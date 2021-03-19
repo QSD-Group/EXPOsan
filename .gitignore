@@ -1,0 +1,78 @@
+build
+dist
+*.egg-info
+__pycache__
+**/__pycache__
+**/*temp*
+*.pyc
+*.pyo
+.pypirc
+MANIFEST
+.coverage
+.coveralls.yml
+htmlcov
+_build
+.cache
+prof
+*Pyreverse*
+monkeytype.sqlite3
+*.spyproject*
+
+# Docs #
+########
+# No need to save these files
+**/_demo.py
+**/.ipynb_checkpoints
+**/.pylint.d
+docs/tutorial/.ipynb_checkpoints
+docs/.ipynb_checkpoints
+docs/build/*
+
+# Compiled source #
+###################
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+*.idea
+
+ # Packages #
+#############
+# it's better to unpack these files and commit the raw source
+# git has its own built in compression methods
+*.7z
+*.dmg
+#*.gz
+*.iso
+*.jar
+*.rar
+#*.tar
+#*.zip
+ 
+# Logs and databases #
+######################
+*.log
+*.sql
+*.sqlite
+ 
+# mac OS generated files #
+##########################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+surfaces
+
+# Other versions #
+##################
+**/_superseded
+IC
+Andrus
+Rowles
+Trimmer
+Zhang
