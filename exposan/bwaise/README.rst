@@ -2,9 +2,6 @@
 bwaise: Sanitation Alternatives in Bwaise, Uganda
 =================================================
 
-**NOT READY YET**
------------------
-
 Summary
 -------
 Systems included in this modules are based on Scenarios A-C as described in
@@ -31,7 +28,7 @@ Loading systems
 .. code-block:: python
 
     >>> # Import bwaise systems as modules
-    >>> from qsdsan.systems import bwaise as bw
+    >>> from exposan.systems import bwaise as bw
     >>> # You can repeat these for `sysB` and `sysC`
     >>> bw.sysA.show()
     System: sysA

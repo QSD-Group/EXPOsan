@@ -1,9 +1,10 @@
+# General ones#
+###############
 build
 dist
 *.egg-info
 __pycache__
 **/__pycache__
-**/*temp*
 *.pyc
 *.pyo
 .pypirc
@@ -21,11 +22,8 @@ monkeytype.sqlite3
 # Docs #
 ########
 # No need to save these files
-**/_demo.py
 **/.ipynb_checkpoints
 **/.pylint.d
-docs/tutorial/.ipynb_checkpoints
-docs/.ipynb_checkpoints
 docs/build/*
 
 # Compiled source #
@@ -68,11 +66,13 @@ ehthumbs.db
 Thumbs.db
 surfaces
 
-# Other versions #
-##################
-**/_superseded
-IC
-Andrus
-Rowles
-Trimmer
-Zhang
+# Others #
+##########
+**/*temp*
+**/*superseded*
+*uploading*
+exposan/IC
+exposan/Andrus
+exposan/Rowles
+exposan/Trimmer
+exposan/Zhang
