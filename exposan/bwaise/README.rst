@@ -28,7 +28,7 @@ Loading systems
 .. code-block:: python
 
     >>> # Import bwaise systems as modules
-    >>> from exposan.systems import bwaise as bw
+    >>> from exposan import bwaise as bw
     >>> # You can repeat these for `sysB` and `sysC`
     >>> bw.sysA.show()
     System: sysA

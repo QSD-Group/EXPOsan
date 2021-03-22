@@ -29,7 +29,7 @@ import qsdsan as qs
 from sklearn.linear_model import LinearRegression as LR
 from qsdsan import sanunits as su
 from qsdsan import WasteStream, ImpactItem, StreamImpactItem, SimpleTEA, LCA
-from qsdsan.systems.bwaise._cmps import cmps
+from exposan.bwaise._cmps import cmps
 
 
 # =============================================================================

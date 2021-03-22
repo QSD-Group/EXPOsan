@@ -17,7 +17,6 @@ for license details.
 
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 from chaospy import distributions as shape
 from thermosteam.functional import V_to_rho, rho_to_V
 from biosteam import PowerUtility
@@ -27,7 +26,7 @@ from qsdsan.utils.loading import load_data, data_path
 from qsdsan.utils.setters import AttrSetter, AttrFuncSetter, DictAttrSetter
 from qsdsan.utils.getters import FuncGetter
 from qsdsan.utils.decorators import time_printer
-from qsdsan.systems import bwaise as bw
+from exposan import bwaise as bw
 
 getattr = getattr
 eval = eval

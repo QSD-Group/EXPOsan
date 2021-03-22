@@ -20,7 +20,7 @@ warnings.filterwarnings(action='ignore')
 import pandas as pd
 from qsdsan import stats as s
 from qsdsan.utils.decorators import time_printer
-from qsdsan.systems import bwaise as bw
+from exposan import bwaise as bw
 
 __all__ = ('run_plot_spearman', 'run_plot_morris', 'run_plot_fast', 'run_plot_sobol')
 
