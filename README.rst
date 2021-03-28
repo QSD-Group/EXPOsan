@@ -37,7 +37,7 @@ Authors and Contributing
 ------------------------
 ``EXPOsan`` is developed by the Quantitative Sustainable Design Group led by members of the `Guest Group <http://engineeringforsustainability.com/>`_ and `other developers <https://github.com/QSD-Group/EXPOsan/graphs/contributors>`_ that have contributed to the repository. Yalin Li (@yalinli2; `email <zoe.yalin.li@gmail.com>`_) is the currently maintainer of this repository and package.
 
-Please refer to `QSDsan <https://github.com/QSD-Group/QSDsan/blob/main/CONTRIBUTING.rst>`_ for contributing guidelines and instructions.
+Please refer the `CONTRIBUTING <https://qsdsan.readthedocs.io/en/latest/CONTRIBUTING.html>`_ section of ``QSDsan`` documentation for contributing guidelines and instructions.
 
 
 License information

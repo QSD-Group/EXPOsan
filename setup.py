@@ -7,8 +7,8 @@ EXPOsan: Exposition of sanitation and resource recovery systems
 This module is developed by:
     Yalin Li <zoe.yalin.li@gmail.com>
 
-This module is under the University of Illinois/NCSA Open Source License. Please refer to
-https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
@@ -17,7 +17,7 @@ from setuptools import setup
 setup(
     name='exposan',
     packages=['exposan'],
-    version='0.0.3',
+    version='0.0.4',
     license='UIUC',
     author='Quantitative Sustainable Design Group',
     author_email='zoe.yalin.li@gmail.com (Yalin Li)',
