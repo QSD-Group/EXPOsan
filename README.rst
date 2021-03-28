@@ -1,5 +1,5 @@
 ===============================================================
-EXPOsan: Exposition of Sanitation and Resource Recovery Systems
+EXPOsan: EXPOsition of sanitation and resource recovery systems
 ===============================================================
 
 .. image:: https://img.shields.io/pypi/l/exposan?color=blue&logo=UIUC&style=flat
@@ -10,14 +10,14 @@ EXPOsan: Exposition of Sanitation and Resource Recovery Systems
    :target: https://pypi.org/project/exposan/
 
 
-What is ``EXPOsan``
--------------------
+What is ``EXPOsan``?
+--------------------
 The ``EXPOsan`` package contains systems developed using the `QSDsan <https://github.com/QSD-Group/QSDsan>`_ package. Please refer to the individual README files within each system module for loading instructions and exemplary results.
 
 
 Installation
 ------------
-Install the package at `PyPI <https://pypi.org/>`_.
+The package can be downloaded from `PyPI <https://pypi.org/project/exposan/>`_.
 
 If you use pip:
 
@@ -30,7 +30,14 @@ To get the git version (use the depth flag to choose how many commit histories y
 
 .. code:: bash
 
-    git clone https://github.com/QSD-Group/EXPOsan.git --depth 1
+    git clone https://github.com/QSD-Group/EXPOsan.git --depth=1
+
+
+Authors and Contributing
+------------------------
+``EXPOsan`` is developed by the Quantitative Sustainable Design Group led by members of the `Guest Group <http://engineeringforsustainability.com/>`_ and `other developers <https://github.com/QSD-Group/EXPOsan/graphs/contributors>`_ that have contributed to the repository. Yalin Li (@yalinli2; `email <zoe.yalin.li@gmail.com>`_) is the currently maintainer of this repository and package.
+
+Please refer to `QSDsan <https://github.com/QSD-Group/QSDsan/blob/master/CONTRIBUTING.rst>`_ for contributing guidelines and instructions.
 
 
 License information

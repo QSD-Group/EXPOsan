@@ -28,20 +28,26 @@ import biosteam as bst
 import qsdsan as qs
 from sklearn.linear_model import LinearRegression as LR
 from qsdsan import sanunits as su
-from qsdsan import WasteStream, ImpactItem, StreamImpactItem, SimpleTEA, LCA
+from qsdsan import WasteStream, ImpactIndicator, ImpactItem, StreamImpactItem, SimpleTEA, LCA
 from exposan.bwaise._cmps import cmps
-
 
 # =============================================================================
 # Unit parameters
 # =============================================================================
 
-qs.set_thermo(cmps)
-items = ImpactItem._items
-GWP = qs.ImpactIndicator._indicators['GWP']
 currency = qs.currency = 'USD'
 qs.CEPCI = qs.CEPCI_by_year[2018]
+qs.set_thermo(cmps)
 bst.speed_up()
+
+import os
+path = os.path.dirname(os.path.realpath(__file__)) + '/data'
+ImpactIndicator.load_indicators_from_file(path+'/impact_indicators.tsv')
+ImpactItem.load_items_from_excel(path+'/impact_items.xlsx')
+del os
+
+GWP = qs.ImpactIndicator._indicators['GWP']
+items = ImpactItem._items
 
 household_size = 4
 get_household_size = lambda: household_size
@@ -234,6 +240,7 @@ def update_A3_param():
     A3._design()
 A3.specification = update_A3_param
 
+
 ###################### Treatment ######################
 A4 = su.LumpedCost('A4', ins=A3-0, cost_item_name='Lumped WWTP',
                    CAPEX=18606700, power=57120/(365*24), lifetime=8)
@@ -293,7 +300,7 @@ A13 = su.ComponentSplitter('A13', ins=A9-0,
 
 ############### Simulation, TEA, and LCA ###############
 sysA = bst.System('sysA', path=(A1, A2, A3, treatA, A9, A10, A11, A12, A13))
-
+# breakpoint()
 teaA = SimpleTEA(system=sysA, discount_rate=get_discount_rate(), start_year=2018,
                  lifetime=get_A4_lifetime(), uptime_ratio=1, lang_factor=None,
                  annual_maintenance=0, annual_labor=12*3e6*12/get_exchange_rate(),

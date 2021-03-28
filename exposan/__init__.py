@@ -15,5 +15,5 @@ for license details.
 import pkg_resources
 try:
     __version__ = pkg_resources.get_distribution('exposan').version
-except pkg_resources.DistributionNotFound:  # pragma: no cover
+except pkg_resources.DistributionNotFound:
     __version__ = None

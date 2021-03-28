@@ -17,7 +17,7 @@ from setuptools import setup
 setup(
     name='exposan',
     packages=['exposan'],
-    version='0.0.2',
+    version='0.0.3',
     license='UIUC',
     author='Quantitative Sustainable Design Group',
     author_email='zoe.yalin.li@gmail.com (Yalin Li)',
@@ -28,6 +28,7 @@ setup(
     package_data=
         {'exposan': [
                     'bwaise/*',
+                    'bwaise/data/*',
                     ]},
     platforms=['Windows', 'Mac', 'Linux'],
     classifiers=['License :: OSI Approved :: University of Illinois/NCSA Open Source License',

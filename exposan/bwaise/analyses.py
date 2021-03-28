@@ -14,8 +14,8 @@ for license details.
 
 # %%
 
-import warnings
-warnings.filterwarnings(action='ignore')
+# import warnings
+# warnings.filterwarnings(action='ignore')
 
 import pandas as pd
 from qsdsan import stats as s
