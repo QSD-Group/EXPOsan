@@ -43,7 +43,8 @@ bst.speed_up()
 import os
 path = os.path.dirname(os.path.realpath(__file__)) + '/data'
 ImpactIndicator.load_indicators_from_file(path+'/impact_indicators.tsv')
-ImpactItem.load_items_from_excel(path+'/impact_items.xlsx')
+item_path = path+'/impact_items.xlsx'
+ImpactItem.load_items_from_excel(item_path)
 del os
 
 GWP = qs.ImpactIndicator._indicators['GWP']

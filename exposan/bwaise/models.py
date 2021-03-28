@@ -31,6 +31,8 @@ from exposan import bwaise as bw
 getattr = getattr
 eval = eval
 
+item_path = bw.systems.item_path
+
 __all__ = ('modelA', 'modelB', 'modelC', 'result_dct',
            'run_uncertainty', 'save_uncertainty_results')
 
@@ -336,8 +338,7 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
     def set_K_fertilizer_CF(i):
         GWP_dct['K'] = -i
 
-    path = data_path + '_impact_item.xlsx'
-    data = load_data(path, sheet='GWP')    
+    data = load_data(item_path, sheet='GWP')    
     for p in data.index:
         item = ImpactItem._items[p]
         b = item.CFs['GlobalWarming']
