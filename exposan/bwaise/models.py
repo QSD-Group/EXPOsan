@@ -806,7 +806,7 @@ def run_uncertainty(model, seed=None, N=1000, rule='L',
     dct['spearman'] = spearman_results
     return dct
 
-def save_uncertainty_results(model, path=None):
+def save_uncertainty_results(model, path=''):
     if not path:
         import os
         path = os.path.dirname(os.path.realpath(__file__))
@@ -815,6 +815,10 @@ def save_uncertainty_results(model, path=None):
             os.mkdir(path)
         path += f'/model{model._system.ID[-1]}.xlsx'
         del os
+    elif not (path.endswith('xlsx') or path.endswith('xls')):
+        extension = path.split('.')[-1]
+        raise ValueError(f'Only "xlsx" and "xls" are supported, not {extension}.')
+    
     dct = result_dct[model._system.ID]
     if dct['parameters'] is None:
         raise ValueError('No cached result, run model first.')

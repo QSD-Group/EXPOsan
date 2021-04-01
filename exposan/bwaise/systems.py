@@ -40,15 +40,18 @@ qs.CEPCI = qs.CEPCI_by_year[2018]
 qs.set_thermo(cmps)
 bst.speed_up()
 
-import os
-path = os.path.dirname(os.path.realpath(__file__)) + '/data'
-ImpactIndicator.load_indicators_from_file(path+'/impact_indicators.tsv')
-item_path = path+'/impact_items.xlsx'
-ImpactItem.load_items_from_excel(item_path)
-del os
+items = ImpactItem._items
+
+if not items: # prevent from reloading
+    import os
+    path = os.path.dirname(os.path.realpath(__file__)) + '/data'
+    ImpactIndicator.load_indicators_from_file(path+'/impact_indicators.tsv')
+    item_path = path+'/impact_items.xlsx'
+    ImpactItem.load_items_from_excel(item_path)
+    del os
 
 GWP = qs.ImpactIndicator._indicators['GWP']
-items = ImpactItem._items
+
 
 household_size = 4
 get_household_size = lambda: household_size

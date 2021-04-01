@@ -68,9 +68,9 @@ surfaces
 
 # Others #
 ##########
+*.sh
 **/*temp*
 **/*superseded*
-*uploading*
 exposan/IC
 exposan/Andrus
 exposan/Rowles

@@ -1,4 +1,4 @@
-Contributing to EXPOsan
-=======================
+Contributing to ``EXPOsan``
+===========================
 
-Please refer to `QSDsan <https://github.com/QSD-Group/QSDsan/blob/master/CONTRIBUTING.rst>`_ for contributing guidelines and instructions.
+Please refer to the `Contributing to QSDsan <https://qsdsan.readthedocs.io/en/latest/CONTRIBUTING.html>`_ section of the documentation for instructions and guidelines.
