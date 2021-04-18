@@ -591,12 +591,12 @@ def set_biogas_energy(i):
 
 # Cost of alternative plants
 B4 = systems.B4
-b = B4.purchase_costs['Lumped WWTP']
+b = B4.baseline_purchase_costs['Lumped WWTP']
 D = shape.Triangle(lower=303426, midpoint=b, upper=370854)
 @paramB(name='Plant CAPEX', element=B4, kind='cost', units='USD',
         baseline=b, distribution=D)
 def set_alt_plant_CAPEX(i):
-    B4.purchase_costs['Lumped WWTP'] = i
+    B4.baseline_purchase_costs['Lumped WWTP'] = i
     
 b = B4.lifetime
 D = shape.Triangle(lower=9, midpoint=b, upper=11)

@@ -38,7 +38,7 @@ apos371 = CFgetter('apos371')
 apos371.load_database('ecoinvent_apos371')
 
 # No need for Midpoint as Endpoint gives categorized results in addition to totals
-# apos371.load_indicators(add=True, method=('recipe'), method_exclude=('LT', 'obsolete'))
+apos371.load_indicators(add=True, method=('recipe'), method_exclude=('LT', 'obsolete'))
 apos371.load_indicators(add=True, method=('recipe endpoint'), method_exclude='LT')
 # For comparison with Trimmer et al.
 apos371.load_indicators(add=True, method='TRACI')
@@ -48,10 +48,6 @@ apos371.load_indicators(add=True, method='TRACI')
 
 import pandas as pd
 all_acts = {}
-# all_acts = dict.fromkeys((
-#     'brick', 'cement', 'concrete', 'excavation', 'gravel_sand', 'hdpe_liner',
-#     'reinforcing_steel', 'steel', 'wood'
-#     ))
 
 def new_act(name):
     act = apos371.copy(name)
@@ -96,12 +92,24 @@ reinforcing_steel = new_act('reinforcing_steel')
 reinforcing_steel.load_activities('market reinforcing steel', add=True, filter={'product': 'steel'})
 reinforcing_steel.load_activities('production reinforcing steel', add=True, filter={'product': 'reinforcing'})
 
-
-#!!! PAUSED
 steel = new_act('steel')
+steel.load_activities('market steel, unalloyed', add=True, limit=None)
+steel.load_activities('market steel, low-alloyed', add=True, limit=None)
 
+stainless_steel = new_act('stainless_steel')
+stainless_steel.load_activities('market steel, chromium steel 18/8', add=True, limit=None)
+
+steel_rolling = new_act('steel_rolling')
+steel_rolling.load_activities('market sheet rolling, chromium steel', add=True, limit=None)
 
 wood = new_act('wood')
+# wood.load_activities('market sawnwood', add=True, filter={'location': 'GLO'}, mask={'product': 'raw'}, limit=None) # None
+wood.load_activities('market sawnwood', add=True, filter={'location': 'RoW'}, mask={'product': 'raw'}, limit=None)
+to_remove = []
+for act in wood.activities.keys():
+    if ('azobe' in act) or ('paraná pine' in act) or ('lath' in act) or ('beam' in act) or ('board' in act):
+        to_remove.append(act)
+wood.remove('activity', to_remove)
 
 
 # %%

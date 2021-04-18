@@ -20,7 +20,7 @@ setup(
     version='0.0.6',
     license='UIUC',
     author='Quantitative Sustainable Design Group',
-    author_email='zoe.yalin.li@gmail.com (Yalin Li)',
+    author_email='quantitative.sustainable.design@gmail.com',
     description='Exposition of sanitation and resource recovery systems',
     long_description=open('README.rst').read(),
     url="https://github.com/QSD-Group/EXPOsan",
