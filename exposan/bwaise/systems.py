@@ -166,27 +166,35 @@ e_item = ImpactItem(ID='e_item', functional_unit='kWh', GWP=GWP_dct['Electricity
 def batch_create_streams(prefix):
     stream_dct = {}
     stream_dct['CH4'] = WasteStream(f'{prefix}_CH4', phase='g',
-                                    impact_item=CH4_item.copy(set_as_source=True))
+                                    impact_item=CH4_item.copy(set_as_source=True,
+                                                              register=False))
     stream_dct['N2O'] = WasteStream(f'{prefix}_N2O', phase='g',
-                                    impact_item=N2O_item.copy(set_as_source=True))
+                                    impact_item=N2O_item.copy(set_as_source=True,
+                                                              register=False))
     stream_dct['liq_N'] = WasteStream(f'{prefix}_liq_N', phase='l', price=price_dct['N'],
-                                      impact_item=N_item.copy(set_as_source=True))
+                                      impact_item=N_item.copy(set_as_source=True,
+                                                              register=False))
     stream_dct['sol_N'] = WasteStream(f'{prefix}_sol_N', phase='l', price=price_dct['N'],
-                                      impact_item=N_item.copy(set_as_source=True))
+                                      impact_item=N_item.copy(set_as_source=True,
+                                                              register=False))
     stream_dct['liq_P'] = WasteStream(f'{prefix}_liq_P', phase='l', price=price_dct['P'],
-                                      impact_item=P_item.copy(set_as_source=True))
+                                      impact_item=P_item.copy(set_as_source=True,
+                                                              register=False))
     stream_dct['sol_P'] = WasteStream(f'{prefix}_sol_P', phase='l', price=price_dct['P'],
-                                      impact_item=P_item.copy(set_as_source=True))
+                                      impact_item=P_item.copy(set_as_source=True,
+                                                              register=False))
     stream_dct['liq_K'] = WasteStream(f'{prefix}_liq_K', phase='l', price=price_dct['K'],
-                                      impact_item=K_item.copy(set_as_source=True))
+                                      impact_item=K_item.copy(set_as_source=True,
+                                                              register=False))
     stream_dct['sol_K'] = WasteStream(f'{prefix}_sol_K', phase='l', price=price_dct['K'],
-                                      impact_item=K_item.copy(set_as_source=True))
+                                      impact_item=K_item.copy(set_as_source=True,
+                                                              register=False))
     return stream_dct
 
 def add_fugitive_items(unit, item):
     unit._run()
     for i in unit.ins:
-        i.impact_item = item.copy(set_as_source=True)
+        i.impact_item = item.copy(set_as_source=True, register=False)
 
 # Costs of WWTP units have been considered in the lumped unit
 def clear_unit_costs(sys):
@@ -325,7 +333,8 @@ flowsheetB = bst.Flowsheet('sysB')
 bst.main_flowsheet.set_flowsheet(flowsheetB)
 streamsB = batch_create_streams('B')
 streamsB['biogas'] = WasteStream('B_biogas', phase='g', price=price_dct['Biogas'],
-                                 impact_item=biogas_item.copy(set_as_source=True))
+                                 impact_item=biogas_item.copy(set_as_source=True,
+                                                              register=False))
 
 #################### Human Inputs ####################
 B1 = su.Excretion('B1', outs=('urine', 'feces'))
