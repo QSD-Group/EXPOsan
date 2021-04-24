@@ -40,7 +40,7 @@ qs.CEPCI = qs.CEPCI_by_year[2018]
 qs.set_thermo(cmps)
 bst.speed_up()
 
-items = ImpactItem._items
+items = ImpactItem.get_all_items()
 
 if not items: # prevent from reloading
     import os
@@ -50,8 +50,7 @@ if not items: # prevent from reloading
     ImpactItem.load_items_from_excel(item_path)
     del os
 
-GWP = qs.ImpactIndicator._indicators['GWP']
-
+GWP = qs.ImpactIndicator.get_indicator('GWP')
 
 household_size = 4
 get_household_size = lambda: household_size
@@ -166,35 +165,27 @@ e_item = ImpactItem(ID='e_item', functional_unit='kWh', GWP=GWP_dct['Electricity
 def batch_create_streams(prefix):
     stream_dct = {}
     stream_dct['CH4'] = WasteStream(f'{prefix}_CH4', phase='g',
-                                    impact_item=CH4_item.copy(set_as_source=True,
-                                                              register=False))
+                                    impact_item=CH4_item.copy(set_as_source=True))
     stream_dct['N2O'] = WasteStream(f'{prefix}_N2O', phase='g',
-                                    impact_item=N2O_item.copy(set_as_source=True,
-                                                              register=False))
+                                    impact_item=N2O_item.copy(set_as_source=True))
     stream_dct['liq_N'] = WasteStream(f'{prefix}_liq_N', phase='l', price=price_dct['N'],
-                                      impact_item=N_item.copy(set_as_source=True,
-                                                              register=False))
+                                      impact_item=N_item.copy(set_as_source=True))
     stream_dct['sol_N'] = WasteStream(f'{prefix}_sol_N', phase='l', price=price_dct['N'],
-                                      impact_item=N_item.copy(set_as_source=True,
-                                                              register=False))
+                                      impact_item=N_item.copy(set_as_source=True))
     stream_dct['liq_P'] = WasteStream(f'{prefix}_liq_P', phase='l', price=price_dct['P'],
-                                      impact_item=P_item.copy(set_as_source=True,
-                                                              register=False))
+                                      impact_item=P_item.copy(set_as_source=True))
     stream_dct['sol_P'] = WasteStream(f'{prefix}_sol_P', phase='l', price=price_dct['P'],
-                                      impact_item=P_item.copy(set_as_source=True,
-                                                              register=False))
+                                      impact_item=P_item.copy(set_as_source=True))
     stream_dct['liq_K'] = WasteStream(f'{prefix}_liq_K', phase='l', price=price_dct['K'],
-                                      impact_item=K_item.copy(set_as_source=True,
-                                                              register=False))
+                                      impact_item=K_item.copy(set_as_source=True))
     stream_dct['sol_K'] = WasteStream(f'{prefix}_sol_K', phase='l', price=price_dct['K'],
-                                      impact_item=K_item.copy(set_as_source=True,
-                                                              register=False))
+                                      impact_item=K_item.copy(set_as_source=True))
     return stream_dct
 
 def add_fugitive_items(unit, item):
     unit._run()
     for i in unit.ins:
-        i.impact_item = item.copy(set_as_source=True, register=False)
+        i.impact_item = item.copy(set_as_source=True)
 
 # Costs of WWTP units have been considered in the lumped unit
 def clear_unit_costs(sys):
@@ -219,7 +210,6 @@ def adjust_NH3_loss(unit):
 
 flowsheetA = bst.Flowsheet('sysA')
 bst.main_flowsheet.set_flowsheet(flowsheetA)
-# breakpoint()
 streamsA = batch_create_streams('A')
 
 #################### Human Inputs ####################
@@ -312,7 +302,7 @@ A13 = su.ComponentSplitter('A13', ins=A9-0,
 
 ############### Simulation, TEA, and LCA ###############
 sysA = bst.System('sysA', path=(A1, A2, A3, treatA, A9, A10, A11, A12, A13))
-# breakpoint()
+
 teaA = SimpleTEA(system=sysA, discount_rate=get_discount_rate(), start_year=2018,
                  lifetime=get_A4_lifetime(), uptime_ratio=1, lang_factor=None,
                  annual_maintenance=0, annual_labor=12*3e6*12/get_exchange_rate(),
@@ -333,8 +323,7 @@ flowsheetB = bst.Flowsheet('sysB')
 bst.main_flowsheet.set_flowsheet(flowsheetB)
 streamsB = batch_create_streams('B')
 streamsB['biogas'] = WasteStream('B_biogas', phase='g', price=price_dct['Biogas'],
-                                 impact_item=biogas_item.copy(set_as_source=True,
-                                                              register=False))
+                                 impact_item=biogas_item.copy(set_as_source=True))
 
 #################### Human Inputs ####################
 B1 = su.Excretion('B1', outs=('urine', 'feces'))
@@ -629,12 +618,13 @@ sys_dct = {
 def cache_recoveries(sys):
     total_COD = get_total_inputs(sys_dct['input_unit'][sys.ID])['COD']
     ppl = sys_dct['ppl'][sys.ID]
+
     if sys_dct['gas_unit'][sys.ID]:
         gas_mol = sys_dct['gas_unit'][sys.ID].outs[0].imol['CH4']
         gas_COD = gas_mol*1e3*get_biogas_energy()*365*24/14e3/ppl/total_COD
-        # breakpoint()
     else:
         gas_COD = 0
+
     cache = {
         'liq': get_recovery(ins=sys_dct['input_unit'][sys.ID],
                             outs=sys_dct['liq_unit'][sys.ID].ins,

@@ -340,7 +340,7 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
 
     data = load_data(item_path, sheet='GWP')    
     for p in data.index:
-        item = ImpactItem._items[p]
+        item = ImpactItem.get_item(p)
         b = item.CFs['GlobalWarming']
         lower = float(data.loc[p]['low'])
         upper = float(data.loc[p]['high'])
