@@ -112,7 +112,7 @@ Loading systems
                         Mg      0.00497
                         Ca      0.0114
     >>> # You can check out all of the components in these systems
-    >>> bw.cmps.show()    
+    >>> bw.cmps.show()   
     CompiledComponents([NH3, NonNH3, P, K, Mg, Ca, H2O, OtherSS, N2O, CH4, O2, N2, CO2, P4O10, Tissue, WoodAsh, Struvite, HAP])
     >>> bw.cmps.NH3.show()
     Component: NH3 (phase_ref='g') at phase='l'
@@ -191,9 +191,9 @@ Results from the original paper [1]_ are saved in the "/results/original_results
     >>> # Check the results for `sysA`
     >>> bw.teaA.show()
     SimpleTEA: sysA
-    NPV  : -22,649,167 USD at 5.0% discount rate
-    EAC  : 3,827,113 USD/yr
-    CAPEX: 12,815,667 USD (annualized to 1,982,863 USD/yr)
+    NPV  : -22,732,728 USD at 5.0% discount rate
+    EAC  : 3,840,042 USD/yr
+    CAPEX: 12,899,228 USD (annualized to 1,995,792 USD/yr)
     AOC  : 1,844,250 USD/yr
     >>> # There are also handy functions to allow you quickly see important results
     >>> bw.print_summaries(bw.sysA)
@@ -201,9 +201,9 @@ Results from the original paper [1]_ are saved in the "/results/original_results
     ---------- Summary for sysA ----------
     
     SimpleTEA: sysA
-    NPV  : -22,649,167 USD at 5.0% discount rate
-    EAC  : 3,827,113 USD/yr
-    CAPEX: 12,815,667 USD (annualized to 1,982,863 USD/yr)
+    NPV  : -22,732,728 USD at 5.0% discount rate
+    EAC  : 3,840,042 USD/yr
+    CAPEX: 12,899,228 USD (annualized to 1,995,792 USD/yr)
     AOC  : 1,844,250 USD/yr
     
     
@@ -213,7 +213,7 @@ Results from the original paper [1]_ are saved in the "/results/original_results
     GlobalWarming (kg CO2-eq)      3.13e+07        9.57e+05     1.14e+08 6.85e+04 1.46e+08
     
     Net cost: 8.4 USD/cap/yr.
-    Capital: 4.3 USD/cap/yr.
+    Capital: 4.4 USD/cap/yr.
     Operating: 4.0 USD/cap/yr.
     
     Net emission: 40.1 kg CO2-eq/cap/yr.
