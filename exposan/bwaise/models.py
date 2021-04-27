@@ -22,10 +22,12 @@ from thermosteam.functional import V_to_rho, rho_to_V
 from biosteam import PowerUtility
 from biosteam.evaluation import Model, Metric
 from qsdsan import currency, ImpactItem
-from qsdsan.utils.loading import load_data, data_path
-from qsdsan.utils.setters import AttrSetter, AttrFuncSetter, DictAttrSetter
-from qsdsan.utils.getters import FuncGetter
-from qsdsan.utils.decorators import time_printer
+from qsdsan.utils import (
+    load_data, data_path,
+    AttrSetter, AttrFuncSetter, DictAttrSetter,
+    FuncGetter,
+    time_printer
+    )
 from exposan import bwaise as bw
 
 getattr = getattr

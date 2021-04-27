@@ -19,7 +19,7 @@ for license details.
 
 import pandas as pd
 from qsdsan import stats as s
-from qsdsan.utils.decorators import time_printer
+from qsdsan.utils import time_printer
 from exposan import bwaise as bw
 
 __all__ = ('run_plot_spearman', 'run_plot_morris', 'run_plot_fast', 'run_plot_sobol')

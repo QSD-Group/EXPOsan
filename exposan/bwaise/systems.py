@@ -40,18 +40,6 @@ qs.CEPCI = qs.CEPCI_by_year[2018]
 qs.set_thermo(cmps)
 bst.speed_up()
 
-items = ImpactItem.get_all_items()
-
-if not items: # prevent from reloading
-    import os
-    path = os.path.dirname(os.path.realpath(__file__)) + '/data'
-    ImpactIndicator.load_indicators_from_file(path+'/impact_indicators.tsv')
-    item_path = path+'/impact_items.xlsx'
-    ImpactItem.load_items_from_excel(item_path)
-    del os
-
-GWP = qs.ImpactIndicator.get_indicator('GWP')
-
 household_size = 4
 get_household_size = lambda: household_size
 household_per_toilet = 4
@@ -145,6 +133,18 @@ GWP_dct = {
     'K': -1.5,
     'Biogas': -3*get_biogas_factor()
     }
+
+items = ImpactItem.get_all_items()
+
+if not items.get('Excavation'): # prevent from reloading
+    import os
+    path = os.path.dirname(os.path.realpath(__file__)) + '/data'
+    ImpactIndicator.load_indicators_from_file(path+'/impact_indicators.tsv')
+    item_path = path+'/impact_items.xlsx'
+    ImpactItem.load_items_from_excel(item_path)
+    del os
+
+GWP = qs.ImpactIndicator.get_indicator('GWP')
 
 bst.PowerUtility.price = price_dct['Electricity']
 items['Concrete'].price = price_dct['Concrete']
