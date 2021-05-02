@@ -28,23 +28,65 @@ for license details.
 # %%
 
 import os
-c_path = os.path.realpath(__file__)
-raw_path = os.path.join(os.path.split(c_path)[0], 'data/raw')
+import qsdsan as qs
 
 from bw2qsd import CFgetter
+from bw2qsd.utils import format_name
+c_path = os.path.realpath(__file__)
+
+
+# %%
+
+# =============================================================================
+# Impact indicators
+# =============================================================================
 
 apos371 = CFgetter('apos371')
 # ecoinvent version 3.7.1, at the point of substitution
 apos371.load_database('ecoinvent_apos371')
 
 # No need for Midpoint as Endpoint gives categorized results in addition to totals
-apos371.load_indicators(add=True, method=('recipe'), method_exclude=('LT', 'obsolete'))
+# apos371.load_indicators(add=True, method=('recipe'), method_exclude=('LT', 'obsolete'))
 apos371.load_indicators(add=True, method=('recipe endpoint'), method_exclude='LT')
 # For comparison with Trimmer et al.
 apos371.load_indicators(add=True, method='TRACI')
 
+ind_df_raw = apos371.export_indicators(show=False, path='')
+ind_df_processed = ind_df_raw.copy()
+
+for num, ind in ind_df_raw.iterrows():
+    old_name = ind['indicator']
+    if 'TRACI' in ind['method']:
+        new_name = old_name
+    else:
+        kind = ind['method'].split(',A)')[0][-1] # egalitarian, hierarchist, individualist
+        if old_name == 'Total':
+            if ind['category'] == 'total':
+                new_name = f'{kind}_All' # total of all categories in E/H/I
+            else:
+                new_name = f'{kind}_{format_name(ind["category"])}_Total' # category total
+        else:
+            new_name = f'{kind}_{old_name}'
+
+    ind_df_processed.iloc[num]['indicator'] = new_name
+
+ind_df_processed.sort_values(by=['method', 'category', 'indicator'], inplace=True)
+
+
+# Make impact indicators in QSDsan
+qs.ImpactIndicator.load_indicators_from_file(ind_df_processed)
+
+
+# Save processed data for separate importing
+data_path = os.path.join(os.path.split(c_path)[0], 'data')
+ind_df_processed.to_csv(os.path.join(data_path, 'indicators_new.tsv'), sep='\t')
+
 
 # %%
+
+# =============================================================================
+# Impact items
+# =============================================================================
 
 import pandas as pd
 all_acts = {}
@@ -53,16 +95,6 @@ def new_act(name):
     act = apos371.copy(name)
     all_acts[name] = act
     return act
-
-def get_stats(df):
-    df2 = df.copy()
-    df2 = df2.append(df[1:].min(), ignore_index=True)
-    df2 = df2.append(df[1:].mean(), ignore_index=True)
-    df2 = df2.append(df[1:].median(), ignore_index=True)
-    df2 = df2.append(df[1:].max(), ignore_index=True)
-    df2.index = pd.Index((*df.index, 'min', 'mean', 'median', 'max'))
-    df2.loc['mean'][0] = df2.loc['median'][0] = df2.loc['max'][0]
-    return df2
 
 brick = new_act('brick')
 brick.load_activities('market brick', add=True, filter={'location': 'GLO'}, mask={'product': 'facility'}, limit=None)
@@ -112,18 +144,20 @@ for act in wood.activities.keys():
 wood.remove('activity', to_remove)
 
 
-# %%
+# Save raw data
+def get_stats(df):
+    df2 = df.copy()
+    df2 = df2.append(df[1:].min(), ignore_index=True)
+    df2 = df2.append(df[1:].mean(), ignore_index=True)
+    df2 = df2.append(df[1:].median(), ignore_index=True)
+    df2 = df2.append(df[1:].max(), ignore_index=True)
+    df2.index = pd.Index((*df.index, 'min', 'mean', 'median', 'max'))
+    df2.loc['mean'][0] = df2.loc['median'][0] = df2.loc['max'][0]
+    return df2
 
+raw_path = os.path.join(data_path, 'new_CFs_raw')
 for k, v in all_acts.items():
     get_stats(v.CFs).to_excel(os.path.join(raw_path, f'{k}_CFs.xlsx'))
-
-
-# df = apos371.get_CF(path=os.path.join(raw_path, 'temp.xlsx'))
-
-# Export impact indicators to be imported by QSDsan
-# apos371.export_indicators(show=False, path=os.path.join(raw_path, 'temp.tsv'))
-# apos371.export_indicators(show=False, path=os.path.join(raw_path, 'impact_indicators.tsv'))
-
 
 
 # %%
