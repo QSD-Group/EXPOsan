@@ -30,9 +30,8 @@ from sklearn.linear_model import LinearRegression as LR
 from qsdsan import sanunits as su
 from qsdsan import WasteStream, ImpactIndicator, ImpactItem, StreamImpactItem, SimpleTEA, LCA
 from exposan.bwaise._cmps import cmps
+from exposan.bwaise._lca_data import load_lca_data
 
-import os
-path = os.path.dirname(os.path.realpath(__file__)) + '/data'
 
 # =============================================================================
 # Unit parameters
@@ -139,31 +138,10 @@ GWP_dct = {
 
 items = ImpactItem.get_all_items()
 
-#!!! Change here to load new impact items
-def load_LCA_data(kind='original'):
-    '''
-    Load impact indicator and impact item data.
-
-    Parameters
-    ----------
-    kind : str
-        "original" loads the data from Trimmer et al.
-        (TRACI, ecoinvent v3.2),
-        "new" loads the data for ReCiPe and TRACI
-        (ecoinvent 3.7.1, at the point of substitution).
-    '''
-    global indicator_path, item_path
-
-    indicator_path = os.path.join(path, f'indicators_{kind}.tsv')
-    ImpactIndicator.load_indicators_from_file(indicator_path)
-
-    item_path = os.path.join(path, f'items_{kind}.xlsx')
-    ImpactItem.load_items_from_excel(item_path)
-
 if not items.get('Excavation'): # prevent from reloading
-    load_LCA_data('original')
+    load_lca_data('original')
 
-GWP = qs.ImpactIndicator.get_indicator('GWP')
+GWP = ImpactIndicator.get_indicator('GWP')
 
 bst.PowerUtility.price = price_dct['Electricity']
 items['Concrete'].price = price_dct['Concrete']

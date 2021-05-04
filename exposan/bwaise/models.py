@@ -15,6 +15,7 @@ for license details.
 
 # %%
 
+import os
 import numpy as np
 import pandas as pd
 from chaospy import distributions as shape
@@ -30,7 +31,8 @@ from qsdsan.utils import (
     )
 from exposan import bwaise as bw
 
-item_path = bw.systems.item_path
+c_path = bw._lca_data.c_path
+item_path = os.path.join(bw._lca_data.data_path, 'items_original.xlsx')
 
 __all__ = ('modelA', 'modelB', 'modelC', 'result_dct',
            'run_uncertainty', 'save_uncertainty_results')
@@ -108,8 +110,8 @@ def batch_setting_unit_params(df, model, unit, exclude=()):
 # Shared by all three systems
 # =============================================================================
 
-su_data_path = data_path + 'sanunit_data/'
-path = su_data_path + '_drying_bed.tsv'
+su_data_path = os.path.join(data_path, 'sanunit_data/')
+path = os.path.join(su_data_path, '_drying_bed.tsv')
 drying_bed_data = load_data(path)
 get_exchange_rate = systems.get_exchange_rate
 
@@ -364,9 +366,9 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
 # For the same processes in sysA and sysB
 # =============================================================================
 
-path = su_data_path + '_toilet.tsv'
+path = os.path.join(su_data_path, '_toilet.tsv')
 toilet_data = load_data(path)
-path = su_data_path + '_pit_latrine.tsv'
+path = os.path.join(su_data_path, '_pit_latrine.tsv')
 pit_latrine_data = load_data(path)
 
 MCF_lower_dct = dct_from_str(pit_latrine_data.loc['MCF_decay']['low'])
@@ -529,7 +531,7 @@ modelA = add_existing_plant_parameters(systems.A2, systems.A4, systems.teaA, mod
 
 # Sedimentation tank
 A5 = systems.A5
-path = su_data_path + '_sedimentation_tank.tsv'
+path = os.path.join(su_data_path, '_sedimentation_tank.tsv')
 data = load_data(path)
 batch_setting_unit_params(data, modelA, A5)
 # The tank was based on a sludge separator
@@ -537,14 +539,14 @@ modelA = add_sludge_separator_parameters(A5, modelA)
 
 # Anaerobic lagoon
 A6 = systems.A6
-path = su_data_path + '_anaerobic_lagoon.tsv'
+path = os.path.join(su_data_path, '_anaerobic_lagoon.tsv')
 anaerobic_lagoon_data = load_data(path)
 batch_setting_unit_params(anaerobic_lagoon_data, modelA, A6)
 modelA = add_lagoon_parameters(A6, modelA)
 
 # Facultative lagoon
 A7 = systems.A7
-path = su_data_path + '_facultative_lagoon.tsv'
+path = os.path.join(su_data_path, '_facultative_lagoon.tsv')
 facultative_lagoon_data = load_data(path)
 batch_setting_unit_params(facultative_lagoon_data, modelA, A7)
 modelA = add_lagoon_parameters(A7, modelA)
@@ -578,7 +580,7 @@ def set_plant_ppl(i):
 
 # Anaerobic baffled reactor
 B5 = systems.B5
-path = su_data_path + '_anaerobic_baffled_reactor.tsv'
+path = os.path.join(su_data_path, '_anaerobic_baffled_reactor.tsv')
 data = load_data(path)
 batch_setting_unit_params(data, modelB, B5)
 
@@ -625,7 +627,7 @@ modelB = add_sludge_separator_parameters(B6, modelB)
 
 # Liquid treatment bed
 B7 = systems.B7
-path = su_data_path + '_liquid_treatment_bed.tsv'
+path = os.path.join(su_data_path, '_liquid_treatment_bed.tsv')
 data = load_data(path)
 batch_setting_unit_params(data, modelB, B7)
 
@@ -677,7 +679,7 @@ modelC = add_shared_parameters(sysC, modelC, systems.C8, systems.C9)
 
 # UDDT
 C2 = systems.C2
-path = su_data_path + '_uddt.tsv'
+path = os.path.join(su_data_path, '_uddt.tsv')
 uddt_data = load_data(path)
 data = pd.concat((toilet_data, uddt_data))
 
@@ -808,13 +810,12 @@ def run_uncertainty(model, seed=None, N=1000, rule='L',
 
 def save_uncertainty_results(model, path=''):
     if not path:
-        import os
-        path = os.path.dirname(os.path.realpath(__file__))
-        path += '/results'
+        path = os.path.join(c_path, 'results')
+
         if not os.path.isdir(path):
             os.mkdir(path)
-        path += f'/model{model._system.ID[-1]}.xlsx'
-        del os
+        path = os.path.join(path, f'model{model._system.ID[-1]}.xlsx')
+
     elif not (path.endswith('xlsx') or path.endswith('xls')):
         extension = path.split('.')[-1]
         raise ValueError(f'Only "xlsx" and "xls" are supported, not {extension}.')

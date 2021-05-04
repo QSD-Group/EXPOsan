@@ -20,9 +20,11 @@ import pandas as pd
 import qsdsan as qs
 from bw2qsd import CFgetter, remove_setups_pickle
 from bw2qsd.utils import format_name
-c_path = os.path.realpath(__file__)
 
-__all__ = ('load_cf_data',)
+c_path = os.path.dirname(__file__)
+data_path = os.path.join(c_path, 'data')
+
+__all__ = ('load_lca_data',)
 
 
 # %%
@@ -215,15 +217,15 @@ def get_cf_data():
 
     return ind_df_processed, all_acts, cf_dct
 
-def save_cf_data(data_path=''):
+def save_cf_data():
     ind_df_processed, all_acts, cf_dct = get_cf_data()
 
-    path = data_path if data_path else os.path.join(os.path.split(c_path)[0], 'data')
-    ind_file = 'indicators.tsv' if data_path else 'indicators_new.tsv'
-    raw_path = os.path.join(path, 'CFs_raw') if data_path else os.path.join(path, 'new_CFs_raw')
+    # path = data_path if data_path else os.path.join(os.path.split(c_path)[0], 'data')
+    ind_file = 'indicators_new.tsv'
+    raw_path = os.path.join(data_path, 'new_CFs_raw')
 
     # Impact indicators
-    ind_df_processed.to_csv(os.path.join(path, ind_file), sep='\t')
+    ind_df_processed.to_csv(os.path.join(data_path, ind_file), sep='\t')
 
     # Raw data
     if not os.path.isdir(raw_path):
@@ -232,26 +234,38 @@ def save_cf_data(data_path=''):
         v.CFs.to_csv(os.path.join(raw_path, f'{k}_CFs.tsv'), sep='\t')
 
     # Organized data
-    f = open(os.path.join(path, 'cf_dct.pckl'), 'wb')
+    f = open(os.path.join(data_path, 'cf_dct.pckl'), 'wb')
     pickle.dump(cf_dct, f)
     f.close()
 
 
-def load_cf_data(indicator_path='', item_path=''):
-    indicator_path = os.path.join(os.path.split(c_path)[0], 'data/indicators_new.tsv') \
-        if not indicator_path else indicator_path
-    item_path = os.path.join(os.path.split(c_path)[0], 'data/cf_dct.pckl') \
-        if not item_path else item_path
+def load_lca_data(kind='original'):
+    '''
+    Load impact indicator and impact item data.
 
-    ind_df_processed = pd.read_csv(indicator_path, sep='\t', index_col=0)
-
-    qs.ImpactIndicator.load_indicators_from_file(ind_df_processed)
+    Parameters
+    ----------
+    kind : str
+        "original" loads the data from Trimmer et al.
+        (TRACI, ecoinvent v3.2),
+        "new" loads the data for ReCiPe and TRACI
+        (ecoinvent 3.7.1, at the point of substitution).
+    '''
+    indicator_path = os.path.join(data_path, f'indicators_{kind}.tsv')
+    indel_col = None if kind=='original' else 0
+    ind_df_processed = pd.read_csv(indicator_path, sep='\t', index_col=indel_col)
+    qs.ImpactIndicator.load_indicators_from_file(indicator_path)
     indicators = qs.ImpactIndicator.get_all_indicators()
 
-    f = open(item_path, 'rb')
-    cf_dct = pickle.load(f)
-    f.close()
-
-    items = create_items(ind_df_processed, cf_dct)
+    if kind == 'original':
+        item_path = os.path.join(data_path, 'items_original.xlsx')
+        qs.ImpactItem.load_items_from_excel(item_path)
+        items = qs.ImpactItem.get_all_items()
+    else:
+        item_path = os.path.join(data_path, 'cf_dct.pckl')
+        f = open(item_path, 'rb')
+        cf_dct = pickle.load(f)
+        f.close()
+        items = create_items(ind_df_processed, cf_dct)
 
     return indicators, items
