@@ -23,15 +23,12 @@ from biosteam import PowerUtility
 from biosteam.evaluation import Model, Metric
 from qsdsan import currency, ImpactItem
 from qsdsan.utils import (
-    load_data, data_path,
+    load_data, data_path, dct_from_str,
     AttrSetter, AttrFuncSetter, DictAttrSetter,
     FuncGetter,
     time_printer
     )
 from exposan import bwaise as bw
-
-getattr = getattr
-eval = eval
 
 item_path = bw.systems.item_path
 
@@ -99,7 +96,7 @@ def batch_setting_unit_params(df, model, unit, exclude=()):
             D = shape.Triangle(lower=lower, midpoint=b, upper=upper)
         elif dist == 'constant': continue
         else:
-            raise ValueError(f'Distribution {dist} not recognized for unit {unit}.')     
+            raise ValueError(f'Distribution {dist} not recognized for unit {unit}.')
         model.parameter(setter=AttrSetter(unit, para),
                         name=para, element=unit, kind='coupled', units=df.loc[para]['unit'],
                         baseline=b, distribution=D)
@@ -120,20 +117,20 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
     ########## Related to multiple units ##########
     unit = sys.path[0]
     param = model.parameter
-    
+
     # UGX-to-USD
     b = get_exchange_rate()
     D = shape.Triangle(lower=3600, midpoint=b, upper=3900)
     param(setter=AttrSetter(systems, 'exchange_rate'),
           name='Exchange rate', element=unit, kind='cost', units='UGX/USD',
           baseline=b, distribution=D)
-    
+
     ########## Related to human input ##########
     # Diet and excretion
     path = data_path + 'sanunit_data/_excretion.tsv'
     data = load_data(path)
     batch_setting_unit_params(data, model, unit)
-    
+
     # Household size
     b = systems.get_household_size()
     D = shape.Normal(mu=b, sigma=1.8)
@@ -141,7 +138,7 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
            baseline=b, distribution=D)
     def set_household_size(i):
         systems.household_size = max(1, i)
-    
+
     # Toilet density
     b = systems.get_household_per_toilet()
     D = shape.Uniform(lower=3, upper=5)
@@ -159,7 +156,7 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
            baseline=b, distribution=D)
     def set_max_CH4_emission(i):
         systems.max_CH4_emission = i
-    
+
     # Time to full degradation
     b = systems.tau_deg
     D = shape.Uniform(lower=1, upper=3)
@@ -167,7 +164,7 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
            baseline=b, distribution=D)
     def set_tau_deg(i):
         systems.tau_deg = i
-    
+
     # Reduction at full degradation
     b = systems.log_deg
     D = shape.Uniform(lower=2, upper=4)
@@ -175,7 +172,7 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
            baseline=b, distribution=D)
     def set_log_deg(i):
         systems.log = i
-    
+
     ##### Toilet material properties #####
     density = unit.density_dct
     b = density['Plastic']
@@ -183,19 +180,19 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
     param(setter=DictAttrSetter(unit, 'density_dct', 'Plastic'),
           name='Plastic density', element=unit, kind='isolated', units='kg/m2',
           baseline=b, distribution=D)
-    
+
     b = density['Brick']
     D = shape.Uniform(lower=1500, upper=2000)
     param(setter=DictAttrSetter(unit, 'density_dct', 'Brick'),
           name='Brick density', element=unit, kind='isolated', units='kg/m3',
           baseline=b, distribution=D)
-    
+
     b = density['StainlessSteelSheet']
     D = shape.Uniform(lower=2.26, upper=3.58)
     param(setter=DictAttrSetter(unit, 'density_dct', 'StainlessSteelSheet'),
           name='SS sheet density', element=unit, kind='isolated', units='kg/m2',
           baseline=b, distribution=D)
-        
+
     b = density['Gravel']
     D = shape.Uniform(lower=1520, upper=1680)
     param(setter=DictAttrSetter(unit, 'density_dct', 'Gravel'),
@@ -207,7 +204,7 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
     param(setter=DictAttrSetter(unit, 'density_dct', 'Sand'),
           name='Sand density', element=unit, kind='isolated', units='kg/m3',
           baseline=b, distribution=D)
-        
+
     b = density['Steel']
     D = shape.Uniform(lower=7750, upper=8050)
     param(setter=DictAttrSetter(unit, 'density_dct', 'Steel'),
@@ -218,7 +215,7 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
     unit = drying_bed_unit
     D = shape.Uniform(lower=0, upper=0.1)
     batch_setting_unit_params(drying_bed_data, model, unit, exclude=('sol_frac', 'bed_H'))
-    
+
     b = unit.sol_frac
     if unit.design_type == 'unplanted':
         D = shape.Uniform(lower=0.3, upper=0.4)
@@ -227,13 +224,13 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
     param(setter=DictAttrSetter(unit, '_sol_frac', getattr(unit, 'design_type')),
           name='sol_frac', element=unit, kind='coupled', units='fraction',
           baseline=b, distribution=D)
-    
+
     b = unit.bed_H['covered']
     D = shape.Uniform(lower=0.45, upper=0.75)
     param(setter=DictAttrSetter(unit, 'bed_H', ('covered', 'uncovered')),
           name='non_storage_bed_H', element=unit, kind='coupled', units='m',
           baseline=b, distribution=D)
-    
+
     b = unit.bed_H['storage']
     D = shape.Uniform(lower=1.2, upper=1.8)
     param(DictAttrSetter(unit, 'bed_H', 'storage'),
@@ -246,7 +243,7 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
     param(setter=DictAttrSetter(unit, 'loss_ratio', 'NH3'),
           name='NH3 application loss', element=unit, kind='coupled',
           units='fraction of applied', baseline=0.05, distribution=D)
-    
+
     # Mg, Ca, C actually not affecting results
     D = shape.Uniform(lower=0, upper=0.05)
     param(setter=DictAttrSetter(unit, 'loss_ratio', ('NonNH3', 'P', 'K', 'Mg', 'Ca')),
@@ -262,25 +259,25 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
            baseline=b, distribution=D)
     def set_price_factor(i):
         systems.price_factor = i
-    
+
     D = shape.Uniform(lower=1.164, upper=2.296)
     @param(name='N fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
            baseline=1.507, distribution=D)
     def set_N_price(i):
         price_dct['N'] = i * get_price_factor()
-        
+
     D = shape.Uniform(lower=2.619, upper=6.692)
     @param(name='P fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
            baseline=3.983, distribution=D)
     def set_P_price(i):
         price_dct['P'] = i * get_price_factor()
-        
+
     D = shape.Uniform(lower=1.214, upper=1.474)
     @param(name='K fertilizer price', element='TEA', kind='isolated', units='USD/kg K',
            baseline=1.333, distribution=D)
     def set_K_price(i):
         price_dct['K'] = i * get_price_factor()
-    
+
     # Money discount rate
     b = systems.get_discount_rate()
     D = shape.Uniform(lower=0.03, upper=0.06)
@@ -288,7 +285,7 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
            baseline=b, distribution=D)
     def set_discount_rate(i):
         systems.discount_rate = i
-    
+
     # Electricity price
     b = price_dct['Electricity']
     D = shape.Triangle(lower=0.08, midpoint=b, upper=0.21)
@@ -296,15 +293,15 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
            units='$/kWh', baseline=b, distribution=D)
     def set_electricity_price(i):
         PowerUtility.price = i
-    
+
     ######## General LCA settings ########
     b = GWP_dct['CH4']
     D = shape.Uniform(lower=28, upper=34)
     @param(name='CH4 CF', element='LCA', kind='isolated', units='kg CO2-eq/kg CH4',
            baseline=b, distribution=D)
     def set_CH4_CF(i):
-        GWP_dct['CH4'] = i    
-    
+        GWP_dct['CH4'] = i
+
     b = GWP_dct['N2O']
     D = shape.Uniform(lower=265, upper=298)
     @param(name='N2O CF', element='LCA', kind='isolated', units='kg CO2-eq/kg N2O',
@@ -325,14 +322,14 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
            units='kg CO2-eq/kg N', baseline=b, distribution=D)
     def set_N_fertilizer_CF(i):
         GWP_dct['N'] = -i
-        
+
     b = -GWP_dct['P']
     D = shape.Triangle(lower=4.3, midpoint=b, upper=5.4)
     @param(name='P fertilizer CF', element='LCA', kind='isolated',
            units='kg CO2-eq/kg P', baseline=b, distribution=D)
     def set_P_fertilizer_CF(i):
         GWP_dct['P'] = -i
-        
+
     b = -GWP_dct['K']
     D = shape.Triangle(lower=1.1, midpoint=b, upper=2)
     @param(name='K fertilizer CF', element='LCA', kind='isolated',
@@ -340,7 +337,7 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
     def set_K_fertilizer_CF(i):
         GWP_dct['K'] = -i
 
-    data = load_data(item_path, sheet='GWP')    
+    data = load_data(item_path, sheet='GWP')
     for p in data.index:
         item = ImpactItem.get_item(p)
         b = item.CFs['GlobalWarming']
@@ -359,7 +356,7 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
                         element='LCA', kind='isolated',
                         units=f'kg CO2-eq/{item.functional_unit}',
                         baseline=b, distribution=D)
-    
+
     return model
 
 
@@ -371,10 +368,11 @@ path = su_data_path + '_toilet.tsv'
 toilet_data = load_data(path)
 path = su_data_path + '_pit_latrine.tsv'
 pit_latrine_data = load_data(path)
-MCF_lower_dct = eval(pit_latrine_data.loc['MCF_decay']['low'])
-MCF_upper_dct = eval(pit_latrine_data.loc['MCF_decay']['high'])
-N2O_EF_lower_dct = eval(pit_latrine_data.loc['N2O_EF_decay']['low'])
-N2O_EF_upper_dct = eval(pit_latrine_data.loc['N2O_EF_decay']['high'])
+
+MCF_lower_dct = dct_from_str(pit_latrine_data.loc['MCF_decay']['low'])
+MCF_upper_dct = dct_from_str(pit_latrine_data.loc['MCF_decay']['high'])
+N2O_EF_lower_dct = dct_from_str(pit_latrine_data.loc['N2O_EF_decay']['low'])
+N2O_EF_upper_dct = dct_from_str(pit_latrine_data.loc['N2O_EF_decay']['high'])
 
 def add_pit_latrine_parameters(sys, model):
     unit = sys.path[1]
@@ -391,7 +389,7 @@ def add_pit_latrine_parameters(sys, model):
           name='MCF_decay', element=unit, kind='coupled',
           units='fraction of anaerobic conversion of degraded COD',
           baseline=b, distribution=D)
-        
+
     b = unit.N2O_EF_decay
     D = shape.Triangle(lower=N2O_EF_lower_dct[kind], midpoint=b, upper=N2O_EF_upper_dct[kind])
     param(setter=DictAttrSetter(unit, '_N2O_EF_decay', kind),
@@ -405,13 +403,13 @@ def add_pit_latrine_parameters(sys, model):
     param(setter=AttrSetter(unit, 'CAPEX'),
           name='Pit latrine capital cost', element=unit, kind='cost',
           units='USD', baseline=b, distribution=D)
-        
+
     b = unit.OPEX_over_CAPEX
     D = shape.Uniform(lower=0.02, upper=0.08)
     param(setter=AttrSetter(unit, 'OPEX_over_CAPEX'),
           name='Pit latrine operating cost', element=unit, kind='cost',
           units='fraction of capital cost', baseline=b, distribution=D)
-    
+
     ######## Related to conveyance ########
     unit = sys.path[2]
     b = unit.loss_ratio
@@ -419,38 +417,38 @@ def add_pit_latrine_parameters(sys, model):
     param(setter=AttrSetter(unit, 'loss_ratio'),
           name='Transportation loss', element=unit, kind='coupled', units='fraction',
           baseline=b, distribution=D)
-    
+
     b = unit.single_truck.distance
     D = shape.Uniform(lower=2, upper=10)
     param(setter=AttrSetter(unit.single_truck, 'distance'),
           name='Transportation distance', element=unit, kind='coupled', units='km',
           baseline=b, distribution=D)
-    
+
     b = systems.emptying_fee
     D = shape.Uniform(lower=0, upper=15)
     @param(name='Emptying fee', element=unit, kind='coupled', units='USD',
            baseline=b, distribution=D)
     def set_emptying_fee(i):
         systems.emptying_fee = i
-    
+
     return model
 
 path = su_data_path + '_sludge_separator.tsv'
 sludge_separator_data = load_data(path)
-split_lower_dct = eval(sludge_separator_data.loc['split']['low'])
-split_upper_dct = eval(sludge_separator_data.loc['split']['high'])
-split_dist_dct = eval(sludge_separator_data.loc['split']['distribution'])
+split_lower_dct = dct_from_str(sludge_separator_data.loc['split']['low'])
+split_upper_dct = dct_from_str(sludge_separator_data.loc['split']['high'])
+split_dist_dct = dct_from_str(sludge_separator_data.loc['split']['distribution'], dtype='str')
 
 def add_sludge_separator_parameters(unit, model):
     param = model.parameter
-    
+
     b = unit.settled_frac
     D = shape.Uniform(lower=0.1, upper=0.2)
     @param(name='Settled frac', element=unit, kind='coupled', units='fraction',
            baseline=b, distribution=D)
     def set_settled_frac(i):
         unit.settled_frac = i
-    
+
     for key in split_lower_dct.keys():
         b = getattr(unit, 'split')[key]
         lower = split_lower_dct[key]
@@ -464,7 +462,7 @@ def add_sludge_separator_parameters(unit, model):
               name='Frac of settled'+key, element=unit, kind='coupled',
               units='fraction',
               baseline=b, distribution=D)
-    
+
     return model
 
 def add_lagoon_parameters(unit, model):
@@ -485,20 +483,20 @@ def add_existing_plant_parameters(toilet_unit, cost_unit, tea, model):
            baseline=b, distribution=D)
     def set_sewer_ppl(i):
         systems.ppl_exist_sewer = i
-        
+
     b = systems.ppl_exist_sludge
     D = shape.Triangle(lower=416667, midpoint=b, upper=458333)
     @param(name='Sludge ppl', element=toilet_unit, kind='coupled', units='-',
            baseline=b, distribution=D)
     def set_sludge_ppl(i):
         systems.ppl_exist_sludge = i
-    
+
     b = cost_unit.lifetime
     D = shape.Triangle(lower=8, midpoint=b, upper=11)
     param(setter=AttrSetter(cost_unit, 'lifetime'),
           name='Plant lifetime', element='TEA/LCA', kind='isolated', units='yr',
           baseline=b, distribution=D)
-    
+
     b = tea.annual_labor
     D = shape.Uniform(lower=1e6, upper=5e6)
     param(setter=AttrFuncSetter(tea, 'annual_labor',
@@ -599,7 +597,7 @@ D = shape.Triangle(lower=303426, midpoint=b, upper=370854)
         baseline=b, distribution=D)
 def set_alt_plant_CAPEX(i):
     B4.baseline_purchase_costs['Lumped WWTP'] = i
-    
+
 b = B4.lifetime
 D = shape.Triangle(lower=9, midpoint=b, upper=11)
 @paramB(name='Plant lifetime', element='TEA/LCA', kind='isolated', units='yr',
@@ -713,7 +711,7 @@ D = shape.Uniform(lower=476, upper=630)
        units='USD', baseline=b, distribution=D)
 def set_UDDT_CAPEX(i):
     C2.CAPEX = i
-    
+
 b = C2.OPEX_over_CAPEX
 D = shape.Uniform(lower=0.05, upper=0.1)
 @paramC(name='UDDT operating cost', element=C2, kind='cost',
@@ -820,7 +818,7 @@ def save_uncertainty_results(model, path=''):
     elif not (path.endswith('xlsx') or path.endswith('xls')):
         extension = path.split('.')[-1]
         raise ValueError(f'Only "xlsx" and "xls" are supported, not {extension}.')
-    
+
     dct = result_dct[model._system.ID]
     if dct['parameters'] is None:
         raise ValueError('No cached result, run model first.')
@@ -831,6 +829,3 @@ def save_uncertainty_results(model, path=''):
             dct['percentiles'].to_excel(writer, sheet_name='Percentiles')
         dct['spearman'].to_excel(writer, sheet_name='Spearman')
         model.table.to_excel(writer, sheet_name='Raw data')
-
-
-

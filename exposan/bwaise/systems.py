@@ -139,14 +139,15 @@ GWP_dct = {
 
 items = ImpactItem.get_all_items()
 
+#!!! Change here to load new impact items
 def load_LCA_data(kind='original'):
     '''
     Load impact indicator and impact item data.
-    
+
     Parameters
     ----------
     kind : str
-        "original" loads the data from the Trimmer et al.
+        "original" loads the data from Trimmer et al.
         (TRACI, ecoinvent v3.2),
         "new" loads the data for ReCiPe and TRACI
         (ecoinvent 3.7.1, at the point of substitution).
@@ -302,8 +303,8 @@ A9.specification = lambda: adjust_NH3_loss(A9)
 
 A10 = su.Mixer('A10', ins=(A2-2, A5-2, A6-1, A7-1, A8-2), outs=streamsA['CH4'])
 A10.specification = lambda: add_fugitive_items(A10, CH4_item)
-A10.line = 'fugitive CH4 mixer' 
-        
+A10.line = 'fugitive CH4 mixer'
+
 A11 = su.Mixer('A11', ins=(A2-3, A5-3, A6-2, A7-2, A8-3), outs=streamsA['N2O'])
 A11.specification = lambda: add_fugitive_items(A11, N2O_item)
 A11.line = 'fugitive N2O mixer'
@@ -675,7 +676,7 @@ def get_summarizing_fuctions():
     func_dct['get_constr_GWP'] = \
         lambda lca, ppl: lca.total_construction_impacts[ind]/lca.lifetime/ppl
     func_dct['get_trans_GWP'] = \
-        lambda lca, ppl: lca.total_transportation_impacts[ind]/lca.lifetime/ppl  
+        lambda lca, ppl: lca.total_transportation_impacts[ind]/lca.lifetime/ppl
     func_dct['get_direct_emission_GWP'] = \
         lambda lca, ppl: lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='direct_emission')[ind] \
             /lca.lifetime/ppl
@@ -712,12 +713,12 @@ def print_summaries(systems):
         print('\n')
         lca = sys_dct['LCA'][sys.ID]
         lca.show()
-        
+
         unit = f'{currency}/cap/yr'
         print(f'\nNet cost: {func["get_annual_cost"](tea, ppl):.1f} {unit}.')
         print(f'Capital: {func["get_annual_CAPEX"](tea, ppl):.1f} {unit}.')
         print(f'Operating: {func["get_annual_OPEX"](tea, ppl):.1f} {unit}.')
-        
+
         unit = f'{GWP.unit}/cap/yr'
         print(f'\nNet emission: {func["get_annual_GWP"](lca, ppl):.1f} {unit}.')
         print(f'Construction: {func["get_constr_GWP"](lca, ppl):.1f} {unit}.')
@@ -752,10 +753,3 @@ __all__ = ('sysA', 'sysB', 'sysC', 'teaA', 'teaB', 'teaC', 'lcaA', 'lcaB', 'lcaC
            *(i.ID for i in sysB.units),
            *(i.ID for i in sysC.units),
            )
-
-
-
-
-
-
-
