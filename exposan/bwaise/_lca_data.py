@@ -15,7 +15,7 @@ for license details.
 
 # %%
 
-import os, pickle
+import os, sys, pickle
 import pandas as pd
 import qsdsan as qs
 from bw2qsd import CFgetter, remove_setups_pickle
@@ -45,7 +45,7 @@ def download_data():
 # Impact indicators
 # =============================================================================
 
-def create_indicators():
+def create_indicators(replace=True):
     apos371 = CFgetter('apos371')
     # ecoinvent version 3.7.1, at the point of substitution
     apos371.load_database('ecoinvent_apos371')
@@ -78,7 +78,16 @@ def create_indicators():
 
     ind_df_processed.sort_values(by=['method', 'category', 'indicator'], inplace=True)
 
-    qs.ImpactIndicator.load_indicators_from_file(ind_df_processed)
+    if replace:
+        for ind_ID in ind_df_processed.indicator:
+            ind = qs.ImpactIndicator.get_indicator(ind_ID)
+            if ind:
+                stdout = sys.stdout
+                sys.stdout = open(os.devnull, 'w')
+                ind.deregister()
+                sys.stdout = stdout
+
+    qs.ImpactIndicator.load_from_file(ind_df_processed)
     indicators = qs.ImpactIndicator.get_all_indicators()
 
     return apos371, ind_df_processed, indicators
@@ -98,6 +107,7 @@ def select_items(database):
         all_acts[name] = act
         return act
 
+    # Construction
     brick = new_act(database, all_acts, 'brick')
     brick.load_activities('market brick', add=True, filter={'location': 'GLO'}, mask={'product': 'facility'}, limit=None)
     brick.load_activities('market brick', add=True, filter={'location': 'RoW', 'product': 'brick'}, limit=None)
@@ -139,10 +149,6 @@ def select_items(database):
     steel.load_activities('market steel, unalloyed', add=True, limit=None)
     steel.load_activities('market steel, low-alloyed', add=True, limit=None)
 
-    trucking = new_act(database, all_acts, 'trucking')
-    trucking.load_activities('market for transport, freight, lorry, all sizes', add=True, filter={'location': 'Row'}, limit=None)
-    # trucking.load_activities('market for transport, freight, lorry, all sizes', add=False, filter={'location': 'Row'}, limit=None) # None
-
     wood = new_act(database, all_acts, 'wood')
     wood.load_activities('market sawnwood', add=True, filter={'location': 'RoW'}, mask={'product': 'raw'}, limit=None)
     # wood.load_activities('market sawnwood', add=True, filter={'location': 'GLO'}, mask={'product': 'raw'}, limit=None) # None
@@ -151,6 +157,36 @@ def select_items(database):
         if ('azobe' in act) or ('paraná pine' in act) or ('lath' in act) or ('beam' in act) or ('board' in act):
             to_remove.append(act)
     wood.remove('activity', to_remove)
+
+    # Transportation
+    trucking = new_act(database, all_acts, 'trucking')
+    trucking.load_activities('market for transport, freight, lorry, all sizes', add=True, filter={'location': 'Row'}, limit=None)
+    # trucking.load_activities('market for transport, freight, lorry, all sizes', add=False, filter={'location': 'Row'}, limit=None) # None
+
+    # Stream
+    biogas = new_act(database, all_acts, 'biogas')
+    biogas.load_activities('market group for liquefied petroleum gas', add=True, filter={'location': 'GLO'}, limit=None)
+    biogas.load_activities('market for liquefied petroleum gas', add=True, filter={'location': 'RoW'}, limit=None)
+
+    nitrogen = new_act(database, all_acts, 'nitrogen')
+    nitrogen.load_activities('nitrogen fertiliser', add=True, limit=None)
+    to_remove = [k for k in nitrogen.activities.keys() if (not 'as N' in k or 'organo' in k)]
+    nitrogen.remove('activity', to_remove)
+
+    phosphorus = new_act(database, all_acts, 'phosphorus')
+    phosphorus.load_activities('phosphorus fertiliser', add=True, limit=None)
+    to_remove = [k for k in phosphorus.activities.keys() if (not 'as P2O5' in k or 'organo' in k)]
+    phosphorus.remove('activity', to_remove)
+
+    potassium = new_act(database, all_acts, 'potassium')
+    potassium.load_activities('potassium fertiliser', add=True, limit=None)
+    to_remove = [k for k in potassium.activities.keys() if (not 'as K2O' in k or 'organo' in k)]
+    potassium.remove('activity', to_remove)
+
+    # Others
+    electricity = new_act(database, all_acts, 'electricity')
+    electricity.load_activities('market electricity', add=True, filter={'location': 'RAF'}, limit=None) # RAF is Africa
+    electricity.load_activities('electricity, hydro', add=True, filter={'name': 'hydro'}, mask={'name': 'pumped'}, limit=None)
 
     return all_acts
 
@@ -176,20 +212,42 @@ def organize_cfs(all_acts):
     cf_dct['Plastic'] = get_stats(all_acts['hdpe_liner'].CFs)
     cf_dct['Sand'] = get_stats(all_acts['sand'].CFs)
     cf_dct['StainlessSteel'] = get_stats(all_acts['stainless_steel'].CFs)
+
     # Sum of stainless steel and steel rolling
     cf_dct['StainlessSteelSheet'] = get_stats(all_acts['stainless_steel'].CFs)
     cols = all_acts['stainless_steel'].CFs.columns[2:]
     cf_dct['StainlessSteelSheet'][cols] += get_stats(all_acts['steel_rolling'].CFs)[cols]
+
     cf_dct['Steel'] = get_stats(all_acts['steel'].CFs)
-    cf_dct['Trucking'] = get_stats(all_acts['trucking'].CFs)
     cf_dct['Wood'] = get_stats(all_acts['wood'].CFs)
+    cf_dct['Trucking'] = get_stats(all_acts['trucking'].CFs)
+
+    cf_dct['Biogas_item'] = get_stats(all_acts['biogas'].CFs)
+    cf_dct['Biogas_item'][cols] *= -1 # credit
+
+    cf_dct['N_item'] = get_stats(all_acts['nitrogen'].CFs)
+    cf_dct['N_item'][cols] *= -1 # credit
+
+    cf_dct['P_item'] = get_stats(all_acts['phosphorus'].CFs)
+    cf_dct['P_item'][cols] /= -(30.973762*2/283.886) # convert from P2O5 to P
+
+    cf_dct['K_item'] = get_stats(all_acts['potassium'].CFs)
+    cf_dct['K_item'][cols] /= -(39.098*2/94.2) # convert from K2O to K
+
+    cf_dct['E_item'] = get_stats(all_acts['electricity'].CFs)
+
     return cf_dct
 
-def create_items(ind_df_processed, cf_dct):
+def create_items(ind_df_processed, cf_dct, replace=True):
     items = []
     for item_ID, df in cf_dct.items():
-        item = qs.ImpactItem(ID=item_ID,
-                             functional_unit=df.loc[1, ('-', '-', 'functional unit')])
+        item = qs.ImpactItem.get_item(item_ID)
+        if not (replace and item):
+            if not ('item' in item_ID and item_ID!='E_item'):
+                item = qs.ImpactItem(ID=item_ID,
+                                     functional_unit=df.loc[1, ('-', '-', 'functional unit')])
+            else:
+                item = qs.StreamImpactItem(ID=item_ID)
 
         for num in ind_df_processed.index:
             ind_ID = ind_df_processed.iloc[num]['indicator']
@@ -239,7 +297,13 @@ def save_cf_data():
     f.close()
 
 
-def load_lca_data(kind='original'):
+# %%
+
+# =============================================================================
+# Load data
+# =============================================================================
+
+def load_lca_data(kind, return_loaded=False):
     '''
     Load impact indicator and impact item data.
 
@@ -250,16 +314,18 @@ def load_lca_data(kind='original'):
         (TRACI, ecoinvent v3.2),
         "new" loads the data for ReCiPe and TRACI
         (ecoinvent 3.7.1, at the point of substitution).
+    return_loaded : bool
+        If True, will return the loaded indicators and items.
     '''
     indicator_path = os.path.join(data_path, f'indicators_{kind}.tsv')
     indel_col = None if kind=='original' else 0
     ind_df_processed = pd.read_csv(indicator_path, sep='\t', index_col=indel_col)
-    qs.ImpactIndicator.load_indicators_from_file(indicator_path)
+    qs.ImpactIndicator.load_from_file(indicator_path)
     indicators = qs.ImpactIndicator.get_all_indicators()
 
     if kind == 'original':
         item_path = os.path.join(data_path, 'items_original.xlsx')
-        qs.ImpactItem.load_items_from_excel(item_path)
+        qs.ImpactItem.load_from_file(item_path)
         items = qs.ImpactItem.get_all_items()
     else:
         item_path = os.path.join(data_path, 'cf_dct.pckl')
@@ -268,4 +334,5 @@ def load_lca_data(kind='original'):
         f.close()
         items = create_items(ind_df_processed, cf_dct)
 
-    return indicators, items
+    if return_loaded:
+        return indicators, items

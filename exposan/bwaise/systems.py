@@ -12,11 +12,11 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 
 TODOs:
-    [1] Recheck COD calculation acorss units once WasteStream is ready
+    [1] Recheck COD calculation acorss units once WasteStream is ready.
 
 Questions:
     [1] WWTP power consumption very low, only 6.5/0.8 kWh per hour for
-        existing/alternative WWTP
+        existing/alternative WWTP.
 
 '''
 
@@ -151,38 +151,68 @@ items['Steel'].price = price_dct['Steel']
 # Universal units and functions
 # =============================================================================
 
-CH4_item = StreamImpactItem(ID='CH4_item', GWP=GWP_dct['CH4'])
-N2O_item = StreamImpactItem(ID='N2O_item', GWP=GWP_dct['N2O'])
-N_item = StreamImpactItem(ID='N_item', GWP=GWP_dct['N'])
-P_item = StreamImpactItem(ID='P_item', GWP=GWP_dct['P'])
-K_item = StreamImpactItem(ID='K_item', GWP=GWP_dct['K'])
-biogas_item = StreamImpactItem(ID='biogas_item', GWP=GWP_dct['Biogas'])
-e_item = ImpactItem(ID='e_item', functional_unit='kWh', GWP=GWP_dct['Electricity'])
+def batch_create_stream_items(kind):
+    if kind == 'original':
+        for k, v in GWP_dct.items():
+            if k == 'Electricity':
+                ImpactItem(ID='E_item', functional_unit='kWh', GWP=v)
+            else:
+                StreamImpactItem(ID=f'{k}_item', GWP=v)
+    elif kind == 'new':
+        E_factor = {'GW2ECO': 0.000000000532, # global warming to ecosystem
+                    'GW2HH': 0.0000000812, # global warming to human health
+                    'OD2HH': 0.00134} # stratospheric ozone depletion to human health
+        H_factor = {'GW2ECO': 0.0000000028, 'GW2HH': 0.000000928, 'OD2HH': 0.000531}
+        I_factor = {'GW2ECO': 0.000000025, 'GW2HH': 0.0000125, 'OD2HH': 0.000237}
+
+        StreamImpactItem(ID=f'CH4_item',
+                         E_ClimateChangeEcosystems=E_factor['GW2ECO']*4.8,
+                         E_ClimateChangeHumanHealth=E_factor['GW2HH']*4.8,
+                         H_ClimateChangeEcosystems=H_factor['GW2ECO']*34,
+                         H_ClimateChangeHumanHealth=H_factor['GW2HH']*34,
+                         I_ClimateChangeEcosystems=I_factor['GW2ECO']*84,
+                         I_ClimateChangeHumanHealth=I_factor['GW2HH']*84
+                         )
+        StreamImpactItem(ID=f'N2O_item',
+                         E_ClimateChangeEcosystems=E_factor['GW2ECO']*78.8,
+                         E_ClimateChangeHumanHealth=E_factor['GW2HH']*78.8,
+                         H_ClimateChangeEcosystems=H_factor['GW2ECO']*298,
+                         H_ClimateChangeHumanHealth=H_factor['GW2HH']*298,
+                         I_ClimateChangeEcosystems=I_factor['GW2ECO']*264,
+                         I_ClimateChangeHumanHealth=I_factor['GW2HH']*264,
+                         E_OzoneDepletion=E_factor['OD2HH']*0.017,
+                         H_OzoneDepletion=H_factor['OD2HH']*0.011,
+                         I_OzoneDepletion=I_factor['OD2HH']*0.007
+                         )
+    else:
+        raise ValueError(f'`kind` can only be "original" or "new", not "{kind}".')
+
+batch_create_stream_items(kind='original')
 
 def batch_create_streams(prefix):
     stream_dct = {}
     stream_dct['CH4'] = WasteStream(f'{prefix}_CH4', phase='g',
-                                    impact_item=CH4_item.copy(set_as_source=True))
+                                    stream_impact_item=items['CH4_item'].copy(set_as_source=True))
     stream_dct['N2O'] = WasteStream(f'{prefix}_N2O', phase='g',
-                                    impact_item=N2O_item.copy(set_as_source=True))
+                                    stream_impact_item=items['N2O_item'].copy(set_as_source=True))
     stream_dct['liq_N'] = WasteStream(f'{prefix}_liq_N', phase='l', price=price_dct['N'],
-                                      impact_item=N_item.copy(set_as_source=True))
+                                      stream_impact_item=items['N_item'].copy(set_as_source=True))
     stream_dct['sol_N'] = WasteStream(f'{prefix}_sol_N', phase='l', price=price_dct['N'],
-                                      impact_item=N_item.copy(set_as_source=True))
+                                      stream_impact_item=items['N_item'].copy(set_as_source=True))
     stream_dct['liq_P'] = WasteStream(f'{prefix}_liq_P', phase='l', price=price_dct['P'],
-                                      impact_item=P_item.copy(set_as_source=True))
+                                      stream_impact_item=items['P_item'].copy(set_as_source=True))
     stream_dct['sol_P'] = WasteStream(f'{prefix}_sol_P', phase='l', price=price_dct['P'],
-                                      impact_item=P_item.copy(set_as_source=True))
+                                      stream_impact_item=items['P_item'].copy(set_as_source=True))
     stream_dct['liq_K'] = WasteStream(f'{prefix}_liq_K', phase='l', price=price_dct['K'],
-                                      impact_item=K_item.copy(set_as_source=True))
+                                      stream_impact_item=items['K_item'].copy(set_as_source=True))
     stream_dct['sol_K'] = WasteStream(f'{prefix}_sol_K', phase='l', price=price_dct['K'],
-                                      impact_item=K_item.copy(set_as_source=True))
+                                      stream_impact_item=items['K_item'].copy(set_as_source=True))
     return stream_dct
 
-def add_fugitive_items(unit, item):
+def add_fugitive_items(unit, item_ID):
     unit._run()
     for i in unit.ins:
-        i.impact_item = item.copy(set_as_source=True)
+        i.stream_impact_item = items[item_ID].copy(set_as_source=True)
 
 # Costs of WWTP units have been considered in the lumped unit
 def clear_unit_costs(sys):
@@ -280,11 +310,11 @@ A9 = su.CropApplication('A9', ins=A7-0, outs=('liquid_fertilizer', 'reuse_loss')
 A9.specification = lambda: adjust_NH3_loss(A9)
 
 A10 = su.Mixer('A10', ins=(A2-2, A5-2, A6-1, A7-1, A8-2), outs=streamsA['CH4'])
-A10.specification = lambda: add_fugitive_items(A10, CH4_item)
+A10.specification = lambda: add_fugitive_items(A10, 'CH4_item')
 A10.line = 'fugitive CH4 mixer'
 
 A11 = su.Mixer('A11', ins=(A2-3, A5-3, A6-2, A7-2, A8-3), outs=streamsA['N2O'])
-A11.specification = lambda: add_fugitive_items(A11, N2O_item)
+A11.specification = lambda: add_fugitive_items(A11, 'N2O_item')
 A11.line = 'fugitive N2O mixer'
 
 A12 = su.ComponentSplitter('A12', ins=A8-0,
@@ -307,7 +337,7 @@ teaA = SimpleTEA(system=sysA, discount_rate=get_discount_rate(), start_year=2018
 
 lcaA = LCA(system=sysA, lifetime=get_A4_lifetime(), lifetime_unit='yr', uptime_ratio=1,
             # Assuming all additional WWTP OPEX from electricity
-            e_item=lambda: A4.power_utility.rate*(365*24)*8)
+            E_item=lambda: A4.power_utility.rate*(365*24)*8)
 
 
 # %%
@@ -320,7 +350,7 @@ flowsheetB = bst.Flowsheet('sysB')
 bst.main_flowsheet.set_flowsheet(flowsheetB)
 streamsB = batch_create_streams('B')
 streamsB['biogas'] = WasteStream('B_biogas', phase='g', price=price_dct['Biogas'],
-                                 impact_item=biogas_item.copy(set_as_source=True))
+                                 stream_impact_item=items['Biogas_item'].copy(set_as_source=True))
 
 #################### Human Inputs ####################
 B1 = su.Excretion('B1', outs=('urine', 'feces'))
@@ -386,11 +416,11 @@ B9 = su.CropApplication('B9', ins=B7-0, outs=('liquid_fertilizer', 'reuse_loss')
 B9.specification = lambda: adjust_NH3_loss(B9)
 
 B10 = su.Mixer('B10', ins=(B2-2, B5-2, B7-1, B8-2), outs=streamsB['CH4'])
-B10.specification = lambda: add_fugitive_items(B10, CH4_item)
+B10.specification = lambda: add_fugitive_items(B10, 'CH4_item')
 B10.line = 'fugitive CH4 mixer'
 
 B11 = su.Mixer('B11', ins=(B2-3, B5-3, B7-2, B8-3), outs=streamsB['N2O'])
-B11.specification = lambda: add_fugitive_items(B11, N2O_item)
+B11.specification = lambda: add_fugitive_items(B11, 'N2O_item')
 B11.line = 'fugitive N2O mixer'
 
 B12 = su.ComponentSplitter('B12', ins=B8-0,
@@ -425,7 +455,7 @@ teaB = SimpleTEA(system=sysB, discount_rate=get_discount_rate(), start_year=2018
 
 lcaB = LCA(system=sysB, lifetime=get_B4_lifetime(), lifetime_unit='yr', uptime_ratio=1,
            # Assuming all additional WWTP OPEX from electricity
-           e_item=lambda: B4.power_utility.rate*(365*24)*10)
+           E_item=lambda: B4.power_utility.rate*(365*24)*10)
 
 
 # %%
@@ -520,11 +550,11 @@ C9 = su.CropApplication('C9', ins=C7-0, outs=('liquid_fertilizer', 'reuse_loss')
 C9.specification = lambda: adjust_NH3_loss(C9)
 
 C10 = su.Mixer('C10', ins=(C2-4, C6-1, C7-1, C8-2), outs=streamsC['CH4'])
-C10.specification = lambda: add_fugitive_items(C10, CH4_item)
+C10.specification = lambda: add_fugitive_items(C10, 'CH4_item')
 C10.line = 'fugitive CH4 mixer'
 
 C11 = su.Mixer('C11', ins=(C2-5, C6-2, C7-2, C8-3), outs=streamsC['N2O'])
-C11.specification = lambda: add_fugitive_items(C11, N2O_item)
+C11.specification = lambda: add_fugitive_items(C11, 'N2O_item')
 C11.line = 'fugitive N2O mixer'
 
 C12 = su.ComponentSplitter('C12', ins=C8-0,
@@ -547,14 +577,34 @@ teaC = SimpleTEA(system=sysC, discount_rate=get_discount_rate(), start_year=2018
 
 lcaC = LCA(system=sysC, lifetime=get_C5_lifetime(), lifetime_unit='yr', uptime_ratio=1,
            # Assuming all additional WWTP OPEX from electricity
-           e_item=lambda: C5.power_utility.rate*(365*24)*8)
+           E_item=lambda: C5.power_utility.rate*(365*24)*8)
 
 
 # %%
 
 # =============================================================================
-# Summarizing Functions
+# Util functions
 # =============================================================================
+
+def update_lca_data(kind):
+    '''
+    Load impact indicator and impact item data.
+
+    Parameters
+    ----------
+    kind : str
+        "original" loads the data from Trimmer et al.
+        (TRACI, ecoinvent v3.2),
+        "new" loads the data for ReCiPe and TRACI
+        (ecoinvent 3.7.1, at the point of substitution).
+    '''
+
+    load_lca_data(kind)
+    batch_create_stream_items(kind)
+
+    for v in items['Biogas_item'].CFs.values():
+        v *= get_biogas_factor()
+
 
 def get_total_inputs(unit):
     if len(unit.ins) == 0: # Excretion units do not have ins
@@ -596,8 +646,8 @@ def get_stream_emissions(streams=None, hr=365*24, ppl=1):
     emission = {}
     factor = hr / ppl
     for i in streams:
-        if not i.impact_item: continue
-        emission[f'{i.ID}'] = i.F_mass*i.impact_item.CFs['GlobalWarming']*factor
+        if not i.stream_impact_item: continue
+        emission[f'{i.ID}'] = i.F_mass*i.stream_impact_item.CFs['GlobalWarming']*factor
     return emission
 
 sys_dct = {
@@ -726,7 +776,7 @@ def save_all_reports():
             i.save_report(f'{path}/{i.system.ID}_lca.xlsx')
 
 __all__ = ('sysA', 'sysB', 'sysC', 'teaA', 'teaB', 'teaC', 'lcaA', 'lcaB', 'lcaC',
-           'print_summaries', 'save_all_reports',
+           'print_summaries', 'save_all_reports', 'update_lca_data',
            *(i.ID for i in sysA.units),
            *(i.ID for i in sysB.units),
            *(i.ID for i in sysC.units),
