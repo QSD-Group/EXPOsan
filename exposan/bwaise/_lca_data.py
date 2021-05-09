@@ -18,8 +18,6 @@ for license details.
 import os, sys, pickle
 import pandas as pd
 import qsdsan as qs
-from bw2qsd import CFgetter, remove_setups_pickle
-from bw2qsd.utils import format_name
 
 c_path = os.path.dirname(__file__)
 data_path = os.path.join(c_path, 'data')
@@ -46,6 +44,8 @@ def download_data():
 # =============================================================================
 
 def create_indicators(replace=True):
+    from bw2qsd import CFgetter
+    from bw2qsd.utils import format_name
     apos371 = CFgetter('apos371')
     # ecoinvent version 3.7.1, at the point of substitution
     apos371.load_database('ecoinvent_apos371')
@@ -266,6 +266,7 @@ def create_items(ind_df_processed, cf_dct, replace=True):
 # =============================================================================
 
 def get_cf_data():
+    from bw2qsd import remove_setups_pickle
     apos371, ind_df_processed, indicators = create_indicators()
     all_acts = select_items(apos371)
     cf_dct = organize_cfs(all_acts)
