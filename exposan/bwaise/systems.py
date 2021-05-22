@@ -136,6 +136,7 @@ GWP_dct = {
     'Biogas': -3*get_biogas_factor()
     }
 
+
 items = ImpactItem.get_all_items()
 
 if not items.get('Excavation'): # prevent from reloading
@@ -251,7 +252,13 @@ A2 = su.PitLatrine('A2', ins=(A1-0, A1-1,
                    OPEX_over_CAPEX=0.05,
                    decay_k_COD=get_decay_k(tau_deg, log_deg),
                    decay_k_N=get_decay_k(tau_deg, log_deg),
-                   max_CH4_emission=get_max_CH4_emission())
+                   max_CH4_emission=get_max_CH4_emission()
+                   )
+def update_A2_param():
+    A2.N_user = get_toilet_user()
+    A2.N_toilet = get_ppl('exist')/get_toilet_user()
+    A2._run()
+A2.specification = update_A2_param
 
 ##################### Conveyance #####################
 A3 = su.Trucking('A3', ins=A2-0, outs=('transported', 'conveyance_loss'),
@@ -365,6 +372,12 @@ B2 = su.PitLatrine('B2', ins=(B1-0, B1-1,
                    decay_k_COD=get_decay_k(tau_deg, log_deg),
                    decay_k_N=get_decay_k(tau_deg, log_deg),
                    max_CH4_emission=get_max_CH4_emission())
+def update_B2_param():
+    B2.N_user = get_toilet_user()
+    B2.N_toilet = get_ppl('exist')/get_toilet_user()
+    B2._run()
+B2.specification = update_B2_param
+
 
 ##################### Conveyance #####################
 B3 = su.Trucking('B3', ins=B2-0, outs=('transported', 'conveyance_loss'),
@@ -482,6 +495,12 @@ C2 = su.UDDT('C2', ins=(C1-0, C1-1,
              decay_k_COD=get_decay_k(tau_deg, log_deg),
              decay_k_N=get_decay_k(tau_deg, log_deg),
              max_CH4_emission=get_max_CH4_emission())
+def update_C2_param():
+    C2.N_user = get_toilet_user()
+    C2.N_toilet = get_ppl('exist')/get_toilet_user()
+    C2._run()
+C2.specification = update_C2_param
+
 
 ##################### Conveyance #####################
 # Liquid waste
@@ -695,9 +714,11 @@ C13.specification = lambda: update_cache(sysC)
 
 def get_summarizing_fuctions():
     func_dct = {}
+    func_dct['get_annual_net_cost'] = lambda tea, ppl: (tea.EAC-tea.sales)/ppl
     func_dct['get_annual_cost'] = lambda tea, ppl: tea.EAC/ppl
     func_dct['get_annual_CAPEX'] = lambda tea, ppl: tea.annualized_CAPEX/ppl
     func_dct['get_annual_OPEX'] = lambda tea, ppl: tea.AOC/ppl
+    func_dct['get_annual_sales'] = lambda tea, ppl: tea.sales/ppl
     ind = 'GlobalWarming'
     func_dct['get_annual_GWP'] = \
         lambda lca, ppl: lca.total_impacts[ind]/lca.lifetime/ppl
@@ -743,9 +764,11 @@ def print_summaries(systems):
         lca.show()
 
         unit = f'{currency}/cap/yr'
-        print(f'\nNet cost: {func["get_annual_cost"](tea, ppl):.1f} {unit}.')
+        print(f'\nNet cost: {func["get_net_cost"](tea, ppl):.1f} {unit}.')
+        print(f'\nTotal cost: {func["get_annual_cost"](tea, ppl):.1f} {unit}.')
         print(f'Capital: {func["get_annual_CAPEX"](tea, ppl):.1f} {unit}.')
         print(f'Operating: {func["get_annual_OPEX"](tea, ppl):.1f} {unit}.')
+        print(f'Sales: {func["get_annual_sales"](tea, ppl):.1f} {unit}.')
 
         unit = f'{GWP.unit}/cap/yr'
         print(f'\nNet emission: {func["get_annual_GWP"](lca, ppl):.1f} {unit}.')

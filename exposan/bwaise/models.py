@@ -114,18 +114,24 @@ su_data_path = os.path.join(data_path, 'sanunit_data/')
 path = os.path.join(su_data_path, '_drying_bed.tsv')
 drying_bed_data = load_data(path)
 get_exchange_rate = systems.get_exchange_rate
+get_decay_k = systems.get_decay_k
+tau_deg = systems.tau_deg
+log_deg = systems.log_deg
 
 def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
     ########## Related to multiple units ##########
     unit = sys.path[0]
     param = model.parameter
+    streams = sys_dct['stream_dct'][sys.ID]
+    tea = sys._TEA
 
     # UGX-to-USD
     b = get_exchange_rate()
     D = shape.Triangle(lower=3600, midpoint=b, upper=3900)
-    param(setter=AttrSetter(systems, 'exchange_rate'),
-          name='Exchange rate', element=unit, kind='cost', units='UGX/USD',
-          baseline=b, distribution=D)
+    @param(name='Exchange rate', element=unit, kind='cost', units='UGX/USD',
+           baseline=b, distribution=D)
+    def set_exchange_rate(i):
+        systems.exchange_rate = i
 
     ########## Related to human input ##########
     # Diet and excretion
@@ -158,14 +164,23 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
            baseline=b, distribution=D)
     def set_max_CH4_emission(i):
         systems.max_CH4_emission = i
+        for unit in sys.units:
+            if hasattr(unit, 'max_CH4_emission'):
+                setattr(unit, 'max_CH4_emission', i)
 
     # Time to full degradation
-    b = systems.tau_deg
+    b = tau_deg
     D = shape.Uniform(lower=1, upper=3)
     @param(name='Full degradation time', element=unit, kind='coupled', units='yr',
            baseline=b, distribution=D)
     def set_tau_deg(i):
-        systems.tau_deg = i
+        tau_deg = i
+        k = get_decay_k(tau_deg, log_deg)
+        for unit in sys.units:
+            if hasattr(unit, 'decay_k_COD'):
+                setattr(unit, 'decay_k_COD', k)
+            if hasattr(unit, 'decay_k_N'):
+                setattr(unit, 'decay_k_N', k)
 
     # Reduction at full degradation
     b = systems.log_deg
@@ -174,6 +189,12 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
            baseline=b, distribution=D)
     def set_log_deg(i):
         systems.log = i
+        k = get_decay_k(tau_deg, log_deg)
+        for unit in sys.units:
+            if hasattr(unit, 'decay_k_COD'):
+                setattr(unit, 'decay_k_COD', k)
+            if hasattr(unit, 'decay_k_N'):
+                setattr(unit, 'decay_k_N', k)
 
     ##### Toilet material properties #####
     density = unit.density_dct
@@ -252,6 +273,24 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
           name='Other application losses', element=unit, kind='coupled',
           units='fraction of applied', baseline=0.02, distribution=D)
 
+    # ######## Equipment lifetime ######## # added to test function, not included in Trimmer et al., 2020
+    # for u in sys.units:
+    #     if u.lifetime:
+    #         if isinstance(u.lifetime, int): # add the lifetime of the unit
+    #             b = u.lifetime
+    #             D = shape.Uniform(lower=b*(1-0.25), upper=b*(1+0.25))
+    #             param(setter=AttrSetter(u, 'lifetime'),
+    #                   name=f'{u} lifetime', element=u, kind='isolated',
+    #                   units='yr', baseline=b, distribution=D)
+    #         else:
+    #             for equip, lifetime in u._default_equipment_lifetime.items(): # add lifetime of all equipment
+    #                 b = lifetime
+    #                 D = shape.Uniform(lower=b*(1-0.25), upper=b*(1+0.25))
+    #                 param(setter=DictAttrSetter(u, 'lifetime', equip),
+    #                       name=f'{equip} lifetime', element=u, kind='isolated',
+    #                       units='yr', baseline=b, distribution=D)
+
+
     ######## General TEA settings ########
     # Discount factor for the excreta-derived fertilizers
     get_price_factor = systems.get_price_factor
@@ -266,19 +305,19 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
     @param(name='N fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
            baseline=1.507, distribution=D)
     def set_N_price(i):
-        price_dct['N'] = i * get_price_factor()
+        price_dct['N'] = streams['liq_N'] = streams['sol_N'] = i * get_price_factor()
 
     D = shape.Uniform(lower=2.619, upper=6.692)
     @param(name='P fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
            baseline=3.983, distribution=D)
     def set_P_price(i):
-        price_dct['P'] = i * get_price_factor()
+        price_dct['P'] = streams['liq_P'] = streams['sol_P'] = i * get_price_factor()
 
     D = shape.Uniform(lower=1.214, upper=1.474)
     @param(name='K fertilizer price', element='TEA', kind='isolated', units='USD/kg K',
            baseline=1.333, distribution=D)
     def set_K_price(i):
-        price_dct['K'] = i * get_price_factor()
+        price_dct['K'] = streams['liq_K'] = streams['sol_K'] = i * get_price_factor()
 
     # Money discount rate
     b = systems.get_discount_rate()
@@ -286,7 +325,7 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
     @param(name='Discount rate', element='TEA', kind='isolated', units='fraction',
            baseline=b, distribution=D)
     def set_discount_rate(i):
-        systems.discount_rate = i
+        systems.discount_rate = tea.discount_rate = i
 
     # Electricity price
     b = price_dct['Electricity']
@@ -302,42 +341,42 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
     @param(name='CH4 CF', element='LCA', kind='isolated', units='kg CO2-eq/kg CH4',
            baseline=b, distribution=D)
     def set_CH4_CF(i):
-        GWP_dct['CH4'] = i
+        GWP_dct['CH4'] = ImpactItem.get_item('CH4_item').CFs['GlobalWarming'] = i
 
     b = GWP_dct['N2O']
     D = shape.Uniform(lower=265, upper=298)
     @param(name='N2O CF', element='LCA', kind='isolated', units='kg CO2-eq/kg N2O',
            baseline=b, distribution=D)
     def set_N2O_CF(i):
-        GWP_dct['N2O'] = i
+        GWP_dct['N2O'] = ImpactItem.get_item('N2O_item').CFs['GlobalWarming'] = i
 
     b = GWP_dct['Electricity']
     D = shape.Uniform(lower=0.106, upper=0.121)
     @param(name='Electricity CF', element='LCA', kind='isolated',
            units='kg CO2-eq/kWh', baseline=b, distribution=D)
     def set_electricity_CF(i):
-        GWP_dct['Electricity'] = i
+        GWP_dct['Electricity'] = ImpactItem.get_item('E_item').CFs['GlobalWarming'] = i
 
     b = -GWP_dct['N']
     D = shape.Triangle(lower=1.8, midpoint=b, upper=8.9)
     @param(name='N fertilizer CF', element='LCA', kind='isolated',
            units='kg CO2-eq/kg N', baseline=b, distribution=D)
     def set_N_fertilizer_CF(i):
-        GWP_dct['N'] = -i
+        GWP_dct['N'] = ImpactItem.get_item('N_item').CFs['GlobalWarming'] = -i
 
     b = -GWP_dct['P']
     D = shape.Triangle(lower=4.3, midpoint=b, upper=5.4)
     @param(name='P fertilizer CF', element='LCA', kind='isolated',
            units='kg CO2-eq/kg P', baseline=b, distribution=D)
     def set_P_fertilizer_CF(i):
-        GWP_dct['P'] = -i
+        GWP_dct['P'] = ImpactItem.get_item('P_item').CFs['GlobalWarming'] = -i
 
     b = -GWP_dct['K']
     D = shape.Triangle(lower=1.1, midpoint=b, upper=2)
     @param(name='K fertilizer CF', element='LCA', kind='isolated',
            units='kg CO2-eq/kg K', baseline=b, distribution=D)
     def set_K_fertilizer_CF(i):
-        GWP_dct['K'] = -i
+        GWP_dct['K'] = ImpactItem.get_item('K_item').CFs['GlobalWarming'] = -i
 
     data = load_data(item_path, sheet='GWP')
     for p in data.index:
@@ -564,6 +603,7 @@ sysB = systems.sysB
 sysB.simulate()
 modelB = Model(sysB, add_metrics(sysB))
 paramB = modelB.parameter
+teaB = sysB._TEA
 
 # Shared parameters
 modelB = add_shared_parameters(sysB, modelB, systems.B8, systems.B9)
@@ -591,6 +631,7 @@ D = shape.Triangle(lower=802, midpoint=b, upper=870)
 def set_biogas_energy(i):
     systems.biogas_energy = i
 
+
 # Cost of alternative plants
 B4 = systems.B4
 b = B4.baseline_purchase_costs['Lumped WWTP']
@@ -613,6 +654,8 @@ D = shape.Uniform(lower=0, upper=10)
         baseline=b, distribution=D)
 def set_unskilled_num(i):
     systems.unskilled_num = i
+    teaB.annual_labor = systems.get_alt_salary()
+
 
 b = systems.get_unskilled_salary()
 D = shape.Uniform(lower=0.5, upper=1)
@@ -620,6 +663,7 @@ D = shape.Uniform(lower=0.5, upper=1)
         baseline=b, distribution=D)
 def set_unskilled_salary(i):
     systems.unskilled_salary = i
+    teaB.annual_labor = systems.get_alt_salary()
 
 # Sludge separator
 B6 = systems.B6
@@ -645,20 +689,24 @@ D = shape.Uniform(lower=6077, upper=6667)
 @paramB(name='Liquid petroleum gas price', element='TEA', kind='isolated', units='UGX',
         baseline=6500, distribution=D)
 def set_LPG_price(i):
-    price_dct['Biogas'] = i/get_exchange_rate()*get_biogas_factor()
+    price_dct['Biogas'] = sys_dct['streams']['sysB']['biogas'].price = \
+        i/get_exchange_rate()*get_biogas_factor()
 
 b = systems.get_LPG_energy()
 D = shape.Uniform(lower=49.5, upper=50.4)
 @paramB(name='Liquid petroleum gas energy', element='TEA/LCA', kind='isolated', units='MJ/kg',
         baseline=b, distribution=D)
 def set_LPG_energy(i):
+    old_LPG_energy = systems.LPG_energy
     systems.LPG_energy = i
+    sys_dct['streams']['sysB']['biogas'].price *= i/old_LPG_energy
 
 D = shape.Uniform(lower=2.93, upper=3.05)
 @paramB(name='Liquid petroleum gas CF', element='LCA', kind='isolated', units='MJ/kg',
         baseline=3, distribution=D)
 def set_LPG_CF(i):
-    GWP_dct['Biogas'] = -i*get_biogas_factor()
+    GWP_dct['Biogas'] = ImpactItem.get_item('Biogas_item').CFs['GlobalWarming'] = \
+        -i*get_biogas_factor()
 
 all_paramsB = modelB.get_parameters()
 
@@ -803,7 +851,7 @@ def run_uncertainty(model, seed=None, N=1000, rule='L',
 
     # Spearman's rank correlation
     spearman_metrics = [model.metrics[i] for i in (0, 3, 12, 16, 20, 24)]
-    spearman_results = model.spearman(model.get_parameters(), spearman_metrics)
+    spearman_results = model.spearman_r(model.get_parameters(), spearman_metrics)[0]
     spearman_results.columns = pd.Index([i.name_with_units for i in spearman_metrics])
     dct['spearman'] = spearman_results
     return dct

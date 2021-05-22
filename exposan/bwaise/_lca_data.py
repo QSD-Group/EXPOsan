@@ -281,7 +281,7 @@ def save_cf_data():
 
     # path = data_path if data_path else os.path.join(os.path.split(c_path)[0], 'data')
     ind_file = 'indicators_new.tsv'
-    raw_path = os.path.join(data_path, 'new_CFs_raw')
+    raw_path = os.path.join(data_path, 'CFs_new')
 
     # Impact indicators
     ind_df_processed.to_csv(os.path.join(data_path, ind_file), sep='\t')
@@ -290,7 +290,7 @@ def save_cf_data():
     if not os.path.isdir(raw_path):
         os.mkdir(raw_path)
     for k, v in all_acts.items():
-        v.CFs.to_csv(os.path.join(raw_path, f'{k}_CFs.tsv'), sep='\t')
+        v.CFs.to_csv(os.path.join(raw_path, f'CFs_{k}.tsv'), sep='\t')
 
     # Organized data
     f = open(os.path.join(data_path, 'cf_dct.pckl'), 'wb')
