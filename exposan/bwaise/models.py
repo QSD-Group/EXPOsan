@@ -60,9 +60,11 @@ def add_metrics(system):
     unit = f'{currency}/cap/yr'
     cat = 'TEA results'
     metrics = [
-        Metric('Net cost', lambda: func['get_annual_cost'](tea, ppl), unit, cat),
+        Metric('Annual net cost', lambda: func['get_annual_net_cost'](tea, ppl), unit, cat),
+        Metric('Annual cost', lambda: func['get_annual_cost'](tea, ppl), unit, cat),
         Metric('Annual CAPEX', lambda: func['get_annual_CAPEX'](tea, ppl), unit, cat),
         Metric('Annual OPEX', lambda: func['get_annual_OPEX'](tea, ppl), unit, cat),
+        Metric('Annual sales', lambda: func['get_annual_sales'](tea, ppl), unit, cat)
         ]
     unit = f'{GWP.unit}/cap/yr'
     cat = 'LCA results'
@@ -113,7 +115,7 @@ def batch_setting_unit_params(df, model, unit, exclude=()):
 su_data_path = os.path.join(data_path, 'sanunit_data/')
 path = os.path.join(su_data_path, '_drying_bed.tsv')
 drying_bed_data = load_data(path)
-get_exchange_rate = systems.get_exchange_rate
+exchange_rate = systems.exchange_rate
 get_decay_k = systems.get_decay_k
 tau_deg = systems.tau_deg
 log_deg = systems.log_deg
@@ -126,7 +128,7 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
     tea = sys._TEA
 
     # UGX-to-USD
-    b = get_exchange_rate()
+    b = exchange_rate
     D = shape.Triangle(lower=3600, midpoint=b, upper=3900)
     @param(name='Exchange rate', element=unit, kind='cost', units='UGX/USD',
            baseline=b, distribution=D)
@@ -140,7 +142,7 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
     batch_setting_unit_params(data, model, unit)
 
     # Household size
-    b = systems.get_household_size()
+    b = systems.household_size
     D = shape.Normal(mu=b, sigma=1.8)
     @param(name='Household size', element=unit, kind='coupled', units='cap/household',
            baseline=b, distribution=D)
@@ -148,7 +150,7 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
         systems.household_size = max(1, i)
 
     # Toilet density
-    b = systems.get_household_per_toilet()
+    b = systems.household_per_toilet
     D = shape.Uniform(lower=3, upper=5)
     @param(name='Toilet density', element=unit, kind='coupled', units='household/toilet',
            baseline=b, distribution=D)
@@ -158,7 +160,7 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
     ##### Universal degradation parameters #####
     # Max methane emission
     unit = sys.path[1] # the first unit that involves degradation
-    b = systems.get_max_CH4_emission()
+    b = systems.max_CH4_emission
     D = shape.Triangle(lower=0.175, midpoint=b, upper=0.325)
     @param(name='Max CH4 emission', element=unit, kind='coupled', units='g CH4/g COD',
            baseline=b, distribution=D)
@@ -293,8 +295,8 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
 
     ######## General TEA settings ########
     # Discount factor for the excreta-derived fertilizers
-    get_price_factor = systems.get_price_factor
-    b = get_price_factor()
+    price_factor = systems.price_factor
+    b = price_factor
     D = shape.Uniform(lower=0.1, upper=0.4)
     @param(name='Price factor', element='TEA', kind='isolated', units='-',
            baseline=b, distribution=D)
@@ -305,22 +307,22 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
     @param(name='N fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
            baseline=1.507, distribution=D)
     def set_N_price(i):
-        price_dct['N'] = streams['liq_N'] = streams['sol_N'] = i * get_price_factor()
+        price_dct['N'] = streams['liq_N'] = streams['sol_N'] = i * price_factor
 
     D = shape.Uniform(lower=2.619, upper=6.692)
     @param(name='P fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
            baseline=3.983, distribution=D)
     def set_P_price(i):
-        price_dct['P'] = streams['liq_P'] = streams['sol_P'] = i * get_price_factor()
+        price_dct['P'] = streams['liq_P'] = streams['sol_P'] = i * price_factor
 
     D = shape.Uniform(lower=1.214, upper=1.474)
     @param(name='K fertilizer price', element='TEA', kind='isolated', units='USD/kg K',
            baseline=1.333, distribution=D)
     def set_K_price(i):
-        price_dct['K'] = streams['liq_K'] = streams['sol_K'] = i * get_price_factor()
+        price_dct['K'] = streams['liq_K'] = streams['sol_K'] = i * price_factor
 
     # Money discount rate
-    b = systems.get_discount_rate()
+    b = systems.discount_rate
     D = shape.Uniform(lower=0.03, upper=0.06)
     @param(name='Discount rate', element='TEA', kind='isolated', units='fraction',
            baseline=b, distribution=D)
@@ -466,7 +468,7 @@ def add_pit_latrine_parameters(sys, model):
           baseline=b, distribution=D)
 
     b = systems.emptying_fee
-    D = shape.Uniform(lower=0, upper=15)
+    D = shape.Uniform(lower=0, upper=0.3)
     @param(name='Emptying fee', element=unit, kind='coupled', units='USD',
            baseline=b, distribution=D)
     def set_emptying_fee(i):
@@ -508,7 +510,7 @@ def add_sludge_separator_parameters(unit, model):
 
 def add_lagoon_parameters(unit, model):
     param = model.parameter
-    b = systems.get_sewer_flow()
+    b = systems.sewer_flow
     D = shape.Uniform(lower=2500, upper=3000)
     @param(name='Sewer flow', element=unit, kind='coupled', units='m3/d',
            baseline=b, distribution=D)
@@ -541,7 +543,7 @@ def add_existing_plant_parameters(toilet_unit, cost_unit, tea, model):
     b = tea.annual_labor
     D = shape.Uniform(lower=1e6, upper=5e6)
     param(setter=AttrFuncSetter(tea, 'annual_labor',
-                                lambda salary: salary*12*12/get_exchange_rate()),
+                                lambda salary: salary*12*12/exchange_rate),
           name='Staff salary', element='TEA', kind='isolated', units='UGX',
           baseline=b, distribution=D)
 
@@ -624,7 +626,7 @@ path = os.path.join(su_data_path, '_anaerobic_baffled_reactor.tsv')
 data = load_data(path)
 batch_setting_unit_params(data, modelB, B5)
 
-b = systems.get_biogas_energy()
+b = systems.biogas_energy
 D = shape.Triangle(lower=802, midpoint=b, upper=870)
 @paramB(name='Biogas energy', element=B5, kind='coupled', units='kJ/mol CH4',
         baseline=b, distribution=D)
@@ -690,16 +692,16 @@ D = shape.Uniform(lower=6077, upper=6667)
         baseline=6500, distribution=D)
 def set_LPG_price(i):
     price_dct['Biogas'] = sys_dct['streams']['sysB']['biogas'].price = \
-        i/get_exchange_rate()*get_biogas_factor()
+        i/exchange_rate*get_biogas_factor()
 
-b = systems.get_LPG_energy()
+b = systems.LPG_energy
 D = shape.Uniform(lower=49.5, upper=50.4)
 @paramB(name='Liquid petroleum gas energy', element='TEA/LCA', kind='isolated', units='MJ/kg',
         baseline=b, distribution=D)
 def set_LPG_energy(i):
     old_LPG_energy = systems.LPG_energy
     systems.LPG_energy = i
-    sys_dct['streams']['sysB']['biogas'].price *= i/old_LPG_energy
+    sys_dct['streams']['sysB']['biogas'].price *= old_LPG_energy * i
 
 D = shape.Uniform(lower=2.93, upper=3.05)
 @paramB(name='Liquid petroleum gas CF', element='LCA', kind='isolated', units='MJ/kg',

@@ -43,10 +43,8 @@ qs.set_thermo(cmps)
 bst.speed_up()
 
 household_size = 4
-get_household_size = lambda: household_size
 household_per_toilet = 4
-get_household_per_toilet = lambda: household_per_toilet
-get_toilet_user = lambda: get_household_size()*get_household_per_toilet()
+get_toilet_user = lambda: household_size * household_per_toilet
 
 # Number of people served by the existing plant (sysA and sysC)
 ppl_exist_sewer = 4e4
@@ -56,9 +54,7 @@ ppl_alt = 5e4
 get_ppl = lambda kind: ppl_exist_sewer+ppl_exist_sludge if kind=='exist' else ppl_alt
 
 exchange_rate = 3700 # UGX per USD
-get_exchange_rate = lambda: exchange_rate
 discount_rate = 0.05
-get_discount_rate = lambda: discount_rate
 
 # Time take for full degradation, [yr]
 tau_deg = 2
@@ -71,26 +67,24 @@ def get_decay_k(tau_deg=2, log_deg=3):
     return k
 
 max_CH4_emission = 0.25
-get_max_CH4_emission = lambda: max_CH4_emission
 
 # Model for tanker truck cost based on capacity (m3)
 # price = a*capacity**b -> ln(price) = ln(a) + bln(capacity)
 UGX_price_dct = np.array((8e4, 12e4, 20e4, 25e4))
 capacities = np.array((3, 4.5, 8, 15))
 emptying_fee = 0.15
-get_emptying_fee = lambda: emptying_fee
 def get_tanker_truck_fee(capacity):
-    price_dct = UGX_price_dct*(1+get_emptying_fee())/get_exchange_rate()
+    price_dct = UGX_price_dct*(1+emptying_fee)/exchange_rate
     ln_p = np.log(price_dct)
     ln_cap = np.log(capacities)
     model = LR().fit(ln_cap.reshape(-1,1), ln_p.reshape(-1,1))
-    [[predicted]] = model.predict(np.array((np.log(capacity))).reshape(1, -1)).tolist()
+    predicted = model.predict(np.array((np.log(capacity))).reshape(1, -1)).item()
+    # [[predicted]] = model.predict(np.array((np.log(capacity))).reshape(1, -1)).tolist()
     cost = np.exp(predicted)
     return cost
 
 # Flow rates for treatment plants
 sewer_flow = 2750 # m3/d
-get_sewer_flow = lambda: sewer_flow
 sludge_flow_exist = 500 # m3/d
 sludge_flow_alt = 60 # m3/d
 get_sludge_flow = lambda kind: \
@@ -102,10 +96,8 @@ app_loss['NH3'] = 0.05
 
 # Energetic content of the biogas
 biogas_energy = 803 # kJ/mol CH4
-get_biogas_energy = lambda: biogas_energy
 LPG_energy = 50 # MJ/kg
-get_LPG_energy = lambda: LPG_energy
-get_biogas_factor = lambda: get_biogas_energy()/cmps.CH4.MW/get_LPG_energy()
+get_biogas_factor = lambda: biogas_energy/cmps.CH4.MW/LPG_energy
 
 
 # =============================================================================
@@ -114,16 +106,15 @@ get_biogas_factor = lambda: get_biogas_energy()/cmps.CH4.MW/get_LPG_energy()
 
 # Recycled nutrients are sold at a lower price than commercial fertilizers
 price_factor = 0.25
-get_price_factor = lambda: price_factor
 
 price_dct = {
     'Electricity': 0.17,
     'Concrete': 194,
     'Steel': 2.665,
-    'N': 1.507*get_price_factor(),
-    'P': 3.983*get_price_factor(),
-    'K': 1.333*get_price_factor(),
-    'Biogas': 6500/get_exchange_rate()*get_biogas_factor()
+    'N': 1.507*price_factor,
+    'P': 3.983*price_factor,
+    'K': 1.333*price_factor,
+    'Biogas': 6500/exchange_rate*get_biogas_factor()
     }
 
 GWP_dct = {
@@ -210,6 +201,15 @@ def batch_create_streams(prefix):
                                       stream_impact_item=items['K_item'].copy(set_as_source=True))
     return stream_dct
 
+def update_toilet_param(unit, kind):
+    unit.N_user = get_toilet_user()
+    unit.N_toilet = get_ppl(kind)/get_toilet_user()
+    unit._run()
+
+def update_lagoon_flow_rate(unit):
+    unit.flow_rate = sewer_flow + get_sludge_flow('exist')
+    unit._run
+
 def add_fugitive_items(unit, item_ID):
     unit._run()
     for i in unit.ins:
@@ -252,13 +252,9 @@ A2 = su.PitLatrine('A2', ins=(A1-0, A1-1,
                    OPEX_over_CAPEX=0.05,
                    decay_k_COD=get_decay_k(tau_deg, log_deg),
                    decay_k_N=get_decay_k(tau_deg, log_deg),
-                   max_CH4_emission=get_max_CH4_emission()
+                   max_CH4_emission=max_CH4_emission
                    )
-def update_A2_param():
-    A2.N_user = get_toilet_user()
-    A2.N_toilet = get_ppl('exist')/get_toilet_user()
-    A2._run()
-A2.specification = update_A2_param
+A2.specification = lambda: update_toilet_param(A2, 'exist')
 
 ##################### Conveyance #####################
 A3 = su.Trucking('A3', ins=A2-0, outs=('transported', 'conveyance_loss'),
@@ -287,27 +283,29 @@ A5 = su.SedimentationTank('A5', ins=A4-0,
                           outs=('liq', 'sol', 'A5_CH4', 'A5_N2O'),
                           decay_k_COD=get_decay_k(tau_deg, log_deg),
                           decay_k_N=get_decay_k(tau_deg, log_deg),
-                          max_CH4_emission=get_max_CH4_emission())
+                          max_CH4_emission=max_CH4_emission)
 
 A6 = su.Lagoon('A6', ins=A5-0, outs=('anaerobic_treated', 'A6_CH4', 'A6_N2O'),
                design_type='anaerobic',
-               flow_rate=get_sewer_flow()+get_sludge_flow('exist'),
+               flow_rate=sewer_flow+get_sludge_flow('exist'),
                decay_k_N=get_decay_k(tau_deg, log_deg),
-               max_CH4_emission=get_max_CH4_emission())
+               max_CH4_emission=max_CH4_emission)
+A6.specification = lambda: update_lagoon_flow_rate(A6)
 
 A7 = su.Lagoon('A7', ins=A6-0, outs=('facultative_treated', 'A7_CH4', 'A7_N2O'),
                design_type='facultative',
-               flow_rate=get_sewer_flow()+get_sludge_flow('exist'),
+               flow_rate=sewer_flow+get_sludge_flow('exist'),
                decay_k_N=get_decay_k(tau_deg, log_deg),
-               max_CH4_emission=get_max_CH4_emission(),
+               max_CH4_emission=max_CH4_emission,
                if_N2O_emission=True)
+A7.specification = lambda: update_lagoon_flow_rate(A7)
 
 A8 = su.DryingBed('A8', ins=A5-1, outs=('dried_sludge', 'evaporated',
                                         'A8_CH4', 'A8_N2O'),
                   design_type='unplanted',
                   decay_k_COD=get_decay_k(tau_deg, log_deg),
                   decay_k_N=get_decay_k(tau_deg, log_deg),
-                  max_CH4_emission=get_max_CH4_emission())
+                  max_CH4_emission=max_CH4_emission)
 treatA = bst.System('treatA', path=(A4, A5, A6, A7, A8))
 A8._cost = lambda: clear_unit_costs(treatA)
 
@@ -337,9 +335,9 @@ A13 = su.ComponentSplitter('A13', ins=A9-0,
 ############### Simulation, TEA, and LCA ###############
 sysA = bst.System('sysA', path=(A1, A2, A3, treatA, A9, A10, A11, A12, A13))
 
-teaA = SimpleTEA(system=sysA, discount_rate=get_discount_rate(), start_year=2018,
+teaA = SimpleTEA(system=sysA, discount_rate=discount_rate, start_year=2018,
                  lifetime=get_A4_lifetime(), uptime_ratio=1, lang_factor=None,
-                 annual_maintenance=0, annual_labor=12*3e6*12/get_exchange_rate(),
+                 annual_maintenance=0, annual_labor=12*3e6*12/exchange_rate,
                  construction_schedule=None)
 
 lcaA = LCA(system=sysA, lifetime=get_A4_lifetime(), lifetime_unit='yr', uptime_ratio=1,
@@ -371,13 +369,8 @@ B2 = su.PitLatrine('B2', ins=(B1-0, B1-1,
                    OPEX_over_CAPEX=0.05,
                    decay_k_COD=get_decay_k(tau_deg, log_deg),
                    decay_k_N=get_decay_k(tau_deg, log_deg),
-                   max_CH4_emission=get_max_CH4_emission())
-def update_B2_param():
-    B2.N_user = get_toilet_user()
-    B2.N_toilet = get_ppl('exist')/get_toilet_user()
-    B2._run()
-B2.specification = update_B2_param
-
+                   max_CH4_emission=max_CH4_emission)
+B2.specification = lambda: update_toilet_param(B2, 'alt')
 
 ##################### Conveyance #####################
 B3 = su.Trucking('B3', ins=B2-0, outs=('transported', 'conveyance_loss'),
@@ -404,21 +397,21 @@ get_B4_lifetime = lambda: B4.lifetime
 B5 = su.AnaerobicBaffledReactor('B5', ins=B4-0, outs=('ABR_treated', 'biogas',
                                                       'B5_CH4', 'B5_N2O'),
                                 decay_k_COD=get_decay_k(tau_deg, log_deg),
-                                max_CH4_emission=get_max_CH4_emission())
+                                max_CH4_emission=max_CH4_emission)
 
 B6 = su.SludgeSeparator('B6', ins=B5-0, outs=('liq', 'sol'))
 
 B7 = su.LiquidTreatmentBed('B7', ins=B6-0, outs=('liquid_bed_treated', 'B7_CH4', 'B7_N2O'),
                            decay_k_COD=get_decay_k(tau_deg, log_deg),
                            decay_k_N=get_decay_k(tau_deg, log_deg),
-                           max_CH4_emission=get_max_CH4_emission())
+                           max_CH4_emission=max_CH4_emission)
 
 B8 = su.DryingBed('B8', ins=B6-1, outs=('dried_sludge', 'evaporated',
                                         'B8_CH4', 'B8_N2O'),
                   design_type='planted',
                   decay_k_COD=get_decay_k(tau_deg, log_deg),
                   decay_k_N=get_decay_k(tau_deg, log_deg),
-                  max_CH4_emission=get_max_CH4_emission())
+                  max_CH4_emission=max_CH4_emission)
 
 treatB = bst.System('treatB', path=(B4, B5, B6, B7, B8))
 B8._cost = lambda: clear_unit_costs(treatB)
@@ -459,9 +452,9 @@ unskilled_num = 5
 get_unskilled_num = lambda: unskilled_num
 unskilled_salary = 75e4 # UGX/month
 get_unskilled_salary = lambda: unskilled_salary*get_unskilled_num()
-get_alt_salary = lambda: (5*5e6+get_unskilled_salary())*12/get_exchange_rate()
+get_alt_salary = lambda: (5*5e6+get_unskilled_salary())*12/exchange_rate
 
-teaB = SimpleTEA(system=sysB, discount_rate=get_discount_rate(), start_year=2018,
+teaB = SimpleTEA(system=sysB, discount_rate=discount_rate, start_year=2018,
                   lifetime=get_B4_lifetime(), uptime_ratio=1, lang_factor=None,
                   annual_maintenance=0, annual_labor=get_alt_salary(),
                   construction_schedule=None)
@@ -494,24 +487,17 @@ C2 = su.UDDT('C2', ins=(C1-0, C1-1,
              OPEX_over_CAPEX=0.1,
              decay_k_COD=get_decay_k(tau_deg, log_deg),
              decay_k_N=get_decay_k(tau_deg, log_deg),
-             max_CH4_emission=get_max_CH4_emission())
-def update_C2_param():
-    C2.N_user = get_toilet_user()
-    C2.N_toilet = get_ppl('exist')/get_toilet_user()
-    C2._run()
-C2.specification = update_C2_param
-
+             max_CH4_emission=max_CH4_emission)
+C2.specification = lambda: update_toilet_param(C2, 'exist')
 
 ##################### Conveyance #####################
 # Liquid waste
 handcart_fee = 0.01 # USD/cap/d
-get_handcart_fee = lambda: handcart_fee
 truck_fee = 23e3 # UGX/m3
-get_truck_fee = lambda: truck_fee
 
 get_handcart_and_truck_fee = \
-    lambda vol, ppl: get_truck_fee()/get_exchange_rate()*vol \
-        + get_handcart_fee()*ppl*C2.collection_period
+    lambda vol, ppl: truck_fee/exchange_rate*vol \
+        + handcart_fee*ppl*C2.collection_period
 C3 = su.Trucking('C3', ins=C2-0, outs=('transported_l', 'loss_l'),
                  load_type='mass', distance=5, distance_unit='km',
                  loss_ratio=0.02)
@@ -544,22 +530,24 @@ get_C5_lifetime = lambda: C5.lifetime
 
 C6 = su.Lagoon('C6', ins=C5-0, outs=('anaerobic_treated', 'C6_CH4', 'C6_N2O'),
                design_type='anaerobic',
-               flow_rate=get_sewer_flow()+get_sludge_flow('exist'),
+               flow_rate=sewer_flow+get_sludge_flow('exist'),
                decay_k_N=get_decay_k(tau_deg, log_deg),
-               max_CH4_emission=get_max_CH4_emission())
+               max_CH4_emission=max_CH4_emission)
+C6.specification = lambda: update_lagoon_flow_rate(C6)
 
 C7 = su.Lagoon('C7', ins=C6-0, outs=('facultative_treated', 'C7_CH4', 'C7_N2O'),
                design_type='facultative',
-               flow_rate=get_sewer_flow()+get_sludge_flow('exist'),
+               flow_rate=sewer_flow+get_sludge_flow('exist'),
                decay_k_N=get_decay_k(tau_deg, log_deg),
-               max_CH4_emission=get_max_CH4_emission(),
+               max_CH4_emission=max_CH4_emission,
                if_N2O_emission=True)
+C7.specification = lambda: update_lagoon_flow_rate(C7)
 
 C8 = su.DryingBed('C8', ins=C5-1, outs=('dried_sludge', 'evaporated', 'C8_CH4', 'C8_N2O'),
                  design_type='unplanted',
                  decay_k_COD=get_decay_k(tau_deg, log_deg),
                  decay_k_N=get_decay_k(tau_deg, log_deg),
-                 max_CH4_emission=get_max_CH4_emission())
+                 max_CH4_emission=max_CH4_emission)
 treatC = bst.System('treatC', path=(C5, C6, C7, C8))
 C8._cost = lambda: clear_unit_costs(treatC)
 
@@ -589,9 +577,9 @@ C13 = su.ComponentSplitter('C13', ins=C9-0,
 ############### Simulation, TEA, and LCA ###############
 sysC = bst.System('sysC', path=(C1, C2, C3, C4, treatC, C9, C10, C11, C12, C13))
 
-teaC = SimpleTEA(system=sysC, discount_rate=get_discount_rate(), start_year=2018,
+teaC = SimpleTEA(system=sysC, discount_rate=discount_rate, start_year=2018,
                  lifetime=get_C5_lifetime(), uptime_ratio=1, lang_factor=None,
-                 annual_maintenance=0, annual_labor=12*3e6*12/get_exchange_rate(),
+                 annual_maintenance=0, annual_labor=12*3e6*12/exchange_rate,
                  construction_schedule=None)
 
 lcaC = LCA(system=sysC, lifetime=get_C5_lifetime(), lifetime_unit='yr', uptime_ratio=1,
@@ -687,7 +675,7 @@ def cache_recoveries(sys):
 
     if sys_dct['gas_unit'][sys.ID]:
         gas_mol = sys_dct['gas_unit'][sys.ID].outs[0].imol['CH4']
-        gas_COD = gas_mol*1e3*get_biogas_energy()*365*24/14e3/ppl/total_COD
+        gas_COD = gas_mol*1e3*biogas_energy*365*24/14e3/ppl/total_COD
     else:
         gas_COD = 0
 
@@ -764,8 +752,8 @@ def print_summaries(systems):
         lca.show()
 
         unit = f'{currency}/cap/yr'
-        print(f'\nNet cost: {func["get_net_cost"](tea, ppl):.1f} {unit}.')
-        print(f'\nTotal cost: {func["get_annual_cost"](tea, ppl):.1f} {unit}.')
+        print(f'\nNet cost: {func["get_annual_net_cost"](tea, ppl):.1f} {unit}.')
+        print(f'Total cost: {func["get_annual_cost"](tea, ppl):.1f} {unit}.')
         print(f'Capital: {func["get_annual_CAPEX"](tea, ppl):.1f} {unit}.')
         print(f'Operating: {func["get_annual_OPEX"](tea, ppl):.1f} {unit}.')
         print(f'Sales: {func["get_annual_sales"](tea, ppl):.1f} {unit}.')
