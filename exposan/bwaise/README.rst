@@ -7,7 +7,7 @@ Summary
 Systems included in this modules are based on Scenarios A-C as described in
 Trimmer et al. [1]_ and named as "sysA", "sysB", and "sysC".
 Previous scripts developed for modeling and analyses of
-the systems can be found in another `repository 
+the systems can be found in another `repository
 <https://github.com/QSD-Group/Bwaise-sanitation-alternatives>`_.
 
 .. figure:: ./figures/sysA.png
@@ -15,11 +15,11 @@ the systems can be found in another `repository
     *Scenario A (sysA): pit latrine with existing treatment system*
 
 .. figure:: ./figures/sysB.png
-    
+
     *Scenario B (sysB): pit latrine with anaerobic treatment*
 
 .. figure:: ./figures/sysC.png
-    
+
     *Scenario C (sysC): containaer-based toilet with existing treatment system*
 
 
@@ -112,7 +112,7 @@ Loading systems
                         Mg      0.00497
                         Ca      0.0114
     >>> # You can check out all of the components in these systems
-    >>> bw.cmps.show()   
+    >>> bw.cmps.show()
     CompiledComponents([NH3, NonNH3, P, K, Mg, Ca, H2O, OtherSS, N2O, CH4, O2, N2, CO2, P4O10, Tissue, WoodAsh, Struvite, HAP])
     >>> bw.cmps.NH3.show()
     Component: NH3 (phase_ref='g') at phase='l'
@@ -150,7 +150,7 @@ Loading systems
                      Ca       0.0117
                      H2O      55.4
                      OtherSS  2.55
-    
+
         WasteStream-specific properties:
          pH         : 7.0
          Alkalinity : 2.5 mg/L
@@ -159,7 +159,7 @@ Loading systems
          TKN        : 4273.6 mg/L
          TP         : 442.4 mg/L
          TK         : 1180.3 mg/L
-    
+
     [1] feces  to  PitLatrine-A2
         phase: 'l', T: 298.15 K, P: 101325 Pa
         flow (g/hr): NH3      0.00685
@@ -170,7 +170,7 @@ Loading systems
                      Ca       0.0792
                      H2O      8.85
                      OtherSS  1.4
-    
+
         WasteStream-specific properties:
          pH         : 7.0
          Alkalinity : 2.5 mg/L
@@ -197,32 +197,32 @@ Results from the original paper [1]_ are saved in the "/results/original_results
     AOC  : 1,844,250 USD/yr
     >>> # There are also handy functions to allow you quickly see important results
     >>> bw.print_summaries(bw.sysA)
-    
+
     ---------- Summary for sysA ----------
-    
+
     SimpleTEA: sysA
     NPV  : -22,732,728 USD at 5.0% discount rate
     EAC  : 3,840,042 USD/yr
     CAPEX: 12,899,228 USD (annualized to 1,995,792 USD/yr)
     AOC  : 1,844,250 USD/yr
-    
-    
+
+
     LCA: sysA (lifetime 8 yr)
     Impacts:
                                Construction  Transportation  WasteStream   Others    Total
     GlobalWarming (kg CO2-eq)      3.13e+07        9.57e+05     1.14e+08 6.85e+04 1.46e+08
-    
+
     Net cost: 8.4 USD/cap/yr.
     Capital: 4.4 USD/cap/yr.
     Operating: 4.0 USD/cap/yr.
-    
+
     Net emission: 40.1 kg CO2-eq/cap/yr.
     Construction: 8.6 kg CO2-eq/cap/yr.
     Transportation: 0.3 kg CO2-eq/cap/yr.
     Direct emission: 37.9 kg CO2-eq/cap/yr.
     Offset: -6.6 kg CO2-eq/cap/yr.
     Other: 0.02 kg CO2-eq/cap/yr.
-    
+
     Total COD recovery is 16.9%, 2.4% in liquid, 14.6% in solid, 0.0% in gas.
     Total N recovery is 36.8%, 35.4% in liquid, 1.4% in solid, 0.0% in gas.
     Total P recovery is 41.0%, 25.4% in liquid, 15.7% in solid, 0.0% in gas.
@@ -259,7 +259,7 @@ to these models or construct your own ones.
 
 ``QSDsan`` also have built-in functions for advanced global sensitivity analyses
 and plotting functions, refer to the `stats <https://qsdsan.readthedocs.io/en/latest/stats.html>`_ module for examples.
-    
+
 
 Coming soon
 -----------
@@ -272,13 +272,3 @@ References
     Trade-Offs across Sanitation Alternatives in an Urban Informal Settlement.
     Environ. Sci. Technol. 2020, 54 (19), 12641–12653.
     `<https://doi.org/10.1021/acs.est.0c03296>`_
-
-    
-
-
-
-
-
-
-
-

@@ -30,8 +30,7 @@ from sklearn.linear_model import LinearRegression as LR
 from qsdsan import sanunits as su
 from qsdsan import WasteStream, ImpactIndicator, ImpactItem, StreamImpactItem, SimpleTEA, LCA
 from exposan.bwaise._cmps import cmps
-from exposan.bwaise._lca_data import load_lca_data
-
+from exposan.bwaise._lca_data import load_lca_data, _ImpactItem_LOADED
 
 # =============================================================================
 # Unit parameters
@@ -51,7 +50,8 @@ ppl_exist_sewer = 4e4
 ppl_exist_sludge = 416667
 # Number of people served by the alternative plant (sysB)
 ppl_alt = 5e4
-get_ppl = lambda kind: ppl_exist_sewer+ppl_exist_sludge if kind=='exist' else ppl_alt
+get_ppl = lambda kind: ppl_exist_sewer+ppl_exist_sludge \
+    if kind.lower() in ('exist', 'sysa', 'sysc', 'a', 'c') else ppl_alt
 
 exchange_rate = 3700 # UGX per USD
 discount_rate = 0.05
@@ -79,7 +79,6 @@ def get_tanker_truck_fee(capacity):
     ln_cap = np.log(capacities)
     model = LR().fit(ln_cap.reshape(-1,1), ln_p.reshape(-1,1))
     predicted = model.predict(np.array((np.log(capacity))).reshape(1, -1)).item()
-    # [[predicted]] = model.predict(np.array((np.log(capacity))).reshape(1, -1)).tolist()
     cost = np.exp(predicted)
     return cost
 
@@ -88,7 +87,7 @@ sewer_flow = 2750 # m3/d
 sludge_flow_exist = 500 # m3/d
 sludge_flow_alt = 60 # m3/d
 get_sludge_flow = lambda kind: \
-    sludge_flow_exist if kind=='exist' else sludge_flow_alt
+    sludge_flow_exist if kind.lower() in ('exist', 'sysa', 'sysc', 'a', 'c') else sludge_flow_alt
 
 # Nutrient loss during applciation
 app_loss = dict.fromkeys(('NH3', 'NonNH3', 'P', 'K', 'Mg', 'Ca'), 0.02)
@@ -127,17 +126,14 @@ GWP_dct = {
     'Biogas': -3*get_biogas_factor()
     }
 
-
-items = ImpactItem.get_all_items()
-
-if not items.get('Excavation'): # prevent from reloading
+if not ImpactItem.get_item('Excavation'): # prevent from reloading
     load_lca_data('original')
 
 GWP = ImpactIndicator.get_indicator('GWP')
 
 bst.PowerUtility.price = price_dct['Electricity']
-items['Concrete'].price = price_dct['Concrete']
-items['Steel'].price = price_dct['Steel']
+ImpactItem.get_item('Concrete').price = price_dct['Concrete']
+ImpactItem.get_item('Steel').price = price_dct['Steel']
 
 # =============================================================================
 # Universal units and functions
@@ -157,7 +153,7 @@ def batch_create_stream_items(kind):
         H_factor = {'GW2ECO': 0.0000000028, 'GW2HH': 0.000000928, 'OD2HH': 0.000531}
         I_factor = {'GW2ECO': 0.000000025, 'GW2HH': 0.0000125, 'OD2HH': 0.000237}
 
-        StreamImpactItem(ID=f'CH4_item',
+        StreamImpactItem(ID='CH4_item',
                          E_ClimateChangeEcosystems=E_factor['GW2ECO']*4.8,
                          E_ClimateChangeHumanHealth=E_factor['GW2HH']*4.8,
                          H_ClimateChangeEcosystems=H_factor['GW2ECO']*34,
@@ -165,7 +161,7 @@ def batch_create_stream_items(kind):
                          I_ClimateChangeEcosystems=I_factor['GW2ECO']*84,
                          I_ClimateChangeHumanHealth=I_factor['GW2HH']*84
                          )
-        StreamImpactItem(ID=f'N2O_item',
+        StreamImpactItem(ID='N2O_item',
                          E_ClimateChangeEcosystems=E_factor['GW2ECO']*78.8,
                          E_ClimateChangeHumanHealth=E_factor['GW2HH']*78.8,
                          H_ClimateChangeEcosystems=H_factor['GW2ECO']*298,
@@ -179,26 +175,51 @@ def batch_create_stream_items(kind):
     else:
         raise ValueError(f'`kind` can only be "original" or "new", not "{kind}".')
 
-batch_create_stream_items(kind='original')
+    global _ImpactItem_LOADED
+    _ImpactItem_LOADED = True
+
 
 def batch_create_streams(prefix):
+    if not _ImpactItem_LOADED:
+        batch_create_stream_items(kind='original')
+
     stream_dct = {}
-    stream_dct['CH4'] = WasteStream(f'{prefix}_CH4', phase='g',
-                                    stream_impact_item=items['CH4_item'].copy(set_as_source=True))
-    stream_dct['N2O'] = WasteStream(f'{prefix}_N2O', phase='g',
-                                    stream_impact_item=items['N2O_item'].copy(set_as_source=True))
+    item = ImpactItem.get_item('CH4_item').copy(f'{prefix}_CH4_item', set_as_source=True)
+    stream_dct['CH4'] = WasteStream(f'{prefix}_CH4', phase='g', stream_impact_item=item)
+    # CH4.stream_impact_item = ImpactItem.get_item('CH4_item').copy(stream=CH4, set_as_source=True)
+
+    item = ImpactItem.get_item('N2O_item').copy(f'{prefix}_N2O_item', set_as_source=True)
+    stream_dct['N2O'] = WasteStream(f'{prefix}_N2O', phase='g', stream_impact_item=item)
+    # N2O.stream_impact_item = ImpactItem.get_item('N2O_item').copy(stream=N2O, set_as_source=True)
+
+    item = ImpactItem.get_item('N_item').copy(f'{prefix}_liq_N_item', set_as_source=True)
     stream_dct['liq_N'] = WasteStream(f'{prefix}_liq_N', phase='l', price=price_dct['N'],
-                                      stream_impact_item=items['N_item'].copy(set_as_source=True))
+                                      stream_impact_item=item)
+    # liq_N.stream_impact_item = ImpactItem.get_item('N_item').copy(stream=liq_N, set_as_source=True)
+
+    item = ImpactItem.get_item('N_item').copy(f'{prefix}_sol_N_item', set_as_source=True)
     stream_dct['sol_N'] = WasteStream(f'{prefix}_sol_N', phase='l', price=price_dct['N'],
-                                      stream_impact_item=items['N_item'].copy(set_as_source=True))
+                                              stream_impact_item=item)
+    # sol_N.stream_impact_item = ImpactItem.get_item('N_item').copy(stream=sol_N, set_as_source=True)
+
+    item = ImpactItem.get_item('P_item').copy(f'{prefix}_liq_P_item', set_as_source=True)
     stream_dct['liq_P'] = WasteStream(f'{prefix}_liq_P', phase='l', price=price_dct['P'],
-                                      stream_impact_item=items['P_item'].copy(set_as_source=True))
+                                      stream_impact_item=item)
+    # liq_P.stream_impact_item=ImpactItem.get_item('P_item').copy(stream=liq_P, set_as_source=True)
+
+    item = ImpactItem.get_item('P_item').copy(f'{prefix}_sol_P_item', set_as_source=True)
     stream_dct['sol_P'] = WasteStream(f'{prefix}_sol_P', phase='l', price=price_dct['P'],
-                                      stream_impact_item=items['P_item'].copy(set_as_source=True))
+                                      stream_impact_item=item)
+    # sol_P.stream_impact_item=ImpactItem.get_item('P_item').copy(stream=sol_P, set_as_source=True)
+
+    item = ImpactItem.get_item('K_item').copy(f'{prefix}_liq_K_item', set_as_source=True)
     stream_dct['liq_K'] = WasteStream(f'{prefix}_liq_K', phase='l', price=price_dct['K'],
-                                      stream_impact_item=items['K_item'].copy(set_as_source=True))
+                                      stream_impact_item=item)
+    # liq_K.stream_impact_item = ImpactItem.get_item('K_item').copy(stream=liq_K, set_as_source=True)
+
+    item = ImpactItem.get_item('K_item').copy(f'{prefix}_sol_K_item', set_as_source=True)
     stream_dct['sol_K'] = WasteStream(f'{prefix}_sol_K', phase='l', price=price_dct['K'],
-                                      stream_impact_item=items['K_item'].copy(set_as_source=True))
+                                      stream_impact_item=item)
     return stream_dct
 
 def update_toilet_param(unit, kind):
@@ -213,7 +234,7 @@ def update_lagoon_flow_rate(unit):
 def add_fugitive_items(unit, item_ID):
     unit._run()
     for i in unit.ins:
-        i.stream_impact_item = items[item_ID].copy(set_as_source=True)
+        i.stream_impact_item = ImpactItem.get_item(item_ID).copy(set_as_source=True)
 
 # Costs of WWTP units have been considered in the lumped unit
 def clear_unit_costs(sys):
@@ -354,8 +375,9 @@ lcaA = LCA(system=sysA, lifetime=get_A4_lifetime(), lifetime_unit='yr', uptime_r
 flowsheetB = bst.Flowsheet('sysB')
 bst.main_flowsheet.set_flowsheet(flowsheetB)
 streamsB = batch_create_streams('B')
+B_biogas_item = ImpactItem.get_item('Biogas_item').copy('B_biogas_item', set_as_source=True)
 streamsB['biogas'] = WasteStream('B_biogas', phase='g', price=price_dct['Biogas'],
-                                 stream_impact_item=items['Biogas_item'].copy(set_as_source=True))
+                                 stream_impact_item=B_biogas_item)
 
 #################### Human Inputs ####################
 B1 = su.Excretion('B1', outs=('urine', 'feces'))
@@ -608,9 +630,20 @@ def update_lca_data(kind):
 
     load_lca_data(kind)
     batch_create_stream_items(kind)
+    # batch_create_streams(kind)
 
-    for v in items['Biogas_item'].CFs.values():
-        v *= get_biogas_factor()
+    for lca in (lcaA, lcaB, lcaC):
+        for i in lca.lca_streams:
+            # To refresh the impact items
+            source_ID = i.stream_impact_item.source.ID
+            i.stream_impact_item.source = ImpactItem.get_item(source_ID)
+
+    Biogas_CFs = ImpactItem.get_item('Biogas_item').CFs
+    for k, v in Biogas_CFs.items():
+        Biogas_CFs[k] = v * get_biogas_factor()
+
+    for i in sysA, sysB, sysC:
+        i.simulate()
 
 
 def get_total_inputs(unit):

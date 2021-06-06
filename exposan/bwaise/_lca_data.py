@@ -19,6 +19,8 @@ import os, sys, pickle
 import pandas as pd
 import qsdsan as qs
 
+_ImpactItem_LOADED = False
+
 c_path = os.path.dirname(__file__)
 data_path = os.path.join(c_path, 'data')
 
@@ -334,6 +336,9 @@ def load_lca_data(kind, return_loaded=False):
         cf_dct = pickle.load(f)
         f.close()
         items = create_items(ind_df_processed, cf_dct)
+
+    global _ImpactItem_LOADED
+    _ImpactItem_LOADED = True
 
     if return_loaded:
         return indicators, items
