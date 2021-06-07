@@ -20,11 +20,12 @@ import pandas as pd
 import qsdsan as qs
 
 _ImpactItem_LOADED = False
+lca_data_kind = 'original'
 
 c_path = os.path.dirname(__file__)
 data_path = os.path.join(c_path, 'data')
 
-__all__ = ('load_lca_data',)
+__all__ = ('get_cf_data', 'save_cf_data', 'load_lca_data',)
 
 
 # %%
@@ -50,13 +51,13 @@ def create_indicators(replace=True):
     from bw2qsd.utils import format_name
     apos371 = CFgetter('apos371')
     # ecoinvent version 3.7.1, at the point of substitution
-    apos371.load_database('ecoinvent_apos371')
+    apos371.load_database('ecoinvent_apos371', print_msg=False)
 
     # No need for Midpoint as Endpoint gives categorized results in addition to totals
     # apos371.load_indicators(add=True, method=('recipe'), method_exclude=('LT', 'obsolete'))
-    apos371.load_indicators(add=True, method=('recipe endpoint'), method_exclude='LT')
+    apos371.load_indicators(add=True, method=('recipe endpoint'), method_exclude='LT', print_msg=False)
     # For comparison with Trimmer et al.
-    apos371.load_indicators(add=True, method='TRACI')
+    apos371.load_indicators(add=True, method='TRACI', print_msg=False)
 
     ind_df_raw = apos371.export_indicators(show=False, path='')
     ind_df_processed = ind_df_raw.copy()
@@ -109,6 +110,10 @@ def select_items(database):
         all_acts[name] = act
         return act
 
+    # Catch all printouts (i.e., don't show them in the console)
+    stdout = sys.stdout
+    sys.stdout = open(os.devnull, 'w')
+
     # Construction
     brick = new_act(database, all_acts, 'brick')
     brick.load_activities('market brick', add=True, filter={'location': 'GLO'}, mask={'product': 'facility'}, limit=None)
@@ -128,6 +133,7 @@ def select_items(database):
     gravel = new_act(database, all_acts, 'gravel')
     gravel.load_activities('market gravel', add=True, filter={'product': 'gravel'}, mask={'name': 'infrastructure'}, limit=None)
 
+    # Only one result
     hdpe_liner = new_act(database, all_acts, 'hdpe_liner')
     hdpe_liner.load_activities('hdpe', add=True, filter={'product': 'polyethylene', 'location': 'RoW'}, limit=None)
     # hdpe_liner.load_activities('hdpe', add=True, filter={'product': 'polyethylene', 'location': 'GLO'}, limit=None) # None
@@ -190,6 +196,9 @@ def select_items(database):
     electricity.load_activities('market electricity', add=True, filter={'location': 'RAF'}, limit=None) # RAF is Africa
     electricity.load_activities('electricity, hydro', add=True, filter={'name': 'hydro'}, mask={'name': 'pumped'}, limit=None)
 
+    # Restore printouts
+    sys.stdout = stdout
+
     return all_acts
 
 
@@ -203,6 +212,7 @@ def get_stats(df, keep_raw_data=False):
     functional_unit = df.loc[1, ('-', '-', 'functional unit')]
     df2.loc[1:, ('-', '-', 'functional unit')] = functional_unit
     return df2
+
 
 def organize_cfs(all_acts):
     cf_dct = {}
@@ -240,6 +250,7 @@ def organize_cfs(all_acts):
 
     return cf_dct
 
+
 def create_items(ind_df_processed, cf_dct, replace=True):
     items = []
     for item_ID, df in cf_dct.items():
@@ -274,14 +285,14 @@ def get_cf_data():
     cf_dct = organize_cfs(all_acts)
 
     # Only run this at the very end to remove the outdated setup.pickle file
-    remove_setups_pickle()
+    remove_setups_pickle(False)
 
     return ind_df_processed, all_acts, cf_dct
+
 
 def save_cf_data():
     ind_df_processed, all_acts, cf_dct = get_cf_data()
 
-    # path = data_path if data_path else os.path.join(os.path.split(c_path)[0], 'data')
     ind_file = 'indicators_new.tsv'
     raw_path = os.path.join(data_path, 'CFs_new')
 
@@ -325,6 +336,9 @@ def load_lca_data(kind, return_loaded=False):
     ind_df_processed = pd.read_csv(indicator_path, sep='\t', index_col=indel_col)
     qs.ImpactIndicator.load_from_file(indicator_path)
     indicators = qs.ImpactIndicator.get_all_indicators()
+
+    global lca_data_kind
+    lca_data_kind = kind
 
     if kind == 'original':
         item_path = os.path.join(data_path, 'items_original.xlsx')

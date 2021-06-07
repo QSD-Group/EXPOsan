@@ -30,7 +30,7 @@ from sklearn.linear_model import LinearRegression as LR
 from qsdsan import sanunits as su
 from qsdsan import WasteStream, ImpactIndicator, ImpactItem, StreamImpactItem, SimpleTEA, LCA
 from exposan.bwaise._cmps import cmps
-from exposan.bwaise._lca_data import load_lca_data, _ImpactItem_LOADED
+from exposan.bwaise._lca_data import lca_data_kind, load_lca_data, _ImpactItem_LOADED
 
 # =============================================================================
 # Unit parameters
@@ -181,7 +181,7 @@ def batch_create_stream_items(kind):
 
 def batch_create_streams(prefix):
     if not _ImpactItem_LOADED:
-        batch_create_stream_items(kind='original')
+        batch_create_stream_items(kind=lca_data_kind)
 
     stream_dct = {}
     item = ImpactItem.get_item('CH4_item').copy(f'{prefix}_CH4_item', set_as_source=True)
@@ -627,23 +627,26 @@ def update_lca_data(kind):
         "new" loads the data for ReCiPe and TRACI
         (ecoinvent 3.7.1, at the point of substitution).
     '''
+    global lca_data_kind
 
-    load_lca_data(kind)
-    batch_create_stream_items(kind)
-    # batch_create_streams(kind)
+    if lca_data_kind != kind:
+        load_lca_data(kind)
+        batch_create_stream_items(kind)
 
-    for lca in (lcaA, lcaB, lcaC):
-        for i in lca.lca_streams:
-            # To refresh the impact items
-            source_ID = i.stream_impact_item.source.ID
-            i.stream_impact_item.source = ImpactItem.get_item(source_ID)
+        for lca in (lcaA, lcaB, lcaC):
+            for i in lca.lca_streams:
+                # To refresh the impact items
+                source_ID = i.stream_impact_item.source.ID
+                i.stream_impact_item.source = ImpactItem.get_item(source_ID)
 
-    Biogas_CFs = ImpactItem.get_item('Biogas_item').CFs
-    for k, v in Biogas_CFs.items():
-        Biogas_CFs[k] = v * get_biogas_factor()
+        Biogas_CFs = ImpactItem.get_item('Biogas_item').CFs
+        for k, v in Biogas_CFs.items():
+            Biogas_CFs[k] = v * get_biogas_factor()
 
-    for i in sysA, sysB, sysC:
-        i.simulate()
+        for i in sysA, sysB, sysC:
+            i.simulate()
+
+        lca_data_kind = kind
 
 
 def get_total_inputs(unit):
@@ -733,28 +736,30 @@ B15.specification = lambda: update_cache(sysB)
 C13.specification = lambda: update_cache(sysC)
 
 
-def get_summarizing_fuctions():
+def get_summarizing_fuctions(system):
     func_dct = {}
     func_dct['get_annual_net_cost'] = lambda tea, ppl: (tea.EAC-tea.sales)/ppl
     func_dct['get_annual_cost'] = lambda tea, ppl: tea.EAC/ppl
     func_dct['get_annual_CAPEX'] = lambda tea, ppl: tea.annualized_CAPEX/ppl
     func_dct['get_annual_OPEX'] = lambda tea, ppl: tea.AOC/ppl
     func_dct['get_annual_sales'] = lambda tea, ppl: tea.sales/ppl
-    ind = 'GlobalWarming'
-    func_dct['get_annual_GWP'] = \
-        lambda lca, ppl: lca.total_impacts[ind]/lca.lifetime/ppl
-    func_dct['get_constr_GWP'] = \
-        lambda lca, ppl: lca.total_construction_impacts[ind]/lca.lifetime/ppl
-    func_dct['get_trans_GWP'] = \
-        lambda lca, ppl: lca.total_transportation_impacts[ind]/lca.lifetime/ppl
-    func_dct['get_direct_emission_GWP'] = \
-        lambda lca, ppl: lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='direct_emission')[ind] \
-            /lca.lifetime/ppl
-    func_dct['get_offset_GWP'] = \
-        lambda lca, ppl: lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='offset')[ind] \
-            /lca.lifetime/ppl
-    func_dct['get_other_GWP'] = \
-        lambda lca, ppl: lca.total_other_impacts[ind]/lca.lifetime/ppl
+
+    for ind in sys_dct['LCA'][system.ID].indicators:
+        func_dct[f'get_annual_{ind.ID}'] = \
+            lambda lca, ppl: lca.total_impacts[ind.ID]/lca.lifetime/ppl
+        func_dct[f'get_constr_{ind.ID}'] = \
+            lambda lca, ppl: lca.total_construction_impacts[ind.ID]/lca.lifetime/ppl
+        func_dct[f'get_trans_{ind.ID}'] = \
+            lambda lca, ppl: lca.total_transportation_impacts[ind.ID]/lca.lifetime/ppl
+        func_dct[f'get_direct_emission_{ind.ID}'] = \
+            lambda lca, ppl: lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='direct_emission')[ind.ID] \
+                /lca.lifetime/ppl
+        func_dct[f'get_offset_{ind.ID}'] = \
+            lambda lca, ppl: lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='offset')[ind.ID] \
+                /lca.lifetime/ppl
+        func_dct[f'get_other_{ind.ID}'] = \
+            lambda lca, ppl: lca.total_other_impacts[ind.ID]/lca.lifetime/ppl
+
     for i in ('COD', 'N', 'P', 'K'):
         func_dct[f'get_liq_{i}_recovery'] = \
             lambda sys, i: sys_dct['cache'][sys.ID]['liq'][i]
@@ -767,22 +772,28 @@ def get_summarizing_fuctions():
                 sys_dct['cache'][sys.ID]['liq'][i] + \
                 sys_dct['cache'][sys.ID]['sol'][i] + \
                 sys_dct['cache'][sys.ID]['gas'][i]
+
     return func_dct
 
 
 def print_summaries(systems):
     try: iter(systems)
     except: systems = (systems, )
-    func = get_summarizing_fuctions()
+
     for sys in systems:
+        func = get_summarizing_fuctions(sys)
         sys.simulate()
         ppl = sys_dct['ppl'][sys.ID]
         print(f'\n---------- Summary for {sys} ----------\n')
+        for i in ('COD', 'N', 'P', 'K'):
+            print(f'Total {i} recovery is {func[f"get_tot_{i}_recovery"](sys, i):.1%}, '
+                  f'{func[f"get_liq_{i}_recovery"](sys, i):.1%} in liquid, '
+                  f'{func[f"get_sol_{i}_recovery"](sys, i):.1%} in solid, '
+                  f'{func[f"get_gas_{i}_recovery"](sys, i):.1%} in gas.')
+        print('\n')
+
         tea = sys_dct['TEA'][sys.ID]
         tea.show()
-        print('\n')
-        lca = sys_dct['LCA'][sys.ID]
-        lca.show()
 
         unit = f'{currency}/cap/yr'
         print(f'\nNet cost: {func["get_annual_net_cost"](tea, ppl):.1f} {unit}.')
@@ -790,20 +801,34 @@ def print_summaries(systems):
         print(f'Capital: {func["get_annual_CAPEX"](tea, ppl):.1f} {unit}.')
         print(f'Operating: {func["get_annual_OPEX"](tea, ppl):.1f} {unit}.')
         print(f'Sales: {func["get_annual_sales"](tea, ppl):.1f} {unit}.')
+        print('\n')
 
-        unit = f'{GWP.unit}/cap/yr'
-        print(f'\nNet emission: {func["get_annual_GWP"](lca, ppl):.1f} {unit}.')
-        print(f'Construction: {func["get_constr_GWP"](lca, ppl):.1f} {unit}.')
-        print(f'Transportation: {func["get_trans_GWP"](lca, ppl):.1f} {unit}.')
-        print(f'Direct emission: {func["get_direct_emission_GWP"](lca, ppl):.1f} {unit}.')
-        print(f'Offset: {func["get_offset_GWP"](lca, ppl):.1f} {unit}.')
-        print(f'Other: {func["get_other_GWP"](lca, ppl):.1} {unit}.\n')
+        lca = sys_dct['LCA'][sys.ID]
+        lca.show()
+        print('\n')
 
-        for i in ('COD', 'N', 'P', 'K'):
-            print(f'Total {i} recovery is {func[f"get_tot_{i}_recovery"](sys, i):.1%}, '
-                  f'{func[f"get_liq_{i}_recovery"](sys, i):.1%} in liquid, '
-                  f'{func[f"get_sol_{i}_recovery"](sys, i):.1%} in solid, '
-                  f'{func[f"get_gas_{i}_recovery"](sys, i):.1%} in gas.')
+        for ind in lca.indicators:
+            unit = f'{ind.unit}/cap/yr'
+            print(f'\nImpact indicator {ind.ID}:')
+
+            f = func[f'get_annual_{ind.ID}']
+            print(f'\nNet emission: {f(lca, ppl):.1f} {unit}.')
+
+            f = func[f'get_constr_{ind.ID}']
+            print(f'Construction: {f(lca, ppl):.1f} {unit}.')
+
+            f = func[f'get_trans_{ind.ID}']
+            print(f'Transportation: {f(lca, ppl):.1f} {unit}.')
+
+            f = func[f'get_direct_emission_{ind.ID}']
+            print(f'Direct emission: {f(lca, ppl):.1f} {unit}.')
+
+            f = func[f'get_offset_{ind.ID}']
+            print(f'Offset: {f(lca, ppl):.1f} {unit}.')
+
+            f = func[f'get_other_{ind.ID}']
+            print(f'Other: {f(lca, ppl):.1} {unit}.\n')
+
 
 def save_all_reports():
     import os

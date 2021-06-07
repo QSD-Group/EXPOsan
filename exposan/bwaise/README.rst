@@ -209,7 +209,7 @@ Results from the original paper [1]_ are saved in the "/results/original_results
 
     LCA: sysA (lifetime 8 yr)
     Impacts:
-                               Construction  Transportation  WasteStream   Others    Total
+                               Construction  Transportation       Stream   Others    Total
     GlobalWarming (kg CO2-eq)      3.13e+07        9.57e+05     1.14e+08 6.85e+04 1.46e+08
 
     Net cost: 8.4 USD/cap/yr.

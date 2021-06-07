@@ -32,7 +32,7 @@ from qsdsan.utils import (
 from exposan import bwaise as bw
 
 c_path = bw._lca_data.c_path
-item_path = os.path.join(bw._lca_data.data_path, 'items_original.xlsx')
+lca_data_kind = bw.systems.lca_data_kind
 
 __all__ = ('modelA', 'modelB', 'modelC', 'result_dct',
            'run_uncertainty', 'save_uncertainty_results')
@@ -48,34 +48,38 @@ systems = bw.systems
 sys_dct = systems.sys_dct
 price_dct = systems.price_dct
 GWP_dct = systems.GWP_dct
-GWP = systems.GWP
 get_summarizing_fuctions = systems.get_summarizing_fuctions
-func = get_summarizing_fuctions()
 
-def add_metrics(system):
+def add_LCA_metrics(system, metrics, kind):
+    systems.update_lca_data(kind)
+    lca = sys_dct['LCA'][system.ID]
+    ppl = sys_dct['ppl'][system.ID]
+    func = get_summarizing_fuctions(system)
+
+    for ind in lca.indicators:
+        unit = f'{ind.unit}/cap/yr'
+        cat = 'LCA results'
+
+        metrics.extend([
+            Metric(f'Net emission {ind.ID}', lambda: func[f'get_annual_{ind.ID}'](lca, ppl), unit, cat),
+            Metric(f'Construction {ind.ID}', lambda: func[f'get_constr_{ind.ID}'](lca, ppl), unit, cat),
+            Metric(f'Transportation {ind.ID}', lambda: func[f'get_trans_{ind.ID}'](lca, ppl), unit, cat),
+            Metric(f'Direct emission {ind.ID}', lambda: func[f'get_direct_emission_{ind.ID}'](lca, ppl), unit, cat),
+            Metric(f'Offset {ind.ID}', lambda: func[f'get_offset_{ind.ID}'](lca, ppl), unit, cat),
+            Metric(f'Other {ind.ID}', lambda: func[f'get_other_{ind.ID}'](lca, ppl), unit, cat),
+            ])
+
+    return metrics
+
+def add_metrics(system, kind):
+    # global lca_metric_kind
+    # lca_metric_kind = kind
     sys_ID = system.ID
     tea = sys_dct['TEA'][sys_ID]
-    lca = sys_dct['LCA'][sys_ID]
     ppl = sys_dct['ppl'][sys_ID]
-    unit = f'{currency}/cap/yr'
-    cat = 'TEA results'
-    metrics = [
-        Metric('Annual net cost', lambda: func['get_annual_net_cost'](tea, ppl), unit, cat),
-        Metric('Annual cost', lambda: func['get_annual_cost'](tea, ppl), unit, cat),
-        Metric('Annual CAPEX', lambda: func['get_annual_CAPEX'](tea, ppl), unit, cat),
-        Metric('Annual OPEX', lambda: func['get_annual_OPEX'](tea, ppl), unit, cat),
-        Metric('Annual sales', lambda: func['get_annual_sales'](tea, ppl), unit, cat)
-        ]
-    unit = f'{GWP.unit}/cap/yr'
-    cat = 'LCA results'
-    metrics.extend([
-        Metric('Net emission', lambda: func['get_annual_GWP'](lca, ppl), unit, cat),
-        Metric('Construction', lambda: func['get_constr_GWP'](lca, ppl), unit, cat),
-        Metric('Transportation', lambda: func['get_trans_GWP'](lca, ppl), unit, cat),
-        Metric('Direct emission', lambda: func['get_direct_emission_GWP'](lca, ppl), unit, cat),
-        Metric('Offset', lambda: func['get_offset_GWP'](lca, ppl), unit, cat),
-        Metric('Other', lambda: func['get_other_GWP'](lca, ppl), unit, cat),
-        ])
+    func = get_summarizing_fuctions(system)
+
+    metrics = []
     for i in ('COD', 'N', 'P', 'K'):
         cat = f'{i} recovery'
         metrics.extend([
@@ -84,7 +88,28 @@ def add_metrics(system):
             Metric(f'Gas {i}', FuncGetter(func[f'get_gas_{i}_recovery'], (system, i)), '', cat),
             Metric(f'Total {i}', FuncGetter(func[f'get_tot_{i}_recovery'], (system, i)), '', cat)
             ])
+    unit = f'{currency}/cap/yr'
+    cat = 'TEA results'
+    metrics.extend([
+        Metric('Annual net cost', lambda: func['get_annual_net_cost'](tea, ppl), unit, cat),
+        Metric('Annual cost', lambda: func['get_annual_cost'](tea, ppl), unit, cat),
+        Metric('Annual CAPEX', lambda: func['get_annual_CAPEX'](tea, ppl), unit, cat),
+        Metric('Annual OPEX', lambda: func['get_annual_OPEX'](tea, ppl), unit, cat),
+        Metric('Annual sales', lambda: func['get_annual_sales'](tea, ppl), unit, cat)
+        ])
+
+    metrics = add_LCA_metrics(system, metrics, kind)
+
     return metrics
+
+
+def update_metrics(model, kind):
+    # global lca_metric_kind
+    # if lca_metric_kind != kind:
+    metrics = [i for i in model.metrics if i.element_name!='LCA results']
+    model.metrics = add_LCA_metrics(model.system, metrics, kind)
+    # lca_metric_kind = kind
+    return model
 
 
 def batch_setting_unit_params(df, model, unit, exclude=()):
@@ -120,8 +145,9 @@ get_decay_k = systems.get_decay_k
 tau_deg = systems.tau_deg
 log_deg = systems.log_deg
 
-def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
+def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
     ########## Related to multiple units ##########
+    sys = model.system
     unit = sys.path[0]
     param = model.parameter
     streams = sys_dct['stream_dct'][sys.ID]
@@ -337,69 +363,131 @@ def add_shared_parameters(sys, model, drying_bed_unit, crop_application_unit):
     def set_electricity_price(i):
         PowerUtility.price = i
 
-    ######## General LCA settings ########
-    b = GWP_dct['CH4']
-    D = shape.Uniform(lower=28, upper=34)
-    @param(name='CH4 CF', element='LCA', kind='isolated', units='kg CO2-eq/kg CH4',
-           baseline=b, distribution=D)
-    def set_CH4_CF(i):
-        GWP_dct['CH4'] = ImpactItem.get_item('CH4_item').CFs['GlobalWarming'] = i
+    return model
 
-    b = GWP_dct['N2O']
-    D = shape.Uniform(lower=265, upper=298)
-    @param(name='N2O CF', element='LCA', kind='isolated', units='kg CO2-eq/kg N2O',
-           baseline=b, distribution=D)
-    def set_N2O_CF(i):
-        GWP_dct['N2O'] = ImpactItem.get_item('N2O_item').CFs['GlobalWarming'] = i
+get_biogas_factor = systems.get_biogas_factor
+def add_LCA_CF_parameters(model, kind=bw._lca_data.lca_data_kind):
+    # global lca_param_kind
+    # lca_param_kind = kind
+    param = model.parameter
+    sys = model.system
+    lca = sys_dct['LCA'][sys.ID]
 
-    b = GWP_dct['Electricity']
-    D = shape.Uniform(lower=0.106, upper=0.121)
-    @param(name='Electricity CF', element='LCA', kind='isolated',
-           units='kg CO2-eq/kWh', baseline=b, distribution=D)
-    def set_electricity_CF(i):
-        GWP_dct['Electricity'] = ImpactItem.get_item('E_item').CFs['GlobalWarming'] = i
+    ######## LCA CF ########
+    if kind == 'original':
+        b = GWP_dct['CH4']
+        D = shape.Uniform(lower=28, upper=34)
+        @param(name='CH4 CF', element='LCA', kind='isolated', units='kg CO2-eq/kg CH4',
+               baseline=b, distribution=D)
+        def set_CH4_CF(i):
+            GWP_dct['CH4'] = ImpactItem.get_item('CH4_item').CFs['GlobalWarming'] = i
 
-    b = -GWP_dct['N']
-    D = shape.Triangle(lower=1.8, midpoint=b, upper=8.9)
-    @param(name='N fertilizer CF', element='LCA', kind='isolated',
-           units='kg CO2-eq/kg N', baseline=b, distribution=D)
-    def set_N_fertilizer_CF(i):
-        GWP_dct['N'] = ImpactItem.get_item('N_item').CFs['GlobalWarming'] = -i
+        b = GWP_dct['N2O']
+        D = shape.Uniform(lower=265, upper=298)
+        @param(name='N2O CF', element='LCA', kind='isolated', units='kg CO2-eq/kg N2O',
+               baseline=b, distribution=D)
+        def set_N2O_CF(i):
+            GWP_dct['N2O'] = ImpactItem.get_item('N2O_item').CFs['GlobalWarming'] = i
 
-    b = -GWP_dct['P']
-    D = shape.Triangle(lower=4.3, midpoint=b, upper=5.4)
-    @param(name='P fertilizer CF', element='LCA', kind='isolated',
-           units='kg CO2-eq/kg P', baseline=b, distribution=D)
-    def set_P_fertilizer_CF(i):
-        GWP_dct['P'] = ImpactItem.get_item('P_item').CFs['GlobalWarming'] = -i
+        b = GWP_dct['Electricity']
+        D = shape.Uniform(lower=0.106, upper=0.121)
+        @param(name='Electricity CF', element='LCA', kind='isolated',
+               units='kg CO2-eq/kWh', baseline=b, distribution=D)
+        def set_electricity_CF(i):
+            GWP_dct['Electricity'] = ImpactItem.get_item('E_item').CFs['GlobalWarming'] = i
 
-    b = -GWP_dct['K']
-    D = shape.Triangle(lower=1.1, midpoint=b, upper=2)
-    @param(name='K fertilizer CF', element='LCA', kind='isolated',
-           units='kg CO2-eq/kg K', baseline=b, distribution=D)
-    def set_K_fertilizer_CF(i):
-        GWP_dct['K'] = ImpactItem.get_item('K_item').CFs['GlobalWarming'] = -i
+        b = -GWP_dct['N']
+        D = shape.Triangle(lower=1.8, midpoint=b, upper=8.9)
+        @param(name='N fertilizer CF', element='LCA', kind='isolated',
+               units='kg CO2-eq/kg N', baseline=b, distribution=D)
+        def set_N_fertilizer_CF(i):
+            GWP_dct['N'] = ImpactItem.get_item('N_item').CFs['GlobalWarming'] = -i
 
-    data = load_data(item_path, sheet='GWP')
-    for p in data.index:
-        item = ImpactItem.get_item(p)
-        b = item.CFs['GlobalWarming']
-        lower = float(data.loc[p]['low'])
-        upper = float(data.loc[p]['high'])
-        dist = data.loc[p]['distribution']
-        if dist == 'uniform':
-            D = shape.Uniform(lower=lower, upper=upper)
-        elif dist == 'triangular':
-            D = shape.Triangle(lower=lower, midpoint=b, upper=upper)
-        elif dist == 'constant': continue
-        else:
-            raise ValueError(f'Distribution {dist} not recognized.')
-        model.parameter(name=p,
-                        setter=DictAttrSetter(item, 'CFs', 'GlobalWarming'),
-                        element='LCA', kind='isolated',
-                        units=f'kg CO2-eq/{item.functional_unit}',
-                        baseline=b, distribution=D)
+        b = -GWP_dct['P']
+        D = shape.Triangle(lower=4.3, midpoint=b, upper=5.4)
+        @param(name='P fertilizer CF', element='LCA', kind='isolated',
+               units='kg CO2-eq/kg P', baseline=b, distribution=D)
+        def set_P_fertilizer_CF(i):
+            GWP_dct['P'] = ImpactItem.get_item('P_item').CFs['GlobalWarming'] = -i
 
+        b = -GWP_dct['K']
+        D = shape.Triangle(lower=1.1, midpoint=b, upper=2)
+        @param(name='K fertilizer CF', element='LCA', kind='isolated',
+               units='kg CO2-eq/kg K', baseline=b, distribution=D)
+        def set_K_fertilizer_CF(i):
+            GWP_dct['K'] = ImpactItem.get_item('K_item').CFs['GlobalWarming'] = -i
+
+        item_path = os.path.join(bw._lca_data.data_path, 'items_original.xlsx')
+        data = load_data(item_path, sheet='GWP')
+        for p in data.index:
+            item = ImpactItem.get_item(p)
+            b = item.CFs['GlobalWarming']
+            lower = float(data.loc[p]['low'])
+            upper = float(data.loc[p]['high'])
+            dist = data.loc[p]['distribution']
+            if dist == 'uniform':
+                D = shape.Uniform(lower=lower, upper=upper)
+            elif dist == 'triangular':
+                D = shape.Triangle(lower=lower, midpoint=b, upper=upper)
+            elif dist == 'constant': continue
+            else:
+                raise ValueError(f'Distribution {dist} not recognized.')
+            model.parameter(name=p+'CF',
+                            setter=DictAttrSetter(item, 'CFs', 'GlobalWarming'),
+                            element='LCA', kind='isolated',
+                            units=f'kg CO2-eq/{item.functional_unit}',
+                            baseline=b, distribution=D)
+
+        if sys.ID == 'sysB':
+            D = shape.Uniform(lower=2.93, upper=3.05)
+            @param(name='Liquid petroleum gas CF', element='LCA', kind='isolated', units='MJ/kg',
+                   baseline=3, distribution=D)
+            def set_LPG_CF(i):
+                GWP_dct['Biogas'] = ImpactItem.get_item('Biogas_item').CFs['GlobalWarming'] = \
+                    -i*get_biogas_factor()
+
+    else:
+        ind_df_processed, all_acts, cf_dct = bw.get_cf_data()
+        ind_new = load_data(os.path.join(bw._lca_data.data_path, 'indicators_new.tsv'))
+
+        for p, df in cf_dct.items():
+            item = ImpactItem.get_item(p)
+            for ind in lca.indicators:
+                full_name = ind_new[ind_new['indicator']==ind.ID]['full_name'].values.item().split("'")
+                column = (full_name[1], full_name[3], full_name[5])
+                ind_data = df[column]
+
+                b = ind_data[df[df[('-', '-', 'activity name')]=='mean'].index].values.item()
+                lower = ind_data[df[df[('-', '-', 'activity name')]=='min'].index].values.item()
+                upper = ind_data[df[df[('-', '-', 'activity name')]=='max'].index].values.item()
+                # All triangular distribution, set to baseline ±10% if only one data entry from ecoinvent
+                name = f'{p} {ind.ID} CF'
+                if lower==upper:
+                    name += ' (±10%)'
+                    lower = b * 0.9
+                    upper = b * 1.1
+
+                if item.ID in ('N_item', 'P_item', 'K_item'):
+                    lower, b, upper = upper, b, lower
+                elif item.ID == 'Biogas_item':
+                    factor = get_biogas_factor()
+                    lower, b, upper = upper*factor, b*factor, lower*factor
+                D = shape.Triangle(lower=lower, midpoint=b, upper=upper)
+                model.parameter(name=f'{p} {ind.ID} CF',
+                                setter=DictAttrSetter(item, 'CFs', ind.ID),
+                                element='LCA', kind='isolated',
+                                units=f'{ind.unit}/{item.functional_unit}',
+                                baseline=b, distribution=D)
+
+    return model
+
+def update_LCA_CF_parameters(model, kind):
+    # # Tricky to use this since need to check and compare for differnet models
+    # global lca_param_kind
+    # if lca_param_kind != kind:
+    non_lca_params = [i for i in model.parameters if not 'CF' in i.name]
+    model.parameters = non_lca_params
+    model = add_LCA_CF_parameters(model, kind)
     return model
 
 
@@ -417,7 +505,8 @@ MCF_upper_dct = dct_from_str(pit_latrine_data.loc['MCF_decay']['high'])
 N2O_EF_lower_dct = dct_from_str(pit_latrine_data.loc['N2O_EF_decay']['low'])
 N2O_EF_upper_dct = dct_from_str(pit_latrine_data.loc['N2O_EF_decay']['high'])
 
-def add_pit_latrine_parameters(sys, model):
+def add_pit_latrine_parameters(model):
+    sys = model.system
     unit = sys.path[1]
     param = model.parameter
     ######## Related to the toilet ########
@@ -558,14 +647,15 @@ def add_existing_plant_parameters(toilet_unit, cost_unit, tea, model):
 
 sysA = systems.sysA
 sysA.simulate()
-modelA = Model(sysA, add_metrics(sysA))
+modelA = Model(sysA, add_metrics(sysA, lca_data_kind))
 paramA = modelA.parameter
 
 # Shared parameters
-modelA = add_shared_parameters(sysA, modelA, systems.A8, systems.A9)
+modelA = add_shared_parameters(modelA, systems.A8, systems.A9)
+modelA = add_LCA_CF_parameters(modelA)
 
 # Pit latrine and conveyance
-modelA = add_pit_latrine_parameters(sysA, modelA)
+modelA = add_pit_latrine_parameters(modelA)
 
 # WWTP costs
 modelA = add_existing_plant_parameters(systems.A2, systems.A4, systems.teaA, modelA)
@@ -603,15 +693,16 @@ all_paramsA = modelA.get_parameters()
 
 sysB = systems.sysB
 sysB.simulate()
-modelB = Model(sysB, add_metrics(sysB))
+modelB = Model(sysB, add_metrics(sysB, lca_data_kind))
 paramB = modelB.parameter
 teaB = sysB._TEA
 
 # Shared parameters
-modelB = add_shared_parameters(sysB, modelB, systems.B8, systems.B9)
+modelB = add_shared_parameters(modelB, systems.B8, systems.B9)
+modelB = add_LCA_CF_parameters(modelB)
 
 # Pit latrine and conveyance
-modelB = add_pit_latrine_parameters(sysB, modelB)
+modelB = add_pit_latrine_parameters(modelB)
 
 b = systems.ppl_alt
 D = shape.Triangle(lower=45e3, midpoint=b, upper=55e3)
@@ -632,7 +723,6 @@ D = shape.Triangle(lower=802, midpoint=b, upper=870)
         baseline=b, distribution=D)
 def set_biogas_energy(i):
     systems.biogas_energy = i
-
 
 # Cost of alternative plants
 B4 = systems.B4
@@ -686,7 +776,6 @@ D = shape.Uniform(lower=0, upper=0.2)
 def set_biogas_loss(i):
     B14.biogas_loss = i
 
-get_biogas_factor = systems.get_biogas_factor
 D = shape.Uniform(lower=6077, upper=6667)
 @paramB(name='Liquid petroleum gas price', element='TEA', kind='isolated', units='UGX',
         baseline=6500, distribution=D)
@@ -703,13 +792,6 @@ def set_LPG_energy(i):
     systems.LPG_energy = i
     sys_dct['streams']['sysB']['biogas'].price *= old_LPG_energy * i
 
-D = shape.Uniform(lower=2.93, upper=3.05)
-@paramB(name='Liquid petroleum gas CF', element='LCA', kind='isolated', units='MJ/kg',
-        baseline=3, distribution=D)
-def set_LPG_CF(i):
-    GWP_dct['Biogas'] = ImpactItem.get_item('Biogas_item').CFs['GlobalWarming'] = \
-        -i*get_biogas_factor()
-
 all_paramsB = modelB.get_parameters()
 
 
@@ -721,11 +803,12 @@ all_paramsB = modelB.get_parameters()
 
 sysC = systems.sysC
 sysC.simulate()
-modelC = Model(sysC, add_metrics(sysC))
+modelC = Model(sysC, add_metrics(sysC, lca_data_kind))
 paramC = modelC.parameter
 
 # Add shared parameters
-modelC = add_shared_parameters(sysC, modelC, systems.C8, systems.C9)
+modelC = add_shared_parameters(modelC, systems.C8, systems.C9)
+modelC = add_LCA_CF_parameters(modelC)
 
 # UDDT
 C2 = systems.C2
