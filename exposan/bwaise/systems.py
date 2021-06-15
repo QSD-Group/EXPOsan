@@ -229,7 +229,7 @@ def update_toilet_param(unit, kind):
 
 def update_lagoon_flow_rate(unit):
     unit.flow_rate = sewer_flow + get_sludge_flow('exist')
-    unit._run
+    unit._run()
 
 def add_fugitive_items(unit, item_ID):
     unit._run()
