@@ -171,9 +171,11 @@ def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
     b = systems.household_size
     D = shape.Normal(mu=b, sigma=1.8)
     @param(name='Household size', element=unit, kind='coupled', units='cap/household',
-           baseline=b, distribution=D)
+           baseline=b, distribution=D,
+           # hook=lambda i: max(1, i) #!!! uncomment this once biosteam (2.29.2) is released
+           )
     def set_household_size(i):
-        systems.household_size = max(1, i)
+        systems.household_size = i
 
     # Toilet density
     b = systems.household_per_toilet
@@ -923,6 +925,7 @@ def run_uncertainty(model, seed=None, N=1000, rule='L',
         np.random.seed(seed)
 
     samples = model.sample(N, rule)
+
     model.load_samples(samples)
     model.evaluate()
 
