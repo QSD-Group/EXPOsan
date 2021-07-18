@@ -50,8 +50,15 @@ ppl_exist_sewer = 4e4
 ppl_exist_sludge = 416667
 # Number of people served by the alternative plant (sysB)
 ppl_alt = 5e4
-get_ppl = lambda kind: ppl_exist_sewer+ppl_exist_sludge \
-    if kind.lower() in ('exist', 'sysa', 'sysc', 'a', 'c') else ppl_alt
+def get_ppl(kind):
+    if kind.lower() in ('exist', 'existing', 'sysa', 'sysc', 'a', 'c'):
+        return ppl_exist_sewer+ppl_exist_sludge
+    elif kind.lower() in ('alt', 'alternative', 'sysb', 'b'):
+        return ppl_alt
+    else:
+        raise ValueError('`kind` should be "exist" (for sysA and sysC)'
+                         f'or "alt" for sysB, not {kind}.')
+
 
 exchange_rate = 3700 # UGX per USD
 discount_rate = 0.05

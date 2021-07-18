@@ -172,7 +172,7 @@ def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
     D = shape.Normal(mu=b, sigma=1.8)
     @param(name='Household size', element=unit, kind='coupled', units='cap/household',
            baseline=b, distribution=D,
-           # hook=lambda i: max(1, i) #!!! uncomment this once biosteam (2.29.2) is released
+            hook=lambda i: max(1, i)
            )
     def set_household_size(i):
         systems.household_size = i
@@ -484,9 +484,6 @@ def add_LCA_CF_parameters(model, kind=bw._lca_data.lca_data_kind):
     return model
 
 def update_LCA_CF_parameters(model, kind):
-    # # Tricky to use this since need to check and compare for differnet models
-    # global lca_param_kind
-    # if lca_param_kind != kind:
     non_lca_params = [i for i in model.parameters if not 'CF' in i.name]
     model.parameters = non_lca_params
     model = add_LCA_CF_parameters(model, kind)
