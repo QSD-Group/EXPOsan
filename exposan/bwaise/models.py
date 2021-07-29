@@ -15,7 +15,7 @@ for license details.
 
 # %%
 
-import os
+import os, pickle
 import numpy as np
 import pandas as pd
 from chaospy import distributions as shape
@@ -48,13 +48,13 @@ systems = bw.systems
 sys_dct = systems.sys_dct
 price_dct = systems.price_dct
 GWP_dct = systems.GWP_dct
-get_summarizing_fuctions = systems.get_summarizing_fuctions
+get_summarizing_functions = systems.get_summarizing_functions
 
 def add_LCA_metrics(system, metrics, kind):
     systems.update_lca_data(kind)
     lca = sys_dct['LCA'][system.ID]
     ppl = sys_dct['ppl'][system.ID]
-    func = get_summarizing_fuctions(system)
+    func = get_summarizing_functions(system)
 
     for ind in lca.indicators:
         unit = f'{ind.unit}/cap/yr'
@@ -77,7 +77,7 @@ def add_metrics(system, kind):
     sys_ID = system.ID
     tea = sys_dct['TEA'][sys_ID]
     ppl = sys_dct['ppl'][sys_ID]
-    func = get_summarizing_fuctions(system)
+    func = get_summarizing_functions(system)
 
     metrics = []
     for i in ('COD', 'N', 'P', 'K'):
@@ -335,19 +335,19 @@ def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
     @param(name='N fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
            baseline=1.507, distribution=D)
     def set_N_price(i):
-        price_dct['N'] = streams['liq_N'] = streams['sol_N'] = i * price_factor
+        price_dct['N'] = streams['liq_N'].price = streams['sol_N'].price = i * price_factor
 
     D = shape.Uniform(lower=2.619, upper=6.692)
     @param(name='P fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
            baseline=3.983, distribution=D)
     def set_P_price(i):
-        price_dct['P'] = streams['liq_P'] = streams['sol_P'] = i * price_factor
+        price_dct['P'] = streams['liq_P'].price = streams['sol_P'].price = i * price_factor
 
     D = shape.Uniform(lower=1.214, upper=1.474)
     @param(name='K fertilizer price', element='TEA', kind='isolated', units='USD/kg K',
            baseline=1.333, distribution=D)
     def set_K_price(i):
-        price_dct['K'] = streams['liq_K'] = streams['sol_K'] = i * price_factor
+        price_dct['K'] = streams['liq_K'].price = streams['sol_K'].price = i * price_factor
 
     # Money discount rate
     b = systems.discount_rate
@@ -449,7 +449,11 @@ def add_LCA_CF_parameters(model, kind=bw._lca_data.lca_data_kind):
                     -i*get_biogas_factor()
 
     else:
-        ind_df_processed, all_acts, cf_dct = bw.get_cf_data()
+        item_path = os.path.join(bw.data_path, 'cf_dct.pckl')
+        f = open(item_path, 'rb')
+        cf_dct = pickle.load(f)
+        f.close()
+
         ind_new = load_data(os.path.join(bw._lca_data.data_path, 'indicators_new.tsv'))
 
         for p, df in cf_dct.items():
@@ -484,8 +488,8 @@ def add_LCA_CF_parameters(model, kind=bw._lca_data.lca_data_kind):
     return model
 
 def update_LCA_CF_parameters(model, kind):
-    non_lca_params = [i for i in model.parameters if not 'CF' in i.name]
-    model.parameters = non_lca_params
+    non_lca_params = [i for i in model.get_parameters() if not 'CF' in i.name]
+    model.set_parameters(non_lca_params)
     model = add_LCA_CF_parameters(model, kind)
     return model
 

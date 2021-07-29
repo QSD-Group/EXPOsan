@@ -12,6 +12,12 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
+import os
+path = os.path.dirname(os.path.realpath(__file__))
+data_path = os.path.join(path, 'data')
+del os
+
+
 from . import _cmps, _lca_data, systems, models, analyses
 
 from ._cmps import *

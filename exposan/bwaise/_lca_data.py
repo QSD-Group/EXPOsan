@@ -53,11 +53,14 @@ def create_indicators(replace=True):
     # ecoinvent version 3.7.1, at the point of substitution
     apos371.load_database('ecoinvent_apos371', print_msg=False)
 
-    # No need for Midpoint as Endpoint gives categorized results in addition to totals
-    # apos371.load_indicators(add=True, method=('recipe'), method_exclude=('LT', 'obsolete'))
-    apos371.load_indicators(add=True, method=('recipe endpoint'), method_exclude='LT', print_msg=False)
+    # Only include categorical total (not including total of categories)
+    apos371.load_indicators(add=True,
+                            method='recipe endpoint', method_exclude='LT',
+                            category_exclude='total', indicator='total',
+                            print_msg=False)
     # For comparison with Trimmer et al.
-    apos371.load_indicators(add=True, method='TRACI', print_msg=False)
+    apos371.load_indicators(add=True, method='TRACI', indicator='global warming',
+                            print_msg=False)
 
     ind_df_raw = apos371.export_indicators(show=False, path='')
     ind_df_processed = ind_df_raw.copy()
@@ -68,14 +71,18 @@ def create_indicators(replace=True):
             new_name = old_name
         else:
             kind = ind['method'].split(',A)')[0][-1] # egalitarian, hierarchist, individualist
-            if old_name == 'Total':
-                if ind['category'] == 'total':
-                    new_name = f'{kind}_All' # total of all categories in E/H/I
-                else:
-                    new_name = f'{kind}_{format_name(ind["category"])}_Total' # category total
-                    ind_df_processed.iloc[num]['category'] += ' total'
-            else:
-                new_name = f'{kind}_{old_name}'
+            new_name = f'{kind}_{format_name(ind["category"])}_Total' # categorical total
+
+            # # Legacy code to include breakdown of all categories and total of categories
+            # kind = ind['method'].split(',A)')[0][-1] # egalitarian, hierarchist, individualist
+            # if old_name == 'Total':
+            #     if ind['category'] == 'total':
+            #         new_name = f'{kind}_All' # total of all categories in E/H/I
+            #     else:
+            #         new_name = f'{kind}_{format_name(ind["category"])}_Total' # categorical total
+            #         ind_df_processed.iloc[num]['category'] += ' total'
+            # else:
+            #     new_name = f'{kind}_{old_name}'
 
         ind_df_processed.iloc[num]['indicator'] = new_name
 
@@ -206,7 +213,7 @@ def get_stats(df, keep_raw_data=False):
     df2 = pd.DataFrame(columns=df.columns, dtype='float64') if not keep_raw_data else df.copy()
     df2 = df2.append(df[1:].min(), ignore_index=True)
     df2 = df2.append(df[1:].mean(), ignore_index=True)
-    # df2 = df2.append(df[1:].median(), ignore_index=True)
+    # df2 = df2.append(df[1:].median(), ignore_index=True) # use mean instead
     df2 = df2.append(df[1:].max(), ignore_index=True)
     df2.loc[-3:, ('-', '-', 'activity name')] = ('min', 'mean', 'max')
     functional_unit = df.loc[1, ('-', '-', 'functional unit')]

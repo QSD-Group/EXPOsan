@@ -161,23 +161,24 @@ def batch_create_stream_items(kind):
         I_factor = {'GW2ECO': 0.000000025, 'GW2HH': 0.0000125, 'OD2HH': 0.000237}
 
         StreamImpactItem(ID='CH4_item',
-                         E_ClimateChangeEcosystems=E_factor['GW2ECO']*4.8,
-                         E_ClimateChangeHumanHealth=E_factor['GW2HH']*4.8,
-                         H_ClimateChangeEcosystems=H_factor['GW2ECO']*34,
-                         H_ClimateChangeHumanHealth=H_factor['GW2HH']*34,
-                         I_ClimateChangeEcosystems=I_factor['GW2ECO']*84,
-                         I_ClimateChangeHumanHealth=I_factor['GW2HH']*84
+                         E_EcosystemQuality_Total=E_factor['GW2ECO']*4.8,
+                         E_HumanHealth_Total=E_factor['GW2HH']*4.8,
+                         H_EcosystemQuality_Total=H_factor['GW2ECO']*34,
+                         H_HumanHealth_Total=H_factor['GW2HH']*34,
+                         I_EcosystemQuality_Total=I_factor['GW2ECO']*84,
+                         I_HumanHealth_Total=I_factor['GW2HH']*84
                          )
         StreamImpactItem(ID='N2O_item',
-                         E_ClimateChangeEcosystems=E_factor['GW2ECO']*78.8,
-                         E_ClimateChangeHumanHealth=E_factor['GW2HH']*78.8,
-                         H_ClimateChangeEcosystems=H_factor['GW2ECO']*298,
-                         H_ClimateChangeHumanHealth=H_factor['GW2HH']*298,
-                         I_ClimateChangeEcosystems=I_factor['GW2ECO']*264,
-                         I_ClimateChangeHumanHealth=I_factor['GW2HH']*264,
-                         E_OzoneDepletion=E_factor['OD2HH']*0.017,
-                         H_OzoneDepletion=H_factor['OD2HH']*0.011,
-                         I_OzoneDepletion=I_factor['OD2HH']*0.007
+                         E_EcosystemQuality_Total=E_factor['GW2ECO']*78.8,
+                         # From climate change + ozone depletion
+                         E_HumanHealth_Total=\
+                             E_factor['GW2HH']*78.8+E_factor['OD2HH']*0.017,
+                         H_EcosystemQuality_Total=H_factor['GW2ECO']*298,
+                         H_HumanHealth_Total=\
+                             H_factor['GW2HH']*298+H_factor['OD2HH']*0.011,
+                         I_EcosystemQuality_Total=I_factor['GW2ECO']*264,
+                         I_HumanHealth_Total=\
+                             I_factor['GW2HH']*264+I_factor['OD2HH']*0.007
                          )
     else:
         raise ValueError(f'`kind` can only be "original" or "new", not "{kind}".')
@@ -743,7 +744,7 @@ B15.specification = lambda: update_cache(sysB)
 C13.specification = lambda: update_cache(sysC)
 
 
-def get_summarizing_fuctions(system):
+def get_summarizing_functions(system):
     func_dct = {}
     func_dct['get_annual_net_cost'] = lambda tea, ppl: (tea.EAC-tea.sales)/ppl
     func_dct['get_annual_cost'] = lambda tea, ppl: tea.EAC/ppl
@@ -788,7 +789,7 @@ def print_summaries(systems):
     except: systems = (systems, )
 
     for sys in systems:
-        func = get_summarizing_fuctions(sys)
+        func = get_summarizing_functions(sys)
         sys.simulate()
         ppl = sys_dct['ppl'][sys.ID]
         print(f'\n---------- Summary for {sys} ----------\n')
