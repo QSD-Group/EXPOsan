@@ -752,21 +752,21 @@ def get_summarizing_functions(system):
     func_dct['get_annual_OPEX'] = lambda tea, ppl: tea.AOC/ppl
     func_dct['get_annual_sales'] = lambda tea, ppl: tea.sales/ppl
 
-    for ind in sys_dct['LCA'][system.ID].indicators:
-        func_dct[f'get_annual_{ind.ID}'] = \
-            lambda lca, ppl: lca.total_impacts[ind.ID]/lca.lifetime/ppl
-        func_dct[f'get_constr_{ind.ID}'] = \
-            lambda lca, ppl: lca.total_construction_impacts[ind.ID]/lca.lifetime/ppl
-        func_dct[f'get_trans_{ind.ID}'] = \
-            lambda lca, ppl: lca.total_transportation_impacts[ind.ID]/lca.lifetime/ppl
-        func_dct[f'get_direct_emission_{ind.ID}'] = \
-            lambda lca, ppl: lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='direct_emission')[ind.ID] \
-                /lca.lifetime/ppl
-        func_dct[f'get_offset_{ind.ID}'] = \
-            lambda lca, ppl: lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='offset')[ind.ID] \
-                /lca.lifetime/ppl
-        func_dct[f'get_other_{ind.ID}'] = \
-            lambda lca, ppl: lca.total_other_impacts[ind.ID]/lca.lifetime/ppl
+    # for ind in sys_dct['LCA'][system.ID].indicators:
+    #     func_dct[f'get_annual_{ind.ID}'] = \
+    #         lambda lca, ppl: lca.total_impacts[ind.ID]/lca.lifetime/ppl
+    #     func_dct[f'get_constr_{ind.ID}'] = \
+    #         lambda lca, ppl: lca.total_construction_impacts[ind.ID]/lca.lifetime/ppl
+    #     func_dct[f'get_trans_{ind.ID}'] = \
+    #         lambda lca, ppl: lca.total_transportation_impacts[ind.ID]/lca.lifetime/ppl
+    #     func_dct[f'get_direct_emission_{ind.ID}'] = \
+    #         lambda lca, ppl: lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='direct_emission')[ind.ID] \
+    #             /lca.lifetime/ppl
+    #     func_dct[f'get_offset_{ind.ID}'] = \
+    #         lambda lca, ppl: lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='offset')[ind.ID] \
+    #             /lca.lifetime/ppl
+    #     func_dct[f'get_other_{ind.ID}'] = \
+    #         lambda lca, ppl: lca.total_other_impacts[ind.ID]/lca.lifetime/ppl
 
     for i in ('COD', 'N', 'P', 'K'):
         func_dct[f'get_liq_{i}_recovery'] = \
@@ -819,23 +819,25 @@ def print_summaries(systems):
             unit = f'{ind.unit}/cap/yr'
             print(f'\nImpact indicator {ind.ID}:')
 
-            f = func[f'get_annual_{ind.ID}']
-            print(f'\nNet emission: {f(lca, ppl):.1f} {unit}.')
+            val = lca.total_impacts[ind.ID]/lca.lifetime/ppl
+            print(f'\nNet emission: {val:.1f} {unit}.')
 
-            f = func[f'get_constr_{ind.ID}']
-            print(f'Construction: {f(lca, ppl):.1f} {unit}.')
+            val = lca.total_construction_impacts[ind.ID]/lca.lifetime/ppl
+            print(f'Construction: {val:.1f} {unit}.')
 
-            f = func[f'get_trans_{ind.ID}']
-            print(f'Transportation: {f(lca, ppl):.1f} {unit}.')
+            val = lca.total_transportation_impacts[ind.ID]/lca.lifetime/ppl
+            print(f'Transportation: {val:.1f} {unit}.')
 
-            f = func[f'get_direct_emission_{ind.ID}']
-            print(f'Direct emission: {f(lca, ppl):.1f} {unit}.')
+            val = lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='direct_emission')[ind.ID] \
+                /lca.lifetime/ppl
+            print(f'Direct emission: {val:.1f} {unit}.')
 
-            f = func[f'get_offset_{ind.ID}']
-            print(f'Offset: {f(lca, ppl):.1f} {unit}.')
+            val = lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='offset')[ind.ID] \
+                /lca.lifetime/ppl
+            print(f'Offset: {val:.1f} {unit}.')
 
-            f = func[f'get_other_{ind.ID}']
-            print(f'Other: {f(lca, ppl):.1} {unit}.\n')
+            val = lca.total_other_impacts[ind.ID]/lca.lifetime/ppl
+            print(f'Other: {val:.1} {unit}.\n')
 
 
 def save_all_reports():

@@ -54,26 +54,34 @@ def add_LCA_metrics(system, metrics, kind):
     systems.update_lca_data(kind)
     lca = sys_dct['LCA'][system.ID]
     ppl = sys_dct['ppl'][system.ID]
-    func = get_summarizing_functions(system)
+    funcs = [
+        lambda ID: lca.total_impacts[ID]/lca.lifetime/ppl,
+        lambda ID: lca.total_construction_impacts[ID]/lca.lifetime/ppl,
+        lambda ID: lca.total_transportation_impacts[ID]/lca.lifetime/ppl,
+        lambda ID: lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='direct_emission')[ID] \
+            /lca.lifetime/ppl,
+        lambda ID: lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='offset')[ID] \
+            /lca.lifetime/ppl,
+        lambda ID: lca.total_other_impacts[ID]/lca.lifetime/ppl
+        ]
 
     for ind in lca.indicators:
         unit = f'{ind.unit}/cap/yr'
         cat = 'LCA results'
-
+        print(ind.ID)
+        print(FuncGetter(funcs[1], (ind.ID,))())
         metrics.extend([
-            Metric(f'Net emission {ind.ID}', lambda: func[f'get_annual_{ind.ID}'](lca, ppl), unit, cat),
-            Metric(f'Construction {ind.ID}', lambda: func[f'get_constr_{ind.ID}'](lca, ppl), unit, cat),
-            Metric(f'Transportation {ind.ID}', lambda: func[f'get_trans_{ind.ID}'](lca, ppl), unit, cat),
-            Metric(f'Direct emission {ind.ID}', lambda: func[f'get_direct_emission_{ind.ID}'](lca, ppl), unit, cat),
-            Metric(f'Offset {ind.ID}', lambda: func[f'get_offset_{ind.ID}'](lca, ppl), unit, cat),
-            Metric(f'Other {ind.ID}', lambda: func[f'get_other_{ind.ID}'](lca, ppl), unit, cat),
+            Metric(f'Net emission {ind.ID}', FuncGetter(funcs[0], (ind.ID,)), unit, cat),
+            Metric(f'Construction {ind.ID}', FuncGetter(funcs[1], (ind.ID,)),unit, cat),
+            Metric(f'Transportation {ind.ID}', FuncGetter(funcs[2], (ind.ID,)),unit, cat),
+            Metric(f'Direct emission {ind.ID}', FuncGetter(funcs[3], (ind.ID,)),unit, cat),
+            Metric(f'Offset {ind.ID}', FuncGetter(funcs[4], (ind.ID,)),unit, cat),
+            Metric(f'Other {ind.ID}', FuncGetter(funcs[5], (ind.ID,)),unit, cat),
             ])
 
     return metrics
 
 def add_metrics(system, kind):
-    # global lca_metric_kind
-    # lca_metric_kind = kind
     sys_ID = system.ID
     tea = sys_dct['TEA'][sys_ID]
     ppl = sys_dct['ppl'][sys_ID]
@@ -104,11 +112,8 @@ def add_metrics(system, kind):
 
 
 def update_metrics(model, kind):
-    # global lca_metric_kind
-    # if lca_metric_kind != kind:
     metrics = [i for i in model.metrics if i.element_name!='LCA results']
     model.metrics = add_LCA_metrics(model.system, metrics, kind)
-    # lca_metric_kind = kind
     return model
 
 
@@ -127,7 +132,8 @@ def batch_setting_unit_params(df, model, unit, exclude=()):
         else:
             raise ValueError(f'Distribution {dist} not recognized for unit {unit}.')
         model.parameter(setter=AttrSetter(unit, para),
-                        name=para, element=unit, kind='coupled', units=df.loc[para]['unit'],
+                        name=f'{type(unit).__name__} {para}', element=unit,
+                        kind='coupled', units=df.loc[para]['unit'],
                         baseline=b, distribution=D)
 
 
@@ -488,7 +494,7 @@ def add_LCA_CF_parameters(model, kind=bw._lca_data.lca_data_kind):
     return model
 
 def update_LCA_CF_parameters(model, kind):
-    non_lca_params = [i for i in model.get_parameters() if not 'CF' in i.name]
+    non_lca_params = [i for i in model.parameters if not 'CF' in i.name]
     model.set_parameters(non_lca_params)
     model = add_LCA_CF_parameters(model, kind)
     return model
@@ -650,7 +656,7 @@ def add_existing_plant_parameters(toilet_unit, cost_unit, tea, model):
 
 sysA = systems.sysA
 sysA.simulate()
-modelA = Model(sysA, add_metrics(sysA, lca_data_kind))
+modelA = Model(sysA, add_metrics(sysA, lca_data_kind), exception_hook=breakpoint)
 paramA = modelA.parameter
 
 # Shared parameters
@@ -685,7 +691,7 @@ facultative_lagoon_data = load_data(path)
 batch_setting_unit_params(facultative_lagoon_data, modelA, A7)
 modelA = add_lagoon_parameters(A7, modelA)
 
-all_paramsA = modelA.get_parameters()
+all_paramsA = modelA.parameters
 
 
 # %%
@@ -696,7 +702,7 @@ all_paramsA = modelA.get_parameters()
 
 sysB = systems.sysB
 sysB.simulate()
-modelB = Model(sysB, add_metrics(sysB, lca_data_kind))
+modelB = Model(sysB, add_metrics(sysB, lca_data_kind), exception_hook=breakpoint)
 paramB = modelB.parameter
 teaB = sysB._TEA
 
@@ -795,7 +801,7 @@ def set_LPG_energy(i):
     systems.LPG_energy = i
     sys_dct['streams']['sysB']['biogas'].price *= old_LPG_energy * i
 
-all_paramsB = modelB.get_parameters()
+all_paramsB = modelB.parameters
 
 
 # %%
@@ -806,7 +812,7 @@ all_paramsB = modelB.get_parameters()
 
 sysC = systems.sysC
 sysC.simulate()
-modelC = Model(sysC, add_metrics(sysC, lca_data_kind))
+modelC = Model(sysC, add_metrics(sysC, lca_data_kind), exception_hook=breakpoint)
 paramC = modelC.parameter
 
 # Add shared parameters
@@ -901,7 +907,7 @@ C7 = systems.C7
 batch_setting_unit_params(facultative_lagoon_data, modelC, C7)
 modelC = add_lagoon_parameters(C7, modelC)
 
-all_paramsC = modelC.get_parameters()
+all_paramsC = modelC.parameters
 
 
 
@@ -932,7 +938,7 @@ def run_uncertainty(model, seed=None, N=1000, rule='L',
 
     # Data organization
     dct = result_dct[model._system.ID]
-    index_p = len(model.get_parameters())
+    index_p = len(model.parameters)
     dct['parameters'] = model.table.iloc[:, :index_p].copy()
     dct['data'] = model.table.iloc[:, index_p:].copy()
     if percentiles:
@@ -940,7 +946,7 @@ def run_uncertainty(model, seed=None, N=1000, rule='L',
 
     # Spearman's rank correlation
     spearman_metrics = [model.metrics[i] for i in (0, 3, 12, 16, 20, 24)]
-    spearman_results = model.spearman_r(model.get_parameters(), spearman_metrics)[0]
+    spearman_results = model.spearman_r(model.parameters, spearman_metrics)[0]
     spearman_results.columns = pd.Index([i.name_with_units for i in spearman_metrics])
     dct['spearman'] = spearman_results
     return dct
