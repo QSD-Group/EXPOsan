@@ -68,8 +68,6 @@ def add_LCA_metrics(system, metrics, kind):
     for ind in lca.indicators:
         unit = f'{ind.unit}/cap/yr'
         cat = 'LCA results'
-        print(ind.ID)
-        print(FuncGetter(funcs[1], (ind.ID,))())
         metrics.extend([
             Metric(f'Net emission {ind.ID}', FuncGetter(funcs[0], (ind.ID,)), unit, cat),
             Metric(f'Construction {ind.ID}', FuncGetter(funcs[1], (ind.ID,)),unit, cat),
@@ -96,6 +94,7 @@ def add_metrics(system, kind):
             Metric(f'Gas {i}', FuncGetter(func[f'get_gas_{i}_recovery'], (system, i)), '', cat),
             Metric(f'Total {i}', FuncGetter(func[f'get_tot_{i}_recovery'], (system, i)), '', cat)
             ])
+
     unit = f'{currency}/cap/yr'
     cat = 'TEA results'
     metrics.extend([
@@ -131,8 +130,13 @@ def batch_setting_unit_params(df, model, unit, exclude=()):
         elif dist == 'constant': continue
         else:
             raise ValueError(f'Distribution {dist} not recognized for unit {unit}.')
+
+        su_type = type(unit).__name__
+        if su_type.lower() == 'lagoon':
+            su_type = f'{unit.design_type.capitalize()} lagoon'
+        name = f'{su_type} {para}'
         model.parameter(setter=AttrSetter(unit, para),
-                        name=f'{type(unit).__name__} {para}', element=unit,
+                        name=name, element=unit,
                         kind='coupled', units=df.loc[para]['unit'],
                         baseline=b, distribution=D)
 
@@ -610,7 +614,8 @@ def add_lagoon_parameters(unit, model):
     param = model.parameter
     b = systems.sewer_flow
     D = shape.Uniform(lower=2500, upper=3000)
-    @param(name='Sewer flow', element=unit, kind='coupled', units='m3/d',
+    name = f'{unit.design_type.capitalize()} lagoon sewer flow'
+    @param(name=name, element=unit, kind='coupled', units='m3/d',
            baseline=b, distribution=D)
     def set_sewer_flow(i):
         systems.sewer_flow = i
@@ -656,7 +661,7 @@ def add_existing_plant_parameters(toilet_unit, cost_unit, tea, model):
 
 sysA = systems.sysA
 sysA.simulate()
-modelA = Model(sysA, add_metrics(sysA, lca_data_kind), exception_hook=breakpoint)
+modelA = Model(sysA, add_metrics(sysA, lca_data_kind))
 paramA = modelA.parameter
 
 # Shared parameters
@@ -702,7 +707,7 @@ all_paramsA = modelA.parameters
 
 sysB = systems.sysB
 sysB.simulate()
-modelB = Model(sysB, add_metrics(sysB, lca_data_kind), exception_hook=breakpoint)
+modelB = Model(sysB, add_metrics(sysB, lca_data_kind))
 paramB = modelB.parameter
 teaB = sysB._TEA
 
@@ -789,7 +794,7 @@ D = shape.Uniform(lower=6077, upper=6667)
 @paramB(name='Liquid petroleum gas price', element='TEA', kind='isolated', units='UGX',
         baseline=6500, distribution=D)
 def set_LPG_price(i):
-    price_dct['Biogas'] = sys_dct['streams']['sysB']['biogas'].price = \
+    price_dct['Biogas'] = sys_dct['stream_dct']['sysB']['biogas'].price = \
         i/exchange_rate*get_biogas_factor()
 
 b = systems.LPG_energy
@@ -799,7 +804,8 @@ D = shape.Uniform(lower=49.5, upper=50.4)
 def set_LPG_energy(i):
     old_LPG_energy = systems.LPG_energy
     systems.LPG_energy = i
-    sys_dct['streams']['sysB']['biogas'].price *= old_LPG_energy * i
+    price_dct['Biogas'] = sys_dct['stream_dct']['sysB']['biogas'].price = \
+        price_dct['Biogas'] / old_LPG_energy * i
 
 all_paramsB = modelB.parameters
 
@@ -812,7 +818,7 @@ all_paramsB = modelB.parameters
 
 sysC = systems.sysC
 sysC.simulate()
-modelC = Model(sysC, add_metrics(sysC, lca_data_kind), exception_hook=breakpoint)
+modelC = Model(sysC, add_metrics(sysC, lca_data_kind))
 paramC = modelC.parameter
 
 # Add shared parameters

@@ -26,6 +26,7 @@ Questions:
 import numpy as np
 import biosteam as bst
 import qsdsan as qs
+from collections.abc import Iterable
 from sklearn.linear_model import LinearRegression as LR
 from qsdsan import sanunits as su
 from qsdsan import WasteStream, ImpactIndicator, ImpactItem, StreamImpactItem, SimpleTEA, LCA
@@ -657,7 +658,7 @@ def update_lca_data(kind):
         lca_data_kind = kind
 
 
-def get_total_inputs(unit):
+def get_total_inputs(unit, ppl):
     if len(unit.ins) == 0: # Excretion units do not have ins
         ins = unit.outs
     else:
@@ -668,14 +669,15 @@ def get_total_inputs(unit):
     inputs['NH3'] = sum(i.imass['NH3'] for i in ins)
     inputs['P'] = sum(i.TP*i.F_vol/1e3 for i in ins)
     inputs['K'] = sum(i.TK*i.F_vol/1e3 for i in ins)
-    hr = 365 * 24
     for i, j in inputs.items():
-        inputs[i] = j * hr
+        inputs[i] = j * ppl
     return inputs
 
-def get_recovery(ins=None, outs=None, hr=365*24, ppl=1, if_relative=True):
-    try: iter(outs)
-    except: outs = (outs,)
+
+def get_recovery(ins, outs, ppl):
+    if not isinstance(outs, Iterable):
+        outs = (outs,)
+
     non_g = tuple(i for i in outs if i.phase != 'g')
     recovery = {}
     recovery['COD'] = sum(i.COD*i.F_vol/1e3 for i in non_g)
@@ -683,23 +685,13 @@ def get_recovery(ins=None, outs=None, hr=365*24, ppl=1, if_relative=True):
     recovery['NH3'] = sum(i.imass['NH3'] for i in non_g)
     recovery['P'] = sum(i.TP*i.F_vol/1e3 for i in non_g)
     recovery['K'] = sum(i.TK*i.F_vol/1e3 for i in non_g)
+
     for i, j in recovery.items():
-        if if_relative:
-            inputs = get_total_inputs(ins)
-            recovery[i] /= inputs[i]/hr * ppl
-        else:
-            recovery[i] /= 1/hr * ppl
+        inputs = get_total_inputs(ins, ppl)
+        recovery[i] /= inputs[i]
+
     return recovery
 
-def get_stream_emissions(streams=None, hr=365*24, ppl=1):
-    try: iter(streams)
-    except: streams = (streams,)
-    emission = {}
-    factor = hr / ppl
-    for i in streams:
-        if not i.stream_impact_item: continue
-        emission[f'{i.ID}'] = i.F_mass*i.stream_impact_item.CFs['GlobalWarming']*factor
-    return emission
 
 sys_dct = {
     'ppl': dict(sysA=get_ppl('exist'), sysB=get_ppl('alt'), sysC=get_ppl('exist')),
@@ -713,17 +705,18 @@ sys_dct = {
     'cache': dict(sysA={}, sysB={}, sysC={}),
     }
 
+
 def cache_recoveries(sys):
-    total_COD = get_total_inputs(sys_dct['input_unit'][sys.ID])['COD']
-    ppl = sys_dct['ppl'][sys.ID]
+    sys_dct['ppl'][sys.ID] = ppl = get_ppl('alt') if sys.ID=='sysB' else get_ppl('exist')
+    total_COD = get_total_inputs(sys_dct['input_unit'][sys.ID], ppl)['COD']
 
     if sys_dct['gas_unit'][sys.ID]:
         gas_mol = sys_dct['gas_unit'][sys.ID].outs[0].imol['CH4']
-        gas_COD = gas_mol*1e3*biogas_energy*365*24/14e3/ppl/total_COD
+        gas_COD = gas_mol*1e3*biogas_energy/14e3/total_COD
     else:
         gas_COD = 0
 
-    cache = {
+    sys_dct['cache'][sys.ID] = cache = {
         'liq': get_recovery(ins=sys_dct['input_unit'][sys.ID],
                             outs=sys_dct['liq_unit'][sys.ID].ins,
                             ppl=ppl),
@@ -734,14 +727,10 @@ def cache_recoveries(sys):
         }
     return cache
 
-def update_cache(sys):
-    last_u = sys.path[-1]
-    last_u._run()
-    sys_dct['cache'][sys.ID] = cache_recoveries(sys)
 
-A13.specification = lambda: update_cache(sysA)
-B15.specification = lambda: update_cache(sysB)
-C13.specification = lambda: update_cache(sysC)
+sysA._set_facilities([*sysA.facilities, lambda: cache_recoveries(sysA)])
+sysB._set_facilities([*sysB.facilities, lambda: cache_recoveries(sysB)])
+sysC._set_facilities([*sysC.facilities, lambda: cache_recoveries(sysC)])
 
 
 def get_summarizing_functions(system):
@@ -751,22 +740,6 @@ def get_summarizing_functions(system):
     func_dct['get_annual_CAPEX'] = lambda tea, ppl: tea.annualized_CAPEX/ppl
     func_dct['get_annual_OPEX'] = lambda tea, ppl: tea.AOC/ppl
     func_dct['get_annual_sales'] = lambda tea, ppl: tea.sales/ppl
-
-    # for ind in sys_dct['LCA'][system.ID].indicators:
-    #     func_dct[f'get_annual_{ind.ID}'] = \
-    #         lambda lca, ppl: lca.total_impacts[ind.ID]/lca.lifetime/ppl
-    #     func_dct[f'get_constr_{ind.ID}'] = \
-    #         lambda lca, ppl: lca.total_construction_impacts[ind.ID]/lca.lifetime/ppl
-    #     func_dct[f'get_trans_{ind.ID}'] = \
-    #         lambda lca, ppl: lca.total_transportation_impacts[ind.ID]/lca.lifetime/ppl
-    #     func_dct[f'get_direct_emission_{ind.ID}'] = \
-    #         lambda lca, ppl: lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='direct_emission')[ind.ID] \
-    #             /lca.lifetime/ppl
-    #     func_dct[f'get_offset_{ind.ID}'] = \
-    #         lambda lca, ppl: lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='offset')[ind.ID] \
-    #             /lca.lifetime/ppl
-    #     func_dct[f'get_other_{ind.ID}'] = \
-    #         lambda lca, ppl: lca.total_other_impacts[ind.ID]/lca.lifetime/ppl
 
     for i in ('COD', 'N', 'P', 'K'):
         func_dct[f'get_liq_{i}_recovery'] = \
@@ -785,8 +758,8 @@ def get_summarizing_functions(system):
 
 
 def print_summaries(systems):
-    try: iter(systems)
-    except: systems = (systems, )
+    if not isinstance(systems, Iterable):
+        systems = (systems, )
 
     for sys in systems:
         func = get_summarizing_functions(sys)
