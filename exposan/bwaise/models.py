@@ -832,7 +832,7 @@ uddt_data = load_data(path)
 data = pd.concat((toilet_data, uddt_data))
 
 WoodAsh = systems.cmps.WoodAsh
-b = V_to_rho(WoodAsh.V.models[0].value, WoodAsh.MW)
+b = V_to_rho(WoodAsh.V(298.15), WoodAsh.MW)
 D = shape.Triangle(lower=663, midpoint=b, upper=977)
 @paramC(name='Desiccant density', element=C2, kind='coupled', units='kg/m3',
         baseline=b, distribution=D)
