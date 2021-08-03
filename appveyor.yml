@@ -18,7 +18,7 @@ init:
 install:
   - cmd: activate condaenv
   - cmd: conda install -yq pip numpy pandas scipy matplotlib pytest sympy pytz
-  - cmd: pip install -r requirements_test.txt
+  - cmd: pip install qsdsan # -r requirements_test.txt
   - cmd: python setup.py install
   - cmd: rmdir /Q /S exposan
 

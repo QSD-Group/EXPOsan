@@ -8,6 +8,8 @@ EXPOsan: EXPOsition of sanitation and resource recovery systems
    :target: https://pypi.python.org/pypi/exposan
 .. image:: https://img.shields.io/pypi/v/exposan?style=flat&color=blue
    :target: https://pypi.org/project/exposan/
+.. image:: https://img.shields.io/appveyor/build/yalinli2/EXPOsan/main?label=build-main&logo=appveyor
+   :target: https://github.com/QSD-Group/EXPOsan/tree/main
 
 
 What is ``EXPOsan``?
