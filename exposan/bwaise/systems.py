@@ -10,14 +10,6 @@ This module is developed by:
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
-
-TODOs:
-    [1] Recheck COD calculation acorss units once WasteStream is ready.
-
-Questions:
-    [1] WWTP power consumption very low, only 6.5/0.8 kWh per hour for
-        existing/alternative WWTP.
-
 '''
 
 
@@ -429,6 +421,10 @@ B5 = su.AnaerobicBaffledReactor('B5', ins=B4-0, outs=('ABR_treated', 'biogas',
                                                       'B5_CH4', 'B5_N2O'),
                                 decay_k_COD=get_decay_k(tau_deg, log_deg),
                                 max_CH4_emission=max_CH4_emission)
+def update_B5_gravel_density():
+    B5.gravel_density = B2.density_dct['Gravel']
+B5.specification = update_B5_gravel_density
+B5.run_after_specification = True
 
 B6 = su.SludgeSeparator('B6', ins=B5-0, outs=('liq', 'sol'))
 
