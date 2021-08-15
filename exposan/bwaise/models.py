@@ -632,7 +632,7 @@ def add_existing_plant_parameters(toilet_unit, cost_unit, tea, model):
 
     b = systems.ppl_exist_sludge
     D = shape.Triangle(lower=416667, midpoint=b, upper=458333)
-    @param(name='Sludge ppl', element=toilet_unit, kind='coupled', units='-',
+    @param(name='Exist sludge ppl', element=toilet_unit, kind='coupled', units='-',
            baseline=b, distribution=D)
     def set_sludge_ppl(i):
         systems.ppl_exist_sludge = i
@@ -720,7 +720,7 @@ modelB = add_pit_latrine_parameters(modelB)
 
 b = systems.ppl_alt
 D = shape.Triangle(lower=45e3, midpoint=b, upper=55e3)
-@paramB(name='Sludge ppl', element=systems.B2, kind='coupled', units='-',
+@paramB(name='Alt sludge ppl', element=systems.B2, kind='coupled', units='-',
         baseline=b, distribution=D)
 def set_plant_ppl(i):
     systems.ppl_alt = i

@@ -357,9 +357,10 @@ A13 = su.ComponentSplitter('A13', ins=A9-0,
 ############### Simulation, TEA, and LCA ###############
 sysA = bst.System('sysA', path=(A1, A2, A3, treatA, A9, A10, A11, A12, A13))
 
+exist_staff_num = 12
 teaA = SimpleTEA(system=sysA, discount_rate=discount_rate, start_year=2018,
                  lifetime=get_A4_lifetime(), uptime_ratio=1, lang_factor=None,
-                 annual_maintenance=0, annual_labor=12*3e6*12/exchange_rate,
+                 annual_maintenance=0, annual_labor=exist_staff_num*3e6*12/exchange_rate,
                  construction_schedule=None)
 
 lcaA = LCA(system=sysA, lifetime=get_A4_lifetime(), lifetime_unit='yr', uptime_ratio=1,
@@ -475,11 +476,12 @@ B15 = su.Mixer('B15', ins=(B14-0, B14-2), outs=streamsB['biogas'])
 ############### Simulation, TEA, and LCA ###############
 sysB = bst.System('sysB', path=(B1, B2, B3, treatB, B9, B10, B11, B12, B13, B14, B15))
 
+skilled_num = 5
 unskilled_num = 5
 get_unskilled_num = lambda: unskilled_num
 unskilled_salary = 75e4 # UGX/month
 get_unskilled_salary = lambda: unskilled_salary*get_unskilled_num()
-get_alt_salary = lambda: (5*5e6+get_unskilled_salary())*12/exchange_rate
+get_alt_salary = lambda: (skilled_num*5e6+get_unskilled_salary())*12/exchange_rate
 
 teaB = SimpleTEA(system=sysB, discount_rate=discount_rate, start_year=2018,
                   lifetime=get_B4_lifetime(), uptime_ratio=1, lang_factor=None,

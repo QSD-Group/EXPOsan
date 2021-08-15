@@ -12,6 +12,6 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-from . import (
-    test_bwaise,
-    )
+import os, sys
+sys.path.insert(0, os.path.abspath('../qs'))
+del os, sys

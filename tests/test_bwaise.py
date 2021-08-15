@@ -12,8 +12,6 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-__all__ = ('test_bwaise',)
-
 def test_bwaise():
     from numpy.testing import assert_allclose
     from exposan import bwaise as bw
