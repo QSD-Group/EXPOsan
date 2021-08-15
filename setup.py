@@ -24,7 +24,7 @@ setup(
     description='Exposition of sanitation and resource recovery systems',
     long_description=open('README.rst').read(),
     url="https://github.com/QSD-Group/EXPOsan",
-    install_requires=['qsdsan>=0.2.15',],
+    install_requires=['qsdsan>=0.3.1',],
     package_data=
         {'exposan': [
                     'bwaise/*',
