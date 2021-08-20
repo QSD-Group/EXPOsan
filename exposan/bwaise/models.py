@@ -150,7 +150,7 @@ def batch_setting_unit_params(df, model, unit, exclude=()):
 su_data_path = os.path.join(data_path, 'sanunit_data/')
 path = os.path.join(su_data_path, '_drying_bed.tsv')
 drying_bed_data = load_data(path)
-exchange_rate = systems.exchange_rate
+get_exchange_rate = systems.get_exchange_rate
 get_decay_k = systems.get_decay_k
 tau_deg = systems.tau_deg
 log_deg = systems.log_deg
@@ -158,15 +158,15 @@ log_deg = systems.log_deg
 def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
     ########## Related to multiple units ##########
     sys = model.system
-    unit = sys.path[0]
+    Excretion, Toilet = sys.path[0], sys.path[1]
     param = model.parameter
     streams = sys_dct['stream_dct'][sys.ID]
     tea = sys._TEA
 
     # UGX-to-USD
-    b = exchange_rate
+    b = get_exchange_rate()
     D = shape.Triangle(lower=3600, midpoint=b, upper=3900)
-    @param(name='Exchange rate', element=unit, kind='cost', units='UGX/USD',
+    @param(name='Exchange rate', element=Excretion, kind='cost', units='UGX/USD',
            baseline=b, distribution=D)
     def set_exchange_rate(i):
         systems.exchange_rate = i
@@ -174,26 +174,55 @@ def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
     ########## Related to human input ##########
     # Diet and excretion
     path = data_path + 'sanunit_data/_excretion.tsv'
-    data = load_data(path)
-    batch_setting_unit_params(data, model, unit)
+    excretion_data = load_data(path)
+    batch_setting_unit_params(excretion_data, model, Excretion)
 
     # Household size
     b = systems.household_size
     D = shape.Normal(mu=b, sigma=1.8)
-    @param(name='Household size', element=unit, kind='coupled', units='cap/household',
+    @param(name='Household size', element=Excretion, kind='coupled', units='cap/household',
            baseline=b, distribution=D,
             hook=lambda i: max(1, i)
            )
     def set_household_size(i):
         systems.household_size = i
 
-    # Toilet density
+    # Toilet
     b = systems.household_per_toilet
     D = shape.Uniform(lower=3, upper=5)
-    @param(name='Toilet density', element=unit, kind='coupled', units='household/toilet',
+    @param(name='Toilet density', element=Toilet, kind='coupled', units='household/toilet',
            baseline=b, distribution=D)
     def set_toilet_density(i):
         systems.household_per_toilet = i
+
+    path = data_path + 'sanunit_data/_toilet.tsv'
+    toilet_data = load_data(path)
+    batch_setting_unit_params(toilet_data, model, Toilet,
+                              exclude=('desiccant_rho',)) # set separately
+
+    toilet_type = type(Toilet).__name__
+    WoodAsh = systems.cmps.WoodAsh
+    b = V_to_rho(WoodAsh.V(298.15), WoodAsh.MW)
+    D = shape.Triangle(lower=663, midpoint=b, upper=977)
+    @param(name=f'{toilet_type} desiccant density', element=Toilet, kind='coupled',
+           units='kg/m3', baseline=b, distribution=D)
+    def set_desiccant_density(i):
+        WoodAsh.V.local_methods['USER_METHOD'].value = rho_to_V(i, WoodAsh.MW)
+        setattr(Toilet, 'desiccant_rho', i)
+
+    b = WoodAsh.i_Mg
+    D = shape.Triangle(lower=0.008, midpoint=b, upper=0.0562)
+    @param(name=f'{toilet_type} desiccant Mg content', element=Toilet, kind='coupled',
+           units='fraction', baseline=b, distribution=D)
+    def set_desiccant_Mg(i):
+        WoodAsh.i_Mg = i
+
+    b = WoodAsh.i_Ca
+    D = shape.Triangle(lower=0.0742, midpoint=b, upper=0.3716)
+    @param(name=f'{toilet_type} desiccant Ca content', element=Toilet, kind='coupled',
+           units='fraction', baseline=b, distribution=D)
+    def set_desiccant_Ca(i):
+        WoodAsh.i_Ca = i
 
     ##### Universal degradation parameters #####
     # Max methane emission
@@ -333,8 +362,8 @@ def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
 
     ######## General TEA settings ########
     # Discount factor for the excreta-derived fertilizers
-    price_factor = systems.price_factor
-    b = price_factor
+    get_price_factor = systems.get_price_factor
+    b = get_price_factor()
     D = shape.Uniform(lower=0.1, upper=0.4)
     @param(name='Price factor', element='TEA', kind='isolated', units='-',
            baseline=b, distribution=D)
@@ -345,19 +374,19 @@ def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
     @param(name='N fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
            baseline=1.507, distribution=D)
     def set_N_price(i):
-        price_dct['N'] = streams['liq_N'].price = streams['sol_N'].price = i * price_factor
+        price_dct['N'] = streams['liq_N'].price = streams['sol_N'].price = i * get_price_factor()
 
     D = shape.Uniform(lower=2.619, upper=6.692)
     @param(name='P fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
            baseline=3.983, distribution=D)
     def set_P_price(i):
-        price_dct['P'] = streams['liq_P'].price = streams['sol_P'].price = i * price_factor
+        price_dct['P'] = streams['liq_P'].price = streams['sol_P'].price = i * get_price_factor()
 
     D = shape.Uniform(lower=1.214, upper=1.474)
     @param(name='K fertilizer price', element='TEA', kind='isolated', units='USD/kg K',
            baseline=1.333, distribution=D)
     def set_K_price(i):
-        price_dct['K'] = streams['liq_K'].price = streams['sol_K'].price = i * price_factor
+        price_dct['K'] = streams['liq_K'].price = streams['sol_K'].price = i * get_price_factor()
 
     # Money discount rate
     b = systems.discount_rate
@@ -486,6 +515,8 @@ def add_LCA_CF_parameters(model, kind=bw._lca_data.lca_data_kind):
                 if item.ID in ('N_item', 'P_item', 'K_item'):
                     lower, b, upper = upper, b, lower
                 elif item.ID == 'Biogas_item':
+                    if not sys.ID == 'sysB':
+                        continue
                     factor = get_biogas_factor()
                     lower, b, upper = upper*factor, b*factor, lower*factor
                 D = shape.Triangle(lower=lower, midpoint=b, upper=upper)
@@ -508,8 +539,6 @@ def update_LCA_CF_parameters(model, kind):
 # For the same processes in sysA and sysB
 # =============================================================================
 
-path = os.path.join(su_data_path, '_toilet.tsv')
-toilet_data = load_data(path)
 path = os.path.join(su_data_path, '_pit_latrine.tsv')
 pit_latrine_data = load_data(path)
 
@@ -523,22 +552,22 @@ def add_pit_latrine_parameters(model):
     unit = sys.path[1]
     param = model.parameter
     ######## Related to the toilet ########
-    data = pd.concat((toilet_data, pit_latrine_data))
-    batch_setting_unit_params(data, model, unit, exclude=('MCF_decay', 'N2O_EF_decay'))
+    batch_setting_unit_params(pit_latrine_data, model, unit,
+                              exclude=('MCF_decay', 'N2O_EF_decay'))
 
     # MCF and N2O_EF decay parameters, specified based on the type of the pit latrine
     b = unit.MCF_decay
     kind = unit._return_MCF_EF()
     D = shape.Triangle(lower=MCF_lower_dct[kind], midpoint=b, upper=MCF_upper_dct[kind])
     param(setter=DictAttrSetter(unit, '_MCF_decay', kind),
-          name='MCF_decay', element=unit, kind='coupled',
+          name='Pit latrine MCF decay', element=unit, kind='coupled',
           units='fraction of anaerobic conversion of degraded COD',
           baseline=b, distribution=D)
 
     b = unit.N2O_EF_decay
     D = shape.Triangle(lower=N2O_EF_lower_dct[kind], midpoint=b, upper=N2O_EF_upper_dct[kind])
     param(setter=DictAttrSetter(unit, '_N2O_EF_decay', kind),
-          name='N2O_EF_decay', element=unit, kind='coupled',
+          name='Pit latrine N2O EF decay', element=unit, kind='coupled',
           units='fraction of N emitted as N2O',
           baseline=b, distribution=D)
 
@@ -547,12 +576,12 @@ def add_pit_latrine_parameters(model):
     D = shape.Uniform(lower=386, upper=511)
     param(setter=AttrSetter(unit, 'CAPEX'),
           name='Pit latrine capital cost', element=unit, kind='cost',
-          units='USD', baseline=b, distribution=D)
+          units='USD/toilet', baseline=b, distribution=D)
 
     b = unit.OPEX_over_CAPEX
     D = shape.Uniform(lower=0.02, upper=0.08)
     param(setter=AttrSetter(unit, 'OPEX_over_CAPEX'),
-          name='Pit latrine operating cost', element=unit, kind='cost',
+          name='Pit latrine annual operating cost', element=unit, kind='cost',
           units='fraction of capital cost', baseline=b, distribution=D)
 
     ######## Related to conveyance ########
@@ -571,7 +600,7 @@ def add_pit_latrine_parameters(model):
 
     b = systems.emptying_fee
     D = shape.Uniform(lower=0, upper=0.3)
-    @param(name='Emptying fee', element=unit, kind='coupled', units='USD',
+    @param(name='Additional emptying fee', element=unit, kind='coupled', units='fraction of base cost',
            baseline=b, distribution=D)
     def set_emptying_fee(i):
         systems.emptying_fee = i
@@ -643,11 +672,11 @@ def add_existing_plant_parameters(toilet_unit, cost_unit, tea, model):
           name='Plant lifetime', element='TEA/LCA', kind='isolated', units='yr',
           baseline=b, distribution=D)
 
-    b = tea.annual_labor
+    b = 3e6
     D = shape.Uniform(lower=1e6, upper=5e6)
     param(setter=AttrFuncSetter(tea, 'annual_labor',
-                                lambda salary: salary*12*12/exchange_rate),
-          name='Staff salary', element='TEA', kind='isolated', units='UGX',
+                                lambda salary: salary*12*12/get_exchange_rate()),
+          name='Staff salary', element='TEA', kind='isolated', units='MM UGX/cap/month',
           baseline=b, distribution=D)
 
     return model
@@ -740,12 +769,12 @@ def set_biogas_energy(i):
 
 # Cost of alternative plants
 B4 = systems.B4
-b = B4.baseline_purchase_costs['Lumped WWTP']
+b = B4.CAPEX_dct['Lumped WWTP']
 D = shape.Triangle(lower=303426, midpoint=b, upper=370854)
 @paramB(name='Plant CAPEX', element=B4, kind='cost', units='USD',
         baseline=b, distribution=D)
 def set_alt_plant_CAPEX(i):
-    B4.baseline_purchase_costs['Lumped WWTP'] = i
+    B4.CAPEX_dct['Lumped WWTP'] = i
 
 b = B4.lifetime
 D = shape.Triangle(lower=9, midpoint=b, upper=11)
@@ -763,9 +792,9 @@ def set_unskilled_num(i):
     teaB.annual_labor = systems.get_alt_salary()
 
 
-b = systems.get_unskilled_salary()
-D = shape.Uniform(lower=0.5, upper=1)
-@paramB(name='Unskilled staff salary', element='TEA', kind='isolated', units='USD',
+b = 0.75e6
+D = shape.Uniform(lower=0.5e6, upper=1e6)
+@paramB(name='Unskilled staff salary', element='TEA', kind='isolated', units='MM UGX/cap/month',
         baseline=b, distribution=D)
 def set_unskilled_salary(i):
     systems.unskilled_salary = i
@@ -791,11 +820,11 @@ def set_biogas_loss(i):
     B14.biogas_loss = i
 
 D = shape.Uniform(lower=6077, upper=6667)
-@paramB(name='Liquid petroleum gas price', element='TEA', kind='isolated', units='UGX',
+@paramB(name='Liquid petroleum gas price', element='TEA', kind='isolated', units='UGX/kg',
         baseline=6500, distribution=D)
 def set_LPG_price(i):
     price_dct['Biogas'] = sys_dct['stream_dct']['sysB']['biogas'].price = \
-        i/exchange_rate*get_biogas_factor()
+        i/get_exchange_rate()*get_biogas_factor()
 
 b = systems.LPG_energy
 D = shape.Uniform(lower=49.5, upper=50.4)
@@ -829,42 +858,18 @@ modelC = add_LCA_CF_parameters(modelC)
 C2 = systems.C2
 path = os.path.join(su_data_path, '_uddt.tsv')
 uddt_data = load_data(path)
-data = pd.concat((toilet_data, uddt_data))
-
-WoodAsh = systems.cmps.WoodAsh
-b = V_to_rho(WoodAsh.V(298.15), WoodAsh.MW)
-D = shape.Triangle(lower=663, midpoint=b, upper=977)
-@paramC(name='Desiccant density', element=C2, kind='coupled', units='kg/m3',
-        baseline=b, distribution=D)
-def set_desiccant_density(i):
-    WoodAsh.V.models[0].value = rho_to_V(i, WoodAsh.MW)
-
-b = WoodAsh.i_Mg
-D = shape.Triangle(lower=0.008, midpoint=b, upper=0.0562)
-@paramC(name='Desiccant Mg content', element=C2, kind='coupled', units='fraction',
-        baseline=b, distribution=D)
-def set_desiccant_Mg(i):
-    WoodAsh.i_Mg = i
-
-b = WoodAsh.i_Ca
-D = shape.Triangle(lower=0.0742, midpoint=b, upper=0.3716)
-@paramC(name='Desiccant Ca content', element=C2, kind='coupled', units='fraction',
-        baseline=b, distribution=D)
-def set_desiccant_Ca(i):
-    WoodAsh.i_Ca = i
-
-batch_setting_unit_params(data, modelC, C2)
+batch_setting_unit_params(uddt_data, modelC, C2)
 
 b = C2.CAPEX
 D = shape.Uniform(lower=476, upper=630)
 @paramC(name='UDDT capital cost', element=C2, kind='cost',
-       units='USD', baseline=b, distribution=D)
+       units='USD/toilet', baseline=b, distribution=D)
 def set_UDDT_CAPEX(i):
     C2.CAPEX = i
 
 b = C2.OPEX_over_CAPEX
 D = shape.Uniform(lower=0.05, upper=0.1)
-@paramC(name='UDDT operating cost', element=C2, kind='cost',
+@paramC(name='UDDT annual operating cost', element=C2, kind='cost',
        units='fraction of capital cost', baseline=b, distribution=D)
 def set_UDDT_OPEX(i):
     C2.OPEX_over_CAPEX = i
@@ -888,14 +893,14 @@ def set_trans_distance(i):
 
 b = systems.handcart_fee
 D = shape.Uniform(lower=0.004, upper=0.015)
-@paramC(name='Handcart fee', element=C3, kind='cost', units='USD',
+@paramC(name='Handcart fee', element=C3, kind='cost', units='USD/cap/d',
        baseline=b, distribution=D)
 def set_handcart_fee(i):
     systems.handcart_fee = i
 
 b = systems.truck_fee
 D = shape.Uniform(lower=17e3, upper=30e3)
-@paramC(name='Truck fee', element=C3, kind='cost', units='USD',
+@paramC(name='Truck fee', element=C3, kind='cost', units='UGX/m3',
        baseline=b, distribution=D)
 def set_truck_fee(i):
     systems.truck_fee = i

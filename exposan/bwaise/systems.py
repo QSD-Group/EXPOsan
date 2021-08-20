@@ -54,6 +54,8 @@ def get_ppl(kind):
 
 
 exchange_rate = 3700 # UGX per USD
+get_exchange_rate = lambda: exchange_rate
+
 discount_rate = 0.05
 
 # Time take for full degradation, [yr]
@@ -72,9 +74,9 @@ max_CH4_emission = 0.25
 # price = a*capacity**b -> ln(price) = ln(a) + bln(capacity)
 UGX_price_dct = np.array((8e4, 12e4, 20e4, 25e4))
 capacities = np.array((3, 4.5, 8, 15))
-emptying_fee = 0.15
+emptying_fee = 0.15 # additional emptying fee, fraction of base cost
 def get_tanker_truck_fee(capacity):
-    price_dct = UGX_price_dct*(1+emptying_fee)/exchange_rate
+    price_dct = UGX_price_dct*(1+emptying_fee)/get_exchange_rate()
     ln_p = np.log(price_dct)
     ln_cap = np.log(capacities)
     model = LR().fit(ln_cap.reshape(-1,1), ln_p.reshape(-1,1))
@@ -105,15 +107,16 @@ get_biogas_factor = lambda: biogas_energy/cmps.CH4.MW/LPG_energy
 
 # Recycled nutrients are sold at a lower price than commercial fertilizers
 price_factor = 0.25
+get_price_factor = lambda: price_factor
 
 price_dct = {
     'Electricity': 0.17,
     'Concrete': 194,
     'Steel': 2.665,
-    'N': 1.507*price_factor,
-    'P': 3.983*price_factor,
-    'K': 1.333*price_factor,
-    'Biogas': 6500/exchange_rate*get_biogas_factor()
+    'N': 1.507*get_price_factor(),
+    'P': 3.983*get_price_factor(),
+    'K': 1.333*get_price_factor(),
+    'Biogas': 6500/get_exchange_rate()*get_biogas_factor()
     }
 
 GWP_dct = {
@@ -243,6 +246,7 @@ def clear_unit_costs(sys):
         if isinstance(i, su.LumpedCost):
             continue
         i.purchase_costs.clear()
+        i.installed_costs.clear()
 
 
 def adjust_NH3_loss(unit):
@@ -358,9 +362,10 @@ A13 = su.ComponentSplitter('A13', ins=A9-0,
 sysA = bst.System('sysA', path=(A1, A2, A3, treatA, A9, A10, A11, A12, A13))
 
 exist_staff_num = 12
+get_annual_labor = lambda: exist_staff_num*3e6*12/get_exchange_rate()
 teaA = SimpleTEA(system=sysA, discount_rate=discount_rate, start_year=2018,
                  lifetime=get_A4_lifetime(), uptime_ratio=1, lang_factor=None,
-                 annual_maintenance=0, annual_labor=exist_staff_num*3e6*12/exchange_rate,
+                 annual_maintenance=0, annual_labor=get_annual_labor(),
                  construction_schedule=None)
 
 lcaA = LCA(system=sysA, lifetime=get_A4_lifetime(), lifetime_unit='yr', uptime_ratio=1,
@@ -481,7 +486,7 @@ unskilled_num = 5
 get_unskilled_num = lambda: unskilled_num
 unskilled_salary = 75e4 # UGX/month
 get_unskilled_salary = lambda: unskilled_salary*get_unskilled_num()
-get_alt_salary = lambda: (skilled_num*5e6+get_unskilled_salary())*12/exchange_rate
+get_alt_salary = lambda: (skilled_num*5e6+get_unskilled_salary())*12/get_exchange_rate()
 
 teaB = SimpleTEA(system=sysB, discount_rate=discount_rate, start_year=2018,
                   lifetime=get_B4_lifetime(), uptime_ratio=1, lang_factor=None,
@@ -525,7 +530,7 @@ handcart_fee = 0.01 # USD/cap/d
 truck_fee = 23e3 # UGX/m3
 
 get_handcart_and_truck_fee = \
-    lambda vol, ppl: truck_fee/exchange_rate*vol \
+    lambda vol, ppl: truck_fee/get_exchange_rate()*vol \
         + handcart_fee*ppl*C2.collection_period
 C3 = su.Trucking('C3', ins=C2-0, outs=('transported_l', 'loss_l'),
                  load_type='mass', distance=5, distance_unit='km',
@@ -608,7 +613,7 @@ sysC = bst.System('sysC', path=(C1, C2, C3, C4, treatC, C9, C10, C11, C12, C13))
 
 teaC = SimpleTEA(system=sysC, discount_rate=discount_rate, start_year=2018,
                  lifetime=get_C5_lifetime(), uptime_ratio=1, lang_factor=None,
-                 annual_maintenance=0, annual_labor=12*3e6*12/exchange_rate,
+                 annual_maintenance=0, annual_labor=12*3e6*12/get_exchange_rate(),
                  construction_schedule=None)
 
 lcaC = LCA(system=sysC, lifetime=get_C5_lifetime(), lifetime_unit='yr', uptime_ratio=1,
