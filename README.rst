@@ -19,20 +19,28 @@ The ``EXPOsan`` package contains systems developed using the `QSDsan <https://gi
 
 Installation
 ------------
-The package can be downloaded from `PyPI <https://pypi.org/project/exposan/>`_.
-
-If you use pip:
+The easiest way is through ``pip``, in command/Anaconda prompt (Windows) or terminal (macOS):
 
 .. code:: bash
 
     pip install exposan
 
+You can also download the package from `PyPI <https://pypi.org/project/exposan/>`_.
 
-To get the git version (use the depth flag to choose how many commit histories you want to clone):
+To get the git version (use the ``depth`` flag to choose how many commit histories you want to clone):
 
 .. code:: bash
 
     git clone https://github.com/QSD-Group/EXPOsan.git --depth=1
+
+
+.. note::
+   
+   Using the ``depth`` flag will only clone the main branch, if there are other branches and you want them, then use the ``no-single-branch`` flag, i.e.
+
+   .. code:: bash
+
+       git clone https://github.com/<YOUR_USERNAME>/EXPOsan.git --depth=1 --no-single-branch
 
 
 Authors and Contributing

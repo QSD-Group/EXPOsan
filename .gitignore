@@ -71,8 +71,5 @@ surfaces
 *.sh
 **/*temp*
 **/*superseded*
-exposan/IC
-exposan/Andrus
-exposan/Rowles
-exposan/Trimmer
-exposan/Zhang
+# conftest is used for local testing only
+conftest.py
