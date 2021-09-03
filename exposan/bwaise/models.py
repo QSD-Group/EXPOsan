@@ -161,7 +161,7 @@ def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
     Excretion, Toilet = sys.path[0], sys.path[1]
     param = model.parameter
     streams = sys_dct['stream_dct'][sys.ID]
-    tea = sys._TEA
+    tea = sys_dct['TEA'][sys.ID]
 
     # UGX-to-USD
     b = get_exchange_rate()
@@ -734,11 +734,10 @@ all_paramsA = modelA.parameters
 # Scenario B (sysB)
 # =============================================================================
 
-sysB = systems.sysB
+sysB, teaB = systems.sysB, systems.teaB
 sysB.simulate()
 modelB = Model(sysB, add_metrics(sysB, lca_data_kind))
 paramB = modelB.parameter
-teaB = sysB._TEA
 
 # Shared parameters
 modelB = add_shared_parameters(modelB, systems.B8, systems.B9)
