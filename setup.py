@@ -17,7 +17,7 @@ from setuptools import setup
 setup(
     name='exposan',
     packages=['exposan'],
-    version='0.1.2',
+    version='0.1.3',
     license='UIUC',
     author='Quantitative Sustainable Design Group',
     author_email='quantitative.sustainable.design@gmail.com',
