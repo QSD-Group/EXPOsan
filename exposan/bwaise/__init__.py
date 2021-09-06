@@ -13,23 +13,23 @@ for license details.
 '''
 
 import os
-path = os.path.dirname(os.path.realpath(__file__))
-data_path = os.path.join(path, 'data')
+bwaise_path = os.path.dirname(__file__)
+data_path = os.path.join(bwaise_path, 'data')
+results_path = os.path.join(bwaise_path, 'results')
+figures_path = os.path.join(bwaise_path, 'figures')
 del os
 
 
-from . import _cmps, _lca_data, systems, models, analyses
+from . import _cmps, _lca_data, systems, models
 
 from ._cmps import *
 from ._lca_data import *
 from .systems import *
 from .models import *
-from .analyses import *
 
 __all__ = (
 	*_cmps.__all__,
     *_lca_data.__all__,
 	*systems.__all__,
     *models.__all__,
-    *analyses.__all__,
 	)

@@ -936,7 +936,7 @@ result_dct = {
 @time_printer
 def run_uncertainty(model, seed=None, N=1000, rule='L',
                     percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
-                    print_time=False):
+                    spearman_metrics='default'):
     global result_dct
     if seed:
         np.random.seed(seed)
@@ -946,20 +946,35 @@ def run_uncertainty(model, seed=None, N=1000, rule='L',
     model.load_samples(samples)
     model.evaluate()
 
-    # Data organization
+    # Spearman's rank correlation,
+    # metrics default to net cost, net emission, and total recoveries
+    spearman_results = None
+    if spearman_metrics:
+        if spearman_metrics.lower() == 'default':
+            spearman_metrics = [i for i in model.metrics
+                                if 'net' in i.name.lower() or 'total' in i.name.lower()]
+
+        spearman_results = model.spearman_r(model.parameters, spearman_metrics)[0]
+        spearman_results.columns = pd.Index([i.name_with_units for i in spearman_metrics])
+
+    dct = organize_uncertainty_results(model, percentiles, spearman_results)
+    return dct
+
+
+# Data organization
+def organize_uncertainty_results(model, percentiles, spearman_results):
     dct = result_dct[model._system.ID]
     index_p = len(model.parameters)
     dct['parameters'] = model.table.iloc[:, :index_p].copy()
     dct['data'] = model.table.iloc[:, index_p:].copy()
+
     if percentiles:
         dct['percentiles'] = dct['data'].quantile(q=percentiles)
 
-    # Spearman's rank correlation
-    spearman_metrics = [model.metrics[i] for i in (0, 3, 12, 16, 20, 24)]
-    spearman_results = model.spearman_r(model.parameters, spearman_metrics)[0]
-    spearman_results.columns = pd.Index([i.name_with_units for i in spearman_metrics])
-    dct['spearman'] = spearman_results
+    if spearman_results:
+        dct['spearman'] = spearman_results
     return dct
+
 
 def save_uncertainty_results(model, path=''):
     if not path:
