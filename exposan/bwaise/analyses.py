@@ -11,7 +11,7 @@ This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 
-TODO: add a function to reload table
+TODO: add a function to pick model tables and reload model
 '''
 
 
@@ -65,11 +65,10 @@ def evaluate(model, samples=None):
 # Save system, TEA, and LCA reports
 # note that system and TEA reports will be in one Excel file,
 # while LCA report will be in a standalone Excel file.
-def save_reports(lca):
-    system = lca.system
+def save_reports(system):
     system.simulate()
     system.save_report(os.path.join(results_path, f'{system.ID}.xlsx'))
-    lca.save_report(os.path.join(results_path, f'{system.ID}_lca.xlsx'))
+    system.LCA.save_report(os.path.join(results_path, f'{system.ID}_lca.xlsx'))
 
 
 # Plot recoveries as 1D-density plots
@@ -143,9 +142,8 @@ if __name__ == '__main__':
     np.random.seed(seed)
 
     # This saves reports for the system, TEA, and LCA
-    #!!! Pending updates from BioSTEAM
-    # for lca in (bw.lcaA, bw.lcaB, bw.lcaC):
-    #     save_reports(lca)
+    for sys in (bw.sysA, bw.sysB, bw.sysC):
+        save_reports(sys)
 
     ########## Uncertainty analysis ##########
     figs, axs = {}, {}
