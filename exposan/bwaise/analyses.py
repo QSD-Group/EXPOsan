@@ -21,6 +21,7 @@ from qsdsan import stats as s
 from qsdsan.utils import time_printer, copy_samples, colors, load_pickle, save_pickle
 from exposan import bwaise as bw
 from exposan.bwaise import results_path, figures_path
+from adjustText import adjust_text
 
 # Comment these out if want to see all warnings
 import warnings
@@ -129,13 +130,27 @@ def plot_kde(model, ID, color, metrics):
     fig.savefig(os.path.join(figures_path, f'cost_emission{ID}.png'), dpi=300)
 
 
+param_set = set(modelA.parameters).union(set(modelB.parameters), set(modelC.parameters))
+param_names = tuple(p.name for p in param_set)
+
 # Plot morris results
-def plot_morris(model, ID, morris_dct, color):
+#!!! Make it possible to have 
+def plot_morris(model, ID, morris_dct, color, annotate=True):
     ID = model.system.ID[-1]
     normalized = {}
     k3s = {}
     for metric in model.metrics:
         df = morris_dct[metric.name].copy()
+
+        #!!! Remove this once results are refreshed
+        try: int(df.index[0])
+        except:
+            df.reset_index(inplace=True)
+            df.rename(columns={'index':'parameter'}, inplace=True)
+
+        labels = [param_names.index(p) for p in df.parameter]
+        df['label'] = labels
+        
         k3s[metric.name] = round(df.mu_star.max()/df.sigma.max(), 1)
         df.mu_star_conf /= df.mu_star.max()
         df.mu_star /= df.mu_star.max()
@@ -143,34 +158,55 @@ def plot_morris(model, ID, morris_dct, color):
         normalized[metric.name] = df
     
         fig, ax = s.plot_morris_results(normalized, metric, label_kind=None,
-                                        k1=None, k2=None, k3=k3s[metric.name],
+                                        k1=k3s[metric.name]*0.1, k2=None,
+                                        k3=k3s[metric.name],
                                         color=color)
         fig.set(figheight=3, figwidth=3)
-        legend = ax.get_legend()
-        if legend:
-            legend.texts[0].set_text('$\\sigma/\\mu^*$=1')
+
+        if annotate:
+            legend = ax.get_legend()
+            if legend:
+                legend.texts[0].set_text('$\\sigma/\\mu^*$=1')
+                legend.texts[1].set_text('$\\sigma/\\mu^*$=0.1')
+            xlabel = r'$\mu^*$/$\mu^*_{max}$'
+            ylabel = r'$\sigma$/$\sigma_{max}$'
+        else:
+            legend = ax.get_legend()
+            if legend:
+                legend.remove()
+            xlabel = ylabel = ''
+
         ticks = [0, 0.25, 0.5, 0.75, 1]
         ax.set(xlim=(0, 1), ylim=(0, 1), xbound=(0, 1.1), ybound=(0, 1.1),
-               xticks=ticks, yticks=ticks, xticklabels=ticks, yticklabels=ticks)
-        ax.set_xlabel(r'$\mu^*$/$\mu^*_{max}$')
-        ax.set_ylabel(r'$\sigma$/$\sigma_{max}$')
+               xticks=ticks, yticks=ticks, xticklabels=ticks, yticklabels=ticks,
+               xlabel=xlabel, ylabel=ylabel)
     
         # Only label the ones with mu_star/mu_star_max>0.1 or sigma/sigma_max>0.1
         top = df[(df.mu_star>=0.1)|(df.sigma>=0.1)]
-        top.reset_index(inplace=True)
-        top.rename(columns={'index':'parameter'}, inplace=True)
+        
+        # Only markout the top five mu_star/mu_star_max parameters
         if top.shape[0] > 5:
+            top.sort_values(by=['mu_star'], ascending=False, inplace=True)
             top = top[:5]
-        for x, y, label in zip(top.mu_star, top.sigma, top.index):
-            ax.annotate(label, (x, y), xytext=(2, 2), textcoords='offset points',
-                        ha='center')
-    
+            
+        labels = []
+        for x, y, label in zip(top.mu_star, top.sigma, top.label):
+            labels.append(ax.text(x, y, label))
+        adjust_text(labels)
+        
+        # # Alternative codes that doesn't work as well as the adjustText package
+        # for x, y, label in zip(top.mu_star, top.sigma, top.label):
+        #     ax.annotate(label, (x, y), 
+        #                 xytext=(2, 2), textcoords='offset points',
+        #                 ha='center')
+        
+        
         fig.subplots_adjust(bottom=0.2, left=0.25)
         path = os.path.join(figures_path, f'Morris{ID}_{metric.name}.png')
         fig.savefig(path, dpi=300)
         
 
-def run(from_record=True):
+def run(from_record=True, annotate_morris=True):
     # # This is the new, recommended method for setting seed,
     # # but not seems to be widely used/supported
     # import numpy as np
@@ -178,12 +214,12 @@ def run(from_record=True):
     # rng.random(5)
     np.random.seed(seed)
 
+    # A dict with all results for future rebuilding of the models
+    global table_dct
     if not from_record:
         # This saves reports for the system, TEA, and LCA
         for sys in (bw.sysA, bw.sysB, bw.sysC):
             save_reports(sys)
-
-        # A dict to save all results for future rebuilding of the models
         table_dct = dict(uncertainty={}, morris={})
     else:
         path = os.path.join(results_path, 'table_dct.pckl')
@@ -196,7 +232,7 @@ def run(from_record=True):
 
         if not from_record:
             # Want to use a larger N (maybe 5000 or 10000)
-            samples = model.sample(N=1000, rule='L', seed=seed)
+            samples = model.sample(N=5000, rule='L', seed=seed)
             model.load_samples(samples)
             if model is modelB:
                 copy_samples(modelA, model)
@@ -222,7 +258,7 @@ def run(from_record=True):
         if not from_record:
             inputs = s.define_inputs(model)
             # Want to use a larger N (maybe 100)
-            morris_samples = s.generate_samples(inputs, kind='Morris', N=10, seed=seed)
+            morris_samples = s.generate_samples(inputs, kind='Morris', N=100, seed=seed)
     
             evaluate(model, morris_samples)
     
@@ -255,7 +291,7 @@ def run(from_record=True):
             morris_dct = table_dct['morris_dct'][ID]
 
         # Make the plots
-        plot_morris(model, ID, morris_dct, RGBs[ID])
+        plot_morris(model, ID, morris_dct, RGBs[ID], annotate_morris)
         
     # Data processing
     if not from_record:
@@ -286,104 +322,8 @@ def run(from_record=True):
 # =============================================================================
 
 if __name__ == '__main__':
-    run(from_record=True)
-    # # # This is the new, recommended method for setting seed,
-    # # # but not seems to be widely used/supported
-    # # import numpy as np
-    # # rng = np.random.default_rng(3221)
-    # # rng.random(5)
-    # np.random.seed(seed)
-
-    # # This saves reports for the system, TEA, and LCA
-    # for sys in (bw.sysA, bw.sysB, bw.sysC):
-    #     save_reports(sys)
-
-    # # A dict to save all results for future rebuilding of the models
-    # table_dct = dict(uncertainty={}, morris={})
-    # ########## Uncertainty analysis ##########
-    # figs, axs = {}, {}
-    # for model in (modelA, modelB, modelC):
-    #     model.metrics = key_metrics = get_key_metrics(model)
-    #     ID = model.system.ID[-1]
-    #     figs[ID], axs[ID] = {}, {}
-
-    #     # Want to use a larger N (maybe 5000 or 10000)
-    #     samples = model.sample(N=1000, rule='L', seed=seed)
-    #     model.load_samples(samples)
-    #     if model is modelB:
-    #         copy_samples(modelA, model)
-    #         color = colors.Guest.green.RGBn
-    #     elif model is modelC:
-    #         copy_samples(modelA, model)
-    #         copy_samples(modelB, model, exclude=modelA.parameters)
-    #         color = colors.Guest.blue.RGBn
-    #     else:
-    #         color = colors.Guest.orange.RGBn
-
-    #     evaluate(model)
-    #     table_dct['uncertainty'][ID] = model.table.copy()
-
-    #     figs[ID]['box'], axs[ID]['box'] = \
-    #         plot_box(model, color, key_metrics[2:], 'horizontal')
-    #     figs[ID]['box'].savefig(os.path.join(figures_path, f'recoveries{ID}.png'), dpi=300)
-
-
-    #     figs[ID]['kde'], axs[ID]['kde'] = plot_kde(model, color, key_metrics[:2])
-    #     figs[ID]['kde'].savefig(os.path.join(figures_path, f'cost_emission{ID}.png'), dpi=300)
-
-    # ########## Morris One-at-A-Time ##########
-    # mu_star_origin_dct = {}
-    # mu_star_norm_dct = {}
-    # for model in (modelA, modelB, modelC):
-    #     inputs = s.define_inputs(model)
-    #     ID = model.system.ID[-1]
-    #     # Want to use a larger N (maybe 100)
-    #     morris_samples = s.generate_samples(inputs, kind='Morris', N=10, seed=seed)
-
-    #     evaluate(model, morris_samples)
-    #     table_dct['morris'][ID] = model.table.copy()
-
-    #     # These are the unprocessed data
-    #     morris_dct = s.morris_analysis(model, inputs, seed=seed,
-    #                                    nan_policy='fill_mean',
-    #                                    file=os.path.join(results_path, f'Morris{ID}.xlsx'))
-    #     table_dct['morris_dct'][ID] = morris_dct.copy()
-
-    #     origin = []
-    #     filtered = []
-    #     for i in model.metrics:
-    #         df = morris_dct[i.name]
-    #         df.sort_values(by=['mu_star'], ascending=False, inplace=True)
-    #         origin.append(df.mu_star)
-    #         df_filtered = df.mu_star.iloc[0:5] # select the top five
-    #         filtered.append(df_filtered)
-
-    #     mu_star_origin = pd.concat(origin, axis=1)
-    #     mu_star_filtered = pd.concat(filtered, axis=1)
-    #     mu_star_origin.columns = mu_star_filtered.columns = [i.name for i in model.metrics]
-    #     mu_star_norm = mu_star_filtered/mu_star_filtered.max() # normalize
-
-    #     mu_star_origin_dct[f'{model.system.ID}'] = mu_star_origin
-    #     mu_star_norm_dct[f'{model.system.ID}'] = mu_star_norm
-
-    # columns = []
-    # data = []
-    # for i in key_metrics:
-    #     for ID, df in mu_star_norm_dct.items():
-    #         columns.append(f'{i.name}-{ID}')
-    #         data.append(df[i.name])
-
-    # combined = pd.concat(data, axis=1)
-    # combined.columns = columns
-
-    # writer = pd.ExcelWriter(os.path.join(results_path, 'Morris.xlsx'))
-    # combined.to_excel(writer, sheet_name='Combined')
-    # for ID, df in mu_star_origin_dct.items():
-    #     df.to_excel(writer, sheet_name=ID)
-    # writer.save()
-    
-    # pickle_path = os.path.join(results_path, 'table_dct.pckl')
-    # save_pickle(table_dct, pickle_path)
+    run(from_record=True, annotate_morris=False)
+    # run(from_record=True, annotate_morris=True)
 
 
 # %%
