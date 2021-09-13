@@ -482,11 +482,15 @@ B15 = su.Mixer('B15', ins=(B14-0, B14-2), outs=streamsB['biogas'])
 sysB = bst.System('sysB', path=(B1, B2, B3, treatB, B9, B10, B11, B12, B13, B14, B15))
 
 skilled_num = 5
+get_skilled_num = lambda: skilled_num
+skilled_salary = 5e6 # UGX/month
+get_tot_skilled_salary = lambda: skilled_salary*get_skilled_num()
+
 unskilled_num = 5
 get_unskilled_num = lambda: unskilled_num
 unskilled_salary = 75e4 # UGX/month
-get_unskilled_salary = lambda: unskilled_salary*get_unskilled_num()
-get_alt_salary = lambda: (skilled_num*5e6+get_unskilled_salary())*12/get_exchange_rate()
+get_tot_unskilled_salary = lambda: unskilled_salary*get_unskilled_num()
+get_alt_salary = lambda: (get_tot_skilled_salary()+get_tot_unskilled_salary())*12/get_exchange_rate()
 
 teaB = SimpleTEA(system=sysB, discount_rate=discount_rate, start_year=2018,
                   lifetime=get_B4_lifetime(), uptime_ratio=1, lang_factor=None,
