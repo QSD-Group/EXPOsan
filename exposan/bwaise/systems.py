@@ -665,7 +665,7 @@ def update_lca_data(kind):
         lca_data_kind = kind
 
 
-def get_total_inputs(unit, ppl):
+def get_total_inputs(unit, multiplier):
     if len(unit.ins) == 0: # Excretion units do not have ins
         ins = unit.outs
     else:
@@ -677,7 +677,7 @@ def get_total_inputs(unit, ppl):
     inputs['P'] = sum(i.TP*i.F_vol/1e3 for i in ins)
     inputs['K'] = sum(i.TK*i.F_vol/1e3 for i in ins)
     for i, j in inputs.items():
-        inputs[i] = j * ppl
+        inputs[i] = j * multiplier
     return inputs
 
 

@@ -32,7 +32,7 @@ RGBs = {
     'A': colors.Guest.orange.RGBn,
     'B': colors.Guest.green.RGBn,
     'C': colors.Guest.blue.RGBn
-    }    
+    }
 seed = 3221 # for numpy seeding and result consistency
 
 
@@ -107,6 +107,7 @@ def plot_box(model, ID, color, metrics, kind='horizontal'):
 
     fig.subplots_adjust(bottom=0.25)
     fig.savefig(os.path.join(figures_path, f'recoveries{ID}.png'), dpi=300)
+    return fig, ax
 
 
 # Plot net cost and emissions as 2D-density plots
@@ -128,42 +129,39 @@ def plot_kde(model, ID, color, metrics):
 
     fig.subplots_adjust(left=0.15)
     fig.savefig(os.path.join(figures_path, f'cost_emission{ID}.png'), dpi=300)
+    return fig, ax
 
 
 param_set = set(modelA.parameters).union(set(modelB.parameters), set(modelC.parameters))
 param_names = tuple(p.name for p in param_set)
 
 # Plot morris results
-#!!! Make it possible to have 
-def plot_morris(model, ID, morris_dct, color, annotate=True):
+def plot_morris(model, ID, morris_dct, combined_morris, color,
+                label_lines=True, label_points=True):
     ID = model.system.ID[-1]
     normalized = {}
     k3s = {}
-    for metric in model.metrics:
+    ax_dct = {}
+    for n, metric in enumerate(model.metrics):
         df = morris_dct[metric.name].copy()
+        df.index = df.parameter
 
-        #!!! Remove this once results are refreshed
-        try: int(df.index[0])
-        except:
-            df.reset_index(inplace=True)
-            df.rename(columns={'index':'parameter'}, inplace=True)
-
-        labels = [param_names.index(p) for p in df.parameter]
-        df['label'] = labels
-        
         k3s[metric.name] = round(df.mu_star.max()/df.sigma.max(), 1)
         df.mu_star_conf /= df.mu_star.max()
+        df.sigma /= df.mu_star.max()
+        # df.sigma /= df.sigma.max()
         df.mu_star /= df.mu_star.max()
-        df.sigma /= df.sigma.max()
         normalized[metric.name] = df
-    
+
         fig, ax = s.plot_morris_results(normalized, metric, label_kind=None,
-                                        k1=k3s[metric.name]*0.1, k2=None,
-                                        k3=k3s[metric.name],
+                                        k1=0.1, k2=None, k3=1,
+                                        # k1=k3s[metric.name]*0.1,
+                                        # k2=None,
+                                        # k3=k3s[metric.name],
                                         color=color)
         fig.set(figheight=3, figwidth=3)
 
-        if annotate:
+        if label_lines:
             legend = ax.get_legend()
             if legend:
                 legend.texts[0].set_text('$\\sigma/\\mu^*$=1')
@@ -180,33 +178,30 @@ def plot_morris(model, ID, morris_dct, color, annotate=True):
         ax.set(xlim=(0, 1), ylim=(0, 1), xbound=(0, 1.1), ybound=(0, 1.1),
                xticks=ticks, yticks=ticks, xticklabels=ticks, yticklabels=ticks,
                xlabel=xlabel, ylabel=ylabel)
-    
+
         # Only label the ones with mu_star/mu_star_max>0.1 or sigma/sigma_max>0.1
         top = df[(df.mu_star>=0.1)|(df.sigma>=0.1)]
-        
+
         # Only markout the top five mu_star/mu_star_max parameters
         if top.shape[0] > 5:
             top.sort_values(by=['mu_star'], ascending=False, inplace=True)
             top = top[:5]
-            
-        labels = []
-        for x, y, label in zip(top.mu_star, top.sigma, top.label):
-            labels.append(ax.text(x, y, label))
-        adjust_text(labels)
-        
-        # # Alternative codes that doesn't work as well as the adjustText package
-        # for x, y, label in zip(top.mu_star, top.sigma, top.label):
-        #     ax.annotate(label, (x, y), 
-        #                 xytext=(2, 2), textcoords='offset points',
-        #                 ha='center')
-        
-        
-        fig.subplots_adjust(bottom=0.2, left=0.25)
-        path = os.path.join(figures_path, f'Morris{ID}_{metric.name}.png')
-        fig.savefig(path, dpi=300)
-        
 
-def run(from_record=True, annotate_morris=True):
+        labels = []
+        for idx in top.index:
+            label = combined_morris[combined_morris.parameter==idx].index.values.item()
+            labels.append(ax.text(top.loc[idx].mu_star, top.loc[idx].sigma, label))
+        adjust_text(labels)
+
+        fig.subplots_adjust(bottom=0.2, left=0.25)
+        path = os.path.join(figures_path, f'Morris{ID}_{n+1}_{metric.name}.png')
+        fig.savefig(path, dpi=300)
+        ax_dct[metric.name] = ax
+    return ax_dct
+
+
+def run(N_uncertainty=5000, N_morris=100, from_record=True,
+        label_morris_lines=True, label_morris_points=True):
     # # This is the new, recommended method for setting seed,
     # # but not seems to be widely used/supported
     # import numpy as np
@@ -215,16 +210,17 @@ def run(from_record=True, annotate_morris=True):
     np.random.seed(seed)
 
     # A dict with all results for future rebuilding of the models
-    global table_dct
+    global table_dct, ax_dct
+    ax_dct = dict(box={}, kde={}, morris={})
     if not from_record:
         # This saves reports for the system, TEA, and LCA
         for sys in (bw.sysA, bw.sysB, bw.sysC):
             save_reports(sys)
-        table_dct = dict(uncertainty={}, morris={})
+        table_dct = dict(uncertainty={}, morris={}, morris_dct={})
     else:
         path = os.path.join(results_path, 'table_dct.pckl')
         table_dct = load_pickle(path)
-        
+
     ########## Uncertainty analysis ##########
     for model in (modelA, modelB, modelC):
         model.metrics = key_metrics = get_key_metrics(model)
@@ -232,23 +228,23 @@ def run(from_record=True, annotate_morris=True):
 
         if not from_record:
             # Want to use a larger N (maybe 5000 or 10000)
-            samples = model.sample(N=5000, rule='L', seed=seed)
+            samples = model.sample(N=N_uncertainty, rule='L', seed=seed)
             model.load_samples(samples)
             if model is modelB:
                 copy_samples(modelA, model)
             elif model is modelC:
                 copy_samples(modelA, model)
                 copy_samples(modelB, model, exclude=modelA.parameters)
-    
+
             evaluate(model)
             table_dct['uncertainty'][ID] = model.table.copy()
         else:
             model.table = table_dct['uncertainty'][ID]
 
         # Make the plots
-        plot_box(model, ID, RGBs[ID], key_metrics[2:], 'horizontal')
-        plot_kde(model, ID, RGBs[ID], key_metrics[:2])
-        
+        _, ax_dct['box'][ID] = plot_box(model, ID, RGBs[ID], key_metrics[2:], 'horizontal')
+        _, ax_dct['kde'][ID] = plot_kde(model, ID, RGBs[ID], key_metrics[:2])
+
 
     ########## Morris One-at-A-Time ##########
     mu_star_origin_dct = {}
@@ -258,61 +254,77 @@ def run(from_record=True, annotate_morris=True):
         if not from_record:
             inputs = s.define_inputs(model)
             # Want to use a larger N (maybe 100)
-            morris_samples = s.generate_samples(inputs, kind='Morris', N=100, seed=seed)
-    
+            morris_samples = s.generate_samples(inputs, kind='Morris', N=N_morris, seed=seed)
+
             evaluate(model, morris_samples)
-    
+
             # These are the unprocessed data
             morris_dct = s.morris_analysis(model, inputs, seed=seed,
                                            nan_policy='fill_mean',
                                            file=os.path.join(results_path, f'Morris{ID}.xlsx'))
-            
+
             table_dct['morris'][ID] = model.table.copy()
             table_dct['morris_dct'][ID] = morris_dct.copy()
 
             origin = []
             filtered = []
+
             for i in model.metrics:
                 df = morris_dct[i.name]
                 df.sort_values(by=['mu_star'], ascending=False, inplace=True)
                 origin.append(df.mu_star)
                 df_filtered = df.mu_star.iloc[0:5] # select the top five
                 filtered.append(df_filtered)
-    
-            mu_star_origin = pd.concat(origin, axis=1)
+
             mu_star_filtered = pd.concat(filtered, axis=1)
-            mu_star_origin.columns = mu_star_filtered.columns = [i.name for i in model.metrics]
             mu_star_norm = mu_star_filtered/mu_star_filtered.max() # normalize
-    
+
+            mu_star_origin = pd.concat([df.parameter, *origin], axis=1)
+            for i in (mu_star_filtered, mu_star_norm):
+                i.insert(0, 'parameter', mu_star_origin.parameter)
+
+            mu_star_origin.columns = mu_star_filtered.columns = mu_star_norm.columns = \
+                ['parameter'] + [i.name for i in model.metrics]
+
             mu_star_origin_dct[f'{model.system.ID}'] = mu_star_origin
             mu_star_norm_dct[f'{model.system.ID}'] = mu_star_norm
         else:
             model.table = table_dct['morris'][ID]
             morris_dct = table_dct['morris_dct'][ID]
 
-        # Make the plots
-        plot_morris(model, ID, morris_dct, RGBs[ID], annotate_morris)
-        
-    # Data processing
+    # Process data
     if not from_record:
         columns = []
         data = []
         for i in key_metrics:
             for ID, df in mu_star_norm_dct.items():
+                df.index = df.parameter
                 columns.append(f'{i.name}-{ID}')
                 data.append(df[i.name])
-    
+
         combined = pd.concat(data, axis=1)
-        combined.columns = columns
-    
-        writer = pd.ExcelWriter(os.path.join(results_path, 'Morris.xlsx'))
-        combined.to_excel(writer, sheet_name='Combined')
+        columns_mi = pd.MultiIndex.from_tuples([i.split('-') for i in columns])
+        combined.columns = columns_mi
+        combined.reset_index(inplace=True)
+        table_dct['morris_combined'] = combined
+
+        writer = pd.ExcelWriter(os.path.join(results_path, 'Morris_mu_star.xlsx'))
+        combined.to_excel(writer, sheet_name='Top five')
         for ID, df in mu_star_origin_dct.items():
             df.to_excel(writer, sheet_name=ID)
         writer.save()
-        
+
         pickle_path = os.path.join(results_path, 'table_dct.pckl')
         save_pickle(table_dct, pickle_path)
+    else:
+        combined = table_dct['morris_combined']
+
+    # Make the plots
+    for model in (modelA, modelB, modelC):
+        ID = model.system.ID[-1]
+        morris_dct = table_dct['morris_dct'][ID]
+        ax_dct['morris'][ID] = plot_morris(model, ID, morris_dct, combined, RGBs[ID],
+                                           label_morris_lines, label_morris_points)
 
 
 # %%
@@ -322,8 +334,10 @@ def run(from_record=True, annotate_morris=True):
 # =============================================================================
 
 if __name__ == '__main__':
-    run(from_record=True, annotate_morris=False)
-    # run(from_record=True, annotate_morris=True)
+    # run(N_uncertainty=1000, N_morris=10, from_record=False,
+    #     label_morris_lines=False, label_morris_points=True)
+    run(N_uncertainty=100, N_morris=2, from_record=True,
+        label_morris_lines=False, label_morris_points=True)
 
 
 # %%
