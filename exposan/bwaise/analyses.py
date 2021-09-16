@@ -16,7 +16,7 @@ for license details.
 # %%
 
 import os
-import numpy as np, pandas as pd
+import numpy as np, pandas as pd, seaborn as sns
 from qsdsan import stats as s
 from qsdsan.utils import time_printer, copy_samples, colors, load_pickle, save_pickle
 from exposan import bwaise as bw
@@ -76,7 +76,7 @@ def save_reports(system):
 
 
 # Plot recoveries as 1D-density plots
-def plot_box(model, ID, color, metrics, kind='horizontal'):
+def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal'):
     if kind == 'horizontal':
         fig, ax = s.plot_uncertainties(model,
                                        y_axis=metrics,
@@ -107,6 +107,7 @@ def plot_box(model, ID, color, metrics, kind='horizontal'):
 
     fig.subplots_adjust(bottom=0.25)
     fig.savefig(os.path.join(figures_path, f'recoveries{ID}.png'), dpi=300)
+
     return fig, ax
 
 
@@ -135,9 +136,9 @@ def plot_kde(model, ID, color, metrics):
 param_set = set(modelA.parameters).union(set(modelB.parameters), set(modelC.parameters))
 param_names = tuple(p.name for p in param_set)
 
-# Plot morris results
-def plot_morris(model, ID, morris_dct, combined_morris, color,
-                label_lines=True, label_points=True):
+# Plot morris results as scatter plot for each metric of each model
+def plot_morris_scatter(model, morris_dct, combined_morris, color,
+                        label_lines=True, label_points=True):
     ID = model.system.ID[-1]
     normalized = {}
     k3s = {}
@@ -149,11 +150,11 @@ def plot_morris(model, ID, morris_dct, combined_morris, color,
         k3s[metric.name] = round(df.mu_star.max()/df.sigma.max(), 1)
         df.mu_star_conf /= df.mu_star.max()
         df.sigma /= df.mu_star.max()
-        # df.sigma /= df.sigma.max()
+        # df.sigma /= df.sigma.max() # if want to normalize by sigma
         df.mu_star /= df.mu_star.max()
         normalized[metric.name] = df
-
-        fig, ax = s.plot_morris_results(normalized, metric, label_kind=None,
+        fig, ax = s.plot_morris_results(normalized, metric,
+                                        label_kind=None,
                                         k1=0.1, k2=None, k3=1,
                                         # k1=k3s[metric.name]*0.1,
                                         # k2=None,
@@ -179,8 +180,9 @@ def plot_morris(model, ID, morris_dct, combined_morris, color,
                xticks=ticks, yticks=ticks, xticklabels=ticks, yticklabels=ticks,
                xlabel=xlabel, ylabel=ylabel)
 
-        # Only label the ones with mu_star/mu_star_max>0.1 or sigma/sigma_max>0.1
-        top = df[(df.mu_star>=0.1)|(df.sigma>=0.1)]
+        # Only label the ones with mu_star/mu_star_max>0.1
+        top = df[(df.mu_star>=0.1)]
+        # top = df[(df.mu_star>=0.1)|(df.sigma>=0.1)]
 
         # Only markout the top five mu_star/mu_star_max parameters
         if top.shape[0] > 5:
@@ -197,7 +199,58 @@ def plot_morris(model, ID, morris_dct, combined_morris, color,
         path = os.path.join(figures_path, f'Morris{ID}_{n+1}_{metric.name}.png')
         fig.savefig(path, dpi=300)
         ax_dct[metric.name] = ax
+
     return ax_dct
+
+
+def plot_morris_scatter_all(models):
+    from matplotlib import pyplot as plt
+    fig = plt.figure(figsize=(12, 18))
+    for model in models:
+        ID = model.system.ID[-1]
+        for metric in model.metrics:
+
+
+
+
+def plot_morris_bubble(combineds):
+    sns.set_theme(style='ticks')
+
+    dct = {'mu_star': combineds['mu_star'].copy(),
+           'sigma': combineds['sigma'].copy()}
+    for k, df in dct.items():
+        columns = [f'{i[0]}-{i[1]}' for i in df.columns]
+        columns[0] = 'parameter'
+        df.columns = columns
+        df.index = df.parameter
+        df = df.drop('parameter', axis=1)
+        dct[k] = df.stack(dropna=False).to_frame().rename(columns={0: k})
+
+    plot_df = pd.concat(dct.values(), axis=1).reset_index()
+    plot_df.rename(columns={'level_1': 'metric'}, inplace=True)
+
+    g = sns.relplot(
+        data=plot_df,
+        x='metric', y='parameter', hue='sigma', size='mu_star',
+        # palette="vlag",
+        hue_norm=(0, 1), # edgecolors='0.7',
+        height=15, sizes=(50, 250), size_norm=(-.2, .8),
+    )
+
+    g.ax.grid(color='gray', linestyle='--', linewidth=0.5)
+    for spine in ('top', 'right'):
+        g.ax.spines[spine].set_visible(True)
+
+    g.ax.set_xlabel('Metric', fontsize=14, fontweight='bold')
+    g.ax.set_ylabel('Parameter', fontsize=14, fontweight='bold')
+
+    for label in g.ax.get_xticklabels():
+        label.set_rotation(90)
+
+    g.fig.subplots_adjust(bottom=0.2)
+    g.fig.savefig(os.path.join(figures_path, 'Morris_bubble.png'), dpi=300)
+
+    return g.ax
 
 
 def run(N_uncertainty=5000, N_morris=100, from_record=True,
@@ -211,7 +264,7 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
 
     # A dict with all results for future rebuilding of the models
     global table_dct, ax_dct
-    ax_dct = dict(box={}, kde={}, morris={})
+    ax_dct = dict(box={}, kde={}, morris_scatter={}, morris_bubble=None)
     if not from_record:
         # This saves reports for the system, TEA, and LCA
         for sys in (bw.sysA, bw.sysB, bw.sysC):
@@ -247,8 +300,8 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
 
 
     ########## Morris One-at-A-Time ##########
-    mu_star_origin_dct = {}
-    mu_star_norm_dct = {}
+    origin_dct = dict(mu_star={}, sigma={})
+    norm_dct = dict(mu_star={}, sigma={})
     for model in (modelA, modelB, modelC):
         ID = model.system.ID[-1]
         if not from_record:
@@ -266,65 +319,88 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
             table_dct['morris'][ID] = model.table.copy()
             table_dct['morris_dct'][ID] = morris_dct.copy()
 
-            origin = []
-            filtered = []
+            origins = dict(mu_star=[], sigma=[])
+            filtereds = dict(mu_star=[], sigma=[])
 
             for i in model.metrics:
                 df = morris_dct[i.name]
                 df.sort_values(by=['mu_star'], ascending=False, inplace=True)
-                origin.append(df.mu_star)
-                df_filtered = df.mu_star.iloc[0:5] # select the top five
-                filtered.append(df_filtered)
+                origins['mu_star'].append(df.mu_star)
+                origins['sigma'].append(df.sigma)
 
-            mu_star_filtered = pd.concat(filtered, axis=1)
-            mu_star_norm = mu_star_filtered/mu_star_filtered.max() # normalize
+                df_filtered = df.iloc[0:5] # select the top five
+                filtereds['mu_star'].append(df_filtered.mu_star)
+                filtereds['sigma'].append(df_filtered.sigma)
 
-            mu_star_origin = pd.concat([df.parameter, *origin], axis=1)
-            for i in (mu_star_filtered, mu_star_norm):
+            mu_star_origin = pd.concat([df.parameter, *origins['mu_star']], axis=1)
+            sigma_origin = pd.concat([df.parameter, *origins['sigma']], axis=1)
+            mu_star_filtered = pd.concat(filtereds['mu_star'], axis=1)
+            sigma_filtered = pd.concat(filtereds['sigma'], axis=1)
+
+            # Won't be able to divde if having different column names
+            sigma_filtered.columns = mu_star_filtered.columns = [i.name for i in model.metrics]
+
+            # Normalize
+            sigma_norm = sigma_filtered/mu_star_filtered.max()
+            mu_star_norm = mu_star_filtered/mu_star_filtered.max()
+
+            for i in (mu_star_filtered, mu_star_norm, sigma_filtered, sigma_norm):
                 i.insert(0, 'parameter', mu_star_origin.parameter)
 
-            mu_star_origin.columns = mu_star_filtered.columns = mu_star_norm.columns = \
-                ['parameter'] + [i.name for i in model.metrics]
+            columns = ['parameter'] + [i.name for i in model.metrics]
+            for df in (mu_star_origin, mu_star_filtered, mu_star_norm,
+                       sigma_origin, sigma_filtered, sigma_origin):
+                df.columns = columns
 
-            mu_star_origin_dct[f'{model.system.ID}'] = mu_star_origin
-            mu_star_norm_dct[f'{model.system.ID}'] = mu_star_norm
+            origin_dct['mu_star'][f'{model.system.ID}'] = mu_star_origin
+            origin_dct['sigma'][f'{model.system.ID}'] = sigma_origin
+            norm_dct['mu_star'][f'{model.system.ID}'] = mu_star_norm
+            norm_dct['sigma'][f'{model.system.ID}'] = sigma_norm
         else:
             model.table = table_dct['morris'][ID]
             morris_dct = table_dct['morris_dct'][ID]
 
     # Process data
     if not from_record:
-        columns = []
-        data = []
-        for i in key_metrics:
-            for ID, df in mu_star_norm_dct.items():
-                df.index = df.parameter
-                columns.append(f'{i.name}-{ID}')
-                data.append(df[i.name])
+        combineds = {}
+        writer = pd.ExcelWriter(os.path.join(results_path, 'Morris_combined.xlsx'))
 
-        combined = pd.concat(data, axis=1)
-        columns_mi = pd.MultiIndex.from_tuples([i.split('-') for i in columns])
-        combined.columns = columns_mi
-        combined.reset_index(inplace=True)
-        table_dct['morris_combined'] = combined
+        for k in ('mu_star', 'sigma'):
+            columns = []
+            data = []
+            for i in key_metrics:
+                for ID, df in norm_dct[k].items():
+                    df.index = df.parameter
+                    columns.append(f'{i.name}-{ID}')
+                    data.append(df[i.name])
 
-        writer = pd.ExcelWriter(os.path.join(results_path, 'Morris_mu_star.xlsx'))
-        combined.to_excel(writer, sheet_name='Top five')
-        for ID, df in mu_star_origin_dct.items():
-            df.to_excel(writer, sheet_name=ID)
+            combined = pd.concat(data, axis=1)
+            columns_mi = pd.MultiIndex.from_tuples([i.split('-') for i in columns])
+            combined.columns = columns_mi
+            combined.reset_index(inplace=True)
+            combineds[k] = combined
+
+            combined.to_excel(writer, sheet_name=f'{k}_combined')
+            for ID, df in origin_dct[k].items():
+                df.to_excel(writer, sheet_name=f'{k}_all_{ID}')
+
         writer.save()
 
+        table_dct['morris_combined'] = combineds
         pickle_path = os.path.join(results_path, 'table_dct.pckl')
         save_pickle(table_dct, pickle_path)
     else:
-        combined = table_dct['morris_combined']
+        combineds = table_dct['morris_combined']
 
-    # Make the plots
+    # Make Morris plots
     for model in (modelA, modelB, modelC):
         ID = model.system.ID[-1]
         morris_dct = table_dct['morris_dct'][ID]
-        ax_dct['morris'][ID] = plot_morris(model, ID, morris_dct, combined, RGBs[ID],
-                                           label_morris_lines, label_morris_points)
+        ax_dct['morris_scatter'][ID] = plot_morris_scatter(
+            model, morris_dct, combineds['mu_star'], RGBs[ID],
+            label_morris_lines, label_morris_points)
+
+    ax_dct['morris_bubble'] = plot_morris_bubble(combineds)
 
 
 # %%
@@ -335,6 +411,8 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
 
 if __name__ == '__main__':
     # run(N_uncertainty=1000, N_morris=10, from_record=False,
+    #     label_morris_lines=False, label_morris_points=True)
+    # run(N_uncertainty=100, N_morris=2, from_record=False,
     #     label_morris_lines=False, label_morris_points=True)
     run(N_uncertainty=100, N_morris=2, from_record=True,
         label_morris_lines=False, label_morris_points=True)
