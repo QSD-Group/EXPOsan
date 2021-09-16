@@ -17,17 +17,18 @@ for license details.
 
 import os
 import numpy as np, pandas as pd, seaborn as sns
+from matplotlib import pyplot as plt
+from adjustText import adjust_text
 from qsdsan import stats as s
 from qsdsan.utils import time_printer, copy_samples, colors, load_pickle, save_pickle
 from exposan import bwaise as bw
 from exposan.bwaise import results_path, figures_path
-from adjustText import adjust_text
 
 # Comment these out if want to see all warnings
 import warnings
 warnings.filterwarnings(action='ignore')
 
-modelA, modelB, modelC = bw.modelA, bw.modelB, bw.modelC
+models = modelA, modelB, modelC = bw.modelA, bw.modelB, bw.modelC
 RGBs = {
     'A': colors.Guest.orange.RGBn,
     'B': colors.Guest.green.RGBn,
@@ -138,42 +139,44 @@ param_names = tuple(p.name for p in param_set)
 
 # Plot morris results as scatter plot for each metric of each model
 def plot_morris_scatter(model, morris_dct, combined_morris, color,
-                        label_lines=True, label_points=True):
+                        label_lines=True, label_points=True,
+                        plot_combined=False, axs=None):
     ID = model.system.ID[-1]
     normalized = {}
-    k3s = {}
     ax_dct = {}
     for n, metric in enumerate(model.metrics):
         df = morris_dct[metric.name].copy()
         df.index = df.parameter
 
-        k3s[metric.name] = round(df.mu_star.max()/df.sigma.max(), 1)
         df.mu_star_conf /= df.mu_star.max()
         df.sigma /= df.mu_star.max()
         # df.sigma /= df.sigma.max() # if want to normalize by sigma
         df.mu_star /= df.mu_star.max()
         normalized[metric.name] = df
+
+        axs_n = None if axs is None else axs[n]
         fig, ax = s.plot_morris_results(normalized, metric,
+                                        ax=axs_n,
                                         label_kind=None,
                                         k1=0.1, k2=None, k3=1,
-                                        # k1=k3s[metric.name]*0.1,
-                                        # k2=None,
-                                        # k3=k3s[metric.name],
                                         color=color)
-        fig.set(figheight=3, figwidth=3)
+        if not plot_combined:
+            fig.set(figheight=3, figwidth=3)
+            xlabel = r'$\mu^*$/$\mu^*_{max}$'
+            ylabel = r'$\sigma$/$\sigma_{max}$'
+        else:
+            label_lines = False
+            xlabel = ylabel = ''
 
         if label_lines:
             legend = ax.get_legend()
             if legend:
                 legend.texts[0].set_text('$\\sigma/\\mu^*$=1')
                 legend.texts[1].set_text('$\\sigma/\\mu^*$=0.1')
-            xlabel = r'$\mu^*$/$\mu^*_{max}$'
-            ylabel = r'$\sigma$/$\sigma_{max}$'
         else:
             legend = ax.get_legend()
             if legend:
                 legend.remove()
-            xlabel = ylabel = ''
 
         ticks = [0, 0.25, 0.5, 0.75, 1]
         ax.set(xlim=(0, 1), ylim=(0, 1), xbound=(0, 1.1), ybound=(0, 1.1),
@@ -189,28 +192,54 @@ def plot_morris_scatter(model, morris_dct, combined_morris, color,
             top.sort_values(by=['mu_star'], ascending=False, inplace=True)
             top = top[:5]
 
-        labels = []
-        for idx in top.index:
-            label = combined_morris[combined_morris.parameter==idx].index.values.item()
-            labels.append(ax.text(top.loc[idx].mu_star, top.loc[idx].sigma, label))
-        adjust_text(labels)
+        if plot_combined: # `adjust_text` won't work here
+            if label_points:
+                for idx in top.index:
+                    label = combined_morris[combined_morris.parameter==idx].index.values.item()
+                    ax.annotate(label, (top.loc[idx].mu_star, top.loc[idx].sigma),
+                                xytext=(2, 2), textcoords='offset points',
+                                ha='center')
+        else:
+            if label_points:
+                labels = []
+                for idx in top.index:
+                    label = combined_morris[combined_morris.parameter==idx].index.values.item()
+                    labels.append(ax.text(top.loc[idx].mu_star, top.loc[idx].sigma, label))
+                adjust_text(labels)
 
-        fig.subplots_adjust(bottom=0.2, left=0.25)
-        path = os.path.join(figures_path, f'Morris{ID}_{n+1}_{metric.name}.png')
-        fig.savefig(path, dpi=300)
-        ax_dct[metric.name] = ax
+        if not plot_combined:
+            fig.subplots_adjust(bottom=0.2, left=0.25)
+            path = os.path.join(figures_path, f'Morris{ID}_{n+1}_{metric.name}.png')
+            fig.savefig(path, dpi=300)
+            ax_dct[metric.name] = ax
 
     return ax_dct
 
 
-def plot_morris_scatter_all(models):
-    from matplotlib import pyplot as plt
+def plot_morris_scatter_all(models, morris_dct, combineds, RGBs):
     fig = plt.figure(figsize=(12, 18))
-    for model in models:
+    tot_models = len(models)
+    tot_metrics = len(models[0].metrics)
+    fig.subplots(tot_metrics, tot_models, sharex=True, sharey=True)
+
+    for n_model, model in enumerate(models):
         ID = model.system.ID[-1]
-        for metric in model.metrics:
+        axs = [fig.axes[tot_models*i+n_model] for i in range(tot_metrics)]
+        plot_morris_scatter(
+            model, morris_dct[ID], combineds['mu_star'], RGBs[ID],
+            label_lines=False, label_points=True,
+            plot_combined=True, axs=axs)
 
+        if n_model == 0:
+            for n, ax in enumerate(axs):
+                ax.set_ylabel(model.metrics[n].name)
+        axs[-1].set_xlabel(f'System {ID}')
 
+    fig.tight_layout()
+    fig.supxlabel(r'$\mu^*$/$\mu^*_{max}$', fontsize=14, fontweight='bold')
+    fig.supylabel(r'$\sigma$/$\sigma_{max}$', fontsize=14, fontweight='bold')
+    fig.subplots_adjust(left=0.12, bottom=0.06)
+    fig.savefig(os.path.join(figures_path, 'Morris_combined.png'), dpi=300)
 
 
 def plot_morris_bubble(combineds):
@@ -275,7 +304,7 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
         table_dct = load_pickle(path)
 
     ########## Uncertainty analysis ##########
-    for model in (modelA, modelB, modelC):
+    for model in models:
         model.metrics = key_metrics = get_key_metrics(model)
         ID = model.system.ID[-1]
 
@@ -302,7 +331,7 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
     ########## Morris One-at-A-Time ##########
     origin_dct = dict(mu_star={}, sigma={})
     norm_dct = dict(mu_star={}, sigma={})
-    for model in (modelA, modelB, modelC):
+    for model in models:
         ID = model.system.ID[-1]
         if not from_record:
             inputs = s.define_inputs(model)
@@ -393,12 +422,14 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
         combineds = table_dct['morris_combined']
 
     # Make Morris plots
-    for model in (modelA, modelB, modelC):
+    for model in models:
         ID = model.system.ID[-1]
         morris_dct = table_dct['morris_dct'][ID]
         ax_dct['morris_scatter'][ID] = plot_morris_scatter(
             model, morris_dct, combineds['mu_star'], RGBs[ID],
             label_morris_lines, label_morris_points)
+
+    plot_morris_scatter_all(models, table_dct['morris_dct'], combineds, RGBs)
 
     ax_dct['morris_bubble'] = plot_morris_bubble(combineds)
 
@@ -423,6 +454,33 @@ if __name__ == '__main__':
 ########## Below are functions used for tutorial purpose ##########
 
 #!!! Need to review and update with new qsdsan
+
+# =============================================================================
+# Pearson and Spearman
+# =============================================================================
+
+def run_plot_spearman(model, N, seed=seed, metrics=None, parameters=None,
+                      file_prefix='default'):
+    suffix = model._system.ID[-1] if file_prefix=='default' else ''
+    metrics = metrics if metrics else get_key_metrics(model)
+
+    if file_prefix=='default':
+        suffix = model._system.ID[-1]
+        dct_file = os.path.join(results_path, f'Spearman{suffix}.xlsx')
+        fig_file = os.path.join(figures_path, f'Spearman{suffix}.png')
+    else:
+        dct_file = f'{file_prefix}.xlsx' if file_prefix else ''
+        fig_file = f'{file_prefix}.png' if file_prefix else ''
+
+    spearman_rho, spearman_p = s.get_correlations(model, kind='Spearman',
+                                                  nan_policy='raise',
+                                                  file=dct_file)
+
+    fig, ax = s.plot_correlations(spearman_rho, parameters=parameters,
+                                  metrics=metrics, file=fig_file)
+
+    return spearman_rho, fig, ax
+
 
 # =============================================================================
 # Morris One-at-A-Time
@@ -470,37 +528,6 @@ def run_plot_morris(model, N, seed=seed, test_convergence=False,
     return dct, fig, ax
 
 
-# %%
-
-# =============================================================================
-# Pearson and Spearman
-# =============================================================================
-
-def run_plot_spearman(model, N, seed=seed, metrics=None, parameters=None,
-                      file_prefix='default'):
-    suffix = model._system.ID[-1] if file_prefix=='default' else ''
-    metrics = metrics if metrics else get_key_metrics(model)
-
-    if file_prefix=='default':
-        suffix = model._system.ID[-1]
-        dct_file = os.path.join(results_path, f'Spearman{suffix}.xlsx')
-        fig_file = os.path.join(figures_path, f'Spearman{suffix}.png')
-    else:
-        dct_file = f'{file_prefix}.xlsx' if file_prefix else ''
-        fig_file = f'{file_prefix}.png' if file_prefix else ''
-
-    spearman_rho, spearman_p = s.get_correlations(model, kind='Spearman',
-                                                  nan_policy='raise',
-                                                  file=dct_file)
-
-    fig, ax = s.plot_correlations(spearman_rho, parameters=parameters,
-                                  metrics=metrics, file=fig_file)
-
-    return spearman_rho, fig, ax
-
-
-# %%
-
 # =============================================================================
 # (e)FAST and RBD-FAST
 # =============================================================================
@@ -535,8 +562,6 @@ def run_plot_fast(model, kind, N, M, seed=seed, metrics=None, plot_metric=None,
     fig, ax = s.plot_fast_results(dct, metric=plot_metric, file=fig_file)
     return dct, fig, ax
 
-
-# %%
 
 # =============================================================================
 # Sobol
