@@ -970,7 +970,7 @@ def organize_uncertainty_results(model, percentiles, spearman_results):
     if percentiles:
         dct['percentiles'] = dct['data'].quantile(q=percentiles)
 
-    if spearman_results:
+    if spearman_results is not None:
         dct['spearman'] = spearman_results
     return dct
 
