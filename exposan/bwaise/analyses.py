@@ -41,11 +41,14 @@ seed = 3221 # for numpy seeding and result consistency
 
 # Net cost, net GWP, and total COD/N/P/K recovery
 def get_key_metrics(model):
-    key_metrics = [i for i in model.metrics if 'net' in i.name.lower()]
-    key_metrics += [i for i in model.metrics if 'total' in i.name.lower()]
+    key_metrics = [i for i in model.metrics if 'total' in i.name.lower()]
+    key_metrics += [i for i in model.metrics if 'net' in i.name.lower()]
+    for i in key_metrics:
+        i.name = i.name.replace('COD', 'energy')
+        i.name = i.name.replace('Annual net cost', 'Cost')
+        i.name = i.name.replace('Net emission GlobalWarming', 'GWP')
+
     return key_metrics
-
-
 
 
 @time_printer
@@ -66,42 +69,33 @@ def evaluate(model, samples=None):
 # while LCA report will be in a standalone Excel file.
 def save_reports(system):
     system.simulate()
-    system.save_report(os.path.join(results_path, f'{system.ID}.xlsx'))
+    system.save_report(os.path.join(results_path, f'{system.ID}_report.xlsx'))
     system.LCA.save_report(os.path.join(results_path, f'{system.ID}_lca.xlsx'))
 
 
 # Plot recoveries as 1D-density plots
 def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal'):
     if kind == 'horizontal':
-        fig, ax = s.plot_uncertainties(model,
-                                       y_axis=metrics,
-                                       kind='box',
-                                       center_kws={'color': color,
-                                                   'width': 0.6})
+        fig, ax = s.plot_uncertainties(model, y_axis=metrics, kind='box',
+                                       center_kws={'color': color, 'width': 0.6})
         ax.get_legend().remove()
         fig.set_figheight(2.5)
+        ax.set(xlabel='', xlim=(0, 1), xticks=np.linspace(0, 1, 6))
         ax.set_yticklabels([i.name.lstrip('Total ') for i in metrics], fontsize=20)
-        ax.set_xlim(0, 1)
-        ax.set_xticks(np.linspace(0, 1, 6))
         ax.set_xticklabels([f'{i:.0%}' for i in np.linspace(0, 1, 6)], fontsize=20)
-
     else:
-        fig, ax = s.plot_uncertainties(model,
-                                       x_axis=metrics,
-                                       kind='box',
-                                       center_kws={'color': color,
-                                                   'width': 0.6})
+        fig, ax = s.plot_uncertainties(model, x_axis=metrics, kind='box',
+                                       center_kws={'color': color, 'width': 0.6})
         ax.get_legend().remove()
         fig.set_figwidth(2.5)
         ax.set_xticklabels([i.name.lstrip('Total ') for i in metrics], fontsize=20)
         for label in ax.get_xticklabels():
             label.set_rotation(30)
-        ax.set_ylim(0, 1)
-        ax.set_yticks(np.linspace(0, 1, 6))
+        ax.set(ylabel='', ylim=(0, 1), yticks=np.linspace(0, 1, 6))
         ax.set_yticklabels([f'{i:.0%}' for i in np.linspace(0, 1, 6)], fontsize=20)
 
-    fig.subplots_adjust(bottom=0.25)
-    fig.savefig(os.path.join(figures_path, f'recoveries{ID}.png'), dpi=300)
+    fig.subplots_adjust(left=0.2, bottom=0.25)
+    fig.savefig(os.path.join(figures_path, f'sys{ID}_recoveries.png'), dpi=300)
 
     return fig, ax
 
@@ -113,7 +107,9 @@ def plot_kde(model, ID, color, metrics):
                                    y_axis=metrics[1],
                                    kind='kde-box',
                                    center_kws={'fill': True, 'color': color},
-                                   margin_kws={'color': color})
+                                   margin_kws={'color': color,
+                                               'whis': (5, 95),
+                                               'sym': ''})
     for i in (ax[0], ax[1]):
         i.set_xlim(0, 100)
         i.set_xticks((np.linspace(0, 100, 6)))
@@ -124,7 +120,8 @@ def plot_kde(model, ID, color, metrics):
         txt.set_fontsize(20)
 
     fig.subplots_adjust(left=0.15)
-    fig.savefig(os.path.join(figures_path, f'cost_emission{ID}.png'), dpi=300)
+    fig.savefig(os.path.join(figures_path, f'sys{ID}_cost_emission.png'), dpi=300)
+
     return fig, ax
 
 
@@ -157,7 +154,7 @@ def plot_morris_scatter(model, morris_dct, combined_morris, color,
         if not plot_combined:
             fig.set(figheight=3, figwidth=3)
             xlabel = r'$\mu^*$/$\mu^*_{max}$'
-            ylabel = r'$\sigma$/$\sigma_{max}$'
+            ylabel = r'$\sigma$/$\mu^*_{max}$'
         else:
             label_lines = False
             xlabel = ylabel = ''
@@ -177,7 +174,7 @@ def plot_morris_scatter(model, morris_dct, combined_morris, color,
                xticks=ticks, yticks=ticks, xticklabels=ticks, yticklabels=ticks,
                xlabel=xlabel, ylabel=ylabel)
 
-        # Only label the ones with mu_star/mu_star_max>0.1
+        # Only label the ones with mu_star/mu_star_max>=0.1
         top = df[(df.mu_star>=0.1)]
         # top = df[(df.mu_star>=0.1)|(df.sigma>=0.1)]
 
@@ -203,7 +200,7 @@ def plot_morris_scatter(model, morris_dct, combined_morris, color,
 
         if not plot_combined:
             fig.subplots_adjust(bottom=0.2, left=0.25)
-            path = os.path.join(figures_path, f'Morris{ID}_{n+1}_{metric.name}.png')
+            path = os.path.join(figures_path, f'sys{ID}_morris{n+1}_{metric.name}.png')
             fig.savefig(path, dpi=300)
             ax_dct[metric.name] = ax
 
@@ -231,9 +228,9 @@ def plot_morris_scatter_all(models, morris_dct, combineds, RGBs):
 
     fig.tight_layout()
     fig.supxlabel(r'$\mu^*$/$\mu^*_{max}$', fontsize=14, fontweight='bold')
-    fig.supylabel(r'$\sigma$/$\sigma_{max}$', fontsize=14, fontweight='bold')
+    fig.supylabel(r'$\sigma$/$\mu^*_{max}$', fontsize=14, fontweight='bold')
     fig.subplots_adjust(left=0.12, bottom=0.06)
-    fig.savefig(os.path.join(figures_path, 'Morris_combined.png'), dpi=300)
+    fig.savefig(os.path.join(figures_path, 'morris_combined.png'), dpi=300)
 
 
 def plot_morris_bubble(combineds):
@@ -271,7 +268,7 @@ def plot_morris_bubble(combineds):
         label.set_rotation(90)
 
     g.fig.subplots_adjust(bottom=0.2)
-    g.fig.savefig(os.path.join(figures_path, 'Morris_bubble.png'), dpi=300)
+    g.fig.savefig(os.path.join(figures_path, 'morris_bubble.png'), dpi=300)
 
     return g.ax
 
@@ -292,7 +289,7 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
         # This saves reports for the system, TEA, and LCA
         for sys in (bw.sysA, bw.sysB, bw.sysC):
             save_reports(sys)
-        table_dct = dict(uncertainty={}, morris={}, morris_dct={})
+        table_dct = dict(uncertainty={}, morris_table={}, morris_dct={})
     else:
         path = os.path.join(results_path, 'table_dct.pckl')
         table_dct = load_pickle(path)
@@ -318,8 +315,8 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
             model.table = table_dct['uncertainty'][ID]
 
         # Make the plots
-        _, ax_dct['box'][ID] = plot_box(model, ID, RGBs[ID], key_metrics[2:], 'horizontal')
-        _, ax_dct['kde'][ID] = plot_kde(model, ID, RGBs[ID], key_metrics[:2])
+        _, ax_dct['box'][ID] = plot_box(model, ID, RGBs[ID], key_metrics[:-2], 'horizontal')
+        _, ax_dct['kde'][ID] = plot_kde(model, ID, RGBs[ID], key_metrics[-2:])
 
 
     ########## Morris One-at-A-Time ##########
@@ -337,9 +334,9 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
             # These are the unprocessed data
             morris_dct = s.morris_analysis(model, inputs, seed=seed,
                                            nan_policy='fill_mean',
-                                           file=os.path.join(results_path, f'Morris{ID}.xlsx'))
+                                           file=os.path.join(results_path, f'sys{ID}_morris.xlsx'))
 
-            table_dct['morris'][ID] = model.table.copy()
+            table_dct['morris_table'][ID] = model.table.copy()
             table_dct['morris_dct'][ID] = morris_dct.copy()
 
             origins = dict(mu_star=[], sigma=[])
@@ -380,13 +377,13 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
             norm_dct['mu_star'][f'{model.system.ID}'] = mu_star_norm
             norm_dct['sigma'][f'{model.system.ID}'] = sigma_norm
         else:
-            model.table = table_dct['morris'][ID]
+            model.table = table_dct['morris_table'][ID]
             morris_dct = table_dct['morris_dct'][ID]
 
     # Process data
     if not from_record:
         combineds = {}
-        writer = pd.ExcelWriter(os.path.join(results_path, 'Morris_combined.xlsx'))
+        writer = pd.ExcelWriter(os.path.join(results_path, 'morris_combined.xlsx'))
 
         for k in ('mu_star', 'sigma'):
             columns = []
