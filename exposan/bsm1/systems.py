@@ -109,4 +109,4 @@ bsm1 = System('BSM1', path=(bio, S1, C1, S2), recycle=(RE, RAS))
 #              DO_ID='S_O', suspended_growth_model=asm1)
 # sys = System('sys', path=(A1, O3, S1, C1, S2), recycle=(RE, RAS))
 if __name__ == '__main__':
-    bsm1.simulate(t_span = (0, 0.1))
+    bsm1.simulate(t_span = (0, 0.05))
