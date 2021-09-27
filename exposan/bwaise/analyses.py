@@ -74,10 +74,12 @@ def save_reports(system):
 
 
 # Plot recoveries as 1D-density plots
-def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal'):
+def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal',
+             whis=(5, 95), sym=''):
     if kind == 'horizontal':
         fig, ax = s.plot_uncertainties(model, y_axis=metrics, kind='box',
-                                       center_kws={'color': color, 'width': 0.6})
+                                       center_kws={'color': color, 'width': 0.6,
+                                                   'whis': whis, 'sym': sym})
         ax.get_legend().remove()
         fig.set_figheight(2.5)
         ax.set(xlabel='', xlim=(0, 1), xticks=np.linspace(0, 1, 6))
@@ -85,7 +87,8 @@ def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal'):
         ax.set_xticklabels([f'{i:.0%}' for i in np.linspace(0, 1, 6)], fontsize=20)
     else:
         fig, ax = s.plot_uncertainties(model, x_axis=metrics, kind='box',
-                                       center_kws={'color': color, 'width': 0.6})
+                                       center_kws={'color': color, 'width': 0.6,
+                                                   'whis': whis, 'sym': sym})
         ax.get_legend().remove()
         fig.set_figwidth(2.5)
         ax.set_xticklabels([i.name.lstrip('Total ') for i in metrics], fontsize=20)
