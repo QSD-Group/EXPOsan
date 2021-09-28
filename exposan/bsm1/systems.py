@@ -9,16 +9,12 @@ This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
-import sys, os
+import os, sys
 sys.path.insert(0, "C:/Users/joy_c/Dropbox/PhD/Research/QSD/codes_developing/QSDsan")
 sys.path.insert(0, "C:/Users/joy_c/Dropbox/PhD/Research/QSD/codes_developing/biosteam")
 
-
-# import thermosteam as tmo
-# import biosteam as bst
-# bst.RAISE_GRAPHVIZ_EXCEPTION = True
 from biosteam import System
-# import numpy as np
+import numpy as np
 from qsdsan import sanunits as su
 from qsdsan import processes as pc
 from qsdsan import WasteStream, set_thermo
@@ -60,12 +56,14 @@ V_ae = 1333    # aerated zone tank volume
 Q_was = 385    # sludge wastage flowrate
 Q_ras = 18446    # recycle sludge flowrate
 
-aer = pc.DiffusedAeration('Fixed_Aeration', 'S_O', KLa=240, DOsat=8.0)
-asm1 = pc.ASM1(components=cmps,
-                Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
-                mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
-                eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
-                K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05)
+# aer = pc.DiffusedAeration('Fixed_Aeration', 'S_O', KLa=240, DOsat=8.0)
+# asm1 = pc.ASM1(components=cmps,
+#                 Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
+#                 mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
+#                 eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
+#                 K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05)
+asm1=None
+aer=1
 
 
 ############# create unit operations #####################
@@ -96,28 +94,25 @@ O3 = su.CSTR('Aerobic_3', O2-0, V_max=V_ae, aeration=2.0,
 
 S1 = su.Splitter('S1', O3-0, [RE, 'treated'], split=0.6, init_with='WasteStream')
 
-C1 = su.FlatBottomCircularClarifier('C1', S1-1, [SE, 'sludge'],
-                                    sludge_flow_rate=Q_ras+Q_was, surface_area=1500,
-                                    height=4, N_layer=10, feed_layer=4,
-                                    # height=12, N_layer=3, feed_layer=2,
-                                    X_threshold=3000, v_max=474, v_max_practical=250,
-                                    rh=5.76e-4, rp=2.86e-3, fns=2.28e-3)
+# C1 = su.FlatBottomCircularClarifier('C1', S1-1, [SE, 'sludge'],
+#                                     sludge_flow_rate=Q_ras+Q_was, surface_area=1500,
+#                                     height=4, N_layer=10, feed_layer=4,
+#                                     # height=12, N_layer=3, feed_layer=2,
+#                                     X_threshold=3000, v_max=474, v_max_practical=250,
+#                                     rh=5.76e-4, rp=2.86e-3, fns=2.28e-3)
 # C1.set_init_solubles(S_I=30, S_S=5.0, S_O=2.0, S_NO=20, S_NH=2.0, S_ALK=7*12)
 # C1.set_init_TSS([10, 20, 40, 70, 200, 300, 350, 350, 2000, 4000])
+C2 = su.IdealClarifier('C2', S1-1, [SE, 'sludge'], sludge_flow_rate=Q_ras+Q_was)
 
-S2 = su.Splitter('S2', C1-1, [RAS, WAS], split=Q_ras/(Q_ras+Q_was), init_with='WasteStream')
-
+# S2 = su.Splitter('S2', C1-1, [RAS, WAS], split=Q_ras/(Q_ras+Q_was), init_with='WasteStream')
+S2 = su.Splitter('S2', C2-1, [RAS, WAS], split=Q_ras/(Q_ras+Q_was), init_with='WasteStream')
 ############# system simulation ############################
 
 bio = System('Biological_treatment', path=(A1, A2, O1, O2, O3))
-bsm1 = System('BSM1', path=(bio, S1, C1, S2), recycle=(RE, RAS))
+# bsm1 = System('BSM1', path=(bio, S1, C1, S2), recycle=(RE, RAS))
+bsm1 = System('BSM1', path=(bio, S1, C2, S2), recycle=(RE, RAS))
 
-# O3 = su.CSTR('Aerobic_3', A1-0, V_max=V_ae, aeration=2.0,
-#              DO_ID='S_O', suspended_growth_model=asm1)
-# sys = System('sys', path=(A1, O3, S1, C1, S2), recycle=(RE, RAS))
-
-
-
+#%%
 @time_printer
 def run(t, method, set_init, **kwargs):
     if set_init:
@@ -131,18 +126,22 @@ def run(t, method, set_init, **kwargs):
                           S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20.0, S_ALK=7*12)
         O3.set_init_conc(S_I=30.0, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100,
                           S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20.0, S_ALK=7*12)
-        C1.set_init_solubles(S_I=30, S_S=5.0, S_O=2.0, S_NO=20, S_NH=2.0, S_ALK=7*12)
+        # C1.set_init_solubles(S_I=30, S_S=5.0, S_O=2.0, S_NO=20, S_NH=2.0, S_ALK=7*12)
         C1.set_init_TSS([10, 20, 40, 70, 200, 300, 350, 350, 2000, 4000])
+        # S1.set_init_conc(S_I=30.0, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100,
+        #                   S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20.0, S_ALK=7*12)
+        # S2.set_init_conc(S_I=30.0, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100,
+        #                   S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20.0, S_ALK=7*12)
     else:
         for u in (A1, A2, O1, O2, O3):
             u._concs = None
         C1._solubles = C1._solids = None
 
-    bsm1.simulate(t_span = (0, t), method=method)
+    bsm1.simulate(t_span = (0, t), method=method, **kwargs)
 
 
 if __name__ == '__main__':
-    t = 1
+    t = 2
     for method in (
             'RK45',
             # 'RK23',
@@ -151,13 +150,13 @@ if __name__ == '__main__':
             # 'BDF',
             # 'LSODA'
             ):
-        print(f'\nMethod {method}')
-        print('Without init')
-        run(t, method, set_init=False)
-        os.rename('sol.txt', f'sol_{t}_{method}_without_init.txt')
-        bsm1.reset_cache()
+        # print(f'\nMethod {method}')
+        # print('Without init')
+        # run(t, method, set_init=False, t_eval=np.arange(0, t+0.05, 0.05))
+        # os.rename('sol.txt', f'sol_{t}_{method}_without_init.txt')
+        # bsm1.reset_cache()
 
         print('With init')
-        run(t, method, set_init=True)
+        run(t, method, set_init=True, t_eval=np.arange(0, t+0.05, 0.05))
         os.rename('sol.txt', f'sol_{t}_{method}_with_init.txt')
         bsm1.reset_cache()
