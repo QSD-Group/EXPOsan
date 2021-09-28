@@ -18,11 +18,11 @@ def test_bwaise():
 
     assert_allclose(bw.teaA.NPV, -41257584.19372313, rtol=1e-2)
     assert_allclose(bw.teaB.NPV, -2547874.581265005, rtol=1e-2)
-    assert_allclose(bw.teaC.NPV, -112951790.44240285, rtol=1e-2)
+    assert_allclose(bw.teaC.NPV, -77072858.90982002, rtol=1e-2)
 
     assert_allclose(bw.lcaA.total_impacts['GlobalWarming'], 146386354.78674603, rtol=1e-2)
     assert_allclose(bw.lcaB.total_impacts['GlobalWarming'], 11987512.603749081, rtol=1e-2)
-    assert_allclose(bw.lcaC.total_impacts['GlobalWarming'], 56832681.43125323, rtol=1e-2)
+    assert_allclose(bw.lcaC.total_impacts['GlobalWarming'], 49928914.70357218, rtol=1e-2)
 
 
 if __name__ == '__main__':

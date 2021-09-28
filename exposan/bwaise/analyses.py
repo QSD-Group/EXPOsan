@@ -16,7 +16,9 @@ for license details.
 # %%
 
 import os
-import numpy as np, pandas as pd
+import numpy as np, pandas as pd, seaborn as sns
+from matplotlib import pyplot as plt
+from adjustText import adjust_text
 from qsdsan import stats as s
 from qsdsan.utils import time_printer, copy_samples, colors, load_pickle, save_pickle
 from exposan import bwaise as bw
@@ -26,12 +28,12 @@ from exposan.bwaise import results_path, figures_path
 import warnings
 warnings.filterwarnings(action='ignore')
 
-modelA, modelB, modelC = bw.modelA, bw.modelB, bw.modelC
+models = modelA, modelB, modelC = bw.modelA, bw.modelB, bw.modelC
 RGBs = {
     'A': colors.Guest.orange.RGBn,
     'B': colors.Guest.green.RGBn,
     'C': colors.Guest.blue.RGBn
-    }    
+    }
 seed = 3221 # for numpy seeding and result consistency
 
 
@@ -39,17 +41,14 @@ seed = 3221 # for numpy seeding and result consistency
 
 # Net cost, net GWP, and total COD/N/P/K recovery
 def get_key_metrics(model):
-    key_metrics = [i for i in model.metrics if 'net' in i.name.lower()]
-    key_metrics += [i for i in model.metrics if 'total' in i.name.lower()]
+    key_metrics = [i for i in model.metrics if 'total' in i.name.lower()]
+    key_metrics += [i for i in model.metrics if 'net' in i.name.lower()]
+    for i in key_metrics:
+        i.name = i.name.replace('COD', 'energy')
+        i.name = i.name.replace('Annual net cost', 'Cost')
+        i.name = i.name.replace('Net emission GlobalWarming', 'GWP')
+
     return key_metrics
-
-
-def filter_parameters(model, df, threshold):
-    new_df = pd.concat((df[df>=threshold], df[df<=-threshold]))
-    filtered = new_df.dropna(how='all')
-    param_dct = {p.name_with_units:p for p in model.get_parameters()}
-    parameters = set(param_dct[i[1]] for i in filtered.index)
-    return list(parameters)
 
 
 @time_printer
@@ -70,42 +69,38 @@ def evaluate(model, samples=None):
 # while LCA report will be in a standalone Excel file.
 def save_reports(system):
     system.simulate()
-    system.save_report(os.path.join(results_path, f'{system.ID}.xlsx'))
+    system.save_report(os.path.join(results_path, f'{system.ID}_report.xlsx'))
     system.LCA.save_report(os.path.join(results_path, f'{system.ID}_lca.xlsx'))
 
 
 # Plot recoveries as 1D-density plots
-def plot_box(model, ID, color, metrics, kind='horizontal'):
+def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal',
+             whis=(5, 95), sym=''):
     if kind == 'horizontal':
-        fig, ax = s.plot_uncertainties(model,
-                                       y_axis=metrics,
-                                       kind='box',
-                                       center_kws={'color': color,
-                                                   'width': 0.6})
+        fig, ax = s.plot_uncertainties(model, y_axis=metrics, kind='box',
+                                       center_kws={'color': color, 'width': 0.6,
+                                                   'whis': whis, 'sym': sym})
         ax.get_legend().remove()
         fig.set_figheight(2.5)
+        ax.set(xlabel='', xlim=(0, 1), xticks=np.linspace(0, 1, 6))
         ax.set_yticklabels([i.name.lstrip('Total ') for i in metrics], fontsize=20)
-        ax.set_xlim(0, 1)
-        ax.set_xticks(np.linspace(0, 1, 6))
         ax.set_xticklabels([f'{i:.0%}' for i in np.linspace(0, 1, 6)], fontsize=20)
-
     else:
-        fig, ax = s.plot_uncertainties(model,
-                                       x_axis=metrics,
-                                       kind='box',
-                                       center_kws={'color': color,
-                                                   'width': 0.6})
+        fig, ax = s.plot_uncertainties(model, x_axis=metrics, kind='box',
+                                       center_kws={'color': color, 'width': 0.6,
+                                                   'whis': whis, 'sym': sym})
         ax.get_legend().remove()
         fig.set_figwidth(2.5)
         ax.set_xticklabels([i.name.lstrip('Total ') for i in metrics], fontsize=20)
         for label in ax.get_xticklabels():
             label.set_rotation(30)
-        ax.set_ylim(0, 1)
-        ax.set_yticks(np.linspace(0, 1, 6))
+        ax.set(ylabel='', ylim=(0, 1), yticks=np.linspace(0, 1, 6))
         ax.set_yticklabels([f'{i:.0%}' for i in np.linspace(0, 1, 6)], fontsize=20)
 
-    fig.subplots_adjust(bottom=0.25)
-    fig.savefig(os.path.join(figures_path, f'recoveries{ID}.png'), dpi=300)
+    fig.subplots_adjust(left=0.2, bottom=0.25)
+    fig.savefig(os.path.join(figures_path, f'sys{ID}_recoveries.png'), dpi=300)
+
+    return fig, ax
 
 
 # Plot net cost and emissions as 2D-density plots
@@ -115,7 +110,9 @@ def plot_kde(model, ID, color, metrics):
                                    y_axis=metrics[1],
                                    kind='kde-box',
                                    center_kws={'fill': True, 'color': color},
-                                   margin_kws={'color': color})
+                                   margin_kws={'color': color,
+                                               'whis': (5, 95),
+                                               'sym': ''})
     for i in (ax[0], ax[1]):
         i.set_xlim(0, 100)
         i.set_xticks((np.linspace(0, 100, 6)))
@@ -126,51 +123,161 @@ def plot_kde(model, ID, color, metrics):
         txt.set_fontsize(20)
 
     fig.subplots_adjust(left=0.15)
-    fig.savefig(os.path.join(figures_path, f'cost_emission{ID}.png'), dpi=300)
+    fig.savefig(os.path.join(figures_path, f'sys{ID}_cost_emission.png'), dpi=300)
+
+    return fig, ax
 
 
-# Plot morris results
-def plot_morris(model, ID, morris_dct, color):
+param_set = set(modelA.parameters).union(set(modelB.parameters), set(modelC.parameters))
+param_names = tuple(p.name for p in param_set)
+
+# Plot morris results as scatter plot for each metric of each model
+def plot_morris_scatter(model, morris_dct, combined_morris, color,
+                        label_lines=True, label_points=True,
+                        plot_combined=False, axs=None):
     ID = model.system.ID[-1]
     normalized = {}
-    k3s = {}
-    for metric in model.metrics:
+    ax_dct = {}
+    for n, metric in enumerate(model.metrics):
         df = morris_dct[metric.name].copy()
-        k3s[metric.name] = round(df.mu_star.max()/df.sigma.max(), 1)
+        df.index = df.parameter
+
         df.mu_star_conf /= df.mu_star.max()
+        df.sigma /= df.mu_star.max()
+        # df.sigma /= df.sigma.max() # if want to normalize by sigma
         df.mu_star /= df.mu_star.max()
-        df.sigma /= df.sigma.max()
         normalized[metric.name] = df
-    
-        fig, ax = s.plot_morris_results(normalized, metric, label_kind=None,
-                                        k1=None, k2=None, k3=k3s[metric.name],
+
+        axs_n = None if axs is None else axs[n]
+        fig, ax = s.plot_morris_results(normalized, metric,
+                                        ax=axs_n,
+                                        label_kind=None,
+                                        k1=0.1, k2=None, k3=1,
                                         color=color)
-        fig.set(figheight=3, figwidth=3)
-        legend = ax.get_legend()
-        if legend:
-            legend.texts[0].set_text('$\\sigma/\\mu^*$=1')
+        if not plot_combined:
+            fig.set(figheight=3, figwidth=3)
+            xlabel = r'$\mu^*$/$\mu^*_{max}$'
+            ylabel = r'$\sigma$/$\mu^*_{max}$'
+        else:
+            label_lines = False
+            xlabel = ylabel = ''
+
+        if label_lines:
+            legend = ax.get_legend()
+            if legend:
+                legend.texts[0].set_text('$\\sigma/\\mu^*$=1')
+                legend.texts[1].set_text('$\\sigma/\\mu^*$=0.1')
+        else:
+            legend = ax.get_legend()
+            if legend:
+                legend.remove()
+
         ticks = [0, 0.25, 0.5, 0.75, 1]
         ax.set(xlim=(0, 1), ylim=(0, 1), xbound=(0, 1.1), ybound=(0, 1.1),
-               xticks=ticks, yticks=ticks, xticklabels=ticks, yticklabels=ticks)
-        ax.set_xlabel(r'$\mu^*$/$\mu^*_{max}$')
-        ax.set_ylabel(r'$\sigma$/$\sigma_{max}$')
-    
-        # Only label the ones with mu_star/mu_star_max>0.1 or sigma/sigma_max>0.1
-        top = df[(df.mu_star>=0.1)|(df.sigma>=0.1)]
-        top.reset_index(inplace=True)
-        top.rename(columns={'index':'parameter'}, inplace=True)
-        if top.shape[0] > 5:
-            top = top[:5]
-        for x, y, label in zip(top.mu_star, top.sigma, top.index):
-            ax.annotate(label, (x, y), xytext=(2, 2), textcoords='offset points',
-                        ha='center')
-    
-        fig.subplots_adjust(bottom=0.2, left=0.25)
-        path = os.path.join(figures_path, f'Morris{ID}_{metric.name}.png')
-        fig.savefig(path, dpi=300)
-        
+               xticks=ticks, yticks=ticks, xticklabels=ticks, yticklabels=ticks,
+               xlabel=xlabel, ylabel=ylabel)
 
-def run(from_record=True):
+        # Only label the ones with mu_star/mu_star_max>=0.1
+        top = df[(df.mu_star>=0.1)]
+        # top = df[(df.mu_star>=0.1)|(df.sigma>=0.1)]
+
+        # Only markout the top five mu_star/mu_star_max parameters
+        if top.shape[0] > 5:
+            top.sort_values(by=['mu_star'], ascending=False, inplace=True)
+            top = top[:5]
+
+        if plot_combined: # `adjust_text` won't work here
+            if label_points:
+                for idx in top.index:
+                    label = combined_morris[combined_morris.parameter==idx].index.values.item()
+                    ax.annotate(label, (top.loc[idx].mu_star, top.loc[idx].sigma),
+                                xytext=(2, 2), textcoords='offset points',
+                                ha='center')
+        else:
+            if label_points:
+                labels = []
+                for idx in top.index:
+                    label = combined_morris[combined_morris.parameter==idx].index.values.item()
+                    labels.append(ax.text(top.loc[idx].mu_star, top.loc[idx].sigma, label))
+                adjust_text(labels)
+
+        if not plot_combined:
+            fig.subplots_adjust(bottom=0.2, left=0.25)
+            path = os.path.join(figures_path, f'sys{ID}_morris{n+1}_{metric.name}.png')
+            fig.savefig(path, dpi=300)
+            ax_dct[metric.name] = ax
+
+    return ax_dct
+
+
+def plot_morris_scatter_all(models, morris_dct, combineds, RGBs):
+    fig = plt.figure(figsize=(12, 18))
+    tot_models = len(models)
+    tot_metrics = len(models[0].metrics)
+    fig.subplots(tot_metrics, tot_models, sharex=True, sharey=True)
+
+    for n_model, model in enumerate(models):
+        ID = model.system.ID[-1]
+        axs = [fig.axes[tot_models*i+n_model] for i in range(tot_metrics)]
+        plot_morris_scatter(
+            model, morris_dct[ID], combineds['mu_star'], RGBs[ID],
+            label_lines=False, label_points=True,
+            plot_combined=True, axs=axs)
+
+        if n_model == 0:
+            for n, ax in enumerate(axs):
+                ax.set_ylabel(model.metrics[n].name)
+        axs[-1].set_xlabel(f'System {ID}')
+
+    fig.tight_layout()
+    fig.supxlabel(r'$\mu^*$/$\mu^*_{max}$', fontsize=14, fontweight='bold')
+    fig.supylabel(r'$\sigma$/$\mu^*_{max}$', fontsize=14, fontweight='bold')
+    fig.subplots_adjust(left=0.12, bottom=0.06)
+    fig.savefig(os.path.join(figures_path, 'morris_combined.png'), dpi=300)
+
+
+def plot_morris_bubble(combineds):
+    sns.set_theme(style='ticks')
+
+    dct = {'mu_star': combineds['mu_star'].copy(),
+           'sigma': combineds['sigma'].copy()}
+    for k, df in dct.items():
+        columns = [f'{i[0]}-{i[1]}' for i in df.columns]
+        columns[0] = 'parameter'
+        df.columns = columns
+        df.index = df.parameter
+        df = df.drop('parameter', axis=1)
+        dct[k] = df.stack(dropna=False).to_frame().rename(columns={0: k})
+
+    plot_df = pd.concat(dct.values(), axis=1).reset_index()
+    plot_df.rename(columns={'level_1': 'metric'}, inplace=True)
+
+    g = sns.relplot(
+        data=plot_df,
+        x='metric', y='parameter', hue='sigma', size='mu_star',
+        # palette="vlag",
+        hue_norm=(0, 1), # edgecolors='0.7',
+        height=15, sizes=(50, 250), size_norm=(-.2, .8),
+    )
+
+    g.ax.grid(color='gray', linestyle='--', linewidth=0.5)
+    for spine in ('top', 'right'):
+        g.ax.spines[spine].set_visible(True)
+
+    g.ax.set_xlabel('Metric', fontsize=14, fontweight='bold')
+    g.ax.set_ylabel('Parameter', fontsize=14, fontweight='bold')
+
+    for label in g.ax.get_xticklabels():
+        label.set_rotation(90)
+
+    g.fig.subplots_adjust(bottom=0.2)
+    g.fig.savefig(os.path.join(figures_path, 'morris_bubble.png'), dpi=300)
+
+    return g.ax
+
+
+def run(N_uncertainty=5000, N_morris=100, from_record=True,
+        label_morris_lines=True, label_morris_points=True):
     # # This is the new, recommended method for setting seed,
     # # but not seems to be widely used/supported
     # import numpy as np
@@ -178,105 +285,147 @@ def run(from_record=True):
     # rng.random(5)
     np.random.seed(seed)
 
+    # A dict with all results for future rebuilding of the models
+    global table_dct, ax_dct
+    ax_dct = dict(box={}, kde={}, morris_scatter={}, morris_bubble=None)
     if not from_record:
         # This saves reports for the system, TEA, and LCA
         for sys in (bw.sysA, bw.sysB, bw.sysC):
             save_reports(sys)
-
-        # A dict to save all results for future rebuilding of the models
-        table_dct = dict(uncertainty={}, morris={})
+        table_dct = dict(uncertainty={}, morris_table={}, morris_dct={})
     else:
         path = os.path.join(results_path, 'table_dct.pckl')
         table_dct = load_pickle(path)
-        
+
     ########## Uncertainty analysis ##########
-    for model in (modelA, modelB, modelC):
+    for model in models:
         model.metrics = key_metrics = get_key_metrics(model)
         ID = model.system.ID[-1]
 
         if not from_record:
             # Want to use a larger N (maybe 5000 or 10000)
-            samples = model.sample(N=1000, rule='L', seed=seed)
+            samples = model.sample(N=N_uncertainty, rule='L', seed=seed)
             model.load_samples(samples)
             if model is modelB:
                 copy_samples(modelA, model)
             elif model is modelC:
                 copy_samples(modelA, model)
                 copy_samples(modelB, model, exclude=modelA.parameters)
-    
+
             evaluate(model)
             table_dct['uncertainty'][ID] = model.table.copy()
         else:
             model.table = table_dct['uncertainty'][ID]
 
         # Make the plots
-        plot_box(model, ID, RGBs[ID], key_metrics[2:], 'horizontal')
-        plot_kde(model, ID, RGBs[ID], key_metrics[:2])
-        
+        _, ax_dct['box'][ID] = plot_box(model, ID, RGBs[ID], key_metrics[:-2], 'horizontal')
+        _, ax_dct['kde'][ID] = plot_kde(model, ID, RGBs[ID], key_metrics[-2:])
+
 
     ########## Morris One-at-A-Time ##########
-    mu_star_origin_dct = {}
-    mu_star_norm_dct = {}
-    for model in (modelA, modelB, modelC):
+    origin_dct = dict(mu_star={}, sigma={})
+    norm_dct = dict(mu_star={}, sigma={})
+    for model in models:
         ID = model.system.ID[-1]
         if not from_record:
             inputs = s.define_inputs(model)
             # Want to use a larger N (maybe 100)
-            morris_samples = s.generate_samples(inputs, kind='Morris', N=10, seed=seed)
-    
+            morris_samples = s.generate_samples(inputs, kind='Morris', N=N_morris, seed=seed)
+
             evaluate(model, morris_samples)
-    
+
             # These are the unprocessed data
             morris_dct = s.morris_analysis(model, inputs, seed=seed,
                                            nan_policy='fill_mean',
-                                           file=os.path.join(results_path, f'Morris{ID}.xlsx'))
-            
-            table_dct['morris'][ID] = model.table.copy()
+                                           file=os.path.join(results_path, f'sys{ID}_morris.xlsx'))
+
+            table_dct['morris_table'][ID] = model.table.copy()
             table_dct['morris_dct'][ID] = morris_dct.copy()
 
-            origin = []
-            filtered = []
+            origins = dict(mu_star=[], sigma=[])
+            filtereds = dict(mu_star=[], sigma=[])
+
             for i in model.metrics:
                 df = morris_dct[i.name]
                 df.sort_values(by=['mu_star'], ascending=False, inplace=True)
-                origin.append(df.mu_star)
-                df_filtered = df.mu_star.iloc[0:5] # select the top five
-                filtered.append(df_filtered)
-    
-            mu_star_origin = pd.concat(origin, axis=1)
-            mu_star_filtered = pd.concat(filtered, axis=1)
-            mu_star_origin.columns = mu_star_filtered.columns = [i.name for i in model.metrics]
-            mu_star_norm = mu_star_filtered/mu_star_filtered.max() # normalize
-    
-            mu_star_origin_dct[f'{model.system.ID}'] = mu_star_origin
-            mu_star_norm_dct[f'{model.system.ID}'] = mu_star_norm
+                origins['mu_star'].append(df.mu_star)
+                origins['sigma'].append(df.sigma)
+
+                df_filtered = df.iloc[0:5] # select the top five
+                filtereds['mu_star'].append(df_filtered.mu_star)
+                filtereds['sigma'].append(df_filtered.sigma)
+
+            mu_star_origin = pd.concat([df.parameter, *origins['mu_star']], axis=1)
+            sigma_origin = pd.concat([df.parameter, *origins['sigma']], axis=1)
+            mu_star_filtered = pd.concat(filtereds['mu_star'], axis=1)
+            sigma_filtered = pd.concat(filtereds['sigma'], axis=1)
+
+            # Won't be able to divde if having different column names
+            sigma_filtered.columns = mu_star_filtered.columns = [i.name for i in model.metrics]
+
+            # Normalize
+            sigma_norm = sigma_filtered/mu_star_filtered.max()
+            mu_star_norm = mu_star_filtered/mu_star_filtered.max()
+
+            for i in (mu_star_filtered, mu_star_norm, sigma_filtered, sigma_norm):
+                i.insert(0, 'parameter', mu_star_origin.parameter)
+
+            columns = ['parameter'] + [i.name for i in model.metrics]
+            for df in (mu_star_origin, mu_star_filtered, mu_star_norm,
+                       sigma_origin, sigma_filtered, sigma_origin):
+                df.columns = columns
+
+            origin_dct['mu_star'][f'{model.system.ID}'] = mu_star_origin
+            origin_dct['sigma'][f'{model.system.ID}'] = sigma_origin
+            norm_dct['mu_star'][f'{model.system.ID}'] = mu_star_norm
+            norm_dct['sigma'][f'{model.system.ID}'] = sigma_norm
         else:
-            model.table = table_dct['morris'][ID]
+            model.table = table_dct['morris_table'][ID]
             morris_dct = table_dct['morris_dct'][ID]
 
-        # Make the plots
-        plot_morris(model, ID, morris_dct, RGBs[ID])
-        
-    # Data processing
+    # Process data
     if not from_record:
-        columns = []
-        data = []
-        for i in key_metrics:
-            for ID, df in mu_star_norm_dct.items():
-                columns.append(f'{i.name}-{ID}')
-                data.append(df[i.name])
-    
-        combined = pd.concat(data, axis=1)
-        combined.columns = columns
-    
-        writer = pd.ExcelWriter(os.path.join(results_path, 'Morris.xlsx'))
-        combined.to_excel(writer, sheet_name='Combined')
-        for ID, df in mu_star_origin_dct.items():
-            df.to_excel(writer, sheet_name=ID)
+        combineds = {}
+        writer = pd.ExcelWriter(os.path.join(results_path, 'morris_combined.xlsx'))
+
+        for k in ('mu_star', 'sigma'):
+            columns = []
+            data = []
+            for i in key_metrics:
+                for ID, df in norm_dct[k].items():
+                    df.index = df.parameter
+                    columns.append(f'{i.name}-{ID}')
+                    data.append(df[i.name])
+
+            combined = pd.concat(data, axis=1)
+            columns_mi = pd.MultiIndex.from_tuples([i.split('-') for i in columns])
+            combined.columns = columns_mi
+            combined.reset_index(inplace=True)
+            combineds[k] = combined
+
+            combined.to_excel(writer, sheet_name=f'{k}_combined')
+            for ID, df in origin_dct[k].items():
+                df.to_excel(writer, sheet_name=f'{k}_all_{ID}')
+
         writer.save()
-        
+
+        table_dct['morris_combined'] = combineds
         pickle_path = os.path.join(results_path, 'table_dct.pckl')
         save_pickle(table_dct, pickle_path)
+    else:
+        combineds = table_dct['morris_combined']
+
+    # Make Morris plots
+    for model in models:
+        ID = model.system.ID[-1]
+        morris_dct = table_dct['morris_dct'][ID]
+        ax_dct['morris_scatter'][ID] = plot_morris_scatter(
+            model, morris_dct, combineds['mu_star'], RGBs[ID],
+            label_morris_lines, label_morris_points)
+
+    plot_morris_scatter_all(models, table_dct['morris_dct'], combineds, RGBs)
+
+    ax_dct['morris_bubble'] = plot_morris_bubble(combineds)
 
 
 # %%
@@ -286,293 +435,9 @@ def run(from_record=True):
 # =============================================================================
 
 if __name__ == '__main__':
-    run(from_record=True)
-    # # # This is the new, recommended method for setting seed,
-    # # # but not seems to be widely used/supported
-    # # import numpy as np
-    # # rng = np.random.default_rng(3221)
-    # # rng.random(5)
-    # np.random.seed(seed)
-
-    # # This saves reports for the system, TEA, and LCA
-    # for sys in (bw.sysA, bw.sysB, bw.sysC):
-    #     save_reports(sys)
-
-    # # A dict to save all results for future rebuilding of the models
-    # table_dct = dict(uncertainty={}, morris={})
-    # ########## Uncertainty analysis ##########
-    # figs, axs = {}, {}
-    # for model in (modelA, modelB, modelC):
-    #     model.metrics = key_metrics = get_key_metrics(model)
-    #     ID = model.system.ID[-1]
-    #     figs[ID], axs[ID] = {}, {}
-
-    #     # Want to use a larger N (maybe 5000 or 10000)
-    #     samples = model.sample(N=1000, rule='L', seed=seed)
-    #     model.load_samples(samples)
-    #     if model is modelB:
-    #         copy_samples(modelA, model)
-    #         color = colors.Guest.green.RGBn
-    #     elif model is modelC:
-    #         copy_samples(modelA, model)
-    #         copy_samples(modelB, model, exclude=modelA.parameters)
-    #         color = colors.Guest.blue.RGBn
-    #     else:
-    #         color = colors.Guest.orange.RGBn
-
-    #     evaluate(model)
-    #     table_dct['uncertainty'][ID] = model.table.copy()
-
-    #     figs[ID]['box'], axs[ID]['box'] = \
-    #         plot_box(model, color, key_metrics[2:], 'horizontal')
-    #     figs[ID]['box'].savefig(os.path.join(figures_path, f'recoveries{ID}.png'), dpi=300)
-
-
-    #     figs[ID]['kde'], axs[ID]['kde'] = plot_kde(model, color, key_metrics[:2])
-    #     figs[ID]['kde'].savefig(os.path.join(figures_path, f'cost_emission{ID}.png'), dpi=300)
-
-    # ########## Morris One-at-A-Time ##########
-    # mu_star_origin_dct = {}
-    # mu_star_norm_dct = {}
-    # for model in (modelA, modelB, modelC):
-    #     inputs = s.define_inputs(model)
-    #     ID = model.system.ID[-1]
-    #     # Want to use a larger N (maybe 100)
-    #     morris_samples = s.generate_samples(inputs, kind='Morris', N=10, seed=seed)
-
-    #     evaluate(model, morris_samples)
-    #     table_dct['morris'][ID] = model.table.copy()
-
-    #     # These are the unprocessed data
-    #     morris_dct = s.morris_analysis(model, inputs, seed=seed,
-    #                                    nan_policy='fill_mean',
-    #                                    file=os.path.join(results_path, f'Morris{ID}.xlsx'))
-    #     table_dct['morris_dct'][ID] = morris_dct.copy()
-
-    #     origin = []
-    #     filtered = []
-    #     for i in model.metrics:
-    #         df = morris_dct[i.name]
-    #         df.sort_values(by=['mu_star'], ascending=False, inplace=True)
-    #         origin.append(df.mu_star)
-    #         df_filtered = df.mu_star.iloc[0:5] # select the top five
-    #         filtered.append(df_filtered)
-
-    #     mu_star_origin = pd.concat(origin, axis=1)
-    #     mu_star_filtered = pd.concat(filtered, axis=1)
-    #     mu_star_origin.columns = mu_star_filtered.columns = [i.name for i in model.metrics]
-    #     mu_star_norm = mu_star_filtered/mu_star_filtered.max() # normalize
-
-    #     mu_star_origin_dct[f'{model.system.ID}'] = mu_star_origin
-    #     mu_star_norm_dct[f'{model.system.ID}'] = mu_star_norm
-
-    # columns = []
-    # data = []
-    # for i in key_metrics:
-    #     for ID, df in mu_star_norm_dct.items():
-    #         columns.append(f'{i.name}-{ID}')
-    #         data.append(df[i.name])
-
-    # combined = pd.concat(data, axis=1)
-    # combined.columns = columns
-
-    # writer = pd.ExcelWriter(os.path.join(results_path, 'Morris.xlsx'))
-    # combined.to_excel(writer, sheet_name='Combined')
-    # for ID, df in mu_star_origin_dct.items():
-    #     df.to_excel(writer, sheet_name=ID)
-    # writer.save()
-    
-    # pickle_path = os.path.join(results_path, 'table_dct.pckl')
-    # save_pickle(table_dct, pickle_path)
-
-
-# %%
-
-########## Below are functions used for tutorial purpose ##########
-
-#!!! Need to review and update with new qsdsan
-
-# =============================================================================
-# Morris One-at-A-Time
-# =============================================================================
-
-def run_plot_morris(model, N, seed=seed, test_convergence=False,
-                    metrics=None, plot_metric=None, parameters=None,
-                    file_prefix='default'):
-    inputs = s.define_inputs(model)
-    metrics = metrics if metrics else get_key_metrics(model)
-    plot_metric = plot_metric if plot_metric else metrics[0]
-    if parameters:
-        model.parameters = parameters
-
-    if file_prefix=='default':
-        suffix = model._system.ID[-1]
-        conv = '_conv' if test_convergence else ''
-        suffix += conv
-    else:
-        suffix = ''
-
-    if file_prefix=='default':
-        suffix = model._system.ID[-1]
-        dct_file = os.path.join(results_path, f'Morris{suffix}.xlsx')
-        fig_file = os.path.join(figures_path, f'Morris{suffix}.png')
-    else:
-        dct_file = f'{file_prefix}.xlsx' if file_prefix else ''
-        fig_file = f'{file_prefix}.png' if file_prefix else ''
-
-    if not test_convergence:
-        morris_samples = s.generate_samples(inputs, kind='Morris', N=N, seed=seed)
-
-        evaluate(model, morris_samples)
-
-        dct = s.morris_analysis(model, inputs, metrics=metrics, seed=seed,
-                                nan_policy='fill_mean', file=dct_file)
-        fig, ax = s.plot_morris_results(dct, metric=plot_metric, file=fig_file)
-
-    else:
-        dct = s.morris_till_convergence(model, inputs, metrics=metrics, seed=seed,
-                                        N_max=N, file=dct_file)
-        fig, ax = s.plot_morris_convergence(dct, metric=plot_metric, plot_rank=True,
-                                            file=fig_file)
-
-    return dct, fig, ax
-
-
-# %%
-
-# =============================================================================
-# Pearson and Spearman
-# =============================================================================
-
-def run_plot_spearman(model, N, seed=seed, metrics=None, parameters=None,
-                      file_prefix='default'):
-    suffix = model._system.ID[-1] if file_prefix=='default' else ''
-    metrics = metrics if metrics else get_key_metrics(model)
-
-    if file_prefix=='default':
-        suffix = model._system.ID[-1]
-        dct_file = os.path.join(results_path, f'Spearman{suffix}.xlsx')
-        fig_file = os.path.join(figures_path, f'Spearman{suffix}.png')
-    else:
-        dct_file = f'{file_prefix}.xlsx' if file_prefix else ''
-        fig_file = f'{file_prefix}.png' if file_prefix else ''
-
-    spearman_rho, spearman_p = s.get_correlations(model, kind='Spearman',
-                                                  nan_policy='raise',
-                                                  file=dct_file)
-
-    fig, ax = s.plot_correlations(spearman_rho, parameters=parameters,
-                                  metrics=metrics, file=fig_file)
-
-    return spearman_rho, fig, ax
-
-
-# %%
-
-# =============================================================================
-# (e)FAST and RBD-FAST
-# =============================================================================
-
-def run_plot_fast(model, kind, N, M, seed=seed, metrics=None, plot_metric=None,
-                  parameters=None, file_prefix='default'):
-    inputs = s.define_inputs(model)
-    metrics = metrics if metrics else get_key_metrics(model)
-    plot_metric = plot_metric if plot_metric else metrics[0]
-    if parameters:
-        model.parameters = parameters
-
-    suffix = model._system.ID[-1] if file_prefix=='default' else ''
-    if file_prefix=='default':
-        suffix = model._system.ID[-1]
-        dct_file = os.path.join(results_path, f'{kind}{suffix}.xlsx')
-        fig_file = os.path.join(figures_path, f'{kind}{suffix}.png')
-    else:
-        dct_file = f'{file_prefix}.xlsx' if file_prefix else ''
-        fig_file = f'{file_prefix}.png' if file_prefix else ''
-
-    if kind.upper() in ('FAST', 'EFAST'):
-        fast_samples = s.generate_samples(inputs, kind=kind, N=N, M=M, seed=seed)
-    else:
-        fast_samples = s.generate_samples(inputs, kind=kind, N=N, seed=seed)
-
-    evaluate(model, fast_samples)
-
-    dct = s.fast_analysis(model, inputs, kind=kind, metrics=metrics,
-                          M=M, seed=seed, nan_policy='fill_mean', file=dct_file)
-
-    fig, ax = s.plot_fast_results(dct, metric=plot_metric, file=fig_file)
-    return dct, fig, ax
-
-
-# %%
-
-# =============================================================================
-# Sobol
-# =============================================================================
-
-def run_plot_sobol(model, N, seed=seed, metrics=None, plot_metric=None,
-                   parameters=None, file_prefix='default'):
-    inputs = s.define_inputs(model)
-    metrics = metrics if metrics else get_key_metrics(model)
-    plot_metric = plot_metric if plot_metric else metrics[0]
-    if parameters:
-        model.parameters = parameters
-
-    sobol_samples = s.generate_samples(inputs, kind='Sobol', N=N, seed=seed,
-                                        calc_second_order=True)
-
-    evaluate(model, sobol_samples)
-
-    if file_prefix=='default':
-        suffix = model._system.ID[-1]
-        dct_file = os.path.join(results_path, f'Sobol{suffix}.xlsx')
-        fig_file = os.path.join(figures_path, f'Sobol{suffix}.png')
-    else:
-        dct_file = f'{file_prefix}.xlsx' if file_prefix else ''
-        fig_file = f'{file_prefix}.png' if file_prefix else ''
-
-    sobol_dct = s.sobol_analysis(model, inputs,
-                                 metrics=metrics, seed=seed,
-                                 calc_second_order=True, conf_level=0.95,
-                                 nan_policy='fill_mean', file=dct_file)
-
-    fig, ax = s.plot_sobol_results(sobol_dct, metric=plot_metric,
-                                    error_bar=True, annotate_heatmap=False,
-                                    file=fig_file)
-
-    return sobol_dct, fig, ax
-
-        #!!! Need to figure out parameter filtering
-        # if auto_filter_parameters:
-        #     key_params = filter_parameters(model, spearman_rho, threshold)
-        #     if len(key_params) > 5:
-        #         model.set_parameters(key_params)
-
-        # # Filter parameters based on Spearman's rho
-        # parameters = filter_parameters(model, spearman_rho, 0.5)
-        # fig, ax = s.plot_correlations(spearman_rho, parameters=parameters,
-        #                               metrics=key_metrics[0])
-
-
-        #!!!! Update the `stats` module based on the following,
-        # and point the users to look at the documentation on the module
-        ########## Uncomment if want to run Spearman and plot results ##########
-        # spearman_rho, fig, ax, all_params = run_plot_spearman(model, N=100)
-
-        ########## Uncommnet if want to test the convergence of Morris and plot ##########
-        # morris_dct_conv, fig, ax = a.run_plot_morris(model, N=100, test_convergence=True)
-        # fig, ax = s.plot_morris_convergence(morris_dct_conv, parameters=parameters,
-        #                                     metric=key_metrics[0], plot_rank=True)
-
-        ########## Uncomment if want to run FAST and plot results ##########
-        # fast_dct, fig, ax = run_plot_fast(model, 'FAST', N=100, M=4)
-        # fig, ax = s.plot_fast_results(fast_dct, key_metrics[0])
-
-        ########## Uncomment if want to run RBD-FAST and plot results ##########
-        # rbd_dct, fig, ax = run_plot_fast(model, 'RBD', N=100, M=10)
-        # fig, ax = s.plot_fast_results(rbd_dct, key_metrics[0])
-
-        ########## Uncomment if want to run Sobol ##########
-        # sobol_dct, fig, ax = run_plot_sobol(model, N=10)
-        # fig, ax = s.plot_sobol_results(sobol_dct, metric=key_metrics[0], kind='STS2',
-        #                                plot_in_diagonal='ST')
+    # run(N_uncertainty=1000, N_morris=10, from_record=False,
+    #     label_morris_lines=False, label_morris_points=True)
+    # run(N_uncertainty=100, N_morris=2, from_record=False,
+    #     label_morris_lines=False, label_morris_points=True)
+    run(N_uncertainty=100, N_morris=2, from_record=True,
+        label_morris_lines=False, label_morris_points=True)

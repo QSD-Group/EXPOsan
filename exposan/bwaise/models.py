@@ -180,7 +180,7 @@ def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
     # Household size
     b = systems.household_size
     D = shape.Normal(mu=b, sigma=1.8)
-    @param(name='Household size', element=Excretion, kind='coupled', units='cap/household',
+    @param(name='Household size', element=Toilet, kind='coupled', units='cap/household',
            baseline=b, distribution=D,
             hook=lambda i: max(1, i)
            )
@@ -790,8 +790,7 @@ def set_unskilled_num(i):
     systems.unskilled_num = i
     teaB.annual_labor = systems.get_alt_salary()
 
-
-b = 0.75e6
+b = systems.unskilled_salary
 D = shape.Uniform(lower=0.5e6, upper=1e6)
 @paramB(name='Unskilled staff salary', element='TEA', kind='isolated', units='MM UGX/cap/month',
         baseline=b, distribution=D)
@@ -971,7 +970,7 @@ def organize_uncertainty_results(model, percentiles, spearman_results):
     if percentiles:
         dct['percentiles'] = dct['data'].quantile(q=percentiles)
 
-    if spearman_results:
+    if spearman_results is not None:
         dct['spearman'] = spearman_results
     return dct
 
