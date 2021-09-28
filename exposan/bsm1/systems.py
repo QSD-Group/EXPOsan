@@ -18,7 +18,7 @@ sys.path.insert(0, "C:/Users/joy_c/Dropbox/PhD/Research/QSD/codes_developing/bio
 # import biosteam as bst
 # bst.RAISE_GRAPHVIZ_EXCEPTION = True
 from biosteam import System
-# import numpy as np
+import numpy as np
 from qsdsan import sanunits as su
 from qsdsan import processes as pc
 from qsdsan import WasteStream, set_thermo
@@ -131,14 +131,14 @@ def run(t, method, set_init, **kwargs):
                           S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20.0, S_ALK=7*12)
         O3.set_init_conc(S_I=30.0, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100,
                           S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20.0, S_ALK=7*12)
-        C1.set_init_solubles(S_I=30, S_S=5.0, S_O=2.0, S_NO=20, S_NH=2.0, S_ALK=7*12)
+        # C1.set_init_solubles(S_I=30, S_S=5.0, S_O=2.0, S_NO=20, S_NH=2.0, S_ALK=7*12)
         C1.set_init_TSS([10, 20, 40, 70, 200, 300, 350, 350, 2000, 4000])
     else:
         for u in (A1, A2, O1, O2, O3):
             u._concs = None
         C1._solubles = C1._solids = None
 
-    bsm1.simulate(t_span = (0, t), method=method)
+    bsm1.simulate(t_span = (0, t), method=method, t_eval=np.arange(0, t+0.05, 0.05))
 
 
 if __name__ == '__main__':
@@ -151,13 +151,13 @@ if __name__ == '__main__':
             # 'BDF',
             # 'LSODA'
             ):
-        print(f'\nMethod {method}')
-        print('Without init')
-        run(t, method, set_init=False)
-        os.rename('sol.txt', f'sol_{t}_{method}_without_init.txt')
-        bsm1.reset_cache()
+        print(f'\nMethod {method}\n------------')
+        # print('\nWithout init')
+        # run(t, method, set_init=False)
+        # os.rename('sol.txt', f'sol_{t}_{method}_without_init.txt')
+        # bsm1.reset_cache()
 
-        print('With init')
+        print('\nWith init')
         run(t, method, set_init=True)
         os.rename('sol.txt', f'sol_{t}_{method}_with_init.txt')
         bsm1.reset_cache()
