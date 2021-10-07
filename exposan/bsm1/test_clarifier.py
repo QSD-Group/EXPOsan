@@ -41,6 +41,33 @@ def dydt(Q_in, X_in, X, Q_s):
     TSS_dot = ((flow_in - flow_out)/A + settle_in - settle_out)/hj        # (n,)
     return TSS_dot
 
+def dy_dt(t, Q_in, Q_s, Z_in, Z):
+    # dQC = np.zeros_like(QC)
+    # dQC[-(n+1)] = dQC_ins[-1]
+    # Q_in = QC_ins[-1]
+    Q_e = Q_in - Q_s
+    # C_in = QC_ins[:-1]
+    # Z_in = C_in*(1-x)
+    # X_in = sum(C_in*imass*x)           # influent TSS
+    # if X_in != 0: self._X_comp = C_in * x / X_in     # g COD/g TSS for solids in influent
+    # X_min = X_in * fns
+    # X = QC[-n:]                        # (n, ), TSS for each layer
+    # Z = QC[:n*m].reshape((n, m)) * (1-x) #(n,m), solubles for each layer, zero for all particulates
+    #***********TSS*************
+    # Q_jout = np.array([Q_e if j < jf else Q_in if j == jf else Q_s for j in range(n)])
+    # flow_out = X*Q_jout
+    # flow_in = np.array([Q_e*X[j+1] if j < jf else Q_in*X_in if j == jf else Q_s*X[j-1] for j in range(n)])
+    # VX = [_settling_flux(xj, vmax, vmaxp, X_min, rh, rp) for xj in X]
+    # J = [VX[j] if X[j+1] <= X_t and j < jf else min(VX[j], VX[j+1]) for j in range(n-1)]
+    # settle_out = np.array(J + [0])
+    # settle_in = np.array([0] + J)
+    # dQC[-n:] = ((flow_in - flow_out)/A + settle_in - settle_out)/hj        # (n,)
+    #*********solubles**********
+    dZ = np.array([Q_e*(Z[j+1]-Z[j]) if j < jf 
+                   else Q_s*(Z[j-1]-Z[j]) if j > jf
+                   else Q_in*(Z_in - Z[j]) for j in range(n)])         # (n, m), 0 wherever particulate
+    return dZ/A/hj
+
 X_in = 2350
 Q_in = 36892
 Q_s = 18831

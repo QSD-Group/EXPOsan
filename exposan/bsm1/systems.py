@@ -30,7 +30,7 @@ set_thermo(cmps)
 
 ############# create WasteStream objects #################
 Q = 18446           # influent flowrate [m3/d]
-Temp = 275.15+15    # temperature [K]
+Temp = 273.15+15    # temperature [K]
 
 PE = WasteStream('primary_effluent', T=Temp)
 PE.set_flow_by_concentration(Q,
@@ -56,12 +56,12 @@ V_ae = 1333    # aerated zone tank volume
 Q_was = 385    # sludge wastage flowrate
 Q_ras = 18446    # recycle sludge flowrate
 
-aer = pc.DiffusedAeration('Fixed_Aeration', 'S_O', KLa=240, DOsat=8.0)
-asm1 = pc.ASM1(components=cmps,
-                Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
+aer = pc.DiffusedAeration('Fixed_Aeration', 'S_O', KLa_20=240, SOTE=0.3,
+                          T_air=Temp, T_water=Temp, d_submergence=4-0.3)
+asm1 = pc.ASM1(Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
                 mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
                 eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
-                K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05)
+                K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05, path='_asm1.tsv')
 # asm1=None
 # aer=1
 
@@ -116,17 +116,17 @@ bsm1 = System('BSM1', path=(bio, S1, C1, S2), recycle=(RE, RAS))
 @time_printer
 def run(t, method, set_init, **kwargs):
     if set_init:
-        A1.set_init_conc(S_I=30.0, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100,
+        A1.set_init_conc(S_I=30.0, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
                           S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20.0, S_ALK=7*12)
-        A2.set_init_conc(S_I=30.0, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100,
+        A2.set_init_conc(S_I=30.0, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
                           S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20.0, S_ALK=7*12)
-        O1.set_init_conc(S_I=30.0, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100,
+        O1.set_init_conc(S_I=30.0, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
                           S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20.0, S_ALK=7*12)
-        O2.set_init_conc(S_I=30.0, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100,
+        O2.set_init_conc(S_I=30.0, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
                           S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20.0, S_ALK=7*12)
-        O3.set_init_conc(S_I=30.0, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100,
+        O3.set_init_conc(S_I=30.0, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
                           S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20.0, S_ALK=7*12)
-        # C1.set_init_solubles(S_I=30, S_S=5.0, S_O=2.0, S_NO=20, S_NH=2.0, S_ALK=7*12)
+        C1.set_init_solubles(S_I=30, S_S=5.0, S_O=2.0, S_NO=20, S_NH=2.0, S_ALK=7*12)
         C1.set_init_TSS([10, 20, 40, 70, 200, 300, 350, 350, 2000, 4000])
         # S1.set_init_conc(S_I=30.0, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100,
         #                   S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20.0, S_ALK=7*12)
@@ -141,13 +141,13 @@ def run(t, method, set_init, **kwargs):
 
 
 if __name__ == '__main__':
-    t = 2
+    t = 1
     for method in (
-            'RK45',
+            # 'RK45',
             # 'RK23',
             # 'DOP853',
             # 'Radau',
-            # 'BDF',
+            'BDF',
             # 'LSODA'
             ):
         print(f'\nMethod {method}\n------------')

@@ -9,7 +9,7 @@ Created on Sat Sep 11 20:19:58 2021
 # Add path for the local thermosteam and biosteam,
 # shouldn't need to do this if using Spyder
 # and having bst/tmo path added to sys.path
-import os, sys, io
+import os, sys, io, numpy as np
 import cProfile, pstats
 from pstats import SortKey
 from systems import bsm1
@@ -26,7 +26,7 @@ sys.path.extend([tmo_path, bst_path])
 # Run cProfile for systems.py, print results in the console
 # =============================================================================
 
-t = 0.1
+t = 1
 
 # Looks like `tuna` isn't able to show all the details
 # https://github.com/nschloe/tuna
@@ -34,7 +34,7 @@ t = 0.1
 #               f"systems_{''.join(str(t).split('.'))}.prof")
 
 # Instead using `pstats`, for t = 0.1, the stats are stored in `systems_01`
-cProfile.run(f'bsm1.simulate(t_span = (0, {t}))',
+cProfile.run(f'bsm1.simulate(t_span = (0, {t}), t_eval = np.arange(0, {t+0.05}, 0.05))',
              f"systems_{''.join(str(t).split('.'))}.prof")
 
 p = pstats.Stats(f"systems_{''.join(str(t).split('.'))}.prof")
