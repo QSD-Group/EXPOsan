@@ -15,7 +15,7 @@ and you can find the `result comparison <https://github.com/QSD-Group/EXPOsan/tr
 
 To run the module developed in Trimmer et al. [1]_, you can run the `Bwaise_sanitation_model.py` script
 in either `baseline <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bwaise/comparison/baseline>`_ 
-or `uncertainty <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bwaise/comparison/uncertainty>_`.
+or `uncertainty <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bwaise/comparison/uncertainty>`_.
 
 Note that minor modifications have been made in the scripts, specifically:
 
