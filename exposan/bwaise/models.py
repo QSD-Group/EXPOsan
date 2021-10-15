@@ -99,7 +99,6 @@ def add_metrics(system, kind):
     cat = 'TEA results'
     metrics.extend([
         Metric('Annual net cost', lambda: func['get_annual_net_cost'](tea, ppl), unit, cat),
-        Metric('Annual cost', lambda: func['get_annual_cost'](tea, ppl), unit, cat),
         Metric('Annual CAPEX', lambda: func['get_annual_CAPEX'](tea, ppl), unit, cat),
         Metric('Annual OPEX', lambda: func['get_annual_OPEX'](tea, ppl), unit, cat),
         Metric('Annual sales', lambda: func['get_annual_sales'](tea, ppl), unit, cat)
