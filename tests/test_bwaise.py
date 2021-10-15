@@ -16,13 +16,13 @@ def test_bwaise():
     from numpy.testing import assert_allclose
     from exposan import bwaise as bw
 
-    assert_allclose(bw.teaA.NPV, -41257584.19372313, rtol=1e-2)
-    assert_allclose(bw.teaB.NPV, -2547874.581265005, rtol=1e-2)
-    assert_allclose(bw.teaC.NPV, -77072858.90982002, rtol=1e-2)
+    assert_allclose(bw.teaA.NPV, -42012332.263887756, rtol=1e-2)
+    assert_allclose(bw.teaB.NPV, -3466006.2170442184, rtol=1e-2)
+    assert_allclose(bw.teaC.NPV, -65107482.77677129, rtol=1e-2)
 
-    assert_allclose(bw.lcaA.total_impacts['GlobalWarming'], 146386354.78674603, rtol=1e-2)
-    assert_allclose(bw.lcaB.total_impacts['GlobalWarming'], 11987512.603749081, rtol=1e-2)
-    assert_allclose(bw.lcaC.total_impacts['GlobalWarming'], 49928914.70357218, rtol=1e-2)
+    assert_allclose(bw.lcaA.total_impacts['GlobalWarming'], 214197344.34534717, rtol=1e-2)
+    assert_allclose(bw.lcaB.total_impacts['GlobalWarming'], 10349791.100520123, rtol=1e-2)
+    assert_allclose(bw.lcaC.total_impacts['GlobalWarming'], 55187798.215826064, rtol=1e-2)
 
 
 if __name__ == '__main__':
