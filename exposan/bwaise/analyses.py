@@ -23,6 +23,7 @@ from qsdsan import stats as s
 from qsdsan.utils import time_printer, copy_samples, colors, load_pickle, save_pickle
 from exposan import bwaise as bw
 from exposan.bwaise import results_path, figures_path
+from exposan.bwaise.models import organize_uncertainty_results, save_uncertainty_results
 
 # Comment these out if want to see all warnings
 import warnings
@@ -314,6 +315,9 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
 
             evaluate(model)
             table_dct['uncertainty'][ID] = model.table.copy()
+            organized_dct = organize_uncertainty_results(
+                model=model, spearman_results=model.spearman()[0])
+            save_uncertainty_results(model, organized_dct)
         else:
             model.table = table_dct['uncertainty'][ID]
 

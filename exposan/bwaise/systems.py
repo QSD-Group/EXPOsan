@@ -310,9 +310,9 @@ A4.line = 'Lumped WWTP cost'
 get_A4_lifetime = lambda: A4.lifetime
 def update_A_t0():
     A5.t0 = A2.emptying_period
-    A6.t0 = A5.t0 + A5.tau/365
+    A6.t0 = A5.t0 # A5.tau is for the solids
     A7.t0 = A6.t0 + A6.tau/365
-    A8.t0 = A7.t0 + A7.tau/365
+    A8.t0 = A5.t0 + A5.tau/365
 A4.specification = update_A_t0
 A4.run_after_specification = True
 
@@ -435,9 +435,7 @@ B4.line = 'Lumped WWTP cost'
 get_B4_lifetime = lambda: B4.lifetime
 def update_B_t0():
     B5.t0 = B2.emptying_period
-    B6.t0 = B5.t0 + A5.tau/365
-    B7.t0 = B6.t0 + A6.tau/365
-    B8.t0 = B7.t0 + A7.tau/365
+    B8.t0 = B7.t0 = B5.t0 + B5.tau/365
 B4.specification = update_B_t0
 B4.run_after_specification = True
 
@@ -586,9 +584,8 @@ C5 = su.LumpedCost('C5', ins=(C3-0, C4-0),
                    CAPEX=18606700, power=57120/(365*24), lifetime=8)
 get_C5_lifetime = lambda: C5.lifetime
 def update_C_t0():
-    C6.t0 = C2.collection_period / 365
+    C8.t0 = C6.t0 = C2.collection_period / 365
     C7.t0 = C6.t0 + C6.tau/365
-    C8.t0 = C7.t0 + C7.tau/365
 C5.specification = update_C_t0
 C5.run_after_specification = True
 
@@ -854,7 +851,7 @@ def save_all_reports():
     for i in (sysA, sysB, sysC, lcaA, lcaB, lcaC):
         if isinstance(i, bst.System):
             i.simulate()
-            i.save_report(f'{path}/{i.ID}.xlsx')
+            i.save_report(f'{path}/{i.ID}_report.xlsx')
         else:
             i.save_report(f'{path}/{i.system.ID}_lca.xlsx')
 

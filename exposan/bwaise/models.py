@@ -960,7 +960,8 @@ def run_uncertainty(model, seed=None, N=1000, rule='L',
 
 
 # Data organization
-def organize_uncertainty_results(model, percentiles, spearman_results):
+def organize_uncertainty_results(model, spearman_results,
+                                 percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1)):
     dct = result_dct[model._system.ID]
     index_p = len(model.parameters)
     dct['parameters'] = model.table.iloc[:, :index_p].copy()
@@ -974,19 +975,19 @@ def organize_uncertainty_results(model, percentiles, spearman_results):
     return dct
 
 
-def save_uncertainty_results(model, path=''):
+def save_uncertainty_results(model, dct=None, path=''):
     if not path:
         path = os.path.join(c_path, 'results')
 
         if not os.path.isdir(path):
             os.mkdir(path)
-        path = os.path.join(path, f'model{model._system.ID[-1]}.xlsx')
+        path = os.path.join(path, f'sys{model._system.ID[-1]}_model.xlsx')
 
     elif not (path.endswith('xlsx') or path.endswith('xls')):
         extension = path.split('.')[-1]
         raise ValueError(f'Only "xlsx" and "xls" are supported, not {extension}.')
 
-    dct = result_dct[model._system.ID]
+    dct = dct or result_dct[model._system.ID]
     if dct['parameters'] is None:
         raise ValueError('No cached result, run model first.')
     with pd.ExcelWriter(path) as writer:
