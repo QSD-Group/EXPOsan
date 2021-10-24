@@ -688,7 +688,7 @@ def update_lca_data(kind):
         lca_data_kind = kind
 
 
-def get_total_inputs(unit, multiplier):
+def get_total_inputs(unit, multiplier=1):
     if len(unit.ins) == 0: # Excretion units do not have ins
         ins = unit.outs
     else:
@@ -704,11 +704,11 @@ def get_total_inputs(unit, multiplier):
     return inputs
 
 
-def get_recovery(ins, outs, ppl):
+def get_recovery(ins, outs, multiplier=1):
     if not isinstance(outs, Iterable):
         outs = (outs,)
 
-    non_g = tuple(i for i in outs if i.phase != 'g')
+    non_g = tuple(i for i in outs if (i.phase != 'g' and 'los' not in i.ID))
     recovery = {}
     recovery['COD'] = sum(i.COD*i.F_vol/1e3 for i in non_g)
     recovery['N'] = sum(i.TN*i.F_vol/1e3 for i in non_g)
@@ -717,7 +717,7 @@ def get_recovery(ins, outs, ppl):
     recovery['K'] = sum(i.TK*i.F_vol/1e3 for i in non_g)
 
     for i, j in recovery.items():
-        inputs = get_total_inputs(ins, ppl)
+        inputs = get_total_inputs(ins, multiplier)
         recovery[i] /= inputs[i]
 
     return recovery
@@ -749,10 +749,10 @@ def cache_recoveries(sys):
     sys_dct['cache'][sys.ID] = cache = {
         'liq': get_recovery(ins=sys_dct['input_unit'][sys.ID],
                             outs=sys_dct['liq_unit'][sys.ID].ins,
-                            ppl=ppl),
+                            multiplier=ppl),
         'sol': get_recovery(ins=sys_dct['input_unit'][sys.ID],
                             outs=sys_dct['sol_unit'][sys.ID].ins,
-                            ppl=ppl),
+                            multiplier=ppl),
         'gas': dict(COD=gas_COD, N=0, P=0, K=0)
         }
     return cache

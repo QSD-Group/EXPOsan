@@ -178,11 +178,9 @@ def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
 
     # Household size
     b = systems.household_size
-    D = shape.Normal(mu=b, sigma=1.8)
+    D = shape.Trunc(shape.Normal(mu=b, sigma=1.8), lower=1)
     @param(name='Household size', element=Toilet, kind='coupled', units='cap/household',
-           baseline=b, distribution=D,
-            hook=lambda i: max(1, i)
-           )
+           baseline=b, distribution=D)
     def set_household_size(i):
         systems.household_size = i
 
@@ -242,8 +240,8 @@ def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
     @param(name='Full degradation time', element=unit, kind='coupled', units='yr',
            baseline=b, distribution=D)
     def set_tau_deg(i):
-        tau_deg = i
-        k = get_decay_k(tau_deg, log_deg)
+        systems.tau_deg = i
+        k = get_decay_k(i, systems.log_deg)
         for unit in sys.units:
             if hasattr(unit, 'decay_k_COD'):
                 setattr(unit, 'decay_k_COD', k)
@@ -256,8 +254,8 @@ def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
     @param(name='Log degradation', element=unit, kind='coupled', units='-',
            baseline=b, distribution=D)
     def set_log_deg(i):
-        systems.log = i
-        k = get_decay_k(tau_deg, log_deg)
+        systems.log_deg = i
+        k = get_decay_k(systems.tau_deg, i)
         for unit in sys.units:
             if hasattr(unit, 'decay_k_COD'):
                 setattr(unit, 'decay_k_COD', k)
@@ -407,8 +405,6 @@ def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
 
 get_biogas_factor = systems.get_biogas_factor
 def add_LCA_CF_parameters(model, kind=bw._lca_data.lca_data_kind):
-    # global lca_param_kind
-    # lca_param_kind = kind
     param = model.parameter
     sys = model.system
     lca = sys_dct['LCA'][sys.ID]
@@ -659,7 +655,7 @@ def add_existing_plant_parameters(toilet_unit, cost_unit, tea, model):
         systems.ppl_exist_sewer = i
 
     b = systems.ppl_exist_sludge
-    D = shape.Triangle(lower=416667, midpoint=b, upper=458333)
+    D = shape.Triangle(lower=375000, midpoint=b, upper=458333)
     @param(name='Exist sludge ppl', element=toilet_unit, kind='coupled', units='-',
            baseline=b, distribution=D)
     def set_sludge_ppl(i):
@@ -725,6 +721,25 @@ batch_setting_unit_params(facultative_lagoon_data, modelA, A7)
 modelA = add_lagoon_parameters(A7, modelA)
 
 all_paramsA = modelA.parameters
+
+# Legacy codes for to look at recoveries
+# A1 = systems.A1
+# get_recovery = systems.get_recovery
+# get_ppl = systems.get_ppl
+# metricsA = [m for m in modelA.metrics]
+# metricsA.extend([
+#     # Metric(f'Net emission {ind.ID}', FuncGetter(funcs[0], (ind.ID,)), unit, cat),
+#     Metric('A1', lambda: get_recovery(A1, systems.A2.ins, get_ppl('a'))['N'], '%', 'N'),
+#     Metric('A2', lambda: get_recovery(A1, systems.A3.ins, get_ppl('a'))['N'], '%', 'N'),
+#     Metric('A3', lambda: get_recovery(A1, systems.A4.ins, get_ppl('a'))['N'], '%', 'N'),
+#     Metric('A4', lambda: get_recovery(A1, systems.A5.ins, get_ppl('a'))['N'], '%', 'N'),
+#     Metric('A5', lambda: get_recovery(A1, systems.A6.ins, get_ppl('a'))['N'], '%', 'N'),
+#     Metric('A6', lambda: get_recovery(A1, systems.A7.ins, get_ppl('a'))['N'], '%', 'N'),
+#     Metric('A7', lambda: get_recovery(A1, systems.A8.ins, get_ppl('a'))['N'], '%', 'N'),
+#     Metric('A8', lambda: get_recovery(A1, systems.A12.ins, get_ppl('a'))['N'], '%', 'N'),
+#     Metric('A9', lambda: get_recovery(A1, systems.A13.ins, get_ppl('a'))['N'], '%', 'N'),
+#     ])
+# modelA.metrics = metricsA
 
 
 # %%
@@ -935,7 +950,6 @@ result_dct = {
 def run_uncertainty(model, seed=None, N=1000, rule='L',
                     percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
                     spearman_metrics='default'):
-    global result_dct
     if seed:
         np.random.seed(seed)
 
@@ -952,23 +966,30 @@ def run_uncertainty(model, seed=None, N=1000, rule='L',
             spearman_metrics = [i for i in model.metrics
                                 if 'net' in i.name.lower() or 'total' in i.name.lower()]
 
-        spearman_results = model.spearman_r(model.parameters, spearman_metrics)[0]
+        # Different versions of BioSTEAM
+        try: spearman_results = model.spearman_r(model.parameters, spearman_metrics)[0]
+        except: spearman_results = model.spearman_r(model.parameters, spearman_metrics)
+
         spearman_results.columns = pd.Index([i.name_with_units for i in spearman_metrics])
 
-    dct = organize_uncertainty_results(model, percentiles, spearman_results)
+    dct = organize_uncertainty_results(model, spearman_results, percentiles)
     return dct
 
 
 # Data organization
 def organize_uncertainty_results(model, spearman_results,
                                  percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1)):
+    global result_dct
     dct = result_dct[model._system.ID]
     index_p = len(model.parameters)
     dct['parameters'] = model.table.iloc[:, :index_p].copy()
     dct['data'] = model.table.iloc[:, index_p:].copy()
 
-    if percentiles:
-        dct['percentiles'] = dct['data'].quantile(q=percentiles)
+    if percentiles is not None:
+        try: dct['percentiles'] = dct['data'].quantile(q=percentiles)
+        except:
+            import pdb
+            pdb.set_trace()
 
     if spearman_results is not None:
         dct['spearman'] = spearman_results

@@ -316,7 +316,7 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
             evaluate(model)
             table_dct['uncertainty'][ID] = model.table.copy()
             organized_dct = organize_uncertainty_results(
-                model=model, spearman_results=model.spearman()[0])
+                model=model, spearman_results=model.spearman())
             save_uncertainty_results(model, organized_dct)
         else:
             model.table = table_dct['uncertainty'][ID]
@@ -439,9 +439,9 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
 # =============================================================================
 
 if __name__ == '__main__':
-    # run(N_uncertainty=1000, N_morris=10, from_record=False,
-    #     label_morris_lines=False, label_morris_points=True)
+    run(N_uncertainty=1000, N_morris=10, from_record=False,
+        label_morris_lines=False, label_morris_points=True)
     # run(N_uncertainty=100, N_morris=2, from_record=False,
     #     label_morris_lines=False, label_morris_points=True)
-    run(N_uncertainty=100, N_morris=2, from_record=True,
-        label_morris_lines=False, label_morris_points=True)
+    # run(N_uncertainty=100, N_morris=2, from_record=True,
+    #     label_morris_lines=False, label_morris_points=True)

@@ -30,7 +30,7 @@ import reuse_disposal
 
 for system in ('A', 'B', 'C'):
     # import input spreadsheet
-    input_excel_name = f'Bwaise_sanitation_inputs{system}.xlsx'
+    input_excel_name = f'Bwaise_sanitation_inputs_uncertainty{system}.xlsx'
     initial_inputs = pd.DataFrame.transpose(pd.read_excel(input_excel_name, sheet_name = 'initial_inputs').set_index('parameters'))
 
     # define the number of scenarios to be generated for the uncertainty analysis
@@ -127,7 +127,7 @@ for system in ('A', 'B', 'C'):
     correlation_parameters = correlation_parameters[:i]
 
     # write results to Excel file
-    writer = pd.ExcelWriter(f'Bwaise_sanitation_outputs{system}.xlsx', engine='xlsxwriter')
+    writer = pd.ExcelWriter(f'Bwaise_sanitation_outputs_uncertainty{system}.xlsx', engine='xlsxwriter')
 
     # define the summary percentile value to report
     summary_percentile = initial_inputs.summary_percentile.expected
