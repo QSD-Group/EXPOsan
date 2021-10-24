@@ -1,5 +1,5 @@
 # Needed by exposan
-qsdsan>=0.3.8
+qsdsan>=0.3.9
 
 # Packages for testing
 pytest-cov>=2.0.1
