@@ -986,10 +986,7 @@ def organize_uncertainty_results(model, spearman_results,
     dct['data'] = model.table.iloc[:, index_p:].copy()
 
     if percentiles is not None:
-        try: dct['percentiles'] = dct['data'].quantile(q=percentiles)
-        except:
-            import pdb
-            pdb.set_trace()
+        dct['percentiles'] = dct['data'].quantile(q=percentiles)
 
     if spearman_results is not None:
         dct['spearman'] = spearman_results

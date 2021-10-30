@@ -20,9 +20,9 @@ import numpy as np, pandas as pd, seaborn as sns
 from matplotlib import pyplot as plt
 from adjustText import adjust_text
 from qsdsan import stats as s
-from qsdsan.utils import time_printer, copy_samples, colors, load_pickle, save_pickle
+from qsdsan.utils import copy_samples, colors, load_pickle, save_pickle
 from exposan import bwaise as bw
-from exposan.bwaise import results_path, figures_path
+from exposan.bwaise import results_path, figures_path, evaluate, get_key_metrics
 from exposan.bwaise.models import organize_uncertainty_results, save_uncertainty_results
 
 # Comment these out if want to see all warnings
@@ -35,28 +35,14 @@ RGBs = {
     'B': colors.Guest.green.RGBn,
     'C': colors.Guest.blue.RGBn
     }
+
+alt_names = {
+    'COD': 'energy',
+    'Annual net cost': 'Cost',
+    'Net emission GlobalWarming': 'GWP',
+    }
+
 seed = 3221 # for numpy seeding and result consistency
-
-
-# %%
-
-# Net cost, net GWP, and total COD/N/P/K recovery
-def get_key_metrics(model):
-    key_metrics = [i for i in model.metrics if 'total' in i.name.lower()]
-    key_metrics += [i for i in model.metrics if 'net' in i.name.lower()]
-    for i in key_metrics:
-        i.name = i.name.replace('COD', 'energy')
-        i.name = i.name.replace('Annual net cost', 'Cost')
-        i.name = i.name.replace('Net emission GlobalWarming', 'GWP')
-
-    return key_metrics
-
-
-@time_printer
-def evaluate(model, samples=None):
-    if samples is not None:
-        model.load_samples(samples)
-    model.evaluate()
 
 
 # %%
@@ -300,7 +286,8 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
 
     ########## Uncertainty analysis ##########
     for model in models:
-        model.metrics = key_metrics = get_key_metrics(model)
+        # Net cost, net GWP, and total COD/N/P/K recovery
+        model.metrics = key_metrics = get_key_metrics(model, alt_names)
         ID = model.system.ID[-1]
 
         if not from_record:
