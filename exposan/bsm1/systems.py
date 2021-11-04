@@ -76,7 +76,9 @@ asm1 = pc.ASM1(Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
 #                 path='_asm1.tsv')
 
 ############# create unit operations #####################
-A1 = su.CSTR('A1', ins=[PE, RE, RAS], V_max=V_an,
+M1 = su.Mixer('M1', ins=[PE, RE, RAS])
+HD = su.HydraulicDelay('HD', ins=M1-0)
+A1 = su.CSTR('A1', ins=HD-0, V_max=V_an,
               aeration=None, suspended_growth_model=asm1)
 
 A2 = su.CSTR('A2', A1-0, V_max=V_an,
@@ -101,23 +103,37 @@ C1 = su.FlatBottomCircularClarifier('C1', S1-1, [SE, 'sludge'],
 
 S2 = su.Splitter('S2', C1-1, [RAS, WAS], split=Q_ras/(Q_ras+Q_was), init_with='WasteStream')
 
-# P1 = su.Pump('P1', SE, init_with='WasteStream')
+HD.set_init_conc(S_I=30.0, S_S=14.61, X_I=1149.1252, X_S=89.33, X_BH=2542.171, X_BA=148.46,
+                  X_P=448.18, S_O=0.393, S_NO=8.33, S_NH=7.70, S_ND=1.94, X_ND=5.61, 
+                  S_ALK=4.70*12)
+# HD.set_init_flow(92230.0)
 
-A1.set_init_conc(S_I=30.0, S_S=2.8082, X_I=1149.1252, X_S=82.1349, X_BH=2551.7658, X_BA=148.3894, 
-                  X_P=448.8519, S_O=0.0042984, S_NH=7.9179, S_ND=1.21661, X_ND=5.2849, S_NO=5.3699, 
-                  S_ALK=4.9277*12)
-A2.set_init_conc(S_I=30.0, S_S=1.4588, X_I=1149.1252, X_S=76.3862, X_BH=2553.3851, X_BA=148.3091, 
-                  X_P=449.5227, S_O=6.3132e-05, S_NH=8.3444, S_ND=0.88206, X_ND=5.0291, S_NO=3.662, 
-                  S_ALK=5.0802*12)
-O1.set_init_conc(S_I=30.0, S_S=1.1495, X_I=1149.1252, X_S=64.8549, X_BH=2557.1314, X_BA=148.9413, 
-                  X_P=450.4183, S_O=1.7184, S_NH=5.5479, S_ND=0.82889, X_ND=4.3924, S_NO=6.5409, 
-                  S_ALK=4.6748*12)
-O2.set_init_conc(S_I=30, S_S=0.99532, X_I=1149.1252, X_S=55.694, X_BH=2559.1826, X_BA=149.5271, 
-                  X_P=451.3147, S_O=2.4289, S_NO=9.299, S_NH=2.9674, S_ND=0.76679, X_ND=3.879, 
-                  S_ALK=4.2935*12)
-O3.set_init_conc(S_I=30.0, S_S=0.88949, X_I=1149.1252, X_S=49.3056, X_BH=2559.3436, X_BA=149.7971, 
-                  X_P=452.2111, S_O=0.49094, S_NH=1.7333, S_ND=0.68828, X_ND=3.5272, S_NO=10.4152, 
-                  S_ALK=4.1256*12)
+A1.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
+                  S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20, S_ALK=7*12)
+A2.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
+                  S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20, S_ALK=7*12)
+O1.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
+                  S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20, S_ALK=7*12)
+O2.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
+                  S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20, S_ALK=7*12)
+O3.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
+                  S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20, S_ALK=7*12)
+
+# A1.set_init_conc(S_I=30.0, S_S=2.8082, X_I=1149.1252, X_S=82.1349, X_BH=2551.7658, X_BA=148.3894, 
+#                   X_P=448.8519, S_O=0.0042984, S_NH=7.9179, S_ND=1.21661, X_ND=5.2849, S_NO=5.3699, 
+#                   S_ALK=4.9277*12)
+# A2.set_init_conc(S_I=30.0, S_S=1.4588, X_I=1149.1252, X_S=76.3862, X_BH=2553.3851, X_BA=148.3091, 
+#                   X_P=449.5227, S_O=6.3132e-05, S_NH=8.3444, S_ND=0.88206, X_ND=5.0291, S_NO=3.662, 
+#                   S_ALK=5.0802*12)
+# O1.set_init_conc(S_I=30.0, S_S=1.1495, X_I=1149.1252, X_S=64.8549, X_BH=2557.1314, X_BA=148.9413, 
+#                   X_P=450.4183, S_O=1.7184, S_NH=5.5479, S_ND=0.82889, X_ND=4.3924, S_NO=6.5409, 
+#                   S_ALK=4.6748*12)
+# O2.set_init_conc(S_I=30, S_S=0.99532, X_I=1149.1252, X_S=55.694, X_BH=2559.1826, X_BA=149.5271, 
+#                   X_P=451.3147, S_O=2.4289, S_NO=9.299, S_NH=2.9674, S_ND=0.76679, X_ND=3.879, 
+#                   S_ALK=4.2935*12)
+# O3.set_init_conc(S_I=30.0, S_S=0.88949, X_I=1149.1252, X_S=49.3056, X_BH=2559.3436, X_BA=149.7971, 
+#                   X_P=452.2111, S_O=0.49094, S_NH=1.7333, S_ND=0.68828, X_ND=3.5272, S_NO=10.4152, 
+#                   S_ALK=4.1256*12)
 
 C1.set_init_solubles(S_I=30, S_S=0.88949, S_O=0.49094, S_NO=10.4152, S_NH=1.7333, 
                       S_ND=0.68828, S_ALK=4.1256*12)
@@ -128,36 +144,38 @@ C1.set_init_TSS([12.4969, 18.1132, 29.5402, 68.9781, 356.0747,
       
 ############# system simulation ############################
 
-bio = System('Biological_treatment', path=(A1, A2, O1, O2, O3, S1), recycle=(RE,))
-bsm1 = System('BSM1', path=(bio, C1, S2), recycle=(RAS,))
+# bio = System('Biological_treatment', path=(A1, A2, O1, O2, O3, S1), recycle=(RE,))
+# bsm1 = System('BSM1', path=(bio, C1, S2), recycle=(RAS,))
+# bio.set_tolerance(rmol=1e-6)
+bsm1 = System('BSM1', path=(M1, HD, A1, A2, O1, O2, O3, S1, C1, S2), recycle=(RE, RAS))
 bsm1.set_tolerance(rmol=1e-6)
-# T = 10
-# bsm1.simulate(t=np.arange(0, T+0.05, 0.05))
+
 #%%
 @time_printer
-def run(T, method=None, **kwargs):
+def run(T, t_step, method=None, **kwargs):
     if method:
         bsm1.simulate(t_span=(0,T), 
-                      t_eval=np.arange(0, T+0.05, 0.05),
+                      t_eval=np.arange(0, T+t_step, t_step),
                       method=method, 
                       **kwargs)
     else:
         bsm1.simulate(solver='odeint', 
-                      t=np.arange(0, T+0.05, 0.05), 
+                      t=np.arange(0, T+t_step, t_step), 
                       **kwargs)
 
 
 if __name__ == '__main__':
-    T = 100
+    T = 10
+    t_step = 0.05
     # method = 'RK45'
     # method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    # method = 'BDF'
-    method = 'LSODA'
+    method = 'BDF'
+    # method = 'LSODA'
     # method = None
     print(f'\nMethod {method}\n------------')
     print(f'Time span 0-{T}d \n')
-    run(T, method=method)
+    run(T, t_step, method=method)
     os.rename('sol.txt', f'sol_{T}_{method}.txt')
     bsm1.reset_cache()
