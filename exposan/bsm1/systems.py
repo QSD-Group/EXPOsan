@@ -77,8 +77,10 @@ asm1 = pc.ASM1(Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
 
 ############# create unit operations #####################
 M1 = su.Mixer('M1', ins=[PE, RE, RAS])
-HD = su.HydraulicDelay('HD', ins=M1-0)
-A1 = su.CSTR('A1', ins=HD-0, V_max=V_an,
+# HD = su.HydraulicDelay('HD', ins=M1-0, t_delay=1e-3)
+# A1 = su.CSTR('A1', ins=HD-0, V_max=V_an,
+#               aeration=None, suspended_growth_model=asm1)
+A1 = su.CSTR('A1', ins=M1-0, V_max=V_an,
               aeration=None, suspended_growth_model=asm1)
 
 A2 = su.CSTR('A2', A1-0, V_max=V_an,
@@ -103,9 +105,9 @@ C1 = su.FlatBottomCircularClarifier('C1', S1-1, [SE, 'sludge'],
 
 S2 = su.Splitter('S2', C1-1, [RAS, WAS], split=Q_ras/(Q_ras+Q_was), init_with='WasteStream')
 
-HD.set_init_conc(S_I=30.0, S_S=14.61, X_I=1149.1252, X_S=89.33, X_BH=2542.171, X_BA=148.46,
-                  X_P=448.18, S_O=0.393, S_NO=8.33, S_NH=7.70, S_ND=1.94, X_ND=5.61, 
-                  S_ALK=4.70*12)
+# HD.set_init_conc(S_I=30.0, S_S=14.61, X_I=1149.1252, X_S=89.33, X_BH=2542.171, X_BA=148.46,
+#                   X_P=448.18, S_O=0.393, S_NO=8.33, S_NH=7.70, S_ND=1.94, X_ND=5.61, 
+#                   S_ALK=4.70*12)
 # HD.set_init_flow(92230.0)
 
 A1.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
@@ -116,8 +118,8 @@ O1.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100
                   S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20, S_ALK=7*12)
 O2.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
                   S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20, S_ALK=7*12)
-O3.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
-                  S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20, S_ALK=7*12)
+# O3.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
+#                   S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20, S_ALK=7*12)
 
 # A1.set_init_conc(S_I=30.0, S_S=2.8082, X_I=1149.1252, X_S=82.1349, X_BH=2551.7658, X_BA=148.3894, 
 #                   X_P=448.8519, S_O=0.0042984, S_NH=7.9179, S_ND=1.21661, X_ND=5.2849, S_NO=5.3699, 
@@ -131,14 +133,15 @@ O3.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100
 # O2.set_init_conc(S_I=30, S_S=0.99532, X_I=1149.1252, X_S=55.694, X_BH=2559.1826, X_BA=149.5271, 
 #                   X_P=451.3147, S_O=2.4289, S_NO=9.299, S_NH=2.9674, S_ND=0.76679, X_ND=3.879, 
 #                   S_ALK=4.2935*12)
-# O3.set_init_conc(S_I=30.0, S_S=0.88949, X_I=1149.1252, X_S=49.3056, X_BH=2559.3436, X_BA=149.7971, 
-#                   X_P=452.2111, S_O=0.49094, S_NH=1.7333, S_ND=0.68828, X_ND=3.5272, S_NO=10.4152, 
-#                   S_ALK=4.1256*12)
+O3.set_init_conc(S_I=30.0, S_S=0.88949, X_I=1149.1252, X_S=49.3056, X_BH=2559.3436, X_BA=149.7971, 
+                  X_P=452.2111, S_O=0.49094, S_NH=1.7333, S_ND=0.68828, X_ND=3.5272, S_NO=10.4152, 
+                  S_ALK=4.1256*12)
 
 C1.set_init_solubles(S_I=30, S_S=0.88949, S_O=0.49094, S_NO=10.4152, S_NH=1.7333, 
                       S_ND=0.68828, S_ALK=4.1256*12)
-C1.set_init_sludge_solids(X_I=1149.1252, X_S=89.33, X_BH=2542.17, X_BA=148.46, X_P=448.18, X_ND=5.61)
+# C1.set_init_sludge_solids(X_I=1149.1252, X_S=89.33, X_BH=2542.17, X_BA=148.46, X_P=448.18, X_ND=5.61)
 # C1.set_init_TSS([10, 20, 40, 70, 200, 300, 350, 350, 2000, 4000])
+C1.set_init_sludge_solids(X_I=1507.892825, X_S=89.3944512, X_BH=5913.554621, X_BA=372.6863109, X_P=641.7843247, X_ND=2.326138037)
 C1.set_init_TSS([12.4969, 18.1132, 29.5402, 68.9781, 356.0747, 
                   356.0747, 356.0747, 356.0747, 356.0747, 6393.9844])
       
@@ -147,8 +150,9 @@ C1.set_init_TSS([12.4969, 18.1132, 29.5402, 68.9781, 356.0747,
 # bio = System('Biological_treatment', path=(A1, A2, O1, O2, O3, S1), recycle=(RE,))
 # bsm1 = System('BSM1', path=(bio, C1, S2), recycle=(RAS,))
 # bio.set_tolerance(rmol=1e-6)
-bsm1 = System('BSM1', path=(M1, HD, A1, A2, O1, O2, O3, S1, C1, S2), recycle=(RE, RAS))
-bsm1.set_tolerance(rmol=1e-6)
+# bsm1 = System('BSM1', path=(M1, HD, A1, A2, O1, O2, O3, S1, C1, S2), recycle=(RE, RAS))
+bsm1 = System('BSM1', path=(M1, A1, A2, O1, O2, O3, S1, C1, S2), recycle=(RE, RAS))
+# bsm1.set_tolerance(rmol=1e-6)
 
 #%%
 @time_printer
@@ -165,13 +169,13 @@ def run(T, t_step, method=None, **kwargs):
 
 
 if __name__ == '__main__':
-    T = 10
-    t_step = 0.05
-    # method = 'RK45'
+    T = 55
+    t_step = 0.5
+    method = 'RK45'
     # method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    method = 'BDF'
+    # method = 'BDF'
     # method = 'LSODA'
     # method = None
     print(f'\nMethod {method}\n------------')
