@@ -12,9 +12,9 @@ Created on Sat Sep 11 20:19:58 2021
 import os, sys, io, numpy as np
 import cProfile, pstats
 from pstats import SortKey
-from systems import bsm1
+from exposan import bsm1
 
-dir_path = os.path.dirname('systems.py')
+dir_path = os.path.dirname(bsm1.__file__)
 tmo_path = os.path.join(dir_path, '../../../tmo')
 bst_path = os.path.join(dir_path, '../../../bst')
 sys.path.extend([tmo_path, bst_path])

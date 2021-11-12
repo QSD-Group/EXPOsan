@@ -19,6 +19,7 @@ from qsdsan import sanunits as su
 from qsdsan import processes as pc
 from qsdsan import WasteStream, set_thermo
 from qsdsan.utils import time_printer
+from exposan.bsm1 import bsm1_path
 
 # =============================================================================
 # Benchmark Simulation Model No. 1
@@ -67,13 +68,13 @@ asm1 = pc.ASM1(Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
                 mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
                 eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
                 K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05, fr_SS_COD=0.75,
-                path='_asm1.tsv')
+                path=os.path.join(bsm1_path, '_asm1.tsv'))
 
 # asm1 = pc.ASM1(Y_A=0.24, Y_H=0.666, f_P=0.08, i_XB=0.086, i_XP=0.06,
 #                 mu_H=6.0, K_S=20.0, K_O_H=0.2, K_NO=0.5, b_H=0.62,
 #                 eta_g=0.8, eta_h=0.4, k_h=3.0, K_X=0.03, mu_A=0.8,
 #                 K_NH=1.0, b_A=0.04, K_O_A=0.4, k_a=0.08, fr_SS_COD=1/1.48, 
-#                 path='_asm1.tsv')
+#                 path=os.path.join(bsm1_path, '_asm1.tsv'))
 
 ############# create unit operations #####################
 M1 = su.Mixer('M1', ins=[PE, RE, RAS])
