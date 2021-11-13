@@ -49,7 +49,7 @@ or other fork and/or branch (replace ``<USERNAME_OF_THE_FORK>`` and ``<BRANCH_NA
 
 .. code::
 
-    pip install git+https://github.com/<USERNAME_OF_THE_FORK>/EXPOsan@<BRANCH_NAME>
+    pip install git+https://github.com/<USERNAME_OF_THE_FORK>/EXPOsan.git@<BRANCH_NAME>
 
 
 You can also download the package from `PyPI <https://pypi.org/project/exposan/>`_.
