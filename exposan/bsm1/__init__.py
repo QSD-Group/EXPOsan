@@ -12,14 +12,11 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-import os
-bsm1_path = os.path.dirname(__file__)
-del os
-
 from . import systems
 
 from .systems import *
 
 __all__ = (
     'systems',
+    *systems.__all__,
 	)

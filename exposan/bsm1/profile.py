@@ -6,27 +6,21 @@ Created on Sat Sep 11 20:19:58 2021
 @author: Yalin Li
 """
 
-# Add path for the local thermosteam and biosteam,
-# shouldn't need to do this if using Spyder
-# and having bst/tmo path added to sys.path
-import os, sys, io, numpy as np
+import os, sys, io
+os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+
+import numpy as np
 import cProfile, pstats
 from pstats import SortKey
-from exposan import bsm1
+from exposan.bsm1 import bsm1, bsm1_path
 
-dir_path = os.path.dirname(bsm1.__file__)
-tmo_path = os.path.join(dir_path, '../../../tmo')
-bst_path = os.path.join(dir_path, '../../../bst')
-sys.path.extend([tmo_path, bst_path])
-
-
-# %%
 
 # =============================================================================
 # Run cProfile for systems.py, print results in the console
 # =============================================================================
 
-t = 1
+t = 50
+t_step = 0.5
 
 # Looks like `tuna` isn't able to show all the details
 # https://github.com/nschloe/tuna
@@ -34,7 +28,7 @@ t = 1
 #               f"systems_{''.join(str(t).split('.'))}.prof")
 
 # Instead using `pstats`, for t = 0.1, the stats are stored in `systems_01`
-cProfile.run(f'bsm1.simulate(t_span = (0, {t}), t_eval = np.arange(0, {t+0.05}, 0.05))',
+cProfile.run(f'bsm1.simulate(t_span=(0, {t}), t_eval=np.arange(0, {t+t_step}, {t_step}))',
              f"systems_{''.join(str(t).split('.'))}.prof")
 
 p = pstats.Stats(f"systems_{''.join(str(t).split('.'))}.prof")
@@ -88,7 +82,7 @@ text = 'ncalls' + text.split('ncalls')[-1]
 text = '\n'.join([','.join(line.rstrip().split(None,5)) for line in text.split('\n')])
 
 # Save the results to csv, here
-csv_path = os.path.join(dir_path, f"systems_{''.join(str(t).split('.'))}.csv")
+csv_path = os.path.join(bsm1_path, f"systems_{''.join(str(t).split('.'))}.csv")
 with open(csv_path, 'w+') as f:
     f.write(text)
     f.close()
