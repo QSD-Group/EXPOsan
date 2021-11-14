@@ -176,12 +176,13 @@ def run(t, t_step, method=None, **kwargs):
                       **kwargs)
     else:
         bsm1.simulate(solver='odeint', 
-                      t=np.arange(0, t+t_step, t_step), 
+                      t=np.arange(0, t+t_step, t_step),
                       **kwargs)
 
 
 if __name__ == '__main__':
-    t = 10
+    bsm1.reset_cache()
+    t = 1
     t_step = 0.5
     method = 'RK45'
     # method = 'RK23'
@@ -190,8 +191,12 @@ if __name__ == '__main__':
     # method = 'BDF'
     # method = 'LSODA'
     # method = None
-    print(f'\nMethod {method}\n------------')
+    msg = f'Method {method}'
+    print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
     print(f'Time span 0-{t}d \n')
-    run(t, t_step, method=method)
-    os.rename('sol.txt', f'sol_{t}_{method}.txt')
-    bsm1.reset_cache()
+    run(t, t_step, method=method, export_state_to='bsm1.xlsx')
+    os.rename('bsm1.xlsx', f'bsm1_{t}_{method}.xlsx')
+    
+    
+# If want to see a quick plot of the state variable of a certain unit
+fig, ax = A1.plot_state_over_time(system=bsm1, state_var=('S_S', 'X_I'))

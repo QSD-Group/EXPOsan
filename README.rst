@@ -39,7 +39,7 @@ or for a specific version (replace X.X.X with the version number):
 
     pip install exposan==X.X.X
 
-If you want to install the latest GitHub version at the `main branch <https://github.com/qsd-group/exposan>`_:
+If you want to install the latest GitHub version at the `main branch <https://github.com/qsd-group/exposan>`_ (note that you can still use the ``-U`` flag for upgrading):
 
 .. code::
 
