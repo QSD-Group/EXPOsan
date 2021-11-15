@@ -171,39 +171,39 @@ KCl_item = StreamImpactItem(ID = 'KCl_item', GWP=GWP_dct['KCl'])
 def batch_create_streams(prefix):
     stream_dct = {}
     stream_dct['CH4'] = WasteStream(f'{prefix}_CH4', phase='g',
-                                    impact_item=CH4_item.copy(set_as_source=True))
+                                    stream_impact_item=CH4_item.copy(set_as_source=True))
     stream_dct['N2O'] = WasteStream(f'{prefix}_N2O', phase='g',
-                                    impact_item=N2O_item.copy(set_as_source=True))
+                                    stream_impact_item=N2O_item.copy(set_as_source=True))
     stream_dct['liq_N'] = WasteStream(f'{prefix}_liq_N', phase='l', price=price_dct['N'],
-                                      impact_item=N_item.copy(set_as_source=True))
+                                      stream_impact_item=N_item.copy(set_as_source=True))
     stream_dct['sol_N'] = WasteStream(f'{prefix}_sol_N', phase='l', price=price_dct['N'],
-                                      impact_item=N_item.copy(set_as_source=True))
+                                      stream_impact_item=N_item.copy(set_as_source=True))
     stream_dct['liq_P'] = WasteStream(f'{prefix}_liq_P', phase='l', price=price_dct['P'],
-                                      impact_item=P_item.copy(set_as_source=True))
+                                      stream_impact_item=P_item.copy(set_as_source=True))
     stream_dct['sol_P'] = WasteStream(f'{prefix}_sol_P', phase='l', price=price_dct['P'],
-                                      impact_item=P_item.copy(set_as_source=True))
+                                      stream_impact_item=P_item.copy(set_as_source=True))
     stream_dct['liq_K'] = WasteStream(f'{prefix}_liq_K', phase='l', price=price_dct['K'],
-                                      impact_item=K_item.copy(set_as_source=True))
+                                      stream_impact_item=K_item.copy(set_as_source=True))
     stream_dct['sol_K'] = WasteStream(f'{prefix}_sol_K', phase='l', price=price_dct['K'],
-                                      impact_item=K_item.copy(set_as_source=True))
+                                      stream_impact_item=K_item.copy(set_as_source=True))
     stream_dct['polymer'] = WasteStream(f'{prefix}_polymer', phase='s', price=price_dct['Polymer'],
-                                      impact_item=resin_item.copy(set_as_source=True))
+                                      stream_impact_item=resin_item.copy(set_as_source=True))
     stream_dct['resin'] = WasteStream(f'{prefix}_resin', phase='s', price=price_dct['Resin'],
-                                      impact_item=resin_item.copy(set_as_source=True))
+                                      stream_impact_item=resin_item.copy(set_as_source=True))
     stream_dct['filter_bag'] = WasteStream(f'{prefix}_filter_bag', phase='s', price=price_dct['FilterBag'],
-                                      impact_item=filter_bag_item.copy(set_as_source=True))
+                                      stream_impact_item=filter_bag_item.copy(set_as_source=True))
     stream_dct['MgOH2'] = WasteStream(f'{prefix}_MgOH2', phase='s', price=price_dct['MgOH2'],
-                                      impact_item=MgOH2_item.copy(set_as_source=True))
+                                      stream_impact_item=MgOH2_item.copy(set_as_source=True))
     stream_dct['MgCO3'] = WasteStream(f'{prefix}_MgCO3', phase='s', price=price_dct['MgCO3'],
-                                      impact_item=MgCO3_item.copy(set_as_source=True))
+                                      stream_impact_item=MgCO3_item.copy(set_as_source=True))
     stream_dct['H2SO4'] = WasteStream(f'{prefix}_H2SO4', phase='s', price=price_dct['H2SO4'],
-                                      impact_item=H2SO4_item.copy(set_as_source=True))
+                                      stream_impact_item=H2SO4_item.copy(set_as_source=True))
     stream_dct['struvite'] = WasteStream(f'{prefix}_struvite', phase='s', price=price_dct['struvite'],
-                                      impact_item=struvite_item.copy(set_as_source=True))
+                                      stream_impact_item=struvite_item.copy(set_as_source=True))
     stream_dct['salt'] = WasteStream(f'{prefix}_salt', phase='s', price=price_dct['salt'],
-                                      impact_item=salt_item.copy(set_as_source=True))
+                                      stream_impact_item=salt_item.copy(set_as_source=True))
     stream_dct['KCl'] = WasteStream(f'{prefix}_KCl', phase='l', price=price_dct['KCl'],
-                                      impact_item=KCl_item.copy(set_as_source=True))
+                                      stream_impact_item=KCl_item.copy(set_as_source=True))
    # stream_dct['sludge'] = WasteStream(f'{prefix}_sludge', phase='s', price=price_dct['sludge'],
                                      # impact_item=sludge_item.copy(set_as_source=True))
     
