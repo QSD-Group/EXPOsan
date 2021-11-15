@@ -250,7 +250,7 @@ A2 = su.MURTToilet('A2', ins=(A1-0, A1-1,
 
 ###################### Treatment ######################
 #Septic Tank 
-A3 = su.PrimarySepticTank('A3', ins=(A2-0), 
+A3 = su.PrimaryReclaimer('A3', ins=(A2-0), 
                     outs=('treated', 'A3_CH4', 'A3_N2O', 'sludge'), 
                     decay_k_COD=get_decay_k(tau_deg, log_deg), 
                     decay_k_N=get_decay_k(tau_deg, log_deg),
