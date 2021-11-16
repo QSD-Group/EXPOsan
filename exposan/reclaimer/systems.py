@@ -251,21 +251,22 @@ A2 = su.MURTToilet('A2', ins=(A1-0, A1-1,
 ###################### Treatment ######################
 #Septic Tank 
 A3 = su.PrimaryReclaimer('A3', ins=(A2-0), 
-                    outs=('treated', 'A3_CH4', 'A3_N2O', 'sludge'), 
+                    outs=('A3_treated', 'A3_CH4', 'A3_N2O', 'A3_sludge'), 
                     decay_k_COD=get_decay_k(tau_deg, log_deg), 
                     decay_k_N=get_decay_k(tau_deg, log_deg),
                     max_CH4_emission=get_max_CH4_emission())
 
-A4 = su.Ultrafiltration('A4', ins=(A3-0), outs = ('treated', 'sludge'))
+
+A4 = su.Ultrafiltration('A4', ins=(A3-0), outs = ('A4_treated', 'retentate'))
                         
 A5 = su.IonExchangeReclaimer('A5', ins=(A4-0, streamsA['GAC'], streamsA['KCl']),
-                                outs=('treated', 'SpentGAC',streamsA['Conc_NH3']),
+                                outs=('A5_treated', 'SpentGAC',streamsA['Conc_NH3']),
                                 decay_k_COD=get_decay_k(tau_deg, log_deg), 
                                 decay_k_N=get_decay_k(tau_deg, log_deg),
                                 max_CH4_emission=get_max_CH4_emission(), if_gridtied=True)
 
 A6 = su.ECR('A6', ins=(A5-0, streamsA['salt'], streamsA['HCl_acid']), 
-                    outs = ('treated'),
+                    outs = ('A6_treated'),
                     decay_k_COD=get_decay_k(tau_deg, log_deg),)
 
 
