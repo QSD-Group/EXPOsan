@@ -257,7 +257,7 @@ A3 = su.PrimaryReclaimer('A3', ins=(A2-0),
                     max_CH4_emission=get_max_CH4_emission())
 
 
-A4 = su.Ultrafiltration('A4', ins=(A3-0), outs = ('A4_treated', 'retentate'))
+A4 = su.Ultrafiltration('A4', ins=(A3-0), outs = ('A4_treated', 'retentate', '', ''))
                         
 A5 = su.IonExchangeReclaimer('A5', ins=(A4-0, streamsA['GAC'], streamsA['KCl']),
                                 outs=('A5_treated', 'SpentGAC',streamsA['Conc_NH3']),
