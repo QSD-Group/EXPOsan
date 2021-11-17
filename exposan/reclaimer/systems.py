@@ -107,7 +107,10 @@ price_dct = {
     'struvite': 0,
     'salt': 0,
     'HCl_acid': 0,
-    'KCl': 0
+    'KCl': 0,
+    'GAC': 1.1,
+    'Zeolite': 1.45,
+    'Conc_NH3': 0, #1.333*(14/17)*get_price_factor(),
     }
 
 
@@ -127,8 +130,10 @@ GWP_dct = {
     'struvite': 0,
     'salt': 0.266695553, 
     'HCl_acid': 0.8,
-    'KCl': 0.8
-    
+    'KCl': 0.8,
+    'GAC': 8.388648277,
+    'Zeolite': 5.175,
+    'Conc_NH3':0, #-5.4*(14/17)
     }
 
 items = ImpactItem.get_all_items()
@@ -166,6 +171,9 @@ H2SO4_item = StreamImpactItem(ID='H2SO4_item', GWP=GWP_dct['H2SO4'])
 struvite_item = StreamImpactItem(ID = 'struvite_item', GWP=GWP_dct['struvite'])
 salt_item = StreamImpactItem(ID = 'salt_item', GWP=GWP_dct['salt'])
 KCl_item = StreamImpactItem(ID = 'KCl_item', GWP=GWP_dct['KCl'])
+GAC_item = StreamImpactItem(ID='GAC_item', GWP=GWP_dct['GAC'])
+Zeolite_item = StreamImpactItem(ID='Zeolite_item', GWP=GWP_dct['Zeolite'])
+Conc_NH3_item = StreamImpactItem(ID='Conc_NH3', GWP=GWP_dct['Conc_NH3'])
 #sludge_item = StreamImpactItem(ID = 'sludge_item', GWP=GWP_dct['sludge'])
 
 def batch_create_streams(prefix):
@@ -204,7 +212,16 @@ def batch_create_streams(prefix):
                                       stream_impact_item=salt_item.copy(set_as_source=True))
     stream_dct['KCl'] = WasteStream(f'{prefix}_KCl', phase='l', price=price_dct['KCl'],
                                       stream_impact_item=KCl_item.copy(set_as_source=True))
-   # stream_dct['sludge'] = WasteStream(f'{prefix}_sludge', phase='s', price=price_dct['sludge'],
+    stream_dct['GAC'] = WasteStream(f'{prefix}_GAC', phase='s', price=price_dct['GAC'], 
+                                      stream_impact_item=GAC_item.copy(set_as_source=True))
+    stream_dct['Zeolite'] = WasteStream(f'{prefix}_Zeolite', phase='s', price=price_dct['Zeolite'], 
+                                      stream_impact_item=Zeolite_item.copy(set_as_source=True))
+    stream_dct['Conc_NH3'] = WasteStream(f'{prefix}_Conc_NH3', phase='s', price=price_dct['Conc_NH3'], 
+                                      stream_impact_item=Conc_NH3_item.copy(set_as_source=True))
+                
+  
+                
+  # stream_dct['sludge'] = WasteStream(f'{prefix}_sludge', phase='s', price=price_dct['sludge'],
                                      # impact_item=sludge_item.copy(set_as_source=True))
     
     
@@ -246,7 +263,7 @@ A2 = su.MURTToilet('A2', ins=(A1-0, A1-1,
                     N_user=120/7, N_toilet=7, 
                     if_flushing=True, if_desiccant=False, if_toilet_paper=True,
                     CAPEX = 0,
-                    OPEX_over_CAPEX= 0.07)
+                    OPEX_over_CAPEX= 0.07) 
 
 ###################### Treatment ######################
 #Septic Tank 
@@ -257,10 +274,10 @@ A3 = su.PrimaryReclaimer('A3', ins=(A2-0),
                     max_CH4_emission=get_max_CH4_emission())
 
 
-A4 = su.Ultrafiltration('A4', ins=(A3-0), outs = ('A4_treated', 'retentate', '', ''))
+A4 = su.Ultrafiltration('A4', ins=(A3-0), outs = ('A4_treated', 'retentate'))
                         
-A5 = su.IonExchangeReclaimer('A5', ins=(A4-0, streamsA['GAC'], streamsA['KCl']),
-                                outs=('A5_treated', 'SpentGAC',streamsA['Conc_NH3']),
+A5 = su.IonExchangeReclaimer('A5', ins=(A4-0, streamsA['Zeolite'], streamsA['GAC'], streamsA['KCl']),
+                                outs=('A5_treated', 'SpentZeolite', 'SpentGAC',streamsA['Conc_NH3']),
                                 decay_k_COD=get_decay_k(tau_deg, log_deg), 
                                 decay_k_N=get_decay_k(tau_deg, log_deg),
                                 max_CH4_emission=get_max_CH4_emission(), if_gridtied=True)
