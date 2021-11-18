@@ -184,7 +184,7 @@ def run(t, t_step, method=None, **kwargs):
 
 if __name__ == '__main__':
     bsm1.reset_cache()
-    t = 1
+    t = 50
     t_step = 0.5
     method = 'RK45'
     # method = 'RK23'
@@ -198,6 +198,5 @@ if __name__ == '__main__':
     print(f'Time span 0-{t}d \n')
     run(t, t_step, method=method)
     
-    
-# If want to see a quick plot of the state variable of a certain unit
-fig, ax = A1.plot_state_over_time(system=bsm1, state_var=('S_S', 'X_I'))
+    # If want to see a quick plot of the state variable of a certain unit
+    fig, ax = A1.plot_state_over_time(system=bsm1, state_var=('S_S', 'X_I'))
