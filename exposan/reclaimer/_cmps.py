@@ -89,6 +89,13 @@ KCl = Component.from_chemical('KCl', tmo.Chemical('KCl'),
                             phase='l', particle_size='Soluble',
                             degradability='Undegradable', organic=False)
 
+GAC = Component.from_chemical('GAC', tmo.Chemical('C'),
+                            phase='s', particle_size='Particulate',
+                            degradability='Undegradable', organic=True)
+
+
+
+
 def add_V_from_rho(cmp, rho):
     V_model = tmo.functional.rho_to_V(rho, cmp.MW)
     try: cmp.V.add_model(V_model)
@@ -99,6 +106,12 @@ def add_V_from_rho(cmp, rho):
 Tissue = Component('Tissue', MW=1, phase='s', particle_size='Particulate',
                     degradability='Undegradable', organic=False,
                     description='Tissue for toilet paper')
+
+Zeolite = Component.from_chemical('Zeolite', tmo.Chemical('PubChem=9942228'),
+                    formula='Na2Al2Si2O8', phase='s', particle_size='Particulate',
+                    degradability='Slowly', organic=False)
+
+
 # 375 kg/m3 is the average of 250-500 for tissue from
 # https://paperonweb.com/density.htm (accessed 2020-11-12)
 add_V_from_rho(Tissue, 375)
@@ -116,6 +129,7 @@ Struvite = Component.from_chemical('Struvite',
                                    formula='NH4MgPO4·H12O6',
                                    phase='s', particle_size='Particulate',
                                    degradability='Undegradable', organic=False)
+
 # http://www.chemspider.com/Chemical-Structure.8396003.html (accessed 2020-11-19)
 add_V_from_rho(Struvite, 1711)
     
@@ -132,7 +146,7 @@ for cmp in (NonNH3, P, K, Mg, Ca, OtherSS):
     add_V_from_rho(cmp, 1e3) # assume the same density as water
 
 cmps = Components((NH3, NonNH3, P, K, Mg, Ca, H2O, OtherSS, N2O, CH4, O2, N2,
-                   CO2, P4O10, Tissue, WoodAsh, Struvite, HAP, KCl))
+                   CO2, P4O10, Tissue, WoodAsh, Zeolite, Struvite, HAP, KCl))
 for i in cmps:
     if i.HHV is None: i.HHV = 0
     if i.LHV is None: i.LHV = 0

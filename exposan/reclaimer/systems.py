@@ -174,6 +174,7 @@ KCl_item = StreamImpactItem(ID = 'KCl_item', GWP=GWP_dct['KCl'])
 GAC_item = StreamImpactItem(ID='GAC_item', GWP=GWP_dct['GAC'])
 Zeolite_item = StreamImpactItem(ID='Zeolite_item', GWP=GWP_dct['Zeolite'])
 Conc_NH3_item = StreamImpactItem(ID='Conc_NH3', GWP=GWP_dct['Conc_NH3'])
+HCl_acid = StreamImpactItem(ID='HCl_acid', GWP=GWP_dct['HCl_acid'])
 #sludge_item = StreamImpactItem(ID = 'sludge_item', GWP=GWP_dct['sludge'])
 
 def batch_create_streams(prefix):
@@ -218,7 +219,8 @@ def batch_create_streams(prefix):
                                       stream_impact_item=Zeolite_item.copy(set_as_source=True))
     stream_dct['Conc_NH3'] = WasteStream(f'{prefix}_Conc_NH3', phase='s', price=price_dct['Conc_NH3'], 
                                       stream_impact_item=Conc_NH3_item.copy(set_as_source=True))
-                
+    stream_dct['HCl_acid'] = WasteStream(f'{prefix}_Conc_NH3', phase='l', price=price_dct['HCl_acid'], 
+                                      stream_impact_item=Conc_NH3_item.copy(set_as_source=True))           
   
                 
   # stream_dct['sludge'] = WasteStream(f'{prefix}_sludge', phase='s', price=price_dct['sludge'],
@@ -282,7 +284,7 @@ A5 = su.IonExchangeReclaimer('A5', ins=(A4-0, streamsA['Zeolite'], streamsA['GAC
                                 decay_k_N=get_decay_k(tau_deg, log_deg),
                                 max_CH4_emission=get_max_CH4_emission(), if_gridtied=True)
 
-A6 = su.ECR('A6', ins=(A5-0, streamsA['salt'], streamsA['HCl_acid']), 
+A6 = su.ECR_Reclaimer('A6', ins=(A5-0, streamsA['salt'], streamsA['HCl_acid']), 
                     outs = ('A6_treated'),
                     decay_k_COD=get_decay_k(tau_deg, log_deg),)
 
