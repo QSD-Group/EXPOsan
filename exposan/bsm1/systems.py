@@ -152,7 +152,7 @@ C1.set_init_TSS([12.4969, 18.1132, 29.5402, 68.9781, 356.0747,
 # bio.set_tolerance(rmol=1e-6)
 # bsm1 = System('BSM1', path=(M1, HD, A1, A2, O1, O2, O3, S1, C1, S2), recycle=(RE, RAS))
 bsm1 = System('BSM1', path=(M1, A1, A2, O1, O2, O3, S1, C1, S2), recycle=(RE, RAS))
-# bsm1.set_tolerance(rmol=1e-6)
+bsm1.set_tolerance(rmol=1e-6)
 
 #%%
 @time_printer
@@ -161,16 +161,18 @@ def run(T, t_step, method=None, **kwargs):
         bsm1.simulate(t_span=(0,T), 
                       t_eval=np.arange(0, T+t_step, t_step),
                       method=method, 
+                      export_state_to=f'sol_{T}d_{method}.tsv',
                       **kwargs)
     else:
         bsm1.simulate(solver='odeint', 
                       t=np.arange(0, T+t_step, t_step), 
+                      export_state_to=f'sol_{T}d_odeint.tsv',
                       **kwargs)
 
 
 if __name__ == '__main__':
-    T = 55
-    t_step = 0.5
+    T = 50
+    t_step = 1
     method = 'RK45'
     # method = 'RK23'
     # method = 'DOP853'
@@ -181,5 +183,5 @@ if __name__ == '__main__':
     print(f'\nMethod {method}\n------------')
     print(f'Time span 0-{T}d \n')
     run(T, t_step, method=method)
-    os.rename('sol.txt', f'sol_{T}_{method}.txt')
+    # os.rename('sol.txt', f'sol_{T}_{method}.txt')
     bsm1.reset_cache()
