@@ -173,10 +173,12 @@ def run(t, t_step, method=None, **kwargs):
         bsm1.simulate(t_span=(0,t), 
                       t_eval=np.arange(0, t+t_step, t_step),
                       method=method, 
+                      export_state_to=f'sol_{t}d_{method}.tsv',
                       **kwargs)
     else:
         bsm1.simulate(solver='odeint', 
                       t=np.arange(0, t+t_step, t_step),
+                      export_state_to=f'sol_{t}d_odeint.tsv',
                       **kwargs)
 
 
@@ -194,8 +196,7 @@ if __name__ == '__main__':
     msg = f'Method {method}'
     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
     print(f'Time span 0-{t}d \n')
-    run(t, t_step, method=method, export_state_to='bsm1.xlsx')
-    os.rename('bsm1.xlsx', f'bsm1_{t}_{method}.xlsx')
+    run(t, t_step, method=method)
     
     
 # If want to see a quick plot of the state variable of a certain unit
