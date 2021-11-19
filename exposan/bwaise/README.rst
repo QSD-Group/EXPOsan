@@ -4,11 +4,28 @@ bwaise: Sanitation Alternatives in Bwaise, Uganda
 
 Summary
 -------
-Systems included in this modules are based on Scenarios A-C as described in
+Systems included in this module are based on Scenarios A-C as described in
 Trimmer et al. [1]_ and named as "sysA", "sysB", and "sysC".
 Previous scripts developed for modeling and analyses of
 the systems can be found in another `repository
 <https://github.com/QSD-Group/Bwaise-sanitation-alternatives>`_.
+
+Results generated from this module have been benchmarked against Trimmer et al. [1]_
+and you can find the `result comparison <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bwaise/comparison>`_.
+
+To run the module developed in Trimmer et al. [1]_, you can run the `Bwaise_sanitation_model.py` script
+in either `baseline <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bwaise/comparison/baseline>`_ 
+or `uncertainty <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bwaise/comparison/uncertainty>`_.
+
+Note that minor modifications have been made in the scripts, specifically:
+
+    - Baseline characterization factor of the electricity has been changed in the input spreadsheet
+    - Degradation algorithm for `dehydration_vault` has been updated in `decentralized_storage.py`
+    - Degradation algorithms for all treatment functions with first-order decay have been updated in `treatment.py`
+    - The emission calculation of `ABR` has been updated.
+
+The change in the spreadsheet is denoted by red font with a note, and all changes in the scripts have been noted with `#!!!`,
+the original value/codes are saved either in the spreadsheet note or as comments.
 
 .. figure:: ./figures/sysA.png
 
@@ -48,13 +65,13 @@ Loading systems
     outs...
     [0] A_CH4
         phase: 'g', T: 298.15 K, P: 101325 Pa
-        flow (kmol/hr): CH4  4.37
+        flow (kmol/hr): CH4  5.57
     [1] A_N2O
         phase: 'g', T: 298.15 K, P: 101325 Pa
-        flow (kmol/hr): N2O  0.000967
+        flow (kmol/hr): N2O  0.022
     [2] A_sol_N
         phase: 'l', T: 298.15 K, P: 101325 Pa
-        flow (kmol/hr): NonNH3  0.13
+        flow (kmol/hr): NonNH3  0.0478
     [3] A_sol_P
         phase: 'l', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): P  0.0984
@@ -65,12 +82,11 @@ Loading systems
         phase: 'l', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): Mg       0.0967
                         Ca       0.446
-                        H2O      46.3
-                        OtherSS  263
+                        H2O      12.4
+                        OtherSS  49.8
     [6] A_liq_N
         phase: 'l', T: 298.15 K, P: 101325 Pa
-        flow (kmol/hr): NH3     1.21
-                        NonNH3  1.82
+        flow (kmol/hr): NonNH3  0.79
     [7] A_liq_P
         phase: 'l', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): P  0.159
@@ -81,7 +97,7 @@ Loading systems
         phase: 'l', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): Mg       0.244
                         Ca       0.557
-                        H2O      615
+                        H2O      601
                         OtherSS  42.7
                         Tissue   126
     [10] leachate
@@ -102,39 +118,14 @@ Loading systems
                         ...
     [12] evaporated
         phase: 'g', T: 298.15 K, P: 101325 Pa
-        flow (kmol/hr): H2O  36.2
+        flow (kmol/hr): H2O  84.3
     [13] reuse_loss
         phase: 'l', T: 298.15 K, P: 101325 Pa
-        flow (kmol/hr): NH3     0.0637
-                        NonNH3  0.0371
+        flow (kmol/hr): NonNH3  0.0161
                         P       0.00325
                         K       0.0147
                         Mg      0.00497
                         Ca      0.0114
-    >>> # You can check out all of the components in these systems
-    >>> bw.cmps.show()
-    CompiledComponents([NH3, NonNH3, P, K, Mg, Ca, H2O, OtherSS, N2O, CH4, O2, N2, CO2, P4O10, Tissue, WoodAsh, Struvite, HAP])
-    >>> bw.cmps.NH3.show()
-    Component: NH3 (phase_ref='g') at phase='l'
-    Component-specific properties:
-    [Others] measured_as: N
-             description: None
-             particle_size: Soluble
-             degradability: Undegradable
-             organic: False
-             i_C: 0 g C/g N
-             i_N: 1 g N/g N
-             i_P: 0 g P/g N
-             i_K: 0 g K/g N
-             i_Mg: 0 g Mg/g N
-             i_Ca: 0 g Ca/g N
-             i_mass: 1.2159 g mass/g N
-             i_charge: 0 mol +/g N
-             i_COD: 0 g COD/g N
-             i_NOD: 4.5691 g NOD/g N
-             f_BOD5_COD: 0
-             f_uBOD_COD: 0
-             f_Vmass_Totmass: 0
     >>> # You can look at individual units
     >>> bw.A1.show()
     Excretion: A1
@@ -150,16 +141,13 @@ Loading systems
                      Ca       0.0117
                      H2O      55.4
                      OtherSS  2.55
-
         WasteStream-specific properties:
          pH         : 7.0
-         Alkalinity : 2.5 mg/L
-         COD        : 5146.0 mg/L
-         TN         : 4273.6 mg/L
-         TKN        : 4273.6 mg/L
-         TP         : 442.4 mg/L
-         TK         : 1180.3 mg/L
-
+         COD        : 5156.4 mg/L
+         TN         : 4282.2 mg/L
+         TKN        : 4282.2 mg/L
+         TP         : 443.3 mg/L
+         TK         : 1182.7 mg/L
     [1] feces  to  PitLatrine-A2
         phase: 'l', T: 298.15 K, P: 101325 Pa
         flow (g/hr): NH3      0.00685
@@ -170,69 +158,65 @@ Loading systems
                      Ca       0.0792
                      H2O      8.85
                      OtherSS  1.4
-
         WasteStream-specific properties:
          pH         : 7.0
-         Alkalinity : 2.5 mg/L
-         COD        : 120065.3 mg/L
-         TN         : 3189.4 mg/L
-         TKN        : 3189.4 mg/L
-         TP         : 1547.9 mg/L
-         TK         : 2269.6 mg/L
+         COD        : 123381.8 mg/L
+         TN         : 3277.5 mg/L
+         TKN        : 3277.5 mg/L
+         TP         : 1590.6 mg/L
+         TK         : 2332.3 mg/L
 
 
 Techno-economic analysis and life cycle assessment (TEA/LCA)
 ------------------------------------------------------------
 TEA and LCA are performed through :class:`biosteam.TEA` and :class:`LCA` objects and named as "teaA", "lcaA", etc.
-Results from the original paper [1]_ are saved in the "/results/original_results" folder for comparison.
 
 .. code-block:: python
 
     >>> # Check the results for `sysA`
-    >>> bw.teaA.show()
     SimpleTEA: sysA
-    NPV  : -22,732,728 USD at 5.0% discount rate
-    EAC  : 3,840,042 USD/yr
-    CAPEX: 12,899,228 USD (annualized to 1,995,792 USD/yr)
-    AOC  : 1,844,250 USD/yr
+    NPV  : -42,029,082 USD at 5.0% discount rate
     >>> # There are also handy functions to allow you quickly see important results
     >>> bw.print_summaries(bw.sysA)
 
     ---------- Summary for sysA ----------
 
+    Total COD recovery is 5.1%, 2.3% in liquid, 2.8% in solid, 0.0% in gas.
+    Total N recovery is 9.0%, 8.5% in liquid, 0.5% in solid, 0.0% in gas.
+    Total P recovery is 41.0%, 25.4% in liquid, 15.7% in solid, 0.0% in gas.
+    Total K recovery is 76.1%, 66.0% in liquid, 10.1% in solid, 0.0% in gas.
+
+
     SimpleTEA: sysA
-    NPV  : -22,732,728 USD at 5.0% discount rate
-    EAC  : 3,840,042 USD/yr
-    CAPEX: 12,899,228 USD (annualized to 1,995,792 USD/yr)
-    AOC  : 1,844,250 USD/yr
+    NPV  : -42,029,082 USD at 5.0% discount rate
+
+    Net cost: 14.2 USD/cap/yr.
+    Capital: 10.6 USD/cap/yr.
+    Operating: 4.0 USD/cap/yr.
+    Sales: 0.4 USD/cap/yr.
 
 
     LCA: sysA (lifetime 8 yr)
     Impacts:
-                               Construction  Transportation       Stream   Others    Total
-    GlobalWarming (kg CO2-eq)      3.13e+07        9.57e+05     1.14e+08 6.85e+04 1.46e+08
+                               Construction  Transportation   Stream   Others    Total
+    GlobalWarming (kg CO2-eq)      3.13e+07        9.57e+05 1.83e+08 5.19e+04 2.15e+08
 
-    Net cost: 8.4 USD/cap/yr.
-    Capital: 4.4 USD/cap/yr.
-    Operating: 4.0 USD/cap/yr.
 
-    Net emission: 40.1 kg CO2-eq/cap/yr.
+
+    Impact indicator GlobalWarming:
+
+    Net emission: 58.8 kg CO2-eq/cap/yr.
     Construction: 8.6 kg CO2-eq/cap/yr.
     Transportation: 0.3 kg CO2-eq/cap/yr.
-    Direct emission: 37.9 kg CO2-eq/cap/yr.
-    Offset: -6.6 kg CO2-eq/cap/yr.
-    Other: 0.02 kg CO2-eq/cap/yr.
-
-    Total COD recovery is 16.9%, 2.4% in liquid, 14.6% in solid, 0.0% in gas.
-    Total N recovery is 36.8%, 35.4% in liquid, 1.4% in solid, 0.0% in gas.
-    Total P recovery is 41.0%, 25.4% in liquid, 15.7% in solid, 0.0% in gas.
-    Total K recovery is 76.1%, 66.0% in liquid, 10.1% in solid, 0.0% in gas.
+    Direct emission: 52.9 kg CO2-eq/cap/yr.
+    Offset: -2.9 kg CO2-eq/cap/yr.
+    Other: 0.01 kg CO2-eq/cap/yr.
     >>> # You can save reports in the "/results" folder with default names
     >>> # Note that system information (e.g., flows, designs) and TEA results
     >>> # will be saved together, but LCA result will be saved in an individual Excel file
     >>> bw.save_all_reports()
     >>> # Alternatively, you can save individual reports at other places
-    >>> bw.sysA.save_report('sysA.xlsx')
+    >>> bw.sysA.save_report('sysA_report.xlsx')
 
 
 Uncertainty and sensitivity analyses
@@ -251,7 +235,7 @@ to these models or construct your own ones.
     >>> models = bw.models
     >>> # Try use larger samples, here is just to get a quick demo result
     >>> models.run_uncertainty(models.modelA, N=10)
-    >>> # Your results will be cached in `result_dct['sysA']`
+    >>> # Your results will be cached in `models.result_dct['sysA']`
     >>> # You can organize the results as you like,
     >>> # but you can also save them using the default organized data
     >>> models.save_uncertainty_results(models.modelA)
@@ -259,11 +243,6 @@ to these models or construct your own ones.
 
 ``QSDsan`` also have built-in functions for advanced global sensitivity analyses
 and plotting functions, refer to the `stats <https://qsdsan.readthedocs.io/en/latest/stats.html>`_ module for examples.
-
-
-Coming soon
------------
-- Comparison figure for results between ``QSDsan`` and [1]_.
 
 
 References

@@ -15,6 +15,10 @@ for license details.
 
 # %%
 
+# Filter out warnings related to solid content
+import warnings
+warnings.filterwarnings('ignore')
+
 import numpy as np
 import biosteam as bst
 import qsdsan as qs
@@ -120,7 +124,7 @@ price_dct = {
     }
 
 GWP_dct = {
-    'Electricity': 0.15,
+    'Electricity': 0.1135,
     'CH4': 28,
     'N2O': 265,
     'N': -5.4,
@@ -304,6 +308,13 @@ A4 = su.LumpedCost('A4', ins=A3-0, cost_item_name='Lumped WWTP',
                    CAPEX=18606700, power=57120/(365*24), lifetime=8)
 A4.line = 'Lumped WWTP cost'
 get_A4_lifetime = lambda: A4.lifetime
+def update_A_t0():
+    A5.t0 = A2.emptying_period
+    A6.t0 = A5.t0 # A5.tau is for the solids
+    A7.t0 = A6.t0 + A6.tau/365
+    A8.t0 = A5.t0 + A5.tau/365
+A4.specification = update_A_t0
+A4.run_after_specification = True
 
 A5 = su.SedimentationTank('A5', ins=A4-0,
                           outs=('liq', 'sol', 'A5_CH4', 'A5_N2O'),
@@ -365,12 +376,12 @@ exist_staff_num = 12
 get_annual_labor = lambda: exist_staff_num*3e6*12/get_exchange_rate()
 teaA = SimpleTEA(system=sysA, discount_rate=discount_rate, start_year=2018,
                  lifetime=get_A4_lifetime(), uptime_ratio=1, lang_factor=None,
-                 annual_maintenance=0, annual_labor=get_annual_labor(),
-                 construction_schedule=None)
+                 annual_maintenance=0, annual_labor=get_annual_labor())
 
 lcaA = LCA(system=sysA, lifetime=get_A4_lifetime(), lifetime_unit='yr', uptime_ratio=1,
-            # Assuming all additional WWTP OPEX from electricity
-            E_item=lambda: A4.power_utility.rate*(365*24)*8)
+           annualize_construction=True,
+           # Assuming all additional WWTP OPEX from electricity
+           E_item=lambda: A4.power_utility.rate*(365*24)*get_A4_lifetime())
 
 
 # %%
@@ -422,6 +433,11 @@ B4 = su.LumpedCost('B4', ins=B3-0, cost_item_name='Lumped WWTP',
                    CAPEX=337140, power=6854/(365*24), lifetime=10)
 B4.line = 'Lumped WWTP cost'
 get_B4_lifetime = lambda: B4.lifetime
+def update_B_t0():
+    B5.t0 = B2.emptying_period
+    B8.t0 = B7.t0 = B5.t0 + B5.tau/365
+B4.specification = update_B_t0
+B4.run_after_specification = True
 
 B5 = su.AnaerobicBaffledReactor('B5', ins=B4-0, outs=('ABR_treated', 'biogas',
                                                       'B5_CH4', 'B5_N2O'),
@@ -494,12 +510,12 @@ get_alt_salary = lambda: (get_tot_skilled_salary()+get_tot_unskilled_salary())*1
 
 teaB = SimpleTEA(system=sysB, discount_rate=discount_rate, start_year=2018,
                   lifetime=get_B4_lifetime(), uptime_ratio=1, lang_factor=None,
-                  annual_maintenance=0, annual_labor=get_alt_salary(),
-                  construction_schedule=None)
+                  annual_maintenance=0, annual_labor=get_alt_salary())
 
 lcaB = LCA(system=sysB, lifetime=get_B4_lifetime(), lifetime_unit='yr', uptime_ratio=1,
+           annualize_construction=True,
            # Assuming all additional WWTP OPEX from electricity
-           E_item=lambda: B4.power_utility.rate*(365*24)*10)
+           E_item=lambda: B4.power_utility.rate*(365*24)*get_B4_lifetime())
 
 
 # %%
@@ -529,13 +545,15 @@ C2 = su.UDDT('C2', ins=(C1-0, C1-1,
 C2.specification = lambda: update_toilet_param(C2, 'exist')
 
 ##################### Conveyance #####################
-# Liquid waste
 handcart_fee = 0.01 # USD/cap/d
 truck_fee = 23e3 # UGX/m3
 
+# Handcart fee is for both liquid/solid
 get_handcart_and_truck_fee = \
-    lambda vol, ppl: truck_fee/get_exchange_rate()*vol \
-        + handcart_fee*ppl*C2.collection_period
+    lambda vol, ppl, include_fee: truck_fee/get_exchange_rate()*vol \
+        + int(include_fee)*handcart_fee*ppl*C2.collection_period
+
+# Liquid waste
 C3 = su.Trucking('C3', ins=C2-0, outs=('transported_l', 'loss_l'),
                  load_type='mass', distance=5, distance_unit='km',
                  loss_ratio=0.02)
@@ -554,8 +572,8 @@ def update_C3_C4_param():
     truck4.load = C4.F_mass_in * hr / C2.N_toilet
     rho3 = C3.F_mass_in/C3.F_vol_in
     rho4 = C4.F_mass_in/C4.F_vol_in
-    C3.fee = get_handcart_and_truck_fee(truck3.load/rho3, ppl)
-    C4.fee = get_handcart_and_truck_fee(truck4.load/rho4, ppl)
+    C3.fee = get_handcart_and_truck_fee(truck3.load/rho3, ppl, True)
+    C4.fee = get_handcart_and_truck_fee(truck4.load/rho4, ppl, False)
     C3._design()
     C4._design()
 C4.specification = update_C3_C4_param
@@ -565,6 +583,11 @@ C5 = su.LumpedCost('C5', ins=(C3-0, C4-0),
                    cost_item_name='Lumped WWTP',
                    CAPEX=18606700, power=57120/(365*24), lifetime=8)
 get_C5_lifetime = lambda: C5.lifetime
+def update_C_t0():
+    C8.t0 = C6.t0 = C2.collection_period / 365
+    C7.t0 = C6.t0 + C6.tau/365
+C5.specification = update_C_t0
+C5.run_after_specification = True
 
 C6 = su.Lagoon('C6', ins=C5-0, outs=('anaerobic_treated', 'C6_CH4', 'C6_N2O'),
                design_type='anaerobic',
@@ -617,12 +640,12 @@ sysC = bst.System('sysC', path=(C1, C2, C3, C4, treatC, C9, C10, C11, C12, C13))
 
 teaC = SimpleTEA(system=sysC, discount_rate=discount_rate, start_year=2018,
                  lifetime=get_C5_lifetime(), uptime_ratio=1, lang_factor=None,
-                 annual_maintenance=0, annual_labor=12*3e6*12/get_exchange_rate(),
-                 construction_schedule=None)
+                 annual_maintenance=0, annual_labor=12*3e6*12/get_exchange_rate())
 
 lcaC = LCA(system=sysC, lifetime=get_C5_lifetime(), lifetime_unit='yr', uptime_ratio=1,
+           annualize_construction=True,
            # Assuming all additional WWTP OPEX from electricity
-           E_item=lambda: C5.power_utility.rate*(365*24)*8)
+           E_item=lambda: C5.power_utility.rate*(365*24)*get_C5_lifetime())
 
 
 # %%
@@ -665,7 +688,7 @@ def update_lca_data(kind):
         lca_data_kind = kind
 
 
-def get_total_inputs(unit, multiplier):
+def get_total_inputs(unit, multiplier=1):
     if len(unit.ins) == 0: # Excretion units do not have ins
         ins = unit.outs
     else:
@@ -681,11 +704,11 @@ def get_total_inputs(unit, multiplier):
     return inputs
 
 
-def get_recovery(ins, outs, ppl):
+def get_recovery(ins, outs, multiplier=1):
     if not isinstance(outs, Iterable):
         outs = (outs,)
 
-    non_g = tuple(i for i in outs if i.phase != 'g')
+    non_g = tuple(i for i in outs if (i.phase != 'g' and 'los' not in i.ID))
     recovery = {}
     recovery['COD'] = sum(i.COD*i.F_vol/1e3 for i in non_g)
     recovery['N'] = sum(i.TN*i.F_vol/1e3 for i in non_g)
@@ -694,7 +717,7 @@ def get_recovery(ins, outs, ppl):
     recovery['K'] = sum(i.TK*i.F_vol/1e3 for i in non_g)
 
     for i, j in recovery.items():
-        inputs = get_total_inputs(ins, ppl)
+        inputs = get_total_inputs(ins, multiplier)
         recovery[i] /= inputs[i]
 
     return recovery
@@ -726,10 +749,10 @@ def cache_recoveries(sys):
     sys_dct['cache'][sys.ID] = cache = {
         'liq': get_recovery(ins=sys_dct['input_unit'][sys.ID],
                             outs=sys_dct['liq_unit'][sys.ID].ins,
-                            ppl=ppl),
+                            multiplier=ppl),
         'sol': get_recovery(ins=sys_dct['input_unit'][sys.ID],
                             outs=sys_dct['sol_unit'][sys.ID].ins,
-                            ppl=ppl),
+                            multiplier=ppl),
         'gas': dict(COD=gas_COD, N=0, P=0, K=0)
         }
     return cache
@@ -742,9 +765,8 @@ sysC._set_facilities([*sysC.facilities, lambda: cache_recoveries(sysC)])
 
 def get_summarizing_functions(system):
     func_dct = {}
-    func_dct['get_annual_net_cost'] = lambda tea, ppl: (tea.EAC-tea.sales)/ppl
-    func_dct['get_annual_cost'] = lambda tea, ppl: tea.EAC/ppl
-    func_dct['get_annual_CAPEX'] = lambda tea, ppl: tea.annualized_CAPEX/ppl
+    func_dct['get_annual_net_cost'] = lambda tea, ppl: (tea.annualized_equipment_cost-tea.net_earnings)/ppl
+    func_dct['get_annual_CAPEX'] = lambda tea, ppl: tea.annualized_equipment_cost/ppl
     func_dct['get_annual_OPEX'] = lambda tea, ppl: tea.AOC/ppl
     func_dct['get_annual_sales'] = lambda tea, ppl: tea.sales/ppl
 
@@ -785,7 +807,6 @@ def print_summaries(systems):
 
         unit = f'{currency}/cap/yr'
         print(f'\nNet cost: {func["get_annual_net_cost"](tea, ppl):.1f} {unit}.')
-        print(f'Total cost: {func["get_annual_cost"](tea, ppl):.1f} {unit}.')
         print(f'Capital: {func["get_annual_CAPEX"](tea, ppl):.1f} {unit}.')
         print(f'Operating: {func["get_annual_OPEX"](tea, ppl):.1f} {unit}.')
         print(f'Sales: {func["get_annual_sales"](tea, ppl):.1f} {unit}.')
@@ -830,7 +851,7 @@ def save_all_reports():
     for i in (sysA, sysB, sysC, lcaA, lcaB, lcaC):
         if isinstance(i, bst.System):
             i.simulate()
-            i.save_report(f'{path}/{i.ID}.xlsx')
+            i.save_report(f'{path}/{i.ID}_report.xlsx')
         else:
             i.save_report(f'{path}/{i.system.ID}_lca.xlsx')
 

@@ -9,7 +9,7 @@ This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
-import sys#, os 
+import sys, os 
 sys.path.insert(0, "C:/Users/joy_c/Dropbox/PhD/Research/QSD/codes_developing/QSDsan")
 sys.path.insert(0, "C:/Users/joy_c/Dropbox/PhD/Research/QSD/codes_developing/biosteam")
 
@@ -19,6 +19,11 @@ from qsdsan import sanunits as su
 from qsdsan import processes as pc
 from qsdsan import WasteStream, set_thermo
 from qsdsan.utils import time_printer
+
+import exposan as es
+bsm1_path = os.path.join(os.path.dirname(es.__file__), 'bsm1')
+del es
+
 
 # =============================================================================
 # Benchmark Simulation Model No. 1
@@ -67,13 +72,13 @@ asm1 = pc.ASM1(Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
                 mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
                 eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
                 K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05, fr_SS_COD=0.75,
-                path='_asm1.tsv')
+                path=os.path.join(bsm1_path, '_asm1.tsv'))
 
 # asm1 = pc.ASM1(Y_A=0.24, Y_H=0.666, f_P=0.08, i_XB=0.086, i_XP=0.06,
 #                 mu_H=6.0, K_S=20.0, K_O_H=0.2, K_NO=0.5, b_H=0.62,
 #                 eta_g=0.8, eta_h=0.4, k_h=3.0, K_X=0.03, mu_A=0.8,
 #                 K_NH=1.0, b_A=0.04, K_O_A=0.4, k_a=0.08, fr_SS_COD=1/1.48, 
-#                 path='_asm1.tsv')
+#                 path=os.path.join(bsm1_path, '_asm1.tsv'))
 
 ############# create unit operations #####################
 M1 = su.Mixer('M1', ins=[PE, RE, RAS])
@@ -154,25 +159,33 @@ C1.set_init_TSS([12.4969, 18.1132, 29.5402, 68.9781, 356.0747,
 bsm1 = System('BSM1', path=(M1, A1, A2, O1, O2, O3, S1, C1, S2), recycle=(RE, RAS))
 bsm1.set_tolerance(rmol=1e-6)
 
+__all__ = (
+    'bsm1', 'bsm1_path',
+    'Q', 'PE', 'SE', 'WAS', 'RE', 'RAS', 
+    *(i.ID for i in bsm1.units),
+    )
+
+
 #%%
 @time_printer
-def run(T, t_step, method=None, **kwargs):
+def run(t, t_step, method=None, **kwargs):
     if method:
-        bsm1.simulate(t_span=(0,T), 
-                      t_eval=np.arange(0, T+t_step, t_step),
+        bsm1.simulate(t_span=(0,t), 
+                      t_eval=np.arange(0, t+t_step, t_step),
                       method=method, 
-                      export_state_to=f'sol_{T}d_{method}.tsv',
+                      export_state_to=f'sol_{t}d_{method}.tsv',
                       **kwargs)
     else:
         bsm1.simulate(solver='odeint', 
-                      t=np.arange(0, T+t_step, t_step), 
-                      export_state_to=f'sol_{T}d_odeint.tsv',
+                      t=np.arange(0, t+t_step, t_step),
+                      export_state_to=f'sol_{t}d_odeint.tsv',
                       **kwargs)
 
 
 if __name__ == '__main__':
-    T = 60
-    t_step = 1
+    bsm1.reset_cache()
+    t = 50
+    t_step = 0.5
     method = 'RK45'
     # method = 'RK23'
     # method = 'DOP853'
@@ -180,8 +193,10 @@ if __name__ == '__main__':
     # method = 'BDF'
     # method = 'LSODA'
     # method = None
-    print(f'\nMethod {method}\n------------')
-    print(f'Time span 0-{T}d \n')
-    run(T, t_step, method=method)
-    # os.rename('sol.txt', f'sol_{T}_{method}.txt')
-    bsm1.reset_cache()
+    msg = f'Method {method}'
+    print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
+    print(f'Time span 0-{t}d \n')
+    run(t, t_step, method=method)
+    
+    # If want to see a quick plot of the state variable of a certain unit
+    # fig, ax = A1.plot_state_over_time(system=bsm1, state_var=('S_S', 'X_I'))
