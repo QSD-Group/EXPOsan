@@ -31,7 +31,7 @@ Future development will include:
 
 Note that minor modifications have been made to ASM1, specifically:
 
-    - Compared to the original model [3]_, a component `S_N2` was added for mass conservation of nitrogen.
+    - Compared to the original model [3]_, a component ``S_N2`` was added for mass conservation of nitrogen.
     - Compared to the updated model [5]_, the ammonia limitation term was removed from the rate equations of the
       heterotrophic growth processes to be consistent with GPS-X and the MATLAB Simulink [2]_ implementation.
 
