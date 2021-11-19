@@ -121,7 +121,7 @@ bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, S1, C1, S2), recycle=(RE, RAS))
 bsm1.set_tolerance(rmol=1e-6)
 
 __all__ = (
-    'bsm1', 'bsm1_path',
+    'bsm1', 'bsm1_path', 'asm1', 'aer1', 'aer2',
     'Q', 'PE', 'SE', 'WAS', 'RE', 'RAS', 
     *(i.ID for i in bsm1.units),
     )
