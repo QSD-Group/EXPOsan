@@ -161,7 +161,7 @@ and for more information.
     (<Figure size 576x324 with 1 Axes>,
      <AxesSubplot:xlabel='Time [d]', ylabel='Concentration'>)
 
-.. figure:: ./figures/demo_A1.state.png
+.. figure:: ./figures/demo_A1_state.png
 
 .. code-block:: python
 
