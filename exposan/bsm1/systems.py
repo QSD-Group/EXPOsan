@@ -9,7 +9,7 @@ This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
-import os, sys
+import sys#, os 
 sys.path.insert(0, "C:/Users/joy_c/Dropbox/PhD/Research/QSD/codes_developing/QSDsan")
 sys.path.insert(0, "C:/Users/joy_c/Dropbox/PhD/Research/QSD/codes_developing/biosteam")
 
@@ -171,7 +171,7 @@ def run(T, t_step, method=None, **kwargs):
 
 
 if __name__ == '__main__':
-    T = 50
+    T = 60
     t_step = 1
     method = 'RK45'
     # method = 'RK23'
