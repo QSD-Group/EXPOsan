@@ -14,4 +14,5 @@ for license details.
 
 from . import (
     test_bwaise,
+    test_bsm1,
     )
