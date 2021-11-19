@@ -125,11 +125,11 @@ Adjust model settings
      'H2O': 0.0,
      'Q': 92229.99999998896}
 
-     >>> # You can also set the initial TSS and solids composition in a clarifier
-     >>> bsm.C1.set_init_TSS([12.4969, 18.1132, 29.5402, 68.9781, 356.0747,
-                              356.0747, 356.0747, 356.0747, 356.0747, 6393.9844])
-     >>> bsm.C1.set_init_sludge_solids(X_I=1507, X_S=89.3, X_BH=5913, X_BA=372.6,
-                                       X_P=641.7, X_ND=2.32)
+    >>> # You can also set the initial TSS and solids composition in a clarifier
+    >>> bsm.C1.set_init_TSS([12.4969, 18.1132, 29.5402, 68.9781, 356.0747,
+                             356.0747, 356.0747, 356.0747, 356.0747, 6393.9844])
+    >>> bsm.C1.set_init_sludge_solids(X_I=1507, X_S=89.3, X_BH=5913, X_BA=372.6,
+                                      X_P=641.7, X_ND=2.32)
 
 Biochemical process model parameters such as ASM1's stoichiometric or kinetic
 parameters can be customized upon and after initiation of the ``CompiledProcesses`` object.
@@ -148,7 +148,7 @@ method. A system of ordinary differential equations (ODEs) is compiled upon the
 initiation of the `System` object. Detailed settings regarding the ODE solver can
 be adjusted by passing keyword arguments to the `simulate` method. See
 `biosteam <https://biosteam.readthedocs.io/en/latest/System.html#biosteam.System.simulate>`_
-and for more information.
+for more information.
 
 .. code-block:: python
 
