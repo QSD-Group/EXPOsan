@@ -17,3 +17,8 @@ try:
     __version__ = pkg_resources.get_distribution('exposan').version
 except pkg_resources.DistributionNotFound:
     __version__ = None
+    
+import os
+es_path = os.path.dirname(__file__)
+del os
+    

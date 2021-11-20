@@ -13,9 +13,11 @@ for license details.
 def test_bsm1():
     from numpy.testing import assert_allclose as ac
     from numpy import arange
+    from qsdsan import set_thermo
     from exposan import bsm1 as b1
 
-    sys = b1.bsm1    
+    sys = b1.bsm1
+    set_thermo(b1.cmps)
     sys.reset_cache()
     sys.simulate(t_span=(0,50), method='LSODA', t_eval=arange(0, 51, 1))
     

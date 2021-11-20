@@ -14,7 +14,10 @@ for license details.
 
 def test_bwaise():
     from numpy.testing import assert_allclose
+    from qsdsan import set_thermo
     from exposan import bwaise as bw
+
+    set_thermo(bw.cmps)
 
     assert_allclose(bw.teaA.NPV, -42012332.263887756, rtol=1e-2)
     assert_allclose(bw.teaB.NPV, -3466006.2170442184, rtol=1e-2)

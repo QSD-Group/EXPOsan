@@ -1,10 +1,10 @@
 ======================================
-bsm1: Benchmark Simulation Model no. 1
+bsm1: Benchmark Simulation Model No. 1
 ======================================
 
 Summary
 -------
-This module implements the benchmark simulation model no. 1 (BSM1). [1]_ The code
+This module implements the Benchmark Simulation Model No. 1 (BSM1). [1]_ The code
 for process modeling and dynamic simulation has been verified against GPS-X and
 MATLAB Simulink [2]_ results.
 
@@ -12,7 +12,7 @@ MATLAB Simulink [2]_ results.
 
     *BSM1 system layout: two anoxic suspended-growth bioreactors followed by three aerobic bioreactors and a secondary clarifier*
 
-The Activated Sludge Model no. 1 (ASM1) [3]_ was used to describe biochemical processes
+The Activated Sludge Model No. 1 (ASM1) [3]_ was used to describe biochemical processes
 and a simple 1-D 10-layer settling model [4]_ was used for the secondary clarifier.
 
 As of now, the BSM1 system can be simulated dynamically with constant influent.

@@ -26,6 +26,7 @@ from collections.abc import Iterable
 from sklearn.linear_model import LinearRegression as LR
 from qsdsan import sanunits as su
 from qsdsan import WasteStream, ImpactIndicator, ImpactItem, StreamImpactItem, SimpleTEA, LCA
+from exposan.bwaise import results_path
 from exposan.bwaise._cmps import cmps
 from exposan.bwaise._lca_data import lca_data_kind, load_lca_data, _ImpactItem_LOADED
 
@@ -843,17 +844,14 @@ def print_summaries(systems):
 
 def save_all_reports():
     import os
-    path = os.path.dirname(os.path.realpath(__file__))
-    path += '/results'
-    if not os.path.isdir(path):
-        os.path.mkdir(path)
-    del os
+    if not os.path.isdir(results_path):
+        os.path.mkdir(results_path)
     for i in (sysA, sysB, sysC, lcaA, lcaB, lcaC):
         if isinstance(i, bst.System):
             i.simulate()
-            i.save_report(f'{path}/{i.ID}_report.xlsx')
+            i.save_report(os.path.join(results_path, f'{i.ID}_report.xlsx'))
         else:
-            i.save_report(f'{path}/{i.system.ID}_lca.xlsx')
+            i.save_report(os.path.join(results_path, f'{i.system.ID}_lca.xlsx'))
 
 __all__ = ('sysA', 'sysB', 'sysC', 'teaA', 'teaB', 'teaC', 'lcaA', 'lcaB', 'lcaC',
            'print_summaries', 'save_all_reports', 'update_lca_data',

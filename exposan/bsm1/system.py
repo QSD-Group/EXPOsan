@@ -10,16 +10,12 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 import os 
-from biosteam import System
 import numpy as np
 from qsdsan import sanunits as su
 from qsdsan import processes as pc
-from qsdsan import WasteStream, set_thermo
+from qsdsan import set_thermo, WasteStream, System
 from qsdsan.utils import time_printer
-
-import exposan as es
-bsm1_path = os.path.join(os.path.dirname(es.__file__), 'bsm1')
-del es
+from exposan.bsm1 import bsm1_path
 
 
 # =============================================================================
@@ -121,7 +117,7 @@ bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, S1, C1, S2), recycle=(RE, RAS))
 bsm1.set_tolerance(rmol=1e-6)
 
 __all__ = (
-    'bsm1', 'bsm1_path', 'asm1', 'aer1', 'aer2',
+    'cmps', 'bsm1', 'bsm1_path', 'asm1', 'aer1', 'aer2',
     'Q', 'PE', 'SE', 'WAS', 'RE', 'RAS', 
     *(i.ID for i in bsm1.units),
     )
