@@ -1,6 +1,6 @@
-=================================================
+======================================
 bsm1: Benchmark Simulation Model no. 1
-=================================================
+======================================
 
 Summary
 -------
@@ -19,7 +19,7 @@ As of now, the BSM1 system can be simulated dynamically with constant influent.
 Fixed aeration is enabled. Idealized aeration control can also be implemented
 by setting target dissolved oxygen concentration.
 
-To perform a simulation of the BSM1 model, you can run the `systems.py` script.
+To perform a simulation of the BSM1 model, you can run the ``system.py`` script.
 Influent loadings, initial conditions, model parameters, system settings, and
 solver options can all be customized in the same script.
 
@@ -36,7 +36,7 @@ Note that minor modifications have been made to ASM1, specifically:
       heterotrophic growth processes to be consistent with GPS-X and the MATLAB Simulink [2]_ implementation.
 
 The most updated version of ASM1 per Rieger et al. [5]_ is available in `QSDsan <https://github.com/QSD-Group/QSDsan/blob/main/qsdsan/processes>`_.
-You can choose to work with the updated version by changing the file path in the `systems.py` script or replace the `_asm1.tsv` file with
+You can choose to work with the updated version by changing the file path in the ``system.py`` script or replace the ``_asm1.tsv`` file with
 the one in `QSDsan <https://github.com/QSD-Group/QSDsan/tree/main/qsdsan/data/process_data>`_.
 
 

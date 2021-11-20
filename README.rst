@@ -45,6 +45,14 @@ If you want to install the latest GitHub version at the `main branch <https://gi
 
     pip install git+https://github.com/QSD-Group/EXPOsan.git
 
+
+.. note::
+
+   If this doesn't give you the newest ``exposan``, try ``pip uninstall exposan`` first.
+
+   Also, you may need to update some ``exposan``'s dependency package (e.g., ' ``qsdsan``, ``biosteam``, ``thermosteam``) versions in order for the new ``exposan`` to run.
+
+
 or other fork and/or branch (replace ``<USERNAME_OF_THE_FORK>`` and ``<BRANCH_NAME>`` with the desired fork and branch names)
 
 .. code::

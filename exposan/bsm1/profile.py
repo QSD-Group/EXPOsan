@@ -1,10 +1,17 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Sat Sep 11 20:19:58 2021
+'''
+EXPOsan: Exposition of sanitation and resource recovery systems
 
-@author: Yalin Li
-"""
+This module is developed by:
+    Yalin Li <zoe.yalin.li@gmail.com>
+    Joy Zhang <joycheung1994@gmail.com>
+
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
+
+This module is used to profile the `bsm1` module to improve simulation speed.
+'''
 
 import os, sys, io
 os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
@@ -16,7 +23,7 @@ from exposan.bsm1 import bsm1, bsm1_path
 
 
 # =============================================================================
-# Run cProfile for systems.py, print results in the console
+# Run cProfile for system.py, print results in the console
 # =============================================================================
 
 t = 50
@@ -25,16 +32,16 @@ t_step = 0.5
 # Looks like `tuna` isn't able to show all the details
 # https://github.com/nschloe/tuna
 # cProfile.run(f'bsm1.simulate(t_span = (0, {t}))',
-#               f"systems_{''.join(str(t).split('.'))}.prof")
+#               f"system_{''.join(str(t).split('.'))}.prof")
 
-# Instead using `pstats`, for t = 0.1, the stats are stored in `systems_01`
+# Instead using `pstats`, for t = 0.1, the stats are stored in `system_01`
 cProfile.run(f'bsm1.simulate(t_span=(0, {t}), t_eval=np.arange(0, {t+t_step}, {t_step}))',
-             f"systems_{''.join(str(t).split('.'))}.prof")
+             f"system_{''.join(str(t).split('.'))}.prof")
 
-p = pstats.Stats(f"systems_{''.join(str(t).split('.'))}.prof")
+p = pstats.Stats(f"system_{''.join(str(t).split('.'))}.prof")
 
 # # If want to load previously saved stats
-# p = pstats.Stats(f"systems_{''.join(str(t).split('.'))}.prof")
+# p = pstats.Stats(f"system_{''.join(str(t).split('.'))}.prof")
 
 
 # # Print all stats
@@ -59,7 +66,7 @@ p.sort_stats('tottime').print_stats(20)
 # # Dump stats, looks like it doesn't matter what the extensions are
 # # (or whether there's an extension),
 # # `.txt` can be used, though won't be able to open it directly
-# p.dump_stats(os.path.join(dir_path, f"systems_{''.join(str(t).split('.'))}.prof"))
+# p.dump_stats(os.path.join(dir_path, f"system_{''.join(str(t).split('.'))}.prof"))
 
 
 # %%
@@ -82,7 +89,7 @@ text = 'ncalls' + text.split('ncalls')[-1]
 text = '\n'.join([','.join(line.rstrip().split(None,5)) for line in text.split('\n')])
 
 # Save the results to csv, here
-csv_path = os.path.join(bsm1_path, f"systems_{''.join(str(t).split('.'))}.csv")
+csv_path = os.path.join(bsm1_path, f"system_{''.join(str(t).split('.'))}.csv")
 with open(csv_path, 'w+') as f:
     f.write(text)
     f.close()
