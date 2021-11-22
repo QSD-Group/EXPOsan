@@ -85,14 +85,22 @@ P4O10 = Component.from_chemical('P4O10', tmo.Chemical('P4O10'),
                                 phase='s', particle_size='Particulate',
                                 degradability='Undegradable', organic=False)
 
-KCl = Component.from_chemical('KCl', tmo.Chemical('KCl'),
-                            phase='l', particle_size='Soluble',
-                            degradability='Undegradable', organic=False)
+KCl = Component.from_chemical('PotassiumChloride', tmo.Chemical('PotassiumChloride'),
+                            phase='s', particle_size='Soluble',
+                            degradability='Slowly', organic=False)
+
+NaCl = Component.from_chemical('SodiumChloride', tmo.Chemical('SodiumChloride'),
+                            formula='NaCl', phase='s', particle_size='Particulate',
+                            degradability='Slowly', organic=False)
+
+HCl = Component.from_chemical('HydrogenChloride', tmo.Chemical('HydrogenChloride'),
+                            formula='HCl', phase='s', particle_size='Particulate',
+                            degradability='Slowly', organic=False)
+
 
 GAC = Component.from_chemical('GAC', tmo.Chemical('C'),
                             phase='s', particle_size='Particulate',
                             degradability='Undegradable', organic=True)
-
 
 
 
@@ -110,6 +118,7 @@ Tissue = Component('Tissue', MW=1, phase='s', particle_size='Particulate',
 Zeolite = Component.from_chemical('Zeolite', tmo.Chemical('PubChem=9942228'),
                     formula='Na2Al2Si2O8', phase='s', particle_size='Particulate',
                     degradability='Slowly', organic=False)
+
 
 
 # 375 kg/m3 is the average of 250-500 for tissue from
@@ -146,7 +155,7 @@ for cmp in (NonNH3, P, K, Mg, Ca, OtherSS):
     add_V_from_rho(cmp, 1e3) # assume the same density as water
 
 cmps = Components((NH3, NonNH3, P, K, Mg, Ca, H2O, OtherSS, N2O, CH4, O2, N2,
-                   CO2, P4O10, Tissue, WoodAsh, Zeolite, Struvite, HAP, KCl))
+                   CO2, P4O10, Tissue, WoodAsh, Zeolite, GAC, Struvite, HAP, KCl, HCl, NaCl))
 for i in cmps:
     if i.HHV is None: i.HHV = 0
     if i.LHV is None: i.LHV = 0

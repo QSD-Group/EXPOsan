@@ -106,7 +106,7 @@ price_dct = {
     'H2SO4': 0.3,
     'struvite': 0,
     'salt': 0,
-    'HCl_acid': 0,
+    'HCl': 0,
     'KCl': 0,
     'GAC': 1.1,
     'Zeolite': 1.45,
@@ -129,7 +129,7 @@ GWP_dct = {
     'H2SO4': 0.158899487,
     'struvite': 0,
     'salt': 0.266695553, 
-    'HCl_acid': 0.8,
+    'HCl': 0.8,
     'KCl': 0.8,
     'GAC': 8.388648277,
     'Zeolite': 5.175,
@@ -138,6 +138,8 @@ GWP_dct = {
 
 items = ImpactItem.get_all_items()
 
+
+breakpoint()
 if not items.get('Excavation'): # prevent from reloading
     import os
     path = os.path.dirname(os.path.realpath(__file__)) + '/data'
@@ -174,7 +176,7 @@ KCl_item = StreamImpactItem(ID = 'KCl_item', GWP=GWP_dct['KCl'])
 GAC_item = StreamImpactItem(ID='GAC_item', GWP=GWP_dct['GAC'])
 Zeolite_item = StreamImpactItem(ID='Zeolite_item', GWP=GWP_dct['Zeolite'])
 Conc_NH3_item = StreamImpactItem(ID='Conc_NH3', GWP=GWP_dct['Conc_NH3'])
-HCl_acid = StreamImpactItem(ID='HCl_acid', GWP=GWP_dct['HCl_acid'])
+HCl = StreamImpactItem(ID='HCl', GWP=GWP_dct['HCl'])
 #sludge_item = StreamImpactItem(ID = 'sludge_item', GWP=GWP_dct['sludge'])
 
 def batch_create_streams(prefix):
@@ -219,13 +221,9 @@ def batch_create_streams(prefix):
                                       stream_impact_item=Zeolite_item.copy(set_as_source=True))
     stream_dct['Conc_NH3'] = WasteStream(f'{prefix}_Conc_NH3', phase='s', price=price_dct['Conc_NH3'], 
                                       stream_impact_item=Conc_NH3_item.copy(set_as_source=True))
-    stream_dct['HCl_acid'] = WasteStream(f'{prefix}_Conc_NH3', phase='l', price=price_dct['HCl_acid'], 
+    stream_dct['HCl'] = WasteStream(f'{prefix}_Conc_NH3', phase='l', price=price_dct['HCl'], 
                                       stream_impact_item=Conc_NH3_item.copy(set_as_source=True))           
   
-                
-  # stream_dct['sludge'] = WasteStream(f'{prefix}_sludge', phase='s', price=price_dct['sludge'],
-                                     # impact_item=sludge_item.copy(set_as_source=True))
-    
     
 
     return stream_dct
@@ -234,7 +232,7 @@ def batch_create_streams(prefix):
 def add_fugitive_items(unit, item):
     unit._run()
     for i in unit.ins:
-        i.impact_item = item.copy(set_as_source=True)
+        i.stream_impact_item = item.copy(set_as_source=True)
         
 
 
@@ -284,7 +282,7 @@ A5 = su.IonExchangeReclaimer('A5', ins=(A4-0, streamsA['Zeolite'], streamsA['GAC
                                 decay_k_N=get_decay_k(tau_deg, log_deg),
                                 max_CH4_emission=get_max_CH4_emission(), if_gridtied=True)
 
-A6 = su.ECR_Reclaimer('A6', ins=(A5-0, streamsA['salt'], streamsA['HCl_acid']), 
+A6 = su.ECR_Reclaimer('A6', ins=(A5-0, streamsA['salt'], streamsA['HCl']), 
                     outs = ('A6_treated'),
                     decay_k_COD=get_decay_k(tau_deg, log_deg),)
 
@@ -426,8 +424,8 @@ def get_stream_emissions(streams=None, hr=365*24, ppl=1):
     emission = {}
     factor = hr / ppl
     for i in streams:
-        if not i.impact_item: continue
-        emission[f'{i.ID}'] = i.F_mass*i.impact_item.CFs['GlobalWarming']*factor
+        if not i.stream_impact_item: continue
+        emission[f'{i.ID}'] = i.F_mass*i.stream_impact_item.CFs['GlobalWarming']*factor
     return emission
 
 #10 corresponds to year
@@ -437,8 +435,8 @@ def get_fugitive_emissions(streams=None, hr=365*24*10):
     factor = hr
     emission=0
     for i in streams:
-        if not i.impact_item: continue
-        emission = i.F_mass*i.impact_item.CFs['GlobalWarming']*factor
+        if not i.stream_impact_item: continue
+        emission = i.F_mass*i.stream_impact_item.CFs['GlobalWarming']*factor
     return emission
 
 #N2O and CH4 emissions
