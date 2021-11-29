@@ -139,7 +139,6 @@ GWP_dct = {
 items = ImpactItem.get_all_items()
 
 
-breakpoint()
 if not items.get('Excavation'): # prevent from reloading
     import os
     path = os.path.dirname(os.path.realpath(__file__)) + '/data'
@@ -300,7 +299,7 @@ A8.line = 'fugitive N2O mixer'
 
 
 
-A10 = su.Trucking('A12', ins=A3-3, outs=('transported', 'conveyance_loss'),
+A10 = su.Trucking('A10', ins=A3-3, outs=('transported', 'conveyance_loss'),
                   load_type='mass', distance=5, distance_unit='km',
                   interval=365, interval_unit='d',
                   loss_ratio=0.02)
@@ -326,22 +325,13 @@ power = sum([u.power_utility.rate for u in sysA.units])
 #!!! update labor to input country specific data and be a distribution
 teaA = SimpleTEA(system=sysA, discount_rate=get_discount_rate(), 
                   start_year=2020, lifetime=10, uptime_ratio=1, 
-                  lang_factor=None, annual_maintenance=0, 
-                  annual_labor=(get_operator_daily_wage() * 1 * 52), construction_schedule=None)
+                  lang_factor=None, annual_maintenance=0)
 
 lcaA = LCA(system=sysA, lifetime=10, lifetime_unit='yr', uptime_ratio=1,
             e_item=lambda: power*(365*24)*10)
 
 
 
-# %%
-
-# =============================================================================
-# Scenario B (sysB): MBR (Anoxic and Facultative Aerobic with MBR)
-# =============================================================================
-
-
-# %%
 
 # =============================================================================
 # Summarizing Functions
