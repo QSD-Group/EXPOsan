@@ -17,7 +17,7 @@ for license details.
 
 # Filter out warnings related to solid content
 import warnings
-warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore', message='Solid content')
 
 import numpy as np
 import biosteam as bst

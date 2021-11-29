@@ -4,18 +4,13 @@ bwaise: Sanitation Alternatives in Bwaise, Uganda
 
 Summary
 -------
-Systems included in this module are based on Scenarios A-C as described in
-Trimmer et al. [1]_ and named as "sysA", "sysB", and "sysC".
-Previous scripts developed for modeling and analyses of
-the systems can be found in another `repository
-<https://github.com/QSD-Group/Bwaise-sanitation-alternatives>`_.
+Systems included in this module are based on Scenarios A-C as described in Trimmer et al. [1]_ and named as "sysA", "sysB", and "sysC". Previous scripts developed for modeling and analyses of the systems can be found in another `repository <https://github.com/QSD-Group/Bwaise-sanitation-alternatives>`_.
 
-Results generated from this module have been benchmarked against Trimmer et al. [1]_
-and you can find the `result comparison <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bwaise/comparison>`_.
+Results generated from this module have been benchmarked against Trimmer et al. [1]_ and you can find the result comparison in the ``comparison`` folder. The folder ``data`` contains data needed to run the module, and ``figures`` and ``results`` contain the archived figures and results generated for Li et al.[2]_ 
 
-To run the module developed in Trimmer et al. [1]_, you can run the `Bwaise_sanitation_model.py` script
-in either `baseline <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bwaise/comparison/baseline>`_ 
-or `uncertainty <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bwaise/comparison/uncertainty>`_.
+To reproduce the results and figures included in Li et al.[2]_, directly run ``systems.py``. You'll need the package `adjustText <https://github.com/Phlya/adjustText>`_ in addition to ``EXPOsan``'s requirements.
+
+To run the module developed in Trimmer et al. [1]_, you can run the `Bwaise_sanitation_model.py` script in either `baseline <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bwaise/comparison/baseline>`_ or `uncertainty <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bwaise/comparison/uncertainty>`_.
 
 Note that minor modifications have been made in the scripts, specifically:
 
@@ -24,8 +19,7 @@ Note that minor modifications have been made in the scripts, specifically:
     - Degradation algorithms for all treatment functions with first-order decay have been updated in `treatment.py`
     - The emission calculation of `ABR` has been updated.
 
-The change in the spreadsheet is denoted by red font with a note, and all changes in the scripts have been noted with `#!!!`,
-the original value/codes are saved either in the spreadsheet note or as comments.
+The change in the spreadsheet is denoted by red font with a note, and all changes in the scripts have been noted with `#!!!`, the original value/codes are saved either in the spreadsheet note or as comments.
 
 .. figure:: ./figures/sysA.png
 
@@ -221,13 +215,9 @@ TEA and LCA are performed through :class:`biosteam.TEA` and :class:`LCA` objects
 
 Uncertainty and sensitivity analyses
 ------------------------------------
-These analyses are performed through :class:`biosteam.Model` objects, three models
-(``modelA``, ``modelB``, ``modelC`` for ``sysA``, ``sysB``, and ``sysC``, respectively)
-have been added with all the uncertainty parameters and ranges according to
-Trimmer et al. [1]_.
+These analyses are performed through :class:`biosteam.Model` objects, three models (``modelA``, ``modelB``, ``modelC`` for ``sysA``, ``sysB``, and ``sysC``, respectively) have been added with all the uncertainty parameters and ranges according to Trimmer et al. [1]_.
 
-You can make changes (e.g., add or remove parameters, change uncertainty ranges)
-to these models or construct your own ones.
+You can make changes (e.g., add or remove parameters, change uncertainty ranges) to these models or construct your own ones.
 
 .. code-block:: python
 
@@ -241,13 +231,10 @@ to these models or construct your own ones.
     >>> models.save_uncertainty_results(models.modelA)
 
 
-``QSDsan`` also have built-in functions for advanced global sensitivity analyses
-and plotting functions, refer to the `stats <https://qsdsan.readthedocs.io/en/latest/stats.html>`_ module for examples.
+``QSDsan`` also have built-in functions for advanced global sensitivity analyses and plotting functions, refer to the `stats <https://qsdsan.readthedocs.io/en/latest/stats.html>`_ module for examples.
 
 
 References
 ----------
-.. [1] Trimmer et al., Navigating Multidimensional Social–Ecological System
-    Trade-Offs across Sanitation Alternatives in an Urban Informal Settlement.
-    Environ. Sci. Technol. 2020, 54 (19), 12641–12653.
-    `<https://doi.org/10.1021/acs.est.0c03296>`_
+.. [1] Trimmer et al., Navigating Multidimensional Social–Ecological System Trade-Offs across Sanitation Alternatives in an Urban Informal Settlement. Environ. Sci. Technol. 2020, 54 (19), 12641–12653. `<https://doi.org/10.1021/acs.est.0c03296>`_
+.. [2] Li et al., QSDsan: An Integrated Platform for Quantitative Sustainable Design of Sanitation and Resource Recovery Systems *In Prep.*

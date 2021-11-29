@@ -21,7 +21,7 @@ The ``EXPOsan`` package contains systems developed using the `QSDsan <https://gi
 
 Installation
 ------------
-The easiest way is through ``pip``, in command/Anaconda prompt (Windows) or terminal (macOS):
+The easiest way is through ``pip``, in your command-line interface (e.g., Anaconda prompt, terminal):
 
 .. code:: bash
 

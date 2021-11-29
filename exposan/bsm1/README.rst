@@ -5,8 +5,7 @@ bsm1: Benchmark Simulation Model No. 1
 Summary
 -------
 This module implements the Benchmark Simulation Model No. 1 (BSM1). [1]_ The code
-for process modeling and dynamic simulation has been verified against GPS-X and
-MATLAB Simulink [2]_ results.
+for process modeling and dynamic simulation has been verified against the MATLAB/Simulink [2]_ implementation developed by International Water Association (IWA) Task Group on Benchmarking of Control Strategies. The ``MATLAB`` folder contains MATLAB/Simulink results for comparison.
 
 .. figure:: ./figures/BSM1.png
 
