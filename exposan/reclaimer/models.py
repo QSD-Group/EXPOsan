@@ -485,41 +485,53 @@ path = su_data_path + '_primary_reclaimer.csv'
 data = load_data(path)
 batch_setting_unit_params(data, modelA, A3)
 
-##SysA Bio treatment: A + O + A + O 
-#Anaerboic 
+##Ultrafiltrtion
 A4 = systems.A4
 path = su_data_path + '_ultrafiltration_reclaimer.csv'
 data = load_data(path)
 batch_setting_unit_params(data, modelA, A4)
 
-# Aerobic 1st Cycle 
+# Ion exchange
 A5 = systems.A5
 path = su_data_path + '_ion_exchange_reclaimer.csv'
 data = load_data(path)
 batch_setting_unit_params(data, modelA, A5)
 
-# Anoxic 
+# ECR
 A6 = systems.A6
 path = su_data_path + '_ECR_reclaimer.csv'
 data = load_data(path)
 batch_setting_unit_params(data, modelA, A6)
 
+#Housing
+A9 = systems.A9
+path = su_data_path + '_housing_reclaimer.csv'
+data = load_data(path)
+batch_setting_unit_params(data, modelA, A9)
+
+#System Controls
+A10 = systems.A10
+path = su_data_path + '_system_reclaimer.csv'
+data = load_data(path)
+batch_setting_unit_params(data, modelA, A10)
+
+
 
 # Conveyance
-A10 = systems.A10
-b = A10.loss_ratio
+A11 = systems.A11
+b = A11.loss_ratio
 D = shape.Uniform(lower=0.02, upper=0.05)
-@paramA(name='Transportation loss', element=A10, kind='coupled', units='fraction',
+@paramA(name='Transportation loss', element=A11, kind='coupled', units='fraction',
         baseline=b, distribution=D)
 def set_trans_loss(i):
-    A10.loss_ratio = A10.loss_ratio = i
+    A11.loss_ratio = A11.loss_ratio = i
 
-b = A10.single_truck.distance
+b = A11.single_truck.distance
 D = shape.Uniform(lower=2, upper=10)
-@paramA(name='Transportation distance', element=A10, kind='coupled', units='km',
+@paramA(name='Transportation distance', element=A11, kind='coupled', units='km',
         baseline=b, distribution=D)
 def set_trans_distance(i):
-    A10.single_truck.distance = i
+    A11.single_truck.distance = i
 
 all_paramsA = modelA.get_parameters()
 

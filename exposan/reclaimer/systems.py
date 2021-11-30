@@ -220,7 +220,7 @@ def batch_create_streams(prefix):
                                       stream_impact_item=Zeolite_item.copy(set_as_source=True))
     stream_dct['Conc_NH3'] = WasteStream(f'{prefix}_Conc_NH3', phase='s', price=price_dct['Conc_NH3'], 
                                       stream_impact_item=Conc_NH3_item.copy(set_as_source=True))
-    stream_dct['HCl'] = WasteStream(f'{prefix}_Conc_NH3', phase='l', price=price_dct['HCl'], 
+    stream_dct['HCl'] = WasteStream(f'{prefix}_HCl', phase='l', price=price_dct['HCl'], 
                                       stream_impact_item=Conc_NH3_item.copy(set_as_source=True))           
   
     
@@ -295,28 +295,29 @@ A8.specification = lambda: add_fugitive_items(A8, N2O_item)
 A8.line = 'fugitive N2O mixer'
 
 ################## Other impacts and costs ##################
-#A9 = su.Misch('A9', ins=(A6-0), outs = ('A9_out'))
+A9 = su.HousingReclaimer('A9', ins=(A6-0), outs = ('A9_out'))
+A10 = su.SystemReclaimer('A10', ins=(A9-0), outs = ('A10_out'))
 
 
 
-A10 = su.Trucking('A10', ins=A3-3, outs=('transported', 'conveyance_loss'),
+A11 = su.Trucking('A11', ins=A3-3, outs=('transported', 'conveyance_loss'),
                   load_type='mass', distance=5, distance_unit='km',
                   interval=365, interval_unit='d',
                   loss_ratio=0.02)
-def update_A10_param():
-    A10._run()
-    truck = A10.single_truck
+def update_A11_param():
+    A11._run()
+    truck = A11.single_truck
     truck.interval = 365*24
-    truck.load = A10.F_mass_in*truck.interval
-    rho = A10.F_mass_in/A10.F_vol_in
+    truck.load = A11.F_mass_in*truck.interval
+    rho = A11.F_mass_in/A10.F_vol_in
     vol = truck.load/rho
-    A10.fee = get_tanker_truck_fee(vol)
-    A10._design()
-A10.specification = update_A10_param
+    A11.fee = get_tanker_truck_fee(vol)
+    A11._design()
+A11.specification = update_A11_param
 
 
 ############### Simulation, TEA, and LCA ###############
-sysA = bst.System('sysA', path= (A1, A2, A3, A4, A5, A6, A7, A8, A10))
+sysA = bst.System('sysA', path= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11))
 
 sysA.simulate()
 

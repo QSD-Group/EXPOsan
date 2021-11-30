@@ -20,43 +20,23 @@ from qsdsan import Model
 m = R.models
 modelA= m.modelA
 
-a = R.analyses
-key_metrics = a.key_metrics
+#a = R.analyses
+#key_metrics = a.key_metrics
 
 
 #spearman_rho, fig, ax, all_params = a.run_plot_spearman(modelA, N=10000) 
 
-uncertainty = m.run_uncertainty(modelA, N=100)
+uncertainty = m.run_uncertainty(modelA, N=10000)
 m.save_uncertainty_results(modelA)
 
-# morris_dct, fig, ax = a.run_plot_morris(modelB, 10, test_convergence=False)
+# # Filter out parameters that only meet a certain threshold
+# def filter_parameters(model, df, threshold):
+#     new_df = pd.concat((df[df>=threshold], df[df<=-threshold]))
+#     filtered = new_df.dropna(how='all')
+#     param_dct = {p.name_with_units:p for p in model.get_parameters()}
+#     parameters = set(param_dct[i[1]] for i in filtered.index)
+#     return list(parameters)
 
-# morris_dct_conv, fig, ax = a.run_plot_morris(modelB, 100, test_convergence=True)
-
-# fast_dct, fig, ax = a.run_plot_fast(modelB, 'FAST', 100, M=4)
-
-# rbd_dct, fig, ax = a.run_plot_fast(modelB, 'RBD', 100, M=10)
-
-# sobol_dct, fig, ax = a.run_plot_sobol(modelB, 10, file_prefix='')
-
-
-# fig, ax = s.plot_uncertainties(modelB, metrics=key_metrics)
-
-# fig, ax = s.plot_correlations(spearman_rho, parameters=modelB.get_parameters(),
-#                               metrics=key_metrics[0])
-
-# fig, ax = s.plot_correlations(spearman_rho, parameters=modelB.get_parameters(),
-#                               metrics=key_metrics)
-
-# fig, ax = s.plot_morris_results(morris_dct, key_metrics[0], label_kind='name')
-
-# fig, ax = s.plot_morris_convergence(morris_dct_conv,
-#                                     parameters=modelB.get_parameters(),
-#                                     metric=key_metrics[0], plot_rank=True)
-
-# fig, ax = s.plot_fast_results(fast_dct, key_metrics[0])
-
-# fig, ax = s.plot_fast_results(rbd_dct, key_metrics[0])
-
-# fig, ax = s.plot_sobol_results(sobol_dct, metric=key_metrics[0], kind='STS2',
-#                                 plot_in_diagonal='ST')
+# # Only want parameters with Spearman's rho >= 0.4 or <= -0.4
+# modelA.parameters = key_parameters = \
+#     filter_parameters(modelA, spearman_rho, threshold=0.4)
