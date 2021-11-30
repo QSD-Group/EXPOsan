@@ -14,6 +14,7 @@ for license details.
 
 import os
 bsm1_path = os.path.dirname(__file__)
+del os
 
 from . import system
 

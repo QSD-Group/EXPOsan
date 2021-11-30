@@ -17,6 +17,8 @@ from qsdsan import processes as pc
 from qsdsan import set_thermo, WasteStream, System
 from qsdsan.utils import time_printer
 
+import os
+bsm1_path = os.path.dirname(__file__)
 
 # =============================================================================
 # Benchmark Simulation Model No. 1
@@ -67,7 +69,7 @@ asm1 = pc.ASM1(Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
                 mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
                 eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
                 K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05, fr_SS_COD=0.75,
-                path='_asm1.tsv') # no need to use the `bsm1_path`, and it triggers repetitive importing
+                path=os.path.join(bsm1_path, '_asm1.tsv'))
 
 ############# create unit operations #####################
 A1 = su.CSTR('A1', ins=[PE, RE, RAS], V_max=V_an,
@@ -132,12 +134,12 @@ def run(t, t_step, method=None, **kwargs):
         bsm1.simulate(t_span=(0,t), 
                       t_eval=np.arange(0, t+t_step, t_step),
                       method=method, 
-                      export_state_to=f'sol_{t}d_{method}.xlsx', # better-looking header in Excel
+                      export_state_to=f'results/sol_{t}d_{method}.xlsx', # better-looking header in Excel
                       **kwargs)
     else:
         bsm1.simulate(solver='odeint', 
                       t=np.arange(0, t+t_step, t_step),
-                      export_state_to=f'sol_{t}d_odeint.xlsx',
+                      export_state_to=f'results/sol_{t}d_odeint.xlsx',
                       **kwargs)
 
 
