@@ -21,6 +21,5 @@ from .system import *
 
 __all__ = (
     'bsm1_path',
-    'system',
     *system.__all__,
 	)

@@ -11,16 +11,11 @@ for process modeling and dynamic simulation has been verified against the MATLAB
 
     *BSM1 system layout: two anoxic suspended-growth bioreactors followed by three aerobic bioreactors and a secondary clarifier*
 
-The Activated Sludge Model No. 1 (ASM1) [3]_ was used to describe biochemical processes
-and a simple 1-D 10-layer settling model [4]_ was used for the secondary clarifier.
+The Activated Sludge Model No. 1 (ASM1) [3]_ was used to describe biochemical processes and a simple 1-D 10-layer settling model [4]_ was used for the secondary clarifier.
 
-As of now, the BSM1 system can be simulated dynamically with constant influent.
-Fixed aeration is enabled. Idealized aeration control can also be implemented
-by setting target dissolved oxygen concentration.
+As of now, the BSM1 system can be simulated dynamically with constant influent. Fixed aeration is enabled. Idealized aeration control can also be implemented by setting target dissolved oxygen concentration.
 
-To perform a simulation of the BSM1 model, you can run the ``system.py`` script.
-Influent loadings, initial conditions, model parameters, system settings, and
-solver options can all be customized in the same script.
+To perform a simulation of the BSM1 model, you can import the module (as shown below) or directly run the ``system.py`` script. Influent loadings, initial conditions, model parameters, system settings, and solver options can all be customized in the same script.
 
 Future development will include:
 
@@ -34,9 +29,7 @@ Note that minor modifications have been made to ASM1, specifically:
     - Compared to the updated model [5]_, the ammonia limitation term was removed from the rate equations of the
       heterotrophic growth processes to be consistent with GPS-X and the MATLAB Simulink [2]_ implementation.
 
-The most updated version of ASM1 per Rieger et al. [5]_ is available in `QSDsan <https://github.com/QSD-Group/QSDsan/blob/main/qsdsan/processes>`_.
-You can choose to work with the updated version by changing the file path in the ``system.py`` script or replace the ``_asm1.tsv`` file with
-the one in `QSDsan <https://github.com/QSD-Group/QSDsan/tree/main/qsdsan/data/process_data>`_.
+The most updated version of ASM1 per Rieger et al. [5]_ is available in `QSDsan <https://github.com/QSD-Group/QSDsan/blob/main/qsdsan/processes>`_. You can choose to work with the updated version by changing the file path in the ``system.py`` script or replace the ``_asm1.tsv`` file with the one in `QSDsan <https://github.com/QSD-Group/QSDsan/tree/main/qsdsan/data/process_data>`_.
 
 
 Load BSM1 system with default settings
@@ -130,24 +123,15 @@ Adjust model settings
     >>> bsm.C1.set_init_sludge_solids(X_I=1507, X_S=89.3, X_BH=5913, X_BA=372.6,
                                       X_P=641.7, X_ND=2.32)
 
-Biochemical process model parameters such as ASM1's stoichiometric or kinetic
-parameters can be customized upon and after initiation of the ``CompiledProcesses`` object.
-See `process <https://qsdsan.readthedocs.io/en/latest/Process.html#compiledprocesses>`_
+Biochemical process model parameters such as ASM1's stoichiometric or kinetic parameters can be customized upon and after initiation of the ``CompiledProcesses`` object. See `process <https://qsdsan.readthedocs.io/en/latest/Process.html#compiledprocesses>`_
 module for more details.
 
-Unit operation settings, such as, reactor dimensions, number of settling layers, and
-settling parameters, can also be customized upon and after initiation of the
-corresponding `SanUnit`.
+Unit operation settings, such as, reactor dimensions, number of settling layers, and settling parameters, can also be customized upon and after initiation of the corresponding ``SanUnit``.
 
 
 Perform dynamic simulations
 ---------------------------
-Dynamic simulation of the BSM1 system can be performed with the built in `simulate`
-method. A system of ordinary differential equations (ODEs) is compiled upon the
-initiation of the `System` object. Detailed settings regarding the ODE solver can
-be adjusted by passing keyword arguments to the `simulate` method. See
-`biosteam <https://biosteam.readthedocs.io/en/latest/System.html#biosteam.System.simulate>`_
-for more information.
+Dynamic simulation of the BSM1 system can be performed with the built in `simulate`method. A system of ordinary differential equations (ODEs) is compiled upon the initiation of the `System` object. Detailed settings regarding the ODE solver can be adjusted by passing keyword arguments to the `simulate` method. See `biosteam <https://biosteam.readthedocs.io/en/latest/System.html#biosteam.System.simulate>`_ for more information.
 
 .. code-block:: python
 
@@ -214,13 +198,8 @@ for more information.
 
 References
 ----------
-.. [1] Alex et al., Benchmark simulation model no. 1 (BSM1). Report by the
-       IWA Taskgroup on benchmarking of control strategies for WWTPs (2008): 19-20.
-       `<http://iwa-mia.org/benchmarking/#BSM1>`_
-.. [2] Gernaey et al., Benchmarking of control strategies for wastewater treatment
-       plants. IWA publishing, 2014. `<https://github.com/wwtmodels/Benchmark-Simulation-Models>`_
+.. [1] Alex et al., Benchmark simulation model no. 1 (BSM1). Report by the IWA Taskgroup on benchmarking of control strategies for WWTPs (2008): 19-20. `<http://iwa-mia.org/benchmarking/#BSM1>`_
+.. [2] Gernaey et al., Benchmarking of control strategies for wastewater treatment plants. IWA publishing, 2014. `<https://github.com/wwtmodels/Benchmark-Simulation-Models>`_
 .. [3] Henze et al., Activated sludge models ASM1, ASM2, ASM2d and ASM3. IWA publishing, 2000.
-.. [4] Takács et al., A Dynamic Model of the Clarification-Thickening Process.
-       Water Res. 1991, 25 (10), 1263–1271. `<https://doi.org/10.1016/0043-1354(91)90066-Y.>`_
-.. [5] Rieger et al., Guidelines for Using Activated Sludge Models.
-       IWA Publishing: London, New York, 2012; Vol. 11. `<https://doi.org/10.2166/9781780401164.>`_
+.. [4] Takács et al., A Dynamic Model of the Clarification-Thickening Process. Water Res. 1991, 25 (10), 1263–1271. `<https://doi.org/10.1016/0043-1354(91)90066-Y.>`_
+.. [5] Rieger et al., Guidelines for Using Activated Sludge Models. IWA Publishing: London, New York, 2012; Vol. 11. `<https://doi.org/10.2166/9781780401164.>`_

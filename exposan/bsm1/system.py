@@ -4,18 +4,18 @@ EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
     Joy Zhang <joycheung1994@gmail.com>
+    Yalin Li <zoe.yalin.li@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
-import os 
+
 import numpy as np
 from qsdsan import sanunits as su
 from qsdsan import processes as pc
 from qsdsan import set_thermo, WasteStream, System
 from qsdsan.utils import time_printer
-from exposan.bsm1 import bsm1_path
 
 
 # =============================================================================
@@ -59,13 +59,15 @@ Q_ras = 18446.0    # recycle sludge flowrate
 # pc.DiffusedAeration.C = 235.0
 # aer = pc.DiffusedAeration('Fixed_Aeration', 'S_O', KLa_20=240, SOTE=0.3, V=V_ae,
 #                           T_air=Temp, T_water=Temp, d_submergence=4-0.3)
+
+
 aer1 = pc.DiffusedAeration('aer1', 'S_O', KLa=240, DOsat=8.0, V=V_ae)
 aer2 = pc.DiffusedAeration('aer2', 'S_O', KLa=84, DOsat=8.0, V=V_ae)
 asm1 = pc.ASM1(Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
                 mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
                 eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
                 K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05, fr_SS_COD=0.75,
-                path=os.path.join(bsm1_path, '_asm1.tsv'))
+                path='_asm1.tsv') # no need to use the `bsm1_path`, and it triggers repetitive importing
 
 ############# create unit operations #####################
 A1 = su.CSTR('A1', ins=[PE, RE, RAS], V_max=V_an,
@@ -117,7 +119,7 @@ bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, S1, C1, S2), recycle=(RE, RAS))
 bsm1.set_tolerance(rmol=1e-6)
 
 __all__ = (
-    'cmps', 'bsm1', 'bsm1_path', 'asm1', 'aer1', 'aer2',
+    'cmps', 'bsm1', 'asm1', 'aer1', 'aer2',
     'Q', 'PE', 'SE', 'WAS', 'RE', 'RAS', 
     *(i.ID for i in bsm1.units),
     )
@@ -130,12 +132,12 @@ def run(t, t_step, method=None, **kwargs):
         bsm1.simulate(t_span=(0,t), 
                       t_eval=np.arange(0, t+t_step, t_step),
                       method=method, 
-                      export_state_to=f'sol_{t}d_{method}.tsv',
+                      export_state_to=f'sol_{t}d_{method}.xlsx', # better-looking header in Excel
                       **kwargs)
     else:
         bsm1.simulate(solver='odeint', 
                       t=np.arange(0, t+t_step, t_step),
-                      export_state_to=f'sol_{t}d_odeint.tsv',
+                      export_state_to=f'sol_{t}d_odeint.xlsx',
                       **kwargs)
 
 
@@ -156,4 +158,4 @@ if __name__ == '__main__':
     run(t, t_step, method=method)
     
     # If want to see a quick plot of the state variable of a certain unit
-    # fig, ax = A1.plot_state_over_time(system=bsm1, state_var=('S_S', 'X_I'))
+    # fig, ax = A1.plot_state_over_time(system=bsm1, state_var=('S_S', 'S_NH'))
