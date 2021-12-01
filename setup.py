@@ -17,14 +17,14 @@ from setuptools import setup
 setup(
     name='exposan',
     packages=['exposan'],
-    version='0.1.9',
+    version='1.0.1',
     license='UIUC',
     author='Quantitative Sustainable Design Group',
     author_email='quantitative.sustainable.design@gmail.com',
     description='Exposition of sanitation and resource recovery systems',
-    long_description=open('README.rst').read(),
+    long_description=open('README.rst', encoding='utf-8').read(),
     url="https://github.com/QSD-Group/EXPOsan",
-    install_requires=['qsdsan>=0.3.13',],
+    install_requires=['qsdsan>=1.0.1',],
     package_data=
         {'exposan': [
                     'bsm1/*',
