@@ -317,11 +317,11 @@ def update_A_t0():
 A4.specification = update_A_t0
 A4.run_after_specification = True
 
-A5 = su.SedimentationTank('A5', ins=A4-0,
-                          outs=('liq', 'sol', 'A5_CH4', 'A5_N2O'),
-                          decay_k_COD=get_decay_k(tau_deg, log_deg),
-                          decay_k_N=get_decay_k(tau_deg, log_deg),
-                          max_CH4_emission=max_CH4_emission)
+A5 = su.Sedimentation('A5', ins=A4-0,
+                      outs=('liq', 'sol', 'A5_CH4', 'A5_N2O'),
+                      decay_k_COD=get_decay_k(tau_deg, log_deg),
+                      decay_k_N=get_decay_k(tau_deg, log_deg),
+                      max_CH4_emission=max_CH4_emission)
 
 A6 = su.Lagoon('A6', ins=A5-0, outs=('anaerobic_treated', 'A6_CH4', 'A6_N2O'),
                design_type='anaerobic',

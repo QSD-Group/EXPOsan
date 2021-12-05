@@ -10,6 +10,8 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
+__all__ = ('test_bsm1',)
+
 def test_bsm1():
     from numpy.testing import assert_allclose as ac
     from numpy import arange
