@@ -12,6 +12,15 @@ for license details.
 
 from qsdsan import Component, Components, WasteStream, set_thermo, sanunits as su
 
+__all__ = ('cmps')
+
+
+# %%
+
+# =============================================================================
+# Components and streams
+# =============================================================================
+
 X = Component('X', phase='s', measured_as='COD', i_COD=0, description='Biomass',
               organic=True, particle_size='Particulate', degradability='Readily')
 X_inert = Component('X_inert', phase='s', description='Inert biomass', i_COD=0,
@@ -25,8 +34,6 @@ CH4 = Component('CH4', phase='g', organic=True, particle_size='Particulate',
 cmps = Components.append_combustion_components([*cmps, CH4], lock_state_at='')
 set_thermo(cmps)
 
-
-# %%
 
 inf = WasteStream('inf')
 inf.set_flow_by_concentration(flow_tot=20,
