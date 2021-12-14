@@ -15,11 +15,25 @@ import numpy as np
 from qsdsan import sanunits as su
 from qsdsan import processes as pc
 from qsdsan import set_thermo, WasteStream, System
-from qsdsan.utils import time_printer
+from qsdsan.utils import time_printer, load_data
 
 import os
 bsm1_path = os.path.dirname(__file__)
 
+
+def batch_init(path, sheet):
+    df = load_data(path, sheet)
+    dct = df.to_dict('index')
+    for k in [A1, A2, O1, O2, O3]:
+        k.set_init_conc(**dct[k._ID])
+    c1s = {k:v for k,v in dct['C1_s'].items() if v>0}
+    c1x = {k:v for k,v in dct['C1_x'].items() if v>0}
+    tss = [v for v in dct['C1_tss'].values() if v>0]
+    C1.set_init_solubles(**c1s)
+    C1.set_init_sludge_solids(**c1x)
+    C1.set_init_TSS(tss)
+
+#%%
 # =============================================================================
 # Benchmark Simulation Model No. 1
 # =============================================================================
@@ -98,24 +112,9 @@ C1 = su.FlatBottomCircularClarifier('C1', S1-1, [SE, 'sludge'],
 S2 = su.Splitter('S2', C1-1, [RAS, WAS], split=Q_ras/(Q_ras+Q_was), init_with='WasteStream')
 
 
-A1.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
-                  S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20, S_ALK=7*12)
-A2.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
-                  S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20, S_ALK=7*12)
-O1.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
-                  S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20, S_ALK=7*12)
-O2.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100, X_P=100,
-                  S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0, S_NO=20, S_ALK=7*12)
-O3.set_init_conc(S_I=30.0, S_S=0.88949, X_I=1149.1252, X_S=49.3056, X_BH=2559.3436, X_BA=149.7971, 
-                  X_P=452.2111, S_O=0.49094, S_NH=1.7333, S_ND=0.68828, X_ND=3.5272, S_NO=10.4152, 
-                  S_ALK=4.1256*12)
+batch_init(os.path.join(bsm1_path, 'data/initial_conditions.xlsx'), 't=10')
+C1.t_delay = 0
 
-C1.set_init_solubles(S_I=30, S_S=0.88949, S_O=0.49094, S_NO=10.4152, S_NH=1.7333, 
-                      S_ND=0.68828, S_ALK=4.1256*12)
-C1.set_init_sludge_solids(X_I=1507.892825, X_S=89.3944512, X_BH=5913.554621, X_BA=372.6863109, X_P=641.7843247, X_ND=2.326138037)
-C1.set_init_TSS([12.4969, 18.1132, 29.5402, 68.9781, 356.0747, 
-                  356.0747, 356.0747, 356.0747, 356.0747, 6393.9844])
-      
 ############# system simulation ############################
 bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, S1, C1, S2), recycle=(RE, RAS))
 bsm1.set_tolerance(rmol=1e-6)
@@ -126,7 +125,6 @@ __all__ = (
     *(i.ID for i in bsm1.units),
     )
 
-
 #%%
 @time_printer
 def run(t, t_step, method=None, **kwargs):
@@ -134,7 +132,7 @@ def run(t, t_step, method=None, **kwargs):
         bsm1.simulate(t_span=(0,t), 
                       t_eval=np.arange(0, t+t_step, t_step),
                       method=method, 
-                      export_state_to=f'results/sol_{t}d_{method}.xlsx', # better-looking header in Excel
+                      export_state_to=f'results/sol_{t}d_{method}_t10_delay0.xlsx', # better-looking header in Excel
                       **kwargs)
     else:
         bsm1.simulate(solver='odeint', 
@@ -160,4 +158,4 @@ if __name__ == '__main__':
     run(t, t_step, method=method)
     
     # If want to see a quick plot of the state variable of a certain unit
-    # fig, ax = A1.plot_state_over_time(system=bsm1, state_var=('S_S', 'S_NH'))
+    fig, ax = C1.plot_state_over_time(system=bsm1, state_var=('S_S', 'S_NH'))
