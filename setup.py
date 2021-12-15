@@ -28,6 +28,7 @@ setup(
     package_data=
         {'exposan': [
                     'bsm1/*',
+                    'bsm1/data/*',
                     'bwaise/*',
                     'bwaise/data/*',
                     ]},
