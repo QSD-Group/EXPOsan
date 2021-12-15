@@ -40,4 +40,10 @@ inf.set_flow_by_concentration(flow_tot=20,
                               concentrations={'Substrate': 18.3},
                               units=('mgd', 'mg/L'))
 
-#!!! PAUSED here
+'''
+System should have the following units:
+    ActivatedSludgeProcess (aeration tanks & clarifiers)
+    Sludge handling units (at least GBT, maybe also others):
+        X_thickened_WAS = 25000; %[mg/L]
+    CHP
+'''
