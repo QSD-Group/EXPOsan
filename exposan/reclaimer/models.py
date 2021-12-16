@@ -52,11 +52,13 @@ __all__ = ( 'modelA', 'result_dct',
 
 systems = R.systems
 sys_dct = systems.sys_dct
+unit_dct = systems.unit_dct
 price_dct = systems.price_dct
 GWP_dct = systems.GWP_dct
 GWP = systems.GWP
 get_summarizing_fuctions = systems.get_summarizing_fuctions
 func = get_summarizing_fuctions()
+
 
 def add_metrics(system):
     sys_ID = system.ID
@@ -151,6 +153,50 @@ def add_shared_parameters(sys, model, country_specific=False):
         @param(name='Electricity CF', element='LCA', kind='isolated',
                    units='kg CO2-eq/kWh', baseline=b, distribution=D)
         def set_electricity_CF(i):
+            GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
+        
+            #GWP_dct['Electricity'] = systems.e_item.CFs['GlobalWarming'] = i
+        
+
+        
+
+
+
+# %%
+
+# =============================================================================
+# Shared by all three systems
+# =============================================================================
+
+su_data_path = data_path + 'sanunit_data/'
+path = su_data_path + '_drying_bed.tsv'
+drying_bed_data = load_data(path)
+
+def add_shared_parameters(sys, model, country_specific=False):
+    ########## Related to multiple units ##########
+    unit = sys.path[0]
+    param = model.parameter
+    streams = sys_dct['stream_dct'][sys.ID]
+    
+    #replacement cost should be a parameter, and then labor costs should be a metric 
+    #the paramter affects the metric 
+    #parameter is the input metric is the output 
+
+            
+        # Electricity price
+    b = price_dct['Electricity']
+    D = shape.Triangle(lower=0.04, midpoint=b, upper=0.1)
+    @param(name='Electricity price', element='TEA', kind='isolated',
+        units='$/kWh', baseline=b, distribution=D)
+        
+    def set_electricity_price(i):
+            PowerUtility.price = i
+
+    b = GWP_dct['Electricity']
+    D = shape.Triangle(lower=0.6212, midpoint=b, upper=0.7592)
+    @param(name='Electricity CF', element='LCA', kind='isolated',
+                   units='kg CO2-eq/kWh', baseline=b, distribution=D)
+    def set_electricity_CF(i):
             GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
         
             #GWP_dct['Electricity'] = systems.e_item.CFs['GlobalWarming'] = i

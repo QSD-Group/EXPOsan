@@ -238,7 +238,7 @@ def add_fugitive_items(unit, item):
 # %%
 
 # =============================================================================
-# Scenario A (sysA): Duke Reclaimer Design 2.0
+# Scenario A (sysA): Duke Reclaimer Design 2.0 Trucking Instead of On-site sludge treatment 
 # =============================================================================
 
 flowsheetA = bst.Flowsheet('sysA')
@@ -315,24 +315,104 @@ def update_A11_param():
     A11._design()
 A11.specification = update_A11_param
 
-
 ############### Simulation, TEA, and LCA ###############
 sysA = bst.System('sysA', path= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11))
-
 sysA.simulate()
+
 
 power = sum([u.power_utility.rate for u in sysA.units])
 
 #!!! update labor to input country specific data and be a distribution
-teaA = SimpleTEA(system=sysA, discount_rate=get_discount_rate(), 
-                  start_year=2020, lifetime=10, uptime_ratio=1, 
-                  lang_factor=None, annual_maintenance=0)
+teaA = SimpleTEA(system=sysA, discount_rate=get_discount_rate(),  
+                  start_year=2020, lifetime=25, uptime_ratio=1, 
+                  lang_factor=None, annual_maintenance=0, 
+                  annual_labor = A5._calc_maintenance_labor_cost() / 8760)
 
 lcaA = LCA(system=sysA, lifetime=10, lifetime_unit='yr', uptime_ratio=1,
             e_item=lambda: power*(365*24)*10)
 
+# =============================================================================
+# System B (sludge pasteruization instead of trucking)
+# =============================================================================
+flowsheetB= bst.Flowsheet('sysB')
+bst.main_flowsheet.set_flowsheet(flowsheetB)
+
+streamsB = batch_create_streams('B')
+
+#################### Human Inputs ####################
+B1 = su.Excretion('B1', outs=('urine','feces'))
+
+################### User Interface ###################
+#Reclaimer 2.0 can process ~30L/hr(net), 720L/24 hours of constant operation
+#flush volume of 6L per flush determines the number of users would be 120 users
+B2 = su.MURTToilet('B2', ins=(B1-0, B1-1,
+                              'toilet_paper', 'flushing_water',
+                              'cleansing_water', 'desiccant'),
+                    outs=('mixed_waste', 'B2_CH4', 'B2_N2O'),
+                    decay_k_COD=get_decay_k(tau_deg, log_deg), 
+                    decay_k_N=get_decay_k(tau_deg, log_deg),
+                    max_CH4_emission=get_max_CH4_emission(),
+                    N_user=120/7, N_toilet=7, 
+                    if_flushing=True, if_desiccant=False, if_toilet_paper=True,
+                    CAPEX = 0,
+                    OPEX_over_CAPEX= 0.07) 
+
+###################### Treatment ######################
+#Septic Tank 
+B3 = su.PrimaryReclaimer('B3', ins=(B2-0), 
+                    outs=('B3_treated', 'B3_CH4', 'B3_N2O', 'B3_sludge'), 
+                    decay_k_COD=get_decay_k(tau_deg, log_deg), 
+                    decay_k_N=get_decay_k(tau_deg, log_deg),
+                    max_CH4_emission=get_max_CH4_emission())
+
+B4 = su.SludgePasteurization('B4', ins=(B3-3, 'air', streamsA['LPG']), outs=('treated_sludge'),
+                                 heat_loss=0.1, target_MC = 0.1, sludge_temp = 283.15, 
+                              temp_pasteurization=343.15, hhv_lpg = 49.3,
+                              hhv_methane = 55.5)
 
 
+B5 = su.Ultrafiltration('A5', ins=(A3-0), outs = ('A5_treated', 'retentate'))
+                        
+B6 = su.IonExchangeReclaimer('B6', ins=(B5-0, streamsA['Zeolite'], streamsA['GAC'], streamsA['KCl']),
+                                outs=('B6_treated', 'SpentZeolite', 'SpentGAC',streamsA['Conc_NH3']),
+                                decay_k_COD=get_decay_k(tau_deg, log_deg), 
+                                decay_k_N=get_decay_k(tau_deg, log_deg),
+                                max_CH4_emission=get_max_CH4_emission(), if_gridtied=True)
+
+B7 = su.ECR_Reclaimer('B7', ins=(B6-0, streamsA['salt'], streamsA['HCl']), 
+                    outs = ('B7_treated'),
+                    decay_k_COD=get_decay_k(tau_deg, log_deg),)
+
+
+B8 = su.Mixer('B8', ins=(B3-1, B2-1), outs=streamsA['CH4'])
+B8.specification = lambda: add_fugitive_items(A7, CH4_item)
+B8.line = 'fugitive CH4 mixer' 
+        
+B9 = su.Mixer('B9', ins=(B3-2, B2-2), outs=streamsA['N2O'])
+B9.specification = lambda: add_fugitive_items(A8, N2O_item)
+B9.line = 'fugitive N2O mixer'
+
+################## Other impacts and costs ##################
+B10 = su.HousingReclaimer('B10', ins=(B7-0), outs = ('B10_out'))
+B11 = su.SystemReclaimer('B11', ins=(B10-0), outs = ('B11_out'))
+
+
+
+############### Simulation, TEA, and LCA ###############
+sysB = bst.System('sysB', path= (B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11))
+sysB.simulate()
+
+
+power = sum([u.power_utility.rate for u in sysA.units])
+
+#!!! update labor to input country specific data and be a distribution
+teaB = SimpleTEA(system=sysB, discount_rate=get_discount_rate(),  
+                  start_year=2020, lifetime=25, uptime_ratio=1, 
+                  lang_factor=None, annual_maintenance=0, 
+                  annual_labor=0)
+
+lcaB = LCA(system=sysB, lifetime=10, lifetime_unit='yr', uptime_ratio=1,
+            e_item=lambda: power*(365*24)*10)
 
 # =============================================================================
 # Summarizing Functions
@@ -351,8 +431,21 @@ sys_dct = {
     'cache': dict(sysA={}, sysB={}, sysC={}),
     }
 
+unit_dct = {
+#     'toilet': dict(sysA=(A2,)),
+    'ion_exchange': dict(sysA=(A5,)),
+#     'chlorination': dict(sysA=(A6,)),
+#     # 'gridtied_system': dict(sysA=(A7,)),    
+#     'photovoltaic_system': dict(sysA=(A7,)),
+#     'control_system': dict(sysA=(A8,)),
+#     'housing': dict(sysA=(A9,)),
+#     'pretreatment': dict(sysA=(A10,)),
+#     'foundation': dict(sysA=(A11,)),
+    }
+
 system_streams = {sysA: streamsA}
 
+#!!!!zeolite check against capital costs
 #learning curve assumptions
 percent_CAPEX_to_scale = 0.1 #this number is the decimal of the fraction of scost of pecialty parts/cost of total parts
 get_percent_CAPEX_to_scale = lambda: percent_CAPEX_to_scale
@@ -373,7 +466,92 @@ def get_scaled_capital(tea):
     scaled_CAPEX_annualized  = (CAPEX_to_scale - scaled_limited)*number_of_units**b+scaled_limited    
     new_CAPEX_annualized = scaled_CAPEX_annualized + CAPEX_not_scaled    
     return new_CAPEX_annualized
+
+#shions code
+def get_cost_capex(unit,tea,ppl):
+    capex = 0
+    if type(unit)== tuple:
+        for i in unit:
+            capex+=tea.get_unit_annualized_CAPEX(i)/365/ppl
+    return capex
+
+def get_cost_scaled_capex(unit,tea,ppl):
+    capex = 0
+    if type(unit)== tuple:
+        for i in unit:
+            capex+=tea.get_unit_annualized_CAPEX(i)/365/ppl
+            capex_to_scale = capex * get_percent_CAPEX_to_scale()
+            capex_not_scaled = capex - capex_to_scale
+            scaled_limited = capex_to_scale * get_percent_limit()
+            b=(np.log(get_learning_curve_percent())/np.log(2))
+            annualized_scaled_capex = (capex_to_scale - scaled_limited)*number_of_units**b+scaled_limited  
+            scaled_capex = annualized_scaled_capex + capex_not_scaled
+    return scaled_capex
+
+def get_cost_opex(unit,ppl):
+    opex = 0
+    if type(unit)== tuple:
+        for i in unit:
+            opex+=sum(i._add_OPEX.values())*24/ppl
+            for stream in i.ins:
+                opex+=stream.imass['Polyacrylamide']*streamsA['polymer'].price*24/ppl
+                opex+=stream.imass['MagnesiumHydroxide']*streamsA['MgOH2'].price*24/ppl
+                opex+=stream.imass['MgCO3']*streamsA['MgCO3'].price*24/ppl
+                opex+=stream.imass['H2SO4']*streamsA['H2SO4'].price*24/ppl
+                opex+=stream.imass['FilterBag']*streamsA['filter_bag'].price*24/ppl
+                opex+=stream.imass['Polystyrene']*streamsA['resin'].price*24/ppl
+                opex+=stream.imass['GAC']*streamsA['GAC'].price*24/ppl
+                opex+=stream.imass['Zeolite']*streamsA['Zeolite'].price*24/ppl
+                opex+=stream.imass['SodiumHydroxide']*streamsA['NaOH'].price*24/ppl
+                opex+=stream.imass['SodiumChloride']*streamsA['NaCl'].price*24/ppl
+    return opex
+
+def get_cost_opex_labor(unit,ppl):
+    opex = 0
+    if type(unit)== tuple:
+        for i in unit:
+            opex=i._calc_maintenance_labor_cost()*24/ppl
+    return opex
+
+def get_cost_opex_replacement(unit,ppl):
+    opex = 0
+    if type(unit)== tuple:
+        for i in unit:
+            opex=i._calc_replacement_cost()*24/ppl
+    return opex
     
+def get_cost_electricity(unit,ppl):
+    electricity = 0
+    if type(unit)== tuple:
+        for i in unit:
+            electricity+=i.power_utility.cost*24/ppl
+    return electricity
+
+def get_cost_opex_streams(unit,ppl):
+    opex = 0
+    if type(unit)== tuple:
+        for i in unit:
+            for stream in i.ins:
+                opex+=stream.imass['Polyacrylamide']*streamsA['polymer'].price*24/ppl
+                opex+=stream.imass['MagnesiumHydroxide']*streamsA['MgOH2'].price*24/ppl
+                opex+=stream.imass['MgCO3']*streamsA['MgCO3'].price*24/ppl
+                opex+=stream.imass['H2SO4']*streamsA['H2SO4'].price*24/ppl
+                opex+=stream.imass['FilterBag']*streamsA['filter_bag'].price*24/ppl
+                opex+=stream.imass['Polystyrene']*streamsA['resin'].price*24/ppl
+                opex+=stream.imass['GAC']*streamsA['GAC'].price*24/ppl              
+                opex+=stream.imass['Zeolite']*streamsA['Zeolite'].price*24/ppl
+                opex+=stream.imass['SodiumHydroxide']*streamsA['NaOH'].price*24/ppl
+                opex+=stream.imass['SodiumChloride']*streamsA['NaCl'].price*24/ppl
+    return opex
+        
+def get_ghg_electricity(unit,ppl):
+    electricity = 0
+    if type(unit)== tuple:
+        for i in unit:
+            electricity+=i.power_utility.consumption*i.uptime_ratio*e_item.CFs['GlobalWarming']*12*365/ppl
+            electricity+=-i.power_utility.production*i.uptime_ratio*e_item.CFs['GlobalWarming']*12*365/ppl
+    return electricity
+
 
 def get_total_inputs(unit):
     if len(unit.ins) == 0: # Excretion units do not have ins
@@ -500,6 +678,16 @@ def get_summarizing_fuctions():
     #             sys_dct['cache'][sys.ID]['liq'][i] + \
     #             sys_dct['cache'][sys.ID]['sol'][i] + \
     #             sys_dct['cache'][sys.ID]['gas'][i]
+    
+        #Cost broken down by units    
+    #Ion Exchange
+    func_dct['ion_exchange_cost_capex'] = lambda ion_exchange,tea,ppl: get_cost_capex(ion_exchange,tea,ppl)
+    func_dct['ion_exchange_cost_scaled_capex'] = lambda ion_exchange,tea,ppl: get_cost_scaled_capex(ion_exchange,tea,ppl)    
+    func_dct['ion_exchange_cost_opex'] = lambda ion_exchange,ppl: get_cost_opex(ion_exchange,ppl)
+    func_dct['ion_exchange_cost_electricity'] = lambda ion_exchange,ppl: get_cost_electricity(ion_exchange,ppl)
+    func_dct['ion_exchange_cost_opex_labor'] = lambda ion_exchange,ppl: get_cost_opex_labor(ion_exchange,ppl)
+    func_dct['ion_exchange_cost_opex_replacement'] = lambda ion_exchange,ppl: get_cost_opex_replacement(ion_exchange,ppl)
+    func_dct['ion_exchange_cost_opex_streams'] = lambda ion_exchange,ppl: get_cost_opex_streams(ion_exchange,ppl)
     return func_dct
 
 
