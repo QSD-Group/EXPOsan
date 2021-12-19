@@ -1,8 +1,7 @@
-	-	-	ReCiPe Endpoint (E,A) (obsolete)	ReCiPe Endpoint (E,A) (obsolete)	ReCiPe Endpoint (E,A) (obsolete)	ReCiPe Endpoint (H,A) (obsolete)	ReCiPe Endpoint (H,A) (obsolete)	ReCiPe Endpoint (H,A) (obsolete)	ReCiPe Endpoint (I,A) (obsolete)	ReCiPe Endpoint (I,A) (obsolete)	ReCiPe Endpoint (I,A) (obsolete)	TRACI (obsolete)
+	-	-	"ReCiPe Endpoint (E,A) (obsolete)"	"ReCiPe Endpoint (E,A) (obsolete)"	"ReCiPe Endpoint (E,A) (obsolete)"	"ReCiPe Endpoint (H,A) (obsolete)"	"ReCiPe Endpoint (H,A) (obsolete)"	"ReCiPe Endpoint (H,A) (obsolete)"	"ReCiPe Endpoint (I,A) (obsolete)"	"ReCiPe Endpoint (I,A) (obsolete)"	"ReCiPe Endpoint (I,A) (obsolete)"	TRACI (obsolete)
 	-	-	ecosystem quality	human health	resources	ecosystem quality	human health	resources	ecosystem quality	human health	resources	environmental impact
 	activity name	functional unit	total	total	total	total	total	total	total	total	total	global warming
 0			points	points	points	points	points	points	points	points	points	kg CO2-Eq
-1	market for waste foundry sand	kilogram	-0.005679673366244719	-0.00880132764676678	-0.0055221020208998176	-0.0027956328625672456	-0.004497757811588726	-0.0055221020208998176	-0.002625573855459487	-0.0037863799295656743	-0.0051869467859969685	-0.10271907178708153
-2	market for silica sand	kilogram	0.005046476067393115	0.004866923495231191	0.0018569136032767792	0.002297175277798354	0.002178239023326457	0.0018569136032767792	0.001279943827099642	0.0017887642230500149	0.0017738376572071413	0.04604158936142336
-3	market for sand-lime brick	kilogram	0.011058229498427705	0.014949843895399486	0.005542770137083059	0.00632662561981676	0.007003175953059003	0.005542770137083059	0.005029875667640467	0.0058385361616204775	0.005568907497897815	0.18261264406020994
-4	market for sand	kilogram	0.003799449465855588	0.0012393850281303543	0.0005821444196953314	0.0006824596831979934	0.0005394440103462986	0.0005821444196953314	0.0006012858432357362	0.0004570661856962211	0.0005540497737098475	0.011276373633993421
+1	market for waste foundry sand	kilogram	-0.005679673	-0.008801328	-0.005522102	-0.002795633	-0.004497758	-0.005522102	-0.002625574	-0.00378638	-0.005186947	-0.102719072
+2	market for silica sand	kilogram	0.005046476	0.004866923	0.001856914	0.002297175	0.002178239	0.001856914	0.001279944	0.001788764	0.001773838	0.046041589
+3	market for sand	kilogram	0.003799449	0.001239385	0.000582144	0.00068246	0.000539444	0.000582144	0.000601286	0.000457066	0.00055405	0.011276374
