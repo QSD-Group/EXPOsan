@@ -105,11 +105,11 @@ price_dct = {
     'MgCO3': 0.9,
     'H2SO4': 0.3,
     'struvite': 0,
-    'salt': 0,
+    'salt': 17.92,
     'HCl': 0,
-    'KCl': 0,
-    'GAC': 1.1,
-    'Zeolite': 1.45,
+    'KCl': 15.0,
+    'GAC': 0,
+    'Zeolite': 0,
     'Conc_NH3': 0, #1.333*(14/17)*get_price_factor(),
     }
 
@@ -259,7 +259,7 @@ A2 = su.MURTToilet('A2', ins=(A1-0, A1-1,
                     decay_k_COD=get_decay_k(tau_deg, log_deg), 
                     decay_k_N=get_decay_k(tau_deg, log_deg),
                     max_CH4_emission=get_max_CH4_emission(),
-                    N_user=120/7, N_toilet=7, 
+                    N_user=100/7, N_toilet=7, 
                     if_flushing=True, if_desiccant=False, if_toilet_paper=True,
                     CAPEX = 0,
                     OPEX_over_CAPEX= 0.07) 
@@ -281,7 +281,7 @@ A5 = su.IonExchangeReclaimer('A5', ins=(A4-0, streamsA['Zeolite'], streamsA['GAC
                                 decay_k_N=get_decay_k(tau_deg, log_deg),
                                 max_CH4_emission=get_max_CH4_emission(), if_gridtied=True)
 
-A6 = su.ECR_Reclaimer('A6', ins=(A5-0, streamsA['salt'], streamsA['HCl']), 
+A6 = su.ECR_Reclaimer('A6', ins=(A5-0, streamsA['salt']), 
                     outs = ('A6_treated'),
                     decay_k_COD=get_decay_k(tau_deg, log_deg),)
 
@@ -324,11 +324,11 @@ power = sum([u.power_utility.rate for u in sysA.units])
 
 #!!! update labor to input country specific data and be a distribution
 teaA = SimpleTEA(system=sysA, discount_rate=get_discount_rate(),  
-                  start_year=2020, lifetime=25, uptime_ratio=1, 
+                  start_year=2020, lifetime=20, uptime_ratio=1, 
                   lang_factor=None, annual_maintenance=0, 
                   annual_labor = A5._calc_maintenance_labor_cost() / 8760)
 
-lcaA = LCA(system=sysA, lifetime=10, lifetime_unit='yr', uptime_ratio=1,
+lcaA = LCA(system=sysA, lifetime=20, lifetime_unit='yr', uptime_ratio=1,
             e_item=lambda: power*(365*24)*10)
 
 # =============================================================================
@@ -359,19 +359,21 @@ B2 = su.MURTToilet('B2', ins=(B1-0, B1-1,
 
 ###################### Treatment ######################
 #Septic Tank 
+#check the pH for the septic tank (7.5?) 
+#additional cost for holding tank for the magnesium? 
+#controls? control the valve 
 B3 = su.PrimaryReclaimer('B3', ins=(B2-0), 
                     outs=('B3_treated', 'B3_CH4', 'B3_N2O', 'B3_sludge'), 
                     decay_k_COD=get_decay_k(tau_deg, log_deg), 
                     decay_k_N=get_decay_k(tau_deg, log_deg),
                     max_CH4_emission=get_max_CH4_emission())
 
-B4 = su.SludgePasteurization('B4', ins=(B3-3, 'air', streamsA['LPG']), outs=('treated_sludge'),
+B4 = su.SludgePasteurization('B4', ins=(B3-3, 'air', 'lpg'), outs=('treated_sludge'),
                                  heat_loss=0.1, target_MC = 0.1, sludge_temp = 283.15, 
-                              temp_pasteurization=343.15, hhv_lpg = 49.3,
-                              hhv_methane = 55.5)
+                              temp_pasteurization=343.15, lhv_lpg = 48.5)
 
 
-B5 = su.Ultrafiltration('A5', ins=(A3-0), outs = ('A5_treated', 'retentate'))
+B5 = su.Ultrafiltration('B5', ins=(B3-0), outs = ('B5_treated', 'retentate'))
                         
 B6 = su.IonExchangeReclaimer('B6', ins=(B5-0, streamsA['Zeolite'], streamsA['GAC'], streamsA['KCl']),
                                 outs=('B6_treated', 'SpentZeolite', 'SpentGAC',streamsA['Conc_NH3']),
@@ -379,17 +381,17 @@ B6 = su.IonExchangeReclaimer('B6', ins=(B5-0, streamsA['Zeolite'], streamsA['GAC
                                 decay_k_N=get_decay_k(tau_deg, log_deg),
                                 max_CH4_emission=get_max_CH4_emission(), if_gridtied=True)
 
-B7 = su.ECR_Reclaimer('B7', ins=(B6-0, streamsA['salt'], streamsA['HCl']), 
+B7 = su.ECR_Reclaimer('B7', ins=(B6-0, streamsA['salt']), 
                     outs = ('B7_treated'),
                     decay_k_COD=get_decay_k(tau_deg, log_deg),)
 
 
 B8 = su.Mixer('B8', ins=(B3-1, B2-1), outs=streamsA['CH4'])
-B8.specification = lambda: add_fugitive_items(A7, CH4_item)
+B8.specification = lambda: add_fugitive_items(B7, CH4_item)
 B8.line = 'fugitive CH4 mixer' 
         
 B9 = su.Mixer('B9', ins=(B3-2, B2-2), outs=streamsA['N2O'])
-B9.specification = lambda: add_fugitive_items(A8, N2O_item)
+B9.specification = lambda: add_fugitive_items(B8, N2O_item)
 B9.line = 'fugitive N2O mixer'
 
 ################## Other impacts and costs ##################
@@ -397,21 +399,20 @@ B10 = su.HousingReclaimer('B10', ins=(B7-0), outs = ('B10_out'))
 B11 = su.SystemReclaimer('B11', ins=(B10-0), outs = ('B11_out'))
 
 
-
 ############### Simulation, TEA, and LCA ###############
 sysB = bst.System('sysB', path= (B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11))
 sysB.simulate()
 
 
-power = sum([u.power_utility.rate for u in sysA.units])
+power = sum([u.power_utility.rate for u in sysB.units])
 
 #!!! update labor to input country specific data and be a distribution
 teaB = SimpleTEA(system=sysB, discount_rate=get_discount_rate(),  
-                  start_year=2020, lifetime=25, uptime_ratio=1, 
+                  start_year=2020, lifetime=20, uptime_ratio=1, 
                   lang_factor=None, annual_maintenance=0, 
                   annual_labor=0)
 
-lcaB = LCA(system=sysB, lifetime=10, lifetime_unit='yr', uptime_ratio=1,
+lcaB = LCA(system=sysB, lifetime=20, lifetime_unit='yr', uptime_ratio=1,
             e_item=lambda: power*(365*24)*10)
 
 # =============================================================================
