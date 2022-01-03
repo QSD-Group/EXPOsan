@@ -211,15 +211,15 @@ def add_shared_parameters(sys, model, country_specific=False):
 
     ######## General TEA settings ########
     
-    b = systems.B6._calc_maintenance_labor_cost() / 8760
-    dist = shape.Uniform(lower=53, upper=1600)
-    @param(name='Annual labor',
-       element='TEA', 
-       kind='isolated',
-       units='USD/yr',
-       baseline = b, distribution=dist)
-    def set_annual_labor(i): # here this `set_ww_price` is the `setter` function that will update the price
-        systems.annual_labor = i
+    # b = systems.B6._calc_maintenance_labor_cost() / 8760
+    # dist = shape.Uniform(lower=53, upper=1600)
+    # @param(name='Annual labor',
+    #    element='TEA', 
+    #    kind='isolated',
+    #    units='USD/yr',
+    #    baseline = b, distribution=dist)
+    # def set_annual_labor(i): # here this `set_ww_price` is the `setter` function that will update the price
+    #     systems.annual_labor = i
     
     # Money discount rate
     # keep discount rate constant
@@ -229,33 +229,7 @@ def add_shared_parameters(sys, model, country_specific=False):
             baseline=b, distribution=D)
     def set_discount_rate(i):
         systems.discount_rate = i
-        
-    b = IonExchangeReclaimer.labor_maintenance_zeolite_regeneration # I'm using a fake parameter as an example, you'll need to update all the `XXX`
-    dist = shape.Uniform(lower=0, upper=30) # or whatever the distribution should be
-    @param(name='Zeolite Regeneration',
-       element='TEA', 
-       kind='isolated',
-       units='hr/year',
-       baseline=b, distribution=dist)
-    def set_parameter1(i):
-        XXX.XXX = i
-        # if there are multiple `TEA` object affected by this, you'll need to include all of them
-        # f(i) is the function that uses Parameter1 to calculate the annual labor,
-        # which depends on what Parameter 1 is
-        teaB.annual_labor = f(i) 
-
-    b = Parameter2
-    dist = shape.Uniform(lower=XXX, upper=XXX)
-    @param(name='The second parameter that affects annual labor',
-       element=XXX, 
-       kind=XXX,
-       units=XXX,
-       baseline=b, distribution=dist)
-    def set_parameter2(i):
-        XXX.XXX = i
-        teaB.annual_labor = f(i) 
-    
-    
+ 
     
     ######## General LCA settings ########
     b = GWP_dct['CH4']
