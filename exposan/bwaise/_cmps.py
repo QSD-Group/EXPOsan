@@ -85,10 +85,6 @@ P4O10 = Component.from_chemical('P4O10', tmo.Chemical('P4O10'),
                                 phase='s', particle_size='Particulate',
                                 degradability='Undegradable', organic=False)
 
-LPG = Component.from_chemical('LPG', tmo.Chemical('PubChem=6334'),
-                              formula='CH3CH2CH3',
-                              phase='g', particle_size='Dissolved gas',
-                              degradability='Slowly', organic=True)
 
 def add_V_from_rho(cmp, rho):
     V_model = tmo.functional.rho_to_V(rho, cmp.MW)
@@ -133,7 +129,7 @@ for cmp in (NonNH3, P, K, Mg, Ca, OtherSS):
     add_V_from_rho(cmp, 1e3) # assume the same density as water
 
 cmps = Components((NH3, NonNH3, P, K, Mg, Ca, H2O, OtherSS, N2O, CH4, O2, N2,
-                   CO2, P4O10, Tissue, WoodAsh, Struvite, HAP, LPG))
+                   CO2, P4O10, Tissue, WoodAsh, Struvite, HAP))
 for i in cmps:
     if i.HHV is None: i.HHV = 0
     if i.LHV is None: i.LHV = 0

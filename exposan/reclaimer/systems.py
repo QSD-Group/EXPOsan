@@ -105,7 +105,7 @@ price_dct = {
     'MgCO3': 0.9,
     'H2SO4': 0.3,
     'struvite': 0,
-    'salt': 17.92,
+    'salt': 0,
     'HCl': 0,
     'KCl': 15.0,
     'GAC': 0,
@@ -375,22 +375,22 @@ B4 = su.SludgePasteurization('B4', ins=(B3-3, 'air', 'lpg'), outs=('treated_slud
 
 B5 = su.Ultrafiltration('B5', ins=(B3-0), outs = ('B5_treated', 'retentate'))
                         
-B6 = su.IonExchangeReclaimer('B6', ins=(B5-0, streamsA['Zeolite'], streamsA['GAC'], streamsA['KCl']),
-                                outs=('B6_treated', 'SpentZeolite', 'SpentGAC',streamsA['Conc_NH3']),
+B6 = su.IonExchangeReclaimer('B6', ins=(B5-0, streamsB['Zeolite'], streamsB['GAC'], streamsB['KCl']),
+                                outs=('B6_treated', 'SpentZeolite', 'SpentGAC',streamsB['Conc_NH3']),
                                 decay_k_COD=get_decay_k(tau_deg, log_deg), 
                                 decay_k_N=get_decay_k(tau_deg, log_deg),
                                 max_CH4_emission=get_max_CH4_emission(), if_gridtied=True)
 
-B7 = su.ECR_Reclaimer('B7', ins=(B6-0, streamsA['salt']), 
+B7 = su.ECR_Reclaimer('B7', ins=(B6-0, streamsB['salt']), 
                     outs = ('B7_treated'),
                     decay_k_COD=get_decay_k(tau_deg, log_deg),)
 
 
-B8 = su.Mixer('B8', ins=(B3-1, B2-1), outs=streamsA['CH4'])
+B8 = su.Mixer('B8', ins=(B3-1, B2-1), outs=streamsB['CH4'])
 B8.specification = lambda: add_fugitive_items(B7, CH4_item)
 B8.line = 'fugitive CH4 mixer' 
         
-B9 = su.Mixer('B9', ins=(B3-2, B2-2), outs=streamsA['N2O'])
+B9 = su.Mixer('B9', ins=(B3-2, B2-2), outs=streamsB['N2O'])
 B9.specification = lambda: add_fugitive_items(B8, N2O_item)
 B9.line = 'fugitive N2O mixer'
 
@@ -410,7 +410,7 @@ power = sum([u.power_utility.rate for u in sysB.units])
 teaB = SimpleTEA(system=sysB, discount_rate=get_discount_rate(),  
                   start_year=2020, lifetime=20, uptime_ratio=1, 
                   lang_factor=None, annual_maintenance=0, 
-                  annual_labor=0)
+                  annual_labor = B6._calc_maintenance_labor_cost() / 8760)
 
 lcaB = LCA(system=sysB, lifetime=20, lifetime_unit='yr', uptime_ratio=1,
             e_item=lambda: power*(365*24)*10)
@@ -421,20 +421,20 @@ lcaB = LCA(system=sysB, lifetime=20, lifetime_unit='yr', uptime_ratio=1,
 
 #!!! items need to be updated in sys_dct, system_streams, learning curve assumptions
 sys_dct = {
-    'ppl':  dict(sysA=300, sysB=300, sysC=300),
-    'input_unit': dict(sysA=A1),
+    'ppl':  dict(sysA=120, sysB=120, sysC=120),
+    'input_unit': dict(sysA=A1, sysB=B1),
     'liq_unit': dict(sysA=None, sysB=None, sysC=None),
     'sol_unit': dict(sysA=None, sysB=None, sysC=None),
     'gas_unit': dict(sysA=None, sysB=None, sysC=None),
-    'stream_dct': dict(sysA=streamsA),
-    'TEA': dict(sysA=teaA),
-    'LCA': dict(sysA=lcaA),
+    'stream_dct': dict(sysA=streamsA, sysB=streamsB),
+    'TEA': dict(sysA=teaA, sysB = teaB),
+    'LCA': dict(sysA=lcaA, sysB=lcaB),
     'cache': dict(sysA={}, sysB={}, sysC={}),
     }
 
-unit_dct = {
+#unit_dct = {
 #     'toilet': dict(sysA=(A2,)),
-    'ion_exchange': dict(sysA=(A5,)),
+#   'ion_exchange': dict(sysA=(A5,)),
 #     'chlorination': dict(sysA=(A6,)),
 #     # 'gridtied_system': dict(sysA=(A7,)),    
 #     'photovoltaic_system': dict(sysA=(A7,)),
@@ -442,11 +442,10 @@ unit_dct = {
 #     'housing': dict(sysA=(A9,)),
 #     'pretreatment': dict(sysA=(A10,)),
 #     'foundation': dict(sysA=(A11,)),
-    }
+#    }
 
-system_streams = {sysA: streamsA}
+system_streams = {sysA:streamsA, sysB:streamsB}
 
-#!!!!zeolite check against capital costs
 #learning curve assumptions
 percent_CAPEX_to_scale = 0.1 #this number is the decimal of the fraction of scost of pecialty parts/cost of total parts
 get_percent_CAPEX_to_scale = lambda: percent_CAPEX_to_scale
@@ -737,7 +736,7 @@ def save_all_reports():
     #     os.path.mkdir(path)
     # del os
     path = '/Users/torimorgan/opt/anaconda3/lib/python3.8/site-packages/exposan/Duke_Reclaimer'
-    for i in (sysA,lcaA):
+    for i in (sysA,lcaA, sysB, lcaB):
         if isinstance(i, bst.System):
             i.simulate()
             i.save_report(f'{path}/{i.ID}.xlsx')
@@ -745,7 +744,7 @@ def save_all_reports():
             i.save_report(f'{path}/{i.system.ID}_lca.xlsx')
 
 
-__all__ = ('sysA', 'teaA', 'lcaA',
+__all__ = ('sysA', 'sysB', 'teaA', 'teaB', 'lcaA', 'lcaB',
             'print_summaries', 'save_all_reports',
             *(i.ID for i in sysA.units)
             )
