@@ -155,8 +155,45 @@ def add_shared_parameters(sys, model, country_specific=False):
             GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
         
             #GWP_dct['Electricity'] = systems.e_item.CFs['GlobalWarming'] = i
-        
-
+    
+    # Parameters for Labor Costs that affect ALL systems    
+    b = systems.labor_maintenance_zeolite_regeneration # I'm using a fake parameter as an example, you'll need to update all the `XXX`
+    D = shape.Uniform(lower=10, midpoint = 20, upper=30) # or whatever the distribution should be
+    @param(name='Ion Exchnage Labor Hours for all systems',
+       element='TEA', 
+       kind='isolated',
+       units='hr/year',
+       baseline=b, distribution=D)
+    
+    def set_parameter1(i):
+        systems.labor_maintenance_zeolite_regeneration = i
+        # if there are multiple `TEA` object affected by this, you'll need to include all of them
+        # f(i) is the function that uses Parameter1 to calculate the annual labor,
+        # which depends on what Parameter 1 is
+        tea.annual_labor = f(i) 
+    
+    b = systems.wages
+    D = shape.Uniform(lower=14.55, midpoint = 29.11, upper=43.68)
+    @param(name='Wages that affect all labor costs in the system',
+       element='TEA', 
+       kind='isolated',
+       units='USD/cap/day',
+       baseline=b, distribution=D)
+    def set_parameter2(i):
+        wages = i
+        tea.annual_labor = f(i) 
+    
+    #ONLY APPLIES TO ONE SYSTEM
+    b = systems.B4.sludge_labor_maintenance
+    D = shape.Uniform(lower=2.1, midpoint = 3, upper=3.9)
+    @param(name='Sludge Pasteurization Labor Hours for System B',
+       element='TEA', 
+       kind='isolated',
+       units='USD/cap/day',
+       baseline=b, distribution=D)
+    def set_parameter3(i):
+        wages = i
+        teaB.annual_labor = f(i) 
         
     
     
@@ -305,7 +342,7 @@ def add_shared_parameters(sys, model, country_specific=False):
 # %%
 
 # =============================================================================
-# Scenario A (sysA): Baseline (Solar and A+O+A+O)
+# Scenario A (sysA): Trucking Scenario (O&M sludge?)
 # =============================================================================
 
 # sysA = systems.sysA
@@ -392,7 +429,7 @@ def add_shared_parameters(sys, model, country_specific=False):
 # %%
 
 # =============================================================================
-# Scenario B (sysB): Primary + A + O + MBR
+# Scenario B (sysB): Sludge Pasteurization - Baseline Scenario
 # =============================================================================
 
 sysB = systems.sysB
@@ -453,7 +490,7 @@ path = su_data_path + '_housing_reclaimer.csv'
 data = load_data(path)
 batch_setting_unit_params(data, modelB, B10)
 
-#Solar costs and impacts
+#Mischelaneous
 B11 = systems.B11
 path = su_data_path + '_system_reclaimer.csv'
 data = load_data(path)
@@ -462,97 +499,83 @@ batch_setting_unit_params(data, modelB, B11)
 all_paramsB = modelB.get_parameters()
 
 
-# # =============================================================================
-# # Scenario C (sysC): Primary with struvite + MBR
-# # =============================================================================
+# =============================================================================
+# Scenario C (sysC): Primary with struvite + MBR
+# =============================================================================
 
-# sysC = systems.sysC
-# sysC.simulate()
-# modelC = Model(sysC, add_metrics(sysC))
-# paramC = modelC.parameter
+sysC = systems.sysC
+sysC.simulate()
+modelC = Model(sysC, add_metrics(sysC))
+paramC = modelC.parameter
 
-# # Shared parameters
-# modelC = add_shared_parameters(sysC, modelC)
-
-
-# # Diet and excretion
-# C1 = systems.C1
-# path = su_data_path + '_excretion.tsv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelC, C1)
-
-# #MURT TOILET
-# C2 = systems.C2
-# path = su_data_path + '_murt_toilet.tsv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelC, C2)
-
-# #primary treatment without struvite
-# C3 = systems.C3
-# path = su_data_path + '_primary_MBR.tsv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelC, C3)
-
-# ##SysA Bio treatment: A + O + MBR
-# #Anaerboic 
-# C4 = systems.C4
-# path = su_data_path + '_anaerobic_ES_bio.tsv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelC, C4)
-
-# # Facultative Aerobic 
-# C5 = systems.C5
-# path = su_data_path + '_aerobic_ES_bio.tsv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelC, C5)
-
-# # MBR
-# C6 = systems.C6
-# path = su_data_path + '_MBR.tsv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelC, C6)
-
-# # MBR with ECR
-# C8 = systems.C8
-# path = su_data_path + '_MBR_ECR.tsv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelC, C8)
+# Shared parameters
+modelC = add_shared_parameters(sysC, modelC)
 
 
-# #Mischelaneous costs and impacts
-# C14 = systems.C14
-# path = su_data_path + '_recycling_controls.tsv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelC, C14)
+# Diet and excretion
+C1 = systems.C1
+path = su_data_path + '_excretion.tsv'
+data = load_data(path)
+batch_setting_unit_params(data, modelC, C1)
 
-# # #Solar costs and impacts
-# # C15 = systems.C15
-# # path = su_data_path + '_solar_ES.tsv'
-# # data = load_data(path)
-# # batch_setting_unit_params(data, modelC, C15)
+#MURT TOILET
+C2 = systems.C2
+path = su_data_path + '_murt_toilet.tsv'
+data = load_data(path)
+batch_setting_unit_params(data, modelC, C2)
 
-# # Conveyance
-# C16 = systems.C16
-# b = C16.loss_ratio
-# D = shape.Uniform(lower=0.02, upper=0.05)
-# @paramC(name='Transportation loss', element=C16, kind='coupled', units='fraction',
-#         baseline=b, distribution=D)
-# def set_trans_loss(i):
-#     C16.loss_ratio = C16.loss_ratio = i
+#primary treatment without struvite
+C3 = systems.C3
+path = su_data_path + '_primary_reclaimer.csv'
+data = load_data(path)
+batch_setting_unit_params(data, modelC, C3)
 
-# b = C16.single_truck.distance
-# D = shape.Uniform(lower=2, upper=10)
-# @paramC(name='Transportation distance', element=C16, kind='coupled', units='km',
-#         baseline=b, distribution=D)
-# def set_trans_distance(i):
-#     C16.single_truck.distance = i
+#SysB Sludge Pasteurization
+C4 = systems.C4
+path = su_data_path + '_sludge_pasteurization.tsv'
+data = load_data(path)
+batch_setting_unit_params(data, modelC, C4)
+
+# Ultrafiltration
+C5 = systems.C5
+path = su_data_path + '_ultrafiltration_reclaimer.csv'
+data = load_data(path)
+batch_setting_unit_params(data, modelC, C5)
+
+# Ion exchange
+C6 = systems.C6
+path = su_data_path + '_ion_exchange_reclaimer.csv'
+data = load_data(path)
+batch_setting_unit_params(data, modelC, C6)
+
+# ECR
+C7 = systems.C7
+path = su_data_path + '_ECR_reclaimer.csv'
+data = load_data(path)
+batch_setting_unit_params(data, modelC, C7)
 
 
+#Housing
+C10 = systems.C10
+path = su_data_path + '_housing_reclaimer.csv'
+data = load_data(path)
+batch_setting_unit_params(data, modelC, C10)
 
-# all_paramsC = modelC.get_parameters()
+#Mischelaneous
+C11 = systems.C11
+path = su_data_path + '_system_reclaimer.csv'
+data = load_data(path)
+batch_setting_unit_params(data, modelC, C11)
 
+#Solar costs and impacts
+C12 = systems.C12
+path = su_data_path + '_solar_reclaimer.csv'
+data = load_data(path)
+batch_setting_unit_params(data, modelC, C12)
 
-# # %%
+all_paramsC = modelC.get_parameters()
+
+# %%
 
 # =============================================================================
 # Functions to run simulation and generate plots
