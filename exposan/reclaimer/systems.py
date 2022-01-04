@@ -274,53 +274,59 @@ A3 = su.PrimaryReclaimer('A3', ins=(A2-0),
                     decay_k_N=get_decay_k(tau_deg, log_deg),
                     max_CH4_emission=get_max_CH4_emission())
 
+A4 = su.SludgePasteurization('A4', ins=(A3-3, 'air', 'lpg'), outs=('treated_sludge'),
+                                 heat_loss=0.1, target_MC = 0.1, sludge_temp = 283.15, 
+                              temp_pasteurization=343.15, lhv_lpg = 48.5)
 
-A4 = su.Ultrafiltration('A4', ins=(A3-0), outs = ('A4_treated', 'retentate'))
+
+A5 = su.Ultrafiltration('A5', ins=(A4-0), outs = ('A5_treated', 'retentate'))
                         
-A5 = su.IonExchangeReclaimer('A5', ins=(A4-0, streamsA['Zeolite'], streamsA['GAC'], streamsA['KCl']),
-                                outs=('A5_treated', 'SpentZeolite', 'SpentGAC',streamsA['Conc_NH3']),
+A6 = su.IonExchangeReclaimer('A6', ins=(A5-0, streamsA['Zeolite'], streamsA['GAC'], streamsA['KCl']),
+                                outs=('A6_treated', 'SpentZeolite', 'SpentGAC',streamsA['Conc_NH3']),
                                 decay_k_COD=get_decay_k(tau_deg, log_deg), 
                                 decay_k_N=get_decay_k(tau_deg, log_deg),
                                 max_CH4_emission=get_max_CH4_emission(), if_gridtied=True)
 
-A6 = su.ECR_Reclaimer('A6', ins=(A5-0, streamsA['salt']), 
-                    outs = ('A6_treated'),
+A7 = su.ECR_Reclaimer('A7', ins=(A6-0, streamsA['salt']), 
+                    outs = ('A7_treated'),
                     decay_k_COD=get_decay_k(tau_deg, log_deg),)
 
-
-A7 = su.Mixer('A7', ins=(A3-1, A2-1), outs=streamsA['CH4'])
-A7.specification = lambda: add_fugitive_items(A7, CH4_item)
-A7.line = 'fugitive CH4 mixer' 
+#Double check the mixer
+A8 = su.Mixer('A8', ins=(A3-1, A2-1), outs=streamsA['CH4'])
+A8.specification = lambda: add_fugitive_items(A8, CH4_item)
+A8.line = 'fugitive CH4 mixer' 
         
-A8 = su.Mixer('A8', ins=(A3-2, A2-2), outs=streamsA['N2O'])
-A8.specification = lambda: add_fugitive_items(A8, N2O_item)
-A8.line = 'fugitive N2O mixer'
+A9 = su.Mixer('A9', ins=(A3-2, A2-2), outs=streamsA['N2O'])
+A9.specification = lambda: add_fugitive_items(A9, N2O_item)
+A9.line = 'fugitive N2O mixer'
 
 ################## Other impacts and costs ##################
-A9 = su.HousingReclaimer('A9', ins=(A6-0), outs = ('A9_out'))
-A10 = su.SystemReclaimer('A10', ins=(A9-0), outs = ('A10_out'))
+A10 = su.HousingReclaimer('A10', ins=(A7-0), outs = ('A10_out'))
+A11 = su.SystemReclaimer('A12', ins=(A9-0), outs = ('A12_out'))
 
 
 
-A11 = su.Trucking('A11', ins=A3-3, outs=('transported', 'conveyance_loss'),
-                  load_type='mass', distance=5, distance_unit='km',
-                  interval=365, interval_unit='d',
-                  loss_ratio=0.02)
-def update_A11_param():
-    A11._run()
-    truck = A11.single_truck
-    truck.interval = 365*24
-    truck.load = A11.F_mass_in*truck.interval
-    rho = A11.F_mass_in/A10.F_vol_in
-    vol = truck.load/rho
-    A11.fee = get_tanker_truck_fee(vol)
-    A11._design()
-A11.specification = update_A11_param
+# A11 = su.Trucking('A11', ins=A3-3, outs=('transported', 'conveyance_loss'),
+#                   load_type='mass', distance=5, distance_unit='km',
+#                   interval=365, interval_unit='d',
+#                   loss_ratio=0.02)
+# def update_A11_param():
+#     A11._run()
+#     truck = A11.single_truck
+#     truck.interval = 365*24
+#     truck.load = A11.F_mass_in*truck.interval
+#     rho = A11.F_mass_in/A10.F_vol_in
+#     vol = truck.load/rho
+#     A11.fee = get_tanker_truck_fee(vol)
+#     A11._design()
+# A11.specification = update_A11_param
 
 ############### Simulation, TEA, and LCA ###############
 sysA = bst.System('sysA', path= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11))
 sysA.simulate()
 
+def update_labor_costs_sysA5():
+    teaA.annual_labor = A5._calc_maintenance_labor_cost() * 8760
 
 power = sum([u.power_utility.rate for u in sysA.units])
 
@@ -328,8 +334,10 @@ power = sum([u.power_utility.rate for u in sysA.units])
 teaA = SimpleTEA(system=sysA, discount_rate=get_discount_rate(),  
                   start_year=2020, lifetime=20, uptime_ratio=1, 
                   lang_factor=None, annual_maintenance=0, 
-                  annual_labor = 20) #annual labor = number of hours
-    #annual_labor = A5._calc_maintenance_labor_cost() / 8760
+                  annual_labor = (A4._calc_maintenance_labor_cost() * 8760) +
+                  (A6._calc_maintenance_labor_cost() * 8760))
+                    
+
 
 lcaA = LCA(system=sysA, lifetime=20, lifetime_unit='yr', uptime_ratio=1,
             e_item=lambda: power*(365*24)*10)
@@ -405,6 +413,9 @@ B11 = su.SystemReclaimer('B11', ins=(B10-0), outs = ('B11_out'))
 sysB = bst.System('sysB', path= (B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11))
 sysB.simulate()
 
+def update_labor_costs_sysB():
+    teaB.annual_labor = (B4._calc_maintenance_labor_cost() * 8760) + (B6._calc_maintenance_labor_cost() * 8760)
+
 
 power = sum([u.power_utility.rate for u in sysB.units])
 
@@ -412,7 +423,7 @@ power = sum([u.power_utility.rate for u in sysB.units])
 teaB = SimpleTEA(system=sysB, discount_rate=get_discount_rate(),  
                   start_year=2020, lifetime=20, uptime_ratio=1, 
                   lang_factor=None, annual_maintenance=0, 
-                  annual_labor = 23)  #number of hours) 
+                  annual_labor = (B4._calc_maintenance_labor_cost() * 8760) + (B6._calc_maintenance_labor_cost() * 8760))  #number of hours) 
 
 lcaB = LCA(system=sysB, lifetime=20, lifetime_unit='yr', uptime_ratio=1,
             e_item=lambda: power*(365*24)*10)
@@ -489,17 +500,30 @@ C12 = su.SolarReclaimer('C12', ins=(C11-0), outs = ('C12_out'))
 sysC = bst.System('sysC', path= (C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12))
 sysC.simulate()
 
+#!!! Add solar labor 
+def update_labor_costs_sysC():
+    teaC.annual_labor = (C4._calc_maintenance_labor_cost() * 8760) + (C6._calc_maintenance_labor_cost() * 8760)
 
-#!!! power = sum([u.power_utility.rate for u in sysC.units]) no power costs? 
 
-teaC = SimpleTEA(system=sysB, discount_rate=get_discount_rate(),  
+teaC = SimpleTEA(system=sysC, discount_rate=get_discount_rate(),  
                   start_year=2020, lifetime=20, uptime_ratio=1, 
                   lang_factor=None, annual_maintenance=0, 
-                  annual_labor = 23)  #number of hours)
+                  annual_labor = (C4._calc_maintenance_labor_cost() * 8760) 
+                  + (C6._calc_maintenance_labor_cost() * 8760) + (C12._calc_maintenance_labor_cost() * 8760))  #number of hours)
 
+#!!! Double check to have solar materials 
 lcaC = LCA(system=sysB, lifetime=20, lifetime_unit='yr', uptime_ratio=1,)
-#!!!            #e_item=lambda: power*(365*24)*10 no power for LCA?)
 
+def update_labor_cost(sys_ID):
+    if sys_ID=='sysA':
+        labor_cost=A5._calc_maintenance_labor_cost() * 8760
+
+    elif sys_ID=='sysB':
+        labor_cost= (B4._calc_maintenance_labor_cost() * 8760) + (B6._calc_maintenance_labor_cost() * 8760 )
+    else:
+        labor_cost= ((C5._calc_maintenance_labor_cost() * 8760) + (C6._calc_maintenance_labor_cost() * 8760) 
+            + (C12._calc_maintenance_labor_cost() * 8760) )
+    return labor_cost
 
 # =============================================================================
 # Summarizing Functions

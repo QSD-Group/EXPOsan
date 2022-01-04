@@ -154,70 +154,124 @@ def add_shared_parameters(sys, model, country_specific=False):
     def set_electricity_CF(i):
             GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
         
-            #GWP_dct['Electricity'] = systems.e_item.CFs['GlobalWarming'] = i
+            # GWP_dct['Electricity'] = systems.e_item.CFs['GlobalWarming'] = i''
+            
+            
+            
+            
     
-    # Parameters for Labor Costs that affect ALL systems    
-    b = systems.labor_maintenance_zeolite_regeneration # I'm using a fake parameter as an example, you'll need to update all the `XXX`
-    D = shape.Uniform(lower=10, midpoint = 20, upper=30) # or whatever the distribution should be
-    @param(name='Ion Exchnage Labor Hours for all systems',
-       element='TEA', 
-       kind='isolated',
-       units='hr/year',
-       baseline=b, distribution=D)
-    
-    def set_parameter1(i):
-        systems.labor_maintenance_zeolite_regeneration = i
+    # Parameters for Labor Costs that affect ALL systems  
+    #Sludge Pasteurization Unit
+    unit = sys.path[3]
+    tea = sys.TEA
+    sysID = sys.ID
+    b = unit.sludge_labor_maintenance 
+    D = shape.Uniform(lower=2.1, upper=3.9) # or whatever the distribution should be
+    @param(name='Sludge Pasteurization for all Units',
+        element='Sludge Pasteurization', 
+        kind='isolated',
+        units='hr/year',
+        baseline=b, distribution=D)
+    def set_SludgePasteurizationHours(i):
+        unit.sludge_labor_maintenance = i
         # if there are multiple `TEA` object affected by this, you'll need to include all of them
         # f(i) is the function that uses Parameter1 to calculate the annual labor,
         # which depends on what Parameter 1 is
-        tea.annual_labor = f(i) 
-    
-    b = systems.wages
-    D = shape.Uniform(lower=14.55, midpoint = 29.11, upper=43.68)
+        tea.annual_labor = systems.update_labor_cost(sysID)
+        
+    unit = sys.path[3]
+    tea = sys.TEA
+    sysID = sys.ID
+    b = unit.wages
+    D = shape.Triangle(lower=14.55, midpoint = 29.11, upper=43.68)
     @param(name='Wages that affect all labor costs in the system',
-       element='TEA', 
-       kind='isolated',
-       units='USD/cap/day',
-       baseline=b, distribution=D)
-    def set_parameter2(i):
-        wages = i
-        tea.annual_labor = f(i) 
+        element='Wages', 
+        kind='isolated',
+        units='USD/cap/day',
+        baseline=b, distribution=D)
+    def set_SludgePasteurizationWages(i):
+        unit.wages = i
+        tea.annual_labor = systems.update_labor_cost(sysID)
     
-    #ONLY APPLIES TO ONE SYSTEM
-    b = systems.B4.sludge_labor_maintenance
-    D = shape.Uniform(lower=2.1, midpoint = 3, upper=3.9)
-    @param(name='Sludge Pasteurization Labor Hours for System B',
-       element='TEA', 
-       kind='isolated',
-       units='USD/cap/day',
-       baseline=b, distribution=D)
-    def set_parameter3(i):
-        wages = i
-        teaB.annual_labor = f(i) 
+    unit = sys.path[5]
+    tea = sys.TEA
+    sysID = sys.ID
+    b = unit.labor_maintenance_zeolite_regeneration # I'm using a fake parameter as an example, you'll need to update all the `XXX`
+    D = shape.Triangle(lower=10, midpoint = 20, upper=30) # or whatever the distribution should be
+    @param(name='Ion Exchnage Labor Hours for all systems',
+        element='Ion Exchange', 
+        kind='isolated',
+        units='hr/year',
+        baseline=b, distribution=D)
+    def set_IonExchangeHours(i):
+        unit.labor_maintenance_zeolite_regeneration = i
+        tea.annual_labor = systems.update_labor_cost(sysID)
+        
+    unit = sys.path[5]
+    tea = sys.TEA
+    sysID = sys.ID
+    b = unit.wages
+    D = shape.Triangle(lower=14.55, midpoint = 29.11, upper=43.68)
+    @param(name='Wages that affect all labor costs in the system',
+        element='IonExchange Wages', 
+        kind='isolated',
+        units='USD/cap/day',
+        baseline=b, distribution=D)
+    def set_IonExchangeWages(i):
+        unit.wages = i
+        tea.annual_labor = systems.update_labor_cost(sysID)
+    
+    # unit = sysC.path[11]
+    # teaC = sys.TEAC
+    # sysID = sys.ID
+    # b = unit.pannel_cleaning # I'm using a fake parameter as an example, you'll need to update all the `XXX`
+    # D = shape.Uniform(lower=10, upper=15) # or whatever the distribution should be
+    # @param(name='Solar Labor Hours for all systems',
+    #     element='Solar', 
+    #     kind='isolated',
+    #     units='hr/year',
+    #     baseline=b, distribution=D)
+    # def set_SolarLaborHours(i):
+    #     unit.pannel_cleaning = i
+    #     teaC.annual_labor = systems.update_labor_cost(sysID)
+        
+    # unit = sys.path[11]
+    # tea = sys.TEA
+    # sysID = sys.ID
+    # b = unit.wages
+    # D = shape.Triangle(lower=14.55, midpoint = 29.11, upper=43.68)
+    # @param(name='Wages that affect all labor costs in the system',
+    #     element='Wages', 
+    #     kind='isolated',
+    #     units='USD/cap/day',
+    #     baseline=b, distribution=D)
+    # def set_SolarWages(i):
+    #     unit.wages = i
+    #     tea.annual_labor = systems.update_labor_cost(sysID)
         
     
     
-    # ########## Related to human input ##########
-    # # Diet and excretion
-    # path = data_path + 'sanunit_data/_excretion.tsv'
-    # data = load_data(path)
-    # batch_setting_unit_params(data, model, unit)
+    ########## Related to human input ##########
+    # Diet and excretion
+    path = data_path + 'sanunit_data/_excretion.tsv'
+    data = load_data(path)
+    batch_setting_unit_params(data, model, unit)
     
-    # # Household size
-    # b = systems.get_household_size()
-    # D = shape.Normal(mu=b, sigma=1.8)
-    # @param(name='Household size', element=unit, kind='coupled', units='cap/household',
-    #        baseline=b, distribution=D)
-    # def set_household_size(i):
-    #     systems.household_size = max(1, i)
+    # Household size
+    b = systems.get_household_size()
+    D = shape.Normal(mu=b, sigma=1.8)
+    @param(name='Household size', element=unit, kind='coupled', units='cap/household',
+            baseline=b, distribution=D)
+    def set_household_size(i):
+        systems.household_size = max(1, i)
     
-    # # Toilet density
-    # b = systems.get_household_per_toilet()
-    # D = shape.Uniform(lower=3, upper=5)
-    # @param(name='Toilet density', element=unit, kind='coupled', units='household/toilet',
-    #        baseline=b, distribution=D)
-    # def set_toilet_density(i):
-    #     systems.household_per_toilet = i
+    # Toilet density
+    b = systems.get_household_per_toilet()
+    D = shape.Uniform(lower=3, upper=5)
+    @param(name='Toilet density', element=unit, kind='coupled', units='household/toilet',
+            baseline=b, distribution=D)
+    def set_toilet_density(i):
+        systems.household_per_toilet = i
 
     ##### Universal degradation parameters #####
     # Max methane emission
@@ -248,15 +302,6 @@ def add_shared_parameters(sys, model, country_specific=False):
 
     ######## General TEA settings ########
     
-    # b = systems.B6._calc_maintenance_labor_cost() / 8760
-    # dist = shape.Uniform(lower=53, upper=1600)
-    # @param(name='Annual labor',
-    #    element='TEA', 
-    #    kind='isolated',
-    #    units='USD/yr',
-    #    baseline = b, distribution=dist)
-    # def set_annual_labor(i): # here this `set_ww_price` is the `setter` function that will update the price
-    #     systems.annual_labor = i
     
     # Money discount rate
     # keep discount rate constant
