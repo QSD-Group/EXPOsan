@@ -43,7 +43,7 @@ cmps = pc.load_asm1_cmps()
 set_thermo(cmps)
 
 ############# create WasteStream objects #################
-Q = 18446.0           # influent flowrate [m3/d]
+Q = 18446           # influent flowrate [m3/d]
 Temp = 273.15+20    # temperature [K]
 
 PE = WasteStream('Wastewater', T=Temp)
@@ -67,8 +67,8 @@ RAS = WasteStream('RAS', T=Temp)
 ############# load and tailor process models #############
 V_an = 1000    # anoxic zone tank volume
 V_ae = 1333    # aerated zone tank volume
-Q_was = 385.0    # sludge wastage flowrate
-Q_ras = 18446.0    # recycle sludge flowrate
+Q_was = 385    # sludge wastage flowrate
+Q_ras = 18446    # recycle sludge flowrate
 
 # pc.DiffusedAeration.A = 8.10765
 # pc.DiffusedAeration.B = 1750.286
@@ -85,6 +85,18 @@ asm1 = pc.ASM1(Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
                 K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05, fr_SS_COD=0.75,
                 path=os.path.join(bsm1_path, '_asm1.tsv'))
 
+# asm1 = pc.ASM1(Y_A=0.23, Y_H=0.64, f_P=0.050, i_XB=0.04, i_XP=0.06,
+#                 mu_H=3.0, K_S=5.0, K_O_H=0.1, K_NO=0.25, b_H=0.29,
+#                 eta_g=0.6, eta_h=0.6, k_h=2.25, K_X=0.075, mu_A=0.48,
+#                 K_NH=0.5, b_A=0.04, K_O_A=0.3, k_a=0.03, fr_SS_COD=0.7,
+#                 path=os.path.join(bsm1_path, '_asm1.tsv'))
+
+# asm1 = pc.ASM1(Y_A=0.25, Y_H=0.70, f_P=0.107, i_XB=0.12, i_XP=0.06,
+#                 mu_H=5.0, K_S=15, K_O_H=0.3, K_NO=0.75, b_H=0.32,
+#                 eta_g=1, eta_h=1, k_h=3.75, K_X=0.125, mu_A=0.53,
+#                 K_NH=1.5, b_A=0.06, K_O_A=0.5, k_a=0.08, fr_SS_COD=0.95,
+#                 path=os.path.join(bsm1_path, '_asm1.tsv'))
+
 ############# create unit operations #####################
 A1 = su.CSTR('A1', ins=[PE, RE, RAS], V_max=V_an,
               aeration=None, suspended_growth_model=asm1)
@@ -98,25 +110,22 @@ O1 = su.CSTR('O1', A2-0, V_max=V_ae, aeration=aer1,
 O2 = su.CSTR('O2', O1-0, V_max=V_ae, aeration=aer1,
               DO_ID='S_O', suspended_growth_model=asm1)
 
-O3 = su.CSTR('O3', O2-0, V_max=V_ae, aeration=aer2,
+O3 = su.CSTR('O3', O2-0, [RE, 'treated'], split=[0.6, 0.4], 
+             V_max=V_ae, aeration=aer2,
               DO_ID='S_O', suspended_growth_model=asm1)
 
-S1 = su.Splitter('S1', O3-0, [RE, 'treated'], split=0.6, init_with='WasteStream')
 
-C1 = su.FlatBottomCircularClarifier('C1', S1-1, [SE, 'sludge'],
-                                    sludge_flow_rate=Q_ras+Q_was, surface_area=1500,
+C1 = su.FlatBottomCircularClarifier('C1', O3-1, [SE, RAS, WAS],
+                                    underflow=Q_ras, wastage=Q_was, surface_area=1500,
                                     height=4, N_layer=10, feed_layer=5,
                                     X_threshold=3000, v_max=474, v_max_practical=250,
                                     rh=5.76e-4, rp=2.86e-3, fns=2.28e-3)
 
-S2 = su.Splitter('S2', C1-1, [RAS, WAS], split=Q_ras/(Q_ras+Q_was), init_with='WasteStream')
 
-
-batch_init(os.path.join(bsm1_path, 'data/initial_conditions.xlsx'), 't=10')
-C1.t_delay = 0
+batch_init(os.path.join(bsm1_path, 'data/initial_conditions.xlsx'), 'default')
 
 ############# system simulation ############################
-bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, S1, C1, S2), recycle=(RE, RAS))
+bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, C1), recycle=(RE, RAS))
 bsm1.set_tolerance(rmol=1e-6)
 
 __all__ = (
@@ -132,12 +141,14 @@ def run(t, t_step, method=None, **kwargs):
         bsm1.simulate(t_span=(0,t), 
                       t_eval=np.arange(0, t+t_step, t_step),
                       method=method, 
-                      export_state_to=f'results/sol_{t}d_{method}_t10_delay0.xlsx', # better-looking header in Excel
+                      export_state_to=f'results/sol_{t}d_{method}.xlsx', # better-looking header in Excel
                       **kwargs)
     else:
         bsm1.simulate(solver='odeint', 
                       t=np.arange(0, t+t_step, t_step),
                       export_state_to=f'results/sol_{t}d_odeint.xlsx',
+                      print_msg=True,
+                      full_output = 1,
                       **kwargs)
 
 
@@ -150,12 +161,12 @@ if __name__ == '__main__':
     # method = 'DOP853'
     # method = 'Radau'
     # method = 'BDF'
-    method = 'LSODA'
-    # method = None
+    # method = 'LSODA'
+    method = None
     msg = f'Method {method}'
     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
     print(f'Time span 0-{t}d \n')
     run(t, t_step, method=method)
     
     # If want to see a quick plot of the state variable of a certain unit
-    fig, ax = C1.plot_state_over_time(system=bsm1, state_var=('S_S', 'S_NH'))
+    # fig, ax = C1.plot_state_over_time(system=bsm1, state_var=('S_S', 'S_NH'))
