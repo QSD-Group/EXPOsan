@@ -21,7 +21,7 @@ def test_bsm1():
     sys = b1.bsm1
     set_thermo(b1.cmps)
     sys.reset_cache()
-    sys.simulate(t_span=(0,50), method='LSODA', t_eval=arange(0, 51, 1))
+    sys.simulate(t_span=(0,50), method='RK23', t_eval=arange(0, 51, 1))
 
     assert sys.outs[0].isempty() == False
     #!!! Temporary while working on fixing the bug
