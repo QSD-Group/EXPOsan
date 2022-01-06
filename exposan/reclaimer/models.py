@@ -40,7 +40,7 @@ item_path = R.systems.item_path
 
 __all__ = ( 'modelB', 'result_dct', 
            'run_uncertainty', 'save_uncertainty_results', 'add_metrics',
-           'batch_setting_unit_params', 'add_shared_parameters',) 
+           'batch_setting_unit_params', 'add_shared_parameters') 
            
 
 
@@ -132,11 +132,6 @@ def add_shared_parameters(sys, model, country_specific=False):
     unit = sys.path[0]
     param = model.parameter
     streams = sys_dct['stream_dct'][sys.ID]
-    
-    #replacement cost should be a parameter, and then labor costs should be a metric 
-    #the paramter affects the metric 
-    #parameter is the input metric is the output 
-
             
         # Electricity price
     b = price_dct['Electricity']
@@ -185,7 +180,7 @@ def add_shared_parameters(sys, model, country_specific=False):
     b = unit.wages
     D = shape.Triangle(lower=14.55, midpoint = 29.11, upper=43.68)
     @param(name='Wages that affect all labor costs in the system',
-        element='Wages', 
+        element='Sludge Pasteurization Wages', 
         kind='isolated',
         units='USD/cap/day',
         baseline=b, distribution=D)
@@ -221,33 +216,6 @@ def add_shared_parameters(sys, model, country_specific=False):
         unit.wages = i
         tea.annual_labor = systems.update_labor_cost(sysID)
     
-    # unit = sysC.path[11]
-    # teaC = sys.TEAC
-    # sysID = sys.ID
-    # b = unit.pannel_cleaning # I'm using a fake parameter as an example, you'll need to update all the `XXX`
-    # D = shape.Uniform(lower=10, upper=15) # or whatever the distribution should be
-    # @param(name='Solar Labor Hours for all systems',
-    #     element='Solar', 
-    #     kind='isolated',
-    #     units='hr/year',
-    #     baseline=b, distribution=D)
-    # def set_SolarLaborHours(i):
-    #     unit.pannel_cleaning = i
-    #     teaC.annual_labor = systems.update_labor_cost(sysID)
-        
-    # unit = sys.path[11]
-    # tea = sys.TEA
-    # sysID = sys.ID
-    # b = unit.wages
-    # D = shape.Triangle(lower=14.55, midpoint = 29.11, upper=43.68)
-    # @param(name='Wages that affect all labor costs in the system',
-    #     element='Wages', 
-    #     kind='isolated',
-    #     units='USD/cap/day',
-    #     baseline=b, distribution=D)
-    # def set_SolarWages(i):
-    #     unit.wages = i
-    #     tea.annual_labor = systems.update_labor_cost(sysID)
         
     
     
@@ -390,6 +358,9 @@ def add_shared_parameters(sys, model, country_specific=False):
 # Scenario A (sysA): Trucking Scenario (O&M sludge?)
 # =============================================================================
 
+#!!! System is still under progress (might be a possible sludge pasteruziation 
+#!!! O&M scenario or link with the zyclone)
+
 # sysA = systems.sysA
 # sysA.simulate()
 # modelA = Model(sysA, add_metrics(sysA))
@@ -399,11 +370,6 @@ def add_shared_parameters(sys, model, country_specific=False):
 # modelA = add_shared_parameters(sysA, modelA)
 
 
-# # Diet and excretion
-# A1 = systems.A1
-# path = su_data_path + '_excretion.tsv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelA, A1)
 
 # # # Toilet and conveyance
 # # modelA = add_toilet_parameters(sysA, modelA)
@@ -486,12 +452,6 @@ paramB = modelB.parameter
 # Shared parameters
 modelB = add_shared_parameters(sysB, modelB)
 
-#MURT TOILET
-# B2 = systems.B2
-# path = su_data_path + '_murt_toilet.tsv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelB, B2)
-
 #primary treatment without struvite
 B3 = systems.B3
 path = su_data_path + '_primary_reclaimer.csv'
@@ -541,20 +501,15 @@ all_paramsB = modelB.get_parameters()
 # =============================================================================
 # Scenario C (sysC): Primary with struvite + MBR
 # =============================================================================
-
 sysC = systems.sysC
 sysC.simulate()
 modelC = Model(sysC, add_metrics(sysC))
 paramC = modelC.parameter
 
-# Shared parameters
-modelC = add_shared_parameters(sysC, modelC)
 
-# # Diet and excretion
-# C1 = systems.C1
-# path = su_data_path + '_excretion.tsv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelC, C1)
+# Model C shared parameters
+modelC = add_shared_parameters(sysC, modelC) 
+
 
 #MURT TOILET
 C2 = systems.C2
@@ -606,10 +561,39 @@ data = load_data(path)
 batch_setting_unit_params(data, modelC, C11)
 
 #Solar costs and impacts
+unit = systems.sysC.path[11]
+tea = systems.sysC.TEA
+sysCID = sysC.ID
+b = unit.pannel_cleaning # I'm using a fake parameter as an example, you'll need to update all the `XXX`
+D = shape.Uniform(lower=10, upper=15) # or whatever the distribution should be
+@paramC(name='Solar Labor Hours for all systems',
+    element='Solar', 
+    kind='isolated',
+    units='hr/year',
+    baseline=b, distribution=D)
+def set_SolarLaborHours(i):
+    unit.pannel_cleaning = i
+    tea.annual_labor = systems.update_labor_cost(sysID)
+    
+unit = systems.sysC.path[11]
+tea = systems.sysC.TEA
+sysID = systems.sysC.ID
+b = unit.wages
+D = shape.Triangle(lower=14.55, midpoint = 29.11, upper=43.68)
+@paramC(name='Wages that affect all labor costs in the system',
+    element='Solar Wages', 
+    kind='isolated',
+    units='USD/cap/day',
+    baseline=b, distribution=D)
+def set_SolarWages(i):
+    unit.wages = i
+    tea.annual_labor = systems.update_labor_cost(sysID)
+    
 C12 = systems.C12
 path = su_data_path + '_solar_reclaimer.csv'
 data = load_data(path)
 batch_setting_unit_params(data, modelC, C12)
+
 
 all_paramsC = modelC.get_parameters()
 
@@ -620,9 +604,9 @@ all_paramsC = modelC.get_parameters()
 # =============================================================================
 
 result_dct = {
-        'sysB': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
+        'sysC': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
         }
-models=modelB
+models=modelC
 @time_printer
 def run_uncertainty(model, seed=None, N=10000, rule='L',
                     percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
