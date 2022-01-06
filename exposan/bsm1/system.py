@@ -127,6 +127,7 @@ batch_init(os.path.join(bsm1_path, 'data/initial_conditions.xlsx'), 'default')
 ############# system simulation ############################
 bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, C1), recycle=(RE, RAS))
 bsm1.set_tolerance(rmol=1e-6)
+bio_IDs = ('X_BH', 'X_BA')
 
 __all__ = (
     'cmps', 'bsm1', 'asm1', 'aer1', 'aer2',
@@ -148,21 +149,21 @@ def run(t, t_step, method=None, **kwargs):
                       t=np.arange(0, t+t_step, t_step),
                       export_state_to=f'results/sol_{t}d_odeint.xlsx',
                       print_msg=True,
-                      full_output = 1,
                       **kwargs)
-
+    srt = bsm1.get_SRT(bio_IDs)
+    print(f'Estimated SRT assuming at steady-state is {round(srt, 2)} days')
 
 if __name__ == '__main__':
     bsm1.reset_cache()
     t = 50
     t_step = 1
     # method = 'RK45'
-    # method = 'RK23'
+    method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
     # method = 'BDF'
     # method = 'LSODA'
-    method = None
+    # method = None
     msg = f'Method {method}'
     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
     print(f'Time span 0-{t}d \n')
