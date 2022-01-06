@@ -42,8 +42,20 @@ inf.set_flow_by_concentration(flow_tot=20,
 
 '''
 System should have the following units:
+    Screening
     ActivatedSludgeProcess (aeration tanks & clarifiers)
     Sludge handling units (at least GBT, maybe also others):
         X_thickened_WAS = 25000; %[mg/L]
     CHP
+
 '''
+
+# @property
+# def active_biomass(self):
+#     '''[tuple] IDs of active biomass (particulate & organic & degradable) components.'''
+#     return self.get_IDs_from_array(self.x*self.b*self.org)
+
+# @property
+# def inert_biomass(self):
+#     '''[tuple] IDs of inert biomass (particulate & organic & undegradable) components.'''
+#     return self.get_IDs_from_array(self.x*self.org-self.x*self.b*self.org)
