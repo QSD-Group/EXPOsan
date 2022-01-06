@@ -302,7 +302,7 @@ A9.line = 'fugitive N2O mixer'
 
 ################## Other impacts and costs ##################
 A10 = su.HousingReclaimer('A10', ins=(A7-0), outs = ('A10_out'))
-A11 = su.SystemReclaimer('A12', ins=(A9-0), outs = ('A12_out'))
+A11 = su.SystemReclaimer('A11', ins=(A9-0), outs = ('A11_out'))
 
 
 
@@ -512,7 +512,7 @@ teaC = SimpleTEA(system=sysC, discount_rate=get_discount_rate(),
                   + (C6._calc_maintenance_labor_cost() * 8760) + (C12._calc_maintenance_labor_cost() * 8760))  #number of hours)
 
 #!!! Double check to have solar materials 
-lcaC = LCA(system=sysB, lifetime=20, lifetime_unit='yr', uptime_ratio=1,)
+lcaC = LCA(system=sysC, lifetime=20, lifetime_unit='yr', uptime_ratio=1,)
 
 def update_labor_cost(sys_ID):
     if sys_ID=='sysA':
@@ -535,9 +535,9 @@ sys_dct = {
     'liq_unit': dict(sysA=None, sysB=None, sysC=None),
     'sol_unit': dict(sysA=None, sysB=None, sysC=None),
     'gas_unit': dict(sysA=None, sysB=None, sysC=None),
-    'stream_dct': dict(sysA=streamsA, sysB=streamsB),
-    'TEA': dict(sysA=teaA, sysB = teaB),
-    'LCA': dict(sysA=lcaA, sysB=lcaB),
+    'stream_dct': dict(sysA=streamsA, sysB=streamsB, sysC=streamsC),
+    'TEA': dict(sysA=teaA, sysB = teaB, sysC = teaC),
+    'LCA': dict(sysA=lcaA, sysB=lcaB, sysC=lcaC),
     'cache': dict(sysA={}, sysB={}, sysC={}),
     }
 

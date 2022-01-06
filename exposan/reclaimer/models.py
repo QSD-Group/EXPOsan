@@ -255,7 +255,7 @@ def add_shared_parameters(sys, model, country_specific=False):
     # Diet and excretion
     path = data_path + 'sanunit_data/_excretion.tsv'
     data = load_data(path)
-    batch_setting_unit_params(data, model, unit)
+    batch_setting_unit_params(data, model, unit=sys.path[0])
     
     # Household size
     b = systems.get_household_size()
@@ -486,17 +486,11 @@ paramB = modelB.parameter
 # Shared parameters
 modelB = add_shared_parameters(sysB, modelB)
 
-# Diet and excretion
-B1 = systems.B1
-path = su_data_path + '_excretion.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelB, B1)
-
 #MURT TOILET
-B2 = systems.B2
-path = su_data_path + '_murt_toilet.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelB, B2)
+# B2 = systems.B2
+# path = su_data_path + '_murt_toilet.tsv'
+# data = load_data(path)
+# batch_setting_unit_params(data, modelB, B2)
 
 #primary treatment without struvite
 B3 = systems.B3
@@ -556,12 +550,11 @@ paramC = modelC.parameter
 # Shared parameters
 modelC = add_shared_parameters(sysC, modelC)
 
-
-# Diet and excretion
-C1 = systems.C1
-path = su_data_path + '_excretion.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelC, C1)
+# # Diet and excretion
+# C1 = systems.C1
+# path = su_data_path + '_excretion.tsv'
+# data = load_data(path)
+# batch_setting_unit_params(data, modelC, C1)
 
 #MURT TOILET
 C2 = systems.C2
