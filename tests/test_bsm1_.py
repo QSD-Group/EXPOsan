@@ -23,6 +23,7 @@ def test_bsm1():
     set_thermo(b1.cmps)
     sys.reset_cache()
     sys.simulate(t_span=(0,50), method='RK23', t_eval=arange(0, 51, 1))
+
     assert sys.outs[0].isempty() == False
     try:
         ac(float(sys.outs[0].iconc['S_S']), 0.895, rtol=1e-2)
