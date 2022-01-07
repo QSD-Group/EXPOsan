@@ -147,12 +147,12 @@ def run(t, t_step, method=None, **kwargs):
         bsm1.simulate(t_span=(0,t),
                       t_eval=np.arange(0, t+t_step, t_step),
                       method=method,
-                      # export_state_to=f'results/sol_{t}d_{method}.xlsx',
+                       export_state_to=f'results/sol_{t}d_{method}.xlsx',
                       **kwargs)
     else:
         bsm1.simulate(solver='odeint',
                       t=np.arange(0, t+t_step, t_step),
-                      # export_state_to=f'results/sol_{t}d_odeint.xlsx',
+                       export_state_to=f'results/sol_{t}d_odeint.xlsx',
                       print_msg=True,
                       **kwargs)
     srt = bsm1.get_SRT(bio_IDs)
@@ -160,7 +160,7 @@ def run(t, t_step, method=None, **kwargs):
 
 if __name__ == '__main__':
     bsm1.reset_cache()
-    t = 5
+    t = 50
     t_step = 1
     # method = 'RK45'
     method = 'RK23'

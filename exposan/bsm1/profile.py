@@ -33,7 +33,7 @@ t_step = 1
 # Looks like `tuna` isn't able to show all the details
 # https://github.com/nschloe/tuna
 # Instead using `pstats`, for t = 0.1, the stats are stored in `system_01`
-cProfile.run(f'bsm1.simulate(t_span=(0, {t}), t_eval=np.arange(0, {t+t_step}, {t_step}), method="LSODA")',
+cProfile.run(f'bsm1.simulate(t_span=(0, {t}), t_eval=np.arange(0, {t+t_step}, {t_step}), method="RK23")',
              f"system_{''.join(str(t).split('.'))}.prof")
 
 p = pstats.Stats(f"system_{''.join(str(t).split('.'))}.prof")
