@@ -520,7 +520,7 @@ def update_labor_cost(sys_ID):
 
     elif sys_ID=='sysB':
         labor_cost= (B4._calc_maintenance_labor_cost() * 8760) + (B6._calc_maintenance_labor_cost() * 8760 )
-    else:
+    else: 
         labor_cost= ((C5._calc_maintenance_labor_cost() * 8760) + (C6._calc_maintenance_labor_cost() * 8760) 
             + (C12._calc_maintenance_labor_cost() * 8760) )
     return labor_cost

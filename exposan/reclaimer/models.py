@@ -38,7 +38,7 @@ eval = eval
 
 item_path = R.systems.item_path
 
-__all__ = ( 'modelB', 'result_dct', 
+__all__ = ( 'modelC', 'result_dct', 
            'run_uncertainty', 'save_uncertainty_results', 'add_metrics',
            'batch_setting_unit_params', 'add_shared_parameters') 
            
@@ -523,7 +523,7 @@ path = su_data_path + '_primary_reclaimer.csv'
 data = load_data(path)
 batch_setting_unit_params(data, modelC, C3)
 
-#SysB Sludge Pasteurization
+# Sludge Pasteurization
 C4 = systems.C4
 path = su_data_path + '_sludge_pasteurization.tsv'
 data = load_data(path)
@@ -561,39 +561,22 @@ data = load_data(path)
 batch_setting_unit_params(data, modelC, C11)
 
 #Solar costs and impacts
-unit = systems.sysC.path[11]
-tea = systems.sysC.TEA
-sysCID = sysC.ID
-b = unit.pannel_cleaning # I'm using a fake parameter as an example, you'll need to update all the `XXX`
-D = shape.Uniform(lower=10, upper=15) # or whatever the distribution should be
+teaC = systems.sysC.TEA
+b = sysC.path[11].pannel_cleaning 
+D = shape.Uniform(lower=10, upper=15) 
 @paramC(name='Solar Labor Hours for all systems',
     element='Solar', 
     kind='isolated',
     units='hr/year',
     baseline=b, distribution=D)
 def set_SolarLaborHours(i):
-    unit.pannel_cleaning = i
-    tea.annual_labor = systems.update_labor_cost(sysID)
-    
-unit = systems.sysC.path[11]
-tea = systems.sysC.TEA
-sysID = systems.sysC.ID
-b = unit.wages
-D = shape.Triangle(lower=14.55, midpoint = 29.11, upper=43.68)
-@paramC(name='Wages that affect all labor costs in the system',
-    element='Solar Wages', 
-    kind='isolated',
-    units='USD/cap/day',
-    baseline=b, distribution=D)
-def set_SolarWages(i):
-    unit.wages = i
-    tea.annual_labor = systems.update_labor_cost(sysID)
-    
+    sysC.path[11].pannel_cleaning = i
+    teaC.annual_labor = systems.update_labor_cost(sysC)
+ 
 C12 = systems.C12
 path = su_data_path + '_solar_reclaimer.csv'
 data = load_data(path)
 batch_setting_unit_params(data, modelC, C12)
-
 
 all_paramsC = modelC.get_parameters()
 
