@@ -33,6 +33,7 @@ def batch_init(path, sheet):
     C1.set_init_sludge_solids(**c1x)
     C1.set_init_TSS(tss)
 
+
 #%%
 # =============================================================================
 # Benchmark Simulation Model No. 1
@@ -47,17 +48,21 @@ Q = 18446           # influent flowrate [m3/d]
 Temp = 273.15+20    # temperature [K]
 
 PE = WasteStream('Wastewater', T=Temp)
-PE.set_flow_by_concentration(Q,
-                              {'S_S':69.5,
-                              'X_BH':28.17,
-                              'X_S':202.32,
-                              'X_I':51.2,
-                              'S_NH':31.56,
-                              'S_I':30,
-                              'S_ND':6.95,
-                              'X_ND':10.59,
-                              'S_ALK':7*12},
-                              units=('m3/d', 'mg/L'))
+inf_kwargs = {
+    'concentrations': {
+        'S_S':69.5,
+        'X_BH':28.17,
+        'X_S':202.32,
+        'X_I':51.2,
+        'S_NH':31.56,
+        'S_I':30,
+        'S_ND':6.95,
+        'X_ND':10.59,
+        'S_ALK':7*12,
+        },
+    'units': ('m3/d', 'mg/L'),
+    }
+PE.set_flow_by_concentration(Q, **inf_kwargs)
 
 SE = WasteStream('Effluent', T=Temp)
 WAS = WasteStream('WAS', T=Temp)
@@ -110,7 +115,7 @@ O1 = su.CSTR('O1', A2-0, V_max=V_ae, aeration=aer1,
 O2 = su.CSTR('O2', O1-0, V_max=V_ae, aeration=aer1,
               DO_ID='S_O', suspended_growth_model=asm1)
 
-O3 = su.CSTR('O3', O2-0, [RE, 'treated'], split=[0.6, 0.4], 
+O3 = su.CSTR('O3', O2-0, [RE, 'treated'], split=[0.6, 0.4],
              V_max=V_ae, aeration=aer2,
               DO_ID='S_O', suspended_growth_model=asm1)
 
@@ -130,7 +135,7 @@ bsm1.set_tolerance(rmol=1e-6)
 
 __all__ = (
     'cmps', 'bsm1', 'asm1', 'aer1', 'aer2',
-    'Q', 'PE', 'SE', 'WAS', 'RE', 'RAS', 
+    'Q', 'PE', 'SE', 'WAS', 'RE', 'RAS',
     *(i.ID for i in bsm1.units),
     )
 
@@ -138,15 +143,15 @@ __all__ = (
 @time_printer
 def run(t, t_step, method=None, **kwargs):
     if method:
-        bsm1.simulate(t_span=(0,t), 
+        bsm1.simulate(t_span=(0,t),
                       t_eval=np.arange(0, t+t_step, t_step),
-                      method=method, 
-                      export_state_to=f'results/sol_{t}d_{method}.xlsx', # better-looking header in Excel
+                      method=method,
+                      # export_state_to=f'results/sol_{t}d_{method}.xlsx',
                       **kwargs)
     else:
-        bsm1.simulate(solver='odeint', 
+        bsm1.simulate(solver='odeint',
                       t=np.arange(0, t+t_step, t_step),
-                      export_state_to=f'results/sol_{t}d_odeint.xlsx',
+                      # export_state_to=f'results/sol_{t}d_odeint.xlsx',
                       print_msg=True,
                       full_output = 1,
                       **kwargs)
@@ -154,19 +159,19 @@ def run(t, t_step, method=None, **kwargs):
 
 if __name__ == '__main__':
     bsm1.reset_cache()
-    t = 50
+    t = 5
     t_step = 1
     # method = 'RK45'
-    # method = 'RK23'
+    method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
     # method = 'BDF'
     # method = 'LSODA'
-    method = None
+    # method = None
     msg = f'Method {method}'
     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
     print(f'Time span 0-{t}d \n')
     run(t, t_step, method=method)
-    
+
     # If want to see a quick plot of the state variable of a certain unit
     # fig, ax = C1.plot_state_over_time(system=bsm1, state_var=('S_S', 'S_NH'))

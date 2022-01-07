@@ -722,7 +722,7 @@ modelA = add_lagoon_parameters(A7, modelA)
 
 all_paramsA = modelA.parameters
 
-# Legacy codes for to look at recoveries
+# Legacy codes to look at recoveries
 # A1 = systems.A1
 # get_recovery = systems.get_recovery
 # get_ppl = systems.get_ppl

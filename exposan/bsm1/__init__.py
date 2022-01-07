@@ -17,10 +17,13 @@ bsm1_path = os.path.dirname(__file__)
 del os
 
 from . import system
-
 from .system import *
+
+from . import model
+from .model import *
 
 __all__ = (
     'bsm1_path',
     *system.__all__,
+    *model.__all__,
 	)
