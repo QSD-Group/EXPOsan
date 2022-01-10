@@ -26,21 +26,19 @@ s = bm.system
 model_bsm1 = qs.Model(system=bsm1)
 
 ########## Add Uncertainty Parameters ##########
-#!!! Parameters pending updates
-
 param = model_bsm1.parameter
 # Give ±10% of the baseline
 get_uniform_w_frac = lambda b, frac: shape.Uniform(lower=b*(1-frac), upper=b*(1+frac))
 
 # Flow rates
-b = s.Q
-D = get_uniform_w_frac(b, 0.1)
-PE = s.PE
-inf_kwargs = s.inf_kwargs
-@param(name='Influent flowrate', element=PE, kind='coupled', units='m3/d',
-       baseline=b, distribution=D)
-def set_Q_inf(i):
-    PE.set_flow_by_concentration(i, **inf_kwargs)
+# b = s.Q
+# D = get_uniform_w_frac(b, 0.1)
+# PE = s.PE
+# inf_kwargs = s.inf_kwargs
+# @param(name='Influent flowrate', element=PE, kind='coupled', units='m3/d',
+#        baseline=b, distribution=D)
+# def set_Q_inf(i):
+#     PE.set_flow_by_concentration(i, **inf_kwargs)
 
 b = s.Q_was
 D = get_uniform_w_frac(b, 0.1)
@@ -65,27 +63,26 @@ def set_Q_ras(i):
 # https://doi.org/10.1016/j.watres.2009.03.048.
 asm1 = s.asm1
 
-#!!! Would appreciate help double-checking the numbers :)
 param_ranges = {
     'mu_H': (4, 3, 5, '/d'), # default, min, max, unit
     'K_S': (10, 5, 15, 'g COD/m3'),
     'K_OH': (0.2, 0.1, 0.3, 'g O2/m3'),
     'K_NO': (0.5, 0.25, 0.75, 'g N/m3'),
-    'b_H': (0.3, 0.29, 0.32, '/d'),
-    'mu_A': (0.5, 0.48, 0.53, '/d'),
+    'b_H': (0.3, 0.285, 0.315, '/d'),
+    'mu_A': (0.5, 0.475, 0.525, '/d'),
     'K_NH': (1, 0.5, 1.5, 'g N/m3'),
     'K_O_A': (0.4, 0.3, 0.5, 'g COD/m3'),
     'b_A': (0.05, 0.04, 0.06, '/d'),
     'eta_g': (0.8, 0.6, 1, ''),
     'k_a': (0.05, 0.03, 0.08, 'm3/g COD/d'),
-    'k_h': (3, 2.25, 3.75, 'g XS/g XBH COD/d'),
-    'K_X': (0.1, 0.075, 0.125, 'g XS/g XBH COD'),
+    'k_h': (3, 2.25, 3.75, 'g X_S/g X_BH COD/d'),
+    'K_X': (0.1, 0.075, 0.125, 'g X_S/g X_BH COD'),
     'eta_h': (0.8, 0.6, 1, ''),
     'Y_H': (0.67, 0.64, 0.7, 'g COD/g COD'),
     'Y_A': (0.24, 0.23, 0.25, 'g COD/g N'),
     'i_XB': (0.08, 0.04, 0.12, 'g N/g COD'),
     'i_XP': (0.06, 0.057, 0.063, 'g N/g COD'),
-    'f_P': (0.75, 0.7, 0.95, 'g TSS/g COD'),
+    # 'f_P': (0.75, 0.7, 0.95, 'g TSS/g COD'),
     'fr_SS_COD': (0.75, 0.7, 0.95, 'g TSS/g COD'),
     }
 
@@ -100,28 +97,27 @@ for name, vals in param_ranges.items():
              f'different from the provided baseline of {b}, is this intentional?')
     D = shape.Triangle(lower=lb, midpoint=b, upper=ub)
     setter = DictAttrSetter(asm1, '_parameters', keys=(name,))
-    param(setter=setter, name=name, element='ASM1', kind='coupled', units=unit,
+    param(setter=setter, name=name, element=A1, kind='coupled', units=unit,
           baseline=b, distribution=D)
 
 # Set f_P by setting the since f_P is calculataed from f_Pobs and Y_H,
 # f_P = f_Pobs*(1-Y_H)/(1-f_Pobs*Y_H)
-# the calcualted baseline is 0.2*(1-0.67)/(1-0.2*0.67)=0.76,
-# close enough to the set 0.8
+# the calcualted baseline is 0.2*(1-0.67)/(1-0.2*0.67)=0.076,
+# close enough to the set 0.08
 b = 0.2
-D = shape.Triangle(lower=0.15, midpoint=b, upper=0.2)
-@param(name='f_Pobs', element=C1, kind='coupled', units='',
+D = shape.Triangle(lower=0.15, midpoint=b, upper=0.25)
+@param(name='f_Pobs', element=asm1, kind='coupled', units='',
        baseline=b, distribution=D)
 def set_f_Pobs(i):
     Y_H = asm1.Y_H
-    asm1.f_p = i*(1-Y_H) / (1-i*Y_H)
+    asm1.f_P = i*(1-Y_H) / (1-i*Y_H)
 
-#!!! Do we want to set uncertainties for the concs of inf based on the same table in Sin et al.?
 
 # Aeration
 aer1 = s.aer1
 O1 = s.O1
 b = aer1.KLa
-D = get_uniform_w_frac(b, 0.1)
+D = shape.Uniform(lower=180, upper=360)
 @param(name='O1 and O2 KLa', element=O1, kind='coupled', units='',
        baseline=b, distribution=D)
 def set_O1_O2_KLa(i):
@@ -134,7 +130,7 @@ D = get_uniform_w_frac(b, 0.1)
 @param(name='O3 KLa', element=O3, kind='coupled', units='',
        baseline=b, distribution=D)
 def set_O3_KLa(i):
-    O3.KLa = i
+    aer2.KLa = i
 
 ########## Add Evaluation Metrics ##########
 metric = model_bsm1.metric
