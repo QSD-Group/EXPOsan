@@ -48,13 +48,45 @@ C1 = s.C1
 def set_Q_was(i):
     C1.wastage = i
 
-b = s.Q_ras
-D = get_uniform_w_frac(b, 0.1)
-@param(name='Return sludge flowrate', element=C1, kind='coupled', units='m3/d',
-       baseline=b, distribution=D)
-def set_Q_ras(i):
-    C1.underflow = i
+# b = s.Q_ras
+# D = get_uniform_w_frac(b, 0.1)
+# @param(name='Return sludge flowrate', element=C1, kind='coupled', units='m3/d',
+#        baseline=b, distribution=D)
+# def set_Q_ras(i):
+#     C1.underflow = i
 
+Q, V_an, V_ae = s.Q, s.V_an, s.V_ae
+b = 1
+D = shape.Uniform(lower=0.75, upper=1)
+@param(name='Sludge recycling as a fraction of influent', element=C1, 
+       kind='coupled', units='', baseline=b, distribution=D)
+def set_Q_ras(i):
+    C1.underflow = Q*i
+
+b = 3
+D = shape.Uniform(lower=2.25, upper=3.75)
+O3 = s.O3
+@param(name='Internal recirculation rate as a fraction of influent', element=O3, 
+       kind='coupled', units='', baseline=b, distribution=D)
+def set_Q_intr(i):
+    intr = i/(1+i+C1._Qras/Q)
+    O3.split = [intr, 1-intr]
+    
+b = V_an * 2 / Q * 24
+D = shape.Uniform(lower=2.34, upper=b)
+A1, A2 = s.A1, s.A2
+@param(name='Anoxic zone hydraulic retention time', element=A1, 
+       kind='coupled', units='hr', baseline=b, distribution=D)
+def set_A1_A2_HRT(i):
+    A1._V_max = A2._V_max = i / 24 * Q / 2
+
+b = V_ae * 3 / Q * 24
+D = shape.Uniform(lower=4.68, upper=b)
+O1, O2 = s.O1, s.O2
+@param(name='Anoxic zone hydraulic retention time', element=A1, 
+       kind='coupled', units='hr', baseline=b, distribution=D)
+def set_O1_O2_O3_HRT(i):
+    O1._V_max = O2._V_max = O3._V_max = i / 24 * Q / 3
 # Kinetic parameters based on
 # Sin, G.; Gernaey, K. V.; Neumann, M. B.; van Loosdrecht, M. C. M.; Gujer, W.
 # Uncertainty Analysis in WWTP Model Applications:
@@ -87,7 +119,6 @@ param_ranges = {
     }
 
 # Use a loop to add the parameters in batch
-A1 = s.A1
 asm1_baseline_param = asm1.parameters
 for name, vals in param_ranges.items():
     b, lb, ub, unit = vals
@@ -106,7 +137,7 @@ for name, vals in param_ranges.items():
 # close enough to the set 0.08
 b = 0.2
 D = shape.Triangle(lower=0.15, midpoint=b, upper=0.25)
-@param(name='f_Pobs', element=asm1, kind='coupled', units='',
+@param(name='f_Pobs', element=A1, kind='coupled', units='',
        baseline=b, distribution=D)
 def set_f_Pobs(i):
     Y_H = asm1.Y_H
@@ -115,7 +146,6 @@ def set_f_Pobs(i):
 
 # Aeration
 aer1 = s.aer1
-O1 = s.O1
 b = aer1.KLa
 D = shape.Uniform(lower=180, upper=360)
 @param(name='O1 and O2 KLa', element=O1, kind='coupled', units='',
@@ -124,27 +154,49 @@ def set_O1_O2_KLa(i):
     aer1.KLa = i
 
 aer2 = s.aer2
-O3 = s.O3
 b = aer2.KLa
 D = get_uniform_w_frac(b, 0.1)
 @param(name='O3 KLa', element=O3, kind='coupled', units='',
        baseline=b, distribution=D)
 def set_O3_KLa(i):
     aer2.KLa = i
+    
+b = 8.0
+D = get_uniform_w_frac(b, 0.1)
+@param(name='Saturation DO', element=O1, kind='coupled', units='mg/L',
+       baseline=b, distribution=D)
+def set_DOsat(i):
+    aer1.DOsat = i
+    aer2.DOsat = i
 
 ########## Add Evaluation Metrics ##########
 metric = model_bsm1.metric
 
 # Use a function to batch-add metrics
 # concentrations of all of the components for the clarifier effluent (seconday effluent),
-cmps = s.cmps
-def add_conc_as_metrics(ws):
-    for cmp in cmps:
-        getter = AttrGetter(ws, attr='iconc',
-                            hook=lambda iconc, ID: iconc[ID],
-                            hook_param=('S_I',))
-        metric(getter=getter, name=f'{ws.ID} {cmp.ID}', units='mg/L', element='WasteStreams')
+# cmps = s.cmps
+# def add_conc_as_metrics(ws):
+#     for cmp in cmps:
+#         getter = AttrGetter(ws, attr='iconc',
+#                             hook=lambda iconc, ID: iconc[ID],
+#                             hook_param=(cmp.ID,))
+#         metric(getter=getter, name=f'{ws.ID} {cmp.ID}', 
+#                units='mg/L', element='WasteStreams')
 
 SE, RAS, WAS, RE = s.SE, s.RAS, s.WAS, s.RE
-for ws in (SE, RAS, WAS, RE):
-    add_conc_as_metrics(ws)
+# for ws in (SE, RAS, WAS, RE):
+#     add_conc_as_metrics(ws)
+
+# Effluent composite variables and daily sludge production
+for i in ('COD', 'TN', 'TKN'):
+    metric(getter=AttrGetter(SE, attr=i), name=i, 
+           units='mg/L', element='Effluent')
+metric(getter=SE.get_TSS, name='TSS', unit='mg/L', element='Effluent')
+
+def get_daily_sludge_production():
+    return WAS.get_TSS() * 1e-3 * WAS.F_vol * 24
+metric(getter=get_daily_sludge_production, 
+       name='Daily sludge production', unit='kg TSS/d', element='WAS')
+
+
+

@@ -15,7 +15,7 @@ import numpy as np
 from qsdsan import sanunits as su
 from qsdsan import processes as pc
 from qsdsan import set_thermo, WasteStream, System
-from qsdsan.utils import time_printer, load_data
+from qsdsan.utils import time_printer, load_data, get_SRT
 
 import os
 bsm1_path = os.path.dirname(__file__)
@@ -156,7 +156,7 @@ def run(t, t_step, method=None, **kwargs):
                       export_state_to=f'results/sol_{t}d_odeint.xlsx',
                       print_msg=True,
                       **kwargs)
-    srt = bsm1.get_SRT(bio_IDs)
+    srt = get_SRT(bsm1, bio_IDs)
     print(f'Estimated SRT assuming at steady-state is {round(srt, 2)} days')
 
 if __name__ == '__main__':
