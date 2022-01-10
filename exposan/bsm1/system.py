@@ -128,6 +128,7 @@ C1 = su.FlatBottomCircularClarifier('C1', O3-1, [SE, RAS, WAS],
 
 
 batch_init(os.path.join(bsm1_path, 'data/initial_conditions.xlsx'), 'default')
+# batch_init(os.path.join(bsm1_path, 'data/initial_conditions.xlsx'), 't=10')
 
 ############# system simulation ############################
 bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, C1), recycle=(RE, RAS))
@@ -152,7 +153,7 @@ def run(t, t_step, method=None, **kwargs):
     else:
         bsm1.simulate(solver='odeint',
                       t=np.arange(0, t+t_step, t_step),
-                       export_state_to=f'results/sol_{t}d_odeint.xlsx',
+                      export_state_to=f'results/sol_{t}d_odeint.xlsx',
                       print_msg=True,
                       **kwargs)
     srt = bsm1.get_SRT(bio_IDs)
