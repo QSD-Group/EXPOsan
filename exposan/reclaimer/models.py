@@ -38,7 +38,7 @@ eval = eval
 
 item_path = R.systems.item_path
 
-__all__ = ( 'modelC', 'result_dct', 
+__all__ = ( 'modelB', 'modelC', 'result_dct', 
            'run_uncertainty', 'save_uncertainty_results', 'add_metrics',
            'batch_setting_unit_params', 'add_shared_parameters') 
            
@@ -561,8 +561,9 @@ data = load_data(path)
 batch_setting_unit_params(data, modelC, C11)
 
 #Solar costs and impacts
+C12 = systems.C12
 teaC = systems.sysC.TEA
-b = sysC.path[11].pannel_cleaning 
+b = C12.pannel_cleaning 
 D = shape.Uniform(lower=10, upper=15) 
 @paramC(name='Solar Labor Hours for all systems',
     element='Solar', 
@@ -570,10 +571,9 @@ D = shape.Uniform(lower=10, upper=15)
     units='hr/year',
     baseline=b, distribution=D)
 def set_SolarLaborHours(i):
-    sysC.path[11].pannel_cleaning = i
+    C12.pannel_cleaning = i
     teaC.annual_labor = systems.update_labor_cost(sysC)
- 
-C12 = systems.C12
+
 path = su_data_path + '_solar_reclaimer.csv'
 data = load_data(path)
 batch_setting_unit_params(data, modelC, C12)
@@ -587,9 +587,9 @@ all_paramsC = modelC.get_parameters()
 # =============================================================================
 
 result_dct = {
-        'sysC': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
+        'sysB': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
         }
-models=modelC
+models=modelB
 @time_printer
 def run_uncertainty(model, seed=None, N=10000, rule='L',
                     percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
@@ -615,10 +615,12 @@ def run_uncertainty(model, seed=None, N=10000, rule='L',
     # Spearman's rank correlation
     spearman_metrics = [model.metrics[i] for i in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)]
     #spearman_metrics = [model.metrics[i] for i in (0, 3, 12, 16, 20, 24)]
-    spearman_results = model.spearman(model.get_parameters(), spearman_metrics)
-    spearman_results.columns = pd.Index([i.name_with_units for i in spearman_metrics])
+    spearman_results, pvalues = model.spearman_r(model.get_parameters(), spearman_metrics)
+    cols = [i.name_with_units for i in spearman_metrics]
+    spearman_results.columns = pd.Index(cols)
+    pvalues.columns = pd.Index(cols)
     dct['spearman'] = spearman_results
-    return dct
+    dct['spearman_p'] = pvalues
 
 # 
 
@@ -644,6 +646,7 @@ def save_uncertainty_results(model, path=''):
         if 'percentiles' in dct.keys():
             dct['percentiles'].to_excel(writer, sheet_name='Percentiles')
         dct['spearman'].to_excel(writer, sheet_name='Spearman')
+        dct['spearman_p'].to_excel(writer, sheet_name='Spearman_pvalues')
         model.table.to_excel(writer, sheet_name='Raw data')
 
 
