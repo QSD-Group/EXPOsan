@@ -88,7 +88,7 @@ asm1 = pc.ASM1(Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
                 mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
                 eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
                 K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05, fr_SS_COD=0.75,
-                path=os.path.join(bsm1_path, '_asm1.tsv'))
+                path=os.path.join(bsm1_path, 'data/_asm1.tsv'))
 
 # asm1 = pc.ASM1(Y_A=0.23, Y_H=0.64, f_P=0.050, i_XB=0.04, i_XP=0.06,
 #                 mu_H=3.0, K_S=5.0, K_O_H=0.1, K_NO=0.25, b_H=0.29,
@@ -141,6 +141,7 @@ __all__ = (
     *(i.ID for i in bsm1.units),
     )
 
+
 #%%
 @time_printer
 def run(t, t_step, method=None, **kwargs):
@@ -148,7 +149,7 @@ def run(t, t_step, method=None, **kwargs):
         bsm1.simulate(t_span=(0,t),
                       t_eval=np.arange(0, t+t_step, t_step),
                       method=method,
-                       export_state_to=f'results/sol_{t}d_{method}.xlsx',
+                      export_state_to=f'results/sol_{t}d_{method}.xlsx',
                       **kwargs)
     else:
         bsm1.simulate(solver='odeint',

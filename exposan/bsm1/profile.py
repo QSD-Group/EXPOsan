@@ -34,9 +34,9 @@ t_step = 1
 # https://github.com/nschloe/tuna
 # Instead using `pstats`, for t = 0.1, the stats are stored in `system_01`
 cProfile.run(f'bsm1.simulate(t_span=(0, {t}), t_eval=np.arange(0, {t+t_step}, {t_step}), method="RK23")',
-             f"system_{''.join(str(t).split('.'))}.prof")
+             f"results/system_{''.join(str(t).split('.'))}.prof")
 
-p = pstats.Stats(f"system_{''.join(str(t).split('.'))}.prof")
+p = pstats.Stats(f"results/system_{''.join(str(t).split('.'))}.prof")
 
 # # If want to load previously saved stats
 # p = pstats.Stats(f"system_{''.join(str(t).split('.'))}.prof")
@@ -87,7 +87,7 @@ text = 'ncalls' + text.split('ncalls')[-1]
 text = '\n'.join([','.join(line.rstrip().split(None,5)) for line in text.split('\n')])
 
 # Save the results to csv, here
-csv_path = os.path.join(bsm1_path, f"system_{''.join(str(t).split('.'))}.csv")
+csv_path = os.path.join(bsm1_path, f"results/system_{''.join(str(t).split('.'))}.csv")
 with open(csv_path, 'w+') as f:
     f.write(text)
     f.close()

@@ -83,7 +83,7 @@ def set_A1_A2_HRT(i):
 b = V_ae * 3 / Q * 24
 D = shape.Uniform(lower=4.68, upper=b)
 O1, O2 = s.O1, s.O2
-@param(name='Anoxic zone hydraulic retention time', element=A1, 
+@param(name='Aerobic zone hydraulic retention time', element=O1, 
        kind='coupled', units='hr', baseline=b, distribution=D)
 def set_O1_O2_O3_HRT(i):
     O1._V_max = O2._V_max = O3._V_max = i / 24 * Q / 3
@@ -191,12 +191,9 @@ SE, RAS, WAS, RE = s.SE, s.RAS, s.WAS, s.RE
 for i in ('COD', 'TN', 'TKN'):
     metric(getter=AttrGetter(SE, attr=i), name=i, 
            units='mg/L', element='Effluent')
-metric(getter=SE.get_TSS, name='TSS', unit='mg/L', element='Effluent')
+metric(getter=SE.get_TSS, name='TSS', units='mg/L', element='Effluent')
 
 def get_daily_sludge_production():
     return WAS.get_TSS() * 1e-3 * WAS.F_vol * 24
 metric(getter=get_daily_sludge_production, 
-       name='Daily sludge production', unit='kg TSS/d', element='WAS')
-
-
-
+       name='Daily sludge production', units='kg TSS/d', element='WAS')
