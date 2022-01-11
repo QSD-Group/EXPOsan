@@ -46,6 +46,8 @@ get_toilet_user = lambda: get_household_size()*get_household_per_toilet()
 
 # Number of people served by the Reclaimer 2.0
 ppl = 120
+toilets = ppl/25
+ppl_toilet = ppl / toilets
 
 discount_rate = 0.05
 get_discount_rate = lambda: discount_rate
@@ -261,7 +263,7 @@ A2 = su.MURTToilet('A2', ins=(A1-0, A1-1,
                     decay_k_COD=get_decay_k(tau_deg, log_deg), 
                     decay_k_N=get_decay_k(tau_deg, log_deg),
                     max_CH4_emission=get_max_CH4_emission(),
-                    N_user=100/7, N_toilet=7, 
+                    N_user=ppl_toilet, N_toilet= toilets, 
                     if_flushing=True, if_desiccant=False, if_toilet_paper=True,
                     CAPEX = 0,
                     OPEX_over_CAPEX= 0.07) 
@@ -364,7 +366,7 @@ B2 = su.MURTToilet('B2', ins=(B1-0, B1-1,
                     decay_k_COD=get_decay_k(tau_deg, log_deg), 
                     decay_k_N=get_decay_k(tau_deg, log_deg),
                     max_CH4_emission=get_max_CH4_emission(),
-                    N_user=120/7, N_toilet=7, 
+                    N_user=ppl_toilet, N_toilet= toilets, 
                     if_flushing=True, if_desiccant=False, if_toilet_paper=True,
                     CAPEX = 0,
                     OPEX_over_CAPEX= 0.07) 
@@ -449,7 +451,7 @@ C2 = su.MURTToilet('C2', ins=(C1-0, C1-1,
                     decay_k_COD=get_decay_k(tau_deg, log_deg), 
                     decay_k_N=get_decay_k(tau_deg, log_deg),
                     max_CH4_emission=get_max_CH4_emission(),
-                    N_user=120/7, N_toilet=7, 
+                    N_user=ppl_toilet, N_toilet= toilets,  
                     if_flushing=True, if_desiccant=False, if_toilet_paper=True,
                     CAPEX = 0,
                     OPEX_over_CAPEX= 0.07) 
@@ -500,7 +502,6 @@ C12 = su.SolarReclaimer('C12', ins=(C11-0), outs = ('C12_out'))
 sysC = bst.System('sysC', path= (C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12))
 sysC.simulate()
 
-#!!! Add solar labor 
 def update_labor_costs_sysC():
     teaC.annual_labor = (C4._calc_maintenance_labor_cost() * 8760) + (C6._calc_maintenance_labor_cost() * 8760)
 

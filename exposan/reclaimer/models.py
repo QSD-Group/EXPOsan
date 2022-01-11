@@ -152,10 +152,31 @@ def add_shared_parameters(sys, model, country_specific=False):
             # GWP_dct['Electricity'] = systems.e_item.CFs['GlobalWarming'] = i''
             
             
-            
-            
-    
-    # Parameters for Labor Costs that affect ALL systems  
+    #Paramter for flushing water to avoid default assumptions found in the _toilet.tsv
+    #Amount of water used for flushing [kg/cap/hr]
+    unit = sys.path[1] #this is my second san unit so teh path is 1 (starts at 0)
+    b = unit.flushing_water #unit in toilet
+    D = shape.Uniform(lower=0.1667, upper=0.25) #Processes 20-30 L/h -> for 120 users = 0.16667-0.25 kg/cap/hr
+    @param(name='Flushing Water Processed',
+        element ='Sanunit 2', 
+        kind='coupled',
+        units='kg/cap/hr',
+        baseline=b, distribution=D)
+    def set_flushing_water(i):
+        unit.flushing_water = i          
+        
+    # #To see sensitvity to number of users
+    # unit = sys.path[1]
+    # b = unit.ppl
+    # D = shape.Uniform(lower=50, upper=300) 
+    # @param(name='Number of users for the system',
+    #     element ='Sanunit 2', 
+    #     kind='coupled',
+    #     units='cap/system',
+    #     baseline=b, distribution=D)
+    # def set_number_users_system(i):
+    #     unit.ppl = i      
+     
     #Sludge Pasteurization Unit
     unit = sys.path[3]
     tea = sys.TEA
@@ -169,9 +190,6 @@ def add_shared_parameters(sys, model, country_specific=False):
         baseline=b, distribution=D)
     def set_SludgePasteurizationHours(i):
         unit.sludge_labor_maintenance = i
-        # if there are multiple `TEA` object affected by this, you'll need to include all of them
-        # f(i) is the function that uses Parameter1 to calculate the annual labor,
-        # which depends on what Parameter 1 is
         tea.annual_labor = systems.update_labor_cost(sysID)
         
     unit = sys.path[3]
@@ -188,6 +206,7 @@ def add_shared_parameters(sys, model, country_specific=False):
         unit.wages = i
         tea.annual_labor = systems.update_labor_cost(sysID)
     
+    #Ion Exchange Unit for Labor Uncertainty Costs
     unit = sys.path[5]
     tea = sys.TEA
     sysID = sys.ID
@@ -216,8 +235,7 @@ def add_shared_parameters(sys, model, country_specific=False):
         unit.wages = i
         tea.annual_labor = systems.update_labor_cost(sysID)
     
-        
-    
+
     
     ########## Related to human input ##########
     # Diet and excretion
@@ -296,18 +314,7 @@ def add_shared_parameters(sys, model, country_specific=False):
            baseline=b, distribution=D)
     def set_N2O_CF(i):
         GWP_dct['N2O'] = systems.N2O_item.CFs['GlobalWarming'] = i
-
-
-    # b = GWP_dct['Electricity']
-    # D = shape.Uniform(lower=0.106, upper=0.121)
-    # @param(name='Electricity CF', element='LCA', kind='isolated',
-    #        units='kg CO2-eq/kWh', baseline=b, distribution=D)
-    # def set_electricity_CF(i):
-    #     GWP_dct['Electricity'] = i
-        
-    
-        
-    
+       
     b = -GWP_dct['N']
     D = shape.Triangle(lower=1.8, midpoint=b, upper=8.9)
     @param(name='N fertilizer CF', element='LCA', kind='isolated',
