@@ -155,7 +155,7 @@ def run(t, t_step, method=None, **kwargs):
                       **kwargs)
     else:
         bsm1.simulate(solver='odeint',
-                      t=np.arange(0, t+t_step, t_step),
+                      t=np.arange(0, t+t_step/30, t_step/30),
                       export_state_to=f'results/sol_{t}d_odeint.xlsx',
                       print_msg=True,
                       **kwargs)

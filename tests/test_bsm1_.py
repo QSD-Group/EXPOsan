@@ -24,8 +24,7 @@ def test_bsm1():
     sys.reset_cache()
     #!!! Temporary while updating dynamic simulation
     try:
-        sys.simulate(t_span=(0,50), method='RK23', t_eval=arange(0, 51, 1))
-    
+        sys.simulate(t_span=(0,50), method='LSODA', t_eval=arange(0, 51, 1))
         assert sys.outs[0].isempty() == False
         ac(float(sys.outs[0].iconc['S_S']), 0.895, rtol=1e-2)
         ac(float(sys.outs[1].iconc['X_BH']), 4994.3, rtol=1e-2)
