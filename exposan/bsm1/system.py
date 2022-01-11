@@ -167,11 +167,11 @@ if __name__ == '__main__':
     t = 50
     t_step = 1
     # method = 'RK45'
-    method = 'RK23'
+    # method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
     # method = 'BDF'
-    # method = 'LSODA'
+    method = 'LSODA'
     # method = None
     msg = f'Method {method}'
     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
