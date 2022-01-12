@@ -18,9 +18,10 @@ np.random.seed(112)
 
 samples = mdl.sample(N=10, rule='L')
 mdl.load_samples(samples)
-t = 10
+t = 50
 t_step = 1
-mdl.evaluate(t_span=(0,t),
+mdl.evaluate(start_from_cached_state=False,
+             t_span=(0,t),
              t_eval=np.arange(0, t+t_step, t_step),
              method='LSODA',
              export_state_to='results/test_time_series.xlsx')

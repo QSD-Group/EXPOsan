@@ -23,7 +23,7 @@ __all__ = ('model_bsm1',)
 
 bsm1 = bm.bsm1
 s = bm.system
-model_bsm1 = qs.Model(system=bsm1)
+model_bsm1 = qs.Model(system=bsm1, exception_hook='raise')
 
 ########## Add Uncertainty Parameters ##########
 param = model_bsm1.parameter
@@ -182,6 +182,6 @@ def get_daily_sludge_production():
     return WAS.get_TSS() * 1e-3 * WAS.F_vol * 24
 
 bio_IDs = ('X_BH', 'X_BA')
-@metric(name='SRT', units='d', element=s)
+@metric(name='SRT', units='d', element='System')
 def get_SRT():
-    return srt(s, bio_IDs)
+    return srt(bsm1, bio_IDs)
