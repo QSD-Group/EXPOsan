@@ -14,7 +14,7 @@ for license details.
 import qsdsan as qs
 from warnings import warn
 from chaospy import distributions as shape
-from qsdsan.utils import DictAttrSetter, AttrGetter
+from qsdsan.utils import DictAttrSetter, AttrGetter, get_SRT as srt
 from exposan import bsm1 as bm
 
 
@@ -27,54 +27,40 @@ model_bsm1 = qs.Model(system=bsm1)
 
 ########## Add Uncertainty Parameters ##########
 param = model_bsm1.parameter
-# Give ±10% of the baseline
 get_uniform_w_frac = lambda b, frac: shape.Uniform(lower=b*(1-frac), upper=b*(1+frac))
 
-# Flow rates
-# b = s.Q
-# D = get_uniform_w_frac(b, 0.1)
-# PE = s.PE
-# inf_kwargs = s.inf_kwargs
-# @param(name='Influent flowrate', element=PE, kind='coupled', units='m3/d',
-#        baseline=b, distribution=D)
-# def set_Q_inf(i):
-#     PE.set_flow_by_concentration(i, **inf_kwargs)
+cmps = s.cmps
+PE = s.PE
 
-b = s.Q_was
-D = get_uniform_w_frac(b, 0.1)
-C1 = s.C1
-@param(name='Waste sludge flowrate', element=C1, kind='coupled', units='m3/d',
-       baseline=b, distribution=D)
-def set_Q_was(i):
-    C1.wastage = i
+b = 0.08
+D = shape.Triangle(lower=0.04, midpoint=b, upper=0.12)
+@param(name='Biomass N content i_XB', element=PE, kind='coupled',
+       units='g N/g COD', baseline=b, distribution=D)
+def set_i_XB(i):
+    cmps.X_BH.i_N = cmps.X_BA.i_N = i
+    cmps.refresh_constants()
 
-# b = s.Q_ras
-# D = get_uniform_w_frac(b, 0.1)
-# @param(name='Return sludge flowrate', element=C1, kind='coupled', units='m3/d',
-#        baseline=b, distribution=D)
-# def set_Q_ras(i):
-#     C1.underflow = i
+b = 0.6
+D = shape.Triangle(lower=0.57, midpoint=b, upper=0.63)
+@param(name='Biomass products N content i_XP', element=PE, kind='coupled',
+       units='g N/g COD', baseline=b, distribution=D)
+def set_i_XP(i):
+    cmps.X_P.i_N = cmps.X_I.i_N = i
+    cmps.refresh_constants()
+ 
+b = 0.75
+D = shape.Triangle(lower=0.7, midpoint=b, upper=0.95)
+@param(name='Organic particulates ash content fr_SS_COD', element=PE, kind='coupled',
+       units='g SS/g COD', baseline=b, distribution=D)
+def set_fr_SS_COD(i):
+    cmps.X_I.i_mass = cmps.X_S.i_mass = cmps.X_P.i_mass = cmps.X_BH.i_mass = cmps.X_BA.i_mass = i
+    cmps.refresh_constants()
 
 Q, V_an, V_ae = s.Q, s.V_an, s.V_ae
-b = 1
-D = shape.Uniform(lower=0.75, upper=1)
-@param(name='Sludge recycling as a fraction of influent', element=C1, 
-       kind='coupled', units='', baseline=b, distribution=D)
-def set_Q_ras(i):
-    C1.underflow = Q*i
+A1, A2, O1, O2, O3, C1 = s.A1, s.A2, s.O1, s.O2, s.O3, s.C1
 
-b = 3
-D = shape.Uniform(lower=2.25, upper=3.75)
-O3 = s.O3
-@param(name='Internal recirculation rate as a fraction of influent', element=O3, 
-       kind='coupled', units='', baseline=b, distribution=D)
-def set_Q_intr(i):
-    intr = i/(1+i+C1._Qras/Q)
-    O3.split = [intr, 1-intr]
-    
 b = V_an * 2 / Q * 24
 D = shape.Uniform(lower=2.34, upper=b)
-A1, A2 = s.A1, s.A2
 @param(name='Anoxic zone hydraulic retention time', element=A1, 
        kind='coupled', units='hr', baseline=b, distribution=D)
 def set_A1_A2_HRT(i):
@@ -82,23 +68,45 @@ def set_A1_A2_HRT(i):
 
 b = V_ae * 3 / Q * 24
 D = shape.Uniform(lower=4.68, upper=b)
-O1, O2 = s.O1, s.O2
 @param(name='Aerobic zone hydraulic retention time', element=O1, 
        kind='coupled', units='hr', baseline=b, distribution=D)
 def set_O1_O2_O3_HRT(i):
     O1._V_max = O2._V_max = O3._V_max = i / 24 * Q / 3
-# Kinetic parameters based on
+    
+b = 3
+D = shape.Uniform(lower=2.25, upper=3.75)
+@param(name='Internal recirculation rate as a fraction of influent', element=O3, 
+       kind='coupled', units='', baseline=b, distribution=D)
+def set_Q_intr(i):
+    intr = i/(1+i+C1._Qras/Q)
+    O3.split = [intr, 1-intr]
+
+b = 1
+D = shape.Uniform(lower=0.75, upper=1)
+@param(name='Sludge recycling as a fraction of influent', element=C1, 
+       kind='coupled', units='', baseline=b, distribution=D)
+def set_Q_ras(i):
+    C1.underflow = Q*i
+
+b = s.Q_was
+D = get_uniform_w_frac(b, 0.1)
+@param(name='Waste sludge flowrate', element=C1, kind='coupled', units='m3/d',
+       baseline=b, distribution=D)
+def set_Q_was(i):
+    C1.wastage = i
+
+
+# Kinetic and stoichiometric parameters based on
 # Sin, G.; Gernaey, K. V.; Neumann, M. B.; van Loosdrecht, M. C. M.; Gujer, W.
 # Uncertainty Analysis in WWTP Model Applications:
 # A Critical Discussion Using an Example from Design.
 # Water Research 2009, 43 (11), 2894–2906.
 # https://doi.org/10.1016/j.watres.2009.03.048.
 asm1 = s.asm1
-
 param_ranges = {
     'mu_H': (4, 3, 5, '/d'), # default, min, max, unit
     'K_S': (10, 5, 15, 'g COD/m3'),
-    'K_OH': (0.2, 0.1, 0.3, 'g O2/m3'),
+    'K_O_H': (0.2, 0.1, 0.3, 'g O2/m3'),
     'K_NO': (0.5, 0.25, 0.75, 'g N/m3'),
     'b_H': (0.3, 0.285, 0.315, '/d'),
     'mu_A': (0.5, 0.475, 0.525, '/d'),
@@ -112,13 +120,8 @@ param_ranges = {
     'eta_h': (0.8, 0.6, 1, ''),
     'Y_H': (0.67, 0.64, 0.7, 'g COD/g COD'),
     'Y_A': (0.24, 0.23, 0.25, 'g COD/g N'),
-    'i_XB': (0.08, 0.04, 0.12, 'g N/g COD'),
-    'i_XP': (0.06, 0.057, 0.063, 'g N/g COD'),
-    # 'f_P': (0.75, 0.7, 0.95, 'g TSS/g COD'),
-    'fr_SS_COD': (0.75, 0.7, 0.95, 'g TSS/g COD'),
     }
 
-# Use a loop to add the parameters in batch
 asm1_baseline_param = asm1.parameters
 for name, vals in param_ranges.items():
     b, lb, ub, unit = vals
@@ -128,21 +131,16 @@ for name, vals in param_ranges.items():
              f'different from the provided baseline of {b}, is this intentional?')
     D = shape.Triangle(lower=lb, midpoint=b, upper=ub)
     setter = DictAttrSetter(asm1, '_parameters', keys=(name,))
-    param(setter=setter, name=name, element=A1, kind='coupled', units=unit,
-          baseline=b, distribution=D)
+    param(setter=setter, name=f'ASM1 {name}', element=A1, kind='coupled', 
+          units=unit, baseline=b, distribution=D)
 
-# Set f_P by setting the since f_P is calculataed from f_Pobs and Y_H,
-# f_P = f_Pobs*(1-Y_H)/(1-f_Pobs*Y_H)
-# the calcualted baseline is 0.2*(1-0.67)/(1-0.2*0.67)=0.076,
-# close enough to the set 0.08
 b = 0.2
 D = shape.Triangle(lower=0.15, midpoint=b, upper=0.25)
-@param(name='f_Pobs', element=A1, kind='coupled', units='',
+@param(name='ASM1 f_Pobs', element=A1, kind='coupled', units='',
        baseline=b, distribution=D)
 def set_f_Pobs(i):
     Y_H = asm1.Y_H
     asm1.f_P = i*(1-Y_H) / (1-i*Y_H)
-
 
 # Aeration
 aer1 = s.aer1
@@ -171,29 +169,19 @@ def set_DOsat(i):
 
 ########## Add Evaluation Metrics ##########
 metric = model_bsm1.metric
-
-# Use a function to batch-add metrics
-# concentrations of all of the components for the clarifier effluent (seconday effluent),
-# cmps = s.cmps
-# def add_conc_as_metrics(ws):
-#     for cmp in cmps:
-#         getter = AttrGetter(ws, attr='iconc',
-#                             hook=lambda iconc, ID: iconc[ID],
-#                             hook_param=(cmp.ID,))
-#         metric(getter=getter, name=f'{ws.ID} {cmp.ID}', 
-#                units='mg/L', element='WasteStreams')
-
 SE, RAS, WAS, RE = s.SE, s.RAS, s.WAS, s.RE
-# for ws in (SE, RAS, WAS, RE):
-#     add_conc_as_metrics(ws)
 
 # Effluent composite variables and daily sludge production
 for i in ('COD', 'TN', 'TKN'):
-    metric(getter=AttrGetter(SE, attr=i), name=i, 
+    metric(getter=AttrGetter(SE, attr=i), name='Effluent '+i, 
            units='mg/L', element='Effluent')
-metric(getter=SE.get_TSS, name='TSS', units='mg/L', element='Effluent')
+metric(getter=SE.get_TSS, name='Effluent TSS', units='mg/L', element='Effluent')
 
+@metric(name='Daily sludge production', units='kg TSS/d', element='WAS')
 def get_daily_sludge_production():
     return WAS.get_TSS() * 1e-3 * WAS.F_vol * 24
-metric(getter=get_daily_sludge_production, 
-       name='Daily sludge production', units='kg TSS/d', element='WAS')
+
+bio_IDs = ('X_BH', 'X_BA')
+@metric(name='SRT', units='d', element=s)
+def get_SRT():
+    return srt(s, bio_IDs)
