@@ -158,19 +158,19 @@ def add_shared_parameters(sys, model, country_specific=False):
     b = unit.flushing_water #unit in toilet
     D = shape.Uniform(lower=0.1667, upper=0.25) #Processes 20-30 L/h -> for 120 users = 0.16667-0.25 kg/cap/hr
     @param(name='Flushing Water Processed',
-        element ='Sanunit 2', 
+        element = unit, 
         kind='coupled',
         units='kg/cap/hr',
         baseline=b, distribution=D)
     def set_flushing_water(i):
         unit.flushing_water = i          
         
-    # #To see sensitvity to number of users
+    # # Comment out to see sensitvity to number of users
     # unit = sys.path[1]
     # b = unit.ppl
-    # D = shape.Uniform(lower=50, upper=300) 
+    # D = shape.Uniform(lower=50, upper=1000) 
     # @param(name='Number of users for the system',
-    #     element ='Sanunit 2', 
+    #     element = unit, 
     #     kind='coupled',
     #     units='cap/system',
     #     baseline=b, distribution=D)
@@ -278,13 +278,13 @@ def add_shared_parameters(sys, model, country_specific=False):
     def set_tau_deg(i):
         systems.tau_deg = i
     
-    # Reduction at full degradation
+    #!!! Reduction at full degradation
     b = systems.log_deg
     D = shape.Uniform(lower=2, upper=4)
     @param(name='Log degradation', element=unit, kind='coupled', units='-',
            baseline=b, distribution=D)
     def set_log_deg(i):
-        systems.log = i
+        systems.log_deg = i
 
     ######## General TEA settings ########
     

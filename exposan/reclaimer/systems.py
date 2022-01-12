@@ -17,18 +17,6 @@ from qsdsan import WasteStream, ImpactIndicator, ImpactItem, StreamImpactItem, S
 from _cmps import cmps
 
 
-
-#import all units
-# from _murt_toilet import MURTToilet
-# from _primary_septic_tank import PrimarySepticTank
-# from _ultrafiltration import Ultrafiltration
-# from _ion_exchange_reclaimer import IonExchangeReclaimer
-# from _ECR import ECR
-# from _controls import Controls
-# from _housing import Housing
-# from _system_reclaimer import SystemReclaimer
-# from _solar import Solar
-
 # =============================================================================
 # Unit parameters
 # =============================================================================
@@ -45,7 +33,8 @@ get_household_per_toilet = lambda: household_per_toilet
 get_toilet_user = lambda: get_household_size()*get_household_per_toilet()
 
 # Number of people served by the Reclaimer 2.0
-ppl = 120
+#!!!
+ppl = 100
 toilets = ppl/25
 ppl_toilet = ppl / toilets
 
@@ -263,7 +252,7 @@ A2 = su.MURTToilet('A2', ins=(A1-0, A1-1,
                     decay_k_COD=get_decay_k(tau_deg, log_deg), 
                     decay_k_N=get_decay_k(tau_deg, log_deg),
                     max_CH4_emission=get_max_CH4_emission(),
-                    N_user=ppl_toilet, N_toilet= toilets, 
+                    N_user=ppl_toilet, ppl = ppl, lifetime=8,
                     if_flushing=True, if_desiccant=False, if_toilet_paper=True,
                     CAPEX = 0,
                     OPEX_over_CAPEX= 0.07) 
@@ -366,10 +355,9 @@ B2 = su.MURTToilet('B2', ins=(B1-0, B1-1,
                     decay_k_COD=get_decay_k(tau_deg, log_deg), 
                     decay_k_N=get_decay_k(tau_deg, log_deg),
                     max_CH4_emission=get_max_CH4_emission(),
-                    N_user=ppl_toilet, N_toilet= toilets, 
+                    N_user=ppl_toilet, ppl = ppl, lifetime=8,
                     if_flushing=True, if_desiccant=False, if_toilet_paper=True,
-                    CAPEX = 0,
-                    OPEX_over_CAPEX= 0.07) 
+                    CAPEX = 0, OPEX_over_CAPEX= 0.07) 
 
 ###################### Treatment ######################
 #Septic Tank 
@@ -451,7 +439,7 @@ C2 = su.MURTToilet('C2', ins=(C1-0, C1-1,
                     decay_k_COD=get_decay_k(tau_deg, log_deg), 
                     decay_k_N=get_decay_k(tau_deg, log_deg),
                     max_CH4_emission=get_max_CH4_emission(),
-                    N_user=ppl_toilet, N_toilet= toilets,  
+                    N_user=ppl_toilet, ppl = ppl, lifetime=8, 
                     if_flushing=True, if_desiccant=False, if_toilet_paper=True,
                     CAPEX = 0,
                     OPEX_over_CAPEX= 0.07) 
@@ -531,7 +519,7 @@ def update_labor_cost(sys_ID):
 # =============================================================================
 
 sys_dct = {
-    'ppl':  dict(sysA=120, sysB=120, sysC=120),
+    'ppl':  dict(sysA=ppl, sysB=ppl, sysC=ppl),
     'input_unit': dict(sysA=A1, sysB=B1),
     'liq_unit': dict(sysA=None, sysB=None, sysC=None),
     'sol_unit': dict(sysA=None, sysB=None, sysC=None),
@@ -803,7 +791,7 @@ def print_summaries(systems):
     func = get_summarizing_fuctions()
     for sys in systems:
         sys.simulate()
-        ppl = sys_dct['ppl'][sys.ID]
+        ppl = sys.path[1].ppl
         print(f'\n---------- Summary for {sys} ----------\n')
         tea = sys_dct['TEA'][sys.ID]
         tea.show()
