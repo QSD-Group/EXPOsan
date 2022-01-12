@@ -139,8 +139,9 @@ D = shape.Triangle(lower=0.15, midpoint=b, upper=0.25)
 @param(name='ASM1 f_Pobs', element=A1, kind='coupled', units='',
        baseline=b, distribution=D)
 def set_f_Pobs(i):
-    Y_H = asm1.Y_H
-    asm1.f_P = i*(1-Y_H) / (1-i*Y_H)
+    params = asm1._parameters
+    Y_H = params['Y_H']
+    params['f_P'] = i*(1-Y_H) / (1-i*Y_H)
 
 # Aeration
 aer1 = s.aer1
