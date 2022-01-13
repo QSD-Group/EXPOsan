@@ -173,10 +173,16 @@ metric = model_bsm1.metric
 SE, RAS, WAS, RE = s.SE, s.RAS, s.WAS, s.RE
 
 # Effluent composite variables and daily sludge production
-for i in ('COD', 'TN', 'TKN'):
+for i in ('COD', 'TN'):
     metric(getter=AttrGetter(SE, attr=i), name='Effluent '+i, 
            units='mg/L', element='Effluent')
+
+@metric(name='Effluent TKN', units='mg/L', element='Effluent')
+def get_TKN():
+    return SE.composite('N', subgroup=('S_NH', 'S_ND', 'X_ND'))
+
 metric(getter=SE.get_TSS, name='Effluent TSS', units='mg/L', element='Effluent')
+
 
 @metric(name='Daily sludge production', units='kg TSS/d', element='WAS')
 def get_daily_sludge_production():

@@ -20,7 +20,7 @@ samples = mdl.sample(N=10, rule='L')
 mdl.load_samples(samples)
 t = 50
 t_step = 1
-mdl.evaluate(start_from_cached_state=False,
+mdl.evaluate(state_reset_hook='reset_cache',
              t_span=(0,t),
              t_eval=np.arange(0, t+t_step, t_step),
              method='LSODA',

@@ -148,10 +148,11 @@ __all__ = (
 @time_printer
 def run(t, t_step, method=None, **kwargs):
     if method:
-        bsm1.simulate(t_span=(0,t),
+        bsm1.simulate(start_from_cached_state=False,
+                      t_span=(0,t),
                       t_eval=np.arange(0, t+t_step, t_step),
                       method=method,
-                      export_state_to=f'results/sol_{t}d_{method}.xlsx',
+                      # export_state_to=f'results/sol_{t}d_{method}.xlsx',
                       **kwargs)
     else:
         bsm1.simulate(solver='odeint',
