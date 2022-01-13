@@ -259,8 +259,8 @@ A2 = su.MURTToilet('A2', ins=(A1-0, A1-1,
 
 ###################### Treatment ######################
 #Septic Tank 
-A3 = su.PrimaryReclaimer('A3', ins=(A2-0), 
-                    outs=('A3_treated', 'A3_CH4', 'A3_N2O', 'A3_sludge'), 
+A3 = su.PrimaryReclaimer('A3', ins=(A2-0, streamsA['MgOH2']), 
+                    outs=('A3_treated', 'A3_CH4', 'A3_N2O', 'A3_sludge', streamsA['struvite']), 
                     decay_k_COD=get_decay_k(tau_deg, log_deg), 
                     decay_k_N=get_decay_k(tau_deg, log_deg),
                     max_CH4_emission=get_max_CH4_emission())
@@ -363,8 +363,8 @@ B2 = su.MURTToilet('B2', ins=(B1-0, B1-1,
 #Septic Tank 
 #additional cost for holding tank for the magnesium? 
 #controls? control the valve 
-B3 = su.PrimaryReclaimer('B3', ins=(B2-0), 
-                    outs=('B3_treated', 'B3_CH4', 'B3_N2O', 'B3_sludge'), 
+B3 = su.PrimaryReclaimer('B3', ins=(B2-0, streamsB['MgOH2']), 
+                    outs=('B3_treated', 'B3_CH4', 'B3_N2O', 'B3_sludge', streamsB['struvite']), 
                     decay_k_COD=get_decay_k(tau_deg, log_deg), 
                     decay_k_N=get_decay_k(tau_deg, log_deg),
                     max_CH4_emission=get_max_CH4_emission())
@@ -449,8 +449,8 @@ C2 = su.MURTToilet('C2', ins=(C1-0, C1-1,
 #check the pH for the septic tank (7.5?) 
 #additional cost for holding tank for the magnesium? 
 #controls? control the valve 
-C3 = su.PrimaryReclaimer('C3', ins=(C2-0), 
-                    outs=('C3_treated', 'C3_CH4', 'C3_N2O', 'C3_sludge'), 
+C3 = su.PrimaryReclaimer('C3', ins=(C2-0, streamsC['MgOH2']), 
+                    outs=('C3_treated', 'C3_CH4', 'C3_N2O', 'C3_sludge', streamsC['struvite']), 
                     decay_k_COD=get_decay_k(tau_deg, log_deg), 
                     decay_k_N=get_decay_k(tau_deg, log_deg),
                     max_CH4_emission=get_max_CH4_emission())

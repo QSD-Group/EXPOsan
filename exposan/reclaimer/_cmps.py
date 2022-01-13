@@ -68,7 +68,6 @@ CH4 = Component.from_chemical('CH4', tmo.Chemical('CH4'),
                               phase='g', particle_size='Dissolved gas',
                               degradability='Slowly', organic=True)
 
-# Below three are for combustion reactions
 O2 = Component.from_chemical('O2', tmo.Chemical('O2'),
                              phase='g', particle_size='Dissolved gas',
                              degradability='Undegradable', organic=False)
@@ -88,6 +87,13 @@ P4O10 = Component.from_chemical('P4O10', tmo.Chemical('P4O10'),
 KCl = Component.from_chemical('PotassiumChloride', tmo.Chemical('PotassiumChloride'),
                             phase='s', particle_size='Soluble',
                             degradability='Slowly', organic=False)
+
+MgOH2 = Component.from_chemical('MagnesiumHydroxide',
+                                   tmo.Chemical('MagnesiumHydroxide'),
+                                   formula='Mg(OH)2',
+                                   phase='s', particle_size='Particulate',
+                                   degradability='Slowly', organic=False)
+
 
 NaCl = Component.from_chemical('SodiumChloride', tmo.Chemical('SodiumChloride'),
                             formula='NaCl', phase='s', particle_size='Particulate',
@@ -160,7 +166,7 @@ for cmp in (NonNH3, P, K, Mg, Ca, OtherSS):
     add_V_from_rho(cmp, 1e3) # assume the same density as water
 
 cmps = Components((NH3, NonNH3, P, K, Mg, Ca, H2O, OtherSS, N2O, CH4, O2, N2,
-                   CO2, P4O10, Tissue, WoodAsh, Zeolite, GAC, Struvite, HAP, KCl, HCl, NaCl, LPG))
+                   CO2, P4O10, Tissue, WoodAsh, Zeolite, GAC, Struvite, HAP, KCl, HCl, NaCl, MgOH2, LPG))
 for i in cmps:
     if i.HHV is None: i.HHV = 0
     if i.LHV is None: i.LHV = 0
