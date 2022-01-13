@@ -12,7 +12,7 @@ for license details.
 
 from qsdsan import Component, Components, WasteStream, set_thermo, sanunits as su
 
-__all__ = ('cmps')
+__all__ = ('cmps',)
 
 
 # %%
