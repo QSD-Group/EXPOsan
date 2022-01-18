@@ -19,12 +19,30 @@ Other things that I think we might want to include:
     similar steady-states conditions
 '''
 
-from qsdsan.utils import ords
-from exposan.bsm1 import model_bsm1
+# from qsdsan.utils import ords
+from time import time
+from exposan.bsm1 import model_bsm1 as mdl, \
+    run_uncertainty#, analyze_timeseries
+# import os
+# import numpy as np
 
-# Why not use something meaningful as the seed?
-# guess what this is (hint: check out the built-in function `ord`)
-seed = ords('bsm1')
-N = 100 # number of simulations
-samples = model_bsm1.sample(N=N, rule='L', seed=seed)
-model_bsm1.load_samples(samples)
+# bsm1_path = os.path.dirname(__file__)
+N = 10
+T = 50
+t_step = 1
+
+#%%
+if __name__ == '__main__':
+    # for i in range(10):
+    #     seed = int(str(time())[-3:])
+    #     mt_path = os.path.join(bsm1_path, f'results/table_{seed}.xlsx')
+    #     ts_path = os.path.join(bsm1_path, f'results/states_{seed}.xlsx')
+    #     print(f'\nBatch ID: {seed}')
+    #     print('-'*15)
+    #     run_uncertainty(mdl, N, T, t_step, method='BDF', 
+    #                     metrics_path=mt_path, timeseries_path=ts_path, 
+    #                     seed=seed)
+    seed = int(str(time())[-3:])
+    run_uncertainty(mdl, N, T, t_step, method='BDF', seed=seed)
+    # out = analyze_timeseries(SE_var_getter)
+

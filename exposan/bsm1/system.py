@@ -92,18 +92,6 @@ asm1 = pc.ASM1(Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
                 K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05, fr_SS_COD=0.75,
                 path=os.path.join(bsm1_path, 'data/_asm1.tsv'))
 
-# asm1 = pc.ASM1(Y_A=0.23, Y_H=0.64, f_P=0.050, i_XB=0.04, i_XP=0.06,
-#                 mu_H=3.0, K_S=5.0, K_O_H=0.1, K_NO=0.25, b_H=0.29,
-#                 eta_g=0.6, eta_h=0.6, k_h=2.25, K_X=0.075, mu_A=0.48,
-#                 K_NH=0.5, b_A=0.04, K_O_A=0.3, k_a=0.03, fr_SS_COD=0.7,
-#                 path=os.path.join(bsm1_path, '_asm1.tsv'))
-
-# asm1 = pc.ASM1(Y_A=0.25, Y_H=0.70, f_P=0.107, i_XB=0.12, i_XP=0.06,
-#                 mu_H=5.0, K_S=15, K_O_H=0.3, K_NO=0.75, b_H=0.32,
-#                 eta_g=1, eta_h=1, k_h=3.75, K_X=0.125, mu_A=0.53,
-#                 K_NH=1.5, b_A=0.06, K_O_A=0.5, k_a=0.08, fr_SS_COD=0.95,
-#                 path=os.path.join(bsm1_path, '_asm1.tsv'))
-
 ############# create unit operations #####################
 A1 = su.CSTR('A1', ins=[PE, RE, RAS], V_max=V_an,
               aeration=None, suspended_growth_model=asm1)
@@ -122,18 +110,21 @@ O3 = su.CSTR('O3', O2-0, [RE, 'treated'], split=[0.6, 0.4],
               DO_ID='S_O', suspended_growth_model=asm1)
 
 
-C1 = su.FlatBottomCircularClarifier('C1', O3-1, [SE, RAS, WAS],
+C1 = su.FlatBottomCircularClarifier('C1', O3-1, ['', RAS, WAS],
                                     underflow=Q_ras, wastage=Q_was, surface_area=1500,
                                     height=4, N_layer=10, feed_layer=5,
                                     X_threshold=3000, v_max=474, v_max_practical=250,
                                     rh=5.76e-4, rp=2.86e-3, fns=2.28e-3)
 
+S1 = su.Sampler('S1', C1-0, SE)
+
 
 batch_init(os.path.join(bsm1_path, 'data/initial_conditions.xlsx'), 'default')
-# batch_init(os.path.join(bsm1_path, 'data/initial_conditions.xlsx'), 't=10')
+
 
 ############# system simulation ############################
-bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, C1), recycle=(RE, RAS))
+bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, C1, S1), recycle=(RE, RAS))
+
 bsm1.set_tolerance(rmol=1e-6)
 bio_IDs = ('X_BH', 'X_BA')
 
@@ -152,7 +143,7 @@ def run(t, t_step, method=None, **kwargs):
                       t_span=(0,t),
                       t_eval=np.arange(0, t+t_step, t_step),
                       method=method,
-                      # export_state_to=f'results/sol_{t}d_{method}.xlsx',
+                      export_state_to=f'results/sol_{t}d_{method}.xlsx',
                       **kwargs)
     else:
         bsm1.simulate(state_reset_hook='reset_cache',
@@ -165,15 +156,14 @@ def run(t, t_step, method=None, **kwargs):
     print(f'Estimated SRT assuming at steady-state is {round(srt, 2)} days')
 
 if __name__ == '__main__':
-    bsm1.reset_cache()
     t = 50
     t_step = 1
     # method = 'RK45'
     # method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    # method = 'BDF'
-    method = 'LSODA'
+    method = 'BDF'
+    # method = 'LSODA'
     # method = None
     msg = f'Method {method}'
     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!

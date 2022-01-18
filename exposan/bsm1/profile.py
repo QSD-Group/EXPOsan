@@ -29,7 +29,7 @@ from exposan.bsm1 import bsm1, bsm1_path
 
 t = 50
 t_step = 1
-method = 'RK23'
+method = 'LSODA'
 
 # Looks like `tuna` isn't able to show all the details
 # https://github.com/nschloe/tuna

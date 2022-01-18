@@ -14,11 +14,15 @@ for license details.
 import qsdsan as qs
 from warnings import warn
 from chaospy import distributions as shape
-from qsdsan.utils import DictAttrSetter, AttrGetter, get_SRT as srt
+from qsdsan.utils import load_data, save_pickle, load_pickle, \
+    DictAttrSetter, AttrGetter, get_SRT as srt, time_printer
 from exposan import bsm1 as bm
+import numpy as np
+import os
+bsm1_path = os.path.dirname(__file__)
+results_path = os.path.join(bsm1_path, 'results/')
 
-
-__all__ = ('model_bsm1',)
+__all__ = ('model_bsm1', 'run_uncertainty', 'analyze_timeseries')
 
 
 bsm1 = bm.bsm1
@@ -192,3 +196,42 @@ bio_IDs = ('X_BH', 'X_BA')
 @metric(name='SRT', units='d', element='System')
 def get_SRT():
     return srt(bsm1, bio_IDs)
+
+########### Functions for UA #################
+
+@time_printer
+def run_uncertainty(model, N, T, t_step, method='LSODA', 
+                    metrics_path='', timeseries_path='', 
+                    rule='L', seed=None, pickle=False):
+    if seed: np.random.seed(seed)
+    samples = model.sample(N=N, rule=rule)
+    model.load_samples(samples)
+    t_span = (0, T)
+    t_eval = np.arange(0, T+t_step, t_step)
+    mpath = metrics_path or os.path.join(results_path, f'table_{seed}.xlsx')
+    if timeseries_path: tpath = timeseries_path
+    else:
+        folder = os.path.join(results_path, f'time_series_data_{seed}')
+        os.mkdir(folder)
+        tpath = os.path.join(folder, 'state.npy')    
+    model.evaluate(
+        state_reset_hook='reset_cache',
+        t_span=t_span,
+        t_eval=t_eval,
+        method=method,
+        export_state_to=tpath
+        )
+    model.table.to_excel(mpath)
+    # if pickle:
+    #     tdata = load_data(path=tpath, sheet_name=None, header=[0,1])
+    #     tdata = sorted(tdata.items())
+    #     save_pickle(tdata, os.path.join(results_path, f'state_{seed}.pckl'))
+    #     save_pickle(model.table, os.path.join(results_path, f'table_{seed}.pckl'))
+
+@time_printer
+def analyze_timeseries(variable_getter, N, folder=''):
+    outputs = {}
+    for sample_id in range(N):       
+        arr = np.load(os.path.join(folder, f'state_{sample_id}.npy'))
+        outputs[sample_id] = variable_getter(arr)
+    return outputs
