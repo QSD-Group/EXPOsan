@@ -23,24 +23,26 @@ Other things that I think we might want to include:
 from time import time
 from exposan.bsm1 import model_bsm1 as mdl, \
     run_uncertainty#, analyze_timeseries
-import os
+# import os
 # import numpy as np
 
-bsm1_path = os.path.dirname(__file__)
-N = 100
+# bsm1_path = os.path.dirname(__file__)
+N = 10
 T = 50
 t_step = 1
 
 #%%
 if __name__ == '__main__':
-    for i in range(10):
-        seed = int(str(time())[-3:])
-        mt_path = os.path.join(bsm1_path, f'results/table_{seed}.xlsx')
-        ts_path = os.path.join(bsm1_path, f'results/states_{seed}.xlsx')
-        print(f'\nBatch ID: {seed}')
-        print('-'*15)
-        run_uncertainty(mdl, N, T, t_step, method='BDF', 
-                        metrics_path=mt_path, timeseries_path=ts_path, 
-                        seed=seed)
-# out = analyze_timeseries(SE_var_getter)
+    # for i in range(10):
+    #     seed = int(str(time())[-3:])
+    #     mt_path = os.path.join(bsm1_path, f'results/table_{seed}.xlsx')
+    #     ts_path = os.path.join(bsm1_path, f'results/states_{seed}.xlsx')
+    #     print(f'\nBatch ID: {seed}')
+    #     print('-'*15)
+    #     run_uncertainty(mdl, N, T, t_step, method='BDF', 
+    #                     metrics_path=mt_path, timeseries_path=ts_path, 
+    #                     seed=seed)
+    seed = int(str(time())[-3:])
+    run_uncertainty(mdl, N, T, t_step, method='BDF', seed=seed)
+    # out = analyze_timeseries(SE_var_getter)
 

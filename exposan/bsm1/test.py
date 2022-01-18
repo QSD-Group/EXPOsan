@@ -14,15 +14,15 @@ for license details.
 from exposan.bsm1 import model_bsm1 as mdl
 import numpy as np
 
-np.random.seed(112)
+# np.random.seed(73)
 
-samples = mdl.sample(N=10, rule='L')
+samples = mdl.sample(N=10, rule='L', seed=73)
 mdl.load_samples(samples)
 t = 50
 t_step = 1
 mdl.evaluate(state_reset_hook='reset_cache',
-             t_span=(0,t),
-             t_eval=np.arange(0, t+t_step, t_step),
-             method='LSODA',
-             export_state_to='results/test_time_series.xlsx')
+              t_span=(0,t),
+              t_eval=np.arange(0, t+t_step, t_step),
+              method='BDF',
+              export_state_to='results/test_time_series.xlsx')
 mdl.table.to_excel('results/table.xlsx')

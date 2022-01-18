@@ -202,14 +202,18 @@ def get_SRT():
 @time_printer
 def run_uncertainty(model, N, T, t_step, method='LSODA', 
                     metrics_path='', timeseries_path='', 
-                    rule='L', seed=None, pickle=True):
+                    rule='L', seed=None, pickle=False):
     if seed: np.random.seed(seed)
     samples = model.sample(N=N, rule=rule)
     model.load_samples(samples)
     t_span = (0, T)
     t_eval = np.arange(0, T+t_step, t_step)
     mpath = metrics_path or os.path.join(results_path, f'table_{seed}.xlsx')
-    tpath = timeseries_path or os.path.join(results_path, f'state_{seed}.xlsx')    
+    if timeseries_path: tpath = timeseries_path
+    else:
+        folder = os.path.join(results_path, f'time_series_data_{seed}')
+        os.mkdir(folder)
+        tpath = os.path.join(folder, 'state.npy')    
     model.evaluate(
         state_reset_hook='reset_cache',
         t_span=t_span,
@@ -218,21 +222,16 @@ def run_uncertainty(model, N, T, t_step, method='LSODA',
         export_state_to=tpath
         )
     model.table.to_excel(mpath)
-    if pickle:
-        tdata = load_data(path=tpath, sheet_name=None, header=[0,1])
-        tdata = sorted(tdata.items())
-        save_pickle(tdata, os.path.join(results_path, f'state_{seed}.pckl'))
-        save_pickle(model.table, os.path.join(results_path, f'table_{seed}.pckl'))
+    # if pickle:
+    #     tdata = load_data(path=tpath, sheet_name=None, header=[0,1])
+    #     tdata = sorted(tdata.items())
+    #     save_pickle(tdata, os.path.join(results_path, f'state_{seed}.pckl'))
+    #     save_pickle(model.table, os.path.join(results_path, f'table_{seed}.pckl'))
 
 @time_printer
-def analyze_timeseries(variable_getter, data_path=''):
+def analyze_timeseries(variable_getter, N, folder=''):
     outputs = {}
-    if data_path:
-        data = load_data(path=data_path, sheet_name=None, header=[0,1])
-        for sample, df in data.items():
-            outputs[sample] = variable_getter(df)
-    else: 
-        data = load_pickle(os.path.join(results_path, 'state_timeseries.pckl'))
-        for sample, df in data:
-            outputs[sample] = variable_getter(df)
+    for sample_id in range(N):       
+        arr = np.load(os.path.join(folder, f'state_{sample_id}.npy'))
+        outputs[sample_id] = variable_getter(arr)
     return outputs

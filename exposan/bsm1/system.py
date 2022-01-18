@@ -144,8 +144,7 @@ def run(t, t_step, method=None, **kwargs):
                       t_span=(0,t),
                       t_eval=np.arange(0, t+t_step, t_step),
                       method=method,
-                      sample_id='testid',
-                      export_state_to=f'results/sol_{t}d_{method}.csv',
+                      export_state_to=f'results/sol_{t}d_{method}.xlsx',
                       **kwargs)
     else:
         bsm1.simulate(solver='odeint',
