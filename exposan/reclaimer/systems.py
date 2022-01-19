@@ -33,8 +33,8 @@ get_household_per_toilet = lambda: household_per_toilet
 get_toilet_user = lambda: get_household_size()*get_household_per_toilet()
 
 # Number of people served by the Reclaimer 2.0
-#!!!
-ppl = 100
+#!!! MAKE SURE TO SCALE CONTAINER AND DOORS
+ppl = 120
 toilets = ppl/25
 ppl_toilet = ppl / toilets
 
@@ -84,7 +84,7 @@ get_operator_daily_wage = lambda: operator_daily_wage
 
 price_dct = {
     'Electricity': 0.06,
-    # 'Wages': 29.11,
+    'wages': 29.11,
     'Concrete': 194,
     'Steel': 2.665,
     'N': 1.507*get_price_factor(),
@@ -97,9 +97,9 @@ price_dct = {
     'MgCO3': 0.9,
     'H2SO4': 0.3,
     'struvite': 0,
-    'salt': 0,
+    'salt': 0, #0.84375
     'HCl': 0,
-    'KCl': 0,
+    'KCl': 0, #15
     'GAC': 0,
     'Zeolite': 0,
     'Conc_NH3': 0, #1.333*(14/17)*get_price_factor(),
@@ -142,7 +142,6 @@ if not items.get('Excavation'): # prevent from reloading
 GWP = qs.ImpactIndicator.get_indicator('GWP')
 
 bst.PowerUtility.price = price_dct['Electricity']
-# wages = price_dct['Wages']
 items['Concrete'].price = price_dct['Concrete']
 items['Steel'].price = price_dct['Steel']
 
@@ -278,7 +277,7 @@ A6 = su.IonExchangeReclaimer('A6', ins=(A5-0, streamsA['Zeolite'], streamsA['GAC
                                 decay_k_N=get_decay_k(tau_deg, log_deg),
                                 max_CH4_emission=get_max_CH4_emission(), if_gridtied=True)
 
-A7 = su.ECR_Reclaimer('A7', ins=(A6-0, streamsA['salt']), 
+A7 = su.ECR_Reclaimer('A7', ins=(A6-0), 
                     outs = ('A7_treated'),
                     decay_k_COD=get_decay_k(tau_deg, log_deg),)
 
@@ -324,14 +323,13 @@ power = sum([u.power_utility.rate for u in sysA.units])
 #!!! update labor to input country specific data and be a distribution
 teaA = SimpleTEA(system=sysA, discount_rate=get_discount_rate(),  
                   start_year=2020, lifetime=20, uptime_ratio=1, 
-                  lang_factor=None, annual_maintenance=0, 
-                  annual_labor = (A4._calc_maintenance_labor_cost() * 8760) +
-                  (A6._calc_maintenance_labor_cost() * 8760))
+                  lang_factor=None, annual_maintenance=0, annual_labor = 
+                  (A4._calc_labor_cost() * 8760) + (A6._calc_labor_cost() * 8760))
                     
 
 
 lcaA = LCA(system=sysA, lifetime=20, lifetime_unit='yr', uptime_ratio=1,
-            e_item=lambda: power*(365*24)*10)
+            e_item=lambda: power*(365*24)*20)
 
 
 # =============================================================================
@@ -381,7 +379,7 @@ B6 = su.IonExchangeReclaimer('B6', ins=(B5-0, streamsB['Zeolite'], streamsB['GAC
                                 decay_k_N=get_decay_k(tau_deg, log_deg),
                                 max_CH4_emission=get_max_CH4_emission(), if_gridtied=True)
 
-B7 = su.ECR_Reclaimer('B7', ins=(B6-0, streamsB['salt']), 
+B7 = su.ECR_Reclaimer('B7', ins=(B6-0), 
                     outs = ('B7_treated'),
                     decay_k_COD=get_decay_k(tau_deg, log_deg),)
 
@@ -413,10 +411,11 @@ power = sum([u.power_utility.rate for u in sysB.units])
 teaB = SimpleTEA(system=sysB, discount_rate=get_discount_rate(),  
                   start_year=2020, lifetime=20, uptime_ratio=1, 
                   lang_factor=None, annual_maintenance=0, 
-                  annual_labor = (B4._calc_maintenance_labor_cost() * 8760) + (B6._calc_maintenance_labor_cost() * 8760))  #number of hours) 
+                  annual_labor = (B4._calc_labor_cost() * 8760) 
+                  + (B6._calc_labor_cost() * 8760))  #number of hours) 
 
 lcaB = LCA(system=sysB, lifetime=20, lifetime_unit='yr', uptime_ratio=1,
-            e_item=lambda: power*(365*24)*10)
+            e_item=lambda: power*(365*24)*20)
 
 # =============================================================================
 # System B (sludge pasteruization instead of trucking)
@@ -468,7 +467,7 @@ C6 = su.IonExchangeReclaimer('C6', ins=(C5-0, streamsC['Zeolite'], streamsC['GAC
                                 decay_k_N=get_decay_k(tau_deg, log_deg),
                                 max_CH4_emission=get_max_CH4_emission(), if_gridtied=True)
 
-C7 = su.ECR_Reclaimer('C7', ins=(C6-0, streamsC['salt']), 
+C7 = su.ECR_Reclaimer('C7', ins=(C6-0), 
                     outs = ('C7_treated'),
                     decay_k_COD=get_decay_k(tau_deg, log_deg),)
 
@@ -497,22 +496,24 @@ def update_labor_costs_sysC():
 teaC = SimpleTEA(system=sysC, discount_rate=get_discount_rate(),  
                   start_year=2020, lifetime=20, uptime_ratio=1, 
                   lang_factor=None, annual_maintenance=0, 
-                  annual_labor = (C4._calc_maintenance_labor_cost() * 8760) 
-                  + (C6._calc_maintenance_labor_cost() * 8760) + (C12._calc_maintenance_labor_cost() * 8760))  #number of hours)
+                  annual_labor = (C4._calc_labor_cost() * 8760) 
+                  + (C6._calc_labor_cost() * 8760) 
+                  + (C12._calc_labor_cost() * 8760))  
 
 #!!! Double check to have solar materials 
-lcaC = LCA(system=sysC, lifetime=20, lifetime_unit='yr', uptime_ratio=1,)
+lcaC = LCA(system=sysC, lifetime=20, lifetime_unit='yr', uptime_ratio=1,
+            e_item=lambda: power*(365*24)*20)
 
-def update_labor_cost(sys_ID):
-    if sys_ID=='sysA':
-        labor_cost=A5._calc_maintenance_labor_cost() * 8760
+# def update_labor_cost(sys_ID):
+#     if sys_ID=='sysA':
+#         labor_cost=A5._calc_maintenance_labor_cost() * 8760
 
-    elif sys_ID=='sysB':
-        labor_cost= (B4._calc_maintenance_labor_cost() * 8760) + (B6._calc_maintenance_labor_cost() * 8760 )
-    else: 
-        labor_cost= ((C5._calc_maintenance_labor_cost() * 8760) + (C6._calc_maintenance_labor_cost() * 8760) 
-            + (C12._calc_maintenance_labor_cost() * 8760) )
-    return labor_cost
+#     elif sys_ID=='sysB':
+#         labor_cost= (B4._calc_maintenance_labor_cost() * 8760) + (B6._calc_maintenance_labor_cost() * 8760 )
+#     else: 
+#         labor_cost= ((C5._calc_maintenance_labor_cost() * 8760) + (C6._calc_maintenance_labor_cost() * 8760) 
+#             + (C12._calc_maintenance_labor_cost() * 8760) )
+#     return labor_cost
 
 # =============================================================================
 # Summarizing Functions
@@ -590,7 +591,6 @@ def get_cost_opex(unit,ppl):
                 opex+=stream.imass['GAC']*streamsA['GAC'].price*24/ppl
                 opex+=stream.imass['Zeolite']*streamsA['Zeolite'].price*24/ppl
                 opex+=stream.imass['SodiumHydroxide']*streamsA['NaOH'].price*24/ppl
-                opex+=stream.imass['SodiumChloride']*streamsA['NaCl'].price*24/ppl
     return opex
 
 def get_cost_opex_labor(unit,ppl):
@@ -614,28 +614,18 @@ def get_cost_electricity(unit,ppl):
             electricity+=i.power_utility.cost*24/ppl
     return electricity
 
-# def get_cost_wages(unit,ppl):
-#     wages = 0
-#     if type(unit)== tuple:
-#         for i in unit:
-#             wages+=i.wages*24/ppl
-#     return wages
-
+##is this correct?
 def get_cost_opex_streams(unit,ppl):
     opex = 0
     if type(unit)== tuple:
         for i in unit:
             for stream in i.ins:
-                opex+=stream.imass['Polyacrylamide']*streamsA['polymer'].price*24/ppl
                 opex+=stream.imass['MagnesiumHydroxide']*streamsA['MgOH2'].price*24/ppl
                 opex+=stream.imass['MgCO3']*streamsA['MgCO3'].price*24/ppl
                 opex+=stream.imass['H2SO4']*streamsA['H2SO4'].price*24/ppl
                 opex+=stream.imass['FilterBag']*streamsA['filter_bag'].price*24/ppl
-                opex+=stream.imass['Polystyrene']*streamsA['resin'].price*24/ppl
                 opex+=stream.imass['GAC']*streamsA['GAC'].price*24/ppl              
                 opex+=stream.imass['Zeolite']*streamsA['Zeolite'].price*24/ppl
-                opex+=stream.imass['SodiumHydroxide']*streamsA['NaOH'].price*24/ppl
-                opex+=stream.imass['SodiumChloride']*streamsA['NaCl'].price*24/ppl
     return opex
         
 def get_ghg_electricity(unit,ppl):
@@ -691,8 +681,8 @@ def get_stream_emissions(streams=None, hr=365*24, ppl=1):
         emission[f'{i.ID}'] = i.F_mass*i.stream_impact_item.CFs['GlobalWarming']*factor
     return emission
 
-#10 corresponds to year
-def get_fugitive_emissions(streams=None, hr=365*24*10):
+#20 corresponds to year
+def get_fugitive_emissions(streams=None, hr=365*24*20):
     try: iter(streams)
     except: streams = (streams,)
     factor = hr
