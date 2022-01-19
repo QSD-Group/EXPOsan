@@ -10,9 +10,10 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
+from flexsolve import IQ_interpolation
 from qsdsan import Component, Components, WasteStream, set_thermo, System
-from qsdsan.sanunits import Screening, ActivatedSludgeProcess, \
-    BeltThickener, SludgeDigester, CHP
+from qsdsan.sanunits import Screening, Mixer, ActivatedSludgeProcess, \
+    BeltThickener, SludgeDigester, CHP as CHPunit
 
 __all__ = ('cmps',)
 
@@ -52,30 +53,38 @@ inf.set_flow_by_concentration(flow_tot=20,
                               units=('mgd', 'mg/L'))
 
 
+# =============================================================================
+# Units and the system
+# =============================================================================
+
 U1 = Screening('U1', ins=inf)
-U2 = ActivatedSludgeProcess('U2', ins=(U1-0, 'air'),
-                            outs=('eff', 'sludge', 'emission'))
-U3 = BeltThickener('U3', ins=U2-1, outs=())
+M1 = Mixer('M1', ins=(U1-0, ''))
+ASP = ActivatedSludgeProcess('ASP', ins=(M1-0, 'ASP_air'),
+                            outs=('treated', 'was', 'offgas'))
+GBT = BeltThickener('GBT', ins=ASP-1, outs=(1-M1, 'thickened'))
+thickened = GBT.outs[1]
+# Update the biomass concentration to be at the set value
+# There will be a warning when solving it, due to the unrealistic
+# sludge moisture content (i.e., it exceeds in the moisture content of the feeds)
+# but it is fine since that's only testing the bound
+def X_inert_at_mc(mc):
+    GBT.sludge_moisture = mc
+    GBT._set_split_at_mc()
+    return thickened.iconc['X_inert']-25000
+def GBT_spec():
+    lb = 1e-3
+    mixed_F_mass = GBT._mixed.F_mass
+    if mixed_F_mass == 0:
+        ub = 1-1e-3
+    else:
+        ub = max(lb+1e-3, GBT._mixed.imass['Water']/mixed_F_mass)
+    IQ_interpolation(f=X_inert_at_mc, x0=lb, x1=ub, xtol=1e-3, ytol=1,
+                     checkbounds=False)
+GBT.specification = GBT_spec
 
+AD = SludgeDigester('AD', ins=GBT-1, outs=('disposed', 'biogas'))
 
+CHP = CHPunit('CHP', ins=(AD-1, 'natural_gas', 'CHP_air'), outs=('emission', 'solids'))
 
-cas = System('cas', path=(U1, U2, U3))
+cas = System('cas', path=(U1, M1, ASP, GBT, AD, CHP))
 cas.simulate()
-'''
-System should have the following units:
-    Screening
-    ActivatedSludgeProcess (aeration tanks & clarifiers)
-    Sludge handling units (at least GBT, maybe also others):
-        X_thickened_WAS = 25000; %[mg/L]
-    CHP
-'''
-
-# @property
-# def active_biomass(self):
-#     '''[tuple] IDs of active biomass (particulate & organic & degradable) components.'''
-#     return self.get_IDs_from_array(self.x*self.b*self.org)
-
-# @property
-# def inert_biomass(self):
-#     '''[tuple] IDs of inert biomass (particulate & organic & undegradable) components.'''
-#     return self.get_IDs_from_array(self.x*self.org-self.x*self.b*self.org)
