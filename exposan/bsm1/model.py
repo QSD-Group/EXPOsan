@@ -14,13 +14,13 @@ for license details.
 import qsdsan as qs
 from warnings import warn
 from chaospy import distributions as shape
-from qsdsan.utils import load_data, save_pickle, load_pickle, \
-    DictAttrSetter, AttrGetter, get_SRT as srt, time_printer
+from qsdsan.utils import DictAttrSetter, AttrGetter, get_SRT as srt, time_printer
 from exposan import bsm1 as bm
+import pandas as pd
 import numpy as np
 import os
-bsm1_path = os.path.dirname(__file__)
-results_path = os.path.join(bsm1_path, 'results/')
+
+results_path = bm.results_path
 
 __all__ = ('model_bsm1', 'run_uncertainty', 'analyze_timeseries')
 
@@ -222,16 +222,12 @@ def run_uncertainty(model, N, T, t_step, method='LSODA',
         export_state_to=tpath
         )
     model.table.to_excel(mpath)
-    # if pickle:
-    #     tdata = load_data(path=tpath, sheet_name=None, header=[0,1])
-    #     tdata = sorted(tdata.items())
-    #     save_pickle(tdata, os.path.join(results_path, f'state_{seed}.pckl'))
-    #     save_pickle(model.table, os.path.join(results_path, f'table_{seed}.pckl'))
 
-@time_printer
-def analyze_timeseries(variable_getter, N, folder=''):
+
+def analyze_timeseries(variable_getter, N, folder='', todf=True, **kwargs):
     outputs = {}
     for sample_id in range(N):       
         arr = np.load(os.path.join(folder, f'state_{sample_id}.npy'))
-        outputs[sample_id] = variable_getter(arr)
+        outputs[sample_id] = variable_getter(arr, **kwargs)
+    if todf: outputs = pd.DataFrame.from_dict(outputs)
     return outputs
