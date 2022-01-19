@@ -149,17 +149,7 @@ def add_shared_parameters(sys, model, country_specific=False):
     def set_electricity_CF(i):
             GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
         
-    b = price_dct['wages']
-    D = shape.Triangle(lower=14.55, midpoint = b, upper=43.68)
-    @param(name='Labor wages', element='TEA', kind='cost', units='USD/h',
-	      baseline=b, distribution=D)
-    def set_labor_wages(i):
-        labor_cost = 0
-        for u in sys.units:
-            if hasattr(u, '_calc_labor_cost'):
-                u.wages = i
-                labor_cost += u._calc_labor_cost()
-        sys.TEA.annual_labor = labor_cost 
+            # GWP_dct['Electricity'] = systems.e_item.CFs['GlobalWarming'] = i''
             
             
     #Paramter for flushing water to avoid default assumptions found in the _toilet.tsv
@@ -173,24 +163,79 @@ def add_shared_parameters(sys, model, country_specific=False):
         units='kg/cap/hr',
         baseline=b, distribution=D)
     def set_flushing_water(i):
-        unit.flushing_water = i  
+        unit.flushing_water = i          
+        
+    # # Comment out to see sensitvity to number of users
+    # unit = sys.path[1]
+    # b = unit.ppl
+    # D = shape.Uniform(lower=50, upper=1000) 
+    # @param(name='Number of users for the system',
+    #     element = unit, 
+    #     kind='coupled',
+    #     units='cap/system',
+    #     baseline=b, distribution=D)
+    # def set_number_users_system(i):
+    #     unit.ppl = i      
      
-    #Another option for looking at the stream uncertainty    
-    # b = price_dct['salt'] 
-    # D = shape.Uniform(lower=3, midpoint = b, upper=9)
-    # @param(name='Price of stream_whose_price_to_be_changed',
-    #        element ='unit_is_most_relevant_to_that_stream', 
-    #        kind='isolated', units='$/kg', baseline=b, distribution=D)
-    # def set_stream_salt_price(i):
-    #     price_dct['salt'] = i
+    #Sludge Pasteurization Unit
+    unit = sys.path[3]
+    tea = sys.TEA
+    sysID = sys.ID
+    b = unit.sludge_labor_maintenance 
+    D = shape.Uniform(lower=2.1, upper=3.9) # or whatever the distribution should be
+    @param(name='Sludge Pasteurization for all Units',
+        element='Sludge Pasteurization', 
+        kind='isolated',
+        units='hr/year',
+        baseline=b, distribution=D)
+    def set_SludgePasteurizationHours(i):
+        unit.sludge_labor_maintenance = i
+        tea.annual_labor = systems.update_labor_cost(sysID)
+        
+    unit = sys.path[3]
+    tea = sys.TEA
+    sysID = sys.ID
+    b = unit.wages
+    D = shape.Triangle(lower=14.55, midpoint = 29.11, upper=43.68)
+    @param(name='Wages that affect all labor costs in the system',
+        element='Sludge Pasteurization Wages', 
+        kind='isolated',
+        units='USD/cap/day',
+        baseline=b, distribution=D)
+    def set_SludgePasteurizationWages(i):
+        unit.wages = i
+        tea.annual_labor = systems.update_labor_cost(sysID)
+    
+    #Ion Exchange Unit for Labor Uncertainty Costs
+    unit = sys.path[5]
+    tea = sys.TEA
+    sysID = sys.ID
+    b = unit.labor_maintenance_zeolite_regeneration # I'm using a fake parameter as an example, you'll need to update all the `XXX`
+    D = shape.Triangle(lower=10, midpoint = 20, upper=30) # or whatever the distribution should be
+    @param(name='Ion Exchnage Labor Hours for all systems',
+        element='Ion Exchange', 
+        kind='isolated',
+        units='hr/year',
+        baseline=b, distribution=D)
+    def set_IonExchangeHours(i):
+        unit.labor_maintenance_zeolite_regeneration = i
+        tea.annual_labor = systems.update_labor_cost(sysID)
+        
+    unit = sys.path[5]
+    tea = sys.TEA
+    sysID = sys.ID
+    b = unit.wages
+    D = shape.Triangle(lower=14.55, midpoint = 29.11, upper=43.68)
+    @param(name='Wages that affect all labor costs in the system',
+        element='IonExchange Wages', 
+        kind='isolated',
+        units='USD/cap/day',
+        baseline=b, distribution=D)
+    def set_IonExchangeWages(i):
+        unit.wages = i
+        tea.annual_labor = systems.update_labor_cost(sysID)
+    
 
-    # b = price_dct['KCl'].price 
-    # D = shape.Uniform(lower=11.25, midpoint = b, upper=18.75)
-    # @param(name='Price of stream_whose_price_to_be_changed',
-    #        element ='unit_is_most_relevant_to_that_stream', 
-    #        kind='isolated', units='$/kg', baseline=b, distribution=D)
-    # def set_stream_KCl_price(i):
-    #     price_dct['KCl'] = i
     
     ########## Related to human input ##########
     # Diet and excretion
@@ -524,6 +569,18 @@ batch_setting_unit_params(data, modelC, C11)
 
 #Solar costs and impacts
 C12 = systems.C12
+teaC = systems.sysC.TEA
+b = C12.pannel_cleaning 
+D = shape.Uniform(lower=10, upper=15) 
+@paramC(name='Solar Labor Hours for all systems',
+    element='Solar', 
+    kind='isolated',
+    units='hr/year',
+    baseline=b, distribution=D)
+def set_SolarLaborHours(i):
+    C12.pannel_cleaning = i
+    teaC.annual_labor = systems.update_labor_cost(sysC)
+
 path = su_data_path + '_solar_reclaimer.csv'
 data = load_data(path)
 batch_setting_unit_params(data, modelC, C12)
