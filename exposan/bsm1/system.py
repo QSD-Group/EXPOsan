@@ -139,17 +139,17 @@ __all__ = (
 @time_printer
 def run(t, t_step, method=None, **kwargs):
     if method:
-        bsm1.simulate(
-            # state_reset_hook='reset_cache',
+        bsm1.simulate(state_reset_hook='reset_cache',
                       t_span=(0,t),
                       t_eval=np.arange(0, t+t_step, t_step),
                       method=method,
                       export_state_to=f'results/sol_{t}d_{method}.xlsx',
                       **kwargs)
     else:
-        bsm1.simulate(solver='odeint',
+        bsm1.simulate(state_reset_hook='reset_cache',
+                      solver='odeint',
                       t=np.arange(0, t+t_step/30, t_step/30),
-                      export_state_to=f'results/sol_{t}d_odeint.xlsx',
+                      # export_state_to=f'results/sol_{t}d_odeint.xlsx',
                       print_msg=True,
                       **kwargs)
     srt = get_SRT(bsm1, bio_IDs)
