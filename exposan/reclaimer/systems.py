@@ -84,7 +84,7 @@ get_operator_daily_wage = lambda: operator_daily_wage
 
 price_dct = {
     'Electricity': 0.06,
-    'wages': 29.11,
+    'wages': 1.213,
     'Concrete': 194,
     'Steel': 2.665,
     'N': 1.507*get_price_factor(),

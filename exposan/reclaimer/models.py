@@ -150,7 +150,7 @@ def add_shared_parameters(sys, model, country_specific=False):
             GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
         
     b = price_dct['wages']
-    D = shape.Triangle(lower=14.55, midpoint = b, upper=43.68)
+    D = shape.Triangle(lower=0.60625, midpoint = b, upper=1.82)
     @param(name='Labor wages', element='TEA', kind='cost', units='USD/h',
 	      baseline=b, distribution=D)
     def set_labor_wages(i):
