@@ -22,11 +22,17 @@ import os
 
 results_path = bm.results_path
 
-__all__ = ('model_bsm1', 'run_uncertainty', 'analyze_timeseries')
-
+__all__ = ('model_bsm1', 'model_2dv',
+           'run_uncertainty', 'analyze_timeseries')
 
 bsm1 = bm.bsm1
 s = bm.system
+
+#%%
+# =============================================================================
+# model with all uncertain variables
+# =============================================================================
+
 model_bsm1 = qs.Model(system=bsm1, exception_hook='raise')
 
 ########## Add Uncertainty Parameters ##########
@@ -177,7 +183,7 @@ metric = model_bsm1.metric
 SE, RAS, WAS, RE = s.SE, s.RAS, s.WAS, s.RE
 
 # Effluent composite variables and daily sludge production
-for i in ('COD', 'TN'):
+for i in ('COD', 'BOD5', 'TN'):
     metric(getter=AttrGetter(SE, attr=i), name='Effluent '+i, 
            units='mg/L', element='Effluent')
 
@@ -197,8 +203,8 @@ bio_IDs = ('X_BH', 'X_BA')
 def get_SRT():
     return srt(bsm1, bio_IDs)
 
+#%%
 ########### Functions for UA #################
-
 @time_printer
 def run_uncertainty(model, N, T, t_step, method='LSODA', 
                     metrics_path='', timeseries_path='', 
@@ -223,7 +229,6 @@ def run_uncertainty(model, N, T, t_step, method='LSODA',
         )
     model.table.to_excel(mpath)
 
-
 def analyze_timeseries(variable_getter, N, folder='', todf=True, **kwargs):
     outputs = {}
     for sample_id in range(N):       
@@ -231,3 +236,36 @@ def analyze_timeseries(variable_getter, N, folder='', todf=True, **kwargs):
         outputs[sample_id] = variable_getter(arr, **kwargs)
     if todf: outputs = pd.DataFrame.from_dict(outputs)
     return outputs
+
+#%%
+
+# =============================================================================
+# A new model for UA with 2 DVs as parameters
+# =============================================================================
+
+model_2dv = qs.Model(system=bsm1, exception_hook='raise')
+param_2dv = model_2dv.parameter
+metric_2dv = model_2dv.metric
+
+b = aer1.Q_air
+D = shape.Uniform(lower=2.4e3, upper=b)
+@param_2dv(name='O1 O2 air flowrate', element=O1, kind='coupled', units='m3/d',
+           baseline=b, distribution=D)
+def set_Q_air(i):
+    aer1.Q_air = i
+    
+b = s.Q_was
+D = get_uniform_w_frac(b, 0.5)
+param_2dv(setter=set_Q_was, name='Waste sludge flowrate', element=C1, 
+          kind='coupled', units='m3/d', baseline=b, distribution=D)
+
+# Effluent composite variables and daily sludge production
+for i in ('COD', 'BOD5', 'TN'):
+    metric_2dv(getter=AttrGetter(SE, attr=i), name='Effluent '+i, 
+               units='mg/L', element='Effluent')
+
+metric_2dv(getter=get_TKN, name='Effluent TKN', units='mg/L', element='Effluent')
+metric_2dv(getter=SE.get_TSS, name='Effluent TSS', units='mg/L', element='Effluent')
+metric_2dv(getter=get_daily_sludge_production,
+           name='Daily sludge production', units='kg TSS/d', element='WAS')
+metric_2dv(getter=get_SRT, name='SRT', units='d', element='System')
