@@ -323,8 +323,8 @@ power = sum([u.power_utility.rate for u in sysA.units])
 #!!! update labor to input country specific data and be a distribution
 teaA = SimpleTEA(system=sysA, discount_rate=get_discount_rate(),  
                   start_year=2020, lifetime=20, uptime_ratio=1, 
-                  lang_factor=None, annual_maintenance=0, annual_labor = 
-                  (A4._calc_labor_cost() * 8760) + (A6._calc_labor_cost() * 8760))
+                  lang_factor=None, annual_maintenance=0, 
+                  annual_labor = (A4._calc_labor_cost() * 8760) + (A6._calc_labor_cost() * 8760))
                     
 
 
@@ -492,10 +492,12 @@ sysC.simulate()
 def update_labor_costs_sysC():
     teaC.annual_labor = (C4._calc_maintenance_labor_cost() * 8760) + (C6._calc_maintenance_labor_cost() * 8760)
 
+power = 0
+power_utility = 0
 
 teaC = SimpleTEA(system=sysC, discount_rate=get_discount_rate(),  
-                  start_year=2020, lifetime=20, uptime_ratio=1, 
-                  lang_factor=None, annual_maintenance=0, 
+                  start_year=2020, lifetime=20, uptime_ratio=1,
+                  lang_factor=None, annual_maintenance=0,
                   annual_labor = (C4._calc_labor_cost() * 8760) 
                   + (C6._calc_labor_cost() * 8760) 
                   + (C12._calc_labor_cost() * 8760))  
@@ -503,6 +505,7 @@ teaC = SimpleTEA(system=sysC, discount_rate=get_discount_rate(),
 #!!! Double check to have solar materials 
 lcaC = LCA(system=sysC, lifetime=20, lifetime_unit='yr', uptime_ratio=1,
             e_item=lambda: power*(365*24)*20)
+
 
 # def update_labor_cost(sys_ID):
 #     if sys_ID=='sysA':
@@ -750,28 +753,6 @@ def get_summarizing_fuctions():
             /lca.lifetime/ppl
     func_dct['get_other_GWP'] = \
         lambda lca, ppl: lca.total_other_impacts[ind]/lca.lifetime/ppl
-    # for i in ('COD', 'N', 'P', 'K'):
-    #     func_dct[f'get_liq_{i}_recovery'] = \
-    #         lambda sys, i: sys_dct['cache'][sys.ID]['liq'][i]
-    #     func_dct[f'get_sol_{i}_recovery'] = \
-    #         lambda sys, i: sys_dct['cache'][sys.ID]['sol'][i]
-    #     func_dct[f'get_gas_{i}_recovery'] = \
-    #         lambda sys, i: sys_dct['cache'][sys.ID]['gas'][i]
-    #     func_dct[f'get_tot_{i}_recovery'] = \
-    #         lambda sys, i: \
-    #             sys_dct['cache'][sys.ID]['liq'][i] + \
-    #             sys_dct['cache'][sys.ID]['sol'][i] + \
-    #             sys_dct['cache'][sys.ID]['gas'][i]
-    
-        #Cost broken down by units    
-    #Ion Exchange
-    func_dct['ion_exchange_cost_capex'] = lambda ion_exchange,tea,ppl: get_cost_capex(ion_exchange,tea,ppl)
-    func_dct['ion_exchange_cost_scaled_capex'] = lambda ion_exchange,tea,ppl: get_cost_scaled_capex(ion_exchange,tea,ppl)    
-    func_dct['ion_exchange_cost_opex'] = lambda ion_exchange,ppl: get_cost_opex(ion_exchange,ppl)
-    func_dct['ion_exchange_cost_electricity'] = lambda ion_exchange,ppl: get_cost_electricity(ion_exchange,ppl)
-    func_dct['ion_exchange_cost_opex_labor'] = lambda ion_exchange,ppl: get_cost_opex_labor(ion_exchange,ppl)
-    func_dct['ion_exchange_cost_opex_replacement'] = lambda ion_exchange,ppl: get_cost_opex_replacement(ion_exchange,ppl)
-    func_dct['ion_exchange_cost_opex_streams'] = lambda ion_exchange,ppl: get_cost_opex_streams(ion_exchange,ppl)
     return func_dct
 
 

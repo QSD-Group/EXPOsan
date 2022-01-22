@@ -18,7 +18,7 @@ from qsdsan import Model
 
 
 m = R.models
-modelB= m.modelB
+modelC= m.modelC
 
 #a = R.analyses
 #key_metrics = a.key_metrics
@@ -26,8 +26,8 @@ modelB= m.modelB
 
 #spearman_rho, fig, ax, all_params = a.run_plot_spearman(modelA, N=10000) 
 
-uncertainty = m.run_uncertainty(modelB, N=10000)
-m.save_uncertainty_results(modelB)
+uncertainty = m.run_uncertainty(modelC, N=10000)
+m.save_uncertainty_results(modelC)
 
 # # Filter out parameters that only meet a certain threshold
 # def filter_parameters(model, df, threshold):

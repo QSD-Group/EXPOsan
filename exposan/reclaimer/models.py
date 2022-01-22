@@ -159,7 +159,8 @@ def add_shared_parameters(sys, model, country_specific=False):
             if hasattr(u, '_calc_labor_cost'):
                 u.wages = i
                 labor_cost += u._calc_labor_cost()
-        sys.TEA.annual_labor = labor_cost 
+        sys.TEA.annual_labor = labor_cost * 365 * 24
+        
             
             
     #Paramter for flushing water to avoid default assumptions found in the _toilet.tsv
@@ -528,6 +529,8 @@ path = su_data_path + '_solar_reclaimer.csv'
 data = load_data(path)
 batch_setting_unit_params(data, modelC, C12)
 
+
+
 all_paramsC = modelC.get_parameters()
 
 # %%
@@ -537,9 +540,9 @@ all_paramsC = modelC.get_parameters()
 # =============================================================================
 
 result_dct = {
-        'sysB': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
+        'sysC': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
         }
-models=modelB
+models=modelC
 @time_printer
 def run_uncertainty(model, seed=None, N=10000, rule='L',
                     percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
