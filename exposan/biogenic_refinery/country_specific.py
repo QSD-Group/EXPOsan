@@ -127,16 +127,26 @@ def run_country(dct):
         
         #price ratio
         i = country_dct['price_ratio']
-        # i=1
+        concrete_item = ImpactItem.get_item('Concrete')
+        steel_item = ImpactItem.get_item('Steel')
         price_dct = systems.price_dct
         old_price_ratio = systems.price_ratio
-        for stream in ('Concrete', 'Steel', 'Polymer', 'Resin', 'FilterBag', 'MgOH2', 'MgCO3', 'H2SO4', 'biochar'):
-            # new_price = price_dct[stream] = price_dct[stream] * i/old_price_ratio 
-            # streams[stream].price = new_price
-            old_price = price_dct[stream]
+        # a much better way would be to have consistent naming in `price_dct` and `streams` dict
+        price_ref = {
+        'Concrete': concrete_item,
+        'Steel': steel_item,
+        'Polymer': streams['polymer'],
+        'Resin': streams['resin'],
+        'FilterBag': streams['filter_bag'],
+        'MgOH2': streams['MgOH2'],
+        'MgCO3': streams['MgCO3'],
+        'H2SO4': streams['H2SO4'],
+        'biochar': streams['biochar'],
+        }
+        for obj_name, obj in price_ref.items():
+            old_price = price_dct[obj_name]
             new_price = old_price * i/old_price_ratio
-            if stream=='Concrete': print(f'\n old price is {old_price}, new price is {new_price}')
-            streams[stream].price = new_price
+            obj.price = new_price
         systems.price_ratio = i
         for u in sysA.units:
             if hasattr(u, 'price_ratio'):
