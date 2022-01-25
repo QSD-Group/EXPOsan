@@ -160,7 +160,7 @@ def run_country(dct):
             D = shape.Triangle(lower=low_val, midpoint=peak_val, upper=max_val)
         else:
             D = shape.Uniform(lower=low_val,upper=max_val)
-        @param(name='Labor wages', element=systems.A1, kind='coupled', units='USD/h',
+        @param(name='Labor wages', element=systems.B1, kind='coupled', units='USD/h',
                baseline=b, distribution=D)
         def set_labor_wages(i):
             labor_cost = 0
@@ -179,7 +179,7 @@ def run_country(dct):
             D = shape.Uniform(lower=low_val,upper=max_val)
         # @param(name='Electricity CF', element='LCA', kind='isolated',
         #         units='kg CO2-eq/kWh', baseline=b, distribution=D)            
-        @param(name='Electricity CF', element=systems.A1, kind='coupled',
+        @param(name='Electricity CF', element=systems.B1, kind='coupled',
                 units='kg CO2-eq/kWh', baseline=b, distribution=D)
         def set_electricity_CF(i):
             GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
