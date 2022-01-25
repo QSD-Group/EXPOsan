@@ -132,34 +132,37 @@ def add_shared_parameters(sys, model, country_specific=False):
     unit = sys.path[0]
     param = model.parameter
     streams = sys_dct['stream_dct'][sys.ID]
-            
+     
+    if not country_specific:      
         # Electricity price
-    b = price_dct['Electricity']
-    D = shape.Triangle(lower=0.04, midpoint=b, upper=0.1)
-    @param(name='Electricity price', element='TEA', kind='isolated',
-        units='$/kWh', baseline=b, distribution=D)
         
-    def set_electricity_price(i):
+        b = price_dct['Electricity']
+        D = shape.Triangle(lower=0.04, midpoint=b, upper=0.1)
+        @param(name='Electricity price', element='TEA', kind='isolated',
+           units='$/kWh', baseline=b, distribution=D)
+        
+        def set_electricity_price(i):
             PowerUtility.price = i
 
-    b = GWP_dct['Electricity']
-    D = shape.Triangle(lower=0.6212, midpoint=b, upper=0.7592)
-    @param(name='Electricity CF', element='LCA', kind='isolated',
+        b = GWP_dct['Electricity']
+        D = shape.Triangle(lower=0.6212, midpoint=b, upper=0.7592)
+        @param(name='Electricity CF', element='LCA', kind='isolated',
                    units='kg CO2-eq/kWh', baseline=b, distribution=D)
-    def set_electricity_CF(i):
+        def set_electricity_CF(i):
             GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
         
-    b = price_dct['wages']
-    D = shape.Triangle(lower=0.60625, midpoint = b, upper=1.82)
-    @param(name='Labor wages', element='TEA', kind='cost', units='USD/h',
-	      baseline=b, distribution=D)
-    def set_labor_wages(i):
-        labor_cost = 0
-        for u in sys.units:
-            if hasattr(u, '_calc_labor_cost'):
-                u.wages = i
-                labor_cost += u._calc_labor_cost()
-        sys.TEA.annual_labor = labor_cost * 365 * 24
+#         b = price_dct['wages']
+#         D = shape.Triangle(lower=0.60625, midpoint = b, upper=1.82)
+#         @param(name='Labor wages', element='TEA', kind='cost', units='USD/h',
+# 	      baseline=b, distribution=D)
+        
+#         def set_labor_wages(i):
+#             labor_cost = 0
+#             for u in sys.units:
+#                 if hasattr(u, '_calc_labor_cost'):
+#                     u.wages = i
+#                     labor_cost += u._calc_labor_cost()
+#             sys.TEA.annual_labor = labor_cost * 365 * 24
         
             
             
@@ -175,23 +178,7 @@ def add_shared_parameters(sys, model, country_specific=False):
         baseline=b, distribution=D)
     def set_flushing_water(i):
         unit.flushing_water = i  
-     
-    #Another option for looking at the stream uncertainty    
-    # b = price_dct['salt'] 
-    # D = shape.Uniform(lower=3, midpoint = b, upper=9)
-    # @param(name='Price of stream_whose_price_to_be_changed',
-    #        element ='unit_is_most_relevant_to_that_stream', 
-    #        kind='isolated', units='$/kg', baseline=b, distribution=D)
-    # def set_stream_salt_price(i):
-    #     price_dct['salt'] = i
 
-    # b = price_dct['KCl'].price 
-    # D = shape.Uniform(lower=11.25, midpoint = b, upper=18.75)
-    # @param(name='Price of stream_whose_price_to_be_changed',
-    #        element ='unit_is_most_relevant_to_that_stream', 
-    #        kind='isolated', units='$/kg', baseline=b, distribution=D)
-    # def set_stream_KCl_price(i):
-    #     price_dct['KCl'] = i
     
     ########## Related to human input ##########
     # Diet and excretion
@@ -574,8 +561,8 @@ def run_uncertainty(model, seed=None, N=10000, rule='L',
     pvalues.columns = pd.Index(cols)
     dct['spearman'] = spearman_results
     dct['spearman_p'] = pvalues
+    return dct
 
-# 
 
 def save_uncertainty_results(model, path=''):
     if not path:
