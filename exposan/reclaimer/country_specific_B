@@ -15,7 +15,7 @@ from systems import price_dct
 from chaospy import distributions as shape
 import biosteam as bst
 from biosteam.evaluation import Model
-from exposan import newgen as ng
+from exposan import reclaimer as DR
 from qsdsan.utils import (
     load_data, data_path,
     AttrSetter, AttrFuncSetter, DictAttrSetter,
@@ -24,7 +24,7 @@ from qsdsan.utils import (
     )
 from qsdsan import currency, ImpactItem
 
-systems = ng.systems
+systems = DR.systems
 sys_dct = systems.sys_dct
 price_dct = systems.price_dct
 GWP_dct = systems.GWP_dct
@@ -210,39 +210,8 @@ def run_country(dct):
         #         baseline=b, distribution=D)
         # def set_NaCl1_price(i):
         #     price_dct['NaCl1'] = streams['NaCl1'].price = i       
+            ########## Related to human input ##########
 
-
-        def add_biogas_sludge_parameters(sys, model):
-            unit = sys.path[3]    
-            param = model.parameter
-            b = unit.biogas_loss   
-            D = shape.Uniform(lower=0.07, upper=0.13)   
-            param(setter=AttrSetter(unit, 'biogas_loss'),
-                  name='Fraction Biogas Lost', element=unit, kind='coupled', units='fraction',
-                  baseline=b, distribution=D)
-    
-            b = unit.biogas_eff
-            D = shape.Uniform(lower=0.385, upper=0.715)
-            # D = np.arange(0,1, 1/10000)
-            param(setter=AttrSetter(unit, 'biogas_eff'),
-                  name='Biogas Efficiency', element=unit, kind='coupled', units='fraction',
-                  baseline=b, distribution=D)    
-            
-            b = unit.heat_loss
-            D = shape.Uniform(lower=0.385, upper=0.715)
-            # D = np.arange(0,1, 1/10000)
-            param(setter=AttrSetter(unit, 'heat_loss'),
-                  name='Heat Loss', element=unit, kind='coupled', units='fraction',
-                  baseline=b, distribution=D)  
-
-            b = unit.sludge_temp
-            D = shape.Uniform(lower=278.15, upper=298.15)
-            # D = np.arange(0,1, 1/10000)
-            param(setter=AttrSetter(unit, 'sludge_temp'),
-                  name='Sludge Temperature', element=unit, kind='coupled', units='fraction',
-                  baseline=b, distribution=D)    
-            
-        
         # Diet and excretion
         B1 = systems.B1
         # p_anim
@@ -264,7 +233,7 @@ def run_country(dct):
         data = load_data(path)
         m.batch_setting_unit_params(data, modelB, B2, exclude=('MCF_decay', 'N2O_EF_decay', 'OPEX_over_CAPEX'))
 
-        b = B2.toilet_MCF_decay
+        b = B2.MCF_decay
         D = shape.Triangle(lower=0.05, midpoint=b, upper=0.15)
         @param(name='MCF_decay', element=B2, kind='coupled',
                units='fraction of anaerobic conversion of degraded COD',
@@ -272,7 +241,7 @@ def run_country(dct):
         def set_MCF_decay(i):
             B2.toilet_MCF_decay = i
         
-        b = B2.toilet_N2O_EF_decay
+        b = B2.N2O_EF_decay
         D = shape.Triangle(lower=0, midpoint=b, upper=0.001)
         @param(name='N2O_EF_decay', element=B2, kind='coupled',
                units='fraction of N emitted as N2O',
@@ -293,7 +262,7 @@ def run_country(dct):
         data = load_data(path)
         m.batch_setting_unit_params(data, modelB, B4)
 
-        add_biogas_sludge_parameters(sysB, modelB)
+       
         
         # Ultrafiltration
         B5 = systems.B5
