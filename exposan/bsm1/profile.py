@@ -29,12 +29,12 @@ from exposan.bsm1 import bsm1, bsm1_path
 
 t = 50
 t_step = 1
-method = 'LSODA'
+method = 'BDF'
 
 # Looks like `tuna` isn't able to show all the details
 # https://github.com/nschloe/tuna
 # Instead using `pstats`, for t = 0.1, the stats are stored in `system_01`
-cProfile.run(f'bsm1.simulate(t_span=(0, {t}), t_eval=np.arange(0, {t+t_step}, {t_step}), method=method)',
+cProfile.run(f'bsm1.simulate(t_span=(0, {t}), rtol=1e-2, atol=1e-3, method=method)',
              f"results/system_{''.join(str(t).split('.'))}d_{method}.prof")
 
 p = pstats.Stats(f"results/system_{''.join(str(t).split('.'))}d_{method}.prof")

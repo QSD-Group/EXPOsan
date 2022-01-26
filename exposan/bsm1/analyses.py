@@ -23,8 +23,9 @@ Other things that I think we might want to include:
 from time import time
 from qsdsan.utils import load_data, load_pickle, save_pickle
 from qsdsan.stats import plot_uncertainties, get_correlations
-from exposan.bsm1 import model_bsm1 as mdl, model_2dv as mdl2, cmps,\
-    run_uncertainty, analyze_timeseries, results_path, figures_path
+from exposan.bsm1 import model_bsm1 as mdl, model_2dv as mdl2, model_ss as mdls, \
+    cmps, run_uncertainty, analyze_timeseries, run_wdiff_init, \
+    results_path, figures_path
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -55,7 +56,7 @@ def single_state_var_getter(arr, unit, variable):
     if variable == 'S_ALK': return arr[:, i]/12
     else: return arr[:, i]
 
-def analyze_SE_vars(seed, pickle=True):
+def analyze_SE_vars(seed, N, pickle=True):
     folder = os.path.join(results_path, f'time_series_data_{seed}')
     state_vars = [ID for ID in cmps.IDs if ID not in ('S_N2', 'H2O', 'S_I')]
     dct = {}
@@ -118,6 +119,12 @@ def plot_SE_timeseries(seed, data=None):
     fig.savefig(os.path.join(figures_path, 'effluent_yt.png'), dpi=300)
     return fig, ax
 
+def UA_w_all_params():
+    seed = int(str(time())[-3:])
+    run_uncertainty(mdl, N, T, t_step, method='BDF', seed=seed)
+    out = analyze_SE_vars(seed)
+    fig, ax = plot_SE_timeseries(seed, data=out)
+    
 #%% 
 #!!! DO NOT UNCOMMENT !!!
 # f_b2cod = cmps.f_BOD5_COD
@@ -221,19 +228,44 @@ def run_mapping(model, n, T, t_step, method='BDF', mpath='', tpath=''):
     if mpath: model.table.to_excel(mpath)
     return xx, yy
 
+def dv_analysis(n=20, T=50, t_step=1, save_to='table_2dv.xlsx'):
+    xx, yy = run_mapping(mdl2, n, T, t_step, 
+                         mpath=os.path.join(results_path, save_to))
+    plot_heatmaps(xx, yy, n, mdl2)
+    
+#%% 50-d simulations with different initial conditions
+def plot_SE_yt_w_diff_init(seed, N, data=None):
+    if data is None:
+        try:
+            path = os.path.join(results_path, f'SE_vars_{seed}.pckl')
+            data = load_pickle(path)
+        except:
+            data = analyze_SE_vars(seed)
+    bm_data = load_data(os.path.join(results_path, 'matlab_exported_data.xlsx'),
+                        sheet='Data_ASin_changed', header=1, skiprows=0, usecols='A,CU:DF')
+    bm_data.columns = [col.rstrip('.6') for col in bm_data.columns]
+    fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12, 12))
+    for var, ir, ic in plots:
+        df = data[var]
+        ax = axes[ir, ic]
+        ax.plot(df.t, df.iloc[:,:N], 
+                color='grey', linestyle='-', alpha=0.3)
+        ax.plot(df.t, bm_data.loc[:, var],
+                color='red', linestyle='-.', label='Matlab/Simulink')
+
+    fig.savefig(os.path.join(figures_path, 'effluent_yt_wdiff_init.png'), dpi=300)
+    return fig, ax
+
+def UA_w_diff_inits(N=100):
+    seed = int(str(time())[-3:])    
+    # run_uncertainty(mdls, N, T, t_step, method='BDF', seed=seed)
+    run_wdiff_init(mdls, N, T, t_step, method='BDF', seed=seed)
+    out = analyze_SE_vars(seed, N)
+    fig, ax = plot_SE_yt_w_diff_init(seed, N, data=out)
+
 #%%
 if __name__ == '__main__':
-    # seed = int(str(time())[-3:])
-    # run_uncertainty(mdl2, 400, T, t_step, method='BDF',
-    #                 metrics_path=os.path.join(results_path, 'table_2dv.xlsx'),
-    #                 timeseries_path=os.path.join(results_path, 'time_series_2DV/state.npy'),
-    #                 seed=seed)
-    # run_uncertainty(mdl, N, T, t_step, method='BDF', seed=seed)
-    # out = analyze_SE_vars(157)
-    # fig, ax = plot_SE_timeseries(157, data=out)
-    # fig, ax = plot_SE_timeseries(157)
+    # UA_w_all_params()
     # run_sensitivity(157)
-    n = 20
-    xx, yy = run_mapping(mdl2, n, T, t_step, 
-                          mpath=os.path.join(results_path, 'table_2dv.xlsx'))
-    plot_heatmaps(xx, yy, n, mdl2)
+    # dv_analysis()
+    UA_w_diff_inits()

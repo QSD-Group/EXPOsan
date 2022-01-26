@@ -22,8 +22,8 @@ import os
 
 results_path = bm.results_path
 
-__all__ = ('model_bsm1', 'model_2dv',
-           'run_uncertainty', 'analyze_timeseries')
+__all__ = ('model_bsm1', 'model_2dv', 'model_ss',
+           'run_uncertainty', 'analyze_timeseries', 'run_wdiff_init')
 
 bsm1 = bm.bsm1
 s = bm.system
@@ -269,3 +269,66 @@ metric_2dv(getter=SE.get_TSS, name='Effluent TSS', units='mg/L', element='Efflue
 metric_2dv(getter=get_daily_sludge_production,
            name='Daily sludge production', units='kg TSS/d', element='WAS')
 metric_2dv(getter=get_SRT, name='SRT', units='d', element='System')
+
+#%%
+
+# =============================================================================
+# A new model for UA with random initial conditions to test steady state
+# =============================================================================
+
+model_ss = qs.Model(system=bsm1, exception_hook='raise')
+param_ss = model_ss.parameter
+metric_ss = model_ss.metric
+
+# Set initial conditions of all bioreactors
+_ic = s._init_conds
+for k, v in _ic.items():
+    i = cmps.index(k)
+    b = v
+    D = get_uniform_w_frac(b, 0.5)
+    @param_ss(name='initial '+k, element=A1, kind='coupled', units='mg/L',
+              baseline=b, distribution=D)
+    def ic_setter(conc): pass
+        # for u in [A1, A2, O1, O2, O3]:
+        #     if u._concs is None: u._concs = np.zeros(len(cmps))
+        #     u._concs[i] = conc
+
+
+# Effluent composite variables and daily sludge production
+for i in ('COD', 'BOD5', 'TN'):
+    metric_ss(getter=AttrGetter(SE, attr=i), name='Effluent '+i, 
+                units='mg/L', element='Effluent')
+
+metric_ss(getter=get_TKN, name='Effluent TKN', units='mg/L', element='Effluent')
+metric_ss(getter=SE.get_TSS, name='Effluent TSS', units='mg/L', element='Effluent')
+metric_ss(getter=get_daily_sludge_production,
+            name='Daily sludge production', units='kg TSS/d', element='WAS')
+metric_ss(getter=get_SRT, name='SRT', units='d', element='System')
+
+@time_printer
+def run_wdiff_init(model, N, T, t_step, method='LSODA', 
+                   metrics_path='', timeseries_path='', 
+                   rule='L', seed=None, pickle=False):
+    if seed: np.random.seed(seed)
+    samples = model.sample(N=N, rule=rule)
+    t_span = (0, T)
+    t_eval = np.arange(0, T+t_step, t_step)
+    # mpath = metrics_path or os.path.join(results_path, f'table_{seed}.xlsx')
+    if timeseries_path: tpath = timeseries_path
+    else:
+        folder = os.path.join(results_path, f'time_series_data_{seed}')
+        os.mkdir(folder)
+        tpath = os.path.join(folder, 'state.npy')
+    for i, smp in enumerate(samples):
+        concs = dict(zip(cmps.IDs[1:-2], smp))
+        for u in model._system.units:
+            if u.ID in ('A1', 'A2', 'O1', 'O2', 'O3'):
+                u.set_init_conc(**concs)                
+        model._system.simulate(
+            state_reset_hook='reset_cache',
+            t_span=t_span,
+            t_eval=t_eval,
+            method=method,
+            export_state_to=tpath,
+            sample_id=i,
+            )
