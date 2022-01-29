@@ -191,11 +191,14 @@ def fmt(x):
         s = f"{x:.0f}"
     return rf"{s}" if plt.rcParams["text.usetex"] else f"{s}"
 
+from exposan.bsm1 import system as sys 
+xbl = sys.aer1.Q_air
+ybl = sys.Q_was
 def plot_heatmaps(xx, yy, n, model=None, path=''):
     if model: data = model.table
     else: 
         path = path or os.path.join(results_path, 'table_2dv.xlsx')
-        data = load_data(path)
+        data = load_data(path, header=[0,1])
     zs = data.loc[:,['Effluent', 'WAS']].to_numpy(copy=True)
     zs = zs.T
     zz = zs.reshape((zs.shape[0], n, n))
@@ -208,6 +211,7 @@ def plot_heatmaps(xx, yy, n, model=None, path=''):
         cs = ax.contour(xx, yy, z, colors='white', origin='lower', linestyles='dashed',
                         linewidths=1, extent=(xx[0,0], xx[0,-1], yy[0,0], yy[-1,0]))
         ax.clabel(cs, cs.levels, inline=True, fmt=fmt)
+        ax.plot(xbl, ybl, marker='D', mec='black', mew=1.5, mfc='white')
     fig.savefig(os.path.join(figures_path, 'heatmaps.png'), dpi=300)
     return fig, ax
     
@@ -232,6 +236,7 @@ def dv_analysis(n=20, T=50, t_step=1, save_to='table_2dv.xlsx'):
     xx, yy = run_mapping(mdl2, n, T, t_step, 
                          mpath=os.path.join(results_path, save_to))
     plot_heatmaps(xx, yy, n, mdl2)
+    # plot_heatmaps(xx, yy, n, path=os.path.join(results_path, save_to))
     
 #%% 50-d simulations with different initial conditions
 def plot_SE_yt_w_diff_init(seed, N, data=None):
@@ -267,5 +272,5 @@ def UA_w_diff_inits(N=100):
 if __name__ == '__main__':
     # UA_w_all_params()
     # run_sensitivity(157)
-    # dv_analysis()
-    UA_w_diff_inits()
+    dv_analysis()
+    # UA_w_diff_inits()

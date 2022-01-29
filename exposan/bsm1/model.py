@@ -14,7 +14,8 @@ for license details.
 import qsdsan as qs
 from warnings import warn
 from chaospy import distributions as shape
-from qsdsan.utils import DictAttrSetter, AttrGetter, get_SRT as srt, time_printer
+from qsdsan.utils import DictAttrSetter, AttrGetter, FuncGetter, \
+    get_SRT as srt, time_printer
 from exposan import bsm1 as bm
 import pandas as pd
 import numpy as np
@@ -248,16 +249,22 @@ param_2dv = model_2dv.parameter
 metric_2dv = model_2dv.metric
 
 b = aer1.Q_air
-D = shape.Uniform(lower=2.4e3, upper=b)
+D = shape.Uniform(lower=2.4e3, upper=b*1.25)
 @param_2dv(name='O1 O2 air flowrate', element=O1, kind='coupled', units='m3/d',
            baseline=b, distribution=D)
 def set_Q_air(i):
     aer1.Q_air = i
     
 b = s.Q_was
-D = get_uniform_w_frac(b, 0.5)
+D = shape.Uniform(lower=300, upper=900)
 param_2dv(setter=set_Q_was, name='Waste sludge flowrate', element=C1, 
           kind='coupled', units='m3/d', baseline=b, distribution=D)
+
+# DO of aerated reactors
+DO_getter = lambda unit: float(unit.outs[0].iconc['S_O'])
+for u in (O1, O2, O3):
+    metric_2dv(getter=FuncGetter(DO_getter, [u]),
+               name=u.ID+' DO', units='mg/L', element=u.ID)
 
 # Effluent composite variables and daily sludge production
 for i in ('COD', 'BOD5', 'TN'):
@@ -289,9 +296,6 @@ for k, v in _ic.items():
     @param_ss(name='initial '+k, element=A1, kind='coupled', units='mg/L',
               baseline=b, distribution=D)
     def ic_setter(conc): pass
-        # for u in [A1, A2, O1, O2, O3]:
-        #     if u._concs is None: u._concs = np.zeros(len(cmps))
-        #     u._concs[i] = conc
 
 
 # Effluent composite variables and daily sludge production
