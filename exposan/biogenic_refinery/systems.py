@@ -170,21 +170,24 @@ items['Steel'].price = price_dct['Steel']
 # Universal units and functions
 # =============================================================================
 
-CH4_item = StreamImpactItem(ID='CH4_item', GWP=GWP_dct['CH4'])
-N2O_item = StreamImpactItem(ID='N2O_item', GWP= GWP_dct['N2O'])
-N_item = StreamImpactItem(ID='N_item', GWP= GWP_dct['N'])
-P_item = StreamImpactItem(ID='P_item', GWP= GWP_dct['P'])
-K_item = StreamImpactItem(ID='K_item', GWP= GWP_dct['K'])
-e_item = ImpactItem(ID='e_item', functional_unit='kWh', GWP= GWP_dct['Electricity'])
-polymer_item = StreamImpactItem(ID='polymer_item', GWP= GWP_dct['Polymer'])
-resin_item = StreamImpactItem(ID='resin_item', GWP= GWP_dct['Resin'])
-filter_bag_item = StreamImpactItem(ID='filter_bag_item', GWP= GWP_dct['FilterBag'])
-MgOH2_item = StreamImpactItem(ID='MgOH2_item', GWP= GWP_dct['MgOH2'])
-MgCO3_item = StreamImpactItem(ID='MgCO3_item', GWP= GWP_dct['MgCO3'])
-H2SO4_item = StreamImpactItem(ID='H2SO4_item', GWP= GWP_dct['H2SO4'])
-biochar_item = StreamImpactItem(ID='biochar_item', GWP= GWP_dct['biochar'])
-struvite_item = StreamImpactItem(ID='struvite_item', GWP= GWP_dct['struvite'])
-conc_NH3_item = StreamImpactItem(ID='conc_NH3_item', GWP= GWP_dct['conc_NH3'])
+CH4_item = items.get('CH4_item')
+N2O_item = items.get('N2O_item')
+if not CH4_item or not N2O_item:
+    CH4_item = StreamImpactItem(ID='CH4_item', GWP=GWP_dct['CH4'])
+    N2O_item = StreamImpactItem(ID='N2O_item', GWP= GWP_dct['N2O'])
+    N_item = StreamImpactItem(ID='N_item', GWP= GWP_dct['N'])
+    P_item = StreamImpactItem(ID='P_item', GWP= GWP_dct['P'])
+    K_item = StreamImpactItem(ID='K_item', GWP= GWP_dct['K'])
+    e_item = ImpactItem(ID='e_item', functional_unit='kWh', GWP= GWP_dct['Electricity'])
+    polymer_item = StreamImpactItem(ID='polymer_item', GWP= GWP_dct['Polymer'])
+    resin_item = StreamImpactItem(ID='resin_item', GWP= GWP_dct['Resin'])
+    filter_bag_item = StreamImpactItem(ID='filter_bag_item', GWP= GWP_dct['FilterBag'])
+    MgOH2_item = StreamImpactItem(ID='MgOH2_item', GWP= GWP_dct['MgOH2'])
+    MgCO3_item = StreamImpactItem(ID='MgCO3_item', GWP= GWP_dct['MgCO3'])
+    H2SO4_item = StreamImpactItem(ID='H2SO4_item', GWP= GWP_dct['H2SO4'])
+    biochar_item = StreamImpactItem(ID='biochar_item', GWP= GWP_dct['biochar'])
+    struvite_item = StreamImpactItem(ID='struvite_item', GWP= GWP_dct['struvite'])
+    conc_NH3_item = StreamImpactItem(ID='conc_NH3_item', GWP= GWP_dct['conc_NH3'])
 def batch_create_streams(prefix):
     
     stream_dct = {}
