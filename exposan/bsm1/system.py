@@ -109,6 +109,11 @@ O3 = su.CSTR('O3', O2-0, [RE, 'treated'], split=[0.6, 0.4],
              V_max=V_ae, aeration=aer2,
               DO_ID='S_O', suspended_growth_model=asm1)
 
+# C1 = su.FlatBottomCircularClarifier('C1', O3-1, [SE, RAS, WAS],
+#                                     underflow=Q_ras, wastage=Q_was, surface_area=1500,
+#                                     height=4, N_layer=10, feed_layer=5,
+#                                     X_threshold=3000, v_max=474, v_max_practical=250,
+#                                     rh=5.76e-4, rp=2.86e-3, fns=2.28e-3)
 
 C1 = su.FlatBottomCircularClarifier('C1', O3-1, ['', RAS, WAS],
                                     underflow=Q_ras, wastage=Q_was, surface_area=1500,
@@ -139,6 +144,9 @@ batch_init(os.path.join(bsm1_path, 'data/initial_conditions.xlsx'), 'default')
 
 ############# system simulation ############################
 bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, C1, S1), recycle=(RE, RAS))
+# bio = System('Bio', path=(A1, A2, O1, O2, O3), recycle=(RE,))
+# bsm1 = System('BSM1', path=(bio, C1, S1), recycle=(RAS,))
+# bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, C1), recycle=(RE, RAS))
 
 bsm1.set_tolerance(rmol=1e-6)
 bio_IDs = ('X_BH', 'X_BA')

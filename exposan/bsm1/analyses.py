@@ -82,7 +82,7 @@ keys = ['S_S', 'S_O', 'S_ALK',
 irows = [0,0,0,1,1,1,2,2,2,3,3,3]
 icols = [0,1,2,0,1,2,0,1,2,0,1,2]
 plots = zip(keys, irows, icols)
-def plot_SE_timeseries(seed, data=None):
+def plot_SE_timeseries(seed, N, data=None):
     if data is None:
         try:
             path = os.path.join(results_path, f'SE_vars_{seed}.pckl')
@@ -96,7 +96,7 @@ def plot_SE_timeseries(seed, data=None):
                         skiprows=[0,2], header=0, usecols='B,DF:DQ')
     bl_data.columns = [col.split(' ')[0] for col in bl_data.columns]
     bl_data.S_ALK = bl_data.S_ALK/12
-    fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12, 12))
+    fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12,12))
     for var, ir, ic in plots:
         df = data[var]
         ax = axes[ir, ic]
@@ -114,6 +114,8 @@ def plot_SE_timeseries(seed, data=None):
                       label='50th')
         # lbm,  = ax.plot(df.t, bm_data.loc[:, var],
         #               color='black', linestyle='-.', label='Matlab/Simulink')
+        # ax.yaxis.set_major_locator(plt.MaxNLocator(5))
+        # if var == 'X_ND': ax.yaxis.set_major_formatter(plt.FormatStrFormatter('%.3f'))
         if ir == 0 and ic == 0: ax.legend(handles=[l5, l50, lbl])
         # if ir == 0 and ic == 0: ax.legend(handles=[lbl, lbm])
     fig.savefig(os.path.join(figures_path, 'effluent_yt.png'), dpi=300)
@@ -123,7 +125,7 @@ def UA_w_all_params():
     seed = int(str(time())[-3:])
     run_uncertainty(mdl, N, T, t_step, method='BDF', seed=seed)
     out = analyze_SE_vars(seed)
-    fig, ax = plot_SE_timeseries(seed, data=out)
+    fig, ax = plot_SE_timeseries(seed, N, data=out)
     
 #%% 
 #!!! DO NOT UNCOMMENT !!!
@@ -153,9 +155,12 @@ def plot_kde2d_metrics(model):
         i, j = ids
         x, y = names
         fig, ax = plot_uncertainties(model, x_axis=metrics[i], y_axis=metrics[j],
-                                     kind='kde-hist', center_kws={'fill':True},
-                                     margin_kws={'kde':True, 'fill':True})
+                                      kind='kde-hist', center_kws={'fill':True},
+                                      margin_kws={'kde':True, 'fill':True})
         fig.savefig(os.path.join(figures_path, f'{x}_vs_{y}.png'))
+    fig, ax = plot_uncertainties(model, x_axis=metrics[6], kind='hist', 
+                                 center_kws={'kde':True})
+    fig.savefig(os.path.join(figures_path, 'SRT_hist.png'))
 
 thresholds = [100, 30, 19, 3, 30] # Effluent COD, BOD5, TN, TKN, TSS
 def run_ks_test(model):
@@ -239,6 +244,13 @@ def dv_analysis(n=20, T=50, t_step=1, save_to='table_2dv.xlsx'):
     # plot_heatmaps(xx, yy, n, path=os.path.join(results_path, save_to))
     
 #%% 50-d simulations with different initial conditions
+keys_wide = ['S_S', 'S_NO', 'X_S', 'X_BH', 
+             'S_O', 'S_NH', 'X_I', 'X_BA',
+             'S_ALK', 'S_ND', 'X_ND', 'X_P']
+irows_wide = [0,0,0,0,1,1,1,1,2,2,2,2]
+icols_wide = [0,1,2,3,0,1,2,3,0,1,2,3]
+plots_wide = zip(keys_wide, irows_wide, icols_wide)
+
 def plot_SE_yt_w_diff_init(seed, N, data=None):
     if data is None:
         try:
@@ -249,16 +261,19 @@ def plot_SE_yt_w_diff_init(seed, N, data=None):
     bm_data = load_data(os.path.join(results_path, 'matlab_exported_data.xlsx'),
                         sheet='Data_ASin_changed', header=1, skiprows=0, usecols='A,CU:DF')
     bm_data.columns = [col.rstrip('.6') for col in bm_data.columns]
-    fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12, 12))
-    for var, ir, ic in plots:
+    fig, axes = plt.subplots(3, 4, sharex=True, figsize=(15, 8))
+    for var, ir, ic in plots_wide:
         df = data[var]
         ax = axes[ir, ic]
         ax.plot(df.t, df.iloc[:,:N], 
                 color='grey', linestyle='-', alpha=0.3)
-        ax.plot(df.t, bm_data.loc[:, var],
-                color='red', linestyle='-.', label='Matlab/Simulink')
-
-    fig.savefig(os.path.join(figures_path, 'effluent_yt_wdiff_init.png'), dpi=300)
+        lbm, = ax.plot(df.t, bm_data.loc[:, var],
+                       color='red', linestyle='-.', label='MATLAB/Simulink')
+        ax.yaxis.set_major_locator(plt.MaxNLocator(5))
+        if var == 'X_ND': ax.yaxis.set_major_formatter(plt.FormatStrFormatter('%.3f'))
+        if ir == 0 and ic == 0: ax.legend(handles=[lbm])
+    plt.subplots_adjust(wspace=0.21, hspace=0.1)
+    fig.savefig(os.path.join(figures_path, 'effluent_yt_wdiff_init_wide.png'), dpi=300)
     return fig, ax
 
 def UA_w_diff_inits(N=100):
@@ -272,5 +287,7 @@ def UA_w_diff_inits(N=100):
 if __name__ == '__main__':
     # UA_w_all_params()
     # run_sensitivity(157)
-    dv_analysis()
-    # UA_w_diff_inits()
+    # dv_analysis()
+    # plot_SE_timeseries(seed=157, N=1000)
+    # plot_SE_yt_w_diff_init(seed=708, N=100)
+    UA_w_diff_inits()
