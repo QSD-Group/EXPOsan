@@ -84,6 +84,11 @@ def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal',
         ax.set(xlabel='', xlim=(0, 1), xticks=ticks)
         ax.set_yticklabels([i.name.lstrip('Total ') for i in metrics], fontsize=20)
         ax.set_xticklabels([f'{i:.0%}' for i in ticks], fontsize=20)
+        
+        ax.tick_params(axis='x', direction='inout')
+        ax2 = ax.secondary_xaxis('top')
+        ax2.tick_params(axis='x', direction='in')
+        ax2.xaxis.set_major_formatter(plt.NullFormatter())
     else:
         fig, ax = s.plot_uncertainties(model, x_axis=metrics, kind='box',
                                        center_kws={'color': color, 'width': 0.6,
@@ -95,6 +100,11 @@ def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal',
             label.set_rotation(30)
         ax.set(ylabel='', ylim=(0, 1), yticks=ticks)
         ax.set_yticklabels([f'{i:.0%}' for i in ticks], fontsize=20)
+        
+        ax.tick_params(axis='x', direction='inout')
+        ax2 = ax.secondary_xaxis('top')
+        ax2.tick_params(axis='x', direction='in')
+        ax2.xaxis.set_major_formatter(plt.NullFormatter())
  
     ax.xaxis.set_minor_locator(AutoMinorLocator(2))
     fig.subplots_adjust(left=0.2, bottom=0.25)

@@ -104,20 +104,23 @@ def plot_SE_timeseries(seed, N, data=None):
                 color='grey', linestyle='-', alpha=0.05)
         lbl, = ax.plot(df.t, bl_data.loc[:, var],
                      color='orange', linestyle='-', linewidth=2.5,
-                     # label='Base')
-                     label='QSDsan')
+                      label='Base')
         l5, l95, = ax.plot(df.t, df.loc[:,['5th percentile', '95th percentile']],
                       color='blue', linestyle='--', 
                       label='5th, 95th')
         l50, = ax.plot(df.t, df.loc[:,'50th percentile'],
                       color='black', linestyle='-.',
                       label='50th')
+        ax.tick_params(axis='both', direction='inout')
+        ax2 = ax.secondary_yaxis('right')
+        ax2.tick_params(axis='y', direction='in')
+        ax2.yaxis.set_major_formatter(plt.NullFormatter())
         # lbm,  = ax.plot(df.t, bm_data.loc[:, var],
         #               color='black', linestyle='-.', label='Matlab/Simulink')
         # ax.yaxis.set_major_locator(plt.MaxNLocator(5))
-        # if var == 'X_ND': ax.yaxis.set_major_formatter(plt.FormatStrFormatter('%.3f'))
         if ir == 0 and ic == 0: ax.legend(handles=[l5, l50, lbl])
         # if ir == 0 and ic == 0: ax.legend(handles=[lbl, lbm])
+    plt.subplots_adjust(hspace=0.1)
     fig.savefig(os.path.join(figures_path, 'effluent_yt.png'), dpi=300)
     return fig, ax
 
@@ -266,10 +269,14 @@ def plot_SE_yt_w_diff_init(seed, N, data=None):
         df = data[var]
         ax = axes[ir, ic]
         ax.plot(df.t, df.iloc[:,:N], 
-                color='grey', linestyle='-', alpha=0.3)
+                color='grey', linestyle='-', alpha=0.25)
         lbm, = ax.plot(df.t, bm_data.loc[:, var],
                        color='red', linestyle='-.', label='MATLAB/Simulink')
         ax.yaxis.set_major_locator(plt.MaxNLocator(5))
+        ax.tick_params(axis='both', direction='inout')
+        ax2 = ax.secondary_yaxis('right')
+        ax2.tick_params(axis='y', direction='in')
+        ax2.yaxis.set_major_formatter(plt.NullFormatter())
         if var == 'X_ND': ax.yaxis.set_major_formatter(plt.FormatStrFormatter('%.3f'))
         if ir == 0 and ic == 0: ax.legend(handles=[lbm])
     plt.subplots_adjust(wspace=0.21, hspace=0.1)
@@ -289,5 +296,5 @@ if __name__ == '__main__':
     # run_sensitivity(157)
     # dv_analysis()
     # plot_SE_timeseries(seed=157, N=1000)
-    # plot_SE_yt_w_diff_init(seed=708, N=100)
-    UA_w_diff_inits()
+    plot_SE_yt_w_diff_init(seed=708, N=100)
+    # UA_w_diff_inits()
