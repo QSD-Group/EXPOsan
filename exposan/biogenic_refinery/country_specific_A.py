@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import models as m, systems
+from exposan import biogenic_refinery as br
 import pandas as pd
 from chaospy import distributions as shape
 from qsdsan.utils import load_data, data_path
 from qsdsan import ImpactItem, PowerUtility, Model
 
+systems = br.systems
+m = br.models
 sys_dct = systems.sys_dct
 price_dct = systems.price_dct
 GWP_dct = systems.GWP_dct
@@ -366,7 +368,7 @@ def run_country(dct):
 
         
 
-        results[country] = m.run_uncertainty(model=modelA, seed=5, N=1000) 
+        results[country] = m.run_uncertainty(model=modelA, seed=5, N=10) 
         del sysA, modelA
         
     return results
@@ -379,7 +381,8 @@ results = run_country(dct=input_dct)
 def save_uncertainty_results(results):
     import os
     path = os.path.dirname(os.path.realpath(__file__))
-    path = '/Users/lane/Desktop/Coding/GitHub/EXPOsan/exposan/biogenic_refinery'
+    path = '/Users/yalinli_cabbi/Desktop/'
+    # path = '/Users/lane/Desktop/Coding/GitHub/EXPOsan/exposan/biogenic_refinery'
     path += '/results'
     if not os.path.isdir(path):
          os.mkdir(path)
