@@ -160,10 +160,10 @@ def plot_kde2d_metrics(model):
         fig, ax = plot_uncertainties(model, x_axis=metrics[i], y_axis=metrics[j],
                                       kind='kde-hist', center_kws={'fill':True},
                                       margin_kws={'kde':True, 'fill':True})
-        fig.savefig(os.path.join(figures_path, f'{x}_vs_{y}.png'))
+        fig.savefig(os.path.join(figures_path, f'{x}_vs_{y}.png'), dpi=300)
     fig, ax = plot_uncertainties(model, x_axis=metrics[6], kind='hist', 
                                  center_kws={'kde':True})
-    fig.savefig(os.path.join(figures_path, 'SRT_hist.png'))
+    fig.savefig(os.path.join(figures_path, 'SRT_hist.png'), dpi=300)
 
 thresholds = [100, 30, 19, 3, 30] # Effluent COD, BOD5, TN, TKN, TSS
 def run_ks_test(model):
@@ -293,8 +293,8 @@ def UA_w_diff_inits(N=100):
 #%%
 if __name__ == '__main__':
     # UA_w_all_params()
-    # run_sensitivity(157)
+    run_sensitivity(157)
     # dv_analysis()
     # plot_SE_timeseries(seed=157, N=1000)
-    plot_SE_yt_w_diff_init(seed=708, N=100)
+    # plot_SE_yt_w_diff_init(seed=708, N=100)
     # UA_w_diff_inits()
