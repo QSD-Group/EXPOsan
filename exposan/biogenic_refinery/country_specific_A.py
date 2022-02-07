@@ -381,8 +381,7 @@ results = run_country(dct=input_dct)
 def save_uncertainty_results(results):
     import os
     path = os.path.dirname(os.path.realpath(__file__))
-    path = '/Users/yalinli_cabbi/Desktop/'
-    # path = '/Users/lane/Desktop/Coding/GitHub/EXPOsan/exposan/biogenic_refinery'
+    path = '/Users/lane/Desktop/Coding/GitHub/EXPOsan/exposan/biogenic_refinery'
     path += '/results'
     if not os.path.isdir(path):
          os.mkdir(path)
