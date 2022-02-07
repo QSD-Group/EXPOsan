@@ -165,11 +165,11 @@ def run(t, t_step, method=None, **kwargs):
     if method:
         bsm1.simulate(state_reset_hook='reset_cache',
                       t_span=(0,t),
-                      # t_eval=np.arange(0, t+t_step, t_step),
+                      t_eval=np.arange(0, t+t_step, t_step),
                       method=method,
                       rtol=1e-2,
                       atol=1e-3,
-                      # export_state_to=f'results/sol_{t}d_{method}.xlsx',
+                      export_state_to=f'results/sol_{t}d_{method}.xlsx',
                       **kwargs)
     else:
         bsm1.simulate(state_reset_hook='reset_cache',
@@ -188,8 +188,8 @@ if __name__ == '__main__':
     # method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    method = 'BDF'
-    # method = 'LSODA'
+    # method = 'BDF'
+    method = 'LSODA'
     # method = None
     msg = f'Method {method}'
     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
