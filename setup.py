@@ -23,7 +23,11 @@ setup(
     author_email='quantitative.sustainable.design@gmail.com',
     description='Exposition of sanitation and resource recovery systems',
     long_description=open('README.rst', encoding='utf-8').read(),
-    url="https://github.com/QSD-Group/EXPOsan",
+    url='https://github.com/QSD-Group/EXPOsan',
+    project_urls={
+        'QSDsan': 'https://github.com/QSD-Group/QSDsan',
+        'QSDsan documentation': 'https://qsdsan.readthedocs.io/',
+    },
     install_requires=['qsdsan>=1.0.7',],
     package_data=
         {'exposan': [

@@ -27,7 +27,7 @@ The easiest way is through ``pip``, in your command-line interface (e.g., Anacon
 
     pip install exposan
 
-If you need to update:
+If you need to upgrade:
 
 .. code::
 
