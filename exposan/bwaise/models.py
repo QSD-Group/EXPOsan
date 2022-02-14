@@ -524,7 +524,7 @@ def add_LCA_CF_parameters(model, kind=bw._lca_data.lca_data_kind):
     return model
 
 def update_LCA_CF_parameters(model, kind):
-    non_lca_params = [i for i in model.parameters if not 'CF' in i.name]
+    non_lca_params = [i for i in model.parameters if not ' CF' in i.name] # just 'CF' will exclude 'MCF' as well
     model.set_parameters(non_lca_params)
     model = add_LCA_CF_parameters(model, kind)
     return model
