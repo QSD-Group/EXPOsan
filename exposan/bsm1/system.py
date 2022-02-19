@@ -123,20 +123,20 @@ C1 = su.FlatBottomCircularClarifier('C1', O3-1, ['', RAS, WAS],
 
 S1 = su.Sampler('S1', C1-0, SE)
 
-_init_conds = {
-        'S_S':5,
-        'X_I':1000,
-        'X_S':100,
-        'X_BH':500,
-        'X_BA':100,
-        'X_P':100,
-        'S_O':2,
-        'S_NO':20,
-        'S_NH':2,
-        'S_ND':1,
-        'X_ND':1,
-        'S_ALK':7*12,
-    }
+# _init_conds = {
+#         'S_S':5,
+#         'X_I':1000,
+#         'X_S':100,
+#         'X_BH':500,
+#         'X_BA':100,
+#         'X_P':100,
+#         'S_O':2,
+#         'S_NO':20,
+#         'S_NH':2,
+#         'S_ND':1,
+#         'X_ND':1,
+#         'S_ALK':7*12,
+#     }
 # for i in [A1, A2, O1, O2, O3]: i.set_init_conc(**_init_conds)
 
 batch_init(os.path.join(bsm1_path, 'data/initial_conditions.xlsx'), 'default')
@@ -147,7 +147,7 @@ bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, C1, S1), recycle=(RE, RAS))
 # bio = System('Bio', path=(A1, A2, O1, O2, O3), recycle=(RE,))
 # bsm1 = System('BSM1', path=(bio, C1, S1), recycle=(RAS,))
 # bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, C1), recycle=(RE, RAS))
-
+bsm1.set_dynamic_tracker(SE)
 bsm1.set_tolerance(rmol=1e-6)
 bio_IDs = ('X_BH', 'X_BA')
 
@@ -155,7 +155,7 @@ __all__ = (
     'cmps', 'bsm1', 'asm1', 'aer1', 'aer2',
     'Q', 'PE', 'SE', 'WAS', 'RE', 'RAS',
     *(i.ID for i in bsm1.units),
-    '_init_conds'
+    # '_init_conds'
     )
 
 
@@ -167,8 +167,8 @@ def run(t, t_step, method=None, **kwargs):
                       t_span=(0,t),
                       t_eval=np.arange(0, t+t_step, t_step),
                       method=method,
-                      rtol=1e-2,
-                      atol=1e-3,
+                      # rtol=1e-2,
+                      # atol=1e-3,
                       export_state_to=f'results/sol_{t}d_{method}.xlsx',
                       **kwargs)
     else:
@@ -188,8 +188,8 @@ if __name__ == '__main__':
     # method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    # method = 'BDF'
-    method = 'LSODA'
+    method = 'BDF'
+    # method = 'LSODA'
     # method = None
     msg = f'Method {method}'
     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
