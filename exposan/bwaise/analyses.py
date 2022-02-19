@@ -19,7 +19,6 @@ import os
 import numpy as np, pandas as pd, seaborn as sns
 from matplotlib import pyplot as plt
 from matplotlib.ticker import AutoMinorLocator
-from adjustText import adjust_text
 from qsdsan import stats as s
 from qsdsan.utils import copy_samples, colors, load_pickle, save_pickle
 from exposan import bwaise as bw
@@ -214,6 +213,7 @@ def plot_morris_scatter(model, morris_dct, combined_morris, color,
                 for idx in top.index:
                     label = combined_morris[combined_morris.parameter==idx].index.values.item()
                     labels.append(ax.text(top.loc[idx].mu_star, top.loc[idx].sigma, label))
+                from adjustText import adjust_text
                 adjust_text(labels)
 
         plot_minor_ticks_and_grid(ax, nx=2, ny=2)
