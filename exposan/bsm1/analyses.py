@@ -19,7 +19,6 @@ Other things that I think we might want to include:
     similar steady-states conditions
 '''
 
-# from qsdsan.utils import ords
 from time import time
 from qsdsan.utils import load_data, load_pickle, save_pickle
 from qsdsan.stats import plot_uncertainties, get_correlations

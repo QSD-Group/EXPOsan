@@ -123,21 +123,21 @@ C1 = su.FlatBottomCircularClarifier('C1', O3-1, ['', RAS, WAS],
 
 S1 = su.Sampler('S1', C1-0, SE)
 
-# _init_conds = {
-#         'S_S':5,
-#         'X_I':1000,
-#         'X_S':100,
-#         'X_BH':500,
-#         'X_BA':100,
-#         'X_P':100,
-#         'S_O':2,
-#         'S_NO':20,
-#         'S_NH':2,
-#         'S_ND':1,
-#         'X_ND':1,
-#         'S_ALK':7*12,
-#     }
-# for i in [A1, A2, O1, O2, O3]: i.set_init_conc(**_init_conds)
+_init_conds = {
+        'S_S':5,
+        'X_I':1000,
+        'X_S':100,
+        'X_BH':500,
+        'X_BA':100,
+        'X_P':100,
+        'S_O':2,
+        'S_NO':20,
+        'S_NH':2,
+        'S_ND':1,
+        'X_ND':1,
+        'S_ALK':7*12,
+    }
+for i in [A1, A2, O1, O2, O3]: i.set_init_conc(**_init_conds)
 
 batch_init(os.path.join(bsm1_path, 'data/initial_conditions.xlsx'), 'default')
 
