@@ -4,12 +4,19 @@ EXPOsan: EXPOsition of sanitation and resource recovery systems
 
 .. image:: https://img.shields.io/pypi/l/exposan?color=blue&logo=UIUC&style=flat
    :target: https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+
 .. image:: https://img.shields.io/pypi/pyversions/exposan?style=flat
    :target: https://pypi.python.org/pypi/exposan
+
 .. image:: https://img.shields.io/pypi/v/exposan?style=flat&color=blue
    :target: https://pypi.org/project/exposan/
+
+.. image:: https://github.com/QSD-Group/EXPOsan/actions/workflows/build.yml/badge.svg?branch=main
+   :target: https://github.com/QSD-Group/EXPOsan/tree/main
+
 .. image:: https://img.shields.io/appveyor/build/yalinli2/EXPOsan/main?label=build&logo=appveyor
    :target: https://github.com/QSD-Group/EXPOsan/tree/main
+
 .. image:: https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg
    :target: https://qsdsan.readthedocs.io/en/latest/CODE_OF_CONDUCT.html
 
