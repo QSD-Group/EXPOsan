@@ -24,3 +24,7 @@ install:
 
 test_script:
   - cmd: pytest
+
+branches:
+  only:
+    - stable
