@@ -83,30 +83,35 @@ def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal',
         ax.set(xlabel='', xlim=(0, 1), xticks=ticks)
         ax.set_yticklabels([i.name.lstrip('Total ') for i in metrics], fontsize=20)
         ax.set_xticklabels([f'{i:.0%}' for i in ticks], fontsize=20)
-        
-        ax.tick_params(axis='x', direction='inout')
+        ax.xaxis.set_minor_locator(AutoMinorLocator(2))
+        ax.tick_params(axis='both', which='both', direction='inout')        
+
         ax2 = ax.secondary_xaxis('top')
-        ax2.tick_params(axis='x', direction='in')
         ax2.xaxis.set_major_formatter(plt.NullFormatter())
+        ax2.xaxis.set_minor_locator(AutoMinorLocator(2))
+        ax2.tick_params(axis='x', which='both', direction='in')
+        fig.subplots_adjust(left=0.2, bottom=0.25)
     else:
         fig, ax = s.plot_uncertainties(model, x_axis=metrics, kind='box',
                                        center_kws={'color': color, 'width': 0.6,
                                                    'whis': whis, 'sym': sym})
         ax.get_legend().remove()
         fig.set_figwidth(2.5)
+        ticks = np.arange(0, 1.2, 0.2)
         ax.set_xticklabels([i.name.lstrip('Total ') for i in metrics], fontsize=20)
         for label in ax.get_xticklabels():
-            label.set_rotation(30)
+            label.set_rotation(90)
         ax.set(ylabel='', ylim=(0, 1), yticks=ticks)
         ax.set_yticklabels([f'{i:.0%}' for i in ticks], fontsize=20)
+        ax.yaxis.set_minor_locator(AutoMinorLocator(2))
+        ax.tick_params(axis='both', which='both', direction='inout')
         
-        ax.tick_params(axis='x', direction='inout')
-        ax2 = ax.secondary_xaxis('top')
-        ax2.tick_params(axis='x', direction='in')
-        ax2.xaxis.set_major_formatter(plt.NullFormatter())
- 
-    ax.xaxis.set_minor_locator(AutoMinorLocator(2))
-    fig.subplots_adjust(left=0.2, bottom=0.25)
+        ax2 = ax.secondary_yaxis('right')
+        ax2.yaxis.set_major_formatter(plt.NullFormatter())
+        ax2.yaxis.set_minor_locator(AutoMinorLocator(2))
+        ax2.tick_params(axis='y', which='both', direction='in')
+        fig.subplots_adjust(left=0.35, bottom=0.3)
+
     fig.savefig(os.path.join(figures_path, f'sys{ID}_recoveries.png'), dpi=300)
 
     return fig, ax
@@ -123,17 +128,32 @@ def plot_kde(model, ID, color, metrics):
                                                'whis': (5, 95),
                                                'width': 0.4,
                                                'sym': ''})
-    for i in (ax[0], ax[1]):
+
+    ax0, ax1, ax2 = fig.axes # KDE, top box, right box
+    plot_minor_ticks_and_grid(ax0, nx=2, ny=2)
+    ax0x = ax0.secondary_xaxis('top')
+    ax0x.xaxis.set_minor_locator(AutoMinorLocator(2))
+    ax0y = ax0.secondary_yaxis('right')
+    ax0y.yaxis.set_minor_locator(AutoMinorLocator(2))
+    for ax in (ax0, ax0x, ax0y):
+        ax.tick_params(axis='both', which='both', direction='inout')
+
+    for i in (ax0, ax1):
         i.set_xlim(0, 60)
         i.set_xticks((np.arange(0, 70, 10)))
-    for i in (ax[0], ax[2]):
+    for i in (ax0, ax2):
         i.set_ylim(-20, 140)
         i.set_yticks((np.arange(-20, 160, 20)))
-    for txt in ax[0].get_xticklabels()+ax[0].get_yticklabels():
+    for txt in ax0.get_xticklabels()+ax0.get_yticklabels():
         txt.set_fontsize(20)
+    ax0x.set_xticklabels('')
+    ax0y.set_yticklabels('')
 
+    ax1.xaxis.set_visible(False)
+    ax1.spines.clear()
+    ax2.spines.clear()
+    ax2.yaxis.set_visible(False)
     fig.subplots_adjust(left=0.15)
-    plot_minor_ticks_and_grid(ax[0], nx=2, ny=2)
     # ax[0].yaxis.get_major_ticks()[-1].gridline.set_visible(False) # if want to remove a certain gridline
     fig.savefig(os.path.join(figures_path, f'sys{ID}_cost_emission.png'), dpi=300)
 
@@ -216,7 +236,8 @@ def plot_morris_scatter(model, morris_dct, combined_morris, color,
                 from adjustText import adjust_text
                 adjust_text(labels)
 
-        plot_minor_ticks_and_grid(ax, nx=2, ny=2)
+        plot_minor_ticks_and_grid(ax, nx=1, ny=1)
+        ax.tick_params(axis='both', which='both', direction='inout')
 
         if not plot_combined:
             fig.subplots_adjust(bottom=0.2, left=0.25)
@@ -250,7 +271,6 @@ def plot_morris_blank(ax_dct):
     par_dct = {k: getattr(temp.figure.subplotpars, k)
                for k in ('left', 'right', 'top', 'bottom')}
     fig.subplots_adjust(**par_dct)
-    # plot_minor_ticks_and_grid(ax, nx=2, ny=2)
     ax.set(xticks=(), yticks=(), xticklabels=(), yticklabels=())
     ax_dct['morris_blank'] = ax
     fig.savefig(os.path.join(figures_path, 'morris_blank.png'), dpi=300)
@@ -273,12 +293,12 @@ def plot_morris_scatter_all(models, morris_dct, combineds, RGBs):
 
         if n_model == 0:
             for n, ax in enumerate(axs):
-                ax.set_ylabel(model.metrics[n].name)
-        axs[-1].set_xlabel(f'System {ID}')
+                ax.set_ylabel(model.metrics[n].name, fontsize=14)
+        axs[-1].set_xlabel(f'System {ID}', fontsize=14)
 
     fig.tight_layout()
-    fig.supxlabel(r'Normalized $\mu^*$ [$\mu^*$/$\mu^*_{max}$]', fontsize=14, fontweight='bold')
-    fig.supylabel(r'Normalized $\sigma$ [$\sigma$/$\mu^*_{max}$]', fontsize=14, fontweight='bold')
+    fig.supxlabel(r'Normalized $\mu^*$ [$\mu^*$/$\mu^*_{max}$]', fontsize=20, fontweight='bold')
+    fig.supylabel(r'Normalized $\sigma$ [$\sigma$/$\mu^*_{max}$]', fontsize=20, fontweight='bold')
     fig.subplots_adjust(left=0.12, bottom=0.06)
     fig.savefig(os.path.join(figures_path, 'morris_normalized_combined.png'), dpi=300)
 
@@ -311,8 +331,8 @@ def plot_morris_bubble(combineds):
     for spine in ('top', 'right'):
         g.ax.spines[spine].set_visible(True)
 
-    g.ax.set_xlabel('Metric', fontsize=14, fontweight='bold')
-    g.ax.set_ylabel('Parameter', fontsize=14, fontweight='bold')
+    g.ax.set_xlabel('Metric', fontsize=20, fontweight='bold')
+    g.ax.set_ylabel('Parameter', fontsize=20, fontweight='bold')
 
     for label in g.ax.get_xticklabels():
         label.set_rotation(90)

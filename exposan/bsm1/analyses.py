@@ -12,13 +12,6 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-'''
-#TODO
-Other things that I think we might want to include:
-    - A figure in the SI (or just on GitHub) showing that we can converge to
-    similar steady-states conditions
-'''
-
 from time import time
 from qsdsan.utils import load_data, load_pickle, save_pickle
 from qsdsan.stats import plot_uncertainties, get_correlations
