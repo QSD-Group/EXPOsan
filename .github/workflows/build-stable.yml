@@ -5,9 +5,9 @@ name: build-stable
 
 on:
   push:
-    branches: [ pypi ]
+    branches: [ stable ]
   pull_request:
-    branches: [ pypi ]
+    branches: [ stable ]
 
 jobs:
   build:

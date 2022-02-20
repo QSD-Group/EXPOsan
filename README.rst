@@ -20,7 +20,7 @@ EXPOsan: EXPOsition of sanitation and resource recovery systems
 .. image:: https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg
    :target: https://qsdsan.readthedocs.io/en/latest/CODE_OF_CONDUCT.html
 
-.. AppVeyor, not in active use:
+.. AppVeyor, not in active use
 ..
     image:: https://img.shields.io/appveyor/build/yalinli2/EXPOsan/main?label=build-stable&logo=appveyor
    :target: https://github.com/QSD-Group/EXPOsan/tree/stable
