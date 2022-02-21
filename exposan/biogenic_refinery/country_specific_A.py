@@ -368,7 +368,7 @@ def run_country(dct):
 
         
 
-        results[country] = m.run_uncertainty(model=modelA, seed=5, N=10) 
+        results[country] = m.run_uncertainty(model=modelA, seed=5, N=1000) 
         del sysA, modelA
         
     return results

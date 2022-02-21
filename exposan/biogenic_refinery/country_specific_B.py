@@ -6,25 +6,14 @@ Created on Wed Jan 26 00:29:16 2022
 @author: lane
 """
 
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-import models as m
-import pandas as pd
-from systems import price_dct
-from chaospy import distributions as shape
-import biosteam as bst
-from biosteam.evaluation import Model
 from exposan import biogenic_refinery as br
-from qsdsan.utils import (
-    load_data, data_path,
-    AttrSetter, AttrFuncSetter, DictAttrSetter,
-    FuncGetter,
-    time_printer
-    )
-from qsdsan import currency, ImpactItem
+import pandas as pd
+from chaospy import distributions as shape
+from qsdsan.utils import load_data, data_path
+from qsdsan import ImpactItem, PowerUtility, Model
 
 systems = br.systems
+m = br.models
 sys_dct = systems.sys_dct
 price_dct = systems.price_dct
 GWP_dct = systems.GWP_dct
@@ -244,7 +233,7 @@ def run_country(dct):
             GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
             
         # energy_price
-        bst.PowerUtility.price = country_dct['energy_price']
+        PowerUtility.price = country_dct['energy_price']
         
         # household size
         unit = sysB.path[0]
