@@ -1,7 +1,7 @@
 # Needed by exposan
 qsdsan>=1.0.7
+scikit-learn
 
 # Packages for testing
-pytest-cov
-coveralls
-nbval
+pytest
+# pytest-cov # not using coverage
