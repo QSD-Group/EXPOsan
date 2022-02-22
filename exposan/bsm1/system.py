@@ -109,19 +109,19 @@ O3 = su.CSTR('O3', O2-0, [RE, 'treated'], split=[0.6, 0.4],
              V_max=V_ae, aeration=aer2,
               DO_ID='S_O', suspended_growth_model=asm1)
 
-# C1 = su.FlatBottomCircularClarifier('C1', O3-1, [SE, RAS, WAS],
-#                                     underflow=Q_ras, wastage=Q_was, surface_area=1500,
-#                                     height=4, N_layer=10, feed_layer=5,
-#                                     X_threshold=3000, v_max=474, v_max_practical=250,
-#                                     rh=5.76e-4, rp=2.86e-3, fns=2.28e-3)
-
-C1 = su.FlatBottomCircularClarifier('C1', O3-1, ['', RAS, WAS],
+C1 = su.FlatBottomCircularClarifier('C1', O3-1, [SE, RAS, WAS],
                                     underflow=Q_ras, wastage=Q_was, surface_area=1500,
                                     height=4, N_layer=10, feed_layer=5,
                                     X_threshold=3000, v_max=474, v_max_practical=250,
                                     rh=5.76e-4, rp=2.86e-3, fns=2.28e-3)
 
-S1 = su.Sampler('S1', C1-0, SE)
+# C1 = su.FlatBottomCircularClarifier('C1', O3-1, ['', RAS, WAS],
+#                                     underflow=Q_ras, wastage=Q_was, surface_area=1500,
+#                                     height=4, N_layer=10, feed_layer=5,
+#                                     X_threshold=3000, v_max=474, v_max_practical=250,
+#                                     rh=5.76e-4, rp=2.86e-3, fns=2.28e-3)
+
+# S1 = su.Sampler('S1', C1-0, SE)
 
 _init_conds = {
         'S_S':5,
@@ -137,16 +137,17 @@ _init_conds = {
         'X_ND':1,
         'S_ALK':7*12,
     }
-for i in [A1, A2, O1, O2, O3]: i.set_init_conc(**_init_conds)
+
+# for i in [A1, A2, O1, O2, O3]: i.set_init_conc(**_init_conds)
 
 batch_init(os.path.join(bsm1_path, 'data/initial_conditions.xlsx'), 'default')
 
 
 ############# system simulation ############################
-bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, C1, S1), recycle=(RE, RAS))
+# bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, C1, S1), recycle=(RE, RAS))
 # bio = System('Bio', path=(A1, A2, O1, O2, O3), recycle=(RE,))
 # bsm1 = System('BSM1', path=(bio, C1, S1), recycle=(RAS,))
-# bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, C1), recycle=(RE, RAS))
+bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, C1), recycle=(RE, RAS))
 bsm1.set_dynamic_tracker(SE)
 bsm1.set_tolerance(rmol=1e-6)
 bio_IDs = ('X_BH', 'X_BA')
@@ -155,7 +156,7 @@ __all__ = (
     'cmps', 'bsm1', 'asm1', 'aer1', 'aer2',
     'Q', 'PE', 'SE', 'WAS', 'RE', 'RAS',
     *(i.ID for i in bsm1.units),
-    # '_init_conds'
+    '_init_conds'
     )
 
 
@@ -195,6 +196,3 @@ if __name__ == '__main__':
     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
     print(f'Time span 0-{t}d \n')
     run(t, t_step, method=method)
-
-    # If want to see a quick plot of the state variable of a certain unit
-    # fig, ax = C1.plot_state_over_time(system=bsm1, state_var=('S_S', 'S_NH'))

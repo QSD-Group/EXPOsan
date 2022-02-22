@@ -29,22 +29,11 @@ t_step = 1
 
 #%% UA with time-series data
 
-idx = mdl._system._load_state()[1]
-def single_state_var_getter(arr, unit, variable):
-    head, tail = idx[unit]
-    if unit == 'C1':
-        if variable.startswith('TSS'): 
-            i_layer = int(variable.lstrip('TSS'))
-            i = 1 + head + len(cmps) + i_layer
-        elif variable == 'Q': i = 1 + head + len(cmps)
-        else: 
-            i_cmp = cmps.index(variable)
-            i = 1 + head + i_cmp
-    else:
-        if variable == 'Q': i = tail
-        else: 
-            i_cmp = cmps.index(variable)
-            i = 1 + head + i_cmp
+def single_SE_state_var_getter(arr, variable):
+    if variable == 'Q': i = -1
+    else: 
+        i_cmp = cmps.index(variable)
+        i = 1 + i_cmp
     if variable == 'S_ALK': return arr[:, i]/12
     else: return arr[:, i]
 
@@ -52,12 +41,12 @@ def analyze_SE_vars(seed, N, pickle=True):
     folder = os.path.join(results_path, f'time_series_data_{seed}')
     state_vars = [ID for ID in cmps.IDs if ID not in ('S_N2', 'H2O', 'S_I')]
     dct = {}
-    t_arr = np.arange(51)
+    t_arr = np.arange(0, T+t_step, t_step)
     pcs = np.array([0, 5, 25, 50, 75, 95, 100])
     col_names = [f'{p}th percentile' for p in pcs]
     for var in state_vars:
-        df = analyze_timeseries(single_state_var_getter, N=N, folder=folder, 
-                                unit='S1', variable=var)
+        df = analyze_timeseries(single_SE_state_var_getter, N=N, folder=folder, 
+                                variable=var)
         quants = np.percentile(df, q = pcs, axis=1)
         df[col_names] = quants.T
         df['t'] = t_arr
@@ -74,22 +63,35 @@ keys = ['S_S', 'S_O', 'S_ALK',
 irows = [0,0,0,1,1,1,2,2,2,3,3,3]
 icols = [0,1,2,0,1,2,0,1,2,0,1,2]
 plots = zip(keys, irows, icols)
-def plot_SE_timeseries(seed, N, data=None):
+
+keys_wide = ['S_S', 'S_NO', 'X_S', 'X_BH', 
+             'S_O', 'S_NH', 'X_I', 'X_BA',
+             'S_ALK', 'S_ND', 'X_ND', 'X_P']
+irows_wide = [0,0,0,0,1,1,1,1,2,2,2,2]
+icols_wide = [0,1,2,3,0,1,2,3,0,1,2,3]
+plots_wide = zip(keys_wide, irows_wide, icols_wide)
+
+def plot_SE_timeseries(seed, N, data=None, wide=False):
     if data is None:
         try:
             path = os.path.join(results_path, f'SE_vars_{seed}.pckl')
             data = load_pickle(path)
         except:
-            data = analyze_SE_vars(seed)
+            data = analyze_SE_vars(seed, N)
     # bm_data = load_data(os.path.join(results_path, 'matlab_exported_data.xlsx'),
     #                     sheet='Data_ASin_changed', header=1, skiprows=0, usecols='A,CU:DF')
     # bm_data.columns = [col.rstrip('.6') for col in bm_data.columns]
     bl_data = load_data(os.path.join(results_path, 'sol_50d_BDF.xlsx'),
-                        skiprows=[0,2], header=0, usecols='B,DF:DQ')
+                        skiprows=[0,2], header=0, usecols='B:Q')
     bl_data.columns = [col.split(' ')[0] for col in bl_data.columns]
     bl_data.S_ALK = bl_data.S_ALK/12
-    fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12,12))
-    for var, ir, ic in plots:
+    if wide: 
+        fig, axes = plt.subplots(3, 4, sharex=True, figsize=(15,8))
+        plts = plots_wide
+    else: 
+        fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12,12))
+        plts = plots
+    for var, ir, ic in plts:
         df = data[var]
         ax = axes[ir, ic]
         ax.plot(df.t, df.iloc[:,:N], 
@@ -112,32 +114,18 @@ def plot_SE_timeseries(seed, N, data=None):
         # ax.yaxis.set_major_locator(plt.MaxNLocator(5))
         if ir == 0 and ic == 0: ax.legend(handles=[l5, l50, lbl])
         # if ir == 0 and ic == 0: ax.legend(handles=[lbl, lbm])
-    plt.subplots_adjust(hspace=0.1)
+    if wide: plt.subplots_adjust(wspace=0.21, hspace=0.1)
+    else: plt.subplots_adjust(hspace=0.1)
     fig.savefig(os.path.join(figures_path, 'effluent_yt.png'), dpi=300)
     return fig, ax
 
 def UA_w_all_params():
     seed = int(str(time())[-3:])
     run_uncertainty(mdl, N, T, t_step, method='BDF', seed=seed)
-    out = analyze_SE_vars(seed)
+    out = analyze_SE_vars(seed, N)
     fig, ax = plot_SE_timeseries(seed, N, data=out)
-    
-#%% 
-#!!! DO NOT UNCOMMENT !!!
-# f_b2cod = cmps.f_BOD5_COD
-# icod = cmps.i_COD
-# def SE_BOD5_getter(arr):
-#     head, tail = idx['S1']
-#     state = arr[-1, head:(tail-1)]
-#     return sum(state * f_b2cod * icod)
-
-# seed = 157
-# folder = os.path.join(results_path, f'time_series_data_{seed}')
-# dct_bod = analyze_timeseries(SE_BOD5_getter, N, folder=folder, todf=False)
-# path = os.path.join(results_path, f'table_{seed}.xlsx')
-# df = load_data(path, header=[0,1])
-# df['Effluent', 'Effluent BOD5 [mg/L]'] = list(dct_bod.values())
-# df.to_excel(path, header=[0,1])
+    # fig, ax = plot_SE_timeseries(seed, N)
+    # return seed
 
 #%% SA to narrow down the number of DVs for further analyses
 
@@ -185,6 +173,7 @@ def meshgrid_sample(p1, p2, n):
 
 irs = [0, 0, 1, 1, 2, 2] 
 ics = [0, 1, 0, 1, 0, 1]
+
 def fmt(x):
     s = f"{x:.1f}"
     if s.endswith("0"):
@@ -194,7 +183,7 @@ def fmt(x):
 from exposan.bsm1 import system as sys 
 xbl = sys.aer1.Q_air
 ybl = sys.Q_was
-def plot_heatmaps(xx, yy, n, model=None, path=''):
+def plot_heatmaps(xx, yy, n, model=None, path='', wide=False):
     if model: data = model.table
     else: 
         path = path or os.path.join(results_path, 'table_2dv.xlsx')
@@ -202,8 +191,13 @@ def plot_heatmaps(xx, yy, n, model=None, path=''):
     zs = data.loc[:,['Effluent', 'WAS']].to_numpy(copy=True)
     zs = zs.T
     zz = zs.reshape((zs.shape[0], n, n))
-    fig, axes = plt.subplots(3, 2, sharex=True, sharey=True, figsize=(9,12))
-    for z, ir, ic in zip(zz, irs, ics):
+    if wide:
+        plts = zip(zz, ics, irs)
+        fig, axes = plt.subplots(2, 3, sharex=True, sharey=True, figsize=(12,9))
+    else:
+        plts = zip(zz, irs, ics)    
+        fig, axes = plt.subplots(3, 2, sharex=True, sharey=True, figsize=(9,12))
+    for z, ir, ic in plts:
         ax = axes[ir, ic]
         pos = ax.imshow(z, aspect='auto', extent=(xx[0,0], xx[0,-1], yy[0,0], yy[-1,0]),
                         interpolation='spline16', origin='lower')
@@ -239,14 +233,9 @@ def dv_analysis(n=20, T=50, t_step=1, save_to='table_2dv.xlsx'):
     # plot_heatmaps(xx, yy, n, path=os.path.join(results_path, save_to))
     
 #%% 50-d simulations with different initial conditions
-keys_wide = ['S_S', 'S_NO', 'X_S', 'X_BH', 
-             'S_O', 'S_NH', 'X_I', 'X_BA',
-             'S_ALK', 'S_ND', 'X_ND', 'X_P']
-irows_wide = [0,0,0,0,1,1,1,1,2,2,2,2]
-icols_wide = [0,1,2,3,0,1,2,3,0,1,2,3]
-plots_wide = zip(keys_wide, irows_wide, icols_wide)
 
-def plot_SE_yt_w_diff_init(seed, N, data=None):
+
+def plot_SE_yt_w_diff_init(seed, N, data=None, wide=False):
     if data is None:
         try:
             path = os.path.join(results_path, f'SE_vars_{seed}.pckl')
@@ -256,8 +245,13 @@ def plot_SE_yt_w_diff_init(seed, N, data=None):
     bm_data = load_data(os.path.join(results_path, 'matlab_exported_data.xlsx'),
                         sheet='Data_ASin_changed', header=1, skiprows=0, usecols='A,CU:DF')
     bm_data.columns = [col.rstrip('.6') for col in bm_data.columns]
-    fig, axes = plt.subplots(3, 4, sharex=True, figsize=(15, 8))
-    for var, ir, ic in plots_wide:
+    if wide: 
+        fig, axes = plt.subplots(3, 4, sharex=True, figsize=(15,8))
+        plts = plots_wide
+    else: 
+        fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12,12))
+        plts = plots
+    for var, ir, ic in plts:
         df = data[var]
         ax = axes[ir, ic]
         ax.plot(df.t, df.iloc[:,:N], 
@@ -271,7 +265,8 @@ def plot_SE_yt_w_diff_init(seed, N, data=None):
         ax2.yaxis.set_major_formatter(plt.NullFormatter())
         if var == 'X_ND': ax.yaxis.set_major_formatter(plt.FormatStrFormatter('%.3f'))
         if ir == 0 and ic == 0: ax.legend(handles=[lbm])
-    plt.subplots_adjust(wspace=0.21, hspace=0.1)
+    if wide: plt.subplots_adjust(wspace=0.21, hspace=0.1)
+    else: plt.subplots_adjust(hspace=0.1)
     fig.savefig(os.path.join(figures_path, 'effluent_yt_wdiff_init_wide.png'), dpi=300)
     return fig, ax
 
@@ -281,12 +276,15 @@ def UA_w_diff_inits(N=100):
     run_wdiff_init(mdls, N, T, t_step, method='BDF', seed=seed)
     out = analyze_SE_vars(seed, N)
     fig, ax = plot_SE_yt_w_diff_init(seed, N, data=out)
+    # return seed
 
 #%%
 if __name__ == '__main__':
     # UA_w_all_params()
-    run_sensitivity(157)
-    # dv_analysis()
-    # plot_SE_timeseries(seed=157, N=1000)
-    # plot_SE_yt_w_diff_init(seed=708, N=100)
+    # run_sensitivity(624)
+    # plot_SE_timeseries(seed=624, N=N, wide=True)
+    
+    dv_analysis()
+    
     # UA_w_diff_inits()
+    # plot_SE_yt_w_diff_init(seed=235, N=100)

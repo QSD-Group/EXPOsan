@@ -194,7 +194,6 @@ def get_TKN():
 
 metric(getter=SE.get_TSS, name='Effluent TSS', units='mg/L', element='Effluent')
 
-
 @metric(name='Daily sludge production', units='kg TSS/d', element='WAS')
 def get_daily_sludge_production():
     return WAS.get_TSS() * 1e-3 * WAS.F_vol * 24
