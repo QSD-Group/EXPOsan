@@ -1,1 +1,7 @@
+# Needed by exposan
 qsdsan>=1.0.7
+
+# Packages for testing
+pytest-cov
+coveralls
+nbval
