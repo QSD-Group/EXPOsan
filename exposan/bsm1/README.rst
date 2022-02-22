@@ -40,7 +40,7 @@ Load BSM1 system with default settings
   >>> bsm.bsm1.show()
   System: BSM1
   Highest convergence error among components in recycle
-  streams {S2-0, S1-0} after 0 loops:
+  streams {C1-1, O3-0} after 0 loops:
   - flow rate   0.00e+00 kmol/hr (0%)
   - temperature 0.00e+00 K (0%)
   ins...
@@ -55,10 +55,10 @@ Load BSM1 system with default settings
                       S_ND   0.381
                       ...
   outs...
-  [0] Effluent
+  [0] WAS
       phase: 'l', T: 293.15 K, P: 101325 Pa
       flow: 0
-  [1] WAS
+  [1] Effluent
       phase: 'l', T: 293.15 K, P: 101325 Pa
       flow: 0
 
@@ -66,17 +66,21 @@ Load BSM1 system with default settings
   >>> bsm.C1.show()
   FlatBottomCircularClarifier: C1
   ins...
-  [0] treated  from  Splitter-S1
+  [0] treated  from  CSTR-O3
       phase: 'l', T: 298.15 K, P: 101325 Pa
       flow: 0
       WasteStream-specific properties: None for empty waste streams
   outs...
-  [0] Effluent
+  [0] ws10  to  Sampler-S1
+      phase: 'l', T: 298.15 K, P: 101325 Pa
+      flow: 0
+      WasteStream-specific properties: None for empty waste streams
+  [1] RAS  to  CSTR-A1
       phase: 'l', T: 293.15 K, P: 101325 Pa
       flow: 0
       WasteStream-specific properties: None for empty waste streams
-  [1] sludge  to  Splitter-S2
-      phase: 'l', T: 298.15 K, P: 101325 Pa
+  [2] WAS
+      phase: 'l', T: 293.15 K, P: 101325 Pa
       flow: 0
       WasteStream-specific properties: None for empty waste streams
 
@@ -98,23 +102,6 @@ Adjust model settings
     >>> bsm.A1.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100,
                              X_P=100, S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0,
                              S_NO=20, S_ALK=7*12)
-    >>> bsm.A1.state
-    {'S_I': 30.0,
-     'S_S': 5.0,
-     'X_I': 1000.0,
-     'X_S': 100.0,
-     'X_BH': 500.0,
-     'X_BA': 100.0,
-     'X_P': 100.0,
-     'S_O': 2.0,
-     'S_NO': 20.0,
-     'S_NH': 2.0,
-     'S_ND': 1.0,
-     'X_ND': 1.0,
-     'S_ALK': 84.0,
-     'S_N2': 0.0,
-     'H2O': 0.0,
-     'Q': 92229.99999998896}
 
     >>> # You can also set the initial TSS and solids composition in a clarifier
     >>> bsm.C1.set_init_TSS([12.4969, 18.1132, 29.5402, 68.9781, 356.0747,
@@ -148,51 +135,49 @@ Dynamic simulation of the BSM1 system can be performed with the built in `simula
 .. code-block:: python
 
     >>> # You can also look at the final state of a specific stream after simulation
-    >>> bsm1.outs[0].show()
-    WasteStream: Effluent from <FlatBottomCircularClarifier: C1>
+    >>> bsm1.outs[1].show()
+    WasteStream: Effluent from <Sampler: S1>
      phase: 'l', T: 293.15 K, P: 101325 Pa
      flow (g/hr): S_I    2.26e+04
-                  S_S    691
-                  X_I    3.18e+03
-                  X_S    141
-                  X_BH   7.1e+03
-                  X_BA   414
-                  X_P    1.25e+03
-                  S_O    401
-                  S_NO   7.98e+03
-                  S_NH   1.7e+03
-                  S_ND   535
-                  X_ND   10
-                  S_ALK  3.75e+04
-                  S_N2   1.97e+04
-                  H2O    7.5e+08
+                  S_S    697
+                  X_I    3.35e+03
+                  X_S    144
+                  X_BH   7.17e+03
+                  X_BA   402
+                  X_P    852
+                  S_O    400
+                  S_NO   7.68e+03
+                  S_NH   2.1e+03
+                  S_ND   538
+                  X_ND   10.2
+                  S_ALK  3.81e+04
+                  S_N2   1.96e+04
+                  H2O    7.52e+08
      WasteStream-specific properties:
       pH         : 7.0
-      COD        : 47.0 mg/L
-      BOD        : 6.4 mg/L
-      TC         : 65.4 mg/L
-      TOC        : 15.6 mg/L
-      TN         : 14.7 mg/L
-      TKN        : 14.7 mg/L
+      COD        : 46.8 mg/L
+      BOD        : 6.5 mg/L
+      TC         : 66.1 mg/L
+      TOC        : 15.5 mg/L
+      TN         : 14.9 mg/L
       TP         : 0.6 mg/L
       TK         : 0.1 mg/L
      Component concentrations (mg/L):
       S_I    30.0
       S_S    0.9
-      X_I    4.2
+      X_I    4.5
       X_S    0.2
-      X_BH   9.4
-      X_BA   0.6
-      X_P    1.7
+      X_BH   9.5
+      X_BA   0.5
+      X_P    1.1
       S_O    0.5
-      S_NO   10.6
-      S_NH   2.3
+      S_NO   10.2
+      S_NH   2.8
       S_ND   0.7
       X_ND   0.0
-      S_ALK  49.8
-      S_N2   26.2
-      H2O    996500.4
-
+      S_ALK  50.6
+      S_N2   26.0
+      H2O    998782.9
 
 
 References

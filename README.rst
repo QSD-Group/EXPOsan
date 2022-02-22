@@ -2,16 +2,34 @@
 EXPOsan: EXPOsition of sanitation and resource recovery systems
 ===============================================================
 
+.. License
 .. image:: https://img.shields.io/pypi/l/exposan?color=blue&logo=UIUC&style=flat
    :target: https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+
+.. Tested Python version
 .. image:: https://img.shields.io/pypi/pyversions/exposan?style=flat
    :target: https://pypi.python.org/pypi/exposan
+
+.. PyPI version
 .. image:: https://img.shields.io/pypi/v/exposan?style=flat&color=blue
    :target: https://pypi.org/project/exposan/
-.. image:: https://img.shields.io/appveyor/build/yalinli2/EXPOsan/main?label=build&logo=appveyor
-   :target: https://github.com/QSD-Group/EXPOsan/tree/main
+
+.. GitHub test of the main branch
+.. image:: https://github.com/QSD-Group/EXPOsan/actions/workflows/build-latest.yml/badge.svg?branch=main
+   :target: https://github.com/QSD-Group/EXPOsan/actions/workflows/build-latest.yml
+
+.. GitHub test of the stable branch (i.e., PyPI released package)
+.. image:: https://github.com/QSD-Group/EXPOsan/actions/workflows/build-stable.yml/badge.svg?branch=stable
+   :target: https://github.com/QSD-Group/EXPOsan/actions/workflows/build-stable.yml
+
+.. Code of Conduct
 .. image:: https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg
    :target: https://qsdsan.readthedocs.io/en/latest/CODE_OF_CONDUCT.html
+
+.. AppVeyor test of the stable branch, not in active use
+..
+    image:: https://img.shields.io/appveyor/build/yalinli2/EXPOsan/main?label=build-stable&logo=appveyor
+   :target: https://github.com/QSD-Group/EXPOsan/tree/stable
 
 
 What is ``EXPOsan``?
@@ -27,7 +45,7 @@ The easiest way is through ``pip``, in your command-line interface (e.g., Anacon
 
     pip install exposan
 
-If you need to update:
+If you need to upgrade:
 
 .. code::
 
@@ -90,6 +108,11 @@ Authors and Contributing
 ``EXPOsan`` is developed by the Quantitative Sustainable Design Group led by members of the `Guest Group <http://engineeringforsustainability.com/>`_ and `other developers <https://github.com/QSD-Group/EXPOsan/graphs/contributors>`_ that have contributed to the repository. Yalin Li (`@yalinli2 <https://github.com/yalinli2>`_; `email <zoe.yalin.li@gmail.com>`_) is the currently maintainer of this repository and package.
 
 Please refer to the `Contributing to QSDsan <https://qsdsan.readthedocs.io/en/latest/CONTRIBUTING.html>`_ section of the documentation for instructions and guidelines.
+
+
+Stay Connected
+--------------
+If you would like to receive exciting news related to the QSDsan platform, you can subscribe to email updates using `this form <https://groups.webservices.illinois.edu/subscribe/154591>`_ (don't worry, you will be able to unsubscribe :)). Thank you in advance for your interest!
 
 
 License information

@@ -134,7 +134,10 @@ GWP_dct = {
     'Biogas': -3*get_biogas_factor()
     }
 
-if not ImpactItem.get_item('Excavation'): # prevent from reloading
+try: # prevent from reloading
+    Excavation = ImpactItem.get_item('Excavation')
+    Excavation.indicators[0]
+except:
     load_lca_data('original')
 
 GWP = ImpactIndicator.get_indicator('GWP')
