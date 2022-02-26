@@ -20,8 +20,8 @@ from exposan.bsm1 import model_bsm1 as mdl, model_2dv as mdl2, model_ss as mdls,
     results_path, figures_path
 import os
 import numpy as np
-import matplotlib.pyplot as plt
-
+import matplotlib as mpl, matplotlib.pyplot as plt
+mpl.rcParams['font.sans-serif'] = 'arial' #!!! Yalin added this
 
 N = 1000
 T = 50
@@ -31,7 +31,7 @@ t_step = 1
 
 def single_SE_state_var_getter(arr, variable):
     if variable == 'Q': i = -1
-    else: 
+    else:
         i_cmp = cmps.index(variable)
         i = 1 + i_cmp
     if variable == 'S_ALK': return arr[:, i]/12
@@ -45,7 +45,7 @@ def analyze_SE_vars(seed, N, pickle=True):
     pcs = np.array([0, 5, 25, 50, 75, 95, 100])
     col_names = [f'{p}th percentile' for p in pcs]
     for var in state_vars:
-        df = analyze_timeseries(single_SE_state_var_getter, N=N, folder=folder, 
+        df = analyze_timeseries(single_SE_state_var_getter, N=N, folder=folder,
                                 variable=var)
         quants = np.percentile(df, q = pcs, axis=1)
         df[col_names] = quants.T
@@ -56,15 +56,15 @@ def analyze_SE_vars(seed, N, pickle=True):
         save_pickle(dct, path)
     return dct
 
-keys = ['S_S', 'S_O', 'S_ALK', 
-        'S_NO', 'S_NH', 'S_ND', 
+keys = ['S_S', 'S_O', 'S_ALK',
+        'S_NO', 'S_NH', 'S_ND',
         'X_S', 'X_I', 'X_ND',
         'X_BH', 'X_BA', 'X_P']
 irows = [0,0,0,1,1,1,2,2,2,3,3,3]
 icols = [0,1,2,0,1,2,0,1,2,0,1,2]
 plots = zip(keys, irows, icols)
 
-keys_wide = ['S_S', 'S_NO', 'X_S', 'X_BH', 
+keys_wide = ['S_S', 'S_NO', 'X_S', 'X_BH',
              'S_O', 'S_NH', 'X_I', 'X_BA',
              'S_ALK', 'S_ND', 'X_ND', 'X_P']
 irows_wide = [0,0,0,0,1,1,1,1,2,2,2,2]
@@ -85,29 +85,29 @@ def plot_SE_timeseries(seed, N, data=None, wide=False):
                         skiprows=[0,2], header=0, usecols='B:Q')
     bl_data.columns = [col.split(' ')[0] for col in bl_data.columns]
     bl_data.S_ALK = bl_data.S_ALK/12
-    if wide: 
+    if wide:
         fig, axes = plt.subplots(3, 4, sharex=True, figsize=(15,8))
         plts = plots_wide
-    else: 
+    else:
         fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12,12))
         plts = plots
     for var, ir, ic in plts:
         df = data[var]
         ax = axes[ir, ic]
-        ax.plot(df.t, df.iloc[:,:N], 
+        ax.plot(df.t, df.iloc[:,:N],
                 color='grey', linestyle='-', alpha=0.05)
         lbl, = ax.plot(df.t, bl_data.loc[:, var],
                      color='orange', linestyle='-', linewidth=2.5,
                       label='Base')
         l5, l95, = ax.plot(df.t, df.loc[:,['5th percentile', '95th percentile']],
-                      color='blue', linestyle='--', 
+                      color='blue', linestyle='--',
                       label='5th, 95th')
         l50, = ax.plot(df.t, df.loc[:,'50th percentile'],
                       color='black', linestyle='-.',
                       label='50th')
-        ax.tick_params(axis='both', direction='inout')
+        ax.tick_params(axis='both', direction='inout', labelsize=12) #!!! Yalin added
         ax2 = ax.secondary_yaxis('right')
-        ax2.tick_params(axis='y', direction='in')
+        ax2.tick_params(axis='y', direction='in', labelsize=12) #!!! Yalin added
         ax2.yaxis.set_major_formatter(plt.NullFormatter())
         # lbm,  = ax.plot(df.t, bm_data.loc[:, var],
         #               color='black', linestyle='-.', label='Matlab/Simulink')
@@ -140,8 +140,25 @@ def plot_kde2d_metrics(model):
         fig, ax = plot_uncertainties(model, x_axis=metrics[i], y_axis=metrics[j],
                                       kind='kde-hist', center_kws={'fill':True},
                                       margin_kws={'kde':True, 'fill':True})
+        #!!! Yalin added this, but not sure which model to run so haven't tested it out
+        ax0, ax1, ax2 = fig.axes # KDE, top box, right box
+        ax0x = ax0.secondary_xaxis('top')
+        ax0y = ax0.secondary_yaxis('right')
+        for ax in (ax0, ax0x, ax0y):
+            ax.tick_params(axis='both', which='both', direction='inout', width=0.5)
+
+        for txt in ax0.get_xticklabels()+ax0.get_yticklabels():
+            txt.set_fontsize(12)
+        ax0x.set_xticklabels('')
+        ax0y.set_yticklabels('')
+
+        ax1.xaxis.set_visible(False)
+        ax1.spines.clear()
+        ax2.spines.clear()
+        ax2.yaxis.set_visible(False)
+
         fig.savefig(os.path.join(figures_path, f'{x}_vs_{y}.png'), dpi=300)
-    fig, ax = plot_uncertainties(model, x_axis=metrics[6], kind='hist', 
+    fig, ax = plot_uncertainties(model, x_axis=metrics[6], kind='hist',
                                  center_kws={'kde':True})
     fig.savefig(os.path.join(figures_path, 'SRT_hist.png'), dpi=300)
 
@@ -152,7 +169,7 @@ def run_ks_test(model):
     key_metrics = [model.metrics[i] for i in to_analyze]
     thrsh = [thresholds[i] for i in to_analyze]
     path = os.path.join(results_path, 'KS_test.xlsx')
-    Ds, ps = get_correlations(model, input_y=key_metrics, kind='KS', 
+    Ds, ps = get_correlations(model, input_y=key_metrics, kind='KS',
                               file=path, thresholds=thrsh)
 
 def run_sensitivity(seed):
@@ -171,7 +188,7 @@ def meshgrid_sample(p1, p2, n):
     samples = np.array([xx.reshape(n**2), yy.reshape(n**2)])
     return samples.T, xx, yy
 
-irs = [0, 0, 1, 1, 2, 2] 
+irs = [0, 0, 1, 1, 2, 2]
 ics = [0, 1, 0, 1, 0, 1]
 
 def fmt(x):
@@ -180,12 +197,12 @@ def fmt(x):
         s = f"{x:.0f}"
     return rf"{s}" if plt.rcParams["text.usetex"] else f"{s}"
 
-from exposan.bsm1 import system as sys 
+from exposan.bsm1 import system as sys
 xbl = sys.aer1.Q_air
 ybl = sys.Q_was
 def plot_heatmaps(xx, yy, n, model=None, path='', wide=False):
     if model: data = model.table
-    else: 
+    else:
         path = path or os.path.join(results_path, 'table_2dv.xlsx')
         data = load_data(path, header=[0,1])
     zs = data.loc[:,['Effluent', 'WAS']].to_numpy(copy=True)
@@ -195,7 +212,7 @@ def plot_heatmaps(xx, yy, n, model=None, path='', wide=False):
         plts = zip(zz, ics, irs)
         fig, axes = plt.subplots(2, 3, sharex=True, sharey=True, figsize=(12,9))
     else:
-        plts = zip(zz, irs, ics)    
+        plts = zip(zz, irs, ics)
         fig, axes = plt.subplots(3, 2, sharex=True, sharey=True, figsize=(9,12))
     for z, ir, ic in plts:
         ax = axes[ir, ic]
@@ -208,7 +225,7 @@ def plot_heatmaps(xx, yy, n, model=None, path='', wide=False):
         ax.plot(xbl, ybl, marker='D', mec='black', mew=1.5, mfc='white')
     fig.savefig(os.path.join(figures_path, 'heatmaps.png'), dpi=300)
     return fig, ax
-    
+
 def run_mapping(model, n, T, t_step, method='BDF', mpath='', tpath=''):
     x = model.parameters[0]
     y = model.parameters[1]
@@ -227,11 +244,11 @@ def run_mapping(model, n, T, t_step, method='BDF', mpath='', tpath=''):
     return xx, yy
 
 def dv_analysis(n=20, T=50, t_step=1, save_to='table_2dv.xlsx'):
-    xx, yy = run_mapping(mdl2, n, T, t_step, 
+    xx, yy = run_mapping(mdl2, n, T, t_step,
                          mpath=os.path.join(results_path, save_to))
     plot_heatmaps(xx, yy, n, mdl2)
     # plot_heatmaps(xx, yy, n, path=os.path.join(results_path, save_to))
-    
+
 #%% 50-d simulations with different initial conditions
 
 
@@ -245,16 +262,16 @@ def plot_SE_yt_w_diff_init(seed, N, data=None, wide=False):
     bm_data = load_data(os.path.join(results_path, 'matlab_exported_data.xlsx'),
                         sheet='Data_ASin_changed', header=1, skiprows=0, usecols='A,CU:DF')
     bm_data.columns = [col.rstrip('.6') for col in bm_data.columns]
-    if wide: 
+    if wide:
         fig, axes = plt.subplots(3, 4, sharex=True, figsize=(15,8))
         plts = plots_wide
-    else: 
+    else:
         fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12,12))
         plts = plots
     for var, ir, ic in plts:
         df = data[var]
         ax = axes[ir, ic]
-        ax.plot(df.t, df.iloc[:,:N], 
+        ax.plot(df.t, df.iloc[:,:N],
                 color='grey', linestyle='-', alpha=0.25)
         lbm, = ax.plot(df.t, bm_data.loc[:, var],
                        color='red', linestyle='-.', label='MATLAB/Simulink')
@@ -271,7 +288,7 @@ def plot_SE_yt_w_diff_init(seed, N, data=None, wide=False):
     return fig, ax
 
 def UA_w_diff_inits(N=100):
-    seed = int(str(time())[-3:])    
+    seed = int(str(time())[-3:])
     # run_uncertainty(mdls, N, T, t_step, method='BDF', seed=seed)
     run_wdiff_init(mdls, N, T, t_step, method='BDF', seed=seed)
     out = analyze_SE_vars(seed, N)
@@ -282,9 +299,9 @@ def UA_w_diff_inits(N=100):
 if __name__ == '__main__':
     # UA_w_all_params()
     # run_sensitivity(624)
-    # plot_SE_timeseries(seed=624, N=N, wide=True)
-    
-    dv_analysis()
-    
+    plot_SE_timeseries(seed=624, N=N, wide=True)
+
+    # dv_analysis()
+
     # UA_w_diff_inits()
     # plot_SE_yt_w_diff_init(seed=235, N=100)
