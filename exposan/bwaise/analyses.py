@@ -340,6 +340,7 @@ def plot_morris_bubble(combineds):
 
     g.ax.set_xlabel('Metric', fontsize=20, fontweight='bold')
     g.ax.set_ylabel('Parameter', fontsize=20, fontweight='bold')
+    g.ax.tick_params(axis='both', which='both', direction='inout')
 
     for label in g.ax.get_xticklabels():
         label.set_rotation(60)
