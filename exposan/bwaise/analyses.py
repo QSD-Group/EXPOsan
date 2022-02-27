@@ -75,7 +75,7 @@ def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal',
              whis=(5, 95), sym=''):
     if kind == 'horizontal':
         fig, ax = s.plot_uncertainties(model, y_axis=metrics, kind='box',
-                                       center_kws={'color': color, 'width': 0.6,
+                                       center_kws={'color': color, 'width': 0.5,
                                                    'whis': whis, 'sym': sym})
         ax.get_legend().remove()
         fig.set_figheight(2.5)
@@ -84,7 +84,7 @@ def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal',
         ax.set_yticklabels([i.name.lstrip('Total ') for i in metrics], fontsize=20)
         ax.set_xticklabels([f'{i:.0%}' for i in ticks], fontsize=20)
         ax.xaxis.set_minor_locator(AutoMinorLocator(2))
-        ax.tick_params(axis='both', which='both', direction='inout')        
+        ax.tick_params(axis='both', which='both', direction='inout')
 
         ax2 = ax.secondary_xaxis('top')
         ax2.xaxis.set_major_formatter(plt.NullFormatter())
@@ -93,7 +93,7 @@ def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal',
         fig.subplots_adjust(left=0.2, bottom=0.25)
     else:
         fig, ax = s.plot_uncertainties(model, x_axis=metrics, kind='box',
-                                       center_kws={'color': color, 'width': 0.6,
+                                       center_kws={'color': color, 'width': 0.5,
                                                    'whis': whis, 'sym': sym})
         ax.get_legend().remove()
         fig.set_figwidth(2.5)
@@ -105,7 +105,7 @@ def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal',
         ax.set_yticklabels([f'{i:.0%}' for i in ticks], fontsize=20)
         ax.yaxis.set_minor_locator(AutoMinorLocator(2))
         ax.tick_params(axis='both', which='both', direction='inout')
-        
+
         ax2 = ax.secondary_yaxis('right')
         ax2.yaxis.set_major_formatter(plt.NullFormatter())
         ax2.yaxis.set_minor_locator(AutoMinorLocator(2))
@@ -136,7 +136,7 @@ def plot_kde(model, ID, color, metrics):
     ax0y = ax0.secondary_yaxis('right')
     ax0y.yaxis.set_minor_locator(AutoMinorLocator(2))
     for ax in (ax0, ax0x, ax0y):
-        ax.tick_params(axis='both', which='both', direction='inout')
+        ax.tick_params(axis='both', which='both', direction='inout', width=0.5)
 
     for i in (ax0, ax1):
         i.set_xlim(0, 60)
@@ -226,7 +226,8 @@ def plot_morris_scatter(model, morris_dct, combined_morris, color,
                     label = combined_morris[combined_morris.parameter==idx].index.values.item()
                     ax.annotate(label, (top.loc[idx].mu_star, top.loc[idx].sigma),
                                 xytext=(2, 2), textcoords='offset points',
-                                ha='center')
+                                ha='center', fontsize=14)
+            labelsize = 'large'
         else:
             if label_points:
                 labels = []
@@ -235,9 +236,11 @@ def plot_morris_scatter(model, morris_dct, combined_morris, color,
                     labels.append(ax.text(top.loc[idx].mu_star, top.loc[idx].sigma, label))
                 from adjustText import adjust_text
                 adjust_text(labels)
+            labelsize = None
 
         plot_minor_ticks_and_grid(ax, nx=1, ny=1)
-        ax.tick_params(axis='both', which='both', direction='inout')
+        ax.tick_params(axis='both', which='both', direction='inout', width=0.5,
+                       labelsize=labelsize)
 
         if not plot_combined:
             fig.subplots_adjust(bottom=0.2, left=0.25)
@@ -293,13 +296,17 @@ def plot_morris_scatter_all(models, morris_dct, combineds, RGBs):
 
         if n_model == 0:
             for n, ax in enumerate(axs):
-                ax.set_ylabel(model.metrics[n].name, fontsize=14)
-        axs[-1].set_xlabel(f'System {ID}', fontsize=14)
+                ax.set_ylabel(model.metrics[n].name, fontsize=14, fontweight='bold')
+                ax.yaxis.labelpad = 15
+        # breakpoint()
+        axs[0].set_xlabel(f'System {ID}', fontsize=14, fontweight='bold')
+        axs[0].xaxis.set_label_position('top')
+        axs[0].xaxis.labelpad = 15
 
     fig.tight_layout()
-    fig.supxlabel(r'Normalized $\mu^*$ [$\mu^*$/$\mu^*_{max}$]', fontsize=20, fontweight='bold')
-    fig.supylabel(r'Normalized $\sigma$ [$\sigma$/$\mu^*_{max}$]', fontsize=20, fontweight='bold')
-    fig.subplots_adjust(left=0.12, bottom=0.06)
+    fig.supxlabel(r'Normalized $\mu^*$ [$\mu^*$/$\mu^*_{max}$]', y=0.01, fontsize=20, fontweight='bold')
+    fig.supylabel(r'Normalized $\sigma$ [$\sigma$/$\mu^*_{max}$]', x=0, fontsize=20, fontweight='bold')
+    fig.subplots_adjust(left=0.12, bottom=0.05)
     fig.savefig(os.path.join(figures_path, 'morris_normalized_combined.png'), dpi=300)
 
 
@@ -333,11 +340,17 @@ def plot_morris_bubble(combineds):
 
     g.ax.set_xlabel('Metric', fontsize=20, fontweight='bold')
     g.ax.set_ylabel('Parameter', fontsize=20, fontweight='bold')
+    g.ax.tick_params(axis='both', which='both', direction='inout')
 
     for label in g.ax.get_xticklabels():
-        label.set_rotation(90)
+        label.set_rotation(60)
+        label.set_fontsize(14)
+    for label in g.ax.get_yticklabels():
+        label.set_fontsize(14)
+    for text in g.legend.get_texts():
+        text.set_fontsize(14)
 
-    g.fig.subplots_adjust(bottom=0.15)
+    g.fig.subplots_adjust(left=0.22, bottom=0.15)
     g.fig.savefig(os.path.join(figures_path, 'morris_normalized_bubble.png'), dpi=300)
 
     return g.ax

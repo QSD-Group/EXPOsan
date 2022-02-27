@@ -126,7 +126,7 @@ evaluate(modelA, morris_samples)
 dct = s.morris_analysis(modelA, inputs, metrics=key_metrics, seed=seed,
                         nan_policy='fill_mean')
 
-# Unfortunately the auto-labelling is not good when you have close points,
+# Unfortunately the auto-labeling is not good when you have close points,
 # so you'll have to do some manual manipulation
 fig, ax = s.plot_morris_results(dct, key_metrics[-2])
 
