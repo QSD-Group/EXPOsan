@@ -178,7 +178,7 @@ def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
 
     # Household size
     b = systems.household_size
-    D = shape.Trunc(shape.Normal(mu=b, sigma=1.8), 1)
+    D = shape.Trunc(shape.Normal(mu=b, sigma=1.8), lower=1)
     @param(name='Household size', element=Toilet, kind='coupled', units='cap/household',
            baseline=b, distribution=D)
     def set_household_size(i):
@@ -722,7 +722,7 @@ modelA = add_lagoon_parameters(A7, modelA)
 
 all_paramsA = modelA.parameters
 
-# Legacy codes to look at recoveries
+# # Legacy codes to look at recoveries
 # A1 = systems.A1
 # get_recovery = systems.get_recovery
 # get_ppl = systems.get_ppl

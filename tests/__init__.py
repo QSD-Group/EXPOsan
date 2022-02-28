@@ -12,17 +12,20 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-# Add a trailing "_" to differentiate the module from
+# Use trailing "_" to differentiate the module from
 # the functions within the module
 from . import (
     test_bsm1_,
     test_bwaise_,
+    test_cas_,
     )
 
 from .test_bsm1_ import *
 from .test_bwaise_ import *
+from .test_cas_ import *
 
 __all__ = (
     *test_bsm1_.__all__,
     *test_bwaise_.__all__,
+    *test_cas_.__all__,
     )

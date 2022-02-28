@@ -235,8 +235,10 @@ def batch_create_streams(prefix):
     return stream_dct
 
 def update_toilet_param(unit, kind):
-    unit.N_user = get_toilet_user()
-    unit.N_toilet = get_ppl(kind)/get_toilet_user()
+    # Use the private attribute so that the number of users/toilets will be exactly as assigned
+    # (i.e., can be fractions)
+    unit._N_user = get_toilet_user()
+    unit._N_toilet = get_ppl(kind)/get_toilet_user()
     unit._run()
 
 def update_lagoon_flow_rate(unit):

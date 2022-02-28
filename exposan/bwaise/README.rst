@@ -31,7 +31,7 @@ The change in the spreadsheet is denoted by red font with a note, and all change
 
 .. figure:: ./figures/sysC.png
 
-    *Scenario C (sysC): containaer-based toilet with existing treatment system*
+    *Scenario C (sysC): container-based toilet (urine diverting dry toilet, UDDT) with existing treatment system*
 
 
 Loading systems
@@ -41,7 +41,7 @@ Loading systems
     >>> # Import bwaise systems as modules
     >>> from exposan import bwaise as bw
     >>> # You can repeat these for `sysB` and `sysC`
-    >>> bw.sysA.show()
+    >>> bw.sysA.show() # doctest: +ELLIPSIS
     System: sysA
     ins...
     [0] toilet_paper
@@ -62,10 +62,10 @@ Loading systems
         flow (kmol/hr): CH4  5.57
     [1] A_N2O
         phase: 'g', T: 298.15 K, P: 101325 Pa
-        flow (kmol/hr): N2O  0.022
+        flow (kmol/hr): N2O  0.0215
     [2] A_sol_N
         phase: 'l', T: 298.15 K, P: 101325 Pa
-        flow (kmol/hr): NonNH3  0.0478
+        flow (kmol/hr): NonNH3  0.0482
     [3] A_sol_P
         phase: 'l', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): P  0.0984
@@ -77,10 +77,10 @@ Loading systems
         flow (kmol/hr): Mg       0.0967
                         Ca       0.446
                         H2O      12.4
-                        OtherSS  49.8
+                        OtherSS  50.1
     [6] A_liq_N
         phase: 'l', T: 298.15 K, P: 101325 Pa
-        flow (kmol/hr): NonNH3  0.79
+        flow (kmol/hr): NonNH3  0.846
     [7] A_liq_P
         phase: 'l', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): P  0.159
@@ -112,16 +112,16 @@ Loading systems
                         ...
     [12] evaporated
         phase: 'g', T: 298.15 K, P: 101325 Pa
-        flow (kmol/hr): H2O  84.3
+        flow (kmol/hr): H2O  84.2
     [13] reuse_loss
         phase: 'l', T: 298.15 K, P: 101325 Pa
-        flow (kmol/hr): NonNH3  0.0161
+        flow (kmol/hr): NonNH3  0.0173
                         P       0.00325
                         K       0.0147
                         Mg      0.00497
                         Ca      0.0114
     >>> # You can look at individual units
-    >>> bw.A1.show()
+    >>> bw.A1.show() # doctest: +ELLIPSIS
     Excretion: A1
     ins...
     outs...
@@ -139,7 +139,6 @@ Loading systems
          pH         : 7.0
          COD        : 5156.4 mg/L
          TN         : 4282.2 mg/L
-         TKN        : 4282.2 mg/L
          TP         : 443.3 mg/L
          TK         : 1182.7 mg/L
     [1] feces  to  PitLatrine-A2
@@ -156,7 +155,6 @@ Loading systems
          pH         : 7.0
          COD        : 123381.8 mg/L
          TN         : 3277.5 mg/L
-         TKN        : 3277.5 mg/L
          TP         : 1590.6 mg/L
          TK         : 2332.3 mg/L
 
@@ -167,50 +165,51 @@ TEA and LCA are performed through :class:`biosteam.TEA` and :class:`LCA` objects
 
 .. code-block:: python
 
-    >>> # Check the results for `sysA`
+    >>> # Check the TEA results for `sysA`
+    >>> bw.teaA.show() # doctest: +SKIP
     SimpleTEA: sysA
-    NPV  : -42,029,082 USD at 5.0% discount rate
+    NPV  : -42,012,580 USD at 5.0% discount rate
     >>> # There are also handy functions to allow you quickly see important results
-    >>> bw.print_summaries(bw.sysA)
+    >>> bw.print_summaries(bw.sysA) # doctest: +SKIP
 
     ---------- Summary for sysA ----------
 
     Total COD recovery is 5.1%, 2.3% in liquid, 2.8% in solid, 0.0% in gas.
-    Total N recovery is 9.0%, 8.5% in liquid, 0.5% in solid, 0.0% in gas.
+    Total N recovery is 9.6%, 9.1% in liquid, 0.5% in solid, 0.0% in gas.
     Total P recovery is 41.0%, 25.4% in liquid, 15.7% in solid, 0.0% in gas.
     Total K recovery is 76.1%, 66.0% in liquid, 10.1% in solid, 0.0% in gas.
 
 
     SimpleTEA: sysA
-    NPV  : -42,029,082 USD at 5.0% discount rate
+    NPV  : -42,012,580 USD at 5.0% discount rate
 
     Net cost: 14.2 USD/cap/yr.
     Capital: 10.6 USD/cap/yr.
     Operating: 4.0 USD/cap/yr.
-    Sales: 0.4 USD/cap/yr.
+    Sales: 0.5 USD/cap/yr.
 
 
     LCA: sysA (lifetime 8 yr)
     Impacts:
                                Construction  Transportation   Stream   Others    Total
-    GlobalWarming (kg CO2-eq)      3.13e+07        9.57e+05 1.83e+08 5.19e+04 2.15e+08
+    GlobalWarming (kg CO2-eq)      3.13e+07        9.57e+05 1.82e+08 5.19e+04 2.14e+08
 
 
 
     Impact indicator GlobalWarming:
 
-    Net emission: 58.8 kg CO2-eq/cap/yr.
+    Net emission: 58.6 kg CO2-eq/cap/yr.
     Construction: 8.6 kg CO2-eq/cap/yr.
     Transportation: 0.3 kg CO2-eq/cap/yr.
-    Direct emission: 52.9 kg CO2-eq/cap/yr.
-    Offset: -2.9 kg CO2-eq/cap/yr.
+    Direct emission: 52.8 kg CO2-eq/cap/yr.
+    Offset: -3.0 kg CO2-eq/cap/yr.
     Other: 0.01 kg CO2-eq/cap/yr.
     >>> # You can save reports in the "/results" folder with default names
     >>> # Note that system information (e.g., flows, designs) and TEA results
-    >>> # will be saved together, but LCA result will be saved in an individual Excel file
-    >>> bw.save_all_reports()
+    >>> # will be saved together, but LCA result will be saved in a separate Excel file
+    >>> # bw.save_all_reports()
     >>> # Alternatively, you can save individual reports at other places
-    >>> bw.sysA.save_report('sysA_report.xlsx')
+    >>> # bw.sysA.save_report('sysA_report.xlsx')
 
 
 Uncertainty and sensitivity analyses
@@ -224,11 +223,13 @@ You can make changes (e.g., add or remove parameters, change uncertainty ranges)
     >>> # Run the default model for `sysA`
     >>> models = bw.models
     >>> # Try use larger samples, here is just to get a quick demo result
-    >>> models.run_uncertainty(models.modelA, N=10)
+    >>> models.run_uncertainty(models.modelA, N=10) # doctest: +ELLIPSIS
+    function `run_uncertainty`
+    Total ...
     >>> # Your results will be cached in `models.result_dct['sysA']`
     >>> # You can organize the results as you like,
     >>> # but you can also save them using the default organized data
-    >>> models.save_uncertainty_results(models.modelA)
+    >>> # models.save_uncertainty_results(models.modelA)
 
 
 ``QSDsan`` also have built-in functions for advanced global sensitivity analyses and plotting functions, refer to the `stats <https://qsdsan.readthedocs.io/en/latest/stats.html>`_ module for examples.

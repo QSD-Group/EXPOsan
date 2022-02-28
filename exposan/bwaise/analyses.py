@@ -30,6 +30,7 @@ import warnings
 warnings.filterwarnings(action='ignore')
 
 models = modelA, modelB, modelC = bw.modelA, bw.modelB, bw.modelC
+
 RGBs = {
     'A': colors.Guest.orange.RGBn,
     'B': colors.Guest.green.RGBn,
@@ -37,7 +38,7 @@ RGBs = {
     }
 
 alt_names = {
-    'COD': 'energy',
+    # 'COD': 'energy',
     'Annual net cost': 'Cost',
     'Net emission GlobalWarming': 'GWP',
     }
@@ -377,7 +378,6 @@ def run(N_uncertainty=5000, N_morris=50, from_record=True,
         # Net cost, net GWP, and total COD/N/P/K recovery
         model.metrics = key_metrics = get_key_metrics(model, alt_names)
         ID = model.system.ID[-1]
-
         if not from_record:
             samples = model.sample(N=N_uncertainty, rule='L', seed=seed)
             model.load_samples(samples)
@@ -388,17 +388,18 @@ def run(N_uncertainty=5000, N_morris=50, from_record=True,
                 copy_samples(modelB, model, exclude=modelA.parameters)
 
             evaluate(model)
+
             table_dct['uncertainty'][ID] = model.table.copy()
             organized_dct = organize_uncertainty_results(
                 model=model, spearman_results=model.spearman())
             save_uncertainty_results(model, organized_dct)
+
         else:
             model.table = table_dct['uncertainty'][ID]
 
         # Make the plots
         _, ax_dct['box'][ID] = plot_box(model, ID, RGBs[ID], key_metrics[:-2], 'horizontal')
         _, ax_dct['kde'][ID] = plot_kde(model, ID, RGBs[ID], key_metrics[-2:])
-
 
     ########## Morris One-at-A-Time ##########
     origin_dct = dict(mu_star={}, sigma={})
@@ -512,8 +513,9 @@ def run(N_uncertainty=5000, N_morris=50, from_record=True,
 # =============================================================================
 
 if __name__ == '__main__':
+    # Run from scratch
     # run(N_uncertainty=5000, N_morris=50, from_record=False,
     #     label_morris_lines=False, label_morris_points=True)
-    # run(N_uncertainty=100, N_morris=2, from_record=False,
-    #     label_morris_lines=False, label_morris_points=True)
+
+    # Just make the plots
     run(from_record=True, label_morris_lines=False, label_morris_points=True)

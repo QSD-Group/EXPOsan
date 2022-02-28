@@ -15,7 +15,7 @@ from qsdsan import Component, Components, WasteStream, set_thermo, System
 from qsdsan.sanunits import Screening, Mixer, ActivatedSludgeProcess, \
     BeltThickener, SludgeDigester, CHP as CHPunit
 
-__all__ = ('cmps',)
+__all__ = ('cmps', 'cas',)
 
 
 

@@ -94,12 +94,12 @@ def plot_SE_timeseries(seed, N, data=None, wide=False):
     for var, ir, ic in plts:
         df = data[var]
         ax = axes[ir, ic]
-        ax.plot(df.t, df.iloc[:,:N],
+        ax.plot(df.t, df.iloc[:,:N].values,
                 color='grey', linestyle='-', alpha=0.05)
         lbl, = ax.plot(df.t, bl_data.loc[:, var],
                      color='orange', linestyle='-', linewidth=2.5,
                       label='Base')
-        l5, l95, = ax.plot(df.t, df.loc[:,['5th percentile', '95th percentile']],
+        l5, l95, = ax.plot(df.t, df.loc[:,['5th percentile', '95th percentile']].values,
                       color='blue', linestyle='--',
                       label='5th, 95th')
         l50, = ax.plot(df.t, df.loc[:,'50th percentile'],

@@ -4,7 +4,7 @@ bsm1: Benchmark Simulation Model No. 1
 
 Summary
 -------
-This module implements the Benchmark Simulation Model No. 1 (BSM1). [1]_ The code for process modeling and dynamic simulation has been verified against the MATLAB/Simulink [2]_ implementation developed by International Water Association (IWA) Task Group on Benchmarking of Control Strategies. The ``results`` folder contains the outputs from both this module (``sol_50d_LSODA.xlsx``) and MATLAB/Simulink results (``matlab_exported_data.xlsx`` and ``matlab_workspace.mat``) for comparison.
+This module implements the Benchmark Simulation Model No. 1 (BSM1). [1]_ The code for process modeling and dynamic simulation has been verified against the MATLAB/Simulink [2]_ implementation developed by International Water Association (IWA) Task Group on Benchmarking of Control Strategies. The ``results`` folder contains the outputs from both this module (``sol_50d_BDF.xlsx``) and MATLAB/Simulink results (``matlab_exported_data.xlsx`` and ``matlab_workspace.mat``) for comparison.
 
 .. figure:: ./figures/BSM1.png
 
@@ -37,7 +37,7 @@ Load BSM1 system with default settings
 
   >>> # Import bsm1 module
   >>> from exposan import bsm1 as bsm
-  >>> bsm.bsm1.show()
+  >>> bsm.bsm1.show() # doctest: +SKIP
   System: BSM1
   Highest convergence error among components in recycle
   streams {C1-1, O3-0} after 0 loops:
@@ -55,13 +55,12 @@ Load BSM1 system with default settings
                       S_ND   0.381
                       ...
   outs...
-  [0] WAS
+  [0] Effluent
       phase: 'l', T: 293.15 K, P: 101325 Pa
       flow: 0
-  [1] Effluent
+  [1] WAS
       phase: 'l', T: 293.15 K, P: 101325 Pa
       flow: 0
-
   >>> # You can look at individual units
   >>> bsm.C1.show()
   FlatBottomCircularClarifier: C1
@@ -71,8 +70,8 @@ Load BSM1 system with default settings
       flow: 0
       WasteStream-specific properties: None for empty waste streams
   outs...
-  [0] ws10  to  Sampler-S1
-      phase: 'l', T: 298.15 K, P: 101325 Pa
+  [0] Effluent
+      phase: 'l', T: 293.15 K, P: 101325 Pa
       flow: 0
       WasteStream-specific properties: None for empty waste streams
   [1] RAS  to  CSTR-A1
@@ -83,7 +82,6 @@ Load BSM1 system with default settings
       phase: 'l', T: 293.15 K, P: 101325 Pa
       flow: 0
       WasteStream-specific properties: None for empty waste streams
-
   >>> # You can also look at a specific model
   >>> bsm.aer1.show()
   Process: aer1
@@ -100,14 +98,13 @@ Adjust model settings
 
     >>> # You can set the initial concentrations in a CSTR
     >>> bsm.A1.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100,
-                             X_P=100, S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0,
-                             S_NO=20, S_ALK=7*12)
-
+    ...                      X_P=100, S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0,
+    ...                      S_NO=20, S_ALK=7*12)
     >>> # You can also set the initial TSS and solids composition in a clarifier
     >>> bsm.C1.set_init_TSS([12.4969, 18.1132, 29.5402, 68.9781, 356.0747,
-                             356.0747, 356.0747, 356.0747, 356.0747, 6393.9844])
+    ...                     356.0747, 356.0747, 356.0747, 356.0747, 6393.9844])
     >>> bsm.C1.set_init_sludge_solids(X_I=1507, X_S=89.3, X_BH=5913, X_BA=372.6,
-                                      X_P=641.7, X_ND=2.32)
+    ...                               X_P=641.7, X_ND=2.32)
 
 Biochemical process model parameters such as ASM1's stoichiometric or kinetic parameters can be customized upon and after initiation of the ``CompiledProcesses`` object. See `process <https://qsdsan.readthedocs.io/en/latest/Process.html#compiledprocesses>`_
 module for more details.
@@ -122,62 +119,76 @@ Dynamic simulation of the BSM1 system can be performed with the built in `simula
 .. code-block:: python
 
     >>> # Simulate with default solver and default settings.
-    >>> from exposan.bsm1 import bsm1
-    >>> bsm1.simulate(t_span = (0,10))
+    >>> # Set the dynamic tracker prior to simulation
+    >>> # if you want to track the state of a certain stream or unit
+    >>> from exposan.bsm1 import bsm1, RAS, O1
+    >>> bsm1.set_dynamic_tracker(RAS, O1)
+    >>> bsm1.simulate(t_span=(0,10), method='BDF')
     Simulation completed.
-    >>> # The state variables in each unit can be plotted over time after simulation.
-    >>> bsm1.units[0].plot_state_over_time(system = bsm1, state_var = ('S_S', 'S_NH'))
-    (<Figure size 576x324 with 1 Axes>,
-     <AxesSubplot:xlabel='Time [d]', ylabel='Concentration'>)
+    >>> # The state variables in each unit can be plotted over time
+    >>> RAS.scope.plot_time_series(('S_S', 'S_NH')) # doctest: +ELLIPSIS
+    (<Figure size ...
+    >>> O1.scope.plot_time_series(('S_S', 'S_NH')) # doctest: +ELLIPSIS
+    (<Figure size ...
+    >>> # Or you can retrieve the time-series record after simulation
+    >>> # at desired time step
+    >>> bsm1.scope.export(t_eval=range(10)) # doctest: +ELLIPSIS
+    ID ...
 
-.. figure:: ./figures/demo_A1_state.png
+.. figure:: ./figures/demo_RAS_state.png
+  
+    *Time-series state of return activated sludge (RAS)*
+
+.. figure:: ./figures/demo_O1_state.png
+
+    *Time-series state of the first aerobic CSTR (O1)*
 
 .. code-block:: python
 
     >>> # You can also look at the final state of a specific stream after simulation
     >>> bsm1.outs[1].show()
-    WasteStream: Effluent from <Sampler: S1>
+    WasteStream: WAS from <FlatBottomCircularClarifier: C1>
      phase: 'l', T: 293.15 K, P: 101325 Pa
-     flow (g/hr): S_I    2.26e+04
-                  S_S    697
-                  X_I    3.35e+03
-                  X_S    144
-                  X_BH   7.17e+03
-                  X_BA   402
-                  X_P    852
-                  S_O    400
-                  S_NO   7.68e+03
-                  S_NH   2.1e+03
-                  S_ND   538
-                  X_ND   10.2
-                  S_ALK  3.81e+04
-                  S_N2   1.96e+04
-                  H2O    7.52e+08
+     flow (g/hr): S_I    481
+                  S_S    14.8
+                  X_I    3.47e+04
+                  X_S    1.47e+03
+                  X_BH   7.34e+04
+                  X_BA   4.17e+03
+                  X_P    8.81e+03
+                  S_O    8.52
+                  S_NO   166
+                  S_NH   41.7
+                  S_ND   11.5
+                  X_ND   104
+                  S_ALK  807
+                  S_N2   418
+                  H2O    1.59e+07
      WasteStream-specific properties:
       pH         : 7.0
-      COD        : 46.8 mg/L
-      BOD        : 6.5 mg/L
-      TC         : 66.1 mg/L
-      TOC        : 15.5 mg/L
-      TN         : 14.9 mg/L
-      TP         : 0.6 mg/L
-      TK         : 0.1 mg/L
+      COD        : 7669.3 mg/L
+      BOD        : 2792.6 mg/L
+      TC         : 2752.5 mg/L
+      TOC        : 2702.2 mg/L
+      TN         : 569.6 mg/L
+      TP         : 120.2 mg/L
+      TK         : 25.7 mg/L
      Component concentrations (mg/L):
       S_I    30.0
       S_S    0.9
-      X_I    4.5
-      X_S    0.2
-      X_BH   9.5
-      X_BA   0.5
-      X_P    1.1
+      X_I    2163.9
+      X_S    91.7
+      X_BH   4573.8
+      X_BA   259.7
+      X_P    549.4
       S_O    0.5
-      S_NO   10.2
-      S_NH   2.8
+      S_NO   10.3
+      S_NH   2.6
       S_ND   0.7
-      X_ND   0.0
-      S_ALK  50.6
-      S_N2   26.0
-      H2O    998782.9
+      X_ND   6.5
+      S_ALK  50.3
+      S_N2   26.1
+      H2O    993889.0
 
 
 References

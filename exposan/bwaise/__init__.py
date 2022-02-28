@@ -44,10 +44,14 @@ from .systems import *
 from .models import *
 
 __all__ = (
+    'evaluate',
+    'get_key_metrics',
+    'bwaise_path',
+    'data_path',
+    'results_path',
+    'figures_path',
 	*_cmps.__all__,
     *_lca_data.__all__,
 	*systems.__all__,
     *models.__all__,
-    'evaluate',
-    'get_key_metrics',
 	)

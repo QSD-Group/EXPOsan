@@ -14,9 +14,9 @@ for license details.
 
 import os
 bsm1_path = os.path.dirname(__file__)
-figures_path = os.path.join(bsm1_path, 'figures')
 data_path = os.path.join(bsm1_path, 'data')
 results_path = os.path.join(bsm1_path, 'results')
+figures_path = os.path.join(bsm1_path, 'figures')
 del os
 
 from . import system
@@ -27,9 +27,9 @@ from .model import *
 
 __all__ = (
     'bsm1_path',
-    'figures_path',
     'data_path',
     'results_path',
+    'figures_path',
     *system.__all__,
     *model.__all__,
 	)
