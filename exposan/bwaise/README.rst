@@ -6,9 +6,9 @@ Summary
 -------
 Systems included in this module are based on Scenarios A-C as described in Trimmer et al. [1]_ and named as "sysA", "sysB", and "sysC". Previous scripts developed for modeling and analyses of the systems can be found in another `repository <https://github.com/QSD-Group/Bwaise-sanitation-alternatives>`_.
 
-Results generated from this module have been benchmarked against Trimmer et al. [1]_ and you can find the result comparison in the ``comparison`` folder. The folder ``data`` contains data needed to run the module, and ``figures`` and ``results`` contain the archived figures and results generated for Li and Zhang et al.[2]_ 
+Results generated from this module have been benchmarked against Trimmer et al. [1]_ and you can find the result comparison in the ``comparison`` folder. The folder ``data`` contains data needed to run the module, and ``figures`` and ``results`` contain the archived figures and results generated for Li and Zhang et al. [2]_ 
 
-To reproduce the results and figures included in Li and Zhang et al.[2]_, directly run ``systems.py``/``analyses.py``. You'll need the package `adjustText <https://github.com/Phlya/adjustText>`_ in addition to ``EXPOsan``'s requirements. You can find a full list of the dependency packages in `qsdsan.yml <https://github.com/QSD-Group/EXPOsan/blob/main/exposan/bwaise/qsdsan.yml>`_, and create a new environment based on it using ``conda env create --file qsdsan.yml``.
+To reproduce the results and figures included in Li and Zhang et al. [2]_, directly run ``systems.py``/``analyses.py``. You'll need the package `adjustText <https://github.com/Phlya/adjustText>`_ in addition to ``EXPOsan``'s requirements. You can find a full list of the dependency packages in `qsdsan.yml <https://github.com/QSD-Group/EXPOsan/blob/main/exposan/bwaise/qsdsan.yml>`_, and create a new environment based on it using ``conda env create --file qsdsan.yml``.
 
 To run the module developed in Trimmer et al. [1]_, you can run the `Bwaise_sanitation_model.py` script in either `baseline <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bwaise/comparison/baseline>`_ or `uncertainty <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bwaise/comparison/uncertainty>`_.
 
