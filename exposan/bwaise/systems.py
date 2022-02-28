@@ -24,6 +24,7 @@ import qsdsan as qs
 from collections.abc import Iterable
 from sklearn.linear_model import LinearRegression as LR
 from qsdsan import (
+    Flowsheet, main_flowsheet,
     WasteStream,
     sanunits as su,
     PowerUtility,
@@ -275,6 +276,9 @@ def adjust_NH3_loss(unit):
 # Scenario A (sysA): pit latrine with existing treatment system
 # =============================================================================
 
+# Set flowsheet to avoid stream replacement warnings
+flowsheetA = Flowsheet('sysA')
+main_flowsheet.set_flowsheet(flowsheetA)
 streamsA = batch_create_streams('A')
 
 #################### Human Inputs ####################
@@ -397,6 +401,8 @@ lcaA = LCA(system=sysA, lifetime=get_A4_lifetime(), lifetime_unit='yr', uptime_r
 # Scenario B (sysB): pit latrine with anaerobic treatment
 # =============================================================================
 
+flowsheetB = Flowsheet('sysB')
+main_flowsheet.set_flowsheet(flowsheetB)
 streamsB = batch_create_streams('B')
 B_biogas_item = ImpactItem.get_item('Biogas_item').copy('B_biogas_item', set_as_source=True)
 streamsB['biogas'] = WasteStream('B_biogas', phase='g', price=price_dct['Biogas'],
@@ -529,6 +535,8 @@ lcaB = LCA(system=sysB, lifetime=get_B4_lifetime(), lifetime_unit='yr', uptime_r
 # Scenario C (sysC): containaer-based sanitation with existing treatment system
 # =============================================================================
 
+flowsheetC = Flowsheet('sysC')
+main_flowsheet.set_flowsheet(flowsheetC)
 streamsC = batch_create_streams('C')
 
 #################### Human Inputs ####################

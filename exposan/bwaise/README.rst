@@ -6,9 +6,9 @@ Summary
 -------
 Systems included in this module are based on Scenarios A-C as described in Trimmer et al. [1]_ and named as "sysA", "sysB", and "sysC". Previous scripts developed for modeling and analyses of the systems can be found in another `repository <https://github.com/QSD-Group/Bwaise-sanitation-alternatives>`_.
 
-Results generated from this module have been benchmarked against Trimmer et al. [1]_ and you can find the result comparison in the ``comparison`` folder. The folder ``data`` contains data needed to run the module, and ``figures`` and ``results`` contain the archived figures and results generated for Li et al.[2]_ 
+Results generated from this module have been benchmarked against Trimmer et al. [1]_ and you can find the result comparison in the ``comparison`` folder. The folder ``data`` contains data needed to run the module, and ``figures`` and ``results`` contain the archived figures and results generated for Li and Zhang et al.[2]_ 
 
-To reproduce the results and figures included in Li et al.[2]_, directly run ``systems.py``/``analyses.py``. You'll need the package `adjustText <https://github.com/Phlya/adjustText>`_ in addition to ``EXPOsan``'s requirements.
+To reproduce the results and figures included in Li and Zhang et al.[2]_, directly run ``systems.py``/``analyses.py``. You'll need the package `adjustText <https://github.com/Phlya/adjustText>`_ in addition to ``EXPOsan``'s requirements. You can find a full list of the dependency packages in ``env.yml``, and create a new environment based on it using ``conda env create --file env.yml``.
 
 To run the module developed in Trimmer et al. [1]_, you can run the `Bwaise_sanitation_model.py` script in either `baseline <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bwaise/comparison/baseline>`_ or `uncertainty <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bwaise/comparison/uncertainty>`_.
 
@@ -238,4 +238,4 @@ You can make changes (e.g., add or remove parameters, change uncertainty ranges)
 References
 ----------
 .. [1] Trimmer et al., Navigating Multidimensional Social–Ecological System Trade-Offs across Sanitation Alternatives in an Urban Informal Settlement. Environ. Sci. Technol. 2020, 54 (19), 12641–12653. `<https://doi.org/10.1021/acs.est.0c03296>`_
-.. [2] Li et al., QSDsan: An Integrated Platform for Quantitative Sustainable Design of Sanitation and Resource Recovery Systems *In Prep.*
+.. [2] Li and  Zhang et al., QSDsan: An Integrated Platform for Quantitative Sustainable Design of Sanitation and Resource Recovery Systems *In Prep.*
