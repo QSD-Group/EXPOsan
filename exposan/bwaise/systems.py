@@ -20,12 +20,16 @@ import warnings
 warnings.filterwarnings('ignore', message='Solid content')
 
 import numpy as np
-import biosteam as bst
 import qsdsan as qs
 from collections.abc import Iterable
 from sklearn.linear_model import LinearRegression as LR
-from qsdsan import sanunits as su
-from qsdsan import WasteStream, ImpactIndicator, ImpactItem, StreamImpactItem, SimpleTEA, LCA
+from qsdsan import (
+    WasteStream,
+    sanunits as su,
+    PowerUtility,
+    ImpactIndicator, ImpactItem, StreamImpactItem,
+    System, SimpleTEA, LCA,
+    )
 from exposan.bwaise import results_path
 from exposan.bwaise._cmps import cmps
 from exposan.bwaise._lca_data import lca_data_kind, load_lca_data, _ImpactItem_LOADED
@@ -37,7 +41,6 @@ from exposan.bwaise._lca_data import lca_data_kind, load_lca_data, _ImpactItem_L
 currency = qs.currency = 'USD'
 qs.CEPCI = qs.CEPCI_by_year[2018]
 qs.set_thermo(cmps)
-bst.speed_up()
 
 household_size = 4
 household_per_toilet = 4
@@ -142,7 +145,7 @@ except:
 
 GWP = ImpactIndicator.get_indicator('GWP')
 
-bst.PowerUtility.price = price_dct['Electricity']
+PowerUtility.price = price_dct['Electricity']
 ImpactItem.get_item('Concrete').price = price_dct['Concrete']
 ImpactItem.get_item('Steel').price = price_dct['Steel']
 
@@ -272,8 +275,6 @@ def adjust_NH3_loss(unit):
 # Scenario A (sysA): pit latrine with existing treatment system
 # =============================================================================
 
-flowsheetA = bst.Flowsheet('sysA')
-bst.main_flowsheet.set_flowsheet(flowsheetA)
 streamsA = batch_create_streams('A')
 
 #################### Human Inputs ####################
@@ -349,7 +350,7 @@ A8 = su.DryingBed('A8', ins=A5-1, outs=('dried_sludge', 'evaporated',
                   decay_k_COD=get_decay_k(tau_deg, log_deg),
                   decay_k_N=get_decay_k(tau_deg, log_deg),
                   max_CH4_emission=max_CH4_emission)
-treatA = bst.System('treatA', path=(A4, A5, A6, A7, A8))
+treatA = System('treatA', path=(A4, A5, A6, A7, A8))
 A8._cost = lambda: clear_unit_costs(treatA)
 
 ################## Reuse or Disposal ##################
@@ -376,7 +377,7 @@ A13 = su.ComponentSplitter('A13', ins=A9-0,
                            split_keys=(('NH3', 'NonNH3'), 'P', 'K'))
 
 ############### Simulation, TEA, and LCA ###############
-sysA = bst.System('sysA', path=(A1, A2, A3, treatA, A9, A10, A11, A12, A13))
+sysA = System('sysA', path=(A1, A2, A3, treatA, A9, A10, A11, A12, A13))
 
 exist_staff_num = 12
 get_annual_labor = lambda: exist_staff_num*3e6*12/get_exchange_rate()
@@ -396,8 +397,6 @@ lcaA = LCA(system=sysA, lifetime=get_A4_lifetime(), lifetime_unit='yr', uptime_r
 # Scenario B (sysB): pit latrine with anaerobic treatment
 # =============================================================================
 
-flowsheetB = bst.Flowsheet('sysB')
-bst.main_flowsheet.set_flowsheet(flowsheetB)
 streamsB = batch_create_streams('B')
 B_biogas_item = ImpactItem.get_item('Biogas_item').copy('B_biogas_item', set_as_source=True)
 streamsB['biogas'] = WasteStream('B_biogas', phase='g', price=price_dct['Biogas'],
@@ -468,7 +467,7 @@ B8 = su.DryingBed('B8', ins=B6-1, outs=('dried_sludge', 'evaporated',
                   decay_k_N=get_decay_k(tau_deg, log_deg),
                   max_CH4_emission=max_CH4_emission)
 
-treatB = bst.System('treatB', path=(B4, B5, B6, B7, B8))
+treatB = System('treatB', path=(B4, B5, B6, B7, B8))
 B8._cost = lambda: clear_unit_costs(treatB)
 
 ################## Reuse or Disposal ##################
@@ -501,7 +500,7 @@ B14 = su.BiogasCombustion('B14', ins=(B5-1, 'air'),
 B15 = su.Mixer('B15', ins=(B14-0, B14-2), outs=streamsB['biogas'])
 
 ############### Simulation, TEA, and LCA ###############
-sysB = bst.System('sysB', path=(B1, B2, B3, treatB, B9, B10, B11, B12, B13, B14, B15))
+sysB = System('sysB', path=(B1, B2, B3, treatB, B9, B10, B11, B12, B13, B14, B15))
 
 skilled_num = 5
 get_skilled_num = lambda: skilled_num
@@ -530,8 +529,6 @@ lcaB = LCA(system=sysB, lifetime=get_B4_lifetime(), lifetime_unit='yr', uptime_r
 # Scenario C (sysC): containaer-based sanitation with existing treatment system
 # =============================================================================
 
-flowsheetC = bst.Flowsheet('sysC')
-bst.main_flowsheet.set_flowsheet(flowsheetC)
 streamsC = batch_create_streams('C')
 
 #################### Human Inputs ####################
@@ -615,7 +612,7 @@ C8 = su.DryingBed('C8', ins=C5-1, outs=('dried_sludge', 'evaporated', 'C8_CH4', 
                  decay_k_COD=get_decay_k(tau_deg, log_deg),
                  decay_k_N=get_decay_k(tau_deg, log_deg),
                  max_CH4_emission=max_CH4_emission)
-treatC = bst.System('treatC', path=(C5, C6, C7, C8))
+treatC = System('treatC', path=(C5, C6, C7, C8))
 C8._cost = lambda: clear_unit_costs(treatC)
 
 ################## Reuse or Disposal ##################
@@ -642,7 +639,7 @@ C13 = su.ComponentSplitter('C13', ins=C9-0,
                            split_keys=(('NH3', 'NonNH3'), 'P', 'K'))
 
 ############### Simulation, TEA, and LCA ###############
-sysC = bst.System('sysC', path=(C1, C2, C3, C4, treatC, C9, C10, C11, C12, C13))
+sysC = System('sysC', path=(C1, C2, C3, C4, treatC, C9, C10, C11, C12, C13))
 
 teaC = SimpleTEA(system=sysC, discount_rate=discount_rate, start_year=2018,
                  lifetime=get_C5_lifetime(), uptime_ratio=1, lang_factor=None,
@@ -852,7 +849,7 @@ def save_all_reports():
     if not os.path.isdir(results_path):
         os.path.mkdir(results_path)
     for i in (sysA, sysB, sysC, lcaA, lcaB, lcaC):
-        if isinstance(i, bst.System):
+        if isinstance(i, System):
             i.simulate()
             i.save_report(os.path.join(results_path, f'{i.ID}_report.xlsx'))
         else:

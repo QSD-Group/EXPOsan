@@ -35,6 +35,7 @@ setup(
                     'bsm1/data/*',
                     'bwaise/*',
                     'bwaise/data/*',
+                    'cas/*',
                     ]},
     platforms=['Windows', 'Mac', 'Linux'],
     classifiers=['License :: OSI Approved :: University of Illinois/NCSA Open Source License',
