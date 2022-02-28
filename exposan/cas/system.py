@@ -15,8 +15,7 @@ from qsdsan import Component, Components, WasteStream, set_thermo, System
 from qsdsan.sanunits import Screening, Mixer, ActivatedSludgeProcess, \
     BeltThickener, SludgeDigester, CHP as CHPunit
 
-__all__ = ('cmps', 'cas',)
-
+__all__ = ('cmps', 'sys',)
 
 
 # =============================================================================
@@ -86,5 +85,5 @@ AD = SludgeDigester('AD', ins=GBT-1, outs=('disposed', 'biogas'))
 
 CHP = CHPunit('CHP', ins=(AD-1, 'natural_gas', 'CHP_air'), outs=('emission', 'solids'))
 
-cas = System('cas', path=(U1, M1, ASP, GBT, AD, CHP))
-cas.simulate()
+sys = System('sys', path=(U1, M1, ASP, GBT, AD, CHP))
+sys.simulate()

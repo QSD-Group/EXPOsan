@@ -17,10 +17,10 @@ __all__ = ('test_cas',)
 #TODO: for now just make sure it can run, add more costing, etc
 def test_cas():
     from qsdsan import set_thermo
-    from exposan import activated_sludge as cas
+    from exposan import cas
 
     set_thermo(cas.cmps)
-    cas.cas.simulate()
+    cas.sys.simulate()
 
 
 if __name__ == '__main__':

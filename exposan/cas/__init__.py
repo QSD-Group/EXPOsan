@@ -12,15 +12,15 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-# import os
-# as_path = os.path.dirname(__file__)
-# del os
+import os
+cas_path = os.path.dirname(__file__)
+del os
 
-# from . import system
+from . import system
 
-# from .system import *
+from .system import *
 
-# __all__ = (
-#     'as_path',
-#     *system.__all__,
-# 	)
+__all__ = (
+    'cas_path',
+    *system.__all__,
+ 	)
