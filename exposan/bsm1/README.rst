@@ -14,7 +14,7 @@ The Activated Sludge Model No. 1 (ASM1) [3]_ was used to describe biochemical pr
 
 As of now, the BSM1 system can be simulated dynamically with constant or dynamic influents. Fixed aeration is enabled. Idealized aeration control can also be implemented by setting target dissolved oxygen concentration.
 
-To reproduce the results and figures included in Li and Zhang et al. [2]_, directly run ``system.py``/``analyses.py``. You'll need the package `adjustText <https://github.com/Phlya/adjustText>`_ in addition to ``EXPOsan``'s requirements. You can find a full list of the dependency packages in `qsdsan.yml <https://github.com/QSD-Group/EXPOsan/blob/main/exposan/bwaise/qsdsan.yml>`_, and create a new environment based on it using ``conda env create --file qsdsan.yml``.
+To reproduce the results and figures included in Li and Zhang et al. [5]_, directly run ``system.py``/``analyses.py``. You'll need the package `adjustText <https://github.com/Phlya/adjustText>`_ in addition to ``EXPOsan``'s requirements. You can find a full list of the dependency packages in `qsdsan.yml <https://github.com/QSD-Group/EXPOsan/blob/main/exposan/bwaise/qsdsan.yml>`_, and create a new environment based on it using ``conda env create --file qsdsan.yml``.
 
 To perform a simulation of the BSM1 model, you can import the module (as shown below) or directly run the ``system.py`` script. Influent loadings, initial conditions, model parameters, system settings, and solver options can all be customized in the same script.
 
@@ -26,10 +26,10 @@ Future development will include:
 Note that minor modifications have been made to ASM1, specifically:
 
     - Compared to the original model [3]_, a component ``S_N2`` was added for mass conservation of nitrogen.
-    - Compared to the updated model [5]_, the ammonia limitation term was removed from the rate equations of the
+    - Compared to the updated model [6]_, the ammonia limitation term was removed from the rate equations of the
       heterotrophic growth processes to be consistent with GPS-X and the MATLAB Simulink [2]_ implementation.
 
-The most updated version of ASM1 per Rieger et al. [5]_ is available in `QSDsan <https://github.com/QSD-Group/QSDsan/blob/main/qsdsan/processes>`_. You can choose to work with the updated version by changing the file path in the ``system.py`` script or replace the ``_asm1.tsv`` file with the one in `QSDsan <https://github.com/QSD-Group/QSDsan/tree/main/qsdsan/data/process_data>`_.
+The most updated version of ASM1 per Rieger et al. [6]_ is available in `QSDsan <https://github.com/QSD-Group/QSDsan/blob/main/qsdsan/processes>`_. You can choose to work with the updated version by changing the file path in the ``system.py`` script or replace the ``_asm1.tsv`` file with the one in `QSDsan <https://github.com/QSD-Group/QSDsan/tree/main/qsdsan/data/process_data>`_.
 
 
 Load BSM1 system with default settings
@@ -198,4 +198,5 @@ References
 .. [2] Gernaey et al., Benchmarking of control strategies for wastewater treatment plants. IWA publishing, 2014. `<https://github.com/wwtmodels/Benchmark-Simulation-Models>`_
 .. [3] Henze et al., Activated sludge models ASM1, ASM2, ASM2d and ASM3. IWA publishing, 2000.
 .. [4] Takács et al., A Dynamic Model of the Clarification-Thickening Process. Water Res. 1991, 25 (10), 1263–1271. `<https://doi.org/10.1016/0043-1354(91)90066-Y.>`_
-.. [5] Rieger et al., Guidelines for Using Activated Sludge Models. IWA Publishing: London, New York, 2012; Vol. 11. `<https://doi.org/10.2166/9781780401164.>`_
+.. [5] Li and  Zhang et al., QSDsan: An Integrated Platform for Quantitative Sustainable Design of Sanitation and Resource Recovery Systems *In Prep.*
+.. [6] Rieger et al., Guidelines for Using Activated Sludge Models. IWA Publishing: London, New York, 2012; Vol. 11. `<https://doi.org/10.2166/9781780401164.>`_
