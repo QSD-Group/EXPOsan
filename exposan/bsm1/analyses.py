@@ -78,19 +78,17 @@ def plot_SE_timeseries(seed, N, data=None, wide=False):
             data = load_pickle(path)
         except:
             data = analyze_SE_vars(seed, N)
-    # bm_data = load_data(os.path.join(results_path, 'matlab_exported_data.xlsx'),
-    #                     sheet='Data_ASin_changed', header=1, skiprows=0, usecols='A,CU:DF')
-    # bm_data.columns = [col.rstrip('.6') for col in bm_data.columns]
     bl_data = load_data(os.path.join(results_path, 'sol_50d_BDF.xlsx'),
                         skiprows=[0,2], header=0, usecols='B:Q')
     bl_data.columns = [col.split(' ')[0] for col in bl_data.columns]
     bl_data.S_ALK = bl_data.S_ALK/12
     if wide:
-        fig, axes = plt.subplots(3, 4, sharex=True, figsize=(15,8))
+        fig, axes = plt.subplots(3, 4, sharex=True, figsize=(14,8))
         plts = plots_wide
     else:
         fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12,12))
         plts = plots
+    x_ticks = np.linspace(0, 50, 6)
     for var, ir, ic in plts:
         df = data[var]
         ax = axes[ir, ic]
@@ -105,16 +103,13 @@ def plot_SE_timeseries(seed, N, data=None, wide=False):
         l50, = ax.plot(df.t, df.loc[:,'50th percentile'],
                       color='black', linestyle='-.',
                       label='50th')
+        ax.xaxis.set_ticks(x_ticks)
         ax.tick_params(axis='both', direction='inout', labelsize=12) #!!! Yalin added
         ax2 = ax.secondary_yaxis('right')
-        ax2.tick_params(axis='y', direction='in', labelsize=12) #!!! Yalin added
+        ax2.tick_params(axis='y', direction='in')
         ax2.yaxis.set_major_formatter(plt.NullFormatter())
-        # lbm,  = ax.plot(df.t, bm_data.loc[:, var],
-        #               color='black', linestyle='-.', label='Matlab/Simulink')
-        # ax.yaxis.set_major_locator(plt.MaxNLocator(5))
-        if ir == 0 and ic == 0: ax.legend(handles=[l5, l50, lbl])
-        # if ir == 0 and ic == 0: ax.legend(handles=[lbl, lbm])
-    if wide: plt.subplots_adjust(wspace=0.21, hspace=0.1)
+        # if ir == 0 and ic == 0: ax.legend(handles=[l5, l50, lbl])
+    if wide: plt.subplots_adjust(wspace=0.2, hspace=0.1)
     else: plt.subplots_adjust(hspace=0.1)
     fig.savefig(os.path.join(figures_path, 'effluent_yt.png'), dpi=300)
     return fig, ax
@@ -208,9 +203,10 @@ def plot_heatmaps(xx, yy, n, model=None, path='', wide=False):
     zs = data.loc[:,['Effluent', 'WAS']].to_numpy(copy=True)
     zs = zs.T
     zz = zs.reshape((zs.shape[0], n, n))
+    x_ticks = np.array([2400, 20000, 40000, 60000, 80000])
     if wide:
         plts = zip(zz, ics, irs)
-        fig, axes = plt.subplots(2, 3, sharex=True, sharey=True, figsize=(12,9))
+        fig, axes = plt.subplots(2, 3, sharex=True, sharey=True, figsize=(14,9))
     else:
         plts = zip(zz, irs, ics)
         fig, axes = plt.subplots(3, 2, sharex=True, sharey=True, figsize=(9,12))
@@ -218,11 +214,23 @@ def plot_heatmaps(xx, yy, n, model=None, path='', wide=False):
         ax = axes[ir, ic]
         pos = ax.imshow(z, aspect='auto', extent=(xx[0,0], xx[0,-1], yy[0,0], yy[-1,0]),
                         interpolation='spline16', origin='lower')
-        fig.colorbar(pos, ax=ax)
+        ax.xaxis.set_ticks(x_ticks)
+        ax.tick_params(axis='both', direction='inout', labelsize=12)
+        ax.tick_params(axis='x', labelrotation=45)
+        ax2x = ax.secondary_xaxis('top')
+        ax2x.xaxis.set_ticks(x_ticks)
+        ax2x.tick_params(axis='x', direction='in')
+        ax2x.xaxis.set_major_formatter(plt.NullFormatter())
+        ax2y = ax.secondary_yaxis('right')
+        ax2y.tick_params(axis='y', direction='in')
+        ax2y.yaxis.set_major_formatter(plt.NullFormatter())
+        cbar = fig.colorbar(pos, ax=ax)
+        cbar.ax.tick_params(labelsize=12)
         cs = ax.contour(xx, yy, z, colors='white', origin='lower', linestyles='dashed',
                         linewidths=1, extent=(xx[0,0], xx[0,-1], yy[0,0], yy[-1,0]))
-        ax.clabel(cs, cs.levels, inline=True, fmt=fmt)
+        ax.clabel(cs, cs.levels, inline=True, fmt=fmt, fontsize=12)
         ax.plot(xbl, ybl, marker='D', mec='black', mew=1.5, mfc='white')
+    if wide: plt.subplots_adjust(wspace=0.05, hspace=0.22)
     fig.savefig(os.path.join(figures_path, 'heatmaps.png'), dpi=300)
     return fig, ax
 
@@ -243,11 +251,11 @@ def run_mapping(model, n, T, t_step, method='BDF', mpath='', tpath=''):
     if mpath: model.table.to_excel(mpath)
     return xx, yy
 
-def dv_analysis(n=20, T=50, t_step=1, save_to='table_2dv.xlsx'):
+def dv_analysis(n=20, T=T, t_step=t_step, save_to='table_2dv.xlsx', wide=True):
     xx, yy = run_mapping(mdl2, n, T, t_step,
                          mpath=os.path.join(results_path, save_to))
-    plot_heatmaps(xx, yy, n, mdl2)
-    # plot_heatmaps(xx, yy, n, path=os.path.join(results_path, save_to))
+    plot_heatmaps(xx, yy, n, mdl2, wide=wide)
+    # plot_heatmaps(xx, yy, n, path=os.path.join(results_path, save_to), wide=wide)
 
 #%% 50-d simulations with different initial conditions
 
@@ -263,28 +271,31 @@ def plot_SE_yt_w_diff_init(seed, N, data=None, wide=False):
                         sheet='Data_ASin_changed', header=1, skiprows=0, usecols='A,CU:DF')
     bm_data.columns = [col.rstrip('.6') for col in bm_data.columns]
     if wide:
-        fig, axes = plt.subplots(3, 4, sharex=True, figsize=(15,8))
+        fig, axes = plt.subplots(3, 4, sharex=True, figsize=(14,8))
         plts = plots_wide
     else:
         fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12,12))
         plts = plots
+    x_ticks = np.linspace(0, 50, 6)
     for var, ir, ic in plts:
         df = data[var]
         ax = axes[ir, ic]
-        ax.plot(df.t, df.iloc[:,:N],
+        ax.plot(df.t, df.iloc[:,:N].values,
                 color='grey', linestyle='-', alpha=0.25)
         lbm, = ax.plot(df.t, bm_data.loc[:, var],
                        color='red', linestyle='-.', label='MATLAB/Simulink')
+        ax.xaxis.set_ticks(x_ticks)
         ax.yaxis.set_major_locator(plt.MaxNLocator(5))
-        ax.tick_params(axis='both', direction='inout')
+        ax.tick_params(axis='both', direction='inout', labelsize=12)
         ax2 = ax.secondary_yaxis('right')
         ax2.tick_params(axis='y', direction='in')
         ax2.yaxis.set_major_formatter(plt.NullFormatter())
-        if var == 'X_ND': ax.yaxis.set_major_formatter(plt.FormatStrFormatter('%.3f'))
-        if ir == 0 and ic == 0: ax.legend(handles=[lbm])
-    if wide: plt.subplots_adjust(wspace=0.21, hspace=0.1)
+        if var == 'X_ND':
+            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, pos: f'{int(x*1000)}'))
+        # if ir == 0 and ic == 0: ax.legend(handles=[lbm])
+    if wide: plt.subplots_adjust(wspace=0.2, hspace=0.1)
     else: plt.subplots_adjust(hspace=0.1)
-    fig.savefig(os.path.join(figures_path, 'effluent_yt_wdiff_init_wide.png'), dpi=300)
+    fig.savefig(os.path.join(figures_path, 'effluent_yt_wdiff_init.png'), dpi=300)
     return fig, ax
 
 def UA_w_diff_inits(seed=None, N=100, T=T, t_step=t_step, wide=True):
@@ -304,4 +315,4 @@ if __name__ == '__main__':
     # dv_analysis()
 
     # UA_w_diff_inits()
-    # plot_SE_yt_w_diff_init(seed=235, N=100)
+    # plot_SE_yt_w_diff_init(seed=235, N=100, wide=True)
