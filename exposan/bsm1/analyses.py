@@ -114,13 +114,14 @@ def plot_SE_timeseries(seed, N, data=None, wide=False):
     fig.savefig(os.path.join(figures_path, 'effluent_yt.png'), dpi=300)
     return fig, ax
 
-def UA_w_all_params(seed=None, N=N, T=T, t_step=t_step, wide=True):
+def UA_w_all_params(seed=None, N=N, T=T, t_step=t_step, plot=True, wide=True):
     seed = seed or int(str(time())[-3:])
     run_uncertainty(mdl, N, T, t_step, method='BDF', seed=seed)
     out = analyze_SE_vars(seed, N)
-    fig, ax = plot_SE_timeseries(seed, N, data=out, wide=wide)
+    if plot:
+        fig, ax = plot_SE_timeseries(seed, N, data=out, wide=wide)
     # fig, ax = plot_SE_timeseries(seed, N)
-    # return seed
+    return seed
 
 #%% SA to narrow down the number of DVs for further analyses
 
@@ -251,15 +252,14 @@ def run_mapping(model, n, T, t_step, method='BDF', mpath='', tpath=''):
     if mpath: model.table.to_excel(mpath)
     return xx, yy
 
-def dv_analysis(n=20, T=T, t_step=t_step, save_to='table_2dv.xlsx', wide=True):
+def dv_analysis(n=20, T=T, t_step=t_step, save_to='table_2dv.xlsx', 
+                plot=True, wide=True):
     xx, yy = run_mapping(mdl2, n, T, t_step,
                          mpath=os.path.join(results_path, save_to))
-    plot_heatmaps(xx, yy, n, mdl2, wide=wide)
+    if plot: plot_heatmaps(xx, yy, n, mdl2, wide=wide)
     # plot_heatmaps(xx, yy, n, path=os.path.join(results_path, save_to), wide=wide)
 
 #%% 50-d simulations with different initial conditions
-
-
 def plot_SE_yt_w_diff_init(seed, N, data=None, wide=False):
     if data is None:
         try:
@@ -298,21 +298,21 @@ def plot_SE_yt_w_diff_init(seed, N, data=None, wide=False):
     fig.savefig(os.path.join(figures_path, 'effluent_yt_wdiff_init.png'), dpi=300)
     return fig, ax
 
-def UA_w_diff_inits(seed=None, N=100, T=T, t_step=t_step, wide=True):
+def UA_w_diff_inits(seed=None, N=100, T=T, t_step=t_step, plot=True, wide=True):
     seed = seed or int(str(time())[-3:])
     # run_uncertainty(mdls, N, T, t_step, method='BDF', seed=seed)
     run_wdiff_init(mdls, N, T, t_step, method='BDF', seed=seed)
     out = analyze_SE_vars(seed, N)
-    fig, ax = plot_SE_yt_w_diff_init(seed, N, data=out, wide=wide)
-    # return seed
+    if plot: fig, ax = plot_SE_yt_w_diff_init(seed, N, data=out, wide=wide)
+    return seed
 
 #%%
 if __name__ == '__main__':
-    UA_w_all_params()
-    # run_sensitivity(624)
-    # plot_SE_timeseries(seed=624, N=N, wide=True)
+    seed1 = UA_w_all_params()
+    run_sensitivity(seed1)
+    # plot_SE_timeseries(seed=seed1, N=N, wide=True)
 
-    # dv_analysis()
+    dv_analysis()
 
-    # UA_w_diff_inits()
-    # plot_SE_yt_w_diff_init(seed=235, N=100, wide=True)
+    seed2 = UA_w_diff_inits()
+    # plot_SE_yt_w_diff_init(seed=seed2, N=100, wide=True)
