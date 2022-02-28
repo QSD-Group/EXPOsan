@@ -12,15 +12,16 @@ This module implements the Benchmark Simulation Model No. 1 (BSM1). [1]_ The cod
 
 The Activated Sludge Model No. 1 (ASM1) [3]_ was used to describe biochemical processes and a simple 1-D 10-layer settling model [4]_ was used for the secondary clarifier.
 
-As of now, the BSM1 system can be simulated dynamically with constant influent. Fixed aeration is enabled. Idealized aeration control can also be implemented by setting target dissolved oxygen concentration.
+As of now, the BSM1 system can be simulated dynamically with constant or dynamic influents. Fixed aeration is enabled. Idealized aeration control can also be implemented by setting target dissolved oxygen concentration.
+
+To reproduce the results and figures included in Li and Zhang et al. [2]_, directly run ``system.py``/``analyses.py``. You'll need the package `adjustText <https://github.com/Phlya/adjustText>`_ in addition to ``EXPOsan``'s requirements. You can find a full list of the dependency packages in `qsdsan.yml <https://github.com/QSD-Group/EXPOsan/blob/main/exposan/bwaise/qsdsan.yml>`_, and create a new environment based on it using ``conda env create --file qsdsan.yml``.
 
 To perform a simulation of the BSM1 model, you can import the module (as shown below) or directly run the ``system.py`` script. Influent loadings, initial conditions, model parameters, system settings, and solver options can all be customized in the same script.
 
 Future development will include:
 
-    - Enable simulation with dynamic influent
     - Design and costing algorithms of unit operations in the system
-    - Aeration control with PI controller
+    - Aeration control with PI or PID controller
 
 Note that minor modifications have been made to ASM1, specifically:
 
@@ -136,7 +137,7 @@ Dynamic simulation of the BSM1 system can be performed with the built in `simula
     ID ...
 
 .. figure:: ./figures/demo_RAS_state.png
-  
+
     *Time-series state of return activated sludge (RAS)*
 
 .. figure:: ./figures/demo_O1_state.png
