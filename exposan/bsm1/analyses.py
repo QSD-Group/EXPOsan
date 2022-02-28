@@ -119,11 +119,11 @@ def plot_SE_timeseries(seed, N, data=None, wide=False):
     fig.savefig(os.path.join(figures_path, 'effluent_yt.png'), dpi=300)
     return fig, ax
 
-def UA_w_all_params():
-    seed = int(str(time())[-3:])
+def UA_w_all_params(seed=None, N=N, T=T, t_step=t_step, wide=True):
+    seed = seed or int(str(time())[-3:])
     run_uncertainty(mdl, N, T, t_step, method='BDF', seed=seed)
     out = analyze_SE_vars(seed, N)
-    fig, ax = plot_SE_timeseries(seed, N, data=out)
+    fig, ax = plot_SE_timeseries(seed, N, data=out, wide=wide)
     # fig, ax = plot_SE_timeseries(seed, N)
     # return seed
 
@@ -287,19 +287,19 @@ def plot_SE_yt_w_diff_init(seed, N, data=None, wide=False):
     fig.savefig(os.path.join(figures_path, 'effluent_yt_wdiff_init_wide.png'), dpi=300)
     return fig, ax
 
-def UA_w_diff_inits(N=100):
-    seed = int(str(time())[-3:])
+def UA_w_diff_inits(seed=None, N=100, T=T, t_step=t_step, wide=True):
+    seed = seed or int(str(time())[-3:])
     # run_uncertainty(mdls, N, T, t_step, method='BDF', seed=seed)
     run_wdiff_init(mdls, N, T, t_step, method='BDF', seed=seed)
     out = analyze_SE_vars(seed, N)
-    fig, ax = plot_SE_yt_w_diff_init(seed, N, data=out)
+    fig, ax = plot_SE_yt_w_diff_init(seed, N, data=out, wide=wide)
     # return seed
 
 #%%
 if __name__ == '__main__':
-    # UA_w_all_params()
+    UA_w_all_params()
     # run_sensitivity(624)
-    plot_SE_timeseries(seed=624, N=N, wide=True)
+    # plot_SE_timeseries(seed=624, N=N, wide=True)
 
     # dv_analysis()
 
