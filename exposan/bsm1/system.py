@@ -180,7 +180,7 @@ def run(t, t_step, method=None, **kwargs):
                       print_msg=True,
                       **kwargs)
     srt = get_SRT(bsm1, bio_IDs)
-    print(f'Estimated SRT assuming at steady-state is {round(srt, 2)} days')
+    print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
 
 if __name__ == '__main__':
     t = 50
