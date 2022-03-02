@@ -20,8 +20,9 @@ from exposan.bsm1 import model_bsm1 as mdl, model_2dv as mdl2, model_ss as mdls,
     results_path, figures_path
 import os
 import numpy as np
-import matplotlib as mpl, matplotlib.pyplot as plt
+import matplotlib as mpl, matplotlib.pyplot as plt, matplotlib.ticker as tk
 mpl.rcParams['font.sans-serif'] = 'arial' #!!! Yalin added this
+mpl.rcParams["figure.autolayout"] = True
 
 N = 1000
 T = 50
@@ -92,8 +93,8 @@ def plot_SE_timeseries(seed, N, data=None, wide=False):
     for var, ir, ic in plts:
         df = data[var]
         ax = axes[ir, ic]
-        ax.plot(df.t, df.iloc[:,:N].values,
-                color='grey', linestyle='-', alpha=0.05)
+        ys = df.iloc[:,:N].values
+        ax.plot(df.t, ys, color='grey', linestyle='-', alpha=0.05)
         lbl, = ax.plot(df.t, bl_data.loc[:, var],
                      color='orange', linestyle='-', linewidth=2.5,
                       label='Base')
@@ -103,12 +104,23 @@ def plot_SE_timeseries(seed, N, data=None, wide=False):
         l50, = ax.plot(df.t, df.loc[:,'50th percentile'],
                       color='black', linestyle='-.',
                       label='50th')
+        lct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
+        y_ticks = lct.tick_values(np.min(ys), np.max(ys))
         ax.xaxis.set_ticks(x_ticks)
-        ax.tick_params(axis='both', direction='inout', labelsize=12) #!!! Yalin added
-        ax2 = ax.secondary_yaxis('right')
-        ax2.tick_params(axis='y', direction='in')
-        ax2.yaxis.set_major_formatter(plt.NullFormatter())
+        ax.yaxis.set_ticks(y_ticks)
+        if var == 'X_ND':
+            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, pos: f'{int(x*1000)}'))
+        ax.tick_params(axis='both', direction='inout', length=6, labelsize=14)
+        ax2x = ax.secondary_xaxis('top')
+        ax2x.xaxis.set_ticks(x_ticks)
+        ax2x.tick_params(axis='x', direction='in')
+        ax2x.xaxis.set_major_formatter(plt.NullFormatter())
+        ax2y = ax.secondary_yaxis('right')
+        ax2y.yaxis.set_ticks(y_ticks)
+        ax2y.tick_params(axis='y', direction='in')
+        ax2y.yaxis.set_major_formatter(plt.NullFormatter())
         # if ir == 0 and ic == 0: ax.legend(handles=[l5, l50, lbl])
+        plt.ylim(y_ticks[0], y_ticks[-1])
     if wide: plt.subplots_adjust(wspace=0.2, hspace=0.1)
     else: plt.subplots_adjust(hspace=0.1)
     fig.savefig(os.path.join(figures_path, 'effluent_yt.png'), dpi=300)
@@ -141,10 +153,10 @@ def plot_kde2d_metrics(model):
         ax0x = ax0.secondary_xaxis('top')
         ax0y = ax0.secondary_yaxis('right')
         for ax in (ax0, ax0x, ax0y):
-            ax.tick_params(axis='both', which='both', direction='inout', width=0.5)
+            ax.tick_params(axis='both', which='both', direction='inout', width=1)
 
         for txt in ax0.get_xticklabels()+ax0.get_yticklabels():
-            txt.set_fontsize(12)
+            txt.set_fontsize(14)
         ax0x.set_xticklabels('')
         ax0y.set_yticklabels('')
 
@@ -152,7 +164,8 @@ def plot_kde2d_metrics(model):
         ax1.spines.clear()
         ax2.spines.clear()
         ax2.yaxis.set_visible(False)
-
+        yl, yu = ax0.get_ylim()
+        if yl < 0: ax0.set_ylim((0, yu))
         fig.savefig(os.path.join(figures_path, f'{x}_vs_{y}.png'), dpi=300)
     fig, ax = plot_uncertainties(model, x_axis=metrics[6], kind='hist',
                                  center_kws={'kde':True})
@@ -171,7 +184,7 @@ def run_ks_test(model):
 def run_sensitivity(seed):
     mdl.table = load_data(os.path.join(results_path, f'table_{seed}.xlsx'), header=[0,1])
     plot_kde2d_metrics(mdl)
-    run_ks_test(mdl)
+    # run_ks_test(mdl)
 
 
 #%% 2-DV heatmap plotting
@@ -211,12 +224,14 @@ def plot_heatmaps(xx, yy, n, model=None, path='', wide=False):
     else:
         plts = zip(zz, irs, ics)
         fig, axes = plt.subplots(3, 2, sharex=True, sharey=True, figsize=(9,12))
+    
+    fig.set_tight_layout({'h_pad':4.5, 'w_pad': 0})
     for z, ir, ic in plts:
         ax = axes[ir, ic]
         pos = ax.imshow(z, aspect='auto', extent=(xx[0,0], xx[0,-1], yy[0,0], yy[-1,0]),
                         interpolation='spline16', origin='lower')
         ax.xaxis.set_ticks(x_ticks)
-        ax.tick_params(axis='both', direction='inout', labelsize=12)
+        ax.tick_params(axis='both', direction='inout', labelsize=14)
         ax.tick_params(axis='x', labelrotation=45)
         ax2x = ax.secondary_xaxis('top')
         ax2x.xaxis.set_ticks(x_ticks)
@@ -226,12 +241,12 @@ def plot_heatmaps(xx, yy, n, model=None, path='', wide=False):
         ax2y.tick_params(axis='y', direction='in')
         ax2y.yaxis.set_major_formatter(plt.NullFormatter())
         cbar = fig.colorbar(pos, ax=ax)
-        cbar.ax.tick_params(labelsize=12)
+        cbar.ax.tick_params(labelsize=14)
         cs = ax.contour(xx, yy, z, colors='white', origin='lower', linestyles='dashed',
                         linewidths=1, extent=(xx[0,0], xx[0,-1], yy[0,0], yy[-1,0]))
-        ax.clabel(cs, cs.levels, inline=True, fmt=fmt, fontsize=12)
-        ax.plot(xbl, ybl, marker='D', mec='black', mew=1.5, mfc='white')
-    if wide: plt.subplots_adjust(wspace=0.05, hspace=0.22)
+        ax.clabel(cs, cs.levels, inline=True, fmt=fmt, fontsize=14)
+        ax.plot(xbl, ybl, marker='D', mec='black', ms=7, mew=1.5, mfc='white')
+    # if wide: plt.subplots_adjust(wspace=0.05, hspace=0.5)
     fig.savefig(os.path.join(figures_path, 'heatmaps.png'), dpi=300)
     return fig, ax
 
@@ -257,7 +272,7 @@ def dv_analysis(n=20, T=T, t_step=t_step, save_to='table_2dv.xlsx',
     xx, yy = run_mapping(mdl2, n, T, t_step,
                          mpath=os.path.join(results_path, save_to))
     if plot: plot_heatmaps(xx, yy, n, mdl2, wide=wide)
-    # plot_heatmaps(xx, yy, n, path=os.path.join(results_path, save_to), wide=wide)
+    # if plot: plot_heatmaps(xx, yy, n, path=os.path.join(results_path, save_to), wide=wide)
 
 #%% 50-d simulations with different initial conditions
 def plot_SE_yt_w_diff_init(seed, N, data=None, wide=False):
@@ -280,18 +295,26 @@ def plot_SE_yt_w_diff_init(seed, N, data=None, wide=False):
     for var, ir, ic in plts:
         df = data[var]
         ax = axes[ir, ic]
-        ax.plot(df.t, df.iloc[:,:N].values,
-                color='grey', linestyle='-', alpha=0.25)
+        ys = df.iloc[:,:N].values
+        ax.plot(df.t, ys, color='grey', linestyle='-', alpha=0.25)
         lbm, = ax.plot(df.t, bm_data.loc[:, var],
                        color='red', linestyle='-.', label='MATLAB/Simulink')
+        lct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
+        y_ticks = lct.tick_values(np.min(ys), np.max(ys))
         ax.xaxis.set_ticks(x_ticks)
-        ax.yaxis.set_major_locator(plt.MaxNLocator(5))
-        ax.tick_params(axis='both', direction='inout', labelsize=12)
-        ax2 = ax.secondary_yaxis('right')
-        ax2.tick_params(axis='y', direction='in')
-        ax2.yaxis.set_major_formatter(plt.NullFormatter())
+        ax.yaxis.set_ticks(y_ticks)
+        # ax.yaxis.set_major_locator(plt.MaxNLocator(5))
         if var == 'X_ND':
             ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, pos: f'{int(x*1000)}'))
+        ax.tick_params(axis='both', direction='inout', length=6, labelsize=14)
+        ax2x = ax.secondary_xaxis('top')
+        ax2x.xaxis.set_ticks(x_ticks)
+        ax2x.tick_params(axis='x', direction='in')
+        ax2x.xaxis.set_major_formatter(plt.NullFormatter())
+        ax2y = ax.secondary_yaxis('right')
+        ax2y.yaxis.set_ticks(y_ticks)
+        ax2y.tick_params(axis='y', direction='in')
+        ax2y.yaxis.set_major_formatter(plt.NullFormatter())
         # if ir == 0 and ic == 0: ax.legend(handles=[lbm])
     if wide: plt.subplots_adjust(wspace=0.2, hspace=0.1)
     else: plt.subplots_adjust(hspace=0.1)
@@ -308,11 +331,11 @@ def UA_w_diff_inits(seed=None, N=100, T=T, t_step=t_step, plot=True, wide=True):
 
 #%%
 if __name__ == '__main__':
-    seed1 = UA_w_all_params()
-    run_sensitivity(seed1)
-    # plot_SE_timeseries(seed=seed1, N=N, wide=True)
+    # seed1 = UA_w_all_params()
+    run_sensitivity(624)
+    # plot_SE_timeseries(seed=624, N=N, wide=True)
 
-    dv_analysis()
+    # dv_analysis()
 
-    seed2 = UA_w_diff_inits()
-    # plot_SE_yt_w_diff_init(seed=seed2, N=100, wide=True)
+    # seed2 = UA_w_diff_inits()
+    # plot_SE_yt_w_diff_init(seed=235, N=100, wide=True)

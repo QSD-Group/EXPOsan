@@ -148,7 +148,7 @@ batch_init(os.path.join(bsm1_path, 'data/initial_conditions.xlsx'), 'default')
 # bio = System('Bio', path=(A1, A2, O1, O2, O3), recycle=(RE,))
 # bsm1 = System('BSM1', path=(bio, C1, S1), recycle=(RAS,))
 bsm1 = System('BSM1', path=(A1, A2, O1, O2, O3, C1), recycle=(RE, RAS))
-bsm1.set_dynamic_tracker(SE)
+bsm1.set_dynamic_tracker(A1, SE)
 bsm1.set_tolerance(rmol=1e-6)
 bio_IDs = ('X_BH', 'X_BA')
 
@@ -170,7 +170,7 @@ def run(t, t_step, method=None, **kwargs):
                       method=method,
                       # rtol=1e-2,
                       # atol=1e-3,
-                      export_state_to=f'results/sol_{t}d_{method}.xlsx',
+                      # export_state_to=f'results/sol_{t}d_{method}.xlsx',
                       **kwargs)
     else:
         bsm1.simulate(state_reset_hook='reset_cache',
