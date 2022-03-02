@@ -148,7 +148,6 @@ def plot_kde2d_metrics(model):
         fig, ax = plot_uncertainties(model, x_axis=metrics[i], y_axis=metrics[j],
                                       kind='kde-hist', center_kws={'fill':True},
                                       margin_kws={'kde':True, 'fill':True})
-        #!!! Yalin added this, but not sure which model to run so haven't tested it out
         ax0, ax1, ax2 = fig.axes # KDE, top box, right box
         ax0x = ax0.secondary_xaxis('top')
         ax0y = ax0.secondary_yaxis('right')
@@ -171,7 +170,7 @@ def plot_kde2d_metrics(model):
                                  center_kws={'kde':True})
     fig.savefig(os.path.join(figures_path, 'SRT_hist.png'), dpi=300)
 
-thresholds = [100, 30, 19, 3, 30] # Effluent COD, BOD5, TN, TKN, TSS
+thresholds = [100, 10, 18, 4, 30] # Effluent COD, BOD5, TN, TKN, TSS
 def run_ks_test(model):
     metrics_df = model.table['Effluent']
     to_analyze =  [i for i in range(5) if sum(metrics_df.iloc[:,i] > thresholds[i]) > 10]
@@ -184,7 +183,7 @@ def run_ks_test(model):
 def run_sensitivity(seed):
     mdl.table = load_data(os.path.join(results_path, f'table_{seed}.xlsx'), header=[0,1])
     plot_kde2d_metrics(mdl)
-    # run_ks_test(mdl)
+    run_ks_test(mdl)
 
 
 #%% 2-DV heatmap plotting
@@ -331,11 +330,11 @@ def UA_w_diff_inits(seed=None, N=100, T=T, t_step=t_step, plot=True, wide=True):
 
 #%%
 if __name__ == '__main__':
-    # seed1 = UA_w_all_params()
-    run_sensitivity(624)
-    # plot_SE_timeseries(seed=624, N=N, wide=True)
+    seed1 = UA_w_all_params(plot=True, wide=True)
+    run_sensitivity(seed1)
+    # plot_SE_timeseries(seed=seed1, N=N, wide=True)
 
-    # dv_analysis()
+    dv_analysis()
 
-    # seed2 = UA_w_diff_inits()
-    # plot_SE_yt_w_diff_init(seed=235, N=100, wide=True)
+    seed2 = UA_w_diff_inits(plot=True, wide=True)
+    # plot_SE_yt_w_diff_init(seed=seed2, N=100, wide=True)
