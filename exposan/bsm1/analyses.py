@@ -17,7 +17,7 @@ from qsdsan.utils import load_data, load_pickle, save_pickle
 from qsdsan.stats import plot_uncertainties, get_correlations
 from exposan.bsm1 import model_bsm1 as mdl, model_2dv as mdl2, model_ss as mdls, \
     cmps, run_uncertainty, analyze_timeseries, run_wdiff_init, \
-    results_path, figures_path
+    data_path, results_path, figures_path
 import os
 import numpy as np
 import matplotlib as mpl, matplotlib.pyplot as plt, matplotlib.ticker as tk
@@ -27,6 +27,7 @@ mpl.rcParams["figure.autolayout"] = True
 N = 1000
 T = 50
 t_step = 1
+
 
 #%% UA with time-series data
 
@@ -281,7 +282,7 @@ def plot_SE_yt_w_diff_init(seed, N, data=None, wide=False):
             data = load_pickle(path)
         except:
             data = analyze_SE_vars(seed)
-    bm_data = load_data(os.path.join(results_path, 'matlab_exported_data.xlsx'),
+    bm_data = load_data(os.path.join(data_path, 'matlab_exported_data.xlsx'),
                         sheet='Data_ASin_changed', header=1, skiprows=0, usecols='A,CU:DF')
     bm_data.columns = [col.rstrip('.6') for col in bm_data.columns]
     if wide:
@@ -330,11 +331,11 @@ def UA_w_diff_inits(seed=None, N=100, T=T, t_step=t_step, plot=True, wide=True):
 
 #%%
 if __name__ == '__main__':
-    seed1 = UA_w_all_params(plot=True, wide=True)
-    run_sensitivity(seed1)
-    plot_SE_timeseries(seed=seed1, N=N, wide=True)
+    # seed1 = UA_w_all_params(plot=True, wide=True)
+    # run_sensitivity(seed1)
+    # plot_SE_timeseries(seed=seed1, N=N, wide=True)
 
     dv_analysis()
 
-    seed2 = UA_w_diff_inits(plot=True, wide=True)
-    plot_SE_yt_w_diff_init(seed=seed2, N=100, wide=True)
+    # seed2 = UA_w_diff_inits(plot=True, wide=True)
+    # plot_SE_yt_w_diff_init(seed=seed2, N=100, wide=True)

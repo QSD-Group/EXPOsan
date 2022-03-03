@@ -256,7 +256,7 @@ def set_Q_air(i):
     
 b = s.Q_was
 D = shape.Uniform(lower=300, upper=900)
-param_2dv(setter=set_Q_was, name='Waste sludge flowrate', element=C1, 
+param_2dv(setter=set_Q_was.setter, name='Waste sludge flowrate', element=C1, 
           kind='coupled', units='m3/d', baseline=b, distribution=D)
 
 # DO of aerated reactors
@@ -270,11 +270,11 @@ for i in ('COD', 'BOD5', 'TN'):
     metric_2dv(getter=AttrGetter(SE, attr=i), name='Effluent '+i, 
                units='mg/L', element='Effluent')
 
-metric_2dv(getter=get_TKN, name='Effluent TKN', units='mg/L', element='Effluent')
+metric_2dv(getter=get_TKN.getter, name='Effluent TKN', units='mg/L', element='Effluent')
 metric_2dv(getter=SE.get_TSS, name='Effluent TSS', units='mg/L', element='Effluent')
-metric_2dv(getter=get_daily_sludge_production,
+metric_2dv(getter=get_daily_sludge_production.getter,
            name='Daily sludge production', units='kg TSS/d', element='WAS')
-metric_2dv(getter=get_SRT, name='SRT', units='d', element='System')
+metric_2dv(getter=get_SRT.getter, name='SRT', units='d', element='System')
 
 #%%
 
@@ -302,11 +302,11 @@ for i in ('COD', 'BOD5', 'TN'):
     metric_ss(getter=AttrGetter(SE, attr=i), name='Effluent '+i, 
                 units='mg/L', element='Effluent')
 
-metric_ss(getter=get_TKN, name='Effluent TKN', units='mg/L', element='Effluent')
+metric_ss(getter=get_TKN.getter, name='Effluent TKN', units='mg/L', element='Effluent')
 metric_ss(getter=SE.get_TSS, name='Effluent TSS', units='mg/L', element='Effluent')
-metric_ss(getter=get_daily_sludge_production,
+metric_ss(getter=get_daily_sludge_production.getter,
             name='Daily sludge production', units='kg TSS/d', element='WAS')
-metric_ss(getter=get_SRT, name='SRT', units='d', element='System')
+metric_ss(getter=get_SRT.getter, name='SRT', units='d', element='System')
 
 @time_printer
 def run_wdiff_init(model, N, T, t_step, method='LSODA', 
