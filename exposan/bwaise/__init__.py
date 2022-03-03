@@ -17,6 +17,9 @@ bwaise_path = os.path.dirname(__file__)
 data_path = os.path.join(bwaise_path, 'data')
 results_path = os.path.join(bwaise_path, 'results')
 figures_path = os.path.join(bwaise_path, 'figures')
+# To save simulation data and generated figures
+if not os.path.isdir(results_path): os.mkdir(results_path)
+if not os.path.isdir(figures_path): os.mkdir(figures_path)
 del os
 
 from qsdsan.utils import time_printer

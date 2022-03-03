@@ -21,7 +21,7 @@ from exposan.bsm1 import model_bsm1 as mdl, model_2dv as mdl2, model_ss as mdls,
 import os
 import numpy as np
 import matplotlib as mpl, matplotlib.pyplot as plt, matplotlib.ticker as tk
-mpl.rcParams['font.sans-serif'] = 'arial' #!!! Yalin added this
+mpl.rcParams['font.sans-serif'] = 'arial'
 mpl.rcParams["figure.autolayout"] = True
 
 N = 1000
@@ -332,9 +332,9 @@ def UA_w_diff_inits(seed=None, N=100, T=T, t_step=t_step, plot=True, wide=True):
 if __name__ == '__main__':
     seed1 = UA_w_all_params(plot=True, wide=True)
     run_sensitivity(seed1)
-    # plot_SE_timeseries(seed=seed1, N=N, wide=True)
+    plot_SE_timeseries(seed=seed1, N=N, wide=True)
 
     dv_analysis()
 
     seed2 = UA_w_diff_inits(plot=True, wide=True)
-    # plot_SE_yt_w_diff_init(seed=seed2, N=100, wide=True)
+    plot_SE_yt_w_diff_init(seed=seed2, N=100, wide=True)

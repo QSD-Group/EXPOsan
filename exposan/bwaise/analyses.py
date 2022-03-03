@@ -37,14 +37,18 @@ RGBs = {
     'C': colors.Guest.blue.RGBn,
     }
 
+# These label names will affect the order of the parameters in Morris plots,
+# but not the value
 alt_names = {
-    'Total COD': 'COD recovery',
-    'Total N': 'N recovery',
-    'Total P': 'P recovery',
-    'Total K': 'K recovery',
+    # 'Total COD': 'COD recovery',
+    # 'Total N': 'N recovery',
+    # 'Total P': 'P recovery',
+    # 'Total K': 'K recovery',
     'Annual net cost': 'Cost',
     'Net emission GlobalWarming': 'GWP',
     }
+# Change both 'Total X' and 'X recovery' to 'X'
+strip_label = lambda label: label.lstrip('Total ').rstrip(' recovery')
 
 seed = 3221 # for numpy seeding and result consistency
 
@@ -87,7 +91,7 @@ def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal', adjust_hue=Fa
         fig.set_figheight(2.5)
         ticks = np.arange(0, 1.2, 0.2)
         ax.set(xlabel='', xlim=(0, 1), xticks=ticks)
-        ax.set_yticklabels([i.name.lstrip('Total ') for i in metrics], fontsize=20)
+        ax.set_yticklabels([strip_label(i.name) for i in metrics], fontsize=20)
         ax.set_xticklabels([f'{i:.0%}' for i in ticks], fontsize=20)
         ax.xaxis.set_minor_locator(AutoMinorLocator(2))
         ax.tick_params(axis='both', which='both', direction='inout')
@@ -105,7 +109,7 @@ def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal', adjust_hue=Fa
             ax.get_legend().remove()
         fig.set_figwidth(2.5)
         ticks = np.arange(0, 1.2, 0.2)
-        ax.set_xticklabels([i.name.lstrip('Total ') for i in metrics], fontsize=20)
+        ax.set_xticklabels([strip_label(i.name) for i in metrics], fontsize=20)
         for label in ax.get_xticklabels():
             label.set_rotation(90)
         ax.set(ylabel='', ylim=(0, 1), yticks=ticks)
@@ -170,7 +174,7 @@ def plot_kde(model, ID, color, metrics):
 param_set = set(modelA.parameters).union(set(modelB.parameters), set(modelC.parameters))
 param_names = tuple(p.name for p in param_set)
 
-# Plot morris results as scatter plot for each metric of each model
+# Plot Morris results as scatter plot for each metric of each model
 def plot_morris_scatter(model, morris_dct, combined_morris, color,
                         label_lines=True, label_points=True,
                         plot_combined=False, axs=None):
@@ -222,7 +226,7 @@ def plot_morris_scatter(model, morris_dct, combined_morris, color,
         # # If want mu_star/mu_star_max or sigma/mu_star_max >=0.1
         # top = df[(df.mu_star>=0.1)|(df.sigma>=0.1)]
 
-        # Only markout the top five mu_star/mu_star_max parameters
+        # Only mark out the top five mu_star/mu_star_max parameters
         if top.shape[0] > 5:
             top.sort_values(by=['mu_star'], ascending=False, inplace=True)
             top = top[:5]
@@ -307,7 +311,12 @@ def plot_morris_scatter_all(models, morris_dct, combineds, RGBs):
 
         if n_model == 0:
             for n, ax in enumerate(axs):
-                ax.set_ylabel(model.metrics[n].name, fontsize=14, fontweight='bold')
+                name = model.metrics[n].name
+                if not name in ('Cost', 'GWP'):
+                    ylabel = strip_label(name)+' recovery'
+                else:
+                    ylabel = name
+                ax.set_ylabel(ylabel, fontsize=14, fontweight='bold')
                 ax.yaxis.labelpad = 15
         axs[0].set_xlabel(f'System {ID}', fontsize=14, fontweight='bold',
                           color=label_colors[n_model])
