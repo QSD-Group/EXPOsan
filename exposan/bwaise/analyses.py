@@ -16,7 +16,7 @@ for license details.
 # %%
 
 import os
-import numpy as np, pandas as pd, seaborn as sns
+import numpy as np, pandas as pd, seaborn as sns, matplotlib.colors as mcolors
 from matplotlib import pyplot as plt
 from matplotlib.ticker import AutoMinorLocator
 from qsdsan import stats as s
@@ -38,7 +38,10 @@ RGBs = {
     }
 
 alt_names = {
-    # 'COD': 'energy',
+    'Total COD': 'COD recovery',
+    'Total N': 'N recovery',
+    'Total P': 'P recovery',
+    'Total K': 'K recovery',
     'Annual net cost': 'Cost',
     'Net emission GlobalWarming': 'GWP',
     }
@@ -290,6 +293,10 @@ def plot_morris_scatter_all(models, morris_dct, combineds, RGBs):
     tot_metrics = len(models[0].metrics)
     fig.subplots(tot_metrics, tot_models, sharex=True, sharey=True)
 
+    label_colors = (# A/B/C
+        mcolors.to_rgba('#7F533E'),
+        mcolors.to_rgba('#5A7F60'),
+        mcolors.to_rgba('#497980'))
     for n_model, model in enumerate(models):
         ID = model.system.ID[-1]
         axs = [fig.axes[tot_models*i+n_model] for i in range(tot_metrics)]
@@ -302,8 +309,8 @@ def plot_morris_scatter_all(models, morris_dct, combineds, RGBs):
             for n, ax in enumerate(axs):
                 ax.set_ylabel(model.metrics[n].name, fontsize=14, fontweight='bold')
                 ax.yaxis.labelpad = 15
-        # breakpoint()
-        axs[0].set_xlabel(f'System {ID}', fontsize=14, fontweight='bold')
+        axs[0].set_xlabel(f'System {ID}', fontsize=14, fontweight='bold',
+                          color=label_colors[n_model])
         axs[0].xaxis.set_label_position('top')
         axs[0].xaxis.labelpad = 15
 
