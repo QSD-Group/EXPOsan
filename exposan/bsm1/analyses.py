@@ -18,6 +18,7 @@ from qsdsan.stats import plot_uncertainties, get_correlations
 from exposan.bsm1 import model_bsm1 as mdl, model_2dv as mdl2, model_ss as mdls, \
     cmps, run_uncertainty, analyze_timeseries, run_wdiff_init, \
     data_path, results_path, figures_path
+from exposan import bsm1 as b1
 import os
 import numpy as np
 import matplotlib as mpl, matplotlib.pyplot as plt, matplotlib.ticker as tk
@@ -28,6 +29,14 @@ N = 1000
 T = 50
 t_step = 1
 
+#%% Baseline
+bl_file = os.path.join(results_path, 'sol_50d_BDF.xlsx')
+if not os.path.exists(bl_file):
+    b1.bsm1.simulate(state_reset_hook='reset_cache',
+                    t_span=(0,T),
+                    t_eval=np.arange(0, T+t_step, t_step),
+                    method='BDF',
+                    export_state_to=bl_file)
 
 #%% UA with time-series data
 
