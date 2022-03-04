@@ -179,7 +179,6 @@ def plot_kde2d_metrics(model):
         fig.savefig(os.path.join(figures_path, f'{x}_vs_{y}.png'), dpi=300)
     fig, ax = plot_uncertainties(model, x_axis=metrics[6], kind='hist',
                                  center_kws={'kde':True})
-    breakpoint()
     ax.tick_params(axis='both', which='both', direction='inout', width=1)
     fig.savefig(os.path.join(figures_path, 'SRT_hist.png'), dpi=300)
 
@@ -241,7 +240,7 @@ def plot_heatmaps(xx, yy, n, model=None, path='', wide=False):
     for z, ir, ic in plts:
         ax = axes[ir, ic]
         pos = ax.imshow(z, aspect='auto', extent=(xx[0,0], xx[0,-1], yy[0,0], yy[-1,0]),
-                        interpolation='spline16', origin='lower')
+                        cmap='viridis', interpolation='spline16', origin='lower')
         ax.xaxis.set_ticks(x_ticks)
         ax.tick_params(axis='both', direction='inout', labelsize=14)
         ax.tick_params(axis='x', labelrotation=45)
@@ -257,7 +256,7 @@ def plot_heatmaps(xx, yy, n, model=None, path='', wide=False):
         cs = ax.contour(xx, yy, z, colors='white', origin='lower', linestyles='dashed',
                         linewidths=1, extent=(xx[0,0], xx[0,-1], yy[0,0], yy[-1,0]))
         ax.clabel(cs, cs.levels, inline=True, fmt=fmt, fontsize=14)
-        ax.plot(xbl, ybl, marker='D', mec='black', ms=7, mew=1.5, mfc='white')
+        ax.plot(xbl, ybl, marker='D', markersize=12, mec='black', ms=7, mew=1.5, mfc='white')
     # if wide: plt.subplots_adjust(wspace=0.05, hspace=0.5)
     fig.savefig(os.path.join(figures_path, 'heatmaps.png'), dpi=300)
     return fig, ax
@@ -354,7 +353,7 @@ if __name__ == '__main__':
     # run_sensitivity(seed1)
     # plot_SE_timeseries(seed=seed1, N=N, wide=True)
 
-    ##### Decision variable heatmapping #####
+    ##### Decision variable heatmap #####
     dv_analysis()
 
     ##### Uncertainty analysis with different initial conditions #####

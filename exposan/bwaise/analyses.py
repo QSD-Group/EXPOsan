@@ -528,13 +528,13 @@ def run(N_uncertainty=5000, N_morris=50, from_record=True,
 # %%
 
 # =============================================================================
-# Acutally run the functions
+# Actually run the functions
 # =============================================================================
 
 if __name__ == '__main__':
     # Run from scratch
-    # run(N_uncertainty=5000, N_morris=50, from_record=False,
-    #     label_morris_lines=False, label_morris_points=True)
+    run(N_uncertainty=5000, N_morris=50, from_record=False,
+        label_morris_lines=False, label_morris_points=True)
 
     # Just make the plots
-    run(from_record=True, label_morris_lines=False, label_morris_points=True)
+    # run(from_record=True, label_morris_lines=False, label_morris_points=True)
