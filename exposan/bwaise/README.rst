@@ -8,15 +8,15 @@ Systems included in this module are based on Scenarios A-C as described in Trimm
 
 Results generated from this module have been benchmarked against Trimmer et al. [1]_ and you can find the result comparison in the ``comparison`` folder. The folder ``data`` contains data needed to run the module, and ``figures`` and ``results`` contain the archived figures and results generated for Li and Zhang et al. [2]_ 
 
-To reproduce the results and figures included in Li and Zhang et al. [2]_, directly run ``systems.py``/``analyses.py`` (before running ``analyses.py``, you'll want to adjust the number of simulations, and you'll need to run from scratch the first time you run to generate the data). You'll need the package `adjustText <https://github.com/Phlya/adjustText>`_ in addition to ``EXPOsan``'s requirements. You can find a full list of the dependency packages in `qsdsan.yml <https://github.com/QSD-Group/EXPOsan/blob/main/exposan/bwaise/qsdsan.yml>`_, and create a new environment based on it using ``conda env create --file qsdsan.yml``. Additionally, you will want the package ``Graphviz`` to be correctly installed in your environment (read more about this on `QSDsan's documentation <https://qsdsan.readthedocs.io/en/latest/FAQ.html#graphviz>`_).
+To reproduce the results and figures included in Li and Zhang et al. [2]_, directly run ``systems.py``/``analyses.py`` (before running ``analyses.py``, you'll want to adjust the number of simulations, and you'll need to run from scratch the first time you run to generate the data). You'll need the package `adjustText <https://github.com/Phlya/adjustText>`_ in addition to ``EXPOsan``'s requirements. You can find a full list of the dependency packages in `qsdsan.yml <https://github.com/QSD-Group/EXPOsan/blob/main/exposan/bwaise/qsdsan.yml>`_, and create a new environment based on it using ``conda env create --file qsdsan.yml``. Additionally, you will want to have the package ``Graphviz`` correctly installed in your environment (read more about this on `QSDsan's documentation <https://qsdsan.readthedocs.io/en/latest/FAQ.html#graphviz>`_).
 
 To run the module developed in Trimmer et al. [1]_, you can run the `Bwaise_sanitation_model.py` script in either `baseline <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bwaise/comparison/baseline>`_ or `uncertainty <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bwaise/comparison/uncertainty>`_.
 
 Note that minor modifications have been made in the scripts, specifically:
 
     - Baseline characterization factor of the electricity has been changed in the input spreadsheet
-    - Degradation algorithm for `dehydration_vault` has been updated in `decentralized_storage.py`
-    - Degradation algorithms for all treatment functions with first-order decay have been updated in `treatment.py`
+    - Degradation algorithm for ``dehydration_vault`` has been updated in ``decentralized_storage.py``
+    - Degradation algorithms for all treatment functions with first-order decay have been updated in ``treatment.py``
     - The emission calculation of `ABR` has been updated.
 
 The change in the spreadsheet is denoted by red font with a note, and all changes in the scripts have been noted with `#!!!`, the original value/codes are saved either in the spreadsheet note or as comments.
@@ -238,4 +238,4 @@ You can make changes (e.g., add or remove parameters, change uncertainty ranges)
 References
 ----------
 .. [1] Trimmer et al., Navigating Multidimensional Social–Ecological System Trade-Offs across Sanitation Alternatives in an Urban Informal Settlement. Environ. Sci. Technol. 2020, 54 (19), 12641–12653. `<https://doi.org/10.1021/acs.est.0c03296>`_
-.. [2] Li and  Zhang et al., QSDsan: An Integrated Platform for Quantitative Sustainable Design of Sanitation and Resource Recovery Systems *In Prep.*
+.. [2] Li and  Zhang et al., QSDsan: An Integrated Platform for Quantitative Sustainable Design of Sanitation and Resource Recovery Systems. *In Prep.*

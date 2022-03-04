@@ -13,6 +13,7 @@ for license details.
 '''
 
 from time import time
+from copy import deepcopy
 from qsdsan.utils import load_data, load_pickle, save_pickle
 from qsdsan.stats import plot_uncertainties, get_correlations
 from exposan.bsm1 import model_bsm1 as mdl, model_2dv as mdl2, model_ss as mdls, \
@@ -95,10 +96,10 @@ def plot_SE_timeseries(seed, N, data=None, wide=False):
     bl_data.S_ALK = bl_data.S_ALK/12
     if wide:
         fig, axes = plt.subplots(3, 4, sharex=True, figsize=(14,8))
-        plts = plots_wide
+        plts = deepcopy(plots_wide)
     else:
         fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12,12))
-        plts = plots
+        plts = deepcopy(plots)
     x_ticks = np.linspace(0, 50, 6)
     for var, ir, ic in plts:
         df = data[var]
@@ -178,6 +179,8 @@ def plot_kde2d_metrics(model):
         fig.savefig(os.path.join(figures_path, f'{x}_vs_{y}.png'), dpi=300)
     fig, ax = plot_uncertainties(model, x_axis=metrics[6], kind='hist',
                                  center_kws={'kde':True})
+    breakpoint()
+    ax.tick_params(axis='both', which='both', direction='inout', width=1)
     fig.savefig(os.path.join(figures_path, 'SRT_hist.png'), dpi=300)
 
 thresholds = [100, 10, 18, 4, 30] # Effluent COD, BOD5, TN, TKN, TSS
@@ -296,10 +299,10 @@ def plot_SE_yt_w_diff_init(seed, N, data=None, wide=False):
     bm_data.columns = [col.rstrip('.6') for col in bm_data.columns]
     if wide:
         fig, axes = plt.subplots(3, 4, sharex=True, figsize=(14,8))
-        plts = plots_wide
+        plts = deepcopy(plots_wide)
     else:
         fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12,12))
-        plts = plots
+        plts = deepcopy(plots)
     x_ticks = np.linspace(0, 50, 6)
     for var, ir, ic in plts:
         df = data[var]
@@ -330,6 +333,7 @@ def plot_SE_yt_w_diff_init(seed, N, data=None, wide=False):
     fig.savefig(os.path.join(figures_path, 'effluent_yt_wdiff_init.png'), dpi=300)
     return fig, ax
 
+
 def UA_w_diff_inits(seed=None, N=100, T=T, t_step=t_step, plot=True, wide=True):
     seed = seed or int(str(time())[-3:])
     # run_uncertainty(mdls, N, T, t_step, method='BDF', seed=seed)
@@ -340,11 +344,23 @@ def UA_w_diff_inits(seed=None, N=100, T=T, t_step=t_step, plot=True, wide=True):
 
 #%%
 if __name__ == '__main__':
-    # seed1 = UA_w_all_params(plot=True, wide=True)
+    ##### Uncertainty analysis with all parameters #####
+    seed1 = UA_w_all_params(plot=True, wide=True)
+    run_sensitivity(seed1)
+
+    # Plot with cached data, note that you need to manually update the `seed1`
+    # based on the name of cached data, the seed should be the last three digits
+    # of the folder and the pickle file, e.g., 624
     # run_sensitivity(seed1)
     # plot_SE_timeseries(seed=seed1, N=N, wide=True)
 
+    ##### Decision variable heatmapping #####
     dv_analysis()
 
-    # seed2 = UA_w_diff_inits(plot=True, wide=True)
+    ##### Uncertainty analysis with different initial conditions #####
+    seed2 = UA_w_diff_inits(plot=True, wide=True)
+
+    # Plot with cached data, note that you need to manually update the `seed2`
+    # based on the name of cached data, the seed should be the last three digits
+    # of the folder and the pickle file, e.g., 235
     # plot_SE_yt_w_diff_init(seed=seed2, N=100, wide=True)

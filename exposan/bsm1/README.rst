@@ -4,7 +4,7 @@ bsm1: Benchmark Simulation Model No. 1
 
 Summary
 -------
-This module implements the Benchmark Simulation Model No. 1 (BSM1). [1]_ The code for process modeling and dynamic simulation has been verified against the MATLAB/Simulink [2]_ implementation developed by International Water Association (IWA) Task Group on Benchmarking of Control Strategies. The ``results`` folder contains the outputs from both this module (``sol_50d_BDF.xlsx``) and MATLAB/Simulink results (``matlab_exported_data.xlsx`` and ``matlab_workspace.mat``) for comparison.
+This module implements the Benchmark Simulation Model No. 1 (BSM1). [1]_ The code for process modeling and dynamic simulation has been verified against the MATLAB/Simulink [2]_ implementation developed by International Water Association (IWA) Task Group on Benchmarking of Control Strategies. The ``data`` folder contains the outputs from MATLAB/Simulink results (``matlab_exported_data.xlsx`` and ``matlab_workspace.mat``) for comparison.
 
 .. figure:: ./figures/BSM1.png
 
@@ -14,7 +14,7 @@ The Activated Sludge Model No. 1 (ASM1) [3]_ was used to describe biochemical pr
 
 As of now, the BSM1 system can be simulated dynamically with constant or dynamic influents. Fixed aeration is enabled. Idealized aeration control can also be implemented by setting target dissolved oxygen concentration.
 
-To reproduce the results and figures included in Li and Zhang et al. [5]_, directly run ``analyses.py``. You can find a full list of the dependency packages in `qsdsan.yml <https://github.com/QSD-Group/EXPOsan/blob/main/exposan/bwaise/qsdsan.yml>`_, and create a new environment based on it using ``conda env create --file qsdsan.yml``.
+To reproduce the results and figures included in Li and Zhang et al. [5]_, directly run ``analyses.py``. You can find a full list of the dependency packages in `qsdsan.yml <https://github.com/QSD-Group/EXPOsan/blob/main/exposan/bwaise/qsdsan.yml>`_, and create a new environment based on it using ``conda env create --file qsdsan.yml``. If you want to look at unit/system diagram, you will want to have the package ``Graphviz`` correctly installed in your environment (read more about this on `QSDsan's documentation <https://qsdsan.readthedocs.io/en/latest/FAQ.html#graphviz>`_).
 
 To perform a simulation of the BSM1 model, you can import the module (as shown below) or directly run the ``system.py`` script. Influent loadings, initial conditions, model parameters, system settings, and solver options can all be customized in the same script.
 
@@ -198,5 +198,5 @@ References
 .. [2] Gernaey et al., Benchmarking of control strategies for wastewater treatment plants. IWA publishing, 2014. `<https://github.com/wwtmodels/Benchmark-Simulation-Models>`_
 .. [3] Henze et al., Activated sludge models ASM1, ASM2, ASM2d and ASM3. IWA publishing, 2000.
 .. [4] Takács et al., A Dynamic Model of the Clarification-Thickening Process. Water Res. 1991, 25 (10), 1263–1271. `<https://doi.org/10.1016/0043-1354(91)90066-Y.>`_
-.. [5] Li and  Zhang et al., QSDsan: An Integrated Platform for Quantitative Sustainable Design of Sanitation and Resource Recovery Systems *In Prep.*
+.. [5] Li and  Zhang et al., QSDsan: An Integrated Platform for Quantitative Sustainable Design of Sanitation and Resource Recovery Systems. *In Prep.*
 .. [6] Rieger et al., Guidelines for Using Activated Sludge Models. IWA Publishing: London, New York, 2012; Vol. 11. `<https://doi.org/10.2166/9781780401164.>`_
