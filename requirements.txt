@@ -1,5 +1,5 @@
 # Needed by exposan
-qsdsan>=1.1.2
+qsdsan>=1.1.3
 scikit-learn
 
 # Packages for testing
