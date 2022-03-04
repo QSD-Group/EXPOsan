@@ -51,8 +51,8 @@ def set_i_XB(i):
     cmps.X_BH.i_N = cmps.X_BA.i_N = i
     cmps.refresh_constants()
 
-b = 0.6
-D = shape.Triangle(lower=0.57, midpoint=b, upper=0.63)
+b = 0.06
+D = shape.Triangle(lower=0.057, midpoint=b, upper=0.063)
 @param(name='Biomass products N content i_XP', element=PE, kind='coupled',
        units='g N/g COD', baseline=b, distribution=D)
 def set_i_XP(i):
@@ -145,8 +145,8 @@ for name, vals in param_ranges.items():
     param(setter=setter, name=f'ASM1 {name}', element=A1, kind='coupled', 
           units=unit, baseline=b, distribution=D)
 
-b = 0.2
-D = shape.Triangle(lower=0.15, midpoint=b, upper=0.25)
+b = 0.20855  # corresponds to f_P = 0.08 and Y_H = 0.67
+D = shape.Triangle(lower=b*0.75, midpoint=b, upper=b*1.25)
 @param(name='ASM1 f_Pobs', element=A1, kind='coupled', units='',
        baseline=b, distribution=D)
 def set_f_Pobs(i):
@@ -289,7 +289,7 @@ metric_ss = model_ss.metric
 # Set initial conditions of all bioreactors
 _ic = s._init_conds
 for k, v in _ic.items():
-    i = cmps.index(k)
+    # i = cmps.index(k)
     b = v
     D = get_uniform_w_frac(b, 0.5)
     @param_ss(name='initial '+k, element=A1, kind='coupled', units='mg/L',
@@ -335,3 +335,6 @@ def run_wdiff_init(model, N, T, t_step, method='LSODA',
             export_state_to=tpath,
             sample_id=i,
             )
+    for u in model._system.units:
+        if u.ID in ('A1', 'A2', 'O1', 'O2', 'O3'):
+            u.set_init_conc(**_ic)
