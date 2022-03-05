@@ -2,25 +2,16 @@
 # -*- coding: utf-8 -*-
 
 '''
-QSDsan: Quantitative Sustainable Design for sanitation and resource recovery systems
+EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+    Lewis Rowles <stetsonsc@gmail.com>
     Yalin Li <zoe.yalin.li@gmail.com>
-    and modified to include polymer and agricultural residues by:
-    Stetson Rowles <stetsonsc@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
-Please refer to https://github.com/QSD-Group/QSDsan/blob/master/LICENSE.txt
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
-
-Ref:
-    [1] Trimmer et al., Navigating Multidimensional Social–Ecological System
-        Trade-Offs across Sanitation Alternatives in an Urban Informal Settlement.
-        Environ. Sci. Technol. 2020, 54 (19), 12641–12653.
-        https://doi.org/10.1021/acs.est.0c03296.
-
 '''
-
 
 # %%
 
@@ -126,7 +117,7 @@ Struvite = Component.from_chemical('Struvite',
                                    degradability='Undegradable', organic=False)
 # http://www.chemspider.com/Chemical-Structure.8396003.html (accessed 2020-11-19)
 add_V_from_rho(Struvite, 1711)
-    
+
 HAP = Component.from_chemical('HAP', tmo.Chemical('Hydroxyapatite'),
                               phase='s', particle_size='Particulate',
                               degradability='Undegradable', organic=False)
@@ -144,16 +135,16 @@ Polymer = Component.from_chemical('Polyacrylamide',
 
 
 Resin = Component.from_chemical('Polystyrene', tmo.Chemical('Polystyrene'),
-                  formula='C8H8', 
-                  phase='s', particle_size='Particulate', 
+                  formula='C8H8',
+                  phase='s', particle_size='Particulate',
                   degradability='Undegradable', organic=False)
-# 1200 kg/m3 
-# 
+# 1200 kg/m3
+#
 # add_V_from_rho(Resin, 1200)
 
 H2SO4 = Component.from_chemical('H2SO4', tmo.Chemical('H2SO4'),
-                  formula='H2SO4', 
-                  phase='l', particle_size='Soluble', 
+                  formula='H2SO4',
+                  phase='l', particle_size='Soluble',
                   degradability='Undegradable', organic=False)
 
 MgOH2 = Component.from_chemical('MagnesiumHydroxide',
@@ -222,16 +213,16 @@ CornStover.HHV = 46.5
 
 for i in  (BambooWood, CoconutShell, CoconutHusk, RiceHusk, CornStover):
     i.copy_models_from(tmo.Chemical('Glucose'), ('Cn', 'mu'))
-    
-    
-    
+
+
+
 for cmp in (NonNH3, C, P, K, Mg, Ca, OtherSS):
     cmp.default()
     cmp.copy_models_from(H2O, ('sigma', 'epsilon', 'kappa', 'Cn', 'mu'))
     add_V_from_rho(cmp, 1e3) # assume the same density as water
 
 cmps = Components((NH3, NonNH3, C, P, K, Mg, Ca, H2O, OtherSS, N2O, CH4, O2, N2,
-                   CO2, P4O10, FilterBag, Tissue, WoodAsh, Struvite, HAP, 
+                   CO2, P4O10, FilterBag, Tissue, WoodAsh, Struvite, HAP,
                    Polymer, Resin, H2SO4, MgOH2, MgCO3,
                    BambooWood, CoconutShell, CoconutHusk, RiceHusk, CornStover))
 for i in cmps:
@@ -241,8 +232,3 @@ for i in cmps:
 cmps.compile()
 
 cmps.set_synonym('H2O', 'Water')
-
-
-
-
-
