@@ -216,7 +216,7 @@ dependencies:
     - cycler==0.11.0
     - dill==0.3.4
     - et-xmlfile==1.1.0
-    - exposan==1.1.1
+    - exposan==1.1.4
     - flexsolve==0.5.3
     - fluids==1.0.17
     - fonttools==4.29.1
