@@ -21,7 +21,7 @@ def test_bwaise():
 
     set_thermo(bw.cmps)
 
-    assert_allclose(bw.teaA.NPV, -42012332.263887756, rtol=1e-2)
+    assert_allclose(bw.teaA.NPV, -42012579.5802784, rtol=1e-2)
     assert_allclose(bw.teaB.NPV, -3466006.2170442184, rtol=1e-2)
     assert_allclose(bw.teaC.NPV, -65107482.77677129, rtol=1e-2)
 

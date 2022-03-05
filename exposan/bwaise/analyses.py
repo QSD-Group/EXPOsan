@@ -16,7 +16,7 @@ for license details.
 # %%
 
 import os
-import numpy as np, pandas as pd, seaborn as sns
+import numpy as np, pandas as pd, seaborn as sns, matplotlib.colors as mcolors
 from matplotlib import pyplot as plt
 from matplotlib.ticker import AutoMinorLocator
 from qsdsan import stats as s
@@ -30,17 +30,25 @@ import warnings
 warnings.filterwarnings(action='ignore')
 
 models = modelA, modelB, modelC = bw.modelA, bw.modelB, bw.modelC
+
 RGBs = {
     'A': colors.Guest.orange.RGBn,
     'B': colors.Guest.green.RGBn,
     'C': colors.Guest.blue.RGBn,
     }
 
+# These label names will affect the order of the parameters in Morris plots,
+# but not the value
 alt_names = {
-    'COD': 'energy',
+    # 'Total COD': 'COD recovery',
+    # 'Total N': 'N recovery',
+    # 'Total P': 'P recovery',
+    # 'Total K': 'K recovery',
     'Annual net cost': 'Cost',
     'Net emission GlobalWarming': 'GWP',
     }
+# Change both 'Total X' and 'X recovery' to 'X'
+strip_label = lambda label: label.lstrip('Total ').rstrip(' recovery')
 
 seed = 3221 # for numpy seeding and result consistency
 
@@ -71,17 +79,19 @@ def save_reports(system):
 
 
 # Plot recoveries as 1D-density plots
-def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal',
+def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal', adjust_hue=False,
              whis=(5, 95), sym=''):
     if kind == 'horizontal':
         fig, ax = s.plot_uncertainties(model, y_axis=metrics, kind='box',
+                                       adjust_hue=adjust_hue,
                                        center_kws={'color': color, 'width': 0.5,
                                                    'whis': whis, 'sym': sym})
-        ax.get_legend().remove()
+        if adjust_hue:
+            ax.get_legend().remove()
         fig.set_figheight(2.5)
         ticks = np.arange(0, 1.2, 0.2)
         ax.set(xlabel='', xlim=(0, 1), xticks=ticks)
-        ax.set_yticklabels([i.name.lstrip('Total ') for i in metrics], fontsize=20)
+        ax.set_yticklabels([strip_label(i.name) for i in metrics], fontsize=20)
         ax.set_xticklabels([f'{i:.0%}' for i in ticks], fontsize=20)
         ax.xaxis.set_minor_locator(AutoMinorLocator(2))
         ax.tick_params(axis='both', which='both', direction='inout')
@@ -95,10 +105,11 @@ def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal',
         fig, ax = s.plot_uncertainties(model, x_axis=metrics, kind='box',
                                        center_kws={'color': color, 'width': 0.5,
                                                    'whis': whis, 'sym': sym})
-        ax.get_legend().remove()
+        if adjust_hue:
+            ax.get_legend().remove()
         fig.set_figwidth(2.5)
         ticks = np.arange(0, 1.2, 0.2)
-        ax.set_xticklabels([i.name.lstrip('Total ') for i in metrics], fontsize=20)
+        ax.set_xticklabels([strip_label(i.name) for i in metrics], fontsize=20)
         for label in ax.get_xticklabels():
             label.set_rotation(90)
         ax.set(ylabel='', ylim=(0, 1), yticks=ticks)
@@ -163,7 +174,7 @@ def plot_kde(model, ID, color, metrics):
 param_set = set(modelA.parameters).union(set(modelB.parameters), set(modelC.parameters))
 param_names = tuple(p.name for p in param_set)
 
-# Plot morris results as scatter plot for each metric of each model
+# Plot Morris results as scatter plot for each metric of each model
 def plot_morris_scatter(model, morris_dct, combined_morris, color,
                         label_lines=True, label_points=True,
                         plot_combined=False, axs=None):
@@ -215,7 +226,7 @@ def plot_morris_scatter(model, morris_dct, combined_morris, color,
         # # If want mu_star/mu_star_max or sigma/mu_star_max >=0.1
         # top = df[(df.mu_star>=0.1)|(df.sigma>=0.1)]
 
-        # Only markout the top five mu_star/mu_star_max parameters
+        # Only mark out the top five mu_star/mu_star_max parameters
         if top.shape[0] > 5:
             top.sort_values(by=['mu_star'], ascending=False, inplace=True)
             top = top[:5]
@@ -286,6 +297,10 @@ def plot_morris_scatter_all(models, morris_dct, combineds, RGBs):
     tot_metrics = len(models[0].metrics)
     fig.subplots(tot_metrics, tot_models, sharex=True, sharey=True)
 
+    label_colors = (# A/B/C
+        mcolors.to_rgba('#7F533E'),
+        mcolors.to_rgba('#5A7F60'),
+        mcolors.to_rgba('#497980'))
     for n_model, model in enumerate(models):
         ID = model.system.ID[-1]
         axs = [fig.axes[tot_models*i+n_model] for i in range(tot_metrics)]
@@ -296,10 +311,15 @@ def plot_morris_scatter_all(models, morris_dct, combineds, RGBs):
 
         if n_model == 0:
             for n, ax in enumerate(axs):
-                ax.set_ylabel(model.metrics[n].name, fontsize=14, fontweight='bold')
+                name = model.metrics[n].name
+                if not name in ('Cost', 'GWP'):
+                    ylabel = strip_label(name)+' recovery'
+                else:
+                    ylabel = name
+                ax.set_ylabel(ylabel, fontsize=14, fontweight='bold')
                 ax.yaxis.labelpad = 15
-        # breakpoint()
-        axs[0].set_xlabel(f'System {ID}', fontsize=14, fontweight='bold')
+        axs[0].set_xlabel(f'System {ID}', fontsize=14, fontweight='bold',
+                          color=label_colors[n_model])
         axs[0].xaxis.set_label_position('top')
         axs[0].xaxis.labelpad = 15
 
@@ -377,7 +397,6 @@ def run(N_uncertainty=5000, N_morris=50, from_record=True,
         # Net cost, net GWP, and total COD/N/P/K recovery
         model.metrics = key_metrics = get_key_metrics(model, alt_names)
         ID = model.system.ID[-1]
-
         if not from_record:
             samples = model.sample(N=N_uncertainty, rule='L', seed=seed)
             model.load_samples(samples)
@@ -388,17 +407,18 @@ def run(N_uncertainty=5000, N_morris=50, from_record=True,
                 copy_samples(modelB, model, exclude=modelA.parameters)
 
             evaluate(model)
+
             table_dct['uncertainty'][ID] = model.table.copy()
             organized_dct = organize_uncertainty_results(
                 model=model, spearman_results=model.spearman())
             save_uncertainty_results(model, organized_dct)
+
         else:
             model.table = table_dct['uncertainty'][ID]
 
         # Make the plots
         _, ax_dct['box'][ID] = plot_box(model, ID, RGBs[ID], key_metrics[:-2], 'horizontal')
         _, ax_dct['kde'][ID] = plot_kde(model, ID, RGBs[ID], key_metrics[-2:])
-
 
     ########## Morris One-at-A-Time ##########
     origin_dct = dict(mu_star={}, sigma={})
@@ -508,12 +528,13 @@ def run(N_uncertainty=5000, N_morris=50, from_record=True,
 # %%
 
 # =============================================================================
-# Acutally run the functions
+# Actually run the functions
 # =============================================================================
 
 if __name__ == '__main__':
-    # run(N_uncertainty=5000, N_morris=50, from_record=False,
-    #     label_morris_lines=False, label_morris_points=True)
-    # run(N_uncertainty=100, N_morris=2, from_record=False,
-    #     label_morris_lines=False, label_morris_points=True)
-    run(from_record=True, label_morris_lines=False, label_morris_points=True)
+    # Run from scratch
+    run(N_uncertainty=5000, N_morris=50, from_record=False,
+        label_morris_lines=False, label_morris_points=True)
+
+    # Just make the plots
+    # run(from_record=True, label_morris_lines=False, label_morris_points=True)

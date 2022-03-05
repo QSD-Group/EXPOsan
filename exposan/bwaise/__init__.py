@@ -17,6 +17,9 @@ bwaise_path = os.path.dirname(__file__)
 data_path = os.path.join(bwaise_path, 'data')
 results_path = os.path.join(bwaise_path, 'results')
 figures_path = os.path.join(bwaise_path, 'figures')
+# To save simulation data and generated figures
+if not os.path.isdir(results_path): os.mkdir(results_path)
+if not os.path.isdir(figures_path): os.mkdir(figures_path)
 del os
 
 from qsdsan.utils import time_printer
@@ -44,10 +47,14 @@ from .systems import *
 from .models import *
 
 __all__ = (
+    'evaluate',
+    'get_key_metrics',
+    'bwaise_path',
+    'data_path',
+    'results_path',
+    'figures_path',
 	*_cmps.__all__,
     *_lca_data.__all__,
 	*systems.__all__,
     *models.__all__,
-    'evaluate',
-    'get_key_metrics',
 	)
