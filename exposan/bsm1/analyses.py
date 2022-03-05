@@ -66,7 +66,7 @@ def seed_RGT():
     if len(set(seeds)) >= 1000:
         raise RuntimeError('The program has run out of 3-digit seeds to use. Consider'
                            'clean up the results folder.')
-    while seed in seeds: 
+    while seed in seeds:
         seed = (seed+1) % 1000
     return seed
 
@@ -78,8 +78,8 @@ def run_all_analyses(seed1=None, seed2=None, N1=N, N2=100, n=20, T=T, t_step=t_s
     run_sensitivity(seed=seed1)
     dv_analysis(n=n, T=T, t_step=t_step, plot=plot, wide=wide)
     UA_w_diff_inits(seed=seed2, N=N2, T=T, t_step=t_step, plot=plot, wide=wide)
-    
-#%% Baseline      
+
+#%% Baseline
 def run_baseline(T=T, t_step=t_step, export_to=''):
     b1.bsm1.simulate(state_reset_hook='reset_cache',
                     t_span=(0,T),
@@ -123,7 +123,7 @@ def plot_SE_timeseries(seed, N, data=None, wide=False):
             data = load_pickle(path)
         except:
             data = analyze_SE_vars(seed, N)
-    bl_data = load_data(os.path.join(results_path, 'sol_50d_BDF.xlsx'), 
+    bl_data = load_data(os.path.join(results_path, 'sol_50d_BDF.xlsx'),
                         skiprows=[0,2], header=0, usecols='B, S:AH')
     bl_data.columns = [col.split(' ')[0] for col in bl_data.columns]
     bl_data.S_ALK = bl_data.S_ALK/12
@@ -205,9 +205,26 @@ def plot_kde2d_metrics(model):
         ax1.spines.clear()
         ax2.spines.clear()
         ax2.yaxis.set_visible(False)
+        xl, xu = ax0.get_xlim()
         yl, yu = ax0.get_ylim()
-        if yl < 0: ax0.set_ylim((0, yu))
+        if yl < 0:
+            ax0.set_ylim((0, yu))
+            yl, yu = ax0.get_ylim()
+        # Plot discharge limits
+        if x == 'COD' and xl < 100 < xu:
+            ax0.axline(xy1=(100,0), slope=np.inf, color='k', linestyle='--')
+        elif x == 'BOD5' and xl < 10 < xu:
+            ax0.axline(xy1=(10,0), slope=np.inf, color='k', linestyle='--')
+        elif x == 'TSS' and xl < 30 < xu:
+            ax0.axline(xy1=(30,0), slope=np.inf, color='k', linestyle='--')
+        if y == 'TN' and yl < 18 < yu:
+            ax0.axline(xy1=(0,18), slope=0, color='k', linestyle='--')
+        elif y == 'TKN' and yl < 4 < yu:
+            ax0.axline(xy1=(0,4), slope=0, color='k', linestyle='--')
+        ax0.set_xlim((xl, xu))
+        ax0.set_ylim((yl, yu))
         fig.savefig(os.path.join(figures_path, f'{x}_vs_{y}.png'), dpi=300)
+        del fig, ax
     fig, ax = plot_uncertainties(model, x_axis=metrics[6], kind='hist',
                                  center_kws={'kde':True})
     ax.tick_params(axis='both', which='both', direction='inout', width=1)
@@ -265,7 +282,7 @@ def plot_heatmaps(xx, yy, model=None, path='', wide=False):
     else:
         plts = zip(zz, irs, ics)
         fig, axes = plt.subplots(3, 2, sharex=True, sharey=True, figsize=(9,12))
-    
+
     fig.set_tight_layout({'h_pad':4.5, 'w_pad': 0})
     for z, ir, ic in plts:
         ax = axes[ir, ic]
@@ -309,17 +326,17 @@ def run_mapping(model, n, T, t_step, run=True, method='BDF', mpath='', tpath='')
         if mpath: model.table.to_excel(mpath)
     return xx, yy
 
-def dv_analysis(n=20, T=T, t_step=t_step, run=True, save_to='table_2dv.xlsx', 
+def dv_analysis(n=20, T=T, t_step=t_step, run=True, save_to='table_2dv.xlsx',
                 plot=True, wide=True):
     path = os.path.join(results_path, save_to)
     xx, yy = run_mapping(mdl2, n, T, t_step, run, mpath=path)
-    if plot: 
-        if run: 
+    if plot:
+        if run:
             plot_heatmaps(xx, yy, mdl2, wide=wide)
             for p in mdl2.parameters:
                 p.setter(p.baseline)
         else: plot_heatmaps(xx, yy, path=path, wide=wide)
-    
+
 
 #%% 50-d simulations with different initial conditions
 def plot_SE_yt_w_diff_init(seed, N, data=None, wide=False):
@@ -381,25 +398,25 @@ def UA_w_diff_inits(seed=None, N=100, T=T, t_step=t_step, plot=True, wide=True):
 
 #%%
 if __name__ == '__main__':
-    ##### Run all analyses and plot all figures) #######
+    ##### Run all analyses and plot all figures) #####
     run_all_analyses()
-    
+
     ##### Uncertainty analysis with all parameters #####
     # seed1 = UA_w_all_params(plot=True, wide=True)
-    
-    ##### KS test with the uncertainty analysis data ###
+
+    ##### KS test with the uncertainty analysis data #####
     # The seed `seed1` should be the the same one used for uncertainty analysis
     # run_sensitivity(seed1)
 
-    ##### Plot cached time-series data from uncertainty analysis 
-    # note that you need to manually update the `seed1`
+    ##### Plot cached time-series data from uncertainty analysis #####
+    # Note that you need to manually update the `seed1`
     # based on the name of cached data, the seed should be the last three digits
     # of the folder and the pickle file, e.g., 624
     # plot_SE_timeseries(seed=seed1, N=N, wide=True)
 
     ##### Decision variable heatmap #####
     # dv_analysis()
-    
+
     # To plot without re-running the simulations
     # dv_analysis(run=False)
 
