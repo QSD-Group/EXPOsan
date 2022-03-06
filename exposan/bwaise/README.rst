@@ -10,8 +10,7 @@ Results generated from this module have been benchmarked against Trimmer et al. 
 
 To reproduce the results and figures (saved in ``cached_results_figures``) included in Li and Zhang et al. [2]_, directly run ``systems.py``/``analyses.py`` (before running ``analyses.py``, you'll want to adjust the number of simulations, and you'll need to run from scratch the first time you run to generate the data). You'll need the package `adjustText <https://github.com/Phlya/adjustText>`_ in addition to ``EXPOsan``'s requirements.
 
-You can find a full list of the packages in the environment used to generate the results in 
- `qsdsan.yml <https://github.com/QSD-Group/EXPOsan/blob/main/exposan/bwaise/qsdsan.yml>`_. Note that the environment was in macOS, other OS users can consult it for the versions of the dependency packages and install them accordingly.
+You can find a full list of the packages in the environment used to generate the results in `qsdsan.yml <https://github.com/QSD-Group/EXPOsan/blob/main/exposan/bwaise/qsdsan.yml>`_. Note that the environment was in macOS, other OS users can consult it for the versions of the dependency packages and install them accordingly.
 
  Additionally, you will want to have the package ``Graphviz`` correctly installed in your environment (read more about this on `QSDsan's documentation <https://qsdsan.readthedocs.io/en/latest/FAQ.html#graphviz>`_).
 
