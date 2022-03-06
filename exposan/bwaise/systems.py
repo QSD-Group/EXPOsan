@@ -100,7 +100,7 @@ sludge_flow_alt = 60 # m3/d
 get_sludge_flow = lambda kind: \
     sludge_flow_exist if kind.lower() in ('exist', 'sysa', 'sysc', 'a', 'c') else sludge_flow_alt
 
-# Nutrient loss during applciation
+# Nutrient loss during application
 app_loss = dict.fromkeys(('NH3', 'NonNH3', 'P', 'K', 'Mg', 'Ca'), 0.02)
 app_loss['NH3'] = 0.05
 
