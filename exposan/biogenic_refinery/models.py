@@ -26,7 +26,7 @@ from qsdsan.utils import (
     time_printer, dct_from_str
     )
 from exposan import biogenic_refinery as br
-from exposan.biogenic_refinery import data_path as br_data_path
+from exposan.biogenic_refinery import data_path as br_data_path, results_path
 
 __all__ = ('modelA', 'modelB', 'modelC', 'modelD', 'result_dct',
            'run_uncertainty', 'save_uncertainty_results', 'add_metrics',
@@ -291,6 +291,8 @@ def batch_setting_unit_params(df, model, unit, exclude=()):
                         name=para, element=unit, kind='coupled', units=df.loc[para]['unit'],
                         baseline=b, distribution=D)
 
+join_path = lambda prefix, file_name: os.path.join(prefix, file_name)
+
 
 # %%
 
@@ -298,9 +300,7 @@ def batch_setting_unit_params(df, model, unit, exclude=()):
 # Shared by all three systems
 # =============================================================================
 
-su_data_path = os.path.join(data_path, 'sanunit_data/')
-path = su_data_path + '_drying_bed.tsv'
-drying_bed_data = load_data(path)
+su_data_path = join_path(data_path, 'sanunits')
 
 def add_shared_parameters(sys, model, country_specific=False):
     ########## Related to multiple units ##########
@@ -340,16 +340,11 @@ def add_shared_parameters(sys, model, country_specific=False):
         def set_household_size(i):
             systems.household_size = max(1, i)
 
-
-
-
     # ########## Related to human input ##########
     # # Diet and excretion
-    # path = data_path + 'sanunit_data/_excretion.tsv'
-    # data = load_data(path)
-    # batch_setting_unit_params(data, model, unit)
-
-
+    # path = join_path(su_data_path '_excretion.tsv')
+    # excretion_data = load_data(path)
+    # batch_setting_unit_params(excretion_data, model, unit)
 
     # Toilet density
     b = systems.household_per_toilet
@@ -368,7 +363,6 @@ def add_shared_parameters(sys, model, country_specific=False):
            baseline=b, distribution=D)
     def set_max_CH4_emission(i):
         systems.max_CH4_emission = i
-
 
     # Time to full degradation
     b = systems.tau_deg
@@ -427,6 +421,8 @@ def add_shared_parameters(sys, model, country_specific=False):
     # ########## Drying bed ##########
     # unit = drying_bed_unit
     # D = shape.Uniform(lower=0, upper=0.1)
+    # path = join_path(su_data_path, '_drying_bed.tsv')
+    # drying_bed_data = load_data(path)
     # batch_setting_unit_params(drying_bed_data, model, unit, exclude=('sol_frac', 'bed_H'))
 
     # b = unit.sol_frac
@@ -494,7 +490,7 @@ def add_shared_parameters(sys, model, country_specific=False):
 
     # Money discount rate
     # keep discount rate constant
-    # b = systems.get_discount_rate()
+    # b = systems.discount_rate
     # D = shape.Uniform(lower=0.03, upper=0.06)
     # @param(name='Discount rate', element='TEA', kind='isolated', units='fraction',
     #        baseline=b, distribution=D)
@@ -549,7 +545,6 @@ def add_shared_parameters(sys, model, country_specific=False):
     def set_CH4_CF(i):
         GWP_dct['CH4'] = systems.CH4_item.CFs['GlobalWarming'] = i
 
-
     b = GWP_dct['N2O']
     D = shape.Uniform(lower=265, upper=298)
     @param(name='N2O CF', element='LCA', kind='isolated', units='kg CO2-eq/kg N2O',
@@ -557,14 +552,12 @@ def add_shared_parameters(sys, model, country_specific=False):
     def set_N2O_CF(i):
         GWP_dct['N2O'] = systems.N2O_item.CFs['GlobalWarming'] = i
 
-
     # b = GWP_dct['Electricity']
     # D = shape.Uniform(lower=0.106, upper=0.121)
     # @param(name='Electricity CF', element='LCA', kind='isolated',
     #        units='kg CO2-eq/kWh', baseline=b, distribution=D)
     # def set_electricity_CF(i):
     #     GWP_dct['Electricity'] = i
-
 
     b = GWP_dct['Polymer']
     D = shape.Triangle(lower=b*0.95, midpoint=b, upper=b*1.05)
@@ -629,7 +622,8 @@ def add_shared_parameters(sys, model, country_specific=False):
     #         units='kg CO2-eq/kg biochar', baseline=b, distribution=D)
     # def set_biochar_CF(i):
     #     GWP_dct['biochar'] = systems.biochar_item.CFs['GlobalWarming'] = -i
-    item_path = os.path.join(br_data_path, 'impact_items.xlsx')
+
+    item_path = join_path(br_data_path, 'impact_items.xlsx')
     data = load_data(item_path, sheet='GWP')
     for p in data.index:
         item = ImpactItem.get_item(p)
@@ -657,9 +651,9 @@ def add_shared_parameters(sys, model, country_specific=False):
 # # For the same processes in sysA and sysC
 # # =============================================================================
 
-path = su_data_path + '_toilet.tsv'
+path = join_path(su_data_path, '_toilet.tsv')
 toilet_data = load_data(path)
-path = su_data_path + '_pit_latrine.tsv'
+path = join_path(su_data_path, '_pit_latrine.tsv')
 pit_latrine_data = load_data(path)
 
 MCF_lower_dct = dct_from_str(pit_latrine_data.loc['MCF_decay']['low'])
@@ -675,20 +669,47 @@ def add_pit_latrine_parameters(sys, model):
     batch_setting_unit_params(data, model, unit, exclude=('MCF_decay', 'N2O_EF_decay'))
 
     # MCF and N2O_EF decay parameters, specified based on the type of the pit latrine
-    b = unit.MCF_decay
     kind = unit._return_MCF_EF()
-    D = shape.Triangle(lower=MCF_lower_dct[kind], midpoint=b, upper=MCF_upper_dct[kind])
+    if sys.ID != 'sysD':
+        b_MCF = unit.MCF_decay
+        D_MCF = shape.Triangle(lower=MCF_lower_dct[kind], midpoint=b_MCF, upper=MCF_upper_dct[kind])
+        b_N2O_EF = unit.N2O_EF_decay
+        D_N2O_EF = shape.Triangle(lower=N2O_EF_lower_dct[kind], midpoint=b_N2O_EF, upper=N2O_EF_upper_dct[kind])
+        ######## Related to conveyance ########
+        convey_unit = sys.path[2]
+        b = convey_unit.loss_ratio
+        D = shape.Uniform(lower=0.02, upper=0.05)
+        param(setter=AttrSetter(convey_unit, 'loss_ratio'),
+              name='Transportation loss', element=convey_unit, kind='coupled', units='fraction',
+              baseline=b, distribution=D)
+
+        b = convey_unit.single_truck.distance
+        D = shape.Uniform(lower=2, upper=10)
+        param(setter=AttrSetter(convey_unit.single_truck, 'distance'),
+              name='Transportation distance', element=convey_unit, kind='coupled', units='km',
+              baseline=b, distribution=D)
+
+        b = systems.emptying_fee
+        D = shape.Uniform(lower=0, upper=0.3)
+        @param(name='Emptying fee', element=convey_unit, kind='coupled', units='USD',
+                baseline=b, distribution=D)
+        def set_emptying_fee(i):
+            systems.emptying_fee = i
+    else:
+        b_MCF = unit.MCF_decay * 2
+        D_MCF = shape.Triangle(lower=MCF_lower_dct[kind]*2, midpoint=b, upper=MCF_upper_dct[kind]*2)
+        b_N2O_EF = unit.N2O_EF_decay * 2
+        D_N2O_EF = shape.Triangle(lower=N2O_EF_lower_dct[kind]*2, midpoint=b, upper=N2O_EF_upper_dct[kind]*2)
+
     param(setter=DictAttrSetter(unit, '_MCF_decay', kind),
           name='MCF_decay', element=unit, kind='coupled',
           units='fraction of anaerobic conversion of degraded COD',
-          baseline=b, distribution=D)
+          baseline=b_MCF, distribution=D_MCF)
 
-    b = unit.N2O_EF_decay
-    D = shape.Triangle(lower=N2O_EF_lower_dct[kind], midpoint=b, upper=N2O_EF_upper_dct[kind])
     param(setter=DictAttrSetter(unit, '_N2O_EF_decay', kind),
           name='N2O_EF_decay', element=unit, kind='coupled',
           units='fraction of N emitted as N2O',
-          baseline=b, distribution=D)
+          baseline=b_N2O_EF, distribution=D_N2O_EF)
 
     # Costs
     b = unit.CAPEX
@@ -703,30 +724,9 @@ def add_pit_latrine_parameters(sys, model):
           name='Pit latrine operating cost', element=unit, kind='cost',
           units='fraction of capital cost', baseline=b, distribution=D)
 
-    ######## Related to conveyance ########
-    unit = sys.path[2]
-    b = unit.loss_ratio
-    D = shape.Uniform(lower=0.02, upper=0.05)
-    param(setter=AttrSetter(unit, 'loss_ratio'),
-          name='Transportation loss', element=unit, kind='coupled', units='fraction',
-          baseline=b, distribution=D)
-
-    b = unit.single_truck.distance
-    D = shape.Uniform(lower=2, upper=10)
-    param(setter=AttrSetter(unit.single_truck, 'distance'),
-          name='Transportation distance', element=unit, kind='coupled', units='km',
-          baseline=b, distribution=D)
-
-    b = systems.emptying_fee
-    D = shape.Uniform(lower=0, upper=0.3)
-    @param(name='Emptying fee', element=unit, kind='coupled', units='USD',
-            baseline=b, distribution=D)
-    def set_emptying_fee(i):
-        systems.emptying_fee = i
-
     return model
 
-# path = su_data_path + '_sludge_separator.tsv'
+# path = join_path(su_data_path '_sludge_separator.tsv')
 # sludge_separator_data = load_data(path)
 # split_lower_dct = eval(sludge_separator_data.loc['split']['low'])
 # split_upper_dct = eval(sludge_separator_data.loc['split']['high'])
@@ -796,45 +796,6 @@ def add_pit_latrine_parameters(sys, model):
     # return model
 
 
-
-def add_pit_latrine_parametersD(sys, model):
-    unit = sys.path[1]
-    param = model.parameter
-    ######## Related to the toilet ########
-    data = pd.concat((toilet_data, pit_latrine_data))
-    batch_setting_unit_params(data, model, unit, exclude=('MCF_decay', 'N2O_EF_decay'))
-
-    # MCF and N2O_EF decay parameters, specified based on the type of the pit latrine
-    b = unit.MCF_decay
-    kind = unit._return_MCF_EF()
-    D = shape.Triangle(lower=MCF_lower_dct[kind]*2, midpoint=b*2, upper=MCF_upper_dct[kind]*2)
-    param(setter=DictAttrSetter(unit, '_MCF_decay', kind),
-          name='MCF_decay', element=unit, kind='coupled',
-          units='fraction of anaerobic conversion of degraded COD',
-          baseline=b, distribution=D)
-
-    b = unit.N2O_EF_decay
-    D = shape.Triangle(lower=N2O_EF_lower_dct[kind]*2, midpoint=b*2, upper=N2O_EF_upper_dct[kind]*2)
-    param(setter=DictAttrSetter(unit, '_N2O_EF_decay', kind),
-          name='N2O_EF_decay', element=unit, kind='coupled',
-          units='fraction of N emitted as N2O',
-          baseline=b, distribution=D)
-
-    # Costs
-    b = unit.CAPEX
-    D = shape.Uniform(lower=523, upper=673)
-    param(setter=AttrSetter(unit, 'CAPEX'),
-          name='Pit latrine capital cost', element=unit, kind='cost',
-          units='USD', baseline=b, distribution=D)
-
-    b = unit.OPEX_over_CAPEX
-    D = shape.Uniform(lower=0.02, upper=0.08)
-    param(setter=AttrSetter(unit, 'OPEX_over_CAPEX'),
-          name='Pit latrine operating cost', element=unit, kind='cost',
-          units='fraction of capital cost', baseline=b, distribution=D)
-    return model
-
-
 # %%
 
 # =============================================================================
@@ -852,68 +813,66 @@ modelA = add_shared_parameters(sysA, modelA)
 
 # Diet and excretion
 A1 = systems.A1
-path = su_data_path + '_excretion.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelA, A1)
+path = join_path(su_data_path, '_excretion.tsv')
+excretion_data = load_data(path)
+batch_setting_unit_params(excretion_data, modelA, A1)
 
 # Pit latrine and conveyance
 modelA = add_pit_latrine_parameters(sysA, modelA)
 
 # Industrial control panel
 A4 = systems.A4
-path = su_data_path + '_control_box_op.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelA, A4)
+path = join_path(su_data_path, '_control_box_op.tsv')
+control_data = load_data(path)
+batch_setting_unit_params(control_data, modelA, A4)
 
 # Housing biogenic refinery
 A5 = systems.A5
-path = su_data_path + '_housing_biogenic_refinery.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelA, A5)
+path = join_path(su_data_path, '_housing_biogenic_refinery.tsv')
+housing_data = load_data(path)
+batch_setting_unit_params(housing_data, modelA, A5)
 
 # Screw press
 A6 = systems.A6
-path = su_data_path + '_screw_press.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelA, A6)
+path = join_path(su_data_path, '_screw_press.tsv')
+screw_data = load_data(path)
+batch_setting_unit_params(screw_data, modelA, A6)
 
 # Liquid treatment bed
 A7 = systems.A7
-path = su_data_path + '_liquid_treatment_bed.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelA, A7)
+path = join_path(su_data_path, '_liquid_treatment_bed.tsv')
+liquid_bed_data = load_data(path)
+batch_setting_unit_params(liquid_bed_data, modelA, A7)
 
 # Carbonizer base
 A8 = systems.A8
-path = su_data_path + '_carbonizer_base.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelA, A8)
+path = join_path(su_data_path, '_carbonizer_base.tsv')
+carbonizer_data = load_data(path)
+batch_setting_unit_params(carbonizer_data, modelA, A8)
 
 # Pollution control device
 A9 = systems.A9
-path = su_data_path + '_pollution_control_device.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelA, A9)
+path = join_path(su_data_path, '_pollution_control_device.tsv')
+pollution_data = load_data(path)
+batch_setting_unit_params(pollution_data, modelA, A9)
 
 # Oil heat exchanger
 A10 = systems.A10
-path = su_data_path + '_oil_heat_exchanger.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelA, A10)
+path = join_path(su_data_path, '_oil_heat_exchanger.tsv')
+oil_hx_data = load_data(path)
+batch_setting_unit_params(oil_hx_data, modelA, A10)
 
 # Hydronic heat exchanger
 A11 = systems.A11
-path = su_data_path + '_hydronic_heat_exchanger.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelA, A11)
+path = join_path(su_data_path, '_hydronic_heat_exchanger.tsv')
+hhx_data = load_data(path)
+batch_setting_unit_params(hhx_data, modelA, A11)
 
-# Dryer from HHx
+# Dryer from HHX
 A12 = systems.A12
-path = su_data_path + '_hhx_dryer.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelA, A12)
-
-all_paramsA = modelA.get_parameters()
+path = join_path(su_data_path, '_hhx_dryer.tsv')
+hhx_dryer_data = load_data(path)
+batch_setting_unit_params(hhx_dryer_data, modelA, A12)
 
 
 # %%
@@ -933,9 +892,7 @@ modelB = add_shared_parameters(sysB, modelB)
 
 # Diet and excretion
 B1 = systems.B1
-path = su_data_path + '_excretion.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelB, B1)
+batch_setting_unit_params(excretion_data, modelB, B1)
 
 # UDDT
 B2 = systems.B2
@@ -991,73 +948,53 @@ def set_truck_fee(i):
 
 # Struvite precipitation
 B5 = systems.B5
-path = su_data_path + '_struvite_precipitation.tsv'
+path = join_path(su_data_path, '_struvite_precipitation.tsv')
 data = load_data(path)
 batch_setting_unit_params(data, modelB, B5)
 
-
 # Ion exchange NH3
 B6 = systems.B6
-path = su_data_path + '_ion_exchange_NH3.tsv'
+path = join_path(su_data_path, '_ion_exchange_NH3.tsv')
 data = load_data(path)
 batch_setting_unit_params(data, modelB, B6)
 
 # Liquid treatment bed
 B7 = systems.B7
-path = su_data_path + '_liquid_treatment_bed.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelB, B7)
+batch_setting_unit_params(liquid_bed_data, modelB, B7)
 
 # Industrial control panel
 B8 = systems.B8
-path = su_data_path + '_control_box_op.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelB, B8)
+batch_setting_unit_params(control_data, modelB, B8)
 
 # Housing biogenic refinery
 B9 = systems.B9
-path = su_data_path + '_housing_biogenic_refinery.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelB, B9)
+batch_setting_unit_params(housing_data, modelB, B9)
 
 # Grinder
 B10 = systems.B10
-path = su_data_path + '_grinder.tsv'
+path = join_path(su_data_path, '_grinder.tsv')
 data = load_data(path)
 batch_setting_unit_params(data, modelB, B10)
 
 # Carbonizer base
 B11 = systems.B11
-path = su_data_path + '_carbonizer_base.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelB, B11)
+batch_setting_unit_params(carbonizer_data, modelB, B11)
 
 # Pollution control device
 B12 = systems.B12
-path = su_data_path + '_pollution_control_device.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelB, B12)
+batch_setting_unit_params(pollution_data, modelB, B12)
 
 # Oil heat exchanger
 B13 = systems.B13
-path = su_data_path + '_oil_heat_exchanger.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelB, B13)
+batch_setting_unit_params(oil_hx_data, modelB, B13)
 
 # Hydronic heat exchanger
 B14 = systems.B14
-path = su_data_path + '_hydronic_heat_exchanger.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelB, B14)
+batch_setting_unit_params(hhx_data, modelB, B14)
 
 # Dryer from HHX
 B15 = systems.B15
-path = su_data_path + '_hhx_dryer.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelB, B15)
-
-
-all_paramsB = modelB.get_parameters()
+batch_setting_unit_params(hhx_dryer_data, modelB, B15)
 
 
 # =============================================================================
@@ -1072,71 +1009,48 @@ paramC = modelC.parameter
 # Shared parameters
 modelC = add_shared_parameters(sysC, modelC)
 
-
 # Diet and excretion
 C1 = systems.C1
-path = su_data_path + '_excretion.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelC, C1)
+batch_setting_unit_params(excretion_data, modelC, C1)
 
 # Pit latrine and conveyance
 modelC = add_pit_latrine_parameters(sysC, modelC)
 
 # Industrial control panel
 C4 = systems.C4
-path = su_data_path + '_control_box_op.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelC, C4)
+batch_setting_unit_params(control_data, modelC, C4)
 
 # Housing biogenic refinery
 C5 = systems.C5
-path = su_data_path + '_housing_biogenic_refinery.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelC, C5)
+batch_setting_unit_params(housing_data, modelC, C5)
 
 # Screw press
 C6 = systems.C6
-path = su_data_path + '_screw_press.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelC, C6)
+batch_setting_unit_params(screw_data, modelC, C6)
 
 # Liquid treatment bed
 C7 = systems.C7
-path = su_data_path + '_liquid_treatment_bed.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelC, C7)
+batch_setting_unit_params(liquid_bed_data, modelC, C7)
 
 # Carbonizer base
 C8 = systems.C8
-path = su_data_path + '_carbonizer_base.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelC, C8)
+batch_setting_unit_params(carbonizer_data, modelC, C8)
 
 # Pollution control device
 C9 = systems.C9
-path = su_data_path + '_pollution_control_device.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelC, C9)
+batch_setting_unit_params(pollution_data, modelC, C9)
 
 # Oil heat exchanger
 C10 = systems.C10
-path = su_data_path + '_oil_heat_exchanger.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelC, C10)
+batch_setting_unit_params(oil_hx_data, modelC, C10)
 
 # Hydronic heat exchanger
 C11 = systems.C11
-path = su_data_path + '_hydronic_heat_exchanger.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelC, C11)
+batch_setting_unit_params(hhx_data, modelC, C11)
 
 # Dryer from HHX
 C12 = systems.C12
-path = su_data_path + '_hhx_dryer.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelC, C12)
-
-all_paramsC = modelC.get_parameters()
+batch_setting_unit_params(hhx_dryer_data, modelC, C12)
 
 
 # =============================================================================
@@ -1148,15 +1062,13 @@ sysD.simulate()
 modelD = Model(sysD, add_metrics(sysD))
 paramD = modelD.parameter
 
-modelD = add_pit_latrine_parametersD(sysD, modelD)
-
+modelD = add_pit_latrine_parameters(sysD, modelD)
 
 D4 = systems.D4
-path = su_data_path + '_anaerobic_lagoon.tsv'
+path = join_path(su_data_path, '_anaerobic_lagoon.tsv')
 anaerobic_lagoon_data = load_data(path)
 batch_setting_unit_params(anaerobic_lagoon_data, modelD, D4)
 
-all_paramsD = modelD.get_parameters()
 
 # %%
 
@@ -1192,10 +1104,8 @@ def run_uncertainty(model, seed=None, N=10000, rule='L',
         dct['percentiles'] = dct['data'].quantile(q=percentiles)
         dct['percentiles_parameters'] = dct['parameters'].quantile(q=percentiles)
 
-
     # Spearman's rank correlation
-    spearman_metrics = [model.metrics[i] for i in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)]
-    #spearman_metrics = [model.metrics[i] for i in (0, 3, 12, 16, 20, 24)]
+    spearman_metrics = model.metrics[:13]
     spearman_results = model.spearman(model.get_parameters(), spearman_metrics)
     spearman_results.columns = pd.Index([i.name_with_units for i in spearman_metrics])
     dct['spearman'] = spearman_results
@@ -1203,19 +1113,9 @@ def run_uncertainty(model, seed=None, N=10000, rule='L',
 
 
 def save_uncertainty_results(model, path=''):
-    if not path:
-        import os
-        path = os.path.dirname(os.path.realpath(__file__))
-        path += '/results'
-        if not os.path.isdir(path):
-            os.mkdir(path)
-        path += f'/model{model._system.ID[-1]}.xlsx'
-        del os
-    elif not (path.endswith('xlsx') or path.endswith('xls')):
-        extension = path.split('.')[-1]
-        raise ValueError(f'Only "xlsx" and "xls" are supported, not {extension}.')
-
-    dct = result_dct[model._system.ID]
+    sys_ID = model.system.ID[-1]
+    path = join_path(results_path, f'{sys_ID}.xlsx') if path=='' else path
+    dct = result_dct[sys_ID]
     if dct['parameters'] is None:
         raise ValueError('No cached result, run model first.')
     with pd.ExcelWriter(path) as writer:

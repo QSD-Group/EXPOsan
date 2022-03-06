@@ -22,7 +22,6 @@ from qsdsan import (
     ImpactIndicator, ImpactItem, StreamImpactItem,
     SimpleTEA, LCA,
     )
-
 from exposan.biogenic_refinery import data_path, results_path
 from exposan.biogenic_refinery._cmps import cmps
 set_thermo(cmps)
@@ -129,7 +128,7 @@ GWP_dct = {
     'conc_NH3': 0, #-5.4*(14/17),
     }
 
-try: # prevent from reloading, test with a unique item in this biorefinery
+try: # prevent from reloading, test with a unique item in this system
     ElectricCables = ImpactItem.get_item('ElectricCables')
     ElectricCables.indicators[0]
 except:
@@ -146,7 +145,7 @@ ImpactItem.get_item('Steel').price = price_dct['Steel']
 # Universal units and functions
 # =============================================================================
 
-if not ImpactItem.get_item('polymer_item'): # polymer_item is a unique item in this biorefinery
+if not ImpactItem.get_item('polymer_item'): # polymer_item is a unique item in this system
     CH4_item = StreamImpactItem(ID='CH4_item', GWP=GWP_dct['CH4'])
     N2O_item = StreamImpactItem(ID='N2O_item', GWP= GWP_dct['N2O'])
     N_item = StreamImpactItem(ID='N_item', GWP= GWP_dct['N'])
@@ -428,8 +427,7 @@ A14.specification = calc_sysA_recoveries
 A14.line = 'fugitive N2O mixer'
 
 ############### Simulation, TEA, and LCA ###############
-sysA = System('sysA', path= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14))
-sysA.simulate()
+sysA = System('sysA', path=(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14))
 teaA = SimpleTEA(system=sysA, discount_rate=discount_rate,
                   start_year=2020, lifetime=20, uptime_ratio=1,
                   lang_factor=None, annual_maintenance=0,
@@ -644,9 +642,7 @@ B17.specification = calc_sysB_recoveries
 B17.line = 'fugitive N2O mixer'
 
 ############### Simulation, TEA, and LCA ###############
-sysB = System('sysB', path= (B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15, B16, B17))
-sysB.simulate()
-
+sysB = System('sysB', path=(B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15, B16, B17))
 teaB = SimpleTEA(system=sysB, discount_rate=discount_rate,
                   start_year=2020, lifetime=20, uptime_ratio=1,
                   lang_factor=None, annual_maintenance=0,
@@ -752,7 +748,7 @@ C14.specification = lambda: add_fugitive_items(C14, 'N2O_item')
 C14.line = 'fugitive N2O mixer'
 
 ############### Simulation, TEA, and LCA ###############
-sysC = System('sysC', path= (C1, C2, C3, C4, C5, C6, C7, C_ag_mix, C8, C9, C10, C11, C12, C13, C14))
+sysC = System('sysC', path=(C1, C2, C3, C4, C5, C6, C7, C_ag_mix, C8, C9, C10, C11, C12, C13, C14))
 sysC.simulate()
 
 
@@ -1387,7 +1383,7 @@ def print_summaries(systems):
         print(f'K bed liq: {func["K_bed_liq"](sys):.2} {unit}.\n')
         print(f'K bed gas: {func["K_bed_gas"](sys):.2} {unit}.\n')
 
-        unit=f'{currency}/cap/d'
+        unit = f'{currency}/cap/d'
         print(f'operator_cost_opex: {func["operator_cost_opex"](tea,ppl):.2} {unit}.\n')
 
         print(f'front_end_cost_capex: {func["front_end_cost_capex"](front_end,tea,ppl):.2} {unit}.\n')
@@ -1424,7 +1420,7 @@ def print_summaries(systems):
         print(f'pollution_control_cost_opex: {func["pollution_control_cost_opex"](pollution_control,ppl):.2} {unit}.\n')
         print(f'pollution_control_cost_electricity: {func["pollution_control_cost_electricity"](pollution_control,ppl):.2} {unit}.\n')
 
-        unit=f'{GWP.unit}/cap/yr'
+        unit = f'{GWP.unit}/cap/yr'
         print(f'front_end_ghg_capex: {func["front_end_ghg_capex"](front_end,lca,ppl):.2} {unit}.\n')
         print(f'front_end_ghg_opex: {func["front_end_ghg_opex"](front_end,lca,ppl):.2} {unit}.\n')
         print(f'front_end_ghg_electricity: {func["front_end_ghg_electricity"](front_end,ppl):.2} {unit}.\n')
@@ -1485,3 +1481,8 @@ __all__ = ('sysA', 'sysB', 'sysC', 'sysD',
             *(i.ID for i in sysC.units),
             *(i.ID for i in sysD.units),
             )
+
+# This prevent simulating the system when importing
+if __name__ == '__main__':
+    for sys in (sysA, sysB, sysC, sysD):
+        sys.simulate()
