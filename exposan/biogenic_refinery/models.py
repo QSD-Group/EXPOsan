@@ -18,17 +18,15 @@ for license details.
 
 import os, numpy as np, pandas as pd
 from chaospy import distributions as shape
-from qsdsan import Model, Metric, PowerUtility, ImpactItem
+from biosteam.evaluation import Metric
+from qsdsan import Model, PowerUtility, ImpactItem
 from qsdsan.utils import (
     load_data, data_path,
     AttrSetter, AttrFuncSetter, DictAttrSetter, FuncGetter,
     time_printer, dct_from_str
     )
 from exposan import biogenic_refinery as br
-
-getattr = getattr
-
-item_path = br.systems.item_path
+from exposan.biogenic_refinery import data_path as br_data_path
 
 __all__ = ('modelA', 'modelB', 'modelC', 'modelD', 'result_dct',
            'run_uncertainty', 'save_uncertainty_results', 'add_metrics',
@@ -311,7 +309,7 @@ def add_shared_parameters(sys, model, country_specific=False):
     streams = sys_dct['stream_dct'][sys.ID]
 
     if not country_specific:
-        b = systems.get_operator_daily_wage()
+        b = systems.operator_daily_wage
         D = shape.Triangle(lower=(14.55), midpoint=b, upper=(43.68))
         @param(name='Operator daily wages', element='TEA', kind='cost', units='USD/d',
               baseline=b, distribution=D)
@@ -335,7 +333,7 @@ def add_shared_parameters(sys, model, country_specific=False):
 
 
         # Household size
-        b = systems.get_household_size()
+        b = systems.household_size
         D = shape.Normal(mu=b, sigma=1.8)
         @param(name='Household size', element=unit, kind='coupled', units='cap/household',
                baseline=b, distribution=D)
@@ -354,7 +352,7 @@ def add_shared_parameters(sys, model, country_specific=False):
 
 
     # Toilet density
-    b = systems.get_household_per_toilet()
+    b = systems.household_per_toilet
     D = shape.Uniform(lower=3, upper=5)
     @param(name='Toilet density', element=unit, kind='coupled', units='household/toilet',
             baseline=b, distribution=D)
@@ -364,7 +362,7 @@ def add_shared_parameters(sys, model, country_specific=False):
     ##### Universal degradation parameters #####
     # Max methane emission
     unit = sys.path[1] # the first unit that involves degradation
-    b = systems.get_max_CH4_emission()
+    b = systems.max_CH4_emission
     D = shape.Triangle(lower=0.175, midpoint=b, upper=0.325)
     @param(name='Max CH4 emission', element=unit, kind='coupled', units='g CH4/g COD',
            baseline=b, distribution=D)
@@ -631,7 +629,7 @@ def add_shared_parameters(sys, model, country_specific=False):
     #         units='kg CO2-eq/kg biochar', baseline=b, distribution=D)
     # def set_biochar_CF(i):
     #     GWP_dct['biochar'] = systems.biochar_item.CFs['GlobalWarming'] = -i
-
+    item_path = os.path.join(br_data_path, 'impact_items.xlsx')
     data = load_data(item_path, sheet='GWP')
     for p in data.index:
         item = ImpactItem.get_item(p)
@@ -863,7 +861,7 @@ modelA = add_pit_latrine_parameters(sysA, modelA)
 
 # Industrial control panel
 A4 = systems.A4
-path = su_data_path + '_industrial_control_panel.tsv'
+path = su_data_path + '_control_box_op.tsv'
 data = load_data(path)
 batch_setting_unit_params(data, modelA, A4)
 
@@ -911,7 +909,7 @@ batch_setting_unit_params(data, modelA, A11)
 
 # Dryer from HHx
 A12 = systems.A12
-path = su_data_path + '_dryer_from_hhx.tsv'
+path = su_data_path + '_hhx_dryer.tsv'
 data = load_data(path)
 batch_setting_unit_params(data, modelA, A12)
 
@@ -1012,7 +1010,7 @@ batch_setting_unit_params(data, modelB, B7)
 
 # Industrial control panel
 B8 = systems.B8
-path = su_data_path + '_industrial_control_panel.tsv'
+path = su_data_path + '_control_box_op.tsv'
 data = load_data(path)
 batch_setting_unit_params(data, modelB, B8)
 
@@ -1054,7 +1052,7 @@ batch_setting_unit_params(data, modelB, B14)
 
 # Dryer from HHX
 B15 = systems.B15
-path = su_data_path + '_dryer_from_hhx.tsv'
+path = su_data_path + '_hhx_dryer.tsv'
 data = load_data(path)
 batch_setting_unit_params(data, modelB, B15)
 
@@ -1086,7 +1084,7 @@ modelC = add_pit_latrine_parameters(sysC, modelC)
 
 # Industrial control panel
 C4 = systems.C4
-path = su_data_path + '_industrial_control_panel.tsv'
+path = su_data_path + '_control_box_op.tsv'
 data = load_data(path)
 batch_setting_unit_params(data, modelC, C4)
 
@@ -1134,7 +1132,7 @@ batch_setting_unit_params(data, modelC, C11)
 
 # Dryer from HHX
 C12 = systems.C12
-path = su_data_path + '_dryer_from_hhx.tsv'
+path = su_data_path + '_hhx_dryer.tsv'
 data = load_data(path)
 batch_setting_unit_params(data, modelC, C12)
 

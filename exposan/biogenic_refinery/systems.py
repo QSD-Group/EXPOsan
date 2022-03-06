@@ -129,13 +129,12 @@ GWP_dct = {
     'conc_NH3': 0, #-5.4*(14/17),
     }
 
-try: # prevent from reloading
-    Excavation = ImpactItem.get_item('Excavation')
-    Excavation.indicators[0]
+try: # prevent from reloading, test with a unique item in this biorefinery
+    ElectricCables = ImpactItem.get_item('ElectricCables')
+    ElectricCables.indicators[0]
 except:
     ImpactIndicator.load_from_file(os.path.join(data_path, 'impact_indicators.tsv'))
-    item_path = os.path.join(data_path, '/impact_items.xlsx')
-    ImpactItem.load_from_file(item_path)
+    ImpactItem.load_from_file(os.path.join(data_path, 'impact_items.xlsx'))
 
 GWP = ImpactIndicator.get_indicator('GWP')
 
@@ -147,10 +146,7 @@ ImpactItem.get_item('Steel').price = price_dct['Steel']
 # Universal units and functions
 # =============================================================================
 
-CH4_item = ImpactItem.get_item('CH4_item')
-N2O_item = ImpactItem.get_item('N2O_item')
-
-if not CH4_item or not N2O_item:
+if not ImpactItem.get_item('polymer_item'): # polymer_item is a unique item in this biorefinery
     CH4_item = StreamImpactItem(ID='CH4_item', GWP=GWP_dct['CH4'])
     N2O_item = StreamImpactItem(ID='N2O_item', GWP= GWP_dct['N2O'])
     N_item = StreamImpactItem(ID='N_item', GWP= GWP_dct['N'])
@@ -629,7 +625,7 @@ def calc_sysB_recoveries():
     #struvite and ion exchange
     nitrogen_dict['struvite']['sysB'] = B5.outs[1].imol['Struvite'] * 14 * hr_per_yr
     phosphorus_dict['struvite']['sysB'] = B5.outs[1].imol['Struvite'] * 31 * hr_per_yr
-    nitrogen_dict['NH3']['sysB'] = get_N(B6.outs[2])
+    nitrogen_dict['NH3']['sysB'] = B6.outs[2].imol['NH3']*14
     #liq bed
     carbon_dict['bed_liq']['sysB'] = get_C(B7.outs[0])
     carbon_dict['bed_gas']['sysB'] = get_C_gas(B7.outs[1])
