@@ -22,15 +22,19 @@ from qsdsan import (
     ImpactIndicator, ImpactItem, StreamImpactItem,
     SimpleTEA, LCA,
     )
+from qsdsan.utils import clear_lca_registries
 from exposan.biogenic_refinery import data_path, results_path
 from exposan.biogenic_refinery._cmps import cmps
+
+# Clear registry to avoid replacement warning messages
+clear_lca_registries()
+
 set_thermo(cmps)
+currency = 'USD'
 
 # =============================================================================
 # Unit parameters
 # =============================================================================
-
-currency = 'USD'
 
 household_size = 4
 household_per_toilet = 4
@@ -128,12 +132,9 @@ GWP_dct = {
     'conc_NH3': 0, #-5.4*(14/17),
     }
 
-try: # prevent from reloading, test with a unique item in this system
-    ElectricCables = ImpactItem.get_item('ElectricCables')
-    ElectricCables.indicators[0]
-except:
-    ImpactIndicator.load_from_file(os.path.join(data_path, 'impact_indicators.tsv'))
-    ImpactItem.load_from_file(os.path.join(data_path, 'impact_items.xlsx'))
+
+ImpactIndicator.load_from_file(os.path.join(data_path, 'impact_indicators.tsv'))
+ImpactItem.load_from_file(os.path.join(data_path, 'impact_items.xlsx'))
 
 GWP = ImpactIndicator.get_indicator('GWP')
 
@@ -145,22 +146,22 @@ ImpactItem.get_item('Steel').price = price_dct['Steel']
 # Universal units and functions
 # =============================================================================
 
-if not ImpactItem.get_item('polymer_item'): # polymer_item is a unique item in this system
-    CH4_item = StreamImpactItem(ID='CH4_item', GWP=GWP_dct['CH4'])
-    N2O_item = StreamImpactItem(ID='N2O_item', GWP= GWP_dct['N2O'])
-    N_item = StreamImpactItem(ID='N_item', GWP= GWP_dct['N'])
-    P_item = StreamImpactItem(ID='P_item', GWP= GWP_dct['P'])
-    K_item = StreamImpactItem(ID='K_item', GWP= GWP_dct['K'])
-    e_item = ImpactItem(ID='e_item', functional_unit='kWh', GWP= GWP_dct['Electricity'])
-    polymer_item = StreamImpactItem(ID='polymer_item', GWP= GWP_dct['Polymer'])
-    resin_item = StreamImpactItem(ID='resin_item', GWP= GWP_dct['Resin'])
-    filter_bag_item = StreamImpactItem(ID='filter_bag_item', GWP= GWP_dct['FilterBag'])
-    MgOH2_item = StreamImpactItem(ID='MgOH2_item', GWP= GWP_dct['MgOH2'])
-    MgCO3_item = StreamImpactItem(ID='MgCO3_item', GWP= GWP_dct['MgCO3'])
-    H2SO4_item = StreamImpactItem(ID='H2SO4_item', GWP= GWP_dct['H2SO4'])
-    biochar_item = StreamImpactItem(ID='biochar_item', GWP= GWP_dct['biochar'])
-    struvite_item = StreamImpactItem(ID='struvite_item', GWP= GWP_dct['struvite'])
-    conc_NH3_item = StreamImpactItem(ID='conc_NH3_item', GWP= GWP_dct['conc_NH3'])
+CH4_item = StreamImpactItem(ID='CH4_item', GWP=GWP_dct['CH4'])
+N2O_item = StreamImpactItem(ID='N2O_item', GWP= GWP_dct['N2O'])
+N_item = StreamImpactItem(ID='N_item', GWP= GWP_dct['N'])
+P_item = StreamImpactItem(ID='P_item', GWP= GWP_dct['P'])
+K_item = StreamImpactItem(ID='K_item', GWP= GWP_dct['K'])
+e_item = ImpactItem(ID='e_item', functional_unit='kWh', GWP= GWP_dct['Electricity'])
+polymer_item = StreamImpactItem(ID='polymer_item', GWP= GWP_dct['Polymer'])
+resin_item = StreamImpactItem(ID='resin_item', GWP= GWP_dct['Resin'])
+filter_bag_item = StreamImpactItem(ID='filter_bag_item', GWP= GWP_dct['FilterBag'])
+MgOH2_item = StreamImpactItem(ID='MgOH2_item', GWP= GWP_dct['MgOH2'])
+MgCO3_item = StreamImpactItem(ID='MgCO3_item', GWP= GWP_dct['MgCO3'])
+H2SO4_item = StreamImpactItem(ID='H2SO4_item', GWP= GWP_dct['H2SO4'])
+biochar_item = StreamImpactItem(ID='biochar_item', GWP= GWP_dct['biochar'])
+struvite_item = StreamImpactItem(ID='struvite_item', GWP= GWP_dct['struvite'])
+conc_NH3_item = StreamImpactItem(ID='conc_NH3_item', GWP= GWP_dct['conc_NH3'])
+
 
 def batch_create_streams(prefix):
     stream_dct = {}

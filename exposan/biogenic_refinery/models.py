@@ -300,7 +300,7 @@ join_path = lambda prefix, file_name: os.path.join(prefix, file_name)
 # Shared by all three systems
 # =============================================================================
 
-su_data_path = join_path(data_path, 'sanunits')
+su_data_path = join_path(data_path, 'sanunit_data')
 
 def add_shared_parameters(sys, model, country_specific=False):
     ########## Related to multiple units ##########
@@ -697,9 +697,9 @@ def add_pit_latrine_parameters(sys, model):
             systems.emptying_fee = i
     else:
         b_MCF = unit.MCF_decay * 2
-        D_MCF = shape.Triangle(lower=MCF_lower_dct[kind]*2, midpoint=b, upper=MCF_upper_dct[kind]*2)
+        D_MCF = shape.Triangle(lower=MCF_lower_dct[kind]*2, midpoint=b_MCF, upper=MCF_upper_dct[kind]*2)
         b_N2O_EF = unit.N2O_EF_decay * 2
-        D_N2O_EF = shape.Triangle(lower=N2O_EF_lower_dct[kind]*2, midpoint=b, upper=N2O_EF_upper_dct[kind]*2)
+        D_N2O_EF = shape.Triangle(lower=N2O_EF_lower_dct[kind]*2, midpoint=b_N2O_EF, upper=N2O_EF_upper_dct[kind]*2)
 
     param(setter=DictAttrSetter(unit, '_MCF_decay', kind),
           name='MCF_decay', element=unit, kind='coupled',
@@ -803,7 +803,6 @@ def add_pit_latrine_parameters(sys, model):
 # =============================================================================
 
 sysA = systems.sysA
-sysA.simulate()
 modelA = Model(sysA, add_metrics(sysA))
 paramA = modelA.parameter
 
@@ -882,7 +881,6 @@ batch_setting_unit_params(hhx_dryer_data, modelA, A12)
 # =============================================================================
 
 sysB = systems.sysB
-sysB.simulate()
 modelB = Model(sysB, add_metrics(sysB))
 paramB = modelB.parameter
 
@@ -896,7 +894,7 @@ batch_setting_unit_params(excretion_data, modelB, B1)
 
 # UDDT
 B2 = systems.B2
-path = su_data_path + '_uddt.tsv'
+path = join_path(su_data_path, '_uddt.tsv')
 uddt_data = load_data(path)
 data = pd.concat((toilet_data, uddt_data))
 batch_setting_unit_params(data, modelB, B2)
@@ -1002,7 +1000,6 @@ batch_setting_unit_params(hhx_dryer_data, modelB, B15)
 # =============================================================================
 
 sysC = systems.sysC
-sysC.simulate()
 modelC = Model(sysC, add_metrics(sysC))
 paramC = modelC.parameter
 
@@ -1058,7 +1055,6 @@ batch_setting_unit_params(hhx_dryer_data, modelC, C12)
 # =============================================================================
 
 sysD = systems.sysD
-sysD.simulate()
 modelD = Model(sysD, add_metrics(sysD))
 paramD = modelD.parameter
 
