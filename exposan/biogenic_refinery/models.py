@@ -1092,7 +1092,7 @@ def run_uncertainty(model, seed=None, N=10000, rule='L',
     model.evaluate()
 
     # Data organization
-    dct = result_dct[model._system.ID]
+    dct = result_dct[model.system.ID]
     index_p = len(model.get_parameters())
     dct['parameters'] = model.table.iloc[:, :index_p].copy()
     dct['data'] = model.table.iloc[:, index_p:].copy()
@@ -1110,7 +1110,7 @@ def run_uncertainty(model, seed=None, N=10000, rule='L',
 
 def save_uncertainty_results(model, path=''):
     sys_ID = model.system.ID[-1]
-    path = join_path(results_path, f'{sys_ID}.xlsx') if path=='' else path
+    path = join_path(results_path, f'model{sys_ID[-1]}.xlsx') if path=='' else path
     dct = result_dct[sys_ID]
     if dct['parameters'] is None:
         raise ValueError('No cached result, run model first.')

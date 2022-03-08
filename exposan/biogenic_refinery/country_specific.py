@@ -33,11 +33,11 @@ GWP = systems.GWP
 su_data_path = os.path.join(data_path, 'sanunit_data')
 
 # Pre-load data sheets as they will be used in multiple systems
-path = su_data_path + '_excretion.tsv'
+path = os.path.join(su_data_path, '_excretion.tsv')
 excretion_data = load_data(path)
 
 # Country-specific inputs
-#!!! Same across countries? If so, should reuse
+#!!! Same across systems? If so, should reuse
 input_dct = {
     'China': {
         'energy_GWP': ('uniform', 0.745, 0.712133646, 0.848557635),
@@ -319,68 +319,68 @@ def run_country(input_dct, base_model, unit_dct={}, save_to=''):
         excretion_unit.p_veg = country_dct['p_veg']
         excretion_unit.e_cal = country_dct['e_cal']
 
-        m.batch_setting_unit_params(data, model, excretion_unit, exclude=('e_cal','p_anim','p_veg'))
+        # m.batch_setting_unit_params(data, model, excretion_unit, exclude=('e_cal','p_anim','p_veg'))
 
-        # Pit latrine and conveyance
-        #modelA = m.add_pit_latrine_parameters(sysA, modelA)
+        # # Pit latrine and conveyance
+        # #modelA = m.add_pit_latrine_parameters(sysA, modelA)
 
-        # Industrial control panel
-        A4 = systems.A4
-        path = su_data_path + '_industrial_control_panel.tsv'
-        data = load_data(path)
-        m.batch_setting_unit_params(data, modelA, A4)
+        # # Industrial control panel
+        # A4 = systems.A4
+        # path = su_data_path + '_industrial_control_panel.tsv'
+        # data = load_data(path)
+        # m.batch_setting_unit_params(data, modelA, A4)
 
-        # Housing biogenic refinery
-        A5 = systems.A5
+        # # Housing biogenic refinery
+        # A5 = systems.A5
 
-        # construction
-        A5.const_wage = country_dct['construction']
+        # # construction
+        # A5.const_wage = country_dct['construction']
 
-        path = su_data_path + '_housing_biogenic_refinery.tsv'
-        data = load_data(path)
-        m.batch_setting_unit_params(data, modelA, A5)
+        # path = su_data_path + '_housing_biogenic_refinery.tsv'
+        # data = load_data(path)
+        # m.batch_setting_unit_params(data, modelA, A5)
 
-        # Screw press
-        A6 = systems.A6
-        path = su_data_path + '_screw_press.tsv'
-        data = load_data(path)
-        m.batch_setting_unit_params(data, modelA, A6)
+        # # Screw press
+        # A6 = systems.A6
+        # path = su_data_path + '_screw_press.tsv'
+        # data = load_data(path)
+        # m.batch_setting_unit_params(data, modelA, A6)
 
-        # Liquid treatment bed
-        A7 = systems.A7
-        path = su_data_path + '_liquid_treatment_bed.tsv'
-        data = load_data(path)
-        m.batch_setting_unit_params(data, modelA, A7)
+        # # Liquid treatment bed
+        # A7 = systems.A7
+        # path = su_data_path + '_liquid_treatment_bed.tsv'
+        # data = load_data(path)
+        # m.batch_setting_unit_params(data, modelA, A7)
 
-        # Carbonizer base
-        A8 = systems.A8
-        path = su_data_path + '_carbonizer_base.tsv'
-        data = load_data(path)
-        m.batch_setting_unit_params(data, modelA, A8)
+        # # Carbonizer base
+        # A8 = systems.A8
+        # path = su_data_path + '_carbonizer_base.tsv'
+        # data = load_data(path)
+        # m.batch_setting_unit_params(data, modelA, A8)
 
-        # Pollution control device
-        A9 = systems.A9
-        path = su_data_path + '_pollution_control_device.tsv'
-        data = load_data(path)
-        m.batch_setting_unit_params(data, modelA, A9)
+        # # Pollution control device
+        # A9 = systems.A9
+        # path = su_data_path + '_pollution_control_device.tsv'
+        # data = load_data(path)
+        # m.batch_setting_unit_params(data, modelA, A9)
 
-        # Oil heat exchanger
-        A10 = systems.A10
-        path = su_data_path + '_oil_heat_exchanger.tsv'
-        data = load_data(path)
-        m.batch_setting_unit_params(data, modelA, A10)
+        # # Oil heat exchanger
+        # A10 = systems.A10
+        # path = su_data_path + '_oil_heat_exchanger.tsv'
+        # data = load_data(path)
+        # m.batch_setting_unit_params(data, modelA, A10)
 
-        # Hydronic heat exchanger
-        A11 = systems.A11
-        path = su_data_path + '_hydronic_heat_exchanger.tsv'
-        data = load_data(path)
-        m.batch_setting_unit_params(data, modelA, A11)
+        # # Hydronic heat exchanger
+        # A11 = systems.A11
+        # path = su_data_path + '_hydronic_heat_exchanger.tsv'
+        # data = load_data(path)
+        # m.batch_setting_unit_params(data, modelA, A11)
 
-        # Dryer from HHx
-        A12 = systems.A12
-        path = su_data_path + '_dryer_from_hhx.tsv'
-        data = load_data(path)
-        m.batch_setting_unit_params(data, modelA, A12)
+        # # Dryer from HHx
+        # A12 = systems.A12
+        # path = su_data_path + '_dryer_from_hhx.tsv'
+        # data = load_data(path)
+        # m.batch_setting_unit_params(data, modelA, A12)
 
         #!!! Assuming want to include what parameters from existing model,
         # can modify to include or exclude things
@@ -388,7 +388,7 @@ def run_country(input_dct, base_model, unit_dct={}, save_to=''):
         results[country] = m.run_uncertainty(model=model, seed=5, N=1000)
 
     if save_to is not None:
-        file_name = os.path.join(results_path, f'country_{sys.ID.lstrip("sys")}.xlsx') \
+        file_name = os.path.join(results_path, f'{country}_{sys.ID.lstrip("sys")}.xlsx') \
             if save_to == '' else save_to
         save_uncertainty_results(results, file_name)
 
