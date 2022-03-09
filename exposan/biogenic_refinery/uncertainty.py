@@ -20,10 +20,10 @@ def run(model_IDs, seed=None, N=1000, country_specific=False):
     # Make it possible to run with one or more models
     if isinstance(model_IDs, str): model_IDs = (model_IDs, )
     for ID in model_IDs:
-        model = create_model(ID)
-        run_uncertainty(model, seed=seed, N=N, country_specific=country_specific)
+        model = create_model(ID, country_specific=country_specific)
+        run_uncertainty(model, seed=seed, N=N)
         save_uncertainty_results(model)
 
 
 if __name__ == '__main__':
-    run(('A', 'B'), seed=5, N=1000)
+    run(('A', 'B'), seed=5, N=10)

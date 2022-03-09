@@ -931,8 +931,8 @@ def run_uncertainty(model, seed=None, N=10000, rule='L',
 
 
 def save_uncertainty_results(model, dct={}, path=''):
-    sys_ID = model.system.ID[-1]
-    path = join_path(results_path, f'model{sys_ID[-1]}.xlsx') if path=='' else path
+    sys_ID = model.system.ID
+    path = join_path(results_path, f'uncertainty{sys_ID[-1]}.xlsx') if path=='' else path
     dct = dct or result_dct[sys_ID]
     if dct['parameters'] is None:
         raise ValueError('No cached result, run model first.')
