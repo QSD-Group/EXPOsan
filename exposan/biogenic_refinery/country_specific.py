@@ -7,6 +7,7 @@ EXPOsan: Exposition of sanitation and resource recovery systems
 This module is developed by:
     Yalin Li <zoe.yalin.li@gmail.com>
     Lane To <lane20@illinois.edu>
+    Lewis Rowles <stetsonsc@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
@@ -16,25 +17,26 @@ for license details.
 
 # %%
 
-import os, pandas as pd
+import os
 from chaospy import distributions as shape
-from qsdsan import ImpactItem, PowerUtility, Model
-from qsdsan.utils import load_data, data_path
+from qsdsan import ImpactItem, PowerUtility
 from exposan import biogenic_refinery as br
+from exposan.biogenic_refinery import (
+    results_path, create_model, run_uncertainty, save_uncertainty_results,
+    systems as br_systems,
+    )
 
-m = br.models
-results_path = br.results_path
-systems = br.systems
-sys_dct = systems.sys_dct
-price_dct = systems.price_dct
-GWP_dct = systems.GWP_dct
-GWP = systems.GWP
+# These codes are written so that it'll be easier/possible/less confusing
+# when running multiple systems at the same time
+sys_dct = br_systems.sys_dct
+price_dct = br_systems.price_dct
+GWP_dct = br_systems.GWP_dct
+GWP = br_systems.GWP
+old_price_ratio = br_systems.price_ratio
+br_get_price_factor = br_systems.get_price_factor
 
-su_data_path = os.path.join(data_path, 'sanunit_data')
-
-# Pre-load data sheets as they will be used in multiple systems
-path = os.path.join(su_data_path, '_excretion.tsv')
-excretion_data = load_data(path)
+def update_price_ratio(ratio):
+    br_systems.price_ratio
 
 # Country-specific inputs
 #!!! Same across systems? If so, should reuse
@@ -201,210 +203,125 @@ input_dct = {
     }
 
 
-def run_country(input_dct, base_model, unit_dct={}, save_to=''):
+def run_country(input_dct, systems=(), seed=None, N=1000, save_results=True):
     results = {}
     for country, country_dct in input_dct.items():
-        sys = base_model.system
-        streams = sys_dct['stream_dct'][sys.ID]
-        # Existing parameters and metrics
-        base_params = base_model.parameters
-        base_metrics = base_model.metrics
+        for sys in systems:
+            streams = sys_dct['stream_dct'][sys.ID]
 
-        # New model for country-specific analysis
-        model = Model(sys)
+            # Create model for country-specific analysis
+            model = create_model(model_ID=sys.ID, country_specific=True)
+            param = model.parameter
 
-        model = m.add_shared_parameters(sys, model, country_specific=True)
-        param = model.parameter
+            # Diet and excretion
+            excretion_unit = sys.path[0]
+            excretion_unit.p_anim = country_dct['p_anim']
+            excretion_unit.p_veg = country_dct['p_veg']
+            excretion_unit.e_cal = country_dct['e_cal']
 
-        # operator
-        #sys._TEA.annual_labor = country_dct['operator']* 3*365
+            # Wages
+            kind, low_val, peak_val, max_val = country_dct['wages']
+            b = peak_val
+            if kind == 'triangle':
+                D = shape.Triangle(lower=low_val, midpoint=peak_val, upper=max_val)
+            else:
+                D = shape.Uniform(lower=low_val,upper=max_val)
+            @param(name='Labor wages',
+                   element=excretion_unit, # just want to add to the 0th unit of the system
+                   kind='coupled', units='USD/h',
+                   baseline=b, distribution=D)
+            def set_labor_wages(i):
+                labor_cost = 0
+                for u in sys.units:
+                    if hasattr(u, '_calc_maintenance_labor_cost'):
+                        u.wages = i
+                        labor_cost += u._calc_maintenance_labor_cost()
+                sys.TEA.annual_labor = labor_cost
 
-        #price ratio
-        i = country_dct['price_ratio']
-        concrete_item = ImpactItem.get_item('Concrete')
-        steel_item = ImpactItem.get_item('Steel')
-        price_dct = systems.price_dct
-        old_price_ratio = systems.price_ratio
-        # a much better way would be to have consistent naming in `price_dct` and `streams` dict
-        price_ref = {
-        'Concrete': concrete_item,
-        'Steel': steel_item,
-        'Polymer': streams['polymer'],
-        'Resin': streams['resin'],
-        'FilterBag': streams['filter_bag'],
-        'MgOH2': streams['MgOH2'],
-        'MgCO3': streams['MgCO3'],
-        'H2SO4': streams['H2SO4'],
-        'biochar': streams['biochar'],
-        }
-        for obj_name, obj in price_ref.items():
-            old_price = price_dct[obj_name]
-            new_price = old_price * i/old_price_ratio
-            obj.price = new_price
-        systems.price_ratio = i
-        for u in sys.units:
-            if hasattr(u, 'price_ratio'):
-                u.price_ratio = i
+            # Price ratio
+            i = country_dct['price_ratio']
+            concrete_item = ImpactItem.get_item('Concrete')
+            steel_item = ImpactItem.get_item('Steel')
 
-        # wages
-        kind, low_val, peak_val, max_val = country_dct['wages']
-        b=peak_val
-        if kind == 'triangle':
-            D = shape.Triangle(lower=low_val, midpoint=peak_val, upper=max_val)
-        else:
-            D = shape.Uniform(lower=low_val,upper=max_val)
-        @param(name='Labor wages', element=systems.A1, kind='coupled', units='USD/h',
-               baseline=b, distribution=D)
-        def set_labor_wages(i):
-            labor_cost = 0
+            price_ref = {
+            'Concrete': concrete_item,
+            'Steel': steel_item,
+            'Polymer': streams['polymer'],
+            'Resin': streams['resin'],
+            'FilterBag': streams['filter_bag'],
+            'MgOH2': streams['MgOH2'],
+            'MgCO3': streams['MgCO3'],
+            'H2SO4': streams['H2SO4'],
+            'biochar': streams['biochar'],
+            }
+            for obj_name, obj in price_ref.items():
+                old_price = price_dct[obj_name]
+                new_price = old_price * i/old_price_ratio
+                obj.price = new_price
+            update_price_ratio(i)
             for u in sys.units:
-                if hasattr(u, '_calc_maintenance_labor_cost'):
-                    u.wages = i
-                    labor_cost += u._calc_maintenance_labor_cost()
-            sys.TEA.annual_labor = labor_cost
+                if hasattr(u, 'price_ratio'):
+                    u.price_ratio = i
 
-        #energy_GWP
-        kind, low_val, peak_val, max_val = country_dct['energy_GWP']
-        b = peak_val
-        if kind == 'triangle':
-            D = shape.Triangle(lower=low_val, midpoint=peak_val, upper=max_val)
-        else:
-            D = shape.Uniform(lower=low_val,upper=max_val)
+            # Energy GWP
+            kind, low_val, peak_val, max_val = country_dct['energy_GWP']
+            b = peak_val
+            if kind == 'triangle':
+                D = shape.Triangle(lower=low_val, midpoint=peak_val, upper=max_val)
+            else:
+                D = shape.Uniform(lower=low_val,upper=max_val)
 
-        @param(name='Electricity CF', element='LCA', kind='isolated',
-                units='kg CO2-eq/kWh', baseline=b, distribution=D)
-        def set_electricity_CF(i):
-            GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
+            @param(name='Electricity CF', element='LCA', kind='isolated',
+                    units='kg CO2-eq/kWh', baseline=b, distribution=D)
+            def set_electricity_CF(i):
+                GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
 
-        # energy_price
-        PowerUtility.price = country_dct['energy_price']
+            # Energy price
+            PowerUtility.price = country_dct['energy_price']
 
-        # # household size
-        excretion_unit = unit_dct['excretion']
-        b = country_dct['household_size']
-        D = shape.Normal(mu=b, sigma=1.8)
-        @param(name='Household size', element=excretion_unit, kind='coupled', units='cap/household',
-                baseline=b, distribution=D)
-        def set_household_size(i):
-            systems.household_size = max(1, i)
+            # # #!!! Household size, commented out because it's added in models.py
+            # # originally it's not
+            # excretion_unit = unit_dct['excretion']
+            # b = country_dct['household_size']
+            # D = shape.Normal(mu=b, sigma=1.8)
+            # @param(name='Household size', element=excretion_unit, kind='coupled', units='cap/household',
+            #         baseline=b, distribution=D)
+            # def set_household_size(i):
+            #     systems.household_size = max(1, i)
 
-        #####Fertilizer prices#####
-        #N fertilizer
-        get_price_factor = systems.get_price_factor
-        b = country_dct['N_fertilizer_price']
-        D = shape.Uniform(lower=0.16, upper=1.79)
-        @param(name='N fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
-                baseline=b, distribution=D)
-        def set_N_price(i):
-            price_dct['N'] = streams['liq_N'] = streams['sol_N'] = i * get_price_factor()
+            # N fertilizer
+            b = country_dct['N_fertilizer_price']
+            D = shape.Uniform(lower=0.16, upper=1.79)
+            @param(name='N fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
+                    baseline=b, distribution=D)
+            def set_N_price(i):
+                price_dct['N'] = streams['liq_N'] = streams['sol_N'] = i * br_get_price_factor()
 
-        #P fertilizer
-        b = country_dct['P_fertilizer_price']
-        D = shape.Uniform(lower=0.57, upper=11.20)
-        @param(name='P fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
-                baseline=b, distribution=D)
-        def set_P_price(i):
-            price_dct['P'] = streams['liq_P'] = streams['sol_P'] = i * get_price_factor()
+            # P fertilizer
+            b = country_dct['P_fertilizer_price']
+            D = shape.Uniform(lower=0.57, upper=11.20)
+            @param(name='P fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
+                    baseline=b, distribution=D)
+            def set_P_price(i):
+                price_dct['P'] = streams['liq_P'] = streams['sol_P'] = i * br_get_price_factor()
 
-        #K fertilizer
-        b = country_dct['K_fertilizer_price']
-        D = shape.Uniform(lower=0.44, upper=.56)
-        @param(name='K fertilizer price', element='TEA', kind='isolated', units='USD/kg K',
-                baseline=b, distribution=D)
-        def set_K_price(i):
-            price_dct['K'] = streams['liq_K'] = streams['sol_K'] = i * get_price_factor()
+            # K fertilizer
+            b = country_dct['K_fertilizer_price']
+            D = shape.Uniform(lower=0.44, upper=0.56)
+            @param(name='K fertilizer price', element='TEA', kind='isolated', units='USD/kg K',
+                    baseline=b, distribution=D)
+            def set_K_price(i):
+                price_dct['K'] = streams['liq_K'] = streams['sol_K'] = i * br_get_price_factor()
 
-        #####Diet and excretion#####
-        excretion_unit.p_anim = country_dct['p_anim']
-        excretion_unit.p_veg = country_dct['p_veg']
-        excretion_unit.e_cal = country_dct['e_cal']
-
-        # m.batch_setting_unit_params(data, model, excretion_unit, exclude=('e_cal','p_anim','p_veg'))
-
-        # # Pit latrine and conveyance
-        # #modelA = m.add_pit_latrine_parameters(sysA, modelA)
-
-        # # Industrial control panel
-        # A4 = systems.A4
-        # path = su_data_path + '_industrial_control_panel.tsv'
-        # data = load_data(path)
-        # m.batch_setting_unit_params(data, modelA, A4)
-
-        # # Housing biogenic refinery
-        # A5 = systems.A5
-
-        # # construction
-        # A5.const_wage = country_dct['construction']
-
-        # path = su_data_path + '_housing_biogenic_refinery.tsv'
-        # data = load_data(path)
-        # m.batch_setting_unit_params(data, modelA, A5)
-
-        # # Screw press
-        # A6 = systems.A6
-        # path = su_data_path + '_screw_press.tsv'
-        # data = load_data(path)
-        # m.batch_setting_unit_params(data, modelA, A6)
-
-        # # Liquid treatment bed
-        # A7 = systems.A7
-        # path = su_data_path + '_liquid_treatment_bed.tsv'
-        # data = load_data(path)
-        # m.batch_setting_unit_params(data, modelA, A7)
-
-        # # Carbonizer base
-        # A8 = systems.A8
-        # path = su_data_path + '_carbonizer_base.tsv'
-        # data = load_data(path)
-        # m.batch_setting_unit_params(data, modelA, A8)
-
-        # # Pollution control device
-        # A9 = systems.A9
-        # path = su_data_path + '_pollution_control_device.tsv'
-        # data = load_data(path)
-        # m.batch_setting_unit_params(data, modelA, A9)
-
-        # # Oil heat exchanger
-        # A10 = systems.A10
-        # path = su_data_path + '_oil_heat_exchanger.tsv'
-        # data = load_data(path)
-        # m.batch_setting_unit_params(data, modelA, A10)
-
-        # # Hydronic heat exchanger
-        # A11 = systems.A11
-        # path = su_data_path + '_hydronic_heat_exchanger.tsv'
-        # data = load_data(path)
-        # m.batch_setting_unit_params(data, modelA, A11)
-
-        # # Dryer from HHx
-        # A12 = systems.A12
-        # path = su_data_path + '_dryer_from_hhx.tsv'
-        # data = load_data(path)
-        # m.batch_setting_unit_params(data, modelA, A12)
-
-        #!!! Assuming want to include what parameters from existing model,
-        # can modify to include or exclude things
-        model.metrics = base_metrics
-        results[country] = m.run_uncertainty(model=model, seed=5, N=1000)
-
-    if save_to is not None:
-        file_name = os.path.join(results_path, f'{country}_{sys.ID.lstrip("sys")}.xlsx') \
-            if save_to == '' else save_to
-        save_uncertainty_results(results, file_name)
+            # Run analysis and save results
+            results[country] = dct = run_uncertainty(model=model, seed=seed, N=N)
+            if save_results:
+                file_name = os.path.join(results_path, f'br_{country}_{sys.ID}.xlsx')
+                save_uncertainty_results(model, dct, file_name)
 
     return results
 
-def save_uncertainty_results(results, file_name):
-    for country, dct in results.items():
-        if dct['parameters'] is None:
-            raise ValueError('No cached result, run model first.')
-        with pd.ExcelWriter(file_name) as writer:
-            dct['parameters'].to_excel(writer, sheet_name='Parameters')
-            dct['data'].to_excel(writer, sheet_name='Uncertainty results')
-            if 'percentiles' in dct.keys():
-                dct['percentiles'].to_excel(writer, sheet_name='Percentiles')
-            dct['spearman'].to_excel(writer, sheet_name='Spearman')
-
-
 if __name__ == '__main__':
-    results = run_country(input_dct, save_to='')
+    results = run_country(input_dct, seed=5, N=10,
+                          systems=(br.sysA, br.sysB, br.sysC, br.sysD),
+                          save_results=True)

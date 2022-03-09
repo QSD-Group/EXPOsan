@@ -21,17 +21,15 @@ from chaospy import distributions as shape
 from biosteam.evaluation import Metric
 from qsdsan import Model, PowerUtility, ImpactItem
 from qsdsan.utils import (
-    load_data, data_path,
-    AttrSetter, AttrFuncSetter, DictAttrSetter, FuncGetter,
-    time_printer, dct_from_str
+    load_data, data_path, AttrSetter, DictAttrSetter, time_printer, dct_from_str
     )
 from exposan import biogenic_refinery as br
 from exposan.biogenic_refinery import data_path as br_data_path, results_path
 
-__all__ = ('modelA', 'modelB', 'modelC', 'modelD', 'result_dct',
-           'run_uncertainty', 'save_uncertainty_results', 'add_metrics',
-           'batch_setting_unit_params', 'add_shared_parameters',
-           'add_pit_latrine_parameters',)
+__all__ = (
+    'create_model', 'result_dct',
+    'run_uncertainty', 'save_uncertainty_results',
+    )
 
 # %%
 
@@ -262,14 +260,6 @@ def add_metrics(system):
         Metric('pollution_control_ghg_direct', lambda: func['pollution_control_ghg_direct'](pollution_control,lca,ppl), unit, cat),
         ])
 
-    # for i in ('COD', 'N', 'P', 'K'):
-    #     cat = f'{i} recovery'
-    #     metrics.extend([
-    #         Metric(f'Liquid {i}', FuncGetter(func[f'get_liq_{i}_recovery'], (system, i)), '', cat),
-    #         Metric(f'Solid {i}', FuncGetter(func[f'get_sol_{i}_recovery'], (system, i)), '', cat),
-    #         Metric(f'Gas {i}', FuncGetter(func[f'get_gas_{i}_recovery'], (system, i)), '', cat),
-    #         Metric(f'Total {i}', FuncGetter(func[f'get_tot_{i}_recovery'], (system, i)), '', cat)
-    #         ])
     return metrics
 
 
@@ -291,23 +281,41 @@ def batch_setting_unit_params(df, model, unit, exclude=()):
                         name=para, element=unit, kind='coupled', units=df.loc[para]['unit'],
                         baseline=b, distribution=D)
 
+
+# %%
+
+# =============================================================================
+# Pre-load data sheets as they will be used in multiple systems
+# =============================================================================
+
 join_path = lambda prefix, file_name: os.path.join(prefix, file_name)
+su_data_path = join_path(data_path, 'sanunit_data')
+excretion_data = load_data(join_path(su_data_path, '_excretion.tsv'))
+control_data = load_data(join_path(su_data_path, '_control_box_op.tsv'))
+housing_data = load_data(join_path(su_data_path, '_housing_biogenic_refinery.tsv'))
+# Screw press for sysA/sysC, grinder for sysB
+screw_data = load_data(join_path(su_data_path, '_screw_press.tsv'))
+grinder_data = load_data(join_path(su_data_path, '_grinder.tsv'))
+liquid_bed_data = load_data(join_path(su_data_path, '_liquid_treatment_bed.tsv'))
+carbonizer_data = load_data(join_path(su_data_path, '_carbonizer_base.tsv'))
+pcd_data = load_data(join_path(su_data_path, '_pollution_control_device.tsv'))
+oil_hx_data = load_data(join_path(su_data_path, '_oil_heat_exchanger.tsv'))
+hhx_data = load_data(join_path(su_data_path, '_hydronic_heat_exchanger.tsv'))
+hhx_dryer_data = load_data(join_path(su_data_path, '_hhx_dryer.tsv'))
 
 
 # %%
 
 # =============================================================================
-# Shared by all three systems
+# Shared by systems A-C
 # =============================================================================
 
-su_data_path = join_path(data_path, 'sanunit_data')
-
-def add_shared_parameters(sys, model, country_specific=False):
-    ########## Related to multiple units ##########
-    unit = sys.path[0]
+def add_shared_parameters(sys, model, unit_dct, country_specific=False):
     param = model.parameter
     streams = sys_dct['stream_dct'][sys.ID]
 
+    # Add these parameters if not running country-specific analysis,
+    # in which they would be updated separately
     if not country_specific:
         b = systems.operator_daily_wage
         D = shape.Triangle(lower=(14.55), midpoint=b, upper=(43.68))
@@ -315,6 +323,33 @@ def add_shared_parameters(sys, model, country_specific=False):
               baseline=b, distribution=D)
         def set_operator_daily_wage(i):
             sys._TEA.annual_labor = i*3*365
+
+        # Discount factor for the excreta-derived fertilizers
+        get_price_factor = systems.get_price_factor
+        b = get_price_factor()
+        D = shape.Uniform(lower=0.1, upper=0.4)
+        @param(name='Price factor', element='TEA', kind='isolated', units='-',
+                baseline=b, distribution=D)
+        def set_price_factor(i):
+            systems.price_factor = i
+
+        D = shape.Uniform(lower=1.164, upper=2.296)
+        @param(name='N fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
+                baseline=1.507, distribution=D)
+        def set_N_price(i):
+            price_dct['N'] = streams['liq_N'] = streams['sol_N'] = i * get_price_factor()
+
+        D = shape.Uniform(lower=2.619, upper=6.692)
+        @param(name='P fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
+                baseline=3.983, distribution=D)
+        def set_P_price(i):
+            price_dct['P'] = streams['liq_P'] = streams['sol_P'] = i * get_price_factor()
+
+        D = shape.Uniform(lower=1.214, upper=1.474)
+        @param(name='K fertilizer price', element='TEA', kind='isolated', units='USD/kg K',
+                baseline=1.333, distribution=D)
+        def set_K_price(i):
+            price_dct['K'] = streams['liq_K'] = streams['sol_K'] = i * get_price_factor()
 
         # Electricity price
         b = price_dct['Electricity']
@@ -331,35 +366,135 @@ def add_shared_parameters(sys, model, country_specific=False):
         def set_electricity_CF(i):
             GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
 
+        #!!! Not sure why these were excluded from non-country-specific analysis
+        # D = shape.Uniform(lower=(1.507*(14/17)*0.8), upper=(1.507*(14/17)*1.2))
+        # @param(name='NH3 fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
+        #         baseline=(1.507*(14/17)*0.25), distribution=D)
+        # def set_N_price(i):
+        #     price_dct['conc_NH3'] = streams['conc_NH3'] = streams['conc_NH3'] = i * get_price_factor()
 
-        # Household size
-        b = systems.household_size
-        D = shape.Normal(mu=b, sigma=1.8)
-        @param(name='Household size', element=unit, kind='coupled', units='cap/household',
-               baseline=b, distribution=D)
-        def set_household_size(i):
-            systems.household_size = max(1, i)
+        # D = shape.Uniform(lower=(3.983*(31/245)*0.8), upper=(3.983*(31/245)*1.2))
+        # @param(name='Struvite fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
+        #         baseline=(3.983*(31/245)*0.25), distribution=D)
+        # def set_P_price(i):
+        #     price_dct['struvite'] = streams['struvite'] = streams['struvite'] = i * get_price_factor()
 
-    # ########## Related to human input ##########
-    # # Diet and excretion
-    # path = join_path(su_data_path '_excretion.tsv')
-    # excretion_data = load_data(path)
-    # batch_setting_unit_params(excretion_data, model, unit)
+        # D = shape.Uniform(lower=(0.014*0.8), upper=(0.014*1.2))
+        # @param(name='Biochar  price', element='TEA', kind='isolated', units='USD/kg biochar',
+        #         baseline=(0.014), distribution=D)
+        # def set_biochar_price(i):
+        #     price_dct['biochar'] = streams['biochar'] = streams['biochar'] = i
 
-    # Toilet density
+        # b = -GWP_dct['N']
+        # D = shape.Triangle(lower=1.8, midpoint=b, upper=8.9)
+        # @param(name='N fertilizer CF', element='LCA', kind='isolated',
+        #        units='kg CO2-eq/kg N', baseline=b, distribution=D)
+        # def set_N_fertilizer_CF(i):
+        #     GWP_dct['N'] = systems.N_item.CFs['GlobalWarming'] = -i
+
+        # b = -GWP_dct['P']
+        # D = shape.Triangle(lower=4.3, midpoint=b, upper=5.4)
+        # @param(name='P fertilizer CF', element='LCA', kind='isolated',
+        #        units='kg CO2-eq/kg P', baseline=b, distribution=D)
+        # def set_P_fertilizer_CF(i):
+        #     GWP_dct['P'] = systems.P_item.CFs['GlobalWarming'] = -i
+
+        # b = -GWP_dct['K']
+        # D = shape.Triangle(lower=1.1, midpoint=b, upper=2)
+        # @param(name='K fertilizer CF', element='LCA', kind='isolated',
+        #        units='kg CO2-eq/kg K', baseline=b, distribution=D)
+        # def set_K_fertilizer_CF(i):
+        #     GWP_dct['K'] = systems.K_item.CFs['GlobalWarming'] = -i
+
+        # b = -GWP_dct['conc_NH3']
+        # D = shape.Triangle(lower=(1.8*(14/17)), midpoint=b, upper=(8.9*(14/17)))
+        # @param(name='conc_NH3 fertilizer CF', element='LCA', kind='isolated',
+        #         units='kg CO2-eq/kg conc_NH3', baseline=b, distribution=D)
+        # def set_conc_NH3_fertilizer_CF(i):
+        #     GWP_dct['conc_NH3'] = systems.conc_NH3_item.CFs['GlobalWarming'] = -i
+
+        # b = -GWP_dct['struvite']
+        # D = shape.Triangle(lower=(4.3*(31/245)), midpoint=b, upper=(5.4*(31/245)))
+        # @param(name='struvite fertilizer CF', element='LCA', kind='isolated',
+        #         units='kg CO2-eq/kg struvite', baseline=b, distribution=D)
+        # def set_struvite_fertilizer_CF(i):
+        #     GWP_dct['struvite'] = systems.struvite_item.CFs['GlobalWarming'] = -i
+
+        # b = -GWP_dct['biochar']
+        # D = shape.Triangle(lower=(0.2*0.9*(44/12)*.8), midpoint=b, upper=(0.2*0.9*(44/12)*1.2))
+        # @param(name='biochar CF', element='LCA', kind='isolated',
+        #         units='kg CO2-eq/kg biochar', baseline=b, distribution=D)
+        # def set_biochar_CF(i):
+        #     GWP_dct['biochar'] = systems.biochar_item.CFs['GlobalWarming'] = -i
+
+    # ########## Specific units ##########
+    # Diet and excretion
+    excretion_unit = unit_dct['Excretion']
+    exclude = ('e_cal','p_anim','p_veg') if country_specific else ()
+    batch_setting_unit_params(excretion_data, model, excretion_unit, exclude)
+
+    # Household size
+    b = systems.household_size
+    D = shape.Normal(mu=b, sigma=1.8)
+    @param(name='Household size', element=excretion_unit, kind='coupled', units='cap/household',
+           baseline=b, distribution=D)
+    def set_household_size(i):
+        systems.household_size = max(1, i)
+
+    # Toilet
+    toilet_unit = unit_dct['Toilet']
     b = systems.household_per_toilet
     D = shape.Uniform(lower=3, upper=5)
-    @param(name='Toilet density', element=unit, kind='coupled', units='household/toilet',
+    @param(name='Toilet density', element=toilet_unit, kind='coupled', units='household/toilet',
             baseline=b, distribution=D)
     def set_toilet_density(i):
         systems.household_per_toilet = i
 
+    # Control box (industrial control panel)
+    control_unit = unit_dct['ControlBox']
+    batch_setting_unit_params(control_data, model, control_unit)
+
+    # Housing biogenic refinery
+    housing_unit = unit_dct['Housing']
+    batch_setting_unit_params(housing_data, model, housing_unit)
+
+    # Screw press (sysA/sysC) or grinder (sysB)
+    solid_decomp_unit = unit_dct.get('Screw', None)
+    if solid_decomp_unit:
+        batch_setting_unit_params(screw_data, model, solid_decomp_unit)
+    else:
+        batch_setting_unit_params(grinder_data, model, unit_dct['Grinder'])
+
+    # Liquid treatment bed
+    liquid_bed_unit = unit_dct['LiquidBed']
+    batch_setting_unit_params(liquid_bed_data, model, liquid_bed_unit)
+
+    # Carbonizer base
+    carbonizer_unit = unit_dct['Carbonizer']
+    batch_setting_unit_params(carbonizer_data, model, carbonizer_unit)
+
+    # Pollution control device
+    pcd_unit = unit_dct['PCD']
+    batch_setting_unit_params(pcd_data, model, pcd_unit)
+
+    # Oil heat exchanger
+    oil_hx_unit = unit_dct['OilHX']
+    batch_setting_unit_params(oil_hx_data, model, oil_hx_unit)
+
+    # Hydronic heat exchanger
+    hhx_unit = unit_dct['HHX']
+    batch_setting_unit_params(hhx_data, model, hhx_unit)
+
+    # Dryer from HHX
+    hhx_dryer_unit = unit_dct['HHXdryer']
+    batch_setting_unit_params(hhx_dryer_data, model, hhx_dryer_unit)
+
     ##### Universal degradation parameters #####
     # Max methane emission
-    unit = sys.path[1] # the first unit that involves degradation
+    toilet_unit = sys.path[1] # the first unit that involves degradation
     b = systems.max_CH4_emission
     D = shape.Triangle(lower=0.175, midpoint=b, upper=0.325)
-    @param(name='Max CH4 emission', element=unit, kind='coupled', units='g CH4/g COD',
+    @param(name='Max CH4 emission', element=toilet_unit, kind='coupled', units='g CH4/g COD',
            baseline=b, distribution=D)
     def set_max_CH4_emission(i):
         systems.max_CH4_emission = i
@@ -367,7 +502,7 @@ def add_shared_parameters(sys, model, country_specific=False):
     # Time to full degradation
     b = systems.tau_deg
     D = shape.Uniform(lower=1, upper=3)
-    @param(name='Full degradation time', element=unit, kind='coupled', units='yr',
+    @param(name='Full degradation time', element=toilet_unit, kind='coupled', units='yr',
            baseline=b, distribution=D)
     def set_tau_deg(i):
         systems.tau_deg = i
@@ -375,167 +510,78 @@ def add_shared_parameters(sys, model, country_specific=False):
     # Reduction at full degradation
     b = systems.log_deg
     D = shape.Uniform(lower=2, upper=4)
-    @param(name='Log degradation', element=unit, kind='coupled', units='-',
+    @param(name='Log degradation', element=toilet_unit, kind='coupled', units='-',
            baseline=b, distribution=D)
     def set_log_deg(i):
         systems.log = i
 
     ##### Toilet material properties #####
-    density = unit.density_dct
+    density = toilet_unit.density_dct
     b = density['Plastic']
     D = shape.Uniform(lower=0.31, upper=1.24)
-    param(setter=DictAttrSetter(unit, 'density_dct', 'Plastic'),
-          name='Plastic density', element=unit, kind='isolated', units='kg/m2',
+    param(setter=DictAttrSetter(toilet_unit, 'density_dct', 'Plastic'),
+          name='Plastic density', element=toilet_unit, kind='isolated', units='kg/m2',
           baseline=b, distribution=D)
 
     b = density['Brick']
     D = shape.Uniform(lower=1500, upper=2000)
-    param(setter=DictAttrSetter(unit, 'density_dct', 'Brick'),
-          name='Brick density', element=unit, kind='isolated', units='kg/m3',
+    param(setter=DictAttrSetter(toilet_unit, 'density_dct', 'Brick'),
+          name='Brick density', element=toilet_unit, kind='isolated', units='kg/m3',
           baseline=b, distribution=D)
 
     b = density['StainlessSteelSheet']
     D = shape.Uniform(lower=2.26, upper=3.58)
-    param(setter=DictAttrSetter(unit, 'density_dct', 'StainlessSteelSheet'),
-          name='SS sheet density', element=unit, kind='isolated', units='kg/m2',
+    param(setter=DictAttrSetter(toilet_unit, 'density_dct', 'StainlessSteelSheet'),
+          name='SS sheet density', element=toilet_unit, kind='isolated', units='kg/m2',
           baseline=b, distribution=D)
 
     b = density['Gravel']
     D = shape.Uniform(lower=1520, upper=1680)
-    param(setter=DictAttrSetter(unit, 'density_dct', 'Gravel'),
-          name='Gravel density', element=unit, kind='isolated', units='kg/m3',
+    param(setter=DictAttrSetter(toilet_unit, 'density_dct', 'Gravel'),
+          name='Gravel density', element=toilet_unit, kind='isolated', units='kg/m3',
           baseline=b, distribution=D)
 
     b = density['Sand']
     D = shape.Uniform(lower=1281, upper=1602)
-    param(setter=DictAttrSetter(unit, 'density_dct', 'Sand'),
-          name='Sand density', element=unit, kind='isolated', units='kg/m3',
+    param(setter=DictAttrSetter(toilet_unit, 'density_dct', 'Sand'),
+          name='Sand density', element=toilet_unit, kind='isolated', units='kg/m3',
           baseline=b, distribution=D)
 
     b = density['Steel']
     D = shape.Uniform(lower=7750, upper=8050)
-    param(setter=DictAttrSetter(unit, 'density_dct', 'Steel'),
-          name='Steel density', element=unit, kind='isolated', units='kg/m3',
+    param(setter=DictAttrSetter(toilet_unit, 'density_dct', 'Steel'),
+          name='Steel density', element=toilet_unit, kind='isolated', units='kg/m3',
           baseline=b, distribution=D)
 
-    # ########## Drying bed ##########
-    # unit = drying_bed_unit
-    # D = shape.Uniform(lower=0, upper=0.1)
-    # path = join_path(su_data_path, '_drying_bed.tsv')
-    # drying_bed_data = load_data(path)
-    # batch_setting_unit_params(drying_bed_data, model, unit, exclude=('sol_frac', 'bed_H'))
-
-    # b = unit.sol_frac
-    # if unit.design_type == 'unplanted':
-    #     D = shape.Uniform(lower=0.3, upper=0.4)
-    # elif unit.design_type == 'planted':
-    #     D = shape.Uniform(lower=0.4, upper=0.7)
-    # param(setter=DictAttrSetter(unit, '_sol_frac', getattr(unit, 'design_type')),
-    #       name='sol_frac', element=unit, kind='coupled', units='fraction',
-    #       baseline=b, distribution=D)
-
-    # b = unit.bed_H['covered']
-    # D = shape.Uniform(lower=0.45, upper=0.75)
-    # param(setter=DictAttrSetter(unit, 'bed_H', ('covered', 'uncovered')),
-    #       name='non_storage_bed_H', element=unit, kind='coupled', units='m',
-    #       baseline=b, distribution=D)
-
-    # b = unit.bed_H['storage']
-    # D = shape.Uniform(lower=1.2, upper=1.8)
-    # param(DictAttrSetter(unit, 'bed_H', 'storage'),
-    #       name='storage_bed_H', element=unit, kind='coupled', units='m',
-    #       baseline=b, distribution=D)
-
-    # ########## Crop application ##########
-    # unit = crop_application_unit
-    # D = shape.Uniform(lower=0, upper=0.1)
-    # param(setter=DictAttrSetter(unit, 'loss_ratio', 'NH3'),
-    #       name='NH3 application loss', element=unit, kind='coupled',
-    #       units='fraction of applied', baseline=0.05, distribution=D)
-
-    # # Mg, Ca, C actually not affecting results
-    # D = shape.Uniform(lower=0, upper=0.05)
-    # param(setter=DictAttrSetter(unit, 'loss_ratio', ('NonNH3', 'P', 'K', 'Mg', 'Ca')),
-    #       name='Other application losses', element=unit, kind='coupled',
-    #       units='fraction of applied', baseline=0.02, distribution=D)
-
     ######## General TEA settings ########
-
-    # Discount factor for the excreta-derived fertilizers
-    get_price_factor = systems.get_price_factor
-    b = get_price_factor()
-    D = shape.Uniform(lower=0.1, upper=0.4)
-    @param(name='Price factor', element='TEA', kind='isolated', units='-',
-            baseline=b, distribution=D)
-    def set_price_factor(i):
-        systems.price_factor = i
-
-    # D = shape.Uniform(lower=1.164, upper=2.296)
-    # @param(name='N fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
-    #        baseline=1.507, distribution=D)
-    # def set_N_price(i):
-    #     price_dct['N'] = streams['liq_N'] = streams['sol_N'] = i * get_price_factor()
-
-    # D = shape.Uniform(lower=2.619, upper=6.692)
-    # @param(name='P fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
-    #        baseline=3.983, distribution=D)
-    # def set_P_price(i):
-    #     price_dct['P'] = streams['liq_P'] = streams['sol_P'] = i * get_price_factor()
-
-    # D = shape.Uniform(lower=1.214, upper=1.474)
-    # @param(name='K fertilizer price', element='TEA', kind='isolated', units='USD/kg K',
-    #        baseline=1.333, distribution=D)
-    # def set_K_price(i):
-    #     price_dct['K'] = streams['liq_K'] = streams['sol_K'] = i * get_price_factor()
-
-    # Money discount rate
-    # keep discount rate constant
+    # # Keeping discount rate constant
     # b = systems.discount_rate
     # D = shape.Uniform(lower=0.03, upper=0.06)
     # @param(name='Discount rate', element='TEA', kind='isolated', units='fraction',
-    #        baseline=b, distribution=D)
+    #         baseline=b, distribution=D)
     # def set_discount_rate(i):
     #     systems.discount_rate = i
 
-    b=price_dct['Polymer']
+    b = price_dct['Polymer']
     D = shape.Uniform(lower=(b*0.95), upper=(b*1.05))
     @param(name='Polymer price', element='TEA', kind='isolated', units='USD/kg polymer',
             baseline=(b), distribution=D)
     def set_polymber_price(i):
         price_dct['Polymer'] = streams['polymer'].price = i
 
-    b=price_dct['Resin']
+    b = price_dct['Resin']
     D = shape.Uniform(lower=(b*0.95), upper=(b*1.05))
     @param(name='Resin price', element='TEA', kind='isolated', units='USD/kg resin',
             baseline=(b), distribution=D)
     def set_resin_price(i):
         price_dct['Resin'] = streams['resin'].price = i
 
-    b=price_dct['FilterBag']
+    b = price_dct['FilterBag']
     D = shape.Uniform(lower=(b*0.95), upper=(b*1.05))
     @param(name='Filter bag price', element='TEA', kind='isolated', units='USD/kg filter bag',
             baseline=(b), distribution=D)
     def set_filterbag_price(i):
         price_dct['FilterBag'] = streams['filter_bag'].price = i
-
-    # D = shape.Uniform(lower=(1.507*(14/17)*0.8), upper=(1.507*(14/17)*1.2))
-    # @param(name='NH3 fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
-    #         baseline=(1.507*(14/17)*0.25), distribution=D)
-    # def set_N_price(i):
-    #     price_dct['conc_NH3'] = streams['conc_NH3'] = streams['conc_NH3'] = i * get_price_factor()
-
-    # D = shape.Uniform(lower=(3.983*(31/245)*0.8), upper=(3.983*(31/245)*1.2))
-    # @param(name='Struvite fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
-    #         baseline=(3.983*(31/245)*0.25), distribution=D)
-    # def set_P_price(i):
-    #     price_dct['struvite'] = streams['struvite'] = streams['struvite'] = i * get_price_factor()
-
-    # D = shape.Uniform(lower=(0.014*0.8), upper=(0.014*1.2))
-    # @param(name='Biochar  price', element='TEA', kind='isolated', units='USD/kg biochar',
-    #         baseline=(0.014), distribution=D)
-    # def set_biochar_price(i):
-    #     price_dct['biochar'] = streams['biochar'] = streams['biochar'] = i
-
 
     ######## General LCA settings ########
     b = GWP_dct['CH4']
@@ -551,13 +597,6 @@ def add_shared_parameters(sys, model, country_specific=False):
            baseline=b, distribution=D)
     def set_N2O_CF(i):
         GWP_dct['N2O'] = systems.N2O_item.CFs['GlobalWarming'] = i
-
-    # b = GWP_dct['Electricity']
-    # D = shape.Uniform(lower=0.106, upper=0.121)
-    # @param(name='Electricity CF', element='LCA', kind='isolated',
-    #        units='kg CO2-eq/kWh', baseline=b, distribution=D)
-    # def set_electricity_CF(i):
-    #     GWP_dct['Electricity'] = i
 
     b = GWP_dct['Polymer']
     D = shape.Triangle(lower=b*0.95, midpoint=b, upper=b*1.05)
@@ -579,49 +618,6 @@ def add_shared_parameters(sys, model, country_specific=False):
             units='kg CO2-eq/kg N', baseline=b, distribution=D)
     def set_filter_bag_CF(i):
         GWP_dct['FilterBag'] = systems.filter_bag_item.CFs['GlobalWarming'] = i
-
-    # b = -GWP_dct['N']
-    # D = shape.Triangle(lower=1.8, midpoint=b, upper=8.9)
-    # @param(name='N fertilizer CF', element='LCA', kind='isolated',
-    #        units='kg CO2-eq/kg N', baseline=b, distribution=D)
-    # def set_N_fertilizer_CF(i):
-    #     GWP_dct['N'] = systems.N_item.CFs['GlobalWarming'] = -i
-
-    # b = -GWP_dct['P']
-    # D = shape.Triangle(lower=4.3, midpoint=b, upper=5.4)
-    # @param(name='P fertilizer CF', element='LCA', kind='isolated',
-    #        units='kg CO2-eq/kg P', baseline=b, distribution=D)
-    # def set_P_fertilizer_CF(i):
-    #     GWP_dct['P'] = systems.P_item.CFs['GlobalWarming'] = -i
-
-    # b = -GWP_dct['K']
-    # D = shape.Triangle(lower=1.1, midpoint=b, upper=2)
-    # @param(name='K fertilizer CF', element='LCA', kind='isolated',
-    #        units='kg CO2-eq/kg K', baseline=b, distribution=D)
-    # def set_K_fertilizer_CF(i):
-    #     GWP_dct['K'] = systems.K_item.CFs['GlobalWarming'] = -i
-
-
-    # b = -GWP_dct['conc_NH3']
-    # D = shape.Triangle(lower=(1.8*(14/17)), midpoint=b, upper=(8.9*(14/17)))
-    # @param(name='conc_NH3 fertilizer CF', element='LCA', kind='isolated',
-    #         units='kg CO2-eq/kg conc_NH3', baseline=b, distribution=D)
-    # def set_conc_NH3_fertilizer_CF(i):
-    #     GWP_dct['conc_NH3'] = systems.conc_NH3_item.CFs['GlobalWarming'] = -i
-
-    # b = -GWP_dct['struvite']
-    # D = shape.Triangle(lower=(4.3*(31/245)), midpoint=b, upper=(5.4*(31/245)))
-    # @param(name='struvite fertilizer CF', element='LCA', kind='isolated',
-    #         units='kg CO2-eq/kg struvite', baseline=b, distribution=D)
-    # def set_struvite_fertilizer_CF(i):
-    #     GWP_dct['struvite'] = systems.struvite_item.CFs['GlobalWarming'] = -i
-
-    # b = -GWP_dct['biochar']
-    # D = shape.Triangle(lower=(0.2*0.9*(44/12)*.8), midpoint=b, upper=(0.2*0.9*(44/12)*1.2))
-    # @param(name='biochar CF', element='LCA', kind='isolated',
-    #         units='kg CO2-eq/kg biochar', baseline=b, distribution=D)
-    # def set_biochar_CF(i):
-    #     GWP_dct['biochar'] = systems.biochar_item.CFs['GlobalWarming'] = -i
 
     item_path = join_path(br_data_path, 'impact_items.xlsx')
     data = load_data(item_path, sheet='GWP')
@@ -647,9 +643,11 @@ def add_shared_parameters(sys, model, country_specific=False):
     return model
 
 
-# # =============================================================================
-# # For the same processes in sysA and sysC
-# # =============================================================================
+# %%
+
+# =============================================================================
+# Shared by systems A, C, and D
+# =============================================================================
 
 path = join_path(su_data_path, '_toilet.tsv')
 toilet_data = load_data(path)
@@ -661,22 +659,17 @@ MCF_upper_dct = dct_from_str(pit_latrine_data.loc['MCF_decay']['high'])
 N2O_EF_lower_dct = dct_from_str(pit_latrine_data.loc['N2O_EF_decay']['low'])
 N2O_EF_upper_dct = dct_from_str(pit_latrine_data.loc['N2O_EF_decay']['high'])
 
-def add_pit_latrine_parameters(sys, model):
-    unit = sys.path[1]
+def add_pit_latrine_parameters(sys, model, unit_dct):
+    pit_unit = unit_dct['Toilet']
     param = model.parameter
     ######## Related to the toilet ########
-    data = pd.concat((toilet_data, pit_latrine_data))
-    batch_setting_unit_params(data, model, unit, exclude=('MCF_decay', 'N2O_EF_decay'))
+    all_pit_data = pd.concat((toilet_data, pit_latrine_data))
+    batch_setting_unit_params(all_pit_data, model, pit_unit, exclude=('MCF_decay', 'N2O_EF_decay'))
 
-    # MCF and N2O_EF decay parameters, specified based on the type of the pit latrine
-    kind = unit._return_MCF_EF()
-    if sys.ID != 'sysD':
-        b_MCF = unit.MCF_decay
-        D_MCF = shape.Triangle(lower=MCF_lower_dct[kind], midpoint=b_MCF, upper=MCF_upper_dct[kind])
-        b_N2O_EF = unit.N2O_EF_decay
-        D_N2O_EF = shape.Triangle(lower=N2O_EF_lower_dct[kind], midpoint=b_N2O_EF, upper=N2O_EF_upper_dct[kind])
+    kind = pit_unit._return_MCF_EF()
+    if sys.ID != 'sysD': # Parameters not applicable to sysD
         ######## Related to conveyance ########
-        convey_unit = sys.path[2]
+        convey_unit = unit_dct['Conveyance']
         b = convey_unit.loss_ratio
         D = shape.Uniform(lower=0.02, upper=0.05)
         param(setter=AttrSetter(convey_unit, 'loss_ratio'),
@@ -695,375 +688,204 @@ def add_pit_latrine_parameters(sys, model):
                 baseline=b, distribution=D)
         def set_emptying_fee(i):
             systems.emptying_fee = i
-    else:
-        b_MCF = unit.MCF_decay * 2
-        D_MCF = shape.Triangle(lower=MCF_lower_dct[kind]*2, midpoint=b_MCF, upper=MCF_upper_dct[kind]*2)
-        b_N2O_EF = unit.N2O_EF_decay * 2
-        D_N2O_EF = shape.Triangle(lower=N2O_EF_lower_dct[kind]*2, midpoint=b_N2O_EF, upper=N2O_EF_upper_dct[kind]*2)
 
-    param(setter=DictAttrSetter(unit, '_MCF_decay', kind),
-          name='MCF_decay', element=unit, kind='coupled',
+    # Parameters applicable to all other systems with the pit latrine
+    b = pit_unit.MCF_decay
+    D = shape.Triangle(lower=MCF_lower_dct[kind], midpoint=b, upper=MCF_upper_dct[kind])
+    param(setter=DictAttrSetter(pit_unit, '_MCF_decay', kind),
+          name='MCF_decay', element=pit_unit, kind='coupled',
           units='fraction of anaerobic conversion of degraded COD',
-          baseline=b_MCF, distribution=D_MCF)
+          baseline=b, distribution=D)
 
-    param(setter=DictAttrSetter(unit, '_N2O_EF_decay', kind),
-          name='N2O_EF_decay', element=unit, kind='coupled',
+    b = pit_unit.N2O_EF_decay
+    D = shape.Triangle(lower=N2O_EF_lower_dct[kind], midpoint=b, upper=N2O_EF_upper_dct[kind])
+    param(setter=DictAttrSetter(pit_unit, '_N2O_EF_decay', kind),
+          name='N2O_EF_decay', element=pit_unit, kind='coupled',
           units='fraction of N emitted as N2O',
-          baseline=b_N2O_EF, distribution=D_N2O_EF)
+          baseline=b, distribution=D)
 
     # Costs
-    b = unit.CAPEX
+    b = pit_unit.CAPEX
     D = shape.Uniform(lower=523, upper=673)
-    param(setter=AttrSetter(unit, 'CAPEX'),
-          name='Pit latrine capital cost', element=unit, kind='cost',
+    param(setter=AttrSetter(pit_unit, 'CAPEX'),
+          name='Pit latrine capital cost', element=pit_unit, kind='cost',
           units='USD', baseline=b, distribution=D)
 
-    b = unit.OPEX_over_CAPEX
+    b = pit_unit.OPEX_over_CAPEX
     D = shape.Uniform(lower=0.02, upper=0.08)
-    param(setter=AttrSetter(unit, 'OPEX_over_CAPEX'),
-          name='Pit latrine operating cost', element=unit, kind='cost',
+    param(setter=AttrSetter(pit_unit, 'OPEX_over_CAPEX'),
+          name='Pit latrine operating cost', element=pit_unit, kind='cost',
           units='fraction of capital cost', baseline=b, distribution=D)
 
     return model
 
-# path = join_path(su_data_path '_sludge_separator.tsv')
-# sludge_separator_data = load_data(path)
-# split_lower_dct = eval(sludge_separator_data.loc['split']['low'])
-# split_upper_dct = eval(sludge_separator_data.loc['split']['high'])
-# split_dist_dct = eval(sludge_separator_data.loc['split']['distribution'])
-# def add_sludge_separator_parameters(unit, model):
-#     param = model.parameter
-
-#     b = unit.settled_frac
-#     D = shape.Uniform(lower=0.1, upper=0.2)
-#     @param(name='Settled frac', element=unit, kind='coupled', units='fraction',
-#            baseline=b, distribution=D)
-#     def set_settled_frac(i):
-#         unit.settled_frac = i
-
-#     for key in split_lower_dct.keys():
-#         b = getattr(unit, 'split')[key]
-#         lower = split_lower_dct[key]
-#         upper = split_upper_dct[key]
-#         dist = split_dist_dct[key]
-#         if dist == 'uniform':
-#             D = shape.Uniform(lower=lower, upper=upper)
-#         elif dist == 'triangular':
-#             D = shape.Triangle(lower=lower, midpoint=b, upper=upper)
-#         param(setter=DictAttrSetter(unit, 'split', key),
-#               name='Frac of settled'+key, element=unit, kind='coupled',
-#               units='fraction',
-#               baseline=b, distribution=D)
-
-#     return model
-# def add_lagoon_parameters(unit, model):
-#     param = model.parameter
-#     b = systems.get_sewer_flow()
-#     D = shape.Uniform(lower=2500, upper=3000)
-#     @param(name='Sewer flow', element=unit, kind='coupled', units='m3/d',
-#            baseline=b, distribution=D)
-#     def set_sewer_flow(i):
-#         systems.sewer_flow = i
-#     return model
-# def add_existing_plant_parameters(toilet_unit, cost_unit, tea, model):
-#     param = model.parameter
-#     b = systems.ppl_exist_sewer
-#     D = shape.Uniform(lower=3e4, upper=5e4)
-#     @param(name='Sewer ppl', element=toilet_unit, kind='coupled', units='-',
-#            baseline=b, distribution=D)
-#     def set_sewer_ppl(i):
-#         systems.ppl_exist_sewer = i
-
-#     b = systems.ppl_exist_sludge
-#     D = shape.Triangle(lower=416667, midpoint=b, upper=458333)
-#     @param(name='Sludge ppl', element=toilet_unit, kind='coupled', units='-',
-#            baseline=b, distribution=D)
-#     def set_sludge_ppl(i):
-#         systems.ppl_exist_sludge = i
-
-#     b = cost_unit.lifetime
-#     D = shape.Triangle(lower=8, midpoint=b, upper=11)
-#     param(setter=AttrSetter(cost_unit, 'lifetime'),
-#           name='Plant lifetime', element='TEA/LCA', kind='isolated', units='yr',
-#           baseline=b, distribution=D)
-
-#     b = tea.annual_labor
-#     D = shape.Uniform(lower=1e6, upper=5e6)
-#     param(setter=AttrFuncSetter(tea, 'annual_labor',
-#                                 lambda salary: salary*12*12),
-#           name='Staff salary', element='TEA', kind='isolated', units='USD',
-#           baseline=b, distribution=D)
-    # return model
-
 
 # %%
 
 # =============================================================================
-# Scenario A (sysA)
+# Functions to create models
 # =============================================================================
 
-sysA = systems.sysA
-modelA = Model(sysA, add_metrics(sysA))
-paramA = modelA.parameter
+# System A
+def create_modelA(country_specific=False):
+    sysA = systems.sysA
+    modelA = Model(sysA, add_metrics(sysA))
 
-# Shared parameters
-modelA = add_shared_parameters(sysA, modelA)
+    # Shared parameters
+    unit_dctA = {
+        'Excretion': systems.A1,
+        'Toilet': systems.A2,
+        'Conveyance': systems.A3,
+        'ControlBox': systems.A4, # industrial control panel
+        'Housing': systems.A5,
+        'Screw': systems.A6,
+        'LiquidBed': systems.A7,
+        'Carbonizer': systems.A8,
+        'PCD': systems.A9, # pollution control device
+        'OilHX': systems.A10,
+        'HHX': systems.A11,
+        'HHXdryer': systems.A12,
+        }
+    modelA = add_shared_parameters(sysA, modelA, unit_dctA, country_specific)
 
+    # Pit latrine and conveyance
+    modelA = add_pit_latrine_parameters(sysA, modelA, unit_dctA)
 
-# Diet and excretion
-A1 = systems.A1
-path = join_path(su_data_path, '_excretion.tsv')
-excretion_data = load_data(path)
-batch_setting_unit_params(excretion_data, modelA, A1)
-
-# Pit latrine and conveyance
-modelA = add_pit_latrine_parameters(sysA, modelA)
-
-# Industrial control panel
-A4 = systems.A4
-path = join_path(su_data_path, '_control_box_op.tsv')
-control_data = load_data(path)
-batch_setting_unit_params(control_data, modelA, A4)
-
-# Housing biogenic refinery
-A5 = systems.A5
-path = join_path(su_data_path, '_housing_biogenic_refinery.tsv')
-housing_data = load_data(path)
-batch_setting_unit_params(housing_data, modelA, A5)
-
-# Screw press
-A6 = systems.A6
-path = join_path(su_data_path, '_screw_press.tsv')
-screw_data = load_data(path)
-batch_setting_unit_params(screw_data, modelA, A6)
-
-# Liquid treatment bed
-A7 = systems.A7
-path = join_path(su_data_path, '_liquid_treatment_bed.tsv')
-liquid_bed_data = load_data(path)
-batch_setting_unit_params(liquid_bed_data, modelA, A7)
-
-# Carbonizer base
-A8 = systems.A8
-path = join_path(su_data_path, '_carbonizer_base.tsv')
-carbonizer_data = load_data(path)
-batch_setting_unit_params(carbonizer_data, modelA, A8)
-
-# Pollution control device
-A9 = systems.A9
-path = join_path(su_data_path, '_pollution_control_device.tsv')
-pollution_data = load_data(path)
-batch_setting_unit_params(pollution_data, modelA, A9)
-
-# Oil heat exchanger
-A10 = systems.A10
-path = join_path(su_data_path, '_oil_heat_exchanger.tsv')
-oil_hx_data = load_data(path)
-batch_setting_unit_params(oil_hx_data, modelA, A10)
-
-# Hydronic heat exchanger
-A11 = systems.A11
-path = join_path(su_data_path, '_hydronic_heat_exchanger.tsv')
-hhx_data = load_data(path)
-batch_setting_unit_params(hhx_data, modelA, A11)
-
-# Dryer from HHX
-A12 = systems.A12
-path = join_path(su_data_path, '_hhx_dryer.tsv')
-hhx_dryer_data = load_data(path)
-batch_setting_unit_params(hhx_dryer_data, modelA, A12)
+    return modelA
 
 
-# %%
+# System B
+def create_modelB(country_specific=False):
+    sysB = systems.sysB
+    modelB = Model(sysB, add_metrics(sysB))
+    paramB = modelB.parameter
 
-# =============================================================================
-# Scenario B (sysB)
-# =============================================================================
+    # Shared parameters
+    unit_dctB = {
+        'Excretion': systems.B1,
+        'Toilet': systems.B2,
+        'Conveyance': (systems.B3, systems.B4),
+        'LiquidBed': systems.B7,
+        'ControlBox': systems.B8, # industrial control panel
+        'Housing': systems.B9,
+        'Grinder': systems.B10,
+        'Carbonizer': systems.B11,
+        'PCD': systems.B12, # pollution control device
+        'OilHX': systems.B13,
+        'HHX': systems.B14,
+        'HHXdryer': systems.B15,
+        }
+    modelB = add_shared_parameters(sysB, modelB, unit_dctB, country_specific)
 
-sysB = systems.sysB
-modelB = Model(sysB, add_metrics(sysB))
-paramB = modelB.parameter
+    # UDDT
+    B2 = systems.B2
+    uddt_data = load_data(join_path(su_data_path, '_uddt.tsv'))
+    all_uddt_data = pd.concat((toilet_data, uddt_data))
+    batch_setting_unit_params(all_uddt_data, modelB, B2)
 
+    b = B2.CAPEX
+    D = shape.Uniform(lower=571, upper=756)
+    @paramB(name='UDDT capital cost', element=B2, kind='cost',
+            units='USD', baseline=b, distribution=D)
+    def set_UDDT_CAPEX(i):
+        B2.CAPEX = i
 
-# Shared parameters
-modelB = add_shared_parameters(sysB, modelB)
+    b = B2.OPEX_over_CAPEX
+    D = shape.Uniform(lower=0.05, upper=0.1)
+    @paramB(name='UDDT operating cost', element=B2, kind='cost',
+            units='fraction of capital cost', baseline=b, distribution=D)
+    def set_UDDT_OPEX(i):
+        B2.OPEX_over_CAPEX = i
 
-# Diet and excretion
-B1 = systems.B1
-batch_setting_unit_params(excretion_data, modelB, B1)
+    # Conveyance
+    B3 = systems.B3
+    B4 = systems.B4
+    b = B3.loss_ratio
+    D = shape.Uniform(lower=0.02, upper=0.05)
+    @paramB(name='Transportation loss', element=B3, kind='coupled', units='fraction',
+           baseline=b, distribution=D)
+    def set_trans_loss(i):
+        B3.loss_ratio = B4.loss_ratio = i
 
-# UDDT
-B2 = systems.B2
-path = join_path(su_data_path, '_uddt.tsv')
-uddt_data = load_data(path)
-data = pd.concat((toilet_data, uddt_data))
-batch_setting_unit_params(data, modelB, B2)
+    b = B3.single_truck.distance
+    D = shape.Uniform(lower=2, upper=10)
+    @paramB(name='Transportation distance', element=B3, kind='coupled', units='km',
+           baseline=b, distribution=D)
+    def set_trans_distance(i):
+        B3.single_truck.distance = B4.single_truck.distance = i
 
-b = B2.CAPEX
-D = shape.Uniform(lower=571, upper=756)
-@paramB(name='UDDT capital cost', element=B2, kind='cost',
-        units='USD', baseline=b, distribution=D)
-def set_UDDT_CAPEX(i):
-    B2.CAPEX = i
+    b = systems.handcart_fee
+    D = shape.Uniform(lower=0.004, upper=0.015)
+    @paramB(name='Handcart fee', element=B3, kind='cost', units='USD',
+           baseline=b, distribution=D)
+    def set_handcart_fee(i):
+        systems.handcart_fee = i
 
-b = B2.OPEX_over_CAPEX
-D = shape.Uniform(lower=0.05, upper=0.1)
-@paramB(name='UDDT operating cost', element=B2, kind='cost',
-        units='fraction of capital cost', baseline=b, distribution=D)
-def set_UDDT_OPEX(i):
-    B2.OPEX_over_CAPEX = i
+    b = systems.truck_fee
+    D = shape.Uniform(lower=4.82, upper=8.5)
+    @paramB(name='Truck fee', element=B3, kind='cost', units='USD',
+           baseline=b, distribution=D)
+    def set_truck_fee(i):
+        systems.truck_fee = i
 
-# Conveyance
-B3 = systems.B3
-B4 = systems.B4
-b = B3.loss_ratio
-D = shape.Uniform(lower=0.02, upper=0.05)
-@paramB(name='Transportation loss', element=B3, kind='coupled', units='fraction',
-       baseline=b, distribution=D)
-def set_trans_loss(i):
-    B3.loss_ratio = B4.loss_ratio = i
+    # Struvite precipitation
+    struvite_data = load_data(join_path(su_data_path, '_struvite_precipitation.tsv'))
+    batch_setting_unit_params(struvite_data, modelB, systems.B5)
 
-b = B3.single_truck.distance
-D = shape.Uniform(lower=2, upper=10)
-@paramB(name='Transportation distance', element=B3, kind='coupled', units='km',
-       baseline=b, distribution=D)
-def set_trans_distance(i):
-    B3.single_truck.distance = B4.single_truck.distance = i
+    # Ion exchange NH3
+    ix_data = load_data(join_path(su_data_path, '_ion_exchange_NH3.tsv'))
+    batch_setting_unit_params(ix_data, modelB, systems.B6)
 
-b = systems.handcart_fee
-D = shape.Uniform(lower=0.004, upper=0.015)
-@paramB(name='Handcart fee', element=B3, kind='cost', units='USD',
-       baseline=b, distribution=D)
-def set_handcart_fee(i):
-    systems.handcart_fee = i
-
-b = systems.truck_fee
-D = shape.Uniform(lower=4.82, upper=8.5)
-@paramB(name='Truck fee', element=B3, kind='cost', units='USD',
-       baseline=b, distribution=D)
-def set_truck_fee(i):
-    systems.truck_fee = i
-
-# Struvite precipitation
-B5 = systems.B5
-path = join_path(su_data_path, '_struvite_precipitation.tsv')
-data = load_data(path)
-batch_setting_unit_params(data, modelB, B5)
-
-# Ion exchange NH3
-B6 = systems.B6
-path = join_path(su_data_path, '_ion_exchange_NH3.tsv')
-data = load_data(path)
-batch_setting_unit_params(data, modelB, B6)
-
-# Liquid treatment bed
-B7 = systems.B7
-batch_setting_unit_params(liquid_bed_data, modelB, B7)
-
-# Industrial control panel
-B8 = systems.B8
-batch_setting_unit_params(control_data, modelB, B8)
-
-# Housing biogenic refinery
-B9 = systems.B9
-batch_setting_unit_params(housing_data, modelB, B9)
-
-# Grinder
-B10 = systems.B10
-path = join_path(su_data_path, '_grinder.tsv')
-data = load_data(path)
-batch_setting_unit_params(data, modelB, B10)
-
-# Carbonizer base
-B11 = systems.B11
-batch_setting_unit_params(carbonizer_data, modelB, B11)
-
-# Pollution control device
-B12 = systems.B12
-batch_setting_unit_params(pollution_data, modelB, B12)
-
-# Oil heat exchanger
-B13 = systems.B13
-batch_setting_unit_params(oil_hx_data, modelB, B13)
-
-# Hydronic heat exchanger
-B14 = systems.B14
-batch_setting_unit_params(hhx_data, modelB, B14)
-
-# Dryer from HHX
-B15 = systems.B15
-batch_setting_unit_params(hhx_dryer_data, modelB, B15)
+    return modelB
 
 
-# =============================================================================
-# Scenario C (sysC)
-# =============================================================================
+# System C
+def create_modelC(country_specific=False):
+    sysC = systems.sysC
+    modelC = Model(sysC, add_metrics(sysC))
 
-sysC = systems.sysC
-modelC = Model(sysC, add_metrics(sysC))
-paramC = modelC.parameter
+    # Shared parameters
+    unit_dctC = {
+        'Excretion': systems.C1,
+        'Toilet': systems.C2,
+        'Conveyance': systems.C3,
+        'ControlBox': systems.C4, # industrial control panel
+        'Housing': systems.C5,
+        'Screw': systems.C6,
+        'LiquidBed': systems.C7,
+        'Carbonizer': systems.C8,
+        'PCD': systems.C9, # pollution control device
+        'OilHX': systems.C10,
+        'HHX': systems.C11,
+        'HHXdryer': systems.C12,
+        }
+    modelC = add_shared_parameters(sysC, modelC, unit_dctC, country_specific)
 
-# Shared parameters
-modelC = add_shared_parameters(sysC, modelC)
+    # Pit latrine and conveyance
+    modelC = add_pit_latrine_parameters(sysC, modelC, unit_dctC)
 
-# Diet and excretion
-C1 = systems.C1
-batch_setting_unit_params(excretion_data, modelC, C1)
-
-# Pit latrine and conveyance
-modelC = add_pit_latrine_parameters(sysC, modelC)
-
-# Industrial control panel
-C4 = systems.C4
-batch_setting_unit_params(control_data, modelC, C4)
-
-# Housing biogenic refinery
-C5 = systems.C5
-batch_setting_unit_params(housing_data, modelC, C5)
-
-# Screw press
-C6 = systems.C6
-batch_setting_unit_params(screw_data, modelC, C6)
-
-# Liquid treatment bed
-C7 = systems.C7
-batch_setting_unit_params(liquid_bed_data, modelC, C7)
-
-# Carbonizer base
-C8 = systems.C8
-batch_setting_unit_params(carbonizer_data, modelC, C8)
-
-# Pollution control device
-C9 = systems.C9
-batch_setting_unit_params(pollution_data, modelC, C9)
-
-# Oil heat exchanger
-C10 = systems.C10
-batch_setting_unit_params(oil_hx_data, modelC, C10)
-
-# Hydronic heat exchanger
-C11 = systems.C11
-batch_setting_unit_params(hhx_data, modelC, C11)
-
-# Dryer from HHX
-C12 = systems.C12
-batch_setting_unit_params(hhx_dryer_data, modelC, C12)
+    return modelC
 
 
-# =============================================================================
-# Scenario D (sysD)
-# =============================================================================
+# System D, the `country_specific` kwarg is just a placeholder to be consistent
+# with other systems, isn't actually being used
+def create_modelD(country_specific=False):
+    sysD = systems.sysD
+    modelD = Model(sysD, add_metrics(sysD))
+    modelD = add_pit_latrine_parameters(sysD, modelD, unit_dct={'Toilet': systems.D2})
+    anaerobic_lagoon_data = load_data(join_path(su_data_path, '_anaerobic_lagoon.tsv'))
+    batch_setting_unit_params(anaerobic_lagoon_data, modelD, systems.D4)
+    return modelD
 
-sysD = systems.sysD
-modelD = Model(sysD, add_metrics(sysD))
-paramD = modelD.parameter
 
-modelD = add_pit_latrine_parameters(sysD, modelD)
-
-D4 = systems.D4
-path = join_path(su_data_path, '_anaerobic_lagoon.tsv')
-anaerobic_lagoon_data = load_data(path)
-batch_setting_unit_params(anaerobic_lagoon_data, modelD, D4)
+# Wrapper function so that it'd work for all
+def create_model(model_ID='A', country_specific=False):
+    model_ID = model_ID.lstrip('model').lstrip('sys') # so that it'll work for "modelA"/"sysA"/"A"
+    if model_ID == 'A': model = create_modelA(country_specific)
+    elif model_ID == 'B': model = create_modelB(country_specific)
+    elif model_ID == 'C': model = create_modelC(country_specific)
+    else: model = create_modelD(country_specific)
+    return model
 
 
 # %%
@@ -1108,10 +930,10 @@ def run_uncertainty(model, seed=None, N=10000, rule='L',
     return dct
 
 
-def save_uncertainty_results(model, path=''):
+def save_uncertainty_results(model, dct={}, path=''):
     sys_ID = model.system.ID[-1]
     path = join_path(results_path, f'model{sys_ID[-1]}.xlsx') if path=='' else path
-    dct = result_dct[sys_ID]
+    dct = dct or result_dct[sys_ID]
     if dct['parameters'] is None:
         raise ValueError('No cached result, run model first.')
     with pd.ExcelWriter(path) as writer:
