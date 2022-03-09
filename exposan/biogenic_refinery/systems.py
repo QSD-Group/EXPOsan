@@ -265,15 +265,15 @@ phosphorus_dict = nitrogen_dict.copy()
 potassium_dict = nitrogen_dict.copy()
 
 # Make sure the same carbon_COD_ratio is used throughout
-get_carbon_COD_ratio = lambda: A12.carbon_COD_ratio
+get_carbon_COD_ratio = lambda ID: A12.carbon_COD_ratio if ID=='A' else B15.carbon_COD_ratio
 def update_carbon_COD_ratio(sys):
     for u in sys.units:
         if hasattr(u, 'carbon_COD_ratio'):
-            u.carbon_COD_ratio = get_carbon_COD_ratio()
+            u.carbon_COD_ratio = get_carbon_COD_ratio(sys.ID[-1])
 
 # Calculate recoveries as in kg C/N/P/K per yr
 hr_per_yr = 365 * 24
-get_C = lambda stream: stream.COD*stream.F_vol/1e3*get_carbon_COD_ratio()*hr_per_yr
+get_C = lambda stream: stream.COD*stream.F_vol/1e3*get_carbon_COD_ratio(stream._source.ID[0])*hr_per_yr
 get_C_gas = lambda stream: stream.imol['CH4']*12*hr_per_yr
 get_N = lambda stream: stream.TN*stream.F_vol/1e3*hr_per_yr
 get_N_gas = lambda stream: stream.imol['N2O']*28*hr_per_yr
@@ -437,9 +437,11 @@ teaA = SimpleTEA(system=sysA, discount_rate=discount_rate,
                   lang_factor=None, annual_maintenance=0,
                   annual_labor=(operator_daily_wage*3*365))
 
-#!!! Need to multiply by 12? not 24?
+# 12 is assuming the device is running 12 hr per day (50% of the time)
+# this isn't adjusted through `uptime_ratio` because other OPEX calculation
+# in this unit needs `uptime_ratio` to be 1
 get_powerA = lambda: sum([(u.power_utility.rate*u.uptime_ratio)
-                          for u in sysA.units])*(365*teaA.lifetime)
+                          for u in sysA.units])*(365*teaA.lifetime)*12
 
 lcaA = LCA(system=sysA, lifetime=20, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerA)
 
@@ -652,9 +654,11 @@ teaB = SimpleTEA(system=sysB, discount_rate=discount_rate,
                   lang_factor=None, annual_maintenance=0,
                   annual_labor=(operator_daily_wage*3*365))
 
-#!!! Need to multiply by 12?
+# 12 is assuming the device is running 12 hr per day (50% of the time)
+# this isn't adjusted through `uptime_ratio` because other OPEX calculation
+# in this unit needs `uptime_ratio` to be 1
 get_powerB = lambda: sum([(u.power_utility.rate*u.uptime_ratio)
-                          for u in sysB.units])*(365*teaB.lifetime)
+                          for u in sysB.units])*(365*teaB.lifetime)*12
 
 lcaB = LCA(system=sysB, lifetime=20, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerB)
 
@@ -720,10 +724,11 @@ C7 = su.LiquidTreatmentBed('C7', ins=C6-0, outs=('liquid_bed_treated', 'C7_CH4',
                            decay_k_N=get_decay_k(tau_deg, log_deg),
                            max_CH4_emission=max_CH4_emission)
 
-# agricultural residue flowrate is proportional to sysA effluent
-# ag_res_kg_hr = A6.outs[1].imass['OtherSS'] * (2/12)
-#!!! Why this is calculated based on units in system A?
-ag_res_kg_hr = (1-(A6.outs[1].imass['H2O']/A6.outs[1].F_mass)) *(A6.outs[1].F_mass) * (2/12)*(1/0.95)
+# Agricultural residue flowrate is proportional to sysA effluent to adjust for
+# the population difference between sysA and sysC
+#!!! Not sure what the 0.95 is, maybe adjusting for moisture content?
+ag_res_ratio = (get_ppl('12k')-get_ppl('10k'))/get_ppl('12k') * (1/0.95)
+ag_res_kg_hr = (A6.outs[1].F_mass-A6.outs[1].imass['H2O']) * ag_res_ratio
 rice_husk = WasteStream('RiceHusk', RiceHusk=ag_res_kg_hr, units='kg/hr', price=0)
 
 C_ag_mix = su.Mixer('C_ag_mix', ins=(C6-1, rice_husk), outs=('C_ag_mix_out'))
@@ -761,9 +766,11 @@ teaC = SimpleTEA(system=sysC, discount_rate=discount_rate,
                  lang_factor=None, annual_maintenance=0,
                  annual_labor=(operator_daily_wage*3*365))
 
-#!!! Need to multiply by 12?
+# 12 is assuming the device is running 12 hr per day (50% of the time)
+# this isn't adjusted through `uptime_ratio` because other OPEX calculation
+# in this unit needs `uptime_ratio` to be 1
 get_powerC = lambda: sum([(u.power_utility.rate*u.uptime_ratio)
-                          for u in sysC.units])*(365*teaC.lifetime)
+                          for u in sysC.units])*(365*teaC.lifetime)*12
 
 lcaC = LCA(system=sysC, lifetime=20, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerC)
 
@@ -783,7 +790,6 @@ streamsD = batch_create_streams('D')
 D1 = su.Excretion('D1', outs=('urine','feces'))
 
 ################### User Interface ###################
-# !!! how to change inputs based on location (e.g., flushing water, cleaning water, toilet paper)
 D2 = su.PitLatrine('D2', ins=(D1-0, D1-1,
                               'toilet_paper', 'flushing_water',
                               'cleansing_water', 'desiccant'),
@@ -791,7 +797,7 @@ D2 = su.PitLatrine('D2', ins=(D1-0, D1-1,
                     N_user=get_toilet_user(), N_toilet=get_ppl('12k')/get_toilet_user(),
                     if_flushing=False, if_desiccant=False, if_toilet_paper=False,
                     OPEX_over_CAPEX=0.05, lifetime=5,
-                  decay_k_COD=get_decay_k(tau_deg, log_deg),
+                    decay_k_COD=get_decay_k(tau_deg, log_deg),
                     decay_k_N=get_decay_k(tau_deg, log_deg),
                     max_CH4_emission=max_CH4_emission
                     )
@@ -839,10 +845,14 @@ teaD = SimpleTEA(system=sysD, discount_rate=discount_rate,
                  start_year=2020, lifetime=20, uptime_ratio=1,
                  lang_factor=None, annual_maintenance=0)
 
+# 12 is assuming the device is running 12 hr per day (50% of the time)
+# this isn't adjusted through `uptime_ratio` because other OPEX calculation
+# in this unit needs `uptime_ratio` to be 1
 get_powerD = lambda: sum([(u.power_utility.rate*u.uptime_ratio)
-                          for u in sysD.units])*(365*teaD.lifetime)
+                          for u in sysD.units])*(365*teaD.lifetime)*12
 
 lcaD = LCA(system=sysD, lifetime=20, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerD)
+
 
 # %%
 
