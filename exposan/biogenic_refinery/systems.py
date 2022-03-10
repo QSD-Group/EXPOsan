@@ -860,7 +860,6 @@ lcaD = LCA(system=sysD, lifetime=20, lifetime_unit='yr', uptime_ratio=1, e_item=
 # Summarizing Functions
 # =============================================================================
 
-#!!! items need to be updated in sys_dct, system_streams, learning curve assumptions
 sys_dct = {
     'ppl': dict(sysA=get_ppl('12k'), sysB=get_ppl('12k'), sysC=get_ppl('10k'), sysD=get_ppl('12k')),
     'input_unit': dict(sysA=A1, sysB=B1, sysC=C1, sysD=D1),
@@ -888,7 +887,7 @@ unit_dct = {
 
 system_streams = {sysA: streamsA, sysB: streamsB, sysC: streamsC, sysD: streamsD}
 
-#learning curve assumptions
+# Learning curve assumptions
 percent_CAPEX_to_scale = 0.1
 get_percent_CAPEX_to_scale = lambda: percent_CAPEX_to_scale
 
@@ -912,70 +911,76 @@ def get_scaled_capital(tea, sys):
         new_CAPEX_annualized = scaled_CAPEX_annualized + CAPEX_not_scaled
     return new_CAPEX_annualized
 
-def get_cost_capex(unit,tea,ppl):
-    # capex = 0
-    # if type(unit)== tuple:
-    #     for i in unit:
-    #         capex+=tea.get_unit_annualized_equipment_cost(i)/365/ppl
-    return tea.get_unit_annualized_equipment_cost(unit)/365/ppl
+def get_cost_capex(units,tea,ppl):
+    return tea.get_unit_annualized_equipment_cost(units)/365/ppl
 
-def get_ghg_capex(unit,lca,ppl):
-    capex = 0
-    if type(unit)== tuple:
-        for i in unit:
-            capex+=lca.get_construction_impacts(i).get('GlobalWarming')/lca.lifetime/ppl
-    return capex
+def get_ghg_capex(units,lca,ppl):
+    ghg = 0
+    try: iter(units)
+    except: units = (units,)
+    for i in units:
+        ghg += lca.get_construction_impacts(i).get('GlobalWarming')/lca.lifetime/ppl
+    return ghg
 
-def get_cost_opex(unit,ppl):
+def get_cost_opex(units,ppl):
     opex = 0
-    if type(unit)== tuple:
-        for i in unit:
-            opex+=sum(i._add_OPEX.values())*24/ppl
-            for stream in i.ins:
-                opex+=stream.imass['Polyacrylamide']*streamsA['polymer'].price*24/ppl
-                opex+=stream.imass['MagnesiumHydroxide']*streamsB['MgOH2'].price*24/ppl
-                opex+=stream.imass['MgCO3']*streamsB['MgCO3'].price*24/ppl
-                opex+=stream.imass['H2SO4']*streamsB['H2SO4'].price*24/ppl
-                opex+=stream.imass['FilterBag']*streamsB['filter_bag'].price*24/ppl
-                opex+=stream.imass['Polystyrene']*streamsB['resin'].price*24/ppl
+    try: iter(units)
+    except: units = (units,)
+    ratio = 24 / ppl # convert to per day
+    for i in units:
+        opex+=sum(i._add_OPEX.values()) * ratio
+        for stream in i.ins:
+            opex+=stream.imass['Polyacrylamide']*streamsA['polymer'].price*ratio
+            opex+=stream.imass['MagnesiumHydroxide']*streamsB['MgOH2'].price*ratio
+            opex+=stream.imass['MgCO3']*streamsB['MgCO3'].price*ratio
+            opex+=stream.imass['H2SO4']*streamsB['H2SO4'].price*ratio
+            opex+=stream.imass['FilterBag']*streamsB['filter_bag'].price*ratio
+            opex+=stream.imass['Polystyrene']*streamsB['resin'].price*ratio
     return opex
 
-def get_cost_electricity(unit,ppl):
+def get_cost_electricity(units,ppl):
     electricity = 0
-    if type(unit)== tuple:
-        for i in unit:
-            electricity+=i.power_utility.cost*24/ppl
+    try: iter(units)
+    except: units = (units,)
+    for i in units:
+        electricity+=i.power_utility.cost*24/ppl
     return electricity
 
-def get_ghg_electricity(unit,ppl):
+def get_ghg_electricity(units,ppl):
     electricity = 0
-    if type(unit)== tuple:
-        for i in unit:
-            electricity+=i.power_utility.consumption*i.uptime_ratio*e_item.CFs['GlobalWarming']*12*365/ppl
-            electricity+=-i.power_utility.production*i.uptime_ratio*e_item.CFs['GlobalWarming']*12*365/ppl
+    ratio = 12 * 365 / ppl # assuming only using electricity for 12 hr per day
+    try: iter(units)
+    except: units = (units,)
+    for i in units:
+        electricity+=i.power_utility.consumption*i.uptime_ratio*e_item.CFs['GlobalWarming']*ratio
+        electricity+=-i.power_utility.production*i.uptime_ratio*e_item.CFs['GlobalWarming']*ratio
     return electricity
 
-def get_ghg_direct(unit,lca,ppl):
+def get_ghg_direct(units,lca,ppl):
     direct = 0
-    if type(unit)== tuple:
-        for i in unit:
-            for stream in i.outs:
-                direct+=stream.imass['CH4']*CH4_item.CFs['GlobalWarming']*24*365/ppl
-                direct+=stream.imass['N2O']*N2O_item.CFs['GlobalWarming']*24*365/ppl
+    ratio = 24*365/ppl
+    try: iter(units)
+    except: units = (units,)
+    for i in units:
+        for stream in i.outs:
+            direct+=stream.imass['CH4']*CH4_item.CFs['GlobalWarming']*ratio
+            direct+=stream.imass['N2O']*N2O_item.CFs['GlobalWarming']*ratio
     return direct
 
-def get_ghg_opex(unit,lca,ppl):
+def get_ghg_opex(units,lca,ppl):
     opex = 0
-    if type(unit)== tuple:
-        for i in unit:
-            opex+=lca.get_stream_impacts(i.ins).get('GlobalWarming')/20/ppl
+    try: iter(units)
+    except: units = (units,)
+    for i in units:
+        opex+=lca.get_stream_impacts(i.ins).get('GlobalWarming')/lca.lifetime/ppl
     return opex
 
-def get_ghg_transport(unit,lca,ppl):
+def get_ghg_transport(units,lca,ppl):
     transport = 0
-    if type(unit)== tuple:
-        for i in unit:
-            transport+=lca.get_transportation_impacts(i).get('GlobalWarming')/20/ppl
+    try: iter(units)
+    except: units = (units,)
+    for i in units:
+        transport+=lca.get_transportation_impacts(i).get('GlobalWarming')/lca.lifetime/ppl
     return transport
 
 def get_total_inputs(unit):
@@ -1033,7 +1038,7 @@ def get_fugitive_emissions(streams=None, hr=365*24*20):
         emission = i.F_mass*i.stream_impact_item.CFs['GlobalWarming']*factor
     return emission
 
-#N2O and CH4 emissions
+# N2O and CH4 emissions
 def get_fugitive_gases(system_num=None):
     fugitive_streams = ('CH4', 'N2O')
     gases = 0
