@@ -22,72 +22,65 @@ Ref:
 
 # %%
 
-import thermosteam as tmo
-from qsdsan import Component, Components
+from thermosteam.functional import rho_to_V
+from qsdsan import Chemical, Component, Components
 
 __all__ = ('cmps', )
 
-NH3 = Component.from_chemical('NH3', tmo.Chemical('NH3'), measured_as='N',
-                              phase='l', particle_size='Soluble',
-                              degradability='Undegradable', organic=False)
+NH3 = Component('NH3', measured_as='N',
+                phase='l', particle_size='Soluble',
+                degradability='Undegradable', organic=False)
 
-NonNH3 = Component.from_chemical('NonNH3', tmo.Chemical('N'), measured_as='N',
-                                 phase='l', particle_size='Soluble',
-                                 degradability='Undegradable', organic=False,
-                                 description='Non-NH3 nitrogen')
+NonNH3 = Component('NonNH3', search_ID='N', measured_as='N',
+                   phase='l', particle_size='Soluble',
+                   degradability='Undegradable', organic=False,
+                   description='Non-NH3 nitrogen')
 
-P = Component.from_chemical('P', tmo.Chemical('P'),
-                            phase='l', particle_size='Soluble',
-                            degradability='Undegradable', organic=False)
+P = Component('P', phase='l', particle_size='Soluble',
+              degradability='Undegradable', organic=False)
 
-K = Component.from_chemical('K', tmo.Chemical('K'),
-                            phase='l', particle_size='Soluble',
-                            degradability='Undegradable', organic=False)
+K = Component('K', phase='l', particle_size='Soluble',
+              degradability='Undegradable', organic=False)
 
-Mg = Component.from_chemical('Mg', tmo.Chemical('Mg'),
-                             phase='l', particle_size='Soluble',
-                             degradability='Undegradable', organic=False)
+Mg = Component('Mg', phase='l', particle_size='Soluble',
+               degradability='Undegradable', organic=False)
 
-Ca = Component.from_chemical('Ca', tmo.Chemical('Ca'),
-                             phase='l', particle_size='Soluble',
-                             degradability='Undegradable', organic=False)
+Ca = Component('Ca', phase='l', particle_size='Soluble',
+               degradability='Undegradable', organic=False)
 
-H2O = Component.from_chemical('H2O', tmo.Chemical('H2O'),
-                              phase='l', particle_size='Soluble',
-                              degradability='Undegradable', organic=False)
+H2O = Component('H2O', phase='l', particle_size='Soluble',
+                degradability='Undegradable', organic=False)
 
 OtherSS = Component('OtherSS', phase='l', particle_size='Soluble',
                     degradability='Undegradable', organic=False,
                     description='Unspecified soluble solids')
 
-N2O = Component.from_chemical('N2O', tmo.Chemical('N2O'),
-                              phase='g', particle_size='Dissolved gas',
-                              degradability='Undegradable', organic=False)
+N2O = Component('N2O', phase='g', particle_size='Dissolved gas',
+                degradability='Undegradable', organic=False)
 
-CH4 = Component.from_chemical('CH4', tmo.Chemical('CH4'),
-                              phase='g', particle_size='Dissolved gas',
-                              degradability='Slowly', organic=True)
+CH4 = Component('CH4', phase='g', particle_size='Dissolved gas',
+                degradability='Slowly', organic=True)
 
 # Below three are for combustion reactions
-O2 = Component.from_chemical('O2', tmo.Chemical('O2'),
-                             phase='g', particle_size='Dissolved gas',
-                             degradability='Undegradable', organic=False)
+O2 = Component('O2', phase='g', particle_size='Dissolved gas',
+               degradability='Undegradable', organic=False)
 
-N2 = Component.from_chemical('N2', tmo.Chemical('N2'),
-                             phase='g', particle_size='Dissolved gas',
-                             degradability='Undegradable', organic=False)
+N2 = Component('N2', phase='g', particle_size='Dissolved gas',
+               degradability='Undegradable', organic=False)
 
-CO2 = Component.from_chemical('CO2', tmo.Chemical('CO2'),
-                              phase='g', particle_size='Dissolved gas',
-                              degradability='Undegradable', organic=False)
+CO2 = Component('CO2', phase='g', particle_size='Dissolved gas',
+                degradability='Undegradable', organic=False)
 
-P4O10 = Component.from_chemical('P4O10', tmo.Chemical('P4O10'),
+P4O10 = Component.from_chemical('P4O10', Chemical('P4O10'),
                                 phase='s', particle_size='Particulate',
                                 degradability='Undegradable', organic=False)
+# The following will lead to an error as it won't be able to copy the V model
+# P4O10 = Component('P4O10', phase='s', particle_size='Particulate',
+#                   degradability='Undegradable', organic=False)
 
 
 def add_V_from_rho(cmp, rho):
-    V_model = tmo.functional.rho_to_V(rho, cmp.MW)
+    V_model = rho_to_V(rho, cmp.MW)
     try: cmp.V.add_model(V_model)
     except:
         handle = getattr(cmp.V, cmp.locked_state)
@@ -106,19 +99,18 @@ WoodAsh = Component('WoodAsh', MW=1, phase='s', i_Mg=0.0224, i_Ca=0.3034,
 add_V_from_rho(WoodAsh, 760)
 
 for i in (Tissue, WoodAsh):
-    i.copy_models_from(tmo.Chemical('Glucose'), ('Cn', 'mu'))
+    i.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
 
-Struvite = Component.from_chemical('Struvite',
-                                   tmo.Chemical('MagnesiumAmmoniumPhosphate'),
-                                   formula='NH4MgPO4·H12O6',
-                                   phase='s', particle_size='Particulate',
-                                   degradability='Undegradable', organic=False)
+Struvite = Component('Struvite', search_ID='MagnesiumAmmoniumPhosphate',
+                     formula='NH4MgPO4·H12O6',
+                     phase='s', particle_size='Particulate',
+                     degradability='Undegradable', organic=False)
 # http://www.chemspider.com/Chemical-Structure.8396003.html (accessed 2020-11-19)
 add_V_from_rho(Struvite, 1711)
     
-HAP = Component.from_chemical('HAP', tmo.Chemical('Hydroxyapatite'),
-                              phase='s', particle_size='Particulate',
-                              degradability='Undegradable', organic=False)
+HAP = Component('HAP', search_ID='Hydroxyapatite',
+                phase='s', particle_size='Particulate',
+                degradability='Undegradable', organic=False)
 # Taking the average of 3.1-3.2 g/cm3 from
 # https://pubchem.ncbi.nlm.nih.gov/compound/Hydroxyapatite (accessed 2020-11-19)
 add_V_from_rho(HAP, 3150)
@@ -137,7 +129,3 @@ for i in cmps:
 cmps.compile()
 
 cmps.set_synonym('H2O', 'Water')
-
-
-
-

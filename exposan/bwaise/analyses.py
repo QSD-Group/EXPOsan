@@ -16,13 +16,13 @@ for license details.
 # %%
 
 import os
-import numpy as np, pandas as pd, seaborn as sns
+import numpy as np, pandas as pd, seaborn as sns, matplotlib.colors as mcolors
 from matplotlib import pyplot as plt
-from adjustText import adjust_text
+from matplotlib.ticker import AutoMinorLocator
 from qsdsan import stats as s
-from qsdsan.utils import time_printer, copy_samples, colors, load_pickle, save_pickle
+from qsdsan.utils import copy_samples, colors, load_pickle, save_pickle
 from exposan import bwaise as bw
-from exposan.bwaise import results_path, figures_path
+from exposan.bwaise import results_path, figures_path, evaluate, get_key_metrics
 from exposan.bwaise.models import organize_uncertainty_results, save_uncertainty_results
 
 # Comment these out if want to see all warnings
@@ -30,33 +30,37 @@ import warnings
 warnings.filterwarnings(action='ignore')
 
 models = modelA, modelB, modelC = bw.modelA, bw.modelB, bw.modelC
+
 RGBs = {
     'A': colors.Guest.orange.RGBn,
     'B': colors.Guest.green.RGBn,
-    'C': colors.Guest.blue.RGBn
+    'C': colors.Guest.blue.RGBn,
     }
+
+# These label names will affect the order of the parameters in Morris plots,
+# but not the value
+alt_names = {
+    # 'Total COD': 'COD recovery',
+    # 'Total N': 'N recovery',
+    # 'Total P': 'P recovery',
+    # 'Total K': 'K recovery',
+    'Annual net cost': 'Cost',
+    'Net emission GlobalWarming': 'GWP',
+    }
+# Change both 'Total X' and 'X recovery' to 'X'
+strip_label = lambda label: label.lstrip('Total ').rstrip(' recovery')
+
 seed = 3221 # for numpy seeding and result consistency
 
+def plot_minor_ticks_and_grid(ax, nx=None, ny=None,
+                              color='k', linestyle='--', linewidth=0.3):
+    if nx:
+        ax.xaxis.set_minor_locator(AutoMinorLocator(nx))
+    if ny:
+        ax.yaxis.set_minor_locator(AutoMinorLocator(ny))
+    ax.grid(color=color, linestyle=linestyle, linewidth=linewidth)
+    return ax
 
-# %%
-
-# Net cost, net GWP, and total COD/N/P/K recovery
-def get_key_metrics(model):
-    key_metrics = [i for i in model.metrics if 'total' in i.name.lower()]
-    key_metrics += [i for i in model.metrics if 'net' in i.name.lower()]
-    for i in key_metrics:
-        i.name = i.name.replace('COD', 'energy')
-        i.name = i.name.replace('Annual net cost', 'Cost')
-        i.name = i.name.replace('Net emission GlobalWarming', 'GWP')
-
-    return key_metrics
-
-
-@time_printer
-def evaluate(model, samples=None):
-    if samples is not None:
-        model.load_samples(samples)
-    model.evaluate()
 
 
 # %%
@@ -75,30 +79,50 @@ def save_reports(system):
 
 
 # Plot recoveries as 1D-density plots
-def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal',
+def plot_box(model, ID, color, metrics, ax_dct, kind='horizontal', adjust_hue=False,
              whis=(5, 95), sym=''):
     if kind == 'horizontal':
         fig, ax = s.plot_uncertainties(model, y_axis=metrics, kind='box',
-                                       center_kws={'color': color, 'width': 0.6,
+                                       adjust_hue=adjust_hue,
+                                       center_kws={'color': color, 'width': 0.5,
                                                    'whis': whis, 'sym': sym})
-        ax.get_legend().remove()
+        if adjust_hue:
+            ax.get_legend().remove()
         fig.set_figheight(2.5)
-        ax.set(xlabel='', xlim=(0, 1), xticks=np.linspace(0, 1, 6))
-        ax.set_yticklabels([i.name.lstrip('Total ') for i in metrics], fontsize=20)
-        ax.set_xticklabels([f'{i:.0%}' for i in np.linspace(0, 1, 6)], fontsize=20)
+        ticks = np.arange(0, 1.2, 0.2)
+        ax.set(xlabel='', xlim=(0, 1), xticks=ticks)
+        ax.set_yticklabels([strip_label(i.name) for i in metrics], fontsize=20)
+        ax.set_xticklabels([f'{i:.0%}' for i in ticks], fontsize=20)
+        ax.xaxis.set_minor_locator(AutoMinorLocator(2))
+        ax.tick_params(axis='both', which='both', direction='inout')
+
+        ax2 = ax.secondary_xaxis('top')
+        ax2.xaxis.set_major_formatter(plt.NullFormatter())
+        ax2.xaxis.set_minor_locator(AutoMinorLocator(2))
+        ax2.tick_params(axis='x', which='both', direction='in')
+        fig.subplots_adjust(left=0.2, bottom=0.25)
     else:
         fig, ax = s.plot_uncertainties(model, x_axis=metrics, kind='box',
-                                       center_kws={'color': color, 'width': 0.6,
+                                       center_kws={'color': color, 'width': 0.5,
                                                    'whis': whis, 'sym': sym})
-        ax.get_legend().remove()
+        if adjust_hue:
+            ax.get_legend().remove()
         fig.set_figwidth(2.5)
-        ax.set_xticklabels([i.name.lstrip('Total ') for i in metrics], fontsize=20)
+        ticks = np.arange(0, 1.2, 0.2)
+        ax.set_xticklabels([strip_label(i.name) for i in metrics], fontsize=20)
         for label in ax.get_xticklabels():
-            label.set_rotation(30)
-        ax.set(ylabel='', ylim=(0, 1), yticks=np.linspace(0, 1, 6))
-        ax.set_yticklabels([f'{i:.0%}' for i in np.linspace(0, 1, 6)], fontsize=20)
+            label.set_rotation(90)
+        ax.set(ylabel='', ylim=(0, 1), yticks=ticks)
+        ax.set_yticklabels([f'{i:.0%}' for i in ticks], fontsize=20)
+        ax.yaxis.set_minor_locator(AutoMinorLocator(2))
+        ax.tick_params(axis='both', which='both', direction='inout')
 
-    fig.subplots_adjust(left=0.2, bottom=0.25)
+        ax2 = ax.secondary_yaxis('right')
+        ax2.yaxis.set_major_formatter(plt.NullFormatter())
+        ax2.yaxis.set_minor_locator(AutoMinorLocator(2))
+        ax2.tick_params(axis='y', which='both', direction='in')
+        fig.subplots_adjust(left=0.35, bottom=0.3)
+
     fig.savefig(os.path.join(figures_path, f'sys{ID}_recoveries.png'), dpi=300)
 
     return fig, ax
@@ -113,17 +137,35 @@ def plot_kde(model, ID, color, metrics):
                                    center_kws={'fill': True, 'color': color},
                                    margin_kws={'color': color,
                                                'whis': (5, 95),
+                                               'width': 0.4,
                                                'sym': ''})
-    for i in (ax[0], ax[1]):
-        i.set_xlim(0, 100)
-        i.set_xticks((np.linspace(0, 100, 6)))
-    for i in (ax[0], ax[2]):
-        i.set_ylim(0, 150)
-        i.set_yticks((np.linspace(0, 150, 6)))
-    for txt in ax[0].get_xticklabels()+ax[0].get_yticklabels():
-        txt.set_fontsize(20)
 
+    ax0, ax1, ax2 = fig.axes # KDE, top box, right box
+    plot_minor_ticks_and_grid(ax0, nx=2, ny=2)
+    ax0x = ax0.secondary_xaxis('top')
+    ax0x.xaxis.set_minor_locator(AutoMinorLocator(2))
+    ax0y = ax0.secondary_yaxis('right')
+    ax0y.yaxis.set_minor_locator(AutoMinorLocator(2))
+    for ax in (ax0, ax0x, ax0y):
+        ax.tick_params(axis='both', which='both', direction='inout', width=0.5)
+
+    for i in (ax0, ax1):
+        i.set_xlim(0, 60)
+        i.set_xticks((np.arange(0, 70, 10)))
+    for i in (ax0, ax2):
+        i.set_ylim(-20, 140)
+        i.set_yticks((np.arange(-20, 160, 20)))
+    for txt in ax0.get_xticklabels()+ax0.get_yticklabels():
+        txt.set_fontsize(20)
+    ax0x.set_xticklabels('')
+    ax0y.set_yticklabels('')
+
+    ax1.xaxis.set_visible(False)
+    ax1.spines.clear()
+    ax2.spines.clear()
+    ax2.yaxis.set_visible(False)
     fig.subplots_adjust(left=0.15)
+    # ax[0].yaxis.get_major_ticks()[-1].gridline.set_visible(False) # if want to remove a certain gridline
     fig.savefig(os.path.join(figures_path, f'sys{ID}_cost_emission.png'), dpi=300)
 
     return fig, ax
@@ -132,7 +174,7 @@ def plot_kde(model, ID, color, metrics):
 param_set = set(modelA.parameters).union(set(modelB.parameters), set(modelC.parameters))
 param_names = tuple(p.name for p in param_set)
 
-# Plot morris results as scatter plot for each metric of each model
+# Plot Morris results as scatter plot for each metric of each model
 def plot_morris_scatter(model, morris_dct, combined_morris, color,
                         label_lines=True, label_points=True,
                         plot_combined=False, axs=None):
@@ -157,8 +199,8 @@ def plot_morris_scatter(model, morris_dct, combined_morris, color,
                                         color=color)
         if not plot_combined:
             fig.set(figheight=3, figwidth=3)
-            xlabel = r'$\mu^*$/$\mu^*_{max}$'
-            ylabel = r'$\sigma$/$\mu^*_{max}$'
+            xlabel = r'Normalized $\mu^*$ [$\mu^*$/$\mu^*_{max}$]'
+            ylabel = r'Normalized $\sigma$ [$\sigma$/$\mu^*_{max}$]'
         else:
             label_lines = False
             xlabel = ylabel = ''
@@ -173,16 +215,18 @@ def plot_morris_scatter(model, morris_dct, combined_morris, color,
             if legend:
                 legend.remove()
 
-        ticks = [0, 0.25, 0.5, 0.75, 1]
-        ax.set(xlim=(0, 1), ylim=(0, 1), xbound=(0, 1.1), ybound=(0, 1.1),
-               xticks=ticks, yticks=ticks, xticklabels=ticks, yticklabels=ticks,
+        ticks = np.arange(0, 1.4, 0.2)
+        ticklabels = [0, 0.2, 0.4, 0.6, 0.8, 1, 1.2]
+        ax.set(xlim=(0, 1.2), ylim=(0, 1.2), xbound=(0, 1.2), ybound=(0, 1.2),
+               xticks=ticks, yticks=ticks, xticklabels=ticklabels, yticklabels=ticklabels,
                xlabel=xlabel, ylabel=ylabel)
 
         # Only label the ones with mu_star/mu_star_max>=0.1
         top = df[(df.mu_star>=0.1)]
+        # # If want mu_star/mu_star_max or sigma/mu_star_max >=0.1
         # top = df[(df.mu_star>=0.1)|(df.sigma>=0.1)]
 
-        # Only markout the top five mu_star/mu_star_max parameters
+        # Only mark out the top five mu_star/mu_star_max parameters
         if top.shape[0] > 5:
             top.sort_values(by=['mu_star'], ascending=False, inplace=True)
             top = top[:5]
@@ -193,14 +237,21 @@ def plot_morris_scatter(model, morris_dct, combined_morris, color,
                     label = combined_morris[combined_morris.parameter==idx].index.values.item()
                     ax.annotate(label, (top.loc[idx].mu_star, top.loc[idx].sigma),
                                 xytext=(2, 2), textcoords='offset points',
-                                ha='center')
+                                ha='center', fontsize=14)
+            labelsize = 'large'
         else:
             if label_points:
                 labels = []
                 for idx in top.index:
                     label = combined_morris[combined_morris.parameter==idx].index.values.item()
                     labels.append(ax.text(top.loc[idx].mu_star, top.loc[idx].sigma, label))
+                from adjustText import adjust_text
                 adjust_text(labels)
+            labelsize = None
+
+        plot_minor_ticks_and_grid(ax, nx=1, ny=1)
+        ax.tick_params(axis='both', which='both', direction='inout', width=0.5,
+                       labelsize=labelsize)
 
         if not plot_combined:
             fig.subplots_adjust(bottom=0.2, left=0.25)
@@ -211,12 +262,45 @@ def plot_morris_scatter(model, morris_dct, combined_morris, color,
     return ax_dct
 
 
+def plot_morris_blank(ax_dct):
+    temp = ax_dct['morris_scatter']['A']['Cost']
+    xrng = np.random.default_rng(seed-1)
+    yrng = np.random.default_rng(seed+1)
+    plt.scatter(xrng.random(5)*0.1, yrng.random(5)*0.1, color='k')
+    plt.scatter(xrng.random(5)*0.5+0.5, yrng.random(5)*0.5+0.5, color='k')
+    plt.scatter(xrng.random(5)*0.2+0.8, yrng.random(5)*0.2, color='k')
+    xline = np.array([0, 2])
+    plt.plot(xline, xline, color='k', linestyle='-')
+    plt.plot(xline, 0.1*xline, color='k', linestyle='-.')
+    ax, fig = plt.gca(), plt.gcf()
+    def copy_prop(prop, origin, new):
+        f = getattr(new, f'set_{prop}')
+        f(getattr(origin, f'get_{prop}')())
+    for suffix in ('lim', 'bound', 'ticks',
+                   # 'ticklabels', 'label'
+                    ):
+        for xy in ('x', 'y'):
+            copy_prop(f'{xy}{suffix}', temp, ax)
+    copy_prop('size_inches', temp.figure, fig)
+    par_dct = {k: getattr(temp.figure.subplotpars, k)
+               for k in ('left', 'right', 'top', 'bottom')}
+    fig.subplots_adjust(**par_dct)
+    ax.set(xticks=(), yticks=(), xticklabels=(), yticklabels=())
+    ax_dct['morris_blank'] = ax
+    fig.savefig(os.path.join(figures_path, 'morris_blank.png'), dpi=300)
+    return ax_dct
+
+
 def plot_morris_scatter_all(models, morris_dct, combineds, RGBs):
     fig = plt.figure(figsize=(12, 18))
     tot_models = len(models)
     tot_metrics = len(models[0].metrics)
     fig.subplots(tot_metrics, tot_models, sharex=True, sharey=True)
 
+    label_colors = (# A/B/C
+        mcolors.to_rgba('#7F533E'),
+        mcolors.to_rgba('#5A7F60'),
+        mcolors.to_rgba('#497980'))
     for n_model, model in enumerate(models):
         ID = model.system.ID[-1]
         axs = [fig.axes[tot_models*i+n_model] for i in range(tot_metrics)]
@@ -227,14 +311,23 @@ def plot_morris_scatter_all(models, morris_dct, combineds, RGBs):
 
         if n_model == 0:
             for n, ax in enumerate(axs):
-                ax.set_ylabel(model.metrics[n].name)
-        axs[-1].set_xlabel(f'System {ID}')
+                name = model.metrics[n].name
+                if not name in ('Cost', 'GWP'):
+                    ylabel = strip_label(name)+' recovery'
+                else:
+                    ylabel = name
+                ax.set_ylabel(ylabel, fontsize=14, fontweight='bold')
+                ax.yaxis.labelpad = 15
+        axs[0].set_xlabel(f'System {ID}', fontsize=14, fontweight='bold',
+                          color=label_colors[n_model])
+        axs[0].xaxis.set_label_position('top')
+        axs[0].xaxis.labelpad = 15
 
     fig.tight_layout()
-    fig.supxlabel(r'$\mu^*$/$\mu^*_{max}$', fontsize=14, fontweight='bold')
-    fig.supylabel(r'$\sigma$/$\mu^*_{max}$', fontsize=14, fontweight='bold')
-    fig.subplots_adjust(left=0.12, bottom=0.06)
-    fig.savefig(os.path.join(figures_path, 'morris_combined.png'), dpi=300)
+    fig.supxlabel(r'Normalized $\mu^*$ [$\mu^*$/$\mu^*_{max}$]', y=0.01, fontsize=20, fontweight='bold')
+    fig.supylabel(r'Normalized $\sigma$ [$\sigma$/$\mu^*_{max}$]', x=0, fontsize=20, fontweight='bold')
+    fig.subplots_adjust(left=0.12, bottom=0.05)
+    fig.savefig(os.path.join(figures_path, 'morris_normalized_combined.png'), dpi=300)
 
 
 def plot_morris_bubble(combineds):
@@ -261,29 +354,30 @@ def plot_morris_bubble(combineds):
         height=15, sizes=(50, 250), size_norm=(-.2, .8),
     )
 
-    g.ax.grid(color='gray', linestyle='--', linewidth=0.5)
+    g.ax.grid(color='k', linestyle='--', linewidth=0.5)
     for spine in ('top', 'right'):
         g.ax.spines[spine].set_visible(True)
 
-    g.ax.set_xlabel('Metric', fontsize=14, fontweight='bold')
-    g.ax.set_ylabel('Parameter', fontsize=14, fontweight='bold')
+    g.ax.set_xlabel('Metric', fontsize=20, fontweight='bold')
+    g.ax.set_ylabel('Parameter', fontsize=20, fontweight='bold')
+    g.ax.tick_params(axis='both', which='both', direction='inout')
 
     for label in g.ax.get_xticklabels():
-        label.set_rotation(90)
+        label.set_rotation(60)
+        label.set_fontsize(14)
+    for label in g.ax.get_yticklabels():
+        label.set_fontsize(14)
+    for text in g.legend.get_texts():
+        text.set_fontsize(14)
 
-    g.fig.subplots_adjust(bottom=0.2)
-    g.fig.savefig(os.path.join(figures_path, 'morris_bubble.png'), dpi=300)
+    g.fig.subplots_adjust(left=0.22, bottom=0.15)
+    g.fig.savefig(os.path.join(figures_path, 'morris_normalized_bubble.png'), dpi=300)
 
     return g.ax
 
 
-def run(N_uncertainty=5000, N_morris=100, from_record=True,
+def run(N_uncertainty=5000, N_morris=50, from_record=True,
         label_morris_lines=True, label_morris_points=True):
-    # # This is the new, recommended method for setting seed,
-    # # but not seems to be widely used/supported
-    # import numpy as np
-    # rng = np.random.default_rng(3221)
-    # rng.random(5)
     np.random.seed(seed)
 
     # A dict with all results for future rebuilding of the models
@@ -300,11 +394,10 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
 
     ########## Uncertainty analysis ##########
     for model in models:
-        model.metrics = key_metrics = get_key_metrics(model)
+        # Net cost, net GWP, and total COD/N/P/K recovery
+        model.metrics = key_metrics = get_key_metrics(model, alt_names)
         ID = model.system.ID[-1]
-
         if not from_record:
-            # Want to use a larger N (maybe 5000 or 10000)
             samples = model.sample(N=N_uncertainty, rule='L', seed=seed)
             model.load_samples(samples)
             if model is modelB:
@@ -314,17 +407,18 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
                 copy_samples(modelB, model, exclude=modelA.parameters)
 
             evaluate(model)
+
             table_dct['uncertainty'][ID] = model.table.copy()
             organized_dct = organize_uncertainty_results(
                 model=model, spearman_results=model.spearman())
             save_uncertainty_results(model, organized_dct)
+
         else:
             model.table = table_dct['uncertainty'][ID]
 
         # Make the plots
         _, ax_dct['box'][ID] = plot_box(model, ID, RGBs[ID], key_metrics[:-2], 'horizontal')
         _, ax_dct['kde'][ID] = plot_kde(model, ID, RGBs[ID], key_metrics[-2:])
-
 
     ########## Morris One-at-A-Time ##########
     origin_dct = dict(mu_star={}, sigma={})
@@ -390,7 +484,7 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
     # Process data
     if not from_record:
         combineds = {}
-        writer = pd.ExcelWriter(os.path.join(results_path, 'morris_combined.xlsx'))
+        writer = pd.ExcelWriter(os.path.join(results_path, 'morris_normalized_combined.xlsx'))
 
         for k in ('mu_star', 'sigma'):
             columns = []
@@ -426,22 +520,21 @@ def run(N_uncertainty=5000, N_morris=100, from_record=True,
         ax_dct['morris_scatter'][ID] = plot_morris_scatter(
             model, morris_dct, combineds['mu_star'], RGBs[ID],
             label_morris_lines, label_morris_points)
-
+    plot_morris_blank(ax_dct) # plot a blank one for annotating in the manuscript
     plot_morris_scatter_all(models, table_dct['morris_dct'], combineds, RGBs)
-
     ax_dct['morris_bubble'] = plot_morris_bubble(combineds)
 
 
 # %%
 
 # =============================================================================
-# Code used to generate figures and data used in the manuscript
+# Actually run the functions
 # =============================================================================
 
 if __name__ == '__main__':
-    run(N_uncertainty=1000, N_morris=10, from_record=False,
+    # Run from scratch
+    run(N_uncertainty=5000, N_morris=50, from_record=False,
         label_morris_lines=False, label_morris_points=True)
-    # run(N_uncertainty=100, N_morris=2, from_record=False,
-    #     label_morris_lines=False, label_morris_points=True)
-    # run(N_uncertainty=100, N_morris=2, from_record=True,
-    #     label_morris_lines=False, label_morris_points=True)
+
+    # Just make the plots
+    # run(from_record=True, label_morris_lines=False, label_morris_points=True)

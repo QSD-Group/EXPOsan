@@ -153,6 +153,9 @@ def select_items(database):
     sand = new_act(database, all_acts, 'sand')
     sand.load_activities('market sand', add=True, filter={'product': 'sand', 'location': 'GLO'}, mask={'name': 'infrastructure'}, limit=None)
     sand.load_activities('market sand', add=True, filter={'product': 'sand', 'location': 'RoW'}, mask={'name': 'infrastructure'}, limit=None)
+    for act in sand.activities.keys():
+        if 'sand-lime brick' in act: # this is for the brick, not for the sand
+            sand.remove('activity', act)
 
     stainless_steel = new_act(database, all_acts, 'stainless_steel')
     stainless_steel.load_activities('market steel, chromium steel 18/8', add=True, limit=None)

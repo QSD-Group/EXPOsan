@@ -1,4 +1,6 @@
 include LICENSE.txt CODE_OF_CONDUCT.md AUTHORS.rst README.rst CONTRIBUTING.rst CHANGELOG.rst pytest.ini 
+global-exclude qsdsan.yml
+global-exclude *.mat
 global-exclude **/*temp*
 global-exclude *temp*.py
 global-exclude .spyproject

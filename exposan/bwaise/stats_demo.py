@@ -12,21 +12,82 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 
 This script contains functions and codes used in the tutorial of
-the `qsdsan.stats` module.
+the `qsdsan.stats` module (https://qsdsan.readthedocs.io/en/latest/stats.html).
 
 '''
 
-import os
+# =============================================================================
+# Setup and uncertainty
+# =============================================================================
+
 import pandas as pd
 from qsdsan import stats as s
 from exposan import bwaise as bw
-from exposan.bwaise import results_path, figures_path
 
-evaluate = bw.analyses.evaluate
-get_key_metrics = bw.analyses.get_key_metrics
+m = bw.models
+modelA = bw.modelA
 
-seed = 3221
+# Total COD/N/P/K recovery and net cost/GWP
+modelA.metrics = key_metrics = bw.get_key_metrics(
+    modelA, alt_names={'Annual net cost': 'Cost',
+                       'Net emission GlobalWarming': 'GWP'})
 
+seed = 3221 # set numpy seed for sample reproducibility
+
+# Run Monte Carlo uncertainty analysis and get Spearman rank correlations,
+# here we use a small sample size for demonstrative purpose
+m.run_uncertainty(modelA, N=100, seed=seed, rule='L',
+                  percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1))
+
+# Pass a path to `file` or use `fig.savefig` if want to save the figure
+fig, ax = s.plot_uncertainties(modelA,
+                               x_axis=key_metrics[:-2], # only recoveries
+                               kind='box', file='')
+
+# Trim figure
+fig.subplots_adjust(bottom=0.25)
+for label in ax.get_xticklabels():
+    label.set_rotation(45)
+
+# Kernel density curve can be added to the histogram,
+# with a log scale, we can have all metric results in the same plot
+fig, ax = s.plot_uncertainties(modelA, y_axis=key_metrics, kind='hist',
+                               center_kws={'kde':True, 'log_scale': 10})
+
+# We can also have 2D histogram plot
+fig, axes = s.plot_uncertainties(modelA,
+                                 x_axis=key_metrics[-2], # cost
+                                 y_axis=key_metrics[-1], # GWP
+                                 kind='hist-box')
+
+# Similar to histogram plots, kernel density plots can be 1D
+fig, ax = s.plot_uncertainties(modelA, x_axis=key_metrics, kind='kde',
+                               center_kws={'fill': True, 'log_scale': 2})
+
+fig.subplots_adjust(bottom=0.25)
+
+# Or 2D with different kinds of margins
+fig, axes = s.plot_uncertainties(modelA, x_axis=key_metrics[-2],
+                                 y_axis=key_metrics[-1], kind='kde-kde',
+                                 center_kws={'fill': True})
+
+fig, axes = s.plot_uncertainties(modelA, x_axis=key_metrics[-2],
+                                 y_axis=key_metrics[-1], kind='kde-hist',
+                                 center_kws={'fill': True},
+                                 margin_kws={'kde': True, 'fill': False})
+
+
+# %%
+
+# =============================================================================
+# Spearman
+# =============================================================================
+
+spearman_rho, spearman_p = s.get_correlations(
+    modelA, kind='Spearman', nan_policy='raise',
+    file='') # pass a path to `file` if you want to save the results as an Excel
+
+# Filter out parameters that only meet a certain threshold
 def filter_parameters(model, df, threshold):
     new_df = pd.concat((df[df>=threshold], df[df<=-threshold]))
     filtered = new_df.dropna(how='all')
@@ -34,183 +95,123 @@ def filter_parameters(model, df, threshold):
     parameters = set(param_dct[i[1]] for i in filtered.index)
     return list(parameters)
 
+# Only want parameters with Spearman's rho >= 0.4 or <= -0.4
+modelA.parameters = key_parameters = \
+    filter_parameters(modelA, spearman_rho, threshold=0.4)
+
+fig, ax = s.plot_correlations(spearman_rho, parameters=key_parameters,
+	                          metrics=key_metrics[-2])
+
+fig.subplots_adjust(left=0.25)
 
 
-#!!! Need to review and update with new qsdsan
+fig, ax = s.plot_correlations(
+    spearman_rho, parameters=key_parameters, metrics=key_metrics)
 
-# =============================================================================
-# Pearson and Spearman
-# =============================================================================
 
-def run_plot_spearman(model, N, seed=seed, metrics=None, parameters=None,
-                      plot_rho_cutoff=0.5, file_prefix='default'):
-    suffix = model.system.ID[-1] if file_prefix=='default' else ''
-    metrics = metrics if metrics else get_key_metrics(model)
-
-    if file_prefix=='default':
-        suffix = model.system.ID[-1]
-        dct_file = os.path.join(results_path, f'Spearman{suffix}.xlsx')
-        fig_file = os.path.join(figures_path, f'Spearman{suffix}.png')
-    else:
-        dct_file = f'{file_prefix}.xlsx' if file_prefix else ''
-        fig_file = f'{file_prefix}.png' if file_prefix else ''
-
-    m.run_uncertainty(model, N=N, seed=seed, rule='L',
-                      percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1))
-
-    spearman_rho, spearman_p = s.get_correlations(model, kind='Spearman',
-                                                  nan_policy='raise',
-                                                  file=dct_file)
-
-    parameters = filter_parameters(model, spearman_rho, plot_rho_cutoff)
-
-    fig, ax = s.plot_correlations(spearman_rho, parameters=parameters,
-                                  metrics=metrics, file=fig_file)
-
-    return spearman_rho, fig, ax
-
+#%%
 
 # =============================================================================
-# Morris One-at-A-Time
+# Morris
 # =============================================================================
 
-def run_plot_morris(model, N, seed=seed, test_convergence=False,
-                    metrics=None, plot_metric=None, parameters=None,
-                    file_prefix='default'):
-    inputs = s.define_inputs(model)
-    metrics = metrics if metrics else get_key_metrics(model)
-    plot_metric = plot_metric if plot_metric else metrics[0]
-    if parameters:
-        model.parameters = parameters
+# Run Morris analysis without testing the convergence,
+# here we use a small sample size for demonstrative purpose
+inputs = s.define_inputs(modelA)
+morris_samples = s.generate_samples(inputs, kind='Morris', N=10, seed=seed)
 
-    if file_prefix=='default':
-        suffix = model.system.ID[-1]
-        conv = '_conv' if test_convergence else ''
-        suffix += conv
-    else:
-        suffix = ''
+evaluate = bw.evaluate
+evaluate(modelA, morris_samples)
 
-    if file_prefix=='default':
-        suffix = model.system.ID[-1]
-        dct_file = os.path.join(results_path, f'Morris{suffix}.xlsx')
-        fig_file = os.path.join(figures_path, f'Morris{suffix}.png')
-    else:
-        dct_file = f'{file_prefix}.xlsx' if file_prefix else ''
-        fig_file = f'{file_prefix}.png' if file_prefix else ''
+dct = s.morris_analysis(modelA, inputs, metrics=key_metrics, seed=seed,
+                        nan_policy='fill_mean')
 
-    if not test_convergence:
-        morris_samples = s.generate_samples(inputs, kind='Morris', N=N, seed=seed)
+# Unfortunately the auto-labeling is not good when you have close points,
+# so you'll have to do some manual manipulation
+fig, ax = s.plot_morris_results(dct, key_metrics[-2])
 
-        evaluate(model, morris_samples)
+fig.subplots_adjust(bottom=0.3)
 
-        dct = s.morris_analysis(model, inputs, metrics=metrics, seed=seed,
-                                nan_policy='fill_mean', file=dct_file)
-        fig, ax = s.plot_morris_results(dct, metric=plot_metric, file=fig_file)
 
-    else:
-        dct = s.morris_till_convergence(model, inputs, metrics=metrics, seed=seed,
-                                        N_max=N, file=dct_file)
-        fig, ax = s.plot_morris_convergence(dct, metric=plot_metric, plot_rank=True,
-                                            file=fig_file)
+# Test if mu_star can converge within 10 trajectories
+# (spoiler: it cannot because we already sort of selected the key parameters,
+# and you will get a message prompt)
+dct = s.morris_till_convergence(modelA, inputs, metrics=key_metrics, seed=seed,
+                                N_max=100)
 
-    return dct, fig, ax
+# Look at mu_star values for two parameters with regard to cost
+fig, ax = s.plot_morris_convergence(dct,
+                                    parameters=key_parameters[:2],
+                                    metric=key_metrics[-2], plot_rank=False)
 
+
+# Look at ranks of mu_star values for all parameters with regard to cost
+fig, ax = s.plot_morris_convergence(dct, parameters=key_parameters,
+                                    metric=key_metrics[-2], plot_rank=True)
+
+
+# %%
 
 # =============================================================================
-# (e)FAST and RBD-FAST
+# FAST
 # =============================================================================
 
-def run_plot_fast(model, kind, N, M, seed=seed, metrics=None, plot_metric=None,
-                  parameters=None, file_prefix='default'):
-    inputs = s.define_inputs(model)
-    metrics = metrics if metrics else get_key_metrics(model)
-    plot_metric = plot_metric if plot_metric else metrics[0]
-    if parameters:
-        model.parameters = parameters
+# Total and main effects from FAST analysis,
+# here we use a small sample size for demonstrative purpose
+fast_samples = s.generate_samples(inputs, kind='FAST', N=100, M=4, seed=seed)
 
-    suffix = model.system.ID[-1] if file_prefix=='default' else ''
-    if file_prefix=='default':
-        suffix = model.system.ID[-1]
-        dct_file = os.path.join(results_path, f'{kind}{suffix}.xlsx')
-        fig_file = os.path.join(figures_path, f'{kind}{suffix}.png')
-    else:
-        dct_file = f'{file_prefix}.xlsx' if file_prefix else ''
-        fig_file = f'{file_prefix}.png' if file_prefix else ''
+evaluate(modelA, fast_samples)
 
-    if kind.upper() in ('FAST', 'EFAST'):
-        fast_samples = s.generate_samples(inputs, kind=kind, N=N, M=M, seed=seed)
-    else:
-        fast_samples = s.generate_samples(inputs, kind=kind, N=N, seed=seed)
+dct = s.fast_analysis(modelA, inputs, kind='FAST', metrics=key_metrics,
+                      M=4, seed=seed, nan_policy='fill_mean')
 
-    evaluate(model, fast_samples)
+fig, ax = s.plot_fast_results(dct, metric=key_metrics[-2])
 
-    dct = s.fast_analysis(model, inputs, kind=kind, metrics=metrics,
-                          M=M, seed=seed, nan_policy='fill_mean', file=dct_file)
+fig.subplots_adjust(left=0.4)
 
-    fig, ax = s.plot_fast_results(dct, metric=plot_metric, file=fig_file)
-    return dct, fig, ax
 
+# Main effects from RBD-FAST analysis,
+# here we use a small sample size for demonstrative purpose
+fast_samples = s.generate_samples(inputs, kind='RBD', N=100, seed=seed)
+
+evaluate(modelA, fast_samples)
+
+dct = s.fast_analysis(modelA, inputs, kind='RBD', metrics=key_metrics,
+                      seed=seed, nan_policy='fill_mean')
+
+fig, ax = s.plot_fast_results(dct, metric=key_metrics[-2])
+
+fig.subplots_adjust(left=0.4)
+
+
+# %%
 
 # =============================================================================
 # Sobol
 # =============================================================================
 
-def run_plot_sobol(model, N, seed=seed, metrics=None, plot_metric=None,
-                   parameters=None, file_prefix='default'):
-    inputs = s.define_inputs(model)
-    metrics = metrics if metrics else get_key_metrics(model)
-    plot_metric = plot_metric if plot_metric else metrics[0]
-    if parameters:
-        model.parameters = parameters
+# Run Sobol analysis, here we use a small sample size for demonstrative purpose
+sobol_samples = s.generate_samples(inputs, kind='Sobol', N=10,
+                                   calc_second_order=True)
 
-    sobol_samples = s.generate_samples(inputs, kind='Sobol', N=N, seed=seed,
-                                        calc_second_order=True)
+evaluate(modelA, sobol_samples)
 
-    evaluate(model, sobol_samples)
+dct = s.sobol_analysis(modelA, inputs, metrics=key_metrics, seed=seed,
+                       calc_second_order=True, conf_level=0.95,
+                       nan_policy='fill_mean')
 
-    if file_prefix=='default':
-        suffix = model.system.ID[-1]
-        dct_file = os.path.join(results_path, f'Sobol{suffix}.xlsx')
-        fig_file = os.path.join(figures_path, f'Sobol{suffix}.png')
-    else:
-        dct_file = f'{file_prefix}.xlsx' if file_prefix else ''
-        fig_file = f'{file_prefix}.png' if file_prefix else ''
+fig, ax = s.plot_sobol_results(dct, metric=key_metrics[-1], kind='STS1')
 
-    sobol_dct = s.sobol_analysis(model, inputs,
-                                 metrics=metrics, seed=seed,
-                                 calc_second_order=True, conf_level=0.95,
-                                 nan_policy='fill_mean', file=dct_file)
-
-    fig, ax = s.plot_sobol_results(sobol_dct, metric=plot_metric,
-                                    error_bar=True, annotate_heatmap=False,
-                                    file=fig_file)
-
-    return sobol_dct, fig, ax
+fig.subplots_adjust(left=0.4, top=0.95)
 
 
-#!!!! Update this scripts and tutorial of the `stats`
-# and point the users to look at the documentation on the module
-if __name__ == '__main__':
-    model = bw.modelA
-    m = bw.models
+fig, ax = s.plot_sobol_results(dct, metric=key_metrics[-1], kind='STS2',
+                               plot_in_diagonal='ST')
 
-    spearman_rho, fig, ax = run_plot_spearman(model, N=100,
-                                              file_prefix='/Users/yalinli_cabbi/downloads/a')
+for label in ax.get_xticklabels():
+    label.set_rotation(45)
 
-    ########## Uncommnet if want to test the convergence of Morris and plot ##########
-    # morris_dct_conv, fig, ax = a.run_plot_morris(model, N=100, test_convergence=True)
-    # fig, ax = s.plot_morris_convergence(morris_dct_conv, parameters=parameters,
-    #                                     metric=key_metrics[0], plot_rank=True)
+fig.subplots_adjust(left=0.4, bottom=0.4)
 
-    ########## Uncomment if want to run FAST and plot results ##########
-    # fast_dct, fig, ax = run_plot_fast(model, 'FAST', N=100, M=4)
-    # fig, ax = s.plot_fast_results(fast_dct, key_metrics[0])
 
-    ########## Uncomment if want to run RBD-FAST and plot results ##########
-    # rbd_dct, fig, ax = run_plot_fast(model, 'RBD', N=100, M=10)
-    # fig, ax = s.plot_fast_results(rbd_dct, key_metrics[0])
-
-    ########## Uncomment if want to run Sobol ##########
-    # sobol_dct, fig, ax = run_plot_sobol(model, N=10)
-    # fig, ax = s.plot_sobol_results(sobol_dct, metric=key_metrics[0], kind='STS2',
-    #                                plot_in_diagonal='ST')
+fig, ax = s.plot_sobol_results(dct, metric=key_metrics[-1], kind='all')
