@@ -21,7 +21,6 @@ from _cmps import cmps
 # Unit parameters
 # =============================================================================
 bst.settings.set_thermo(cmps)
-#items = ImpactItem._items
 
 currency = qs.currency = 'USD'
 bst.speed_up()
@@ -32,9 +31,11 @@ household_per_toilet = 5
 get_household_per_toilet = lambda: household_per_toilet
 get_toilet_user = lambda: get_household_size()*get_household_per_toilet()
 
-# Number of people served by the Reclaimer 2.0
-#!!! MAKE SURE TO SCALE CONTAINER AND DOORS
+# Number of people served by the Reclaimer 2.0 (30 users)
+#For every 30 users, check the sanunits to add additional units based how you scale up
 ppl = 120
+
+#For every 25 people, you will want to add a toilet room (portable toilet/porta potty)
 toilets = ppl/25
 ppl_toilet = ppl / toilets
 
@@ -75,9 +76,10 @@ def get_tanker_truck_fee(capacity):
 # =============================================================================
 
 # Recycled nutrients are sold at a lower price than commercial fertilizers
-
 price_factor = 0.25
 get_price_factor = lambda: price_factor
+
+price_ratio = 1
 
 operator_daily_wage = 29
 get_operator_daily_wage = lambda: operator_daily_wage
@@ -168,7 +170,7 @@ GAC_item = StreamImpactItem(ID='GAC_item', GWP=GWP_dct['GAC'])
 Zeolite_item = StreamImpactItem(ID='Zeolite_item', GWP=GWP_dct['Zeolite'])
 Conc_NH3_item = StreamImpactItem(ID='Conc_NH3', GWP=GWP_dct['Conc_NH3'])
 HCl = StreamImpactItem(ID='HCl', GWP=GWP_dct['HCl'])
-#sludge_item = StreamImpactItem(ID = 'sludge_item', GWP=GWP_dct['sludge'])
+sludge_item = StreamImpactItem(ID = 'sludge_item', GWP=GWP_dct['sludge'])
 
 def batch_create_streams(prefix):
     stream_dct = {}
@@ -230,7 +232,7 @@ def add_fugitive_items(unit, item):
 # %%
 
 # =============================================================================
-# Scenario A (sysA): Duke Reclaimer Design 2.0 Trucking Instead of On-site sludge treatment 
+# Scenario A (sysA): Duke Reclaimer Design 2.0 Solids Treatment Only 
 # =============================================================================
 
 flowsheetA = bst.Flowsheet('sysA')
@@ -241,24 +243,9 @@ streamsA = batch_create_streams('A')
 #################### Human Inputs ####################
 A1 = su.Excretion('A1', outs=('urine','feces'))
 
-################### User Interface ###################
-#Reclaimer 2.0 can process ~30L/hr(net), 720L/24 hours of constant operation
-#flush volume of 6L per flush determines the number of users would be 120 users
-A2 = su.MURTToilet('A2', ins=(A1-0, A1-1,
-                              'toilet_paper', 'flushing_water',
-                              'cleansing_water', 'desiccant'),
-                    outs=('mixed_waste', 'A2_CH4', 'A2_N2O'),
-                    decay_k_COD=get_decay_k(tau_deg, log_deg), 
-                    decay_k_N=get_decay_k(tau_deg, log_deg),
-                    max_CH4_emission=get_max_CH4_emission(),
-                    N_user=ppl_toilet, ppl = ppl, lifetime=8,
-                    if_flushing=True, if_desiccant=False, if_toilet_paper=True,
-                    CAPEX = 0,
-                    OPEX_over_CAPEX= 0.07) 
-
 ###################### Treatment ######################
 #Septic Tank 
-A3 = su.PrimaryReclaimer('A3', ins=(A2-0, streamsA['MgOH2']), 
+A3 = su.PrimaryReclaimer('A3', ins=(A1-0, streamsA['MgOH2']), 
                     outs=('A3_treated', 'A3_CH4', 'A3_N2O', 'A3_sludge', streamsA['struvite']), 
                     decay_k_COD=get_decay_k(tau_deg, log_deg), 
                     decay_k_N=get_decay_k(tau_deg, log_deg),
@@ -269,71 +256,31 @@ A4 = su.SludgePasteurization('A4', ins=(A3-3, 'air', 'lpg'), outs=('treated_slud
                               temp_pasteurization=343.15, lhv_lpg = 48.5)
 
 
-A5 = su.Ultrafiltration('A5', ins=(A4-0), outs = ('A5_treated', 'retentate'))
-                        
-A6 = su.IonExchangeReclaimer('A6', ins=(A5-0, streamsA['Zeolite'], streamsA['GAC'], streamsA['KCl']),
-                                outs=('A6_treated', 'SpentZeolite', 'SpentGAC',streamsA['Conc_NH3']),
-                                decay_k_COD=get_decay_k(tau_deg, log_deg), 
-                                decay_k_N=get_decay_k(tau_deg, log_deg),
-                                max_CH4_emission=get_max_CH4_emission(), if_gridtied=True)
-
-A7 = su.ECR_Reclaimer('A7', ins=(A6-0), 
-                    outs = ('A7_treated'),
-                    decay_k_COD=get_decay_k(tau_deg, log_deg),)
-
 #Double check the mixer
-A8 = su.Mixer('A8', ins=(A3-1, A2-1), outs=streamsA['CH4'])
+A8 = su.Mixer('A8', ins=(A3-1), outs=streamsA['CH4'])
 A8.specification = lambda: add_fugitive_items(A8, CH4_item)
 A8.line = 'fugitive CH4 mixer' 
         
-A9 = su.Mixer('A9', ins=(A3-2, A2-2), outs=streamsA['N2O'])
+A9 = su.Mixer('A9', ins=(A3-2), outs=streamsA['N2O'])
 A9.specification = lambda: add_fugitive_items(A9, N2O_item)
 A9.line = 'fugitive N2O mixer'
 
-################## Other impacts and costs ##################
-A10 = su.HousingReclaimer('A10', ins=(A7-0), outs = ('A10_out'))
-A11 = su.SystemReclaimer('A11', ins=(A9-0), outs = ('A11_out'))
-
-
-
-# A11 = su.Trucking('A11', ins=A3-3, outs=('transported', 'conveyance_loss'),
-#                   load_type='mass', distance=5, distance_unit='km',
-#                   interval=365, interval_unit='d',
-#                   loss_ratio=0.02)
-# def update_A11_param():
-#     A11._run()
-#     truck = A11.single_truck
-#     truck.interval = 365*24
-#     truck.load = A11.F_mass_in*truck.interval
-#     rho = A11.F_mass_in/A10.F_vol_in
-#     vol = truck.load/rho
-#     A11.fee = get_tanker_truck_fee(vol)
-#     A11._design()
-# A11.specification = update_A11_param
-
 ############### Simulation, TEA, and LCA ###############
-sysA = bst.System('sysA', path= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11))
+sysA = bst.System('sysA', path= (A1, A3, A4))
 sysA.simulate()
-
-def update_labor_costs_sysA5():
-    teaA.annual_labor = A5._calc_maintenance_labor_cost() * 8760
 
 power = sum([u.power_utility.rate for u in sysA.units])
 
-#!!! update labor to input country specific data and be a distribution
 teaA = SimpleTEA(system=sysA, discount_rate=get_discount_rate(),  
                   start_year=2020, lifetime=20, uptime_ratio=1, 
                   lang_factor=None, annual_maintenance=0, 
-                  annual_labor = (A4._calc_labor_cost() * 8760) + (A6._calc_labor_cost() * 8760))
-                    
-
+                  annual_labor = (A4._calc_labor_cost() * 8760))
 
 lcaA = LCA(system=sysA, lifetime=20, lifetime_unit='yr', uptime_ratio=1,
             e_item=lambda: power*(365*24)*20)
 
-
 # =============================================================================
-# System B (sludge pasteruization instead of trucking)
+# System B Duke Reclaimer 2.0 Full System on grid-tied energy
 # =============================================================================
 flowsheetB= bst.Flowsheet('sysB')
 bst.main_flowsheet.set_flowsheet(flowsheetB)
@@ -357,11 +304,8 @@ B2 = su.MURTToilet('B2', ins=(B1-0, B1-1,
                     if_flushing=True, if_desiccant=False, if_toilet_paper=True,
                     CAPEX = 0, OPEX_over_CAPEX= 0.07) 
 
-###################### Treatment ######################
-#Septic Tank 
-#additional cost for holding tank for the magnesium? 
-#controls? control the valve 
-B3 = su.PrimaryReclaimer('B3', ins=(B2-0, streamsB['MgOH2']), 
+##################### Treatment ######################
+B3 = su.PrimaryReclaimer('B3', ins=(B1-0, streamsB['MgOH2']), 
                     outs=('B3_treated', 'B3_CH4', 'B3_N2O', 'B3_sludge', streamsB['struvite']), 
                     decay_k_COD=get_decay_k(tau_deg, log_deg), 
                     decay_k_N=get_decay_k(tau_deg, log_deg),
@@ -384,11 +328,11 @@ B7 = su.ECR_Reclaimer('B7', ins=(B6-0),
                     decay_k_COD=get_decay_k(tau_deg, log_deg),)
 
 
-B8 = su.Mixer('B8', ins=(B3-1, B2-1), outs=streamsB['CH4'])
+B8 = su.Mixer('B8', ins=(B3-1), outs=streamsB['CH4'])
 B8.specification = lambda: add_fugitive_items(B7, CH4_item)
 B8.line = 'fugitive CH4 mixer' 
         
-B9 = su.Mixer('B9', ins=(B3-2, B2-2), outs=streamsB['N2O'])
+B9 = su.Mixer('B9', ins=(B3-2), outs=streamsB['N2O'])
 B9.specification = lambda: add_fugitive_items(B8, N2O_item)
 B9.line = 'fugitive N2O mixer'
 
@@ -398,27 +342,26 @@ B11 = su.SystemReclaimer('B11', ins=(B10-0), outs = ('B11_out'))
 
 
 ############### Simulation, TEA, and LCA ###############
-sysB = bst.System('sysB', path= (B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11))
+sysB = bst.System('sysB', path= (B1, B3, B4, B5, B6, B7, B8, B9, B10, B11))
 sysB.simulate()
 
 def update_labor_costs_sysB():
     teaB.annual_labor = (B4._calc_maintenance_labor_cost() * 8760) + (B6._calc_maintenance_labor_cost() * 8760)
 
 
-power = sum([u.power_utility.rate for u in sysB.units])
+powerB = sum([u.power_utility.rate for u in sysB.units])
 
-#!!! update labor to input country specific data and be a distribution
 teaB = SimpleTEA(system=sysB, discount_rate=get_discount_rate(),  
                   start_year=2020, lifetime=20, uptime_ratio=1, 
                   lang_factor=None, annual_maintenance=0, 
                   annual_labor = (B4._calc_labor_cost() * 8760) 
-                  + (B6._calc_labor_cost() * 8760))  #number of hours) 
+                  + (B6._calc_labor_cost() * 8760))  
 
 lcaB = LCA(system=sysB, lifetime=20, lifetime_unit='yr', uptime_ratio=1,
-            e_item=lambda: power*(365*24)*20)
+            e_item=lambda: powerB*(365*24)*20)
 
 # =============================================================================
-# System B (sludge pasteruization instead of trucking)
+# System C Duke Reclaimer 2.0 coupled with solar volatic system 
 # =============================================================================
 flowsheetC= bst.Flowsheet('sysC')
 bst.main_flowsheet.set_flowsheet(flowsheetC)
@@ -445,9 +388,6 @@ C2 = su.MURTToilet('C2', ins=(C1-0, C1-1,
 
 ###################### Treatment ######################
 #Septic Tank 
-#check the pH for the septic tank (7.5?) 
-#additional cost for holding tank for the magnesium? 
-#controls? control the valve 
 C3 = su.PrimaryReclaimer('C3', ins=(C2-0, streamsC['MgOH2']), 
                     outs=('C3_treated', 'C3_CH4', 'C3_N2O', 'C3_sludge', streamsC['struvite']), 
                     decay_k_COD=get_decay_k(tau_deg, log_deg), 
@@ -492,9 +432,7 @@ sysC.simulate()
 def update_labor_costs_sysC():
     teaC.annual_labor = (C4._calc_maintenance_labor_cost() * 8760) + (C6._calc_maintenance_labor_cost() * 8760)
 
-power = 0
-power_utility = 0
-
+powerC = 0
 teaC = SimpleTEA(system=sysC, discount_rate=get_discount_rate(),  
                   start_year=2020, lifetime=20, uptime_ratio=1,
                   lang_factor=None, annual_maintenance=0,
@@ -502,40 +440,86 @@ teaC = SimpleTEA(system=sysC, discount_rate=get_discount_rate(),
                   + (C6._calc_labor_cost() * 8760) 
                   + (C12._calc_labor_cost() * 8760))  
 
-#!!! Double check to have solar materials 
 lcaC = LCA(system=sysC, lifetime=20, lifetime_unit='yr', uptime_ratio=1,
-            e_item=lambda: power*(365*24)*20)
+            e_item=lambda: powerC*(365*24)*20)
 
 
-# def update_labor_cost(sys_ID):
-#     if sys_ID=='sysA':
-#         labor_cost=A5._calc_maintenance_labor_cost() * 8760
+# =============================================================================
+# Scenario D (sysD): Targeted Nitrogen Removal Only 
+# =============================================================================
 
-#     elif sys_ID=='sysB':
-#         labor_cost= (B4._calc_maintenance_labor_cost() * 8760) + (B6._calc_maintenance_labor_cost() * 8760 )
-#     else: 
-#         labor_cost= ((C5._calc_maintenance_labor_cost() * 8760) + (C6._calc_maintenance_labor_cost() * 8760) 
-#             + (C12._calc_maintenance_labor_cost() * 8760) )
-#     return labor_cost
+flowsheetD = bst.Flowsheet('sysD')
+bst.main_flowsheet.set_flowsheet(flowsheetD)
+
+streamsD = batch_create_streams('D')
+
+#################### Human Inputs ####################
+D1 = su.Excretion('D1', outs=('urine','feces')) 
+
+###################### Treatment ######################
+D3 = su.PrimaryReclaimer('D3', ins=(D1-0, streamsD['MgOH2']), 
+                    outs=('D3_treated', 'D3_CH4', 'D3_N2O', 'D3_sludge', streamsD['struvite']), 
+                    decay_k_COD=get_decay_k(tau_deg, log_deg), 
+                    decay_k_N=get_decay_k(tau_deg, log_deg),
+                    max_CH4_emission=get_max_CH4_emission())
+
+
+
+D4 = su.Ultrafiltration('D4', ins=(D3-0), outs = ('D4_treated', 'retentate'))
+                        
+D5 = su.IonExchangeReclaimer('D5', ins=(D4-0, streamsD['Zeolite'], streamsD['GAC'], streamsD['KCl']),
+                                outs=('D5_treated', 'SpentZeolite', 'SpentGAC',streamsD['Conc_NH3']),
+                                decay_k_COD=get_decay_k(tau_deg, log_deg), 
+                                decay_k_N=get_decay_k(tau_deg, log_deg),
+                                max_CH4_emission=get_max_CH4_emission())
+
+D6 = su.Mixer('D6', ins=(D3-1), outs=streamsD['CH4'])
+D6.specification = lambda: add_fugitive_items(D6, CH4_item)
+D6.line = 'fugitive CH4 mixer' 
+        
+D7 = su.Mixer('D7', ins=(D3-2), outs=streamsD['N2O'])
+D7.specification = lambda: add_fugitive_items(D7, N2O_item)
+D7.line = 'fugitive N2O mixer'
+
+################## Other impacts and costs ##################
+D8 = su.HousingReclaimer('D8', ins=(D5-0), outs = ('D8_out'))
+D9 = su.SystemReclaimer('D9', ins=(D8-0), outs = ('D9_out'))
+
+############### Simulation, TEA, and LCA ###############
+sysD = bst.System('sysD', path= (D1, D3, D4, D5, D6, D7, D8, D9))
+sysD.simulate()
+
+powerD = sum([u.power_utility.rate for u in sysD.units])
+
+teaD = SimpleTEA(system=sysD, discount_rate=get_discount_rate(),  
+                  start_year=2020, lifetime=20, uptime_ratio=1, 
+                  lang_factor=None, annual_maintenance=0, 
+                  annual_labor = (D5._calc_labor_cost() * 8760))
+                    
+
+
+lcaD = LCA(system=sysD, lifetime=20, lifetime_unit='yr', uptime_ratio=1,
+            e_item=lambda: powerD*(365*24)*20)
+
 
 # =============================================================================
 # Summarizing Functions
 # =============================================================================
 
 sys_dct = {
-    'ppl':  dict(sysA=ppl, sysB=ppl, sysC=ppl),
-    'input_unit': dict(sysA=A1, sysB=B1),
-    'liq_unit': dict(sysA=None, sysB=None, sysC=None),
-    'sol_unit': dict(sysA=None, sysB=None, sysC=None),
-    'gas_unit': dict(sysA=None, sysB=None, sysC=None),
-    'stream_dct': dict(sysA=streamsA, sysB=streamsB, sysC=streamsC),
-    'TEA': dict(sysA=teaA, sysB = teaB, sysC = teaC),
-    'LCA': dict(sysA=lcaA, sysB=lcaB, sysC=lcaC),
-    'cache': dict(sysA={}, sysB={}, sysC={}),
+    'ppl':  dict(sysA=ppl, sysB=ppl, sysC=ppl, sysD = ppl),
+    'input_unit': dict(sysA=A1, sysB=B1, sysC=C1, sysD=D1),
+    'liq_unit': dict(sysA=None, sysB=None, sysC=None, sysD=None),
+    'sol_unit': dict(sysA=None, sysB=None, sysC=None, sysD=None),
+    'gas_unit': dict(sysA=None, sysB=None, sysC=None, sysD=None),
+    'stream_dct': dict(sysA=streamsA, sysB=streamsB, sysC=streamsC, sysD=streamsD),
+    'TEA': dict(sysA=teaA, sysB = teaB, sysC = teaC, sysD=teaD),
+    'LCA': dict(sysA=lcaA, sysB=lcaB, sysC=lcaC, sysD=lcaD),
+    'cache': dict(sysA={}, sysB={}, sysC={}, sysD={}),
     }
 
 
-system_streams = {sysA:streamsA, sysB:streamsB, sysC:streamsC}
+system_streams = {sysA:streamsA, sysB:streamsB, sysC:streamsC, sysD:streamsD}
 
 #learning curve assumptions
 percent_CAPEX_to_scale = 0.1 #this number is the decimal of the fraction of scost of pecialty parts/cost of total parts
@@ -617,7 +601,6 @@ def get_cost_electricity(unit,ppl):
             electricity+=i.power_utility.cost*24/ppl
     return electricity
 
-##is this correct?
 def get_cost_opex_streams(unit,ppl):
     opex = 0
     if type(unit)== tuple:
@@ -703,29 +686,6 @@ def get_fugitive_gases(system_num=None):
         gases+=get_fugitive_emissions(system_streams[system_num][i])
     return gases
 
-def cache_recoveries(sys):
-    total_COD = get_total_inputs(sys_dct['input_unit'][sys.ID])['COD']
-    ppl = sys_dct['ppl'][sys.ID]
-    if sys_dct['gas_unit'][sys.ID]:
-        gas_mol = sys_dct['gas_unit'][sys.ID].outs[0].imol['CH4']
-    else:
-        gas_COD = 0
-    cache = {
-        'liq': get_recovery(ins=sys_dct['input_unit'][sys.ID],
-                            outs=sys_dct['liq_unit'][sys.ID].ins,
-                            ppl=ppl),
-        'sol': get_recovery(ins=sys_dct['input_unit'][sys.ID],
-                            outs=sys_dct['sol_unit'][sys.ID].ins,
-                            ppl=ppl),
-        'gas': dict(COD=gas_COD, N=0, P=0, K=0)
-        }
-    return cache
-
-def update_cache(sys):
-    last_u = sys.path[-1]
-    last_u._run()
-    sys_dct['cache'][sys.ID] = cache_recoveries(sys)
-
 def get_summarizing_fuctions():
     func_dct = {}
     func_dct['get_annual_cost'] = lambda tea, ppl: (tea.EAC-tea.annualized_CAPEX
@@ -787,31 +747,22 @@ def print_summaries(systems):
         print(f'Offset: {func["get_offset_GWP"](lca, ppl):.2f} {unit}.')
         print(f'Other: {func["get_other_GWP"](lca, ppl):.2} {unit}.\n')
 
-        # for i in ('COD', 'N', 'P', 'K'):
-        #     print(f'Total {i} recovery is {func[f"get_tot_{i}_recovery"](sys, i):.1%}, '
-        #           f'{func[f"get_liq_{i}_recovery"](sys, i):.1%} in liquid, '
-        #           f'{func[f"get_sol_{i}_recovery"](sys, i):.1%} in solid, '
-        #           f'{func[f"get_gas_{i}_recovery"](sys, i):.1%} in gas.')
 
 def save_all_reports():
-  # import os
-    # path = os.path.dirname(os.path.realpath(__file__))
-    # path += '/results'
-    # if not os.path.isdir(path):
-    #     os.path.mkdir(path)
-    # del os
     path = '/Users/torimorgan/opt/anaconda3/lib/python3.8/site-packages/exposan/Duke_Reclaimer'
-    for i in (sysA,lcaA, sysB,lcaB, sysC,lcaC):
+    for i in (sysA,lcaA, sysB,lcaB, sysC,lcaC, sysD,lcaC):
         if isinstance(i, bst.System):
             i.simulate()
             i.save_report(f'{path}/{i.ID}.xlsx')
         else:
             i.save_report(f'{path}/{i.system.ID}_lca.xlsx')
 
-__all__ = ('sysA', 'sysB', 'sysC', 'teaA', 'teaB', 
-           'teaC', 'lcaA', 'lcaB', 'lcaC',
-            'print_summaries', 'save_all_reports',
+__all__ = ('sysA', 'sysB', 'sysC', 'sysD', 
+           'teaA', 'teaB', 'teaC', 'teaD', 
+           'lcaA', 'lcaB', 'lcaC', 'lcaD',
+           'print_summaries', 'save_all_reports',
             *(i.ID for i in sysA.units),
             *(i.ID for i in sysB.units),
             *(i.ID for i in sysC.units),
+            *(i.ID for i in sysD.units)
             )

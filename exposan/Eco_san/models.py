@@ -710,11 +710,11 @@ path = su_data_path + '_recycling_controls.tsv'
 data = load_data(path)
 batch_setting_unit_params(data, modelC, C14)
 
-#Solar costs and impacts
-C15 = systems.C15
-path = su_data_path + '_solar_ES.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelC, C15)
+# #Solar costs and impacts
+# C15 = systems.C15
+# path = su_data_path + '_solar_ES.tsv'
+# data = load_data(path)
+# batch_setting_unit_params(data, modelC, C15)
 
 # Conveyance
 C16 = systems.C16

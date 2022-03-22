@@ -21,14 +21,12 @@ for license details.
 import numpy as np
 import pandas as pd
 from chaospy import distributions as shape
-from thermosteam.functional import V_to_rho, rho_to_V
 from biosteam import PowerUtility
 from biosteam.evaluation import Model, Metric
 from qsdsan import currency, ImpactItem
 from qsdsan.utils import (
     load_data, data_path,
-    AttrSetter, AttrFuncSetter, DictAttrSetter,
-    FuncGetter,
+    AttrSetter, DictAttrSetter,
     time_printer
     )
 from exposan import reclaimer as R
@@ -38,11 +36,10 @@ eval = eval
 
 item_path = R.systems.item_path
 
-__all__ = ( 'modelB', 'modelC', 'result_dct', 
+__all__ = ( 'modelA', 'modelB', 'modelC', 'modelD', 'result_dct', 
            'run_uncertainty', 'save_uncertainty_results', 'add_metrics',
            'batch_setting_unit_params', 'add_shared_parameters') 
            
-
 
 # %%
 
@@ -86,14 +83,6 @@ def add_metrics(system):
         Metric('Offset', lambda: func['get_offset_GWP'](lca, ppl), unit, cat),
         Metric('Other', lambda: func['get_other_GWP'](lca, ppl), unit, cat),
         ])
-    # for i in ('COD', 'N', 'P', 'K'):
-    #     cat = f'{i} recovery'
-    #     metrics.extend([
-    #         Metric(f'Liquid {i}', FuncGetter(func[f'get_liq_{i}_recovery'], (system, i)), '', cat),
-    #         Metric(f'Solid {i}', FuncGetter(func[f'get_sol_{i}_recovery'], (system, i)), '', cat),
-    #         Metric(f'Gas {i}', FuncGetter(func[f'get_gas_{i}_recovery'], (system, i)), '', cat),
-    #         Metric(f'Total {i}', FuncGetter(func[f'get_tot_{i}_recovery'], (system, i)), '', cat)
-    #         ])
     return metrics
 
 
@@ -166,25 +155,22 @@ def add_shared_parameters(sys, model, country_specific=False):
         
             
             
-    #Paramter for flushing water to avoid default assumptions found in the _toilet.tsv
-    #Amount of water used for flushing [kg/cap/hr]
-    unit = sys.path[1] #this is my second san unit so teh path is 1 (starts at 0)
-    b = unit.flushing_water #unit in toilet
-    D = shape.Uniform(lower=0.1667, upper=0.25) #Processes 20-30 L/h -> for 120 users = 0.16667-0.25 kg/cap/hr
-    @param(name='Flushing Water Processed',
-        element = unit, 
-        kind='coupled',
-        units='kg/cap/hr',
-        baseline=b, distribution=D)
-    def set_flushing_water(i):
-        unit.flushing_water = i  
+    # #Paramter for flushing water to avoid default assumptions found in the _toilet.tsv
+    # #Amount of water used for flushing [kg/cap/hr]
+    # unit = sys.path[1] #this is my second san unit so teh path is 1 (starts at 0)
+    # b = unit.flushing_water #unit in toilet
+    # D = shape.Uniform(lower=0.1667, upper=0.25) #Processes 20-30 L/h -> for 120 users = 0.16667-0.25 kg/cap/hr
+    # @param(name='Flushing Water Processed',
+    #     element = unit, 
+    #     kind='coupled',
+    #     units='kg/cap/hr',
+    #     baseline=b, distribution=D)
+    # def set_flushing_water(i):
+    #     unit.flushing_water = i  
 
     
     ########## Related to human input ##########
-    # Diet and excretion
-    path = data_path + 'sanunit_data/_excretion.tsv'
-    data = load_data(path)
-    batch_setting_unit_params(data, model, unit=sys.path[0])
+
     
     # Household size
     b = systems.get_household_size()
@@ -305,86 +291,39 @@ def add_shared_parameters(sys, model, country_specific=False):
 # %%
 
 # =============================================================================
-# Scenario A (sysA): Trucking Scenario (O&M sludge?)
+# Scenario A (sysA): Solids Removal Only 
 # =============================================================================
 
-#!!! System is still under progress (might be a possible sludge pasteruziation 
-#!!! O&M scenario or link with the zyclone)
+sysA = systems.sysA
+sysA.simulate()
+modelA = Model(sysA, add_metrics(sysA))
+paramA = modelA.parameter
 
-# sysA = systems.sysA
-# sysA.simulate()
-# modelA = Model(sysA, add_metrics(sysA))
-# paramA = modelA.parameter
+# Shared parameters
+modelA = add_shared_parameters(sysA, modelA)
 
-# # Shared parameters
-# modelA = add_shared_parameters(sysA, modelA)
+# # Toilet and conveyance
+# modelA = add_toilet_parameters(sysA, modelA)
 
-
-
-# # # Toilet and conveyance
-# # modelA = add_toilet_parameters(sysA, modelA)
-
-# # #MURT TOILET
+# #MURT TOILET
 # A2 = systems.A2
 # path = su_data_path + '_murt_toilet.tsv'
 # data = load_data(path)
 # batch_setting_unit_params(data, modelA, A2)
 
-# #primary treatment without struvite
-# A3 = systems.A3
-# path = su_data_path + '_primary_reclaimer.csv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelA, A3)
+#primary treatment without struvite
+A3 = systems.A3
+path = su_data_path + '_primary_reclaimer.csv'
+data = load_data(path)
+batch_setting_unit_params(data, modelA, A3)
 
-# ##Ultrafiltrtion
-# A4 = systems.A4
-# path = su_data_path + '_ultrafiltration_reclaimer.csv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelA, A4)
+#SysB Sludge Pasteurization
+A4 = systems.A4
+path = su_data_path + '_sludge_pasteurization.tsv'
+data = load_data(path)
+batch_setting_unit_params(data, modelA, A4)
 
-# # Ion exchange
-# A5 = systems.A5
-# path = su_data_path + '_ion_exchange_reclaimer.csv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelA, A5)
-
-# # ECR
-# A6 = systems.A6
-# path = su_data_path + '_ECR_reclaimer.csv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelA, A6)
-
-# #Housing
-# A9 = systems.A9
-# path = su_data_path + '_housing_reclaimer.csv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelA, A9)
-
-# #System Controls
-# A10 = systems.A10
-# path = su_data_path + '_system_reclaimer.csv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelA, A10)
-
-
-
-# # Conveyance
-# A11 = systems.A11
-# b = A11.loss_ratio
-# D = shape.Uniform(lower=0.02, upper=0.05)
-# @paramA(name='Transportation loss', element=A11, kind='coupled', units='fraction',
-#         baseline=b, distribution=D)
-# def set_trans_loss(i):
-#     A11.loss_ratio = A11.loss_ratio = i
-
-# b = A11.single_truck.distance
-# D = shape.Uniform(lower=2, upper=10)
-# @paramA(name='Transportation distance', element=A11, kind='coupled', units='km',
-#         baseline=b, distribution=D)
-# def set_trans_distance(i):
-#     A11.single_truck.distance = i
-
-# all_paramsA = modelA.get_parameters()
+all_paramsA = modelA.get_parameters()
 
 
 # %%
@@ -401,6 +340,18 @@ paramB = modelB.parameter
 
 # Shared parameters
 modelB = add_shared_parameters(sysB, modelB)
+
+# Diet and excretion
+B1 =systems.B1
+path = data_path + 'sanunit_data/_excretion.tsv'
+data = load_data(path)
+batch_setting_unit_params(data, modelB, B1)
+
+# #MURT TOILET
+# B2 = systems.B2
+# path = su_data_path + '_murt_toilet.tsv'
+# data = load_data(path)
+# batch_setting_unit_params(data, modelB, B2)
 
 #primary treatment without struvite
 B3 = systems.B3
@@ -460,6 +411,11 @@ paramC = modelC.parameter
 # Model C shared parameters
 modelC = add_shared_parameters(sysC, modelC) 
 
+# Diet and excretion
+C1 =systems.C1
+path = data_path + 'sanunit_data/_excretion.tsv'
+data = load_data(path)
+batch_setting_unit_params(data, modelC, C1)
 
 #MURT TOILET
 C2 = systems.C2
@@ -520,6 +476,65 @@ batch_setting_unit_params(data, modelC, C12)
 
 all_paramsC = modelC.get_parameters()
 
+# =============================================================================
+# Scenario D (sysC): Targetted Nitrogen removal
+# =============================================================================
+sysD = systems.sysD
+sysD.simulate()
+modelD = Model(sysD, add_metrics(sysD))
+paramD = modelD.parameter
+
+
+# Model C shared parameters
+modelD = add_shared_parameters(sysD, modelD) 
+
+# Diet and excretion
+D1 =systems.D1
+path = data_path + 'sanunit_data/_excretion.tsv'
+data = load_data(path)
+batch_setting_unit_params(data, modelD, D1)
+
+# #MURT TOILET
+# D2 = systems.D2
+# path = su_data_path + '_murt_toilet.tsv'
+# data = load_data(path)
+# batch_setting_unit_params(data, modelD, D2)
+
+#primary treatment without struvite
+D3 = systems.D3
+path = su_data_path + '_primary_reclaimer.csv'
+data = load_data(path)
+batch_setting_unit_params(data, modelD, D3)
+
+# Ultrafiltration
+D4 = systems.D4
+path = su_data_path + '_ultrafiltration_reclaimer.csv'
+data = load_data(path)
+batch_setting_unit_params(data, modelD, D4)
+
+# Ion exchange
+D5 = systems.D5
+path = su_data_path + '_ion_exchange_reclaimer.csv'
+data = load_data(path)
+batch_setting_unit_params(data, modelD, D5)
+
+
+#Housing
+D8 = systems.D8
+path = su_data_path + '_housing_reclaimer.csv'
+data = load_data(path)
+batch_setting_unit_params(data, modelD, D8)
+
+#Mischelaneous
+D9 = systems.D9
+path = su_data_path + '_system_reclaimer.csv'
+data = load_data(path)
+batch_setting_unit_params(data, modelD, D9)
+
+
+
+all_paramsD = modelD.get_parameters()
+
 # %%
 
 # =============================================================================
@@ -527,9 +542,11 @@ all_paramsC = modelC.get_parameters()
 # =============================================================================
 
 result_dct = {
+        'sysA': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
+        'sysB': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
         'sysC': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
         }
-models=modelC
+models=modelA, modelB, modelC
 @time_printer
 def run_uncertainty(model, seed=None, N=10000, rule='L',
                     percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
