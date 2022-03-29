@@ -11,7 +11,6 @@ for license details.
 import numpy as np
 import biosteam as bst
 import qsdsan as qs
-from sklearn.linear_model import LinearRegression as LR
 from qsdsan import sanunits as su
 from qsdsan import WasteStream, ImpactIndicator, ImpactItem, StreamImpactItem, SimpleTEA, LCA
 from _cmps import cmps
@@ -39,6 +38,10 @@ ppl = 120
 toilets = ppl/25
 ppl_toilet = ppl / toilets
 
+#For every 30 people you will want to add a reclaimer unit
+reclaimer_units = ppl/30
+
+
 discount_rate = 0.05
 get_discount_rate = lambda: discount_rate
 
@@ -47,7 +50,6 @@ tau_deg = 2
 # Log reduction at full degradation
 log_deg = 3
 # Get reduction rate constant k for COD and N, use a function so that k can be
-# changed during uncertainty analysis
 def get_decay_k(tau_deg=2, log_deg=3):
     k = (-1/tau_deg)*np.log(10**-log_deg)
     return k
@@ -55,21 +57,6 @@ def get_decay_k(tau_deg=2, log_deg=3):
 
 max_CH4_emission = 0.25
 get_max_CH4_emission = lambda: max_CH4_emission
-
-# Model for tanker truck cost based on capacity (m3)
-# price = a*capacity**b -> ln(price) = ln(a) + bln(capacity)
-USD_price_dct = np.array((21.62, 32.43, 54.05, 67.57))
-capacities = np.array((3, 4.5, 8, 15))
-emptying_fee = 0.15
-get_emptying_fee = lambda: emptying_fee
-def get_tanker_truck_fee(capacity):
-    price_dct = USD_price_dct*(1+get_emptying_fee())
-    ln_p = np.log(price_dct)
-    ln_cap = np.log(capacities)
-    model = LR().fit(ln_cap.reshape(-1,1), ln_p.reshape(-1,1))
-    [[predicted]] = model.predict(np.array((np.log(capacity))).reshape(1, -1)).tolist()
-    cost = np.exp(predicted)
-    return cost
 
 # =============================================================================
 # Prices and GWP CFs
@@ -99,12 +86,13 @@ price_dct = {
     'MgCO3': 0.9,
     'H2SO4': 0.3,
     'struvite': 0,
-    'salt': 0, #0.84375
+    'salt': 0, 
     'HCl': 0,
-    'KCl': 0, #15
+    'KCl': 0, 
     'GAC': 0,
     'Zeolite': 0,
-    'Conc_NH3': 0, #1.333*(14/17)*get_price_factor(),
+    'Conc_NH3': 0, 
+    'sludge': 0
     }
 
 
@@ -127,13 +115,14 @@ GWP_dct = {
     'KCl': 0.8,
     'GAC': 8.388648277,
     'Zeolite': 5.175,
-    'Conc_NH3':0, #-5.4*(14/17)
+    'Conc_NH3':0,
+    'sludge':0
     }
 
 items = ImpactItem.get_all_items()
 
 
-if not items.get('Excavation'): # prevent from reloading
+if not items.get('Excavation'):
     import os
     path = os.path.dirname(os.path.realpath(__file__)) + '/data'
     ImpactIndicator.load_from_file(path+'/impact_indicators.csv')

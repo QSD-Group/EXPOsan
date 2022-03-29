@@ -17,7 +17,6 @@ for license details.
 
 
 # %%
-
 import numpy as np
 import pandas as pd
 from chaospy import distributions as shape
@@ -42,14 +41,12 @@ __all__ = ( 'modelA', 'modelB', 'modelC', 'modelD', 'result_dct',
            
 
 # %%
-
 # =============================================================================
 # Functions for batch-making metrics and -setting parameters
 # =============================================================================
 
 systems = R.systems
 sys_dct = systems.sys_dct
-#unit_dct = systems.unit_dct
 price_dct = systems.price_dct
 GWP_dct = systems.GWP_dct
 GWP = systems.GWP
@@ -124,7 +121,6 @@ def add_shared_parameters(sys, model, country_specific=False):
      
     if not country_specific:      
         # Electricity price
-        
         b = price_dct['Electricity']
         D = shape.Triangle(lower=0.04, midpoint=b, upper=0.1)
         @param(name='Electricity price', element='TEA', kind='isolated',
@@ -139,39 +135,8 @@ def add_shared_parameters(sys, model, country_specific=False):
                    units='kg CO2-eq/kWh', baseline=b, distribution=D)
         def set_electricity_CF(i):
             GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
-        
-#         b = price_dct['wages']
-#         D = shape.Triangle(lower=0.60625, midpoint = b, upper=1.82)
-#         @param(name='Labor wages', element='TEA', kind='cost', units='USD/h',
-# 	      baseline=b, distribution=D)
-        
-#         def set_labor_wages(i):
-#             labor_cost = 0
-#             for u in sys.units:
-#                 if hasattr(u, '_calc_labor_cost'):
-#                     u.wages = i
-#                     labor_cost += u._calc_labor_cost()
-#             sys.TEA.annual_labor = labor_cost * 365 * 24
-        
-            
-            
-    # #Paramter for flushing water to avoid default assumptions found in the _toilet.tsv
-    # #Amount of water used for flushing [kg/cap/hr]
-    # unit = sys.path[1] #this is my second san unit so teh path is 1 (starts at 0)
-    # b = unit.flushing_water #unit in toilet
-    # D = shape.Uniform(lower=0.1667, upper=0.25) #Processes 20-30 L/h -> for 120 users = 0.16667-0.25 kg/cap/hr
-    # @param(name='Flushing Water Processed',
-    #     element = unit, 
-    #     kind='coupled',
-    #     units='kg/cap/hr',
-    #     baseline=b, distribution=D)
-    # def set_flushing_water(i):
-    #     unit.flushing_water = i  
-
-    
+  
     ########## Related to human input ##########
-
-    
     # Household size
     b = systems.get_household_size()
     D = shape.Normal(mu=b, sigma=1.8)
@@ -207,7 +172,7 @@ def add_shared_parameters(sys, model, country_specific=False):
     def set_tau_deg(i):
         systems.tau_deg = i
     
-    #!!! Reduction at full degradation
+    #Reduction at full degradation
     b = systems.log_deg
     D = shape.Uniform(lower=2, upper=4)
     @param(name='Log degradation', element=unit, kind='coupled', units='-',
@@ -216,17 +181,13 @@ def add_shared_parameters(sys, model, country_specific=False):
         systems.log_deg = i
 
     ######## General TEA settings ########
-    
-    
     # Money discount rate
-    # keep discount rate constant
     b = systems.get_discount_rate()
     D = shape.Uniform(lower=0.03, upper=0.06)
     @param(name='Discount rate', element='TEA', kind='isolated', units='fraction',
             baseline=b, distribution=D)
     def set_discount_rate(i):
         systems.discount_rate = i
- 
     
     ######## General LCA settings ########
     b = GWP_dct['CH4']
@@ -235,7 +196,6 @@ def add_shared_parameters(sys, model, country_specific=False):
            baseline=b, distribution=D)
     def set_CH4_CF(i):
         GWP_dct['CH4'] = systems.CH4_item.CFs['GlobalWarming'] = i    
-   
     
     b = GWP_dct['N2O']
     D = shape.Uniform(lower=265, upper=298)
@@ -286,14 +246,11 @@ def add_shared_parameters(sys, model, country_specific=False):
                         baseline=b, distribution=D)
     
     return model
-
-
 # %%
 
 # =============================================================================
 # Scenario A (sysA): Solids Removal Only 
 # =============================================================================
-
 sysA = systems.sysA
 sysA.simulate()
 modelA = Model(sysA, add_metrics(sysA))
@@ -302,14 +259,11 @@ paramA = modelA.parameter
 # Shared parameters
 modelA = add_shared_parameters(sysA, modelA)
 
-# # Toilet and conveyance
-# modelA = add_toilet_parameters(sysA, modelA)
-
-# #MURT TOILET
-# A2 = systems.A2
-# path = su_data_path + '_murt_toilet.tsv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelA, A2)
+# Diet and excretion
+A1 =systems.A1
+path = data_path + 'sanunit_data/_excretion.tsv'
+data = load_data(path)
+batch_setting_unit_params(data, modelA, A1)
 
 #primary treatment without struvite
 A3 = systems.A3
@@ -329,14 +283,12 @@ all_paramsA = modelA.get_parameters()
 # %%
 
 # =============================================================================
-# Scenario B (sysB): Sludge Pasteurization - Baseline Scenario
+# Scenario B (sysB): Full Duke System with Grid Source
 # =============================================================================
-
 sysB = systems.sysB
 sysB.simulate()
 modelB = Model(sysB, add_metrics(sysB))
 paramB = modelB.parameter
-
 
 # Shared parameters
 modelB = add_shared_parameters(sysB, modelB)
@@ -347,11 +299,6 @@ path = data_path + 'sanunit_data/_excretion.tsv'
 data = load_data(path)
 batch_setting_unit_params(data, modelB, B1)
 
-# #MURT TOILET
-# B2 = systems.B2
-# path = su_data_path + '_murt_toilet.tsv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelB, B2)
 
 #primary treatment without struvite
 B3 = systems.B3
@@ -400,7 +347,7 @@ all_paramsB = modelB.get_parameters()
 
 
 # =============================================================================
-# Scenario C (sysC): Primary with struvite + MBR
+# Scenario C (sysC):Full System with Solar Photovoltaci Source
 # =============================================================================
 sysC = systems.sysC
 sysC.simulate()
@@ -416,12 +363,6 @@ C1 =systems.C1
 path = data_path + 'sanunit_data/_excretion.tsv'
 data = load_data(path)
 batch_setting_unit_params(data, modelC, C1)
-
-#MURT TOILET
-C2 = systems.C2
-path = su_data_path + '_murt_toilet.tsv'
-data = load_data(path)
-batch_setting_unit_params(data, modelC, C2)
 
 #primary treatment without struvite
 C3 = systems.C3
@@ -484,7 +425,6 @@ sysD.simulate()
 modelD = Model(sysD, add_metrics(sysD))
 paramD = modelD.parameter
 
-
 # Model C shared parameters
 modelD = add_shared_parameters(sysD, modelD) 
 
@@ -493,12 +433,6 @@ D1 =systems.D1
 path = data_path + 'sanunit_data/_excretion.tsv'
 data = load_data(path)
 batch_setting_unit_params(data, modelD, D1)
-
-# #MURT TOILET
-# D2 = systems.D2
-# path = su_data_path + '_murt_toilet.tsv'
-# data = load_data(path)
-# batch_setting_unit_params(data, modelD, D2)
 
 #primary treatment without struvite
 D3 = systems.D3
@@ -518,7 +452,6 @@ path = su_data_path + '_ion_exchange_reclaimer.csv'
 data = load_data(path)
 batch_setting_unit_params(data, modelD, D5)
 
-
 #Housing
 D8 = systems.D8
 path = su_data_path + '_housing_reclaimer.csv'
@@ -530,8 +463,6 @@ D9 = systems.D9
 path = su_data_path + '_system_reclaimer.csv'
 data = load_data(path)
 batch_setting_unit_params(data, modelD, D9)
-
-
 
 all_paramsD = modelD.get_parameters()
 
@@ -545,8 +476,9 @@ result_dct = {
         'sysA': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
         'sysB': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
         'sysC': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
+        'sysD':  dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman'))
         }
-models=modelA, modelB, modelC
+models=modelA, modelB, modelC, modelD
 @time_printer
 def run_uncertainty(model, seed=None, N=10000, rule='L',
                     percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
@@ -571,7 +503,6 @@ def run_uncertainty(model, seed=None, N=10000, rule='L',
 
     # Spearman's rank correlation
     spearman_metrics = [model.metrics[i] for i in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)]
-    #spearman_metrics = [model.metrics[i] for i in (0, 3, 12, 16, 20, 24)]
     spearman_results, pvalues = model.spearman_r(model.get_parameters(), spearman_metrics)
     cols = [i.name_with_units for i in spearman_metrics]
     spearman_results.columns = pd.Index(cols)
@@ -605,6 +536,3 @@ def save_uncertainty_results(model, path=''):
         dct['spearman'].to_excel(writer, sheet_name='Spearman')
         dct['spearman_p'].to_excel(writer, sheet_name='Spearman_pvalues')
         model.table.to_excel(writer, sheet_name='Raw data')
-
-
-

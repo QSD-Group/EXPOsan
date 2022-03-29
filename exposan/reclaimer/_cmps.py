@@ -86,7 +86,7 @@ P4O10 = Component.from_chemical('P4O10', tmo.Chemical('P4O10'),
 
 KCl = Component.from_chemical('PotassiumChloride', tmo.Chemical('PotassiumChloride'),
                             phase='s', particle_size='Soluble',
-                            degradability='Slowly', organic=False)
+                            degradability='Undegradable', organic=False)
 
 MgOH2 = Component.from_chemical('MagnesiumHydroxide',
                                    tmo.Chemical('MagnesiumHydroxide'),
