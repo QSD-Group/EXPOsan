@@ -366,66 +366,65 @@ def add_shared_parameters(sys, model, unit_dct, country_specific=False):
         def set_electricity_CF(i):
             GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
 
-        #!!! Not sure why these were excluded from non-country-specific analysis
-        # D = shape.Uniform(lower=(1.507*(14/17)*0.8), upper=(1.507*(14/17)*1.2))
-        # @param(name='NH3 fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
-        #         baseline=(1.507*(14/17)*0.25), distribution=D)
-        # def set_N_price(i):
-        #     price_dct['conc_NH3'] = streams['conc_NH3'] = streams['conc_NH3'] = i * get_price_factor()
+        D = shape.Uniform(lower=(1.507*(14/17)*0.8), upper=(1.507*(14/17)*1.2))
+        @param(name='NH3 fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
+                baseline=(1.507*(14/17)*0.25), distribution=D)
+        def set_con_NH3_price(i):
+            price_dct['conc_NH3'] = streams['conc_NH3'] = streams['conc_NH3'] = i * get_price_factor()
 
-        # D = shape.Uniform(lower=(3.983*(31/245)*0.8), upper=(3.983*(31/245)*1.2))
-        # @param(name='Struvite fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
-        #         baseline=(3.983*(31/245)*0.25), distribution=D)
-        # def set_P_price(i):
-        #     price_dct['struvite'] = streams['struvite'] = streams['struvite'] = i * get_price_factor()
+        D = shape.Uniform(lower=(3.983*(31/245)*0.8), upper=(3.983*(31/245)*1.2))
+        @param(name='Struvite fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
+                baseline=(3.983*(31/245)*0.25), distribution=D)
+        def set_struvite_price(i):
+            price_dct['struvite'] = streams['struvite'] = streams['struvite'] = i * get_price_factor()
 
-        # D = shape.Uniform(lower=(0.014*0.8), upper=(0.014*1.2))
-        # @param(name='Biochar  price', element='TEA', kind='isolated', units='USD/kg biochar',
-        #         baseline=(0.014), distribution=D)
-        # def set_biochar_price(i):
-        #     price_dct['biochar'] = streams['biochar'] = streams['biochar'] = i
+        D = shape.Uniform(lower=(0.014*0.8), upper=(0.014*1.2))
+        @param(name='Biochar  price', element='TEA', kind='isolated', units='USD/kg biochar',
+                baseline=(0.014), distribution=D)
+        def set_biochar_price(i):
+            price_dct['biochar'] = streams['biochar'] = streams['biochar'] = i
 
-        # b = -GWP_dct['N']
-        # D = shape.Triangle(lower=1.8, midpoint=b, upper=8.9)
-        # @param(name='N fertilizer CF', element='LCA', kind='isolated',
-        #        units='kg CO2-eq/kg N', baseline=b, distribution=D)
-        # def set_N_fertilizer_CF(i):
-        #     GWP_dct['N'] = systems.N_item.CFs['GlobalWarming'] = -i
+        b = -GWP_dct['N']
+        D = shape.Triangle(lower=1.8, midpoint=b, upper=8.9)
+        @param(name='N fertilizer CF', element='LCA', kind='isolated',
+                units='kg CO2-eq/kg N', baseline=b, distribution=D)
+        def set_N_fertilizer_CF(i):
+            GWP_dct['N'] = systems.N_item.CFs['GlobalWarming'] = -i
 
-        # b = -GWP_dct['P']
-        # D = shape.Triangle(lower=4.3, midpoint=b, upper=5.4)
-        # @param(name='P fertilizer CF', element='LCA', kind='isolated',
-        #        units='kg CO2-eq/kg P', baseline=b, distribution=D)
-        # def set_P_fertilizer_CF(i):
-        #     GWP_dct['P'] = systems.P_item.CFs['GlobalWarming'] = -i
+        b = -GWP_dct['P']
+        D = shape.Triangle(lower=4.3, midpoint=b, upper=5.4)
+        @param(name='P fertilizer CF', element='LCA', kind='isolated',
+                units='kg CO2-eq/kg P', baseline=b, distribution=D)
+        def set_P_fertilizer_CF(i):
+            GWP_dct['P'] = systems.P_item.CFs['GlobalWarming'] = -i
 
-        # b = -GWP_dct['K']
-        # D = shape.Triangle(lower=1.1, midpoint=b, upper=2)
-        # @param(name='K fertilizer CF', element='LCA', kind='isolated',
-        #        units='kg CO2-eq/kg K', baseline=b, distribution=D)
-        # def set_K_fertilizer_CF(i):
-        #     GWP_dct['K'] = systems.K_item.CFs['GlobalWarming'] = -i
+        b = -GWP_dct['K']
+        D = shape.Triangle(lower=1.1, midpoint=b, upper=2)
+        @param(name='K fertilizer CF', element='LCA', kind='isolated',
+                units='kg CO2-eq/kg K', baseline=b, distribution=D)
+        def set_K_fertilizer_CF(i):
+            GWP_dct['K'] = systems.K_item.CFs['GlobalWarming'] = -i
 
-        # b = -GWP_dct['conc_NH3']
-        # D = shape.Triangle(lower=(1.8*(14/17)), midpoint=b, upper=(8.9*(14/17)))
-        # @param(name='conc_NH3 fertilizer CF', element='LCA', kind='isolated',
-        #         units='kg CO2-eq/kg conc_NH3', baseline=b, distribution=D)
-        # def set_conc_NH3_fertilizer_CF(i):
-        #     GWP_dct['conc_NH3'] = systems.conc_NH3_item.CFs['GlobalWarming'] = -i
+        b = -GWP_dct['conc_NH3']
+        D = shape.Triangle(lower=(1.8*(14/17)), midpoint=b, upper=(8.9*(14/17)))
+        @param(name='conc_NH3 fertilizer CF', element='LCA', kind='isolated',
+                units='kg CO2-eq/kg conc_NH3', baseline=b, distribution=D)
+        def set_conc_NH3_fertilizer_CF(i):
+            GWP_dct['conc_NH3'] = systems.conc_NH3_item.CFs['GlobalWarming'] = -i
 
-        # b = -GWP_dct['struvite']
-        # D = shape.Triangle(lower=(4.3*(31/245)), midpoint=b, upper=(5.4*(31/245)))
-        # @param(name='struvite fertilizer CF', element='LCA', kind='isolated',
-        #         units='kg CO2-eq/kg struvite', baseline=b, distribution=D)
-        # def set_struvite_fertilizer_CF(i):
-        #     GWP_dct['struvite'] = systems.struvite_item.CFs['GlobalWarming'] = -i
+        b = -GWP_dct['struvite']
+        D = shape.Triangle(lower=(4.3*(31/245)), midpoint=b, upper=(5.4*(31/245)))
+        @param(name='struvite fertilizer CF', element='LCA', kind='isolated',
+                units='kg CO2-eq/kg struvite', baseline=b, distribution=D)
+        def set_struvite_fertilizer_CF(i):
+            GWP_dct['struvite'] = systems.struvite_item.CFs['GlobalWarming'] = -i
 
-        # b = -GWP_dct['biochar']
-        # D = shape.Triangle(lower=(0.2*0.9*(44/12)*.8), midpoint=b, upper=(0.2*0.9*(44/12)*1.2))
-        # @param(name='biochar CF', element='LCA', kind='isolated',
-        #         units='kg CO2-eq/kg biochar', baseline=b, distribution=D)
-        # def set_biochar_CF(i):
-        #     GWP_dct['biochar'] = systems.biochar_item.CFs['GlobalWarming'] = -i
+        b = -GWP_dct['biochar']
+        D = shape.Triangle(lower=(0.2*0.9*(44/12)*.8), midpoint=b, upper=(0.2*0.9*(44/12)*1.2))
+        @param(name='biochar CF', element='LCA', kind='isolated',
+                units='kg CO2-eq/kg biochar', baseline=b, distribution=D)
+        def set_biochar_CF(i):
+            GWP_dct['biochar'] = systems.biochar_item.CFs['GlobalWarming'] = -i
 
     # ########## Specific units ##########
     # Diet and excretion
