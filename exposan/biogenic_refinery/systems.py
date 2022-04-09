@@ -829,16 +829,22 @@ D4 = su.Lagoon('D4', ins=D3-0, outs=('anaerobic_treated', 'D4_CH4', 'D4_N2O'),
                 decay_k_N=get_decay_k(tau_deg, log_deg),
                 max_CH4_emission=max_CH4_emission)
 
+D5 = su.DryingBed('D5', ins=D4-0, outs=('dried_sludge', 'evaporated',
+                                        'A8_CH4', 'A8_N2O'),
+                  design_type='unplanted',
+                  decay_k_COD=get_decay_k(tau_deg, log_deg),
+                  decay_k_N=get_decay_k(tau_deg, log_deg),
+                  max_CH4_emission=max_CH4_emission)
 
-D5 = su.Mixer('D5', ins=(D2-2, D4-1), outs=streamsD['CH4'])
-D5.specification = lambda: add_fugitive_items(D5, 'CH4_item')
-D5.line = 'fugitive CH4 mixer'
+D6 = su.Mixer('D6', ins=(D2-2, D4-1, D5-2), outs=streamsD['CH4'])
+D6.specification = lambda: add_fugitive_items(D5, 'CH4_item')
+D6.line = 'fugitive CH4 mixer' 
+        
+D7 = su.Mixer('D7', ins=(D2-3, D4-2, D5-3), outs=streamsD['N2O'])
+D7.specification = lambda: add_fugitive_items(D6, 'N2O_item')
+D7.line = 'fugitive N2O mixer'
 
-D6 = su.Mixer('D6', ins=(D2-3, D4-2), outs=streamsD['N2O'])
-D6.specification = lambda: add_fugitive_items(D6, 'N2O_item')
-D6.line = 'fugitive N2O mixer'
-
-sysD = System('sysD', path=(D1, D2, D3, D4, D5, D6))
+sysD = System('sysD', path=(D1, D2, D3, D4, D5, D6, D7))
 sysD.simulate()
 
 teaD = SimpleTEA(system=sysD, discount_rate=discount_rate,
@@ -873,10 +879,10 @@ sys_dct = {
     }
 
 unit_dct = {
-    'front_end': dict(sysA=(A2,), sysB=(B2,), sysC=None, sysD=None),
-    'transport': dict(sysA=(A3,), sysB=(B3,B4,), sysC=None, sysD=None),
-    'pretreatment': dict(sysA=(A6,), sysB=(B10,), sysC=None, sysD=None),
-    'liq_treatment': dict(sysA=(A7,), sysB=(B5,B6,B7), sysC=None, sysD=None),
+    'front_end': dict(sysA=(A2,), sysB=(B2,), sysC=None, sysD=(D2,)),
+    'transport': dict(sysA=(A3,), sysB=(B3,B4,), sysC=None, sysD=(D3,)),
+    'pretreatment': dict(sysA=(A6,), sysB=(B10,), sysC=None, sysD=(D4,)),
+    'liq_treatment': dict(sysA=(A7,), sysB=(B5,B6,B7), sysC=None, sysD=(D7,)),
     'controls_housing': dict(sysA=(A4,A5), sysB=(B8,B9), sysC=None, sysD=None),
     'dryer_hhx': dict(sysA=(A11,A12), sysB=(B14,B15), sysC=None, sysD=None),
     'ohx': dict(sysA=(A10,), sysB=(B13,), sysC=None, sysD=None),
@@ -912,9 +918,11 @@ def get_scaled_capital(tea, sys):
     return new_CAPEX_annualized
 
 def get_cost_capex(units,tea,ppl):
+    if units is None: return 0.
     return tea.get_unit_annualized_equipment_cost(units)/365/ppl
 
 def get_ghg_capex(units,lca,ppl):
+    if units is None: return 0.
     ghg = 0
     try: iter(units)
     except: units = (units,)
@@ -923,6 +931,7 @@ def get_ghg_capex(units,lca,ppl):
     return ghg
 
 def get_cost_opex(units,ppl):
+    if units is None: return 0.
     opex = 0
     try: iter(units)
     except: units = (units,)
@@ -939,6 +948,7 @@ def get_cost_opex(units,ppl):
     return opex
 
 def get_cost_electricity(units,ppl):
+    if units is None: return 0.
     electricity = 0
     try: iter(units)
     except: units = (units,)
@@ -947,6 +957,7 @@ def get_cost_electricity(units,ppl):
     return electricity
 
 def get_ghg_electricity(units,ppl):
+    if units is None: return 0.
     electricity = 0
     ratio = 12 * 365 / ppl # assuming only using electricity for 12 hr per day
     try: iter(units)
@@ -957,6 +968,7 @@ def get_ghg_electricity(units,ppl):
     return electricity
 
 def get_ghg_direct(units,lca,ppl):
+    if units is None: return 0.
     direct = 0
     ratio = 24*365/ppl
     try: iter(units)
@@ -968,6 +980,7 @@ def get_ghg_direct(units,lca,ppl):
     return direct
 
 def get_ghg_opex(units,lca,ppl):
+    if units is None: return 0.
     opex = 0
     try: iter(units)
     except: units = (units,)
@@ -976,6 +989,7 @@ def get_ghg_opex(units,lca,ppl):
     return opex
 
 def get_ghg_transport(units,lca,ppl):
+    if units is None: return 0.
     transport = 0
     try: iter(units)
     except: units = (units,)
@@ -984,6 +998,7 @@ def get_ghg_transport(units,lca,ppl):
     return transport
 
 def get_total_inputs(unit):
+    if unit is None: return 0.
     if len(unit.ins) == 0: # Excretion units do not have ins
         ins = unit.outs
     else:

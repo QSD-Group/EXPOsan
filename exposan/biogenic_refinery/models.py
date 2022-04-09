@@ -405,22 +405,23 @@ def add_shared_parameters(sys, model, unit_dct, country_specific=False):
         def set_K_fertilizer_CF(i):
             GWP_dct['K'] = systems.K_item.CFs['GlobalWarming'] = -i
 
-        b = -GWP_dct['conc_NH3']
-        D = shape.Triangle(lower=(1.8*(14/17)), midpoint=b, upper=(8.9*(14/17)))
+        b = -5.4*(14/17)
+        try: D = shape.Triangle(lower=-8.9*(14/17), midpoint=b, upper=-1.8*(14/17))
+        except: breakpoint()
         @param(name='conc_NH3 fertilizer CF', element='LCA', kind='isolated',
                 units='kg CO2-eq/kg conc_NH3', baseline=b, distribution=D)
         def set_conc_NH3_fertilizer_CF(i):
             GWP_dct['conc_NH3'] = systems.conc_NH3_item.CFs['GlobalWarming'] = -i
 
-        b = -GWP_dct['struvite']
-        D = shape.Triangle(lower=(4.3*(31/245)), midpoint=b, upper=(5.4*(31/245)))
+        b = -4.9*(31/245)
+        D = shape.Triangle(lower=-5.4*(31/245), midpoint=b, upper=-4.3*(31/245))
         @param(name='struvite fertilizer CF', element='LCA', kind='isolated',
                 units='kg CO2-eq/kg struvite', baseline=b, distribution=D)
         def set_struvite_fertilizer_CF(i):
             GWP_dct['struvite'] = systems.struvite_item.CFs['GlobalWarming'] = -i
 
-        b = -GWP_dct['biochar']
-        D = shape.Triangle(lower=(0.2*0.9*(44/12)*.8), midpoint=b, upper=(0.2*0.9*(44/12)*1.2))
+        b = -0.2*0.9*(44/12) #assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
+        D = shape.Triangle(lower=-0.2*0.9*(44/12)*1.2, midpoint=b, upper=-0.2*0.9*(44/12)*0.8)
         @param(name='biochar CF', element='LCA', kind='isolated',
                 units='kg CO2-eq/kg biochar', baseline=b, distribution=D)
         def set_biochar_CF(i):
@@ -726,9 +727,9 @@ def add_pit_latrine_parameters(sys, model, unit_dct):
 # =============================================================================
 
 # System A
-def create_modelA(country_specific=False):
+def create_modelA(country_specific=False, **model_kwargs):
     sysA = systems.sysA
-    modelA = Model(sysA, add_metrics(sysA))
+    modelA = Model(sysA, add_metrics(sysA), **model_kwargs)
 
     # Shared parameters
     unit_dctA = {
@@ -754,9 +755,9 @@ def create_modelA(country_specific=False):
 
 
 # System B
-def create_modelB(country_specific=False):
+def create_modelB(country_specific=False, **model_kwargs):
     sysB = systems.sysB
-    modelB = Model(sysB, add_metrics(sysB))
+    modelB = Model(sysB, add_metrics(sysB), **model_kwargs)
     paramB = modelB.parameter
 
     # Shared parameters
@@ -839,9 +840,9 @@ def create_modelB(country_specific=False):
 
 
 # System C
-def create_modelC(country_specific=False):
+def create_modelC(country_specific=False, **model_kwargs):
     sysC = systems.sysC
-    modelC = Model(sysC, add_metrics(sysC))
+    modelC = Model(sysC, add_metrics(sysC), **model_kwargs)
 
     # Shared parameters
     unit_dctC = {
@@ -868,22 +869,50 @@ def create_modelC(country_specific=False):
 
 # System D, the `country_specific` kwarg is just a placeholder to be consistent
 # with other systems, isn't actually being used
-def create_modelD(country_specific=False):
+def create_modelD(country_specific=False, **model_kwargs):
     sysD = systems.sysD
-    modelD = Model(sysD, add_metrics(sysD))
+    modelD = Model(sysD, add_metrics(sysD), **model_kwargs)
     modelD = add_pit_latrine_parameters(sysD, modelD, unit_dct={'Toilet': systems.D2})
+    paramD = modelD.parameter
+    
     anaerobic_lagoon_data = load_data(join_path(su_data_path, '_anaerobic_lagoon.tsv'))
     batch_setting_unit_params(anaerobic_lagoon_data, modelD, systems.D4)
+    
+    drying_bed_data = load_data(join_path(su_data_path, '_drying_bed.tsv'))
+    D5 = systems.D5
+    batch_setting_unit_params(drying_bed_data, modelD, D5, exclude=('sol_frac', 'bed_H'))
+
+    b = D5.sol_frac
+    if D5.design_type == 'unplanted':
+        D = shape.Uniform(lower=0.3, upper=0.4)
+    elif D5.design_type == 'planted':
+        D = shape.Uniform(lower=0.4, upper=0.7)
+    paramD(setter=DictAttrSetter(D5, '_sol_frac', getattr(D5, 'design_type')),
+           name='sol_frac', element=D5, kind='coupled', units='fraction',
+           baseline=b, distribution=D)
+
+    b = D5.bed_H['covered']
+    D = shape.Uniform(lower=0.45, upper=0.75)
+    paramD(setter=DictAttrSetter(D5, 'bed_H', ('covered', 'uncovered')),
+           name='non_storage_bed_H', element=D5, kind='coupled', units='m',
+           baseline=b, distribution=D)
+
+    b = D5.bed_H['storage']
+    D = shape.Uniform(lower=1.2, upper=1.8)
+    paramD(DictAttrSetter(D5, 'bed_H', 'storage'),
+           name='storage_bed_H', element=D5, kind='coupled', units='m',
+           baseline=b, distribution=D)
+    
     return modelD
 
 
 # Wrapper function so that it'd work for all
-def create_model(model_ID='A', country_specific=False):
+def create_model(model_ID='A', country_specific=False, **model_kwargs):
     model_ID = model_ID.lstrip('model').lstrip('sys') # so that it'll work for "modelA"/"sysA"/"A"
-    if model_ID == 'A': model = create_modelA(country_specific)
-    elif model_ID == 'B': model = create_modelB(country_specific)
-    elif model_ID == 'C': model = create_modelC(country_specific)
-    else: model = create_modelD(country_specific)
+    if model_ID == 'A': model = create_modelA(country_specific, **model_kwargs)
+    elif model_ID == 'B': model = create_modelB(country_specific, **model_kwargs)
+    elif model_ID == 'C': model = create_modelC(country_specific, **model_kwargs)
+    else: model = create_modelD(country_specific, **model_kwargs)
     return model
 
 
