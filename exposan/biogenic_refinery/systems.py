@@ -173,32 +173,26 @@ def batch_create_streams(prefix):
 
     item = ImpactItem.get_item('N2O_item').copy(f'{prefix}_N2O_item', set_as_source=True)
     stream_dct['N2O'] = WasteStream(f'{prefix}_N2O', phase='g', stream_impact_item=item)
-    # N2O.stream_impact_item = ImpactItem.get_item('N2O_item').copy(stream=N2O, set_as_source=True)
 
     item = ImpactItem.get_item('N_item').copy(f'{prefix}_liq_N_item', set_as_source=True)
     stream_dct['liq_N'] = WasteStream(f'{prefix}_liq_N', phase='l', price=price_dct['N'],
                                       stream_impact_item=item)
-    # liq_N.stream_impact_item = ImpactItem.get_item('N_item').copy(stream=liq_N, set_as_source=True)
 
     item = ImpactItem.get_item('N_item').copy(f'{prefix}_sol_N_item', set_as_source=True)
     stream_dct['sol_N'] = WasteStream(f'{prefix}_sol_N', phase='l', price=price_dct['N'],
                                               stream_impact_item=item)
-    # sol_N.stream_impact_item = ImpactItem.get_item('N_item').copy(stream=sol_N, set_as_source=True)
 
     item = ImpactItem.get_item('P_item').copy(f'{prefix}_liq_P_item', set_as_source=True)
     stream_dct['liq_P'] = WasteStream(f'{prefix}_liq_P', phase='l', price=price_dct['P'],
                                       stream_impact_item=item)
-    # liq_P.stream_impact_item=ImpactItem.get_item('P_item').copy(stream=liq_P, set_as_source=True)
 
     item = ImpactItem.get_item('P_item').copy(f'{prefix}_sol_P_item', set_as_source=True)
     stream_dct['sol_P'] = WasteStream(f'{prefix}_sol_P', phase='l', price=price_dct['P'],
                                       stream_impact_item=item)
-    # sol_P.stream_impact_item=ImpactItem.get_item('P_item').copy(stream=sol_P, set_as_source=True)
 
     item = ImpactItem.get_item('K_item').copy(f'{prefix}_liq_K_item', set_as_source=True)
     stream_dct['liq_K'] = WasteStream(f'{prefix}_liq_K', phase='l', price=price_dct['K'],
                                       stream_impact_item=item)
-    # liq_K.stream_impact_item = ImpactItem.get_item('K_item').copy(stream=liq_K, set_as_source=True)
 
     item = ImpactItem.get_item('K_item').copy(f'{prefix}_sol_K_item', set_as_source=True)
     stream_dct['sol_K'] = WasteStream(f'{prefix}_sol_K', phase='l', price=price_dct['K'],
