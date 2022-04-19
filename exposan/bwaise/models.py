@@ -70,11 +70,11 @@ def add_LCA_metrics(system, metrics, kind):
         cat = 'LCA results'
         metrics.extend([
             Metric(f'Net emission {ind.ID}', FuncGetter(funcs[0], (ind.ID,)), unit, cat),
-            Metric(f'Construction {ind.ID}', FuncGetter(funcs[1], (ind.ID,)),unit, cat),
-            Metric(f'Transportation {ind.ID}', FuncGetter(funcs[2], (ind.ID,)),unit, cat),
-            Metric(f'Direct emission {ind.ID}', FuncGetter(funcs[3], (ind.ID,)),unit, cat),
-            Metric(f'Offset {ind.ID}', FuncGetter(funcs[4], (ind.ID,)),unit, cat),
-            Metric(f'Other {ind.ID}', FuncGetter(funcs[5], (ind.ID,)),unit, cat),
+            Metric(f'Construction {ind.ID}', FuncGetter(funcs[1], (ind.ID,)), unit, cat),
+            Metric(f'Transportation {ind.ID}', FuncGetter(funcs[2], (ind.ID,)), unit, cat),
+            Metric(f'Direct emission {ind.ID}', FuncGetter(funcs[3], (ind.ID,)), unit, cat),
+            Metric(f'Offset {ind.ID}', FuncGetter(funcs[4], (ind.ID,)), unit, cat),
+            Metric(f'Other {ind.ID}', FuncGetter(funcs[5], (ind.ID,)), unit, cat),
             ])
 
     return metrics
@@ -154,7 +154,7 @@ get_decay_k = systems.get_decay_k
 tau_deg = systems.tau_deg
 log_deg = systems.log_deg
 
-def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
+def add_shared_parameters(model, drying_bed_unit, main_crop_application_unit):
     ########## Related to multiple units ##########
     sys = model.system
     Excretion, Toilet = sys.path[0], sys.path[1]
@@ -302,7 +302,6 @@ def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
 
     ########## Drying bed ##########
     unit = drying_bed_unit
-    D = shape.Uniform(lower=0, upper=0.1)
     batch_setting_unit_params(drying_bed_data, model, unit, exclude=('sol_frac', 'bed_H'))
 
     b = unit.sol_frac
@@ -327,7 +326,7 @@ def add_shared_parameters(model, drying_bed_unit, crop_application_unit):
           baseline=b, distribution=D)
 
     ########## Crop application ##########
-    unit = crop_application_unit
+    unit = main_crop_application_unit
     D = shape.Uniform(lower=0, upper=0.1)
     param(setter=DictAttrSetter(unit, 'loss_ratio', 'NH3'),
           name='NH3 application loss', element=unit, kind='coupled',
@@ -946,6 +945,23 @@ result_dct = {
         'sysC': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
         }
 
+# Data organization
+def organize_uncertainty_results(model, spearman_results,
+                                 percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1)):
+    global result_dct
+    dct = result_dct[model._system.ID]
+    index_p = len(model.parameters)
+    dct['parameters'] = model.table.iloc[:, :index_p].copy()
+    dct['data'] = model.table.iloc[:, index_p:].copy()
+
+    if percentiles is not None:
+        dct['percentiles'] = dct['data'].quantile(q=percentiles)
+
+    if spearman_results is not None:
+        dct['spearman'] = spearman_results
+    return dct
+
+
 @time_printer
 def run_uncertainty(model, seed=None, N=1000, rule='L',
                     percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
@@ -973,23 +989,6 @@ def run_uncertainty(model, seed=None, N=1000, rule='L',
         spearman_results.columns = pd.Index([i.name_with_units for i in spearman_metrics])
 
     dct = organize_uncertainty_results(model, spearman_results, percentiles)
-    return dct
-
-
-# Data organization
-def organize_uncertainty_results(model, spearman_results,
-                                 percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1)):
-    global result_dct
-    dct = result_dct[model._system.ID]
-    index_p = len(model.parameters)
-    dct['parameters'] = model.table.iloc[:, :index_p].copy()
-    dct['data'] = model.table.iloc[:, index_p:].copy()
-
-    if percentiles is not None:
-        dct['percentiles'] = dct['data'].quantile(q=percentiles)
-
-    if spearman_results is not None:
-        dct['spearman'] = spearman_results
     return dct
 
 
