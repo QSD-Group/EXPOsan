@@ -201,7 +201,8 @@ def batch_create_streams(prefix):
 def add_fugitive_items(unit, item_ID):
     unit._run()
     for i in unit.ins:
-        i.stream_impact_item = ImpactItem.get_item(item_ID).copy(set_as_source=True)
+        i.stream_impact_item = ImpactItem.get_item(item_ID)
+        # i.stream_impact_item = ImpactItem.get_item(item_ID).copy(set_as_source=True)
         
 
 # %%
@@ -283,7 +284,7 @@ B2 = su.MURTToilet('B2', ins=(B1-0, B1-1,
                    CAPEX=0, OPEX_over_CAPEX=0.07)
 
 ##################### Treatment ######################
-B3 = su.PrimaryReclaimer('B3', ins=(B1-0, streamsB['MgOH2']),
+B3 = su.PrimaryReclaimer('B3', ins=(B2-0, streamsB['MgOH2']),
                          outs=('B3_treated', 'B3_CH4', 'B3_N2O', 'B3_sludge', streamsB['struvite']),
                          decay_k_COD=get_decay_k(tau_deg, log_deg),
                          decay_k_N=get_decay_k(tau_deg, log_deg),
@@ -404,7 +405,7 @@ C7 = su.ECR_Reclaimer('C7', ins=(C6-0),
                       outs='C7_treated',
                       decay_k_COD=get_decay_k(tau_deg, log_deg),
                       ppl=ppl,
-                      if_gridtied=True
+                      if_gridtied=False
                       )
 
 C8 = su.Mixer('C8', ins=(C3-1, C2-1), outs=streamsC['CH4'])
@@ -418,7 +419,7 @@ C9.line = 'fugitive N2O mixer'
 ################## Non-Treatment ##################
 C10 = su.HousingReclaimer('C10', ins=(C7-0), outs='C10_out', ppl=ppl)
 C11 = su.SystemReclaimer('C11', ins=(C10-0), outs='C11_out', ppl=ppl, if_gridtied=False)
-C12 = su.SolarReclaimer('C12', ins=(C11-0), outs='C12_out')
+C12 = su.SolarReclaimer('C12', ins=(C11-0), outs='C12_out', ppl=ppl)
 
 ############### Simulation, TEA, and LCA ###############
 sysC = System('sysC', path=(C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12))
@@ -575,7 +576,7 @@ def get_cost_electricity(units,ppl):
     try: iter(units)
     except: units = (units,)
     for i in units:
-        electricity+=i.power_utility.cost*24/ppl
+        electricity+=i.power_utility.cost/ppl
     return electricity
 
 def get_ghg_electricity(units,ppl):
@@ -761,3 +762,5 @@ if __name__ == '__main__':
         sys.simulate()
 
 print_summaries(sysB)
+print_summaries(sysC)
+
