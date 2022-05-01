@@ -3,10 +3,12 @@
 
 '''
 EXPOsan: Exposition of sanitation and resource recovery systems
+
 This module is developed by:
     Tori Morgan <tvlmorgan@gmail.com>
     Hannah Lohman <hlohman94@gmail.com>
     Yalin Li <zoe.yalin.li@gmail.com>
+
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txtt
 for license details.
@@ -68,7 +70,7 @@ price_ratio = 1
 
 price_dct = {
     'Electricity': 0.06,
-    'wages': 1.213,
+    'wages': 3.64,
     'Concrete': 194*price_ratio,
     'Steel': 2.665*price_ratio,
     'N': 1.507*get_price_factor(),
@@ -419,7 +421,7 @@ C9.line = 'fugitive N2O mixer'
 ################## Non-Treatment ##################
 C10 = su.HousingReclaimer('C10', ins=(C7-0), outs='C10_out', ppl=ppl)
 C11 = su.SystemReclaimer('C11', ins=(C10-0), outs='C11_out', ppl=ppl, if_gridtied=False)
-C12 = su.SolarReclaimer('C12', ins=(C11-0), outs='C12_out', ppl=ppl)
+C12 = su.SolarReclaimer('C12', ins=(C11-0), outs='C12_out')
 
 ############### Simulation, TEA, and LCA ###############
 sysC = System('sysC', path=(C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12))
@@ -513,6 +515,17 @@ sys_dct = {
     'cache': dict(sysA={}, sysB={}, sysC={}, sysD={}),
     }
 
+unit_dct = {
+    'front_end':  dict(sysA=None, sysB=(B2,), sysC=(C2,), sysD=None),
+    'primary': dict(sysA=(A3,), sysB=(B3,), sysC=(C3,), sysD=(D3,)),
+    'sludge_pasteurization': dict(sysA=(A4,), sysB=(B4,), sysC=(C4,), sysD=None),
+    'ultrafiltration': dict(sysA=None, sysB=(B5,), sysC=(C5,), sysD=(D4,)),
+    'ion_exchange': dict(sysA=None, sysB=(B6,), sysC=(C6,), sysD=(D5,)),
+    'ecr': dict(sysA=None, sysB=(B7,), sysC=(C7,), sysD=None),
+    'housing': dict(sysA=None, sysB=(B10,), sysC=(C10,), sysD=(D8,)),
+    'system': dict(sysA=None, sysB=(B11,), sysC=(C11,), sysD=(D9,)),
+    'solar': dict(sysA=None, sysB=None, sysC=(C12,), sysD=None),
+    }
 
 system_streams = {sysA:streamsA, sysB:streamsB, sysC:streamsC, sysD:streamsD}
 
@@ -675,7 +688,7 @@ def get_fugitive_gases(system_num=None):
     return gases
 
 
-def get_summarizing_fuctions():
+def get_summarizing_functions():
     func_dct = {}
     func_dct['get_annual_cost'] = lambda tea, ppl: (tea.EAC-tea.annualized_CAPEX
                                                     +get_scaled_capital(tea))/ppl
@@ -708,7 +721,7 @@ def get_summarizing_fuctions():
 def print_summaries(systems):
     try: iter(systems)
     except: systems = (systems, )
-    func = get_summarizing_fuctions()
+    func = get_summarizing_functions()
     for sys in systems:
         sys.simulate()
         ppl = sys_dct['ppl'][sys.ID]
