@@ -228,6 +228,7 @@ def run_country(input_dct, systems=(), seed=None, N=1000, save_results=True):
     return results
 
 if __name__ == '__main__':
-    results = run_country(input_dct, seed=5, N=10,
-                          systems=(re.sysA, re.sysB, re.sysC, re.sysD),
+    results = run_country(input_dct, seed=5, N=1000,
+                          # systems=(re.sysA, re.sysB, re.sysC, re.sysD),
+                          systems=(re.sysB, re.sysC),
                           save_results=True)

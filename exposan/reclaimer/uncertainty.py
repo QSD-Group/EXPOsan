@@ -26,4 +26,4 @@ def run(model_IDs, seed=None, N=1000, country_specific=False, **model_kwargs):
 
 
 if __name__ == '__main__':
-    run(('A', 'B', 'C', 'D'), seed=5, N=10)
+    run(('A', 'B', 'C', 'D'), seed=5, N=1000)

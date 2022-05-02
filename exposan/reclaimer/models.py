@@ -140,7 +140,7 @@ def add_shared_parameters(sys, model, unit_dct, country_specific=False):
             labor_cost = 0
             for u in sys.units:
                 if hasattr(u, '_calc_maintenance_labor_cost'):
-                    u.labor_wage = i
+                    u.wages = i
                     labor_cost += u._calc_maintenance_labor_cost()
             sys.TEA.annual_labor = labor_cost * 365 * 24  # converting labor_cost (USD/hr) to annual_labor (USD/yr)
 
@@ -264,7 +264,8 @@ def create_modelA(country_specific=False, **model_kwargs):
 
     # Sludge pasteurization
     sludge_pasteurization_data = load_data(join_path(su_data_path, '_sludge_pasteurization_reclaimer.tsv'))
-    batch_setting_unit_params(sludge_pasteurization_data, modelA, systems.A4)
+    exclude = 'wages' if country_specific else ()
+    batch_setting_unit_params(sludge_pasteurization_data, modelA, systems.A4, exclude)
 
     return modelA
 
@@ -322,7 +323,8 @@ def create_modelB(country_specific=False, **model_kwargs):
 
     # Ion exchange
     ion_exchange_data = load_data(join_path(su_data_path, '_ion_exchange_reclaimer.csv'))
-    batch_setting_unit_params(ion_exchange_data, modelB, systems.B6)
+    exclude = 'wages' if country_specific else ()
+    batch_setting_unit_params(ion_exchange_data, modelB, systems.B6, exclude)
 
     # ECR
     ecr_data = load_data(join_path(su_data_path, '_ECR_reclaimer.csv'))
@@ -392,7 +394,8 @@ def create_modelC(country_specific=False, **model_kwargs):
 
     # Ion exchange
     ion_exchange_data = load_data(join_path(su_data_path, '_ion_exchange_reclaimer.csv'))
-    batch_setting_unit_params(ion_exchange_data, modelC, systems.C6)
+    exclude = 'wages' if country_specific else ()
+    batch_setting_unit_params(ion_exchange_data, modelC, systems.C6, exclude)
 
     # ECR
     ecr_data = load_data(join_path(su_data_path, '_ECR_reclaimer.csv'))
@@ -500,7 +503,8 @@ def run_uncertainty(model, seed=None, N=10000, rule='L',
 
 def save_uncertainty_results(model, dct={}, path=''):
     sys_ID = model.system.ID
-    path = join_path(results_path, f'uncertainty{sys_ID[-1]}.xlsx') if path=='' else path
+    population = systems.ppl
+    path = join_path(results_path, f'uncertainty{sys_ID[-1]}_{population}users.xlsx') if path=='' else path
     dct = dct or result_dct[sys_ID]
     if dct['parameters'] is None:
         raise ValueError('No cached result, run model first.')
