@@ -15,9 +15,7 @@ import numpy as np
 from qsdsan import sanunits as su
 from qsdsan import processes as pc
 from qsdsan import set_thermo, WasteStream, System
-from qsdsan.utils import time_printer, load_data
-try: from qsdsan.utils import get_SRT
-except: pass
+from qsdsan.utils import time_printer, load_data, get_SRT
 
 import os
 bsm1_path = os.path.dirname(__file__)

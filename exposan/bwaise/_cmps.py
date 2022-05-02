@@ -107,7 +107,7 @@ Struvite = Component('Struvite', search_ID='MagnesiumAmmoniumPhosphate',
                      degradability='Undegradable', organic=False)
 # http://www.chemspider.com/Chemical-Structure.8396003.html (accessed 2020-11-19)
 add_V_from_rho(Struvite, 1711)
-    
+
 HAP = Component('HAP', search_ID='Hydroxyapatite',
                 phase='s', particle_size='Particulate',
                 degradability='Undegradable', organic=False)

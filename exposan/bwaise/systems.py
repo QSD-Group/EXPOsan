@@ -202,36 +202,29 @@ def batch_create_streams(prefix):
     stream_dct = {}
     item = ImpactItem.get_item('CH4_item').copy(f'{prefix}_CH4_item', set_as_source=True)
     stream_dct['CH4'] = WasteStream(f'{prefix}_CH4', phase='g', stream_impact_item=item)
-    # CH4.stream_impact_item = ImpactItem.get_item('CH4_item').copy(stream=CH4, set_as_source=True)
 
     item = ImpactItem.get_item('N2O_item').copy(f'{prefix}_N2O_item', set_as_source=True)
     stream_dct['N2O'] = WasteStream(f'{prefix}_N2O', phase='g', stream_impact_item=item)
-    # N2O.stream_impact_item = ImpactItem.get_item('N2O_item').copy(stream=N2O, set_as_source=True)
 
     item = ImpactItem.get_item('N_item').copy(f'{prefix}_liq_N_item', set_as_source=True)
     stream_dct['liq_N'] = WasteStream(f'{prefix}_liq_N', phase='l', price=price_dct['N'],
                                       stream_impact_item=item)
-    # liq_N.stream_impact_item = ImpactItem.get_item('N_item').copy(stream=liq_N, set_as_source=True)
 
     item = ImpactItem.get_item('N_item').copy(f'{prefix}_sol_N_item', set_as_source=True)
     stream_dct['sol_N'] = WasteStream(f'{prefix}_sol_N', phase='l', price=price_dct['N'],
                                               stream_impact_item=item)
-    # sol_N.stream_impact_item = ImpactItem.get_item('N_item').copy(stream=sol_N, set_as_source=True)
 
     item = ImpactItem.get_item('P_item').copy(f'{prefix}_liq_P_item', set_as_source=True)
     stream_dct['liq_P'] = WasteStream(f'{prefix}_liq_P', phase='l', price=price_dct['P'],
                                       stream_impact_item=item)
-    # liq_P.stream_impact_item=ImpactItem.get_item('P_item').copy(stream=liq_P, set_as_source=True)
 
     item = ImpactItem.get_item('P_item').copy(f'{prefix}_sol_P_item', set_as_source=True)
     stream_dct['sol_P'] = WasteStream(f'{prefix}_sol_P', phase='l', price=price_dct['P'],
                                       stream_impact_item=item)
-    # sol_P.stream_impact_item=ImpactItem.get_item('P_item').copy(stream=sol_P, set_as_source=True)
 
     item = ImpactItem.get_item('K_item').copy(f'{prefix}_liq_K_item', set_as_source=True)
     stream_dct['liq_K'] = WasteStream(f'{prefix}_liq_K', phase='l', price=price_dct['K'],
                                       stream_impact_item=item)
-    # liq_K.stream_impact_item = ImpactItem.get_item('K_item').copy(stream=liq_K, set_as_source=True)
 
     item = ImpactItem.get_item('K_item').copy(f'{prefix}_sol_K_item', set_as_source=True)
     stream_dct['sol_K'] = WasteStream(f'{prefix}_sol_K', phase='l', price=price_dct['K'],
@@ -578,9 +571,10 @@ def update_C3_C4_param():
     C4._run()
     truck3, truck4 = C3.single_truck, C4.single_truck
     hr = truck3.interval = truck4.interval = C2.collection_period*24
-    ppl = get_ppl('exist') / C2.N_toilet
-    truck3.load = C3.F_mass_in * hr / C2.N_toilet
-    truck4.load = C4.F_mass_in * hr / C2.N_toilet
+    N_toilet = C2.N_toilet
+    ppl = get_ppl('exist') / N_toilet
+    truck3.load = C3.F_mass_in * hr / N_toilet
+    truck4.load = C4.F_mass_in * hr / N_toilet
     rho3 = C3.F_mass_in/C3.F_vol_in
     rho4 = C4.F_mass_in/C4.F_vol_in
     C3.fee = get_handcart_and_truck_fee(truck3.load/rho3, ppl, True)
@@ -624,30 +618,37 @@ treatC = System('treatC', path=(C5, C6, C7, C8))
 C8._cost = lambda: clear_unit_costs(treatC)
 
 ################## Reuse or Disposal ##################
-C9 = su.CropApplication('C9', ins=C7-0, outs=('liquid_fertilizer', 'reuse_loss'),
+C9 = su.CropApplication('C9', ins=C7-0, outs=('liq_fertilizer', 'liq_loss'),
                         loss_ratio=app_loss)
 C9.specification = lambda: adjust_NH3_loss(C9)
 
-C10 = su.Mixer('C10', ins=(C2-4, C6-1, C7-1, C8-2), outs=streamsC['CH4'])
-C10.specification = lambda: add_fugitive_items(C10, 'CH4_item')
-C10.line = 'fugitive CH4 mixer'
+C10 = su.CropApplication('C10', ins=C8-0, outs=('sol_fertilizer', 'sol_loss'),
+                        loss_ratio=app_loss)
+def adjust_C10_loss_ratio():
+    C10.loss_ratio.update(C9.loss_ratio)
+    adjust_NH3_loss(C10)
+C10.specification = adjust_C10_loss_ratio
 
-C11 = su.Mixer('C11', ins=(C2-5, C6-2, C7-2, C8-3), outs=streamsC['N2O'])
-C11.specification = lambda: add_fugitive_items(C11, 'N2O_item')
-C11.line = 'fugitive N2O mixer'
+C11 = su.Mixer('C11', ins=(C2-4, C6-1, C7-1, C8-2), outs=streamsC['CH4'])
+C11.specification = lambda: add_fugitive_items(C11, 'CH4_item')
+C11.line = 'fugitive CH4 mixer'
 
-C12 = su.ComponentSplitter('C12', ins=C8-0,
+C12 = su.Mixer('C12', ins=(C2-5, C6-2, C7-2, C8-3), outs=streamsC['N2O'])
+C12.specification = lambda: add_fugitive_items(C12, 'N2O_item')
+C12.line = 'fugitive N2O mixer'
+
+C13 = su.ComponentSplitter('C13', ins=C10-0,
                            outs=(streamsC['sol_N'], streamsC['sol_P'], streamsC['sol_K'],
                                  'C_sol_non_fertilizers'),
                            split_keys=(('NH3', 'NonNH3'), 'P', 'K'))
 
-C13 = su.ComponentSplitter('C13', ins=C9-0,
+C14 = su.ComponentSplitter('C14', ins=C9-0,
                            outs=(streamsC['liq_N'], streamsC['liq_P'], streamsC['liq_K'],
                                  'C_liq_non_fertilizers'),
                            split_keys=(('NH3', 'NonNH3'), 'P', 'K'))
 
 ############### Simulation, TEA, and LCA ###############
-sysC = System('sysC', path=(C1, C2, C3, C4, treatC, C9, C10, C11, C12, C13))
+sysC = System('sysC', path=(C1, C2, C3, C4, treatC, C9, C10, C11, C12, C13, C14))
 
 teaC = SimpleTEA(system=sysC, discount_rate=discount_rate, start_year=2018,
                  lifetime=get_C5_lifetime(), uptime_ratio=1, lang_factor=None,
@@ -737,8 +738,8 @@ def get_recovery(ins, outs, multiplier=1):
 sys_dct = {
     'ppl': dict(sysA=get_ppl('exist'), sysB=get_ppl('alt'), sysC=get_ppl('exist')),
     'input_unit': dict(sysA=A1, sysB=B1, sysC=C1),
-    'liq_unit': dict(sysA=A13, sysB=B13, sysC=C13),
-    'sol_unit': dict(sysA=A12, sysB=B12, sysC=C12),
+    'liq_unit': dict(sysA=A13, sysB=B13, sysC=C14),
+    'sol_unit': dict(sysA=A12, sysB=B12, sysC=C13),
     'gas_unit': dict(sysA=None, sysB=B15, sysC=None),
     'stream_dct': dict(sysA=streamsA, sysB=streamsB, sysC=streamsC),
     'TEA': dict(sysA=teaA, sysB=teaB, sysC=teaC),
