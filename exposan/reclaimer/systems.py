@@ -773,7 +773,3 @@ __all__ = ('sysA', 'sysB', 'sysC', 'sysD',
 if __name__ == '__main__':
     for sys in (sysA, sysB, sysC, sysD):
         sys.simulate()
-
-print_summaries(sysB)
-print_summaries(sysC)
-

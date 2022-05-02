@@ -5,7 +5,8 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-   Tori Morgan>
+    Tori Morgan <tvlmorgan@gmail.com>
+    Hannah Lohman <hlohman94@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
@@ -16,7 +17,8 @@ import os
 reclaimer_path = os.path.dirname(__file__)
 data_path = os.path.join(reclaimer_path, 'data')
 results_path = os.path.join(reclaimer_path, 'results')
-figures_path = os.path.join(reclaimer_path, 'figures')
+# To save simulation data and generated figures
+if not os.path.isdir(results_path): os.mkdir(results_path)
 del os
 
 from qsdsan.utils import time_printer
