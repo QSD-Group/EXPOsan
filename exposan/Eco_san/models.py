@@ -31,7 +31,7 @@ from qsdsan.utils import (
     FuncGetter,
     time_printer
     )
-from exposan import Eco_san as es
+from exposan import eco_san as es
 
 getattr = getattr
 eval = eval

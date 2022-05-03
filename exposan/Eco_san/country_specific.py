@@ -7,7 +7,7 @@ from systems import price_dct
 from chaospy import distributions as shape
 import biosteam as bst
 from biosteam.evaluation import Model
-from exposan import Eco_san as es
+from exposan import eco_san as es
 from qsdsan.utils import (
     load_data, data_path,
     AttrSetter, AttrFuncSetter, DictAttrSetter,

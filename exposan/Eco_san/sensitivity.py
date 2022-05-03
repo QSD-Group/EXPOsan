@@ -13,7 +13,7 @@ Created on Sat May  8 12:03:05 2021
 # =============================================================================
 
 from qsdsan import stats as s
-from exposan import Eco_san as es
+from exposan import eco_san as es
 
 m = es.models
 modelC= m.modelC

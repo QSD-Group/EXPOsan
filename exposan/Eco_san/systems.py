@@ -745,7 +745,7 @@ def save_all_reports():
     # if not os.path.isdir(path):
     #     os.path.mkdir(path)
     # del os
-    path = '/Users/torimorgan/opt/anaconda3/lib/python3.8/site-packages/exposan/Eco_san'
+    path = '/Users/torimorgan/opt/anaconda3/lib/python3.8/site-packages/exposan/eco_san'
     for i in (sysC, lcaC):
         if isinstance(i, bst.System):
             i.simulate()

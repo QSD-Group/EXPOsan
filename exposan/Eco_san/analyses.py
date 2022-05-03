@@ -23,7 +23,7 @@ for license details.
 import pandas as pd
 from qsdsan import stats as s
 from qsdsan.utils import time_printer
-from exposan import Eco_san as es
+from exposan import eco_san as es
 
 __all__ = ('run_plot_spearman', 'run_plot_morris', 'run_plot_fast', 'run_plot_sobol')
 

@@ -10,7 +10,7 @@ This module is developed by:
     Yalin Li <zoe.yalin.li@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
-Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txtt
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
@@ -348,7 +348,7 @@ get_powerB = lambda: sum([u.power_utility.rate for u in sysB.units]) * (24 * 365
 lcaB = LCA(system=sysB, lifetime=20, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerB)
 
 # =============================================================================
-# System C Duke Reclaimer 2.0 coupled with photovolatic system
+# System C Duke Reclaimer 2.0 coupled with photovoltaic system
 # =============================================================================
 
 # Set flowsheet to avoid stream replacement warnings
