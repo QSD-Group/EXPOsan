@@ -71,7 +71,7 @@ def create_asm_validation_system(process_model='ASM1', aerated=False):
             mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
             eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
             K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05, fr_SS_COD=0.75,
-            path=os.path.join(asm_path, 'data/_asm1.tsv'), #!!! check the stoichimetories used by GPS-X9o
+            path=os.path.join(asm_path, 'data/_asm1.tsv'), #!!! check the stoichimetories used by GPS-X
             )
         # Initial conditions in the CSTR
         init_conds = {
@@ -148,8 +148,8 @@ def create_asm_validation_system(process_model='ASM1', aerated=False):
     # Aeration
     if aerated:
         V = V_aer
-        # aer = pc.DiffusedAeration('aer', DO_ID, KLa=240, DOsat=8.0, V=V)
-        aer = 2
+        aer = pc.DiffusedAeration('aer', DO_ID, KLa=240, DOsat=8.0, V=V)
+        # aer = 2
     else:
         V = V_an
         aer = None
