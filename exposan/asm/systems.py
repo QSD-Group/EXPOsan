@@ -144,6 +144,7 @@ def create_asm_validation_system(process_model='ASM1', aerated=False):
         DO_ID = 'S_O2'
     else:
         raise ValueError(f'`process_model` can only be "ASM1" or "ASM2d", not {process_model}.')
+    asm.stoichiometry.to_csv(f'results/{process_model}_{suffix}_stoichiometry.csv')
 
     # Aeration
     if aerated:
@@ -168,16 +169,18 @@ def create_asm_validation_system(process_model='ASM1', aerated=False):
 # %%
 
 @time_printer
-def run(process_model, aerated, t, t_step, method, **kwargs):
+def run(process_model, aerated, t, t_step, method, simulate=True, **kwargs):
+    global sys
     sys = create_asm_validation_system(process_model, aerated=aerated)
     suffix = 'aer' if aerated else 'an'
     file_name = f'{process_model}_{suffix}'
-    sys.simulate(state_reset_hook='reset_cache',
-                 t_span=(0, t),
-                 t_eval=np.arange(0, t+t_step, t_step),
-                 method=method,
-                 export_state_to=f'results/{file_name}.xlsx',
-                 **kwargs)
+    if simulate:
+        sys.simulate(state_reset_hook='reset_cache',
+                     t_span=(0, t),
+                     t_eval=np.arange(0, t+t_step, t_step),
+                      method=method,
+                     export_state_to=f'results/{file_name}.xlsx',
+                     **kwargs)
 
 if __name__ == '__main__':
     t = 10
@@ -188,4 +191,5 @@ if __name__ == '__main__':
             msg = f'{process_model}-{suffix}'
             print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
             print(f'Time span 0-{t}d \n')
-            run(process_model, aerated, t, t_step, method='BDF')
+            # run(process_model, aerated, t, t_step, method='BDF', simulate=True)
+            run(process_model, aerated, t, t_step, method='BDF', simulate=False)
