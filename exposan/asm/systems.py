@@ -148,8 +148,8 @@ def create_asm_validation_system(process_model='ASM1', aerated=False):
     # Aeration
     if aerated:
         V = V_aer
-        aer = pc.DiffusedAeration('aer', DO_ID, KLa=240, DOsat=8.0, V=V)
-        # aer = 2
+        # aer = pc.DiffusedAeration('aer', DO_ID, KLa=240, DOsat=8.0, V=V)
+        aer = 2
     else:
         V = V_an
         aer = None
@@ -158,7 +158,7 @@ def create_asm_validation_system(process_model='ASM1', aerated=False):
     inf = WasteStream('influent', T=Temp)
     inf.set_flow_by_concentration(Q, **inf_kwargs)
     eff = WasteStream('effluent', T=Temp)
-    CSTR = su.CSTR('CSTR', ins=inf, outs=eff, V_max=V, aeration=aer, suspended_growth_model=asm)
+    CSTR = su.CSTR('CSTR', ins=inf, outs=eff, V_max=V, DO_ID=DO_ID, aeration=aer, suspended_growth_model=asm)
     CSTR.set_init_conc(**init_conds)
     sys = System('sys', path=(CSTR,))
     sys.set_dynamic_tracker(CSTR, inf, eff)
