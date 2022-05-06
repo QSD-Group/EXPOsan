@@ -8,4 +8,4 @@ NOT YET COMPLETED
 
 Summary
 -------
-This module is used to validate the activated sludge models as in `Henze et al`_<https://iwaponline.com/ebooks/book/96/Activated-Sludge-Models-ASM1-ASM2-ASM2d-and-ASM3>.
+This module is used to validate the activated sludge models as in `Henze et al <https://iwaponline.com/ebooks/book/96/Activated-Sludge-Models-ASM1-ASM2-ASM2d-and-ASM3>`_.
