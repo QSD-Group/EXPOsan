@@ -29,8 +29,8 @@ Temp = 273.15+20    # temperature [K]
 Q = 18446           # influent flowrate [m3/d]
 
 # Tanks
-V_an = 1000    # anoxic zone tank volume
-V_aer = 1333    # aerated zone tank volume
+V_an = 1000    # anoxic zone tank volume [m3]
+V_aer = 1333    # aerated zone tank volume [m3]
 
 
 # %%
