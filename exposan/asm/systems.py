@@ -70,12 +70,12 @@ def create_asm_validation_system(process_model='ASM1', aerated=False):
             Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
             mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
             eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
-            K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05, fr_SS_COD=0.75,
+            K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05, fr_SS_COD=0.75, #!!! fr_SS_COD=1/1.48
             path=os.path.join(asm_path, 'data/_asm1.tsv'), #!!! check the stoichimetories used by GPS-X
             )
         # Initial conditions in the CSTR
         init_conds = {
-                'S_S': 5,
+                'S_S': 5,  #!!! need to add 'S_I':30 to be completely consistent with GPS-X
                 'X_I': 1000,
                 'X_S': 100,
                 'X_BH': 500,
@@ -96,7 +96,7 @@ def create_asm_validation_system(process_model='ASM1', aerated=False):
         inf_kwargs = {
             'concentrations': { # Henze et al., Activated Sludge Models ASM1, ASM2, ASM2d and ASM3, P91
                 'S_F': 30,
-                'S_A': 20,
+                'S_A': 20, #!!! 'S_A':0 in GPS-X
                 'S_NH4': 16,
                 'S_PO4': 3.6,
                 'S_I': 30,
@@ -111,11 +111,11 @@ def create_asm_validation_system(process_model='ASM1', aerated=False):
                 iN_SI=0.01, iN_SF=0.03, iN_XI=0.02, iN_XS=0.04, iN_BM=0.07,
                 iP_SI=0.0, iP_SF=0.01, iP_XI=0.01, iP_XS=0.01, iP_BM=0.02,
                 iTSS_XI=0.75, iTSS_XS=0.75, iTSS_BM=0.9,
-                f_SI=0.0, Y_H=0.625, f_XI_H=0.1,
+                f_SI=0.0, Y_H=0.625, f_XI_H=0.1,  #!!! Y_H=0.67 in GPS-X
                 Y_PAO=0.625, Y_PO4=0.4, Y_PHA=0.2, f_XI_PAO=0.1,
                 Y_A=0.24, f_XI_AUT=0.1,
                 K_h=3.0, eta_NO3=0.6, eta_fe=0.4, K_O2=0.2, K_NO3=0.5, K_X=0.1,
-                mu_H=6.0, q_fe=3.0, eta_NO3_H=0.8, b_H=0.4, K_O2_H=0.2, K_F=4.0,
+                mu_H=6.0, q_fe=3.0, eta_NO3_H=0.8, b_H=0.4, K_O2_H=0.2, K_F=4.0, #!!! mu_H=4.0, b_H=0.3 in GPS-X
                 K_fe=4.0, K_A_H=4.0, K_NO3_H=0.5, K_NH4_H=0.05, K_P_H=0.01, K_ALK_H=0.1,
                 q_PHA=3.0, q_PP=1.5, mu_PAO=1.0, eta_NO3_PAO=0.6, b_PAO=0.2, b_PP=0.2,
                 b_PHA=0.2, K_O2_PAO=0.2, K_NO3_PAO=0.5, K_A_PAO=4.0, K_NH4_PAO=0.05,
@@ -125,21 +125,21 @@ def create_asm_validation_system(process_model='ASM1', aerated=False):
                 k_PRE=1.0, k_RED=0.6, K_ALK_PRE=0.5,
                 )
         init_conds = {
-                'S_F': 2,
+                'S_F': 2, #!!! 'S_F':5, 'S_O2':2 in GPS-X
                 'S_A': 5,
                 'S_I': 30,
-                'S_NH4': 22,
+                'S_NH4': 22, #!!! 'S_NH4':2, 'S_N2':0, 'S_NO3':20 in GPS-X
                 'S_N2': 21,
                 'S_NO3': 0.001,
-                'S_PO4': 11,
-                'X_I': 1800,
+                'S_PO4': 11, #!!! 'S_PO4':5
+                'X_I': 1800, #!!! 'X_I':1000, 'X_S':100, 'X_H':500
                 'X_S': 150,
                 'X_H': 1900,
-                'X_PAO': 250,
+                'X_PAO': 250, #!!! 'X_PAO':200, 'X_PP':100, 'X_PHA':100
                 'X_PP': 70,
                 'X_PHA': 7,
-                'X_AUT': 125,
-                'S_ALK': 6*12,
+                'X_AUT': 125, #!!! 'X_AUT':100
+                'S_ALK': 6*12, #!!! 'S_ALK':7*12
             }
         DO_ID = 'S_O2'
     else:
