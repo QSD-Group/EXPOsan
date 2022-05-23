@@ -16,10 +16,8 @@ import os
 asm_path = os.path.dirname(__file__)
 data_path = os.path.join(asm_path, 'data')
 results_path = os.path.join(asm_path, 'results')
-figures_path = os.path.join(asm_path, 'figures')
-# To save simulation data and generated figures
+# To save simulation data
 if not os.path.isdir(results_path): os.mkdir(results_path)
-if not os.path.isdir(figures_path): os.mkdir(figures_path)
 del os
 
 from . import systems
