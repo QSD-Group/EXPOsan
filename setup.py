@@ -31,6 +31,8 @@ setup(
     install_requires=['qsdsan>=1.1.4',],
     package_data=
         {'exposan': [
+                    'asm/*',
+                    'asm/data/*',
                     'bsm1/*',
                     'bsm1/data/*',
                     'bwaise/*',
