@@ -161,22 +161,14 @@ __all__ = (
 #%%
 @time_printer
 def run(t, t_step, method=None, **kwargs):
-    if method:
-        bsm1.simulate(state_reset_hook='reset_cache',
-                      t_span=(0,t),
-                      t_eval=np.arange(0, t+t_step, t_step),
-                      method=method,
-                      # rtol=1e-2,
-                      # atol=1e-3,
-                      # export_state_to=f'results/sol_{t}d_{method}.xlsx',
-                      **kwargs)
-    else:
-        bsm1.simulate(state_reset_hook='reset_cache',
-                      solver='odeint',
-                      t=np.arange(0, t+t_step/30, t_step/30),
-                      # export_state_to=f'results/sol_{t}d_odeint.xlsx',
-                      print_msg=True,
-                      **kwargs)
+    bsm1.simulate(state_reset_hook='reset_cache',
+                  t_span=(0,t),
+                  t_eval=np.arange(0, t+t_step, t_step),
+                  method=method,
+                  # rtol=1e-2,
+                  # atol=1e-3,
+                  # export_state_to=f'results/sol_{t}d_{method}.xlsx',
+                  **kwargs)
     srt = get_SRT(bsm1, bio_IDs)
     print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
 
@@ -189,7 +181,6 @@ if __name__ == '__main__':
     # method = 'Radau'
     method = 'BDF'
     # method = 'LSODA'
-    # method = None
     msg = f'Method {method}'
     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
     print(f'Time span 0-{t}d \n')

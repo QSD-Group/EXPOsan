@@ -200,5 +200,5 @@ References
 .. [2] Gernaey et al., Benchmarking of control strategies for wastewater treatment plants. IWA publishing, 2014. `<https://github.com/wwtmodels/Benchmark-Simulation-Models>`_
 .. [3] Henze et al., Activated sludge models ASM1, ASM2, ASM2d and ASM3. IWA publishing, 2000.
 .. [4] Takács et al., A Dynamic Model of the Clarification-Thickening Process. Water Res. 1991, 25 (10), 1263–1271. `<https://doi.org/10.1016/0043-1354(91)90066-Y.>`_
-.. [5] Li and  Zhang et al., QSDsan: An Integrated Platform for Quantitative Sustainable Design of Sanitation and Resource Recovery Systems. *In Prep.*
+.. [5] Li and  Zhang et al., QSDsan: An Integrated Platform for Quantitative Sustainable Design of Sanitation and Resource Recovery Systems. arXiv:2203.06243 [cs] 2022.
 .. [6] Rieger et al., Guidelines for Using Activated Sludge Models. IWA Publishing: London, New York, 2012; Vol. 11. `<https://doi.org/10.2166/9781780401164.>`_
