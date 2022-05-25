@@ -5,7 +5,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    Yalin Li <zoe.yalin.li@gmail.com>
+    Yalin Li <mailto.yalin.li@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
@@ -162,11 +162,25 @@ def batch_create_stream_items(kind):
             else:
                 StreamImpactItem(ID=f'{k}_item', GWP=v)
     elif kind == 'new':
-        E_factor = {'GW2ECO': 0.000000000532, # global warming to ecosystem
-                    'GW2HH': 0.0000000812, # global warming to human health
-                    'OD2HH': 0.00134} # stratospheric ozone depletion to human health
-        H_factor = {'GW2ECO': 0.0000000028, 'GW2HH': 0.000000928, 'OD2HH': 0.000531}
-        I_factor = {'GW2ECO': 0.000000025, 'GW2HH': 0.0000125, 'OD2HH': 0.000237}
+        EcosystemQuality_factor = 29320 # pt/species/yr
+        HumanHealth_factor = 436000 # pt/DALY
+
+        E_factor = {
+            # Global warming to (terrestrial+freshwater) ecosystem
+            'GW2ECO': (2.5e-08+6.82e-13)*EcosystemQuality_factor,
+            'GW2HH': 1.25e-05*HumanHealth_factor, # global warming to human health
+            'OD2HH': 0.00134*HumanHealth_factor, # stratospheric ozone depletion to human health
+                    }
+        H_factor = {
+            'GW2ECO': (2.8e-09+7.65e-14)*EcosystemQuality_factor,
+            'GW2HH': 9.28e-07*HumanHealth_factor,
+            'OD2HH': 0.000531*HumanHealth_factor,
+            }
+        I_factor = {
+            'GW2ECO': (5.32e-10+1.45e-14)*EcosystemQuality_factor,
+            'GW2HH': 8.12e-08*HumanHealth_factor,
+            'OD2HH': 0.000237*HumanHealth_factor,
+            }
 
         StreamImpactItem(ID='CH4_item',
                          E_EcosystemQuality_Total=E_factor['GW2ECO']*4.8,
