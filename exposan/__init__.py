@@ -21,4 +21,5 @@ except pkg_resources.DistributionNotFound:
 import os
 es_path = os.path.dirname(__file__)
 del os, pkg_resources
-    
+
+from . import utils

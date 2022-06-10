@@ -19,8 +19,6 @@ for license details.
 import warnings
 warnings.filterwarnings('ignore', message='Solid content')
 
-import numpy as np
-from sklearn.linear_model import LinearRegression as LR
 from qsdsan import (
     Flowsheet, main_flowsheet,
     WasteStream,
@@ -28,109 +26,60 @@ from qsdsan import (
     ImpactItem,
     System, SimpleTEA, LCA,
     )
-from exposan.bwaise._process_settings import price_dct
+from exposan.utils import add_fugitive_items, clear_unit_costs
+# from exposan import bwaise as bw
+from exposan.bwaise import (
+    exchange_rate, discount_rate, price_dct, get_alt_salary,
+    get_toilet_user, get_ppl, sewer_flow, get_sludge_flow,
+    get_decay_k, max_CH4_emission,
+    get_tanker_truck_fee,
+    app_loss,
+    )
 
-# =============================================================================
-# Unit parameters
-# =============================================================================
-
-household_size = 4
-household_per_toilet = 4
-get_toilet_user = lambda: household_size * household_per_toilet
-
-# Number of people served by the existing plant (sysA and sysC)
-ppl_exist_sewer = 4e4
-ppl_exist_sludge = 416667
-# Number of people served by the alternative plant (sysB)
-ppl_alt = 5e4
-def get_ppl(kind):
-    if kind.lower() in ('exist', 'existing', 'sysa', 'sysc', 'a', 'c'):
-        return ppl_exist_sewer+ppl_exist_sludge
-    elif kind.lower() in ('alt', 'alternative', 'sysb', 'b'):
-        return ppl_alt
-    else:
-        raise ValueError('`kind` should be "exist" (for sysA and sysC)'
-                         f'or "alt" for sysB, not {kind}.')
-
-exchange_rate = 3700 # UGX per USD
-discount_rate = 0.05
-
-# Time take for full degradation, [yr]
-tau_deg = 2
-# Log reduction at full degradation
-log_deg = 3
-# Get reduction rate constant k for COD and N, use a function so that k can be
-# changed during uncertainty analysis
-def get_decay_k(tau_deg=2, log_deg=3):
-    k = (-1/tau_deg)*np.log(10**-log_deg)
-    return k
-
-max_CH4_emission = 0.25
-
-# Model for tanker truck cost based on capacity (m3)
-# price = a*capacity**b -> ln(price) = ln(a) + bln(capacity)
-UGX_price_dct = np.array((8e4, 12e4, 20e4, 25e4))
-capacities = np.array((3, 4.5, 8, 15))
-emptying_fee = 0.15 # additional emptying fee, fraction of base cost
-def get_tanker_truck_fee(capacity):
-    price_dct = UGX_price_dct*(1+emptying_fee)/exchange_rate
-    ln_p = np.log(price_dct)
-    ln_cap = np.log(capacities)
-    model = LR().fit(ln_cap.reshape(-1,1), ln_p.reshape(-1,1))
-    predicted = model.predict(np.array((np.log(capacity))).reshape(1, -1)).item()
-    cost = np.exp(predicted)
-    return cost
-
-# Flow rates for treatment plants
-sewer_flow = 2750 # m3/d
-sludge_flow_exist = 500 # m3/d
-sludge_flow_alt = 60 # m3/d
-get_sludge_flow = lambda kind: \
-    sludge_flow_exist if kind.lower() in ('exist', 'sysa', 'sysc', 'a', 'c') else sludge_flow_alt
-
-# Nutrient loss during application
-app_loss = dict.fromkeys(('NH3', 'NonNH3', 'P', 'K', 'Mg', 'Ca'), 0.02)
-app_loss['NH3'] = 0.05
+__all__ = ('create_system',)
 
 
-
+# %%
 
 # =============================================================================
 # Universal units and functions
 # =============================================================================
 
 def batch_create_streams(prefix):
-    stream_dct = {}
     item = ImpactItem.get_item('CH4_item').copy(f'{prefix}_CH4_item', set_as_source=True)
-    stream_dct['CH4'] = WasteStream(f'{prefix}_CH4', phase='g', stream_impact_item=item)
+    WasteStream('CH4', phase='g', stream_impact_item=item)
 
     item = ImpactItem.get_item('N2O_item').copy(f'{prefix}_N2O_item', set_as_source=True)
-    stream_dct['N2O'] = WasteStream(f'{prefix}_N2O', phase='g', stream_impact_item=item)
+    WasteStream('N2O', phase='g', stream_impact_item=item)
 
-    item = ImpactItem.get_item('N_item').copy(f'{prefix}_liq_N_item', set_as_source=True)
-    stream_dct['liq_N'] = WasteStream(f'{prefix}_liq_N', phase='l', price=price_dct['N'],
-                                      stream_impact_item=item)
+    for nutrient in ('N', 'P', 'K'):
+        for phase in ('liq', 'sol'):
+            original = ImpactItem.get_item(f'{nutrient}_item')
+            new = original.copy(f'{phase}_{nutrient}_item', set_as_source=True)
+            WasteStream(f'{phase}_{nutrient}', phase='l',
+                        price=price_dct[nutrient], stream_impact_item=new)
 
-    item = ImpactItem.get_item('N_item').copy(f'{prefix}_sol_N_item', set_as_source=True)
-    stream_dct['sol_N'] = WasteStream(f'{prefix}_sol_N', phase='l', price=price_dct['N'],
-                                              stream_impact_item=item)
+    # item = ImpactItem.get_item('N_item').copy(f'{prefix}_liq_N_item', set_as_source=True)
+    # WasteStream(f'{prefix}_liq_N', phase='l', price=price_dct['N'], stream_impact_item=item)
 
-    item = ImpactItem.get_item('P_item').copy(f'{prefix}_liq_P_item', set_as_source=True)
-    stream_dct['liq_P'] = WasteStream(f'{prefix}_liq_P', phase='l', price=price_dct['P'],
-                                      stream_impact_item=item)
+    # item = ImpactItem.get_item('N_item').copy(f'{prefix}_sol_N_item', set_as_source=True)
+    # WasteStream(f'{prefix}_sol_N', phase='l', price=price_dct['N'], stream_impact_item=item)
 
-    item = ImpactItem.get_item('P_item').copy(f'{prefix}_sol_P_item', set_as_source=True)
-    stream_dct['sol_P'] = WasteStream(f'{prefix}_sol_P', phase='l', price=price_dct['P'],
-                                      stream_impact_item=item)
+    # item = ImpactItem.get_item('P_item').copy(f'{prefix}_liq_P_item', set_as_source=True)
+    # WasteStream(f'{prefix}_liq_P', phase='l', price=price_dct['P'], stream_impact_item=item)
 
-    item = ImpactItem.get_item('K_item').copy(f'{prefix}_liq_K_item', set_as_source=True)
-    stream_dct['liq_K'] = WasteStream(f'{prefix}_liq_K', phase='l', price=price_dct['K'],
-                                      stream_impact_item=item)
+    # item = ImpactItem.get_item('P_item').copy(f'{prefix}_sol_P_item', set_as_source=True)
+    # stream_dct['sol_P'] = WasteStream(f'{prefix}_sol_P', phase='l', price=price_dct['P'],
+    #                                   stream_impact_item=item)
 
-    item = ImpactItem.get_item('K_item').copy(f'{prefix}_sol_K_item', set_as_source=True)
-    stream_dct['sol_K'] = WasteStream(f'{prefix}_sol_K', phase='l', price=price_dct['K'],
-                                      stream_impact_item=item)
-    return stream_dct
+    # item = ImpactItem.get_item('K_item').copy(f'{prefix}_liq_K_item', set_as_source=True)
+    # stream_dct['liq_K'] = WasteStream(f'{prefix}_liq_K', phase='l', price=price_dct['K'],
+    #                                   stream_impact_item=item)
+
+    # item = ImpactItem.get_item('K_item').copy(f'{prefix}_sol_K_item', set_as_source=True)
+    # stream_dct['sol_K'] = WasteStream(f'{prefix}_sol_K', phase='l', price=price_dct['K'],
+    #                                   stream_impact_item=item)
+
 
 def update_toilet_param(unit, kind):
     # Use the private attribute so that the number of users/toilets will be exactly as assigned
@@ -142,19 +91,6 @@ def update_toilet_param(unit, kind):
 def update_lagoon_flow_rate(unit):
     unit.flow_rate = sewer_flow + get_sludge_flow('exist')
     unit._run()
-
-def add_fugitive_items(unit, item_ID):
-    unit._run()
-    for i in unit.ins:
-        i.stream_impact_item = ImpactItem.get_item(item_ID).copy(set_as_source=True)
-
-# Costs of WWTP units have been considered in the lumped unit
-def clear_unit_costs(sys):
-    for i in sys.units:
-        if isinstance(i, su.LumpedCost):
-            continue
-        i.purchase_costs.clear()
-        i.installed_costs.clear()
 
 
 def adjust_NH3_loss(unit):
@@ -170,8 +106,10 @@ def adjust_NH3_loss(unit):
 # Scenario A (sysA): pit latrine with existing treatment system
 # =============================================================================
 
-def create_systemA(streamsA=None):
-    streamsA = streamsA or batch_create_streams('A')
+def create_systemA(flowsheet=None):
+    flowsheet = flowsheet or main_flowsheet
+    streamA = flowsheet.stream
+    batch_create_streams('A')
 
     ##### Human Inputs #####
     A1 = su.Excretion('A1', outs=('urine', 'feces'))
@@ -183,8 +121,8 @@ def create_systemA(streamsA=None):
                        outs=('mixed_waste', 'leachate', 'A2_CH4', 'A2_N2O'),
                        N_user=get_toilet_user(), N_toilet=get_ppl('exist')/get_toilet_user(),
                        OPEX_over_CAPEX=0.05,
-                       decay_k_COD=get_decay_k(tau_deg, log_deg),
-                       decay_k_N=get_decay_k(tau_deg, log_deg),
+                       decay_k_COD=get_decay_k(),
+                       decay_k_N=get_decay_k(),
                        max_CH4_emission=max_CH4_emission
                        )
     A2.specification = lambda: update_toilet_param(A2, 'exist')
@@ -221,21 +159,21 @@ def create_systemA(streamsA=None):
 
     A5 = su.Sedimentation('A5', ins=A4-0,
                           outs=('liq', 'sol', 'A5_CH4', 'A5_N2O'),
-                          decay_k_COD=get_decay_k(tau_deg, log_deg),
-                          decay_k_N=get_decay_k(tau_deg, log_deg),
+                          decay_k_COD=get_decay_k(),
+                          decay_k_N=get_decay_k(),
                           max_CH4_emission=max_CH4_emission)
 
     A6 = su.Lagoon('A6', ins=A5-0, outs=('anaerobic_treated', 'A6_CH4', 'A6_N2O'),
                    design_type='anaerobic',
                    flow_rate=sewer_flow+get_sludge_flow('exist'),
-                   decay_k_N=get_decay_k(tau_deg, log_deg),
+                   decay_k_N=get_decay_k(),
                    max_CH4_emission=max_CH4_emission)
     A6.specification = lambda: update_lagoon_flow_rate(A6)
 
     A7 = su.Lagoon('A7', ins=A6-0, outs=('facultative_treated', 'A7_CH4', 'A7_N2O'),
                    design_type='facultative',
                    flow_rate=sewer_flow+get_sludge_flow('exist'),
-                   decay_k_N=get_decay_k(tau_deg, log_deg),
+                   decay_k_N=get_decay_k(),
                    max_CH4_emission=max_CH4_emission,
                    if_N2O_emission=True)
     A7.specification = lambda: update_lagoon_flow_rate(A7)
@@ -243,8 +181,8 @@ def create_systemA(streamsA=None):
     A8 = su.DryingBed('A8', ins=A5-1, outs=('dried_sludge', 'evaporated',
                                             'A8_CH4', 'A8_N2O'),
                       design_type='unplanted',
-                      decay_k_COD=get_decay_k(tau_deg, log_deg),
-                      decay_k_N=get_decay_k(tau_deg, log_deg),
+                      decay_k_COD=get_decay_k(),
+                      decay_k_N=get_decay_k(),
                       max_CH4_emission=max_CH4_emission)
     treatA = System('treatA', path=(A4, A5, A6, A7, A8))
     A8._cost = lambda: clear_unit_costs(treatA)
@@ -254,32 +192,32 @@ def create_systemA(streamsA=None):
                             loss_ratio=app_loss)
     A9.specification = lambda: adjust_NH3_loss(A9)
 
-    A10 = su.Mixer('A10', ins=(A2-2, A5-2, A6-1, A7-1, A8-2), outs=streamsA['CH4'])
+    A10 = su.Mixer('A10', ins=(A2-2, A5-2, A6-1, A7-1, A8-2), outs=streamA.CH4)
     A10.specification = lambda: add_fugitive_items(A10, 'CH4_item')
     A10.line = 'fugitive CH4 mixer'
 
-    A11 = su.Mixer('A11', ins=(A2-3, A5-3, A6-2, A7-2, A8-3), outs=streamsA['N2O'])
+    A11 = su.Mixer('A11', ins=(A2-3, A5-3, A6-2, A7-2, A8-3), outs=streamA.N2O)
     A11.specification = lambda: add_fugitive_items(A11, 'N2O_item')
     A11.line = 'fugitive N2O mixer'
 
     A12 = su.ComponentSplitter('A12', ins=A8-0,
-                               outs=(streamsA['sol_N'], streamsA['sol_P'], streamsA['sol_K'],
-                                     'A_sol_non_fertilizers'),
+                               outs=(streamA.sol_N, streamA.sol_P, streamA.sol_K,
+                                     'sol_non_fertilizers'),
                                split_keys=(('NH3', 'NonNH3'), 'P', 'K'))
 
     A13 = su.ComponentSplitter('A13', ins=A9-0,
-                               outs=(streamsA['liq_N'], streamsA['liq_P'], streamsA['liq_K'],
-                                     'A_liq_non_fertilizers'),
+                               outs=(streamA.liq_N, streamA.liq_P, streamA.liq_K,
+                                     'liq_non_fertilizers'),
                                split_keys=(('NH3', 'NonNH3'), 'P', 'K'))
 
     ##### Simulation, TEA, and LCA #####
     sysA = System('sysA', path=(A1, A2, A3, treatA, A9, A10, A11, A12, A13))
 
     exist_staff_num = 12
-    get_annual_labor = lambda: exist_staff_num*3e6*12/exchange_rate
+    annual_labor = exist_staff_num*3e6*12/exchange_rate
     SimpleTEA(system=sysA, discount_rate=discount_rate, start_year=2018,
               lifetime=get_A4_lifetime(), uptime_ratio=1, lang_factor=None,
-              annual_maintenance=0, annual_labor=get_annual_labor())
+              annual_maintenance=0, annual_labor=annual_labor)
 
     LCA(system=sysA, lifetime=get_A4_lifetime(), lifetime_unit='yr', uptime_ratio=1,
         annualize_construction=True,
@@ -295,11 +233,13 @@ def create_systemA(streamsA=None):
 # Scenario B (sysB): pit latrine with anaerobic treatment
 # =============================================================================
 
-def create_systemB(streamsB=None):
-    streamsB = streamsB or batch_create_streams('B')
-    B_biogas_item = ImpactItem.get_item('Biogas_item').copy('B_biogas_item', set_as_source=True)
-    streamsB['biogas'] = WasteStream('B_biogas', phase='g', price=price_dct['Biogas'],
-                                     stream_impact_item=B_biogas_item)
+def create_systemB(flowsheet=None):
+    flowsheet = flowsheet or main_flowsheet
+    streamB = flowsheet.stream
+    batch_create_streams('B')
+
+    biogas_item = ImpactItem.get_item('Biogas_item').copy('biogas_item', set_as_source=True)
+    WasteStream('biogas', phase='g', price=price_dct['Biogas'], stream_impact_item=biogas_item)
 
     ##### Human Inputs #####
     B1 = su.Excretion('B1', outs=('urine', 'feces'))
@@ -311,8 +251,8 @@ def create_systemB(streamsB=None):
                        outs=('mixed_waste', 'leachate', 'B2_CH4', 'B2_N2O'),
                        N_user=get_toilet_user(), N_toilet=get_ppl('alt')/get_toilet_user(),
                        OPEX_over_CAPEX=0.05,
-                       decay_k_COD=get_decay_k(tau_deg, log_deg),
-                       decay_k_N=get_decay_k(tau_deg, log_deg),
+                       decay_k_COD=get_decay_k(),
+                       decay_k_N=get_decay_k(),
                        max_CH4_emission=max_CH4_emission)
     B2.specification = lambda: update_toilet_param(B2, 'alt')
 
@@ -343,9 +283,9 @@ def create_systemB(streamsB=None):
     B4.specification = update_B_t0
     B4.run_after_specification = True
 
-    B5 = su.AnaerobicBaffledReactor('B5', ins=B4-0, outs=('ABR_treated', 'biogas',
+    B5 = su.AnaerobicBaffledReactor('B5', ins=B4-0, outs=('ABR_treated', 'raw_biogas',
                                                           'B5_CH4', 'B5_N2O'),
-                                    decay_k_COD=get_decay_k(tau_deg, log_deg),
+                                    decay_k_COD=get_decay_k(),
                                     max_CH4_emission=max_CH4_emission)
     def update_B5_gravel_density():
         B5.gravel_density = B2.density_dct['Gravel']
@@ -355,15 +295,15 @@ def create_systemB(streamsB=None):
     B6 = su.SludgeSeparator('B6', ins=B5-0, outs=('liq', 'sol'))
 
     B7 = su.LiquidTreatmentBed('B7', ins=B6-0, outs=('liquid_bed_treated', 'B7_CH4', 'B7_N2O'),
-                               decay_k_COD=get_decay_k(tau_deg, log_deg),
-                               decay_k_N=get_decay_k(tau_deg, log_deg),
+                               decay_k_COD=get_decay_k(),
+                               decay_k_N=get_decay_k(),
                                max_CH4_emission=max_CH4_emission)
 
     B8 = su.DryingBed('B8', ins=B6-1, outs=('dried_sludge', 'evaporated',
                                             'B8_CH4', 'B8_N2O'),
                       design_type='planted',
-                      decay_k_COD=get_decay_k(tau_deg, log_deg),
-                      decay_k_N=get_decay_k(tau_deg, log_deg),
+                      decay_k_COD=get_decay_k(),
+                      decay_k_N=get_decay_k(),
                       max_CH4_emission=max_CH4_emission)
 
     treatB = System('treatB', path=(B4, B5, B6, B7, B8))
@@ -374,43 +314,32 @@ def create_systemB(streamsB=None):
                             loss_ratio=app_loss)
     B9.specification = lambda: adjust_NH3_loss(B9)
 
-    B10 = su.Mixer('B10', ins=(B2-2, B5-2, B7-1, B8-2), outs=streamsB['CH4'])
+    B10 = su.Mixer('B10', ins=(B2-2, B5-2, B7-1, B8-2), outs=streamB.CH4)
     B10.specification = lambda: add_fugitive_items(B10, 'CH4_item')
     B10.line = 'fugitive CH4 mixer'
 
-    B11 = su.Mixer('B11', ins=(B2-3, B5-3, B7-2, B8-3), outs=streamsB['N2O'])
+    B11 = su.Mixer('B11', ins=(B2-3, B5-3, B7-2, B8-3), outs=streamB.N2O)
     B11.specification = lambda: add_fugitive_items(B11, 'N2O_item')
     B11.line = 'fugitive N2O mixer'
 
     B12 = su.ComponentSplitter('B12', ins=B8-0,
-                                outs=(streamsB['sol_N'], streamsB['sol_P'], streamsB['sol_K'],
-                                      'B_sol_non_fertilizers'),
+                                outs=(streamB.sol_N, streamB.sol_P, streamB.sol_K,
+                                      'sol_non_fertilizers'),
                                 split_keys=(('NH3', 'NonNH3'), 'P', 'K'))
 
     B13 = su.ComponentSplitter('B13', ins=B9-0,
-                                outs=(streamsB['liq_N'], streamsB['liq_P'], streamsB['liq_K'],
-                                      'B_liq_non_fertilizers'),
+                                outs=(streamB.liq_N, streamB.liq_P, streamB.liq_K,
+                                      'liq_non_fertilizers'),
                                 split_keys=(('NH3', 'NonNH3'), 'P', 'K'))
 
     B14 = su.BiogasCombustion('B14', ins=(B5-1, 'air'),
                               outs=('used', 'lost', 'wasted'),
                               if_combustion=False,
                               biogas_loss=0.1, biogas_eff=0.55)
-    B15 = su.Mixer('B15', ins=(B14-0, B14-2), outs=streamsB['biogas'])
+    B15 = su.Mixer('B15', ins=(B14-0, B14-2), outs=streamB.biogas)
 
     ##### Simulation, TEA, and LCA #####
     sysB = System('sysB', path=(B1, B2, B3, treatB, B9, B10, B11, B12, B13, B14, B15))
-
-    skilled_num = 5
-    get_skilled_num = lambda: skilled_num
-    skilled_salary = 5e6 # UGX/month
-    get_tot_skilled_salary = lambda: skilled_salary*get_skilled_num()
-
-    unskilled_num = 5
-    get_unskilled_num = lambda: unskilled_num
-    unskilled_salary = 75e4 # UGX/month
-    get_tot_unskilled_salary = lambda: unskilled_salary*get_unskilled_num()
-    get_alt_salary = lambda: (get_tot_skilled_salary()+get_tot_unskilled_salary())*12/exchange_rate
 
     SimpleTEA(system=sysB, discount_rate=discount_rate, start_year=2018,
               lifetime=get_B4_lifetime(), uptime_ratio=1, lang_factor=None,
@@ -430,12 +359,10 @@ def create_systemB(streamsB=None):
 # Scenario C (sysC): containaer-based sanitation with existing treatment system
 # =============================================================================
 
-flowsheetC = Flowsheet('sysC')
-main_flowsheet.set_flowsheet(flowsheetC)
-streamsC = batch_create_streams('C')
-
-def create_systemC(streamsC=None):
-    streamsC = streamsC or batch_create_streams('C')
+def create_systemC(flowsheet=None):
+    flowsheet = flowsheet or main_flowsheet
+    streamC = flowsheet.stream
+    batch_create_streams('C')
 
     ##### Human Inputs #####
     C1 = su.Excretion('C1', outs=('urine', 'feces'))
@@ -448,8 +375,8 @@ def create_systemC(streamsC=None):
                        'struvite', 'HAP', 'C2_CH4', 'C2_N2O'),
                  N_user=get_toilet_user(), N_toilet=get_ppl('exist')/get_toilet_user(),
                  OPEX_over_CAPEX=0.1,
-                 decay_k_COD=get_decay_k(tau_deg, log_deg),
-                 decay_k_N=get_decay_k(tau_deg, log_deg),
+                 decay_k_COD=get_decay_k(),
+                 decay_k_N=get_decay_k(),
                  max_CH4_emission=max_CH4_emission)
     C2.specification = lambda: update_toilet_param(C2, 'exist')
 
@@ -502,22 +429,22 @@ def create_systemC(streamsC=None):
     C6 = su.Lagoon('C6', ins=C5-0, outs=('anaerobic_treated', 'C6_CH4', 'C6_N2O'),
                    design_type='anaerobic',
                    flow_rate=sewer_flow+get_sludge_flow('exist'),
-                   decay_k_N=get_decay_k(tau_deg, log_deg),
+                   decay_k_N=get_decay_k(),
                    max_CH4_emission=max_CH4_emission)
     C6.specification = lambda: update_lagoon_flow_rate(C6)
 
     C7 = su.Lagoon('C7', ins=C6-0, outs=('facultative_treated', 'C7_CH4', 'C7_N2O'),
                    design_type='facultative',
                    flow_rate=sewer_flow+get_sludge_flow('exist'),
-                   decay_k_N=get_decay_k(tau_deg, log_deg),
+                   decay_k_N=get_decay_k(),
                    max_CH4_emission=max_CH4_emission,
                    if_N2O_emission=True)
     C7.specification = lambda: update_lagoon_flow_rate(C7)
 
     C8 = su.DryingBed('C8', ins=C5-1, outs=('dried_sludge', 'evaporated', 'C8_CH4', 'C8_N2O'),
                      design_type='unplanted',
-                     decay_k_COD=get_decay_k(tau_deg, log_deg),
-                     decay_k_N=get_decay_k(tau_deg, log_deg),
+                     decay_k_COD=get_decay_k(),
+                     decay_k_N=get_decay_k(),
                      max_CH4_emission=max_CH4_emission)
     treatC = System('treatC', path=(C5, C6, C7, C8))
     C8._cost = lambda: clear_unit_costs(treatC)
@@ -534,22 +461,22 @@ def create_systemC(streamsC=None):
         adjust_NH3_loss(C10)
     C10.specification = adjust_C10_loss_ratio
 
-    C11 = su.Mixer('C11', ins=(C2-4, C6-1, C7-1, C8-2), outs=streamsC['CH4'])
+    C11 = su.Mixer('C11', ins=(C2-4, C6-1, C7-1, C8-2), outs=streamC.CH4)
     C11.specification = lambda: add_fugitive_items(C11, 'CH4_item')
     C11.line = 'fugitive CH4 mixer'
 
-    C12 = su.Mixer('C12', ins=(C2-5, C6-2, C7-2, C8-3), outs=streamsC['N2O'])
+    C12 = su.Mixer('C12', ins=(C2-5, C6-2, C7-2, C8-3), outs=streamC.N2O)
     C12.specification = lambda: add_fugitive_items(C12, 'N2O_item')
     C12.line = 'fugitive N2O mixer'
 
     C13 = su.ComponentSplitter('C13', ins=C10-0,
-                               outs=(streamsC['sol_N'], streamsC['sol_P'], streamsC['sol_K'],
-                                     'C_sol_non_fertilizers'),
+                               outs=(streamC.sol_N, streamC.sol_P, streamC.sol_K,
+                                     'sol_non_fertilizers'),
                                split_keys=(('NH3', 'NonNH3'), 'P', 'K'))
 
     C14 = su.ComponentSplitter('C14', ins=C9-0,
-                               outs=(streamsC['liq_N'], streamsC['liq_P'], streamsC['liq_K'],
-                                     'C_liq_non_fertilizers'),
+                               outs=(streamC.liq_N, streamC.liq_P, streamC.liq_K,
+                                     'liq_non_fertilizers'),
                                split_keys=(('NH3', 'NonNH3'), 'P', 'K'))
 
     ##### Simulation, TEA, and LCA #####
@@ -573,19 +500,16 @@ def create_systemC(streamsC=None):
 # Wrapper function
 # =============================================================================
 
-def create_systeam(system_ID='A', flowsheet=None):
+def create_system(system_ID='A', flowsheet=None):
     system_ID = system_ID.lower().lstrip('sys').upper() # so that it'll work for "sysA"/"A"
-
 
     # Set flowsheet to avoid stream replacement warnings
     if flowsheet is None:
         flowsheet = Flowsheet(f'sys{system_ID}')
         main_flowsheet.set_flowsheet(flowsheet)
 
-    streams = batch_create_streams(system_ID)
-
-    if system_ID == 'A': system = create_systemA(streams)
-    elif system_ID == 'B': system = create_systemB(streams)
-    elif system_ID == 'C': system = create_systemC(streams)
+    if system_ID == 'A': system = create_systemA(flowsheet)
+    elif system_ID == 'B': system = create_systemB(flowsheet)
+    elif system_ID == 'C': system = create_systemC(flowsheet)
     else: raise ValueError(f'`system_ID` can only be "A", "B", or "C", not "{system_ID}".')
     return system
