@@ -16,8 +16,7 @@ for license details.
 # %%
 
 import os, pickle
-import numpy as np
-import pandas as pd
+import numpy as np, pandas as pd
 from chaospy import distributions as shape
 from thermosteam.functional import V_to_rho, rho_to_V
 from biosteam import PowerUtility
@@ -34,7 +33,7 @@ from exposan import bwaise as bw
 c_path = bw._lca_data.c_path
 lca_data_kind = bw.systems.lca_data_kind
 
-__all__ = ('modelA', 'modelB', 'modelC', 'result_dct',
+__all__ = ('create_model', 'result_dct',
            'run_uncertainty', 'save_uncertainty_results')
 
 
@@ -146,9 +145,29 @@ def batch_setting_unit_params(df, model, unit, exclude=()):
 # Shared by all three systems
 # =============================================================================
 
+# Data sheets
 su_data_path = ospath.join(data_path, 'sanunit_data/')
+
+path = ospath.join(su_data_path, '_pit_latrine.tsv')
+pit_latrine_data = load_data(path)
+MCF_lower_dct = dct_from_str(pit_latrine_data.loc['MCF_decay']['low'])
+MCF_upper_dct = dct_from_str(pit_latrine_data.loc['MCF_decay']['high'])
+N2O_EF_lower_dct = dct_from_str(pit_latrine_data.loc['N2O_EF_decay']['low'])
+N2O_EF_upper_dct = dct_from_str(pit_latrine_data.loc['N2O_EF_decay']['high'])
+
 path = ospath.join(su_data_path, '_drying_bed.tsv')
 drying_bed_data = load_data(path)
+
+path = ospath.join(su_data_path, '_sedimentation_tank.tsv')
+sedimentation_tank_data = load_data(path)
+
+path = ospath.join(su_data_path, '_anaerobic_lagoon.tsv')
+anaerobic_lagoon_data = load_data(path)
+
+path = ospath.join(su_data_path, '_facultative_lagoon.tsv')
+facultative_lagoon_data = load_data(path)
+
+
 get_exchange_rate = systems.get_exchange_rate
 get_decay_k = systems.get_decay_k
 tau_deg = systems.tau_deg
@@ -533,13 +552,7 @@ def update_LCA_CF_parameters(model, kind):
 # For the same processes in sysA and sysB
 # =============================================================================
 
-path = ospath.join(su_data_path, '_pit_latrine.tsv')
-pit_latrine_data = load_data(path)
 
-MCF_lower_dct = dct_from_str(pit_latrine_data.loc['MCF_decay']['low'])
-MCF_upper_dct = dct_from_str(pit_latrine_data.loc['MCF_decay']['high'])
-N2O_EF_lower_dct = dct_from_str(pit_latrine_data.loc['N2O_EF_decay']['low'])
-N2O_EF_upper_dct = dct_from_str(pit_latrine_data.loc['N2O_EF_decay']['high'])
 
 def add_pit_latrine_parameters(model):
     sys = model.system
@@ -682,63 +695,57 @@ def add_existing_plant_parameters(toilet_unit, cost_unit, tea, model):
 # Scenario A (sysA)
 # =============================================================================
 
-sysA = systems.sysA
-sysA.simulate()
-modelA = Model(sysA, add_metrics(sysA, lca_data_kind))
-paramA = modelA.parameter
+def create_modelA():
+    sysA = bw.create_systeam('A')
+    modelA = Model(sysA, add_metrics(sysA, lca_data_kind))
 
-# Shared parameters
-modelA = add_shared_parameters(modelA, systems.A8, systems.A9)
-modelA = add_LCA_CF_parameters(modelA)
+    # Shared parameters
+    modelA = add_shared_parameters(modelA, systems.A8, systems.A9)
+    modelA = add_LCA_CF_parameters(modelA)
 
-# Pit latrine and conveyance
-modelA = add_pit_latrine_parameters(modelA)
+    # Pit latrine and conveyance
+    modelA = add_pit_latrine_parameters(modelA)
 
-# WWTP costs
-modelA = add_existing_plant_parameters(systems.A2, systems.A4, systems.teaA, modelA)
+    # WWTP costs
+    modelA = add_existing_plant_parameters(systems.A2, systems.A4, systems.teaA, modelA)
 
-# Sedimentation tank
-A5 = systems.A5
-path = ospath.join(su_data_path, '_sedimentation_tank.tsv')
-data = load_data(path)
-batch_setting_unit_params(data, modelA, A5)
-# The tank was based on a sludge separator
-modelA = add_sludge_separator_parameters(A5, modelA)
+    # Sedimentation tank
+    A5 = systems.A5
+    batch_setting_unit_params(sedimentation_tank_data, modelA, A5)
+    # The tank was based on a sludge separator
+    modelA = add_sludge_separator_parameters(A5, modelA)
 
-# Anaerobic lagoon
-A6 = systems.A6
-path = ospath.join(su_data_path, '_anaerobic_lagoon.tsv')
-anaerobic_lagoon_data = load_data(path)
-batch_setting_unit_params(anaerobic_lagoon_data, modelA, A6)
-modelA = add_lagoon_parameters(A6, modelA)
+    # Anaerobic lagoon
+    A6 = systems.A6
+    batch_setting_unit_params(anaerobic_lagoon_data, modelA, A6)
+    modelA = add_lagoon_parameters(A6, modelA)
 
-# Facultative lagoon
-A7 = systems.A7
-path = ospath.join(su_data_path, '_facultative_lagoon.tsv')
-facultative_lagoon_data = load_data(path)
-batch_setting_unit_params(facultative_lagoon_data, modelA, A7)
-modelA = add_lagoon_parameters(A7, modelA)
+    # Facultative lagoon
+    A7 = systems.A7
+    batch_setting_unit_params(facultative_lagoon_data, modelA, A7)
+    modelA = add_lagoon_parameters(A7, modelA)
 
-all_paramsA = modelA.parameters
+    # # DO NOT DELETE
+    # # Legacy codes to look at recoveries
+    # A1 = systems.A1
+    # get_recovery = systems.get_recovery
+    # get_ppl = systems.get_ppl
+    # metricsA = [m for m in modelA.metrics]
+    # metricsA.extend([
+    #     # Metric(f'Net emission {ind.ID}', FuncGetter(funcs[0], (ind.ID,)), unit, cat),
+    #     Metric('A1', lambda: get_recovery(A1, systems.A2.ins, get_ppl('a'))['N'], '%', 'N'),
+    #     Metric('A2', lambda: get_recovery(A1, systems.A3.ins, get_ppl('a'))['N'], '%', 'N'),
+    #     Metric('A3', lambda: get_recovery(A1, systems.A4.ins, get_ppl('a'))['N'], '%', 'N'),
+    #     Metric('A4', lambda: get_recovery(A1, systems.A5.ins, get_ppl('a'))['N'], '%', 'N'),
+    #     Metric('A5', lambda: get_recovery(A1, systems.A6.ins, get_ppl('a'))['N'], '%', 'N'),
+    #     Metric('A6', lambda: get_recovery(A1, systems.A7.ins, get_ppl('a'))['N'], '%', 'N'),
+    #     Metric('A7', lambda: get_recovery(A1, systems.A8.ins, get_ppl('a'))['N'], '%', 'N'),
+    #     Metric('A8', lambda: get_recovery(A1, systems.A12.ins, get_ppl('a'))['N'], '%', 'N'),
+    #     Metric('A9', lambda: get_recovery(A1, systems.A13.ins, get_ppl('a'))['N'], '%', 'N'),
+    #     ])
+    # modelA.metrics = metricsA
 
-# # Legacy codes to look at recoveries
-# A1 = systems.A1
-# get_recovery = systems.get_recovery
-# get_ppl = systems.get_ppl
-# metricsA = [m for m in modelA.metrics]
-# metricsA.extend([
-#     # Metric(f'Net emission {ind.ID}', FuncGetter(funcs[0], (ind.ID,)), unit, cat),
-#     Metric('A1', lambda: get_recovery(A1, systems.A2.ins, get_ppl('a'))['N'], '%', 'N'),
-#     Metric('A2', lambda: get_recovery(A1, systems.A3.ins, get_ppl('a'))['N'], '%', 'N'),
-#     Metric('A3', lambda: get_recovery(A1, systems.A4.ins, get_ppl('a'))['N'], '%', 'N'),
-#     Metric('A4', lambda: get_recovery(A1, systems.A5.ins, get_ppl('a'))['N'], '%', 'N'),
-#     Metric('A5', lambda: get_recovery(A1, systems.A6.ins, get_ppl('a'))['N'], '%', 'N'),
-#     Metric('A6', lambda: get_recovery(A1, systems.A7.ins, get_ppl('a'))['N'], '%', 'N'),
-#     Metric('A7', lambda: get_recovery(A1, systems.A8.ins, get_ppl('a'))['N'], '%', 'N'),
-#     Metric('A8', lambda: get_recovery(A1, systems.A12.ins, get_ppl('a'))['N'], '%', 'N'),
-#     Metric('A9', lambda: get_recovery(A1, systems.A13.ins, get_ppl('a'))['N'], '%', 'N'),
-#     ])
-# modelA.metrics = metricsA
+    return modelA
 
 
 # %%
@@ -747,107 +754,108 @@ all_paramsA = modelA.parameters
 # Scenario B (sysB)
 # =============================================================================
 
-sysB, teaB = systems.sysB, systems.teaB
-sysB.simulate()
-modelB = Model(sysB, add_metrics(sysB, lca_data_kind))
-paramB = modelB.parameter
+def create_modelB():
+    sysB = bw.create_systeam('B')
+    teaB = sysB.TEA
+    modelB = Model(sysB, add_metrics(sysB, lca_data_kind))
+    paramB = modelB.parameter
 
-# Shared parameters
-modelB = add_shared_parameters(modelB, systems.B8, systems.B9)
-modelB = add_LCA_CF_parameters(modelB)
+    # Shared parameters
+    modelB = add_shared_parameters(modelB, systems.B8, systems.B9)
+    modelB = add_LCA_CF_parameters(modelB)
 
-# Pit latrine and conveyance
-modelB = add_pit_latrine_parameters(modelB)
+    # Pit latrine and conveyance
+    modelB = add_pit_latrine_parameters(modelB)
 
-b = systems.ppl_alt
-D = shape.Triangle(lower=45e3, midpoint=b, upper=55e3)
-@paramB(name='Alt sludge ppl', element=systems.B2, kind='coupled', units='-',
-        baseline=b, distribution=D)
-def set_plant_ppl(i):
-    systems.ppl_alt = i
+    b = systems.ppl_alt
+    D = shape.Triangle(lower=45e3, midpoint=b, upper=55e3)
+    @paramB(name='Alt sludge ppl', element=systems.B2, kind='coupled', units='-',
+            baseline=b, distribution=D)
+    def set_plant_ppl(i):
+        systems.ppl_alt = i
 
-# Anaerobic baffled reactor
-B5 = systems.B5
-path = ospath.join(su_data_path, '_anaerobic_baffled_reactor.tsv')
-data = load_data(path)
-batch_setting_unit_params(data, modelB, B5)
+    # Anaerobic baffled reactor
+    B5 = systems.B5
+    path = ospath.join(su_data_path, '_anaerobic_baffled_reactor.tsv')
+    data = load_data(path)
+    batch_setting_unit_params(data, modelB, B5)
 
-b = systems.biogas_energy
-D = shape.Triangle(lower=802, midpoint=b, upper=870)
-@paramB(name='Biogas energy', element=B5, kind='coupled', units='kJ/mol CH4',
-        baseline=b, distribution=D)
-def set_biogas_energy(i):
-    systems.biogas_energy = i
+    b = systems.biogas_energy
+    D = shape.Triangle(lower=802, midpoint=b, upper=870)
+    @paramB(name='Biogas energy', element=B5, kind='coupled', units='kJ/mol CH4',
+            baseline=b, distribution=D)
+    def set_biogas_energy(i):
+        systems.biogas_energy = i
 
-# Cost of alternative plants
-B4 = systems.B4
-b = B4.CAPEX_dct['Lumped WWTP']
-D = shape.Triangle(lower=303426, midpoint=b, upper=370854)
-@paramB(name='Plant CAPEX', element=B4, kind='cost', units='USD',
-        baseline=b, distribution=D)
-def set_alt_plant_CAPEX(i):
-    B4.CAPEX_dct['Lumped WWTP'] = i
+    # Cost of alternative plants
+    B4 = systems.B4
+    b = B4.CAPEX_dct['Lumped WWTP']
+    D = shape.Triangle(lower=303426, midpoint=b, upper=370854)
+    @paramB(name='Plant CAPEX', element=B4, kind='cost', units='USD',
+            baseline=b, distribution=D)
+    def set_alt_plant_CAPEX(i):
+        B4.CAPEX_dct['Lumped WWTP'] = i
 
-b = B4.lifetime
-D = shape.Triangle(lower=9, midpoint=b, upper=11)
-@paramB(name='Plant lifetime', element='TEA/LCA', kind='isolated', units='yr',
-        baseline=b, distribution=D)
-def set_plant_lifetime(i):
-    B4.lifetime = i
+    b = B4.lifetime
+    D = shape.Triangle(lower=9, midpoint=b, upper=11)
+    @paramB(name='Plant lifetime', element='TEA/LCA', kind='isolated', units='yr',
+            baseline=b, distribution=D)
+    def set_plant_lifetime(i):
+        B4.lifetime = i
 
-b = systems.get_unskilled_num()
-D = shape.Uniform(lower=0, upper=10)
-@paramB(name='Unskilled staff num', element='TEA', kind='isolated', units='-',
-        baseline=b, distribution=D)
-def set_unskilled_num(i):
-    systems.unskilled_num = i
-    teaB.annual_labor = systems.get_alt_salary()
+    b = systems.get_unskilled_num()
+    D = shape.Uniform(lower=0, upper=10)
+    @paramB(name='Unskilled staff num', element='TEA', kind='isolated', units='-',
+            baseline=b, distribution=D)
+    def set_unskilled_num(i):
+        systems.unskilled_num = i
+        teaB.annual_labor = systems.get_alt_salary()
 
-b = systems.unskilled_salary
-D = shape.Uniform(lower=0.5e6, upper=1e6)
-@paramB(name='Unskilled staff salary', element='TEA', kind='isolated', units='MM UGX/cap/month',
-        baseline=b, distribution=D)
-def set_unskilled_salary(i):
-    systems.unskilled_salary = i
-    teaB.annual_labor = systems.get_alt_salary()
+    b = systems.unskilled_salary
+    D = shape.Uniform(lower=0.5e6, upper=1e6)
+    @paramB(name='Unskilled staff salary', element='TEA', kind='isolated', units='MM UGX/cap/month',
+            baseline=b, distribution=D)
+    def set_unskilled_salary(i):
+        systems.unskilled_salary = i
+        teaB.annual_labor = systems.get_alt_salary()
 
-# Sludge separator
-B6 = systems.B6
-modelB = add_sludge_separator_parameters(B6, modelB)
+    # Sludge separator
+    B6 = systems.B6
+    modelB = add_sludge_separator_parameters(B6, modelB)
 
-# Liquid treatment bed
-B7 = systems.B7
-path = ospath.join(su_data_path, '_liquid_treatment_bed.tsv')
-data = load_data(path)
-batch_setting_unit_params(data, modelB, B7)
+    # Liquid treatment bed
+    B7 = systems.B7
+    path = ospath.join(su_data_path, '_liquid_treatment_bed.tsv')
+    data = load_data(path)
+    batch_setting_unit_params(data, modelB, B7)
 
-# Biogas combustion
-B14 = systems.B14
-b = B14.biogas_loss
-D = shape.Uniform(lower=0, upper=0.2)
-@paramB(name='Biogas loss ratio', element=B14, kind='coupled', units='fraction',
-        baseline=b, distribution=D)
-def set_biogas_loss(i):
-    B14.biogas_loss = i
+    # Biogas combustion
+    B14 = systems.B14
+    b = B14.biogas_loss
+    D = shape.Uniform(lower=0, upper=0.2)
+    @paramB(name='Biogas loss ratio', element=B14, kind='coupled', units='fraction',
+            baseline=b, distribution=D)
+    def set_biogas_loss(i):
+        B14.biogas_loss = i
 
-D = shape.Uniform(lower=6077, upper=6667)
-@paramB(name='Liquid petroleum gas price', element='TEA', kind='isolated', units='UGX/kg',
-        baseline=6500, distribution=D)
-def set_LPG_price(i):
-    price_dct['Biogas'] = sys_dct['stream_dct']['sysB']['biogas'].price = \
-        i/get_exchange_rate()*get_biogas_factor()
+    D = shape.Uniform(lower=6077, upper=6667)
+    @paramB(name='Liquid petroleum gas price', element='TEA', kind='isolated', units='UGX/kg',
+            baseline=6500, distribution=D)
+    def set_LPG_price(i):
+        price_dct['Biogas'] = sys_dct['stream_dct']['sysB']['biogas'].price = \
+            i/get_exchange_rate()*get_biogas_factor()
 
-b = systems.LPG_energy
-D = shape.Uniform(lower=49.5, upper=50.4)
-@paramB(name='Liquid petroleum gas energy', element='TEA/LCA', kind='isolated', units='MJ/kg',
-        baseline=b, distribution=D)
-def set_LPG_energy(i):
-    old_LPG_energy = systems.LPG_energy
-    systems.LPG_energy = i
-    price_dct['Biogas'] = sys_dct['stream_dct']['sysB']['biogas'].price = \
-        price_dct['Biogas'] / old_LPG_energy * i
+    b = systems.LPG_energy
+    D = shape.Uniform(lower=49.5, upper=50.4)
+    @paramB(name='Liquid petroleum gas energy', element='TEA/LCA', kind='isolated', units='MJ/kg',
+            baseline=b, distribution=D)
+    def set_LPG_energy(i):
+        old_LPG_energy = systems.LPG_energy
+        systems.LPG_energy = i
+        price_dct['Biogas'] = sys_dct['stream_dct']['sysB']['biogas'].price = \
+            price_dct['Biogas'] / old_LPG_energy * i
 
-all_paramsB = modelB.parameters
+    return modelB
 
 
 # %%
@@ -856,80 +864,88 @@ all_paramsB = modelB.parameters
 # Scenario C (sysC)
 # =============================================================================
 
-sysC = systems.sysC
-sysC.simulate()
-modelC = Model(sysC, add_metrics(sysC, lca_data_kind))
-paramC = modelC.parameter
+def create_modelC():
+    sysC = bw.create_systeam('C')
+    modelC = Model(sysC, add_metrics(sysC, lca_data_kind))
+    paramC = modelC.parameter
 
-# Add shared parameters
-modelC = add_shared_parameters(modelC, systems.C8, systems.C9)
-modelC = add_LCA_CF_parameters(modelC)
+    # Add shared parameters
+    modelC = add_shared_parameters(modelC, systems.C8, systems.C9)
+    modelC = add_LCA_CF_parameters(modelC)
 
-# UDDT
-C2 = systems.C2
-path = ospath.join(su_data_path, '_uddt.tsv')
-uddt_data = load_data(path)
-batch_setting_unit_params(uddt_data, modelC, C2)
+    # UDDT
+    C2 = systems.C2
+    path = ospath.join(su_data_path, '_uddt.tsv')
+    uddt_data = load_data(path)
+    batch_setting_unit_params(uddt_data, modelC, C2)
 
-b = C2.CAPEX
-D = shape.Uniform(lower=476, upper=630)
-@paramC(name='UDDT capital cost', element=C2, kind='cost',
-       units='USD/toilet', baseline=b, distribution=D)
-def set_UDDT_CAPEX(i):
-    C2.CAPEX = i
+    b = C2.CAPEX
+    D = shape.Uniform(lower=476, upper=630)
+    @paramC(name='UDDT capital cost', element=C2, kind='cost',
+           units='USD/toilet', baseline=b, distribution=D)
+    def set_UDDT_CAPEX(i):
+        C2.CAPEX = i
 
-b = C2.OPEX_over_CAPEX
-D = shape.Uniform(lower=0.05, upper=0.1)
-@paramC(name='UDDT annual operating cost', element=C2, kind='cost',
-       units='fraction of capital cost', baseline=b, distribution=D)
-def set_UDDT_OPEX(i):
-    C2.OPEX_over_CAPEX = i
+    b = C2.OPEX_over_CAPEX
+    D = shape.Uniform(lower=0.05, upper=0.1)
+    @paramC(name='UDDT annual operating cost', element=C2, kind='cost',
+           units='fraction of capital cost', baseline=b, distribution=D)
+    def set_UDDT_OPEX(i):
+        C2.OPEX_over_CAPEX = i
 
-# Conveyance
-C3 = systems.C3
-C4 = systems.C4
-b = C3.loss_ratio
-D = shape.Uniform(lower=0.02, upper=0.05)
-@paramC(name='Transportation loss', element=C3, kind='coupled', units='fraction',
-       baseline=b, distribution=D)
-def set_trans_loss(i):
-    C3.loss_ratio = C4.loss_ratio = i
+    # Conveyance
+    C3 = systems.C3
+    C4 = systems.C4
+    b = C3.loss_ratio
+    D = shape.Uniform(lower=0.02, upper=0.05)
+    @paramC(name='Transportation loss', element=C3, kind='coupled', units='fraction',
+           baseline=b, distribution=D)
+    def set_trans_loss(i):
+        C3.loss_ratio = C4.loss_ratio = i
 
-b = C3.single_truck.distance
-D = shape.Uniform(lower=2, upper=10)
-@paramC(name='Transportation distance', element=C3, kind='coupled', units='km',
-       baseline=b, distribution=D)
-def set_trans_distance(i):
-    C3.single_truck.distance = C4.single_truck.distance = i
+    b = C3.single_truck.distance
+    D = shape.Uniform(lower=2, upper=10)
+    @paramC(name='Transportation distance', element=C3, kind='coupled', units='km',
+           baseline=b, distribution=D)
+    def set_trans_distance(i):
+        C3.single_truck.distance = C4.single_truck.distance = i
 
-b = systems.handcart_fee
-D = shape.Uniform(lower=0.004, upper=0.015)
-@paramC(name='Handcart fee', element=C3, kind='cost', units='USD/cap/d',
-       baseline=b, distribution=D)
-def set_handcart_fee(i):
-    systems.handcart_fee = i
+    b = systems.handcart_fee
+    D = shape.Uniform(lower=0.004, upper=0.015)
+    @paramC(name='Handcart fee', element=C3, kind='cost', units='USD/cap/d',
+           baseline=b, distribution=D)
+    def set_handcart_fee(i):
+        systems.handcart_fee = i
 
-b = systems.truck_fee
-D = shape.Uniform(lower=17e3, upper=30e3)
-@paramC(name='Truck fee', element=C3, kind='cost', units='UGX/m3',
-       baseline=b, distribution=D)
-def set_truck_fee(i):
-    systems.truck_fee = i
+    b = systems.truck_fee
+    D = shape.Uniform(lower=17e3, upper=30e3)
+    @paramC(name='Truck fee', element=C3, kind='cost', units='UGX/m3',
+           baseline=b, distribution=D)
+    def set_truck_fee(i):
+        systems.truck_fee = i
 
-# WWTP costs
-modelC = add_existing_plant_parameters(systems.C2, systems.C5, systems.teaC, modelC)
+    # WWTP costs
+    modelC = add_existing_plant_parameters(systems.C2, systems.C5, systems.teaC, modelC)
 
-# Anaerobic lagoon
-C6 = systems.C6
-batch_setting_unit_params(anaerobic_lagoon_data, modelC, C6)
-modelC = add_lagoon_parameters(C6, modelC)
+    # Anaerobic lagoon
+    C6 = systems.C6
+    batch_setting_unit_params(anaerobic_lagoon_data, modelC, C6)
+    modelC = add_lagoon_parameters(C6, modelC)
 
-# Facultative lagoon
-C7 = systems.C7
-batch_setting_unit_params(facultative_lagoon_data, modelC, C7)
-modelC = add_lagoon_parameters(C7, modelC)
+    # Facultative lagoon
+    C7 = systems.C7
+    batch_setting_unit_params(facultative_lagoon_data, modelC, C7)
+    modelC = add_lagoon_parameters(C7, modelC)
+    return modelC
 
-all_paramsC = modelC.parameters
+# Wrapper function
+def create_model(model_ID='A', **model_kwargs):
+    model_ID = model_ID.lstrip('model').lstrip('sys') # so that it'll work for "modelA"/"sysA"/"A"
+    if model_ID == 'A': model = create_modelA(**model_kwargs)
+    elif model_ID == 'B': model = create_modelB(**model_kwargs)
+    elif model_ID == 'C': model = create_modelC(**model_kwargs)
+    else: raise ValueError(f'`model_ID` can only be "A", "B", or "C", not "{model_ID}".')
+    return model
 
 
 
@@ -939,6 +955,7 @@ all_paramsC = modelC.parameters
 # Functions to run simulation and generate plots
 # =============================================================================
 
+#!!! PAUSED, putting result_dct into the functions below
 result_dct = {
         'sysA': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
         'sysB': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
