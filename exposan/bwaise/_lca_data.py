@@ -20,7 +20,7 @@ import os, sys, pickle, pandas as pd, qsdsan as qs
 c_path = os.path.dirname(__file__)
 data_path = os.path.join(c_path, 'data')
 
-__all__ = ('get_cf_data', 'save_cf_data',)
+__all__ = ('create_indicators', 'create_items', 'get_cf_data', 'save_cf_data',)
 
 
 # %%
