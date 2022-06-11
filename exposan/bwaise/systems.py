@@ -26,13 +26,14 @@ from qsdsan import (
     ImpactItem,
     System, SimpleTEA, LCA,
     )
+from qsdsan.utils import clear_lca_registries
 from exposan.utils import add_fugitive_items, clear_unit_costs
-# from exposan import bwaise as bw
 from exposan.bwaise import (
+    _load_lca_data,
     exchange_rate, discount_rate, price_dct, get_alt_salary,
     get_toilet_user, get_ppl, sewer_flow, get_sludge_flow,
     get_decay_k, max_CH4_emission,
-    get_tanker_truck_fee,
+    get_tanker_truck_fee, get_handcart_and_truck_fee,
     app_loss,
     )
 
@@ -58,27 +59,6 @@ def batch_create_streams(prefix):
             new = original.copy(f'{phase}_{nutrient}_item', set_as_source=True)
             WasteStream(f'{phase}_{nutrient}', phase='l',
                         price=price_dct[nutrient], stream_impact_item=new)
-
-    # item = ImpactItem.get_item('N_item').copy(f'{prefix}_liq_N_item', set_as_source=True)
-    # WasteStream(f'{prefix}_liq_N', phase='l', price=price_dct['N'], stream_impact_item=item)
-
-    # item = ImpactItem.get_item('N_item').copy(f'{prefix}_sol_N_item', set_as_source=True)
-    # WasteStream(f'{prefix}_sol_N', phase='l', price=price_dct['N'], stream_impact_item=item)
-
-    # item = ImpactItem.get_item('P_item').copy(f'{prefix}_liq_P_item', set_as_source=True)
-    # WasteStream(f'{prefix}_liq_P', phase='l', price=price_dct['P'], stream_impact_item=item)
-
-    # item = ImpactItem.get_item('P_item').copy(f'{prefix}_sol_P_item', set_as_source=True)
-    # stream_dct['sol_P'] = WasteStream(f'{prefix}_sol_P', phase='l', price=price_dct['P'],
-    #                                   stream_impact_item=item)
-
-    # item = ImpactItem.get_item('K_item').copy(f'{prefix}_liq_K_item', set_as_source=True)
-    # stream_dct['liq_K'] = WasteStream(f'{prefix}_liq_K', phase='l', price=price_dct['K'],
-    #                                   stream_impact_item=item)
-
-    # item = ImpactItem.get_item('K_item').copy(f'{prefix}_sol_K_item', set_as_source=True)
-    # stream_dct['sol_K'] = WasteStream(f'{prefix}_sol_K', phase='l', price=price_dct['K'],
-    #                                   stream_impact_item=item)
 
 
 def update_toilet_param(unit, kind):
@@ -381,14 +361,6 @@ def create_systemC(flowsheet=None):
     C2.specification = lambda: update_toilet_param(C2, 'exist')
 
     ##### Conveyance #####
-    handcart_fee = 0.01 # USD/cap/d
-    truck_fee = 23e3 # UGX/m3
-
-    # Handcart fee is for both liquid/solid
-    get_handcart_and_truck_fee = \
-        lambda vol, ppl, include_fee: truck_fee/exchange_rate*vol \
-            + int(include_fee)*handcart_fee*ppl*C2.collection_period
-
     # Liquid waste
     C3 = su.Trucking('C3', ins=C2-0, outs=('transported_l', 'loss_l'),
                      load_type='mass', distance=5, distance_unit='km',
@@ -409,8 +381,8 @@ def create_systemC(flowsheet=None):
         truck4.load = C4.F_mass_in * hr / N_toilet
         rho3 = C3.F_mass_in/C3.F_vol_in
         rho4 = C4.F_mass_in/C4.F_vol_in
-        C3.fee = get_handcart_and_truck_fee(truck3.load/rho3, ppl, True)
-        C4.fee = get_handcart_and_truck_fee(truck4.load/rho4, ppl, False)
+        C3.fee = get_handcart_and_truck_fee(truck3.load/rho3, ppl, True, C2)
+        C4.fee = get_handcart_and_truck_fee(truck4.load/rho4, ppl, False, C2)
         C3._design()
         C4._design()
     C4.specification = update_C3_C4_param
@@ -500,16 +472,31 @@ def create_systemC(flowsheet=None):
 # Wrapper function
 # =============================================================================
 
-def create_system(system_ID='A', flowsheet=None):
-    system_ID = system_ID.lower().lstrip('sys').upper() # so that it'll work for "sysA"/"A"
+def create_system(system_ID='A', flowsheet=None, lca_kind='original'):
+    ID = system_ID.lower().lstrip('sys').upper() # so that it'll work for "sysA"/"A"
+    sys_ID = f'sys{ID}'
+    reload_lca = False
 
     # Set flowsheet to avoid stream replacement warnings
     if flowsheet is None:
+        if hasattr(main_flowsheet.flowsheet, sys_ID): # clear flowsheet
+            getattr(main_flowsheet.flowsheet, sys_ID).clear()
+            clear_lca_registries()
+            reload_lca = True
         flowsheet = Flowsheet(f'sys{system_ID}')
         main_flowsheet.set_flowsheet(flowsheet)
+
+    loaded_status = _load_lca_data(lca_kind, reload_lca)
 
     if system_ID == 'A': system = create_systemA(flowsheet)
     elif system_ID == 'B': system = create_systemB(flowsheet)
     elif system_ID == 'C': system = create_systemC(flowsheet)
-    else: raise ValueError(f'`system_ID` can only be "A", "B", or "C", not "{system_ID}".')
+    else: raise ValueError(f'`system_ID` can only be "A", "B", or "C", not "{ID}".')
+
+    if loaded_status != lca_kind: # to refresh the impact items
+        lca = system.LCA
+        for i in lca.lca_streams:
+            source_ID = i.stream_impact_item.source.ID
+            i.stream_impact_item.source = ImpactItem.get_item(source_ID)
+
     return system

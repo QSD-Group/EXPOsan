@@ -21,14 +21,14 @@ from thermosteam.functional import V_to_rho, rho_to_V
 from qsdsan import currency, ImpactItem, PowerUtility, Model, Metric
 from qsdsan.utils import (
     ospath, load_data, data_path, dct_from_str,
-    AttrSetter, AttrFuncSetter, DictAttrSetter, FuncGetter,
+    AttrSetter, AttrFuncSetter, DictAttrSetter,
     )
 from exposan.utils import batch_setting_unit_params, run_uncertainty as run
 from exposan import bwaise as bw
 from exposan.bwaise import (
-    results_path, price_dct, GWP_dct,
-    get_ppl, get_summarizing_functions,
-    get_decay_k, get_biogas_factor, get_exchange_rate,get_alt_salary,
+    results_path, _load_components, create_system, price_dct, GWP_dct,
+    get_decay_k, get_biogas_factor, get_alt_salary,
+    get_recoveries, get_TEA_metrics, get_LCA_metrics,
     )
 
 __all__ = ('create_model', 'run_uncertainty',)
@@ -40,93 +40,55 @@ __all__ = ('create_model', 'run_uncertainty',)
 # Functions for batch-making metrics and -setting parameters
 # =============================================================================
 
-
 def add_LCA_metrics(model, lca_kind):
     bw._load_lca_data(lca_kind)
     system = model.system
     lca = system.LCA
-    ppl = get_ppl(system.ID)
-    funcs = [
-        lambda ID: lca.total_impacts[ID]/lca.lifetime/ppl,
-        lambda ID: lca.total_construction_impacts[ID]/lca.lifetime/ppl,
-        lambda ID: lca.total_transportation_impacts[ID]/lca.lifetime/ppl,
-        lambda ID: lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='direct_emission')[ID] \
-            /lca.lifetime/ppl,
-        lambda ID: lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='offset')[ID] \
-            /lca.lifetime/ppl,
-        lambda ID: lca.total_other_impacts[ID]/lca.lifetime/ppl
-        ]
-
-    metrics = model.metrics
+    metrics = []
     for ind in lca.indicators:
         unit = f'{ind.unit}/cap/yr'
         cat = 'LCA results'
+        funcs = get_LCA_metrics(system, ind)
         metrics.extend([
-            Metric(f'Net emission {ind.ID}', FuncGetter(funcs[0], (ind.ID,)), unit, cat),
-            Metric(f'Construction {ind.ID}', FuncGetter(funcs[1], (ind.ID,)), unit, cat),
-            Metric(f'Transportation {ind.ID}', FuncGetter(funcs[2], (ind.ID,)), unit, cat),
-            Metric(f'Direct emission {ind.ID}', FuncGetter(funcs[3], (ind.ID,)), unit, cat),
-            Metric(f'Offset {ind.ID}', FuncGetter(funcs[4], (ind.ID,)), unit, cat),
-            Metric(f'Other {ind.ID}', FuncGetter(funcs[5], (ind.ID,)), unit, cat),
+            Metric(f'Net emission {ind.ID}', funcs[0], unit, cat),
+            Metric(f'Construction {ind.ID}', funcs[1], unit, cat),
+            Metric(f'Transportation {ind.ID}', funcs[2], unit, cat),
+            Metric(f'Direct emission {ind.ID}', funcs[3], unit, cat),
+            Metric(f'Offset {ind.ID}', funcs[4], unit, cat),
+            Metric(f'Other {ind.ID}', funcs[5], unit, cat),
             ])
-    model.metrics = metrics
+    model.metrics = [*model.metrics, *metrics]
 
 
 def add_metrics(model, lca_kind):
     system = model.system
-    tea = system.TEA
-    ppl = get_ppl(system.ID)
-    func = get_summarizing_functions(system)
-
     metrics = []
     for i in ('COD', 'N', 'P', 'K'):
+        funcs = get_recoveries(system, i)
         cat = f'{i} recovery'
         metrics.extend([
-            Metric(f'Liquid {i}', FuncGetter(func[f'get_liq_{i}_recovery'], (system, i)), '', cat),
-            Metric(f'Solid {i}', FuncGetter(func[f'get_sol_{i}_recovery'], (system, i)), '', cat),
-            Metric(f'Gas {i}', FuncGetter(func[f'get_gas_{i}_recovery'], (system, i)), '', cat),
-            Metric(f'Total {i}', FuncGetter(func[f'get_tot_{i}_recovery'], (system, i)), '', cat)
+            Metric(f'Liquid {i}', funcs[0], '', cat),
+            Metric(f'Solid {i}', funcs[1], '', cat),
+            Metric(f'Gas {i}', funcs[2], '', cat),
+            Metric(f'Total {i}', funcs[3], '', cat)
             ])
 
     unit = f'{currency}/cap/yr'
     cat = 'TEA results'
+    funcs = get_TEA_metrics(system)
     metrics.extend([
-        Metric('Annual net cost', lambda: func['get_annual_net_cost'](tea, ppl), unit, cat),
-        Metric('Annual CAPEX', lambda: func['get_annual_CAPEX'](tea, ppl), unit, cat),
-        Metric('Annual OPEX', lambda: func['get_annual_OPEX'](tea, ppl), unit, cat),
-        Metric('Annual sales', lambda: func['get_annual_sales'](tea, ppl), unit, cat)
+        Metric('Annual net cost', funcs[0], unit, cat),
+        Metric('Annual CAPEX', funcs[1], unit, cat),
+        Metric('Annual OPEX', funcs[2], unit, cat),
+        Metric('Annual sales', funcs[3], unit, cat)
         ])
-
-    add_LCA_metrics(model, lca_kind)
     model.metrics = metrics
+    add_LCA_metrics(model, lca_kind)
 
 
 def update_metrics(model, lca_kind):
     model.metrics = [i for i in model.metrics if i.element_name!='LCA results']
     add_LCA_metrics(model, lca_kind)
-
-
-# def batch_setting_unit_params(df, model, unit, exclude=()):
-#     for para in df.index:
-#         if para in exclude: continue
-#         b = getattr(unit, para)
-#         lower = float(df.loc[para]['low'])
-#         upper = float(df.loc[para]['high'])
-#         dist = df.loc[para]['distribution']
-#         if dist == 'uniform':
-#             D = shape.Uniform(lower=lower, upper=upper)
-#         elif dist == 'triangular':
-#             D = shape.Triangle(lower=lower, midpoint=b, upper=upper)
-#         elif dist == 'constant': continue
-#         else:
-#             raise ValueError(f'Distribution {dist} not recognized for unit {unit}.')
-
-#         su_type = type(unit).__name__
-#         name = f'{unit.ID}-{su_type}-{para}'
-#         model.parameter(setter=AttrSetter(unit, para),
-#                         name=name, element=unit,
-#                         kind='coupled', units=df.loc[para]['unit'],
-#                         baseline=b, distribution=D)
 
 
 # %%
@@ -407,13 +369,13 @@ def add_shared_parameters(model, drying_bed_unit, main_crop_application_unit):
         PowerUtility.price = i
 
 
-def add_LCA_CF_parameters(model, kind=bw._lca_data.lca_data_kind):
+def add_LCA_CF_parameters(model, lca_kind):
     param = model.parameter
     sys = model.system
     lca = sys.LCA
 
     ##### LCA CF #####
-    if kind == 'original':
+    if lca_kind == 'original':
         b = GWP_dct['CH4']
         D = shape.Uniform(lower=28, upper=34)
         @param(name='CH4 CF', element='LCA', kind='isolated', units='kg CO2-eq/kg CH4',
@@ -661,7 +623,7 @@ def add_existing_plant_parameters(toilet_unit, cost_unit, model):
     b = 3e6
     D = shape.Uniform(lower=1e6, upper=5e6)
     param(setter=AttrFuncSetter(tea, 'annual_labor',
-                                lambda salary: salary*12*12/get_exchange_rate()),
+                                lambda salary: salary*12*12/bw.exchange_rate),
           name='Staff salary', element='TEA', kind='isolated', units='MM UGX/cap/month',
           baseline=b, distribution=D)
 
@@ -673,14 +635,14 @@ def add_existing_plant_parameters(toilet_unit, cost_unit, model):
 # =============================================================================
 
 def create_modelA(lca_kind='original'):
-    sysA = bw.create_systeam('A')
+    sysA = create_system('A')
     unitA = sysA.flowsheet.unit
 
     # Add shared metrics/parameters
     modelA = Model(sysA)
     add_metrics(modelA, lca_kind)
     add_shared_parameters(modelA, unitA.A8, unitA.A9)
-    add_LCA_CF_parameters(modelA)
+    add_LCA_CF_parameters(modelA, lca_kind=lca_kind)
 
     # Pit latrine and conveyance
     add_pit_latrine_parameters(modelA)
@@ -733,7 +695,7 @@ def create_modelA(lca_kind='original'):
 # =============================================================================
 
 def create_modelB(lca_kind='original'):
-    sysB = bw.create_systeam('B')
+    sysB = create_system('B')
     unitB = sysB.flowsheet.unit
     teaB = sysB.TEA
 
@@ -742,7 +704,7 @@ def create_modelB(lca_kind='original'):
     paramB = modelB.parameter
     add_metrics(modelB, lca_kind)
     add_shared_parameters(modelB, unitB.B8, unitB.B9)
-    add_LCA_CF_parameters(modelB)
+    add_LCA_CF_parameters(modelB, lca_kind=lca_kind)
 
     # Pit latrine and conveyance
     add_pit_latrine_parameters(modelB)
@@ -822,7 +784,7 @@ def create_modelB(lca_kind='original'):
     @paramB(name='Liquid petroleum gas price', element='TEA', kind='isolated', units='UGX/kg',
             baseline=6500, distribution=D)
     def set_LPG_price(i):
-        price_dct['Biogas'] = biogas.price = i/get_exchange_rate()*get_biogas_factor()
+        price_dct['Biogas'] = biogas.price = i/bw.exchange_rate*get_biogas_factor()
 
     b = bw.LPG_energy
     D = shape.Uniform(lower=49.5, upper=50.4)
@@ -843,15 +805,15 @@ def create_modelB(lca_kind='original'):
 # =============================================================================
 
 def create_modelC(lca_kind='original'):
-    sysC = bw.create_systeam('C')
+    sysC = create_system('C')
     unitC = sysC.flowsheet.unit
 
     # Add shared metrics/parameters
     modelC = Model(sysC)
     paramC = modelC.parameter
-    add_metrics(sysC, lca_kind)
+    add_metrics(modelC, lca_kind)
     add_shared_parameters(modelC, unitC.C8, unitC.C9)
-    add_LCA_CF_parameters(modelC)
+    add_LCA_CF_parameters(modelC, lca_kind=lca_kind)
 
     # UDDT
     C2 = unitC.C2
@@ -919,8 +881,10 @@ def create_modelC(lca_kind='original'):
 
     return modelC
 
-# Wrapper function
+
+# Wrapper functions
 def create_model(model_ID='A', **model_kwargs):
+    _load_components()
     model_ID = model_ID.lstrip('model').lstrip('sys') # so that it'll work for "modelA"/"sysA"/"A"
     if model_ID == 'A': model = create_modelA(**model_kwargs)
     elif model_ID == 'B': model = create_modelB(**model_kwargs)
@@ -929,131 +893,7 @@ def create_model(model_ID='A', **model_kwargs):
     return model
 
 
-
-# %%
-
-# =============================================================================
-# Functions to run simulation and generate plots
-# =============================================================================
-
-def run_uncertainty(model, path, **kwargs):
+def run_uncertainty(model, path='', **kwargs):
     kwargs['path'] = os.path.join(results_path, f'sys{model.system.ID[-1]}_model.xlsx') if path=='' else path
     run(model=model, **kwargs)
-
-    # if seed: np.random.seed(seed)
-
-    # samples = model.sample(N, rule)
-    # model.load_samples(samples)
-    # model.evaluate()
-
-    # # Data organization
-    # dct = {}
-    # index_p = len(model.get_parameters())
-    # dct['parameters'] = model.table.iloc[:, :index_p].copy()
-    # dct['data'] = model.table.iloc[:, index_p:].copy()
-    # if percentiles:
-    #     dct['percentiles'] = dct['data'].quantile(q=percentiles)
-    #     dct['percentiles_parameters'] = dct['parameters'].quantile(q=percentiles)
-
-    # # Spearman's rank correlation
-    # spearman_metrics = model.metrics[:13]
-    # spearman_results = model.spearman(model.get_parameters(), spearman_metrics)
-    # spearman_results.columns = pd.Index([i.name_with_units for i in spearman_metrics])
-    # dct['spearman'] = spearman_results
-
-    # path = os.path.join(results_path, f'sys{model.system.ID[-1]}_model.xlsx') if path=='' else path
-    # with pd.ExcelWriter(path) as writer:
-    #     dct['parameters'].to_excel(writer, sheet_name='Parameters')
-    #     dct['data'].to_excel(writer, sheet_name='Uncertainty results')
-    #     if 'percentiles' in dct.keys():
-    #         dct['percentiles'].to_excel(writer, sheet_name='Percentiles')
-    #         dct['percentiles_parameters'].to_excel(writer, sheet_name='Parameter percentiles')
-    #     dct['spearman'].to_excel(writer, sheet_name='Spearman')
-    #     model.table.to_excel(writer, sheet_name='Raw data')
-
     return
-
-
-# # Data organization
-# def organize_uncertainty_results(model, spearman_results,
-#                                  percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1)):
-#     global result_dct
-#     dct = result_dct[model._system.ID]
-#     index_p = len(model.parameters)
-#     dct['parameters'] = model.table.iloc[:, :index_p].copy()
-#     dct['data'] = model.table.iloc[:, index_p:].copy()
-
-#     if percentiles is not None:
-#         dct['percentiles'] = dct['data'].quantile(q=percentiles)
-
-#     if spearman_results is not None:
-#         dct['spearman'] = spearman_results
-#     return dct
-
-
-
-# def save_uncertainty_results(model, dct={}, path=''):
-#     path = os.path.join(results_path, f'sys{model._system.ID[-1]}_model.xlsx') if path=='' else path
-#     dct = dct or result_dct[sys_ID]
-#     if dct['parameters'] is None:
-#         raise ValueError('No cached result, run model first.')
-#     with pd.ExcelWriter(path) as writer:
-#         dct['parameters'].to_excel(writer, sheet_name='Parameters')
-#         dct['data'].to_excel(writer, sheet_name='Uncertainty results')
-#         if 'percentiles' in dct.keys():
-#             dct['percentiles'].to_excel(writer, sheet_name='Percentiles')
-#         dct['spearman'].to_excel(writer, sheet_name='Spearman')
-#         model.table.to_excel(writer, sheet_name='Raw data')
-
-# @time_printer
-# def run_uncertainty(model, seed=None, N=1000, rule='L',
-#                     percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
-#                     spearman_metrics='default'):
-#     if seed:
-#         np.random.seed(seed)
-
-#     samples = model.sample(N, rule)
-
-#     model.load_samples(samples)
-#     model.evaluate()
-
-#     # Spearman's rank correlation,
-#     # metrics default to net cost, net emission, and total recoveries
-#     spearman_results = None
-#     if spearman_metrics:
-#         if spearman_metrics.lower() == 'default':
-#             spearman_metrics = [i for i in model.metrics
-#                                 if 'net' in i.name.lower() or 'total' in i.name.lower()]
-
-#         # Different versions of BioSTEAM
-#         try: spearman_results = model.spearman_r(model.parameters, spearman_metrics)[0]
-#         except: spearman_results = model.spearman_r(model.parameters, spearman_metrics)
-
-#         spearman_results.columns = pd.Index([i.name_with_units for i in spearman_metrics])
-
-#     dct = organize_uncertainty_results(model, spearman_results, percentiles)
-#     return dct
-
-
-# def save_uncertainty_results(model, dct=None, path=''):
-#     if not path:
-#         path = ospath.join(c_path, 'results')
-
-#         if not ospath.isdir(path):
-#             os.mkdir(path)
-#         path = ospath.join(path, f'sys{model._system.ID[-1]}_model.xlsx')
-
-#     elif not (path.endswith('xlsx') or path.endswith('xls')):
-#         extension = path.split('.')[-1]
-#         raise ValueError(f'Only "xlsx" and "xls" are supported, not {extension}.')
-
-#     dct = dct or result_dct[model._system.ID]
-#     if dct['parameters'] is None:
-#         raise ValueError('No cached result, run model first.')
-#     with pd.ExcelWriter(path) as writer:
-#         dct['parameters'].to_excel(writer, sheet_name='Parameters')
-#         dct['data'].to_excel(writer, sheet_name='Uncertainty results')
-#         if 'percentiles' in dct.keys():
-#             dct['percentiles'].to_excel(writer, sheet_name='Percentiles')
-#         dct['spearman'].to_excel(writer, sheet_name='Spearman')
-#         model.table.to_excel(writer, sheet_name='Raw data')

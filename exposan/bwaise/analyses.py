@@ -22,14 +22,14 @@ from matplotlib.ticker import AutoMinorLocator
 from qsdsan import stats as s
 from qsdsan.utils import copy_samples, colors, load_pickle, save_pickle
 from exposan import bwaise as bw
+from exposan.utils import organize_and_save_results
 from exposan.bwaise import results_path, figures_path, evaluate, get_key_metrics
-from exposan.bwaise.models import organize_uncertainty_results, save_uncertainty_results
 
 # Comment these out if want to see all warnings
 import warnings
 warnings.filterwarnings(action='ignore')
 
-models = modelA, modelB, modelC = bw.modelA, bw.modelB, bw.modelC
+models = modelA, modelB, modelC = (bw.create_model(ID) for ID in ('A', 'B', 'C'))
 
 RGBs = {
     'A': colors.Guest.orange.RGBn,
@@ -392,7 +392,7 @@ def run(N_uncertainty=5000, N_morris=50, from_record=True,
         path = os.path.join(results_path, 'table_dct.pckl')
         table_dct = load_pickle(path)
 
-    ########## Uncertainty analysis ##########
+    ##### Uncertainty analysis #####
     for model in models:
         # Net cost, net GWP, and total COD/N/P/K recovery
         model.metrics = key_metrics = get_key_metrics(model, alt_names)
@@ -409,9 +409,11 @@ def run(N_uncertainty=5000, N_morris=50, from_record=True,
             evaluate(model)
 
             table_dct['uncertainty'][ID] = model.table.copy()
-            organized_dct = organize_uncertainty_results(
-                model=model, spearman_results=model.spearman())
-            save_uncertainty_results(model, organized_dct)
+            organize_and_save_results(model, spearman_results=model.spearman())
+
+            # organized_dct = organize_uncertainty_results(
+            #     model=model, spearman_results=model.spearman())
+            # save_uncertainty_results(model, organized_dct)
 
         else:
             model.table = table_dct['uncertainty'][ID]
@@ -420,7 +422,7 @@ def run(N_uncertainty=5000, N_morris=50, from_record=True,
         _, ax_dct['box'][ID] = plot_box(model, ID, RGBs[ID], key_metrics[:-2], 'horizontal')
         _, ax_dct['kde'][ID] = plot_kde(model, ID, RGBs[ID], key_metrics[-2:])
 
-    ########## Morris One-at-A-Time ##########
+    ##### Morris One-at-A-Time #####
     origin_dct = dict(mu_star={}, sigma={})
     norm_dct = dict(mu_star={}, sigma={})
     for model in models:

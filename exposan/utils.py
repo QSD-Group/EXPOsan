@@ -66,7 +66,7 @@ def clear_unit_costs(sys):
 
 
 @time_printer
-def run_uncertainty(model, seed=None, N=10000, rule='L',
+def run_uncertainty(model, seed=None, N=1000, rule='L',
                     percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
                     path='', print_time=False):
     if seed: np.random.seed(seed)
@@ -74,30 +74,31 @@ def run_uncertainty(model, seed=None, N=10000, rule='L',
     samples = model.sample(N, rule)
     model.load_samples(samples)
     model.evaluate()
+    # Spearman's rank correlation
+    spearman_results = model.spearman()
+    spearman_results.columns = pd.Index([i.name_with_units for i in model.metrics])
+    organize_and_save_results(model=model, percentiles=percentiles,
+                              spearman_results=spearman_results, path=path)
 
-    # Data organization
+
+def organize_and_save_results(
+        model, percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
+        spearman_results=None, path=''):
     dct = {}
     index_p = len(model.get_parameters())
     dct['parameters'] = model.table.iloc[:, :index_p].copy()
     dct['data'] = model.table.iloc[:, index_p:].copy()
     if percentiles:
-        dct['percentiles'] = dct['data'].quantile(q=percentiles)
         dct['percentiles_parameters'] = dct['parameters'].quantile(q=percentiles)
-
-    # Spearman's rank correlation
-    spearman_metrics = model.metrics[:13]
-    spearman_results = model.spearman(model.get_parameters(), spearman_metrics)
-    spearman_results.columns = pd.Index([i.name_with_units for i in spearman_metrics])
+        dct['percentiles_results'] = dct['data'].quantile(q=percentiles)
     dct['spearman'] = spearman_results
 
     path = os.path.join(es_path, f'sys{model.system.ID[-1]}_model.xlsx') if path=='' else path
     with pd.ExcelWriter(path) as writer:
         dct['parameters'].to_excel(writer, sheet_name='Parameters')
         dct['data'].to_excel(writer, sheet_name='Uncertainty results')
-        if 'percentiles' in dct.keys():
-            dct['percentiles'].to_excel(writer, sheet_name='Percentiles')
+        if percentiles:
             dct['percentiles_parameters'].to_excel(writer, sheet_name='Parameter percentiles')
-        dct['spearman'].to_excel(writer, sheet_name='Spearman')
+            dct['percentiles_results'].to_excel(writer, sheet_name='Result percentiles')
+        if spearman_results is not None: dct['spearman'].to_excel(writer, sheet_name='Spearman')
         model.table.to_excel(writer, sheet_name='Raw data')
-
-    return

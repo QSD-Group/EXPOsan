@@ -15,7 +15,7 @@ for license details.
 
 import os, pickle, numpy as np, pandas as pd, qsdsan as qs
 from qsdsan import ImpactItem, StreamImpactItem
-from qsdsan.utils import AttrGetter, FuncGetter, time_printer
+from qsdsan.utils import time_printer
 
 bwaise_path = os.path.dirname(__file__)
 data_path = os.path.join(bwaise_path, 'data')
@@ -80,6 +80,14 @@ def get_tanker_truck_fee(capacity):
     cost = np.exp(predicted)
     return cost
 
+handcart_fee = 0.01 # USD/cap/d
+truck_fee = 23e3 # UGX/m3
+
+# Handcart fee is for both liquid/solid
+get_handcart_and_truck_fee = \
+    lambda vol, ppl, include_fee, unit: truck_fee/exchange_rate*vol \
+        + int(include_fee)*handcart_fee*ppl*unit.collection_period
+
 # Flow rates for treatment plants
 sewer_flow = 2750 # m3/d
 sludge_flow_exist = 500 # m3/d
@@ -130,7 +138,7 @@ GWP_dct = {
     'N': -5.4,
     'P': -4.9,
     'K': -1.5,
-    'Biogas': -3*get_biogas_factor()
+    'Biogas': -3*get_biogas_factor(),
     }
 
 
@@ -140,16 +148,9 @@ GWP_dct = {
 # Load components and systems
 # =============================================================================
 
-from . import _components, _lca_data, systems#, models
+from . import _components
 from ._components import *
-from ._lca_data import *
-from .systems import *
-
 _components_loaded = False
-_system_loaded = False
-_impact_item_loaded = False
-
-
 def _load_components():
     global components, _components_loaded
     components = create_components()
@@ -157,7 +158,10 @@ def _load_components():
     _components_loaded = True
 
 
-def _load_lca_data(lca_kind='original'):
+from . import _lca_data
+from ._lca_data import *
+_impact_item_loaded = False
+def _load_lca_data(lca_kind='original', reload=False):
     '''
     Load impact indicator and impact item data.
 
@@ -168,123 +172,122 @@ def _load_lca_data(lca_kind='original'):
         (TRACI, ecoinvent v3.2, GWP only),
         "new" loads the data for ReCiPe and TRACI
         (ecoinvent 3.7.1, at the point of substitution).
+    reload : bool
+        Whether to force reload LCA data.
     '''
-    indicator_path = os.path.join(data_path, f'indicators_{lca_kind}.tsv')
-    indel_col = None if lca_kind=='original' else 0
-    ind_df_processed = pd.read_csv(indicator_path, sep='\t', index_col=indel_col)
-    qs.ImpactIndicator.load_from_file(indicator_path)
-
     global _impact_item_loaded
-    _impact_item_loaded = lca_kind
+    if _impact_item_loaded != lca_kind or reload:
+        indicator_path = os.path.join(data_path, f'indicators_{lca_kind}.tsv')
+        indel_col = None if lca_kind=='original' else 0
+        ind_df_processed = pd.read_csv(indicator_path, sep='\t', index_col=indel_col)
+        qs.ImpactIndicator.load_from_file(indicator_path)
 
-    if lca_kind.lower() in ('original', 'traci'):
-        item_path = os.path.join(data_path, 'items_original.xlsx')
-        qs.ImpactItem.load_from_file(item_path)
-        # Electricity and stream impact items
-        for k, v in GWP_dct.items():
-            if k == 'Electricity':
-                ImpactItem(ID='E_item', functional_unit='kWh', GWP=v)
-            else:
-                StreamImpactItem(ID=f'{k}_item', GWP=v)
-    elif lca_kind.lower() in ('new', 'recipe'):
-        item_path = os.path.join(data_path, 'cf_dct.pckl')
-        f = open(item_path, 'rb')
-        cf_dct = pickle.load(f)
-        f.close()
-        create_items(ind_df_processed, cf_dct)
+        if lca_kind.lower() in ('original', 'traci'):
+            item_path = os.path.join(data_path, 'items_original.xlsx')
+            qs.ImpactItem.load_from_file(item_path)
+            # Electricity and stream impact items
+            for k, v in GWP_dct.items():
+                if k == 'Electricity':
+                    ImpactItem(ID='E_item', functional_unit='kWh', GWP=v)
+                else:
+                    StreamImpactItem(ID=f'{k}_item', GWP=v)
+        elif lca_kind.lower() in ('new', 'recipe'):
+            item_path = os.path.join(data_path, 'cf_dct.pckl')
+            f = open(item_path, 'rb')
+            cf_dct = pickle.load(f)
+            f.close()
+            create_items(ind_df_processed, cf_dct)
 
-        # Fugitive
-        EcosystemQuality_factor = 29320 # pt/species/yr
-        HumanHealth_factor = 436000 # pt/DALY
+            # Fugitive
+            EcosystemQuality_factor = 29320 # pt/species/yr
+            HumanHealth_factor = 436000 # pt/DALY
 
-        E_factor = {
-            # Global warming to (terrestrial+freshwater) ecosystem
-            'GW2ECO': (2.5e-08+6.82e-13)*EcosystemQuality_factor,
-            'GW2HH': 1.25e-05*HumanHealth_factor, # global warming to human health
-            'OD2HH': 0.00134*HumanHealth_factor, # stratospheric ozone depletion to human health
-                    }
-        H_factor = {
-            'GW2ECO': (2.8e-09+7.65e-14)*EcosystemQuality_factor,
-            'GW2HH': 9.28e-07*HumanHealth_factor,
-            'OD2HH': 0.000531*HumanHealth_factor,
-            }
-        I_factor = {
-            'GW2ECO': (5.32e-10+1.45e-14)*EcosystemQuality_factor,
-            'GW2HH': 8.12e-08*HumanHealth_factor,
-            'OD2HH': 0.000237*HumanHealth_factor,
-            }
+            E_factor = {
+                # Global warming to (terrestrial+freshwater) ecosystem
+                'GW2ECO': (2.5e-08+6.82e-13)*EcosystemQuality_factor,
+                'GW2HH': 1.25e-05*HumanHealth_factor, # global warming to human health
+                'OD2HH': 0.00134*HumanHealth_factor, # stratospheric ozone depletion to human health
+                        }
+            H_factor = {
+                'GW2ECO': (2.8e-09+7.65e-14)*EcosystemQuality_factor,
+                'GW2HH': 9.28e-07*HumanHealth_factor,
+                'OD2HH': 0.000531*HumanHealth_factor,
+                }
+            I_factor = {
+                'GW2ECO': (5.32e-10+1.45e-14)*EcosystemQuality_factor,
+                'GW2HH': 8.12e-08*HumanHealth_factor,
+                'OD2HH': 0.000237*HumanHealth_factor,
+                }
 
-        StreamImpactItem(ID='CH4_item',
-                         E_EcosystemQuality_Total=E_factor['GW2ECO']*4.8,
-                         E_HumanHealth_Total=E_factor['GW2HH']*4.8,
-                         H_EcosystemQuality_Total=H_factor['GW2ECO']*34,
-                         H_HumanHealth_Total=H_factor['GW2HH']*34,
-                         I_EcosystemQuality_Total=I_factor['GW2ECO']*84,
-                         I_HumanHealth_Total=I_factor['GW2HH']*84
-                         )
-        StreamImpactItem(ID='N2O_item',
-                         E_EcosystemQuality_Total=E_factor['GW2ECO']*78.8,
-                         # From climate change + ozone depletion
-                         E_HumanHealth_Total=\
-                             E_factor['GW2HH']*78.8+E_factor['OD2HH']*0.017,
-                         H_EcosystemQuality_Total=H_factor['GW2ECO']*298,
-                         H_HumanHealth_Total=\
-                             H_factor['GW2HH']*298+H_factor['OD2HH']*0.011,
-                         I_EcosystemQuality_Total=I_factor['GW2ECO']*264,
-                         I_HumanHealth_Total=\
-                             I_factor['GW2HH']*264+I_factor['OD2HH']*0.007
-                         )
-    else: raise ValueError(f'`kind` can only be "original" or "new", not "{lca_kind}".')
+            StreamImpactItem(ID='CH4_item',
+                             E_EcosystemQuality_Total=E_factor['GW2ECO']*4.8,
+                             E_HumanHealth_Total=E_factor['GW2HH']*4.8,
+                             H_EcosystemQuality_Total=H_factor['GW2ECO']*34,
+                             H_HumanHealth_Total=H_factor['GW2HH']*34,
+                             I_EcosystemQuality_Total=I_factor['GW2ECO']*84,
+                             I_HumanHealth_Total=I_factor['GW2HH']*84
+                             )
+            StreamImpactItem(ID='N2O_item',
+                             E_EcosystemQuality_Total=E_factor['GW2ECO']*78.8,
+                             # From climate change + ozone depletion
+                             E_HumanHealth_Total=\
+                                 E_factor['GW2HH']*78.8+E_factor['OD2HH']*0.017,
+                             H_EcosystemQuality_Total=H_factor['GW2ECO']*298,
+                             H_HumanHealth_Total=\
+                                 H_factor['GW2HH']*298+H_factor['OD2HH']*0.011,
+                             I_EcosystemQuality_Total=I_factor['GW2ECO']*264,
+                             I_HumanHealth_Total=\
+                                 I_factor['GW2HH']*264+I_factor['OD2HH']*0.007
+                             )
+        else: raise ValueError(f'`kind` can only be "original" or "new", not "{lca_kind}".')
 
-    # Update prices
-    ImpactItem.get_item('Concrete').price = price_dct['Concrete']
-    ImpactItem.get_item('Steel').price = price_dct['Steel']
-    Biogas_CFs = ImpactItem.get_item('Biogas_item').CFs
-    for k, v in Biogas_CFs.items(): Biogas_CFs[k] = v * get_biogas_factor()
+        # Update prices
+        ImpactItem.get_item('Concrete').price = price_dct['Concrete']
+        ImpactItem.get_item('Steel').price = price_dct['Steel']
+        Biogas_CFs = ImpactItem.get_item('Biogas_item').CFs
+        for k, v in Biogas_CFs.items(): Biogas_CFs[k] = v * get_biogas_factor()
 
-    '''
-    try: # prevent from reloading
-        Excavation = ImpactItem.get_item('Excavation')
-        Excavation.indicators[0]
-    except:
-        _load_lca_data('original')
-    '''
+        _impact_item_loaded = lca_kind
+
+    return _impact_item_loaded
 
 
-def _load_system():
+from . import systems
+from .systems import *
+_system_loaded = False
+def _load_system(lca_kind='original'):
     qs.currency = 'USD'
     qs.CEPCI = qs.CEPCI_by_year[2018]
     qs.PowerUtility.price = price_dct['Electricity']
-    global sysA, sysB, sysC, _system_loaded
-    sysA = create_system('A')
-    sysB = create_system('B')
-    sysC = create_system('C')
+    global sysA, sysB, sysC, teaA, teaB, teaC, lcaA, lcaB, lcaC, _system_loaded
+    sysA = create_system('A', lca_kind=lca_kind)
+    teaA = sysA.TEA
+    lcaA = sysA.LCA
+    sysB = create_system('B', lca_kind=lca_kind)
+    teaB = sysB.TEA
+    lcaB = sysB.LCA
+    sysC = create_system('C', lca_kind=lca_kind)
+    teaC = sysC.TEA
+    lcaC = sysC.LCA
     _system_loaded = True
+
 
 def load(lca_kind='original'):
     if not _components_loaded: _load_components()
-    if _impact_item_loaded is False : _load_lca_data(lca_kind)
-    if not _system_loaded: _load_system()
-    if _impact_item_loaded != lca_kind: # to refresh the impact items
-        for sys in (sysA, sysB, sysC):
-            lca = sys.LCA
-            for i in lca.lca_streams:
-                source_ID = i.stream_impact_item.source.ID
-                i.stream_impact_item.source = ImpactItem.get_item(source_ID)
+    if not _system_loaded: _load_system(lca_kind)
     dct = globals()
     for sys in (sysA, sysB, sysC): dct.update(sys.flowsheet.to_dict())
 
 
 def __getattr__(name):
-    if not _components_loaded:
-        _load_components()
-        if name in ('components', 'cmps'): return components
-    if not _system_loaded:
-        _load_system()
-        dct = globals()
-        for sys in (sysA, sysB, sysC): dct.update(sys.flowsheet.to_dict())
-        if name in dct: return dct[name]
-    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+    if not _components_loaded or not _system_loaded:
+        raise AttributeError(f'module "{__name__}" not yet loaded, '
+                             f'load moduel with `{__name__}.load()`.')
+    #     _load_system()
+    #     dct = globals()
+    #     for sys in (sysA, sysB, sysC): dct.update(sys.flowsheet.to_dict())
+    #     if name in dct: return dct[name]
+    # raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
 
 
@@ -315,17 +318,40 @@ def get_recoveries(system, resource):
         liq = get_outs(unit.C14)
         sol = get_outs(unit.C13)
 
-    ppl = get_ppl(system.ID)
-
     attr = f'T{resource}' if resource != 'COD' else resource
     sum_attr = lambda streams: sum(getattr(s, attr)*s.F_vol/1e3 for s in streams)
 
-    return (
-        lambda: sum_attr(liq)/sum_attr(ins)/ppl,
-        lambda: sum_attr(sol)/sum_attr(ins)/ppl,
-        lambda: get_gas_COD()/sum_attr(ins)/ppl,
-        lambda: (sum_attr(liq)+sum_attr(sol)+get_gas_COD())/sum_attr(ins)/ppl,
-        )
+    return [
+        lambda: sum_attr(liq)/sum_attr(ins)/get_ppl(sys_ID),
+        lambda: sum_attr(sol)/sum_attr(ins)/get_ppl(sys_ID),
+        lambda: get_gas_COD()/sum_attr(ins)/get_ppl(sys_ID),
+        lambda: (sum_attr(liq)+sum_attr(sol)+get_gas_COD())/sum_attr(ins)/get_ppl(sys_ID),
+        ]
+
+def get_TEA_metrics(system):
+    sys_ID = system.ID
+    tea = system.TEA
+    return [
+        lambda: (tea.annualized_equipment_cost-tea.net_earnings)/get_ppl(sys_ID),
+        lambda: tea.annualized_equipment_cost/get_ppl(sys_ID),
+        lambda: tea.AOC/get_ppl(sys_ID),
+        lambda: tea.sales/get_ppl(sys_ID),
+        ]
+
+def get_LCA_metrics(system, indicator):
+    lca = system.LCA
+    sys_ID = system.ID
+    ind_ID = indicator.ID
+    return [
+        lambda: lca.total_impacts[ind_ID]/lca.lifetime/get_ppl(sys_ID),
+        lambda: lca.total_construction_impacts[ind_ID]/lca.lifetime/get_ppl(sys_ID),
+        lambda: lca.total_transportation_impacts[ind_ID]/lca.lifetime/get_ppl(sys_ID),
+        lambda: lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='direct_emission')[ind_ID] \
+            /lca.lifetime/get_ppl(sys_ID),
+        lambda: lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='offset')[ind_ID] \
+            /lca.lifetime/get_ppl(sys_ID),
+        lambda: lca.total_other_impacts[ind_ID]/lca.lifetime/get_ppl(sys_ID)
+        ]
 
 
 def print_summaries(systems):
@@ -333,7 +359,6 @@ def print_summaries(systems):
     except: systems = (systems,)
 
     for sys in systems:
-        # func = get_summarizing_functions(sys)
         sys.simulate()
         print(f'\n---------- Summary for {sys} ----------\n')
         # Recoveries
@@ -346,53 +371,34 @@ def print_summaries(systems):
         print('\n')
 
         # TEA
-        ppl = get_ppl(sys.ID)
         tea = sys.TEA
         tea.show()
-
+        funcs = get_TEA_metrics(sys)
         unit = f'{qs.currency}/cap/yr'
-        val = (tea.annualized_equipment_cost-tea.net_earnings)/ppl
-        print(f'\nNet cost: {val:.1f} {unit}.')
-
-        val = tea.annualized_equipment_cost/ppl
-        print(f'Capital: {val:.1f} {unit}.')
-
-        val = tea.AOC/ppl
-        print(f'Operating: {val:.1f} {unit}.')
-
-        val = tea.sales/ppl
-        print(f'Sales: {val:.1f} {unit}.')
+        print(f'\nNet cost: {funcs[0]():.1f} {unit}.')
+        print(f'Capital: {funcs[1]():.1f} {unit}.')
+        print(f'Operating: {funcs[2]():.1f} {unit}.')
+        print(f'Sales: {funcs[3]():.1f} {unit}.')
         print('\n')
 
         # LCA
         lca = sys.LCA
         lca.show()
-
         print('\n')
         for ind in lca.indicators:
+            funcs = get_LCA_metrics(sys, ind)
             unit = f'{ind.unit}/cap/yr'
             print(f'\nImpact indicator {ind.ID}:')
+            print(f'\nNet emission: {funcs[0]():.1f} {unit}.')
+            print(f'Construction: {funcs[1]():.1f} {unit}.')
+            print(f'Transportation: {funcs[2]():.1f} {unit}.')
+            print(f'Direct emission: {funcs[3]():.1f} {unit}.')
+            print(f'Offset: {funcs[4]():.1f} {unit}.')
+            print(f'Other: {funcs[5]():.1} {unit}.\n')
 
-            val = lca.total_impacts[ind.ID]/lca.lifetime/ppl
-            print(f'\nNet emission: {val:.1f} {unit}.')
 
-            val = lca.total_construction_impacts[ind.ID]/lca.lifetime/ppl
-            print(f'Construction: {val:.1f} {unit}.')
-
-            val = lca.total_transportation_impacts[ind.ID]/lca.lifetime/ppl
-            print(f'Transportation: {val:.1f} {unit}.')
-
-            val = lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='direct_emission')[ind.ID] \
-                /lca.lifetime/ppl
-            print(f'Direct emission: {val:.1f} {unit}.')
-
-            val = lca.get_stream_impacts(stream_items=lca.stream_inventory, kind='offset')[ind.ID] \
-                /lca.lifetime/ppl
-            print(f'Offset: {val:.1f} {unit}.')
-
-            val = lca.total_other_impacts[ind.ID]/lca.lifetime/ppl
-            print(f'Other: {val:.1} {unit}.\n')
-
+from . import models
+from .models import *
 
 @time_printer
 def evaluate(model, samples=None):
@@ -409,20 +415,15 @@ def get_key_metrics(model, alt_names={}):
     return key_metrics
 
 
-
-#!!! from . import models
-# from .models import *
-
-
 __all__ = (
-    'evaluate',
-    'get_key_metrics',
     'bwaise_path',
     'data_path',
     'results_path',
     'figures_path',
+    'evaluate',
+    'get_key_metrics',
  	*_components.__all__,
     *_lca_data.__all__,
  	*systems.__all__,
-  #   *models.__all__,
+    *models.__all__,
  	)
