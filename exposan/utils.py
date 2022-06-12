@@ -50,7 +50,9 @@ def batch_setting_unit_params(df, model, unit, exclude=()):
             raise ValueError(f'Distribution {dist} not recognized for unit {unit}.')
 
         su_type = type(unit).__name__
-        name = f'{unit.ID}-{su_type}-{para}'
+        if su_type.lower() == 'lagoon':
+            su_type = f'{unit.design_type.capitalize()} lagoon'
+        name = f'{su_type} {para}'
         model.parameter(setter=AttrSetter(unit, para),
                         name=name, element=unit,
                         kind='coupled', units=df.loc[para]['unit'],

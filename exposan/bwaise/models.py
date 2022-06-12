@@ -635,7 +635,7 @@ def add_existing_plant_parameters(toilet_unit, cost_unit, model):
 # =============================================================================
 
 def create_modelA(lca_kind='original'):
-    sysA = create_system('A')
+    sysA = create_system('A', lca_kind=lca_kind)
     unitA = sysA.flowsheet.unit
 
     # Add shared metrics/parameters
@@ -695,7 +695,7 @@ def create_modelA(lca_kind='original'):
 # =============================================================================
 
 def create_modelB(lca_kind='original'):
-    sysB = create_system('B')
+    sysB = create_system('B', lca_kind=lca_kind)
     unitB = sysB.flowsheet.unit
     teaB = sysB.TEA
 
@@ -805,7 +805,7 @@ def create_modelB(lca_kind='original'):
 # =============================================================================
 
 def create_modelC(lca_kind='original'):
-    sysC = create_system('C')
+    sysC = create_system('C', lca_kind=lca_kind)
     unitC = sysC.flowsheet.unit
 
     # Add shared metrics/parameters

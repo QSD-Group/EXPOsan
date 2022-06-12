@@ -411,10 +411,6 @@ def run(N_uncertainty=5000, N_morris=50, from_record=True,
             table_dct['uncertainty'][ID] = model.table.copy()
             organize_and_save_results(model, spearman_results=model.spearman())
 
-            # organized_dct = organize_uncertainty_results(
-            #     model=model, spearman_results=model.spearman())
-            # save_uncertainty_results(model, organized_dct)
-
         else:
             model.table = table_dct['uncertainty'][ID]
 
