@@ -283,12 +283,6 @@ def __getattr__(name):
     if not _components_loaded or not _system_loaded:
         raise AttributeError(f'module "{__name__}" not yet loaded, '
                              f'load moduel with `{__name__}.load()`.')
-    #     _load_system()
-    #     dct = globals()
-    #     for sys in (sysA, sysB, sysC): dct.update(sys.flowsheet.to_dict())
-    #     if name in dct: return dct[name]
-    # raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
-
 
 
 # %%

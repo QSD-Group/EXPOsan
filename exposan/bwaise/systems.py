@@ -478,6 +478,7 @@ def create_system(system_ID='A', flowsheet=None, lca_kind='original'):
     reload_lca = False
 
     # Set flowsheet to avoid stream replacement warnings
+    #!!! Maybe better to use 'bwA', etc. as flowsheet names
     if flowsheet is None:
         if hasattr(main_flowsheet.flowsheet, sys_ID): # clear flowsheet
             getattr(main_flowsheet.flowsheet, sys_ID).clear()
