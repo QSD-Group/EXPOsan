@@ -46,7 +46,7 @@ __all__ = ('create_system',)
 # Universal units and functions
 # =============================================================================
 
-def batch_create_streams(prefix):
+def batch_create_streams(prefix, phases=('liq', 'sol')):
     item = ImpactItem.get_item('CH4_item').copy(f'{prefix}_CH4_item', set_as_source=True)
     WasteStream('CH4', phase='g', stream_impact_item=item)
 
@@ -54,7 +54,7 @@ def batch_create_streams(prefix):
     WasteStream('N2O', phase='g', stream_impact_item=item)
 
     for nutrient in ('N', 'P', 'K'):
-        for phase in ('liq', 'sol'):
+        for phase in phases:
             original = ImpactItem.get_item(f'{nutrient}_item')
             new = original.copy(f'{phase}_{nutrient}_item', set_as_source=True)
             WasteStream(f'{phase}_{nutrient}', phase='l',
@@ -474,17 +474,16 @@ def create_systemC(flowsheet=None):
 
 def create_system(system_ID='A', flowsheet=None, lca_kind='original'):
     ID = system_ID.lower().lstrip('sys').upper() # so that it'll work for "sysA"/"A"
-    sys_ID = f'sys{ID}'
     reload_lca = False
 
     # Set flowsheet to avoid stream replacement warnings
-    #!!! Maybe better to use 'bwA', etc. as flowsheet names
     if flowsheet is None:
-        if hasattr(main_flowsheet.flowsheet, sys_ID): # clear flowsheet
-            getattr(main_flowsheet.flowsheet, sys_ID).clear()
+        flowsheet_ID = f'bw{ID}'
+        if hasattr(main_flowsheet.flowsheet, flowsheet_ID): # clear flowsheet
+            getattr(main_flowsheet.flowsheet, flowsheet_ID).clear()
             clear_lca_registries()
             reload_lca = True
-        flowsheet = Flowsheet(f'sys{system_ID}')
+        flowsheet = Flowsheet(flowsheet_ID)
         main_flowsheet.set_flowsheet(flowsheet)
 
     loaded_status = _load_lca_data(lca_kind, reload_lca)

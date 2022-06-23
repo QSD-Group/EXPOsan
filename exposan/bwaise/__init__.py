@@ -282,7 +282,7 @@ def load(lca_kind='original'):
 def __getattr__(name):
     if not _components_loaded or not _system_loaded:
         raise AttributeError(f'module "{__name__}" not yet loaded, '
-                             f'load moduel with `{__name__}.load()`.')
+                             f'load module with `{__name__}.load()`.')
 
 
 # %%
