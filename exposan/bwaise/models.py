@@ -439,7 +439,7 @@ def add_LCA_CF_parameters(model, lca_kind):
                             units=f'kg CO2-eq/{item.functional_unit}',
                             baseline=b, distribution=D)
 
-        if sys.ID == 'sysB':
+        if sys.ID == 'sysB' and ImpactItem.get_item('Biogas_item'):
             D = shape.Uniform(lower=2.93, upper=3.05)
             @param(name='Liquid petroleum gas CF', element='LCA', kind='isolated', units='MJ/kg',
                    baseline=3, distribution=D)
