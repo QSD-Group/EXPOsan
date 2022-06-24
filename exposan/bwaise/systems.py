@@ -61,11 +61,11 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
                         price=price_dct[nutrient], stream_impact_item=new)
 
 
-def update_toilet_param(unit, kind):
+def update_toilet_param(unit, ppl):
     # Use the private attribute so that the number of users/toilets will be exactly as assigned
     # (i.e., can be fractions)
     unit._N_user = get_toilet_user()
-    unit._N_toilet = get_ppl(kind)/get_toilet_user()
+    unit._N_toilet = ppl/get_toilet_user()
     unit._run()
 
 def update_lagoon_flow_rate(unit):
@@ -105,7 +105,7 @@ def create_systemA(flowsheet=None):
                        decay_k_N=get_decay_k(),
                        max_CH4_emission=max_CH4_emission
                        )
-    A2.specification = lambda: update_toilet_param(A2, 'exist')
+    A2.specification = lambda: update_toilet_param(A2, get_ppl('exist'))
 
     ##### Conveyance #####
     A3 = su.Trucking('A3', ins=A2-0, outs=('transported', 'conveyance_loss'),
@@ -234,7 +234,7 @@ def create_systemB(flowsheet=None):
                        decay_k_COD=get_decay_k(),
                        decay_k_N=get_decay_k(),
                        max_CH4_emission=max_CH4_emission)
-    B2.specification = lambda: update_toilet_param(B2, 'alt')
+    B2.specification = lambda: update_toilet_param(B2, get_ppl('alt'))
 
     ##### Conveyance #####
     B3 = su.Trucking('B3', ins=B2-0, outs=('transported', 'conveyance_loss'),
@@ -358,7 +358,7 @@ def create_systemC(flowsheet=None):
                  decay_k_COD=get_decay_k(),
                  decay_k_N=get_decay_k(),
                  max_CH4_emission=max_CH4_emission)
-    C2.specification = lambda: update_toilet_param(C2, 'exist')
+    C2.specification = lambda: update_toilet_param(C2, get_ppl('exist'))
 
     ##### Conveyance #####
     # Liquid waste

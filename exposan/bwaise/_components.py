@@ -23,11 +23,11 @@ Ref:
 # %%
 
 from thermosteam.functional import rho_to_V
-from qsdsan import Chemical, Component, Components
+from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
 
 __all__ = ('create_components', )
 
-def create_components():
+def create_components(set_thermo=True):
     NH3 = Component('NH3', measured_as='N',
                     phase='l', particle_size='Soluble',
                     degradability='Undegradable', organic=False)
@@ -129,5 +129,6 @@ def create_components():
 
     cmps.compile()
     cmps.set_synonym('H2O', 'Water')
+    if set_thermo: qs_set_thermo(cmps)
 
     return cmps

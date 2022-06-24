@@ -59,7 +59,7 @@ tau_deg = 2
 log_deg = 3
 # Get reduction rate constant k for COD and N, use a function so that k can be
 # changed during uncertainty analysis
-def get_decay_k(tau_deg=2, log_deg=3):
+def get_decay_k(tau_deg=tau_deg, log_deg=log_deg):
     k = (-1/tau_deg)*np.log(10**-log_deg)
     return k
 
@@ -98,8 +98,6 @@ get_sludge_flow = lambda kind: \
 # Nutrient loss during application
 app_loss = dict.fromkeys(('NH3', 'NonNH3', 'P', 'K', 'Mg', 'Ca'), 0.02)
 app_loss['NH3'] = 0.05
-
-exchange_rate = 3700 # UGX per USD
 
 # Recycled nutrients are sold at a lower price than commercial fertilizers
 price_factor = 0.25

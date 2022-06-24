@@ -883,13 +883,52 @@ def create_modelC(lca_kind='original'):
 
 
 # Wrapper functions
-def create_model(model_ID='A', **model_kwargs):
+country_params = {
+    'Caloric intake': 'Excretion e cal',
+    'Vegetable protein intake': 'Excretion p veg',
+    'Animal protein intake': 'Excretion p anim',
+    'N fertilizer price': 'N fertilizer price',
+    'P fertilizer price': 'P fertilizer price',
+    'K fertilizer price': 'K fertilizer price',
+    'Food waste ratio': 'Food waste ratio', # not in the original model
+    'Price level ratio': 'Price level ratio', # not in the original model
+    'Income tax': 'Income tax', # not in the original model
+    }
+def create_model(model_ID='A', country_specific=False, **model_kwargs):
     _load_components()
     model_ID = model_ID.lstrip('model').lstrip('sys') # so that it'll work for "modelA"/"sysA"/"A"
     if model_ID == 'A': model = create_modelA(**model_kwargs)
     elif model_ID == 'B': model = create_modelB(**model_kwargs)
     elif model_ID == 'C': model = create_modelC(**model_kwargs)
     else: raise ValueError(f'`model_ID` can only be "A", "B", or "C", not "{model_ID}".')
+    
+    if country_specific: # add the remaining three more country-specific parameters
+        param = model.parameter
+        system = model.system
+
+        unit = system.path[0]
+        b = unit.waste_ratio
+        D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+        @param(name='Food waste ratio', element=unit, kind='cost', units='fraction',
+               baseline=b, distribution=D)
+        def set_food_waste_ratio(i):
+            unit.waste_ratio = i
+
+        b = systems.price_ratio
+        D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+        @param(name='Price level ratio', element='TEA', kind='cost', units='',
+               baseline=b, distribution=D)
+        def set_price_ratio(i):
+            systems.price_ratio = i
+
+        tea = system.TEA
+        b = tea.income_tax
+        D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+        @param(name='Income tax', element='TEA', kind='cost', units='fraction',
+               baseline=b, distribution=D)
+        def set_income_tax(i):
+            tea.income_tax = i
+
     return model
 
 
