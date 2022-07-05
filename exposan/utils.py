@@ -14,6 +14,10 @@ for license details.
 
 import os, numpy as np, pandas as pd
 from chaospy import distributions as shape
+<<<<<<< HEAD
+=======
+from thermosteam.functional import rho_to_V
+>>>>>>> 39af7d1ccc5478a59bd0bf765ea48bcbcf694bb0
 from qsdsan import ImpactItem, sanunits as su
 from qsdsan.utils import time_printer, AttrSetter
 from . import es_path
@@ -22,6 +26,10 @@ from . import es_path
 
 __all__ = (
     'add_fugitive_items',
+<<<<<<< HEAD
+=======
+    'add_V_from_rho',
+>>>>>>> 39af7d1ccc5478a59bd0bf765ea48bcbcf694bb0
     'batch_setting_unit_params',
     'clear_unit_costs',
     'run_uncertainty',
@@ -34,6 +42,17 @@ def add_fugitive_items(unit, item_ID):
         i.stream_impact_item = ImpactItem.get_item(item_ID).copy(set_as_source=True)
 
 
+<<<<<<< HEAD
+=======
+def add_V_from_rho(cmp, rho):
+    V_model = rho_to_V(rho, cmp.MW)
+    try: cmp.V.add_model(V_model)
+    except:
+        handle = getattr(cmp.V, cmp.locked_state)
+        handle.add_model(V_model)
+
+
+>>>>>>> 39af7d1ccc5478a59bd0bf765ea48bcbcf694bb0
 def batch_setting_unit_params(df, model, unit, exclude=()):
     for para in df.index:
         if para in exclude: continue
