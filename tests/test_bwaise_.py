@@ -16,10 +16,12 @@ __all__ = ('test_bwaise',)
 
 def test_bwaise():
     from numpy.testing import assert_allclose
-    from qsdsan import set_thermo
     from exposan import bwaise as bw
 
-    set_thermo(bw.cmps)
+    try: bw.load()
+    except: # for some reason components won't be loaded in testing
+        bw._load_components()
+        bw.load()
 
     assert_allclose(bw.teaA.NPV, -42012579.5802784, rtol=1e-2)
     assert_allclose(bw.teaB.NPV, -3466006.2170442184, rtol=1e-2)

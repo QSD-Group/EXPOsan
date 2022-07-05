@@ -15,17 +15,12 @@ for license details.
 
 # %%
 
-import os, sys, pickle
-import pandas as pd
-import qsdsan as qs
-
-_ImpactItem_LOADED = False
-lca_data_kind = 'original'
+import os, sys, pickle, pandas as pd, qsdsan as qs
 
 c_path = os.path.dirname(__file__)
 data_path = os.path.join(c_path, 'data')
 
-__all__ = ('get_cf_data', 'save_cf_data', 'load_lca_data',)
+__all__ = ('create_indicators', 'create_items', 'get_cf_data', 'save_cf_data',)
 
 
 # %%
@@ -319,50 +314,3 @@ def save_cf_data():
     f = open(os.path.join(data_path, 'cf_dct.pckl'), 'wb')
     pickle.dump(cf_dct, f)
     f.close()
-
-
-# %%
-
-# =============================================================================
-# Load data
-# =============================================================================
-
-def load_lca_data(kind, return_loaded=False):
-    '''
-    Load impact indicator and impact item data.
-
-    Parameters
-    ----------
-    kind : str
-        "original" loads the data from Trimmer et al.
-        (TRACI, ecoinvent v3.2),
-        "new" loads the data for ReCiPe and TRACI
-        (ecoinvent 3.7.1, at the point of substitution).
-    return_loaded : bool
-        If True, will return the loaded indicators and items.
-    '''
-    indicator_path = os.path.join(data_path, f'indicators_{kind}.tsv')
-    indel_col = None if kind=='original' else 0
-    ind_df_processed = pd.read_csv(indicator_path, sep='\t', index_col=indel_col)
-    qs.ImpactIndicator.load_from_file(indicator_path)
-    indicators = qs.ImpactIndicator.get_all_indicators()
-
-    global lca_data_kind
-    lca_data_kind = kind
-
-    if kind == 'original':
-        item_path = os.path.join(data_path, 'items_original.xlsx')
-        qs.ImpactItem.load_from_file(item_path)
-        items = qs.ImpactItem.get_all_items()
-    else:
-        item_path = os.path.join(data_path, 'cf_dct.pckl')
-        f = open(item_path, 'rb')
-        cf_dct = pickle.load(f)
-        f.close()
-        items = create_items(ind_df_processed, cf_dct)
-
-    global _ImpactItem_LOADED
-    _ImpactItem_LOADED = True
-
-    if return_loaded:
-        return indicators, items

@@ -40,7 +40,7 @@ def batch_init(path, sheet):
 # =============================================================================
 
 ############# load components and set thermo #############
-cmps = pc.load_asm1_cmps()
+cmps = components = pc.load_asm1_cmps()
 set_thermo(cmps)
 
 ############# create WasteStream objects #################

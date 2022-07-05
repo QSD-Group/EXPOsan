@@ -34,7 +34,7 @@ EXPOsan: EXPOsition of sanitation and resource recovery systems
 
 What is ``EXPOsan``?
 --------------------
-The ``EXPOsan`` package contains systems developed using the `QSDsan <https://github.com/QSD-Group/QSDsan>`_ package. Please refer to the individual README files within each system module for loading instructions and exemplary results.
+The ``EXPOsan`` package contains systems developed using the `QSDsan <https://github.com/QSD-Group/QSDsan>`_ package. A list of the developed systems is included in QSDsan's `documentation <https://qsdsan.readthedocs.io/en/latest/Developed_Systems.html>`_. Please refer to the individual README files within each system module for loading instructions and exemplary results.
 
 
 Installation

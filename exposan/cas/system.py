@@ -10,6 +10,13 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
+'''
+TODO:
+    - Add cost
+    - Some of the design may refer to Table 10-3 on page 1068 of Metcalf and Eddy
+        - Process (a) low loaded anaerobic lagoon system or (n) plug flow anaerobic system
+'''
+
 from flexsolve import IQ_interpolation
 from qsdsan import Component, Components, WasteStream, set_thermo, System
 from qsdsan.sanunits import Screening, Mixer, ActivatedSludgeProcess, \

@@ -44,6 +44,8 @@ Loading systems
 
     >>> # Import bwaise systems as modules
     >>> from exposan import bwaise as bw
+    >>> # Load the system module
+    >>> bw.load()
     >>> # You can repeat these for `sysB` and `sysC`
     >>> bw.sysA.show() # doctest: +ELLIPSIS
     System: sysA
@@ -225,15 +227,12 @@ You can make changes (e.g., add or remove parameters, change uncertainty ranges)
 .. code-block:: python
 
     >>> # Run the default model for `sysA`
-    >>> models = bw.models
+    >>> modelA = bw.create_model('A')
     >>> # Try use larger samples, here is just to get a quick demo result
-    >>> models.run_uncertainty(models.modelA, N=10) # doctest: +ELLIPSIS
+    >>> # The result will be automatically saved under the results folder
+    >>> bw.run_uncertainty(modelA, N=10) # doctest: +ELLIPSIS
     function `run_uncertainty`
     Total ...
-    >>> # Your results will be cached in `models.result_dct['sysA']`
-    >>> # You can organize the results as you like,
-    >>> # but you can also save them using the default organized data
-    >>> # models.save_uncertainty_results(models.modelA)
 
 
 ``QSDsan`` also have built-in functions for advanced global sensitivity analyses and plotting functions, refer to the `stats <https://qsdsan.readthedocs.io/en/latest/stats.html>`_ module for examples.
