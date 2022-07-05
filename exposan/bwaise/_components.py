@@ -24,6 +24,7 @@ Ref:
 
 from thermosteam.functional import rho_to_V
 from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
+from exposan.utils import add_V_from_rho
 
 __all__ = ('create_components', )
 
@@ -78,13 +79,6 @@ def create_components(set_thermo=True):
     # The following will lead to an error as it won't be able to copy the V model
     # P4O10 = Component('P4O10', phase='s', particle_size='Particulate',
     #                   degradability='Undegradable', organic=False)
-
-    def add_V_from_rho(cmp, rho):
-        V_model = rho_to_V(rho, cmp.MW)
-        try: cmp.V.add_model(V_model)
-        except:
-            handle = getattr(cmp.V, cmp.locked_state)
-            handle.add_model(V_model)
 
     Tissue = Component('Tissue', MW=1, phase='s', particle_size='Particulate',
                         degradability='Undegradable', organic=False,
