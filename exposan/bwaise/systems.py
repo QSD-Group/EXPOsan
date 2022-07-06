@@ -30,11 +30,19 @@ from qsdsan.utils import clear_lca_registries
 from exposan.utils import add_fugitive_items, clear_unit_costs
 from exposan.bwaise import (
     _load_lca_data,
-    exchange_rate, discount_rate, price_dct, get_alt_salary,
-    get_toilet_user, get_ppl, sewer_flow, get_sludge_flow,
-    get_decay_k, max_CH4_emission,
-    get_tanker_truck_fee, get_handcart_and_truck_fee,
     app_loss,
+    discount_rate,
+    exchange_rate, 
+    get_alt_salary,
+    get_decay_k,
+    get_handcart_and_truck_fee,
+    get_ppl,
+    get_sludge_flow,
+    get_tanker_truck_fee,
+    get_toilet_user,
+    max_CH4_emission,
+    price_dct,
+    sewer_flow,
     )
 
 __all__ = ('create_system',)
@@ -336,7 +344,7 @@ def create_systemB(flowsheet=None):
 # %%
 
 # =============================================================================
-# Scenario C (sysC): containaer-based sanitation with existing treatment system
+# Scenario C (sysC): container-based sanitation with existing treatment system
 # =============================================================================
 
 def create_systemC(flowsheet=None):
