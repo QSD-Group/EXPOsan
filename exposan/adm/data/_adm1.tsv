@@ -1,0 +1,20 @@
+	S_su	S_aa	S_fa	S_va	S_bu	S_pro	S_ac	S_h2	S_ch4	S_IC	S_IN	S_I	X_c	X_ch	X_pr	X_li	X_su	X_aa	X_fa	X_c4	X_pro	X_ac	X_h2	X_I
+disintegration										0.000176289	-6.58E-06	0.1	-1	0.2	0.2	0.3								0.2
+hydrolysis_carbs	1													-1										
+hydrolysis_proteins		1													-1									
+hydrolysis_lipids	0.05		0.95							-0.002783088						-1								
+uptake_sugars	-1				0.117	0.243	0.369	0.171		0.085990949	-8.00E-03						0.1							
+uptake_amino_acids		-1		0.2116	0.2392	0.046	0.368	0.0552		0.04448523	9.16E-02							0.08						
+uptake_LCFA			-1				0.658	0.282		-0.008186829	-4.80E-03								0.06					
+uptake_valerate				-1		0.5076	0.2914	0.141		-0.006404555	-4.80E-03									0.06				
+uptake_butyrate					-1		0.752	0.188		-0.004273524	-4.80E-03									0.06				
+uptake_propionate						-1	0.5472	0.4128		0.101399432	-3.20E-03										0.04			
+uptake_acetate							-1		0.95	0.177754243	-4.00E-03											0.05		
+uptake_h2								-1	0.94	-0.19879261	-4.80E-03												0.06	
+decay_Xsu										0.04128	4.24E-02		1				-1							
+decay_Xaa										0.04128	4.24E-02		1					-1						
+decay_Xfa										0.04128	4.24E-02		1						-1					
+decay_Xc4										0.04128	4.24E-02		1							-1				
+decay_Xpro										0.04128	4.24E-02		1								-1			
+decay_Xac										0.04128	4.24E-02		1									-1		
+decay_Xh2										0.04128	4.24E-02		1										-1	
