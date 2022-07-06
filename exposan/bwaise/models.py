@@ -20,15 +20,28 @@ from chaospy import distributions as shape
 from thermosteam.functional import V_to_rho, rho_to_V
 from qsdsan import currency, ImpactItem, PowerUtility, Model, Metric
 from qsdsan.utils import (
-    ospath, load_data, data_path, dct_from_str,
-    AttrSetter, AttrFuncSetter, DictAttrSetter,
+    AttrFuncSetter,
+    AttrSetter,
+    DictAttrSetter,
+    data_path,
+    dct_from_str,
+    load_data,
+    ospath,
     )
 from exposan.utils import batch_setting_unit_params, run_uncertainty as run
 from exposan import bwaise as bw
 from exposan.bwaise import (
-    results_path, _load_components, create_system, price_dct, GWP_dct,
-    get_decay_k, get_biogas_factor, get_alt_salary,
-    get_recoveries, get_TEA_metrics, get_LCA_metrics,
+    _load_components,
+    create_system,
+    get_alt_salary,
+    get_biogas_factor,
+    get_decay_k,
+    get_LCA_metrics,
+    get_TEA_metrics,
+    get_recoveries,
+    GWP_dct,
+    price_dct,
+    results_path,
     )
 
 __all__ = ('create_model', 'run_uncertainty',)
@@ -901,7 +914,7 @@ def create_model(model_ID='A', country_specific=False, **model_kwargs):
     elif model_ID == 'B': model = create_modelB(**model_kwargs)
     elif model_ID == 'C': model = create_modelC(**model_kwargs)
     else: raise ValueError(f'`model_ID` can only be "A", "B", or "C", not "{model_ID}".')
-    
+
     if country_specific: # add the remaining three more country-specific parameters
         param = model.parameter
         system = model.system
@@ -914,12 +927,12 @@ def create_model(model_ID='A', country_specific=False, **model_kwargs):
         def set_food_waste_ratio(i):
             unit.waste_ratio = i
 
-        b = systems.price_ratio
+        b = bw.systems.price_ratio
         D = shape.Uniform(lower=b*0.9, upper=b*1.1)
         @param(name='Price level ratio', element='TEA', kind='cost', units='',
                baseline=b, distribution=D)
         def set_price_ratio(i):
-            systems.price_ratio = i
+            bw.systems.price_ratio = i
 
         tea = system.TEA
         b = tea.income_tax
