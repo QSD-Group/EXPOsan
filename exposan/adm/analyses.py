@@ -14,7 +14,7 @@ for license details.
 from copy import deepcopy
 from qsdsan.utils import ospath, load_pickle, save_pickle
 # from qsdsan.stats import plot_uncertainties, get_correlations
-from exposan.adm.system import cmps, results_path, figures_path
+from exposan.adm import cmps, results_path, figures_path
 import numpy as np, pandas as pd, os, matplotlib as mpl, \
     matplotlib.pyplot as plt, matplotlib.ticker as tk
 
