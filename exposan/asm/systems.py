@@ -48,8 +48,7 @@ def create_asm_validation_system(process_model='ASM1', aerated=False):
     pc_lower = process_model.lower()
     if pc_lower == 'asm1':
         # Thermodynamic conditions
-        cmps = pc.load_asm1_cmps()
-        set_thermo(cmps)
+        cmps = pc.create_asm1_cmps()
         # Influent
         inf_kwargs = {
             'concentrations': {
@@ -91,8 +90,7 @@ def create_asm_validation_system(process_model='ASM1', aerated=False):
             }
         DO_ID = 'S_O'
     elif pc_lower == 'asm2d':
-        cmps = pc.load_asm2d_cmps()
-        set_thermo(cmps)
+        cmps = pc.create_asm2d_cmps()
 
         inf_kwargs = {
             'concentrations': { # Henze et al., Activated Sludge Models ASM1, ASM2, ASM2d and ASM3, P91
