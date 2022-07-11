@@ -25,6 +25,7 @@ N = 100
 T = 200
 t_step = 5
 
+#%%
 S_keys = [ID for ID in cmps.IDs if ID.startswith('S_') and ID not in ('S_an', 'S_cat')]
 X_keys = [ID for ID in cmps.IDs if ID.startswith('X_')]
 gas_keys = ['S_h2_gas', 'S_ch4_gas', 'S_IC_gas']
@@ -119,6 +120,6 @@ def plot_yt_w_diff_init(seed, N, data=None):
 if __name__ == '__main__':
     seed = 119
     ##### Uncertainty analysis results with different initial conditions #####
-    # out = analyze_vars(seed, N)
-    # plot_yt_w_diff_init(seed, N, data=out)
-    plot_yt_w_diff_init(seed, N)    
+    out = analyze_vars(seed, N)
+    plot_yt_w_diff_init(seed, N, data=out)
+    # plot_yt_w_diff_init(seed, N)    
