@@ -61,38 +61,38 @@ conc = {
 
 brewery_ww.set_flow_by_concentration(Q, concentrations=conc, units=('m3/d', 'kg/m3'))
 
-# inf = WasteStream('Influent', T=Temp)
-# inf_kwargs = {
-#     'concentrations': {
-#         'S_su':0.01,
-#         'S_aa':1e-3,
-#         'S_fa':1e-3,
-#         'S_va':1e-3,
-#         'S_bu':1e-3,
-#         'S_pro':1e-3,
-#         'S_ac':1e-3,
-#         'S_h2':1e-8,
-#         'S_ch4':1e-5,
-#         'S_IC':0.04*C_mw,
-#         'S_IN':0.01*N_mw,
-#         'S_I':0.02,
-#         'X_c':2.0,
-#         'X_ch':5.0,
-#         'X_pr':20.0,
-#         'X_li':5.0,
-#         'X_aa':1e-2,
-#         'X_fa':1e-2,
-#         'X_c4':1e-2,
-#         'X_pro':1e-2, 
-#         'X_ac':1e-2, 
-#         'X_h2':1e-2, 
-#         'X_I':25, 
-#         'S_cat':0.04, 
-#         'S_an':0.02
-#         },
-#     'units': ('m3/d', 'kg/m3'),
-#     }
-# inf.set_flow_by_concentration(Q, **inf_kwargs)
+inf = WasteStream('Influent', T=Temp)
+inf_kwargs = {
+    'concentrations': {
+        'S_su':0.01,
+        'S_aa':1e-3,
+        'S_fa':1e-3,
+        'S_va':1e-3,
+        'S_bu':1e-3,
+        'S_pro':1e-3,
+        'S_ac':1e-3,
+        'S_h2':1e-8,
+        'S_ch4':1e-5,
+        'S_IC':0.04*C_mw,
+        'S_IN':0.01*N_mw,
+        'S_I':0.02,
+        'X_c':2.0,
+        'X_ch':5.0,
+        'X_pr':20.0,
+        'X_li':5.0,
+        'X_aa':1e-2,
+        'X_fa':1e-2,
+        'X_c4':1e-2,
+        'X_pro':1e-2, 
+        'X_ac':1e-2, 
+        'X_h2':1e-2, 
+        'X_I':25, 
+        'S_cat':0.04, 
+        'S_an':0.02
+        },
+    'units': ('m3/d', 'kg/m3'),
+    }
+inf.set_flow_by_concentration(Q, **inf_kwargs)
 
 eff = WasteStream('Effluent', T=Temp)
 bg = WasteStream('Biogas')
@@ -144,11 +144,11 @@ AD.set_init_conc(**_init_conds)
 sys = System('ADM1_test', path=(AD,))
 sys.set_dynamic_tracker(AD, bg)
 
-# __all__ = (
-#     'cmps', 'adm1', 'sys',
-#     'inf', 'eff', 'bg', 'AD', 
-#     'Temp', '_init_conds'
-#     )
+__all__ = (
+    'cmps', 'adm1', 'sys',
+    'inf', 'eff', 'bg', 'AD', 
+    'Temp', '_init_conds'
+    )
 
 #%%
 @time_printer
