@@ -21,7 +21,6 @@ from chemicals.elements import molecular_weight as get_mw
 
 ############# load components and set thermo #############
 cmps = pc.create_adm1_cmps()
-set_thermo(cmps)
 
 ############# create WasteStream objects #################
 Q = 170           # influent flowrate [m3/d]
