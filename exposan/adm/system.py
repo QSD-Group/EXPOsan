@@ -11,7 +11,7 @@ for license details.
 '''
 
 import numpy as np
-from qsdsan import sanunits as su, processes as pc, set_thermo, WasteStream, System
+from qsdsan import sanunits as su, processes as pc, WasteStream, System
 from qsdsan.utils import time_printer
 from chemicals.elements import molecular_weight as get_mw
 
@@ -28,37 +28,37 @@ Temp = 273.15+35    # temperature [K]
 C_mw = get_mw({'C':1})
 N_mw = get_mw({'N':1})
 
-brewery_ww = WasteStream('BreweryWW', T=Temp)
+# brewery_ww = WasteStream('BreweryWW', T=Temp)
 
-conc = {
-    'S_su':3.0,
-    'S_aa':0.6,
-    'S_fa':0.4,
-    'S_va':0.4,
-    'S_bu':0.4,
-    'S_pro':0.4,
-    'S_ac':0.4,
-    'S_h2':5e-9,
-    'S_ch4':5e-6,
-    'S_IC':0.04*C_mw,
-    'S_IN':0.01*N_mw,
-    'S_I':0.02,
-    'X_c':0.1,
-    'X_ch':0.3,
-    'X_pr':0.5,
-    'X_li':0.25,
-    'X_aa':1e-3,
-    'X_fa':1e-3,
-    'X_c4':1e-3,
-    'X_pro':1e-3, 
-    'X_ac':1e-3, 
-    'X_h2':1e-3, 
-    'X_I':0.025, 
-    'S_cat':0.04, 
-    'S_an':0.02
-    }
+# conc = {
+#     'S_su':3.0,
+#     'S_aa':0.6,
+#     'S_fa':0.4,
+#     'S_va':0.4,
+#     'S_bu':0.4,
+#     'S_pro':0.4,
+#     'S_ac':0.4,
+#     'S_h2':5e-9,
+#     'S_ch4':5e-6,
+#     'S_IC':0.04*C_mw,
+#     'S_IN':0.01*N_mw,
+#     'S_I':0.02,
+#     'X_c':0.1,
+#     'X_ch':0.3,
+#     'X_pr':0.5,
+#     'X_li':0.25,
+#     'X_aa':1e-3,
+#     'X_fa':1e-3,
+#     'X_c4':1e-3,
+#     'X_pro':1e-3, 
+#     'X_ac':1e-3, 
+#     'X_h2':1e-3, 
+#     'X_I':0.025, 
+#     'S_cat':0.04, 
+#     'S_an':0.02
+#     }
 
-brewery_ww.set_flow_by_concentration(Q, concentrations=conc, units=('m3/d', 'kg/m3'))
+# brewery_ww.set_flow_by_concentration(Q, concentrations=conc, units=('m3/d', 'kg/m3'))
 
 inf = WasteStream('Influent', T=Temp)
 inf_kwargs = {
@@ -101,8 +101,8 @@ bg = WasteStream('Biogas')
 adm1 = pc.ADM1()
 
 ############# create unit operation ########################
-# AD = su.AnaerobicCSTR('AD', ins=inf, outs=(bg, eff), model=adm1)
-AD = su.AnaerobicCSTR('AD', ins=brewery_ww, outs=(bg, eff), model=adm1)
+AD = su.AnaerobicCSTR('AD', ins=inf, outs=(bg, eff), model=adm1)
+# AD = su.AnaerobicCSTR('AD', ins=brewery_ww, outs=(bg, eff), model=adm1)
 
 _init_conds = {
     'S_su': 0.0124*1e3,
@@ -131,14 +131,6 @@ _init_conds = {
     }
 
 AD.set_init_conc(**_init_conds)
-
-# AD._state = np.array([0.01195483, 0.00531474, 0.098621401, 0.011625006, 0.01325073,
-#                       0.015783666, 0.197629717, 2.36E-07, 0.055088776, 0.152677871*C_mw, 
-#                       0.130229816*N_mw, 0.328697664, 0.308697664, 0.02794724, 0.102574106,
-#                       0.02948305, 0.420165982, 1.179171799, 0.243035345, 0.431921106, 
-#                       0.137305909, 0.760562658, 0.317022953, 25.61739533,
-#                       0.0, 0.0, 0.0, 6.40065e-7, 0.025400113, 0.014150535,
-#                       170, 308.15])
 
 sys = System('ADM1_test', path=(AD,))
 sys.set_dynamic_tracker(AD, bg)
