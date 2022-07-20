@@ -647,12 +647,12 @@ def add_existing_plant_parameters(toilet_unit, cost_unit, model):
 # Scenario A (sysA)
 # =============================================================================
 
-def create_modelA(lca_kind='original'):
+def create_modelA(lca_kind='original', **model_kwargs):
     sysA = create_system('A', lca_kind=lca_kind)
     unitA = sysA.flowsheet.unit
 
     # Add shared metrics/parameters
-    modelA = Model(sysA)
+    modelA = Model(sysA, **model_kwargs)
     add_metrics(modelA, lca_kind)
     add_shared_parameters(modelA, unitA.A8, unitA.A9)
     add_LCA_CF_parameters(modelA, lca_kind=lca_kind)
@@ -707,13 +707,13 @@ def create_modelA(lca_kind='original'):
 # Scenario B (sysB)
 # =============================================================================
 
-def create_modelB(lca_kind='original'):
+def create_modelB(lca_kind='original', **model_kwargs):
     sysB = create_system('B', lca_kind=lca_kind)
     unitB = sysB.flowsheet.unit
     teaB = sysB.TEA
 
     # Add shared metrics/parameters
-    modelB = Model(sysB)
+    modelB = Model(sysB, **model_kwargs)
     paramB = modelB.parameter
     add_metrics(modelB, lca_kind)
     add_shared_parameters(modelB, unitB.B8, unitB.B9)
@@ -817,12 +817,12 @@ def create_modelB(lca_kind='original'):
 # Scenario C (sysC)
 # =============================================================================
 
-def create_modelC(lca_kind='original'):
+def create_modelC(lca_kind='original', **model_kwargs):
     sysC = create_system('C', lca_kind=lca_kind)
     unitC = sysC.flowsheet.unit
 
     # Add shared metrics/parameters
-    modelC = Model(sysC)
+    modelC = Model(sysC, **model_kwargs)
     paramC = modelC.parameter
     add_metrics(modelC, lca_kind)
     add_shared_parameters(modelC, unitC.C8, unitC.C9)
@@ -909,7 +909,7 @@ country_params = {
     }
 def create_model(model_ID='A', country_specific=False, **model_kwargs):
     _load_components()
-    model_ID = model_ID.lstrip('model').lstrip('sys') # so that it'll work for "modelA"/"sysA"/"A"
+    model_ID = model_ID.lstrip('model').lstrip('sys').upper() # so that it'll work for "modelA"/"sysA"/"A"
     if model_ID == 'A': model = create_modelA(**model_kwargs)
     elif model_ID == 'B': model = create_modelB(**model_kwargs)
     elif model_ID == 'C': model = create_modelC(**model_kwargs)

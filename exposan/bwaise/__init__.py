@@ -320,6 +320,17 @@ def get_recoveries(system, resource):
         lambda: (sum_attr(liq)+sum_attr(sol)+get_gas_COD())/sum_attr(ins)/get_ppl(sys_ID),
         ]
 
+# added this net_earings property 7/11 as suggested by Yoel.
+@property
+def net_earnings(self):
+    """Net earnings without accounting for annualized depreciation."""
+    net_earnings = self.sales - self.AOC
+    if net_earnings < 0:
+        return net_earnings
+    else:
+        return (1 - self.income_tax) * net_earnings
+qs.SimpleTEA.net_earnings = net_earnings
+
 def get_TEA_metrics(system):
     sys_ID = system.ID
     tea = system.TEA

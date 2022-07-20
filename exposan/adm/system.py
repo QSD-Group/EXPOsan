@@ -10,23 +10,56 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-import os, numpy as np
+import numpy as np
 from qsdsan import sanunits as su, processes as pc, set_thermo, WasteStream, System
 from qsdsan.utils import time_printer
-
-adm_path = os.path.dirname(__file__)
+from chemicals.elements import molecular_weight as get_mw
 
 # =============================================================================
 # Validation & Verification of ADM1
 # =============================================================================
 
 ############# load components and set thermo #############
-cmps = pc.load_adm1_cmps()
+cmps = pc.create_adm1_cmps()
 set_thermo(cmps)
 
 ############# create WasteStream objects #################
 Q = 170           # influent flowrate [m3/d]
 Temp = 273.15+35    # temperature [K]
+C_mw = get_mw({'C':1})
+N_mw = get_mw({'N':1})
+
+brewery_ww = WasteStream('BreweryWW', T=Temp)
+
+conc = {
+    'S_su':3.0,
+    'S_aa':0.6,
+    'S_fa':0.4,
+    'S_va':0.4,
+    'S_bu':0.4,
+    'S_pro':0.4,
+    'S_ac':0.4,
+    'S_h2':5e-9,
+    'S_ch4':5e-6,
+    'S_IC':0.04*C_mw,
+    'S_IN':0.01*N_mw,
+    'S_I':0.02,
+    'X_c':0.1,
+    'X_ch':0.3,
+    'X_pr':0.5,
+    'X_li':0.25,
+    'X_aa':1e-3,
+    'X_fa':1e-3,
+    'X_c4':1e-3,
+    'X_pro':1e-3, 
+    'X_ac':1e-3, 
+    'X_h2':1e-3, 
+    'X_I':0.025, 
+    'S_cat':0.04, 
+    'S_an':0.02
+    }
+
+brewery_ww.set_flow_by_concentration(Q, concentrations=conc, units=('m3/d', 'kg/m3'))
 
 inf = WasteStream('Influent', T=Temp)
 inf_kwargs = {
@@ -40,8 +73,8 @@ inf_kwargs = {
         'S_ac':1e-3,
         'S_h2':1e-8,
         'S_ch4':1e-5,
-        'S_IC':0.04*12,
-        'S_IN':0.01*14,
+        'S_IC':0.04*C_mw,
+        'S_IN':0.01*N_mw,
         'S_I':0.02,
         'X_c':2.0,
         'X_ch':5.0,
@@ -65,39 +98,57 @@ eff = WasteStream('Effluent', T=Temp)
 bg = WasteStream('Biogas')
 
 ############# load process model ###########################
+# adm1 = pc.ADM1(path=os.path.join(adm_path, '_adm1.tsv'))
 adm1 = pc.ADM1()
 
 ############# create unit operation ########################
-AD = su.AnaerobicCSTR('AD', ins=inf, outs=(bg, eff), model=adm1)
-AD.set_init_conc(
-    S_su =  0.0124*1e3,
-    S_aa =  0.0055*1e3,
-    S_fa =  0.1074*1e3,
-    S_va =  0.0123*1e3,
-    S_bu = 0.0140*1e3,
-    S_pro = 0.0176*1e3,
-    S_ac =  0.0893*1e3,
-    S_h2 =  2.5055e-7*1e3,
-    S_ch4 = 0.0555*1e3,
-    S_IC = 0.0951*1e3,
-    S_IN = 0.0945*1e3,
-    S_I = 0.1309*1e3,
-    X_c = 0.0*1e3,
-    X_ch = 0.0205*1e3,
-    X_pr = 0.0842*1e3,
-    X_li = 0.0436*1e3,
-    X_su = 0.3122*1e3,
-    X_aa = 0.9317*1e3,
-    X_fa = 0.3384*1e3,
-    X_c4 = 0.3258*1e3,
-    X_pro = 0.1011*1e3,
-    X_ac = 0.6772*1e3,
-    X_h2 =  0.2848*1e3,
-    X_I =  17.2162*1e3
-    )
+# AD = su.AnaerobicCSTR('AD', ins=inf, outs=(bg, eff), model=adm1)
+AD = su.AnaerobicCSTR('AD', ins=brewery_ww, outs=(bg, eff), model=adm1)
+
+_init_conds = {
+    'S_su': 0.0124*1e3,
+    'S_aa': 0.0055*1e3,
+    'S_fa': 0.1074*1e3,
+    'S_va': 0.0123*1e3,
+    'S_bu': 0.0140*1e3,
+    'S_pro': 0.0176*1e3,
+    'S_ac': 0.0893*1e3,
+    'S_h2': 2.5055e-7*1e3,
+    'S_ch4': 0.0555*1e3,
+    'S_IC': 0.0951*C_mw*1e3,
+    'S_IN': 0.0945*N_mw*1e3,
+    'S_I': 0.1309*1e3,
+    'X_ch': 0.0205*1e3,
+    'X_pr': 0.0842*1e3,
+    'X_li': 0.0436*1e3,
+    'X_su': 0.3122*1e3,
+    'X_aa': 0.9317*1e3,
+    'X_fa': 0.3384*1e3,
+    'X_c4': 0.3258*1e3,
+    'X_pro': 0.1011*1e3,
+    'X_ac': 0.6772*1e3,
+    'X_h2': 0.2848*1e3,
+    'X_I': 17.2162*1e3
+    }
+
+AD.set_init_conc(**_init_conds)
+
+# AD._state = np.array([0.01195483, 0.00531474, 0.098621401, 0.011625006, 0.01325073,
+#                       0.015783666, 0.197629717, 2.36E-07, 0.055088776, 0.152677871*C_mw, 
+#                       0.130229816*N_mw, 0.328697664, 0.308697664, 0.02794724, 0.102574106,
+#                       0.02948305, 0.420165982, 1.179171799, 0.243035345, 0.431921106, 
+#                       0.137305909, 0.760562658, 0.317022953, 25.61739533,
+#                       0.0, 0.0, 0.0, 6.40065e-7, 0.025400113, 0.014150535,
+#                       170, 308.15])
 
 sys = System('ADM1_test', path=(AD,))
-sys.set_dynamic_tracker(AD, eff, bg)
+sys.set_dynamic_tracker(AD, bg)
+
+__all__ = (
+    'cmps', 'adm1', 'sys',
+    'inf', 'eff', 'bg', 'AD', 
+    'Temp', '_init_conds'
+    )
 
 #%%
 @time_printer
@@ -106,12 +157,12 @@ def run(t, t_step, method=None, **kwargs):
                  t_span=(0,t),
                  t_eval=np.arange(0, t+t_step, t_step),
                  method=method,
-                 export_state_to=f'results/sol2_{t}d_{method}.xlsx',
+                 # export_state_to=f'results/sol2_{t}d_{method}_Phead.xlsx',
                  **kwargs)
 
 if __name__ == '__main__':
-    t = 50
-    t_step = 1
+    t = 200
+    t_step = 5
     # method = 'RK45'
     # method = 'RK23'
     # method = 'DOP853'

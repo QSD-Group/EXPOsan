@@ -40,8 +40,7 @@ def batch_init(path, sheet):
 # =============================================================================
 
 ############# load components and set thermo #############
-cmps = components = pc.load_asm1_cmps()
-set_thermo(cmps)
+cmps = components = pc.create_asm1_cmps()
 
 ############# create WasteStream objects #################
 Q = 18446           # influent flowrate [m3/d]
