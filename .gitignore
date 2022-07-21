@@ -18,6 +18,7 @@ _build
 *Pyreverse*
 monkeytype.sqlite3
 *.spyproject*
+*.Rhistory
 
 # Docs #
 ########
