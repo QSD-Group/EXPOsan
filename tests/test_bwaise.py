@@ -18,15 +18,10 @@ def test_bwaise():
     from numpy.testing import assert_allclose
     from exposan import bwaise as bw
 
-    try: bw.load()
-    except: # for some reason components won't be loaded in testing
-        bw._load_components()
-        bw.load()
-
+    bw.load()
     assert_allclose(bw.teaA.NPV, -42012579.5802784, rtol=1e-2)
     assert_allclose(bw.teaB.NPV, -3466006.2170442184, rtol=1e-2)
     assert_allclose(bw.teaC.NPV, -65107482.77677129, rtol=1e-2)
-
     assert_allclose(bw.lcaA.total_impacts['GlobalWarming'], 214197344.34534717, rtol=1e-2)
     assert_allclose(bw.lcaB.total_impacts['GlobalWarming'], 10349791.100520123, rtol=1e-2)
     assert_allclose(bw.lcaC.total_impacts['GlobalWarming'], 55187798.215826064, rtol=1e-2)

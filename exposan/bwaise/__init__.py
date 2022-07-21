@@ -149,11 +149,12 @@ GWP_dct = {
 from . import _components
 from ._components import *
 _components_loaded = False
-def _load_components():
+def _load_components(reload=False):
     global components, _components_loaded
-    components = create_components()
-    qs.set_thermo(components)
-    _components_loaded = True
+    if not _components_loaded or reload:
+        components = create_components()
+        qs.set_thermo(components)
+        _components_loaded = True
 
 
 from . import _lca_data
