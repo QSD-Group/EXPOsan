@@ -10,13 +10,6 @@ This module is developed by:
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
-
-Ref:
-    [1] Trimmer et al., Navigating Multidimensional Social–Ecological System
-        Trade-Offs across Sanitation Alternatives in an Urban Informal Settlement.
-        Environ. Sci. Technol. 2020, 54 (19), 12641–12653.
-        https://doi.org/10.1021/acs.est.0c03296.
-
 '''
 
 
@@ -116,10 +109,10 @@ def create_components(set_thermo=True):
 
     cmps = Components((NH3, NonNH3, P, K, Mg, Ca, H2O, OtherSS, N2O, CH4, O2, N2,
                        CO2, P4O10, Tissue, WoodAsh, Struvite, HAP))
+
     for i in cmps:
-        if i.HHV is None: i.HHV = 0
-        if i.LHV is None: i.LHV = 0
-        if i.Hf is None: i.Hf = 0
+        for attr in ('HHV', 'LHV', 'Hf'):
+            if getattr(i, attr) is None: setattr(i, attr, 0)
 
     cmps.compile()
     cmps.set_synonym('H2O', 'Water')
