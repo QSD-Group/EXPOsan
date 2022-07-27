@@ -13,6 +13,7 @@ for license details.
 '''
 
 import os, numpy as np, pandas as pd
+from sklearn.linear_model import LinearRegression as LR
 from chaospy import distributions as shape
 from thermosteam.functional import rho_to_V
 from qsdsan import ImpactItem, sanunits as su
@@ -26,6 +27,8 @@ __all__ = (
     'add_V_from_rho',
     'batch_setting_unit_params',
     'clear_unit_costs',
+    'get_decay_k',
+    'get_generic_tanker_truck_fee',
     'run_uncertainty',
     )
 
@@ -75,6 +78,43 @@ def clear_unit_costs(sys):
         if isinstance(i, su.LumpedCost): continue
         i.purchase_costs.clear()
         i.installed_costs.clear()
+
+
+# Get reduction rate constant k for COD and N, use a function so that k can be
+# changed during uncertainty analysis
+def get_decay_k(tau_deg=2, log_deg=3):
+    k = (-1/tau_deg)*np.log(10**-log_deg)
+    return k
+
+
+def get_generic_tanker_truck_fee(capacity, fitting_dct, emptying_fee=0.15, exchange_rate=1):
+    '''
+    Exponential fitting to get the tanker truck fee based on capacity.
+
+    cost = a*capacity**b -> ln(price) = ln(a) + bln(capacity)
+
+    Parameters
+    ----------
+    capacity : float
+        The capacity at which the tanker truck fee will be calculated.
+    fitting_dct : dict(float, float)
+        Capacity-based cost to develop the exponential fitting correlation,
+        keys should be the capacities and values should be the corresponding costs.
+        Capacities for fitting.
+    emptying_fee : float
+        Additional fraction of fee that will be added on top of the given prices.
+    exchange_rate : float
+        Exchange that will be multiplied to the prices.
+    '''
+    capacities = np.array(tuple(fitting_dct.keys()))
+    costs = np.array(tuple(fitting_dct.values()))
+    costs *= (1+emptying_fee)*exchange_rate
+    ln_p = np.log(costs)
+    ln_cap = np.log(np.array(capacities))
+    model = LR().fit(ln_cap.reshape(-1,1), ln_p.reshape(-1,1))
+    predicted = model.predict(np.array((np.log(capacity))).reshape(1, -1)).item()
+    fee = np.exp(predicted)
+    return fee
 
 
 @time_printer
