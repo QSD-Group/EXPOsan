@@ -87,7 +87,16 @@ def get_decay_k(tau_deg=2, log_deg=3):
     return k
 
 
-def get_generic_tanker_truck_fee(capacity, fitting_dct, emptying_fee=0.15, exchange_rate=1):
+fitting_dct = {
+    3: 21.62,
+    4.5: 32.43,
+    8: 54.05,
+    15: 67.57,
+}
+def get_generic_tanker_truck_fee(capacity,
+                                 fitting_dct=fitting_dct,
+                                 emptying_fee=0.15,
+                                 exchange_rate=1):
     '''
     Exponential fitting to get the tanker truck fee based on capacity.
 
