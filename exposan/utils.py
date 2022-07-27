@@ -13,6 +13,7 @@ for license details.
 '''
 
 import os, numpy as np, pandas as pd
+from math import log
 from sklearn.linear_model import LinearRegression as LR
 from chaospy import distributions as shape
 from thermosteam.functional import rho_to_V
@@ -28,6 +29,7 @@ __all__ = (
     'batch_setting_unit_params',
     'clear_unit_costs',
     'get_decay_k',
+    'get_generic_scaled_capital',
     'get_generic_tanker_truck_fee',
     'run_uncertainty',
     )
@@ -85,6 +87,34 @@ def clear_unit_costs(sys):
 def get_decay_k(tau_deg=2, log_deg=3):
     k = (-1/tau_deg)*np.log(10**-log_deg)
     return k
+
+
+def get_generic_scaled_capital(tea, percent_CAPEX_to_scale, number_of_units,
+                               percent_limit, learning_curve_percent):
+    '''
+    Scale capital cost based for the Nth system
+    (would be lower than the cost for a single system due to scaling effect).
+
+    Parameters
+    ----------
+    tea : obj
+        TEA obj for the system of interest.
+    percent_CAPEX_to_scale : float
+        The fraction of the cost of specialty parts/cost of total parts.
+    number_of_units : int
+        Number of units to be constructed.
+    percent_limit : float
+        Percent of the lowest cost of the normal cost of a single system.
+    learning_curve_percent : float
+        The percent factor of the learning curve.
+    '''
+    CAPEX_to_scale = tea.annualized_CAPEX * percent_CAPEX_to_scale
+    CAPEX_not_scaled = tea.annualized_CAPEX - CAPEX_to_scale
+    scaled_limited = CAPEX_to_scale * percent_limit
+    b = log(learning_curve_percent)/log(2)
+    scaled_CAPEX_annualized  = (CAPEX_to_scale - scaled_limited)*number_of_units**b + scaled_limited
+    new_CAPEX_annualized = scaled_CAPEX_annualized + CAPEX_not_scaled
+    return new_CAPEX_annualized
 
 
 fitting_dct = {
