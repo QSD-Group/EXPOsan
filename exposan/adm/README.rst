@@ -6,7 +6,7 @@ Summary
 -------
 This module is used to validate the implementation of Anaerobic Digestion Model No. 1 (ADM1) [1]_ in QSDsan using a continuous stirred-tank reactor (CSTR). The implemented algorithms (i.e., ``qsdsan.processes.ADM1`` and  ``qsdsan.sanunits.AnaerobicCSTR`` classes) has been verified against the MATLAB/Simulink implementation with algebraic solutions for H2 and pH developed by Flores-Alsina et al. [2]_ , [3]_.
 
- .. figure:: ./figures/ADM1_cstr.png
+ .. figure:: ./figures/adm1_cstr.png
 
     *Layout of the system used for the validation of ADM1 implemented in QSDsan.*
 

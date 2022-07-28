@@ -6,7 +6,7 @@ Summary
 -------
 This module implements the Benchmark Simulation Model No. 1 (BSM1). [1]_ The code for process modeling and dynamic simulation has been verified against the MATLAB/Simulink [2]_ implementation developed by International Water Association (IWA) Task Group on Benchmarking of Control Strategies. The ``data`` folder contains the outputs from MATLAB/Simulink results (``matlab_exported_data.xlsx`` and ``matlab_workspace.mat``) for comparison.
 
-.. figure:: ./figures/BSM1.png
+.. figure:: ./figures/bsm1.png
 
     *BSM1 system layout: two anoxic suspended-growth bioreactors followed by three aerobic bioreactors and a secondary clarifier*
 
