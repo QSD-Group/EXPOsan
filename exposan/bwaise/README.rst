@@ -216,7 +216,7 @@ TEA and LCA are performed through :class:`biosteam.TEA` and :class:`LCA` objects
 
 Uncertainty and sensitivity analyses
 ------------------------------------
-These analyses are performed through :class:`biosteam.Model` objects, three models (``modelA``, ``modelB``, ``modelC`` for ``sysA``, ``sysB``, and ``sysC``, respectively) have been added with all the uncertainty parameters and ranges according to Trimmer et al. [1]_.
+Uncertainty and sensitivity analyses are performed through :class:`Model` objects. Three models (``modelA`` to ``modelC`` corresponding to ``sysA`` to ``sysC``, respectively) have been added with all the uncertainty parameters and ranges according to Trimmer et al. [1]_.
 
 You can make changes (e.g., add or remove parameters, change uncertainty ranges) to these models or construct your own ones.
 
