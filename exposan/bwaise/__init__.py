@@ -16,6 +16,7 @@ for license details.
 import os, pickle, numpy as np, pandas as pd, qsdsan as qs
 from qsdsan import ImpactItem, StreamImpactItem
 from qsdsan.utils import time_printer
+from exposan.utils import get_decay_k, get_generic_tanker_truck_fee
 
 bwaise_path = os.path.dirname(__file__)
 data_path = os.path.join(bwaise_path, 'data')
@@ -57,28 +58,25 @@ discount_rate = 0.05
 tau_deg = 2
 # Log reduction at full degradation
 log_deg = 3
-# Get reduction rate constant k for COD and N, use a function so that k can be
-# changed during uncertainty analysis
-def get_decay_k(tau_deg=tau_deg, log_deg=log_deg):
-    k = (-1/tau_deg)*np.log(10**-log_deg)
-    return k
 
 max_CH4_emission = 0.25
 
 # Model for tanker truck cost based on capacity (m3)
 # price = a*capacity**b -> ln(price) = ln(a) + bln(capacity)
-from sklearn.linear_model import LinearRegression
-UGX_price_dct = np.array((8e4, 12e4, 20e4, 25e4))
-capacities = np.array((3, 4.5, 8, 15))
+fitting_dct = {
+    3: 8e4,
+    4.5: 12e4,
+    8: 20e4,
+    15: 25e4,
+}
 emptying_fee = 0.15 # additional emptying fee, fraction of base cost
 def get_tanker_truck_fee(capacity):
-    price_dct = UGX_price_dct*(1+emptying_fee)/exchange_rate
-    ln_p = np.log(price_dct)
-    ln_cap = np.log(capacities)
-    model = LinearRegression().fit(ln_cap.reshape(-1,1), ln_p.reshape(-1,1))
-    predicted = model.predict(np.array((np.log(capacity))).reshape(1, -1)).item()
-    cost = np.exp(predicted)
-    return cost
+    return get_generic_tanker_truck_fee(
+        capacity=capacity,
+        fitting_dct=fitting_dct,
+        emptying_fee=emptying_fee,
+        exchange_rate=1/exchange_rate,
+        )
 
 handcart_fee = 0.01 # USD/cap/d
 truck_fee = 23e3 # UGX/m3
@@ -149,11 +147,12 @@ GWP_dct = {
 from . import _components
 from ._components import *
 _components_loaded = False
-def _load_components():
+def _load_components(reload=False):
     global components, _components_loaded
-    components = create_components()
-    qs.set_thermo(components)
-    _components_loaded = True
+    if not _components_loaded or reload:
+        components = create_components()
+        qs.set_thermo(components)
+        _components_loaded = True
 
 
 from . import _lca_data

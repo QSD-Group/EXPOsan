@@ -13,6 +13,8 @@ for license details.
 '''
 
 import os, numpy as np, pandas as pd
+from math import log
+from sklearn.linear_model import LinearRegression as LR
 from chaospy import distributions as shape
 <<<<<<< HEAD
 =======
@@ -32,6 +34,9 @@ __all__ = (
 >>>>>>> 39af7d1ccc5478a59bd0bf765ea48bcbcf694bb0
     'batch_setting_unit_params',
     'clear_unit_costs',
+    'get_decay_k',
+    'get_generic_scaled_capital',
+    'get_generic_tanker_truck_fee',
     'run_uncertainty',
     )
 
@@ -84,6 +89,80 @@ def clear_unit_costs(sys):
         if isinstance(i, su.LumpedCost): continue
         i.purchase_costs.clear()
         i.installed_costs.clear()
+
+
+# Get reduction rate constant k for COD and N, use a function so that k can be
+# changed during uncertainty analysis
+def get_decay_k(tau_deg=2, log_deg=3):
+    k = (-1/tau_deg)*np.log(10**-log_deg)
+    return k
+
+
+def get_generic_scaled_capital(tea, percent_CAPEX_to_scale, number_of_units,
+                               percent_limit, learning_curve_percent):
+    '''
+    Scale capital cost based for the Nth system
+    (would be lower than the cost for a single system due to scaling effect).
+
+    Parameters
+    ----------
+    tea : obj
+        TEA obj for the system of interest.
+    percent_CAPEX_to_scale : float
+        The fraction of the cost of specialty parts/cost of total parts.
+    number_of_units : int
+        Number of units to be constructed.
+    percent_limit : float
+        Percent of the lowest cost of the normal cost of a single system.
+    learning_curve_percent : float
+        The percent factor of the learning curve.
+    '''
+    CAPEX_to_scale = tea.annualized_CAPEX * percent_CAPEX_to_scale
+    CAPEX_not_scaled = tea.annualized_CAPEX - CAPEX_to_scale
+    scaled_limited = CAPEX_to_scale * percent_limit
+    b = log(learning_curve_percent)/log(2)
+    scaled_CAPEX_annualized  = (CAPEX_to_scale - scaled_limited)*number_of_units**b + scaled_limited
+    new_CAPEX_annualized = scaled_CAPEX_annualized + CAPEX_not_scaled
+    return new_CAPEX_annualized
+
+
+fitting_dct = {
+    3: 21.62,
+    4.5: 32.43,
+    8: 54.05,
+    15: 67.57,
+}
+def get_generic_tanker_truck_fee(capacity,
+                                 fitting_dct=fitting_dct,
+                                 emptying_fee=0.15,
+                                 exchange_rate=1):
+    '''
+    Exponential fitting to get the tanker truck fee based on capacity.
+
+    cost = a*capacity**b -> ln(price) = ln(a) + bln(capacity)
+
+    Parameters
+    ----------
+    capacity : float
+        The capacity at which the tanker truck fee will be calculated.
+    fitting_dct : dict(float, float)
+        Capacity-based cost to develop the exponential fitting correlation,
+        keys should be the capacities and values should be the corresponding costs.
+        Capacities for fitting.
+    emptying_fee : float
+        Additional fraction of fee that will be added on top of the given prices.
+    exchange_rate : float
+        Exchange that will be multiplied to the prices.
+    '''
+    capacities = np.array(tuple(fitting_dct.keys()))
+    costs = np.array(tuple(fitting_dct.values()))
+    costs *= (1+emptying_fee)*exchange_rate
+    ln_p = np.log(costs)
+    ln_cap = np.log(np.array(capacities))
+    model = LR().fit(ln_cap.reshape(-1,1), ln_p.reshape(-1,1))
+    predicted = model.predict(np.array((np.log(capacity))).reshape(1, -1)).item()
+    fee = np.exp(predicted)
+    return fee
 
 
 @time_printer

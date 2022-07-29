@@ -29,6 +29,7 @@ from qsdsan import (
 from qsdsan.utils import clear_lca_registries
 from exposan.utils import add_fugitive_items, clear_unit_costs
 from exposan.bwaise import (
+    _load_components,
     _load_lca_data,
     app_loss,
     discount_rate,
@@ -494,12 +495,19 @@ def create_system(system_ID='A', flowsheet=None, lca_kind='original'):
         flowsheet = Flowsheet(flowsheet_ID)
         main_flowsheet.set_flowsheet(flowsheet)
 
+    _load_components()
     loaded_status = _load_lca_data(lca_kind, reload_lca)
 
-    if system_ID == 'A': system = create_systemA(flowsheet)
-    elif system_ID == 'B': system = create_systemB(flowsheet)
-    elif system_ID == 'C': system = create_systemC(flowsheet)
+    if system_ID == 'A': f = create_systemA
+    elif system_ID == 'B': f = create_systemB
+    elif system_ID == 'C': f = create_systemC
     else: raise ValueError(f'`system_ID` can only be "A", "B", or "C", not "{ID}".')
+
+    try:
+        system = f(flowsheet)
+    except:
+        _load_components(reload=True)
+        system = f(flowsheet)
 
     if loaded_status != lca_kind: # to refresh the impact items
         lca = system.LCA

@@ -107,31 +107,35 @@ def update_metrics(model, lca_kind):
 # %%
 
 # =============================================================================
+# Data sheets
+# =============================================================================
+
+join_path = lambda prefix, file_name: os.path.join(prefix, file_name)
+
+su_data_path = ospath.join(data_path, 'sanunit_data')
+excretion_data = load_data(join_path(su_data_path, '_excretion.tsv'))
+toilet_data = load_data(join_path(su_data_path, '_toilet.tsv'))
+pit_latrine_data = load_data(join_path(su_data_path, '_pit_latrine.tsv'))
+uddt_data = load_data(join_path(su_data_path, '_uddt.tsv'))
+drying_bed_data = load_data(join_path(su_data_path, '_drying_bed.tsv'))
+liquid_bed_data = load_data(join_path(su_data_path, '_liquid_treatment_bed.tsv'))
+sedimentation_tank_data = load_data(join_path(su_data_path, '_sedimentation_tank.tsv'))
+anaerobic_lagoon_data = load_data(join_path(su_data_path, '_anaerobic_lagoon.tsv'))
+facultative_lagoon_data = load_data(join_path(su_data_path, '_facultative_lagoon.tsv'))
+sludge_separator_data = load_data(join_path(su_data_path, '_sludge_separator.tsv'))
+abr_data = load_data(join_path(su_data_path, '_anaerobic_baffled_reactor.tsv'))
+
+
+# %%
+
+# =============================================================================
 # Shared by all three systems
 # =============================================================================
 
-# Data sheets
-su_data_path = ospath.join(data_path, 'sanunit_data/')
-
-path = ospath.join(su_data_path, '_pit_latrine.tsv')
-pit_latrine_data = load_data(path)
 MCF_lower_dct = dct_from_str(pit_latrine_data.loc['MCF_decay']['low'])
 MCF_upper_dct = dct_from_str(pit_latrine_data.loc['MCF_decay']['high'])
 N2O_EF_lower_dct = dct_from_str(pit_latrine_data.loc['N2O_EF_decay']['low'])
 N2O_EF_upper_dct = dct_from_str(pit_latrine_data.loc['N2O_EF_decay']['high'])
-
-path = ospath.join(su_data_path, '_drying_bed.tsv')
-drying_bed_data = load_data(path)
-
-path = ospath.join(su_data_path, '_sedimentation_tank.tsv')
-sedimentation_tank_data = load_data(path)
-
-path = ospath.join(su_data_path, '_anaerobic_lagoon.tsv')
-anaerobic_lagoon_data = load_data(path)
-
-path = ospath.join(su_data_path, '_facultative_lagoon.tsv')
-facultative_lagoon_data = load_data(path)
-
 
 def add_shared_parameters(model, drying_bed_unit, main_crop_application_unit):
     ##### Related to multiple units #####
@@ -152,8 +156,6 @@ def add_shared_parameters(model, drying_bed_unit, main_crop_application_unit):
 
     ##### Related to human input #####
     # Diet and excretion
-    path = ospath.join(data_path, 'sanunit_data/_excretion.tsv')
-    excretion_data = load_data(path)
     batch_setting_unit_params(excretion_data, model, Excretion)
 
     # Household size
@@ -172,8 +174,6 @@ def add_shared_parameters(model, drying_bed_unit, main_crop_application_unit):
     def set_toilet_density(i):
         bw.household_per_toilet = i
 
-    path = ospath.join(data_path, 'sanunit_data/_toilet.tsv')
-    toilet_data = load_data(path)
     batch_setting_unit_params(toilet_data, model, Toilet,
                               exclude=('desiccant_rho',)) # set separately
 
@@ -569,8 +569,6 @@ def add_pit_latrine_parameters(model):
         bw.emptying_fee = i
 
 
-path = ospath.join(su_data_path, '_sludge_separator.tsv')
-sludge_separator_data = load_data(path)
 split_lower_dct = dct_from_str(sludge_separator_data.loc['split']['low'])
 split_upper_dct = dct_from_str(sludge_separator_data.loc['split']['high'])
 split_dist_dct = dct_from_str(sludge_separator_data.loc['split']['distribution'], dtype='str')
@@ -731,9 +729,7 @@ def create_modelB(lca_kind='original', **model_kwargs):
 
     # Anaerobic baffled reactor
     B5 = unitB.B5
-    path = ospath.join(su_data_path, '_anaerobic_baffled_reactor.tsv')
-    data = load_data(path)
-    batch_setting_unit_params(data, modelB, B5)
+    batch_setting_unit_params(abr_data, modelB, B5)
 
     b = bw.biogas_energy
     D = shape.Triangle(lower=802, midpoint=b, upper=870)
@@ -779,9 +775,7 @@ def create_modelB(lca_kind='original', **model_kwargs):
 
     # Liquid treatment bed
     B7 = unitB.B7
-    path = ospath.join(su_data_path, '_liquid_treatment_bed.tsv')
-    data = load_data(path)
-    batch_setting_unit_params(data, modelB, B7)
+    batch_setting_unit_params(liquid_bed_data, modelB, B7)
 
     # Biogas combustion
     B14 = unitB.B14
@@ -830,8 +824,6 @@ def create_modelC(lca_kind='original', **model_kwargs):
 
     # UDDT
     C2 = unitC.C2
-    path = ospath.join(su_data_path, '_uddt.tsv')
-    uddt_data = load_data(path)
     batch_setting_unit_params(uddt_data, modelC, C2)
 
     b = C2.CAPEX

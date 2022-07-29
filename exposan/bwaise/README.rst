@@ -210,17 +210,13 @@ TEA and LCA are performed through :class:`biosteam.TEA` and :class:`LCA` objects
     Direct emission: 52.8 kg CO2-eq/cap/yr.
     Offset: -3.0 kg CO2-eq/cap/yr.
     Other: 0.01 kg CO2-eq/cap/yr.
-    >>> # You can save reports in the "/results" folder with default names
-    >>> # Note that system information (e.g., flows, designs) and TEA results
-    >>> # will be saved together, but LCA result will be saved in a separate Excel file
-    >>> # bw.save_all_reports()
-    >>> # Alternatively, you can save individual reports at other places
-    >>> # bw.sysA.save_report('sysA_report.xlsx')
+    >>> # You can also save system reports
+    >>> # bw.sysA.save_report('full_file_path.xlsx')
 
 
 Uncertainty and sensitivity analyses
 ------------------------------------
-These analyses are performed through :class:`biosteam.Model` objects, three models (``modelA``, ``modelB``, ``modelC`` for ``sysA``, ``sysB``, and ``sysC``, respectively) have been added with all the uncertainty parameters and ranges according to Trimmer et al. [1]_.
+Uncertainty and sensitivity analyses are performed through :class:`Model` objects. Three models (``modelA`` to ``modelC`` corresponding to ``sysA`` to ``sysC``, respectively) have been added with all the uncertainty parameters and ranges according to Trimmer et al. [1]_.
 
 You can make changes (e.g., add or remove parameters, change uncertainty ranges) to these models or construct your own ones.
 
