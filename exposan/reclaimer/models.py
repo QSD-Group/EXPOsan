@@ -2,119 +2,103 @@
 # -*- coding: utf-8 -*-
 
 '''
-EXPOsan: Exposition of sanitation and resource recovery systems
+DMsan: Decision-making for sanitation and resource recovery systems
 
 This module is developed by:
     Tori Morgan <tvlmorgan@gmail.com>
     Hannah Lohman <hlohman94@gmail.com>
-    Yalin Li <zoe.yalin.li@gmail.com>
-
-This module is under the University of Illinois/NCSA Open Source License.
-Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txtt
-for license details.
+    Yalin Li <mailto.yalin.li@gmail.com>
 '''
 
 
 # %%
 
-import os, numpy as np, pandas as pd
+import os, qsdsan as qs
 from chaospy import distributions as shape
-from biosteam.evaluation import Metric
-from qsdsan import Model, PowerUtility, ImpactItem
+from qsdsan import Model, Metric, PowerUtility, ImpactItem
 from qsdsan.utils import (
-    load_data, data_path, AttrSetter, DictAttrSetter, time_printer, dct_from_str
+    data_path,
+    DictAttrSetter,
+    load_data,
     )
+from exposan.utils import batch_setting_unit_params, run_uncertainty as run
 from exposan import reclaimer as re
-from exposan.reclaimer import data_path as re_data_path, results_path
-
-__all__ = (
-    'create_model', 'result_dct',
-    'run_uncertainty', 'save_uncertainty_results',
+from exposan.reclaimer import (
+    _load_components,
+    create_system,
+    data_path as re_data_path,
+    get_decay_k,
+    get_LCA_metrics,
+    get_TEA_metrics,
+    get_recoveries,
+    GWP_dct,
+    H_Ecosystems_dct,
+    H_Health_dct,
+    H_Resources_dct,
+    price_dct,
+    results_path,
     )
+
+__all__ = ('create_model', 'run_uncertainty',)
+
 
 # %%
 
 # =============================================================================
-# Functions for batch-making metrics and -setting parameters
+# Functions for batch-making metrics and setting parameters
 # =============================================================================
 
-systems = re.systems
-currency = systems.currency
-sys_dct = systems.sys_dct
-# unit_dct = systems.unit_dct
-price_dct = systems.price_dct
-GWP_dct = systems.GWP_dct
-GWP = systems.GWP
-get_summarizing_functions = systems.get_summarizing_functions
-func = get_summarizing_functions()
-
-
-def add_metrics(system):
-    sys_ID = system.ID
-    tea = sys_dct['TEA'][sys_ID]
-    lca = sys_dct['LCA'][sys_ID]
-    ppl = sys_dct['ppl'][sys_ID]
-    unit = f'{currency}/cap/yr'
-    cat = 'TEA results'
+def add_metrics(model):
+    re._load_lca_data()
+    system = model.system
+    # Recoveries
+    funcs = get_recoveries(system)
     metrics = [
-        Metric('Net cost', lambda: func['get_annual_cost'](tea, ppl), unit, cat),
-        Metric('Annual CAPEX', lambda: func['get_annual_CAPEX'](tea, ppl), unit, cat),
-        Metric('Energy', lambda: func['get_annual_energy'](tea, ppl), unit, cat),
-        Metric('Annual OPEX', lambda: func['get_annual_OPEX'](tea, ppl), unit, cat),
-        Metric('Labor', lambda: func['get_annual_labor'](tea, ppl), unit, cat),
-        Metric('Sales', lambda: func['get_annual_sales'](tea, ppl), unit, cat),
-        ]
-    unit = f'{GWP.unit}/cap/yr'
+        Metric('Total N', funcs[0], '% N', 'N recovery'),
+        Metric('Total P', funcs[1], '% P', 'P recovery'),
+        Metric('Total K', funcs[2], '% K', 'K recovery'),
+    ]
+    # Net cost
+    metrics.append(
+        Metric('Annual net cost', get_TEA_metrics(system)[0], f'{qs.currency}/cap/yr', 'TEA results'),
+        )
+    # Net emissions
+    funcs = get_LCA_metrics(system)
     cat = 'LCA results'
     metrics.extend([
-        Metric('Net emission', lambda: func['get_annual_GWP'](lca, ppl), unit, cat),
-        Metric('Construction', lambda: func['get_constr_GWP'](lca, ppl), unit, cat),
-        Metric('Transportation', lambda: func['get_trans_GWP'](lca, ppl), unit, cat),
-        Metric('Fugitive gas', lambda: func['get_CH4_N2O_GWP'](system, lca, ppl), unit, cat),
-        Metric('Stream items', lambda: func['get_stream_items_emission_GWP'](system, lca, ppl), unit, cat),
-        Metric('Offset', lambda: func['get_offset_GWP'](lca, ppl), unit, cat),
-        Metric('Other', lambda: func['get_other_GWP'](lca, ppl), unit, cat),
+        Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),
+        Metric('H_Ecosystems', funcs[1], 'points/cap/yr', cat),
+        Metric('H_Health', funcs[2], 'points/cap/yr', cat),
+        Metric('H_Resources', funcs[3], 'points/cap/yr', cat),
         ])
-    return metrics
-
-
-def batch_setting_unit_params(df, model, unit, exclude=()):
-    for para in df.index:
-        if para in exclude: continue
-        b = getattr(unit, para)
-        lower = float(df.loc[para]['low'])
-        upper = float(df.loc[para]['high'])
-        dist = df.loc[para]['distribution']
-        if dist == 'uniform':
-            D = shape.Uniform(lower=lower, upper=upper)
-        elif dist == 'triangular':
-            D = shape.Triangle(lower=lower, midpoint=b, upper=upper)
-        elif dist == 'constant': continue
-        else:
-            raise ValueError(f'Distribution {dist} not recognized for unit {unit}.')
-        model.parameter(setter=AttrSetter(unit, para),
-                        name=para, element=unit, kind='coupled', units=df.loc[para]['unit'],
-                        baseline=b, distribution=D)
+    model.metrics = metrics
 
 
 # %%
 
 # =============================================================================
-# Pre-load data sheets as they will be used in multiple systems
+# Data sheets
 # =============================================================================
 
-join_path = lambda prefix, file_name: os.path.join(prefix, file_name)
-su_data_path = join_path(data_path, 'sanunit_data')
-excretion_data = load_data(join_path(su_data_path, '_excretion.tsv'))
-murt_toilet_data = load_data(join_path(su_data_path, '_murt_toilet.tsv'))
-primary_data = load_data(join_path(su_data_path, '_primary_reclaimer.csv'))
-sludge_pasteurization_data = load_data(join_path(su_data_path, '_sludge_pasteurization_reclaimer.tsv'))
-ultrafiltration_data = load_data(join_path(su_data_path, '_ultrafiltration_reclaimer.csv'))
-ion_exchange_data = load_data(join_path(su_data_path, '_ion_exchange_reclaimer.csv'))
-ecr_data = load_data(join_path(su_data_path, '_ECR_reclaimer.csv'))
-housing_data = load_data(join_path(su_data_path, '_housing_reclaimer.csv'))
-system_data = load_data(join_path(su_data_path, '_system_reclaimer.csv'))
-solar_data = load_data(join_path(su_data_path, '_solar_reclaimer.csv'))
+su_data_path = os.path.join(data_path, 'sanunit_data')
+re_su_data_path = os.path.join(su_data_path, 're')
+
+def load_re_su_data(file_name):
+    if file_name.startswith('_re'):
+        return load_data(os.path.join(re_su_data_path, file_name))
+    return load_data(os.path.join(su_data_path, file_name))
+
+excretion_data = load_re_su_data('_excretion.tsv')
+murt_data = load_re_su_data('_murt.tsv')
+pasteurization_data = load_re_su_data('_sludge_pasteurization.tsv')
+septic_tank_data = load_re_su_data('_septic_tank.csv')
+
+ultrafiltration_data = load_re_su_data('_re_ultrafiltration.csv')
+ix_data = load_re_su_data('_re_ion_exchange.csv')
+ecr_data = load_re_su_data('_re_ecr.csv')
+housing_data = load_re_su_data('_re_housing.csv')
+system_data = load_re_su_data('_re_system.csv')
+solar_data = load_re_su_data('_re_solar.csv')
 
 
 # %%
@@ -123,13 +107,15 @@ solar_data = load_data(join_path(su_data_path, '_solar_reclaimer.csv'))
 # Shared by all systems
 # =============================================================================
 
-def add_shared_parameters(sys, model, unit_dct, country_specific=False):
+def add_shared_parameters(model, unit_dct, country_specific=False):
+    sys = model.system
+    sys_stream = sys.flowsheet.stream
     param = model.parameter
-    streams = sys_dct['stream_dct'][sys.ID]
 
     # Add these parameters if not running country-specific analysis,
     # in which they would be updated separately
-    if not country_specific:      
+
+    if not country_specific:
 
         # Labor wage
         b = price_dct['wages']
@@ -137,66 +123,205 @@ def add_shared_parameters(sys, model, unit_dct, country_specific=False):
         @param(name='Labor wages', element='TEA', kind='cost', units='USD/h',
                baseline=b, distribution=D)
         def set_labor_wages(i):
-            labor_cost = 0
             for u in sys.units:
                 if hasattr(u, '_calc_maintenance_labor_cost'):
                     u.wages = i
-                    labor_cost += u._calc_maintenance_labor_cost()
-            sys.TEA.annual_labor = labor_cost * 365 * 24  # converting labor_cost (USD/hr) to annual_labor (USD/yr)
 
         # Electricity price
         b = price_dct['Electricity']
-        D = shape.Triangle(lower=0.04, midpoint=b, upper=0.1)
+        D = shape.Uniform(lower=0.045, upper=0.075)
         @param(name='Electricity price', element='TEA', kind='isolated',
-           units='$/kWh', baseline=b, distribution=D)
+               units='$/kWh', baseline=b, distribution=D)
         def set_electricity_price(i):
             PowerUtility.price = i
 
         # Electricity GWP
         b = GWP_dct['Electricity']
-        D = shape.Triangle(lower=0.6212, midpoint=b, upper=0.7592)
+        D = shape.Triangle(lower=b*0.9, midpoint=b, upper=b*1.1)
         @param(name='Electricity CF', element='LCA', kind='isolated',
                    units='kg CO2-eq/kWh', baseline=b, distribution=D)
         def set_electricity_CF(i):
             GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
 
-    # ########## Specific units ##########
+        # Electricity H_Ecosystems
+        b = H_Ecosystems_dct['Electricity']
+        D = shape.Triangle(lower=b*0.9, midpoint=b, upper=b*1.1)
+        @param(name='Electricity Ecosystems CF', element='LCA', kind='isolated',
+                   units='points/kWh', baseline=b, distribution=D)
+        def set_electricity_ecosystems_CF(i):
+            H_Ecosystems_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Ecosystems'] = i
+
+        # Electricity H_Health
+        b = H_Health_dct['Electricity']
+        D = shape.Triangle(lower=b*0.9, midpoint=b, upper=b*1.1)
+        @param(name='Electricity Health CF', element='LCA', kind='isolated',
+                   units='points/kWh', baseline=b, distribution=D)
+        def set_electricity_health_CF(i):
+            H_Health_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Health'] = i
+
+        # Electricity H_Resources
+        b = H_Resources_dct['Electricity']
+        D = shape.Triangle(lower=b*0.9, midpoint=b, upper=b*1.1)
+        @param(name='Electricity Resources CF', element='LCA', kind='isolated',
+                   units='points/kWh', baseline=b, distribution=D)
+        def set_electricity_resources_CF(i):
+            H_Resources_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Resources'] = i
+
+        # N fertilizer price
+        b = 1.507
+        D = shape.Uniform(lower=b * 0.8, upper=b * 1.2)
+
+        @param(name='N fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
+               baseline=b, distribution=D)
+        def set_N_price(i):
+            price_dct['N'] = sys_stream.liq_N.price = sys_stream.sol_N.price = i * re.price_factor
+
+        # P fertilizer price
+        b = 3.983
+        D = shape.Uniform(lower=b * 0.8, upper=b * 1.2)
+
+        @param(name='P fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
+               baseline=b, distribution=D)
+        def set_P_price(i):
+            price_dct['P'] = sys_stream.liq_P.price = sys_stream.sol_P.price = i * re.price_factor
+
+        # K fertilizer price
+        b = 1.333
+        D = shape.Uniform(lower=b * 0.8, upper=b * 1.2)
+
+        @param(name='K fertilizer price', element='TEA', kind='isolated', units='USD/kg K',
+               baseline=b, distribution=D)
+        def set_K_price(i):
+            price_dct['K'] = sys_stream.liq_K.price = sys_stream.sol_K.price = i * re.price_factor
+
+        # NH3 fertilizer price
+        D = shape.Uniform(lower=(1.507 * (14 / 17) * 0.8), upper=(1.507 * (14 / 17) * 1.2))
+
+        @param(name='NH3 fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
+               baseline=(1.507 * (14 / 17)), distribution=D)
+        def set_con_NH3_price(i):
+            price_dct['conc_NH3'] = sys_stream.conc_NH3.price = i * re.price_factor
+
+    ##### Specific units #####
     # Diet and excretion
     excretion_unit = unit_dct['Excretion']
     exclude = ('e_cal', 'p_anim', 'p_veg') if country_specific else ()
     batch_setting_unit_params(excretion_data, model, excretion_unit, exclude)
 
-    # Septic tank (primary)
+    # MURT
+    murt_unit = unit_dct.get('Toilet')
+    if murt_unit:
+        exclude = ('MCF_decay', 'N2O_EF_decay', 'OPEX_over_CAPEX')
+        batch_setting_unit_params(murt_data, model, murt_unit, exclude)
+
+        # # CAPEX of MURT is 0 as it is considered in the housing unit
+        # b = murt_unit.OPEX_over_CAPEX
+        # D = shape.Uniform(lower=0.02, upper=0.08)
+        # @param(name='MURT operating cost', element=murt_unit, kind='coupled', units='cost',
+        #        baseline=b, distribution=D)
+        # def set_OPEX_over_CAPEX(i):
+        #     murt_unit.OPEX_over_CAPEX = i
+
+        b = murt_unit.MCF_decay
+        D = shape.Triangle(lower=0.05, midpoint=b, upper=0.15)
+        @param(name='MCF_decay', element=murt_unit, kind='coupled',
+               units='fraction of anaerobic conversion of degraded COD',
+               baseline=b, distribution=D)
+        def set_MCF_decay(i):
+            murt_unit.MCF_decay = i
+
+        b = murt_unit.N2O_EF_decay
+        D = shape.Triangle(lower=0, midpoint=b, upper=0.001)
+        @param(name='N2O_EF_decay', element=murt_unit, kind='coupled',
+               units='fraction of N emitted as N2O',
+               baseline=b, distribution=D)
+        def set_N2O_EF_decay(i):
+            murt_unit.N2O_EF_decay = i
+
+    # Septic tank (primary treatment)
     primary_unit = unit_dct['Primary']
-    batch_setting_unit_params(primary_data, model, primary_unit)
+    batch_setting_unit_params(septic_tank_data, model, primary_unit)
+
+    b = primary_unit.sludge_moisture_content
+    D = shape.Uniform(lower=0.9, upper=0.98)
+    param(name='Sludge moisture content', element=primary_unit, kind='coupled', units='fraction',
+          baseline=b, distribution=D)
+    def set_primary_sludge_moisture_content(i):
+        primary_unit.sludge_moisture_content = i
+
+    # Sludge pasteurization
+    # `wages` should be excluded for all units this this attribute
+    exclude = 'wages' if country_specific else ()
+    pasteurization_unit = unit_dct.get('Pasteurization')
+    if pasteurization_unit: batch_setting_unit_params(pasteurization_data, model, pasteurization_unit, exclude)
+
+    # Ultrafiltration
+    ultrafiltration_unit = unit_dct.get('Ultrafiltration')
+    if ultrafiltration_unit: batch_setting_unit_params(ultrafiltration_data, model, ultrafiltration_unit)
+
+    # Ion exchange
+    ix_unit = unit_dct.get('Ion exchange')
+    if ix_unit: batch_setting_unit_params(ix_data, model, ix_unit, exclude)
+
+    # Electrochemical reactor
+    ecr_unit = unit_dct.get('ECR')
+    if ecr_unit: batch_setting_unit_params(ecr_data, model, ecr_unit, exclude)
+
+    # Housing
+    housing_unit = unit_dct.get('Housing')
+    if housing_unit: batch_setting_unit_params(housing_data, model, housing_unit)
+
+    # System
+    system_unit = unit_dct.get('System')
+    if system_unit: batch_setting_unit_params(system_data, model, system_unit)
+
+    # Solar
+    solar_unit = unit_dct.get('Solar')
+    if solar_unit: batch_setting_unit_params(solar_data, model, solar_unit, exclude)
 
     ##### Universal degradation parameters #####
     # Max methane emission
-    unit = sys.path[1] # the first unit that involves degradation
-    b = systems.max_CH4_emission
+    unit = sys.path[1]  # the first unit that involves degradation
+    b = re.max_CH4_emission
     D = shape.Triangle(lower=0.175, midpoint=b, upper=0.325)
     @param(name='Max CH4 emission', element=unit, kind='coupled', units='g CH4/g COD',
            baseline=b, distribution=D)
     def set_max_CH4_emission(i):
-        systems.max_CH4_emission = i
+        re.max_CH4_emission = i
+        for unit in sys.units:
+            if hasattr(unit, 'max_CH4_emission'):
+                setattr(unit, 'max_CH4_emission', i)
 
     # Time to full degradation
-    b = systems.tau_deg
+    b = re.tau_deg
     D = shape.Uniform(lower=1, upper=3)
     @param(name='Full degradation time', element=unit, kind='coupled', units='yr',
            baseline=b, distribution=D)
     def set_tau_deg(i):
-        systems.tau_deg = i
-    
+        re.tau_deg = i
+        k = get_decay_k(i, re.log_deg)
+        for unit in sys.units:
+            if hasattr(unit, 'decay_k_COD'):
+                setattr(unit, 'decay_k_COD', k)
+            if hasattr(unit, 'decay_k_N'):
+                setattr(unit, 'decay_k_N', k)
+
     # Reduction at full degradation
-    b = systems.log_deg
+    b = re.log_deg
     D = shape.Uniform(lower=2, upper=4)
     @param(name='Log degradation', element=unit, kind='coupled', units='-',
            baseline=b, distribution=D)
     def set_log_deg(i):
-        systems.log_deg = i
+        re.log_deg = i
+        k = get_decay_k(re.tau_deg, i)
+        for unit in sys.units:
+            if hasattr(unit, 'decay_k_COD'):
+                setattr(unit, 'decay_k_COD', k)
+            if hasattr(unit, 'decay_k_N'):
+                setattr(unit, 'decay_k_N', k)
 
-    ######## General TEA settings ########
+    ##### General TEA settings #####
+
     # # Keeping discount rate constant
     # b = systems.discount_rate
     # D = shape.Uniform(lower=0.03, upper=0.06)
@@ -205,43 +330,317 @@ def add_shared_parameters(sys, model, unit_dct, country_specific=False):
     # def set_discount_rate(i):
     #     systems.discount_rate = i
 
-    ######## General LCA settings ########
+    # Discount factor for the excreta-derived fertilizers
+    b = re.price_factor
+    D = shape.Uniform(lower=0.1, upper=0.4)
+    @param(name='Price factor', element='TEA', kind='isolated', units='-',
+           baseline=b, distribution=D)
+    def set_price_factor(i):
+        re.price_factor = i
+
+    ##### General LCA settings #####
+
+    # CH4
     b = GWP_dct['CH4']
-    D = shape.Uniform(lower=28, upper=34)
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
     @param(name='CH4 CF', element='LCA', kind='isolated', units='kg CO2-eq/kg CH4',
            baseline=b, distribution=D)
     def set_CH4_CF(i):
-        GWP_dct['CH4'] = systems.CH4_item.CFs['GlobalWarming'] = i    
-    
+        GWP_dct['CH4'] = ImpactItem.get_item('CH4_item').CFs['GlobalWarming'] = i
+
+    b = H_Ecosystems_dct['CH4']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='CH4 ecosystems CF', element='LCA', kind='isolated', units='points/kg CH4',
+           baseline=b, distribution=D)
+    def set_CH4_ecosystems_CF(i):
+        H_Ecosystems_dct['CH4'] = ImpactItem.get_item('CH4_item').CFs['H_Ecosystems'] = i
+
+    b = H_Health_dct['CH4']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='CH4 health CF', element='LCA', kind='isolated', units='points/kg CH4',
+           baseline=b, distribution=D)
+    def set_CH4_health_CF(i):
+        H_Health_dct['CH4'] = ImpactItem.get_item('CH4_item').CFs['H_Health'] = i
+
+    # N2O
     b = GWP_dct['N2O']
-    D = shape.Uniform(lower=265, upper=298)
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
     @param(name='N2O CF', element='LCA', kind='isolated', units='kg CO2-eq/kg N2O',
            baseline=b, distribution=D)
     def set_N2O_CF(i):
-        GWP_dct['N2O'] = systems.N2O_item.CFs['GlobalWarming'] = i
+        GWP_dct['N2O'] = ImpactItem.get_item('N2O_item').CFs['GlobalWarming'] = i
 
-    item_path = join_path(re_data_path, 'impact_items.xlsx')
-    data = load_data(item_path, sheet='GWP')    
-    for p in data.index:
-        item = ImpactItem.get_item(p)
-        b = item.CFs['GlobalWarming']
-        lower = float(data.loc[p]['low'])
-        upper = float(data.loc[p]['high'])
-        dist = data.loc[p]['distribution']
-        if dist == 'uniform':
-            D = shape.Uniform(lower=lower, upper=upper)
-        elif dist == 'triangular':
-            D = shape.Triangle(lower=lower, midpoint=b, upper=upper)
-        elif dist == 'constant': continue
-        else:
-            raise ValueError(f'Distribution {dist} not recognized.')
-        model.parameter(name=p,
-                        setter=DictAttrSetter(item, 'CFs', 'GlobalWarming'),
-                        element='LCA', kind='isolated',
-                        units=f'kg CO2-eq/{item.functional_unit}',
-                        baseline=b, distribution=D)
-    
-    return model
+    b = H_Ecosystems_dct['N2O']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='N2O ecosystems CF', element='LCA', kind='isolated', units='points/kg N2O',
+           baseline=b, distribution=D)
+    def set_N2O_ecosystems_CF(i):
+        H_Ecosystems_dct['N2O'] = ImpactItem.get_item('N2O_item').CFs['H_Ecosystems'] = i
+
+    b = H_Health_dct['N2O']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='N2O health CF', element='LCA', kind='isolated', units='points/kg N2O',
+           baseline=b, distribution=D)
+    def set_N2O_health_CF(i):
+        H_Health_dct['N2O'] = ImpactItem.get_item('N2O_item').CFs['H_Health'] = i
+
+    # Recovered N fertilizer
+    b = -GWP_dct['N']
+    D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+    @param(name='N fertilizer CF', element='LCA', kind='isolated',
+           units='kg CO2-eq/kg N', baseline=b, distribution=D)
+    def set_N_fertilizer_CF(i):
+        GWP_dct['N'] = ImpactItem.get_item('N_item').CFs['GlobalWarming'] = -i
+
+    b = -H_Ecosystems_dct['N']
+    D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+    @param(name='N fertilizer ecosystems CF', element='LCA', kind='isolated',
+           units='points/kg N', baseline=b, distribution=D)
+    def set_N_fertilizer_ecosystems_CF(i):
+        H_Ecosystems_dct['N'] = ImpactItem.get_item('N_item').CFs['H_Ecosystems'] = -i
+
+    b = -H_Health_dct['N']
+    D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+    @param(name='N fertilizer health CF', element='LCA', kind='isolated',
+           units='points/kg N', baseline=b, distribution=D)
+    def set_N_fertilizer_health_CF(i):
+        H_Health_dct['N'] = ImpactItem.get_item('N_item').CFs['H_Health'] = -i
+
+    b = -H_Resources_dct['N']
+    D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+    @param(name='N fertilizer resources CF', element='LCA', kind='isolated',
+           units='points/kg N', baseline=b, distribution=D)
+    def set_N_fertilizer_resources_CF(i):
+        H_Resources_dct['N'] = ImpactItem.get_item('N_item').CFs['H_Resources'] = -i
+
+    # Recovered P fertilizer
+    b = -GWP_dct['P']
+    D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+    @param(name='P fertilizer CF', element='LCA', kind='isolated',
+           units='kg CO2-eq/kg P', baseline=b, distribution=D)
+    def set_P_fertilizer_CF(i):
+        GWP_dct['P'] = ImpactItem.get_item('P_item').CFs['GlobalWarming'] = -i
+
+    b = -H_Ecosystems_dct['P']
+    D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+    @param(name='P fertilizer ecosystems CF', element='LCA', kind='isolated',
+           units='points/kg P', baseline=b, distribution=D)
+    def set_P_fertilizer_ecosystems_CF(i):
+        H_Ecosystems_dct['P'] = ImpactItem.get_item('P_item').CFs['H_Ecosystems'] = -i
+
+    b = -H_Health_dct['P']
+    D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+    @param(name='P fertilizer health CF', element='LCA', kind='isolated',
+           units='points/kg P', baseline=b, distribution=D)
+    def set_P_fertilizer_health_CF(i):
+        H_Health_dct['P'] = ImpactItem.get_item('P_item').CFs['H_Health'] = -i
+
+    b = -H_Resources_dct['P']
+    D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+    @param(name='P fertilizer resources CF', element='LCA', kind='isolated',
+           units='points/kg P', baseline=b, distribution=D)
+    def set_P_fertilizer_resources_CF(i):
+        H_Resources_dct['P'] = ImpactItem.get_item('P_item').CFs['H_Resources'] = -i
+
+    # Recovered K fertilizer
+    b = -GWP_dct['K']
+    D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+    @param(name='K fertilizer CF', element='LCA', kind='isolated',
+           units='kg CO2-eq/kg K', baseline=b, distribution=D)
+    def set_K_fertilizer_CF(i):
+        GWP_dct['K'] = ImpactItem.get_item('K_item').CFs['GlobalWarming'] = -i
+
+    b = -H_Ecosystems_dct['K']
+    D = shape.Triangle(lower=b * 0.90, midpoint=b, upper=b * 1.1)
+    @param(name='K fertilizer ecosystems CF', element='LCA', kind='isolated',
+           units='points/kg K', baseline=b, distribution=D)
+    def set_K_fertilizer_ecosystems_CF(i):
+        H_Ecosystems_dct['K'] = ImpactItem.get_item('K_item').CFs['H_Ecosystems'] = -i
+
+    b = -H_Health_dct['K']
+    D = shape.Triangle(lower=b * 0.90, midpoint=b, upper=b * 1.1)
+    @param(name='K fertilizer health CF', element='LCA', kind='isolated',
+           units='points/kg K', baseline=b, distribution=D)
+    def set_K_fertilizer_health_CF(i):
+        H_Health_dct['K'] = ImpactItem.get_item('K_item').CFs['H_Health'] = -i
+
+    b = -H_Resources_dct['K']
+    D = shape.Triangle(lower=b * 0.90, midpoint=b, upper=b * 1.1)
+    @param(name='K fertilizer resources CF', element='LCA', kind='isolated',
+           units='points/kg K', baseline=b, distribution=D)
+    def set_K_fertilizer_resources_CF(i):
+        H_Resources_dct['K'] = ImpactItem.get_item('K_item').CFs['H_Resources'] = -i
+
+    # Recovered concentrated NH3 fertilizer
+    b = -GWP_dct['conc_NH3']
+    D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+    @param(name='Conc NH3 CF', element='LCA', kind='isolated',
+            units='kg CO2-eq/kg', baseline=b, distribution=D)
+    def set_conc_NH3_CF(i):
+        GWP_dct['conc_NH3'] = ImpactItem.get_item('conc_NH3_item').CFs['GlobalWarming'] = -i
+
+    b = -H_Ecosystems_dct['conc_NH3']
+    D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+    @param(name='Conc NH3 ecosystems CF', element='LCA', kind='isolated',
+            units='points/kg', baseline=b, distribution=D)
+    def set_conc_NH3_ecosystems_CF(i):
+        H_Ecosystems_dct['conc_NH3'] = ImpactItem.get_item('conc_NH3_item').CFs['H_Ecosystems'] = -i
+
+    b = -H_Health_dct['conc_NH3']
+    D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+    @param(name='Conc NH3 health CF', element='LCA', kind='isolated',
+            units='points/kg', baseline=b, distribution=D)
+    def set_conc_NH3_health_CF(i):
+        H_Health_dct['conc_NH3'] = ImpactItem.get_item('conc_NH3_item').CFs['H_Health'] = -i
+
+    b = -H_Resources_dct['conc_NH3']
+    D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+    @param(name='Conc NH3 resources CF', element='LCA', kind='isolated',
+            units='points/kg', baseline=b, distribution=D)
+    def set_conc_NH3_resources_CF(i):
+        H_Resources_dct['conc_NH3'] = ImpactItem.get_item('conc_NH3_item').CFs['H_Resources'] = -i
+
+    # GAC
+    b = GWP_dct['GAC']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='GAC CF', element='LCA', kind='isolated',
+           units='kg CO2-eq/kg', baseline=b, distribution=D)
+    def set_GAC_CF(i):
+        GWP_dct['GAC'] = ImpactItem.get_item('GAC_item').CFs['GlobalWarming'] = i
+
+    b = H_Ecosystems_dct['GAC']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='GAC ecosystems CF', element='LCA', kind='isolated',
+           units='points/kg', baseline=b, distribution=D)
+    def set_GAC_ecosystems_CF(i):
+        H_Ecosystems_dct['GAC'] = ImpactItem.get_item('GAC_item').CFs['H_Ecosystems'] = i
+
+    b = H_Health_dct['GAC']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='GAC health CF', element='LCA', kind='isolated',
+           units='points/kg', baseline=b, distribution=D)
+    def set_GAC_health_CF(i):
+        H_Health_dct['GAC'] = ImpactItem.get_item('GAC_item').CFs['H_Health'] = i
+
+    b = H_Resources_dct['GAC']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='GAC resources CF', element='LCA', kind='isolated',
+           units='points/kg', baseline=b, distribution=D)
+    def set_GAC_resources_CF(i):
+        H_Resources_dct['GAC'] = ImpactItem.get_item('GAC_item').CFs['H_Resources'] = i
+
+    # Zeolite
+    b = GWP_dct['Zeolite']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='Zeolite CF', element='LCA', kind='isolated',
+           units='kg CO2-eq/kg', baseline=b, distribution=D)
+    def set_Zeolite_CF(i):
+        GWP_dct['Zeolite'] = ImpactItem.get_item('Zeolite_item').CFs['GlobalWarming'] = i
+
+    b = H_Ecosystems_dct['Zeolite']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='Zeolite ecosystems CF', element='LCA', kind='isolated',
+           units='points/kg', baseline=b, distribution=D)
+    def set_Zeolite_ecosystems_CF(i):
+        H_Ecosystems_dct['Zeolite'] = ImpactItem.get_item('Zeolite_item').CFs['H_Ecosystems'] = i
+
+    b = H_Health_dct['Zeolite']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='Zeolite health CF', element='LCA', kind='isolated',
+           units='points/kg', baseline=b, distribution=D)
+    def set_Zeolite_health_CF(i):
+        H_Health_dct['Zeolite'] = ImpactItem.get_item('Zeolite_item').CFs['H_Health'] = i
+
+    b = H_Resources_dct['Zeolite']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='Zeolite resources CF', element='LCA', kind='isolated',
+           units='points/kg', baseline=b, distribution=D)
+    def set_Zeolite_resources_CF(i):
+        H_Resources_dct['Zeolite'] = ImpactItem.get_item('Zeolite_item').CFs['H_Resources'] = i
+
+    # KCl
+    b = GWP_dct['KCl']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='KCl CF', element='LCA', kind='isolated',
+           units='kg CO2-eq/kg', baseline=b, distribution=D)
+    def set_KCl_CF(i):
+        GWP_dct['KCl'] = ImpactItem.get_item('KCl_item').CFs['GlobalWarming'] = i
+
+    b = H_Ecosystems_dct['KCl']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='KCl ecosystems CF', element='LCA', kind='isolated',
+           units='points/kg', baseline=b, distribution=D)
+    def set_KCl_ecosystems_CF(i):
+        H_Ecosystems_dct['KCl'] = ImpactItem.get_item('KCl_item').CFs['H_Ecosystems'] = i
+
+    b = H_Health_dct['KCl']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='KCl health CF', element='LCA', kind='isolated',
+           units='points/kg', baseline=b, distribution=D)
+    def set_KCl_health_CF(i):
+        H_Health_dct['KCl'] = ImpactItem.get_item('KCl_item').CFs['H_Health'] = i
+
+    b = H_Resources_dct['KCl']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='KCl resources CF', element='LCA', kind='isolated',
+           units='points/kg', baseline=b, distribution=D)
+    def set_KCl_resources_CF(i):
+        H_Resources_dct['KCl'] = ImpactItem.get_item('KCl_item').CFs['H_Resources'] = i
+
+    # MgOH2
+    b = GWP_dct['MgOH2']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='MgOH2 CF', element='LCA', kind='isolated',
+           units='kg CO2-eq/kg', baseline=b, distribution=D)
+    def set_MgOH2_CF(i):
+        GWP_dct['MgOH2'] = ImpactItem.get_item('MgOH2_item').CFs['GlobalWarming'] = i
+
+    b = H_Ecosystems_dct['MgOH2']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='MgOH2 ecosystems CF', element='LCA', kind='isolated',
+           units='points/kg', baseline=b, distribution=D)
+    def set_MgOH2_ecosystems_CF(i):
+        H_Ecosystems_dct['MgOH2'] = ImpactItem.get_item('MgOH2_item').CFs['H_Ecosystems'] = i
+
+    b = H_Health_dct['MgOH2']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='MgOH2 health CF', element='LCA', kind='isolated',
+           units='points/kg', baseline=b, distribution=D)
+    def set_MgOH2_health_CF(i):
+        H_Health_dct['MgOH2'] = ImpactItem.get_item('MgOH2_item').CFs['H_Health'] = i
+
+    b = H_Resources_dct['MgOH2']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='MgOH2 resources CF', element='LCA', kind='isolated',
+           units='points/kg', baseline=b, distribution=D)
+    def set_MgOH2_resources_CF(i):
+        H_Resources_dct['MgOH2'] = ImpactItem.get_item('MgOH2_item').CFs['H_Resources'] = i
+
+    # Other CFs
+    item_path = os.path.join(re_data_path, 'impact_items.xlsx')
+
+    for indicator in ('GlobalWarming', 'H_Ecosystems', 'H_Health', 'H_Resources'):
+        sheet_name = indicator if indicator != 'GlobalWarming' else 'GWP'
+        data = load_data(item_path, sheet=sheet_name)
+        for p in data.index:
+            item = ImpactItem.get_item(p)
+            b = item.CFs[indicator]
+            lower = float(data.loc[p]['low'])
+            upper = float(data.loc[p]['high'])
+            dist = data.loc[p]['distribution']
+            if dist == 'uniform':
+                D = shape.Uniform(lower=lower, upper=upper)
+            elif dist == 'triangular':
+                D = shape.Triangle(lower=lower, midpoint=b, upper=upper)
+            elif dist == 'constant':
+                continue
+            else:
+                raise ValueError(f'Distribution {dist} not recognized.')
+            model.parameter(name=p + f'-{indicator}',
+                            setter=DictAttrSetter(item, 'CFs', indicator),
+                            element='LCA', kind='isolated',
+                            units=f'kg CO2-eq/{item.functional_unit}',
+                            baseline=b, distribution=D)
 
 
 # %%
@@ -252,266 +651,218 @@ def add_shared_parameters(sys, model, unit_dct, country_specific=False):
 
 # System A: Solids removal only
 def create_modelA(country_specific=False, **model_kwargs):
-    sysA = systems.sysA
-    modelA = Model(sysA, add_metrics(sysA), **model_kwargs)
+    sysA = create_system('A')
+    unitA = sysA.flowsheet.unit
 
-    # Shared parameters
+    # Shared metrics/parameters
+    modelA = Model(sysA, **model_kwargs)
+    add_metrics(modelA)
     unit_dctA = {
-        'Excretion': systems.A1,
-        'Primary': systems.A3,
+        'Excretion': unitA.A1,
+        'Primary': unitA.A3,
+        'Pasteurization': unitA.A4,
     }
-    modelA = add_shared_parameters(sysA, modelA, unit_dctA, country_specific)
+    add_shared_parameters(modelA, unit_dctA, country_specific)
 
-    # Sludge pasteurization
-    sludge_pasteurization_data = load_data(join_path(su_data_path, '_sludge_pasteurization_reclaimer.tsv'))
-    exclude = 'wages' if country_specific else ()
-    batch_setting_unit_params(sludge_pasteurization_data, modelA, systems.A4, exclude)
+    # # Sludge pasteurization
+    # exclude = 'wages' if country_specific else ()
+    # batch_setting_unit_params(pasteurization_data, modelA, unitA.A4, exclude)
 
     return modelA
 
 
 # System B: Full Duke system with grid electricity source
 def create_modelB(country_specific=False, **model_kwargs):
-    sysB = systems.sysB
-    modelB = Model(sysB, add_metrics(sysB), **model_kwargs)
-    paramB = modelB.parameter
+    sysB = create_system('B')
+    unitB = sysB.flowsheet.unit
 
     # Shared parameters
+    modelB = Model(sysB, **model_kwargs)
+    add_metrics(modelB)
     unit_dctB = {
-        'Excretion': systems.B1,
-        'Primary': systems.B3,
+        'Excretion': unitB.B1,
+        'Toilet': unitB.B2,
+        'Primary': unitB.B3,
+        'Pasteurization': unitB.B4,
+        'Ultrafiltration': unitB.B5,
+        'Ion exchange': unitB.B6,
+        'ECR': unitB.B7,
+        'Housing': unitB.B10,
+        'System': unitB.B11,
     }
-    modelB = add_shared_parameters(sysB, modelB, unit_dctB, country_specific)
+    add_shared_parameters(modelB, unit_dctB, country_specific)
 
-    # MURT toilet
-    B2 = systems.B2
-    murt_toilet_data = load_data(join_path(su_data_path, '_murt_toilet.tsv'))
-    exclude = ('MCF_decay', 'N2O_EF_decay', 'OPEX_over_CAPEX')
-    batch_setting_unit_params(murt_toilet_data, modelB, systems.B2, exclude)
+    # # MURT toilet
+    # B2 = unitB.B2
+    # exclude = ('MCF_decay', 'N2O_EF_decay', 'OPEX_over_CAPEX')
+    # batch_setting_unit_params(murt_data, modelB, unitB.B2, exclude)
 
-    b = B2.OPEX_over_CAPEX
-    D = shape.Uniform(lower=0.02, upper=0.08)
-    @paramB(name='MURT Toilet operating cost', element=B2, kind='coupled', units='cost',
-            baseline=b, distribution=D)
-    def set_OPEX_over_CAPEX(i):
-        B2.OPEX_over_CAPEX = i
+    # paramB = modelB.parameter
+    # b = B2.OPEX_over_CAPEX
+    # D = shape.Uniform(lower=0.02, upper=0.08)
+    # @paramB(name='MURT Toilet operating cost', element=B2, kind='coupled', units='cost',
+    #         baseline=b, distribution=D)
+    # def set_OPEX_over_CAPEX(i):
+    #     B2.OPEX_over_CAPEX = i
 
-    b = B2.MCF_decay
-    D = shape.Triangle(lower=0.05, midpoint=b, upper=0.15)
-    @paramB(name='MCF_decay', element=B2, kind='coupled',
-            units='fraction of anaerobic conversion of degraded COD',
-            baseline=b, distribution=D)
-    def set_MCF_decay(i):
-        B2.MCF_decay = i
+    # b = B2.MCF_decay
+    # D = shape.Triangle(lower=0.05, midpoint=b, upper=0.15)
+    # @paramB(name='MCF_decay', element=B2, kind='coupled',
+    #         units='fraction of anaerobic conversion of degraded COD',
+    #         baseline=b, distribution=D)
+    # def set_MCF_decay(i):
+    #     B2.MCF_decay = i
 
-    b = B2.N2O_EF_decay
-    D = shape.Triangle(lower=0, midpoint=b, upper=0.001)
-    @paramB(name='N2O_EF_decay', element=B2, kind='coupled',
-            units='fraction of N emitted as N2O',
-            baseline=b, distribution=D)
-    def set_N2O_EF_decay(i):
-        B2.N2O_EF_decay = i
+    # b = B2.N2O_EF_decay
+    # D = shape.Triangle(lower=0, midpoint=b, upper=0.001)
+    # @paramB(name='N2O_EF_decay', element=B2, kind='coupled',
+    #         units='fraction of N emitted as N2O',
+    #         baseline=b, distribution=D)
+    # def set_N2O_EF_decay(i):
+    #     B2.N2O_EF_decay = i
 
-    # Sludge pasteurization
-    sludge_pasteurization_data = load_data(join_path(su_data_path, '_sludge_pasteurization_reclaimer.tsv'))
-    exclude = 'wages' if country_specific else ()
-    batch_setting_unit_params(sludge_pasteurization_data, modelB, systems.B4, exclude)
+    # # Ultrafiltration
+    # batch_setting_unit_params(ultrafiltration_data, modelB, unitB.B5)
 
-    # Ultrafiltration
-    ultrafiltration_data = load_data(join_path(su_data_path, '_ultrafiltration_reclaimer.csv'))
-    batch_setting_unit_params(ultrafiltration_data, modelB, systems.B5)
+    # # Ion exchange
+    # exclude = 'wages' if country_specific else ()
+    # batch_setting_unit_params(ix_data, modelB, unitB.B6, exclude)
 
-    # Ion exchange
-    ion_exchange_data = load_data(join_path(su_data_path, '_ion_exchange_reclaimer.csv'))
-    exclude = 'wages' if country_specific else ()
-    batch_setting_unit_params(ion_exchange_data, modelB, systems.B6, exclude)
+    # # ECR
+    # batch_setting_unit_params(ecr_data, modelB, unitB.B7)
 
-    # ECR
-    ecr_data = load_data(join_path(su_data_path, '_ECR_reclaimer.csv'))
-    batch_setting_unit_params(ecr_data, modelB, systems.B7)
+    # # Housing
+    # batch_setting_unit_params(housing_data, modelB, unitB.B10)
 
-    # Housing
-    housing_data = load_data(join_path(su_data_path, '_housing_reclaimer.csv'))
-    batch_setting_unit_params(housing_data, modelB, systems.B10)
-
-    # System
-    system_data = load_data(join_path(su_data_path, '_system_reclaimer.csv'))
-    batch_setting_unit_params(system_data, modelB, systems.B11)
+    # # System
+    # batch_setting_unit_params(system_data, modelB, unitB.B11)
 
     return modelB
 
 
 # System C: Full Duke system with solar electricity source
 def create_modelC(country_specific=False, **model_kwargs):
-    sysC = systems.sysC
-    modelC = Model(sysC, add_metrics(sysC), **model_kwargs)
-    paramC = modelC.parameter
+    sysC = create_system('C')
+    unitC = sysC.flowsheet.unit
 
     # Shared parameters
+    modelC = Model(sysC, **model_kwargs)
+    add_metrics(modelC)
     unit_dctC = {
-        'Excretion': systems.C1,
-        'Primary': systems.C3,
+        'Excretion': unitC.C1,
+        'Primary': unitC.C3,
+        'Pasteurization': unitC.C4,
+        'Ultrafiltration': unitC.C5,
+        'Ion exchange': unitC.C6,
+        'ECR': unitC.C7,
+        'Housing': unitC.C10,
+        'System': unitC.C11,
+        'Solar': unitC.C12,
     }
-    modelC = add_shared_parameters(sysC, modelC, unit_dctC, country_specific)
+    add_shared_parameters(modelC, unit_dctC, country_specific)
 
-    # MURT toilet
-    C2 = systems.C2
-    murt_toilet_data = load_data(join_path(su_data_path, '_murt_toilet.tsv'))
-    exclude = ('MCF_decay', 'N2O_EF_decay', 'OPEX_over_CAPEX')
-    batch_setting_unit_params(murt_toilet_data, modelC, systems.C2, exclude)
+    # # MURT
+    # C2 = unitC.C2
+    # exclude = ('MCF_decay', 'N2O_EF_decay', 'OPEX_over_CAPEX')
+    # batch_setting_unit_params(murt_data, modelC, unitC.C2, exclude)
 
-    b = C2.OPEX_over_CAPEX
-    D = shape.Uniform(lower=0.02, upper=0.08)
-    @paramC(name='MURT Toilet operating cost', element=C2, kind='coupled', units='cost',
-            baseline=b, distribution=D)
-    def set_OPEX_over_CAPEX(i):
-        C2.OPEX_over_CAPEX = i
+    # paramC = modelC.parameter
+    # b = C2.OPEX_over_CAPEX
+    # D = shape.Uniform(lower=0.02, upper=0.08)
+    # @paramC(name='MURT Toilet operating cost', element=C2, kind='coupled', units='cost',
+    #         baseline=b, distribution=D)
+    # def set_OPEX_over_CAPEX(i):
+    #     C2.OPEX_over_CAPEX = i
 
-    b = C2.MCF_decay
-    D = shape.Triangle(lower=0.05, midpoint=b, upper=0.15)
-    @paramC(name='MCF_decay', element=C2, kind='coupled',
-            units='fraction of anaerobic conversion of degraded COD',
-            baseline=b, distribution=D)
-    def set_MCF_decay(i):
-        C2.MCF_decay = i
+    # b = C2.MCF_decay
+    # D = shape.Triangle(lower=0.05, midpoint=b, upper=0.15)
+    # @paramC(name='MCF_decay', element=C2, kind='coupled',
+    #         units='fraction of anaerobic conversion of degraded COD',
+    #         baseline=b, distribution=D)
+    # def set_MCF_decay(i):
+    #     C2.MCF_decay = i
 
-    b = C2.N2O_EF_decay
-    D = shape.Triangle(lower=0, midpoint=b, upper=0.001)
-    @paramC(name='N2O_EF_decay', element=C2, kind='coupled',
-            units='fraction of N emitted as N2O',
-            baseline=b, distribution=D)
-    def set_N2O_EF_decay(i):
-        C2.N2O_EF_decay = i
+    # b = C2.N2O_EF_decay
+    # D = shape.Triangle(lower=0, midpoint=b, upper=0.001)
+    # @paramC(name='N2O_EF_decay', element=C2, kind='coupled',
+    #         units='fraction of N emitted as N2O',
+    #         baseline=b, distribution=D)
+    # def set_N2O_EF_decay(i):
+    #     C2.N2O_EF_decay = i
 
-    # Sludge pasteurization
-    sludge_pasteurization_data = load_data(join_path(su_data_path, '_sludge_pasteurization_reclaimer.tsv'))
-    exclude = 'wages' if country_specific else ()
-    batch_setting_unit_params(sludge_pasteurization_data, modelC, systems.C4, exclude)
+    # # Sludge pasteurization
+    # exclude = 'wages' if country_specific else ()
+    # batch_setting_unit_params(pasteurization_data, modelC, unitC.C4, exclude)
 
-    # Ultrafiltration
-    ultrafiltration_data = load_data(join_path(su_data_path, '_ultrafiltration_reclaimer.csv'))
-    batch_setting_unit_params(ultrafiltration_data, modelC, systems.C5)
+    # # Ultrafiltration
+    # batch_setting_unit_params(ultrafiltration_data, modelC, unitC.C5)
 
-    # Ion exchange
-    ion_exchange_data = load_data(join_path(su_data_path, '_ion_exchange_reclaimer.csv'))
-    exclude = 'wages' if country_specific else ()
-    batch_setting_unit_params(ion_exchange_data, modelC, systems.C6, exclude)
+    # # Ion exchange
+    # exclude = 'wages' if country_specific else ()
+    # batch_setting_unit_params(ix_data, modelC, unitC.C6, exclude)
 
-    # ECR
-    ecr_data = load_data(join_path(su_data_path, '_ECR_reclaimer.csv'))
-    batch_setting_unit_params(ecr_data, modelC, systems.C7)
+    # # ECR
+    # batch_setting_unit_params(ecr_data, modelC, unitC.C7)
 
-    # Housing
-    housing_data = load_data(join_path(su_data_path, '_housing_reclaimer.csv'))
-    batch_setting_unit_params(housing_data, modelC, systems.C10)
+    # # Housing
+    # batch_setting_unit_params(housing_data, modelC, unitC.C10)
 
-    # System
-    system_data = load_data(join_path(su_data_path, '_system_reclaimer.csv'))
-    batch_setting_unit_params(system_data, modelC, systems.C11)
+    # # System
+    # batch_setting_unit_params(system_data, modelC, unitC.C11)
 
-    # Solar
-    solar_data = load_data(join_path(su_data_path, '_solar_reclaimer.csv'))
-    exclude = 'wages' if country_specific else ()
-    batch_setting_unit_params(solar_data, modelC, systems.C12, exclude)
+    # # Solar
+    # exclude = 'wages' if country_specific else ()
+    # batch_setting_unit_params(solar_data, modelC, unitC.C12, exclude)
 
     return modelC
 
 
 # System D: Targeted nitrogen removal (created for NSS preliminary analysis)
 def create_modelD(country_specific=False, **model_kwargs):
-    sysD = systems.sysD
-    modelD = Model(sysD, add_metrics(sysD), **model_kwargs)
-    paramD = modelD.parameter
+    sysD = create_system('D')
+    unitD = sysD.flowsheet.unit
 
     # Shared parameters
+    modelD = Model(sysD, **model_kwargs)
+    add_metrics(modelD)
     unit_dctD = {
-        'Excretion': systems.D1,
-        'Primary': systems.D3,
+        'Excretion': unitD.D1,
+        'Primary': unitD.D3,
+        'Ultrafiltration': unitD.D4,
+        'Ion exchange': unitD.D5,
+        'Housing': unitD.D8,
+        'System': unitD.D9,
     }
-    modelD = add_shared_parameters(sysD, modelD, unit_dctD, country_specific)
+    add_shared_parameters(modelD, unit_dctD, country_specific)
 
-    # Ultrafiltration
-    ultrafiltration_data = load_data(join_path(su_data_path, '_ultrafiltration_reclaimer.csv'))
-    batch_setting_unit_params(ultrafiltration_data, modelD, systems.D4)
+    # # Ultrafiltration
+    # batch_setting_unit_params(ultrafiltration_data, modelD, unitD.D4)
 
-    # Ion exchange
-    ion_exchange_data = load_data(join_path(su_data_path, '_ion_exchange_reclaimer.csv'))
-    batch_setting_unit_params(ion_exchange_data, modelD, systems.D5)
+    # # Ion exchange
+    # batch_setting_unit_params(ix_data, modelD, unitD.D5)
 
-    # Housing
-    housing_data = load_data(join_path(su_data_path, '_housing_reclaimer.csv'))
-    batch_setting_unit_params(housing_data, modelD, systems.D8)
+    # # Housing
+    # batch_setting_unit_params(housing_data, modelD, unitD.D8)
 
-    # System
-    system_data = load_data(join_path(su_data_path, '_system_reclaimer.csv'))
-    batch_setting_unit_params(system_data, modelD, systems.D9)
+    # # System
+    # batch_setting_unit_params(system_data, modelD, unitD.D9)
 
     return modelD
 
 
 # Wrapper function so that it'd work for all
 def create_model(model_ID='A', country_specific=False, **model_kwargs):
-    model_ID = model_ID.lstrip('model').lstrip('sys') # so that it'll work for "modelA"/"sysA"/"A"
+    _load_components()
+    model_ID = model_ID.lower().rsplit('model')[-1].rsplit('sys')[-1].upper() # works for "modelA"/"sysA"/"A"
     if model_ID == 'A': model = create_modelA(country_specific, **model_kwargs)
     elif model_ID == 'B': model = create_modelB(country_specific, **model_kwargs)
     elif model_ID == 'C': model = create_modelC(country_specific, **model_kwargs)
-    else: model = create_modelD(country_specific, **model_kwargs)
+    elif model_ID == 'D': model = create_modelD(country_specific, **model_kwargs)
+    else: raise ValueError(f'`model_ID` can only be "A", "B", "C", or "D", not "{model_ID}".')
     return model
 
 
-# %%
-
-# =============================================================================
-# Functions to run simulation and generate plots
-# =============================================================================
-
-result_dct = {
-        'sysA': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
-        'sysB': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
-        'sysC': dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman')),
-        'sysD':  dict.fromkeys(('parameters', 'data', 'percentiles', 'spearman'))
-        }
-
-@time_printer
-def run_uncertainty(model, seed=None, N=10000, rule='L',
-                    percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
-                    print_time=False):
-    global result_dct
-    if seed:
-        np.random.seed(seed)
-
-    samples = model.sample(N, rule)
-    model.load_samples(samples)
-    model.evaluate()
-
-    # Data organization
-    dct = result_dct[model.system.ID]
-    index_p = len(model.get_parameters())
-    dct['parameters'] = model.table.iloc[:, :index_p].copy()
-    dct['data'] = model.table.iloc[:, index_p:].copy()
-    if percentiles:
-        dct['percentiles'] = dct['data'].quantile(q=percentiles)
-        dct['percentiles_parameters'] = dct['parameters'].quantile(q=percentiles)
-
-    # Spearman's rank correlation
-    spearman_metrics = model.metrics[:13]
-    spearman_results = model.spearman(model.get_parameters(), spearman_metrics)
-    spearman_results.columns = pd.Index([i.name_with_units for i in spearman_metrics])
-    dct['spearman'] = spearman_results
-    return dct
-
-
-def save_uncertainty_results(model, dct={}, path=''):
-    sys_ID = model.system.ID
-    population = systems.ppl
-    path = join_path(results_path, f'uncertainty{sys_ID[-1]}_{population}users.xlsx') if path=='' else path
-    dct = dct or result_dct[sys_ID]
-    if dct['parameters'] is None:
-        raise ValueError('No cached result, run model first.')
-    with pd.ExcelWriter(path) as writer:
-        dct['parameters'].to_excel(writer, sheet_name='Parameters')
-        dct['data'].to_excel(writer, sheet_name='Uncertainty results')
-        if 'percentiles' in dct.keys():
-            dct['percentiles'].to_excel(writer, sheet_name='Percentiles')
-        dct['spearman'].to_excel(writer, sheet_name='Spearman')
-        model.table.to_excel(writer, sheet_name='Raw data')
+def run_uncertainty(model, path='', **kwargs):
+    kwargs['path'] = os.path.join(results_path, f'sys{model.system.ID[-1]}_model.xlsx') if path=='' else path
+    run(model=model, **kwargs)
+    return
