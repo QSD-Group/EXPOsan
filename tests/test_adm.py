@@ -24,9 +24,9 @@ def test_adm():
     t_step = 5
     sys = adm.sys
     sys.simulate(state_reset_hook='reset_cache',
-             t_span=(0, t),
-             t_eval=np.arange(0, t+t_step, t_step),
-             method='BDF')
+                 t_span=(0, t),
+                 t_eval=np.arange(0, t+t_step, t_step),
+                 method='BDF')
 
     AD = sys.flowsheet.unit.AD
     AD_state = AD.state
