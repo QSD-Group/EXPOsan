@@ -14,6 +14,9 @@ for license details.
 
 
 import os, pickle, numpy as np, pandas as pd, qsdsan as qs
+
+import biosteam
+
 from qsdsan import ImpactItem, StreamImpactItem
 from qsdsan.utils import time_printer
 from exposan.utils import get_decay_k, get_generic_tanker_truck_fee
