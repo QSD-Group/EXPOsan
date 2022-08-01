@@ -31,6 +31,7 @@ from exposan.biogenic_refinery import (
     results_path,
     )
 
+__all__ = ('create_country_specific_model',)
 
 # Filter out warnings related to uptime ratio
 import warnings

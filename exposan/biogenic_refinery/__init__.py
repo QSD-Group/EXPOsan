@@ -564,6 +564,8 @@ def print_summaries(systems):
 from . import models
 from .models import *
 
+from . import country_specific
+from .country_specific import *
 
 __all__ = (
 	'br_path',
@@ -572,4 +574,5 @@ __all__ = (
 	*_components.__all__,
 	*systems.__all__,
     *models.__all__,
+    *country_specific.__all__,
  	)
