@@ -21,10 +21,10 @@ from qsdsan import ImpactItem, StreamImpactItem
 from qsdsan.utils import time_printer
 from exposan.utils import get_decay_k, get_generic_tanker_truck_fee
 
-bwaise_path = os.path.dirname(__file__)
-data_path = os.path.join(bwaise_path, 'data')
-results_path = os.path.join(bwaise_path, 'results')
-figures_path = os.path.join(bwaise_path, 'figures')
+bw_path = os.path.dirname(__file__)
+data_path = os.path.join(bw_path, 'data')
+results_path = os.path.join(bw_path, 'results')
+figures_path = os.path.join(bw_path, 'figures')
 # To save simulation data and generated figures
 if not os.path.isdir(results_path): os.mkdir(results_path)
 if not os.path.isdir(figures_path): os.mkdir(figures_path)
@@ -422,7 +422,7 @@ def get_key_metrics(model, alt_names={}):
 
 
 __all__ = (
-    'bwaise_path',
+    'bw_path',
     'data_path',
     'results_path',
     'figures_path',

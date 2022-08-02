@@ -24,8 +24,7 @@ import pandas as pd
 from qsdsan import stats as s
 from exposan import bwaise as bw
 
-m = bw.models
-modelA = bw.modelA
+modelA = bw.create_model('A')
 
 # Total COD/N/P/K recovery and net cost/GWP
 modelA.metrics = key_metrics = bw.get_key_metrics(
@@ -36,8 +35,8 @@ seed = 3221 # set numpy seed for sample reproducibility
 
 # Run Monte Carlo uncertainty analysis and get Spearman rank correlations,
 # here we use a small sample size for demonstrative purpose
-m.run_uncertainty(modelA, N=100, seed=seed, rule='L',
-                  percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1))
+bw.run_uncertainty(modelA, N=100, seed=seed, rule='L',
+                   percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1))
 
 # Pass a path to `file` or use `fig.savefig` if want to save the figure
 fig, ax = s.plot_uncertainties(modelA,

@@ -852,7 +852,6 @@ def create_modelD(country_specific=False, **model_kwargs):
 
 # Wrapper function so that it'd work for all
 def create_model(model_ID='A', country_specific=False, **model_kwargs):
-    _load_components()
     model_ID = model_ID.lower().rsplit('model')[-1].rsplit('sys')[-1].upper() # works for "modelA"/"sysA"/"A"
     if model_ID == 'A': model = create_modelA(country_specific, **model_kwargs)
     elif model_ID == 'B': model = create_modelB(country_specific, **model_kwargs)

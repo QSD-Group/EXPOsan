@@ -15,7 +15,6 @@ for license details.
 
 # %%
 
-from thermosteam.functional import rho_to_V
 from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
 from exposan.utils import add_V_from_rho
 
@@ -26,7 +25,7 @@ def create_components(set_thermo=True):
                     phase='l', particle_size='Soluble',
                     degradability='Undegradable', organic=False)
 
-    NonNH3 = Component('NonNH3', search_ID='N', measured_as='N',
+    NonNH3 = Component('NonNH3', formula='N', measured_as='N',
                        phase='l', particle_size='Soluble',
                        degradability='Undegradable', organic=False,
                        description='Non-NH3 nitrogen')
@@ -115,7 +114,10 @@ def create_components(set_thermo=True):
             if getattr(i, attr) is None: setattr(i, attr, 0)
 
     cmps.compile()
-    cmps.set_synonym('H2O', 'Water')
+
+    cmps.set_alias('H2O', 'Water')
+    cmps.remove_alias('NonNH3', 'N')
+
     if set_thermo: qs_set_thermo(cmps)
 
     return cmps

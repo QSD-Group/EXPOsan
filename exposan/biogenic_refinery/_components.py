@@ -120,7 +120,7 @@ def create_components(set_thermo=True):
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):
             if getattr(i, attr) is None: setattr(i, attr, 0)
-    
+
     cmps.compile()
     cmps.set_synonym('H2O', 'Water')
     if set_thermo: qs_set_thermo(cmps)
