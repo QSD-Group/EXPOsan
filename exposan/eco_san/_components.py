@@ -30,10 +30,11 @@ def create_components(set_thermo=True):
             if getattr(i, attr) is None: setattr(i, attr, 0)
 
     cmps.compile()
-    cmps.set_synonym('H2O', 'Water')
-    cmps.set_synonym('MgOH2', 'MagnesiumHydroxide')
-    cmps.set_synonym('NaCl', 'SodiumChloride')
-    cmps.set_synonym('HCl', 'HydrogenChloride')
+    
+    cmps.set_alias('H2O', 'Water')
+    cmps.set_alias('MgOH2', 'MagnesiumHydroxide')
+    cmps.set_alias('NaCl', 'SodiumChloride')
+    cmps.set_alias('HCl', 'HydrogenChloride')
 
     if set_thermo: qs_set_thermo(cmps)
 
