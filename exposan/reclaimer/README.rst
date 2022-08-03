@@ -4,7 +4,7 @@ Reclaimer
 
 Summary
 -------
-Systems included in this module are based on the work described in Trotochaud et al., [1]_ for the Reclaimer 2.0 system designed by researchers at Duke University.
+Systems included in this module are based on the work described in Trotochaud et al., [1]_ for the `Reclaimer <https://washaid.pratt.duke.edu/work/water-sanitation/reinvent-toilet-challenge>`_ 2.0 system designed by researchers at Duke University.
 
 Four system configurations are included in this module.
 
