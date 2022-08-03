@@ -214,13 +214,12 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
         exclude = ('MCF_decay', 'N2O_EF_decay', 'OPEX_over_CAPEX')
         batch_setting_unit_params(murt_data, model, murt_unit, exclude)
 
-        # # CAPEX of MURT is 0 as it is considered in the housing unit
-        # b = murt_unit.OPEX_over_CAPEX
-        # D = shape.Uniform(lower=0.02, upper=0.08)
-        # @param(name='MURT operating cost', element=murt_unit, kind='coupled', units='cost',
-        #        baseline=b, distribution=D)
-        # def set_OPEX_over_CAPEX(i):
-        #     murt_unit.OPEX_over_CAPEX = i
+        b = murt_unit.OPEX_over_CAPEX
+        D = shape.Uniform(lower=0.02, upper=0.08)
+        @param(name='MURT operating cost', element=murt_unit, kind='coupled', units='cost',
+               baseline=b, distribution=D)
+        def set_OPEX_over_CAPEX(i):
+            murt_unit.OPEX_over_CAPEX = i
 
         b = murt_unit.MCF_decay
         D = shape.Triangle(lower=0.05, midpoint=b, upper=0.15)

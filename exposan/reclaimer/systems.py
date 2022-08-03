@@ -153,7 +153,7 @@ def create_systemB(flowsheet=None):
                  max_CH4_emission=max_CH4_emission,
                  N_user=ppl, N_tot_user=ppl, lifetime=8,
                  if_flushing=True, if_desiccant=False, if_toilet_paper=True,
-                 CAPEX=0, OPEX_over_CAPEX=0.07)
+                 CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06)
 
     ##### Treatment #####
     B3 = su.SepticTank('B3', ins=(B2-0, streamB['MgOH2']),
@@ -182,13 +182,9 @@ def create_systemB(flowsheet=None):
 
     B6 = su.ReclaimerIonExchange('B6', ins=(B5-0, streamB['Zeolite'], streamB['GAC'], streamB['KCl']),
                                  outs=('B6_treated', 'SpentZeolite', 'SpentGAC', streamB['conc_NH3']),
-                                 decay_k_COD=get_decay_k(),
-                                 decay_k_N=get_decay_k(),
-                                 max_CH4_emission=max_CH4_emission,
                                  ppl=ppl)
 
     B7 = su.ReclaimerECR('B7', ins=(B6-0), outs='B7_treated',
-                        decay_k_COD=get_decay_k(),
                         ppl=ppl, if_gridtied=True)
 
     B8 = su.Mixer('B8', ins=(B2-1, B3-1), outs=streamB['CH4'])
@@ -248,7 +244,7 @@ def create_systemC(flowsheet=None):
                  max_CH4_emission=max_CH4_emission,
                  N_user=ppl, N_tot_user=ppl, lifetime=8,
                  if_flushing=True, if_desiccant=False, if_toilet_paper=True,
-                 CAPEX=0, OPEX_over_CAPEX=0.07)
+                 CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06)
 
     ##### Treatment #####
     C3 = su.SepticTank('C3', ins=(C2-0, streamC['MgOH2']),
@@ -278,13 +274,9 @@ def create_systemC(flowsheet=None):
 
     C6 = su.ReclaimerIonExchange('C6', ins=(C5-0, streamC['Zeolite'], streamC['GAC'], streamC['KCl']),
                                  outs=('C6_treated', 'SpentZeolite', 'SpentGAC',streamC['conc_NH3']),
-                                 decay_k_COD=get_decay_k(),
-                                 decay_k_N=get_decay_k(),
-                                 max_CH4_emission=max_CH4_emission,
                                  ppl=ppl)
 
     C7 = su.ReclaimerECR('C7', ins=(C6-0), outs='C7_treated',
-                        decay_k_COD=get_decay_k(),
                         ppl=ppl, if_gridtied=False)
 
     C8 = su.Mixer('C8', ins=(C3-1, C2-1), outs=streamC['CH4'])
@@ -353,9 +345,6 @@ def create_systemD(flowsheet=None):
 
     D5 = su.ReclaimerIonExchange('D5', ins=(D4-0, streamD['Zeolite'], streamD['GAC'], streamD['KCl']),
                                  outs=('D5_treated', 'SpentZeolite', 'SpentGAC',streamD['conc_NH3']),
-                                 decay_k_COD=get_decay_k(),
-                                 decay_k_N=get_decay_k(),
-                                 max_CH4_emission=max_CH4_emission,
                                  ppl=ppl)
 
     D6 = su.Mixer('D6', ins=(D3-1), outs=streamD['CH4'])
