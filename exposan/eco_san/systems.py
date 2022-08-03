@@ -174,7 +174,7 @@ def create_systemA(flowsheet=None):
 
 # =============================================================================
 # Scenario B (sysB)
-# anaerobic-aerobic-aerobic membrane bioreactor (AeMBR)-ECR
+# anaerobic-aerobic-membrane bioreactor (MBR)-ECR
 # (anoxic and facultative aerobic with MBR)
 # =============================================================================
 
@@ -214,10 +214,10 @@ def create_systemB(flowsheet=None):
                         decay_k_N=get_decay_k(),
                         max_CH4_emission=max_CH4_emission)
 
-    B6 = su.EcoSanAeMBR('B6', ins=B5-0, outs=('B6_treated', 'B6_CH4', 'B6_N2O'),
-                        decay_k_COD=get_decay_k(),
-                        decay_k_N=get_decay_k(),
-                        max_CH4_emission=max_CH4_emission)
+    B6 = su.EcoSanMBR('B6', ins=B5-0, outs=('B6_treated', 'B6_CH4', 'B6_N2O'),
+                      decay_k_COD=get_decay_k(),
+                      decay_k_N=get_decay_k(),
+                      max_CH4_emission=max_CH4_emission)
 
     B8 = su.EcoSanECR('B8', ins=(B6-0, streamB['salt'], streamB['HCl_acid']),
                       outs=('B8_treated',), if_after_MBR=True,
@@ -311,10 +311,10 @@ def create_systemC(flowsheet=None):
                           decay_k_COD=get_decay_k(),
                           decay_k_N=get_decay_k(),
                           max_CH4_emission=max_CH4_emission)
-    C6 = su.EcoSanAeMBR('C6', ins=C5-0, outs=('C6_treated', 'C6_CH4', 'C6_N2O'),
-                        decay_k_COD=get_decay_k(),
-                        decay_k_N=get_decay_k(),
-                        max_CH4_emission=max_CH4_emission)
+    C6 = su.EcoSanMBR('C6', ins=C5-0, outs=('C6_treated', 'C6_CH4', 'C6_N2O'),
+                      decay_k_COD=get_decay_k(),
+                      decay_k_N=get_decay_k(),
+                      max_CH4_emission=max_CH4_emission)
     C8 = su.EcoSanECR('C8', ins=(C6-0, streamC['salt'], streamC['HCl_acid']),
                       outs = ('C8_treated'), if_after_MBR=True,
                       decay_k_COD=get_decay_k(),
