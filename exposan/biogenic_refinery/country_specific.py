@@ -356,7 +356,7 @@ def create_country_specific_model(ID, country):
            baseline=b, distribution=D)
     def set_const_daily_wage(i):
         for u in sys.units:
-            if isinstance(u, qs.sanunits.HousingBiogenicRefinery): break
+            if isinstance(u, qs.sanunits.BiogenicRefineryHousing): break
             u.const_daily_wage = i
 
     # Certified electrician wage
