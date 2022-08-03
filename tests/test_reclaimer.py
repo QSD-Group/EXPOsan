@@ -25,17 +25,17 @@ def test_reclaimer():
 
     modelB = re.create_model('B')
     dfB = modelB.metrics_at_baseline()
-    valuesB = [71.45, 91.79, 17.95, 43.04, 154.2, -0.06367, 29.98, -0.2677]
+    valuesB = [71.45, 91.79, 17.95, 44.34, 154.2, -0.06366, 29.98, -0.2675]
     assert_allclose(dfB.values, valuesB, rtol=1e-2)
 
     modelC = re.create_model('C')
     dfC = modelC.metrics_at_baseline()
-    valuesC = [71.445, 91.795, 17.949, 53.58, 114.906, -0.204, 27.672, -1.826]
+    valuesC = [71.445, 91.795, 17.949, 54.877, 114.92, -0.204, 27.672, -1.826]
     assert_allclose(dfC.values, valuesC, rtol=1e-2)
 
     modelD = re.create_model('D')
     dfD = modelD.metrics_at_baseline()
-    valuesD = [0.0, 0.0, 0.0, 35.199, 91.13, 0.231, 3.817, 2.762]
+    valuesD = [0.0, 0.0, 0.0, 36.539, 91.144, 0.231, 3.817, 2.762]
     assert_allclose(dfD.values, valuesD, rtol=1e-2)
 
 
