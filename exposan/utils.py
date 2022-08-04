@@ -28,6 +28,7 @@ __all__ = (
     'add_V_from_rho',
     'batch_setting_unit_params',
     'clear_unit_costs',
+    'country_specific_inputs',
     'get_decay_k',
     'get_generic_scaled_capital',
     'get_generic_tanker_truck_fee',
@@ -80,6 +81,282 @@ def clear_unit_costs(sys):
         if isinstance(i, su.LumpedCost): continue
         i.purchase_costs.clear()
         i.installed_costs.clear()
+
+
+# Example input dict for country-specific analysis
+country_specific_inputs = {
+    'China': {
+        'energy_GWP': 0.745,
+        'energy_H_Ecosystems': 0.002336342,
+        'energy_H_Health': 0.037590269,
+        'energy_H_Resources': 0.02714852,
+        'energy_price': 0.084,
+        'wages': 6.5736875,  # MURT labor wage USD/hour
+        'operator_daily_wage': 52.5895,  # USD/day
+        'const_wage': 32.66,  # USD/day
+        'certified_electrician_wages': 6.251324074,  # USD/hour
+        'service_team_wages': 6.5736875,  # USD/hour
+        'facility_manager_wages': 6.018625,  # USD/hour
+        'biomass_controls_wages': 6.018625,  # USD/hour
+        'e_cal': 3191,
+        'p_anim': 40,
+        'p_veg': 60.63,
+        'food_waste_ratio': 0.15,
+        'price_ratio': 0.610,
+        'household_size': 3,
+        'N_fertilizer_price': 0.939,
+        'P_fertilizer_price': 1.744,
+        'K_fertilizer_price': 1.119,
+        'NH3_fertilizer_price': 0.939*(14/17),
+        'struvite_fertilizer_price': 1.744*(31/245),
+        'NaCl': 0.35,  # for NEWgen
+        'LPG': 0.954  # for NEWgen
+        },
+    'India': {
+        'energy_GWP': 0.852,
+        'energy_H_Ecosystems': 0.002616438,
+        'energy_H_Health': 0.043194571,
+        'energy_H_Resources': 0.030496415,
+        'energy_price': 0.081,
+        'wages': 1.315625,  # MURT labor wage USD/hour
+        'operator_daily_wage': 10.525,  # USD/day
+        'const_wage': 10.3285,  # USD/day
+        'certified_electrician_wages': 2.1189375,  # USD/hour
+        'service_team_wages': 1.315625,  # USD/hour
+        'facility_manager_wages': 2.1026875,  # USD/hour
+        'biomass_controls_wages': 2.1026875,  # USD/hour
+        'e_cal': 2533,
+        'p_anim': 15,
+        'p_veg': 48.35,
+        'food_waste_ratio': 0.03,
+        'price_ratio': 0.300,
+        'household_size': 5,
+        'N_fertilizer_price': 0.158,
+        'P_fertilizer_price': 0.567,
+        'K_fertilizer_price': 0.445,
+        'NH3_fertilizer_price': 0.158 * (14 / 17),
+        'struvite_fertilizer_price': 0.567 * (31 / 245),
+        'NaCl': 0.47,  # for NEWgen
+        'LPG': 1.488  # for NEWgen
+        },
+    'South Africa': {
+        'energy_GWP': 0.955,
+        'energy_H_Ecosystems': 0.002734378,
+        'energy_H_Health': 0.042074692,
+        'energy_H_Resources': 0.033168799,
+        'energy_price': 0.14,
+        'wages': 1.695565104,  # MURT labor wage USD/hour (Africa average)
+        'operator_daily_wage': 14.79638636,  # USD/day
+        'const_wage': 14.06925,  # USD/day
+        'certified_electrician_wages': 2.669459239,  # USD/hour
+        'service_team_wages': 1.849548295,  # USD/hour
+        'facility_manager_wages': 3.122466346,  # USD/hour
+        'biomass_controls_wages': 3.122466346,  # USD/hour
+        'e_cal': 2899,
+        'p_anim': 36.03,
+        'p_veg': 48.33,
+        'food_waste_ratio': 0.02,
+        'price_ratio': 0.460,
+        'household_size': 3,
+        'N_fertilizer_price': 0.807,
+        'P_fertilizer_price': 5.062,
+        'K_fertilizer_price': 0.872,
+        'NH3_fertilizer_price': 0.807 * (14 / 17),
+        'struvite_fertilizer_price': 5.062 * (31 / 245),
+        'NaCl': 0.225,  # for NEWgen
+        'LPG': 2.257  # for NEWgen
+        },
+    'Senegal': {
+        'energy_GWP': 0.939,
+        'energy_H_Ecosystems': 0.002819172,
+        'energy_H_Health': 0.04520618,
+        'energy_H_Resources': 0.033261027,
+        'energy_price': 0.186,
+        'wages': 1.695565104,  # MURT labor wage USD/hour (Africa average)
+        'operator_daily_wage': 14.79638636,  # USD/day
+        'const_wage': 14.06925,  # USD/day
+        'certified_electrician_wages': 2.669459239,  # USD/hour
+        'service_team_wages': 1.849548295,  # USD/hour
+        'facility_manager_wages': 3.122466346,  # USD/hour
+        'biomass_controls_wages': 3.122466346,  # USD/hour
+        'e_cal': 2545,
+        'p_anim': 13.69,
+        'p_veg': 48.67,
+        'food_waste_ratio': 0.02,
+        'price_ratio': 0.408,
+        'household_size': 9,
+        'N_fertilizer_price': 1.400,
+        'P_fertilizer_price': 14.049,
+        'K_fertilizer_price': 1.506,  # Africa average
+        'NH3_fertilizer_price': 1.400 * (14 / 17),
+        'struvite_fertilizer_price': 14.049 * (31 / 245),
+        'NaCl': 0.05,  # for NEWgen
+        'LPG': 1.422  # for NEWgen (Africa average)
+        },
+    'Uganda': {
+        'energy_GWP': 0.159,
+        'energy_H_Ecosystems': 0.001594625,
+        'energy_H_Health': 0.036965578,
+        'energy_H_Resources': 0.012043899,
+        'energy_price': 0.184,
+        'wages': 1.3920625,  # MURT labor wage (USD/hour)
+        'operator_daily_wage': 11.1365,  # USD/day
+        'const_wage': 5.0795,  # USD/day
+        'certified_electrician_wages': 1.2930625,  # USD/hour
+        'service_team_wages': 1.3920625,  # USD/hour
+        'facility_manager_wages': 1.6025625,  # USD/hour
+        'biomass_controls_wages': 1.6025625,  # USD/hour
+        'e_cal': 1981,
+        'p_anim': 12.25,
+        'p_veg': 34.69,
+        'food_waste_ratio': 0.02,
+        'price_ratio': 0.348,
+        'household_size': 5,
+        'N_fertilizer_price': 1.790,
+        'P_fertilizer_price': 3.965,
+        'K_fertilizer_price': 1.329,
+        'NH3_fertilizer_price': 1.790 * (14 / 17),
+        'struvite_fertilizer_price': 3.965 * (31 / 245),
+        'NaCl': 0.284,  # for NEWgen
+        'LPG': 1.700  # for NEWgen
+        },
+    'Median': {
+        'energy_GWP': 0.686,
+        'energy_H_Ecosystems': 0.002456338,
+        'energy_H_Health': 0.040824307,
+        'energy_H_Resources': 0.027825633,
+        'energy_price': 0.129,
+        'wages': 3.6228125,  # MURT labor wage (USD/hour)
+        'operator_daily_wage': 29.654,  # USD/day
+        'const_wage': 28.153,  # USD/day
+        'certified_electrician_wages': 4.5995,  # USD/hour
+        'service_team_wages': 3.70675,  # USD/hour
+        'facility_manager_wages': 5.1823125,  # USD/hour
+        'biomass_controls_wages': 5.1823125,  # USD/hour
+        'e_cal': 2864,
+        'p_anim': 36.04,
+        'p_veg': 43.75,
+        'food_waste_ratio': 0.06,
+        'price_ratio': 0.479,
+        'household_size': 4,
+        'N_fertilizer_price': 1.465,
+        'P_fertilizer_price': 3.965,
+        'K_fertilizer_price': 1.268,
+        'NH3_fertilizer_price': 1.465 * (14 / 17),
+        'struvite_fertilizer_price': 3.965 * (31 / 245),
+        'NaCl': 0.284,
+        'LPG': 1.3916
+        },
+    'Worst_ECON': {
+        'energy_GWP': 1.046968,
+        'energy_H_Ecosystems': 0.004594958,
+        'energy_H_Health': 0.136580714,
+        'energy_H_Resources': 0.036204436,
+        'energy_price': 0.378,
+        'wages': 42.1214375,  # MURT labor wage (USD/hour)
+        'operator_daily_wage': 336.9715,  # USD/day
+        'const_wage': 332.76,  # USD/day
+        'certified_electrician_wages': 56.512875,  # USD/hour
+        'service_team_wages': 42.1214375,  # USD/hour
+        'facility_manager_wages': 58.8279375,  # USD/hour
+        'biomass_controls_wages': 58.8279375,  # USD/hour
+        'e_cal': 1786,
+        'p_anim': 6.55,
+        'p_veg': 24.81,
+        'food_waste_ratio': 0.22,
+        'price_ratio': 1.370785956,
+        'household_size': 2,
+        'N_fertilizer_price': 0.158,
+        'P_fertilizer_price': 0.567,
+        'K_fertilizer_price': 0.315,
+        'NH3_fertilizer_price': 0.158 * (14 / 17),
+        'struvite_fertilizer_price': 0.567 * (31 / 245),
+        'NaCl': 0.47,
+        'LPG': 2.68128  # Maximum because LPG is an input to the system
+        },
+    'Best_ECON': {
+        'energy_GWP': 0.012,
+        'energy_H_Ecosystems': 0.000516572,
+        'energy_H_Health': 0.011264692,
+        'energy_H_Resources': 0.005237881,
+        'energy_price': 0,
+        'wages': 0.1251875,  # MURT labor wage (USD/hour)
+        'operator_daily_wage': 1.0015,  # USD/day
+        'const_wage': 3.25,  # USD/day
+        'certified_electrician_wages': 0.1875,  # USD/hour
+        'service_team_wages': 0.1251875,  # USD/hour
+        'facility_manager_wages': 0.692625,  # USD/hour
+        'biomass_controls_wages': 0.692625,  # USD/hour
+        'e_cal': 3885,
+        'p_anim': 104.98,
+        'p_veg': 73.29,
+        'food_waste_ratio': 0.02,
+        'price_ratio': 0.174,
+        'household_size': 9,
+        'N_fertilizer_price': 3.283,
+        'P_fertilizer_price': 15.244,
+        'K_fertilizer_price': 2.560,
+        'NH3_fertilizer_price': 3.283 * (14 / 17),
+        'struvite_fertilizer_price': 15.244 * (31 / 245),
+        'NaCl': 0.050,
+        'LPG': 0.13132  # Minimum because LPG is an input into the system
+        },
+    'Worst_ENV': {
+        'energy_GWP': 1.046968,
+        'energy_H_Ecosystems': 0.004594958,
+        'energy_H_Health': 0.136580714,
+        'energy_H_Resources': 0.036204436,
+        'energy_price': 0.378,
+        'wages': 42.1214375,  # MURT labor wage (USD/hour)
+        'operator_daily_wage': 336.9715,  # USD/day
+        'const_wage': 332.76,  # USD/day
+        'certified_electrician_wages': 56.512875,  # USD/hour
+        'service_team_wages': 42.1214375,  # USD/hour
+        'facility_manager_wages': 58.8279375,  # USD/hour
+        'biomass_controls_wages': 58.8279375,  # USD/hour
+        'e_cal': 3885,
+        'p_anim': 104.98,
+        'p_veg': 73.29,
+        'food_waste_ratio': 0.02,
+        'price_ratio': 1.370785956,
+        'household_size': 2,
+        'N_fertilizer_price': 0.158,
+        'P_fertilizer_price': 0.567,
+        'K_fertilizer_price': 0.315,
+        'NH3_fertilizer_price': 0.158 * (14 / 17),
+        'struvite_fertilizer_price': 0.567 * (31 / 245),
+        'NaCl': 0.47,
+        'LPG': 2.68128  # Maximum because LPG is an input to the system
+        },
+    'Best_ENV': {
+        'energy_GWP': 0.012,
+        'energy_H_Ecosystems': 0.000516572,
+        'energy_H_Health': 0.011264692,
+        'energy_H_Resources': 0.005237881,
+        'energy_price': 0,
+        'wages': 0.1251875,  # MURT labor wage (USD/hour)
+        'operator_daily_wage': 1.0015,  # USD/day
+        'const_wage': 3.25,  # USD/day
+        'certified_electrician_wages': 0.1875,  # USD/hour
+        'service_team_wages': 0.1251875,  # USD/hour
+        'facility_manager_wages': 0.692625,  # USD/hour
+        'biomass_controls_wages': 0.692625,  # USD/hour
+        'e_cal': 1786,
+        'p_anim': 6.55,
+        'p_veg': 24.81,
+        'price_ratio': 0.174,
+        'food_waste_ratio': 0.22,
+        'household_size': 9,
+        'N_fertilizer_price': 3.283,
+        'P_fertilizer_price': 15.244,
+        'K_fertilizer_price': 2.560,
+        'NH3_fertilizer_price': 3.283 * (14 / 17),
+        'struvite_fertilizer_price': 15.244 * (31 / 245),
+        'NaCl': 0.050,
+        'LPG': 0.13132  # Minimum because LPG is an input into the system
+        },
+    }
+
 
 
 # Get reduction rate constant k for COD and N, use a function so that k can be
