@@ -663,10 +663,6 @@ def create_modelA(country_specific=False, **model_kwargs):
     }
     add_shared_parameters(modelA, unit_dctA, country_specific)
 
-    # # Sludge pasteurization
-    # exclude = 'wages' if country_specific else ()
-    # batch_setting_unit_params(pasteurization_data, modelA, unitA.A4, exclude)
-
     return modelA
 
 
@@ -690,51 +686,6 @@ def create_modelB(country_specific=False, **model_kwargs):
         'System': unitB.B11,
     }
     add_shared_parameters(modelB, unit_dctB, country_specific)
-
-    # # MURT toilet
-    # B2 = unitB.B2
-    # exclude = ('MCF_decay', 'N2O_EF_decay', 'OPEX_over_CAPEX')
-    # batch_setting_unit_params(murt_data, modelB, unitB.B2, exclude)
-
-    # paramB = modelB.parameter
-    # b = B2.OPEX_over_CAPEX
-    # D = shape.Uniform(lower=0.02, upper=0.08)
-    # @paramB(name='MURT Toilet operating cost', element=B2, kind='coupled', units='cost',
-    #         baseline=b, distribution=D)
-    # def set_OPEX_over_CAPEX(i):
-    #     B2.OPEX_over_CAPEX = i
-
-    # b = B2.MCF_decay
-    # D = shape.Triangle(lower=0.05, midpoint=b, upper=0.15)
-    # @paramB(name='MCF_decay', element=B2, kind='coupled',
-    #         units='fraction of anaerobic conversion of degraded COD',
-    #         baseline=b, distribution=D)
-    # def set_MCF_decay(i):
-    #     B2.MCF_decay = i
-
-    # b = B2.N2O_EF_decay
-    # D = shape.Triangle(lower=0, midpoint=b, upper=0.001)
-    # @paramB(name='N2O_EF_decay', element=B2, kind='coupled',
-    #         units='fraction of N emitted as N2O',
-    #         baseline=b, distribution=D)
-    # def set_N2O_EF_decay(i):
-    #     B2.N2O_EF_decay = i
-
-    # # Ultrafiltration
-    # batch_setting_unit_params(ultrafiltration_data, modelB, unitB.B5)
-
-    # # Ion exchange
-    # exclude = 'wages' if country_specific else ()
-    # batch_setting_unit_params(ix_data, modelB, unitB.B6, exclude)
-
-    # # ECR
-    # batch_setting_unit_params(ecr_data, modelB, unitB.B7)
-
-    # # Housing
-    # batch_setting_unit_params(housing_data, modelB, unitB.B10)
-
-    # # System
-    # batch_setting_unit_params(system_data, modelB, unitB.B11)
 
     return modelB
 
@@ -760,59 +711,6 @@ def create_modelC(country_specific=False, **model_kwargs):
     }
     add_shared_parameters(modelC, unit_dctC, country_specific)
 
-    # # MURT
-    # C2 = unitC.C2
-    # exclude = ('MCF_decay', 'N2O_EF_decay', 'OPEX_over_CAPEX')
-    # batch_setting_unit_params(murt_data, modelC, unitC.C2, exclude)
-
-    # paramC = modelC.parameter
-    # b = C2.OPEX_over_CAPEX
-    # D = shape.Uniform(lower=0.02, upper=0.08)
-    # @paramC(name='MURT Toilet operating cost', element=C2, kind='coupled', units='cost',
-    #         baseline=b, distribution=D)
-    # def set_OPEX_over_CAPEX(i):
-    #     C2.OPEX_over_CAPEX = i
-
-    # b = C2.MCF_decay
-    # D = shape.Triangle(lower=0.05, midpoint=b, upper=0.15)
-    # @paramC(name='MCF_decay', element=C2, kind='coupled',
-    #         units='fraction of anaerobic conversion of degraded COD',
-    #         baseline=b, distribution=D)
-    # def set_MCF_decay(i):
-    #     C2.MCF_decay = i
-
-    # b = C2.N2O_EF_decay
-    # D = shape.Triangle(lower=0, midpoint=b, upper=0.001)
-    # @paramC(name='N2O_EF_decay', element=C2, kind='coupled',
-    #         units='fraction of N emitted as N2O',
-    #         baseline=b, distribution=D)
-    # def set_N2O_EF_decay(i):
-    #     C2.N2O_EF_decay = i
-
-    # # Sludge pasteurization
-    # exclude = 'wages' if country_specific else ()
-    # batch_setting_unit_params(pasteurization_data, modelC, unitC.C4, exclude)
-
-    # # Ultrafiltration
-    # batch_setting_unit_params(ultrafiltration_data, modelC, unitC.C5)
-
-    # # Ion exchange
-    # exclude = 'wages' if country_specific else ()
-    # batch_setting_unit_params(ix_data, modelC, unitC.C6, exclude)
-
-    # # ECR
-    # batch_setting_unit_params(ecr_data, modelC, unitC.C7)
-
-    # # Housing
-    # batch_setting_unit_params(housing_data, modelC, unitC.C10)
-
-    # # System
-    # batch_setting_unit_params(system_data, modelC, unitC.C11)
-
-    # # Solar
-    # exclude = 'wages' if country_specific else ()
-    # batch_setting_unit_params(solar_data, modelC, unitC.C12, exclude)
-
     return modelC
 
 
@@ -833,18 +731,6 @@ def create_modelD(country_specific=False, **model_kwargs):
         'System': unitD.D9,
     }
     add_shared_parameters(modelD, unit_dctD, country_specific)
-
-    # # Ultrafiltration
-    # batch_setting_unit_params(ultrafiltration_data, modelD, unitD.D4)
-
-    # # Ion exchange
-    # batch_setting_unit_params(ix_data, modelD, unitD.D5)
-
-    # # Housing
-    # batch_setting_unit_params(housing_data, modelD, unitD.D8)
-
-    # # System
-    # batch_setting_unit_params(system_data, modelD, unitD.D9)
 
     return modelD
 
