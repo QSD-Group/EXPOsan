@@ -529,33 +529,33 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
         H_Resources_dct['GAC'] = ImpactItem.get_item('GAC_item').CFs['H_Resources'] = i
 
     # Zeolite
-    b = GWP_dct['Zeolite']
+    b = GWP_dct['zeolite']
     D = shape.Uniform(lower=b*0.9, upper=b*1.1)
-    @param(name='Zeolite CF', element='LCA', kind='isolated',
+    @param(name='zeolite CF', element='LCA', kind='isolated',
            units='kg CO2-eq/kg', baseline=b, distribution=D)
-    def set_Zeolite_CF(i):
-        GWP_dct['Zeolite'] = ImpactItem.get_item('Zeolite_item').CFs['GlobalWarming'] = i
+    def set_zeolite_CF(i):
+        GWP_dct['zeolite'] = ImpactItem.get_item('zeolite_item').CFs['GlobalWarming'] = i
 
-    b = H_Ecosystems_dct['Zeolite']
+    b = H_Ecosystems_dct['zeolite']
     D = shape.Uniform(lower=b*0.9, upper=b*1.1)
     @param(name='Zeolite ecosystems CF', element='LCA', kind='isolated',
            units='points/kg', baseline=b, distribution=D)
-    def set_Zeolite_ecosystems_CF(i):
-        H_Ecosystems_dct['Zeolite'] = ImpactItem.get_item('Zeolite_item').CFs['H_Ecosystems'] = i
+    def set_zeolite_ecosystems_CF(i):
+        H_Ecosystems_dct['zeolite'] = ImpactItem.get_item('zeolite_item').CFs['H_Ecosystems'] = i
 
-    b = H_Health_dct['Zeolite']
+    b = H_Health_dct['zeolite']
     D = shape.Uniform(lower=b*0.9, upper=b*1.1)
     @param(name='Zeolite health CF', element='LCA', kind='isolated',
            units='points/kg', baseline=b, distribution=D)
-    def set_Zeolite_health_CF(i):
-        H_Health_dct['Zeolite'] = ImpactItem.get_item('Zeolite_item').CFs['H_Health'] = i
+    def set_zeolite_health_CF(i):
+        H_Health_dct['zeolite'] = ImpactItem.get_item('zeolite_item').CFs['H_Health'] = i
 
-    b = H_Resources_dct['Zeolite']
+    b = H_Resources_dct['zeolite']
     D = shape.Uniform(lower=b*0.9, upper=b*1.1)
     @param(name='Zeolite resources CF', element='LCA', kind='isolated',
            units='points/kg', baseline=b, distribution=D)
-    def set_Zeolite_resources_CF(i):
-        H_Resources_dct['Zeolite'] = ImpactItem.get_item('Zeolite_item').CFs['H_Resources'] = i
+    def set_zeolite_resources_CF(i):
+        H_Resources_dct['zeolite'] = ImpactItem.get_item('zeolite_item').CFs['H_Resources'] = i
 
     # KCl
     b = GWP_dct['KCl']

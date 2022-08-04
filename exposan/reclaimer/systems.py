@@ -64,7 +64,7 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
     create_stream_with_impact_item(stream_ID='MgOH2')
     create_stream_with_impact_item(stream_ID='KCl')
     create_stream_with_impact_item(stream_ID='GAC')
-    create_stream_with_impact_item(stream_ID='Zeolite')
+    create_stream_with_impact_item(stream_ID='zeolite')
     create_stream_with_impact_item(stream_ID='conc_NH3', dct_key='conc_NH3')
 
 
@@ -180,8 +180,8 @@ def create_systemB(flowsheet=None):
                                      outs=('B5_treated', 'retentate'),
                                      ppl=ppl, if_gridtied=True)
 
-    B6 = su.ReclaimerIonExchange('B6', ins=(B5-0, streamB['Zeolite'], streamB['GAC'], streamB['KCl']),
-                                 outs=('B6_treated', 'SpentZeolite', 'SpentGAC', streamB['conc_NH3']),
+    B6 = su.ReclaimerIonExchange('B6', ins=(B5-0, streamB['zeolite'], streamB['GAC'], streamB['KCl']),
+                                 outs=('B6_treated', 'spent_zeolite', 'spent_GAC', streamB['conc_NH3']),
                                  ppl=ppl)
 
     B7 = su.ReclaimerECR('B7', ins=(B6-0), outs='B7_treated',
@@ -272,8 +272,8 @@ def create_systemC(flowsheet=None):
                                      ppl=ppl,
                                      if_gridtied=False)
 
-    C6 = su.ReclaimerIonExchange('C6', ins=(C5-0, streamC['Zeolite'], streamC['GAC'], streamC['KCl']),
-                                 outs=('C6_treated', 'SpentZeolite', 'SpentGAC',streamC['conc_NH3']),
+    C6 = su.ReclaimerIonExchange('C6', ins=(C5-0, streamC['zeolite'], streamC['GAC'], streamC['KCl']),
+                                 outs=('C6_treated', 'spent_zeolite', 'spent_GAC',streamC['conc_NH3']),
                                  ppl=ppl)
 
     C7 = su.ReclaimerECR('C7', ins=(C6-0), outs='C7_treated',
@@ -343,8 +343,8 @@ def create_systemD(flowsheet=None):
                                      ppl=ppl,
                                      if_gridtied=True)
 
-    D5 = su.ReclaimerIonExchange('D5', ins=(D4-0, streamD['Zeolite'], streamD['GAC'], streamD['KCl']),
-                                 outs=('D5_treated', 'SpentZeolite', 'SpentGAC',streamD['conc_NH3']),
+    D5 = su.ReclaimerIonExchange('D5', ins=(D4-0, streamD['zeolite'], streamD['GAC'], streamD['KCl']),
+                                 outs=('D5_treated', 'spent_zeolite', 'spent_GAC',streamD['conc_NH3']),
                                  ppl=ppl)
 
     D6 = su.Mixer('D6', ins=(D3-1), outs=streamD['CH4'])
