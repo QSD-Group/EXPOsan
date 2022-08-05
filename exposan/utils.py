@@ -229,8 +229,8 @@ general_country_specific_inputs = {
         'K_fertilizer_price': 1.119,
         'NH3_fertilizer_price': 0.939*(14/17),
         'struvite_fertilizer_price': 1.744*(31/245),
-        'NaCl': 0.35,  # for NEWgen
-        'LPG': 0.954  # for NEWgen
+        'NaCl_price': 0.35,  # for NEWgen
+        'LPG_price': 0.954  # for NEWgen
         },
     'India': {
         'energy_GWP': 0.852,
@@ -256,8 +256,8 @@ general_country_specific_inputs = {
         'K_fertilizer_price': 0.445,
         'NH3_fertilizer_price': 0.158 * (14 / 17),
         'struvite_fertilizer_price': 0.567 * (31 / 245),
-        'NaCl': 0.47,  # for NEWgen
-        'LPG': 1.488  # for NEWgen
+        'NaCl_price': 0.47,  # for NEWgen
+        'LPG_price': 1.488  # for NEWgen
         },
     'South Africa': {
         'energy_GWP': 0.955,
@@ -283,8 +283,8 @@ general_country_specific_inputs = {
         'K_fertilizer_price': 0.872,
         'NH3_fertilizer_price': 0.807 * (14 / 17),
         'struvite_fertilizer_price': 5.062 * (31 / 245),
-        'NaCl': 0.225,  # for NEWgen
-        'LPG': 2.257  # for NEWgen
+        'NaCl_price': 0.225,  # for NEWgen
+        'LPG_price': 2.257  # for NEWgen
         },
     'Senegal': {
         'energy_GWP': 0.939,
@@ -310,8 +310,8 @@ general_country_specific_inputs = {
         'K_fertilizer_price': 1.506,  # Africa average
         'NH3_fertilizer_price': 1.400 * (14 / 17),
         'struvite_fertilizer_price': 14.049 * (31 / 245),
-        'NaCl': 0.05,  # for NEWgen
-        'LPG': 1.422  # for NEWgen (Africa average)
+        'NaCl_price': 0.05,  # for NEWgen
+        'LPG_price': 1.422  # for NEWgen (Africa average)
         },
     'Uganda': {
         'energy_GWP': 0.159,
@@ -337,8 +337,8 @@ general_country_specific_inputs = {
         'K_fertilizer_price': 1.329,
         'NH3_fertilizer_price': 1.790 * (14 / 17),
         'struvite_fertilizer_price': 3.965 * (31 / 245),
-        'NaCl': 0.284,  # for NEWgen
-        'LPG': 1.700  # for NEWgen
+        'NaCl_price': 0.284,  # for NEWgen
+        'LPG_price': 1.700  # for NEWgen
         },
     'Median': {
         'energy_GWP': 0.686,
@@ -364,8 +364,8 @@ general_country_specific_inputs = {
         'K_fertilizer_price': 1.268,
         'NH3_fertilizer_price': 1.465 * (14 / 17),
         'struvite_fertilizer_price': 3.965 * (31 / 245),
-        'NaCl': 0.284,
-        'LPG': 1.3916
+        'NaCl_price': 0.284,
+        'LPG_price': 1.3916
         },
     'Worst_ECON': {
         'energy_GWP': 1.046968,
@@ -391,8 +391,8 @@ general_country_specific_inputs = {
         'K_fertilizer_price': 0.315,
         'NH3_fertilizer_price': 0.158 * (14 / 17),
         'struvite_fertilizer_price': 0.567 * (31 / 245),
-        'NaCl': 0.47,
-        'LPG': 2.68128  # Maximum because LPG is an input to the system
+        'NaCl_price': 0.47,
+        'LPG_price': 2.68128  # Maximum because LPG is an input to the system
         },
     'Best_ECON': {
         'energy_GWP': 0.012,
@@ -418,8 +418,8 @@ general_country_specific_inputs = {
         'K_fertilizer_price': 2.560,
         'NH3_fertilizer_price': 3.283 * (14 / 17),
         'struvite_fertilizer_price': 15.244 * (31 / 245),
-        'NaCl': 0.050,
-        'LPG': 0.13132  # Minimum because LPG is an input into the system
+        'NaCl_price': 0.050,
+        'LPG_price': 0.13132  # Minimum because LPG is an input into the system
         },
     'Worst_ENV': {
         'energy_GWP': 1.046968,
@@ -445,8 +445,8 @@ general_country_specific_inputs = {
         'K_fertilizer_price': 0.315,
         'NH3_fertilizer_price': 0.158 * (14 / 17),
         'struvite_fertilizer_price': 0.567 * (31 / 245),
-        'NaCl': 0.47,
-        'LPG': 2.68128  # Maximum because LPG is an input to the system
+        'NaCl_price': 0.47,
+        'LPG_price': 2.68128  # Maximum because LPG is an input to the system
         },
     'Best_ENV': {
         'energy_GWP': 0.012,
@@ -472,8 +472,8 @@ general_country_specific_inputs = {
         'K_fertilizer_price': 2.560,
         'NH3_fertilizer_price': 3.283 * (14 / 17),
         'struvite_fertilizer_price': 15.244 * (31 / 245),
-        'NaCl': 0.050,
-        'LPG': 0.13132  # Minimum because LPG is an input into the system
+        'NaCl_price': 0.050,
+        'LPG_price': 0.13132  # Minimum because LPG is an input into the system
         },
     }
 

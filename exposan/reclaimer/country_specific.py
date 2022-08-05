@@ -148,7 +148,6 @@ def create_country_specific_model(ID, country, country_data=None, model=None):
         def set_electricity_resources_CF(i):
             H_Resources_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Resources'] = i
 
-
     # N fertilizer price
     key = 'N_fertilizer_price'
     price_D_ratio = 0.2
