@@ -15,12 +15,10 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-
-import os, qsdsan as qs
 from chaospy import distributions as shape
 from qsdsan import ImpactItem, PowerUtility
+from exposan.utils import general_country_specific_inputs, run_module_country_specific
 from exposan import biogenic_refinery as br
-from exposan.utils import country_specific_inputs
 from exposan.biogenic_refinery import (
     create_model,
     GWP_dct,
@@ -56,7 +54,7 @@ def create_country_specific_model(ID, country, model=None, country_data=None):
     param = model.parameter
     sys = model.system
     sys_stream = sys.flowsheet.stream
-    country_data = country_data or country_specific_inputs[country]
+    country_data = country_data or general_country_specific_inputs[country]
     param_dct = {p.name: p for p in model.parameters}
 
     def get_param_name_b_D(key, ratio):
@@ -141,8 +139,8 @@ def create_country_specific_model(ID, country, model=None, country_data=None):
                baseline=b, distribution=D)
         def set_const_daily_wage(i):
             for u in sys.units:
-                if isinstance(u, qs.sanunits.BiogenicRefineryHousing): break
-                u.const_daily_wage = i
+                if hasattr(u, 'const_daily_wage'):
+                    u.const_daily_wage = i
 
     # Certified electrician wage
     key = 'certified_electrician_wages'
@@ -321,23 +319,15 @@ def create_country_specific_model(ID, country, model=None, country_data=None):
     return model
 
 
-def run_country(system_IDs=(), country_specific_inputs=country_specific_inputs,
-                folder_path='', seed=None, N=1000):
-    models = dict.fromkeys(system_IDs)
-    for sys_ID in system_IDs:
-        sys_dct = {}
-        for n, country in enumerate(country_specific_inputs.keys()):
-            if n == 0: # create model for country-specific analysis
-                model = create_country_specific_model(ID=sys_ID, country=country)
-            else: # reuse the model, just update parameters
-                model = create_country_specific_model(ID=sys_ID, model=model, country=country)
-            # Run analysis and save results
-            folder_path = folder_path or results_path
-            path = os.path.join(folder_path, f'{sys_ID}_{country}.xlsx')
-            run_uncertainty(model=model, path=path, seed=seed, N=N)
-            sys_dct[country] = model
-        models[sys_ID] = sys_dct
-    return models
+def run_country(system_IDs, seed=None, N=1000):
+    return run_module_country_specific(
+        create_country_specific_model_func=create_country_specific_model,
+        run_uncertainty_func=run_uncertainty,
+        folder_path=results_path,
+        system_IDs=system_IDs,
+        seed=seed,
+        N=N,
+        )
 
 
 if __name__ == '__main__':

@@ -5,7 +5,10 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+
     Yalin Li <mailto.yalin.li@gmail.com>
+
+    Hannah Lohman <hlohman94@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License. Please refer to
 https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
@@ -28,10 +31,12 @@ __all__ = (
     'add_V_from_rho',
     'batch_setting_unit_params',
     'clear_unit_costs',
-    'country_specific_inputs',
+    'general_country_specific_inputs',
     'get_decay_k',
     'get_generic_scaled_capital',
     'get_generic_tanker_truck_fee',
+    'organize_and_save_results',
+    'run_module_country_specific',
     'run_uncertainty',
     )
 
@@ -83,8 +88,123 @@ def clear_unit_costs(sys):
         i.installed_costs.clear()
 
 
+# Get reduction rate constant k for COD and N, use a function so that k can be
+# changed during uncertainty analysis
+def get_decay_k(tau_deg=2, log_deg=3):
+    k = (-1/tau_deg)*np.log(10**-log_deg)
+    return k
+
+
+def get_generic_scaled_capital(tea, percent_CAPEX_to_scale, number_of_units,
+                               percent_limit, learning_curve_percent):
+    '''
+    Scale capital cost based for the Nth system
+    (would be lower than the cost for a single system due to scaling effect).
+
+    Parameters
+    ----------
+    tea : obj
+        TEA obj for the system of interest.
+    percent_CAPEX_to_scale : float
+        The fraction of the cost of specialty parts/cost of total parts.
+    number_of_units : int
+        Number of units to be constructed.
+    percent_limit : float
+        Percent of the lowest cost of the normal cost of a single system.
+    learning_curve_percent : float
+        The percent factor of the learning curve.
+    '''
+    CAPEX_to_scale = tea.annualized_CAPEX * percent_CAPEX_to_scale
+    CAPEX_not_scaled = tea.annualized_CAPEX - CAPEX_to_scale
+    scaled_limited = CAPEX_to_scale * percent_limit
+    b = log(learning_curve_percent)/log(2)
+    scaled_CAPEX_annualized  = (CAPEX_to_scale - scaled_limited)*number_of_units**b + scaled_limited
+    new_CAPEX_annualized = scaled_CAPEX_annualized + CAPEX_not_scaled
+    return new_CAPEX_annualized
+
+
+fitting_dct = {
+    3: 21.62,
+    4.5: 32.43,
+    8: 54.05,
+    15: 67.57,
+}
+def get_generic_tanker_truck_fee(capacity,
+                                 fitting_dct=fitting_dct,
+                                 emptying_fee=0.15,
+                                 exchange_rate=1):
+    '''
+    Exponential fitting to get the tanker truck fee based on capacity.
+
+    cost = a*capacity**b -> ln(price) = ln(a) + bln(capacity)
+
+    Parameters
+    ----------
+    capacity : float
+        The capacity at which the tanker truck fee will be calculated.
+    fitting_dct : dict(float, float)
+        Capacity-based cost to develop the exponential fitting correlation,
+        keys should be the capacities and values should be the corresponding costs.
+        Capacities for fitting.
+    emptying_fee : float
+        Additional fraction of fee that will be added on top of the given prices.
+    exchange_rate : float
+        Exchange that will be multiplied to the prices.
+    '''
+    capacities = np.array(tuple(fitting_dct.keys()))
+    costs = np.array(tuple(fitting_dct.values()))
+    costs *= (1+emptying_fee)*exchange_rate
+    ln_p = np.log(costs)
+    ln_cap = np.log(np.array(capacities))
+    model = LR().fit(ln_cap.reshape(-1,1), ln_p.reshape(-1,1))
+    predicted = model.predict(np.array((np.log(capacity))).reshape(1, -1)).item()
+    fee = np.exp(predicted)
+    return fee
+
+
+# %%
+
+@time_printer
+def run_uncertainty(model, seed=None, N=1000, rule='L',
+                    percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
+                    path='', print_time=False):
+    if seed: np.random.seed(seed)
+
+    samples = model.sample(N, rule)
+    model.load_samples(samples)
+    model.evaluate()
+    # Spearman's rank correlation
+    spearman_results = model.spearman()
+    spearman_results.columns = pd.Index([i.name_with_units for i in model.metrics])
+    organize_and_save_results(model=model, percentiles=percentiles,
+                              spearman_results=spearman_results, path=path)
+
+
+def organize_and_save_results(
+        model, percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
+        spearman_results=None, path=''):
+    dct = {}
+    index_p = len(model.get_parameters())
+    dct['parameters'] = model.table.iloc[:, :index_p].copy()
+    dct['data'] = model.table.iloc[:, index_p:].copy()
+    if percentiles:
+        dct['percentiles_parameters'] = dct['parameters'].quantile(q=percentiles)
+        dct['percentiles_results'] = dct['data'].quantile(q=percentiles)
+    dct['spearman'] = spearman_results
+
+    path = os.path.join(es_path, f'sys{model.system.ID[-1]}_model.xlsx') if path=='' else path
+    with pd.ExcelWriter(path) as writer:
+        dct['parameters'].to_excel(writer, sheet_name='Parameters')
+        dct['data'].to_excel(writer, sheet_name='Uncertainty results')
+        if percentiles:
+            dct['percentiles_parameters'].to_excel(writer, sheet_name='Parameter percentiles')
+            dct['percentiles_results'].to_excel(writer, sheet_name='Result percentiles')
+        if spearman_results is not None: dct['spearman'].to_excel(writer, sheet_name='Spearman')
+        model.table.to_excel(writer, sheet_name='Raw data')
+
+
 # Example input dict for country-specific analysis
-country_specific_inputs = {
+general_country_specific_inputs = {
     'China': {
         'energy_GWP': 0.745,
         'energy_H_Ecosystems': 0.002336342,
@@ -358,115 +478,33 @@ country_specific_inputs = {
     }
 
 
-
-# Get reduction rate constant k for COD and N, use a function so that k can be
-# changed during uncertainty analysis
-def get_decay_k(tau_deg=2, log_deg=3):
-    k = (-1/tau_deg)*np.log(10**-log_deg)
-    return k
-
-
-def get_generic_scaled_capital(tea, percent_CAPEX_to_scale, number_of_units,
-                               percent_limit, learning_curve_percent):
-    '''
-    Scale capital cost based for the Nth system
-    (would be lower than the cost for a single system due to scaling effect).
-
-    Parameters
-    ----------
-    tea : obj
-        TEA obj for the system of interest.
-    percent_CAPEX_to_scale : float
-        The fraction of the cost of specialty parts/cost of total parts.
-    number_of_units : int
-        Number of units to be constructed.
-    percent_limit : float
-        Percent of the lowest cost of the normal cost of a single system.
-    learning_curve_percent : float
-        The percent factor of the learning curve.
-    '''
-    CAPEX_to_scale = tea.annualized_CAPEX * percent_CAPEX_to_scale
-    CAPEX_not_scaled = tea.annualized_CAPEX - CAPEX_to_scale
-    scaled_limited = CAPEX_to_scale * percent_limit
-    b = log(learning_curve_percent)/log(2)
-    scaled_CAPEX_annualized  = (CAPEX_to_scale - scaled_limited)*number_of_units**b + scaled_limited
-    new_CAPEX_annualized = scaled_CAPEX_annualized + CAPEX_not_scaled
-    return new_CAPEX_annualized
-
-
-fitting_dct = {
-    3: 21.62,
-    4.5: 32.43,
-    8: 54.05,
-    15: 67.57,
-}
-def get_generic_tanker_truck_fee(capacity,
-                                 fitting_dct=fitting_dct,
-                                 emptying_fee=0.15,
-                                 exchange_rate=1):
-    '''
-    Exponential fitting to get the tanker truck fee based on capacity.
-
-    cost = a*capacity**b -> ln(price) = ln(a) + bln(capacity)
-
-    Parameters
-    ----------
-    capacity : float
-        The capacity at which the tanker truck fee will be calculated.
-    fitting_dct : dict(float, float)
-        Capacity-based cost to develop the exponential fitting correlation,
-        keys should be the capacities and values should be the corresponding costs.
-        Capacities for fitting.
-    emptying_fee : float
-        Additional fraction of fee that will be added on top of the given prices.
-    exchange_rate : float
-        Exchange that will be multiplied to the prices.
-    '''
-    capacities = np.array(tuple(fitting_dct.keys()))
-    costs = np.array(tuple(fitting_dct.values()))
-    costs *= (1+emptying_fee)*exchange_rate
-    ln_p = np.log(costs)
-    ln_cap = np.log(np.array(capacities))
-    model = LR().fit(ln_cap.reshape(-1,1), ln_p.reshape(-1,1))
-    predicted = model.predict(np.array((np.log(capacity))).reshape(1, -1)).item()
-    fee = np.exp(predicted)
-    return fee
-
-
-@time_printer
-def run_uncertainty(model, seed=None, N=1000, rule='L',
-                    percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
-                    path='', print_time=False):
-    if seed: np.random.seed(seed)
-
-    samples = model.sample(N, rule)
-    model.load_samples(samples)
-    model.evaluate()
-    # Spearman's rank correlation
-    spearman_results = model.spearman()
-    spearman_results.columns = pd.Index([i.name_with_units for i in model.metrics])
-    organize_and_save_results(model=model, percentiles=percentiles,
-                              spearman_results=spearman_results, path=path)
-
-
-def organize_and_save_results(
-        model, percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
-        spearman_results=None, path=''):
-    dct = {}
-    index_p = len(model.get_parameters())
-    dct['parameters'] = model.table.iloc[:, :index_p].copy()
-    dct['data'] = model.table.iloc[:, index_p:].copy()
-    if percentiles:
-        dct['percentiles_parameters'] = dct['parameters'].quantile(q=percentiles)
-        dct['percentiles_results'] = dct['data'].quantile(q=percentiles)
-    dct['spearman'] = spearman_results
-
-    path = os.path.join(es_path, f'sys{model.system.ID[-1]}_model.xlsx') if path=='' else path
-    with pd.ExcelWriter(path) as writer:
-        dct['parameters'].to_excel(writer, sheet_name='Parameters')
-        dct['data'].to_excel(writer, sheet_name='Uncertainty results')
-        if percentiles:
-            dct['percentiles_parameters'].to_excel(writer, sheet_name='Parameter percentiles')
-            dct['percentiles_results'].to_excel(writer, sheet_name='Result percentiles')
-        if spearman_results is not None: dct['spearman'].to_excel(writer, sheet_name='Spearman')
-        model.table.to_excel(writer, sheet_name='Raw data')
+def run_module_country_specific(
+        create_country_specific_model_func,
+        run_uncertainty_func,
+        folder_path,
+        system_IDs,
+        country_specific_inputs=None,
+        seed=None,
+        N=1000
+        ):
+    country_specific_inputs = country_specific_inputs or general_country_specific_inputs
+    models = dict.fromkeys(system_IDs)
+    for sys_ID in system_IDs:
+        sys_dct = {}
+        for n, country in enumerate(country_specific_inputs.keys()):
+            kwargs = {
+                'ID': sys_ID,
+                'country': country,
+                'country_data': country_specific_inputs[country],
+                }
+            if n == 0: # create tje ,pde;
+                model = create_country_specific_model_func(**kwargs)
+            else: # reuse the model, just update parameters
+                kwargs['model'] = model
+                model = create_country_specific_model_func(**kwargs)
+            # Run analysis and save results
+            path = os.path.join(folder_path, f'{sys_ID}_{country}.xlsx')
+            run_uncertainty_func(model=model, path=path, seed=seed, N=N)
+            sys_dct[country] = model
+        models[sys_ID] = sys_dct
+    return models
