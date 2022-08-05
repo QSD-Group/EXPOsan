@@ -497,7 +497,7 @@ def run_module_country_specific(
                 'country': country,
                 'country_data': country_specific_inputs[country],
                 }
-            if n == 0: # create tje ,pde;
+            if n == 0: # create the model
                 model = create_country_specific_model_func(**kwargs)
             else: # reuse the model, just update parameters
                 kwargs['model'] = model
