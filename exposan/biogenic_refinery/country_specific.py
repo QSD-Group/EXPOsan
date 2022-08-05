@@ -263,7 +263,7 @@ def create_country_specific_model(ID, country, model=None, country_data=None):
         p.baseline = b
         p.distribution = D
     else:
-        @param(name='N fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
+        @param(name=name, element='TEA', kind='isolated', units='USD/kg N',
                baseline=b, distribution=D)
         def set_N_price(i):
             price_dct['N'] = sys_stream.liq_N.price = sys_stream.sol_N.price = i * br.price_factor
@@ -275,7 +275,7 @@ def create_country_specific_model(ID, country, model=None, country_data=None):
         p.baseline = b
         p.distribution = D
     else:
-        @param(name='P fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
+        @param(name=name, element='TEA', kind='isolated', units='USD/kg P',
                baseline=b, distribution=D)
         def set_P_price(i):
             price_dct['P'] = sys_stream.liq_P.price = sys_stream.sol_P.price = i * br.price_factor
@@ -287,7 +287,7 @@ def create_country_specific_model(ID, country, model=None, country_data=None):
         p.baseline = b
         p.distribution = D
     else:
-        @param(name='K fertilizer price', element='TEA', kind='isolated', units='USD/kg K',
+        @param(name=name, element='TEA', kind='isolated', units='USD/kg K',
                baseline=b, distribution=D)
         def set_K_price(i):
             price_dct['K'] = sys_stream.liq_K.price = sys_stream.sol_K.price = i * br.price_factor
