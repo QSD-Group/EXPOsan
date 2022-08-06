@@ -162,24 +162,6 @@ def get_generic_tanker_truck_fee(capacity,
     return fee
 
 
-# %%
-
-@time_printer
-def run_uncertainty(model, seed=None, N=1000, rule='L',
-                    percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
-                    path='', print_time=False):
-    if seed: np.random.seed(seed)
-
-    samples = model.sample(N, rule)
-    model.load_samples(samples)
-    model.evaluate()
-    # Spearman's rank correlation
-    spearman_results = model.spearman()
-    spearman_results.columns = pd.Index([i.name_with_units for i in model.metrics])
-    organize_and_save_results(model=model, percentiles=percentiles,
-                              spearman_results=spearman_results, path=path)
-
-
 def organize_and_save_results(
         model, percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
         spearman_results=None, path=''):
@@ -201,6 +183,22 @@ def organize_and_save_results(
             dct['percentiles_results'].to_excel(writer, sheet_name='Result percentiles')
         if spearman_results is not None: dct['spearman'].to_excel(writer, sheet_name='Spearman')
         model.table.to_excel(writer, sheet_name='Raw data')
+
+
+@time_printer
+def run_uncertainty(model, seed=None, N=1000, rule='L',
+                    percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
+                    path='', print_time=False):
+    if seed: np.random.seed(seed)
+
+    samples = model.sample(N, rule)
+    model.load_samples(samples)
+    model.evaluate()
+    # Spearman's rank correlation
+    spearman_results = model.spearman()
+    spearman_results.columns = pd.Index([i.name_with_units for i in model.metrics])
+    organize_and_save_results(model=model, percentiles=percentiles,
+                              spearman_results=spearman_results, path=path)
 
 
 # Example input dict for country-specific analysis
