@@ -116,6 +116,7 @@ def create_country_specific_model(ID, country, model=None, country_data=None):
     # Household size
     key = 'household_size'
     name = format_key(key)
+    model.parameters = [i for i in model.parameters if i.name is not name]
     b = country_data[key]
     D = shape.Normal(mu=b, sigma=1.8)
     @param(name=name, element=excretion_unit, kind='coupled', units='cap/household',
