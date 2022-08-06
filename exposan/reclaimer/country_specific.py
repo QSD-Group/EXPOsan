@@ -59,6 +59,9 @@ def create_country_specific_model(ID, country, country_data=None, model=None):
     def get_param_name_b_D(key, ratio):
         name = format_key(key)
         p = param_dct.get(name)
+        # Throw out this parameter (so that a new one can be added with updated values)
+        # if it's already there
+        if p: model.parameters = [i for i in model.parameters if i is not p]
         b = country_data[key]
         D = get_default_uniform(b, ratio)
         return name, p, b, D
@@ -86,116 +89,80 @@ def create_country_specific_model(ID, country, country_data=None, model=None):
     key = 'operator_daily_wage'
     wage_D_ratio = 0.5
     name, p, b, D = get_param_name_b_D(key, wage_D_ratio)
-    if p:
-        p.baseline = b
-        p.distribution = D
-    else:
-        @param(name=name,
-               element=excretion_unit,  # just want to add to the 0th unit of the system
-               kind='coupled', units='USD/h',
-               baseline=b, distribution=D)
-        def set_labor_wages(i):
-            for u in sys.units:
-                if hasattr(u, '_calc_maintenance_labor_cost'):
-                    u.wages = i
+    @param(name=name,
+           element=excretion_unit,  # just want to add to the 0th unit of the system
+           kind='coupled', units='USD/h',
+           baseline=b, distribution=D)
+    def set_labor_wages(i):
+        for u in sys.units:
+            if hasattr(u, '_calc_maintenance_labor_cost'):
+                u.wages = i
 
     # Energy GWP
     key = 'energy_GWP'
     GWP_D_ratio = 0.1
     name, p, b, D = get_param_name_b_D(key, GWP_D_ratio)
-    if p:
-        p.baseline = b
-        p.distribution = D
-    else:
-        @param(name=name, element='LCA', kind='isolated',
-               units='kg CO2-eq/kWh', baseline=b, distribution=D)
-        def set_electricity_CF(i):
-            GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
+    @param(name=name, element='LCA', kind='isolated',
+           units='kg CO2-eq/kWh', baseline=b, distribution=D)
+    def set_electricity_CF(i):
+        GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
 
     # Energy H_Ecosystems
     key = 'energy_H_Ecosystems'
     name, p, b, D = get_param_name_b_D(key, GWP_D_ratio)
-    if p:
-        p.baseline = b
-        p.distribution = D
-    else:
-        @param(name=name, element='LCA', kind='isolated',
-               units='points/kWh', baseline=b, distribution=D)
-        def set_electricity_ecosystems_CF(i):
-            H_Ecosystems_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Ecosystems'] = i
+    @param(name=name, element='LCA', kind='isolated',
+           units='points/kWh', baseline=b, distribution=D)
+    def set_electricity_ecosystems_CF(i):
+        H_Ecosystems_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Ecosystems'] = i
 
     # Energy H_Health
     key = 'energy_H_Health'
     name, p, b, D = get_param_name_b_D(key, GWP_D_ratio)
-    if p:
-        p.baseline = b
-        p.distribution = D
-    else:
-        @param(name=name, element='LCA', kind='isolated',
-               units='points/kWh', baseline=b, distribution=D)
-        def set_electricity_health_CF(i):
-            H_Health_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Health'] = i
+    @param(name=name, element='LCA', kind='isolated',
+           units='points/kWh', baseline=b, distribution=D)
+    def set_electricity_health_CF(i):
+        H_Health_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Health'] = i
 
     # Energy H_Resources
     key = 'energy_H_Resources'
     name, p, b, D = get_param_name_b_D(key, GWP_D_ratio)
-    if p:
-        p.baseline = b
-        p.distribution = D
-    else:
-        @param(name=name, element='LCA', kind='isolated',
-               units='points/kWh', baseline=b, distribution=D)
-        def set_electricity_resources_CF(i):
-            H_Resources_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Resources'] = i
+    @param(name=name, element='LCA', kind='isolated',
+           units='points/kWh', baseline=b, distribution=D)
+    def set_electricity_resources_CF(i):
+        H_Resources_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Resources'] = i
 
     # N fertilizer price
     key = 'N_fertilizer_price'
     price_D_ratio = 0.2
     name, p, b, D = get_param_name_b_D(key, price_D_ratio)
-    if p:
-        p.baseline = b
-        p.distribution = D
-    else:
-        @param(name=name, element='TEA', kind='isolated', units='USD/kg N',
-               baseline=b, distribution=D)
-        def set_N_price(i):
-            price_dct['N'] = sys_stream.liq_N.price = sys_stream.sol_N.price = i * re.price_factor
+    @param(name=name, element='TEA', kind='isolated', units='USD/kg N',
+           baseline=b, distribution=D)
+    def set_N_price(i):
+        price_dct['N'] = sys_stream.liq_N.price = sys_stream.sol_N.price = i * re.price_factor
 
     # P fertilizer price
     key = 'P_fertilizer_price'
     name, p, b, D = get_param_name_b_D(key, price_D_ratio)
-    if p:
-        p.baseline = b
-        p.distribution = D
-    else:
-        @param(name=name, element='TEA', kind='isolated', units='USD/kg P',
-               baseline=b, distribution=D)
-        def set_P_price(i):
-            price_dct['P'] = sys_stream.liq_P.price = sys_stream.sol_P.price = i * re.price_factor
+    @param(name=name, element='TEA', kind='isolated', units='USD/kg P',
+           baseline=b, distribution=D)
+    def set_P_price(i):
+        price_dct['P'] = sys_stream.liq_P.price = sys_stream.sol_P.price = i * re.price_factor
 
     # K fertilizer price
     key = 'K_fertilizer_price'
     name, p, b, D = get_param_name_b_D(key, price_D_ratio)
-    if p:
-        p.baseline = b
-        p.distribution = D
-    else:
-        @param(name=name, element='TEA', kind='isolated', units='USD/kg K',
-               baseline=b, distribution=D)
-        def set_K_price(i):
-            price_dct['K'] = sys_stream.liq_K.price = sys_stream.sol_K.price = i * re.price_factor
+    @param(name=name, element='TEA', kind='isolated', units='USD/kg K',
+           baseline=b, distribution=D)
+    def set_K_price(i):
+        price_dct['K'] = sys_stream.liq_K.price = sys_stream.sol_K.price = i * re.price_factor
 
     # Concentrated NH3 fertilizer price
     key = 'NH3_fertilizer_price'
     name, p, b, D = get_param_name_b_D(key, price_D_ratio)
-    if p:
-        p.baseline = b
-        p.distribution = D
-    else:
-        @param(name=name, element='TEA', kind='isolated', units='USD/kg N',
-               baseline=b, distribution=D)
-        def set_con_NH3_price(i):
-            price_dct['conc_NH3'] = sys_stream.conc_NH3.price = i * re.price_factor
+    @param(name=name, element='TEA', kind='isolated', units='USD/kg N',
+           baseline=b, distribution=D)
+    def set_con_NH3_price(i):
+        price_dct['conc_NH3'] = sys_stream.conc_NH3.price = i * re.price_factor
 
     return model
 
