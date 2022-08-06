@@ -60,7 +60,7 @@ def create_country_specific_model(ID, country, country_data=None, model=None):
         name = format_key(key)
         p = param_dct.get(name)
         b = country_data[key]
-        D = get_default_uniform(b, 0.5)
+        D = get_default_uniform(b, ratio)
         return name, p, b, D
 
     ##### Constant parameter settings #####
