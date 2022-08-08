@@ -66,6 +66,7 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
     create_stream_with_impact_item(stream_ID='GAC')
     create_stream_with_impact_item(stream_ID='zeolite')
     create_stream_with_impact_item(stream_ID='conc_NH3', dct_key='conc_NH3')
+    create_stream_with_impact_item(stream_ID='LPG')
 
 
 # %%
@@ -97,7 +98,7 @@ def create_systemA(flowsheet=None):
                        )
 
     # Biogas-related streams are empty as no biogas is generated in Reclaimer
-    A4 = su.SludgePasteurization('A4', ins=('biogas', 'air', A3-3, 'lpg'),
+    A4 = su.SludgePasteurization('A4', ins=('biogas', 'air', A3-3, streamA['LPG']),
                                  outs=('biogas_used', 'biogas_lost', 'biogas_wasted', 'treated_sludge'),
                                  heat_loss=0.1, target_MC=0.1, sludge_temp=283.15,
                                  temp_pasteurization=343.15, lhv_lpg=48.5,
@@ -168,7 +169,7 @@ def create_systemB(flowsheet=None):
                        )
 
     # Biogas-related streams are empty as no biogas is generated in Reclaimer
-    B4 = su.SludgePasteurization('B4', ins=('biogas', 'air', B3-3, 'lpg'),
+    B4 = su.SludgePasteurization('B4', ins=('biogas', 'air', B3-3, streamB['LPG']),
                                  outs=('biogas_used', 'biogas_lost', 'biogas_wasted', 'treated_sludge'),
                                  heat_loss=0.1, target_MC=0.1, sludge_temp=283.15,
                                  temp_pasteurization=343.15, lhv_lpg=48.5,
@@ -259,7 +260,7 @@ def create_systemC(flowsheet=None):
                        )
 
     # Biogas-related streams are empty as no biogas is generated in Reclaimer
-    C4 = su.SludgePasteurization('C4', ins=('biogas', 'air', C3-3, 'lpg'),
+    C4 = su.SludgePasteurization('C4', ins=('biogas', 'air', C3-3, streamC['LPG']),
                                  outs=('biogas_used', 'biogas_lost', 'biogas_wasted', 'treated_sludge'),
                                  heat_loss=0.1, target_MC=0.1, sludge_temp=283.15,
                                  temp_pasteurization=343.15, lhv_lpg=48.5,

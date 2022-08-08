@@ -202,6 +202,14 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
         def set_con_NH3_price(i):
             price_dct['conc_NH3'] = sys_stream.conc_NH3.price = i * re.price_factor
 
+        # LPG price
+        b = price_dct['LPG']
+        D = shape.Uniform(lower=1.0661, upper=1.9799)
+        @param(name='LPG price', element='TEA', kind='isolated', units='USD/kg',
+               baseline=b, distribution=D)
+        def set_LPG_price(i):
+            price_dct['LPG'] = sys_stream.LPG.price = i
+
     ##### Specific units #####
     # Diet and excretion
     excretion_unit = unit_dct['Excretion']
@@ -614,6 +622,35 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
            units='points/kg', baseline=b, distribution=D)
     def set_MgOH2_resources_CF(i):
         H_Resources_dct['MgOH2'] = ImpactItem.get_item('MgOH2_item').CFs['H_Resources'] = i
+
+    # LPG
+    b = GWP_dct['LPG']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='LPG CF', element='LCA', kind='isolated',
+           units='kg CO2-eq/kg', baseline=b, distribution=D)
+    def set_LPG_CF(i):
+        GWP_dct['LPG'] = ImpactItem.get_item('LPG_item').CFs['GlobalWarming'] = i
+
+    b = H_Ecosystems_dct['LPG']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='LPG ecosystems CF', element='LCA', kind='isolated',
+           units='points/kg', baseline=b, distribution=D)
+    def set_LPG_ecosystems_CF(i):
+        H_Ecosystems_dct['LPG'] = ImpactItem.get_item('LPG_item').CFs['H_Ecosystems'] = i
+
+    b = H_Health_dct['LPG']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='LPG health CF', element='LCA', kind='isolated',
+           units='points/kg', baseline=b, distribution=D)
+    def set_LPG_health_CF(i):
+        H_Health_dct['LPG'] = ImpactItem.get_item('LPG_item').CFs['H_Health'] = i
+
+    b = H_Resources_dct['LPG']
+    D = shape.Uniform(lower=b*0.9, upper=b*1.1)
+    @param(name='LPG resources CF', element='LCA', kind='isolated',
+           units='points/kg', baseline=b, distribution=D)
+    def set_LPG_resources_CF(i):
+        H_Resources_dct['LPG'] = ImpactItem.get_item('LPG_item').CFs['H_Resources'] = i
 
     # Other CFs
     item_path = os.path.join(re_data_path, 'impact_items.xlsx')

@@ -131,9 +131,17 @@ def create_country_specific_model(ID, country, country_data=None, model=None):
     def set_electricity_resources_CF(i):
         H_Resources_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Resources'] = i
 
+    # LPG
+    key = 'LPG_price'
+    price_D_ratio = 0.2
+    name, p, b, D = get_param_name_b_D(key, price_D_ratio)
+    @param(name=name, element='TEA', kind='isolated', units='USD/kg',
+           baseline=b, distribution=D)
+    def set_LPG_price(i):
+        price_dct['LPG'] = sys_stream.LPG.price = i
+
     # N fertilizer price
     key = 'N_fertilizer_price'
-    price_D_ratio = 0.2
     name, p, b, D = get_param_name_b_D(key, price_D_ratio)
     @param(name=name, element='TEA', kind='isolated', units='USD/kg N',
            baseline=b, distribution=D)
