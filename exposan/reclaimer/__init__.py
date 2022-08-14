@@ -67,6 +67,7 @@ price_dct = {
     'KCl': 0.0*price_ratio,
     'GAC': 0.0*price_ratio,
     'zeolite': 0.0*price_ratio,
+    'LPG': 1.3916,  # USD/kg, #0.710 USD/L global average, 0.51 kg = 1 L
     }
 
 GWP_dct = {
@@ -81,6 +82,7 @@ GWP_dct = {
     'KCl': 0.8,
     'GAC': 8.388648277,
     'zeolite': 5.175,
+    'LPG': 0.714219323022122,  # 2.93, 3.05 Bwaise
     }
 
 EcosystemQuality_factor = 29320 * (2.8e-09+7.65e-14)  # (pt/species.yr) * (species.yr/kgCO2eq)
@@ -96,6 +98,7 @@ H_Ecosystems_dct = {
     'KCl': 0.00220372,
     'GAC': 0.000437915,
     'zeolite': 0.020161669,
+    'LPG': 0.003610414,
     }
 
 HumanHealth_factor = 436000 * 9.28e-07  # (pt/DALY) * (DALY/kgCO2eq)
@@ -111,6 +114,7 @@ H_Health_dct = {
     'KCl': 0.036770628,
     'GAC': 0.003448424,
     'zeolite': 0.36462721,
+    'LPG': 0.044654087,
     }
 
 H_Resources_dct = {
@@ -125,6 +129,7 @@ H_Resources_dct = {
     'KCl': 0.031653596,
     'GAC': 0.002986373,
     'zeolite': 0.224590444,
+    'LPG': 0.178274445,
     }
 
 
@@ -181,6 +186,7 @@ def _load_lca_data(reload=False):
         create_stream_impact_item(item_ID='GAC_item')
         create_stream_impact_item(item_ID='zeolite_item')
         create_stream_impact_item(item_ID='conc_NH3_item')
+        create_stream_impact_item(item_ID='LPG_item')
         ImpactItem(ID='e_item', functional_unit='kWh',
                    GWP=GWP_dct['Electricity'],
                    H_Ecosystems=H_Ecosystems_dct['Electricity'],
