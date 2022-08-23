@@ -1,5 +1,5 @@
 ===============================================================
-EXPOsan: EXPOsition of sanitation and resource recovery systems
+EXPOsan: EXPOsition of Sanitation and Resource Recovery Systems
 ===============================================================
 
 .. License
