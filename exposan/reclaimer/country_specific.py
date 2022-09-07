@@ -86,7 +86,7 @@ def create_country_specific_model(ID, country, country_data=None, model=None):
 
     ##### Uncertain parameter settings #####
     # Wages
-    key = 'operator_daily_wage'
+    key = 'wages'
     wage_D_ratio = 0.5
     name, p, b, D = get_param_name_b_D(key, wage_D_ratio)
     @param(name=name,
