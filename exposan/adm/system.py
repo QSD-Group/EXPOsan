@@ -12,7 +12,7 @@ for license details.
 
 import numpy as np
 from qsdsan import sanunits as su, processes as pc, WasteStream, System
-from qsdsan.utils import time_printer
+from qsdsan.utils import time_printer, ExogenousDynamicVariable as EDV
 from chemicals.elements import molecular_weight as get_mw
 
 # =============================================================================
@@ -101,7 +101,9 @@ bg = WasteStream('Biogas')
 adm1 = pc.ADM1()
 
 ############# create unit operation ########################
-AD = su.AnaerobicCSTR('AD', ins=inf, outs=(bg, eff), model=adm1)
+T_op = EDV('T_op', function = lambda t: Temp)
+AD = su.AnaerobicCSTR('AD', ins=inf, outs=(bg, eff), model=adm1,
+                      exogenous_vars=(T_op,))
 # AD = su.AnaerobicCSTR('AD', ins=brewery_ww, outs=(bg, eff), model=adm1)
 
 _init_conds = {

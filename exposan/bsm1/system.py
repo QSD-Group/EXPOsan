@@ -14,7 +14,7 @@ for license details.
 import numpy as np
 from qsdsan import sanunits as su
 from qsdsan import processes as pc
-from qsdsan import set_thermo, WasteStream, System
+from qsdsan import WasteStream, System
 from qsdsan.utils import time_printer, load_data, get_SRT
 
 import os
