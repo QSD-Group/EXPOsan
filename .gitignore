@@ -70,7 +70,6 @@ surfaces
 # Others #
 ##########
 *.sh
-**/*temp*
 **/*tmp*
 **/*superseded*
 # conftest is used for local testing only
