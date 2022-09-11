@@ -204,7 +204,7 @@ def get_scaled_capital(tea):
 def get_TEA_metrics(system, include_breakdown=False):
     tea = system.TEA
     get_annual_electricity = lambda system: system.power_utility.cost*system.operating_hours
-    functions = [lambda: (tea.EAC-tea.annualized_CAPEX+get_scaled_capital(tea)) / ppl]
+    functions = [lambda: (get_scaled_capital(tea)-tea.net_earnings) / ppl]
     if not include_breakdown: return functions # net cost
     return [
         *functions,
