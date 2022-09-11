@@ -19,6 +19,7 @@ import warnings
 warnings.filterwarnings('ignore', message='uptime_ratio')
 
 # Run uncertainty analysis and Spearman without country-specific settings
+from exposan import biogenic_refinery as br
 from exposan.biogenic_refinery import create_model, run_uncertainty
 
 def run(model_IDs, seed=None, N=1000, country_specific=False, **model_kwargs):
@@ -30,5 +31,6 @@ def run(model_IDs, seed=None, N=1000, country_specific=False, **model_kwargs):
 
 
 if __name__ == '__main__':
+    br.INCLUDE_RESOURCE_RECOVERY = True
     # run(('A', 'B', 'C', 'D'), seed=5, N=10)
     run(('A', 'B'), seed=5, N=50) # running systems A and B for contextual analysis with DMsan
