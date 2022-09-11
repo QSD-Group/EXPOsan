@@ -18,6 +18,9 @@ import os, numpy as np, qsdsan as qs
 from qsdsan import ImpactItem, StreamImpactItem
 from exposan.utils import get_decay_k, get_generic_scaled_capital
 
+# Module-wise setting on whether to allow resource recovery
+INCLUDE_RESOURCE_RECOVERY = False
+
 re_path = os.path.dirname(__file__)
 data_path = os.path.join(re_path, 'data')
 results_path = os.path.join(re_path, 'results')
@@ -56,81 +59,91 @@ price_factor = 0.25
 # Should be changed based on country
 price_ratio = 1
 
-price_dct = {
-    'Electricity': 0.06,
-    'wages': 3.64,
-    'N': 1.507*price_factor,
-    'P': 3.983*price_factor,
-    'K': 1.333*price_factor,
-    'conc_NH3': 1.333*(14/17)*price_factor,
-    'MgOH2': 0.0*price_ratio,
-    'KCl': 0.0*price_ratio,
-    'GAC': 0.0*price_ratio,
-    'zeolite': 0.0*price_ratio,
-    'LPG': 1.3916,  # USD/kg, #0.710 USD/L global average, 0.51 kg = 1 L
-    }
-
-GWP_dct = {
-    'Electricity': 0.69,
-    'CH4': 34,
-    'N2O': 298,
-    'N': -5.4,
-    'P': -4.9,
-    'K': -1.5,
-    'conc_NH3': -5.4*(14/17),
-    'MgOH2': 1.176277921,
-    'KCl': 0.8,
-    'GAC': 8.388648277,
-    'zeolite': 5.175,
-    'LPG': 0.714219323022122,  # 2.93, 3.05 Bwaise
-    }
-
 EcosystemQuality_factor = 29320 * (2.8e-09+7.65e-14)  # (pt/species.yr) * (species.yr/kgCO2eq)
-H_Ecosystems_dct = {
-    'Electricity': 0.002456338,
-    'CH4': 34 * EcosystemQuality_factor,
-    'N2O': 298 * EcosystemQuality_factor,
-    'N': -0.0461961,
-    'P': -0.093269908,
-    'K': -0.01895794,
-    'conc_NH3': -0.0461961*(14/17),
-    'MgOH2': 0.209556136,
-    'KCl': 0.00220372,
-    'GAC': 0.000437915,
-    'zeolite': 0.020161669,
-    'LPG': 0.003610414,
-    }
-
 HumanHealth_factor = 436000 * 9.28e-07  # (pt/DALY) * (DALY/kgCO2eq)
-H_Health_dct = {
-    'Electricity': 0.040824307,
-    'CH4': 34 * HumanHealth_factor,
-    'N2O': 298 * HumanHealth_factor,
-    'N': -0.637826734,
-    'P': -1.774294425,
-    'K': -0.116067637,
-    'conc_NH3': -0.637826734*(14/17),
-    'MgOH2': 4.639146841,
-    'KCl': 0.036770628,
-    'GAC': 0.003448424,
-    'zeolite': 0.36462721,
-    'LPG': 0.044654087,
-    }
 
-H_Resources_dct = {
-    'Electricity': 0.027825633,
-    'CH4': 0,  # no GWP to Resource Depletion pathway
-    'N2O': 0,  # no GWP to Resource Depletion pathway
-    'N': -0.259196888,
-    'P': -1.084191599,
-    'K': -0.054033438,
-    'conc_NH3': -0.259196888*(14/17),
-    'MgOH2': 4.05197164,
-    'KCl': 0.031653596,
-    'GAC': 0.002986373,
-    'zeolite': 0.224590444,
-    'LPG': 0.178274445,
-    }
+def update_resource_recovery_settings():
+    global INCLUDE_RESOURCE_RECOVERY
+    global price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct
+    RR_factor = int(bool(INCLUDE_RESOURCE_RECOVERY))
+    price_dct = {
+        'Electricity': 0.06,
+        'wages': 3.64,
+        'N': 1.507*price_factor*RR_factor,
+        'P': 3.983*price_factor*RR_factor,
+        'K': 1.333*price_factor*RR_factor,
+        'conc_NH3': 1.333*(14/17)*price_factor*RR_factor,
+        'MgOH2': 0.0*price_ratio,
+        'KCl': 0.0*price_ratio,
+        'GAC': 0.0*price_ratio,
+        'zeolite': 0.0*price_ratio,
+        'LPG': 1.3916,  # USD/kg, #0.710 USD/L global average, 0.51 kg = 1 L
+        }
+    
+    GWP_dct = {
+        'Electricity': 0.69,
+        'CH4': 34,
+        'N2O': 298,
+        'N': -5.4*RR_factor,
+        'P': -4.9*RR_factor,
+        'K': -1.5*RR_factor,
+        'conc_NH3': -5.4*(14/17)*RR_factor,
+        'MgOH2': 1.176277921,
+        'KCl': 0.8,
+        'GAC': 8.388648277,
+        'zeolite': 5.175,
+        'LPG': 0.714219323022122,  # 2.93, 3.05 Bwaise
+        }
+    
+    H_Ecosystems_dct = {
+        'Electricity': 0.002456338,
+        'CH4': 34 * EcosystemQuality_factor,
+        'N2O': 298 * EcosystemQuality_factor,
+        'N': -0.0461961*RR_factor,
+        'P': -0.093269908*RR_factor,
+        'K': -0.01895794*RR_factor,
+        'conc_NH3': -0.0461961*(14/17)*RR_factor,
+        'MgOH2': 0.209556136,
+        'KCl': 0.00220372,
+        'GAC': 0.000437915,
+        'zeolite': 0.020161669,
+        'LPG': 0.003610414,
+        }
+    
+    
+    H_Health_dct = {
+        'Electricity': 0.040824307,
+        'CH4': 34 * HumanHealth_factor,
+        'N2O': 298 * HumanHealth_factor,
+        'N': -0.637826734*RR_factor,
+        'P': -1.774294425*RR_factor,
+        'K': -0.116067637*RR_factor,
+        'conc_NH3': -0.637826734*(14/17)*RR_factor,
+        'MgOH2': 4.639146841,
+        'KCl': 0.036770628,
+        'GAC': 0.003448424,
+        'zeolite': 0.36462721,
+        'LPG': 0.044654087,
+        }
+    
+    H_Resources_dct = {
+        'Electricity': 0.027825633,
+        'CH4': 0,  # no GWP to Resource Depletion pathway
+        'N2O': 0,  # no GWP to Resource Depletion pathway
+        'N': -0.259196888*RR_factor,
+        'P': -1.084191599*RR_factor,
+        'K': -0.054033438*RR_factor,
+        'conc_NH3': -0.259196888*(14/17)*RR_factor,
+        'MgOH2': 4.05197164,
+        'KCl': 0.031653596,
+        'GAC': 0.002986373,
+        'zeolite': 0.224590444,
+        'LPG': 0.178274445,
+        }
+    
+    return price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct
+
+update_resource_recovery_settings()
 
 
 # %%
@@ -167,6 +180,8 @@ def _load_lca_data(reload=False):
 
         item_path = os.path.join(data_path, 'impact_items.xlsx')
         qs.ImpactItem.load_from_file(item_path)
+        
+        price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct = update_resource_recovery_settings()
 
         # Impacts associated with streams and electricity
         def create_stream_impact_item(item_ID, dct_key=''):
@@ -327,7 +342,7 @@ def get_scaled_capital(tea):
 def get_TEA_metrics(system, include_breakdown=False):
     tea = system.TEA
     get_annual_electricity = lambda system: system.power_utility.cost*system.operating_hours
-    functions = [lambda: (tea.EAC-tea.annualized_CAPEX+get_scaled_capital(tea)) / ppl]
+    functions = [lambda: (get_scaled_capital(tea)-tea.net_earnings) / ppl]
     if not include_breakdown: return functions # net cost
     return [
         *functions,

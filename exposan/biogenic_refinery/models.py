@@ -549,8 +549,8 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
     def set_filter_bag_resources_CF(i):
         H_Resources_dct['FilterBag'] = ImpactItem.get_item('filter_bag_item').CFs['H_Resources'] = i
 
-    # Recovered N fertilizer
     if br.INCLUDE_RESOURCE_RECOVERY:
+        # Recovered N fertilizer
         b = -GWP_dct['N']
         D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
         @param(name='N fertilizer CF', element='LCA', kind='isolated',

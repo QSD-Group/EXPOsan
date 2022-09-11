@@ -20,7 +20,7 @@ from exposan.utils import (
     get_generic_tanker_truck_fee as get_tanker_truck_fee,
     )
 
-# System-wise setting on whether to allow resource recovery
+# Module-wise setting on whether to allow resource recovery
 INCLUDE_RESOURCE_RECOVERY = False
 
 br_path = os.path.dirname(__file__)
@@ -219,6 +219,7 @@ def _load_lca_data(reload=False):
 
         item_path = os.path.join(data_path, 'impact_items.xlsx')
         qs.ImpactItem.load_from_file(item_path)
+        
         price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct = update_resource_recovery_settings()
 
         # Impacts associated with streams and electricity

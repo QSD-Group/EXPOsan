@@ -30,7 +30,7 @@ from exposan.reclaimer import (
     get_decay_k,
     max_CH4_emission,
     ppl,
-    price_dct,
+    update_resource_recovery_settings,
     )
 
 __all__ = ('create_system',)
@@ -47,6 +47,7 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
     item = ImpactItem.get_item('N2O_item').copy(f'{prefix}_N2O_item', set_as_source=True)
     WasteStream('N2O', phase='g', stream_impact_item=item)
 
+    price_dct = update_resource_recovery_settings()[0]
     for nutrient in ('N', 'P', 'K'):
         for phase in phases:
             original = ImpactItem.get_item(f'{nutrient}_item')

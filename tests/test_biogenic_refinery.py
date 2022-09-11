@@ -19,6 +19,7 @@ def test_biogenic_refinery():
     from exposan import biogenic_refinery as br
 
     # # Without resource recovery
+
     # br.INCLUDE_RESOURCE_RECOVERY = False
     # modelA = br.create_model('A')
     # dfA = modelA.metrics_at_baseline()
@@ -42,6 +43,7 @@ def test_biogenic_refinery():
 
     # With resource recovery
     br.INCLUDE_RESOURCE_RECOVERY = True
+
     modelA2 = br.create_model('A')
     dfA2 = modelA2.metrics_at_baseline()
     valuesA2 = [37.58, 64.69, 67.36, 10.2, 28.57, -0.02701, 10.21, -0.3066]
@@ -57,7 +59,7 @@ def test_biogenic_refinery():
     valuesC2 = [0.0, 0.0, 0.0, 11.672, 35.428, 0.049, 11.207, 0.23]
     assert_allclose(dfC2.values, valuesC2, rtol=1e-2)
 
-    # Same results with/without resource recovery for system D
+    # Same results with/without resource recovery
     modelD2 = br.create_model('D')
     dfD2 = modelD2.metrics_at_baseline()
     valuesD2 = [0.0, 0.0, 0.0, 10.017, 74.644, 0.125, 22.774, 0.525]
