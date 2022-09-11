@@ -21,13 +21,9 @@ from exposan.utils import general_country_specific_inputs, run_module_country_sp
 from exposan import biogenic_refinery as br
 from exposan.biogenic_refinery import (
     create_model,
-    GWP_dct,
-    H_Ecosystems_dct,
-    H_Health_dct,
-    H_Resources_dct,
-    price_dct,
     run_uncertainty,
     results_path,
+    update_resource_recovery_settings,
     )
 
 __all__ = ('create_country_specific_model',)
@@ -56,6 +52,7 @@ def create_country_specific_model(ID, country, model=None, country_data=None):
     sys_stream = sys.flowsheet.stream
     country_data = country_data or general_country_specific_inputs[country]
     param_dct = {p.name: p for p in model.parameters}
+    price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct = update_resource_recovery_settings()
 
     def get_param_name_b_D(key, ratio):
         name = format_key(key)
@@ -215,46 +212,47 @@ def create_country_specific_model(ID, country, model=None, country_data=None):
     def set_electricity_resources_CF(i):
         H_Resources_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Resources'] = i
 
-    # N fertilizer price
-    key = 'N_fertilizer_price'
-    price_D_ratio = 0.2
-    name, p, b, D = get_param_name_b_D(key, price_D_ratio)
-    @param(name=name, element='TEA', kind='isolated', units='USD/kg N',
-           baseline=b, distribution=D)
-    def set_N_price(i):
-        price_dct['N'] = sys_stream.liq_N.price = sys_stream.sol_N.price = i * br.price_factor
-
-    # P fertilizer price
-    key = 'P_fertilizer_price'
-    name, p, b, D = get_param_name_b_D(key, price_D_ratio)
-    @param(name=name, element='TEA', kind='isolated', units='USD/kg P',
-           baseline=b, distribution=D)
-    def set_P_price(i):
-        price_dct['P'] = sys_stream.liq_P.price = sys_stream.sol_P.price = i * br.price_factor
-
-    # K fertilizer price
-    key = 'K_fertilizer_price'
-    name, p, b, D = get_param_name_b_D(key, price_D_ratio)
-    @param(name=name, element='TEA', kind='isolated', units='USD/kg K',
-           baseline=b, distribution=D)
-    def set_K_price(i):
-        price_dct['K'] = sys_stream.liq_K.price = sys_stream.sol_K.price = i * br.price_factor
-
-    # Concentrated NH3 fertilizer price
-    key = 'NH3_fertilizer_price'
-    name, p, b, D = get_param_name_b_D(key, price_D_ratio)
-    @param(name=name, element='TEA', kind='isolated', units='USD/kg N',
-           baseline=b, distribution=D)
-    def set_con_NH3_price(i):
-        price_dct['conc_NH3'] = sys_stream.conc_NH3.price = i * br.price_factor
-
-    # Struvite fertilizer price
-    key = 'struvite_fertilizer_price'
-    name, p, b, D = get_param_name_b_D(key, price_D_ratio)
-    @param(name=name, element='TEA', kind='isolated', units='USD/kg P',
-           baseline=b, distribution=D)
-    def set_struvite_price(i):
-        price_dct['struvite'] = sys_stream.struvite.price = i * br.price_factor
+    if br.INCLUDE_RESOURCE_RECOVERY:
+        # N fertilizer price
+        key = 'N_fertilizer_price'
+        price_D_ratio = 0.2
+        name, p, b, D = get_param_name_b_D(key, price_D_ratio)
+        @param(name=name, element='TEA', kind='isolated', units='USD/kg N',
+               baseline=b, distribution=D)
+        def set_N_price(i):
+            price_dct['N'] = sys_stream.liq_N.price = sys_stream.sol_N.price = i * br.price_factor
+    
+        # P fertilizer price
+        key = 'P_fertilizer_price'
+        name, p, b, D = get_param_name_b_D(key, price_D_ratio)
+        @param(name=name, element='TEA', kind='isolated', units='USD/kg P',
+               baseline=b, distribution=D)
+        def set_P_price(i):
+            price_dct['P'] = sys_stream.liq_P.price = sys_stream.sol_P.price = i * br.price_factor
+    
+        # K fertilizer price
+        key = 'K_fertilizer_price'
+        name, p, b, D = get_param_name_b_D(key, price_D_ratio)
+        @param(name=name, element='TEA', kind='isolated', units='USD/kg K',
+               baseline=b, distribution=D)
+        def set_K_price(i):
+            price_dct['K'] = sys_stream.liq_K.price = sys_stream.sol_K.price = i * br.price_factor
+    
+        # Concentrated NH3 fertilizer price
+        key = 'NH3_fertilizer_price'
+        name, p, b, D = get_param_name_b_D(key, price_D_ratio)
+        @param(name=name, element='TEA', kind='isolated', units='USD/kg N',
+               baseline=b, distribution=D)
+        def set_con_NH3_price(i):
+            price_dct['conc_NH3'] = sys_stream.conc_NH3.price = i * br.price_factor
+    
+        # Struvite fertilizer price
+        key = 'struvite_fertilizer_price'
+        name, p, b, D = get_param_name_b_D(key, price_D_ratio)
+        @param(name=name, element='TEA', kind='isolated', units='USD/kg P',
+               baseline=b, distribution=D)
+        def set_struvite_price(i):
+            price_dct['struvite'] = sys_stream.struvite.price = i * br.price_factor
 
     return model
 

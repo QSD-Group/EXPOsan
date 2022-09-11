@@ -20,6 +20,9 @@ from exposan.utils import (
     get_generic_tanker_truck_fee as get_tanker_truck_fee,
     )
 
+# System-wise setting on whether to allow resource recovery
+INCLUDE_RESOURCE_RECOVERY = False
+
 br_path = os.path.dirname(__file__)
 data_path = os.path.join(br_path, 'data')
 results_path = os.path.join(br_path, 'results')
@@ -77,99 +80,109 @@ operator_daily_wage = 29
 const_daily_wage = 17
 const_person_days = 100
 
-price_dct = {
-    'Electricity': 0.06,
-    'Concrete': 194*price_ratio,
-    'Steel': 2.665*price_ratio,
-    'N': 1.507*price_factor,
-    'P': 3.983*price_factor,
-    'K': 1.333*price_factor,
-    'Polymer': 1*price_ratio,
-    'Resin': 3.335*price_ratio,
-    'FilterBag': 4.81*price_ratio,
-    'MgOH2':  0.145*price_ratio,
-    'MgCO3': 0.9*price_ratio,
-    'H2SO4': 0.3*price_ratio,
-    'biochar': 0,  # 0.014*price_ratio,  # assuming value of biochar is 0 for TEA - HACL
-    'struvite': 3.983*(31/245)*price_factor,
-    'conc_NH3': 1.333*(14/17)*price_factor,
-    }
+EcosystemQuality_factor = 29320 * (2.8e-09+7.65e-14) # (pt/species.yr) * (species.yr/kgCO2eq)
+HumanHealth_factor = 436000 * 9.28e-07 # (pt/DALY) * (DALY/kgCO2eq)
 
-GWP_dct = {
-    'Electricity': 0.69,
-    'CH4': 34,
-    'N2O': 298,
-    'N': -5.4,
-    'P': -4.9,
-    'K': -1.5,
-    'Polymer': 2.8,
-    'Resin': 1.612,
-    'FilterBag': 0.464,  # based on 0.05 kg of nylon and nylon's GWP of 9.279255342 kgCO2eq per kg
-    'MgOH2': 1.176277921,
-    'MgCO3': 1.176277921,
-    'H2SO4': 0.158899487,
-    'biochar': -0.2*0.9*(44/12),  # assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
-    'struvite': -4.9*(31/245),
-    'conc_NH3': -5.4*(14/17),
-    }
+def update_resource_recovery_settings():
+    global INCLUDE_RESOURCE_RECOVERY
+    global price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct
+    RR_factor = int(bool(INCLUDE_RESOURCE_RECOVERY))
+    price_dct = {
+        'Electricity': 0.06,
+        'Concrete': 194*price_ratio,
+        'Steel': 2.665*price_ratio,
+        'N': 1.507*price_factor*RR_factor,
+        'P': 3.983*price_factor*RR_factor,
+        'K': 1.333*price_factor*RR_factor,
+        'Polymer': 1*price_ratio,
+        'Resin': 3.335*price_ratio,
+        'FilterBag': 4.81*price_ratio,
+        'MgOH2':  0.145*price_ratio,
+        'MgCO3': 0.9*price_ratio,
+        'H2SO4': 0.3*price_ratio,
+        'biochar': 0*RR_factor,  # 0.014*price_ratio,  # assuming value of biochar is 0 for TEA - HACL
+        'struvite': 3.983*(31/245)*price_factor*RR_factor,
+        'conc_NH3': 1.333*(14/17)*price_factor*RR_factor,
+        }
 
-EcosystemQuality_factor = 29320 * (2.8e-09+7.65e-14)  # (pt/species.yr) * (species.yr/kgCO2eq)
-H_Ecosystems_dct = {
-    'Electricity': 0.002456338,
-    'CH4': 34 * EcosystemQuality_factor,
-    'N2O': 298 * EcosystemQuality_factor,
-    'N': -0.0461961,
-    'P': -0.093269908,
-    'K': -0.01895794,
-    'Polymer': 0.003527775,
-    'Resin': 0.005986888,
-    'FilterBag': 0.000360284,  # based on 0.05 kg of nylon and nylon's H_Ecosystems of 0.007205687 points per kg
-    'MgOH2': 0.209556136,
-    'MgCO3': 0.209556136,
-    'H2SO4': 0.000808874,
-    'biochar': -0.2*0.9*(44/12)*EcosystemQuality_factor,  # assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
-    'struvite': -0.093269908*(31/245),
-    'conc_NH3': -0.0461961*(14/17),
-    }
+    GWP_dct = {
+        'Electricity': 0.69,
+        'CH4': 34,
+        'N2O': 298,
+        'N': -5.4*RR_factor,
+        'P': -4.9*RR_factor,
+        'K': -1.5*RR_factor,
+        'Polymer': 2.8,
+        'Resin': 1.612,
+        'FilterBag': 0.464,  # based on 0.05 kg of nylon and nylon's GWP of 9.279255342 kgCO2eq per kg
+        'MgOH2': 1.176277921,
+        'MgCO3': 1.176277921,
+        'H2SO4': 0.158899487,
+        # Assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
+        'biochar': -0.2*0.9*(44/12)*RR_factor,
+        'struvite': -4.9*(31/245)*RR_factor,
+        'conc_NH3': -5.4*(14/17)*RR_factor,
+        }
 
-HumanHealth_factor = 436000 * 9.28e-07  # (pt/DALY) * (DALY/kgCO2eq)
-H_Health_dct = {
-    'Electricity': 0.040824307,
-    'CH4': 34 * HumanHealth_factor,
-    'N2O': 298 * HumanHealth_factor,
-    'N': -0.637826734,
-    'P': -1.774294425,
-    'K': -0.116067637,
-    'Polymer': 0.054782882,
-    'Resin': 0.094225663,
-    'FilterBag': 0.005084823,  # based on 0.05 kg of nylon and nylon's H_Health of 0.10169646 points per kg
-    'MgOH2': 4.639146841,
-    'MgCO3': 4.639146841,
-    'H2SO4': 0.026124187,
-    'biochar': -0.2*0.9*(44/12)*HumanHealth_factor,  # assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
-    'struvite': -1.774294425*(31/245),
-    'conc_NH3': -0.637826734*(14/17),
-    }
+    H_Ecosystems_dct = {
+        'Electricity': 0.002456338,
+        'CH4': 34 * EcosystemQuality_factor,
+        'N2O': 298 * EcosystemQuality_factor,
+        'N': -0.0461961*RR_factor,
+        'P': -0.093269908*RR_factor,
+        'K': -0.01895794*RR_factor,
+        'Polymer': 0.003527775,
+        'Resin': 0.005986888,
+        'FilterBag': 0.000360284,  # based on 0.05 kg of nylon and nylon's H_Ecosystems of 0.007205687 points per kg
+        'MgOH2': 0.209556136,
+        'MgCO3': 0.209556136,
+        'H2SO4': 0.000808874,
+        # Assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
+        'biochar': -0.2*0.9*(44/12)*EcosystemQuality_factor*RR_factor,
+        'struvite': -0.093269908*(31/245)*RR_factor,
+        'conc_NH3': -0.0461961*(14/17)*RR_factor,
+        }
 
-H_Resources_dct = {
-    'Electricity': 0.027825633,
-    'CH4': 0,  # no GWP to Resource Depletion pathway
-    'N2O': 0,  # no GWP to Resource Depletion pathway
-    'N': -0.259196888,
-    'P': -1.084191599,
-    'K': -0.054033438,
-    'Polymer': 0.029951119,
-    'Resin': 0.107890228,
-    'FilterBag': 0.010811979,  # based on 0.05 kg of nylon and nylon's H_Resources of 0.216239589 points per kg
-    'MgOH2': 4.05197164,
-    'MgCO3': 4.05197164,
-    'H2SO4': 0.025065831,
-    'biochar': 0,  # no GWP to Resource Depletion pathway
-    'struvite': -1.084191599*(31/245),
-    'conc_NH3': -0.259196888*(14/17),
-    }
+    H_Health_dct = {
+        'Electricity': 0.040824307,
+        'CH4': 34 * HumanHealth_factor,
+        'N2O': 298 * HumanHealth_factor,
+        'N': -0.637826734*RR_factor,
+        'P': -1.774294425*RR_factor,
+        'K': -0.116067637*RR_factor,
+        'Polymer': 0.054782882,
+        'Resin': 0.094225663,
+        'FilterBag': 0.005084823,  # based on 0.05 kg of nylon and nylon's H_Health of 0.10169646 points per kg
+        'MgOH2': 4.639146841,
+        'MgCO3': 4.639146841,
+        'H2SO4': 0.026124187,
+        # Assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
+        'biochar': -0.2*0.9*(44/12)*HumanHealth_factor*RR_factor,
+        'struvite': -1.774294425*(31/245)*RR_factor,
+        'conc_NH3': -0.637826734*(14/17)*RR_factor,
+        }
 
+    H_Resources_dct = {
+        'Electricity': 0.027825633,
+        'CH4': 0,  # no GWP to Resource Depletion pathway
+        'N2O': 0,  # no GWP to Resource Depletion pathway
+        'N': -0.259196888*RR_factor,
+        'P': -1.084191599*RR_factor,
+        'K': -0.054033438*RR_factor,
+        'Polymer': 0.029951119,
+        'Resin': 0.107890228,
+        'FilterBag': 0.010811979,  # based on 0.05 kg of nylon and nylon's H_Resources of 0.216239589 points per kg
+        'MgOH2': 4.05197164,
+        'MgCO3': 4.05197164,
+        'H2SO4': 0.025065831,
+        'biochar': 0*RR_factor,  # no GWP to Resource Depletion pathway
+        'struvite': -1.084191599*(31/245)*RR_factor,
+        'conc_NH3': -0.259196888*(14/17)*RR_factor,
+        }
+    
+    return price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct
 
+update_resource_recovery_settings()
 
 
 # %%
@@ -206,11 +219,13 @@ def _load_lca_data(reload=False):
 
         item_path = os.path.join(data_path, 'impact_items.xlsx')
         qs.ImpactItem.load_from_file(item_path)
+        price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct = update_resource_recovery_settings()
 
         # Impacts associated with streams and electricity
         def create_stream_impact_item(item_ID, dct_key=''):
             dct_key = dct_key or item_ID.rsplit('_item')[0] # `rstrip` will change "struvite_item" to "struv"
-            StreamImpactItem(ID=item_ID, GWP=GWP_dct[dct_key],
+            StreamImpactItem(ID=item_ID,
+                             GWP=GWP_dct[dct_key],
                              H_Ecosystems=H_Ecosystems_dct[dct_key],
                              H_Health=H_Health_dct[dct_key],
                              H_Resources=H_Resources_dct[dct_key])
@@ -471,7 +486,7 @@ def get_TEA_metrics(system, include_breakdown=False):
     tea = system.TEA
     ppl = get_ppl(system.ID)
     get_annual_electricity = lambda system: system.power_utility.cost*system.operating_hours
-    functions = [lambda: (tea.EAC-tea.annualized_CAPEX+get_scaled_capital(tea)) / ppl]
+    functions = [lambda: (get_scaled_capital(tea)-tea.net_earnings) / ppl]
     if not include_breakdown: return functions # net cost
     return [
         *functions,
