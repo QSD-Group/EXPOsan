@@ -71,6 +71,7 @@ surfaces
 ##########
 *.sh
 **/*temp*
+**/*tmp*
 **/*superseded*
 # conftest is used for local testing only
 conftest.py
