@@ -1,8 +1,8 @@
 include LICENSE.txt CODE_OF_CONDUCT.md AUTHORS.rst README.rst CONTRIBUTING.rst CHANGELOG.rst pytest.ini 
 global-exclude qsdsan.yml
 global-exclude *.mat
-global-exclude **/*temp*
-global-exclude *temp*.py
+global-exclude **/*tmp*
+global-exclude *tmp*.py
 global-exclude .spyproject
 global-exclude tests/.spyproject/*
 global-exclude tests/.spyproject
@@ -19,4 +19,4 @@ global-exclude *checkpoint*
 global-exclude .*ipynb_checkpoints*
 global-exclude *.log
 recursive-exclude docs *ipynb_checkpoints
-recursive-exclude **temp** **/*temp* *.log
+recursive-exclude **tmp** **/*tmp* *.log
