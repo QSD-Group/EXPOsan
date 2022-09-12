@@ -23,17 +23,17 @@ def test_reclaimer():
     
     # modelA = re.create_model('A')
     # dfA = modelA.metrics_at_baseline()
-    # valuesA = [0.0, 0.0, 0.0, 6.701, 35.246, 0.141, 2.302, 1.772]
+    # valuesA = [0.0, 0.0, 0.0, 3.408, 32.3, 0.131, 2.128, 1.653]
     # assert_allclose(dfA.values, valuesA, rtol=1e-2)
 
     # modelB = re.create_model('B')
     # dfB = modelB.metrics_at_baseline()
-    # valuesB = [71.445, 91.795, 17.949, 73.743, 203.555, 0.379, 37.436, 6.778]
+    # valuesB = [71.445, 91.795, 17.949, 70.45, 200.608, 0.368, 37.262, 6.659]
     # assert_allclose(dfB.values, valuesB, rtol=1e-2)
 
     # modelC = re.create_model('C')
     # dfC = modelC.metrics_at_baseline()
-    # valuesC = [71.445, 91.795, 17.949, 84.279, 164.252, 0.239, 35.131, 5.22]
+    # valuesC = [71.445, 91.795, 17.949, 80.987, 161.305, 0.229, 34.956, 5.101]
     # assert_allclose(dfC.values, valuesC, rtol=1e-2)
 
     # modelD = re.create_model('D')
@@ -47,17 +47,17 @@ def test_reclaimer():
     modelA2 = re.create_model('A')
     dfA2 = modelA2.metrics_at_baseline()
     # Same results with/without resource recovery
-    valuesA2 = [0.0, 0.0, 0.0, 6.701, 35.246, 0.141, 2.302, 1.772]
+    valuesA2 = [0.0, 0.0, 0.0, 3.408, 32.3, 0.131, 2.128, 1.653]
     assert_allclose(dfA2.values, valuesA2, rtol=1e-2)
 
     modelB2 = re.create_model('B')
     dfB2 = modelB2.metrics_at_baseline()
-    valuesB2 = [71.45, 91.79, 17.95, 70.42, 181.4, 0.05168, 31.64, 3.453]
+    valuesB2 = [71.45, 91.79, 17.95, 67.13, 178.5, 0.04119, 31.47, 3.334]
     assert_allclose(dfB2.values, valuesB2, rtol=1e-2)
 
     modelC2 = re.create_model('C')
     dfC2 = modelC2.metrics_at_baseline()
-    valuesC2 = [71.45, 91.79, 17.95, 80.96, 142.1, -0.08818, 29.34, 1.894]
+    valuesC2 = [71.45, 91.79, 17.95, 77.66, 139.2, -0.09867, 29.16, 1.776]
     assert_allclose(dfC2.values, valuesC2, rtol=1e-2)
 
     modelD2 = re.create_model('D')
