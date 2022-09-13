@@ -1,18 +1,22 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Sep  6 14:53:45 2022
+'''
+EXPOsan: Exposition of sanitation and resource recovery systems
 
-@author: yalinli_cabbi
-"""
+This module is developed by:
+    
+    Yalin Li <mailto.yalin.li@gmail.com>
+    
+    Joy Zhang <joycheung1994@gmail.com>
 
-
-# %%
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
+'''
 
 import numpy as np
-from biosteam.utils.piping import Inlets, Outlets, ignore_docking_warnings
 from biosteam.units import Junction as BSTjunction
 from qsdsan import SanUnit, System
+from qsdsan.sanunits import DynamicInfluent
 
 class Junction(SanUnit):
     '''
@@ -122,16 +126,6 @@ class Junction(SanUnit):
         self.outs[0].mass = MYsum
 
 
-
-    @property
-    def components(self):
-        '''Compilation of upstream and downstream components.'''
-        return self._components
-
-
-
-
-
     # Below are dynamic simulation-related properties
     @property
     def state(self):
@@ -140,35 +134,37 @@ class Junction(SanUnit):
         else:
             return dict(zip(list(self.components.IDs) + ['Q'], self._state))
 
+    def _init_dynamic(self):
+        super()._init_dynamic()
+        # Need to use ins' components, otherwise _ins_QC will follow the shape of
+        # the unit's (i.e., downstream) components
+        self._ins_QC = np.zeros((len(self._ins), len(self.ins[0].components)+1))
+        self._ins_dQC = self._ins_QC.copy()
+
     def _init_state(self):
-        '''initialize state by specifying or calculating component concentrations
+        '''
+        Initialize state by specifying or calculating component concentrations
         based on influents. Total flow rate is always initialized as the sum of
-        influent wastestream flows.'''
-        self._state = self._ins_QC[0]
+        influent wastestream flows.
+        '''
+        self._state = np.zeros(len(self.components)+1)
         self._dstate = self._state * 0.
 
     def _update_state(self):
-        '''updates conditions of output stream based on conditions of the Junction'''
+        '''
+        Updates conditions of output stream based on conditions of the Junction.
+        '''
         self._outs[0].state = self._state
 
     def _update_dstate(self):
-        '''updates rates of change of output stream from rates of change of the Junction'''
+        '''
+        Updates rates of change of output stream from rates of change of the Junction.
+        '''
         self._outs[0].dstate = self._dstate
-
-    @property
-    def AE(self):
-        if self._AE is None:
-            self._compile_AE()
-        return self._AE
-
-    #!!! Need to add if self.components is not following downstream components
-    # def _init_dynamic(self):
-
 
     # The unit's state should be the same as the effluent state
     # react the state arr and dstate arr
     def _compile_AE(self):
-        # _n_ins = len(self.ins)
         _state = self._state
         _dstate = self._dstate
         _update_state = self._update_state
@@ -176,10 +172,9 @@ class Junction(SanUnit):
         _RX = self.RX
         _RY = self.RY
         def yt(t, QC_ins, dQC_ins):
-            breakpoint()
             for i, j in zip((QC_ins, dQC_ins), (_state, _dstate)):
                 MXsum = i[0][:-1] # shape = (1, num_upcmps)
-                MY = (_RX*MXsum).T @ _RY # _RX: (num_rxns, num_upcmps); _RY: (num_rxns, num_downcmps)
+                MY = -(_RX*MXsum).T @ _RY # _RX: (num_rxns, num_upcmps); _RY: (num_rxns, num_downcmps)
                 MYsum = MY.sum(axis=0) # MY: (num_upcmps, num_downcmps)
                 Q = MY.sum()
                 j[:-1] = MYsum
@@ -207,6 +202,13 @@ class Junction(SanUnit):
             _update_dstate()
         self._AE = yt
 
+        
+    @property
+    def AE(self):
+        if self._AE is None:
+            self._compile_AE()
+        return self._AE
+
 
 # %%
 
@@ -214,6 +216,7 @@ import qsdsan as qs
 
 
 cmps_asm1 = qs.processes.create_asm1_cmps()
+thermo_asm1 = qs.get_thermo()
 s1 = qs.WasteStream('s1')
 for ID in cmps_asm1.IDs: s1.imass[ID] = 1
 
@@ -221,10 +224,6 @@ for ID in cmps_asm1.IDs: s1.imass[ID] = 1
 cmps_adm1 = qs.processes.create_adm1_cmps()
 s2 = qs.WasteStream('s2')
 for ID in cmps_adm1.IDs: s2.imass[ID] = 2
-
-cmps_compiled = qs.Components((*cmps_asm1, *cmps_adm1))
-cmps_compiled.compile()
-qs.set_thermo(cmps_compiled)
 
 
 reactions = []
@@ -237,8 +236,32 @@ for n, ID in enumerate(cmps_asm1.IDs):
         reactions.append(rxn)
 reactions.append({'S_N2': -1})
 
+
+
+DI = DynamicInfluent('DI', thermo=thermo_asm1)
+
+J1 = Junction('J1', upstream=DI.outs[0], downstream=s2, reactions=reactions, isdynamic=True)
+
+sys = System('sys', path=(DI, J1,))
+sys.set_dynamic_tracker(DI, s2, J1)
+sys.simulate(
+    state_reset_hook='reset_cache',
+    t_span=(0, 10),
+    t_eval=np.arange(0, 10.5, 0.5),
+    )
+
+
+
+# %%
+
 # # Probably shouldn't use reactions at all,
 # # should directly use the array
+
+# from thermosteam.reaction import Reaction as Rxn, ParallelReaction as PRxn
+# cmps_compiled = qs.Components((*cmps_asm1, *cmps_adm1))
+# cmps_compiled.compile()
+# qs.set_thermo(cmps_compiled)
+
 # lst = []
 # for n, ID in enumerate(cmps_asm.IDs):
 #     if n < 13:
@@ -252,22 +275,6 @@ reactions.append({'S_N2': -1})
 #             X=1,
 #             ))
 # asm2adm1 = PRxn(lst)
-
-J1 = Junction('J1', upstream=s1, downstream=s2, reactions=reactions, isdynamic=True)
-
-sys = System('sys', path=(J1,))
-sys.set_dynamic_tracker(s1, s2, J1)
-sys.simulate(
-    state_reset_hook='reset_cache',
-    t_span=(0, 10),
-    t_eval=np.arange(0, 10.5, 0.5),
-    )
-
-
-
-# %%
-
-# from thermosteam.reaction import Reaction as Rxn, ParallelReaction as PRxn
 
 
     # def __init__(self, ID='', upstream=None, outs=None, downstream=None, isdynamic=False,
