@@ -125,7 +125,7 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
 
         # Electricity price
         b = price_dct['Electricity']
-        D = shape.Uniform(lower=0.045, upper=0.075)
+        D = shape.Triangle(lower=0.08, midpoint=b, upper=0.14)
         @param(name='Electricity price', element='TEA', kind='isolated',
                units='$/kWh', baseline=b, distribution=D)
         def set_electricity_price(i):

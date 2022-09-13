@@ -88,7 +88,7 @@ def update_resource_recovery_settings():
     global price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct
     RR_factor = int(bool(INCLUDE_RESOURCE_RECOVERY))
     price_dct = {
-        'Electricity': 0.06,
+        'Electricity': 0.13,
         'Concrete': 194*price_ratio,
         'Steel': 2.665*price_ratio,
         'N': 1.507*price_factor*RR_factor,
