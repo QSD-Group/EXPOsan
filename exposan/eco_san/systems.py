@@ -128,11 +128,11 @@ def create_systemA(flowsheet=None):
                       max_CH4_emission=max_CH4_emission)
 
     A10 = su.Mixer('A10', ins=(A3-1, A2-1, A4-1, A5-1, A6-1, A7-1), outs=streamA['CH4'])
-    A10.specification = lambda: add_fugitive_items(A10, 'CH4_item')
+    A10.add_specification(lambda: add_fugitive_items(A10, 'CH4_item'))
     A10.line = 'fugitive CH4 mixer'
 
     A11 = su.Mixer('A11', ins=(A3-2, A2-2, A4-2, A5-2, A6-2, A7-2), outs=streamA['N2O'])
-    A11.specification = lambda: add_fugitive_items(A11, 'N2O_item')
+    A11.add_specification(lambda: add_fugitive_items(A11, 'N2O_item'))
     A11.line = 'fugitive N2O mixer'
 
     ##### Other impacts and costs #####
@@ -153,7 +153,7 @@ def create_systemA(flowsheet=None):
         vol = truck.load/rho
         A16.fee = get_tanker_truck_fee(vol)
         A16._design()
-    A16.specification = update_A16_param
+    A16.add_specification(update_A16_param)
 
     ##### Simulation, TEA, and LCA #####
     sysA = System('sysA', path=(A1, A2, A3, A4, A5, A6, A7, A8, A10, A11, A13, A14, A15, A16))
@@ -227,11 +227,11 @@ def create_systemB(flowsheet=None):
 
 
     B10 = su.Mixer('B10', ins=(B2-1, B3-1, B4-1, B5-1, B6-1), outs=streamB['CH4'])
-    B10.specification = lambda: add_fugitive_items(B10, 'CH4_item')
+    B10.add_specification(lambda: add_fugitive_items(B10, 'CH4_item'))
     B10.line = 'fugitive CH4 mixer'
 
     B11 = su.Mixer('B11', ins=(B2-2, B3-2, B4-2, B5-2, B6-2), outs=streamB['N2O'])
-    B11.specification = lambda: add_fugitive_items(B11, 'N2O_item')
+    B11.add_specification(lambda: add_fugitive_items(B11, 'N2O_item'))
     B11.line = 'fugitive N2O mixer'
 
     ##### Other impacts and costs #####
@@ -252,7 +252,7 @@ def create_systemB(flowsheet=None):
         vol = truck.load/rho
         B16.fee = get_tanker_truck_fee(vol)
         B16._design()
-    B16.specification = update_B16_param
+    B16.add_specification(update_B16_param)
 
     ##### Simulation, TEA, and LCA #####
     sysB = System('sysB', path=(B1, B2, B3, B4, B5, B6, B8, B10, B11, B14, B15, B16))
@@ -322,11 +322,11 @@ def create_systemC(flowsheet=None):
                       max_CH4_emission=max_CH4_emission)
 
     C10 = su.Mixer('C10', ins=(C2-1, C3-1, C4-1, C5-1, C6-1), outs=streamC['CH4'])
-    C10.specification = lambda: add_fugitive_items(C10, 'CH4_item')
+    C10.add_specification(lambda: add_fugitive_items(C10, 'CH4_item'))
     C10.line = 'fugitive CH4 mixer'
 
     C11 = su.Mixer('C11', ins=(C2-2, C3-2, C4-2, C5-2, C6-2), outs=streamC['N2O'])
-    C11.specification = lambda: add_fugitive_items(C1, 'N2O_item')
+    C11.add_specification(lambda: add_fugitive_items(C1, 'N2O_item'))
     C11.line = 'fugitive N2O mixer'
 
     ##### Other impacts and costs #####
@@ -345,7 +345,7 @@ def create_systemC(flowsheet=None):
         vol = truck.load/rho
         C16.fee = get_tanker_truck_fee(vol)
         C16._design()
-    C16.specification = update_C16_param
+    C16.add_specification(update_C16_param)
 
     ##### Simulation, TEA, and LCA #####
     sysC = System('sysC', path=(C1, C2, C3, C4, C5, C6, C8, C10, C11, C14, C16))

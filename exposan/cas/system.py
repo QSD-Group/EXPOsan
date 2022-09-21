@@ -86,7 +86,7 @@ def GBT_spec():
         ub = max(lb+1e-3, GBT._mixed.imass['Water']/mixed_F_mass)
     IQ_interpolation(f=X_inert_at_mc, x0=lb, x1=ub, xtol=1e-3, ytol=1,
                      checkbounds=False)
-GBT.specification = GBT_spec
+GBT.add_specification(GBT_spec)
 
 AD = SludgeDigester('AD', ins=GBT-1, outs=('disposed', 'biogas'))
 

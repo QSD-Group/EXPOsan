@@ -108,11 +108,11 @@ def create_systemA(flowsheet=None):
                                  if_sludge_service=True)
 
     A8 = su.Mixer('A8', ins=(A3-1), outs=streamA['CH4'])
-    A8.specification = lambda: add_fugitive_items(A8, 'CH4_item')
+    A8.add_specification(lambda: add_fugitive_items(A8, 'CH4_item'))
     A8.line = 'fugitive CH4 mixer'
 
     A9 = su.Mixer('A9', ins=(A3-2), outs=streamA['N2O'])
-    A9.specification = lambda: add_fugitive_items(A9, 'N2O_item')
+    A9.add_specification(lambda: add_fugitive_items(A9, 'N2O_item'))
     A9.line = 'fugitive N2O mixer'
 
     ##### Simulation, TEA, and LCA #####
@@ -190,11 +190,11 @@ def create_systemB(flowsheet=None):
                         ppl=ppl, if_gridtied=True)
 
     B8 = su.Mixer('B8', ins=(B2-1, B3-1), outs=streamB['CH4'])
-    B8.specification = lambda: add_fugitive_items(B7, 'CH4_item')
+    B8.add_specification(lambda: add_fugitive_items(B7, 'CH4_item'))
     B8.line = 'fugitive CH4 mixer'
 
     B9 = su.Mixer('B9', ins=(B2-2, B3-2), outs=streamB['N2O'])
-    B9.specification = lambda: add_fugitive_items(B8, 'N2O_item')
+    B9.add_specification(lambda: add_fugitive_items(B8, 'N2O_item'))
     B9.line = 'fugitive N2O mixer'
 
     ##### Non-Treatment #####
@@ -282,11 +282,11 @@ def create_systemC(flowsheet=None):
                         ppl=ppl, if_gridtied=False)
 
     C8 = su.Mixer('C8', ins=(C3-1, C2-1), outs=streamC['CH4'])
-    C8.specification = lambda: add_fugitive_items(C7, 'CH4_item')
+    C8.add_specification(lambda: add_fugitive_items(C7, 'CH4_item'))
     C8.line = 'fugitive CH4 mixer'
 
     C9 = su.Mixer('B9', ins=(C3-2, C2-2), outs=streamC['N2O'])
-    C9.specification = lambda: add_fugitive_items(C8, 'N2O_item')
+    C9.add_specification(lambda: add_fugitive_items(C8, 'N2O_item'))
     C9.line = 'fugitive N2O mixer'
 
     ##### Non-Treatment #####
@@ -350,11 +350,11 @@ def create_systemD(flowsheet=None):
                                  ppl=ppl)
 
     D6 = su.Mixer('D6', ins=(D3-1), outs=streamD['CH4'])
-    D6.specification = lambda: add_fugitive_items(D6, 'CH4_item')
+    D6.add_specification(lambda: add_fugitive_items(D6, 'CH4_item'))
     D6.line = 'fugitive CH4 mixer'
 
     D7 = su.Mixer('D7', ins=(D3-2), outs=streamD['N2O'])
-    D7.specification = lambda: add_fugitive_items(D7, 'N2O_item')
+    D7.add_specification(lambda: add_fugitive_items(D7, 'N2O_item'))
     D7.line = 'fugitive N2O mixer'
 
     ##### Non-Treatment #####

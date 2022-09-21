@@ -127,7 +127,7 @@ def create_systemA(flowsheet=None):
                        decay_k_N=get_decay_k(),
                        max_CH4_emission=max_CH4_emission
                        )
-    A2.specification = lambda: update_toilet_param(A2)
+    A2.add_specification(lambda: update_toilet_param(A2))
 
     ##### Conveyance of Waste #####
     A3 = su.Trucking('A3', ins=A2-0, outs=('transported', 'conveyance_loss'),
@@ -143,7 +143,7 @@ def create_systemA(flowsheet=None):
         vol = truck.load/rho
         A3.fee = get_tanker_truck_fee(vol)
         A3._design()
-    A3.specification = update_A3_param
+    A3.add_specification(update_A3_param)
 
     ##### Treatment #####
     A4 = su.BiogenicRefineryControls('A4', ins=A3-0, outs='A4_out')
@@ -177,11 +177,11 @@ def create_systemA(flowsheet=None):
     A12-0-A8
 
     A13 = su.Mixer('A13', ins=(A2-2, A7-1, A12-2), outs=streamA.CH4)
-    A13.specification = lambda: add_fugitive_items(A13, 'CH4_item')
+    A13.add_specification(lambda: add_fugitive_items(A13, 'CH4_item'))
     A13.line = 'fugitive CH4 mixer'
 
     A14 = su.Mixer('A14', ins=(A2-3, A7-2, A9-1, A12-1), outs=streamA.N2O)
-    A14.specification = lambda: add_fugitive_items(A14, 'N2O_item')
+    A14.add_specification(lambda: add_fugitive_items(A14, 'N2O_item'))
     A14.line = 'fugitive N2O mixer'
 
     A15 = su.ComponentSplitter('A15', ins=A7-0,
@@ -189,8 +189,8 @@ def create_systemA(flowsheet=None):
                                      'liq_non_fertilizers'),
                                split_keys=(('NH3', 'NonNH3'), 'P', 'K'))
     # Make sure the same carbon_COD_ratio is used throughout
-    A15.specification = lambda: update_carbon_COD_ratio(sysA)
-    A15.run_after_specification = True
+    A15.add_specification(lambda: update_carbon_COD_ratio(sysA))
+    A15.run_after_specifications = True
 
     ##### Simulation, TEA, and LCA #####
     sysA = System('sysA', path=(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15))
@@ -235,7 +235,7 @@ def create_systemB(flowsheet=None):
                  decay_k_COD=get_decay_k(),
                  decay_k_N=get_decay_k(),
                  max_CH4_emission=max_CH4_emission)
-    B2.specification = lambda: update_toilet_param(B2)
+    B2.add_specification(lambda: update_toilet_param(B2))
 
     ##### Conveyance of Waste #####
     # Liquid waste
@@ -262,7 +262,7 @@ def create_systemB(flowsheet=None):
         B4.fee = get_handcart_and_truck_fee(truck4.load/rho4, ppl_t, False, B2)
         B3._design()
         B4._design()
-    B4.specification = update_B3_B4_param
+    B4.add_specification(update_B3_B4_param)
 
     ##### Treatment #####
     B5 = su.BiogenicRefineryStruvitePrecipitation(
@@ -304,11 +304,11 @@ def create_systemB(flowsheet=None):
     B15-0-B11
 
     B16 = su.Mixer('B16', ins=(B2-4, B7-1, B15-2), outs=streamB.CH4)
-    B16.specification = lambda: add_fugitive_items(B16, 'CH4_item')
+    B16.add_specification(lambda: add_fugitive_items(B16, 'CH4_item'))
     B16.line = 'fugitive CH4 mixer'
 
     B17 = su.Mixer('B17', ins=(B2-5, B7-2, B12-1, B15-1), outs=streamB.N2O)
-    B17.specification = lambda: add_fugitive_items(B17, 'N2O_item')
+    B17.add_specification(lambda: add_fugitive_items(B17, 'N2O_item'))
     B17.line = 'fugitive N2O mixer'
 
     B18 = su.ComponentSplitter('B18', ins=B9-0,
@@ -316,8 +316,8 @@ def create_systemB(flowsheet=None):
                                      'liq_non_fertilizers'),
                                split_keys=(('NH3', 'NonNH3'), 'P', 'K'))
     # Make sure the same carbon_COD_ratio is used throughout
-    B18.specification = lambda: update_carbon_COD_ratio(sysB)
-    B18.run_after_specification = True
+    B18.add_specification(lambda: update_carbon_COD_ratio(sysB))
+    B18.run_after_specifications = True
 
     ##### Simulation, TEA, and LCA #####
     sysB = System('sysB', path=(B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15, B16, B17, B18))
@@ -361,7 +361,7 @@ def create_systemC(flowsheet=None):
                        decay_k_COD=get_decay_k(),
                        decay_k_N=get_decay_k(),
                        max_CH4_emission=max_CH4_emission)
-    C2.specification = lambda: update_toilet_param(C2)
+    C2.add_specification(lambda: update_toilet_param(C2))
 
     ##### Conveyance of Waste #####
     C3 = su.Trucking('C3', ins=C2-0, outs=('transported', 'conveyance_loss'),
@@ -377,7 +377,7 @@ def create_systemC(flowsheet=None):
         vol = truck.load/rho
         C3.fee = get_tanker_truck_fee(vol)
         C3._design()
-    C3.specification = update_C3_param
+    C3.add_specification(update_C3_param)
 
     ##### Treatment #####
 
@@ -420,11 +420,11 @@ def create_systemC(flowsheet=None):
     C12-0-C8
 
     C13 = su.Mixer('C13', ins=(C2-2, C7-1, C12-2), outs=streamC.CH4)
-    C13.specification = lambda: add_fugitive_items(C13, 'CH4_item')
+    C13.add_specification(lambda: add_fugitive_items(C13, 'CH4_item'))
     C13.line = 'fugitive CH4 mixer'
 
     C14 = su.Mixer('C14', ins=(C2-3, C7-2, C9-1, C12-1), outs=streamC.N2O)
-    C14.specification = lambda: add_fugitive_items(C14, 'N2O_item')
+    C14.add_specification(lambda: add_fugitive_items(C14, 'N2O_item'))
     C14.line = 'fugitive N2O mixer'
 
     ##### Simulation, TEA, and LCA #####
@@ -471,7 +471,7 @@ def create_systemD(flowsheet=None):
                         decay_k_N=get_decay_k(),
                         max_CH4_emission=max_CH4_emission
                         )
-    D2.specification = lambda: update_toilet_param(D2)
+    D2.add_specification(lambda: update_toilet_param(D2))
 
     ##### Conveyance of Waste #####
     D3 = su.Trucking('D3', ins=D2-0, outs=('transported', 'conveyance_loss'),
@@ -487,7 +487,7 @@ def create_systemD(flowsheet=None):
         vol = truck.load/rho
         D3.fee = get_tanker_truck_fee(vol)
         D3._design()
-    D3.specification = update_D3_param
+    D3.add_specification(update_D3_param)
 
     D4 = su.Lagoon('D4', ins=D3-0, outs=('anaerobic_treated', 'D4_CH4', 'D4_N2O'),
                     design_type='anaerobic',
@@ -502,11 +502,11 @@ def create_systemD(flowsheet=None):
                       max_CH4_emission=max_CH4_emission)
 
     D6 = su.Mixer('D6', ins=(D2-2, D4-1, D5-2), outs=streamD.CH4)
-    D6.specification = lambda: add_fugitive_items(D5, 'CH4_item')
+    D6.add_specification(lambda: add_fugitive_items(D5, 'CH4_item'))
     D6.line = 'fugitive CH4 mixer'
 
     D7 = su.Mixer('D7', ins=(D2-3, D4-2, D5-3), outs=streamD.N2O)
-    D7.specification = lambda: add_fugitive_items(D6, 'N2O_item')
+    D7.add_specification(lambda: add_fugitive_items(D6, 'N2O_item'))
     D7.line = 'fugitive N2O mixer'
 
     sysD = System('sysD', path=(D1, D2, D3, D4, D5, D6, D7))

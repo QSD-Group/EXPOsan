@@ -114,7 +114,7 @@ def create_systemA(flowsheet=None):
                        decay_k_N=get_decay_k(),
                        max_CH4_emission=max_CH4_emission
                        )
-    A2.specification = lambda: update_toilet_param(A2, get_ppl('exist'))
+    A2.add_specification(lambda: update_toilet_param(A2, get_ppl('exist')))
 
     ##### Conveyance #####
     A3 = su.Trucking('A3', ins=A2-0, outs=('transported', 'conveyance_loss'),
@@ -130,7 +130,7 @@ def create_systemA(flowsheet=None):
         vol = truck.load/rho
         A3.fee = get_tanker_truck_fee(vol)
         A3._design()
-    A3.specification = update_A3_param
+    A3.add_specification(update_A3_param)
 
 
     ##### Treatment #####
@@ -143,8 +143,8 @@ def create_systemA(flowsheet=None):
         A6.t0 = A5.t0 # A5.tau is for the solids
         A7.t0 = A6.t0 + A6.tau/365
         A8.t0 = A5.t0 + A5.tau/365
-    A4.specification = update_A_t0
-    A4.run_after_specification = True
+    A4.add_specification(update_A_t0)
+    A4.run_after_specifications = True
 
     A5 = su.Sedimentation('A5', ins=A4-0,
                           outs=('liq', 'sol', 'A5_CH4', 'A5_N2O'),
@@ -157,7 +157,7 @@ def create_systemA(flowsheet=None):
                    flow_rate=sewer_flow+get_sludge_flow('exist'),
                    decay_k_N=get_decay_k(),
                    max_CH4_emission=max_CH4_emission)
-    A6.specification = lambda: update_lagoon_flow_rate(A6)
+    A6.add_specification(lambda: update_lagoon_flow_rate(A6))
 
     A7 = su.Lagoon('A7', ins=A6-0, outs=('facultative_treated', 'A7_CH4', 'A7_N2O'),
                    design_type='facultative',
@@ -165,7 +165,7 @@ def create_systemA(flowsheet=None):
                    decay_k_N=get_decay_k(),
                    max_CH4_emission=max_CH4_emission,
                    if_N2O_emission=True)
-    A7.specification = lambda: update_lagoon_flow_rate(A7)
+    A7.add_specification(lambda: update_lagoon_flow_rate(A7))
 
     A8 = su.DryingBed('A8', ins=A5-1, outs=('dried_sludge', 'evaporated',
                                             'A8_CH4', 'A8_N2O'),
@@ -179,14 +179,14 @@ def create_systemA(flowsheet=None):
     ##### Reuse or Disposal #####
     A9 = su.CropApplication('A9', ins=A7-0, outs=('liquid_fertilizer', 'reuse_loss'),
                             loss_ratio=app_loss)
-    A9.specification = lambda: adjust_NH3_loss(A9)
+    A9.add_specification(lambda: adjust_NH3_loss(A9))
 
     A10 = su.Mixer('A10', ins=(A2-2, A5-2, A6-1, A7-1, A8-2), outs=streamA.CH4)
-    A10.specification = lambda: add_fugitive_items(A10, 'CH4_item')
+    A10.add_specification(lambda: add_fugitive_items(A10, 'CH4_item'))
     A10.line = 'fugitive CH4 mixer'
 
     A11 = su.Mixer('A11', ins=(A2-3, A5-3, A6-2, A7-2, A8-3), outs=streamA.N2O)
-    A11.specification = lambda: add_fugitive_items(A11, 'N2O_item')
+    A11.add_specification(lambda: add_fugitive_items(A11, 'N2O_item'))
     A11.line = 'fugitive N2O mixer'
 
     A12 = su.ComponentSplitter('A12', ins=A8-0,
@@ -243,7 +243,7 @@ def create_systemB(flowsheet=None):
                        decay_k_COD=get_decay_k(),
                        decay_k_N=get_decay_k(),
                        max_CH4_emission=max_CH4_emission)
-    B2.specification = lambda: update_toilet_param(B2, get_ppl('alt'))
+    B2.add_specification(lambda: update_toilet_param(B2, get_ppl('alt')))
 
     ##### Conveyance #####
     B3 = su.Trucking('B3', ins=B2-0, outs=('transported', 'conveyance_loss'),
@@ -259,7 +259,7 @@ def create_systemB(flowsheet=None):
         vol = truck.load/rho
         B3.fee = get_tanker_truck_fee(vol)
         B3._design()
-    B3.specification = update_B3_param
+    B3.add_specification(update_B3_param)
 
     ##### Treatment #####
     B4 = su.LumpedCost('B4', ins=B3-0, cost_item_name='Lumped WWTP',
@@ -269,8 +269,8 @@ def create_systemB(flowsheet=None):
     def update_B_t0():
         B5.t0 = B2.emptying_period
         B8.t0 = B7.t0 = B5.t0 + B5.tau/365
-    B4.specification = update_B_t0
-    B4.run_after_specification = True
+    B4.add_specification(update_B_t0)
+    B4.run_after_specifications = True
 
     B5 = su.AnaerobicBaffledReactor('B5', ins=B4-0, outs=('ABR_treated', 'raw_biogas',
                                                           'B5_CH4', 'B5_N2O'),
@@ -278,8 +278,8 @@ def create_systemB(flowsheet=None):
                                     max_CH4_emission=max_CH4_emission)
     def update_B5_gravel_density():
         B5.gravel_density = B2.density_dct['Gravel']
-    B5.specification = update_B5_gravel_density
-    B5.run_after_specification = True
+    B5.add_specification(update_B5_gravel_density)
+    B5.run_after_specifications = True
 
     B6 = su.SludgeSeparator('B6', ins=B5-0, outs=('liq', 'sol'))
 
@@ -301,14 +301,14 @@ def create_systemB(flowsheet=None):
     ##### Reuse or Disposal #####
     B9 = su.CropApplication('B9', ins=B7-0, outs=('liquid_fertilizer', 'reuse_loss'),
                             loss_ratio=app_loss)
-    B9.specification = lambda: adjust_NH3_loss(B9)
+    B9.add_specification(lambda: adjust_NH3_loss(B9))
 
     B10 = su.Mixer('B10', ins=(B2-2, B5-2, B7-1, B8-2), outs=streamB.CH4)
-    B10.specification = lambda: add_fugitive_items(B10, 'CH4_item')
+    B10.add_specification(lambda: add_fugitive_items(B10, 'CH4_item'))
     B10.line = 'fugitive CH4 mixer'
 
     B11 = su.Mixer('B11', ins=(B2-3, B5-3, B7-2, B8-3), outs=streamB.N2O)
-    B11.specification = lambda: add_fugitive_items(B11, 'N2O_item')
+    B11.add_specification(lambda: add_fugitive_items(B11, 'N2O_item'))
     B11.line = 'fugitive N2O mixer'
 
     B12 = su.ComponentSplitter('B12', ins=B8-0,
@@ -367,7 +367,7 @@ def create_systemC(flowsheet=None):
                  decay_k_COD=get_decay_k(),
                  decay_k_N=get_decay_k(),
                  max_CH4_emission=max_CH4_emission)
-    C2.specification = lambda: update_toilet_param(C2, get_ppl('exist'))
+    C2.add_specification(lambda: update_toilet_param(C2, get_ppl('exist')))
 
     ##### Conveyance #####
     # Liquid waste
@@ -394,7 +394,7 @@ def create_systemC(flowsheet=None):
         C4.fee = get_handcart_and_truck_fee(truck4.load/rho4, ppl, False, C2)
         C3._design()
         C4._design()
-    C4.specification = update_C3_C4_param
+    C4.add_specification(update_C3_C4_param)
 
     ##### Treatment #####
     C5 = su.LumpedCost('C5', ins=(C3-0, C4-0),
@@ -404,15 +404,15 @@ def create_systemC(flowsheet=None):
     def update_C_t0():
         C8.t0 = C6.t0 = C2.collection_period / 365
         C7.t0 = C6.t0 + C6.tau/365
-    C5.specification = update_C_t0
-    C5.run_after_specification = True
+    C5.add_specification(update_C_t0)
+    C5.run_after_specifications = True
 
     C6 = su.Lagoon('C6', ins=C5-0, outs=('anaerobic_treated', 'C6_CH4', 'C6_N2O'),
                    design_type='anaerobic',
                    flow_rate=sewer_flow+get_sludge_flow('exist'),
                    decay_k_N=get_decay_k(),
                    max_CH4_emission=max_CH4_emission)
-    C6.specification = lambda: update_lagoon_flow_rate(C6)
+    C6.add_specification(lambda: update_lagoon_flow_rate(C6))
 
     C7 = su.Lagoon('C7', ins=C6-0, outs=('facultative_treated', 'C7_CH4', 'C7_N2O'),
                    design_type='facultative',
@@ -420,7 +420,7 @@ def create_systemC(flowsheet=None):
                    decay_k_N=get_decay_k(),
                    max_CH4_emission=max_CH4_emission,
                    if_N2O_emission=True)
-    C7.specification = lambda: update_lagoon_flow_rate(C7)
+    C7.add_specification(lambda: update_lagoon_flow_rate(C7))
 
     C8 = su.DryingBed('C8', ins=C5-1, outs=('dried_sludge', 'evaporated', 'C8_CH4', 'C8_N2O'),
                      design_type='unplanted',
@@ -433,21 +433,21 @@ def create_systemC(flowsheet=None):
     ##### Reuse or Disposal #####
     C9 = su.CropApplication('C9', ins=C7-0, outs=('liq_fertilizer', 'liq_loss'),
                             loss_ratio=app_loss)
-    C9.specification = lambda: adjust_NH3_loss(C9)
+    C9.add_specification(lambda: adjust_NH3_loss(C9))
 
     C10 = su.CropApplication('C10', ins=C8-0, outs=('sol_fertilizer', 'sol_loss'),
                             loss_ratio=app_loss)
     def adjust_C10_loss_ratio():
         C10.loss_ratio.update(C9.loss_ratio)
         adjust_NH3_loss(C10)
-    C10.specification = adjust_C10_loss_ratio
+    C10.add_specification(adjust_C10_loss_ratio)
 
     C11 = su.Mixer('C11', ins=(C2-4, C6-1, C7-1, C8-2), outs=streamC.CH4)
-    C11.specification = lambda: add_fugitive_items(C11, 'CH4_item')
+    C11.add_specification(lambda: add_fugitive_items(C11, 'CH4_item'))
     C11.line = 'fugitive CH4 mixer'
 
     C12 = su.Mixer('C12', ins=(C2-5, C6-2, C7-2, C8-3), outs=streamC.N2O)
-    C12.specification = lambda: add_fugitive_items(C12, 'N2O_item')
+    C12.add_specification(lambda: add_fugitive_items(C12, 'N2O_item'))
     C12.line = 'fugitive N2O mixer'
 
     C13 = su.ComponentSplitter('C13', ins=C10-0,
