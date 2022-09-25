@@ -37,7 +37,7 @@ frac_deg = 0.68
 #                     ('HAc', 'Ac-'), ('HPr', 'Pr-'),
 #                     ('HBu', 'Bu-'), ('HVa', 'Va-'))
 
-#!!! these values should be retrived from the ADM1 object's rate function parameter set
+#!!! these values should be retrieved from the ADM1 object's rate function parameter set
 T_base = 273.15 + 25
 pKa_base = np.array([14, 9.25, 6.35, 4.76, 4.88, 4.82, 4.86])
 Ka_dH = np.array([55900, 51965, 7646, 0, 0, 0, 0])
