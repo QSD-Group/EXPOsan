@@ -684,7 +684,8 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
 
 # System A: Solids removal only
 def create_modelA(country_specific=False, **model_kwargs):
-    sysA = create_system('A')
+    flowsheet = model_kwargs.pop('flowsheet', None)
+    sysA = create_system('A', flowsheet=flowsheet)
     unitA = sysA.flowsheet.unit
 
     # Shared metrics/parameters
@@ -702,7 +703,8 @@ def create_modelA(country_specific=False, **model_kwargs):
 
 # System B: Full Duke system with grid electricity source
 def create_modelB(country_specific=False, **model_kwargs):
-    sysB = create_system('B')
+    flowsheet = model_kwargs.pop('flowsheet', None)
+    sysB = create_system('B', flowsheet=flowsheet)
     unitB = sysB.flowsheet.unit
 
     # Shared parameters
@@ -726,7 +728,8 @@ def create_modelB(country_specific=False, **model_kwargs):
 
 # System C: Full Duke system with solar electricity source
 def create_modelC(country_specific=False, **model_kwargs):
-    sysC = create_system('C')
+    flowsheet = model_kwargs.pop('flowsheet', None)
+    sysC = create_system('C', flowsheet=flowsheet)
     unitC = sysC.flowsheet.unit
 
     # Shared parameters
@@ -750,7 +753,8 @@ def create_modelC(country_specific=False, **model_kwargs):
 
 # System D: Targeted nitrogen removal (created for NSS preliminary analysis)
 def create_modelD(country_specific=False, **model_kwargs):
-    sysD = create_system('D')
+    flowsheet = model_kwargs.pop('flowsheet', None)
+    sysD = create_system('D', flowsheet=flowsheet)
     unitD = sysD.flowsheet.unit
 
     # Shared parameters

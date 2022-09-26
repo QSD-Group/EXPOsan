@@ -820,7 +820,8 @@ def add_pit_latrine_parameters(model, unit_dct):
 # =============================================================================
 
 def create_modelA(country_specific=False, **model_kwargs):
-    sysA = create_system('A')
+    flowsheet = model_kwargs.pop('flowsheet', None)
+    sysA = create_system('A', flowsheet=flowsheet)
     unitA = sysA.flowsheet.unit
 
     # Shared metrics/parameters
@@ -849,7 +850,8 @@ def create_modelA(country_specific=False, **model_kwargs):
 
 
 def create_modelB(country_specific=False, **model_kwargs):
-    sysB = create_system('B')
+    flowsheet = model_kwargs.pop('flowsheet', None)
+    sysB = create_system('B', flowsheet=flowsheet)
     unitB = sysB.flowsheet.unit
 
     # Shared parameters
@@ -931,7 +933,8 @@ def create_modelB(country_specific=False, **model_kwargs):
 
 
 def create_modelC(country_specific=False, **model_kwargs):
-    sysC = create_system('C')
+    flowsheet = model_kwargs.pop('flowsheet', None)
+    sysC = create_system('C', flowsheet=flowsheet)
     unitC = sysC.flowsheet.unit
 
     # Shared parameters
@@ -962,7 +965,8 @@ def create_modelC(country_specific=False, **model_kwargs):
 # The `country_specific` kwarg is just a placeholder to be consistent
 # with other systems, isn't actually being used
 def create_modelD(country_specific=False, **model_kwargs):
-    sysD = create_system('D')
+    flowsheet = model_kwargs.pop('flowsheet', None)
+    sysD = create_system('D', flowsheet=flowsheet)
     unitD = sysD.flowsheet.unit
     modelD = Model(sysD, **model_kwargs)
     add_metrics(modelD)
