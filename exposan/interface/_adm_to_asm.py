@@ -50,18 +50,10 @@ class ADMtoASM(Junction):
     
     :class:`qsdsan.sanunits.ASMtoADM`_    
     '''
-    def __init__(self, ID='', upstream=None, downstream=None,
-                 init_with='WasteStream', F_BM_default=None, isdynamic=False):
-        super().__init__(self, ID=ID, upstream=upstream, downstream=downstream,
-                         init_with=init_with, F_BM_default=F_BM_default,
-                         isdynamic=isdynamic)
-
-    def _compile_AE(self):
-        _state = self._state
-        _dstate = self._dstate
-        _update_state = self._update_state
-        _update_dstate = self._update_dstate
+    def _parse_reactions(self, rxns):
+        raise RuntimeError('Reactions are automatically compiled.')
         
+    def _compile_reactions(self):
         # Retrieve constants
         ins = self.ins[0]
         outs = self.outs[0]
@@ -186,6 +178,15 @@ class ADMtoASM(Junction):
             # return asm_vals*1000
             return asm_vals
         
+        self._reactions = adm2asm
+    
+    def _compile_AE(self):
+        _state = self._state
+        _dstate = self._dstate
+        _update_state = self._update_state
+        _update_dstate = self._update_dstate
+        adm2asm = self.reactions
+               
         def yt(t, QC_ins, dQC_ins):
             # X_BH, X_BA, S_O, S_NO, S_N2 = 0
             
@@ -207,4 +208,5 @@ class ADMtoASM(Junction):
 
             _update_state()
             _update_dstate()
+        
         self._AE = yt

@@ -60,21 +60,11 @@ class ASMtoADM(Junction):
     :class:`qsdsan.sanunits.Junction`_
     
     :class:`qsdsan.sanunits.ADMtoASM`_    
-    '''
-
-    def __init__(self, ID='', upstream=None, downstream=None,
-                 init_with='WasteStream', F_BM_default=None, isdynamic=False):
-        super().__init__(self, ID=ID, upstream=upstream, downstream=downstream,
-                         init_with=init_with, F_BM_default=F_BM_default,
-                         isdynamic=isdynamic)
-        
-
-    def _compile_AE(self):
-        _state = self._state
-        _dstate = self._dstate
-        _update_state = self._update_state
-        _update_dstate = self._update_dstate
-        
+    '''   
+    def _parse_reactions(self, rxns):
+        raise RuntimeError('Reactions are automatically compiled.')
+    
+    def _compile_reactions(self):
         # Retrieve constants
         ins = self.ins[0]
         outs = self.outs[0]
@@ -146,7 +136,6 @@ class ASMtoADM(Junction):
             
             # Step 3: convert slowly biodegradable COD and TKN
             # into proteins, lipids, and carbohydrates
-
             req_xcod = X_ND / X_pr_i_N
             if X_S < req_xcod:
                 X_pr = X_S
@@ -242,6 +231,16 @@ class ASMtoADM(Junction):
             # return adm_vals/1000
             return adm_vals
         
+        self._reactions = asm2adm
+        
+
+    def _compile_AE(self):
+        _state = self._state
+        _dstate = self._dstate
+        _update_state = self._update_state
+        _update_dstate = self._update_dstate
+        asm2adm = self.reactions
+        
         def yt(t, QC_ins, dQC_ins):
             # S_fa, S_va, S_bu, S_pro, S_ac, S_h2, S_ch4, \
             #     X_c, X_su, X_aa, X_fa, X_c4, X_pro, X_ac, X_h2 = 0
@@ -265,4 +264,5 @@ class ASMtoADM(Junction):
 
             _update_state()
             _update_dstate()
+        
         self._AE = yt

@@ -32,12 +32,16 @@ class Junction(SanUnit):
         Influent stream.
     downstream : stream or str
         Effluent stream.
-    reaction : iterable(dict) | callable
+    conversions : iterable(dict) | callable
         Iterable of dict that has the conversion of upstream components to
-        downstream components.
-        Keys of the dict should be the ID or alias of components,
+        downstream components,
+        or a function that will return the concentration of the effluent
+        with influent concentration as the input.
+        
+        If given as an iterable of dict, keys of each of the dict should be 
+        the ID or alias of components,
         values should be the conversion/yield,
-        negative values for reactants and positive values for products.
+        which should be negative for reactants and positive for products.
 
     .. note::
         `ins` and `outs` have all the components,
@@ -49,7 +53,7 @@ class Junction(SanUnit):
 
     def __init__(self, ID='', upstream=None, downstream=None,
                  init_with='WasteStream', F_BM_default=None, isdynamic=False,
-                 *, reactions=None):
+                 reactions=None):
         thermo = downstream.thermo
         SanUnit.__init__(self, ID, upstream, downstream, thermo, init_with,
                          F_BM_default=F_BM_default, isdynamic=isdynamic,
@@ -57,8 +61,7 @@ class Junction(SanUnit):
         self.reactions = reactions
 
 
-    def _parse(self):
-        rxns = self.reactions
+    def _parse_reactions(self, rxns):
         cmps_in = self.ins[0].components
         cmps_outs = self.outs[0].components
 
@@ -98,20 +101,27 @@ class Junction(SanUnit):
             index = np.where(RXsum!=-1)[0][0]
             raise ValueError(f'Conversion for Component "{cmps_in.IDs[index]}" '
                              f'is {abs(RXsum[index])}, not 100%.')
-
-        self.RX = RX
-        self.RY = RY
-
+        self._RX = RX
+        self._RY = RY
+        
+        
+    def _compile_reactions(self):
+        def reactions(X):
+            Yarr = -(self._RX*X).T @ self._RY # _RX: (num_rxns, num_upcmps); _RY: (num_rxns, num_downcmps)
+            Y = Yarr.sum(axis=0) # Y: (num_upcmps, num_downcmps)
+            return Y            
+        self._reactions = reactions
+        
 
     def _run(self):
         ins = self.ins[0]
-        CXsum = ins.conc.reshape(1, len(ins.components))
-        CY = (self.RX*CXsum).T @ self.RY # _RX: (num_rxns, num_upcmps); _RY: (num_rxns, num_downcmps)
-        CYsum = CY.sum(axis=0) # MY: (num_upcmps, num_downcmps)
+        rxns = self.reactions
+        X = ins.conc.reshape(1, len(ins.components))
+        Y = rxns(X)
         outs = self.outs[0]
         outs.set_flow_by_concentration(
-            flow_tot=outs.F_vol,
-            concentrations=dict(zip(outs.components.IDs, CYsum)),
+            flow_tot=ins.F_vol,
+            concentrations=dict(zip(outs.components.IDs, Y)),
             units=('m3/hr', 'mg/L'))
 
 
@@ -158,17 +168,14 @@ class Junction(SanUnit):
         _dstate = self._dstate
         _update_state = self._update_state
         _update_dstate = self._update_dstate
-        _RX = self.RX
-        _RY = self.RY
+        rxns = self.reactions
         def yt(t, QC_ins, dQC_ins):
             for i, j in zip((QC_ins, dQC_ins), (_state, _dstate)):
-                MXsum = i[0][:-1] # shape = (1, num_upcmps)
-                MY = -(_RX*MXsum).T @ _RY # _RX: (num_rxns, num_upcmps); _RY: (num_rxns, num_downcmps)
-                MYsum = MY.sum(axis=0) # MY: (num_upcmps, num_downcmps)
-                Q = MY.sum()
-                j[:-1] = MYsum
+                X = i[0][:-1] # shape = (1, num_upcmps)
+                Y = rxns(X)
+                Q = Y.sum() #!!! this is probably wrong
+                j[:-1] = Y
                 j[-1] = Q
-
             _update_state()
             _update_dstate()
         self._AE = yt
@@ -183,17 +190,17 @@ class Junction(SanUnit):
     @property
     def reactions(self):
         '''
-        [iterable(dict)] Reactions to convert components in the influent
-        to those in the effluents
+        [callable] Function that takes the concentration array of the influent
+        and convert to the concentration array of the effluent.
         '''
-        if not hasattr(self, '_reactions'): return None
+        if not self._reactions: self._compile_reactions()
         return self._reactions
     @reactions.setter
     def reactions(self, i):
-        if i:
-            self._reactions = i
-            self._parse()
-        else: self._reactions = None
+        if callable(i): self._reactions = i
+        else:
+            self._parse_reactions(i)
+            self._compile_reactions()
 
 
 # %%
