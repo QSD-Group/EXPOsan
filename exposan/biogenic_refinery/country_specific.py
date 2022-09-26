@@ -42,7 +42,11 @@ old_price_ratio = copy(br.price_ratio)
 # Create model for country-specific analysis
 # =============================================================================
 
-get_default_uniform = lambda b, ratio: shape.Uniform(lower=b*(1-ratio), upper=b*(1+ratio))
+def get_default_uniform(b, ratio, lb=None, ub=None): # lb/ub for upper/lower bounds
+    lower = max(b*(1-ratio), lb) if lb else b*(1-ratio)
+    upper = min(b*(1+ratio), ub) if ub else b*(1+ratio)
+    return shape.Uniform(lower=lower, upper=upper)
+    
 format_key = lambda key: (' '.join(key.split('_'))).capitalize()
 
 def create_country_specific_model(ID, country, model=None, country_data=None):
@@ -54,23 +58,47 @@ def create_country_specific_model(ID, country, model=None, country_data=None):
     param_dct = {p.name: p for p in model.parameters}
     price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct = update_resource_recovery_settings()
 
-    def get_param_name_b_D(key, ratio):
+    def get_param_name_b_D(key, ratio, lb=None, ub=None):
         name = format_key(key)
         p = param_dct.get(name)
         # Throw out this parameter (so that a new one can be added with updated values)
         # if it's already there
         if p: model.parameters = [i for i in model.parameters if i is not p]
         b = country_data[key]
-        D = get_default_uniform(b, ratio)
+        D = get_default_uniform(b, ratio, lb=lb, ub=ub)
         return name, p, b, D
 
     ##### Constant parameter settings #####
     # Diet and excretion
     excretion_unit = sys.path[0]
-    excretion_unit.p_anim = country_data['p_anim']
-    excretion_unit.p_veg = country_data['p_veg']
-    excretion_unit.e_cal = country_data['e_cal']
-    excretion_unit.waste_ratio = country_data['food_waste_ratio']
+    dietary_D_ratio = 0.1
+    key = 'p_anim'
+    name, p, b, D = get_param_name_b_D(key, dietary_D_ratio)
+    @param(name='p_anim', element=excretion_unit, kind='coupled', units='g/cap/d',
+           baseline=b, distribution=D)
+    def set_animal_protein(i):
+        excretion_unit.p_anim = i
+        
+    key = 'p_veg'
+    name, p, b, D = get_param_name_b_D(key, dietary_D_ratio)
+    @param(name='p_veg', element=excretion_unit, kind='coupled', units='g/cap/d',
+           baseline=b, distribution=D)
+    def set_vegetal_protein(i):
+        excretion_unit.p_veg = i
+        
+    key = 'e_cal'
+    name, p, b, D = get_param_name_b_D(key, dietary_D_ratio)
+    @param(name='e_cal', element=excretion_unit, kind='coupled', units='kcal/cap/d',
+           baseline=b, distribution=D)
+    def set_caloric_intake(i):
+        excretion_unit.e_cal = i
+        
+    key = 'food_waste_ratio'
+    name, p, b, D = get_param_name_b_D(key, dietary_D_ratio, lb=0, ub=1)
+    @param(name='food_waste_ratio', element=excretion_unit, kind='coupled', units='-',
+           baseline=b, distribution=D)
+    def set_food_waste_ratio(i):
+        excretion_unit.waste_ratio = i
 
     # Price ratio
     price_ratio = country_data['price_ratio']
