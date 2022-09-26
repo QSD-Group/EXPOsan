@@ -68,76 +68,68 @@ def create_country_specific_model(ID, country, model=None, country_data=None):
         D = get_default_uniform(b, ratio, lb=lb, ub=ub)
         return name, p, b, D
 
-    ##### Constant parameter settings #####
     # Diet and excretion
     excretion_unit = sys.path[0]
     dietary_D_ratio = 0.1
     key = 'p_anim'
     name, p, b, D = get_param_name_b_D(key, dietary_D_ratio)
-    @param(name='p_anim', element=excretion_unit, kind='coupled', units='g/cap/d',
+    @param(name=name, element=excretion_unit, kind='coupled', units='g/cap/d',
            baseline=b, distribution=D)
     def set_animal_protein(i):
         excretion_unit.p_anim = i
         
     key = 'p_veg'
     name, p, b, D = get_param_name_b_D(key, dietary_D_ratio)
-    @param(name='p_veg', element=excretion_unit, kind='coupled', units='g/cap/d',
+    @param(name=name, element=excretion_unit, kind='coupled', units='g/cap/d',
            baseline=b, distribution=D)
     def set_vegetal_protein(i):
         excretion_unit.p_veg = i
         
     key = 'e_cal'
     name, p, b, D = get_param_name_b_D(key, dietary_D_ratio)
-    @param(name='e_cal', element=excretion_unit, kind='coupled', units='kcal/cap/d',
+    @param(name=name, element=excretion_unit, kind='coupled', units='kcal/cap/d',
            baseline=b, distribution=D)
     def set_caloric_intake(i):
         excretion_unit.e_cal = i
         
     key = 'food_waste_ratio'
     name, p, b, D = get_param_name_b_D(key, dietary_D_ratio, lb=0, ub=1)
-    @param(name='food_waste_ratio', element=excretion_unit, kind='coupled', units='-',
+    @param(name=name, element=excretion_unit, kind='coupled', units='-',
            baseline=b, distribution=D)
     def set_food_waste_ratio(i):
         excretion_unit.waste_ratio = i
 
     # Price ratio
-    price_ratio = country_data['price_ratio']
-    concrete_item = ImpactItem.get_item('Concrete')
-    steel_item = ImpactItem.get_item('Steel')
-
-    price_ref = {
-        'Concrete': concrete_item,
-        'Steel': steel_item,
-        'Polymer': sys_stream.polymer,
-        'Resin': sys_stream.resin,
-        'FilterBag': sys_stream.filter_bag,
-        'MgOH2': sys_stream.MgOH2,
-        'MgCO3': sys_stream.MgCO3,
-        'H2SO4': sys_stream.H2SO4,
-        'biochar': sys_stream.biochar,
+    price_ratio_D_ratio = 0.2
+    key = 'price_ratio'
+    name, p, b, D = get_param_name_b_D(key, price_ratio_D_ratio, lb=0, ub=1)
+    item_ref = {
+        'Concrete': 'Concrete',
+        'Steel': 'Steel',
     }
-    for obj_name, obj in price_ref.items():
-        old_price = price_dct[obj_name]
-        new_price = old_price * price_ratio/old_price_ratio
-        obj.price = new_price
-    br.price_ratio = price_ratio
-    for u in sys.units:
-        if hasattr(u, 'price_ratio'):
-            u.price_ratio = price_ratio
-
-    # Operator daily wage
-    key = 'operator_daily_wage'
-    wage_D_ratio = 0.5
-    name, p, b, D = get_param_name_b_D(key, wage_D_ratio)
-    @param(name=name, element='TEA', kind='cost', units='USD/d',
+    stream_ref = {
+        'Polymer': 'polymer',
+        'Resin': 'resin',
+        'FilterBag': 'filter_bag',
+        'MgOH2': 'MgOH2',
+        'MgCO3': 'MgCO3',
+        'H2SO4': 'H2SO4',
+        'biochar': 'biochar',
+    }
+    @param(name=name, element=excretion_unit, kind='cost', units='-',
            baseline=b, distribution=D)
-    def set_operator_daily_wage(i):
-        sys.TEA.annual_labor = i * 3 * 365
+    def set_price_ratio(i):
+        br.price_ratio = i
+        for obj_name in (*item_ref.keys(), *stream_ref.keys()):
+            old_price = price_dct[obj_name]
+            new_price = old_price * i/old_price_ratio
+            if obj_name in item_ref.keys():
+                ImpactItem.get_item(item_ref[obj_name]).price = new_price
+            else: getattr(sys_stream, stream_ref[obj_name]).price = new_price
+        for u in sys.units:
+            if hasattr(u, 'price_ratio'):
+                u.price_ratio = i
 
-    # Energy price
-    PowerUtility.price = country_data['energy_price']
-
-    ##### Uncertain parameter settings #####
     # Household size
     key = 'household_size'
     name = format_key(key)
@@ -148,6 +140,15 @@ def create_country_specific_model(ID, country, model=None, country_data=None):
             baseline=b, distribution=D)
     def set_household_size(i):
         br.household_size = max(1, i)
+
+    # Operator daily wage
+    key = 'operator_daily_wage'
+    wage_D_ratio = 0.5
+    name, p, b, D = get_param_name_b_D(key, wage_D_ratio)
+    @param(name=name, element='TEA', kind='cost', units='USD/d',
+           baseline=b, distribution=D)
+    def set_operator_daily_wage(i):
+        sys.TEA.annual_labor = i * 3 * 365
 
     # Construction daily wage
     key = 'const_wage'
@@ -206,6 +207,15 @@ def create_country_specific_model(ID, country, model=None, country_data=None):
         for u in sys.units:
             if hasattr(u, 'biomass_controls_wages'):
                 u.biomass_controls_wages = i
+
+    # Energy price
+    energy_price_D_ratio = 0.1
+    key = 'energy_price'
+    name, p, b, D = get_param_name_b_D(key, energy_price_D_ratio)
+    @param(name=name, element='TEA', kind='cost', units='USD/kWh',
+           baseline=b, distribution=D)
+    def set_energy_price(i):
+        PowerUtility.price = i
 
     # Energy GWP
     key = 'energy_GWP'

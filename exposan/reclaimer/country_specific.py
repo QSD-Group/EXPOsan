@@ -67,49 +67,49 @@ def create_country_specific_model(ID, country, country_data=None, model=None):
         D = get_default_uniform(b, ratio, lb=lb, ub=ub)
         return name, p, b, D
 
-    ##### Constant parameter settings #####
     # Diet and excretion
     excretion_unit = sys.path[0]
     dietary_D_ratio = 0.1
     key = 'p_anim'
     name, p, b, D = get_param_name_b_D(key, dietary_D_ratio)
-    @param(name='p_anim', element=excretion_unit, kind='coupled', units='g/cap/d',
+    @param(name=name, element=excretion_unit, kind='coupled', units='g/cap/d',
            baseline=b, distribution=D)
     def set_animal_protein(i):
         excretion_unit.p_anim = i
         
     key = 'p_veg'
     name, p, b, D = get_param_name_b_D(key, dietary_D_ratio)
-    @param(name='p_veg', element=excretion_unit, kind='coupled', units='g/cap/d',
+    @param(name=name, element=excretion_unit, kind='coupled', units='g/cap/d',
            baseline=b, distribution=D)
     def set_vegetal_protein(i):
         excretion_unit.p_veg = i
         
     key = 'e_cal'
     name, p, b, D = get_param_name_b_D(key, dietary_D_ratio)
-    @param(name='e_cal', element=excretion_unit, kind='coupled', units='kcal/cap/d',
+    @param(name=name, element=excretion_unit, kind='coupled', units='kcal/cap/d',
            baseline=b, distribution=D)
     def set_caloric_intake(i):
         excretion_unit.e_cal = i
         
     key = 'food_waste_ratio'
     name, p, b, D = get_param_name_b_D(key, dietary_D_ratio, lb=0, ub=1)
-    @param(name='food_waste_ratio', element=excretion_unit, kind='coupled', units='-',
+    @param(name=name, element=excretion_unit, kind='coupled', units='-',
            baseline=b, distribution=D)
     def set_food_waste_ratio(i):
         excretion_unit.waste_ratio = i
 
     # Price ratio
-    i = country_data['price_ratio']
-    re.price_ratio = i
-    for u in sys.units:
-        if hasattr(u, 'price_ratio'):
-            u.price_ratio = i
+    price_ratio_D_ratio = 0.2
+    key = 'price_ratio'
+    name, p, b, D = get_param_name_b_D(key, price_ratio_D_ratio, lb=0, ub=1)
+    @param(name=name, element=excretion_unit, kind='cost', units='-',
+           baseline=b, distribution=D)
+    def set_price_ratio(i):
+        re.price_ratio = i
+        for u in sys.units:
+            if hasattr(u, 'price_ratio'):
+                u.price_ratio = i
 
-    # Energy price
-    PowerUtility.price = country_data['energy_price']
-
-    ##### Uncertain parameter settings #####
     # Wages
     key = 'wages'
     wage_D_ratio = 0.5
@@ -122,6 +122,15 @@ def create_country_specific_model(ID, country, country_data=None, model=None):
         for u in sys.units:
             if hasattr(u, '_calc_maintenance_labor_cost'):
                 u.wages = i
+
+    # Energy price
+    energy_price_D_ratio = 0.1
+    key = 'energy_price'
+    name, p, b, D = get_param_name_b_D(key, energy_price_D_ratio)
+    @param(name=name, element='TEA', kind='cost', units='USD/kWh',
+           baseline=b, distribution=D)
+    def set_energy_price(i):
+        PowerUtility.price = i
 
     # Energy GWP
     key = 'energy_GWP'
