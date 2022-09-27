@@ -4,6 +4,7 @@
 **/results/*
 **/.DS_Store*
 **/.ipynb_checkpoints
+**/__pycache__
 *.egg-info
 *.prof
 *.pyc
