@@ -268,6 +268,12 @@ def create_systemC(flowsheet=None):
                                  ppl=ppl, baseline_ppl=100,
                                  user_scale_up=None, exponent_scale=0.6,
                                  if_sludge_service=True)
+    # Clear power usage for the solar scenario
+    old_C4_cost = C4._cost
+    def C4_cost_no_power():
+        old_C4_cost()
+        C4.power_utility.empty()
+    C4._cost = C4_cost_no_power
 
     C5 = su.ReclaimerUltrafiltration('C5', ins=(C3-0),
                                      outs=('C5_treated', 'retentate'),
