@@ -8,19 +8,19 @@ Systems included in this module are based on the work described in Trotochaud et
 
 Four system configurations are included in this module.
 
-.. figure:: ./figures/sysA.png
+.. figure:: ./readme_figures/sysA.png
 
     *Scenario A (sysA): solids treatment only*
 
-.. figure:: ./figures/sysB.png
+.. figure:: ./readme_figures/sysB.png
 
     *Scenario B (sysB): full system with grid-tied electricity*
 
-.. figure:: ./figures/sysC.png
+.. figure:: ./readme_figures/sysC.png
 
     *Scenario C (sysC): full system with photovoltaic (solar) electricity*
 
-.. figure:: ./figures/sysD.png
+.. figure:: ./readme_figures/sysD.png
 
     *Scenario D (sysD): target N removal only with grid-tied electricity*
 

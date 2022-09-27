@@ -173,9 +173,6 @@ class ADMtoASM(Junction):
             assert sum(asm_vals*asm_i_COD) == sum(adm_vals*adm_i_COD)
             assert sum(asm_vals*asm_i_N) == sum(adm_vals*adm_i_N)
             
-            # # Aren't all conc in mg/L?
-            # # convert from kg/m3 (ADM) to mg/L(ASM)
-            # return asm_vals*1000
             return asm_vals
         
         self._reactions = adm2asm
@@ -202,7 +199,7 @@ class ADMtoASM(Junction):
             for i, j in zip((QC_ins, dQC_ins), (_state, _dstate)):                             
                 adm_vals = i[0][:-1] # shape = (1, num_upcmps)
                 asm_vals = adm2asm(adm_vals)
-                Q = asm_vals.sum() #!!! what's the unit of Q?
+                Q = asm_vals.sum() #!!! what's the unit of Q? m3/d, should not be the sum and should not change from upstream to downstream
                 j[:-1] = asm_vals
                 j[-1] = Q
 

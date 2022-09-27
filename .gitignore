@@ -50,6 +50,11 @@ docs/build/*
 #*.tar
 #*.zip
  
+# Temporary results
+###################
+**/results/*
+**/figures/*
+
 # Logs and databases #
 ######################
 *.log

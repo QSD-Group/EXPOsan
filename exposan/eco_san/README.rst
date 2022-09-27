@@ -8,15 +8,15 @@ Systems included in this module are based on the `Eco-San <http://www.eco-san.cn
 
 Three system configurations are included in this module.
 
-.. figure:: ./figures/sysA.png
+.. figure:: ./readme_figures/sysA.png
 
     *Scenario A (sysA): anaerobic-aerobic-anoxic-aerobic-electrochemical reactor (ECR)*
 
-.. figure:: ./figures/sysB.png
+.. figure:: ./readme_figures/sysB.png
 
     *Scenario B (sysB): anaerobic-aerobic-aerobic membrane bioreactor (AeMBR)-ECR*
 
-.. figure:: ./figures/sysC.png
+.. figure:: ./readme_figures/sysC.png
 
     *Scenario C (sysC): sysB with struvite precipitation*
 

@@ -25,15 +25,15 @@ Note that minor modifications have been made in the scripts, specifically:
 
 The change in the spreadsheet is denoted by red font with a note, and all changes in the scripts have been noted with `#!!!`, the original value/codes are saved either in the spreadsheet note or as comments.
 
-.. figure:: ./figures/sysA.png
+.. figure:: ./readme_figures/sysA.png
 
     *Scenario A (sysA): pit latrine with existing treatment system*
 
-.. figure:: ./figures/sysB.png
+.. figure:: ./readme_figures/sysB.png
 
     *Scenario B (sysB): pit latrine with anaerobic treatment*
 
-.. figure:: ./figures/sysC.png
+.. figure:: ./readme_figures/sysC.png
 
     *Scenario C (sysC): container-based toilet (urine diverting dry toilet, UDDT) with existing treatment system*
 

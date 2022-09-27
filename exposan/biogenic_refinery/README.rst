@@ -8,19 +8,19 @@ Systems included in this module are based on the work described in Rowles et al.
 
 Four system configurations are included in this module.
 
-.. figure:: ./figures/sysA.png
+.. figure:: ./readme_figures/sysA.png
 
     *Scenario A (sysA): pit latrine with 12,000 users*
 
-.. figure:: ./figures/sysB.png
+.. figure:: ./readme_figures/sysB.png
 
     *Scenario B (sysB): urine-diverting dry toilet (UDDT) with 12,000 users*
 
-.. figure:: ./figures/sysC.png
+.. figure:: ./readme_figures/sysC.png
 
     *Scenario C (sysC): pit latrine with 10,000 users*
 
-.. figure:: ./figures/sysD.png
+.. figure:: ./readme_figures/sysD.png
 
     *Scenario D (sysD): pit latrine with 12,000 users without the biogenic refinery*
 
