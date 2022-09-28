@@ -4,6 +4,8 @@ QSDsan: Quantitative Sustainable Design for sanitation and resource recovery sys
 
 This module is developed by:
     
+    Joy Zhang <joycheung1994@gmail.com>
+    
     Yalin Li <mailto.yalin.li@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -705,7 +707,7 @@ class ASMtoADM(ADMjunction):
                 X_ch, X_pr, X_li, 
                 0, 0, 0, 0, 0, 0, 0, # X_su, X_aa, X_fa, X_c4, X_pro, X_ac, X_h2,
                 X_I, S_cat, S_an, H2O])
-                      
+            
             assert sum(asm_vals*asm_i_COD) == sum(adm_vals*adm_i_COD), 'COD not balanced.'
             assert sum(asm_vals*asm_i_N) - sum(asm_vals[asm_N_gas_indices]) \
                 == sum(adm_vals*adm_i_N), 'N not balanced.'
