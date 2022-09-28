@@ -51,14 +51,19 @@ class Junction(SanUnit):
     '''
     _graphics = BSTjunction._graphics
 
-    def __init__(self, ID='', upstream=None, downstream=None,
+    def __init__(self, ID='', upstream=None, downstream=(), thermo=None,
                  init_with='WasteStream', F_BM_default=None, isdynamic=False,
                  reactions=None):
-        thermo = downstream.thermo
-        SanUnit.__init__(self, ID, upstream, downstream, thermo, init_with,
+        thermo = downstream.thermo if downstream else thermo
+        SanUnit.__init__(self, ID, ins=upstream, outs=downstream, thermo=thermo,
+                         init_with=init_with,
                          F_BM_default=F_BM_default, isdynamic=isdynamic,
                          skip_property_package_check=True)
-        self.reactions = reactions
+        if reactions: self.reactions = reactions
+
+    def _no_parse_reactions(self, rxns):
+        if rxns is None: return
+        raise RuntimeError('Reactions are automatically compiled.')
 
 
     def _parse_reactions(self, rxns):
@@ -173,9 +178,8 @@ class Junction(SanUnit):
             for i, j in zip((QC_ins, dQC_ins), (_state, _dstate)):
                 X = i[0][:-1] # shape = (1, num_upcmps)
                 Y = rxns(X)
-                Q = Y.sum() #!!! this is probably wrong
                 j[:-1] = Y
-                j[-1] = Q
+                j[-1] = i[0][-1] # volumetric flow of outs should equal that of ins
             _update_state()
             _update_dstate()
         self._AE = yt

@@ -14,35 +14,28 @@ for license details.
 '''
 
 import numpy as np, qsdsan as qs
-from . import Junction
-from qsdsan import Process, System
-from qsdsan.sanunits import DynamicInfluent
+from qsdsan import System
+from exposan.bsm1 import bsm1 as bsm1_sys, A1, RE as RWW, WAS
+from exposan.interface._junction import Junction
+from exposan.interface._adm_to_asm import ADMtoASM 
+from exposan.interface._asm_to_adm import ASMtoADM
 
-
-cmps_asm1 = qs.processes.create_asm1_cmps()
-thermo_asm1 = qs.get_thermo()
-s1 = qs.WasteStream('s1')
-for ID in cmps_asm1.IDs: s1.imass[ID] = 1
-
-
+thermo_asm1 = qs.get_thermo() # ASM1 components loaded by the bsm1 module
 cmps_adm1 = qs.processes.create_adm1_cmps()
-s2 = qs.WasteStream('s2')
-for ID in cmps_adm1.IDs: s2.imass[ID] = 2
+thermo_adm1 = qs.get_thermo()
+J1 = ASMtoADM('J1', upstream=WAS, thermo=thermo_adm1) # WAS is C1.outs[2]
+AD1 = qs.sanunits.AnaerobicCSTR('AD1', ins=J1.outs[0], outs=('biogas', 'ad_eff'))
+J2 = ADMtoASM('J2', upstream=AD1-1, downstream='', thermo=thermo_asm1)
+
+qs.set_thermo(thermo_asm1)
+
+RWW.disconnect_sink() # disconnect from A1
+M1 = qs.sanunits.Mixer('M1', ins=[RWW, J2.outs[0]], isdynamic=True)
+A1.ins[1] = M1.outs[0]
+sys = System(path=(*bsm1_sys.units, J1, AD1, J2, M1))
 
 
-reactions = []
-for n, ID in enumerate(cmps_asm1.IDs):
-    if n < 13:
-        rxn = {ID: -1,
-               cmps_adm1.IDs[2*n]: 0.5,
-               cmps_adm1.IDs[2*n+1]: 0.5,
-               }
-        reactions.append(rxn)
-reactions.append({'S_N2': -1})
-
-
-
-DI = DynamicInfluent('DI', thermo=thermo_asm1)
+# %%
 
 J1 = Junction('J1', upstream=DI.outs[0], downstream=s2, reactions=reactions, isdynamic=True)
 
@@ -60,32 +53,7 @@ sys.simulate(
 #              ref_component='X_BH',
 #              conserved_for=('COD', 'N', 'P', 'mass'))
 
-p1 = Process('biomass_convert', 
-              reaction='X_BH + [?]X_ND -> X_pr + [0.32]X_I',
-              ref_component='X_BH',
-              conserved_for=('N',))
-
-
-# %%
-
-# # Probably shouldn't use reactions at all,
-# # should directly use the array
-
-# from thermosteam.reaction import Reaction as Rxn, ParallelReaction as PRxn
-# cmps_compiled = qs.Components((*cmps_asm1, *cmps_adm1))
-# cmps_compiled.compile()
-# qs.set_thermo(cmps_compiled)
-
-# lst = []
-# for n, ID in enumerate(cmps_asm.IDs):
-#     if n < 13:
-#         lst.append(Rxn(
-#             {
-#                 ID: -1,
-#                 cmps_adm1.IDs[2*n]: 0.5,
-#                 cmps_adm1.IDs[2*n+1]: 0.5,
-#             },
-#             reactant=ID,
-#             X=1,
-#             ))
-# asm2adm1 = PRxn(lst)
+# p1 = Process('biomass_convert', 
+#               reaction='X_BH + [?]X_ND -> X_pr + [0.32]X_I',
+#               ref_component='X_BH',
+#               conserved_for=('N',))

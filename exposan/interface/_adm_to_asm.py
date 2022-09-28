@@ -14,7 +14,7 @@ for license details.
 '''
 
 import numpy as np
-from . import Junction
+from ._junction import Junction
 from ._asm_to_adm import calc_pKa #!!! will it be different for asm/adm modules?
 
 __all__ = ('ADMtoASM',)
@@ -50,8 +50,7 @@ class ADMtoASM(Junction):
     
     :class:`qsdsan.sanunits.ASMtoADM`_    
     '''
-    def _parse_reactions(self, rxns):
-        raise RuntimeError('Reactions are automatically compiled.')
+    _parse_reactions = Junction._no_parse_reactions
         
     def _compile_reactions(self):
         # Retrieve constants
@@ -199,9 +198,8 @@ class ADMtoASM(Junction):
             for i, j in zip((QC_ins, dQC_ins), (_state, _dstate)):                             
                 adm_vals = i[0][:-1] # shape = (1, num_upcmps)
                 asm_vals = adm2asm(adm_vals)
-                Q = asm_vals.sum() #!!! what's the unit of Q? m3/d, should not be the sum and should not change from upstream to downstream
                 j[:-1] = asm_vals
-                j[-1] = Q
+                j[-1] = i[0][-1] # volumetric flow of outs should equal that of ins
 
             _update_state()
             _update_dstate()

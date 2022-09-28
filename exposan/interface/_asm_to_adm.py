@@ -16,7 +16,7 @@ for license details.
 import numpy as np
 from warnings import warn
 from qsdsan import processes as pc
-from . import Junction
+from ._junction import Junction
 
 __all__ = ('ASMtoADM',)
 
@@ -24,12 +24,11 @@ li_ch_split_XS = [0.7, 0.3]
 li_ch_split_bio = [0.4, 0.6]
 frac_deg = 0.68
 
+#!!! these values should be retrived from the ADM1 object's rate function parameter set
+T_base = 273.15 + 25
 # _acid_base_pairs = (('H+', 'OH-'), ('NH4+', 'NH3'), ('CO2', 'HCO3-'),
 #                     ('HAc', 'Ac-'), ('HPr', 'Pr-'),
 #                     ('HBu', 'Bu-'), ('HVa', 'Va-'))
-
-#!!! these values should be retrived from the ADM1 object's rate function parameter set
-T_base = 273.15 + 25
 pKa_base = np.array([14, 9.25, 6.35, 4.76, 4.88, 4.82, 4.86])
 Ka_dH = np.array([55900, 51965, 7646, 0, 0, 0, 0])
 
@@ -60,9 +59,8 @@ class ASMtoADM(Junction):
     :class:`qsdsan.sanunits.Junction`_
     
     :class:`qsdsan.sanunits.ADMtoASM`_    
-    '''   
-    def _parse_reactions(self, rxns):
-        raise RuntimeError('Reactions are automatically compiled.')
+    '''  
+    _parse_reactions = Junction._no_parse_reactions
     
     def _compile_reactions(self):
         # Retrieve constants
@@ -225,10 +223,7 @@ class ASMtoADM(Junction):
             assert sum(asm_vals*asm_i_COD) == sum(adm_vals*adm_i_COD), 'COD not balanced.'
             assert sum(asm_vals*asm_i_N) - sum(asm_vals[asm_N_gas_indices]) \
                 == sum(adm_vals*adm_i_N), 'N not balanced.'
-            
-            # # Aren't all conc in mg/L?
-            # # unit conversion from mg/L (ASM) to kg/m3 (ADM)
-            # return adm_vals/1000
+
             return adm_vals
         
         self._reactions = asm2adm
@@ -258,9 +253,8 @@ class ASMtoADM(Junction):
             for i, j in zip((QC_ins, dQC_ins), (_state, _dstate)):                             
                 asm_vals = i[0][:-1] # shape = (1, num_upcmps)
                 adm_vals = asm2adm(asm_vals)
-                Q = adm_vals.sum() #!!! what's the unit of Q?
                 j[:-1] = adm_vals
-                j[-1] = Q
+                j[-1] = i[0][-1] # volumetric flow of outs should equal that of ins
 
             _update_state()
             _update_dstate()
