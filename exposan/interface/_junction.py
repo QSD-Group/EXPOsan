@@ -60,6 +60,7 @@ class Junction(SanUnit):
                          F_BM_default=F_BM_default, isdynamic=isdynamic,
                          skip_property_package_check=True)
         if reactions: self.reactions = reactions
+        else: self.reactions = None
 
     def _no_parse_reactions(self, rxns):
         if rxns is None: return
@@ -112,16 +113,17 @@ class Junction(SanUnit):
         
     def _compile_reactions(self):
         def reactions(X):
+            X.reshape(1, len(X))
             Yarr = -(self._RX*X).T @ self._RY # _RX: (num_rxns, num_upcmps); _RY: (num_rxns, num_downcmps)
-            Y = Yarr.sum(axis=0) # Y: (num_upcmps, num_downcmps)
-            return Y            
+            Y = Yarr.sum(axis=0) # Yarr: (num_upcmps, num_downcmps)
+            return Y.reshape(Y.shape[1],)
         self._reactions = reactions
         
 
     def _run(self):
         ins = self.ins[0]
         rxns = self.reactions
-        X = ins.conc.reshape(1, len(ins.components))
+        X = ins.conc.value
         Y = rxns(X)
         outs = self.outs[0]
         outs.set_flow_by_concentration(

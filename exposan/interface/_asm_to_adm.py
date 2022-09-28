@@ -24,7 +24,7 @@ li_ch_split_XS = [0.7, 0.3]
 li_ch_split_bio = [0.4, 0.6]
 frac_deg = 0.68
 
-#!!! these values should be retrived from the ADM1 object's rate function parameter set
+#!!! these values should be retrieved from the ADM1 object's rate function parameter set
 T_base = 273.15 + 25
 # _acid_base_pairs = (('H+', 'OH-'), ('NH4+', 'NH3'), ('CO2', 'HCO3-'),
 #                     ('HAc', 'Ac-'), ('HPr', 'Pr-'),
@@ -117,7 +117,7 @@ class ASMtoADM(Junction):
                 if X_BH < 0:
                     X_BA += X_BH
                     X_BH = 0
-                S_O, S_NO = 0
+                S_O = S_NO = 0
             
             # Step 2: convert any readily biodegradable 
             # COD and TKN into amino acids and sugars
@@ -163,7 +163,7 @@ class ASMtoADM(Junction):
                 X_li += ((X_BH+X_BA) * frac_deg - bio2pr) * li_ch_split_bio[0]
                 X_ch += ((X_BH+X_BA) * frac_deg - bio2pr) * li_ch_split_bio[1]
                 X_ND = 0
-            X_BH, X_BA = 0
+            X_BH = X_BA = 0
             
             # Step 5: map particulate inerts
             if X_P_i_N * X_P + asm_X_I_i_N * X_I + X_ND < (X_P+X_I) * adm_X_I_i_N:
@@ -182,20 +182,20 @@ class ASMtoADM(Junction):
                 S_ND = 0
             elif req_sn <= S_ND + X_ND + S_NH:
                 S_NH -= (req_sn - S_ND - X_ND)
-                S_ND, X_ND = 0
+                S_ND = X_ND = 0
             else:
                 warn('Additional soluble inert COD is mapped to S_su.')
                 SI_cod = (S_ND + X_ND + S_NH)/S_I_i_N
                 S_su += S_I - SI_cod
                 S_I = SI_cod
-                S_ND, X_ND, S_NH = 0
+                S_ND = X_ND = S_NH = 0
                 
             # Step 6: maps any remaining nitrogen
             S_IN = S_ND + X_ND + S_NH
             
             # Step 7: charge balance
             asm_charge_tot = _snh/14 - _sno/14 - _salk/12
-            pKw, pKa_IN, pKa_IC = calc_pKa()[:2]
+            pKw, pKa_IN, pKa_IC = calc_pKa()[:2] #!!! we should be able to do this outside of the integration, right?
             alpha_IN = 10**(pKa_IN-pH)/(1+10**(pKa_IN-pH))/14 # charge per g N
             alpha_IC = -1/(1+10**(pKa_IC-pH))/12 # charge per g C
             #!!! charge balance should technically include VFAs, 
@@ -249,8 +249,8 @@ class ASMtoADM(Junction):
             #     X_ch, X_pr, X_li, 
             #     0, 0, 0, 0, 0, 0, 0, # X_su, X_aa, X_fa, X_c4, X_pro, X_ac, X_h2,
             #     X_I, S_cat, S_an, H2O])
-            
-            for i, j in zip((QC_ins, dQC_ins), (_state, _dstate)):                             
+
+            for i, j in zip((QC_ins, dQC_ins), (_state, _dstate)):               
                 asm_vals = i[0][:-1] # shape = (1, num_upcmps)
                 adm_vals = asm2adm(asm_vals)
                 j[:-1] = adm_vals
