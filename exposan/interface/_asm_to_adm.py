@@ -20,6 +20,7 @@ from ._junction import Junction
 
 __all__ = ('ASMtoADM',)
 
+# user defined ones
 li_ch_split_XS = [0.7, 0.3]
 li_ch_split_bio = [0.4, 0.6]
 frac_deg = 0.68
@@ -30,7 +31,9 @@ T_base = 273.15 + 25
 #                     ('HAc', 'Ac-'), ('HPr', 'Pr-'),
 #                     ('HBu', 'Bu-'), ('HVa', 'Va-'))
 pKa_base = np.array([14, 9.25, 6.35, 4.76, 4.88, 4.82, 4.86])
-Ka_dH = np.array([55900, 51965, 7646, 0, 0, 0, 0])
+Ka_dH = np.array([55900, 51965, 7646, 0, 0, 0, 0]) # constant
+adm = None
+adm.rate_function
 
 def calc_pKa(T):
     return pKa_base - np.log10(np.exp(pc.T_correction_factor(T_base, T, Ka_dH)))
@@ -66,7 +69,6 @@ class ASMtoADM(Junction):
         # Retrieve constants
         ins = self.ins[0]
         outs = self.outs[0]
-        pH = ins.pH
         
         cmps_asm = ins.components
         S_NO_i_COD = cmps_asm.S_NO.i_COD
@@ -85,6 +87,11 @@ class ASMtoADM(Junction):
         adm_X_I_i_N = cmps_adm.X_I.i_N
         adm_i_COD = cmps_adm.i_COD
         adm_i_N = cmps_adm.i_N
+        
+        pKw, pKa_IN, pKa_IC = self.pKas[:2]
+        pH = self.pH
+        alpha_IN = 10**(pKa_IN-pH)/(1+10**(pKa_IN-pH))/14 # charge per g N
+        alpha_IC = -1/(1+10**(pKa_IC-pH))/12 # charge per g C
         
         def asm2adm(asm_vals):
             S_I, S_S, X_I, X_S, X_BH, X_BA, X_P, S_O, S_NO, S_NH, S_ND, X_ND, S_ALK, S_N2, H2O = asm_vals
@@ -190,14 +197,11 @@ class ASMtoADM(Junction):
                 S_I = SI_cod
                 S_ND = X_ND = S_NH = 0
                 
-            # Step 6: maps any remaining nitrogen
+            # Step 6: map any remaining nitrogen
             S_IN = S_ND + X_ND + S_NH
             
             # Step 7: charge balance
             asm_charge_tot = _snh/14 - _sno/14 - _salk/12
-            pKw, pKa_IN, pKa_IC = calc_pKa()[:2] #!!! we should be able to do this outside of the integration, right?
-            alpha_IN = 10**(pKa_IN-pH)/(1+10**(pKa_IN-pH))/14 # charge per g N
-            alpha_IC = -1/(1+10**(pKa_IC-pH))/12 # charge per g C
             #!!! charge balance should technically include VFAs, 
             # but VFAs concentrations are assumed zero per previous steps??
             S_IC = (asm_charge_tot -  S_IN*alpha_IN)/alpha_IC
@@ -259,4 +263,14 @@ class ASMtoADM(Junction):
             _update_state()
             _update_dstate()
         
-        self._AE = yt
+        self._AE = yt        
+    
+
+    @property
+    def pKas(self):
+        '''
+        [numpy.array] pKa of the following acid-base pairs:
+        ('H+', 'OH-'), ('NH4+', 'NH3'), ('CO2', 'HCO3-'),
+        ('HAc', 'Ac-'), ('HPr', 'Pr-'), ('HBu', 'Bu-'), ('HVa', 'Va-')
+        '''
+        return pKa_base - np.log10(np.exp(pc.T_correction_factor(T_base, self.T, Ka_dH)))

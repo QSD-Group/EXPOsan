@@ -21,9 +21,8 @@ class Junction(SanUnit):
     '''
     A non-reactive class that serves to convert a stream with one set of components
     and into another.
-
-    (i.e., all the outs at the same as the ins) unit that
-    is used in dynamic simulation to record the unit/stream states.
+    
+    Thermal conditions of the downstream (T, P) will be copied from those of the upstream.
 
 
     Parameters
@@ -126,6 +125,7 @@ class Junction(SanUnit):
         X = ins.conc.value
         Y = rxns(X)
         outs = self.outs[0]
+        outs.thermal_condition.copy(ins.thermal_condition)
         outs.set_flow_by_concentration(
             flow_tot=ins.F_vol,
             concentrations=dict(zip(outs.components.IDs, Y)),
@@ -186,7 +186,20 @@ class Junction(SanUnit):
             _update_dstate()
         self._AE = yt
 
-        
+    
+    @property
+    def T(self):
+        '''[float] Temperature of the upstream/downstream [K].'''
+        return self.ins[0].T
+    @T.setter
+    def T(self, T):
+        self.ins[0].T = self.outs[0].T = T
+    
+    @property
+    def pH(self):
+        '''[float] pH of the upstream/downstream.'''
+        return self.ins[0].pH
+    
     @property
     def AE(self):
         if self._AE is None:
