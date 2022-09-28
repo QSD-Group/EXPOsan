@@ -8,7 +8,7 @@ Systems included in this module are based on Scenarios A-C as described in Trimm
 
 Results generated from this module have been benchmarked against Trimmer et al. [1]_ and you can find the result comparison in the ``comparison`` folder. The folder ``data`` contains data needed to run the module, and ``figures`` and ``results`` contain the archived figures and results generated for Li and Zhang et al. [2]_ 
 
-To reproduce the results and figures included in Li and Zhang et al. [2]_, directly run ``systems.py``/``analyses.py`` (before running ``analyses.py``, you'll want to adjust the number of simulations, and you'll need to run from scratch the first time you run to generate the data). You'll need the package `adjustText <https://github.com/Phlya/adjustText>`_ in addition to ``EXPOsan``'s requirements.
+To reproduce the results and figures included in Li and Zhang et al. [2]_ (archived in a separate `repository <https://github.com/QSD-Group/Publication-Archives/tree/main/Li_and_Zhang_et_al_2022>`_), directly run ``systems.py``/``analyses.py`` (before running ``analyses.py``, you'll want to adjust the number of simulations, and you'll need to run from scratch the first time you run to generate the data). You'll need the package `adjustText <https://github.com/Phlya/adjustText>`_ in addition to ``EXPOsan``'s requirements.
 
 You can find a full list of the packages in the environment used to generate the results in `qsdsan.yml <https://github.com/QSD-Group/EXPOsan/blob/main/exposan/bwaise/qsdsan.yml>`_. Note that the environment was in macOS, other OS users can consult it for the versions of the dependency packages and install them accordingly.
 
