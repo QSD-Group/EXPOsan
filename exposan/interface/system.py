@@ -18,6 +18,10 @@ from qsdsan import System
 from exposan.bsm1 import bsm1 as bsm1_sys, A1, C1, RE as RWW, WAS
 from exposan.interface._junction import ADMtoASM, ASMtoADM
 
+# =============================================================================
+# Run the Junction classes
+# =============================================================================
+
 thermo_asm1 = qs.get_thermo() # ASM1 components loaded by the bsm1 module
 
 # Subsequent units should be using ADM1 components
@@ -42,12 +46,18 @@ sys.simulate(
     )
 
 
-# p1 = Process('biomass_convert', 
-#              reaction='X_BH + X_ND -> [?]X_pr + [?]X_li + [?]X_ch + [?]X_I',
-#              ref_component='X_BH',
-#              conserved_for=('COD', 'N', 'P', 'mass'))
+# %%
 
-# p1 = Process('biomass_convert', 
-#               reaction='X_BH + [?]X_ND -> X_pr + [0.32]X_I',
-#               ref_component='X_BH',
-#               conserved_for=('N',))
+# =============================================================================
+# Use the functions in the `test_interface` module
+# =============================================================================
+
+import numpy as np
+from exposan.interface.test_interface import asm2adm
+
+asm_vals = np.array(
+    [29.999999992316447, 69.49999998219967, 51.19999998688672, 202.31999994818125,
+     28.16999999278511, 0.0, 0.0, 0.0, 0.0, 31.559999991916882, 6.949999998219941,
+     10.589999997287704, 83.99999997848548, 0.0, 998542.1330570019])
+
+adm_vals = asm2adm(asm_vals, T=293.15, pH=7)

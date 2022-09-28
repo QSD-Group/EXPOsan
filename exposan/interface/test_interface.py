@@ -24,10 +24,10 @@ cmps_adm = pc.create_adm1_cmps(False)
 #              ref_component='X_BH',
 #              conserved_for=('COD', 'N', 'P', 'mass'))
 
-p1 = Process('biomass_convert', 
-              reaction='X_BH + [?]X_ND -> X_pr + [0.32]X_I',
-              ref_component='X_BH',
-              conserved_for=('N',))
+# p1 = Process('biomass_convert', 
+#               reaction='X_BH + [?]X_ND -> X_pr + [0.32]X_I',
+#               ref_component='X_BH',
+#               conserved_for=('N',))
 
 li_ch_split_XS = [0.7, 0.3]
 li_ch_split_bio = [0.4, 0.6]
@@ -54,7 +54,7 @@ def asm2adm(asm_vals, T, pH):
     S_I, S_S, X_I, X_S, X_BH, X_BA, X_P, S_O, S_NO, S_NH, S_ND, X_ND, S_ALK, S_N2, H2O = asm_vals
     
     S_fa, S_va, S_bu, S_pro, S_ac, S_h2, S_ch4, \
-        X_c, X_su, X_aa, X_fa, X_c4, X_pro, X_ac, X_h2 = 0
+        X_c, X_su, X_aa, X_fa, X_c4, X_pro, X_ac, X_h2 = [0]*15
     
     # Step 0: charged component snapshot
     _sno = S_NO
@@ -84,7 +84,7 @@ def asm2adm(asm_vals, T, pH):
         if X_BH < 0:
             X_BA += X_BH
             X_BH = 0
-        S_O, S_NO = 0
+        S_O = S_NO = 0
     
     # Step 2: convert any readily biodegradable 
     # COD and TKN into amino acids and sugars
@@ -130,7 +130,7 @@ def asm2adm(asm_vals, T, pH):
         X_li += ((X_BH+X_BA) * frac_deg - bio2pr) * li_ch_split_bio[0]
         X_ch += ((X_BH+X_BA) * frac_deg - bio2pr) * li_ch_split_bio[1]
         X_ND = 0
-    X_BH, X_BA = 0
+    X_BH = X_BA = 0
     
     # Step 5: map particulate inerts
     if cmps_asm.X_P.i_N * X_P + cmps_asm.X_I.i_N * X_I + X_ND < (X_P+X_I) * cmps_adm.X_I.i_N:
@@ -148,7 +148,7 @@ def asm2adm(asm_vals, T, pH):
         S_ND = 0
     elif req_sn <= S_ND + X_ND + S_NH:
         S_NH -= (req_sn - S_ND - X_ND)
-        S_ND, X_ND = 0
+        S_ND = X_ND = 0
     else:
         warn('Additional soluble inert COD is mapped to S_su.')
         SI_cod = (S_ND + X_ND + S_NH)/cmps_adm.S_I.i_N
@@ -161,7 +161,7 @@ def asm2adm(asm_vals, T, pH):
     
     # Step 7: charge balance
     asm_charge_tot = _snh/14 - _sno/14 - _salk/12
-    pKw, pKa_IN, pKa_IC = calc_pKa(T)[:2]
+    pKw, pKa_IN, pKa_IC = calc_pKa(T)[:3]
     alpha_IN = 10**(pKa_IN-pH)/(1+10**(pKa_IN-pH))/14 # charge per g N
     alpha_IC = -1/(1+10**(pKa_IC-pH))/12 # charge per g C
     #!!! charge balance should technically include VFAs, 
@@ -180,10 +180,24 @@ def asm2adm(asm_vals, T, pH):
                         S_h2, S_ch4, S_IC, S_IN, S_I, X_c, X_ch, 
                         X_pr, X_li, X_su, X_aa, X_fa, X_c4, X_pro, 
                         X_ac, X_h2, X_I, S_cat, S_an, H2O])
-    
-    assert sum(asm_vals*cmps_asm.i_COD) == sum(adm_vals*cmps_adm.i_COD)
-    assert sum(asm_vals*cmps_asm.i_N) - sum(asm_vals[cmps_asm.indices(('S_NO', 'S_N2'))]) \
-        == sum(adm_vals*cmps_adm.i_N)
+
+    lhs = sum(asm_vals*cmps_asm.i_COD)
+    rhs = sum(adm_vals*cmps_adm.i_COD)
+    if lhs != rhs:
+        raise RuntimeError('COD not balanced, '
+                           f'influent (ASM) COD is {lhs}, '
+                           f'effluent (ADM) COD is {rhs}.')
+        
+    lhs = sum(asm_vals*cmps_asm.i_N) - sum(asm_vals[cmps_asm.indices(('S_NO', 'S_N2'))])
+    rhs = sum(adm_vals*cmps_adm.i_N)
+    if lhs != rhs:
+        raise RuntimeError('M not balanced, '
+                           f'influent aqueous (ASM) N is {lhs}, '
+                           f'effluent aqueous (ADM) N is {rhs}.')
+
+    # assert sum(asm_vals*cmps_asm.i_COD) == sum(adm_vals*cmps_adm.i_COD)
+    # assert sum(asm_vals*cmps_asm.i_N) - sum(asm_vals[cmps_asm.indices(('S_NO', 'S_N2'))]) \
+    #     == sum(adm_vals*cmps_adm.i_N)
     
     # unit conversion from mg/L (ASM) to kg/m3 (ADM)
     return adm_vals/1000
@@ -195,7 +209,7 @@ def adm2asm(adm_vals, T, pH):
         X_c, X_ch, X_pr, X_li, X_su, X_aa, X_fa, X_c4, X_pro, X_ac, X_h2, X_I, \
         S_cat, S_an, H2O = adm_vals
     
-    X_BH, X_BA, S_O, S_NO, S_N2 = 0
+    X_BH, X_BA, S_O, S_NO, S_N2 = [0]*5
     
     # Step 0: snapshot of charged components
     _ions = np.array([S_IN, S_IC, S_ac, S_pro, S_bu, S_va])

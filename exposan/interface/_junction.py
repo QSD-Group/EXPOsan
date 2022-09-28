@@ -573,7 +573,7 @@ class ASMtoADM(ADMjunction):
         alpha_IN = self.alpha_IN
         alpha_IC = self.alpha_IC
         proton_charge = 10**(-self.pKa[0]+self.pH) - 10**(-self.pH) # self.pKa[0] is pKw
-        
+
         def asm2adm(asm_vals):
             S_I, S_S, X_I, X_S, X_BH, X_BA, X_P, S_O, S_NO, S_NH, S_ND, X_ND, S_ALK, S_N2, H2O = asm_vals
             
@@ -708,9 +708,19 @@ class ASMtoADM(ADMjunction):
                 0, 0, 0, 0, 0, 0, 0, # X_su, X_aa, X_fa, X_c4, X_pro, X_ac, X_h2,
                 X_I, S_cat, S_an, H2O])
             
-            assert sum(asm_vals*asm_i_COD) == sum(adm_vals*adm_i_COD), 'COD not balanced.'
-            assert sum(asm_vals*asm_i_N) - sum(asm_vals[asm_N_gas_indices]) \
-                == sum(adm_vals*adm_i_N), 'N not balanced.'
+            lhs = sum(asm_vals*asm_i_COD)
+            rhs = sum(adm_vals*adm_i_COD)
+            if lhs != rhs:
+                raise RuntimeError('COD not balanced, '
+                                   f'influent (ASM) COD is {lhs}, '
+                                   f'effluent (ADM) COD is {rhs}.')
+                
+            lhs = sum(asm_vals*asm_i_N) - sum(asm_vals[asm_N_gas_indices])
+            rhs = sum(adm_vals*adm_i_N)
+            if lhs != rhs:
+                raise RuntimeError('M not balanced, '
+                                   f'influent aqueous (ASM) N is {lhs}, '
+                                   f'effluent aqueous (ADM) N is {rhs}.')
 
             return adm_vals
         
