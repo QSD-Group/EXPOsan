@@ -16,8 +16,7 @@ for license details.
 import numpy as np, qsdsan as qs
 from qsdsan import System
 from exposan.bsm1 import bsm1 as bsm1_sys, A1, C1, RE as RWW, WAS
-from exposan.interface._adm_to_asm import ADMtoASM 
-from exposan.interface._asm_to_adm import ASMtoADM
+from exposan.interface._junction import ADMtoASM, ASMtoADM
 
 thermo_asm1 = qs.get_thermo() # ASM1 components loaded by the bsm1 module
 
