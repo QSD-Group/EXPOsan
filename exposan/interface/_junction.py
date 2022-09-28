@@ -272,7 +272,7 @@ class ADMjunction(Junction):
             pc.create_adm1_cmps()
             self._adm1_model = pc.ADM1()
             qs.set_thermo(current_thermo)
-            return self._adm1_model
+        return self._adm1_model
     @adm1_model.setter
     def adm1_model(self, model):
         self._adm1_model = model       
@@ -301,6 +301,20 @@ class ADMjunction(Junction):
         ('HAc', 'Ac-'), ('HPr', 'Pr-'), ('HBu', 'Bu-'), ('HVa', 'Va-')
         '''
         return self.pKa_base-np.log10(np.exp(pc.T_correction_factor(self.T_base, self.T, self.Ka_dH)))
+    
+    @property
+    def alpha_IC(self):
+        '''[float] Charge per g of C.'''
+        pH = self.pH
+        pKa_IC = self.pKa[2]
+        return -1/(1+10**(pKa_IC-pH))/12
+
+    @property
+    def alpha_IN(self):
+        '''[float] Charge per g of N.'''
+        pH = self.pH
+        pKa_IN = self.pKa[1]
+        return 10**(pKa_IN-pH)/(1+10**(pKa_IN-pH))/14
     
     
 # %%
@@ -361,8 +375,8 @@ class ADMtoASM(ADMjunction):
         asm_i_COD = cmps_asm.i_COD
         asm_i_N = cmps_asm.i_N
         
-        alpha_IC = self.alpha_IC
         alpha_IN = self.alpha_IN
+        alpha_IC = self.alpha_IC
         alpha_vfa = self.alpha_vfa
 
         def adm2asm(adm_vals):    
@@ -487,21 +501,6 @@ class ADMtoASM(ADMjunction):
             _update_dstate()
         
         self._AE = yt
-        
-
-    @property
-    def alpha_IC(self):
-        '''[float] Charge per g of C.'''
-        pH = self.pH
-        pKa_IC = self.pKa[2]
-        return -1/(1+10**(pKa_IC-pH))/12
-
-    @property
-    def alpha_IN(self):
-        '''[float] Charge per g of N.'''
-        pH = self.pH
-        pKa_IN = self.pKa[1]
-        return 10**(pKa_IN-pH)/(1+10**(pKa_IN-pH))/14
 
     @property
     def alpha_vfa(self):
@@ -568,11 +567,10 @@ class ASMtoADM(ADMjunction):
         adm_i_COD = cmps_adm.i_COD
         adm_i_N = cmps_adm.i_N
         
-        pKw, pKa_IN, pKa_IC = self.pKa[:2]
-        pH = self.pH
-        alpha_IN = 10**(pKa_IN-pH)/(1+10**(pKa_IN-pH))/14 # charge per g N
-        alpha_IC = -1/(1+10**(pKa_IC-pH))/12 # charge per g C
         frac_deg = self.frac_deg
+        alpha_IN = self.alpha_IN
+        alpha_IC = self.alpha_IC
+        proton_charge = 10**(-self.pKa[0]+self.pH) - 10**(-self.pH) # self.pKa[0] is pKw
         
         def asm2adm(asm_vals):
             S_I, S_S, X_I, X_S, X_BH, X_BA, X_P, S_O, S_NO, S_NH, S_ND, X_ND, S_ALK, S_N2, H2O = asm_vals
@@ -689,7 +687,7 @@ class ASMtoADM(ADMjunction):
             #!!! charge balance should technically include VFAs, 
             # but VFAs concentrations are assumed zero per previous steps??
             S_IC = (asm_charge_tot -  S_IN*alpha_IN)/alpha_IC
-            net_Scat = asm_charge_tot + 10**(-pKw + pH) - 10**(-pH)   
+            net_Scat = asm_charge_tot + proton_charge
             if net_Scat > 0:  
                 S_cat = net_Scat
                 S_an = 0
