@@ -163,7 +163,7 @@ class Junction(SanUnit):
         based on influents. Total flow rate is always initialized as the sum of
         influent wastestream flows.
         '''
-        self._state = np.zeros(len(self.components)+1)
+        self._state = np.append(self.outs[0].conc, self.outs[0].F_vol*24)
         self._dstate = self._state * 0.
 
     def _update_state(self):
@@ -237,6 +237,7 @@ class Junction(SanUnit):
             
 # %%
 
+#TODO: add a `rtol` kwargs for error checking
 class ADMjunction(Junction):
     '''
     An abstract superclass holding common properties of ADM interface classes.
@@ -251,8 +252,19 @@ class ADMjunction(Junction):
     :class:`qsdsan.sanunits.ASMtoADM`
     '''
     _parse_reactions = Junction._no_parse_reactions
-    _adm1_model = None
     
+    def __init__(self, ID='', upstream=None, downstream=(), thermo=None,
+                 init_with='WasteStream', F_BM_default=None, isdynamic=False,
+                 adm1_model=None):
+        self.adm1_model = adm1_model # otherwise there won't be adm1_model when `_compile_reactions` is called
+        if thermo is None:
+            warn('No `thermo` object is provided and is prone to raise error. '
+                 'If you are not sure how to get the `thermo` object, '
+                 'use `thermo = qsdsan.set_thermo` after setting thermo with the `Components` object.')
+        super().__init__(ID=ID, upstream=upstream, downstream=downstream,
+                         thermo=thermo, init_with=init_with, 
+                         F_BM_default=F_BM_default, isdynamic=isdynamic)
+        
    
     @property
     def T(self):
@@ -270,15 +282,13 @@ class ADMjunction(Junction):
     @property
     def adm1_model(self):
         '''[qsdsan.Process] ADM process model.'''
-        if not self._adm1_model:
-            current_thermo = qs.get_thermo()
-            pc.create_adm1_cmps()
-            self._adm1_model = pc.ADM1()
-            qs.set_thermo(current_thermo)
         return self._adm1_model
     @adm1_model.setter
     def adm1_model(self, model):
-        self._adm1_model = model       
+        if not isinstance(model, pc.ADM1):
+            raise ValueError('`adm1_model` must be an `AMD1` object, '
+                             f'the given object is {type(model).__name__}.')
+        self._adm1_model = model
         
     @property
     def T_base(self):
@@ -424,6 +434,7 @@ class ADMtoASM(ADMjunction):
             X_S += xsub_cod
             X_ND += xsub_n - xsub_cod*X_S_i_N  # X_S.i_N should technically be zero
             if X_ND < 0:
+                breakpoint()
                 raise RuntimeError('Not enough nitrogen (substrate + excess X_ND) '
                                    'to map all particulate substrate COD into X_S')
             
@@ -498,18 +509,7 @@ class ADMtoASM(ADMjunction):
         _update_dstate = self._update_dstate
         adm2asm = self.reactions
                
-        def yt(t, QC_ins, dQC_ins):
-            # X_BH, X_BA, S_O, S_NO, S_N2 = 0
-            
-            # asm_vals = np.array(([
-            #     S_I, S_S, X_I, X_S, 
-            #     0, 0, # X_BH, X_BA, 
-            #     X_P, 
-            #     0, 0, # S_O, S_NO, 
-            #     S_NH, S_ND, X_ND, S_ALK, 
-            #     0, # S_N2, 
-            #     H2O]))
-            
+        def yt(t, QC_ins, dQC_ins):          
             for i, j in zip((QC_ins, dQC_ins), (_state, _dstate)):                             
                 adm_vals = i[0][:-1] # shape = (1, num_upcmps)
                 asm_vals = adm2asm(adm_vals)
@@ -569,7 +569,7 @@ class ASMtoADM(ADMjunction):
         # Retrieve constants
         ins = self.ins[0]
         outs = self.outs[0]
-        
+
         cmps_asm = ins.components
         S_NO_i_COD = cmps_asm.S_NO.i_COD
         X_BH_i_N = cmps_asm.X_BH.i_N
@@ -677,8 +677,7 @@ class ASMtoADM(ADMjunction):
             # Step 5: map particulate inerts
             xi_nsp = X_P_i_N * X_P + asm_X_I_i_N * X_I
             xi_ndm = (X_P+X_I) * adm_X_I_i_N
-            if xi_nsp + X_ND < xi_ndm:
-                breakpoint()
+            if (xi_nsp + X_ND)*(1+1e-6) < xi_ndm: # allow for minor rounding error
                 raise RuntimeError('Not enough N in X_I, X_P, X_ND to fully convert X_I and X_P '
                                    'into X_I in ADM1.')
             deficit = xi_ndm - xi_nsp
@@ -741,7 +740,6 @@ class ASMtoADM(ADMjunction):
                 raise RuntimeError('TKN not balanced, '
                                    f'influent (ASM) TKN is {lhs}, '
                                    f'effluent (ADM) TKN is {rhs}.')
-
             return adm_vals
         
         self._reactions = asm2adm
@@ -755,23 +753,10 @@ class ASMtoADM(ADMjunction):
         asm2adm = self.reactions
         
         def yt(t, QC_ins, dQC_ins):
-            # S_fa, S_va, S_bu, S_pro, S_ac, S_h2, S_ch4, \
-            #     X_c, X_su, X_aa, X_fa, X_c4, X_pro, X_ac, X_h2 = 0
-            
-            # adm_vals = np.array([
-            #     S_su, S_aa,
-            #     0, 0, 0, 0, 0, # S_fa, S_va, S_bu, S_pro, S_ac, 
-            #     0, 0, # S_h2, S_ch4,
-            #     S_IC, S_IN, S_I, 
-            #     0, # X_c, 
-            #     X_ch, X_pr, X_li, 
-            #     0, 0, 0, 0, 0, 0, 0, # X_su, X_aa, X_fa, X_c4, X_pro, X_ac, X_h2,
-            #     X_I, S_cat, S_an, H2O])
-
-            for i, j in zip((QC_ins, dQC_ins), (_state, _dstate)):               
+            for i, j in zip((QC_ins, dQC_ins), (_state, _dstate)):   
                 asm_vals = i[0][:-1] # shape = (1, num_upcmps)
                 adm_vals = asm2adm(asm_vals)
-                j[:-1] = adm_vals
+                j[:-1] = adm_vals                
                 j[-1] = i[0][-1] # volumetric flow of outs should equal that of ins
 
             _update_state()

@@ -23,16 +23,20 @@ from exposan.interface._junction import ADMtoASM, ASMtoADM
 # =============================================================================
 
 thermo_asm1 = qs.get_thermo() # ASM1 components loaded by the bsm1 module
+cmps_asm1 = thermo_asm1.chemicals
 
 # Subsequent units should be using ADM1 components
 cmps_adm1 = qs.processes.create_adm1_cmps()
 thermo_adm1 = qs.get_thermo()
 adm1 = qs.processes.ADM1()
-J1 = ASMtoADM('J1', upstream=WAS, thermo=thermo_adm1, isdynamic=True) # WAS is C1.outs[2]
+cmps_adm1.X_I.i_N = cmps_asm1.X_I.i_N
+
+
+J1 = ASMtoADM('J1', upstream=WAS, thermo=thermo_adm1, isdynamic=True, adm1_model=adm1) # WAS is C1.outs[2]
 temp = lambda t: 293.15
 AD1 = qs.sanunits.AnaerobicCSTR('AD1', ins=J1.outs[0], outs=('biogas', 'ad_eff'), isdynamic=True,
                                 model=adm1, exogenous_var=(temp,))
-J2 = ADMtoASM('J2', upstream=AD1-1, thermo=thermo_asm1, isdynamic=True)
+J2 = ADMtoASM('J2', upstream=AD1-1, thermo=thermo_asm1, isdynamic=True, adm1_model=adm1)
 
 # Subsequent units should be using ASM1 components
 qs.set_thermo(thermo_asm1)
