@@ -15,6 +15,7 @@ for license details.
 
 import numpy as np, qsdsan as qs
 from warnings import warn
+from math import isclose
 from biosteam.units import Junction as BSTjunction
 from qsdsan import SanUnit, processes as pc
 
@@ -134,7 +135,7 @@ class Junction(SanUnit):
         X = ins.conc.value
         Y = rxns(X)
         outs = self.outs[0]
-        outs.thermal_condition.copy(ins.thermal_condition)
+        outs.thermal_condition.copy_like(ins.thermal_condition)
         outs.set_flow_by_concentration(
             flow_tot=ins.F_vol,
             concentrations=dict(zip(outs.components.IDs, Y)),
@@ -333,7 +334,8 @@ class ADMtoASM(ADMjunction):
     downstream : stream or str
         Effluent stream with ASM components.
     bio_to_xs : float
-        Split of the total biodegradable COD to soluble biomass.
+        Split of the total biomass COD to slowly biodegradable substrate (X_S),
+        the rest is assumed to be mapped into X_P.
     
     References
     ----------
@@ -392,10 +394,12 @@ class ADMtoASM(ADMjunction):
             # Step 1a: convert biomass into X_S+X_ND and X_P
             bio_cod = X_su + X_aa + X_fa + X_c4 + X_pro + X_ac + X_h2
             bio_n = sum((adm_vals*adm_i_N)[adm_bio_N_indices])
-            xs_cod = self.bio_to_xs * bio_cod
-            xp_cod = bio_cod - xs_cod
+            xp_cod = bio_cod * (1-self.bio_to_xs)
             xp_ndm = xp_cod*X_P_i_N
             if xp_ndm > bio_n:
+                warn('Not enough biomass N to map the specified proportion of '
+                     'biomass COD into X_P. Mapped as much COD as possible, the rest '
+                     'goes to X_S.')
                 X_P = bio_n/asm_i_N
                 bio_n = 0
             else:
@@ -411,11 +415,6 @@ class ADMtoASM(ADMjunction):
                 S_IN -= (xs_ndm - bio_n)
                 bio_n = 0
             else:
-            #     X_S = (bio_n + S_IN)/X_S_i_N
-            #     X_ND = 0
-            #     S_IN, bio_n = 0
-            # bio_cod -= (X_S + X_P)
-            # if bio_cod > 0:
                 raise RuntimeError('Not enough nitrogen (S_IN + biomass) to map '
                                     'all biomass COD into X_P and X_S')
             
@@ -445,13 +444,16 @@ class ADMtoASM(ADMjunction):
                 if S_IN < 0:
                     raise RuntimeError('Not enough nitrogen (S_I + S_IN) to map '
                                        'all ADM S_I into ASM S_I')
+            S_NH += S_IN
                 
             # Step 4: map all soluble substrates into S_S and S_ND        
             ssub_cod = S_su + S_aa + S_fa + S_va + S_bu + S_pro + S_ac
             ssub_n = S_aa * S_aa_i_N
             if ssub_cod*S_S_i_N <= ssub_n:
                 S_S = ssub_cod
-                S_ND = ssub_n - S_S/S_S_i_N # S_S.i_N should technically be zero
+                S_ND = ssub_n
+                if S_S_i_N != 0:
+                    S_ND -= S_S/S_S_i_N # S_S.i_N should technically be zero
             else:
                 raise RuntimeError('Not enough nitrogen to map all soluble substrates into ASM S_S')
             
@@ -467,8 +469,23 @@ class ADMtoASM(ADMjunction):
                 S_NH, S_ND, X_ND, S_ALK, 
                 0, # S_N2, 
                 H2O]))
-            assert sum(asm_vals*asm_i_COD) == sum(adm_vals*adm_i_COD)
-            assert sum(asm_vals*asm_i_N) == sum(adm_vals*adm_i_N)
+            
+            if S_h2 > 0 or S_ch4 > 0:
+                warn('Ignored dissolved H2 or CH4.')
+            
+            lhs = sum(adm_vals*adm_i_COD) - S_h2 - S_ch4
+            rhs = sum(asm_vals*asm_i_COD)
+            if not isclose(lhs, rhs, rel_tol=1e-3):
+                raise RuntimeError('COD not balanced, '
+                                   f'influent (ADM) COD is {lhs}, '
+                                   f'effluent (ASM) COD is {rhs}.')
+
+            lhs = sum(adm_vals*adm_i_N)
+            rhs = sum(asm_vals*asm_i_N)
+            if not isclose(lhs, rhs, rel_tol=1e-3):
+                raise RuntimeError('TKN not balanced, '
+                                   f'influent (ASM) TKN is {lhs}, '
+                                   f'effluent (ADM) TKN is {rhs}.')
             
             return asm_vals
         
@@ -523,11 +540,13 @@ class ASMtoADM(ADMjunction):
     downstream : stream or str
         Effluent stream with ADM components.
     xs_to_li : float
-        Split of soluble biomass to lipid.
+        Split of slowly biodegradable substrate COD to lipid, 
+        after all N is mapped into protein.
     bio_to_li : float
-        Split of biodegradable material to lipid.
+        Split of biomass COD to lipid, after all biomass N is
+        mapped into protein.
     frac_deg : float
-        Fraction of degraded biomass.
+        Biodegradable fraction of biomass COD.
     
     References
     ----------
@@ -559,7 +578,7 @@ class ASMtoADM(ADMjunction):
         X_P_i_N = cmps_asm.X_P.i_N
         asm_i_COD = cmps_asm.i_COD
         asm_i_N = cmps_asm.i_N
-        asm_N_gas_indices = cmps_asm.indices(('S_NO', 'S_N2'))
+        asm_nonTKN_indices = cmps_asm.indices(('S_NO', 'S_N2'))
         
         cmps_adm = outs.components
         S_aa_i_N = cmps_adm.S_aa.i_N
@@ -576,31 +595,16 @@ class ASMtoADM(ADMjunction):
 
         def asm2adm(asm_vals):
             S_I, S_S, X_I, X_S, X_BH, X_BA, X_P, S_O, S_NO, S_NH, S_ND, X_ND, S_ALK, S_N2, H2O = asm_vals
-            # S_I = 29.999999992316447
-            # S_S = 69.49999998219967
-            # X_I = 51.19999998688672
-            # X_S = 202.31999994818125
-            # X_BH = 28.16999999278511
-            # X_BA = 0.0
-            # X_P = 0.0
-            # S_O = 0.0
-            # S_NO = 0.0
-            # S_NH = 31.559999991916882
-            # S_ND = 6.949999998219941
-            # X_ND = 10.589999997287704
-            # S_ALK = 83.99999997848548
-            # S_N2 = 0.0
-            # H2O = 998542.1330570019
 
             # Step 0: charged component snapshot
-            _sno = S_NO # 0
-            _snh = S_NH # 31.559999991916882
-            _salk = S_ALK # 83.99999997848548
+            _sno = S_NO
+            _snh = S_NH
+            _salk = S_ALK
             
             # Step 1: remove any remaining COD demand
-            O_coddm = S_O # 0
-            NO_coddm = -S_NO*S_NO_i_COD # 0
-            cod_spl = S_S + X_S + X_BH + X_BA # 299.989999923166
+            O_coddm = S_O
+            NO_coddm = -S_NO*S_NO_i_COD
+            cod_spl = S_S + X_S + X_BH + X_BA
             
             if cod_spl <= O_coddm:
                 S_O = O_coddm - cod_spl
@@ -609,45 +613,43 @@ class ASMtoADM(ADMjunction):
                 S_O = 0
                 S_NO = -(O_coddm + NO_coddm - cod_spl)/S_NO_i_COD
                 S_S = X_S = X_BH = X_BA = 0
-            else: # True
-                S_S -= O_coddm + NO_coddm # 69.49999998219967
+            else:
+                S_S -= O_coddm + NO_coddm
                 if S_S < 0:
                     X_S += S_S
                     S_S = 0
-                if X_S < 0: # 202.31999994818125 #!!! how could X_S < 0?
-                    X_BH += X_S
-                    X_S = 0
-                if X_BH < 0: # 28.16999999278511 #!!! how could X_BH < 0?
-                    X_BA += X_BH
-                    X_BH = 0
+                    if X_S < 0:
+                        X_BH += X_S
+                        X_S = 0
+                        if X_BH < 0:
+                            X_BA += X_BH
+                            X_BH = 0
                 S_O = S_NO = 0
             
             # Step 2: convert any readily biodegradable 
             # COD and TKN into amino acids and sugars
-            req_scod = S_ND / S_aa_i_N # 70.88444405911804
-            if S_S < req_scod: # True
-                S_aa = S_S # 69.49999998219967
+            req_scod = S_ND / S_aa_i_N
+            if S_S < req_scod:
+                S_aa = S_S
                 S_su = 0
-                S_ND -= S_aa * S_aa_i_N # 0.1357404499652084
+                S_ND -= S_aa * S_aa_i_N
             else:
                 S_aa = req_scod
                 S_su = S_S - S_aa
                 S_ND = 0
-            S_S = 0
-            # breakpoint()
+
             # Step 3: convert slowly biodegradable COD and TKN
             # into proteins, lipids, and carbohydrates
-            req_xcod = X_ND / X_pr_i_N # 108.00953418504514
+            req_xcod = X_ND / X_pr_i_N
             if X_S < req_xcod:
                 X_pr = X_S
-                X_li, X_ch = 0
+                X_li = X_ch = 0
                 X_ND -= X_pr * X_pr_i_N
-            else: # True
+            else:
                 X_pr = req_xcod
-                X_li = self.xs_to_li * (X_S - X_pr) # 66.01732603419528
-                X_ch = (X_S - X_pr) - X_li # 28.29313972894083
+                X_li = self.xs_to_li * (X_S - X_pr)
+                X_ch = (X_S - X_pr) - X_li
                 X_ND = 0
-            X_S = 0
             
             # Step 4: convert active biomass into protein, lipids, 
             # carbohydrates and potentially particulate TKN
@@ -655,44 +657,33 @@ class ASMtoADM(ADMjunction):
                 X_BH * X_BH_i_N
                 + X_BA * X_BA_i_N
                 - (X_BH+X_BA) * (1-frac_deg) * adm_X_I_i_N
-                ) # 1.712735999561335
+                )
             if available_bioN < 0:
-                raise RuntimeError('Not enough N in X_BA and X_BH to fully convert the non-biodegrable'
+                raise RuntimeError('Not enough N in X_BA and X_BH to fully convert the non-biodegrable '
                                    'portion into X_I in ADM1.')
-            req_bioN = (X_BH+X_BA) * frac_deg * X_pr_i_N # 1.8781471971589698
+            req_bioN = (X_BH+X_BA) * frac_deg * X_pr_i_N
             if available_bioN + X_ND >= req_bioN:
                 X_pr += (X_BH+X_BA) * frac_deg
                 X_ND += available_bioN - req_bioN
-            else: # True
-                bio2pr = (available_bioN + X_ND)/X_pr_i_N # 17.468538011516273
-                X_pr += bio2pr # 125.47807219656141
-                bio_to_split = ((X_BH+X_BA) * frac_deg - bio2pr) # 1.6870619835776033
-                bio_split_to_li = bio_to_split * self.bio_to_li # 0.6748247934310414
-                X_li += bio_split_to_li # 66.69215082762632
-                X_ch += (bio_to_split - bio_split_to_li) # 29.30537691908739
+            else:
+                bio2pr = (available_bioN + X_ND)/X_pr_i_N
+                X_pr += bio2pr
+                bio_to_split = (X_BH+X_BA) * frac_deg - bio2pr
+                bio_split_to_li = bio_to_split * self.bio_to_li
+                X_li += bio_split_to_li
+                X_ch += (bio_to_split - bio_split_to_li)
                 X_ND = 0
-            X_BH = X_BA = 0
             
             # Step 5: map particulate inerts
-            if X_P_i_N * X_P + asm_X_I_i_N * X_I + X_ND < (X_P+X_I) * adm_X_I_i_N:
-                raise RuntimeError('Not enough N in X_I, X_P, X_ND to fully convert X_I and X_P'
+            xi_nsp = X_P_i_N * X_P + asm_X_I_i_N * X_I
+            xi_ndm = (X_P+X_I) * adm_X_I_i_N
+            if xi_nsp + X_ND < xi_ndm:
+                breakpoint()
+                raise RuntimeError('Not enough N in X_I, X_P, X_ND to fully convert X_I and X_P '
                                    'into X_I in ADM1.')
-            deficit = (X_P+X_I) * adm_X_I_i_N - X_P_i_N * X_P + asm_X_I_i_N * X_I # 6.143999998426406
-            # #!!! should this be
-            # deficit = (X_P+X_I) * adm_X_I_i_N - (X_P_i_N * X_P + asm_X_I_i_N * X_I)
-            
-            # # if so, consider changing to
-            # lhs = X_P_i_N * X_P + asm_X_I_i_N * X_I + X_ND
-            # rhs = (X_P+X_I) * adm_X_I_i_N
-            # if lhs < rhs:
-            #     raise RuntimeError('Not enough N in X_I, X_P, X_ND to fully convert X_I and X_P'
-            #                        'into X_I in ADM1.')
-            # deficit = rhs - lhs # 0
-
-            #!!! PAUSED HERE
-            X_I = X_I + X_P + (X_BH+X_BA) * (1-frac_deg) # 51.19999998688672
-            X_ND -= deficit
-            
+            deficit = xi_ndm - xi_nsp
+            X_I += X_P + (X_BH+X_BA) * (1-frac_deg)
+            X_ND -= deficit            
 
             req_sn = S_I * S_I_i_N
             if req_sn <= S_ND:
@@ -739,17 +730,17 @@ class ASMtoADM(ADMjunction):
             
             lhs = sum(asm_vals*asm_i_COD)
             rhs = sum(adm_vals*adm_i_COD)
-            if lhs != rhs:
+            if not isclose(lhs, rhs, rel_tol=1e-3):
                 raise RuntimeError('COD not balanced, '
                                    f'influent (ASM) COD is {lhs}, '
                                    f'effluent (ADM) COD is {rhs}.')
                 
-            lhs = sum(asm_vals*asm_i_N) - sum(asm_vals[asm_N_gas_indices])
+            lhs = sum(asm_vals*asm_i_N) - sum(asm_vals[asm_nonTKN_indices])
             rhs = sum(adm_vals*adm_i_N)
-            if lhs != rhs:
-                raise RuntimeError('M not balanced, '
-                                   f'influent (ASM) aqueous N is {lhs}, '
-                                   f'effluent (ADM) aqueous N is {rhs}.')
+            if not isclose(lhs, rhs, rel_tol=1e-3):
+                raise RuntimeError('TKN not balanced, '
+                                   f'influent (ASM) TKN is {lhs}, '
+                                   f'effluent (ADM) TKN is {rhs}.')
 
             return adm_vals
         

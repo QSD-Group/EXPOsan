@@ -27,8 +27,11 @@ thermo_asm1 = qs.get_thermo() # ASM1 components loaded by the bsm1 module
 # Subsequent units should be using ADM1 components
 cmps_adm1 = qs.processes.create_adm1_cmps()
 thermo_adm1 = qs.get_thermo()
+adm1 = qs.processes.ADM1()
 J1 = ASMtoADM('J1', upstream=WAS, thermo=thermo_adm1, isdynamic=True) # WAS is C1.outs[2]
-AD1 = qs.sanunits.AnaerobicCSTR('AD1', ins=J1.outs[0], outs=('biogas', 'ad_eff'), isdynamic=True)
+temp = lambda t: 293.15
+AD1 = qs.sanunits.AnaerobicCSTR('AD1', ins=J1.outs[0], outs=('biogas', 'ad_eff'), isdynamic=True,
+                                model=adm1, exogenous_var=(temp,))
 J2 = ADMtoASM('J2', upstream=AD1-1, thermo=thermo_asm1, isdynamic=True)
 
 # Subsequent units should be using ASM1 components
@@ -41,8 +44,8 @@ sys = System(path=(*bsm1_sys.units, J1, AD1, J2, M1))
 sys.set_dynamic_tracker(A1, C1, J1, AD1, J2, M1)
 sys.simulate(
     state_reset_hook='reset_cache',
-    t_span=(0, 10),
-    t_eval=np.arange(0, 10.5, 0.5),
+    t_span=(0, 3),
+    t_eval=np.arange(0, 3.5, 0.5),
     )
 
 
@@ -53,7 +56,7 @@ sys.simulate(
 # =============================================================================
 
 import numpy as np
-from exposan.interface.test_interface import asm2adm
+from exposan.interface.test_interface import asm2adm, adm2asm
 
 asm_vals = np.array(
     [29.999999992316447, 69.49999998219967, 51.19999998688672, 202.31999994818125,
@@ -61,3 +64,4 @@ asm_vals = np.array(
      10.589999997287704, 83.99999997848548, 0.0, 998542.1330570019])
 
 adm_vals = asm2adm(asm_vals, T=293.15, pH=7)
+asm_vals2 = adm2asm(adm_vals, T=293.15, pH=7)
