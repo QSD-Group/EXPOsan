@@ -68,22 +68,22 @@ def asm2adm(asm_vals, T, pH):
     
     if cod_spl <= O_coddm:
         S_O = O_coddm - cod_spl
-        S_S, X_S, X_BH, X_BA = 0
+        S_S = X_S = X_BH = X_BA = 0
     elif cod_spl <= O_coddm + NO_coddm:
         S_O = 0
         S_NO = -(O_coddm + NO_coddm - cod_spl)/cmps_asm.S_NO.i_COD
-        S_S, X_S, X_BH, X_BA = 0
+        S_S = X_S = X_BH = X_BA = 0
     else:
         S_S -= O_coddm + NO_coddm
         if S_S < 0:
             X_S += S_S
             S_S = 0
-        if X_S < 0:
-            X_BH += X_S
-            X_S = 0
-        if X_BH < 0:
-            X_BA += X_BH
-            X_BH = 0
+            if X_S < 0:
+                X_BH += X_S
+                X_S = 0
+                if X_BH < 0:
+                    X_BA += X_BH
+                    X_BH = 0
         S_O = S_NO = 0
     
     # Step 2: convert any readily biodegradable 
@@ -104,7 +104,7 @@ def asm2adm(asm_vals, T, pH):
     req_xcod = X_ND / cmps_adm.X_pr.i_N
     if X_S < req_xcod:
         X_pr = X_S
-        X_li, X_ch = 0
+        X_li = X_ch = 0
         X_ND -= X_pr * cmps_adm.X_pr.i_N
     else:
         X_pr = req_xcod
@@ -130,14 +130,15 @@ def asm2adm(asm_vals, T, pH):
         X_li += ((X_BH+X_BA) * frac_deg - bio2pr) * li_ch_split_bio[0]
         X_ch += ((X_BH+X_BA) * frac_deg - bio2pr) * li_ch_split_bio[1]
         X_ND = 0
+    X_I += (X_BH+X_BA) * (1-frac_deg)
     X_BH = X_BA = 0
     
     # Step 5: map particulate inerts
     if cmps_asm.X_P.i_N * X_P + cmps_asm.X_I.i_N * X_I + X_ND < (X_P+X_I) * cmps_adm.X_I.i_N:
         raise RuntimeError('Not enough N in X_I, X_P, X_ND to fully convert X_I and X_P'
                            'into X_I in ADM1.')
-    deficit = (X_P+X_I) * cmps_adm.X_I.i_N - cmps_asm.X_P.i_N * X_P + cmps_asm.X_I.i_N * X_I
-    X_I = X_I + X_P + (X_BH+X_BA) * (1-frac_deg)
+    deficit = (X_P+X_I) * cmps_adm.X_I.i_N - cmps_asm.X_P.i_N * X_P - cmps_asm.X_I.i_N * X_I
+    X_I += X_P
     X_ND -= deficit
     
     req_sn = S_I * cmps_adm.S_I.i_N
@@ -158,6 +159,7 @@ def asm2adm(asm_vals, T, pH):
         
     # Step 6: maps any remaining nitrogen
     S_IN = S_ND + X_ND + S_NH
+    S_ND = X_ND = S_NH = 0
     
     # Step 7: charge balance
     asm_charge_tot = _snh/14 - _sno/14 - _salk/12
