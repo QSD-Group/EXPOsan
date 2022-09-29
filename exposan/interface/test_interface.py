@@ -97,7 +97,6 @@ def asm2adm(asm_vals, T, pH):
         S_aa = req_scod
         S_su = S_S - S_aa
         S_ND = 0
-    S_S = 0
     
     # Step 3: convert slowly biodegradable COD and TKN
     # into proteins, lipids, and carbohydrates
@@ -110,7 +109,6 @@ def asm2adm(asm_vals, T, pH):
         X_pr = req_xcod
         X_li, X_ch = [frac*(X_S - X_pr) for frac in li_ch_split_XS]
         X_ND = 0
-    X_S = 0
     
     # Step 4: convert active biomass into protein, lipids, 
     # carbohydrates and potentially particulate TKN
@@ -130,15 +128,13 @@ def asm2adm(asm_vals, T, pH):
         X_li += ((X_BH+X_BA) * frac_deg - bio2pr) * li_ch_split_bio[0]
         X_ch += ((X_BH+X_BA) * frac_deg - bio2pr) * li_ch_split_bio[1]
         X_ND = 0
-    X_I += (X_BH+X_BA) * (1-frac_deg)
-    X_BH = X_BA = 0
-    
+        
     # Step 5: map particulate inerts
     if cmps_asm.X_P.i_N * X_P + cmps_asm.X_I.i_N * X_I + X_ND < (X_P+X_I) * cmps_adm.X_I.i_N:
         raise RuntimeError('Not enough N in X_I, X_P, X_ND to fully convert X_I and X_P'
                            'into X_I in ADM1.')
     deficit = (X_P+X_I) * cmps_adm.X_I.i_N - cmps_asm.X_P.i_N * X_P - cmps_asm.X_I.i_N * X_I
-    X_I += X_P
+    X_I += X_P +(X_BH+X_BA) * (1-frac_deg)
     X_ND -= deficit
     
     req_sn = S_I * cmps_adm.S_I.i_N
@@ -159,7 +155,6 @@ def asm2adm(asm_vals, T, pH):
         
     # Step 6: maps any remaining nitrogen
     S_IN = S_ND + X_ND + S_NH
-    S_ND = X_ND = S_NH = 0
     
     # Step 7: charge balance
     asm_charge_tot = _snh/14 - _sno/14 - _salk/12
@@ -194,10 +189,9 @@ def asm2adm(asm_vals, T, pH):
     rhs = sum(adm_vals*cmps_adm.i_N)
     if not isclose(lhs, rhs, abs_tol=1e-9):
         raise RuntimeError('TKN not balanced, '
-                           f'influent aqueous (ASM) TKN is {lhs}, '
-                           f'effluent aqueous (ADM) TKN is {rhs}.')
+                           f'influent (ASM) TKN is {lhs}, '
+                           f'effluent (ADM) TKN is {rhs}.')
     
-    # unit conversion from mg/L (ASM) to kg/m3 (ADM)
     return adm_vals
 
 xs_xp_split_bio = [0.7, 0.3]
@@ -236,14 +230,8 @@ def adm2asm(adm_vals, T, pH):
         S_IN -= (xs_ndm - bio_n)
         bio_n = 0
     else:
-    #     X_S = (bio_n + S_IN)/cmps_asm.X_S.i_N
-    #     X_ND = 0
-    #     S_IN, bio_n = 0
-    # bio_cod -= (X_S + X_P)
-    # if bio_cod > 0:
         raise RuntimeError('Not enough nitrogen (S_IN + biomass) to map '
                            'all biomass COD into X_P and X_S')
-    X_su, X_aa, X_fa, X_c4, X_pro, X_ac, X_h2 = [0]*7
     
     # Step 1b: convert particulate substrates into X_S + X_ND
     xsub_cod = X_c + X_ch + X_pr + X_li
@@ -253,7 +241,6 @@ def adm2asm(adm_vals, T, pH):
     if X_ND < 0:
         raise RuntimeError('Not enough nitrogen (substrate + excess X_ND) '
                            'to map all particulate substrate COD into X_S')
-    X_c = X_ch = X_pr = X_li = 0
     
     # Step 2: map all X_I from ADM to ASM
     excess_XIn = X_I * (cmps_adm.X_I.i_N - cmps_asm.X_I.i_N)
@@ -273,7 +260,6 @@ def adm2asm(adm_vals, T, pH):
             raise RuntimeError('Not enough nitrogen (S_I + S_IN) to map '
                                'all ADM S_I into ASM S_I')
     S_NH += S_IN
-    S_IN = 0
         
     # Step 4: map all soluble substrates into S_S and S_ND
     ssub_cod = S_su + S_aa + S_fa + S_va + S_bu + S_pro + S_ac
@@ -285,7 +271,6 @@ def adm2asm(adm_vals, T, pH):
             S_ND -= S_S/cmps_asm.S_S.i_N # S_S.i_N should technically be zero
     else:
         raise RuntimeError('Not enough nitrogen to map all soluble substrates into ASM S_S')
-    S_su, S_aa, S_fa, S_va, S_bu, S_pro, S_ac = [0]*7
     
     # Step 5: charge balance for alkalinity
     pKa = calc_pKa(T)
@@ -311,8 +296,7 @@ def adm2asm(adm_vals, T, pH):
     rhs = sum(adm_vals*cmps_adm.i_N)
     if not isclose(lhs, rhs, abs_tol=1e-9):
         raise RuntimeError('TKN not balanced, '
-                           f'influent aqueous (ADM) TKN is {rhs}, '
-                           f'effluent aqueous (ASM) TKN is {lhs}.')
+                           f'influent (ADM) TKN is {rhs}, '
+                           f'effluent (ASM) TKN is {lhs}.')
     
-    # convert from kg/m3 (ADM) to mg/L(ASM)
     return asm_vals
