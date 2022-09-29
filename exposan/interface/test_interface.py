@@ -11,7 +11,7 @@ Plant-Wide Simulation. Water Res. 2009, 43, 1913–1923.
 from qsdsan import processes as pc, Components, Process, set_thermo
 from warnings import warn
 import numpy as np
-
+from math import isclose
 
 cmps_asm = pc.create_asm1_cmps(False)
 cmps_adm = pc.create_adm1_cmps(False)
@@ -185,24 +185,20 @@ def asm2adm(asm_vals, T, pH):
 
     lhs = sum(asm_vals*cmps_asm.i_COD)
     rhs = sum(adm_vals*cmps_adm.i_COD)
-    if lhs != rhs:
+    if not isclose(lhs, rhs, abs_tol=1e-9):
         raise RuntimeError('COD not balanced, '
                            f'influent (ASM) COD is {lhs}, '
                            f'effluent (ADM) COD is {rhs}.')
         
     lhs = sum(asm_vals*cmps_asm.i_N) - sum(asm_vals[cmps_asm.indices(('S_NO', 'S_N2'))])
     rhs = sum(adm_vals*cmps_adm.i_N)
-    if lhs != rhs:
-        raise RuntimeError('M not balanced, '
-                           f'influent aqueous (ASM) N is {lhs}, '
-                           f'effluent aqueous (ADM) N is {rhs}.')
-
-    # assert sum(asm_vals*cmps_asm.i_COD) == sum(adm_vals*cmps_adm.i_COD)
-    # assert sum(asm_vals*cmps_asm.i_N) - sum(asm_vals[cmps_asm.indices(('S_NO', 'S_N2'))]) \
-    #     == sum(adm_vals*cmps_adm.i_N)
+    if not isclose(lhs, rhs, abs_tol=1e-9):
+        raise RuntimeError('TKN not balanced, '
+                           f'influent aqueous (ASM) TKN is {lhs}, '
+                           f'effluent aqueous (ADM) TKN is {rhs}.')
     
     # unit conversion from mg/L (ASM) to kg/m3 (ADM)
-    return adm_vals/1000
+    return adm_vals
 
 xs_xp_split_bio = [0.7, 0.3]
 
@@ -222,6 +218,9 @@ def adm2asm(adm_vals, T, pH):
     xs_cod, xp_cod = [frac*bio_cod for frac in xs_xp_split_bio]
     xp_ndm = xp_cod*cmps_asm.X_P.i_N
     if xp_ndm > bio_n:
+        warn('Not enough biomass N to map the specified proportion of '
+             'biomass COD into X_P. Mapped as much COD as possible, the rest '
+             'goes to X_S.')
         X_P = bio_n/cmps_asm.i_N
         bio_n = 0
     else:
@@ -243,7 +242,8 @@ def adm2asm(adm_vals, T, pH):
     # bio_cod -= (X_S + X_P)
     # if bio_cod > 0:
         raise RuntimeError('Not enough nitrogen (S_IN + biomass) to map '
-                            'all biomass COD into X_P and X_S')
+                           'all biomass COD into X_P and X_S')
+    X_su, X_aa, X_fa, X_c4, X_pro, X_ac, X_h2 = [0]*7
     
     # Step 1b: convert particulate substrates into X_S + X_ND
     xsub_cod = X_c + X_ch + X_pr + X_li
@@ -253,6 +253,7 @@ def adm2asm(adm_vals, T, pH):
     if X_ND < 0:
         raise RuntimeError('Not enough nitrogen (substrate + excess X_ND) '
                            'to map all particulate substrate COD into X_S')
+    X_c = X_ch = X_pr = X_li = 0
     
     # Step 2: map all X_I from ADM to ASM
     excess_XIn = X_I * (cmps_adm.X_I.i_N - cmps_asm.X_I.i_N)
@@ -271,15 +272,20 @@ def adm2asm(adm_vals, T, pH):
         if S_IN < 0:
             raise RuntimeError('Not enough nitrogen (S_I + S_IN) to map '
                                'all ADM S_I into ASM S_I')
+    S_NH += S_IN
+    S_IN = 0
         
     # Step 4: map all soluble substrates into S_S and S_ND
     ssub_cod = S_su + S_aa + S_fa + S_va + S_bu + S_pro + S_ac
     ssub_n = S_aa * cmps_adm.S_aa.i_N
     if ssub_cod*cmps_asm.S_S.i_N <= ssub_n:
         S_S = ssub_cod
-        S_ND = ssub_n - S_S/cmps_asm.S_S.i_N # S_S.i_N should technically be zero
+        S_ND = ssub_n
+        if cmps_asm.S_S.i_N != 0:
+            S_ND -= S_S/cmps_asm.S_S.i_N # S_S.i_N should technically be zero
     else:
         raise RuntimeError('Not enough nitrogen to map all soluble substrates into ASM S_S')
+    S_su, S_aa, S_fa, S_va, S_bu, S_pro, S_ac = [0]*7
     
     # Step 5: charge balance for alkalinity
     pKa = calc_pKa(T)
@@ -291,9 +297,22 @@ def adm2asm(adm_vals, T, pH):
     S_ALK = (sum(_ions * np.append([alpha_IN, alpha_IC], alpha_vfa)) - S_NH/14)*(-12)
     
     # Step 6: check COD and TKN balance
-    asm_vals = np.array(([S_I, S_S, X_I, X_S, X_BH, X_BA, X_P, S_O, S_NO, S_NH, S_ND, X_ND, S_ALK, S_N2, H2O]))
-    assert sum(asm_vals*cmps_asm.i_COD) == sum(adm_vals*cmps_adm.i_COD)
-    assert sum(asm_vals*cmps_asm.i_N) == sum(adm_vals*cmps_adm.i_N)
+    asm_vals = np.array(([S_I, S_S, X_I, X_S, X_BH, X_BA, X_P, S_O, 
+                          S_NO, S_NH, S_ND, X_ND, S_ALK, S_N2, H2O]))
+    
+    lhs = sum(asm_vals*cmps_asm.i_COD)
+    rhs = sum(adm_vals*cmps_adm.i_COD) - S_h2 - S_ch4
+    if not isclose(lhs, rhs, abs_tol=1e-9):
+        raise RuntimeError('COD not balanced, '
+                           f'influent (ADM) COD is {rhs}, '
+                           f'effluent (ASM) COD is {lhs}.')
+        
+    lhs = sum(asm_vals*cmps_asm.i_N)
+    rhs = sum(adm_vals*cmps_adm.i_N)
+    if not isclose(lhs, rhs, abs_tol=1e-9):
+        raise RuntimeError('TKN not balanced, '
+                           f'influent aqueous (ADM) TKN is {rhs}, '
+                           f'effluent aqueous (ASM) TKN is {lhs}.')
     
     # convert from kg/m3 (ADM) to mg/L(ASM)
-    return asm_vals*1000
+    return asm_vals
