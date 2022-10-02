@@ -38,7 +38,7 @@ class Junction(SanUnit):
         Influent stream.
     downstream : stream or str
         Effluent stream.
-    conversions : iterable(dict) | callable
+    reactions : iterable(dict) | callable
         Iterable of dict that has the conversion of upstream components to
         downstream components,
         or a function that will return the concentration of the effluent
@@ -48,12 +48,6 @@ class Junction(SanUnit):
         the ID or alias of components,
         values should be the conversion/yield,
         which should be negative for reactants and positive for products.
-
-    .. note::
-        `ins` and `outs` have all the components,
-        `upstream` and `downstream` only have their individual components;
-        but the mass flow of `ins` equals that of `upstream`,
-        and the mass flow of `outs` equals that of `downstream`.
     '''
     _graphics = BSTjunction._graphics
 
@@ -163,7 +157,7 @@ class Junction(SanUnit):
         based on influents. Total flow rate is always initialized as the sum of
         influent wastestream flows.
         '''
-        self._state = np.zeros(len(self.components)+1)
+        self._state = np.append(self.outs[0].conc, self.outs[0].F_vol*24)
         self._dstate = self._state * 0.
 
     def _update_state(self):
@@ -237,6 +231,7 @@ class Junction(SanUnit):
             
 # %%
 
+#TODO: add a `rtol` kwargs for error checking
 class ADMjunction(Junction):
     '''
     An abstract superclass holding common properties of ADM interface classes.
@@ -251,8 +246,20 @@ class ADMjunction(Junction):
     :class:`qsdsan.sanunits.ASMtoADM`
     '''
     _parse_reactions = Junction._no_parse_reactions
-    _adm1_model = None
+    tolerance = 1e-3
     
+    def __init__(self, ID='', upstream=None, downstream=(), thermo=None,
+                 init_with='WasteStream', F_BM_default=None, isdynamic=False,
+                 adm1_model=None):
+        self.adm1_model = adm1_model # otherwise there won't be adm1_model when `_compile_reactions` is called
+        if thermo is None:
+            warn('No `thermo` object is provided and is prone to raise error. '
+                 'If you are not sure how to get the `thermo` object, '
+                 'use `thermo = qsdsan.set_thermo` after setting thermo with the `Components` object.')
+        super().__init__(ID=ID, upstream=upstream, downstream=downstream,
+                         thermo=thermo, init_with=init_with, 
+                         F_BM_default=F_BM_default, isdynamic=isdynamic)
+        
    
     @property
     def T(self):
@@ -270,15 +277,13 @@ class ADMjunction(Junction):
     @property
     def adm1_model(self):
         '''[qsdsan.Process] ADM process model.'''
-        if not self._adm1_model:
-            current_thermo = qs.get_thermo()
-            pc.create_adm1_cmps()
-            self._adm1_model = pc.ADM1()
-            qs.set_thermo(current_thermo)
         return self._adm1_model
     @adm1_model.setter
     def adm1_model(self, model):
-        self._adm1_model = model       
+        if not isinstance(model, pc.ADM1):
+            raise ValueError('`adm1_model` must be an `AMD1` object, '
+                             f'the given object is {type(model).__name__}.')
+        self._adm1_model = model
         
     @property
     def T_base(self):
@@ -333,9 +338,15 @@ class ADMtoASM(ADMjunction):
         Influent stream with ADM components.
     downstream : stream or str
         Effluent stream with ASM components.
+    adm1_model : obj
+        The anaerobic digestion process model (:class:`qsdsan.processes.ADM1`).
     bio_to_xs : float
         Split of the total biomass COD to slowly biodegradable substrate (X_S),
         the rest is assumed to be mapped into X_P.
+    tolerance : float
+        Error tolerance,
+        relative when checking mass balance,
+        absolute when checking material abundance.
     
     References
     ----------
@@ -359,6 +370,7 @@ class ADMtoASM(ADMjunction):
         # Retrieve constants
         ins = self.ins[0]
         outs = self.outs[0]
+        tol = self.tolerance
         
         cmps_adm = ins.components
         X_c_i_N = cmps_adm.X_c.i_N
@@ -410,7 +422,7 @@ class ADMtoASM(ADMjunction):
             if xs_ndm <= bio_n:
                 X_ND = bio_n - xs_ndm
                 bio_n = 0
-            elif xs_ndm <= bio_n + S_IN:
+            elif xs_ndm*(1+tol) <= bio_n + S_IN:
                 X_ND = 0
                 S_IN -= (xs_ndm - bio_n)
                 bio_n = 0
@@ -423,16 +435,19 @@ class ADMtoASM(ADMjunction):
             xsub_n = X_c*X_c_i_N + X_pr*X_pr_i_N
             X_S += xsub_cod
             X_ND += xsub_n - xsub_cod*X_S_i_N  # X_S.i_N should technically be zero
-            if X_ND < 0:
+            if X_ND+tol < 0:
                 raise RuntimeError('Not enough nitrogen (substrate + excess X_ND) '
                                    'to map all particulate substrate COD into X_S')
+            else: X_ND = max(0, X_ND) # reset small error
             
             # Step 2: map all X_I from ADM to ASM           
             excess_XIn = X_I * (adm_X_I_i_N - asm_X_I_i_N)
             S_IN += excess_XIn
-            if S_IN < 0:
+            if S_IN+tol < 0:
+                breakpoint()
                 raise RuntimeError('Not enough nitrogen (X_I + S_IN) to map '
                                    'all ADM X_I into ASM X_I')
+            else: S_IN = max(0, S_IN) # reset small error
             
             # Step 3: map ADM S_I into ASM S_I and S_NH
             excess_SIn = S_I * (adm_S_I_i_N - asm_S_I_i_N)
@@ -441,15 +456,17 @@ class ADMtoASM(ADMjunction):
             else:
                 S_NH = 0
                 S_IN += excess_SIn
-                if S_IN < 0:
+                if S_IN+tol < 0:
                     raise RuntimeError('Not enough nitrogen (S_I + S_IN) to map '
                                        'all ADM S_I into ASM S_I')
+                else: S_IN = max(0, S_IN) # reset small error
             S_NH += S_IN
                 
             # Step 4: map all soluble substrates into S_S and S_ND        
             ssub_cod = S_su + S_aa + S_fa + S_va + S_bu + S_pro + S_ac
             ssub_n = S_aa * S_aa_i_N
-            if ssub_cod*S_S_i_N <= ssub_n:
+            if ssub_n<0 and abs(ssub_n) < tol: ssub_n = 0
+            if (ssub_cod*S_S_i_N)*(1+tol) <= ssub_n:
                 S_S = ssub_cod
                 S_ND = ssub_n
                 if S_S_i_N != 0:
@@ -470,19 +487,19 @@ class ADMtoASM(ADMjunction):
                 0, # S_N2, 
                 H2O]))
             
-            if S_h2 > 0 or S_ch4 > 0:
+            if S_h2 > tol or S_ch4 > tol:
                 warn('Ignored dissolved H2 or CH4.')
             
             lhs = sum(adm_vals*adm_i_COD) - S_h2 - S_ch4
             rhs = sum(asm_vals*asm_i_COD)
-            if not isclose(lhs, rhs, rel_tol=1e-3):
+            if not isclose(lhs, rhs, rel_tol=tol):
                 raise RuntimeError('COD not balanced, '
                                    f'influent (ADM) COD is {lhs}, '
                                    f'effluent (ASM) COD is {rhs}.')
 
             lhs = sum(adm_vals*adm_i_N)
             rhs = sum(asm_vals*asm_i_N)
-            if not isclose(lhs, rhs, rel_tol=1e-3):
+            if not isclose(lhs, rhs, rel_tol=tol):
                 raise RuntimeError('TKN not balanced, '
                                    f'influent (ASM) TKN is {lhs}, '
                                    f'effluent (ADM) TKN is {rhs}.')
@@ -498,18 +515,7 @@ class ADMtoASM(ADMjunction):
         _update_dstate = self._update_dstate
         adm2asm = self.reactions
                
-        def yt(t, QC_ins, dQC_ins):
-            # X_BH, X_BA, S_O, S_NO, S_N2 = 0
-            
-            # asm_vals = np.array(([
-            #     S_I, S_S, X_I, X_S, 
-            #     0, 0, # X_BH, X_BA, 
-            #     X_P, 
-            #     0, 0, # S_O, S_NO, 
-            #     S_NH, S_ND, X_ND, S_ALK, 
-            #     0, # S_N2, 
-            #     H2O]))
-            
+        def yt(t, QC_ins, dQC_ins):          
             for i, j in zip((QC_ins, dQC_ins), (_state, _dstate)):                             
                 adm_vals = i[0][:-1] # shape = (1, num_upcmps)
                 asm_vals = adm2asm(adm_vals)
@@ -539,6 +545,8 @@ class ASMtoADM(ADMjunction):
         Influent stream with ASM components.
     downstream : stream or str
         Effluent stream with ADM components.
+    adm1_model : obj
+        The anaerobic digestion process model (:class:`qsdsan.processes.ADM1`).
     xs_to_li : float
         Split of slowly biodegradable substrate COD to lipid, 
         after all N is mapped into protein.
@@ -547,6 +555,10 @@ class ASMtoADM(ADMjunction):
         mapped into protein.
     frac_deg : float
         Biodegradable fraction of biomass COD.
+    tolerance : float
+        Error tolerance,
+        relative when checking mass balance,
+        absolute when checking material abundance.
     
     References
     ----------
@@ -569,7 +581,8 @@ class ASMtoADM(ADMjunction):
         # Retrieve constants
         ins = self.ins[0]
         outs = self.outs[0]
-        
+        tol = self.tolerance
+
         cmps_asm = ins.components
         S_NO_i_COD = cmps_asm.S_NO.i_COD
         X_BH_i_N = cmps_asm.X_BH.i_N
@@ -658,7 +671,7 @@ class ASMtoADM(ADMjunction):
                 + X_BA * X_BA_i_N
                 - (X_BH+X_BA) * (1-frac_deg) * adm_X_I_i_N
                 )
-            if available_bioN < 0:
+            if available_bioN+tol < 0:
                 raise RuntimeError('Not enough N in X_BA and X_BH to fully convert the non-biodegrable '
                                    'portion into X_I in ADM1.')
             req_bioN = (X_BH+X_BA) * frac_deg * X_pr_i_N
@@ -677,8 +690,7 @@ class ASMtoADM(ADMjunction):
             # Step 5: map particulate inerts
             xi_nsp = X_P_i_N * X_P + asm_X_I_i_N * X_I
             xi_ndm = (X_P+X_I) * adm_X_I_i_N
-            if xi_nsp + X_ND < xi_ndm:
-                breakpoint()
+            if (xi_nsp + X_ND)*(1+tol) < xi_ndm: # allow for minor rounding error
                 raise RuntimeError('Not enough N in X_I, X_P, X_ND to fully convert X_I and X_P '
                                    'into X_I in ADM1.')
             deficit = xi_ndm - xi_nsp
@@ -691,7 +703,7 @@ class ASMtoADM(ADMjunction):
             elif req_sn <= S_ND + X_ND:
                 X_ND -= (req_sn - S_ND)
                 S_ND = 0
-            elif req_sn <= S_ND + X_ND + S_NH:
+            elif req_sn*(1+tol) <= S_ND + X_ND + S_NH:
                 S_NH -= (req_sn - S_ND - X_ND)
                 S_ND = X_ND = 0
             else:
@@ -730,18 +742,17 @@ class ASMtoADM(ADMjunction):
             
             lhs = sum(asm_vals*asm_i_COD)
             rhs = sum(adm_vals*adm_i_COD)
-            if not isclose(lhs, rhs, rel_tol=1e-3):
+            if not isclose(lhs, rhs, rel_tol=tol):
                 raise RuntimeError('COD not balanced, '
                                    f'influent (ASM) COD is {lhs}, '
                                    f'effluent (ADM) COD is {rhs}.')
                 
             lhs = sum(asm_vals*asm_i_N) - sum(asm_vals[asm_nonTKN_indices])
             rhs = sum(adm_vals*adm_i_N)
-            if not isclose(lhs, rhs, rel_tol=1e-3):
+            if not isclose(lhs, rhs, rel_tol=tol):
                 raise RuntimeError('TKN not balanced, '
                                    f'influent (ASM) TKN is {lhs}, '
                                    f'effluent (ADM) TKN is {rhs}.')
-
             return adm_vals
         
         self._reactions = asm2adm
@@ -755,23 +766,10 @@ class ASMtoADM(ADMjunction):
         asm2adm = self.reactions
         
         def yt(t, QC_ins, dQC_ins):
-            # S_fa, S_va, S_bu, S_pro, S_ac, S_h2, S_ch4, \
-            #     X_c, X_su, X_aa, X_fa, X_c4, X_pro, X_ac, X_h2 = 0
-            
-            # adm_vals = np.array([
-            #     S_su, S_aa,
-            #     0, 0, 0, 0, 0, # S_fa, S_va, S_bu, S_pro, S_ac, 
-            #     0, 0, # S_h2, S_ch4,
-            #     S_IC, S_IN, S_I, 
-            #     0, # X_c, 
-            #     X_ch, X_pr, X_li, 
-            #     0, 0, 0, 0, 0, 0, 0, # X_su, X_aa, X_fa, X_c4, X_pro, X_ac, X_h2,
-            #     X_I, S_cat, S_an, H2O])
-
-            for i, j in zip((QC_ins, dQC_ins), (_state, _dstate)):               
+            for i, j in zip((QC_ins, dQC_ins), (_state, _dstate)):   
                 asm_vals = i[0][:-1] # shape = (1, num_upcmps)
                 adm_vals = asm2adm(asm_vals)
-                j[:-1] = adm_vals
+                j[:-1] = adm_vals                
                 j[-1] = i[0][-1] # volumetric flow of outs should equal that of ins
 
             _update_state()
