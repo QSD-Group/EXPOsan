@@ -11,23 +11,29 @@ This module is developed by:
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
+
+#!!! Add full citation here (you can't find the report with just Jones et al., 2014)
 '''
 
 from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
 from exposan.utils import add_V_from_rho
 
-__all__ = ('creat_components',)
+__all__ = ('create_components',)
 
 def create_components(set_thermo=True):
     
     #Solids components
-    
+    #!!! we usually use upper camel case when naming components/units,
+    # e.g., sludge would be Sludge, biooil would be BioOil
+    # but we use lower case with underscores for streams
+    # e.g., upgraded_biocrude
     sludge = Component('sludge', phase='s', formula='C56H95O27N6P',
                        particle_size='Particulate',
                        degradability='Undegradable',organic=False)
     add_V_from_rho(sludge,721)   
     #https://www.aqua-calc.com/page/density-table/substance/sewage-coma-and-blank-sludge
-    sludge.HHV = 22.0  #Li et al 2018
+    #!!! for references, add "accessed"
+    sludge.HHV = 22.0  #Li et al 2018 #!!! double-check unit, 22 is probably MJ/kg, here is J/mol
     sludge.copy_models_from(Chemical('glucose'),('Cn',)) #glucose will be replaced
     
     struvite = Component('struvite',search_ID='MagnesiumAmmoniumPhosphate',
@@ -159,6 +165,8 @@ def create_components(set_thermo=True):
                        CH4,C2H6,C3H8,C5H12,CO2,CO,H2,
                        H2SO4,H3PO4,MgCl2,NaOH,NH42SO4,H2O,NH3])
     
+    #!!! This means that if there's no HHV, then you HHV, LHV, and Hf to 0
+    # this may or may not be what we wanted, e.g., now cmps.biochar.HHV == 0
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):
             if getattr(i, attr) is None: setattr(i, attr, 0)
