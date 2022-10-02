@@ -12,6 +12,28 @@ This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 
+References:
+
+(1) Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J. 
+    Quantitative Evaluation of an Integrated System for Valorization of Wastewater 
+    Algae as Bio-Oil, Fuel Gas, and Fertilizer Products. 
+    Environ. Sci. Technol. 2018, 52 (21), 12717–12727. 
+    https://doi.org/10.1021/acs.est.8b04035.
+    
+(2) Snowden-Swan, L. J.; Zhu, Y.; Jones, S. B.; Elliott, D. C.; Schmidt, A. J.; 
+    Hallen, R. T.; Billing, J. M.; Hart, T. R.; Fox, S. P.; Maupin, G. D. 
+    Hydrothermal Liquefaction and Upgrading of Municipal Wastewater Treatment 
+    Plant Sludge: A Preliminary Techno-Economic Analysis; 
+    PNNL--25464, 1258731; 2016; https://doi.org/10.2172/1258731.
+
+
+(3) Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
+    Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
+    Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
+    Process Design and Economics for the Conversion of Algal Biomass to Hydrocarbons: 
+    Whole Algae Hydrothermal Liquefaction and Upgrading; PNNL--23227, 1126336; 2014; 
+    https://doi.org/10.2172/1126336.
+
 #!!! Add full citation here (you can't find the report with just Jones et al., 2014)
 '''
 
@@ -27,34 +49,34 @@ def create_components(set_thermo=True):
     # e.g., sludge would be Sludge, biooil would be BioOil
     # but we use lower case with underscores for streams
     # e.g., upgraded_biocrude
-    sludge = Component('sludge', phase='s', formula='C56H95O27N6P',
+    Sludge = Component('sludge', phase='s', formula='C56H95O27N6P',
                        particle_size='Particulate',
                        degradability='Undegradable',organic=False)
-    add_V_from_rho(sludge,721)   
-    #https://www.aqua-calc.com/page/density-table/substance/sewage-coma-and-blank-sludge
+    add_V_from_rho(Sludge,721)   
+    #https://www.aqua-calc.com/page/density-table/substance/sewage-coma-and-blank-sludge (accessed 2022-9-30)
     #!!! for references, add "accessed"
-    sludge.HHV = 22.0  #Li et al 2018 #!!! double-check unit, 22 is probably MJ/kg, here is J/mol
-    sludge.copy_models_from(Chemical('glucose'),('Cn',)) #glucose will be replaced
+    Sludge.HHV = 22.0  #Li et al 2018 #!!! double-check unit, 22 is probably MJ/kg, here is J/mol #kg->mol pending
+    Sludge.copy_models_from(Chemical('glucose'),('Cn',)) #glucose will be replaced
     
-    struvite = Component('struvite',search_ID='MagnesiumAmmoniumPhosphate',
+    Struvite = Component('struvite',search_ID='MagnesiumAmmoniumPhosphate',
                          formula='NH4MgPO4·H12O6',phase='s',
                          particle_size='Particulate', 
                          degradability='Undegradable',
                          organic=False)
-    add_V_from_rho(struvite, 1710)
-    #http://webmineral.com/data/Struvite.shtml#.YzYvqOzMIiM
+    add_V_from_rho(Struvite, 1710)
+    #http://webmineral.com/data/Struvite.shtml#.YzYvqOzMIiM (accessed 2022-9-30)
     
-    biochar = Component('biochar',phase='s',particle_size='Particulate',
+    Biochar = Component('biochar',phase='s',particle_size='Particulate',
                         degradability='Undegradable',organic=False,i_C=0.399,
                         i_N=0.026,i_P=0.184)
-    add_V_from_rho(biochar, 1500)  #Assume 1500kg/m3
-    biochar.copy_models_from(Chemical('CaCO3'),('Cn',))  #CaCO3?
+    add_V_from_rho(Biochar, 1500)  #Assume 1500kg/m3
+    Biochar.copy_models_from(Chemical('CaCO3'),('Cn',))  #CaCO3?
     
-    residual = Component('residual',phase='s',particle_size='Particulate',
+    Residual = Component('residual',phase='s',particle_size='Particulate',
                         degradability='Undegradable',organic=False,i_C=0.484,
                         i_N=0.031,i_P=0.011)
-    add_V_from_rho(residual, 1500)  #Assume 1500kg/m3
-    residual.copy_models_from(Chemical('CaCO3'),('Cn',))  #CaCO3?
+    add_V_from_rho(Residual, 1500)  #Assume 1500kg/m3
+    Residual.copy_models_from(Chemical('CaCO3'),('Cn',))  #CaCO3?
     
     HTchar = Component('HTchar',phase='s',particle_size='Particulate',
                         degradability='Undegradable',organic=False,i_C=0.515,
@@ -64,19 +86,19 @@ def create_components(set_thermo=True):
     
     #Oil components
     
-    biocrude = Component('biocrude',phase='l',formula = 'C14H21O1.8N',
+    Biocrude = Component('biocrude',phase='l',formula = 'C14H21O1.8N',
                          particle_size='Soluble',
                          degradability='Slowly',organic=True)
-    biocrude.HHV = 34.9  #Li et al 2018
-    add_V_from_rho(biocrude, 980)  #SS et al PNNL 2021
-    biocrude.copy_models_from(Chemical('palmitamide'),('Cn',))  #Jones et al 2014
+    Biocrude.HHV = 34.9  #Li et al 2018 #kg->mol pending
+    add_V_from_rho(Biocrude, 980)  #SS et al PNNL 2021
+    Biocrude.copy_models_from(Chemical('palmitamide'),('Cn',))  #Jones et al 2014
     
-    biooil = Component('biooil',phase='l',formula='C100H165O1.5N',
+    Biooil = Component('biooil',phase='l',formula='C100H165O1.5N',
                        particle_size='Soluble',
                        degradability='Slowly',organic=True)
-    biooil.HHV = 45.4  #Li et al 2018
-    add_V_from_rho(biooil, 794)  #SS et al PNNL 2016
-    biooil.copy_models_from(Chemical('hexadecane'),('Cn',))  #Jones et al 2014
+    Biooil.HHV = 45.4  #Li et al 2018 #kg->mol pending
+    add_V_from_rho(Biooil, 794)  #SS et al PNNL 2016
+    Biooil.copy_models_from(Chemical('hexadecane'),('Cn',))  #Jones et al 2014
     
     #Aqueous components
     
@@ -86,11 +108,11 @@ def create_components(set_thermo=True):
     add_V_from_rho(HTLaqueous, 1000)
     HTLaqueous.copy_models_from(Chemical('H2O'),('Cn',))
     
-    mixture = Component('mixture',phase='l',particle_size='Soluble',
+    Mixture = Component('mixture',phase='l',particle_size='Soluble',
                         degradability='Undegradable',organic=False,i_C=0.213,
                         i_N=0.088,i_P=0.071,i_COD=0.512)
-    add_V_from_rho(mixture, 1000)
-    mixture.copy_models_from(Chemical('H2O'),('Cn',))
+    add_V_from_rho(Mixture, 1000)
+    Mixture.copy_models_from(Chemical('H2O'),('Cn',))
     
     CHGfeed = Component('CHGfeed',phase='l',particle_size='Soluble',
                         degradability='Undegradable',organic=False,i_C=0.316,
@@ -150,7 +172,7 @@ def create_components(set_thermo=True):
     NH42SO4 = Component('NH42SO4',phase='l',particle_size='Soluble',
                         degradability='Undegradable',organic=False)
     add_V_from_rho(NH42SO4, 1770)
-    #https://en.wikipedia.org/wiki/Ammonium_sulfate
+    #https://en.wikipedia.org/wiki/Ammonium_sulfate (accessed 2022-9-30)
     
     H2O = Component('H2O',phase='l',particle_size='Soluble',
                     degradability='Undegradable',organic=False)
@@ -159,14 +181,14 @@ def create_components(set_thermo=True):
                     degradability='Undegradable',organic=False)
 
 
-    cmps = Components([sludge,struvite,biochar,HTchar,
-                       biocrude,biooil,
+    cmps = Components([Sludge,Struvite,Biochar,HTchar,
+                       Biocrude,Biooil,
                        HTLaqueous,CHGfeed,CHGeffluent,WW,
                        CH4,C2H6,C3H8,C5H12,CO2,CO,H2,
                        H2SO4,H3PO4,MgCl2,NaOH,NH42SO4,H2O,NH3])
     
     #!!! This means that if there's no HHV, then you HHV, LHV, and Hf to 0
-    # this may or may not be what we wanted, e.g., now cmps.biochar.HHV == 0
+    # this may or may not be what we wanted, e.g., now cmps.biochar.HHV == 0 #pending
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):
             if getattr(i, attr) is None: setattr(i, attr, 0)
