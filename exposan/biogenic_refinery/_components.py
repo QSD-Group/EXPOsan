@@ -73,7 +73,7 @@ def create_components(set_thermo=True):
     # Coconut shell
     # moisture content = 20.5 %, caloric value (HHV) = 8.27 MJ/kg
     CoconutShell = Component('CoconutShell', phase='s', i_C = 0.5022, i_N = 0.0001,
-                             particle_size='Particulate',
+                             f_Amass_Totmass = 0.0071, particle_size='Particulate',
                              degradability='Undegradable', organic=False)
     # 700 kg/m3 is average from:
     # https://aip.scitation.org/doi/pdf/10.1063/1.5127145#:~:text=Actual%20density%20of%20coconut%20shell,600%2D800%20kg%2Fm3. (accessed 2021-04-17)
@@ -83,7 +83,7 @@ def create_components(set_thermo=True):
     # Coconut husk
     # moisture content = 18.067 %, caloric value (HHV) = 19.77 MJ/kg
     CoconutHusk = Component('CoconutHusk', phase='s', i_C = 0.4876, i_N = 0.002,
-                            particle_size='Particulate',
+                            , particle_size='Particulate',
                             degradability='Undegradable', organic=False)
     # 69 kg/m3 is average for crushed husk from:
     # https://demelenterprises.com/Cocopeat/Cocopeat.pdf (accessed 2021-04-17)
