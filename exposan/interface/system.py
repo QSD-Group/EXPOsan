@@ -81,13 +81,18 @@ sys.simulate(
 # Use the functions in the `test_interface` module
 # =============================================================================
 
-# import numpy as np
-# from exposan.interface.test_interface import asm2adm, adm2asm
+import numpy as np
+from exposan.interface.test_interface import asm2adm, adm2asm
 
 # asm_vals = np.array(
 #     [29.999999992316447, 69.49999998219967, 51.19999998688672, 202.31999994818125,
-#      28.16999999278511, 0.0, 0.0, 0.0, 0.0, 31.559999991916882, 6.949999998219941,
-#      10.589999997287704, 83.99999997848548, 0.0, 998542.1330570019])
+#       28.16999999278511, 0.0, 0.0, 0.0, 0.0, 31.559999991916882, 6.949999998219941,
+#       10.589999997287704, 83.99999997848548, 0.0, 998542.1330570019])
 
-# adm_vals = asm2adm(asm_vals, T=293.15, pH=7)
-# asm_vals2 = adm2asm(adm_vals, T=293.15, pH=7)
+asm_vals = np.array(
+    [3.000e+01, 4.946e+00, 1.041e+03, 5.284e+01, 5.526e+02, 1.038e+02, 1.050e+02,
+     2.173e+00, 2.004e+01, 1.854e+00, 9.778e-01, 1.038e+00, 8.396e+01, 1.870e-02,
+     5.236e+01])
+
+adm_vals = asm2adm(asm_vals, T=293.15, pH=7)
+asm_vals2 = adm2asm(adm_vals, T=293.15, pH=7)
