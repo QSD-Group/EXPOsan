@@ -8,7 +8,7 @@ Created on Mon Oct  3 15:31:22 2022
 
 import qsdsan as qs
 from qsdsan import sanunits as su
-from exposan.HTL._components import create_components
+from exposan.htl._components import create_components
 
 cmps = create_components()
 
