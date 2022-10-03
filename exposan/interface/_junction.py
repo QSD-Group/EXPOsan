@@ -13,7 +13,7 @@ Please refer to https://github.com/QSD-Group/QSDsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-import numpy as np, qsdsan as qs
+import numpy as np
 from warnings import warn
 from math import isclose
 from biosteam.units import Junction as BSTjunction
@@ -421,7 +421,6 @@ class ADMtoASM(ADMjunction):
                 _cod_bl, _cod_err, _cod_tol, _asm_cod = self.isbalanced(adm_cod, _asm_vals, asm_i_COD)
                 if _cod_bl: return _asm_vals
                 else: 
-                    breakpoint()
                     warn('cannot balance COD and TKN at the same '
                         f'time with rtol={self.rtol} and atol={self.atol}. '
                         f'influent (ADM) COD is {adm_cod}, '
@@ -436,7 +435,6 @@ class ADMtoASM(ADMjunction):
             _tkn_bl, _tkn_err, _tkn_tol, _asm_tkn = self.isbalanced(adm_tkn, _asm_vals, asm_i_N)
             if _tkn_bl: return _asm_vals
             else:
-                breakpoint()
                 warn('cannot balance COD and TKN at the same '
                     f'time with rtol={self.rtol} and atol={self.atol}. '
                     f'influent (ADM) COD is {adm_cod}, '
@@ -665,7 +663,6 @@ class ASMtoADM(ADMjunction):
                 _cod_bl, _cod_err, _cod_tol, _adm_cod = self.isbalanced(asm_cod, _adm_vals, adm_i_COD)
                 if _cod_bl: return _adm_vals
                 else: 
-                    breakpoint()
                     warn('cannot balance COD and TKN at the same '
                         f'time with rtol={self.rtol} and atol={self.atol}.\n '
                         f'influent (ASM) COD is {asm_cod}\n '
@@ -680,7 +677,6 @@ class ASMtoADM(ADMjunction):
             _tkn_bl, _tkn_err, _tkn_tol, _adm_tkn = self.isbalanced(asm_tkn, _adm_vals, adm_i_N)
             if _tkn_bl: return _adm_vals
             else:
-                breakpoint()
                 warn('cannot balance COD and TKN at the same '
                     f'time with rtol={self.rtol} and atol={self.atol}.\n '
                     f'influent (ASM) COD is {asm_cod}\n '
