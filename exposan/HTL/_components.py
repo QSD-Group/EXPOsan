@@ -49,14 +49,15 @@ def create_components(set_thermo=True):
     # e.g., sludge would be Sludge, biooil would be BioOil
     # but we use lower case with underscores for streams
     # e.g., upgraded_biocrude
-    Sludge = Component('sludge', phase='s', formula='C56H95O27N6P',
+    Sludge = Component('Sludge', phase='s', formula='C56H95O27N6P',
                        particle_size='Particulate',
                        degradability='Undegradable',organic=False)
     add_V_from_rho(Sludge,721)   
     #https://www.aqua-calc.com/page/density-table/substance/sewage-coma-and-blank-sludge (accessed 2022-9-30)
     #!!! for references, add "accessed"
     Sludge.HHV = 22.0  #Li et al 2018 #!!! double-check unit, 22 is probably MJ/kg, here is J/mol #kg->mol pending
-    Sludge.copy_models_from(Chemical('glucose'),('Cn',)) #glucose will be replaced
+    # Sludge.copy_models_from(Chemical('glucose'),('Cn',)) #glucose will be replaced
+    Sludge.add_model(constant) # convert the 1.25 kJ/kg/K from Leow et al., 2015 (https://pubs.rsc.org/en/content/articlelanding/2015/gc/c5gc00574d) to J/mol/K
     
     Struvite = Component('struvite',search_ID='MagnesiumAmmoniumPhosphate',
                          formula='NH4MgPO4·H12O6',phase='s',
