@@ -56,8 +56,8 @@ def create_components(set_thermo=True):
                        degradability='Undegradable',organic=False)
     add_V_from_rho(Sludge,721)
     #https://www.aqua-calc.com/page/density-table/substance/sewage-coma-and-blank-sludge (accessed 2022-9-30)
-    Sludge.HHV = 22.0*10**6*Sludge.MW/1000  #Li et al 2018
-    Sludge.Cn.add_model(1.25*10**3*Sludge.MW/1000) # Leow et al 2015
+    Sludge.HHV = 22.0*10**6*Sludge.MW/1000  #Li et al., 2018
+    Sludge.Cn.add_model(1.25*10**3*Sludge.MW/1000) # Leow et al., 2015
     
     Struvite = Component('Struvite',search_ID='MagnesiumAmmoniumPhosphate',
                          formula='NH4MgPO4·H12O6',phase='s',
@@ -90,16 +90,16 @@ def create_components(set_thermo=True):
     Biocrude = Component('Biocrude',phase='l',formula = 'C14H21O1.8N',
                          particle_size='Soluble',
                          degradability='Slowly',organic=True)
-    Biocrude.HHV = 34.9*10**6*Biocrude.MW/1000  #Li et al 2018
-    add_V_from_rho(Biocrude, 980)  #SS et al PNNL 2021
-    Biocrude.copy_models_from(Chemical('palmitamide'),('Cn',))  #Jones et al 2014
+    Biocrude.HHV = 34.9*10**6*Biocrude.MW/1000  #Li et al., 2018
+    add_V_from_rho(Biocrude, 980)  #SS et al., PNNL 2021
+    Biocrude.copy_models_from(Chemical('palmitamide'),('Cn',))  #Jones et al., 2014
     
     Biooil = Component('Biooil',phase='l',formula='C100H165O1.5N',
                        particle_size='Soluble',
                        degradability='Slowly',organic=True)
-    Biooil.HHV = 45.4*10**6*Biooil.MW/1000  #Li et al 2018
-    add_V_from_rho(Biooil, 794)  #SS et al PNNL 2016
-    Biooil.copy_models_from(Chemical('hexadecane'),('Cn',))  #Jones et al 2014
+    Biooil.HHV = 45.4*10**6*Biooil.MW/1000  #Li et al., 2018
+    add_V_from_rho(Biooil, 794)  #SS et al., PNNL 2016
+    Biooil.copy_models_from(Chemical('hexadecane'),('Cn',))  #Jones et al., 2014
     
     #Aqueous components
     
