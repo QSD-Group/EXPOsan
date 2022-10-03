@@ -57,7 +57,7 @@ def create_components(set_thermo=True):
     #!!! for references, add "accessed"
     Sludge.HHV = 22.0  #Li et al 2018 #!!! double-check unit, 22 is probably MJ/kg, here is J/mol #kg->mol pending
     # Sludge.copy_models_from(Chemical('glucose'),('Cn',)) #glucose will be replaced
-    Sludge.add_model(constant) # convert the 1.25 kJ/kg/K from Leow et al., 2015 (https://pubs.rsc.org/en/content/articlelanding/2015/gc/c5gc00574d) to J/mol/K
+    Sludge.Cn.add_model(1.25) # convert the 1.25 kJ/kg/K from Leow et al., 2015 (https://pubs.rsc.org/en/content/articlelanding/2015/gc/c5gc00574d) to J/mol/K
     
     Struvite = Component('struvite',search_ID='MagnesiumAmmoniumPhosphate',
                          formula='NH4MgPO4·H12O6',phase='s',
