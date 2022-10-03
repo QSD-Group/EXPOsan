@@ -51,13 +51,29 @@ def create_components(set_thermo=True):
     
     #Solids components
     
-    Sludge = Component('Sludge', phase='s', formula='C56H95O27N6P',
+    #Sludge is separated into lipid, protein, and carbohydrate for the convenience
+    #suring sanunits setup.
+    Sludge_lipid = Component('Sludge_lipid', phase='s', formula='C56H95O27N6P',
                        particle_size='Particulate',
                        degradability='Undegradable',organic=False)
-    add_V_from_rho(Sludge,721)
+    add_V_from_rho(Sludge_lipid,721)
     #https://www.aqua-calc.com/page/density-table/substance/sewage-coma-and-blank-sludge (accessed 2022-9-30)
-    Sludge.HHV = 22.0*10**6*Sludge.MW/1000  #Li et al., 2018
-    Sludge.Cn.add_model(1.25*10**3*Sludge.MW/1000) # Leow et al., 2015
+    Sludge_lipid.HHV = 22.0*10**6*Sludge_lipid.MW/1000  #Li et al., 2018
+    Sludge_lipid.Cn.add_model(1.25*10**3*Sludge_lipid.MW/1000) # Leow et al., 2015
+    
+    Sludge_protein = Component('Sludge_protein', phase='s', formula='C56H95O27N6P',
+                       particle_size='Particulate',
+                       degradability='Undegradable',organic=False)
+    add_V_from_rho(Sludge_protein,721)
+    Sludge_protein.HHV = 22.0*10**6*Sludge_protein.MW/1000
+    Sludge_protein.Cn.add_model(1.25*10**3*Sludge_protein.MW/1000)
+    
+    Sludge_carbo = Component('Sludge_carbo', phase='s', formula='C56H95O27N6P',
+                       particle_size='Particulate',
+                       degradability='Undegradable',organic=False)
+    add_V_from_rho(Sludge_carbo,721)
+    Sludge_carbo.HHV = 22.0*10**6*Sludge_carbo.MW/1000
+    Sludge_carbo.Cn.add_model(1.25*10**3*Sludge_carbo.MW/1000)
     
     Struvite = Component('Struvite',search_ID='MagnesiumAmmoniumPhosphate',
                          formula='NH4MgPO4·H12O6',phase='s',
@@ -182,7 +198,7 @@ def create_components(set_thermo=True):
                     degradability='Undegradable',organic=False)
 
 
-    cmps = Components([Sludge,Struvite,Biochar,HTchar,
+    cmps = Components([Sludge_lipid,Sludge_protein,Sludge_carbo,Struvite,Biochar,HTchar,
                        Biocrude,Biooil,
                        HTLaqueous,CHGfeed,CHGeffluent,WW,
                        CH4,C2H6,C3H8,C5H12,CO2,CO,H2,
