@@ -1,0 +1,440 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1050pt" height="360pt" viewBox="0.00 0.00 1050.00 359.51">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 355.51)">
+<!-- U1
+Screening&#45;&gt;M1
+Mixer -->
+<g id="edge11" class="edge">
+<title>U1
+Screening:c-&gt;M1
+Mixer:c</title>
+<path fill="none" stroke="#90918e" d="M143.63,-34.01C156.77,-34.01 171.45,-34.01 184.34,-34.01"/>
+<polygon fill="#90918e" stroke="#90918e" points="184.67,-37.51 194.67,-34.01 184.67,-30.51 184.67,-37.51"/>
+<g id="a_edge11-label"><a xlink:title="Temperature: 298 K
+Pressure: 101325 Pa
+Liquid flow: 1.76e+05 kmol/hr">
+<text text-anchor="middle" x="173" y="-37.81" font-family="Arial" font-size="14.00" fill="#90918e"> ws1</text>
+</a>
+</g>
+</g>
+<!-- M1
+Mixer&#45;&gt;ASP
+Activated sludge process -->
+<g id="edge10" class="edge">
+<title>M1
+Mixer:c-&gt;ASP
+Activated sludge process:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M245.21,-46.58C270.17,-59.53 309.83,-80.11 341.71,-96.66"/>
+<polygon fill="#90918e" stroke="#90918e" points="340.41,-99.93 350.9,-101.43 343.64,-93.71 340.41,-99.93"/>
+<g id="a_edge10-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="277.5" y="-79.81" font-family="Arial" font-size="14.00" fill="#90918e"> ws3</text>
+</a>
+</g>
+</g>
+<!-- ASP
+Activated sludge process&#45;&gt;GBT
+Belt thickener -->
+<g id="edge17" class="edge">
+<title>ASP
+Activated sludge process:c-&gt;GBT
+Belt thickener:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M440.61,-101.46C468.01,-88.65 502.93,-72.32 531.79,-58.83"/>
+<polygon fill="#90918e" stroke="#90918e" points="533.36,-61.96 540.93,-54.55 530.39,-55.62 533.36,-61.96"/>
+<g id="a_edge17-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="508" y="-81.81" font-family="Arial" font-size="14.00" fill="#90918e"> was</text>
+</a>
+</g>
+</g>
+<!-- ASP
+Activated sludge process&#45;&gt; treated -->
+<g id="edge3" class="edge">
+<title>ASP
+Activated sludge process:c-&gt; treated:w</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M477.35,-119.21C479.93,-119.13 482.48,-119.07 485,-119.01 505.44,-118.56 510.57,-118.24 531,-119.01 554.61,-119.9 560.38,-123.01 584,-123.01"/>
+<g id="a_edge3-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="508" y="-122.81" font-family="Arial" font-size="14.00" fill="#90918e"> treated</text>
+</a>
+</g>
+</g>
+<!-- ASP
+Activated sludge process&#45;&gt; offgas -->
+<g id="edge21" class="edge">
+<title>ASP
+Activated sludge process:c-&gt; offgas:w</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M440.5,-144.67C478.2,-160.42 533.4,-179.01 584,-179.01"/>
+<g id="a_edge21-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="508" y="-177.81" font-family="Arial" font-size="14.00" fill="#90918e"> offgas</text>
+</a>
+</g>
+</g>
+<!-- GBT
+Belt thickener&#45;&gt;M1
+Mixer -->
+<g id="edge14" class="edge">
+<title>GBT
+Belt thickener:c-&gt;M1
+Mixer:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M538.82,-33.15C463.74,-33.35 320.64,-33.74 255.2,-33.92"/>
+<polygon fill="#90918e" stroke="#90918e" points="255,-30.42 245.01,-33.95 255.02,-37.42 255,-30.42"/>
+<g id="a_edge14-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="393.5" y="-37.81" font-family="Arial" font-size="14.00" fill="#90918e"> ws2</text>
+</a>
+</g>
+</g>
+<!-- GBT
+Belt thickener&#45;&gt;AD
+Sludge digester -->
+<g id="edge19" class="edge">
+<title>GBT
+Belt thickener:c-&gt;AD
+Sludge digester:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M637.24,-33.01C658.01,-33.01 682.59,-33.01 704.86,-33.01"/>
+<polygon fill="#90918e" stroke="#90918e" points="704.91,-36.51 714.91,-33.01 704.91,-29.51 704.91,-36.51"/>
+<g id="a_edge19-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="676" y="-36.81" font-family="Arial" font-size="14.00" fill="#90918e"> thickened</text>
+</a>
+</g>
+</g>
+<!-- AD
+Sludge digester&#45;&gt;CHP
+CHP -->
+<g id="edge20" class="edge">
+<title>AD
+Sludge digester:c-&gt;CHP
+CHP:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M825.1,-51.41C850.21,-61.22 879.79,-74.66 904,-91.01 904.5,-91.35 905,-91.7 905.5,-92.06"/>
+<polygon fill="#90918e" stroke="#90918e" points="903.4,-94.86 913.39,-98.4 907.79,-89.4 903.4,-94.86"/>
+<g id="a_edge20-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="868.5" y="-94.81" font-family="Arial" font-size="14.00" fill="#90918e"> biogas</text>
+</a>
+</g>
+</g>
+<!-- AD
+Sludge digester&#45;&gt; disposed -->
+<g id="edge2" class="edge">
+<title>AD
+Sludge digester:c-&gt; disposed:w</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M810.45,-11.47C817.75,-8.39 825.46,-5.69 833,-4.01 863.8,2.83 872.53,-1.65 904,-4.01 915.88,-4.91 918.59,-8.01 930.5,-8.01"/>
+<g id="a_edge2-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="868.5" y="-7.81" font-family="Arial" font-size="14.00" fill="#90918e"> disposed</text>
+</a>
+</g>
+</g>
+<!-- GBT_eff
+Pump&#45;&gt; ws4 -->
+<g id="edge1" class="edge">
+<title>GBT_eff
+Pump:c-&gt; ws4:w</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M139.21,-172.01C161.04,-172.01 190.22,-172.01 216,-172.01"/>
+<g id="a_edge1-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="173" y="-175.81" font-family="Arial" font-size="14.00" fill="#90918e"> ws4</text>
+</a>
+</g>
+</g>
+<!-- GBT_sludge
+Pump&#45;&gt; ws5 -->
+<g id="edge9" class="edge">
+<title>GBT_sludge
+Pump:c-&gt; ws5:w</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M151.22,-251.01C171.09,-251.01 194.71,-251.01 216,-251.01"/>
+<g id="a_edge9-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="173" y="-254.81" font-family="Arial" font-size="14.00" fill="#90918e"> ws5</text>
+</a>
+</g>
+</g>
+<!-- AD_sludge
+WWTpump&#45;&gt; ws7 -->
+<g id="edge6" class="edge">
+<title>AD_sludge
+WWTpump:c-&gt; ws7:w</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M148.05,-330.01C168.55,-330.01 193.56,-330.01 216,-330.01"/>
+<g id="a_edge6-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="173" y="-333.81" font-family="Arial" font-size="14.00" fill="#90918e"> ws7</text>
+</a>
+</g>
+</g>
+<!-- CHP
+CHP&#45;&gt; emission -->
+<g id="edge8" class="edge">
+<title>CHP
+CHP:c-&gt; emission:w</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M957.33,-130.12C976.66,-138.14 1005.86,-148.01 1032.5,-148.01"/>
+<g id="a_edge8-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="994" y="-151.81" font-family="Arial" font-size="14.00" fill="#90918e"> emission</text>
+</a>
+</g>
+</g>
+<!-- CHP
+CHP&#45;&gt; solids -->
+<g id="edge18" class="edge">
+<title>CHP
+CHP:c-&gt; solids:w</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M957.33,-109.91C976.66,-101.89 1005.86,-92.01 1032.5,-92.01"/>
+<g id="a_edge18-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="994" y="-109.81" font-family="Arial" font-size="14.00" fill="#90918e"> solids</text>
+</a>
+</g>
+</g>
+<!--  ws.2&#45;&gt;GBT_sludge
+Pump -->
+<g id="edge4" class="edge">
+<title> ws.2:e-&gt;GBT_sludge
+Pump:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M11,-251.01C26.5,-251.01 43.45,-251.01 58.59,-251.01"/>
+<g id="a_edge4-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="35" y="-254.81" font-family="Arial" font-size="14.00" fill="#90918e"> ws.2</text>
+</a>
+</g>
+</g>
+<!--  ws.1&#45;&gt;GBT_eff
+Pump -->
+<g id="edge5" class="edge">
+<title> ws.1:e-&gt;GBT_eff
+Pump:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M11,-172.01C30.86,-172.01 53.1,-172.01 70.86,-172.01"/>
+<g id="a_edge5-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="35" y="-175.81" font-family="Arial" font-size="14.00" fill="#90918e"> ws.1</text>
+</a>
+</g>
+</g>
+<!--  inf&#45;&gt;U1
+Screening -->
+<g id="edge7" class="edge">
+<title> inf:e-&gt;U1
+Screening:c</title>
+<path fill="none" stroke="#90918e" d="M11,-34.01C29.24,-34.01 49.5,-34.01 66.44,-34.01"/>
+<g id="a_edge7-label"><a xlink:title="Temperature: 298 K
+Pressure: 101325 Pa
+Liquid flow: 1.76e+05 kmol/hr">
+<text text-anchor="middle" x="35" y="-37.81" font-family="Arial" font-size="14.00" fill="#90918e"> inf</text>
+</a>
+</g>
+</g>
+<!--  ws.3&#45;&gt;AD_sludge
+WWTpump -->
+<g id="edge12" class="edge">
+<title> ws.3:e-&gt;AD_sludge
+WWTpump:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M11,-330.01C27.63,-330.01 45.93,-330.01 61.87,-330.01"/>
+<g id="a_edge12-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="35" y="-333.81" font-family="Arial" font-size="14.00" fill="#90918e"> ws.3</text>
+</a>
+</g>
+</g>
+<!--  natural gas&#45;&gt;CHP
+CHP -->
+<g id="edge13" class="edge">
+<title> natural gas:e-&gt;CHP
+CHP:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M777,-176.01C827.64,-176.01 882.4,-149.7 911.83,-133.14"/>
+<g id="a_edge13-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="868.5" y="-170.81" font-family="Arial" font-size="14.00" fill="#90918e"> natural gas</text>
+</a>
+</g>
+</g>
+<!--  ASP air&#45;&gt;ASP
+Activated sludge process -->
+<g id="edge15" class="edge">
+<title> ASP air:e-&gt;ASP
+Activated sludge process:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M227,-123.01C253.87,-123.01 283.18,-123.01 309.58,-123.01"/>
+<g id="a_edge15-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="277.5" y="-126.81" font-family="Arial" font-size="14.00" fill="#90918e"> ASP air</text>
+</a>
+</g>
+</g>
+<!--  CHP air&#45;&gt;CHP
+CHP -->
+<g id="edge16" class="edge">
+<title> CHP air:e-&gt;CHP
+CHP:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M777,-120.01C801.95,-120.01 808.06,-116.9 833,-116.01 864.54,-114.89 872.52,-113.89 904,-116.01 906.58,-116.19 909.27,-116.45 911.95,-116.75"/>
+<g id="a_edge16-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="868.5" y="-119.81" font-family="Arial" font-size="14.00" fill="#90918e"> CHP air</text>
+</a>
+</g>
+</g>
+<!-- U1
+Screening -->
+<g id="node1" class="node">
+<title>U1
+Screening</title>
+<g id="a_node1"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="143.5,-55.51 66.5,-55.51 66.5,-12.51 143.5,-12.51 143.5,-55.51"/>
+<text text-anchor="middle" x="105" y="-37.81" font-family="Arial" font-size="14.00" fill="white">U1</text>
+<text text-anchor="middle" x="105" y="-22.81" font-family="Arial" font-size="14.00" fill="white">Screening</text>
+</a>
+</g>
+</g>
+<!-- M1
+Mixer -->
+<g id="node2" class="node">
+<title>M1
+Mixer</title>
+<g id="a_node2"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="245,-55.51 195,-55.51 195,-12.51 245,-12.51 245,-55.51"/>
+<text text-anchor="middle" x="220" y="-37.81" font-family="Arial" font-size="14.00" fill="white">M1</text>
+<text text-anchor="middle" x="220" y="-22.81" font-family="Arial" font-size="14.00" fill="white">Mixer</text>
+</a>
+</g>
+</g>
+<!-- ASP
+Activated sludge process -->
+<g id="node3" class="node">
+<title>ASP
+Activated sludge process</title>
+<g id="a_node3"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="477,-144.51 310,-144.51 310,-101.51 477,-101.51 477,-144.51"/>
+<text text-anchor="middle" x="393.5" y="-126.81" font-family="Arial" font-size="14.00" fill="white">ASP</text>
+<text text-anchor="middle" x="393.5" y="-111.81" font-family="Arial" font-size="14.00" fill="white">Activated sludge process</text>
+</a>
+</g>
+</g>
+<!-- GBT
+Belt thickener -->
+<g id="node4" class="node">
+<title>GBT
+Belt thickener</title>
+<g id="a_node4"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="637,-54.51 539,-54.51 539,-11.51 637,-11.51 637,-54.51"/>
+<text text-anchor="middle" x="588" y="-36.81" font-family="Arial" font-size="14.00" fill="white">GBT</text>
+<text text-anchor="middle" x="588" y="-21.81" font-family="Arial" font-size="14.00" fill="white">Belt thickener</text>
+</a>
+</g>
+</g>
+<!-- AD
+Sludge digester -->
+<g id="node5" class="node">
+<title>AD
+Sludge digester</title>
+<g id="a_node5"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="825,-54.51 715,-54.51 715,-11.51 825,-11.51 825,-54.51"/>
+<text text-anchor="middle" x="770" y="-36.81" font-family="Arial" font-size="14.00" fill="white">AD</text>
+<text text-anchor="middle" x="770" y="-21.81" font-family="Arial" font-size="14.00" fill="white">Sludge digester</text>
+</a>
+</g>
+</g>
+<!-- GBT_eff
+Pump -->
+<g id="node6" class="node">
+<title>GBT_eff
+Pump</title>
+<g id="a_node6"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="139,-193.51 71,-193.51 71,-150.51 139,-150.51 139,-193.51"/>
+<text text-anchor="middle" x="105" y="-175.81" font-family="Arial" font-size="14.00" fill="white">GBT_eff</text>
+<text text-anchor="middle" x="105" y="-160.81" font-family="Arial" font-size="14.00" fill="white">Pump</text>
+</a>
+</g>
+</g>
+<!-- GBT_sludge
+Pump -->
+<g id="node7" class="node">
+<title>GBT_sludge
+Pump</title>
+<g id="a_node7"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="151,-272.51 59,-272.51 59,-229.51 151,-229.51 151,-272.51"/>
+<text text-anchor="middle" x="105" y="-254.81" font-family="Arial" font-size="14.00" fill="white">GBT_sludge</text>
+<text text-anchor="middle" x="105" y="-239.81" font-family="Arial" font-size="14.00" fill="white">Pump</text>
+</a>
+</g>
+</g>
+<!-- AD_sludge
+WWTpump -->
+<g id="node8" class="node">
+<title>AD_sludge
+WWTpump</title>
+<g id="a_node8"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="148,-351.51 62,-351.51 62,-308.51 148,-308.51 148,-351.51"/>
+<text text-anchor="middle" x="105" y="-333.81" font-family="Arial" font-size="14.00" fill="white">AD_sludge</text>
+<text text-anchor="middle" x="105" y="-318.81" font-family="Arial" font-size="14.00" fill="white">WWTpump</text>
+</a>
+</g>
+</g>
+<!-- CHP
+CHP -->
+<g id="node9" class="node">
+<title>CHP
+CHP</title>
+<g id="a_node9"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="957,-141.51 912,-141.51 912,-98.51 957,-98.51 957,-141.51"/>
+<text text-anchor="middle" x="934.5" y="-123.81" font-family="Arial" font-size="14.00" fill="white">CHP</text>
+<text text-anchor="middle" x="934.5" y="-108.81" font-family="Arial" font-size="14.00" fill="white">CHP</text>
+</a>
+</g>
+</g>
+<!--  ws4 -->
+<g id="node10" class="node">
+<title> ws4</title>
+<polygon fill="#f98f60" stroke="#90918e" points="225.5,-172.01 217.25,-179.01 217.25,-165.01 225.5,-172.01"/>
+</g>
+<!--  disposed -->
+<g id="node11" class="node">
+<title> disposed</title>
+<polygon fill="#f98f60" stroke="#90918e" points="940,-8.01 931.75,-15.01 931.75,-1.01 940,-8.01"/>
+</g>
+<!--  treated -->
+<g id="node12" class="node">
+<title> treated</title>
+<polygon fill="#f98f60" stroke="#90918e" points="593.5,-123.01 585.25,-130.01 585.25,-116.01 593.5,-123.01"/>
+</g>
+<!--  ws.2 -->
+<g id="node13" class="node">
+<title> ws.2</title>
+<polygon fill="#f98f60" stroke="#90918e" points="5.5,-256.51 0,-251.01 5.5,-245.51 11,-251.01 5.5,-256.51"/>
+</g>
+<!--  ws.1 -->
+<g id="node14" class="node">
+<title> ws.1</title>
+<polygon fill="#f98f60" stroke="#90918e" points="5.5,-177.51 0,-172.01 5.5,-166.51 11,-172.01 5.5,-177.51"/>
+</g>
+<!--  ws7 -->
+<g id="node15" class="node">
+<title> ws7</title>
+<polygon fill="#f98f60" stroke="#90918e" points="225.5,-330.01 217.25,-337.01 217.25,-323.01 225.5,-330.01"/>
+</g>
+<!--  inf -->
+<g id="node16" class="node">
+<title> inf</title>
+<polygon fill="#f98f60" stroke="#90918e" points="5.5,-39.51 0,-34.01 5.5,-28.51 11,-34.01 5.5,-39.51"/>
+</g>
+<!--  emission -->
+<g id="node17" class="node">
+<title> emission</title>
+<polygon fill="#f98f60" stroke="#90918e" points="1042,-148.01 1033.75,-155.01 1033.75,-141.01 1042,-148.01"/>
+</g>
+<!--  ws5 -->
+<g id="node18" class="node">
+<title> ws5</title>
+<polygon fill="#f98f60" stroke="#90918e" points="225.5,-251.01 217.25,-258.01 217.25,-244.01 225.5,-251.01"/>
+</g>
+<!--  ws.3 -->
+<g id="node19" class="node">
+<title> ws.3</title>
+<polygon fill="#f98f60" stroke="#90918e" points="5.5,-335.51 0,-330.01 5.5,-324.51 11,-330.01 5.5,-335.51"/>
+</g>
+<!--  natural gas -->
+<g id="node20" class="node">
+<title> natural gas</title>
+<polygon fill="#f98f60" stroke="#90918e" points="770,-181.51 764.5,-176.01 770,-170.51 775.5,-176.01 770,-181.51"/>
+</g>
+<!--  ASP air -->
+<g id="node21" class="node">
+<title> ASP air</title>
+<polygon fill="#f98f60" stroke="#90918e" points="220,-128.51 214.5,-123.01 220,-117.51 225.5,-123.01 220,-128.51"/>
+</g>
+<!--  CHP air -->
+<g id="node22" class="node">
+<title> CHP air</title>
+<polygon fill="#f98f60" stroke="#90918e" points="770,-125.51 764.5,-120.01 770,-114.51 775.5,-120.01 770,-125.51"/>
+</g>
+<!--  solids -->
+<g id="node23" class="node">
+<title> solids</title>
+<polygon fill="#f98f60" stroke="#90918e" points="1042,-92.01 1033.75,-99.01 1033.75,-85.01 1042,-92.01"/>
+</g>
+<!--  offgas -->
+<g id="node24" class="node">
+<title> offgas</title>
+<polygon fill="#f98f60" stroke="#90918e" points="593.5,-179.01 585.25,-186.01 585.25,-172.01 593.5,-179.01"/>
+</g>
+</g>
+</svg>
