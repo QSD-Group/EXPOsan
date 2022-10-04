@@ -30,7 +30,7 @@ jobs:
         python -m pip install pytest
         pip install git+https://github.com/BioSTEAMDevelopmentGroup/thermosteam.git@qsdsan
         pip install git+https://github.com/BioSTEAMDevelopmentGroup/biosteam.git@qsdsan
-        pip install git+https://github.com/QSD-Group/QSDsan.git
+        pip install git+https://github.com/QSD-Group/QSDsan.git@main
         pip install -r requirements.txt
     - name: Test with pytest
       run: |
