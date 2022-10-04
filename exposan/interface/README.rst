@@ -6,7 +6,7 @@ Summary
 -------
 This modules contains a simple system to show the use of units to enable dynamic simulation with more than one process models (``ADMtoASM`` and ``ASMtoADM`` for anaerobic digestion model no.1 and activated sludge model no.1) .
 
-The system contains the entire Benchmark Simulation Model No. 1 (BSM1) [1]_ as modeled in the `bsm1 <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bsm1>`_ module. But the waste activated stream from the clarifier is sent to an anaerobic digester (AD), and the effluent from the AD is recycled into the first anaerobic reactor.
+The system contains the entire Benchmark Simulation Model No. 1 (BSM1) [1]_ configuration as modeled in the `bsm1 <https://github.com/QSD-Group/EXPOsan/tree/main/exposan/bsm1>`_ module. But the waste activated sludge from the clarifier is sent to an anaerobic digester (AD), and the effluent from the AD is recycled into the first activated sludge bioreactor.
 
 .. figure:: ./readme_figures/interface.svg
 
