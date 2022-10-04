@@ -7,6 +7,7 @@ EXPOsan: Exposition of sanitation and resource recovery systems
 This module is developed by:
     Lewis Rowles <stetsonsc@gmail.com>
     Yalin Li <mailto.yalin.li@gmail.com>
+    Lane To <lane20@illinois.edu>
 
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
@@ -61,48 +62,48 @@ def create_components(set_thermo=True):
     # data collect from source below unless noted
     # https://www.sciencedirect.com/science/article/abs/pii/S0016236101001314?via%3Dihub
     # Bamboo wood
-    # moisture content = 20.55 %, caloric value (HHV) = 11.5 MJ/kg
+    # moisture content = 11.50 %, caloric value (HHV) = 20.547 MJ/kg
     BambooWood = Component('BambooWood', MW=1, phase='s', i_C = 0.4876, i_N = 0.002,
-                           particle_size='Particulate',
+                           f_Amass_Totmass = 0.0195, particle_size='Particulate',
                            degradability='Undegradable', organic=False)
     # 406 kg/m3 is average from:
     # https://ojs.cnr.ncsu.edu/index.php/BioRes/article/view/10244 (accessed 2021-04-17)
     add_V_from_rho(BambooWood, 406)
-    BambooWood.HHV = 11.5
+    BambooWood.HHV = 20.547
 
     # Coconut shell
-    # moisture content = 20.5 %, caloric value (HHV) = 8.27 MJ/kg
+    # moisture content = 8.27 %, caloric value (HHV) = 20.498 MJ/kg
     CoconutShell = Component('CoconutShell', phase='s', i_C = 0.5022, i_N = 0.0001,
                              f_Amass_Totmass = 0.0071, particle_size='Particulate',
                              degradability='Undegradable', organic=False)
     # 700 kg/m3 is average from:
     # https://aip.scitation.org/doi/pdf/10.1063/1.5127145#:~:text=Actual%20density%20of%20coconut%20shell,600%2D800%20kg%2Fm3. (accessed 2021-04-17)
     add_V_from_rho(CoconutShell, 700)
-    CoconutShell.HHV = 8.27
+    CoconutShell.HHV = 20.498
 
     # Coconut husk
-    # moisture content = 18.067 %, caloric value (HHV) = 19.77 MJ/kg
+    # moisture content = 19.777 %, caloric value (HHV) = 18.067 MJ/kg
     CoconutHusk = Component('CoconutHusk', phase='s', i_C = 0.4876, i_N = 0.002,
-                            , particle_size='Particulate',
+                            f_Amass_Totmass = 0.0516, particle_size='Particulate',
                             degradability='Undegradable', organic=False)
     # 69 kg/m3 is average for crushed husk from:
     # https://demelenterprises.com/Cocopeat/Cocopeat.pdf (accessed 2021-04-17)
     add_V_from_rho(CoconutHusk, 69)
-    CoconutHusk.HHV = 19.77
+    CoconutHusk.HHV = 18.067
 
     # Rice husk
-    # moisture content = 14.693 %, caloric value (HHV) = 8.47 MJ/kg
+    # moisture content = 8.47 %, caloric value (HHV) = 14.693 MJ/kg
     RiceHusk = Component('RiceHusk', phase='s', i_C = 0.385, i_N = 0.0045,
-                          particle_size='Particulate',
+                          f_Amass_Totmass = 0.2124, particle_size='Particulate',
                           degradability='Undegradable', organic=False)
     # 358 kg/m3 is average from:
     # https://thescipub.com/pdf/ajassp.2012.1757.1768.pdf (accessed 2021-04-17)
     add_V_from_rho(RiceHusk, 358)
-    RiceHusk.HHV = 8.47
+    RiceHusk.HHV = 14.693
 
     # Corn stover
     # moisture content = 18.5 %, caloric value (HHV) = 46.5 MJ/kg
-    CornStover = Component('CornStoverk', phase='s', i_C = 0.465, i_N = 0.0056,
+    CornStover = Component('CornStover', phase='s', i_C = 0.465, i_N = 0.0056,
                            particle_size='Particulate',
                            degradability='Undegradable', organic=False)
     # 90 kg/m3 is average from:
