@@ -23,21 +23,6 @@ data_path, results_path = _init_modules(module, include_data_path=True)
 # %%
 
 # =============================================================================
-# Universal parameters
-# =============================================================================
-
-# Streams
-Temp = 273.15+20    # temperature [K]
-Q = 18446           # influent flowrate [m3/d]
-
-# Tanks
-V_an = 1000    # anoxic zone tank volume [m3]
-V_aer = 1333    # aerated zone tank volume [m3]
-
-
-# %%
-
-# =============================================================================
 # Load the components, process model, and system
 # =============================================================================
 
@@ -48,7 +33,7 @@ _system_loaded = False
 _loaded_pc_model = None
 _loaded_aerated = None
 def load(process_model='ASM1', aerated=False, reload=False,
-         asm_kwargs=None, inf_kwargs=None, init_conds=None, flowsheet=None):
+         inf_kwargs={}, asm_kwargs={}, init_conds={}, flowsheet=None):
     global _system_loaded, _loaded_pc_model, _loaded_aerated
     if (process_model!=_loaded_pc_model) or (_loaded_aerated!=aerated): reload = True
     if reload:
@@ -56,10 +41,10 @@ def load(process_model='ASM1', aerated=False, reload=False,
         sys = create_system(
             process_model=process_model,
             aerated=aerated,
-            asm_kwargs=asm_kwargs,
             inf_kwargs=inf_kwargs,
+            asm_kwargs=asm_kwargs,
             init_conds=init_conds,
-            flowsheet=flowsheet
+            flowsheet=flowsheet,
             )
         CSTR = sys.flowsheet.unit.CSTR
         cmps = components = CSTR.components

@@ -14,9 +14,23 @@ for license details.
 import os, numpy as np, qsdsan as qs
 from qsdsan import sanunits as su, processes as pc, WasteStream, System
 from qsdsan.utils import time_printer
-from exposan.asm import data_path, results_path, Temp, Q, V_an, V_aer
+from exposan.asm import data_path, results_path
 
 __all__ = ('create_system',)
+
+# %%
+
+# =============================================================================
+# Universal parameters
+# =============================================================================
+
+# Streams
+Temp = 273.15+20    # temperature [K]
+Q = 18446           # influent flowrate [m3/d]
+
+# Tanks
+V_an = 1000    # anoxic zone tank volume [m3]
+V_aer = 1333    # aerated zone tank volume [m3]
 
 
 # %%
@@ -26,7 +40,7 @@ __all__ = ('create_system',)
 # =============================================================================
 
 def create_system(process_model='ASM1', aerated=False,
-                  asm_kwargs=None, inf_kwargs=None, init_conds=None,
+                  inf_kwargs={}, asm_kwargs={}, init_conds={},
                   flowsheet=None):
     suffix = 'aer' if aerated else 'an'
     flowsheet = flowsheet or qs.Flowsheet(f'{process_model}_{suffix}')
@@ -37,17 +51,7 @@ def create_system(process_model='ASM1', aerated=False,
     if pc_lower == 'asm1':
         # Thermodynamic conditions
         cmps = pc.create_asm1_cmps()
-        
-        # Process model
-        asm_kwargs = asm_kwargs or dict(
-            Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
-            mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
-            eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
-            K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05, fr_SS_COD=1/1.48,
-            path=os.path.join(data_path, '_asm1.tsv'),
-            )
-        asm = pc.ASM1(components=cmps, **asm_kwargs)
-        
+
         # Influent
         inf_kwargs = inf_kwargs or {
             'concentrations': {
@@ -63,6 +67,16 @@ def create_system(process_model='ASM1', aerated=False,
                 },
             'units': ('m3/d', 'mg/L'),
             }
+        
+        # Process model
+        asm_kwargs = asm_kwargs or dict(
+            Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
+            mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
+            eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
+            K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05, fr_SS_COD=1/1.48,
+            path=os.path.join(data_path, '_asm1.tsv'),
+            )
+        asm = pc.ASM1(components=cmps, **asm_kwargs)
         
         # Initial conditions in the CSTR
         init_conds = init_conds or {
@@ -84,6 +98,21 @@ def create_system(process_model='ASM1', aerated=False,
     elif pc_lower == 'asm2d':
         cmps = pc.create_asm2d_cmps()
         
+        inf_kwargs = {
+            'concentrations': { # Henze et al., Activated Sludge Models ASM1, ASM2, ASM2d and ASM3, P91
+                'S_I': 30,
+                'S_F': 30,
+                'S_A': 0,
+                'S_NH4': 16,
+                'S_PO4': 3.6,
+                'S_ALK': 5*12, # mmol/L to mg C/L
+                'X_I': 25,
+                'X_S': 125,
+                'X_H': 30,
+                },
+            'units': ('m3/d', 'mg/L'),
+            }
+
         asm_kwargs = asm_kwargs or dict(
             iN_SI=0.01, iN_SF=0.03, iN_XI=0.02, iN_XS=0.04, iN_BM=0.07,
             iP_SI=0.0, iP_SF=0.01, iP_XI=0.01, iP_XS=0.01, iP_BM=0.02,
@@ -102,22 +131,7 @@ def create_system(process_model='ASM1', aerated=False,
             K_P_AUT=0.01, k_PRE=1.0, k_RED=0.6, K_ALK_PRE=0.5,
             )
         asm = pc.ASM2d(components=cmps, **asm_kwargs)
-        
-        inf_kwargs = {
-            'concentrations': { # Henze et al., Activated Sludge Models ASM1, ASM2, ASM2d and ASM3, P91
-                'S_I': 30,
-                'S_F': 30,
-                'S_A': 0,
-                'S_NH4': 16,
-                'S_PO4': 3.6,
-                'S_ALK': 5*12, # mmol/L to mg C/L
-                'X_I': 25,
-                'X_S': 125,
-                'X_H': 30,
-                },
-            'units': ('m3/d', 'mg/L'),
-            }
-        
+
         init_conds = init_conds or {
                 'S_I': 30,
                 'S_F': 5,
