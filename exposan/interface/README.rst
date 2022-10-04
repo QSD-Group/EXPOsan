@@ -17,9 +17,9 @@ Load the system
 ---------------
 .. code-block:: python
 
-	>>> from exposan import interface
-	>>> interface.load()
-	>>> sys = interface.sys
+	>>> from exposan import interface as inter
+	>>> inter.load()
+	>>> sys = inter.sys
 	>>> sys.simulate(t_span=(0, 50))
 	>>> u = sys.flowsheet.unit # unit registry
 	>>> # Check the states of any one or more components

@@ -17,7 +17,6 @@ import os, numpy as np, qsdsan as qs
 from qsdsan import System
 from qsdsan.sanunits import ADMtoASM, ASMtoADM
 from exposan.bsm1 import create_system as create_bsm1_system
-# from exposan.bsm1 import bsm1 as bsm1_sys, A1, C1, RE as RWW, WAS
 from exposan.interface import results_path
 
 __all__ = ('create_system',)
