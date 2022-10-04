@@ -17,7 +17,7 @@ from chaospy import distributions as shape
 from qsdsan.utils import DictAttrSetter, AttrGetter, FuncGetter, \
     get_SRT as srt, time_printer
 from exposan.bsm1 import (
-    bio_IDs,
+    biomass_IDs,
     create_system,
     default_init_conds as _ic,
     results_path,
@@ -233,7 +233,7 @@ def create_model(system=None, flowsheet=None, kind='general'):
     
     @metric(name='SRT', units='d', element='System')
     def get_SRT():
-        return srt(sys, bio_IDs)
+        return srt(sys, biomass_IDs)
     
     return model
                 

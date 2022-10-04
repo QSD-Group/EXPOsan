@@ -19,7 +19,7 @@ from qsdsan.utils import time_printer, load_data, get_SRT
 from exposan.bsm1 import data_path
 
 __all__ = (
-    'bio_IDs',
+    'biomass_IDs',
     'create_system',
     'default_asm_kwargs', 'default_inf_kwargs', 'default_init_conds',
     'Q', 'Q_ras', 'Q_was', 'Temp', 'V_an', 'V_ae', 
@@ -39,7 +39,7 @@ V_an = 1000    # anoxic zone tank volume
 V_ae = 1333    # aerated zone tank volume
 Q_was = 385    # sludge wastage flowrate
 Q_ras = 18446    # recycle sludge flowrate
-bio_IDs = ('X_BH', 'X_BA')
+biomass_IDs = ('X_BH', 'X_BA')
 
 # aer = pc.DiffusedAeration('Fixed_Aeration', 'S_O', KLa_20=240, SOTE=0.3, V=V_ae,
 #                           T_air=Temp, T_water=Temp, d_submergence=4-0.3)
@@ -191,7 +191,7 @@ def run(t, t_step, method=None, **kwargs):
         # atol=1e-3,
         # export_state_to=f'results/sol_{t}d_{method}.xlsx',
         **kwargs)
-    srt = get_SRT(sys, bio_IDs)
+    srt = get_SRT(sys, biomass_IDs)
     print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
 
 if __name__ == '__main__':
