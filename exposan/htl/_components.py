@@ -95,11 +95,11 @@ def create_components(set_thermo=True):
     add_V_from_rho(Residual, 1500)  #Assume 1500kg/m3
     Residual.copy_models_from(Chemical('CaCO3'),('Cn',))  #CaCO3?
     
-    HTchar = Component('HTchar',phase='s',particle_size='Particulate',
+    Char = Component('Char',phase='s',particle_size='Particulate',
                         degradability='Undegradable',organic=False,i_C=0.515,
                         i_N=0.150)
-    add_V_from_rho(HTchar, 1500)  #Assume 1500kg/m3
-    HTchar.copy_models_from(Chemical('CaCO3'),('Cn',))
+    add_V_from_rho(Char, 1500)  #Assume 1500kg/m3
+    Char.copy_models_from(Chemical('CaCO3'),('Cn',))
     
     #Oil components
     
@@ -133,7 +133,7 @@ def create_components(set_thermo=True):
     
     CHGfeed = Component('CHGfeed',phase='l',particle_size='Soluble',
                         degradability='Undegradable',organic=False,i_C=0.316,
-                        i_N=0.130,i_P=0.005,i_COD=0.759)
+                        i_N=0.085,i_P=0.005,i_COD=0.759)
     add_V_from_rho(CHGfeed, 1000)
     CHGfeed.copy_models_from(Chemical('H2O'),('Cn',))
     
@@ -144,8 +144,8 @@ def create_components(set_thermo=True):
     CHGeffluent.copy_models_from(Chemical('H2O'),('Cn',))
     
     WW = Component('WW',phase='l',particle_size='Soluble',
-                        degradability='Undegradable',organic=False,i_C=0.365,
-                        i_N=0.012,i_P=0.008,i_COD=0.017)
+                        degradability='Undegradable',organic=False,i_C=0.418,
+                        i_N=0.014,i_P=0.009,i_COD=0.020)
     add_V_from_rho(WW, 1000)
     WW.copy_models_from(Chemical('H2O'),('Cn',))
     
@@ -198,9 +198,9 @@ def create_components(set_thermo=True):
                     degradability='Undegradable',organic=False)
 
 
-    cmps = Components([Sludge_lipid,Sludge_protein,Sludge_carbo,Struvite,Biochar,HTchar,
+    cmps = Components([Sludge_lipid,Sludge_protein,Sludge_carbo,Struvite,Biochar,Residual,Char,
                        Biocrude,Biooil,
-                       HTLaqueous,CHGfeed,CHGeffluent,WW,
+                       HTLaqueous,Mixture,CHGfeed,CHGeffluent,WW,
                        CH4,C2H6,C3H8,C5H12,CO2,CO,H2,
                        H2SO4,H3PO4,MgCl2,NaOH,NH42SO4,H2O,NH3])
     
