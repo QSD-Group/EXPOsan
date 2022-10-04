@@ -1,5 +1,5 @@
 ==========================================================
-interface: Demo system for dynamic system with ASM and ADM
+interface: Demo system for dynamic simulation with ASM and ADM
 ==========================================================
 
 Summary
