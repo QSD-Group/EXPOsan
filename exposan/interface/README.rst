@@ -34,5 +34,5 @@ Load the system
 
 References
 ----------
-.. [1] Nopens et al. An ASM/ADM Model Interface for Dynamic Plant-Wide Simulation. Water Res. 2009, 43, 1913–1923. `<https://doi.org/10.1016/j.watres.2009.01.012>`_
+.. [1] Nopens et al., An ASM/ADM Model Interface for Dynamic Plant-Wide Simulation. Water Res. 2009, 43, 1913–1923. `<https://doi.org/10.1016/j.watres.2009.01.012>`_
 .. [2] Alex et al., Benchmark simulation model no. 1 (BSM1). Report by the IWA Taskgroup on benchmarking of control strategies for WWTPs (2008): 19-20. `<http://iwa-mia.org/benchmarking/#BSM1>`_
