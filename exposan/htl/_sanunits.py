@@ -51,15 +51,11 @@ class HTL(SanUnit):
         
     _N_ins=1 #One wastestream with four components (H2O, Sludge_lipid, Sludge_protein, and Sludge_carbon)
     _N_outs=4
-    
-    # def checkcomposition(self):
-    #     compositions_sum = self.lipid_ratio+self.protein_ratio+self.carbo_ratio
-    #     if compositions_sum!=1:
-    #         warn('The sum of protein, lipid, and carbohydrate is not 1')
         
         
     def _run(self):
         pass
+        # Design a function to check if the sum of sludge compositions is one. If not, warn('').
         
     def _design(self):
         pass
