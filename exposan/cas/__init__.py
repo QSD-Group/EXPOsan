@@ -13,10 +13,10 @@ for license details.
 '''
 
 import os, qsdsan as qs
+from exposan.utils import _init_modules
 cas_path = os.path.dirname(__file__)
-results_path = os.path.join(cas_path, 'results')
-# To save simulation data
-if not os.path.isdir(results_path): os.mkdir(results_path)
+module = os.path.split(cas_path)[-1]
+data_path, results_path = _init_modules(module, include_data_path=True)
 del os
 
 

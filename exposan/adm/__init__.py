@@ -3,6 +3,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+    
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -11,14 +12,13 @@ for license details.
 '''
 
 import os
+from exposan.utils import _init_modules
 adm_path = os.path.dirname(__file__)
-data_path = os.path.join(adm_path, 'data')
-results_path = os.path.join(adm_path, 'results')
-figures_path = os.path.join(adm_path, 'figures')
-# To save simulation results and generated figures
-if not os.path.isdir(results_path): os.mkdir(results_path)
-if not os.path.isdir(figures_path): os.mkdir(figures_path)
+module = os.path.split(adm_path)[-1]
+data_path, results_path, figures_path = \
+    _init_modules(module, include_data_path=True, include_figures_path=True)
 del os
+
 
 from . import system
 from .system import *

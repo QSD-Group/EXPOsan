@@ -14,11 +14,10 @@ for license details.
 '''
 
 import os
+from exposan.utils import _init_modules
 asm_path = os.path.dirname(__file__)
-data_path = os.path.join(asm_path, 'data')
-results_path = os.path.join(asm_path, 'results')
-# To save simulation data
-if not os.path.isdir(results_path): os.mkdir(results_path)
+module = os.path.split(asm_path)[-1]
+data_path, results_path = _init_modules(module, include_data_path=True)
 
 
 # %%
