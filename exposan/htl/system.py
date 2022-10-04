@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Oct  3 15:31:22 2022
+'''
+EXPOsan: Exposition of sanitation and resource recovery systems
 
-@author: yalinli_cabbi
-"""
+This module is developed by:
+    Jianan Feng <jiananf2@illinois.edu>
+    Joy Zhang <joycheung1994@gmail.com>
+    Yalin Li <mailto.yalin.li@gmail.com>
+    
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
+'''
 
 import qsdsan as qs
 import exposan.htl._sanunits as su
