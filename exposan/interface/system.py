@@ -22,7 +22,10 @@ from exposan.interface import results_path
 __all__ = ('create_system',)
 
 
-def create_system():
+def create_system(flowsheet=None):
+    flowsheet = flowsheet or qs.Flowsheet('interface')
+    qs.main_flowsheet.set_flowsheet(flowsheet)
+
     thermo_asm1 = qs.get_thermo() # ASM1 components loaded by the bsm1 module
     cmps_asm1 = thermo_asm1.chemicals
     
