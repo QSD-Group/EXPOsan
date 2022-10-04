@@ -39,6 +39,12 @@ def load(reload=False, inf_kwargs={}, asm_kwargs={}, init_conds={}, aeration_pro
         O1 = sys.flowsheet.unit.O1
         cmps = components = O1.components
         asm = O1.suspended_growth_model
+        # Legacy names
+        global PE, SE, RE
+        stream = sys.flowsheet.stream
+        PE = stream.wastewater
+        SE = stream.effluent
+        RE = stream.RWW
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     _system_loaded = True

@@ -113,13 +113,13 @@ def create_system(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
     # Components and stream
     pc.create_asm1_cmps()
     
-    PE = WasteStream('Wastewater', T=Temp)
+    wastewater = WasteStream('wastewater', T=Temp)
     inf_kwargs = inf_kwargs or default_inf_kwargs
-    PE.set_flow_by_concentration(Q, **inf_kwargs)
+    wastewater.set_flow_by_concentration(Q, **inf_kwargs)
     
-    SE = WasteStream('Effluent', T=Temp)
+    effluent = WasteStream('effluent', T=Temp)
     WAS = WasteStream('WAS', T=Temp)
-    RE = WasteStream('RWW', T=Temp)
+    RWW = WasteStream('RWW', T=Temp)
     RAS = WasteStream('RAS', T=Temp)
     
     # Process models
@@ -132,7 +132,7 @@ def create_system(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
     asm1 = pc.ASM1(**asm_kwargs)
     
     # Create unit operations
-    A1 = su.CSTR('A1', ins=[PE, RE, RAS], V_max=V_an,
+    A1 = su.CSTR('A1', ins=[wastewater, RWW, RAS], V_max=V_an,
                   aeration=None, suspended_growth_model=asm1)
     
     A2 = su.CSTR('A2', A1-0, V_max=V_an,
@@ -144,11 +144,11 @@ def create_system(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
     O2 = su.CSTR('O2', O1-0, V_max=V_ae, aeration=aer2,
                   DO_ID='S_O', suspended_growth_model=asm1)
     
-    O3 = su.CSTR('O3', O2-0, [RE, 'treated'], split=[0.6, 0.4],
+    O3 = su.CSTR('O3', O2-0, [RWW, 'treated'], split=[0.6, 0.4],
                  V_max=V_ae, aeration=aer3,
                   DO_ID='S_O', suspended_growth_model=asm1)
     
-    C1 = su.FlatBottomCircularClarifier('C1', O3-1, [SE, RAS, WAS],
+    C1 = su.FlatBottomCircularClarifier('C1', O3-1, [effluent, RAS, WAS],
                                         underflow=Q_ras, wastage=Q_was, surface_area=1500,
                                         height=4, N_layer=10, feed_layer=5,
                                         X_threshold=3000, v_max=474, v_max_practical=250,
@@ -161,18 +161,18 @@ def create_system(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
     #                                     X_threshold=3000, v_max=474, v_max_practical=250,
     #                                     rh=5.76e-4, rp=2.86e-3, fns=2.28e-3)
 
-    # S1 = su.Sampler('S1', C1-0, SE)
+    # S1 = su.Sampler('S1', C1-0, effluent)
     
     # System setup
-    sys = System('sys', path=(A1, A2, O1, O2, O3, C1), recycle=(RE, RAS))
-    # sys = System('sys', path=(A1, A2, O1, O2, O3, C1, S1), recycle=(RE, RAS))
-    # bio = System('bio', path=(A1, A2, O1, O2, O3), recycle=(RE,))
+    sys = System('sys', path=(A1, A2, O1, O2, O3, C1), recycle=(RWW, RAS))
+    # sys = System('sys', path=(A1, A2, O1, O2, O3, C1, S1), recycle=(RWW, RAS))
+    # bio = System('bio', path=(A1, A2, O1, O2, O3), recycle=(RWW,))
     # sys = System('sys', path=(bio, C1, S1), recycle=(RAS,))
 
     if init_conds:
         for i in [A1, A2, O1, O2, O3]: i.set_init_conc(**init_conds)
     else: batch_init(sys, os.path.join(data_path, 'initial_conditions.xlsx'), 'default')
-    sys.set_dynamic_tracker(A1, SE)
+    sys.set_dynamic_tracker(A1, effluent)
     sys.set_tolerance(rmol=1e-6)
     
     return sys

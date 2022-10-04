@@ -32,8 +32,8 @@ __all__ = ('create_model', 'run_uncertainty', 'run_wdiff_init',)
 def create_model(system=None, flowsheet=None, kind='general'):
     sys = system or create_system(flowsheet)
     stream = sys.flowsheet.stream
-    PE, SE, WAS = stream.Wastewater, stream.Effluent, stream.WAS
-    cmps = PE.components
+    wastewater, effluent, WAS = stream.wastewater, stream.effluent, stream.WAS
+    cmps = wastewater.components
     
     unit = sys.flowsheet.unit
     A1, A2, O1, O2, O3, C1 = unit.A1, unit.A2, unit.O1, unit.O2, unit.O3, unit.C1
@@ -50,7 +50,7 @@ def create_model(system=None, flowsheet=None, kind='general'):
     if kind == 'general':
         b = 0.08
         D = shape.Triangle(lower=0.04, midpoint=b, upper=0.12)
-        @param(name='Biomass N content i_XB', element=PE, kind='coupled',
+        @param(name='Biomass N content i_XB', element=wastewater, kind='coupled',
                units='g N/g COD', baseline=b, distribution=D)
         def set_i_XB(i):
             cmps.X_BH.i_N = cmps.X_BA.i_N = i
@@ -58,7 +58,7 @@ def create_model(system=None, flowsheet=None, kind='general'):
         
         b = 0.06
         D = shape.Triangle(lower=0.057, midpoint=b, upper=0.063)
-        @param(name='Biomass products N content i_XP', element=PE, kind='coupled',
+        @param(name='Biomass products N content i_XP', element=wastewater, kind='coupled',
                units='g N/g COD', baseline=b, distribution=D)
         def set_i_XP(i):
             cmps.X_P.i_N = cmps.X_I.i_N = i
@@ -66,7 +66,7 @@ def create_model(system=None, flowsheet=None, kind='general'):
          
         b = 0.75
         D = shape.Triangle(lower=0.7, midpoint=b, upper=0.95)
-        @param(name='Organic particulates ash content fr_SS_COD', element=PE, kind='coupled',
+        @param(name='Organic particulates ash content fr_SS_COD', element=wastewater, kind='coupled',
                units='g SS/g COD', baseline=b, distribution=D)
         def set_fr_SS_COD(i):
             cmps.X_I.i_mass = cmps.X_S.i_mass = cmps.X_P.i_mass = cmps.X_BH.i_mass = cmps.X_BA.i_mass = i
@@ -218,14 +218,14 @@ def create_model(system=None, flowsheet=None, kind='general'):
     ##### Add universal evaluation metrics #####   
     # Effluent composite variables and daily sludge production
     for i in ('COD', 'BOD5', 'TN'):
-        metric(getter=AttrGetter(SE, attr=i), name='Effluent '+i, 
+        metric(getter=AttrGetter(effluent, attr=i), name='Effluent '+i, 
                units='mg/L', element='Effluent')
     
     @metric(name='Effluent TKN', units='mg/L', element='Effluent')
     def get_TKN():
-        return SE.composite('N', subgroup=('S_NH', 'S_ND', 'X_ND'))
+        return effluent.composite('N', subgroup=('S_NH', 'S_ND', 'X_ND'))
     
-    metric(getter=SE.get_TSS, name='Effluent TSS', units='mg/L', element='Effluent')
+    metric(getter=effluent.get_TSS, name='Effluent TSS', units='mg/L', element='Effluent')
     
     @metric(name='Daily sludge production', units='kg TSS/d', element='WAS')
     def get_daily_sludge_production():
