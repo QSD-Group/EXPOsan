@@ -5,6 +5,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+    
     Yalin Li <mailto.yalin.li@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -14,11 +15,10 @@ for license details.
 
 __all__ = ('test_adm',)
 
-# TODO: change to the new loading routine
 def test_adm():
     import numpy as np
     from exposan import adm
-    # adm.load()
+    adm.load()
 
     t = 200
     t_step = 5

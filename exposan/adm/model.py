@@ -13,12 +13,13 @@ for license details.
 import qsdsan as qs
 from chaospy import distributions as shape
 from qsdsan.utils import ospath, time_printer
-from exposan.adm import sys, _init_conds as _ic, AD, results_path
+from exposan.adm import create_system, default_init_conds as _ic, results_path
 # import pandas as pd
 import numpy as np
 import os
 
-__all__ = ('model_ss',)
+__all__ = ('create_model',)
+
 
 #%%
 
@@ -26,20 +27,25 @@ __all__ = ('model_ss',)
 # UA with random initial conditions to test steady state
 # =============================================================================
 
-model_ss = qs.Model(system=sys, exception_hook='raise')
-param_ss = model_ss.parameter
-# metric_ss = model_ss.metric
-
-get_uniform_w_frac = lambda b, frac: shape.Uniform(lower=b*(1-frac), upper=b*(1+frac))
-
-
-# Set initial conditions of all bioreactors
-for k, v in _ic.items():
-    b = v
-    D = get_uniform_w_frac(b, 0.5)
-    @param_ss(name='initial '+k, element=AD, kind='coupled', units='mg/L',
-              baseline=b, distribution=D)
-    def ic_setter(conc): pass
+def create_model(flowsheet=None):
+    sys = create_system(flowsheet)
+    model_ss = qs.Model(system=sys, exception_hook='raise')
+    param_ss = model_ss.parameter
+    # metric_ss = model_ss.metric
+    
+    get_uniform_w_frac = lambda b, frac: shape.Uniform(lower=b*(1-frac), upper=b*(1+frac))
+    
+    
+    # Set initial conditions of all bioreactors
+    AD = sys.flowsheet.unit.AD
+    for k, v in _ic.items():
+        b = v
+        D = get_uniform_w_frac(b, 0.5)
+        @param_ss(name='initial '+k, element=AD, kind='coupled', units='mg/L',
+                  baseline=b, distribution=D)
+        def ic_setter(conc): pass
+    
+    return model_ss
 
 
 @time_printer
@@ -57,8 +63,10 @@ def run_wdiff_init(model, N, T, t_step, method='BDF',
         tpath = os.path.join(folder, 'state.npy')
     for i, smp in enumerate(samples):
         concs = dict(zip(_ic.keys(), smp))
+        sys = model.system
+        AD = sys.flowsheet.unit.AD
         AD.set_init_conc(**concs)          
-        model._system.simulate(
+        sys.simulate(
             state_reset_hook='reset_cache',
             t_span=t_span,
             t_eval=t_eval,
@@ -67,6 +75,7 @@ def run_wdiff_init(model, N, T, t_step, method='BDF',
             sample_id=i,
             )
     AD.set_init_conc(**_ic)
+
 
 #%%
 if __name__ == '__main__':
@@ -80,5 +89,5 @@ if __name__ == '__main__':
     # method = 'Radau'
     method = 'BDF'
     # method = 'LSODA'
-    run_wdiff_init(model_ss, n, t, t_step, method=method,
-                   seed=seed)
+    model_ss = create_model()
+    run_wdiff_init(model_ss, n, t, t_step, method=method, seed=seed)

@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="279pt" height="85pt" viewBox="0.00 0.00 279.00 85.00">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 81)">
+<!-- AD
+Anaerobic CSTR&#45;&gt; Biogas -->
+<g id="edge1" class="edge">
+<title>AD
+Anaerobic CSTR:c-&gt; Biogas:w</title>
+<path fill="none" stroke="#90918e" d="M194.14,-53.52C215.14,-58.73 239.18,-63 261.5,-63"/>
+<g id="a_edge1-label"><a xlink:title="Temperature: 308 K
+Pressure: 101325 Pa
+Gas flow: 12.5 kmol/hr">
+<text text-anchor="middle" x="227" y="-65.8" font-family="Arial" font-size="14.00" fill="#90918e"> Biogas</text>
+</a>
+</g>
+</g>
+<!-- AD
+Anaerobic CSTR&#45;&gt; Effluent -->
+<g id="edge3" class="edge">
+<title>AD
+Anaerobic CSTR:c-&gt; Effluent:w</title>
+<path fill="none" stroke="#90918e" stroke-width="1.6" d="M194.14,-16.48C215.14,-11.27 239.18,-7 261.5,-7"/>
+<g id="a_edge3-label"><a xlink:title="Temperature: 308 K
+Pressure: 101325 Pa
+Liquid flow: 593 kmol/hr">
+<text text-anchor="middle" x="227" y="-18.8" font-family="Arial" font-size="14.00" fill="#90918e"> Effluent</text>
+</a>
+</g>
+</g>
+<!--  Influent&#45;&gt;AD
+Anaerobic CSTR -->
+<g id="edge2" class="edge">
+<title> Influent:e-&gt;AD
+Anaerobic CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-width="2.2" d="M11,-35C32.14,-35 55.33,-35 75.81,-35"/>
+<g id="a_edge2-label"><a xlink:title="Temperature: 308 K
+Pressure: 101325 Pa
+Liquid flow: 708 kmol/hr">
+<text text-anchor="middle" x="43.5" y="-38.8" font-family="Arial" font-size="14.00" fill="#90918e"> Influent</text>
+</a>
+</g>
+</g>
+<!-- AD
+Anaerobic CSTR -->
+<g id="node1" class="node">
+<title>AD
+Anaerobic CSTR</title>
+<g id="a_node1"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="194,-56.5 76,-56.5 76,-13.5 194,-13.5 194,-56.5"/>
+<text text-anchor="middle" x="135" y="-38.8" font-family="Arial" font-size="14.00" fill="white">AD</text>
+<text text-anchor="middle" x="135" y="-23.8" font-family="Arial" font-size="14.00" fill="white">Anaerobic CSTR</text>
+</a>
+</g>
+</g>
+<!--  Biogas -->
+<g id="node2" class="node">
+<title> Biogas</title>
+<polygon fill="#f98f60" stroke="#90918e" points="271,-63 262.75,-70 262.75,-56 271,-63"/>
+</g>
+<!--  Influent -->
+<g id="node3" class="node">
+<title> Influent</title>
+<polygon fill="#f98f60" stroke="#90918e" points="5.5,-40.5 0,-35 5.5,-29.5 11,-35 5.5,-40.5"/>
+</g>
+<!--  Effluent -->
+<g id="node4" class="node">
+<title> Effluent</title>
+<polygon fill="#f98f60" stroke="#90918e" points="271,-7 262.75,-14 262.75,0 271,-7"/>
+</g>
+</g>
+</svg>

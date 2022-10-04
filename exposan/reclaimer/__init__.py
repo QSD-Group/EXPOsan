@@ -16,16 +16,14 @@ for license details.
 
 import os, numpy as np, qsdsan as qs
 from qsdsan import ImpactItem, StreamImpactItem
-from exposan.utils import get_decay_k, get_generic_scaled_capital
+from exposan.utils import _init_modules, get_decay_k, get_generic_scaled_capital
 
 # Module-wise setting on whether to allow resource recovery
 INCLUDE_RESOURCE_RECOVERY = False
 
 re_path = os.path.dirname(__file__)
-data_path = os.path.join(re_path, 'data')
-results_path = os.path.join(re_path, 'results')
-# To save simulation data
-if not os.path.isdir(results_path): os.mkdir(results_path)
+module = os.path.split(re_path)[-1]
+data_path, results_path = _init_modules(module, include_data_path=True)
 
 
 # %%

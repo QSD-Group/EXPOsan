@@ -12,16 +12,16 @@ for license details.
 '''
 
 import os, numpy as np, qsdsan as qs
-from qsdsan import sanunits as su, processes as pc, set_thermo, WasteStream, System
+from qsdsan import sanunits as su, processes as pc, WasteStream, System
 from qsdsan.utils import time_printer
+from exposan.asm import data_path, results_path
 
-asm_path = os.path.dirname(__file__)
-
+__all__ = ('create_system',)
 
 # %%
 
 # =============================================================================
-# Universal settings
+# Universal parameters
 # =============================================================================
 
 # Streams
@@ -39,9 +39,11 @@ V_aer = 1333    # aerated zone tank volume [m3]
 # Functions to create the needed configuration
 # =============================================================================
 
-def create_asm_validation_system(process_model='ASM1', aerated=False):
+def create_system(process_model='ASM1', aerated=False,
+                  inf_kwargs={}, asm_kwargs={}, init_conds={},
+                  flowsheet=None):
     suffix = 'aer' if aerated else 'an'
-    flowsheet = qs.Flowsheet(f'{process_model}_{suffix}')
+    flowsheet = flowsheet or qs.Flowsheet(f'{process_model}_{suffix}')
     qs.main_flowsheet.set_flowsheet(flowsheet)
 
     # Load process model (including associated components)
@@ -49,8 +51,9 @@ def create_asm_validation_system(process_model='ASM1', aerated=False):
     if pc_lower == 'asm1':
         # Thermodynamic conditions
         cmps = pc.create_asm1_cmps()
+
         # Influent
-        inf_kwargs = {
+        inf_kwargs = inf_kwargs or {
             'concentrations': {
                 'S_S': 69.5,
                 'X_BH': 28.17,
@@ -64,16 +67,19 @@ def create_asm_validation_system(process_model='ASM1', aerated=False):
                 },
             'units': ('m3/d', 'mg/L'),
             }
+        
         # Process model
-        asm = pc.ASM1(
+        asm_kwargs = asm_kwargs or dict(
             Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
             mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
             eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
             K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05, fr_SS_COD=1/1.48,
-            path=os.path.join(asm_path, 'data/_asm1.tsv'),
+            path=os.path.join(data_path, '_asm1.tsv'),
             )
+        asm = pc.ASM1(components=cmps, **asm_kwargs)
+        
         # Initial conditions in the CSTR
-        init_conds = {
+        init_conds = init_conds or {
                 'S_I': 30,
                 'S_S': 5,
                 'X_I': 1000,
@@ -91,7 +97,7 @@ def create_asm_validation_system(process_model='ASM1', aerated=False):
         DO_ID = 'S_O'
     elif pc_lower == 'asm2d':
         cmps = pc.create_asm2d_cmps()
-
+        
         inf_kwargs = {
             'concentrations': { # Henze et al., Activated Sludge Models ASM1, ASM2, ASM2d and ASM3, P91
                 'S_I': 30,
@@ -106,24 +112,27 @@ def create_asm_validation_system(process_model='ASM1', aerated=False):
                 },
             'units': ('m3/d', 'mg/L'),
             }
-        asm = pc.ASM2d(
-                iN_SI=0.01, iN_SF=0.03, iN_XI=0.02, iN_XS=0.04, iN_BM=0.07,
-                iP_SI=0.0, iP_SF=0.01, iP_XI=0.01, iP_XS=0.01, iP_BM=0.02,
-                iTSS_XI=0.75, iTSS_XS=0.75, iTSS_BM=0.9,
-                f_SI=0.0, Y_H=0.67, f_XI_H=0.1,
-                Y_PAO=0.625, Y_PO4=0.4, Y_PHA=0.2, f_XI_PAO=0.1,
-                Y_A=0.24, f_XI_AUT=0.1,
-                K_h=3.0, eta_NO3=0.6, eta_fe=0.4, K_O2=0.2, K_NO3=0.5, K_X=0.1,
-                mu_H=4.0, q_fe=3.0, eta_NO3_H=0.8, b_H=0.3, K_O2_H=0.2, K_F=4.0,
-                K_fe=4.0, K_A_H=4.0, K_NO3_H=0.5, K_NH4_H=0.05, K_P_H=0.01, K_ALK_H=0.1,
-                q_PHA=3.0, q_PP=1.5, mu_PAO=1.0, eta_NO3_PAO=0.6, b_PAO=0.2, b_PP=0.2,
-                b_PHA=0.2, K_O2_PAO=0.2, K_NO3_PAO=0.5, K_A_PAO=4.0, K_NH4_PAO=0.05,
-                K_PS=0.2, K_P_PAO=0.01, K_ALK_PAO=0.1,
-                K_PP=0.01, K_MAX=0.34, K_IPP=0.02, K_PHA=0.01,
-                mu_AUT=1.0, b_AUT=0.15, K_O2_AUT=0.5, K_NH4_AUT=1.0, K_ALK_AUT=0.5,
-                K_P_AUT=0.01, k_PRE=1.0, k_RED=0.6, K_ALK_PRE=0.5,
-                )
-        init_conds = {
+
+        asm_kwargs = asm_kwargs or dict(
+            iN_SI=0.01, iN_SF=0.03, iN_XI=0.02, iN_XS=0.04, iN_BM=0.07,
+            iP_SI=0.0, iP_SF=0.01, iP_XI=0.01, iP_XS=0.01, iP_BM=0.02,
+            iTSS_XI=0.75, iTSS_XS=0.75, iTSS_BM=0.9,
+            f_SI=0.0, Y_H=0.67, f_XI_H=0.1,
+            Y_PAO=0.625, Y_PO4=0.4, Y_PHA=0.2, f_XI_PAO=0.1,
+            Y_A=0.24, f_XI_AUT=0.1,
+            K_h=3.0, eta_NO3=0.6, eta_fe=0.4, K_O2=0.2, K_NO3=0.5, K_X=0.1,
+            mu_H=4.0, q_fe=3.0, eta_NO3_H=0.8, b_H=0.3, K_O2_H=0.2, K_F=4.0,
+            K_fe=4.0, K_A_H=4.0, K_NO3_H=0.5, K_NH4_H=0.05, K_P_H=0.01, K_ALK_H=0.1,
+            q_PHA=3.0, q_PP=1.5, mu_PAO=1.0, eta_NO3_PAO=0.6, b_PAO=0.2, b_PP=0.2,
+            b_PHA=0.2, K_O2_PAO=0.2, K_NO3_PAO=0.5, K_A_PAO=4.0, K_NH4_PAO=0.05,
+            K_PS=0.2, K_P_PAO=0.01, K_ALK_PAO=0.1,
+            K_PP=0.01, K_MAX=0.34, K_IPP=0.02, K_PHA=0.01,
+            mu_AUT=1.0, b_AUT=0.15, K_O2_AUT=0.5, K_NH4_AUT=1.0, K_ALK_AUT=0.5,
+            K_P_AUT=0.01, k_PRE=1.0, k_RED=0.6, K_ALK_PRE=0.5,
+            )
+        asm = pc.ASM2d(components=cmps, **asm_kwargs)
+
+        init_conds = init_conds or {
                 'S_I': 30,
                 'S_F': 5,
                 'S_A': 5,
@@ -171,12 +180,13 @@ def create_asm_validation_system(process_model='ASM1', aerated=False):
 def run(process_model, aerated, t, t_step, method, simulate=True,
         save_stoichiometry=False, save_states=False, **kwargs):
     global sys
-    sys = create_asm_validation_system(process_model, aerated=aerated)
+    sys = create_system(process_model, aerated=aerated)
     suffix = 'aer' if aerated else 'an'
     if save_stoichiometry:
         asm = sys.flowsheet.unit.CSTR.suspended_growth_model
-        asm.stoichiometry.to_csv(f'results/{process_model}_{suffix}_stoichiometry.csv')
-    export_state_to = f'results/{process_model}_{suffix}.xlsx' if save_states else ''
+        path = os.path.join(results_path, f'{process_model}_{suffix}_stoichiometry.csv')
+        asm.stoichiometry.to_csv(path)
+    export_state_to = os.path.join(results_path, f'{process_model}_{suffix}.xlsx') if save_states else ''
     if simulate:
         sys.simulate(state_reset_hook='reset_cache',
                      t_span=(0, t),
@@ -194,5 +204,5 @@ if __name__ == '__main__':
             msg = f'{process_model}-{suffix}'
             print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
             print(f'Time span 0-{t}d \n')
-            run(process_model, aerated, t, t_step, method='BDF', simulate=True)
-            # run(process_model, aerated, t, t_step, method='BDF', simulate=True, save_stoichiometry=True, save_states=True)
+            # run(process_model, aerated, t, t_step, method='BDF', simulate=True)
+            run(process_model, aerated, t, t_step, method='BDF', simulate=True, save_stoichiometry=True, save_states=True)

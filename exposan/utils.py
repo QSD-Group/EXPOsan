@@ -27,6 +27,7 @@ from . import es_path
 
 
 __all__ = (
+    '_init_modules',
     'add_fugitive_items',
     'add_V_from_rho',
     'batch_setting_unit_params',
@@ -39,6 +40,19 @@ __all__ = (
     'run_module_country_specific',
     'run_uncertainty',
     )
+
+
+def _init_modules(module_name, include_data_path=False, include_figures_path=False):
+    module_path = os.path.join(es_path, module_name)
+    dirnames = ['results']
+    if include_data_path: dirnames.insert(0, 'data')
+    if include_figures_path: dirnames.append('figures')
+    paths = []
+    for dirname in dirnames:
+        p = os.path.join(module_path, dirname)
+        paths.append(p)
+        if not os.path.isdir(p): os.mkdir(p)
+    return paths
 
 
 def add_fugitive_items(unit, item_ID):

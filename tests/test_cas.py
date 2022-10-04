@@ -14,13 +14,9 @@ for license details.
 
 __all__ = ('test_cas',)
 
-#TODO: for now just make sure it can run, add more costing, etc
 def test_cas():
-    from qsdsan import set_thermo
     from exposan import cas
-
-    set_thermo(cas.cmps)
-    cas.sys.simulate()
+    cas.load()
 
 
 if __name__ == '__main__':
