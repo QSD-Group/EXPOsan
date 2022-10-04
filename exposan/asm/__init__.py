@@ -32,19 +32,19 @@ from .systems import create_system
 _system_loaded = False
 _loaded_pc_model = None
 _loaded_aerated = None
-def load(process_model='ASM1', aerated=False, reload=False,
-         inf_kwargs={}, asm_kwargs={}, init_conds={}, flowsheet=None):
+def load(reload=False, flowsheet=None, process_model='ASM1', aerated=False,
+         inf_kwargs={}, asm_kwargs={}, init_conds={}):
     global _system_loaded, _loaded_pc_model, _loaded_aerated
     if (process_model!=_loaded_pc_model) or (_loaded_aerated!=aerated): reload = True
     if reload:
         global cmps, components, asm, sys
         sys = create_system(
+            flowsheet=flowsheet,
             process_model=process_model,
             aerated=aerated,
             inf_kwargs=inf_kwargs,
             asm_kwargs=asm_kwargs,
             init_conds=init_conds,
-            flowsheet=flowsheet,
             )
         CSTR = sys.flowsheet.unit.CSTR
         cmps = components = CSTR.components
