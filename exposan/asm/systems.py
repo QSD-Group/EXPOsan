@@ -190,5 +190,5 @@ if __name__ == '__main__':
             msg = f'{process_model}-{suffix}'
             print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
             print(f'Time span 0-{t}d \n')
-            run(process_model, aerated, t, t_step, method='BDF', simulate=True)
-            # run(process_model, aerated, t, t_step, method='BDF', simulate=True, save_stoichiometry=True, save_states=True)
+            # run(process_model, aerated, t, t_step, method='BDF', simulate=True)
+            run(process_model, aerated, t, t_step, method='BDF', simulate=True, save_stoichiometry=True, save_states=True)
