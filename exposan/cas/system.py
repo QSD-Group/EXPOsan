@@ -24,21 +24,16 @@ from exposan.cas import create_components
 
 __all__ = ('create_system')
 
-def create_system(flowsheet=None):
-    try: qs.get_thermo()
-    except: create_components()
-
+def create_system_without_cmps(flowsheet=None):
     flowsheet = flowsheet or qs.Flowsheet('cas')
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
     # Influent
     inf = WasteStream('inf')
-    inf.set_flow_by_concentration(flow_tot=20,
-                                  concentrations={
-                                      'Substrate': 300,
-                                      'X_inert': 100,
-                                      },
-                                  units=('mgd', 'mg/L'))
+    inf.set_flow_by_concentration(
+        flow_tot=20,
+        concentrations={'Substrate': 300, 'X_inert': 100,},
+        units=('mgd', 'mg/L'))
     
     # Units and the system
     with qs.System('sys') as sys:
@@ -72,6 +67,15 @@ def create_system(flowsheet=None):
         su.CHP('CHP', ins=(AD-1, 'natural_gas', 'CHP_air'), outs=('emission', 'solids'))
     
     return sys
+
+
+def create_system(flowsheet=None):
+    try: sys = create_system_without_cmps(flowsheet=flowsheet)
+    except: # mostly for testing where components from the previous system will be carried over
+        create_components()
+        sys = create_system_without_cmps(flowsheet=flowsheet)
+    return sys
+
 
 # %%
 
