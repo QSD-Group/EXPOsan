@@ -36,36 +36,37 @@ def create_system_without_cmps(flowsheet=None):
         units=('mgd', 'mg/L'))
     
     # Units and the system
-    with qs.System('sys') as sys:
-        U1 = su.Screening('U1', ins=inf)
-        M1 = su.Mixer('M1', ins=(U1-0, ''))
-        ASP = su.ActivatedSludgeProcess('ASP', ins=(M1-0, 'ASP_air'),
-                                    outs=('treated', 'was', 'offgas'))
-        GBT = su.BeltThickener('GBT', ins=ASP-1, outs=(1-M1, 'thickened'))
-        thickened = GBT.outs[1]
-        # Update the biomass concentration to be at the set value
-        # There will be a warning when solving it, due to the unrealistic
-        # sludge moisture content (i.e., it exceeds in the moisture content of the feeds)
-        # but it is fine since that's only testing the bound
-        def X_inert_at_mc(mc):
-            GBT.sludge_moisture = mc
-            GBT._set_split_at_mc()
-            return thickened.iconc['X_inert']-25000
-        def GBT_spec():
-            lb = 1e-3
-            mixed_F_mass = GBT._mixed.F_mass
-            if mixed_F_mass == 0:
-                ub = 1-1e-3
-            else:
-                ub = max(lb+1e-3, GBT._mixed.imass['Water']/mixed_F_mass)
-            IQ_interpolation(f=X_inert_at_mc, x0=lb, x1=ub, xtol=1e-3, ytol=1,
-                             checkbounds=False)
-        GBT.add_specification(GBT_spec)
-        
-        AD = su.SludgeDigester('AD', ins=GBT-1, outs=('disposed', 'biogas'))
-        
-        su.CHP('CHP', ins=(AD-1, 'natural_gas', 'CHP_air'), outs=('emission', 'solids'))
+    U1 = su.Screening('U1', ins=inf)
+    M1 = su.Mixer('M1', ins=(U1-0, ''))
+    ASP = su.ActivatedSludgeProcess('ASP', ins=(M1-0, 'ASP_air'),
+                                outs=('treated', 'was', 'offgas'))
+    GBT = su.BeltThickener('GBT', ins=ASP-1, outs=(1-M1, 'thickened'))
+    thickened = GBT.outs[1]
+    # Update the biomass concentration to be at the set value
+    # There will be a warning when solving it, due to the unrealistic
+    # sludge moisture content (i.e., it exceeds in the moisture content of the feeds)
+    # but it is fine since that's only testing the bound
+    def X_inert_at_mc(mc):
+        GBT.sludge_moisture = mc
+        GBT._set_split_at_mc()
+        return thickened.iconc['X_inert']-25000
+    def GBT_spec():
+        lb = 1e-3
+        mixed_F_mass = GBT._mixed.F_mass
+        if mixed_F_mass == 0:
+            ub = 1-1e-3
+        else:
+            ub = max(lb+1e-3, GBT._mixed.imass['Water']/mixed_F_mass)
+        IQ_interpolation(f=X_inert_at_mc, x0=lb, x1=ub, xtol=1e-3, ytol=1,
+                         checkbounds=False)
+    GBT.add_specification(GBT_spec)
     
+    AD = su.SludgeDigester('AD', ins=GBT-1, outs=('disposed', 'biogas'))
+    
+    CHP = su.CHP('CHP', ins=(AD-1, 'natural_gas', 'CHP_air'), outs=('emission', 'solids'))
+    
+    sys = qs.System('sys', path=(U1, M1, ASP, GBT, AD, CHP))
+
     return sys
 
 
