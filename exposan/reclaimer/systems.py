@@ -103,7 +103,7 @@ def create_systemA(flowsheet=None):
                                  heat_loss=0.1, target_MC=0.1, sludge_temp=283.15,
                                  temp_pasteurization=343.15, lhv_lpg=48.5,
                                  ppl=ppl, baseline_ppl=100,
-                                 user_scale_up=None, exponent_scale=0.6,
+                                 user_scale_up=None, exponent_scale=1,
                                  if_sludge_service=True)
 
     A8 = su.Mixer('A8', ins=(A3-1), outs=streamA['CH4'])
@@ -174,7 +174,7 @@ def create_systemB(flowsheet=None):
                                  heat_loss=0.1, target_MC=0.1, sludge_temp=283.15,
                                  temp_pasteurization=343.15, lhv_lpg=48.5,
                                  ppl=ppl, baseline_ppl=100,
-                                 user_scale_up=None, exponent_scale=0.6,
+                                 user_scale_up=None, exponent_scale=1,
                                  if_sludge_service=True)
 
     B5 = su.ReclaimerUltrafiltration('B5', ins=(B3-0),
@@ -265,7 +265,7 @@ def create_systemC(flowsheet=None):
                                  heat_loss=0.1, target_MC=0.1, sludge_temp=283.15,
                                  temp_pasteurization=343.15, lhv_lpg=48.5,
                                  ppl=ppl, baseline_ppl=100,
-                                 user_scale_up=None, exponent_scale=0.6,
+                                 user_scale_up=None, exponent_scale=1,
                                  if_sludge_service=True)
     # Clear power usage for the solar scenario
     old_C4_cost = C4._cost
