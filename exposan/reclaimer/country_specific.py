@@ -48,24 +48,33 @@ def get_default_uniform(b, ratio, lb=None, ub=None): # lb/ub for upper/lower bou
 
 format_key = lambda key: (' '.join(key.split('_'))).capitalize()
 
-def create_country_specific_model(ID, country, country_data=None, model=None):
+def create_country_specific_model(ID, country, model=None, country_data=None,
+                                  include_non_contextual_params=True):
     model = model.copy() if model is not None else create_model(model_ID=ID, country_specific=True)
     param = model.parameter
     sys = model.system
     sys_stream = sys.flowsheet.stream
     country_data = country_data or general_country_specific_inputs[country]
-    param_dct = {p.name: p for p in model.parameters}
     price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct = update_resource_recovery_settings()
 
-    def get_param_name_b_D(key, ratio, lb=None, ub=None):
-        name = format_key(key)
-        p = param_dct.get(name)
-        # Throw out this parameter (so that a new one can be added with updated values)
-        # if it's already there
-        if p: model.parameters = [i for i in model.parameters if i is not p]
-        b = country_data[key]
-        D = get_default_uniform(b, ratio, lb=lb, ub=ub)
-        return name, p, b, D
+    if include_non_contextual_params:
+        param_dct = {p.name: p for p in model.parameters}
+        def get_param_name_b_D(key, ratio, lb=None, ub=None):
+            name = format_key(key)
+            p = param_dct.get(name)
+            # Throw out this parameter (so that a new one can be added with updated values)
+            # if it's already there
+            if p: model.parameters = [i for i in model.parameters if i is not p]
+            b = country_data[key]
+            D = get_default_uniform(b, ratio, lb=lb, ub=ub)
+            return name, p, b, D
+    else:
+        model.parameters = [] # throw out all parameters
+        def get_param_name_b_D(key, ratio, lb=None, ub=None):
+            name = format_key(key)
+            b = country_data[key]
+            D = get_default_uniform(b, ratio, lb=lb, ub=ub)
+            return name, p, b, D
 
     # Diet and excretion
     excretion_unit = sys.path[0]
