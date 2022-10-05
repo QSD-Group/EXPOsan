@@ -101,7 +101,7 @@ def create_country_specific_model(ID, country, country_data=None, model=None):
     # Price ratio
     price_ratio_D_ratio = 0.2
     key = 'price_ratio'
-    name, p, b, D = get_param_name_b_D(key, price_ratio_D_ratio, lb=0, ub=1)
+    name, p, b, D = get_param_name_b_D(key, price_ratio_D_ratio, lb=0)
     @param(name=name, element=excretion_unit, kind='cost', units='-',
            baseline=b, distribution=D)
     def set_price_ratio(i):

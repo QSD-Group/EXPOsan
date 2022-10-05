@@ -153,7 +153,7 @@ def create_systemB(flowsheet=None):
                  decay_k_COD=get_decay_k(),
                  decay_k_N=get_decay_k(),
                  max_CH4_emission=max_CH4_emission,
-                 N_user=ppl, N_tot_user=ppl, lifetime=8,
+                 N_user=25, N_tot_user=ppl, lifetime=10,
                  if_flushing=True, if_desiccant=False, if_toilet_paper=True,
                  CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06)
 
@@ -244,7 +244,7 @@ def create_systemC(flowsheet=None):
                  decay_k_COD=get_decay_k(),
                  decay_k_N=get_decay_k(),
                  max_CH4_emission=max_CH4_emission,
-                 N_user=ppl, N_tot_user=ppl, lifetime=8,
+                 N_user=25, N_tot_user=ppl, lifetime=10,
                  if_flushing=True, if_desiccant=False, if_toilet_paper=True,
                  CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06)
 

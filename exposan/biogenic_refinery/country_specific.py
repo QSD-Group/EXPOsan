@@ -102,7 +102,7 @@ def create_country_specific_model(ID, country, model=None, country_data=None):
     # Price ratio
     price_ratio_D_ratio = 0.2
     key = 'price_ratio'
-    name, p, b, D = get_param_name_b_D(key, price_ratio_D_ratio, lb=0, ub=1)
+    name, p, b, D = get_param_name_b_D(key, price_ratio_D_ratio, lb=0)
     item_ref = {
         'Concrete': 'Concrete',
         'Steel': 'Steel',
