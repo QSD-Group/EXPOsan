@@ -86,7 +86,6 @@ def create_systemA(flowsheet=None):
     A1 = su.Excretion('A1', outs=('urine', 'feces'))
 
     ##### Treatment #####
-
     A3 = su.SepticTank('A3', ins=(A1-0, streamA['MgOH2']),
                        outs=('A3_treated', 'A3_CH4', 'A3_N2O', 'A3_sludge'),
                        decay_k_COD=get_decay_k(),

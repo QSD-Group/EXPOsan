@@ -28,12 +28,12 @@ def test_reclaimer():
 
     # modelB = re.create_model('B')
     # dfB = modelB.metrics_at_baseline()
-    # valuesB =  [71.445, 91.795, 17.949, 75.794, 200.777, 0.369, 37.272, 6.666]
+    # valuesB =  [71.445, 91.795, 17.949, 78.061, 200.883, 0.369, 37.283, 6.672]
     # assert_allclose(dfB.values, valuesB, rtol=1e-2)
 
     # modelC = re.create_model('C')
     # dfC = modelC.metrics_at_baseline()
-    # valuesC =  [71.445, 91.795, 17.949, 80.19, 150.148, 0.189, 34.296, 4.651]
+    # valuesC =  [71.445, 91.795, 17.949, 82.457, 150.254, 0.189, 34.307, 4.657]
     # assert_allclose(dfC.values, valuesC, rtol=1e-2)
 
     # modelD = re.create_model('D')
@@ -52,12 +52,12 @@ def test_reclaimer():
 
     modelB2 = re.create_model('B')
     dfB2 = modelB2.metrics_at_baseline()
-    valuesB2 = [71.45, 91.79, 17.95, 72.47, 178.6, 0.0418, 31.48, 3.341]
+    valuesB2 = [71.45, 91.79, 17.95, 74.74, 178.8, 0.0422, 31.49, 3.347]
     assert_allclose(dfB2.values, valuesB2, rtol=1e-2)
 
     modelC2 = re.create_model('C')
     dfC2 = modelC2.metrics_at_baseline()
-    valuesC2 = [71.445, 91.795, 17.949, 76.868, 128.017, -0.138, 28.501, 1.326]
+    valuesC2 = [71.445, 91.795, 17.949, 79.134, 128.123, -0.138, 28.512, 1.332]
     assert_allclose(dfC2.values, valuesC2, rtol=1e-2)
 
     modelD2 = re.create_model('D')
