@@ -60,12 +60,13 @@ def create_system(flowsheet=None):
 if __name__ == '__main__':
     t = 50
     t_step = 0.5
+    t_eval = np.arange(0, t+t_step, t_step)
     method = 'BDF'
     sys = create_system()
     sys.simulate(
         state_reset_hook='reset_cache',
         t_span=(0, t),
-        t_eval=np.arange(0, t+t_step, t_step),
+        t_eval=t_eval,
         )
     # Just to test a random state
     states = ('S_su',)
@@ -73,4 +74,5 @@ if __name__ == '__main__':
     fig, ax = AD1.scope.plot_time_series(states)
     
     # # Output all states, #!!! seems to have problems
-    # sys.scope.export(os.path.join(results_path, f'states_{t}_{method}.xlsx'))
+    sys.scope.export(os.path.join(results_path, f'states_{t}_{method}.xlsx'), 
+                     t_eval=t_eval)
