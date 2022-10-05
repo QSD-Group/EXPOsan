@@ -73,6 +73,7 @@ def create_country_specific_model(ID, country, model=None, country_data=None,
         model.parameters = [] # throw out all parameters
         def get_param_name_b_D(key, ratio, lb=None, ub=None):
             name = format_key(key)
+            p = '' # not used, doesn't matter what the value is
             b = country_data[key]
             D = get_default_uniform(b, ratio, lb=lb, ub=ub)
             return name, p, b, D
