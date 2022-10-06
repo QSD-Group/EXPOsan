@@ -14,24 +14,27 @@ from biosteam.evaluation._utils import var_indices
 import numpy as np
 import os
 
-__all__ = ('model_ua', 'run_uncertainty')
+__all__ = ('model_ua', 'run_uncertainty', 'cmps', 'H2E')
 
 
 #%%
 # =============================================================================
 # model with uncertain ADM1 parameters
 # =============================================================================
-
-model_ua = qs.Model(system=s.sys, exception_hook='raise')
+sysA, sysB = s.create_systems()
+model_ua = qs.Model(system=sysB, exception_hook='raise')
 
 ########## Add Uncertainty Parameters ##########
 param = model_ua.parameter
 get_uniform_w_frac = lambda b, frac: shape.Uniform(lower=b*(1-frac), upper=b*(1+frac))
 
-cmps = s.cmps
-inf, eff, bg1, bg2 = s.brewery_ww, s.eff, s.bg1, s.bg2
-adm1 = s.adm1
-H2E, CH4E = s.H2E, s.CH4E
+ws_reg = sysB.flowsheet.stream
+inf, eff, bg1, bg2 = ws_reg.BreweryWW_B, ws_reg.Effluent_B, ws_reg.biogas_1B, ws_reg.biogas_2B
+cmps = inf.components
+
+u_reg = sysB.flowsheet.unit
+H2E, CH4E = u_reg.AnR1, u_reg.AnR2
+adm1 = H2E.model
 Ys_bl, mus_bl, Ks_bl = s.yields_bl, s.mus_bl, s.Ks_bl
 n_Ys = len(Ys_bl)
 n_mus = len(mus_bl)

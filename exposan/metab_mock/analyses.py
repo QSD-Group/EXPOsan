@@ -8,7 +8,7 @@ from time import time
 from copy import deepcopy
 from qsdsan.utils import load_data, load_pickle, save_pickle, ospath
 from qsdsan.stats import plot_uncertainties
-from exposan.metab_mock import model_ua as mdl, system as s,\
+from exposan.metab_mock import model_ua as mdl, cmps, H2E, \
     run_uncertainty, results_path, figures_path
 import os
 import numpy as np
@@ -35,8 +35,9 @@ indices = [(4, 5), (0, 1)]
 names = [('H2', 'CH4'), ('rCOD_1', 'rCOD_2')]
 pairs = zip(indices, names)
 
-cmps = s.cmps
-H2E = s.H2E
+# cmps = s.cmps
+# H2E = s.H2E
+
 
 def seed_RGT():
     files = os.listdir(results_path)

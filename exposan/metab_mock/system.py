@@ -25,6 +25,7 @@ __all__ = (
     'default_inf_concs',
     'default_R1_init_conds',
     'default_R2_init_conds',
+    'yields_bl', 'mus_bl', 'Ks_bl'
     )
 
 #%% default values
@@ -209,7 +210,7 @@ def create_systems(flowsheet_A=None, flowsheet_B=None,
     AnR1 = su.AnaerobicCSTR('AnR1', ins=inf_b, outs=(bg1_B, ''), 
                             V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
                             retain_cmps=('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro'))
-    AnR2 = su.AnaerobicCSTR('AnR2', ins=H2E-1, outs=(bg2_B, eff_B), 
+    AnR2 = su.AnaerobicCSTR('AnR2', ins=AnR1-1, outs=(bg2_B, eff_B), 
                             V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
                             retain_cmps=('X_ac', 'X_h2'))
     AnR1.set_init_conc(**R1_init_conds)
