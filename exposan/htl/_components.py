@@ -62,9 +62,12 @@ def create_components(set_thermo=True):
     P_s = Component('P_s',phase='s',particle_size='Particulate',degradability='Undegradable',
                   organic=False)
     
+    Others_s = Component('Others_s',phase='s',particle_size='Particulate',degradability='Undegradable',
+                  organic=False)
+    
     Sludge_lipid = Component('Sludge_lipid', phase='s', formula='C56H95O27N6P',
                        particle_size='Particulate',
-                       degradability='Undegradable',organic=False)
+                       degradability='Undegradable',organic=True)
     add_V_from_rho(Sludge_lipid,721)
     #https://www.aqua-calc.com/page/density-table/substance/sewage-coma-and-blank-sludge (accessed 2022-9-30)
     Sludge_lipid.HHV = 22.0*10**6*Sludge_lipid.MW/1000  #Li et al., 2018
@@ -72,14 +75,14 @@ def create_components(set_thermo=True):
     
     Sludge_protein = Component('Sludge_protein', phase='s', formula='C56H95O27N6P',
                        particle_size='Particulate',
-                       degradability='Undegradable',organic=False)
+                       degradability='Undegradable',organic=True)
     add_V_from_rho(Sludge_protein,721)
     Sludge_protein.HHV = 22.0*10**6*Sludge_protein.MW/1000
     Sludge_protein.Cn.add_model(1.25*10**3*Sludge_protein.MW/1000)
     
     Sludge_carbo = Component('Sludge_carbo', phase='s', formula='C56H95O27N6P',
                        particle_size='Particulate',
-                       degradability='Undegradable',organic=False)
+                       degradability='Undegradable',organic=True)
     add_V_from_rho(Sludge_carbo,721)
     Sludge_carbo.HHV = 22.0*10**6*Sludge_carbo.MW/1000
     Sludge_carbo.Cn.add_model(1.25*10**3*Sludge_carbo.MW/1000)
@@ -98,11 +101,11 @@ def create_components(set_thermo=True):
     # add_V_from_rho(Biochar, 1500)  #Assume 1500kg/m3
     # Biochar.copy_models_from(Chemical('CaCO3'),('Cn',))
     
-    Residual = Component('Residual',phase='s',particle_size='Particulate',
-                        degradability='Undegradable',organic=False,i_C=0.484,
-                        i_N=0.031,i_P=0.011)
-    add_V_from_rho(Residual, 1500)  #Assume 1500kg/m3
-    Residual.copy_models_from(Chemical('CaCO3'),('Cn',))  #CaCO3?
+    # Residual = Component('Residual',phase='s',particle_size='Particulate',
+    #                     degradability='Undegradable',organic=False,i_C=0.484,
+    #                     i_N=0.031,i_P=0.011)
+    # add_V_from_rho(Residual, 1500)  #Assume 1500kg/m3
+    # Residual.copy_models_from(Chemical('CaCO3'),('Cn',))  #CaCO3?
     
     Char = Component('Char',phase='s',particle_size='Particulate',
                         degradability='Undegradable',organic=False,i_C=0.515,
@@ -112,35 +115,59 @@ def create_components(set_thermo=True):
     
     #Oil components
     
-    Biocrude = Component('Biocrude',phase='l',formula = 'C14H21O1.8N',
-                         particle_size='Soluble',
-                         degradability='Slowly',organic=True)
-    Biocrude.HHV = 34.9*10**6*Biocrude.MW/1000  #Li et al., 2018
-    add_V_from_rho(Biocrude, 980)  #SS et al., PNNL 2021
-    Biocrude.copy_models_from(Chemical('palmitamide'),('Cn',))  #Jones et al., 2014
+    C_c = Component('C_c',phase='l',particle_size='Soluble',
+                         degradability='Undegradable',organic=False)
     
-    Biooil = Component('Biooil',phase='l',formula='C100H165O1.5N',
-                       particle_size='Soluble',
-                       degradability='Slowly',organic=True)
-    Biooil.HHV = 45.4*10**6*Biooil.MW/1000  #Li et al., 2018
-    add_V_from_rho(Biooil, 794)  #SS et al., PNNL 2016
-    Biooil.copy_models_from(Chemical('hexadecane'),('Cn',))  #Jones et al., 2014
+    N_c = Component('N_c',phase='l',particle_size='Soluble',
+                         degradability='Undegradable',organic=False)
+
+    Others_c = Component('Others_c',phase='l',particle_size='Soluble',
+                         degradability='Undegradable',organic=False)
+    
+    C_o = Component('C_o',phase='l',particle_size='Soluble',
+                         degradability='Undegradable',organic=False)
+    
+    N_o = Component('N_o',phase='l',particle_size='Soluble',
+                         degradability='Undegradable',organic=False)
+    
+    Others_o = Component('Others_o',phase='l',particle_size='Soluble',
+                         degradability='Undegradable',organic=False)
+    
+    # Biocrude = Component('Biocrude',phase='l',formula = 'C14H21O1.8N',
+    #                      particle_size='Soluble',
+    #                      degradability='Slowly',organic=True)
+    # Biocrude.HHV = 34.9*10**6*Biocrude.MW/1000  #Li et al., 2018
+    # add_V_from_rho(Biocrude, 980)  #SS et al., PNNL 2021
+    # Biocrude.copy_models_from(Chemical('palmitamide'),('Cn',))  #Jones et al., 2014
+    
+    # Biooil = Component('Biooil',phase='l',formula='C100H165O1.5N',
+    #                    particle_size='Soluble',
+    #                    degradability='Slowly',organic=True)
+    # Biooil.HHV = 45.4*10**6*Biooil.MW/1000  #Li et al., 2018
+    # add_V_from_rho(Biooil, 794)  #SS et al., PNNL 2016
+    # Biooil.copy_models_from(Chemical('hexadecane'),('Cn',))  #Jones et al., 2014
     
     #Aqueous components
     C_l = Component('C_l',phase='l',particle_size='Soluble',degradability='Undegradable',
-                  organic=False)
+                  organic=False,i_COD=0.602)
+    
+    C_l_after_COD_removal = Component('C_l_after_COD_removal',phase='l',particle_size='Soluble',degradability='Undegradable',
+                  organic=False,i_COD=0.602)
     
     N_l = Component('N_l',phase='l',particle_size='Soluble',degradability='Undegradable',
-                  organic=False)
+                  organic=False,i_COD=0)
     
     P_l = Component('P_l',phase='l',particle_size='Soluble',degradability='Undegradable',
-                  organic=False)
+                  organic=False,i_COD=0)
     
-    HTLaqueous = Component('HTLaqueous',phase='l',particle_size='Soluble',
-                        degradability='Undegradable',organic=False,i_C=0.250,
-                        i_N=0.103,i_P=0.028,i_COD=0.602)
-    add_V_from_rho(HTLaqueous, 1000)
-    HTLaqueous.copy_models_from(Chemical('H2O'),('Cn',))
+    Others_l = Component('Others_l',phase='l',particle_size='Soluble',degradability='Undegradable',
+                  organic=False,i_COD=0)
+    
+    # HTLaqueous = Component('HTLaqueous',phase='l',particle_size='Soluble',
+    #                     degradability='Undegradable',organic=False,i_C=0.250,
+    #                     i_N=0.103,i_P=0.028,i_COD=0.602)
+    # add_V_from_rho(HTLaqueous, 1000)
+    # HTLaqueous.copy_models_from(Chemical('H2O'),('Cn',))
     
     Mixture = Component('Mixture',phase='l',particle_size='Soluble',
                         degradability='Undegradable',organic=False,i_C=0.213,
@@ -214,19 +241,29 @@ def create_components(set_thermo=True):
     NH3 = Component('NH3',phase='g',particle_size='Dissolved gas',
                     degradability='Undegradable',organic=False)
 
-    for i in (C_s, N_s, P_s):
+    for i in (C_s, N_s, P_s,Others_s):
         i.default()
         i.copy_models_from(Chemical('CaCO3'),('sigma','epsilon','kappa','Cn','mu'))
         add_V_from_rho(i, 1500)
 
-    for i in (C_l, N_l, P_l):
+    for i in (C_l, C_l_after_COD_removal, N_l, P_l,Others_l):
         i.default()
         i.copy_models_from(H2O,('sigma','epsilon','kappa','Cn','mu'))
         add_V_from_rho(i, 1000)
+        
+    for i in (C_c, N_c, Others_c):
+        i.HHV = Chemical('palmitamide').HHV
+        add_V_from_rho(i, 980)  #SS et al., PNNL 2021
+        i.copy_models_from(Chemical('palmitamide'),('Cn',))  #Jones et al., 2014
+        
+    for i in (C_o, N_o, Others_o):
+        i.HHV = Chemical('hexadecane').HHV
+        add_V_from_rho(i, 794)  #SS et al., PNNL 2016
+        i.copy_models_from(Chemical('hexadecane'),('Cn',))  #Jones et al., 2014
 
-    cmps = Components([C_s,N_s,P_s,Sludge_lipid,Sludge_protein,Sludge_carbo,Struvite,Residual,Char,#Biochar,
-                       Biocrude,Biooil,
-                       C_l,N_l,P_l,HTLaqueous,Mixture,CHGfeed,CHGeffluent,WW,
+    cmps = Components([C_s,N_s,P_s,Others_s,Sludge_lipid,Sludge_protein,Sludge_carbo,Struvite,#Residual,Char,Biochar,
+                       C_c,N_c,Others_c,C_o,N_o,Others_o,#Biocrude,Biooil,
+                       C_l,C_l_after_COD_removal,N_l,P_l,Others_l,Mixture,CHGfeed,CHGeffluent,WW,#HTLaqueous
                        CH4,C2H6,C3H8,C5H12,CO2,CO,H2,
                        H2SO4,H3PO4,MgCl2,NaOH,NH42SO4,H2O,NH3])
     
