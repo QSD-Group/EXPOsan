@@ -42,9 +42,7 @@ References:
     https://doi.org/10.2172/1126336.
 '''
 
-from warnings import warn
 from qsdsan import SanUnit
-import exposan
 
 __all__ = (
     'HTL',
@@ -70,13 +68,19 @@ class HTL(SanUnit):
         biochar, others
     '''
     
-    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='WasteStream',**kwargs):
+    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='WasteStream',
+                 biochar_C_N_ratio=15.5,biochar_C_P_ratio=2.163,COD_ratio=0.602,**kwargs):
         SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
+        self.biochar_C_N_ratio=biochar_C_N_ratio
+        self.biochar_C_P_ratio=biochar_C_P_ratio
+        self.COD_ratio=COD_ratio
 
     _N_ins = 1
     _N_outs = 2
         
     def _run(self):
+        
+        cmps=self.components
         
         dewatered_sludge=self.ins[0]
         biochar,others=self.outs
@@ -89,19 +93,39 @@ class HTL(SanUnit):
         protein_ratio = dewatered_sludge.imass['Sludge_protein']/dewatered_sludge_afdw
         carbo_ratio = dewatered_sludge.imass['Sludge_carbo']/dewatered_sludge_afdw
         
-        if lipid_ratio+protein_ratio+carbo_ratio != 1:
-            warn('The sum of the sludge composition is not 1')
+        sludge_C_mass = dewatered_sludge_afdw*cmps.Sludge_carbo.i_C
+        sludge_N_mass = dewatered_sludge_afdw*cmps.Sludge_carbo.i_N
+        sludge_P_mass = dewatered_sludge_afdw*cmps.Sludge_carbo.i_P
         
-        #Revised MCA model
+        # if abs(lipid_ratio+protein_ratio+carbo_ratio-1)>0.05:
+        #     warn('The sum of the sludge composition is not 1')
+        
         others.imass['H2O'] = dewatered_sludge.imass['H2O']
-        others.imass['Biocrude'] = (0.846*lipid_ratio + 0.445*protein_ratio\
+        
+        Biocrude_mass = (0.846*lipid_ratio + 0.445*protein_ratio\
             + 0.205*carbo_ratio) * dewatered_sludge_afdw
-        others.imass['HTLaqueous'] = (0.154*lipid_ratio + 0.481*protein_ratio)\
-            * dewatered_sludge_afdw
-        others.imass['CO2'] = (0.074*protein_ratio + 0.418*carbo_ratio)\
-            * dewatered_sludge_afdw
+        others.imass['C_c']=Biocrude_mass*0.721
+        others.imass['N_c']=Biocrude_mass*protein_ratio*0.133
+        others.imass['Others_c']=Biocrude_mass-others.imass['C_c']-others.imass['N_c']
+        
         biochar_mass = 0.377*carbo_ratio * dewatered_sludge_afdw
         biochar.imass['C_s']=min(1.75*carbo_ratio, 0.65)*biochar_mass
+        biochar.imass['N_s']=biochar.imass['C_s']/self.biochar_C_N_ratio
+        biochar.imass['P_s']=min(sludge_P_mass,biochar.imass['C_s']/self.biochar_C_P_ratio)
+        biochar.imass['Others_s']=biochar_mass-biochar.imass['C_s']-biochar.imass['N_s']-\
+            biochar.imass['P_s']
+            
+        others.imass['CO2'] = (0.074*protein_ratio + 0.418*carbo_ratio)\
+            * dewatered_sludge_afdw
+            
+        HTLaqueous_mass = (0.154*lipid_ratio + 0.481*protein_ratio)\
+            * dewatered_sludge_afdw
+        cmps = self.components
+        cmps.C_l.i_COD=self.COD_ratio
+        others.imass['C_l']=sludge_C_mass-biochar.imass['C_s']-others.imass['C_c']-others.imass['CO2']*12/44
+        others.imass['N_l']=sludge_N_mass-biochar.imass['N_s']-others.imass['N_c']
+        others.imass['P_l']=sludge_P_mass-biochar.imass['P_s']
+        others.imass['Others_l']=HTLaqueous_mass-others.imass['C_l']-others.imass['N_l']-others.imass['P_l']
 
     def _design(self):
         pass
@@ -126,16 +150,19 @@ class HT(SanUnit):
     '''
     
     def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='WasteStream',\
-                 biooil_ratio=0.581,gas_ratio=0.047,ch4_ratio=0.48,co_ratio=0.128,\
-                     co2_ratio=0.007,c2h6_ratio=0.188,c3h8_ratio=0.107,**kwargs):
+                 biooil_ratio=0.581,gas_ratio=0.047,c5h12_ratio=0.09,co_ratio=0.128,\
+                     co2_ratio=0.007,c2h6_ratio=0.188,c3h8_ratio=0.107,biooil_C_ratio=0.855,
+                     biooil_N_ratio=0.01,**kwargs):
         SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
         self.biooil_ratio=biooil_ratio
         self.gas_ratio=gas_ratio
-        self.ch4_ratio=ch4_ratio
+        self.c5h12_ratio=c5h12_ratio
         self.co_ratio=co_ratio
         self.co2_ratio=co2_ratio
         self.c2h6_ratio=c2h6_ratio
         self.c3h8_ratio=c3h8_ratio
+        self.biooil_C_ratio=biooil_C_ratio
+        self.biooil_N_ratio=biooil_N_ratio
 
     _N_ins = 1
     _N_outs = 2
@@ -145,27 +172,45 @@ class HT(SanUnit):
         biocrude = self.ins[0]
         char,others = self.outs
         
-        massin = biocrude.imass['Biocrude']
-        others.imass['Biooil'] = massin * self.biooil_ratio
+        massin = biocrude.imass['C_c']+biocrude.imass['N_c']+biocrude.imass['Others_c']
+        biooil_mass = massin * self.biooil_ratio
+        gas_mass = massin * self.gas_ratio
+        char_mass = massin * (1-self.biooil_ratio-self.gas_ratio)
+        
+        others.imass['C_o']=biooil_mass*self.biooil_C_ratio
+        others.imass['N_o']=biooil_mass*self.biooil_N_ratio
+        others.imass['Others_o']=biooil_mass*(1-self.biooil_C_ratio-self.biooil_N_ratio)
+        
+        for i in (self.c5h12_ratio,self.co_ratio,self.co2_ratio,self.c2h6_ratio,self.c3h8_ratio,
+                    1-self.c5h12_ratio-self.co_ratio-self.co2_ratio-self.c2h6_ratio-\
+                    self.c3h8_ratio):
+            if i<0: i=0
+    
         fuelgas_HT_composition = {
-            'CH4':self.ch4_ratio,
+            'C5H12':self.c5h12_ratio,
             'CO':self.co_ratio,
             'CO2':self.co2_ratio,
             'C2H6':self.c2h6_ratio,
             'C3H8':self.c3h8_ratio,
-            'C5H12':1-self.ch4_ratio-self.co_ratio-self.co2_ratio-self.c2h6_ratio-\
+            'CH4':1-self.c5h12_ratio-self.co_ratio-self.co2_ratio-self.c2h6_ratio-\
                 self.c3h8_ratio
             }
         for name,ratio in fuelgas_HT_composition.items():
-            others.imass[name] = massin * self.gas_ratio * ratio
-        char.imass['Char'] = massin*(1-self.biooil_ratio-self.gas_ratio)
+            others.imass[name] = gas_mass * ratio
+        
+        char.imass['C_s'] = biocrude.imass['C_c']-others.imass['C_o']-others.imass['CH4']*12/16-\
+            others.imass['CO']*12/28-others.imass['CO2']*12/44-others.imass['C2H6']*24/30-\
+            others.imass['C3H8']*36/44-others.imass['C5H12']*60/72
+        char.imass['N_s'] = biocrude.imass['N_c']-others.imass['N_o']
+        char.imass['Others_s'] = char_mass-char.imass['C_s']-char.imass['N_s']
+    
         
     def _design(self):
         pass
     
     def _cost(self):
         pass
-    
+   
 class AcidExtraction(SanUnit):
     
     '''
@@ -188,16 +233,22 @@ class AcidExtraction(SanUnit):
         
     def _run(self):
         
-        biochar, acid_P = self.ins
-        residual, extracted_P = self.outs
+        biochar, acid = self.ins
+        residual, extracted = self.outs
         
-        cmps = self.components
-        acid_P.imass['H2SO4']=biochar.imass['Biochar']*10*0.5*98/1000 #0.5 M H2SO4 10 mL/1 g Biochar
-        acid_P.imass['H2O']=biochar.imass['Biochar']*10-acid_P.imass['H2SO4']
-        residual.imass['Residual'] = biochar.imass['Biochar']-biochar.imass['Biochar']*\
-            cmps.Biochar.i_P*self.P_recovery_rate
-        extracted_P.imass['H3PO4'] = biochar.imass['Biochar']*cmps.Biochar.i_P*self.P_recovery_rate/31*98
-        extracted_P.imass['']
+        biochar_mass = biochar.imass['C_s']+biochar.imass['N_s']+biochar.imass['P_s']+biochar.imass['Others_s']
+        
+        acid.imass['H2SO4']=biochar_mass*10*0.5*98/1000 #0.5 M H2SO4 10 mL/1 g Biochar
+        acid.imass['H2O']=biochar_mass*10*1.05-acid.imass['H2SO4'] #0.5 M H2SO4 density: 1.05 kg/L 
+        #https://www.fishersci.com/shop/products/sulfuric-acid-1n-0-5m-standard-solution-thermo-
+        #scientific/AC124240010 (accessed 10-6-2022)
+        
+        residual.copy_like(biochar)
+        residual.imass['P_s']=biochar.imass['P_s']*(1-self.P_recovery_rate)
+        
+        extracted.imass['H2O']=acid.imass['H2O']
+        extracted.imass['Others_l']=acid.imass['H2SO4']
+        extracted.imass['P_l']=biochar.imass['P_s']*self.P_recovery_rate
         
     def _design(self):
         pass
@@ -225,17 +276,20 @@ class HTLmixer(SanUnit):
         
     def _run(self):
         
-        aqueous, extracted_P = self.ins
+        aqueous, extracted = self.ins
         mixture = self.outs[0]
         
-        mixture.imass['Mixture'] = aqueous.imass['HTLaqueous']+extracted_P.imass['H3PO4']
-          
+        mixture.copy_like(extracted)
+        mixture.imass['C_l']+=aqueous.imass['C_l']
+        mixture.imass['N_l']+=aqueous.imass['N_l']
+        mixture.imass['P_l']+=aqueous.imass['P_l']
+        mixture.imass['Others_l']+=aqueous.imass['Others_l']
+        
     def _design(self):
         pass
     
     def _cost(self):
         pass
-    
     
 class StruvitePrecipitation(SanUnit):
     '''
@@ -246,12 +300,15 @@ class StruvitePrecipitation(SanUnit):
     ins: Iterable (stream)
         mixture, supply_MgCl2
     outs: Iterable (stream)
-        struvite, chgfeed
+        struvite, effluent
     '''
     
-    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='WasteStream',
-                  **kwargs):
+    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='WasteStream',Mg_P_ratio=1,
+                 P_recovery_rate=0.95,P_in_struvite=0.127,**kwargs):
         SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
+        self.Mg_P_ratio=Mg_P_ratio
+        self.P_recovery_rate=P_recovery_rate
+        self.P_in_struvite=P_in_struvite
 
     _N_ins = 2
     _N_outs = 2
@@ -259,13 +316,16 @@ class StruvitePrecipitation(SanUnit):
     def _run(self):
         
         mixture, supply_MgCl2 = self.ins
-        struvite, chgfeed = self.outs
+        struvite, effluent = self.outs
         
-        cmps = self.components
-        struvite.imass['Struvite'] = mixture.imass['Mixture']*cmps.Mixture.i_P*0.95/0.127
-        struvite.phase='s'
-        chgfeed.imass['CHGfeed'] = mixture.imass['Mixture']+supply_MgCl2.imass['MgCl2']\
-            - struvite.imass['Struvite']
+        supply_MgCl2.imass['MgCl2']=mixture.imass['P_l']/31*95.211*self.Mg_P_ratio
+        struvite.imass['Struvite']=mixture.imass['P_l']*self.P_recovery_rate/self.P_in_struvite
+        
+        effluent.copy_like(mixture)
+        effluent.imass['P_l'] -= struvite.imass['Struvite']*self.P_in_struvite
+        effluent.imass['N_l'] -= struvite.imass['Struvite']*self.P_in_struvite/31*14
+        effluent.imass['Others_l'] += (supply_MgCl2.imass['MgCl2']-\
+                                       struvite.imass['Struvite']*self.P_in_struvite*(1+14/31))
           
     def _design(self):
         pass
@@ -282,36 +342,57 @@ class CHG(SanUnit):
     Parameters
     ----------
     ins: Iterable (stream)
-        chgfeed
+        feed
     outs: Iterable (stream)
-        fuelgas_CHG, chgeffluent
+        fuelgas, effluent
     '''
     
-    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='WasteStream',**kwargs):
+    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='WasteStream',ch4_ratio=0.244,
+                 co_ratio=0.029,co2_ratio=0.150,c2h6_ratio=0.043,toc_tc_ratio=0.764,
+                 toc_to_gas_c_ratio=0.262,COD_removal_rate=0.975,**kwargs):
         SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
+        self.ch4_ratio=ch4_ratio
+        self.co_ratio=co_ratio
+        self.co2_ratio=co2_ratio
+        self.c2h6_ratio=c2h6_ratio
+        self.toc_tc_ratio=toc_tc_ratio
+        self.toc_to_gas_c_ratio=toc_to_gas_c_ratio
+        self.COD_removal_rate=COD_removal_rate
         
     _N_ins = 1
     _N_outs = 2
         
     def _run(self):
         
-        chgfeed = self.ins[0]
-        fuelgas_CHG, chgeffluent = self.outs
+        feed = self.ins[0]
+        fuelgas, effluent = self.outs
         
-        cmps = self.components
+        for i in (self.ch4_ratio,self.co_ratio,self.co2_ratio,self.c2h6_ratio,
+                  1-self.ch4_ratio-self.co_ratio-self.co2_ratio-self.c2h6_ratio):
+            if i < 0: i = 0
+        
+        fuel_gas_mass = feed.imass['C_l']*self.toc_tc_ratio*self.toc_to_gas_c_ratio/(self.\
+            ch4_ratio*12/16+self.co_ratio*12/28+self.co2_ratio*12/44+self.c2h6_ratio*24/30)
+
         fuelgas_CHG_composition = {
-            'CH4':0.244,
-            'CO':0.029,
-            'CO2':0.150,
-            'C2H6':0.043,
-            'H2':0.534
+            'CH4':self.ch4_ratio,
+            'CO':self.co_ratio,
+            'CO2':self.co2_ratio,
+            'C2H6':self.c2h6_ratio,
+            'H2':1-self.ch4_ratio-self.co_ratio-self.co2_ratio-self.c2h6_ratio
             }
-        for name,ratio in fuelgas_CHG_composition.items():
-            fuelgas_CHG.imass[name] = chgfeed.imass['CHGfeed']*cmps.CHGfeed.i_C*0.764*0.262/0.3 * ratio
         
-        chgeffluent.imass['CHGeffluent'] = chgfeed.imass['CHGfeed'] -\
-            chgfeed.imass['CHGfeed']*cmps.CHGfeed.i_C*0.764*0.262/0.3
-       
+        for name,ratio in fuelgas_CHG_composition.items():
+            fuelgas.imass[name] = fuel_gas_mass * ratio
+        
+        cmps=self.components
+        cmps.C_l_after_COD_removal.i_COD=cmps.C_l.i_COD
+        cmps.C_l_after_COD_removal.i_COD*=(1-self.COD_removal_rate)
+        
+        effluent.copy_like(feed)
+        effluent.imass['C_l']=0
+        effluent.imass['C_l_after_COD_removal']=feed.imass['C_l']*(1-self.toc_tc_ratio*self.toc_to_gas_c_ratio)
+        effluent
         
     def _design(self):
         pass
@@ -328,28 +409,33 @@ class MembraneDistillation(SanUnit):
     Parameters
     ----------
     ins: Iterable (stream)
-        chgeffluent, acid_N
+        influent, acid
     outs: Iterable (stream)
         ammoniasulfate, ww
     '''
     
-    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='WasteStream',
-                  **kwargs):
+    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='WasteStream',N_S_ratio=2,
+                 N_recovery_rate=0.9,**kwargs):
         SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
+        self.N_S_ratio=N_S_ratio
+        self.N_recovery_rate=N_recovery_rate
 
     _N_ins = 2
     _N_outs = 2
         
     def _run(self):
         
-        chgeffluent, acid_N = self.ins
+        influent, acid = self.ins
         ammoniasulfate, ww = self.outs
         
-        cmps = self.components
-        ammoniasulfate.imass['NH42SO4'] = chgeffluent.imass['CHGeffluent']*\
-            cmps.CHGeffluent.i_N*0.9/14*132
-        ww.imass['WW'] = chgeffluent.imass['CHGeffluent']+acid_N.imass['H2SO4']-\
+        acid.imass['H2SO4'] = influent.imass['N_l']/14/self.N_S_ratio*98
+        acid.imass['H2O'] = acid.imass['H2SO4']*1000/98/0.5*1.05-acid.imass['H2SO4']
+        ammoniasulfate.imass['NH42SO4']=influent.imass['N_l']*self.N_recovery_rate/14*132
+        ammoniasulfate.imass['H2O']=acid.imass['H2O']
+        ww.copy_like(influent)
+        ww.imass['Others_l']+=ww.imass['N_l']*self.N_recovery_rate+acid.imass['H2SO4']-\
             ammoniasulfate.imass['NH42SO4']
+        ww.imass['N_l']*=(1-self.N_recovery_rate)
         
     def _design(self):
         pass
