@@ -22,10 +22,11 @@ Load the system
    >>> from exposan import adm
    >>> adm.load()
    >>> sys = adm.sys
-   >>> sys.simulate(t_span=(0, 50))
+   >>> # RK23 or RK45 doesn't work
+   >>> sys.simulate(t_span=(0,50), method='BDF')
    >>> AD = adm.AD
    >>> # Check the states of any one or more components
-   >>> fig, axis = AD.scope.plot_time_series(AD.components.IDs[:3])
+   >>> fig, axis = AD.scope.plot_time_series(('S_ch4', 'S_ac'))
    >>> fig
 
 .. figure:: ./readme_figures/AD_select_states.png

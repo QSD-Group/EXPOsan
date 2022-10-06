@@ -38,9 +38,11 @@ Load BSM1 system with default settings
 --------------------------------------
 .. code-block:: python
 
-  >>> # Import bsm1 module
-  >>> from exposan import bsm1 as bsm
-  >>> bsm.bsm1.show() # doctest: +SKIP
+  >>> # Load the system
+  >>> from exposan import bsm1
+  >>> bsm1.load()
+  >>> sys = bsm1.sys
+  >>> sys.show() # doctest: +SKIP
   System: BSM1
   Highest convergence error among components in recycle
   streams {C1-1, O3-0} after 0 loops:
@@ -65,7 +67,7 @@ Load BSM1 system with default settings
       phase: 'l', T: 293.15 K, P: 101325 Pa
       flow: 0
   >>> # You can look at individual units
-  >>> bsm.C1.show()
+  >>> bsm1.C1.show() # the streams are all empty because you haven't simulate the system
   FlatBottomCircularClarifier: C1
   ins...
   [0] treated  from  CSTR-O3
@@ -86,7 +88,7 @@ Load BSM1 system with default settings
       flow: 0
       WasteStream-specific properties: None for empty waste streams
   >>> # You can also look at a specific model
-  >>> bsm.aer1.show()
+  >>> bsm1.O1.aeration.show()
   Process: aer1
   [stoichiometry] S_O: 1
   [reference]     S_O
@@ -100,14 +102,14 @@ Adjust model settings
 .. code-block:: python
 
     >>> # You can set the initial concentrations in a CSTR
-    >>> bsm.A1.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100,
-    ...                      X_P=100, S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0,
-    ...                      S_NO=20, S_ALK=7*12)
+    >>> bsm1.A1.set_init_conc(S_I=30, S_S=5.0, X_I=1000, X_S=100, X_BH=500, X_BA=100,
+    ...                       X_P=100, S_O=2.0, S_NH=2.0, S_ND=1.0, X_ND=1.0,
+    ...                       S_NO=20, S_ALK=7*12)
     >>> # You can also set the initial TSS and solids composition in a clarifier
-    >>> bsm.C1.set_init_TSS([12.4969, 18.1132, 29.5402, 68.9781, 356.0747,
-    ...                     356.0747, 356.0747, 356.0747, 356.0747, 6393.9844])
-    >>> bsm.C1.set_init_sludge_solids(X_I=1507, X_S=89.3, X_BH=5913, X_BA=372.6,
-    ...                               X_P=641.7, X_ND=2.32)
+    >>> bsm1.C1.set_init_TSS([12.4969, 18.1132, 29.5402, 68.9781, 356.0747,
+    ...                      356.0747, 356.0747, 356.0747, 356.0747, 6393.9844])
+    >>> bsm1.C1.set_init_sludge_solids(X_I=1507, X_S=89.3, X_BH=5913, X_BA=372.6,
+    ...                                X_P=641.7, X_ND=2.32)
 
 Biochemical process model parameters such as ASM1's stoichiometric or kinetic parameters can be customized upon and after initiation of the ``CompiledProcesses`` object. See `process <https://qsdsan.readthedocs.io/en/latest/Process.html#compiledprocesses>`_
 module for more details.
@@ -124,18 +126,19 @@ Dynamic simulation of the BSM1 system can be performed with the built in `simula
     >>> # Simulate with default solver and default settings.
     >>> # Set the dynamic tracker prior to simulation
     >>> # if you want to track the state of a certain stream or unit
-    >>> from exposan.bsm1 import bsm1, RAS, O1
-    >>> bsm1.set_dynamic_tracker(RAS, O1)
-    >>> bsm1.simulate(t_span=(0,10), method='BDF')
+    >>> RAS = sys.flowsheet.stream.RAS
+    >>> O1 = sys.flowsheet.unit.O1
+    >>> sys.set_dynamic_tracker(RAS, O1)
+    >>> sys.simulate(t_span=(0,10), method='BDF')
     Simulation completed.
     >>> # The state variables in each unit can be plotted over time
-    >>> RAS.scope.plot_time_series(('S_S', 'S_NH')) # doctest: +ELLIPSIS
-    (<Figure size ...
-    >>> O1.scope.plot_time_series(('S_S', 'S_NH')) # doctest: +ELLIPSIS
-    (<Figure size ...
+    >>> fig, axis = RAS.scope.plot_time_series(('S_S', 'S_NH')) # doctest: +ELLIPSIS
+    >>> fig
+    >>> fig, axis = O1.scope.plot_time_series(('S_S', 'S_NH')) # doctest: +ELLIPSIS
+    >>> fig
     >>> # Or you can retrieve the time-series record after simulation
     >>> # at desired time step
-    >>> bsm1.scope.export(t_eval=range(10)) # doctest: +ELLIPSIS
+    >>> sys.scope.export(t_eval=range(10)) # doctest: +ELLIPSIS
     ID ...
 
 .. figure:: ./readme_figures/demo_RAS_state.png
@@ -149,7 +152,7 @@ Dynamic simulation of the BSM1 system can be performed with the built in `simula
 .. code-block:: python
 
     >>> # You can also look at the final state of a specific stream after simulation
-    >>> bsm1.outs[1].show()
+    >>> sys.outs[1].show()
     WasteStream: WAS from <FlatBottomCircularClarifier: C1>
      phase: 'l', T: 293.15 K, P: 101325 Pa
      flow (g/hr): S_I    481
@@ -200,5 +203,5 @@ References
 .. [2] Gernaey et al., Benchmarking of control strategies for wastewater treatment plants. IWA publishing, 2014. `<https://github.com/wwtmodels/Benchmark-Simulation-Models>`_
 .. [3] Henze et al., Activated sludge models ASM1, ASM2, ASM2d and ASM3. IWA publishing, 2000.
 .. [4] Takács et al., A Dynamic Model of the Clarification-Thickening Process. Water Res. 1991, 25 (10), 1263–1271. `<https://doi.org/10.1016/0043-1354(91)90066-Y.>`_
-.. [5] Li and  Zhang et al., QSDsan: An Integrated Platform for Quantitative Sustainable Design of Sanitation and Resource Recovery Systems. arXiv:2203.06243 [cs] 2022.
+.. [5] Li and  Zhang et al., QSDsan: An Integrated Platform for Quantitative Sustainable Design of Sanitation and Resource Recovery Systems. Environ. Sci.: Water Res. Technol. 2022, 8 (10), 2289–2303. `<https://doi.org/10.1039/D2EW00455K>`_.
 .. [6] Rieger et al., Guidelines for Using Activated Sludge Models. IWA Publishing: London, New York, 2012; Vol. 11. `<https://doi.org/10.2166/9781780401164.>`_

@@ -86,7 +86,6 @@ def create_systemA(flowsheet=None):
     A1 = su.Excretion('A1', outs=('urine', 'feces'))
 
     ##### Treatment #####
-
     A3 = su.SepticTank('A3', ins=(A1-0, streamA['MgOH2']),
                        outs=('A3_treated', 'A3_CH4', 'A3_N2O', 'A3_sludge'),
                        decay_k_COD=get_decay_k(),
@@ -104,7 +103,7 @@ def create_systemA(flowsheet=None):
                                  heat_loss=0.1, target_MC=0.1, sludge_temp=283.15,
                                  temp_pasteurization=343.15, lhv_lpg=48.5,
                                  ppl=ppl, baseline_ppl=100,
-                                 user_scale_up=None, exponent_scale=0.6,
+                                 user_scale_up=None, exponent_scale=1,
                                  if_sludge_service=True)
 
     A8 = su.Mixer('A8', ins=(A3-1), outs=streamA['CH4'])
@@ -153,7 +152,7 @@ def create_systemB(flowsheet=None):
                  decay_k_COD=get_decay_k(),
                  decay_k_N=get_decay_k(),
                  max_CH4_emission=max_CH4_emission,
-                 N_user=ppl, N_tot_user=ppl, lifetime=8,
+                 N_user=25, N_tot_user=ppl, lifetime=10,
                  if_flushing=True, if_desiccant=False, if_toilet_paper=True,
                  CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06)
 
@@ -175,7 +174,7 @@ def create_systemB(flowsheet=None):
                                  heat_loss=0.1, target_MC=0.1, sludge_temp=283.15,
                                  temp_pasteurization=343.15, lhv_lpg=48.5,
                                  ppl=ppl, baseline_ppl=100,
-                                 user_scale_up=None, exponent_scale=0.6,
+                                 user_scale_up=None, exponent_scale=1,
                                  if_sludge_service=True)
 
     B5 = su.ReclaimerUltrafiltration('B5', ins=(B3-0),
@@ -244,7 +243,7 @@ def create_systemC(flowsheet=None):
                  decay_k_COD=get_decay_k(),
                  decay_k_N=get_decay_k(),
                  max_CH4_emission=max_CH4_emission,
-                 N_user=ppl, N_tot_user=ppl, lifetime=8,
+                 N_user=25, N_tot_user=ppl, lifetime=10,
                  if_flushing=True, if_desiccant=False, if_toilet_paper=True,
                  CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06)
 
@@ -266,7 +265,7 @@ def create_systemC(flowsheet=None):
                                  heat_loss=0.1, target_MC=0.1, sludge_temp=283.15,
                                  temp_pasteurization=343.15, lhv_lpg=48.5,
                                  ppl=ppl, baseline_ppl=100,
-                                 user_scale_up=None, exponent_scale=0.6,
+                                 user_scale_up=None, exponent_scale=1,
                                  if_sludge_service=True)
     # Clear power usage for the solar scenario
     old_C4_cost = C4._cost

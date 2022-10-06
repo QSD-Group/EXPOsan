@@ -24,7 +24,7 @@ from . import system
 from .system import *
 
 _system_loaded = False
-def load(reload=False, adm_kwargs={}, inf_kwargs={}, init_conds={}, flowsheet=None):
+def load(reload=False, inf_kwargs={}, adm_kwargs={}, init_conds={}):
     global _system_loaded
     if not _system_loaded: reload = True
     if reload:
@@ -33,7 +33,6 @@ def load(reload=False, adm_kwargs={}, inf_kwargs={}, init_conds={}, flowsheet=No
             inf_kwargs=inf_kwargs,
             adm_kwargs=adm_kwargs,
             init_conds=init_conds,
-            flowsheet=flowsheet,
             )
         AD = sys.flowsheet.unit.AD
         cmps = components = AD.components

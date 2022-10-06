@@ -38,7 +38,7 @@ household_size = 4
 household_per_toilet = 5
 get_toilet_user = lambda: household_size*household_per_toilet
 
-# Number of people served by the Eco-san
+# Number of people served by the Eco-San system
 ppl = 300
 
 discount_rate = 0.05

@@ -131,7 +131,7 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
         # Household size
         excretion_unit = unit_dct['Excretion']
         b = br.household_size
-        D = shape.Normal(mu=b, sigma=1.8)
+        D = shape.Normal(mu=b, sigma=0.012)
         @param(name='Household size', element=excretion_unit, kind='coupled', units='cap/household',
                baseline=b, distribution=D)
         def set_household_size(i):
