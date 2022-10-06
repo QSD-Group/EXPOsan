@@ -20,11 +20,13 @@ class DegassingMembrane(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', F_BM_default=None, isdynamic=True,
+                 tau=0.01,
                  H2_degas_efficiency=0.8, CH4_degas_efficiency=0.8, 
                  CO2_degas_efficiency=0.8, gas_IDs=('S_h2', 'S_ch4', 'S_IC')):
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
                          init_with=init_with, F_BM_default=F_BM_default,
                          isdynamic=isdynamic)
+        self.tau = tau
         self.H2_degas_efficiency = H2_degas_efficiency
         self.CH4_degas_efficiency = CH4_degas_efficiency
         self.CO2_degas_efficiency = CO2_degas_efficiency
@@ -104,23 +106,39 @@ class DegassingMembrane(SanUnit):
         liquid.dstate[:-1] = (1-s) * arr[:-1]
         liquid.dstate[-1] = arr[-1]
      
-    @property
-    def AE(self):
-        if self._AE is None:
-            self._compile_AE()
-        return self._AE
+    # @property
+    # def AE(self):
+    #     if self._AE is None:
+    #         self._compile_AE()
+    #     return self._AE
 
-    def _compile_AE(self):
-        _state = self._state
+    # def _compile_AE(self):
+    #     _state = self._state
+    #     _dstate = self._dstate
+    #     _update_state = self._update_state
+    #     _update_dstate = self._update_dstate
+    #     def yt(t, QC_ins, dQC_ins):
+    #         _state[:] = QC_ins[0]
+    #         _dstate[:] = dQC_ins[0]
+    #         _update_state()
+    #         _update_dstate()
+    #     self._AE = yt
+
+    @property
+    def ODE(self):
+        if self._ODE is None:
+            self._compile_ODE()
+        return self._ODE
+    
+    def _compile_ODE(self):
         _dstate = self._dstate
-        _update_state = self._update_state
         _update_dstate = self._update_dstate
-        def yt(t, QC_ins, dQC_ins):
-            _state[:] = QC_ins[0]
-            _dstate[:] = dQC_ins[0]
-            _update_state()
+        tau = self.tau
+        def dy_dt(t, QC_ins, QC, dQC_ins):
+            _dstate[:] = (QC_ins[0] - QC)/tau
+            _dstate[-1] = dQC_ins[0,-1]
             _update_dstate()
-        self._AE = yt
+        self._ODE = dy_dt
 
 #%%
 
@@ -134,7 +152,7 @@ class METAB_AnCSTR(AnaerobicCSTR, CSTR):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', V_liq=3400, V_gas=300, split=None,
-                 model=None, T=308.15, max_headspace_P=1.013, 
+                 model=None, T=308.15, max_headspace_P=30, 
                  retain_cmps=(), fraction_retain=0.95,
                  isdynamic=True, exogenous_vars=(), **kwargs):
         AnaerobicCSTR.__init__(self, ID=ID, ins=ins, outs=outs, thermo=thermo, 
