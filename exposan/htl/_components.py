@@ -52,7 +52,16 @@ def create_components(set_thermo=True):
     #Solids components
     
     #Sludge is separated into lipid, protein, and carbohydrate for the convenience
-    #suring sanunits setup.
+    #during sanunits setup.
+    C_s = Component('C_s',phase='s',particle_size='Particulate',degradability='Undegradable',
+                  organic=False)
+    
+    N_s = Component('N_s',phase='s',particle_size='Particulate',degradability='Undegradable',
+                  organic=False)
+    
+    P_s = Component('P_s',phase='s',particle_size='Particulate',degradability='Undegradable',
+                  organic=False)
+    
     Sludge_lipid = Component('Sludge_lipid', phase='s', formula='C56H95O27N6P',
                        particle_size='Particulate',
                        degradability='Undegradable',organic=False)
@@ -83,11 +92,11 @@ def create_components(set_thermo=True):
     add_V_from_rho(Struvite, 1710)
     #http://webmineral.com/data/Struvite.shtml#.YzYvqOzMIiM (accessed 2022-9-30)
     
-    Biochar = Component('Biochar',phase='s',particle_size='Particulate',
-                        degradability='Undegradable',organic=False,i_C=0.399,
-                        i_N=0.026,i_P=0.184)
-    add_V_from_rho(Biochar, 1500)  #Assume 1500kg/m3
-    Biochar.copy_models_from(Chemical('CaCO3'),('Cn',))
+    # Biochar = Component('Biochar',phase='s',particle_size='Particulate',
+    #                     degradability='Undegradable',organic=False,i_C=0.399,
+    #                     i_N=0.026,i_P=0.184)
+    # add_V_from_rho(Biochar, 1500)  #Assume 1500kg/m3
+    # Biochar.copy_models_from(Chemical('CaCO3'),('Cn',))
     
     Residual = Component('Residual',phase='s',particle_size='Particulate',
                         degradability='Undegradable',organic=False,i_C=0.484,
@@ -118,6 +127,14 @@ def create_components(set_thermo=True):
     Biooil.copy_models_from(Chemical('hexadecane'),('Cn',))  #Jones et al., 2014
     
     #Aqueous components
+    C_l = Component('C_l',phase='l',particle_size='Soluble',degradability='Undegradable',
+                  organic=False)
+    
+    N_l = Component('N_l',phase='l',particle_size='Soluble',degradability='Undegradable',
+                  organic=False)
+    
+    P_l = Component('P_l',phase='l',particle_size='Soluble',degradability='Undegradable',
+                  organic=False)
     
     HTLaqueous = Component('HTLaqueous',phase='l',particle_size='Soluble',
                         degradability='Undegradable',organic=False,i_C=0.250,
@@ -197,10 +214,19 @@ def create_components(set_thermo=True):
     NH3 = Component('NH3',phase='g',particle_size='Dissolved gas',
                     degradability='Undegradable',organic=False)
 
+    for i in (C_s, N_s, P_s):
+        i.default()
+        i.copy_models_from(Chemical('CaCO3'),('sigma','epsilon','kappa','Cn','mu'))
+        add_V_from_rho(i, 1500)
 
-    cmps = Components([Sludge_lipid,Sludge_protein,Sludge_carbo,Struvite,Biochar,Residual,Char,
+    for i in (C_l, N_l, P_l):
+        i.default()
+        i.copy_models_from(H2O,('sigma','epsilon','kappa','Cn','mu'))
+        add_V_from_rho(i, 1000)
+
+    cmps = Components([C_s,N_s,P_s,Sludge_lipid,Sludge_protein,Sludge_carbo,Struvite,Residual,Char,#Biochar,
                        Biocrude,Biooil,
-                       HTLaqueous,Mixture,CHGfeed,CHGeffluent,WW,
+                       C_l,N_l,P_l,HTLaqueous,Mixture,CHGfeed,CHGeffluent,WW,
                        CH4,C2H6,C3H8,C5H12,CO2,CO,H2,
                        H2SO4,H3PO4,MgCl2,NaOH,NH42SO4,H2O,NH3])
     
