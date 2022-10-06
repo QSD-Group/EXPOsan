@@ -20,24 +20,35 @@ from exposan.htl._components import create_components
 
 
 cmps = create_components()
-
 sludge = qs.WasteStream('sludge',Sludge_lipid=308,Sludge_protein=464,Sludge_carbo=228,H2O=4000, units='kg/hr',T=25+273.15)
-acidforP = qs.WasteStream('acidforP',H2SO4=33,units='kg/hr')
-supply_mgcl2 = qs.WasteStream('MgCl2',MgCl2=66,units='kg/hr')
-acidforN = qs.WasteStream('acidforN', H2SO4=114,units='kg/hr')
+acidforP = qs.WasteStream('acidforP')
+supply_mgcl2 = qs.WasteStream('MgCl2')
+acidforN = qs.WasteStream('acidforN')
 
-HX1 = suu.HXutility('HX1',ins=sludge,outs=('HX1out',),T=350+273.15)
-HX2 = suu.HXprocess
 
-HTL = su.HTL('HTL',ins=HX1-0,outs=('biocrude','aqueous','offgas','biochar'))
-HT = su.HT('HT',ins=HTL-0,outs=('biooil', 'fuelgas_HT', 'char'))
-Acidex = su.AcidExtraction('Acidex',ins=(HTL-3,acidforP),outs=('residual','H3PO4'))
-M1 = su.HTLmixer('M1',ins=(HTL-1,Acidex-1),outs=('mixture',))
-Strupre = su.StruvitePrecipitation('Strupre',ins=(M1-0,supply_mgcl2),outs=('struvite','chgfeed'))
-CHG = su.CHG('CHG',ins=Strupre-1,outs=('fuelgas_CHG','chgeffluent'))
-MemDis = su.MembraneDistillation('MemDis',ins=(CHG-1,acidforN),outs=('AmmoniaSulfate','ww'))
+HTL = su.HTL('A120',ins=sludge,outs=('biochar','others'))
+S1 = suu.Splitter('A130',ins=HTL-1,outs=('aqueous_biocrude','offgas'),
+                  split={
+                      'CO2':0,
+                      'C_c':1,'N_c':1,'Others_c':1,'C_l':1,'N_l':1,'P_l':1,'Others_l':1,'H2O':1
+                      })
+S2 = suu.Splitter('A140',ins=S1-0,outs=('aqueous','biocrude'),
+                  split={
+                      'C_c':0,'N_c':0,'Others_c':0,'C_l':1,'N_l':1,'P_l':1,'Others_l':1,'H2O':1
+                      })
+HT = su.HT('A330',ins=S2-1,outs=('char', 'others'))
+S3 = suu.Splitter('A340',ins=HT-1,outs=('biooil','fuel_gas'),
+                  split={
+                      'C_o':1,'N_o':1,'Others_o':1,
+                      'CO':0,'CO2':0,'CH4':0,'C2H6':0,'C3H8':0,'C5H12':0
+                      })
+Acidex = su.AcidExtraction('A210',ins=(HTL-0,acidforP),outs=('residual','extracted'))
+M1 = su.HTLmixer('A220',ins=(S2-0,Acidex-1),outs=('mixture'))
+StruPre = su.StruvitePrecipitation('A230',ins=(M1-0,supply_mgcl2),outs=('struvite','CHGfeed'))
+CHG = su.CHG('A250',ins=StruPre-1,outs=('fuelgas','effluent'))
+MemDis = su.MembraneDistillation('A260',ins=(CHG-1,acidforN),outs=('AmmoniaSulfate','ww'))
 
-sys = qs.System('sys',path=(HX1,HTL,HT,Acidex,M1,Strupre,CHG,MemDis))
+sys = qs.System('sys',path=(HTL,S1,S2,HT,S3,Acidex,M1,StruPre,CHG,MemDis))
     
 sys.simulate()
 sys.diagram()
