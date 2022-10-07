@@ -48,7 +48,8 @@ def add_degas_params(model, bioreactors, membranes):
            baseline=b, distribution=D)
     def H2E_split_setter(s):
         H2E.split = [s, 1-s]
-    
+
+    D = shape.Uniform(0.1, 0.9)    
     @param(name='CH4E_sidestream_split', element=CH4E, kind='coupled', units='',
            baseline=b, distribution=D)
     def CH4E_split_setter(s):
@@ -61,13 +62,15 @@ def add_degas_params(model, bioreactors, membranes):
     def H2_e_rmv(e):
         DM1.H2_degas_efficiency = e
         DM2.H2_degas_efficiency = e
-        
+
+    D = shape.Uniform(0.25, 0.85)        
     @param(name='CH4_removal_efficiency', element=DM1, kind='coupled', units='',
            baseline=b, distribution=D)
     def CH4_e_rmv(e):
         DM1.CH4_degas_efficiency = e
         DM2.CH4_degas_efficiency = e
         
+    D = shape.Uniform(0.25, 0.85)
     @param(name='CO2_removal_efficiency', element=DM1, kind='coupled', units='',
            baseline=b, distribution=D)
     def CO2_e_rmv(e):
