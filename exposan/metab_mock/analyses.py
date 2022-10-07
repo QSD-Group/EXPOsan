@@ -1,15 +1,26 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Aug  4 17:05:15 2022
+'''
+EXPOsan: Exposition of sanitation and resource recovery systems
 
-@author: joy_c
-"""
+This module is developed by:
+    
+    Joy Zhang <joycheung1994@gmail.com>
+
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
+'''
+
 from time import time
 from copy import deepcopy
 from qsdsan.utils import load_data, load_pickle, save_pickle, ospath
 from qsdsan.stats import plot_uncertainties
-from exposan.metab_mock import model_ua as mdl, cmps, H2E, \
-    run_uncertainty, results_path, figures_path
+from exposan.metab_mock import (
+    create_modelB, 
+    run_modelB, 
+    results_path, 
+    figures_path
+     )
 import os
 import numpy as np
 import pandas as pd
@@ -19,6 +30,9 @@ mpl.rcParams['font.sans-serif'] = 'arial'
 mpl.rcParams["figure.autolayout"] = True
 
 #%% Global variables
+mdl = create_modelB()
+cmps = mdl._system.flowsheet.stream.Effluent_B.components
+AnR1 = mdl._system.flowsheet.unit.AnR1
 
 N = 400
 T = 120
@@ -35,9 +49,6 @@ indices = [(4, 5), (0, 1)]
 names = [('H2', 'CH4'), ('rCOD_1', 'rCOD_2')]
 pairs = zip(indices, names)
 
-# cmps = s.cmps
-# H2E = s.H2E
-
 
 def seed_RGT():
     files = os.listdir(results_path)
@@ -53,7 +64,7 @@ def seed_RGT():
 #%% UA with time-series data
 def single_state_var_getter(arr, unit, variable):
     j = 1
-    if unit == 'CH4E': j += len(H2E._state)
+    if unit in ('AnR2', 'CH4E'): j += len(AnR1._state)
     i = cmps.index(variable)
     return arr[:, i+j]
 
@@ -72,7 +83,7 @@ def analyze_vars(seed, N, pickle=True):
     t_arr = np.arange(0, T+t_step, t_step)
     pcs = np.array([0, 5, 25, 50, 75, 95, 100])
     col_names = [f'{p}th percentile' for p in pcs]
-    for u in ('H2E', 'CH4E'):
+    for u in ('AnR1', 'AnR2'):
         dct[u] = {}
         for var in state_vars:
             df = analyze_timeseries(single_state_var_getter, N=N, folder=folder,
@@ -165,10 +176,10 @@ def plot_kde2d_metrics(seed):
 
 def UA_w_all_params(seed=None, N=N, T=T, t_step=t_step, plot=True):
     seed = seed or seed_RGT()
-    run_uncertainty(mdl, N, T, t_step, method='BDF', seed=seed)
+    run_modelB(mdl, N, T, t_step, method='BDF', seed=seed)
     out = analyze_vars(seed, N)
     if plot: 
-        for u in ('H2E', 'CH4E'):
+        for u in ('AnR1', 'AnR2'):
             plot_timeseries(seed, N, u, data=out)
         plot_kde2d_metrics(mdl)
     print(f'Seed used for uncertainty analysis with all parameters is {seed}.')
@@ -179,8 +190,8 @@ def UA_w_all_params(seed=None, N=N, T=T, t_step=t_step, plot=True):
 #%%
 if __name__ == '__main__':
     seed = 952
-    # run_uncertainty(mdl, N, T, t_step, method='BDF', seed=seed)
+    # run_modelB(mdl, N, T, t_step, method='BDF', seed=seed)
     # out = analyze_vars(seed, N)
-    plot_timeseries(seed, N, 'H2E')
-    plot_timeseries(seed, N, 'CH4E')
+    plot_timeseries(seed, N, 'AnR1')
+    plot_timeseries(seed, N, 'AnR2')
     # plot_kde2d_metrics(seed)

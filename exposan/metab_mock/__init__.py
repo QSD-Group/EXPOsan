@@ -18,11 +18,11 @@ del os
 from . import units
 from .units import *
 
-from . import system
-from .system import *
+from . import systems
+from .systems import *
 
-from . import model
-from .model import *
+from . import models
+from .models import *
 
 __all__ = (
     'folder',
@@ -30,6 +30,6 @@ __all__ = (
     'results_path',
     'figures_path',
     *units.__all__,
-    *system.__all__,
-    *model.__all__,
+    *systems.__all__,
+    *models.__all__,
 	)
