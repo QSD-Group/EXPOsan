@@ -20,35 +20,113 @@ from exposan.htl._components import create_components
 
 
 cmps = create_components()
-sludge = qs.WasteStream('sludge',Sludge_lipid=308,Sludge_protein=464,Sludge_carbo=228,H2O=4000, units='kg/hr',T=25+273.15)
-acidforP = qs.WasteStream('acidforP')
-supply_mgcl2 = qs.WasteStream('MgCl2')
-acidforN = qs.WasteStream('acidforN')
+
+sludge = qs.Stream('sludge',Sludge_lipid=308,Sludge_protein=464,Sludge_carbo=228,
+                        H2O=99000, units='kg/hr',T=25+273.15)
+
+sludge_dry_weight = sludge.F_mass-sludge.imass['H2O']
+sludge_C_ratio = 0.508
+sludge_P_ratio = 0.0235
+sludge_H_ratio = 0.0717
+sludge_S_ratio = 0.0124
+sludge_N_ratio = sludge.imass['Sludge_protein']/sludge_dry_weight/4.78
+sludge_O_ratio = 1-sludge_C_ratio-sludge_P_ratio-sludge_H_ratio-sludge_S_ratio-sludge_N_ratio
+AOSc = (3*sludge_N_ratio/14+2*sludge_O_ratio/16-sludge_H_ratio/1)/(sludge_C_ratio/12)
+sludge_carbo_ratio = sludge.imass['Sludge_carbo']/sludge_dry_weight
+sludge_protein_ratio = sludge.imass['Sludge_protein']/sludge_dry_weight
 
 
-HTL = su.HTL('A120',ins=sludge,outs=('biochar','others'))
-S1 = suu.Splitter('A130',ins=HTL-1,outs=('aqueous_biocrude','offgas'),
-                  split={
-                      'CO2':0,
-                      'C_c':1,'N_c':1,'Others_c':1,'C_l':1,'N_l':1,'P_l':1,'Others_l':1,'H2O':1
-                      })
-S2 = suu.Splitter('A140',ins=S1-0,outs=('aqueous','biocrude'),
-                  split={
-                      'C_c':0,'N_c':0,'Others_c':0,'C_l':1,'N_l':1,'P_l':1,'Others_l':1,'H2O':1
-                      })
-HT = su.HT('A330',ins=S2-1,outs=('char', 'others'))
-S3 = suu.Splitter('A340',ins=HT-1,outs=('biooil','fuel_gas'),
-                  split={
-                      'C_o':1,'N_o':1,'Others_o':1,
-                      'CO':0,'CO2':0,'CH4':0,'C2H6':0,'C3H8':0,'C5H12':0
-                      })
-Acidex = su.AcidExtraction('A210',ins=(HTL-0,acidforP),outs=('residual','extracted'))
-M1 = su.HTLmixer('A220',ins=(S2-0,Acidex-1),outs=('mixture'))
-StruPre = su.StruvitePrecipitation('A230',ins=(M1-0,supply_mgcl2),outs=('struvite','CHGfeed'))
-CHG = su.CHG('A250',ins=StruPre-1,outs=('fuelgas','effluent'))
+acidforP = qs.Stream('H2SO4_1')
+supply_mgcl2 = qs.Stream('MgCl2')
+acidforN = qs.Stream('H2S04_2')
+
+
+SludgeThickener = suu.SludgeThickening('A000',init_with='Stream',ins=sludge,
+                                       outs=('Supernatant_1','Compressed_sludge_1'),
+                                       solids=('Sludge_lipid','Sludge_protein','Sludge_carbo'))
+
+SludgeCentrifuge = suu.SludgeCentrifuge('A010',init_with='Stream',ins=SludgeThickener-1,
+                                        outs=('Supernatant_2','Compressed_sludge_2'),
+                                        solids=('Sludge_lipid','Sludge_protein','Sludge_carbo'))
+
+HTL = su.HTL('A110',ins=SludgeCentrifuge-1,outs=('biochar','HTLaqueous','biocrude','offgas'))
+HTL.simulate()
+biochar_C_ratio = min(1.75*sludge_carbo_ratio,0.65)
+biochar_C_N_ratio=15.5
+biochar_C_P_ratio=2.163
+biochar_N_ratio = biochar_C_ratio/biochar_C_N_ratio
+biochar_P_ratio = biochar_C_ratio/biochar_C_P_ratio
+biochar_C = HTL.outs[0].F_mass*biochar_C_ratio
+biochar_N = HTL.outs[0].F_mass*biochar_N_ratio
+biochar_P = min((sludge.F_mass-sludge.imass['H2O'])*sludge_P_ratio,HTL.outs[0].F_mass*biochar_P_ratio)
+
+biocrude_C_ratio = (AOSc*(-8.37)+68.55)/100
+biocrude_N_ratio = 0.133*sludge_protein_ratio
+biocrude_C = HTL.outs[2].imass['Biocrude']*biocrude_C_ratio
+biocrude_N = HTL.outs[2].imass['Biocrude']*biocrude_N_ratio
+
+offgas_C = HTL.outs[3].F_mass*12/44
+
+HTLaqueous_C = sludge_dry_weight*sludge_C_ratio - biochar_C - biocrude_C - offgas_C
+HTLaqueous_N = sludge_dry_weight*sludge_N_ratio - biochar_N - biocrude_N
+HTLaqueous_P = sludge_dry_weight*sludge_P_ratio - biochar_P
+
+HT = su.HT('A410',ins=HTL-2,outs=('HTaqueous','fuel_gas','biooil'))
+HT.simulate()
+HTfuel_gas_C = 0
+fuelgas_carbo_ratio = {
+    'C5H12':60/72,
+    'CO':12/28,
+    'CO2':12/44,
+    'C2H6':24/30,
+    'C3H8':36/44,
+    'CH4':12/16
+     }
+for name, ratio in fuelgas_carbo_ratio.items():
+    HTfuel_gas_C+=HT.outs[1].imass[name]*ratio
+    
+biooil_C_ratio = 0.855 
+biooil_N_ratio = 0.01
+biooil_C = HT.outs[2].F_mass*biooil_C_ratio
+biooil_N = HT.outs[2].F_mass*biooil_N_ratio
+
+HTaqueous_C = biocrude_C - HTfuel_gas_C - biooil_C
+HTaqueous_N = biocrude_N - biooil_N
+
+
+Acidex = su.AcidExtraction('A200',ins=(HTL-0,acidforP),outs=('residual','extracted'),
+                           biochar_C_ratio=biochar_C_ratio,biochar_C_P_ratio=biochar_C_P_ratio)
+Acidex.simulate()
+residual_C = biochar_C
+redidual_N = biochar_N
+residual_P = biochar_P-Acidex.outs[1].imass['P']
+
+extracted_P = Acidex.outs[1].imass['P']
+
+
+M1 = su.HTLmixer('A300',ins=(HTL-1,Acidex-1),outs=('mixture'),HTLaqueous_C=HTLaqueous_C,
+                 HTLaqueous_N=HTLaqueous_N,HTLaqueous_P=HTLaqueous_P)
+
+P_in_struvite=0.127
+StruPre = su.StruvitePrecipitation('A310',ins=(M1-0,supply_mgcl2),outs=('struvite','CHGfeed'),P_in_struvite=P_in_struvite)
+
+CHG = su.CHG('A330',ins=StruPre-1,outs=('fuelgas','effluent'))
+
 MemDis = su.MembraneDistillation('A260',ins=(CHG-1,acidforN),outs=('AmmoniaSulfate','ww'))
 
-sys = qs.System('sys',path=(HTL,S1,S2,HT,S3,Acidex,M1,StruPre,CHG,MemDis))
-    
+sys=qs.System('sys',path=(SludgeThickener,SludgeCentrifuge,HTL,HT,Acidex,M1,StruPre,CHG,MemDis))
+
 sys.simulate()
+
+struvite_P=StruPre.outs[0].imass['Struvite']*P_in_struvite
+struvite_N=struvite_P*14/31
+
+CHG_C = CHG.outs[1].imass['C']
+CHG_N = CHG.outs[1].imass['N']
+CHG_P = CHG.outs[1].imass['P']
+
+ww_C = MemDis.outs[1].imass['C']
+ww_N = MemDis.outs[1].imass['N']
+ww_P = MemDis.outs[1].imass['P']
+
 sys.diagram()
