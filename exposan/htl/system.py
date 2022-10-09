@@ -158,7 +158,7 @@ dist = shape.Uniform(0.02,0.03)
        baseline=0.0235,
        distribution=dist)
 def set_sludge_p_ratio(i):
-    sludge_P_ratio=i
+    M1.HTLaqueous_P = i
     
 metric = model.metric
 @metric(name='Struvite_production',units='kg/hr',element='TEA')
@@ -172,10 +172,3 @@ samples = model.sample(N=100, rule='L')
 model.load_samples(samples)
 model.evaluate()
 model.table
-
-
-
-
-
-
-
