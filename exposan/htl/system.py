@@ -130,3 +130,52 @@ ww_N = MemDis.outs[1].imass['N']
 ww_P = MemDis.outs[1].imass['P']
 
 sys.diagram()
+
+#%%
+from qsdsan import Model
+
+model = Model(sys)
+
+from chaospy import distributions as shape
+
+param=model.parameter
+
+dist = shape.Uniform(250,350)
+@param(name='sludge_lipid_content',
+       element=sludge,
+       kind='coupled',
+       units='kg/hr',
+       baseline=308,
+       distribution=dist)
+def set_sludge_lipid_content(i):
+    sludge.imass['Sludge_lipid']=i
+    
+dist = shape.Uniform(0.02,0.03)
+@param(name='sludge_p_ratio',
+       element=sludge,
+       kind='coupled',
+       units='kg/hr',
+       baseline=0.0235,
+       distribution=dist)
+def set_sludge_p_ratio(i):
+    sludge_P_ratio=i
+    
+metric = model.metric
+@metric(name='Struvite_production',units='kg/hr',element='TEA')
+def get_struvite_production():
+    return StruPre.outs[0].imass['Struvite']
+
+#%%
+import numpy as np
+np.random.seed(3221)
+samples = model.sample(N=100, rule='L')
+model.load_samples(samples)
+model.evaluate()
+model.table
+
+
+
+
+
+
+
