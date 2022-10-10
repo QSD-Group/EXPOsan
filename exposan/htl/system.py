@@ -21,23 +21,21 @@ from exposan.htl._components import create_components
 
 cmps = create_components()
 
-sludge = qs.Stream('sludge',Sludge_lipid=308,Sludge_protein=464,Sludge_carbo=228,
-                        H2O=99000, units='kg/hr',T=25+273.15)
-
+fake_sludge = qs.Stream('fake_sludge',H2O=100000,units='kg/hr',T=298.15)
+#set H2O equal to the total sludge input flow
 acidforP = qs.Stream('H2SO4_1')
 supply_mgcl2 = qs.Stream('MgCl2')
-acidforN = qs.Stream('H2S04_2')
+acidforN = qs.Stream('H2SO4_2')
 
+SluL = su.SludgeLab('S000',ins=fake_sludge,outs='real_sludge')
 
-SludgeThickener = suu.SludgeThickening('A000',init_with='Stream',ins=sludge,
-                                       outs=('Supernatant_1','Compressed_sludge_1'),
-                                       solids=('Sludge_lipid','Sludge_protein','Sludge_carbo'))
+SluT = suu.SludgeThickening('A000',ins=SluL-0,outs=('Supernatant_1','Compressed_sludge_1'),
+                            init_with='Stream',solids=('Sludge_lipid','Sludge_protein','Sludge_carbo'))
 
-SludgeCentrifuge = suu.SludgeCentrifuge('A010',init_with='Stream',ins=SludgeThickener-1,
-                                        outs=('Supernatant_2','Compressed_sludge_2'),
-                                        solids=('Sludge_lipid','Sludge_protein','Sludge_carbo'))
+SluC = suu.SludgeCentrifuge('A010',ins=SluT-1,outs=('Supernatant_2','Compressed_sludge_2'),
+                            init_with='Stream',solids=('Sludge_lipid','Sludge_protein','Sludge_carbo'))
 
-HTL = su.HTL('A110',ins=SludgeCentrifuge-1,outs=('biochar','HTLaqueous','biocrude','offgas'))
+HTL = su.HTL('A110',ins=SluC-1,outs=('biochar','HTLaqueous','biocrude','offgas'))
 
 HT = su.HT('A410',ins=HTL-2,outs=('HTaqueous','fuel_gas','biooil'))
 
@@ -51,7 +49,7 @@ CHG = su.CHG('A330',ins=StruPre-1,outs=('fuelgas','effluent'))
 
 MemDis = su.MembraneDistillation('A340',ins=(CHG-1,acidforN),outs=('AmmoniaSulfate','ww'))
 
-sys=qs.System('sys',path=(SludgeThickener,SludgeCentrifuge,HTL,HT,Acidex,M1,StruPre,CHG,MemDis))
+sys=qs.System('sys',path=(SluL,SluT,SluC,HTL,HT,Acidex,M1,StruPre,CHG,MemDis))
 
 sys.simulate()
 
@@ -88,7 +86,7 @@ def set_p_struvite_recovery_ratio(i):
     
 dist = shape.Uniform(0.0235,0.025)
 @param(name='sludge_p_ratio',
-       element=sludge,
+       element=HTL,
        kind='coupled',
        units='-',
        baseline=0.0235,
