@@ -48,6 +48,7 @@ from qsdsan import SanUnit
 # from thermosteam import MultiStream, separations
 
 __all__ = (
+    'SludgeLab',
     'HTL',
     'HT',
     'AcidExtraction',
@@ -55,6 +56,50 @@ __all__ = (
     'StruvitePrecipitation',
     'CHG',
     'MembraneDistillation')
+
+
+class SludgeLab(SanUnit):
+    '''
+    SludgeLab is a fake unit that makes it easier to incorperate sludge compositions
+    and moisture content into uncertainty analysis.
+    
+    Parameters
+    ----------
+    ins: Iterable (stream)
+        fake_sludge
+    outs: Iterable (stream)
+        real_sludge
+    '''
+    # auxiliary_unit_names=('heat_exchanger',)
+
+    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream', 
+                 sludge_moisture=0.99,sludge_dw_protein=0.464,
+                 sludge_dw_lipid=0.308,**kwargs):
+        SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
+        self.sludge_moisture=sludge_moisture
+        self.sludge_dw_lipid=sludge_dw_lipid
+        self.sludge_dw_protein=sludge_dw_protein
+        
+    _N_ins = 1
+    _N_outs = 1
+    
+    def _run(self):
+        fake_sludge=self.ins[0]
+        real_sludge=self.outs[0]
+        real_sludge.imass['H2O']=fake_sludge.F_mass*self.sludge_moisture
+        real_sludge.imass['Sludge_lipid']=fake_sludge.F_mass*(1-self.sludge_moisture)*\
+            self.sludge_dw_lipid
+        real_sludge.imass['Sludge_protein']=fake_sludge.F_mass*(1-self.sludge_moisture)*\
+            self.sludge_dw_protein
+        real_sludge.imass['Sludge_carbo']=fake_sludge.F_mass*(1-self.sludge_moisture)*\
+            (1-self.sludge_dw_lipid-self.sludge_dw_protein)
+        
+    def _design(self):
+        pass
+    
+    def _cost(self):
+        pass
+
 
 class HTL(SanUnit):
     
