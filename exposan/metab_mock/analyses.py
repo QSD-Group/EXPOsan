@@ -17,8 +17,9 @@ from qsdsan.utils import load_data, load_pickle, save_pickle, ospath
 from qsdsan.stats import plot_uncertainties
 from exposan.metab_mock import (
     create_modelA,
-    create_modelB, 
-    run_modelA,
+    create_modelB,
+    create_modelC,
+    run_model,
     run_modelB, 
     results_path, 
     figures_path
@@ -34,6 +35,7 @@ mpl.rcParams["figure.autolayout"] = True
 #%% Global variables
 mdlA = create_modelA()
 mdlB = create_modelB()
+mdlC = create_modelC()
 cmps = mdlB._system.flowsheet.stream.Effluent_B.components
 AnR1 = mdlB._system.flowsheet.unit.AnR1
 
@@ -144,17 +146,15 @@ def plot_timeseries(seed, N, unit, sys='B', data=None):
     fig.savefig(ospath.join(figures_path, f'{unit}_states.png'), dpi=300)
     return fig, axes
 
-def plot_kde2d_metrics(seed, sys='B'):
-    if sys == 'A': mdl = mdlA
-    else: mdl = mdlB
-    metrics = mdl.metrics
-    if mdl.table is None:
-        path = ospath.join(results_path, f'sys{sys}_table_{seed}.xlsx')
-        mdl.table = load_data(path=path, header=[0,1])
+def plot_kde2d_metrics(seed, model, sys_ID):
+    metrics = model.metrics
+    if model.table is None:
+        path = ospath.join(results_path, f'sys{sys_ID}_table_{seed}.xlsx')
+        model.table = load_data(path=path, header=[0,1])
     for ids, names in pairs:
         i, j = ids
         x, y = names
-        fig, ax = plot_uncertainties(mdl, x_axis=metrics[i], y_axis=metrics[j],
+        fig, ax = plot_uncertainties(model, x_axis=metrics[i], y_axis=metrics[j],
                                      kind='kde-box', center_kws={'fill':True},
                                      margin_kws={'width':0.5})
         ax0, ax1, ax2 = fig.axes # KDE, top box, right box
@@ -179,30 +179,39 @@ def plot_kde2d_metrics(seed, sys='B'):
             yl, yu = ax0.get_ylim()
         ax0.set_xlim((xl, xu))
         ax0.set_ylim((yl, yu))
-        fig.savefig(ospath.join(figures_path, f'sys{sys}_{x}_vs_{y}.png'), dpi=300)
+        fig.savefig(ospath.join(figures_path, f'sys{sys_ID}_{x}_vs_{y}.png'), dpi=300)
         del fig, ax
 
-def plot_scatter(seed, sys='B'):
-    if sys == 'A': mdl = mdlA
-    else: mdl = mdlB
-    nx = len(mdl.parameters)
-    ny = len(mdl.metrics)
-    if mdl.table is None:
-        path = ospath.join(results_path, f'sys{sys}_table_{seed}.xlsx')
-        mdl.table = load_data(path=path, header=[0,1])
-    df_x = mdl.table.iloc[:, :nx]
-    df_y = mdl.table.iloc[:, nx:]
+def plot_scatter(seed, modelA, modelC):
+    nx = len(modelA.parameters)
+    ny = len(modelA.metrics)
+    if modelA.table is None:
+        path = ospath.join(results_path, f'sysA_table_{seed}.xlsx')
+        modelA.table = load_data(path=path, header=[0,1])
+    if modelC.table is None:
+        path = ospath.join(results_path, f'sysC_table_{seed}.xlsx')
+        modelC.table = load_data(path=path, header=[0,1])
+    dfa_x = modelA.table.iloc[:, :nx]
+    dfa_y = modelA.table.iloc[:, nx:]
+    dfc_x = modelC.table.iloc[:, :nx]
+    dfc_y = modelC.table.iloc[:, nx:]
     fig, axes = plt.subplots(ny, nx, sharex=False, sharey=False, 
                              figsize=(nx*2, ny*2))
     x_ticks = np.linspace(0.1, 0.9, 5)
     for j in range(ny):
-        y = df_y.iloc[:,j].values
-        lct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
-        y_ticks = lct.tick_values(np.min(y), np.max(y))
+        ya = dfa_y.iloc[:,j].values
+        yc = dfc_y.iloc[:,j].values
+        ylct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
+        y_ticks = ylct.tick_values(min(np.min(ya), np.min(yc)), 
+                                   max(np.max(ya), np.max(yc)))
         for i in range(nx):
+            xa = dfa_x.iloc[:,i].values
+            xc = dfc_x.iloc[:,i].values
+            xlct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
+            x_ticks = xlct.tick_values(np.min(xa), np.max(xa))
             ax = axes[j,i]            
-            ax.scatter(df_x.iloc[:,i], y, marker='o', 
-                       s=1, c='black')
+            ax.scatter(xa, ya, marker='o', s=1, c='orange', alpha=0.7)
+            ax.scatter(xc, yc, marker='^', s=1, c='blue', alpha=0.7)
             ax.tick_params(axis='both', direction='inout', length=4, labelsize=11)
             ax.xaxis.set_ticks(x_ticks)
             ax.yaxis.set_ticks(y_ticks)
@@ -217,20 +226,20 @@ def plot_scatter(seed, sys='B'):
             ax2y.tick_params(axis='y', direction='in', length=2)
             ax2y.yaxis.set_ticklabels([])
     plt.subplots_adjust(wspace=0, hspace=0)
-    fig.savefig(ospath.join(figures_path, f'sys{sys}_table.png'), dpi=300)
+    fig.savefig(ospath.join(figures_path, 'AvC_table.png'), dpi=300)
     return fig, axes
 
 #%%
-def run_UA_sysA(seed=None, N=N, T=T, t_step=t_step, plot=True):
+def run_UA_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
     seed = seed or seed_RGT()
-    run_modelA(mdlA, N, T, t_step, method='BDF', seed=seed)
-    # out = analyze_vars(seed, N, sys='A')
+    # run_model(mdlA, N, T, t_step, method='BDF', sys_ID='A', seed=seed)
+    run_model(mdlC, N, T, t_step, method='BDF', sys_ID='C', seed=seed)
     if plot:
-        plot_kde2d_metrics(seed, 'A')
-        plot_scatter(seed, 'A')
+        plot_scatter(seed, mdlA, mdlC)
     print(f'Seed used for uncertainty analysis of system A is {seed}.')
-    for p in mdlA.parameters:
-        p.setter(p.baseline)
+    for mdl in (mdlA, mdlC):
+        for p in mdl.parameters:
+            p.setter(p.baseline)
     return seed
 
 def run_UA_sysB(seed=None, N=N, T=T, t_step=t_step, plot=True):
@@ -240,7 +249,7 @@ def run_UA_sysB(seed=None, N=N, T=T, t_step=t_step, plot=True):
     if plot: 
         for u in ('AnR1', 'AnR2'):
             plot_timeseries(seed, N, u, data=out, sys='B')
-        plot_kde2d_metrics(seed, sys='B')
+        plot_kde2d_metrics(seed, mdlB, sys_ID='B')
     print(f'Seed used for uncertainty analysis of system B is {seed}.')
     for p in mdlB.parameters:
         p.setter(p.baseline)
@@ -248,7 +257,7 @@ def run_UA_sysB(seed=None, N=N, T=T, t_step=t_step, plot=True):
 
 #%%
 if __name__ == '__main__':
-    run_UA_sysA(N=400)
+    run_UA_AvC(seed=123, N=10)
     # seed = 952
     # run_modelB(mdl, N, T, t_step, method='BDF', seed=seed)
     # out = analyze_vars(seed, N, 'B')
