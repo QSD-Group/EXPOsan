@@ -11,16 +11,16 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-import os, numpy as np, qsdsan as qs
+import numpy as np, qsdsan as qs
 from chemicals.elements import molecular_weight as get_mw
 from qsdsan import sanunits as su, processes as pc, WasteStream, System
-from qsdsan.utils import time_printer, ExogenousDynamicVariable as EDV
-from exposan.adm import data_path
+from qsdsan.utils import time_printer
+# from exposan.adm import data_path
 
 
 __all__ = (
     'create_system',
-    'brewry_inf_kwargs',
+    'brewery_inf_kwargs',
     'default_inf_kwargs',
     'default_init_conds',
     )
@@ -66,7 +66,7 @@ default_inf_kwargs = {
     'units': ('m3/d', 'kg/m3'),
     }
     
-brewry_inf_kwargs = {
+brewery_inf_kwargs = {
     'concentrations': {
         'S_su':3.0,
         'S_aa':0.6,
@@ -147,9 +147,7 @@ def create_system(flowsheet=None, inf_kwargs={}, adm_kwargs={}, init_conds={}):
     adm1 = pc.ADM1(**adm_kwargs)
     
     # System setup
-    T_op = EDV('T_op', function = lambda t: Temp)
-    AD = su.AnaerobicCSTR('AD', ins=inf, outs=(bg, eff), model=adm1,
-                          exogenous_vars=(T_op,))
+    AD = su.AnaerobicCSTR('AD', ins=inf, outs=(bg, eff), model=adm1, T=Temp)
     
     init_conds = init_conds or default_init_conds
     AD.set_init_conc(**init_conds)
