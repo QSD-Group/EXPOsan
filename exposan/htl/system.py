@@ -19,6 +19,7 @@ from qsdsan import sanunits as suu
 from exposan.htl._components import create_components
 
 # __all__ = ('create_system',)
+
 # def create_system():
 
 cmps = create_components()
@@ -59,6 +60,8 @@ sys.simulate()
 
 sys.diagram()
 
+# return sys
+
 #%%
 from qsdsan import Model
 
@@ -70,51 +73,51 @@ param=model.parameter
 
 dist = shape.Triangle(0.9895,0.99,0.9905)
 @param(name='sludge_moisture',
-        element=SluL,
-        kind='coupled',
-        units='-',
-        baseline=0.99,
-        distribution=dist)
+       element=SluL,
+       kind='coupled',
+       units='-',
+       baseline=0.99,
+       distribution=dist)
 def set_sludge_moisture(i):
     SluL.sludge_moisture=i
 
 dist = shape.Triangle(0.29,0.32575,0.376)
 @param(name='sludge_dw_protein',
-        element=SluL,
-        kind='coupled',
-        units='-',
-        baseline=0.341,
-        distribution=dist)
+       element=SluL,
+       kind='coupled',
+       units='-',
+       baseline=0.341,
+       distribution=dist)
 def set_sludge_dw_protein(i):
     SluL.sludge_dw_protein=i
 
 dist = shape.Triangle(0.167,0.22925,0.308)
 @param(name='sludge_dw_carbo',
-        element=SluL,
-        kind='coupled',
-        units='-',
-        baseline=0.167,
-        distribution=dist)
+       element=SluL,
+       kind='coupled',
+       units='-',
+       baseline=0.167,
+       distribution=dist)
 def set_sludge_dw_carbo(i):
     SluL.sludge_dw_carbo=i
 
 dist = shape.Triangle(0.174,0.27275,0.414)
 @param(name='sludge_dw_ash',
-        element=SluL,
-        kind='coupled',
-        units='-',
-        baseline=0.266,
-        distribution=dist)
+       element=SluL,
+       kind='coupled',
+       units='-',
+       baseline=0.266,
+       distribution=dist)
 def set_sludge_dw_ash(i):
     SluL.sludge_dw_ash=i
 
 dist = shape.Triangle(0.343,0.4206,0.478)
 @param(name='sludge_C_ratio',
-        element=HTL,
-        kind='coupled',
-        units='-',
-        baseline=0.411,
-        distribution=dist)
+       element=HTL,
+       kind='coupled',
+       units='-',
+       baseline=0.411,
+       distribution=dist)
 def set_sludge_C_ratio(i):
     HTL.sludge_C_ratio=i
 
@@ -130,21 +133,21 @@ def set_sludge_P_ratio(i):
 
 dist = shape.Triangle(0.047,0.0586,0.065)
 @param(name='sludge_H_ratio',
-        element=HTL,
-        kind='coupled',
-        units='-',
-        baseline=0.058,
-        distribution=dist)
+       element=HTL,
+       kind='coupled',
+       units='-',
+       baseline=0.058,
+       distribution=dist)
 def set_sludge_H_ratio(i):
     HTL.sludge_H_ratio=i
 
 dist = shape.Triangle(0.005,0.0096,0.016)
 @param(name='sludge_S_ratio',
-        element=HTL,
-        kind='coupled',
-        units='-',
-        baseline=0.01,
-        distribution=dist)
+       element=HTL,
+       kind='coupled',
+       units='-',
+       baseline=0.01,
+       distribution=dist)
 def set_sludge_S_ratio(i):
     HTL.sludge_S_ratio=i
 
@@ -160,11 +163,11 @@ def set_sludge_N_ratio(i):
 
 dist = shape.Triangle(0.261,0.2808,0.336)
 @param(name='sludge_O_ratio',
-        element=HTL,
-        kind='coupled',
-        units='-',
-        baseline=0.261,
-        distribution=dist)
+       element=HTL,
+       kind='coupled',
+       units='-',
+       baseline=0.261,
+       distribution=dist)
 def set_sludge_O_ratio(i):
     HTL.sludge_O_ratio=i
 
@@ -190,101 +193,101 @@ def set_biochar_C_P_ratio(i):
 
 dist = shape.Triangle(0.035,0.0648,0.102)
 @param(name='biocrude_moisture_content',
-        element=HTL,
-        kind='coupled',
-        units='-',
-        baseline=0.044,
-        distribution=dist)
+       element=HTL,
+       kind='coupled',
+       units='-',
+       baseline=0.044,
+       distribution=dist)
 def set_biocrude_moisture_content(i):
     HTL.biocrude_moisture_content=i
 
 dist = shape.Triangle(0.75,0.78,0.82)
 @param(name='biooil_ratio',
-        element=HT,
-        kind='coupled',
-        units='-',
-        baseline=0.77,
-        distribution=dist)
+       element=HT,
+       kind='coupled',
+       units='-',
+       baseline=0.77,
+       distribution=dist)
 def set_biooil_ratio(i):
     HT.biooil_ratio=i
 
 dist = shape.Triangle(0.04,0.073,0.1)
 @param(name='gas_ratio',
-        element=HT,
-        kind='coupled',
-        units='-',
-        baseline=0.07,
-        distribution=dist)
+       element=HT,
+       kind='coupled',
+       units='-',
+       baseline=0.07,
+       distribution=dist)
 def set_gas_ratio(i):
     HT.gas_ratio=i
 
 dist = shape.Normal(0.128,0.00064)
 @param(name='co_ratio',
-        element=HT,
-        kind='coupled',
-        units='-',
-        baseline=0.128,
-        distribution=dist)
+       element=HT,
+       kind='coupled',
+       units='-',
+       baseline=0.128,
+       distribution=dist)
 def set_co_ratio_HT(i):
     HT.co_ratio=i
 
 dist = shape.Normal(0.007,0.000035)
 @param(name='co2_ratio',
-        element=HT,
-        kind='coupled',
-        units='-',
-        baseline=0.007,
-        distribution=dist)
+       element=HT,
+       kind='coupled',
+       units='-',
+       baseline=0.007,
+       distribution=dist)
 def set_co2_ratio_HT(i):
     HT.co2_ratio=i
 
 dist = shape.Normal(0.188,0.00094)
 @param(name='c2h6_ratio',
-        element=HT,
-        kind='coupled',
-        units='-',
-        baseline=0.188,
-        distribution=dist)
+       element=HT,
+       kind='coupled',
+       units='-',
+       baseline=0.188,
+       distribution=dist)
 def set_c2h6_ratio_HT(i):
     HT.c2h6_ratio=i
 
 dist = shape.Normal(0.107,0.000535)
 @param(name='c3h8_ratio',
-        element=HT,
-        kind='coupled',
-        units='-',
-        baseline=0.107,
-        distribution=dist)
+       element=HT,
+       kind='coupled',
+       units='-',
+       baseline=0.107,
+       distribution=dist)
 def set_c3h8_ratio_HT(i):
     HT.c3h8_ratio=i
 
 dist = shape.Normal(0.09,0.00045)
 @param(name='c5h12_ratio',
-        element=HT,
-        kind='coupled',
-        units='-',
-        baseline=0.09,
-        distribution=dist)
+       element=HT,
+       kind='coupled',
+       units='-',
+       baseline=0.09,
+       distribution=dist)
 def set_c5h12_ratio_HT(i):
     HT.c5h12_ratio=i
 
 dist = shape.Triangle(0.846,0.854,0.86)
 @param(name='biooil_C_ratio',
-        element=HT,
-        kind='coupled',
-        units='-',
-        baseline=0.855,
-        distribution=dist)
+       element=HT,
+       kind='coupled',
+       units='-',
+       baseline=0.855,
+       distribution=dist)
 def set_biooil_C_ratio(i):
     HT.biooil_C_ratio=i
 
 dist = shape.Triangle(0.0004,0.004111,0.016)
 @param(name='biooil_N_ratio',
-        element=HT,
-        kind='coupled',
-        units='-',
-        baseline=0.01,
-        distribution=dist)
+       element=HT,
+       kind='coupled',
+       units='-',
+       baseline=0.01,
+       distribution=dist)
 def set_biooil_N_ratio(i):
     HT.biooil_N_ratio=i
 
@@ -310,51 +313,51 @@ def set_P_pre_recovery_ratio(i):
 
 dist = shape.Triangle(0.097,0.11,0.127)
 @param(name='P_in_struvite',
-        element=StruPre,
-        kind='coupled',
-        units='-',
-        baseline=0.127,
-        distribution=dist)
+       element=StruPre,
+       kind='coupled',
+       units='-',
+       baseline=0.127,
+       distribution=dist)
 def set_P_in_struvite(i):
     StruPre.P_in_struvite=i
 
 dist = shape.Normal(0.244,0.00122)
 @param(name='ch4_ratio',
-        element=CHG,
-        kind='coupled',
-        units='-',
-        baseline=0.244,
-        distribution=dist)
+       element=CHG,
+       kind='coupled',
+       units='-',
+       baseline=0.244,
+       distribution=dist)
 def set_ch4_ratio_CHG(i):
     CHG.ch4_ratio=i
 
 dist = shape.Normal(0.029,0.000145)
 @param(name='co_ratio',
-        element=CHG,
-        kind='coupled',
-        units='-',
-        baseline=0.029,
-        distribution=dist)
+       element=CHG,
+       kind='coupled',
+       units='-',
+       baseline=0.029,
+       distribution=dist)
 def set_co_ratio_CHG(i):
     CHG.co_ratio=i
 
 dist = shape.Normal(0.15,0.00075)
 @param(name='co2_ratio',
-        element=CHG,
-        kind='coupled',
-        units='-',
-        baseline=0.15,
-        distribution=dist)
+       element=CHG,
+       kind='coupled',
+       units='-',
+       baseline=0.15,
+       distribution=dist)
 def set_co2_ratio_CHG(i):
     CHG.co2_ratio=i
 
 dist = shape.Normal(0.043,0.000215)
 @param(name='c2h6_ratio',
-        element=CHG,
-        kind='coupled',
-        units='-',
-        baseline=0.043,
-        distribution=dist)
+       element=CHG,
+       kind='coupled',
+       units='-',
+       baseline=0.043,
+       distribution=dist)
 def set_c2h6_ratio_CHG(i):
     CHG.c2h6_ratio=i
 
