@@ -73,12 +73,13 @@ class SludgeLab(SanUnit):
     # auxiliary_unit_names=('heat_exchanger',)
 
     def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream', 
-                 sludge_moisture=0.99,sludge_dw_protein=0.464,
-                 sludge_dw_lipid=0.308,**kwargs):
+                 sludge_moisture=0.99,sludge_dw_protein=0.341,
+                 sludge_dw_ash=0.266,sludge_dw_carbo=0.167,**kwargs):
         SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
         self.sludge_moisture=sludge_moisture
-        self.sludge_dw_lipid=sludge_dw_lipid
+        self.sludge_dw_ash=sludge_dw_ash
         self.sludge_dw_protein=sludge_dw_protein
+        self.sludge_dw_carbo=sludge_dw_carbo
         
     _N_ins = 1
     _N_outs = 1
@@ -87,12 +88,15 @@ class SludgeLab(SanUnit):
         fake_sludge=self.ins[0]
         real_sludge=self.outs[0]
         real_sludge.imass['H2O']=fake_sludge.F_mass*self.sludge_moisture
-        real_sludge.imass['Sludge_lipid']=fake_sludge.F_mass*(1-self.sludge_moisture)*\
-            self.sludge_dw_lipid
         real_sludge.imass['Sludge_protein']=fake_sludge.F_mass*(1-self.sludge_moisture)*\
             self.sludge_dw_protein
         real_sludge.imass['Sludge_carbo']=fake_sludge.F_mass*(1-self.sludge_moisture)*\
-            (1-self.sludge_dw_lipid-self.sludge_dw_protein)
+            self.sludge_dw_carbo
+        real_sludge.imass['Sludge_ash']=fake_sludge.F_mass*(1-self.sludge_moisture)*\
+            self.sludge_dw_ash
+        real_sludge.imass['Sludge_lipid']=fake_sludge.F_mass*(1-self.sludge_moisture)*\
+            (1-self.sludge_dw_ash-self.sludge_dw_protein-self.sludge_dw_carbo)
+
         
     def _design(self):
         pass
@@ -119,8 +123,9 @@ class HTL(SanUnit):
     # auxiliary_unit_names=('heat_exchanger',)
 
     def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream', 
-                 biocrude_moisture_content=0.056,sludge_C_ratio = 0.508,
-                 sludge_P_ratio = 0.0235,sludge_H_ratio = 0.0717,sludge_S_ratio = 0.0124,
+                 biocrude_moisture_content=0.044,sludge_C_ratio=0.411,
+                 sludge_P_ratio=0.019,sludge_H_ratio=0.058,sludge_S_ratio=0.01,
+                 sludge_N_ratio=0.05,sludge_O_ratio=0.261,
                  biochar_C_N_ratio=15.5,biochar_C_P_ratio=2.163,**kwargs):
         SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
         self.biocrude_moisture_content=biocrude_moisture_content
@@ -128,6 +133,8 @@ class HTL(SanUnit):
         self.sludge_P_ratio=sludge_P_ratio
         self.sludge_H_ratio=sludge_H_ratio
         self.sludge_S_ratio=sludge_S_ratio
+        self.sludge_N_ratio=sludge_N_ratio
+        self.sludge_O_ratio=sludge_O_ratio
         self.biochar_C_N_ratio=biochar_C_N_ratio
         self.biochar_C_P_ratio=biochar_C_P_ratio
         # self._load_components()
@@ -151,6 +158,8 @@ class HTL(SanUnit):
             dewatered_sludge.imass['Sludge_lipid']\
             + dewatered_sludge.imass['Sludge_protein']\
             + dewatered_sludge.imass['Sludge_carbo']
+            
+        self.dewatered_sludge_dw = self.dewatered_sludge_afdw + dewatered_sludge.imass['Sludge_ash']
                                
         lipid_ratio = dewatered_sludge.imass['Sludge_lipid']/dewatered_sludge_afdw
         protein_ratio = dewatered_sludge.imass['Sludge_protein']/dewatered_sludge_afdw
@@ -166,18 +175,11 @@ class HTL(SanUnit):
             
         biocrude.imass['H2O'] = biocrude.imass['Biocrude']/(1-self.biocrude_moisture_content)-\
             biocrude.imass['Biocrude']
-        HTLaqueous.imass['H2O'] = dewatered_sludge.imass['H2O']-biocrude.imass['H2O']
+        HTLaqueous.imass['H2O'] = dewatered_sludge.imass['H2O']-biocrude.imass['H2O']+\
+            dewatered_sludge.imass['Sludge_ash'] #assume ash goes to water
         
         # separations.vle(self.ins[0], *self.outs, self.T, self.P,multi_stream=self._multi_stream)
-        
-    @property
-    def sludge_N_ratio(self):
-        return self.ins[0].imass['Sludge_protein']/self.dewatered_sludge_afdw/4.78
-    
-    @property
-    def sludge_O_ratio(self):
-        return 1-self.sludge_C_ratio-self.sludge_H_ratio-self.sludge_N_ratio-\
-            self.sludge_P_ratio-self.sludge_S_ratio
+
     
     @property
     def AOSc(self):
@@ -185,16 +187,16 @@ class HTL(SanUnit):
                self.sludge_H_ratio/1)/(self.sludge_C_ratio/12)
     
     @property
-    def sludge_carbo_ratio(self):
-        return self.ins[0].imass['Sludge_carbo']/self.dewatered_sludge_afdw
+    def sludge_carbo_ratio_dw(self):
+        return self.ins[0].imass['Sludge_carbo']/self.dewatered_sludge_dw
     
     @property
-    def sludge_protein_ratio(self):
-        return self.ins[0].imass['Sludge_protein']/self.dewatered_sludge_afdw
+    def sludge_protein_ratio_dw(self):
+        return self.ins[0].imass['Sludge_protein']/self.dewatered_sludge_dw
     
     @property
     def biochar_C_ratio(self):
-        return min(1.75*self.sludge_carbo_ratio,0.65)
+        return min(1.75*self.sludge_carbo_ratio_dw,0.65)
     
     @property
     def biochar_N_ratio(self):
@@ -223,7 +225,7 @@ class HTL(SanUnit):
 
     @property
     def biocrude_N_ratio(self):
-        return 0.133*self.sludge_protein_ratio
+        return 0.133*self.sludge_protein_ratio_dw
 
     @property
     def biocrude_C(self):
@@ -239,17 +241,17 @@ class HTL(SanUnit):
 
     @property
     def HTLaqueous_C(self):
-        return self.dewatered_sludge_afdw*self.sludge_C_ratio -\
+        return self.dewatered_sludge_dw*self.sludge_C_ratio -\
             self.biochar_C - self.biocrude_C - self.offgas_C
 
     @property
     def HTLaqueous_N(self):
-        return self.dewatered_sludge_afdw*self.sludge_N_ratio -\
+        return self.dewatered_sludge_dw*self.sludge_N_ratio -\
             self.biochar_N - self.biocrude_N
 
     @property
     def HTLaqueous_P(self):
-        return self.dewatered_sludge_afdw*self.sludge_P_ratio -\
+        return self.dewatered_sludge_dw*self.sludge_P_ratio -\
             self.biochar_P
 
     def _design(self):
@@ -324,6 +326,10 @@ class HT(SanUnit):
         HTaqueous.imass['Aqueous'] = biocrude.F_mass-biooil.imass['Biooil']-gas_mass
             
     @property
+    def biooil_C(self):
+        return min(self.outs[2].F_mass*self.biooil_C_ratio,self.ins[0]._source.biocrude_C)
+        
+    @property
     def HTfuel_gas_C(self):
         HTfuel_gas_C = 0
         fuelgas_carbo_ratio = {
@@ -336,11 +342,7 @@ class HT(SanUnit):
               }
         for name, ratio in fuelgas_carbo_ratio.items():
             HTfuel_gas_C+=self.outs[1].imass[name]*ratio
-        return HTfuel_gas_C
-    
-    @property
-    def biooil_C(self):
-        return self.outs[2].F_mass*self.biooil_C_ratio
+        return min(HTfuel_gas_C,self.ins[0]._source.biocrude_C-self.biooil_C)
     
     @property
     def biooil_N(self):
@@ -350,7 +352,7 @@ class HT(SanUnit):
 
     @property
     def HTaqueous_C(self):
-        return self.ins[0]._source.biocrude_C - self.HTfuel_gas_C - self.biooil_C
+        return max(0,self.ins[0]._source.biocrude_C - self.HTfuel_gas_C - self.biooil_C)
 
     @property
     def HTaqueous_N(self):
@@ -377,10 +379,10 @@ class AcidExtraction(SanUnit):
     '''
     
     def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream',acid_vol=10,
-                 P_acid_recovery_rate=0.95,**kwargs):
+                 P_acid_recovery_ratio=0.95,**kwargs):
         SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
         self.acid_vol=acid_vol
-        self.P_acid_recovery_rate=P_acid_recovery_rate
+        self.P_acid_recovery_ratio=P_acid_recovery_ratio
 
     _N_ins = 2
     _N_outs = 2
@@ -396,7 +398,7 @@ class AcidExtraction(SanUnit):
         #scientific/AC124240010 (accessed 10-6-2022)
         
         residual.imass['Residual']=biochar.F_mass*\
-            (1-self.ins[0]._source.biochar_P_ratio*self.P_acid_recovery_rate)
+            (1-self.ins[0]._source.biochar_P_ratio*self.P_acid_recovery_ratio)
         
         extracted.copy_like(acid)
         extracted.imass['P']=biochar.F_mass-residual.F_mass
@@ -469,10 +471,10 @@ class StruvitePrecipitation(SanUnit):
     '''
     
     def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream',Mg_P_ratio=1,
-                 P_pre_recovery_rate=0.95,P_in_struvite=0.127,**kwargs):
+                 P_pre_recovery_ratio=0.95,P_in_struvite=0.127,**kwargs):
         SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
         self.Mg_P_ratio=Mg_P_ratio
-        self.P_pre_recovery_rate=P_pre_recovery_rate
+        self.P_pre_recovery_ratio=P_pre_recovery_ratio
         self.P_in_struvite=P_in_struvite
 
     _N_ins = 2
@@ -484,7 +486,7 @@ class StruvitePrecipitation(SanUnit):
         struvite, effluent = self.outs
         
         supply_MgCl2.imass['MgCl2']=mixture.imass['P']/31*95.211*self.Mg_P_ratio
-        struvite.imass['Struvite']=mixture.imass['P']*self.P_pre_recovery_rate/self.P_in_struvite
+        struvite.imass['Struvite']=mixture.imass['P']*self.P_pre_recovery_ratio/self.P_in_struvite
         
         effluent.copy_like(mixture)
         effluent.imass['P'] -= struvite.imass['Struvite']*self.P_in_struvite
@@ -585,7 +587,7 @@ class MembraneDistillation(SanUnit):
     '''
     
     def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream',N_S_ratio=2,
-                 N_recovery_rate=0.9,**kwargs):
+                 N_recovery_rate=0.825,**kwargs):
         SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
         self.N_S_ratio=N_S_ratio
         self.N_recovery_rate=N_recovery_rate
