@@ -602,7 +602,7 @@ class MembraneDistillation(SanUnit):
         
         acid.imass['H2SO4'] = influent.imass['N']/14/self.N_S_ratio*98
         acid.imass['H2O'] = acid.imass['H2SO4']*1000/98/0.5*1.05-acid.imass['H2SO4']
-        ammoniasulfate.imass['NH42SO4']=influent.imass['N']*self.N_recovery_rate/14*132
+        ammoniasulfate.imass['NH42SO4']=influent.imass['N']*self.N_recovery_rate/28*132
         ammoniasulfate.imass['H2O']=acid.imass['H2O']
         ww.copy_like(influent)
         ww.imass['N']*=(1-self.N_recovery_rate)
