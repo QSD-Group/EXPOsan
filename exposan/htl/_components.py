@@ -92,7 +92,7 @@ def create_components(set_thermo=True):
     Biochar.copy_models_from(Chemical('CaCO3'),('Cn',))
     
     Biocrude = Component('Biocrude',phase='l',particle_size='Soluble',
-                          formula='C14H21O1.9N',degradability='Undegradable',organic=False)
+                          formula='C19H28O2.7N',degradability='Undegradable',organic=False)
     Biocrude.HHV = 34.9*10**6*Biocrude.MW/1000  #Li et al., 2018
     add_V_from_rho(Biocrude, 980)  #SS et al., PNNL 2021
     Biocrude.copy_models_from(Chemical('palmitamide'),('Cn',))  #Jones et al., 2014
