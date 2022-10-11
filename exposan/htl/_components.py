@@ -97,10 +97,15 @@ def create_components(set_thermo=True):
     add_V_from_rho(Biocrude, 980)  #SS et al., PNNL 2021
     Biocrude.copy_models_from(Chemical('palmitamide'),('Cn',))  #Jones et al., 2014
     
-    Aqueous = Component('Aqueous',phase='l',particle_size='Soluble',
+    HTLaqueous = Component('HTLaqueous',phase='l',particle_size='Soluble',
                         degradability='Undegradable',organic=False)
-    add_V_from_rho(Aqueous, 1000)
-    Aqueous.copy_models_from(Chemical('H2O'),('Cn',))  #Aqueous referd to TDS in aqueous phase
+    add_V_from_rho(HTLaqueous, 1000)
+    HTLaqueous.copy_models_from(Chemical('H2O'),('Cn',))  #HTLaqueous referd to TDS in HTL aqueous phase
+    
+    HTaqueous = Component('HTaqueous',phase='l',particle_size='Soluble',
+                        degradability='Undegradable',organic=False)
+    add_V_from_rho(HTaqueous, 1000)
+    HTaqueous.copy_models_from(Chemical('H2O'),('Cn',))  #HTaqueous referd to HT aqueous waste
     
     Biooil = Component('Biooil',phase='l',particle_size='Soluble',
                         formula='C100H165O1.5N',degradability='Undegradable',organic=False)
@@ -180,7 +185,7 @@ def create_components(set_thermo=True):
     cmps = Components([Sludge_lipid,Sludge_protein,Sludge_carbo,Sludge_ash,
                        Struvite,Biochar,Residual,
                        Biocrude,Biooil,
-                       Aqueous,C,N,P,
+                       HTLaqueous,HTaqueous,C,N,P,
                        CH4,C2H6,C3H8,C5H12,CO2,CO,H2,
                        H2SO4,H3PO4,MgCl2,NaOH,NH42SO4,H2O,NH3])
     
