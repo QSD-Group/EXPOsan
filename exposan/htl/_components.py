@@ -74,6 +74,13 @@ def create_components(set_thermo=True):
     Sludge_carbo.HHV = 22.0*10**6*Sludge_carbo.MW/1000
     Sludge_carbo.Cn.add_model(1.25*10**3*Sludge_carbo.MW/1000)
     Sludge_carbo.mu.add_model(0.006)
+    
+    Sludge_ash = Component('Sludge_ash', phase='s',particle_size='Particulate',
+                       formula='C56H95O24N9P',degradability='Undegradable',organic=False)
+    add_V_from_rho(Sludge_ash,721)
+    Sludge_ash.HHV = 22.0*10**6*Sludge_ash.MW/1000
+    Sludge_ash.Cn.add_model(1.25*10**3*Sludge_ash.MW/1000)
+    Sludge_ash.mu.add_model(0.006)
 
 
     H2O = Component('H2O',phase='l',particle_size='Soluble',
@@ -170,7 +177,8 @@ def create_components(set_thermo=True):
     NH3 = Component('NH3',phase='g',particle_size='Dissolved gas',
                     degradability='Undegradable',organic=False)
 
-    cmps = Components([Sludge_lipid,Sludge_protein,Sludge_carbo,Struvite,Biochar,Residual,
+    cmps = Components([Sludge_lipid,Sludge_protein,Sludge_carbo,Sludge_ash,
+                       Struvite,Biochar,Residual,
                        Biocrude,Biooil,
                        Aqueous,C,N,P,
                        CH4,C2H6,C3H8,C5H12,CO2,CO,H2,
