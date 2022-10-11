@@ -168,8 +168,8 @@ class HTL(SanUnit):
         biocrude.imass['Biocrude'] = (0.846*lipid_ratio + 0.445*protein_ratio\
             + 0.205*carbo_ratio) * dewatered_sludge_afdw
         biochar.imass['Biochar'] = 0.377*carbo_ratio * dewatered_sludge_afdw     
-        HTLaqueous.imass['Aqueous'] = (0.154*lipid_ratio + 0.481*protein_ratio)\
-            * dewatered_sludge_afdw    
+        HTLaqueous.imass['HTLaqueous'] = (0.154*lipid_ratio + 0.481*protein_ratio)\
+            * dewatered_sludge_afdw #HTLaqueous is TDS in aqueous phase
         offgas.imass['CO2'] = (0.074*protein_ratio + 0.418*carbo_ratio)\
             * dewatered_sludge_afdw
             
@@ -323,7 +323,8 @@ class HT(SanUnit):
         for name,ratio in fuelgas_HT_composition.items():
             fuel_gas.imass[name] = gas_mass * ratio
         
-        HTaqueous.imass['Aqueous'] = biocrude.F_mass-biooil.imass['Biooil']-gas_mass
+        HTaqueous.imass['HTaqueous'] = biocrude.F_mass-biooil.imass['Biooil']-gas_mass
+        #HTaqueous is liquid waste from HT
             
     @property
     def biooil_C(self):
@@ -449,7 +450,7 @@ class HTLmixer(SanUnit):
         mixture.imass['N']=self.ins[0]._source.HTLaqueous_N
         mixture.imass['P']=self.ins[0]._source.HTLaqueous_P+extracted.imass['P']
         mixture.imass['H2O']=HTLaqueous.F_mass+extracted.F_mass-\
-            mixture.imass['C']-mixture.imass['N']-mixture.imass['P']
+            mixture.imass['C']-mixture.imass['N']-mixture.imass['P'] #Represented by H2O except C, N, P
         
     def _design(self):
         pass
