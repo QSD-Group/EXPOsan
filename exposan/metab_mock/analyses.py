@@ -29,8 +29,12 @@ import numpy as np
 import pandas as pd
 import matplotlib as mpl, matplotlib.pyplot as plt, matplotlib.ticker as tk
 
+
 mpl.rcParams['font.sans-serif'] = 'arial'
 mpl.rcParams["figure.autolayout"] = True
+mpl.rcParams['xtick.minor.visible'] = True
+mpl.rcParams['ytick.minor.visible'] = True
+# mpl.rcParams['figure.facecolor'] = 'white'
 
 #%% Global variables
 mdlA = create_modelA()
@@ -40,8 +44,8 @@ cmps = mdlB._system.flowsheet.stream.Effluent_B.components
 AnR1 = mdlB._system.flowsheet.unit.AnR1
 
 N = 400
-T = 120
-t_step = 3
+T = 200
+t_step = 5
 
 keys = ['X_ch', 'S_su', 'S_va', 'S_ac',
         'X_pr', 'S_aa', 'S_bu', 'S_h2',
@@ -197,7 +201,6 @@ def plot_scatter(seed, modelA, modelC):
     dfc_y = modelC.table.iloc[:, nx:]
     fig, axes = plt.subplots(ny, nx, sharex=False, sharey=False, 
                              figsize=(nx*2, ny*2))
-    x_ticks = np.linspace(0.1, 0.9, 5)
     for j in range(ny):
         ya = dfa_y.iloc[:,j].values
         yc = dfc_y.iloc[:,j].values
@@ -210,33 +213,34 @@ def plot_scatter(seed, modelA, modelC):
             xlct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
             x_ticks = xlct.tick_values(np.min(xa), np.max(xa))
             ax = axes[j,i]            
-            ax.scatter(xa, ya, marker='o', s=1, c='orange', alpha=0.7)
-            ax.scatter(xc, yc, marker='^', s=1, c='blue', alpha=0.7)
-            ax.tick_params(axis='both', direction='inout', length=4, labelsize=11)
+            ax.scatter(xa, ya, marker='o', s=0.7, c='#f98f60')
+            ax.scatter(xc, yc, marker='^', s=0.7, c='#60c1cf', alpha=0.5)
+            ax.tick_params(axis='both', which='both', 
+                           direction='inout', labelsize=10)
             ax.xaxis.set_ticks(x_ticks)
             ax.yaxis.set_ticks(y_ticks)
             if i > 0: ax.yaxis.set_ticklabels([])
             if j < ny-1: ax.xaxis.set_ticklabels([])
             ax2x = ax.secondary_xaxis('top')
             ax2x.xaxis.set_ticks(x_ticks)
-            ax2x.tick_params(axis='x', direction='in', length=2)
+            ax2x.tick_params(axis='x', which='both', direction='in')
             ax2x.xaxis.set_ticklabels([])
             ax2y = ax.secondary_yaxis('right')
             ax2y.yaxis.set_ticks(y_ticks)
-            ax2y.tick_params(axis='y', direction='in', length=2)
+            ax2y.tick_params(axis='y', which='both', direction='in')
             ax2y.yaxis.set_ticklabels([])
-    plt.subplots_adjust(wspace=0, hspace=0)
+    fig.subplots_adjust(wspace=0., hspace=0.)
     fig.savefig(ospath.join(figures_path, 'AvC_table.png'), dpi=300)
     return fig, axes
 
 #%%
 def run_UA_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
     seed = seed or seed_RGT()
-    # run_model(mdlA, N, T, t_step, method='BDF', sys_ID='A', seed=seed)
+    run_model(mdlA, N, T, t_step, method='BDF', sys_ID='A', seed=seed)
     run_model(mdlC, N, T, t_step, method='BDF', sys_ID='C', seed=seed)
     if plot:
         plot_scatter(seed, mdlA, mdlC)
-    print(f'Seed used for uncertainty analysis of system A is {seed}.')
+    print(f'Seed used for uncertainty analysis of systems A & C is {seed}.')
     for mdl in (mdlA, mdlC):
         for p in mdl.parameters:
             p.setter(p.baseline)
@@ -257,7 +261,7 @@ def run_UA_sysB(seed=None, N=N, T=T, t_step=t_step, plot=True):
 
 #%%
 if __name__ == '__main__':
-    run_UA_AvC(seed=123, N=10)
+    run_UA_AvC()
     # seed = 952
     # run_modelB(mdl, N, T, t_step, method='BDF', seed=seed)
     # out = analyze_vars(seed, N, 'B')
