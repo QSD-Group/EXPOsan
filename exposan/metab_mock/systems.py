@@ -130,6 +130,60 @@ default_R2_init_conds = {
     'X_h2': 3.70*1e3,
     }
 
+R1_ss_conds = {
+    'S_su': 0.0145871088552909*1e3,
+    'S_aa': 0.00643308564144693*1e3,
+    'S_fa': 0.634823005990967*1e3,
+    'S_va': 0.624510322247682*1e3,
+    'S_bu': 1.03793927591996*1e3,
+    'S_pro': 1.24676871525373*1e3,
+    'S_ac': 2.00250371674824*1e3,
+    'S_h2': 0.00850364943532684*1e3,
+    'S_ch4': 0.0000422133982597226*1e3,
+    'S_IC': 0.244296234124982*1e3,
+    'S_IN': 0.216115320077251*1e3,
+    'S_I': 0.027310256066728*1e3,
+    'X_c': 0.146203507058736*1e3,
+    'X_ch': 0.0286018513139117*1e3,
+    'X_pr': 0.0467836694957302*1e3,
+    'X_li': 0.0247209587890493*1e3,
+    'X_su': 4.69052782535406*1e3,
+    'X_aa': 1.22829926704024*1e3,
+    'X_fa': 0.0147446263753011*1e3,
+    'X_c4': 0.0149933579422897*1e3,
+    'X_pro': 0.0145343147735253*1e3,
+    'X_ac': 0.00098041337766024*1e3,
+    'X_h2': 0.00110808891184369*1e3,
+    'X_I': 0.0396205121367899*1e3
+    }
+
+R2_ss_conds = {
+    'S_su': 0.00106990968535691*1e3,
+    'S_aa': 0.00125571416517827*1e3,
+    'S_fa': 0.121097573221394*1e3,
+    'S_va': 0.0132519103137696*1e3,
+    'S_bu': 0.0172912281196732*1e3,
+    'S_pro': 0.020032163173878*1e3,
+    'S_ac': 0.00574002755366853*1e3,
+    'S_h2': 3.76969944940856e-08*1e3,
+    'S_ch4': 0.0499411746585487*1e3,
+    'S_IC': 0.525579793735968*1e3,
+    'S_IN': 0.223232426903785*1e3,
+    'S_I': 0.105601391746794*1e3,
+    'X_c': 0.0897520281015078*1e3,
+    'X_ch': 0.00108163641708242*1e3,
+    'X_pr': 0.00120204580901502*1e3,
+    'X_li': 0.00150204523369107*1e3,
+    'X_su': 0.195961987850137*1e3,
+    'X_aa': 0.059723477130333*1e3,
+    'X_fa': 0.0351858744892462*1e3,
+    'X_c4': 0.0812315951844566*1e3,
+    'X_pro': 0.0503466475437059*1e3,
+    'X_ac': 1.1653549028287*1e3,
+    'X_h2': 0.4352809013846*1e3,
+    'X_I': 0.196117291164614*1e3
+    }
+
 
 # %%
 # =============================================================================
@@ -167,8 +221,10 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
             split=(split_2, 1-split_2), V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
             retain_cmps=('X_ac', 'X_h2'))
     DM2 = DM('DM2', ins=CH4E-0, outs=(bg2_A, 1-CH4E), tau=tau_2)
-    H2E.set_init_conc(**R1_init_conds)
-    CH4E.set_init_conc(**R2_init_conds)
+    H2E.set_init_conc(**R1_ss_conds)
+    CH4E.set_init_conc(**R2_ss_conds)
+    # H2E.set_init_conc(**R1_init_conds)
+    # CH4E.set_init_conc(**R2_init_conds)
     sysA = System('mock_METAB', 
                   path=(H2E, DM1, CH4E, DM2),
                   recycle=(DM1-1, DM2-1))
@@ -241,6 +297,8 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
                           V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
                           retain_cmps=('X_ac', 'X_h2'))
     DM2c = DM('DM2_c', ins=R2-1, outs=(bgm2, 1-R2), tau=0.1)
+    R1.set_init_conc(**R1_ss_conds)
+    R2.set_init_conc(**R2_ss_conds)
     sysC = System('combined_METAB', path=(R1, DM1c, R2, DM2c),
                   recycle=(DM1c-1, DM2c-1))
     sysC.set_dynamic_tracker(R1, R2, bgm1, bgm2, bgh1, bgh2)
