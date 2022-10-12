@@ -70,7 +70,6 @@ class SludgeLab(SanUnit):
     outs: Iterable (stream)
         real_sludge
     '''
-    # auxiliary_unit_names=('heat_exchanger',)
 
     def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream', 
                  sludge_moisture=0.99,sludge_dw_protein=0.341,
