@@ -104,8 +104,9 @@ def create_components(set_thermo=True):
     # Corn stover
     # moisture content = 18.5 %, caloric value (HHV) = 46.5 MJ/kg
     CornStover = Component('CornStover', phase='s', i_C = 0.465, i_N = 0.0056,
-                           particle_size='Particulate',
+                           f_Amass_Totmass = 0.109, particle_size='Particulate',
                            degradability='Undegradable', organic=False)
+    # Ash content is from: https://doi.org/10.1111/gcbb.12183
     # 90 kg/m3 is average from:
     # https://core.ac.uk/download/pdf/38931685.pdf (accessed 2021-04-17)
     add_V_from_rho(CornStover, 90)
