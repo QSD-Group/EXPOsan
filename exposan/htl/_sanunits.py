@@ -73,12 +73,12 @@ class SludgeLab(SanUnit):
 
     def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream', 
                  sludge_moisture=0.99,sludge_dw_protein=0.341,
-                 sludge_dw_ash=0.266,sludge_dw_carbo=0.167,**kwargs):
+                 sludge_dw_lipid=0.226,sludge_dw_carbo=0.167,**kwargs):
         SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
         self.sludge_moisture=sludge_moisture
-        self.sludge_dw_ash=sludge_dw_ash
         self.sludge_dw_protein=sludge_dw_protein
         self.sludge_dw_carbo=sludge_dw_carbo
+        self.sludge_dw_lipid=sludge_dw_lipid
         
     _N_ins = 1
     _N_outs = 1
@@ -91,10 +91,10 @@ class SludgeLab(SanUnit):
             self.sludge_dw_protein
         real_sludge.imass['Sludge_carbo']=fake_sludge.F_mass*(1-self.sludge_moisture)*\
             self.sludge_dw_carbo
-        real_sludge.imass['Sludge_ash']=fake_sludge.F_mass*(1-self.sludge_moisture)*\
-            self.sludge_dw_ash
         real_sludge.imass['Sludge_lipid']=fake_sludge.F_mass*(1-self.sludge_moisture)*\
-            (1-self.sludge_dw_ash-self.sludge_dw_protein-self.sludge_dw_carbo)
+            self.sludge_dw_lipid
+        real_sludge.imass['Sludge_ash']=fake_sludge.F_mass*(1-self.sludge_moisture)*\
+            (1-self.sludge_dw_protein-self.sludge_dw_carbo-self.sludge_dw_lipid)
 
         
     def _design(self):
