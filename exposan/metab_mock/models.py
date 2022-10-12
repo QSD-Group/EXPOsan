@@ -27,7 +27,6 @@ __all__ = ('create_modelA',
            'run_model',
            'run_modelB'
            )
-
 #%%
 sysA, sysB, sysC = s.create_systems()
 Ys_bl, mus_bl, Ks_bl = s.yields_bl, s.mus_bl, s.Ks_bl
@@ -39,7 +38,9 @@ n_mus = len(mus_bl)
 # =============================================================================
 get_uniform_w_frac = lambda b, frac: shape.Uniform(lower=b*(1-frac), upper=b*(1+frac))
 
-def add_degas_params(model, bioreactors, membranes, b_split=0.5, var_split=0.8):
+def add_degas_params(model, bioreactors, membranes, 
+                     b_split=0.5, var_split=0.8, 
+                     b_ermv=0.75, bounds_ermv=(0.25, 0.85)):
     param = model.parameter
     H2E, CH4E = bioreactors
     DM1, DM2 = membranes
@@ -59,22 +60,22 @@ def add_degas_params(model, bioreactors, membranes, b_split=0.5, var_split=0.8):
         try: CH4E.split = [s, 1-s]
         except: CH4E.split = s
     
-    b = 0.75
-    D = shape.Uniform(0.25, 0.85)
+    b = b_ermv
+    D = shape.Uniform(*bounds_ermv)
     @param(name='H2_removal_efficiency', element=DM1, kind='coupled', units='',
            baseline=b, distribution=D)
     def H2_e_rmv(e):
         DM1.H2_degas_efficiency = e
         DM2.H2_degas_efficiency = e
 
-    D = shape.Uniform(0.25, 0.85)        
+    D = shape.Uniform(*bounds_ermv)        
     @param(name='CH4_removal_efficiency', element=DM1, kind='coupled', units='',
            baseline=b, distribution=D)
     def CH4_e_rmv(e):
         DM1.CH4_degas_efficiency = e
         DM2.CH4_degas_efficiency = e
         
-    D = shape.Uniform(0.25, 0.85)
+    D = shape.Uniform(*bounds_ermv)
     @param(name='CO2_removal_efficiency', element=DM1, kind='coupled', units='',
            baseline=b, distribution=D)
     def CO2_e_rmv(e):
@@ -140,10 +141,8 @@ def create_modelC():
         ws_reg.biogas_hsp_2
         )
     u_reg = sysC.flowsheet.unit
-    # R1, S1, DM1, R2, S2, DM2 = u_reg.R1, u_reg.S1, u_reg.DM1_c, u_reg.R2, u_reg.S2, u_reg.DM2_c
-    # add_degas_params(model, (S1, S2), (DM1, DM2), b_split=0.1, var_split=0.05)
     R1, DM1, R2, DM2 = u_reg.R1, u_reg.DM1_c, u_reg.R2, u_reg.DM2_c
-    add_degas_params(model, (R1, R2), (DM1, DM2), b_split=0.05, var_split=0.5)
+    add_degas_params(model, (R1, R2), (DM1, DM2))
     add_metrics(model, (bgm1, bgm2, bgh1, bgh2), (inf, eff), (R1, R2))
     return model
 
