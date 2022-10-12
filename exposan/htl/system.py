@@ -101,73 +101,73 @@ dist = shape.Triangle(0.167,0.22925,0.308)
 def set_sludge_dw_carbo(i):
     SluL.sludge_dw_carbo=i
 
-dist = shape.Triangle(0.174,0.27275,0.414)
-@param(name='sludge_dw_ash',
+dist = shape.Triangle(0.116,0.1725,0.226)
+@param(name='sludge_dw_lipid',
        element=SluL,
        kind='coupled',
        units='-',
-       baseline=0.266,
+       baseline=0.226,
        distribution=dist)
-def set_sludge_dw_ash(i):
-    SluL.sludge_dw_ash=i
+def set_sludge_dw_lipid(i):
+    SluL.sludge_dw_lipid=i
 
 dist = shape.Triangle(0.343,0.4206,0.478)
 @param(name='sludge_C_ratio',
-       element=HTL,
-       kind='coupled',
-       units='-',
-       baseline=0.411,
-       distribution=dist)
+        element=HTL,
+        kind='coupled',
+        units='-',
+        baseline=0.411,
+        distribution=dist)
 def set_sludge_C_ratio(i):
     HTL.sludge_C_ratio=i
 
 dist = shape.Triangle(0.007,0.0168,0.02)
 @param(name='sludge_P_ratio',
-       element=HTL,
-       kind='coupled',
-       units='-',
-       baseline=0.019,
-       distribution=dist)
+        element=HTL,
+        kind='coupled',
+        units='-',
+        baseline=0.019,
+        distribution=dist)
 def set_sludge_P_ratio(i):
     HTL.sludge_P_ratio=i
 
 dist = shape.Triangle(0.047,0.0586,0.065)
 @param(name='sludge_H_ratio',
-       element=HTL,
-       kind='coupled',
-       units='-',
-       baseline=0.058,
-       distribution=dist)
+        element=HTL,
+        kind='coupled',
+        units='-',
+        baseline=0.058,
+        distribution=dist)
 def set_sludge_H_ratio(i):
     HTL.sludge_H_ratio=i
 
 dist = shape.Triangle(0.005,0.0096,0.016)
 @param(name='sludge_S_ratio',
-       element=HTL,
-       kind='coupled',
-       units='-',
-       baseline=0.01,
-       distribution=dist)
+        element=HTL,
+        kind='coupled',
+        units='-',
+        baseline=0.01,
+        distribution=dist)
 def set_sludge_S_ratio(i):
     HTL.sludge_S_ratio=i
 
 dist = shape.Triangle(0.036,0.0484,0.061)
 @param(name='sludge_N_ratio',
-       element=HTL,
-       kind='coupled',
-       units='-',
-       baseline=0.05,
-       distribution=dist)
+        element=HTL,
+        kind='coupled',
+        units='-',
+        baseline=0.05,
+        distribution=dist)
 def set_sludge_N_ratio(i):
     HTL.sludge_N_ratio=i
 
 dist = shape.Triangle(0.261,0.2808,0.336)
 @param(name='sludge_O_ratio',
-       element=HTL,
-       kind='coupled',
-       units='-',
-       baseline=0.261,
-       distribution=dist)
+        element=HTL,
+        kind='coupled',
+        units='-',
+        baseline=0.261,
+        distribution=dist)
 def set_sludge_O_ratio(i):
     HTL.sludge_O_ratio=i
 
@@ -390,6 +390,11 @@ dist = shape.Triangle(0.8,0.825,0.85)
        distribution=dist)
 def set_N_recovery_rate(i):
     MemDis.N_recovery_rate=i   
+
+# metric = model.metric
+# @metric(name='P_recovery_rate',units='-',element='Production')
+# def get_P_recovery_rate():
+#     return StruPre.struvite_P/((HTL.ins[0].F_mass-HTL.ins[0].imass['H2O'])*HTL.sludge_P_ratio)
 
 metric = model.metric
 @metric(name='Struvite',units='kg/hr',element='Production')
