@@ -24,8 +24,9 @@ from exposan.htl._components import create_components
 
 cmps = create_components()
 
-fake_sludge = qs.Stream('fake_sludge',H2O=100000,units='kg/hr',T=298.15)
+fake_sludge = qs.Stream('fake_sludge',H2O=10/0.01*907.185/24,units='kg/hr',T=298.15)
 #set H2O equal to the total sludge input flow
+#assume 99% moisture, 10 us tons of dw sludge per day
 acidforP = qs.Stream('H2SO4_1')
 supply_mgcl2 = qs.Stream('MgCl2')
 acidforN = qs.Stream('H2SO4_2')
