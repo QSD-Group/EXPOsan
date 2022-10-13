@@ -212,7 +212,7 @@ class METAB_AnCSTR(AnaerobicCSTR, CSTR):
         arr = self._state
         f_rtn = self._f_retain
         n_cmps = len(self.components)
-        Cs = arr[:n_cmps]*(1-f_rtn)*1e3
+        Cs = arr[:n_cmps]*(1-f_rtn)*1e3  # kg/m3 to mg/L
         S_gas = arr[n_cmps: (n_cmps+self._n_gas)]
         p_gas = sum(self._R * self.T * S_gas) + self.p_vapor()
         if p_gas> self._Pmax_hs:
@@ -222,7 +222,7 @@ class METAB_AnCSTR(AnaerobicCSTR, CSTR):
             if out.state is None:
                 out.state = np.append(Cs, arr[-1])
             else: 
-                out.state[:n_cmps] = Cs  # kg/m3 to mg/L
+                out.state[:n_cmps] = Cs
                 out.state[-1] = arr[-1]
         else:
             for ws, spl in zip(self._outs, self.split):
@@ -234,13 +234,13 @@ class METAB_AnCSTR(AnaerobicCSTR, CSTR):
         arr = self._dstate
         f_rtn = self._f_retain
         n_cmps = len(self.components)
-        dCs = arr[:n_cmps]*(1-f_rtn)*1e3
+        dCs = arr[:n_cmps]*(1-f_rtn)*1e3  # kg/m3 to mg/L
         if self.split is None:
             out, = self.outs
             if out.dstate is None:
                 out.dstate = np.append(dCs, arr[-1])
             else: 
-                out.dstate[:n_cmps] = dCs  # kg/m3 to mg/L
+                out.dstate[:n_cmps] = dCs
                 out.dstate[-1] = arr[-1]
         else:
             for ws, spl in zip(self._outs, self.split):

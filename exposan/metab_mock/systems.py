@@ -130,35 +130,67 @@ default_R2_init_conds = {
     'X_h2': 3.70*1e3,
     }
 
-# H2E = su.AnaerobicCSTR('H2E', ins=[brewery_ww, 'return_1'], outs=('headspace_1', ''), 
-#                       V_liq=5, V_gas=0.556, T=T1, model=adm1, 
-#                       retain_cmps=('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro'))
-# S1 = su.Splitter('S1', ins=H2E-1, outs=('sidestream_1', ''),
-#                   split=split_1, isdynamic=True)
-# DM1 = DM('DM1', ins=S1-0, outs=(bg1, 1-H2E), 
-#           H2_degas_efficiency=0.5,
-#           CH4_degas_efficiency=0, 
-#           CO2_degas_efficiency=0.2)
+R1_ss_conds = {
+    'S_su': 0.0145871088552909*1e3,
+    'S_aa': 0.00643308564144693*1e3,
+    'S_fa': 0.634823005990967*1e3,
+    'S_va': 0.624510322247682*1e3,
+    'S_bu': 1.03793927591996*1e3,
+    'S_pro': 1.24676871525373*1e3,
+    'S_ac': 2.00250371674824*1e3,
+    'S_h2': 0.00850364943532684*1e3,
+    'S_ch4': 0.0000422133982597226*1e3,
+    'S_IC': 0.244296234124982*1e3,
+    'S_IN': 0.216115320077251*1e3,
+    'S_I': 0.027310256066728*1e3,
+    'X_c': 0.146203507058736*1e3,
+    'X_ch': 0.0286018513139117*1e3,
+    'X_pr': 0.0467836694957302*1e3,
+    'X_li': 0.0247209587890493*1e3,
+    'X_su': 4.69052782535406*1e3,
+    'X_aa': 1.22829926704024*1e3,
+    'X_fa': 0.0147446263753011*1e3,
+    'X_c4': 0.0149933579422897*1e3,
+    'X_pro': 0.0145343147735253*1e3,
+    'X_ac': 0.00098041337766024*1e3,
+    'X_h2': 0.00110808891184369*1e3,
+    'X_I': 0.0396205121367899*1e3
+    }
 
-# CH4E = su.AnaerobicCSTR('CH4E', ins=[S1-1, 'return_2'], outs=('headspace_2', ''), 
-#                         V_liq=75, V_gas=5, T=T2, model=adm1,
-#                         retain_cmps=('X_ac', 'X_h2'))
-# S2 = su.Splitter('S2', ins=CH4E-1, outs=('sidestream_2', eff),
-#                   split=split_2, isdynamic=True)
-# DM2 = DM('DM2', ins=S2-0, outs=(bg2, 1-CH4E),
-#           H2_degas_efficiency=0,
-#           CH4_degas_efficiency=0.5, 
-#           CO2_degas_efficiency=0.2)
+R2_ss_conds = {
+    'S_su': 0.00106990968535691*1e3,
+    'S_aa': 0.00125571416517827*1e3,
+    'S_fa': 0.121097573221394*1e3,
+    'S_va': 0.0132519103137696*1e3,
+    'S_bu': 0.0172912281196732*1e3,
+    'S_pro': 0.020032163173878*1e3,
+    'S_ac': 0.00574002755366853*1e3,
+    'S_h2': 3.76969944940856e-08*1e3,
+    'S_ch4': 0.0499411746585487*1e3,
+    'S_IC': 0.525579793735968*1e3,
+    'S_IN': 0.223232426903785*1e3,
+    'S_I': 0.105601391746794*1e3,
+    'X_c': 0.0897520281015078*1e3,
+    'X_ch': 0.00108163641708242*1e3,
+    'X_pr': 0.00120204580901502*1e3,
+    'X_li': 0.00150204523369107*1e3,
+    'X_su': 0.195961987850137*1e3,
+    'X_aa': 0.059723477130333*1e3,
+    'X_fa': 0.0351858744892462*1e3,
+    'X_c4': 0.0812315951844566*1e3,
+    'X_pro': 0.0503466475437059*1e3,
+    'X_ac': 1.1653549028287*1e3,
+    'X_h2': 0.4352809013846*1e3,
+    'X_I': 0.196117291164614*1e3
+    }
 
-# sys = System('mock_METAB', path=(H2E, S1, DM1, CH4E, S2, DM2),
-#               recycle=(DM1-1, DM2-1))
 
 # %%
 # =============================================================================
 # Preliminary analyses with mock METAB configuration
 # =============================================================================
 
-def create_systems(flowsheet_A=None, flowsheet_B=None, 
+def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
                    inf_concs={}, R1_init_conds={}, R2_init_conds={}):
     flowsheet_A = flowsheet_A or qs.Flowsheet('METAB_sysA')
     qs.main_flowsheet.set_flowsheet(flowsheet_A)
@@ -189,8 +221,10 @@ def create_systems(flowsheet_A=None, flowsheet_B=None,
             split=(split_2, 1-split_2), V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
             retain_cmps=('X_ac', 'X_h2'))
     DM2 = DM('DM2', ins=CH4E-0, outs=(bg2_A, 1-CH4E), tau=tau_2)
-    H2E.set_init_conc(**R1_init_conds)
-    CH4E.set_init_conc(**R2_init_conds)
+    H2E.set_init_conc(**R1_ss_conds)
+    CH4E.set_init_conc(**R2_ss_conds)
+    # H2E.set_init_conc(**R1_init_conds)
+    # CH4E.set_init_conc(**R2_init_conds)
     sysA = System('mock_METAB', 
                   path=(H2E, DM1, CH4E, DM2),
                   recycle=(DM1-1, DM2-1))
@@ -218,12 +252,63 @@ def create_systems(flowsheet_A=None, flowsheet_B=None,
     sysB = System('baseline', path=(AnR1, AnR2))
     sysB.set_dynamic_tracker(AnR1, AnR2, bg1_B, bg2_B)
     
-    return sysA, sysB
+    #***************************************************
+    flowsheet_C = flowsheet_C or qs.Flowsheet('METAB_sysC')
+    qs.main_flowsheet.set_flowsheet(flowsheet_C)
+    
+    ############# sysC streams ########################
+    inf_c = brewery_ww.copy('BreweryWW_C')
+    eff_c = WasteStream('Effluent_C', T=T2)
+    bgm1 = WasteStream('biogas_mem_1', phase='g')
+    bgm2 = WasteStream('biogas_mem_2', phase='g')
+    bgh1 = WasteStream('biogas_hsp_1', phase='g')
+    bgh2 = WasteStream('biogas_hsp_2', phase='g')
+    
+    ############# sysC unit operation #################
+    # R1 = su.AnaerobicCSTR('R1', ins=[inf_c, 'return_1'], outs=(bgh1, ''), 
+    #                       V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
+    #                       retain_cmps=('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro'))
+    # S1 = su.Splitter('S1', ins=R1-1, outs=('sidestream_1', ''),
+    #                   split=split_1, isdynamic=True)
+    # DM1c = DM('DM1_c', ins=S1-0, outs=(bgm1, 1-R1), tau=tau_1)
+
+    # R2 = su.AnaerobicCSTR('R2', ins=[S1-1, 'return_2'], outs=(bgh2, ''), 
+    #                       V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
+    #                       retain_cmps=('X_ac', 'X_h2'))
+    # S2 = su.Splitter('S2', ins=R2-1, outs=('sidestream_2', eff_c),
+    #                   split=split_2, isdynamic=True)
+    # DM2c = DM('DM2_c', ins=S2-0, outs=(bgm2, 1-R2), tau=tau_2)
+
+    # sysC = System('combined_METAB', path=(R1, S1, DM1c, R2, S2, DM2c),
+    #               recycle=(DM1c-1, DM2c-1))
+    # sysC.set_dynamic_tracker(R1, R2, bgm1, bgm2, bgh1, bgh2)
+    sc1 = 0.1
+    sc2 = 0.1
+    R1 = su.AnaerobicCSTR('R1', ins=[inf_c, 'return_1'], 
+                          outs=(bgh1, 'sidestream_1', ''), 
+                          split=(sc1, 1-sc1),
+                          V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
+                          retain_cmps=('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro'))
+    DM1c = DM('DM1_c', ins=R1-1, outs=(bgm1, 1-R1), tau=0.1)
+
+    R2 = su.AnaerobicCSTR('R2', ins=[R1-2, 'return_2'], 
+                          outs=(bgh2, 'sidestream_2', eff_c), 
+                          split=(sc2, 1-sc2),
+                          V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
+                          retain_cmps=('X_ac', 'X_h2'))
+    DM2c = DM('DM2_c', ins=R2-1, outs=(bgm2, 1-R2), tau=0.1)
+    R1.set_init_conc(**R1_ss_conds)
+    R2.set_init_conc(**R2_ss_conds)
+    sysC = System('combined_METAB', path=(R1, DM1c, R2, DM2c),
+                  recycle=(DM1c-1, DM2c-1))
+    sysC.set_dynamic_tracker(R1, R2, bgm1, bgm2, bgh1, bgh2)
+              
+    return sysA, sysB, sysC
 
 #%%
 @time_printer
 def run(t, t_step, method=None, **kwargs):
-    sysA, sysB = create_systems()
+    sysA, sysB, sysC = create_systems()
     print(f'Simulating {sysA.ID}...')
     sysA.simulate(state_reset_hook='reset_cache',
                   t_span=(0,t),
@@ -233,6 +318,13 @@ def run(t, t_step, method=None, **kwargs):
                   **kwargs)
     print(f'Simulating {sysB.ID}...')
     sysB.simulate(state_reset_hook='reset_cache',
+                  t_span=(0,t),
+                  t_eval=np.arange(0, t+t_step, t_step),
+                  method=method,
+                  # export_state_to=ospath.join(folder, f'results/{method}_{t}d_sysB.xlsx'),
+                  **kwargs)
+    print(f'Simulating {sysC.ID}...')
+    sysC.simulate(state_reset_hook='reset_cache',
                   t_span=(0,t),
                   t_eval=np.arange(0, t+t_step, t_step),
                   method=method,

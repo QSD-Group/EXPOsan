@@ -23,12 +23,12 @@ import os
 
 __all__ = ('create_modelA', 
            'create_modelB',
-           'run_modelA',
+           'create_modelC',
+           'run_model',
            'run_modelB'
            )
-
 #%%
-sysA, sysB = s.create_systems()
+sysA, sysB, sysC = s.create_systems()
 Ys_bl, mus_bl, Ks_bl = s.yields_bl, s.mus_bl, s.Ks_bl
 n_Ys = len(Ys_bl)
 n_mus = len(mus_bl)
@@ -36,53 +36,72 @@ n_mus = len(mus_bl)
 # =============================================================================
 # model with uncertain parameters regarding gas extraction
 # =============================================================================
+get_uniform_w_frac = lambda b, frac: shape.Uniform(lower=b*(1-frac), upper=b*(1+frac))
 
-def add_degas_params(model, bioreactors, membranes):
+def add_degas_params(model, bioreactors, membranes, 
+                     b_split=0.5, var_split=0.8, 
+                     b_ermv=0.75, bounds_ermv=(0.25, 0.85)):
     param = model.parameter
     H2E, CH4E = bioreactors
     DM1, DM2 = membranes
     
-    b = 0.5
-    D = shape.Uniform(0.1, 0.9)
+    b = b_split
+    D = get_uniform_w_frac(b, var_split)
     @param(name='H2E_sidestream_split', element=H2E, kind='coupled', units='',
            baseline=b, distribution=D)
     def H2E_split_setter(s):
-        H2E.split = [s, 1-s]
+        try: H2E.split = [s, 1-s]
+        except: H2E.split = s
 
-    D = shape.Uniform(0.1, 0.9)    
+    D = get_uniform_w_frac(b, var_split)
     @param(name='CH4E_sidestream_split', element=CH4E, kind='coupled', units='',
            baseline=b, distribution=D)
     def CH4E_split_setter(s):
-        CH4E.split = [s, 1-s]
+        try: CH4E.split = [s, 1-s]
+        except: CH4E.split = s
     
-    b = 0.75
-    D = shape.Uniform(0.25, 0.85)
+    b = b_ermv
+    D = shape.Uniform(*bounds_ermv)
     @param(name='H2_removal_efficiency', element=DM1, kind='coupled', units='',
            baseline=b, distribution=D)
     def H2_e_rmv(e):
         DM1.H2_degas_efficiency = e
         DM2.H2_degas_efficiency = e
 
-    D = shape.Uniform(0.25, 0.85)        
+    D = shape.Uniform(*bounds_ermv)        
     @param(name='CH4_removal_efficiency', element=DM1, kind='coupled', units='',
            baseline=b, distribution=D)
     def CH4_e_rmv(e):
         DM1.CH4_degas_efficiency = e
         DM2.CH4_degas_efficiency = e
         
-    D = shape.Uniform(0.25, 0.85)
+    D = shape.Uniform(*bounds_ermv)
     @param(name='CO2_removal_efficiency', element=DM1, kind='coupled', units='',
            baseline=b, distribution=D)
     def CO2_e_rmv(e):
         DM1.CO2_degas_efficiency = e
         DM2.CO2_degas_efficiency = e
 
-def add_metrics(model, biogas, wastewater):
+vfa_IDs = ('S_va', 'S_bu', 'S_pro', 'S_ac')
+
+def add_metrics(model, biogas, wastewater, units):
     metric = model.metric
-    bg1, bg2 = biogas
     inf, eff = wastewater
+    R1, R2 = units
     S_h2_i_mass = eff.components.S_h2.i_mass
     S_ch4_i_mass = eff.components.S_ch4.i_mass
+    
+    @metric(name='R1 VFAs', units='g/L', element='Stage_1')
+    def get_stage1_VFAs():
+        return R1.outs[1].composite('COD', subgroup=vfa_IDs)/1000
+    
+    @metric(name='R1 H2', units='mg/L', element='Stage_1')
+    def get_H2():
+        return R1.outs[1].iconc['S_h2']*S_h2_i_mass
+    
+    @metric(name='R2 CH4', units='mg/L', element='Stage_2')
+    def get_CH4():
+        return eff.iconc['S_ch4']*S_ch4_i_mass
     
     @metric(name='Effluent COD', units='g/L', element='System')
     def get_eff_COD():
@@ -94,12 +113,11 @@ def add_metrics(model, biogas, wastewater):
     
     @metric(name='H2 production', units='kg/d', element='Biogas')
     def get_QH2():
-        return (bg1.imass['S_h2'] + bg2.imass['S_h2'])*S_h2_i_mass*24
+        return sum([bg.imass['S_h2'] for bg in biogas])*S_h2_i_mass*24
 
     @metric(name='CH4 production', units='kg/d', element='Biogas')
     def get_QCH4():
-        return (bg1.imass['S_ch4'] + bg2.imass['S_ch4'])*S_ch4_i_mass*24
-
+        return sum([bg.imass['S_ch4'] for bg in biogas])*S_ch4_i_mass*24
 
 def create_modelA():
     model = qs.Model(system=sysA, exception_hook='raise')
@@ -108,16 +126,30 @@ def create_modelA():
     u_reg = sysA.flowsheet.unit
     H2E, DM1, CH4E, DM2 = u_reg.H2E, u_reg.DM1, u_reg.CH4E, u_reg.DM2
     add_degas_params(model, (H2E, CH4E), (DM1, DM2))
-    add_metrics(model, (bg1, bg2), (inf, eff))   
+    add_metrics(model, (bg1, bg2), (inf, eff), (H2E, CH4E))   
     return model
     
+def create_modelC():
+    model = qs.Model(system=sysC, exception_hook='raise')
+    ws_reg = sysC.flowsheet.stream
+    inf, eff, bgm1, bgm2, bgh1, bgh2 = (
+        ws_reg.BreweryWW_C, 
+        ws_reg.Effluent_C, 
+        ws_reg.biogas_mem_1, 
+        ws_reg.biogas_mem_2,
+        ws_reg.biogas_hsp_1, 
+        ws_reg.biogas_hsp_2
+        )
+    u_reg = sysC.flowsheet.unit
+    R1, DM1, R2, DM2 = u_reg.R1, u_reg.DM1_c, u_reg.R2, u_reg.DM2_c
+    add_degas_params(model, (R1, R2), (DM1, DM2))
+    add_metrics(model, (bgm1, bgm2, bgh1, bgh2), (inf, eff), (R1, R2))
+    return model
 
 #%%
 # =============================================================================
 # model with uncertain ADM1 parameters
 # =============================================================================
-
-get_uniform_w_frac = lambda b, frac: shape.Uniform(lower=b*(1-frac), upper=b*(1+frac))
 
 def add_adm_params(model, adm1, units):
     param = model.parameter
@@ -154,23 +186,28 @@ def create_modelB():
     AnR1, AnR2 = u_reg.AnR1, u_reg.AnR2
     adm1 = AnR1.model
     add_adm_params(model, adm1, (AnR1, AnR2))
-    add_metrics(model, (bg1, bg2), (inf, eff))
+    add_metrics(model, (bg1, bg2), (inf, eff), (AnR1, AnR2))
     return model
 
 #%%
+# =============================================================================
+# model with uncertain ADM1 parameters
+# =============================================================================
+
+#%%
 @time_printer
-def run_modelA(model, N, T, t_step, method='BDF',
-               metrics_path='', timeseries_path='',
-               rule='L', seed=None, pickle=False):
+def run_model(model, N, T, t_step, method='BDF', sys_ID=None,
+              metrics_path='', timeseries_path='',
+              rule='L', seed=None, pickle=False):
     if seed: np.random.seed(seed)
     samples = model.sample(N=N, rule=rule)
     model.load_samples(samples)
     t_span = (0, T)
     t_eval = np.arange(0, T+t_step, t_step)
-    mpath = metrics_path or ospath.join(results_path, f'sysA_table_{seed}.xlsx')
+    mpath = metrics_path or ospath.join(results_path, f'sys{sys_ID}_table_{seed}.xlsx')
     if timeseries_path: tpath = timeseries_path
     else:
-        folder = ospath.join(results_path, f'sysA_time_series_data_{seed}')
+        folder = ospath.join(results_path, f'sys{sys_ID}_time_series_data_{seed}')
         os.mkdir(folder)
         tpath = ospath.join(folder, 'state.npy')
     model.evaluate(
@@ -181,7 +218,6 @@ def run_modelA(model, N, T, t_step, method='BDF',
         export_state_to=tpath
         )
     model.table.to_excel(mpath)
-
 
 @time_printer
 def run_modelB(model, N, T, t_step, method='BDF', 
