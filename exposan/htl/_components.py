@@ -181,6 +181,9 @@ def create_components(set_thermo=True):
          
     NH3 = Component('NH3',phase='g',particle_size='Dissolved gas',
                     degradability='Undegradable',organic=False)
+    
+    #heating agent
+    p-Terphenyl = Component('Terphenyl',CAS='92-94-4')
 
     cmps = Components([Sludge_lipid,Sludge_protein,Sludge_carbo,Sludge_ash,
                        Struvite,Biochar,Residual,
