@@ -11,6 +11,13 @@ This module is developed by:
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
+
+References:
+(1) Knorr, D.; Lukas, J.; Schoen, P. Production of Advanced Biofuels via
+    Liquefaction - Hydrothermal Liquefaction Reactor Design: April 5, 2013;
+    NREL/SR-5100-60462, 1111191; 2013; p NREL/SR-5100-60462, 1111191.
+    https://doi.org/10.2172/1111191.
+
 '''
 
 import qsdsan as qs
@@ -30,6 +37,33 @@ fake_sludge = qs.Stream('fake_sludge',H2O=10/0.01*907.185/24,units='kg/hr',T=298
 acidforP = qs.Stream('H2SO4_1')
 supply_mgcl2 = qs.Stream('MgCl2')
 acidforN = qs.Stream('H2SO4_2')
+
+
+
+
+#Use p-Terphenyl as the heating agent
+low_pressure_steam = UtilityAgent(
+    'low_pressure_steam',
+    Water=1, T=693.15, P=1516847.2, phase='l', #T=450C P=220psig extrapolate from Knorr et al., PNNL 2013
+    thermo=thermo_water,
+    regeneration_price = 0.2378,
+    heat_transfer_efficiency = 0.9,
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 SluL = su.SludgeLab('S000',ins=fake_sludge,outs='real_sludge')
 
