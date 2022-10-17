@@ -25,6 +25,8 @@ __all__ = (
     'default_inf_concs',
     'default_R1_init_conds',
     'default_R2_init_conds',
+    'R1_ss_conds',
+    'R2_ss_conds',
     'yields_bl', 'mus_bl', 'Ks_bl'
     )
 
@@ -265,23 +267,6 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
     bgh2 = WasteStream('biogas_hsp_2', phase='g')
     
     ############# sysC unit operation #################
-    # R1 = su.AnaerobicCSTR('R1', ins=[inf_c, 'return_1'], outs=(bgh1, ''), 
-    #                       V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
-    #                       retain_cmps=('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro'))
-    # S1 = su.Splitter('S1', ins=R1-1, outs=('sidestream_1', ''),
-    #                   split=split_1, isdynamic=True)
-    # DM1c = DM('DM1_c', ins=S1-0, outs=(bgm1, 1-R1), tau=tau_1)
-
-    # R2 = su.AnaerobicCSTR('R2', ins=[S1-1, 'return_2'], outs=(bgh2, ''), 
-    #                       V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
-    #                       retain_cmps=('X_ac', 'X_h2'))
-    # S2 = su.Splitter('S2', ins=R2-1, outs=('sidestream_2', eff_c),
-    #                   split=split_2, isdynamic=True)
-    # DM2c = DM('DM2_c', ins=S2-0, outs=(bgm2, 1-R2), tau=tau_2)
-
-    # sysC = System('combined_METAB', path=(R1, S1, DM1c, R2, S2, DM2c),
-    #               recycle=(DM1c-1, DM2c-1))
-    # sysC.set_dynamic_tracker(R1, R2, bgm1, bgm2, bgh1, bgh2)
     sc1 = 0.1
     sc2 = 0.1
     R1 = su.AnaerobicCSTR('R1', ins=[inf_c, 'return_1'], 
@@ -289,14 +274,14 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
                           split=(sc1, 1-sc1),
                           V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
                           retain_cmps=('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro'))
-    DM1c = DM('DM1_c', ins=R1-1, outs=(bgm1, 1-R1), tau=0.1)
+    DM1c = DM('DM1_c', ins=R1-1, outs=(bgm1, 1-R1), tau=tau_1)
 
     R2 = su.AnaerobicCSTR('R2', ins=[R1-2, 'return_2'], 
                           outs=(bgh2, 'sidestream_2', eff_c), 
                           split=(sc2, 1-sc2),
                           V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
                           retain_cmps=('X_ac', 'X_h2'))
-    DM2c = DM('DM2_c', ins=R2-1, outs=(bgm2, 1-R2), tau=0.1)
+    DM2c = DM('DM2_c', ins=R2-1, outs=(bgm2, 1-R2), tau=tau_2)
     R1.set_init_conc(**R1_ss_conds)
     R2.set_init_conc(**R2_ss_conds)
     sysC = System('combined_METAB', path=(R1, DM1c, R2, DM2c),

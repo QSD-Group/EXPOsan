@@ -16,11 +16,14 @@ from copy import deepcopy
 from qsdsan.utils import load_data, load_pickle, save_pickle, ospath
 from qsdsan.stats import plot_uncertainties
 from exposan.metab_mock import (
+    create_systems,
     create_modelA,
     create_modelB,
     create_modelC,
+    create_ss_model,
     run_model,
-    run_modelB, 
+    run_modelB,
+    run_ss_model,
     results_path, 
     figures_path
      )
@@ -43,6 +46,10 @@ mdlC = create_modelC()
 cmps = mdlB._system.flowsheet.stream.Effluent_B.components
 AnR1 = mdlB._system.flowsheet.unit.AnR1
 
+sysA, sysB, sysC = create_systems()
+mssA = create_ss_model(sysA, R1_ID='H2E', R2_ID='CH4E')
+mssC = create_ss_model(sysC, R1_ID='R1', R2_ID='R2')
+
 N = 400
 T = 200
 t_step = 5
@@ -56,9 +63,18 @@ plots_wide = zip(keys, irows, icols)
 
 # indices = [(4, 5), (0, 1)]
 # names = [('H2', 'CH4'), ('rCOD_1', 'rCOD_2')]
-indices = [(0,1), (2,3)]
+indices = [(3,4), (5,6)]
 names = [('eff_COD', 'rCOD'), ('H2', 'CH4')]
 pairs = zip(indices, names)
+
+S_keys = [ID for ID in cmps.IDs if ID.startswith('S_') and ID not in ('S_an', 'S_cat')]
+X_keys = [ID for ID in cmps.IDs if ID.startswith('X_')]
+gas_keys = ['S_h2_gas', 'S_ch4_gas', 'S_IC_gas']
+irows = [0,0,0,1,1,1,2,2,2,3,3,3]
+icols = [0,1,2,0,1,2,0,1,2,0,1,2]
+s_plots = zip(S_keys, irows, icols)
+x_plots = zip(X_keys, irows, icols)
+g_plots = zip(gas_keys, [0,0,0], [0,1,2])
 
 
 def seed_RGT():
@@ -75,8 +91,11 @@ def seed_RGT():
 #%% UA with time-series data
 def single_state_var_getter(arr, unit, variable):
     j = 1
-    if unit in ('AnR2', 'CH4E'): j += len(AnR1._state)
-    i = cmps.index(variable)
+    if unit in ('CH4E', 'AnR2', 'R2'): j += len(AnR1._state_keys)
+    if variable == 'S_IC_gas': i = 29
+    elif variable == 'S_ch4_gas': i = 28
+    elif variable == 'S_h2_gas': i = 27
+    else: i = cmps.index(variable)
     return arr[:, i+j]
 
 def analyze_timeseries(variable_getter, N, folder='', todf=True, **kwargs):
@@ -87,14 +106,16 @@ def analyze_timeseries(variable_getter, N, folder='', todf=True, **kwargs):
     if todf: outputs = pd.DataFrame.from_dict(outputs)
     return outputs
 
-def analyze_vars(seed, N, sys='B', pickle=True):
-    folder = os.path.join(results_path, f'sys{sys}_time_series_data_{seed}')
-    state_vars = keys
+def analyze_vars(seed, N, prefix='sys', sys_ID='B', pickle=True):
+    folder = os.path.join(results_path, f'{prefix}{sys_ID}_time_series_data_{seed}')
+    state_vars = S_keys+X_keys+gas_keys
     dct = {}
     t_arr = np.arange(0, T+t_step, t_step)
-    pcs = np.array([0, 5, 25, 50, 75, 95, 100])
+    pcs = np.array([5, 25, 50, 75, 95])
     col_names = [f'{p}th percentile' for p in pcs]
-    units = ('AnR1', 'AnR2') if sys == 'B' else ('H2E', 'CH4E')
+    if sys_ID == 'A': units = ('H2E', 'CH4E')
+    elif sys_ID == 'B': units = ('AnR1', 'AnR2')
+    else: units = ('R1', 'R2')
     for u in units:
         dct[u] = {}
         for var in state_vars:
@@ -105,17 +126,17 @@ def analyze_vars(seed, N, sys='B', pickle=True):
             df['t'] = t_arr
             dct[u][var] = df
     if pickle:
-        path = os.path.join(results_path, f'sys{sys}_state_vars_{seed}.pckl')
+        path = os.path.join(results_path, f'{prefix}{sys_ID}_state_vars_{seed}.pckl')
         save_pickle(dct, path)
     return dct
 
-def plot_timeseries(seed, N, unit, sys='B', data=None):
+def plot_timeseries(seed, N, unit, sys_ID='B', data=None):
     if data is None:
         try:
-            path = ospath.join(results_path, f'sys{sys}_state_vars_{seed}.pckl')
+            path = ospath.join(results_path, f'sys{sys_ID}_state_vars_{seed}.pckl')
             data = load_pickle(path)
         except:
-            data = analyze_vars(seed, N, sys=sys)
+            data = analyze_vars(seed, N, sys_ID=sys_ID)
     plts = deepcopy(plots_wide)    
     x_ticks = np.linspace(0, T, 5)
     fig, axes = plt.subplots(3, 4, sharex=True, figsize=(14,8))
@@ -233,6 +254,47 @@ def plot_scatter(seed, modelA, modelC):
     fig.savefig(ospath.join(figures_path, 'AvC_table.png'), dpi=300)
     return fig, axes
 
+def plot_ss_convergence(seed, N, unit='CH4E', prefix='ss', sys_ID='A', data=None):
+    if data is None:
+        try:
+            path = os.path.join(results_path, f'{prefix}{sys_ID}_state_vars_{seed}.pckl')
+            data = load_pickle(path)
+        except:
+            data = analyze_vars(seed, N, sys_ID=sys_ID)
+    fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12,12))
+    x_ticks = np.linspace(0, 200, 6)
+    for group, par_size in [(s_plots, 's'), (x_plots, 'x'), (g_plots, 'g')]:
+        if par_size == 'g':
+            fig, axes = plt.subplots(1, 3, sharex=True, figsize=(12,3.2))
+        else:
+            fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12,12))
+        plts = deepcopy(group)        
+        for var, ir, ic in plts:
+            df = data[unit][var]
+            if par_size == 'g': ax = axes[ic]
+            else: ax = axes[ir, ic]
+            ys = df.iloc[:,:N].values
+            # breakpoint()
+            ax.plot(df.t, ys, color='grey', linestyle='-', alpha=0.25)
+            lct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
+            y_ticks = lct.tick_values(np.min(ys), np.max(ys))
+            ax.xaxis.set_ticks(x_ticks)
+            ax.yaxis.set_ticks(y_ticks)
+            ax.tick_params(axis='both', which='both', 
+                           direction='inout', labelsize=14)
+            ax2x = ax.secondary_xaxis('top')
+            ax2x.xaxis.set_ticks(x_ticks)
+            ax2x.tick_params(axis='x', which='both', direction='in')
+            ax2x.xaxis.set_ticklabels([])
+            ax2y = ax.secondary_yaxis('right')
+            ax2y.yaxis.set_ticks(y_ticks)
+            ax2y.tick_params(axis='y', which='both', direction='in')
+            ax2y.yaxis.set_ticklabels([])
+        del plts
+        fig.subplots_adjust(hspace=0., wspace=0.)
+        fig.savefig(ospath.join(figures_path, f'{prefix}{sys_ID}_{par_size}t_wdiff_init.png'), dpi=300)
+        del fig, axes
+
 #%%
 def run_UA_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
     seed = seed or seed_RGT()
@@ -259,9 +321,22 @@ def run_UA_sysB(seed=None, N=N, T=T, t_step=t_step, plot=True):
         p.setter(p.baseline)
     return seed
 
+def run_ss_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
+    seed = seed or seed_RGT()
+    run_ss_model(mssA, N, T, t_step, sys_ID='A', R1_ID='H2E', R2_ID='CH4E', seed=seed)
+    run_ss_model(mssC, N, T, t_step, sys_ID='C', R1_ID='R1', R2_ID='R2', seed=seed)
+    outA = analyze_vars(seed, N, prefix='ss', sys_ID='A')
+    outC = analyze_vars(seed, N, prefix='ss', sys_ID='C')
+    if plot:
+        plot_ss_convergence(seed, N, unit='CH4E', prefix='ss', sys_ID='A', data=outA)
+        plot_ss_convergence(seed, N, unit='R2', prefix='ss', sys_ID='C', data=outC)
+    print(f'Seed used for uncertainty analysis of system B is {seed}.')
+    return seed
+
 #%%
 if __name__ == '__main__':
-    run_UA_AvC()
+    # run_UA_AvC()
+    run_ss_AvC(N=100)
     # seed = 952
     # run_modelB(mdl, N, T, t_step, method='BDF', seed=seed)
     # out = analyze_vars(seed, N, 'B')

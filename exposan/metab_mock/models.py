@@ -24,8 +24,10 @@ import os
 __all__ = ('create_modelA', 
            'create_modelB',
            'create_modelC',
+           'create_ss_model',
            'run_model',
-           'run_modelB'
+           'run_modelB',
+           'run_ss_model'
            )
 #%%
 sysA, sysB, sysC = s.create_systems()
@@ -191,9 +193,69 @@ def create_modelB():
 
 #%%
 # =============================================================================
-# model with uncertain ADM1 parameters
+# model with random initial conditions
 # =============================================================================
+def create_ss_model(system, R1_ID, R2_ID, 
+                    R1_baseline_init_conds=None, 
+                    R2_baseline_init_conds=None, 
+                    frac_var=0.5):
+    model = qs.Model(system, exception_hook='raise')
+    _ic1 = R1_baseline_init_conds or s.R1_ss_conds
+    _ic2 = R2_baseline_init_conds or s.R2_ss_conds
+    u_reg = system.flowsheet.unit
+    R1 = getattr(u_reg, R1_ID)
+    R2 = getattr(u_reg, R2_ID)
+    param = model.parameter
+    for ic, u in zip((_ic1,_ic2), (R1,R2)):
+        for k, v in ic.items():
+            b = v
+            D = get_uniform_w_frac(b, frac_var)
+            @param(name=f'{k}_0', element=u, kind='coupled', units='mg/L',
+                      baseline=b, distribution=D)
+            def ic_setter(conc): pass
+    return model
 
+@time_printer
+def run_ss_model(model, N, T, t_step, method='BDF', sys_ID=None,
+                 R1_baseline_init_conds=None, 
+                 R2_baseline_init_conds=None,
+                 R1_ID='R1', R2_ID='R2',
+                 metrics_path='', timeseries_path='', 
+                 rule='L', seed=None, pickle=False):
+    _ic1 = R1_baseline_init_conds or s.R1_ss_conds
+    _ic2 = R2_baseline_init_conds or s.R2_ss_conds
+    k1 = _ic1.keys()
+    k2 = _ic2.keys()
+    n_ic1 = len(k1)
+    u_reg = model._system.flowsheet.unit
+    R1 = getattr(u_reg, R1_ID)
+    R2 = getattr(u_reg, R2_ID)
+    if seed: np.random.seed(seed)
+    samples = model.sample(N=N, rule=rule)
+    model.load_samples(samples)
+    t_span = (0, T)
+    t_eval = np.arange(0, T+t_step, t_step)
+    if timeseries_path: tpath = timeseries_path
+    else:
+        folder = ospath.join(results_path, f'ss{sys_ID}_time_series_data_{seed}')
+        os.mkdir(folder)
+        tpath = ospath.join(folder, 'state.npy')
+    for i, smp in enumerate(samples):
+        ic1 = dict(zip(k1, smp[:n_ic1]))
+        ic2 = dict(zip(k2, smp[n_ic1:]))
+        R1.set_init_conc(**ic1)
+        R2.set_init_conc(**ic2)
+        model._system.simulate(
+            state_reset_hook='reset_cache',
+            t_span=t_span,
+            t_eval=t_eval,
+            method=method,
+            export_state_to=tpath,
+            sample_id=i,
+            )
+    R1.set_init_conc(**_ic1)
+    R2.set_init_conc(**_ic2)
+            
 #%%
 @time_printer
 def run_model(model, N, T, t_step, method='BDF', sys_ID=None,
