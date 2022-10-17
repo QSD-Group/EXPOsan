@@ -213,6 +213,10 @@ def create_ss_model(system, R1_ID, R2_ID,
             @param(name=f'{k}_0', element=u, kind='coupled', units='mg/L',
                       baseline=b, distribution=D)
             def ic_setter(conc): pass
+    bgs = [s for s in system.products if s.phase =='g']
+    inf, = system.feeds
+    eff, = set(system.products) - set(bgs)
+    add_metrics(model, bgs, (inf, eff), (R1, R2))
     return model
 
 @time_printer
@@ -235,11 +239,14 @@ def run_ss_model(model, N, T, t_step, method='BDF', sys_ID=None,
     model.load_samples(samples)
     t_span = (0, T)
     t_eval = np.arange(0, T+t_step, t_step)
+    mpath = metrics_path or ospath.join(results_path, f'ss{sys_ID}_table_{seed}.xlsx')
     if timeseries_path: tpath = timeseries_path
     else:
         folder = ospath.join(results_path, f'ss{sys_ID}_time_series_data_{seed}')
         os.mkdir(folder)
         tpath = ospath.join(folder, 'state.npy')
+    index = model._index
+    values = [None] * len(index)    
     for i, smp in enumerate(samples):
         ic1 = dict(zip(k1, smp[:n_ic1]))
         ic2 = dict(zip(k2, smp[n_ic1:]))
@@ -253,6 +260,9 @@ def run_ss_model(model, N, T, t_step, method='BDF', sys_ID=None,
             export_state_to=tpath,
             sample_id=i,
             )
+        values[i] = [i() for i in model.metrics]
+    model.table[var_indices(model._metrics)] = values
+    model.table.to_excel(mpath)
     R1.set_init_conc(**_ic1)
     R2.set_init_conc(**_ic2)
             

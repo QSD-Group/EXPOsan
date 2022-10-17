@@ -293,7 +293,34 @@ def plot_ss_convergence(seed, N, unit='CH4E', prefix='ss', sys_ID='A', data=None
         del plts
         fig.subplots_adjust(hspace=0., wspace=0.)
         fig.savefig(ospath.join(figures_path, f'{prefix}{sys_ID}_{par_size}t_wdiff_init.png'), dpi=300)
+        # fig.savefig(ospath.join(figures_path, f'{prefix}{sys_ID}_{par_size}t_tau01.png'), dpi=300)
         del fig, axes
+
+#%%
+import seaborn as sns
+from math import ceil
+
+def f_grouping(cod_removal):
+    if cod_removal > 50: return 'high' 
+    else: return 'low'
+
+def plot_dist_bygroup(model, sys_ID='A'):
+    group = model.table.loc[:,('System','Total COD removal [%]')].apply(f_grouping)
+    n_param = len(model.parameters)
+    ncol = 6
+    nrow = ceil(n_param/ncol)
+    x_df = model.table.iloc[:, :n_param]
+    fig, axes = plt.subplots(nrow, ncol, sharey=True, figsize=(ncol*3, nrow*2.5))
+    for col, ax in zip(x_df, axes.ravel()):
+        unit = col[0].split('-')[-1]
+        var = col[1].split(' 0')[0]
+        sns.histplot(data=x_df, x=col, hue=group, bins=30, stat='probability',
+                     cumulative=True,
+                     common_norm=False, kde=True, legend=False, ax=ax)
+        ax.set_xlabel(f'{unit} {var}_0')
+    fig.subplots_adjust(hspace=0., wspace=0.)
+    fig.savefig(ospath.join(figures_path, f'hist_ss{sys_ID}'), dpi=300)
+
 
 #%%
 def run_UA_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
@@ -330,7 +357,9 @@ def run_ss_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
     if plot:
         plot_ss_convergence(seed, N, unit='CH4E', prefix='ss', sys_ID='A', data=outA)
         plot_ss_convergence(seed, N, unit='R2', prefix='ss', sys_ID='C', data=outC)
-    print(f'Seed used for uncertainty analysis of system B is {seed}.')
+        plot_dist_bygroup(mssA)
+        plot_dist_bygroup(mssC, sys_ID='C')
+    print(f'Seed used for convergence test is {seed}.')
     return seed
 
 #%%
