@@ -183,14 +183,17 @@ def create_components(set_thermo=True):
                     degradability='Undegradable',organic=False)
     
     #heating agent
-    p-Terphenyl = Component('Terphenyl',CAS='92-94-4')
+    Terphenyl = Component('Terphenyl',CAS='92-94-4',phase='l',
+                          particle_size='Soluble',
+                          degradability='Slowly',organic=True)
 
     cmps = Components([Sludge_lipid,Sludge_protein,Sludge_carbo,Sludge_ash,
                        Struvite,Biochar,Residual,
                        Biocrude,Biooil,
                        HTLaqueous,HTaqueous,C,N,P,
                        CH4,C2H6,C3H8,C5H12,CO2,CO,H2,
-                       H2SO4,H3PO4,MgCl2,NaOH,NH42SO4,H2O,NH3])
+                       H2SO4,H3PO4,MgCl2,NaOH,NH42SO4,H2O,NH3,
+                       Terphenyl])
     
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):
