@@ -21,6 +21,7 @@ References:
 '''
 
 import qsdsan as qs
+import biosteam as bst
 import exposan.htl._sanunits as su
 from qsdsan import sanunits as suu
 from exposan.htl._components import create_components
@@ -30,6 +31,7 @@ from exposan.htl._components import create_components
 # def create_system():
 
 cmps = create_components()
+htl_thermo = qs.get_thermo()
 
 fake_sludge = qs.Stream('fake_sludge',H2O=10/0.01*907.185/24,units='kg/hr',T=298.15)
 #set H2O equal to the total sludge input flow
@@ -42,28 +44,15 @@ acidforN = qs.Stream('H2SO4_2')
 
 
 #Use p-Terphenyl as the heating agent
-low_pressure_steam = UtilityAgent(
-    'low_pressure_steam',
-    Water=1, T=693.15, P=1516847.2, phase='l', #T=450C P=220psig extrapolate from Knorr et al., PNNL 2013
-    thermo=thermo_water,
-    regeneration_price = 0.2378,
-    heat_transfer_efficiency = 0.9,
+heating_oil = bst.UtilityAgent(
+            'heating_oil',
+            Terphenyl=1, T=693.15, P=1516847.2, phase='l',
+            thermo=htl_thermo,T_limit=1000,
+            regeneration_price = 0.2378,
+            heat_transfer_efficiency = 0.9,
+        ) #values are not true
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+bst.HeatUtility.heating_agents.append(heating_oil)
 
 SluL = su.SludgeLab('S000',ins=fake_sludge,outs='real_sludge')
 
@@ -75,9 +64,13 @@ SluC = suu.SludgeCentrifuge('A010',ins=SluT-1,outs=('Supernatant_2','Compressed_
                             init_with='Stream',solids=('Sludge_lipid','Sludge_protein','Sludge_carbo',
                                                        'Sludge_ash'))
 
-HTL = su.HTL('A110',ins=SluC-1,outs=('biochar','HTLaqueous','biocrude','offgas'))
+H1 = suu.HXutility('A100',ins=SluC-1,outs='heated_sludge',T=350+273.15,init_with='Stream')
 
-HT = su.HT('A410',ins=HTL-2,outs=('HTaqueous','fuel_gas','biooil'))
+HTL = su.HTL('A110',ins=H1-0,outs=('biochar','HTLaqueous','biocrude','offgas'))
+
+H2 = suu.HXutility('A400',ins=HTL-2,outs='heated_biocrude',T=405+273.15,init_with='Stream')
+
+HT = su.HT('A410',ins=H2-0,outs=('HTaqueous','fuel_gas','biooil'))
 
 Acidex = su.AcidExtraction('A200',ins=(HTL-0,acidforP),outs=('residual','extracted'))
 
@@ -89,13 +82,21 @@ CHG = su.CHG('A330',ins=StruPre-1,outs=('fuelgas','effluent'))
 
 MemDis = su.MembraneDistillation('A340',ins=(CHG-1,acidforN),outs=('AmmoniaSulfate','ww'))
 
-sys=qs.System('sys',path=(SluL,SluT,SluC,HTL,HT,Acidex,M1,StruPre,CHG,MemDis))
+# HXN = suu.HeatExchangerNetwork('HXN')
+
+sys=qs.System('sys',path=(SluL,SluT,SluC,H1,HTL,H2,HT,Acidex,M1,StruPre,CHG,MemDis))#,facilities=(HXN,))
+
+
+sys.operating_hours=200000
+
 
 sys.simulate()
 
 sys.diagram()
 
 # return sys
+
+
 
 #%%
 from qsdsan import Model
