@@ -78,13 +78,15 @@ M1 = su.HTLmixer('A300',ins=(HTL-1,Acidex-1),outs=('mixture'))
 
 StruPre = su.StruvitePrecipitation('A310',ins=(M1-0,supply_mgcl2),outs=('struvite','CHGfeed'))
 
-CHG = su.CHG('A330',ins=StruPre-1,outs=('fuelgas','effluent'))
+H3 = suu.HXutility('A320',ins=StruPre-1,outs='heated_aqueous',T=350+273.15,init_with='Stream')
+
+CHG = su.CHG('A330',ins=H3-0,outs=('fuelgas','effluent'))
 
 MemDis = su.MembraneDistillation('A340',ins=(CHG-1,acidforN),outs=('AmmoniaSulfate','ww'))
 
 # HXN = suu.HeatExchangerNetwork('HXN')
 
-sys=qs.System('sys',path=(SluL,SluT,SluC,H1,HTL,H2,HT,Acidex,M1,StruPre,CHG,MemDis))#,facilities=(HXN,))
+sys=qs.System('sys',path=(SluL,SluT,SluC,H1,HTL,H2,HT,Acidex,M1,StruPre,H3,CHG,MemDis))#,facilities=(HXN,))
 
 
 sys.operating_hours=200000
