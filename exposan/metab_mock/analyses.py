@@ -39,6 +39,11 @@ mpl.rcParams['xtick.minor.visible'] = True
 mpl.rcParams['ytick.minor.visible'] = True
 # mpl.rcParams['figure.facecolor'] = 'white'
 
+#colors
+#D81B60
+#1E88E5
+#FFC107
+
 #%% Global variables
 mdlA = create_modelA()
 mdlB = create_modelB()
@@ -207,7 +212,7 @@ def plot_kde2d_metrics(seed, model, sys_ID):
         fig.savefig(ospath.join(figures_path, f'sys{sys_ID}_{x}_vs_{y}.png'), dpi=300)
         del fig, ax
 
-def plot_scatter(seed, modelA, modelC):
+def plot_scatter(seed, modelA, modelC, sysB_metrics=None):
     nx = len(modelA.parameters)
     ny = len(modelA.metrics)
     if modelA.table is None:
@@ -221,23 +226,27 @@ def plot_scatter(seed, modelA, modelC):
     dfc_x = modelC.table.iloc[:, :nx]
     dfc_y = modelC.table.iloc[:, nx:]
     fig, axes = plt.subplots(ny, nx, sharex=False, sharey=False, 
-                             figsize=(nx*2, ny*2))
+                             figsize=(nx*2.5, ny*2.5))
     for j in range(ny):
         ya = dfa_y.iloc[:,j].values
         yc = dfc_y.iloc[:,j].values
+        try: yb = sysB_metrics[j]
+        except: yb = -1
         ylct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
-        y_ticks = ylct.tick_values(min(np.min(ya), np.min(yc)), 
-                                   max(np.max(ya), np.max(yc)))
+        ymin = max(0, min(np.min(ya), np.min(yc), yb))
+        ymax = max(np.max(ya), np.max(yc), yb)
+        y_ticks = ylct.tick_values(ymin, ymax)
         for i in range(nx):
             xa = dfa_x.iloc[:,i].values
             xc = dfc_x.iloc[:,i].values
             xlct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
             x_ticks = xlct.tick_values(np.min(xa), np.max(xa))
-            ax = axes[j,i]            
-            ax.scatter(xa, ya, marker='o', s=0.7, c='#f98f60')
-            ax.scatter(xc, yc, marker='^', s=0.7, c='#60c1cf', alpha=0.5)
+            ax = axes[j,i]
+            ax.axhline(y=yb, ls='-', lw=0.3, c='black')
+            ax.scatter(xa, ya, marker='o', s=1, c='#D81B60')
+            ax.scatter(xc, yc, marker='^', s=1, c='#1E88E5')
             ax.tick_params(axis='both', which='both', 
-                           direction='inout', labelsize=10)
+                           direction='inout', labelsize=10.5)
             ax.xaxis.set_ticks(x_ticks)
             ax.yaxis.set_ticks(y_ticks)
             if i > 0: ax.yaxis.set_ticklabels([])
@@ -251,16 +260,21 @@ def plot_scatter(seed, modelA, modelC):
             ax2y.tick_params(axis='y', which='both', direction='in')
             ax2y.yaxis.set_ticklabels([])
     fig.subplots_adjust(wspace=0., hspace=0.)
-    fig.savefig(ospath.join(figures_path, 'AvC_table.png'), dpi=300)
+    fig.savefig(ospath.join(figures_path, f'AvC_table_{seed}.png'), dpi=300)
     return fig, axes
 
-def plot_ss_convergence(seed, N, unit='CH4E', prefix='ss', sys_ID='A', data=None):
+def plot_ss_convergence(seed, N, unit='CH4E', prefix='ss', sys_ID='A', data=None,
+                        baseline_sys=None, baseline_unit_ID='AnR2'):
     if data is None:
         try:
             path = os.path.join(results_path, f'{prefix}{sys_ID}_state_vars_{seed}.pckl')
             data = load_pickle(path)
         except:
             data = analyze_vars(seed, N, sys_ID=sys_ID)
+    if baseline_sys is not None:
+         blu = getattr(baseline_sys.flowsheet.unit, baseline_unit_ID)
+         bl_df = pd.DataFrame(blu.scope.record, columns=blu._state_keys)
+         bl_ts = blu.scope.time_series
     fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12,12))
     x_ticks = np.linspace(0, 200, 6)
     for group, par_size in [(s_plots, 's'), (x_plots, 'x'), (g_plots, 'g')]:
@@ -274,10 +288,17 @@ def plot_ss_convergence(seed, N, unit='CH4E', prefix='ss', sys_ID='A', data=None
             if par_size == 'g': ax = axes[ic]
             else: ax = axes[ir, ic]
             ys = df.iloc[:,:N].values
-            # breakpoint()
             ax.plot(df.t, ys, color='grey', linestyle='-', alpha=0.25)
+            if baseline_sys is not None:
+                bl_y = bl_df.loc[:, var].values
+                ax.plot(bl_ts, bl_y, color='#FFC107')
+                ymin = np.min(bl_y)
+                ymax = np.max(bl_y)
+            else: 
+                ymin = np.inf
+                ymax = -1
             lct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
-            y_ticks = lct.tick_values(np.min(ys), np.max(ys))
+            y_ticks = lct.tick_values(min(np.min(ys), ymin), max(np.max(ys), ymax))
             ax.xaxis.set_ticks(x_ticks)
             ax.yaxis.set_ticks(y_ticks)
             ax.tick_params(axis='both', which='both', 
@@ -292,7 +313,7 @@ def plot_ss_convergence(seed, N, unit='CH4E', prefix='ss', sys_ID='A', data=None
             ax2y.yaxis.set_ticklabels([])
         del plts
         fig.subplots_adjust(hspace=0., wspace=0.)
-        fig.savefig(ospath.join(figures_path, f'{prefix}{sys_ID}_{par_size}t_wdiff_init.png'), dpi=300)
+        fig.savefig(ospath.join(figures_path, f'{prefix}{sys_ID}_{par_size}t_{unit}.png'), dpi=300)
         # fig.savefig(ospath.join(figures_path, f'{prefix}{sys_ID}_{par_size}t_tau01.png'), dpi=300)
         del fig, axes
 
@@ -304,7 +325,7 @@ def f_grouping(cod_removal):
     if cod_removal > 50: return 'high' 
     else: return 'low'
 
-def plot_dist_bygroup(model, sys_ID='A'):
+def plot_dist_bygroup(seed, model, sys_ID='A'):
     group = model.table.loc[:,('System','Total COD removal [%]')].apply(f_grouping)
     n_param = len(model.parameters)
     ncol = 6
@@ -319,7 +340,7 @@ def plot_dist_bygroup(model, sys_ID='A'):
                      common_norm=False, kde=True, legend=False, ax=ax)
         ax.set_xlabel(f'{unit} {var}_0')
     fig.subplots_adjust(hspace=0., wspace=0.)
-    fig.savefig(ospath.join(figures_path, f'hist_ss{sys_ID}'), dpi=300)
+    fig.savefig(ospath.join(figures_path, f'hist_ss{sys_ID}_{seed}'), dpi=300)
 
 
 #%%
@@ -327,8 +348,13 @@ def run_UA_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
     seed = seed or seed_RGT()
     run_model(mdlA, N, T, t_step, method='BDF', sys_ID='A', seed=seed)
     run_model(mdlC, N, T, t_step, method='BDF', sys_ID='C', seed=seed)
-    if plot:
-        plot_scatter(seed, mdlA, mdlC)
+    outC = analyze_vars(seed, N, prefix='sys', sys_ID='C')
+    mdlB._system.simulate(t_span=(0, T), method='BDF')
+    sysB_metrics = [m.getter() for m in mdlB.metrics]
+    if plot: 
+        plot_scatter(seed, mdlA, mdlC, sysB_metrics)
+        plot_ss_convergence(seed, N, unit='R2', prefix='sys', sys_ID='C',
+                            data=outC, baseline_sys=mdlB._system)
     print(f'Seed used for uncertainty analysis of systems A & C is {seed}.')
     for mdl in (mdlA, mdlC):
         for p in mdl.parameters:
@@ -357,15 +383,15 @@ def run_ss_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
     if plot:
         plot_ss_convergence(seed, N, unit='CH4E', prefix='ss', sys_ID='A', data=outA)
         plot_ss_convergence(seed, N, unit='R2', prefix='ss', sys_ID='C', data=outC)
-        plot_dist_bygroup(mssA)
-        plot_dist_bygroup(mssC, sys_ID='C')
+        plot_dist_bygroup(seed, mssA)
+        plot_dist_bygroup(seed, mssC, sys_ID='C')
     print(f'Seed used for convergence test is {seed}.')
     return seed
 
 #%%
 if __name__ == '__main__':
-    # run_UA_AvC()
-    run_ss_AvC(N=100)
+    run_UA_AvC(seed=874)
+    # run_ss_AvC(seed=223, N=100)
     # seed = 952
     # run_modelB(mdl, N, T, t_step, method='BDF', seed=seed)
     # out = analyze_vars(seed, N, 'B')
