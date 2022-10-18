@@ -92,6 +92,7 @@ def add_metrics(model, biogas, wastewater, units):
     R1, R2 = units
     S_h2_i_mass = eff.components.S_h2.i_mass
     S_ch4_i_mass = eff.components.S_ch4.i_mass
+    cmps_i_COD = eff.components.i_COD
     
     @metric(name='R1 VFAs', units='g/L', element='Stage_1')
     def get_stage1_VFAs():
@@ -111,7 +112,7 @@ def add_metrics(model, biogas, wastewater, units):
     
     @metric(name='Total COD removal', units='%', element='System')
     def get_rCOD():
-        return (1 - eff.COD/inf.COD)*100
+        return (1 - sum(eff.mass*cmps_i_COD)/sum(inf.mass*cmps_i_COD))*100
     
     @metric(name='H2 production', units='kg/d', element='Biogas')
     def get_QH2():
