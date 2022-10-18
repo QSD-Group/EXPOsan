@@ -142,8 +142,8 @@ R1_ss_conds = {
     'S_ac': 2.00250371674824*1e3,
     'S_h2': 0.00850364943532684*1e3,
     'S_ch4': 0.0000422133982597226*1e3,
-    'S_IC': 0.244296234124982*1e3,
-    'S_IN': 0.216115320077251*1e3,
+    'S_IC': 0.0951*C_mw*1e3,
+    'S_IN': 0.0945*N_mw*1e3,
     'S_I': 0.027310256066728*1e3,
     'X_c': 0.146203507058736*1e3,
     'X_ch': 0.0286018513139117*1e3,
@@ -169,8 +169,8 @@ R2_ss_conds = {
     'S_ac': 0.00574002755366853*1e3,
     'S_h2': 3.76969944940856e-08*1e3,
     'S_ch4': 0.0499411746585487*1e3,
-    'S_IC': 0.525579793735968*1e3,
-    'S_IN': 0.223232426903785*1e3,
+    'S_IC': 0.0951*C_mw*1e3,
+    'S_IN': 0.0945*N_mw*1e3,
     'S_I': 0.105601391746794*1e3,
     'X_c': 0.0897520281015078*1e3,
     'X_ch': 0.00108163641708242*1e3,
@@ -211,10 +211,7 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
     ############# load process model ###########################
     adm1 = pc.ADM1()
     
-    ############# sysA unit operation ########################
-    R1_init_conds = R1_init_conds or default_R1_init_conds
-    R2_init_conds = R2_init_conds or default_R2_init_conds
-    
+    ############# sysA unit operation ########################   
     H2E = AB('H2E', ins=[brewery_ww, 'return_1'], outs=('sidestream_1', ''), 
             split=(split_1, 1-split_1), V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
             retain_cmps=('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro'))
@@ -243,14 +240,18 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
     bg2_B = WasteStream('biogas_2B', phase='g')
     
     ############# sysB unit operation #################
+    R1_init_conds = R1_init_conds or default_R1_init_conds
+    R2_init_conds = R2_init_conds or default_R2_init_conds
     AnR1 = su.AnaerobicCSTR('AnR1', ins=inf_b, outs=(bg1_B, ''), 
                             V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
                             retain_cmps=('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro'))
     AnR2 = su.AnaerobicCSTR('AnR2', ins=AnR1-1, outs=(bg2_B, eff_B), 
                             V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
                             retain_cmps=('X_ac', 'X_h2'))
-    AnR1.set_init_conc(**R1_init_conds)
-    AnR2.set_init_conc(**R2_init_conds)
+    # AnR1.set_init_conc(**R1_init_conds)
+    # AnR2.set_init_conc(**R2_init_conds)
+    AnR1.set_init_conc(**R1_ss_conds)
+    AnR2.set_init_conc(**R2_ss_conds)
     sysB = System('baseline', path=(AnR1, AnR2))
     sysB.set_dynamic_tracker(AnR1, AnR2, bg1_B, bg2_B)
     
