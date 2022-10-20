@@ -97,6 +97,21 @@ def create_components(set_thermo=True):
     add_V_from_rho(Biocrude, 980)  #SS et al., PNNL 2021
     Biocrude.copy_models_from(Chemical('palmitamide'),('Cn',))  #Jones et al., 2014
     
+    Biooil = Component('Biooil',phase='l',particle_size='Soluble',
+                        formula='C100H165O1.5N',degradability='Undegradable',organic=False)
+    Biooil.HHV = 45.4*10**6*Biooil.MW/1000  #Li et al., 2018
+    add_V_from_rho(Biooil, 794)  #SS et al., PNNL 2016
+    Biooil.copy_models_from(Chemical('hexadecane'),('Cn',))  #Jones et al., 2014
+    
+    #Delete Biooil
+    #Add Gasline (octane), diesel (C16H34), and Heavy_oil (C23H48)
+    
+    
+    
+    
+    
+    
+    
     HTLaqueous = Component('HTLaqueous',phase='l',particle_size='Soluble',
                         degradability='Undegradable',organic=False)
     add_V_from_rho(HTLaqueous, 1000)
@@ -107,11 +122,7 @@ def create_components(set_thermo=True):
     add_V_from_rho(HTaqueous, 1000)
     HTaqueous.copy_models_from(Chemical('H2O'),('Cn',))  #HTaqueous referd to HT aqueous waste
     
-    Biooil = Component('Biooil',phase='l',particle_size='Soluble',
-                        formula='C100H165O1.5N',degradability='Undegradable',organic=False)
-    Biooil.HHV = 45.4*10**6*Biooil.MW/1000  #Li et al., 2018
-    add_V_from_rho(Biooil, 794)  #SS et al., PNNL 2016
-    Biooil.copy_models_from(Chemical('hexadecane'),('Cn',))  #Jones et al., 2014
+   
 
     Struvite = Component('Struvite',search_ID='MagnesiumAmmoniumPhosphate',
                          formula='NH4MgPO4·H12O6',phase='s',
@@ -140,11 +151,16 @@ def create_components(set_thermo=True):
         i.copy_models_from(H2O,('sigma','epsilon','kappa','Cn','mu'))
         add_V_from_rho(i, 1000)
     
+    O2 = Component('O2',phase='g',particle_size='Dissolved gas',
+                    degradability='Undegradable',organic=False)
+    
+    N2 = Component('N2',phase='g',particle_size='Dissolved gas',
+                    degradability='Undegradable',organic=False)
     
     CH4 = Component('CH4',phase='g',particle_size='Dissolved gas',
                     degradability='Slowly',organic=True)
     
-    C2H6 = Component('C2H6',phase='g',particle_size='Dissolved gas',
+    C2H6 = Component('C2H6',search_ID='ethane',phase='g',particle_size='Dissolved gas',
                    degradability='Slowly',organic=True)
     
     C3H8 = Component('C3H8',phase='g',particle_size='Dissolved gas',
@@ -191,7 +207,7 @@ def create_components(set_thermo=True):
                        Struvite,Biochar,Residual,
                        Biocrude,Biooil,
                        HTLaqueous,HTaqueous,C,N,P,
-                       CH4,C2H6,C3H8,C5H12,CO2,CO,H2,
+                       O2,N2,CH4,C2H6,C3H8,C5H12,CO2,CO,H2,
                        H2SO4,H3PO4,MgCl2,NaOH,NH42SO4,H2O,NH3,
                        Terphenyl])
     

@@ -51,11 +51,13 @@ __all__ = (
     'SludgeLab',
     'HTL',
     'HT',
+    'HC',
     'AcidExtraction',
     'HTLmixer',
     'StruvitePrecipitation',
     'CHG',
-    'MembraneDistillation')
+    'MembraneDistillation',
+    'GasMixer')
 
 
 class SludgeLab(SanUnit):
@@ -177,6 +179,9 @@ class HTL(SanUnit):
         HTLaqueous.imass['H2O'] = dewatered_sludge.imass['H2O']-biocrude.imass['H2O']+\
             dewatered_sludge.imass['Sludge_ash'] #assume ash goes to water
         
+        for stream in [biochar,HTLaqueous,biocrude,offgas]:
+            stream.T=dewatered_sludge.T
+            
         # separations.vle(self.ins[0], *self.outs, self.T, self.P,multi_stream=self._multi_stream)
 
     
@@ -324,7 +329,12 @@ class HT(SanUnit):
         
         HTaqueous.imass['HTaqueous'] = biocrude.F_mass-biooil.imass['Biooil']-gas_mass
         #HTaqueous is liquid waste from HT
-            
+
+        for stream in [HTaqueous,fuel_gas,biooil]:
+            stream.T=biocrude.T
+
+        fuel_gas.phase='g'
+        
     @property
     def biooil_C(self):
         return min(self.outs[2].F_mass*self.biooil_C_ratio,self.ins[0]._source.biocrude_C)
@@ -365,6 +375,90 @@ class HT(SanUnit):
         pass
    
    
+
+
+
+class HC(SanUnit):
+    
+    '''
+    Hydrocracking further cracks down heavy part in HT biooil to diesel and gasoline.
+    
+    Parameters
+    ----------
+    ins: Iterable (stream)
+    biocrude
+    outs: Iterable (stream)
+    HTaqueous, fuel_gas, biooil
+    '''
+    
+    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream',\
+                 biooil_ratio=0.77,gas_ratio=0.07,#Jones et al., 2014
+                 co_ratio=0.128,co2_ratio=0.007,
+                 c2h6_ratio=0.188,c3h8_ratio=0.107,c5h12_ratio=0.09,
+                 biooil_C_ratio=0.855,biooil_N_ratio=0.01,
+                 **kwargs):
+        SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
+        self.biooil_ratio=biooil_ratio
+        self.gas_ratio=gas_ratio
+        self.c5h12_ratio=c5h12_ratio
+        self.co_ratio=co_ratio
+        self.co2_ratio=co2_ratio
+        self.c2h6_ratio=c2h6_ratio
+        self.c3h8_ratio=c3h8_ratio
+        self.biooil_C_ratio = biooil_C_ratio
+        self.biooil_N_ratio = biooil_N_ratio
+
+    _N_ins = 1
+    _N_outs = 3
+        
+    def _run(self):
+        
+        biocrude = self.ins[0]
+        HTaqueous,fuel_gas,biooil = self.outs
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class AcidExtraction(SanUnit):
     
     '''
@@ -402,6 +496,9 @@ class AcidExtraction(SanUnit):
         
         extracted.copy_like(acid)
         extracted.imass['P']=biochar.F_mass-residual.F_mass
+        
+        residual.T = biochar.T
+        extracted.T = acid.T
         
     @property
     def residual_C(self):
@@ -451,6 +548,8 @@ class HTLmixer(SanUnit):
         mixture.imass['H2O']=HTLaqueous.F_mass+extracted.F_mass-\
             mixture.imass['C']-mixture.imass['N']-mixture.imass['P'] #Represented by H2O except C, N, P
         
+        mixture.T = HTLaqueous.T
+        
     def _design(self):
         pass
     
@@ -493,7 +592,10 @@ class StruvitePrecipitation(SanUnit):
         effluent.imass['N'] -= struvite.imass['Struvite']*self.P_in_struvite/31*14
         effluent.imass['H2O'] += (supply_MgCl2.imass['MgCl2']-\
                                        struvite.imass['Struvite']*(1-self.P_in_struvite*(1+14/31)))
-
+        
+        struvite.T = mixture.T
+        effluent.T = mixture.T
+        
     @property
     def struvite_P(self):
         return self.outs[0].imass['Struvite']*self.P_in_struvite
@@ -565,6 +667,11 @@ class CHG(SanUnit):
         effluent.imass['H2O']=CHGfeed.F_mass-CHGfuel_gas_mass-effluent.imass['C']-\
             effluent.imass['N']-effluent.imass['P']
         
+        CHGfuelgas.T = CHGfeed.T
+        effluent.T = CHGfeed.T
+        
+        CHGfuelgas.phase='g'
+        
     def _design(self):
         pass
     
@@ -608,9 +715,54 @@ class MembraneDistillation(SanUnit):
         ww.imass['N']*=(1-self.N_recovery_rate)
         ww.imass['H2O']+=ww.imass['N']*self.N_recovery_rate+acid.imass['H2SO4']-\
             ammoniasulfate.imass['NH42SO4']
+        ammoniasulfate.T = influent.T
+        ww.T = influent.T
         
     def _design(self):
         pass
     
     def _cost(self):
         pass
+    
+class GasMixer(SanUnit):
+    
+    '''
+    Mix fuel gas from HT and CHG.
+    
+    Parameters
+    ----------
+    ins: Iterable (stream)
+        ht_fuel_gas, chg_fuel_gas
+    outs: Iterable (stream)
+        fuel_gas
+    '''
+    
+    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream',**kwargs):
+        SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
+
+    _N_ins = 2
+    _N_outs = 1
+        
+    def _run(self):
+        
+        ht_fuel_gas, chg_fuel_gas = self.ins
+        fuel_gas = self.outs[0]
+        fuel_gas.copy_like(ht_fuel_gas)
+        for gas in ['CH4','CO','CO2','C2H6','H2']:
+            fuel_gas.imass[gas] += chg_fuel_gas.imass[gas]
+        
+    def _design(self):
+        pass
+    
+    def _cost(self):
+        pass   
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
