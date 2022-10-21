@@ -212,7 +212,7 @@ def plot_kde2d_metrics(seed, model, sys_ID):
         fig.savefig(ospath.join(figures_path, f'sys{sys_ID}_{x}_vs_{y}.png'), dpi=300)
         del fig, ax
 
-def plot_scatter(seed, modelA, modelC, sysB_metrics=None):
+def plot_scatter(seed, modelA, modelC, bl_metrics=None):
     nx = len(modelA.parameters)
     ny = len(modelA.metrics)
     if modelA.table is None:
@@ -226,20 +226,20 @@ def plot_scatter(seed, modelA, modelC, sysB_metrics=None):
     dfc_x = modelC.table.iloc[:, :nx]
     dfc_y = modelC.table.iloc[:, nx:]
     fig, axes = plt.subplots(ny, nx, sharex=False, sharey=False, 
-                             figsize=(nx*2.5, ny*2.5))
+                             figsize=(nx*2.5, ny*2.5)) 
+    xlct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
+    ylct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
     for j in range(ny):
         ya = dfa_y.iloc[:,j].values
         yc = dfc_y.iloc[:,j].values
-        try: yb = sysB_metrics[j]
+        try: yb = bl_metrics[j]
         except: yb = -1
-        ylct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
         ymin = max(0, min(np.min(ya), np.min(yc), yb))
         ymax = max(np.max(ya), np.max(yc), yb)
         y_ticks = ylct.tick_values(ymin, ymax)
         for i in range(nx):
             xa = dfa_x.iloc[:,i].values
             xc = dfc_x.iloc[:,i].values
-            xlct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
             x_ticks = xlct.tick_values(np.min(xa), np.max(xa))
             ax = axes[j,i]
             ax.axhline(y=yb, ls='-', lw=0.3, c='black')
@@ -262,6 +262,58 @@ def plot_scatter(seed, modelA, modelC, sysB_metrics=None):
     fig.subplots_adjust(wspace=0., hspace=0.)
     fig.savefig(ospath.join(figures_path, f'AvC_table_{seed}.png'), dpi=300)
     return fig, axes
+
+def plot_2d_scatter(seed, model, bl_metrics=None):
+    npr = len(model.parameters)
+    nmt = len(model.metrics)
+    if model.table is None:
+        path = ospath.join(results_path, f'sysC_table_{seed}.xlsx')
+        model.table = load_data(path=path, header=[0,1])
+    df_p = model.table.iloc[:, :npr]
+    df_m = model.table.iloc[:, npr:]    
+    nplot = ceil(nmt/2)
+    nrow = ceil(nplot/2)
+    xlct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
+    ylct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
+    for i in range(npr):
+        fig, axes = plt.subplots(nrow, 2, sharex=False, sharey=False, 
+                                 figsize=(6, nrow*2.5))
+        c = df_p.iloc[:,i].values
+        for j, ax in zip(range(nplot), axes.ravel()):
+            x = df_m.iloc[:,j*2].values
+            y = df_m.iloc[:,j*2+1].values
+            try: xmin = np.min(x)
+            except: breakpoint()
+            xmax = np.max(x)
+            ymin = np.min(y)
+            ymax = np.max(y)
+            im = ax.scatter(x, y, marker='o', s=1, c=c, cmap='viridis')
+            if bl_metrics is not None:
+                x_bl, y_bl = bl_metrics[j*2: (j*2+2)]
+                ax.scatter(x_bl, y_bl, s=1.5, marker='^', c='black')
+                if x_bl < xmin: xmin = x_bl
+                elif x_bl > xmax: xmax = x_bl
+                if y_bl < ymin: ymin = y_bl
+                elif y_bl > ymax: ymax = y_bl
+            ax.tick_params(axis='both', which='both', 
+                           direction='inout', labelsize=10.5)
+            x_ticks = xlct.tick_values(xmin, xmax)
+            y_ticks = ylct.tick_values(ymin, ymax)
+            ax.xaxis.set_ticks(x_ticks)
+            ax.yaxis.set_ticks(y_ticks)
+            ax2x = ax.secondary_xaxis('top')
+            ax2x.xaxis.set_ticks(x_ticks)
+            ax2x.tick_params(axis='x', which='both', direction='in')
+            ax2x.xaxis.set_ticklabels([])
+            ax2y = ax.secondary_yaxis('right')
+            ax2y.yaxis.set_ticks(y_ticks)
+            ax2y.tick_params(axis='y', which='both', direction='in')
+            ax2y.yaxis.set_ticklabels([])
+            cbar = fig.colorbar(im, ax=ax)
+            cbar.ax.tick_params(labelsize=10.5)
+        fig.subplots_adjust(wspace=0., hspace=0.)
+        fig.savefig(ospath.join(figures_path, f'2dscatter_param{i}_{seed}.png'), dpi=300)
+        del fig, axes
 
 def plot_ss_convergence(seed, N, unit='CH4E', prefix='ss', sys_ID='A', data=None,
                         baseline_sys=None, baseline_unit_ID='AnR2'):
@@ -349,12 +401,18 @@ def run_UA_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
     run_model(mdlA, N, T, t_step, method='BDF', sys_ID='A', seed=seed)
     run_model(mdlC, N, T, t_step, method='BDF', sys_ID='C', seed=seed)
     outC = analyze_vars(seed, N, prefix='sys', sys_ID='C')
-    mdlB._system.simulate(t_span=(0, T), method='BDF')
-    sysB_metrics = [m.getter() for m in mdlB.metrics]
-    if plot: 
-        plot_scatter(seed, mdlA, mdlC, sysB_metrics)
-        plot_ss_convergence(seed, N, unit='R2', prefix='sys', sys_ID='C',
-                            data=outC, baseline_sys=mdlB._system)
+    for p in mdlC.parameters:
+        if 'removal' in p.name: p.setter(0)
+        else: p.setter(1e-4)
+    temp_sysC = mdlC._system
+    temp_sysC.simulate(t_span=(0, T), method='BDF')
+    tmC = [m.getter() for m in mdlC.metrics]
+    if plot:
+        plot_scatter(seed, mdlA, mdlC, tmC)
+        plot_ss_convergence(seed, N, unit='R1', prefix='sys', sys_ID='C', data=outC,
+                            baseline_sys=temp_sysC, baseline_unit_ID='R1')
+        plot_ss_convergence(seed, N, unit='R2', prefix='sys', sys_ID='C', data=outC,
+                            baseline_sys=temp_sysC, baseline_unit_ID='R2')
     print(f'Seed used for uncertainty analysis of systems A & C is {seed}.')
     for mdl in (mdlA, mdlC):
         for p in mdl.parameters:
@@ -389,8 +447,8 @@ def run_ss_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
     return seed
 
 #%%
-if __name__ == '__main__':
-    run_UA_AvC(seed=874)
+# if __name__ == '__main__':
+#     run_UA_AvC(seed=123, N=10)
     # run_ss_AvC(seed=223, N=100)
     # seed = 952
     # run_modelB(mdl, N, T, t_step, method='BDF', seed=seed)

@@ -14,8 +14,8 @@ for license details.
 import qsdsan as qs
 # from warnings import warn
 from chaospy import distributions as shape
-from qsdsan.utils import ospath, time_printer
-from exposan.metab_mock import systems as s, results_path
+from qsdsan.utils import ospath, time_printer, get_SRT
+from exposan.metab_mock import systems as s, results_path, biomass_IDs
 from biosteam.evaluation._utils import var_indices
 # import pandas as pd
 import numpy as np
@@ -42,7 +42,7 @@ get_uniform_w_frac = lambda b, frac: shape.Uniform(lower=b*(1-frac), upper=b*(1+
 
 def add_degas_params(model, bioreactors, membranes, 
                      b_split=0.5, var_split=0.8, 
-                     b_ermv=0.75, bounds_ermv=(0.25, 0.85)):
+                     b_ermv=0.75, bounds_ermv=(0., 0.8)):
     param = model.parameter
     H2E, CH4E = bioreactors
     DM1, DM2 = membranes
@@ -93,6 +93,10 @@ def add_metrics(model, biogas, wastewater, units):
     S_h2_i_mass = eff.components.S_h2.i_mass
     S_ch4_i_mass = eff.components.S_ch4.i_mass
     cmps_i_COD = eff.components.i_COD
+    
+    @metric(name='SRT', units='d', element='System')
+    def get_sys_SRT():
+        return get_SRT(model._system, biomass_IDs, (R1.ID, R2.ID))
     
     @metric(name='R1 VFAs', units='g/L', element='Stage_1')
     def get_stage1_VFAs():
