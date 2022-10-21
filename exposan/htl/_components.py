@@ -97,19 +97,22 @@ def create_components(set_thermo=True):
     add_V_from_rho(Biocrude, 980)  #SS et al., PNNL 2021
     Biocrude.copy_models_from(Chemical('palmitamide'),('Cn',))  #Jones et al., 2014
     
-    Biooil = Component('Biooil',phase='l',particle_size='Soluble',
-                        formula='C100H165O1.5N',degradability='Undegradable',organic=False)
-    Biooil.HHV = 45.4*10**6*Biooil.MW/1000  #Li et al., 2018
-    add_V_from_rho(Biooil, 794)  #SS et al., PNNL 2016
-    Biooil.copy_models_from(Chemical('hexadecane'),('Cn',))  #Jones et al., 2014
+    # Biooil = Component('Biooil',phase='l',particle_size='Soluble',
+    #                     formula='C100H165O1.5N',degradability='Undegradable',organic=False)
+    # Biooil.HHV = 45.4*10**6*Biooil.MW/1000  #Li et al., 2018
+    # add_V_from_rho(Biooil, 794)  #SS et al., PNNL 2016
+    # Biooil.copy_models_from(Chemical('hexadecane'),('Cn',))  #Jones et al., 2014
     
     #Delete Biooil
-    #Add Gasline (octane), diesel (C16H34), and Heavy_oil (C23H48)
+    #Add Gasoline (octane), diesel (C16H34), and Heavy_oil (C23H48)
+    Gasoline = Component('Gasoline',search_ID='Octane',phase='l',particle_size='Soluble',
+                        formula='C8H18',degradability='Slowly',organic=True)
     
+    Diesel = Component('Diesel',search_ID='C16H34',phase='l',particle_size='Soluble',
+                        formula='C16H34',degradability='Slowly',organic=True)
     
-    
-    
-    
+    Heavy_oil = Component('Heavy_oil',search_ID='C23H48',phase='l',particle_size='Soluble',
+                        formula='C23H48',degradability='Slowly',organic=True)
     
     
     HTLaqueous = Component('HTLaqueous',phase='l',particle_size='Soluble',
@@ -166,7 +169,7 @@ def create_components(set_thermo=True):
     C3H8 = Component('C3H8',phase='g',particle_size='Dissolved gas',
                    degradability='Slowly',organic=True)
     
-    C5H12 = Component('C5H12',phase='g',particle_size='Dissolved gas',
+    C4H10 = Component('C4H10',phase='g',particle_size='Dissolved gas',
                    degradability='Slowly',organic=True)
     
     CO2 = Component('CO2',phase='g',particle_size='Dissolved gas',
@@ -205,9 +208,9 @@ def create_components(set_thermo=True):
 
     cmps = Components([Sludge_lipid,Sludge_protein,Sludge_carbo,Sludge_ash,
                        Struvite,Biochar,Residual,
-                       Biocrude,Biooil,
+                       Biocrude,Gasoline,Diesel,Heavy_oil,#Biooil,
                        HTLaqueous,HTaqueous,C,N,P,
-                       O2,N2,CH4,C2H6,C3H8,C5H12,CO2,CO,H2,
+                       O2,N2,CH4,C2H6,C3H8,C4H10,CO2,CO,H2,
                        H2SO4,H3PO4,MgCl2,NaOH,NH42SO4,H2O,NH3,
                        Terphenyl])
     
