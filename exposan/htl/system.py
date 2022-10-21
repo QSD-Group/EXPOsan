@@ -33,12 +33,11 @@ from exposan.htl._components import create_components
 cmps = create_components()
 htl_thermo = qs.get_thermo()
 
-fake_sludge = qs.Stream('fake_sludge',H2O=10/0.01*907.185/24,units='kg/hr',T=298.15)
+fake_sludge = qs.Stream('fake_sludge',H2O=100000,units='kg/hr',T=298.15)
 #set H2O equal to the total sludge input flow
 #assume 99% moisture, 10 us tons of dw sludge per day
-acidforP = qs.Stream('H2SO4_1')
-supply_mgcl2 = qs.Stream('MgCl2')
-acidforN = qs.Stream('H2SO4_2')
+
+
 
 
 
@@ -70,27 +69,36 @@ HTL = su.HTL('A110',ins=H1-0,outs=('biochar','HTLaqueous','biocrude','offgas'))
 
 H2 = suu.HXutility('A400',ins=HTL-2,outs='heated_biocrude',T=405+273.15,init_with='Stream')
 
-HT = su.HT('A410',ins=H2-0,outs=('HTaqueous','HT_fuel_gas','biooil'))
+HT = su.HT('A410',ins=(H2-0,'H2'),outs=('HTaqueous','HT_fuel_gas','gasoline','diesel','heavy_oil'))
 
-Acidex = su.AcidExtraction('A200',ins=(HTL-0,acidforP),outs=('residual','extracted'))
+HC = su.HC('A420',ins=(HT-4,'H2'),outs=('gasoline', 'diesel', 'offgas'))
+
+Acidex = su.AcidExtraction('A200',ins=(HTL-0,'H2SO4'),outs=('residual','extracted'))
 
 M1 = su.HTLmixer('A300',ins=(HTL-1,Acidex-1),outs=('mixture'))
 
-StruPre = su.StruvitePrecipitation('A310',ins=(M1-0,supply_mgcl2),outs=('struvite','CHGfeed'))
+StruPre = su.StruvitePrecipitation('A310',ins=(M1-0,'MgCl2'),outs=('struvite','CHGfeed'))
 
 H3 = suu.HXutility('A320',ins=StruPre-1,outs='heated_aqueous',T=355+273.15,init_with='Stream')
 
 CHG = su.CHG('A330',ins=H3-0,outs=('CHG_fuel_gas','effluent'))
 
-MemDis = su.MembraneDistillation('A340',ins=(CHG-1,acidforN),outs=('AmmoniaSulfate','ww'))
+MemDis = su.MembraneDistillation('A340',ins=(CHG-1,'H2SO4'),outs=('AmmoniaSulfate','ww'))
+
+
+# =============================================================================
+# Add off gas from HTL and HC to GasMixer!
+# =============================================================================
+
+
 
 GasMixer = su.GasMixer('S500',ins=(HT-1,CHG-0),outs=('fuel_gas'))
 
 CHP = suu.CHP('A500',ins=(GasMixer-0,'natural_gas','air'),outs=('emission','solid_ash'))
 
-HXN = suu.HeatExchangerNetwork('HXN')
+# HXN = suu.HeatExchangerNetwork('HXN')
 
-sys=qs.System('sys',path=(SluL,SluT,SluC,H1,HTL,H2,HT,Acidex,M1,StruPre,H3,CHG,GasMixer,CHP,MemDis),facilities=(HXN,))
+sys=qs.System('sys',path=(SluL,SluT,SluC,H1,HTL,H2,HT,HC,Acidex,M1,StruPre,H3,CHG,GasMixer,CHP,MemDis))#,facilities=(HXN,))
 
 
 
@@ -305,14 +313,14 @@ def set_c3h8_ratio_HT(i):
     HT.c3h8_ratio=i
 
 dist = shape.Normal(0.09,0.00045)
-@param(name='c5h12_ratio',
+@param(name='c4h10_ratio',
         element=HT,
         kind='coupled',
         units='-',
         baseline=0.09,
         distribution=dist)
-def set_c5h12_ratio_HT(i):
-    HT.c5h12_ratio=i
+def set_c4h10_ratio_HT(i):
+    HT.c4h10_ratio=i
 
 dist = shape.Triangle(0.846,0.854,0.86)
 @param(name='biooil_C_ratio',
