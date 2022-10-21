@@ -276,21 +276,26 @@ class HT(SanUnit):
     Parameters
     ----------
     ins: Iterable (stream)
-    biocrude
+    biocrude,hydrogen_gas
     outs: Iterable (stream)
-    HTaqueous, fuel_gas, biooil
+    HTaqueous, fuel_gas, gasoline, diesel, heavy_oil
     '''
     
-    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream',\
+    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream',
                  biooil_ratio=0.77,gas_ratio=0.07,#Jones et al., 2014
+                 biocrude_h2_ratio = 18.14,
+                 gasoline_ratio = 0.103, heavy_oil_ratio = 0.113,
                  co_ratio=0.128,co2_ratio=0.007,
-                 c2h6_ratio=0.188,c3h8_ratio=0.107,c5h12_ratio=0.09,
+                 c2h6_ratio=0.188,c3h8_ratio=0.107,c4h10_ratio=0.09,
                  biooil_C_ratio=0.855,biooil_N_ratio=0.01,
                  **kwargs):
         SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
         self.biooil_ratio=biooil_ratio
         self.gas_ratio=gas_ratio
-        self.c5h12_ratio=c5h12_ratio
+        self.biocrude_h2_ratio=biocrude_h2_ratio
+        self.gasoline_ratio=gasoline_ratio
+        self.heavy_oil_ratio=heavy_oil_ratio  
+        self.c4h10_ratio=c4h10_ratio
         self.co_ratio=co_ratio
         self.co2_ratio=co2_ratio
         self.c2h6_ratio=c2h6_ratio
@@ -298,42 +303,52 @@ class HT(SanUnit):
         self.biooil_C_ratio = biooil_C_ratio
         self.biooil_N_ratio = biooil_N_ratio
 
-    _N_ins = 1
-    _N_outs = 3
+    _N_ins = 2
+    _N_outs = 5
         
     def _run(self):
         
-        biocrude = self.ins[0]
-        HTaqueous,fuel_gas,biooil = self.outs
+        biocrude,hydrogen_gas = self.ins
+        HTaqueous,fuel_gas,gasoline,diesel,heavy_oil = self.outs
         
-        biooil.imass['Biooil'] = biocrude.F_mass*self.biooil_ratio
+        hydrogen_gas.imass['H2'] = biocrude.F_mass/self.biocrude_h2_ratio
+        hydrogen_gas.phase='g'
+        
+        biooil_total_mass = biocrude.F_mass*self.biooil_ratio
+        
+        for i in (self.gasoline_ratio,self.heavy_oil_ratio):
+            if i<0: i=0
+        gasoline.imass['Gasoline'] = biooil_total_mass*self.gasoline_ratio
+        diesel.imass['Diesel'] = biooil_total_mass*(1-self.gasoline_ratio-self.heavy_oil_ratio)
+        heavy_oil.imass['Heavy_oil'] = biooil_total_mass*self.heavy_oil_ratio
+        
         gas_mass = biocrude.F_mass*self.gas_ratio
         
-        for i in (self.c5h12_ratio,self.co_ratio,self.co2_ratio,self.c2h6_ratio,self.c3h8_ratio,
-                    1-self.c5h12_ratio-self.co_ratio-self.co2_ratio-self.c2h6_ratio-\
+        fuel_gas.phase='g'
+        
+        for i in (self.c4h10_ratio,self.co_ratio,self.co2_ratio,self.c2h6_ratio,self.c3h8_ratio,
+                    1-self.c4h10_ratio-self.co_ratio-self.co2_ratio-self.c2h6_ratio-\
                     self.c3h8_ratio):
             if i<0: i=0
     
         fuelgas_HT_composition = {
-            'C5H12':self.c5h12_ratio,
+            'C4H10':self.c4h10_ratio,
             'CO':self.co_ratio,
             'CO2':self.co2_ratio,
             'C2H6':self.c2h6_ratio,
             'C3H8':self.c3h8_ratio,
-            'CH4':1-self.c5h12_ratio-self.co_ratio-self.co2_ratio-self.c2h6_ratio-\
+            'CH4':1-self.c4h10_ratio-self.co_ratio-self.co2_ratio-self.c2h6_ratio-\
                 self.c3h8_ratio
             }
             
         for name,ratio in fuelgas_HT_composition.items():
             fuel_gas.imass[name] = gas_mass * ratio
         
-        HTaqueous.imass['HTaqueous'] = biocrude.F_mass-biooil.imass['Biooil']-gas_mass
+        HTaqueous.imass['HTaqueous'] = biocrude.F_mass+hydrogen_gas.F_mass-biooil_total_mass-gas_mass
         #HTaqueous is liquid waste from HT
 
-        for stream in [HTaqueous,fuel_gas,biooil]:
+        for stream in [HTaqueous,fuel_gas,gasoline,diesel,heavy_oil]:
             stream.T=biocrude.T
-
-        fuel_gas.phase='g'
         
     @property
     def biooil_C(self):
@@ -343,7 +358,7 @@ class HT(SanUnit):
     def HTfuel_gas_C(self):
         HTfuel_gas_C = 0
         fuelgas_carbo_ratio = {
-            'C5H12':60/72,
+            'C4H10':60/72,
             'CO':12/28,
             'CO2':12/44,
             'C2H6':24/30,
@@ -375,9 +390,6 @@ class HT(SanUnit):
         pass
    
    
-
-
-
 class HC(SanUnit):
     
     '''
@@ -386,79 +398,50 @@ class HC(SanUnit):
     Parameters
     ----------
     ins: Iterable (stream)
-    biocrude
+    heavy_oil, hydrogen_gas
     outs: Iterable (stream)
-    HTaqueous, fuel_gas, biooil
+    gasoline, diesel, off_gas
     '''
     
-    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream',\
-                 biooil_ratio=0.77,gas_ratio=0.07,#Jones et al., 2014
-                 co_ratio=0.128,co2_ratio=0.007,
-                 c2h6_ratio=0.188,c3h8_ratio=0.107,c5h12_ratio=0.09,
-                 biooil_C_ratio=0.855,biooil_N_ratio=0.01,
+    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream',
+                 heavy_oil_h2_ratio=45.17,gasoline_hc_ratio=0.303,off_gas_ratio=0.0394,
                  **kwargs):
         SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
-        self.biooil_ratio=biooil_ratio
-        self.gas_ratio=gas_ratio
-        self.c5h12_ratio=c5h12_ratio
-        self.co_ratio=co_ratio
-        self.co2_ratio=co2_ratio
-        self.c2h6_ratio=c2h6_ratio
-        self.c3h8_ratio=c3h8_ratio
-        self.biooil_C_ratio = biooil_C_ratio
-        self.biooil_N_ratio = biooil_N_ratio
-
-    _N_ins = 1
+        self.heavy_oil_h2_ratio=heavy_oil_h2_ratio
+        self.gasoline_hc_ratio=gasoline_hc_ratio
+        self.off_gas_ratio=off_gas_ratio
+        
+    _N_ins = 2
     _N_outs = 3
         
     def _run(self):
         
-        biocrude = self.ins[0]
-        HTaqueous,fuel_gas,biooil = self.outs
+        heavy_oil, hydrogen_gas = self.ins
+        gasoline, diesel, off_gas = self.outs
+        
+        hydrogen_gas.imass['H2'] = heavy_oil.F_mass/self.heavy_oil_h2_ratio
+        hydrogen_gas.phase='g'
+        
+        for i in [self.gasoline_hc_ratio,self.off_gas_ratio]:
+            if i < 0: i=0
+        
+        gasoline.imass['Gasoline'] = (heavy_oil.F_mass+hydrogen_gas.F_mass)*self.gasoline_hc_ratio
 
+        diesel.imass['Diesel'] = (heavy_oil.F_mass+hydrogen_gas.F_mass)*\
+            (1-self.gasoline_hc_ratio-self.off_gas_ratio)
+        
+        off_gas.imass['CO2'] = (heavy_oil.F_mass+hydrogen_gas.F_mass)*self.off_gas_ratio
+        
+        for stream in [gasoline, diesel, off_gas]:
+            stream.T=heavy_oil.T
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    def _design(self):
+        pass
+    
+    def _cost(self):
+        pass
+   
+    
 class AcidExtraction(SanUnit):
     
     '''
@@ -648,6 +631,8 @@ class CHG(SanUnit):
                   1-self.ch4_ratio-self.co_ratio-self.co2_ratio-self.c2h6_ratio):
             if i < 0: i = 0
         
+        CHGfuelgas.phase='g'
+        
         CHGfuel_gas_mass = CHGfeed.imass['C']*self.toc_tc_ratio*self.toc_to_gas_c_ratio/(self.\
             ch4_ratio*12/16+self.co_ratio*12/28+self.co2_ratio*12/44+self.c2h6_ratio*24/30)
 
@@ -670,7 +655,7 @@ class CHG(SanUnit):
         CHGfuelgas.T = CHGfeed.T
         effluent.T = CHGfeed.T
         
-        CHGfuelgas.phase='g'
+        
         
     def _design(self):
         pass
