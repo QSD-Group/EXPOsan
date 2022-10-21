@@ -37,11 +37,6 @@ fake_sludge = qs.Stream('fake_sludge',H2O=100000,units='kg/hr',T=298.15)
 #set H2O equal to the total sludge input flow
 #assume 99% moisture, 10 us tons of dw sludge per day
 
-
-
-
-
-
 #Use p-Terphenyl as the heating agent
 heating_oil = bst.UtilityAgent(
             'heating_oil',
@@ -63,42 +58,64 @@ SluC = suu.SludgeCentrifuge('A010',ins=SluT-1,outs=('Supernatant_2','Compressed_
                             init_with='Stream',solids=('Sludge_lipid','Sludge_protein','Sludge_carbo',
                                                        'Sludge_ash'))
 
-H1 = suu.HXutility('A100',ins=SluC-1,outs='heated_sludge',T=350+273.15,init_with='Stream')
+P1 = suu.Pump('P100',ins=SluC-1,outs='press_sludge',P=3049.7*6894.76) #Jones 2014: 3049.7 psia
 
-HTL = su.HTL('A110',ins=H1-0,outs=('biochar','HTLaqueous','biocrude','offgas'))
+H1 = suu.HXutility('A100',ins=P1-0,outs='heated_sludge',T=350+273.15,init_with='Stream')
 
-H2 = suu.HXutility('A400',ins=HTL-2,outs='heated_biocrude',T=405+273.15,init_with='Stream')
+HTL = su.HTL('A110',ins=H1-0,outs=('biochar','HTLaqueous','biocrude','offgas_HTL'))
 
-HT = su.HT('A410',ins=(H2-0,'H2'),outs=('HTaqueous','HT_fuel_gas','gasoline','diesel','heavy_oil'))
+P2 = suu.Pump('P400',ins=HTL-2,outs='press_biocrude',P=1530.0*6894.76) #Jones 2014: 1530.0 psia
 
-HC = su.HC('A420',ins=(HT-4,'H2'),outs=('gasoline', 'diesel', 'offgas'))
+H2 = suu.HXutility('A400',ins=P2-0,outs='heated_biocrude',T=405+273.15,init_with='Stream')
 
-Acidex = su.AcidExtraction('A200',ins=(HTL-0,'H2SO4'),outs=('residual','extracted'))
+HT = su.HT('A410',ins=(H2-0,'H2_HT'),outs=('HTaqueous','HT_fuel_gas','gasoline_HT','diesel_HT','heavy_oil'))
+
+P3 = suu.Pump('P401',ins=HT-4,outs='press_heavy_oil',P=1034.7*6894.76) #Jones 2014: 1034.7 psia
+
+H3 = suu.HXutility('A420',ins=P3-0,outs='heated_heavy_oil',T=375+273.15,init_with='Stream')
+#now is cooling, but will be heating after adding auxiliary HXutility for HT
+
+HC = su.HC('A430',ins=(H3-0,'H2_HC'),outs=('gasoline_HC', 'diesel_HC', 'offgas_HC'))
+
+Acidex = su.AcidExtraction('A200',ins=(HTL-0,'H2SO4_P'),outs=('residual','extracted'))
 
 M1 = su.HTLmixer('A300',ins=(HTL-1,Acidex-1),outs=('mixture'))
 
 StruPre = su.StruvitePrecipitation('A310',ins=(M1-0,'MgCl2'),outs=('struvite','CHGfeed'))
 
-H3 = suu.HXutility('A320',ins=StruPre-1,outs='heated_aqueous',T=355+273.15,init_with='Stream')
+P4 = suu.Pump('P300',ins=StruPre-1,outs='press_aqueous',P=3089.7*6894.76) #Jones 2014: 3089.7 psia
 
-CHG = su.CHG('A330',ins=H3-0,outs=('CHG_fuel_gas','effluent'))
+H4 = suu.HXutility('A320',ins=P4-0,outs='heated_aqueous',T=355+273.15,init_with='Stream')
 
-MemDis = su.MembraneDistillation('A340',ins=(CHG-1,'H2SO4'),outs=('AmmoniaSulfate','ww'))
+CHG = su.CHG('A330',ins=H4-0,outs=('CHG_fuel_gas','effluent'))
 
+MemDis = su.MembraneDistillation('A340',ins=(CHG-1,'H2SO4_N'),outs=('AmmoniaSulfate','ww'))
 
-# =============================================================================
-# Add off gas from HTL and HC to GasMixer!
-# =============================================================================
-
-
-
-GasMixer = su.GasMixer('S500',ins=(HT-1,CHG-0),outs=('fuel_gas'))
+GasMixer = su.GasMixer('S500',ins=(HTL-3,HT-1,HC-2,CHG-0),outs=('fuel_gas'))
 
 CHP = suu.CHP('A500',ins=(GasMixer-0,'natural_gas','air'),outs=('emission','solid_ash'))
 
+GasolineMixer = su.FuelMixer('T000',ins=(HT-2,HC-0),outs='Mixed_gasoline')
+
+DieselMixer = su.FuelMixer('T100',ins=(HT-3,HC-1),outs='Mixed_diesel')
+
+GasolineTank = suu.StorageTank('T001',ins=GasolineMixer-0,outs=('Gasoline_out'),tau=3*24)
+#store for 3 days based on Jones 2014
+
+DieselTank = suu.StorageTank('T101',ins=DieselMixer-0,outs=('Diesel_out'),tau=3*24)
+#store for 3 days based on Jones 2014
+
 # HXN = suu.HeatExchangerNetwork('HXN')
 
-sys=qs.System('sys',path=(SluL,SluT,SluC,H1,HTL,H2,HT,HC,Acidex,M1,StruPre,H3,CHG,GasMixer,CHP,MemDis))#,facilities=(HXN,))
+sys=qs.System('sys',path=(SluL,SluT,SluC,
+                          P1,H1,HTL,
+                          P2,H2,HT,
+                          P3,H3,HC,
+                          Acidex,M1,StruPre,
+                          P4,H4,CHG,
+                          GasMixer,CHP,MemDis,
+                          GasolineMixer,GasolineTank,
+                          DieselMixer,DieselTank))#,facilities=(HXN,))
 
 
 
