@@ -202,10 +202,10 @@ def create_components(set_thermo=True):
     NH3 = Component('NH3',phase='g',particle_size='Dissolved gas',
                     degradability='Undegradable',organic=False)
     
-    #heating agent
-    Terphenyl = Component('Terphenyl',CAS='92-94-4',phase='l',
-                          particle_size='Soluble',
-                          degradability='Slowly',organic=True)
+    # #heating agent
+    # Terphenyl = Component('Terphenyl',CAS='92-94-4',phase='l',
+    #                       particle_size='Soluble',
+    #                       degradability='Slowly',organic=True)
 
     cmps = Components([Sludge_lipid,Sludge_protein,Sludge_carbo,Sludge_ash,
                        Struvite,Biochar,Residual,
@@ -213,7 +213,8 @@ def create_components(set_thermo=True):
                        HTLaqueous,HTaqueous,C,N,P,
                        O2,N2,CH4,C2H6,C3H8,C4H10,CO2,CO,H2,
                        H2SO4,H3PO4,MgCl2,NaOH,NH42SO4,H2O,NH3,
-                       Terphenyl])
+                       # Terphenyl
+                       ])
     
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):

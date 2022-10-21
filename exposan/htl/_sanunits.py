@@ -42,11 +42,10 @@ References:
     https://doi.org/10.2172/1126336.
 '''
 
-# import biosteam as bst
+import biosteam as bst, qsdsan as qs
 from qsdsan import SanUnit
 from biosteam.units import StorageTank
-# from qsdsan.sanunits import HXutility
-# from thermosteam import MultiStream, separations
+from qsdsan.sanunits import HXutility
 
 __all__ = (
     'SludgeLab',
@@ -106,12 +105,11 @@ class SludgeLab(SanUnit):
     def _cost(self):
         pass
 
-
 class HTL(SanUnit):
     
     '''
     HTL converts dewatered sludge to biocrude, aqueous, off-gas, and biochar under
-    elevated temperature (350°C) and pressure. The products percentage (wt%) can be evaluatad
+    elevated temperature (350°C) and pressure. The products percentage (wt%) can be evaluated
     using revised MCA model (Li et al., 2017, Leow et al., 2018) with known sludge
     composition (protein%, lipid%, and carbohydrate%)
     
@@ -122,7 +120,7 @@ class HTL(SanUnit):
     outs: Iterable (stream)
         biochar, HTLaqueous, biocrude, offgas
     '''
-    # auxiliary_unit_names=('heat_exchanger',)
+    auxiliary_unit_names=('heat_exchanger',)
 
     def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream', 
                  biocrude_moisture_content=0.044,sludge_C_ratio=0.411,
@@ -139,29 +137,26 @@ class HTL(SanUnit):
         self.sludge_O_ratio=sludge_O_ratio
         self.biochar_C_N_ratio=biochar_C_N_ratio
         self.biochar_C_P_ratio=biochar_C_P_ratio
-        # self._load_components()
-        # self.heat_exchanger.T=25+273.15
+        self.heat_exchanger = HXutility(ID=None, ins=(None,), outs=None, thermo=self.thermo)
+        self._mixed_higherT = qs.Stream(f'{self.ID}_mixed_higherT')
+        self._mixed_lowerT = qs.Stream(f'{self.ID}_mixed_lowerT')
+        
     _N_ins = 1
     _N_outs = 4
-    
-    # def _load_components(self):
-    #     self._multi_stream = ms = MultiStream(None, thermo=self.thermo)
-    #     self.heat_exchanger = hx = HXutility(None, (None,), ms, thermo=self.thermo) 
-    #     hx.load_agent(heating_oil)
-    #     hx.owner = self.owner
-    #     self.heat_utilities = (*hx.heat_utilities, bst.HeatUtility(), bst.HeatUtility())
     
 
     def _run(self):
         dewatered_sludge=self.ins[0]
-        biochar,HTLaqueous,biocrude,offgas=self.outs
+        biochar,HTLaqueous,biocrude,offgas= outs = self.outs
+        for s in outs: s.T = dewatered_sludge.T
+        
         
         self.dewatered_sludge_afdw = dewatered_sludge_afdw =\
             dewatered_sludge.imass['Sludge_lipid']\
             + dewatered_sludge.imass['Sludge_protein']\
             + dewatered_sludge.imass['Sludge_carbo']
             
-        self.dewatered_sludge_dw = self.dewatered_sludge_afdw + dewatered_sludge.imass['Sludge_ash']
+        self.dewatered_sludge_dw = dewatered_sludge_afdw + dewatered_sludge.imass['Sludge_ash']
                                
         lipid_ratio = dewatered_sludge.imass['Sludge_lipid']/dewatered_sludge_afdw
         protein_ratio = dewatered_sludge.imass['Sludge_protein']/dewatered_sludge_afdw
@@ -180,15 +175,19 @@ class HTL(SanUnit):
         HTLaqueous.imass['H2O'] = dewatered_sludge.imass['H2O']-biocrude.imass['H2O']+\
             dewatered_sludge.imass['Sludge_ash'] #assume ash goes to water
         
-        for stream in [biochar,HTLaqueous,biocrude,offgas]:
-            stream.T=dewatered_sludge.T
-         
         biochar.P = 3029.7*6894.76 #Jones 2014: 3029.7 psia
         HTLaqueous.P = 30*6894.76 #Jones 2014: 30 psia
         biocrude.P = 30*6894.76
         offgas.P = 30*6894.76
-         
-        # separations.vle(self.ins[0], *self.outs, self.T, self.P,multi_stream=self._multi_stream)
+        
+        mixed_higherT, mixed_lowerT = self._mixed_higherT, self._mixed_lowerT
+        mixed_higherT.mix_from(outs)
+
+        for stream in outs: stream.T = 298.15
+        mixed_lowerT.mix_from(outs)
+
+        hx = self.heat_exchanger
+        hx.simulate_as_auxiliary_exchanger(inlet=mixed_higherT, outlet=mixed_lowerT)
 
     
     @property

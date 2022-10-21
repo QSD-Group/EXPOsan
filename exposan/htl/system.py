@@ -24,29 +24,21 @@ import qsdsan as qs
 import biosteam as bst
 import exposan.htl._sanunits as su
 from qsdsan import sanunits as suu
+from exposan.htl._process_settings import load_process_settings
 from exposan.htl._components import create_components
+
 
 # __all__ = ('create_system',)
 
 # def create_system():
-
+    
+load_process_settings()
 cmps = create_components()
-htl_thermo = qs.get_thermo()
 
 fake_sludge = qs.Stream('fake_sludge',H2O=100000,units='kg/hr',T=298.15)
 #set H2O equal to the total sludge input flow
 #assume 99% moisture, 10 us tons of dw sludge per day
 
-#Use p-Terphenyl as the heating agent
-heating_oil = bst.UtilityAgent(
-            'heating_oil',
-            Terphenyl=1, T=693.15, P=1516847.2, phase='l',
-            thermo=htl_thermo,T_limit=1000,
-            regeneration_price = 0.2378,
-            heat_transfer_efficiency = 0.9,
-        ) #values are not true
-
-bst.HeatUtility.heating_agents.append(heating_oil)
 
 SluL = su.SludgeLab('S000',ins=fake_sludge,outs='real_sludge')
 
@@ -61,8 +53,14 @@ SluC = suu.SludgeCentrifuge('A010',ins=SluT-1,outs=('Supernatant_2','Compressed_
 P1 = suu.Pump('P100',ins=SluC-1,outs='press_sludge',P=3049.7*6894.76) #Jones 2014: 3049.7 psia
 
 H1 = suu.HXutility('A100',ins=P1-0,outs='heated_sludge',T=350+273.15,init_with='Stream')
+# H1.register_alias('H1') # so that qs.main_flowsheet.H1 works as well
+
+#!!! currently the power/heat utilities of HTL_hx aren't added to HTL,
+# it'll be added in after I pulled in some updates from biosteam,
+# so we don't need to worry about it (I'm leaving this note to reminder myself)
 
 HTL = su.HTL('A110',ins=H1-0,outs=('biochar','HTLaqueous','biocrude','offgas_HTL'))
+HTL_hx = HTL.heat_exchanger
 
 P2 = suu.Pump('P400',ins=HTL-2,outs='press_biocrude',P=1530.0*6894.76) #Jones 2014: 1530.0 psia
 
@@ -119,7 +117,7 @@ sys=qs.System('sys',path=(SluL,SluT,SluC,
 
 
 
-sys.operating_hours=200000
+sys.operating_hours=8410 # 1 year = 8760 hr, 200000 is way too much
 
 
 sys.simulate()
@@ -127,6 +125,7 @@ sys.simulate()
 sys.diagram()
 
 # return sys
+
 
 
 
