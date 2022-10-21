@@ -44,6 +44,7 @@ References:
 
 # import biosteam as bst
 from qsdsan import SanUnit
+from biosteam.units import StorageTank
 # from qsdsan.sanunits import HXutility
 # from thermosteam import MultiStream, separations
 
@@ -181,7 +182,12 @@ class HTL(SanUnit):
         
         for stream in [biochar,HTLaqueous,biocrude,offgas]:
             stream.T=dewatered_sludge.T
-            
+         
+        biochar.P = 3029.7*6894.76 #Jones 2014: 3029.7 psia
+        HTLaqueous.P = 30*6894.76 #Jones 2014: 30 psia
+        biocrude.P = 30*6894.76
+        offgas.P = 30*6894.76
+         
         # separations.vle(self.ins[0], *self.outs, self.T, self.P,multi_stream=self._multi_stream)
 
     
@@ -350,6 +356,12 @@ class HT(SanUnit):
         for stream in [HTaqueous,fuel_gas,gasoline,diesel,heavy_oil]:
             stream.T=biocrude.T
         
+        HTaqueous.P = 55*6894.76 #Jones 2014: 55 psia
+        fuel_gas.P = 20*6894.76
+        gasoline.P = 25*6894.76
+        diesel.P = 18.7*6894.76
+        heavy_oil.P = 18.7*6894.76
+        
     @property
     def biooil_C(self):
         return min(self.outs[2].F_mass*self.biooil_C_ratio,self.ins[0]._source.biocrude_C)
@@ -434,7 +446,11 @@ class HC(SanUnit):
         
         for stream in [gasoline, diesel, off_gas]:
             stream.T=heavy_oil.T
-
+        
+        gasoline.P = 20*6894.76 #Jones 2014: 20 psia
+        diesel.P = 24*6894.76
+        off_gas.P = 20*6894.76
+        
     def _design(self):
         pass
     
@@ -655,7 +671,8 @@ class CHG(SanUnit):
         CHGfuelgas.T = CHGfeed.T
         effluent.T = CHGfeed.T
         
-        
+        CHGfuelgas.P = 50*6894.76 #Jones 2014: 50 psia
+        effluent = 50*6894.76
         
     def _design(self):
         pass
@@ -712,14 +729,50 @@ class MembraneDistillation(SanUnit):
 class GasMixer(SanUnit):
     
     '''
-    Mix fuel gas from HT and CHG.
+    Mix all gases.
     
     Parameters
     ----------
     ins: Iterable (stream)
-        ht_fuel_gas, chg_fuel_gas
+        htl_off_gas, ht_fuel_gas, hc_off_gas, chg_fuel_gas
     outs: Iterable (stream)
         fuel_gas
+    '''
+    
+    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream',**kwargs):
+        SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
+
+    _N_ins = 4
+    _N_outs = 1
+        
+    def _run(self):
+        
+        htl_off_gas, ht_fuel_gas, hc_off_gas, chg_fuel_gas = self.ins
+        fuel_gas = self.outs[0]
+        
+        fuel_gas.copy_like(ht_fuel_gas)
+        for gas in ['CH4','CO','CO2','C2H6','H2','C3H8','C4H10']:
+            fuel_gas.imass[gas] += (htl_off_gas.imass[gas]+hc_off_gas.imass[gas]+
+                                    chg_fuel_gas.imass[gas])
+            
+        
+    def _design(self):
+        pass
+    
+    def _cost(self):
+        pass   
+    
+class FuelMixer(SanUnit):
+    
+    '''
+    Mix fuels.
+    
+    Parameters
+    ----------
+    ins: Iterable (stream)
+        ht_fuel, hc_fuel
+    outs: Iterable (stream)
+        mixed_fuel
     '''
     
     def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream',**kwargs):
@@ -730,21 +783,21 @@ class GasMixer(SanUnit):
         
     def _run(self):
         
-        ht_fuel_gas, chg_fuel_gas = self.ins
-        fuel_gas = self.outs[0]
-        fuel_gas.copy_like(ht_fuel_gas)
-        for gas in ['CH4','CO','CO2','C2H6','H2']:
-            fuel_gas.imass[gas] += chg_fuel_gas.imass[gas]
+        ht_fuel, hc_fuel = self.ins
+        mixed_fuel = self.outs[0]
+        
+        mixed_fuel.copy_like(ht_fuel)
+        mixed_fuel.imass['Gasoline'] += hc_fuel.imass['Gasoline']
+        mixed_fuel.imass['Diesel'] += hc_fuel.imass['Diesel']
         
     def _design(self):
         pass
     
     def _cost(self):
-        pass   
+        pass 
+
     
-    
-    
-    
+
     
     
     
