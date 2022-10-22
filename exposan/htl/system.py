@@ -41,11 +41,11 @@ fake_sludge = qs.Stream('fake_sludge',H2O=100000,units='kg/hr',T=298.15)
 
 SluL = su.SludgeLab('S000',ins=fake_sludge,outs='real_sludge')
 
-SluT = suu.SludgeThickening('A000',ins=SluL-0,outs=('Supernatant_1','Compressed_sludge_1'),
+SluT = suu.SludgeThickening('A000',ins=SluL-0,outs=('supernatant_1','compressed_sludge_1'),
                             init_with='Stream',solids=('Sludge_lipid','Sludge_protein','Sludge_carbo',
                                                        'Sludge_ash'))
 
-SluC = suu.SludgeCentrifuge('A010',ins=SluT-1,outs=('Supernatant_2','Compressed_sludge_2'),
+SluC = suu.SludgeCentrifuge('A010',ins=SluT-1,outs=('supernatant_2','compressed_sludge_2'),
                             init_with='Stream',solids=('Sludge_lipid','Sludge_protein','Sludge_carbo',
                                                        'Sludge_ash'))
 
@@ -61,6 +61,21 @@ H1 = suu.HXutility('A110',ins=P1-0,outs='heated_sludge',T=350+273.15,init_with='
 HTL = su.HTL('A120',ins=H1-0,outs=('biochar','HTLaqueous','biocrude','offgas_HTL'))
 HTL_hx = HTL.heat_exchanger #include this into path?
 
+AcidEx = su.AcidExtraction('A200',ins=(HTL-0,'H2SO4_P'),outs=('residual','extracted'))
+
+M1 = su.HTLmixer('A210',ins=(HTL-1,AcidEx-1),outs=('mixture'))
+
+StruPre = su.StruvitePrecipitation('A220',ins=(M1-0,'MgCl2'),outs=('struvite','CHG_feed'))
+
+P2 = suu.Pump('A230',ins=StruPre-1,outs='press_aqueous',P=3089.7*6894.76) #Jones 2014: 3089.7 psia
+
+H2 = suu.HXutility('A240',ins=P2-0,outs='heated_aqueous',T=350+273.15,init_with='Stream')
+
+CHG = su.CHG('A250',ins=H2-0,outs=('CHG_fuel_gas','effluent'))
+CHG_hx = CHG.heat_exchanger
+
+MemDis = su.MembraneDistillation('A260',ins=(CHG-1,'H2SO4_N'),outs=('AmmoniaSulfate','ww'))
+
 P3 = suu.Pump('A300',ins=HTL-2,outs='press_biocrude',P=1530.0*6894.76) #Jones 2014: 1530.0 psia
 
 H3 = suu.HXutility('A310',ins=P3-0,outs='heated_biocrude',T=405+273.15,init_with='Stream')
@@ -75,21 +90,6 @@ H4 = suu.HXutility('A340',ins=P4-0,outs='heated_heavy_oil',T=395+273.15,init_wit
 
 HC = su.HC('A350',ins=(H4-0,'H2_HC'),outs=('gasoline_HC', 'diesel_HC', 'offgas_HC'))
 HC_hx = HC.heat_exchanger
-
-Acidex = su.AcidExtraction('A200',ins=(HTL-0,'H2SO4_P'),outs=('residual','extracted'))
-
-M1 = su.HTLmixer('A210',ins=(HTL-1,Acidex-1),outs=('mixture'))
-
-StruPre = su.StruvitePrecipitation('A220',ins=(M1-0,'MgCl2'),outs=('struvite','CHGfeed'))
-
-P2 = suu.Pump('A230',ins=StruPre-1,outs='press_aqueous',P=3089.7*6894.76) #Jones 2014: 3089.7 psia
-
-H2 = suu.HXutility('A240',ins=P2-0,outs='heated_aqueous',T=350+273.15,init_with='Stream')
-
-CHG = su.CHG('A250',ins=H2-0,outs=('CHG_fuel_gas','effluent'))
-CHG_hx = CHG.heat_exchanger
-
-MemDis = su.MembraneDistillation('A260',ins=(CHG-1,'H2SO4_N'),outs=('AmmoniaSulfate','ww'))
 
 GasMixer = su.GasMixer('S200',ins=(HTL-3,HT-1,HC-2,CHG-0),outs=('fuel_gas'))
 
@@ -107,17 +107,17 @@ DieselTank = suu.StorageTank('A370',ins=DieselMixer-0,outs=('Diesel_out'),tau=3*
 
 # HXN = suu.HeatExchangerNetwork('HXN')
 
-for unit in (SluL,SluT,SluC,P1,H1,HTL,P2,H2,HT,P3,H3,HC,Acidex,M1,StruPre,P4,H4,CHG,
+for unit in (SluL,SluT,SluC,P1,H1,HTL,P2,H2,HT,P3,H3,HC,AcidEx,M1,StruPre,P4,H4,CHG,
              GasMixer,CHP,MemDis,GasolineMixer,GasolineTank,DieselMixer,DieselTank):
     unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1]) # so that qs.main_flowsheet.H1 works as well
 
 sys=qs.System('sys',path=(SluL,SluT,SluC,
                           P1,H1,HTL,
-                          P2,H2,HT,
-                          P3,H3,HC,
-                          Acidex,M1,StruPre,
-                          P4,H4,CHG,
-                          GasMixer,CHP,MemDis,
+                          AcidEx,M1,StruPre,
+                          P2,H2,CHG,MemDis,
+                          P3,H3,HT,
+                          P4,H4,HC,
+                          GasMixer,CHP,
                           GasolineMixer,GasolineTank,
                           DieselMixer,DieselTank))#,facilities=(HXN,))
 
@@ -366,13 +366,13 @@ def set_biooil_N_ratio(i):
 
 dist = shape.Triangle(0.92625,0.95,0.97375)
 @param(name='P_acid_recovery_ratio',
-        element=Acidex,
+        element=AcidEx,
         kind='coupled',
         units='-',
         baseline=0.95,
         distribution=dist)
 def set_P_acid_recovery_ratio(i):
-    Acidex.P_acid_recovery_ratio=i
+    AcidEx.P_acid_recovery_ratio=i
 
 dist = shape.Triangle(0.92625,0.95,0.97375)
 @param(name='P_pre_recovery_ratio',
