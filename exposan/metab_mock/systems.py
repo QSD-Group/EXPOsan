@@ -25,7 +25,10 @@ __all__ = (
     'default_inf_concs',
     'default_R1_init_conds',
     'default_R2_init_conds',
-    'yields_bl', 'mus_bl', 'Ks_bl'
+    'R1_ss_conds',
+    'R2_ss_conds',
+    'yields_bl', 'mus_bl', 'Ks_bl',
+    'biomass_IDs'
     )
 
 #%% default values
@@ -41,6 +44,10 @@ Vl2 = 75
 Vg2 = 5
 split_2 = 0.75
 tau_2 = 0.021
+
+fermenters = ('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro')
+methanogens = ('X_ac', 'X_h2')
+biomass_IDs = (*fermenters, *methanogens)
 
 C_mw = get_mw({'C':1})
 N_mw = get_mw({'N':1})
@@ -140,8 +147,8 @@ R1_ss_conds = {
     'S_ac': 2.00250371674824*1e3,
     'S_h2': 0.00850364943532684*1e3,
     'S_ch4': 0.0000422133982597226*1e3,
-    'S_IC': 0.244296234124982*1e3,
-    'S_IN': 0.216115320077251*1e3,
+    'S_IC': 0.0951*C_mw*1e3,
+    'S_IN': 0.0945*N_mw*1e3,
     'S_I': 0.027310256066728*1e3,
     'X_c': 0.146203507058736*1e3,
     'X_ch': 0.0286018513139117*1e3,
@@ -167,8 +174,8 @@ R2_ss_conds = {
     'S_ac': 0.00574002755366853*1e3,
     'S_h2': 3.76969944940856e-08*1e3,
     'S_ch4': 0.0499411746585487*1e3,
-    'S_IC': 0.525579793735968*1e3,
-    'S_IN': 0.223232426903785*1e3,
+    'S_IC': 0.0951*C_mw*1e3,
+    'S_IN': 0.0945*N_mw*1e3,
     'S_I': 0.105601391746794*1e3,
     'X_c': 0.0897520281015078*1e3,
     'X_ch': 0.00108163641708242*1e3,
@@ -209,17 +216,14 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
     ############# load process model ###########################
     adm1 = pc.ADM1()
     
-    ############# sysA unit operation ########################
-    R1_init_conds = R1_init_conds or default_R1_init_conds
-    R2_init_conds = R2_init_conds or default_R2_init_conds
-    
+    ############# sysA unit operation ########################   
     H2E = AB('H2E', ins=[brewery_ww, 'return_1'], outs=('sidestream_1', ''), 
             split=(split_1, 1-split_1), V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
-            retain_cmps=('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro'))
+            retain_cmps=fermenters)
     DM1 = DM('DM1', ins=H2E-0, outs=(bg1_A, 1-H2E), tau=tau_1)
     CH4E = AB('CH4E', ins=[H2E-1, 'return_2'], outs=('sidestream_2', eff_A), 
             split=(split_2, 1-split_2), V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
-            retain_cmps=('X_ac', 'X_h2'))
+            retain_cmps=methanogens)
     DM2 = DM('DM2', ins=CH4E-0, outs=(bg2_A, 1-CH4E), tau=tau_2)
     H2E.set_init_conc(**R1_ss_conds)
     CH4E.set_init_conc(**R2_ss_conds)
@@ -241,14 +245,18 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
     bg2_B = WasteStream('biogas_2B', phase='g')
     
     ############# sysB unit operation #################
+    R1_init_conds = R1_init_conds or default_R1_init_conds
+    R2_init_conds = R2_init_conds or default_R2_init_conds
     AnR1 = su.AnaerobicCSTR('AnR1', ins=inf_b, outs=(bg1_B, ''), 
                             V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
-                            retain_cmps=('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro'))
+                            retain_cmps=fermenters)
     AnR2 = su.AnaerobicCSTR('AnR2', ins=AnR1-1, outs=(bg2_B, eff_B), 
                             V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
-                            retain_cmps=('X_ac', 'X_h2'))
-    AnR1.set_init_conc(**R1_init_conds)
-    AnR2.set_init_conc(**R2_init_conds)
+                            retain_cmps=methanogens)
+    # AnR1.set_init_conc(**R1_init_conds)
+    # AnR2.set_init_conc(**R2_init_conds)
+    AnR1.set_init_conc(**R1_ss_conds)
+    AnR2.set_init_conc(**R2_ss_conds)
     sysB = System('baseline', path=(AnR1, AnR2))
     sysB.set_dynamic_tracker(AnR1, AnR2, bg1_B, bg2_B)
     
@@ -265,38 +273,23 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
     bgh2 = WasteStream('biogas_hsp_2', phase='g')
     
     ############# sysC unit operation #################
-    # R1 = su.AnaerobicCSTR('R1', ins=[inf_c, 'return_1'], outs=(bgh1, ''), 
-    #                       V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
-    #                       retain_cmps=('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro'))
-    # S1 = su.Splitter('S1', ins=R1-1, outs=('sidestream_1', ''),
-    #                   split=split_1, isdynamic=True)
-    # DM1c = DM('DM1_c', ins=S1-0, outs=(bgm1, 1-R1), tau=tau_1)
-
-    # R2 = su.AnaerobicCSTR('R2', ins=[S1-1, 'return_2'], outs=(bgh2, ''), 
-    #                       V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
-    #                       retain_cmps=('X_ac', 'X_h2'))
-    # S2 = su.Splitter('S2', ins=R2-1, outs=('sidestream_2', eff_c),
-    #                   split=split_2, isdynamic=True)
-    # DM2c = DM('DM2_c', ins=S2-0, outs=(bgm2, 1-R2), tau=tau_2)
-
-    # sysC = System('combined_METAB', path=(R1, S1, DM1c, R2, S2, DM2c),
-    #               recycle=(DM1c-1, DM2c-1))
-    # sysC.set_dynamic_tracker(R1, R2, bgm1, bgm2, bgh1, bgh2)
     sc1 = 0.1
     sc2 = 0.1
     R1 = su.AnaerobicCSTR('R1', ins=[inf_c, 'return_1'], 
                           outs=(bgh1, 'sidestream_1', ''), 
                           split=(sc1, 1-sc1),
                           V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
-                          retain_cmps=('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro'))
-    DM1c = DM('DM1_c', ins=R1-1, outs=(bgm1, 1-R1), tau=0.1)
+                          retain_cmps=fermenters)
+    DM1c = DM('DM1_c', ins=R1-1, outs=(bgm1, 1-R1), tau=tau_1)
+    # DM1c = DM('DM1_c', ins=R1-1, outs=(bgm1, 1-R1), tau=0.1)    
 
     R2 = su.AnaerobicCSTR('R2', ins=[R1-2, 'return_2'], 
                           outs=(bgh2, 'sidestream_2', eff_c), 
                           split=(sc2, 1-sc2),
                           V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
-                          retain_cmps=('X_ac', 'X_h2'))
-    DM2c = DM('DM2_c', ins=R2-1, outs=(bgm2, 1-R2), tau=0.1)
+                          retain_cmps=methanogens)
+    DM2c = DM('DM2_c', ins=R2-1, outs=(bgm2, 1-R2), tau=tau_2)
+    # DM2c = DM('DM2_c', ins=R2-1, outs=(bgm2, 1-R2), tau=0.1)
     R1.set_init_conc(**R1_ss_conds)
     R2.set_init_conc(**R2_ss_conds)
     sysC = System('combined_METAB', path=(R1, DM1c, R2, DM2c),

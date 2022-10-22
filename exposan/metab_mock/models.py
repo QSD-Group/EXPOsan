@@ -14,8 +14,8 @@ for license details.
 import qsdsan as qs
 # from warnings import warn
 from chaospy import distributions as shape
-from qsdsan.utils import ospath, time_printer
-from exposan.metab_mock import systems as s, results_path
+from qsdsan.utils import ospath, time_printer, get_SRT
+from exposan.metab_mock import systems as s, results_path, biomass_IDs
 from biosteam.evaluation._utils import var_indices
 # import pandas as pd
 import numpy as np
@@ -24,8 +24,10 @@ import os
 __all__ = ('create_modelA', 
            'create_modelB',
            'create_modelC',
+           'create_ss_model',
            'run_model',
-           'run_modelB'
+           'run_modelB',
+           'run_ss_model'
            )
 #%%
 sysA, sysB, sysC = s.create_systems()
@@ -40,7 +42,7 @@ get_uniform_w_frac = lambda b, frac: shape.Uniform(lower=b*(1-frac), upper=b*(1+
 
 def add_degas_params(model, bioreactors, membranes, 
                      b_split=0.5, var_split=0.8, 
-                     b_ermv=0.75, bounds_ermv=(0.25, 0.85)):
+                     b_ermv=0.75, bounds_ermv=(0., 0.8)):
     param = model.parameter
     H2E, CH4E = bioreactors
     DM1, DM2 = membranes
@@ -90,6 +92,11 @@ def add_metrics(model, biogas, wastewater, units):
     R1, R2 = units
     S_h2_i_mass = eff.components.S_h2.i_mass
     S_ch4_i_mass = eff.components.S_ch4.i_mass
+    cmps_i_COD = eff.components.i_COD
+    
+    @metric(name='SRT', units='d', element='System')
+    def get_sys_SRT():
+        return get_SRT(model._system, biomass_IDs, (R1.ID, R2.ID))
     
     @metric(name='R1 VFAs', units='g/L', element='Stage_1')
     def get_stage1_VFAs():
@@ -109,7 +116,7 @@ def add_metrics(model, biogas, wastewater, units):
     
     @metric(name='Total COD removal', units='%', element='System')
     def get_rCOD():
-        return (1 - eff.COD/inf.COD)*100
+        return (1 - sum(eff.mass*cmps_i_COD)/sum(inf.mass*cmps_i_COD))*100
     
     @metric(name='H2 production', units='kg/d', element='Biogas')
     def get_QH2():
@@ -191,9 +198,79 @@ def create_modelB():
 
 #%%
 # =============================================================================
-# model with uncertain ADM1 parameters
+# model with random initial conditions
 # =============================================================================
+def create_ss_model(system, R1_ID, R2_ID, 
+                    R1_baseline_init_conds=None, 
+                    R2_baseline_init_conds=None, 
+                    frac_var=0.5):
+    model = qs.Model(system, exception_hook='raise')
+    _ic1 = R1_baseline_init_conds or s.R1_ss_conds
+    _ic2 = R2_baseline_init_conds or s.R2_ss_conds
+    u_reg = system.flowsheet.unit
+    R1 = getattr(u_reg, R1_ID)
+    R2 = getattr(u_reg, R2_ID)
+    param = model.parameter
+    for ic, u in zip((_ic1,_ic2), (R1,R2)):
+        for k, v in ic.items():
+            b = v
+            D = get_uniform_w_frac(b, frac_var)
+            @param(name=f'{k}_0', element=u, kind='coupled', units='mg/L',
+                      baseline=b, distribution=D)
+            def ic_setter(conc): pass
+    bgs = [s for s in system.products if s.phase =='g']
+    inf, = system.feeds
+    eff, = set(system.products) - set(bgs)
+    add_metrics(model, bgs, (inf, eff), (R1, R2))
+    return model
 
+@time_printer
+def run_ss_model(model, N, T, t_step, method='BDF', sys_ID=None,
+                 R1_baseline_init_conds=None, 
+                 R2_baseline_init_conds=None,
+                 R1_ID='R1', R2_ID='R2',
+                 metrics_path='', timeseries_path='', 
+                 rule='L', seed=None, pickle=False):
+    _ic1 = R1_baseline_init_conds or s.R1_ss_conds
+    _ic2 = R2_baseline_init_conds or s.R2_ss_conds
+    k1 = _ic1.keys()
+    k2 = _ic2.keys()
+    n_ic1 = len(k1)
+    u_reg = model._system.flowsheet.unit
+    R1 = getattr(u_reg, R1_ID)
+    R2 = getattr(u_reg, R2_ID)
+    if seed: np.random.seed(seed)
+    samples = model.sample(N=N, rule=rule)
+    model.load_samples(samples)
+    t_span = (0, T)
+    t_eval = np.arange(0, T+t_step, t_step)
+    mpath = metrics_path or ospath.join(results_path, f'ss{sys_ID}_table_{seed}.xlsx')
+    if timeseries_path: tpath = timeseries_path
+    else:
+        folder = ospath.join(results_path, f'ss{sys_ID}_time_series_data_{seed}')
+        os.mkdir(folder)
+        tpath = ospath.join(folder, 'state.npy')
+    index = model._index
+    values = [None] * len(index)    
+    for i, smp in enumerate(samples):
+        ic1 = dict(zip(k1, smp[:n_ic1]))
+        ic2 = dict(zip(k2, smp[n_ic1:]))
+        R1.set_init_conc(**ic1)
+        R2.set_init_conc(**ic2)
+        model._system.simulate(
+            state_reset_hook='reset_cache',
+            t_span=t_span,
+            t_eval=t_eval,
+            method=method,
+            export_state_to=tpath,
+            sample_id=i,
+            )
+        values[i] = [i() for i in model.metrics]
+    model.table[var_indices(model._metrics)] = values
+    model.table.to_excel(mpath)
+    R1.set_init_conc(**_ic1)
+    R2.set_init_conc(**_ic2)
+            
 #%%
 @time_printer
 def run_model(model, N, T, t_step, method='BDF', sys_ID=None,
