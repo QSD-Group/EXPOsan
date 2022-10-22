@@ -49,60 +49,67 @@ SluC = suu.SludgeCentrifuge('A010',ins=SluT-1,outs=('Supernatant_2','Compressed_
                             init_with='Stream',solids=('Sludge_lipid','Sludge_protein','Sludge_carbo',
                                                        'Sludge_ash'))
 
-P1 = suu.Pump('P100',ins=SluC-1,outs='press_sludge',P=3049.7*6894.76) #Jones 2014: 3049.7 psia
+P1 = suu.Pump('A100',ins=SluC-1,outs='press_sludge',P=3049.7*6894.76) #Jones 2014: 3049.7 psia
 
-H1 = suu.HXutility('A100',ins=P1-0,outs='heated_sludge',T=350+273.15,init_with='Stream')
-# H1.register_alias('H1') # so that qs.main_flowsheet.H1 works as well
+H1 = suu.HXutility('A110',ins=P1-0,outs='heated_sludge',T=350+273.15,init_with='Stream')
+
 
 #!!! currently the power/heat utilities of HTL_hx aren't added to HTL,
 # it'll be added in after I pulled in some updates from biosteam,
 # so we don't need to worry about it (I'm leaving this note to reminder myself)
 
-HTL = su.HTL('A110',ins=H1-0,outs=('biochar','HTLaqueous','biocrude','offgas_HTL'))
-HTL_hx = HTL.heat_exchanger
+HTL = su.HTL('A120',ins=H1-0,outs=('biochar','HTLaqueous','biocrude','offgas_HTL'))
+HTL_hx = HTL.heat_exchanger #include this into path?
 
-P2 = suu.Pump('P400',ins=HTL-2,outs='press_biocrude',P=1530.0*6894.76) #Jones 2014: 1530.0 psia
+P3 = suu.Pump('A300',ins=HTL-2,outs='press_biocrude',P=1530.0*6894.76) #Jones 2014: 1530.0 psia
 
-H2 = suu.HXutility('A400',ins=P2-0,outs='heated_biocrude',T=405+273.15,init_with='Stream')
+H3 = suu.HXutility('A310',ins=P3-0,outs='heated_biocrude',T=405+273.15,init_with='Stream')
 
-HT = su.HT('A410',ins=(H2-0,'H2_HT'),outs=('HTaqueous','HT_fuel_gas','gasoline_HT','diesel_HT','heavy_oil'))
+HT = su.HT('A320',ins=(H3-0,'H2_HT'),outs=('HTaqueous','HT_fuel_gas','gasoline_HT','diesel_HT','heavy_oil'))
+HT_hx = HT.heat_exchanger
 
-P3 = suu.Pump('P401',ins=HT-4,outs='press_heavy_oil',P=1034.7*6894.76) #Jones 2014: 1034.7 psia
+P4 = suu.Pump('A330',ins=HT-4,outs='press_heavy_oil',P=1034.7*6894.76) #Jones 2014: 1034.7 psia
 
-H3 = suu.HXutility('A420',ins=P3-0,outs='heated_heavy_oil',T=395+273.15,init_with='Stream')
+H4 = suu.HXutility('A340',ins=P4-0,outs='heated_heavy_oil',T=395+273.15,init_with='Stream')
 #All temperatures and pressures are from Jones et al., 2014
 
-HC = su.HC('A430',ins=(H3-0,'H2_HC'),outs=('gasoline_HC', 'diesel_HC', 'offgas_HC'))
+HC = su.HC('A350',ins=(H4-0,'H2_HC'),outs=('gasoline_HC', 'diesel_HC', 'offgas_HC'))
+HC_hx = HC.heat_exchanger
 
 Acidex = su.AcidExtraction('A200',ins=(HTL-0,'H2SO4_P'),outs=('residual','extracted'))
 
-M1 = su.HTLmixer('A300',ins=(HTL-1,Acidex-1),outs=('mixture'))
+M1 = su.HTLmixer('A210',ins=(HTL-1,Acidex-1),outs=('mixture'))
 
-StruPre = su.StruvitePrecipitation('A310',ins=(M1-0,'MgCl2'),outs=('struvite','CHGfeed'))
+StruPre = su.StruvitePrecipitation('A220',ins=(M1-0,'MgCl2'),outs=('struvite','CHGfeed'))
 
-P4 = suu.Pump('P300',ins=StruPre-1,outs='press_aqueous',P=3089.7*6894.76) #Jones 2014: 3089.7 psia
+P2 = suu.Pump('A230',ins=StruPre-1,outs='press_aqueous',P=3089.7*6894.76) #Jones 2014: 3089.7 psia
 
-H4 = suu.HXutility('A320',ins=P4-0,outs='heated_aqueous',T=350+273.15,init_with='Stream')
+H2 = suu.HXutility('A240',ins=P2-0,outs='heated_aqueous',T=350+273.15,init_with='Stream')
 
-CHG = su.CHG('A330',ins=H4-0,outs=('CHG_fuel_gas','effluent'))
+CHG = su.CHG('A250',ins=H2-0,outs=('CHG_fuel_gas','effluent'))
+CHG_hx = CHG.heat_exchanger
 
-MemDis = su.MembraneDistillation('A340',ins=(CHG-1,'H2SO4_N'),outs=('AmmoniaSulfate','ww'))
+MemDis = su.MembraneDistillation('A260',ins=(CHG-1,'H2SO4_N'),outs=('AmmoniaSulfate','ww'))
 
-GasMixer = su.GasMixer('S500',ins=(HTL-3,HT-1,HC-2,CHG-0),outs=('fuel_gas'))
+GasMixer = su.GasMixer('S200',ins=(HTL-3,HT-1,HC-2,CHG-0),outs=('fuel_gas'))
 
-CHP = suu.CHP('A500',ins=(GasMixer-0,'natural_gas','air'),outs=('emission','solid_ash'))
+CHP = suu.CHP('A400',ins=(GasMixer-0,'natural_gas','air'),outs=('emission','solid_ash'))
 
-GasolineMixer = su.FuelMixer('T000',ins=(HT-2,HC-0),outs='Mixed_gasoline')
+GasolineMixer = su.FuelMixer('S100',ins=(HT-2,HC-0),outs='Mixed_gasoline')
 
-DieselMixer = su.FuelMixer('T100',ins=(HT-3,HC-1),outs='Mixed_diesel')
+DieselMixer = su.FuelMixer('S110',ins=(HT-3,HC-1),outs='Mixed_diesel')
 
-GasolineTank = suu.StorageTank('T001',ins=GasolineMixer-0,outs=('Gasoline_out'),tau=3*24)
+GasolineTank = suu.StorageTank('A360',ins=GasolineMixer-0,outs=('Gasoline_out'),tau=3*24)
 #store for 3 days based on Jones 2014
 
-DieselTank = suu.StorageTank('T101',ins=DieselMixer-0,outs=('Diesel_out'),tau=3*24)
+DieselTank = suu.StorageTank('A370',ins=DieselMixer-0,outs=('Diesel_out'),tau=3*24)
 #store for 3 days based on Jones 2014
 
 # HXN = suu.HeatExchangerNetwork('HXN')
+
+for unit in (SluL,SluT,SluC,P1,H1,HTL,P2,H2,HT,P3,H3,HC,Acidex,M1,StruPre,P4,H4,CHG,
+             GasMixer,CHP,MemDis,GasolineMixer,GasolineTank,DieselMixer,DieselTank):
+    unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1]) # so that qs.main_flowsheet.H1 works as well
 
 sys=qs.System('sys',path=(SluL,SluT,SluC,
                           P1,H1,HTL,
