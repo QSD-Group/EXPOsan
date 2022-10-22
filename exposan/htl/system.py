@@ -69,8 +69,8 @@ HT = su.HT('A410',ins=(H2-0,'H2_HT'),outs=('HTaqueous','HT_fuel_gas','gasoline_H
 
 P3 = suu.Pump('P401',ins=HT-4,outs='press_heavy_oil',P=1034.7*6894.76) #Jones 2014: 1034.7 psia
 
-H3 = suu.HXutility('A420',ins=P3-0,outs='heated_heavy_oil',T=375+273.15,init_with='Stream')
-#now is cooling, but will be heating after adding auxiliary HXutility for HT
+H3 = suu.HXutility('A420',ins=P3-0,outs='heated_heavy_oil',T=395+273.15,init_with='Stream')
+#All temperatures and pressures are from Jones et al., 2014
 
 HC = su.HC('A430',ins=(H3-0,'H2_HC'),outs=('gasoline_HC', 'diesel_HC', 'offgas_HC'))
 
@@ -82,7 +82,7 @@ StruPre = su.StruvitePrecipitation('A310',ins=(M1-0,'MgCl2'),outs=('struvite','C
 
 P4 = suu.Pump('P300',ins=StruPre-1,outs='press_aqueous',P=3089.7*6894.76) #Jones 2014: 3089.7 psia
 
-H4 = suu.HXutility('A320',ins=P4-0,outs='heated_aqueous',T=355+273.15,init_with='Stream')
+H4 = suu.HXutility('A320',ins=P4-0,outs='heated_aqueous',T=350+273.15,init_with='Stream')
 
 CHG = su.CHG('A330',ins=H4-0,outs=('CHG_fuel_gas','effluent'))
 
