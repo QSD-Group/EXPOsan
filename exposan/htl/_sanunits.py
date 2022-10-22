@@ -182,7 +182,8 @@ class HTL(SanUnit):
         mixed_higherT, mixed_lowerT = self._mixed_higherT, self._mixed_lowerT
         mixed_higherT.mix_from(outs)
 
-        for stream in outs: stream.T = 298.15
+        for stream in outs: stream.T = 60+273.15 #Jones 2014
+        
         mixed_lowerT.mix_from(outs)
 
         hx = self.heat_exchanger
@@ -285,6 +286,8 @@ class HT(SanUnit):
     HTaqueous, fuel_gas, gasoline, diesel, heavy_oil
     '''
     
+    auxiliary_unit_names=('heat_exchanger',)
+    
     def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream',
                  biooil_ratio=0.77,gas_ratio=0.07,#Jones et al., 2014
                  biocrude_h2_ratio = 18.14,
@@ -306,6 +309,8 @@ class HT(SanUnit):
         self.c3h8_ratio=c3h8_ratio
         self.biooil_C_ratio = biooil_C_ratio
         self.biooil_N_ratio = biooil_N_ratio
+        self._mixed_higherT = qs.Stream(f'{self.ID}_mixed_higherT')
+        self._mixed_lowerT = qs.Stream(f'{self.ID}_mixed_lowerT')
 
     _N_ins = 2
     _N_outs = 5
@@ -313,7 +318,9 @@ class HT(SanUnit):
     def _run(self):
         
         biocrude,hydrogen_gas = self.ins
-        HTaqueous,fuel_gas,gasoline,diesel,heavy_oil = self.outs
+        HTaqueous,fuel_gas,gasoline,diesel,heavy_oil = outs = self.outs
+        
+        for s in outs: s.T = biocrude.T
         
         hydrogen_gas.imass['H2'] = biocrude.F_mass/self.biocrude_h2_ratio
         hydrogen_gas.phase='g'
@@ -350,15 +357,26 @@ class HT(SanUnit):
         
         HTaqueous.imass['HTaqueous'] = biocrude.F_mass+hydrogen_gas.F_mass-biooil_total_mass-gas_mass
         #HTaqueous is liquid waste from HT
-
-        for stream in [HTaqueous,fuel_gas,gasoline,diesel,heavy_oil]:
-            stream.T=biocrude.T
-        
+   
         HTaqueous.P = 55*6894.76 #Jones 2014: 55 psia
         fuel_gas.P = 20*6894.76
         gasoline.P = 25*6894.76
         diesel.P = 18.7*6894.76
         heavy_oil.P = 18.7*6894.76
+        
+        mixed_higherT, mixed_lowerT = self._mixed_higherT, self._mixed_lowerT
+        mixed_higherT.mix_from(outs)
+
+        HTaqueous.T = 47+273.15 #Jones 2014
+        fuel_gas.T = 44+273.15
+        gasoline.T = 109+273.15
+        diesel.T = 265+273.15
+        heavy_oil.T = 381+273.15
+        
+        mixed_lowerT.mix_from(outs)
+
+        hx = self.heat_exchanger
+        hx.simulate_as_auxiliary_exchanger(inlet=mixed_higherT, outlet=mixed_lowerT)
         
     @property
     def biooil_C(self):
@@ -413,6 +431,8 @@ class HC(SanUnit):
     gasoline, diesel, off_gas
     '''
     
+    auxiliary_unit_names=('heat_exchanger',)
+    
     def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream',
                  heavy_oil_h2_ratio=45.17,gasoline_hc_ratio=0.303,off_gas_ratio=0.0394,
                  **kwargs):
@@ -420,6 +440,8 @@ class HC(SanUnit):
         self.heavy_oil_h2_ratio=heavy_oil_h2_ratio
         self.gasoline_hc_ratio=gasoline_hc_ratio
         self.off_gas_ratio=off_gas_ratio
+        self._mixed_higherT = qs.Stream(f'{self.ID}_mixed_higherT')
+        self._mixed_lowerT = qs.Stream(f'{self.ID}_mixed_lowerT')
         
     _N_ins = 2
     _N_outs = 3
@@ -427,7 +449,9 @@ class HC(SanUnit):
     def _run(self):
         
         heavy_oil, hydrogen_gas = self.ins
-        gasoline, diesel, off_gas = self.outs
+        gasoline, diesel, off_gas = outs = self.outs
+        
+        for s in outs: s.T = heavy_oil.T
         
         hydrogen_gas.imass['H2'] = heavy_oil.F_mass/self.heavy_oil_h2_ratio
         hydrogen_gas.phase='g'
@@ -441,13 +465,22 @@ class HC(SanUnit):
             (1-self.gasoline_hc_ratio-self.off_gas_ratio)
         
         off_gas.imass['CO2'] = (heavy_oil.F_mass+hydrogen_gas.F_mass)*self.off_gas_ratio
-        
-        for stream in [gasoline, diesel, off_gas]:
-            stream.T=heavy_oil.T
-        
+           
         gasoline.P = 20*6894.76 #Jones 2014: 20 psia
         diesel.P = 24*6894.76
         off_gas.P = 20*6894.76
+        
+        mixed_higherT, mixed_lowerT = self._mixed_higherT, self._mixed_lowerT
+        mixed_higherT.mix_from(outs)
+
+        gasoline.T = 60+273.15 #Jones 2014
+        diesel.T = 220+273.15
+        off_gas.T = 45+273.15
+        
+        mixed_lowerT.mix_from(outs)
+
+        hx = self.heat_exchanger
+        hx.simulate_as_auxiliary_exchanger(inlet=mixed_higherT, outlet=mixed_lowerT)
         
     def _design(self):
         pass
@@ -622,6 +655,8 @@ class CHG(SanUnit):
         CHGfuelgas, effluent
     '''
     
+    auxiliary_unit_names=('heat_exchanger',)
+    
     def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream',ch4_ratio=0.244,
                  co_ratio=0.029,co2_ratio=0.150,c2h6_ratio=0.043,toc_tc_ratio=0.764,
                  toc_to_gas_c_ratio=0.262,**kwargs):
@@ -632,6 +667,8 @@ class CHG(SanUnit):
         self.c2h6_ratio=c2h6_ratio
         self.toc_tc_ratio=toc_tc_ratio
         self.toc_to_gas_c_ratio=toc_to_gas_c_ratio
+        self._mixed_higherT = qs.Stream(f'{self.ID}_mixed_higherT')
+        self._mixed_lowerT = qs.Stream(f'{self.ID}_mixed_lowerT')
         
     _N_ins = 1
     _N_outs = 2
@@ -639,7 +676,9 @@ class CHG(SanUnit):
     def _run(self):
         
         CHGfeed = self.ins[0]
-        CHGfuelgas, effluent = self.outs
+        CHGfuelgas, effluent = outs = self.outs
+        
+        for s in outs: s.T = CHGfeed.T
         
         for i in (self.ch4_ratio,self.co_ratio,self.co2_ratio,self.c2h6_ratio,
                   1-self.ch4_ratio-self.co_ratio-self.co2_ratio-self.c2h6_ratio):
@@ -666,11 +705,19 @@ class CHG(SanUnit):
         effluent.imass['H2O']=CHGfeed.F_mass-CHGfuel_gas_mass-effluent.imass['C']-\
             effluent.imass['N']-effluent.imass['P']
         
-        CHGfuelgas.T = CHGfeed.T
-        effluent.T = CHGfeed.T
-        
         CHGfuelgas.P = 50*6894.76 #Jones 2014: 50 psia
         effluent = 50*6894.76
+        
+        mixed_higherT, mixed_lowerT = self._mixed_higherT, self._mixed_lowerT
+        mixed_higherT.mix_from(outs)
+
+        CHGfuelgas.T = 60+273.15 #Jones 2014
+        effluent.T = 60+273.15
+        
+        mixed_lowerT.mix_from(outs)
+
+        hx = self.heat_exchanger
+        hx.simulate_as_auxiliary_exchanger(inlet=mixed_higherT, outlet=mixed_lowerT)
         
     def _design(self):
         pass
