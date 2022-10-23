@@ -176,13 +176,8 @@ class HTL(SanUnit):
         biochar.phase='s'
         offgas.phase='g'
         
-        biochar.P = 3029.7*6894.76 #Jones 2014: 3029.7 psia
-        HTLaqueous.P = 30*6894.76 #Jones 2014: 30 psia
-        biocrude.P = 30*6894.76
-        offgas.P = 30*6894.76
-        
         mixed_higherT, mixed_lowerT = self._mixed_higherT, self._mixed_lowerT
-        mixed_higherT.mix_from(outs)
+        mixed_higherT.mix_from(outs) #assume the cooling happen at 1 atm
 
         for stream in outs: stream.T = 60+273.15 #Jones 2014
         
@@ -190,7 +185,11 @@ class HTL(SanUnit):
 
         hx = self.heat_exchanger
         hx.simulate_as_auxiliary_exchanger(inlet=mixed_higherT, outlet=mixed_lowerT)
-
+        
+        biochar.P = 3029.7*6894.76 #Jones 2014: 3029.7 psia
+        HTLaqueous.P = 30*6894.76 #Jones 2014: 30 psia
+        biocrude.P = 30*6894.76
+        offgas.P = 30*6894.76
     
     @property
     def AOSc(self):
@@ -303,6 +302,8 @@ class AcidExtraction(SanUnit):
         acid.imass['H2O']=biochar.F_mass*self.acid_vol*1.05-acid.imass['H2SO4'] #0.5 M H2SO4 density: 1.05 kg/L 
         #https://www.fishersci.com/shop/products/sulfuric-acid-1n-0-5m-standard-solution-thermo-
         #scientific/AC124240010 (accessed 10-6-2022)
+        acid.T = biochar.T
+        acid.P = self.ins[0]._source.outs[1].P
         
         residual.imass['Residual']=biochar.F_mass*\
             (1-self.ins[0]._source.biochar_P_ratio*self.P_acid_recovery_ratio)
@@ -363,7 +364,8 @@ class HTLmixer(SanUnit):
         mixture.imass['H2O']=HTLaqueous.F_mass+extracted.F_mass-\
             mixture.imass['C']-mixture.imass['N']-mixture.imass['P'] #Represented by H2O except C, N, P
         
-        mixture.T = HTLaqueous.T
+        mixture.T = extracted.T
+        mixture.P = HTLaqueous.P
         
     def _design(self):
         pass
@@ -495,9 +497,6 @@ class CHG(SanUnit):
         
         CHGfuelgas.phase='g'
         
-        CHGfuelgas.P = 50*6894.76 #Jones 2014: 50 psia
-        effluent.P = 50*6894.76
-        
         mixed_higherT, mixed_lowerT = self._mixed_higherT, self._mixed_lowerT
         mixed_higherT.mix_from(outs)
 
@@ -508,6 +507,9 @@ class CHG(SanUnit):
 
         hx = self.heat_exchanger
         hx.simulate_as_auxiliary_exchanger(inlet=mixed_higherT, outlet=mixed_lowerT)
+        
+        CHGfuelgas.P = 50*6894.76 #Jones 2014: 50 psia
+        effluent.P = 50*6894.76
         
     def _design(self):
         pass
@@ -552,8 +554,9 @@ class MembraneDistillation(SanUnit):
         ww.imass['N']*=(1-self.N_recovery_rate)
         ww.imass['H2O']+=ww.imass['N']*self.N_recovery_rate+acid.imass['H2SO4']-\
             ammoniasulfate.imass['NH42SO4']
-        ammoniasulfate.T = influent.T
-        ww.T = influent.T
+        ammoniasulfate.T = acid.T
+        ww.T = acid.T
+        ww.P = acid.P
         
     def _design(self):
         pass
@@ -617,11 +620,14 @@ class HT(SanUnit):
         
         hydrogen_gas.imass['H2'] = biocrude.F_mass/self.biocrude_h2_ratio
         hydrogen_gas.phase='g'
+        hydrogen_gas.T = 117.5+273.15 #Jones 2014
+        hydrogen_gas.P = 1530.0*6894.76
         
         biooil_total_mass = biocrude.F_mass*self.biooil_ratio
         
         for i in (self.gasoline_ratio,self.heavy_oil_ratio):
             if i<0: i=0
+            
         gasoline.imass['Gasoline'] = biooil_total_mass*self.gasoline_ratio
         diesel.imass['Diesel'] = biooil_total_mass*(1-self.gasoline_ratio-self.heavy_oil_ratio)
         heavy_oil.imass['Heavy_oil'] = biooil_total_mass*self.heavy_oil_ratio
@@ -651,12 +657,6 @@ class HT(SanUnit):
         
         fuel_gas.phase='g'
         
-        HTaqueous.P = 55*6894.76 #Jones 2014: 55 psia
-        fuel_gas.P = 20*6894.76
-        gasoline.P = 25*6894.76
-        diesel.P = 18.7*6894.76
-        heavy_oil.P = 18.7*6894.76
-        
         mixed_higherT, mixed_lowerT = self._mixed_higherT, self._mixed_lowerT
         mixed_higherT.mix_from(outs)
 
@@ -670,6 +670,12 @@ class HT(SanUnit):
 
         hx = self.heat_exchanger
         hx.simulate_as_auxiliary_exchanger(inlet=mixed_higherT, outlet=mixed_lowerT)
+        
+        HTaqueous.P = 55*6894.76 #Jones 2014: 55 psia
+        fuel_gas.P = 20*6894.76
+        gasoline.P = 25*6894.76
+        diesel.P = 18.7*6894.76
+        heavy_oil.P = 18.7*6894.76
         
     @property
     def biooil_C(self):
@@ -749,6 +755,8 @@ class HC(SanUnit):
         
         hydrogen_gas.imass['H2'] = heavy_oil.F_mass/self.heavy_oil_h2_ratio
         hydrogen_gas.phase='g'
+        hydrogen_gas.T = 128+273.15 #Jones 2014
+        hydrogen_gas.P = 1039.7*6894.76
         
         for i in [self.gasoline_hc_ratio,self.off_gas_ratio]:
             if i < 0: i=0
@@ -762,10 +770,6 @@ class HC(SanUnit):
         
         off_gas.phase='g'
         
-        gasoline.P = 20*6894.76 #Jones 2014: 20 psia
-        diesel.P = 24*6894.76
-        off_gas.P = 20*6894.76
-        
         mixed_higherT, mixed_lowerT = self._mixed_higherT, self._mixed_lowerT
         mixed_higherT.mix_from(outs)
 
@@ -777,6 +781,10 @@ class HC(SanUnit):
 
         hx = self.heat_exchanger
         hx.simulate_as_auxiliary_exchanger(inlet=mixed_higherT, outlet=mixed_lowerT)
+        
+        gasoline.P = 20*6894.76 #Jones 2014: 20 psia
+        diesel.P = 24*6894.76
+        off_gas.P = 20*6894.76
         
     def _design(self):
         pass
