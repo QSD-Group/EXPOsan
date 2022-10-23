@@ -51,8 +51,9 @@ def create_components(set_thermo=True):
     
     Sludge_lipid = Component('Sludge_lipid', phase='s',particle_size='Particulate',
                        formula='C56H95O24N9P',degradability='Undegradable',organic=False)
-    add_V_from_rho(Sludge_lipid,721)
-    #https://www.aqua-calc.com/page/density-table/substance/sewage-coma-and-blank-sludge (accessed 2022-9-30)
+    add_V_from_rho(Sludge_lipid,1400)
+    #https://www.climate-policy-watcher.org/wastewater-sludge/physical-and-biological-properties.html (accessed 2022-10-23)
+    #https://web.deu.edu.tr/atiksu/ana52/wdesign06.html (accessed 2022-10-23)
     Sludge_lipid.HHV = 22.0*10**6*Sludge_lipid.MW/1000  #Li et al., 2018
     Sludge_lipid.Cn.add_model(1.25*10**3*Sludge_lipid.MW/1000) # Leow et al., 2015
     Sludge_lipid.mu.add_model(0.006) #https://www.researchgate.net/figure/Apparent
@@ -61,7 +62,7 @@ def create_components(set_thermo=True):
     
     Sludge_protein = Component('Sludge_protein', phase='s',particle_size='Particulate',
                        formula='C56H95O24N9P',degradability='Undegradable',organic=False)
-    add_V_from_rho(Sludge_protein,721)
+    add_V_from_rho(Sludge_protein,1400)
     Sludge_protein.HHV = 22.0*10**6*Sludge_protein.MW/1000
     Sludge_protein.Cn.add_model(1.25*10**3*Sludge_protein.MW/1000)
     Sludge_protein.mu.add_model(0.006)
@@ -69,14 +70,14 @@ def create_components(set_thermo=True):
     
     Sludge_carbo = Component('Sludge_carbo', phase='s',particle_size='Particulate',
                        formula='C56H95O24N9P',degradability='Undegradable',organic=False)
-    add_V_from_rho(Sludge_carbo,721)
+    add_V_from_rho(Sludge_carbo,1400)
     Sludge_carbo.HHV = 22.0*10**6*Sludge_carbo.MW/1000
     Sludge_carbo.Cn.add_model(1.25*10**3*Sludge_carbo.MW/1000)
     Sludge_carbo.mu.add_model(0.006)
     
     Sludge_ash = Component('Sludge_ash', phase='s',particle_size='Particulate',
                        formula='C56H95O24N9P',degradability='Undegradable',organic=False)
-    add_V_from_rho(Sludge_ash,721)
+    add_V_from_rho(Sludge_ash,1400)
     Sludge_ash.HHV = 22.0*10**6*Sludge_ash.MW/1000
     Sludge_ash.Cn.add_model(1.25*10**3*Sludge_ash.MW/1000)
     Sludge_ash.mu.add_model(0.006)
