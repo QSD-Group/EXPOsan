@@ -122,18 +122,13 @@ sys=qs.System('sys',path=(SluL,SluT,SluC,
                           GasMixer,CHP))#,facilities=(HXN,))
 
 
-
-sys.operating_hours=8410 # 1 year = 8760 hr, 200000 is way too much
-
+sys.operating_hours=8410 # 1 year = 8760 hr
 
 sys.simulate()
 
 sys.diagram()
 
 # return sys
-
-
-
 
 #%%
 from qsdsan import Model
