@@ -112,8 +112,8 @@ CHP = suu.CHP('A400',ins=(GasMixer-0,'natural_gas','air'),outs=('emission','soli
 # HXN = suu.HeatExchangerNetwork('HXN')
 
 for unit in (SluL,SluT,SluC,P1,H1,HTL,AcidEx,M1,StruPre,P2,H2,CHG,MemDis,
-             P3,H3,HT,P4,H4,HC,H5,H6,GasolineMixer,GasolineTank,
-             DieselMixer,DieselTank,GasMixer,CHP):
+             P3,H3,HT,P4,H4,HC,GasolineMixer,DieselMixer,H5,H6,GasolineTank,
+             DieselTank,GasMixer,CHP):
     unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1]) # so that qs.main_flowsheet.H1 works as well
 
 sys=qs.System('sys',path=(SluL,SluT,SluC,
@@ -122,9 +122,9 @@ sys=qs.System('sys',path=(SluL,SluT,SluC,
                           P2,H2,CHG,MemDis,
                           P3,H3,HT,
                           P4,H4,HC,
+                          GasolineMixer,DieselMixer,
                           H5,H6,
-                          GasolineMixer,GasolineTank,
-                          DieselMixer,DieselTank,
+                          GasolineTank,DieselTank,
                           GasMixer,CHP))#,facilities=(HXN,))
 
 
