@@ -235,7 +235,7 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
     sysA.set_dynamic_tracker(H2E, CH4E, bg1_A, bg2_A)
     
     #***************************************************
-    flowsheet_B = flowsheet_A or qs.Flowsheet('METAB_sysB')
+    flowsheet_B = flowsheet_B or qs.Flowsheet('METAB_sysB')
     qs.main_flowsheet.set_flowsheet(flowsheet_B)
 
     ############# sysB streams ########################
@@ -301,6 +301,7 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
 #%%
 @time_printer
 def run(t, t_step, method=None, **kwargs):
+    global sysA, sysB, sysC
     sysA, sysB, sysC = create_systems()
     print(f'Simulating {sysA.ID}...')
     sysA.simulate(state_reset_hook='reset_cache',
