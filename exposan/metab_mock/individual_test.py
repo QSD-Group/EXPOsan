@@ -179,13 +179,15 @@ t = 200
 # t = 20 # shorter t doesn't make sense
 # t = 2000 # long t doesn't make a difference (sysB is about to close COD MB, sysC a little off)
 
-split = 0.1
+split = 0.9
 R1.split = R2.split = (split, 1-split)
 
 degassing = 1
 for u in (DM1_c, DM2_c):
     for gas in ('H2', 'CH4', 'CO2'):
         setattr(u, f'{gas}_degas_efficiency', degassing)
+# DM1_c.CO2_degas_efficiency = DM2_c.CO2_degas_efficiency = 0
+        
 
 sysB.simulate(state_reset_hook='reset_cache', t_span=(0,t), method='BDF')
 sysC.simulate(state_reset_hook='reset_cache', t_span=(0,t), method='BDF')
@@ -214,4 +216,105 @@ print('sysB tot COD removal: ', 1-COD_effB/COD_in)
 print('sysC tot COD removal: ', 1-COD_effC/COD_in)
 
 print(f'R1 MB: {get_COD(R1.outs)/get_COD(R1.ins)}')
+print(f'R2 MB: {get_COD(R2.outs)/get_COD(R2.ins)}')
 print(f'DM1_c MB: {get_COD(DM1_c.outs)/get_COD(DM1_c.ins)}')
+print(f'DM2_c MB: {get_COD(DM2_c.outs)/get_COD(DM2_c.ins)}')
+
+
+# %%
+
+from qsdsan import sanunits as su, WasteStream, processes as pc, System
+from exposan.metab_mock import *
+
+Q = 5           # influent flowrate [m3/d]
+T1 = 273.15+35  # temperature [K]
+Vl1 = 5         # liquid volume [m^3]
+Vg1 = 0.556     # headspace volume [m^3]
+split_1 = 0.75  # split ratio to side-stream
+tau_1 = 0.021   # degassing membrane retention time [d]
+
+T2 = 273.15+25    
+Vl2 = 75
+Vg2 = 5
+split_2 = 0.75
+tau_2 = 0.021
+
+fermenters = ('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro')
+methanogens = ('X_ac', 'X_h2')
+biomass_IDs = (*fermenters, *methanogens)
+
+adm1 = pc.ADM1()
+
+inf_b = WasteStream('BreweryWW_B', T=T1)
+inf_b.set_flow_by_concentration(Q, concentrations=default_inf_concs, units=('m3/d', 'kg/m3'))
+eff_B = WasteStream('Effluent_B', T=T2)
+bg1_B = WasteStream('biogas_1B', phase='g')
+bg2_B = WasteStream('biogas_2B', phase='g')
+AnR1 = su.AnaerobicCSTR('AnR1', ins=inf_b, outs=(bg1_B, ''), 
+                        V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
+                        retain_cmps=fermenters)
+# AnR2 = su.AnaerobicCSTR('AnR2', ins=AnR1-1, outs=(bg2_B, eff_B), 
+#                         V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
+#                         retain_cmps=methanogens)
+AnR1.set_init_conc(**R1_ss_conds)
+# AnR2.set_init_conc(**R2_ss_conds)
+sysB = System('baseline', path=(AnR1,))
+sysB.set_dynamic_tracker(AnR1, bg1_B)
+# sysB = System('baseline', path=(AnR1, AnR2))
+# sysB.set_dynamic_tracker(AnR1, AnR2, bg1_B, bg2_B)
+
+inf_c = inf_b.copy('BreweryWW_C')
+eff_c = WasteStream('Effluent_C', T=T2)
+bgm1 = WasteStream('biogas_mem_1', phase='g')
+bgm2 = WasteStream('biogas_mem_2', phase='g')
+bgh1 = WasteStream('biogas_hsp_1', phase='g')
+bgh2 = WasteStream('biogas_hsp_2', phase='g')
+
+############# sysC unit operation #################
+sc1 = 0.9
+sc2 = 0.9
+R1 = su.AnaerobicCSTR('R1', ins=[inf_c, 'return_1'], 
+                      outs=(bgh1, 'sidestream_1', ''), 
+                      split=(sc1, 1-sc1),
+                      V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
+                      retain_cmps=fermenters)
+DM1c = DM1_c = DegassingMembrane('DM1_c', ins=R1-1, outs=(bgm1, 1-R1), tau=tau_1)
+# DM1c = DM('DM1_c', ins=R1-1, outs=(bgm1, 1-R1), tau=0.1)    
+
+# R2 = su.AnaerobicCSTR('R2', ins=[R1-2, 'return_2'], 
+#                       outs=(bgh2, 'sidestream_2', eff_c), 
+#                       split=(sc2, 1-sc2),
+#                       V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
+#                       retain_cmps=methanogens)
+# DM2c = DM2_c = DegassingMembrane('DM2_c', ins=R2-1, outs=(bgm2, 1-R2), tau=tau_2)
+# DM2c = DM('DM2_c', ins=R2-1, outs=(bgm2, 1-R2), tau=0.1)
+
+R1.set_init_conc(**R1_ss_conds)
+# R2.set_init_conc(**R2_ss_conds)
+
+degassing = 1
+for u in (DM1_c, ):
+    for gas in ('H2', 'CH4', 'CO2'):
+        setattr(u, f'{gas}_degas_efficiency', degassing)
+# DM1_c.H2_degas_efficiency = DM2_c.H2_degas_efficiency = 1
+# DM1_c.CH4_degas_efficiency = DM2_c.CH4_degas_efficiency = 1
+
+sysC = System('combined_METAB', path=(R1, DM1c,),
+              recycle=(DM1c-1,))
+sysC.set_dynamic_tracker(R1, bgm1, bgh1,)
+
+# sysC = System('combined_METAB', path=(R1, DM1c, R2, DM2c),
+#               recycle=(DM1c-1, DM2c-1))
+# sysC.set_dynamic_tracker(R1, R2, bgm1, bgm2, bgh1, bgh2)
+
+
+
+cmps = AnR1.components
+def get_COD(streams):
+    try: iter(streams)
+    except: streams = [streams]
+    return sum((s.mass*cmps.i_COD).sum() for s in streams)
+
+t = 200
+# sysB.simulate(state_reset_hook='reset_cache', t_span=(0,t), method='BDF')
+sysC.simulate(state_reset_hook='reset_cache', t_span=(0,t), method='BDF')

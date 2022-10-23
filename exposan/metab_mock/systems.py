@@ -331,7 +331,6 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
     
     ############# sysC unit operation #################
     sc1 = 0.1
-    # sc1 = 0.5 #!!!
     sc2 = 0.1
     R1 = su.AnaerobicCSTR('R1', ins=[inf_c, 'return_1'], 
                           outs=(bgh1, 'sidestream_1', ''), 
