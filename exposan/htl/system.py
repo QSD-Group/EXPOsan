@@ -95,10 +95,14 @@ GasolineMixer = su.FuelMixer('S100',ins=(HT-2,HC-0),outs='mixed_gasoline')
 
 DieselMixer = su.FuelMixer('S110',ins=(HT-3,HC-1),outs='mixed_diesel')
 
-GasolineTank = suu.StorageTank('A360',ins=GasolineMixer-0,outs=('gasoline_out'),tau=3*24)
+H5 = suu.HXutility('A360',ins=GasolineMixer-0,outs='cooled_gasoline',T=60+273.15,init_with='Stream')
+
+H6 = suu.HXutility('A370',ins=DieselMixer-0,outs='cooled_diesel',T=60+273.15,init_with='Stream')
+
+GasolineTank = suu.StorageTank('A380',ins=H5-0,outs=('gasoline_out'),tau=3*24,init_with='Stream')
 #store for 3 days based on Jones 2014
 
-DieselTank = suu.StorageTank('A370',ins=DieselMixer-0,outs=('diesel_out'),tau=3*24)
+DieselTank = suu.StorageTank('A390',ins=H6-0,outs=('diesel_out'),tau=3*24,init_with='Stream')
 #store for 3 days based on Jones 2014
 
 GasMixer = su.GasMixer('S200',ins=(HTL-3,CHG-0,HT-1,HC-2),outs=('fuel_gas'))
@@ -107,8 +111,9 @@ CHP = suu.CHP('A400',ins=(GasMixer-0,'natural_gas','air'),outs=('emission','soli
 
 # HXN = suu.HeatExchangerNetwork('HXN')
 
-for unit in (SluL,SluT,SluC,P1,H1,HTL,P2,H2,HT,P3,H3,HC,AcidEx,M1,StruPre,P4,H4,CHG,
-             GasMixer,CHP,MemDis,GasolineMixer,GasolineTank,DieselMixer,DieselTank):
+for unit in (SluL,SluT,SluC,P1,H1,HTL,AcidEx,M1,StruPre,P2,H2,CHG,MemDis,
+             P3,H3,HT,P4,H4,HC,H5,H6,GasolineMixer,GasolineTank,
+             DieselMixer,DieselTank,GasMixer,CHP):
     unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1]) # so that qs.main_flowsheet.H1 works as well
 
 sys=qs.System('sys',path=(SluL,SluT,SluC,
@@ -117,6 +122,7 @@ sys=qs.System('sys',path=(SluL,SluT,SluC,
                           P2,H2,CHG,MemDis,
                           P3,H3,HT,
                           P4,H4,HC,
+                          H5,H6,
                           GasolineMixer,GasolineTank,
                           DieselMixer,DieselTank,
                           GasMixer,CHP))#,facilities=(HXN,))
