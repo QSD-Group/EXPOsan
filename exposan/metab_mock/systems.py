@@ -191,6 +191,61 @@ R2_ss_conds = {
     'X_I': 0.196117291164614*1e3
     }
 
+# # R1_split = (0.9, 0.1), <0.2% diff if uses these
+# R1_ss_conds = {
+#     'S_su': 0.01431332653033124*1e3,
+#     'S_aa': 0.006319229324446604*1e3,
+#     'S_fa': 0.6348272949518201*1e3,
+#     'S_va': 0.6245549045932813*1e3,
+#     'S_bu': 1.038036275314748*1e3,
+#     'S_pro': 1.2468433077261327*1e3,
+#     'S_ac': 2.0025986879937308*1e3,
+#     'S_h2': 0.011117814005879386*1e3,
+#     'S_ch4': 5.952203539352817e-05*1e3,
+#     'S_IC': 0.08330274953356481*C_mw*1e3,
+#     'S_IN': 0.21612074810295764*N_mw*1e3,
+#     'S_I': 0.02730942113623604*1e3,
+#     'X_c': 0.14618842266689933*1e3,
+#     'X_ch': 0.028601712932738325*1e3,
+#     'X_pr': 0.04678353111459632*1e3,
+#     'X_li': 0.024720751217894823*1e3,
+#     'X_su': 4.6915202551212944*1e3,
+#     'X_aa': 1.2274469593168187*1e3,
+#     'X_fa': 0.014302724094919613*1e3,
+#     'X_c4': 0.014436386133097296*1e3,
+#     'X_pro': 0.014311685377540902*1e3,
+#     'X_ac': 0.0009804172325111186*1e3,
+#     'X_h2': 0.0011332727803773114*1e3,
+#     'X_I': 0.039618842271433245*1e3
+#     }
+
+# R2_ss_conds = {
+#     'S_su': 0.0008282629572271559*1e3,
+#     'S_aa':0.001032694581229776*1e3,
+#     'S_fa': 0.12736791568063396*1e3,
+#     'S_va': 0.013392575245557583*1e3,
+#     'S_bu': 0.01747268169433745*1e3,
+#     'S_pro': 0.020406491318645616*1e3,
+#     'S_ac': 0.00999472311030857*1e3,
+#     'S_h2': 7.706131429350044e-08*1e3,
+#     'S_ch4': 0.07044765251475965*1e3,
+#     'S_IC': 0.49869691792599646*C_mw*1e3,
+#     'S_IN': 0.20439321199252136*N_mw*1e3,
+#     'S_I': 0.07350288752133147*1e3,
+#     'X_c': 0.06137141129938335*1e3,
+#     'X_ch': 0.0007989050950664583*1e3,
+#     'X_pr': 0.0009192059152983118*1e3,
+#     'X_li': 0.0010780568238771538*1e3,
+#     'X_su': 0.19130327796202837*1e3,
+#     'X_aa': 0.056026151032630665*1e3,
+#     'X_fa': 0.03107211586931466*1e3,
+#     'X_c4': 0.07959903792107152*1e3,
+#     'X_pro': 0.04955864019101192*1e3,
+#     'X_ac': 0.6361761447275743*1e3,
+#     'X_h2':0.20772282044789275*1e3,
+#     'X_I': 0.13200577400466326*1e3
+#     }
+
 
 # %%
 # =============================================================================
@@ -233,6 +288,7 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
                   path=(H2E, DM1, CH4E, DM2),
                   recycle=(DM1-1, DM2-1))
     sysA.set_dynamic_tracker(H2E, CH4E, bg1_A, bg2_A)
+    # qs.WasteStream('biogas_A', phase='g')
     
     #***************************************************
     flowsheet_B = flowsheet_A or qs.Flowsheet('METAB_sysB')
@@ -259,6 +315,7 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
     AnR2.set_init_conc(**R2_ss_conds)
     sysB = System('baseline', path=(AnR1, AnR2))
     sysB.set_dynamic_tracker(AnR1, AnR2, bg1_B, bg2_B)
+    # qs.WasteStream('biogas_B', phase='g')
     
     #***************************************************
     flowsheet_C = flowsheet_C or qs.Flowsheet('METAB_sysC')
@@ -274,6 +331,7 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
     
     ############# sysC unit operation #################
     sc1 = 0.1
+    # sc1 = 0.5 #!!!
     sc2 = 0.1
     R1 = su.AnaerobicCSTR('R1', ins=[inf_c, 'return_1'], 
                           outs=(bgh1, 'sidestream_1', ''), 
@@ -295,12 +353,16 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
     sysC = System('combined_METAB', path=(R1, DM1c, R2, DM2c),
                   recycle=(DM1c-1, DM2c-1))
     sysC.set_dynamic_tracker(R1, R2, bgm1, bgm2, bgh1, bgh2)
+    # qs.WasteStream('biogas_1C', phase='g')
+    # qs.WasteStream('biogas_2C', phase='g')
+    # qs.WasteStream('biogas_C', phase='g')
               
     return sysA, sysB, sysC
 
 #%%
 @time_printer
 def run(t, t_step, method=None, **kwargs):
+    global sysA, sysB, sysC
     sysA, sysB, sysC = create_systems()
     print(f'Simulating {sysA.ID}...')
     sysA.simulate(state_reset_hook='reset_cache',
@@ -325,8 +387,8 @@ def run(t, t_step, method=None, **kwargs):
                   **kwargs)
 
 if __name__ == '__main__':
-    t = 120
-    t_step = 3
+    t = 200
+    t_step = 5
     # method = 'RK45'
     # method = 'RK23'
     # method = 'DOP853'
