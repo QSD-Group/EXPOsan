@@ -628,11 +628,11 @@ class HT(SanUnit):
             if i<0: i=0
     
         fuelgas_HT_composition = {
-            'C4H10':self.c4h10_ratio,
             'CO':self.co_ratio,
             'CO2':self.co2_ratio,
             'C2H6':self.c2h6_ratio,
             'C3H8':self.c3h8_ratio,
+            'C4H10':self.c4h10_ratio,
             'CH4':1-self.c4h10_ratio-self.co_ratio-self.co2_ratio-self.c2h6_ratio-\
                 self.c3h8_ratio
             }
@@ -775,6 +775,41 @@ class HC(SanUnit):
         pass
    
 
+class FuelMixer(SanUnit):
+    
+    '''
+    Mix fuels.
+    
+    Parameters
+    ----------
+    ins: Iterable (stream)
+        ht_fuel, hc_fuel
+    outs: Iterable (stream)
+        mixed_fuel
+    '''
+    
+    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream',**kwargs):
+        SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
+
+    _N_ins = 2
+    _N_outs = 1
+        
+    def _run(self):
+        
+        ht_fuel, hc_fuel = self.ins
+        mixed_fuel = self.outs[0]
+        
+        mixed_fuel.copy_like(ht_fuel)
+        mixed_fuel.imass['Gasoline'] += hc_fuel.imass['Gasoline']
+        mixed_fuel.imass['Diesel'] += hc_fuel.imass['Diesel']
+        
+    def _design(self):
+        pass
+    
+    def _cost(self):
+        pass 
+
+    
 class GasMixer(SanUnit):
     
     '''
@@ -810,42 +845,6 @@ class GasMixer(SanUnit):
     
     def _cost(self):
         pass   
-    
-
-class FuelMixer(SanUnit):
-    
-    '''
-    Mix fuels.
-    
-    Parameters
-    ----------
-    ins: Iterable (stream)
-        ht_fuel, hc_fuel
-    outs: Iterable (stream)
-        mixed_fuel
-    '''
-    
-    def __init__(self,ID='',ins=None,outs=(),thermo=None,init_with='Stream',**kwargs):
-        SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
-
-    _N_ins = 2
-    _N_outs = 1
-        
-    def _run(self):
-        
-        ht_fuel, hc_fuel = self.ins
-        mixed_fuel = self.outs[0]
-        
-        mixed_fuel.copy_like(ht_fuel)
-        mixed_fuel.imass['Gasoline'] += hc_fuel.imass['Gasoline']
-        mixed_fuel.imass['Diesel'] += hc_fuel.imass['Diesel']
-        
-    def _design(self):
-        pass
-    
-    def _cost(self):
-        pass 
-
     
 
     
