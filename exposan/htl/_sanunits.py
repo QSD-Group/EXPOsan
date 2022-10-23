@@ -168,11 +168,13 @@ class HTL(SanUnit):
             * dewatered_sludge_afdw #HTLaqueous is TDS in aqueous phase
         offgas.imass['CO2'] = (0.074*protein_ratio + 0.418*carbo_ratio)\
             * dewatered_sludge_afdw
-            
         biocrude.imass['H2O'] = biocrude.imass['Biocrude']/(1-self.biocrude_moisture_content)-\
             biocrude.imass['Biocrude']
         HTLaqueous.imass['H2O'] = dewatered_sludge.imass['H2O']-biocrude.imass['H2O']+\
             dewatered_sludge.imass['Sludge_ash'] #assume ash goes to water
+        
+        biochar.phase='s'
+        offgas.phase='g'
         
         biochar.P = 3029.7*6894.76 #Jones 2014: 3029.7 psia
         HTLaqueous.P = 30*6894.76 #Jones 2014: 30 psia
@@ -308,6 +310,8 @@ class AcidExtraction(SanUnit):
         extracted.copy_like(acid)
         extracted.imass['P']=biochar.F_mass-residual.F_mass
         
+        residual.phase='s'
+        
         residual.T = biochar.T
         extracted.T = acid.T
         
@@ -398,12 +402,16 @@ class StruvitePrecipitation(SanUnit):
         supply_MgCl2.imass['MgCl2']=mixture.imass['P']/31*95.211*self.Mg_P_ratio
         struvite.imass['Struvite']=mixture.imass['P']*self.P_pre_recovery_ratio/self.P_in_struvite
         
+        supply_MgCl2.phase='s'
+        
         effluent.copy_like(mixture)
         effluent.imass['P'] -= struvite.imass['Struvite']*self.P_in_struvite
         effluent.imass['N'] -= struvite.imass['Struvite']*self.P_in_struvite/31*14
         effluent.imass['H2O'] += (supply_MgCl2.imass['MgCl2']-\
                                        struvite.imass['Struvite']*(1-self.P_in_struvite*(1+14/31)))
         
+        struvite.phase='s'    
+            
         struvite.T = mixture.T
         effluent.T = mixture.T
         
@@ -466,8 +474,6 @@ class CHG(SanUnit):
                   1-self.ch4_ratio-self.co_ratio-self.co2_ratio-self.c2h6_ratio):
             if i < 0: i = 0
         
-        CHGfuelgas.phase='g'
-        
         CHGfuel_gas_mass = CHGfeed.imass['C']*self.toc_tc_ratio*self.toc_to_gas_c_ratio/(self.\
             ch4_ratio*12/16+self.co_ratio*12/28+self.co2_ratio*12/44+self.c2h6_ratio*24/30)
 
@@ -487,8 +493,10 @@ class CHG(SanUnit):
         effluent.imass['H2O']=CHGfeed.F_mass-CHGfuel_gas_mass-effluent.imass['C']-\
             effluent.imass['N']-effluent.imass['P']
         
+        CHGfuelgas.phase='g'
+        
         CHGfuelgas.P = 50*6894.76 #Jones 2014: 50 psia
-        effluent = 50*6894.76
+        effluent.P = 50*6894.76
         
         mixed_higherT, mixed_lowerT = self._mixed_higherT, self._mixed_lowerT
         mixed_higherT.mix_from(outs)
@@ -620,8 +628,6 @@ class HT(SanUnit):
         
         gas_mass = biocrude.F_mass*self.gas_ratio
         
-        fuel_gas.phase='g'
-        
         for i in (self.c4h10_ratio,self.co_ratio,self.co2_ratio,self.c2h6_ratio,self.c3h8_ratio,
                     1-self.c4h10_ratio-self.co_ratio-self.co2_ratio-self.c2h6_ratio-\
                     self.c3h8_ratio):
@@ -642,7 +648,9 @@ class HT(SanUnit):
         
         HTaqueous.imass['HTaqueous'] = biocrude.F_mass+hydrogen_gas.F_mass-biooil_total_mass-gas_mass
         #HTaqueous is liquid waste from HT
-   
+        
+        fuel_gas.phase='g'
+        
         HTaqueous.P = 55*6894.76 #Jones 2014: 55 psia
         fuel_gas.P = 20*6894.76
         gasoline.P = 25*6894.76
@@ -751,7 +759,9 @@ class HC(SanUnit):
             (1-self.gasoline_hc_ratio-self.off_gas_ratio)
         
         off_gas.imass['CO2'] = (heavy_oil.F_mass+hydrogen_gas.F_mass)*self.off_gas_ratio
-           
+        
+        off_gas.phase='g'
+        
         gasoline.P = 20*6894.76 #Jones 2014: 20 psia
         diesel.P = 24*6894.76
         off_gas.P = 20*6894.76
@@ -796,12 +806,13 @@ class FuelMixer(SanUnit):
         
     def _run(self):
         
-        ht_fuel, hc_fuel = self.ins
+        ht_fuel, hc_fuel = ins = self.ins
         mixed_fuel = self.outs[0]
         
-        mixed_fuel.copy_like(ht_fuel)
-        mixed_fuel.imass['Gasoline'] += hc_fuel.imass['Gasoline']
-        mixed_fuel.imass['Diesel'] += hc_fuel.imass['Diesel']
+        mixed_fuel.mix_from(ins)
+        # mixed_fuel.copy_like(ht_fuel)
+        # mixed_fuel.imass['Gasoline'] += hc_fuel.imass['Gasoline']
+        # mixed_fuel.imass['Diesel'] += hc_fuel.imass['Diesel']
         
     def _design(self):
         pass
@@ -831,25 +842,18 @@ class GasMixer(SanUnit):
         
     def _run(self):
         
-        htl_off_gas, ht_fuel_gas, hc_off_gas, chg_fuel_gas = self.ins
+        htl_off_gas, ht_fuel_gas, hc_off_gas, chg_fuel_gas = ins = self.ins
         fuel_gas = self.outs[0]
         
-        fuel_gas.copy_like(ht_fuel_gas)
-        for gas in ['CH4','CO','CO2','C2H6','H2','C3H8','C4H10']:
-            fuel_gas.imass[gas] += (htl_off_gas.imass[gas]+hc_off_gas.imass[gas]+
-                                    chg_fuel_gas.imass[gas])
+        fuel_gas.mix_from(ins)
+        fuel_gas.phase='g'
+        # fuel_gas.copy_like(ht_fuel_gas)
+        # for gas in ['CH4','CO','CO2','C2H6','H2','C3H8','C4H10']:
+        #     fuel_gas.imass[gas] += (htl_off_gas.imass[gas]+hc_off_gas.imass[gas]+
+        #                             chg_fuel_gas.imass[gas])
             
-        
     def _design(self):
         pass
     
     def _cost(self):
-        pass   
-    
-
-    
-    
-    
-    
-    
-    
+        pass
