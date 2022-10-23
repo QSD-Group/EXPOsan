@@ -125,8 +125,6 @@ def create_components(set_thermo=True):
     add_V_from_rho(HTaqueous, 1000)
     HTaqueous.copy_models_from(Chemical('H2O'),('Cn',))  #HTaqueous referd to HT aqueous waste
     
-   
-
     Struvite = Component('Struvite',search_ID='MagnesiumAmmoniumPhosphate',
                          formula='NH4MgPO4·H12O6',phase='s',
                          particle_size='Particulate', 
@@ -181,14 +179,17 @@ def create_components(set_thermo=True):
     H2 = Component('H2',phase='g',particle_size='Dissolved gas',
                    degradability='Undegradable',organic=False)
     
+    NH3 = Component('NH3',phase='g',particle_size='Dissolved gas',
+                    degradability='Undegradable',organic=False)
+    
     H2SO4 = Component('H2SO4',phase='l',particle_size='Soluble',
                       degradability='Undegradable',organic=False)
     
     H3PO4 = Component('H3PO4',phase='l',particle_size='Soluble',
                       degradability='Undegradable',organic=False)
     
-    MgCl2 = Component('MgCl2',phase='l',particle_size='Soluble',
-                      degradability='Undegradable',organic=False)
+    MgCl2 = Component('MgCl2',phase='s',particle_size='Soluble',
+                      degradability='Undegradable',organic=False) #assume we add MgCl2 solid
     
     NaOH = Component('NaOH',phase='l',particle_size='Soluble',
                      degradability='Undegradable',organic=False)
@@ -197,11 +198,8 @@ def create_components(set_thermo=True):
                         degradability='Undegradable',organic=False)
     add_V_from_rho(NH42SO4, 1770)
     #https://en.wikipedia.org/wiki/Ammonium_sulfate (accessed 2022-9-30)
-         
-    NH3 = Component('NH3',phase='g',particle_size='Dissolved gas',
-                    degradability='Undegradable',organic=False)
     
-    # #heating agent
+    # heating agent (see_process_settings.py)
     # Terphenyl = Component('Terphenyl',CAS='92-94-4',phase='l',
     #                       particle_size='Soluble',
     #                       degradability='Slowly',organic=True)
