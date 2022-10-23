@@ -91,19 +91,19 @@ H4 = suu.HXutility('A340',ins=P4-0,outs='heated_heavy_oil',T=395+273.15,init_wit
 HC = su.HC('A350',ins=(H4-0,'H2_HC'),outs=('gasoline_HC', 'diesel_HC', 'offgas_HC'))
 HC_hx = HC.heat_exchanger
 
-GasMixer = su.GasMixer('S200',ins=(HTL-3,HT-1,HC-2,CHG-0),outs=('fuel_gas'))
+GasolineMixer = su.FuelMixer('S100',ins=(HT-2,HC-0),outs='mixed_gasoline')
+
+DieselMixer = su.FuelMixer('S110',ins=(HT-3,HC-1),outs='mixed_diesel')
+
+GasolineTank = suu.StorageTank('A360',ins=GasolineMixer-0,outs=('gasoline_out'),tau=3*24)
+#store for 3 days based on Jones 2014
+
+DieselTank = suu.StorageTank('A370',ins=DieselMixer-0,outs=('diesel_out'),tau=3*24)
+#store for 3 days based on Jones 2014
+
+GasMixer = su.GasMixer('S200',ins=(HTL-3,CHG-0,HT-1,HC-2),outs=('fuel_gas'))
 
 CHP = suu.CHP('A400',ins=(GasMixer-0,'natural_gas','air'),outs=('emission','solid_ash'))
-
-GasolineMixer = su.FuelMixer('S100',ins=(HT-2,HC-0),outs='Mixed_gasoline')
-
-DieselMixer = su.FuelMixer('S110',ins=(HT-3,HC-1),outs='Mixed_diesel')
-
-GasolineTank = suu.StorageTank('A360',ins=GasolineMixer-0,outs=('Gasoline_out'),tau=3*24)
-#store for 3 days based on Jones 2014
-
-DieselTank = suu.StorageTank('A370',ins=DieselMixer-0,outs=('Diesel_out'),tau=3*24)
-#store for 3 days based on Jones 2014
 
 # HXN = suu.HeatExchangerNetwork('HXN')
 
@@ -117,9 +117,9 @@ sys=qs.System('sys',path=(SluL,SluT,SluC,
                           P2,H2,CHG,MemDis,
                           P3,H3,HT,
                           P4,H4,HC,
-                          GasMixer,CHP,
                           GasolineMixer,GasolineTank,
-                          DieselMixer,DieselTank))#,facilities=(HXN,))
+                          DieselMixer,DieselTank,
+                          GasMixer,CHP))#,facilities=(HXN,))
 
 
 
