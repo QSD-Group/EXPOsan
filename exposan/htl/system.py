@@ -111,10 +111,10 @@ CHP = suu.CHP('A400',ins=(GasMixer-0,'natural_gas','air'),outs=('emission','soli
 
 # HXN = suu.HeatExchangerNetwork('HXN')
 
-for unit in (SluL,SluT,SluC,P1,H1,HTL,AcidEx,M1,StruPre,P2,H2,CHG,MemDis,
-             P3,H3,HT,P4,H4,HC,GasolineMixer,DieselMixer,H5,H6,GasolineTank,
-             DieselTank,GasMixer,CHP):
-    unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1]) # so that qs.main_flowsheet.H1 works as well
+# for unit in (SluL,SluT,SluC,P1,H1,HTL,AcidEx,M1,StruPre,P2,H2,CHG,MemDis,
+#              P3,H3,HT,P4,H4,HC,GasolineMixer,DieselMixer,H5,H6,GasolineTank,
+#              DieselTank,GasMixer,CHP):
+#     unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1]) # so that qs.main_flowsheet.H1 works as well
 
 sys=qs.System('sys',path=(SluL,SluT,SluC,
                           P1,H1,HTL,
@@ -465,10 +465,6 @@ dist = shape.Triangle(0.8,0.825,0.85)
 def set_N_recovery_rate(i):
     MemDis.N_recovery_rate=i   
 
-# metric = model.metric
-# @metric(name='P_recovery_rate',units='-',element='Production')
-# def get_P_recovery_rate():
-#     return StruPre.struvite_P/((HTL.ins[0].F_mass-HTL.ins[0].imass['H2O'])*HTL.sludge_P_ratio)
 
 metric = model.metric
 @metric(name='Struvite',units='kg/hr',element='Production')
@@ -483,26 +479,15 @@ def get_nh42so4_production():
 def get_bioil_production():
     return HT.outs[2].imass['Biooil']
 
-@metric(name='H2',units='kg/hr',element='Production')
-def get_h2_production():
-    return CHG.outs[0].imass['H2']
-
-@metric(name='CO',units='kg/hr',element='Production')
-def get_co_production():
-    return HT.outs[1].imass['CO']+CHG.outs[0].imass['CO']
-
 @metric(name='CO2',units='kg/hr',element='Production')
 def get_co2_production():
-    return HTL.outs[3].imass['CO2']+HT.outs[1].imass['CO']+CHG.outs[0].imass['CO']
+    return CHP.outs[0].imass['CO2']
 
-@metric(name='CH4',units='kg/hr',element='Production')
-def get_ch4_production():
-    return HT.outs[1].imass['CH4']+CHG.outs[0].imass['CH4']
 
 #%%
 import numpy as np
 np.random.seed(3221)
-samples = model.sample(N=1000, rule='L')
+samples = model.sample(N=100, rule='L')
 model.load_samples(samples)
 model.evaluate()
 model.table
