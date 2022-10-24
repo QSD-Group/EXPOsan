@@ -291,7 +291,7 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
     # qs.WasteStream('biogas_A', phase='g')
     
     #***************************************************
-    flowsheet_B = flowsheet_A or qs.Flowsheet('METAB_sysB')
+    flowsheet_B = flowsheet_B or qs.Flowsheet('METAB_sysB')
     qs.main_flowsheet.set_flowsheet(flowsheet_B)
 
     ############# sysB streams ########################
