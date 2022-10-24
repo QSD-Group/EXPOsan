@@ -128,7 +128,7 @@ sys=qs.System('sys',path=(SluL,SluT,SluC,
                           GasMixer,CHP))#,facilities=(HXN,))
 
 
-sys.operating_hours=8410 # 1 year = 8760 hr
+sys.operating_hours=7884 # NRES 2013
 
 sys.simulate()
 
