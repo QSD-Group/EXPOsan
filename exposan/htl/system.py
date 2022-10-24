@@ -51,8 +51,11 @@ SluC = suu.SludgeCentrifuge('A010',ins=SluT-1,outs=('supernatant_2','compressed_
 
 P1 = suu.Pump('A100',ins=SluC-1,outs='press_sludge',P=3049.7*6894.76) #Jones 2014: 3049.7 psia
 
-H1 = suu.HXutility('A110',ins=P1-0,outs='heated_sludge',T=350+273.15,init_with='Stream')
-
+H1 = suu.HXutility('A110',ins=P1-0,outs='heated_sludge',T=350+273.15,U=0.874,init_with='Stream')
+# H1: from NREL 2013: 154 (40-446) Btu/hr/ft2/F ~ U = 0.874 (0.227-2.531) kW/m2/k
+# U is just needed for H1? Right? I think high viscosity of sludge is just here but not in other pumps
+# unit conversion: http://www.unitconversion.org/heat-transfer-coefficient/watts-
+# per-square-meter-per-k-to-btus-th--per-hour-per-square-foot-per-f-conversion.html
 
 #!!! currently the power/heat utilities of HTL_hx aren't added to HTL,
 # it'll be added in after I pulled in some updates from biosteam,
