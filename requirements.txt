@@ -1,3 +1,4 @@
 # Needed by exposan
 git+https://github.com/QSD-Group/QSDsan.git
 scikit-learn
+pint<=0.19.2
