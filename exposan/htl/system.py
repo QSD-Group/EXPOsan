@@ -477,9 +477,13 @@ def get_struvite_production():
 def get_nh42so4_production():
     return MemDis.outs[0].imass['NH42SO4']
 
-@metric(name='Biooil',units='kg/hr',element='Production')
-def get_bioil_production():
-    return HT.outs[2].imass['Biooil']
+@metric(name='Gasoline',units='kg/hr',element='Production')
+def get_gasoline_production():
+    return GasolineTank.outs[0].imass['Gasoline']
+
+@metric(name='Diesel',units='kg/hr',element='Production')
+def get_diesel_production():
+    return DieselTank.outs[0].imass['Diesel']
 
 @metric(name='CO2',units='kg/hr',element='Production')
 def get_co2_production():
