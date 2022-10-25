@@ -34,24 +34,24 @@ from exposan.htl._components import create_components
 load_process_settings()
 cmps = create_components()
 
-fake_sludge = qs.Stream('fake_sludge',H2O=1814370,units='kg/hr',T=298.15)
+fake_sludge = qs.Stream('fake_sludge', H2O=1814370, units='kg/hr', T=25+273.15)
 #set H2O equal to the total sludge input flow
 #assume 99% moisture, 20 us tons of dw sludge per h
 
 
-SluL = su.SludgeLab('S000',ins=fake_sludge,outs='real_sludge')
+SluL = su.SludgeLab('S000', ins=fake_sludge, outs='real_sludge')
 
-SluT = suu.SludgeThickening('A000',ins=SluL-0,outs=('supernatant_1','compressed_sludge_1'),
-                            init_with='Stream',solids=('Sludge_lipid','Sludge_protein','Sludge_carbo',
+SluT = suu.SludgeThickening('A000', ins=SluL-0, outs=('supernatant_1','compressed_sludge_1'),
+                            init_with='Stream', solids=('Sludge_lipid','Sludge_protein','Sludge_carbo',
                                                        'Sludge_ash'))
 
-SluC = suu.SludgeCentrifuge('A010',ins=SluT-1,outs=('supernatant_2','compressed_sludge_2'),
-                            init_with='Stream',solids=('Sludge_lipid','Sludge_protein','Sludge_carbo',
+SluC = suu.SludgeCentrifuge('A010', ins=SluT-1, outs=('supernatant_2','compressed_sludge_2'),
+                            init_with='Stream', solids=('Sludge_lipid','Sludge_protein','Sludge_carbo',
                                                        'Sludge_ash'))
 
-P1 = suu.Pump('A100',ins=SluC-1,outs='press_sludge',P=3049.7*6894.76) #Jones 2014: 3049.7 psia
+P1 = suu.Pump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76) #Jones 2014: 3049.7 psia
 
-H1 = suu.HXutility('A110',ins=P1-0,outs='heated_sludge',T=350+273.15,U=0.874,init_with='Stream')
+H1 = suu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=350+273.15, U=0.874, init_with='Stream')
 # H1: from NREL 2013: 154 (40-446) Btu/hr/ft2/F ~ U = 0.874 (0.227-2.531) kW/m2/k
 # U is just needed for H1? Right? I think high viscosity of sludge is just here but not in other pumps
 # unit conversion: http://www.unitconversion.org/heat-transfer-coefficient/watts-
@@ -61,77 +61,76 @@ H1 = suu.HXutility('A110',ins=P1-0,outs='heated_sludge',T=350+273.15,U=0.874,ini
 # it'll be added in after I pulled in some updates from biosteam,
 # so we don't need to worry about it (I'm leaving this note to reminder myself)
 
-HTL = su.HTL('A120',ins=H1-0,outs=('biochar','HTLaqueous','biocrude','offgas_HTL'))
+HTL = su.HTL('A120', ins=H1-0, outs=('biochar','HTLaqueous','biocrude','offgas_HTL'))
 HTL_hx = HTL.heat_exchanger #include this into path?
 
-AcidEx = su.AcidExtraction('A200',ins=(HTL-0,'H2SO4_P'),outs=('residual','extracted'))
+AcidEx = su.AcidExtraction('A200', ins=(HTL-0,'H2SO4_P'), outs=('residual','extracted'))
 
-M1 = su.HTLmixer('A210',ins=(HTL-1,AcidEx-1),outs=('mixture'))
+M1 = su.HTLmixer('A210', ins=(HTL-1,AcidEx-1), outs=('mixture'))
 
-StruPre = su.StruvitePrecipitation('A220',ins=(M1-0,'MgCl2'),outs=('struvite','CHG_feed'))
+StruPre = su.StruvitePrecipitation('A220', ins=(M1-0,'MgCl2'), outs=('struvite','CHG_feed'))
 
-P2 = suu.Pump('A230',ins=StruPre-1,outs='press_aqueous',P=3089.7*6894.76) #Jones 2014: 3089.7 psia
+P2 = suu.Pump('A230', ins=StruPre-1, outs='press_aqueous', P=3089.7*6894.76) #Jones 2014: 3089.7 psia
 
-H2 = suu.HXutility('A240',ins=P2-0,outs='heated_aqueous',T=350+273.15,init_with='Stream')
+H2 = suu.HXutility('A240', ins=P2-0, outs='heated_aqueous', T=350+273.15, init_with='Stream')
 
-CHG = su.CHG('A250',ins=H2-0,outs=('CHG_fuel_gas','effluent'))
+CHG = su.CHG('A250', ins=H2-0, outs=('CHG_fuel_gas','effluent'))
 CHG_hx = CHG.heat_exchanger
 
-MemDis = su.MembraneDistillation('A260',ins=(CHG-1,'H2SO4_N'),outs=('AmmoniaSulfate','ww'))
+MemDis = su.MembraneDistillation('A260', ins=(CHG-1,'H2SO4_N'), outs=('AmmoniaSulfate','ww'))
 
-P3 = suu.Pump('A300',ins=HTL-2,outs='press_biocrude',P=1530.0*6894.76) #Jones 2014: 1530.0 psia
+P3 = suu.Pump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76) #Jones 2014: 1530.0 psia
 
-H3 = suu.HXutility('A310',ins=P3-0,outs='heated_biocrude',T=405+273.15,init_with='Stream')
+H3 = suu.HXutility('A310', ins=P3-0, outs='heated_biocrude', T=405+273.15, init_with='Stream')
 
-HT = su.HT('A320',ins=(H3-0,'H2_HT'),outs=('HTaqueous','HT_fuel_gas','gasoline_HT','diesel_HT','heavy_oil'))
+HT = su.HT('A320', ins=(H3-0,'H2_HT'), outs=('HTaqueous','HT_fuel_gas','gasoline_HT','diesel_HT','heavy_oil'))
 HT_hx = HT.heat_exchanger
 
-P4 = suu.Pump('A330',ins=HT-4,outs='press_heavy_oil',P=1034.7*6894.76) #Jones 2014: 1034.7 psia
+P4 = suu.Pump('A330', ins=HT-4, outs='press_heavy_oil', P=1034.7*6894.76) #Jones 2014: 1034.7 psia
 
-H4 = suu.HXutility('A340',ins=P4-0,outs='heated_heavy_oil',T=395+273.15,init_with='Stream')
+H4 = suu.HXutility('A340', ins=P4-0, outs='heated_heavy_oil', T=395+273.15, init_with='Stream')
 #All temperatures and pressures are from Jones et al., 2014
 
-HC = su.HC('A350',ins=(H4-0,'H2_HC'),outs=('gasoline_HC', 'diesel_HC', 'offgas_HC'))
+HC = su.HC('A350', ins=(H4-0,'H2_HC'), outs=('gasoline_HC', 'diesel_HC', 'offgas_HC'))
 HC_hx = HC.heat_exchanger
 
-GasolineMixer = su.FuelMixer('S100',ins=(HT-2,HC-0),outs='mixed_gasoline')
+GasolineMixer = su.FuelMixer('S100', ins=(HT-2,HC-0), outs='mixed_gasoline')
 
-DieselMixer = su.FuelMixer('S110',ins=(HT-3,HC-1),outs='mixed_diesel')
+DieselMixer = su.FuelMixer('S110', ins=(HT-3,HC-1), outs='mixed_diesel')
 
-H5 = suu.HXutility('A360',ins=GasolineMixer-0,outs='cooled_gasoline',T=60+273.15,init_with='Stream')
+H5 = suu.HXutility('A360', ins=GasolineMixer-0, outs='cooled_gasoline', T=60+273.15, init_with='Stream')
 
-H6 = suu.HXutility('A370',ins=DieselMixer-0,outs='cooled_diesel',T=60+273.15,init_with='Stream')
+H6 = suu.HXutility('A370', ins=DieselMixer-0, outs='cooled_diesel', T=60+273.15, init_with='Stream')
 
-GasolineTank = suu.StorageTank('A380',ins=H5-0,outs=('gasoline_out'),tau=3*24,init_with='Stream')
+GasolineTank = suu.StorageTank('A380', ins=H5-0, outs=('gasoline_out'), tau=3*24, init_with='Stream')
 #store for 3 days based on Jones 2014
 
-DieselTank = suu.StorageTank('A390',ins=H6-0,outs=('diesel_out'),tau=3*24,init_with='Stream')
+DieselTank = suu.StorageTank('A390', ins=H6-0, outs=('diesel_out'), tau=3*24, init_with='Stream')
 #store for 3 days based on Jones 2014
 
-GasMixer = su.GasMixer('S200',ins=(HTL-3,CHG-0,HT-1,HC-2),outs=('fuel_gas'))
+GasMixer = su.GasMixer('S200', ins=(HTL-3,CHG-0,HT-1,HC-2), outs=('fuel_gas'))
 
-CHP = suu.CHP('A400',ins=(GasMixer-0,'natural_gas','air'),outs=('emission','solid_ash'))
+CHP = suu.CHP('A400', ins=(GasMixer-0,'natural_gas','air'), outs=('emission','solid_ash'))
 
 # HXN = suu.HeatExchangerNetwork('HXN')
 
-# for unit in (SluL,SluT,SluC,P1,H1,HTL,AcidEx,M1,StruPre,P2,H2,CHG,MemDis,
-#              P3,H3,HT,P4,H4,HC,GasolineMixer,DieselMixer,H5,H6,GasolineTank,
-#              DieselTank,GasMixer,CHP):
+# for unit in (SluL, SluT, SluC, P1, H1, HTL, AcidEx, M1, StruPre, P2, H2, CHG, MemDis,
+#              P3, H3, HT, P4, H4, HC, GasolineMixer, DieselMixer, H5, H6, GasolineTank,
+#              DieselTank, GasMixer, CHP):
 #     unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1]) # so that qs.main_flowsheet.H1 works as well
 
-sys=qs.System('sys',path=(SluL,SluT,SluC,
-                          P1,H1,HTL,
-                          AcidEx,M1,StruPre,
-                          P2,H2,CHG,MemDis,
-                          P3,H3,HT,
-                          P4,H4,HC,
-                          GasolineMixer,DieselMixer,
-                          H5,H6,
-                          GasolineTank,DieselTank,
-                          GasMixer,CHP))#,facilities=(HXN,))
+sys = qs.System('sys', path=(SluL, SluT, SluC,
+                             P1, H1, HTL,
+                             AcidEx, M1, StruPre,
+                             P2, H2, CHG, MemDis,
+                             P3, H3, HT,
+                             P4, H4, HC,
+                             GasolineMixer, DieselMixer,
+                             H5, H6,
+                             GasolineTank, DieselTank,
+                             GasMixer, CHP))#,facilities=(HXN,))
 
-
-sys.operating_hours=7884 # NRES 2013
+sys.operating_hours = 7884 # NRES 2013
 
 sys.simulate()
 
@@ -146,7 +145,7 @@ model = Model(sys)
 
 from chaospy import distributions as shape
 
-param=model.parameter
+param = model.parameter
 
 dist = shape.Triangle(0.9895,0.99,0.9905)
 @param(name='sludge_moisture',

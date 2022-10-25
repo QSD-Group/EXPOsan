@@ -18,9 +18,9 @@ import biosteam as bst, qsdsan as qs
 def load_process_settings():
     #Use p-Terphenyl as the heating agent
     
-    Terphenyl = qs.Component('Terphenyl',CAS='92-94-4',phase='l',
+    Terphenyl = qs.Component('Terphenyl', CAS='92-94-4', phase='l',
                           particle_size='Soluble',
-                          degradability='Slowly',organic=True)
+                          degradability='Slowly', organic=True)
     heating_oil_thermo = bst.Thermo((Terphenyl,))
     
     heating_oil = bst.UtilityAgent(
