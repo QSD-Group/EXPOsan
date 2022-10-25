@@ -44,6 +44,8 @@ setup(
                     'cas/*',
                     'eco_san/*',
                     'eco_san/data/*',
+                    'interface/*',
+                    'metab_mock/*',
                     'reclaimer/*',
                     'reclaimer/data/*',
                     ]},
