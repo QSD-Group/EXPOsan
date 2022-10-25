@@ -125,7 +125,9 @@ class HTL(SanUnit):
                  biocrude_moisture_content=0.044,sludge_C_ratio=0.411,
                  sludge_P_ratio=0.019,sludge_H_ratio=0.058,sludge_S_ratio=0.01,
                  sludge_N_ratio=0.05,sludge_O_ratio=0.261,
-                 biochar_C_N_ratio=15.5,biochar_C_P_ratio=2.163,**kwargs):
+                 biochar_C_N_ratio=15.5,biochar_C_P_ratio=2.163,
+                 eff_T=60+273.15, #Jones 2014
+                 **kwargs):
         SanUnit.__init__(self,ID,ins,outs,thermo,init_with)
         self.biocrude_moisture_content=biocrude_moisture_content
         self.sludge_C_ratio=sludge_C_ratio
@@ -136,10 +138,12 @@ class HTL(SanUnit):
         self.sludge_O_ratio=sludge_O_ratio
         self.biochar_C_N_ratio=biochar_C_N_ratio
         self.biochar_C_P_ratio=biochar_C_P_ratio
-        self.heat_exchanger = HXutility(ID=None, ins=(None,), outs=None, thermo=self.thermo)
-        self._mixed_higherT = qs.Stream(f'{self.ID}_mixed_higherT')
-        self._mixed_lowerT = qs.Stream(f'{self.ID}_mixed_lowerT')
-        
+        self.eff_T = eff_T
+        hx_in = bst.Stream(f'{ID}_hx_in')
+        hx_out = bst.Stream(f'{ID}_hx_out')
+        self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out, T=eff_T)
+
+
     _N_ins = 1
     _N_outs = 4
     
@@ -175,21 +179,21 @@ class HTL(SanUnit):
         
         biochar.phase='s'
         offgas.phase='g'
-        
-        mixed_higherT, mixed_lowerT = self._mixed_higherT, self._mixed_lowerT
-        mixed_higherT.mix_from(outs) #assume the cooling happen at 1 atm
-
-        for stream in outs: stream.T = 60+273.15 #Jones 2014
-        
-        mixed_lowerT.mix_from(outs)
-
-        hx = self.heat_exchanger
-        hx.simulate_as_auxiliary_exchanger(inlet=mixed_higherT, outlet=mixed_lowerT)
+        for stream in outs: stream.T = self.eff_T
         
         biochar.P = 3029.7*6894.76 #Jones 2014: 3029.7 psia
         HTLaqueous.P = 30*6894.76 #Jones 2014: 30 psia
         biocrude.P = 30*6894.76
         offgas.P = 30*6894.76
+
+    
+    def _design(self):
+        hx = self.heat_exchanger
+        hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
+        hx_ins0.mix_from(self.outs)
+        hx_ins0.T = self.ins[0].T
+        hx_outs0.copy_flow(hx_ins0)
+        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
     
     @property
     def AOSc(self):
