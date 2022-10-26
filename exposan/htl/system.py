@@ -77,7 +77,7 @@ H2 = suu.HXutility('A240', ins=P2-0, outs='heated_aqueous', T=350+273.15, init_w
 CHG = su.CHG('A250', ins=H2-0, outs=('CHG_fuel_gas','effluent'))
 CHG_hx = CHG.heat_exchanger
 
-MemDis = su.MembraneDistillation('A260', ins=(CHG-1,'H2SO4_N'), outs=('AmmoniaSulfate','ww'))
+MemDis = su.MembraneDistillation('A260', ins=(CHG-1,'H2SO4_N'), outs=('Ammonia_Sulfate','ww'))
 
 P3 = suu.Pump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76) #Jones 2014: 1530.0 psia
 
