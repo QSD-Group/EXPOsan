@@ -195,15 +195,8 @@ class HTL(SanUnit):
         biocrude.P = self.biocrude_pre
         offgas.P = self.offgas_pre
         
-        for stream in outs: stream.T = self.eff_T
-        hx = self.heat_exchanger
-        hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
-        hx_ins0.mix_from(outs)
-        hx_outs0.mix_from(outs)
-        hx_ins0.T = self.ins[0].T
-        hx.T = hx_outs0.T
-        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
-
+        for stream in self.outs: stream.T = self.eff_T
+        
     @property
     def AOSc(self):
        return (3*self.sludge_N_ratio/14 + 2*self.sludge_O_ratio/16 -\
@@ -278,7 +271,14 @@ class HTL(SanUnit):
             self.biochar_P
 
     def _design(self):
-        pass
+        
+        hx = self.heat_exchanger
+        hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
+        hx_ins0.mix_from(self.outs)
+        hx_outs0.mix_from(self.outs)
+        hx_ins0.T = self.ins[0].T
+        hx.T = hx_outs0.T
+        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
     
     def _cost(self):
         pass
@@ -525,17 +525,17 @@ class CHG(SanUnit):
         CHGfuelgas.P = self.CHGfuelgas_pre
         effluent.P = self.effluent_pre
         
-        for stream in outs: stream.T = self.eff_T
+        for stream in self.outs: stream.T = self.eff_T
+        
+    def _design(self):
+        
         hx = self.heat_exchanger
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
-        hx_ins0.mix_from(outs)
-        hx_outs0.mix_from(outs)
+        hx_ins0.mix_from(self.outs)
+        hx_outs0.mix_from(self.outs)
         hx_ins0.T = self.ins[0].T
         hx.T = hx_outs0.T
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
-        
-    def _design(self):
-        pass
     
     def _cost(self):
         pass
@@ -717,14 +717,6 @@ class HT(SanUnit):
         diesel.T = self.diesel_T
         heavy_oil.T = self.heavy_oil_T
         
-        hx = self.heat_exchanger
-        hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
-        hx_ins0.mix_from(self.outs)
-        hx_outs0.mix_from(self.outs)
-        hx_ins0.T = self.ins[0].T
-        hx.T = hx_outs0.T
-        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
-        
     @property
     def biooil_C(self):
         return min(self.outs[2].F_mass*self.biooil_C_ratio,self.ins[0]._source.biocrude_C)
@@ -759,7 +751,14 @@ class HT(SanUnit):
         return self.ins[0]._source.biocrude_N - self.biooil_N
 
     def _design(self):
-        pass
+        
+        hx = self.heat_exchanger
+        hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
+        hx_ins0.mix_from(self.outs)
+        hx_outs0.mix_from(self.outs)
+        hx_ins0.T = self.ins[0].T
+        hx.T = hx_outs0.T
+        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
     
     def _cost(self):
         pass
@@ -843,6 +842,8 @@ class HC(SanUnit):
         diesel.T = self.diesel_T
         off_gas.T = self.off_gas_T
         
+    def _design(self):
+        
         hx = self.heat_exchanger
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
         hx_ins0.mix_from(self.outs)
@@ -850,9 +851,6 @@ class HC(SanUnit):
         hx_ins0.T = self.ins[0].T
         hx.T = hx_outs0.T
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
-        
-    def _design(self):
-        pass
     
     def _cost(self):
         pass
