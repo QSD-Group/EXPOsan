@@ -254,7 +254,7 @@ R2_ss_conds = {
 # Preliminary analyses with mock METAB configuration
 # =============================================================================
 
-def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
+def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowsheet_D=None,
                    inf_concs={}, R1_init_conds={}, R2_init_conds={}):
     flowsheet_A = flowsheet_A or qs.Flowsheet('METAB_sysA')
     qs.main_flowsheet.set_flowsheet(flowsheet_A)
@@ -355,8 +355,39 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
     # qs.WasteStream('biogas_1C', phase='g')
     # qs.WasteStream('biogas_2C', phase='g')
     # qs.WasteStream('biogas_C', phase='g')
-              
-    return sysA, sysB, sysC
+
+    #***************************************************
+    flowsheet_D = flowsheet_C or qs.Flowsheet('METAB_sysD')
+    qs.main_flowsheet.set_flowsheet(flowsheet_D)
+    
+    ############# sysC streams ########################
+    inf_d = brewery_ww.copy('BreweryWW_D')
+    eff_d = WasteStream('Effluent_D', T=T2)
+    bgm1_d = WasteStream('biogas_mem_1d', phase='g')
+    bgm2_d = WasteStream('biogas_mem_2d', phase='g')
+    bgh1_d = WasteStream('biogas_hsp_1d', phase='g')
+    bgh2_d = WasteStream('biogas_hsp_2d', phase='g')
+    
+    ############# sysC unit operation #################
+    R1d = su.AnaerobicCSTR('R1d', ins=[inf_d, 'return_1d'], 
+                          outs=(bgh1_d, 'sidestream_1d', ''), 
+                          split=(split_1, 1-split_1),
+                          V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
+                          retain_cmps=fermenters)
+    DM1d = DM('DM1_c', ins=R1d-1, outs=(bgm1_d, 1-R1d), tau=tau_1)
+
+    R2d = su.AnaerobicCSTR('R2', ins=R1d-2, 
+                          outs=(bgh2_d, ''), 
+                          V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
+                          retain_cmps=methanogens)
+    DM2d = DM('DM2_d', ins=R2d-1, outs=(bgm2_d, eff_d), tau=tau_2)
+    R1d.set_init_conc(**R1_ss_conds)
+    R2d.set_init_conc(**R2_ss_conds)
+    sysD = System('hybrid_METAB', path=(R1d, DM1d, R2d, DM2d),
+                  recycle=(DM1d-1, ))
+    sysD.set_dynamic_tracker(R1d, R2d, bgm1_d, bgm2_d, bgh1_d, bgh2_d)    
+    
+    return sysA, sysB, sysC, sysD
 
 #%%
 @time_printer

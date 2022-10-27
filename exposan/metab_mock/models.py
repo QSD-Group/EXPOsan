@@ -30,7 +30,7 @@ __all__ = ('create_modelA',
            'run_ss_model'
            )
 #%%
-sysA, sysB, sysC = s.create_systems()
+sysA, sysB, sysC, sysD = s.create_systems()
 Ys_bl, mus_bl, Ks_bl = s.yields_bl, s.mus_bl, s.Ks_bl
 n_Ys = len(Ys_bl)
 n_mus = len(mus_bl)
