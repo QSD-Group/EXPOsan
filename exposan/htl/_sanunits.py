@@ -58,11 +58,16 @@ __all__ = (
     'MembraneDistillation',
     'GasMixer')
 
+# =============================================================================
+# Sludge Lab
+# =============================================================================
 
 class SludgeLab(SanUnit):
     '''
     SludgeLab is a fake unit that makes it easier to incorperate sludge compositions
     and moisture content into uncertainty analysis.
+    
+    Model method: just _run, no _design or _cost.
     
     Parameters
     ----------
@@ -106,6 +111,9 @@ class SludgeLab(SanUnit):
     def _cost(self):
         pass
 
+# =============================================================================
+# HTL
+# =============================================================================
 
 class HTL(SanUnit):
     
@@ -113,7 +121,9 @@ class HTL(SanUnit):
     HTL converts dewatered sludge to biocrude, aqueous, off-gas, and biochar under
     elevated temperature (350°C) and pressure. The products percentage (wt%) can be evaluated
     using revised MCA model (Li et al., 2017, Leow et al., 2018) with known sludge
-    composition (protein%, lipid%, and carbohydrate%)
+    composition (protein%, lipid%, and carbohydrate%).
+    
+    Model method: empirical model (based on MCA model and experimental data).
     
     Parameters
     ----------
@@ -283,11 +293,16 @@ class HTL(SanUnit):
     def _cost(self):
         pass
 
+# =============================================================================
+# Acid Extraction
+# =============================================================================
 
 class AcidExtraction(SanUnit):
     
     '''
     H2SO4 is added to biochar from HTL to extract P. 
+    
+    Model method: assume P recovery ratio, add filters in _design and _cost.
     
     Parameters
     ----------
@@ -349,9 +364,14 @@ class AcidExtraction(SanUnit):
     def _cost(self):
         pass
     
-    
+# =============================================================================
+# HTL mixer
+# =============================================================================
+
 class HTLmixer(SanUnit):
     '''
+    
+    Model method: elements separation, need _design and _cost.
     
     Parameters
     ----------
@@ -389,15 +409,20 @@ class HTLmixer(SanUnit):
     def _cost(self):
         pass
 
+# =============================================================================
+# Struvite Precipitation
+# =============================================================================
 
 class StruvitePrecipitation(SanUnit):
     '''
     extracted_P and HTL aqueous are mixed together (Mixer) before adding MgCl2 and struvite precipitation.
     
+    Model method: P recovery rate with uncertainty from literature data. If mol(N)<mol(P), add NH4Cl to mol(N):mol(P)=1:1
+    
     Parameters
     ----------
     ins: Iterable (stream)
-        mixture, supply_MgCl2
+        mixture, supply_MgCl2, supply_NH4Cl
     outs: Iterable (stream)
         struvite, effluent
     '''
@@ -411,25 +436,27 @@ class StruvitePrecipitation(SanUnit):
         self.P_pre_recovery_ratio = P_pre_recovery_ratio
         self.P_in_struvite = P_in_struvite
 
-    _N_ins = 2
+    _N_ins = 3
     _N_outs = 2
         
     def _run(self):
         
-        mixture, supply_MgCl2 = self.ins
+        mixture, supply_MgCl2, supply_NH4Cl = self.ins
         struvite, effluent = self.outs
         
-        supply_MgCl2.imass['MgCl2'] = mixture.imass['P']/31*95.211*self.Mg_P_ratio
+        if mixture.imass['P']/31 > mixture.imass['N']/14:
+            supply_NH4Cl.imass['NH4Cl'] = (mixture.imass['P']/31 - mixture.imass['N']/14)*53.5 #make sure N:P > 1:1
+        
+        supply_MgCl2.imass['MgCl2'] = mixture.imass['P']/31*95.211*self.Mg_P_ratio #Mg:P = 1:1
         struvite.imass['Struvite'] = mixture.imass['P']*self.P_pre_recovery_ratio/self.P_in_struvite
         
         supply_MgCl2.phase = 's'
         
         effluent.copy_like(mixture)
         effluent.imass['P'] -= struvite.imass['Struvite']*self.P_in_struvite
-        effluent.imass['N'] -= struvite.imass['Struvite']*self.P_in_struvite/31*14
-        effluent.imass['H2O'] += (supply_MgCl2.imass['MgCl2'] -\
-                                       struvite.imass['Struvite']*(1 - self.P_in_struvite*(1+14/31)))
-        
+        effluent.imass['N'] += supply_NH4Cl.imass['NH4Cl']*14/53.5 - struvite.imass['Struvite']*self.P_in_struvite/31*14
+        effluent.imass['H2O'] += (supply_MgCl2.imass['MgCl2'] + supply_NH4Cl.imass['NH4Cl'] -\
+                                  struvite.imass['Struvite']*(1 - self.P_in_struvite*(1+14/31)))
         struvite.phase = 's'    
             
         struvite.T = mixture.T
@@ -455,6 +482,8 @@ class CHG(SanUnit):
     '''
     CHG serves to reduce the COD content in the aqueous phase and produce fuel gas 
     under elevated temperature (350°C) and pressure.
+    
+    Model method: use experimental data, assume no NH3 loss for now.
     
     Parameters
     ----------
@@ -547,6 +576,8 @@ class MembraneDistillation(SanUnit):
     Membrane distillation will be modeled using vapor-liquid-liquid equilibrium later.
     Here is simplified.
     
+    Model method: mechanistic model, refer to https://www.sciencedirect.com/science/article/pii/S0011916411007284
+    
     Parameters
     ----------
     ins: Iterable (stream)
@@ -598,6 +629,8 @@ class HT(SanUnit):
     biooil and fuel gas can be estimated using values from Li et al., 2018.
     The amount of char can be calculated based on mass closure.
     
+    Model method: use experimental data.
+    
     Parameters
     ----------
     ins: Iterable (stream)
@@ -613,7 +646,7 @@ class HT(SanUnit):
                  biocrude_h2_ratio = 18.14,
                  hydrogen_gas_T = 117.5+273.15, #Jones 2014 #H2 heating and pressurization?
                  hydrogen_gas_P = 1530.0*6894.76,
-                 gasoline_ratio = 0.103, heavy_oil_ratio = 0.113,
+                 gasoline_ratio = 0.103, heavy_oil_ratio = 0.113, #see spreadsheet for calculation
                  co_ratio=0.128, co2_ratio=0.007, c2h6_ratio=0.188,
                  c3h8_ratio=0.107, c4h10_ratio=0.09,
                  biooil_C_ratio=0.855, biooil_N_ratio=0.01,
@@ -769,6 +802,8 @@ class HC(SanUnit):
     '''
     Hydrocracking further cracks down heavy part in HT biooil to diesel and gasoline.
     
+    Model method: use experimental data.
+    
     Parameters
     ----------
     ins: Iterable (stream)
@@ -796,7 +831,7 @@ class HC(SanUnit):
         self.heavy_oil_h2_ratio = heavy_oil_h2_ratio
         self.hydrogen_gas_T = hydrogen_gas_T
         self.hydrogen_gas_P = hydrogen_gas_P
-        self.gasoline_hc_ratio = gasoline_hc_ratio
+        self.gasoline_hc_ratio = gasoline_hc_ratio #see spreadsheet for calculation
         self.off_gas_ratio = off_gas_ratio
         self.gasoline_pre = gasoline_pre
         self.diesel_pre = diesel_pre
@@ -861,6 +896,8 @@ class FuelMixer(SanUnit):
     '''
     Mix fuels.
     
+    Model method: pass _design and _cost, add piping cost to HT and/or HC.
+    
     Parameters
     ----------
     ins: Iterable (stream)
@@ -894,6 +931,8 @@ class GasMixer(SanUnit):
     
     '''
     Mix all gases.
+    
+    Model method: pass _design and _cost, add piping cost to HTL, CHG, HT, and/or HC.
     
     Parameters
     ----------

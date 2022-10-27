@@ -199,6 +199,10 @@ def create_components(set_thermo=True):
     
     NH42SO4 = Component('NH42SO4', phase='s', particle_size='Soluble',
                         degradability='Undegradable', organic=False)
+    
+    NH4Cl = Component('NH4Cl', phase='s', particle_size='Soluble',
+                        degradability='Undegradable', organic=False)
+    
     add_V_from_rho(NH42SO4, 1770)
     #https://en.wikipedia.org/wiki/Ammonium_sulfate (accessed 2022-9-30)
     
@@ -212,7 +216,7 @@ def create_components(set_thermo=True):
                        Biocrude, Gasoline, Diesel, Heavy_oil, #Biooil,
                        HTLaqueous, HTaqueous, C, N, P,
                        O2, N2, CH4, C2H6, C3H8, C4H10, CO2, CO, H2,
-                       H2SO4, H3PO4, MgCl2, NaOH, NH42SO4, H2O, NH3,
+                       H2SO4, H3PO4, MgCl2, NaOH, NH42SO4, NH4Cl, H2O, NH3,
                        # Terphenyl
                        ])
     
