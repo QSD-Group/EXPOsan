@@ -140,13 +140,14 @@ R2 = fC.unit.R2
 
 R2.split = (0.1, 0.9)
 
-splits = [round(i, 1) for i in np.arange(0.1, 1, 0.1)]
+splits = np.linspace(0.1, 0.9, 9)
 
 inf_CODs = []
 eff_CODs = []
 bgs_CODs = []
 for split in splits:
     R1.split = (split, 1-split)
+    # sysC.set_tolerance(rmol=1e-6)
     try:
         sysC.simulate(state_reset_hook='reset_cache', t_span=(0,200), method='BDF')
         inf_CODs.append(get_COD(inf))
@@ -318,3 +319,15 @@ def get_COD(streams):
 t = 200
 # sysB.simulate(state_reset_hook='reset_cache', t_span=(0,t), method='BDF')
 sysC.simulate(state_reset_hook='reset_cache', t_span=(0,t), method='BDF')
+
+#%%
+import exposan.metab_mock as mm
+sysA, sysB, sysC = mm.create_systems()
+# sysC._setup()
+# sysC.converge()
+cmps = sysC.units[0].components
+sysC.set_tolerance(rmol=1e-6)
+sysC.simulate(t_span=(0,200), method='BDF', state_reset_hook='reset_cache')
+inf_cod = sum([(ws.mass * cmps.i_COD).sum() for ws in sysC.feeds])
+out_cod = sum([(ws.mass * cmps.i_COD).sum() for ws in sysC.products])
+out_cod/inf_cod

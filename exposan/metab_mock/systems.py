@@ -28,7 +28,8 @@ __all__ = (
     'R1_ss_conds',
     'R2_ss_conds',
     'yields_bl', 'mus_bl', 'Ks_bl',
-    'biomass_IDs'
+    'biomass_IDs',
+    'vfa_IDs'
     )
 
 #%% default values
@@ -48,6 +49,7 @@ tau_2 = 0.021
 fermenters = ('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro')
 methanogens = ('X_ac', 'X_h2')
 biomass_IDs = (*fermenters, *methanogens)
+vfa_IDs = ('S_va', 'S_bu', 'S_pro', 'S_ac')
 
 C_mw = get_mw({'C':1})
 N_mw = get_mw({'N':1})
@@ -330,11 +332,9 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
     bgh2 = WasteStream('biogas_hsp_2', phase='g')
     
     ############# sysC unit operation #################
-    sc1 = 0.1
-    sc2 = 0.1
     R1 = su.AnaerobicCSTR('R1', ins=[inf_c, 'return_1'], 
                           outs=(bgh1, 'sidestream_1', ''), 
-                          split=(sc1, 1-sc1),
+                          split=(split_1, 1-split_1),
                           V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
                           retain_cmps=fermenters)
     DM1c = DM('DM1_c', ins=R1-1, outs=(bgm1, 1-R1), tau=tau_1)
@@ -342,7 +342,7 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None,
 
     R2 = su.AnaerobicCSTR('R2', ins=[R1-2, 'return_2'], 
                           outs=(bgh2, 'sidestream_2', eff_c), 
-                          split=(sc2, 1-sc2),
+                          split=(split_2, 1-split_2),
                           V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
                           retain_cmps=methanogens)
     DM2c = DM('DM2_c', ins=R2-1, outs=(bgm2, 1-R2), tau=tau_2)

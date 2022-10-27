@@ -15,7 +15,7 @@ import qsdsan as qs
 # from warnings import warn
 from chaospy import distributions as shape
 from qsdsan.utils import ospath, time_printer, get_SRT
-from exposan.metab_mock import systems as s, results_path, biomass_IDs
+from exposan.metab_mock import systems as s, results_path, biomass_IDs, vfa_IDs
 from biosteam.evaluation._utils import var_indices
 # import pandas as pd
 import numpy as np
@@ -41,27 +41,44 @@ n_mus = len(mus_bl)
 get_uniform_w_frac = lambda b, frac: shape.Uniform(lower=b*(1-frac), upper=b*(1+frac))
 
 def add_degas_params(model, bioreactors, membranes, 
-                     b_split=0.5, var_split=0.8, 
-                     b_ermv=0.75, bounds_ermv=(0., 0.8)):
+                     Q_ratio_ssm2inf=(1, 19),  # ratio to influent Q
+                     b_ermv=0.75, bounds_ermv=(0.5, 1)):
     param = model.parameter
     H2E, CH4E = bioreactors
     DM1, DM2 = membranes
     
-    b = b_split
-    D = get_uniform_w_frac(b, var_split)
-    @param(name='H2E_sidestream_split', element=H2E, kind='coupled', units='',
-           baseline=b, distribution=D)
-    def H2E_split_setter(s):
-        try: H2E.split = [s, 1-s]
-        except: H2E.split = s
+    # b = b_split
+    # D = get_uniform_w_frac(b, var_split)
+    # @param(name='H2E_sidestream_split', element=H2E, kind='coupled', units='',
+    #        baseline=b, distribution=D)
+    # def H2E_split_setter(s):
+    #     try: H2E.split = [s, 1-s]
+    #     except: H2E.split = s
 
-    D = get_uniform_w_frac(b, var_split)
-    @param(name='CH4E_sidestream_split', element=CH4E, kind='coupled', units='',
-           baseline=b, distribution=D)
-    def CH4E_split_setter(s):
-        try: CH4E.split = [s, 1-s]
-        except: CH4E.split = s
+    # D = get_uniform_w_frac(b, var_split)
+    # @param(name='CH4E_sidestream_split', element=CH4E, kind='coupled', units='',
+    #        baseline=b, distribution=D)
+    # def CH4E_split_setter(s):
+    #     try: CH4E.split = [s, 1-s]
+    #     except: CH4E.split = s
+    lb, ub = Q_ratio_ssm2inf
     
+    b = s.Q
+    D = shape.Uniform(s.Q*lb, s.Q*ub)  # equivalent to split varied in [0.5, 0.95]
+    @param(name='DM1_flowrate', element=H2E, kind='coupled', 
+           units='m3/d', baseline=b, distribution=D)
+    def DM1_Q_setter(q):
+        try: H2E.split = [q, s.Q]
+        except: H2E.split = q/(q+s.Q)
+        
+    b = s.Q
+    D = shape.Uniform(s.Q*lb, s.Q*ub)  # equivalent to split varied in [0.5, 0.95]
+    @param(name='DM2_flowrate', element=CH4E, kind='coupled', 
+           units='m3/d', baseline=b, distribution=D)
+    def DM2_Q_setter(q):
+        try: CH4E.split = [q, s.Q]
+        except: CH4E.split = q/(q+s.Q)
+        
     b = b_ermv
     D = shape.Uniform(*bounds_ermv)
     @param(name='H2_removal_efficiency', element=DM1, kind='coupled', units='',
@@ -77,14 +94,12 @@ def add_degas_params(model, bioreactors, membranes,
         DM1.CH4_degas_efficiency = e
         DM2.CH4_degas_efficiency = e
         
-    D = shape.Uniform(*bounds_ermv)
-    @param(name='CO2_removal_efficiency', element=DM1, kind='coupled', units='',
-           baseline=b, distribution=D)
-    def CO2_e_rmv(e):
-        DM1.CO2_degas_efficiency = e
-        DM2.CO2_degas_efficiency = e
-
-vfa_IDs = ('S_va', 'S_bu', 'S_pro', 'S_ac')
+    # D = shape.Uniform(*bounds_ermv)
+    # @param(name='CO2_removal_efficiency', element=DM1, kind='coupled', units='',
+    #        baseline=b, distribution=D)
+    # def CO2_e_rmv(e):
+    #     DM1.CO2_degas_efficiency = e
+    #     DM2.CO2_degas_efficiency = e
 
 def add_metrics(model, biogas, wastewater, units):
     metric = model.metric

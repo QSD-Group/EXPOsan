@@ -22,7 +22,7 @@ class DegassingMembrane(SanUnit):
                  init_with='WasteStream', F_BM_default=None, isdynamic=True,
                  tau=0.01,
                  H2_degas_efficiency=0.8, CH4_degas_efficiency=0.8, 
-                 CO2_degas_efficiency=0.8, gas_IDs=('S_h2', 'S_ch4', 'S_IC')):
+                 CO2_degas_efficiency=0.05, gas_IDs=('S_h2', 'S_ch4', 'S_IC')):
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
                          init_with=init_with, F_BM_default=F_BM_default,
                          isdynamic=isdynamic)
