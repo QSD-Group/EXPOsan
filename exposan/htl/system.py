@@ -63,18 +63,12 @@ H1 = suu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=350+273.15, U=0.874
 HTL = su.HTL('A120', ins=H1-0, outs=('biochar','HTLaqueous','biocrude','offgas_HTL'))
 HTL_hx = HTL.heat_exchanger #include this into path?
 
+H2SO4_Tank = suu.StorageTank('T200', ins='H2SO4_in', outs=('H2SO4_out')) #tau?
 
+SP1 = su.Acidsplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'), init_with='Stream')
+# must put after AcidEx and MemDis in path during simulation to ensure input not empty
 
-
-
-H_P_Tank = suu.StorageTank('xxx') #tau?
-
-AcidEx = su.AcidExtraction('A200', ins=(HTL-0,H_P_Tank), outs=('residual','extracted'))
-
-
-
-
-
+AcidEx = su.AcidExtraction('A200', ins=(HTL-0,SP1-0), outs=('residual','extracted'))
 
 M1 = su.HTLmixer('A210', ins=(HTL-1,AcidEx-1), outs=('mixture'))
 
@@ -88,18 +82,7 @@ H2 = suu.HXutility('A240', ins=P2-0, outs='heated_aqueous', T=350+273.15, init_w
 CHG = su.CHG('A250', ins=H2-0, outs=('CHG_fuel_gas','effluent'))
 CHG_hx = CHG.heat_exchanger
 
-
-
-
-H_N_Tank = suu.StorageTank('xxx') #tau?
-
-MemDis = su.MembraneDistillation('A260', ins=(CHG-1,H_N_Tank-0), outs=('Ammonia_Sulfate','ww'))
-
-
-
-
-
-
+MemDis = su.MembraneDistillation('A260', ins=(CHG-1,SP1-1), outs=('Ammonia_Sulfate','ww'))
 
 P3 = suu.Pump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76) #Jones 2014: 1530.0 psia
 
@@ -143,8 +126,9 @@ CHP = suu.CHP('A400', ins=(GasMixer-0,'natural_gas','air'), outs=('emission','so
 
 sys = qs.System('sys', path=(SluL, SluT, SluC,
                              P1, H1, HTL,
-                             H_P_Tank, AcidEx, M1, StruPre,
-                             P2, H2, CHG, H_N_Tank, MemDis,
+                             AcidEx, M1, StruPre,
+                             P2, H2, CHG, MemDis,
+                             SP1, H2SO4_Tank, 
                              P3, H3, HT,
                              P4, H4, HC,
                              GasolineMixer, DieselMixer,
