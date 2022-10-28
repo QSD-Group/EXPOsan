@@ -906,3 +906,45 @@ class HC(SanUnit):
     
     def _cost(self):
         pass
+    
+    
+class Acidsplitter(SanUnit):
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream',
+                 **kwargs):
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo,init_with)
+        
+    _N_ins = 1
+    _N_outs = 2
+        
+    def _run(self):
+        
+        acid_in = self.ins[0]
+        acid_ouq_1, acid_out_2 = self.outs
+        
+        acid_in.mix_from(self.outs)
+        
+        
+    def _design(self):
+        pass
+
+    def _cost(self):
+        pass
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
