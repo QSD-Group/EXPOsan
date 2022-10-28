@@ -41,9 +41,8 @@ References:
     https://doi.org/10.2172/1126336.
 '''
 
-import thermosteam as tmo, biosteam as bst, qsdsan as qs
+import biosteam as bst
 from qsdsan import SanUnit
-from biosteam.units import StorageTank
 from qsdsan.sanunits import HXutility
 
 __all__ = (
