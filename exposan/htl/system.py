@@ -20,7 +20,6 @@ References:
 '''
 
 import qsdsan as qs
-import biosteam as bst
 import exposan.htl._sanunits as su
 from qsdsan import sanunits as suu
 from exposan.htl._process_settings import load_process_settings
@@ -64,11 +63,23 @@ H1 = suu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=350+273.15, U=0.874
 HTL = su.HTL('A120', ins=H1-0, outs=('biochar','HTLaqueous','biocrude','offgas_HTL'))
 HTL_hx = HTL.heat_exchanger #include this into path?
 
-AcidEx = su.AcidExtraction('A200', ins=(HTL-0,'H2SO4_P'), outs=('residual','extracted'))
+
+
+
+
+H_P_Tank = suu.StorageTank('xxx') #tau?
+
+AcidEx = su.AcidExtraction('A200', ins=(HTL-0,H_P_Tank), outs=('residual','extracted'))
+
+
+
+
+
 
 M1 = su.HTLmixer('A210', ins=(HTL-1,AcidEx-1), outs=('mixture'))
 
 StruPre = su.StruvitePrecipitation('A220', ins=(M1-0,'MgCl2','NH4Cl'), outs=('struvite','CHG_feed'))
+# MgCl2 and NH4Cl are added as solid
 
 P2 = suu.Pump('A230', ins=StruPre-1, outs='press_aqueous', P=3089.7*6894.76) #Jones 2014: 3089.7 psia
 
@@ -77,7 +88,18 @@ H2 = suu.HXutility('A240', ins=P2-0, outs='heated_aqueous', T=350+273.15, init_w
 CHG = su.CHG('A250', ins=H2-0, outs=('CHG_fuel_gas','effluent'))
 CHG_hx = CHG.heat_exchanger
 
-MemDis = su.MembraneDistillation('A260', ins=(CHG-1,'H2SO4_N'), outs=('Ammonia_Sulfate','ww'))
+
+
+
+H_N_Tank = suu.StorageTank('xxx') #tau?
+
+MemDis = su.MembraneDistillation('A260', ins=(CHG-1,H_N_Tank-0), outs=('Ammonia_Sulfate','ww'))
+
+
+
+
+
+
 
 P3 = suu.Pump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76) #Jones 2014: 1530.0 psia
 
@@ -94,9 +116,9 @@ H4 = suu.HXutility('A340', ins=P4-0, outs='heated_heavy_oil', T=395+273.15, init
 HC = su.HC('A350', ins=(H4-0,'H2_HC'), outs=('gasoline_HC', 'diesel_HC', 'offgas_HC'))
 HC_hx = HC.heat_exchanger
 
-GasolineMixer = su.FuelMixer('S100', ins=(HT-2,HC-0), outs='mixed_gasoline')
+GasolineMixer = suu.Mixer('S100', ins=(HT-2,HC-0), outs='mixed_gasoline',init_with='Stream')
 
-DieselMixer = su.FuelMixer('S110', ins=(HT-3,HC-1), outs='mixed_diesel')
+DieselMixer = suu.Mixer('S110', ins=(HT-3,HC-1), outs='mixed_diesel')
 
 H5 = suu.HXutility('A360', ins=GasolineMixer-0, outs='cooled_gasoline', T=60+273.15, init_with='Stream')
 
@@ -108,7 +130,7 @@ GasolineTank = suu.StorageTank('A380', ins=H5-0, outs=('gasoline_out'), tau=3*24
 DieselTank = suu.StorageTank('A390', ins=H6-0, outs=('diesel_out'), tau=3*24, init_with='Stream')
 #store for 3 days based on Jones 2014
 
-GasMixer = su.GasMixer('S200', ins=(HTL-3,CHG-0,HT-1,HC-2), outs=('fuel_gas'))
+GasMixer = suu.Mixer('S200',ins=(HTL-3,CHG-0,HT-1,HC-2), outs=('fuel_gas'),init_with='Stream')
 
 CHP = suu.CHP('A400', ins=(GasMixer-0,'natural_gas','air'), outs=('emission','solid_ash'))
 
@@ -121,8 +143,8 @@ CHP = suu.CHP('A400', ins=(GasMixer-0,'natural_gas','air'), outs=('emission','so
 
 sys = qs.System('sys', path=(SluL, SluT, SluC,
                              P1, H1, HTL,
-                             AcidEx, M1, StruPre,
-                             P2, H2, CHG, MemDis,
+                             H_P_Tank, AcidEx, M1, StruPre,
+                             P2, H2, CHG, H_N_Tank, MemDis,
                              P3, H3, HT,
                              P4, H4, HC,
                              GasolineMixer, DieselMixer,
@@ -187,16 +209,6 @@ dist = shape.Triangle(0.116,0.1725,0.226)
 def set_sludge_dw_lipid(i):
     SluL.sludge_dw_lipid=i
 
-dist = shape.Triangle(0.343,0.4206,0.478)
-@param(name='sludge_C_ratio',
-        element=HTL,
-        kind='coupled',
-        units='-',
-        baseline=0.411,
-        distribution=dist)
-def set_sludge_C_ratio(i):
-    HTL.sludge_C_ratio=i
-
 dist = shape.Triangle(0.007,0.0168,0.02)
 @param(name='sludge_P_ratio',
         element=HTL,
@@ -206,46 +218,6 @@ dist = shape.Triangle(0.007,0.0168,0.02)
         distribution=dist)
 def set_sludge_P_ratio(i):
     HTL.sludge_P_ratio=i
-
-dist = shape.Triangle(0.047,0.0586,0.065)
-@param(name='sludge_H_ratio',
-        element=HTL,
-        kind='coupled',
-        units='-',
-        baseline=0.058,
-        distribution=dist)
-def set_sludge_H_ratio(i):
-    HTL.sludge_H_ratio=i
-
-dist = shape.Triangle(0.005,0.0096,0.016)
-@param(name='sludge_S_ratio',
-        element=HTL,
-        kind='coupled',
-        units='-',
-        baseline=0.01,
-        distribution=dist)
-def set_sludge_S_ratio(i):
-    HTL.sludge_S_ratio=i
-
-dist = shape.Triangle(0.036,0.0484,0.061)
-@param(name='sludge_N_ratio',
-        element=HTL,
-        kind='coupled',
-        units='-',
-        baseline=0.05,
-        distribution=dist)
-def set_sludge_N_ratio(i):
-    HTL.sludge_N_ratio=i
-
-dist = shape.Triangle(0.261,0.2808,0.336)
-@param(name='sludge_O_ratio',
-        element=HTL,
-        kind='coupled',
-        units='-',
-        baseline=0.261,
-        distribution=dist)
-def set_sludge_O_ratio(i):
-    HTL.sludge_O_ratio=i
 
 dist = shape.Triangle(9.57,15.5,23.8)
 @param(name='biochar_C_N_ratio',

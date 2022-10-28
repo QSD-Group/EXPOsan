@@ -135,9 +135,7 @@ class HTL(SanUnit):
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream', 
                  biocrude_moisture_content=0.044,
-                 sludge_C_ratio=0.411, sludge_P_ratio=0.019,
-                 sludge_H_ratio=0.058, sludge_S_ratio=0.01,
-                 sludge_N_ratio=0.05, sludge_O_ratio=0.261,
+                 sludge_P_ratio=0.019,
                  biochar_C_N_ratio=15.5, biochar_C_P_ratio=2.163,
                  biochar_pre=3029.7*6894.76, #Jones 2014: 3029.7 psia
                  HTLaqueous_pre=30*6894.76, #Jones 2014: 30 psia
@@ -148,12 +146,7 @@ class HTL(SanUnit):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.biocrude_moisture_content = biocrude_moisture_content
-        self.sludge_C_ratio = sludge_C_ratio
         self.sludge_P_ratio = sludge_P_ratio
-        self.sludge_H_ratio = sludge_H_ratio
-        self.sludge_S_ratio = sludge_S_ratio
-        self.sludge_N_ratio = sludge_N_ratio
-        self.sludge_O_ratio = sludge_O_ratio
         self.biochar_C_N_ratio = biochar_C_N_ratio
         self.biochar_C_P_ratio = biochar_C_P_ratio
         self.biochar_pre = biochar_pre
@@ -171,7 +164,7 @@ class HTL(SanUnit):
     def _run(self):
         
         dewatered_sludge = self.ins[0]
-        biochar, HTLaqueous, biocrude, offgas = outs = self.outs
+        biochar, HTLaqueous, biocrude, offgas = self.outs
         
         self.dewatered_sludge_afdw = dewatered_sludge_afdw =\
             dewatered_sludge.imass['Sludge_lipid']\
@@ -184,6 +177,19 @@ class HTL(SanUnit):
         protein_ratio = dewatered_sludge.imass['Sludge_protein']/dewatered_sludge_afdw
         carbo_ratio = dewatered_sludge.imass['Sludge_carbo']/dewatered_sludge_afdw
         
+        sludge_lab = self.ins[0]._source.ins[0]._source.ins[0]._source.ins[0]._source.ins[0].source
+        
+        self.sludge_C_ratio = sludge_lab.sludge_dw_carbo*0.44 +\
+                              sludge_lab.sludge_dw_lipid*0.75 +\
+                              sludge_lab.sludge_dw_protein*0.53
+        self.sludge_N_ratio = sludge_lab.sludge_dw_protein*0.16
+        self.sludge_H_ratio = self.sludge_C_ratio/7
+        self.sludge_O_ratio = 1 - self.sludge_C_ratio - self.sludge_N_ratio -\
+                              self.sludge_H_ratio - self.sludge_P_ratio -\
+                              (1 - sludge_lab.sludge_dw_carbo -\
+                               sludge_lab.sludge_dw_lipid -\
+                               sludge_lab.sludge_dw_protein)*0.75
+
         biocrude.imass['Biocrude'] = (0.846*lipid_ratio + 0.445*protein_ratio\
             + 0.205*carbo_ratio)*dewatered_sludge_afdw
         biochar.imass['Biochar'] = 0.377*carbo_ratio*dewatered_sludge_afdw     
@@ -897,79 +903,6 @@ class HC(SanUnit):
         hx_ins0.T = self.ins[0].T
         hx.T = hx_outs0.T
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
-    
-    def _cost(self):
-        pass
-   
-
-class FuelMixer(SanUnit):
-    
-    '''
-    Mix fuels.
-    
-    Model method: pass _design and _cost, add piping cost to HT and/or HC.
-    
-    Parameters
-    ----------
-    ins: Iterable (stream)
-        ht_fuel, hc_fuel
-    outs: Iterable (stream)
-        mixed_fuel
-    '''
-    
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream', **kwargs):
-        
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-
-    _N_ins = 2
-    _N_outs = 1
-        
-    def _run(self):
-        
-        ht_fuel, hc_fuel = ins = self.ins
-        mixed_fuel = self.outs[0]
-        
-        mixed_fuel.mix_from(ins)
-        
-    def _design(self):
-        pass
-    
-    def _cost(self):
-        pass 
-
-    
-class GasMixer(SanUnit):
-    
-    '''
-    Mix all gases.
-    
-    Model method: pass _design and _cost, add piping cost to HTL, CHG, HT, and/or HC.
-    
-    Parameters
-    ----------
-    ins: Iterable (stream)
-        htl_off_gas, ht_fuel_gas, hc_off_gas, chg_fuel_gas
-    outs: Iterable (stream)
-        fuel_gas
-    '''
-    
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream', **kwargs):
-        
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-
-    _N_ins = 4
-    _N_outs = 1
-        
-    def _run(self):
-        
-        htl_off_gas, ht_fuel_gas, hc_off_gas, chg_fuel_gas = ins = self.ins
-        fuel_gas = self.outs[0]
-        
-        fuel_gas.mix_from(ins)
-        fuel_gas.phase = 'g'
-
-    def _design(self):
-        pass
     
     def _cost(self):
         pass
