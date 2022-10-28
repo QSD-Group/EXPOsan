@@ -41,7 +41,7 @@ References:
     https://doi.org/10.2172/1126336.
 '''
 
-import biosteam as bst, qsdsan as qs
+import thermosteam as tmo, biosteam as bst, qsdsan as qs
 from qsdsan import SanUnit
 from biosteam.units import StorageTank
 from qsdsan.sanunits import HXutility
@@ -576,7 +576,12 @@ class MembraneDistillation(SanUnit):
     Membrane distillation will be modeled using vapor-liquid-liquid equilibrium later.
     Here is simplified.
     
-    Model method: mechanistic model, refer to https://www.sciencedirect.com/science/article/pii/S0011916411007284
+    Model method: 
+        1. Feed pH = 10, permeate pH =1.5 (0.5 M H2SO4)
+        2. All N in the feed are NH4+/NH3 (Jones PNNL 2014)
+        3. 95% NH3 in feed can be transfered to permeate (assume 95% for now)
+        4. All NH3 in permeate can form (NH4)2SO4 (which makes sense since just water evaporates)
+        5. _design and _cost refer to A.A. et al., Membrane distillation: A comprehensive review
     
     Parameters
     ----------
@@ -587,12 +592,13 @@ class MembraneDistillation(SanUnit):
     '''
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream',
-                 N_S_ratio=2, N_recovery_rate=0.825,
+                 N_S_ratio=2, pH=10, ammonia_transfer_ratio=0.95,
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.N_S_ratio = N_S_ratio
-        self.N_recovery_rate = N_recovery_rate
+        self.pH = pH
+        self.ammonia_transfer_ratio = ammonia_transfer_ratio
 
     _N_ins = 2
     _N_outs = 2
@@ -604,12 +610,18 @@ class MembraneDistillation(SanUnit):
         
         acid.imass['H2SO4'] = influent.imass['N']/14/self.N_S_ratio*98
         acid.imass['H2O'] = acid.imass['H2SO4']*1000/98/0.5*1.05 - acid.imass['H2SO4']
-        ammoniasulfate.imass['NH42SO4'] = influent.imass['N']*self.N_recovery_rate/28*132
+        
+        
+        pKa = 9.26 #ammonia pKa
+        ammonia_to_ammonium = 10**(-pKa)/10**(-self.pH)
+        ammonia_in_feed = influent.imass['N']/14*ammonia_to_ammonium/(1 + ammonia_to_ammonium)*17
+
+        ammoniasulfate.imass['NH42SO4'] = ammonia_in_feed*self.ammonia_transfer_ratio/34*132
         ammoniasulfate.imass['H2O'] = acid.imass['H2O']
+        ammoniasulfate.imass['H2SO4'] = acid.F_mass + ammoniasulfate.imass['NH42SO4']/132*26 -\
+            ammoniasulfate.imass['NH42SO4'] - ammoniasulfate.imass['H2O']
         ww.copy_like(influent)
-        ww.imass['N'] *= (1 - self.N_recovery_rate)
-        ww.imass['H2O'] += ww.imass['N']*self.N_recovery_rate + acid.imass['H2SO4'] -\
-            ammoniasulfate.imass['NH42SO4']
+        ww.imass['N'] -= influent.imass['N']*self.ammonia_transfer_ratio*ammonia_to_ammonium/(1 + ammonia_to_ammonium)
         ammoniasulfate.T = acid.T
         ww.T = acid.T
         ww.P = acid.P
