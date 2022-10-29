@@ -226,6 +226,6 @@ def create_components(set_thermo=True):
 
     cmps.compile()
     cmps.set_alias('H2O', 'Water')
-    if set_thermo: qs_set_thermo(cmps)
+    if set_thermo: qs_set_thermo(cmps,cache=True)
 
     return cmps
