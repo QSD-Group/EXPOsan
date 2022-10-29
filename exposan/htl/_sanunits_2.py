@@ -44,6 +44,12 @@ References:
 import biosteam as bst
 from qsdsan import SanUnit
 from qsdsan.sanunits import HXutility
+from biosteam.units import Flash as FL
+from biosteam import PowerUtility
+from thermosteam import MultiStream, separations
+from math import pi
+import numpy as np
+from biosteam.units import design_tools as design
 
 __all__ = (
     'SludgeLab',
@@ -116,7 +122,7 @@ class SludgeLab(SanUnit):
     
     @property
     def sludge_H_ratio(self):
-       return self.sludge_C/7
+       return self.sludge_C_ratio/7
     #based on SS PNNL 2021 data, H ~ C/7
    
     @property
@@ -139,8 +145,8 @@ class SludgeLab(SanUnit):
     
     @property
     def sludge_O_ratio(self):
-       return 1 - self.sludge_C - self.sludge_H - self.sludge_N - self.sludge_O -\
-          self.sludge_P - self.sludge_dw_ash*0.75
+       return 1 - self.sludge_C_ratio - self.sludge_H_ratio - self.sludge_N_ratio -\
+           self.sludge_P_ratio - self.sludge_dw_ash*0.75
     #sludge_O is calculated based on mass balance closure
     #asd * 0.75 since double count some elements. 0.75 is based on SS PNNL 2021.
     
@@ -156,7 +162,7 @@ class SludgeLab(SanUnit):
         pass
 
 # =============================================================================
-# HTL
+# HTL (ignore three phase separator for now, ask Yalin)
 # =============================================================================
 
 class HTL(SanUnit):
@@ -285,7 +291,7 @@ class HTL(SanUnit):
 
     @property
     def biocrude_C_ratio(self):
-        return (self.AOSc*(-8.37) + 68.55)/100 #revised MCA model
+        return (self.sludgelab.AOSc*(-8.37) + 68.55)/100 #revised MCA model
 
     @property
     def biocrude_N_ratio(self):
@@ -304,6 +310,7 @@ class HTL(SanUnit):
         return self.outs[3].imass['CO2']*12/44 + self.outs[3].imass['CH4']*12/16 +\
             self.outs[3].imass['C2H6']*24/30
 
+    #C, N, and P in aqueous phase are calculated base on mass balance closure
     @property
     def HTLaqueous_C(self):
         return (self.ins[0].F_mass - self.ins[0].imass['H2O'])*self.sludgelab.sludge_C_ratio -\
@@ -376,11 +383,12 @@ class AcidExtraction(SanUnit):
             (1 - self.ins[0]._source.biochar_P_ratio*self.P_acid_recovery_ratio)
         
         extracted.copy_like(acid)
-        extracted.imass['P'] = biochar.F_mass - residual.F_mass
+        extracted.imass['P'] = biochar.F_mass - residual.F_mass #assume just P can be extracted
         
         residual.phase = 's'
         
         residual.T = extracted.T = biochar.T
+        #H2SO4 reacts with biochar to release heat and temperature will be increased mixture's temperature
         
     @property
     def residual_C(self):
@@ -481,7 +489,7 @@ class StruvitePrecipitation(SanUnit):
         struvite, effluent = self.outs
         
         if mixture.imass['P']/31 > mixture.imass['N']/14:
-            supply_NH4Cl.imass['NH4Cl'] = (mixture.imass['P']/31 - mixture.imass['N']/14)*53.5 #make sure N:P > 1:1
+            supply_NH4Cl.imass['NH4Cl'] = (mixture.imass['P']/31 - mixture.imass['N']/14)*53.5 #make sure N:P >= 1:1
         
         supply_MgCl2.imass['MgCl2'] = mixture.imass['P']/31*95.211*self.Mg_P_ratio #Mg:P = 1:1
         struvite.imass['Struvite'] = mixture.imass['P']*self.P_pre_recovery_ratio/self.P_in_struvite
@@ -511,13 +519,17 @@ class StruvitePrecipitation(SanUnit):
     
     def _cost(self):
         pass
-    
+
+# =============================================================================
+# CHG
+# =============================================================================
 
 class CHG(SanUnit):
    
     '''
     CHG serves to reduce the COD content in the aqueous phase and produce fuel gas 
-    under elevated temperature (350°C) and pressure.
+    under elevated temperature (350°C) and pressure. The outlet will be cooled down
+    and separated by a flash unit.
     
     Model method: use experimental data, assume no NH3 loss for now.
     
@@ -533,11 +545,11 @@ class CHG(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream',
                  ch4_ratio=0.244, co_ratio=0.029, co2_ratio=0.150,
-                 c2h6_ratio=0.043, toc_tc_ratio=0.764,
+                 c2h6_ratio=0.043, #fuel gas ratio are from Li 2018
+                 toc_tc_ratio=0.764,
                  toc_to_gas_c_ratio=0.262,
-                 CHGfuelgas_pre = 50*6894.76, #Jones 2014: 50 psia
-                 effluent_pre = 50*6894.76,
-                 eff_T=60+273.15, #Jones 2014
+                 CHGout_pre = 3065.7*6894.76, #Jones 2014: pressure before flash
+                 eff_T=60+273.15, #Jones 2014: temperature after cooler
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -547,20 +559,21 @@ class CHG(SanUnit):
         self.c2h6_ratio = c2h6_ratio
         self.toc_tc_ratio = toc_tc_ratio
         self.toc_to_gas_c_ratio = toc_to_gas_c_ratio
-        self.CHGfuelgas_pre = CHGfuelgas_pre
-        self.effluent_pre = effluent_pre
+        self.CHGout_pre = CHGout_pre
         self.eff_T = eff_T
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
         
     _N_ins = 1
-    _N_outs = 2
+    _N_outs = 1
         
     def _run(self):
         
         CHGfeed = self.ins[0]
-        CHGfuelgas, effluent = outs = self.outs
+        CHGout = self.outs[0]
+        
+        # CHGout.copy_like(CHGfeed)
         
         for i in (self.ch4_ratio, self.co_ratio, self.co2_ratio, self.c2h6_ratio,
                   1 - self.ch4_ratio - self.co_ratio - self.co2_ratio - self.c2h6_ratio):
@@ -578,17 +591,18 @@ class CHG(SanUnit):
             }
         
         for name,ratio in CHGfuelgas_composition.items():
-            CHGfuelgas.imass[name] = CHGfuel_gas_mass*ratio
+            CHGout.imass[name] = CHGfuel_gas_mass*ratio
         
-        effluent.copy_like(CHGfeed)
-        effluent.imass['C'] *= (1 - self.toc_tc_ratio*self.toc_to_gas_c_ratio)
-        effluent.imass['H2O'] = CHGfeed.F_mass - CHGfuel_gas_mass - effluent.imass['C'] -\
-            effluent.imass['N'] - effluent.imass['P']
         
-        CHGfuelgas.phase = 'g'
+        # CHGout.imass['C'] *= (1 - self.toc_tc_ratio*self.toc_to_gas_c_ratio)
+        # CHGout.imass['H2O'] = CHGfeed.F_mass - CHGfuel_gas_mass - CHGout.imass['C'] -\
+        #     CHGout.imass['N'] - CHGout.imass['P']
             
-        CHGfuelgas.P = self.CHGfuelgas_pre
-        effluent.P = self.effluent_pre
+        CHGout.imass['H2O'] = CHGfeed.F_mass - CHGfuel_gas_mass
+        
+        # CHGout.phase = 'l'
+            
+        CHGout.P = self.CHGout_pre
         
         for stream in self.outs: stream.T = self.eff_T
         
@@ -605,6 +619,9 @@ class CHG(SanUnit):
     def _cost(self):
         pass
     
+# =============================================================================
+# Membrane Distillation
+# =============================================================================
 
 class MembraneDistillation(SanUnit):
     
@@ -618,6 +635,13 @@ class MembraneDistillation(SanUnit):
         3. 95% NH3 in feed can be transfered to permeate (assume 95% for now)
         4. All NH3 in permeate can form (NH4)2SO4 (which makes sense since just water evaporates)
         5. _design and _cost refer to A.A. et al., Membrane distillation: A comprehensive review
+    
+    
+# =============================================================================
+#     ############# add NaOH somewhere there or in other units
+# =============================================================================
+    
+    
     
     Parameters
     ----------
@@ -975,6 +999,335 @@ class Acidsplitter(SanUnit):
 
 
 
+
+
+
+class Flash(SanUnit, FL):
+
+    auxiliary_unit_names = FL.auxiliary_unit_names
+    _units = FL._units
+    _max_agile_design = FL._max_agile_design
+    _F_BM_default = FL._F_BM_default
+    _graphics = FL._graphics
+    _N_outs = FL._N_outs
+
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='Stream', *,
+                 V=None, T=None, Q=None, P=None, y=None, x=None,
+                 vessel_material='Carbon steel',
+                 vacuum_system_preference='Liquid-ring pump',
+                 has_glycol_groups=False,
+                 has_amine_groups=False,
+                 vessel_type=None,
+                 holdup_time=15,
+                 surge_time=7.5,
+                 has_mist_eliminator=False):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with=init_with)
+        self._load_components()
+        
+        #: Enforced molar vapor fraction
+        self.V = V
+        
+        #: Enforced operating temperature (K)
+        self.T = T
+        
+        #: [array_like] Molar composition of vapor (for binary mixture)
+        self.y = y
+        
+        #: [array_like] Molar composition of liquid (for binary mixture)
+        self.x = x
+        
+        #: Enforced duty (kJ/hr)
+        self.Q = Q
+        
+        #: Operating pressure (Pa)
+        self.P = P
+        
+        #: [str] Vessel construction material
+        self.vessel_material = vessel_material
+
+        #: [str] If a vacuum system is needed, it will choose one according to this preference.
+        self.vacuum_system_preference = vacuum_system_preference
+        
+        #: [bool] True if glycol groups are present in the mixture
+        self.has_glycol_groups = has_glycol_groups
+        
+        #: [bool] True if amine groups are present in the mixture
+        self.has_amine_groups = has_amine_groups
+        
+        #: [str] 'Horizontal', 'Vertical', or 'Default'
+        self.vessel_type = vessel_type
+        
+        #: [float] Time it takes to raise liquid to half full (min)
+        self.holdup_time = holdup_time
+        
+        #: [float] Time it takes to reach from normal to maximum liquied level (min)
+        self.surge_time = surge_time
+        
+        #: [bool] True if using a mist eliminator pad
+        self.has_mist_eliminator = has_mist_eliminator
+        
+    def _load_components(self):
+        self._multi_stream = ms = MultiStream(None, thermo=self.thermo)
+        self.heat_exchanger = HXutility(None, (None,), ms, thermo=self.thermo) 
+        
+    def reset_cache(self, isdynamic=None):
+        self._multi_stream.reset_cache()
+        self.heat_exchanger.reset_cache()
+        
+    @property
+    def P(self):
+        """Operating pressure (Pa)."""
+        return self._P
+    @P.setter
+    def P(self, P):
+        if P and P < 101325 and not self.power_utility:
+            self.power_utility = PowerUtility()
+        self._P = P
+
+    @property
+    def vapor(self):
+        """Outlet vapor stream (equivalent to outs[0])."""
+        return self._outs[0]
+    @vapor.setter
+    def vapor(self, vapor):
+        self._outs[0] = vapor
+    
+    @property
+    def liquid(self):
+        """Outlet liquid stream (equivalent to outs[1])."""
+        return self._outs[1]
+    @liquid.setter
+    def liquid(self, liquid):
+        self._outs[1] = liquid
+
+    def _default_vessel_type(self):
+        vap, liq = self.outs
+        F_mass_vap = vap.F_mass
+        F_mass_liq = liq.F_mass 
+        return 'Vertical' if F_mass_vap / F_mass_liq > 0.1 else 'Horizontal'
+
+    def _run(self):
+        separations.vle(self.ins[0], *self.outs, self.T, self.P, self.V, 
+                        self.Q, self.x, self.y, self._multi_stream)
+            
+    def _design(self):
+        vap, liq = self.outs
+        self.no_vessel_needed = vap.isempty() or liq.isempty()
+        if self.no_vessel_needed:
+            self.design_results.clear()
+        else:
+            vessel_type = self.vessel_type
+            if vessel_type == 'Vertical': 
+                args = self._vertical_vessel_pressure_diameter_and_length()
+            elif vessel_type == 'Horizontal': 
+                args = self._horizontal_vessel_pressure_diameter_and_length()
+            else: raise RuntimeError('unknown vessel type') # pragma: no cover
+            self.design_results.update(
+                self._vessel_design(*args)
+            )
+        if self.Q == 0.:
+            self.heat_exchanger._setup() # Removes results
+        else:
+            self.heat_exchanger.simulate_as_auxiliary_exchanger(self.ins, [self._multi_stream])
+
+    def _cost(self):
+        D = self.design_results
+        if not self.no_vessel_needed:
+            self.baseline_purchase_costs.update(
+                self._vessel_purchase_cost(D['Weight'], D['Diameter'], D['Length'])
+            )
+            self._cost_vacuum()
+
+    def _cost_vacuum(self):
+        P = self.P
+        if not P or P > 101320: 
+            self.vacuum_system = None
+        else:
+            Design = self.design_results
+            R = Design['Diameter'] * 0.5
+            volume = 0.02832 * np.pi * Design['Length'] * R * R # Volume ft3 to m3
+            self.vacuum_system = bst.VacuumSystem(
+                self, self.vacuum_system_preference, vessel_volume=volume,
+            )
+
+    def _design_parameters(self):
+        # Retrieve run_args and properties
+        vap, liq = self._outs
+        rhov = vap.get_property('rho', 'lb/ft3')
+        rhol = liq.get_property('rho', 'lb/ft3')
+        P = liq.get_property('P', 'psi')  # Pressure (psi)
+
+        vessel_type = self.vessel_type
+        Th = self.holdup_time
+        Ts = self.surge_time
+        has_mist_eliminator = self.has_mist_eliminator
+
+        # Calculate the volumetric flowrate
+        Qv = vap.get_total_flow('ft^3 / s')
+        Qll = liq.get_total_flow('ft^3 / min')
+
+        # Calculate Ut and set Uv
+        K = design.compute_Stokes_law_York_Demister_K_value(P)
+
+        # Adjust K value
+        if not has_mist_eliminator and vessel_type == 'Vertical': K /= 2
+
+        # Adjust for amine or glycol groups:
+        if self.has_glycol_groups: K *= 0.6
+        elif self.has_amine_groups: K *= 0.8
+
+        Ut = K*((rhol - rhov) / rhov)**0.5
+        Uv = 0.75*Ut
+
+        # Calculate Holdup and Surge volume
+        Vh = Th*Qll
+        Vs = Ts*Qll
+        return rhov, rhol, P, Th, Ts, has_mist_eliminator, Qv, Qll, Ut, Uv, Vh, Vs
+
+    def _vertical_vessel_pressure_diameter_and_length(self):
+        rhov, rhol, P, Th, Ts, has_mist_eliminator, Qv, Qll, Ut, Uv, Vh, Vs = self._design_parameters()
+
+        # Calculate internal diameter, Dvd
+        Dvd = (4.0*Qv/(pi*Uv))**0.5
+        if has_mist_eliminator:
+            D = design.ceil_half_step(Dvd + 0.4)
+        else:
+            D = design.ceil_half_step(Dvd)
+
+        # Obtaining low liquid level height, Hlll
+        Hlll = 0.5
+        if P < 300:
+            Hlll = 1.25
+
+        # Calculate the height from Hlll to Normal liq level, Hnll
+        Hh = Vh/(pi/4.0*Dvd**2)
+        if Hh < 1.0: Hh = 1.0
+
+        # Calculate the height from Hnll to  High liq level, Hhll
+        Hs = Vs/(pi/4.0*Dvd**2)
+        if Hs < 0.5: Hs = 0.5
+
+        # Calculate dN
+        Qm = Qll + Qv
+        lamda = Qll/Qm
+        rhoM = rhol*lamda + rhov*(1-lamda)
+        dN = (4*Qm/(pi*60.0/(rhoM**0.5)))**0.5
+        dN = design.ceil_half_step(dN)
+
+        # Calculate Hlin, assume with inlet diverter
+        Hlin = 1.0 + dN
+
+        # Calculate the vapor disengagement height
+        Hv = 0.5*Dvd
+        Hv2 = (2.0 if has_mist_eliminator else 3.0) + dN/2.0 # pragma: no cover
+        if Hv2 < Hv: Hv = Hv2
+        Hv = Hv
+
+        # Calculate total height, Ht
+        Hme = 1.5 if has_mist_eliminator else 0.0
+        Ht = Hlll + Hh + Hs + Hlin + Hv + Hme
+        Ht = design.ceil_half_step(Ht)
+
+        # Find maximum and normal liquid level
+        # Hhll = Hs + Hh + Hlll
+        # Hnll = Hh + Hlll
+
+        return P, D, Ht
+        
+    def _horizontal_vessel_pressure_diameter_and_length(self):
+        rhov, rhol, P, Th, Ts, has_mist_eliminator, Qv, Qll, Ut, Uv, Vh, Vs = self._design_parameters()
+
+        # Initialize LD
+        if P > 0 and P <= 264.7:
+            LD = 1.5/250.0*(P-14.7)+1.5
+        elif P > 264.7 and P <= 514.7: # pragma: no cover
+            LD = 1.0/250.0*(P-14.7)+2.0
+        elif P > 514.7: # pragma: no cover
+            LD = 5.0
+
+        D = (4.0*(Vh+Vs)/(0.6*pi*LD))**(1.0/3.0)
+        if D <= 4.0:
+            D = 4.0
+        else:
+            D = design.ceil_half_step(D)
+
+        for outerIter in range(50):
+            At = pi*(D**2)/4.0 # Total area
+
+            # Calculate Lower Liquid Area
+            Hlll = round(0.5*D + 7.0)  
+            Hlll = Hlll/12.0 # D is in ft but Hlll is in inches
+            X = Hlll/D
+            Y = design.HNATable(1, X)
+            Alll = Y*At
+
+            # Calculate the Vapor disengagement area, Av
+            Hv = 0.2*D
+            if has_mist_eliminator and Hv <= 2.0: Hv = 2.0
+            elif Hv <= 1.0: Hv = 1.0
+            else: Hv = design.ceil_half_step(Hv)
+            Av = design.HNATable(1, Hv/D)*At
+            
+            # Calculate minimum length for surge and holdup
+            L = (Vh + Vs)/(At - Av - Alll)
+            # Calculate liquid dropout
+            Phi = Hv/Uv
+            # Calculate actual vapor velocity
+            Uva = Qv/Av
+            # Calculate minimum length for vapor disengagement
+            Lmin = Uva*Phi
+            Li = L
+            
+            for innerIter in range(50):
+                if L < 0.8*Lmin: Hv += 0.5
+                elif L > 1.2*Lmin:
+                    if has_mist_eliminator and Hv <= 2.0: Hv = 2.0
+                    elif not has_mist_eliminator and Hv <= 1.0: Hv = 1.0
+                    else: Hv -= 0.5
+                else: break
+                Av = design.HNATable(1, Hv/D)*At
+                Alll = design.HNATable(1, Hlll/D)*At
+                Li = (Vh + Vs)/(At - Av - Alll)
+                Phi = Hv/Uv
+                Uva = Qv/Av
+                Lmin = Uva*Phi
+            
+            L = Li
+            LD = L/D
+            # Check LD
+            if LD < 1.2:
+                if D <= 4.0: break
+                else: D -= 0.5
+
+            if LD > 7.2: # pragma: no cover
+                D += 0.5
+            else: break
+
+        # Recalculate LD so it lies between 1.5 - 6.0
+        while True:
+            LD = L / D
+            if (LD < 1.5) and D <= 4.0: L += 0.5
+            elif LD < 1.5: D -= 0.5
+            elif (LD > 6.0): D += 0.5
+            else: break
+
+        # # To check minimum Hv value
+        # if int(has_mist_eliminator) == 1 and Hv <= 2.0:
+        #     Hv = 2.0
+        # if int(has_mist_eliminator) == 0 and Hv <= 1.0:
+        #     Hv = 1.0
+
+        # Calculate normal liquid level and High liquid level
+        # Hhll = D - Hv
+        # if (Hhll < 0.0):
+        #     Hhll = 0.0
+        # Anll = Alll + Vh/L
+        # X = Anll/At
+        # Y = HNATable(2, X)
+        # Hnll = Y*D
+        
+        return P, D, L
 
 
 
