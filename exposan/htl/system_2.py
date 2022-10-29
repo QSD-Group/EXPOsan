@@ -20,7 +20,7 @@ References:
 '''
 
 import qsdsan as qs
-import exposan.htl._sanunits as su
+import exposan.htl._sanunits_2 as su
 from qsdsan import sanunits as suu
 from exposan.htl._process_settings import load_process_settings
 from exposan.htl._components import create_components
@@ -38,7 +38,9 @@ fake_sludge = qs.Stream('fake_sludge', H2O=100000, units='kg/hr', T=25+273.15)
 #assume 99% moisture, 20 us tons of dw sludge per h
 
 
-SluL = su.SludgeLab('S000', ins=fake_sludge, outs='real_sludge')
+SluL = su.SludgeLab('S000', ins=fake_sludge, outs='real_sludge',sludge_moisture=0.99,
+                    sludge_P=0.019)
+
 
 SluT = suu.SludgeThickening('A000', ins=SluL-0, outs=('supernatant_1','compressed_sludge_1'),
                             init_with='Stream', solids=('Sludge_lipid','Sludge_protein','Sludge_carbo',
@@ -56,12 +58,26 @@ H1 = suu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=350+273.15, U=0.874
 # unit conversion: http://www.unitconversion.org/heat-transfer-coefficient/watts-
 # per-square-meter-per-k-to-btus-th--per-hour-per-square-foot-per-f-conversion.html
 
-#!!! currently the power/heat utilities of HTL_hx aren't added to HTL,
-# it'll be added in after I pulled in some updates from biosteam,
-# so we don't need to worry about it (I'm leaving this note to reminder myself)
-
 HTL = su.HTL('A120', ins=H1-0, outs=('biochar','HTLaqueous','biocrude','offgas_HTL'))
-HTL_hx = HTL.heat_exchanger #include this into path?
+HTL_hx = HTL.heat_exchanger
+
+sys = qs.System('sys', path=(SluL, SluT, SluC,P1, H1,HTL))
+
+sys.operating_hours = 7884 # NRES 2013
+
+sys.simulate()
+
+sys.diagram()
+
+
+
+
+
+
+
+
+
+
 
 H2SO4_Tank = suu.StorageTank('T200', ins='H2SO4_in', outs=('H2SO4_out')) #tau?
 
@@ -124,23 +140,7 @@ CHP = suu.CHP('A400', ins=(GasMixer-0,'natural_gas','air'), outs=('emission','so
 #              DieselTank, GasMixer, CHP):
 #     unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1]) # so that qs.main_flowsheet.H1 works as well
 
-sys = qs.System('sys', path=(SluL, SluT, SluC,
-                             P1, H1, HTL,
-                             AcidEx, M1, StruPre,
-                             P2, H2, CHG, MemDis,
-                             SP1, H2SO4_Tank, 
-                             P3, H3, HT,
-                             P4, H4, HC,
-                             GasolineMixer, DieselMixer,
-                             H5, H6,
-                             GasolineTank, DieselTank,
-                             GasMixer, CHP))#,facilities=(HXN,))
 
-sys.operating_hours = 7884 # NRES 2013
-
-sys.simulate()
-
-sys.diagram()
 
 # return sys
 

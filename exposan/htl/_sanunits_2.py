@@ -78,8 +78,8 @@ class SludgeLab(SanUnit):
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream', 
                  sludge_moisture=0.99, sludge_dw_protein=0.341,
-                 sludge_dw_lipid=0.226, sludge_dw_carbo=0.167,
-                 sludge_P = 0.019, #data are from SS PNNL 2021
+                 sludge_dw_lipid=0.226, sludge_dw_carbo=0.167, sludge_P_ratio = 0.019,
+                 #data are from SS PNNL 2021
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -88,7 +88,8 @@ class SludgeLab(SanUnit):
         self.sludge_dw_carbo = sludge_dw_carbo
         self.sludge_dw_lipid = sludge_dw_lipid
         self.sludge_dw_ash = 1 - sludge_dw_protein - sludge_dw_carbo - sludge_dw_lipid
-        self.sludge_P = sludge_P #set P as an independent variable, assume S is 0
+        self.sludge_P_ratio = sludge_P_ratio
+        #set P as an independent variable, assume S is 0
         
     _N_ins = 1
     _N_outs = 1
@@ -108,33 +109,45 @@ class SludgeLab(SanUnit):
         
     #all sludge elemental analysis are based on empirical equation
     @property
-    def sludge_C(self):
+    def sludge_C_ratio(self):
        return self.sludge_dw_carbo*0.44 + self.sludge_dw_lipid*0.75 + self.sludge_dw_protein*0.53
     #https://pubmed.ncbi.nlm.nih.gov/2061559/ (accessed 2022-10-27)
     #https://encyclopedi/a2.thefreedictionary.com/Proteins (accessed 2022-10-27)
     
     @property
-    def sludge_H(self):
+    def sludge_H_ratio(self):
        return self.sludge_C/7
     #based on SS PNNL 2021 data, H ~ C/7
    
     @property
-    def sludge_N(self):
+    def sludge_N_ratio(self):
        return self.sludge_dw_protein*0.16
     #https://www.fao.org/3/y5022e/y5022e03.htm#:~:text=On%20the%20basis%20of%20
     #early,is%20confounded%20by%20two%20considerations (accessed 2022-10-27)
    
     @property
-    def sludge_P(self):
-       return self.sludge_P
+    def sludge_P_ratio(self):
+       return self._sludge_P_ratio
     #set P as an indepedent variable since hard to find any association with sludge biochemical compositions
     
+    @sludge_P_ratio.setter
+    def sludge_P_ratio(self, i):
+        if not 0 <= i <= 1:
+            raise AttributeError('`sludge_P` must be within [0, 1], '
+                                f'the provided value {i} is outside this range.')
+        self._sludge_P_ratio = i
+    
     @property
-    def sludge_O(self):
+    def sludge_O_ratio(self):
        return 1 - self.sludge_C - self.sludge_H - self.sludge_N - self.sludge_O -\
           self.sludge_P - self.sludge_dw_ash*0.75
     #sludge_O is calculated based on mass balance closure
     #asd * 0.75 since double count some elements. 0.75 is based on SS PNNL 2021.
+    
+    @property
+    def AOSc(self):
+       return (3*self.sludge_N_ratio/14 + 2*self.sludge_O_ratio/16 -\
+               self.sludge_H_ratio/1)/(self.sludge_C_ratio/12)
    
     def _design(self):
         pass
@@ -167,7 +180,8 @@ class HTL(SanUnit):
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream',
                  biocrude_moisture_content=0.056, #Jones PNNL 2014
-                 biochar_C_N_ratio=15.5, biochar_C_P_ratio=2.163,
+                 biochar_C_N_ratio=15.5, biochar_C_P_ratio=2.163, #based on Yalin's data
+                 ch4_ratio=0.05, c2h6_ratio = 0.03,
                  biochar_pre=3029.7*6894.76, #Jones 2014: 3029.7 psia
                  HTLaqueous_pre=30*6894.76, #Jones 2014: 30 psia
                  biocrude_pre=30*6894.76,
@@ -180,6 +194,11 @@ class HTL(SanUnit):
 
         self.biochar_C_N_ratio = biochar_C_N_ratio
         self.biochar_C_P_ratio = biochar_C_P_ratio
+        
+        self.ch4_ratio = ch4_ratio
+        self.c2h6_ratio = c2h6_ratio
+        self.co2_ratio = 1 - self.ch4_ratio - self.c2h6_ratio
+        
         self.biochar_pre = biochar_pre
         self.HTLaqueous_pre = HTLaqueous_pre
         self.biocrude_pre = biocrude_pre
@@ -209,8 +228,17 @@ class HTL(SanUnit):
         biochar.imass['Biochar'] = 0.377*carbo_ratio*dewatered_sludge_afdw     
         HTLaqueous.imass['HTLaqueous'] = (0.154*lipid_ratio + 0.481*protein_ratio)\
             *dewatered_sludge_afdw #HTLaqueous is TDS in aqueous phase
-        offgas.imass['CO2'] = (0.074*protein_ratio + 0.418*carbo_ratio)\
+            
+        for ratio in (self.ch4_ratio, self.c2h6_ratio, self.co2_ratio):
+            if ratio < 0: ratio = 0
+         
+        offgas_imass = (0.074*protein_ratio + 0.418*carbo_ratio)\
             *dewatered_sludge_afdw
+            
+        offgas.imass['CH4'] = offgas_imass*self.ch4_ratio
+        offgas.imass['C2H6'] = offgas_imass*self.c2h6_ratio
+        offgas.imass['CO2'] = offgas_imass*self.co2_ratio
+            
         biocrude.imass['Biocrude'] = (0.846*lipid_ratio + 0.445*protein_ratio\
             + 0.205*carbo_ratio)*dewatered_sludge_afdw
         biocrude.imass['H2O'] = biocrude.imass['Biocrude']/(1 - self.biocrude_moisture_content) -\
@@ -228,18 +256,15 @@ class HTL(SanUnit):
         
         for stream in self.outs: stream.T = self.eff_T
         
-    @property
-    def AOSc(self):
-       return (3*self.sludge_N_ratio/14 + 2*self.sludge_O_ratio/16 -\
-               self.sludge_H_ratio/1)/(self.sludge_C_ratio/12)
-    
+        self.sludgelab = self.ins[0]._source.ins[0]._source.ins[0]._source.ins[0]._source.ins[0]._source
+
     @property
     def biochar_C_ratio(self):
-        return min(1.75*self.sludge_carbo_ratio_dw, 0.65)
+        return min(1.75*self.sludgelab.sludge_dw_carbo, 0.65) #revised MCA model
     
     @property
     def biochar_N_ratio(self):
-        return self.biochar_C_ratio/self.biochar_C_N_ratio
+        return self.biochar_C_ratio/self.biochar_C_N_ratio 
     
     @property
     def biochar_P_ratio(self):
@@ -255,16 +280,16 @@ class HTL(SanUnit):
 
     @property
     def biochar_P(self):
-        return min((self.ins[0].F_mass - self.ins[0].imass['H2O'])*self.sludge_P_ratio,
-                   self.outs[0].F_mass*self.biochar_P_ratio)
+        return min((self.ins[0].F_mass - self.ins[0].imass['H2O'])*self.sludgelab.sludge_P_ratio,
+                   self.outs[0].F_mass*self.biochar_P_ratio) #make sure biochar P smaller than total P
 
     @property
     def biocrude_C_ratio(self):
-        return (self.AOSc*(-8.37) + 68.55)/100
+        return (self.AOSc*(-8.37) + 68.55)/100 #revised MCA model
 
     @property
     def biocrude_N_ratio(self):
-        return 0.133*self.sludge_protein_ratio_dw
+        return 0.133*self.sludgelab.sludge_dw_protein #revised MCA model
 
     @property
     def biocrude_C(self):
@@ -276,21 +301,22 @@ class HTL(SanUnit):
 
     @property
     def offgas_C(self):
-        return self.outs[3].F_mass*12/44
+        return self.outs[3].imass['CO2']*12/44 + self.outs[3].imass['CH4']*12/16 +\
+            self.outs[3].imass['C2H6']*24/30
 
     @property
     def HTLaqueous_C(self):
-        return self.dewatered_sludge_dw*self.sludge_C_ratio -\
+        return (self.ins[0].F_mass - self.ins[0].imass['H2O'])*self.sludgelab.sludge_C_ratio -\
             self.biochar_C - self.biocrude_C - self.offgas_C
 
     @property
     def HTLaqueous_N(self):
-        return self.dewatered_sludge_dw*self.sludge_N_ratio -\
+        return (self.ins[0].F_mass - self.ins[0].imass['H2O'])*self.sludgelab.sludge_N_ratio -\
             self.biochar_N - self.biocrude_N
 
     @property
     def HTLaqueous_P(self):
-        return self.dewatered_sludge_dw*self.sludge_P_ratio -\
+        return (self.ins[0].F_mass - self.ins[0].imass['H2O'])*self.sludgelab.sludge_P_ratio -\
             self.biochar_P
 
     def _design(self):

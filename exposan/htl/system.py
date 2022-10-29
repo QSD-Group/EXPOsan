@@ -61,7 +61,7 @@ H1 = suu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=350+273.15, U=0.874
 # so we don't need to worry about it (I'm leaving this note to reminder myself)
 
 HTL = su.HTL('A120', ins=H1-0, outs=('biochar','HTLaqueous','biocrude','offgas_HTL'))
-HTL_hx = HTL.heat_exchanger #include this into path?
+HTL_hx = HTL.heat_exchanger
 
 H2SO4_Tank = suu.StorageTank('T200', ins='H2SO4_in', outs=('H2SO4_out')) #tau?
 
@@ -113,7 +113,7 @@ GasolineTank = suu.StorageTank('A380', ins=H5-0, outs=('gasoline_out'), tau=3*24
 DieselTank = suu.StorageTank('A390', ins=H6-0, outs=('diesel_out'), tau=3*24, init_with='Stream')
 #store for 3 days based on Jones 2014
 
-GasMixer = suu.Mixer('S200',ins=(HTL-3,CHG-0,HT-1,HC-2), outs=('fuel_gas'),init_with='Stream')
+GasMixer = suu.Mixer('S200',ins=(CHG-0,HT-1), outs=('fuel_gas'),init_with='Stream')
 
 CHP = suu.CHP('A400', ins=(GasMixer-0,'natural_gas','air'), outs=('emission','solid_ash'))
 
