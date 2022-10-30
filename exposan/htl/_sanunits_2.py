@@ -573,8 +573,6 @@ class CHG(SanUnit):
         CHGfeed = self.ins[0]
         CHGout = self.outs[0]
         
-        # CHGout.copy_like(CHGfeed)
-        
         for i in (self.ch4_ratio, self.co_ratio, self.co2_ratio, self.c2h6_ratio,
                   1 - self.ch4_ratio - self.co_ratio - self.co2_ratio - self.c2h6_ratio):
             if i < 0: i = 0
@@ -605,6 +603,8 @@ class CHG(SanUnit):
         CHGout.P = self.CHGout_pre
         
         for stream in self.outs: stream.T = self.eff_T
+        
+
         
     def _design(self):
         
