@@ -48,7 +48,8 @@ __all__ = ('create_components',)
 
 def create_components(set_thermo=True):
     
-    Sludge_lipid = Component('Sludge_lipid', particle_size='Particulate',
+    
+    Sludge_lipid = Component('Sludge_lipid', phase='s', particle_size='Particulate',
                        formula='C56H95O24N9P', degradability='Undegradable', organic=False)
     add_V_from_rho(Sludge_lipid, 1400)
     #https://www.climate-policy-watcher.org/wastewater-sludge/physical-and-biological-properties.html (accessed 2022-10-23)
@@ -57,7 +58,7 @@ def create_components(set_thermo=True):
     Sludge_lipid.Cn.add_model(1.25*10**3*Sludge_lipid.MW/1000) # Leow et al., 2015
     Sludge_lipid.mu.add_model(6000) #made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt (NREL 2013 appendix B)
     
-    Sludge_protein = Component('Sludge_protein', particle_size='Particulate',
+    Sludge_protein = Component('Sludge_protein', phase='s', particle_size='Particulate',
                        formula='C56H95O24N9P', degradability='Undegradable', organic=False)
     add_V_from_rho(Sludge_protein, 1400)
     Sludge_protein.HHV = 22.0*10**6*Sludge_protein.MW/1000
@@ -65,14 +66,14 @@ def create_components(set_thermo=True):
     Sludge_protein.mu.add_model(6000) #made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt (NREL 2013 appendix B)
     
     
-    Sludge_carbo = Component('Sludge_carbo', particle_size='Particulate',
+    Sludge_carbo = Component('Sludge_carbo', phase='s', particle_size='Particulate',
                        formula='C56H95O24N9P', degradability='Undegradable', organic=False)
     add_V_from_rho(Sludge_carbo, 1400)
     Sludge_carbo.HHV = 22.0*10**6*Sludge_carbo.MW/1000
     Sludge_carbo.Cn.add_model(1.25*10**3*Sludge_carbo.MW/1000)
     Sludge_carbo.mu.add_model(6000) #made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt (NREL 2013 appendix B)
     
-    Sludge_ash = Component('Sludge_ash', particle_size='Particulate',
+    Sludge_ash = Component('Sludge_ash', phase='s', particle_size='Particulate',
                        formula='C56H95O24N9P', degradability='Undegradable', organic=False)
     add_V_from_rho(Sludge_ash, 1400)
     Sludge_ash.HHV = 22.0*10**6*Sludge_ash.MW/1000
@@ -83,12 +84,12 @@ def create_components(set_thermo=True):
     H2O = Component('H2O', particle_size='Soluble',
                     degradability='Undegradable', organic=False)
     
-    Biochar = Component('Biochar', particle_size='Particulate',
+    Biochar = Component('Biochar', phase='s', particle_size='Particulate',
                         degradability='Undegradable', organic=False)
     add_V_from_rho(Biochar, 1500)  #Assume 1500kg/m3
     Biochar.copy_models_from(Chemical('CaCO3'),('Cn',))
     
-    Biocrude = Component('Biocrude', particle_size='Soluble',
+    Biocrude = Component('Biocrude', phase='l', particle_size='Soluble',
                           formula='C19H28O2.7N', degradability='Undegradable', organic=False)
     Biocrude.HHV = 34.9*10**6*Biocrude.MW/1000  #Li et al., 2018
     add_V_from_rho(Biocrude, 980)  #SS et al., PNNL 2021
@@ -97,7 +98,7 @@ def create_components(set_thermo=True):
     #made-up value, so that HTL.outs['biocrude'] =HT.ins[0] = 0.0006 m2/s ~ 600 cSt
     #(the temperature of HT.ins['biocrude'] is much higher than 40C, so use HTL outs value to compare with PNNL report)
     
-    # Biooil = Component('Biooil',particle_size='Soluble',
+    # Biooil = Component('Biooil',phase='l',particle_size='Soluble',
     #                     formula='C100H165O1.5N',degradability='Undegradable',organic=False)
     # Biooil.HHV = 45.4*10**6*Biooil.MW/1000  #Li et al., 2018
     # add_V_from_rho(Biooil, 794)  #SS et al., PNNL 2016
@@ -105,110 +106,241 @@ def create_components(set_thermo=True):
     
     #Delete Biooil
     #Add Gasoline (octane), diesel (C16H34), and Heavy_oil (C23H48)
-    Gasoline = Component('Gasoline', search_ID='Octane', particle_size='Soluble',
+    Gasoline = Component('Gasoline', search_ID='Octane', phase='l', particle_size='Soluble',
                         formula='C8H18', degradability='Slowly', organic=True)
    
-    Diesel = Component('Diesel', search_ID='C16H34', particle_size='Soluble',
+    Diesel = Component('Diesel', search_ID='C16H34', phase='l', particle_size='Soluble',
                         formula='C16H34', degradability='Slowly', organic=True)
     Diesel.mu.add_model(0.0015) #https://acta.mendelu.cz/pdfs/acu/2015/04/08.pdf (accessed 2022-10-24)
     
-    Heavy_oil = Component('Heavy_oil', search_ID='C23H48', particle_size='Soluble',
+    Heavy_oil = Component('Heavy_oil', search_ID='C23H48', phase='l', particle_size='Soluble',
                         formula='C23H48', degradability='Slowly', organic=True)
     Heavy_oil.mu.add_model(0.005)
     #https://www.engineeringtoolbox.com/crude-oil-petroleum-viscosity-gravity-density-d_1959.html (accessed 2022-10-24)
     
-    HTLaqueous = Component('HTLaqueous', particle_size='Soluble',
+    HTLaqueous = Component('HTLaqueous', phase='l', particle_size='Soluble',
                         degradability='Undegradable', organic=False)
     add_V_from_rho(HTLaqueous, 1000)
     HTLaqueous.copy_models_from(Chemical('H2O'),('Cn','mu'))  #HTLaqueous referd to TDS in HTL aqueous phase
     
-    HTaqueous = Component('HTaqueous', particle_size='Soluble',
+    HTaqueous = Component('HTaqueous', phase='l', particle_size='Soluble',
                         degradability='Undegradable', organic=False)
     add_V_from_rho(HTaqueous, 1000)
     HTaqueous.copy_models_from(Chemical('H2O'),('Cn','mu'))  #HTaqueous referd to HT aqueous waste
     
     Struvite = Component('Struvite', search_ID='MagnesiumAmmoniumPhosphate',
-                         formula='NH4MgPO4·H12O6',
+                         formula='NH4MgPO4·H12O6', phase='s',
                          particle_size='Particulate', 
                          degradability='Undegradable',
                          organic=False)
     add_V_from_rho(Struvite, 1710)
     #http://webmineral.com/data/Struvite.shtml#.YzYvqOzMIiM (accessed 2022-9-30)
     
-    Residual = Component('Residual', particle_size='Particulate',
+    Residual = Component('Residual', phase='s', particle_size='Particulate',
                         degradability='Undegradable', organic=False)
     add_V_from_rho(Residual, 1500)  #Assume 1500kg/m3
     Residual.copy_models_from(Chemical('CaCO3'),('Cn',))  #CaCO3?
     
-    C = Component('C', particle_size='Soluble', degradability='Undegradable',
+    C = Component('C', search_ID='water', particle_size='Soluble', degradability='Undegradable',
                   organic=False)
     
-    N = Component('N', particle_size='Soluble', degradability='Undegradable',
+    N = Component('N', search_ID='water', particle_size='Soluble', degradability='Undegradable',
                   organic=False)
     
-    P = Component('P', particle_size='Soluble', degradability='Undegradable',
+    P = Component('P', search_ID='water', particle_size='Soluble', degradability='Undegradable',
                   organic=False)
     
-    for i in(C,N,P):
-        i.default()
-        i.copy_models_from(H2O,('sigma','epsilon','kappa','Cn','mu'))
-        add_V_from_rho(i, 1000)
+    # for i in(C,N,P):
+    #     i.default()
+    #     i.copy_models_from(H2O,('Psat', 'Hvap', 'sigma', 'epsilon', 'kappa', 'V', 'Cn', 'mu'))
     
-    O2 = Component('O2', particle_size='Dissolved gas',
+    O2 = Component('O2', phase='g', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
     
-    N2 = Component('N2', particle_size='Dissolved gas',
+    N2 = Component('N2', phase='g', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
     
-    CH4 = Component('CH4', particle_size='Dissolved gas',
+    CH4 = Component('CH4', phase='g', particle_size='Dissolved gas',
                     degradability='Slowly', organic=True)
     
-    C2H6 = Component('C2H6', search_ID='ethane', particle_size='Dissolved gas',
+    C2H6 = Component('C2H6', phase='g', search_ID='ethane', particle_size='Dissolved gas',
                    degradability='Slowly', organic=True)
     
-    C3H8 = Component('C3H8', particle_size='Dissolved gas',
+    C3H8 = Component('C3H8', phase='g', particle_size='Dissolved gas',
                    degradability='Slowly', organic=True)
     
-    C4H10 = Component('C4H10', particle_size='Dissolved gas',
+    C4H10 = Component('C4H10', phase='g', particle_size='Dissolved gas',
                    degradability='Slowly', organic=True)
     
-    CO2 = Component('CO2', particle_size='Dissolved gas',
+    CO2 = Component('CO2', phase='g', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
     
-    CO = Component('CO', particle_size='Dissolved gas',
+    CO = Component('CO', phase='g', particle_size='Dissolved gas',
                    degradability='Undegradable', organic=False)
     
-    H2 = Component('H2', particle_size='Dissolved gas',
+    H2 = Component('H2', phase='g', particle_size='Dissolved gas',
                    degradability='Undegradable', organic=False)
     
-    NH3 = Component('NH3', particle_size='Dissolved gas',
+    NH3 = Component('NH3', phase='g', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
     
-    H2SO4 = Component('H2SO4', particle_size='Soluble',
+    H2SO4 = Component('H2SO4', phase='l', particle_size='Soluble',
                       degradability='Undegradable', organic=False)
     
-    H3PO4 = Component('H3PO4', particle_size='Soluble',
+    H3PO4 = Component('H3PO4', phase='l', particle_size='Soluble',
                       degradability='Undegradable', organic=False)
     
-    MgCl2 = Component('MgCl2', particle_size='Soluble',
+    MgCl2 = Component('MgCl2', phase='s', particle_size='Soluble',
                       degradability='Undegradable', organic=False) #assume we add MgCl2 solid
     
-    NaOH = Component('NaOH', particle_size='Soluble',
+    NaOH = Component('NaOH', phase='l', particle_size='Soluble',
                      degradability='Undegradable', organic=False)
     
-    NH42SO4 = Component('NH42SO4', particle_size='Soluble',
+    NH42SO4 = Component('NH42SO4', phase='s', particle_size='Soluble',
                         degradability='Undegradable', organic=False)
     
-    NH4Cl = Component('NH4Cl', particle_size='Soluble',
+    NH4Cl = Component('NH4Cl', phase='s', particle_size='Soluble',
                         degradability='Undegradable', organic=False)
     
     add_V_from_rho(NH42SO4, 1770)
     #https://en.wikipedia.org/wiki/Ammonium_sulfate (accessed 2022-9-30)
+
+    TWOMBUTAN = Component('TWOMBUTAN', search_ID='78-78-4', particle_size='Soluble',
+                        degradability='Slowly', organic=True)
     
-    # heating agent (see_process_settings.py)
-    # Terphenyl = Component('Terphenyl', CAS='92-94-4',
-    #                       particle_size='Soluble',
-    #                       degradability='Slowly', organic=True)
+    NPENTAN = Component('TWOMBUTAN', search_ID='109-66-0', particle_size='Soluble',
+                        degradability='Slowly', organic=True)
+    
+    
+    
+
+    TWOMPENTA = Component('TWOMPENTA', search_ID='107-83-5', particle_size='Soluble',
+                        degradability='Slowly', organic=True)
+    
+    
+    HEXANE = Component('TWOMPENTA', search_ID='110-54-3', particle_size='Soluble',
+                        degradability='Slowly', organic=True)
+    
+    
+
+    TWOMHEXAN = Component('TWOMHEXAN', search_ID='591-76-4', particle_size='Soluble',
+                        degradability='Slowly', organic=True)
+
+    HEPTANE = Component('HEPTANE', search_ID='142-82-5', particle_size='Soluble',
+                        degradability='Slowly', organic=True)
+
+    CC6METH = Component('CC6METH', search_ID='108-87-2', particle_size='Soluble',
+                        degradability='Slowly', organic=True)
+    
+    
+    
+    PIPERDIN = Component('PIPERDIN', search_ID='110-89-4', particle_size='Soluble',
+                        degradability='Slowly', organic=True)
+    
+    
+    TOLUENE = Component('TOLUENE', search_ID='108-88-3', particle_size='Soluble',
+                        degradability='Slowly', organic=True)
+    
+    
+    THREEMHEPTA = Component('THREEMHEPTA', search_ID='589-81-1', particle_size='Soluble',
+                        degradability='Slowly', organic=True)
+
+
+    OCTANE = Component('OCTANE', search_ID='111-65-9', particle_size='Soluble',
+                        degradability='Slowly', organic=True)
+
+    ETHCYC6 = Component('ETHCYC6', search_ID='1678-91-7', particle_size='Soluble',
+                        degradability='Slowly', organic=True)
+
+    ETHYLBEN = Component('ETHYLBEN', search_ID='100-41-4', particle_size='Soluble',
+                        degradability='Slowly', organic=True)
+
+    OXYLENE = Component('OXYLENE', search_ID='95-47-6', particle_size='Soluble',
+                        degradability='Slowly', organic=True)
+
+
+    C9H20 = Component('C9H20', search_ID='111-84-2', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    PROCYC6 = Component('PROCYC6', search_ID='1678-92-8', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    C3BENZ = Component('C3BENZ', search_ID='103-65-1', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+
+
+    FOURMONAN = Component('FOURMONAN', search_ID='17301-94-9', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+
+    C10H22 = Component('C10H22', search_ID='124-18-5', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    C4BENZ = Component('C4BENZ', search_ID='104-51-8', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    C11H24 = Component('C11H24', search_ID='1120-21-4', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    C10H12 = Component('C10H12', search_ID='119-64-2', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+    #use 1234NA (OTTFNA) to replace since they are both C10H12
+
+    C12H26 = Component('C12H26', search_ID='112-40-3', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    OTTFNA = Component('OTTFNA', search_ID='119-64-2', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    C6BENZ = Component('C6BENZ', search_ID='1077-16-3', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    OTTFSN = Component('OTTFSN', search_ID='1680-51-9', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    C7BENZ = Component('C7BENZ', search_ID='1078-71-3', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    C8BENZ = Component('C8BENZ', search_ID='2189-60-8', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    C10H16O4 = Component('C10H16O4', search_ID='94-60-0', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    C15H32 = Component('C15H32', search_ID='629-62-9', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    C16H34 = Component('C16H34', search_ID='544-76-3', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    C17H36 = Component('C17H36', search_ID='629-78-7', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    C18H38 = Component('C18H38', search_ID='593-45-3', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    C19H40 = Component('C19H40', search_ID='629-92-5', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    C20H42 = Component('C20H42', search_ID='638-36-8', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    C21H44 = Component('C21H44', search_ID='629-94-7', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    TRICOSANE = Component('TRICOSANE', search_ID='638-67-5', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    C24H38O4 = Component('C24H38O4', search_ID='27554-26-3', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+
+    C26H42O4 = Component('C26H42O4', search_ID='27554-26-3', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+    #use C24H38O4 to replace since they are similar
+
+    C30H62 = Component('C30H62', search_ID='638-68-6', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
 
     cmps = Components([Sludge_lipid, Sludge_protein, Sludge_carbo, Sludge_ash,
                        Struvite, Biochar, Residual,
@@ -216,7 +348,13 @@ def create_components(set_thermo=True):
                        HTLaqueous, HTaqueous, C, N, P,
                        O2, N2, CH4, C2H6, C3H8, C4H10, CO2, CO, H2,
                        H2SO4, H3PO4, MgCl2, NaOH, NH42SO4, NH4Cl, H2O, NH3,
-                       # Terphenyl
+                       TWOMBUTAN, NPENTAN, TWOMPENTA, HEXANE, TWOMHEXAN,
+                       HEPTANE, CC6METH, PIPERDIN, TOLUENE, THREEMHEPTA,
+                       OCTANE, ETHCYC6, ETHYLBEN, OXYLENE, C9H20, PROCYC6,
+                       C3BENZ, FOURMONAN, C10H22, C4BENZ, C11H24, C10H12,
+                       C12H26, OTTFNA, C6BENZ, OTTFSN, C7BENZ, C8BENZ,
+                       C10H16O4, C15H32, C16H34, C17H36, C18H38, C19H40,
+                       C20H42, C21H44, TRICOSANE, C24H38O4, C26H42O4, C30H62
                        ])
     
     for i in cmps:

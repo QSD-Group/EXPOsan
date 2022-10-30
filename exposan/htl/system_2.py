@@ -86,12 +86,19 @@ CHG_hx = CHG.heat_exchanger
 
 # F1_feed = qs.Stream('F1_feed',H2O=CHG.outs)
 
-F1 = Flash('F1', ins=CHG-0, outs=('d','f'),T=60+273.15, P=50*6894.76)
+F1 = Flash('A260', ins=CHG-0, outs=('fuel_gas','N_riched_aqueous'),T=60+273.15, P=50*6894.76)
 
+MemDis = su.MembraneDistillation('A260', ins=(F1-1,SP1-1), outs=('Ammonia_Sulfate','ww'))
 
+P3 = qsu.Pump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76) #Jones 2014: 1530.0 psia
 
-sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx, SP1, M1, StruPre,
-                             P2, H2, CHG, F1))
+H3 = qsu.HXutility('A310', ins=P3-0, outs='heated_biocrude', T=174+273.15, init_with='Stream')
+#T = 174 C (345 F) based on Jones PNNL report. However, the reaction releases a lot of heat
+#and increase the temperature of effluent to 402 C (755.5 F). The auxiliary HX should cool the products
+#from 402 C.
+
+sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx, M1, StruPre,
+                             P2, H2, CHG, F1, MemDis, SP1, P3, H3))
 #SP1 should be after AcidEx
 
 sys.operating_hours = 7884 # NRES 2013
@@ -116,11 +123,10 @@ sys.diagram()
 
 
 
-MemDis = su.MembraneDistillation('A260', ins=(CHG-0,SP1-1), outs=('Ammonia_Sulfate','ww'))
 
-P3 = qsu.Pump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76) #Jones 2014: 1530.0 psia
 
-H3 = qsu.HXutility('A310', ins=P3-0, outs='heated_biocrude', T=405+273.15, init_with='Stream')
+
+
 
 HT = su.HT('A320', ins=(H3-0,'H2_HT'), outs=('HTaqueous','HT_fuel_gas','gasoline_HT','diesel_HT','heavy_oil'))
 HT_hx = HT.heat_exchanger

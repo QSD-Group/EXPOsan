@@ -597,14 +597,22 @@ class CHG(SanUnit):
         #     CHGout.imass['N'] - CHGout.imass['P']
             
         CHGout.imass['H2O'] = CHGfeed.F_mass - CHGfuel_gas_mass
-        
-        # CHGout.phase = 'l'
             
         CHGout.P = self.CHGout_pre
         
         for stream in self.outs: stream.T = self.eff_T
         
-
+    @property
+    def CHGout_C(self):
+        return self.ins[0].imass['C']*(1 - self.toc_tc_ratio*self.toc_to_gas_c_ratio)
+    
+    @property
+    def CHGout_N(self):
+        return self.ins[0].imass['N']
+    
+    @property
+    def CHGout_P(self):
+        return self.ins[0].imass['P']
         
     def _design(self):
         
@@ -642,7 +650,6 @@ class MembraneDistillation(SanUnit):
 # =============================================================================
     
     
-    
     Parameters
     ----------
     ins: Iterable (stream)
@@ -668,9 +675,13 @@ class MembraneDistillation(SanUnit):
         influent, acid = self.ins
         ammoniasulfate, ww = self.outs
         
+        influent.imass['C'] = self.ins[0]._source.ins[0]._source.CHGout_C
+        influent.imass['N'] = self.ins[0]._source.ins[0]._source.CHGout_N
+        influent.imass['P'] = self.ins[0]._source.ins[0]._source.CHGout_P
+        influent.imass['H2O'] -= (influent.imass['C'] + influent.imass['N'] + influent.imass['P'])
+        
         acid.imass['H2SO4'] = influent.imass['N']/14/self.N_S_ratio*98
         acid.imass['H2O'] = acid.imass['H2SO4']*1000/98/0.5*1.05 - acid.imass['H2SO4']
-        
         
         pKa = 9.26 #ammonia pKa
         ammonia_to_ammonium = 10**(-pKa)/10**(-self.pH)
@@ -691,7 +702,10 @@ class MembraneDistillation(SanUnit):
     
     def _cost(self):
         pass
-    
+
+# =============================================================================
+# HT
+# =============================================================================
 
 class HT(SanUnit):
     
@@ -725,11 +739,26 @@ class HT(SanUnit):
                  gasoline_pre = 25*6894.76,
                  diesel_pre = 18.7*6894.76,
                  heavy_oil_pre = 18.7*6894.76,
+                 HTrxn_T=402+273.15, #Jones 2014
                  HTaqueous_T=47+273.15,
-                 fuel_gas_T=44+273.15, #Jones 2014
+                 fuel_gas_T=44+273.15,
                  gasoline_T=109+273.15,
                  diesel_T=265+273.15,
                  heavy_oil_T=381+273.15,
+                 oil_ratio={'TWOMBUTAN':0.0077, 'NPENTAN':0.0077, 'TWOMPENTA':0.0310,
+                            'HEXANE':0.0155, 'TWOMHEXAN':0.0310, 'HEPTANE':0.0155,
+                            'CC6METH':0.0155, 'PIPERDIN':0.0077, 'TOLUENE':0.0155,
+                            'THREEMHEPTA':0.0155, 'OCTANE':0.0155, 'ETHCYC6':0.0155,
+                            'ETHYLBEN':0.0310, 'OXYLENE':0.0155, 'C9H20':0.0155,
+                            'PROCYC6':0.0310, 'C3BENZ':0.0155, 'FOURMONAN':0.0155,
+                            'C10H22':0.0464, 'C4BENZ':0.0155, 'C11H24':0.0310,
+                            'C10H12':0.0155, 'C12H26':0.0310, 'OTTFNA':0.0155,
+                            'C6BENZ':0.0155, 'OTTFSN':0.0155, 'C7BENZ':0.0155,
+                            'C8BENZ':0.0310, 'C10H16O4':0.0155, 'C15H32':0.0155,
+                            'C16H34':0.1238, 'C17H36':0.0464, 'C18H38':0.0310,
+                            'C19H40':0.0310, 'C20H42':0.0774, 'C21H44':0.0310,
+                            'TRICOSANE':0.0155, 'C24H38O4':0.0310, 'C26H42O4':0.0310,
+                            'C30H62':0.0015},
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -750,6 +779,7 @@ class HT(SanUnit):
         self.gasoline_pre = gasoline_pre
         self.diesel_pre = diesel_pre
         self.heavy_oil_pre = heavy_oil_pre
+        self.HTrxn_T = HTrxn_T
         self.HTaqueous_T = HTaqueous_T
         self.fuel_gas_T = fuel_gas_T
         self.gasoline_T = gasoline_T
@@ -855,7 +885,7 @@ class HT(SanUnit):
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
         hx_ins0.mix_from(self.outs)
         hx_outs0.mix_from(self.outs)
-        hx_ins0.T = self.ins[0].T
+        hx_ins0.T = self.HTrxn_T
         hx.T = hx_outs0.T
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
     
