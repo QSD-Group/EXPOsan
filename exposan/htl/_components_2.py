@@ -48,7 +48,6 @@ __all__ = ('create_components',)
 
 def create_components(set_thermo=True):
     
-    
     Sludge_lipid = Component('Sludge_lipid', particle_size='Particulate',
                        formula='C56H95O24N9P', degradability='Undegradable', organic=False)
     add_V_from_rho(Sludge_lipid, 1400)
