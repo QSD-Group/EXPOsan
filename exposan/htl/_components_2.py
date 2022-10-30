@@ -49,7 +49,7 @@ __all__ = ('create_components',)
 def create_components(set_thermo=True):
     
     
-    Sludge_lipid = Component('Sludge_lipid', phase='s', particle_size='Particulate',
+    Sludge_lipid = Component('Sludge_lipid', particle_size='Particulate',
                        formula='C56H95O24N9P', degradability='Undegradable', organic=False)
     add_V_from_rho(Sludge_lipid, 1400)
     #https://www.climate-policy-watcher.org/wastewater-sludge/physical-and-biological-properties.html (accessed 2022-10-23)
@@ -58,7 +58,7 @@ def create_components(set_thermo=True):
     Sludge_lipid.Cn.add_model(1.25*10**3*Sludge_lipid.MW/1000) # Leow et al., 2015
     Sludge_lipid.mu.add_model(6000) #made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt (NREL 2013 appendix B)
     
-    Sludge_protein = Component('Sludge_protein', phase='s', particle_size='Particulate',
+    Sludge_protein = Component('Sludge_protein', particle_size='Particulate',
                        formula='C56H95O24N9P', degradability='Undegradable', organic=False)
     add_V_from_rho(Sludge_protein, 1400)
     Sludge_protein.HHV = 22.0*10**6*Sludge_protein.MW/1000
@@ -66,14 +66,14 @@ def create_components(set_thermo=True):
     Sludge_protein.mu.add_model(6000) #made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt (NREL 2013 appendix B)
     
     
-    Sludge_carbo = Component('Sludge_carbo', phase='s', particle_size='Particulate',
+    Sludge_carbo = Component('Sludge_carbo', particle_size='Particulate',
                        formula='C56H95O24N9P', degradability='Undegradable', organic=False)
     add_V_from_rho(Sludge_carbo, 1400)
     Sludge_carbo.HHV = 22.0*10**6*Sludge_carbo.MW/1000
     Sludge_carbo.Cn.add_model(1.25*10**3*Sludge_carbo.MW/1000)
     Sludge_carbo.mu.add_model(6000) #made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt (NREL 2013 appendix B)
     
-    Sludge_ash = Component('Sludge_ash', phase='s', particle_size='Particulate',
+    Sludge_ash = Component('Sludge_ash', particle_size='Particulate',
                        formula='C56H95O24N9P', degradability='Undegradable', organic=False)
     add_V_from_rho(Sludge_ash, 1400)
     Sludge_ash.HHV = 22.0*10**6*Sludge_ash.MW/1000
@@ -81,15 +81,15 @@ def create_components(set_thermo=True):
     Sludge_ash.mu.add_model(6000) #made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt (NREL 2013 appendix B)
 
 
-    H2O = Component('H2O', phase='l', particle_size='Soluble',
+    H2O = Component('H2O', particle_size='Soluble',
                     degradability='Undegradable', organic=False)
     
-    Biochar = Component('Biochar', phase='s', particle_size='Particulate',
+    Biochar = Component('Biochar', particle_size='Particulate',
                         degradability='Undegradable', organic=False)
     add_V_from_rho(Biochar, 1500)  #Assume 1500kg/m3
     Biochar.copy_models_from(Chemical('CaCO3'),('Cn',))
     
-    Biocrude = Component('Biocrude', phase='l', particle_size='Soluble',
+    Biocrude = Component('Biocrude', particle_size='Soluble',
                           formula='C19H28O2.7N', degradability='Undegradable', organic=False)
     Biocrude.HHV = 34.9*10**6*Biocrude.MW/1000  #Li et al., 2018
     add_V_from_rho(Biocrude, 980)  #SS et al., PNNL 2021
@@ -98,7 +98,7 @@ def create_components(set_thermo=True):
     #made-up value, so that HTL.outs['biocrude'] =HT.ins[0] = 0.0006 m2/s ~ 600 cSt
     #(the temperature of HT.ins['biocrude'] is much higher than 40C, so use HTL outs value to compare with PNNL report)
     
-    # Biooil = Component('Biooil',phase='l',particle_size='Soluble',
+    # Biooil = Component('Biooil',particle_size='Soluble',
     #                     formula='C100H165O1.5N',degradability='Undegradable',organic=False)
     # Biooil.HHV = 45.4*10**6*Biooil.MW/1000  #Li et al., 2018
     # add_V_from_rho(Biooil, 794)  #SS et al., PNNL 2016
@@ -106,48 +106,48 @@ def create_components(set_thermo=True):
     
     #Delete Biooil
     #Add Gasoline (octane), diesel (C16H34), and Heavy_oil (C23H48)
-    Gasoline = Component('Gasoline', search_ID='Octane', phase='l', particle_size='Soluble',
+    Gasoline = Component('Gasoline', search_ID='Octane', particle_size='Soluble',
                         formula='C8H18', degradability='Slowly', organic=True)
    
-    Diesel = Component('Diesel', search_ID='C16H34', phase='l', particle_size='Soluble',
+    Diesel = Component('Diesel', search_ID='C16H34', particle_size='Soluble',
                         formula='C16H34', degradability='Slowly', organic=True)
     Diesel.mu.add_model(0.0015) #https://acta.mendelu.cz/pdfs/acu/2015/04/08.pdf (accessed 2022-10-24)
     
-    Heavy_oil = Component('Heavy_oil', search_ID='C23H48', phase='l', particle_size='Soluble',
+    Heavy_oil = Component('Heavy_oil', search_ID='C23H48', particle_size='Soluble',
                         formula='C23H48', degradability='Slowly', organic=True)
     Heavy_oil.mu.add_model(0.005)
     #https://www.engineeringtoolbox.com/crude-oil-petroleum-viscosity-gravity-density-d_1959.html (accessed 2022-10-24)
     
-    HTLaqueous = Component('HTLaqueous', phase='l', particle_size='Soluble',
+    HTLaqueous = Component('HTLaqueous', particle_size='Soluble',
                         degradability='Undegradable', organic=False)
     add_V_from_rho(HTLaqueous, 1000)
     HTLaqueous.copy_models_from(Chemical('H2O'),('Cn','mu'))  #HTLaqueous referd to TDS in HTL aqueous phase
     
-    HTaqueous = Component('HTaqueous', phase='l', particle_size='Soluble',
+    HTaqueous = Component('HTaqueous', particle_size='Soluble',
                         degradability='Undegradable', organic=False)
     add_V_from_rho(HTaqueous, 1000)
     HTaqueous.copy_models_from(Chemical('H2O'),('Cn','mu'))  #HTaqueous referd to HT aqueous waste
     
     Struvite = Component('Struvite', search_ID='MagnesiumAmmoniumPhosphate',
-                         formula='NH4MgPO4·H12O6', phase='s',
+                         formula='NH4MgPO4·H12O6',
                          particle_size='Particulate', 
                          degradability='Undegradable',
                          organic=False)
     add_V_from_rho(Struvite, 1710)
     #http://webmineral.com/data/Struvite.shtml#.YzYvqOzMIiM (accessed 2022-9-30)
     
-    Residual = Component('Residual', phase='s', particle_size='Particulate',
+    Residual = Component('Residual', particle_size='Particulate',
                         degradability='Undegradable', organic=False)
     add_V_from_rho(Residual, 1500)  #Assume 1500kg/m3
     Residual.copy_models_from(Chemical('CaCO3'),('Cn',))  #CaCO3?
     
-    C = Component('C', phase='l', particle_size='Soluble', degradability='Undegradable',
+    C = Component('C', particle_size='Soluble', degradability='Undegradable',
                   organic=False)
     
-    N = Component('N', phase='l', particle_size='Soluble', degradability='Undegradable',
+    N = Component('N', particle_size='Soluble', degradability='Undegradable',
                   organic=False)
     
-    P = Component('P', phase='l', particle_size='Soluble', degradability='Undegradable',
+    P = Component('P', particle_size='Soluble', degradability='Undegradable',
                   organic=False)
     
     for i in(C,N,P):
@@ -155,59 +155,59 @@ def create_components(set_thermo=True):
         i.copy_models_from(H2O,('sigma','epsilon','kappa','Cn','mu'))
         add_V_from_rho(i, 1000)
     
-    O2 = Component('O2', phase='g', particle_size='Dissolved gas',
+    O2 = Component('O2', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
     
-    N2 = Component('N2', phase='g', particle_size='Dissolved gas',
+    N2 = Component('N2', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
     
-    CH4 = Component('CH4', phase='g', particle_size='Dissolved gas',
+    CH4 = Component('CH4', particle_size='Dissolved gas',
                     degradability='Slowly', organic=True)
     
-    C2H6 = Component('C2H6', search_ID='ethane', phase='g', particle_size='Dissolved gas',
+    C2H6 = Component('C2H6', search_ID='ethane', particle_size='Dissolved gas',
                    degradability='Slowly', organic=True)
     
-    C3H8 = Component('C3H8', phase='g', particle_size='Dissolved gas',
+    C3H8 = Component('C3H8', particle_size='Dissolved gas',
                    degradability='Slowly', organic=True)
     
-    C4H10 = Component('C4H10', phase='g', particle_size='Dissolved gas',
+    C4H10 = Component('C4H10', particle_size='Dissolved gas',
                    degradability='Slowly', organic=True)
     
-    CO2 = Component('CO2', phase='g', particle_size='Dissolved gas',
+    CO2 = Component('CO2', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
     
-    CO = Component('CO', phase='g', particle_size='Dissolved gas',
+    CO = Component('CO', particle_size='Dissolved gas',
                    degradability='Undegradable', organic=False)
     
-    H2 = Component('H2', phase='g', particle_size='Dissolved gas',
+    H2 = Component('H2', particle_size='Dissolved gas',
                    degradability='Undegradable', organic=False)
     
-    NH3 = Component('NH3', phase='g', particle_size='Dissolved gas',
+    NH3 = Component('NH3', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
     
-    H2SO4 = Component('H2SO4', phase='l', particle_size='Soluble',
+    H2SO4 = Component('H2SO4', particle_size='Soluble',
                       degradability='Undegradable', organic=False)
     
-    H3PO4 = Component('H3PO4', phase='l', particle_size='Soluble',
+    H3PO4 = Component('H3PO4', particle_size='Soluble',
                       degradability='Undegradable', organic=False)
     
-    MgCl2 = Component('MgCl2', phase='s', particle_size='Soluble',
+    MgCl2 = Component('MgCl2', particle_size='Soluble',
                       degradability='Undegradable', organic=False) #assume we add MgCl2 solid
     
-    NaOH = Component('NaOH', phase='l', particle_size='Soluble',
+    NaOH = Component('NaOH', particle_size='Soluble',
                      degradability='Undegradable', organic=False)
     
-    NH42SO4 = Component('NH42SO4', phase='s', particle_size='Soluble',
+    NH42SO4 = Component('NH42SO4', particle_size='Soluble',
                         degradability='Undegradable', organic=False)
     
-    NH4Cl = Component('NH4Cl', phase='s', particle_size='Soluble',
+    NH4Cl = Component('NH4Cl', particle_size='Soluble',
                         degradability='Undegradable', organic=False)
     
     add_V_from_rho(NH42SO4, 1770)
     #https://en.wikipedia.org/wiki/Ammonium_sulfate (accessed 2022-9-30)
     
     # heating agent (see_process_settings.py)
-    # Terphenyl = Component('Terphenyl', CAS='92-94-4', phase='l',
+    # Terphenyl = Component('Terphenyl', CAS='92-94-4',
     #                       particle_size='Soluble',
     #                       degradability='Slowly', organic=True)
 
