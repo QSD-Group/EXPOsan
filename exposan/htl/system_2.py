@@ -24,7 +24,7 @@ import exposan.htl._sanunits_2 as su
 from qsdsan import sanunits as qsu
 from biosteam.units import Flash
 from exposan.htl._process_settings import load_process_settings
-from exposan.htl._components import create_components
+from exposan.htl._components_2 import create_components
 
 
 # __all__ = ('create_system',)
@@ -86,7 +86,7 @@ CHG_hx = CHG.heat_exchanger
 
 # F1_feed = qs.Stream('F1_feed',H2O=CHG.outs)
 
-F1 = su.Flash('F1', ins=CHG-0, outs=('d','f'),T=60+273.15, P=50*6894.76)
+F1 = Flash('F1', ins=CHG-0, outs=('d','f'),T=60+273.15, P=50*6894.76)
 
 
 
