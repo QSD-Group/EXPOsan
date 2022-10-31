@@ -179,23 +179,25 @@ def create_components(set_thermo=True):
     NH3 = Component('NH3', phase='g', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
     
-    H2SO4 = Component('H2SO4', particle_size='Soluble',
+    H2SO4 = Component('H2SO4', phase='l', particle_size='Soluble',
                       degradability='Undegradable', organic=False)
     
-    H3PO4 = Component('H3PO4', particle_size='Soluble',
+    H3PO4 = Component('H3PO4', phase='l', particle_size='Soluble',
                       degradability='Undegradable', organic=False)
     
-    MgCl2 = Component('MgCl2', particle_size='Soluble',
+    MgCl2 = Component('MgCl2', phase='l', particle_size='Soluble',
                       degradability='Undegradable', organic=False)
     
-    NaOH = Component('NaOH', particle_size='Soluble',
+    NaOH = Component('NaOH', phase='l', particle_size='Soluble',
                      degradability='Undegradable', organic=False)
     
-    NH42SO4 = Component('NH42SO4', search_ID='7783-20-2',
-                        particle_size='Soluble', degradability='Undegradable',
-                        organic=False)
+    NH42SO4 = Component('NH42SO4', phase='l', particle_size='Soluble',
+                        degradability='Undegradable', organic=False)
     
-    NH4Cl = Component('NH4Cl', particle_size='Soluble',
+    add_V_from_rho(NH42SO4, 1770)
+    #https://en.wikipedia.org/wiki/Ammonium_sulfate (accessed 2022-9-30)
+    
+    NH4Cl = Component('NH4Cl', phase='l', particle_size='Soluble',
                         degradability='Undegradable', organic=False)
 
     #Below are biooil-related components

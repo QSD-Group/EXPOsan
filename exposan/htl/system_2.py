@@ -64,7 +64,7 @@ H1 = qsu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=350+273.15, U=0.874
 # unit conversion: http://www.unitconversion.org/heat-transfer-coefficient/watts-
 # per-square-meter-per-k-to-btus-th--per-hour-per-square-foot-per-f-conversion.html
 
-HTL = su.HTL('A120', ins=H1-0, outs=('biochar','HTLv','biocrude','offgas_HTL'))
+HTL = su.HTL('A120', ins=H1-0, outs=('biochar','HTLaqueous','biocrude','offgas_HTL'))
 HTL_hx = HTL.heat_exchanger
 
 #not including three phase separator for now, ask Yalin
