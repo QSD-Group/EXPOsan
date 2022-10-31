@@ -77,7 +77,7 @@ Vg1 = 0.556     # headspace volume [m^3]
 tau_1 = 0.021   # degassing membrane retention time [d]
 f_Q = 1    # recirculation rate
 
-def create_system():
+def create_system(fixed_hsp_P=False):
     cmps = create_cmps()
     ps = create_processes()
     inf = qs.WasteStream('inf')
@@ -88,7 +88,8 @@ def create_system():
     R1 = su.AnaerobicCSTR('R1', ins=[inf, 'return_1'], 
                           outs=(bgh, 'sidestream_1', eff), 
                           T=298.15, V_liq=Vl1, V_gas=Vg1, model=ps,
-                          split=(f_Q, 1))
+                          split=(f_Q, 1),
+                          fixed_headspace_P=fixed_hsp_P)
     R1.set_init_conc(S_h2=8.503, S_ch4=0.0422, S_IC=1141.2)
     DM1 = DM('DM1', ins=R1-1, outs=(bgm, 1-R1), tau=tau_1)
     sys = qs.System('degas', path=(R1, DM1), recycle=(DM1-1,))
@@ -319,11 +320,11 @@ def plot_area(data, rh2):
     fig.savefig(ospath.join(figures_path, f'area_rH2_{name}.png'), dpi=300)
     del fig, ax
 
-def dv1_analysis(N=50, T=100, t_step=10, run=True, 
-                 save_to='table_1dv.xlsx', plot=True):
+def dv1_analysis(N=50, T=100, t_step=10, run=True, fixed_hsp_P=False,
+                 save_to='table_1dv_fixedP.xlsx', plot=True):
     path = ospath.join(results_path, save_to)
     if run:
-        sys = create_system()
+        sys = create_system(fixed_hsp_P)
         mdl2 = qs.Model(sys)
         mdl2 = add_params(mdl2, True)
         mdl2 = add_metrics(mdl2)
@@ -341,4 +342,4 @@ if __name__ == '__main__':
     # xx, yy = dv_analysis(n=4, run=False)
     # xx, yy = dv_analysis(run=False)
     # xx, yy = dv_analysis()
-    dv1_analysis(run=False)
+    dv1_analysis(fixed_hsp_P=True)

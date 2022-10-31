@@ -20,6 +20,7 @@ from exposan.metab_mock import (
     create_modelA,
     create_modelB,
     create_modelC,
+    create_modelD,
     create_ss_model,
     run_model,
     run_modelB,
@@ -45,16 +46,18 @@ mpl.rcParams['ytick.minor.visible'] = True
 #FFC107
 
 #%% Global variables
-mdlA = create_modelA()
-mdlB = create_modelB()
-mdlC = create_modelC()
-cmps = mdlB._system.flowsheet.stream.Effluent_B.components
-AnR1 = mdlB._system.flowsheet.unit.AnR1
 
-sysA, sysB, sysC = create_systems()
+sysA, sysB, sysC, sysD = create_systems()
 mssA = create_ss_model(sysA, R1_ID='H2E', R2_ID='CH4E')
 mssC = create_ss_model(sysC, R1_ID='R1', R2_ID='R2')
 
+mdlA = create_modelA(sysA)
+mdlB = create_modelB(sysB)
+mdlC = create_modelC(sysC)
+mdlD = create_modelD(sysD)
+
+cmps = mdlB._system.flowsheet.stream.Effluent_B.components
+AnR1 = mdlB._system.flowsheet.unit.AnR1
 N = 400
 T = 200
 t_step = 5
@@ -398,21 +401,20 @@ def plot_dist_bygroup(seed, model, sys_ID='A'):
 #%%
 def run_UA_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
     seed = seed or seed_RGT()
-    run_model(mdlA, N, T, t_step, method='BDF', sys_ID='A', seed=seed)
-    run_model(mdlC, N, T, t_step, method='BDF', sys_ID='C', seed=seed)
+    run_model(mdlA, N, T, t_step, method='BDF', seed=seed)
+    run_model(mdlC, N, T, t_step, method='BDF', seed=seed)
     outC = analyze_vars(seed, N, prefix='sys', sys_ID='C')
-    for p in mdlC.parameters:
-        if 'removal' in p.name: p.setter(0)
-        else: p.setter(1e-4)
-    temp_sysC = mdlC._system
-    temp_sysC.simulate(t_span=(0, T), method='BDF')
-    tmC = [m.getter() for m in mdlC.metrics]
+    for p in mdlB.parameters:
+        p.setter(p.baseline)
+    temp_sysB = mdlB._system
+    temp_sysB.simulate(t_span=(0, T), method='BDF')
+    tmB = [m.getter() for m in mdlB.metrics]
     if plot:
-        plot_scatter(seed, mdlA, mdlC, tmC)
+        plot_scatter(seed, mdlA, mdlC, tmB)
         plot_ss_convergence(seed, N, unit='R1', prefix='sys', sys_ID='C', data=outC,
-                            baseline_sys=temp_sysC, baseline_unit_ID='R1')
+                            baseline_sys=temp_sysB, baseline_unit_ID='AnR1')
         plot_ss_convergence(seed, N, unit='R2', prefix='sys', sys_ID='C', data=outC,
-                            baseline_sys=temp_sysC, baseline_unit_ID='R2')
+                            baseline_sys=temp_sysB, baseline_unit_ID='AnR2')
     print(f'Seed used for uncertainty analysis of systems A & C is {seed}.')
     for mdl in (mdlA, mdlC):
         for p in mdl.parameters:
@@ -447,8 +449,8 @@ def run_ss_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
     return seed
 
 #%%
-# if __name__ == '__main__':
-#     run_UA_AvC(seed=123, N=10)
+if __name__ == '__main__':
+    run_UA_AvC()
     # run_ss_AvC(seed=223, N=100)
     # seed = 952
     # run_modelB(mdl, N, T, t_step, method='BDF', seed=seed)

@@ -255,166 +255,156 @@ R2_ss_conds = {
 # =============================================================================
 
 def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowsheet_D=None,
-                   inf_concs={}, R1_init_conds={}, R2_init_conds={}):
-    flowsheet_A = flowsheet_A or qs.Flowsheet('METAB_sysA')
-    qs.main_flowsheet.set_flowsheet(flowsheet_A)
-    
+                   inf_concs={}, R1_init_conds={}, R2_init_conds={}, which=None):
+    which = which or ('A', 'B', 'C', 'D')
+    if isinstance(which, str): which = (which,)
     ############# load components and set thermo #############
     pc.create_adm1_cmps()
-
-    ############# create WasteStream objects #################
     inf_concs = inf_concs or default_inf_concs
     brewery_ww = WasteStream('BreweryWW_A', T=T1)
     brewery_ww.set_flow_by_concentration(Q, concentrations=inf_concs, units=('m3/d', 'kg/m3'))
-    eff_A = WasteStream('Effluent_A', T=T2)
-    bg1_A = WasteStream('biogas_1A', phase='g')
-    bg2_A = WasteStream('biogas_2A', phase='g')
-    
     ############# load process model ###########################
     adm1 = pc.ADM1()
-    
-    ############# sysA unit operation ########################   
-    H2E = AB('H2E', ins=[brewery_ww, 'return_1'], outs=('sidestream_1', ''), 
-            split=(split_1, 1-split_1), V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
-            retain_cmps=fermenters)
-    DM1 = DM('DM1', ins=H2E-0, outs=(bg1_A, 1-H2E), tau=tau_1)
-    CH4E = AB('CH4E', ins=[H2E-1, 'return_2'], outs=('sidestream_2', eff_A), 
-            split=(split_2, 1-split_2), V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
-            retain_cmps=methanogens)
-    DM2 = DM('DM2', ins=CH4E-0, outs=(bg2_A, 1-CH4E), tau=tau_2)
-    H2E.set_init_conc(**R1_ss_conds)
-    CH4E.set_init_conc(**R2_ss_conds)
-    # H2E.set_init_conc(**R1_init_conds)
-    # CH4E.set_init_conc(**R2_init_conds)
-    sysA = System('mock_METAB', 
-                  path=(H2E, DM1, CH4E, DM2),
-                  recycle=(DM1-1, DM2-1))
-    sysA.set_dynamic_tracker(H2E, CH4E, bg1_A, bg2_A)
-    # qs.WasteStream('biogas_A', phase='g')
-    
-    #***************************************************
-    flowsheet_B = flowsheet_B or qs.Flowsheet('METAB_sysB')
-    qs.main_flowsheet.set_flowsheet(flowsheet_B)
-
-    ############# sysB streams ########################
-    inf_b = brewery_ww.copy('BreweryWW_B')
-    eff_B = WasteStream('Effluent_B', T=T2)
-    bg1_B = WasteStream('biogas_1B', phase='g')
-    bg2_B = WasteStream('biogas_2B', phase='g')
-    
-    ############# sysB unit operation #################
     R1_init_conds = R1_init_conds or default_R1_init_conds
     R2_init_conds = R2_init_conds or default_R2_init_conds
-    AnR1 = su.AnaerobicCSTR('AnR1', ins=inf_b, outs=(bg1_B, ''), 
-                            V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
-                            retain_cmps=fermenters)
-    AnR2 = su.AnaerobicCSTR('AnR2', ins=AnR1-1, outs=(bg2_B, eff_B), 
-                            V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
-                            retain_cmps=methanogens)
-    # AnR1.set_init_conc(**R1_init_conds)
-    # AnR2.set_init_conc(**R2_init_conds)
-    AnR1.set_init_conc(**R1_ss_conds)
-    AnR2.set_init_conc(**R2_ss_conds)
-    sysB = System('baseline', path=(AnR1, AnR2))
-    sysB.set_dynamic_tracker(AnR1, AnR2, bg1_B, bg2_B)
-    # qs.WasteStream('biogas_B', phase='g')
+    systems = []
     
-    #***************************************************
-    flowsheet_C = flowsheet_C or qs.Flowsheet('METAB_sysC')
-    qs.main_flowsheet.set_flowsheet(flowsheet_C)
+    if 'A' in which:
+        flowsheet_A = flowsheet_A or qs.Flowsheet('METAB_sysA')
+        qs.main_flowsheet.set_flowsheet(flowsheet_A)
+        ############# create WasteStream objects #################
+        eff_A = WasteStream('Effluent_A', T=T2)
+        bg1_A = WasteStream('biogas_1A', phase='g')
+        bg2_A = WasteStream('biogas_2A', phase='g')
+        flowsheet_A.stream.register(brewery_ww.ID, brewery_ww)
+           
+        ############# sysA unit operation ########################   
+        H2E = AB('H2E', ins=[brewery_ww, 'return_1'], outs=('sidestream_1', ''), 
+                split=(split_1, 1-split_1), V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
+                retain_cmps=fermenters)
+        DM1 = DM('DM1', ins=H2E-0, outs=(bg1_A, 1-H2E), tau=tau_1)
+        CH4E = AB('CH4E', ins=[H2E-1, 'return_2'], outs=('sidestream_2', eff_A), 
+                split=(split_2, 1-split_2), V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
+                retain_cmps=methanogens)
+        DM2 = DM('DM2', ins=CH4E-0, outs=(bg2_A, 1-CH4E), tau=tau_2)
+        H2E.set_init_conc(**R1_ss_conds)
+        CH4E.set_init_conc(**R2_ss_conds)
+        # H2E.set_init_conc(**R1_init_conds)
+        # CH4E.set_init_conc(**R2_init_conds)
+        sysA = System('mock_METAB', 
+                      path=(H2E, DM1, CH4E, DM2),
+                      recycle=(DM1-1, DM2-1))
+        sysA.set_dynamic_tracker(H2E, CH4E, bg1_A, bg2_A)
+        systems.append(sysA)
     
-    ############# sysC streams ########################
-    inf_c = brewery_ww.copy('BreweryWW_C')
-    eff_c = WasteStream('Effluent_C', T=T2)
-    bgm1 = WasteStream('biogas_mem_1', phase='g')
-    bgm2 = WasteStream('biogas_mem_2', phase='g')
-    bgh1 = WasteStream('biogas_hsp_1', phase='g')
-    bgh2 = WasteStream('biogas_hsp_2', phase='g')
+    if 'B' in which:
+        flowsheet_B = flowsheet_B or qs.Flowsheet('METAB_sysB')
+        qs.main_flowsheet.set_flowsheet(flowsheet_B)
     
-    ############# sysC unit operation #################
-    R1 = su.AnaerobicCSTR('R1', ins=[inf_c, 'return_1'], 
-                          outs=(bgh1, 'sidestream_1', ''), 
-                          split=(split_1, 1-split_1),
-                          V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
-                          retain_cmps=fermenters)
-    DM1c = DM('DM1_c', ins=R1-1, outs=(bgm1, 1-R1), tau=tau_1)
-    # DM1c = DM('DM1_c', ins=R1-1, outs=(bgm1, 1-R1), tau=0.1)    
+        ############# sysB streams ########################
+        inf_b = brewery_ww.copy('BreweryWW_B')
+        eff_B = WasteStream('Effluent_B', T=T2)
+        bg1_B = WasteStream('biogas_1B', phase='g')
+        bg2_B = WasteStream('biogas_2B', phase='g')
+        
+        ############# sysB unit operation #################
+        AnR1 = su.AnaerobicCSTR('AnR1', ins=inf_b, outs=(bg1_B, ''), 
+                                V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
+                                retain_cmps=fermenters)
+        AnR2 = su.AnaerobicCSTR('AnR2', ins=AnR1-1, outs=(bg2_B, eff_B), 
+                                V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
+                                retain_cmps=methanogens)
+        # AnR1.set_init_conc(**R1_init_conds)
+        # AnR2.set_init_conc(**R2_init_conds)
+        AnR1.set_init_conc(**R1_ss_conds)
+        AnR2.set_init_conc(**R2_ss_conds)
+        sysB = System('baseline', path=(AnR1, AnR2))
+        sysB.set_dynamic_tracker(AnR1, AnR2, bg1_B, bg2_B)
+        systems.append(sysB)
+        
+    if 'C' in which:
+        flowsheet_C = flowsheet_C or qs.Flowsheet('METAB_sysC')
+        qs.main_flowsheet.set_flowsheet(flowsheet_C)
+        
+        ############# sysC streams ########################
+        inf_c = brewery_ww.copy('BreweryWW_C')
+        eff_c = WasteStream('Effluent_C', T=T2)
+        bgm1 = WasteStream('biogas_mem_1', phase='g')
+        bgm2 = WasteStream('biogas_mem_2', phase='g')
+        bgh1 = WasteStream('biogas_hsp_1', phase='g')
+        bgh2 = WasteStream('biogas_hsp_2', phase='g')
+        
+        ############# sysC unit operation #################
+        R1 = su.AnaerobicCSTR('R1', ins=[inf_c, 'return_1'], 
+                              outs=(bgh1, 'sidestream_1', ''), 
+                              split=(split_1, 1-split_1),
+                              V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
+                              retain_cmps=fermenters)
+        DM1c = DM('DM1_c', ins=R1-1, outs=(bgm1, 1-R1), tau=tau_1)
+        # DM1c = DM('DM1_c', ins=R1-1, outs=(bgm1, 1-R1), tau=0.1)    
+    
+        R2 = su.AnaerobicCSTR('R2', ins=[R1-2, 'return_2'], 
+                              outs=(bgh2, 'sidestream_2', eff_c), 
+                              split=(split_2, 1-split_2),
+                              V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
+                              retain_cmps=methanogens)
+        DM2c = DM('DM2_c', ins=R2-1, outs=(bgm2, 1-R2), tau=tau_2)
+        # DM2c = DM('DM2_c', ins=R2-1, outs=(bgm2, 1-R2), tau=0.1)
+        R1.set_init_conc(**R1_ss_conds)
+        R2.set_init_conc(**R2_ss_conds)
+        sysC = System('combined_METAB', path=(R1, DM1c, R2, DM2c),
+                      recycle=(DM1c-1, DM2c-1))
+        sysC.set_dynamic_tracker(R1, R2, bgm1, bgm2, bgh1, bgh2)
+        systems.append(sysC)
 
-    R2 = su.AnaerobicCSTR('R2', ins=[R1-2, 'return_2'], 
-                          outs=(bgh2, 'sidestream_2', eff_c), 
-                          split=(split_2, 1-split_2),
-                          V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
-                          retain_cmps=methanogens)
-    DM2c = DM('DM2_c', ins=R2-1, outs=(bgm2, 1-R2), tau=tau_2)
-    # DM2c = DM('DM2_c', ins=R2-1, outs=(bgm2, 1-R2), tau=0.1)
-    R1.set_init_conc(**R1_ss_conds)
-    R2.set_init_conc(**R2_ss_conds)
-    sysC = System('combined_METAB', path=(R1, DM1c, R2, DM2c),
-                  recycle=(DM1c-1, DM2c-1))
-    sysC.set_dynamic_tracker(R1, R2, bgm1, bgm2, bgh1, bgh2)
-    # qs.WasteStream('biogas_1C', phase='g')
-    # qs.WasteStream('biogas_2C', phase='g')
-    # qs.WasteStream('biogas_C', phase='g')
-
-    #***************************************************
-    flowsheet_D = flowsheet_C or qs.Flowsheet('METAB_sysD')
-    qs.main_flowsheet.set_flowsheet(flowsheet_D)
+    if 'D' in which:
+        flowsheet_D = flowsheet_C or qs.Flowsheet('METAB_sysD')
+        qs.main_flowsheet.set_flowsheet(flowsheet_D)
+        
+        ############# sysC streams ########################
+        inf_d = brewery_ww.copy('BreweryWW_D')
+        eff_d = WasteStream('Effluent_D', T=T2)
+        bgm1_d = WasteStream('biogas_mem_1d', phase='g')
+        bgm2_d = WasteStream('biogas_mem_2d', phase='g')
+        bgh1_d = WasteStream('biogas_hsp_1d', phase='g')
+        bgh2_d = WasteStream('biogas_hsp_2d', phase='g')
+        
+        ############# sysC unit operation #################
+        R1d = su.AnaerobicCSTR('R1d', ins=[inf_d, 'return_1d'], 
+                              outs=(bgh1_d, 'sidestream_1d', ''), 
+                              split=(split_1, 1-split_1),
+                              V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
+                              retain_cmps=fermenters)
+        DM1d = DM('DM1d', ins=R1d-1, outs=(bgm1_d, 1-R1d), tau=tau_1)
     
-    ############# sysC streams ########################
-    inf_d = brewery_ww.copy('BreweryWW_D')
-    eff_d = WasteStream('Effluent_D', T=T2)
-    bgm1_d = WasteStream('biogas_mem_1d', phase='g')
-    bgm2_d = WasteStream('biogas_mem_2d', phase='g')
-    bgh1_d = WasteStream('biogas_hsp_1d', phase='g')
-    bgh2_d = WasteStream('biogas_hsp_2d', phase='g')
+        R2d = su.AnaerobicCSTR('R2d', ins=R1d-2, 
+                              outs=(bgh2_d, ''), 
+                              V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
+                              retain_cmps=methanogens)
+        DM2d = DM('DM2d', ins=R2d-1, outs=(bgm2_d, eff_d), tau=tau_2)
+        R1d.set_init_conc(**R1_ss_conds)
+        R2d.set_init_conc(**R2_ss_conds)
+        sysD = System('hybrid_METAB', path=(R1d, DM1d, R2d, DM2d),
+                      recycle=(DM1d-1, ))
+        sysD.set_dynamic_tracker(R1d, R2d, bgm1_d, bgm2_d, bgh1_d, bgh2_d)
+        systems.append(sysD)
     
-    ############# sysC unit operation #################
-    R1d = su.AnaerobicCSTR('R1d', ins=[inf_d, 'return_1d'], 
-                          outs=(bgh1_d, 'sidestream_1d', ''), 
-                          split=(split_1, 1-split_1),
-                          V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
-                          retain_cmps=fermenters)
-    DM1d = DM('DM1_c', ins=R1d-1, outs=(bgm1_d, 1-R1d), tau=tau_1)
-
-    R2d = su.AnaerobicCSTR('R2', ins=R1d-2, 
-                          outs=(bgh2_d, ''), 
-                          V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
-                          retain_cmps=methanogens)
-    DM2d = DM('DM2_d', ins=R2d-1, outs=(bgm2_d, eff_d), tau=tau_2)
-    R1d.set_init_conc(**R1_ss_conds)
-    R2d.set_init_conc(**R2_ss_conds)
-    sysD = System('hybrid_METAB', path=(R1d, DM1d, R2d, DM2d),
-                  recycle=(DM1d-1, ))
-    sysD.set_dynamic_tracker(R1d, R2d, bgm1_d, bgm2_d, bgh1_d, bgh2_d)    
-    
-    return sysA, sysB, sysC, sysD
+    return systems
 
 #%%
 @time_printer
 def run(t, t_step, method=None, **kwargs):
-    global sysA, sysB, sysC
-    sysA, sysB, sysC = create_systems()
-    print(f'Simulating {sysA.ID}...')
-    sysA.simulate(state_reset_hook='reset_cache',
-                  t_span=(0,t),
-                  t_eval=np.arange(0, t+t_step, t_step),
-                  method=method,
-                  # export_state_to=ospath.join(folder, f'results/{method}_{t}d_sysA.xlsx'),
-                  **kwargs)
-    print(f'Simulating {sysB.ID}...')
-    sysB.simulate(state_reset_hook='reset_cache',
-                  t_span=(0,t),
-                  t_eval=np.arange(0, t+t_step, t_step),
-                  method=method,
-                  # export_state_to=ospath.join(folder, f'results/{method}_{t}d_sysB.xlsx'),
-                  **kwargs)
-    print(f'Simulating {sysC.ID}...')
-    sysC.simulate(state_reset_hook='reset_cache',
-                  t_span=(0,t),
-                  t_eval=np.arange(0, t+t_step, t_step),
-                  method=method,
-                  # export_state_to=ospath.join(folder, f'results/{method}_{t}d_sysB.xlsx'),
-                  **kwargs)
+    global sysA, sysB, sysC, sysD
+    sysA, sysB, sysC, sysD = create_systems()
+    for sys in (sysA, sysB, sysC, sysD):
+        print(f'Simulating {sys.ID}...')
+        sys.simulate(state_reset_hook='reset_cache',
+                    t_span=(0,t),
+                    t_eval=np.arange(0, t+t_step, t_step),
+                    method=method,
+                    # export_state_to=ospath.join(folder, f'results/{method}_{t}d_{sys.ID[-4:]}.xlsx'),
+                    **kwargs)
+
 
 if __name__ == '__main__':
     t = 200
