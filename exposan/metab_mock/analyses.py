@@ -35,7 +35,7 @@ import matplotlib as mpl, matplotlib.pyplot as plt, matplotlib.ticker as tk
 
 
 mpl.rcParams['font.sans-serif'] = 'arial'
-mpl.rcParams["figure.autolayout"] = True
+mpl.rcParams["figure.autolayout"] = False
 mpl.rcParams['xtick.minor.visible'] = True
 mpl.rcParams['ytick.minor.visible'] = True
 # mpl.rcParams['figure.facecolor'] = 'white'
@@ -229,7 +229,8 @@ def plot_scatter(seed, modelA, modelC, bl_metrics=None):
     dfc_x = modelC.table.iloc[:, :nx]
     dfc_y = modelC.table.iloc[:, nx:]
     fig, axes = plt.subplots(ny, nx, sharex=False, sharey=False, 
-                             figsize=(nx*2.5, ny*2.5)) 
+                             figsize=(nx*2.5, ny*2.5),
+                             layout='constrained') 
     xlct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
     ylct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
     for j in range(ny):
@@ -262,7 +263,6 @@ def plot_scatter(seed, modelA, modelC, bl_metrics=None):
             ax2y.yaxis.set_ticks(y_ticks)
             ax2y.tick_params(axis='y', which='both', direction='in')
             ax2y.yaxis.set_ticklabels([])
-    fig.subplots_adjust(wspace=0., hspace=0.)
     fig.savefig(ospath.join(figures_path, f'AvC_table_{seed}.png'), dpi=300)
     return fig, axes
 
@@ -403,18 +403,19 @@ def run_UA_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
     seed = seed or seed_RGT()
     run_model(mdlA, N, T, t_step, method='BDF', seed=seed)
     run_model(mdlC, N, T, t_step, method='BDF', seed=seed)
-    outC = analyze_vars(seed, N, prefix='sys', sys_ID='C')
+    # outC = analyze_vars(seed, N, prefix='sys', sys_ID='C')
     for p in mdlB.parameters:
         p.setter(p.baseline)
     temp_sysB = mdlB._system
-    temp_sysB.simulate(t_span=(0, T), method='BDF')
+    temp_sysB.simulate(t_span=(0, T), method='BDF', 
+                       state_reset_hook='reset_cache')
     tmB = [m.getter() for m in mdlB.metrics]
     if plot:
         plot_scatter(seed, mdlA, mdlC, tmB)
-        plot_ss_convergence(seed, N, unit='R1', prefix='sys', sys_ID='C', data=outC,
-                            baseline_sys=temp_sysB, baseline_unit_ID='AnR1')
-        plot_ss_convergence(seed, N, unit='R2', prefix='sys', sys_ID='C', data=outC,
-                            baseline_sys=temp_sysB, baseline_unit_ID='AnR2')
+        # plot_ss_convergence(seed, N, unit='R1', prefix='sys', sys_ID='C', data=outC,
+        #                     baseline_sys=temp_sysB, baseline_unit_ID='AnR1')
+        # plot_ss_convergence(seed, N, unit='R2', prefix='sys', sys_ID='C', data=outC,
+        #                     baseline_sys=temp_sysB, baseline_unit_ID='AnR2')
     print(f'Seed used for uncertainty analysis of systems A & C is {seed}.')
     for mdl in (mdlA, mdlC):
         for p in mdl.parameters:
