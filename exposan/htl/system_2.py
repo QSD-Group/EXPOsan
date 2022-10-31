@@ -26,7 +26,6 @@ from biosteam.units import Flash, IsothermalCompressor, BinaryDistillation
 from exposan.htl._process_settings_2 import load_process_settings
 from exposan.htl._components_2 import create_components
 
-
 # __all__ = ('create_system',)
 
 # def create_system():
@@ -35,11 +34,12 @@ load_process_settings()
 cmps = create_components()
 
 fake_sludge = qs.Stream('fake_sludge', H2O=100000, units='kg/hr', T=25+273.15)
-#set H2O equal to the total sludge input flow
-#assume 99% moisture, 20 us tons of dw sludge per h
+# set H2O equal to the total sludge input flow
+# assume 99% moisture, 20 us tons of dw sludge per h
 
-hydrogen = qs.Stream('hydrogen', H2=5000, units='kg/hr', T=25+273.15)
-#5000 is made up
+hydrogen = qs.Stream('hydrogen', H2=15.64, units='kg/hr', T=25+273.15)
+# hydrogen amount can be calculate based on biocrude (primary) and heavy amount
+# if value provided is not in the reasonable range, an exception will be raised
 
 # =============================================================================
 # pretreatment (Area 000)
@@ -65,9 +65,9 @@ SluC = qsu.SludgeCentrifuge('A010', ins=SluT-1,
 # =============================================================================
 
 P1 = qsu.Pump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76)
-#Jones 2014: 3049.7 psia
+# Jones 2014: 3049.7 psia
 
-H1 = qsu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=350+273.15,
+H1 = qsu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=351+273.15,
                    U=0.874, init_with='Stream')
 # H1: NREL 2013: 154 (40-446) Btu/hr/ft2/F ~ U = 0.874 (0.227-2.531) kW/m2/k
 # U is just needed for H1? Right? I think high viscosity of sludge is just here
@@ -76,17 +76,17 @@ H1 = qsu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=350+273.15,
 # watts-per-square-meter-per-k-to-btus-th--per-hour-per-square-foot-per-f-
 # conversion.html
 
-HTL = su.HTL('A120', ins=H1-0, outs=('biochar','HTL_aqueous','biocrude',
+HTL = su.HTL('A120', ins=(H1-0,'NaOH'), outs=('biochar','HTL_aqueous','biocrude',
                                      'offgas_HTL'))
 HTL_hx = HTL.heat_exchanger
 
-#not including three phase separator for now, ask Yalin
+# not including three phase separator for now, ask Yalin
 
 # =============================================================================
 # CHG (Area 200)
 # =============================================================================
 
-H2SO4_Tank = qsu.StorageTank('T200', ins='H2SO4_in', outs=('H2SO4_out')) #tau?
+H2SO4_Tank = qsu.StorageTank('T200', ins='H2SO4_in', outs=('H2SO4_out')) # tau?
 
 SP1 = su.HTLsplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
                      init_with='Stream')
@@ -102,7 +102,7 @@ StruPre = su.StruvitePrecipitation('A220', ins=(M1-0,'MgCl2','NH4Cl'),
                                    outs=('struvite','CHG_feed'))
 
 P2 = qsu.Pump('A230', ins=StruPre-1, outs='press_aqueous',
-              P=3089.7*6894.76) #Jones 2014: 3089.7 psia
+              P=3089.7*6894.76) # Jones 2014: 3089.7 psia
 
 H2 = qsu.HXutility('A240', ins=P2-0, outs='heated_aqueous',
                    T=350+273.15, init_with='Stream')
@@ -121,7 +121,9 @@ MemDis = su.MembraneDistillation('A270', ins=(F1-1, SP1-1),
 # =============================================================================
 
 SP2 = qsu.Splitter('S500',ins=hydrogen, outs=('hydrogen_HT','hydrogen_HC'),
-                   init_with='Stream', split=29/30)
+                   init_with='Stream', split=28/29)
+# hydrogen are splitted to HT and HC with a ratio of 28:1
+# based on Jones 3654:132
 
 HX_H2_HT = qsu.HXutility('A500', ins=SP2-0, outs='heated_H2_HT',
                          T=117.5+273.15)
@@ -139,13 +141,13 @@ IC_H2_HC = IsothermalCompressor('A530', ins=HX_H2_HC-0,
 # =============================================================================
 
 P3 = qsu.Pump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76)
-#Jones 2014: 1530.0 psia
+# Jones 2014: 1530.0 psia
 
 H3 = qsu.HXutility('A310', ins=P3-0, outs='heated_biocrude', T=174+273.15,
                    init_with='Stream')
-#T = 174 C (345 F) based on Jones PNNL report. However, the reaction releases
-#a lot of heat and increase the temperature of effluent to 402 C (755.5 F).
-#The auxiliary HX should cool the products from 402 C.
+# T = 174 C (345 F) based on Jones PNNL report. However, the reaction releases
+# a lot of heat and increase the temperature of effluent to 402 C (755.5 F).
+# The auxiliary HX should cool the products from 402 C.
 
 HT = su.HT('A320', ins=(H3-0, IC_H2_HT-0), outs='HTout')
 HT_hx = HT.heat_exchanger
@@ -155,12 +157,12 @@ F2 = Flash('A330', ins=HT-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273,
 
 F3 = Flash('A340', ins=F2-1, outs=('HT_fuel_gas_2','HT_aqueous_2'), T=47+273,
            P=55*6894.76)
-#This one just decrease T/P, and just T is related to design and cost,
-#consider other ways?
+# This one just decrease T/P, and just T is related to design and cost,
+# consider other ways?
 
 SP3 = qsu.Splitter('S300', ins=F3-1, outs=('HT_ww','HT_oil'),
                    split={'H2O':1}, init_with='Stream')
-#Separate water and oil based on gravity
+# separate water and oil based on gravity
 
 HX_biocrude = qsu.HXutility('A350', ins=SP3-1, outs='heated_oil', T=252+273)
 
@@ -179,13 +181,13 @@ C2 = BinaryDistillation('A370', ins=C1-1,
 # =============================================================================
 
 P4 = qsu.Pump('A400', ins=C2-1, outs='press_heavy_oil', P=1034.7*6894.76)
-#Jones 2014: 1034.7 psia
+# Jones 2014: 1034.7 psia
 
 H4 = qsu.HXutility('A410', ins=P4-0, outs='heated_heavy_oil', T=394+273.15,
                    init_with='Stream')
-#T = 394 C (741.2 F) based on Jones PNNL report. However, the reaction releases
-#a lot of heat and increase the temperature of effluent to 451 C (844.6 F).
-#The auxiliary HX should cool the products from 451 C.
+# T = 394 C (741.2 F) based on Jones PNNL report. However, the reaction
+# releases a lot of heat and increase the temperature of effluent to 451 C
+# (844.6 F). The auxiliary HX should cool the products from 451 C.
 
 HC = su.HC('A420', ins=(H4-0, IC_H2_HC-0), outs='HC_out')
 HC_hx = HC.heat_exchanger
@@ -195,8 +197,8 @@ F4 = Flash('A430', ins=HC-0, outs=('HC_fuel_gas','HC_aqueous'), T=60+273,
 
 F5 = Flash('A440', ins=F4-1, outs=('HC_fuel_gas_2','HC_aqueous_2'), T=60.2+273,
            P=30*6894.76)
-#This one just decrease T/P, and just T is related to design and cost,
-#consider other ways?
+# This one just decrease T/P, and just T is related to design and cost,
+# consider other ways?
 
 C3 = BinaryDistillation('A450', ins=F5-1, outs=('HC_Gasoline','HC_Diesel'),
                         LHK=('C9H20','C10H22'), P=30*6894.76,
@@ -220,15 +222,15 @@ H6 = qsu.HXutility('A610', ins=DieselMixer-0, outs='cooled_diesel',
 
 GasolineTank = qsu.StorageTank('T600', ins=H5-0, outs=('gasoline_out'),
                                tau=3*24, init_with='Stream')
-#store for 3 days based on Jones 2014
+# store for 3 days based on Jones 2014
 
 DieselTank = qsu.StorageTank('T610', ins=H6-0, outs=('diesel_out'),
                              tau=3*24, init_with='Stream')
-#store for 3 days based on Jones 2014
+# store for 3 days based on Jones 2014
 
 GasMixer = qsu.Mixer('S620', ins=(HTL-3, F1-0, F2-0, F4-0), outs=('fuel_gas'),
                      init_with='Stream')
-#don't include F3-0 and F5-0 because they are empty. May change later.
+# don't include F3-0 and F5-0 because they are empty. May change later.
 
 CHP = qsu.CHP('A620', ins=(GasMixer-0,'natural_gas','air'),
               outs=('emission','solid_ash'))
@@ -246,14 +248,14 @@ HXN = qsu.HeatExchangerNetwork('HXN')
 #              GasolineTank, DieselTank, GasMixer, CHP, SP2,
 #              HX_H2_HT, IC_H2_HT, HX_H2_HC, IC_H2_HC):
 #     unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1])
-#so that qs.main_flowsheet.H1 works as well
+# so that qs.main_flowsheet.H1 works as well
 
 sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
-                             M1, StruPre, P2, H2, CHG, F1, MemDis, SP1, P3, H3,
+                             M1, StruPre, P2, H2, CHG, F1, MemDis, SP1, SP2,
+                             HX_H2_HT, IC_H2_HT, HX_H2_HC, IC_H2_HC, P3, H3,
                              HT, F2, F3, SP3, HX_biocrude, C1, C2, P4, H4, HC,
                              F4, F5, C3, GasolineMixer, DieselMixer, H5, H6,
-                             GasolineTank, DieselTank, GasMixer, CHP, SP2,
-                             HX_H2_HT, IC_H2_HT, HX_H2_HC, IC_H2_HC))
+                             GasolineTank, DieselTank, GasMixer, CHP, ))
                 #, facilities=(HXN,))
 
 sys.operating_hours = 7884 # NRES 2013

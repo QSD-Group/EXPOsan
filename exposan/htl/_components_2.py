@@ -52,15 +52,15 @@ def create_components(set_thermo=True):
                              degradability='Undegradable',
                              organic=False)
     add_V_from_rho(Sludge_lipid, 1400)
-    #https://www.climate-policy-watcher.org/wastewater-sludge/physical-
-    #and-biological-properties.html (accessed 2022-10-23)
-    #https://web.deu.edu.tr/atiksu/ana52/wdesign06.html (accessed 2022-10-23)
+    # https://www.climate-policy-watcher.org/wastewater-sludge/physical-
+    # and-biological-properties.html (accessed 2022-10-23)
+    # https://web.deu.edu.tr/atiksu/ana52/wdesign06.html (accessed 2022-10-23)
     Sludge_lipid.HHV = 22.0*10**6*Sludge_lipid.MW/1000  #Li et al., 2018
     Sludge_lipid.Cn.add_model(1.25*10**3*Sludge_lipid.MW/1000) 
-    #Leow et al., 2015
+    # Leow et al., 2015
     Sludge_lipid.mu.add_model(6000)
-    #made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
-    #(NREL 2013 appendix B)
+    # made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
+    # (NREL 2013 appendix B)
     
     Sludge_protein = Component('Sludge_protein', phase='s',
                                particle_size='Particulate',
@@ -71,8 +71,8 @@ def create_components(set_thermo=True):
     Sludge_protein.HHV = 22.0*10**6*Sludge_protein.MW/1000
     Sludge_protein.Cn.add_model(1.25*10**3*Sludge_protein.MW/1000)
     Sludge_protein.mu.add_model(6000)
-    #made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
-    #(NREL 2013 appendix B)
+    # made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
+    # (NREL 2013 appendix B)
     
     Sludge_carbo = Component('Sludge_carbo', phase='s',
                              particle_size='Particulate',
@@ -83,8 +83,8 @@ def create_components(set_thermo=True):
     Sludge_carbo.HHV = 22.0*10**6*Sludge_carbo.MW/1000
     Sludge_carbo.Cn.add_model(1.25*10**3*Sludge_carbo.MW/1000)
     Sludge_carbo.mu.add_model(6000)
-    #made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
-    #(NREL 2013 appendix B)
+    # made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
+    # (NREL 2013 appendix B)
     
     Sludge_ash = Component('Sludge_ash', phase='s',
                            particle_size='Particulate',
@@ -95,32 +95,32 @@ def create_components(set_thermo=True):
     Sludge_ash.HHV = 22.0*10**6*Sludge_ash.MW/1000
     Sludge_ash.Cn.add_model(1.25*10**3*Sludge_ash.MW/1000)
     Sludge_ash.mu.add_model(6000)
-    #made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
-    #(NREL 2013 appendix B)
+    # made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
+    # (NREL 2013 appendix B)
 
     Biochar = Component('Biochar', phase='s', particle_size='Particulate',
                         degradability='Undegradable', organic=False)
-    add_V_from_rho(Biochar, 1500)  #Assume 1500kg/m3
+    add_V_from_rho(Biochar, 1500)  # assume 1500kg/m3
     Biochar.copy_models_from(Chemical('CaCO3'),('Cn',))
     
     Biocrude = Component('Biocrude', phase='l', particle_size='Soluble',
                           formula='C19H28O2.7N', degradability='Undegradable',
                           organic=False)
-    Biocrude.HHV = 34.9*10**6*Biocrude.MW/1000  #Li et al., 2018
-    add_V_from_rho(Biocrude, 980)  #SS et al., PNNL 2021
+    Biocrude.HHV = 34.9*10**6*Biocrude.MW/1000  # Li et al., 2018
+    add_V_from_rho(Biocrude, 980)  # SS et al., PNNL 2021
     Biocrude.copy_models_from(Chemical('palmitamide'),('Cn',)) 
-    #Jones et al., 2014
+    # Jones et al., 2014
     Biocrude.mu.add_model(1.07)
-    #made-up value, so that HTL.outs['biocrude'] = HT.ins[0] = 0.0006 m2/s 
-                                                            #~ 600 cSt
-    #(the temperature of HT.ins['biocrude'] is much higher than 40C,
-    #so use HTL outs value to compare with PNNL report)
+    # made-up value, so that HTL.outs['biocrude'] = HT.ins[0] = 0.0006 m2/s 
+    # ~ 600 cSt
+    # (the temperature of HT.ins['biocrude'] is much higher than 40C,
+    # so use HTL outs value to compare with PNNL report)
     
     HTLaqueous = Component('HTLaqueous', phase='l', particle_size='Soluble',
                            degradability='Undegradable', organic=False)
     add_V_from_rho(HTLaqueous, 1000)
     HTLaqueous.copy_models_from(Chemical('H2O'),('Cn','mu'))
-    #HTLaqueous referd to TDS in HTL aqueous phase
+    # HTLaqueous referd to TDS in HTL aqueous phase
     
     Struvite = Component('Struvite', search_ID='MagnesiumAmmoniumPhosphate',
                          formula='NH4MgPO4·H12O6', phase='s',
@@ -128,12 +128,12 @@ def create_components(set_thermo=True):
                          degradability='Undegradable',
                          organic=False)
     add_V_from_rho(Struvite, 1710)
-    #http://webmineral.com/data/Struvite.shtml#.YzYvqOzMIiM
-    #(accessed 2022-9-30)
+    # http://webmineral.com/data/Struvite.shtml#.YzYvqOzMIiM
+    # (accessed 2022-9-30)
     
     Residual = Component('Residual', phase='s', particle_size='Particulate',
                         degradability='Undegradable', organic=False)
-    add_V_from_rho(Residual, 1500)  #Assume 1500kg/m3
+    add_V_from_rho(Residual, 1500)  # assume 1500kg/m3
     Residual.copy_models_from(Chemical('CaCO3'),('Cn',)) #CaCO3?
     
     H2O = Component('H2O', particle_size='Soluble',
@@ -193,14 +193,13 @@ def create_components(set_thermo=True):
     
     NH42SO4 = Component('NH42SO4', phase='l', particle_size='Soluble',
                         degradability='Undegradable', organic=False)
-    
     add_V_from_rho(NH42SO4, 1770)
-    #https://en.wikipedia.org/wiki/Ammonium_sulfate (accessed 2022-9-30)
+    # https://en.wikipedia.org/wiki/Ammonium_sulfate (accessed 2022-9-30)
     
     NH4Cl = Component('NH4Cl', phase='l', particle_size='Soluble',
                         degradability='Undegradable', organic=False)
 
-    #Below are biooil-related components
+    # below are biooil-related components
     TWOMBUTAN = Component('TWOMBUTAN', search_ID='78-78-4',
                           particle_size='Soluble', degradability='Slowly',
                           organic=True)
@@ -288,7 +287,7 @@ def create_components(set_thermo=True):
 
     C10H12 = Component('C10H12', search_ID='119-64-2', particle_size='Soluble',
                        degradability='Slowly', organic=True)
-    #use 1234NA (OTTFNA) to replace since they are both C10H12
+    # use 1234NA (OTTFNA) to replace since they are both C10H12
 
     C12H26 = Component('C12H26', search_ID='112-40-3', particle_size='Soluble',
                        degradability='Slowly', organic=True)
@@ -358,7 +357,7 @@ def create_components(set_thermo=True):
     C26H42O4 = Component('C26H42O4', search_ID='27554-26-3',
                          particle_size='Soluble', degradability='Slowly',
                          organic=True)
-    #use C24H38O4 to replace since they are similar
+    # use C24H38O4 to replace since they are similar
 
     C30H62 = Component('C30H62', search_ID='638-68-6', particle_size='Soluble',
                       degradability='Slowly', organic=True)
