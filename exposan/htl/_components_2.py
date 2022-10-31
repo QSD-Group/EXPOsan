@@ -56,7 +56,7 @@ def create_components(set_thermo=True):
     #and-biological-properties.html (accessed 2022-10-23)
     #https://web.deu.edu.tr/atiksu/ana52/wdesign06.html (accessed 2022-10-23)
     Sludge_lipid.HHV = 22.0*10**6*Sludge_lipid.MW/1000  #Li et al., 2018
-    Sludge_lipid.Cn.s.add_model(1.25*10**3*Sludge_lipid.MW/1000) 
+    Sludge_lipid.Cn.add_model(1.25*10**3*Sludge_lipid.MW/1000) 
     #Leow et al., 2015
     Sludge_lipid.mu.add_model(6000)
     #made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
