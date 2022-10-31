@@ -38,8 +38,8 @@ fake_sludge = qs.Stream('fake_sludge', H2O=100000, units='kg/hr', T=25+273.15)
 #set H2O equal to the total sludge input flow
 #assume 99% moisture, 20 us tons of dw sludge per h
 
-hydrogen = qs.Stream('hydrogen', H2=1000, units='kg/hr', T=25+273.15)
-#1000 is not right
+hydrogen = qs.Stream('hydrogen', H2=5000, units='kg/hr', T=25+273.15)
+#5000 is made up
 
 # =============================================================================
 # pretreatment (Area 000)
@@ -76,7 +76,7 @@ H1 = qsu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=350+273.15,
 # watts-per-square-meter-per-k-to-btus-th--per-hour-per-square-foot-per-f-
 # conversion.html
 
-HTL = su.HTL('A120', ins=H1-0, outs=('biochar','HTLaqueous','biocrude',
+HTL = su.HTL('A120', ins=H1-0, outs=('biochar','HTL_aqueous','biocrude',
                                      'offgas_HTL'))
 HTL_hx = HTL.heat_exchanger
 
