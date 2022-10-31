@@ -61,12 +61,50 @@ def add_fugitive_items(unit, item_ID):
         i.stream_impact_item = ImpactItem.get_item(item_ID).copy(set_as_source=True)
 
 
-def add_V_from_rho(cmp, rho):
-    V_model = rho_to_V(rho, cmp.MW)
-    try: cmp.V.add_model(V_model)
-    except:
-        handle = getattr(cmp.V, cmp.locked_state)
-        handle.add_model(V_model)
+def add_V_from_rho(component, rho, phase=''):
+    '''
+    Add constant molar volume model for a component by providing density.
+
+    Parameters
+    ----------
+    component : obj
+        The component object.
+    rho : float
+        Density in kg/m3.
+    phase : str
+        For which phase the constant molar volume model should be add,
+        must be provided if the component is not locked at a certain phase.
+
+    Examples
+    --------    
+    >>> from qsdsan import Component
+    >>> from exposan.utils import add_V_from_rho
+    >>> H2O = Component('H2O', particle_size='Soluble',
+    ...                 degradability='Undegradable', organic=False)
+    >>> # Add a constant model when H2O is not locked at a state
+    >>> add_V_from_rho(H2O, rho=1000, phase='l')
+    >>> H2O.V.l(300, 101325) # doctest: +ELLIPSIS
+    1.80...
+    >>> # Lock H2O at liquid phase then add the model
+    >>> H2O.at_state('l')
+    >>> add_V_from_rho(H2O, rho=1500)
+    >>> H2O.V(300, 101325) # doctest: +ELLIPSIS
+    1.20...
+    '''
+    V_model = rho_to_V(rho, component.MW)
+    state = component.locked_state
+
+    if state:
+        if phase and state != 'phase':
+            raise ValueError(f'The component "{component.ID}" is locked at phase '
+                             f'"{state}", cannot add model for phase "{phase}".')
+        handle = component.V
+    else:
+        if not phase:
+            raise ValueError('`phase` must be provided for component that is not locked '
+                             f'at a certain phase ("{component.ID}").')
+        handle = getattr(component.V, phase)
+    handle.add_model(V_model)
 
 
 def batch_setting_unit_params(df, model, unit, exclude=()):
