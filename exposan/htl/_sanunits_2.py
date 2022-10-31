@@ -55,6 +55,7 @@ __all__ = (
     'SludgeLab',
     'HTL',
     'HT',
+    'Depressure_Splitter',
     'HC',
     'AcidExtraction',
     'HTLmixer',
@@ -332,7 +333,7 @@ class HTL(SanUnit):
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
         hx_ins0.mix_from(self.outs)
         hx_outs0.mix_from(self.outs)
-        hx_ins0.T = self.ins[0].T
+        hx_ins0.T = self.ins[0].T #temperature before/after HTL are similar
         hx.T = hx_outs0.T
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
     
@@ -447,6 +448,48 @@ class HTLmixer(SanUnit):
         mixture.T = extracted.T
         mixture.P = HTLaqueous.P
         
+    def _design(self):
+        pass
+    
+    def _cost(self):
+        pass
+    
+
+# =============================================================================
+# HTLsplitter
+# =============================================================================
+
+class HTLsplitter(SanUnit):
+    
+    '''
+    Hydrocracking further cracks down heavy part in HT biooil to diesel and gasoline.
+    
+    Model method: use experimental data.
+    
+    Parameters
+    ----------
+    ins: Iterable (stream)
+    flow_in
+    outs: Iterable (stream)
+    flow_out_1, flow_out_2
+    '''
+    
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream',
+                 **kwargs):
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo,init_with)
+
+    _N_ins = 1
+    _N_outs = 2
+        
+    def _run(self):
+        
+        flow_in = self.ins[0]
+        flow_out_1, flow_out_2 = self.outs
+        
+        flow_in.mix_from((flow_out_1, flow_out_2))
+    
     def _design(self):
         pass
     
@@ -620,7 +663,7 @@ class CHG(SanUnit):
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
         hx_ins0.mix_from(self.outs)
         hx_outs0.mix_from(self.outs)
-        hx_ins0.T = self.ins[0].T
+        hx_ins0.T = self.ins[0].T #temperature before/after CHG are similar
         hx.T = hx_outs0.T
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
     
@@ -720,7 +763,7 @@ class HT(SanUnit):
     Parameters
     ----------
     ins: Iterable (stream)
-    biocrude,hydrogen_gas
+    biocrude, hydrogen_gas
     outs: Iterable (stream)
     HTaqueous, fuel_gas, gasoline, diesel, heavy_oil
     '''
@@ -728,123 +771,88 @@ class HT(SanUnit):
     auxiliary_unit_names=('heat_exchanger',)
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream',
-                 biooil_ratio=0.77, gas_ratio=0.07,#Jones et al., 2014
-                 biocrude_h2_ratio = 18.14,
-                 gasoline_ratio = 0.103, heavy_oil_ratio = 0.113, #see spreadsheet for calculation
-                 co_ratio=0.128, co2_ratio=0.007, c2h6_ratio=0.188,
-                 c3h8_ratio=0.107, c4h10_ratio=0.09,
+                 biooil_ratio=0.77, gas_ratio=0.07,#Jones et al., 2014 #double check
+                 # biocrude_h2_ratio = 18.14, #double check
+
                  biooil_C_ratio=0.855, biooil_N_ratio=0.01,
-                 HTaqueous_pre = 55*6894.76, #Jones 2014: 55 psia
-                 fuel_gas_pre = 20*6894.76,
-                 gasoline_pre = 25*6894.76,
-                 diesel_pre = 18.7*6894.76,
-                 heavy_oil_pre = 18.7*6894.76,
+                 HTout_pre = 717.4*6894.76, #Jones 2014: 55 psia
+                 
                  HTrxn_T=402+273.15, #Jones 2014
-                 HTaqueous_T=47+273.15,
-                 fuel_gas_T=44+273.15,
-                 gasoline_T=109+273.15,
-                 diesel_T=265+273.15,
-                 heavy_oil_T=381+273.15,
-                 oil_ratio={'TWOMBUTAN':0.0077, 'NPENTAN':0.0077, 'TWOMPENTA':0.0310,
-                            'HEXANE':0.0155, 'TWOMHEXAN':0.0310, 'HEPTANE':0.0155,
-                            'CC6METH':0.0155, 'PIPERDIN':0.0077, 'TOLUENE':0.0155,
-                            'THREEMHEPTA':0.0155, 'OCTANE':0.0155, 'ETHCYC6':0.0155,
-                            'ETHYLBEN':0.0310, 'OXYLENE':0.0155, 'C9H20':0.0155,
-                            'PROCYC6':0.0310, 'C3BENZ':0.0155, 'FOURMONAN':0.0155,
-                            'C10H22':0.0464, 'C4BENZ':0.0155, 'C11H24':0.0310,
-                            'C10H12':0.0155, 'C12H26':0.0310, 'OTTFNA':0.0155,
-                            'C6BENZ':0.0155, 'OTTFSN':0.0155, 'C7BENZ':0.0155,
-                            'C8BENZ':0.0310, 'C10H16O4':0.0155, 'C15H32':0.0155,
-                            'C16H34':0.1238, 'C17H36':0.0464, 'C18H38':0.0310,
-                            'C19H40':0.0310, 'C20H42':0.0774, 'C21H44':0.0310,
-                            'TRICOSANE':0.0155, 'C24H38O4':0.0310, 'C26H42O4':0.0310,
-                            'C30H62':0.0015},
+                 HTout_T=43+273.15,
+                 
+                 gas_composition = {'CO':0.128, 'CO2':0.007, 'CH4':0.480,
+                                    'C2H6':0.188, 'C3H8':0.107, 'C4H10':0.09},
+                 
+                 oil_composition={'TWOMBUTAN':0.0077, 'NPENTAN':0.0077, 'TWOMPENTA':0.0310,
+                                  'HEXANE':0.0155, 'TWOMHEXAN':0.0310, 'HEPTANE':0.0155,
+                                  'CC6METH':0.0155, 'PIPERDIN':0.0077, 'TOLUENE':0.0155,
+                                  'THREEMHEPTA':0.0155, 'OCTANE':0.0155, 'ETHCYC6':0.0155,
+                                  'ETHYLBEN':0.0310, 'OXYLENE':0.0155, 'C9H20':0.0155,
+                                  'PROCYC6':0.0310, 'C3BENZ':0.0155, 'FOURMONAN':0.0155,
+                                  'C10H22':0.0464, 'C4BENZ':0.0155, 'C11H24':0.0310,
+                                  'C10H12':0.0155, 'C12H26':0.0310, 'OTTFNA':0.0155,
+                                  'C6BENZ':0.0155, 'OTTFSN':0.0155, 'C7BENZ':0.0155,
+                                  'C8BENZ':0.0310, 'C10H16O4':0.0155, 'C15H32':0.0155,
+                                  'C16H34':0.1238, 'C17H36':0.0464, 'C18H38':0.0310,
+                                  'C19H40':0.0310, 'C20H42':0.0774, 'C21H44':0.0310,
+                                  'TRICOSANE':0.0155, 'C24H38O4':0.0310, 'C26H42O4':0.0310,
+                                  'C30H62':0.0015},
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.biooil_ratio = biooil_ratio
         self.gas_ratio = gas_ratio
-        self.biocrude_h2_ratio = biocrude_h2_ratio
-        self.gasoline_ratio = gasoline_ratio
-        self.heavy_oil_ratio = heavy_oil_ratio  
-        self.c4h10_ratio = c4h10_ratio
-        self.co_ratio = co_ratio
-        self.co2_ratio = co2_ratio
-        self.c2h6_ratio = c2h6_ratio
-        self.c3h8_ratio = c3h8_ratio
+        # self.biocrude_h2_ratio = biocrude_h2_ratio
+        
+
+        
         self.biooil_C_ratio = biooil_C_ratio
         self.biooil_N_ratio = biooil_N_ratio
-        self.HTaqueous_pre = HTaqueous_pre
-        self.fuel_gas_pre = fuel_gas_pre
-        self.gasoline_pre = gasoline_pre
-        self.diesel_pre = diesel_pre
-        self.heavy_oil_pre = heavy_oil_pre
+        self.HTout_pre = HTout_pre
+
+
         self.HTrxn_T = HTrxn_T
-        self.HTaqueous_T = HTaqueous_T
-        self.fuel_gas_T = fuel_gas_T
-        self.gasoline_T = gasoline_T
-        self.diesel_T = diesel_T
-        self.heavy_oil_T = heavy_oil_T
+        self.HTout_T = HTout_T
+        
+        self.gas_composition = gas_composition
+
+        self.oil_composition = oil_composition
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
 
+
     _N_ins = 2
-    _N_outs = 5
+    _N_outs = 1
         
     def _run(self):
         
-        biocrude,hydrogen_gas = self.ins
-        HTaqueous, fuel_gas, gasoline, diesel, heavy_oil = self.outs
+        biocrude, hydrogen_gas = self.ins
+        ht_out = self.outs[0]
         
         # hydrogen_gas.imass['H2'] = biocrude.F_mass/self.biocrude_h2_ratio
-        hydrogen_gas.phase = 'g'
+        # hydrogen_gas.phase = 'g'
         
         biooil_total_mass = biocrude.F_mass*self.biooil_ratio
-        
-        for i in (self.gasoline_ratio, self.heavy_oil_ratio):
-            if i < 0: i = 0
-            
-        gasoline.imass['Gasoline'] = biooil_total_mass*self.gasoline_ratio
-        diesel.imass['Diesel'] = biooil_total_mass*(1 - self.gasoline_ratio - self.heavy_oil_ratio)
-        heavy_oil.imass['Heavy_oil'] = biooil_total_mass*self.heavy_oil_ratio
+        for name, ratio in self.oil_composition.items():
+            ht_out.imass[name] = biooil_total_mass*ratio
         
         gas_mass = biocrude.F_mass*self.gas_ratio
+        for name, ratio in self.gas_composition.items():
+            ht_out.imass[name] = gas_mass*ratio
         
-        for i in (self.c4h10_ratio, self.co_ratio, self.co2_ratio, self.c2h6_ratio, self.c3h8_ratio,
-                    1 - self.c4h10_ratio - self.co_ratio - self.co2_ratio - self.c2h6_ratio -\
-                    self.c3h8_ratio):
-            if i < 0: i = 0
-    
-        fuelgas_HT_composition = {
-            'CO':self.co_ratio,
-            'CO2':self.co2_ratio,
-            'C2H6':self.c2h6_ratio,
-            'C3H8':self.c3h8_ratio,
-            'C4H10':self.c4h10_ratio,
-            'CH4':1 - self.c4h10_ratio - self.co_ratio - self.co2_ratio - self.c2h6_ratio -\
-                self.c3h8_ratio
-            }
-            
-        for name,ratio in fuelgas_HT_composition.items():
-            fuel_gas.imass[name] = gas_mass*ratio
+        ht_out.imass['H2O'] = biocrude.F_mass + hydrogen_gas.F_mass - biooil_total_mass - gas_mass
+        #Use water to represent HT aqueous phase, C, N, and P can be calculated base on MB closure.
         
-        HTaqueous.imass['HTaqueous'] = biocrude.F_mass + hydrogen_gas.F_mass - biooil_total_mass - gas_mass
-        #HTaqueous is liquid waste from HT
+        ht_out.P = self.HTout_pre
         
-        fuel_gas.phase = 'g'
+        ht_out.T = self.HTout_T
         
-        HTaqueous.P = self.HTaqueous_pre
-        fuel_gas.P = self.fuel_gas_pre
-        gasoline.P = self.gasoline_pre
-        diesel.P = self.diesel_pre
-        heavy_oil.P = self.heavy_oil_pre
         
-        HTaqueous.T = self.HTaqueous_T
-        fuel_gas.T = self.fuel_gas_T
-        gasoline.T = self.gasoline_T
-        diesel.T = self.diesel_T
-        heavy_oil.T = self.heavy_oil_T
+        
+        
+        
+        
         
     @property
     def biooil_C(self):
@@ -885,13 +893,16 @@ class HT(SanUnit):
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
         hx_ins0.mix_from(self.outs)
         hx_outs0.mix_from(self.outs)
-        hx_ins0.T = self.HTrxn_T
+        hx_ins0.T = self.HTrxn_T #temperature before/after HT are different
         hx.T = hx_outs0.T
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
     
     def _cost(self):
         pass
-   
+
+# =============================================================================
+# HC
+# =============================================================================
    
 class HC(SanUnit):
     
@@ -911,67 +922,61 @@ class HC(SanUnit):
     auxiliary_unit_names=('heat_exchanger',)
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream',
-                 heavy_oil_h2_ratio=45.17,
-                 hydrogen_gas_T=128+273.15, #Jones 2014 #H2 heating and pressurization?
-                 hydrogen_gas_P=1039.7*6894.76,
-                 gasoline_hc_ratio=0.303,off_gas_ratio=0.0394,
-                 gasoline_pre = 20*6894.76,
-                 diesel_pre = 24*6894.76,
-                 off_gas_pre = 20*6894.76, #Jones 2014
-                 gasoline_T=60+273.15,
-                 diesel_T=220+273.15,
-                 off_gas_T=45+273.15, #Jones 2014
+                 # heavy_oil_h2_ratio=45.17, #double check
+                 oil_ratio=0.9609, off_gas_ratio=0.0394, #double check
+                 HC_out_pre=1005.7*6894.76,
+                 HC_rxn_T=451+273.15,
+                 HC_out_T=60+273.15,
+                 
+                 gas_composition = {'H2':0.275, 'CO2':0.590, 'CH4':0.135},
+                 
+                 oil_composition = {'HEXANE':0.0121, 'CYCHEX':0.0401, 'HEPTANE':0.1219,
+                                    'OCTANE':0.0853, 'C9H20':0.0950, 'C10H22':0.1226,
+                                    'C11H24':0.1756, 'C12H26':0.1374, 'C13H28':0.0969,
+                                    'C14H30':0.0483, 'C15H32':0.0338, 'C16H34':0.0200,
+                                    'C17H36':0.0045, 'C18H38':0.0010, 'C19H40':0.0052,
+                                    'C20H42':0.0002, 'PHYTANE':0.0002,
+                                    },
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo,init_with)
-        self.heavy_oil_h2_ratio = heavy_oil_h2_ratio
-        self.hydrogen_gas_T = hydrogen_gas_T
-        self.hydrogen_gas_P = hydrogen_gas_P
-        self.gasoline_hc_ratio = gasoline_hc_ratio #see spreadsheet for calculation
+        # self.heavy_oil_h2_ratio = heavy_oil_h2_ratio
+
+        self.oil_ratio = oil_ratio
         self.off_gas_ratio = off_gas_ratio
-        self.gasoline_pre = gasoline_pre
-        self.diesel_pre = diesel_pre
-        self.off_gas_pre = off_gas_pre  
-        self.gasoline_T = gasoline_T
-        self.diesel_T = diesel_T
-        self.off_gas_T = off_gas_T
-        
+        self.HC_out_pre = HC_out_pre
+        self.HC_rxn_T = HC_rxn_T
+        self.HC_out_T = HC_out_T
+        self.gas_composition = gas_composition
+        self.oil_composition = oil_composition
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
         
     _N_ins = 2
-    _N_outs = 3
+    _N_outs = 1
         
     def _run(self):
         
         heavy_oil, hydrogen_gas = self.ins
-        gasoline, diesel, off_gas = self.outs
+        hc_out = self.outs[0]
         
-        hydrogen_gas.imass['H2'] = heavy_oil.F_mass/self.heavy_oil_h2_ratio
-        hydrogen_gas.phase = 'g'
-        hydrogen_gas.T = self.hydrogen_gas_T
-        hydrogen_gas.P = self.hydrogen_gas_P
+        # hydrogen_gas.imass['H2'] = heavy_oil.F_mass/self.heavy_oil_h2_ratio
+        # hydrogen_gas.phase = 'g'
         
-        for i in [self.gasoline_hc_ratio, self.off_gas_ratio]:
-            if i < 0: i = 0
-        
-        gasoline.imass['Gasoline'] = (heavy_oil.F_mass + hydrogen_gas.F_mass)*self.gasoline_hc_ratio
 
-        diesel.imass['Diesel'] = (heavy_oil.F_mass + hydrogen_gas.F_mass)*\
-            (1 - self.gasoline_hc_ratio - self.off_gas_ratio)
-        
-        off_gas.imass['CO2'] = (heavy_oil.F_mass + hydrogen_gas.F_mass)*self.off_gas_ratio
-        
-        off_gas.phase = 'g'
+        hc_oil_mass = (heavy_oil.F_mass + hydrogen_gas.F_mass)*self.oil_ratio #double check ratio calculation
 
-        gasoline.P = self.gasoline_pre
-        diesel.P = self.diesel_pre
-        off_gas.P = self.off_gas_pre
+        for name, ratio in self.oil_composition.items():
+            hc_out.imass[name] = hc_oil_mass*ratio
+
+        hc_gas_mass = (heavy_oil.F_mass + hydrogen_gas.F_mass)*self.off_gas_ratio #double check ratio calculation
+
+        for name, ratio in self.gas_composition.items():
+            hc_out.imass[name] = hc_gas_mass*ratio
         
-        gasoline.T = self.gasoline_T
-        diesel.T = self.diesel_T
-        off_gas.T = self.off_gas_T
+        hc_out.P = self.HC_out_pre
+        hc_out.T = self.HC_out_T
         
     def _design(self):
         
@@ -979,7 +984,7 @@ class HC(SanUnit):
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
         hx_ins0.mix_from(self.outs)
         hx_outs0.mix_from(self.outs)
-        hx_ins0.T = self.ins[0].T
+        hx_ins0.T = self.HC_rxn_T #temperature before/after HC are different
         hx.T = hx_outs0.T
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
     
@@ -987,387 +992,4 @@ class HC(SanUnit):
         pass
     
     
-
-class Acidsplitter(SanUnit):
-    
-    '''
-    Hydrocracking further cracks down heavy part in HT biooil to diesel and gasoline.
-    
-    Model method: use experimental data.
-    
-    Parameters
-    ----------
-    ins: Iterable (stream)
-    acid_in
-    outs: Iterable (stream)
-    acid_for_N, acid_for_P
-    '''
-    
-    
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream',
-                 **kwargs):
-        
-        SanUnit.__init__(self, ID, ins, outs, thermo,init_with)
-
-    _N_ins = 1
-    _N_outs = 2
-        
-    def _run(self):
-        
-        acid_in = self.ins[0]
-        acid_for_N, acid_for_P = self.outs
-        
-        acid_in.mix_from((acid_for_N, acid_for_P))
-    
-    def _design(self):
-        pass
-    
-    def _cost(self):
-        pass
-        
-
-
-
-
-
-
-
-class Flash(SanUnit, FL):
-
-    auxiliary_unit_names = FL.auxiliary_unit_names
-    _units = FL._units
-    _max_agile_design = FL._max_agile_design
-    _F_BM_default = FL._F_BM_default
-    _graphics = FL._graphics
-    _N_outs = FL._N_outs
-
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='Stream', *,
-                 V=None, T=None, Q=None, P=None, y=None, x=None,
-                 vessel_material='Carbon steel',
-                 vacuum_system_preference='Liquid-ring pump',
-                 has_glycol_groups=False,
-                 has_amine_groups=False,
-                 vessel_type=None,
-                 holdup_time=15,
-                 surge_time=7.5,
-                 has_mist_eliminator=False):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with=init_with)
-        self._load_components()
-        
-        #: Enforced molar vapor fraction
-        self.V = V
-        
-        #: Enforced operating temperature (K)
-        self.T = T
-        
-        #: [array_like] Molar composition of vapor (for binary mixture)
-        self.y = y
-        
-        #: [array_like] Molar composition of liquid (for binary mixture)
-        self.x = x
-        
-        #: Enforced duty (kJ/hr)
-        self.Q = Q
-        
-        #: Operating pressure (Pa)
-        self.P = P
-        
-        #: [str] Vessel construction material
-        self.vessel_material = vessel_material
-
-        #: [str] If a vacuum system is needed, it will choose one according to this preference.
-        self.vacuum_system_preference = vacuum_system_preference
-        
-        #: [bool] True if glycol groups are present in the mixture
-        self.has_glycol_groups = has_glycol_groups
-        
-        #: [bool] True if amine groups are present in the mixture
-        self.has_amine_groups = has_amine_groups
-        
-        #: [str] 'Horizontal', 'Vertical', or 'Default'
-        self.vessel_type = vessel_type
-        
-        #: [float] Time it takes to raise liquid to half full (min)
-        self.holdup_time = holdup_time
-        
-        #: [float] Time it takes to reach from normal to maximum liquied level (min)
-        self.surge_time = surge_time
-        
-        #: [bool] True if using a mist eliminator pad
-        self.has_mist_eliminator = has_mist_eliminator
-        
-    def _load_components(self):
-        self._multi_stream = ms = MultiStream(None, thermo=self.thermo)
-        self.heat_exchanger = HXutility(None, (None,), ms, thermo=self.thermo) 
-        
-    def reset_cache(self, isdynamic=None):
-        self._multi_stream.reset_cache()
-        self.heat_exchanger.reset_cache()
-        
-    @property
-    def P(self):
-        """Operating pressure (Pa)."""
-        return self._P
-    @P.setter
-    def P(self, P):
-        if P and P < 101325 and not self.power_utility:
-            self.power_utility = PowerUtility()
-        self._P = P
-
-    @property
-    def vapor(self):
-        """Outlet vapor stream (equivalent to outs[0])."""
-        return self._outs[0]
-    @vapor.setter
-    def vapor(self, vapor):
-        self._outs[0] = vapor
-    
-    @property
-    def liquid(self):
-        """Outlet liquid stream (equivalent to outs[1])."""
-        return self._outs[1]
-    @liquid.setter
-    def liquid(self, liquid):
-        self._outs[1] = liquid
-
-    def _default_vessel_type(self):
-        vap, liq = self.outs
-        F_mass_vap = vap.F_mass
-        F_mass_liq = liq.F_mass 
-        return 'Vertical' if F_mass_vap / F_mass_liq > 0.1 else 'Horizontal'
-
-    def _run(self):
-        separations.vle(self.ins[0], *self.outs, self.T, self.P, self.V, 
-                        self.Q, self.x, self.y, self._multi_stream)
-            
-    def _design(self):
-        vap, liq = self.outs
-        self.no_vessel_needed = vap.isempty() or liq.isempty()
-        if self.no_vessel_needed:
-            self.design_results.clear()
-        else:
-            vessel_type = self.vessel_type
-            if vessel_type == 'Vertical': 
-                args = self._vertical_vessel_pressure_diameter_and_length()
-            elif vessel_type == 'Horizontal': 
-                args = self._horizontal_vessel_pressure_diameter_and_length()
-            else: raise RuntimeError('unknown vessel type') # pragma: no cover
-            self.design_results.update(
-                self._vessel_design(*args)
-            )
-        if self.Q == 0.:
-            self.heat_exchanger._setup() # Removes results
-        else:
-            self.heat_exchanger.simulate_as_auxiliary_exchanger(self.ins, [self._multi_stream])
-
-    def _cost(self):
-        D = self.design_results
-        if not self.no_vessel_needed:
-            self.baseline_purchase_costs.update(
-                self._vessel_purchase_cost(D['Weight'], D['Diameter'], D['Length'])
-            )
-            self._cost_vacuum()
-
-    def _cost_vacuum(self):
-        P = self.P
-        if not P or P > 101320: 
-            self.vacuum_system = None
-        else:
-            Design = self.design_results
-            R = Design['Diameter'] * 0.5
-            volume = 0.02832 * np.pi * Design['Length'] * R * R # Volume ft3 to m3
-            self.vacuum_system = bst.VacuumSystem(
-                self, self.vacuum_system_preference, vessel_volume=volume,
-            )
-
-    def _design_parameters(self):
-        # Retrieve run_args and properties
-        vap, liq = self._outs
-        rhov = vap.get_property('rho', 'lb/ft3')
-        rhol = liq.get_property('rho', 'lb/ft3')
-        P = liq.get_property('P', 'psi')  # Pressure (psi)
-
-        vessel_type = self.vessel_type
-        Th = self.holdup_time
-        Ts = self.surge_time
-        has_mist_eliminator = self.has_mist_eliminator
-
-        # Calculate the volumetric flowrate
-        Qv = vap.get_total_flow('ft^3 / s')
-        Qll = liq.get_total_flow('ft^3 / min')
-
-        # Calculate Ut and set Uv
-        K = design.compute_Stokes_law_York_Demister_K_value(P)
-
-        # Adjust K value
-        if not has_mist_eliminator and vessel_type == 'Vertical': K /= 2
-
-        # Adjust for amine or glycol groups:
-        if self.has_glycol_groups: K *= 0.6
-        elif self.has_amine_groups: K *= 0.8
-
-        Ut = K*((rhol - rhov) / rhov)**0.5
-        Uv = 0.75*Ut
-
-        # Calculate Holdup and Surge volume
-        Vh = Th*Qll
-        Vs = Ts*Qll
-        return rhov, rhol, P, Th, Ts, has_mist_eliminator, Qv, Qll, Ut, Uv, Vh, Vs
-
-    def _vertical_vessel_pressure_diameter_and_length(self):
-        rhov, rhol, P, Th, Ts, has_mist_eliminator, Qv, Qll, Ut, Uv, Vh, Vs = self._design_parameters()
-
-        # Calculate internal diameter, Dvd
-        Dvd = (4.0*Qv/(pi*Uv))**0.5
-        if has_mist_eliminator:
-            D = design.ceil_half_step(Dvd + 0.4)
-        else:
-            D = design.ceil_half_step(Dvd)
-
-        # Obtaining low liquid level height, Hlll
-        Hlll = 0.5
-        if P < 300:
-            Hlll = 1.25
-
-        # Calculate the height from Hlll to Normal liq level, Hnll
-        Hh = Vh/(pi/4.0*Dvd**2)
-        if Hh < 1.0: Hh = 1.0
-
-        # Calculate the height from Hnll to  High liq level, Hhll
-        Hs = Vs/(pi/4.0*Dvd**2)
-        if Hs < 0.5: Hs = 0.5
-
-        # Calculate dN
-        Qm = Qll + Qv
-        lamda = Qll/Qm
-        rhoM = rhol*lamda + rhov*(1-lamda)
-        dN = (4*Qm/(pi*60.0/(rhoM**0.5)))**0.5
-        dN = design.ceil_half_step(dN)
-
-        # Calculate Hlin, assume with inlet diverter
-        Hlin = 1.0 + dN
-
-        # Calculate the vapor disengagement height
-        Hv = 0.5*Dvd
-        Hv2 = (2.0 if has_mist_eliminator else 3.0) + dN/2.0 # pragma: no cover
-        if Hv2 < Hv: Hv = Hv2
-        Hv = Hv
-
-        # Calculate total height, Ht
-        Hme = 1.5 if has_mist_eliminator else 0.0
-        Ht = Hlll + Hh + Hs + Hlin + Hv + Hme
-        Ht = design.ceil_half_step(Ht)
-
-        # Find maximum and normal liquid level
-        # Hhll = Hs + Hh + Hlll
-        # Hnll = Hh + Hlll
-
-        return P, D, Ht
-        
-    def _horizontal_vessel_pressure_diameter_and_length(self):
-        rhov, rhol, P, Th, Ts, has_mist_eliminator, Qv, Qll, Ut, Uv, Vh, Vs = self._design_parameters()
-
-        # Initialize LD
-        if P > 0 and P <= 264.7:
-            LD = 1.5/250.0*(P-14.7)+1.5
-        elif P > 264.7 and P <= 514.7: # pragma: no cover
-            LD = 1.0/250.0*(P-14.7)+2.0
-        elif P > 514.7: # pragma: no cover
-            LD = 5.0
-
-        D = (4.0*(Vh+Vs)/(0.6*pi*LD))**(1.0/3.0)
-        if D <= 4.0:
-            D = 4.0
-        else:
-            D = design.ceil_half_step(D)
-
-        for outerIter in range(50):
-            At = pi*(D**2)/4.0 # Total area
-
-            # Calculate Lower Liquid Area
-            Hlll = round(0.5*D + 7.0)  
-            Hlll = Hlll/12.0 # D is in ft but Hlll is in inches
-            X = Hlll/D
-            Y = design.HNATable(1, X)
-            Alll = Y*At
-
-            # Calculate the Vapor disengagement area, Av
-            Hv = 0.2*D
-            if has_mist_eliminator and Hv <= 2.0: Hv = 2.0
-            elif Hv <= 1.0: Hv = 1.0
-            else: Hv = design.ceil_half_step(Hv)
-            Av = design.HNATable(1, Hv/D)*At
-            
-            # Calculate minimum length for surge and holdup
-            L = (Vh + Vs)/(At - Av - Alll)
-            # Calculate liquid dropout
-            Phi = Hv/Uv
-            # Calculate actual vapor velocity
-            Uva = Qv/Av
-            # Calculate minimum length for vapor disengagement
-            Lmin = Uva*Phi
-            Li = L
-            
-            for innerIter in range(50):
-                if L < 0.8*Lmin: Hv += 0.5
-                elif L > 1.2*Lmin:
-                    if has_mist_eliminator and Hv <= 2.0: Hv = 2.0
-                    elif not has_mist_eliminator and Hv <= 1.0: Hv = 1.0
-                    else: Hv -= 0.5
-                else: break
-                Av = design.HNATable(1, Hv/D)*At
-                Alll = design.HNATable(1, Hlll/D)*At
-                Li = (Vh + Vs)/(At - Av - Alll)
-                Phi = Hv/Uv
-                Uva = Qv/Av
-                Lmin = Uva*Phi
-            
-            L = Li
-            LD = L/D
-            # Check LD
-            if LD < 1.2:
-                if D <= 4.0: break
-                else: D -= 0.5
-
-            if LD > 7.2: # pragma: no cover
-                D += 0.5
-            else: break
-
-        # Recalculate LD so it lies between 1.5 - 6.0
-        while True:
-            LD = L / D
-            if (LD < 1.5) and D <= 4.0: L += 0.5
-            elif LD < 1.5: D -= 0.5
-            elif (LD > 6.0): D += 0.5
-            else: break
-
-        # # To check minimum Hv value
-        # if int(has_mist_eliminator) == 1 and Hv <= 2.0:
-        #     Hv = 2.0
-        # if int(has_mist_eliminator) == 0 and Hv <= 1.0:
-        #     Hv = 1.0
-
-        # Calculate normal liquid level and High liquid level
-        # Hhll = D - Hv
-        # if (Hhll < 0.0):
-        #     Hhll = 0.0
-        # Anll = Alll + Vh/L
-        # X = Anll/At
-        # Y = HNATable(2, X)
-        # Hnll = Y*D
-        
-        return P, D, L
-
-
-
-
-
-
-
-
-
-
-
-
 

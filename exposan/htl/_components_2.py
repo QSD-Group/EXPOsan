@@ -123,11 +123,6 @@ def create_components(set_thermo=True):
     add_V_from_rho(HTLaqueous, 1000)
     HTLaqueous.copy_models_from(Chemical('H2O'),('Cn','mu'))  #HTLaqueous referd to TDS in HTL aqueous phase
     
-    HTaqueous = Component('HTaqueous', phase='l', particle_size='Soluble',
-                        degradability='Undegradable', organic=False)
-    add_V_from_rho(HTaqueous, 1000)
-    HTaqueous.copy_models_from(Chemical('H2O'),('Cn','mu'))  #HTaqueous referd to HT aqueous waste
-    
     Struvite = Component('Struvite', search_ID='MagnesiumAmmoniumPhosphate',
                          formula='NH4MgPO4·H12O6', phase='s',
                          particle_size='Particulate', 
@@ -208,23 +203,23 @@ def create_components(set_thermo=True):
     TWOMBUTAN = Component('TWOMBUTAN', search_ID='78-78-4', particle_size='Soluble',
                         degradability='Slowly', organic=True)
     
-    NPENTAN = Component('TWOMBUTAN', search_ID='109-66-0', particle_size='Soluble',
+    NPENTAN = Component('NPENTAN', search_ID='109-66-0', particle_size='Soluble',
                         degradability='Slowly', organic=True)
-    
-    
-    
 
     TWOMPENTA = Component('TWOMPENTA', search_ID='107-83-5', particle_size='Soluble',
                         degradability='Slowly', organic=True)
     
-    
-    HEXANE = Component('TWOMPENTA', search_ID='110-54-3', particle_size='Soluble',
+    HEXANE = Component('HEXANE', search_ID='110-54-3', particle_size='Soluble',
                         degradability='Slowly', organic=True)
-    
-    
 
     TWOMHEXAN = Component('TWOMHEXAN', search_ID='591-76-4', particle_size='Soluble',
                         degradability='Slowly', organic=True)
+    
+    
+    
+    CYCHEX = Component('CYCHEX', search_ID='110-82-7', particle_size='Soluble',
+                        degradability='Slowly', organic=True)
+    
 
     HEPTANE = Component('HEPTANE', search_ID='142-82-5', particle_size='Soluble',
                         degradability='Slowly', organic=True)
@@ -232,19 +227,14 @@ def create_components(set_thermo=True):
     CC6METH = Component('CC6METH', search_ID='108-87-2', particle_size='Soluble',
                         degradability='Slowly', organic=True)
     
-    
-    
     PIPERDIN = Component('PIPERDIN', search_ID='110-89-4', particle_size='Soluble',
                         degradability='Slowly', organic=True)
-    
     
     TOLUENE = Component('TOLUENE', search_ID='108-88-3', particle_size='Soluble',
                         degradability='Slowly', organic=True)
     
-    
     THREEMHEPTA = Component('THREEMHEPTA', search_ID='589-81-1', particle_size='Soluble',
                         degradability='Slowly', organic=True)
-
 
     OCTANE = Component('OCTANE', search_ID='111-65-9', particle_size='Soluble',
                         degradability='Slowly', organic=True)
@@ -258,7 +248,6 @@ def create_components(set_thermo=True):
     OXYLENE = Component('OXYLENE', search_ID='95-47-6', particle_size='Soluble',
                         degradability='Slowly', organic=True)
 
-
     C9H20 = Component('C9H20', search_ID='111-84-2', particle_size='Soluble',
                       degradability='Slowly', organic=True)
 
@@ -268,11 +257,12 @@ def create_components(set_thermo=True):
     C3BENZ = Component('C3BENZ', search_ID='103-65-1', particle_size='Soluble',
                       degradability='Slowly', organic=True)
 
-
-
     FOURMONAN = Component('FOURMONAN', search_ID='17301-94-9', particle_size='Soluble',
                       degradability='Slowly', organic=True)
 
+
+    C9H20 = Component('C9H20', search_ID='111-84-2', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
 
     C10H22 = Component('C10H22', search_ID='124-18-5', particle_size='Soluble',
                       degradability='Slowly', organic=True)
@@ -289,6 +279,21 @@ def create_components(set_thermo=True):
 
     C12H26 = Component('C12H26', search_ID='112-40-3', particle_size='Soluble',
                       degradability='Slowly', organic=True)
+    
+    
+    C13H28 = Component('C13H28', search_ID='629-50-5', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+    
+    C14H30 = Component('C14H30', search_ID='629-59-4', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+    
+    
+    
+    
+    
+    
+    
+    
 
     OTTFNA = Component('OTTFNA', search_ID='119-64-2', particle_size='Soluble',
                       degradability='Slowly', organic=True)
@@ -308,6 +313,16 @@ def create_components(set_thermo=True):
     C10H16O4 = Component('C10H16O4', search_ID='94-60-0', particle_size='Soluble',
                       degradability='Slowly', organic=True)
 
+
+
+
+
+
+
+
+
+
+
     C15H32 = Component('C15H32', search_ID='629-62-9', particle_size='Soluble',
                       degradability='Slowly', organic=True)
 
@@ -325,6 +340,15 @@ def create_components(set_thermo=True):
 
     C20H42 = Component('C20H42', search_ID='638-36-8', particle_size='Soluble',
                       degradability='Slowly', organic=True)
+    
+    PHYTANE = Component('PHYTANE', search_ID='638-36-8', particle_size='Soluble',
+                      degradability='Slowly', organic=True)
+    
+    
+    
+    
+    
+    
 
     C21H44 = Component('C21H44', search_ID='629-94-7', particle_size='Soluble',
                       degradability='Slowly', organic=True)
@@ -345,16 +369,16 @@ def create_components(set_thermo=True):
     cmps = Components([Sludge_lipid, Sludge_protein, Sludge_carbo, Sludge_ash,
                        Struvite, Biochar, Residual,
                        Biocrude, Gasoline, Diesel, Heavy_oil, #Biooil,
-                       HTLaqueous, HTaqueous, C, N, P,
+                       HTLaqueous, C, N, P,
                        O2, N2, CH4, C2H6, C3H8, C4H10, CO2, CO, H2,
                        H2SO4, H3PO4, MgCl2, NaOH, NH42SO4, NH4Cl, H2O, NH3,
-                       TWOMBUTAN, NPENTAN, TWOMPENTA, HEXANE, TWOMHEXAN,
+                       TWOMBUTAN, NPENTAN, TWOMPENTA, HEXANE, TWOMHEXAN, CYCHEX,
                        HEPTANE, CC6METH, PIPERDIN, TOLUENE, THREEMHEPTA,
                        OCTANE, ETHCYC6, ETHYLBEN, OXYLENE, C9H20, PROCYC6,
-                       C3BENZ, FOURMONAN, C10H22, C4BENZ, C11H24, C10H12,
-                       C12H26, OTTFNA, C6BENZ, OTTFSN, C7BENZ, C8BENZ,
+                       C3BENZ, FOURMONAN, C9H20, C10H22, C4BENZ, C11H24, C10H12,
+                       C12H26, C13H28, C14H30, OTTFNA, C6BENZ, OTTFSN, C7BENZ, C8BENZ,
                        C10H16O4, C15H32, C16H34, C17H36, C18H38, C19H40,
-                       C20H42, C21H44, TRICOSANE, C24H38O4, C26H42O4, C30H62
+                       C20H42, PHYTANE, C21H44, TRICOSANE, C24H38O4, C26H42O4, C30H62
                        ])
     
     for i in cmps:

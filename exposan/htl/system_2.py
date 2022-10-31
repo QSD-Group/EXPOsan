@@ -22,7 +22,7 @@ References:
 import qsdsan as qs
 import exposan.htl._sanunits_2 as su
 from qsdsan import sanunits as qsu
-from biosteam.units import Flash
+from biosteam.units import Flash, IsothermalCompressor, BinaryDistillation
 from exposan.htl._process_settings import load_process_settings
 from exposan.htl._components_2 import create_components
 
@@ -37,6 +37,11 @@ cmps = create_components()
 fake_sludge = qs.Stream('fake_sludge', H2O=100000, units='kg/hr', T=25+273.15)
 #set H2O equal to the total sludge input flow
 #assume 99% moisture, 20 us tons of dw sludge per h
+
+hydrogen = qs.Stream('hydrogen', H2=1000, units='kg/hr', T=25+273.15)
+#1000 is not right
+
+
 
 
 SluL = su.SludgeLab('S000', ins=fake_sludge, outs='real_sludge',sludge_moisture=0.99,
@@ -66,7 +71,7 @@ HTL_hx = HTL.heat_exchanger
 
 H2SO4_Tank = qsu.StorageTank('T200', ins='H2SO4_in', outs=('H2SO4_out')) #tau?
 
-SP1 = su.Acidsplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'), init_with='Stream')
+SP1 = su.HTLsplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'), init_with='Stream')
 # must put after AcidEx and MemDis in path during simulation to ensure input not empty
 
 AcidEx = su.AcidExtraction('A200', ins=(HTL-0,SP1-0), outs=('residual','extracted'))
@@ -86,9 +91,20 @@ CHG_hx = CHG.heat_exchanger
 
 # F1_feed = qs.Stream('F1_feed',H2O=CHG.outs)
 
-F1 = Flash('A260', ins=CHG-0, outs=('fuel_gas','N_riched_aqueous'),T=60+273.15, P=50*6894.76)
+F1 = Flash('A260', ins=CHG-0, outs=('CHG_fuel_gas','N_riched_aqueous'),T=60+273.15, P=50*6894.76)
 
 MemDis = su.MembraneDistillation('A260', ins=(F1-1,SP1-1), outs=('Ammonia_Sulfate','ww'))
+
+
+SP3 = qsu.Splitter('aaa',ins=hydrogen, outs=('hydrogen_HT','hydrogen_HC'), init_with='Stream', split=29/30)
+
+HX_H2_HT = qsu.HXutility('ttt', ins=SP3-0, outs='heated_H2_HT', T=117.5+273.15)
+
+IC1 = IsothermalCompressor('ccc', ins=HX_H2_HT-0, outs='compressed_H2_HT', P=1530*6894.76)
+
+HX_H2_HC = qsu.HXutility('ttttt', ins=SP3-1, outs='heated_H2_HC', T=128+273.15)
+
+IC2 = IsothermalCompressor('hhh', ins=HX_H2_HC-0, outs='compressed_H2_HC', P=1039.7*6894.76)
 
 P3 = qsu.Pump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76) #Jones 2014: 1530.0 psia
 
@@ -97,9 +113,70 @@ H3 = qsu.HXutility('A310', ins=P3-0, outs='heated_biocrude', T=174+273.15, init_
 #and increase the temperature of effluent to 402 C (755.5 F). The auxiliary HX should cool the products
 #from 402 C.
 
+HT = su.HT('A320', ins=(H3-0, IC1-0), outs='HTout')
+HT_hx = HT.heat_exchanger
+
+F2 = Flash('xxx', ins=HT-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273, P=717.4*6894.76)
+
+F3 = Flash('xxxx', ins=F2-1, outs=('HT_fuel_gas_2','HT_aqueous_2'), T=47+273, P=55*6894.76)
+#This one just decrease T/P, and just T is related to design and cost, consider other ways?
+
+SP2 = qsu.Splitter('SP2', ins=F3-1, outs=('HT_ww','HT_oil'), split={'H2O':1}, init_with='Stream')
+#Separate water and oil based on gravity
+
+HX_newly_add_1 = qsu.HXutility('HX_new_1',ins=SP2-1,outs='heated_oil', T=252+273)
+
+C1 = BinaryDistillation('yyy',ins=HX_newly_add_1-0,outs=('HT_Gasoline','HT_other_oil'), LHK=('C10H22','C4BENZ'),P=54*6894.76,
+                        y_top=116/122, x_bot=114/732, k=2, is_divided=True)
+
+
+C2 = BinaryDistillation('zzz',ins=C1-1,outs=('HT_Diesel','HT_heavy_oil'), LHK=('C19H40','C21H44'),P=25*6894.76,
+                        y_top=2421/2448, x_bot=158/2448, k=2, is_divided=True)
+
+P4 = qsu.Pump('A330', ins=C2-1, outs='press_heavy_oil', P=1034.7*6894.76) #Jones 2014: 1034.7 psia
+
+H4 = qsu.HXutility('A340', ins=P4-0, outs='heated_heavy_oil', T=394+273.15, init_with='Stream')
+#T = 394 C (741.2 F) based on Jones PNNL report. However, the reaction releases a lot of heat
+#and increase the temperature of effluent to 451 C (844.6 F). The auxiliary HX should cool the products
+#from 451 C.
+
+HC = su.HC('A350', ins=(H4-0, IC2-0), outs='HC_out')
+HC_hx = HC.heat_exchanger
+
+F4 = Flash('xxxxx', ins=HC-0, outs=('HC_fuel_gas','HC_aqueous'), T=60+273, P=1005.7*6894.76)
+
+F5 = Flash('xxxxxx', ins=F4-1, outs=('HC_fuel_gas_2','HC_aqueous_2'), T=60.2+273, P=30*6894.76)
+#This one just decrease T/P, and just T is related to design and cost, consider other ways?
+
+C3 = BinaryDistillation('zzzzz',ins=F5-1,outs=('HC_Gasoline','HC_Diesel'), LHK=('C9H20','C10H22'),P=30*6894.76,
+                        y_top=360/546, x_bot=7/708, k=2, is_divided=True)
+
+GasolineMixer = qsu.Mixer('S100', ins=(C1-0,C3-0), outs='mixed_gasoline',init_with='Stream')
+
+DieselMixer = qsu.Mixer('S110', ins=(C2-0,C3-1), outs='mixed_diesel')
+
+H5 = qsu.HXutility('A360', ins=GasolineMixer-0, outs='cooled_gasoline', T=60+273.15, init_with='Stream')
+
+H6 = qsu.HXutility('A370', ins=DieselMixer-0, outs='cooled_diesel', T=60+273.15, init_with='Stream')
+
+GasolineTank = qsu.StorageTank('A380', ins=H5-0, outs=('gasoline_out'), tau=3*24, init_with='Stream')
+#store for 3 days based on Jones 2014
+
+DieselTank = qsu.StorageTank('A390', ins=H6-0, outs=('diesel_out'), tau=3*24, init_with='Stream')
+#store for 3 days based on Jones 2014
+
+GasMixer = qsu.Mixer('S200',ins=(HTL-3, F1-0, F2-0, F4-0), outs=('fuel_gas'),init_with='Stream')
+#don't include F3-0 and F5-0 because they are empty. May change later.
+
+CHP = qsu.CHP('A400', ins=(GasMixer-0,'natural_gas','air'), outs=('emission','solid_ash'))
+
+
+
 sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx, M1, StruPre,
-                             P2, H2, CHG, F1, MemDis, SP1, P3, H3))
-#SP1 should be after AcidEx
+                             P2, H2, CHG, F1, MemDis, SP1, P3, H3, HT, F2, F3, SP2, HX_newly_add_1, C1, C2,
+                             P4, H4, HC, F4, F5, C3, GasolineMixer, DieselMixer, H5, H6,
+                             GasolineTank, DieselTank, GasMixer, CHP, SP3, HX_H2_HT, IC1,
+                             HX_H2_HC, IC2))
 
 sys.operating_hours = 7884 # NRES 2013
 
@@ -128,34 +205,22 @@ sys.diagram()
 
 
 
-HT = su.HT('A320', ins=(H3-0,'H2_HT'), outs=('HTaqueous','HT_fuel_gas','gasoline_HT','diesel_HT','heavy_oil'))
-HT_hx = HT.heat_exchanger
 
-P4 = qsu.Pump('A330', ins=HT-4, outs='press_heavy_oil', P=1034.7*6894.76) #Jones 2014: 1034.7 psia
 
-H4 = qsu.HXutility('A340', ins=P4-0, outs='heated_heavy_oil', T=395+273.15, init_with='Stream')
-#All temperatures and pressures are from Jones et al., 2014
 
-HC = su.HC('A350', ins=(H4-0,'H2_HC'), outs=('gasoline_HC', 'diesel_HC', 'offgas_HC'))
-HC_hx = HC.heat_exchanger
 
-GasolineMixer = qsu.Mixer('S100', ins=(HT-2,HC-0), outs='mixed_gasoline',init_with='Stream')
 
-DieselMixer = qsu.Mixer('S110', ins=(HT-3,HC-1), outs='mixed_diesel')
 
-H5 = qsu.HXutility('A360', ins=GasolineMixer-0, outs='cooled_gasoline', T=60+273.15, init_with='Stream')
 
-H6 = qsu.HXutility('A370', ins=DieselMixer-0, outs='cooled_diesel', T=60+273.15, init_with='Stream')
 
-GasolineTank = qsu.StorageTank('A380', ins=H5-0, outs=('gasoline_out'), tau=3*24, init_with='Stream')
-#store for 3 days based on Jones 2014
 
-DieselTank = qsu.StorageTank('A390', ins=H6-0, outs=('diesel_out'), tau=3*24, init_with='Stream')
-#store for 3 days based on Jones 2014
 
-GasMixer = qsu.Mixer('S200',ins=(HTL-3,CHG-0,HT-1,HC-2), outs=('fuel_gas'),init_with='Stream')
 
-CHP = qsu.CHP('A400', ins=(GasMixer-0,'natural_gas','air'), outs=('emission','solid_ash'))
+
+
+
+
+
 
 # HXN = suu.HeatExchangerNetwork('HXN')
 
