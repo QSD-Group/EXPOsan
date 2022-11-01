@@ -439,6 +439,10 @@ def run_UA_DvB(seed=None, N=N, T=T, t_step=t_step, plot=True):
     tmB = [m.getter() for m in mdlB.metrics]
     if plot:
         plot_scatter(seed, mdlD, None, tmB)
+    print(f'Seed used for uncertainty analysis of system D is {seed}.')
+    for p in mdlD.parameters:
+        p.setter(p.baseline)
+    return seed
 
 def run_UA_sysB(seed=None, N=N, T=T, t_step=t_step, plot=True):
     seed = seed or seed_RGT()
