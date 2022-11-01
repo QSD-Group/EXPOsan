@@ -44,6 +44,7 @@ mpl.rcParams['ytick.minor.visible'] = True
 #D81B60
 #1E88E5
 #FFC107
+#004D40
 
 #%% Global variables
 
@@ -215,40 +216,45 @@ def plot_kde2d_metrics(seed, model, sys_ID):
         fig.savefig(ospath.join(figures_path, f'sys{sys_ID}_{x}_vs_{y}.png'), dpi=300)
         del fig, ax
 
-def plot_scatter(seed, modelA, modelC, bl_metrics=None):
-    nx = len(modelA.parameters)
-    ny = len(modelA.metrics)
-    if modelA.table is None:
-        path = ospath.join(results_path, f'sysA_table_{seed}.xlsx')
-        modelA.table = load_data(path=path, header=[0,1])
-    if modelC.table is None:
-        path = ospath.join(results_path, f'sysC_table_{seed}.xlsx')
-        modelC.table = load_data(path=path, header=[0,1])
-    dfa_x = modelA.table.iloc[:, :nx]
-    dfa_y = modelA.table.iloc[:, nx:]
-    dfc_x = modelC.table.iloc[:, :nx]
-    dfc_y = modelC.table.iloc[:, nx:]
+def plot_scatter(seed, model1, model2=None, bl_metrics=None):
+    if model2 is None:
+        mdls = (model1,)
+        mks = ('o',) 
+        clrs = ('#004D40',)
+        prefix = model1.system.ID[-1]
+    else:
+        mdls = (model1, model2)
+        mks = ('o', '^') 
+        clrs = ('#D81B60', '#1E88E5')
+        prefix = f'{model1.system.ID[-1]}v{model2.system.ID[-1]}'
+    nx = len(model1.parameters)
+    ny = len(model1.metrics)
+    for mdl in mdls:
+        if mdl.table is None:
+            path = ospath.join(results_path, f'sys{mdl.system.ID[-1]}_table_{seed}.xlsx')
+            mdl.table = load_data(path=path, header=[0,1])
+    dfs_x = [mdl.table.iloc[:, :nx] for mdl in mdls]
+    dfs_y = [mdl.table.iloc[:, nx:] for mdl in mdls]
+
     fig, axes = plt.subplots(ny, nx, sharex=False, sharey=False, 
                              figsize=(nx*2.5, ny*2.5),
                              layout='constrained') 
     xlct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
     ylct = tk.MaxNLocator(nbins=3, min_n_ticks=1)
     for j in range(ny):
-        ya = dfa_y.iloc[:,j].values
-        yc = dfc_y.iloc[:,j].values
+        ys = [df_y.iloc[:,j].values for df_y in dfs_y]
         try: yb = bl_metrics[j]
         except: yb = -1
-        ymin = max(0, min(np.min(ya), np.min(yc), yb))
-        ymax = max(np.max(ya), np.max(yc), yb)
+        ymin = max(0, min(np.min(ys), yb))
+        ymax = max(np.max(ys), yb)
         y_ticks = ylct.tick_values(ymin, ymax)
         for i in range(nx):
-            xa = dfa_x.iloc[:,i].values
-            xc = dfc_x.iloc[:,i].values
-            x_ticks = xlct.tick_values(np.min(xa), np.max(xa))
+            xs = [df_x.iloc[:,i].values for df_x in dfs_x]
+            x_ticks = xlct.tick_values(np.min(xs), np.max(xs))
             ax = axes[j,i]
             ax.axhline(y=yb, ls='-', lw=0.3, c='black')
-            ax.scatter(xa, ya, marker='o', s=1, c='#D81B60')
-            ax.scatter(xc, yc, marker='^', s=1, c='#1E88E5')
+            for x, y, m, c in zip(xs, ys, mks, clrs):
+                ax.scatter(x, y, marker=m, s=1, c=c)
             ax.tick_params(axis='both', which='both', 
                            direction='inout', labelsize=10.5)
             ax.xaxis.set_ticks(x_ticks)
@@ -263,7 +269,7 @@ def plot_scatter(seed, modelA, modelC, bl_metrics=None):
             ax2y.yaxis.set_ticks(y_ticks)
             ax2y.tick_params(axis='y', which='both', direction='in')
             ax2y.yaxis.set_ticklabels([])
-    fig.savefig(ospath.join(figures_path, f'AvC_table_{seed}.png'), dpi=300)
+    fig.savefig(ospath.join(figures_path, f'{prefix}_table_{seed}.png'), dpi=300)
     return fig, axes
 
 def plot_2d_scatter(seed, model, bl_metrics=None):
@@ -422,6 +428,18 @@ def run_UA_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
             p.setter(p.baseline)
     return seed
 
+def run_UA_DvB(seed=None, N=N, T=T, t_step=t_step, plot=True):
+    seed = seed or seed_RGT()
+    run_model(mdlD, N, T, t_step, method='BDF', seed=seed)
+    for p in mdlB.parameters:
+        p.setter(p.baseline)
+    temp_sysB = mdlB._system
+    temp_sysB.simulate(t_span=(0, T), method='BDF', 
+                       state_reset_hook='reset_cache')
+    tmB = [m.getter() for m in mdlB.metrics]
+    if plot:
+        plot_scatter(seed, mdlD, None, tmB)
+
 def run_UA_sysB(seed=None, N=N, T=T, t_step=t_step, plot=True):
     seed = seed or seed_RGT()
     run_modelB(mdlB, N, T, t_step, method='BDF', seed=seed)
@@ -451,7 +469,8 @@ def run_ss_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
 
 #%%
 if __name__ == '__main__':
-    run_UA_AvC(seed=628)
+    # run_UA_AvC(seed=628)
+    run_UA_DvB()
     # run_ss_AvC(seed=223, N=100)
     # seed = 952
     # run_modelB(mdl, N, T, t_step, method='BDF', seed=seed)
