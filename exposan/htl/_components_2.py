@@ -212,16 +212,16 @@ def create_components(set_thermo=True):
                           particle_size='Soluble', degradability='Slowly',
                           organic=True)
     
+    CYCHEX = Component('CYCHEX', search_ID='110-82-7', particle_size='Soluble',
+                        degradability='Slowly', organic=True)
+    
+    
     HEXANE = Component('HEXANE', search_ID='110-54-3', particle_size='Soluble',
                         degradability='Slowly', organic=True)
 
     TWOMHEXAN = Component('TWOMHEXAN', search_ID='591-76-4',
                           particle_size='Soluble', degradability='Slowly',
                           organic=True)
-    
-    CYCHEX = Component('CYCHEX', search_ID='110-82-7', particle_size='Soluble',
-                        degradability='Slowly', organic=True)
-    
 
     HEPTANE = Component('HEPTANE', search_ID='142-82-5',
                         particle_size='Soluble', degradability='Slowly',
@@ -360,8 +360,8 @@ def create_components(set_thermo=True):
                        Biocrude, HTLaqueous, H2O, C, N, P,
                        O2, N2, CH4, C2H6, C3H8, C4H10, CO2, CO, H2, NH3,
                        H2SO4, H3PO4, MgCl2, NaOH, NH42SO4, NH4Cl,
-                       TWOMBUTAN, NPENTAN, TWOMPENTA, HEXANE, TWOMHEXAN,
-                       CYCHEX, HEPTANE, CC6METH, PIPERDIN, TOLUENE,
+                       TWOMBUTAN, NPENTAN, TWOMPENTA, CYCHEX, HEXANE,
+                       TWOMHEXAN, HEPTANE, CC6METH, PIPERDIN, TOLUENE,
                        THREEMHEPTA, OCTANE, ETHCYC6, ETHYLBEN, OXYLENE, C9H20,
                        PROCYC6, C3BENZ, FOURMONAN, C10H22, C4BENZ,
                        C11H24, C10H12, C12H26, C13H28, C14H30, OTTFNA, C6BENZ,

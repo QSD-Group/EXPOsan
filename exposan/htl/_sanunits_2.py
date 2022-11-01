@@ -38,11 +38,17 @@ References:
     Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
     PNNL--23227, 1126336; 2014; 
     https://doi.org/10.2172/1126336.
+    
+(5) Hao, S.; Choi, Y.-J.; Wu, B.; Higgins, C. P.; Deeb, R.; Strathmann, T. J.
+    Hydrothermal Alkaline Treatment for Destruction of Per- and Polyfluoroalkyl
+    Substances in Aqueous Film-Forming Foam. Environ. Sci. Technol.
+    2021, 55(5), 3283–3295. https://doi.org/10.1021/acs.est.0c06906.
 '''
 
 import biosteam as bst
 from qsdsan import SanUnit
 from qsdsan.sanunits import HXutility
+from exposan.htl._components_2 import create_components
 
 __all__ = ('SludgeLab',
           'HTL',
@@ -54,6 +60,8 @@ __all__ = ('SludgeLab',
           'MembraneDistillation',
           'HT',
           'HC')
+
+cmps = create_components()
 
 # =============================================================================
 # Sludge Lab
@@ -150,8 +158,8 @@ class SludgeLab(SanUnit):
     
     @property
     def AOSc(self):
-       return (3*self.sludge_N_ratio/14 + 2*self.sludge_O_ratio/16 -\
-               self.sludge_H_ratio/1)/(self.sludge_C_ratio/12)
+       return (3*self.sludge_N_ratio/14.0067 + 2*self.sludge_O_ratio/15.999 -\
+               self.sludge_H_ratio/1.00784)/(self.sludge_C_ratio/12.011)
    
     def _design(self):
         pass
@@ -171,6 +179,16 @@ class HTL(SanUnit):
     (wt%) can be evaluated using revised MCA model (Li et al., 2017,
     Leow et al., 2018) with known sludge composition (protein%, lipid%,
     and carbohydrate%, all afdw%).
+    
+    Notice that for HTL we just calculate each phases' total mass (except gas)
+    and calculate C, N, and P amount in each phase as properties. We don't
+    specify components for oil/char since we want to use MCA model to calculate
+    C and N amount and it is not necessary to calculate every possible
+    components since they will be treated in HT/AcidEx anyway. We also don't
+    specify components for aqueous since we want to calculate aqueous C, N, and
+    P based on mass balance closure. But later for CHG, HT, and HC, we specify
+    each components (except aqueous phase) for the application of flash,
+    distillation column, and CHP units.
     
     Model method: empirical model (based on MCA model and experimental data).
     
@@ -224,10 +242,12 @@ class HTL(SanUnit):
                                 dewatered_sludge.imass['Sludge_protein'] +\
                                 dewatered_sludge.imass['Sludge_carbo']
         
-# =============================================================================
-# NaOH added here, the amount is made up
-# =============================================================================
-        base.imass['NaOH'] = dewatered_sludge_afdw/20  
+        # NaOH added here. target is 5 M (Shilai Hao EST)
+        # for water solution: 5 M NaOH: 20 g NaOH / 100 mL H2O
+        # (0.2 kg NaOH / 1 kg H2O)
+        # here, the calculation is based on the water amount in the dewatered
+        # sludge (assume the initial pH = 7, and solids don't affect pH)
+        base.imass['NaOH'] = dewatered_sludge.imass['H2O']*0.2 
         
         lipid_ratio = dewatered_sludge.imass['Sludge_lipid']/\
                       dewatered_sludge_afdw
@@ -262,6 +282,7 @@ class HTL(SanUnit):
                                   dewatered_sludge.imass['Sludge_ash'] +\
                                   base.imass['NaOH']
         # assume ash (all soluble based on Jones) goes to water
+        # all NaOH also goes to water to maintain pH for membrane distillation
         
         biochar.phase = 's'
         offgas.phase = 'g'
@@ -322,11 +343,12 @@ class HTL(SanUnit):
 
     @property
     def offgas_C(self):
-        return self.outs[3].imass['CO2']*12/44 +\
-               self.outs[3].imass['CH4']*12/16 +\
-               self.outs[3].imass['C2H6']*24/30
-
-    # C, N, and P in aqueous phase are calculated base on mass balance closure
+        carbon = 0
+        for name in self.gas_composition.keys():
+            carbon += self.outs[3].imass[name]*cmps[name].i_C
+        return carbon   
+               
+    # C, N, and P in aqueous phase are calculated based on mass balance closure
     @property
     def HTLaqueous_C(self):
         return (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
@@ -350,7 +372,7 @@ class HTL(SanUnit):
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
         hx_ins0.mix_from((self.outs[1], self.outs[2], self.outs[3]))
         hx_outs0.mix_from((self.outs[1], self.outs[2], self.outs[3]))
-        hx_ins0.T = self.ins[0].T #temperature before/after HTL are similar
+        hx_ins0.T = self.ins[0].T # temperature before/after HTL are similar
         hx.T = hx_outs0.T
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
     
@@ -392,7 +414,7 @@ class AcidExtraction(SanUnit):
         biochar, acid = self.ins
         residual, extracted = self.outs
         
-        acid.imass['H2SO4'] = biochar.F_mass*self.acid_vol*0.5*98/1000
+        acid.imass['H2SO4'] = biochar.F_mass*self.acid_vol*0.5*98.079/1000
         #0.5 M H2SO4 acid_vol (10 mL/1 g) Biochar
         acid.imass['H2O'] = biochar.F_mass*self.acid_vol*1.05 -\
                             acid.imass['H2SO4']
@@ -562,12 +584,12 @@ class StruvitePrecipitation(SanUnit):
         mixture, supply_MgCl2, supply_NH4Cl = self.ins
         struvite, effluent = self.outs
         
-        if mixture.imass['P']/31 > mixture.imass['N']/14:
-            supply_NH4Cl.imass['NH4Cl'] = (mixture.imass['P']/31 -\
-                                           mixture.imass['N']/14)*53.5
+        if mixture.imass['P']/30.973762 > mixture.imass['N']/14.0067:
+            supply_NH4Cl.imass['NH4Cl'] = (mixture.imass['P']/30.973762 -\
+                                           mixture.imass['N']/14.0067)*53.491
         # make sure N:P >= 1:1
         
-        supply_MgCl2.imass['MgCl2'] = mixture.imass['P']/31*95.211*\
+        supply_MgCl2.imass['MgCl2'] = mixture.imass['P']/30.973762*95.211*\
                                       self.Mg_P_ratio # Mg:P = 1:1
         struvite.imass['Struvite'] = mixture.imass['P']*\
                                      self.P_pre_recovery_ratio/\
@@ -576,13 +598,14 @@ class StruvitePrecipitation(SanUnit):
         
         effluent.copy_like(mixture)
         effluent.imass['P'] -= struvite.imass['Struvite']*self.P_in_struvite
-        effluent.imass['N'] += supply_NH4Cl.imass['NH4Cl']*14/53.5 -\
+        effluent.imass['N'] += supply_NH4Cl.imass['NH4Cl']*14.0067/53.491 -\
                                struvite.imass['Struvite']*\
-                               self.P_in_struvite/31*14
+                               self.P_in_struvite/30.973762*14.0067
         effluent.imass['H2O'] += (supply_MgCl2.imass['MgCl2'] +\
                                   supply_NH4Cl.imass['NH4Cl'] -\
                                   struvite.imass['Struvite']*\
-                                  (1 - self.P_in_struvite*(1+14/31)))
+                                  (1 - self.P_in_struvite*\
+                                  (1+14.0067/30.973762)))
         struvite.phase = 's'    
             
         struvite.T = mixture.T
@@ -594,7 +617,7 @@ class StruvitePrecipitation(SanUnit):
 
     @property
     def struvite_N(self):
-        return self.struvite_P*14/31
+        return self.struvite_P*14.0067/30.973762
 
     def _design(self):
         pass
@@ -631,7 +654,9 @@ class CHG(SanUnit):
                                   'CO2':0.432,
                                   'C2H6':0.011,
                                   'C3H8':0.030,
-                                  'H2':0.0001}, # Jones
+                                  'H2':0.0001},
+                 # Jones
+                 # will not be a variable in uncertainty/sensitivity analysis
                  gas_c_to_total_c=0.764*0.262, # Li EST
                  CHGout_pre = 3065.7*6894.76,
                  # Jones 2014: pressure before flash
@@ -655,11 +680,11 @@ class CHG(SanUnit):
         CHGfeed = self.ins[0]
         CHGout = self.outs[0]
         
-        gas_mass = CHGfeed.imass['C']*self.gas_c_to_total_c/\
-                           (self.gas_composition['CH4']*12/16 +\
-                            self.gas_composition['CO2']*12/44 +\
-                            self.gas_composition['C2H6']*24/30 +\
-                            self.gas_composition['C3H8']*36/44)
+        gas_C_ratio = 0
+        for name, ratio in self.gas_composition.items():
+            gas_C_ratio += ratio*cmps[name].i_C
+        
+        gas_mass = CHGfeed.imass['C']*self.gas_c_to_total_c/gas_C_ratio
         
         for name,ratio in self.gas_composition.items():
             CHGout.imass[name] = gas_mass*ratio
@@ -674,6 +699,7 @@ class CHG(SanUnit):
         
     @property
     def CHGout_C(self):
+        # not include carbon in gas phase
         return self.ins[0].imass['C']*(1 - self.gas_c_to_total_c)
     
     @property
@@ -741,7 +767,7 @@ class MembraneDistillation(SanUnit):
     def _run(self):
         
         influent, acid = self.ins
-        ammoniasulfate, ww = self.outs
+        ammoniumsulfate, ww = self.outs
         
         influent.imass['C'] = self.ins[0]._source.ins[0]._source.CHGout_C
         influent.imass['N'] = self.ins[0]._source.ins[0]._source.CHGout_N
@@ -749,28 +775,29 @@ class MembraneDistillation(SanUnit):
         influent.imass['H2O'] -= (influent.imass['C'] + influent.imass['N'] +\
                                   influent.imass['P'])
         
-        acid.imass['H2SO4'] = influent.imass['N']/14/self.N_S_ratio*98
-        acid.imass['H2O'] = acid.imass['H2SO4']*1000/98/0.5*1.05 -\
+        acid.imass['H2SO4'] = influent.imass['N']/14.0067/self.N_S_ratio*98.079
+        acid.imass['H2O'] = acid.imass['H2SO4']*1000/98.079/0.5*1.05 -\
                             acid.imass['H2SO4']
         
         pKa = 9.26 # ammonia pKa
         ammonia_to_ammonium = 10**(-pKa)/10**(-self.pH)
-        ammonia_in_feed = influent.imass['N']/14*ammonia_to_ammonium/(1 +\
-                          ammonia_to_ammonium)*17
+        ammonia_in_feed = influent.imass['N']/14.0067*ammonia_to_ammonium/(1 +\
+                          ammonia_to_ammonium)*17.031
 
-        ammoniasulfate.imass['NH42SO4'] = ammonia_in_feed*\
-                                          self.ammonia_transfer_ratio/34*132
-        ammoniasulfate.imass['H2O'] = acid.imass['H2O']
-        ammoniasulfate.imass['H2SO4'] = acid.F_mass + ammoniasulfate.\
-                                        imass['NH42SO4']/132*26 -\
-                                        ammoniasulfate.imass['NH42SO4'] -\
-                                        ammoniasulfate.imass['H2O']
+        ammoniumsulfate.imass['NH42SO4'] = ammonia_in_feed*\
+                                          self.ammonia_transfer_ratio/34.062*\
+                                          132.14
+        ammoniumsulfate.imass['H2O'] = acid.imass['H2O']
+        ammoniumsulfate.imass['H2SO4'] = acid.imass['H2SO4'] +\
+                                         ammoniumsulfate.imass['NH42SO4']/\
+                                         132.14*28.0134 -\
+                                         ammoniumsulfate.imass['NH42SO4']
                                         
         ww.copy_like(influent)
         ww.imass['N'] -= influent.imass['N']*self.ammonia_transfer_ratio*\
                          ammonia_to_ammonium/(1 + ammonia_to_ammonium)
                          
-        ammoniasulfate.T = acid.T
+        ammoniumsulfate.T = acid.T
         ww.T = acid.T
         ww.P = acid.P
         
@@ -815,6 +842,7 @@ class HT(SanUnit):
                  HTout_T=43+273.15,
                  gas_composition = {'CH4':0.285, 'C2H6':0.365, 'C3H8':0.350},
                  # C3H8 includes N-C4H10, N-PENTAN, and HEXANE (stream #339)
+                 # will not be a variable in uncertainty/sensitivity analysis
                  oil_composition={'TWOMBUTAN':0.0044, 'NPENTAN':0.0040,
                                   'TWOMPENTA':0.0044, 'HEXANE':0.0035,
                                   'TWOMHEXAN':0.0044, 'HEPTANE':0.0044,
@@ -837,6 +865,7 @@ class HT(SanUnit):
                                   'C26H42O4':0.0111, 'C30H62':0.0022},
                  # Jones et al., 2014
                  # spreadsheet HT calculation
+                 # will not be a variable in uncertainty/sensitivity analysis
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -895,40 +924,65 @@ class HT(SanUnit):
         
         ht_out.T = self.HTout_T
         
-    @property
-    def biooil_C(self):
-        return min(self.outs[2].F_mass*self.biooil_C_ratio,
-                   self.ins[0]._source.biocrude_C)
+        self.HT_C_check() # allow +/- 10% out of mass balance
+        self.HT_N_check() # allow +/- 10% out of mass balance
+        # possibility exist that more carbon is in biooil and gas than in
+        # biocrude because we use the biooil/gas compositions to calculate
+        # carbon. In this case, the C in HT aqueous phase will be negative.
+        # It's OK if the mass balance is within +/- 10%. Otherwise, an
+        # exception will be raised.
         
     @property
-    def HTfuel_gas_C(self):
-        HTfuel_gas_C = 0
-        fuelgas_carbo_ratio = {
-            'C4H10':60/72,
-            'CO':12/28,
-            'CO2':12/44,
-            'C2H6':24/30,
-            'C3H8':36/44,
-            'CH4':12/16
-              }
-        for name, ratio in fuelgas_carbo_ratio.items():
-            HTfuel_gas_C+=self.outs[1].imass[name]*ratio
-        return min(HTfuel_gas_C, self.ins[0]._source.biocrude_C-self.biooil_C)
-    
+    def biooil_C(self):
+        carbon = 0
+        for name in self.oil_composition.keys():
+            carbon += self.outs[0].imass[name]*cmps[name].i_C
+        return carbon
+
     @property
     def biooil_N(self):
-        return self.outs[2].F_mass*self.biooil_N_ratio
-
-    biocrude_C_ratio = HTL.biocrude_C_ratio
+        nitrogen = 0
+        for name in self.oil_composition.keys():
+            nitrogen += self.outs[0].imass[name]*cmps[name].i_N
+        return nitrogen
 
     @property
+    def HTfuel_gas_C(self):
+        carbon = 0
+        for name in self.gas_composition.keys():
+            carbon += self.outs[0].imass[name]*cmps[name].i_C
+        return carbon
+    
+    def HT_C_check(self):
+        HTL = self.ins[0]._source.ins[0]._source.ins[0]._source
+        carbon = HTL.biocrude_C - self.biooil_C - self.HTfuel_gas_C
+        if carbon < -0.1*HTL.biocrude_C:
+            raise Exception('carbon mass balance is out of +/- 10%')
+            
+    def HT_N_check(self):
+        HTL = self.ins[0]._source.ins[0]._source.ins[0]._source
+        nitrogen = HTL.biocrude_N - self.biooil_N
+        if nitrogen < -0.1*HTL.biocrude_N:
+            raise Exception('nitrogen mass balance is out of +/- 10%')
+    
+    @property
     def HTaqueous_C(self):
-        return max(0,self.ins[0]._source.biocrude_C - self.HTfuel_gas_C -\
-                   self.biooil_C)
+        HTL = self.ins[0]._source.ins[0]._source.ins[0]._source
+        carbon = HTL.biocrude_C - self.biooil_C - self.HTfuel_gas_C
+        if carbon > 0:
+            print(f'{carbon:.2f}')
+        if -0.1*HTL.biocrude_C < carbon < 0:
+            print(f'{carbon:.2f}, acceptable: within 10% of the input carbon')
 
     @property
     def HTaqueous_N(self):
-        return self.ins[0]._source.biocrude_N - self.biooil_N
+        HTL = self.ins[0]._source.ins[0]._source.ins[0]._source
+        nitrogen = HTL.biocrude_N - self.biooil_N
+        if nitrogen > 0:
+            print(f'{nitrogen:.2f}')
+        if -0.1*HTL.biocrude_N < nitrogen < 0:
+            print(f'{nitrogen:.2f}, acceptable: within 10% of the input '\
+                   'nitrogen')
 
     def _design(self):
         
@@ -974,15 +1028,17 @@ class HC(SanUnit):
                  HC_rxn_T=451+273.15,
                  HC_out_T=60+273.15,
                  gas_composition = {'CO2':0.860, 'CH4':0.140},
-                 oil_composition = {'HEXANE':0.0121, 'CYCHEX':0.0401,
-                                    'HEPTANE':0.1219, 'OCTANE':0.0853,
-                                    'C9H20':0.0950, 'C10H22':0.1226,
-                                    'C11H24':0.1756, 'C12H26':0.1374,
-                                    'C13H28':0.0969, 'C14H30':0.0483,
-                                    'C15H32':0.0338, 'C16H34':0.0200,
+                 # will not be a variable in uncertainty/sensitivity analysis
+                 oil_composition = {'CYCHEX':0.0389,'HEXANE':0.0116,
+                                    'HEPTANE':0.1202, 'OCTANE':0.0851,
+                                    'C9H20':0.0952, 'C10H22':0.1231,
+                                    'C11H24':0.1764, 'C12H26':0.1382,
+                                    'C13H28':0.0974, 'C14H30':0.0486,
+                                    'C15H32':0.0340, 'C16H34':0.0201,
                                     'C17H36':0.0045, 'C18H38':0.0010,
-                                    'C19H40':0.0052, 'C20H42':0.0002, #!!!combine C20H42 and PHYTANE as C20H42
-                                    'PHYTANE':0.0002},
+                                    'C19H40':0.0052, 'C20H42':0.0003},
+                 #combine C20H42 and PHYTANE as C20H42
+                 # will not be a variable in uncertainty/sensitivity analysis
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo,init_with)
@@ -1007,27 +1063,57 @@ class HC(SanUnit):
         
         H2_splitter = self.ins[1]._source.ins[0]._source.ins[0]._source
         
-        # the amount of H2 reactioned is 1/96*heavy oil amount (unchangeable)
+        # the amount of H2 reactioned is 0.01125*heavy oil amount (unchangeable)
         # H2 amount should be OK here, but in case of not enough, add the
         # following exception (excess is OK):
-        if hydrogen_gas.imass['H2'] < 1/96*heavy_oil.F_mass:
+        if hydrogen_gas.imass['H2'] < 0.01125*heavy_oil.F_mass:
             raise Exception('H2 is too less, the minimum should be '\
-              f'[{1/96*heavy_oil.F_mass/(1 - H2_splitter.split[0]):.2f}.')
+              f'[{0.01125*heavy_oil.F_mass/(1 - H2_splitter.split[0]):.2f}.')
     
-        hc_oil_mass = heavy_oil.F_mass*97/96*self.oil_ratio
+        hc_oil_mass = heavy_oil.F_mass*1.01125*self.oil_ratio
 
         for name, ratio in self.oil_composition.items():
             hc_out.imass[name] = hc_oil_mass*ratio
 
-        hc_gas_mass = heavy_oil.F_mass*97/96*self.off_gas_ratio
+        hc_gas_mass = heavy_oil.F_mass*1.01125*self.off_gas_ratio
 
         for name, ratio in self.gas_composition.items():
             hc_out.imass[name] = hc_gas_mass*ratio
         
-        hc_out.imass['H2'] = hydrogen_gas.imass['H2'] - heavy_oil.F_mass/96
+        hc_out.imass['H2'] = hydrogen_gas.imass['H2'] -\
+                             heavy_oil.F_mass*0.01125
         
         hc_out.P = self.HC_out_pre
         hc_out.T = self.HC_out_T
+        
+        self.HC_C_check()
+        # make sure that carbon mass balance is within +/- 10%. Otherwise, an
+        # exception will be raised.
+        
+    @property
+    def biooil_C(self):
+        carbon = 0
+        for name in self.oil_composition.keys():
+            carbon += self.outs[0].imass[name]*cmps[name].i_C
+        return carbon
+    
+    @property
+    def HCfuel_gas_C(self):
+        carbon = 0
+        for name in self.gas_composition.keys():
+            carbon += self.outs[0].imass[name]*cmps[name].i_C
+        return carbon
+    
+    def HC_C_check(self):
+        C_in = 0
+        total_num = len(list(cmps))
+        for num in range(total_num):
+            C_in += self.ins[0].imass[str(list(cmps)[num])]*list(cmps)[num].i_C
+            
+        C_out = self.biooil_C + self.HCfuel_gas_C
+        
+        if C_out < 0.95*C_in or C_out > 1.05*C_out :
+            raise Exception('carbon mass balance is out of +/- 5%')
         
     def _design(self):
         

@@ -12,11 +12,19 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 
 References:
-(1) Knorr, D.; Lukas, J.; Schoen, P. Production of Advanced Biofuels via
+
+(1) Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
+    Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
+    Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
+    Process Design and Economics for the Conversion of Algal Biomass to
+    Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
+    PNNL--23227, 1126336; 2014; 
+    https://doi.org/10.2172/1126336.
+    
+(2) Knorr, D.; Lukas, J.; Schoen, P. Production of Advanced Biofuels via
     Liquefaction - Hydrothermal Liquefaction Reactor Design: April 5, 2013;
     NREL/SR-5100-60462, 1111191; 2013; p NREL/SR-5100-60462, 1111191.
     https://doi.org/10.2172/1111191.
-
 '''
 
 import qsdsan as qs
@@ -76,8 +84,8 @@ H1 = qsu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=351+273.15,
 # watts-per-square-meter-per-k-to-btus-th--per-hour-per-square-foot-per-f-
 # conversion.html
 
-HTL = su.HTL('A120', ins=(H1-0,'NaOH'), outs=('biochar','HTL_aqueous','biocrude',
-                                     'offgas_HTL'))
+HTL = su.HTL('A120', ins=(H1-0,'NaOH'), outs=('biochar','HTL_aqueous',
+             'biocrude','offgas_HTL'))
 HTL_hx = HTL.heat_exchanger
 
 # not including three phase separator for now, ask Yalin
@@ -114,7 +122,8 @@ F1 = Flash('A260', ins=CHG-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
            T=60+273.15, P=50*6894.76)
 
 MemDis = su.MembraneDistillation('A270', ins=(F1-1, SP1-1),
-                                 outs=('Ammonia_Sulfate','ww'))
+                                 outs=('ammonium_sulfate','MemDis_ww'))
+#ammonium sulfate fate? crystallation or transport out?
 
 # =============================================================================
 # H2 plant (Area 500)
@@ -229,12 +238,15 @@ DieselTank = qsu.StorageTank('T610', ins=H6-0, outs=('diesel_out'),
                              tau=3*24, init_with='Stream')
 # store for 3 days based on Jones 2014
 
-GasMixer = qsu.Mixer('S620', ins=(HTL-3, F1-0, F2-0, F4-0), outs=('fuel_gas'),
-                     init_with='Stream')
+GasMixer = qsu.Mixer('S620', ins=(HTL-3, F1-0, F2-0, F3-0, F4-0, F5-0),
+                     outs=('fuel_gas'), init_with='Stream')
 # don't include F3-0 and F5-0 because they are empty. May change later.
 
 CHP = qsu.CHP('A620', ins=(GasMixer-0,'natural_gas','air'),
               outs=('emission','solid_ash'))
+
+WWMixer = qsu.Mixer('S630', ins=(SluT-0, SluC-0, MemDis-1, SP3-0),
+                    outs='wastewater')
 
 # =============================================================================
 # facilities
@@ -256,7 +268,7 @@ sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              HX_H2_HT, IC_H2_HT, HX_H2_HC, IC_H2_HC, P3, H3,
                              HT, F2, F3, SP3, HX_biocrude, C1, C2, P4, H4, HC,
                              F4, F5, C3, GasolineMixer, DieselMixer, H5, H6,
-                             GasolineTank, DieselTank, GasMixer, CHP, ))
+                             GasolineTank, DieselTank, GasMixer, CHP, WWMixer))
                 #, facilities=(HXN,))
 
 sys.operating_hours = 7884 # NRES 2013
@@ -356,6 +368,36 @@ dist = shape.Triangle(0.035,0.0648,0.102)
 def set_biocrude_moisture_content(i):
     HTL.biocrude_moisture_content=i
 
+dist = shape.Normal(0.764,0.049)
+@param(name='toc_tc_ratio',
+        element=CHG,
+        kind='coupled',
+        units='-',
+        baseline=0.764,
+        distribution=dist)
+def set_toc_tc_ratio(i):
+    CHG.toc_tc_ratio=i
+
+dist = shape.Normal(0.262,0.06)
+@param(name='toc_to_gas_c_ratio',
+        element=CHG,
+        kind='coupled',
+        units='-',
+        baseline=0.262,
+        distribution=dist)
+def set_toc_to_gas_c_ratio(i):
+    CHG.toc_to_gas_c_ratio=i
+
+dist = shape.Triangle(0.8,0.825,0.85)
+@param(name='N_recovery_rate',
+        element=MemDis,
+        kind='coupled',
+        units='-',
+        baseline=0.825,
+        distribution=dist)
+def set_N_recovery_rate(i):
+    MemDis.N_recovery_rate=i   
+
 dist = shape.Triangle(0.75,0.78,0.82)
 @param(name='biooil_ratio',
         element=HT,
@@ -375,76 +417,6 @@ dist = shape.Triangle(0.04,0.073,0.1)
         distribution=dist)
 def set_gas_ratio(i):
     HT.gas_ratio=i
-
-dist = shape.Normal(0.128,0.00064)
-@param(name='co_ratio',
-        element=HT,
-        kind='coupled',
-        units='-',
-        baseline=0.128,
-        distribution=dist)
-def set_co_ratio_HT(i):
-    HT.co_ratio=i
-
-dist = shape.Normal(0.007,0.000035)
-@param(name='co2_ratio',
-        element=HT,
-        kind='coupled',
-        units='-',
-        baseline=0.007,
-        distribution=dist)
-def set_co2_ratio_HT(i):
-    HT.co2_ratio=i
-
-dist = shape.Normal(0.188,0.00094)
-@param(name='c2h6_ratio',
-        element=HT,
-        kind='coupled',
-        units='-',
-        baseline=0.188,
-        distribution=dist)
-def set_c2h6_ratio_HT(i):
-    HT.c2h6_ratio=i
-
-dist = shape.Normal(0.107,0.000535)
-@param(name='c3h8_ratio',
-        element=HT,
-        kind='coupled',
-        units='-',
-        baseline=0.107,
-        distribution=dist)
-def set_c3h8_ratio_HT(i):
-    HT.c3h8_ratio=i
-
-dist = shape.Normal(0.09,0.00045)
-@param(name='c4h10_ratio',
-        element=HT,
-        kind='coupled',
-        units='-',
-        baseline=0.09,
-        distribution=dist)
-def set_c4h10_ratio_HT(i):
-    HT.c4h10_ratio=i
-
-dist = shape.Triangle(0.846,0.854,0.86)
-@param(name='biooil_C_ratio',
-        element=HT,
-        kind='coupled',
-        units='-',
-        baseline=0.855,
-        distribution=dist)
-def set_biooil_C_ratio(i):
-    HT.biooil_C_ratio=i
-
-dist = shape.Triangle(0.0004,0.004111,0.016)
-@param(name='biooil_N_ratio',
-        element=HT,
-        kind='coupled',
-        units='-',
-        baseline=0.01,
-        distribution=dist)
-def set_biooil_N_ratio(i):
-    HT.biooil_N_ratio=i
 
 dist = shape.Triangle(0.92625,0.95,0.97375)
 @param(name='P_acid_recovery_ratio',
@@ -476,77 +448,6 @@ dist = shape.Triangle(0.097,0.11,0.127)
 def set_P_in_struvite(i):
     StruPre.P_in_struvite=i
 
-dist = shape.Normal(0.244,0.00122)
-@param(name='ch4_ratio',
-        element=CHG,
-        kind='coupled',
-        units='-',
-        baseline=0.244,
-        distribution=dist)
-def set_ch4_ratio_CHG(i):
-    CHG.ch4_ratio=i
-
-dist = shape.Normal(0.029,0.000145)
-@param(name='co_ratio',
-        element=CHG,
-        kind='coupled',
-        units='-',
-        baseline=0.029,
-        distribution=dist)
-def set_co_ratio_CHG(i):
-    CHG.co_ratio=i
-
-dist = shape.Normal(0.15,0.00075)
-@param(name='co2_ratio',
-        element=CHG,
-        kind='coupled',
-        units='-',
-        baseline=0.15,
-        distribution=dist)
-def set_co2_ratio_CHG(i):
-    CHG.co2_ratio=i
-
-dist = shape.Normal(0.043,0.000215)
-@param(name='c2h6_ratio',
-        element=CHG,
-        kind='coupled',
-        units='-',
-        baseline=0.043,
-        distribution=dist)
-def set_c2h6_ratio_CHG(i):
-    CHG.c2h6_ratio=i
-
-dist = shape.Normal(0.764,0.049)
-@param(name='toc_tc_ratio',
-        element=CHG,
-        kind='coupled',
-        units='-',
-        baseline=0.764,
-        distribution=dist)
-def set_toc_tc_ratio(i):
-    CHG.toc_tc_ratio=i
-
-dist = shape.Normal(0.262,0.06)
-@param(name='toc_to_gas_c_ratio',
-        element=CHG,
-        kind='coupled',
-        units='-',
-        baseline=0.262,
-        distribution=dist)
-def set_toc_to_gas_c_ratio(i):
-    CHG.toc_to_gas_c_ratio=i
-
-dist = shape.Triangle(0.8,0.825,0.85)
-@param(name='N_recovery_rate',
-        element=MemDis,
-        kind='coupled',
-        units='-',
-        baseline=0.825,
-        distribution=dist)
-def set_N_recovery_rate(i):
-    MemDis.N_recovery_rate=i   
-
-
 metric = model.metric
 @metric(name='Struvite',units='kg/hr',element='Production')
 def get_struvite_production():
@@ -558,21 +459,16 @@ def get_nh42so4_production():
 
 @metric(name='Gasoline',units='kg/hr',element='Production')
 def get_gasoline_production():
-    return GasolineTank.outs[0].imass['Gasoline']
+    return GasolineTank.outs[0].F_mass
 
 @metric(name='Diesel',units='kg/hr',element='Production')
 def get_diesel_production():
-    return DieselTank.outs[0].imass['Diesel']
-
-@metric(name='CO2',units='kg/hr',element='Production')
-def get_co2_production():
-    return CHP.outs[0].imass['CO2']
-
+    return DieselTank.outs[0].F_mass
 
 #%%
 import numpy as np
 np.random.seed(3221)
-samples = model.sample(N=100, rule='L')
+samples = model.sample(N=10, rule='L')
 model.load_samples(samples)
 model.evaluate()
 model.table
