@@ -37,7 +37,7 @@ fake_sludge = qs.Stream('fake_sludge', H2O=100000, units='kg/hr', T=25+273.15)
 # set H2O equal to the total sludge input flow
 # assume 99% moisture, 20 us tons of dw sludge per h
 
-hydrogen = qs.Stream('hydrogen', H2=15.64, units='kg/hr', T=25+273.15)
+hydrogen = qs.Stream('hydrogen', H2=18.92, units='kg/hr', T=25+273.15)
 # hydrogen amount can be calculate based on biocrude (primary) and heavy amount
 # if value provided is not in the reasonable range, an exception will be raised
 
