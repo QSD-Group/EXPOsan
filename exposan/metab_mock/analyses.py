@@ -451,7 +451,7 @@ def run_ss_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
 
 #%%
 if __name__ == '__main__':
-    run_UA_AvC()
+    run_UA_AvC(seed=628)
     # run_ss_AvC(seed=223, N=100)
     # seed = 952
     # run_modelB(mdl, N, T, t_step, method='BDF', seed=seed)

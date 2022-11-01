@@ -14,7 +14,7 @@ for license details.
 import qsdsan as qs
 # from warnings import warn
 from chaospy import distributions as shape
-from qsdsan.utils import ospath, time_printer, get_SRT
+from qsdsan.utils import ospath, time_printer, get_SRT, AttrFuncSetter
 from exposan.metab_mock import systems as s, results_path, biomass_IDs, vfa_IDs
 from biosteam.evaluation._utils import var_indices
 # import pandas as pd
@@ -40,6 +40,8 @@ n_mus = len(mus_bl)
 # =============================================================================
 get_uniform_w_frac = lambda b, frac: shape.Uniform(lower=b*(1-frac), upper=b*(1+frac))
 
+fset_recir = lambda r: [r, 1]
+
 def add_degas_params(model, bioreactors, membranes, 
                      recirculation=(1, 19),  # ratio to influent Q
                      b_ermv=0.85, bounds_ermv=(0.5, 1)):
@@ -51,11 +53,9 @@ def add_degas_params(model, bioreactors, membranes,
     for u in bioreactors:
         b = 1
         D = shape.Uniform(lb, ub)  # equivalent to split varied in [0.5, 0.95]
-        @param(name=f'{u.ID}_recirculation_rate', element=u, kind='coupled', 
-               units='', baseline=b, distribution=D)
-        def DM_recir(r):
-            try: u.split = [r, 1]
-            except: u.split = r/(r+1)
+        param(setter=AttrFuncSetter(u, 'split', fset_recir), 
+              name=f'{u.ID}_recirculation_rate', element=u, kind='coupled', 
+              units='', baseline=b, distribution=D)
     
     b = b_ermv
     D = shape.Uniform(*bounds_ermv)
@@ -87,41 +87,37 @@ def add_metrics(model, biogas, wastewater, units):
     S_ch4_i_mass = eff.components.S_ch4.i_mass
     cmps_i_COD = eff.components.i_COD
         
-    @metric(name='SRT', units='d', element='System')
-    def get_sys_SRT():
-        return get_SRT(model._system, biomass_IDs, (R1.ID, R2.ID))
+    # @metric(name='SRT', units='d', element='System')
+    # def get_sys_SRT():
+    #     return get_SRT(model._system, biomass_IDs, (R1.ID, R2.ID))
     
-    @metric(name='R1 VFAs', units='g/L', element='Stage_1')
-    def get_stage1_VFAs():
-        return R1.outs[1].composite('COD', subgroup=vfa_IDs)/1000
+    # @metric(name='R1 VFAs', units='g/L', element='Stage_1')
+    # def get_stage1_VFAs():
+    #     return R1.outs[1].composite('COD', subgroup=vfa_IDs)/1000
         
     @metric(name='R1 H2', units='mg/L', element='Stage_1')
     def get_H2():
         return R1.outs[1].iconc['S_h2']*S_h2_i_mass
 
-    # @metric(name='R1 minimum H2 inhibition factor', units='', element='Stage_1')
-    # def get_Ih2():
-    #     return min(R1._tempstate[2])
+    @metric(name='R1 minimum H2 inhibition factor', units='', element='Stage_1')
+    def get_Ih2():
+        return min(R1._tempstate[2])
     
-    # @metric(name='R1 pH', units='', element='Stage_1')
-    # def get_pH():
-    #     return R1._tempstate[0]
+    @metric(name='R1 pH', units='', element='Stage_1')
+    def get_pH():
+        return R1._tempstate[0]
     
-    # @metric(name='R1 minimum pH inhibition factor', units='', element='Stage_1')
-    # def get_Iph():
-    #     return min(R1._tempstate[1][:-1])
+    @metric(name='R1 minimum pH inhibition factor', units='', element='Stage_1')
+    def get_Iph():
+        return min(R1._tempstate[1][:-1])
         
     @metric(name='R2 CH4', units='mg/L', element='Stage_2')
     def get_CH4():
         return eff.iconc['S_ch4']*S_ch4_i_mass
     
-    @metric(name='Effluent COD', units='g/L', element='System')
-    def get_eff_COD():
-        return eff.COD/1000
-
-    @metric(name='Total COD removal', units='%', element='System')
-    def get_rCOD():
-        return (1 - sum(eff.mass*cmps_i_COD)/sum(inf.mass*cmps_i_COD))*100
+    # @metric(name='Effluent COD', units='g/L', element='System')
+    # def get_eff_COD():
+    #     return eff.COD/1000
     
     @metric(name='H2 production', units='kg/d', element='Biogas')
     def get_QH2():
@@ -130,7 +126,11 @@ def add_metrics(model, biogas, wastewater, units):
     @metric(name='CH4 production', units='kg/d', element='Biogas')
     def get_QCH4():
         return sum([bg.imass['S_ch4'] for bg in biogas])*S_ch4_i_mass*24
-    
+ 
+    @metric(name='Total COD removal', units='%', element='System')
+    def get_rCOD():
+        return (1 - sum(eff.mass*cmps_i_COD)/sum(inf.mass*cmps_i_COD))*100
+   
 
 def create_modelA(sys=None):
     sysA = sys or s.create_systems(which='A')[0]
