@@ -807,7 +807,7 @@ class HT(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
-                 biooil_ratio=0.85, gas_ratio=0.05,
+                 biooil_ratio=0.835, gas_ratio=0.06,
                  # Jones et al., 2014
                  # spreadsheet HT calculation
                  HTout_pre = 717.4*6894.76, # Jones 2014: 55 psia
@@ -856,32 +856,32 @@ class HT(SanUnit):
         biocrude, hydrogen_gas = self.ins
         ht_out = self.outs[0]
         
-        H2_splitter = self.ins[1]._source.ins[0]._source.ins[0]._source
+        H2_split = self.ins[1]._source.ins[0]._source.ins[0]._source
         
-        # the amount of H2 reactioned is 0.04*biocrude amount (unchangeable)
+        # the amount of H2 reactioned is 0.046*biocrude amount (unchangeable)
         # the amount of H2 added can range from 1-3 times rxned amount
-        if hydrogen_gas.imass['H2'] < 0.04*biocrude.imass['Biocrude']:
+        if hydrogen_gas.imass['H2'] < 0.046*biocrude.imass['Biocrude']:
             raise Exception('H2 is too less, should be between '\
-              f'[{0.04*biocrude.imass["Biocrude"]/H2_splitter.split[0]:.2f}, '\
-              f'{0.12*biocrude.imass["Biocrude"]/H2_splitter.split[0]:.2f}] '\
+              f'[{0.046*biocrude.imass["Biocrude"]/H2_split.split[0]:.2f}, '\
+              f'{0.138*biocrude.imass["Biocrude"]/H2_split.split[0]:.2f}] '\
               'kg/hr.')
-        elif hydrogen_gas.imass['H2'] > 0.12*biocrude.imass['Biocrude']:
+        elif hydrogen_gas.imass['H2'] > 0.138*biocrude.imass['Biocrude']:
             raise Exception('H2 is too much, should be between '\
-              f'[{0.04*biocrude.imass["Biocrude"]/H2_splitter.split[0]:.2f}, '\
-              f'{0.12*biocrude.imass["Biocrude"]/H2_splitter.split[0]:.2f}] '\
+              f'[{0.046*biocrude.imass["Biocrude"]/H2_split.split[0]:.2f}, '\
+              f'{0.138*biocrude.imass["Biocrude"]/H2_split.split[0]:.2f}] '\
               'kg/hr.')
         
         # *1.4 means biocrude amount + H2 reactioned amount
-        biooil_total_mass = biocrude.imass['Biocrude']*1.04*self.biooil_ratio
+        biooil_total_mass = biocrude.imass['Biocrude']*1.046*self.biooil_ratio
         for name, ratio in self.oil_composition.items():
             ht_out.imass[name] = biooil_total_mass*ratio
         
-        gas_mass = biocrude.imass['Biocrude']*1.04*self.gas_ratio
+        gas_mass = biocrude.imass['Biocrude']*1.046*self.gas_ratio
         for name, ratio in self.gas_composition.items():
             ht_out.imass[name] = gas_mass*ratio
             
         ht_out.imass['H2'] = hydrogen_gas.imass['H2'] -\
-                             biocrude.imass['Biocrude']*0.04
+                             biocrude.imass['Biocrude']*0.046
         
         ht_out.imass['H2O'] = biocrude.F_mass + hydrogen_gas.F_mass -\
                               biooil_total_mass - gas_mass - ht_out.imass['H2']
@@ -965,7 +965,8 @@ class HC(SanUnit):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
                  oil_ratio=0.955, off_gas_ratio=0.045,
-                 # Jones et al., 2014 #spreadsheet HC calculation
+                 # Jones et al., 2014
+                 # spreadsheet HC calculation
                  HC_out_pre=1005.7*6894.76,
                  HC_rxn_T=451+273.15,
                  HC_out_T=60+273.15,
