@@ -17,16 +17,15 @@ import os, qsdsan as qs
 from math import log
 from qsdsan import ImpactItem, StreamImpactItem
 from exposan.utils import (
+    _init_modules,
     get_decay_k,
     get_generic_scaled_capital,
     get_generic_tanker_truck_fee as get_tanker_truck_fee,
     )
 
 es_path = os.path.dirname(__file__)
-data_path = os.path.join(es_path, 'data')
-results_path = os.path.join(es_path, 'results')
-# To save simulation data
-if not os.path.isdir(results_path): os.mkdir(results_path)
+module = os.path.split(es_path)[-1]
+data_path, results_path = _init_modules(module, include_data_path=True)
 
 
 # %%
@@ -39,7 +38,7 @@ household_size = 4
 household_per_toilet = 5
 get_toilet_user = lambda: household_size*household_per_toilet
 
-# Number of people served by the Eco-san
+# Number of people served by the Eco-San system
 ppl = 300
 
 discount_rate = 0.05

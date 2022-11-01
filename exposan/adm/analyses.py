@@ -14,7 +14,7 @@ for license details.
 from copy import deepcopy
 from qsdsan.utils import ospath, load_pickle, save_pickle
 # from qsdsan.stats import plot_uncertainties, get_correlations
-from exposan.adm import cmps, results_path, figures_path
+from exposan.adm import results_path, figures_path, create_system
 import numpy as np, pandas as pd, os, matplotlib as mpl, \
     matplotlib.pyplot as plt, matplotlib.ticker as tk
 
@@ -26,6 +26,8 @@ T = 200
 t_step = 5
 
 #%%
+sys = create_system()
+cmps = sys.units[0].components
 S_keys = [ID for ID in cmps.IDs if ID.startswith('S_') and ID not in ('S_an', 'S_cat')]
 X_keys = [ID for ID in cmps.IDs if ID.startswith('X_')]
 gas_keys = ['S_h2_gas', 'S_ch4_gas', 'S_IC_gas']

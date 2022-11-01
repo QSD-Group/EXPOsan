@@ -15,12 +15,10 @@ __all__ = ('test_bsm1',)
 def test_bsm1():
     from numpy.testing import assert_allclose as ac
     from numpy import arange
-    from qsdsan import set_thermo
-    from exposan import bsm1 as b1
+    from exposan import bsm1
 
-    sys = b1.bsm1
-    set_thermo(b1.cmps)
-    sys.reset_cache()
+    bsm1.load()
+    sys = bsm1.sys
     sys.simulate(t_span=(0,50), method='BDF', t_eval=arange(0, 51, 1))
     assert sys.outs[0].isempty() == False
     ac(float(sys.outs[0].iconc['S_S']), 0.895, rtol=1e-2)

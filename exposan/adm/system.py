@@ -3,6 +3,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+    
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -10,58 +11,31 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-import numpy as np
-from qsdsan import sanunits as su, processes as pc, WasteStream, System
-from qsdsan.utils import time_printer, ExogenousDynamicVariable as EDV
+import numpy as np, qsdsan as qs
 from chemicals.elements import molecular_weight as get_mw
+from qsdsan import sanunits as su, processes as pc, WasteStream, System
+from qsdsan.utils import time_printer
+# from exposan.adm import data_path
+
+
+__all__ = (
+    'create_system',
+    'brewery_inf_kwargs',
+    'default_inf_kwargs',
+    'default_init_conds',
+    )
+
 
 # =============================================================================
-# Validation & Verification of ADM1
+# Parameters
 # =============================================================================
 
-############# load components and set thermo #############
-cmps = pc.create_adm1_cmps()
-
-############# create WasteStream objects #################
 Q = 170           # influent flowrate [m3/d]
 Temp = 273.15+35    # temperature [K]
 C_mw = get_mw({'C':1})
 N_mw = get_mw({'N':1})
 
-# brewery_ww = WasteStream('BreweryWW', T=Temp)
-
-# conc = {
-#     'S_su':3.0,
-#     'S_aa':0.6,
-#     'S_fa':0.4,
-#     'S_va':0.4,
-#     'S_bu':0.4,
-#     'S_pro':0.4,
-#     'S_ac':0.4,
-#     'S_h2':5e-9,
-#     'S_ch4':5e-6,
-#     'S_IC':0.04*C_mw,
-#     'S_IN':0.01*N_mw,
-#     'S_I':0.02,
-#     'X_c':0.1,
-#     'X_ch':0.3,
-#     'X_pr':0.5,
-#     'X_li':0.25,
-#     'X_aa':1e-3,
-#     'X_fa':1e-3,
-#     'X_c4':1e-3,
-#     'X_pro':1e-3, 
-#     'X_ac':1e-3, 
-#     'X_h2':1e-3, 
-#     'X_I':0.025, 
-#     'S_cat':0.04, 
-#     'S_an':0.02
-#     }
-
-# brewery_ww.set_flow_by_concentration(Q, concentrations=conc, units=('m3/d', 'kg/m3'))
-
-inf = WasteStream('Influent', T=Temp)
-inf_kwargs = {
+default_inf_kwargs = {
     'concentrations': {
         'S_su':0.01,
         'S_aa':1e-3,
@@ -87,26 +61,43 @@ inf_kwargs = {
         'X_h2':1e-2, 
         'X_I':25, 
         'S_cat':0.04, 
-        'S_an':0.02
+        'S_an':0.02,
         },
     'units': ('m3/d', 'kg/m3'),
     }
-inf.set_flow_by_concentration(Q, **inf_kwargs)
+    
+brewery_inf_kwargs = {
+    'concentrations': {
+        'S_su':3.0,
+        'S_aa':0.6,
+        'S_fa':0.4,
+        'S_va':0.4,
+        'S_bu':0.4,
+        'S_pro':0.4,
+        'S_ac':0.4,
+        'S_h2':5e-9,
+        'S_ch4':5e-6,
+        'S_IC':0.04*C_mw,
+        'S_IN':0.01*N_mw,
+        'S_I':0.02,
+        'X_c':0.1,
+        'X_ch':0.3,
+        'X_pr':0.5,
+        'X_li':0.25,
+        'X_aa':1e-3,
+        'X_fa':1e-3,
+        'X_c4':1e-3,
+        'X_pro':1e-3, 
+        'X_ac':1e-3, 
+        'X_h2':1e-3, 
+        'X_I':0.025, 
+        'S_cat':0.04, 
+        'S_an':0.02,
+        },
+    'units': ('m3/d', 'kg/m3'),
+    }
 
-eff = WasteStream('Effluent', T=Temp)
-bg = WasteStream('Biogas')
-
-############# load process model ###########################
-# adm1 = pc.ADM1(path=os.path.join(adm_path, '_adm1.tsv'))
-adm1 = pc.ADM1()
-
-############# create unit operation ########################
-T_op = EDV('T_op', function = lambda t: Temp)
-AD = su.AnaerobicCSTR('AD', ins=inf, outs=(bg, eff), model=adm1,
-                      exogenous_vars=(T_op,))
-# AD = su.AnaerobicCSTR('AD', ins=brewery_ww, outs=(bg, eff), model=adm1)
-
-_init_conds = {
+default_init_conds = {
     'S_su': 0.0124*1e3,
     'S_aa': 0.0055*1e3,
     'S_fa': 0.1074*1e3,
@@ -132,20 +123,48 @@ _init_conds = {
     'X_I': 17.2162*1e3
     }
 
-AD.set_init_conc(**_init_conds)
 
-sys = System('ADM1_test', path=(AD,))
-sys.set_dynamic_tracker(AD, bg)
+# %%
 
-__all__ = (
-    'cmps', 'adm1', 'sys',
-    'inf', 'eff', 'bg', 'AD', 
-    'Temp', '_init_conds'
-    )
+# =============================================================================
+# Validation & Verification of ADM1
+# =============================================================================
 
-#%%
+def create_system(flowsheet=None, inf_kwargs={}, adm_kwargs={}, init_conds={}):
+    flowsheet = flowsheet or qs.Flowsheet('adm')
+    qs.main_flowsheet.set_flowsheet(flowsheet)
+
+    # Components and streams
+    pc.create_adm1_cmps()   
+    inf = WasteStream('Influent', T=Temp)
+    inf_kwargs = inf_kwargs or default_inf_kwargs
+    inf.set_flow_by_concentration(Q, **inf_kwargs)
+    
+    eff = WasteStream('Effluent', T=Temp)
+    bg = WasteStream('Biogas')
+    
+    # Process model
+    adm1 = pc.ADM1(**adm_kwargs)
+    
+    # System setup
+    AD = su.AnaerobicCSTR('AD', ins=inf, outs=(bg, eff), model=adm1, T=Temp)
+    
+    init_conds = init_conds or default_init_conds
+    AD.set_init_conc(**init_conds)
+    
+    sys = System('ADM1_test', path=(AD,))
+    sys.set_dynamic_tracker(AD, bg)
+    
+    return sys
+
+
+# %%
+
 @time_printer
 def run(t, t_step, method=None, **kwargs):
+    sys = create_system()
+    # adm_kwargs = dict(path=os.path.join(data_path, '_adm1.tsv'))
+    # sys = create_system(inf_kwargs=brewry_inf_kwargs, adm_kwargs=adm_kwargs)
     sys.simulate(state_reset_hook='reset_cache',
                  t_span=(0,t),
                  t_eval=np.arange(0, t+t_step, t_step),

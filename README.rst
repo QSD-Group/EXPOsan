@@ -18,10 +18,6 @@ EXPOsan: EXPOsition of Sanitation and Resource Recovery Systems
 .. image:: https://github.com/QSD-Group/EXPOsan/actions/workflows/build-latest.yml/badge.svg?branch=main
    :target: https://github.com/QSD-Group/EXPOsan/actions/workflows/build-latest.yml
 
-.. GitHub test of the stable branch (i.e., PyPI released package)
-.. image:: https://github.com/QSD-Group/EXPOsan/actions/workflows/build-stable.yml/badge.svg?branch=stable
-   :target: https://github.com/QSD-Group/EXPOsan/actions/workflows/build-stable.yml
-
 .. Code of Conduct
 .. image:: https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg
    :target: https://qsdsan.readthedocs.io/en/latest/CODE_OF_CONDUCT.html
@@ -105,9 +101,9 @@ then navigate into the repository (``cd EXPOsan``) and install the required pack
 
 Authors and Contributing
 ------------------------
-``EXPOsan`` is developed by the Quantitative Sustainable Design Group led by members of the `Guest Group <http://engineeringforsustainability.com/>`_ and `other developers <https://github.com/QSD-Group/EXPOsan/graphs/contributors>`_ that have contributed to the repository. Yalin (`webpage <https://qsdsan.readthedocs.io/en/latest/authors/Yalin_Li.html>`_; `email <zoe.yalin.li@gmail.com>`_) is the currently maintainer of this repository and package.
+``EXPOsan`` is developed by the Quantitative Sustainable Design Group led by members of the `Guest Group <http://engineeringforsustainability.com/>`_ and `other developers <https://github.com/QSD-Group/EXPOsan/graphs/contributors>`_ that have contributed to the repository. `Yalin Li <https://qsdsan.readthedocs.io/en/latest/authors/Yalin_Li.html>`_) is the currently maintainer of this repository and package.
 
-Please refer to the `Contributing to QSDsan <https://qsdsan.readthedocs.io/en/latest/CONTRIBUTING.html>`_ section of the documentation for instructions and guidelines.
+Please refer to the `Contributing to QSDsan <https://qsdsan.readthedocs.io/en/latest/CONTRIBUTING.html>`_ section of the documentation for instructions and guidelines. If you find yourself struggle with the installation/setting up the environment, this extended version of `installation instructions <https://qsdsan.readthedocs.io/en/latest/tutorials/_installation.html>`_ might be helpful to you.
 
 
 Stay Connected

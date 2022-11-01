@@ -19,15 +19,12 @@ import biosteam
 
 from qsdsan import ImpactItem, StreamImpactItem
 from qsdsan.utils import time_printer
-from exposan.utils import get_decay_k, get_generic_tanker_truck_fee
+from exposan.utils import _init_modules, get_decay_k, get_generic_tanker_truck_fee
 
 bw_path = os.path.dirname(__file__)
-data_path = os.path.join(bw_path, 'data')
-results_path = os.path.join(bw_path, 'results')
-figures_path = os.path.join(bw_path, 'figures')
-# To save simulation data and generated figures
-if not os.path.isdir(results_path): os.mkdir(results_path)
-if not os.path.isdir(figures_path): os.mkdir(figures_path)
+module = os.path.split(bw_path)[-1]
+data_path, results_path, figures_path = \
+    _init_modules(module, include_data_path=True, include_figures_path=True)
 
 
 # %%

@@ -4,7 +4,9 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+    
     Joy Zhang <joycheung1994@gmail.com>
+    
     Yalin Li <mailto.yalin.li@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -12,19 +14,23 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
+import os, numpy as np, pandas as pd, matplotlib as mpl, matplotlib.pyplot as plt, matplotlib.ticker as tk
 from time import time
 from copy import deepcopy
 from qsdsan.utils import load_data, load_pickle, save_pickle
 from qsdsan.stats import plot_uncertainties, get_correlations
-from exposan.bsm1 import model_bsm1 as mdl, model_2dv as mdl2, model_ss as mdls, \
-    cmps, system as sys, run_uncertainty, analyze_timeseries, run_wdiff_init, \
-    data_path, results_path, figures_path
-from exposan import bsm1 as b1
-import os
-import numpy as np
-import matplotlib as mpl, matplotlib.pyplot as plt, matplotlib.ticker as tk
+from exposan.bsm1 import (
+    create_model,
+    create_system,
+    data_path, figures_path, results_path,
+    Q_was,
+    run_uncertainty,
+    run_wdiff_init,
+    )  
+
 mpl.rcParams['font.sans-serif'] = 'arial'
 mpl.rcParams["figure.autolayout"] = True
+
 
 #%% Global variables
 
@@ -56,8 +62,11 @@ thresholds = [100, 10, 18, 4, 30] # Effluent COD, BOD5, TN, TKN, TSS
 irs = [0, 0, 1, 1, 2, 2]
 ics = [0, 1, 0, 1, 0, 1]
 
-xbl = sys.aer1.Q_air
-ybl = sys.Q_was
+sys = create_system()
+cmps = sys.units[0].components
+O1 = sys.flowsheet.unit.O1
+xbl = O1.aeration.Q_air
+ybl = Q_was
 
 def seed_RGT():
     files = os.listdir(results_path)
@@ -70,23 +79,31 @@ def seed_RGT():
         seed = (seed+1) % 1000
     return seed
 
+def analyze_timeseries(variable_getter, N, folder='', todf=True, **kwargs):
+    outputs = {}
+    for sample_id in range(N):       
+        arr = np.load(os.path.join(folder, f'state_{sample_id}.npy'))
+        outputs[sample_id] = variable_getter(arr, **kwargs)
+    if todf: outputs = pd.DataFrame.from_dict(outputs)
+    return outputs
+
 def run_all_analyses(seed1=None, seed2=None, N1=N, N2=100, n=20, T=T, t_step=t_step, plot=True, wide=True):
     bl_file = os.path.join(results_path, 'sol_50d_BDF.xlsx')
     if not os.path.exists(bl_file):
-        run_baseline(export_to = bl_file)
-    seed1 = UA_w_all_params(seed=seed1, N=N1, T=T, t_step=t_step, plot=plot, wide=wide)
-    run_sensitivity(seed=seed1)
+        run_baseline(export_to=bl_file)
+    mdl, seed1 = UA_w_all_params(seed=seed1, N=N1, T=T, t_step=t_step, plot=plot, wide=wide)
+    run_sensitivity(mdl, seed=seed1)
     dv_analysis(n=n, T=T, t_step=t_step, plot=plot, wide=wide)
     UA_w_diff_inits(seed=seed2, N=N2, T=T, t_step=t_step, plot=plot, wide=wide)
 
 #%% Baseline
 def run_baseline(T=T, t_step=t_step, export_to=''):
-    b1.bsm1.simulate(state_reset_hook='reset_cache',
-                    t_span=(0,T),
-                    t_eval=np.arange(0, T+t_step, t_step),
-                    method='BDF',
-                    export_state_to=export_to)
-    b1.bsm1.diagram(file=os.path.join(figures_path, 'BSM1.png'), dpi='300')
+    sys.simulate(state_reset_hook='reset_cache',
+                 t_span=(0,T),
+                 t_eval=np.arange(0, T+t_step, t_step),
+                 method='BDF',
+                 export_state_to=export_to)
+    sys.diagram(file=os.path.join(figures_path, 'BSM1.png'), dpi='300')
 
 #%% UA with time-series data
 def single_SE_state_var_getter(arr, variable):
@@ -172,6 +189,7 @@ def plot_SE_timeseries(seed, N, data=None, wide=False):
     return fig, axes
 
 def UA_w_all_params(seed=None, N=N, T=T, t_step=t_step, plot=True, wide=True):
+    mdl = create_model(system=sys)
     seed = seed or seed_RGT()
     run_uncertainty(mdl, N, T, t_step, method='BDF', seed=seed)
     out = analyze_SE_vars(seed, N)
@@ -179,7 +197,7 @@ def UA_w_all_params(seed=None, N=N, T=T, t_step=t_step, plot=True, wide=True):
     print(f'Seed used for uncertainty analysis with all parameters is {seed}.')
     for p in mdl.parameters:
         p.setter(p.baseline)
-    return seed
+    return mdl, seed
 
 #%% SA to narrow down the number of DVs for further analyses
 def plot_kde2d_metrics(model):
@@ -244,7 +262,7 @@ def run_ks_test(model):
         print(f'{len(to_analyze)} metric was found to have significant numbers '
               f'(> {min_smp_size}) of samples below and above its threshold.')
 
-def run_sensitivity(seed):
+def run_sensitivity(mdl, seed):
     mdl.table = load_data(os.path.join(results_path, f'table_{seed}.xlsx'), header=[0,1])
     plot_kde2d_metrics(mdl)
     run_ks_test(mdl)
@@ -328,6 +346,7 @@ def run_mapping(model, n, T, t_step, run=True, method='BDF', mpath='', tpath='')
 
 def dv_analysis(n=20, T=T, t_step=t_step, run=True, save_to='table_2dv.xlsx',
                 plot=True, wide=True):
+    mdl2 = create_model(system=sys, kind='decision variables')
     path = os.path.join(results_path, save_to)
     xx, yy = run_mapping(mdl2, n, T, t_step, run, mpath=path)
     if plot:
@@ -388,6 +407,7 @@ def plot_SE_yt_w_diff_init(seed, N, data=None, wide=False):
 
 
 def UA_w_diff_inits(seed=None, N=100, T=T, t_step=t_step, plot=True, wide=True):
+    mdls = create_model(system=sys, kind='steady state')
     seed = seed or seed_RGT()
     run_wdiff_init(mdls, N, T, t_step, method='BDF', seed=seed)
     out = analyze_SE_vars(seed, N)
@@ -402,11 +422,11 @@ if __name__ == '__main__':
     run_all_analyses()
 
     ##### Uncertainty analysis with all parameters #####
-    # seed1 = UA_w_all_params(plot=True, wide=True)
+    # mdl, seed1 = UA_w_all_params(plot=True, wide=True)
 
     ##### KS test with the uncertainty analysis data #####
     # The seed `seed1` should be the the same one used for uncertainty analysis
-    # run_sensitivity(seed1)
+    # run_sensitivity(mdl, seed1)
 
     ##### Plot cached time-series data from uncertainty analysis #####
     # Note that you need to manually update the `seed1`

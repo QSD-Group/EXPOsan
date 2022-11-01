@@ -5,6 +5,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+    
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -13,17 +14,47 @@ for license details.
 '''
 
 import os
+from exposan.utils import _init_modules
 bsm1_path = os.path.dirname(__file__)
-data_path = os.path.join(bsm1_path, 'data')
-results_path = os.path.join(bsm1_path, 'results')
-figures_path = os.path.join(bsm1_path, 'figures')
-# To save simulation results and generated figures
-if not os.path.isdir(results_path): os.mkdir(results_path)
-if not os.path.isdir(figures_path): os.mkdir(figures_path)
+module = os.path.split(bsm1_path)[-1]
+data_path, results_path, figures_path = \
+    _init_modules(module, include_data_path=True, include_figures_path=True)
 del os
 
 from . import system
 from .system import *
+
+_system_loaded = False
+def load(reload=False, inf_kwargs={}, asm_kwargs={}, init_conds={}, aeration_processes=()):
+    global _system_loaded
+    if not _system_loaded: reload = True
+    if reload:
+        global cmps, components, asm, sys
+        sys = create_system(
+            inf_kwargs=inf_kwargs,
+            asm_kwargs=asm_kwargs,
+            init_conds=init_conds,
+            aeration_processes=aeration_processes,
+            )
+        O1 = sys.flowsheet.unit.O1
+        cmps = components = O1.components
+        asm = O1.suspended_growth_model
+        # Legacy names
+        global PE, SE, RE
+        stream = sys.flowsheet.stream
+        PE = stream.wastewater
+        SE = stream.effluent
+        RE = stream.RWW
+    dct = globals()
+    dct.update(sys.flowsheet.to_dict())
+    _system_loaded = True
+
+
+def __getattr__(name):
+    if not _system_loaded:
+        raise AttributeError(f'module "{__name__}" not yet loaded, '
+                             f'load module with `{__name__}.load()`.')
+
 
 from . import model
 from .model import *
