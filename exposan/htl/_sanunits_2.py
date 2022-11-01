@@ -807,33 +807,36 @@ class HT(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
-                 biooil_ratio=0.835, gas_ratio=0.06,
+                 biooil_ratio=0.8, gas_ratio=0.07,
                  # Jones et al., 2014
                  # spreadsheet HT calculation
                  HTout_pre = 717.4*6894.76, # Jones 2014: 55 psia
                  HTrxn_T=402+273.15, # Jones 2014
                  HTout_T=43+273.15,
-                 gas_composition = {'CH4':0.333, 'C2H6':0.427, 'C3H8':0.241},
-                 oil_composition={'TWOMBUTAN':0.0077, 'NPENTAN':0.0077,
-                                  'TWOMPENTA':0.0310, 'HEXANE':0.0155,
-                                  'TWOMHEXAN':0.0310, 'HEPTANE':0.0155,
-                                  'CC6METH':0.0155, 'PIPERDIN':0.0077,
-                                  'TOLUENE':0.0155, 'THREEMHEPTA':0.0155,
-                                  'OCTANE':0.0155, 'ETHCYC6':0.0155,
-                                  'ETHYLBEN':0.0310, 'OXYLENE':0.0155,
-                                  'C9H20':0.0155, 'PROCYC6':0.0310,
-                                  'C3BENZ':0.0155, 'FOURMONAN':0.0155,
-                                  'C10H22':0.0464, 'C4BENZ':0.0155,
-                                  'C11H24':0.0310, 'C10H12':0.0155,
-                                  'C12H26':0.0310, 'OTTFNA':0.0155,
-                                  'C6BENZ':0.0155, 'OTTFSN':0.0155,
-                                  'C7BENZ':0.0155, 'C8BENZ':0.0310,
-                                  'C10H16O4':0.0155, 'C15H32':0.0155,
-                                  'C16H34':0.1238, 'C17H36':0.0464, 
-                                  'C18H38':0.0310, 'C19H40':0.0310,
-                                  'C20H42':0.0774, 'C21H44':0.0310,
-                                  'TRICOSANE':0.0155, 'C24H38O4':0.0310,
-                                  'C26H42O4':0.0310, 'C30H62':0.0015},
+                 gas_composition = {'CH4':0.285, 'C2H6':0.365, 'C3H8':0.350},
+                 # C3H8 includes N-C4H10, N-PENTAN, and HEXANE (stream #339)
+                 oil_composition={'TWOMBUTAN':0.0044, 'NPENTAN':0.0040,
+                                  'TWOMPENTA':0.0044, 'HEXANE':0.0035,
+                                  'TWOMHEXAN':0.0044, 'HEPTANE':0.0044,
+                                  'CC6METH':0.0111, 'PIPERDIN':0.0044,
+                                  'TOLUENE':0.0111, 'THREEMHEPTA':0.0111,
+                                  'OCTANE':0.0111, 'ETHCYC6':0.0044,
+                                  'ETHYLBEN':0.0222, 'OXYLENE':0.0111,
+                                  'C9H20':0.0044, 'PROCYC6':0.0044,
+                                  'C3BENZ':0.0111, 'FOURMONAN':0,
+                                  'C10H22':0.0222, 'C4BENZ':0.0133,
+                                  'C11H24':0.0222, 'C10H12':0.0222,
+                                  'C12H26':0.0222, 'OTTFNA':0.0111,
+                                  'C6BENZ':0.0222, 'OTTFSN':0.0222,
+                                  'C7BENZ':0.0222, 'C8BENZ':0.0222,
+                                  'C10H16O4':0.0200, 'C15H32':0.0666,
+                                  'C16H34':0.1998, 'C17H36':0.0888, 
+                                  'C18H38':0.0444, 'C19H40':0.0444,
+                                  'C20H42':0.1110, 'C21H44':0.0444,
+                                  'TRICOSANE':0.0444, 'C24H38O4':0.0089,
+                                  'C26H42O4':0.0111, 'C30H62':0.0022},
+                 # Jones et al., 2014
+                 # spreadsheet HT calculation
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -978,7 +981,7 @@ class HC(SanUnit):
                                     'C13H28':0.0969, 'C14H30':0.0483,
                                     'C15H32':0.0338, 'C16H34':0.0200,
                                     'C17H36':0.0045, 'C18H38':0.0010,
-                                    'C19H40':0.0052, 'C20H42':0.0002,
+                                    'C19H40':0.0052, 'C20H42':0.0002, #!!!combine C20H42 and PHYTANE as C20H42
                                     'PHYTANE':0.0002},
                  **kwargs):
         

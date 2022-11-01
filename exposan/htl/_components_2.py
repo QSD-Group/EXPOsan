@@ -272,9 +272,6 @@ def create_components(set_thermo=True):
                           particle_size='Soluble', degradability='Slowly',
                           organic=True)
 
-    C9H20 = Component('C9H20', search_ID='111-84-2', particle_size='Soluble',
-                      degradability='Slowly', organic=True)
-
     C10H22 = Component('C10H22', search_ID='124-18-5', particle_size='Soluble',
                        degradability='Slowly', organic=True)
 
@@ -338,10 +335,6 @@ def create_components(set_thermo=True):
 
     C20H42 = Component('C20H42', search_ID='638-36-8', particle_size='Soluble',
                        degradability='Slowly', organic=True)
-    
-    PHYTANE = Component('PHYTANE', search_ID='638-36-8',
-                        particle_size='Soluble', degradability='Slowly',
-                        organic=True)
 
     C21H44 = Component('C21H44', search_ID='629-94-7', particle_size='Soluble',
                        degradability='Slowly', organic=True)
@@ -370,10 +363,10 @@ def create_components(set_thermo=True):
                        TWOMBUTAN, NPENTAN, TWOMPENTA, HEXANE, TWOMHEXAN,
                        CYCHEX, HEPTANE, CC6METH, PIPERDIN, TOLUENE,
                        THREEMHEPTA, OCTANE, ETHCYC6, ETHYLBEN, OXYLENE, C9H20,
-                       PROCYC6, C3BENZ, FOURMONAN, C9H20, C10H22, C4BENZ,
+                       PROCYC6, C3BENZ, FOURMONAN, C10H22, C4BENZ,
                        C11H24, C10H12, C12H26, C13H28, C14H30, OTTFNA, C6BENZ,
                        OTTFSN, C7BENZ, C8BENZ, C10H16O4, C15H32, C16H34,
-                       C17H36, C18H38, C19H40, C20H42, PHYTANE, C21H44,
+                       C17H36, C18H38, C19H40, C20H42, C21H44,
                        TRICOSANE, C24H38O4, C26H42O4, C30H62])
     
     for i in cmps:

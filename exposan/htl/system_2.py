@@ -152,11 +152,11 @@ H3 = qsu.HXutility('A310', ins=P3-0, outs='heated_biocrude', T=174+273.15,
 HT = su.HT('A320', ins=(H3-0, IC_H2_HT-0), outs='HTout')
 HT_hx = HT.heat_exchanger
 
-F2 = Flash('A330', ins=HT-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273,
-           P=717.4*6894.76)
+F2 = Flash('A330', ins=HT-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
+           P=717.4*6894.76) # outflow P
 
-F3 = Flash('A340', ins=F2-1, outs=('HT_fuel_gas_2','HT_aqueous_2'), T=47+273,
-           P=55*6894.76)
+F3 = Flash('A340', ins=F2-1, outs=('HT_fuel_gas_2','HT_aqueous_2'),
+           T=47+273.15, P=55*6894.76) # outflow P
 # This one just decrease T/P, and just T is related to design and cost,
 # consider other ways?
 
@@ -164,16 +164,17 @@ SP3 = qsu.Splitter('S300', ins=F3-1, outs=('HT_ww','HT_oil'),
                    split={'H2O':1}, init_with='Stream')
 # separate water and oil based on gravity
 
-HX_biocrude = qsu.HXutility('A350', ins=SP3-1, outs='heated_oil', T=252+273)
+HX_biocrude = qsu.HXutility('A350', ins=SP3-1, outs='heated_oil', T=252+273.15)
+# temperature: Jones stream #334 (we remove the first distillation column)
 
 C1 = BinaryDistillation('A360', ins=HX_biocrude-0,
                         outs=('HT_Gasoline','HT_other_oil'),
-                        LHK=('C10H22','C4BENZ'), P=54*6894.76,
+                        LHK=('C10H22','C4BENZ'), P=25*6894.76, # outflow P
                         y_top=116/122, x_bot=114/732, k=2, is_divided=True)
 
 C2 = BinaryDistillation('A370', ins=C1-1,
                         outs=('HT_Diesel','HT_heavy_oil'),
-                        LHK=('C19H40','C21H44'),P=25*6894.76,
+                        LHK=('C19H40','C21H44'),P=18.7*6894.76, # outflow P
                         y_top=2421/2448, x_bot=158/2448, k=2, is_divided=True)
 
 # =============================================================================
@@ -193,15 +194,15 @@ HC = su.HC('A420', ins=(H4-0, IC_H2_HC-0), outs='HC_out')
 HC_hx = HC.heat_exchanger
 
 F4 = Flash('A430', ins=HC-0, outs=('HC_fuel_gas','HC_aqueous'), T=60+273,
-           P=1005.7*6894.76)
+           P=1005.7*6894.76) # outflow P
 
 F5 = Flash('A440', ins=F4-1, outs=('HC_fuel_gas_2','HC_aqueous_2'), T=60.2+273,
-           P=30*6894.76)
+           P=30*6894.76) # outflow P
 # This one just decrease T/P, and just T is related to design and cost,
 # consider other ways?
 
 C3 = BinaryDistillation('A450', ins=F5-1, outs=('HC_Gasoline','HC_Diesel'),
-                        LHK=('C9H20','C10H22'), P=30*6894.76,
+                        LHK=('C9H20','C10H22'), P=20*6894.76, # outflow P
                         y_top=360/546, x_bot=7/708, k=2, is_divided=True)
 
 # =============================================================================
