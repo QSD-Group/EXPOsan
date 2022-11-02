@@ -284,8 +284,7 @@ sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              HT, F2, F3, SP3, HX_biocrude, C1, C2, P4, HCmixer,
                              H4, HC, F4, F5, C3, GasolineMixer, DieselMixer,
                              H5, H6, GasolineTank, DieselTank, GasMixer, CHP,
-                             WWmixer))
-                #, facilities=(HXN,))
+                             WWmixer), facilities=(HXN,))
 
 sys.operating_hours = 7884 # NRES 2013
 
