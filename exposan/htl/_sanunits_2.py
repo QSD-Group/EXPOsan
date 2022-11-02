@@ -59,7 +59,8 @@ __all__ = ('SludgeLab',
           'CHG',
           'MembraneDistillation',
           'HT',
-          'HC')
+          'HC',
+          'WWmixer')
 
 cmps = create_components()
 
@@ -296,6 +297,20 @@ class HTL(SanUnit):
         
         self.sludgelab = self.ins[0]._source.ins[0]._source.ins[0].\
                          _source.ins[0]._source.ins[0]._source
+        
+        # in the case that HTLaqueous_C or HTLaqueous_N is less than 0, which
+        # is not likely to happen, we add the following two exceptions.
+        if self.HTLaqueous_C < 0:
+            raise Exception('double check sludge composition, HTLaqueous_C '\
+                            'is not likely to be less than 0, otherwise, we '\
+                            'do not need CHG')
+        if self.HTLaqueous_N < 0:
+            raise Exception('double check sludge composition, HTLaqueous_N '\
+                            'is not likely to be less than 0, otherwise, we '\
+                            'do not need membrane distillation')
+            
+        # self.HTLaqueous_P is always larger than 0, since an constraint is
+        # added when calculated biochar_P
 
     @property
     def biochar_C_ratio(self):
@@ -460,8 +475,10 @@ class AcidExtraction(SanUnit):
 
 class HTLmixer(SanUnit):
     '''
+    A fake unit that calculates C, N, P, and H2O amount in the mixture of HTL
+    aqueous and AcidEx effluent.
     
-    Model method: elements separation, need _design and _cost.
+    Model method: elements separation, don't need _design and _cost.
     
     Parameters
     ----------
@@ -510,8 +527,7 @@ class HTLmixer(SanUnit):
 class HTLsplitter(SanUnit):
     
     '''
-    Hydrocracking further cracks down heavy part in HT biooil to diesel and
-    gasoline.
+    A fake unit that calculates influent based on effluents.
     
     Model method: use experimental data.
     
@@ -793,13 +809,13 @@ class MembraneDistillation(SanUnit):
                                          132.14*28.0134 -\
                                          ammoniumsulfate.imass['NH42SO4']
                                         
-        ww.copy_like(influent)
+        ww.copy_like(influent) # ww has the same T and P as influent
         ww.imass['N'] -= influent.imass['N']*self.ammonia_transfer_ratio*\
                          ammonia_to_ammonium/(1 + ammonia_to_ammonium)
                          
         ammoniumsulfate.T = acid.T
-        ww.T = acid.T
-        ww.P = acid.P
+        ammoniumsulfate.P = acid.P
+        # ammoniumsulfate has the same T and P as acid
         
     def _design(self):
         pass
@@ -896,12 +912,12 @@ class HT(SanUnit):
             raise Exception('H2 is too less, should be between '\
               f'[{0.046*biocrude.imass["Biocrude"]/H2_split.split[0]:.2f}, '\
               f'{0.138*biocrude.imass["Biocrude"]/H2_split.split[0]:.2f}] '\
-              'kg/hr.')
+              'kg/hr')
         elif hydrogen_gas.imass['H2'] > 0.138*biocrude.imass['Biocrude']:
             raise Exception('H2 is too much, should be between '\
               f'[{0.046*biocrude.imass["Biocrude"]/H2_split.split[0]:.2f}, '\
               f'{0.138*biocrude.imass["Biocrude"]/H2_split.split[0]:.2f}] '\
-              'kg/hr.')
+              'kg/hr')
         
         # *1.4 means biocrude amount + H2 reactioned amount
         biooil_total_mass = biocrude.imass['Biocrude']*1.046*self.biooil_ratio
@@ -917,15 +933,23 @@ class HT(SanUnit):
         
         ht_out.imass['H2O'] = biocrude.F_mass + hydrogen_gas.F_mass -\
                               biooil_total_mass - gas_mass - ht_out.imass['H2']
-        # use water to represent HT aqueous phase, C, N, and P
-        # can be calculated base on MB closure.
+        # use water to represent HT aqueous phase,
+        # C and N can be calculated base on MB closure.
         
         ht_out.P = self.HTout_pre
         
         ht_out.T = self.HTout_T
         
-        self.HT_C_check() # allow +/- 10% out of mass balance
-        self.HT_N_check() # allow +/- 10% out of mass balance
+        self.HTL = self.ins[0]._source.ins[0]._source.ins[0]._source
+        
+        if self.HTaqueous_C < -0.1*self.HTL.biocrude_C:
+            raise Exception('carbon mass balance is out of +/- 10%')
+        # allow +/- 10% out of mass balance
+        
+        if self.HTaqueous_N < -0.1*self.HTL.biocrude_N:
+            raise Exception('nitrogen mass balance is out of +/- 10%')
+        # allow +/- 10% out of mass balance
+        
         # possibility exist that more carbon is in biooil and gas than in
         # biocrude because we use the biooil/gas compositions to calculate
         # carbon. In this case, the C in HT aqueous phase will be negative.
@@ -952,37 +976,14 @@ class HT(SanUnit):
         for name in self.gas_composition.keys():
             carbon += self.outs[0].imass[name]*cmps[name].i_C
         return carbon
-    
-    def HT_C_check(self):
-        HTL = self.ins[0]._source.ins[0]._source.ins[0]._source
-        carbon = HTL.biocrude_C - self.biooil_C - self.HTfuel_gas_C
-        if carbon < -0.1*HTL.biocrude_C:
-            raise Exception('carbon mass balance is out of +/- 10%')
-            
-    def HT_N_check(self):
-        HTL = self.ins[0]._source.ins[0]._source.ins[0]._source
-        nitrogen = HTL.biocrude_N - self.biooil_N
-        if nitrogen < -0.1*HTL.biocrude_N:
-            raise Exception('nitrogen mass balance is out of +/- 10%')
-    
+
     @property
     def HTaqueous_C(self):
-        HTL = self.ins[0]._source.ins[0]._source.ins[0]._source
-        carbon = HTL.biocrude_C - self.biooil_C - self.HTfuel_gas_C
-        if carbon > 0:
-            print(f'{carbon:.2f}')
-        if -0.1*HTL.biocrude_C < carbon < 0:
-            print(f'{carbon:.2f}, acceptable: within 10% of the input carbon')
+        return self.HTL.biocrude_C - self.biooil_C - self.HTfuel_gas_C
 
     @property
     def HTaqueous_N(self):
-        HTL = self.ins[0]._source.ins[0]._source.ins[0]._source
-        nitrogen = HTL.biocrude_N - self.biooil_N
-        if nitrogen > 0:
-            print(f'{nitrogen:.2f}')
-        if -0.1*HTL.biocrude_N < nitrogen < 0:
-            print(f'{nitrogen:.2f}, acceptable: within 10% of the input '\
-                   'nitrogen')
+        return self.HTL.biocrude_N - self.biooil_N
 
     def _design(self):
         
@@ -1068,7 +1069,7 @@ class HC(SanUnit):
         # following exception (excess is OK):
         if hydrogen_gas.imass['H2'] < 0.01125*heavy_oil.F_mass:
             raise Exception('H2 is too less, the minimum should be '\
-              f'[{0.01125*heavy_oil.F_mass/(1 - H2_splitter.split[0]):.2f}.')
+              f'[{0.01125*heavy_oil.F_mass/(1 - H2_splitter.split[0]):.2f}')
     
         hc_oil_mass = heavy_oil.F_mass*1.01125*self.oil_ratio
 
@@ -1086,7 +1087,15 @@ class HC(SanUnit):
         hc_out.P = self.HC_out_pre
         hc_out.T = self.HC_out_T
         
-        self.HC_C_check()
+        C_in = 0
+        total_num = len(list(cmps))
+        for num in range(total_num):
+            C_in += heavy_oil.imass[str(list(cmps)[num])]*list(cmps)[num].i_C
+            
+        C_out = self.biooil_C + self.HCfuel_gas_C
+        
+        if C_out < 0.95*C_in or C_out > 1.05*C_out :
+            raise Exception('carbon mass balance is out of +/- 5%')
         # make sure that carbon mass balance is within +/- 10%. Otherwise, an
         # exception will be raised.
         
@@ -1103,18 +1112,7 @@ class HC(SanUnit):
         for name in self.gas_composition.keys():
             carbon += self.outs[0].imass[name]*cmps[name].i_C
         return carbon
-    
-    def HC_C_check(self):
-        C_in = 0
-        total_num = len(list(cmps))
-        for num in range(total_num):
-            C_in += self.ins[0].imass[str(list(cmps)[num])]*list(cmps)[num].i_C
-            
-        C_out = self.biooil_C + self.HCfuel_gas_C
-        
-        if C_out < 0.95*C_in or C_out > 1.05*C_out :
-            raise Exception('carbon mass balance is out of +/- 5%')
-        
+
     def _design(self):
         
         hx = self.heat_exchanger
@@ -1124,6 +1122,53 @@ class HC(SanUnit):
         hx_ins0.T = self.HC_rxn_T # temperature before/after HC are different
         hx.T = hx_outs0.T
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
+    
+    def _cost(self):
+        pass
+    
+class WWmixer(SanUnit):
+    '''
+    A fake unit that mix all wastewater streams and calculates C, N, P, and H2O
+    amount.
+    
+    Model method: elements calculation, don't need _design and _cost.
+    
+    Parameters
+    ----------
+    ins: Iterable (stream)
+        supernatant_1, supernatant_2, memdis_ww, ht_ww
+    outs: Iterable (stream)
+        mixture
+    '''
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='Stream',
+                 **kwargs):
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+
+    _N_ins = 4
+    _N_outs = 1
+        
+    def _run(self):
+        
+        supernatant_1, supernatant_2, memdis_ww, ht_ww = self.ins
+        mixture = self.outs[0]
+        
+        mixture.mix_from(self.ins)
+        
+        HT = self.ins[3]._source.ins[0]._source.ins[0]._source.ins[0]._source
+        
+        # only account for C and N from HT if they are not less than 0
+        if HT.HTaqueous_C >= 0:
+            mixture.imass['C'] += HT.HTaqueous_C
+            mixture.imass['H2O'] -= HT.HTaqueous_C
+        if HT.HTaqueous_N >=0:
+            mixture.imass['N'] += HT.HTaqueous_N
+            mixture.imass['H2O'] -= HT.HTaqueous_N
+
+    def _design(self):
+        pass
     
     def _cost(self):
         pass

@@ -72,7 +72,8 @@ SluC = qsu.SludgeCentrifuge('A010', ins=SluT-1,
 # HTL (Area 100)
 # =============================================================================
 
-P1 = qsu.Pump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76)
+P1 = qsu.Pump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76,
+              init_with='Stream')
 # Jones 2014: 3049.7 psia
 
 H1 = qsu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=351+273.15,
@@ -94,7 +95,8 @@ HTL_hx = HTL.heat_exchanger
 # CHG (Area 200)
 # =============================================================================
 
-H2SO4_Tank = qsu.StorageTank('T200', ins='H2SO4_in', outs=('H2SO4_out')) # tau?
+H2SO4_Tank = qsu.StorageTank('T200', ins='H2SO4_in', outs=('H2SO4_out'),
+                             init_with='Stream') # tau?
 
 SP1 = su.HTLsplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
                      init_with='Stream')
@@ -110,7 +112,7 @@ StruPre = su.StruvitePrecipitation('A220', ins=(M1-0,'MgCl2','NH4Cl'),
                                    outs=('struvite','CHG_feed'))
 
 P2 = qsu.Pump('A230', ins=StruPre-1, outs='press_aqueous',
-              P=3089.7*6894.76) # Jones 2014: 3089.7 psia
+              P=3089.7*6894.76, init_with='Stream') # Jones 2014: 3089.7 psia
 
 H2 = qsu.HXutility('A240', ins=P2-0, outs='heated_aqueous',
                    T=350+273.15, init_with='Stream')
@@ -135,12 +137,14 @@ SP2 = qsu.Splitter('S500',ins=hydrogen, outs=('hydrogen_HT','hydrogen_HC'),
 # based on Jones 3654:132
 
 HX_H2_HT = qsu.HXutility('A500', ins=SP2-0, outs='heated_H2_HT',
-                         T=117.5+273.15)
+                         T=117.5+273.15, init_with='Stream')
 
 IC_H2_HT = IsothermalCompressor('A510', ins=HX_H2_HT-0, 
                                 outs='compressed_H2_HT', P=1530*6894.76)
+# units from biosteam don't have init_with in __init__
 
-HX_H2_HC = qsu.HXutility('A520', ins=SP2-1, outs='heated_H2_HC', T=128+273.15)
+HX_H2_HC = qsu.HXutility('A520', ins=SP2-1, outs='heated_H2_HC',
+                         T=128+273.15, init_with='Stream')
 
 IC_H2_HC = IsothermalCompressor('A530', ins=HX_H2_HC-0,
                                 outs='compressed_H2_HC', P=1039.7*6894.76)
@@ -149,7 +153,8 @@ IC_H2_HC = IsothermalCompressor('A530', ins=HX_H2_HC-0,
 # HT (Area 300)
 # =============================================================================
 
-P3 = qsu.Pump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76)
+P3 = qsu.Pump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76,
+              init_with='Stream')
 # Jones 2014: 1530.0 psia
 
 H3 = qsu.HXutility('A310', ins=P3-0, outs='heated_biocrude', T=174+273.15,
@@ -190,7 +195,8 @@ C2 = BinaryDistillation('A370', ins=C1-1,
 # HC (Area 400)
 # =============================================================================
 
-P4 = qsu.Pump('A400', ins=C2-1, outs='press_heavy_oil', P=1034.7*6894.76)
+P4 = qsu.Pump('A400', ins=C2-1, outs='press_heavy_oil', P=1034.7*6894.76,
+              init_with='Stream')
 # Jones 2014: 1034.7 psia
 
 H4 = qsu.HXutility('A410', ins=P4-0, outs='heated_heavy_oil', T=394+273.15,
@@ -240,13 +246,14 @@ DieselTank = qsu.StorageTank('T610', ins=H6-0, outs=('diesel_out'),
 
 GasMixer = qsu.Mixer('S620', ins=(HTL-3, F1-0, F2-0, F3-0, F4-0, F5-0),
                      outs=('fuel_gas'), init_with='Stream')
-# don't include F3-0 and F5-0 because they are empty. May change later.
+# F3-0 and F5-0 are empty, may change remove/modify F3 and/or F5 later
 
 CHP = qsu.CHP('A620', ins=(GasMixer-0,'natural_gas','air'),
-              outs=('emission','solid_ash'))
+              outs=('emission','solid_ash'), init_with='Stream')
 
-WWMixer = qsu.Mixer('S630', ins=(SluT-0, SluC-0, MemDis-1, SP3-0),
-                    outs='wastewater')
+WWmixer = su.WWmixer('S630', ins=(SluT-0, SluC-0, MemDis-1, SP3-0),
+                    outs='wastewater', init_with='Stream')
+# effluent of WWmixer goes back to WWTP
 
 # =============================================================================
 # facilities
@@ -268,7 +275,7 @@ sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              HX_H2_HT, IC_H2_HT, HX_H2_HC, IC_H2_HC, P3, H3,
                              HT, F2, F3, SP3, HX_biocrude, C1, C2, P4, H4, HC,
                              F4, F5, C3, GasolineMixer, DieselMixer, H5, H6,
-                             GasolineTank, DieselTank, GasMixer, CHP, WWMixer))
+                             GasolineTank, DieselTank, GasMixer, CHP, WWmixer))
                 #, facilities=(HXN,))
 
 sys.operating_hours = 7884 # NRES 2013
