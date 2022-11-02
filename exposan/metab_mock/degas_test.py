@@ -88,7 +88,7 @@ def create_system(fixed_hsp_P=False):
     R1 = su.AnaerobicCSTR('R1', ins=[inf, 'return_1'], 
                           outs=(bgh, 'sidestream_1', eff), 
                           T=298.15, V_liq=Vl1, V_gas=Vg1, model=ps,
-                          split=(f_Q, 1),
+                          split=(f_Q, 1), headspace_P=1.013,
                           fixed_headspace_P=fixed_hsp_P)
     R1.set_init_conc(S_h2=8.503, S_ch4=0.0422, S_IC=1141.2)
     DM1 = DM('DM1', ins=R1-1, outs=(bgm, 1-R1), tau=tau_1)
@@ -103,7 +103,7 @@ def add_params(model, fix_H2_rprod=False):
     
     b = 1
     D = shape.Uniform(1, 9)
-    @param(name='side-to-main_flowrate_ratio', element=R1, kind='coupled',
+    @param(name='Recirculation_rate', element=R1, kind='coupled',
            units='', baseline=b, distribution=D)
     def set_fQ(fq):
         R1.split = [fq, 1]
@@ -111,8 +111,8 @@ def add_params(model, fix_H2_rprod=False):
     if not fix_H2_rprod:
         b = 1e-3
         D = shape.LogUniform(-6*np.log(10), -0.1*np.log(10))
-        @param(name='H2_production_rate', element=ps, kind='coupled', units='kgCOD/m3/d',
-               baseline=b, distribution=D)
+        @param(name='H2_production_rate', element=ps, kind='coupled', 
+               units='kgCOD/m3/d', baseline=b, distribution=D)
         def set_H2_rprod(r):
             ps.rate_function._params['rh2'] = r
     
@@ -165,6 +165,7 @@ mpl.rcParams['font.sans-serif'] = 'arial'
 mpl.rcParams["figure.autolayout"] = False
 mpl.rcParams['xtick.minor.visible'] = True
 mpl.rcParams['ytick.minor.visible'] = True
+mpl.rcParams['savefig.facecolor'] = 'white'
 
 def meshgrid_sample(p1, p2, n):
     xl, xu = p1.distribution.lower[0], p1.distribution.upper[0]
@@ -204,7 +205,7 @@ def plot_heatmaps(xx, yy, model=None, path='', wide=False):
     if model: data = model.table
     else:
         path = path or ospath.join(results_path, 'table_2dv.xlsx')
-        data = load_data(path, header=[0,1])
+        data = load_data(path, sheet=0, header=[0,1])
     zs = data.iloc[:,2:].to_numpy(copy=True)
     n = int(zs.shape[0] ** 0.5)
     zs = zs.T
@@ -263,7 +264,6 @@ def dv_analysis(n=20, T=100, t_step=10, run=True, save_to='table_2dv.xlsx',
 
 #%%
 import pandas as pd
-mpl.rcParams["figure.autolayout"] = True
 
 def run_scenarios(model, N=50, 
                   T=100, t_step=10, method='BDF', mpath=''):
@@ -297,7 +297,7 @@ def plot_area(data, rh2):
     x = data.iloc[:,0].to_numpy(copy=True)
     y_mem = data.iloc[:,1].to_numpy(copy=True)
     y_tot = y_mem + data.iloc[:,2].to_numpy()
-    fig, ax = plt.subplots(figsize=(4,3))
+    fig, ax = plt.subplots(figsize=(4,3), layout='constrained')
     ax.plot(x, y_mem, '-', c='#D81B60', linewidth=0.4)
     area1 = ax.fill_between(x, 0., y_mem, color='#D81B60', alpha=0.7, label='Sidestream')
     ax.plot(x, y_tot, '-', c='#1E88E5', linewidth=0.4)
@@ -342,4 +342,4 @@ if __name__ == '__main__':
     # xx, yy = dv_analysis(n=4, run=False)
     # xx, yy = dv_analysis(run=False)
     # xx, yy = dv_analysis()
-    dv1_analysis(fixed_hsp_P=True)
+    dv1_analysis(save_to='table_1dv_Pvar.xlsx')

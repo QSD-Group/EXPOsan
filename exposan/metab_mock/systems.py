@@ -358,7 +358,7 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowshe
         systems.append(sysC)
 
     if 'D' in which:
-        flowsheet_D = flowsheet_C or qs.Flowsheet('METAB_sysD')
+        flowsheet_D = flowsheet_D or qs.Flowsheet('METAB_sysD')
         qs.main_flowsheet.set_flowsheet(flowsheet_D)
         
         ############# sysC streams ########################

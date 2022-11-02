@@ -38,7 +38,7 @@ mpl.rcParams['font.sans-serif'] = 'arial'
 mpl.rcParams["figure.autolayout"] = False
 mpl.rcParams['xtick.minor.visible'] = True
 mpl.rcParams['ytick.minor.visible'] = True
-# mpl.rcParams['figure.facecolor'] = 'white'
+mpl.rcParams['savefig.facecolor'] = 'white'
 
 #colors
 #D81B60
@@ -220,18 +220,18 @@ def plot_scatter(seed, model1, model2=None, bl_metrics=None):
     if model2 is None:
         mdls = (model1,)
         mks = ('o',) 
-        clrs = ('#004D40',)
-        prefix = model1.system.ID[-1]
+        clrs = ('#E66100',)
+        prefix = model1.system.flowsheet.ID[-1]
     else:
         mdls = (model1, model2)
         mks = ('o', '^') 
         clrs = ('#D81B60', '#1E88E5')
-        prefix = f'{model1.system.ID[-1]}v{model2.system.ID[-1]}'
+        prefix = f'{model1.system.flowsheet.ID[-1]}v{model2.system.flowsheet.ID[-1]}'
     nx = len(model1.parameters)
     ny = len(model1.metrics)
     for mdl in mdls:
         if mdl.table is None:
-            path = ospath.join(results_path, f'sys{mdl.system.ID[-1]}_table_{seed}.xlsx')
+            path = ospath.join(results_path, f'sys{mdl.system.flowsheet.ID[-1]}_table_{seed}.xlsx')
             mdl.table = load_data(path=path, header=[0,1])
     dfs_x = [mdl.table.iloc[:, :nx] for mdl in mdls]
     dfs_y = [mdl.table.iloc[:, nx:] for mdl in mdls]
@@ -252,7 +252,7 @@ def plot_scatter(seed, model1, model2=None, bl_metrics=None):
             xs = [df_x.iloc[:,i].values for df_x in dfs_x]
             x_ticks = xlct.tick_values(np.min(xs), np.max(xs))
             ax = axes[j,i]
-            ax.axhline(y=yb, ls='-', lw=0.3, c='black')
+            ax.axhline(y=yb, ls='-', lw=0.5, c='black')
             for x, y, m, c in zip(xs, ys, mks, clrs):
                 ax.scatter(x, y, marker=m, s=1, c=c)
             ax.tick_params(axis='both', which='both', 
@@ -428,9 +428,9 @@ def run_UA_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
             p.setter(p.baseline)
     return seed
 
-def run_UA_DvB(seed=None, N=N, T=T, t_step=t_step, plot=True):
+def run_UA_DvB(seed=None, N=N, T=T, t_step=t_step, run=True, plot=True):
     seed = seed or seed_RGT()
-    run_model(mdlD, N, T, t_step, method='BDF', seed=seed)
+    if run: run_model(mdlD, N, T, t_step, method='BDF', seed=seed)
     for p in mdlB.parameters:
         p.setter(p.baseline)
     temp_sysB = mdlB._system
@@ -474,7 +474,7 @@ def run_ss_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
 #%%
 if __name__ == '__main__':
     # run_UA_AvC(seed=628)
-    run_UA_DvB()
+    run_UA_DvB(seed=96, run=False)
     # run_ss_AvC(seed=223, N=100)
     # seed = 952
     # run_modelB(mdl, N, T, t_step, method='BDF', seed=seed)
