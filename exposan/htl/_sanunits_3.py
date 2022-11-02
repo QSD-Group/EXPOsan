@@ -751,7 +751,7 @@ class MembraneDistillation(SanUnit):
     pressure difference across the hydrophobic membrane.
     
     Model method: 
-        1. Feed pH = 10, permeate pH =1.5 (0.5 M H2SO4)
+        1. Feed pH = 10, permeate pH = 1.5 (0.5 M H2SO4)
         2. All N in the feed are NH4+/NH3 (Jones PNNL 2014)
         3. 95% NH3 in feed can be transfered to permeate (assume 95% for now,
            use literature data to find a conservative assumpation later)
