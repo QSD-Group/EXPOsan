@@ -48,7 +48,7 @@ References:
 import biosteam as bst
 from qsdsan import SanUnit
 from qsdsan.sanunits import HXutility
-from exposan.htl._components_2 import create_components
+from exposan.htl._components_3 import create_components
 
 __all__ = ('SludgeLab',
           'HTL',
@@ -58,7 +58,7 @@ __all__ = ('SludgeLab',
           'StruvitePrecipitation',
           'CHG',
           'MembraneDistillation',
-          'H2mixer'
+          'H2mixer',
           'HT',
           'HC',
           'WWmixer')
@@ -892,48 +892,45 @@ class HT(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
-                 biooil_ratio=0.8, gas_ratio=0.07,
+                 hydrocarbon_ratio=0.875,
                  # Jones et al., 2014
                  # spreadsheet HT calculation
                  HTout_pre = 717.4*6894.76, # Jones 2014: 55 psia
                  HTrxn_T=402+273.15, # Jones 2014
                  HTout_T=43+273.15,
-                 gas_composition = {'CH4':0.285, 'C2H6':0.365, 'C3H8':0.350},
-                 # C3H8 includes N-C4H10, N-PENTAN, and HEXANE (stream #339)
-                 # will not be a variable in uncertainty/sensitivity analysis
-                 oil_composition={'TWOMBUTAN':0.0044, 'NPENTAN':0.0040,
-                                  'TWOMPENTA':0.0044, 'HEXANE':0.0035,
-                                  'TWOMHEXAN':0.0044, 'HEPTANE':0.0044,
-                                  'CC6METH':0.0111, 'PIPERDIN':0.0044,
-                                  'TOLUENE':0.0111, 'THREEMHEPTA':0.0111,
-                                  'OCTANE':0.0111, 'ETHCYC6':0.0044,
-                                  'ETHYLBEN':0.0222, 'OXYLENE':0.0111,
-                                  'C9H20':0.0044, 'PROCYC6':0.0044,
-                                  'C3BENZ':0.0111, 'FOURMONAN':0,
-                                  'C10H22':0.0222, 'C4BENZ':0.0133,
-                                  'C11H24':0.0222, 'C10H12':0.0222,
-                                  'C12H26':0.0222, 'OTTFNA':0.0111,
-                                  'C6BENZ':0.0222, 'OTTFSN':0.0222,
-                                  'C7BENZ':0.0222, 'C8BENZ':0.0222,
-                                  'C10H16O4':0.0200, 'C15H32':0.0666,
-                                  'C16H34':0.1998, 'C17H36':0.0888, 
-                                  'C18H38':0.0444, 'C19H40':0.0444,
-                                  'C20H42':0.1110, 'C21H44':0.0444,
-                                  'TRICOSANE':0.0444, 'C24H38O4':0.0089,
-                                  'C26H42O4':0.0111, 'C30H62':0.0022},
+                 HT_composition = {'CH4':0.0228, 'C2H6':0.0292,
+                                   'C3H8':0.0165, 'C4H10':0.0087,
+                                   'TWOMBUTAN':0.0041, 'NPENTAN':0.0068,
+                                   'TWOMPENTA':0.0041, 'HEXANE':0.0041,
+                                   'TWOMHEXAN':0.0041, 'HEPTANE':0.0041,
+                                   'CC6METH':0.0102, 'PIPERDIN':0.0041,
+                                   'TOLUENE':0.0102, 'THREEMHEPTA':0.0102,
+                                   'OCTANE':0.0102, 'ETHCYC6':0.0041,
+                                   'ETHYLBEN':0.0204, 'OXYLENE':0.0102,
+                                   'C9H20':0.0041, 'PROCYC6':0.0041,
+                                   'C3BENZ':0.0102, 'FOURMONAN':0,
+                                   'C10H22':0.0204, 'C4BENZ':0.0122,
+                                   'C11H24':0.0204, 'C10H12':0.0204,
+                                   'C12H26':0.0204, 'OTTFNA':0.0102,
+                                   'C6BENZ':0.0204, 'OTTFSN':0.0204,
+                                   'C7BENZ':0.0204, 'C8BENZ':0.0204,
+                                   'C10H16O4':0.0184, 'C15H32':0.0612,
+                                   'C16H34':0.1836, 'C17H36':0.0816, 
+                                   'C18H38':0.0408, 'C19H40':0.0408,
+                                   'C20H42':0.1020, 'C21H44':0.0408,
+                                   'TRICOSANE':0.0408, 'C24H38O4':0.0082,
+                                   'C26H42O4':0.0102, 'C30H62':0.0020},
                  # Jones et al., 2014
                  # spreadsheet HT calculation
                  # will not be a variable in uncertainty/sensitivity analysis
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.biooil_ratio = biooil_ratio
-        self.gas_ratio = gas_ratio
+        self.hydrocarbon_ratio = hydrocarbon_ratio
         self.HTout_pre = HTout_pre
         self.HTrxn_T = HTrxn_T
         self.HTout_T = HTout_T
-        self.gas_composition = gas_composition
-        self.oil_composition = oil_composition
+        self.HT_composition = HT_composition
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
@@ -943,10 +940,11 @@ class HT(SanUnit):
         
     def _run(self):
         
-        mixture = self.ins [0]
+        mixture = self.ins[0]
         ht_out = self.outs[0]
         
-        H2_split = self.ins[0]._source.ins[0]._source.ins[0]._source.ins[0]._source
+        H2_split = self.ins[0]._source.ins[0]._source.ins[0]._source.ins[0].\
+                   _source
         
         # the amount of H2 reactioned is 0.046*biocrude amount (unchangeable)
         # the amount of H2 added can range from 1-3 times rxned amount
@@ -962,19 +960,17 @@ class HT(SanUnit):
               'kg/hr')
         
         # *1.4 means biocrude amount + H2 reactioned amount
-        biooil_total_mass = mixture.imass['Biocrude']*1.046*self.biooil_ratio
-        for name, ratio in self.oil_composition.items():
-            ht_out.imass[name] = biooil_total_mass*ratio
+        hydrocarbon_mass = mixture.imass['Biocrude']*1.046*\
+                           self.hydrocarbon_ratio
+        for name, ratio in self.HT_composition.items():
+            ht_out.imass[name] = hydrocarbon_mass*ratio
         
-        gas_mass = mixture.imass['Biocrude']*1.046*self.gas_ratio
-        for name, ratio in self.gas_composition.items():
-            ht_out.imass[name] = gas_mass*ratio
             
         ht_out.imass['H2'] = mixture.imass['H2'] -\
                              mixture.imass['Biocrude']*0.046
         
-        ht_out.imass['H2O'] = mixture.F_mass - biooil_total_mass -\
-                              gas_mass - ht_out.imass['H2']
+        ht_out.imass['H2O'] = mixture.F_mass - hydrocarbon_mass -\
+                              ht_out.imass['H2']
         # use water to represent HT aqueous phase,
         # C and N can be calculated base on MB closure.
         
@@ -982,7 +978,8 @@ class HT(SanUnit):
         
         ht_out.T = self.HTout_T
         
-        self.HTL = self.ins[0]._source.ins[0]._source.ins[1]._source.ins[0]._source
+        self.HTL = self.ins[0]._source.ins[0]._source.ins[1]._source.ins[0].\
+                   _source
         
         if self.HTaqueous_C < -0.1*self.HTL.biocrude_C:
             raise Exception('carbon mass balance is out of +/- 10%')
@@ -999,33 +996,26 @@ class HT(SanUnit):
         # exception will be raised.
         
     @property
-    def biooil_C(self):
+    def hydrocarbon_C(self):
         carbon = 0
-        for name in self.oil_composition.keys():
+        for name in self.HT_composition.keys():
             carbon += self.outs[0].imass[name]*cmps[name].i_C
         return carbon
 
     @property
-    def biooil_N(self):
+    def hydrocarbon_N(self):
         nitrogen = 0
-        for name in self.oil_composition.keys():
+        for name in self.HT_composition.keys():
             nitrogen += self.outs[0].imass[name]*cmps[name].i_N
         return nitrogen
 
     @property
-    def HTfuel_gas_C(self):
-        carbon = 0
-        for name in self.gas_composition.keys():
-            carbon += self.outs[0].imass[name]*cmps[name].i_C
-        return carbon
-
-    @property
     def HTaqueous_C(self):
-        return self.HTL.biocrude_C - self.biooil_C - self.HTfuel_gas_C
+        return self.HTL.biocrude_C - self.hydrocarbon_C
 
     @property
     def HTaqueous_N(self):
-        return self.HTL.biocrude_N - self.biooil_N
+        return self.HTL.biocrude_N - self.hydrocarbon_N
 
     def _design(self):
         
@@ -1064,34 +1054,33 @@ class HC(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
-                 oil_ratio=0.955, off_gas_ratio=0.045,
+                 hydrocarbon_ratio = 1,
+                 # nearly all input heavy oils and H2 will be converted to
+                 # products
                  # Jones et al., 2014
                  # spreadsheet HC calculation
                  HC_out_pre=1005.7*6894.76,
                  HC_rxn_T=451+273.15,
                  HC_out_T=60+273.15,
-                 gas_composition = {'CO2':0.860, 'CH4':0.140},
-                 # will not be a variable in uncertainty/sensitivity analysis
-                 oil_composition = {'CYCHEX':0.0389,'HEXANE':0.0116,
-                                    'HEPTANE':0.1202, 'OCTANE':0.0851,
-                                    'C9H20':0.0952, 'C10H22':0.1231,
-                                    'C11H24':0.1764, 'C12H26':0.1382,
-                                    'C13H28':0.0974, 'C14H30':0.0486,
-                                    'C15H32':0.0340, 'C16H34':0.0201,
-                                    'C17H36':0.0045, 'C18H38':0.0010,
-                                    'C19H40':0.0052, 'C20H42':0.0003},
+                 HC_composition = {'CO2':0.0388, 'CH4':0.0063,
+                                   'CYCHEX':0.0389,'HEXANE':0.0116,
+                                   'HEPTANE':0.1202, 'OCTANE':0.0851,
+                                   'C9H20':0.0952, 'C10H22':0.1231,
+                                   'C11H24':0.1764, 'C12H26':0.1382,
+                                   'C13H28':0.0974, 'C14H30':0.0486,
+                                   'C15H32':0.0340, 'C16H34':0.0201,
+                                   'C17H36':0.0045, 'C18H38':0.0010,
+                                   'C19H40':0.0052, 'C20H42':0.0003},
                  #combine C20H42 and PHYTANE as C20H42
                  # will not be a variable in uncertainty/sensitivity analysis
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo,init_with)
-        self.oil_ratio = oil_ratio
-        self.off_gas_ratio = off_gas_ratio
+        self.hydrocarbon_ratio = hydrocarbon_ratio
         self.HC_out_pre = HC_out_pre
         self.HC_rxn_T = HC_rxn_T
         self.HC_out_T = HC_out_T
-        self.gas_composition = gas_composition
-        self.oil_composition = oil_composition
+        self.HC_composition = HC_composition
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
@@ -1104,7 +1093,8 @@ class HC(SanUnit):
         mixture = self.ins[0]
         hc_out = self.outs[0]
         
-        H2_splitter = self.ins[0]._source.ins[0]._source.ins[0]._source.ins[0]._source
+        H2_splitter = self.ins[0]._source.ins[0]._source.ins[0]._source.\
+                      ins[0]._source
         
         # the amount of H2 reactioned is 0.01125*heavy oil amount (unchangeable)
         # H2 amount should be OK here, but in case of not enough, add the
@@ -1113,15 +1103,11 @@ class HC(SanUnit):
             raise Exception('H2 is too less, the minimum should be '\
               f'[{0.01125*mixture.F_mass/(1 - H2_splitter.split[0]):.2f}')
     
-        hc_oil_mass = mixture.F_mass*1.01125*self.oil_ratio
+        hydrocarbon_mass = (mixture.F_mass - mixture.imass['H2'])*\
+                           1.01125*self.hydrocarbon_ratio
 
-        for name, ratio in self.oil_composition.items():
-            hc_out.imass[name] = hc_oil_mass*ratio
-
-        hc_gas_mass = mixture.F_mass*1.01125*self.off_gas_ratio
-
-        for name, ratio in self.gas_composition.items():
-            hc_out.imass[name] = hc_gas_mass*ratio
+        for name, ratio in self.HC_composition.items():
+            hc_out.imass[name] = hydrocarbon_mass*ratio
         
         hc_out.imass['H2'] = mixture.imass['H2'] -\
                              mixture.F_mass*0.01125
@@ -1134,7 +1120,7 @@ class HC(SanUnit):
         for num in range(total_num):
             C_in += mixture.imass[str(list(cmps)[num])]*list(cmps)[num].i_C
             
-        C_out = self.biooil_C + self.HCfuel_gas_C
+        C_out = self.hydrocarbon_C
         
         if C_out < 0.95*C_in or C_out > 1.05*C_out :
             raise Exception('carbon mass balance is out of +/- 5%')
@@ -1142,16 +1128,9 @@ class HC(SanUnit):
         # exception will be raised.
         
     @property
-    def biooil_C(self):
+    def hydrocarbon_C(self):
         carbon = 0
-        for name in self.oil_composition.keys():
-            carbon += self.outs[0].imass[name]*cmps[name].i_C
-        return carbon
-    
-    @property
-    def HCfuel_gas_C(self):
-        carbon = 0
-        for name in self.gas_composition.keys():
+        for name in self.HC_composition.keys():
             carbon += self.outs[0].imass[name]*cmps[name].i_C
         return carbon
 
@@ -1167,7 +1146,11 @@ class HC(SanUnit):
     
     def _cost(self):
         pass
-    
+
+# =============================================================================
+# WWmixer
+# =============================================================================
+
 class WWmixer(SanUnit):
     '''
     A fake unit that mix all wastewater streams and calculates C, N, P, and H2O
@@ -1199,7 +1182,7 @@ class WWmixer(SanUnit):
         
         mixture.mix_from(self.ins)
         
-        HT = self.ins[3]._source.ins[0]._source.ins[0]._source.ins[0]._source
+        HT = self.ins[3]._source.ins[0]._source.ins[0]._source
         
         # only account for C and N from HT if they are not less than 0
         if HT.HTaqueous_C >= 0:

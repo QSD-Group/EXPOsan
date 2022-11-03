@@ -31,8 +31,8 @@ import qsdsan as qs
 import exposan.htl._sanunits_3 as su
 from qsdsan import sanunits as qsu
 from biosteam.units import Flash, IsothermalCompressor, BinaryDistillation
-from exposan.htl._process_settings_2 import load_process_settings
-from exposan.htl._components_2 import create_components
+from exposan.htl._process_settings_3 import load_process_settings
+from exposan.htl._components_3 import create_components
 
 # __all__ = ('create_system',)
 
@@ -172,26 +172,26 @@ HT = su.HT('A320', ins=H3-0, outs='HTout')
 HT_hx = HT.heat_exchanger
 
 F2 = Flash('A330', ins=HT-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
-           P=717.4*6894.76) # outflow P
+           P=55*6894.76) # outflow P
 
-F3 = Flash('A340', ins=F2-1, outs=('HT_fuel_gas_2','HT_aqueous_2'),
-           T=47+273.15, P=55*6894.76) # outflow P
-# This one just decrease T/P, and just T is related to design and cost,
-# consider other ways?
-
-SP3 = qsu.Splitter('S300', ins=F3-1, outs=('HT_ww','HT_oil'),
+SP3 = qsu.Splitter('S300', ins=F2-1, outs=('HT_ww','HT_oil'),
                    split={'H2O':1}, init_with='Stream')
 # separate water and oil based on gravity
 
-HX_biocrude = qsu.HXutility('A350', ins=SP3-1, outs='heated_oil', T=252+273.15)
+HX_biocrude = qsu.HXutility('A340', ins=SP3-1, outs='heated_oil', T=104+273.15)
 # temperature: Jones stream #334 (we remove the first distillation column)
 
-C1 = BinaryDistillation('A360', ins=HX_biocrude-0,
+C1 = BinaryDistillation('A350', ins=HX_biocrude-0,
+                        outs=('HT_light','HT_heavy'),
+                        LHK=('C4H10','NPENTAN'), P=50*6894.76, # outflow P
+                        y_top=188/253, x_bot=73/293, k=2, is_divided=True)
+
+C2 = BinaryDistillation('A360', ins=C1-1,
                         outs=('HT_Gasoline','HT_other_oil'),
                         LHK=('C10H22','C4BENZ'), P=25*6894.76, # outflow P
                         y_top=116/122, x_bot=114/732, k=2, is_divided=True)
 
-C2 = BinaryDistillation('A370', ins=C1-1,
+C3 = BinaryDistillation('A370', ins=C2-1,
                         outs=('HT_Diesel','HT_heavy_oil'),
                         LHK=('C19H40','C21H44'),P=18.7*6894.76, # outflow P
                         y_top=2421/2448, x_bot=158/2448, k=2, is_divided=True)
@@ -200,7 +200,7 @@ C2 = BinaryDistillation('A370', ins=C1-1,
 # HC (Area 400)
 # =============================================================================
 
-P4 = qsu.Pump('A400', ins=C2-1, outs='press_heavy_oil', P=1034.7*6894.76,
+P4 = qsu.Pump('A400', ins=C3-1, outs='press_heavy_oil', P=1034.7*6894.76,
               init_with='Stream')
 # Jones 2014: 1034.7 psia
 
@@ -216,15 +216,10 @@ H4 = qsu.HXutility('A410', ins=HCmixer-0, outs='heated_heavy_oil',
 HC = su.HC('A420', ins=H4-0, outs='HC_out')
 HC_hx = HC.heat_exchanger
 
-F4 = Flash('A430', ins=HC-0, outs=('HC_fuel_gas','HC_aqueous'), T=60+273,
-           P=1005.7*6894.76) # outflow P
-
-F5 = Flash('A440', ins=F4-1, outs=('HC_fuel_gas_2','HC_aqueous_2'), T=60.2+273,
+F3 = Flash('A430', ins=HC-0, outs=('HC_fuel_gas','HC_aqueous'), T=60.2+273,
            P=30*6894.76) # outflow P
-# This one just decrease T/P, and just T is related to design and cost,
-# consider other ways?
 
-C3 = BinaryDistillation('A450', ins=F5-1, outs=('HC_Gasoline','HC_Diesel'),
+C4 = BinaryDistillation('A450', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
                         LHK=('C9H20','C10H22'), P=20*6894.76, # outflow P
                         y_top=360/546, x_bot=7/708, k=2, is_divided=True)
 
@@ -232,10 +227,10 @@ C3 = BinaryDistillation('A450', ins=F5-1, outs=('HC_Gasoline','HC_Diesel'),
 # CHP and storage (Area 600)
 # =============================================================================
 
-GasolineMixer = qsu.Mixer('S600', ins=(C1-0, C3-0), outs='mixed_gasoline',
+GasolineMixer = qsu.Mixer('S600', ins=(C2-0, C4-0), outs='mixed_gasoline',
                           init_with='Stream')
 
-DieselMixer = qsu.Mixer('S610', ins=(C2-0, C3-1), outs='mixed_diesel',
+DieselMixer = qsu.Mixer('S610', ins=(C3-0, C4-1), outs='mixed_diesel',
                         init_with='Stream')
 
 H5 = qsu.HXutility('A600', ins=GasolineMixer-0, outs='cooled_gasoline',
@@ -252,7 +247,7 @@ DieselTank = qsu.StorageTank('T610', ins=H6-0, outs=('diesel_out'),
                              tau=3*24, init_with='Stream')
 # store for 3 days based on Jones 2014
 
-GasMixer = qsu.Mixer('S620', ins=(HTL-3, F1-0, F2-0, F3-0, F4-0, F5-0),
+GasMixer = qsu.Mixer('S620', ins=(HTL-3, F1-0, F2-0, C1-0, F3-0),
                      outs=('fuel_gas'), init_with='Stream')
 # F3-0 and F5-0 are empty, may change remove/modify F3 and/or F5 later
 
@@ -281,10 +276,10 @@ HXN = qsu.HeatExchangerNetwork('HXN')
 sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              M1, StruPre, P2, H2, CHG, F1, MemDis, SP1, SP2,
                              IC_H2_HT, IC_H2_HC, P3, HTmixer, H3,
-                             HT, F2, F3, SP3, HX_biocrude, C1, C2, P4, HCmixer,
-                             H4, HC, F4, F5, C3, GasolineMixer, DieselMixer,
+                             HT, F2, SP3, HX_biocrude, C1, C2, C3, P4, HCmixer,
+                             H4, HC, F3, C4, GasolineMixer, DieselMixer,
                              H5, H6, GasolineTank, DieselTank, GasMixer, CHP,
-                             WWmixer), facilities=(HXN,))
+                             WWmixer)) #, facilities=(HXN,))
 
 sys.operating_hours = 7884 # NRES 2013
 

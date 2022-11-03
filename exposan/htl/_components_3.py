@@ -162,10 +162,9 @@ def create_components(set_thermo=True):
                      organic=True)
     
     C3H8 = Component('C3H8', phase='g', particle_size='Dissolved gas',
-                   degradability='Slowly', organic=True)
+                     degradability='Slowly', organic=True)
     
-    C4H10 = Component('C4H10', phase='g', particle_size='Dissolved gas',
-                   degradability='Slowly', organic=True)
+    # CH4, C2H6, and C3H8 are gas phase only
     
     CO2 = Component('CO2', phase='g', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
@@ -200,6 +199,10 @@ def create_components(set_thermo=True):
                         degradability='Undegradable', organic=False)
 
     # below are biooil-related components
+    # CH4, C2H6, and C3H8 are gas phase only
+    C4H10 = Component('C4H10', particle_size='Dissolved gas',
+                   degradability='Slowly', organic=True)
+    
     TWOMBUTAN = Component('TWOMBUTAN', search_ID='78-78-4',
                           particle_size='Soluble', degradability='Slowly',
                           organic=True)
@@ -358,9 +361,9 @@ def create_components(set_thermo=True):
     cmps = Components([Sludge_lipid, Sludge_protein, Sludge_carbo, Sludge_ash,
                        Struvite, Biochar, Residual,
                        Biocrude, HTLaqueous, H2O, C, N, P,
-                       O2, N2, CH4, C2H6, C3H8, C4H10, CO2, CO, H2, NH3,
+                       O2, N2, CH4, C2H6, C3H8, CO2, CO, H2, NH3,
                        H2SO4, H3PO4, MgCl2, NaOH, NH42SO4, NH4Cl,
-                       TWOMBUTAN, NPENTAN, TWOMPENTA, CYCHEX, HEXANE,
+                       C4H10, TWOMBUTAN, NPENTAN, TWOMPENTA, CYCHEX, HEXANE,
                        TWOMHEXAN, HEPTANE, CC6METH, PIPERDIN, TOLUENE,
                        THREEMHEPTA, OCTANE, ETHCYC6, ETHYLBEN, OXYLENE, C9H20,
                        PROCYC6, C3BENZ, FOURMONAN, C10H22, C4BENZ,
