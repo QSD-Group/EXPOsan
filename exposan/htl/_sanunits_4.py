@@ -896,14 +896,7 @@ class HT(SanUnit):
                  # spreadsheet HT calculation
                  HTin_T = 174+273.15,
                  HTrxn_T=402+273.15, # Jones 2014
-                 
-                 
-                 
-
-
-                 
                  HTout_T=43+273.15,
-                 
                  HT_composition = {'CH4':0.0228, 'C2H6':0.0292,
                                    'C3H8':0.0165, 'C4H10':0.0087,
                                    'TWOMBUTAN':0.0041, 'NPENTAN':0.0068,
@@ -1065,8 +1058,8 @@ class HC(SanUnit):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
                  hydrogen_P = 1039.7*6894.76,
-                 hydrogen_to_heavy_oil = 0.0624,
-                 hydrogen_rxned_to_heavy_oil = 0.0112,
+                 hydrogen_to_heavy_oil = 0.0625,
+                 hydrogen_rxned_to_heavy_oil = 0.01125,
                  hydrocarbon_ratio = 1,
                  # nearly all input heavy oils and H2 will be converted to
                  # products

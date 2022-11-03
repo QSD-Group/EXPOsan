@@ -41,7 +41,7 @@ from exposan.htl._components_4 import create_components
 load_process_settings()
 cmps = create_components()
 
-fake_sludge = qs.Stream('fake_sludge', H2O=100000, units='kg/hr', T=25+273.15)
+fake_sludge = qs.Stream('sludge', H2O=100000, units='kg/hr', T=25+273.15)
 # set H2O equal to the total sludge input flow
 # assume 99% moisture, 20 us tons of dw sludge per h
 
@@ -95,7 +95,7 @@ HTL_hx = HTL.heat_exchanger
 # CHG (Area 200)
 # =============================================================================
 
-H2SO4_Tank = qsu.StorageTank('T200', ins='H2SO4_in', outs=('H2SO4_out'),
+H2SO4_Tank = qsu.StorageTank('T200', ins='H2SO4', outs=('H2SO4_out'),
                              init_with='Stream') # tau?
 
 SP1 = su.HTLsplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
@@ -142,7 +142,11 @@ P3 = qsu.Pump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76,
 # releases a lot of heat and increase the temperature of effluent to 402 C
 # (755.5 F).
 
-HT = su.HT('A310', ins=(P3-0,'HT_H2'), outs='HTout')
+RSP1 = qsu.ReversedSplitter('S600', ins='H2', outs=('HT_H2','HC_H2'),
+                            init_with='Stream')
+# reversed splitter, write before HT and HC, simulate after HT and HC
+
+HT = su.HT('A310', ins=(P3-0, RSP1-0), outs='HTout')
 HT_compressor = HT.compressor
 HT_hx = HT.heat_exchanger
 
@@ -188,7 +192,7 @@ P4 = qsu.Pump('A400', ins=C3-1, outs='press_heavy_oil', P=1034.7*6894.76,
 # releases a lot of heat and increase the temperature of effluent to 451 C
 # (844.6 F).
 
-HC = su.HC('A410', ins=(P4-0,'HC_H2'), outs='HC_out')
+HC = su.HC('A410', ins=(P4-0, RSP1-1), outs='HC_out')
 HC_compressor = HC.compressor
 HC_hx = HC.heat_exchanger
 
@@ -218,11 +222,11 @@ H7 = qsu.HXutility('A500', ins=GasolineMixer-0, outs='cooled_gasoline',
 H8 = qsu.HXutility('A510', ins=DieselMixer-0, outs='cooled_diesel',
                    T=60+273.15, init_with='Stream')
 
-GasolineTank = qsu.StorageTank('T500', ins=H7-0, outs=('gasoline_out'),
+GasolineTank = qsu.StorageTank('T500', ins=H7-0, outs=('gasoline'),
                                tau=3*24, init_with='Stream')
 # store for 3 days based on Jones 2014
 
-DieselTank = qsu.StorageTank('T510', ins=H8-0, outs=('diesel_out'),
+DieselTank = qsu.StorageTank('T510', ins=H8-0, outs=('diesel'),
                              tau=3*24, init_with='Stream')
 # store for 3 days based on Jones 2014
 
@@ -257,7 +261,7 @@ sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              P3, HT, V1, H4, F2, SP2, H5, C1, C2, C3, P4,
                              HC, H6, F3, C4, GasolineMixer, DieselMixer,
                              H7, H8, GasolineTank, DieselTank, GasMixer, CHP,
-                             WWmixer)) # , facilities=(HXN,))
+                             WWmixer, RSP1)) # , facilities=(HXN,))
 
 sys.operating_hours = 7884 # NRES 2013
 
