@@ -49,7 +49,13 @@ import biosteam as bst
 from qsdsan import SanUnit
 from qsdsan.sanunits import HXutility
 from biosteam.units import IsothermalCompressor
-from exposan.htl._components_4 import create_components
+from exposan.htl._components_design import create_components
+from biosteam.units.design_tools import PressureVessel
+from biosteam.units.design_tools.cost_index import CEPCI_by_year as CEPCI
+from math import pi, ceil
+from biosteam.exceptions import DesignError
+from biosteam import Stream
+from biosteam.units.decorators import cost
 
 __all__ = ('SludgeLab',
           'HTL',
@@ -65,6 +71,210 @@ __all__ = ('SludgeLab',
           'WWmixer')
 
 cmps = create_components()
+
+
+
+
+
+
+
+class Reactor(SanUnit, PressureVessel, isabstract=True):
+    '''
+    Create an abstract class for reactor unit, purchase cost of the reactor
+    is based on volume calculated by residence time.
+    Parameters
+    ----------
+    ins : stream
+        Inlet.
+    outs : stream
+        Outlet.
+    tau : float
+        Residence time [hr].
+    V_wf : float
+        Fraction of working volume over total volume.
+    mixing_intensity: float
+        Mechanical mixing intensity, [/s].
+    kW_per_m3: float
+        Power usage of agitator
+        (converted from 0.5 hp/1000 gal as in [1]).
+        If mixing_intensity is provided, this will be calculated based on
+        the mixing_intensity and viscosity of the influent mixture as in [2]_
+    wall_thickness_factor=1: float
+        A safety factor to scale up the calculated minimum wall thickness.
+    vessel_material : str, optional
+        Vessel material. Default to 'Stainless steel 316'.
+    vessel_type : str, optional
+        Vessel type. Can only be 'Horizontal' or 'Vertical'.
+    References
+    ----------
+    .. [1] Seider, W. D.; Lewin, D. R.; Seader, J. D.; Widagdo, S.; Gani, R.;
+        Ng, M. K. Cost Accounting and Capital Cost Estimation. In Product
+        and Process Design Principles; Wiley, 2017; pp 470.
+    .. [2] Shoener et al. Energy Positive Domestic Wastewater Treatment:
+        The Roles of Anaerobic and Phototrophic Technologies.
+        Environ. Sci.: Processes Impacts 2014, 16 (6), 1204–1222.
+        `<https://doi.org/10.1039/C3EM00711A>`_.
+    '''
+    _N_ins = 2
+    _N_outs = 1
+    _ins_size_is_fixed = False
+    _outs_size_is_fixed = False
+
+    _units = {**PressureVessel._units,
+              'Residence time': 'hr',
+              'Total volume': 'm3',
+              'Reactor volume': 'm3'}
+
+    # For a single reactor, based on diameter and length from PressureVessel._bounds,
+    # converted from ft3 to m3
+    _Vmax = pi/4*(20**2)*40/35.3147
+
+    def __init__(self, ID='', ins=None, outs=(), *,
+                 P=101325, tau=0.5, V_wf=0.8,
+                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
+                 wall_thickness_factor=1,
+                 vessel_material='Stainless steel 316',
+                 vessel_type='Vertical'):
+
+        SanUnit.__init__(self, ID, ins, outs)
+        self.P = P
+        self.tau = tau
+        self.V_wf = V_wf
+        self.length_to_diameter = length_to_diameter
+        self.mixing_intensity = mixing_intensity
+        self.kW_per_m3 = kW_per_m3
+        self.wall_thickness_factor = wall_thickness_factor
+        self.vessel_material = vessel_material
+        self.vessel_type = vessel_type
+
+    def _design(self):
+        Design = self.design_results
+        ins_F_vol = self.F_vol_in
+        V_total = ins_F_vol * self.tau / self.V_wf
+        P = self.P * 0.000145038 # Pa to psi
+        length_to_diameter = self.length_to_diameter
+        wall_thickness_factor = self.wall_thickness_factor
+
+        N = ceil(V_total/self._Vmax)
+        if N == 0:
+            V_reactor = 0
+            D = 0
+            L = 0
+        else:
+            V_reactor = V_total / N
+            D = (4*V_reactor/pi/length_to_diameter)**(1/3)
+            D *= 3.28084 # convert from m to ft
+            L = D * length_to_diameter
+
+        Design['Residence time'] = self.tau
+        Design['Total volume'] = V_total
+        Design['Single reactor volume'] = V_reactor
+        Design['Number of reactors'] = N
+        Design.update(self._vessel_design(P, D, L))
+        if wall_thickness_factor == 1: pass
+        elif wall_thickness_factor < 1:
+            raise DesignError('wall_thickness_factor must be larger than 1')
+        else:
+             Design['Wall thickness'] *= wall_thickness_factor
+             # Weight is proportional to wall thickness in PressureVessel design
+             Design['Weight'] = round(Design['Weight']*wall_thickness_factor, 2)
+
+    def _cost(self):
+        Design = self.design_results
+        purchase_costs = self.baseline_purchase_costs
+
+        if Design['Total volume'] == 0:
+            for i, j in purchase_costs.items():
+                purchase_costs[i] = 0
+
+        else:
+            purchase_costs.update(self._vessel_purchase_cost(
+                Design['Weight'], Design['Diameter'], Design['Length']))
+            for i, j in purchase_costs.items():
+                purchase_costs[i] *= Design['Number of reactors']
+
+            self.power_utility(self.kW_per_m3*Design['Total volume'])
+
+    @property
+    def BM(self):
+        vessel_type = self.vessel_type
+        if not vessel_type:
+            raise AttributeError('Vessel type not defined')
+        elif vessel_type == 'Vertical':
+            return self.BM_vertical
+        elif vessel_type == 'Horizontal':
+            return self.BM_horizontal
+        else:
+            raise RuntimeError('Invalid vessel type')
+
+    @property
+    def kW_per_m3(self):
+        G = self.mixing_intensity
+        if G is None:
+            return self._kW_per_m3
+        else:
+            mixture = Stream()
+            mixture.mix_from(self.ins)
+            kW_per_m3 = mixture.mu*(G**2)/1e3
+            return kW_per_m3
+    @kW_per_m3.setter
+    def kW_per_m3(self, i):
+        if self.mixing_intensity and i is not None:
+            raise AttributeError('mixing_intensity is provided, kw_per_m3 will be calculated.')
+        else:
+            self._kW_per_m3 = i
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # =============================================================================
 # Sludge Lab
@@ -174,7 +384,17 @@ class SludgeLab(SanUnit):
 # HTL (ignore three phase separator for now, ask Yalin)
 # =============================================================================
 
-class HTL(SanUnit):
+@cost(basis='Fermenter size', ID='Fermenter', units='kg',
+      cost=10128000, S=(42607+443391+948+116)*(60+36),
+      CE=CEPCI[2009], n=1, BM=1.5)
+# cyclone separator
+
+@cost(basis='Fermenter size', ID='Fermenter', units='kg',
+      cost=10128000, S=(42607+443391+948+116)*(60+36),
+      CE=CEPCI[2009], n=1, BM=1.5)
+# three phase separator
+
+class HTL(Reactor):
     
     '''
     HTL converts dewatered sludge to biocrude, aqueous, off-gas, and biochar
@@ -217,6 +437,13 @@ class HTL(SanUnit):
                  biocrude_pre=30*6894.76,
                  offgas_pre=30*6894.76,
                  eff_T=60+273.15, # Jones 2014
+                 
+                 P=None, tau=1, V_wf=0.5,
+                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
+                 wall_thickness_factor=1,
+                 vessel_material='Stainless steel 316',
+                 vessel_type='Vertical',
+                 
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -232,9 +459,21 @@ class HTL(SanUnit):
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
+        
+        self.P = P
+        self.tau = tau
+        self.V_wf = V_wf
+        self.length_to_diameter = length_to_diameter
+        self.mixing_intensity = mixing_intensity
+        self.kW_per_m3 = kW_per_m3
+        self.wall_thickness_factor = wall_thickness_factor
+        self.vessel_material = vessel_material
+        self.vessel_type = vessel_type
 
     _N_ins = 2
     _N_outs = 4
+    _units= {'Fermenter size': 'kg', # cyclone separator
+             'Fermenter size': 'kg'} # three phase separator
     
     def _run(self):
         
@@ -395,14 +634,20 @@ class HTL(SanUnit):
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
         # not necessary to simulate here?
         
+
+        self.P = self.ins[0].P
+        Reactor._design(self)
+
+        
+        
     def _cost(self):
-        pass
+        Reactor._cost(self)
 
 # =============================================================================
 # Acid Extraction
 # =============================================================================
 
-class AcidExtraction(SanUnit):
+class AcidExtraction(Reactor):
     
     '''
     H2SO4 is added to biochar from HTL to extract P. 
@@ -419,11 +664,28 @@ class AcidExtraction(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', acid_vol=10, P_acid_recovery_ratio=0.95,
+                 
+                 P=None, tau=1, V_wf=0.5,
+                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
+                 wall_thickness_factor=1,
+                 vessel_material='Stainless steel 316',
+                 vessel_type='Vertical',
+                 
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.acid_vol = acid_vol
         self.P_acid_recovery_ratio = P_acid_recovery_ratio
+        
+        self.P = P
+        self.tau = tau
+        self.V_wf = V_wf
+        self.length_to_diameter = length_to_diameter
+        self.mixing_intensity = mixing_intensity
+        self.kW_per_m3 = kW_per_m3
+        self.wall_thickness_factor = wall_thickness_factor
+        self.vessel_material = vessel_material
+        self.vessel_type = vessel_type
 
     _N_ins = 2
     _N_outs = 2
@@ -468,7 +730,9 @@ class AcidExtraction(SanUnit):
         return self.ins[0]._source.biochar_P - self.outs[1].imass['P']
         
     def _design(self):
-        pass
+        
+        self.P = self.ins[1].P
+        Reactor._design(self)
     
     def _cost(self):
         pass
@@ -570,7 +834,7 @@ class HTLsplitter(SanUnit):
 # Struvite Precipitation
 # =============================================================================
 
-class StruvitePrecipitation(SanUnit):
+class StruvitePrecipitation(Reactor):
     '''
     extracted_P and HTL aqueous are mixed together (Mixer) before adding
     MgCl2 and struvite precipitation.
@@ -589,12 +853,29 @@ class StruvitePrecipitation(SanUnit):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', Mg_P_ratio=1,
                  P_pre_recovery_ratio=0.95, P_in_struvite=0.127,
+                 
+                 P=None, tau=1, V_wf=0.5,
+                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
+                 wall_thickness_factor=1,
+                 vessel_material='Stainless steel 316',
+                 vessel_type='Vertical',
+                 
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.Mg_P_ratio = Mg_P_ratio
         self.P_pre_recovery_ratio = P_pre_recovery_ratio
         self.P_in_struvite = P_in_struvite
+        
+        self.P = P
+        self.tau = tau
+        self.V_wf = V_wf
+        self.length_to_diameter = length_to_diameter
+        self.mixing_intensity = mixing_intensity
+        self.kW_per_m3 = kW_per_m3
+        self.wall_thickness_factor = wall_thickness_factor
+        self.vessel_material = vessel_material
+        self.vessel_type = vessel_type
 
     _N_ins = 3
     _N_outs = 2
@@ -640,7 +921,9 @@ class StruvitePrecipitation(SanUnit):
         return self.struvite_P*14.0067/30.973762
 
     def _design(self):
-        pass
+        
+        self.P = self.ins[0].P
+        Reactor._design(self)
     
     def _cost(self):
         pass
@@ -649,7 +932,7 @@ class StruvitePrecipitation(SanUnit):
 # CHG
 # =============================================================================
 
-class CHG(SanUnit):
+class CHG(Reactor):
    
     '''
     CHG serves to reduce the COD content in the aqueous phase and produce fuel
@@ -677,6 +960,13 @@ class CHG(SanUnit):
                  # will not be a variable in uncertainty/sensitivity analysis
                  gas_c_to_total_c=0.764*0.262, # Li EST
                  # Jones 2014: pressure before flash
+                 
+                 P=None, tau=4, V_wf=0.5,
+                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
+                 wall_thickness_factor=1,
+                 vessel_material='Stainless steel 316',
+                 vessel_type='Vertical',
+                 
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -685,6 +975,16 @@ class CHG(SanUnit):
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
+        
+        self.P = P
+        self.tau = tau
+        self.V_wf = V_wf
+        self.length_to_diameter = length_to_diameter
+        self.mixing_intensity = mixing_intensity
+        self.kW_per_m3 = kW_per_m3
+        self.wall_thickness_factor = wall_thickness_factor
+        self.vessel_material = vessel_material
+        self.vessel_type = vessel_type
         
     _N_ins = 1
     _N_outs = 1
@@ -733,6 +1033,9 @@ class CHG(SanUnit):
         hx_ins0.T = self.ins[0].T # temperature before/after CHG are similar
         hx.T = hx_outs0.T
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
+        
+        self.P = self.ins[0].P
+        Reactor._design(self)
     
     def _cost(self):
         pass
@@ -741,7 +1044,7 @@ class CHG(SanUnit):
 # Membrane Distillation
 # =============================================================================
 
-class MembraneDistillation(SanUnit):
+class MembraneDistillation(Reactor):
     
     '''
     Membrane distillation recovers nitrogen as ammonia sulfate based on vapor
@@ -768,12 +1071,29 @@ class MembraneDistillation(SanUnit):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
                  N_S_ratio=2, pH=10, ammonia_transfer_ratio=0.95,
+                 
+                 P=None, tau=1, V_wf=0.5,
+                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
+                 wall_thickness_factor=1,
+                 vessel_material='Stainless steel 316',
+                 vessel_type='Vertical',
+                 
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.N_S_ratio = N_S_ratio
         self.pH = pH
         self.ammonia_transfer_ratio = ammonia_transfer_ratio
+        
+        self.P = P
+        self.tau = tau
+        self.V_wf = V_wf
+        self.length_to_diameter = length_to_diameter
+        self.mixing_intensity = mixing_intensity
+        self.kW_per_m3 = kW_per_m3
+        self.wall_thickness_factor = wall_thickness_factor
+        self.vessel_material = vessel_material
+        self.vessel_type = vessel_type
 
     _N_ins = 2
     _N_outs = 2
@@ -819,53 +1139,18 @@ class MembraneDistillation(SanUnit):
         # ammoniumsulfate has the same T and P as acid
         
     def _design(self):
-        pass
+        
+        self.P = self.ins[1].P
+        Reactor._design(self)
     
     def _cost(self):
         pass
-
-# class H2mixer(SanUnit):
-#     '''
-#     A fake unit that mix H2 and oil.
-    
-#     Model method: mix_from, don't need _design and _cost.
-    
-#     Parameters
-#     ----------
-#     ins: Iterable (stream)
-#         hydrogen, oil
-#     outs: Iterable (stream)
-#         mixture
-#     '''
-    
-#     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-#                  init_with='Stream',
-#                  **kwargs):
-        
-#         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-
-#     _N_ins = 2
-#     _N_outs = 1
-        
-#     def _run(self):
-        
-#         hydrogen, oil = self.ins
-#         mixture = self.outs[0]
-        
-#         mixture.mix_from(self.ins)
-#         mixture.P = min(hydrogen.P, oil.P)
-
-#     def _design(self):
-#         pass
-    
-#     def _cost(self):
-#         pass
 
 # =============================================================================
 # HT
 # =============================================================================
 
-class HT(SanUnit):
+class HT(Reactor):
     
     '''
     Biocrude mixed with H2 are hydrotreated at elevated temperature (405°C)
@@ -888,40 +1173,46 @@ class HT(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
-                 hydrogen_P = 1530*6894.76,
-                 hydrogen_to_biocrude = 0.138,
-                 hydrogen_rxned_to_biocrude = 0.046,
+                 hydrogen_P=1530*6894.76,
+                 hydrogen_to_biocrude=0.138,
+                 hydrogen_rxned_to_biocrude=0.046,
                  hydrocarbon_ratio=0.875,
                  # Jones et al., 2014
                  # spreadsheet HT calculation
-                 HTin_T = 174+273.15,
+                 HTin_T=174+273.15,
                  HTrxn_T=402+273.15, # Jones 2014
-                 HTout_T=43+273.15,
-                 HT_composition = {'CH4':0.0228, 'C2H6':0.0292,
-                                   'C3H8':0.0165, 'C4H10':0.0087,
-                                   'TWOMBUTAN':0.0041, 'NPENTAN':0.0068,
-                                   'TWOMPENTA':0.0041, 'HEXANE':0.0041,
-                                   'TWOMHEXAN':0.0041, 'HEPTANE':0.0041,
-                                   'CC6METH':0.0102, 'PIPERDIN':0.0041,
-                                   'TOLUENE':0.0102, 'THREEMHEPTA':0.0102,
-                                   'OCTANE':0.0102, 'ETHCYC6':0.0041,
-                                   'ETHYLBEN':0.0204, 'OXYLENE':0.0102,
-                                   'C9H20':0.0041, 'PROCYC6':0.0041,
-                                   'C3BENZ':0.0102, 'FOURMONAN':0,
-                                   'C10H22':0.0204, 'C4BENZ':0.0122,
-                                   'C11H24':0.0204, 'C10H12':0.0204,
-                                   'C12H26':0.0204, 'OTTFNA':0.0102,
-                                   'C6BENZ':0.0204, 'OTTFSN':0.0204,
-                                   'C7BENZ':0.0204, 'C8BENZ':0.0204,
-                                   'C10H16O4':0.0184, 'C15H32':0.0612,
-                                   'C16H34':0.1836, 'C17H36':0.0816, 
-                                   'C18H38':0.0408, 'C19H40':0.0408,
-                                   'C20H42':0.1020, 'C21H44':0.0408,
-                                   'TRICOSANE':0.0408, 'C24H38O4':0.0082,
-                                   'C26H42O4':0.0102, 'C30H62':0.0020},
+                 HT_composition={'CH4':0.0228, 'C2H6':0.0292,
+                                 'C3H8':0.0165, 'C4H10':0.0087,
+                                 'TWOMBUTAN':0.0041, 'NPENTAN':0.0068,
+                                 'TWOMPENTA':0.0041, 'HEXANE':0.0041,
+                                 'TWOMHEXAN':0.0041, 'HEPTANE':0.0041,
+                                 'CC6METH':0.0102, 'PIPERDIN':0.0041,
+                                 'TOLUENE':0.0102, 'THREEMHEPTA':0.0102,
+                                 'OCTANE':0.0102, 'ETHCYC6':0.0041,
+                                 'ETHYLBEN':0.0204, 'OXYLENE':0.0102,
+                                 'C9H20':0.0041, 'PROCYC6':0.0041,
+                                 'C3BENZ':0.0102, 'FOURMONAN':0,
+                                 'C10H22':0.0204, 'C4BENZ':0.0122,
+                                 'C11H24':0.0204, 'C10H12':0.0204,
+                                 'C12H26':0.0204, 'OTTFNA':0.0102,
+                                 'C6BENZ':0.0204, 'OTTFSN':0.0204,
+                                 'C7BENZ':0.0204, 'C8BENZ':0.0204,
+                                 'C10H16O4':0.0184, 'C15H32':0.0612,
+                                 'C16H34':0.1836, 'C17H36':0.0816, 
+                                 'C18H38':0.0408, 'C19H40':0.0408,
+                                 'C20H42':0.1020, 'C21H44':0.0408,
+                                 'TRICOSANE':0.0408, 'C24H38O4':0.0082,
+                                 'C26H42O4':0.0102, 'C30H62':0.0020},
                  # Jones et al., 2014
                  # spreadsheet HT calculation
                  # will not be a variable in uncertainty/sensitivity analysis
+                 
+                 P=None, tau=2, V_wf=0.5,
+                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
+                 wall_thickness_factor=1,
+                 vessel_material='Stainless steel 316',
+                 vessel_type='Vertical',
+                 
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -943,6 +1234,16 @@ class HT(SanUnit):
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
+        
+        self.P = P
+        self.tau = tau
+        self.V_wf = V_wf
+        self.length_to_diameter = length_to_diameter
+        self.mixing_intensity = mixing_intensity
+        self.kW_per_m3 = kW_per_m3
+        self.wall_thickness_factor = wall_thickness_factor
+        self.vessel_material = vessel_material
+        self.vessel_type = vessel_type
 
     _N_ins = 2
     _N_outs = 1
@@ -1029,6 +1330,9 @@ class HT(SanUnit):
         # H2 and biocrude have the same pressure
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
         # not necessary to simulate here?
+        
+        self.P = min(IC_outs0.P, self.ins[0].P)
+        Reactor._design(self)
     
     def _cost(self):
         pass
@@ -1037,7 +1341,7 @@ class HT(SanUnit):
 # HC
 # =============================================================================
    
-class HC(SanUnit):
+class HC(Reactor):
     
     '''
     Hydrocracking further cracks down heavy part in HT biooil to diesel and
@@ -1057,28 +1361,34 @@ class HC(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
-                 hydrogen_P = 1039.7*6894.76,
-                 hydrogen_to_heavy_oil = 0.0625,
-                 hydrogen_rxned_to_heavy_oil = 0.01125,
-                 hydrocarbon_ratio = 1,
+                 hydrogen_P=1039.7*6894.76,
+                 hydrogen_to_heavy_oil=0.0625,
+                 hydrogen_rxned_to_heavy_oil=0.01125,
+                 hydrocarbon_ratio=1,
                  # nearly all input heavy oils and H2 will be converted to
                  # products
                  # Jones et al., 2014
                  # spreadsheet HC calculation
-                 HCin_T = 394+273.15,
+                 HCin_T=394+273.15,
                  HC_rxn_T=451+273.15,
- 
-                 HC_composition = {'CO2':0.0388, 'CH4':0.0063,
-                                   'CYCHEX':0.0389,'HEXANE':0.0116,
-                                   'HEPTANE':0.1202, 'OCTANE':0.0851,
-                                   'C9H20':0.0952, 'C10H22':0.1231,
-                                   'C11H24':0.1764, 'C12H26':0.1382,
-                                   'C13H28':0.0974, 'C14H30':0.0486,
-                                   'C15H32':0.0340, 'C16H34':0.0201,
-                                   'C17H36':0.0045, 'C18H38':0.0010,
-                                   'C19H40':0.0052, 'C20H42':0.0003},
+                 HC_composition={'CO2':0.0388, 'CH4':0.0063,
+                                 'CYCHEX':0.0389,'HEXANE':0.0116,
+                                 'HEPTANE':0.1202, 'OCTANE':0.0851,
+                                 'C9H20':0.0952, 'C10H22':0.1231,
+                                 'C11H24':0.1764, 'C12H26':0.1382,
+                                 'C13H28':0.0974, 'C14H30':0.0486,
+                                 'C15H32':0.0340, 'C16H34':0.0201,
+                                 'C17H36':0.0045, 'C18H38':0.0010,
+                                 'C19H40':0.0052, 'C20H42':0.0003},
                  #combine C20H42 and PHYTANE as C20H42
                  # will not be a variable in uncertainty/sensitivity analysis
+                 
+                 P=None, tau=2, V_wf=0.5,
+                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
+                 wall_thickness_factor=1,
+                 vessel_material='Stainless steel 316',
+                 vessel_type='Vertical',
+                 
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo,init_with)
@@ -1100,6 +1410,16 @@ class HC(SanUnit):
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
+        
+        self.P = P
+        self.tau = tau
+        self.V_wf = V_wf
+        self.length_to_diameter = length_to_diameter
+        self.mixing_intensity = mixing_intensity
+        self.kW_per_m3 = kW_per_m3
+        self.wall_thickness_factor = wall_thickness_factor
+        self.vessel_material = vessel_material
+        self.vessel_type = vessel_type
         
     _N_ins = 2
     _N_outs = 1
@@ -1161,6 +1481,9 @@ class HC(SanUnit):
         # H2 and biocrude have the same pressure
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
         # not necessary to simulate here?
+        
+        self.P = min(IC_outs0.P, self.ins[0].P)
+        Reactor._design(self)
     
     def _cost(self):
         pass

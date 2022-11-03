@@ -28,11 +28,11 @@ References:
 '''
 
 import qsdsan as qs
-import exposan.htl._sanunits_4 as su
+import exposan.htl._sanunits_design as su
 from qsdsan import sanunits as qsu
 from biosteam.units import Flash, IsenthalpicValve, BinaryDistillation
-from exposan.htl._process_settings_4 import load_process_settings
-from exposan.htl._components_4 import create_components
+from exposan.htl._process_settings_design import load_process_settings
+from exposan.htl._components_design import create_components
 
 # __all__ = ('create_system',)
 
@@ -41,13 +41,9 @@ from exposan.htl._components_4 import create_components
 load_process_settings()
 cmps = create_components()
 
-fake_sludge = qs.Stream('sludge', H2O=100000, units='kg/hr', T=25+273.15)
+fake_sludge = qs.Stream('sludge', H2O=2605779.303, units='kg/hr', T=25+273.15)
 # set H2O equal to the total sludge input flow
 # assume 99% moisture, 20 us tons of dw sludge per h
-
-hydrogen = qs.Stream('hydrogen', H2=18.92, units='kg/hr', T=25+273.15)
-# hydrogen amount can be calculate based on biocrude (primary) and heavy amount
-# if value provided is not in the reasonable range, an exception will be raised
 
 # =============================================================================
 # pretreatment (Area 000)
