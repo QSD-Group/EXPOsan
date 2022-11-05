@@ -231,7 +231,8 @@ class HTL(SanUnit):
         self.eff_T = eff_T
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
+        # Add '.' in ID for auxiliary units
+        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
 
     _N_ins = 2
     _N_outs = 4
@@ -937,12 +938,13 @@ class HT(SanUnit):
         
         IC_in = bst.Stream(f'{ID}_IC_in')
         IC_out = bst.Stream(f'{ID}_IC_out')
-        self.compressor = IsothermalCompressor(ID=f'{ID}_IC', ins=IC_in,
+        # Add '.' in ID for auxiliary units
+        self.compressor = IsothermalCompressor(ID=f'.{ID}_IC', ins=IC_in,
                                                outs=IC_out, P=None)
         
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
+        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
 
     _N_ins = 2
     _N_outs = 1
@@ -1013,7 +1015,8 @@ class HT(SanUnit):
         return self.HTL.biocrude_N - self.hydrocarbon_N
 
     def _design(self):
-        
+        #!!! Make sure cost/utilities of IC added to HT (since IC.simulate is not used)
+        # maybe better to use IC.simulate?
         IC = self.compressor
         IC_ins0, IC_outs0 = IC.ins[0], IC.outs[0]
         IC_ins0.copy_like(self.ins[1])
@@ -1094,12 +1097,13 @@ class HC(SanUnit):
         
         IC_in = bst.Stream(f'{ID}_IC_in')
         IC_out = bst.Stream(f'{ID}_IC_out')
-        self.compressor = IsothermalCompressor(ID=f'{ID}_IC', ins=IC_in,
+        # Add '.' in ID for auxiliary units
+        self.compressor = IsothermalCompressor(ID=f'.{ID}_IC', ins=IC_in,
                                                outs=IC_out, P=None)
         
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
+        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
         
     _N_ins = 2
     _N_outs = 1
@@ -1145,7 +1149,7 @@ class HC(SanUnit):
         return carbon
 
     def _design(self):
-        
+        #!!! See comments for HT
         IC = self.compressor
         IC_ins0, IC_outs0 = IC.ins[0], IC.outs[0]
         IC_ins0.copy_like(self.ins[1])
