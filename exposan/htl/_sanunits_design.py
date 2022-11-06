@@ -149,7 +149,11 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
 
     def _design(self):
         Design = self.design_results
+        
         ins_F_vol = self.F_vol_in
+        for i in range(len(self.ins)):
+            ins_F_vol -= self.ins[i].ivol['H2']
+        # not include gas (e.g. H2)
         V_total = ins_F_vol * self.tau / self.V_wf
         P = self.P * 0.000145038 # Pa to psi
         length_to_diameter = self.length_to_diameter
@@ -217,6 +221,7 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
             mixture.mix_from(self.ins)
             kW_per_m3 = mixture.mu*(G**2)/1e3
             return kW_per_m3
+        
     @kW_per_m3.setter
     def kW_per_m3(self, i):
         if self.mixing_intensity and i is not None:
@@ -384,15 +389,10 @@ class SludgeLab(SanUnit):
 # HTL (ignore three phase separator for now, ask Yalin)
 # =============================================================================
 
-@cost(basis='Fermenter size', ID='Fermenter', units='kg',
-      cost=10128000, S=(42607+443391+948+116)*(60+36),
-      CE=CEPCI[2009], n=1, BM=1.5)
-# cyclone separator
-
-@cost(basis='Fermenter size', ID='Fermenter', units='kg',
-      cost=10128000, S=(42607+443391+948+116)*(60+36),
-      CE=CEPCI[2009], n=1, BM=1.5)
-# three phase separator
+@cost(basis='Treatment capacity', ID='Solids filter oil/water separator', units='lb/h',
+      cost=3945523, S=1219765,
+      CE=CEPCI[2011], n=0.68, BM=1.9)
+# separator
 
 class HTL(Reactor):
     
@@ -424,6 +424,8 @@ class HTL(Reactor):
     '''
     
     auxiliary_unit_names=('heat_exchanger',)
+    
+    _kg_2_lb = 2.20462
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
@@ -438,7 +440,7 @@ class HTL(Reactor):
                  offgas_pre=30*6894.76,
                  eff_T=60+273.15, # Jones 2014
                  
-                 P=None, tau=1, V_wf=0.5,
+                 P=None, tau=15/60, V_wf=0.15,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
@@ -458,7 +460,7 @@ class HTL(Reactor):
         self.eff_T = eff_T
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
+        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
         
         self.P = P
         self.tau = tau
@@ -472,8 +474,7 @@ class HTL(Reactor):
 
     _N_ins = 2
     _N_outs = 4
-    _units= {'Fermenter size': 'kg', # cyclone separator
-             'Fermenter size': 'kg'} # three phase separator
+    _units= {'Treatment capacity': 'lb/h'} # separator
     
     def _run(self):
         
@@ -624,6 +625,9 @@ class HTL(Reactor):
 
     def _design(self):
         
+        Design = self.design_results
+        Design['Treatment capacity'] = self.ins[0].F_mass*self._kg_2_lb
+        
         hx = self.heat_exchanger
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
         hx_ins0.mix_from((self.outs[1], self.outs[2], self.outs[3]))
@@ -637,11 +641,12 @@ class HTL(Reactor):
 
         self.P = self.ins[0].P
         Reactor._design(self)
-
-        
         
     def _cost(self):
         Reactor._cost(self)
+        self._decorated_cost()
+        
+            
 
 # =============================================================================
 # Acid Extraction
@@ -735,7 +740,7 @@ class AcidExtraction(Reactor):
         Reactor._design(self)
     
     def _cost(self):
-        pass
+        Reactor._cost(self)
     
 # =============================================================================
 # HTL mixer
@@ -926,7 +931,7 @@ class StruvitePrecipitation(Reactor):
         Reactor._design(self)
     
     def _cost(self):
-        pass
+        Reactor._cost(self)
 
 # =============================================================================
 # CHG
@@ -961,7 +966,7 @@ class CHG(Reactor):
                  gas_c_to_total_c=0.764*0.262, # Li EST
                  # Jones 2014: pressure before flash
                  
-                 P=None, tau=4, V_wf=0.5,
+                 P=None, tau=1, V_wf=0.5,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
@@ -974,7 +979,7 @@ class CHG(Reactor):
         self.gas_c_to_total_c = gas_c_to_total_c
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
+        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
         
         self.P = P
         self.tau = tau
@@ -1034,11 +1039,12 @@ class CHG(Reactor):
         hx.T = hx_outs0.T
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
         
+        Reactor._Vmax /= 2
         self.P = self.ins[0].P
         Reactor._design(self)
     
     def _cost(self):
-        pass
+        Reactor._cost(self)
     
 # =============================================================================
 # Membrane Distillation
@@ -1144,7 +1150,7 @@ class MembraneDistillation(Reactor):
         Reactor._design(self)
     
     def _cost(self):
-        pass
+        Reactor._cost(self)
 
 # =============================================================================
 # HT
@@ -1228,12 +1234,12 @@ class HT(Reactor):
         
         IC_in = bst.Stream(f'{ID}_IC_in')
         IC_out = bst.Stream(f'{ID}_IC_out')
-        self.compressor = IsothermalCompressor(ID=f'{ID}_IC', ins=IC_in,
+        self.compressor = IsothermalCompressor(ID=f'.{ID}_IC', ins=IC_in,
                                                outs=IC_out, P=None)
         
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
+        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
         
         self.P = P
         self.tau = tau
@@ -1255,6 +1261,7 @@ class HT(Reactor):
         
         hydrogen.imass['H2'] = biocrude.imass['Biocrude']*\
                                self.hydrogen_to_biocrude
+        hydrogen.phase = 'g'
 
         hydrocarbon_mass = biocrude.imass['Biocrude']*\
                            (1 + self.hydrogen_rxned_to_biocrude)*\
@@ -1315,11 +1322,15 @@ class HT(Reactor):
 
     def _design(self):
         
+        Design = self.design_results
+        Design['Hydrogen'] = self.ins[1].F_vol*self._m3perhr_2_mmscfd
+        
         IC = self.compressor
         IC_ins0, IC_outs0 = IC.ins[0], IC.outs[0]
         IC_ins0.copy_like(self.ins[1])
         IC_outs0.copy_like(self.ins[1])
-        IC_outs0.P = self.hydrogen_P
+        IC_outs0.P = IC.P = self.hydrogen_P
+        IC.simulate()
         
         hx = self.heat_exchanger
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
@@ -1329,18 +1340,18 @@ class HT(Reactor):
         hx_ins0.P = hx_outs0.P = min(IC_outs0.P, self.ins[0].P)
         # H2 and biocrude have the same pressure
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
-        # not necessary to simulate here?
+        # it is necessary to simulate here, otherwise, cost will not be calculated
         
         self.P = min(IC_outs0.P, self.ins[0].P)
         Reactor._design(self)
     
     def _cost(self):
-        pass
+        Reactor._cost(self)
 
 # =============================================================================
 # HC
 # =============================================================================
-   
+
 class HC(Reactor):
     
     '''
@@ -1404,12 +1415,12 @@ class HC(Reactor):
         
         IC_in = bst.Stream(f'{ID}_IC_in')
         IC_out = bst.Stream(f'{ID}_IC_out')
-        self.compressor = IsothermalCompressor(ID=f'{ID}_IC', ins=IC_in,
+        self.compressor = IsothermalCompressor(ID=f'.{ID}_IC', ins=IC_in,
                                                outs=IC_out, P=None)
         
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
+        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
         
         self.P = P
         self.tau = tau
@@ -1430,6 +1441,7 @@ class HC(Reactor):
         hc_out = self.outs[0]
         
         hydrogen.imass['H2'] = heavy_oil.F_mass*self.hydrogen_to_heavy_oil
+        hydrogen.phase = 'g'
 
     
         hydrocarbon_mass = heavy_oil.F_mass*(1 +\
@@ -1466,11 +1478,15 @@ class HC(Reactor):
 
     def _design(self):
         
+        Design = self.design_results
+        Design['Hydrogen'] = self.ins[1].F_vol*self._m3perhr_2_mmscfd
+        
         IC = self.compressor
         IC_ins0, IC_outs0 = IC.ins[0], IC.outs[0]
         IC_ins0.copy_like(self.ins[1])
         IC_outs0.copy_like(self.ins[1])
-        IC_outs0.P = self.hydrogen_P
+        IC_outs0.P = IC.P = self.hydrogen_P
+        IC.simulate()
         
         hx = self.heat_exchanger
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
@@ -1486,7 +1502,7 @@ class HC(Reactor):
         Reactor._design(self)
     
     def _cost(self):
-        pass
+        Reactor._cost(self)
 
 # =============================================================================
 # WWmixer
