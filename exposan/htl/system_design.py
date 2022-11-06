@@ -41,9 +41,9 @@ from exposan.htl._components_design import create_components
 load_process_settings()
 cmps = create_components()
 
-fake_sludge = qs.Stream('sludge', H2O=5211558.606, units='kg/hr', T=25+273.15)
+fake_sludge = qs.Stream('sludge', H2O=5000000, units='kg/hr', T=25+273.15)
 # set H2O equal to the total sludge input flow
-# assume 99% moisture, 20 us tons of dw sludge per h
+# assume 99% moisture, 50 metric tons of dw sludge per h
 
 # =============================================================================
 # pretreatment (Area 000)
@@ -87,14 +87,12 @@ HTL = su.HTL('A120', ins=(H1-0,'NaOH'), outs=('biochar','HTL_aqueous',
              'biocrude','offgas_HTL'))
 HTL_hx = HTL.heat_exchanger
 
-# not including three phase separator for now, ask Yalin
-
 # =============================================================================
 # CHG (Area 200)
 # =============================================================================
 
 H2SO4_Tank = qsu.StorageTank('T200', ins='H2SO4', outs=('H2SO4_out'),
-                             init_with='Stream') # tau?
+                             init_with='Stream', tau=3*24)
 
 SP1 = su.HTLsplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
                      init_with='Stream')
@@ -215,27 +213,31 @@ DieselMixer = qsu.Mixer('S510', ins=(C3-0, C4-1), outs='mixed_diesel',
                         init_with='Stream')
 
 H7 = qsu.HXutility('A500', ins=GasolineMixer-0, outs='cooled_gasoline',
-                   T=60+273.15, init_with='Stream')
+                   T=60+273.15, init_with='Stream', rigorous=True)
 
 H8 = qsu.HXutility('A510', ins=DieselMixer-0, outs='cooled_diesel',
-                   T=60+273.15, init_with='Stream')
+                   T=60+273.15, init_with='Stream', rigorous=True)
 
-GasolineTank = qsu.StorageTank('T500', ins=H7-0, outs=('gasoline'),
+PC1 = su.PhaseChanger('S520', ins=H7-0, outs='cooled_gasoline_liquid')
+
+PC2 = su.PhaseChanger('S530', ins=H8-0, outs='cooled_diesel_liquid')
+
+GasolineTank = qsu.StorageTank('T500', ins=PC1-0, outs=('gasoline'),
                                tau=3*24, init_with='Stream')
 # store for 3 days based on Jones 2014
 
-DieselTank = qsu.StorageTank('T510', ins=H8-0, outs=('diesel'),
+DieselTank = qsu.StorageTank('T510', ins=PC2-0, outs=('diesel'),
                              tau=3*24, init_with='Stream')
 # store for 3 days based on Jones 2014
 
-GasMixer = qsu.Mixer('S520', ins=(HTL-3, F1-0, F2-0, C1-0, F3-0),
+GasMixer = qsu.Mixer('S540', ins=(HTL-3, F1-0, F2-0, C1-0, F3-0),
                      outs=('fuel_gas'), init_with='Stream')
 # F3-0 and F5-0 are empty, may change remove/modify F3 and/or F5 later
 
 CHP = qsu.CHP('A520', ins=(GasMixer-0,'natural_gas','air'),
               outs=('emission','solid_ash'), init_with='Stream')
 
-WWmixer = su.WWmixer('S530', ins=(SluT-0, SluC-0, MemDis-1, SP2-0),
+WWmixer = su.WWmixer('S550', ins=(SluT-0, SluC-0, MemDis-1, SP2-0),
                     outs='wastewater', init_with='Stream')
 # effluent of WWmixer goes back to WWTP
 
@@ -258,8 +260,9 @@ sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              M1, StruPre, P2, H2, CHG, H3, F1, MemDis, SP1,
                              P3, HT, V1, H4, F2, SP2, H5, C1, C2, C3, P4,
                              HC, H6, F3, C4, GasolineMixer, DieselMixer,
-                             H7, H8, GasolineTank, DieselTank, GasMixer, CHP,
-                             WWmixer, RSP1)) # , facilities=(HXN,))
+                             H7, H8, PC1, PC2, GasolineTank, DieselTank,
+                             GasMixer, CHP, WWmixer, RSP1)) 
+                # , facilities=(HXN,))
 
 sys.operating_hours = 7884 # NRES 2013
 

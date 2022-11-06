@@ -65,10 +65,10 @@ __all__ = ('SludgeLab',
           'StruvitePrecipitation',
           'CHG',
           'MembraneDistillation',
-          # 'H2mixer',
           'HT',
           'HC',
-          'WWmixer')
+          'WWmixer',
+          'PhaseChanger')
 
 cmps = create_components()
 
@@ -128,6 +128,8 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
     # For a single reactor, based on diameter and length from PressureVessel._bounds,
     # converted from ft3 to m3
     _Vmax = pi/4*(20**2)*40/35.3147
+    
+    _F_BM_default = PressureVessel._F_BM_default
 
     def __init__(self, ID='', ins=None, outs=(), *,
                  P=101325, tau=0.5, V_wf=0.8,
@@ -426,6 +428,9 @@ class HTL(Reactor):
     auxiliary_unit_names=('heat_exchanger',)
     
     _kg_2_lb = 2.20462
+    
+    _F_BM_default = {**Reactor._F_BM_default,
+                     'Heat exchanger': 3.17}
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
@@ -440,7 +445,7 @@ class HTL(Reactor):
                  offgas_pre=30*6894.76,
                  eff_T=60+273.15, # Jones 2014
                  
-                 P=None, tau=15/60, V_wf=0.15,
+                 P=None, tau=1, V_wf=0.5,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
@@ -634,9 +639,7 @@ class HTL(Reactor):
         hx_outs0.mix_from((self.outs[1], self.outs[2], self.outs[3]))
         hx_ins0.T = self.ins[0].T # temperature before/after HTL are similar
         hx.T = hx_outs0.T
-        # not necessary to set T here?
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
-        # not necessary to simulate here?
         
 
         self.P = self.ins[0].P
@@ -667,10 +670,12 @@ class AcidExtraction(Reactor):
         residual, extracted
     '''
     
+    _F_BM_default = {**Reactor._F_BM_default}
+    
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', acid_vol=10, P_acid_recovery_ratio=0.95,
                  
-                 P=None, tau=1, V_wf=0.5,
+                 P=None, tau=2, V_wf=0.5,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
@@ -855,6 +860,8 @@ class StruvitePrecipitation(Reactor):
         struvite, effluent
     '''
     
+    _F_BM_default = {**Reactor._F_BM_default}
+    
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', Mg_P_ratio=1,
                  P_pre_recovery_ratio=0.95, P_in_struvite=0.127,
@@ -954,6 +961,9 @@ class CHG(Reactor):
         CHGfuelgas, effluent
     '''
     
+    _F_BM_default = {**Reactor._F_BM_default,
+                     'Heat exchanger': 3.17}
+    
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
                  gas_composition={'CH4':0.527,
@@ -1039,12 +1049,17 @@ class CHG(Reactor):
         hx.T = hx_outs0.T
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
         
-        Reactor._Vmax /= 2
+        Reactor._Vmax /= 2 # so that there are 6 CHG tanks
         self.P = self.ins[0].P
         Reactor._design(self)
     
     def _cost(self):
         Reactor._cost(self)
+        purchase_costs = self.baseline_purchase_costs
+        current_cost = 0 # cost w/o sulfur guard
+        for item in purchase_costs.keys():
+            current_cost += purchase_costs[item]
+        purchase_costs['sulfur guard'] = current_cost*0.05
     
 # =============================================================================
 # Membrane Distillation
@@ -1073,6 +1088,8 @@ class MembraneDistillation(Reactor):
     outs: Iterable (stream)
         ammoniasulfate, ww
     '''
+    
+    _F_BM_default = {**Reactor._F_BM_default}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
@@ -1176,6 +1193,12 @@ class HT(Reactor):
     '''
     
     auxiliary_unit_names=('compressor','heat_exchanger',)
+    
+    _m3perhr_2_mmscfd = 1/1177.17
+    
+    _F_BM_default = {**Reactor._F_BM_default,
+                     'Heat exchanger': 3.17,
+                     'Compressor': 1.1}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
@@ -1340,7 +1363,6 @@ class HT(Reactor):
         hx_ins0.P = hx_outs0.P = min(IC_outs0.P, self.ins[0].P)
         # H2 and biocrude have the same pressure
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
-        # it is necessary to simulate here, otherwise, cost will not be calculated
         
         self.P = min(IC_outs0.P, self.ins[0].P)
         Reactor._design(self)
@@ -1369,6 +1391,12 @@ class HC(Reactor):
     '''
     
     auxiliary_unit_names=('compressor','heat_exchanger',)
+    
+    _m3perhr_2_mmscfd = 1/1177.17
+    
+    _F_BM_default = {**Reactor._F_BM_default,
+                     'Heat exchanger': 3.17,
+                     'Compressor': 1.1}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
@@ -1496,7 +1524,6 @@ class HC(Reactor):
         hx_ins0.P = hx_outs0.P = min(IC_outs0.P, self.ins[0].P)
         # H2 and biocrude have the same pressure
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
-        # not necessary to simulate here?
         
         self.P = min(IC_outs0.P, self.ins[0].P)
         Reactor._design(self)
@@ -1555,4 +1582,50 @@ class WWmixer(SanUnit):
     
     def _cost(self):
         pass
+    
+# =============================================================================
+# PhaseChanger
+# =============================================================================
 
+class PhaseChanger(SanUnit):
+    '''
+    Correct phase.
+    
+    Model method: just correct phase, don't need _design and _cost.
+    
+    Parameters
+    ----------
+    ins: Iterable (stream)
+        influent
+    outs: Iterable (stream)
+        effluent
+    '''
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='Stream', phase='l',
+                 **kwargs):
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.phase = phase
+
+    _N_ins = 1
+    _N_outs = 1
+    _ins_size_is_fixed = False
+    _outs_size_is_fixed = False
+        
+    def _run(self):
+        
+        influent = self.ins[0]
+        effluent = self.outs[0]
+        
+        if self.phase not in ('g','l','s'):
+            raise Exception("phase must be 'g','l', or 's'")
+        
+        effluent.copy_like(influent)
+        effluent.phase = self.phase
+
+    def _design(self):
+        pass
+    
+    def _cost(self):
+        pass
