@@ -685,7 +685,7 @@ class CHG(SanUnit):
         self.gas_c_to_total_c = gas_c_to_total_c
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
+        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
         
     _N_ins = 1
     _N_outs = 1
@@ -1021,7 +1021,8 @@ class HT(SanUnit):
         IC_ins0, IC_outs0 = IC.ins[0], IC.outs[0]
         IC_ins0.copy_like(self.ins[1])
         IC_outs0.copy_like(self.ins[1])
-        IC_outs0.P = self.hydrogen_P
+        IC_outs0.P = IC.P = self.hydrogen_P
+        IC.simulate()
         
         hx = self.heat_exchanger
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
@@ -1154,7 +1155,8 @@ class HC(SanUnit):
         IC_ins0, IC_outs0 = IC.ins[0], IC.outs[0]
         IC_ins0.copy_like(self.ins[1])
         IC_outs0.copy_like(self.ins[1])
-        IC_outs0.P = self.hydrogen_P
+        IC_outs0.P = IC.P = self.hydrogen_P
+        IC.simulate()
         
         hx = self.heat_exchanger
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
