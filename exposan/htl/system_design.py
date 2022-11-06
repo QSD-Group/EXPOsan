@@ -41,7 +41,7 @@ from exposan.htl._components_design import create_components
 load_process_settings()
 cmps = create_components()
 
-fake_sludge = qs.Stream('sludge', H2O=2605779.303, units='kg/hr', T=25+273.15)
+fake_sludge = qs.Stream('sludge', H2O=5211558.606, units='kg/hr', T=25+273.15)
 # set H2O equal to the total sludge input flow
 # assume 99% moisture, 20 us tons of dw sludge per h
 
