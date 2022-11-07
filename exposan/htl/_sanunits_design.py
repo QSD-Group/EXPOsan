@@ -380,7 +380,12 @@ class SludgeLab(SanUnit):
     def AOSc(self):
        return (3*self.sludge_N_ratio/14.0067 + 2*self.sludge_O_ratio/15.999 -\
                self.sludge_H_ratio/1.00784)/(self.sludge_C_ratio/12.011)
-   
+
+    @property
+    def sludge_HHV(self):
+       return 100*(0.338*self.sludge_C_ratio + 1.428*(self.sludge_H_ratio -\
+              self.sludge_O_ratio/8)) # Li 2017, in MJ/kg
+        
     def _design(self):
         pass
     
@@ -489,6 +494,7 @@ class HTL(Reactor):
         dewatered_sludge_afdw = dewatered_sludge.imass['Sludge_lipid'] +\
                                 dewatered_sludge.imass['Sludge_protein'] +\
                                 dewatered_sludge.imass['Sludge_carbo']
+        # just use afdw in revised MCA model, other places use dw
         
         # NaOH added here. target is 5 M (Shilai Hao EST)
         # for water solution: 5 M NaOH: 20 g NaOH / 100 mL H2O
@@ -602,7 +608,21 @@ class HTL(Reactor):
     @property
     def biocrude_N(self):
         return self.outs[2].F_mass*self.biocrude_N_ratio
+    
+    @property
+    def biocrude_HHV(self):
+        return 30.74 - 8.52*self.sludgelab.AOSc +\
+               0.024*self.sludgelab.sludge_dw_protein # Li 2017, in MJ/kg
+               
+    @property
+    def energy_recovery(self):
+        return self.biocrude_HHV*self.outs[2].imass['Biocrude']/\
+               (self.sludgelab.outs[0].F_mass -\
+               self.sludgelab.outs[0].imass['H2O'])/self.sludgelab.sludge_HHV
+        # Li 2017
+                         
 
+               
     @property
     def offgas_C(self):
         carbon = 0
