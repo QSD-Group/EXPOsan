@@ -454,8 +454,7 @@ class HTL(Reactor):
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
-                 vessel_type='Vertical',
-                 
+                 vessel_type='Vertical',         
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -620,9 +619,7 @@ class HTL(Reactor):
                (self.sludgelab.outs[0].F_mass -\
                self.sludgelab.outs[0].imass['H2O'])/self.sludgelab.sludge_HHV
         # Li 2017
-                         
 
-               
     @property
     def offgas_C(self):
         carbon = 0
@@ -695,7 +692,7 @@ class AcidExtraction(Reactor):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', acid_vol=10, P_acid_recovery_ratio=0.95,
                  
-                 P=None, tau=2, V_wf=0.5,
+                 P=None, tau=1, V_wf=0.5,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
