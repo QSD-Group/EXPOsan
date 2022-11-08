@@ -108,6 +108,7 @@ def add_V_from_rho(component, rho, phase=''):
 
 
 def batch_setting_unit_params(df, model, unit, exclude=()):
+    if isinstance(exclude, str): exclude = (exclude,)
     for para in df.index:
         if para in exclude: continue
         b = getattr(unit, para)

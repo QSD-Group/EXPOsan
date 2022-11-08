@@ -113,6 +113,7 @@ def create_country_specific_model(ID, country, model=None, country_data=None,
     price_ratio_D_ratio = 0.2
     key = 'price_ratio'
     name, p, b, D = get_param_name_b_D(key, price_ratio_D_ratio, lb=0)
+    old_price_dct = price_dct.copy()
     item_ref = {
         'Concrete': 'Concrete',
         'Steel': 'Steel',
@@ -131,7 +132,7 @@ def create_country_specific_model(ID, country, model=None, country_data=None,
     def set_price_ratio(i):
         br.price_ratio = i
         for obj_name in (*item_ref.keys(), *stream_ref.keys()):
-            old_price = price_dct[obj_name]
+            old_price = old_price_dct[obj_name]
             new_price = old_price * i/old_price_ratio
             if obj_name in item_ref.keys():
                 ImpactItem.get_item(item_ref[obj_name]).price = new_price
