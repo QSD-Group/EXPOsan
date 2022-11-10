@@ -43,6 +43,11 @@ References:
     Hydrothermal Alkaline Treatment for Destruction of Per- and Polyfluoroalkyl
     Substances in Aqueous Film-Forming Foam. Environ. Sci. Technol.
     2021, 55(5), 3283–3295. https://doi.org/10.1021/acs.est.0c06906.
+    
+(6)	Matayeva, A.; Rasmussen, S. R.; Biller, P. Distribution of Nutrients and
+    Phosphorus Recovery in Hydrothermal Liquefaction of Waste Streams.
+    BiomassBioenergy 2022, 156, 106323.
+    https://doi.org/10.1016/j.biombioe.2021.106323.
 '''
 
 import biosteam as bst
@@ -343,23 +348,29 @@ class SludgeLab(SanUnit):
     # https://pubmed.ncbi.nlm.nih.gov/2061559/ (accessed 2022-10-27)
     # https://encyclopedi/a2.thefreedictionary.com/Proteins
     # (accessed 2022-10-27)
+    # add uncertainty after serious calibration!
     
     @property
     def sludge_H_ratio(self):
-       return self.sludge_C_ratio/7
+       return self.sludge_C_ratio*0.143
     # based on SS PNNL 2021 data, H ~ C/7
+    # add uncertainty after serious calibration!
    
     @property
     def sludge_N_ratio(self):
-       return self.sludge_dw_protein*0.16
+       return self.sludge_dw_protein*0.16 
+    # or change according to Leow 2018: afdw pr/4.78
+    # but here, we use dw instead of afdw
     # https://www.fao.org/3/y5022e/y5022e03.htm#:~:text=On%20the%20basis%20of%
     # 20early,is%20confounded%20by%20two%20considerations (accessed 2022-10-27)
+    # add uncertainty after serious calibration!
    
     @property
     def sludge_P_ratio(self):
        return self._sludge_P_ratio
     # set P as an indepedent variable since hard to find any association with
     # sludge biochemical compositions
+    # add uncertainty after serious calibration!
     
     @sludge_P_ratio.setter
     def sludge_P_ratio(self, i):
@@ -374,7 +385,8 @@ class SludgeLab(SanUnit):
        return 1 - self.sludge_C_ratio - self.sludge_H_ratio -\
            self.sludge_N_ratio - self.sludge_P_ratio - self.sludge_dw_ash*0.75
     # sludge_O is calculated based on mass balance closure and * 0.75 since
-    # double count some elements. 0.75 is based on SS PNNL 2021.
+    # double count some elements. 0.75 is based on SS PNNL 2021
+    # add uncertainty after serious calibration!
     
     @property
     def AOSc(self):
@@ -439,16 +451,27 @@ class HTL(Reactor):
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
-                 biocrude_moisture_content=0.056, # Jones PNNL 2014
-                 biochar_C_N_ratio=15.5, biochar_C_P_ratio=2.163,
-                 # Li EST
+                 lipid_2_biocrude = 0.846, # revised MCA
+                 protein_2_biocrude = 0.445, # revised MCA
+                 carbo_2_biocrude = 0.205, # revised MCA
+                 protein_2_gas = 0.074, # revised MCA
+                 carbo_2_gas = 0.418, # revised MCA
+                 biocrude_C_slope = -8.37, # MCA
+                 biocrude_C_intercept = 68.55, # MCA
+                 biocrude_N_slope = 0.133, # MCA
+                 biocrude_H_slope = -2.61, # MCA
+                 biocrude_H_intercept = 8.20, # MCA
+                 biochar_C_slope = 1.75, # MCA
+                 NaOH_2_water = 0.2, # Hao: 5 M NaOH
+                 biocrude_moisture_content=0.056, # Jones
+                 biochar_P_ratio=0.86, # Matayeva: 0.84-0.88
                  gas_composition={'CH4':0.050, 'C2H6':0.032,
                                   'CO2':0.918}, # Jones
-                 biochar_pre=3029.7*6894.76, # Jones 2014: 3029.7 psia
-                 HTLaqueous_pre=30*6894.76, # Jones 2014: 30 psia
-                 biocrude_pre=30*6894.76,
-                 offgas_pre=30*6894.76,
-                 eff_T=60+273.15, # Jones 2014
+                 biochar_pre=3029.7*6894.76, # Jones
+                 HTLaqueous_pre=30*6894.76, # Jones
+                 biocrude_pre=30*6894.76, # Jones
+                 offgas_pre=30*6894.76, # Jones
+                 eff_T=60+273.15, # Jones
                  
                  P=None, tau=1, V_wf=0.5,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
@@ -458,9 +481,20 @@ class HTL(Reactor):
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.lipid_2_biocrude = lipid_2_biocrude
+        self.protein_2_biocrude = protein_2_biocrude
+        self.carbo_2_biocrude = carbo_2_biocrude
+        self.protein_2_gas = protein_2_gas
+        self.carbo_2_gas = carbo_2_gas
+        self.biocrude_C_slope = biochar_C_slope
+        self.biocrude_C_intercept = biocrude_C_intercept
+        self.biocrude_N_slope = biocrude_N_slope
+        self.biocrude_H_slope = biocrude_H_slope
+        self.biocrude_H_intercept = biocrude_H_intercept
+        self.biochar_C_slope = biochar_C_slope
+        self.NaOH_2_water = NaOH_2_water
         self.biocrude_moisture_content = biocrude_moisture_content
-        self.biochar_C_N_ratio = biochar_C_N_ratio
-        self.biochar_C_P_ratio = biochar_C_P_ratio
+        self.biochar_P_ratio = biochar_P_ratio
         self.gas_composition = gas_composition
         self.biochar_pre = biochar_pre
         self.HTLaqueous_pre = HTLaqueous_pre
@@ -500,7 +534,7 @@ class HTL(Reactor):
         # (0.2 kg NaOH / 1 kg H2O)
         # here, the calculation is based on the water amount in the dewatered
         # sludge (assume the initial pH = 7, and solids don't affect pH)
-        base.imass['NaOH'] = dewatered_sludge.imass['H2O']*0.2 
+        base.imass['NaOH'] = dewatered_sludge.imass['H2O']*self.NaOH_2_water
         
         lipid_ratio = dewatered_sludge.imass['Sludge_lipid']/\
                       dewatered_sludge_afdw
@@ -517,14 +551,14 @@ class HTL(Reactor):
                                           dewatered_sludge_afdw
         # HTLaqueous is TDS in aqueous phase
          
-        gas_mass = (0.074*protein_ratio + 0.418*carbo_ratio)*\
+        gas_mass = (self.protein_2_gas*protein_ratio + self.carbo_2_gas*carbo_ratio)*\
                        dewatered_sludge_afdw
                        
         for name, ratio in self.gas_composition.items():
             offgas.imass[name] = gas_mass*ratio
             
-        biocrude.imass['Biocrude'] = (0.846*lipid_ratio + 0.445*protein_ratio\
-                                      + 0.205*carbo_ratio)*\
+        biocrude.imass['Biocrude'] = (self.lipid_2_biocrude*lipid_ratio + self.protein_2_biocrude*protein_ratio\
+                                      + self.carbo_2_biocrude*carbo_ratio)*\
                                       dewatered_sludge_afdw
         biocrude.imass['H2O'] = biocrude.imass['Biocrude']/(1 -\
                                 self.biocrude_moisture_content) -\
@@ -566,43 +600,42 @@ class HTL(Reactor):
 
     @property
     def biochar_C_ratio(self):
-        return min(1.75*self.sludgelab.sludge_dw_carbo, 0.65)
+        return min(self.biochar_C_slope*self.sludgelab.sludge_dw_carbo, 0.65)
     # revised MCA model
-    
-    @property
-    def biochar_N_ratio(self):
-        return self.biochar_C_ratio/self.biochar_C_N_ratio 
-    
-    @property
-    def biochar_P_ratio(self):
-        return self.biochar_C_ratio/self.biochar_C_P_ratio
 
     @property
     def biochar_C(self):
         return self.outs[0].F_mass*self.biochar_C_ratio
 
     @property
-    def biochar_N(self):
-        return self.outs[0].F_mass*self.biochar_N_ratio
-
-    @property
     def biochar_P(self):
-        return min((self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
-                    self.sludgelab.sludge_P_ratio, self.outs[0].F_mass*\
-                    self.biochar_P_ratio)
-    # make sure biochar P smaller than total P
+        return (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
+                self.sludgelab.sludge_P_ratio*self.biochar_P_ratio
+        
+    @property
+    def biorude_P(self):
+        return (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
+                self.sludgelab.sludge_P_ratio*(1 - self.biochar_P_ratio)
 
     @property
     def biocrude_C_ratio(self):
-        return (self.sludgelab.AOSc*(-8.37) + 68.55)/100 # revised MCA model
+        return (self.sludgelab.AOSc*self.biocrude_C_slope + self.biocrude_C_intercept)/100 # revised MCA model
+    
+    @property
+    def biocrude_H_ratio(self):
+        return (self.sludgelab.AOSc*self.biocrude_H_slope + self.biocrude_H_intercept)/100 # revised MCA model
 
     @property
     def biocrude_N_ratio(self):
-        return 0.133*self.sludgelab.sludge_dw_protein # revised MCA model
-
+        return self.biocrude_N_slope*self.sludgelab.sludge_dw_protein # revised MCA model
+    
     @property
     def biocrude_C(self):
         return self.outs[2].F_mass*self.biocrude_C_ratio
+
+    @property
+    def biocrude_H(self):
+        return self.outs[2].F_mass*self.biocrude_H_ratio
 
     @property
     def biocrude_N(self):
@@ -627,7 +660,7 @@ class HTL(Reactor):
             carbon += self.outs[3].imass[name]*cmps[name].i_C
         return carbon   
                
-    # C, N, and P in aqueous phase are calculated based on mass balance closure
+    # C and N in aqueous phase are calculated based on mass balance closure
     @property
     def HTLaqueous_C(self):
         return (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
@@ -637,13 +670,7 @@ class HTL(Reactor):
     @property
     def HTLaqueous_N(self):
         return (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
-                self.sludgelab.sludge_N_ratio - self.biochar_N -\
-                self.biocrude_N
-
-    @property
-    def HTLaqueous_P(self):
-        return (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
-                self.sludgelab.sludge_P_ratio - self.biochar_P
+                self.sludgelab.sludge_N_ratio - self.biocrude_N
 
     def _design(self):
         
@@ -657,7 +684,6 @@ class HTL(Reactor):
         hx_ins0.T = self.ins[0].T # temperature before/after HTL are similar
         hx.T = hx_outs0.T
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
-        
 
         self.P = self.ins[0].P
         Reactor._design(self)
@@ -666,8 +692,6 @@ class HTL(Reactor):
         Reactor._cost(self)
         self._decorated_cost()
         
-            
-
 # =============================================================================
 # Acid Extraction
 # =============================================================================
