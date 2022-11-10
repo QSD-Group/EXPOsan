@@ -41,7 +41,7 @@ from exposan.htl._components_design import create_components
 load_process_settings()
 cmps = create_components()
 
-fake_sludge = qs.Stream('sludge', H2O=5000000, units='kg/hr', T=25+273.15)
+fake_sludge = qs.Stream('sludge', H2O=100000, units='kg/hr', T=25+273.15)
 # set H2O equal to the total sludge input flow
 # assume 99% moisture, 50 metric tons of dw sludge per h
 
@@ -83,7 +83,7 @@ H1 = qsu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=351+273.15,
 # watts-per-square-meter-per-k-to-btus-th--per-hour-per-square-foot-per-f-
 # conversion.html
 
-HTL = su.HTL('A120', ins=(H1-0,'NaOH'), outs=('biochar','HTL_aqueous',
+HTL = su.HTL('A120', ins=(H1-0), outs=('biochar','HTL_aqueous',
              'biocrude','offgas_HTL'))
 HTL_hx = HTL.heat_exchanger
 
@@ -104,7 +104,7 @@ AcidEx = su.AcidExtraction('A200', ins=(HTL-0,SP1-0),
 
 M1 = su.HTLmixer('A210', ins=(HTL-1,AcidEx-1), outs=('mixture'))
 
-StruPre = su.StruvitePrecipitation('A220', ins=(M1-0,'MgCl2','NH4Cl'),
+StruPre = su.StruvitePrecipitation('A220', ins=(M1-0,'MgCl2','NH4Cl','NaOH'),
                                    outs=('struvite','CHG_feed'))
 
 P2 = qsu.Pump('A230', ins=StruPre-1, outs='press_aqueous',
@@ -151,27 +151,29 @@ V1 = IsenthalpicValve('A320', ins=HT-0, outs='depressed_HT', P=717.4*6894.76)
 H4 = qsu.HXutility('A330', ins=V1-0, outs='cooled_HT', T=60+273.15,
                    init_with='Stream')
 
-F2 = Flash('A3340', ins=H4-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
-           P=55*6894.76) # outflow P
+F2 = Flash('A340', ins=H4-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
+           P=717.4*6894.76) # outflow P
 
-SP2 = qsu.Splitter('S300', ins=F2-1, outs=('HT_ww','HT_oil'),
+V2 = IsenthalpicValve('A350', ins=F2-1, outs='depressed_flash_effluent', P=55*6894.76)
+
+SP2 = qsu.Splitter('S300', ins=V2-0, outs=('HT_ww','HT_oil'),
                    split={'H2O':1}, init_with='Stream')
 # separate water and oil based on gravity
 
-H5 = qsu.HXutility('A350', ins=SP2-1, outs='heated_oil', T=104+273.15)
+H5 = qsu.HXutility('A360', ins=SP2-1, outs='heated_oil', T=104+273.15)
 # temperature: Jones stream #334 (we remove the first distillation column)
 
-C1 = BinaryDistillation('A360', ins=H5-0,
+C1 = BinaryDistillation('A370', ins=H5-0,
                         outs=('HT_light','HT_heavy'),
                         LHK=('C4H10','TWOMBUTAN'), P=50*6894.76, # outflow P
                         y_top=188/253, x_bot=53/162, k=2, is_divided=True)
 
-C2 = BinaryDistillation('A370', ins=C1-1,
+C2 = BinaryDistillation('A380', ins=C1-1,
                         outs=('HT_Gasoline','HT_other_oil'),
                         LHK=('C10H22','C4BENZ'), P=25*6894.76, # outflow P
                         y_top=116/122, x_bot=114/732, k=2, is_divided=True)
 
-C3 = BinaryDistillation('A380', ins=C2-1,
+C3 = BinaryDistillation('A390', ins=C2-1,
                         outs=('HT_Diesel','HT_heavy_oil'),
                         LHK=('C19H40','C21H44'),P=18.7*6894.76, # outflow P
                         y_top=2421/2448, x_bot=158/2448, k=2, is_divided=True)
@@ -258,7 +260,7 @@ WWmixer = su.WWmixer('S550', ins=(SluT-0, SluC-0, MemDis-1, SP2-0),
 
 sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              M1, StruPre, P2, H2, CHG, H3, F1, MemDis, SP1,
-                             P3, HT, V1, H4, F2, SP2, H5, C1, C2, C3, P4,
+                             P3, HT, V1, H4, F2, V2, SP2, H5, C1, C2, C3, P4,
                              HC, H6, F3, C4, GasolineMixer, DieselMixer,
                              H7, H8, PC1, PC2, GasolineTank, DieselTank,
                              GasMixer, CHP, WWmixer, RSP1)) 
@@ -411,7 +413,7 @@ dist = shape.Triangle(0.04,0.073,0.1)
 def set_gas_ratio(i):
     HT.gas_ratio=i
 
-dist = shape.Triangle(0.92625,0.95,0.97375)
+dist = shape.Triangle(0.5,0.7,0.9)
 @param(name='P_acid_recovery_ratio',
         element=AcidEx,
         kind='coupled',
