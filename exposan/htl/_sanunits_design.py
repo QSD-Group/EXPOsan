@@ -313,7 +313,10 @@ class SludgeLab(SanUnit):
                  init_with='Stream', 
                  sludge_moisture=0.99, sludge_dw_protein=0.341,
                  sludge_dw_lipid=0.226, sludge_dw_carbo=0.167,
-                 sludge_P_ratio = 0.019, # data are from SS PNNL 2021
+                 lipid_2_C=0.750, protein_2_C=0.545,
+                 carbo_2_C=0.400, C_2_H=0.143,
+                 protein_2_N=0.159, N_2_P=0.200,
+                 
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -323,9 +326,13 @@ class SludgeLab(SanUnit):
         self.sludge_dw_lipid = sludge_dw_lipid
         self.sludge_dw_ash = 1 - sludge_dw_protein - sludge_dw_carbo -\
                              sludge_dw_lipid
-        self.sludge_P_ratio = sludge_P_ratio
-        # set P as an independent variable, assume S (sulfur) is 0
-        
+        self.lipid_2_C = lipid_2_C
+        self.protein_2_C = protein_2_C
+        self.carbo_2_C = carbo_2_C
+        self.C_2_H = C_2_H
+        self.protein_2_N = protein_2_N
+        self.N_2_P = N_2_P
+
     _N_ins = 1
     _N_outs = 1
     
@@ -344,50 +351,25 @@ class SludgeLab(SanUnit):
     # all sludge elemental analysis are based on empirical equation
     @property
     def sludge_C_ratio(self):
-       return self.sludge_dw_carbo*0.44 + self.sludge_dw_lipid*0.75 +\
-           self.sludge_dw_protein*0.53
-    # https://pubmed.ncbi.nlm.nih.gov/2061559/ (accessed 2022-10-27)
-    # https://encyclopedi/a2.thefreedictionary.com/Proteins
-    # (accessed 2022-10-27)
-    # add uncertainty after serious calibration!
+       return self.sludge_dw_carbo*self.carbo_2_C + self.sludge_dw_lipid*self.lipid_2_C +\
+           self.sludge_dw_protein*self.protein_2_C
     
     @property
     def sludge_H_ratio(self):
-       return self.sludge_C_ratio*0.143
-    # based on SS PNNL 2021 data, H ~ C/7
-    # add uncertainty after serious calibration!
+       return self.sludge_C_ratio*self.C_2_H
    
     @property
     def sludge_N_ratio(self):
-       return self.sludge_dw_protein*0.16 
-    # or change according to Leow 2018: afdw pr/4.78
-    # but here, we use dw instead of afdw
-    # https://www.fao.org/3/y5022e/y5022e03.htm#:~:text=On%20the%20basis%20of%
-    # 20early,is%20confounded%20by%20two%20considerations (accessed 2022-10-27)
-    # add uncertainty after serious calibration!
+       return self.sludge_dw_protein*self.protein_2_N
    
     @property
     def sludge_P_ratio(self):
-       return self._sludge_P_ratio
-    # set P as an indepedent variable since hard to find any association with
-    # sludge biochemical compositions
-    # add uncertainty after serious calibration!
-    
-    @sludge_P_ratio.setter
-    def sludge_P_ratio(self, i):
-        if not 0 <= i <= 1:
-            raise AttributeError('`sludge_P` must be within [0, 1], '
-                                f'the provided value {i} is outside the\
-                                range.')
-        self._sludge_P_ratio = i
+       return self.sludge_N_ratio*self.N_2_P
     
     @property
     def sludge_O_ratio(self):
        return 1 - self.sludge_C_ratio - self.sludge_H_ratio -\
-           self.sludge_N_ratio - self.sludge_P_ratio - self.sludge_dw_ash*0.75
-    # sludge_O is calculated based on mass balance closure and * 0.75 since
-    # double count some elements. 0.75 is based on SS PNNL 2021
-    # add uncertainty after serious calibration!
+           self.sludge_N_ratio - self.sludge_dw_ash
     
     @property
     def AOSc(self):
@@ -1349,19 +1331,19 @@ class HT(Reactor):
         
         self.HTL = self.ins[0]._source.ins[0]._source
         
-        if self.HTaqueous_C < -0.1*self.HTL.biocrude_C:
+        if self.HTaqueous_C < -0.1*(self.HTL.ins[0].F_mass - self.HTL.ins[0].imass['H2O'])*self.HTL.sludgelab.sludge_C_ratio:
             raise Exception('carbon mass balance is out of +/- 10%')
         # allow +/- 10% out of mass balance
         
-        if self.HTaqueous_N < -0.1*self.HTL.biocrude_N:
+        if self.HTaqueous_N < -0.1*(self.HTL.ins[0].F_mass - self.HTL.ins[0].imass['H2O'])*self.HTL.sludgelab.sludge_N_ratio:
             raise Exception('nitrogen mass balance is out of +/- 10%')
         # allow +/- 10% out of mass balance
-        
+
         # possibility exist that more carbon is in biooil and gas than in
         # biocrude because we use the biooil/gas compositions to calculate
         # carbon. In this case, the C in HT aqueous phase will be negative.
-        # It's OK if the mass balance is within +/- 10%. Otherwise, an
-        # exception will be raised.
+        # It's OK if the mass balance is within +/- 10% of total carbon in 
+        # sludge. Otherwise, an exception will be raised.
         
     @property
     def hydrocarbon_C(self):
@@ -1535,7 +1517,7 @@ class HC(Reactor):
         
         if C_out < 0.95*C_in or C_out > 1.05*C_out :
             raise Exception('carbon mass balance is out of +/- 5%')
-        # make sure that carbon mass balance is within +/- 10%. Otherwise, an
+        # make sure that carbon mass balance is within +/- 5%. Otherwise, an
         # exception will be raised.
         
     @property
