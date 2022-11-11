@@ -563,20 +563,8 @@ class HTL(Reactor):
         
         self.sludgelab = self.ins[0]._source.ins[0]._source.ins[0].\
                          _source.ins[0]._source.ins[0]._source
-        
-        # in the case that HTLaqueous_C or HTLaqueous_N is less than 0, which
-        # is not likely to happen, we add the following two exceptions.
-        if self.HTLaqueous_C < 0:
-            raise Exception('double check sludge composition, HTLaqueous_C '\
-                            'is not likely to be less than 0, otherwise, we '\
-                            'do not need CHG')
-        if self.HTLaqueous_N < 0:
-            raise Exception('double check sludge composition, HTLaqueous_N '\
-                            'is not likely to be less than 0, otherwise, we '\
-                            'do not need membrane distillation')
-            
-        # self.HTLaqueous_P is always larger than 0, since an constraint is
-        # added when calculated biochar_P
+
+        self.HTLaqueous_C # check carbon MB
 
     @property
     def biochar_C_ratio(self):
@@ -636,11 +624,19 @@ class HTL(Reactor):
         return carbon   
                
     # C and N in aqueous phase are calculated based on mass balance closure
+    # in the case that HTLaqueous_C is less than 0, which
+    # is likely to happen when the carbo% is high,
+    # we assume the HTLaqueous 0 and excess biochar_C is ok
+    
     @property
     def HTLaqueous_C(self):
-        return (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
-                self.sludgelab.sludge_C_ratio - self.biochar_C -\
-                self.biocrude_C - self.offgas_C
+        if ((self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
+             self.sludgelab.sludge_C_ratio - self.biochar_C -\
+             self.biocrude_C - self.offgas_C) < -0.1*(self.ins[0].F_mass - self.ins[0].imass['H2O'])*self.sludgelab.sludge_C_ratio:
+            raise Exception('carbon mass balance is out of +/- 10%')
+        else: return max((self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
+                          self.sludgelab.sludge_C_ratio - self.biochar_C -\
+                          self.biocrude_C - self.offgas_C, 0)
 
     @property
     def HTLaqueous_N(self):
@@ -987,7 +983,8 @@ class CHG(Reactor):
     '''
     
     _F_BM_default = {**Reactor._F_BM_default,
-                     'Heat exchanger': 3.17}
+                     'Heat exchanger': 3.17,
+                     'Sulfur guard': 2.0}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
@@ -1083,7 +1080,7 @@ class CHG(Reactor):
         current_cost = 0 # cost w/o sulfur guard
         for item in purchase_costs.keys():
             current_cost += purchase_costs[item]
-        purchase_costs['sulfur guard'] = current_cost*0.05
+        purchase_costs['Sulfur guard'] = current_cost*0.05
     
 # =============================================================================
 # Membrane Distillation
@@ -1334,6 +1331,7 @@ class HT(Reactor):
         if self.HTaqueous_C < -0.1*(self.HTL.ins[0].F_mass - self.HTL.ins[0].imass['H2O'])*self.HTL.sludgelab.sludge_C_ratio:
             raise Exception('carbon mass balance is out of +/- 10%')
         # allow +/- 10% out of mass balance
+        # should be no C in the aqueous phase, the calculation here is just for MB
         
         if self.HTaqueous_N < -0.1*(self.HTL.ins[0].F_mass - self.HTL.ins[0].imass['H2O'])*self.HTL.sludgelab.sludge_N_ratio:
             raise Exception('nitrogen mass balance is out of +/- 10%')
@@ -1362,6 +1360,7 @@ class HT(Reactor):
     @property
     def HTaqueous_C(self):
         return self.HTL.biocrude_C - self.hydrocarbon_C
+    # should be no C in the aqueous phase, the calculation here is just for MB
 
     @property
     def HTaqueous_N(self):
