@@ -48,6 +48,20 @@ References:
     Phosphorus Recovery in Hydrothermal Liquefaction of Waste Streams.
     BiomassBioenergy 2022, 156, 106323.
     https://doi.org/10.1016/j.biombioe.2021.106323.
+    
+(7) Semmens, M. J.; Foster, D. M.; Cussler, E. L. Ammonia Removal from Water
+    Using Microporous Hollow Fibers. Journal of Membrane Science 1990, 51 (1),
+    127–140. https://doi.org/10.1016/S0376-7388(00)80897-2.
+    
+(8) Scheepers, D. M.; Tahir, A. J.; Brunner, C.; Guillen-Burrieza, E.
+    Vacuum Membrane Distillation Multi-Component Numerical Model for Ammonia
+    Recovery from Liquid Streams. Journal of Membrane Science
+    2020, 614, 118399. https://doi.org/10.1016/j.memsci.2020.118399.
+
+(9) Ding, Z.; Liu, L.; Li, Z.; Ma, R.; Yang, Z. Experimental Study of Ammonia
+    Removal from Water by Membrane Distillation (MD): The Comparison of Three
+    Configurations. Journal of Membrane Science 2006, 286 (1), 93–103.
+    https://doi.org/10.1016/j.memsci.2006.09.015.
 '''
 
 import biosteam as bst
@@ -57,10 +71,11 @@ from biosteam.units import IsothermalCompressor
 from exposan.htl._components_design import create_components
 from biosteam.units.design_tools import PressureVessel
 from biosteam.units.design_tools.cost_index import CEPCI_by_year as CEPCI
-from math import pi, ceil
+from math import pi, ceil, log
 from biosteam.exceptions import DesignError
 from biosteam import Stream
 from biosteam.units.decorators import cost
+from thermosteam import indexer, equilibrium
 
 __all__ = ('Reactor',
            'SludgeLab',
@@ -1146,6 +1161,51 @@ class MembraneDistillation(Reactor):
         
         influent, acid = self.ins
         ammoniumsulfate, ww = self.outs
+        
+        pKa = 9.26 # ammonia pKa
+        ammonia_to_ammonium = 10**(-pKa)/10**(-self.pH)
+        ammonia = (self.ins[0]._source.ins[0]._source.ins[0].\
+                   _source.CHGout_N)*ammonia_to_ammonium/(1 +\
+                   ammonia_to_ammonium)*17.031/14.0067
+        others = influent.F_mass - ammonia
+        imass = indexer.MassFlowIndexer(l=[('H2O', others), ('NH3', ammonia)],
+                                        g=[('H2O', 0), ('NH3', 0)])
+        vle = equilibrium.VLE(imass)
+        vle(T=333.15, P=344738)
+        X_NH3_f_m = vle.imol['g'][21]/(vle.imol['g'][9] + vle.imol['g'][21])
+        X_NH3_f = vle.imol['l'][21]/(vle.imol['l'][9] + vle.imol['l'][21])
+        
+        Dm = 1.6*10**(-7) # feed molecular diffusity m/s Semmens
+        # (underesitmate, this value may be at 15 or 25 C, our feed is 60 C, should be higher)
+        porosity = 0.9 # Scheepers
+        thickness = 7*10**(-5) # m, Scheepers
+        tortuosity = 1.2 # Scheepers
+
+        km = Dm*porosity/tortuosity/thickness
+        
+        Henry = 1.61*10**(-5) # atm*m3/mole
+        # https://webwiser.nlm.nih.gov/substance?substanceId=315&identifier=\
+        # Ammonia&identifierType=name&menuItemId=81&catId=120#:~:text=The%20\
+        # Henry's%20Law%20constant%20for,m%2Fmole(2). (accessed 11-11-2022)
+        
+        
+        dimensionless_Henry = Henry/8.20575/(10**(-5))/influent.T # H' = H/RT
+        # https://www.sciencedirect.com/topics/chemistry/henrys-law#:~:text=\
+        # Values%20for%20Henry's%20law%20constants,gas%20constant%20(8.20575%\
+        # 20%C3%97%2010 (accessed 11-11-2022)
+        
+        Ka = 1.75*10**(-5) #1.2~2.3*10^-5 Ding
+        
+        
+        kf = 1/(1/Ka - 1/dimensionless_Henry/km*(1 + 10**(-pKa)*10**(-self.pH)/(10**(-14))))
+        
+        J = kf*ammonia/influent.F_mass*1000*log(X_NH3_f_m/X_NH3_f)
+        
+        
+        
+        
+        
+        
         
         influent.imass['C'] = self.ins[0]._source.ins[0]._source.ins[0].\
                               _source.CHGout_C

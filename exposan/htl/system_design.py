@@ -271,6 +271,13 @@ sys.simulate()
 
 sys.diagram()
 
+# tea = qs.TEA(system=sys, discount_rate=0.05, start_year=2022,
+#              lifetime=10, uptime_ratio=0.9,
+#              system_add_OPEX=0.03)
+
+
+# tea.show()
+
 # return sys
 
 #%%

@@ -175,7 +175,7 @@ def create_components(set_thermo=True):
     H2 = Component('H2', phase='g', particle_size='Dissolved gas',
                    degradability='Undegradable', organic=False)
     
-    NH3 = Component('NH3', phase='g', particle_size='Dissolved gas',
+    NH3 = Component('NH3', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
     
     H2SO4 = Component('H2SO4', phase='l', particle_size='Soluble',
