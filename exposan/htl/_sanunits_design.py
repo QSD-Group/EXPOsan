@@ -496,10 +496,9 @@ class HTL(Reactor):
         self.HTLaqueous_pre = HTLaqueous_pre
         self.biocrude_pre = biocrude_pre
         self.offgas_pre = offgas_pre
-        self.eff_T = eff_T
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
+        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out, T=eff_T)
         
         self.P = P
         self.tau = tau
@@ -574,7 +573,7 @@ class HTL(Reactor):
         biocrude.P = self.biocrude_pre
         offgas.P = self.offgas_pre
         
-        for stream in self.outs: stream.T = self.eff_T
+        for stream in self.outs: stream.T = self.hx.T
         
         self.sludgelab = self.ins[0]._source.ins[0]._source.ins[0].\
                          _source.ins[0]._source.ins[0]._source
@@ -671,9 +670,9 @@ class HTL(Reactor):
         hx = self.heat_exchanger
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
         hx_ins0.mix_from((self.outs[1], self.outs[2], self.outs[3]))
-        hx_outs0.mix_from((self.outs[1], self.outs[2], self.outs[3]))
+        hx_outs0.copy_like(hx_ins0)
         hx_ins0.T = self.ins[0].T # temperature before/after HTL are similar
-        hx.T = hx_outs0.T
+        hx_outs0.T = hx.T
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
 
         self.P = self.ins[0].P
@@ -1080,9 +1079,10 @@ class CHG(Reactor):
         hx = self.heat_exchanger
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
         hx_ins0.mix_from(self.outs)
-        hx_outs0.mix_from(self.outs)
+        hx_outs0.copy_like(hx_ins0)
         hx_ins0.T = self.ins[0].T # temperature before/after CHG are similar
         hx.T = hx_outs0.T
+        #!!! There doesn't seem to be any change in temperature
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
         
         Reactor._Vmax /= 2 # so that there are 6 CHG tanks
