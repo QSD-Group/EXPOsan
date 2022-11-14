@@ -18,8 +18,7 @@ References:
     Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
     Process Design and Economics for the Conversion of Algal Biomass to
     Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
-    PNNL--23227, 1126336; 2014; 
-    https://doi.org/10.2172/1126336.
+    PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
     
 (2) Knorr, D.; Lukas, J.; Schoen, P. Production of Advanced Biofuels via
     Liquefaction - Hydrothermal Liquefaction Reactor Design: April 5, 2013;
@@ -115,14 +114,15 @@ H2 = qsu.HXutility('A240', ins=P2-0, outs='heated_aqueous',
 CHG = su.CHG('A250', ins=H2-0, outs='CHG_out')
 
 H3 = qsu.HXutility('A260', ins=CHG-0, outs='cooled_CHG', T=60+273.15,
-                   init_with='Stream')
+                    init_with='Stream')
 
+V1 = IsenthalpicValve('A270', ins=H3-0, outs='depressed_cooled_CHG', P=50*6894.76)
 
-F1 = Flash('A270', ins=H3-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
-           T=60+273.15, P=50*6894.76)
+F1 = Flash('A280', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
+            T=60+273.15, P=50*6894.76)
 
-MemDis = su.MembraneDistillation('A280', ins=(F1-1, SP1-1, 'NaOH_N'),
-                                 outs=('ammonium_sulfate','MemDis_ww'))
+MemDis = su.MembraneDistillation('A290', ins=(F1-1, SP1-1, 'NaOH_N'),
+                                  outs=('ammonium_sulfate','MemDis_ww'))
 
 # =============================================================================
 # HT (Area 300)
@@ -144,18 +144,18 @@ HT = su.HT('A310', ins=(P3-0, RSP1-0), outs='HTout')
 HT_compressor = HT.compressor
 HT_hx = HT.heat_exchanger
 
-V1 = IsenthalpicValve('A320', ins=HT-0, outs='depressed_HT', P=717.4*6894.76)
+V2 = IsenthalpicValve('A320', ins=HT-0, outs='depressed_HT', P=717.4*6894.76)
 
-H4 = qsu.HXutility('A330', ins=V1-0, outs='cooled_HT', T=60+273.15,
-                   init_with='Stream')
+H4 = qsu.HXutility('A330', ins=V2-0, outs='cooled_HT', T=60+273.15,
+                    init_with='Stream')
 
 F2 = Flash('A340', ins=H4-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
-           P=717.4*6894.76) # outflow P
+            P=717.4*6894.76) # outflow P
 
-V2 = IsenthalpicValve('A350', ins=F2-1, outs='depressed_flash_effluent', P=55*6894.76)
+V3 = IsenthalpicValve('A350', ins=F2-1, outs='depressed_flash_effluent', P=55*6894.76)
 
-SP2 = qsu.Splitter('S310', ins=V2-0, outs=('HT_ww','HT_oil'),
-                   split={'H2O':1}, init_with='Stream')
+SP2 = qsu.Splitter('S310', ins=V3-0, outs=('HT_ww','HT_oil'),
+                    split={'H2O':1}, init_with='Stream')
 # separate water and oil based on gravity
 
 H5 = qsu.HXutility('A360', ins=SP2-1, outs='heated_oil', T=104+273.15)
@@ -193,12 +193,15 @@ HC_compressor = HC.compressor
 HC_hx = HC.heat_exchanger
 
 H6 = qsu.HXutility('A420', ins=HC-0, outs='cooled_HC', T=60+273.15,
-                   init_with='Stream')
+                    init_with='Stream')
 
-F3 = Flash('A430', ins=H6-0, outs=('HC_fuel_gas','HC_aqueous'), T=60.2+273,
-           P=30*6894.76) # outflow P
+V4 = IsenthalpicValve('A430', ins=H6-0, outs='cooled_depressed_HC', P=30*6894.76)
 
-C4 = BinaryDistillation('A440', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
+
+F3 = Flash('A440', ins=V4-0, outs=('HC_fuel_gas','HC_aqueous'), T=60.2+273,
+            P=30*6894.76) # outflow P
+
+C4 = BinaryDistillation('A450', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
                         LHK=('C9H20','C10H22'), P=20*6894.76, # outflow P
                         y_top=360/546, x_bot=7/708, k=2, is_divided=True)
 
@@ -213,25 +216,25 @@ DieselMixer = qsu.Mixer('S510', ins=(C3-0, C4-1), outs='mixed_diesel',
                         init_with='Stream')
 
 H7 = qsu.HXutility('A500', ins=GasolineMixer-0, outs='cooled_gasoline',
-                   T=60+273.15, init_with='Stream', rigorous=True)
+                    T=60+273.15, init_with='Stream', rigorous=True)
 
 H8 = qsu.HXutility('A510', ins=DieselMixer-0, outs='cooled_diesel',
-                   T=60+273.15, init_with='Stream', rigorous=True)
+                    T=60+273.15, init_with='Stream', rigorous=True)
 
 PC1 = su.PhaseChanger('S520', ins=H7-0, outs='cooled_gasoline_liquid')
 
 PC2 = su.PhaseChanger('S530', ins=H8-0, outs='cooled_diesel_liquid')
 
 GasolineTank = qsu.StorageTank('T500', ins=PC1-0, outs=('gasoline'),
-                               tau=3*24, init_with='Stream')
+                                tau=3*24, init_with='Stream')
 # store for 3 days based on Jones 2014
 
 DieselTank = qsu.StorageTank('T510', ins=PC2-0, outs=('diesel'),
-                             tau=3*24, init_with='Stream')
+                              tau=3*24, init_with='Stream')
 # store for 3 days based on Jones 2014
 
 GasMixer = qsu.Mixer('S540', ins=(HTL-3, F1-0, F2-0, C1-0, F3-0),
-                     outs=('fuel_gas'), init_with='Stream')
+                      outs=('fuel_gas'), init_with='Stream')
 # F3-0 and F5-0 are empty, may change remove/modify F3 and/or F5 later
 
 CHP = qsu.CHP('A520', ins=(GasMixer-0,'natural_gas','air'),
@@ -245,7 +248,7 @@ WWmixer = su.WWmixer('S550', ins=(SluT-0, SluC-0, MemDis-1, SP2-0),
 # facilities
 # =============================================================================
 
-# HXN = qsu.HeatExchangerNetwork('HXN')
+HXN = qsu.HeatExchangerNetwork('HXN')
 
 # for unit in (SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
 #              M1, StruPre, P2, H2, CHG, F1, MemDis, SP1, P3, H3,
@@ -257,12 +260,12 @@ WWmixer = su.WWmixer('S550', ins=(SluT-0, SluC-0, MemDis-1, SP2-0),
 # so that qs.main_flowsheet.H1 works as well
 
 sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
-                             M1, StruPre, P2, H2, CHG, H3, F1, MemDis, SP1,
-                             P3, HT, V1, H4, F2, V2, SP2, H5, C1, C2, C3, P4,
-                             HC, H6, F3, C4, GasolineMixer, DieselMixer,
+                             M1, StruPre, P2, H2, CHG, H3, V1, F1, MemDis, SP1,
+                             P3, HT, V2, H4, F2, V3, SP2, H5, C1, C2, C3, P4,
+                             HC, H6, V4, F3, C4, GasolineMixer, DieselMixer,
                              H7, H8, PC1, PC2, GasolineTank, DieselTank,
-                             GasMixer, CHP, WWmixer, RSP1))
-                # , facilities=(HXN,))
+                             GasMixer, CHP, WWmixer, RSP1
+                             ), facilities=(HXN,))
 
 sys.operating_hours = 7884 # NRES 2013
 

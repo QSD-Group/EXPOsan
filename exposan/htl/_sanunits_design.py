@@ -1184,14 +1184,14 @@ class MembraneDistillation(Reactor):
         base.imass['NaOH'] = NaOH_mol*39.997/1000
         
         acid.imass['H2SO4'] = (self.ins[0]._source.ins[0]._source.ins[0].\
-                   _source.CHGout_N)/14.0067/self.N_S_ratio*98.079
+                   _source.ins[0]._source.CHGout_N)/14.0067/self.N_S_ratio*98.079
         acid.imass['H2O'] = acid.imass['H2SO4']*1000/98.079/0.5*1.05 -\
                             acid.imass['H2SO4']
         
         pKa = 9.26 # ammonia pKa
         ammonia_to_ammonium = 10**(-pKa)/10**(-self.target_pH)
         ammonia = (self.ins[0]._source.ins[0]._source.ins[0].\
-                   _source.CHGout_N)*ammonia_to_ammonium/(1 +\
+                   _source.ins[0]._source.CHGout_N)*ammonia_to_ammonium/(1 +\
                    ammonia_to_ammonium)*17.031/14.0067
         others = influent.F_mass - ammonia
         N2_in_air = self.membrane_area/self.m2_2_m3*self.porosity*0.79*1.204
@@ -1234,14 +1234,14 @@ class MembraneDistillation(Reactor):
                                         
         ww.copy_like(influent) # ww has the same T and P as influent
         ww.imass['N'] = (self.ins[0]._source.ins[0]._source.ins[0].\
-                   _source.CHGout_N)*(1 - ammonia_to_ammonium/(1 +\
+                   _source.ins[0]._source.CHGout_N)*(1 - ammonia_to_ammonium/(1 +\
                          ammonia_to_ammonium)*ammonia_transfer_rate)
                                                           
         ww.imass['C'] = self.ins[0]._source.ins[0]._source.ins[0].\
-                   _source.CHGout_C
+                   _source.ins[0]._source.CHGout_C
                          
         ww.imass['P'] = self.ins[0]._source.ins[0]._source.ins[0].\
-                   _source.CHGout_P
+                   _source.ins[0]._source.CHGout_P
                    
         ww.imass['H2O'] -= (ww.imass['C'] + ww.imass['N'] + ww.imass['P'])
         
