@@ -103,7 +103,7 @@ AcidEx = su.AcidExtraction('A200', ins=(HTL-0,SP1-0),
 
 M1 = su.HTLmixer('A210', ins=(HTL-1,AcidEx-1), outs=('mixture'))
 
-StruPre = su.StruvitePrecipitation('A220', ins=(M1-0,'MgCl2','NH4Cl','NaOH'),
+StruPre = su.StruvitePrecipitation('A220', ins=(M1-0,'MgCl2','NH4Cl','NaOH_P'),
                                    outs=('struvite','CHG_feed'))
 
 P2 = qsu.Pump('A230', ins=StruPre-1, outs='press_aqueous',
@@ -121,9 +121,8 @@ H3 = qsu.HXutility('A260', ins=CHG-0, outs='cooled_CHG', T=60+273.15,
 F1 = Flash('A270', ins=H3-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
            T=60+273.15, P=50*6894.76)
 
-MemDis = su.MembraneDistillation('A280', ins=(F1-1, SP1-1),
+MemDis = su.MembraneDistillation('A280', ins=(F1-1, SP1-1, 'NaOH_N'),
                                  outs=('ammonium_sulfate','MemDis_ww'))
-#ammonium sulfate fate? crystallation or transport out?
 
 # =============================================================================
 # HT (Area 300)
@@ -137,7 +136,7 @@ P3 = qsu.Pump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76,
 # releases a lot of heat and increase the temperature of effluent to 402 C
 # (755.5 F).
 
-RSP1 = qsu.ReversedSplitter('S600', ins='H2', outs=('HT_H2','HC_H2'),
+RSP1 = qsu.ReversedSplitter('S300', ins='H2', outs=('HT_H2','HC_H2'),
                             init_with='Stream')
 # reversed splitter, write before HT and HC, simulate after HT and HC
 
@@ -155,7 +154,7 @@ F2 = Flash('A340', ins=H4-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
 
 V2 = IsenthalpicValve('A350', ins=F2-1, outs='depressed_flash_effluent', P=55*6894.76)
 
-SP2 = qsu.Splitter('S300', ins=V2-0, outs=('HT_ww','HT_oil'),
+SP2 = qsu.Splitter('S310', ins=V2-0, outs=('HT_ww','HT_oil'),
                    split={'H2O':1}, init_with='Stream')
 # separate water and oil based on gravity
 
@@ -329,36 +328,6 @@ dist = shape.Triangle(0.116,0.1725,0.226)
 def set_sludge_dw_lipid(i):
     SluL.sludge_dw_lipid=i
 
-dist = shape.Triangle(0.007,0.0168,0.02)
-@param(name='sludge_P_ratio',
-        element=HTL,
-        kind='coupled',
-        units='-',
-        baseline=0.019,
-        distribution=dist)
-def set_sludge_P_ratio(i):
-    HTL.sludge_P_ratio=i
-
-dist = shape.Triangle(9.57,15.5,23.8)
-@param(name='biochar_C_N_ratio',
-        element=HTL,
-        kind='coupled',
-        units='-',
-        baseline=15.5,
-        distribution=dist)
-def set_biochar_C_N_ratio(i):
-    HTL.biochar_C_N_ratio=i
-
-dist = shape.Triangle(1.49,2.16,2.90)
-@param(name='biochar_C_P_ratio',
-        element=HTL,
-        kind='coupled',
-        units='-',
-        baseline=2.16,
-        distribution=dist)
-def set_biochar_C_P_ratio(i):
-    HTL.biochar_C_P_ratio=i
-
 dist = shape.Triangle(0.035,0.0648,0.102)
 @param(name='biocrude_moisture_content',
         element=HTL,
@@ -368,36 +337,6 @@ dist = shape.Triangle(0.035,0.0648,0.102)
         distribution=dist)
 def set_biocrude_moisture_content(i):
     HTL.biocrude_moisture_content=i
-
-dist = shape.Normal(0.764,0.049)
-@param(name='toc_tc_ratio',
-        element=CHG,
-        kind='coupled',
-        units='-',
-        baseline=0.764,
-        distribution=dist)
-def set_toc_tc_ratio(i):
-    CHG.toc_tc_ratio=i
-
-dist = shape.Normal(0.262,0.06)
-@param(name='toc_to_gas_c_ratio',
-        element=CHG,
-        kind='coupled',
-        units='-',
-        baseline=0.262,
-        distribution=dist)
-def set_toc_to_gas_c_ratio(i):
-    CHG.toc_to_gas_c_ratio=i
-
-dist = shape.Triangle(0.8,0.825,0.85)
-@param(name='N_recovery_rate',
-        element=MemDis,
-        kind='coupled',
-        units='-',
-        baseline=0.825,
-        distribution=dist)
-def set_N_recovery_rate(i):
-    MemDis.N_recovery_rate=i   
 
 dist = shape.Triangle(0.75,0.78,0.82)
 @param(name='biooil_ratio',
@@ -465,6 +404,10 @@ def get_gasoline_production():
 @metric(name='Diesel',units='kg/hr',element='Production')
 def get_diesel_production():
     return DieselTank.outs[0].F_mass
+
+@metric(name='Total installed cost',units='$',element='TEA')
+def get_total_installed_cost():
+    return sys.installed_equipment_cost
 
 #%%
 import numpy as np

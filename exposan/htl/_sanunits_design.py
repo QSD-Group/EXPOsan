@@ -49,16 +49,20 @@ References:
     BiomassBioenergy 2022, 156, 106323.
     https://doi.org/10.1016/j.biombioe.2021.106323.
     
-(7) Semmens, M. J.; Foster, D. M.; Cussler, E. L. Ammonia Removal from Water
-    Using Microporous Hollow Fibers. Journal of Membrane Science 1990, 51 (1),
-    127–140. https://doi.org/10.1016/S0376-7388(00)80897-2.
+(7) Doran, P. M. Chapter 11 - Unit Operations. In Bioprocess Engineering
+    Principles (Second Edition); Doran, P. M., Ed.; Academic Press: London,
+    2013; pp 445–595. https://doi.org/10.1016/B978-0-12-220851-5.00011-3.
     
-(8) Scheepers, D. M.; Tahir, A. J.; Brunner, C.; Guillen-Burrieza, E.
+(8) Spiller, L. L. Determination of Ammonia/Air Diffusion Coefficient Using
+    Nafion Lined Tube. Analytical Letters 1989, 22 (11–12), 2561–2573.
+    https://doi.org/10.1080/00032718908052375.
+
+(9) Scheepers, D. M.; Tahir, A. J.; Brunner, C.; Guillen-Burrieza, E.
     Vacuum Membrane Distillation Multi-Component Numerical Model for Ammonia
     Recovery from Liquid Streams. Journal of Membrane Science
     2020, 614, 118399. https://doi.org/10.1016/j.memsci.2020.118399.
 
-(9) Ding, Z.; Liu, L.; Li, Z.; Ma, R.; Yang, Z. Experimental Study of Ammonia
+(10) Ding, Z.; Liu, L.; Li, Z.; Ma, R.; Yang, Z. Experimental Study of Ammonia
     Removal from Water by Membrane Distillation (MD): The Comparison of Three
     Configurations. Journal of Membrane Science 2006, 286 (1), 93–103.
     https://doi.org/10.1016/j.memsci.2006.09.015.
@@ -92,12 +96,6 @@ __all__ = ('Reactor',
            'PhaseChanger')
 
 cmps = create_components()
-
-
-
-
-
-
 
 class Reactor(SanUnit, PressureVessel, isabstract=True):
     '''
@@ -525,13 +523,6 @@ class HTL(Reactor):
                                 dewatered_sludge.imass['Sludge_carbo']
         # just use afdw in revised MCA model, other places use dw
         
-        # NaOH added here (not now). target is 5 M (Shilai Hao EST)
-        # but NaOH also needs to be heated
-        # for water solution: 5 M NaOH: 20 g NaOH / 100 mL H2O
-        # (0.2 kg NaOH / 1 kg H2O)
-        # here, the calculation is based on the water amount in the dewatered
-        # sludge (assume the initial pH = 7, and solids don't affect pH)
-        
         lipid_ratio = dewatered_sludge.imass['Sludge_lipid']/\
                       dewatered_sludge_afdw
         protein_ratio = dewatered_sludge.imass['Sludge_protein']/\
@@ -564,7 +555,6 @@ class HTL(Reactor):
                                   biocrude.imass['H2O'] +\
                                   dewatered_sludge.imass['Sludge_ash']
         # assume ash (all soluble based on Jones) goes to water
-        # all NaOH also goes to water to maintain pH for membrane distillation
 
         biochar.phase = 's'
         offgas.phase = 'g'
@@ -818,6 +808,16 @@ class HTLmixer(SanUnit):
         mixture.T = extracted.T
         mixture.P = extracted.P
         
+    @property
+    def pH(self):
+        # assume HTLaqueous pH = 9 Li 2018 SI (9.08 ± 0.30)
+        # extracted pH = 0 (0.5 M H2SO4)
+        # since HTLaqueous pH is near to neutral
+        # assume pH is dominant by extracted and will be calculate based on dilution
+        dilution_factor = self.F_mass_in/self.ins[1].F_mass
+        hydrogen_ion_conc = 10**0/dilution_factor
+        return -log(hydrogen_ion_conc, 10)
+        
     def _design(self):
         pass
     
@@ -889,9 +889,10 @@ class StruvitePrecipitation(Reactor):
     _F_BM_default = {**Reactor._F_BM_default}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='Stream', Mg_P_ratio=2,
+                 init_with='Stream', 
+                 target_pH = 9.5,
+                 Mg_P_ratio=2,
                  P_pre_recovery_ratio=0.99, P_in_struvite=0.127,
-                 NaOH_2_water = 0.015,
                  # assume the pH of mixture is 0.5, target is 9.5
                  # (10^-0.5 + 10^-4.5)*40/1000 = 0.01265 ~ 0.015
                  HTLaqueous_NH3_N_2_total_N = 0.853, # Jones
@@ -905,10 +906,10 @@ class StruvitePrecipitation(Reactor):
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.target_pH = target_pH
         self.Mg_P_ratio = Mg_P_ratio
         self.P_pre_recovery_ratio = P_pre_recovery_ratio
         self.P_in_struvite = P_in_struvite
-        self.NaOH_2_water = NaOH_2_water
         self.HTLaqueous_NH3_N_2_total_N = HTLaqueous_NH3_N_2_total_N
         
         self.P = P
@@ -929,8 +930,13 @@ class StruvitePrecipitation(Reactor):
         mixture, supply_MgCl2, supply_NH4Cl, base = self.ins
         struvite, effluent = self.outs
         
-        base.imass['NaOH'] = mixture.imass['H2O']*self.NaOH_2_water
         
+        old_pH = self.ins[0]._source.pH
+        neutral_NaOH_mol = 10**(-old_pH)*self.ins[0].F_mass # ignore solid volume
+        to_target_pH = 10**(self.target_pH - 14)*self.ins[0].F_mass # ignore solid volume
+        total_NaOH = neutral_NaOH_mol + to_target_pH # unit: mol/h
+        base.imass['NaOH'] = total_NaOH * 39.997/1000
+
         if mixture.imass['P']/30.973762 > self.Mg_P_ratio*mixture.imass['N']*self.HTLaqueous_NH3_N_2_total_N/14.0067:
         # N:P >= Mg:P
             supply_NH4Cl.imass['NH4Cl'] = (mixture.imass['P']/30.973762 -\
@@ -1108,14 +1114,9 @@ class MembraneDistillation(Reactor):
     pressure difference across the hydrophobic membrane.
     
     Model method: 
-        1. Feed pH = 10, permeate pH = 1.5 (0.5 M H2SO4)
-        2. All N in the feed are NH4+/NH3 (Jones PNNL 2014)
-        3. 95% NH3 in feed can be transfered to permeate (assume 95% for now,
-           use literature data to find a conservative assumpation later)
-        4. All NH3 in permeate can form (NH4)2SO4 (which makes sense since
-           just water evaporates)
-        5. _design and _cost refer to
-           A.A. et al., Membrane distillation: A comprehensive review
+        1. calculate NH3 in feed based on pH
+        2. calculate NH3/H2O VLE
+        3. calculate NH3 flux and removal rate
 
     Parameters
     ----------
@@ -1129,20 +1130,47 @@ class MembraneDistillation(Reactor):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
-                 N_S_ratio=2, pH=10, ammonia_transfer_ratio=0.95,
+                 CHGeffluent_pH=8.16, # 8.16 ± 0.25 Li 2018
+                 target_pH=10,
+                 N_S_ratio=2,
+                 # S is excess since not all N can be transfered to form ammonia sulfate
+                 # for now, assume N_S_ratio = 2 is ok
+                 m2_2_m3=1200, # just for hollow fiber membrane, Doran
+                 Dm=2.28*10**(-5), # 2.28 ± 0.12 m^2/s NH3 molecular diffusity in air Spiller
+                 # (underesitmate, this value may be at 15 or 25 C, our feed is 60 C, should be higher)
+                 porosity=0.9, # Scheepers
+                 thickness=7*10**(-5), # m, Scheepers
+                 tortuosity=1.2, # Scheepers
+                 Henry=1.61*10**(-5), # atm*m3/mole
+                 # https://webwiser.nlm.nih.gov/substance?substanceId=315&identifier=\
+                 # Ammonia&identifierType=name&menuItemId=81&catId=120#:~:text=The%20\
+                 # Henry's%20Law%20constant%20for,m%2Fmole(2). (accessed 11-11-2022)
+                 Ka=1.75*10**(-5), # overall mass transfer coefficient 1.2~2.3*10^-5 m/s Ding
+                 membrane_area=370, # m2 refer to qsdsan.sanunits._membrane_bioreactors
+                 # the membrane area, design, and cost will be updated
+                 # for now, assume a large membrane area to ensure 100% ammonia removal
                  
                  P=None, tau=1, V_wf=0.5,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
+                 # design of membrane reactor cannot use class Reactor, will change later
                  
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.CHGeffluent_pH = CHGeffluent_pH
+        self.target_pH = target_pH
         self.N_S_ratio = N_S_ratio
-        self.pH = pH
-        self.ammonia_transfer_ratio = ammonia_transfer_ratio
+        self.m2_2_m3 = m2_2_m3
+        self.Dm = Dm
+        self.porosity = porosity
+        self.thickness = thickness
+        self.tortuosity = tortuosity
+        self.Henry = Henry
+        self.Ka = Ka
+        self.membrane_area = membrane_area
         
         self.P = P
         self.tau = tau
@@ -1156,78 +1184,60 @@ class MembraneDistillation(Reactor):
 
     _N_ins = 2
     _N_outs = 2
-        
+    
     def _run(self):
         
-        influent, acid = self.ins
+        influent, acid, base = self.ins
         ammoniumsulfate, ww = self.outs
         
-        pKa = 9.26 # ammonia pKa
-        ammonia_to_ammonium = 10**(-pKa)/10**(-self.pH)
-        ammonia = (self.ins[0]._source.ins[0]._source.ins[0].\
-                   _source.CHGout_N)*ammonia_to_ammonium/(1 +\
-                   ammonia_to_ammonium)*17.031/14.0067
-        others = influent.F_mass - ammonia
-        imass = indexer.MassFlowIndexer(l=[('H2O', others), ('NH3', ammonia)],
-                                        g=[('H2O', 0), ('NH3', 0)])
-        vle = equilibrium.VLE(imass)
-        vle(T=333.15, P=344738)
-        X_NH3_f_m = vle.imol['g'][21]/(vle.imol['g'][9] + vle.imol['g'][21])
-        X_NH3_f = vle.imol['l'][21]/(vle.imol['l'][9] + vle.imol['l'][21])
         
-        Dm = 1.6*10**(-7) # feed molecular diffusity m/s Semmens
-        # (underesitmate, this value may be at 15 or 25 C, our feed is 60 C, should be higher)
-        porosity = 0.9 # Scheepers
-        thickness = 7*10**(-5) # m, Scheepers
-        tortuosity = 1.2 # Scheepers
-
-        km = Dm*porosity/tortuosity/thickness
+        NaOH_conc = 10**(self.target_pH - 14) - 10**(self.CHGeffluent_pH - 14)
+        NaOH_mol = NaOH_conc*self.ins[0].F_mass
+        base.imass['NaOH'] = NaOH_mol*39.997/1000
         
-        Henry = 1.61*10**(-5) # atm*m3/mole
-        # https://webwiser.nlm.nih.gov/substance?substanceId=315&identifier=\
-        # Ammonia&identifierType=name&menuItemId=81&catId=120#:~:text=The%20\
-        # Henry's%20Law%20constant%20for,m%2Fmole(2). (accessed 11-11-2022)
-        
-        
-        dimensionless_Henry = Henry/8.20575/(10**(-5))/influent.T # H' = H/RT
-        # https://www.sciencedirect.com/topics/chemistry/henrys-law#:~:text=\
-        # Values%20for%20Henry's%20law%20constants,gas%20constant%20(8.20575%\
-        # 20%C3%97%2010 (accessed 11-11-2022)
-        
-        Ka = 1.75*10**(-5) #1.2~2.3*10^-5 Ding
-        
-        
-        kf = 1/(1/Ka - 1/dimensionless_Henry/km*(1 + 10**(-pKa)*10**(-self.pH)/(10**(-14))))
-        
-        J = kf*ammonia/influent.F_mass*1000*log(X_NH3_f_m/X_NH3_f)
-        
-        
-        
-        
-        
-        
-        
-        influent.imass['C'] = self.ins[0]._source.ins[0]._source.ins[0].\
-                              _source.CHGout_C
-        influent.imass['N'] = self.ins[0]._source.ins[0]._source.ins[0].\
-                              _source.CHGout_N
-        influent.imass['P'] = self.ins[0]._source.ins[0]._source.ins[0].\
-                              _source.CHGout_P
-        influent.imass['H2O'] -= (influent.imass['C'] + influent.imass['N'] +\
-                                  influent.imass['P'])
-        
-        acid.imass['H2SO4'] = influent.imass['N']/14.0067/self.N_S_ratio*98.079
+        acid.imass['H2SO4'] = (self.ins[0]._source.ins[0]._source.ins[0].\
+                   _source.CHGout_N)/14.0067/self.N_S_ratio*98.079
         acid.imass['H2O'] = acid.imass['H2SO4']*1000/98.079/0.5*1.05 -\
                             acid.imass['H2SO4']
         
         pKa = 9.26 # ammonia pKa
-        ammonia_to_ammonium = 10**(-pKa)/10**(-self.pH)
-        ammonia_in_feed = influent.imass['N']/14.0067*ammonia_to_ammonium/(1 +\
-                          ammonia_to_ammonium)*17.031
+        ammonia_to_ammonium = 10**(-pKa)/10**(-self.target_pH)
+        ammonia = (self.ins[0]._source.ins[0]._source.ins[0].\
+                   _source.CHGout_N)*ammonia_to_ammonium/(1 +\
+                   ammonia_to_ammonium)*17.031/14.0067
+        others = influent.F_mass - ammonia
+        N2_in_air = self.membrane_area/self.m2_2_m3*self.porosity*0.79*1.204
+        O2_in_air = self.membrane_area/self.m2_2_m3*self.porosity*0.21*1.204
+        # N2:O2 = 0.79:0.21 in the air, air density is 1.204 kg/m3
+        # https://en.wikipedia.org/wiki/Density_of_air#:~:text=It%20also%20\
+        # changes%20with%20variation,International%20Standard%20Atmosphere%2\
+        # 0(ISA). (accessed 11-14-2022)
+        
+        imass = indexer.MassFlowIndexer(l=[('H2O', others), ('NH3', ammonia), ('N2', 0), ('O2', 0)],
+                                        g=[('H2O', 0), ('NH3', 0),  ('N2', N2_in_air), ('O2', O2_in_air)])
+        # N2 amount will be changed based on design, maybe also add O2 (N2:O2 = 4:1)
+        
+        vle = equilibrium.VLE(imass)
+        vle(T=influent.T, P=influent.P)
+        X_NH3_f_m = vle.imol['g','NH3']/(vle.imol['g','H2O'] + vle.imol['g','NH3'])
+        X_NH3_f = vle.imol['l','NH3']/(vle.imol['l','H2O'] + vle.imol['l','NH3'])
 
-        ammoniumsulfate.imass['NH42SO4'] = ammonia_in_feed*\
-                                          self.ammonia_transfer_ratio/34.062*\
-                                          132.14
+        km = self.Dm*self.porosity/self.tortuosity/self.thickness
+        
+        dimensionless_Henry = self.Henry/8.20575/(10**(-5))/influent.T # H' = H/RT
+        # https://www.sciencedirect.com/topics/chemistry/henrys-law#:~:text=\
+        # Values%20for%20Henry's%20law%20constants,gas%20constant%20(8.20575%\
+        # 20%C3%97%2010 (accessed 11-11-2022)
+        
+        kf = 1/(1/self.Ka - 1/dimensionless_Henry/km*(1 + 10**(-pKa)*10**(-self.target_pH)/(10**(-14))))
+        
+        J = kf*ammonia/influent.F_mass*1000*log(X_NH3_f_m/X_NH3_f)*3600 # in kg/m2/h
+        
+        NH3_mass_flow = J*self.membrane_area
+        
+        ammonia_transfer_rate = min(1, NH3_mass_flow/ammonia)
+        
+        ammoniumsulfate.imass['NH42SO4'] = ammonia*ammonia_transfer_rate/34.062*132.14
         ammoniumsulfate.imass['H2O'] = acid.imass['H2O']
         ammoniumsulfate.imass['H2SO4'] = acid.imass['H2SO4'] +\
                                          ammoniumsulfate.imass['NH42SO4']/\
@@ -1235,9 +1245,20 @@ class MembraneDistillation(Reactor):
                                          ammoniumsulfate.imass['NH42SO4']
                                         
         ww.copy_like(influent) # ww has the same T and P as influent
-        ww.imass['N'] -= influent.imass['N']*self.ammonia_transfer_ratio*\
-                         ammonia_to_ammonium/(1 + ammonia_to_ammonium)
+        ww.imass['N'] = (self.ins[0]._source.ins[0]._source.ins[0].\
+                   _source.CHGout_N)*(1 - ammonia_to_ammonium/(1 +\
+                         ammonia_to_ammonium)*ammonia_transfer_rate)
+                                                          
+        ww.imass['C'] = self.ins[0]._source.ins[0]._source.ins[0].\
+                   _source.CHGout_C
                          
+        ww.imass['P'] = self.ins[0]._source.ins[0]._source.ins[0].\
+                   _source.CHGout_P
+                   
+        ww.imass['H2O'] -= (ww.imass['C'] + ww.imass['N'] + ww.imass['P'])
+        
+        ww.imass['H2O'] += self.ins[2].F_mass
+        
         ammoniumsulfate.T = acid.T
         ammoniumsulfate.P = acid.P
         # ammoniumsulfate has the same T and P as acid
