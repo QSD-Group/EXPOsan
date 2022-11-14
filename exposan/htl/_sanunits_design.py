@@ -563,7 +563,7 @@ class HTL(Reactor):
         biocrude.P = self.biocrude_pre
         offgas.P = self.offgas_pre
         
-        for stream in self.outs: stream.T = self.hx.T
+        for stream in self.outs: stream.T = self.heat_exchanger.T
         
         self.sludgelab = self.ins[0]._source.ins[0]._source.ins[0].\
                          _source.ins[0]._source.ins[0]._source
@@ -663,6 +663,7 @@ class HTL(Reactor):
         hx_outs0.copy_like(hx_ins0)
         hx_ins0.T = self.ins[0].T # temperature before/after HTL are similar
         hx_outs0.T = hx.T
+        hx_ins0.P = hx_outs0.P = self.outs[1].P
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
 
         self.P = self.ins[0].P
@@ -1028,9 +1029,6 @@ class CHG(Reactor):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.gas_composition = gas_composition
         self.gas_c_to_total_c = gas_c_to_total_c
-        hx_in = bst.Stream(f'{ID}_hx_in')
-        hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
         
         self.P = P
         self.tau = tau
@@ -1081,16 +1079,6 @@ class CHG(Reactor):
         return self.ins[0].imass['P']
         
     def _design(self):
-        
-        hx = self.heat_exchanger
-        hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
-        hx_ins0.mix_from(self.outs)
-        hx_outs0.copy_like(hx_ins0)
-        hx_ins0.T = self.ins[0].T # temperature before/after CHG are similar
-        hx.T = hx_outs0.T
-        #!!! There doesn't seem to be any change in temperature
-        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
-        
         Reactor._Vmax /= 2 # so that there are 6 CHG tanks
         self.P = self.ins[0].P
         Reactor._design(self)
@@ -1352,9 +1340,7 @@ class HT(Reactor):
         self.hydrogen_excess_times = hydrogen_excess_times
         self.hydrocarbon_ratio = hydrocarbon_ratio
         self.HTin_T = HTin_T
-
         self.HTrxn_T = HTrxn_T
-
         self.HT_composition = HT_composition
         
         IC_in = bst.Stream(f'{ID}_IC_in')
@@ -1462,7 +1448,7 @@ class HT(Reactor):
         hx = self.heat_exchanger
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
         hx_ins0.mix_from(self.ins)
-        hx_outs0.mix_from(self.ins)
+        hx_outs0.copy_like(hx_ins0)
         hx_outs0.T = self.HTin_T
         hx_ins0.P = hx_outs0.P = min(IC_outs0.P, self.ins[0].P)
         # H2 and biocrude have the same pressure
@@ -1513,7 +1499,7 @@ class HC(Reactor):
                  # Jones et al., 2014
                  # spreadsheet HC calculation
                  HCin_T=394+273.15,
-                 HC_rxn_T=451+273.15,
+                 HCrxn_T=451+273.15,
                  HC_composition={'CO2':0.0388, 'CH4':0.0063,
                                  'CYCHEX':0.0389,'HEXANE':0.0116,
                                  'HEPTANE':0.1202, 'OCTANE':0.0851,
@@ -1540,7 +1526,7 @@ class HC(Reactor):
         self.hydrogen_excess_times = hydrogen_excess_times
         self.hydrocarbon_ratio = hydrocarbon_ratio
         self.HCin_T = HCin_T
-        self.HC_rxn_T = HC_rxn_T
+        self.HCrxn_T = HCrxn_T
         self.HC_composition = HC_composition
         
         IC_in = bst.Stream(f'{ID}_IC_in')
@@ -1586,7 +1572,7 @@ class HC(Reactor):
                              self.hydrogen_rxned_to_heavy_oil
         
         hc_out.P = heavy_oil.P
-        hc_out.T = self.HC_rxn_T
+        hc_out.T = self.HCrxn_T
         
         C_in = 0
         total_num = len(list(cmps))
@@ -1622,7 +1608,7 @@ class HC(Reactor):
         hx = self.heat_exchanger
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
         hx_ins0.mix_from(self.ins)
-        hx_outs0.mix_from(self.ins)
+        hx_outs0.copy_like(hx_ins0)
         hx_outs0.T = self.HCin_T
         hx_ins0.P = hx_outs0.P = min(IC_outs0.P, self.ins[0].P)
         # H2 and biocrude have the same pressure
