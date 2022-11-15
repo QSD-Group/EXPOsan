@@ -191,7 +191,6 @@ def run_mapping(model, n, T, t_step, run=True, method='BDF', mpath=''):
             method=method
             )
         if mpath: model.table.to_excel(mpath)
-        
     return xx, yy
 
 def fmt(x):

@@ -254,9 +254,10 @@ R2_ss_conds = {
 # Preliminary analyses with mock METAB configuration
 # =============================================================================
 
-def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowsheet_D=None,
+def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, 
+                   flowsheet_D=None, flowsheet_E=None,
                    inf_concs={}, R1_init_conds={}, R2_init_conds={}, which=None):
-    which = which or ('A', 'B', 'C', 'D')
+    which = which or ('A', 'B', 'C', 'D', 'E')
     if isinstance(which, str): which = (which,)
     ############# load components and set thermo #############
     pc.create_adm1_cmps()
@@ -389,13 +390,41 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowshe
         sysD.set_dynamic_tracker(R1d, R2d, bgm1_d, bgm2_d, bgh1_d, bgh2_d)
         systems.append(sysD)
     
+    if 'E' in which:
+        flowsheet_E = flowsheet_E or qs.Flowsheet('METAB_sysE')
+        qs.main_flowsheet.set_flowsheet(flowsheet_E)
+        
+        ############# sysC streams ########################
+        inf_e = brewery_ww.copy('BreweryWW_E')
+        eff_e = WasteStream('Effluent_E', T=T2)
+        # bgm1_d = WasteStream('biogas_mem_1d', phase='g')
+        bgm2_e = WasteStream('biogas_mem_2e', phase='g')
+        bgh1_e = WasteStream('biogas_hsp_1e', phase='g')
+        bgh2_e = WasteStream('biogas_hsp_2e', phase='g')
+        
+        ############# sysC unit operation #################
+        R1e = su.AnaerobicCSTR('R1e', ins=inf_e, outs=(bgh1_e, ''),
+                               fixed_headspace_P=True,
+                               headspace_P=0.1013,
+                               V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
+                               retain_cmps=fermenters)    
+        R2e = su.AnaerobicCSTR('R2e', ins=R1e-1, outs=(bgh2_e, ''),                               
+                              V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
+                              retain_cmps=methanogens)
+        DM2e = DM('DM2e', ins=R2e-1, outs=(bgm2_e, eff_e), tau=tau_2)
+        R1e.set_init_conc(**R1_ss_conds)
+        R2e.set_init_conc(**R2_ss_conds)
+        sysE = System('Best_METAB', path=(R1e, R2e, DM2e))
+        sysE.set_dynamic_tracker(R1e, R2e, bgm2_e, bgh1_e, bgh2_e)
+        systems.append(sysE)
+    
     return systems
 
 #%%
 @time_printer
 def run(t, t_step, method=None, **kwargs):
-    global sysA, sysB, sysC, sysD
-    sysA, sysB, sysC, sysD = create_systems()
+    global sysA, sysB, sysC, sysD, sysE
+    sysA, sysB, sysC, sysD, sysE = create_systems()
     for sys in (sysA, sysB, sysC, sysD):
         print(f'Simulating {sys.ID}...')
         sys.simulate(state_reset_hook='reset_cache',
