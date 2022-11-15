@@ -40,7 +40,7 @@ from exposan.htl._components_design import create_components
 load_process_settings()
 cmps = create_components()
 
-fake_sludge = qs.Stream('sludge', H2O=100000, units='kg/hr', T=25+273.15)
+fake_sludge = qs.Stream('sludge', H2O=5000000, units='kg/hr', T=25+273.15)
 # set H2O equal to the total sludge input flow
 # assume 99% moisture, 50 metric tons of dw sludge per h
 
@@ -250,13 +250,13 @@ WWmixer = su.WWmixer('S550', ins=(SluT-0, SluC-0, MemDis-1, SP2-0),
 
 HXN = qsu.HeatExchangerNetwork('HXN')
 
-# for unit in (SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
-#              M1, StruPre, P2, H2, CHG, F1, MemDis, SP1, P3, H3,
-#              HT, F2, F3, SP3, HX_biocrude, C1, C2, P4, H4, HC,
-#              F4, F5, C3, GasolineMixer, DieselMixer, H5, H6,
-#              GasolineTank, DieselTank, GasMixer, CHP, SP2,
-#              HX_H2_HT, IC_H2_HT, HX_H2_HC, IC_H2_HC):
-#     unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1])
+for unit in (SluL, SluT, SluC, P1, H1, HTL, HTL_hx, H2SO4_Tank, AcidEx,
+             M1, StruPre, P2, H2, CHG, H3, V1, F1, MemDis, SP1,
+             P3, HT, HT_compressor, HT_hx, V2, H4, F2, V3, SP2, H5, C1, C2, C3, P4,
+             HC, HC_compressor, HC_hx, H6, V4, F3, C4, GasolineMixer, DieselMixer,
+             H7, H8, PC1, PC2, GasolineTank, DieselTank,
+             GasMixer, CHP, WWmixer, RSP1, HXN):
+    unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1])
 # so that qs.main_flowsheet.H1 works as well
 
 sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,

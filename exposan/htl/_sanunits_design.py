@@ -97,6 +97,10 @@ __all__ = ('Reactor',
 
 cmps = create_components()
 
+# =============================================================================
+# Reactor
+# =============================================================================
+
 class Reactor(SanUnit, PressureVessel, isabstract=True):
     '''
     Create an abstract class for reactor unit, purchase cost of the reactor
@@ -249,58 +253,6 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
             raise AttributeError('mixing_intensity is provided, kw_per_m3 will be calculated.')
         else:
             self._kW_per_m3 = i
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # =============================================================================
 # Sludge Lab
@@ -468,11 +420,11 @@ class HTL(Reactor):
                  offgas_pre=30*6894.76, # Jones
                  eff_T=60+273.15, # Jones
                  
-                 P=None, tau=1, V_wf=0.5,
-                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
+                 P=None, tau=15/60, V_wf=0.3,
+                 length_to_diameter=7862/2*3, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
-                 vessel_type='Vertical',         
+                 vessel_type='Horizontal',         
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -543,7 +495,8 @@ class HTL(Reactor):
         for name, ratio in self.gas_composition.items():
             offgas.imass[name] = gas_mass*ratio
             
-        biocrude.imass['Biocrude'] = (self.lipid_2_biocrude*lipid_ratio + self.protein_2_biocrude*protein_ratio\
+        biocrude.imass['Biocrude'] = (self.lipid_2_biocrude*lipid_ratio +\
+                                      self.protein_2_biocrude*protein_ratio\
                                       + self.carbo_2_biocrude*carbo_ratio)*\
                                       dewatered_sludge_afdw
         biocrude.imass['H2O'] = biocrude.imass['Biocrude']/(1 -\
@@ -586,11 +539,13 @@ class HTL(Reactor):
 
     @property
     def biocrude_C_ratio(self):
-        return (self.sludgelab.AOSc*self.biocrude_C_slope + self.biocrude_C_intercept)/100 # revised MCA model
+        return (self.sludgelab.AOSc*self.biocrude_C_slope + self.biocrude_C_intercept)/100
+        # revised MCA model
     
     @property
     def biocrude_H_ratio(self):
-        return (self.sludgelab.AOSc*self.biocrude_H_slope + self.biocrude_H_intercept)/100 # revised MCA model
+        return (self.sludgelab.AOSc*self.biocrude_H_slope + self.biocrude_H_intercept)/100
+        # revised MCA model
 
     @property
     def biocrude_N_ratio(self):
@@ -636,7 +591,9 @@ class HTL(Reactor):
     def HTLaqueous_C(self):
         if ((self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
              self.sludgelab.sludge_C_ratio - self.biochar_C -\
-             self.biocrude_C - self.offgas_C) < -0.1*(self.ins[0].F_mass - self.ins[0].imass['H2O'])*self.sludgelab.sludge_C_ratio:
+             self.biocrude_C - self.offgas_C) < -0.1*(self.ins[0].F_mass -\
+                                                self.ins[0].imass['H2O'])*\
+                                                self.sludgelab.sludge_C_ratio:
             raise Exception('carbon mass balance is out of +/- 10%')
         else: return max((self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
                           self.sludgelab.sludge_C_ratio - self.biochar_C -\
@@ -735,7 +692,8 @@ class AcidExtraction(Reactor):
         # https://www.fishersci.com/shop/products/sulfuric-acid-1n-0-5m-
         # standard-solution-thermo-scientific/AC124240010 (accessed 10-6-2022)
         
-        residual.imass['Residual'] = biochar.F_mass - self.ins[0]._source.biochar_P*self.P_acid_recovery_ratio
+        residual.imass['Residual'] = biochar.F_mass - self.ins[0]._source.\
+                                     biochar_P*self.P_acid_recovery_ratio
         
         extracted.copy_like(acid)
         extracted.imass['P'] = biochar.F_mass - residual.F_mass
@@ -937,10 +895,12 @@ class StruvitePrecipitation(Reactor):
         total_NaOH = neutral_NaOH_mol + to_target_pH # unit: mol/h
         base.imass['NaOH'] = total_NaOH * 39.997/1000
 
-        if mixture.imass['P']/30.973762 > self.Mg_P_ratio*mixture.imass['N']*self.HTLaqueous_NH3_N_2_total_N/14.0067:
+        if mixture.imass['P']/30.973762 > self.Mg_P_ratio*mixture.imass['N']*\
+                                          self.HTLaqueous_NH3_N_2_total_N/14.0067:
         # N:P >= Mg:P
             supply_NH4Cl.imass['NH4Cl'] = (mixture.imass['P']/30.973762 -\
-                                           self.Mg_P_ratio*mixture.imass['N']*self.HTLaqueous_NH3_N_2_total_N/14.0067)*53.491
+                                           self.Mg_P_ratio*mixture.imass['N']*\
+                                           self.HTLaqueous_NH3_N_2_total_N/14.0067)*53.491
         # make sure N:P >= 1:1
         
         supply_MgCl2.imass['MgCl2'] = mixture.imass['P']/30.973762*95.211*\
@@ -1201,8 +1161,14 @@ class MembraneDistillation(Reactor):
         # changes%20with%20variation,International%20Standard%20Atmosphere%2\
         # 0(ISA). (accessed 11-14-2022)
         
-        imass = indexer.MassFlowIndexer(l=[('H2O', others), ('NH3', ammonia), ('N2', 0), ('O2', 0)],
-                                        g=[('H2O', 0), ('NH3', 0),  ('N2', N2_in_air), ('O2', O2_in_air)])
+        imass = indexer.MassFlowIndexer(l=[('H2O', others),
+                                           ('NH3', ammonia),
+                                           ('N2', 0),
+                                           ('O2', 0)],
+                                        g=[('H2O', 0),
+                                           ('NH3', 0), 
+                                           ('N2', N2_in_air),
+                                           ('O2', O2_in_air)])
         # N2 amount will be changed based on design, maybe also add O2 (N2:O2 = 4:1)
         
         vle = equilibrium.VLE(imass)
@@ -1217,7 +1183,8 @@ class MembraneDistillation(Reactor):
         # Values%20for%20Henry's%20law%20constants,gas%20constant%20(8.20575%\
         # 20%C3%97%2010 (accessed 11-11-2022)
         
-        kf = 1/(1/self.Ka - 1/dimensionless_Henry/km*(1 + 10**(-pKa)*10**(-self.target_pH)/(10**(-14))))
+        kf = 1/(1/self.Ka - 1/dimensionless_Henry/km*(1 + 10**(-pKa)*10**\
+             (-self.target_pH)/(10**(-14))))
         
         J = kf*ammonia/influent.F_mass*1000*log(X_NH3_f_m/X_NH3_f)*3600 # in kg/m2/h
         
@@ -1395,12 +1362,14 @@ class HT(Reactor):
         
         self.HTL = self.ins[0]._source.ins[0]._source
         
-        if self.HTaqueous_C < -0.1*(self.HTL.ins[0].F_mass - self.HTL.ins[0].imass['H2O'])*self.HTL.sludgelab.sludge_C_ratio:
+        if self.HTaqueous_C < -0.1*(self.HTL.ins[0].F_mass - self.HTL.ins[0].\
+                              imass['H2O'])*self.HTL.sludgelab.sludge_C_ratio:
             raise Exception('carbon mass balance is out of +/- 10%')
         # allow +/- 10% out of mass balance
         # should be no C in the aqueous phase, the calculation here is just for MB
         
-        if self.HTaqueous_N < -0.1*(self.HTL.ins[0].F_mass - self.HTL.ins[0].imass['H2O'])*self.HTL.sludgelab.sludge_N_ratio:
+        if self.HTaqueous_N < -0.1*(self.HTL.ins[0].F_mass - self.HTL.ins[0].\
+                              imass['H2O'])*self.HTL.sludgelab.sludge_N_ratio:
             raise Exception('nitrogen mass balance is out of +/- 10%')
         # allow +/- 10% out of mass balance
 
@@ -1655,8 +1624,8 @@ class WWmixer(SanUnit):
         
         mixture.mix_from(self.ins)
         
-        HT = self.ins[3]._source.ins[0]._source.ins[0]._source.ins[0]._source.ins[0]._source.\
-             ins[0]._source
+        HT = self.ins[3]._source.ins[0]._source.ins[0]._source.ins[0]._source.\
+             ins[0]._source.ins[0]._source
         
         # only account for C and N from HT if they are not less than 0
         if HT.HTaqueous_C >= 0:
