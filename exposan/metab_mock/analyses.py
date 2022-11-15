@@ -251,7 +251,8 @@ def plot_scatter(seed, model1, model2=None, bl_metrics=None):
         for i in range(nx):
             xs = [df_x.iloc[:,i].values for df_x in dfs_x]
             x_ticks = xlct.tick_values(np.min(xs), np.max(xs))
-            ax = axes[j,i]
+            if nx > 1: ax = axes[j,i]
+            else: ax = axes[j]
             ax.axhline(y=yb, ls='-', lw=0.5, c='black')
             for x, y, m, c in zip(xs, ys, mks, clrs):
                 ax.scatter(x, y, marker=m, s=1, c=c)
@@ -328,7 +329,7 @@ def plot_ss_convergence(seed, N, unit='CH4E', prefix='ss', sys_ID='A', data=None
                         baseline_sys=None, baseline_unit_ID='AnR2'):
     if data is None:
         try:
-            path = os.path.join(results_path, f'{prefix}{sys_ID}_state_vars_{seed}.pckl')
+            path = ospath.join(results_path, f'{prefix}{sys_ID}_state_vars_{seed}.pckl')
             data = load_pickle(path)
         except:
             data = analyze_vars(seed, N, sys_ID=sys_ID)
@@ -340,9 +341,9 @@ def plot_ss_convergence(seed, N, unit='CH4E', prefix='ss', sys_ID='A', data=None
     x_ticks = np.linspace(0, 200, 6)
     for group, par_size in [(s_plots, 's'), (x_plots, 'x'), (g_plots, 'g')]:
         if par_size == 'g':
-            fig, axes = plt.subplots(1, 3, sharex=True, figsize=(12,3.2))
+            fig, axes = plt.subplots(1, 3, sharex=True, figsize=(12,3.2), layout='constrained')
         else:
-            fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12,12))
+            fig, axes = plt.subplots(4, 3, sharex=True, figsize=(12,12), layout='constrained')
         plts = deepcopy(group)        
         for var, ir, ic in plts:
             df = data[unit][var]
@@ -373,11 +374,45 @@ def plot_ss_convergence(seed, N, unit='CH4E', prefix='ss', sys_ID='A', data=None
             ax2y.tick_params(axis='y', which='both', direction='in')
             ax2y.yaxis.set_ticklabels([])
         del plts
-        fig.subplots_adjust(hspace=0., wspace=0.)
+        # fig.subplots_adjust(hspace=0., wspace=0.)
         fig.savefig(ospath.join(figures_path, f'{prefix}{sys_ID}_{par_size}t_{unit}.png'), dpi=300)
         # fig.savefig(ospath.join(figures_path, f'{prefix}{sys_ID}_{par_size}t_tau01.png'), dpi=300)
         del fig, axes
 
+def plot_area(seed, model):
+    if model.table is None:
+        path = ospath.join(results_path, f'sys{model.system.flowsheet.ID[-1]}_table_{seed}.xlsx')
+        model.table = load_data(path=path, header=[0,1])
+    data = model.table
+    data.columns = ['x', 'r1', 'rt', 'h2cod', 'ch4cod']
+    data.sort_values(by='x', axis=0, inplace=True)
+    x = data.iloc[:,0].to_numpy(copy=True)
+    y_r1 = data.iloc[:,1].to_numpy(copy=True)
+    y_tot = data.iloc[:,2].to_numpy(copy=True)
+    fig, ax = plt.subplots(figsize=(4,3), layout='constrained')
+    ax.plot(x, y_r1, '-', c='#D81B60', linewidth=0.4)
+    area1 = ax.fill_between(x, 0., y_r1, color='#D81B60', alpha=0.7, label='Stage 1')
+    ax.plot(x, y_tot, '-', c='#1E88E5', linewidth=0.4)
+    area2 = ax.fill_between(x, y_r1, y_tot, color='#1E88E5', alpha=0.7, label='Stage 2')
+    ax.set_xlim(np.min(x), np.max(x))
+    ax.set_ylim(bottom=0., top=100)
+    # ax.set_yscale('log')
+    ax.set_xlabel('Recirculation rate [-]', fontsize=11)
+    ax.set_ylabel('COD removal [%]', fontsize=11)
+    ax.legend(handles=[area1, area2], fontsize=10)
+    ax.tick_params(axis='both', which='both', direction='inout', labelsize=10)
+    ax2x = ax.secondary_xaxis('top')
+    ax2x.set_xlim(np.min(x), np.max(x))
+    ax2x.tick_params(direction='in', which='both')
+    ax2x.xaxis.set_ticklabels([])
+    ax2y = ax.secondary_yaxis('right')
+    ax2y.set_ylim(bottom=0., top=100)
+    # ax2y.set_yscale('log')
+    ax2y.tick_params(direction='in', which='both')
+    ax2y.yaxis.set_ticklabels([])
+    fig.savefig(ospath.join(figures_path, f'rCOD_vs_recir_{seed}.png'), dpi=300)
+    return fig, ax
+    
 #%%
 import seaborn as sns
 from math import ceil
@@ -439,6 +474,8 @@ def run_UA_DvB(seed=None, N=N, T=T, t_step=t_step, run=True, plot=True):
     tmB = [m.getter() for m in mdlB.metrics]
     if plot:
         plot_scatter(seed, mdlD, None, tmB)
+        # plot_ss_convergence(seed, N, unit='R1', prefix='sys', sys_ID='D', 
+        #                     baseline_sys=temp_sysB, baseline_unit_ID='AnR1')
     print(f'Seed used for uncertainty analysis of system D is {seed}.')
     for p in mdlD.parameters:
         p.setter(p.baseline)
@@ -471,11 +508,18 @@ def run_ss_AvC(seed=None, N=N, T=T, t_step=t_step, plot=True):
     print(f'Seed used for convergence test is {seed}.')
     return seed
 
+def dv1_analysis(seed=None, N=100, T=T, t_step=t_step, run=True, plot=True):
+    seed = seed or seed_RGT()
+    if run: run_model(mdlD, N, T, t_step, method='BDF', seed=seed)
+    if plot: fig, ax = plot_area(seed, mdlD)
+    return seed
+    
 #%%
 if __name__ == '__main__':
     # run_UA_AvC(seed=628)
-    run_UA_DvB(seed=96, run=False)
+    # run_UA_DvB(seed=96)
     # run_ss_AvC(seed=223, N=100)
+    dv1_analysis(seed=796)
     # seed = 952
     # run_modelB(mdl, N, T, t_step, method='BDF', seed=seed)
     # out = analyze_vars(seed, N, 'B')
