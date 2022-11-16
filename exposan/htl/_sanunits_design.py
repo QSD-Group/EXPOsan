@@ -421,7 +421,7 @@ class HTL(Reactor):
                  eff_T=60+273.15, # Jones
                  
                  P=None, tau=15/60, V_wf=0.3,
-                 length_to_diameter=7862/2*3, mixing_intensity=None, kW_per_m3=0.0985,
+                 length_to_diameter=7862*4/2*3, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Horizontal',         
@@ -978,7 +978,7 @@ class CHG(Reactor):
                  # will not be a variable in uncertainty/sensitivity analysis
                  gas_c_to_total_c=0.5655, # Jones
                  
-                 P=None, tau=1, V_wf=0.5,
+                 P=None, tau=0.5, V_wf=0.3,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
@@ -1293,7 +1293,7 @@ class HT(Reactor):
                  # spreadsheet HT calculation
                  # will not be a variable in uncertainty/sensitivity analysis
                  
-                 P=None, tau=2, V_wf=0.5,
+                 P=None, tau=0.5, V_wf=0.8,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
@@ -1481,7 +1481,7 @@ class HC(Reactor):
                  #combine C20H42 and PHYTANE as C20H42
                  # will not be a variable in uncertainty/sensitivity analysis
                  
-                 P=None, tau=2, V_wf=0.5,
+                 P=None, tau=0.5, V_wf=0.8,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',

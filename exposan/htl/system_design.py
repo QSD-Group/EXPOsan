@@ -56,13 +56,15 @@ SluT = qsu.SludgeThickening('A000', ins=SluL-0,
                             outs=('supernatant_1','compressed_sludge_1'),
                             init_with='Stream', 
                             solids=('Sludge_lipid','Sludge_protein',
-                                    'Sludge_carbo','Sludge_ash'))
+                                    'Sludge_carbo','Sludge_ash'),
+                            sludge_moisture=0.96)
 
 SluC = qsu.SludgeCentrifuge('A010', ins=SluT-1,
                             outs=('supernatant_2','compressed_sludge_2'),
                             init_with='Stream',
                             solids=('Sludge_lipid','Sludge_protein',
-                                    'Sludge_carbo','Sludge_ash'))
+                                    'Sludge_carbo','Sludge_ash'),
+                            sludge_moisture=0.8)
 
 # =============================================================================
 # HTL (Area 100)
