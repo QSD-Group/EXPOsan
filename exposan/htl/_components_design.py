@@ -357,7 +357,15 @@ def create_components(set_thermo=True):
 
     C30H62 = Component('C30H62', search_ID='638-68-6', particle_size='Soluble',
                       degradability='Slowly', organic=True)
+    
+    Gasoline = Component('Gasoline', search_ID='544-76-3', phase='l', particle_size='Soluble',
+                         degradability='Slowly', organic=True)
+    # Gasoline copies C16H34, do not need to be precise, since Gasoline is just used to calculte fuel production amount
 
+    Diesel = Component('Diesel', search_ID='629-94-7', phase='l', particle_size='Soluble',
+                       degradability='Slowly', organic=True)
+    # Diesel copies C21H44, do not need to be precise, since Diesel is just used to calculte fuel production amount
+    
     cmps = Components([Sludge_lipid, Sludge_protein, Sludge_carbo, Sludge_ash,
                        Struvite, Biochar, Residual,
                        Biocrude, HTLaqueous, H2O, C, N, P,
@@ -370,7 +378,7 @@ def create_components(set_thermo=True):
                        C11H24, C10H12, C12H26, C13H28, C14H30, OTTFNA, C6BENZ,
                        OTTFSN, C7BENZ, C8BENZ, C10H16O4, C15H32, C16H34,
                        C17H36, C18H38, C19H40, C20H42, C21H44,
-                       TRICOSANE, C24H38O4, C26H42O4, C30H62])
+                       TRICOSANE, C24H38O4, C26H42O4, C30H62, Gasoline, Diesel])
     
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):

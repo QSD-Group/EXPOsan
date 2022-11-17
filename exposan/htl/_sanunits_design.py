@@ -93,7 +93,8 @@ __all__ = ('Reactor',
            'HT',
            'HC',
            'WWmixer',
-           'PhaseChanger')
+           'PhaseChanger',
+           'FuelMixer')
 
 cmps = create_components()
 
@@ -421,8 +422,8 @@ class HTL(Reactor):
                  eff_T=60+273.15, # Jones
                  
                  P=None, tau=15/60, V_wf=0.3,
-                 length_to_diameter=7862*4/2*3, mixing_intensity=None, kW_per_m3=0.0985,
-                 wall_thickness_factor=1,
+                 length_to_diameter=7862/2*3, mixing_intensity=None, kW_per_m3=0,
+                 wall_thickness_factor=2.4,
                  vessel_material='Stainless steel 316',
                  vessel_type='Horizontal',         
                  **kwargs):
@@ -1682,6 +1683,61 @@ class PhaseChanger(SanUnit):
         effluent.copy_like(influent)
         effluent.phase = self.phase
 
+    def _design(self):
+        pass
+    
+    def _cost(self):
+        pass
+    
+# =============================================================================
+# FuelMixer
+# =============================================================================
+
+class FuelMixer(SanUnit):
+    '''
+    Convert gasoline to diesel or diesel to gasoline based on LHV.
+    
+    Model method: Fake unit.
+    
+    Parameters
+    ----------
+    ins: Iterable (stream)
+        gasoline, diesel
+    outs: Iterable (stream)
+        fuel
+    '''
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='Stream', target='diesel',
+                 **kwargs):
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.target = target
+
+    _N_ins = 2
+    _N_outs = 1
+
+    def _run(self):
+        
+        gasoline, diesel = self.ins
+        fuel = self.outs[0]
+        
+        if self.target not in ('gasoline','diesel'):
+            raise RuntimeError ("target must be either 'gasoline' or 'diesel'")
+        
+        gasoline_LHV_2_diesel_LHV = (gasoline.LHV/gasoline.F_mass)/(diesel.LHV/diesel.F_mass)
+        # KJ/kg:KJ/kg
+        
+        if self.target == 'gasoline':
+            fuel.imass['Gasoline'] = gasoline.F_mass + diesel.F_mass/gasoline_LHV_2_diesel_LHV
+            fuel.T = gasoline.T
+            fuel.P = gasoline.P
+        
+        if self.target == 'diesel':
+            fuel.imass['Diesel'] = diesel.F_mass + gasoline.F_mass*gasoline_LHV_2_diesel_LHV
+            fuel.T = diesel.T
+            fuel.P = fuel.P
+            
     def _design(self):
         pass
     

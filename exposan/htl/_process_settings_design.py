@@ -8,40 +8,47 @@ This module is developed by:
     Jianan Feng <jiananf2@illinois.edu>
     Yalin Li <mailto.yalin.li@gmail.com>
     
+References:
+    
+(1) Lang, C.; Lee, B. Heat Transfer Fluid Life Time Analysis of Diphenyl
+    Oxide/Biphenyl Grades for Concentrated Solar Power Plants. Energy Procedia
+    2015, 69, 672–680. https://doi.org/10.1016/j.egypro.2015.03.077.
+
+    
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
 import biosteam as bst, qsdsan as qs
+from thermosteam import Chemical
 
 def load_process_settings():
-    #Use p-Terphenyl as the heating agent
+    # use DOWTHERM(TM) A Heat Transfer Fluid (HTF) as the heating agent
+    # DOWTHERM(TM) A HTF = 73.5% diphenyl oxide (DPO) + 26.5% Biphenyl (BIP)
+    # critical temperature for HTF: 497 C
+    # critical pressure for HTF: 313.4 kPa
+    # https://www.dow.com/en-us/pdp.dowtherm-a-heat-transfer-fluid.238000z.\
+    # html#tech-content (accessed 11-16-2022)
     
-    Terphenyl = qs.Component('Terphenyl', CAS='92-94-4', phase='l',
-                          particle_size='Soluble',
-                          degradability='Slowly', organic=True)
-    heating_oil_thermo = bst.Thermo((Terphenyl,))
+    DPO_chem = Chemical('DPO_chem', search_ID='101-84-8')
+    BIP_chem = Chemical('BIP_chem', search_ID='92-52-4')
     
-    heating_oil = bst.UtilityAgent(
-                'heating_oil',
-                Terphenyl=1, T=693.15, P=1516847.2, phase='l',
-                thermo=heating_oil_thermo,T_limit=500,
-                regeneration_price = 0.2378,
-                heat_transfer_efficiency = 0.9,
-            ) #values are not true
+    DPO = qs.Component.from_chemical('DPO', chemical=DPO_chem, particle_size='Soluble',
+                                     degradability='Slowly', organic=True)
     
-    '''
-    T_limit is the temperature limit of outlet utility streams [K].
-    If no limit is given, phase change is assumed.
-    If utility agent heats up, `T_limit` is the maximum temperature.
-    If utility agent cools down, `T_limit` is the minimum temperature.
+    BIP = qs.Component.from_chemical('BIP', chemical=BIP_chem, particle_size='Soluble',
+                                     degradability='Slowly', organic=True)
     
+    HTF_thermo = bst.Thermo((DPO, BIP,))
     
-    So we should give a `T_limit` as the heating oil is not changing phase,
-    and we should give a `T_limit` that is smaller than `T` since the heating oil
-    cools down when the sludge feed heats up.
-    
-    500 is made up
-    '''
-    bst.HeatUtility.heating_agents.append(heating_oil)
+    HTF = bst.UtilityAgent('HTF', DPO=0.735, BIP=0.265, T=673.15, P=951477, phase='g',
+                           # 400 C (673.15 K) and 138 psig (951477 pa) are max temp and pressure for HTF
+                           thermo=HTF_thermo,
+                           # T_limit = 495 F (530.372 K) is the highest temp that vapor can exist
+                           regeneration_price=1,
+                           heat_transfer_efficiency=0.9) # Lang
+    # Temperature and pressure: https://www.dow.com/content/dam/dcc/documents/\
+    # en-us/app-tech-guide/176/176-01334-01-dowtherm-heat-transfer-fluids-\
+    # engineering-manual.pdf?iframe=true (accessed on 11-16-2022)
+    bst.HeatUtility.heating_agents.append(HTF)

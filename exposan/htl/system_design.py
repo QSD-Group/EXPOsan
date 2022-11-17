@@ -235,14 +235,17 @@ DieselTank = qsu.StorageTank('T510', ins=PC2-0, outs=('diesel'),
                               tau=3*24, init_with='Stream')
 # store for 3 days based on Jones 2014
 
-GasMixer = qsu.Mixer('S540', ins=(HTL-3, F1-0, F2-0, C1-0, F3-0),
+FuelMixer = su.FuelMixer('S540', ins=(GasolineTank-0, DieselTank-0),\
+                         outs='fuel', target='gasoline')
+# integrate gasoline and diesel based on their LHV for MFSP calculation
+
+GasMixer = qsu.Mixer('S550', ins=(HTL-3, F1-0, F2-0, C1-0, F3-0),
                       outs=('fuel_gas'), init_with='Stream')
-# F3-0 and F5-0 are empty, may change remove/modify F3 and/or F5 later
 
 CHP = qsu.CHP('A520', ins=(GasMixer-0,'natural_gas','air'),
               outs=('emission','solid_ash'), init_with='Stream')
 
-WWmixer = su.WWmixer('S550', ins=(SluT-0, SluC-0, MemDis-1, SP2-0),
+WWmixer = su.WWmixer('S560', ins=(SluT-0, SluC-0, MemDis-1, SP2-0),
                     outs='wastewater', init_with='Stream')
 # effluent of WWmixer goes back to WWTP
 
@@ -256,7 +259,7 @@ for unit in (SluL, SluT, SluC, P1, H1, HTL, HTL_hx, H2SO4_Tank, AcidEx,
              M1, StruPre, P2, H2, CHG, H3, V1, F1, MemDis, SP1,
              P3, HT, HT_compressor, HT_hx, V2, H4, F2, V3, SP2, H5, C1, C2, C3, P4,
              HC, HC_compressor, HC_hx, H6, V4, F3, C4, GasolineMixer, DieselMixer,
-             H7, H8, PC1, PC2, GasolineTank, DieselTank,
+             H7, H8, PC1, PC2, GasolineTank, DieselTank, FuelMixer,
              GasMixer, CHP, WWmixer, RSP1, HXN):
     unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1])
 # so that qs.main_flowsheet.H1 works as well
@@ -265,7 +268,7 @@ sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              M1, StruPre, P2, H2, CHG, H3, V1, F1, MemDis, SP1,
                              P3, HT, V2, H4, F2, V3, SP2, H5, C1, C2, C3, P4,
                              HC, H6, V4, F3, C4, GasolineMixer, DieselMixer,
-                             H7, H8, PC1, PC2, GasolineTank, DieselTank,
+                             H7, H8, PC1, PC2, GasolineTank, DieselTank, FuelMixer,
                              GasMixer, CHP, WWmixer, RSP1
                              ), facilities=(HXN,))
 
@@ -421,7 +424,7 @@ samples = model.sample(N=10, rule='L')
 model.load_samples(samples)
 model.evaluate()
 model.table
- #%%
+#%%
 fig, ax = qs.stats.plot_uncertainties(model)
 fig
 #%%
