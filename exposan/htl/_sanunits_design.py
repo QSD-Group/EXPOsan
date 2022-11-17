@@ -658,7 +658,7 @@ class AcidExtraction(Reactor):
                  P=None, tau=1, V_wf=0.5,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
-                 vessel_material='Stainless steel 316',
+                 vessel_material='Stainless steel 304',
                  vessel_type='Vertical',
                  
                  **kwargs):
@@ -859,7 +859,7 @@ class StruvitePrecipitation(Reactor):
                  P=None, tau=1, V_wf=0.5,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
-                 vessel_material='Stainless steel 316',
+                 vessel_material='Stainless steel 304',
                  vessel_type='Vertical',
                  
                  **kwargs):
