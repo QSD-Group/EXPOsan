@@ -175,7 +175,7 @@ def create_components(set_thermo=True):
     H2 = Component('H2', phase='g', particle_size='Dissolved gas',
                    degradability='Undegradable', organic=False)
     
-    NH3 = Component('NH3', phase='g', particle_size='Dissolved gas',
+    NH3 = Component('NH3', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
     
     H2SO4 = Component('H2SO4', phase='l', particle_size='Soluble',
@@ -357,7 +357,31 @@ def create_components(set_thermo=True):
 
     C30H62 = Component('C30H62', search_ID='638-68-6', particle_size='Soluble',
                       degradability='Slowly', organic=True)
+    
+    Gasoline = Component('Gasoline', search_ID='544-76-3', phase='l', particle_size='Soluble',
+                         degradability='Slowly', organic=True)
+    # Gasoline copies C16H34, do not need to be precise, since Gasoline is just used to calculte fuel production amount
 
+    Diesel = Component('Diesel', search_ID='629-94-7', phase='l', particle_size='Soluble',
+                       degradability='Slowly', organic=True)
+    # Diesel copies C21H44, do not need to be precise, since Diesel is just used to calculte fuel production amount
+    
+    # values for all catalysts are made up since we just need to calculate cost for catalysts
+    CHG_catalyst = Component('CHG_catalyst', phase='s', particle_size='Particulate',
+                             degradability='Undegradable', organic=False)
+    add_V_from_rho(CHG_catalyst, 1500)
+    CHG_catalyst.copy_models_from(Chemical('CaCO3'),('Cn',))
+    
+    HT_catalyst = Component('HT_catalyst', phase='s', particle_size='Particulate',
+                             degradability='Undegradable', organic=False)
+    add_V_from_rho(HT_catalyst, 1500)
+    HT_catalyst.copy_models_from(Chemical('CaCO3'),('Cn',))
+    
+    HC_catalyst = Component('HC_catalyst', phase='s', particle_size='Particulate',
+                             degradability='Undegradable', organic=False)
+    add_V_from_rho(HC_catalyst, 1500)
+    HC_catalyst.copy_models_from(Chemical('CaCO3'),('Cn',))
+    
     cmps = Components([Sludge_lipid, Sludge_protein, Sludge_carbo, Sludge_ash,
                        Struvite, Biochar, Residual,
                        Biocrude, HTLaqueous, H2O, C, N, P,
@@ -370,7 +394,8 @@ def create_components(set_thermo=True):
                        C11H24, C10H12, C12H26, C13H28, C14H30, OTTFNA, C6BENZ,
                        OTTFSN, C7BENZ, C8BENZ, C10H16O4, C15H32, C16H34,
                        C17H36, C18H38, C19H40, C20H42, C21H44,
-                       TRICOSANE, C24H38O4, C26H42O4, C30H62])
+                       TRICOSANE, C24H38O4, C26H42O4, C30H62, Gasoline, Diesel,
+                       CHG_catalyst, HT_catalyst, HC_catalyst])
     
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):
