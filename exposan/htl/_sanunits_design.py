@@ -1139,7 +1139,7 @@ class MembraneDistillation(Reactor):
                  P=None, tau=1, V_wf=0.5,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
-                 vessel_material='Stainless steel 316',
+                 vessel_material='Stainless steel 304',
                  vessel_type='Vertical',
                  # design of membrane reactor cannot use class Reactor, will change later
                  
@@ -1301,7 +1301,6 @@ class HT(Reactor):
                  catalyst_lifetime=7884*2, # 2 years*yearly operation hr NREL 2013
                  hydrogen_P=1530*6894.76,
                  hydrogen_rxned_to_biocrude=0.046,
-                 hydrogen_excess_times=3,
                  hydrocarbon_ratio=0.875, # 87.5 wt% of biocrude and reacted H2
                  # Jones et al., 2014
                  # spreadsheet HT calculation
@@ -1333,7 +1332,7 @@ class HT(Reactor):
                  # spreadsheet HT calculation
                  # will not be a variable in uncertainty/sensitivity analysis
                  
-                 P=None, tau=0.5, V_wf=0.8,
+                 P=None, tau=0.5, V_wf=0.6,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
@@ -1346,7 +1345,6 @@ class HT(Reactor):
         self.catalyst_lifetime = catalyst_lifetime
         self.hydrogen_P = hydrogen_P
         self.hydrogen_rxned_to_biocrude = hydrogen_rxned_to_biocrude
-        self.hydrogen_excess_times = hydrogen_excess_times
         self.hydrocarbon_ratio = hydrocarbon_ratio
         self.HTin_T = HTin_T
         self.HTrxn_T = HTrxn_T
@@ -1386,7 +1384,7 @@ class HT(Reactor):
         # heating/cooling of catalysts
         
         hydrogen.imass['H2'] = biocrude.imass['Biocrude']*\
-                               self.hydrogen_rxned_to_biocrude*self.hydrogen_excess_times
+                               self.hydrogen_rxned_to_biocrude
         hydrogen.phase = 'g'
 
         hydrocarbon_mass = biocrude.imass['Biocrude']*\
@@ -1511,7 +1509,6 @@ class HC(Reactor):
                  catalyst_lifetime=7884*5, # 5 years*yearly operation hr NREL 2013
                  hydrogen_P=1039.7*6894.76,
                  hydrogen_rxned_to_heavy_oil=0.01125,
-                 hydrogen_excess_times=50/9,
                  hydrocarbon_ratio=1, # 100 wt% of heavy oil and reacted H2
                  # nearly all input heavy oils and H2 will be converted to
                  # products
@@ -1531,7 +1528,7 @@ class HC(Reactor):
                  #combine C20H42 and PHYTANE as C20H42
                  # will not be a variable in uncertainty/sensitivity analysis
                  
-                 P=None, tau=0.5, V_wf=0.8,
+                 P=None, tau=0.5, V_wf=0.6,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
@@ -1544,7 +1541,6 @@ class HC(Reactor):
         self.catalyst_lifetime = catalyst_lifetime
         self.hydrogen_P = hydrogen_P
         self.hydrogen_rxned_to_heavy_oil = hydrogen_rxned_to_heavy_oil
-        self.hydrogen_excess_times = hydrogen_excess_times
         self.hydrocarbon_ratio = hydrocarbon_ratio
         self.HCin_T = HCin_T
         self.HCrxn_T = HCrxn_T
@@ -1583,8 +1579,7 @@ class HC(Reactor):
         # catalysts amount is quite low compared to the main stream, therefore do not consider
         # heating/cooling of catalysts
         
-        hydrogen.imass['H2'] = heavy_oil.F_mass*self.hydrogen_rxned_to_heavy_oil*\
-                               self.hydrogen_excess_times
+        hydrogen.imass['H2'] = heavy_oil.F_mass*self.hydrogen_rxned_to_heavy_oil
         hydrogen.phase = 'g'
 
     
