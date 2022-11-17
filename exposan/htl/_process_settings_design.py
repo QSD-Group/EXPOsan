@@ -46,8 +46,8 @@ def load_process_settings():
                            # 400 C (673.15 K) and 138 psig (951477 pa) are max temp and pressure for HTF
                            thermo=HTF_thermo,
                            # T_limit = 495 F (530.372 K) is the highest temp that vapor can exist
-                           regeneration_price=1,
-                           heat_transfer_efficiency=0.9) # Lang
+                           regeneration_price=1) # Lang
+                           # use default heat transfer efficiency (1)
     # Temperature and pressure: https://www.dow.com/content/dam/dcc/documents/\
     # en-us/app-tech-guide/176/176-01334-01-dowtherm-heat-transfer-fluids-\
     # engineering-manual.pdf?iframe=true (accessed on 11-16-2022)

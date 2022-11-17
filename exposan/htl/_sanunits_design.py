@@ -959,9 +959,9 @@ class CHG(Reactor):
     Parameters
     ----------
     ins: Iterable (stream)
-        CHGfeed
+        chg_in, catalyst_in
     outs: Iterable (stream)
-        CHGfuelgas, effluent
+        chg_out, catalyst_out
     '''
     
     _F_BM_default = {**Reactor._F_BM_default,
@@ -970,6 +970,8 @@ class CHG(Reactor):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
+                 WHSV=3.99, # wt./hr per wt. catalyst Jones
+                 catalyst_lifetime=7884, # 1 year*yearly operation hr NREL 2013
                  gas_composition={'CH4':0.527,
                                   'CO2':0.432,
                                   'C2H6':0.011,
@@ -988,6 +990,8 @@ class CHG(Reactor):
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.WHSV = WHSV
+        self.catalyst_lifetime = catalyst_lifetime
         self.gas_composition = gas_composition
         self.gas_c_to_total_c = gas_c_to_total_c
         
@@ -1001,30 +1005,36 @@ class CHG(Reactor):
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
         
-    _N_ins = 1
-    _N_outs = 1
+    _N_ins = 2
+    _N_outs = 2
         
     def _run(self):
         
-        CHGfeed = self.ins[0]
-        CHGout = self.outs[0]
+        chg_in, catalyst_in = self.ins
+        chg_out, catalyst_out = self.outs
+        
+        catalyst_in.imass['CHG_catalyst'] = chg_in.F_mass/self.WHSV/self.catalyst_lifetime
+        catalyst_in.phase = 's'
+        catalyst_out.copy_like(catalyst_in)
+        # catalysts amount is quite low compared to the main stream, therefore do not consider
+        # heating/cooling of catalysts
         
         gas_C_ratio = 0
         for name, ratio in self.gas_composition.items():
             gas_C_ratio += ratio*cmps[name].i_C
         
-        gas_mass = CHGfeed.imass['C']*self.gas_c_to_total_c/gas_C_ratio
+        gas_mass = chg_in.imass['C']*self.gas_c_to_total_c/gas_C_ratio
         
         for name,ratio in self.gas_composition.items():
-            CHGout.imass[name] = gas_mass*ratio
+            chg_out.imass[name] = gas_mass*ratio
             
-        CHGout.imass['H2O'] = CHGfeed.F_mass - gas_mass
+        chg_out.imass['H2O'] = chg_in.F_mass - gas_mass
         # all C, N, and P are accounted in H2O here, but will be calculated as
         # properties.
             
-        CHGout.T = CHGfeed.T
+        chg_out.T = chg_in.T
         
-        CHGout.P = CHGfeed.P
+        chg_out.P = chg_in.P
         
     @property
     def CHGout_C(self):
@@ -1245,9 +1255,9 @@ class HT(Reactor):
     Parameters
     ----------
     ins: Iterable (stream)
-    biocrude, hydrogen
+    biocrude, hydrogen, catalyst_in
     outs: Iterable (stream)
-    HTaqueous, fuel_gas, gasoline, diesel, heavy_oil
+    ht_out, catalyst_out
     '''
     
     auxiliary_unit_names=('compressor','heat_exchanger',)
@@ -1260,6 +1270,8 @@ class HT(Reactor):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
+                 WHSV=0.625, # wt./hr per wt. catalyst Jones
+                 catalyst_lifetime=7884*2, # 2 years*yearly operation hr NREL 2013
                  hydrogen_P=1530*6894.76,
                  hydrogen_rxned_to_biocrude=0.046,
                  hydrogen_excess_times=3,
@@ -1303,6 +1315,8 @@ class HT(Reactor):
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.WHSV = WHSV
+        self.catalyst_lifetime = catalyst_lifetime
         self.hydrogen_P = hydrogen_P
         self.hydrogen_rxned_to_biocrude = hydrogen_rxned_to_biocrude
         self.hydrogen_excess_times = hydrogen_excess_times
@@ -1330,13 +1344,19 @@ class HT(Reactor):
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
 
-    _N_ins = 2
-    _N_outs = 1
+    _N_ins = 3
+    _N_outs = 2
         
     def _run(self):
         
-        biocrude, hydrogen = self.ins
-        ht_out = self.outs[0]
+        biocrude, hydrogen, catalyst_in = self.ins
+        ht_out, catalyst_out = self.outs
+        
+        catalyst_in.imass['HT_catalyst'] = biocrude.F_mass/self.WHSV/self.catalyst_lifetime
+        catalyst_in.phase = 's'
+        catalyst_out.copy_like(catalyst_in)
+        # catalysts amount is quite low compared to the main stream, therefore do not consider
+        # heating/cooling of catalysts
         
         hydrogen.imass['H2'] = biocrude.imass['Biocrude']*\
                                self.hydrogen_rxned_to_biocrude*self.hydrogen_excess_times
@@ -1445,9 +1465,9 @@ class HC(Reactor):
     Parameters
     ----------
     ins: Iterable (stream)
-    heavy_oil, hydrogen
+    heavy_oil, hydrogen, catalyst_in
     outs: Iterable (stream)
-    gasoline, diesel, off_gas
+    ht_out, catalyst_out
     '''
     
     auxiliary_unit_names=('compressor','heat_exchanger',)
@@ -1460,6 +1480,8 @@ class HC(Reactor):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
+                 WHSV=0.625, # wt./hr per wt. catalyst Jones
+                 catalyst_lifetime=7884*5, # 5 years*yearly operation hr NREL 2013
                  hydrogen_P=1039.7*6894.76,
                  hydrogen_rxned_to_heavy_oil=0.01125,
                  hydrogen_excess_times=50/9,
@@ -1491,6 +1513,8 @@ class HC(Reactor):
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo,init_with)
+        self.WHSV = WHSV
+        self.catalyst_lifetime = catalyst_lifetime
         self.hydrogen_P = hydrogen_P
         self.hydrogen_rxned_to_heavy_oil = hydrogen_rxned_to_heavy_oil
         self.hydrogen_excess_times = hydrogen_excess_times
@@ -1518,13 +1542,19 @@ class HC(Reactor):
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
         
-    _N_ins = 2
-    _N_outs = 1
+    _N_ins = 3
+    _N_outs = 2
         
     def _run(self):
         
-        heavy_oil, hydrogen = self.ins
-        hc_out = self.outs[0]
+        heavy_oil, hydrogen, catalyst_in = self.ins
+        hc_out, catalyst_out = self.outs
+        
+        catalyst_in.imass['HC_catalyst'] = heavy_oil.F_mass/self.WHSV/self.catalyst_lifetime
+        catalyst_in.phase = 's'
+        catalyst_out.copy_like(catalyst_in)
+        # catalysts amount is quite low compared to the main stream, therefore do not consider
+        # heating/cooling of catalysts
         
         hydrogen.imass['H2'] = heavy_oil.F_mass*self.hydrogen_rxned_to_heavy_oil*\
                                self.hydrogen_excess_times

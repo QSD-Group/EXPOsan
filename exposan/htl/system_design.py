@@ -113,7 +113,7 @@ P2 = qsu.Pump('A230', ins=StruPre-1, outs='press_aqueous',
 H2 = qsu.HXutility('A240', ins=P2-0, outs='heated_aqueous',
                    T=350+273.15, init_with='Stream')
 
-CHG = su.CHG('A250', ins=H2-0, outs='CHG_out')
+CHG = su.CHG('A250', ins=(H2-0, '7.8% Ru/C'), outs=('CHG_out', '7.8% Ru/C_out'))
 
 H3 = qsu.HXutility('A260', ins=CHG-0, outs='cooled_CHG', T=60+273.15,
                     init_with='Stream')
@@ -142,7 +142,7 @@ RSP1 = qsu.ReversedSplitter('S300', ins='H2', outs=('HT_H2','HC_H2'),
                             init_with='Stream')
 # reversed splitter, write before HT and HC, simulate after HT and HC
 
-HT = su.HT('A310', ins=(P3-0, RSP1-0), outs='HTout')
+HT = su.HT('A310', ins=(P3-0, RSP1-0, 'CoMo_alumina_HT'), outs=('HTout', 'CoMo_alumina_HT_out'))
 HT_compressor = HT.compressor
 HT_hx = HT.heat_exchanger
 
@@ -190,7 +190,7 @@ P4 = qsu.Pump('A400', ins=C3-1, outs='press_heavy_oil', P=1034.7*6894.76,
 # releases a lot of heat and increase the temperature of effluent to 451 C
 # (844.6 F).
 
-HC = su.HC('A410', ins=(P4-0, RSP1-1), outs='HC_out')
+HC = su.HC('A410', ins=(P4-0, RSP1-1, 'CoMo_alumina_HC'), outs=('HC_out', 'CoMo_alumina_HC_out'))
 HC_compressor = HC.compressor
 HC_hx = HC.heat_exchanger
 
