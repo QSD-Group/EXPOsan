@@ -421,7 +421,7 @@ class HTL(Reactor):
                  offgas_pre=30*6894.76, # Jones
                  eff_T=60+273.15, # Jones
                  
-                 P=None, tau=15/60, V_wf=0.3,
+                 P=None, tau=15/60, V_wf=0.3, #Jones & NREL 2013
                  length_to_diameter=7862/2*3, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=2.4,
                  vessel_material='Stainless steel 316',
@@ -1308,7 +1308,7 @@ class HT(Reactor):
                  
                  P=None, tau=0.5, V_wf=0.8,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
-                 wall_thickness_factor=1,
+                 wall_thickness_factor=2.4,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
                  
@@ -1506,7 +1506,7 @@ class HC(Reactor):
                  
                  P=None, tau=0.5, V_wf=0.8,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
-                 wall_thickness_factor=1,
+                 wall_thickness_factor=2.4,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
                  
