@@ -173,6 +173,34 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
 
+    def _HTL_design(self):
+        Design = self.design_results
+        
+        ins_F_vol = self.F_vol_in
+        V_total = ins_F_vol * self.tau / self.V_wf
+        P = self.P * 0.000145038 # Pa to psi
+        wall_thickness_factor = self.wall_thickness_factor
+        
+        N = 4
+        V_reactor = V_total / N
+        D = 8/39.37 # convert 8 inch to m
+        L = 4*V_reactor/pi/D/D
+        D = 8/12 # convert 8 inch to ft
+        L *= 3.28084 # convert from m to ft
+        
+        Design['Residence time'] = self.tau
+        Design['Total volume'] = V_total
+        Design['Single reactor volume'] = V_reactor
+        Design['Number of reactors'] = N
+        Design.update(self._vessel_design(P, D, L))
+        if wall_thickness_factor == 1: pass
+        elif wall_thickness_factor < 1:
+            raise DesignError('wall_thickness_factor must be larger than 1')
+        else:
+             Design['Wall thickness'] *= wall_thickness_factor
+             # Weight is proportional to wall thickness in PressureVessel design
+             Design['Weight'] = round(Design['Weight']*wall_thickness_factor, 2)
+
     def _design(self):
         Design = self.design_results
         
@@ -421,9 +449,9 @@ class HTL(Reactor):
                  offgas_pre=30*6894.76, # Jones
                  eff_T=60+273.15, # Jones
                  
-                 P=None, tau=15/60, V_wf=0.3, #Jones & NREL 2013
-                 length_to_diameter=7862/2*3, mixing_intensity=None, kW_per_m3=0,
-                 wall_thickness_factor=2.4,
+                 P=None, tau=15/60, V_wf=0.3,
+                 length_to_diameter=0, mixing_intensity=None, kW_per_m3=0,
+                 wall_thickness_factor=3.5,
                  vessel_material='Stainless steel 316',
                  vessel_type='Horizontal',         
                  **kwargs):
@@ -625,7 +653,7 @@ class HTL(Reactor):
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
 
         self.P = self.ins[0].P
-        Reactor._design(self)
+        Reactor._HTL_design(self)
         
     def _cost(self):
         Reactor._cost(self)
@@ -981,7 +1009,7 @@ class CHG(Reactor):
                  # will not be a variable in uncertainty/sensitivity analysis
                  gas_c_to_total_c=0.5655, # Jones
                  
-                 P=None, tau=0.5, V_wf=0.3,
+                 P=None, tau=20/60, V_wf=0.5,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
@@ -1050,7 +1078,6 @@ class CHG(Reactor):
         return self.ins[0].imass['P']
         
     def _design(self):
-        Reactor._Vmax /= 2 # so that there are 6 CHG tanks
         self.P = self.ins[0].P
         Reactor._design(self)
     
@@ -1308,7 +1335,7 @@ class HT(Reactor):
                  
                  P=None, tau=0.5, V_wf=0.8,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
-                 wall_thickness_factor=2.4,
+                 wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
                  
@@ -1506,7 +1533,7 @@ class HC(Reactor):
                  
                  P=None, tau=0.5, V_wf=0.8,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
-                 wall_thickness_factor=2.4,
+                 wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
                  
