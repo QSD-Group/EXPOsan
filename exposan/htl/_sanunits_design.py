@@ -172,22 +172,79 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
         self.wall_thickness_factor = wall_thickness_factor
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
+        
+    def _drum_design(self):
+        Design = self.design_results
+        
+        P = self.P * 0.000145038 # Pa to psi
+        length_to_diameter = self.length_to_diameter
+        wall_thickness_factor = self.wall_thickness_factor
 
+        N = 4
+        V_reactor = 4230*0.00378541 # 4230 gal to m3
+        D = (4*V_reactor/pi/length_to_diameter)**(1/3)
+        D *= 3.28084 # convert from m to ft
+        L = D * length_to_diameter
+
+        Design['Total volume'] = V_reactor*N
+        Design['Single reactor volume'] = V_reactor
+        Design['Number of reactors'] = N
+        Design.update(self._vessel_design(P, D, L))
+        if wall_thickness_factor == 1: pass
+        elif wall_thickness_factor < 1:
+            raise DesignError('wall_thickness_factor must be larger than 1')
+        else:
+             Design['Wall thickness'] *= wall_thickness_factor
+             # Weight is proportional to wall thickness in PressureVessel design
+             Design['Weight'] = round(Design['Weight']*wall_thickness_factor, 2)
+        
     def _HTL_design(self):
         Design = self.design_results
         
         ins_F_vol = self.F_vol_in
         V_total = ins_F_vol * self.tau / self.V_wf
         P = self.P * 0.000145038 # Pa to psi
+        length_to_diameter = self.length_to_diameter
         wall_thickness_factor = self.wall_thickness_factor
-        
+
         N = 4
         V_reactor = V_total / N
-        D = 8/39.37 # convert 8 inch to m
-        L = 4*V_reactor/pi/D/D
-        D = 8/12 # convert 8 inch to ft
-        L *= 3.28084 # convert from m to ft
+        D = (4*V_reactor/pi/length_to_diameter)**(1/3)
+        D *= 3.28084 # convert from m to ft
+        L = D * length_to_diameter
+
+        Design['Residence time'] = self.tau
+        Design['Total volume'] = V_total
+        Design['Single reactor volume'] = V_reactor
+        Design['Number of reactors'] = N
+        Design.update(self._vessel_design(P, D, L))
+        if wall_thickness_factor == 1: pass
+        elif wall_thickness_factor < 1:
+            raise DesignError('wall_thickness_factor must be larger than 1')
+        else:
+             Design['Wall thickness'] *= wall_thickness_factor
+             # Weight is proportional to wall thickness in PressureVessel design
+             Design['Weight'] = round(Design['Weight']*wall_thickness_factor, 2)
+
+
+    def _CHG_design(self):
+        Design = self.design_results
         
+        ins_F_vol = self.F_vol_in
+        for i in range(len(self.ins)):
+            ins_F_vol -= self.ins[i].ivol['H2']
+        # not include gas (e.g. H2)
+        V_total = ins_F_vol * self.tau / self.V_wf
+        P = self.P * 0.000145038 # Pa to psi
+        length_to_diameter = self.length_to_diameter
+        wall_thickness_factor = self.wall_thickness_factor
+
+        N = 6
+        V_reactor = V_total / N
+        D = (4*V_reactor/pi/length_to_diameter)**(1/3)
+        D *= 3.28084 # convert from m to ft
+        L = D * length_to_diameter
+
         Design['Residence time'] = self.tau
         Design['Total volume'] = V_total
         Design['Single reactor volume'] = V_reactor
@@ -382,6 +439,46 @@ class SludgeLab(SanUnit):
         pass
 
 # =============================================================================
+# KOdrum
+# =============================================================================
+
+class KOdrum(Reactor):
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='Stream',
+                 P=3049.7*6894.76, tau=0, V_wf=0,
+                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
+                 wall_thickness_factor=1.5,
+                 vessel_material='Stainless steel 316',
+                 vessel_type='Vertical',
+                 **kwargs):
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.P = P
+        self.tau = tau
+        self.V_wf = V_wf
+        self.length_to_diameter = length_to_diameter
+        self.mixing_intensity = mixing_intensity
+        self.kW_per_m3 = kW_per_m3
+        self.wall_thickness_factor = wall_thickness_factor
+        self.vessel_material = vessel_material
+        self.vessel_type = vessel_type
+
+    _N_ins = 3
+    _N_outs = 2
+    _ins_size_is_fixed = False
+    _outs_size_is_fixed = False
+    
+    def _run(self):
+        pass
+        
+    def _design(self):
+        Reactor._drum_design(self)
+    
+    def _cost(self):
+        Reactor._cost(self)
+
+# =============================================================================
 # HTL (ignore three phase separator for now, ask Yalin)
 # =============================================================================
 
@@ -419,7 +516,7 @@ class HTL(Reactor):
         biochar, HTLaqueous, biocrude, offgas
     '''
     
-    auxiliary_unit_names=('heat_exchanger',)
+    auxiliary_unit_names=('heat_exchanger','kodrum')
     
     _kg_2_lb = 2.20462
     
@@ -450,10 +547,10 @@ class HTL(Reactor):
                  eff_T=60+273.15, # Jones
                  
                  P=None, tau=15/60, V_wf=0.3,
-                 length_to_diameter=0, mixing_intensity=None, kW_per_m3=0,
-                 wall_thickness_factor=3.5,
+                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
+                 wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
-                 vessel_type='Horizontal',         
+                 vessel_type='Vertical',         
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -478,6 +575,7 @@ class HTL(Reactor):
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out, T=eff_T)
+        self.kodrum = KOdrum(ID=f'.{ID}_KOdrum')
         
         self.P = P
         self.tau = tau
@@ -651,6 +749,8 @@ class HTL(Reactor):
         hx_outs0.T = hx.T
         hx_ins0.P = hx_outs0.P = self.outs[1].P
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
+        
+        self.kodrum.simulate()
 
         self.P = self.ins[0].P
         Reactor._HTL_design(self)
@@ -1014,7 +1114,6 @@ class CHG(Reactor):
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
-                 
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -1079,7 +1178,7 @@ class CHG(Reactor):
         
     def _design(self):
         self.P = self.ins[0].P
-        Reactor._design(self)
+        Reactor._CHG_design(self)
     
     def _cost(self):
         Reactor._cost(self)
@@ -1332,7 +1431,7 @@ class HT(Reactor):
                  # spreadsheet HT calculation
                  # will not be a variable in uncertainty/sensitivity analysis
                  
-                 P=None, tau=0.5, V_wf=0.6,
+                 P=None, tau=4/3, V_wf=0.133,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
@@ -1528,7 +1627,7 @@ class HC(Reactor):
                  #combine C20H42 and PHYTANE as C20H42
                  # will not be a variable in uncertainty/sensitivity analysis
                  
-                 P=None, tau=0.5, V_wf=0.6,
+                 P=None, tau=8.5, V_wf=0.286,
                  length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',

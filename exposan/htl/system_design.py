@@ -75,8 +75,8 @@ P1 = qsu.Pump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76,
 # Jones 2014: 3049.7 psia
 
 H1 = qsu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=351+273.15,
-                   U=0.874, init_with='Stream')
-# H1: NREL 2013: 154 (40-446) Btu/hr/ft2/F ~ U = 0.874 (0.227-2.531) kW/m2/k
+                   U=0.284, init_with='Stream')
+# H1: SS PNNL 2020: 50 (17-76) Btu/hr/ft2/F ~ U = 0.284 (0.096-0.4313) kW/m2/k
 # U is just needed for H1? Right? I think high viscosity of sludge is just here
 # but not in other pumps
 # unit conversion: http://www.unitconversion.org/heat-transfer-coefficient/
@@ -86,6 +86,7 @@ H1 = qsu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=351+273.15,
 HTL = su.HTL('A120', ins=(H1-0), outs=('biochar','HTL_aqueous',
              'biocrude','offgas_HTL'))
 HTL_hx = HTL.heat_exchanger
+HTL_drum = HTL.kodrum
 
 # =============================================================================
 # CHG (Area 200)
@@ -255,7 +256,7 @@ WWmixer = su.WWmixer('S560', ins=(SluT-0, SluC-0, MemDis-1, SP2-0),
 
 HXN = qsu.HeatExchangerNetwork('HXN')
 
-for unit in (SluL, SluT, SluC, P1, H1, HTL, HTL_hx, H2SO4_Tank, AcidEx,
+for unit in (SluL, SluT, SluC, P1, H1, HTL, HTL_hx, HTL_drum, H2SO4_Tank, AcidEx,
              M1, StruPre, P2, H2, CHG, H3, V1, F1, MemDis, SP1,
              P3, HT, HT_compressor, HT_hx, V2, H4, F2, V3, SP2, H5, C1, C2, C3, P4,
              HC, HC_compressor, HC_hx, H6, V4, F3, C4, GasolineMixer, DieselMixer,
