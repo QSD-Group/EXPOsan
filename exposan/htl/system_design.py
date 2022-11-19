@@ -100,10 +100,10 @@ SP1 = su.HTLsplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
 # must put after AcidEx and MemDis in path during simulation to ensure input
 # not empty
 
-AcidEx = su.AcidExtraction('A200', ins=(HTL-0,SP1-0),
+AcidEx = su.AcidExtraction('A200', ins=(HTL-0, SP1-0),
                            outs=('residual','extracted'))
 
-M1 = su.HTLmixer('A210', ins=(HTL-1,AcidEx-1), outs=('mixture'))
+M1 = su.HTLmixer('A210', ins=(HTL-1, AcidEx-1), outs=('mixture'))
 
 StruPre = su.StruvitePrecipitation('A220', ins=(M1-0,'MgCl2','NH4Cl','NaOH_P'),
                                    outs=('struvite','CHG_feed'))
