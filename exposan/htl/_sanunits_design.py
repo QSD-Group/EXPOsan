@@ -66,6 +66,12 @@ References:
     Removal from Water by Membrane Distillation (MD): The Comparison of Three
     Configurations. Journal of Membrane Science 2006, 286 (1), 93–103.
     https://doi.org/10.1016/j.memsci.2006.09.015.
+    
+(11) Towler, G.; Sinnott, R. Chapter 14 - Design of Pressure Vessels.
+    In Chemical Engineering Design (Second Edition); Towler, G., Sinnott, R.,
+    Eds.; Butterworth-Heinemann: Boston, 2013; pp 563–629.
+    https://doi.org/10.1016/B978-0-08-096659-5.00014-6.
+
 '''
 
 import biosteam as bst
@@ -157,7 +163,7 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
 
     def __init__(self, ID='', ins=None, outs=(), *,
                  P=101325, tau=0.5, V_wf=0.8,
-                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
+                 length_to_diameter=2, N=None, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical'):
@@ -167,155 +173,64 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
         self.tau = tau
         self.V_wf = V_wf
         self.length_to_diameter = length_to_diameter
+        self.N = N
+        self.V = V
+        self.auxiliary = auxiliary
         self.mixing_intensity = mixing_intensity
         self.kW_per_m3 = kW_per_m3
         self.wall_thickness_factor = wall_thickness_factor
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
         
-    def _drum_design(self):
-        Design = self.design_results
-        
-        P = self.P * 0.000145038 # Pa to psi
-        length_to_diameter = self.length_to_diameter
-        wall_thickness_factor = self.wall_thickness_factor
-
-        N = 4
-        V_reactor = 4230*0.00378541 # 4230 gal to m3
-        D = (4*V_reactor/pi/length_to_diameter)**(1/3)
-        D *= 3.28084 # convert from m to ft
-        L = D * length_to_diameter
-
-        Design['Total volume'] = V_reactor*N
-        Design['Single reactor volume'] = V_reactor
-        Design['Number of reactors'] = N
-        Design.update(self._vessel_design(P, D, L))
-        if wall_thickness_factor == 1: pass
-        elif wall_thickness_factor < 1:
-            raise DesignError('wall_thickness_factor must be larger than 1')
-        else:
-             Design['Wall thickness'] *= wall_thickness_factor
-             # Weight is proportional to wall thickness in PressureVessel design
-             Design['Weight'] = round(Design['Weight']*wall_thickness_factor, 2)
-        
-    def _HTL_design(self):
-        Design = self.design_results
-        
-        ins_F_vol = self.F_vol_in
-        V_total = ins_F_vol * self.tau / self.V_wf
-        P = self.P * 0.000145038 # Pa to psi
-        length_to_diameter = self.length_to_diameter
-        wall_thickness_factor = self.wall_thickness_factor
-
-        N = 4
-        V_reactor = V_total / N
-        D = (4*V_reactor/pi/length_to_diameter)**(1/3)
-        D *= 3.28084 # convert from m to ft
-        L = D * length_to_diameter
-
-        Design['Residence time'] = self.tau
-        Design['Total volume'] = V_total
-        Design['Single reactor volume'] = V_reactor
-        Design['Number of reactors'] = N
-        Design.update(self._vessel_design(P, D, L))
-        if wall_thickness_factor == 1: pass
-        elif wall_thickness_factor < 1:
-            raise DesignError('wall_thickness_factor must be larger than 1')
-        else:
-             Design['Wall thickness'] *= wall_thickness_factor
-             # Weight is proportional to wall thickness in PressureVessel design
-             Design['Weight'] = round(Design['Weight']*wall_thickness_factor, 2)
-
-
-    def _CHG_design(self):
-        Design = self.design_results
-        
-        ins_F_vol = self.F_vol_in
-        for i in range(len(self.ins)):
-            ins_F_vol -= self.ins[i].ivol['H2']
-        # not include gas (e.g. H2)
-        V_total = ins_F_vol * self.tau / self.V_wf
-        P = self.P * 0.000145038 # Pa to psi
-        length_to_diameter = self.length_to_diameter
-        wall_thickness_factor = self.wall_thickness_factor
-
-        N = 6
-        V_reactor = V_total / N
-        D = (4*V_reactor/pi/length_to_diameter)**(1/3)
-        D *= 3.28084 # convert from m to ft
-        L = D * length_to_diameter
-
-        Design['Residence time'] = self.tau
-        Design['Total volume'] = V_total
-        Design['Single reactor volume'] = V_reactor
-        Design['Number of reactors'] = N
-        Design.update(self._vessel_design(P, D, L))
-        if wall_thickness_factor == 1: pass
-        elif wall_thickness_factor < 1:
-            raise DesignError('wall_thickness_factor must be larger than 1')
-        else:
-             Design['Wall thickness'] *= wall_thickness_factor
-             # Weight is proportional to wall thickness in PressureVessel design
-             Design['Weight'] = round(Design['Weight']*wall_thickness_factor, 2)
-             
-    def _HC_design(self):
-        Design = self.design_results
-        
-        ins_F_vol = self.F_vol_in
-        for i in range(len(self.ins)):
-            ins_F_vol -= self.ins[i].ivol['H2']
-        # not include gas (e.g. H2)
-        V_total = ins_F_vol * self.tau / self.V_wf
-        P = self.P * 0.000145038 # Pa to psi
-        length_to_diameter = self.length_to_diameter
-        wall_thickness_factor = self.wall_thickness_factor
-
-        N = 4
-        V_reactor = V_total / N
-        D = (4*V_reactor/pi/length_to_diameter)**(1/3)
-        D *= 3.28084 # convert from m to ft
-        L = D * length_to_diameter
-
-        Design['Residence time'] = self.tau
-        Design['Total volume'] = V_total
-        Design['Single reactor volume'] = V_reactor
-        Design['Number of reactors'] = N
-        Design.update(self._vessel_design(P, D, L))
-        if wall_thickness_factor == 1: pass
-        elif wall_thickness_factor < 1:
-            raise DesignError('wall_thickness_factor must be larger than 1')
-        else:
-             Design['Wall thickness'] = min(12, Design['Wall thickness']*wall_thickness_factor)
-             # Weight is proportional to wall thickness in PressureVessel design
-             Design['Weight'] = round(Design['Weight']*wall_thickness_factor, 2)
-
     def _design(self):
         Design = self.design_results
-        
-        ins_F_vol = self.F_vol_in
-        for i in range(len(self.ins)):
-            ins_F_vol -= self.ins[i].ivol['H2']
-        # not include gas (e.g. H2)
-        V_total = ins_F_vol * self.tau / self.V_wf
+        if not self.auxiliary:
+            ins_F_vol = self.F_vol_in
+            for i in range(len(self.ins)):
+                ins_F_vol -= self.ins[i].ivol['H2']
+            # not include gas (e.g. H2)
+            V_total = ins_F_vol * self.tau / self.V_wf
         P = self.P * 0.000145038 # Pa to psi
         length_to_diameter = self.length_to_diameter
         wall_thickness_factor = self.wall_thickness_factor
 
-        N = ceil(V_total/self._Vmax)
-        if N == 0:
-            V_reactor = 0
-            D = 0
-            L = 0
-        else:
-            V_reactor = V_total / N
-            D = (4*V_reactor/pi/length_to_diameter)**(1/3)
-            D *= 3.28084 # convert from m to ft
-            L = D * length_to_diameter
+        if self.N:
+            if self.V:
+                D = (4*self.V/pi/length_to_diameter)**(1/3)
+                D *= 3.28084 # convert from m to ft
+                L = D * length_to_diameter
 
-        Design['Residence time'] = self.tau
-        Design['Total volume'] = V_total
-        Design['Single reactor volume'] = V_reactor
-        Design['Number of reactors'] = N
+                Design['Total volume'] = self.V*self.N
+                Design['Single reactor volume'] = self.V
+                Design['Number of reactors'] = self.N
+            else:
+                V_reactor = V_total / self.N
+                D = (4*V_reactor/pi/length_to_diameter)**(1/3)
+                D *= 3.28084 # convert from m to ft
+                L = D * length_to_diameter
+
+                Design['Residence time'] = self.tau
+                Design['Total volume'] = V_total
+                Design['Single reactor volume'] = V_reactor
+                Design['Number of reactors'] = self.N
+        else:
+            N = ceil(V_total/self._Vmax)
+            if N == 0:
+                V_reactor = 0
+                D = 0
+                L = 0
+            else:
+                
+                V_reactor = V_total / N
+                D = (4*V_reactor/pi/length_to_diameter)**(1/3)
+                D *= 3.28084 # convert from m to ft
+                L = D * length_to_diameter
+
+            Design['Residence time'] = self.tau
+            Design['Total volume'] = V_total
+            Design['Single reactor volume'] = V_reactor
+            Design['Number of reactors'] = N
+
         Design.update(self._vessel_design(P, D, L))
         if wall_thickness_factor == 1: pass
         elif wall_thickness_factor < 1:
@@ -370,7 +285,7 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
             raise AttributeError('mixing_intensity is provided, kw_per_m3 will be calculated.')
         else:
             self._kW_per_m3 = i
-
+    
 # =============================================================================
 # Sludge Lab
 # =============================================================================
@@ -475,11 +390,30 @@ class SludgeLab(SanUnit):
 
 class KOdrum(Reactor):
     
+    '''
+    konckout drum: a HTL auxiliary unit
+    
+    Model method: just design and cost.
+    
+    Design: for each HTL reactor (4 in total), add a KOdrum to separate liquid
+    from gas. V = 4230 gal based on NREL 2013.
+    
+    Parameters
+    ----------
+    ins: Iterable (stream)
+        dewatered_sludge
+    outs: Iterable (stream)
+        biochar, HTLaqueous, biocrude, offgas
+    '''
+    
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
                  P=3049.7*6894.76, tau=0, V_wf=0,
-                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
-                 wall_thickness_factor=1.5,
+                 length_to_diameter=2, N=4,
+                 V=4230*0.00378541, # 4230 gal to m3, NREL 2013
+                 auxiliary=True,
+                 mixing_intensity=None, kW_per_m3=0,
+                 wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
                  **kwargs):
@@ -489,6 +423,9 @@ class KOdrum(Reactor):
         self.tau = tau
         self.V_wf = V_wf
         self.length_to_diameter = length_to_diameter
+        self.N = N
+        self.V = V
+        self.auxiliary = auxiliary
         self.mixing_intensity = mixing_intensity
         self.kW_per_m3 = kW_per_m3
         self.wall_thickness_factor = wall_thickness_factor
@@ -504,7 +441,7 @@ class KOdrum(Reactor):
         pass
         
     def _design(self):
-        Reactor._drum_design(self)
+        Reactor._design(self)
     
     def _cost(self):
         Reactor._cost(self)
@@ -538,6 +475,10 @@ class HTL(Reactor):
     distillation column, and CHP units.
     
     Model method: empirical model (based on MCA model and experimental data).
+    
+    Design: tau = 15/60 based on Jones 2014. V_wf = 0.3 calculate based on data
+    in NREL 2013. N = 4 based on NREL 2013. Instead of a long PFR, use length_to_
+    diameter = 2.
     
     Parameters
     ----------
@@ -578,7 +519,7 @@ class HTL(Reactor):
                  eff_T=60+273.15, # Jones
                  
                  P=None, tau=15/60, V_wf=0.3,
-                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
+                 length_to_diameter=2, N=4, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',         
@@ -612,6 +553,9 @@ class HTL(Reactor):
         self.tau = tau
         self.V_wf = V_wf
         self.length_to_diameter = length_to_diameter
+        self.N = N
+        self.V = V
+        self.auxiliary = auxiliary
         self.mixing_intensity = mixing_intensity
         self.kW_per_m3 = kW_per_m3
         self.wall_thickness_factor = wall_thickness_factor
@@ -784,7 +728,7 @@ class HTL(Reactor):
         self.kodrum.simulate()
 
         self.P = self.ins[0].P
-        Reactor._HTL_design(self)
+        Reactor._design(self)
         
     def _cost(self):
         Reactor._cost(self)
@@ -801,6 +745,8 @@ class AcidExtraction(Reactor):
     
     Model method: assume P recovery ratio, add filters in _design and _cost.
     
+    Design: tau and V_wf use default values. Material uses 304.
+    
     Parameters
     ----------
     ins: Iterable (stream)
@@ -815,7 +761,7 @@ class AcidExtraction(Reactor):
                  init_with='Stream', acid_vol=10, P_acid_recovery_ratio=0.70,
                  
                  P=None, tau=0.5, V_wf=0.8,
-                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
+                 length_to_diameter=2, N=None, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=2, # acid conditions
                  vessel_material='Stainless steel 304',
                  vessel_type='Vertical',
@@ -830,6 +776,9 @@ class AcidExtraction(Reactor):
         self.tau = tau
         self.V_wf = V_wf
         self.length_to_diameter = length_to_diameter
+        self.N = N
+        self.V = V
+        self.auxiliary = auxiliary
         self.mixing_intensity = mixing_intensity
         self.kW_per_m3 = kW_per_m3
         self.wall_thickness_factor = wall_thickness_factor
@@ -996,6 +945,8 @@ class StruvitePrecipitation(Reactor):
     Model method: P recovery rate with uncertainty from literature data.
     If mol(N)<mol(P), add NH4Cl to mol(N):mol(P)=1:1
     
+    Design: tau and V_wf use default values. Material uses 304.
+    
     Parameters
     ----------
     ins: Iterable (stream)
@@ -1016,7 +967,7 @@ class StruvitePrecipitation(Reactor):
                  HTLaqueous_NH3_N_2_total_N = 0.853, # Jones
                  
                  P=None, tau=0.5, V_wf=0.8,
-                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
+                 length_to_diameter=2, N=None, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 304',
                  vessel_type='Vertical',
@@ -1034,6 +985,9 @@ class StruvitePrecipitation(Reactor):
         self.tau = tau
         self.V_wf = V_wf
         self.length_to_diameter = length_to_diameter
+        self.N = N
+        self.V = V
+        self.auxiliary = auxiliary
         self.mixing_intensity = mixing_intensity
         self.kW_per_m3 = kW_per_m3
         self.wall_thickness_factor = wall_thickness_factor
@@ -1120,6 +1074,9 @@ class CHG(Reactor):
     
     Model method: use experimental data, assume no NH3 loss for now.
     
+    Design: tau = 1/3 h and V_wf = 0.5 based on Davis NREL 2018. Assuming no
+    headspace. N=6 based on Jones 2014.
+    
     Parameters
     ----------
     ins: Iterable (stream)
@@ -1148,7 +1105,7 @@ class CHG(Reactor):
                  gas_c_to_total_c=0.5655, # Jones
                  
                  P=None, tau=20/60, V_wf=0.5,
-                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
+                 length_to_diameter=2, N=6, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
@@ -1164,6 +1121,9 @@ class CHG(Reactor):
         self.tau = tau
         self.V_wf = V_wf
         self.length_to_diameter = length_to_diameter
+        self.N = N
+        self.V = V
+        self.auxiliary = auxiliary
         self.mixing_intensity = mixing_intensity
         self.kW_per_m3 = kW_per_m3
         self.wall_thickness_factor = wall_thickness_factor
@@ -1221,7 +1181,7 @@ class CHG(Reactor):
         Design['Treatment capacity'] = self.ins[0].F_mass*self._kg_2_lb
         
         self.P = self.ins[0].P
-        Reactor._CHG_design(self)
+        Reactor._design(self)
     
     def _cost(self):
         Reactor._cost(self)
@@ -1246,6 +1206,8 @@ class MembraneDistillation(Reactor):
         1. calculate NH3 in feed based on pH
         2. calculate NH3/H2O VLE
         3. calculate NH3 flux and removal rate
+        
+    Design: will be updated. (cannot use Class Reactor)
 
     Parameters
     ----------
@@ -1280,7 +1242,7 @@ class MembraneDistillation(Reactor):
                  # for now, assume a large membrane area to ensure 100% ammonia removal
                  
                  P=None, tau=1, V_wf=0.5,
-                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
+                 length_to_diameter=2, N=None, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 304',
                  vessel_type='Vertical',
@@ -1305,6 +1267,9 @@ class MembraneDistillation(Reactor):
         self.tau = tau
         self.V_wf = V_wf
         self.length_to_diameter = length_to_diameter
+        self.N = N
+        self.V = V
+        self.auxiliary = auxiliary
         self.mixing_intensity = mixing_intensity
         self.kW_per_m3 = kW_per_m3
         self.wall_thickness_factor = wall_thickness_factor
@@ -1422,6 +1387,10 @@ class HT(Reactor):
     
     Model method: use experimental data.
     
+    Design: tau assumes 2 times HTL tau. V_wf calculated based on
+    LHSV = 0.5 L/L/hr and H2 and biocrude volume ratio.
+    Void fraction of catalyst = 0.4 (the same as HC, Chemical Engineering Design).
+    
     Parameters
     ----------
     ins: Iterable (stream)
@@ -1476,7 +1445,7 @@ class HT(Reactor):
                  # will not be a variable in uncertainty/sensitivity analysis
                  
                  P=None, tau=0.5, V_wf=1/15,
-                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
+                 length_to_diameter=2, N=None, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
@@ -1506,6 +1475,9 @@ class HT(Reactor):
         self.tau = tau
         self.V_wf = V_wf
         self.length_to_diameter = length_to_diameter
+        self.N = N
+        self.V = V
+        self.auxiliary = auxiliary
         self.mixing_intensity = mixing_intensity
         self.kW_per_m3 = kW_per_m3
         self.wall_thickness_factor = wall_thickness_factor
@@ -1630,6 +1602,14 @@ class HC(Reactor):
     
     Model method: use experimental data.
     
+    Design: tau assumes 10 times HT tau. V_wf calculated based on
+    LHSV = 0.5 L/L/hr and H2 and biocrude volume ratio.
+    Void fraction of catalyst = 0.4 (Chemical Engineering Design).
+    wall_thickness_factor = 1.5 to account for harsher conditions in HC than HT.
+    (https://www.differencebetween.com/difference-between-hydrocracking-and-\
+    hydrotreating/#:~:text=The%20key%20difference%20between%20hydrocracking,\
+    processes%20in%20petroleum%20oil%20refining. (accessed 11-19-2022))
+    
     Parameters
     ----------
     ins: Iterable (stream)
@@ -1671,8 +1651,8 @@ class HC(Reactor):
                  #combine C20H42 and PHYTANE as C20H42
                  # will not be a variable in uncertainty/sensitivity analysis
                  
-                 P=None, tau=4.5, V_wf=0.2,
-                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
+                 P=None, tau=5, V_wf=0.2,
+                 length_to_diameter=2, N=None, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1.5,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
@@ -1702,6 +1682,9 @@ class HC(Reactor):
         self.tau = tau
         self.V_wf = V_wf
         self.length_to_diameter = length_to_diameter
+        self.N = N
+        self.V = V
+        self.auxiliary = auxiliary
         self.mixing_intensity = mixing_intensity
         self.kW_per_m3 = kW_per_m3
         self.wall_thickness_factor = wall_thickness_factor
