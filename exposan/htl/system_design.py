@@ -243,8 +243,11 @@ FuelMixer = su.FuelMixer('S540', ins=(GasolineTank-0, DieselTank-0),\
 GasMixer = qsu.Mixer('S550', ins=(HTL-3, F1-0, F2-0, C1-0, F3-0),
                       outs=('fuel_gas'), init_with='Stream')
 
+# The system produces more energy than needed (heating+power)
 CHP = qsu.CHP('A520', ins=(GasMixer-0,'natural_gas','air'),
-              outs=('emission','solid_ash'), init_with='Stream', supplement_utility='power')
+              outs=('emission','solid_ash'), init_with='Stream', supplement_power_utility=True)
+# CHP = qsu.CHP('A520', ins=(GasMixer-0,'natural_gas','air'),
+#               outs=('emission','solid_ash'), init_with='Stream', supplement_power_utility=False)
 
 WWmixer = su.WWmixer('S560', ins=(SluT-0, SluC-0, MemDis-1, SP2-0),
                     outs='wastewater', init_with='Stream')
