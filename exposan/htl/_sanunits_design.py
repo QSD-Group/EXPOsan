@@ -157,7 +157,7 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
 
     def __init__(self, ID='', ins=None, outs=(), *,
                  P=101325, tau=0.5, V_wf=0.8,
-                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
+                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical'):
@@ -255,6 +255,37 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
             raise DesignError('wall_thickness_factor must be larger than 1')
         else:
              Design['Wall thickness'] *= wall_thickness_factor
+             # Weight is proportional to wall thickness in PressureVessel design
+             Design['Weight'] = round(Design['Weight']*wall_thickness_factor, 2)
+             
+    def _HC_design(self):
+        Design = self.design_results
+        
+        ins_F_vol = self.F_vol_in
+        for i in range(len(self.ins)):
+            ins_F_vol -= self.ins[i].ivol['H2']
+        # not include gas (e.g. H2)
+        V_total = ins_F_vol * self.tau / self.V_wf
+        P = self.P * 0.000145038 # Pa to psi
+        length_to_diameter = self.length_to_diameter
+        wall_thickness_factor = self.wall_thickness_factor
+
+        N = 4
+        V_reactor = V_total / N
+        D = (4*V_reactor/pi/length_to_diameter)**(1/3)
+        D *= 3.28084 # convert from m to ft
+        L = D * length_to_diameter
+
+        Design['Residence time'] = self.tau
+        Design['Total volume'] = V_total
+        Design['Single reactor volume'] = V_reactor
+        Design['Number of reactors'] = N
+        Design.update(self._vessel_design(P, D, L))
+        if wall_thickness_factor == 1: pass
+        elif wall_thickness_factor < 1:
+            raise DesignError('wall_thickness_factor must be larger than 1')
+        else:
+             Design['Wall thickness'] = min(12, Design['Wall thickness']*wall_thickness_factor)
              # Weight is proportional to wall thickness in PressureVessel design
              Design['Weight'] = round(Design['Weight']*wall_thickness_factor, 2)
 
@@ -783,9 +814,9 @@ class AcidExtraction(Reactor):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', acid_vol=10, P_acid_recovery_ratio=0.70,
                  
-                 P=None, tau=1, V_wf=0.5,
-                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
-                 wall_thickness_factor=1,
+                 P=None, tau=0.5, V_wf=0.8,
+                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
+                 wall_thickness_factor=2, # acid conditions
                  vessel_material='Stainless steel 304',
                  vessel_type='Vertical',
                  
@@ -984,8 +1015,8 @@ class StruvitePrecipitation(Reactor):
                  # (10^-0.5 + 10^-4.5)*40/1000 = 0.01265 ~ 0.015
                  HTLaqueous_NH3_N_2_total_N = 0.853, # Jones
                  
-                 P=None, tau=1, V_wf=0.5,
-                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
+                 P=None, tau=0.5, V_wf=0.8,
+                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 304',
                  vessel_type='Vertical',
@@ -1075,6 +1106,11 @@ class StruvitePrecipitation(Reactor):
 # CHG
 # =============================================================================
 
+@cost(basis='Treatment capacity', ID='Hydrocyclone', units='lb/h',
+      cost=5000000, S=968859,
+      CE=CEPCI[2009], n=0.65, BM=2.1)
+# hydrocyclone
+
 class CHG(Reactor):
    
     '''
@@ -1091,6 +1127,8 @@ class CHG(Reactor):
     outs: Iterable (stream)
         chg_out, catalyst_out
     '''
+    
+    _kg_2_lb = 2.20462
     
     _F_BM_default = {**Reactor._F_BM_default,
                      'Heat exchanger': 3.17,
@@ -1110,7 +1148,7 @@ class CHG(Reactor):
                  gas_c_to_total_c=0.5655, # Jones
                  
                  P=None, tau=20/60, V_wf=0.5,
-                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
+                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
@@ -1134,6 +1172,7 @@ class CHG(Reactor):
         
     _N_ins = 2
     _N_outs = 2
+    _units= {'Treatment capacity': 'lb/h'} # hydrocyclone
         
     def _run(self):
         
@@ -1177,6 +1216,10 @@ class CHG(Reactor):
         return self.ins[0].imass['P']
         
     def _design(self):
+        
+        Design = self.design_results
+        Design['Treatment capacity'] = self.ins[0].F_mass*self._kg_2_lb
+        
         self.P = self.ins[0].P
         Reactor._CHG_design(self)
     
@@ -1187,6 +1230,7 @@ class CHG(Reactor):
         for item in purchase_costs.keys():
             current_cost += purchase_costs[item]
         purchase_costs['Sulfur guard'] = current_cost*0.05
+        self._decorated_cost()
     
 # =============================================================================
 # Membrane Distillation
@@ -1236,7 +1280,7 @@ class MembraneDistillation(Reactor):
                  # for now, assume a large membrane area to ensure 100% ammonia removal
                  
                  P=None, tau=1, V_wf=0.5,
-                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
+                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 304',
                  vessel_type='Vertical',
@@ -1431,8 +1475,8 @@ class HT(Reactor):
                  # spreadsheet HT calculation
                  # will not be a variable in uncertainty/sensitivity analysis
                  
-                 P=None, tau=4/3, V_wf=0.133,
-                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
+                 P=None, tau=0.5, V_wf=1/15,
+                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
@@ -1616,7 +1660,7 @@ class HC(Reactor):
                  HCin_T=394+273.15,
                  HCrxn_T=451+273.15,
                  HC_composition={'CO2':0.0388, 'CH4':0.0063,
-                                 'CYCHEX':0.0389,'HEXANE':0.0116,
+                                 'CYCHEX':0.0389, 'HEXANE':0.0116,
                                  'HEPTANE':0.1202, 'OCTANE':0.0851,
                                  'C9H20':0.0952, 'C10H22':0.1231,
                                  'C11H24':0.1764, 'C12H26':0.1382,
@@ -1627,9 +1671,9 @@ class HC(Reactor):
                  #combine C20H42 and PHYTANE as C20H42
                  # will not be a variable in uncertainty/sensitivity analysis
                  
-                 P=None, tau=8.5, V_wf=0.286,
-                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0.0985,
-                 wall_thickness_factor=1,
+                 P=None, tau=4.5, V_wf=0.2,
+                 length_to_diameter=2, mixing_intensity=None, kW_per_m3=0,
+                 wall_thickness_factor=1.5,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
                  

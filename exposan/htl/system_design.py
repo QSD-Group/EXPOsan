@@ -52,7 +52,7 @@ SluL = su.SludgeLab('S000', ins=fake_sludge, outs='real_sludge',
                     sludge_moisture=0.99, sludge_dw_protein=0.341,
                     sludge_dw_lipid=0.226, sludge_dw_carbo=0.167)
 
-SluT = qsu.SludgeThickening('A000', ins=SluL-0, 
+SluT = qsu.SludgeThickening('A000', ins=SluL-0,
                             outs=('supernatant_1','compressed_sludge_1'),
                             init_with='Stream', 
                             solids=('Sludge_lipid','Sludge_protein',
