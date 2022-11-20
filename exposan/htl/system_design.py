@@ -41,7 +41,7 @@ from exposan.htl._TEA import *
 load_process_settings()
 cmps = create_components()
 
-fake_sludge = qs.Stream('sludge', H2O=200000, units='kg/hr', T=25+273.15)
+fake_sludge = qs.Stream('sludge', H2O=200000, units='kg/hr', T=25+273.15, price=0.003)
 # set H2O equal to the total sludge input flow
 # assume 99% moisture, 50 metric tons of dw sludge per h
 # $0.003/kg is an estimated value for 1% dw algae from Jones
