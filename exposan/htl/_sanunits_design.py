@@ -76,12 +76,11 @@ References:
 
 import biosteam as bst
 from qsdsan import SanUnit
-from qsdsan.sanunits import HXutility, MixTank
+from qsdsan.sanunits import HXutility
 from biosteam.units import IsothermalCompressor
 from exposan.htl._components_design import create_components
 from biosteam.units.design_tools import PressureVessel
 from biosteam.units.design_tools.cost_index import CEPCI_by_year as CEPCI
-from biosteam.units.design_tools.tank_design import mix_tank_purchase_cost_algorithms
 from math import pi, ceil, log
 from biosteam.exceptions import DesignError
 from biosteam import Stream
@@ -739,14 +738,14 @@ class HTL(Reactor):
 # Acid Extraction
 # =============================================================================
 
-class AcidExtraction(MixTank):
+class AcidExtraction(Reactor):
     
     '''
     H2SO4 is added to biochar from HTL to extract P. 
     
     Model method: assume P recovery ratio, add filters in _design and _cost.
     
-    Design: tau and V_wf use default values. Material uses 304.
+    Design: tau, V_wf, and kW_per_m3 use MixTank default values. Material uses 304.
     
     Parameters
     ----------
@@ -756,25 +755,33 @@ class AcidExtraction(MixTank):
         residual, extracted
     '''
     
-    _F_BM_default = {**MixTank._F_BM_default}
+    _F_BM_default = {**Reactor._F_BM_default}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', acid_vol=10, P_acid_recovery_ratio=0.70,
-                 tau = 1, V_wf = 0.8, # use default values
-                 vessel_type = 'Conventional',
-                 vessel_material = 'Stainless steel',
-                 # use stainless steel since pH is low, _F_BM for stainless steel is 1.65
-                 kW_per_m3 = 0.0985, # use default values
+                 P=None, tau=1, V_wf=0.8, # use MixTank default value
+                 length_to_diameter=2, N=None, V=None, auxiliary=False,
+                 mixing_intensity=None, kW_per_m3=0.0985, # use MixTank default value
+                 wall_thickness_factor=1,
+                 vessel_material='Stainless steel 304', # acid condition
+                 vessel_type='Vertical',
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.acid_vol = acid_vol
         self.P_acid_recovery_ratio = P_acid_recovery_ratio
+        self.P = P
         self.tau = tau
         self.V_wf = V_wf
-        self.vessel_type = vessel_type
-        self.vessel_material = vessel_material
+        self.length_to_diameter = length_to_diameter
+        self.N = N
+        self.V = V
+        self.auxiliary = auxiliary
+        self.mixing_intensity = mixing_intensity
         self.kW_per_m3 = kW_per_m3
+        self.wall_thickness_factor = wall_thickness_factor
+        self.vessel_material = vessel_material
+        self.vessel_type = vessel_type
 
     _N_ins = 2
     _N_outs = 2
@@ -814,11 +821,11 @@ class AcidExtraction(MixTank):
         return self.ins[0]._source.biochar_P - self.outs[1].imass['P']
         
     def _design(self):
-        MixTank._design(self)
-    
+        self.P = self.ins[1].P
+        Reactor._design(self)
+        
     def _cost(self):
-        self.purchase_cost_algorithm = mix_tank_purchase_cost_algorithms[self.vessel_type]
-        MixTank._cost(self)
+        Reactor._cost(self)
     
 # =============================================================================
 # HTL mixer
@@ -927,7 +934,7 @@ class HTLsplitter(SanUnit):
 # Struvite Precipitation
 # =============================================================================
 
-class StruvitePrecipitation(MixTank):
+class StruvitePrecipitation(Reactor):
     '''
     extracted_P and HTL aqueous are mixed together (Mixer) before adding
     MgCl2 and struvite precipitation.
@@ -935,7 +942,7 @@ class StruvitePrecipitation(MixTank):
     Model method: P recovery rate with uncertainty from literature data.
     If mol(N)<mol(P), add NH4Cl to mol(N):mol(P)=1:1
     
-    Design: tau and V_wf use default values. Material uses 304.
+    Design: tau, V_wf, and kW_per_m3 use MixTank default values. Material uses carbon steel.
     
     Parameters
     ----------
@@ -945,7 +952,7 @@ class StruvitePrecipitation(MixTank):
         struvite, effluent
     '''
     
-    _F_BM_default = {**MixTank._F_BM_default}
+    _F_BM_default = {**Reactor._F_BM_default}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', 
@@ -956,11 +963,12 @@ class StruvitePrecipitation(MixTank):
                  # (10^-0.5 + 10^-4.5)*40/1000 = 0.01265 ~ 0.015
                  HTLaqueous_NH3_N_2_total_N = 0.853, # Jones  
                  
-                 tau = 1, V_wf = 0.8, # use default values
-                 vessel_type = 'Conventional',
-                 vessel_material = 'Carbon steel',
-                 # use carbon steel since pH is high, _F_BM for carbon steel is 2.3
-                 kW_per_m3 = 0.0985, # use default values
+                 P=None, tau=1, V_wf=0.8, # use MixTank default value
+                 length_to_diameter=2, N=None, V=None, auxiliary=False,
+                 mixing_intensity=None, kW_per_m3=0.0985, # use MixTank default value
+                 wall_thickness_factor=1,
+                 vessel_material='Carbon steel', # basic condition
+                 vessel_type='Vertical',
                  
                  **kwargs):
         
@@ -970,12 +978,19 @@ class StruvitePrecipitation(MixTank):
         self.P_pre_recovery_ratio = P_pre_recovery_ratio
         self.P_in_struvite = P_in_struvite
         self.HTLaqueous_NH3_N_2_total_N = HTLaqueous_NH3_N_2_total_N
+        self.P = P
         self.tau = tau
         self.V_wf = V_wf
-        self.vessel_type = vessel_type
-        self.vessel_material = vessel_material
+        self.length_to_diameter = length_to_diameter
+        self.N = N
+        self.V = V
+        self.auxiliary = auxiliary
+        self.mixing_intensity = mixing_intensity
         self.kW_per_m3 = kW_per_m3
-
+        self.wall_thickness_factor = wall_thickness_factor
+        self.vessel_material = vessel_material
+        self.vessel_type = vessel_type
+        
     _N_ins = 4
     _N_outs = 2
         
@@ -1030,11 +1045,11 @@ class StruvitePrecipitation(MixTank):
         return self.struvite_P*14.0067/30.973762
 
     def _design(self):
-        MixTank._design(self)
-    
+        self.P = self.ins[0].P
+        Reactor._design(self)
+        
     def _cost(self):
-        self.purchase_cost_algorithm = mix_tank_purchase_cost_algorithms[self.vessel_type]
-        MixTank._cost(self)
+        Reactor._cost(self)
     
 # =============================================================================
 # CHG
