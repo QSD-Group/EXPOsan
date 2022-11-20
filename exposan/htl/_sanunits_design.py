@@ -71,6 +71,12 @@ References:
     In Chemical Engineering Design (Second Edition); Towler, G., Sinnott, R.,
     Eds.; Butterworth-Heinemann: Boston, 2013; pp 563–629.
     https://doi.org/10.1016/B978-0-08-096659-5.00014-6.
+    
+(12) Al-Obaidani, S.; Curcio, E.; Macedonio, F.; Di Profio, G.; Al-Hinai, H.;
+    Drioli, E. Potential of Membrane Distillation in Seawater Desalination:
+    Thermal Efficiency, Sensitivity Study and Cost Estimation.
+    Journal of Membrane Science 2008, 323 (1), 85–98.
+    https://doi.org/10.1016/j.memsci.2008.06.006.
 
 '''
 
@@ -1191,7 +1197,7 @@ class CHG(Reactor):
 # Membrane Distillation
 # =============================================================================
 
-class MembraneDistillation(Reactor):
+class MembraneDistillation(SanUnit):
     
     '''
     Membrane distillation recovers nitrogen as ammonia sulfate based on vapor
@@ -1202,17 +1208,20 @@ class MembraneDistillation(Reactor):
         2. calculate NH3/H2O VLE
         3. calculate NH3 flux and removal rate
         
-    Design: will be updated. (cannot use Class Reactor)
+    Design: based on Al-Obaidani et al.
 
     Parameters
     ----------
     ins: Iterable (stream)
-        influent, acid
+        influent, acid, base
     outs: Iterable (stream)
         ammoniasulfate, ww
     '''
     
-    _F_BM_default = {**Reactor._F_BM_default}
+    _F_BM_default = {'Membrane': 1}
+    
+    _units = {'Area': 'm2',
+              'Total volume': 'm3'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
@@ -1221,7 +1230,7 @@ class MembraneDistillation(Reactor):
                  N_S_ratio=2,
                  # S is excess since not all N can be transfered to form ammonia sulfate
                  # for now, assume N_S_ratio = 2 is ok
-                 m2_2_m3=1200, # just for hollow fiber membrane, Doran
+                 m2_2_m3=1200, # specific surface area, for hollow fiber membrane, Doran
                  Dm=2.28*10**(-5), # 2.28 ± 0.12 m^2/s NH3 molecular diffusity in air Spiller
                  # (underesitmate, this value may be at 15 or 25 C, our feed is 60 C, should be higher)
                  porosity=0.9, # Scheepers
@@ -1232,17 +1241,7 @@ class MembraneDistillation(Reactor):
                  # Ammonia&identifierType=name&menuItemId=81&catId=120#:~:text=The%20\
                  # Henry's%20Law%20constant%20for,m%2Fmole(2). (accessed 11-11-2022)
                  Ka=1.75*10**(-5), # overall mass transfer coefficient 1.2~2.3*10^-5 m/s Ding
-                 membrane_area=370, # m2 refer to qsdsan.sanunits._membrane_bioreactors
-                 # the membrane area, design, and cost will be updated
-                 # for now, assume a large membrane area to ensure 100% ammonia removal
-                 
-                 P=None, tau=1, V_wf=0.5,
-                 length_to_diameter=2, N=None, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
-                 wall_thickness_factor=1,
-                 vessel_material='Stainless steel 304',
-                 vessel_type='Vertical',
-                 # design of membrane reactor cannot use class Reactor, will change later
-                 
+                 capacity=6.01, # kg/m2/h, Al-Obaidani
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -1256,29 +1255,15 @@ class MembraneDistillation(Reactor):
         self.tortuosity = tortuosity
         self.Henry = Henry
         self.Ka = Ka
-        self.membrane_area = membrane_area
-        
-        self.P = P
-        self.tau = tau
-        self.V_wf = V_wf
-        self.length_to_diameter = length_to_diameter
-        self.N = N
-        self.V = V
-        self.auxiliary = auxiliary
-        self.mixing_intensity = mixing_intensity
-        self.kW_per_m3 = kW_per_m3
-        self.wall_thickness_factor = wall_thickness_factor
-        self.vessel_material = vessel_material
-        self.vessel_type = vessel_type
+        self.capacity = capacity
 
-    _N_ins = 2
+    _N_ins = 3
     _N_outs = 2
     
     def _run(self):
         
         influent, acid, base = self.ins
         ammoniumsulfate, ww = self.outs
-        
         
         NaOH_conc = 10**(self.target_pH - 14) - 10**(self.CHGeffluent_pH - 14)
         NaOH_mol = NaOH_conc*self.ins[0].F_mass
@@ -1295,6 +1280,8 @@ class MembraneDistillation(Reactor):
                    _source.ins[0]._source.CHGout_N)*ammonia_to_ammonium/(1 +\
                    ammonia_to_ammonium)*17.031/14.0067
         others = influent.F_mass - ammonia
+        
+        self.membrane_area = self.F_vol_in*1000/self.capacity
         N2_in_air = self.membrane_area/self.m2_2_m3*self.porosity*0.79*1.204
         O2_in_air = self.membrane_area/self.m2_2_m3*self.porosity*0.21*1.204
         # N2:O2 = 0.79:0.21 in the air, air density is 1.204 kg/m3
@@ -1331,9 +1318,9 @@ class MembraneDistillation(Reactor):
         
         NH3_mass_flow = J*self.membrane_area
         
-        ammonia_transfer_rate = min(1, NH3_mass_flow/ammonia)
+        ammonia_transfer_ratio = min(1, NH3_mass_flow/ammonia)
         
-        ammoniumsulfate.imass['NH42SO4'] = ammonia*ammonia_transfer_rate/34.062*132.14
+        ammoniumsulfate.imass['NH42SO4'] = ammonia*ammonia_transfer_ratio/34.062*132.14
         ammoniumsulfate.imass['H2O'] = acid.imass['H2O']
         ammoniumsulfate.imass['H2SO4'] = acid.imass['H2SO4'] +\
                                          ammoniumsulfate.imass['NH42SO4']/\
@@ -1341,15 +1328,15 @@ class MembraneDistillation(Reactor):
                                          ammoniumsulfate.imass['NH42SO4']
                                         
         ww.copy_like(influent) # ww has the same T and P as influent
-        ww.imass['N'] = (self.ins[0]._source.ins[0]._source.ins[0].\
-                   _source.ins[0]._source.CHGout_N)*(1 - ammonia_to_ammonium/(1 +\
-                         ammonia_to_ammonium)*ammonia_transfer_rate)
+        
+        self.CHG = self.ins[0]._source.ins[0]._source.ins[0]._source.ins[0]._source
+        
+        ww.imass['N'] = self.CHG.CHGout_N*(1 - ammonia_to_ammonium/(1 +\
+                         ammonia_to_ammonium)*ammonia_transfer_ratio)
                                                           
-        ww.imass['C'] = self.ins[0]._source.ins[0]._source.ins[0].\
-                   _source.ins[0]._source.CHGout_C
+        ww.imass['C'] = self.CHG.CHGout_C
                          
-        ww.imass['P'] = self.ins[0]._source.ins[0]._source.ins[0].\
-                   _source.ins[0]._source.CHGout_P
+        ww.imass['P'] = self.CHG.CHGout_P
                    
         ww.imass['H2O'] -= (ww.imass['C'] + ww.imass['N'] + ww.imass['P'])
         
@@ -1358,14 +1345,23 @@ class MembraneDistillation(Reactor):
         ammoniumsulfate.T = acid.T
         ammoniumsulfate.P = acid.P
         # ammoniumsulfate has the same T and P as acid
+    
+    @property
+    def N_recovery_ratio(self):
+        return 1 - self.outs[1].imass['N']/self.CHG.CHGout_N
         
     def _design(self):
-        
-        self.P = self.ins[1].P
-        Reactor._design(self)
+        Design = self.design_results
+        Design['Area'] = self.membrane_area
+        Design['Total volume'] = Design['Area']/self.m2_2_m3
     
     def _cost(self):
-        Reactor._cost(self)
+        Design = self.design_results
+        purchase_costs = self.baseline_purchase_costs
+        purchase_costs['Membrane'] = Design['Area']*90
+        # Al-Obaidani: $90/m2, though this is a 2008 paper, the price stills applys
+        # based on online price, $90/m2 is conservative
+        # when calculating OPEX, remember to include 15% membrane replacement per year (Al-Obaidani)
 
 # =============================================================================
 # HT
