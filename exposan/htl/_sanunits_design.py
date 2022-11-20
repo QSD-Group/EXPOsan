@@ -169,7 +169,8 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
 
     def __init__(self, ID='', ins=None, outs=(), *,
                  P=101325, tau=0.5, V_wf=0.8,
-                 length_to_diameter=2, N=None, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
+                 length_to_diameter=2, N=None, V=None, auxiliary=False,
+                 mixing_intensity=None, kW_per_m3=0.0985,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical'):
