@@ -32,6 +32,7 @@ from qsdsan import sanunits as qsu
 from biosteam.units import Flash, IsenthalpicValve, BinaryDistillation
 from exposan.htl._process_settings_design import load_process_settings
 from exposan.htl._components_design import create_components
+from exposan.htl._TEA import *
 
 # __all__ = ('create_system',)
 
@@ -40,9 +41,10 @@ from exposan.htl._components_design import create_components
 load_process_settings()
 cmps = create_components()
 
-fake_sludge = qs.Stream('sludge', H2O=5000000, units='kg/hr', T=25+273.15)
+fake_sludge = qs.Stream('sludge', H2O=200000, units='kg/hr', T=25+273.15)
 # set H2O equal to the total sludge input flow
 # assume 99% moisture, 50 metric tons of dw sludge per h
+# $0.003/kg is an estimated value for 1% dw algae from Jones
 
 # =============================================================================
 # pretreatment (Area 000)
@@ -50,7 +52,7 @@ fake_sludge = qs.Stream('sludge', H2O=5000000, units='kg/hr', T=25+273.15)
 
 SluL = su.SludgeLab('S000', ins=fake_sludge, outs='real_sludge',
                     sludge_moisture=0.99, sludge_dw_protein=0.341,
-                    sludge_dw_lipid=0.226, sludge_dw_carbo=0.167)
+                    sludge_dw_lipid=0.226, sludge_dw_carbo=0.167, yearly_operation_hour=7920)
 
 SluT = qsu.SludgeThickening('A000', ins=SluL-0,
                             outs=('supernatant_1','compressed_sludge_1'),
@@ -94,6 +96,7 @@ HTL_drum = HTL.kodrum
 
 H2SO4_Tank = qsu.StorageTank('T200', ins='H2SO4', outs=('H2SO4_out'),
                              init_with='Stream', tau=3*24)
+H2SO4_Tank.ins[0].price = 0.0055 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2016$/kg
 
 SP1 = su.HTLsplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
                      init_with='Stream')
@@ -124,8 +127,8 @@ V1 = IsenthalpicValve('A270', ins=H3-0, outs='depressed_cooled_CHG', P=50*6894.7
 F1 = Flash('A280', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
             T=60+273.15, P=50*6894.76)
 
-MemDis = su.MembraneDistillation('A290', ins=(F1-1, SP1-1, 'NaOH_N'),
-                                  outs=('ammonium_sulfate','MemDis_ww'))
+MemDis = su.MembraneDistillation('A290', ins=(F1-1, SP1-1, 'NaOH_N', 'Membrane_in'),
+                                  outs=('ammonium_sulfate','MemDis_ww', 'Membrane_out'))
 
 # =============================================================================
 # HT (Area 300)
@@ -247,6 +250,8 @@ GasMixer = qsu.Mixer('S550', ins=(HTL-3, F1-0, F2-0, C1-0, F3-0),
 CHP = qsu.CHP('A520', ins=(GasMixer-0,'natural_gas','air'),
               outs=('emission','solid_ash'), init_with='Stream', supplement_power_utility=True)
 
+CHP.ins[1].price = 5.1/1000/0.02391792567 # from $/scf to $/kg, values from Jones
+
 WWmixer = su.WWmixer('S560', ins=(SluT-0, SluC-0, MemDis-1, SP2-0),
                     outs='wastewater', init_with='Stream')
 # effluent of WWmixer goes back to WWTP
@@ -274,18 +279,15 @@ sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              GasMixer, CHP, WWmixer, RSP1
                              ), facilities=(HXN,))
 
-sys.operating_hours = 7884 # NRES 2013
+sys.operating_hours = SluL.operation_hour # 7920 hr Jones
 
 sys.simulate()
 
 sys.diagram()
 
-# tea = qs.TEA(system=sys, discount_rate=0.05, start_year=2022,
-#              lifetime=10, uptime_ratio=0.9,
-#              system_add_OPEX=0.03)
+tea = create_tea(sys)
 
-
-# tea.show()
+table = capex_table(tea)
 
 # return sys
 
@@ -399,25 +401,29 @@ def set_P_in_struvite(i):
     StruPre.P_in_struvite=i
 
 metric = model.metric
-@metric(name='Struvite',units='kg/hr',element='Production')
-def get_struvite_production():
-    return StruPre.outs[0].imass['Struvite']
+# @metric(name='Struvite',units='kg/hr',element='Production')
+# def get_struvite_production():
+#     return StruPre.outs[0].imass['Struvite']
 
-@metric(name='(NH4)2SO4',units='kg/hr',element='Production')
-def get_nh42so4_production():
-    return MemDis.outs[0].imass['NH42SO4']
+# @metric(name='(NH4)2SO4',units='kg/hr',element='Production')
+# def get_nh42so4_production():
+#     return MemDis.outs[0].imass['NH42SO4']
 
-@metric(name='Gasoline',units='kg/hr',element='Production')
-def get_gasoline_production():
-    return GasolineTank.outs[0].F_mass
+# @metric(name='Gasoline',units='kg/hr',element='Production')
+# def get_gasoline_production():
+#     return GasolineTank.outs[0].F_mass
 
-@metric(name='Diesel',units='kg/hr',element='Production')
-def get_diesel_production():
-    return DieselTank.outs[0].F_mass
+# @metric(name='Diesel',units='kg/hr',element='Production')
+# def get_diesel_production():
+#     return DieselTank.outs[0].F_mass
 
-@metric(name='Total installed cost',units='$',element='TEA')
-def get_total_installed_cost():
-    return sys.installed_equipment_cost
+# @metric(name='Total installed cost',units='$',element='TEA')
+# def get_total_installed_cost():
+#     return sys.installed_equipment_cost
+
+@metric(name='MFSP',units='$',element='TEA')
+def get_MFSP():
+    return tea.solve_price(FuelMixer.outs[0])*3.2245 # from $/kg to $/gal diesel
 
 #%%
 import numpy as np

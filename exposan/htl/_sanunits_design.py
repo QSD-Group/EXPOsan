@@ -77,7 +77,11 @@ References:
     Thermal Efficiency, Sensitivity Study and Cost Estimation.
     Journal of Membrane Science 2008, 323 (1), 85–98.
     https://doi.org/10.1016/j.memsci.2008.06.006.
-
+    
+(13) Zhu, Y.; Schmidt, A.; Valdez, P.; Snowden-Swan, L.; Edmundson, S.
+    Hydrothermal Liquefaction and Upgrading of Wastewater-Grown Microalgae:
+    2021 State of Technology; PNNL-32695, 1855835; 2022; p PNNL-32695, 1855835.
+    https://doi.org/10.2172/1855835.
 '''
 
 import biosteam as bst
@@ -109,6 +113,8 @@ __all__ = ('Reactor',
            'FuelMixer')
 
 cmps = create_components()
+
+yearly_operation_hour = 7920 # Jones
 
 # =============================================================================
 # Reactor
@@ -320,7 +326,7 @@ class SludgeLab(SanUnit):
                  lipid_2_C=0.750, protein_2_C=0.545,
                  carbo_2_C=0.400, C_2_H=0.143,
                  protein_2_N=0.159, N_2_P=0.200,
-                 
+                 operation_hour=yearly_operation_hour,
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -336,6 +342,7 @@ class SludgeLab(SanUnit):
         self.C_2_H = C_2_H
         self.protein_2_N = protein_2_N
         self.N_2_P = N_2_P
+        self.operation_hour = yearly_operation_hour
 
     _N_ins = 1
     _N_outs = 1
@@ -1011,6 +1018,7 @@ class StruvitePrecipitation(Reactor):
         to_target_pH = 10**(self.target_pH - 14)*self.ins[0].F_mass # ignore solid volume
         total_NaOH = neutral_NaOH_mol + to_target_pH # unit: mol/h
         base.imass['NaOH'] = total_NaOH * 39.997/1000
+        base.price = 0.2384/0.453592 # Davis 2016$ $/lb to $/kg 
 
         if mixture.imass['P']/30.973762 > self.Mg_P_ratio*mixture.imass['N']*\
                                           self.HTLaqueous_NH3_N_2_total_N/14.0067:
@@ -1018,13 +1026,16 @@ class StruvitePrecipitation(Reactor):
             supply_NH4Cl.imass['NH4Cl'] = (mixture.imass['P']/30.973762 -\
                                            self.Mg_P_ratio*mixture.imass['N']*\
                                            self.HTLaqueous_NH3_N_2_total_N/14.0067)*53.491
+        supply_NH4Cl.price = 0.2 # made-up value based on online price, will change later
         # make sure N:P >= 1:1
         
         supply_MgCl2.imass['MgCl2'] = mixture.imass['P']/30.973762*95.211*\
                                       self.Mg_P_ratio # Mg:P = 2:1 (1.5:1 - 4:1)
+        supply_MgCl2.price = 0.5 # made-up value based on online price, will change later
         struvite.imass['Struvite'] = mixture.imass['P']*\
                                      self.P_pre_recovery_ratio/\
                                      self.P_in_struvite
+        struvite.price = 0.30/0.453592 # Zhu 2022 PNNL $/lb to $/kg (0.19, 0.30, 0.55)
         supply_MgCl2.phase = supply_NH4Cl.phase = base.phase = 's'
         
         effluent.copy_like(mixture)
@@ -1067,7 +1078,7 @@ class StruvitePrecipitation(Reactor):
       CE=CEPCI[2009], n=0.65, BM=2.1)
 # hydrocyclone
 
-class CHG(Reactor):
+class CHG(Reactor, SludgeLab):
    
     '''
     CHG serves to reduce the COD content in the aqueous phase and produce fuel
@@ -1096,7 +1107,8 @@ class CHG(Reactor):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
                  WHSV=3.99, # wt./hr per wt. catalyst Jones
-                 catalyst_lifetime=7884, # 1 year*yearly operation hr NREL 2013
+                 catalyst_lifetime=1*yearly_operation_hour, # 1 year Jones
+                 catalyst_price=60/0.453592, # $60/lb to $/kg (2011$)
                  gas_composition={'CH4':0.527,
                                   'CO2':0.432,
                                   'C2H6':0.011,
@@ -1116,6 +1128,7 @@ class CHG(Reactor):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.WHSV = WHSV
         self.catalyst_lifetime = catalyst_lifetime
+        self.catalyst_price = catalyst_price
         self.gas_composition = gas_composition
         self.gas_c_to_total_c = gas_c_to_total_c
         
@@ -1146,6 +1159,7 @@ class CHG(Reactor):
         catalyst_out.copy_like(catalyst_in)
         # catalysts amount is quite low compared to the main stream, therefore do not consider
         # heating/cooling of catalysts
+        catalyst_in.price = self.catalyst_price
         
         gas_C_ratio = 0
         for name, ratio in self.gas_composition.items():
@@ -1243,6 +1257,9 @@ class MembraneDistillation(SanUnit):
                  # Henry's%20Law%20constant%20for,m%2Fmole(2). (accessed 11-11-2022)
                  Ka=1.75*10**(-5), # overall mass transfer coefficient 1.2~2.3*10^-5 m/s Ding
                  capacity=6.01, # kg/m2/h, Al-Obaidani
+                 membrane_price=90,
+                 # Al-Obaidani: $90/m2, though this is a 2008 paper, the price stills applys
+                 # based on online price, $90/m2 is conservative
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -1257,18 +1274,20 @@ class MembraneDistillation(SanUnit):
         self.Henry = Henry
         self.Ka = Ka
         self.capacity = capacity
+        self.membrane_price = membrane_price
 
-    _N_ins = 3
-    _N_outs = 2
+    _N_ins = 4
+    _N_outs = 3
     
     def _run(self):
         
-        influent, acid, base = self.ins
-        ammoniumsulfate, ww = self.outs
+        influent, acid, base, mem_in = self.ins
+        ammoniumsulfate, ww, mem_out = self.outs
         
         NaOH_conc = 10**(self.target_pH - 14) - 10**(self.CHGeffluent_pH - 14)
         NaOH_mol = NaOH_conc*self.ins[0].F_mass
         base.imass['NaOH'] = NaOH_mol*39.997/1000
+        base.price = 0.2384/0.453592 # Davis 2016$ $/lb to $/kg
         
         acid.imass['H2SO4'] = (self.ins[0]._source.ins[0]._source.ins[0].\
                    _source.ins[0]._source.CHGout_N)/14.0067/self.N_S_ratio*98.079
@@ -1327,6 +1346,8 @@ class MembraneDistillation(SanUnit):
                                          ammoniumsulfate.imass['NH42SO4']/\
                                          132.14*28.0134 -\
                                          ammoniumsulfate.imass['NH42SO4']
+        ammoniumsulfate.price = 0.4*ammoniumsulfate.imass['NH42SO4']/ammoniumsulfate.F_mass
+        # made-up value based on online price, will change later
                                         
         ww.copy_like(influent) # ww has the same T and P as influent
         
@@ -1346,6 +1367,11 @@ class MembraneDistillation(SanUnit):
         ammoniumsulfate.T = acid.T
         ammoniumsulfate.P = acid.P
         # ammoniumsulfate has the same T and P as acid
+        
+        mem_in.imass['Membrane'] = 0.15*self.membrane_area/yearly_operation_hour # m2/hr
+        mem_out.copy_like(mem_in)
+        mem_in.price = self.membrane_price
+        # add membrane as streams to include 15% membrane replacement per year (Al-Obaidani)
     
     @property
     def N_recovery_ratio(self):
@@ -1359,10 +1385,7 @@ class MembraneDistillation(SanUnit):
     def _cost(self):
         Design = self.design_results
         purchase_costs = self.baseline_purchase_costs
-        purchase_costs['Membrane'] = Design['Area']*90
-        # Al-Obaidani: $90/m2, though this is a 2008 paper, the price stills applys
-        # based on online price, $90/m2 is conservative
-        # when calculating OPEX, remember to include 15% membrane replacement per year (Al-Obaidani)
+        purchase_costs['Membrane'] = Design['Area']*self.membrane_price
 
 # =============================================================================
 # HT
@@ -1402,7 +1425,8 @@ class HT(Reactor):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
                  WHSV=0.625, # wt./hr per wt. catalyst Jones
-                 catalyst_lifetime=7884*2, # 2 years*yearly operation hr NREL 2013
+                 catalyst_lifetime=2*yearly_operation_hour, # 2 years Jones
+                 catalyst_price=15.5/0.453592, # $15.5/lb to $/kg (2007$)
                  hydrogen_P=1530*6894.76,
                  hydrogen_rxned_to_biocrude=0.046,
                  hydrocarbon_ratio=0.875, # 87.5 wt% of biocrude and reacted H2
@@ -1447,6 +1471,7 @@ class HT(Reactor):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.WHSV = WHSV
         self.catalyst_lifetime = catalyst_lifetime
+        self.catalyst_price = catalyst_price
         self.hydrogen_P = hydrogen_P
         self.hydrogen_rxned_to_biocrude = hydrogen_rxned_to_biocrude
         self.hydrocarbon_ratio = hydrocarbon_ratio
@@ -1489,10 +1514,12 @@ class HT(Reactor):
         catalyst_out.copy_like(catalyst_in)
         # catalysts amount is quite low compared to the main stream, therefore do not consider
         # heating/cooling of catalysts
+        catalyst_in.price = self.catalyst_price
         
         hydrogen.imass['H2'] = biocrude.imass['Biocrude']*\
                                self.hydrogen_rxned_to_biocrude
         hydrogen.phase = 'g'
+        hydrogen.price = 0.7306/0.453592 # Davis 2016$ $/lb to $/kg
 
         hydrocarbon_mass = biocrude.imass['Biocrude']*\
                            (1 + self.hydrogen_rxned_to_biocrude)*\
@@ -1621,7 +1648,8 @@ class HC(Reactor):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
                  WHSV=0.625, # wt./hr per wt. catalyst Jones
-                 catalyst_lifetime=7884*5, # 5 years*yearly operation hr NREL 2013
+                 catalyst_lifetime=5*yearly_operation_hour, # 5 years Jones
+                 catalyst_price=15.5/0.453592, # $15.5/lb to $/kg (2007$)
                  hydrogen_P=1039.7*6894.76,
                  hydrogen_rxned_to_heavy_oil=0.01125,
                  hydrocarbon_ratio=1, # 100 wt% of heavy oil and reacted H2
@@ -1654,6 +1682,7 @@ class HC(Reactor):
         SanUnit.__init__(self, ID, ins, outs, thermo,init_with)
         self.WHSV = WHSV
         self.catalyst_lifetime = catalyst_lifetime
+        self.catalyst_price = catalyst_price
         self.hydrogen_P = hydrogen_P
         self.hydrogen_rxned_to_heavy_oil = hydrogen_rxned_to_heavy_oil
         self.hydrocarbon_ratio = hydrocarbon_ratio
@@ -1696,11 +1725,12 @@ class HC(Reactor):
         catalyst_out.copy_like(catalyst_in)
         # catalysts amount is quite low compared to the main stream, therefore do not consider
         # heating/cooling of catalysts
+        catalyst_in.price = self.catalyst_price
         
         hydrogen.imass['H2'] = heavy_oil.F_mass*self.hydrogen_rxned_to_heavy_oil
         hydrogen.phase = 'g'
+        hydrogen.price = 0.7306/0.453592 # Davis 2016$ $/lb to $/kg
 
-    
         hydrocarbon_mass = heavy_oil.F_mass*(1 +\
                            self.hydrogen_rxned_to_heavy_oil)*\
                            self.hydrocarbon_ratio

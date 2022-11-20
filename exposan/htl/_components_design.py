@@ -382,6 +382,12 @@ def create_components(set_thermo=True):
     add_V_from_rho(HC_catalyst, 1500)
     HC_catalyst.copy_models_from(Chemical('CaCO3'),('Cn',))
     
+    # values for Membrane are made up since we just need to calculate cost for membrane
+    Membrane = Component('Membrane', phase='s', particle_size='Particulate',
+                             degradability='Undegradable', organic=False)
+    add_V_from_rho(Membrane, 1500)
+    Membrane.copy_models_from(Chemical('CaCO3'),('Cn',))
+    
     cmps = Components([Sludge_lipid, Sludge_protein, Sludge_carbo, Sludge_ash,
                        Struvite, Biochar, Residual,
                        Biocrude, HTLaqueous, H2O, C, N, P,
@@ -395,7 +401,7 @@ def create_components(set_thermo=True):
                        OTTFSN, C7BENZ, C8BENZ, C10H16O4, C15H32, C16H34,
                        C17H36, C18H38, C19H40, C20H42, C21H44,
                        TRICOSANE, C24H38O4, C26H42O4, C30H62, Gasoline, Diesel,
-                       CHG_catalyst, HT_catalyst, HC_catalyst])
+                       CHG_catalyst, HT_catalyst, HC_catalyst, Membrane])
     
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):
