@@ -53,32 +53,37 @@ References:
     Principles (Second Edition); Doran, P. M., Ed.; Academic Press: London,
     2013; pp 445–595. https://doi.org/10.1016/B978-0-12-220851-5.00011-3.
     
-(8) Spiller, L. L. Determination of Ammonia/Air Diffusion Coefficient Using
+(8) Elliott, D. C.; Neuenschwander, G. G.; Hart, T. R.; Rotness, L. J.;
+    Zacher, A. H.; Santosa, D. M.; Valkenburg, C.; Jones, S. B.;
+    Rahardjo, S. A. T. Catalytic Hydrothermal Gasification of Lignin-Rich
+    Biorefinery Residues and Algae Final Report. 87.
+
+(9) Spiller, L. L. Determination of Ammonia/Air Diffusion Coefficient Using
     Nafion Lined Tube. Analytical Letters 1989, 22 (11–12), 2561–2573.
     https://doi.org/10.1080/00032718908052375.
 
-(9) Scheepers, D. M.; Tahir, A. J.; Brunner, C.; Guillen-Burrieza, E.
+(10) Scheepers, D. M.; Tahir, A. J.; Brunner, C.; Guillen-Burrieza, E.
     Vacuum Membrane Distillation Multi-Component Numerical Model for Ammonia
     Recovery from Liquid Streams. Journal of Membrane Science
     2020, 614, 118399. https://doi.org/10.1016/j.memsci.2020.118399.
 
-(10) Ding, Z.; Liu, L.; Li, Z.; Ma, R.; Yang, Z. Experimental Study of Ammonia
+(11) Ding, Z.; Liu, L.; Li, Z.; Ma, R.; Yang, Z. Experimental Study of Ammonia
     Removal from Water by Membrane Distillation (MD): The Comparison of Three
     Configurations. Journal of Membrane Science 2006, 286 (1), 93–103.
     https://doi.org/10.1016/j.memsci.2006.09.015.
     
-(11) Towler, G.; Sinnott, R. Chapter 14 - Design of Pressure Vessels.
+(12) Towler, G.; Sinnott, R. Chapter 14 - Design of Pressure Vessels.
     In Chemical Engineering Design (Second Edition); Towler, G., Sinnott, R.,
     Eds.; Butterworth-Heinemann: Boston, 2013; pp 563–629.
     https://doi.org/10.1016/B978-0-08-096659-5.00014-6.
     
-(12) Al-Obaidani, S.; Curcio, E.; Macedonio, F.; Di Profio, G.; Al-Hinai, H.;
+(13) Al-Obaidani, S.; Curcio, E.; Macedonio, F.; Di Profio, G.; Al-Hinai, H.;
     Drioli, E. Potential of Membrane Distillation in Seawater Desalination:
     Thermal Efficiency, Sensitivity Study and Cost Estimation.
     Journal of Membrane Science 2008, 323 (1), 85–98.
     https://doi.org/10.1016/j.memsci.2008.06.006.
     
-(13) Zhu, Y.; Schmidt, A.; Valdez, P.; Snowden-Swan, L.; Edmundson, S.
+(14) Zhu, Y.; Schmidt, A.; Valdez, P.; Snowden-Swan, L.; Edmundson, S.
     Hydrothermal Liquefaction and Upgrading of Wastewater-Grown Microalgae:
     2021 State of Technology; PNNL-32695, 1855835; 2022; p PNNL-32695, 1855835.
     https://doi.org/10.2172/1855835.
@@ -165,6 +170,7 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
     _units = {**PressureVessel._units,
               'Residence time': 'hr',
               'Total volume': 'm3',
+              'Single reactor volume': 'm3',
               'Reactor volume': 'm3'}
 
     # For a single reactor, based on diameter and length from PressureVessel._bounds,
@@ -217,7 +223,7 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
                 Design['Single reactor volume'] = self.V
                 Design['Number of reactors'] = self.N
             else:
-                V_reactor = V_total / self.N
+                V_reactor = V_total/self.N
                 D = (4*V_reactor/pi/length_to_diameter)**(1/3)
                 D *= 3.28084 # convert from m to ft
                 L = D * length_to_diameter
@@ -233,7 +239,6 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
                 D = 0
                 L = 0
             else:
-                
                 V_reactor = V_total / N
                 D = (4*V_reactor/pi/length_to_diameter)**(1/3)
                 D *= 3.28084 # convert from m to ft
@@ -1118,7 +1123,7 @@ class CHG(Reactor, SludgeLab):
                  # will not be a variable in uncertainty/sensitivity analysis
                  gas_c_to_total_c=0.5655, # Jones
                  
-                 P=None, tau=20/60, V_wf=0.5,
+                 P=None, tau=20/60, void_fraction=0.5,
                  length_to_diameter=2, N=6, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
@@ -1134,7 +1139,7 @@ class CHG(Reactor, SludgeLab):
         
         self.P = P
         self.tau = tau
-        self.V_wf = V_wf
+        self.V_wf = void_fraction # no headspace, gases produced will be vented, so V_wf = void fraction Elliott
         self.length_to_diameter = length_to_diameter
         self.N = N
         self.V = V
@@ -1460,7 +1465,7 @@ class HT(Reactor):
                  # spreadsheet HT calculation
                  # will not be a variable in uncertainty/sensitivity analysis
                  
-                 P=None, tau=0.5, V_wf=1/15,
+                 P=None, tau=0.5, void_fraciton=0.4, # Towler
                  length_to_diameter=2, N=None, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
@@ -1490,7 +1495,7 @@ class HT(Reactor):
         
         self.P = P
         self.tau = tau
-        self.V_wf = V_wf
+        self.void_fraciton = void_fraciton
         self.length_to_diameter = length_to_diameter
         self.N = N
         self.V = V
@@ -1604,6 +1609,10 @@ class HT(Reactor):
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
         
         self.P = min(IC_outs0.P, self.ins[0].P)
+        
+        V_H2 = self.ins[1].F_vol*101325/self.hydrogen_P
+        V_biocrude = self.ins[0].F_vol
+        self.V_wf = self.void_fraciton*V_biocrude/(V_biocrude + V_H2)
         Reactor._design(self)
     
     def _cost(self):
@@ -1671,7 +1680,7 @@ class HC(Reactor):
                  #combine C20H42 and PHYTANE as C20H42
                  # will not be a variable in uncertainty/sensitivity analysis
                  
-                 P=None, tau=5, V_wf=0.2,
+                 P=None, tau=5, void_fraciton=0.4, # Towler
                  length_to_diameter=2, N=None, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1.5,
                  vessel_material='Stainless steel 316',
@@ -1701,7 +1710,7 @@ class HC(Reactor):
         
         self.P = P
         self.tau = tau
-        self.V_wf = V_wf
+        self.void_fraciton = void_fraciton
         self.length_to_diameter = length_to_diameter
         self.N = N
         self.V = V
@@ -1785,6 +1794,10 @@ class HC(Reactor):
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
         
         self.P = min(IC_outs0.P, self.ins[0].P)
+        
+        V_H2 = self.ins[1].F_vol*101325/self.hydrogen_P
+        V_biocrude = self.ins[0].F_vol
+        self.V_wf = self.void_fraciton*V_biocrude/(V_biocrude + V_H2)
         Reactor._design(self)
     
     def _cost(self):
