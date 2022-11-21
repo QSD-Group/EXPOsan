@@ -41,7 +41,7 @@ from exposan.htl._TEA import *
 load_process_settings()
 cmps = create_components()
 
-fake_sludge = qs.Stream('sludge', H2O=200000, units='kg/hr', T=25+273.15, price=0.003)
+fake_sludge = qs.Stream('sludge', H2O=1000000*365/7920, units='kg/hr', T=25+273.15)
 # set H2O equal to the total sludge input flow
 # assume 99% moisture, 50 metric tons of dw sludge per h
 # $0.003/kg is an estimated value for 1% dw algae from Jones
@@ -108,7 +108,7 @@ AcidEx = su.AcidExtraction('A200', ins=(HTL-0, SP1-0),
 
 M1 = su.HTLmixer('A210', ins=(HTL-1, AcidEx-1), outs=('mixture'))
 
-StruPre = su.StruvitePrecipitation('A220', ins=(M1-0,'MgCl2','NH4Cl','NaOH_P'),
+StruPre = su.StruvitePrecipitation('A220', ins=(M1-0,'MgCl2','NH4Cl','MgO'),
                                    outs=('struvite','CHG_feed'))
 
 P2 = qsu.Pump('A230', ins=StruPre-1, outs='press_aqueous',
@@ -127,7 +127,7 @@ V1 = IsenthalpicValve('A270', ins=H3-0, outs='depressed_cooled_CHG', P=50*6894.7
 F1 = Flash('A280', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
             T=60+273.15, P=50*6894.76)
 
-MemDis = su.MembraneDistillation('A290', ins=(F1-1, SP1-1, 'NaOH_N', 'Membrane_in'),
+MemDis = su.MembraneDistillation('A290', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
                                   outs=('ammonium_sulfate','MemDis_ww', 'Membrane_out'))
 
 # =============================================================================
