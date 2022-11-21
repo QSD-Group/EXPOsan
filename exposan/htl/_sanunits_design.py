@@ -83,7 +83,13 @@ References:
     Journal of Membrane Science 2008, 323 (1), 85–98.
     https://doi.org/10.1016/j.memsci.2008.06.006.
     
-(14) Zhu, Y.; Schmidt, A.; Valdez, P.; Snowden-Swan, L.; Edmundson, S.
+(14) Kogler, A.; Farmer, M.; Simon, J. A.; Tilmans, S.; Wells, G. F.;
+    Tarpeh, W. A. Systematic Evaluation of Emerging Wastewater Nutrient Removal
+    and Recovery Technologies to Inform Practice and Advance Resource
+    Efficiency. ACS EST Eng. 2021, 1 (4), 662–684.
+    https://doi.org/10.1021/acsestengg.0c00253.
+
+(15) Zhu, Y.; Schmidt, A.; Valdez, P.; Snowden-Swan, L.; Edmundson, S.
     Hydrothermal Liquefaction and Upgrading of Wastewater-Grown Microalgae:
     2021 State of Technology; PNNL-32695, 1855835; 2022; p PNNL-32695, 1855835.
     https://doi.org/10.2172/1855835.
@@ -777,8 +783,8 @@ class AcidExtraction(Reactor):
     _F_BM_default = {**Reactor._F_BM_default}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='Stream', acid_vol=10, P_acid_recovery_ratio=0.70,
-                 P=None, tau=1, V_wf=0.8, # use MixTank default value
+                 init_with='Stream', acid_vol=10, P_acid_recovery_ratio=0.90, # Zhu
+                 P=None, tau=2, V_wf=0.8, # tau: Zhu
                  length_to_diameter=2, N=None, V=None, auxiliary=False,
                  mixing_intensity=None, kW_per_m3=0.0985, # use MixTank default value
                  wall_thickness_factor=1,
@@ -810,41 +816,54 @@ class AcidExtraction(Reactor):
         biochar, acid = self.ins
         residual, extracted = self.outs
         
-        acid.imass['H2SO4'] = biochar.F_mass*self.acid_vol*0.5*98.079/1000
-        #0.5 M H2SO4 acid_vol (10 mL/1 g) Biochar
-        acid.imass['H2O'] = biochar.F_mass*self.acid_vol*1.05 -\
-                            acid.imass['H2SO4']
-        # 0.5 M H2SO4 density: 1.05 kg/L 
-        # https://www.fishersci.com/shop/products/sulfuric-acid-1n-0-5m-
-        # standard-solution-thermo-scientific/AC124240010 (accessed 10-6-2022)
+        self.sludgelab = self.ins[0]._source.sludgelab
         
-        residual.imass['Residual'] = biochar.F_mass - self.ins[0]._source.\
-                                     biochar_P*self.P_acid_recovery_ratio
-        
-        extracted.copy_like(acid)
-        extracted.imass['P'] = biochar.F_mass - residual.F_mass
-        # assume just P can be extracted
-        
-        residual.phase = 's'
-        
-        residual.T = extracted.T = biochar.T
-        # H2SO4 reacts with biochar to release heat and temperature will be
-        # increased mixture's temperature
-        
+        if self.sludgelab.sludge_P_ratio == 0:
+            residual.copy_like(biochar)
+            biochar.price = 0.2 # $/kg made-up value based on online info, will change later
+        else:
+            acid.imass['H2SO4'] = biochar.F_mass*self.acid_vol*0.5*98.079/1000
+            #0.5 M H2SO4 acid_vol (10 mL/1 g) Biochar
+            acid.imass['H2O'] = biochar.F_mass*self.acid_vol*1.05 -\
+                                acid.imass['H2SO4']
+            # 0.5 M H2SO4 density: 1.05 kg/L 
+            # https://www.fishersci.com/shop/products/sulfuric-acid-1n-0-5m-
+            # standard-solution-thermo-scientific/AC124240010 (accessed 10-6-2022)
+            
+            residual.imass['Residual'] = biochar.F_mass - self.ins[0]._source.\
+                                         biochar_P*self.P_acid_recovery_ratio
+            residual.price = 0.1 # made-up value
+            
+            extracted.copy_like(acid)
+            extracted.imass['P'] = biochar.F_mass - residual.F_mass
+            # assume just P can be extracted
+            
+            residual.phase = 's'
+            
+            residual.T = extracted.T = biochar.T
+            # H2SO4 reacts with biochar to release heat and temperature will be
+            # increased mixture's temperature
+            
     @property
     def residual_C(self):
         return self.ins[0]._source.biochar_C
-
+    
     @property
     def residual_P(self):
         return self.ins[0]._source.biochar_P - self.outs[1].imass['P']
         
     def _design(self):
-        self.P = self.ins[1].P
-        Reactor._design(self)
+        if self.sludgelab.sludge_P_ratio == 0:
+            pass
+        else:
+            self.P = self.ins[1].P
+            Reactor._design(self)
         
     def _cost(self):
-        Reactor._cost(self)
+        if self.sludgelab.sludge_P_ratio == 0:
+            pass
+        else:
+            Reactor._cost(self)
     
 # =============================================================================
 # HTL mixer
@@ -879,17 +898,20 @@ class HTLmixer(SanUnit):
         HTLaqueous, extracted = self.ins
         mixture = self.outs[0]
         
-        mixture.imass['C'] = self.ins[0]._source.HTLaqueous_C
-        mixture.imass['N'] = self.ins[0]._source.HTLaqueous_N
-        mixture.imass['P'] = self.ins[0]._source.HTLaqueous_P +\
-                             extracted.imass['P']
-        mixture.imass['H2O'] = HTLaqueous.F_mass + extracted.F_mass -\
-                               mixture.imass['C'] - mixture.imass['N'] -\
-                               mixture.imass['P']
-        # represented by H2O except C, N, P
-        
-        mixture.T = extracted.T
-        mixture.P = extracted.P
+        if self.ins[1].imass['P'] == 0:
+            mixture.copy_like(HTLaqueous)
+        else:
+            mixture.imass['C'] = self.ins[0]._source.HTLaqueous_C
+            mixture.imass['N'] = self.ins[0]._source.HTLaqueous_N
+            mixture.imass['P'] = self.ins[0]._source.HTLaqueous_P +\
+                                 extracted.imass['P']
+            mixture.imass['H2O'] = HTLaqueous.F_mass + extracted.F_mass -\
+                                   mixture.imass['C'] - mixture.imass['N'] -\
+                                   mixture.imass['P']
+            # represented by H2O except C, N, P
+            
+            mixture.T = extracted.T
+            mixture.P = extracted.P
         
     @property
     def pH(self):
@@ -897,7 +919,7 @@ class HTLmixer(SanUnit):
         # extracted pH = 0 (0.5 M H2SO4)
         # since HTLaqueous pH is near to neutral
         # assume pH is dominant by extracted and will be calculate based on dilution
-        dilution_factor = self.F_mass_in/self.ins[1].F_mass
+        dilution_factor = self.F_mass_in/self.ins[1].F_mass if self.ins[1].imass['P'] != 0 else 1
         hydrogen_ion_conc = 10**0/dilution_factor
         return -log(hydrogen_ion_conc, 10)
         
@@ -975,14 +997,15 @@ class StruvitePrecipitation(Reactor):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', 
-                 target_pH = 9.5,
+                 target_pH = 9.5, # Zhu used 8.5, can include in uncertainty
                  Mg_P_ratio=2,
-                 P_pre_recovery_ratio=0.99, P_in_struvite=0.127,
+                 P_pre_recovery_ratio=0.99, # Zhu
+                 P_in_struvite=0.127,
                  # assume the pH of mixture is 0.5, target is 9.5
                  # (10^-0.5 + 10^-4.5)*40/1000 = 0.01265 ~ 0.015
                  HTLaqueous_NH3_N_2_total_N = 0.853, # Jones  
                  
-                 P=None, tau=1, V_wf=0.8, # use MixTank default value
+                 P=None, tau=1, V_wf=0.8, # tau: Zhu
                  length_to_diameter=2, N=None, V=None, auxiliary=False,
                  mixing_intensity=None, kW_per_m3=0.0985, # use MixTank default value
                  wall_thickness_factor=1,
@@ -1018,46 +1041,49 @@ class StruvitePrecipitation(Reactor):
         mixture, supply_MgCl2, supply_NH4Cl, base = self.ins
         struvite, effluent = self.outs
         
-        old_pH = self.ins[0]._source.pH
-        neutral_NaOH_mol = 10**(-old_pH)*self.ins[0].F_mass # ignore solid volume
-        to_target_pH = 10**(self.target_pH - 14)*self.ins[0].F_mass # ignore solid volume
-        total_NaOH = neutral_NaOH_mol + to_target_pH # unit: mol/h
-        base.imass['NaOH'] = total_NaOH * 39.997/1000
-        base.price = 0.2384/0.453592 # Davis 2016$ $/lb to $/kg 
-
-        if mixture.imass['P']/30.973762 > self.Mg_P_ratio*mixture.imass['N']*\
-                                          self.HTLaqueous_NH3_N_2_total_N/14.0067:
-        # N:P >= Mg:P
-            supply_NH4Cl.imass['NH4Cl'] = (mixture.imass['P']/30.973762 -\
-                                           self.Mg_P_ratio*mixture.imass['N']*\
-                                           self.HTLaqueous_NH3_N_2_total_N/14.0067)*53.491
-        supply_NH4Cl.price = 0.2 # made-up value based on online price, will change later
-        # make sure N:P >= 1:1
-        
-        supply_MgCl2.imass['MgCl2'] = mixture.imass['P']/30.973762*95.211*\
-                                      self.Mg_P_ratio # Mg:P = 2:1 (1.5:1 - 4:1)
-        supply_MgCl2.price = 0.5 # made-up value based on online price, will change later
-        struvite.imass['Struvite'] = mixture.imass['P']*\
-                                     self.P_pre_recovery_ratio/\
-                                     self.P_in_struvite
-        struvite.price = 0.30/0.453592 # Zhu 2022 PNNL $/lb to $/kg (0.19, 0.30, 0.55)
-        supply_MgCl2.phase = supply_NH4Cl.phase = base.phase = 's'
-        
-        effluent.copy_like(mixture)
-        effluent.imass['P'] -= struvite.imass['Struvite']*self.P_in_struvite
-        effluent.imass['N'] += supply_NH4Cl.imass['NH4Cl']*14.0067/53.491 -\
-                               struvite.imass['Struvite']*\
-                               self.P_in_struvite/30.973762*14.0067
-        effluent.imass['H2O'] += (supply_MgCl2.imass['MgCl2'] +\
-                                  supply_NH4Cl.imass['NH4Cl'] +\
-                                  base.imass['NaOH'] -\
-                                  struvite.imass['Struvite']*\
-                                  (1 - self.P_in_struvite*\
-                                  (1+14.0067/30.973762)))
-        struvite.phase = 's'    
+        if self.ins[0]._source.ins[1].imass['P'] == 0:
+            effluent.copy_like(mixture)
+        else:
+            old_pH = self.ins[0]._source.pH
+            neutral_OH_mol = 10**(-old_pH)*self.ins[0].F_mass # ignore solid volume
+            to_target_pH = 10**(self.target_pH - 14)*self.ins[0].F_mass # ignore solid volume
+            total_OH = neutral_OH_mol + to_target_pH # unit: mol/h
+            base.imass['MgO'] = total_OH/2 * 40.3044/1000
+            base.price = 0.3 # made-up value based on online price, will change later 
+    
+            if mixture.imass['P']/30.973762 > self.Mg_P_ratio*mixture.imass['N']*\
+                                              self.HTLaqueous_NH3_N_2_total_N/14.0067:
+            # N:P >= Mg:P
+                supply_NH4Cl.imass['NH4Cl'] = (mixture.imass['P']/30.973762 -\
+                                               self.Mg_P_ratio*mixture.imass['N']*\
+                                               self.HTLaqueous_NH3_N_2_total_N/14.0067)*53.491
+            supply_NH4Cl.price = 0.2 # made-up value based on online price, will change later
+            # make sure N:P >= 1:1
             
-        struvite.T = mixture.T
-        effluent.T = mixture.T
+            supply_MgCl2.imass['MgCl2'] = mixture.imass['P']/30.973762*95.211*\
+                                          self.Mg_P_ratio # Mg:P = 2:1 (1.5:1 - 4:1)
+            supply_MgCl2.price = 0.5 # made-up value based on online price, will change later
+            struvite.imass['Struvite'] = mixture.imass['P']*\
+                                         self.P_pre_recovery_ratio/\
+                                         self.P_in_struvite
+            struvite.price = 0.30/0.453592 # Zhu 2022 PNNL $/lb to $/kg (0.19, 0.30, 0.55)
+            supply_MgCl2.phase = supply_NH4Cl.phase = base.phase = 's'
+            
+            effluent.copy_like(mixture)
+            effluent.imass['P'] -= struvite.imass['Struvite']*self.P_in_struvite
+            effluent.imass['N'] += supply_NH4Cl.imass['NH4Cl']*14.0067/53.491 -\
+                                   struvite.imass['Struvite']*\
+                                   self.P_in_struvite/30.973762*14.0067
+            effluent.imass['H2O'] += (supply_MgCl2.imass['MgCl2'] +\
+                                      supply_NH4Cl.imass['NH4Cl'] +\
+                                      base.imass['NaOH'] -\
+                                      struvite.imass['Struvite']*\
+                                      (1 - self.P_in_struvite*\
+                                      (1+14.0067/30.973762)))
+            struvite.phase = 's'    
+                
+            struvite.T = mixture.T
+            effluent.T = mixture.T
         
     @property
     def struvite_P(self):
@@ -1068,11 +1094,17 @@ class StruvitePrecipitation(Reactor):
         return self.struvite_P*14.0067/30.973762
 
     def _design(self):
-        self.P = self.ins[0].P
-        Reactor._design(self)
+        if self.ins[0]._source.ins[1].imass['P'] == 0:
+            pass
+        else:
+            self.P = self.ins[0].P
+            Reactor._design(self)
         
     def _cost(self):
-        Reactor._cost(self)
+        if self.ins[0]._source.ins[1].imass['P'] == 0:
+            pass
+        else:
+            Reactor._cost(self)
     
 # =============================================================================
 # CHG
@@ -1245,7 +1277,7 @@ class MembraneDistillation(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
-                 CHGeffluent_pH=8.16, # 8.16 ± 0.25 Li 2018
+                 inffluent_pH=8.16, # CHG effluent pH: 8.16 ± 0.25 Li 2018
                  target_pH=10,
                  N_S_ratio=2,
                  # S is excess since not all N can be transfered to form ammonia sulfate
@@ -1262,13 +1294,14 @@ class MembraneDistillation(SanUnit):
                  # Henry's%20Law%20constant%20for,m%2Fmole(2). (accessed 11-11-2022)
                  Ka=1.75*10**(-5), # overall mass transfer coefficient 1.2~2.3*10^-5 m/s Ding
                  capacity=6.01, # kg/m2/h, Al-Obaidani
+                 # permeate flux, similar values can be found in many other papers ([], [] ,[] ,[] ,[] ,[] in Kogler Stanford)
                  membrane_price=90,
                  # Al-Obaidani: $90/m2, though this is a 2008 paper, the price stills applys
                  # based on online price, $90/m2 is conservative
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.CHGeffluent_pH = CHGeffluent_pH
+        self.inffluent_pH = inffluent_pH
         self.target_pH = target_pH
         self.N_S_ratio = N_S_ratio
         self.m2_2_m3 = m2_2_m3
@@ -1289,108 +1322,120 @@ class MembraneDistillation(SanUnit):
         influent, acid, base, mem_in = self.ins
         ammoniumsulfate, ww, mem_out = self.outs
         
-        NaOH_conc = 10**(self.target_pH - 14) - 10**(self.CHGeffluent_pH - 14)
-        NaOH_mol = NaOH_conc*self.ins[0].F_mass
-        base.imass['NaOH'] = NaOH_mol*39.997/1000
-        base.price = 0.2384/0.453592 # Davis 2016$ $/lb to $/kg
-        
-        acid.imass['H2SO4'] = (self.ins[0]._source.ins[0]._source.ins[0].\
-                   _source.ins[0]._source.CHGout_N)/14.0067/self.N_S_ratio*98.079
-        acid.imass['H2O'] = acid.imass['H2SO4']*1000/98.079/0.5*1.05 -\
-                            acid.imass['H2SO4']
-        
-        pKa = 9.26 # ammonia pKa
-        ammonia_to_ammonium = 10**(-pKa)/10**(-self.target_pH)
-        ammonia = (self.ins[0]._source.ins[0]._source.ins[0].\
-                   _source.ins[0]._source.CHGout_N)*ammonia_to_ammonium/(1 +\
-                   ammonia_to_ammonium)*17.031/14.0067
-        others = influent.F_mass - ammonia
-        
-        self.membrane_area = self.F_vol_in*1000/self.capacity
-        N2_in_air = self.membrane_area/self.m2_2_m3*self.porosity*0.79*1.204
-        O2_in_air = self.membrane_area/self.m2_2_m3*self.porosity*0.21*1.204
-        # N2:O2 = 0.79:0.21 in the air, air density is 1.204 kg/m3
-        # https://en.wikipedia.org/wiki/Density_of_air#:~:text=It%20also%20\
-        # changes%20with%20variation,International%20Standard%20Atmosphere%2\
-        # 0(ISA). (accessed 11-14-2022)
-        
-        imass = indexer.MassFlowIndexer(l=[('H2O', others),
-                                           ('NH3', ammonia),
-                                           ('N2', 0),
-                                           ('O2', 0)],
-                                        g=[('H2O', 0),
-                                           ('NH3', 0), 
-                                           ('N2', N2_in_air),
-                                           ('O2', O2_in_air)])
-        # N2 amount will be changed based on design, maybe also add O2 (N2:O2 = 4:1)
-        
-        vle = equilibrium.VLE(imass)
-        vle(T=influent.T, P=influent.P)
-        X_NH3_f_m = vle.imol['g','NH3']/(vle.imol['g','H2O'] + vle.imol['g','NH3'])
-        X_NH3_f = vle.imol['l','NH3']/(vle.imol['l','H2O'] + vle.imol['l','NH3'])
-
-        km = self.Dm*self.porosity/self.tortuosity/self.thickness
-        
-        dimensionless_Henry = self.Henry/8.20575/(10**(-5))/influent.T # H' = H/RT
-        # https://www.sciencedirect.com/topics/chemistry/henrys-law#:~:text=\
-        # Values%20for%20Henry's%20law%20constants,gas%20constant%20(8.20575%\
-        # 20%C3%97%2010 (accessed 11-11-2022)
-        
-        kf = 1/(1/self.Ka - 1/dimensionless_Henry/km*(1 + 10**(-pKa)*10**\
-             (-self.target_pH)/(10**(-14))))
-        
-        J = kf*ammonia/influent.F_mass*1000*log(X_NH3_f_m/X_NH3_f)*3600 # in kg/m2/h
-        
-        NH3_mass_flow = J*self.membrane_area
-        
-        ammonia_transfer_ratio = min(1, NH3_mass_flow/ammonia)
-        
-        ammoniumsulfate.imass['NH42SO4'] = ammonia*ammonia_transfer_ratio/34.062*132.14
-        ammoniumsulfate.imass['H2O'] = acid.imass['H2O']
-        ammoniumsulfate.imass['H2SO4'] = acid.imass['H2SO4'] +\
-                                         ammoniumsulfate.imass['NH42SO4']/\
-                                         132.14*28.0134 -\
-                                         ammoniumsulfate.imass['NH42SO4']
-        ammoniumsulfate.price = 0.4*ammoniumsulfate.imass['NH42SO4']/ammoniumsulfate.F_mass
-        # made-up value based on online price, will change later
-                                        
-        ww.copy_like(influent) # ww has the same T and P as influent
         
         self.CHG = self.ins[0]._source.ins[0]._source.ins[0]._source.ins[0]._source
         
-        ww.imass['N'] = self.CHG.CHGout_N*(1 - ammonia_to_ammonium/(1 +\
-                         ammonia_to_ammonium)*ammonia_transfer_ratio)
-                                                          
-        ww.imass['C'] = self.CHG.CHGout_C
-                         
-        ww.imass['P'] = self.CHG.CHGout_P
-                   
-        ww.imass['H2O'] -= (ww.imass['C'] + ww.imass['N'] + ww.imass['P'])
-        
-        ww.imass['H2O'] += self.ins[2].F_mass
-        
-        ammoniumsulfate.T = acid.T
-        ammoniumsulfate.P = acid.P
-        # ammoniumsulfate has the same T and P as acid
-        
-        mem_in.imass['Membrane'] = 0.15*self.membrane_area/yearly_operation_hour # m2/hr
-        mem_out.copy_like(mem_in)
-        mem_in.price = self.membrane_price
-        # add membrane as streams to include 15% membrane replacement per year (Al-Obaidani)
+        if self.CHG.ins[0].imass['N'] == 0:
+            ww.copy_like(influent)
+        else:
+            NaOH_conc = 10**(self.target_pH - 14) - 10**(self.inffluent_pH - 14)
+            NaOH_mol = NaOH_conc*self.ins[0].F_mass
+            base.imass['NaOH'] = NaOH_mol*39.997/1000
+            base.price = 0.2384/0.453592 # Davis 2016$ $/lb to $/kg
+            
+            acid.imass['H2SO4'] = (self.ins[0]._source.ins[0]._source.ins[0].\
+                       _source.ins[0]._source.CHGout_N)/14.0067/self.N_S_ratio*98.079
+            acid.imass['H2O'] = acid.imass['H2SO4']*1000/98.079/0.5*1.05 -\
+                                acid.imass['H2SO4']
+            
+            pKa = 9.26 # ammonia pKa
+            ammonia_to_ammonium = 10**(-pKa)/10**(-self.target_pH)
+            ammonia = (self.ins[0]._source.ins[0]._source.ins[0].\
+                       _source.ins[0]._source.CHGout_N)*ammonia_to_ammonium/(1 +\
+                       ammonia_to_ammonium)*17.031/14.0067
+            others = influent.F_mass - ammonia
+            
+            self.membrane_area = self.F_vol_in*1000/self.capacity
+            N2_in_air = self.membrane_area/self.m2_2_m3*self.porosity*0.79*1.204
+            O2_in_air = self.membrane_area/self.m2_2_m3*self.porosity*0.21*1.204
+            # N2:O2 = 0.79:0.21 in the air, air density is 1.204 kg/m3
+            # https://en.wikipedia.org/wiki/Density_of_air#:~:text=It%20also%20\
+            # changes%20with%20variation,International%20Standard%20Atmosphere%2\
+            # 0(ISA). (accessed 11-14-2022)
+            
+            imass = indexer.MassFlowIndexer(l=[('H2O', others),
+                                               ('NH3', ammonia),
+                                               ('N2', 0),
+                                               ('O2', 0)],
+                                            g=[('H2O', 0),
+                                               ('NH3', 0), 
+                                               ('N2', N2_in_air),
+                                               ('O2', O2_in_air)])
+            # N2 amount will be changed based on design, maybe also add O2 (N2:O2 = 4:1)
+            
+            vle = equilibrium.VLE(imass)
+            vle(T=influent.T, P=influent.P)
+            X_NH3_f_m = vle.imol['g','NH3']/(vle.imol['g','H2O'] + vle.imol['g','NH3'])
+            X_NH3_f = vle.imol['l','NH3']/(vle.imol['l','H2O'] + vle.imol['l','NH3'])
+    
+            km = self.Dm*self.porosity/self.tortuosity/self.thickness
+            
+            dimensionless_Henry = self.Henry/8.20575/(10**(-5))/influent.T # H' = H/RT
+            # https://www.sciencedirect.com/topics/chemistry/henrys-law#:~:text=\
+            # Values%20for%20Henry's%20law%20constants,gas%20constant%20(8.20575%\
+            # 20%C3%97%2010 (accessed 11-11-2022)
+            
+            kf = 1/(1/self.Ka - 1/dimensionless_Henry/km*(1 + 10**(-pKa)*10**\
+                 (-self.target_pH)/(10**(-14))))
+            
+            J = kf*ammonia/influent.F_mass*1000*log(X_NH3_f_m/X_NH3_f)*3600 # in kg/m2/h
+            
+            NH3_mass_flow = J*self.membrane_area
+            
+            ammonia_transfer_ratio = min(1, NH3_mass_flow/ammonia)
+            
+            ammoniumsulfate.imass['NH42SO4'] = ammonia*ammonia_transfer_ratio/34.062*132.14
+            ammoniumsulfate.imass['H2O'] = acid.imass['H2O']
+            ammoniumsulfate.imass['H2SO4'] = acid.imass['H2SO4'] +\
+                                             ammoniumsulfate.imass['NH42SO4']/\
+                                             132.14*28.0134 -\
+                                             ammoniumsulfate.imass['NH42SO4']
+            ammoniumsulfate.price = 0.4*ammoniumsulfate.imass['NH42SO4']/ammoniumsulfate.F_mass
+            # made-up value based on online price, will change later
+                                            
+            ww.copy_like(influent) # ww has the same T and P as influent
+            
+            self.CHG = self.ins[0]._source.ins[0]._source.ins[0]._source.ins[0]._source
+            
+            ww.imass['N'] = self.CHG.CHGout_N*(1 - ammonia_to_ammonium/(1 +\
+                             ammonia_to_ammonium)*ammonia_transfer_ratio)
+                                                              
+            ww.imass['C'] = self.CHG.CHGout_C
+                             
+            ww.imass['P'] = self.CHG.CHGout_P
+                       
+            ww.imass['H2O'] -= (ww.imass['C'] + ww.imass['N'] + ww.imass['P'])
+            
+            ww.imass['H2O'] += self.ins[2].F_mass
+            
+            ammoniumsulfate.T = acid.T
+            ammoniumsulfate.P = acid.P
+            # ammoniumsulfate has the same T and P as acid
+            
+            mem_in.imass['Membrane'] = 0.15*self.membrane_area/yearly_operation_hour # m2/hr
+            mem_out.copy_like(mem_in)
+            mem_in.price = self.membrane_price
+            # add membrane as streams to include 15% membrane replacement per year (Al-Obaidani)
     
     @property
     def N_recovery_ratio(self):
         return 1 - self.outs[1].imass['N']/self.CHG.CHGout_N
         
     def _design(self):
-        Design = self.design_results
-        Design['Area'] = self.membrane_area
-        Design['Total volume'] = Design['Area']/self.m2_2_m3
+        if self.CHG.ins[0].imass['N'] == 0:
+            pass
+        else:
+            Design = self.design_results
+            Design['Area'] = self.membrane_area
+            Design['Total volume'] = Design['Area']/self.m2_2_m3
     
     def _cost(self):
-        Design = self.design_results
-        purchase_costs = self.baseline_purchase_costs
-        purchase_costs['Membrane'] = Design['Area']*self.membrane_price
+        if self.CHG.ins[0].imass['N'] == 0:
+            pass
+        else:
+            Design = self.design_results
+            purchase_costs = self.baseline_purchase_costs
+            purchase_costs['Membrane'] = Design['Area']*self.membrane_price
 
 # =============================================================================
 # HT
@@ -1514,6 +1559,14 @@ class HT(Reactor):
         biocrude, hydrogen, catalyst_in = self.ins
         ht_out, catalyst_out = self.outs
         
+        self.HTL = self.ins[0]._source.ins[0]._source
+        
+        if self.HTL.sludgelab.sludge_N_ratio == 0:
+            remove = self.HT_composition['PIPERDIN']
+            for chemical in self.HT_composition.keys():  
+                self.HT_composition[chemical] /= (1-remove)
+            self.HT_composition['PIPERDIN'] = 0
+        
         catalyst_in.imass['HT_catalyst'] = biocrude.F_mass/self.WHSV/self.catalyst_lifetime
         catalyst_in.phase = 's'
         catalyst_out.copy_like(catalyst_in)
@@ -1544,8 +1597,6 @@ class HT(Reactor):
         ht_out.P = biocrude.P
         
         ht_out.T = self.HTrxn_T
-        
-        self.HTL = self.ins[0]._source.ins[0]._source
         
         if self.HTaqueous_C < -0.1*(self.HTL.ins[0].F_mass - self.HTL.ins[0].\
                               imass['H2O'])*self.HTL.sludgelab.sludge_C_ratio:
