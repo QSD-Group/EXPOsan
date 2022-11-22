@@ -41,17 +41,17 @@ from exposan.htl._TEA import *
 load_process_settings()
 cmps = create_components()
 
-fake_sludge = qs.Stream('sludge', H2O=1000000*365/7920, units='kg/hr', T=25+273.15)
+fake_sludge = qs.Stream('sludge', H2O=150000, units='kg/hr', T=25+273.15)
 # set H2O equal to the total sludge input flow
-# assume 99% moisture, 10 metric tons of dw sludge per d
+# assume 99% moisture, 10 metric tons of dw sludge per d: (1000000*365/7920) kg/hr
 
 # =============================================================================
 # pretreatment (Area 000)
 # =============================================================================
 
 SluL = su.SludgeLab('S000', ins=fake_sludge, outs='real_sludge',
-                    sludge_moisture=0.99, sludge_dw_ash=0.266, 
-                    sludge_afdw_protein=0, sludge_afdw_lipid=1, yearly_operation_hour=7920)
+                    sludge_moisture=0.99, sludge_dw_ash=0.2, 
+                    sludge_afdw_protein=0.2, sludge_afdw_lipid=0.2, yearly_operation_hour=7920)
 
 SluT = qsu.SludgeThickening('A000', ins=SluL-0,
                             outs=('supernatant_1','compressed_sludge_1'),
@@ -84,7 +84,7 @@ H1 = qsu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=351+273.15,
 # watts-per-square-meter-per-k-to-btus-th--per-hour-per-square-foot-per-f-
 # conversion.html
 
-HTL = su.HTL('A120', ins=(H1-0), outs=('biochar','HTL_aqueous',
+HTL = su.HTL('A120', ins=H1-0, outs=('biochar','HTL_aqueous',
              'biocrude','offgas_HTL'))
 HTL_hx = HTL.heat_exchanger
 HTL_drum = HTL.kodrum
@@ -110,18 +110,12 @@ M1 = su.HTLmixer('A210', ins=(HTL-1, AcidEx-1), outs=('mixture'))
 StruPre = su.StruvitePrecipitation('A220', ins=(M1-0,'MgCl2','NH4Cl','MgO'),
                                    outs=('struvite','CHG_feed'))
 
-P2 = qsu.Pump('A230', ins=StruPre-1, outs='press_aqueous',
-              P=3089.7*6894.76, init_with='Stream') # Jones 2014: 3089.7 psia
+CHG = su.CHG('A250', ins=(StruPre-1, '7.8% Ru/C'), outs=('CHG_out', '7.8% Ru/C_out'))
+CHG_pump = CHG.pump
+CHG_heating = CHG.heat_ex_heating
+CHG_cooling = CHG.heat_ex_cooling
 
-H2 = qsu.HXutility('A240', ins=P2-0, outs='heated_aqueous',
-                   T=350+273.15, init_with='Stream')
-
-CHG = su.CHG('A250', ins=(H2-0, '7.8% Ru/C'), outs=('CHG_out', '7.8% Ru/C_out'))
-
-H3 = qsu.HXutility('A260', ins=CHG-0, outs='cooled_CHG', T=60+273.15,
-                    init_with='Stream')
-
-V1 = IsenthalpicValve('A270', ins=H3-0, outs='depressed_cooled_CHG', P=50*6894.76)
+V1 = IsenthalpicValve('A270', ins=CHG-0, outs='depressed_cooled_CHG', P=50*6894.76)
 
 F1 = Flash('A280', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
             T=60+273.15, P=50*6894.76)
@@ -262,7 +256,7 @@ WWmixer = su.WWmixer('S560', ins=(SluT-0, SluC-0, MemDis-1, SP2-0),
 HXN = qsu.HeatExchangerNetwork('HXN')
 
 for unit in (SluL, SluT, SluC, P1, H1, HTL, HTL_hx, HTL_drum, H2SO4_Tank, AcidEx,
-             M1, StruPre, P2, H2, CHG, H3, V1, F1, MemDis, SP1,
+             M1, StruPre, CHG, CHG_pump, CHG_heating, CHG_cooling, V1, F1, MemDis, SP1,
              P3, HT, HT_compressor, HT_hx, V2, H4, F2, V3, SP2, H5, D1, D2, D3, P4,
              HC, HC_compressor, HC_hx, H6, V4, F3, D4, GasolineMixer, DieselMixer,
              H7, H8, PC1, PC2, GasolineTank, DieselTank, FuelMixer,
@@ -271,7 +265,7 @@ for unit in (SluL, SluT, SluC, P1, H1, HTL, HTL_hx, HTL_drum, H2SO4_Tank, AcidEx
 # so that qs.main_flowsheet.H1 works as well
 
 sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
-                             M1, StruPre, P2, H2, CHG, H3, V1, F1, MemDis, SP1,
+                             M1, StruPre, CHG, V1, F1, MemDis, SP1,
                              P3, HT, V2, H4, F2, V3, SP2, H5, D1, D2, D3, P4,
                              HC, H6, V4, F3, D4, GasolineMixer, DieselMixer,
                              H7, H8, PC1, PC2, GasolineTank, DieselTank, FuelMixer,

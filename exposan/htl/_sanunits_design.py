@@ -97,7 +97,7 @@ References:
 
 import biosteam as bst
 from qsdsan import SanUnit
-from qsdsan.sanunits import HXutility
+from qsdsan.sanunits import HXutility, Pump
 from biosteam.units import IsothermalCompressor
 from exposan.htl._components_design import create_components
 from biosteam.units.design_tools import PressureVessel
@@ -643,7 +643,7 @@ class HTL(Reactor):
         afdw_carbo_ratio = self.sludgelab.sludge_afdw_carbo
 
         # the following calculations are based on revised MCA model
-        biochar.imass['Biochar'] = 0.377*afdw_carbo_ratio*dewatered_sludge_afdw  
+        biochar.imass['Biochar'] = max(0, 0.377*afdw_carbo_ratio*dewatered_sludge_afdw)
         
         HTLaqueous.imass['HTLaqueous'] = (0.481*afdw_protein_ratio +\
                                           0.154*afdw_lipid_ratio)*\
@@ -839,8 +839,12 @@ class AcidExtraction(Reactor):
         self.HTL = self.ins[0]._source
         
         if self.HTL.biochar_P == 0:
-            residual.copy_like(biochar)
-            biochar.price = 0.2 # $/kg made-up value based on online info, will change later
+            if biochar.F_mass >= 0:
+                residual.copy_like(biochar)
+                biochar.price = 0.2 # $/kg made-up value based on online info, will change later
+            else: pass
+        elif biochar.F_mass <= 0:
+            pass
         else:
             acid.imass['H2SO4'] = biochar.F_mass*self.acid_vol*0.5*98.079/1000
             #0.5 M H2SO4 acid_vol (10 mL/1 g) Biochar
@@ -861,6 +865,7 @@ class AcidExtraction(Reactor):
             residual.phase = 's'
             
             residual.T = extracted.T = biochar.T
+            residual.P = biochar.P
             # H2SO4 reacts with biochar to release heat and temperature will be
             # increased mixture's temperature
             
@@ -873,14 +878,14 @@ class AcidExtraction(Reactor):
         return self.ins[0]._source.biochar_P - self.outs[1].imass['P']
         
     def _design(self):
-        if self.HTL.biochar_P == 0:
+        if self.HTL.biochar_P == 0 or self.ins[0].F_mass <= 0:
             pass
         else:
             self.P = self.ins[1].P
             Reactor._design(self)
         
     def _cost(self):
-        if self.HTL.biochar_P == 0:
+        if self.HTL.biochar_P == 0 or self.ins[0].F_mass <= 0:
             pass
         else:
             Reactor._cost(self)
@@ -918,20 +923,20 @@ class HTLmixer(SanUnit):
         HTLaqueous, extracted = self.ins
         mixture = self.outs[0]
         
-        if self.ins[1].imass['P'] == 0:
-            mixture.copy_like(HTLaqueous)
-        else:
-            mixture.imass['C'] = self.ins[0]._source.HTLaqueous_C
-            mixture.imass['N'] = self.ins[0]._source.HTLaqueous_N
-            mixture.imass['P'] = self.ins[0]._source.HTLaqueous_P +\
-                                 extracted.imass['P']
-            mixture.imass['H2O'] = HTLaqueous.F_mass + extracted.F_mass -\
-                                   mixture.imass['C'] - mixture.imass['N'] -\
-                                   mixture.imass['P']
-            # represented by H2O except C, N, P
+        # if self.ins[1].imass['P'] == 0:
+        #     mixture.copy_like(HTLaqueous)
+        # else:
+        mixture.imass['C'] = self.ins[0]._source.HTLaqueous_C
+        mixture.imass['N'] = self.ins[0]._source.HTLaqueous_N
+        mixture.imass['P'] = self.ins[0]._source.HTLaqueous_P +\
+                             extracted.imass['P']
+        mixture.imass['H2O'] = HTLaqueous.F_mass + extracted.F_mass -\
+                               mixture.imass['C'] - mixture.imass['N'] -\
+                               mixture.imass['P']
+        # represented by H2O except C, N, P
             
-            mixture.T = extracted.T
-            mixture.P = extracted.P
+        mixture.T = HTLaqueous.T
+        mixture.P = HTLaqueous.P
         
     @property
     def pH(self):
@@ -1157,6 +1162,8 @@ class CHG(Reactor, SludgeLab):
         chg_out, catalyst_out
     '''
     
+    auxiliary_unit_names=('pump','heat_ex_heating','heat_ex_cooling')
+    
     _kg_2_lb = 2.20462
     
     _F_BM_default = {**Reactor._F_BM_default,
@@ -1165,6 +1172,12 @@ class CHG(Reactor, SludgeLab):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
+                 
+                 pump_pressure=3089.7*6894.76,
+                 heat_temp=350+273.15,
+                 cool_temp=60+273.15,
+                 
+                 
                  WHSV=3.99, # wt./hr per wt. catalyst Jones
                  catalyst_lifetime=1*yearly_operation_hour, # 1 year Jones
                  catalyst_price=60/0.453592, # $60/lb to $/kg (2011$)
@@ -1185,11 +1198,28 @@ class CHG(Reactor, SludgeLab):
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        
+        self.pump_pressure = pump_pressure
+        self.heat_temp = heat_temp
+        self.cool_temp = cool_temp
+        
         self.WHSV = WHSV
         self.catalyst_lifetime = catalyst_lifetime
         self.catalyst_price = catalyst_price
         self.gas_composition = gas_composition
         self.gas_c_to_total_c = gas_c_to_total_c
+        
+        pump_in = bst.Stream(f'{ID}_pump_in')
+        pump_out = bst.Stream(f'{ID}_pump_out')
+        self.pump = Pump(ID=f'.{ID}_pump', ins=pump_in, outs=pump_out, P=pump_pressure)
+        
+        hx_ht_in = bst.Stream(f'{ID}_hx_ht_in')
+        hx_ht_out = bst.Stream(f'{ID}_hx_ht_out')
+        self.heat_ex_heating = HXutility(ID=f'.{ID}_hx_ht', ins=hx_ht_in, outs=hx_ht_out, T=heat_temp)
+
+        hx_cl_in = bst.Stream(f'{ID}_hx_cl_in')
+        hx_cl_out = bst.Stream(f'{ID}_hx_cl_out')
+        self.heat_ex_cooling = HXutility(ID=f'.{ID}_hx_cl', ins=hx_cl_in, outs=hx_cl_out, T=cool_temp)
         
         self.P = P
         self.tau = tau
@@ -1236,9 +1266,9 @@ class CHG(Reactor, SludgeLab):
             # all C, N, and P are accounted in H2O here, but will be calculated as
             # properties.
                 
-            chg_out.T = chg_in.T
+            chg_out.T = self.cool_temp
             
-            chg_out.P = chg_in.P
+            chg_out.P = self.pump_pressure
         
     @property
     def CHGout_C(self):
@@ -1260,6 +1290,29 @@ class CHG(Reactor, SludgeLab):
             Design = self.design_results
             Design['Treatment capacity'] = self.ins[0].F_mass*self._kg_2_lb
         
+            
+            pump = self.pump
+            pump.ins[0].copy_like(self.ins[0])
+            pump.simulate()
+        
+            hx_ht = self.heat_ex_heating
+            hx_ht_ins0, hx_ht_outs0 = hx_ht.ins[0], hx_ht.outs[0]
+            hx_ht_ins0.copy_like(self.ins[0])
+            hx_ht_outs0.copy_like(hx_ht_ins0)
+            hx_ht_ins0.T = self.ins[0].T
+            hx_ht_outs0.T = hx_ht.T
+            hx_ht_ins0.P = hx_ht_outs0.P = pump.P
+            hx_ht.simulate_as_auxiliary_exchanger(ins=hx_ht.ins, outs=hx_ht.outs)
+            
+            hx_cl = self.heat_ex_cooling
+            hx_cl_ins0, hx_cl_outs0 = hx_cl.ins[0], hx_cl.outs[0]
+            hx_cl_ins0.copy_like(self.outs[0])
+            hx_cl_outs0.copy_like(hx_cl_ins0)
+            hx_cl_ins0.T = hx_ht.T
+            hx_cl_outs0.T = hx_cl.T
+            hx_cl_ins0.P = hx_cl_outs0.P = self.outs[0].P
+            hx_cl.simulate_as_auxiliary_exchanger(ins=hx_cl.ins, outs=hx_cl.outs)
+
             self.P = self.ins[0].P
             Reactor._design(self)
     
@@ -1354,7 +1407,7 @@ class MembraneDistillation(SanUnit):
         ammoniumsulfate, ww, mem_out = self.outs
         
         
-        self.CHG = self.ins[0]._source.ins[0]._source.ins[0]._source.ins[0]._source
+        self.CHG = self.ins[0]._source.ins[0]._source.ins[0]._source
         
         if self.CHG.CHGout_N == 0:
             ww.copy_like(influent)
