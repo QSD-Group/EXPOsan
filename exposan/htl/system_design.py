@@ -51,7 +51,7 @@ fake_sludge = qs.Stream('sludge', H2O=1000000*365/7920, units='kg/hr', T=25+273.
 
 SluL = su.SludgeLab('S000', ins=fake_sludge, outs='real_sludge',
                     sludge_moisture=0.99, sludge_dw_ash=0.266, 
-                    sludge_afdw_protein=0, sludge_afdw_lipid=0, yearly_operation_hour=7920)
+                    sludge_afdw_protein=0, sludge_afdw_lipid=1, yearly_operation_hour=7920)
 
 SluT = qsu.SludgeThickening('A000', ins=SluL-0,
                             outs=('supernatant_1','compressed_sludge_1'),

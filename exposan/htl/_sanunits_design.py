@@ -362,13 +362,16 @@ class SludgeLab(SanUnit):
         fake_sludge = self.ins[0]
         real_sludge = self.outs[0]
         
+        if self.sludge_afdw_protein + self.sludge_afdw_lipid > 1:
+            raise Exception ('protein and lipid exceed 1')
+        
         real_sludge.imass['H2O'] = fake_sludge.F_mass * self.sludge_moisture
-        sludge_dw = fake_sludge.F_mass*(1 - self.sludge_moisture)
-        sludge_afdw = sludge_dw*(1 - self.sludge_dw_ash)
+        self.sludge_dw = fake_sludge.F_mass*(1 - self.sludge_moisture)
+        sludge_afdw = self.sludge_dw*(1 - self.sludge_dw_ash)
         real_sludge.imass['Sludge_protein'] = sludge_afdw*self.sludge_afdw_protein
         real_sludge.imass['Sludge_lipid'] = sludge_afdw*self.sludge_afdw_lipid
         real_sludge.imass['Sludge_carbo'] = sludge_afdw*self.sludge_afdw_carbo
-        real_sludge.imass['Sludge_ash'] = sludge_dw*self.sludge_dw_ash
+        real_sludge.imass['Sludge_ash'] = self.sludge_dw*self.sludge_dw_ash
     
     @property
     def sludge_dw_protein(self):
@@ -403,7 +406,27 @@ class SludgeLab(SanUnit):
     def sludge_O_ratio(self):
        return 1 - self.sludge_C_ratio - self.sludge_H_ratio -\
            self.sludge_N_ratio - self.sludge_dw_ash
+
+    @property
+    def sludge_C(self):
+       return self.sludge_C_ratio*self.sludge_dw
+           
+    @property
+    def sludge_H(self):
+       return self.sludge_H_ratio*self.sludge_dw
+   
+    @property
+    def sludge_N(self):
+       return self.sludge_N_ratio*self.sludge_dw
+   
+    @property
+    def sludge_P(self):
+       return self.sludge_P_ratio*self.sludge_dw
     
+    @property
+    def sludge_O(self):
+       return self.sludge_O_ratio*self.sludge_dw
+           
     @property
     def AOSc(self):
        return (3*self.sludge_N_ratio/14.0067 + 2*self.sludge_O_ratio/15.999 -\
@@ -658,8 +681,6 @@ class HTL(Reactor):
         
         for stream in self.outs: stream.T = self.heat_exchanger.T
 
-        self.HTLaqueous_C # check carbon MB
-
     @property
     def biocrude_C_ratio(self):
         return (self.sludgelab.AOSc*self.biocrude_C_slope + self.biocrude_C_intercept)/100
@@ -676,8 +697,7 @@ class HTL(Reactor):
     
     @property
     def biocrude_C(self):
-        return min(self.outs[2].F_mass*self.biocrude_C_ratio, (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
-               self.sludgelab.sludge_C_ratio)
+        return min(self.outs[2].F_mass*self.biocrude_C_ratio, self.sludgelab.sludge_C)
 
     @property
     def biocrude_H(self):
@@ -685,8 +705,7 @@ class HTL(Reactor):
 
     @property
     def biocrude_N(self):
-        return min(self.outs[2].F_mass*self.biocrude_N_ratio, (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
-               self.sludgelab.sludge_N_ratio)
+        return min(self.outs[2].F_mass*self.biocrude_N_ratio, self.sludgelab.sludge_N)
     
     @property
     def biocrude_HHV(self):
@@ -707,21 +726,18 @@ class HTL(Reactor):
 
     @property
     def biochar_C(self):
-        return min(self.outs[0].F_mass*self.biochar_C_ratio, (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
-               self.sludgelab.sludge_C_ratio - self.biocrude_C)
+        return min(self.outs[0].F_mass*self.biochar_C_ratio, self.sludgelab.sludge_C - self.biocrude_C)
 
     @property
     def biochar_P(self):
-        return (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
-                self.sludgelab.sludge_P_ratio*self.biochar_P_recovery_ratio
+        return self.sludgelab.sludge_P*self.biochar_P_recovery_ratio
 
     @property
     def offgas_C(self):
         carbon = 0
         for name in self.gas_composition.keys():
             carbon += self.outs[3].imass[name]*cmps[name].i_C
-        return min(carbon, (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
-               self.sludgelab.sludge_C_ratio - self.biocrude_C - self.biochar_C)
+        return min(carbon, self.sludgelab.sludge_C - self.biocrude_C - self.biochar_C)
                
     # C and N in aqueous phase are calculated based on mass balance closure
     # in the case that HTLaqueous_C is less than 0, which
@@ -730,25 +746,15 @@ class HTL(Reactor):
     
     @property
     def HTLaqueous_C(self):
-        if ((self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
-             self.sludgelab.sludge_C_ratio - self.biochar_C -\
-             self.biocrude_C - self.offgas_C) < -0.1*(self.ins[0].F_mass -\
-                                                self.ins[0].imass['H2O'])*\
-                                                self.sludgelab.sludge_C_ratio:
-            raise Exception('carbon mass balance is out of +/- 10%')
-        else: return max((self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
-                          self.sludgelab.sludge_C_ratio - self.biochar_C -\
-                          self.biocrude_C - self.offgas_C, 0)
+        return self.sludgelab.sludge_C - self.biocrude_C - self.biochar_C - self.offgas_C
 
     @property
     def HTLaqueous_N(self):
-        return (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
-                self.sludgelab.sludge_N_ratio - self.biocrude_N
+        return self.sludgelab.sludge_N - self.biocrude_N
         
     @property
     def HTLaqueous_P(self):
-        return (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
-                self.sludgelab.sludge_P_ratio*(1 - self.biochar_P_recovery_ratio)
+        return self.sludgelab.sludge_P*(1 - self.biochar_P_recovery_ratio)
 
     def _design(self):
         
@@ -830,9 +836,9 @@ class AcidExtraction(Reactor):
         biochar, acid = self.ins
         residual, extracted = self.outs
         
-        self.sludgelab = self.ins[0]._source.sludgelab
+        self.HTL = self.ins[0]._source
         
-        if self.sludgelab.sludge_P_ratio == 0:
+        if self.HTL.biochar_P == 0:
             residual.copy_like(biochar)
             biochar.price = 0.2 # $/kg made-up value based on online info, will change later
         else:
@@ -867,14 +873,14 @@ class AcidExtraction(Reactor):
         return self.ins[0]._source.biochar_P - self.outs[1].imass['P']
         
     def _design(self):
-        if self.sludgelab.sludge_P_ratio == 0:
+        if self.HTL.biochar_P == 0:
             pass
         else:
             self.P = self.ins[1].P
             Reactor._design(self)
         
     def _cost(self):
-        if self.sludgelab.sludge_P_ratio == 0:
+        if self.HTL.biochar_P == 0:
             pass
         else:
             Reactor._cost(self)
@@ -1055,10 +1061,12 @@ class StruvitePrecipitation(Reactor):
         mixture, supply_MgCl2, supply_NH4Cl, base = self.ins
         struvite, effluent = self.outs
         
-        if self.ins[0]._source.ins[1].imass['P'] == 0:
+        self.HTLmixer = self.ins[0]._source
+        
+        if self.HTLmixer.ins[1].imass['P'] == 0:
             effluent.copy_like(mixture)
         else:
-            old_pH = self.ins[0]._source.pH
+            old_pH = self.HTLmixer.pH
             neutral_OH_mol = 10**(-old_pH)*self.ins[0].F_mass # ignore solid volume
             to_target_pH = 10**(self.target_pH - 14)*self.ins[0].F_mass # ignore solid volume
             total_OH = neutral_OH_mol + to_target_pH # unit: mol/h
@@ -1108,14 +1116,14 @@ class StruvitePrecipitation(Reactor):
         return self.struvite_P*14.0067/30.973762
 
     def _design(self):
-        if self.ins[0]._source.ins[1].imass['P'] == 0:
+        if self.HTLmixer.ins[1].imass['P'] == 0:
             pass
         else:
             self.P = self.ins[0].P
             Reactor._design(self)
         
     def _cost(self):
-        if self.ins[0]._source.ins[1].imass['P'] == 0:
+        if self.HTLmixer.ins[1].imass['P'] == 0:
             pass
         else:
             Reactor._cost(self)
@@ -1205,29 +1213,32 @@ class CHG(Reactor, SludgeLab):
         chg_in, catalyst_in = self.ins
         chg_out, catalyst_out = self.outs
         
-        catalyst_in.imass['CHG_catalyst'] = chg_in.F_mass/self.WHSV/self.catalyst_lifetime
-        catalyst_in.phase = 's'
-        catalyst_out.copy_like(catalyst_in)
-        # catalysts amount is quite low compared to the main stream, therefore do not consider
-        # heating/cooling of catalysts
-        catalyst_in.price = self.catalyst_price
-        
-        gas_C_ratio = 0
-        for name, ratio in self.gas_composition.items():
-            gas_C_ratio += ratio*cmps[name].i_C
-        
-        gas_mass = chg_in.imass['C']*self.gas_c_to_total_c/gas_C_ratio
-        
-        for name,ratio in self.gas_composition.items():
-            chg_out.imass[name] = gas_mass*ratio
+        if self.ins[0].imass['C'] == 0:
+            chg_out.copy_like(chg_in)
+        else:
+            catalyst_in.imass['CHG_catalyst'] = chg_in.F_mass/self.WHSV/self.catalyst_lifetime
+            catalyst_in.phase = 's'
+            catalyst_out.copy_like(catalyst_in)
+            # catalysts amount is quite low compared to the main stream, therefore do not consider
+            # heating/cooling of catalysts
+            catalyst_in.price = self.catalyst_price
             
-        chg_out.imass['H2O'] = chg_in.F_mass - gas_mass
-        # all C, N, and P are accounted in H2O here, but will be calculated as
-        # properties.
+            gas_C_ratio = 0
+            for name, ratio in self.gas_composition.items():
+                gas_C_ratio += ratio*cmps[name].i_C
             
-        chg_out.T = chg_in.T
-        
-        chg_out.P = chg_in.P
+            gas_mass = chg_in.imass['C']*self.gas_c_to_total_c/gas_C_ratio
+            
+            for name,ratio in self.gas_composition.items():
+                chg_out.imass[name] = gas_mass*ratio
+                
+            chg_out.imass['H2O'] = chg_in.F_mass - gas_mass
+            # all C, N, and P are accounted in H2O here, but will be calculated as
+            # properties.
+                
+            chg_out.T = chg_in.T
+            
+            chg_out.P = chg_in.P
         
     @property
     def CHGout_C(self):
@@ -1243,21 +1254,26 @@ class CHG(Reactor, SludgeLab):
         return self.ins[0].imass['P']
         
     def _design(self):
+        if self.ins[0].imass['C'] == 0:
+            pass
+        else:
+            Design = self.design_results
+            Design['Treatment capacity'] = self.ins[0].F_mass*self._kg_2_lb
         
-        Design = self.design_results
-        Design['Treatment capacity'] = self.ins[0].F_mass*self._kg_2_lb
-        
-        self.P = self.ins[0].P
-        Reactor._design(self)
+            self.P = self.ins[0].P
+            Reactor._design(self)
     
     def _cost(self):
-        Reactor._cost(self)
-        purchase_costs = self.baseline_purchase_costs
-        current_cost = 0 # cost w/o sulfur guard
-        for item in purchase_costs.keys():
-            current_cost += purchase_costs[item]
-        purchase_costs['Sulfur guard'] = current_cost*0.05
-        self._decorated_cost()
+        if self.ins[0].imass['C'] == 0:
+            pass
+        else:
+            Reactor._cost(self)
+            purchase_costs = self.baseline_purchase_costs
+            current_cost = 0 # cost w/o sulfur guard
+            for item in purchase_costs.keys():
+                current_cost += purchase_costs[item]
+            purchase_costs['Sulfur guard'] = current_cost*0.05
+            self._decorated_cost()
     
 # =============================================================================
 # Membrane Distillation
@@ -1340,7 +1356,7 @@ class MembraneDistillation(SanUnit):
         
         self.CHG = self.ins[0]._source.ins[0]._source.ins[0]._source.ins[0]._source
         
-        if self.CHG.ins[0].imass['N'] == 0:
+        if self.CHG.CHGout_N == 0:
             ww.copy_like(influent)
         else:
             NaOH_conc = 10**(self.target_pH - 14) - 10**(self.inffluent_pH - 14)
@@ -1348,15 +1364,13 @@ class MembraneDistillation(SanUnit):
             base.imass['NaOH'] = NaOH_mol*39.997/1000
             base.price = 0.2384/0.453592 # Davis 2016$ $/lb to $/kg
             
-            acid.imass['H2SO4'] = (self.ins[0]._source.ins[0]._source.ins[0].\
-                       _source.ins[0]._source.CHGout_N)/14.0067/self.N_S_ratio*98.079
+            acid.imass['H2SO4'] = self.CHG.CHGout_N/14.0067/self.N_S_ratio*98.079
             acid.imass['H2O'] = acid.imass['H2SO4']*1000/98.079/0.5*1.05 -\
                                 acid.imass['H2SO4']
             
             pKa = 9.26 # ammonia pKa
             ammonia_to_ammonium = 10**(-pKa)/10**(-self.target_pH)
-            ammonia = (self.ins[0]._source.ins[0]._source.ins[0].\
-                       _source.ins[0]._source.CHGout_N)*ammonia_to_ammonium/(1 +\
+            ammonia = self.CHG.CHGout_N*ammonia_to_ammonium/(1 +\
                        ammonia_to_ammonium)*17.031/14.0067
             others = influent.F_mass - ammonia
             
@@ -1410,8 +1424,6 @@ class MembraneDistillation(SanUnit):
                                             
             ww.copy_like(influent) # ww has the same T and P as influent
             
-            self.CHG = self.ins[0]._source.ins[0]._source.ins[0]._source.ins[0]._source
-            
             ww.imass['N'] = self.CHG.CHGout_N*(1 - ammonia_to_ammonium/(1 +\
                              ammonia_to_ammonium)*ammonia_transfer_ratio)
                                                               
@@ -1437,7 +1449,7 @@ class MembraneDistillation(SanUnit):
         return 1 - self.outs[1].imass['N']/self.CHG.CHGout_N
         
     def _design(self):
-        if self.CHG.ins[0].imass['N'] == 0:
+        if self.CHG.CHGout_N == 0:
             pass
         else:
             Design = self.design_results
@@ -1445,7 +1457,7 @@ class MembraneDistillation(SanUnit):
             Design['Total volume'] = Design['Area']/self.m2_2_m3
     
     def _cost(self):
-        if self.CHG.ins[0].imass['N'] == 0:
+        if self.CHG.CHGout_N == 0:
             pass
         else:
             Design = self.design_results
@@ -1618,15 +1630,13 @@ class HT(Reactor):
         
         ht_out.T = self.HTrxn_T
         
-        if self.HTaqueous_C < -0.1*(self.HTL.ins[0].F_mass - self.HTL.ins[0].\
-                              imass['H2O'])*self.HTL.sludgelab.sludge_C_ratio:
-            raise Exception('carbon mass balance is out of +/- 10%')
+        if self.HTaqueous_C < -0.1*self.HTL.sludgelab.sludge_C:
+            raise Exception('carbon mass balance is out of +/- 10% for the whole system')
         # allow +/- 10% out of mass balance
         # should be no C in the aqueous phase, the calculation here is just for MB
         
-        if self.HTaqueous_N < -0.1*(self.HTL.ins[0].F_mass - self.HTL.ins[0].\
-                              imass['H2O'])*self.HTL.sludgelab.sludge_N_ratio:
-            raise Exception('nitrogen mass balance is out of +/- 10%')
+        if self.HTaqueous_N < -0.1*self.HTL.sludgelab.sludge_N:
+            raise Exception('nitrogen mass balance is out of +/- 10% for the whole system')
         # allow +/- 10% out of mass balance
 
         # possibility exist that more carbon is in biooil and gas than in
@@ -1832,7 +1842,7 @@ class HC(Reactor):
         C_out = self.hydrocarbon_C
         
         if C_out < 0.95*C_in or C_out > 1.05*C_out :
-            raise Exception('carbon mass balance is out of +/- 5%')
+            raise Exception('carbon mass balance is out of +/- 5% for HC')
         # make sure that carbon mass balance is within +/- 5%. Otherwise, an
         # exception will be raised.
         
