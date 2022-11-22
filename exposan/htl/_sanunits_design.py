@@ -332,8 +332,8 @@ class SludgeLab(SanUnit):
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', 
-                 sludge_moisture=0.99, sludge_dw_protein=0.341,
-                 sludge_dw_lipid=0.226, sludge_dw_carbo=0.167,
+                 sludge_moisture=0.99, sludge_dw_ash=0.266, 
+                 sludge_afdw_protein=0.465, sludge_afdw_lipid=0.308,
                  lipid_2_C=0.750, protein_2_C=0.545,
                  carbo_2_C=0.400, C_2_H=0.143,
                  protein_2_N=0.159, N_2_P=0.200,
@@ -342,11 +342,10 @@ class SludgeLab(SanUnit):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.sludge_moisture = sludge_moisture
-        self.sludge_dw_protein = sludge_dw_protein
-        self.sludge_dw_carbo = sludge_dw_carbo
-        self.sludge_dw_lipid = sludge_dw_lipid
-        self.sludge_dw_ash = 1 - sludge_dw_protein - sludge_dw_carbo -\
-                             sludge_dw_lipid
+        self.sludge_dw_ash = sludge_dw_ash
+        self.sludge_afdw_protein = sludge_afdw_protein
+        self.sludge_afdw_lipid = sludge_afdw_lipid
+        self.sludge_afdw_carbo = 1 - sludge_afdw_protein - sludge_afdw_lipid
         self.lipid_2_C = lipid_2_C
         self.protein_2_C = protein_2_C
         self.carbo_2_C = carbo_2_C
@@ -365,17 +364,29 @@ class SludgeLab(SanUnit):
         
         real_sludge.imass['H2O'] = fake_sludge.F_mass * self.sludge_moisture
         sludge_dw = fake_sludge.F_mass*(1 - self.sludge_moisture)
-        real_sludge.imass['Sludge_protein'] = sludge_dw*self.sludge_dw_protein
-        real_sludge.imass['Sludge_carbo'] = sludge_dw*self.sludge_dw_carbo
-        real_sludge.imass['Sludge_lipid'] = sludge_dw*self.sludge_dw_lipid
+        sludge_afdw = sludge_dw*(1 - self.sludge_dw_ash)
+        real_sludge.imass['Sludge_protein'] = sludge_afdw*self.sludge_afdw_protein
+        real_sludge.imass['Sludge_lipid'] = sludge_afdw*self.sludge_afdw_lipid
+        real_sludge.imass['Sludge_carbo'] = sludge_afdw*self.sludge_afdw_carbo
         real_sludge.imass['Sludge_ash'] = sludge_dw*self.sludge_dw_ash
-          
-    # all sludge elemental analysis are based on empirical equation
+    
+    @property
+    def sludge_dw_protein(self):
+        return self.sludge_afdw_protein*(1-self.sludge_dw_ash)
+    
+    @property
+    def sludge_dw_lipid(self):
+        return self.sludge_afdw_lipid*(1-self.sludge_dw_ash)
+    
+    @property
+    def sludge_dw_carbo(self):
+        return self.sludge_afdw_carbo*(1-self.sludge_dw_ash)
+    
     @property
     def sludge_C_ratio(self):
-       return self.sludge_dw_carbo*self.carbo_2_C + self.sludge_dw_lipid*self.lipid_2_C +\
-           self.sludge_dw_protein*self.protein_2_C
-    
+       return self.sludge_dw_protein*self.protein_2_C + self.sludge_dw_lipid*self.lipid_2_C +\
+           self.sludge_dw_carbo*self.carbo_2_C
+           
     @property
     def sludge_H_ratio(self):
        return self.sludge_C_ratio*self.C_2_H
@@ -596,35 +607,37 @@ class HTL(Reactor):
         dewatered_sludge = self.ins[0]
         biochar, HTLaqueous, biocrude, offgas = self.outs
         
+        self.sludgelab = self.ins[0]._source.ins[0]._source.ins[0].\
+                         _source.ins[0]._source.ins[0]._source
+        
         dewatered_sludge_afdw = dewatered_sludge.imass['Sludge_lipid'] +\
                                 dewatered_sludge.imass['Sludge_protein'] +\
                                 dewatered_sludge.imass['Sludge_carbo']
         # just use afdw in revised MCA model, other places use dw
         
-        lipid_ratio = dewatered_sludge.imass['Sludge_lipid']/\
-                      dewatered_sludge_afdw
-        protein_ratio = dewatered_sludge.imass['Sludge_protein']/\
-                        dewatered_sludge_afdw
-        carbo_ratio = dewatered_sludge.imass['Sludge_carbo']/\
-                      dewatered_sludge_afdw
+        afdw_protein_ratio = self.sludgelab.sludge_afdw_protein
+        afdw_lipid_ratio = self.sludgelab.sludge_afdw_lipid
+        afdw_carbo_ratio = self.sludgelab.sludge_afdw_carbo
 
         # the following calculations are based on revised MCA model
-        biochar.imass['Biochar'] = 0.377*carbo_ratio*dewatered_sludge_afdw  
+        biochar.imass['Biochar'] = 0.377*afdw_carbo_ratio*dewatered_sludge_afdw  
         
-        HTLaqueous.imass['HTLaqueous'] = (0.154*lipid_ratio +\
-                                          0.481*protein_ratio)*\
+        HTLaqueous.imass['HTLaqueous'] = (0.481*afdw_protein_ratio +\
+                                          0.154*afdw_lipid_ratio)*\
                                           dewatered_sludge_afdw
         # HTLaqueous is TDS in aqueous phase
+        
+        # 0.377, 0.481, and 0.154 don't have uncertainties becasue they are calculated values
          
-        gas_mass = (self.protein_2_gas*protein_ratio + self.carbo_2_gas*carbo_ratio)*\
+        gas_mass = (self.protein_2_gas*afdw_protein_ratio + self.carbo_2_gas*afdw_carbo_ratio)*\
                        dewatered_sludge_afdw
                        
         for name, ratio in self.gas_composition.items():
             offgas.imass[name] = gas_mass*ratio
             
-        biocrude.imass['Biocrude'] = (self.lipid_2_biocrude*lipid_ratio +\
-                                      self.protein_2_biocrude*protein_ratio\
-                                      + self.carbo_2_biocrude*carbo_ratio)*\
+        biocrude.imass['Biocrude'] = (self.protein_2_biocrude*afdw_protein_ratio +\
+                                      self.lipid_2_biocrude*afdw_lipid_ratio +\
+                                      self.carbo_2_biocrude*afdw_carbo_ratio)*\
                                       dewatered_sludge_afdw
         biocrude.imass['H2O'] = biocrude.imass['Biocrude']/(1 -\
                                 self.biocrude_moisture_content) -\
@@ -644,25 +657,8 @@ class HTL(Reactor):
         offgas.P = self.offgas_pre
         
         for stream in self.outs: stream.T = self.heat_exchanger.T
-        
-        self.sludgelab = self.ins[0]._source.ins[0]._source.ins[0].\
-                         _source.ins[0]._source.ins[0]._source
 
         self.HTLaqueous_C # check carbon MB
-
-    @property
-    def biochar_C_ratio(self):
-        return min(self.biochar_C_slope*self.sludgelab.sludge_dw_carbo, 0.65)
-    # revised MCA model
-
-    @property
-    def biochar_C(self):
-        return self.outs[0].F_mass*self.biochar_C_ratio
-
-    @property
-    def biochar_P(self):
-        return (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
-                self.sludgelab.sludge_P_ratio*self.biochar_P_recovery_ratio
 
     @property
     def biocrude_C_ratio(self):
@@ -680,7 +676,8 @@ class HTL(Reactor):
     
     @property
     def biocrude_C(self):
-        return self.outs[2].F_mass*self.biocrude_C_ratio
+        return min(self.outs[2].F_mass*self.biocrude_C_ratio, (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
+               self.sludgelab.sludge_C_ratio)
 
     @property
     def biocrude_H(self):
@@ -688,7 +685,8 @@ class HTL(Reactor):
 
     @property
     def biocrude_N(self):
-        return self.outs[2].F_mass*self.biocrude_N_ratio
+        return min(self.outs[2].F_mass*self.biocrude_N_ratio, (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
+               self.sludgelab.sludge_N_ratio)
     
     @property
     def biocrude_HHV(self):
@@ -701,13 +699,29 @@ class HTL(Reactor):
                (self.sludgelab.outs[0].F_mass -\
                self.sludgelab.outs[0].imass['H2O'])/self.sludgelab.sludge_HHV
         # Li 2017
+        
+    @property
+    def biochar_C_ratio(self):
+        return min(self.biochar_C_slope*self.sludgelab.sludge_dw_carbo, 0.65)
+    # revised MCA model
+
+    @property
+    def biochar_C(self):
+        return min(self.outs[0].F_mass*self.biochar_C_ratio, (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
+               self.sludgelab.sludge_C_ratio - self.biocrude_C)
+
+    @property
+    def biochar_P(self):
+        return (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
+                self.sludgelab.sludge_P_ratio*self.biochar_P_recovery_ratio
 
     @property
     def offgas_C(self):
         carbon = 0
         for name in self.gas_composition.keys():
             carbon += self.outs[3].imass[name]*cmps[name].i_C
-        return carbon   
+        return min(carbon, (self.ins[0].F_mass - self.ins[0].imass['H2O'])*\
+               self.sludgelab.sludge_C_ratio - self.biocrude_C - self.biochar_C)
                
     # C and N in aqueous phase are calculated based on mass balance closure
     # in the case that HTLaqueous_C is less than 0, which
@@ -1294,7 +1308,8 @@ class MembraneDistillation(SanUnit):
                  # Henry's%20Law%20constant%20for,m%2Fmole(2). (accessed 11-11-2022)
                  Ka=1.75*10**(-5), # overall mass transfer coefficient 1.2~2.3*10^-5 m/s Ding
                  capacity=6.01, # kg/m2/h, Al-Obaidani
-                 # permeate flux, similar values can be found in many other papers ([], [] ,[] ,[] ,[] ,[] in Kogler Stanford)
+                 # permeate flux, similar values can be found in many other papers ([176], [222] ,[223] in Kogler Stanford)
+                 # [177], [223] in Kogler Stanford show high nitrogen recovery ratio (>85% under optimal conditions)
                  membrane_price=90,
                  # Al-Obaidani: $90/m2, though this is a 2008 paper, the price stills applys
                  # based on online price, $90/m2 is conservative
@@ -1484,28 +1499,33 @@ class HT(Reactor):
                  # spreadsheet HT calculation
                  HTin_T=174+273.15,
                  HTrxn_T=402+273.15, # Jones 2014
-                 HT_composition={'CH4':0.0228, 'C2H6':0.0292,
-                                 'C3H8':0.0165, 'C4H10':0.0087,
-                                 'TWOMBUTAN':0.0041, 'NPENTAN':0.0068,
-                                 'TWOMPENTA':0.0041, 'HEXANE':0.0041,
-                                 'TWOMHEXAN':0.0041, 'HEPTANE':0.0041,
-                                 'CC6METH':0.0102, 'PIPERDIN':0.0041,
-                                 'TOLUENE':0.0102, 'THREEMHEPTA':0.0102,
-                                 'OCTANE':0.0102, 'ETHCYC6':0.0041,
-                                 'ETHYLBEN':0.0204, 'OXYLENE':0.0102,
-                                 'C9H20':0.0041, 'PROCYC6':0.0041,
-                                 'C3BENZ':0.0102, 'FOURMONAN':0,
-                                 'C10H22':0.0204, 'C4BENZ':0.0122,
-                                 'C11H24':0.0204, 'C10H12':0.0204,
-                                 'C12H26':0.0204, 'OTTFNA':0.0102,
-                                 'C6BENZ':0.0204, 'OTTFSN':0.0204,
-                                 'C7BENZ':0.0204, 'C8BENZ':0.0204,
-                                 'C10H16O4':0.0184, 'C15H32':0.0612,
-                                 'C16H34':0.1836, 'C17H36':0.0816, 
-                                 'C18H38':0.0408, 'C19H40':0.0408,
-                                 'C20H42':0.1020, 'C21H44':0.0408,
-                                 'TRICOSANE':0.0408, 'C24H38O4':0.0082,
-                                 'C26H42O4':0.0102, 'C30H62':0.0020},
+                 HT_composition={'CH4':0.02280, 'C2H6':0.02923,
+                                 'C3H8':0.01650, 'C4H10':0.00870,
+                                 'TWOMBUTAN':0.00408, 'NPENTAN':0.00678,
+                                 'TWOMPENTA':0.00408, 'HEXANE':0.00401,
+                                 'TWOMHEXAN':0.00408, 'HEPTANE':0.00401,
+                                 'CC6METH':0.01020, 'PIPERDIN':0.00408,
+                                 'TOLUENE':0.01013, 'THREEMHEPTA':0.01020,
+                                 'OCTANE':0.01013, 'ETHCYC6':0.00408,
+                                 'ETHYLBEN':0.02040, 'OXYLENE':0.01020,
+                                 'C9H20':0.00408, 'PROCYC6':0.00408,
+                                 'C3BENZ':0.01020, 'FOURMONAN':0,
+                                 'C10H22':0.00240, 'C4BENZ':0.01223,
+                                 # C10H22 was originally 0.00203, but it is not
+                                 # good for distillation column, the excess amount
+                                 # is substracted from HEXANE, HEPTANE, TOLUENE,
+                                 # OCTANE, and C9H20, which were originally 0.00408,
+                                 # 0.00408, 0.01020, 0.01020, and 0.00408
+                                 'C11H24':0.02040, 'C10H12':0.02040,
+                                 'C12H26':0.02040, 'OTTFNA':0.01020,
+                                 'C6BENZ':0.02040, 'OTTFSN':0.02040,
+                                 'C7BENZ':0.02040, 'C8BENZ':0.02040,
+                                 'C10H16O4':0.01837, 'C15H32':0.06120,
+                                 'C16H34':0.18360, 'C17H36':0.08160, 
+                                 'C18H38':0.04080, 'C19H40':0.04080,
+                                 'C20H42':0.10200, 'C21H44':0.04080,
+                                 'TRICOSANE':0.04080, 'C24H38O4':0.00817,
+                                 'C26H42O4':0.01020, 'C30H62':0.00203},
                  # Jones et al., 2014
                  # spreadsheet HT calculation
                  # will not be a variable in uncertainty/sensitivity analysis
@@ -1719,15 +1739,15 @@ class HC(Reactor):
                  # spreadsheet HC calculation
                  HCin_T=394+273.15,
                  HCrxn_T=451+273.15,
-                 HC_composition={'CO2':0.0388, 'CH4':0.0063,
-                                 'CYCHEX':0.0389, 'HEXANE':0.0116,
-                                 'HEPTANE':0.1202, 'OCTANE':0.0851,
-                                 'C9H20':0.0952, 'C10H22':0.1231,
-                                 'C11H24':0.1764, 'C12H26':0.1382,
-                                 'C13H28':0.0974, 'C14H30':0.0486,
-                                 'C15H32':0.0340, 'C16H34':0.0201,
-                                 'C17H36':0.0045, 'C18H38':0.0010,
-                                 'C19H40':0.0052, 'C20H42':0.0003},
+                 HC_composition={'CO2':0.03880, 'CH4':0.00630,
+                                 'CYCHEX':0.03714, 'HEXANE':0.01111,
+                                 'HEPTANE':0.11474, 'OCTANE':0.08125,
+                                 'C9H20':0.09086, 'C10H22':0.11756,
+                                 'C11H24':0.16846, 'C12H26':0.13198,
+                                 'C13H28':0.09302, 'C14H30':0.04643,
+                                 'C15H32':0.03250, 'C16H34':0.01923,
+                                 'C17H36':0.00431, 'C18H38':0.00099,
+                                 'C19H40':0.00497, 'C20H42':0.00033},
                  #combine C20H42 and PHYTANE as C20H42
                  # will not be a variable in uncertainty/sensitivity analysis
                  

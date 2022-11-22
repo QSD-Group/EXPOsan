@@ -43,16 +43,15 @@ cmps = create_components()
 
 fake_sludge = qs.Stream('sludge', H2O=1000000*365/7920, units='kg/hr', T=25+273.15)
 # set H2O equal to the total sludge input flow
-# assume 99% moisture, 50 metric tons of dw sludge per h
-# $0.003/kg is an estimated value for 1% dw algae from Jones
+# assume 99% moisture, 10 metric tons of dw sludge per d
 
 # =============================================================================
 # pretreatment (Area 000)
 # =============================================================================
 
 SluL = su.SludgeLab('S000', ins=fake_sludge, outs='real_sludge',
-                    sludge_moisture=0.99, sludge_dw_protein=0.341,
-                    sludge_dw_lipid=0.226, sludge_dw_carbo=0.167, yearly_operation_hour=7920)
+                    sludge_moisture=0.99, sludge_dw_ash=0.266, 
+                    sludge_afdw_protein=0, sludge_afdw_lipid=0, yearly_operation_hour=7920)
 
 SluT = qsu.SludgeThickening('A000', ins=SluL-0,
                             outs=('supernatant_1','compressed_sludge_1'),
@@ -167,17 +166,17 @@ SP2 = qsu.Splitter('S310', ins=V3-0, outs=('HT_ww','HT_oil'),
 H5 = qsu.HXutility('A360', ins=SP2-1, outs='heated_oil', T=104+273.15)
 # temperature: Jones stream #334 (we remove the first distillation column)
 
-C1 = BinaryDistillation('A370', ins=H5-0,
+D1 = BinaryDistillation('A370', ins=H5-0,
                         outs=('HT_light','HT_heavy'),
                         LHK=('C4H10','TWOMBUTAN'), P=50*6894.76, # outflow P
                         y_top=188/253, x_bot=53/162, k=2, is_divided=True)
 
-C2 = BinaryDistillation('A380', ins=C1-1,
+D2 = BinaryDistillation('A380', ins=D1-1,
                         outs=('HT_Gasoline','HT_other_oil'),
                         LHK=('C10H22','C4BENZ'), P=25*6894.76, # outflow P
                         y_top=116/122, x_bot=114/732, k=2, is_divided=True)
 
-C3 = BinaryDistillation('A390', ins=C2-1,
+D3 = BinaryDistillation('A390', ins=D2-1,
                         outs=('HT_Diesel','HT_heavy_oil'),
                         LHK=('C19H40','C21H44'),P=18.7*6894.76, # outflow P
                         y_top=2421/2448, x_bot=158/2448, k=2, is_divided=True)
@@ -186,7 +185,7 @@ C3 = BinaryDistillation('A390', ins=C2-1,
 # HC (Area 400)
 # =============================================================================
 
-P4 = qsu.Pump('A400', ins=C3-1, outs='press_heavy_oil', P=1034.7*6894.76,
+P4 = qsu.Pump('A400', ins=D3-1, outs='press_heavy_oil', P=1034.7*6894.76,
               init_with='Stream')
 # Jones 2014: 1034.7 psia
 
@@ -207,7 +206,7 @@ V4 = IsenthalpicValve('A430', ins=H6-0, outs='cooled_depressed_HC', P=30*6894.76
 F3 = Flash('A440', ins=V4-0, outs=('HC_fuel_gas','HC_aqueous'), T=60.2+273,
             P=30*6894.76) # outflow P
 
-C4 = BinaryDistillation('A450', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
+D4 = BinaryDistillation('A450', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
                         LHK=('C9H20','C10H22'), P=20*6894.76, # outflow P
                         y_top=360/546, x_bot=7/708, k=2, is_divided=True)
 
@@ -215,10 +214,10 @@ C4 = BinaryDistillation('A450', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
 # CHP and storage (Area 500)
 # =============================================================================
 
-GasolineMixer = qsu.Mixer('S500', ins=(C2-0, C4-0), outs='mixed_gasoline',
+GasolineMixer = qsu.Mixer('S500', ins=(D2-0, D4-0), outs='mixed_gasoline',
                           init_with='Stream')
 
-DieselMixer = qsu.Mixer('S510', ins=(C3-0, C4-1), outs='mixed_diesel',
+DieselMixer = qsu.Mixer('S510', ins=(D3-0, D4-1), outs='mixed_diesel',
                         init_with='Stream')
 
 H7 = qsu.HXutility('A500', ins=GasolineMixer-0, outs='cooled_gasoline',
@@ -243,7 +242,7 @@ FuelMixer = su.FuelMixer('S540', ins=(GasolineTank-0, DieselTank-0),\
                          outs='fuel', target='gasoline')
 # integrate gasoline and diesel based on their LHV for MFSP calculation
 
-GasMixer = qsu.Mixer('S550', ins=(HTL-3, F1-0, F2-0, C1-0, F3-0),
+GasMixer = qsu.Mixer('S550', ins=(HTL-3, F1-0, F2-0, D1-0, F3-0),
                       outs=('fuel_gas'), init_with='Stream')
 
 # The system produces more energy than needed (heating+power)
@@ -264,8 +263,8 @@ HXN = qsu.HeatExchangerNetwork('HXN')
 
 for unit in (SluL, SluT, SluC, P1, H1, HTL, HTL_hx, HTL_drum, H2SO4_Tank, AcidEx,
              M1, StruPre, P2, H2, CHG, H3, V1, F1, MemDis, SP1,
-             P3, HT, HT_compressor, HT_hx, V2, H4, F2, V3, SP2, H5, C1, C2, C3, P4,
-             HC, HC_compressor, HC_hx, H6, V4, F3, C4, GasolineMixer, DieselMixer,
+             P3, HT, HT_compressor, HT_hx, V2, H4, F2, V3, SP2, H5, D1, D2, D3, P4,
+             HC, HC_compressor, HC_hx, H6, V4, F3, D4, GasolineMixer, DieselMixer,
              H7, H8, PC1, PC2, GasolineTank, DieselTank, FuelMixer,
              GasMixer, CHP, WWmixer, RSP1, HXN):
     unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1])
@@ -273,8 +272,8 @@ for unit in (SluL, SluT, SluC, P1, H1, HTL, HTL_hx, HTL_drum, H2SO4_Tank, AcidEx
 
 sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              M1, StruPre, P2, H2, CHG, H3, V1, F1, MemDis, SP1,
-                             P3, HT, V2, H4, F2, V3, SP2, H5, C1, C2, C3, P4,
-                             HC, H6, V4, F3, C4, GasolineMixer, DieselMixer,
+                             P3, HT, V2, H4, F2, V3, SP2, H5, D1, D2, D3, P4,
+                             HC, H6, V4, F3, D4, GasolineMixer, DieselMixer,
                              H7, H8, PC1, PC2, GasolineTank, DieselTank, FuelMixer,
                              GasMixer, CHP, WWmixer, RSP1
                              ), facilities=(HXN,))

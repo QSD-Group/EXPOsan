@@ -290,7 +290,7 @@ def create_components(set_thermo=True):
 
     C10H12 = Component('C10H12', search_ID='119-64-2', particle_size='Soluble',
                        degradability='Slowly', organic=True)
-    # use 1234NA (OTTFNA) to replace since they are both C10H12
+    # use 1234NA (OTTFNA)'s search_ID to replace since they are both C10H12
 
     C12H26 = Component('C12H26', search_ID='112-40-3', particle_size='Soluble',
                        degradability='Slowly', organic=True)
