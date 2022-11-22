@@ -41,7 +41,7 @@ from exposan.htl._TEA import *
 load_process_settings()
 cmps = create_components()
 
-fake_sludge = qs.Stream('sludge', H2O=150000, units='kg/hr', T=25+273.15)
+fake_sludge = qs.Stream('sludge', H2O=800000, units='kg/hr', T=25+273.15)
 # set H2O equal to the total sludge input flow
 # assume 99% moisture, 10 metric tons of dw sludge per d: (1000000*365/7920) kg/hr
 
@@ -50,8 +50,8 @@ fake_sludge = qs.Stream('sludge', H2O=150000, units='kg/hr', T=25+273.15)
 # =============================================================================
 
 SluL = su.SludgeLab('S000', ins=fake_sludge, outs='real_sludge',
-                    sludge_moisture=0.99, sludge_dw_ash=0.2, 
-                    sludge_afdw_protein=0.2, sludge_afdw_lipid=0.2, yearly_operation_hour=7920)
+                    sludge_moisture=0.99, sludge_dw_ash=0.266, 
+                    sludge_afdw_protein=0.465, sludge_afdw_lipid=0.308, yearly_operation_hour=7920)
 
 SluT = qsu.SludgeThickening('A000', ins=SluL-0,
                             outs=('supernatant_1','compressed_sludge_1'),

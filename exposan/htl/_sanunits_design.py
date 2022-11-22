@@ -643,7 +643,7 @@ class HTL(Reactor):
         afdw_carbo_ratio = self.sludgelab.sludge_afdw_carbo
 
         # the following calculations are based on revised MCA model
-        biochar.imass['Biochar'] = max(0, 0.377*afdw_carbo_ratio*dewatered_sludge_afdw)
+        biochar.imass['Biochar'] = 0.377*afdw_carbo_ratio*dewatered_sludge_afdw
         
         HTLaqueous.imass['HTLaqueous'] = (0.481*afdw_protein_ratio +\
                                           0.154*afdw_lipid_ratio)*\
@@ -838,36 +838,35 @@ class AcidExtraction(Reactor):
         
         self.HTL = self.ins[0]._source
         
-        if self.HTL.biochar_P == 0:
-            if biochar.F_mass >= 0:
-                residual.copy_like(biochar)
-                biochar.price = 0.2 # $/kg made-up value based on online info, will change later
-            else: pass
-        elif biochar.F_mass <= 0:
+        if biochar.F_mass <= 0:
             pass
         else:
-            acid.imass['H2SO4'] = biochar.F_mass*self.acid_vol*0.5*98.079/1000
-            #0.5 M H2SO4 acid_vol (10 mL/1 g) Biochar
-            acid.imass['H2O'] = biochar.F_mass*self.acid_vol*1.05 -\
-                                acid.imass['H2SO4']
-            # 0.5 M H2SO4 density: 1.05 kg/L 
-            # https://www.fishersci.com/shop/products/sulfuric-acid-1n-0-5m-
-            # standard-solution-thermo-scientific/AC124240010 (accessed 10-6-2022)
-            
-            residual.imass['Residual'] = biochar.F_mass - self.ins[0]._source.\
-                                         biochar_P*self.P_acid_recovery_ratio
-            residual.price = 0.1 # made-up value
-            
-            extracted.copy_like(acid)
-            extracted.imass['P'] = biochar.F_mass - residual.F_mass
-            # assume just P can be extracted
-            
-            residual.phase = 's'
-            
-            residual.T = extracted.T = biochar.T
-            residual.P = biochar.P
-            # H2SO4 reacts with biochar to release heat and temperature will be
-            # increased mixture's temperature
+            if self.HTL.biochar_P == 0:
+                residual.copy_like(biochar)
+                residual.price = 0.1 # $/kg made-up value based on online info, will change later
+            else: 
+                acid.imass['H2SO4'] = biochar.F_mass*self.acid_vol*0.5*98.079/1000
+                #0.5 M H2SO4 acid_vol (10 mL/1 g) Biochar
+                acid.imass['H2O'] = biochar.F_mass*self.acid_vol*1.05 -\
+                                    acid.imass['H2SO4']
+                # 0.5 M H2SO4 density: 1.05 kg/L 
+                # https://www.fishersci.com/shop/products/sulfuric-acid-1n-0-5m-
+                # standard-solution-thermo-scientific/AC124240010 (accessed 10-6-2022)
+                
+                residual.imass['Residual'] = biochar.F_mass - self.ins[0]._source.\
+                                             biochar_P*self.P_acid_recovery_ratio
+                residual.price = 0.1 # made-up value
+                
+                extracted.copy_like(acid)
+                extracted.imass['P'] = biochar.F_mass - residual.F_mass
+                # assume just P can be extracted
+                
+                residual.phase = 's'
+                
+                residual.T = extracted.T = biochar.T
+                residual.P = biochar.P
+                # H2SO4 reacts with biochar to release heat and temperature will be
+                # increased mixture's temperature
             
     @property
     def residual_C(self):
@@ -878,14 +877,14 @@ class AcidExtraction(Reactor):
         return self.ins[0]._source.biochar_P - self.outs[1].imass['P']
         
     def _design(self):
-        if self.HTL.biochar_P == 0 or self.ins[0].F_mass <= 0:
+        if self.ins[0].F_mass <= 0 or self.HTL.biochar_P == 0:
             pass
         else:
             self.P = self.ins[1].P
             Reactor._design(self)
         
     def _cost(self):
-        if self.HTL.biochar_P == 0 or self.ins[0].F_mass <= 0:
+        if self.ins[0].F_mass <= 0 or self.HTL.biochar_P == 0:
             pass
         else:
             Reactor._cost(self)
@@ -923,9 +922,9 @@ class HTLmixer(SanUnit):
         HTLaqueous, extracted = self.ins
         mixture = self.outs[0]
         
-        # if self.ins[1].imass['P'] == 0:
-        #     mixture.copy_like(HTLaqueous)
-        # else:
+        mixture.mix_from(self.ins)
+        mixture.empty()
+        
         mixture.imass['C'] = self.ins[0]._source.HTLaqueous_C
         mixture.imass['N'] = self.ins[0]._source.HTLaqueous_N
         mixture.imass['P'] = self.ins[0]._source.HTLaqueous_P +\
@@ -935,8 +934,8 @@ class HTLmixer(SanUnit):
                                mixture.imass['P']
         # represented by H2O except C, N, P
             
-        mixture.T = HTLaqueous.T
-        mixture.P = HTLaqueous.P
+        # mixture.T = HTLaqueous.T
+        # mixture.P = HTLaqueous.P
         
     @property
     def pH(self):
