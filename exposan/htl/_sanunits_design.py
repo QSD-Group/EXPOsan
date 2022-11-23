@@ -1645,7 +1645,7 @@ class HT(Reactor):
         
         self.HTL = self.ins[0]._source.ins[0]._source
         
-        if self.HTL.sludgelab.sludge_N_ratio == 0:
+        if self.HTL.biocrude_N == 0:
             remove = self.HT_composition['PIPERDIN']
             for chemical in self.HT_composition.keys():  
                 self.HT_composition[chemical] /= (1-remove)
