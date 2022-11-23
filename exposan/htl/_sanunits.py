@@ -99,7 +99,7 @@ import biosteam as bst
 from qsdsan import SanUnit
 from qsdsan.sanunits import HXutility, Pump
 from biosteam.units import IsothermalCompressor
-from exposan.htl._components_design import create_components
+from exposan.htl._components import create_components
 from biosteam.units.design_tools import PressureVessel
 from biosteam.units.design_tools.cost_index import CEPCI_by_year as CEPCI
 from math import pi, ceil, log

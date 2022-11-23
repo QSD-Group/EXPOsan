@@ -27,11 +27,11 @@ References:
 '''
 
 import qsdsan as qs
-import exposan.htl._sanunits_design as su
+import exposan.htl._sanunits as su
 from qsdsan import sanunits as qsu
 from biosteam.units import Flash, IsenthalpicValve, BinaryDistillation
-from exposan.htl._process_settings_design import load_process_settings
-from exposan.htl._components_design import create_components
+from exposan.htl._process_settings import load_process_settings
+from exposan.htl._components import create_components
 from exposan.htl._TEA import *
 
 # __all__ = ('create_system',)
