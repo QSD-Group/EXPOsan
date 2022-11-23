@@ -750,6 +750,8 @@ class HTL(Reactor):
     @property
     def HTLaqueous_C(self):
         return self.sludgelab.sludge_C - self.biocrude_C - self.biochar_C - self.offgas_C
+    # !!! keep in mind, in reality, HTLaqueous_C cannot be 0.
+    # when inputs for HTL become extreme, the production will deviate from MCA model
 
     @property
     def HTLaqueous_N(self):

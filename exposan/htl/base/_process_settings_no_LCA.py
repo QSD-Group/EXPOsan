@@ -23,6 +23,8 @@ for license details.
 import biosteam as bst, qsdsan as qs
 from thermosteam import Chemical
 
+bst.settings.CEPCI = qs.CEPCI = qs.CEPCI_by_year[2016] # use 2016$ to match up with recent PNNL report
+
 def load_process_settings():
     # use DOWTHERM(TM) A Heat Transfer Fluid (HTF) as the heating agent
     # DOWTHERM(TM) A HTF = 73.5% diphenyl oxide (DPO) + 26.5% Biphenyl (BIP)
