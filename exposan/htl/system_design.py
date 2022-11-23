@@ -41,7 +41,7 @@ from exposan.htl._TEA import *
 load_process_settings()
 cmps = create_components()
 
-fake_sludge = qs.Stream('sludge', H2O=800000, units='kg/hr', T=25+273.15)
+fake_sludge = qs.Stream('sludge', H2O=1000000*365/7920, units='kg/hr', T=25+273.15)
 # set H2O equal to the total sludge input flow
 # assume 99% moisture, 10 metric tons of dw sludge per d: (1000000*365/7920) kg/hr
 
@@ -233,7 +233,7 @@ DieselTank = qsu.StorageTank('T510', ins=PC2-0, outs=('diesel'),
 # store for 3 days based on Jones 2014
 
 FuelMixer = su.FuelMixer('S540', ins=(GasolineTank-0, DieselTank-0),\
-                         outs='fuel', target='gasoline')
+                         outs='fuel', target='diesel')
 # integrate gasoline and diesel based on their LHV for MFSP calculation
 
 GasMixer = qsu.Mixer('S550', ins=(HTL-3, F1-0, F2-0, D1-0, F3-0),

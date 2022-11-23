@@ -362,6 +362,9 @@ class SludgeLab(SanUnit):
         fake_sludge = self.ins[0]
         real_sludge = self.outs[0]
         
+        if self.sludge_dw_ash >= 1:
+            raise Exception ('ash can not be larger than or equal to 1')
+        
         if self.sludge_afdw_protein + self.sludge_afdw_lipid > 1:
             raise Exception ('protein and lipid exceed 1')
         
