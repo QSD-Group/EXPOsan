@@ -936,9 +936,6 @@ class HTLmixer(SanUnit):
                                mixture.imass['C'] - mixture.imass['N'] -\
                                mixture.imass['P']
         # represented by H2O except C, N, P
-            
-        # mixture.T = HTLaqueous.T
-        # mixture.P = HTLaqueous.P
         
     @property
     def pH(self):
@@ -1070,7 +1067,7 @@ class StruvitePrecipitation(Reactor):
         
         self.HTLmixer = self.ins[0]._source
         
-        if self.HTLmixer.ins[1].imass['P'] == 0:
+        if self.HTLmixer.outs[0].imass['P'] == 0:
             effluent.copy_like(mixture)
         else:
             old_pH = self.HTLmixer.pH
@@ -1123,14 +1120,14 @@ class StruvitePrecipitation(Reactor):
         return self.struvite_P*14.0067/30.973762
 
     def _design(self):
-        if self.HTLmixer.ins[1].imass['P'] == 0:
+        if self.HTLmixer.outs[0].imass['P'] == 0:
             pass
         else:
             self.P = self.ins[0].P
             Reactor._design(self)
         
     def _cost(self):
-        if self.HTLmixer.ins[1].imass['P'] == 0:
+        if self.HTLmixer.outs[0].imass['P'] == 0:
             pass
         else:
             Reactor._cost(self)
