@@ -41,15 +41,15 @@ from exposan.htl._TEA import *
 load_process_settings()
 cmps = create_components()
 
-fake_sludge = qs.Stream('sludge', H2O=1000000*365/7920, units='kg/hr', T=25+273.15)
-# set H2O equal to the total sludge input flow
-# assume 99% moisture, 10 metric tons of dw sludge per d: (1000000*365/7920) kg/hr
+raw_wastewater = qs.Stream('raw_wastewater', H2O=10, units='MGD', T=25+273.15)
+# set H2O equal to the total raw wastewater into the WWTP
 
 # =============================================================================
 # pretreatment (Area 000)
 # =============================================================================
 
-SluL = su.SludgeLab('S000', ins=fake_sludge, outs='real_sludge',
+SluL = su.SludgeLab('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
+                    ww_2_dry_sludge=1, # how much metric ton/day sludge can be produced by 1 MGD of ww
                     sludge_moisture=0.99, sludge_dw_ash=0.266, 
                     sludge_afdw_protein=0.465, sludge_afdw_lipid=0.308, yearly_operation_hour=7920)
 
@@ -77,7 +77,7 @@ P1 = qsu.Pump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76,
 
 H1 = qsu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=351+273.15,
                    U=0.284, init_with='Stream')
-# H1: SS PNNL 2020: 50 (17-76) Btu/hr/ft2/F ~ U = 0.284 (0.096-0.4313) kW/m2/k
+# H1: SS PNNL 2020: 50 (17-76) Btu/hr/ft2/F ~ U = 0.284 (0.096-0.4313) kW/m2/K
 # U is just needed for H1? Right? I think high viscosity of sludge is just here
 # but not in other pumps
 # unit conversion: http://www.unitconversion.org/heat-transfer-coefficient/

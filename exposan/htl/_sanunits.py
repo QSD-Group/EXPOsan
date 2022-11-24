@@ -13,25 +13,33 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 
 References:
-    
-(1) Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J. 
+
+(1) Snowden-Swan, L. J.; Li, S.; Jiang, Y.; Thorson, M. R.; Schmidt, A. J.;
+    Seiple, T. E.; Billing, J. M.; Santosa, D. M.; Hart, T. R.; Fox, S. P.;
+    Cronin, D.; Kallupalayam Ramasamy, K.; Anderson, D. B.; Hallen, R. T.;
+    Fonoll-Almansa, X.; Norton, J. Wet Waste Hydrothermal Liquefaction and
+    Biocrude Upgrading to Hydrocarbon Fuels: 2021 State of Technology;
+    PNNL-32731; Pacific Northwest National Lab. (PNNL), Richland, WA
+    (United States), 2022. https://doi.org/10.2172/1863608.
+
+(2) Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J. 
     Quantitative Evaluation of an Integrated System for Valorization of
     Wastewater Algae as Bio-Oil, Fuel Gas, and Fertilizer Products. 
     Environ. Sci. Technol. 2018, 52 (21), 12717–12727. 
     https://doi.org/10.1021/acs.est.8b04035.
     
-(2) Leow, S.; Witter, J. R.; Vardon, D. R.; Sharma, B. K.;
+(3) Leow, S.; Witter, J. R.; Vardon, D. R.; Sharma, B. K.;
     Guest, J. S.; Strathmann, T. J. Prediction of Microalgae Hydrothermal
     Liquefaction Products from Feedstock Biochemical Composition.
     Green Chem. 2015, 17 (6), 3584–3599. https://doi.org/10.1039/C5GC00574D.
     
-(3) Snowden-Swan, L. J.; Zhu, Y.; Jones, S. B.; Elliott, D. C.; Schmidt, A. J.; 
+(4) Snowden-Swan, L. J.; Zhu, Y.; Jones, S. B.; Elliott, D. C.; Schmidt, A. J.; 
     Hallen, R. T.; Billing, J. M.; Hart, T. R.; Fox, S. P.; Maupin, G. D. 
     Hydrothermal Liquefaction and Upgrading of Municipal Wastewater Treatment 
     Plant Sludge: A Preliminary Techno-Economic Analysis; 
     PNNL--25464, 1258731; 2016; https://doi.org/10.2172/1258731.
 
-(4) Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
+(5) Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
     Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
     Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
     Process Design and Economics for the Conversion of Algal Biomass to
@@ -39,57 +47,57 @@ References:
     PNNL--23227, 1126336; 2014; 
     https://doi.org/10.2172/1126336.
     
-(5) Hao, S.; Choi, Y.-J.; Wu, B.; Higgins, C. P.; Deeb, R.; Strathmann, T. J.
+(6) Hao, S.; Choi, Y.-J.; Wu, B.; Higgins, C. P.; Deeb, R.; Strathmann, T. J.
     Hydrothermal Alkaline Treatment for Destruction of Per- and Polyfluoroalkyl
     Substances in Aqueous Film-Forming Foam. Environ. Sci. Technol.
     2021, 55(5), 3283–3295. https://doi.org/10.1021/acs.est.0c06906.
     
-(6)	Matayeva, A.; Rasmussen, S. R.; Biller, P. Distribution of Nutrients and
+(7)	Matayeva, A.; Rasmussen, S. R.; Biller, P. Distribution of Nutrients and
     Phosphorus Recovery in Hydrothermal Liquefaction of Waste Streams.
     BiomassBioenergy 2022, 156, 106323.
     https://doi.org/10.1016/j.biombioe.2021.106323.
     
-(7) Doran, P. M. Chapter 11 - Unit Operations. In Bioprocess Engineering
+(8) Doran, P. M. Chapter 11 - Unit Operations. In Bioprocess Engineering
     Principles (Second Edition); Doran, P. M., Ed.; Academic Press: London,
     2013; pp 445–595. https://doi.org/10.1016/B978-0-12-220851-5.00011-3.
     
-(8) Elliott, D. C.; Neuenschwander, G. G.; Hart, T. R.; Rotness, L. J.;
+(9) Elliott, D. C.; Neuenschwander, G. G.; Hart, T. R.; Rotness, L. J.;
     Zacher, A. H.; Santosa, D. M.; Valkenburg, C.; Jones, S. B.;
     Rahardjo, S. A. T. Catalytic Hydrothermal Gasification of Lignin-Rich
     Biorefinery Residues and Algae Final Report. 87.
 
-(9) Spiller, L. L. Determination of Ammonia/Air Diffusion Coefficient Using
+(10) Spiller, L. L. Determination of Ammonia/Air Diffusion Coefficient Using
     Nafion Lined Tube. Analytical Letters 1989, 22 (11–12), 2561–2573.
     https://doi.org/10.1080/00032718908052375.
 
-(10) Scheepers, D. M.; Tahir, A. J.; Brunner, C.; Guillen-Burrieza, E.
+(11) Scheepers, D. M.; Tahir, A. J.; Brunner, C.; Guillen-Burrieza, E.
     Vacuum Membrane Distillation Multi-Component Numerical Model for Ammonia
     Recovery from Liquid Streams. Journal of Membrane Science
     2020, 614, 118399. https://doi.org/10.1016/j.memsci.2020.118399.
 
-(11) Ding, Z.; Liu, L.; Li, Z.; Ma, R.; Yang, Z. Experimental Study of Ammonia
+(12) Ding, Z.; Liu, L.; Li, Z.; Ma, R.; Yang, Z. Experimental Study of Ammonia
     Removal from Water by Membrane Distillation (MD): The Comparison of Three
     Configurations. Journal of Membrane Science 2006, 286 (1), 93–103.
     https://doi.org/10.1016/j.memsci.2006.09.015.
     
-(12) Towler, G.; Sinnott, R. Chapter 14 - Design of Pressure Vessels.
+(13) Towler, G.; Sinnott, R. Chapter 14 - Design of Pressure Vessels.
     In Chemical Engineering Design (Second Edition); Towler, G., Sinnott, R.,
     Eds.; Butterworth-Heinemann: Boston, 2013; pp 563–629.
     https://doi.org/10.1016/B978-0-08-096659-5.00014-6.
     
-(13) Al-Obaidani, S.; Curcio, E.; Macedonio, F.; Di Profio, G.; Al-Hinai, H.;
+(14) Al-Obaidani, S.; Curcio, E.; Macedonio, F.; Di Profio, G.; Al-Hinai, H.;
     Drioli, E. Potential of Membrane Distillation in Seawater Desalination:
     Thermal Efficiency, Sensitivity Study and Cost Estimation.
     Journal of Membrane Science 2008, 323 (1), 85–98.
     https://doi.org/10.1016/j.memsci.2008.06.006.
     
-(14) Kogler, A.; Farmer, M.; Simon, J. A.; Tilmans, S.; Wells, G. F.;
+(15) Kogler, A.; Farmer, M.; Simon, J. A.; Tilmans, S.; Wells, G. F.;
     Tarpeh, W. A. Systematic Evaluation of Emerging Wastewater Nutrient Removal
     and Recovery Technologies to Inform Practice and Advance Resource
     Efficiency. ACS EST Eng. 2021, 1 (4), 662–684.
     https://doi.org/10.1021/acsestengg.0c00253.
 
-(15) Zhu, Y.; Schmidt, A.; Valdez, P.; Snowden-Swan, L.; Edmundson, S.
+(16) Zhu, Y.; Schmidt, A.; Valdez, P.; Snowden-Swan, L.; Edmundson, S.
     Hydrothermal Liquefaction and Upgrading of Wastewater-Grown Microalgae:
     2021 State of Technology; PNNL-32695, 1855835; 2022; p PNNL-32695, 1855835.
     https://doi.org/10.2172/1855835.
@@ -309,7 +317,7 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
             raise AttributeError('mixing_intensity is provided, kw_per_m3 will be calculated.')
         else:
             self._kW_per_m3 = i
-    
+
 # =============================================================================
 # Sludge Lab
 # =============================================================================
@@ -325,13 +333,17 @@ class SludgeLab(SanUnit):
     Parameters
     ----------
     ins: Iterable (stream)
-        fake_sludge
+        ww
     outs: Iterable (stream)
-        real_sludge
+        sludge, treated
     '''
+
+    _m3perh_2_MGD = 1/157.725491
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', 
+                 ww_2_dry_sludge=1, # ww (MGD) to dw sludge (metric ton/day) # SS PNNL 2022
+                 # how much metric ton/day sludge can be produced by 1 MGD of ww
                  sludge_moisture=0.99, sludge_dw_ash=0.266, 
                  sludge_afdw_protein=0.465, sludge_afdw_lipid=0.308,
                  lipid_2_C=0.750, protein_2_C=0.545,
@@ -341,6 +353,7 @@ class SludgeLab(SanUnit):
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.ww_2_dry_sludge = ww_2_dry_sludge
         self.sludge_moisture = sludge_moisture
         self.sludge_dw_ash = sludge_dw_ash
         self.sludge_afdw_protein = sludge_afdw_protein
@@ -355,26 +368,30 @@ class SludgeLab(SanUnit):
         self.operation_hour = yearly_operation_hour
 
     _N_ins = 1
-    _N_outs = 1
+    _N_outs = 2
     
     def _run(self):
         
-        fake_sludge = self.ins[0]
-        real_sludge = self.outs[0]
+        ww = self.ins[0]
+        sludge, treated = self.outs
         
         if self.sludge_dw_ash >= 1:
             raise Exception ('ash can not be larger than or equal to 1')
         
         if self.sludge_afdw_protein + self.sludge_afdw_lipid > 1:
             raise Exception ('protein and lipid exceed 1')
-        
-        real_sludge.imass['H2O'] = fake_sludge.F_mass * self.sludge_moisture
-        self.sludge_dw = fake_sludge.F_mass*(1 - self.sludge_moisture)
+            
+        self.sludge_dw = ww.F_vol*self._m3perh_2_MGD*self.ww_2_dry_sludge*1000/24
+
+        sludge.imass['H2O'] = self.sludge_dw/(1-self.sludge_moisture)*self.sludge_moisture
+        sludge.imass['Sludge_ash'] = self.sludge_dw*self.sludge_dw_ash
+
         sludge_afdw = self.sludge_dw*(1 - self.sludge_dw_ash)
-        real_sludge.imass['Sludge_protein'] = sludge_afdw*self.sludge_afdw_protein
-        real_sludge.imass['Sludge_lipid'] = sludge_afdw*self.sludge_afdw_lipid
-        real_sludge.imass['Sludge_carbo'] = sludge_afdw*self.sludge_afdw_carbo
-        real_sludge.imass['Sludge_ash'] = self.sludge_dw*self.sludge_dw_ash
+        sludge.imass['Sludge_protein'] = sludge_afdw*self.sludge_afdw_protein
+        sludge.imass['Sludge_lipid'] = sludge_afdw*self.sludge_afdw_lipid
+        sludge.imass['Sludge_carbo'] = sludge_afdw*self.sludge_afdw_carbo
+
+        treated.imass['H2O'] = ww.F_mass - sludge.F_mass
     
     @property
     def sludge_dw_protein(self):
@@ -1027,8 +1044,6 @@ class StruvitePrecipitation(Reactor):
                  Mg_P_ratio=2,
                  P_pre_recovery_ratio=0.99, # Zhu
                  P_in_struvite=0.127,
-                 # assume the pH of mixture is 0.5, target is 9.5
-                 # (10^-0.5 + 10^-4.5)*40/1000 = 0.01265 ~ 0.015
                  HTLaqueous_NH3_N_2_total_N = 0.853, # Jones  
                  
                  P=None, tau=1, V_wf=0.8, # tau: Zhu
@@ -1088,8 +1103,9 @@ class StruvitePrecipitation(Reactor):
             supply_NH4Cl.price = 0.2 # made-up value based on online price, will change later
             # make sure N:P >= 1:1
             
-            supply_MgCl2.imass['MgCl2'] = mixture.imass['P']/30.973762*95.211*\
-                                          self.Mg_P_ratio # Mg:P = 2:1 (1.5:1 - 4:1)
+            supply_MgCl2.imass['MgCl2'] = (mixture.imass['P']/30.973762*self.Mg_P_ratio -\
+                                           base.imass['MgO']/40.3044)*95.211
+                                           # Mg:P = 2:1 (1.5:1 - 4:1)
             supply_MgCl2.price = 0.5 # made-up value based on online price, will change later
             struvite.imass['Struvite'] = mixture.imass['P']*\
                                          self.P_pre_recovery_ratio/\
@@ -1178,10 +1194,9 @@ class CHG(Reactor, SludgeLab):
                  heat_temp=350+273.15,
                  cool_temp=60+273.15,
                  
-                 
                  WHSV=3.99, # wt./hr per wt. catalyst Jones
                  catalyst_lifetime=1*yearly_operation_hour, # 1 year Jones
-                 catalyst_price=60/0.453592, # $60/lb to $/kg (2011$)
+                 catalyst_price=60/0.453592/CEPCI[2011]*CEPCI[2016], # $60/lb to $/kg (2011$)
                  gas_composition={'CH4':0.527,
                                   'CO2':0.432,
                                   'C2H6':0.011,
@@ -1189,7 +1204,7 @@ class CHG(Reactor, SludgeLab):
                                   'H2':0.0001},
                  # Jones
                  # will not be a variable in uncertainty/sensitivity analysis
-                 gas_c_to_total_c=0.5655, # Jones
+                 gas_C_2_total_C=0.5655, # Jones
                  
                  P=None, tau=20/60, void_fraction=0.5,
                  length_to_diameter=2, N=6, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
@@ -1208,7 +1223,7 @@ class CHG(Reactor, SludgeLab):
         self.catalyst_lifetime = catalyst_lifetime
         self.catalyst_price = catalyst_price
         self.gas_composition = gas_composition
-        self.gas_c_to_total_c = gas_c_to_total_c
+        self.gas_C_2_total_C = gas_C_2_total_C
         
         pump_in = bst.Stream(f'{ID}_pump_in')
         pump_out = bst.Stream(f'{ID}_pump_out')
@@ -1258,7 +1273,7 @@ class CHG(Reactor, SludgeLab):
             for name, ratio in self.gas_composition.items():
                 gas_C_ratio += ratio*cmps[name].i_C
             
-            gas_mass = chg_in.imass['C']*self.gas_c_to_total_c/gas_C_ratio
+            gas_mass = chg_in.imass['C']*self.gas_C_2_total_C/gas_C_ratio
             
             for name,ratio in self.gas_composition.items():
                 chg_out.imass[name] = gas_mass*ratio
@@ -1274,7 +1289,7 @@ class CHG(Reactor, SludgeLab):
     @property
     def CHGout_C(self):
         # not include carbon in gas phase
-        return self.ins[0].imass['C']*(1 - self.gas_c_to_total_c)
+        return self.ins[0].imass['C']*(1 - self.gas_C_2_total_C)
     
     @property
     def CHGout_N(self):
@@ -1366,9 +1381,9 @@ class MembraneDistillation(SanUnit):
                  N_S_ratio=2,
                  # S is excess since not all N can be transfered to form ammonia sulfate
                  # for now, assume N_S_ratio = 2 is ok
-                 m2_2_m3=1200, # specific surface area, for hollow fiber membrane, Doran
-                 Dm=2.28*10**(-5), # 2.28 ± 0.12 m^2/s NH3 molecular diffusity in air Spiller
-                 # (underesitmate, this value may be at 15 or 25 C, our feed is 60 C, should be higher)
+                 m2_2_m3=1/1200, # specific surface area, for hollow fiber membrane, Doran
+                 Dm=2.28*10**(-5), # (2.28 ± 0.12)*10^-5 m^2/s NH3 molecular diffusity in air Spiller
+                 # (underestimate, this value may be at 15 or 25 C, our feed is 60 C, should be higher)
                  porosity=0.9, # Scheepers
                  thickness=7*10**(-5), # m, Scheepers
                  tortuosity=1.2, # Scheepers
@@ -1380,9 +1395,8 @@ class MembraneDistillation(SanUnit):
                  capacity=6.01, # kg/m2/h, Al-Obaidani
                  # permeate flux, similar values can be found in many other papers ([176], [222] ,[223] in Kogler Stanford)
                  # [177], [223] in Kogler Stanford show high nitrogen recovery ratio (>85% under optimal conditions)
-                 membrane_price=90,
-                 # Al-Obaidani: $90/m2, though this is a 2008 paper, the price stills applys
-                 # based on online price, $90/m2 is conservative
+                 membrane_price=90/CEPCI[2008]*CEPCI[2016],
+                 # Al-Obaidani: $90/m2, $2008
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -1429,8 +1443,8 @@ class MembraneDistillation(SanUnit):
             others = influent.F_mass - ammonia
             
             self.membrane_area = self.F_vol_in*1000/self.capacity
-            N2_in_air = self.membrane_area/self.m2_2_m3*self.porosity*0.79*1.204
-            O2_in_air = self.membrane_area/self.m2_2_m3*self.porosity*0.21*1.204
+            N2_in_air = self.membrane_area*self.m2_2_m3*self.porosity*0.79*1.204
+            O2_in_air = self.membrane_area*self.m2_2_m3*self.porosity*0.21*1.204
             # N2:O2 = 0.79:0.21 in the air, air density is 1.204 kg/m3
             # https://en.wikipedia.org/wiki/Density_of_air#:~:text=It%20also%20\
             # changes%20with%20variation,International%20Standard%20Atmosphere%2\
@@ -1508,7 +1522,7 @@ class MembraneDistillation(SanUnit):
         else:
             Design = self.design_results
             Design['Area'] = self.membrane_area
-            Design['Total volume'] = Design['Area']/self.m2_2_m3
+            Design['Total volume'] = Design['Area']*self.m2_2_m3
     
     def _cost(self):
         if self.CHG.CHGout_N == 0:
@@ -1557,7 +1571,7 @@ class HT(Reactor):
                  init_with='Stream',
                  WHSV=0.625, # wt./hr per wt. catalyst Jones
                  catalyst_lifetime=2*yearly_operation_hour, # 2 years Jones
-                 catalyst_price=15.5/0.453592, # $15.5/lb to $/kg (2007$)
+                 catalyst_price=15.5/0.453592/CEPCI[2007]*CEPCI[2016], # $15.5/lb to $/kg (2007$)
                  hydrogen_P=1530*6894.76,
                  hydrogen_rxned_to_biocrude=0.046,
                  hydrocarbon_ratio=0.875, # 87.5 wt% of biocrude and reacted H2
@@ -1793,7 +1807,7 @@ class HC(Reactor):
                  init_with='Stream',
                  WHSV=0.625, # wt./hr per wt. catalyst Jones
                  catalyst_lifetime=5*yearly_operation_hour, # 5 years Jones
-                 catalyst_price=15.5/0.453592, # $15.5/lb to $/kg (2007$)
+                 catalyst_price=15.5/0.453592/CEPCI[2007]*CEPCI[2016], # $15.5/lb to $/kg (2007$)
                  hydrogen_P=1039.7*6894.76,
                  hydrogen_rxned_to_heavy_oil=0.01125,
                  hydrocarbon_ratio=1, # 100 wt% of heavy oil and reacted H2

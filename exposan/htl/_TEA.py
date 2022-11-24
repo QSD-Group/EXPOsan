@@ -201,7 +201,7 @@ def create_tea(sys, OSBL_units=None, cls=None):
         construction=0.20, # NREL 2013
         contingency=0.10, # NREL 2013
         other_indirect_costs=0.10, # NREL 2013
-        labor_cost=2.5e6, # cloase to Jones value, use default value here
+        labor_cost=2.5e6, # use default value
         labor_burden=0.90, # Jones and Davis
         property_insurance=0.007, # Jones & NREL 2013
         maintenance=0.03, # Jones & NREL 2013
