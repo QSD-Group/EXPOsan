@@ -191,7 +191,7 @@ def create_tea(sys, OSBL_units=None, cls=None):
         WC_over_FCI=0.05, # Jones
         finance_interest=0.08, # Jones
         finance_years=10, # Jones
-        finance_fraction=0.6, # Jones
+        finance_fraction=0.6, # debt: Jones
         OSBL_units=OSBL_units,
         warehouse=0.04, # NREL 2013
         site_development=0.09, # NREL 2013
