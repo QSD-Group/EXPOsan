@@ -11,96 +11,6 @@ This module is developed by:
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
-
-References:
-
-(1) Snowden-Swan, L. J.; Li, S.; Jiang, Y.; Thorson, M. R.; Schmidt, A. J.;
-    Seiple, T. E.; Billing, J. M.; Santosa, D. M.; Hart, T. R.; Fox, S. P.;
-    Cronin, D.; Kallupalayam Ramasamy, K.; Anderson, D. B.; Hallen, R. T.;
-    Fonoll-Almansa, X.; Norton, J. Wet Waste Hydrothermal Liquefaction and
-    Biocrude Upgrading to Hydrocarbon Fuels: 2021 State of Technology;
-    PNNL-32731; Pacific Northwest National Lab. (PNNL), Richland, WA
-    (United States), 2022. https://doi.org/10.2172/1863608.
-
-(2) Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J. 
-    Quantitative Evaluation of an Integrated System for Valorization of
-    Wastewater Algae as Bio-Oil, Fuel Gas, and Fertilizer Products. 
-    Environ. Sci. Technol. 2018, 52 (21), 12717–12727. 
-    https://doi.org/10.1021/acs.est.8b04035.
-    
-(3) Leow, S.; Witter, J. R.; Vardon, D. R.; Sharma, B. K.;
-    Guest, J. S.; Strathmann, T. J. Prediction of Microalgae Hydrothermal
-    Liquefaction Products from Feedstock Biochemical Composition.
-    Green Chem. 2015, 17 (6), 3584–3599. https://doi.org/10.1039/C5GC00574D.
-    
-(4) Snowden-Swan, L. J.; Zhu, Y.; Jones, S. B.; Elliott, D. C.; Schmidt, A. J.; 
-    Hallen, R. T.; Billing, J. M.; Hart, T. R.; Fox, S. P.; Maupin, G. D. 
-    Hydrothermal Liquefaction and Upgrading of Municipal Wastewater Treatment 
-    Plant Sludge: A Preliminary Techno-Economic Analysis; 
-    PNNL--25464, 1258731; 2016; https://doi.org/10.2172/1258731.
-
-(5) Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
-    Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
-    Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
-    Process Design and Economics for the Conversion of Algal Biomass to
-    Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
-    PNNL--23227, 1126336; 2014; 
-    https://doi.org/10.2172/1126336.
-    
-(6) Hao, S.; Choi, Y.-J.; Wu, B.; Higgins, C. P.; Deeb, R.; Strathmann, T. J.
-    Hydrothermal Alkaline Treatment for Destruction of Per- and Polyfluoroalkyl
-    Substances in Aqueous Film-Forming Foam. Environ. Sci. Technol.
-    2021, 55(5), 3283–3295. https://doi.org/10.1021/acs.est.0c06906.
-    
-(7)	Matayeva, A.; Rasmussen, S. R.; Biller, P. Distribution of Nutrients and
-    Phosphorus Recovery in Hydrothermal Liquefaction of Waste Streams.
-    BiomassBioenergy 2022, 156, 106323.
-    https://doi.org/10.1016/j.biombioe.2021.106323.
-    
-(8) Doran, P. M. Chapter 11 - Unit Operations. In Bioprocess Engineering
-    Principles (Second Edition); Doran, P. M., Ed.; Academic Press: London,
-    2013; pp 445–595. https://doi.org/10.1016/B978-0-12-220851-5.00011-3.
-    
-(9) Elliott, D. C.; Neuenschwander, G. G.; Hart, T. R.; Rotness, L. J.;
-    Zacher, A. H.; Santosa, D. M.; Valkenburg, C.; Jones, S. B.;
-    Rahardjo, S. A. T. Catalytic Hydrothermal Gasification of Lignin-Rich
-    Biorefinery Residues and Algae Final Report. 87.
-
-(10) Spiller, L. L. Determination of Ammonia/Air Diffusion Coefficient Using
-    Nafion Lined Tube. Analytical Letters 1989, 22 (11–12), 2561–2573.
-    https://doi.org/10.1080/00032718908052375.
-
-(11) Scheepers, D. M.; Tahir, A. J.; Brunner, C.; Guillen-Burrieza, E.
-    Vacuum Membrane Distillation Multi-Component Numerical Model for Ammonia
-    Recovery from Liquid Streams. Journal of Membrane Science
-    2020, 614, 118399. https://doi.org/10.1016/j.memsci.2020.118399.
-
-(12) Ding, Z.; Liu, L.; Li, Z.; Ma, R.; Yang, Z. Experimental Study of Ammonia
-    Removal from Water by Membrane Distillation (MD): The Comparison of Three
-    Configurations. Journal of Membrane Science 2006, 286 (1), 93–103.
-    https://doi.org/10.1016/j.memsci.2006.09.015.
-    
-(13) Towler, G.; Sinnott, R. Chapter 14 - Design of Pressure Vessels.
-    In Chemical Engineering Design (Second Edition); Towler, G., Sinnott, R.,
-    Eds.; Butterworth-Heinemann: Boston, 2013; pp 563–629.
-    https://doi.org/10.1016/B978-0-08-096659-5.00014-6.
-    
-(14) Al-Obaidani, S.; Curcio, E.; Macedonio, F.; Di Profio, G.; Al-Hinai, H.;
-    Drioli, E. Potential of Membrane Distillation in Seawater Desalination:
-    Thermal Efficiency, Sensitivity Study and Cost Estimation.
-    Journal of Membrane Science 2008, 323 (1), 85–98.
-    https://doi.org/10.1016/j.memsci.2008.06.006.
-    
-(15) Kogler, A.; Farmer, M.; Simon, J. A.; Tilmans, S.; Wells, G. F.;
-    Tarpeh, W. A. Systematic Evaluation of Emerging Wastewater Nutrient Removal
-    and Recovery Technologies to Inform Practice and Advance Resource
-    Efficiency. ACS EST Eng. 2021, 1 (4), 662–684.
-    https://doi.org/10.1021/acsestengg.0c00253.
-
-(16) Zhu, Y.; Schmidt, A.; Valdez, P.; Snowden-Swan, L.; Edmundson, S.
-    Hydrothermal Liquefaction and Upgrading of Wastewater-Grown Microalgae:
-    2021 State of Technology; PNNL-32695, 1855835; 2022; p PNNL-32695, 1855835.
-    https://doi.org/10.2172/1855835.
 '''
 
 import biosteam as bst
@@ -148,14 +58,22 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
     is based on volume calculated by residence time.
     Parameters
     ----------
-    ins : stream
+    ins: stream
         Inlet.
-    outs : stream
+    outs: stream
         Outlet.
-    tau : float
-        Residence time [hr].
-    V_wf : float
+    tau: float
+        Residence time, [hr].
+    V_wf: float
         Fraction of working volume over total volume.
+    length_to_diameter : float
+        Reactor length to diameter ratio.
+    N: int
+        Number of reactor.
+    V: float
+        Volume of reactor, [m3].
+    auxiliary: bool
+        Whether or not the reactor is an auxiliart unit.      
     mixing_intensity: float
         Mechanical mixing intensity, [/s].
     kW_per_m3: float
@@ -177,7 +95,7 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
     .. [2] Shoener et al. Energy Positive Domestic Wastewater Treatment:
         The Roles of Anaerobic and Phototrophic Technologies.
         Environ. Sci.: Processes Impacts 2014, 16 (6), 1204–1222.
-        `<https://doi.org/10.1039/C3EM00711A>`_.
+        https://doi.org/10.1039/C3EM00711A.
     '''
     _N_ins = 2
     _N_outs = 1
@@ -326,27 +244,54 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
 # =============================================================================
 
 class SludgeLab(SanUnit):
-    
     '''
     SludgeLab is a fake unit that can set up sludge biochemical compositions
     and calculate sludge elemental compositions.
-    
-    Model method: just _run, no _design or _cost.
-    
     Parameters
     ----------
-    ins: Iterable (stream)
-        ww
-    outs: Iterable (stream)
-        sludge, treated
+    ins: stream
+        ww.
+    outs: stream
+        sludge, treated.
+    ww_2_dry_sludge: float
+        Wastewater-to-dry-sludge conversion factor, [metric ton/day/MGD].
+    sludge_moisture: float
+        Sludge moisture content.
+    sludge_dw_ash: float
+        Sludge dry weight ash content.
+    sludge_afdw_protein: float
+        Sludge ash free dry weight protein content.
+    sludge_afdw_lipid: float
+        Sludge ash free dry weight lipid content.
+    lipid_2_C: float
+        Lipid to carbon factor.     
+    protein_2_C: float
+        Protein to carbon factor.
+    carbo_2_C: float
+        Carbohydrate to carbon factor.
+    C_2_H: float
+        Carbon to hydrogen factor.
+    protein_2_N: float
+        Protein to nitrogen factor.
+    N_2_P: float
+        Nitrogen to phosphorus factor. 
+    operation_hour: float
+        Plant yearly operation hour, [hr/yr].
+    References
+    ----------
+    .. [1] Metcalf and Eddy, Incorporated. 1991. Wastewater Engineering:
+        Treatment Disposal and Reuse. New York: McGraw-Hill.
+    .. [2] Li, Y.; Leow, S.; Fedders, A. C.; Sharma, B. K.; Guest, J. S.;
+        Strathmann, T. J. Quantitative Multiphase Model for Hydrothermal
+        Liquefaction of Algal Biomass. Green Chem. 2017, 19 (4), 1163–1174.
+        https://doi.org/10.1039/C6GC03294J.
     '''
 
     _m3perh_2_MGD = 1/157.725491
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', 
-                 ww_2_dry_sludge=0.94, # ww (MGD) to dw sludge (metric ton/day) # SS PNNL 2022
-                 # how much metric ton/day sludge can be produced by 1 MGD of ww
+                 ww_2_dry_sludge=0.94, # [1]
                  sludge_moisture=0.99, sludge_dw_ash=0.257, 
                  sludge_afdw_protein=0.463, sludge_afdw_lipid=0.204,
                  lipid_2_C=0.750, protein_2_C=0.545,
@@ -458,7 +403,7 @@ class SludgeLab(SanUnit):
     @property
     def sludge_HHV(self):
        return 100*(0.338*self.sludge_C_ratio + 1.428*(self.sludge_H_ratio -\
-              self.sludge_O_ratio/8)) # Li 2017, in MJ/kg
+              self.sludge_O_ratio/8)) # [2]
         
     def _design(self):
         pass
@@ -471,21 +416,14 @@ class SludgeLab(SanUnit):
 # =============================================================================
 
 class KOdrum(Reactor):
-    
     '''
-    konckout drum: a HTL auxiliary unit
-    
-    Model method: just design and cost.
-    
-    Design: for each HTL reactor (4 in total), add a KOdrum to separate liquid
-    from gas. V = 4230 gal based on NREL 2013.
-    
-    Parameters
+    Konckout drum is a HTL auxiliary unit.
+    References
     ----------
-    ins: Iterable (stream)
-        dewatered_sludge
-    outs: Iterable (stream)
-        biochar, HTLaqueous, biocrude, offgas
+    .. [1] Knorr, D.; Lukas, J.; Schoen, P. Production of Advanced Biofuels via
+        Liquefaction - Hydrothermal Liquefaction Reactor Design: April 5, 2013;
+        NREL/SR-5100-60462, 1111191; 2013; p NREL/SR-5100-60462, 1111191.
+        https://doi.org/10.2172/1111191.
     '''
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
@@ -538,14 +476,12 @@ class KOdrum(Reactor):
 # separator
 
 class HTL(Reactor):
-    
     '''
     HTL converts dewatered sludge to biocrude, aqueous, off-gas, and biochar
     under elevated temperature (350°C) and pressure. The products percentage
     (wt%) can be evaluated using revised MCA model (Li et al., 2017,
     Leow et al., 2018) with known sludge composition (protein%, lipid%,
     and carbohydrate%, all afdw%).
-    
     Notice that for HTL we just calculate each phases' total mass (except gas)
     and calculate C, N, and P amount in each phase as properties. We don't
     specify components for oil/char since we want to use MCA model to calculate
@@ -555,19 +491,70 @@ class HTL(Reactor):
     P based on mass balance closure. But later for CHG, HT, and HC, we specify
     each components (except aqueous phase) for the application of flash,
     distillation column, and CHP units.
-    
-    Model method: empirical model (based on MCA model and experimental data).
-    
-    Design: tau = 15/60 based on Jones 2014. V_wf = 0.3 calculate based on data
-    in NREL 2013. N = 4 based on NREL 2013. Instead of a long PFR, use length_to_
-    diameter = 2.
-    
     Parameters
     ----------
-    ins: Iterable (stream)
-        dewatered_sludge
-    outs: Iterable (stream)
-        biochar, HTLaqueous, biocrude, offgas
+    ins: stream
+        dewatered_sludge.
+    outs: stream
+        biochar, HTLaqueous, biocrude, offgas.
+    lipid_2_biocrude: float
+        Lipid to biocrude factor.
+    protein_2_biocrude: float
+        Protein to biocrude factor.
+    carbo_2_biocrude: float
+        Carbohydrate to biocrude factor.
+    protein_2_gas: float
+        Protein to gas factor.
+    carbo_2_gas: float
+        Carbohydrate to gas factor.
+    biocrude_C_slope: float
+        Biocrude carbon content slope.
+    biocrude_C_intercept: float
+        Biocrude carbon content intercept.
+    biocrude_N_slope: float
+        Biocrude nitrogen content slope.
+    biocrude_H_slope: float
+        Biocrude hydrogen content slope.
+    biocrude_H_intercept: float
+        Biocrude hydrogen content intercept.
+    biochar_C_slope: float
+        Biochar carbon content slope.
+    biocrude_moisture_content: float
+        Biocrude moisture content.
+    biochar_P_recovery_ratio: float
+        Biochar phosphorus to total phosphorus ratio.
+    gas_composition: dict
+        HTL offgas compositions.
+    biochar_pre: float
+        Biochar pressure, [Pa].
+    HTLaqueous_pre: float
+        HTL aqueous phase pressure, [Pa].
+    biocrude_pre: float
+        Biocrude pressure, [Pa].
+    offgas_pre: float
+        Offgas pressure, [Pa].
+    eff_T: float
+        HTL effluent temperature, [K].
+    References
+    ----------
+    .. [1] Leow, S.; Witter, J. R.; Vardon, D. R.; Sharma, B. K.;
+        Guest, J. S.; Strathmann, T. J. Prediction of Microalgae Hydrothermal
+        Liquefaction Products from Feedstock Biochemical Composition.
+        Green Chem. 2015, 17 (6), 3584–3599. https://doi.org/10.1039/C5GC00574D.
+    .. [2] Li, Y.; Leow, S.; Fedders, A. C.; Sharma, B. K.; Guest, J. S.;
+        Strathmann, T. J. Quantitative Multiphase Model for Hydrothermal
+        Liquefaction of Algal Biomass. Green Chem. 2017, 19 (4), 1163–1174.
+        https://doi.org/10.1039/C6GC03294J.
+    .. [3] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
+        Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
+        Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
+        Process Design and Economics for the Conversion of Algal Biomass to
+        Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
+        PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
+    .. [4] Matayeva, A.; Rasmussen, S. R.; Biller, P. Distribution of Nutrients and
+        Phosphorus Recovery in Hydrothermal Liquefaction of Waste Streams.
+        BiomassBioenergy 2022, 156, 106323.
+        https://doi.org/10.1016/j.biombioe.2021.106323.
     '''
     
     auxiliary_unit_names=('heat_exchanger','kodrum')
@@ -579,29 +566,29 @@ class HTL(Reactor):
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
-                 lipid_2_biocrude = 0.846, # revised MCA
-                 protein_2_biocrude = 0.445, # revised MCA
-                 carbo_2_biocrude = 0.205, # revised MCA
-                 protein_2_gas = 0.074, # revised MCA
-                 carbo_2_gas = 0.418, # revised MCA
-                 biocrude_C_slope = -8.37, # MCA
-                 biocrude_C_intercept = 68.55, # MCA
-                 biocrude_N_slope = 0.133, # MCA
-                 biocrude_H_slope = -2.61, # MCA
-                 biocrude_H_intercept = 8.20, # MCA
-                 biochar_C_slope = 1.75, # MCA
-                 biocrude_moisture_content=0.063, # Jones
-                 biochar_P_recovery_ratio=0.86, # Matayeva: 0.84-0.88
+                 lipid_2_biocrude = 0.846, # [1]
+                 protein_2_biocrude = 0.445, # [1]
+                 carbo_2_biocrude = 0.205, # [1]
+                 protein_2_gas = 0.074, # [1]
+                 carbo_2_gas = 0.418, # [1]
+                 biocrude_C_slope = -8.37, # [2]
+                 biocrude_C_intercept = 68.55, # [2]
+                 biocrude_N_slope = 0.133, # [2]
+                 biocrude_H_slope = -2.61, # [2]
+                 biocrude_H_intercept = 8.20, # [2]
+                 biochar_C_slope = 1.75, # [2]
+                 biocrude_moisture_content=0.063, # [3]
+                 biochar_P_recovery_ratio=0.86, # [4]
                  gas_composition={'CH4':0.050, 'C2H6':0.032,
-                                  'CO2':0.918}, # Jones
-                 biochar_pre=3029.7*6894.76, # Jones
-                 HTLaqueous_pre=30*6894.76, # Jones
-                 biocrude_pre=30*6894.76, # Jones
-                 offgas_pre=30*6894.76, # Jones
-                 eff_T=60+273.15, # Jones
-                 
+                                  'CO2':0.918}, # [3]
+                 biochar_pre=3029.7*6894.76, # [3]
+                 HTLaqueous_pre=30*6894.76, # [3]
+                 biocrude_pre=30*6894.76, # [3]
+                 offgas_pre=30*6894.76, # [3]
+                 eff_T=60+273.15, # [3]
                  P=None, tau=15/60, V_wf=0.3,
-                 length_to_diameter=2, N=4, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
+                 length_to_diameter=2, N=4, V=None, auxiliary=False,
+                 mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',         
@@ -630,7 +617,6 @@ class HTL(Reactor):
         hx_out = bst.Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out, T=eff_T)
         self.kodrum = KOdrum(ID=f'.{ID}_KOdrum')
-        
         self.P = P
         self.tau = tau
         self.V_wf = V_wf
@@ -672,7 +658,6 @@ class HTL(Reactor):
                                           0.154*afdw_lipid_ratio)*\
                                           dewatered_sludge_afdw
         # HTLaqueous is TDS in aqueous phase
-        
         # 0.377, 0.481, and 0.154 don't have uncertainties becasue they are calculated values
          
         gas_mass = (self.protein_2_gas*afdw_protein_ratio + self.carbo_2_gas*afdw_carbo_ratio)*\
@@ -706,17 +691,15 @@ class HTL(Reactor):
 
     @property
     def biocrude_C_ratio(self):
-        return (self.sludgelab.AOSc*self.biocrude_C_slope + self.biocrude_C_intercept)/100
-        # revised MCA model
+        return (self.sludgelab.AOSc*self.biocrude_C_slope + self.biocrude_C_intercept)/100 # [2]
     
     @property
     def biocrude_H_ratio(self):
-        return (self.sludgelab.AOSc*self.biocrude_H_slope + self.biocrude_H_intercept)/100
-        # revised MCA model
+        return (self.sludgelab.AOSc*self.biocrude_H_slope + self.biocrude_H_intercept)/100 # [2]
 
     @property
     def biocrude_N_ratio(self):
-        return self.biocrude_N_slope*self.sludgelab.sludge_dw_protein # revised MCA model
+        return self.biocrude_N_slope*self.sludgelab.sludge_dw_protein # [2]
     
     @property
     def biocrude_C(self):
@@ -733,19 +716,17 @@ class HTL(Reactor):
     @property
     def biocrude_HHV(self):
         return 30.74 - 8.52*self.sludgelab.AOSc +\
-               0.024*self.sludgelab.sludge_dw_protein # Li 2017, in MJ/kg
+               0.024*self.sludgelab.sludge_dw_protein # [2]
                
     @property
     def energy_recovery(self):
         return self.biocrude_HHV*self.outs[2].imass['Biocrude']/\
                (self.sludgelab.outs[0].F_mass -\
-               self.sludgelab.outs[0].imass['H2O'])/self.sludgelab.sludge_HHV
-        # Li 2017
+               self.sludgelab.outs[0].imass['H2O'])/self.sludgelab.sludge_HHV # [2]
         
     @property
     def biochar_C_ratio(self):
-        return min(self.biochar_C_slope*self.sludgelab.sludge_dw_carbo, 0.65)
-    # revised MCA model
+        return min(self.biochar_C_slope*self.sludgelab.sludge_dw_carbo, 0.65) # [2]
 
     @property
     def biochar_C(self):
@@ -765,7 +746,7 @@ class HTL(Reactor):
     # C and N in aqueous phase are calculated based on mass balance closure
     # in the case that HTLaqueous_C is less than 0, which
     # is likely to happen when the carbo% is high,
-    # we assume the HTLaqueous 0 and excess biochar_C is ok
+    # we prioritize offgas_C over HTLaqueous_C for now
     
     @property
     def HTLaqueous_C(self):
@@ -809,27 +790,31 @@ class HTL(Reactor):
 # =============================================================================
 
 class AcidExtraction(Reactor):
-    
     '''
-    H2SO4 is added to biochar from HTL to extract P. 
-    
-    Model method: assume P recovery ratio, add filters in _design and _cost.
-    
-    Design: tau, V_wf, and kW_per_m3 use MixTank default values. Material uses 304.
-    
+    H2SO4 is added to biochar from HTL to extract phosphorus. 
     Parameters
     ----------
-    ins: Iterable (stream)
-        biochar, acid
-    outs: Iterable (stream)
-        residual, extracted
+    ins: stream
+        biochar, acid.
+    outs: stream
+        residual, extracted.
+    acid_vol: float
+        0.5 M H2SO4 to biochar ratio: mL/g.
+    P_acid_recovery_ratio: float
+        The ratio of phosphorus that can be extracted.
+    References
+    ----------
+    .. [1] Zhu, Y.; Schmidt, A.; Valdez, P.; Snowden-Swan, L.; Edmundson, S.
+        Hydrothermal Liquefaction and Upgrading of Wastewater-Grown Microalgae:
+        2021 State of Technology; PNNL-32695, 1855835; 2022; p PNNL-32695, 1855835.
+        https://doi.org/10.2172/1855835.
     '''
     
     _F_BM_default = {**Reactor._F_BM_default}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', acid_vol=7, P_acid_recovery_ratio=0.8,
-                 P=None, tau=2, V_wf=0.8, # tau: Zhu
+                 P=None, tau=2, V_wf=0.8, # tau: [1]
                  length_to_diameter=2, N=None, V=None, auxiliary=False,
                  mixing_intensity=None, kW_per_m3=0.0985, # use MixTank default value
                  wall_thickness_factor=1,
@@ -922,15 +907,19 @@ class HTLmixer(SanUnit):
     '''
     A fake unit that calculates C, N, P, and H2O amount in the mixture of HTL
     aqueous and AcidEx effluent.
-    
-    Model method: elements separation, don't need _design and _cost.
-    
     Parameters
     ----------
-    ins: Iterable (stream)
+    ins: stream
         HTLaqueous, extracted
-    outs: Iterable (stream)
+    outs: stream
         mixture
+    References
+    ----------
+    .. [1] Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J. 
+        Quantitative Evaluation of an Integrated System for Valorization of
+        Wastewater Algae as Bio-Oil, Fuel Gas, and Fertilizer Products. 
+        Environ. Sci. Technol. 2018, 52 (21), 12717–12727. 
+        https://doi.org/10.1021/acs.est.8b04035.
     '''
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
@@ -961,7 +950,7 @@ class HTLmixer(SanUnit):
         
     @property
     def pH(self):
-        # assume HTLaqueous pH = 9 Li 2018 SI (9.08 ± 0.30)
+        # assume HTLaqueous pH = 9 [1] (9.08 ± 0.30)
         # extracted pH = 0 (0.5 M H2SO4)
         # since HTLaqueous pH is near to neutral
         # assume pH is dominant by extracted and will be calculate based on dilution
@@ -980,20 +969,15 @@ class HTLmixer(SanUnit):
 # =============================================================================
 
 class HTLsplitter(SanUnit):
-    
     '''
     A fake unit that calculates influent based on effluents.
-    
-    Model method: use experimental data.
-    
     Parameters
     ----------
-    ins: Iterable (stream)
+    ins: stream
     flow_in
-    outs: Iterable (stream)
+    outs: stream
     flow_out_1, flow_out_2
     '''
-    
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
@@ -1023,20 +1007,36 @@ class HTLsplitter(SanUnit):
 
 class StruvitePrecipitation(Reactor):
     '''
-    extracted_P and HTL aqueous are mixed together (Mixer) before adding
-    MgCl2 and struvite precipitation.
-    
-    Model method: P recovery rate with uncertainty from literature data.
-    If mol(N)<mol(P), add NH4Cl to mol(N):mol(P)=1:1
-    
-    Design: tau, V_wf, and kW_per_m3 use MixTank default values. Material uses carbon steel.
-    
+    Extracted and HTL aqueous are mixed together before adding MgCl2 for struvite precipitation.
+    If mol(N)<mol(P), add NH4Cl to mol(N):mol(P)=1:1.
     Parameters
     ----------
-    ins: Iterable (stream)
-        mixture, supply_MgCl2, supply_NH4Cl
-    outs: Iterable (stream)
-        struvite, effluent
+    ins: stream
+        mixture, supply_MgCl2, supply_NH4Cl, base.
+    outs: stream
+        struvite, effluent.
+    target_pH: float
+        Target pH for struvite precipitation.
+    Mg_P_ratio: float
+        mol(Mg) to mol(P) ratio.   
+    P_pre_recovery_ratio: float
+        Ratio of phosphorus that can be precipitated out.
+    P_in_struvite: float
+        Mass ratio of phosphorus in struvite.
+    HTLaqueous_NH3_N_2_total_N: float
+        Ratio of NH3-N to TN in HTL aqueous phase.
+    References
+    ----------
+    .. [1] Zhu, Y.; Schmidt, A.; Valdez, P.; Snowden-Swan, L.; Edmundson, S.
+        Hydrothermal Liquefaction and Upgrading of Wastewater-Grown Microalgae:
+        2021 State of Technology; PNNL-32695, 1855835; 2022; p PNNL-32695, 1855835.
+        https://doi.org/10.2172/1855835.
+    .. [2] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
+        Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
+        Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
+        Process Design and Economics for the Conversion of Algal Biomass to
+        Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
+        PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
     '''
     
     _F_BM_default = {**Reactor._F_BM_default}
@@ -1045,17 +1045,15 @@ class StruvitePrecipitation(Reactor):
                  init_with='Stream', 
                  target_pH = 9,
                  Mg_P_ratio=2.5,
-                 P_pre_recovery_ratio=0.99, # Zhu
+                 P_pre_recovery_ratio=0.99, # [1]
                  P_in_struvite=0.126,
-                 HTLaqueous_NH3_N_2_total_N = 0.853, # Jones
-                 
-                 P=None, tau=1, V_wf=0.8, # tau: Zhu
+                 HTLaqueous_NH3_N_2_total_N = 0.853, # [2]
+                 P=None, tau=1, V_wf=0.8, # tau: [1]
                  length_to_diameter=2, N=None, V=None, auxiliary=False,
                  mixing_intensity=None, kW_per_m3=0.0985, # use MixTank default value
                  wall_thickness_factor=1,
                  vessel_material='Carbon steel', # basic condition
                  vessel_type='Vertical',
-                 
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -1108,7 +1106,6 @@ class StruvitePrecipitation(Reactor):
             
             supply_MgCl2.imass['MgCl2'] = (mixture.imass['P']/30.973762*self.Mg_P_ratio -\
                                            base.imass['MgO']/40.3044)*95.211
-                                           # Mg:P = 2:1 (1.5:1 - 4:1)
             supply_MgCl2.price = 0.5452
             struvite.imass['Struvite'] = mixture.imass['P']*\
                                          self.P_pre_recovery_ratio/\
@@ -1163,25 +1160,54 @@ class StruvitePrecipitation(Reactor):
 # hydrocyclone
 
 class CHG(Reactor, SludgeLab):
-   
     '''
     CHG serves to reduce the COD content in the aqueous phase and produce fuel
     gas under elevated temperature (350°C) and pressure. The outlet will be
     cooled down and separated by a flash unit.
-    
-    Model method: use experimental data, assume no NH3 loss for now.
-    
-    Design: tau = 1/3 h and V_wf = 0.5 based on Davis NREL 2018. Assuming no
-    headspace. N=6 based on Jones 2014.
-    
     Parameters
     ----------
-    ins: Iterable (stream)
-        chg_in, catalyst_in
-    outs: Iterable (stream)
-        chg_out, catalyst_out
+    ins: stream
+        chg_in, catalyst_in.
+    outs: stream
+        chg_out, catalyst_out.
+    pump_pressure: float
+        CHG influent pressure, [Pa].
+    heat_temp: float
+        CHG influent temperature, [K].
+    cool_temp: float
+        CHG effluent temperature, [K].
+    WHSV: float
+        Weight Hourly Space velocity, [kg feed/hr/kg catalyst].
+    catalyst_lifetime: float
+        CHG catalyst lifetime, [hr].
+    catalyst_price: float
+        CHG catalyst price, [$/kg].
+    gas_composition: dict
+        CHG gas composition.
+    gas_C_2_total_C: dict
+        CHG gas carbon content to feed carbon content.
+    References
+    ----------
+    .. [1] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
+        Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
+        Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
+        Process Design and Economics for the Conversion of Algal Biomass to
+        Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
+        PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
+    .. [2] Davis, R. E.; Grundl, N. J.; Tao, L.; Biddy, M. J.; Tan, E. C.;
+        Beckham, G. T.; Humbird, D.; Thompson, D. N.; Roni, M. S. Process
+        Design and Economics for the Conversion of Lignocellulosic Biomass
+        to Hydrocarbon Fuels and Coproducts: 2018 Biochemical Design Case
+        Update; Biochemical Deconstruction and Conversion of Biomass to Fuels
+        and Products via Integrated Biorefinery Pathways; NREL/TP--5100-71949,
+        1483234; 2018; p NREL/TP--5100-71949, 1483234.
+        https://doi.org/10.2172/1483234.
+    .. [3] Elliott, D. C.; Neuenschwander, G. G.; Hart, T. R.; Rotness, L. J.;
+        Zacher, A. H.; Santosa, D. M.; Valkenburg, C.; Jones, S. B.;
+        Rahardjo, S. A. T. Catalytic Hydrothermal Gasification of Lignin-Rich
+        Biorefinery Residues and Algae Final Report. 87.
     '''
-    
+
     auxiliary_unit_names=('pump','heat_ex_heating','heat_ex_cooling')
     
     _kg_2_lb = 2.20462
@@ -1192,25 +1218,21 @@ class CHG(Reactor, SludgeLab):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
-                 
                  pump_pressure=3089.7*6894.76,
                  heat_temp=350+273.15,
                  cool_temp=60+273.15,
-                 
-                 WHSV=3.56, # wt./hr per wt. catalyst
-                 catalyst_lifetime=1*yearly_operation_hour, # 1 year Jones
+                 WHSV=3.56,
+                 catalyst_lifetime=1*yearly_operation_hour, # 1 year [1]
                  catalyst_price=134.53,
                  gas_composition={'CH4':0.527,
                                   'CO2':0.432,
                                   'C2H6':0.011,
                                   'C3H8':0.030,
-                                  'H2':0.0001},
-                 # Jones
-                 # will not be a variable in uncertainty/sensitivity analysis
-                 gas_C_2_total_C=0.598, # Jones
-                 
-                 P=None, tau=20/60, void_fraction=0.5,
-                 length_to_diameter=2, N=6, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
+                                  'H2':0.0001}, # [1]
+                 gas_C_2_total_C=0.598, # [1]
+                 P=None, tau=20/60, void_fraction=0.5, # [2, 3]
+                 length_to_diameter=2, N=6, V=None, auxiliary=False,
+                 mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
@@ -1221,28 +1243,24 @@ class CHG(Reactor, SludgeLab):
         self.pump_pressure = pump_pressure
         self.heat_temp = heat_temp
         self.cool_temp = cool_temp
-        
         self.WHSV = WHSV
         self.catalyst_lifetime = catalyst_lifetime
         self.catalyst_price = catalyst_price
         self.gas_composition = gas_composition
         self.gas_C_2_total_C = gas_C_2_total_C
-        
         pump_in = bst.Stream(f'{ID}_pump_in')
         pump_out = bst.Stream(f'{ID}_pump_out')
         self.pump = Pump(ID=f'.{ID}_pump', ins=pump_in, outs=pump_out, P=pump_pressure)
-        
         hx_ht_in = bst.Stream(f'{ID}_hx_ht_in')
         hx_ht_out = bst.Stream(f'{ID}_hx_ht_out')
         self.heat_ex_heating = HXutility(ID=f'.{ID}_hx_ht', ins=hx_ht_in, outs=hx_ht_out, T=heat_temp)
-
         hx_cl_in = bst.Stream(f'{ID}_hx_cl_in')
         hx_cl_out = bst.Stream(f'{ID}_hx_cl_out')
         self.heat_ex_cooling = HXutility(ID=f'.{ID}_hx_cl', ins=hx_cl_in, outs=hx_cl_out, T=cool_temp)
-        
         self.P = P
         self.tau = tau
-        self.V_wf = void_fraction # no headspace, gases produced will be vented, so V_wf = void fraction Elliott
+        self.V_wf = void_fraction
+        # no headspace, gases produced will be vented, so V_wf = void fraction [2, 3]
         self.length_to_diameter = length_to_diameter
         self.N = N
         self.V = V
@@ -1282,11 +1300,9 @@ class CHG(Reactor, SludgeLab):
                 chg_out.imass[name] = gas_mass*ratio
                 
             chg_out.imass['H2O'] = chg_in.F_mass - gas_mass
-            # all C, N, and P are accounted in H2O here, but will be calculated as
-            # properties.
+            # all C, N, and P are accounted in H2O here, but will be calculated as properties.
                 
             chg_out.T = self.cool_temp
-            
             chg_out.P = self.pump_pressure
         
     @property
@@ -1352,24 +1368,72 @@ class CHG(Reactor, SludgeLab):
 # =============================================================================
 
 class MembraneDistillation(SanUnit):
-    
     '''
     Membrane distillation recovers nitrogen as ammonia sulfate based on vapor
     pressure difference across the hydrophobic membrane.
-    
-    Model method: 
-        1. calculate NH3 in feed based on pH
-        2. calculate NH3/H2O VLE
-        3. calculate NH3 flux and removal rate
-        
-    Design: based on Al-Obaidani et al.
-
     Parameters
     ----------
-    ins: Iterable (stream)
-        influent, acid, base
-    outs: Iterable (stream)
-        ammoniasulfate, ww
+    ins: stream
+        influent, acid, base, mem_in.
+    outs: stream
+        ammoniumsulfate, ww, mem_out.
+    influent_pH: float
+        Influent pH.
+    target_pH: float
+        Target pH for membrane distillation.
+    N_S_ratio: float
+        mol(N) to mol(S) ratio.
+    m2_2_m3: float
+        m2 to m3 factor, 1/specific surface area, [m3/m2].
+    Dm: float
+        NH3 molecular diffusity in air, [m2/s]. 
+    porosity: float
+        Membrane porosity.
+    thickness: float
+        Membrane thickness, [m].
+    tortuosity: float
+        Membrane tortuosity.
+    Henry: float
+        NH3 Henry constant, [atm*m3/mol].
+    Ka: float
+        Overall mass transfer coefficient, [m/s].
+    capacity: float
+        Membrane treatement capacity (permeate flux), [kg/m2/h].
+    membrane_price: float
+        Membrane price, [$/kg, use kg to replace m2].
+    ammonium_sulfate_price: float
+        Ammonium sulfate price, [$/kg].
+    References
+    ----------
+    .. [1] Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J. 
+        Quantitative Evaluation of an Integrated System for Valorization of
+        Wastewater Algae as Bio-Oil, Fuel Gas, and Fertilizer Products. 
+        Environ. Sci. Technol. 2018, 52 (21), 12717–12727. 
+        https://doi.org/10.1021/acs.est.8b04035.
+    .. [2] Doran, P. M. Chapter 11 - Unit Operations. In Bioprocess Engineering
+        Principles (Second Edition); Doran, P. M., Ed.; Academic Press: London,
+        2013; pp 445–595. https://doi.org/10.1016/B978-0-12-220851-5.00011-3.
+    .. [3] Spiller, L. L. Determination of Ammonia/Air Diffusion Coefficient Using
+        Nafion Lined Tube. Analytical Letters 1989, 22 (11–12), 2561–2573.
+        https://doi.org/10.1080/00032718908052375.
+    .. [4] Scheepers, D. M.; Tahir, A. J.; Brunner, C.; Guillen-Burrieza, E.
+        Vacuum Membrane Distillation Multi-Component Numerical Model for Ammonia
+        Recovery from Liquid Streams. Journal of Membrane Science
+        2020, 614, 118399. https://doi.org/10.1016/j.memsci.2020.118399.
+    .. [5] Ding, Z.; Liu, L.; Li, Z.; Ma, R.; Yang, Z. Experimental Study of Ammonia
+        Removal from Water by Membrane Distillation (MD): The Comparison of Three
+        Configurations. Journal of Membrane Science 2006, 286 (1), 93–103.
+        https://doi.org/10.1016/j.memsci.2006.09.015.
+    .. [6] Al-Obaidani, S.; Curcio, E.; Macedonio, F.; Di Profio, G.; Al-Hinai, H.;
+        Drioli, E. Potential of Membrane Distillation in Seawater Desalination:
+        Thermal Efficiency, Sensitivity Study and Cost Estimation.
+        Journal of Membrane Science 2008, 323 (1), 85–98.
+        https://doi.org/10.1016/j.memsci.2008.06.006.
+    .. [7] Kogler, A.; Farmer, M.; Simon, J. A.; Tilmans, S.; Wells, G. F.;
+        Tarpeh, W. A. Systematic Evaluation of Emerging Wastewater Nutrient Removal
+        and Recovery Technologies to Inform Practice and Advance Resource
+        Efficiency. ACS EST Eng. 2021, 1 (4), 662–684.
+        https://doi.org/10.1021/acsestengg.0c00253.
     '''
     
     _F_BM_default = {'Membrane': 1}
@@ -1379,32 +1443,31 @@ class MembraneDistillation(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
-                 inffluent_pH=8.16, # CHG effluent pH: 8.16 ± 0.25 Li 2018
+                 influent_pH=8.16, # CHG effluent pH: 8.16 ± 0.25 [1]
                  target_pH=10,
                  N_S_ratio=2,
                  # S is excess since not all N can be transfered to form ammonia sulfate
                  # for now, assume N_S_ratio = 2 is ok
-                 m2_2_m3=1/1200, # specific surface area, for hollow fiber membrane, Doran
-                 Dm=2.28*10**(-5), # (2.28 ± 0.12)*10^-5 m^2/s NH3 molecular diffusity in air Spiller
+                 m2_2_m3=1/1200, # specific surface area, for hollow fiber membrane [2]
+                 Dm=2.28*10**(-5), # (2.28 ± 0.12)*10^-5 m^2/s NH3 molecular diffusity in air [3]
                  # (underestimate, this value may be at 15 or 25 C, our feed is 60 C, should be higher)
-                 porosity=0.9, # Scheepers
-                 thickness=7*10**(-5), # m, Scheepers
-                 tortuosity=1.2, # Scheepers
-                 Henry=1.61*10**(-5), # atm*m3/mole
+                 porosity=0.9, # [4]
+                 thickness=7*10**(-5), # m [4]
+                 tortuosity=1.2, # [4]
+                 Henry=1.61*10**(-5), # atm*m3/mol
                  # https://webwiser.nlm.nih.gov/substance?substanceId=315&identifier=\
                  # Ammonia&identifierType=name&menuItemId=81&catId=120#:~:text=The%20\
                  # Henry's%20Law%20constant%20for,m%2Fmole(2). (accessed 11-11-2022)
-                 Ka=1.75*10**(-5), # overall mass transfer coefficient 1.2~2.3*10^-5 m/s Ding
-                 capacity=6.01, # kg/m2/h, Al-Obaidani
-                 # permeate flux, similar values can be found in many other papers ([176], [222] ,[223] in Kogler Stanford)
-                 # [177], [223] in Kogler Stanford show high nitrogen recovery ratio (>85% under optimal conditions)
-                 membrane_price=93.29,
+                 Ka=1.75*10**(-5), # overall mass transfer coefficient 1.2~2.3*10^-5 m/s [5]
+                 capacity=6.01, # kg/m2/h [6]
+                 # permeate flux, similar values can be found in many other papers ([176], [222] ,[223] in [7])
+                 # [177], [223] in [7] show high nitrogen recovery ratio (>85% under optimal conditions)
+                 membrane_price=93.29, # $90/m2 2008 [6]
                  ammonium_sulfate_price=0.3236, # convert to solution price
-                 # Al-Obaidani: $90/m2, $2008
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.inffluent_pH = inffluent_pH
+        self.influent_pH = influent_pH
         self.target_pH = target_pH
         self.N_S_ratio = N_S_ratio
         self.m2_2_m3 = m2_2_m3
@@ -1432,7 +1495,7 @@ class MembraneDistillation(SanUnit):
         if self.CHG.CHGout_N == 0:
             ww.copy_like(influent)
         else:
-            NaOH_conc = 10**(self.target_pH - 14) - 10**(self.inffluent_pH - 14)
+            NaOH_conc = 10**(self.target_pH - 14) - 10**(self.influent_pH - 14)
             NaOH_mol = NaOH_conc*self.ins[0].F_mass
             base.imass['NaOH'] = NaOH_mol*39.997/1000
             base.price = 0.526
@@ -1493,7 +1556,6 @@ class MembraneDistillation(SanUnit):
                                              132.14*28.0134 -\
                                              ammoniumsulfate.imass['NH42SO4']
             ammoniumsulfate.price = self.ammonium_sulfate_price*ammoniumsulfate.imass['NH42SO4']/ammoniumsulfate.F_mass
-            # made-up value based on online price, will change later
                                             
             ww.copy_like(influent) # ww has the same T and P as influent
             
@@ -1515,7 +1577,7 @@ class MembraneDistillation(SanUnit):
             mem_in.imass['Membrane'] = 0.15*self.membrane_area/yearly_operation_hour # m2/hr
             mem_out.copy_like(mem_in)
             mem_in.price = self.membrane_price
-            # add membrane as streams to include 15% membrane replacement per year (Al-Obaidani)
+            # add membrane as streams to include 15% membrane replacement per year [6]
     
     @property
     def N_recovery_ratio(self):
@@ -1542,26 +1604,45 @@ class MembraneDistillation(SanUnit):
 # =============================================================================
 
 class HT(Reactor):
-    
     '''
     Biocrude mixed with H2 are hydrotreated at elevated temperature (405°C)
-    and pressure to produce upgraded biooil. Co-products include fuel gas and
-    char. The amount of biooil and fuel gas can be estimated using values from
-    Li et al., 2018.
-    The amount of char can be calculated based on mass closure.
-    
-    Model method: use experimental data.
-    
-    Design: tau assumes 2 times HTL tau. V_wf calculated based on
-    LHSV = 0.5 L/L/hr and H2 and biocrude volume ratio.
-    Void fraction of catalyst = 0.4 (the same as HC, Chemical Engineering Design).
-    
+    and pressure to produce upgraded biooil. Co-product includes fuel gas.
     Parameters
     ----------
-    ins: Iterable (stream)
-    biocrude, hydrogen, catalyst_in
-    outs: Iterable (stream)
-    ht_out, catalyst_out
+    ins: stream
+        biocrude, hydrogen, catalyst_in.
+    outs: stream
+        ht_out, catalyst_out = self.outs.
+    WHSV: float
+        Weight Hourly Space velocity, [kg feed/hr/kg catalyst].
+    catalyst_lifetime: float
+        CHG catalyst lifetime, [hr].
+    catalyst_price: float
+        CHG catalyst price, [$/kg].
+    hydrogen_P: float
+        Hydrogen pressure, [Pa].
+    hydrogen_rxned_to_biocrude: float
+        Reacted H2 to biocrude mass ratio.
+    hydrocarbon_ratio: float
+        Mass ratio of produced hydrocarbon to the sum of biocrude and reacted H2.
+    HTin_T: float
+        HT influent temperature, [K].
+    HTrxn_T: float
+        HT effluent (after reaction) temperature, [K].
+    HT_composition: dict
+        HT effluent composition.
+    References
+    ----------
+    .. [1] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
+        Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
+        Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
+        Process Design and Economics for the Conversion of Algal Biomass to
+        Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
+        PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
+    .. [2] Towler, G.; Sinnott, R. Chapter 14 - Design of Pressure Vessels.
+        In Chemical Engineering Design (Second Edition); Towler, G., Sinnott, R.,
+        Eds.; Butterworth-Heinemann: Boston, 2013; pp 563–629.
+        https://doi.org/10.1016/B978-0-08-096659-5.00014-6.
     '''
     
     auxiliary_unit_names=('compressor','heat_exchanger',)
@@ -1574,16 +1655,15 @@ class HT(Reactor):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
-                 WHSV=0.625, # wt./hr per wt. catalyst Jones
-                 catalyst_lifetime=2*yearly_operation_hour, # 2 years Jones
+                 WHSV=0.625, # wt./hr per wt. catalyst [1]
+                 catalyst_lifetime=2*yearly_operation_hour, # 2 years [1]
                  catalyst_price=38.79,
                  hydrogen_P=1530*6894.76,
                  hydrogen_rxned_to_biocrude=0.046,
-                 hydrocarbon_ratio=0.875, # 87.5 wt% of biocrude and reacted H2
-                 # Jones et al., 2014
+                 hydrocarbon_ratio=0.875, # 87.5 wt% of biocrude and reacted H2 [1]
                  # spreadsheet HT calculation
                  HTin_T=174+273.15,
-                 HTrxn_T=402+273.15, # Jones 2014
+                 HTrxn_T=402+273.15, # [1]
                  HT_composition={'CH4':0.02280, 'C2H6':0.02923,
                                  'C3H8':0.01650, 'C4H10':0.00870,
                                  'TWOMBUTAN':0.00408, 'NPENTAN':0.00678,
@@ -1610,17 +1690,15 @@ class HT(Reactor):
                                  'C18H38':0.04080, 'C19H40':0.04080,
                                  'C20H42':0.10200, 'C21H44':0.04080,
                                  'TRICOSANE':0.04080, 'C24H38O4':0.00817,
-                                 'C26H42O4':0.01020, 'C30H62':0.00203},
-                 # Jones et al., 2014
+                                 'C26H42O4':0.01020, 'C30H62':0.00203}, # [1]
                  # spreadsheet HT calculation
                  # will not be a variable in uncertainty/sensitivity analysis
-                 
-                 P=None, tau=0.5, void_fraciton=0.4, # Towler
-                 length_to_diameter=2, N=None, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
+                 P=None, tau=0.5, void_fraciton=0.4, # [2]
+                 length_to_diameter=2, N=None, V=None, auxiliary=False,
+                 mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
-                 
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -1633,16 +1711,13 @@ class HT(Reactor):
         self.HTin_T = HTin_T
         self.HTrxn_T = HTrxn_T
         self.HT_composition = HT_composition
-        
         IC_in = bst.Stream(f'{ID}_IC_in')
         IC_out = bst.Stream(f'{ID}_IC_out')
         self.compressor = IsothermalCompressor(ID=f'.{ID}_IC', ins=IC_in,
                                                outs=IC_out, P=None)
-        
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
-        
         self.P = P
         self.tau = tau
         self.void_fraciton = void_fraciton
@@ -1777,27 +1852,41 @@ class HT(Reactor):
 # =============================================================================
 
 class HC(Reactor):
-    
     '''
-    Hydrocracking further cracks down heavy part in HT biooil to diesel and
-    gasoline.
-    
-    Model method: use experimental data.
-    
-    Design: tau assumes 10 times HT tau. V_wf calculated based on
-    LHSV = 0.5 L/L/hr and H2 and biocrude volume ratio.
-    Void fraction of catalyst = 0.4 (Chemical Engineering Design).
-    wall_thickness_factor = 1.5 to account for harsher conditions in HC than HT.
-    (https://www.differencebetween.com/difference-between-hydrocracking-and-\
-    hydrotreating/#:~:text=The%20key%20difference%20between%20hydrocracking,\
-    processes%20in%20petroleum%20oil%20refining. (accessed 11-19-2022))
-    
+    Biocrude mixed with H2 are hydrotreated at elevated temperature (405°C)
+    and pressure to produce upgraded biooil. Co-product includes fuel gas.
     Parameters
     ----------
-    ins: Iterable (stream)
-    heavy_oil, hydrogen, catalyst_in
-    outs: Iterable (stream)
-    ht_out, catalyst_out
+    ins: stream
+        heavy_oil, hydrogen, catalyst_in.
+    outs: stream
+        hc_out, catalyst_out.
+    WHSV: float
+        Weight Hourly Space velocity, [kg feed/hr/kg catalyst].
+    catalyst_lifetime: float
+        CHG catalyst lifetime, [hr].
+    catalyst_price: float
+        CHG catalyst price, [$/kg].
+    hydrogen_P: float
+        Hydrogen pressure, [Pa].
+    hydrogen_rxned_to_heavy_oil: float
+        Reacted H2 to heavy oil mass ratio.
+    hydrocarbon_ratio: float
+        Mass ratio of produced hydrocarbon to the sum of heavy oil and reacted H2.
+    HCin_T: float
+        HC influent temperature, [K].
+    HCrxn_T: float
+        HC effluent (after reaction) temperature, [K].
+    HC_composition: dict
+        HC effluent composition.
+    References
+    ----------
+    .. [1] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
+        Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
+        Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
+        Process Design and Economics for the Conversion of Algal Biomass to
+        Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
+        PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
     '''
     
     auxiliary_unit_names=('compressor','heat_exchanger',)
@@ -1810,15 +1899,14 @@ class HC(Reactor):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
-                 WHSV=0.625, # wt./hr per wt. catalyst Jones
-                 catalyst_lifetime=5*yearly_operation_hour, # 5 years Jones
+                 WHSV=0.625, # wt./hr per wt. catalyst [1]
+                 catalyst_lifetime=5*yearly_operation_hour, # 5 years [1]
                  catalyst_price=38.79,
                  hydrogen_P=1039.7*6894.76,
                  hydrogen_rxned_to_heavy_oil=0.01125,
                  hydrocarbon_ratio=1, # 100 wt% of heavy oil and reacted H2
                  # nearly all input heavy oils and H2 will be converted to
-                 # products
-                 # Jones et al., 2014
+                 # products [1]
                  # spreadsheet HC calculation
                  HCin_T=394+273.15,
                  HCrxn_T=451+273.15,
@@ -1833,13 +1921,11 @@ class HC(Reactor):
                                  'C19H40':0.00497, 'C20H42':0.00033},
                  #combine C20H42 and PHYTANE as C20H42
                  # will not be a variable in uncertainty/sensitivity analysis
-                 
                  P=None, tau=5, void_fraciton=0.4, # Towler
                  length_to_diameter=2, N=None, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1.5,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
-                 
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo,init_with)
@@ -1852,16 +1938,13 @@ class HC(Reactor):
         self.HCin_T = HCin_T
         self.HCrxn_T = HCrxn_T
         self.HC_composition = HC_composition
-        
         IC_in = bst.Stream(f'{ID}_IC_in')
         IC_out = bst.Stream(f'{ID}_IC_out')
         self.compressor = IsothermalCompressor(ID=f'.{ID}_IC', ins=IC_in,
                                                outs=IC_out, P=None)
-        
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
-        
         self.P = P
         self.tau = tau
         self.void_fraciton = void_fraciton
@@ -1965,14 +2048,11 @@ class WWmixer(SanUnit):
     '''
     A fake unit that mix all wastewater streams and calculates C, N, P, and H2O
     amount.
-    
-    Model method: elements calculation, don't need _design and _cost.
-    
     Parameters
     ----------
-    ins: Iterable (stream)
+    ins: stream
         supernatant_1, supernatant_2, memdis_ww, ht_ww
-    outs: Iterable (stream)
+    outs: stream
         mixture
     '''
     
@@ -2016,14 +2096,11 @@ class WWmixer(SanUnit):
 class PhaseChanger(SanUnit):
     '''
     Correct phase.
-    
-    Model method: just correct phase, don't need _design and _cost.
-    
     Parameters
     ----------
-    ins: Iterable (stream)
+    ins: stream
         influent
-    outs: Iterable (stream)
+    outs: stream
         effluent
     '''
     
@@ -2063,15 +2140,14 @@ class PhaseChanger(SanUnit):
 class FuelMixer(SanUnit):
     '''
     Convert gasoline to diesel or diesel to gasoline based on LHV.
-    
-    Model method: Fake unit.
-    
     Parameters
     ----------
-    ins: Iterable (stream)
+    ins: stream
         gasoline, diesel
-    outs: Iterable (stream)
+    outs: stream
         fuel
+    target: str
+        The target can only be 'gasoline' or 'diesel'.
     '''
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
