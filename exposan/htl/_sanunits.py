@@ -1025,6 +1025,14 @@ class StruvitePrecipitation(Reactor):
         Mass ratio of phosphorus in struvite.
     HTLaqueous_NH3_N_2_total_N: float
         Ratio of NH3-N to TN in HTL aqueous phase.
+    MgO_price: float
+        MgO price, [$/kg].
+    NH4Cl_price: float
+        NH4Cl price, [$/kg].
+    MgCl2_price: float
+        MgCl2 price, [$/kg].
+    struvite_price: float
+        Struvite price, [$/kg].
     References
     ----------
     .. [1] Zhu, Y.; Schmidt, A.; Valdez, P.; Snowden-Swan, L.; Edmundson, S.
@@ -1048,6 +1056,10 @@ class StruvitePrecipitation(Reactor):
                  P_pre_recovery_ratio=0.99, # [1]
                  P_in_struvite=0.126,
                  HTLaqueous_NH3_N_2_total_N = 0.853, # [2]
+                 MgO_price=0.2,
+                 NH4Cl_price=0.13,
+                 MgCl2_price=0.5452,
+                 struvite_price=0.6784,
                  P=None, tau=1, V_wf=0.8, # tau: [1]
                  length_to_diameter=2, N=None, V=None, auxiliary=False,
                  mixing_intensity=None, kW_per_m3=0.0985, # use MixTank default value
@@ -1062,6 +1074,10 @@ class StruvitePrecipitation(Reactor):
         self.P_pre_recovery_ratio = P_pre_recovery_ratio
         self.P_in_struvite = P_in_struvite
         self.HTLaqueous_NH3_N_2_total_N = HTLaqueous_NH3_N_2_total_N
+        self.MgO_price = MgO_price
+        self.NH4Cl_price = NH4Cl_price
+        self.MgCl2_price = MgCl2_price
+        self.struvite_price = struvite_price
         self.P = P
         self.tau = tau
         self.V_wf = V_wf
@@ -1093,7 +1109,7 @@ class StruvitePrecipitation(Reactor):
             to_target_pH = 10**(self.target_pH - 14)*self.ins[0].F_mass # ignore solid volume
             total_OH = neutral_OH_mol + to_target_pH # unit: mol/h
             base.imass['MgO'] = total_OH/2 * 40.3044/1000
-            base.price = 0.2
+            base.price = self.MgO_price
     
             if mixture.imass['P']/30.973762 > self.Mg_P_ratio*mixture.imass['N']*\
                                               self.HTLaqueous_NH3_N_2_total_N/14.0067:
@@ -1101,16 +1117,16 @@ class StruvitePrecipitation(Reactor):
                 supply_NH4Cl.imass['NH4Cl'] = (mixture.imass['P']/30.973762 -\
                                                self.Mg_P_ratio*mixture.imass['N']*\
                                                self.HTLaqueous_NH3_N_2_total_N/14.0067)*53.491
-            supply_NH4Cl.price = 0.13
+            supply_NH4Cl.price = self.NH4Cl_price
             # make sure N:P >= 1:1
             
             supply_MgCl2.imass['MgCl2'] = (mixture.imass['P']/30.973762*self.Mg_P_ratio -\
                                            base.imass['MgO']/40.3044)*95.211
-            supply_MgCl2.price = 0.5452
+            supply_MgCl2.price = self.MgCl2_price
             struvite.imass['Struvite'] = mixture.imass['P']*\
                                          self.P_pre_recovery_ratio/\
                                          self.P_in_struvite
-            struvite.price = 0.6784
+            struvite.price = self.struvite_price
             supply_MgCl2.phase = supply_NH4Cl.phase = base.phase = 's'
             
             effluent.copy_like(mixture)
@@ -1399,6 +1415,8 @@ class MembraneDistillation(SanUnit):
         Overall mass transfer coefficient, [m/s].
     capacity: float
         Membrane treatement capacity (permeate flux), [kg/m2/h].
+    sodium_hydroxide_price: float
+        Sodium hydroxide price, [$/kg].
     membrane_price: float
         Membrane price, [$/kg, use kg to replace m2].
     ammonium_sulfate_price: float
@@ -1462,6 +1480,7 @@ class MembraneDistillation(SanUnit):
                  capacity=6.01, # kg/m2/h [6]
                  # permeate flux, similar values can be found in many other papers ([176], [222] ,[223] in [7])
                  # [177], [223] in [7] show high nitrogen recovery ratio (>85% under optimal conditions)
+                 sodium_hydroxide_price=0.5256,
                  membrane_price=93.29, # $90/m2 2008 [6]
                  ammonium_sulfate_price=0.3236, # convert to solution price
                  **kwargs):
@@ -1478,6 +1497,7 @@ class MembraneDistillation(SanUnit):
         self.Henry = Henry
         self.Ka = Ka
         self.capacity = capacity
+        self.sodium_hydroxide_price=sodium_hydroxide_price
         self.membrane_price = membrane_price
         self.ammonium_sulfate_price = ammonium_sulfate_price
 
@@ -1489,7 +1509,6 @@ class MembraneDistillation(SanUnit):
         influent, acid, base, mem_in = self.ins
         ammoniumsulfate, ww, mem_out = self.outs
         
-        
         self.CHG = self.ins[0]._source.ins[0]._source.ins[0]._source
         
         if self.CHG.CHGout_N == 0:
@@ -1498,7 +1517,7 @@ class MembraneDistillation(SanUnit):
             NaOH_conc = 10**(self.target_pH - 14) - 10**(self.influent_pH - 14)
             NaOH_mol = NaOH_conc*self.ins[0].F_mass
             base.imass['NaOH'] = NaOH_mol*39.997/1000
-            base.price = 0.526
+            base.price = self.sodium_hydroxide_price
             
             acid.imass['H2SO4'] = self.CHG.CHGout_N/14.0067/self.N_S_ratio*98.079
             acid.imass['H2O'] = acid.imass['H2SO4']*1000/98.079/0.5*1.05 -\
@@ -1619,6 +1638,8 @@ class HT(Reactor):
         CHG catalyst lifetime, [hr].
     catalyst_price: float
         CHG catalyst price, [$/kg].
+    hydrogen_price: float
+        Hydrogen price, [$/kg].
     hydrogen_P: float
         Hydrogen pressure, [Pa].
     hydrogen_rxned_to_biocrude: float
@@ -1658,6 +1679,7 @@ class HT(Reactor):
                  WHSV=0.625, # wt./hr per wt. catalyst [1]
                  catalyst_lifetime=2*yearly_operation_hour, # 2 years [1]
                  catalyst_price=38.79,
+                 hydrogen_price=1.61,
                  hydrogen_P=1530*6894.76,
                  hydrogen_rxned_to_biocrude=0.046,
                  hydrocarbon_ratio=0.875, # 87.5 wt% of biocrude and reacted H2 [1]
@@ -1705,6 +1727,7 @@ class HT(Reactor):
         self.WHSV = WHSV
         self.catalyst_lifetime = catalyst_lifetime
         self.catalyst_price = catalyst_price
+        self.hydrogen_price = hydrogen_price
         self.hydrogen_P = hydrogen_P
         self.hydrogen_rxned_to_biocrude = hydrogen_rxned_to_biocrude
         self.hydrocarbon_ratio = hydrocarbon_ratio
@@ -1757,7 +1780,7 @@ class HT(Reactor):
         hydrogen.imass['H2'] = biocrude.imass['Biocrude']*\
                                self.hydrogen_rxned_to_biocrude
         hydrogen.phase = 'g'
-        hydrogen.price = 1.61
+        hydrogen.price = self.hydrogen_price
 
         hydrocarbon_mass = biocrude.imass['Biocrude']*\
                            (1 + self.hydrogen_rxned_to_biocrude)*\
@@ -1867,6 +1890,8 @@ class HC(Reactor):
         CHG catalyst lifetime, [hr].
     catalyst_price: float
         CHG catalyst price, [$/kg].
+    hydrogen_price: float
+        Hydrogen price, [$/kg].
     hydrogen_P: float
         Hydrogen pressure, [Pa].
     hydrogen_rxned_to_heavy_oil: float
@@ -1902,6 +1927,7 @@ class HC(Reactor):
                  WHSV=0.625, # wt./hr per wt. catalyst [1]
                  catalyst_lifetime=5*yearly_operation_hour, # 5 years [1]
                  catalyst_price=38.79,
+                 hydrogen_price=1.61,
                  hydrogen_P=1039.7*6894.76,
                  hydrogen_rxned_to_heavy_oil=0.01125,
                  hydrocarbon_ratio=1, # 100 wt% of heavy oil and reacted H2
@@ -1932,6 +1958,7 @@ class HC(Reactor):
         self.WHSV = WHSV
         self.catalyst_lifetime = catalyst_lifetime
         self.catalyst_price = catalyst_price
+        self.hydrogen_price = hydrogen_price
         self.hydrogen_P = hydrogen_P
         self.hydrogen_rxned_to_heavy_oil = hydrogen_rxned_to_heavy_oil
         self.hydrocarbon_ratio = hydrocarbon_ratio
@@ -1975,7 +2002,7 @@ class HC(Reactor):
         
         hydrogen.imass['H2'] = heavy_oil.F_mass*self.hydrogen_rxned_to_heavy_oil
         hydrogen.phase = 'g'
-        hydrogen.price = 1.61
+        hydrogen.price = self.hydrogen_price
 
         hydrocarbon_mass = heavy_oil.F_mass*(1 +\
                            self.hydrogen_rxned_to_heavy_oil)*\
@@ -2148,14 +2175,22 @@ class FuelMixer(SanUnit):
         fuel
     target: str
         The target can only be 'gasoline' or 'diesel'.
+    gasoline_price: float
+        Gasoline price, [$/kg].
+    diesel_price: float
+        Diesel price, [$/kg].
     '''
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', target='diesel',
+                 gasoline_price=0.9388,
+                 diesel_price=0.9722,
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.target = target
+        self.gasoline_price = gasoline_price
+        self.diesel_price = diesel_price
 
     _N_ins = 2
     _N_outs = 1
@@ -2175,11 +2210,13 @@ class FuelMixer(SanUnit):
             fuel.imass['Gasoline'] = gasoline.F_mass + diesel.F_mass/gasoline_LHV_2_diesel_LHV
             fuel.T = gasoline.T
             fuel.P = gasoline.P
+            fuel.price = self.gasoline_price
         
         if self.target == 'diesel':
             fuel.imass['Diesel'] = diesel.F_mass + gasoline.F_mass*gasoline_LHV_2_diesel_LHV
             fuel.T = diesel.T
             fuel.P = fuel.P
+            fuel.price = self.diesel_price
             
     def _design(self):
         pass
