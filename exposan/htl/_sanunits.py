@@ -853,7 +853,6 @@ class AcidExtraction(Reactor):
         else:
             if self.HTL.biochar_P == 0:
                 residual.copy_like(biochar)
-                residual.price = 0.1 # $/kg made-up value based on online info, will change later
             else: 
                 acid.imass['H2SO4'] = biochar.F_mass*self.acid_vol*0.5*98.079/1000
                 #0.5 M H2SO4 acid_vol (10 mL/1 g) Biochar
@@ -865,7 +864,6 @@ class AcidExtraction(Reactor):
                 
                 residual.imass['Residual'] = biochar.F_mass - self.ins[0]._source.\
                                              biochar_P*self.P_acid_recovery_ratio
-                residual.price = 0.1 # made-up value
                 
                 extracted.copy_like(acid)
                 extracted.imass['P'] = biochar.F_mass - residual.F_mass
@@ -1109,7 +1107,6 @@ class StruvitePrecipitation(Reactor):
             to_target_pH = 10**(self.target_pH - 14)*self.ins[0].F_mass # ignore solid volume
             total_OH = neutral_OH_mol + to_target_pH # unit: mol/h
             base.imass['MgO'] = total_OH/2 * 40.3044/1000
-            base.price = self.MgO_price
     
             if mixture.imass['P']/30.973762 > self.Mg_P_ratio*mixture.imass['N']*\
                                               self.HTLaqueous_NH3_N_2_total_N/14.0067:
@@ -1117,16 +1114,13 @@ class StruvitePrecipitation(Reactor):
                 supply_NH4Cl.imass['NH4Cl'] = (mixture.imass['P']/30.973762 -\
                                                self.Mg_P_ratio*mixture.imass['N']*\
                                                self.HTLaqueous_NH3_N_2_total_N/14.0067)*53.491
-            supply_NH4Cl.price = self.NH4Cl_price
             # make sure N:P >= 1:1
             
             supply_MgCl2.imass['MgCl2'] = (mixture.imass['P']/30.973762*self.Mg_P_ratio -\
                                            base.imass['MgO']/40.3044)*95.211
-            supply_MgCl2.price = self.MgCl2_price
             struvite.imass['Struvite'] = mixture.imass['P']*\
                                          self.P_pre_recovery_ratio/\
                                          self.P_in_struvite
-            struvite.price = self.struvite_price
             supply_MgCl2.phase = supply_NH4Cl.phase = base.phase = 's'
             
             effluent.copy_like(mixture)
@@ -1161,6 +1155,11 @@ class StruvitePrecipitation(Reactor):
             Reactor._design(self)
         
     def _cost(self):
+        self.ins[1].price = self.MgCl2_price
+        self.ins[2].price = self.NH4Cl_price
+        self.ins[3].price = self.MgO_price
+        self.outs[0].price = self.struvite_price
+        
         if self.HTLmixer.outs[0].imass['P'] == 0:
             pass
         else:
@@ -1304,7 +1303,6 @@ class CHG(Reactor, SludgeLab):
             catalyst_out.copy_like(catalyst_in)
             # catalysts amount is quite low compared to the main stream, therefore do not consider
             # heating/cooling of catalysts
-            catalyst_in.price = self.catalyst_price
             
             gas_C_ratio = 0
             for name, ratio in self.gas_composition.items():
@@ -1368,6 +1366,8 @@ class CHG(Reactor, SludgeLab):
             Reactor._design(self)
     
     def _cost(self):
+        self.ins[1].price = self.catalyst_price
+        
         if self.ins[0].imass['C'] == 0:
             pass
         else:
@@ -1517,7 +1517,6 @@ class MembraneDistillation(SanUnit):
             NaOH_conc = 10**(self.target_pH - 14) - 10**(self.influent_pH - 14)
             NaOH_mol = NaOH_conc*self.ins[0].F_mass
             base.imass['NaOH'] = NaOH_mol*39.997/1000
-            base.price = self.sodium_hydroxide_price
             
             acid.imass['H2SO4'] = self.CHG.CHGout_N/14.0067/self.N_S_ratio*98.079
             acid.imass['H2O'] = acid.imass['H2SO4']*1000/98.079/0.5*1.05 -\
@@ -1574,7 +1573,6 @@ class MembraneDistillation(SanUnit):
                                              ammoniumsulfate.imass['NH42SO4']/\
                                              132.14*28.0134 -\
                                              ammoniumsulfate.imass['NH42SO4']
-            ammoniumsulfate.price = self.ammonium_sulfate_price*ammoniumsulfate.imass['NH42SO4']/ammoniumsulfate.F_mass
                                             
             ww.copy_like(influent) # ww has the same T and P as influent
             
@@ -1595,7 +1593,6 @@ class MembraneDistillation(SanUnit):
             
             mem_in.imass['Membrane'] = 0.15*self.membrane_area/yearly_operation_hour # m2/hr
             mem_out.copy_like(mem_in)
-            mem_in.price = self.membrane_price
             # add membrane as streams to include 15% membrane replacement per year [6]
     
     @property
@@ -1611,6 +1608,12 @@ class MembraneDistillation(SanUnit):
             Design['Total volume'] = Design['Area']*self.m2_2_m3
     
     def _cost(self):
+        self.ins[2].price = self.sodium_hydroxide_price
+        if self.outs[0].F_mass != 0:
+            self.outs[0].price = self.ammonium_sulfate_price*self.outs[0].imass['NH42SO4']/\
+                                 self.outs[0].F_mass
+        self.ins[3].price = self.membrane_price
+        
         if self.CHG.CHGout_N == 0:
             pass
         else:
@@ -1644,6 +1647,8 @@ class HT(Reactor):
         Hydrogen pressure, [Pa].
     hydrogen_rxned_to_biocrude: float
         Reacted H2 to biocrude mass ratio.
+    hydrogen_excess: float
+        Actual hydrogen amount = hydrogen_rxned_to_biocrude*hydrogen_excess
     hydrocarbon_ratio: float
         Mass ratio of produced hydrocarbon to the sum of biocrude and reacted H2.
     HTin_T: float
@@ -1682,6 +1687,7 @@ class HT(Reactor):
                  hydrogen_price=1.61,
                  hydrogen_P=1530*6894.76,
                  hydrogen_rxned_to_biocrude=0.046,
+                 hydrogen_excess=3,
                  hydrocarbon_ratio=0.875, # 87.5 wt% of biocrude and reacted H2 [1]
                  # spreadsheet HT calculation
                  HTin_T=174+273.15,
@@ -1730,6 +1736,7 @@ class HT(Reactor):
         self.hydrogen_price = hydrogen_price
         self.hydrogen_P = hydrogen_P
         self.hydrogen_rxned_to_biocrude = hydrogen_rxned_to_biocrude
+        self.hydrogen_excess = hydrogen_excess
         self.hydrocarbon_ratio = hydrocarbon_ratio
         self.HTin_T = HTin_T
         self.HTrxn_T = HTrxn_T
@@ -1775,12 +1782,10 @@ class HT(Reactor):
         catalyst_out.copy_like(catalyst_in)
         # catalysts amount is quite low compared to the main stream, therefore do not consider
         # heating/cooling of catalysts
-        catalyst_in.price = self.catalyst_price
         
         hydrogen.imass['H2'] = biocrude.imass['Biocrude']*\
-                               self.hydrogen_rxned_to_biocrude
+                               self.hydrogen_rxned_to_biocrude*self.hydrogen_excess
         hydrogen.phase = 'g'
-        hydrogen.price = self.hydrogen_price
 
         hydrocarbon_mass = biocrude.imass['Biocrude']*\
                            (1 + self.hydrogen_rxned_to_biocrude)*\
@@ -1840,7 +1845,6 @@ class HT(Reactor):
         return self.HTL.biocrude_N - self.hydrocarbon_N
 
     def _design(self):
-        
         Design = self.design_results
         Design['Hydrogen'] = self.ins[1].F_vol*self._m3perhr_2_mmscfd
         
@@ -1862,12 +1866,16 @@ class HT(Reactor):
         
         self.P = min(IC_outs0.P, self.ins[0].P)
         
-        V_H2 = self.ins[1].F_vol*101325/self.hydrogen_P
+        V_H2 = self.ins[1].F_vol/self.hydrogen_excess*101325/self.hydrogen_P
+        # just account for reacted H2
         V_biocrude = self.ins[0].F_vol
         self.V_wf = self.void_fraciton*V_biocrude/(V_biocrude + V_H2)
         Reactor._design(self)
     
     def _cost(self):
+        self.ins[1].price = self.hydrogen_price
+        self.ins[2].price = self.catalyst_price
+        
         Reactor._cost(self)
 
 # =============================================================================
@@ -1896,6 +1904,8 @@ class HC(Reactor):
         Hydrogen pressure, [Pa].
     hydrogen_rxned_to_heavy_oil: float
         Reacted H2 to heavy oil mass ratio.
+    hydrogen_excess: float
+        Actual hydrogen amount = hydrogen_rxned_to_biocrude*hydrogen_excess
     hydrocarbon_ratio: float
         Mass ratio of produced hydrocarbon to the sum of heavy oil and reacted H2.
     HCin_T: float
@@ -1930,6 +1940,7 @@ class HC(Reactor):
                  hydrogen_price=1.61,
                  hydrogen_P=1039.7*6894.76,
                  hydrogen_rxned_to_heavy_oil=0.01125,
+                 hydrogen_excess=5.556,
                  hydrocarbon_ratio=1, # 100 wt% of heavy oil and reacted H2
                  # nearly all input heavy oils and H2 will be converted to
                  # products [1]
@@ -1961,6 +1972,7 @@ class HC(Reactor):
         self.hydrogen_price = hydrogen_price
         self.hydrogen_P = hydrogen_P
         self.hydrogen_rxned_to_heavy_oil = hydrogen_rxned_to_heavy_oil
+        self.hydrogen_excess = hydrogen_excess
         self.hydrocarbon_ratio = hydrocarbon_ratio
         self.HCin_T = HCin_T
         self.HCrxn_T = HCrxn_T
@@ -1998,11 +2010,9 @@ class HC(Reactor):
         catalyst_out.copy_like(catalyst_in)
         # catalysts amount is quite low compared to the main stream, therefore do not consider
         # heating/cooling of catalysts
-        catalyst_in.price = self.catalyst_price
         
-        hydrogen.imass['H2'] = heavy_oil.F_mass*self.hydrogen_rxned_to_heavy_oil
+        hydrogen.imass['H2'] = heavy_oil.F_mass*self.hydrogen_rxned_to_heavy_oil*self.hydrogen_excess
         hydrogen.phase = 'g'
-        hydrogen.price = self.hydrogen_price
 
         hydrocarbon_mass = heavy_oil.F_mass*(1 +\
                            self.hydrogen_rxned_to_heavy_oil)*\
@@ -2059,12 +2069,16 @@ class HC(Reactor):
         
         self.P = min(IC_outs0.P, self.ins[0].P)
         
-        V_H2 = self.ins[1].F_vol*101325/self.hydrogen_P
+        V_H2 = self.ins[1].F_vol/self.hydrogen_excess*101325/self.hydrogen_P
+        # just account for reacted H2
         V_biocrude = self.ins[0].F_vol
         self.V_wf = self.void_fraciton*V_biocrude/(V_biocrude + V_H2)
         Reactor._design(self)
     
     def _cost(self):
+        self.ins[1].price = self.hydrogen_price
+        self.ins[2].price = self.catalyst_price
+        
         Reactor._cost(self)
 
 # =============================================================================
@@ -2222,4 +2236,12 @@ class FuelMixer(SanUnit):
         pass
     
     def _cost(self):
-        pass
+        if self.target == 'gasoline':
+            self.outs[0].price = self.gasoline_price
+        if self.target == 'diesel':
+            self.outs[0].price = self.diesel_price 
+            
+            
+            
+            
+            
