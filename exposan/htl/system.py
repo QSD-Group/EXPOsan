@@ -49,9 +49,9 @@ raw_wastewater = qs.Stream('raw_wastewater', H2O=10, units='MGD', T=25+273.15)
 # =============================================================================
 
 SluL = su.SludgeLab('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
-                    ww_2_dry_sludge=1, # how much metric ton/day sludge can be produced by 1 MGD of ww
-                    sludge_moisture=0.99, sludge_dw_ash=0.266, 
-                    sludge_afdw_protein=0.465, sludge_afdw_lipid=0.308, yearly_operation_hour=7920)
+                    ww_2_dry_sludge=0.94, # how much metric ton/day sludge can be produced by 1 MGD of ww
+                    sludge_moisture=0.99, sludge_dw_ash=0.257, 
+                    sludge_afdw_protein=0.463, sludge_afdw_lipid=0.204, yearly_operation_hour=7920)
 
 SluT = qsu.SludgeThickening('A000', ins=SluL-0,
                             outs=('supernatant_1','compressed_sludge_1'),
@@ -95,7 +95,7 @@ HTL_drum = HTL.kodrum
 
 H2SO4_Tank = qsu.StorageTank('T200', ins='H2SO4', outs=('H2SO4_out'),
                              init_with='Stream', tau=3*24)
-H2SO4_Tank.ins[0].price = 0.0058 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
+H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
 
 SP1 = su.HTLsplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
                      init_with='Stream')
@@ -243,7 +243,7 @@ GasMixer = qsu.Mixer('S550', ins=(HTL-3, F1-0, F2-0, D1-0, F3-0),
 CHP = qsu.CHP('A520', ins=(GasMixer-0,'natural_gas','air'),
               outs=('emission','solid_ash'), init_with='Stream', supplement_power_utility=True)
 
-CHP.ins[1].price = 5.1/1000/0.02391792567 # from $/scf to $/kg, values from Jones
+CHP.ins[1].price = 0.1685
 
 WWmixer = su.WWmixer('S560', ins=(SluT-0, SluC-0, MemDis-1, SP2-0),
                     outs='wastewater', init_with='Stream')

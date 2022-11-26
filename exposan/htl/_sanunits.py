@@ -345,13 +345,13 @@ class SludgeLab(SanUnit):
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', 
-                 ww_2_dry_sludge=1, # ww (MGD) to dw sludge (metric ton/day) # SS PNNL 2022
+                 ww_2_dry_sludge=0.94, # ww (MGD) to dw sludge (metric ton/day) # SS PNNL 2022
                  # how much metric ton/day sludge can be produced by 1 MGD of ww
-                 sludge_moisture=0.99, sludge_dw_ash=0.266, 
-                 sludge_afdw_protein=0.465, sludge_afdw_lipid=0.308,
+                 sludge_moisture=0.99, sludge_dw_ash=0.257, 
+                 sludge_afdw_protein=0.463, sludge_afdw_lipid=0.204,
                  lipid_2_C=0.750, protein_2_C=0.545,
                  carbo_2_C=0.400, C_2_H=0.143,
-                 protein_2_N=0.159, N_2_P=0.200,
+                 protein_2_N=0.159, N_2_P=0.393,
                  operation_hour=yearly_operation_hour,
                  **kwargs):
         
@@ -590,7 +590,7 @@ class HTL(Reactor):
                  biocrude_H_slope = -2.61, # MCA
                  biocrude_H_intercept = 8.20, # MCA
                  biochar_C_slope = 1.75, # MCA
-                 biocrude_moisture_content=0.056, # Jones
+                 biocrude_moisture_content=0.063, # Jones
                  biochar_P_recovery_ratio=0.86, # Matayeva: 0.84-0.88
                  gas_composition={'CH4':0.050, 'C2H6':0.032,
                                   'CO2':0.918}, # Jones
@@ -828,7 +828,7 @@ class AcidExtraction(Reactor):
     _F_BM_default = {**Reactor._F_BM_default}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='Stream', acid_vol=10, P_acid_recovery_ratio=0.90, # Zhu
+                 init_with='Stream', acid_vol=7, P_acid_recovery_ratio=0.8,
                  P=None, tau=2, V_wf=0.8, # tau: Zhu
                  length_to_diameter=2, N=None, V=None, auxiliary=False,
                  mixing_intensity=None, kW_per_m3=0.0985, # use MixTank default value
@@ -1043,8 +1043,8 @@ class StruvitePrecipitation(Reactor):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', 
-                 target_pH = 9.5, # Zhu used 8.5, can include in uncertainty
-                 Mg_P_ratio=2,
+                 target_pH = 9,
+                 Mg_P_ratio=2.5,
                  P_pre_recovery_ratio=0.99, # Zhu
                  P_in_struvite=0.126,
                  HTLaqueous_NH3_N_2_total_N = 0.853, # Jones
@@ -1095,7 +1095,7 @@ class StruvitePrecipitation(Reactor):
             to_target_pH = 10**(self.target_pH - 14)*self.ins[0].F_mass # ignore solid volume
             total_OH = neutral_OH_mol + to_target_pH # unit: mol/h
             base.imass['MgO'] = total_OH/2 * 40.3044/1000
-            base.price = 0.3 # made-up value based on online price, will change later 
+            base.price = 0.2
     
             if mixture.imass['P']/30.973762 > self.Mg_P_ratio*mixture.imass['N']*\
                                               self.HTLaqueous_NH3_N_2_total_N/14.0067:
@@ -1103,17 +1103,17 @@ class StruvitePrecipitation(Reactor):
                 supply_NH4Cl.imass['NH4Cl'] = (mixture.imass['P']/30.973762 -\
                                                self.Mg_P_ratio*mixture.imass['N']*\
                                                self.HTLaqueous_NH3_N_2_total_N/14.0067)*53.491
-            supply_NH4Cl.price = 0.2 # made-up value based on online price, will change later
+            supply_NH4Cl.price = 0.13
             # make sure N:P >= 1:1
             
             supply_MgCl2.imass['MgCl2'] = (mixture.imass['P']/30.973762*self.Mg_P_ratio -\
                                            base.imass['MgO']/40.3044)*95.211
                                            # Mg:P = 2:1 (1.5:1 - 4:1)
-            supply_MgCl2.price = 0.5 # made-up value based on online price, will change later
+            supply_MgCl2.price = 0.5452
             struvite.imass['Struvite'] = mixture.imass['P']*\
                                          self.P_pre_recovery_ratio/\
                                          self.P_in_struvite
-            struvite.price = 0.30/0.453592 # Zhu 2022 PNNL $/lb to $/kg (0.19, 0.30, 0.55)
+            struvite.price = 0.6784
             supply_MgCl2.phase = supply_NH4Cl.phase = base.phase = 's'
             
             effluent.copy_like(mixture)
@@ -1197,9 +1197,9 @@ class CHG(Reactor, SludgeLab):
                  heat_temp=350+273.15,
                  cool_temp=60+273.15,
                  
-                 WHSV=3.99, # wt./hr per wt. catalyst Jones
+                 WHSV=3.56, # wt./hr per wt. catalyst
                  catalyst_lifetime=1*yearly_operation_hour, # 1 year Jones
-                 catalyst_price=60/0.453592/CEPCI[2011]*CEPCI[2020], # $60/lb to $/kg (2011$)
+                 catalyst_price=134.53,
                  gas_composition={'CH4':0.527,
                                   'CO2':0.432,
                                   'C2H6':0.011,
@@ -1207,7 +1207,7 @@ class CHG(Reactor, SludgeLab):
                                   'H2':0.0001},
                  # Jones
                  # will not be a variable in uncertainty/sensitivity analysis
-                 gas_C_2_total_C=0.5655, # Jones
+                 gas_C_2_total_C=0.598, # Jones
                  
                  P=None, tau=20/60, void_fraction=0.5,
                  length_to_diameter=2, N=6, V=None, auxiliary=False, mixing_intensity=None, kW_per_m3=0,
@@ -1398,7 +1398,7 @@ class MembraneDistillation(SanUnit):
                  capacity=6.01, # kg/m2/h, Al-Obaidani
                  # permeate flux, similar values can be found in many other papers ([176], [222] ,[223] in Kogler Stanford)
                  # [177], [223] in Kogler Stanford show high nitrogen recovery ratio (>85% under optimal conditions)
-                 membrane_price=90/CEPCI[2008]*CEPCI[2020],
+                 membrane_price=93.29,
                  ammonium_sulfate_price=0.3236, # convert to solution price
                  # Al-Obaidani: $90/m2, $2008
                  **kwargs):
@@ -1435,7 +1435,7 @@ class MembraneDistillation(SanUnit):
             NaOH_conc = 10**(self.target_pH - 14) - 10**(self.inffluent_pH - 14)
             NaOH_mol = NaOH_conc*self.ins[0].F_mass
             base.imass['NaOH'] = NaOH_mol*39.997/1000
-            base.price = 0.25/0.453592 # Davis 2020$ $/lb to $/kg
+            base.price = 0.526
             
             acid.imass['H2SO4'] = self.CHG.CHGout_N/14.0067/self.N_S_ratio*98.079
             acid.imass['H2O'] = acid.imass['H2SO4']*1000/98.079/0.5*1.05 -\
@@ -1576,7 +1576,7 @@ class HT(Reactor):
                  init_with='Stream',
                  WHSV=0.625, # wt./hr per wt. catalyst Jones
                  catalyst_lifetime=2*yearly_operation_hour, # 2 years Jones
-                 catalyst_price=15.5/0.453592/CEPCI[2007]*CEPCI[2020], # $15.5/lb to $/kg (2007$)
+                 catalyst_price=38.79,
                  hydrogen_P=1530*6894.76,
                  hydrogen_rxned_to_biocrude=0.046,
                  hydrocarbon_ratio=0.875, # 87.5 wt% of biocrude and reacted H2
@@ -1682,7 +1682,7 @@ class HT(Reactor):
         hydrogen.imass['H2'] = biocrude.imass['Biocrude']*\
                                self.hydrogen_rxned_to_biocrude
         hydrogen.phase = 'g'
-        hydrogen.price = 0.77/0.453592 # Davis 2020$ $/lb to $/kg
+        hydrogen.price = 1.61
 
         hydrocarbon_mass = biocrude.imass['Biocrude']*\
                            (1 + self.hydrogen_rxned_to_biocrude)*\
@@ -1812,7 +1812,7 @@ class HC(Reactor):
                  init_with='Stream',
                  WHSV=0.625, # wt./hr per wt. catalyst Jones
                  catalyst_lifetime=5*yearly_operation_hour, # 5 years Jones
-                 catalyst_price=15.5/0.453592/CEPCI[2007]*CEPCI[2020], # $15.5/lb to $/kg (2007$)
+                 catalyst_price=38.79,
                  hydrogen_P=1039.7*6894.76,
                  hydrogen_rxned_to_heavy_oil=0.01125,
                  hydrocarbon_ratio=1, # 100 wt% of heavy oil and reacted H2
@@ -1892,7 +1892,7 @@ class HC(Reactor):
         
         hydrogen.imass['H2'] = heavy_oil.F_mass*self.hydrogen_rxned_to_heavy_oil
         hydrogen.phase = 'g'
-        hydrogen.price = 0.77/0.453592 # Davis 2020$ $/lb to $/kg
+        hydrogen.price = 1.61
 
         hydrocarbon_mass = heavy_oil.F_mass*(1 +\
                            self.hydrogen_rxned_to_heavy_oil)*\
