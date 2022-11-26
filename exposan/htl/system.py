@@ -76,13 +76,13 @@ P1 = qsu.Pump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76,
 # Jones 2014: 3049.7 psia
 
 H1 = qsu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=351+273.15,
-                   U=0.284, init_with='Stream')
+                   U=0.0794957, init_with='Stream')
+# feed T is low, thus high viscosity and low U (case B in Knorr 2013)
+# U: 3, 14, 15 BTU/hr/ft2/F as minimum, baseline, and maximum
+# U: 0.0170348, 0.0794957, 0.085174 kW/m2/K
 # H1: SS PNNL 2020: 50 (17-76) Btu/hr/ft2/F ~ U = 0.284 (0.096-0.4313) kW/m2/K
-# U is just needed for H1? Right? I think high viscosity of sludge is just here
-# but not in other pumps
-# unit conversion: http://www.unitconversion.org/heat-transfer-coefficient/
-# watts-per-square-meter-per-k-to-btus-th--per-hour-per-square-foot-per-f-
-# conversion.html
+# but not in other pumps (low viscosity, don't need U to enforce total heat transfer efficiency)
+# unit conversion: https://www.unitsconverters.com/en/Btu(It)/Hmft2mdegf-To-W/M2mk/Utu-4404-4398
 
 HTL = su.HTL('A120', ins=H1-0, outs=('biochar','HTL_aqueous',
              'biocrude','offgas_HTL'))
@@ -95,7 +95,7 @@ HTL_drum = HTL.kodrum
 
 H2SO4_Tank = qsu.StorageTank('T200', ins='H2SO4', outs=('H2SO4_out'),
                              init_with='Stream', tau=3*24)
-H2SO4_Tank.ins[0].price = 0.0055 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2016$/kg
+H2SO4_Tank.ins[0].price = 0.0058 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
 
 SP1 = su.HTLsplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
                      init_with='Stream')

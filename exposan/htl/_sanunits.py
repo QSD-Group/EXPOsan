@@ -115,6 +115,7 @@ from biosteam.exceptions import DesignError
 from biosteam import Stream
 from biosteam.units.decorators import cost
 from thermosteam import indexer, equilibrium
+from exposan.htl._process_settings import load_process_settings
 
 __all__ = ('Reactor',
            'SludgeLab',
@@ -132,6 +133,8 @@ __all__ = ('Reactor',
            'FuelMixer')
 
 cmps = create_components()
+
+load_process_settings()
 
 yearly_operation_hour = 7920 # Jones
 
@@ -1043,8 +1046,8 @@ class StruvitePrecipitation(Reactor):
                  target_pH = 9.5, # Zhu used 8.5, can include in uncertainty
                  Mg_P_ratio=2,
                  P_pre_recovery_ratio=0.99, # Zhu
-                 P_in_struvite=0.127,
-                 HTLaqueous_NH3_N_2_total_N = 0.853, # Jones  
+                 P_in_struvite=0.126,
+                 HTLaqueous_NH3_N_2_total_N = 0.853, # Jones
                  
                  P=None, tau=1, V_wf=0.8, # tau: Zhu
                  length_to_diameter=2, N=None, V=None, auxiliary=False,
@@ -1196,7 +1199,7 @@ class CHG(Reactor, SludgeLab):
                  
                  WHSV=3.99, # wt./hr per wt. catalyst Jones
                  catalyst_lifetime=1*yearly_operation_hour, # 1 year Jones
-                 catalyst_price=60/0.453592/CEPCI[2011]*CEPCI[2016], # $60/lb to $/kg (2011$)
+                 catalyst_price=60/0.453592/CEPCI[2011]*CEPCI[2020], # $60/lb to $/kg (2011$)
                  gas_composition={'CH4':0.527,
                                   'CO2':0.432,
                                   'C2H6':0.011,
@@ -1395,7 +1398,8 @@ class MembraneDistillation(SanUnit):
                  capacity=6.01, # kg/m2/h, Al-Obaidani
                  # permeate flux, similar values can be found in many other papers ([176], [222] ,[223] in Kogler Stanford)
                  # [177], [223] in Kogler Stanford show high nitrogen recovery ratio (>85% under optimal conditions)
-                 membrane_price=90/CEPCI[2008]*CEPCI[2016],
+                 membrane_price=90/CEPCI[2008]*CEPCI[2020],
+                 ammonium_sulfate_price=0.3236, # convert to solution price
                  # Al-Obaidani: $90/m2, $2008
                  **kwargs):
         
@@ -1412,6 +1416,7 @@ class MembraneDistillation(SanUnit):
         self.Ka = Ka
         self.capacity = capacity
         self.membrane_price = membrane_price
+        self.ammonium_sulfate_price = ammonium_sulfate_price
 
     _N_ins = 4
     _N_outs = 3
@@ -1430,7 +1435,7 @@ class MembraneDistillation(SanUnit):
             NaOH_conc = 10**(self.target_pH - 14) - 10**(self.inffluent_pH - 14)
             NaOH_mol = NaOH_conc*self.ins[0].F_mass
             base.imass['NaOH'] = NaOH_mol*39.997/1000
-            base.price = 0.2384/0.453592 # Davis 2016$ $/lb to $/kg
+            base.price = 0.25/0.453592 # Davis 2020$ $/lb to $/kg
             
             acid.imass['H2SO4'] = self.CHG.CHGout_N/14.0067/self.N_S_ratio*98.079
             acid.imass['H2O'] = acid.imass['H2SO4']*1000/98.079/0.5*1.05 -\
@@ -1487,7 +1492,7 @@ class MembraneDistillation(SanUnit):
                                              ammoniumsulfate.imass['NH42SO4']/\
                                              132.14*28.0134 -\
                                              ammoniumsulfate.imass['NH42SO4']
-            ammoniumsulfate.price = 0.4*ammoniumsulfate.imass['NH42SO4']/ammoniumsulfate.F_mass
+            ammoniumsulfate.price = self.ammonium_sulfate_price*ammoniumsulfate.imass['NH42SO4']/ammoniumsulfate.F_mass
             # made-up value based on online price, will change later
                                             
             ww.copy_like(influent) # ww has the same T and P as influent
@@ -1571,7 +1576,7 @@ class HT(Reactor):
                  init_with='Stream',
                  WHSV=0.625, # wt./hr per wt. catalyst Jones
                  catalyst_lifetime=2*yearly_operation_hour, # 2 years Jones
-                 catalyst_price=15.5/0.453592/CEPCI[2007]*CEPCI[2016], # $15.5/lb to $/kg (2007$)
+                 catalyst_price=15.5/0.453592/CEPCI[2007]*CEPCI[2020], # $15.5/lb to $/kg (2007$)
                  hydrogen_P=1530*6894.76,
                  hydrogen_rxned_to_biocrude=0.046,
                  hydrocarbon_ratio=0.875, # 87.5 wt% of biocrude and reacted H2
@@ -1677,7 +1682,7 @@ class HT(Reactor):
         hydrogen.imass['H2'] = biocrude.imass['Biocrude']*\
                                self.hydrogen_rxned_to_biocrude
         hydrogen.phase = 'g'
-        hydrogen.price = 0.7306/0.453592 # Davis 2016$ $/lb to $/kg
+        hydrogen.price = 0.77/0.453592 # Davis 2020$ $/lb to $/kg
 
         hydrocarbon_mass = biocrude.imass['Biocrude']*\
                            (1 + self.hydrogen_rxned_to_biocrude)*\
@@ -1807,7 +1812,7 @@ class HC(Reactor):
                  init_with='Stream',
                  WHSV=0.625, # wt./hr per wt. catalyst Jones
                  catalyst_lifetime=5*yearly_operation_hour, # 5 years Jones
-                 catalyst_price=15.5/0.453592/CEPCI[2007]*CEPCI[2016], # $15.5/lb to $/kg (2007$)
+                 catalyst_price=15.5/0.453592/CEPCI[2007]*CEPCI[2020], # $15.5/lb to $/kg (2007$)
                  hydrogen_P=1039.7*6894.76,
                  hydrogen_rxned_to_heavy_oil=0.01125,
                  hydrocarbon_ratio=1, # 100 wt% of heavy oil and reacted H2
@@ -1887,7 +1892,7 @@ class HC(Reactor):
         
         hydrogen.imass['H2'] = heavy_oil.F_mass*self.hydrogen_rxned_to_heavy_oil
         hydrogen.phase = 'g'
-        hydrogen.price = 0.7306/0.453592 # Davis 2016$ $/lb to $/kg
+        hydrogen.price = 0.77/0.453592 # Davis 2020$ $/lb to $/kg
 
         hydrocarbon_mass = heavy_oil.F_mass*(1 +\
                            self.hydrogen_rxned_to_heavy_oil)*\
@@ -2088,7 +2093,7 @@ class FuelMixer(SanUnit):
             raise RuntimeError ("target must be either 'gasoline' or 'diesel'")
         
         gasoline_LHV_2_diesel_LHV = (gasoline.LHV/gasoline.F_mass)/(diesel.LHV/diesel.F_mass)
-        # KJ/kg:KJ/kg
+        # KJ/kg gasoline:KJ/kg diesel
         
         if self.target == 'gasoline':
             fuel.imass['Gasoline'] = gasoline.F_mass + diesel.F_mass/gasoline_LHV_2_diesel_LHV
