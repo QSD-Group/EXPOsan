@@ -259,10 +259,10 @@ class SludgeLab(SanUnit):
         Sludge moisture content.
     sludge_dw_ash: float
         Sludge dry weight ash content.
-    sludge_afdw_protein: float
-        Sludge ash free dry weight protein content.
     sludge_afdw_lipid: float
         Sludge ash free dry weight lipid content.
+    sludge_afdw_protein: float
+        Sludge ash free dry weight protein content.
     lipid_2_C: float
         Lipid to carbon factor.     
     protein_2_C: float
@@ -293,7 +293,7 @@ class SludgeLab(SanUnit):
                  init_with='Stream', 
                  ww_2_dry_sludge=0.94, # [1]
                  sludge_moisture=0.99, sludge_dw_ash=0.257, 
-                 sludge_afdw_protein=0.463, sludge_afdw_lipid=0.204,
+                 sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, 
                  lipid_2_C=0.750, protein_2_C=0.545,
                  carbo_2_C=0.400, C_2_H=0.143,
                  protein_2_N=0.159, N_2_P=0.393,
@@ -734,7 +734,7 @@ class HTL(Reactor):
 
     @property
     def biochar_P(self):
-        return self.sludgelab.sludge_P*self.biochar_P_recovery_ratio
+        return min(self.sludgelab.sludge_P*self.biochar_P_recovery_ratio, self.outs[0].F_mass)
 
     @property
     def offgas_C(self):
@@ -851,7 +851,8 @@ class AcidExtraction(Reactor):
         if biochar.F_mass <= 0:
             pass
         else:
-            if self.HTL.biochar_P == 0:
+            if self.HTL.biochar_P <= 0.005:
+                # if P is too less in biochar: there is no meaning to extract
                 residual.copy_like(biochar)
             else: 
                 acid.imass['H2SO4'] = biochar.F_mass*self.acid_vol*0.5*98.079/1000
@@ -885,14 +886,14 @@ class AcidExtraction(Reactor):
         return self.ins[0]._source.biochar_P - self.outs[1].imass['P']
         
     def _design(self):
-        if self.ins[0].F_mass <= 0 or self.HTL.biochar_P == 0:
+        if self.ins[0].F_mass <= 0 or self.HTL.biochar_P <= 0.005:
             pass
         else:
             self.P = self.ins[1].P
             Reactor._design(self)
         
     def _cost(self):
-        if self.ins[0].F_mass <= 0 or self.HTL.biochar_P == 0:
+        if self.ins[0].F_mass <= 0 or self.HTL.biochar_P <= 0.005:
             pass
         else:
             Reactor._cost(self)
