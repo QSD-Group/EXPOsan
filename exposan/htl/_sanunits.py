@@ -139,9 +139,14 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
     def _design(self):
         Design = self.design_results
         if not self.auxiliary:
+        # if auxiliary, in our system, only K/O drum whose N, and V are provided
+        # do not need to deal with self.F_vol_in (auxiliary unit has trouble doing this)
             ins_F_vol = self.F_vol_in
             for i in range(len(self.ins)):
-                ins_F_vol -= self.ins[i].ivol['H2']
+                ins_F_vol -= (self.ins[i].ivol['H2'] +\
+                              self.ins[i].ivol['CHG_catalyst'] +\
+                              self.ins[i].ivol['HT_catalyst'] +\
+                              self.ins[i].ivol['HC_catalyst'])
             # not include gas (e.g. H2)
             V_total = ins_F_vol * self.tau / self.V_wf
         P = self.P * 0.000145038 # Pa to psi
