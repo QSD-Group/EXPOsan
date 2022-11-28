@@ -304,8 +304,8 @@ class SludgeLab(SanUnit):
         self.ww_2_dry_sludge = ww_2_dry_sludge
         self.sludge_moisture = sludge_moisture
         self.sludge_dw_ash = sludge_dw_ash
-        self.sludge_afdw_protein = sludge_afdw_protein
         self.sludge_afdw_lipid = sludge_afdw_lipid
+        self.sludge_afdw_protein = sludge_afdw_protein
         self.sludge_afdw_carbo = 1 - sludge_afdw_protein - sludge_afdw_lipid
         self.lipid_2_C = lipid_2_C
         self.protein_2_C = protein_2_C
@@ -335,8 +335,8 @@ class SludgeLab(SanUnit):
         sludge.imass['Sludge_ash'] = self.sludge_dw*self.sludge_dw_ash
 
         sludge_afdw = self.sludge_dw*(1 - self.sludge_dw_ash)
-        sludge.imass['Sludge_protein'] = sludge_afdw*self.sludge_afdw_protein
         sludge.imass['Sludge_lipid'] = sludge_afdw*self.sludge_afdw_lipid
+        sludge.imass['Sludge_protein'] = sludge_afdw*self.sludge_afdw_protein
         sludge.imass['Sludge_carbo'] = sludge_afdw*self.sludge_afdw_carbo
 
         treated.imass['H2O'] = ww.F_mass - sludge.F_mass
@@ -404,6 +404,10 @@ class SludgeLab(SanUnit):
     def sludge_HHV(self):
        return 100*(0.338*self.sludge_C_ratio + 1.428*(self.sludge_H_ratio -\
               self.sludge_O_ratio/8)) # [2]
+
+    @property
+    def H_C_eff(self):
+        return (self.sludge_H/1.00784-2*self.sludge_O/15.999)/self.sludge_C*12.011
         
     def _design(self):
         pass
@@ -647,8 +651,8 @@ class HTL(Reactor):
                                 dewatered_sludge.imass['Sludge_carbo']
         # just use afdw in revised MCA model, other places use dw
         
-        afdw_protein_ratio = self.sludgelab.sludge_afdw_protein
         afdw_lipid_ratio = self.sludgelab.sludge_afdw_lipid
+        afdw_protein_ratio = self.sludgelab.sludge_afdw_protein
         afdw_carbo_ratio = self.sludgelab.sludge_afdw_carbo
 
         # the following calculations are based on revised MCA model
@@ -2170,12 +2174,16 @@ class FuelMixer(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', target='diesel',
+                 gasoline_gal_2_kg=2.834894885,
+                 diesel_gal_2_kg=3.220628346,
                  gasoline_price=0.9388,
                  diesel_price=0.9722,
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.target = target
+        self.gasoline_gal_2_kg = gasoline_gal_2_kg
+        self.diesel_gal_2_kg = diesel_gal_2_kg
         self.gasoline_price = gasoline_price
         self.diesel_price = diesel_price
 
@@ -2212,9 +2220,4 @@ class FuelMixer(SanUnit):
         if self.target == 'gasoline':
             self.outs[0].price = self.gasoline_price
         if self.target == 'diesel':
-            self.outs[0].price = self.diesel_price 
-            
-            
-            
-            
-            
+            self.outs[0].price = self.diesel_price

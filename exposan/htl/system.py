@@ -53,7 +53,7 @@ SluL = su.SludgeLab('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
                     ww_2_dry_sludge=0.94,
                     # how much metric ton/day sludge can be produced by 1 MGD of ww
                     sludge_moisture=0.99, sludge_dw_ash=0.257, 
-                    sludge_afdw_lipid=0.39, sludge_afdw_protein=0.05, yearly_operation_hour=7920)
+                    sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, yearly_operation_hour=7920)
 
 SluT = qsu.SludgeThickening('A000', ins=SluL-0,
                             outs=('supernatant_1','compressed_sludge_1'),
