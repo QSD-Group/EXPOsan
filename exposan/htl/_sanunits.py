@@ -674,11 +674,10 @@ class HTL(Reactor):
                                 self.biocrude_moisture_content) -\
                                 biocrude.imass['Biocrude']
                                 
-        HTLaqueous.imass['H2O'] = dewatered_sludge.imass['H2O'] -\
-                                  biocrude.imass['H2O'] +\
-                                  dewatered_sludge.imass['Sludge_ash']
+        HTLaqueous.imass['H2O'] = dewatered_sludge.F_mass - biochar.F_mass -\
+                                  biocrude.F_mass - gas_mass - HTLaqueous.imass['HTLaqueous']
         # assume ash (all soluble based on Jones) goes to water
-
+        
         biochar.phase = 's'
         offgas.phase = 'g'
         
@@ -815,7 +814,7 @@ class AcidExtraction(Reactor):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', acid_vol=7, P_acid_recovery_ratio=0.8,
                  P=None, tau=2, V_wf=0.8, # tau: [1]
-                 length_to_diameter=2, N=None, V=None, auxiliary=False,
+                 length_to_diameter=2, N=1, V=None, auxiliary=False,
                  mixing_intensity=None, kW_per_m3=0.0985, # use MixTank default value
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 304', # acid condition
@@ -851,8 +850,7 @@ class AcidExtraction(Reactor):
         if biochar.F_mass <= 0:
             pass
         else:
-            if self.HTL.biochar_P <= 0.005:
-                # if P is too less in biochar: there is no meaning to extract
+            if self.HTL.biochar_P <= 0:
                 residual.copy_like(biochar)
             else: 
                 acid.imass['H2SO4'] = biochar.F_mass*self.acid_vol*0.5*98.079/1000
@@ -886,17 +884,13 @@ class AcidExtraction(Reactor):
         return self.ins[0]._source.biochar_P - self.outs[1].imass['P']
         
     def _design(self):
-        if self.ins[0].F_mass <= 0 or self.HTL.biochar_P <= 0.005:
-            pass
-        else:
-            self.P = self.ins[1].P
-            Reactor._design(self)
+        self.V = self.HTL.sludgelab.ins[0].F_vol/788.627455
+        # 1/788.627455 m3 reactor/m3 wastewater/h (50 MGD ~ 10 m3)
+        self.P = self.ins[1].P
+        Reactor._design(self)
         
     def _cost(self):
-        if self.ins[0].F_mass <= 0 or self.HTL.biochar_P <= 0.005:
-            pass
-        else:
-            Reactor._cost(self)
+        Reactor._cost(self)
     
 # =============================================================================
 # HTL mixer
@@ -1060,7 +1054,7 @@ class StruvitePrecipitation(Reactor):
                  MgCl2_price=0.5452,
                  struvite_price=0.6784,
                  P=None, tau=1, V_wf=0.8, # tau: [1]
-                 length_to_diameter=2, N=None, V=None, auxiliary=False,
+                 length_to_diameter=2, N=1, V=None, auxiliary=False,
                  mixing_intensity=None, kW_per_m3=0.0985, # use MixTank default value
                  wall_thickness_factor=1,
                  vessel_material='Carbon steel', # basic condition
@@ -1117,8 +1111,8 @@ class StruvitePrecipitation(Reactor):
                                                self.HTLaqueous_NH3_N_2_total_N/14.0067)*53.491
             # make sure N:P >= 1:1
             
-            supply_MgCl2.imass['MgCl2'] = (mixture.imass['P']/30.973762*self.Mg_P_ratio -\
-                                           base.imass['MgO']/40.3044)*95.211
+            supply_MgCl2.imass['MgCl2'] = max((mixture.imass['P']/30.973762*self.Mg_P_ratio -\
+                                           base.imass['MgO']/40.3044)*95.211, 0)
             struvite.imass['Struvite'] = mixture.imass['P']*\
                                          self.P_pre_recovery_ratio/\
                                          self.P_in_struvite
@@ -1129,12 +1123,9 @@ class StruvitePrecipitation(Reactor):
             effluent.imass['N'] += supply_NH4Cl.imass['NH4Cl']*14.0067/53.491 -\
                                    struvite.imass['Struvite']*\
                                    self.P_in_struvite/30.973762*14.0067
-            effluent.imass['H2O'] += (supply_MgCl2.imass['MgCl2'] +\
-                                      supply_NH4Cl.imass['NH4Cl'] +\
-                                      base.imass['NaOH'] -\
-                                      struvite.imass['Struvite']*\
-                                      (1 - self.P_in_struvite*\
-                                      (1+14.0067/30.973762)))
+            effluent.imass['H2O'] = self.F_mass_in - struvite.F_mass -\
+                                    effluent.imass['C'] - effluent.imass['N'] -\
+                                    effluent.imass['P']
             struvite.phase = 's'    
                 
             struvite.T = mixture.T
@@ -1149,11 +1140,10 @@ class StruvitePrecipitation(Reactor):
         return self.struvite_P*14.0067/30.973762
 
     def _design(self):
-        if self.HTLmixer.outs[0].imass['P'] == 0:
-            pass
-        else:
-            self.P = self.ins[0].P
-            Reactor._design(self)
+        self.V = self.HTLmixer.ins[1]._source.HTL.sludgelab.ins[0].F_vol*2/788.627455
+        # 2/788.627455 m3 reactor/m3 wastewater/h (50 MGD ~ 20 m3)
+        self.P = self.ins[0].P
+        Reactor._design(self)
         
     def _cost(self):
         self.ins[1].price = self.MgCl2_price
@@ -1161,10 +1151,7 @@ class StruvitePrecipitation(Reactor):
         self.ins[3].price = self.MgO_price
         self.outs[0].price = self.struvite_price
         
-        if self.HTLmixer.outs[0].imass['P'] == 0:
-            pass
-        else:
-            Reactor._cost(self)
+        Reactor._cost(self)
     
 # =============================================================================
 # CHG
@@ -1296,29 +1283,26 @@ class CHG(Reactor, SludgeLab):
         chg_in, catalyst_in = self.ins
         chg_out, catalyst_out = self.outs
         
-        if self.ins[0].imass['C'] == 0:
-            chg_out.copy_like(chg_in)
-        else:
-            catalyst_in.imass['CHG_catalyst'] = chg_in.F_mass/self.WHSV/self.catalyst_lifetime
-            catalyst_in.phase = 's'
-            catalyst_out.copy_like(catalyst_in)
-            # catalysts amount is quite low compared to the main stream, therefore do not consider
-            # heating/cooling of catalysts
+        catalyst_in.imass['CHG_catalyst'] = chg_in.F_mass/self.WHSV/self.catalyst_lifetime
+        catalyst_in.phase = 's'
+        catalyst_out.copy_like(catalyst_in)
+        # catalysts amount is quite low compared to the main stream, therefore do not consider
+        # heating/cooling of catalysts
             
-            gas_C_ratio = 0
-            for name, ratio in self.gas_composition.items():
-                gas_C_ratio += ratio*cmps[name].i_C
+        gas_C_ratio = 0
+        for name, ratio in self.gas_composition.items():
+            gas_C_ratio += ratio*cmps[name].i_C
             
-            gas_mass = chg_in.imass['C']*self.gas_C_2_total_C/gas_C_ratio
-            
-            for name,ratio in self.gas_composition.items():
-                chg_out.imass[name] = gas_mass*ratio
+        gas_mass = chg_in.imass['C']*self.gas_C_2_total_C/gas_C_ratio
+        
+        for name,ratio in self.gas_composition.items():
+            chg_out.imass[name] = gas_mass*ratio
                 
-            chg_out.imass['H2O'] = chg_in.F_mass - gas_mass
-            # all C, N, and P are accounted in H2O here, but will be calculated as properties.
+        chg_out.imass['H2O'] = chg_in.F_mass - gas_mass
+        # all C, N, and P are accounted in H2O here, but will be calculated as properties.
                 
-            chg_out.T = self.cool_temp
-            chg_out.P = self.pump_pressure
+        chg_out.T = self.cool_temp
+        chg_out.P = self.pump_pressure
         
     @property
     def CHGout_C(self):
@@ -1334,51 +1318,44 @@ class CHG(Reactor, SludgeLab):
         return self.ins[0].imass['P']
         
     def _design(self):
-        if self.ins[0].imass['C'] == 0:
-            pass
-        else:
-            Design = self.design_results
-            Design['Treatment capacity'] = self.ins[0].F_mass*self._kg_2_lb
+        Design = self.design_results
+        Design['Treatment capacity'] = self.ins[0].F_mass*self._kg_2_lb
         
-            
-            pump = self.pump
-            pump.ins[0].copy_like(self.ins[0])
-            pump.simulate()
+        pump = self.pump
+        pump.ins[0].copy_like(self.ins[0])
+        pump.simulate()
         
-            hx_ht = self.heat_ex_heating
-            hx_ht_ins0, hx_ht_outs0 = hx_ht.ins[0], hx_ht.outs[0]
-            hx_ht_ins0.copy_like(self.ins[0])
-            hx_ht_outs0.copy_like(hx_ht_ins0)
-            hx_ht_ins0.T = self.ins[0].T
-            hx_ht_outs0.T = hx_ht.T
-            hx_ht_ins0.P = hx_ht_outs0.P = pump.P
-            hx_ht.simulate_as_auxiliary_exchanger(ins=hx_ht.ins, outs=hx_ht.outs)
+        hx_ht = self.heat_ex_heating
+        hx_ht_ins0, hx_ht_outs0 = hx_ht.ins[0], hx_ht.outs[0]
+        hx_ht_ins0.copy_like(self.ins[0])
+        hx_ht_outs0.copy_like(hx_ht_ins0)
+        hx_ht_ins0.T = self.ins[0].T
+        hx_ht_outs0.T = hx_ht.T
+        hx_ht_ins0.P = hx_ht_outs0.P = pump.P
+        hx_ht.simulate_as_auxiliary_exchanger(ins=hx_ht.ins, outs=hx_ht.outs)
             
-            hx_cl = self.heat_ex_cooling
-            hx_cl_ins0, hx_cl_outs0 = hx_cl.ins[0], hx_cl.outs[0]
-            hx_cl_ins0.copy_like(self.outs[0])
-            hx_cl_outs0.copy_like(hx_cl_ins0)
-            hx_cl_ins0.T = hx_ht.T
-            hx_cl_outs0.T = hx_cl.T
-            hx_cl_ins0.P = hx_cl_outs0.P = self.outs[0].P
-            hx_cl.simulate_as_auxiliary_exchanger(ins=hx_cl.ins, outs=hx_cl.outs)
+        hx_cl = self.heat_ex_cooling
+        hx_cl_ins0, hx_cl_outs0 = hx_cl.ins[0], hx_cl.outs[0]
+        hx_cl_ins0.copy_like(self.outs[0])
+        hx_cl_outs0.copy_like(hx_cl_ins0)
+        hx_cl_ins0.T = hx_ht.T
+        hx_cl_outs0.T = hx_cl.T
+        hx_cl_ins0.P = hx_cl_outs0.P = self.outs[0].P
+        hx_cl.simulate_as_auxiliary_exchanger(ins=hx_cl.ins, outs=hx_cl.outs)
 
-            self.P = self.ins[0].P
-            Reactor._design(self)
+        self.P = self.ins[0].P
+        Reactor._design(self)
     
     def _cost(self):
         self.ins[1].price = self.catalyst_price
         
-        if self.ins[0].imass['C'] == 0:
-            pass
-        else:
-            Reactor._cost(self)
-            purchase_costs = self.baseline_purchase_costs
-            current_cost = 0 # cost w/o sulfur guard
-            for item in purchase_costs.keys():
-                current_cost += purchase_costs[item]
-            purchase_costs['Sulfur guard'] = current_cost*0.05
-            self._decorated_cost()
+        Reactor._cost(self)
+        purchase_costs = self.baseline_purchase_costs
+        current_cost = 0 # cost w/o sulfur guard
+        for item in purchase_costs.keys():
+            current_cost += purchase_costs[item]
+        purchase_costs['Sulfur guard'] = current_cost*0.05
+        self._decorated_cost()
     
 # =============================================================================
 # Membrane Distillation
@@ -1514,6 +1491,7 @@ class MembraneDistillation(SanUnit):
         
         if self.CHG.CHGout_N == 0:
             ww.copy_like(influent)
+            self.membrane_area = self.F_vol_in*1000/self.capacity
         else:
             NaOH_conc = 10**(self.target_pH - 14) - 10**(self.influent_pH - 14)
             NaOH_mol = NaOH_conc*self.ins[0].F_mass
@@ -1601,12 +1579,9 @@ class MembraneDistillation(SanUnit):
         return 1 - self.outs[1].imass['N']/self.CHG.CHGout_N
         
     def _design(self):
-        if self.CHG.CHGout_N == 0:
-            pass
-        else:
-            Design = self.design_results
-            Design['Area'] = self.membrane_area
-            Design['Total volume'] = Design['Area']*self.m2_2_m3
+        Design = self.design_results
+        Design['Area'] = self.membrane_area
+        Design['Total volume'] = Design['Area']*self.m2_2_m3
     
     def _cost(self):
         self.ins[2].price = self.sodium_hydroxide_price
@@ -1615,12 +1590,9 @@ class MembraneDistillation(SanUnit):
                                  self.outs[0].F_mass
         self.ins[3].price = self.membrane_price
         
-        if self.CHG.CHGout_N == 0:
-            pass
-        else:
-            Design = self.design_results
-            purchase_costs = self.baseline_purchase_costs
-            purchase_costs['Membrane'] = Design['Area']*self.membrane_price
+        Design = self.design_results
+        purchase_costs = self.baseline_purchase_costs
+        purchase_costs['Membrane'] = Design['Area']*self.membrane_price
 
 # =============================================================================
 # HT
