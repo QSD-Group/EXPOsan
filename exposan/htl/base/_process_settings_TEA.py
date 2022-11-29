@@ -22,10 +22,12 @@ for license details.
 
 import biosteam as bst, qsdsan as qs
 from thermosteam import Chemical
-
-bst.settings.CEPCI = qs.CEPCI = qs.CEPCI_by_year[2016] # use 2016$ to match up with recent PNNL report
+from qsdsan import PowerUtility
 
 def load_process_settings():
+# =============================================================================
+#     add a heating agent
+# =============================================================================
     # use DOWTHERM(TM) A Heat Transfer Fluid (HTF) as the heating agent
     # DOWTHERM(TM) A HTF = 73.5% diphenyl oxide (DPO) + 26.5% Biphenyl (BIP)
     # critical temperature for HTF: 497 C
@@ -54,3 +56,21 @@ def load_process_settings():
     # en-us/app-tech-guide/176/176-01334-01-dowtherm-heat-transfer-fluids-\
     # engineering-manual.pdf?iframe=true (accessed on 11-16-2022)
     bst.HeatUtility.heating_agents.append(HTF)
+    
+# =============================================================================
+#     unify money
+# =============================================================================
+    qs.CEPCI_by_year[2015] = 557
+    qs.CEPCI_by_year[2016] = 542
+    qs.CEPCI_by_year[2017] = 568
+    qs.CEPCI_by_year[2019] = 608
+    qs.CEPCI_by_year[2020] = 596
+    qs.CEPCI_by_year[2021] = 708
+    # https://www.toweringskills.com/financial-analysis/cost-indices/ (accessed 11-25-22)
+
+    bst.settings.CEPCI = qs.CEPCI = qs.CEPCI_by_year[2020] # use 2020$ to match up with latest PNNL report
+    
+# =============================================================================
+#     set electricity price
+# =============================================================================
+    PowerUtility.price = 0.069

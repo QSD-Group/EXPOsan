@@ -733,24 +733,24 @@ class HTL(Reactor):
                self.sludgelab.outs[0].imass['H2O'])/self.sludgelab.sludge_HHV # [2]
         
     @property
+    def offgas_C(self):
+        carbon = 0
+        for name in self.gas_composition.keys():
+            carbon += self.outs[3].imass[name]*cmps[name].i_C
+        return min(carbon, self.sludgelab.sludge_C - self.biocrude_C)    
+        
+    @property
     def biochar_C_ratio(self):
         return min(self.biochar_C_slope*self.sludgelab.sludge_dw_carbo, 0.65) # [2]
 
     @property
     def biochar_C(self):
-        return min(self.outs[0].F_mass*self.biochar_C_ratio, self.sludgelab.sludge_C - self.biocrude_C)
+        return min(self.outs[0].F_mass*self.biochar_C_ratio, self.sludgelab.sludge_C - self.biocrude_C - self.offgas_C)
 
     @property
     def biochar_P(self):
         return min(self.sludgelab.sludge_P*self.biochar_P_recovery_ratio, self.outs[0].F_mass)
 
-    @property
-    def offgas_C(self):
-        carbon = 0
-        for name in self.gas_composition.keys():
-            carbon += self.outs[3].imass[name]*cmps[name].i_C
-        return min(carbon, self.sludgelab.sludge_C - self.biocrude_C - self.biochar_C)
-               
     # C and N in aqueous phase are calculated based on mass balance closure
     # in the case that HTLaqueous_C is less than 0, which
     # is likely to happen when the carbo% is high,
@@ -759,8 +759,16 @@ class HTL(Reactor):
     @property
     def HTLaqueous_C(self):
         return self.sludgelab.sludge_C - self.biocrude_C - self.biochar_C - self.offgas_C
-    # !!! keep in mind, in reality, HTLaqueous_C cannot be 0.
+    # keep in mind, in reality, HTLaqueous_C cannot be 0.
     # when inputs for HTL become extreme, the production will deviate from MCA model
+    # here for C, the priority level: biocrude > offgas > biochar > aqueous, rationale:
+    # 1. biocrude is the most important product, so put in the first place;
+    # 2. offgas mass & composition are known, so it's better to match up to for mass balance calculation;
+    # 3. biochar C is not useful, therefore put after offgas;
+    # 4. if biocrude_C + offgas_c + biochar_C = TC, this is all calculated based on the MCA model,
+    #    so HTLaqueous_C shold be 0.
+    #    if biocrude_C + offgas_C + biochar_C < TC, any remaining C should go to HTLaqueous,
+    #    therefore, we put HTLaqueous_C the last place.
 
     @property
     def HTLaqueous_N(self):
