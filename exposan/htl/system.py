@@ -42,7 +42,7 @@ from qsdsan import PowerUtility
 load_process_settings()
 cmps = create_components()
 
-raw_wastewater = qs.Stream('raw_wastewater', H2O=50, units='MGD', T=25+273.15)
+raw_wastewater = qs.Stream('raw_wastewater', H2O=80, units='MGD', T=25+273.15)
 # set H2O equal to the total raw wastewater into the WWTP
 
 # =============================================================================
@@ -111,19 +111,26 @@ M1 = su.HTLmixer('A210', ins=(HTL-1, AcidEx-1), outs=('mixture'))
 
 StruPre = su.StruvitePrecipitation('A220', ins=(M1-0,'MgCl2','NH4Cl','MgO'),
                                    outs=('struvite','CHG_feed'))
+StruPre.ins[1].price = 0.5452
+StruPre.ins[2].price = 0.13
+StruPre.ins[3].price = 0.2
+StruPre.outs[0].price = 0.661
 
-CHG = su.CHG('A250', ins=(StruPre-1, '7.8% Ru/C'), outs=('CHG_out', '7.8% Ru/C_out'))
+CHG = su.CHG('A230', ins=(StruPre-1, '7.8% Ru/C'), outs=('CHG_out', '7.8% Ru/C_out'))
 CHG_pump = CHG.pump
 CHG_heating = CHG.heat_ex_heating
 CHG_cooling = CHG.heat_ex_cooling
+CHG.ins[1].price = 134.53
 
-V1 = IsenthalpicValve('A270', ins=CHG-0, outs='depressed_cooled_CHG', P=50*6894.76)
+V1 = IsenthalpicValve('A240', ins=CHG-0, outs='depressed_cooled_CHG', P=50*6894.76)
 
-F1 = Flash('A280', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
+F1 = Flash('A250', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
             T=60+273.15, P=50*6894.76)
 
-MemDis = su.MembraneDistillation('A290', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
-                                  outs=('ammonium_sulfate','MemDis_ww', 'Membrane_out'))
+MemDis = su.MembraneDistillation('A260', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
+                                  outs=('ammonium_sulfate','MemDis_ww', 'Membrane_out','solution'))
+MemDis.ins[2].price = 0.5256
+MemDis.outs[0].price = 0.3236
 
 # =============================================================================
 # HT (Area 300)
@@ -140,10 +147,12 @@ P3 = qsu.Pump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76,
 RSP1 = qsu.ReversedSplitter('S300', ins='H2', outs=('HT_H2','HC_H2'),
                             init_with='Stream')
 # reversed splitter, write before HT and HC, simulate after HT and HC
+RSP1.ins[0].price = 1.61
 
 HT = su.HT('A310', ins=(P3-0, RSP1-0, 'CoMo_alumina_HT'), outs=('HTout', 'CoMo_alumina_HT_out'))
 HT_compressor = HT.compressor
 HT_hx = HT.heat_exchanger
+HT.ins[2].price = 38.79
 
 V2 = IsenthalpicValve('A320', ins=HT-0, outs='depressed_HT', P=717.4*6894.76)
 
@@ -192,6 +201,7 @@ P4 = qsu.Pump('A400', ins=D3-1, outs='press_heavy_oil', P=1034.7*6894.76,
 HC = su.HC('A410', ins=(P4-0, RSP1-1, 'CoMo_alumina_HC'), outs=('HC_out', 'CoMo_alumina_HC_out'))
 HC_compressor = HC.compressor
 HC_hx = HC.heat_exchanger
+HC.ins[2].price = 38.79
 
 H6 = qsu.HXutility('A420', ins=HC-0, outs='cooled_HC', T=60+273.15,
                     init_with='Stream')
@@ -543,6 +553,26 @@ dist = shape.Normal(8.200,0.138)
         distribution=dist)
 def set_biocrude_H_intercept(i):
     HTL.biocrude_H_intercept=i
+    
+dist = shape.Normal(478,18.878)
+@param(name='HTLaqueous_C_slope',
+        element=HTL,
+        kind='coupled',
+        units='-',
+        baseline=478,
+        distribution=dist)
+def set_HTLaqueous_C_slope(i):
+    HTL.HTLaqueous_C_slope=i
+    
+dist = shape.Triangle(0.715,0.764,0.813)
+@param(name='TOC_TC',
+        element=HTL,
+        kind='coupled',
+        units='-',
+        baseline=0.764,
+        distribution=dist)
+def set_TOC_TC(i):
+    HTL.TOC_TC=i
 
 dist = shape.Normal(1.750,0.122)
 @param(name='biochar_C_slope',
@@ -619,6 +649,16 @@ dist = shape.Uniform(1,4)
         distribution=dist)
 def set_Mg_P_ratio(i):
     StruPre.Mg_P_ratio=i
+    
+dist = shape.Triangle(0.7,0.828,0.95)
+@param(name='P_pre_recovery_ratio',
+        element=StruPre,
+        kind='coupled',
+        units='-',
+        baseline=0.828,
+        distribution=dist)
+def set_P_pre_recovery_ratio(i):
+    StruPre.P_pre_recovery_ratio=i
 
 # =============================================================================
 # CHG
@@ -855,6 +895,48 @@ def set_HC_hydrocarbon_ratio(i):
 # =============================================================================
 # TEA
 # =============================================================================
+
+dist = shape.Triangle(0.005994,0.014497)
+@param(name='5% H2SO4 price',
+        element='TEA',
+        kind='isolated',
+        units='$/kg',
+        baseline=0.00658,
+        distribution=dist)
+def set_H2SO4_price(i):
+    H2SO4_Tank.ins[0].price=i
+
+dist = shape.Triangle(0.525,0.5452
+
+
+
+IRR
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 dist = shape.Triangle(0.005994,0.014497)
 @param(name='5% H2SO4 price',
         element='TEA',
@@ -873,27 +955,7 @@ dist = shape.Triangle(0.525,0.5452,0.57)
         baseline=0.5452,
         distribution=dist)
 def set_MgCl2_price(i):
-    StruPre.MgCl2_price=i
-
-dist = shape.Uniform(0.1,0.3)
-@param(name='MgO price',
-        element='TEA',
-        kind='isolated',
-        units='$/kg',
-        baseline=0.2,
-        distribution=dist)
-def set_MgO_price(i):
-    StruPre.MgO_price=i
-
-dist = shape.Uniform(1.450,1.772)
-@param(name='H2 price',
-        element='TEA',
-        kind='isolated',
-        units='$/kg',
-        baseline=1.611,
-        distribution=dist)
-def set_H2_price(i):
-    HT.hydrogen_price=HC.hydrogen_price=i
+    StruPre.ins[1].price=i
 
 dist = shape.Uniform(0.12,0.14)
 @param(name='NH4Cl price',
@@ -903,7 +965,38 @@ dist = shape.Uniform(0.12,0.14)
         baseline=0.13,
         distribution=dist)
 def set_NH4Cl_price(i):
-    StruPre.NH4Cl_price=i
+    StruPre.ins[2].price=i
+
+dist = shape.Uniform(0.1,0.3)
+@param(name='MgO price',
+        element='TEA',
+        kind='isolated',
+        units='$/kg',
+        baseline=0.2,
+        distribution=dist)
+def set_MgO_price(i):
+    StruPre.ins[3].price=i
+        
+        
+dist = shape.Triangle(0.419,0.661,1.213)
+@param(name='struvite price',
+        element='TEA',
+        kind='isolated',
+        units='$/kg',
+        baseline=0.661,
+        distribution=dist)
+def set_struvite_price(i):
+    StruPre.outs[0].price=i        
+        
+dist = shape.Uniform(1.450,1.772)
+@param(name='H2 price',
+        element='TEA',
+        kind='isolated',
+        units='$/kg',
+        baseline=1.611,
+        distribution=dist)
+def set_H2_price(i):
+    RSP1.ins[0].price=i
 
 dist = shape.Uniform(0.473,0.578)
 @param(name='NaOH price',
@@ -913,17 +1006,17 @@ dist = shape.Uniform(0.473,0.578)
         baseline=0.5256,
         distribution=dist)
 def set_NaOH_price(i):
-    MemDis.sodium_hydroxide_price=i
-    
-dist = shape.Triangle(67.27,134.53,269.07)
-@param(name='CHG catalyst price',
+    MemDis.ins[2].price=i
+
+dist = shape.Triangle(0.1636,0.3236,0.463)
+@param(name='ammonium sulfate price',
         element='TEA',
         kind='isolated',
         units='$/kg',
-        baseline=134.53,
+        baseline=0.3236,
         distribution=dist)
-def set_catalyst_price(i):
-    CHG.catalyst_price=i
+def set_ammonium_sulfate_price(i):
+    MemDis.outs[0].price=i
 
 dist = shape.Uniform(83.96,102.62)
 @param(name='membrane price',
@@ -934,6 +1027,16 @@ dist = shape.Uniform(83.96,102.62)
         distribution=dist)
 def set_membrane_price(i):
     MemDis.membrane_price=i
+
+dist = shape.Triangle(67.27,134.53,269.07)
+@param(name='CHG catalyst price',
+        element='TEA',
+        kind='isolated',
+        units='$/kg',
+        baseline=134.53,
+        distribution=dist)
+def set_catalyst_price(i):
+    CHG.ins[1].price=i
 
 dist = shape.Triangle(0.121,0.1685,0.3608)
 @param(name='CH4 price',
@@ -953,18 +1056,8 @@ dist = shape.Uniform(34.91,42.67)
         baseline=38.79,
         distribution=dist)
 def set_HT_HC_catalyst_price(i):
-    HT.catalyst_price=HC.catalyst_price=i
+    HT.ins[2].price=HC.ins[2].price=i
     
-dist = shape.Triangle(0.1636,0.3236,0.463)
-@param(name='ammonium sulfate price',
-        element='TEA',
-        kind='isolated',
-        units='$/kg',
-        baseline=0.3236,
-        distribution=dist)
-def set_ammonium_sulfate_price(i):
-    MemDis.ammonium_sulfate_price=i
-
 dist = shape.Triangle(0.7085,0.9388,1.4493)
 @param(name='gasoline price',
         element='TEA',
@@ -984,16 +1077,6 @@ dist = shape.Triangle(0.7458,0.9722,1.6579)
         distribution=dist)
 def set_diesel_price(i):
     FuelMixer.diesel_price=i
-
-dist = shape.Triangle(0.3641,0.6784,2.3633)
-@param(name='struvite price',
-        element='TEA',
-        kind='isolated',
-        units='$/kg',
-        baseline=0.6784,
-        distribution=dist)
-def set_struvite_price(i):
-    StruPre.struvite_price=i
 
 dist = shape.Triangle(0.0667,0.06879,0.07180)
 @param(name='electrivity price',
