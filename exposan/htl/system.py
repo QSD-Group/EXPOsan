@@ -33,7 +33,7 @@ from biosteam.units import Flash, IsenthalpicValve, BinaryDistillation
 from exposan.htl._process_settings import load_process_settings
 from exposan.htl._components import create_components
 from exposan.htl._TEA import *
-from qsdsan import PowerUtility
+from qsdsan import PowerUtility, Construction
 
 # __all__ = ('create_system',)
 
@@ -136,7 +136,7 @@ MemDis.outs[0].price = 0.3236
 # HT (Area 300)
 # =============================================================================
 
-P3 = qsu.Pump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76,
+P2 = qsu.Pump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76,
               init_with='Stream')
 # Jones 2014: 1530.0 psia
 
@@ -149,7 +149,7 @@ RSP1 = qsu.ReversedSplitter('S300', ins='H2', outs=('HT_H2','HC_H2'),
 # reversed splitter, write before HT and HC, simulate after HT and HC
 RSP1.ins[0].price = 1.61
 
-HT = su.HT('A310', ins=(P3-0, RSP1-0, 'CoMo_alumina_HT'), outs=('HTout', 'CoMo_alumina_HT_out'))
+HT = su.HT('A310', ins=(P2-0, RSP1-0, 'CoMo_alumina_HT'), outs=('HTout', 'CoMo_alumina_HT_out'))
 HT_compressor = HT.compressor
 HT_hx = HT.heat_exchanger
 HT.ins[2].price = 38.79
@@ -190,7 +190,7 @@ D3 = BinaryDistillation('A390', ins=D2-1,
 # HC (Area 400)
 # =============================================================================
 
-P4 = qsu.Pump('A400', ins=D3-1, outs='press_heavy_oil', P=1034.7*6894.76,
+P3 = qsu.Pump('A400', ins=D3-1, outs='press_heavy_oil', P=1034.7*6894.76,
               init_with='Stream')
 # Jones 2014: 1034.7 psia
 
@@ -198,7 +198,7 @@ P4 = qsu.Pump('A400', ins=D3-1, outs='press_heavy_oil', P=1034.7*6894.76,
 # releases a lot of heat and increase the temperature of effluent to 451 C
 # (844.6 F).
 
-HC = su.HC('A410', ins=(P4-0, RSP1-1, 'CoMo_alumina_HC'), outs=('HC_out', 'CoMo_alumina_HC_out'))
+HC = su.HC('A410', ins=(P3-0, RSP1-1, 'CoMo_alumina_HC'), outs=('HC_out', 'CoMo_alumina_HC_out'))
 HC_compressor = HC.compressor
 HC_hx = HC.heat_exchanger
 HC.ins[2].price = 38.79
@@ -269,7 +269,7 @@ HXN = qsu.HeatExchangerNetwork('HXN')
 
 for unit in (SluL, SluT, SluC, P1, H1, HTL, HTL_hx, HTL_drum, H2SO4_Tank, AcidEx,
              M1, StruPre, CHG, CHG_pump, CHG_heating, CHG_cooling, V1, F1, MemDis, SP1,
-             P3, HT, HT_compressor, HT_hx, V2, H4, F2, V3, SP2, H5, D1, D2, D3, P4,
+             P2, HT, HT_compressor, HT_hx, V2, H4, F2, V3, SP2, H5, D1, D2, D3, P3,
              HC, HC_compressor, HC_hx, H6, V4, F3, D4, GasolineMixer, DieselMixer,
              H7, H8, PC1, PC2, GasolineTank, DieselTank, FuelMixer,
              GasMixer, CHP, WWmixer, RSP1, HXN):
@@ -278,7 +278,7 @@ for unit in (SluL, SluT, SluC, P1, H1, HTL, HTL_hx, HTL_drum, H2SO4_Tank, AcidEx
 
 sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              M1, StruPre, CHG, V1, F1, MemDis, SP1,
-                             P3, HT, V2, H4, F2, V3, SP2, H5, D1, D2, D3, P4,
+                             P2, HT, V2, H4, F2, V3, SP2, H5, D1, D2, D3, P3,
                              HC, H6, V4, F3, D4, GasolineMixer, DieselMixer,
                              H7, H8, PC1, PC2, GasolineTank, DieselTank, FuelMixer,
                              GasMixer, CHP, WWmixer, RSP1
@@ -293,6 +293,8 @@ sys.diagram()
 tea = create_tea(sys)
 
 table = capex_table(tea)
+
+
 
 # return sys
 
@@ -896,48 +898,38 @@ def set_HC_hydrocarbon_ratio(i):
 # TEA
 # =============================================================================
 
-dist = shape.Triangle(0.005994,0.014497)
-@param(name='5% H2SO4 price',
+dist = shape.Triangle(0.6,1,1.4)
+@param(name='CAPEX_factor',
         element='TEA',
         kind='isolated',
-        units='$/kg',
-        baseline=0.00658,
+        units='-',
+        baseline=1,
         distribution=dist)
-def set_H2SO4_price(i):
-    H2SO4_Tank.ins[0].price=i
-
-dist = shape.Triangle(0.525,0.5452
+def set_CAPEX_factor(i):
+    HTL.CAPEX_factor=CHG.CAPEX_factor=HT.CAPEX_factor=i
 
 
+dist = shape.Uniform(1102.5,1347.5)
+@param(name='unit_CAPEX',
+        element='TEA',
+        kind='isolated',
+        units='-',
+        baseline=1225,
+        distribution=dist)
+def set_unit_CAPEX(i):
+    CHP.unit_CAPEX=i
 
-IRR
+dist = shape.Triangle(0,0.1,0.2)
+@param(name='IRR',
+        element='TEA',
+        kind='isolated',
+        units='-',
+        baseline=0.1,
+        distribution=dist)
+def set_IRR(i):
+    tea.IRR=i
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-dist = shape.Triangle(0.005994,0.014497)
+dist = shape.Triangle(0.005994,0.00658,0.014497)
 @param(name='5% H2SO4 price',
         element='TEA',
         kind='isolated',

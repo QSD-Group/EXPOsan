@@ -438,8 +438,7 @@ class KOdrum(Reactor):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
                  P=3049.7*6894.76, tau=0, V_wf=0,
-                 length_to_diameter=2, N=4,
-                 V=4230*0.00378541, # 4230 gal to m3, NREL 2013
+                 length_to_diameter=2, N=4, V=None,
                  auxiliary=True,
                  mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
@@ -548,6 +547,8 @@ class HTL(Reactor):
         Offgas pressure, [Pa].
     eff_T: float
         HTL effluent temperature, [K].
+    CAPEX_factor: float
+        Factor used to adjust CAPEX.
     References
     ----------
     .. [1] Leow, S.; Witter, J. R.; Vardon, D. R.; Sharma, B. K.;
@@ -582,6 +583,7 @@ class HTL(Reactor):
     auxiliary_unit_names=('heat_exchanger','kodrum')
     
     _kg_2_lb = 2.20462
+    _gal_2_m3 = 0.00378541
     
     _F_BM_default = {**Reactor._F_BM_default,
                      'Heat exchanger': 3.17}
@@ -615,7 +617,8 @@ class HTL(Reactor):
                  mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
-                 vessel_type='Vertical',         
+                 vessel_type='Vertical',
+                 CAPEX_factor=1,
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -655,6 +658,7 @@ class HTL(Reactor):
         self.wall_thickness_factor = wall_thickness_factor
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
+        self.CAPEX_factor = CAPEX_factor
 
     _N_ins = 1
     _N_outs = 4
@@ -801,14 +805,26 @@ class HTL(Reactor):
         self.P = self.ins[0].P
         Reactor._design(self)
         
-        self.kodrum.V = min(Design['Single reactor volume']/1253*4230,4230*0.00378541)
-        # in [6], single HTL volume:single K/O drum volume = 1253:4230
-        # when HTL is larger than 1253 gal, K/O will not increase
+        self.kodrum.V = self.F_mass_out*self._kg_2_lb/1225236*4230*self._gal_2_m3
+        # in [6], when knockout drum influent is 1225236 lb/hr, single knockout
+        # drum volume is 4230 gal
+        
         self.kodrum.simulate()
         
     def _cost(self):
         Reactor._cost(self)
         self._decorated_cost()
+        
+        purchase_costs = self.baseline_purchase_costs
+        for item in purchase_costs.keys():
+            purchase_costs[item] *= self.CAPEX_factor
+        
+        for aux_unit in self.auxiliary_units:
+            purchase_costs = aux_unit.baseline_purchase_costs
+            installed_costs = aux_unit.installed_costs
+            for item in purchase_costs.keys():
+                purchase_costs[item] *= self.CAPEX_factor
+                installed_costs[item] *= self.CAPEX_factor
         
 # =============================================================================
 # Acid Extraction
@@ -1040,8 +1056,6 @@ class StruvitePrecipitation(Reactor):
         mol(Mg) to mol(P) ratio.   
     P_pre_recovery_ratio: float
         Ratio of phosphorus that can be precipitated out.
-    P_in_struvite: float
-        Mass ratio of phosphorus in struvite.
     HTLaqueous_NH3_N_2_total_N: float
         Ratio of NH3-N to TN in HTL aqueous phase.
     References
@@ -1065,7 +1079,6 @@ class StruvitePrecipitation(Reactor):
                  target_pH = 9,
                  Mg_P_ratio=2.5,
                  P_pre_recovery_ratio=0.828, # [1]
-                 P_in_struvite=0.126,
                  HTLaqueous_NH3_N_2_total_N = 0.853, # [2]
                  P=None, tau=1, V_wf=0.8, # tau: [1]
                  length_to_diameter=2, N=1, V=20, auxiliary=False,
@@ -1079,7 +1092,6 @@ class StruvitePrecipitation(Reactor):
         self.target_pH = target_pH
         self.Mg_P_ratio = Mg_P_ratio
         self.P_pre_recovery_ratio = P_pre_recovery_ratio
-        self.P_in_struvite = P_in_struvite
         self.HTLaqueous_NH3_N_2_total_N = HTLaqueous_NH3_N_2_total_N
         self.P = P
         self.tau = tau
@@ -1123,14 +1135,13 @@ class StruvitePrecipitation(Reactor):
 
             struvite.imass['Struvite'] = mixture.imass['P']*\
                                          self.P_pre_recovery_ratio/\
-                                         self.P_in_struvite
+                                         30.973762*245.41
             supply_MgCl2.phase = supply_NH4Cl.phase = base.phase = 's'
             
             effluent.copy_like(mixture)
-            effluent.imass['P'] -= struvite.imass['Struvite']*self.P_in_struvite
+            effluent.imass['P'] -= struvite.imass['Struvite']*30.973762/245.41
             effluent.imass['N'] += supply_NH4Cl.imass['NH4Cl']*14.0067/53.491 -\
-                                   struvite.imass['Struvite']*\
-                                   self.P_in_struvite/30.973762*14.0067
+                                   struvite.imass['Struvite']*14.0067/245.41
             effluent.imass['H2O'] = self.F_mass_in - struvite.F_mass -\
                                     effluent.imass['C'] - effluent.imass['N'] -\
                                     effluent.imass['P']
@@ -1141,7 +1152,7 @@ class StruvitePrecipitation(Reactor):
         
     @property
     def struvite_P(self):
-        return self.outs[0].imass['Struvite']*self.P_in_struvite
+        return self.outs[0].imass['Struvite']*30.973762/245.41
 
     @property
     def struvite_N(self):
@@ -1190,6 +1201,8 @@ class CHG(Reactor, SludgeLab):
         CHG gas composition.
     gas_C_2_total_C: dict
         CHG gas carbon content to feed carbon content.
+    CAPEX_factor: float
+        Factor used to adjust CAPEX.
     References
     ----------
     .. [1] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
@@ -1239,6 +1252,7 @@ class CHG(Reactor, SludgeLab):
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
+                 CAPEX_factor=1,
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -1272,6 +1286,7 @@ class CHG(Reactor, SludgeLab):
         self.wall_thickness_factor = wall_thickness_factor
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
+        self.CAPEX_factor = CAPEX_factor
         
     _N_ins = 2
     _N_outs = 2
@@ -1353,6 +1368,17 @@ class CHG(Reactor, SludgeLab):
             current_cost += purchase_costs[item]
         purchase_costs['Sulfur guard'] = current_cost*0.05
         self._decorated_cost()
+        
+        purchase_costs = self.baseline_purchase_costs
+        for item in purchase_costs.keys():
+            purchase_costs[item] *= self.CAPEX_factor
+        
+        for aux_unit in self.auxiliary_units:
+            purchase_costs = aux_unit.baseline_purchase_costs
+            installed_costs = aux_unit.installed_costs
+            for item in purchase_costs.keys():
+                purchase_costs[item] *= self.CAPEX_factor
+                installed_costs[item] *= self.CAPEX_factor
     
 # =============================================================================
 # Membrane Distillation
@@ -1361,7 +1387,8 @@ class CHG(Reactor, SludgeLab):
 class MembraneDistillation(SanUnit):
     '''
     Membrane distillation recovers nitrogen as ammonia sulfate based on vapor
-    pressure difference across the hydrophobic membrane.
+    pressure difference across the hydrophobic membrane. Ignore water flux across
+    membrane since it will not affect system performance (either TEA or LCA).
     Parameters
     ----------
     ins: stream
@@ -1610,6 +1637,8 @@ class HT(Reactor):
         HT effluent (after reaction) temperature, [K].
     HT_composition: dict
         HT effluent composition.
+    CAPEX_factor: float
+        Factor used to adjust CAPEX.
     References
     ----------
     .. [1] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
@@ -1678,6 +1707,7 @@ class HT(Reactor):
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
+                 CAPEX_factor=1,
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -1709,6 +1739,7 @@ class HT(Reactor):
         self.wall_thickness_factor = wall_thickness_factor
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
+        self.CAPEX_factor = CAPEX_factor
 
     _N_ins = 3
     _N_outs = 2
@@ -1823,6 +1854,17 @@ class HT(Reactor):
     
     def _cost(self):
         Reactor._cost(self)
+        
+        purchase_costs = self.baseline_purchase_costs
+        for item in purchase_costs.keys():
+            purchase_costs[item] *= self.CAPEX_factor
+        
+        for aux_unit in self.auxiliary_units:
+            purchase_costs = aux_unit.baseline_purchase_costs
+            installed_costs = aux_unit.installed_costs
+            for item in purchase_costs.keys():
+                purchase_costs[item] *= self.CAPEX_factor
+                installed_costs[item] *= self.CAPEX_factor
 
 # =============================================================================
 # HC
