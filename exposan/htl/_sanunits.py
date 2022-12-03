@@ -16,22 +16,22 @@ for license details.
 import biosteam as bst
 from qsdsan import SanUnit
 import qsdsan.sanunits as qsu
-from qsdsan.sanunits import HXutility, Pump, WWTpump
 from biosteam.units import IsothermalCompressor
 from exposan.htl._components import create_components
-from biosteam.units.design_tools import PressureVessel
+from biosteam.units.design_tools import PressureVessel, flash_vessel_design
 from biosteam.units.design_tools.cost_index import CEPCI_by_year as CEPCI
 from math import pi, ceil, log
-from biosteam.exceptions import DesignError
+from biosteam.exceptions import DesignError, bounds_warning, DesignWarning
 from biosteam import Stream
 from biosteam.units.decorators import cost
 from thermosteam import indexer, equilibrium
 from exposan.htl._process_settings import load_process_settings
 from qsdsan.utils import auom, select_pipe
-
+from biosteam.units.design_tools.specification_factors import material_densities_lb_per_ft3
+from warnings import warn
 
 __all__ = ('Reactor',
-           'SludgeLab',
+           'WWTP',
            'HTL',
            'AcidExtraction',
            'HTLmixer',
@@ -44,7 +44,8 @@ __all__ = ('Reactor',
            'WWmixer',
            'PhaseChanger',
            'FuelMixer',
-           'HTLpump')
+           'HTLpump',
+           'HTLHX')
 
 cmps = create_components()
 
@@ -57,6 +58,10 @@ _m3_to_gal = auom('m3').conversion_factor('gallon')
 _lb_to_kg = auom('lb').conversion_factor('kg')
 
 _ft3_to_gal = auom('ft3').conversion_factor('gallon')
+
+_ft3_to_m3 = auom('ft3').conversion_factor('m3')
+
+_in_to_ft = auom('in').conversion_factor('ft')
 
 # =============================================================================
 # Reactor
@@ -258,9 +263,9 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
 # Sludge Lab
 # =============================================================================
 
-class SludgeLab(SanUnit):
+class WWTP(SanUnit):
     '''
-    SludgeLab is a fake unit that can set up sludge biochemical compositions
+    WWTP is a fake unit that can set up sludge biochemical compositions
     and calculate sludge elemental compositions.
     Parameters
     ----------
@@ -651,7 +656,7 @@ class HTL(Reactor):
         self.offgas_pre = offgas_pre
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out, T=eff_T)
+        self.heat_exchanger = HTLHX(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out, T=eff_T)
         self.kodrum = KOdrum(ID=f'.{ID}_KOdrum')
         self.P = P
         self.tau = tau
@@ -676,7 +681,7 @@ class HTL(Reactor):
         dewatered_sludge = self.ins[0]
         biochar, HTLaqueous, biocrude, offgas = self.outs
         
-        self.sludgelab = self.ins[0]._source.ins[0]._source.ins[0].\
+        self.WWTP = self.ins[0]._source.ins[0]._source.ins[0].\
                          _source.ins[0]._source.ins[0]._source
         
         dewatered_sludge_afdw = dewatered_sludge.imass['Sludge_lipid'] +\
@@ -684,9 +689,9 @@ class HTL(Reactor):
                                 dewatered_sludge.imass['Sludge_carbo']
         # just use afdw in revised MCA model, other places use dw
         
-        afdw_lipid_ratio = self.sludgelab.sludge_afdw_lipid
-        afdw_protein_ratio = self.sludgelab.sludge_afdw_protein
-        afdw_carbo_ratio = self.sludgelab.sludge_afdw_carbo
+        afdw_lipid_ratio = self.WWTP.sludge_afdw_lipid
+        afdw_protein_ratio = self.WWTP.sludge_afdw_protein
+        afdw_carbo_ratio = self.WWTP.sludge_afdw_carbo
 
         # the following calculations are based on revised MCA model
         biochar.imass['Biochar'] = 0.377*afdw_carbo_ratio*dewatered_sludge_afdw
@@ -727,26 +732,26 @@ class HTL(Reactor):
 
     @property
     def biocrude_C_ratio(self):
-        return (self.sludgelab.AOSc*self.biocrude_C_slope + self.biocrude_C_intercept)/100 # [2]
+        return (self.WWTP.AOSc*self.biocrude_C_slope + self.biocrude_C_intercept)/100 # [2]
     
     @property
     def biocrude_H_ratio(self):
-        return (self.sludgelab.AOSc*self.biocrude_H_slope + self.biocrude_H_intercept)/100 # [2]
+        return (self.WWTP.AOSc*self.biocrude_H_slope + self.biocrude_H_intercept)/100 # [2]
 
     @property
     def biocrude_N_ratio(self):
-        return self.biocrude_N_slope*self.sludgelab.sludge_dw_protein # [2]
+        return self.biocrude_N_slope*self.WWTP.sludge_dw_protein # [2]
     
     @property
     def biocrude_C(self):
-        return min(self.outs[2].F_mass*self.biocrude_C_ratio, self.sludgelab.sludge_C)
+        return min(self.outs[2].F_mass*self.biocrude_C_ratio, self.WWTP.sludge_C)
 
 
     @property
     def HTLaqueous_C(self):
         return min(self.outs[1].F_vol*1000*self.HTLaqueous_C_slope*\
-                   self.sludgelab.sludge_dw_protein*100/1000000/self.TOC_TC,
-                   self.sludgelab.sludge_C - self.biocrude_C)
+                   self.WWTP.sludge_dw_protein*100/1000000/self.TOC_TC,
+                   self.WWTP.sludge_C - self.biocrude_C)
 
     @property
     def biocrude_H(self):
@@ -754,46 +759,46 @@ class HTL(Reactor):
 
     @property
     def biocrude_N(self):
-        return min(self.outs[2].F_mass*self.biocrude_N_ratio, self.sludgelab.sludge_N)
+        return min(self.outs[2].F_mass*self.biocrude_N_ratio, self.WWTP.sludge_N)
     
     @property
     def biocrude_HHV(self):
-        return 30.74 - 8.52*self.sludgelab.AOSc +\
-               0.024*self.sludgelab.sludge_dw_protein # [2]
+        return 30.74 - 8.52*self.WWTP.AOSc +\
+               0.024*self.WWTP.sludge_dw_protein # [2]
                
     @property
     def energy_recovery(self):
         return self.biocrude_HHV*self.outs[2].imass['Biocrude']/\
-               (self.sludgelab.outs[0].F_mass -\
-               self.sludgelab.outs[0].imass['H2O'])/self.sludgelab.sludge_HHV # [2]
+               (self.WWTP.outs[0].F_mass -\
+               self.WWTP.outs[0].imass['H2O'])/self.WWTP.sludge_HHV # [2]
         
     @property
     def offgas_C(self):
         carbon = 0
         for name in self.gas_composition.keys():
             carbon += self.outs[3].imass[name]*cmps[name].i_C
-        return min(carbon, self.sludgelab.sludge_C - self.biocrude_C - self.HTLaqueous_C)    
+        return min(carbon, self.WWTP.sludge_C - self.biocrude_C - self.HTLaqueous_C)    
         
     @property
     def biochar_C_ratio(self):
-        return min(self.biochar_C_slope*self.sludgelab.sludge_dw_carbo, 0.65) # [2]
+        return min(self.biochar_C_slope*self.WWTP.sludge_dw_carbo, 0.65) # [2]
 
     @property
     def biochar_C(self):
-        return min(self.outs[0].F_mass*self.biochar_C_ratio, self.sludgelab.sludge_C -\
+        return min(self.outs[0].F_mass*self.biochar_C_ratio, self.WWTP.sludge_C -\
                    self.biocrude_C - self.HTLaqueous_C - self.offgas_C)
 
     @property
     def biochar_P(self):
-        return min(self.sludgelab.sludge_P*self.biochar_P_recovery_ratio, self.outs[0].F_mass)
+        return min(self.WWTP.sludge_P*self.biochar_P_recovery_ratio, self.outs[0].F_mass)
 
     @property
     def HTLaqueous_N(self):
-        return self.sludgelab.sludge_N - self.biocrude_N
+        return self.WWTP.sludge_N - self.biocrude_N
         
     @property
     def HTLaqueous_P(self):
-        return self.sludgelab.sludge_P*(1 - self.biochar_P_recovery_ratio)
+        return self.WWTP.sludge_P*(1 - self.biochar_P_recovery_ratio)
 
     def _design(self):
         
@@ -933,7 +938,7 @@ class AcidExtraction(Reactor):
         return self.ins[0]._source.biochar_P - self.outs[1].imass['P']
         
     def _design(self):
-        self.N = ceil(self.HTL.sludgelab.ins[0].F_vol/788.627455/self.V)
+        self.N = ceil(self.HTL.WWTP.ins[0].F_vol/788.627455/self.V)
         # 1/788.627455 m3 reactor/m3 wastewater/h (50 MGD ~ 10 m3)
         self.P = self.ins[1].P
         Reactor._design(self)
@@ -1166,7 +1171,7 @@ class StruvitePrecipitation(Reactor):
         return self.struvite_P*14.0067/30.973762
 
     def _design(self):
-        self.N = ceil(self.HTLmixer.ins[1]._source.HTL.sludgelab.ins[0].F_vol*2/788.627455/self.V)
+        self.N = ceil(self.HTLmixer.ins[1]._source.HTL.WWTP.ins[0].F_vol*2/788.627455/self.V)
         # 2/788.627455 m3 reactor/m3 wastewater/h (50 MGD ~ 20 m3)
         self.P = self.ins[0].P
         Reactor._design(self)
@@ -1183,7 +1188,7 @@ class StruvitePrecipitation(Reactor):
       CE=CEPCI[2009], n=0.65, BM=2.1)
 # hydrocyclone
 
-class CHG(Reactor, SludgeLab):
+class CHG(Reactor):
     '''
     CHG serves to reduce the COD content in the aqueous phase and produce fuel
     gas under elevated temperature (350°C) and pressure. The outlet will be
@@ -1274,10 +1279,10 @@ class CHG(Reactor, SludgeLab):
         self.pump = HTLpump(ID=f'.{ID}_pump', ins=pump_in, outs=pump_out, P=pump_pressure)
         hx_ht_in = bst.Stream(f'{ID}_hx_ht_in')
         hx_ht_out = bst.Stream(f'{ID}_hx_ht_out')
-        self.heat_ex_heating = HXutility(ID=f'.{ID}_hx_ht', ins=hx_ht_in, outs=hx_ht_out, T=heat_temp)
+        self.heat_ex_heating = HTLHX(ID=f'.{ID}_hx_ht', ins=hx_ht_in, outs=hx_ht_out, T=heat_temp)
         hx_cl_in = bst.Stream(f'{ID}_hx_cl_in')
         hx_cl_out = bst.Stream(f'{ID}_hx_cl_out')
-        self.heat_ex_cooling = HXutility(ID=f'.{ID}_hx_cl', ins=hx_cl_in, outs=hx_cl_out, T=cool_temp)
+        self.heat_ex_cooling = HTLHX(ID=f'.{ID}_hx_cl', ins=hx_cl_in, outs=hx_cl_out, T=cool_temp)
         self.P = P
         self.tau = tau
         self.V_wf = void_fraction
@@ -1731,7 +1736,7 @@ class HT(Reactor):
                                                outs=IC_out, P=None)
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
+        self.heat_exchanger = HTLHX(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
         self.P = P
         self.tau = tau
         self.void_fraciton = void_fraciton
@@ -1791,12 +1796,12 @@ class HT(Reactor):
         
         ht_out.T = self.HTrxn_T
         
-        if self.HTaqueous_C < -0.1*self.HTL.sludgelab.sludge_C:
+        if self.HTaqueous_C < -0.1*self.HTL.WWTP.sludge_C:
             raise Exception('carbon mass balance is out of +/- 10% for the whole system')
         # allow +/- 10% out of mass balance
         # should be no C in the aqueous phase, the calculation here is just for MB
         
-        if self.HTaqueous_N < -0.1*self.HTL.sludgelab.sludge_N:
+        if self.HTaqueous_N < -0.1*self.HTL.WWTP.sludge_N:
             raise Exception('nitrogen mass balance is out of +/- 10% for the whole system')
         # allow +/- 10% out of mass balance
 
@@ -1968,7 +1973,7 @@ class HC(Reactor):
                                                outs=IC_out, P=None)
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
+        self.heat_exchanger = HTLHX(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
         self.P = P
         self.tau = tau
         self.void_fraciton = void_fraciton
@@ -2385,4 +2390,121 @@ class HTLpump(qsu.Pump):
     @SS_per_pump.setter
     def SS_per_pump(self, i):
         self._SS_per_pump = i
-        
+
+# =============================================================================
+# HTLHX
+# =============================================================================
+
+class HTLHX(qsu.HXutility):
+    '''
+    Similar to qsdsan.sanunits.HXutility, but can calculate material usage.
+    References
+    ----------
+    .. [1] Seider, W. D., Lewin, D. R., Seader, J. D., Widagdo, S., Gani, R., &
+           Ng, M. K. (2017). Product and Process Design Principles. Wiley.
+    '''
+    
+    line = qsu.HXutility.line
+    _graphics = qsu.HXutility._graphics
+    _units = {'Area': 'ft^2',
+              'Total tube length': 'ft',
+              'Inner pipe weight': 'kg',
+              'Outer pipe weight': 'kg',
+              'Total steel weight': 'kg',
+              'Shell length': 'ft',
+              'Shell diameter': 'ft',
+              'Shell steel weight': 'kg',
+              'Tube weight': 'kg'}
+    _bounds = {'Vertical vessel weight': (4200, 1e6),
+               'Horizontal vessel weight': (1e3, 9.2e5),
+               'Horizontal vessel diameter': (3, 21),
+               'Vertical vessel length': (12, 40)}
+
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='Stream', T=None, rigorous=False, U=None,
+                 heat_exchanger_type="Floating head",
+                 material="Carbon steel/carbon steel",
+                 N_shells=2):
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
+                     init_with=init_with, T=T, rigorous=rigorous, U=U,
+                     heat_exchanger_type=heat_exchanger_type,
+                     material=material, N_shells=N_shells)
+    
+    def _design(self, duty=None):
+        # Set duty and run heat utility
+        if duty is None: duty = self.Hnet # Includes heat of formation
+        inlet = self.ins[0]
+        outlet = self.outs[0] 
+        T_in = inlet.T
+        T_out = outlet.T
+        iscooling = duty < 0.
+        if iscooling: # Assume there is a pressure drop before the heat exchanger
+            if T_out > T_in: T_in = T_out
+        else:
+            if T_out < T_in: T_out = T_in
+        self.add_heat_utility(duty, T_in, T_out, 
+                              heat_transfer_efficiency=self.heat_transfer_efficiency,
+                              hxn_ok=True)
+        bst.units.HX._design(self)
+
+        D = self.design_results
+        if D['Area'] < 150: # double pipe
+            # Assume use 1 1/4 nominal size of inner tube, based on Seider page 365
+            # Table 12.3, when use Schedule 40, surface area per foot is 0.435 ft2
+            # and weight is 2.28 lb steel per foot
+            D['Total tube length'] = D['Area']/0.435
+            D['Inner pipe weight'] = D['Total tube length']*2.28*_lb_to_kg
+            # Assume use 2 nominal size of outer tube, same length as inner tube
+            # the weight is 3.66 lb steel per foot
+            D['Outer pipe weight'] = D['Total tube length']*3.66*_lb_to_kg
+            D['Total steel weight'] = D['Inner pipe weight'] + D['Outer pipe weight']
+        else: # shell and tube
+            # assume all tubes are 16 ft long and 3/4 in O.D., 16 BWG
+            D['Shell length'] = 16
+            # D['Total tube length'] = 'N/A'
+            single_shell_area = D['Area']/self.N_shells
+            if single_shell_area <= 100:
+                D['Shell diameter'] = 1
+            elif single_shell_area <= 400:
+                D['Shell diameter'] = 2
+            elif single_shell_area < 1100:
+                D['Shell diameter'] = 3
+            else:
+                D['Shell diameter'] = 3
+                D['Shell length'] *= single_shell_area/1100 # increase tube length
+            
+            Shell_design = self._horizontal_vessel_design(self.ins[0].P, D['Shell diameter'], D['Shell length'])
+            D['Shell steel weight'] = Shell_design['Weight']*_lb_to_kg*self.N_shells
+            
+            # according to Seider page 367, Table 12.4, 3/4 in O.D., 16 BWG tube: 0.520 lb/ft
+            single_tube_area = pi*(3/4)*_in_to_ft*D['Shell length']
+            
+            D['Total tube length'] = D['Shell length']*single_shell_area/single_tube_area*self.N_shells
+            
+            D['Tube weight'] = D['Total tube length']*0.520*_lb_to_kg
+            
+            D['Total steel weight'] = D['Shell steel weight'] + D['Tube weight']
+            
+    def _horizontal_vessel_design(self, pressure, diameter, length) -> dict:
+        pressure = pressure
+        diameter = diameter
+        length = length
+        # Calculate vessel weight and wall thickness
+        rho_M = material_densities_lb_per_ft3['Carbon steel']
+        if pressure < 14.68:
+            warn('vacuum pressure vessel ASME codes not implemented yet; '
+                 'wall thickness may be inaccurate and stiffening rings may be '
+                 'required', category=DesignWarning)
+        VW, VWT = flash_vessel_design.compute_vessel_weight_and_wall_thickness(
+            pressure, diameter, length, rho_M)
+        bounds_warning(self, 'Horizontal vessel weight', VW, 'lb',
+                       self._bounds['Horizontal vessel weight'], 'cost')
+        bounds_warning(self, 'Horizontal vessel diameter', diameter, 'ft',
+                       self._bounds['Horizontal vessel diameter'], 'cost')
+        Design = {}
+        Design['Vessel type'] = 'Horizontal'
+        Design['Length'] = length  # ft
+        Design['Diameter'] = diameter  # ft
+        Design['Weight'] = VW  # lb
+        Design['Wall thickness'] = VWT  # in
+        return Design

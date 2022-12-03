@@ -49,13 +49,13 @@ raw_wastewater = qs.Stream('raw_wastewater', H2O=80, units='MGD', T=25+273.15)
 # pretreatment (Area 000)
 # =============================================================================
 
-SluL = su.SludgeLab('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
+WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
                     ww_2_dry_sludge=0.94,
                     # how much metric ton/day sludge can be produced by 1 MGD of ww
                     sludge_moisture=0.99, sludge_dw_ash=0.257, 
                     sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, yearly_operation_hour=7920)
 
-SluT = qsu.SludgeThickening('A000', ins=SluL-0,
+SluT = qsu.SludgeThickening('A000', ins=WWTP-0,
                             outs=('supernatant_1','compressed_sludge_1'),
                             init_with='Stream', 
                             solids=('Sludge_lipid','Sludge_protein',
@@ -77,7 +77,7 @@ P1 = su.HTLpump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76,
               init_with='Stream')
 # Jones 2014: 3049.7 psia
 
-H1 = qsu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=351+273.15,
+H1 = su.HTLHX('A110', ins=P1-0, outs='heated_sludge', T=351+273.15,
                    U=0.0794957, init_with='Stream')
 # feed T is low, thus high viscosity and low U (case B in Knorr 2013)
 # U: 3, 14, 15 BTU/hr/ft2/F as minimum, baseline, and maximum
@@ -156,7 +156,7 @@ HT.ins[2].price = 38.79
 
 V2 = IsenthalpicValve('A320', ins=HT-0, outs='depressed_HT', P=717.4*6894.76)
 
-H2 = qsu.HXutility('A330', ins=V2-0, outs='cooled_HT', T=60+273.15,
+H2 = su.HTLHX('A330', ins=V2-0, outs='cooled_HT', T=60+273.15,
                     init_with='Stream')
 
 F2 = Flash('A340', ins=H2-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
@@ -168,7 +168,7 @@ SP2 = qsu.Splitter('S310', ins=V3-0, outs=('HT_ww','HT_oil'),
                     split={'H2O':1}, init_with='Stream')
 # separate water and oil based on gravity
 
-H3 = qsu.HXutility('A360', ins=SP2-1, outs='heated_oil', T=104+273.15)
+H3 = su.HTLHX('A360', ins=SP2-1, outs='heated_oil', T=104+273.15)
 # temperature: Jones stream #334 (we remove the first distillation column)
 
 D1 = BinaryDistillation('A370', ins=H3-0,
@@ -203,7 +203,7 @@ HC_compressor = HC.compressor
 HC_hx = HC.heat_exchanger
 HC.ins[2].price = 38.79
 
-H4 = qsu.HXutility('A420', ins=HC-0, outs='cooled_HC', T=60+273.15,
+H4 = su.HTLHX('A420', ins=HC-0, outs='cooled_HC', T=60+273.15,
                     init_with='Stream')
 
 V4 = IsenthalpicValve('A430', ins=H4-0, outs='cooled_depressed_HC', P=30*6894.76)
@@ -226,10 +226,10 @@ GasolineMixer = qsu.Mixer('S500', ins=(D2-0, D4-0), outs='mixed_gasoline',
 DieselMixer = qsu.Mixer('S510', ins=(D3-0, D4-1), outs='mixed_diesel',
                         init_with='Stream')
 
-H5 = qsu.HXutility('A500', ins=GasolineMixer-0, outs='cooled_gasoline',
+H5 = su.HTLHX('A500', ins=GasolineMixer-0, outs='cooled_gasoline',
                     T=60+273.15, init_with='Stream', rigorous=True)
 
-H6 = qsu.HXutility('A510', ins=DieselMixer-0, outs='cooled_diesel',
+H6 = su.HTLHX('A510', ins=DieselMixer-0, outs='cooled_diesel',
                     T=60+273.15, init_with='Stream', rigorous=True)
 
 PC1 = su.PhaseChanger('S520', ins=H5-0, outs='cooled_gasoline_liquid')
@@ -267,7 +267,7 @@ WWmixer = su.WWmixer('S560', ins=(SluT-0, SluC-0, MemDis-1, SP2-0),
 
 HXN = qsu.HeatExchangerNetwork('HXN')
 
-for unit in (SluL, SluT, SluC, P1, H1, HTL, HTL_hx, HTL_drum, H2SO4_Tank, AcidEx,
+for unit in (WWTP, SluT, SluC, P1, H1, HTL, HTL_hx, HTL_drum, H2SO4_Tank, AcidEx,
              M1, StruPre, CHG, CHG_pump, CHG_heating, CHG_cooling, V1, F1, MemDis, SP1,
              P2, HT, HT_compressor, HT_hx, V2, H2, F2, V3, SP2, H3, D1, D2, D3, P3,
              HC, HC_compressor, HC_hx, H4, V4, F3, D4, GasolineMixer, DieselMixer,
@@ -276,7 +276,7 @@ for unit in (SluL, SluT, SluC, P1, H1, HTL, HTL_hx, HTL_drum, H2SO4_Tank, AcidEx
     unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1])
 # so that qs.main_flowsheet.H1 works as well
 
-sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
+sys = qs.System('sys', path=(WWTP, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              M1, StruPre, CHG, V1, F1, MemDis, SP1,
                              P2, HT, V2, H2, F2, V3, SP2, H3, D1, D2, D3, P3,
                              HC, H4, V4, F3, D4, GasolineMixer, DieselMixer,
@@ -284,7 +284,7 @@ sys = qs.System('sys', path=(SluL, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              GasMixer, CHP, WWmixer, RSP1
                              ), facilities=(HXN,))
 
-sys.operating_hours = SluL.operation_hour # 7920 hr Jones
+sys.operating_hours = WWTP.operation_hour # 7920 hr Jones
 
 sys.simulate()
 
@@ -308,127 +308,127 @@ from chaospy import distributions as shape
 param = model.parameter
 
 # =============================================================================
-# SluL
+# WWTP
 # =============================================================================
 dist = shape.Uniform(0.846,1.034)
 @param(name='ww_2_dry_sludge',
-        element=SluL,
+        element=WWTP,
         kind='coupled',
         units='ton/d/MGD',
         baseline=0.94,
         distribution=dist)
 def set_ww_2_dry_sludge(i):
-    SluL.ww_2_dry_sludge=i
+    WWTP.ww_2_dry_sludge=i
 
 dist = shape.Uniform(0.97,0.995)
 @param(name='sludge_moisture',
-        element=SluL,
+        element=WWTP,
         kind='coupled',
         units='-',
         baseline=0.99,
         distribution=dist)
-def set_SluL_sludge_moisture(i):
-    SluL.sludge_moisture=i
+def set_WWTP_sludge_moisture(i):
+    WWTP.sludge_moisture=i
 
 dist = shape.Triangle(0.174,0.2567,0.414)
 @param(name='sludge_dw_ash',
-        element=SluL,
+        element=WWTP,
         kind='coupled',
         units='-',
         baseline=0.2567,
         distribution=dist)
 def set_sludge_dw_ash(i):
-    SluL.sludge_dw_ash=i
+    WWTP.sludge_dw_ash=i
 
 dist = shape.Triangle(0.38,0.4634,0.51)
 @param(name='sludge_afdw_protein',
-        element=SluL,
+        element=WWTP,
         kind='coupled',
         units='-',
         baseline=0.4634,
         distribution=dist)
 def set_sludge_afdw_protein(i):
-    SluL.sludge_afdw_protein=i
+    WWTP.sludge_afdw_protein=i
 
 dist = shape.Triangle(0.08,0.2043,0.308)
 @param(name='sludge_afdw_lipid',
-        element=SluL,
+        element=WWTP,
         kind='coupled',
         units='-',
         baseline=0.2043,
         distribution=dist)
 def set_sludge_afdw_lipid(i):
-    SluL.sludge_afdw_lipid=i
+    WWTP.sludge_afdw_lipid=i
 
 dist = shape.Uniform(0.675,0.825)
 @param(name='lipid_2_C',
-        element=SluL,
+        element=WWTP,
         kind='coupled',
         units='-',
         baseline=0.75,
         distribution=dist)
 def set_lipid_2_C(i):
-    SluL.lipid_2_C=i
+    WWTP.lipid_2_C=i
 
 dist = shape.Uniform(0.4905,0.5995)
 @param(name='protein_2_C',
-        element=SluL,
+        element=WWTP,
         kind='coupled',
         units='-',
         baseline=0.545,
         distribution=dist)
 def set_protein_2_C(i):
-    SluL.protein_2_C=i
+    WWTP.protein_2_C=i
 
 dist = shape.Uniform(0.36,0.44)
 @param(name='carbo_2_C',
-        element=SluL,
+        element=WWTP,
         kind='coupled',
         units='-',
         baseline=0.4,
         distribution=dist)
 def set_carbo_2_C(i):
-    SluL.carbo_2_C=i
+    WWTP.carbo_2_C=i
 
 dist = shape.Triangle(0.1348,0.1427,0.1647)
 @param(name='C_2_H',
-        element=SluL,
+        element=WWTP,
         kind='coupled',
         units='-',
         baseline=0.1427,
         distribution=dist)
 def set_C_2_H(i):
-    SluL.C_2_H=i
+    WWTP.C_2_H=i
 
 dist = shape.Uniform(0.1431,0.1749)
 @param(name='protein_2_N',
-        element=SluL,
+        element=WWTP,
         kind='coupled',
         units='-',
         baseline=0.159,
         distribution=dist)
 def set_protein_2_N(i):
-    SluL.protein_2_N=i
+    WWTP.protein_2_N=i
     
 dist = shape.Triangle(0.1944,0.3927,0.5556)
 @param(name='N_2_P',
-        element=SluL,
+        element=WWTP,
         kind='coupled',
         units='-',
         baseline=0.3927,
         distribution=dist)
 def set_N_2_P(i):
-    SluL.N_2_P=i
+    WWTP.N_2_P=i
 
 dist = shape.Triangle(7392,7920,8448)
 @param(name='operation_hour',
-        element=SluL,
+        element=WWTP,
         kind='coupled',
         units='hr/yr',
         baseline=7920,
         distribution=dist)
 def set_operation_hour(i):
-    SluL.operation_hour=i
+    WWTP.operation_hour=i
 
 # =============================================================================
 # SluC
