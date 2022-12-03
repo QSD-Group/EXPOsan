@@ -2402,6 +2402,7 @@ class HTLHX(qsu.HXutility):
     ----------
     .. [1] Seider, W. D., Lewin, D. R., Seader, J. D., Widagdo, S., Gani, R., &
            Ng, M. K. (2017). Product and Process Design Principles. Wiley.
+           Chapter 12: Heat Exchanger Design.
     '''
     
     line = qsu.HXutility.line
@@ -2449,7 +2450,7 @@ class HTLHX(qsu.HXutility):
 
         D = self.design_results
         if D['Area'] < 150: # double pipe
-            # Assume use 1 1/4 nominal size of inner tube, based on Seider page 365
+            # Assume use 1 1/4 nominal size of inner tube, based on [1] page 365
             # Table 12.3, when use Schedule 40, surface area per foot is 0.435 ft2
             # and weight is 2.28 lb steel per foot
             D['Total tube length'] = D['Area']/0.435
@@ -2476,7 +2477,7 @@ class HTLHX(qsu.HXutility):
             Shell_design = self._horizontal_vessel_design(self.ins[0].P, D['Shell diameter'], D['Shell length'])
             D['Shell steel weight'] = Shell_design['Weight']*_lb_to_kg*self.N_shells
             
-            # according to Seider page 367, Table 12.4, 3/4 in O.D., 16 BWG tube: 0.520 lb/ft
+            # according to [1] page 367, Table 12.4, 3/4 in O.D., 16 BWG tube: 0.520 lb/ft
             single_tube_area = pi*(3/4)*_in_to_ft*D['Shell length']
             
             D['Total tube length'] = D['Shell length']*single_shell_area/single_tube_area*self.N_shells
