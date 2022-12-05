@@ -21,8 +21,8 @@ class DegassingMembrane(SanUnit):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', F_BM_default=None, isdynamic=True,
                  tau=0.01,
-                 H2_degas_efficiency=0.8, CH4_degas_efficiency=0.8, 
-                 CO2_degas_efficiency=0.8, gas_IDs=('S_h2', 'S_ch4', 'S_IC')):
+                 H2_degas_efficiency=0.85, CH4_degas_efficiency=0.85, 
+                 CO2_degas_efficiency=0.05, gas_IDs=('S_h2', 'S_ch4', 'S_IC')):
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
                          init_with=init_with, F_BM_default=F_BM_default,
                          isdynamic=isdynamic)
@@ -164,6 +164,7 @@ class METAB_AnCSTR(AnaerobicCSTR, CSTR):
         self._fixed_P_gas = None
         self.f_q_gas_fixed_P_headspace = self.f_q_gas_var_P_headspace = lambda *args: 0.
         self._biogas = None
+        self._tempstate = []
     
     # split = property(CSTR.split.fget, CSTR.split.fset)
     split = CSTR.split
@@ -231,6 +232,7 @@ class METAB_AnCSTR(AnaerobicCSTR, CSTR):
                 ws.state[-1] = arr[-1]*spl
 
     def _update_dstate(self):
+        self._tempstate = self.model.rate_function._params['root'].data.copy()
         arr = self._dstate
         f_rtn = self._f_retain
         n_cmps = len(self.components)
