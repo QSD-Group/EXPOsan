@@ -2576,11 +2576,6 @@ class HTL_sludge_centrifuge(qsu.SludgeThickening, bst.units.SolidsCentrifuge):
 # =============================================================================
 # HTLCHP
 # =============================================================================
-
-from qsdsan.utils import sum_system_utility
-from thermosteam.reaction import ParallelReaction
-from flexsolve import IQ_interpolation
-from biosteam import HeatUtility
     
 class HTLCHP(qsu.CHP):
     '''
@@ -2601,87 +2596,7 @@ class HTLCHP(qsu.CHP):
               'Reinforcing steel': 'kg'}
     
     def _design(self):
-        feed, natural_gas, air = self.ins
-        emission, ash = self.outs
-        for i in (natural_gas, air, ash):
-            i.empty()
-        feed.phase = natural_gas.phase = air.phase = emission.phase = 'g'
-        ash.phase = 's'
-        emission.P = ash.P = 101325
-        emission.T = ash.T = 298.15
-        self._refresh_sys()
-
-        cmps = self.components
-        rxns = []
-        for cmp in cmps:
-            if cmp.locked_state in ('l', 's') and (not cmp.organic or cmp.degradability=='Undegradable'):
-                continue
-            rxn = cmp.get_combustion_reaction()
-            if rxn:
-                rxns.append(rxn)
-        combustion_rxns = self.combustion_reactions = ParallelReaction(rxns)
-
-        def react(natural_gas_flow=0):
-            emission.copy_flow(feed)
-            emission.imol['CH4'] += natural_gas_flow
-            natural_gas.imol['CH4'] = natural_gas_flow
-            combustion_rxns.force_reaction(emission.mol)
-            air.imol['O2'] = -emission.imol['O2']
-            emission.imol['N2'] = air.imol['N2'] = air.imol['O2']/0.21*0.79
-            emission.imol['O2'] = 0
-            H_net_feed = feed.H + feed.HHV - emission.H # subtracting the energy in emission
-            if natural_gas.imol['CH4'] != 0: # add natural gas H and HHV
-                H_net_feed += natural_gas.H + natural_gas.HHV
-            return H_net_feed
-
-        # Calculate the amount of energy in the feed (no natural gas) and needs
-        self.H_net_feeds_no_natural_gas = react(0)
-        
-        # Calculate all energy needs in kJ/hr as in H_net_feeds
-        kwds = dict(system=self.system, operating_hours=self.system.operating_hours, exclude_units=(self,))
-        pu = self.power_utility
-        H_heating_needs = sum_system_utility(**kwds, utility='heating', result_unit='kJ/hr')/self.combustion_eff
-        H_power_needs = sum_system_utility(**kwds, utility='power', result_unit='kJ/hr')/self.combined_eff
-        
-        # Calculate the amount of energy needs to be provided
-        H_supp = H_heating_needs+H_power_needs if self.supplement_power_utility else H_heating_needs
-                      
-        # Objective function to calculate the heat deficit at a given natural gas flow rate
-        def H_deficit_at_natural_gas_flow(flow):
-            return H_supp-react(flow)
-        # Initial lower and upper bounds for the solver
-        lb = 0
-        ub = react()/cmps.CH4.LHV*2
-        if H_deficit_at_natural_gas_flow(0) > 0: # energy in the feeds is not enough
-            while H_deficit_at_natural_gas_flow(ub) > 0: # increase bounds if not enough energy
-                lb = ub
-                ub *= 2
-            natural_gas_flow = IQ_interpolation(
-                H_deficit_at_natural_gas_flow,
-                x0=lb, x1=ub, xtol=1e-3, ytol=1,
-                checkbounds=False)
-            H_net_feeds = react(natural_gas_flow)
-        else: # enough energy in the feed, set natural_gas_flow to 0
-            H_net_feeds = react(0)
-
-        # Update heating utilities
-        self.heat_utilities = HeatUtility.sum_by_agent(sum(self.sys_heating_utilities.values(), ()))
-        for hu in self.heat_utilities: hu.reverse()
-            
-        
-        # Power production if there is sufficient energy
-        if H_net_feeds <= H_heating_needs:
-            pu.production = 0
-        else:
-            pu.production = (H_net_feeds-H_heating_needs)/3600*self.combined_eff
-
-        self.H_heating_needs = H_heating_needs
-        self.H_power_needs = H_power_needs
-        self.H_net_feeds = H_net_feeds
-
-        ash_IDs = [i.ID for i in cmps if not i.formula]
-        ash.copy_flow(emission, IDs=tuple(ash_IDs), remove=True)
-        
+        super()._design()
         D = self.design_results
         
         # material calculation based on [1], linearly scaled on power (kW)
