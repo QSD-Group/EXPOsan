@@ -825,6 +825,10 @@ class HTL(Reactor):
 
         self.P = self.ins[0].P
         Reactor._design(self)
+        Design['Solid filter and separator weight'] = 0.2*Design['Weight'] # assume stainless steel
+        # based on [6], case D design table, the purchase price of solid filter and separator to
+        # the purchase price of HTL reactor is around 0.2, therefore, assume the weight of solid filter
+        # and separator is 0.2*HTL weight
         
         self.kodrum.V = self.F_mass_out/_lb_to_kg/1225236*4230/_m3_to_gal
         # in [6], when knockout drum influent is 1225236 lb/hr, single knockout
@@ -1378,6 +1382,9 @@ class CHG(Reactor):
 
         self.P = self.pump_pressure
         Reactor._design(self)
+        Design['Hydrocyclone weight'] = 0.3*Design['Weight'] # assume stainless steel
+        # based on [1], page 54, the purchase price of hydrocyclone to the purchase price of CHG
+        # reactor is around 0.3, therefore, assume the weight of hydrocyclone is 0.3*CHG weight
     
     def _cost(self):
         Reactor._cost(self)
