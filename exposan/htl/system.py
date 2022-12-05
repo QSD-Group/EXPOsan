@@ -42,7 +42,7 @@ from qsdsan import PowerUtility, Construction
 load_process_settings()
 cmps = create_components()
 
-raw_wastewater = qs.Stream('raw_wastewater', H2O=100, units='MGD', T=25+273.15)
+raw_wastewater = qs.Stream('raw_wastewater', H2O=50, units='MGD', T=25+273.15)
 # Jones baseline: 1276.6 MGD, 1.066e-4 $/kg ww
 # set H2O equal to the total raw wastewater into the WWTP
 
@@ -54,7 +54,7 @@ WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
                     ww_2_dry_sludge=0.94,
                     # how much metric ton/day sludge can be produced by 1 MGD of ww
                     sludge_moisture=0.99, sludge_dw_ash=0.257, 
-                    sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, yearly_operation_hour=7920)
+                    sludge_afdw_lipid=1, sludge_afdw_protein=0, yearly_operation_hour=7920)
 
 SluC = su.HTL_sludge_centrifuge('A000', ins=WWTP-0,
                             outs=('supernatant','compressed_sludge'),
@@ -289,8 +289,6 @@ sys.diagram()
 tea = create_tea(sys)
 
 table = capex_table(tea)
-
-
 
 # return sys
 

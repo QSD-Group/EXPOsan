@@ -71,6 +71,10 @@ _m_to_ft = auom('m').conversion_factor('ft')
 
 _Pa_to_psi = auom('Pa').conversion_factor('psi')
 
+_m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
+
+_m3perh_to_mmscfd = 1/1177.17 # H2
+
 # =============================================================================
 # Reactor
 # =============================================================================
@@ -315,8 +319,6 @@ class WWTP(SanUnit):
         https://doi.org/10.1039/C6GC03294J.
     '''
 
-    _m3perh_2_MGD = 1/157.725491
-
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', 
                  ww_2_dry_sludge=0.94, # [1]
@@ -357,7 +359,7 @@ class WWTP(SanUnit):
         if self.sludge_afdw_protein + self.sludge_afdw_lipid > 1:
             raise Exception ('protein and lipid exceed 1')
             
-        self.sludge_dw = ww.F_vol*self._m3perh_2_MGD*self.ww_2_dry_sludge*1000/24
+        self.sludge_dw = ww.F_vol*_m3perh_to_MGD*self.ww_2_dry_sludge*1000/24
 
         sludge.imass['H2O'] = self.sludge_dw/(1-self.sludge_moisture)*self.sludge_moisture
         sludge.imass['Sludge_ash'] = self.sludge_dw*self.sludge_dw_ash
@@ -882,7 +884,7 @@ class AcidExtraction(Reactor):
                  init_with='Stream', acid_vol=7, P_acid_recovery_ratio=0.8,
                  P=None, tau=2, V_wf=0.8, # tau: [1]
                  length_to_diameter=2, N=1, V=10, auxiliary=False,
-                 mixing_intensity=None, kW_per_m3=0.0985, # use MixTank default value
+                 mixing_intensity=None, kW_per_m3=0, # use MixTank default value
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 304', # acid condition
                  vessel_type='Vertical',
@@ -1107,7 +1109,7 @@ class StruvitePrecipitation(Reactor):
                  HTLaqueous_NH3_N_2_total_N = 0.853, # [2]
                  P=None, tau=1, V_wf=0.8, # tau: [1]
                  length_to_diameter=2, N=1, V=20, auxiliary=False,
-                 mixing_intensity=None, kW_per_m3=0.0985, # use MixTank default value
+                 mixing_intensity=None, kW_per_m3=0, # use MixTank default value
                  wall_thickness_factor=1,
                  vessel_material='Carbon steel', # basic condition
                  vessel_type='Vertical',
@@ -1681,11 +1683,11 @@ class HT(Reactor):
     
     auxiliary_unit_names=('compressor','heat_exchanger',)
     
-    _m3perhr_2_mmscfd = 1/1177.17
-    
     _F_BM_default = {**Reactor._F_BM_default,
                      'Heat exchanger': 3.17,
                      'Compressor': 1.1}
+    
+    _units = {'Hydrogen': 'mmscfd'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
@@ -1852,7 +1854,7 @@ class HT(Reactor):
 
     def _design(self):
         Design = self.design_results
-        Design['Hydrogen'] = self.ins[1].F_vol*self._m3perhr_2_mmscfd
+        Design['Hydrogen'] = self.ins[1].F_vol*_m3perh_to_mmscfd
         
         IC = self.compressor
         IC_ins0, IC_outs0 = IC.ins[0], IC.outs[0]
@@ -1936,11 +1938,11 @@ class HC(Reactor):
     
     auxiliary_unit_names=('compressor','heat_exchanger',)
     
-    _m3perhr_2_mmscfd = 1/1177.17
-    
     _F_BM_default = {**Reactor._F_BM_default,
                      'Heat exchanger': 3.17,
                      'Compressor': 1.1}
+    
+    _units = {'Hydrogen': 'mmscfd'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
@@ -2055,7 +2057,7 @@ class HC(Reactor):
     def _design(self):
         
         Design = self.design_results
-        Design['Hydrogen'] = self.ins[1].F_vol*self._m3perhr_2_mmscfd
+        Design['Hydrogen'] = self.ins[1].F_vol*_m3perh_to_mmscfd
         
         IC = self.compressor
         IC_ins0, IC_outs0 = IC.ins[0], IC.outs[0]
@@ -2474,7 +2476,6 @@ class HTLHX(qsu.HXutility):
                 D['Shell diameter'] = 3
             else:
                 D['Shell diameter'] = 3
-                
                 self.N_shells = ceil(D['Area']/1100) # ceil shell number
                 # if increase the number of N_shells, ft (correction factor) will increase (max = 1),
                 # then the required area will decrease, so the calculation here is conservative.
@@ -2483,11 +2484,11 @@ class HTLHX(qsu.HXutility):
             Shell_design = self._horizontal_vessel_design(self.ins[0].P*_Pa_to_psi, D['Shell diameter'], D['Shell length'])
             D['Shell steel weight'] = Shell_design['Weight']*_lb_to_kg*self.N_shells
             
-            # according to [1] page 367, Table 12.4, 3/4 in O.D., 16 BWG tube: 0.520 lb/ft
             single_tube_area = pi*(3/4)*_in_to_ft*D['Shell length']
             
             D['Total tube length'] = D['Shell length']*single_shell_area/single_tube_area*self.N_shells
             
+            # according to [1] page 367, Table 12.4, 3/4 in O.D., 16 BWG tube: 0.520 lb/ft
             D['Tube weight'] = D['Total tube length']*0.520*_lb_to_kg
             
             D['Total steel weight'] = D['Shell steel weight'] + D['Tube weight']
@@ -2510,10 +2511,10 @@ class HTLHX(qsu.HXutility):
                        self._bounds['Horizontal vessel diameter'], 'cost')
         Design = {}
         Design['Vessel type'] = 'Horizontal'
-        Design['Length'] = length  # ft
-        Design['Diameter'] = diameter  # ft
-        Design['Weight'] = VW  # lb
-        Design['Wall thickness'] = VWT  # in
+        Design['Length'] = length # ft
+        Design['Diameter'] = diameter # ft
+        Design['Weight'] = VW # lb
+        Design['Wall thickness'] = VWT # in
         return Design
 
 # =============================================================================
@@ -2565,10 +2566,11 @@ class HTL_sludge_centrifuge(qsu.SludgeThickening, bst.units.SolidsCentrifuge):
         D['Number of large centrifuge'] = floor(self.F_vol_in*_m3_to_gal/60/170)
         if self.F_vol_in*_m3_to_gal/60 - D['Number of large centrifuge']*170 <= 80:
             D['Number of small centrifuge'] = 1
+            D['Centrifige stainless steel'] = (4000*D['Number of large centrifuge'] + 2500*D['Number of small centrifuge'])*_lb_to_kg
         else:
             D['Number of large centrifuge'] += 1
-        
-        D['Centrifige stainless steel'] = (4000*D['Number of large centrifuge'] + 2500*D['Number of small centrifuge'])*_lb_to_kg
+            D['Centrifige stainless steel'] = 4000*D['Number of large centrifuge']*_lb_to_kg
+
         D['Total stainless steel'] = D['Total pump stainless steel'] + D['Total pipe stainless steel'] + D['Centrifige stainless steel']
     def _cost(self):
         qsu.SludgeThickening._cost(self)
@@ -2623,6 +2625,7 @@ class HTL_storage_tank(qsu.StorageTank):
     
     _units = {'Diameter': 'ft',
               'Length': 'ft',
+              'Wall thickness': 'in',
               'Weight': 'kg'}
     _bounds = {'Vertical vessel weight': (4200, 1e6),
                'Horizontal vessel weight': (1e3, 9.2e5),
@@ -2645,7 +2648,7 @@ class HTL_storage_tank(qsu.StorageTank):
         
         Diameter = (4*D['Total volume']/pi/self.length_to_diameter)**(1/3)
         Diameter *= _m_to_ft # convert from m to ft
-        L = Diameter * self.length_to_diameter
+        L = Diameter * self.length_to_diameter # ft
 
         Tank_design = self._horizontal_vessel_design(self.ins[0].P*_Pa_to_psi, Diameter, L)
         
@@ -2673,10 +2676,10 @@ class HTL_storage_tank(qsu.StorageTank):
                        self._bounds['Horizontal vessel diameter'], 'cost')
         Design = {}
         Design['Vessel type'] = 'Horizontal'
-        Design['Length'] = length  # ft
-        Design['Diameter'] = diameter  # ft
-        Design['Weight'] = VW  # lb
-        Design['Wall thickness'] = VWT  # in
+        Design['Length'] = length # ft
+        Design['Diameter'] = diameter # ft
+        Design['Weight'] = VW # lb
+        Design['Wall thickness'] = VWT # in
         return Design
 
 # =============================================================================
