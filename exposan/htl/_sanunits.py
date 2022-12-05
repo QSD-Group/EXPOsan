@@ -48,7 +48,8 @@ __all__ = ('Reactor',
            'HTLHX',
            'HTL_sludge_centrifuge',
            'HTLCHP',
-           'HTL_storage_tank')
+           'HTL_storage_tank',
+           'HTLcompressor')
 
 cmps = create_components()
 
@@ -818,7 +819,8 @@ class HTL(Reactor):
         hx_outs0.copy_like(hx_ins0)
         hx_ins0.T = self.ins[0].T # temperature before/after HTL are similar
         hx_outs0.T = hx.T
-        hx_ins0.P = hx_outs0.P = self.outs[1].P
+        hx_ins0.P = hx_outs0.P = self.outs[0].P # cooling before depressurized, heating after pressurized
+        # in other words, both heating and cooling are performed under relatively high pressure
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
 
         self.P = self.ins[0].P
@@ -1739,7 +1741,7 @@ class HT(Reactor):
         self.HT_composition = HT_composition
         IC_in = bst.Stream(f'{ID}_IC_in')
         IC_out = bst.Stream(f'{ID}_IC_out')
-        self.compressor = IsothermalCompressor(ID=f'.{ID}_IC', ins=IC_in,
+        self.compressor = HTLcompressor(ID=f'.{ID}_IC', ins=IC_in,
                                                outs=IC_out, P=None)
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
@@ -1976,7 +1978,7 @@ class HC(Reactor):
         self.HC_composition = HC_composition
         IC_in = bst.Stream(f'{ID}_IC_in')
         IC_out = bst.Stream(f'{ID}_IC_out')
-        self.compressor = IsothermalCompressor(ID=f'.{ID}_IC', ins=IC_in,
+        self.compressor = HTLcompressor(ID=f'.{ID}_IC', ins=IC_in,
                                                outs=IC_out, P=None)
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
@@ -2270,10 +2272,6 @@ class HTLpump(qsu.Pump):
     _units = {'Pump pipe stainless steel': 'kg',
               'Pump stainless steel': 'kg'}
 
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream',P=None,
-                 **kwargs):
-        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, P=P)
     def _design(self):
         super()._design()
         
@@ -2427,16 +2425,6 @@ class HTLHX(qsu.HXutility):
                'Horizontal vessel weight': (1e3, 9.2e5),
                'Horizontal vessel diameter': (3, 21),
                'Vertical vessel length': (12, 40)}
-
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='Stream', T=None, rigorous=False, U=None,
-                 heat_exchanger_type="Floating head",
-                 material="Carbon steel/carbon steel",
-                 N_shells=2):
-        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
-                     init_with=init_with, T=T, rigorous=rigorous, U=U,
-                     heat_exchanger_type=heat_exchanger_type,
-                     material=material, N_shells=N_shells)
     
     def _design(self, duty=None):
         # Set duty and run heat utility
@@ -2480,16 +2468,11 @@ class HTLHX(qsu.HXutility):
             else:
                 D['Shell diameter'] = 3
                 
-                # self.N_shells = ceil(D['Area']/1100) # just add one shell
-                
-                self.N_shells = D['Area']/1100
-                if floor(self.N_shells*2)%2 == 1: # if the first decimal >= 5, add one shell
-                    self.N_shells = ceil(self.N_shells)
-                else: # if the first decimal < 5, increase length
-                # TODO: may just add one shell, increase length increase weight quickly
-                    self.N_shells = floor(self.N_shells)
-                    D['Shell length'] *= D['Area']/(1100*self.N_shells)
-            
+                self.N_shells = ceil(D['Area']/1100) # ceil shell number
+                # if increase the number of N_shells, ft (correction factor) will increase (max = 1),
+                # then the required area will decrease, so the calculation here is conservative.
+                single_shell_area = D['Area']/self.N_shells
+
             Shell_design = self._horizontal_vessel_design(self.ins[0].P*_Pa_to_psi, D['Shell diameter'], D['Shell length'])
             D['Shell steel weight'] = Shell_design['Weight']*_lb_to_kg*self.N_shells
             
@@ -2572,27 +2555,17 @@ class HTL_sludge_centrifuge(qsu.SludgeThickening, bst.units.SolidsCentrifuge):
         # when rated capacity (80, 170]: weight = 4000 lb
         # when rated capacity > 170 GPM, use a combination of large and small centrifuges
         
-        if self.F_vol_in*_m3_to_gal/60 <= 80:
+        D['Number of large centrifuge'] = floor(self.F_vol_in*_m3_to_gal/60/170)
+        if self.F_vol_in*_m3_to_gal/60 - D['Number of large centrifuge']*170 <= 80:
             D['Number of small centrifuge'] = 1
-            D['Centrifige stainless steel'] = 2500*_lb_to_kg
-        elif self.F_vol_in*_m3_to_gal/60 <= 170:
-            D['Number of large centrifuge'] = 1
-            D['Centrifige stainless steel'] = 4000*_lb_to_kg
         else:
-            N_large = floor(self.F_vol_in*_m3_to_gal/60/170)
-            if self.F_vol_in*_m3_to_gal/60 - 170*N_large <= 80:
-                N_small = 1
-                D['Number of large centrifuge'] = N_large
-                D['Number of small centrifuge'] = N_small
-            else:
-                N_large +=1
-                D['Number of large centrifuge'] = N_large
-            D['Centrifige stainless steel'] = (4000*N_large + 2500*N_small)*_lb_to_kg
+            D['Number of large centrifuge'] += 1
+        
+        D['Centrifige stainless steel'] = (4000*D['Number of large centrifuge'] + 2500*D['Number of small centrifuge'])*_lb_to_kg
         D['Total stainless steel'] = D['Total pump stainless steel'] + D['Total pipe stainless steel'] + D['Centrifige stainless steel']
     def _cost(self):
         qsu.SludgeThickening._cost(self)
-    
-   
+
 # =============================================================================
 # HTLCHP
 # =============================================================================
@@ -2619,15 +2592,6 @@ class HTLCHP(qsu.CHP):
               'Furnace': 'kg',
               'Concrete': 'kg',
               'Reinforcing steel': 'kg'}
-    
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 unit_CAPEX=1225, CHP_type='Fuel cell',
-                 combustion_eff=0.8, combined_eff=None,
-                 system=None, supplement_power_utility=False, F_BM={'CHP': 1.}):
-        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with,
-                     unit_CAPEX=unit_CAPEX, CHP_type=CHP_type,
-                     combustion_eff=combustion_eff, combined_eff=combined_eff,
-                     system=system, supplement_power_utility=supplement_power_utility, F_BM=F_BM)
     
     def _design(self):
         feed, natural_gas, air = self.ins
@@ -2761,7 +2725,7 @@ class HTL_storage_tank(qsu.StorageTank):
         Diameter *= _m_to_ft # convert from m to ft
         L = Diameter * self.length_to_diameter
 
-        Tank_design = self._horizontal_vessel_design(self.outs[0].P*_Pa_to_psi, Diameter, L)
+        Tank_design = self._horizontal_vessel_design(self.ins[0].P*_Pa_to_psi, Diameter, L)
         
         D['Diameter'] = Diameter
         D['Length'] = L
@@ -2792,3 +2756,25 @@ class HTL_storage_tank(qsu.StorageTank):
         Design['Weight'] = VW  # lb
         Design['Wall thickness'] = VWT  # in
         return Design
+
+# =============================================================================
+# HTLcompressor
+# =============================================================================
+
+class HTLcompressor(IsothermalCompressor):
+    '''
+    Similar to biosteam.units.IsothermalCompressor, but can calculate number of units.
+    '''
+    
+    def _design(self):
+        super()._design()
+        D = self.design_results
+        power = D['Ideal power']/D['Driver efficiency']
+        D['Number of 300 kW unit'] = floor(power/300)
+        if (power - D['Number of 300 kW unit']*300) <= 60:
+            # according to Ecoinvent 3: the impact of at most 15 4 kW unit is smaller than 1 300 kW unit
+            # therefore, if the rest of power is smaller than 60 kW, use multiple small units
+            # else, add one large unit
+            D['Number of 4 kW unit'] = ceil((power - D['Number of 300 kW unit']*300)/4)
+        else:
+            D['Number of 300 kW unit'] += 1
