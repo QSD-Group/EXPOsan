@@ -20,7 +20,7 @@ from biosteam.units import IsothermalCompressor
 from exposan.htl._components import create_components
 from biosteam.units.design_tools import PressureVessel, flash_vessel_design
 from biosteam.units.design_tools.cost_index import CEPCI_by_year as CEPCI
-from math import pi, ceil, log
+from math import pi, ceil, log, floor
 from biosteam.exceptions import DesignError, bounds_warning, DesignWarning
 from biosteam import Stream
 from biosteam.units.decorators import cost
@@ -45,7 +45,10 @@ __all__ = ('Reactor',
            'PhaseChanger',
            'FuelMixer',
            'HTLpump',
-           'HTLHX')
+           'HTLHX',
+           'HTL_sludge_centrifuge',
+           'HTLCHP',
+           'HTL_storage_tank')
 
 cmps = create_components()
 
@@ -62,6 +65,10 @@ _ft3_to_gal = auom('ft3').conversion_factor('gallon')
 _ft3_to_m3 = auom('ft3').conversion_factor('m3')
 
 _in_to_ft = auom('in').conversion_factor('ft')
+
+_m_to_ft = auom('m').conversion_factor('ft')
+
+_Pa_to_psi = auom('Pa').conversion_factor('psi')
 
 # =============================================================================
 # Reactor
@@ -164,14 +171,14 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
                               self.ins[i].ivol['HC_catalyst'])
             # not include gas (e.g. H2)
             V_total = ins_F_vol * self.tau / self.V_wf
-        P = self.P * 0.000145038 # Pa to psi
+        P = self.P * _Pa_to_psi # Pa to psi
         length_to_diameter = self.length_to_diameter
         wall_thickness_factor = self.wall_thickness_factor
 
         if self.N:
             if self.V:
                 D = (4*self.V/pi/length_to_diameter)**(1/3)
-                D *= 3.28084 # convert from m to ft
+                D *= _m_to_ft # convert from m to ft
                 L = D * length_to_diameter
 
                 Design['Total volume'] = self.V*self.N
@@ -180,7 +187,7 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
             else:
                 V_reactor = V_total/self.N
                 D = (4*V_reactor/pi/length_to_diameter)**(1/3)
-                D *= 3.28084 # convert from m to ft
+                D *= _m_to_ft # convert from m to ft
                 L = D * length_to_diameter
 
                 Design['Residence time'] = self.tau
@@ -196,7 +203,7 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
             else:
                 V_reactor = V_total / N
                 D = (4*V_reactor/pi/length_to_diameter)**(1/3)
-                D *= 3.28084 # convert from m to ft
+                D *= _m_to_ft # convert from m to ft
                 L = D * length_to_diameter
 
             Design['Residence time'] = self.tau
@@ -682,7 +689,7 @@ class HTL(Reactor):
         biochar, HTLaqueous, biocrude, offgas = self.outs
         
         self.WWTP = self.ins[0]._source.ins[0]._source.ins[0].\
-                         _source.ins[0]._source.ins[0]._source
+                         _source.ins[0]._source
         
         dewatered_sludge_afdw = dewatered_sludge.imass['Sludge_lipid'] +\
                                 dewatered_sludge.imass['Sludge_protein'] +\
@@ -2090,17 +2097,17 @@ class WWmixer(SanUnit):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
 
-    _N_ins = 4
+    _N_ins = 3
     _N_outs = 1
         
     def _run(self):
         
-        supernatant_1, supernatant_2, memdis_ww, ht_ww = self.ins
+        supernatant, memdis_ww, ht_ww = self.ins
         mixture = self.outs[0]
         
         mixture.mix_from(self.ins)
         
-        HT = self.ins[3]._source.ins[0]._source.ins[0]._source.ins[0]._source.\
+        HT = self.ins[2]._source.ins[0]._source.ins[0]._source.ins[0]._source.\
              ins[0]._source.ins[0]._source
         
         # only account for C and N from HT if they are not less than 0
@@ -2472,9 +2479,18 @@ class HTLHX(qsu.HXutility):
                 D['Shell diameter'] = 3
             else:
                 D['Shell diameter'] = 3
-                D['Shell length'] *= single_shell_area/1100 # increase tube length
+                
+                # self.N_shells = ceil(D['Area']/1100) # just add one shell
+                
+                self.N_shells = D['Area']/1100
+                if floor(self.N_shells*2)%2 == 1: # if the first decimal >= 5, add one shell
+                    self.N_shells = ceil(self.N_shells)
+                else: # if the first decimal < 5, increase length
+                # TODO: may just add one shell, increase length increase weight quickly
+                    self.N_shells = floor(self.N_shells)
+                    D['Shell length'] *= D['Area']/(1100*self.N_shells)
             
-            Shell_design = self._horizontal_vessel_design(self.ins[0].P, D['Shell diameter'], D['Shell length'])
+            Shell_design = self._horizontal_vessel_design(self.ins[0].P*_Pa_to_psi, D['Shell diameter'], D['Shell length'])
             D['Shell steel weight'] = Shell_design['Weight']*_lb_to_kg*self.N_shells
             
             # according to [1] page 367, Table 12.4, 3/4 in O.D., 16 BWG tube: 0.520 lb/ft
@@ -2492,6 +2508,273 @@ class HTLHX(qsu.HXutility):
         length = length
         # Calculate vessel weight and wall thickness
         rho_M = material_densities_lb_per_ft3['Carbon steel']
+        if pressure < 14.68:
+            warn('vacuum pressure vessel ASME codes not implemented yet; '
+                 'wall thickness may be inaccurate and stiffening rings may be '
+                 'required', category=DesignWarning)
+        VW, VWT = flash_vessel_design.compute_vessel_weight_and_wall_thickness(
+            pressure, diameter, length, rho_M)
+        bounds_warning(self, 'Horizontal vessel weight', VW, 'lb',
+                       self._bounds['Horizontal vessel weight'], 'cost')
+        bounds_warning(self, 'Horizontal vessel diameter', diameter, 'ft',
+                       self._bounds['Horizontal vessel diameter'], 'cost')
+        Design = {}
+        Design['Vessel type'] = 'Horizontal'
+        Design['Length'] = length  # ft
+        Design['Diameter'] = diameter  # ft
+        Design['Weight'] = VW  # lb
+        Design['Wall thickness'] = VWT  # in
+        return Design
+
+# =============================================================================
+# HTL_sludge_centrifuge
+# =============================================================================
+    
+class HTL_sludge_centrifuge(qsu.SludgeThickening, bst.units.SolidsCentrifuge):
+    '''
+    Similar to qsdsan.sanunits.SludgeCentrifuge, but can calculate material usage.
+    References
+    ----------
+    .. [1] https://dolphincentrifuge.com/wastewater-centrifuge/ (accessed 12-4-2022).
+    '''
+    
+    _units = {'Total pump stainless steel': 'kg',
+              'Total pipe stainless steel': 'kg',
+              'Centrifige stainless steel': 'kg',
+              'Total stainless steel': 'kg'}
+
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+                 sludge_moisture=0.8, solids=(),
+                 centrifuge_type='scroll_solid_bowl'):
+        qsu.SludgeThickening.__init__(self, ID, ins, outs, thermo, init_with,
+                                sludge_moisture=sludge_moisture,
+                                solids=solids)
+        self.centrifuge_type = centrifuge_type
+        ID = self.ID
+        eff = self.outs[0].proxy(f'{ID}_eff')
+        sludge = self.outs[1].proxy(f'{ID}_sludge')
+        self.effluent_pump = HTLpump(f'.{ID}_eff_pump', ins=eff, init_with=init_with)
+        self.sludge_pump = HTLpump(f'.{ID}_sludge_pump', ins=sludge, init_with=init_with)
+
+    _run = qsu.SludgeThickening._run
+
+    def _design(self):
+        bst.units.SolidsCentrifuge._design(self)
+        D = self.design_results
+        self.effluent_pump.simulate()
+        self.sludge_pump.simulate()
+        D['Total pump stainless steel'] = self.effluent_pump.design_results['Pump stainless steel'] +\
+                                          self.sludge_pump.design_results['Pump stainless steel']
+        D['Total pipe stainless steel'] = self.effluent_pump.design_results['Pump pipe stainless steel'] +\
+                                          self.sludge_pump.design_results['Pump pipe stainless steel']
+        # based on [1]:
+        # when rated capacity <= 80 GPM: weight = 2500 lb
+        # when rated capacity (80, 170]: weight = 4000 lb
+        # when rated capacity > 170 GPM, use a combination of large and small centrifuges
+        
+        if self.F_vol_in*_m3_to_gal/60 <= 80:
+            D['Number of small centrifuge'] = 1
+            D['Centrifige stainless steel'] = 2500*_lb_to_kg
+        elif self.F_vol_in*_m3_to_gal/60 <= 170:
+            D['Number of large centrifuge'] = 1
+            D['Centrifige stainless steel'] = 4000*_lb_to_kg
+        else:
+            N_large = floor(self.F_vol_in*_m3_to_gal/60/170)
+            if self.F_vol_in*_m3_to_gal/60 - 170*N_large <= 80:
+                N_small = 1
+                D['Number of large centrifuge'] = N_large
+                D['Number of small centrifuge'] = N_small
+            else:
+                N_large +=1
+                D['Number of large centrifuge'] = N_large
+            D['Centrifige stainless steel'] = (4000*N_large + 2500*N_small)*_lb_to_kg
+        D['Total stainless steel'] = D['Total pump stainless steel'] + D['Total pipe stainless steel'] + D['Centrifige stainless steel']
+    def _cost(self):
+        qsu.SludgeThickening._cost(self)
+    
+   
+# =============================================================================
+# HTLCHP
+# =============================================================================
+
+from qsdsan.utils import sum_system_utility
+from thermosteam.reaction import ParallelReaction
+from flexsolve import IQ_interpolation
+from biosteam import HeatUtility
+    
+class HTLCHP(qsu.CHP):
+    '''
+    Similar to qsdsan.sanunits.CHP, but can calculate material usage.
+    References
+    ----------
+    .. [1] Havukainen, J.; Nguyen, M. T.; Väisänen, S.; Horttanainen, M.
+           Life Cycle Assessment of Small-Scale Combined Heat and Power Plant:
+           Environmental Impacts of Different Forest Biofuels and Replacing
+           District Heat Produced from Natural Gas. Journal of Cleaner
+           Production 2018, 172, 837–846.
+           https://doi.org/10.1016/j.jclepro.2017.10.241.
+    '''
+    
+    _units = {'Steel': 'kg',
+              'Furnace': 'kg',
+              'Concrete': 'kg',
+              'Reinforcing steel': 'kg'}
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+                 unit_CAPEX=1225, CHP_type='Fuel cell',
+                 combustion_eff=0.8, combined_eff=None,
+                 system=None, supplement_power_utility=False, F_BM={'CHP': 1.}):
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with,
+                     unit_CAPEX=unit_CAPEX, CHP_type=CHP_type,
+                     combustion_eff=combustion_eff, combined_eff=combined_eff,
+                     system=system, supplement_power_utility=supplement_power_utility, F_BM=F_BM)
+    
+    def _design(self):
+        feed, natural_gas, air = self.ins
+        emission, ash = self.outs
+        for i in (natural_gas, air, ash):
+            i.empty()
+        feed.phase = natural_gas.phase = air.phase = emission.phase = 'g'
+        ash.phase = 's'
+        emission.P = ash.P = 101325
+        emission.T = ash.T = 298.15
+        self._refresh_sys()
+
+        cmps = self.components
+        rxns = []
+        for cmp in cmps:
+            if cmp.locked_state in ('l', 's') and (not cmp.organic or cmp.degradability=='Undegradable'):
+                continue
+            rxn = cmp.get_combustion_reaction()
+            if rxn:
+                rxns.append(rxn)
+        combustion_rxns = self.combustion_reactions = ParallelReaction(rxns)
+
+        def react(natural_gas_flow=0):
+            emission.copy_flow(feed)
+            emission.imol['CH4'] += natural_gas_flow
+            natural_gas.imol['CH4'] = natural_gas_flow
+            combustion_rxns.force_reaction(emission.mol)
+            air.imol['O2'] = -emission.imol['O2']
+            emission.imol['N2'] = air.imol['N2'] = air.imol['O2']/0.21*0.79
+            emission.imol['O2'] = 0
+            H_net_feed = feed.H + feed.HHV - emission.H # subtracting the energy in emission
+            if natural_gas.imol['CH4'] != 0: # add natural gas H and HHV
+                H_net_feed += natural_gas.H + natural_gas.HHV
+            return H_net_feed
+
+        # Calculate the amount of energy in the feed (no natural gas) and needs
+        self.H_net_feeds_no_natural_gas = react(0)
+        
+        # Calculate all energy needs in kJ/hr as in H_net_feeds
+        kwds = dict(system=self.system, operating_hours=self.system.operating_hours, exclude_units=(self,))
+        pu = self.power_utility
+        H_heating_needs = sum_system_utility(**kwds, utility='heating', result_unit='kJ/hr')/self.combustion_eff
+        H_power_needs = sum_system_utility(**kwds, utility='power', result_unit='kJ/hr')/self.combined_eff
+        
+        # Calculate the amount of energy needs to be provided
+        H_supp = H_heating_needs+H_power_needs if self.supplement_power_utility else H_heating_needs
+                      
+        # Objective function to calculate the heat deficit at a given natural gas flow rate
+        def H_deficit_at_natural_gas_flow(flow):
+            return H_supp-react(flow)
+        # Initial lower and upper bounds for the solver
+        lb = 0
+        ub = react()/cmps.CH4.LHV*2
+        if H_deficit_at_natural_gas_flow(0) > 0: # energy in the feeds is not enough
+            while H_deficit_at_natural_gas_flow(ub) > 0: # increase bounds if not enough energy
+                lb = ub
+                ub *= 2
+            natural_gas_flow = IQ_interpolation(
+                H_deficit_at_natural_gas_flow,
+                x0=lb, x1=ub, xtol=1e-3, ytol=1,
+                checkbounds=False)
+            H_net_feeds = react(natural_gas_flow)
+        else: # enough energy in the feed, set natural_gas_flow to 0
+            H_net_feeds = react(0)
+
+        # Update heating utilities
+        self.heat_utilities = HeatUtility.sum_by_agent(sum(self.sys_heating_utilities.values(), ()))
+        for hu in self.heat_utilities: hu.reverse()
+            
+        
+        # Power production if there is sufficient energy
+        if H_net_feeds <= H_heating_needs:
+            pu.production = 0
+        else:
+            pu.production = (H_net_feeds-H_heating_needs)/3600*self.combined_eff
+
+        self.H_heating_needs = H_heating_needs
+        self.H_power_needs = H_power_needs
+        self.H_net_feeds = H_net_feeds
+
+        ash_IDs = [i.ID for i in cmps if not i.formula]
+        ash.copy_flow(emission, IDs=tuple(ash_IDs), remove=True)
+        
+        D = self.design_results
+        
+        # material calculation based on [1], linearly scaled on power (kW)
+        # in [1], a 580 kW CHP:
+        # steel: 20098 kg
+        # furnace: 12490 kg
+        # reinforced concrete: 15000 kg (concrete + reinforcing steel)
+        # 1 m3 reinforced concrete: 98 v/v% concrete with a density of 2500 kg/m3 (2450 kg)
+        #                            2 v/v% reinforcing steel with a density of 7850 kg/m3 (157kg)
+        factor = self.H_net_feeds/3600/580
+        D['Steel'] = factor*20098
+        D['Furnace'] = factor*12490
+        D['Concrete'] = factor*15000*2450/(2450 + 157)
+        D['Reinforcing steel'] = factor*15000*157/(2450 + 157)
+
+# =============================================================================
+# HTL_storage_tank
+# =============================================================================
+        
+class HTL_storage_tank(qsu.StorageTank):
+    '''
+    Similar to qsdsan.sanunits.StorageTank, but can calculate material usage.
+    '''
+    
+    _units = {'Diameter': 'ft',
+              'Length': 'ft',
+              'Weight': 'kg'}
+    _bounds = {'Vertical vessel weight': (4200, 1e6),
+               'Horizontal vessel weight': (1e3, 9.2e5),
+               'Horizontal vessel diameter': (3, 21),
+               'Vertical vessel length': (12, 40)}
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                  vessel_type=None, tau=None, V_wf=None,
+                  vessel_material=None, kW_per_m3=0.,
+                  init_with='WasteStream', F_BM_default=None, length_to_diameter=2):
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
+                      vessel_type=vessel_type, tau=tau, V_wf=V_wf,
+                      vessel_material=vessel_material, kW_per_m3=kW_per_m3,
+                      init_with=init_with, F_BM_default=F_BM_default)
+        self.length_to_diameter = length_to_diameter
+    
+    def _design(self):
+        super()._design()
+        D = self.design_results
+        
+        Diameter = (4*D['Total volume']/pi/self.length_to_diameter)**(1/3)
+        Diameter *= _m_to_ft # convert from m to ft
+        L = Diameter * self.length_to_diameter
+
+        Tank_design = self._horizontal_vessel_design(self.outs[0].P*_Pa_to_psi, Diameter, L)
+        
+        D['Diameter'] = Diameter
+        D['Length'] = L
+        D['Wall thickness'] = Tank_design['Wall thickness']
+        D['Material'] = self.vessel_material
+        D['Weight'] = Tank_design['Weight']*_lb_to_kg
+        
+    def _horizontal_vessel_design(self, pressure, diameter, length) -> dict:
+        pressure = pressure
+        diameter = diameter
+        length = length
+        # Calculate vessel weight and wall thickness
+        rho_M = material_densities_lb_per_ft3[self.vessel_material]
         if pressure < 14.68:
             warn('vacuum pressure vessel ASME codes not implemented yet; '
                  'wall thickness may be inaccurate and stiffening rings may be '

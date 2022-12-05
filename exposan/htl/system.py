@@ -42,7 +42,8 @@ from qsdsan import PowerUtility, Construction
 load_process_settings()
 cmps = create_components()
 
-raw_wastewater = qs.Stream('raw_wastewater', H2O=80, units='MGD', T=25+273.15)
+raw_wastewater = qs.Stream('raw_wastewater', H2O=100, units='MGD', T=25+273.15)
+# Jones baseline: 1276.6 MGD, 1.066e-4 $/kg ww
 # set H2O equal to the total raw wastewater into the WWTP
 
 # =============================================================================
@@ -55,15 +56,8 @@ WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
                     sludge_moisture=0.99, sludge_dw_ash=0.257, 
                     sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, yearly_operation_hour=7920)
 
-SluT = qsu.SludgeThickening('A000', ins=WWTP-0,
-                            outs=('supernatant_1','compressed_sludge_1'),
-                            init_with='Stream', 
-                            solids=('Sludge_lipid','Sludge_protein',
-                                    'Sludge_carbo','Sludge_ash'),
-                            sludge_moisture=0.96)
-
-SluC = qsu.SludgeCentrifuge('A010', ins=SluT-1,
-                            outs=('supernatant_2','compressed_sludge_2'),
+SluC = su.HTL_sludge_centrifuge('A000', ins=WWTP-0,
+                            outs=('supernatant','compressed_sludge'),
                             init_with='Stream',
                             solids=('Sludge_lipid','Sludge_protein',
                                     'Sludge_carbo','Sludge_ash'),
@@ -95,8 +89,8 @@ HTL_drum = HTL.kodrum
 # CHG (Area 200)
 # =============================================================================
 
-H2SO4_Tank = qsu.StorageTank('T200', ins='H2SO4', outs=('H2SO4_out'),
-                             init_with='Stream', tau=3*24)
+H2SO4_Tank = su.HTL_storage_tank('T200', ins='H2SO4', outs=('H2SO4_out'),
+                             init_with='Stream', tau=24, vessel_material='Carbon steel')
 H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
 
 SP1 = su.HTLsplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
@@ -106,6 +100,8 @@ SP1 = su.HTLsplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
 
 AcidEx = su.AcidExtraction('A200', ins=(HTL-0, SP1-0),
                            outs=('residual','extracted'))
+
+AcidEx.outs[0].price = -0.055 # SS 2021 SOT PNNL report page 24 Table 9
 
 M1 = su.HTLmixer('A210', ins=(HTL-1, AcidEx-1), outs=('mixture'))
 
@@ -236,12 +232,12 @@ PC1 = su.PhaseChanger('S520', ins=H5-0, outs='cooled_gasoline_liquid')
 
 PC2 = su.PhaseChanger('S530', ins=H6-0, outs='cooled_diesel_liquid')
 
-GasolineTank = qsu.StorageTank('T500', ins=PC1-0, outs=('gasoline'),
-                                tau=3*24, init_with='Stream')
+GasolineTank = su.HTL_storage_tank('T500', ins=PC1-0, outs=('gasoline'),
+                                tau=3*24, init_with='Stream', vessel_material='Carbon steel')
 # store for 3 days based on Jones 2014
 
-DieselTank = qsu.StorageTank('T510', ins=PC2-0, outs=('diesel'),
-                              tau=3*24, init_with='Stream')
+DieselTank = su.HTL_storage_tank('T510', ins=PC2-0, outs=('diesel'),
+                              tau=3*24, init_with='Stream', vessel_material='Carbon steel')
 # store for 3 days based on Jones 2014
 
 FuelMixer = su.FuelMixer('S540', ins=(GasolineTank-0, DieselTank-0),\
@@ -252,12 +248,12 @@ GasMixer = qsu.Mixer('S550', ins=(HTL-3, F1-0, F2-0, D1-0, F3-0),
                       outs=('fuel_gas'), init_with='Stream')
 
 # The system produces more energy than needed (heating+power)
-CHP = qsu.CHP('A520', ins=(GasMixer-0,'natural_gas','air'),
-              outs=('emission','solid_ash'), init_with='Stream', supplement_power_utility=True)
+CHP = su.HTLCHP('A520', ins=(GasMixer-0,'natural_gas','air'),
+              outs=('emission','solid_ash'), init_with='Stream', supplement_power_utility=False)
 
 CHP.ins[1].price = 0.1685
 
-WWmixer = su.WWmixer('S560', ins=(SluT-0, SluC-0, MemDis-1, SP2-0),
+WWmixer = su.WWmixer('S560', ins=(SluC-0, MemDis-1, SP2-0),
                     outs='wastewater', init_with='Stream')
 # effluent of WWmixer goes back to WWTP
 
@@ -267,7 +263,7 @@ WWmixer = su.WWmixer('S560', ins=(SluT-0, SluC-0, MemDis-1, SP2-0),
 
 HXN = qsu.HeatExchangerNetwork('HXN')
 
-for unit in (WWTP, SluT, SluC, P1, H1, HTL, HTL_hx, HTL_drum, H2SO4_Tank, AcidEx,
+for unit in (WWTP, SluC, P1, H1, HTL, HTL_hx, HTL_drum, H2SO4_Tank, AcidEx,
              M1, StruPre, CHG, CHG_pump, CHG_heating, CHG_cooling, V1, F1, MemDis, SP1,
              P2, HT, HT_compressor, HT_hx, V2, H2, F2, V3, SP2, H3, D1, D2, D3, P3,
              HC, HC_compressor, HC_hx, H4, V4, F3, D4, GasolineMixer, DieselMixer,
@@ -276,7 +272,7 @@ for unit in (WWTP, SluT, SluC, P1, H1, HTL, HTL_hx, HTL_drum, H2SO4_Tank, AcidEx
     unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1])
 # so that qs.main_flowsheet.H1 works as well
 
-sys = qs.System('sys', path=(WWTP, SluT, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
+sys = qs.System('sys', path=(WWTP, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              M1, StruPre, CHG, V1, F1, MemDis, SP1,
                              P2, HT, V2, H2, F2, V3, SP2, H3, D1, D2, D3, P3,
                              HC, H4, V4, F3, D4, GasolineMixer, DieselMixer,
@@ -429,19 +425,6 @@ dist = shape.Triangle(7392,7920,8448)
         distribution=dist)
 def set_operation_hour(i):
     WWTP.operation_hour=i
-
-# =============================================================================
-# SluC
-# =============================================================================
-dist = shape.Uniform(0.75,0.85)
-@param(name='sludge_moisture',
-        element=SluC,
-        kind='coupled',
-        units='-',
-        baseline=0.8,
-        distribution=dist)
-def set_SluC_sludge_moisture(i):
-    SluC.sludge_moisture=i
 
 # =============================================================================
 # HTL
@@ -1069,6 +1052,16 @@ dist = shape.Triangle(0.7458,0.9722,1.6579)
         distribution=dist)
 def set_diesel_price(i):
     FuelMixer.diesel_price=i
+    
+dist = shape.Uniform(-0.0605,-0.0495)
+@param(name='residual disposal',
+        element='TEA',
+        kind='isolated',
+        units='$/kg',
+        baseline=-0.055,
+        distribution=dist)
+def set_residual_disposal(i):
+    AcidEx.outs[0].price =i
 
 dist = shape.Triangle(0.0667,0.06879,0.07180)
 @param(name='electrivity price',
