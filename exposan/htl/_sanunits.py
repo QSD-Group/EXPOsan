@@ -14,9 +14,9 @@ for license details.
 '''
 
 import biosteam as bst
-from qsdsan import SanUnit
+from qsdsan import SanUnit, Construction
 import qsdsan.sanunits as qsu
-from biosteam.units import IsothermalCompressor
+from biosteam.units import IsothermalCompressor, Flash, BinaryDistillation
 from exposan.htl._components import create_components
 from biosteam.units.design_tools import PressureVessel, flash_vessel_design
 from biosteam.units.design_tools.cost_index import CEPCI_by_year as CEPCI
@@ -49,7 +49,9 @@ __all__ = ('Reactor',
            'HTL_sludge_centrifuge',
            'HTLCHP',
            'HTL_storage_tank',
-           'HTLcompressor')
+           'HTLcompressor',
+           'HTLflash',
+           'HTLdistillation')
 
 cmps = create_components()
 
@@ -225,6 +227,18 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
              # Weight is proportional to wall thickness in PressureVessel design
              Design['Weight'] = round(Design['Weight']*wall_thickness_factor, 2)
 
+        if self.vessel_material == 'Carbon steel':
+            self.construction = (
+                Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg'),
+                )
+            self.construction[0].quantity = Design['Weight']*_lb_to_kg
+        
+        if self.vessel_material == 'Stainless steel 316':
+            self.construction = (
+                Construction('stainless_steel', linked_unit=self, item='Stainless_steel', quantity_unit='kg'),
+                )
+            self.construction[0].quantity = Design['Weight']*_lb_to_kg
+
     def _cost(self):
         Design = self.design_results
         purchase_costs = self.baseline_purchase_costs
@@ -320,7 +334,7 @@ class WWTP(SanUnit):
     '''
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='Stream', 
+                 init_with='WasteStream', 
                  ww_2_dry_sludge=0.94, # [1]
                  sludge_moisture=0.99, sludge_dw_ash=0.257, 
                  sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, 
@@ -611,7 +625,7 @@ class HTL(Reactor):
                      'Heat exchanger': 3.17}
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='Stream',
+                 init_with='WasteStream',
                  lipid_2_biocrude=0.846, # [1]
                  protein_2_biocrude=0.445, # [1]
                  carbo_2_biocrude=0.205, # [1]
@@ -684,7 +698,8 @@ class HTL(Reactor):
 
     _N_ins = 1
     _N_outs = 4
-    _units= {'Treatment capacity': 'lb/h'} # separator
+    _units= {'Treatment capacity': 'lb/h',
+             'Solid filter and separator weight': 'lb'}
     
     def _run(self):
         
@@ -831,6 +846,7 @@ class HTL(Reactor):
         # based on [6], case D design table, the purchase price of solid filter and separator to
         # the purchase price of HTL reactor is around 0.2, therefore, assume the weight of solid filter
         # and separator is 0.2*HTL weight
+        self.construction[0].quantity += Design['Solid filter and separator weight']*_lb_to_kg
         
         self.kodrum.V = self.F_mass_out/_lb_to_kg/1225236*4230/_m3_to_gal
         # in [6], when knockout drum influent is 1225236 lb/hr, single knockout
@@ -881,7 +897,7 @@ class AcidExtraction(Reactor):
     _F_BM_default = {**Reactor._F_BM_default}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='Stream', acid_vol=7, P_acid_recovery_ratio=0.8,
+                 init_with='WasteStream', acid_vol=7, P_acid_recovery_ratio=0.8,
                  P=None, tau=2, V_wf=0.8, # tau: [1]
                  length_to_diameter=2, N=1, V=10, auxiliary=False,
                  mixing_intensity=None, kW_per_m3=0, # use MixTank default value
@@ -1102,7 +1118,7 @@ class StruvitePrecipitation(Reactor):
     _F_BM_default = {**Reactor._F_BM_default}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='Stream', 
+                 init_with='WasteStream', 
                  target_pH = 9,
                  Mg_P_ratio=2.5,
                  P_pre_recovery_ratio=0.828, # [1]
@@ -1257,9 +1273,11 @@ class CHG(Reactor):
     _F_BM_default = {**Reactor._F_BM_default,
                      'Heat exchanger': 3.17,
                      'Sulfur guard': 2.0}
+    _units= {'Treatment capacity': 'lb/h',
+             'Hydrocyclone weight': 'lb'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='Stream',
+                 init_with='WasteStream',
                  pump_pressure=3089.7*6894.76,
                  heat_temp=350+273.15,
                  cool_temp=60+273.15,
@@ -1387,6 +1405,7 @@ class CHG(Reactor):
         Design['Hydrocyclone weight'] = 0.3*Design['Weight'] # assume stainless steel
         # based on [1], page 54, the purchase price of hydrocyclone to the purchase price of CHG
         # reactor is around 0.3, therefore, assume the weight of hydrocyclone is 0.3*CHG weight
+        self.construction[0].quantity += Design['Hydrocyclone weight']*_lb_to_kg
     
     def _cost(self):
         Reactor._cost(self)
@@ -1486,7 +1505,7 @@ class MembraneDistillation(SanUnit):
               'Total volume': 'm3'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='Stream',
+                 init_with='WasteStream',
                  influent_pH=8.16, # CHG effluent pH: 8.16 ± 0.25 [1]
                  target_pH=10,
                  N_S_ratio=2,
@@ -1626,6 +1645,11 @@ class MembraneDistillation(SanUnit):
         Design = self.design_results
         Design['Area'] = self.membrane_area
         Design['Total volume'] = Design['Area']*self.m2_2_m3
+        
+        self.construction = (
+            Construction('membrane', linked_unit=self, item='RO', quantity_unit='m2'),
+            )
+        self.construction[0].quantity = Design['Area']
     
     def _cost(self):
         self.ins[3].price = self.membrane_price
@@ -1690,7 +1714,7 @@ class HT(Reactor):
     _units = {'Hydrogen': 'mmscfd'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='Stream',
+                 init_with='SanStream',
                  WHSV=0.625, # wt./hr per wt. catalyst [1]
                  catalyst_lifetime=2*yearly_operation_hour, # 2 years [1]
                  hydrogen_P=1530*6894.76,
@@ -1945,7 +1969,7 @@ class HC(Reactor):
     _units = {'Hydrogen': 'mmscfd'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='Stream',
+                 init_with='SanStream',
                  WHSV=0.625, # wt./hr per wt. catalyst [1]
                  catalyst_lifetime=5*yearly_operation_hour, # 5 years [1]
                  hydrogen_P=1039.7*6894.76,
@@ -1975,7 +1999,7 @@ class HC(Reactor):
                  vessel_type='Vertical',
                  **kwargs):
         
-        SanUnit.__init__(self, ID, ins, outs, thermo,init_with)
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.WHSV = WHSV
         self.catalyst_lifetime = catalyst_lifetime
         self.hydrogen_P = hydrogen_P
@@ -2289,6 +2313,11 @@ class HTLpump(qsu.Pump):
         D = self.design_results
         D['Pump pipe stainless steel'] = pipe
         D['Pump stainless steel'] = pumps
+        
+        self.construction = (
+            Construction('stainless_steel', linked_unit=self, item='Stainless_steel', quantity_unit='kg'),
+            )
+        self.construction[0].quantity = pipe + pumps
     
     def design_sludge(self, Q_mgd=None, N_pump=None, **kwargs):
         '''
@@ -2493,6 +2522,11 @@ class HTLHX(qsu.HXutility):
             
             D['Total steel weight'] = D['Shell steel weight'] + D['Tube weight']
             
+        self.construction = (
+            Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg'),
+            )
+        self.construction[0].quantity = D['Total steel weight']
+            
     def _horizontal_vessel_design(self, pressure, diameter, length) -> dict:
         pressure = pressure
         diameter = diameter
@@ -2564,14 +2598,20 @@ class HTL_sludge_centrifuge(qsu.SludgeThickening, bst.units.SolidsCentrifuge):
         # when rated capacity > 170 GPM, use a combination of large and small centrifuges
         
         D['Number of large centrifuge'] = floor(self.F_vol_in*_m3_to_gal/60/170)
+        D['Number of small centrifuge'] = 0
         if self.F_vol_in*_m3_to_gal/60 - D['Number of large centrifuge']*170 <= 80:
             D['Number of small centrifuge'] = 1
-            D['Centrifige stainless steel'] = (4000*D['Number of large centrifuge'] + 2500*D['Number of small centrifuge'])*_lb_to_kg
         else:
             D['Number of large centrifuge'] += 1
-            D['Centrifige stainless steel'] = 4000*D['Number of large centrifuge']*_lb_to_kg
-
+        
+        D['Centrifige stainless steel'] = (4000*D['Number of large centrifuge'] + 2500*D['Number of small centrifuge'])*_lb_to_kg
         D['Total stainless steel'] = D['Total pump stainless steel'] + D['Total pipe stainless steel'] + D['Centrifige stainless steel']
+        
+        self.construction = (
+            Construction('stainless_steel', linked_unit=self, item='Stainless_steel', quantity_unit='kg'),
+            )
+        self.construction[0].quantity = D['Total stainless steel']
+        
     def _cost(self):
         qsu.SludgeThickening._cost(self)
 
@@ -2613,6 +2653,17 @@ class HTLCHP(qsu.CHP):
         D['Furnace'] = factor*12490
         D['Concrete'] = factor*15000*2450/(2450 + 157)
         D['Reinforcing steel'] = factor*15000*157/(2450 + 157)
+        
+        self.construction = (
+            Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg'),
+            Construction('furnace', linked_unit=self, item='Furnace', quantity_unit='kg'),
+            Construction('concrete', linked_unit=self, item='concrete', quantity_unit='kg'),
+            Construction('reinforcing_steel', linked_unit=self, item='Reinforcing_steel', quantity_unit='kg'),
+            )
+        self.construction[0].quantity = D['Steel']
+        self.construction[1].quantity = D['Furnace']
+        self.construction[2].quantity = D['Concrete']
+        self.construction[3].quantity = D['Reinforcing steel']
 
 # =============================================================================
 # HTL_storage_tank
@@ -2658,6 +2709,11 @@ class HTL_storage_tank(qsu.StorageTank):
         D['Material'] = self.vessel_material
         D['Weight'] = Tank_design['Weight']*_lb_to_kg
         
+        self.construction = (
+            Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg'),
+            )
+        self.construction[0].quantity = D['Weight']
+        
     def _horizontal_vessel_design(self, pressure, diameter, length) -> dict:
         pressure = pressure
         diameter = diameter
@@ -2696,6 +2752,7 @@ class HTLcompressor(IsothermalCompressor):
         D = self.design_results
         power = D['Ideal power']/D['Driver efficiency']
         D['Number of 300 kW unit'] = floor(power/300)
+        D['Number of 4 kW unit'] = 0
         if (power - D['Number of 300 kW unit']*300) <= 60:
             # according to Ecoinvent 3: the impact of at most 15 4 kW unit is smaller than 1 300 kW unit
             # therefore, if the rest of power is smaller than 60 kW, use multiple small units
@@ -2703,3 +2760,44 @@ class HTLcompressor(IsothermalCompressor):
             D['Number of 4 kW unit'] = ceil((power - D['Number of 300 kW unit']*300)/4)
         else:
             D['Number of 300 kW unit'] += 1
+        
+        self.construction = (
+            Construction('compressor_4kW', linked_unit=self, item='Compressor_4kW', quantity_unit='ea'),
+            Construction('compressor_300kW', linked_unit=self, item='Compressor_300kW', quantity_unit='ea')
+            )
+        self.construction[0].quantity = D['Number of 4 kW unit']
+        self.construction[1].quantity = D['Number of 300 kW unit']
+
+# =============================================================================
+# HTLflash
+# =============================================================================
+class HTLflash(Flash):
+    '''
+    Similar to biosteam.units.Flash, but includes construction.
+    '''
+    
+    def _design(self):
+        super()._design()
+        D = self.design_results
+        
+        self.construction = (
+            Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg'),
+            )
+        self.construction[0].quantity = D['Weight']*_lb_to_kg
+
+# =============================================================================
+# HTLdistillation
+# =============================================================================
+class HTLdistillation(BinaryDistillation):
+    '''
+    Similar to biosteam.units.BinaryDistillation, but includes construction.
+    '''
+    
+    def _design(self):
+        super()._design()
+        D = self.design_results
+        
+        self.construction = (
+            Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg'),
+            )
+        self.construction[0].quantity = (D['Rectifier weight'] + D['Stripper weight'])*_lb_to_kg

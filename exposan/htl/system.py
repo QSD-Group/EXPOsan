@@ -29,11 +29,11 @@ References:
 import qsdsan as qs
 import exposan.htl._sanunits as su
 from qsdsan import sanunits as qsu
-from biosteam.units import Flash, IsenthalpicValve, BinaryDistillation
+from biosteam.units import IsenthalpicValve
 from exposan.htl._process_settings import load_process_settings
 from exposan.htl._components import create_components
 from exposan.htl._TEA import *
-from qsdsan import PowerUtility, Construction
+from qsdsan import PowerUtility
 
 # __all__ = ('create_system',)
 
@@ -42,7 +42,12 @@ from qsdsan import PowerUtility, Construction
 load_process_settings()
 cmps = create_components()
 
-raw_wastewater = qs.Stream('raw_wastewater', H2O=50, units='MGD', T=25+273.15)
+# Construction here, StreamImpactItem after TEA
+qs.ImpactIndicator.load_from_file('/Users/jiananfeng/Desktop/PhD CEE/coding/Cloned packages/EXPOsan/exposan/htl/data/impact_indicators.csv')
+
+qs.ImpactItem.load_from_file('/Users/jiananfeng/Desktop/PhD CEE/coding/Cloned packages/EXPOsan/exposan/htl/data/impact_items.xlsx')
+
+raw_wastewater = qs.Stream('raw_wastewater', H2O=20, units='MGD', T=25+273.15)
 # Jones baseline: 1276.6 MGD, 1.066e-4 $/kg ww
 # set H2O equal to the total raw wastewater into the WWTP
 
@@ -54,7 +59,7 @@ WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
                     ww_2_dry_sludge=0.94,
                     # how much metric ton/day sludge can be produced by 1 MGD of ww
                     sludge_moisture=0.99, sludge_dw_ash=0.257, 
-                    sludge_afdw_lipid=1, sludge_afdw_protein=0, yearly_operation_hour=7920)
+                    sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, yearly_operation_hour=7920)
 
 SluC = su.HTL_sludge_centrifuge('A000', ins=WWTP-0,
                             outs=('supernatant','compressed_sludge'),
@@ -90,7 +95,7 @@ HTL_drum = HTL.kodrum
 # =============================================================================
 
 H2SO4_Tank = su.HTL_storage_tank('T200', ins='H2SO4', outs=('H2SO4_out'),
-                             init_with='Stream', tau=24, vessel_material='Carbon steel')
+                             init_with='WasteStream', tau=24, vessel_material='Carbon steel')
 H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
 
 SP1 = su.HTLsplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
@@ -120,11 +125,11 @@ CHG.ins[1].price = 134.53
 
 V1 = IsenthalpicValve('A240', ins=CHG-0, outs='depressed_cooled_CHG', P=50*6894.76)
 
-F1 = Flash('A250', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
-            T=60+273.15, P=50*6894.76)
+F1 = su.HTLflash('A250', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
+                 T=60+273.15, P=50*6894.76)
 
 MemDis = su.MembraneDistillation('A260', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
-                                  outs=('ammonium_sulfate','MemDis_ww', 'Membrane_out','solution'))
+                                  outs=('ammonium_sulfate','MemDis_ww', 'Membrane_out','solution'), init_with='WasteStream')
 MemDis.ins[2].price = 0.5256
 MemDis.outs[0].price = 0.3236
 
@@ -141,7 +146,7 @@ P2 = su.HTLpump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76,
 # (755.5 F).
 
 RSP1 = qsu.ReversedSplitter('S300', ins='H2', outs=('HT_H2','HC_H2'),
-                            init_with='Stream')
+                            init_with='WasteStream')
 # reversed splitter, write before HT and HC, simulate after HT and HC
 RSP1.ins[0].price = 1.61
 
@@ -155,8 +160,8 @@ V2 = IsenthalpicValve('A320', ins=HT-0, outs='depressed_HT', P=717.4*6894.76)
 H2 = su.HTLHX('A330', ins=V2-0, outs='cooled_HT', T=60+273.15,
                     init_with='Stream')
 
-F2 = Flash('A340', ins=H2-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
-            P=717.4*6894.76) # outflow P
+F2 = su.HTLflash('A340', ins=H2-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
+                 P=717.4*6894.76) # outflow P
 
 V3 = IsenthalpicValve('A350', ins=F2-1, outs='depressed_flash_effluent', P=55*6894.76)
 
@@ -167,17 +172,17 @@ SP2 = qsu.Splitter('S310', ins=V3-0, outs=('HT_ww','HT_oil'),
 H3 = su.HTLHX('A360', ins=SP2-1, outs='heated_oil', T=104+273.15)
 # temperature: Jones stream #334 (we remove the first distillation column)
 
-D1 = BinaryDistillation('A370', ins=H3-0,
+D1 = su.HTLdistillation('A370', ins=H3-0,
                         outs=('HT_light','HT_heavy'),
                         LHK=('C4H10','TWOMBUTAN'), P=50*6894.76, # outflow P
                         y_top=188/253, x_bot=53/162, k=2, is_divided=True)
 
-D2 = BinaryDistillation('A380', ins=D1-1,
+D2 = su.HTLdistillation('A380', ins=D1-1,
                         outs=('HT_Gasoline','HT_other_oil'),
                         LHK=('C10H22','C4BENZ'), P=25*6894.76, # outflow P
                         y_top=116/122, x_bot=114/732, k=2, is_divided=True)
 
-D3 = BinaryDistillation('A390', ins=D2-1,
+D3 = su.HTLdistillation('A390', ins=D2-1,
                         outs=('HT_Diesel','HT_heavy_oil'),
                         LHK=('C19H40','C21H44'),P=18.7*6894.76, # outflow P
                         y_top=2421/2448, x_bot=158/2448, k=2, is_divided=True)
@@ -205,10 +210,10 @@ H4 = su.HTLHX('A420', ins=HC-0, outs='cooled_HC', T=60+273.15,
 V4 = IsenthalpicValve('A430', ins=H4-0, outs='cooled_depressed_HC', P=30*6894.76)
 
 
-F3 = Flash('A440', ins=V4-0, outs=('HC_fuel_gas','HC_aqueous'), T=60.2+273,
-            P=30*6894.76) # outflow P
+F3 = su.HTLflash('A440', ins=V4-0, outs=('HC_fuel_gas','HC_aqueous'), T=60.2+273,
+                 P=30*6894.76) # outflow P
 
-D4 = BinaryDistillation('A450', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
+D4 = su.HTLdistillation('A450', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
                         LHK=('C9H20','C10H22'), P=20*6894.76, # outflow P
                         y_top=360/546, x_bot=7/708, k=2, is_divided=True)
 
@@ -249,7 +254,7 @@ GasMixer = qsu.Mixer('S550', ins=(HTL-3, F1-0, F2-0, D1-0, F3-0),
 
 # The system produces more energy than needed (heating+power)
 CHP = su.HTLCHP('A520', ins=(GasMixer-0,'natural_gas','air'),
-              outs=('emission','solid_ash'), init_with='Stream', supplement_power_utility=False)
+              outs=('emission','solid_ash'), init_with='WasteStream', supplement_power_utility=False)
 
 CHP.ins[1].price = 0.1685
 
@@ -278,7 +283,7 @@ sys = qs.System('sys', path=(WWTP, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              HC, H4, V4, F3, D4, GasolineMixer, DieselMixer,
                              H5, H6, PC1, PC2, GasolineTank, DieselTank, FuelMixer,
                              GasMixer, CHP, WWmixer, RSP1
-                             ), facilities=(HXN,))
+                              ), facilities=(HXN,))
 
 sys.operating_hours = WWTP.operation_hour # 7920 hr Jones
 
@@ -289,6 +294,151 @@ sys.diagram()
 tea = create_tea(sys)
 
 table = capex_table(tea)
+
+RO_item = qs.StreamImpactItem(linked_stream=MemDis.ins[3],
+                              Acidification=0.53533,
+                              Ecotoxicity=0.90848,
+                              Eutrophication=0.0028322,
+                              GlobalWarming=2.2663,
+                              OzoneDepletion=0.00000025541,
+                              PhotochemicalOxidation=0.0089068,
+                              Carcinogenics=0.034791,
+                              NonCarcinogenics=31.8,
+                              RespiratoryEffects=0.0028778)
+                              
+H2SO4_item = qs.StreamImpactItem(linked_stream=H2SO4_Tank.ins[0],
+                                 Acidification=0.019678922,
+                                 Ecotoxicity=0.069909345,
+                                 Eutrophication=4.05E-06,
+                                 GlobalWarming=0.008205666,
+                                 OzoneDepletion=8.94E-10,
+                                 PhotochemicalOxidation=5.04E-05,
+                                 Carcinogenics=1.74E-03,
+                                 NonCarcinogenics=1.68237815,
+                                 RespiratoryEffects=9.41E-05)
+
+MgCl2_item = qs.StreamImpactItem(linked_stream=StruPre.ins[1],
+                                 Acidification=0.77016,
+                                 Ecotoxicity=0.97878,
+                                 Eutrophication=0.00039767,
+                                 GlobalWarming=2.8779,
+                                 OzoneDepletion=4.94E-08,
+                                 PhotochemicalOxidation=0.0072306,
+                                 Carcinogenics=0.0050938,
+                                 NonCarcinogenics=8.6916,
+                                 RespiratoryEffects=0.004385)
+
+H2_item = qs.StreamImpactItem(linked_stream=RSP1.ins[0],
+                              Acidification=0.81014,
+                              Ecotoxicity=0.42747,
+                              Eutrophication=0.0029415,
+                              GlobalWarming=1.5624,
+                              OzoneDepletion=1.80E-06,
+                              PhotochemicalOxidation=0.0052545,
+                              Carcinogenics=0.0026274,
+                              NonCarcinogenics=8.5687,
+                              RespiratoryEffects=0.0036698)
+
+MgO_item = qs.StreamImpactItem(linked_stream=StruPre.ins[3],
+                               Acidification=0.12584,
+                               Ecotoxicity=2.7949,
+                               Eutrophication=0.00063607,
+                               GlobalWarming=1.1606,
+                               OzoneDepletion=1.54E-08,
+                               PhotochemicalOxidation=0.0017137,
+                               Carcinogenics=0.018607,
+                               NonCarcinogenics=461.54,
+                               RespiratoryEffects=0.0008755)
+
+NaOH_item = qs.StreamImpactItem(linked_stream=MemDis.ins[2],
+                                Acidification=0.33656,
+                                Ecotoxicity=0.77272,
+                                Eutrophication=0.00032908,
+                                GlobalWarming=1.2514,
+                                OzoneDepletion=7.89E-07,
+                                PhotochemicalOxidation=0.0033971,
+                                Carcinogenics=0.0070044,
+                                NonCarcinogenics=13.228,
+                                RespiratoryEffects=0.0024543)
+
+NH4Cl_item = qs.StreamImpactItem(linked_stream=StruPre.ins[2],
+                                 Acidification=0.34682,
+                                 Ecotoxicity=0.90305, 
+                                 Eutrophication=0.0047381,
+                                 GlobalWarming=1.525,
+                                 OzoneDepletion=9.22E-08,
+                                 PhotochemicalOxidation=0.0030017,
+                                 Carcinogenics=0.010029,
+                                 NonCarcinogenics=14.85,
+                                 RespiratoryEffects=0.0018387)
+
+struvite_item = qs.StreamImpactItem(linked_stream=StruPre.outs[0],
+                                    Acidification=-0.122829597,
+                                    Ecotoxicity=-0.269606396,
+                                    Eutrophication=-0.000174952,
+                                    GlobalWarming=-0.420850152,
+                                    OzoneDepletion=-2.29549E-08,
+                                    PhotochemicalOxidation=-0.001044087,
+                                    Carcinogenics=-0.002983018,
+                                    NonCarcinogenics=-4.496533528,
+                                    RespiratoryEffects=-0.00061764)
+
+NH42SO4_item = qs.StreamImpactItem(linked_stream=MemDis.outs[0],
+                                   Acidification=-0.72917,
+                                   Ecotoxicity=-3.4746,
+                                   Eutrophication=-0.0024633,
+                                   GlobalWarming=-1.2499,
+                                   OzoneDepletion=-6.12E-08,
+                                   PhotochemicalOxidation=-0.0044519,
+                                   Carcinogenics=-0.036742,
+                                   NonCarcinogenics=-62.932,
+                                   RespiratoryEffects=-0.0031315)
+
+Natural_gas_item = qs.StreamImpactItem(linked_stream=CHP.ins[1],
+                                       Acidification=0.1032,
+                                       Ecotoxicity=0.1071,
+                                       Eutrophication=7.87E-05,
+                                       GlobalWarming=2.754919474,
+                                       OzoneDepletion=2.17E-07,
+                                       PhotochemicalOxidation=0.00092588,
+                                       Carcinogenics=0.00088329,
+                                       NonCarcinogenics=4.3413,
+                                       RespiratoryEffects=0.00048979)
+
+CHG_catalyst_item = qs.StreamImpactItem(linked_stream=CHG.ins[1],
+                                        Acidification=991.6544196,
+                                        Ecotoxicity=15371.08292,
+                                        Eutrophication=0.45019348,
+                                        GlobalWarming=484.7862509,
+                                        OzoneDepletion=2.23437E-05,
+                                        PhotochemicalOxidation=6.735405072,
+                                        Carcinogenics=1.616793132,
+                                        NonCarcinogenics=27306.37232,
+                                        RespiratoryEffects=3.517184526)
+
+HT_catalyst_item = qs.StreamImpactItem(linked_stream=HT.ins[2],
+                                        Acidification=4.056401283,
+                                        Ecotoxicity=50.26926274,
+                                        Eutrophication=0.005759274,
+                                        GlobalWarming=6.375878231,
+                                        OzoneDepletion=1.39248E-06,
+                                        PhotochemicalOxidation=0.029648759,
+                                        Carcinogenics=0.287516945,
+                                        NonCarcinogenics=369.791688,
+                                        RespiratoryEffects=0.020809293)
+
+HC_catalyst_item = qs.StreamImpactItem(linked_stream=HC.ins[2],
+                                        Acidification=4.056401283,
+                                        Ecotoxicity=50.26926274,
+                                        Eutrophication=0.005759274,
+                                        GlobalWarming=6.375878231,
+                                        OzoneDepletion=1.39248E-06,
+                                        PhotochemicalOxidation=0.029648759,
+                                        Carcinogenics=0.287516945,
+                                        NonCarcinogenics=369.791688,
+                                        RespiratoryEffects=0.020809293)
+
+lca = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr', Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30)
 
 # return sys
 
