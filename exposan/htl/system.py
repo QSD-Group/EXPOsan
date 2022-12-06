@@ -428,15 +428,15 @@ HT_catalyst_item = qs.StreamImpactItem(linked_stream=HT.ins[2],
                                         RespiratoryEffects=0.020809293)
 
 HC_catalyst_item = qs.StreamImpactItem(linked_stream=HC.ins[2],
-                                        Acidification=4.056401283,
-                                        Ecotoxicity=50.26926274,
-                                        Eutrophication=0.005759274,
-                                        GlobalWarming=6.375878231,
-                                        OzoneDepletion=1.39248E-06,
-                                        PhotochemicalOxidation=0.029648759,
-                                        Carcinogenics=0.287516945,
-                                        NonCarcinogenics=369.791688,
-                                        RespiratoryEffects=0.020809293)
+                                       Acidification=4.056401283,
+                                       Ecotoxicity=50.26926274,
+                                       Eutrophication=0.005759274,
+                                       GlobalWarming=6.375878231,
+                                       OzoneDepletion=1.39248E-06,
+                                       PhotochemicalOxidation=0.029648759,
+                                       Carcinogenics=0.287516945,
+                                       NonCarcinogenics=369.791688,
+                                       RespiratoryEffects=0.020809293)
 
 lca = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr', Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30)
 
