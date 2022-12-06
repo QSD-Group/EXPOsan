@@ -77,9 +77,10 @@ default_pm2_kwargs = dict(
     Y_LI_NR_HET_ACE=1.105, Y_LI_ND_HET_ACE=0.713, Y_X_ALG_HET_ACE=0.216,
     Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880, 
     Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317, n_dark=0.7,
-    path=os.path.join(data_path, '_pm2.tsv'),
+    path=None,
     )
-
+    # path=os.path.join(data_path, '_pm2.tsv')
+    
 default_init_conds = {
         'X_CHL':2.1,
         'X_ALG':420.0,
@@ -236,7 +237,7 @@ def run(t, t_step, method=None, **kwargs):
         method=method,
         # rtol=1e-2,
         # atol=1e-3,
-        # export_state_to=f'results/sol_{t}d_{method}.xlsx',
+        export_state_to=f'results/sol_{t}d_{method}.xlsx',
         **kwargs)
     srt = get_SRT(sys, biomass_IDs)
     print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')

@@ -121,8 +121,7 @@ def run_wdiff_init(model, N, T, t_step, method='RK23',
         concs = dict(zip(cmps.IDs[0:-1], smp))
         for u in model._system.units:
             if u.ID in ('MIX', 'PBR1', 'PBR2', 'PBR3', 'PBR4', 'PBR5', 'PBR6', 'PBR7', 'PBR8', 'PBR9', 'PBR10', 
-            'PBR11', 'PBR12', 'PBR13', 'PBR14', 'PBR15', 'PBR16', 'PBR17', 'PBR18', 'PBR19', 'PBR20', 
-            'MEM', 'MEV', 'POST_MEM', 'CENT', 'RE'):
+            'PBR11', 'PBR12', 'PBR13', 'PBR14', 'PBR15', 'PBR16', 'PBR17', 'PBR18', 'PBR19', 'PBR20', 'MEV', 'RET'):
                 u.set_init_conc(**concs)
             
         model._system.simulate(
@@ -136,16 +135,15 @@ def run_wdiff_init(model, N, T, t_step, method='RK23',
         
     for u in model._system.units:
         if u.ID in ('MIX', 'PBR1', 'PBR2', 'PBR3', 'PBR4', 'PBR5', 'PBR6', 'PBR7', 'PBR8', 'PBR9', 'PBR10', 
-        'PBR11', 'PBR12', 'PBR13', 'PBR14', 'PBR15', 'PBR16', 'PBR17', 'PBR18', 'PBR19', 'PBR20', 
-        'MEM', 'MEV', 'POST_MEM', 'CENT', 'RE'):
+        'PBR11', 'PBR12', 'PBR13', 'PBR14', 'PBR15', 'PBR16', 'PBR17', 'PBR18', 'PBR19', 'PBR20', 'MEV', 'RET'):
             u.set_init_conc(**concs)
  
 #%%
 if __name__ == '__main__':
     seed = 119
-    t = 200
+    t = 50
     t_step = 5
-    n = 100
+    n = 2
     # method = 'RK45'
     method = 'RK23'
     # method = 'DOP853'
