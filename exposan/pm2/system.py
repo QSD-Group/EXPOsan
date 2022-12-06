@@ -34,6 +34,8 @@ __all__ = (
 Q = 445.47           # influent flowrate [m3/d]
 Temp = 286.13        # temperature [K]
 
+Light = 330
+
 V_mix = 66  
 V_pbr = 77.49
 V_mem = 7.03
@@ -123,10 +125,10 @@ def create_system(flowsheet=None, inf_kwargs={}, pm2_kwargs={}, init_conds={}):
     cmps = pc.create_pm2_cmps()
     
     # Exogeneous dynamic variables
-    T_pbr, I_pbr = EDV.batch_init(os.path.join(data_path, 'exo_vars.xlsx'))
+    # T_pbr, I_pbr = EDV.batch_init(os.path.join(data_path, 'exo_vars.xlsx'))
 
-    T_mix = T_pbr
-    I_mix = EDV('light_I_mix', function=lambda t: 0)
+    # T_mix = T_pbr
+    # I_mix = EDV('light_I_mix', function=lambda t: 0)
     
     # Streams
     SE = WasteStream('Secondary_effluent', T=Temp)
@@ -155,49 +157,96 @@ def create_system(flowsheet=None, inf_kwargs={}, pm2_kwargs={}, init_conds={}):
     pm2 = pc.PM2(**pm2_kwargs)
     
     # Create unit operations
+    # MIX = su.CSTR('MIX', ins=[SE, RAA], outs=[PHO], V_max=V_mix,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_mix, I_mix))
+
+    # PBR1 = su.CSTR('PBR1', ins=MIX-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR2 = su.CSTR('PBR2', ins=PBR1-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR3 = su.CSTR('PBR3', ins=PBR2-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR4 = su.CSTR('PBR4', ins=PBR3-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR5 = su.CSTR('PBR5', ins=PBR4-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR6 = su.CSTR('PBR6', ins=PBR5-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR7 = su.CSTR('PBR7', ins=PBR6-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR8 = su.CSTR('PBR8', ins=PBR7-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR9 = su.CSTR('PBR9', ins=PBR8-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR10 = su.CSTR('PBR10', ins=PBR9-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR11 = su.CSTR('PBR11', ins=PBR10-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR12 = su.CSTR('PBR12', ins=PBR11-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR13 = su.CSTR('PBR13', ins=PBR12-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR14 = su.CSTR('PBR14', ins=PBR13-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR15 = su.CSTR('PBR15', ins=PBR14-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR16 = su.CSTR('PBR16', ins=PBR15-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR17 = su.CSTR('PBR17', ins=PBR16-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR18 = su.CSTR('PBR18', ins=PBR17-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR19 = su.CSTR('PBR19', ins=PBR18-0, V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    # PBR20 = su.CSTR('PBR20', ins=PBR19-0, outs=[ME, INT], split=[0.51, 0.49], V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+
     MIX = su.CSTR('MIX', ins=[SE, RAA], outs=[PHO], V_max=V_mix,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_mix, I_mix))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, 0))
 
     PBR1 = su.CSTR('PBR1', ins=MIX-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR2 = su.CSTR('PBR2', ins=PBR1-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR3 = su.CSTR('PBR3', ins=PBR2-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR4 = su.CSTR('PBR4', ins=PBR3-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR5 = su.CSTR('PBR5', ins=PBR4-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR6 = su.CSTR('PBR6', ins=PBR5-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR7 = su.CSTR('PBR7', ins=PBR6-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR8 = su.CSTR('PBR8', ins=PBR7-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR9 = su.CSTR('PBR9', ins=PBR8-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR10 = su.CSTR('PBR10', ins=PBR9-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR11 = su.CSTR('PBR11', ins=PBR10-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR12 = su.CSTR('PBR12', ins=PBR11-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR13 = su.CSTR('PBR13', ins=PBR12-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR14 = su.CSTR('PBR14', ins=PBR13-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR15 = su.CSTR('PBR15', ins=PBR14-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR16 = su.CSTR('PBR16', ins=PBR15-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR17 = su.CSTR('PBR17', ins=PBR16-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR18 = su.CSTR('PBR18', ins=PBR17-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR19 = su.CSTR('PBR19', ins=PBR18-0, V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
     PBR20 = su.CSTR('PBR20', ins=PBR19-0, outs=[ME, INT], split=[0.51, 0.49], V_max=V_pbr/20,
-                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+                  aeration=None, suspended_growth_model=pm2, exogenous_vars=(Temp, Light))
+
+
+
 
     MEM = su.Splitter('MEM', PBR20-0, outs=[TE, RETEN], split=0.39*(1-cmps.x))
 
