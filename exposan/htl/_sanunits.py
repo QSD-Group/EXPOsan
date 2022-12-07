@@ -48,10 +48,12 @@ __all__ = ('Reactor',
            'HTLHX',
            'HTL_sludge_centrifuge',
            'HTLCHP',
+           'HTLCHP_2',
            'HTL_storage_tank',
            'HTLcompressor',
            'HTLflash',
-           'HTLdistillation')
+           'HTLdistillation',
+           'HTLHXN')
 
 cmps = create_components()
 
@@ -1120,7 +1122,7 @@ class StruvitePrecipitation(Reactor):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', 
                  target_pH = 9,
-                 Mg_P_ratio=2.5,
+                 Mg_P_ratio=1,
                  P_pre_recovery_ratio=0.828, # [1]
                  HTLaqueous_NH3_N_2_total_N = 0.853, # [2]
                  P=None, tau=1, V_wf=0.8, # tau: [1]
@@ -1714,7 +1716,7 @@ class HT(Reactor):
     _units = {'Hydrogen': 'mmscfd'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='SanStream',
+                 init_with='Stream',
                  WHSV=0.625, # wt./hr per wt. catalyst [1]
                  catalyst_lifetime=2*yearly_operation_hour, # 2 years [1]
                  hydrogen_P=1530*6894.76,
@@ -1969,7 +1971,7 @@ class HC(Reactor):
     _units = {'Hydrogen': 'mmscfd'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='SanStream',
+                 init_with='Stream',
                  WHSV=0.625, # wt./hr per wt. catalyst [1]
                  catalyst_lifetime=5*yearly_operation_hour, # 5 years [1]
                  hydrogen_P=1039.7*6894.76,
@@ -2175,7 +2177,7 @@ class PhaseChanger(SanUnit):
     '''
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='Stream', phase='l',
+                 init_with='WasteStream', phase='l',
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -2225,7 +2227,7 @@ class FuelMixer(SanUnit):
     '''
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='Stream', target='diesel',
+                 init_with='WasteStream', target='diesel',
                  gasoline_gal_2_kg=2.834894885,
                  diesel_gal_2_kg=3.220628346,
                  gasoline_price=0.9388,
@@ -2664,6 +2666,112 @@ class HTLCHP(qsu.CHP):
         self.construction[1].quantity = D['Furnace']
         self.construction[2].quantity = D['Concrete']
         self.construction[3].quantity = D['Reinforcing steel']
+        
+        
+        
+        
+        
+        
+        
+# =============================================================================
+# HTLCHP_2
+# =============================================================================
+
+from thermosteam.reaction import ParallelReaction
+
+class HTLCHP_2(qsu.CHP):
+    '''
+    Similar to qsdsan.sanunits.CHP, but can calculate material usage.
+    References
+    ----------
+    .. [1] Havukainen, J.; Nguyen, M. T.; Väisänen, S.; Horttanainen, M.
+           Life Cycle Assessment of Small-Scale Combined Heat and Power Plant:
+           Environmental Impacts of Different Forest Biofuels and Replacing
+           District Heat Produced from Natural Gas. Journal of Cleaner
+           Production 2018, 172, 837–846.
+           https://doi.org/10.1016/j.jclepro.2017.10.241.
+    '''
+    _N_ins = 2
+    _N_outs = 2
+    _units = {'Steel': 'kg',
+              'Furnace': 'kg',
+              'Concrete': 'kg',
+              'Reinforcing steel': 'kg'}
+    
+    def _design(self):
+        feed, air = self.ins
+        emission, ash = self.outs
+        for i in (air, ash):
+            i.empty()
+        feed.phase = air.phase = emission.phase = 'g'
+        ash.phase = 's'
+        emission.P = ash.P = 101325
+        emission.T = ash.T = 298.15
+
+        cmps = self.components
+        rxns = []
+        for cmp in cmps:
+            if cmp.locked_state in ('l', 's') and (not cmp.organic or cmp.degradability=='Undegradable'):
+                continue
+            rxn = cmp.get_combustion_reaction()
+            if rxn:
+                rxns.append(rxn)
+        combustion_rxns = self.combustion_reactions = ParallelReaction(rxns)
+
+        def react(natural_gas_flow=0):
+            emission.copy_flow(feed)
+            combustion_rxns.force_reaction(emission.mol)
+            air.imol['O2'] = -emission.imol['O2']
+            emission.imol['N2'] = air.imol['N2'] = air.imol['O2']/0.21*0.79
+            emission.imol['O2'] = 0
+            H_net_feed = feed.H + feed.HHV - emission.H # subtracting the energy in emission
+            return H_net_feed
+
+        self.H_net_feeds = react(0)
+        
+        pu = self.power_utility
+        pu.production = self.H_net_feeds/3600*self.combined_eff
+
+        ash_IDs = [i.ID for i in cmps if not i.formula]
+        ash.copy_flow(emission, IDs=tuple(ash_IDs), remove=True)
+        
+        D = self.design_results
+        
+        # material calculation based on [1], linearly scaled on power (kW)
+        # in [1], a 580 kW CHP:
+        # steel: 20098 kg
+        # furnace: 12490 kg
+        # reinforced concrete: 15000 kg (concrete + reinforcing steel)
+        # 1 m3 reinforced concrete: 98 v/v% concrete with a density of 2500 kg/m3 (2450 kg)
+        #                            2 v/v% reinforcing steel with a density of 7850 kg/m3 (157kg)
+        factor = self.H_net_feeds/3600/580
+        D['Steel'] = factor*20098
+        D['Furnace'] = factor*12490
+        D['Concrete'] = factor*15000*2450/(2450 + 157)
+        D['Reinforcing steel'] = factor*15000*157/(2450 + 157)
+        
+        self.construction = (
+            Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg'),
+            Construction('furnace', linked_unit=self, item='Furnace', quantity_unit='kg'),
+            Construction('concrete', linked_unit=self, item='concrete', quantity_unit='kg'),
+            Construction('reinforcing_steel', linked_unit=self, item='Reinforcing_steel', quantity_unit='kg'),
+            )
+        self.construction[0].quantity = D['Steel']
+        self.construction[1].quantity = D['Furnace']
+        self.construction[2].quantity = D['Concrete']
+        self.construction[3].quantity = D['Reinforcing steel']        
+
+
+
+
+
+
+
+
+
+
+
+
 
 # =============================================================================
 # HTL_storage_tank
@@ -2771,6 +2879,7 @@ class HTLcompressor(IsothermalCompressor):
 # =============================================================================
 # HTLflash
 # =============================================================================
+
 class HTLflash(Flash):
     '''
     Similar to biosteam.units.Flash, but includes construction.
@@ -2783,11 +2892,13 @@ class HTLflash(Flash):
         self.construction = (
             Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg'),
             )
-        self.construction[0].quantity = D['Weight']*_lb_to_kg
+        if 'Weight' in D.keys():
+            self.construction[0].quantity = D['Weight']*_lb_to_kg
 
 # =============================================================================
 # HTLdistillation
 # =============================================================================
+
 class HTLdistillation(BinaryDistillation):
     '''
     Similar to biosteam.units.BinaryDistillation, but includes construction.
@@ -2801,3 +2912,17 @@ class HTLdistillation(BinaryDistillation):
             Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg'),
             )
         self.construction[0].quantity = (D['Rectifier weight'] + D['Stripper weight'])*_lb_to_kg
+
+# =============================================================================
+# HTLHXN
+# =============================================================================
+
+class HTLHXN(qsu.HeatExchangerNetwork):
+    '''
+    Similar to qsdsan.sanunits.HeatExchangerNetwork, but enable LCA.
+    '''
+    
+    def __init__(self, ID=''):
+        super().__init__(ID=ID)
+        self.construction = ()
+        self.transportation = ()
