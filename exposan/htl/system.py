@@ -48,7 +48,7 @@ qs.ImpactIndicator.load_from_file('/Users/jiananfeng/Desktop/PhD CEE/coding/Clon
 
 qs.ImpactItem.load_from_file('/Users/jiananfeng/Desktop/PhD CEE/coding/Cloned packages/EXPOsan/exposan/htl/data/impact_items.xlsx')
 
-raw_wastewater = qs.Stream('raw_wastewater', H2O=50, units='MGD', T=25+273.15)
+raw_wastewater = qs.Stream('raw_wastewater', H2O=100, units='MGD', T=25+273.15)
 # Jones baseline: 1276.6 MGD, 1.066e-4 $/kg ww
 # set H2O equal to the total raw wastewater into the WWTP
 
@@ -261,6 +261,9 @@ GasMixer = qsu.Mixer('S570', ins=(HTL-3, F1-0, F2-0, D1-0, F3-0),
 CHP = su.HTLCHP('A520', ins=(GasMixer-0, 'natural_gas', 'air'),
               outs=('emission','solid_ash'), init_with='WasteStream', supplement_power_utility=False)
 
+
+# natural gas price
+
 WWmixer = su.WWmixer('S580', ins=(SluC-0, MemDis-1, SP2-0),
                     outs='wastewater', init_with='Stream')
 # effluent of WWmixer goes back to WWTP
@@ -285,7 +288,7 @@ sys = qs.System('sys', path=(WWTP, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              P2, HT, V2, H2, F2, V3, SP2, H3, D1, D2, D3, P3,
                              HC, H4, V4, F3, D4, GasolineMixer, DieselMixer,
                              H5, H6, PC1, PC2, PC3, PC4, GasolineTank, DieselTank, FuelMixer,
-                             GasMixer, CHP, WWmixer, RSP1), facilities=(HXN,))
+                             GasMixer, WWmixer, RSP1), facilities=(HXN, CHP,))
 
 sys.operating_hours = WWTP.operation_hour # 7920 hr Jones
 
@@ -1230,14 +1233,14 @@ def get_MFSP():
     return tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg
 
 metric = model.metric
-@metric(name='CWP',units='kg CO2/gal diesel',element='LCA')
+@metric(name='GWP',units='kg CO2/gal diesel',element='LCA')
 def getLCA():
     return lca.get_total_impacts()['GlobalWarming']/FuelMixer.outs[0].F_mass/lca.lifetime/sys.operating_hours*FuelMixer.diesel_gal_2_kg
 
 #%%
 import numpy as np
 np.random.seed(3221)
-samples = model.sample(N=5, rule='L')
+samples = model.sample(N=20, rule='L')
 model.load_samples(samples)
 model.evaluate()
 model.table
@@ -1261,6 +1264,6 @@ fig, ax = qs.stats.plot_uncertainties(model, x_axis=model.metrics[0], y_axis=mod
                                       kind='kde-kde', center_kws={'fill': True})
 fig
 #%%
-r_df, p_df = qs.stats.get_correlations(model, kind='Spearman')
+r_df, p_df = qs.stats.get_correlations(model, kind='Spearman', nan_policy='omit')
 fig, ax = qs.stats.plot_correlations(r_df)
 fig
