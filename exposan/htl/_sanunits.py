@@ -48,7 +48,6 @@ __all__ = ('Reactor',
            'HTLHX',
            'HTL_sludge_centrifuge',
            'HTLCHP',
-           'HTLCHP_2',
            'HTL_storage_tank',
            'HTLcompressor',
            'HTLflash',
@@ -228,17 +227,15 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
              Design['Wall thickness'] *= wall_thickness_factor
              # Weight is proportional to wall thickness in PressureVessel design
              Design['Weight'] = round(Design['Weight']*wall_thickness_factor, 2)
-
-        
+             
         quantity = Design['Weight']*_lb_to_kg
         construction = getattr(self, 'construction', ())
-        item_name = self.vessel_material.replace(' ', '_').rstrip('_316')
+        item_name = self.vessel_material.replace(' ', '_').rstrip('_316').rstrip('_304')
         if construction: construction[0].quantity = quantity
         else:
             self.construction = (
                 Construction(item_name.lower(), linked_unit=self, item=item_name, quantity_unit='kg', quantity=quantity),
                 )
-
 
     def _cost(self):
         Design = self.design_results
@@ -681,7 +678,7 @@ class HTL(Reactor):
         self.offgas_pre = offgas_pre
         hx_in = bst.Stream(f'{ID}_hx_in')
         hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HTLHX(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out, T=eff_T)
+        self.heat_exchanger = HTLHX(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out, T=eff_T, rigorous=True)
         self.kodrum = KOdrum(ID=f'.{ID}_KOdrum')
         self.P = P
         self.tau = tau
@@ -834,11 +831,15 @@ class HTL(Reactor):
         hx = self.heat_exchanger
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
         hx_ins0.mix_from((self.outs[1], self.outs[2], self.outs[3]))
+        
         hx_outs0.copy_like(hx_ins0)
         hx_ins0.T = self.ins[0].T # temperature before/after HTL are similar
         hx_outs0.T = hx.T
         hx_ins0.P = hx_outs0.P = self.outs[0].P # cooling before depressurized, heating after pressurized
         # in other words, both heating and cooling are performed under relatively high pressure
+        
+        hx_ins0.vle(T=hx_ins0.T, P=hx_ins0.P)
+        
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
 
         self.P = self.ins[0].P
@@ -1033,9 +1034,12 @@ class HTLmixer(SanUnit):
         # extracted pH = 0 (0.5 M H2SO4)
         # since HTLaqueous pH is near to neutral
         # assume pH is dominant by extracted and will be calculate based on dilution
-        dilution_factor = self.F_mass_in/self.ins[1].F_mass if self.ins[1].imass['P'] != 0 else 1
-        hydrogen_ion_conc = 10**0/dilution_factor
-        return -log(hydrogen_ion_conc, 10)
+        if self.ins[1].F_mass == 0:
+            return 9
+        else:
+            dilution_factor = self.F_mass_in/self.ins[1].F_mass if self.ins[1].imass['P'] != 0 else 1
+            hydrogen_ion_conc = 10**0/dilution_factor
+            return -log(hydrogen_ion_conc, 10)
         
     def _design(self):
         pass
@@ -1313,10 +1317,10 @@ class CHG(Reactor):
         self.pump = HTLpump(ID=f'.{ID}_pump', ins=pump_in, outs=pump_out, P=pump_pressure)
         hx_ht_in = bst.Stream(f'{ID}_hx_ht_in')
         hx_ht_out = bst.Stream(f'{ID}_hx_ht_out')
-        self.heat_ex_heating = HTLHX(ID=f'.{ID}_hx_ht', ins=hx_ht_in, outs=hx_ht_out, T=heat_temp)
+        self.heat_ex_heating = HTLHX(ID=f'.{ID}_hx_ht', ins=hx_ht_in, outs=hx_ht_out, T=heat_temp, rigorous=True)
         hx_cl_in = bst.Stream(f'{ID}_hx_cl_in')
         hx_cl_out = bst.Stream(f'{ID}_hx_cl_out')
-        self.heat_ex_cooling = HTLHX(ID=f'.{ID}_hx_cl', ins=hx_cl_in, outs=hx_cl_out, T=cool_temp)
+        self.heat_ex_cooling = HTLHX(ID=f'.{ID}_hx_cl', ins=hx_cl_in, outs=hx_cl_out, T=cool_temp, rigorous=True)
         self.P = P
         self.tau = tau
         self.V_wf = void_fraction
@@ -1390,6 +1394,9 @@ class CHG(Reactor):
         hx_ht_ins0.T = self.ins[0].T
         hx_ht_outs0.T = hx_ht.T
         hx_ht_ins0.P = hx_ht_outs0.P = pump.P
+        
+        hx_ht_ins0.vle(T=hx_ht_ins0.T, P=hx_ht_ins0.P)
+        
         hx_ht.simulate_as_auxiliary_exchanger(ins=hx_ht.ins, outs=hx_ht.outs)
             
         hx_cl = self.heat_ex_cooling
@@ -1399,6 +1406,9 @@ class CHG(Reactor):
         hx_cl_ins0.T = hx_ht.T
         hx_cl_outs0.T = hx_cl.T
         hx_cl_ins0.P = hx_cl_outs0.P = self.outs[0].P
+        
+        hx_cl_ins0.vle(T=hx_cl_ins0.T, P=hx_cl_ins0.P)
+        
         hx_cl.simulate_as_auxiliary_exchanger(ins=hx_cl.ins, outs=hx_cl.outs)
 
         self.P = self.pump_pressure
@@ -1777,9 +1787,25 @@ class HT(Reactor):
         IC_out = bst.Stream(f'{ID}_IC_out')
         self.compressor = HTLcompressor(ID=f'.{ID}_IC', ins=IC_in,
                                                outs=IC_out, P=None)
-        hx_in = bst.Stream(f'{ID}_hx_in')
-        hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HTLHX(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
+        
+        
+        
+        
+        
+        hx_H2_in = bst.Stream(f'{ID}_hx_H2_in')
+        hx_H2_out = bst.Stream(f'{ID}_hx_H2_out')
+        self.heat_exchanger_H2 = HTLHX(ID=f'.{ID}_hx_H2', ins=hx_H2_in, outs=hx_H2_out, rigorous=True)
+        
+        
+        
+        hx_oil_in = bst.Stream(f'{ID}_hx_oil_in')
+        hx_oil_out = bst.Stream(f'{ID}_hx_oil_out')
+        self.heat_exchanger_oil = HTLHX(ID=f'.{ID}_hx_oil', ins=hx_oil_in, outs=hx_oil_out, rigorous=True)
+        
+        
+        
+        
+        
         self.P = P
         self.tau = tau
         self.void_fraciton = void_fraciton
@@ -1823,6 +1849,9 @@ class HT(Reactor):
         hydrocarbon_mass = biocrude.imass['Biocrude']*\
                            (1 + self.hydrogen_rxned_to_biocrude)*\
                            self.hydrocarbon_ratio
+                           
+        ht_out.phase = 'g'
+                           
         for name, ratio in self.HT_composition.items():
             ht_out.imass[name] = hydrocarbon_mass*ratio
             
@@ -1838,6 +1867,8 @@ class HT(Reactor):
         ht_out.P = biocrude.P
         
         ht_out.T = self.HTrxn_T
+        
+        ht_out.vle(T=ht_out.T, P=ht_out.P)
         
         if self.HTaqueous_C < -0.1*self.HTL.WWTP.sludge_C:
             raise Exception('carbon mass balance is out of +/- 10% for the whole system')
@@ -1888,14 +1919,53 @@ class HT(Reactor):
         IC_outs0.P = IC.P = self.hydrogen_P
         IC.simulate()
         
-        hx = self.heat_exchanger
-        hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
-        hx_ins0.mix_from(self.ins)
-        hx_outs0.copy_like(hx_ins0)
-        hx_outs0.T = self.HTin_T
-        hx_ins0.P = hx_outs0.P = min(IC_outs0.P, self.ins[0].P)
-        # H2 and biocrude have the same pressure
-        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
+        
+        
+        
+        
+        
+        
+        
+        hx_H2 = self.heat_exchanger_H2
+        hx_H2_ins0, hx_H2_outs0 = hx_H2.ins[0], hx_H2.outs[0]
+        hx_H2_ins0.copy_like(self.ins[1])
+        hx_H2_outs0.copy_like(hx_H2_ins0)
+        hx_H2_ins0.phase = hx_H2_outs0.phase = 'g'
+        hx_H2_outs0.T = self.HTin_T
+        hx_H2_ins0.P = hx_H2_outs0.P = IC_outs0.P
+
+        
+        hx_H2.simulate_as_auxiliary_exchanger(ins=hx_H2.ins, outs=hx_H2.outs)
+        
+        
+        
+        
+        
+        
+        
+        hx_oil = self.heat_exchanger_oil
+        hx_oil_ins0, hx_oil_outs0 = hx_oil.ins[0], hx_oil.outs[0]
+        hx_oil_ins0.copy_like(self.ins[0])
+        hx_oil_outs0.copy_like(hx_oil_ins0)
+        hx_oil_outs0.T = self.HTin_T
+        hx_oil_ins0.P = hx_oil_outs0.P = self.ins[0].P
+
+        
+        hx_oil_ins0.vle(T=hx_oil_ins0.T, P=hx_oil_ins0.P)
+        
+        hx_oil.simulate_as_auxiliary_exchanger(ins=hx_oil.ins, outs=hx_oil.outs)
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         
         self.P = min(IC_outs0.P, self.ins[0].P)
         
@@ -2014,9 +2084,15 @@ class HC(Reactor):
         IC_out = bst.Stream(f'{ID}_IC_out')
         self.compressor = HTLcompressor(ID=f'.{ID}_IC', ins=IC_in,
                                                outs=IC_out, P=None)
-        hx_in = bst.Stream(f'{ID}_hx_in')
-        hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HTLHX(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
+        hx_H2_in = bst.Stream(f'{ID}_hx_H2_in')
+        hx_H2_out = bst.Stream(f'{ID}_hx_H2_out')
+        self.heat_exchanger_H2 = HTLHX(ID=f'.{ID}_hx_H2', ins=hx_H2_in, outs=hx_H2_out, rigorous=True)
+        
+        
+        
+        hx_oil_in = bst.Stream(f'{ID}_hx_oil_in')
+        hx_oil_out = bst.Stream(f'{ID}_hx_oil_out')
+        self.heat_exchanger_oil = HTLHX(ID=f'.{ID}_hx_oil', ins=hx_oil_in, outs=hx_oil_out, rigorous=True)
         self.P = P
         self.tau = tau
         self.void_fraciton = void_fraciton
@@ -2051,6 +2127,8 @@ class HC(Reactor):
                            self.hydrogen_rxned_to_heavy_oil)*\
                            self.hydrocarbon_ratio
 
+        hc_out.phase = 'g'
+
         for name, ratio in self.HC_composition.items():
             hc_out.imass[name] = hydrocarbon_mass*ratio
         
@@ -2059,6 +2137,8 @@ class HC(Reactor):
         
         hc_out.P = heavy_oil.P
         hc_out.T = self.HCrxn_T
+        
+        hc_out.vle(T=hc_out.T, P=hc_out.P)
         
         C_in = 0
         total_num = len(list(cmps))
@@ -2091,14 +2171,34 @@ class HC(Reactor):
         IC_outs0.P = IC.P = self.hydrogen_P
         IC.simulate()
         
-        hx = self.heat_exchanger
-        hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
-        hx_ins0.mix_from(self.ins)
-        hx_outs0.copy_like(hx_ins0)
-        hx_outs0.T = self.HCin_T
-        hx_ins0.P = hx_outs0.P = min(IC_outs0.P, self.ins[0].P)
-        # H2 and biocrude have the same pressure
-        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
+        hx_H2 = self.heat_exchanger_H2
+        hx_H2_ins0, hx_H2_outs0 = hx_H2.ins[0], hx_H2.outs[0]
+        hx_H2_ins0.copy_like(self.ins[1])
+        hx_H2_outs0.copy_like(hx_H2_ins0)
+        hx_H2_ins0.phase = hx_H2_outs0.phase = 'g'
+        hx_H2_outs0.T = self.HCin_T
+        hx_H2_ins0.P = hx_H2_outs0.P = IC_outs0.P
+        
+        
+        hx_H2.simulate_as_auxiliary_exchanger(ins=hx_H2.ins, outs=hx_H2.outs)
+        
+        
+        
+        
+        
+        
+        
+        hx_oil = self.heat_exchanger_oil
+        hx_oil_ins0, hx_oil_outs0 = hx_oil.ins[0], hx_oil.outs[0]
+        hx_oil_ins0.copy_like(self.ins[0])
+        hx_oil_outs0.copy_like(hx_oil_ins0)
+        hx_oil_outs0.T = self.HCin_T
+        hx_oil_ins0.P = hx_oil_outs0.P = self.ins[0].P
+        
+        
+        hx_oil_ins0.vle(T=hx_oil_ins0.T, P=hx_oil_ins0.P)
+        
+        hx_oil.simulate_as_auxiliary_exchanger(ins=hx_oil.ins, outs=hx_oil.outs)
         
         self.P = min(IC_outs0.P, self.ins[0].P)
         
@@ -2321,7 +2421,7 @@ class HTLpump(qsu.Pump):
                 Construction('stainless_steel', linked_unit=self, item='Stainless_steel', 
                              quantity=pipe + pumps, quantity_unit='kg'),
                 )
-    
+
     def design_sludge(self, Q_mgd=None, N_pump=None, **kwargs):
         '''
         Design pump for handling waste sludge.
@@ -2676,101 +2776,7 @@ class HTLCHP(qsu.CHP):
                 Construction('furnace', linked_unit=self, item='Furnace', quantity_unit='kg', quantity=D['Furnace']),
                 Construction('concrete', linked_unit=self, item='concrete', quantity_unit='kg', quantity=D['Concrete']),
                 Construction('reinforcing_steel', linked_unit=self, item='Reinforcing_steel', quantity_unit='kg', quantity=D['Reinforcing steel']),
-                ) 
-        
-        
-# =============================================================================
-# HTLCHP_2
-# =============================================================================
-
-from thermosteam.reaction import ParallelReaction
-
-class HTLCHP_2(qsu.CHP):
-    '''
-    Similar to qsdsan.sanunits.CHP, but can calculate material usage.
-    References
-    ----------
-    .. [1] Havukainen, J.; Nguyen, M. T.; Väisänen, S.; Horttanainen, M.
-           Life Cycle Assessment of Small-Scale Combined Heat and Power Plant:
-           Environmental Impacts of Different Forest Biofuels and Replacing
-           District Heat Produced from Natural Gas. Journal of Cleaner
-           Production 2018, 172, 837–846.
-           https://doi.org/10.1016/j.jclepro.2017.10.241.
-    '''
-    _N_ins = 2
-    _N_outs = 2
-    _units = {'Steel': 'kg',
-              'Furnace': 'kg',
-              'Concrete': 'kg',
-              'Reinforcing steel': 'kg'}
-    
-    def _design(self):
-        feed, air = self.ins
-        emission, ash = self.outs
-        for i in (air, ash):
-            i.empty()
-        feed.phase = air.phase = emission.phase = 'g'
-        ash.phase = 's'
-        emission.P = ash.P = 101325
-        emission.T = ash.T = 298.15
-
-        cmps = self.components
-        rxns = []
-        for cmp in cmps:
-            if cmp.locked_state in ('l', 's') and (not cmp.organic or cmp.degradability=='Undegradable'):
-                continue
-            rxn = cmp.get_combustion_reaction()
-            if rxn:
-                rxns.append(rxn)
-        combustion_rxns = self.combustion_reactions = ParallelReaction(rxns)
-
-        def react(natural_gas_flow=0):
-            emission.copy_flow(feed)
-            combustion_rxns.force_reaction(emission.mol)
-            air.imol['O2'] = -emission.imol['O2']
-            emission.imol['N2'] = air.imol['N2'] = air.imol['O2']/0.21*0.79
-            emission.imol['O2'] = 0
-            H_net_feed = feed.H + feed.HHV - emission.H # subtracting the energy in emission
-            return H_net_feed
-
-        self.H_net_feeds = react(0)
-        
-        pu = self.power_utility
-        pu.production = self.H_net_feeds/3600*self.combined_eff
-
-        ash_IDs = [i.ID for i in cmps if not i.formula]
-        ash.copy_flow(emission, IDs=tuple(ash_IDs), remove=True)
-        
-        D = self.design_results
-        
-        # material calculation based on [1], linearly scaled on power (kW)
-        # in [1], a 580 kW CHP:
-        # steel: 20098 kg
-        # furnace: 12490 kg
-        # reinforced concrete: 15000 kg (concrete + reinforcing steel)
-        # 1 m3 reinforced concrete: 98 v/v% concrete with a density of 2500 kg/m3 (2450 kg)
-        #                            2 v/v% reinforcing steel with a density of 7850 kg/m3 (157kg)
-        factor = self.H_net_feeds/3600/580
-        D['Steel'] = factor*20098
-        D['Furnace'] = factor*12490
-        D['Concrete'] = factor*15000*2450/(2450 + 157)
-        D['Reinforcing steel'] = factor*15000*157/(2450 + 157)
-        
-        construction = getattr(self, 'construction', ())
-        if construction: 
-            construction[0].quantity = D['Steel']
-            construction[1].quantity = D['Furnace']
-            construction[2].quantity = D['Concrete']
-            construction[3].quantity = D['Reinforcing steel']
-        else:
-            self.construction = (
-                Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg', quantity=D['Steel']),
-                Construction('furnace', linked_unit=self, item='Furnace', quantity_unit='kg', quantity=D['Furnace']),
-                Construction('concrete', linked_unit=self, item='concrete', quantity_unit='kg', quantity=D['Concrete']),
-                Construction('reinforcing_steel', linked_unit=self, item='Reinforcing_steel', quantity_unit='kg', quantity=D['Reinforcing steel']),
-                ) 
-    
-
+                )
 
 # =============================================================================
 # HTL_storage_tank
@@ -2823,7 +2829,6 @@ class HTL_storage_tank(qsu.StorageTank):
                 Construction('carbon_steel', linked_unit=self, item='Carbon_steel', 
                              quantity=D['Weight'], quantity_unit='kg'),
                 )
-
         
     def _horizontal_vessel_design(self, pressure, diameter, length) -> dict:
         pressure = pressure
@@ -2877,12 +2882,11 @@ class HTLcompressor(IsothermalCompressor):
             construction[0].quantity = D['Number of 4 kW unit']
             construction[1].quantity = D['Number of 300 kW unit']
         else:
-        
+
             self.construction = (
                 Construction('compressor_4kW', linked_unit=self, item='Compressor_4kW', quantity_unit='ea', quantity=D['Number of 4 kW unit']),
                 Construction('compressor_300kW', linked_unit=self, item='Compressor_300kW', quantity_unit='ea', quantity=D['Number of 4 kW unit'])
                 )
-
 
 # =============================================================================
 # HTLflash
@@ -2926,7 +2930,6 @@ class HTLdistillation(BinaryDistillation):
                              quantity=(D['Rectifier weight'] + D['Stripper weight'])*_lb_to_kg, quantity_unit='kg'),
                 )
 
-
 # =============================================================================
 # HTLHXN
 # =============================================================================
@@ -2936,7 +2939,7 @@ class HTLHXN(qsu.HeatExchangerNetwork):
     Similar to qsdsan.sanunits.HeatExchangerNetwork, but enable LCA.
     '''
     
-    def __init__(self, ID=''):
-        super().__init__(ID=ID)
+    def _design(self):
+        super()._design()
         self.construction = ()
         self.transportation = ()
