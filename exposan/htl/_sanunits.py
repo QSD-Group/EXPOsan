@@ -1790,9 +1790,25 @@ class HT(Reactor):
         IC_out = bst.Stream(f'{ID}_IC_out')
         self.compressor = HTLcompressor(ID=f'.{ID}_IC', ins=IC_in,
                                                outs=IC_out, P=None)
-        hx_in = bst.Stream(f'{ID}_hx_in')
-        hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HTLHX(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out, rigorous=True)
+        
+        
+        
+        
+        
+        hx_H2_in = bst.Stream(f'{ID}_hx_H2_in')
+        hx_H2_out = bst.Stream(f'{ID}_hx_H2_out')
+        self.heat_exchanger_H2 = HTLHX(ID=f'.{ID}_hx_H2', ins=hx_H2_in, outs=hx_H2_out, rigorous=True)
+        
+        
+        
+        hx_oil_in = bst.Stream(f'{ID}_hx_oil_in')
+        hx_oil_out = bst.Stream(f'{ID}_hx_oil_out')
+        self.heat_exchanger_oil = HTLHX(ID=f'.{ID}_hx_oil', ins=hx_oil_in, outs=hx_oil_out, rigorous=True)
+        
+        
+        
+        
+        
         self.P = P
         self.tau = tau
         self.void_fraciton = void_fraciton
@@ -1906,17 +1922,53 @@ class HT(Reactor):
         IC_outs0.P = IC.P = self.hydrogen_P
         IC.simulate()
         
-        hx = self.heat_exchanger
-        hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
-        hx_ins0.mix_from(self.ins)
-        hx_outs0.copy_like(hx_ins0)
-        hx_outs0.T = self.HTin_T
-        hx_ins0.P = hx_outs0.P = min(IC_outs0.P, self.ins[0].P)
-        # H2 and biocrude have the same pressure
         
-        hx_ins0.vle(T=hx_ins0.T, P=hx_ins0.P)
         
-        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
+        
+        
+        
+        
+        
+        hx_H2 = self.heat_exchanger_H2
+        hx_H2_ins0, hx_H2_outs0 = hx_H2.ins[0], hx_H2.outs[0]
+        hx_H2_ins0.copy_like(self.ins[1])
+        hx_H2_outs0.copy_like(hx_H2_ins0)
+        hx_H2_ins0.phase = hx_H2_outs0.phase = 'g'
+        hx_H2_outs0.T = self.HTin_T
+        hx_H2_ins0.P = hx_H2_outs0.P = IC_outs0.P
+
+        
+        hx_H2.simulate_as_auxiliary_exchanger(ins=hx_H2.ins, outs=hx_H2.outs)
+        
+        
+        
+        
+        
+        
+        
+        hx_oil = self.heat_exchanger_oil
+        hx_oil_ins0, hx_oil_outs0 = hx_oil.ins[0], hx_oil.outs[0]
+        hx_oil_ins0.copy_like(self.ins[0])
+        hx_oil_outs0.copy_like(hx_oil_ins0)
+        hx_oil_outs0.T = self.HTin_T
+        hx_oil_ins0.P = hx_oil_outs0.P = self.ins[0].P
+
+        
+        hx_oil_ins0.vle(T=hx_oil_ins0.T, P=hx_oil_ins0.P)
+        
+        hx_oil.simulate_as_auxiliary_exchanger(ins=hx_oil.ins, outs=hx_oil.outs)
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         
         self.P = min(IC_outs0.P, self.ins[0].P)
         
@@ -2035,9 +2087,15 @@ class HC(Reactor):
         IC_out = bst.Stream(f'{ID}_IC_out')
         self.compressor = HTLcompressor(ID=f'.{ID}_IC', ins=IC_in,
                                                outs=IC_out, P=None)
-        hx_in = bst.Stream(f'{ID}_hx_in')
-        hx_out = bst.Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HTLHX(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out, rigorous=True)
+        hx_H2_in = bst.Stream(f'{ID}_hx_H2_in')
+        hx_H2_out = bst.Stream(f'{ID}_hx_H2_out')
+        self.heat_exchanger_H2 = HTLHX(ID=f'.{ID}_hx_H2', ins=hx_H2_in, outs=hx_H2_out, rigorous=True)
+        
+        
+        
+        hx_oil_in = bst.Stream(f'{ID}_hx_oil_in')
+        hx_oil_out = bst.Stream(f'{ID}_hx_oil_out')
+        self.heat_exchanger_oil = HTLHX(ID=f'.{ID}_hx_oil', ins=hx_oil_in, outs=hx_oil_out, rigorous=True)
         self.P = P
         self.tau = tau
         self.void_fraciton = void_fraciton
@@ -2067,7 +2125,6 @@ class HC(Reactor):
         
         hydrogen.imass['H2'] = heavy_oil.F_mass*self.hydrogen_rxned_to_heavy_oil*self.hydrogen_excess
         hydrogen.phase = 'g'
-        hydrogen.T = heavy_oil.T
 
         hydrocarbon_mass = heavy_oil.F_mass*(1 +\
                            self.hydrogen_rxned_to_heavy_oil)*\
@@ -2117,17 +2174,34 @@ class HC(Reactor):
         IC_outs0.P = IC.P = self.hydrogen_P
         IC.simulate()
         
-        hx = self.heat_exchanger
-        hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
-        hx_ins0.mix_from(self.ins)
-        hx_outs0.copy_like(hx_ins0)
-        hx_outs0.T = self.HCin_T
-        hx_ins0.P = hx_outs0.P = min(IC_outs0.P, self.ins[0].P)
-        # H2 and biocrude have the same pressure
+        hx_H2 = self.heat_exchanger_H2
+        hx_H2_ins0, hx_H2_outs0 = hx_H2.ins[0], hx_H2.outs[0]
+        hx_H2_ins0.copy_like(self.ins[1])
+        hx_H2_outs0.copy_like(hx_H2_ins0)
+        hx_H2_ins0.phase = hx_H2_outs0.phase = 'g'
+        hx_H2_outs0.T = self.HCin_T
+        hx_H2_ins0.P = hx_H2_outs0.P = IC_outs0.P
         
-        hx_ins0.vle(T=hx_ins0.T, P=hx_ins0.P)
         
-        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
+        hx_H2.simulate_as_auxiliary_exchanger(ins=hx_H2.ins, outs=hx_H2.outs)
+        
+        
+        
+        
+        
+        
+        
+        hx_oil = self.heat_exchanger_oil
+        hx_oil_ins0, hx_oil_outs0 = hx_oil.ins[0], hx_oil.outs[0]
+        hx_oil_ins0.copy_like(self.ins[0])
+        hx_oil_outs0.copy_like(hx_oil_ins0)
+        hx_oil_outs0.T = self.HCin_T
+        hx_oil_ins0.P = hx_oil_outs0.P = self.ins[0].P
+        
+        
+        hx_oil_ins0.vle(T=hx_oil_ins0.T, P=hx_oil_ins0.P)
+        
+        hx_oil.simulate_as_auxiliary_exchanger(ins=hx_oil.ins, outs=hx_oil.outs)
         
         self.P = min(IC_outs0.P, self.ins[0].P)
         

@@ -164,7 +164,8 @@ RSP1.ins[0].price = 1.61
 
 HT = su.HT('A310', ins=(P2-0, RSP1-0, 'CoMo_alumina_HT'), outs=('HTout', 'CoMo_alumina_HT_out'))
 HT_compressor = HT.compressor
-HT_hx = HT.heat_exchanger
+HT_hx_H2 = HT.heat_exchanger_H2
+HT_hx_oil = HT.heat_exchanger_oil
 HT.ins[2].price = 38.79
 
 V2 = IsenthalpicValve('A320', ins=HT-0, outs='depressed_HT', P=717.4*6894.76, vle=True)
@@ -213,7 +214,8 @@ P3 = su.HTLpump('A400', ins=D3-1, outs='press_heavy_oil', P=1034.7*6894.76,
 
 HC = su.HC('A410', ins=(P3-0, RSP1-1, 'CoMo_alumina_HC'), outs=('HC_out', 'CoMo_alumina_HC_out'))
 HC_compressor = HC.compressor
-HC_hx = HC.heat_exchanger
+HC_hx_H2 = HC.heat_exchanger_H2
+HC_hx_oil = HC.heat_exchanger_oil
 HC.ins[2].price = 38.79
 
 H4 = su.HTLHX('A420', ins=HC-0, outs='cooled_HC', T=60+273.15,
@@ -285,8 +287,8 @@ CHP.ins[1].price = 0.1685
 
 for unit in (WWTP, SluC, P1, H1, HTL, HTL_hx, HTL_drum, H2SO4_Tank, AcidEx,
              M1, StruPre, CHG, CHG_pump, CHG_heating, CHG_cooling, V1, F1, MemDis, SP1,
-             P2, HT, HT_compressor, HT_hx, V2, H2, F2, V3, SP2, H3, D1, D2, D3, P3,
-             HC, HC_compressor, HC_hx, H4, V4, F3, D4, GasolineMixer, DieselMixer,
+             P2, HT, HT_compressor, HT_hx_H2, HT_hx_oil, V2, H2, F2, V3, SP2, H3, D1, D2, D3, P3,
+             HC, HC_compressor, HC_hx_H2, HC_hx_oil, H4, V4, F3, D4, GasolineMixer, DieselMixer,
              H5, H6, PC1, PC2, PC3, PC4, GasolineTank, DieselTank, FuelMixer,
              GasMixer, WWmixer, RSP1, HXN, CHP):
     unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1])
@@ -447,27 +449,27 @@ HC_catalyst_item = qs.StreamImpactItem(linked_stream=PC4.outs[0],
 # sys.simulate()
 # if have qs.LCA below, don't need to simulate here
 
-lca = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
-             Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
-             Cooling=lambda:sys.get_cooling_duty()/1000*30)
+# lca = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
+#              Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
+#              Cooling=lambda:sys.get_cooling_duty()/1000*30)
 
 # results_diesel.append([100*a,100*b,round(100-100*a-100*b),lca.get_total_impacts()['GlobalWarming']/FuelMixer.outs[0].F_mass/7920/30*1000/45.5*1055.05585262])
 # results_diesel.append([lca.get_total_impacts()['GlobalWarming']/FuelMixer.outs[0].F_mass/7920/30*1000/45.5*1055.05585262])
 
-# diesel_item = qs.StreamImpactItem(linked_stream=FuelMixer.outs[0],
-#                                         Acidification=-0.25164,
-#                                         Ecotoxicity=-0.18748,
-#                                         Eutrophication=-0.0010547,
-#                                         GlobalWarming=-0.47694,
-#                                         OzoneDepletion=-6.42E-07,
-#                                         PhotochemicalOxidation=-0.0019456,
-#                                         Carcinogenics=-0.00069252,
-#                                         NonCarcinogenics=-2.9281,
-#                                         RespiratoryEffects=-0.0011096)
+diesel_item = qs.StreamImpactItem(linked_stream=FuelMixer.outs[0],
+                                        Acidification=-0.25164,
+                                        Ecotoxicity=-0.18748,
+                                        Eutrophication=-0.0010547,
+                                        GlobalWarming=-0.47694,
+                                        OzoneDepletion=-6.42E-07,
+                                        PhotochemicalOxidation=-0.0019456,
+                                        Carcinogenics=-0.00069252,
+                                        NonCarcinogenics=-2.9281,
+                                        RespiratoryEffects=-0.0011096)
 
-# lca = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
-#              Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
-#              Cooling=lambda:sys.get_cooling_duty()/1000*30)
+lca = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
+              Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
+              Cooling=lambda:sys.get_cooling_duty()/1000*30)
 
 # results_sludge.append([100*a,100*b,round(100-100*a-100*b),WWTP.H_C_eff,tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg,lca.get_total_impacts()['GlobalWarming']/80/0.94/30/(7920/24)])
 # results_sludge.append([a, tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg,lca.get_total_impacts()['GlobalWarming']/a/0.94/30/(7920/24)])
