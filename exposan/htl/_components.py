@@ -47,10 +47,10 @@ __all__ = ('create_components',)
 def create_components(set_thermo=True):
     
     Sludge_lipid = Component('Sludge_lipid', phase='s',
-                             particle_size='Particulate',
-                             formula='C56H95O24N9P',
-                             degradability='Undegradable',
-                             organic=False)
+                              particle_size='Particulate',
+                              formula='C56H95O24N9P',
+                              degradability='Undegradable',
+                              organic=False)
     add_V_from_rho(Sludge_lipid, 1400)
     # https://www.climate-policy-watcher.org/wastewater-sludge/physical-
     # and-biological-properties.html (accessed 2022-10-23)
@@ -63,10 +63,10 @@ def create_components(set_thermo=True):
     # (NREL 2013 appendix B)
     
     Sludge_protein = Component('Sludge_protein', phase='s',
-                               particle_size='Particulate',
-                               formula='C56H95O24N9P',
-                               degradability='Undegradable',
-                               organic=False)
+                                particle_size='Particulate',
+                                formula='C56H95O24N9P',
+                                degradability='Undegradable',
+                                organic=False)
     add_V_from_rho(Sludge_protein, 1400)
     Sludge_protein.HHV = 22.0*10**6*Sludge_protein.MW/1000
     Sludge_protein.Cn.add_model(1.25*10**3*Sludge_protein.MW/1000)
@@ -75,10 +75,10 @@ def create_components(set_thermo=True):
     # (NREL 2013 appendix B)
     
     Sludge_carbo = Component('Sludge_carbo', phase='s',
-                             particle_size='Particulate',
-                             formula='C56H95O24N9P',
-                             degradability='Undegradable',
-                             organic=False)
+                              particle_size='Particulate',
+                              formula='C56H95O24N9P',
+                              degradability='Undegradable',
+                              organic=False)
     add_V_from_rho(Sludge_carbo, 1400)
     Sludge_carbo.HHV = 22.0*10**6*Sludge_carbo.MW/1000
     Sludge_carbo.Cn.add_model(1.25*10**3*Sludge_carbo.MW/1000)
@@ -87,10 +87,10 @@ def create_components(set_thermo=True):
     # (NREL 2013 appendix B)
     
     Sludge_ash = Component('Sludge_ash', phase='s',
-                           particle_size='Particulate',
-                           formula='C56H95O24N9P',
-                           degradability='Undegradable',
-                           organic=False)
+                            particle_size='Particulate',
+                            formula='C56H95O24N9P',
+                            degradability='Undegradable',
+                            organic=False)
     add_V_from_rho(Sludge_ash, 1400)
     Sludge_ash.HHV = 22.0*10**6*Sludge_ash.MW/1000
     Sludge_ash.Cn.add_model(1.25*10**3*Sludge_ash.MW/1000)
@@ -103,24 +103,33 @@ def create_components(set_thermo=True):
     add_V_from_rho(Biochar, 1500)  # assume 1500kg/m3
     Biochar.copy_models_from(Chemical('CaCO3'),('Cn',))
     
-    Biocrude = Component('Biocrude', phase='l', particle_size='Soluble',
-                          formula='C19H28O2.7N', degradability='Undegradable',
-                          organic=False)
-    Biocrude.HHV = 34.9*10**6*Biocrude.MW/1000  # Li et al., 2018
-    add_V_from_rho(Biocrude, 980)  # SS et al., PNNL 2021
-    Biocrude.copy_models_from(Chemical('palmitamide'),('Cn',)) 
-    # Jones et al., 2014
-    Biocrude.mu.add_model(1.07)
-    # made-up value, so that HTL.outs['biocrude'] = HT.ins[0] = 0.0006 m2/s 
-    # ~ 600 cSt
-    # (the temperature of HT.ins['biocrude'] is much higher than 40C,
-    # so use HTL outs value to compare with PNNL report)
+    Biocrude = Component('Biocrude', search_ID='629-54-9',
+                         particle_size='Soluble', degradability='Slowly',
+                         organic=True)
     
-    HTLaqueous = Component('HTLaqueous', phase='l', particle_size='Soluble',
+    # use palmitamide to represent biocrude
+        
+        
+        
+        
+    #     'Biocrude', particle_size='Soluble',
+    #                       formula='C19H28O2.7N', degradability='Undegradable',
+    #                       organic=False)
+    # Biocrude.HHV = 34.9*10**6*Biocrude.MW/1000  # Li et al., 2018
+    # # add_V_from_rho(Biocrude, 980)  # SS et al., PNNL 2021
+    # Biocrude.copy_models_from(Chemical('palmitamide'),('Cn',)) 
+    # # Jones et al., 2014
+    # # Biocrude.mu.add_model(1.07)
+    # # made-up value, so that HTL.outs['biocrude'] = HT.ins[0] = 0.0006 m2/s 
+    # # ~ 600 cSt
+    # # (the temperature of HT.ins['biocrude'] is much higher than 40C,
+    # # so use HTL outs value to compare with PNNL report)
+    
+    HTLaqueous = Component('HTLaqueous', search_ID='water', particle_size='Soluble',
                            degradability='Undegradable', organic=False)
-    add_V_from_rho(HTLaqueous, 1000)
-    HTLaqueous.copy_models_from(Chemical('H2O'),('Cn','mu'))
-    # HTLaqueous referd to TDS in HTL aqueous phase
+    # add_V_from_rho(HTLaqueous, 1000)
+    # HTLaqueous.copy_models_from(Chemical('H2O'),('Cn','mu'))
+    # # HTLaqueous referd to TDS in HTL aqueous phase
     
     Struvite = Component('Struvite', search_ID='MagnesiumAmmoniumPhosphate',
                          formula='NH4MgPO4·H12O6', phase='s',

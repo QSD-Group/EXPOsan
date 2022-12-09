@@ -48,13 +48,24 @@ qs.ImpactIndicator.load_from_file('/Users/jiananfeng/Desktop/PhD CEE/coding/Clon
 
 qs.ImpactItem.load_from_file('/Users/jiananfeng/Desktop/PhD CEE/coding/Cloned packages/EXPOsan/exposan/htl/data/impact_items.xlsx')
 
-raw_wastewater = qs.Stream('raw_wastewater', H2O=100, units='MGD', T=25+273.15)
+
+# results_diesel = []
+# results_sludge = []
+# for a in (5,10,20,40,80):
+
+raw_wastewater = qs.Stream('raw_wastewater', H2O=50, units='MGD', T=25+273.15)
 # Jones baseline: 1276.6 MGD, 1.066e-4 $/kg ww
 # set H2O equal to the total raw wastewater into the WWTP
 
 # =============================================================================
 # pretreatment (Area 000)
 # =============================================================================
+
+# results_diesel = []
+# results_sludge = []
+# for a in (0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8):
+#     for b in (0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8):
+#         if a + b < 1:
 
 WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
                     ww_2_dry_sludge=0.94,
@@ -78,7 +89,7 @@ P1 = su.HTLpump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76,
 # Jones 2014: 3049.7 psia
 
 H1 = su.HTLHX('A110', ins=P1-0, outs='heated_sludge', T=351+273.15,
-                   U=0.0794957, init_with='Stream')
+                   U=0.0794957, init_with='Stream', rigorous=True)
 # feed T is low, thus high viscosity and low U (case B in Knorr 2013)
 # U: 3, 14, 15 BTU/hr/ft2/F as minimum, baseline, and maximum
 # U: 0.0170348, 0.0794957, 0.085174 kW/m2/K
@@ -124,7 +135,7 @@ CHG_heating = CHG.heat_ex_heating
 CHG_cooling = CHG.heat_ex_cooling
 CHG.ins[1].price = 134.53
 
-V1 = IsenthalpicValve('A240', ins=CHG-0, outs='depressed_cooled_CHG', P=50*6894.76)
+V1 = IsenthalpicValve('A240', ins=CHG-0, outs='depressed_cooled_CHG', P=50*6894.76, vle=True)
 
 F1 = su.HTLflash('A250', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                  T=60+273.15, P=50*6894.76)
@@ -156,21 +167,21 @@ HT_compressor = HT.compressor
 HT_hx = HT.heat_exchanger
 HT.ins[2].price = 38.79
 
-V2 = IsenthalpicValve('A320', ins=HT-0, outs='depressed_HT', P=717.4*6894.76)
+V2 = IsenthalpicValve('A320', ins=HT-0, outs='depressed_HT', P=717.4*6894.76, vle=True)
 
 H2 = su.HTLHX('A330', ins=V2-0, outs='cooled_HT', T=60+273.15,
-                    init_with='Stream')
+                    init_with='Stream', rigorous=True)
 
 F2 = su.HTLflash('A340', ins=H2-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
                  P=717.4*6894.76) # outflow P
 
-V3 = IsenthalpicValve('A350', ins=F2-1, outs='depressed_flash_effluent', P=55*6894.76)
+V3 = IsenthalpicValve('A350', ins=F2-1, outs='depressed_flash_effluent', P=55*6894.76, vle=True)
 
 SP2 = qsu.Splitter('S310', ins=V3-0, outs=('HT_ww','HT_oil'),
                     split={'H2O':1}, init_with='Stream')
 # separate water and oil based on gravity
 
-H3 = su.HTLHX('A360', ins=SP2-1, outs='heated_oil', T=104+273.15)
+H3 = su.HTLHX('A360', ins=SP2-1, outs='heated_oil', T=104+273.15, rigorous=True)
 # temperature: Jones stream #334 (we remove the first distillation column)
 
 D1 = su.HTLdistillation('A370', ins=H3-0,
@@ -206,9 +217,9 @@ HC_hx = HC.heat_exchanger
 HC.ins[2].price = 38.79
 
 H4 = su.HTLHX('A420', ins=HC-0, outs='cooled_HC', T=60+273.15,
-                    init_with='Stream')
+                    init_with='Stream', rigorous=True)
 
-V4 = IsenthalpicValve('A430', ins=H4-0, outs='cooled_depressed_HC', P=30*6894.76)
+V4 = IsenthalpicValve('A430', ins=H4-0, outs='cooled_depressed_HC', P=30*6894.76, vle=True)
 
 
 F3 = su.HTLflash('A440', ins=V4-0, outs=('HC_fuel_gas','HC_aqueous'), T=60.2+273,
@@ -223,10 +234,10 @@ D4 = su.HTLdistillation('A450', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
 # =============================================================================
 
 GasolineMixer = qsu.Mixer('S500', ins=(D2-0, D4-0), outs='mixed_gasoline',
-                          init_with='Stream')
+                          init_with='Stream', rigorous=True)
 
 DieselMixer = qsu.Mixer('S510', ins=(D3-0, D4-1), outs='mixed_diesel',
-                        init_with='Stream')
+                        init_with='Stream', rigorous=True)
 
 H5 = su.HTLHX('A500', ins=GasolineMixer-0, outs='cooled_gasoline',
                     T=60+273.15, init_with='Stream', rigorous=True)
@@ -257,13 +268,6 @@ FuelMixer = su.FuelMixer('S560', ins=(GasolineTank-0, DieselTank-0),
 GasMixer = qsu.Mixer('S570', ins=(HTL-3, F1-0, F2-0, D1-0, F3-0),
                       outs=('fuel_gas'), init_with='Stream')
 
-# The system produces more energy than needed (heating+power)
-CHP = su.HTLCHP('A520', ins=(GasMixer-0, 'natural_gas', 'air'),
-              outs=('emission','solid_ash'), init_with='WasteStream', supplement_power_utility=False)
-
-
-# natural gas price
-
 WWmixer = su.WWmixer('S580', ins=(SluC-0, MemDis-1, SP2-0),
                     outs='wastewater', init_with='Stream')
 # effluent of WWmixer goes back to WWTP
@@ -274,12 +278,17 @@ WWmixer = su.WWmixer('S580', ins=(SluC-0, MemDis-1, SP2-0),
 
 HXN = su.HTLHXN('HXN')
 
+CHP = su.HTLCHP('A520', ins=(GasMixer-0, 'natural_gas', 'air'),
+              outs=('emission','solid_ash'), init_with='WasteStream', supplement_power_utility=False)
+
+CHP.ins[1].price = 0.1685
+
 for unit in (WWTP, SluC, P1, H1, HTL, HTL_hx, HTL_drum, H2SO4_Tank, AcidEx,
              M1, StruPre, CHG, CHG_pump, CHG_heating, CHG_cooling, V1, F1, MemDis, SP1,
              P2, HT, HT_compressor, HT_hx, V2, H2, F2, V3, SP2, H3, D1, D2, D3, P3,
              HC, HC_compressor, HC_hx, H4, V4, F3, D4, GasolineMixer, DieselMixer,
              H5, H6, PC1, PC2, PC3, PC4, GasolineTank, DieselTank, FuelMixer,
-             GasMixer, CHP, WWmixer, RSP1, HXN):
+             GasMixer, WWmixer, RSP1, HXN, CHP):
     unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1])
 # so that qs.main_flowsheet.H1 works as well
 
@@ -291,14 +300,6 @@ sys = qs.System('sys', path=(WWTP, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              GasMixer, WWmixer, RSP1), facilities=(HXN, CHP,))
 
 sys.operating_hours = WWTP.operation_hour # 7920 hr Jones
-
-sys.simulate()
-
-sys.diagram()
-
-tea = create_tea(sys)
-
-table = capex_table(tea)
 
 RO_item = qs.StreamImpactItem(linked_stream=MemDis.ins[3],
                               Acidification=0.53533,
@@ -443,20 +444,43 @@ HC_catalyst_item = qs.StreamImpactItem(linked_stream=PC4.outs[0],
                                        NonCarcinogenics=369.791688,
                                        RespiratoryEffects=0.020809293)
 
-diesel_item = qs.StreamImpactItem(linked_stream=FuelMixer.outs[0],
-                                        Acidification=-0.25164,
-                                        Ecotoxicity=-0.18748,
-                                        Eutrophication=-0.0010547,
-                                        GlobalWarming=-0.47694,
-                                        OzoneDepletion=-6.42E-07,
-                                        PhotochemicalOxidation=-0.0019456,
-                                        Carcinogenics=-0.00069252,
-                                        NonCarcinogenics=-2.9281,
-                                        RespiratoryEffects=-0.0011096)
+# sys.simulate()
+# if have qs.LCA below, don't need to simulate here
 
-lca = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr', Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30)
+lca = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
+             Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
+             Cooling=lambda:sys.get_cooling_duty()/1000*30)
+
+# results_diesel.append([100*a,100*b,round(100-100*a-100*b),lca.get_total_impacts()['GlobalWarming']/FuelMixer.outs[0].F_mass/7920/30*1000/45.5*1055.05585262])
+# results_diesel.append([lca.get_total_impacts()['GlobalWarming']/FuelMixer.outs[0].F_mass/7920/30*1000/45.5*1055.05585262])
+
+# diesel_item = qs.StreamImpactItem(linked_stream=FuelMixer.outs[0],
+#                                         Acidification=-0.25164,
+#                                         Ecotoxicity=-0.18748,
+#                                         Eutrophication=-0.0010547,
+#                                         GlobalWarming=-0.47694,
+#                                         OzoneDepletion=-6.42E-07,
+#                                         PhotochemicalOxidation=-0.0019456,
+#                                         Carcinogenics=-0.00069252,
+#                                         NonCarcinogenics=-2.9281,
+#                                         RespiratoryEffects=-0.0011096)
+
+# lca = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
+#              Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
+#              Cooling=lambda:sys.get_cooling_duty()/1000*30)
+
+# results_sludge.append([100*a,100*b,round(100-100*a-100*b),WWTP.H_C_eff,tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg,lca.get_total_impacts()['GlobalWarming']/80/0.94/30/(7920/24)])
+# results_sludge.append([a, tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg,lca.get_total_impacts()['GlobalWarming']/a/0.94/30/(7920/24)])
+
+sys.diagram()
+
+tea = create_tea(sys)
+
+table = capex_table(tea)
 
 # return sys
+
+
 
 #%%
 from qsdsan import Model
@@ -1046,7 +1070,7 @@ def set_CAPEX_factor(i):
     HTL.CAPEX_factor=CHG.CAPEX_factor=HT.CAPEX_factor=i
 
 
-dist = shape.Uniform(1102.5,1347.5)
+dist = shape.Uniform(980,1470)
 @param(name='unit_CAPEX',
         element='TEA',
         kind='isolated',
