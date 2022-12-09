@@ -1394,9 +1394,7 @@ class CHG(Reactor):
         hx_ht_ins0.T = self.ins[0].T
         hx_ht_outs0.T = hx_ht.T
         hx_ht_ins0.P = hx_ht_outs0.P = pump.P
-        
         hx_ht_ins0.vle(T=hx_ht_ins0.T, P=hx_ht_ins0.P)
-        
         hx_ht.simulate_as_auxiliary_exchanger(ins=hx_ht.ins, outs=hx_ht.outs)
             
         hx_cl = self.heat_ex_cooling
@@ -1406,9 +1404,7 @@ class CHG(Reactor):
         hx_cl_ins0.T = hx_ht.T
         hx_cl_outs0.T = hx_cl.T
         hx_cl_ins0.P = hx_cl_outs0.P = self.outs[0].P
-        
         hx_cl_ins0.vle(T=hx_cl_ins0.T, P=hx_cl_ins0.P)
-        
         hx_cl.simulate_as_auxiliary_exchanger(ins=hx_cl.ins, outs=hx_cl.outs)
 
         self.P = self.pump_pressure
@@ -1787,25 +1783,12 @@ class HT(Reactor):
         IC_out = bst.Stream(f'{ID}_IC_out')
         self.compressor = HTLcompressor(ID=f'.{ID}_IC', ins=IC_in,
                                                outs=IC_out, P=None)
-        
-        
-        
-        
-        
         hx_H2_in = bst.Stream(f'{ID}_hx_H2_in')
         hx_H2_out = bst.Stream(f'{ID}_hx_H2_out')
         self.heat_exchanger_H2 = HTLHX(ID=f'.{ID}_hx_H2', ins=hx_H2_in, outs=hx_H2_out, rigorous=True)
-        
-        
-        
         hx_oil_in = bst.Stream(f'{ID}_hx_oil_in')
         hx_oil_out = bst.Stream(f'{ID}_hx_oil_out')
         self.heat_exchanger_oil = HTLHX(ID=f'.{ID}_hx_oil', ins=hx_oil_in, outs=hx_oil_out, rigorous=True)
-        
-        
-        
-        
-        
         self.P = P
         self.tau = tau
         self.void_fraciton = void_fraciton
@@ -1918,14 +1901,7 @@ class HT(Reactor):
         IC_outs0.copy_like(self.ins[1])
         IC_outs0.P = IC.P = self.hydrogen_P
         IC.simulate()
-        
-        
-        
-        
-        
-        
-        
-        
+
         hx_H2 = self.heat_exchanger_H2
         hx_H2_ins0, hx_H2_outs0 = hx_H2.ins[0], hx_H2.outs[0]
         hx_H2_ins0.copy_like(self.ins[1])
@@ -1933,15 +1909,7 @@ class HT(Reactor):
         hx_H2_ins0.phase = hx_H2_outs0.phase = 'g'
         hx_H2_outs0.T = self.HTin_T
         hx_H2_ins0.P = hx_H2_outs0.P = IC_outs0.P
-
-        
         hx_H2.simulate_as_auxiliary_exchanger(ins=hx_H2.ins, outs=hx_H2.outs)
-        
-        
-        
-        
-        
-        
         
         hx_oil = self.heat_exchanger_oil
         hx_oil_ins0, hx_oil_outs0 = hx_oil.ins[0], hx_oil.outs[0]
@@ -1949,23 +1917,8 @@ class HT(Reactor):
         hx_oil_outs0.copy_like(hx_oil_ins0)
         hx_oil_outs0.T = self.HTin_T
         hx_oil_ins0.P = hx_oil_outs0.P = self.ins[0].P
-
-        
         hx_oil_ins0.vle(T=hx_oil_ins0.T, P=hx_oil_ins0.P)
-        
         hx_oil.simulate_as_auxiliary_exchanger(ins=hx_oil.ins, outs=hx_oil.outs)
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         
         self.P = min(IC_outs0.P, self.ins[0].P)
         
@@ -2087,9 +2040,6 @@ class HC(Reactor):
         hx_H2_in = bst.Stream(f'{ID}_hx_H2_in')
         hx_H2_out = bst.Stream(f'{ID}_hx_H2_out')
         self.heat_exchanger_H2 = HTLHX(ID=f'.{ID}_hx_H2', ins=hx_H2_in, outs=hx_H2_out, rigorous=True)
-        
-        
-        
         hx_oil_in = bst.Stream(f'{ID}_hx_oil_in')
         hx_oil_out = bst.Stream(f'{ID}_hx_oil_out')
         self.heat_exchanger_oil = HTLHX(ID=f'.{ID}_hx_oil', ins=hx_oil_in, outs=hx_oil_out, rigorous=True)
@@ -2178,26 +2128,15 @@ class HC(Reactor):
         hx_H2_ins0.phase = hx_H2_outs0.phase = 'g'
         hx_H2_outs0.T = self.HCin_T
         hx_H2_ins0.P = hx_H2_outs0.P = IC_outs0.P
-        
-        
         hx_H2.simulate_as_auxiliary_exchanger(ins=hx_H2.ins, outs=hx_H2.outs)
-        
-        
-        
-        
-        
-        
-        
+
         hx_oil = self.heat_exchanger_oil
         hx_oil_ins0, hx_oil_outs0 = hx_oil.ins[0], hx_oil.outs[0]
         hx_oil_ins0.copy_like(self.ins[0])
         hx_oil_outs0.copy_like(hx_oil_ins0)
         hx_oil_outs0.T = self.HCin_T
         hx_oil_ins0.P = hx_oil_outs0.P = self.ins[0].P
-        
-        
         hx_oil_ins0.vle(T=hx_oil_ins0.T, P=hx_oil_ins0.P)
-        
         hx_oil.simulate_as_auxiliary_exchanger(ins=hx_oil.ins, outs=hx_oil.outs)
         
         self.P = min(IC_outs0.P, self.ins[0].P)
@@ -2720,7 +2659,6 @@ class HTL_sludge_centrifuge(qsu.SludgeThickening, bst.units.SolidsCentrifuge):
                 Construction('stainless_steel', linked_unit=self, item='Stainless_steel', 
                              quantity=total_steel, quantity_unit='kg'),
                 )
-
         
     def _cost(self):
         qsu.SludgeThickening._cost(self)
@@ -2882,7 +2820,6 @@ class HTLcompressor(IsothermalCompressor):
             construction[0].quantity = D['Number of 4 kW unit']
             construction[1].quantity = D['Number of 300 kW unit']
         else:
-
             self.construction = (
                 Construction('compressor_4kW', linked_unit=self, item='Compressor_4kW', quantity_unit='ea', quantity=D['Number of 4 kW unit']),
                 Construction('compressor_300kW', linked_unit=self, item='Compressor_300kW', quantity_unit='ea', quantity=D['Number of 4 kW unit'])

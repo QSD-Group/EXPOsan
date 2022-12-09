@@ -106,30 +106,10 @@ def create_components(set_thermo=True):
     Biocrude = Component('Biocrude', search_ID='629-54-9',
                          particle_size='Soluble', degradability='Slowly',
                          organic=True)
-    
     # use palmitamide to represent biocrude
-        
-        
-        
-        
-    #     'Biocrude', particle_size='Soluble',
-    #                       formula='C19H28O2.7N', degradability='Undegradable',
-    #                       organic=False)
-    # Biocrude.HHV = 34.9*10**6*Biocrude.MW/1000  # Li et al., 2018
-    # # add_V_from_rho(Biocrude, 980)  # SS et al., PNNL 2021
-    # Biocrude.copy_models_from(Chemical('palmitamide'),('Cn',)) 
-    # # Jones et al., 2014
-    # # Biocrude.mu.add_model(1.07)
-    # # made-up value, so that HTL.outs['biocrude'] = HT.ins[0] = 0.0006 m2/s 
-    # # ~ 600 cSt
-    # # (the temperature of HT.ins['biocrude'] is much higher than 40C,
-    # # so use HTL outs value to compare with PNNL report)
     
     HTLaqueous = Component('HTLaqueous', search_ID='water', particle_size='Soluble',
                            degradability='Undegradable', organic=False)
-    # add_V_from_rho(HTLaqueous, 1000)
-    # HTLaqueous.copy_models_from(Chemical('H2O'),('Cn','mu'))
-    # # HTLaqueous referd to TDS in HTL aqueous phase
     
     Struvite = Component('Struvite', search_ID='MagnesiumAmmoniumPhosphate',
                          formula='NH4MgPO4·H12O6', phase='s',
