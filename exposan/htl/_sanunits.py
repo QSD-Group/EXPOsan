@@ -2414,7 +2414,6 @@ class HTLpump(qsu.Pump):
         D = self.design_results
         D['Pump pipe stainless steel'] = pipe
         D['Pump stainless steel'] = pumps
-        
         construction = getattr(self, 'construction', ()) # would work for both biosteam/qsdsan units
         if construction: construction[0].quantity = pipe + pumps
         else:
@@ -2626,13 +2625,13 @@ class HTLHX(qsu.HXutility):
             
             total_steel = D['Total steel weight'] = D['Shell steel weight'] + D['Tube weight']
             
-            construction = getattr(self, 'construction', ())
-            if construction: construction[0].quantity = total_steel
-            else:
-                self.construction = (
-                    Construction('stainless_steel', linked_unit=self, item='Stainless_steel', 
-                                 quantity=total_steel, quantity_unit='kg'),
-                    )
+        construction = getattr(self, 'construction', ())
+        if construction: construction[0].quantity = total_steel
+        else:
+            self.construction = (
+                Construction('stainless_steel', linked_unit=self, item='Stainless_steel', 
+                             quantity=total_steel, quantity_unit='kg'),
+                )
             
     def _horizontal_vessel_design(self, pressure, diameter, length) -> dict:
         pressure = pressure
@@ -2721,6 +2720,7 @@ class HTL_sludge_centrifuge(qsu.SludgeThickening, bst.units.SolidsCentrifuge):
                 Construction('stainless_steel', linked_unit=self, item='Stainless_steel', 
                              quantity=total_steel, quantity_unit='kg'),
                 )
+
         
     def _cost(self):
         qsu.SludgeThickening._cost(self)
