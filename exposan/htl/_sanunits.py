@@ -227,18 +227,15 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
              Design['Wall thickness'] *= wall_thickness_factor
              # Weight is proportional to wall thickness in PressureVessel design
              Design['Weight'] = round(Design['Weight']*wall_thickness_factor, 2)
-
-        if self.vessel_material == 'Carbon steel':
+             
+        quantity = Design['Weight']*_lb_to_kg
+        construction = getattr(self, 'construction', ())
+        item_name = self.vessel_material.replace(' ', '_').rstrip('_316').rstrip('_304')
+        if construction: construction[0].quantity = quantity
+        else:
             self.construction = (
-                Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg'),
+                Construction(item_name.lower(), linked_unit=self, item=item_name, quantity_unit='kg', quantity=quantity),
                 )
-            self.construction[0].quantity = Design['Weight']*_lb_to_kg
-        
-        if self.vessel_material == 'Stainless steel 316' or 'Stainless steel 304':
-            self.construction = (
-                Construction('stainless_steel', linked_unit=self, item='Stainless_steel', quantity_unit='kg'),
-                )
-            self.construction[0].quantity = Design['Weight']*_lb_to_kg
 
     def _cost(self):
         Design = self.design_results
@@ -1555,6 +1552,9 @@ class MembraneDistillation(SanUnit):
         self.Ka = Ka
         self.capacity = capacity
         self.membrane_price = membrane_price
+        self.construction = (
+            Construction('membrane', linked_unit=self, item='RO', quantity_unit='m2'),
+            )
 
     _N_ins = 4
     _N_outs = 4
@@ -1660,9 +1660,6 @@ class MembraneDistillation(SanUnit):
         Design['Area'] = self.membrane_area
         Design['Total volume'] = Design['Area']*self.m2_2_m3
         
-        self.construction = (
-            Construction('membrane', linked_unit=self, item='RO', quantity_unit='m2'),
-            )
         self.construction[0].quantity = Design['Area']
     
     def _cost(self):
@@ -2418,11 +2415,14 @@ class HTLpump(qsu.Pump):
         D['Pump pipe stainless steel'] = pipe
         D['Pump stainless steel'] = pumps
         
-        self.construction = (
-            Construction('stainless_steel', linked_unit=self, item='Stainless_steel', quantity_unit='kg'),
-            )
-        self.construction[0].quantity = pipe + pumps
-    
+        construction = getattr(self, 'construction', ()) # would work for both biosteam/qsdsan units
+        if construction: construction[0].quantity = pipe + pumps
+        else:
+            self.construction = (
+                Construction('stainless_steel', linked_unit=self, item='Stainless_steel', 
+                             quantity=pipe + pumps, quantity_unit='kg'),
+                )
+
     def design_sludge(self, Q_mgd=None, N_pump=None, **kwargs):
         '''
         Design pump for handling waste sludge.
@@ -2595,7 +2595,7 @@ class HTLHX(qsu.HXutility):
             # Assume use 2 nominal size of outer tube, same length as inner tube
             # the weight is 3.66 lb steel per foot
             D['Outer pipe weight'] = D['Total tube length']*3.66*_lb_to_kg
-            D['Total steel weight'] = D['Inner pipe weight'] + D['Outer pipe weight']
+            total_steel = D['Total steel weight'] = D['Inner pipe weight'] + D['Outer pipe weight']
         else: # shell and tube
             # assume all tubes are 16 ft long and 3/4 in O.D., 16 BWG
             D['Shell length'] = 16
@@ -2624,12 +2624,15 @@ class HTLHX(qsu.HXutility):
             # according to [1] page 367, Table 12.4, 3/4 in O.D., 16 BWG tube: 0.520 lb/ft
             D['Tube weight'] = D['Total tube length']*0.520*_lb_to_kg
             
-            D['Total steel weight'] = D['Shell steel weight'] + D['Tube weight']
+            total_steel = D['Total steel weight'] = D['Shell steel weight'] + D['Tube weight']
             
-        self.construction = (
-            Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg'),
-            )
-        self.construction[0].quantity = D['Total steel weight']
+            construction = getattr(self, 'construction', ())
+            if construction: construction[0].quantity = total_steel
+            else:
+                self.construction = (
+                    Construction('stainless_steel', linked_unit=self, item='Stainless_steel', 
+                                 quantity=total_steel, quantity_unit='kg'),
+                    )
             
     def _horizontal_vessel_design(self, pressure, diameter, length) -> dict:
         pressure = pressure
@@ -2709,12 +2712,15 @@ class HTL_sludge_centrifuge(qsu.SludgeThickening, bst.units.SolidsCentrifuge):
             D['Number of large centrifuge'] += 1
         
         D['Centrifige stainless steel'] = (4000*D['Number of large centrifuge'] + 2500*D['Number of small centrifuge'])*_lb_to_kg
-        D['Total stainless steel'] = D['Total pump stainless steel'] + D['Total pipe stainless steel'] + D['Centrifige stainless steel']
+        total_steel = D['Total stainless steel'] = D['Total pump stainless steel'] + D['Total pipe stainless steel'] + D['Centrifige stainless steel']
         
-        self.construction = (
-            Construction('stainless_steel', linked_unit=self, item='Stainless_steel', quantity_unit='kg'),
-            )
-        self.construction[0].quantity = D['Total stainless steel']
+        construction = getattr(self, 'construction', ())
+        if construction: construction[0].quantity = total_steel
+        else:
+            self.construction = (
+                Construction('stainless_steel', linked_unit=self, item='Stainless_steel', 
+                             quantity=total_steel, quantity_unit='kg'),
+                )
         
     def _cost(self):
         qsu.SludgeThickening._cost(self)
@@ -2758,16 +2764,19 @@ class HTLCHP(qsu.CHP):
         D['Concrete'] = factor*15000*2450/(2450 + 157)
         D['Reinforcing steel'] = factor*15000*157/(2450 + 157)
         
-        self.construction = (
-            Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg'),
-            Construction('furnace', linked_unit=self, item='Furnace', quantity_unit='kg'),
-            Construction('concrete', linked_unit=self, item='concrete', quantity_unit='kg'),
-            Construction('reinforcing_steel', linked_unit=self, item='Reinforcing_steel', quantity_unit='kg'),
-            )
-        self.construction[0].quantity = D['Steel']
-        self.construction[1].quantity = D['Furnace']
-        self.construction[2].quantity = D['Concrete']
-        self.construction[3].quantity = D['Reinforcing steel']
+        construction = getattr(self, 'construction', ())
+        if construction: 
+            construction[0].quantity = D['Steel']
+            construction[1].quantity = D['Furnace']
+            construction[2].quantity = D['Concrete']
+            construction[3].quantity = D['Reinforcing steel']
+        else:
+            self.construction = (
+                Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg', quantity=D['Steel']),
+                Construction('furnace', linked_unit=self, item='Furnace', quantity_unit='kg', quantity=D['Furnace']),
+                Construction('concrete', linked_unit=self, item='concrete', quantity_unit='kg', quantity=D['Concrete']),
+                Construction('reinforcing_steel', linked_unit=self, item='Reinforcing_steel', quantity_unit='kg', quantity=D['Reinforcing steel']),
+                )
 
 # =============================================================================
 # HTL_storage_tank
@@ -2813,10 +2822,13 @@ class HTL_storage_tank(qsu.StorageTank):
         D['Material'] = self.vessel_material
         D['Weight'] = Tank_design['Weight']*_lb_to_kg
         
-        self.construction = (
-            Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg'),
-            )
-        self.construction[0].quantity = D['Weight']
+        construction = getattr(self, 'construction', ())
+        if construction: construction[0].quantity = D['Weight']
+        else:
+            self.construction = (
+                Construction('carbon_steel', linked_unit=self, item='Carbon_steel', 
+                             quantity=D['Weight'], quantity_unit='kg'),
+                )
         
     def _horizontal_vessel_design(self, pressure, diameter, length) -> dict:
         pressure = pressure
@@ -2865,12 +2877,16 @@ class HTLcompressor(IsothermalCompressor):
         else:
             D['Number of 300 kW unit'] += 1
         
-        self.construction = (
-            Construction('compressor_4kW', linked_unit=self, item='Compressor_4kW', quantity_unit='ea'),
-            Construction('compressor_300kW', linked_unit=self, item='Compressor_300kW', quantity_unit='ea')
-            )
-        self.construction[0].quantity = D['Number of 4 kW unit']
-        self.construction[1].quantity = D['Number of 300 kW unit']
+        construction = getattr(self, 'construction', ())
+        if construction:
+            construction[0].quantity = D['Number of 4 kW unit']
+            construction[1].quantity = D['Number of 300 kW unit']
+        else:
+
+            self.construction = (
+                Construction('compressor_4kW', linked_unit=self, item='Compressor_4kW', quantity_unit='ea', quantity=D['Number of 4 kW unit']),
+                Construction('compressor_300kW', linked_unit=self, item='Compressor_300kW', quantity_unit='ea', quantity=D['Number of 4 kW unit'])
+                )
 
 # =============================================================================
 # HTLflash
@@ -2885,11 +2901,13 @@ class HTLflash(Flash):
         super()._design()
         D = self.design_results
         
-        self.construction = (
-            Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg'),
-            )
-        if 'Weight' in D.keys():
-            self.construction[0].quantity = D['Weight']*_lb_to_kg
+        construction = getattr(self, 'construction', ())
+        if construction: construction[0].quantity = D['Weight']*_lb_to_kg
+        else:
+            self.construction = (
+                Construction('carbon_steel', linked_unit=self, item='Carbon_steel', 
+                             quantity=D['Weight']*_lb_to_kg, quantity_unit='kg'),
+                )
 
 # =============================================================================
 # HTLdistillation
@@ -2904,10 +2922,13 @@ class HTLdistillation(BinaryDistillation):
         super()._design()
         D = self.design_results
         
-        self.construction = (
-            Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg'),
-            )
-        self.construction[0].quantity = (D['Rectifier weight'] + D['Stripper weight'])*_lb_to_kg
+        construction = getattr(self, 'construction', ())
+        if construction: construction[0].quantity = (D['Rectifier weight'] + D['Stripper weight'])*_lb_to_kg
+        else:
+            self.construction = (
+                Construction('carbon_steel', linked_unit=self, item='Carbon_steel', 
+                             quantity=(D['Rectifier weight'] + D['Stripper weight'])*_lb_to_kg, quantity_unit='kg'),
+                )
 
 # =============================================================================
 # HTLHXN

@@ -26,7 +26,7 @@ References:
     https://doi.org/10.2172/1111191.
 '''
 
-import qsdsan as qs
+import os, qsdsan as qs
 import exposan.htl._sanunits as su
 from qsdsan import sanunits as qsu
 from biosteam.units import IsenthalpicValve
@@ -44,10 +44,9 @@ load_process_settings()
 cmps = create_components()
 
 # Construction here, StreamImpactItem after TEA
-qs.ImpactIndicator.load_from_file('/Users/jiananfeng/Desktop/PhD CEE/coding/Cloned packages/EXPOsan/exposan/htl/data/impact_indicators.csv')
-
-qs.ImpactItem.load_from_file('/Users/jiananfeng/Desktop/PhD CEE/coding/Cloned packages/EXPOsan/exposan/htl/data/impact_items.xlsx')
-
+folder = os.path.dirname(__file__)
+qs.ImpactIndicator.load_from_file(os.path.join(folder, 'data/impact_indicators.csv'))
+qs.ImpactItem.load_from_file(os.path.join(folder, 'data/impact_items.xlsx'))
 
 # results_diesel = []
 # results_sludge = []
@@ -285,13 +284,15 @@ CHP = su.HTLCHP('A520', ins=(GasMixer-0, 'natural_gas', 'air'),
 
 CHP.ins[1].price = 0.1685
 
-for unit in (WWTP, SluC, P1, H1, HTL, HTL_hx, HTL_drum, H2SO4_Tank, AcidEx,
-             M1, StruPre, CHG, CHG_pump, CHG_heating, CHG_cooling, V1, F1, MemDis, SP1,
-             P2, HT, HT_compressor, HT_hx_H2, HT_hx_oil, V2, H2, F2, V3, SP2, H3, D1, D2, D3, P3,
-             HC, HC_compressor, HC_hx_H2, HC_hx_oil, H4, V4, F3, D4, GasolineMixer, DieselMixer,
-             H5, H6, PC1, PC2, PC3, PC4, GasolineTank, DieselTank, FuelMixer,
-             GasMixer, WWmixer, RSP1, HXN, CHP):
-    unit.register_alias(f'{unit=}'.split('=')[0].split('.')[-1])
+dct = globals()
+for unit_alias in (
+        'WWTP', 'SluC', 'P1', 'H1', 'HTL', 'HTL_hx', 'HTL_drum', 'H2SO4_Tank', 'AcidEx',
+        'M1', 'StruPre', 'CHG', 'CHG_pump', 'CHG_heating', 'CHG_cooling', 'V1', 'F1', 'MemDis', 'SP1',
+        'P2', 'HT', 'HT_compressor', 'HT_hx_H2', 'HT_hx_oil', 'V2', 'H2', 'F2', 'V3', 'SP2', 'H3', 'D1', 'D2', 'D3', 'P3',
+        'HC', 'HC_compressor', 'HC_hx_H2', 'HC_hx_oil', 'H4', 'V4', 'F3', 'D4', 'GasolineMixer', 'DieselMixer',
+        'H5', 'H6', 'PC1', 'PC2', 'PC3', 'PC4', 'GasolineTank', 'DieselTank', 'FuelMixer',
+        'GasMixer', 'WWmixer', 'RSP1', 'HXN', 'CHP'):
+    dct[unit_alias].register_alias(unit_alias)
 # so that qs.main_flowsheet.H1 works as well
 
 sys = qs.System('sys', path=(WWTP, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
