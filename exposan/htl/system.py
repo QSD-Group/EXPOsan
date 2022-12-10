@@ -52,7 +52,7 @@ qs.ImpactItem.load_from_file(os.path.join(folder, 'data/impact_items.xlsx'))
 # results_sludge = []
 # for a in (5,10,20,40,80):
 
-raw_wastewater = qs.Stream('raw_wastewater', H2O=50, units='MGD', T=25+273.15)
+raw_wastewater = qs.Stream('raw_wastewater', H2O=100, units='MGD', T=25+273.15)
 # Jones baseline: 1276.6 MGD, 1.066e-4 $/kg ww
 # set H2O equal to the total raw wastewater into the WWTP
 
@@ -70,7 +70,7 @@ WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
                     ww_2_dry_sludge=0.94,
                     # how much metric ton/day sludge can be produced by 1 MGD of ww
                     sludge_moisture=0.99, sludge_dw_ash=0.257, 
-                    sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, yearly_operation_hour=7920)
+                    sludge_afdw_lipid=0, sludge_afdw_protein=0, yearly_operation_hour=7920)
 
 SluC = su.HTL_sludge_centrifuge('A000', ins=WWTP-0,
                             outs=('supernatant','compressed_sludge'),
@@ -106,7 +106,7 @@ HTL_drum = HTL.kodrum
 # =============================================================================
 
 H2SO4_Tank = su.HTL_storage_tank('T200', ins='H2SO4', outs=('H2SO4_out'),
-                             init_with='WasteStream', tau=24, vessel_material='Carbon steel')
+                             init_with='WasteStream', tau=24, vessel_material='Stainless steel')
 H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
 
 SP1 = su.HTLsplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
@@ -450,27 +450,27 @@ HC_catalyst_item = qs.StreamImpactItem(linked_stream=PC4.outs[0],
 # sys.simulate()
 # if have qs.LCA below, don't need to simulate here
 
-# lca = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
-#              Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
-#              Cooling=lambda:sys.get_cooling_duty()/1000*30)
+lca = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
+              Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
+              Cooling=lambda:sys.get_cooling_duty()/1000*30)
 
 # results_diesel.append([100*a,100*b,round(100-100*a-100*b),lca.get_total_impacts()['GlobalWarming']/FuelMixer.outs[0].F_mass/7920/30*1000/45.5*1055.05585262])
 # results_diesel.append([lca.get_total_impacts()['GlobalWarming']/FuelMixer.outs[0].F_mass/7920/30*1000/45.5*1055.05585262])
 
-diesel_item = qs.StreamImpactItem(linked_stream=FuelMixer.outs[0],
-                                        Acidification=-0.25164,
-                                        Ecotoxicity=-0.18748,
-                                        Eutrophication=-0.0010547,
-                                        GlobalWarming=-0.47694,
-                                        OzoneDepletion=-6.42E-07,
-                                        PhotochemicalOxidation=-0.0019456,
-                                        Carcinogenics=-0.00069252,
-                                        NonCarcinogenics=-2.9281,
-                                        RespiratoryEffects=-0.0011096)
+# diesel_item = qs.StreamImpactItem(linked_stream=FuelMixer.outs[0],
+#                                         Acidification=-0.25164,
+#                                         Ecotoxicity=-0.18748,
+#                                         Eutrophication=-0.0010547,
+#                                         GlobalWarming=-0.47694,
+#                                         OzoneDepletion=-6.42E-07,
+#                                         PhotochemicalOxidation=-0.0019456,
+#                                         Carcinogenics=-0.00069252,
+#                                         NonCarcinogenics=-2.9281,
+#                                         RespiratoryEffects=-0.0011096)
 
-lca = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
-              Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
-              Cooling=lambda:sys.get_cooling_duty()/1000*30)
+# lca = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
+#               Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
+#               Cooling=lambda:sys.get_cooling_duty()/1000*30)
 
 # results_sludge.append([100*a,100*b,round(100-100*a-100*b),WWTP.H_C_eff,tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg,lca.get_total_impacts()['GlobalWarming']/80/0.94/30/(7920/24)])
 # results_sludge.append([a, tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg,lca.get_total_impacts()['GlobalWarming']/a/0.94/30/(7920/24)])
@@ -1132,8 +1132,7 @@ dist = shape.Uniform(0.1,0.3)
         distribution=dist)
 def set_MgO_price(i):
     StruPre.ins[3].price=i
-        
-        
+
 dist = shape.Triangle(0.419,0.661,1.213)
 @param(name='struvite price',
         element='TEA',

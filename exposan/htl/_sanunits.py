@@ -20,7 +20,7 @@ from biosteam.units import IsothermalCompressor, Flash, BinaryDistillation
 from exposan.htl._components import create_components
 from biosteam.units.design_tools import PressureVessel, flash_vessel_design
 from biosteam.units.design_tools.cost_index import CEPCI_by_year as CEPCI
-from math import pi, ceil, log, floor
+from math import pi, ceil, log, floor, exp
 from biosteam.exceptions import DesignError, bounds_warning, DesignWarning
 from biosteam import Stream
 from biosteam.units.decorators import cost
@@ -228,7 +228,7 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
              # Weight is proportional to wall thickness in PressureVessel design
              Design['Weight'] = round(Design['Weight']*wall_thickness_factor, 2)
              
-        quantity = Design['Weight']*_lb_to_kg
+        quantity = Design['Weight']*Design['Number of reactors']*_lb_to_kg
         construction = getattr(self, 'construction', ())
         item_name = self.vessel_material.replace(' ', '_').rstrip('_316').rstrip('_304')
         if construction: construction[0].quantity = quantity
@@ -1504,6 +1504,9 @@ class MembraneDistillation(SanUnit):
         and Recovery Technologies to Inform Practice and Advance Resource
         Efficiency. ACS EST Eng. 2021, 1 (4), 662–684.
         https://doi.org/10.1021/acsestengg.0c00253.
+    .. [8] Pikaar, I.; Guest, J.; Ganigue, R.; Jensen, P.; Rabaey, K.; Seviour, T.;
+        Trimmer, J.; van der Kolk, O.; Vaneeckhaute, C.; Verstraete, W.; Resource
+        Recovery from Water: Principles and Applicaiton. IWA 2022.
     '''
     
     _F_BM_default = {'Membrane': 1}
@@ -1574,7 +1577,9 @@ class MembraneDistillation(SanUnit):
             acid.imass['H2O'] = acid.imass['H2SO4']*1000/98.079/0.5*1.05 -\
                                 acid.imass['H2SO4']
             
-            pKa = 9.26 # ammonia pKa
+            self.pKa = pKa = -log(exp(52.22/8.3145*1000*(1/298 - 1/self.ins[0].T))*10**(-9.252), 10)
+            # calculation of pKa under different T follows van't Hoff relationship [8] page 292
+
             ammonia_to_ammonium = 10**(-pKa)/10**(-self.target_pH)
             ammonia = self.CHG.CHGout_N*ammonia_to_ammonium/(1 +\
                        ammonia_to_ammonium)*17.031/14.0067
@@ -2553,7 +2558,7 @@ class HTLHX(qsu.HXutility):
                 single_shell_area = D['Area']/self.N_shells
 
             Shell_design = self._horizontal_vessel_design(self.ins[0].P*_Pa_to_psi, D['Shell diameter'], D['Shell length'])
-            D['Shell steel weight'] = Shell_design['Weight']*_lb_to_kg*self.N_shells
+            D['Shell steel weight'] = Shell_design['Weight']*self.N_shells*_lb_to_kg
             
             single_tube_area = pi*(3/4)*_in_to_ft*D['Shell length']
             
@@ -2761,19 +2766,23 @@ class HTL_storage_tank(qsu.StorageTank):
         D['Weight'] = Tank_design['Weight']*_lb_to_kg
         
         construction = getattr(self, 'construction', ())
+        item_name = self.vessel_material.replace(' ', '_')
         if construction: construction[0].quantity = D['Weight']
         else:
             self.construction = (
-                Construction('carbon_steel', linked_unit=self, item='Carbon_steel', 
+                Construction(item_name.lower(), linked_unit=self, item=item_name,
                              quantity=D['Weight'], quantity_unit='kg'),
                 )
-        
+
     def _horizontal_vessel_design(self, pressure, diameter, length) -> dict:
         pressure = pressure
         diameter = diameter
         length = length
         # Calculate vessel weight and wall thickness
-        rho_M = material_densities_lb_per_ft3[self.vessel_material]
+        if self.vessel_material == 'Carbon steel':
+            rho_M = material_densities_lb_per_ft3[self.vessel_material]
+        else:
+            rho_M = material_densities_lb_per_ft3['Stainless steel 304']
         if pressure < 14.68:
             warn('vacuum pressure vessel ASME codes not implemented yet; '
                  'wall thickness may be inaccurate and stiffening rings may be '
@@ -2838,13 +2847,14 @@ class HTLflash(Flash):
         super()._design()
         D = self.design_results
         
-        construction = getattr(self, 'construction', ())
-        if construction: construction[0].quantity = D['Weight']*_lb_to_kg
-        else:
-            self.construction = (
-                Construction('carbon_steel', linked_unit=self, item='Carbon_steel', 
-                             quantity=D['Weight']*_lb_to_kg, quantity_unit='kg'),
-                )
+        if self.outs[0].F_mass != 0:
+            construction = getattr(self, 'construction', ())
+            if construction: construction[0].quantity = D['Weight']*_lb_to_kg
+            else:
+                self.construction = (
+                    Construction('carbon_steel', linked_unit=self, item='Carbon_steel', 
+                                 quantity=D['Weight']*_lb_to_kg, quantity_unit='kg'),
+                    )
 
 # =============================================================================
 # HTLdistillation
