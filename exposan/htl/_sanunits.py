@@ -745,6 +745,7 @@ class HTL(Reactor):
         
         biochar.phase = 's'
         offgas.phase = 'g'
+        HTLaqueous.phase = biocrude.phase = 'l'
         
         biochar.P = self.biochar_pre
         HTLaqueous.P = self.HTLaqueous_pre
@@ -836,6 +837,8 @@ class HTL(Reactor):
         hx_outs0.T = hx.T
         hx_ins0.P = hx_outs0.P = self.outs[0].P # cooling before depressurized, heating after pressurized
         # in other words, both heating and cooling are performed under relatively high pressure
+        hx_ins0.vle(T=hx_ins0.T, P=hx_ins0.P)
+        hx_outs0.vle(T=hx_outs0.T, P=hx_outs0.P)
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
 
         self.P = self.ins[0].P
@@ -1390,6 +1393,10 @@ class CHG(Reactor):
         hx_ht_ins0.T = self.ins[0].T
         hx_ht_outs0.T = hx_ht.T
         hx_ht_ins0.P = hx_ht_outs0.P = pump.P
+        
+        hx_ht_ins0.vle(T=hx_ht_ins0.T, P=hx_ht_ins0.P)
+        hx_ht_outs0.vle(T=hx_ht_outs0.T, P=hx_ht_outs0.P)
+        
         hx_ht.simulate_as_auxiliary_exchanger(ins=hx_ht.ins, outs=hx_ht.outs)
             
         hx_cl = self.heat_ex_cooling
@@ -1399,6 +1406,10 @@ class CHG(Reactor):
         hx_cl_ins0.T = hx_ht.T
         hx_cl_outs0.T = hx_cl.T
         hx_cl_ins0.P = hx_cl_outs0.P = self.outs[0].P
+
+        hx_cl_ins0.vle(T=hx_cl_ins0.T, P=hx_cl_ins0.P)
+        hx_cl_outs0.vle(T=hx_cl_outs0.T, P=hx_cl_outs0.P)        
+        
         hx_cl.simulate_as_auxiliary_exchanger(ins=hx_cl.ins, outs=hx_cl.outs)
 
         self.P = self.pump_pressure
@@ -1783,10 +1794,10 @@ class HT(Reactor):
                                                outs=IC_out, P=None)
         hx_H2_in = bst.Stream(f'{ID}_hx_H2_in')
         hx_H2_out = bst.Stream(f'{ID}_hx_H2_out')
-        self.heat_exchanger_H2 = HTLHX(ID=f'.{ID}_hx_H2', ins=hx_H2_in, outs=hx_H2_out, rigorous=True)
+        self.heat_exchanger_H2 = HTLHX(ID=f'.{ID}_hx_H2', ins=hx_H2_in, outs=hx_H2_out)
         hx_oil_in = bst.Stream(f'{ID}_hx_oil_in')
         hx_oil_out = bst.Stream(f'{ID}_hx_oil_out')
-        self.heat_exchanger_oil = HTLHX(ID=f'.{ID}_hx_oil', ins=hx_oil_in, outs=hx_oil_out, rigorous=True)
+        self.heat_exchanger_oil = HTLHX(ID=f'.{ID}_hx_oil', ins=hx_oil_in, outs=hx_oil_out)
         self.P = P
         self.tau = tau
         self.void_fraciton = void_fraciton
@@ -2036,10 +2047,10 @@ class HC(Reactor):
                                                outs=IC_out, P=None)
         hx_H2_in = bst.Stream(f'{ID}_hx_H2_in')
         hx_H2_out = bst.Stream(f'{ID}_hx_H2_out')
-        self.heat_exchanger_H2 = HTLHX(ID=f'.{ID}_hx_H2', ins=hx_H2_in, outs=hx_H2_out, rigorous=True)
+        self.heat_exchanger_H2 = HTLHX(ID=f'.{ID}_hx_H2', ins=hx_H2_in, outs=hx_H2_out)
         hx_oil_in = bst.Stream(f'{ID}_hx_oil_in')
         hx_oil_out = bst.Stream(f'{ID}_hx_oil_out')
-        self.heat_exchanger_oil = HTLHX(ID=f'.{ID}_hx_oil', ins=hx_oil_in, outs=hx_oil_out, rigorous=True)
+        self.heat_exchanger_oil = HTLHX(ID=f'.{ID}_hx_oil', ins=hx_oil_in, outs=hx_oil_out)
         self.P = P
         self.tau = tau
         self.void_fraciton = void_fraciton
@@ -2706,7 +2717,7 @@ class HTLCHP(qsu.CHP):
             self.construction = (
                 Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg', quantity=D['Steel']),
                 Construction('furnace', linked_unit=self, item='Furnace', quantity_unit='kg', quantity=D['Furnace']),
-                Construction('concrete', linked_unit=self, item='concrete', quantity_unit='kg', quantity=D['Concrete']),
+                Construction('concrete', linked_unit=self, item='Concrete', quantity_unit='kg', quantity=D['Concrete']),
                 Construction('reinforcing_steel', linked_unit=self, item='Reinforcing_steel', quantity_unit='kg', quantity=D['Reinforcing steel']),
                 )
 
