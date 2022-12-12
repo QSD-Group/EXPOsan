@@ -337,8 +337,8 @@ class WWTP(SanUnit):
                  sludge_moisture=0.99, sludge_dw_ash=0.257, 
                  sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, 
                  lipid_2_C=0.750, protein_2_C=0.545,
-                 carbo_2_C=0.400, C_2_H=0.143,
-                 protein_2_N=0.159, N_2_P=0.393,
+                 carbo_2_C=0.400, C_2_H=0.1427,
+                 protein_2_N=0.159, N_2_P=0.3927,
                  operation_hour=yearly_operation_hour,
                  **kwargs):
         
@@ -348,7 +348,7 @@ class WWTP(SanUnit):
         self.sludge_dw_ash = sludge_dw_ash
         self.sludge_afdw_lipid = sludge_afdw_lipid
         self.sludge_afdw_protein = sludge_afdw_protein
-        self.sludge_afdw_carbo = 1 - sludge_afdw_protein - sludge_afdw_lipid
+        self.sludge_afdw_carbo = round(1 - sludge_afdw_protein - sludge_afdw_lipid, 5)
         self.lipid_2_C = lipid_2_C
         self.protein_2_C = protein_2_C
         self.carbo_2_C = carbo_2_C
@@ -636,7 +636,7 @@ class HTL(Reactor):
                  biocrude_H_intercept=8.20, # [2]
                  HTLaqueous_C_slope=478, # [2]
                  TOC_TC=0.764, # [3]
-                 biochar_C_slope = 1.75, # [2]
+                 biochar_C_slope=1.75, # [2]
                  biocrude_moisture_content=0.063, # [4]
                  biochar_P_recovery_ratio=0.86, # [5]
                  gas_composition={'CH4':0.050, 'C2H6':0.032,
@@ -661,7 +661,7 @@ class HTL(Reactor):
         self.carbo_2_biocrude = carbo_2_biocrude
         self.protein_2_gas = protein_2_gas
         self.carbo_2_gas = carbo_2_gas
-        self.biocrude_C_slope = biochar_C_slope
+        self.biocrude_C_slope = biocrude_C_slope
         self.biocrude_C_intercept = biocrude_C_intercept
         self.biocrude_N_slope = biocrude_N_slope
         self.biocrude_H_slope = biocrude_H_slope
@@ -831,15 +831,11 @@ class HTL(Reactor):
         hx = self.heat_exchanger
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
         hx_ins0.mix_from((self.outs[1], self.outs[2], self.outs[3]))
-        
         hx_outs0.copy_like(hx_ins0)
         hx_ins0.T = self.ins[0].T # temperature before/after HTL are similar
         hx_outs0.T = hx.T
         hx_ins0.P = hx_outs0.P = self.outs[0].P # cooling before depressurized, heating after pressurized
         # in other words, both heating and cooling are performed under relatively high pressure
-        
-        hx_ins0.vle(T=hx_ins0.T, P=hx_ins0.P)
-        
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
 
         self.P = self.ins[0].P
@@ -1282,18 +1278,18 @@ class CHG(Reactor):
              'Hydrocyclone weight': 'lb'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream',
+                 init_with='Stream',
                  pump_pressure=3089.7*6894.76,
                  heat_temp=350+273.15,
                  cool_temp=60+273.15,
-                 WHSV=3.56,
+                 WHSV=3.562,
                  catalyst_lifetime=1*yearly_operation_hour, # 1 year [1]
                  gas_composition={'CH4':0.527,
                                   'CO2':0.432,
                                   'C2H6':0.011,
                                   'C3H8':0.030,
                                   'H2':0.0001}, # [1]
-                 gas_C_2_total_C=0.598, # [1]
+                 gas_C_2_total_C=0.5981, # [1]
                  P=None, tau=20/60, void_fraction=0.5, # [2, 3]
                  length_to_diameter=2, N=6, V=None, auxiliary=False,
                  mixing_intensity=None, kW_per_m3=0,
@@ -1362,7 +1358,7 @@ class CHG(Reactor):
                 
         chg_out.imass['H2O'] = chg_in.F_mass - gas_mass
         # all C, N, and P are accounted in H2O here, but will be calculated as properties.
-                
+        
         chg_out.T = self.cool_temp
         chg_out.P = self.pump_pressure
         
@@ -1394,7 +1390,6 @@ class CHG(Reactor):
         hx_ht_ins0.T = self.ins[0].T
         hx_ht_outs0.T = hx_ht.T
         hx_ht_ins0.P = hx_ht_outs0.P = pump.P
-        hx_ht_ins0.vle(T=hx_ht_ins0.T, P=hx_ht_ins0.P)
         hx_ht.simulate_as_auxiliary_exchanger(ins=hx_ht.ins, outs=hx_ht.outs)
             
         hx_cl = self.heat_ex_cooling
@@ -1404,7 +1399,6 @@ class CHG(Reactor):
         hx_cl_ins0.T = hx_ht.T
         hx_cl_outs0.T = hx_cl.T
         hx_cl_ins0.P = hx_cl_outs0.P = self.outs[0].P
-        hx_cl_ins0.vle(T=hx_cl_ins0.T, P=hx_cl_ins0.P)
         hx_cl.simulate_as_auxiliary_exchanger(ins=hx_cl.ins, outs=hx_cl.outs)
 
         self.P = self.pump_pressure
@@ -1626,10 +1620,9 @@ class MembraneDistillation(SanUnit):
             
             ammoniumsulfate.imass['NH42SO4'] = ammonia*ammonia_transfer_ratio/34.062*132.14
             ammoniumsulfatesolution.imass['H2O'] = acid.imass['H2O']
-            ammoniumsulfatesolution.imass['H2SO4'] = acid.imass['H2SO4'] +\
+            ammoniumsulfatesolution.imass['H2SO4'] = acid.imass['H2SO4'] -\
                                              ammoniumsulfate.imass['NH42SO4']/\
-                                             132.14*28.0134 -\
-                                             ammoniumsulfate.imass['NH42SO4']
+                                             132.14*98.079
                                             
             ww.copy_like(influent) # ww has the same T and P as influent
             
@@ -1922,7 +1915,6 @@ class HT(Reactor):
         hx_oil_outs0.copy_like(hx_oil_ins0)
         hx_oil_outs0.T = self.HTin_T
         hx_oil_ins0.P = hx_oil_outs0.P = self.ins[0].P
-        hx_oil_ins0.vle(T=hx_oil_ins0.T, P=hx_oil_ins0.P)
         hx_oil.simulate_as_auxiliary_exchanger(ins=hx_oil.ins, outs=hx_oil.outs)
         
         self.P = min(IC_outs0.P, self.ins[0].P)
@@ -2141,7 +2133,6 @@ class HC(Reactor):
         hx_oil_outs0.copy_like(hx_oil_ins0)
         hx_oil_outs0.T = self.HCin_T
         hx_oil_ins0.P = hx_oil_outs0.P = self.ins[0].P
-        hx_oil_ins0.vle(T=hx_oil_ins0.T, P=hx_oil_ins0.P)
         hx_oil.simulate_as_auxiliary_exchanger(ins=hx_oil.ins, outs=hx_oil.outs)
         
         self.P = min(IC_outs0.P, self.ins[0].P)
@@ -2302,13 +2293,11 @@ class FuelMixer(SanUnit):
             fuel.imass['Gasoline'] = gasoline.F_mass + diesel.F_mass/gasoline_LHV_2_diesel_LHV
             fuel.T = gasoline.T
             fuel.P = gasoline.P
-            fuel.price = self.gasoline_price
         
         if self.target == 'diesel':
             fuel.imass['Diesel'] = diesel.F_mass + gasoline.F_mass*gasoline_LHV_2_diesel_LHV
             fuel.T = diesel.T
-            fuel.P = fuel.P
-            fuel.price = self.diesel_price
+            fuel.P = diesel.P
             
     def _design(self):
         pass

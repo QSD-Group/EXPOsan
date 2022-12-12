@@ -35,6 +35,9 @@ from exposan.htl._components import create_components
 from exposan.htl._TEA import *
 from qsdsan import PowerUtility
 from biosteam import HeatUtility
+from qsdsan.utils import auom
+
+_m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
 
 # __all__ = ('create_system',)
 
@@ -62,15 +65,15 @@ raw_wastewater = qs.Stream('raw_wastewater', H2O=100, units='MGD', T=25+273.15)
 
 # results_diesel = []
 # results_sludge = []
-# for a in (0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8):
-#     for b in (0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8):
-#         if a + b < 1:
-
+# for a in (0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1):
+#     for b in (0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1):
+#         if a + b <= 1:
+            
 WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
                     ww_2_dry_sludge=0.94,
                     # how much metric ton/day sludge can be produced by 1 MGD of ww
                     sludge_moisture=0.99, sludge_dw_ash=0.257, 
-                    sludge_afdw_lipid=0, sludge_afdw_protein=0, yearly_operation_hour=7920)
+                    sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, yearly_operation_hour=7920)
 
 SluC = su.HTL_sludge_centrifuge('A000', ins=WWTP-0,
                             outs=('supernatant','compressed_sludge'),
@@ -88,7 +91,7 @@ P1 = su.HTLpump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76,
 # Jones 2014: 3049.7 psia
 
 H1 = su.HTLHX('A110', ins=P1-0, outs='heated_sludge', T=351+273.15,
-                   U=0.0794957, init_with='Stream', rigorous=True)
+                   U=0.0795, init_with='Stream', rigorous=True)
 # feed T is low, thus high viscosity and low U (case B in Knorr 2013)
 # U: 3, 14, 15 BTU/hr/ft2/F as minimum, baseline, and maximum
 # U: 0.0170348, 0.0794957, 0.085174 kW/m2/K
@@ -250,9 +253,11 @@ PC1 = su.PhaseChanger('S520', ins=H5-0, outs='cooled_gasoline_liquid')
 
 PC2 = su.PhaseChanger('S530', ins=H6-0, outs='cooled_diesel_liquid')
 
-PC3 = su.PhaseChanger('S540', ins=HT-1, outs='HT_catalyst_out', phase='s')
+PC3 = su.PhaseChanger('S540', ins=CHG-1, outs='CHG_catalyst_out', phase='s')
 
-PC4 = su.PhaseChanger('S550', ins=HC-1, outs='HC_catalyst_out', phase='s')
+PC4 = su.PhaseChanger('S550', ins=HT-1, outs='HT_catalyst_out', phase='s')
+
+PC5 = su.PhaseChanger('S560', ins=HC-1, outs='HC_catalyst_out', phase='s')
 
 GasolineTank = su.HTL_storage_tank('T500', ins=PC1-0, outs=('gasoline'),
                                 tau=3*24, init_with='Stream', vessel_material='Carbon steel')
@@ -262,14 +267,14 @@ DieselTank = su.HTL_storage_tank('T510', ins=PC2-0, outs=('diesel'),
                               tau=3*24, init_with='Stream', vessel_material='Carbon steel')
 # store for 3 days based on Jones 2014
 
-FuelMixer = su.FuelMixer('S560', ins=(GasolineTank-0, DieselTank-0),
+FuelMixer = su.FuelMixer('S570', ins=(GasolineTank-0, DieselTank-0),
                          outs='fuel', target='diesel')
 # integrate gasoline and diesel based on their LHV for MFSP calculation
 
-GasMixer = qsu.Mixer('S570', ins=(HTL-3, F1-0, F2-0, D1-0, F3-0),
+GasMixer = qsu.Mixer('S580', ins=(HTL-3, F1-0, F2-0, D1-0, F3-0),
                       outs=('fuel_gas'), init_with='Stream')
 
-WWmixer = su.WWmixer('S580', ins=(SluC-0, MemDis-1, SP2-0),
+WWmixer = su.WWmixer('S590', ins=(SluC-0, MemDis-1, SP2-0),
                     outs='wastewater', init_with='Stream')
 # effluent of WWmixer goes back to WWTP
 
@@ -277,7 +282,7 @@ WWmixer = su.WWmixer('S580', ins=(SluC-0, MemDis-1, SP2-0),
 # facilities
 # =============================================================================
 
-HXN = su.HTLHXN('HXN')
+HXN = su.HTLHXN('HXN', replace_unit_heat_utilities=False)
 
 CHP = su.HTLCHP('A520', ins=(GasMixer-0, 'natural_gas', 'air'),
               outs=('emission','solid_ash'), init_with='WasteStream', supplement_power_utility=False)
@@ -290,19 +295,10 @@ for unit_alias in (
         'M1', 'StruPre', 'CHG', 'CHG_pump', 'CHG_heating', 'CHG_cooling', 'V1', 'F1', 'MemDis', 'SP1',
         'P2', 'HT', 'HT_compressor', 'HT_hx_H2', 'HT_hx_oil', 'V2', 'H2', 'F2', 'V3', 'SP2', 'H3', 'D1', 'D2', 'D3', 'P3',
         'HC', 'HC_compressor', 'HC_hx_H2', 'HC_hx_oil', 'H4', 'V4', 'F3', 'D4', 'GasolineMixer', 'DieselMixer',
-        'H5', 'H6', 'PC1', 'PC2', 'PC3', 'PC4', 'GasolineTank', 'DieselTank', 'FuelMixer',
+        'H5', 'H6', 'PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'GasolineTank', 'DieselTank', 'FuelMixer',
         'GasMixer', 'WWmixer', 'RSP1', 'HXN', 'CHP'):
     dct[unit_alias].register_alias(unit_alias)
 # so that qs.main_flowsheet.H1 works as well
-
-sys = qs.System('sys', path=(WWTP, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
-                             M1, StruPre, CHG, V1, F1, MemDis, SP1,
-                             P2, HT, V2, H2, F2, V3, SP2, H3, D1, D2, D3, P3,
-                             HC, H4, V4, F3, D4, GasolineMixer, DieselMixer,
-                             H5, H6, PC1, PC2, PC3, PC4, GasolineTank, DieselTank, FuelMixer,
-                             GasMixer, WWmixer, RSP1), facilities=(HXN, CHP,))
-
-sys.operating_hours = WWTP.operation_hour # 7920 hr Jones
 
 RO_item = qs.StreamImpactItem(linked_stream=MemDis.ins[3],
                               Acidification=0.53533,
@@ -414,7 +410,7 @@ natural_gas_item = qs.StreamImpactItem(linked_stream=CHP.ins[1],
                                         NonCarcinogenics=3.63204,
                                         RespiratoryEffects=0.000350917)
 
-CHG_catalyst_item = qs.StreamImpactItem(linked_stream=CHG.ins[1],
+CHG_catalyst_item = qs.StreamImpactItem(linked_stream=PC3.outs[0],
                                         Acidification=991.6544196,
                                         Ecotoxicity=15371.08292,
                                         Eutrophication=0.45019348,
@@ -425,7 +421,7 @@ CHG_catalyst_item = qs.StreamImpactItem(linked_stream=CHG.ins[1],
                                         NonCarcinogenics=27306.37232,
                                         RespiratoryEffects=3.517184526)
 
-HT_catalyst_item = qs.StreamImpactItem(linked_stream=PC3.outs[0],
+HT_catalyst_item = qs.StreamImpactItem(linked_stream=PC4.outs[0],
                                         Acidification=4.056401283,
                                         Ecotoxicity=50.26926274,
                                         Eutrophication=0.005759274,
@@ -436,7 +432,7 @@ HT_catalyst_item = qs.StreamImpactItem(linked_stream=PC3.outs[0],
                                         NonCarcinogenics=369.791688,
                                         RespiratoryEffects=0.020809293)
 
-HC_catalyst_item = qs.StreamImpactItem(linked_stream=PC4.outs[0],
+HC_catalyst_item = qs.StreamImpactItem(linked_stream=PC5.outs[0],
                                        Acidification=4.056401283,
                                        Ecotoxicity=50.26926274,
                                        Eutrophication=0.005759274,
@@ -447,44 +443,47 @@ HC_catalyst_item = qs.StreamImpactItem(linked_stream=PC4.outs[0],
                                        NonCarcinogenics=369.791688,
                                        RespiratoryEffects=0.020809293)
 
-# sys.simulate()
-# if have qs.LCA below, don't need to simulate here
+diesel_item = qs.StreamImpactItem(linked_stream=FuelMixer.outs[0],
+                                  Acidification=-0.25164,
+                                  Ecotoxicity=-0.18748,
+                                  Eutrophication=-0.0010547,
+                                  GlobalWarming=-0.47694,
+                                  OzoneDepletion=-6.42E-07,
+                                  PhotochemicalOxidation=-0.0019456,
+                                  Carcinogenics=-0.00069252,
+                                  NonCarcinogenics=-2.9281,
+                                  RespiratoryEffects=-0.0011096)
+
+sys = qs.System('sys', path=(WWTP, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
+                             M1, StruPre, CHG, V1, F1, MemDis, SP1,
+                             P2, HT, V2, H2, F2, V3, SP2, H3, D1, D2, D3, P3,
+                             HC, H4, V4, F3, D4, GasolineMixer, DieselMixer,
+                             H5, H6, PC1, PC2, PC3, PC4, PC5, GasolineTank, DieselTank, FuelMixer,
+                             GasMixer, WWmixer, RSP1), facilities=(HXN, CHP,))
+
+sys.operating_hours = WWTP.operation_hour # 7920 hr Jones
 
 lca = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
               Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
               Cooling=lambda:sys.get_cooling_duty()/1000*30)
 
+tea = create_tea(sys)
+
 # results_diesel.append([100*a,100*b,round(100-100*a-100*b),lca.get_total_impacts()['GlobalWarming']/FuelMixer.outs[0].F_mass/7920/30*1000/45.5*1055.05585262])
 # results_diesel.append([lca.get_total_impacts()['GlobalWarming']/FuelMixer.outs[0].F_mass/7920/30*1000/45.5*1055.05585262])
 
-# diesel_item = qs.StreamImpactItem(linked_stream=FuelMixer.outs[0],
-#                                         Acidification=-0.25164,
-#                                         Ecotoxicity=-0.18748,
-#                                         Eutrophication=-0.0010547,
-#                                         GlobalWarming=-0.47694,
-#                                         OzoneDepletion=-6.42E-07,
-#                                         PhotochemicalOxidation=-0.0019456,
-#                                         Carcinogenics=-0.00069252,
-#                                         NonCarcinogenics=-2.9281,
-#                                         RespiratoryEffects=-0.0011096)
+
 
 # lca = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
 #               Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
 #               Cooling=lambda:sys.get_cooling_duty()/1000*30)
 
-# results_sludge.append([100*a,100*b,round(100-100*a-100*b),WWTP.H_C_eff,tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg,lca.get_total_impacts()['GlobalWarming']/80/0.94/30/(7920/24)])
+# tea = create_tea(sys)
+
+# results_sludge.append([100*a,100*b,round(100-100*a-100*b),WWTP.H_C_eff,tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg,lca.get_total_impacts()['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/0.94/30/(7920/24)])
 # results_sludge.append([a, tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg,lca.get_total_impacts()['GlobalWarming']/a/0.94/30/(7920/24)])
 
-sys.diagram()
-
-tea = create_tea(sys)
-
-table = capex_table(tea)
-
 # return sys
-
-
-
 #%%
 from qsdsan import Model
 
@@ -517,35 +516,35 @@ dist = shape.Uniform(0.97,0.995)
 def set_WWTP_sludge_moisture(i):
     WWTP.sludge_moisture=i
 
-dist = shape.Triangle(0.174,0.2567,0.414)
+dist = shape.Triangle(0.174,0.257,0.414)
 @param(name='sludge_dw_ash',
         element=WWTP,
         kind='coupled',
         units='-',
-        baseline=0.2567,
+        baseline=0.257,
         distribution=dist)
 def set_sludge_dw_ash(i):
     WWTP.sludge_dw_ash=i
 
-dist = shape.Triangle(0.38,0.4634,0.51)
-@param(name='sludge_afdw_protein',
-        element=WWTP,
-        kind='coupled',
-        units='-',
-        baseline=0.4634,
-        distribution=dist)
-def set_sludge_afdw_protein(i):
-    WWTP.sludge_afdw_protein=i
-
-dist = shape.Triangle(0.08,0.2043,0.308)
+dist = shape.Triangle(0.08,0.204,0.308)
 @param(name='sludge_afdw_lipid',
         element=WWTP,
         kind='coupled',
         units='-',
-        baseline=0.2043,
+        baseline=0.204,
         distribution=dist)
 def set_sludge_afdw_lipid(i):
     WWTP.sludge_afdw_lipid=i
+
+dist = shape.Triangle(0.38,0.463,0.51)
+@param(name='sludge_afdw_protein',
+        element=WWTP,
+        kind='coupled',
+        units='-',
+        baseline=0.463,
+        distribution=dist)
+def set_sludge_afdw_protein(i):
+    WWTP.sludge_afdw_protein=i
 
 dist = shape.Uniform(0.675,0.825)
 @param(name='lipid_2_C',
@@ -760,12 +759,12 @@ dist = shape.Normal(1.750,0.122)
 def set_biochar_C_slope(i):
     HTL.biochar_C_slope=i
 
-dist = shape.Triangle(0.035,0.063125,0.102)
+dist = shape.Triangle(0.035,0.063,0.102)
 @param(name='biocrude_moisture_content',
         element=HTL,
         kind='coupled',
         units='-',
-        baseline=0.063125,
+        baseline=0.063,
         distribution=dist)
 def set_biocrude_moisture_content(i):
     HTL.biocrude_moisture_content=i
@@ -794,14 +793,14 @@ def set_acid_vol(i):
     AcidEx.acid_vol=i
 
 dist = shape.Uniform(0.7,0.9)
-@param(name='P_recovery_ratio',
+@param(name='P_acid_recovery_ratio',
         element=AcidEx,
         kind='coupled',
         units='-',
         baseline=0.8,
         distribution=dist)
 def set_P_recovery_ratio(i):
-    AcidEx.P_recovery_ratio=i
+    AcidEx.P_acid_recovery_ratio=i
 
 # =============================================================================
 # StruPre
@@ -850,14 +849,14 @@ def set_CHG_catalyst_lifetime(i):
     CHG.catalyst_lifetime=i
 
 dist = shape.Triangle(0.1893,0.5981,0.7798)
-@param(name='gas_C_to_total_C',
+@param(name='gas_C_2_total_C',
         element=CHG,
         kind='coupled',
         units='-',
         baseline=0.5981,
         distribution=dist)
-def set_gas_C_to_total_C(i):
-    CHG.gas_C_to_total_C=i
+def set_gas_C_2_total_C(i):
+    CHG.gas_C_2_total_C=i
 
 # =============================================================================
 # MemDis
@@ -887,7 +886,7 @@ dist = shape.Uniform(0.00075,0.000917)
         element=MemDis,
         kind='coupled',
         units='-',
-        baseline=0.0008333,
+        baseline=1/1200,
         distribution=dist)
 def set_m2_2_m3(i):
     MemDis.m2_2_m3=i
@@ -1063,15 +1062,34 @@ def set_HC_hydrocarbon_ratio(i):
 # =============================================================================
 
 dist = shape.Triangle(0.6,1,1.4)
-@param(name='CAPEX_factor',
+@param(name='HTL_CAPEX_factor',
         element='TEA',
         kind='isolated',
         units='-',
         baseline=1,
         distribution=dist)
-def set_CAPEX_factor(i):
-    HTL.CAPEX_factor=CHG.CAPEX_factor=HT.CAPEX_factor=i
+def set_HTL_CAPEX_factor(i):
+    HTL.CAPEX_factor=i
+    
+dist = shape.Triangle(0.6,1,1.4)
+@param(name='CHG_CAPEX_factor',
+        element='TEA',
+        kind='isolated',
+        units='-',
+        baseline=1,
+        distribution=dist)
+def set_CHG_CAPEX_factor(i):
+    CHG.CAPEX_factor=i
 
+dist = shape.Triangle(0.6,1,1.4)
+@param(name='HT_CAPEX_factor',
+        element='TEA',
+        kind='isolated',
+        units='-',
+        baseline=1,
+        distribution=dist)
+def set_HT_CAPEX_factor(i):
+    HT.CAPEX_factor=i
 
 dist = shape.Uniform(980,1470)
 @param(name='unit_CAPEX',
@@ -1241,7 +1259,7 @@ dist = shape.Uniform(-0.0605,-0.0495)
         baseline=-0.055,
         distribution=dist)
 def set_residual_disposal(i):
-    AcidEx.outs[0].price =i
+    AcidEx.outs[0].price=i
 
 dist = shape.Triangle(0.0667,0.06879,0.07180)
 @param(name='electricity price',
@@ -1259,14 +1277,14 @@ def get_MFSP():
     return tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg
 
 metric = model.metric
-@metric(name='GWP',units='kg CO2/gal diesel',element='LCA')
-def getLCA():
-    return lca.get_total_impacts()['GlobalWarming']/FuelMixer.outs[0].F_mass/lca.lifetime/sys.operating_hours*FuelMixer.diesel_gal_2_kg
+@metric(name='GWP',units='kg CO2/kg sludge',element='LCA')
+def get_LCA_sludge():
+    return lca.get_total_impacts()['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/0.94/30/(7920/24)
 
 #%%
 import numpy as np
 np.random.seed(3221)
-samples = model.sample(N=20, rule='L')
+samples = model.sample(N=200, rule='L')
 model.load_samples(samples)
 model.evaluate()
 model.table
