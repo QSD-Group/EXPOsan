@@ -22,6 +22,8 @@ from .system import *
 from . import model
 from .model import *
 
+from . import mock_centralized as mc
+
 __all__ = (
     'folder',
     'data_path',
