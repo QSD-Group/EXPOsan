@@ -339,7 +339,7 @@ class WWTP(SanUnit):
                  lipid_2_C=0.750, protein_2_C=0.545,
                  carbo_2_C=0.400, C_2_H=0.1427,
                  protein_2_N=0.159, N_2_P=0.3927,
-                 operation_hour=yearly_operation_hour,
+                 operation_hours=yearly_operation_hour,
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -355,7 +355,7 @@ class WWTP(SanUnit):
         self.C_2_H = C_2_H
         self.protein_2_N = protein_2_N
         self.N_2_P = N_2_P
-        self.operation_hour = yearly_operation_hour
+        self.operation_hours = operation_hours
 
     _N_ins = 1
     _N_outs = 2
