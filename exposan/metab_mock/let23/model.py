@@ -74,7 +74,7 @@ def add_params(model):
     def set_hsp_P(P):
         if R1.fixed_headspace_P: R1.headspace_P = P*1.01325
     
-    b = 1
+    b = 400
     D = shape.Uniform(1, 400)
     @param(name='Recirculation_rate', element=R1, kind='coupled', units='',
            baseline=b, distribution=D)
@@ -255,7 +255,19 @@ def add_metrics(model):
     def get_E_biogas():
         # kmol/hr * J/mol = kJ/hr
         return sum(sum(bg.mass*cmps.i_mass/cmps.chem_MW*cmps.LHV) for bg in bgs)/1e3
+
+    @metric(name='H2 energy', units='MJ/hr', element='Energy')    
+    def get_E_h2():
+        return sum(bg.imass['S_h2'] for bg in bgs)*S_h2_i_mass/cmps.S_h2.chem_MW*cmps.S_h2.LHV/1e3
     
+    @metric(name='CH4 energy', units='MJ/hr', element='Energy')    
+    def get_E_ch4():
+        return sum(bg.imass['S_ch4'] for bg in bgs)*S_ch4_i_mass/cmps.S_ch4.chem_MW*cmps.S_ch4.LHV/1e3
+
+    @metric(name='H2O energy', units='MJ/hr', element='Energy')    
+    def get_E_h2o():
+        return sum(bg.imass['H2O'] for bg in bgs)/cmps.H2O.MW*cmps.H2O.LHV/1e3
+
     conv = auom('kJ/hr').conversion_factor('kW')
     @metric(name='Net operation energy', units='kW', element='Energy')
     def get_net_E():
@@ -264,11 +276,6 @@ def add_metrics(model):
         produce = sum(sum(bg.mass*cmps.i_mass/cmps.chem_MW*cmps.LHV) \
                       for bg in bgs) * conv * 0.6 # assume 60% CHP efficiency
         return produce - consume
-    
-#%%
-
-    
-
 
 #%%
 def create_models(systems=None, **kwargs):

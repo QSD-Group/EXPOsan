@@ -15,7 +15,8 @@ from qsdsan.utils import load_data, ospath
 from exposan.metab_mock.let23 import (
     results_path, 
     figures_path,
-    mc
+    mc,
+    create_models
      )
 import numpy as np, pandas as pd
 import matplotlib as mpl, matplotlib.pyplot as plt
@@ -153,11 +154,55 @@ def KStest(seed, yname, threshold, sys='sysC', scenario='nonselect', plot_save_t
     plot_cdf_bygroup(xs, group, plot_save_to)
     return stats, sig_cols
 
+#%% Baseline energy breakdown
+path = ospath.join(results_path, 'E_breakdown.xlsx')
+
+def baseline_E_breakdown():
+    smdls = create_models(selective=True)
+    nmdls = create_models(selective=False)
+    
+    outs = []
+    for mdl in smdls+nmdls:
+        mdl.system.simulate(t_span=(0,400), method='BDF', state_reset_hook='reset_cache')
+        outs.append([m.getter() for m in mdl.metrics])
+    cols = [f'{m.name} [{m.units}]' for m in mdl.metrics]
+    iterables = [['selective', 'nonselect'], ['A','B','C','D']]
+    rows = pd.MultiIndex.from_product(iterables, names=['group', 'sys'])
+    outs = pd.DataFrame(outs, columns=cols, index=rows)
+    outs.to_excel(path)
+
+df = load_data(path, sheet=1, index_col=[0,1])
+viridis = plt.cm.get_cmap('viridis', 5).colors
+def stacked_bar(df, save_to=None):
+    mpl.rcParams['xtick.minor.visible'] = False
+    fig, axes = plt.subplots(1, 4, sharey=True, figsize=(5, 4))
+    x = [0.3, 0.7]
+    for i, sys in enumerate('ABCD'):
+        ax = axes[i]
+        ax.axhline(y=0, color='black', linewidth=0.5)
+        data = df.loc[idx[:, sys],:].to_numpy().T
+        yp = np.zeros(2)
+        yn = yp.copy()
+        for j, y in enumerate(data):
+            y_offset = (y>=0)*yp + (y<0)*yn
+            ax.bar(x, y, width=0.2, bottom=y_offset, color=viridis[j], 
+                   tick_label='')
+            yp += (y>=0) * y
+            yn += (y<0) * y
+        ax.tick_params(axis='y', which='both', direction='inout')
+        ax.set_xlim(0,1)
+        ax.set_title(sys)
+    fig.subplots_adjust(wspace=0)
+    if save_to:
+        fig.savefig(ospath.join(figures_path, save_to), dpi=300,
+                    transparent=True)
+    else: return fig, axes
+
 #%%
 if __name__ == '__main__':
     seed = 123
-    yname = 'Net operation energy [kW]'
     metrics = load_metrics(seed)
     plot_all_metrics(metrics)
     plot_E_per_rCOD(metrics)
+    yname = 'Net operation energy [kW]'
     stats, sig_xs = KStest(seed, yname, threshold=-1.15)
