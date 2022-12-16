@@ -199,10 +199,54 @@ def stacked_bar(df, save_to=None):
     else: return fig, axes
 
 #%%
+def compare_metrics(metrics):
+    compare = {}
+    iterables = [['selective', 'nonselect'], ['B-A','C-A','D-C']]
+    keys = pd.MultiIndex.from_product(iterables, names=['group', 'pair'])
+    for k, df in metrics.items():
+        l = []
+        for g in iterables[0]:
+            l.append(df[g].B - df[g].A)
+            l.append(df[g].C - df[g].A)
+            l.append(df[g].D - df[g].C)
+            # l.append((df[g].B/df[g].A-1)*100)
+            # l.append((df[g].C/df[g].A-1)*100)
+            # l.append((df[g].D/df[g].C-1)*100)
+        compare[k] = pd.concat(l, axis=1, keys=keys)
+    return compare
+
+def plot_compare(df, save_to=None):
+    fig, axes = plt.subplots(1, 2, sharey=True, figsize=(3, 4))
+    for g, i, c in zip(['selective', 'nonselect'],(0,1), ('#60c1cf', '#F98F60')):
+        ax = axes[i]
+        ax.axhline(y=0, color='black', linewidth=0.5)
+        cols = [col[~np.isnan(col)] for col in df[g].to_numpy().T]
+        ax.boxplot(cols, showmeans=True, labels=['B-A','C-A','D-C'], 
+                   flierprops=flierprops, meanprops=meanprops,
+                   medianprops=medianprops)
+        parts = ax.violinplot(cols, showextrema=False)
+        for p in parts['bodies']:
+            p.set_facecolor(c)
+            p.set_alpha(1)
+        ax.tick_params(axis='y', which='both', direction='inout')
+    fig.subplots_adjust(wspace=0)
+    if save_to:
+        fig.savefig(ospath.join(figures_path, f'diff/{save_to}'), dpi=300,
+                    facecolor='white', bbox_inches='tight')
+    else: return fig, axes
+
+def plot_all_compare(compare):
+    mpl.rcParams['xtick.minor.visible'] = False
+    for k, df in compare.items():
+        var = k.split(" [")[0]
+        plot_compare(df, f'{var}.png')
+
+
+#%%
 if __name__ == '__main__':
     seed = 123
     metrics = load_metrics(seed)
-    plot_all_metrics(metrics)
-    plot_E_per_rCOD(metrics)
-    yname = 'Net operation energy [kW]'
-    stats, sig_xs = KStest(seed, yname, threshold=-1.15)
+    # plot_all_metrics(metrics)
+    # plot_E_per_rCOD(metrics)
+    # yname = 'Net operation energy [kW]'
+    # stats, sig_xs = KStest(seed, yname, threshold=-1.15)
