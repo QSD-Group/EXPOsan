@@ -173,7 +173,7 @@ RSP1 = qsu.ReversedSplitter('S300', ins='H2', outs=('HT_H2','HC_H2'),
 # reversed splitter, write before HT and HC, simulate after HT and HC
 RSP1.ins[0].price = 1.61
 
-HT = su.HT('A310', ins=(P2-0, RSP1-0, 'CoMo_alumina_HT'), outs=('HTout', 'CoMo_alumina_HT_out'))
+HT = su.HT_PSA('A310', ins=(P2-0, RSP1-0, 'CoMo_alumina_HT'), outs=('HTout', 'CoMo_alumina_HT_out'))
 HT_compressor = HT.compressor
 HT_hx_H2 = HT.heat_exchanger_H2
 HT_hx_oil = HT.heat_exchanger_oil
@@ -465,7 +465,7 @@ for unit_alias in (
     dct[unit_alias].register_alias(unit_alias)
 # so that qs.main_flowsheet.H1 works as well
 
-sys = qs.System('sys', path=(WWTP, SluC, P1, H1, HTL, H2SO4_Tank,
+sys_PSA = qs.System('sys_PSA', path=(WWTP, SluC, P1, H1, HTL, H2SO4_Tank,
                              AcidEx,
                              M1, StruPre, CHG, V1, F1, MemDis, SP1,
                              P2, HT, V2, H2, F2, V3, SP2, H3, D1, D2, D3, P3,
@@ -473,11 +473,11 @@ sys = qs.System('sys', path=(WWTP, SluC, P1, H1, HTL, H2SO4_Tank,
                              H5, H6, PC1, PC2, PC3, PC4, PC5, GasolineTank, DieselTank, FuelMixer,
                              GasMixer, WWmixer, RSP1), facilities=(HXN, CHP,))
 
-sys.operating_hours = WWTP.operation_hours # 7920 hr Jones
+sys_PSA.operating_hours = WWTP.operation_hours # 7920 hr Jones
 
-lca_diesel = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
-                    Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
-                    Cooling=lambda:sys.get_cooling_duty()/1000*30)
+lca_diesel = qs.LCA(system=sys_PSA, lifetime=30, lifetime_unit='yr',
+                    Electricity=lambda:(sys_PSA.get_electricity_consumption()-sys_PSA.get_electricity_production())*30,
+                    Cooling=lambda:sys_PSA.get_cooling_duty()/1000*30)
 
 # results_diesel.append([100*a,100*b,round(100-100*a-100*b),lca_diesel.get_total_impacts()['GlobalWarming']/FuelMixer.outs[0].F_mass/7920/30*1000/45.5*1055.05585262])
 # results_diesel.append([lca_diesel.get_total_impacts()['GlobalWarming']/FuelMixer.outs[0].F_mass/7920/30*1000/45.5*1055.05585262])
@@ -494,20 +494,20 @@ diesel_item = qs.StreamImpactItem(ID='diesel_item',
                                   NonCarcinogenics=-2.9281,
                                   RespiratoryEffects=-0.0011096)
 
-lca_sludge = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
-              Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
-              Cooling=lambda:sys.get_cooling_duty()/1000*30)
+lca_sludge = qs.LCA(system=sys_PSA, lifetime=30, lifetime_unit='yr',
+              Electricity=lambda:(sys_PSA.get_electricity_consumption()-sys_PSA.get_electricity_production())*30,
+              Cooling=lambda:sys_PSA.get_cooling_duty()/1000*30)
 
 # results_sludge.append([100*a,100*b,round(100-100*a-100*b),WWTP.H_C_eff,tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg,lca_sludge.get_total_impacts()['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/0.94/30/(7920/24)])
 # results_sludge.append([a, tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg,lca_sludge.get_total_impacts()['GlobalWarming']/a/0.94/30/(7920/24)])
 
-tea = create_tea(sys)
+tea = create_tea(sys_PSA)
 
-# return sys
+# return sys_PSA
 #%%
 from qsdsan import Model
 
-model = Model(sys)
+model = Model(sys_PSA)
 
 from chaospy import distributions as shape
 
@@ -634,7 +634,7 @@ dist = shape.Triangle(7392,7920,8448)
         baseline=7920,
         distribution=dist)
 def set_operation_hour(i):
-    WWTP.operation_hours=sys.operating_hours=i
+    WWTP.operation_hours=sys_PSA.operating_hours=i
 
 # =============================================================================
 # HTL
@@ -1003,6 +1003,16 @@ dist = shape.Uniform(0.0414,0.0506)
         distribution=dist)
 def set_HT_hydrogen_rxned_to_biocrude(i):
     HT.hydrogen_rxned_to_biocrude=i
+
+dist = shape.Uniform(0.8,0.9)
+@param(name='PSA_efficiency',
+        element=HT,
+        kind='coupled',
+        units='-',
+        baseline=0.9,
+        distribution=dist)
+def set_PSA_efficiency(i):
+    HT.PSA_efficiency=i
 
 dist = shape.Uniform(2.4,3.6)
 @param(name='hydrogen_excess',
@@ -1573,12 +1583,12 @@ def get_MFSP():
 
 @metric(name='GWP_diesel',units='g CO2/MMBTU diesel',element='LCA')
 def get_LCA_diesel():
-    return lca_diesel.get_total_impacts()['GlobalWarming']/FuelMixer.outs[0].F_mass/sys.operating_hours/lca_diesel.lifetime*_kg_to_g/45.5/_MJ_to_MMBTU
+    return lca_diesel.get_total_impacts()['GlobalWarming']/FuelMixer.outs[0].F_mass/sys_PSA.operating_hours/lca_diesel.lifetime*_kg_to_g/45.5/_MJ_to_MMBTU
 # diesel: 45.5 MJ/kg
 
 @metric(name='GWP_sludge',units='kg CO2/ton dry sludge',element='LCA')
 def get_LCA_sludge():
-    return lca_sludge.get_total_impacts()['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca_sludge.lifetime
+    return lca_sludge.get_total_impacts()['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys_PSA.operating_hours/24)/lca_sludge.lifetime
 
 #%%
 import numpy as np
