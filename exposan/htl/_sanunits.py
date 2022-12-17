@@ -3058,6 +3058,7 @@ class HTL_storage_tank(qsu.StorageTank):
         construction = getattr(self, 'construction', ())
         item_name = self.vessel_material.replace(' ', '_')
         if construction: construction[0].quantity = D['Weight']
+        # N = 1, don't have to * numbers of the tank
         else:
             self.construction = (
                 Construction(item_name.lower(), linked_unit=self, item=item_name,
@@ -3140,6 +3141,7 @@ class HTLflash(Flash):
         if self.outs[0].F_mass != 0:
             construction = getattr(self, 'construction', ())
             if construction: construction[0].quantity = D['Weight']*_lb_to_kg
+            # N = 1, don't have to * numbers of the reactor
             else:
                 self.construction = (
                     Construction('carbon_steel', linked_unit=self, item='Carbon_steel', 
