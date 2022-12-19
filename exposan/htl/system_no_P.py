@@ -1458,14 +1458,6 @@ def get_HT_H2_E():
 def get_HC_H2_E():
     return HC.ins[1].HHV/HC.hydrogen_excess/1000000
 
-@metric(name='extracted_P',units='kg/hr',element='Sankey')
-def get_extracted_P():
-    return AcidEx.outs[1].imass['P']
-
-@metric(name='residual_P',units='kg/hr',element='Sankey')
-def get_residual_P():
-    return HTL.biochar_P-AcidEx.outs[1].imass['P']
-
 @metric(name='residual_C',units='kg/hr',element='Sankey')
 def get_residual_C():
     return HTL.biochar_C
