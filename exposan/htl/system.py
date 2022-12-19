@@ -36,6 +36,8 @@ from exposan.htl._TEA import *
 from qsdsan import PowerUtility
 from biosteam import HeatUtility
 from qsdsan.utils import auom, DictAttrSetter
+import numpy as np
+import pandas as pd
 
 _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
 
@@ -465,8 +467,7 @@ for unit_alias in (
     dct[unit_alias].register_alias(unit_alias)
 # so that qs.main_flowsheet.H1 works as well
 
-sys = qs.System('sys', path=(WWTP, SluC, P1, H1, HTL, H2SO4_Tank,
-                             AcidEx,
+sys = qs.System('sys', path=(WWTP, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
                              M1, StruPre, CHG, V1, F1, MemDis, SP1,
                              P2, HT, V2, H2, F2, V3, SP2, H3, D1, D2, D3, P3,
                              HC, H4, V4, F3, D4, GasolineMixer, DieselMixer,
@@ -1302,7 +1303,7 @@ for item in qs.ImpactItem.get_all_items().keys():
         abs_large = 1.1*qs.ImpactItem.get_item(item).CFs[CF]
         dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
         @param(name=f'{item}_{CF}',
-               # setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
+               setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
                element='LCA',
                kind='isolated',
                units=qs.ImpactIndicator.get_indicator(CF).unit,
@@ -1581,14 +1582,13 @@ def get_LCA_sludge():
     return lca_sludge.get_total_impacts()['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca_sludge.lifetime
 
 #%%
-import numpy as np
 np.random.seed(3221)
-samples = model.sample(N=3, rule='L')
+samples = model.sample(N=1000, rule='L')
 model.load_samples(samples)
 model.evaluate()
 model.table
+
 #%%
-import pandas as pd
 def organize_results(model, path):
     idx = len(model.parameters)
     parameters = model.table.iloc[:, :idx]

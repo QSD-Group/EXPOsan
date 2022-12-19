@@ -36,6 +36,8 @@ from exposan.htl._TEA import *
 from qsdsan import PowerUtility
 from biosteam import HeatUtility
 from qsdsan.utils import auom, DictAttrSetter
+import numpy as np
+import pandas as pd
 
 _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
 
@@ -468,9 +470,6 @@ lca_diesel = qs.LCA(system=sys_no_P, lifetime=30, lifetime_unit='yr',
                     Electricity=lambda:(sys_no_P.get_electricity_consumption()-sys_no_P.get_electricity_production())*30,
                     Cooling=lambda:sys_no_P.get_cooling_duty()/1000*30)
 
-# results_diesel.append([100*a,100*b,round(100-100*a-100*b),lca_diesel.get_total_impacts()['GlobalWarming']/FuelMixer.outs[0].F_mass/7920/30*1000/45.5*1055.05585262])
-# results_diesel.append([lca_diesel.get_total_impacts()['GlobalWarming']/FuelMixer.outs[0].F_mass/7920/30*1000/45.5*1055.05585262])
-
 diesel_item = qs.StreamImpactItem(ID='diesel_item',
                                   linked_stream=FuelMixer.outs[0],
                                   Acidification=-0.25164,
@@ -486,9 +485,6 @@ diesel_item = qs.StreamImpactItem(ID='diesel_item',
 lca_sludge = qs.LCA(system=sys_no_P, lifetime=30, lifetime_unit='yr',
               Electricity=lambda:(sys_no_P.get_electricity_consumption()-sys_no_P.get_electricity_production())*30,
               Cooling=lambda:sys_no_P.get_cooling_duty()/1000*30)
-
-# results_sludge.append([100*a,100*b,round(100-100*a-100*b),WWTP.H_C_eff,tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg,lca_sludge.get_total_impacts()['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/0.94/30/(7920/24)])
-# results_sludge.append([a, tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg,lca_sludge.get_total_impacts()['GlobalWarming']/a/0.94/30/(7920/24)])
 
 tea = create_tea(sys_no_P)
 
@@ -1268,7 +1264,7 @@ for item in qs.ImpactItem.get_all_items().keys():
         abs_large = 1.1*qs.ImpactItem.get_item(item).CFs[CF]
         dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
         @param(name=f'{item}_{CF}',
-               # setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
+               setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
                element='LCA',
                kind='isolated',
                units=qs.ImpactIndicator.get_indicator(CF).unit,
@@ -1547,14 +1543,12 @@ def get_LCA_sludge():
     return lca_sludge.get_total_impacts()['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys_no_P.operating_hours/24)/lca_sludge.lifetime
 
 #%%
-import numpy as np
 np.random.seed(3221)
-samples = model.sample(N=3, rule='L')
+samples = model.sample(N=1000, rule='L')
 model.load_samples(samples)
 model.evaluate()
 model.table
 #%%
-import pandas as pd
 def organize_results(model, path):
     idx = len(model.parameters)
     parameters = model.table.iloc[:, :idx]
