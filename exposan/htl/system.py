@@ -1318,6 +1318,7 @@ for item in qs.ImpactItem.get_all_items().keys():
 
 metric = model.metric
 
+#%%
 @metric(name='sludge_C',units='kg/hr',element='Sankey')
 def get_sludge_C():
     return WWTP.sludge_C
@@ -1568,6 +1569,7 @@ def get_MemDis_ww_N():
 def get_MemDis_ww_P():
     return MemDis.outs[1].imass['P']
 
+#%%
 @metric(name='MFSP',units='$/gal diesel',element='TEA')
 def get_MFSP():
     return tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg
