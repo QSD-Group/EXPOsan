@@ -1605,6 +1605,18 @@ def get_HXN_CAPEX():
 def get_CHP_CAPEX():
     return CHP.installed_cost
 
+@metric(name='AOC',units='$/yr',element='TEA')
+def get_AOC():
+    return tea.AOC
+
+@metric(name='FOC',units='$/yr',element='TEA')
+def get_FOC():
+    return tea.FOC
+
+@metric(name='VOC',units='$/yr',element='TEA')
+def get_VOC():
+    return tea.VOC
+
 @metric(name='material_VOC',units='$/yr',element='TEA')
 def get_material_VOC():
     return sys_PSA.material_cost
