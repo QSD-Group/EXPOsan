@@ -46,6 +46,8 @@ _kg_to_g = auom('kg').conversion_factor('g')
 
 _MJ_to_MMBTU = auom('MJ').conversion_factor('MMBTU')
 
+_MMgal_to_L = auom('gal').conversion_factor('L')*1000000
+
 # __all__ = ('create_system',)
 
 # def create_system():
@@ -236,7 +238,7 @@ D4 = su.HTLdistillation('A450', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
                         y_top=360/546, x_bot=7/708, k=2, is_divided=True)
 
 # =============================================================================
-# CHP, storage, and disposal (Area 500)
+# Storage, and disposal (Area 500)
 # =============================================================================
 
 GasolineMixer = qsu.Mixer('S500', ins=(D2-0, D4-0), outs='mixed_gasoline',
@@ -1671,9 +1673,64 @@ def get_other_utilities_VOC():
     return a
 
 #%%
+@metric(name='construction_GWP',units='kg CO2 eq',element='LCA')
+def get_construction_GWP():
+    return lca_diesel.get_construction_impacts()['GlobalWarming']
+
+@metric(name='stream_GWP',units='kg CO2 eq',element='LCA')
+def get_stream_GWP():
+    return lca_diesel.get_stream_impacts()['GlobalWarming']
+
+@metric(name='other_GWP',units='kg CO2 eq',element='LCA')
+def get_other_GWP():
+    return lca_diesel.get_other_impacts()['GlobalWarming']
+
+@metric(name='CHG_GWP',units='kg CO2 eq',element='LCA')
+def get_CHG_GWP():
+    table_construction = lca_diesel.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
+    table_stream = lca_diesel.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+    return table_construction['Stainless_steel [kg]']['A230']+table_stream['CHG_catalyst_out']
+
+@metric(name='HT_HC_GWP',units='kg CO2 eq',element='LCA')
+def get_HT_HC_GWP():
+    table_construction = lca_diesel.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
+    table_stream = lca_diesel.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+    return table_construction['Carbon_steel [kg]']['T500']+table_construction['Carbon_steel [kg]']['T510']+\
+           table_construction['Stainless_steel [kg]']['A300']+table_construction['Stainless_steel [kg]']['A310']+\
+           table_construction['Stainless_steel [kg]']['A330']+table_construction['Stainless_steel [kg]']['A360']+\
+           table_construction['Stainless_steel [kg]']['A400']+table_construction['Stainless_steel [kg]']['A410']+\
+           table_construction['Stainless_steel [kg]']['A420']+table_construction['Stainless_steel [kg]']['A500']+\
+           table_construction['Stainless_steel [kg]']['A510']+\
+           table_stream['H2']+table_stream['HT_catalyst_out']+table_stream['HC_catalyst_out']
+
+@metric(name='nutrient_GWP',units='kg CO2 eq',element='LCA')
+def get_nutrient_GWP():
+    table_construction = lca_diesel.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
+    table_stream = lca_diesel.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+    return table_construction['Carbon_steel [kg]']['A220']+\
+           table_construction['Stainless_steel [kg]']['A200']+table_construction['Stainless_steel [kg]']['T200']+\
+           table_construction['RO [m2]']['A260']+\
+           table_stream['H2SO4']+table_stream['MgCl2']+table_stream['MgO']+table_stream['struvite']+\
+           table_stream['NH4Cl']+table_stream['Membrane_in']+table_stream['NaOH']+table_stream['ammonium_sulfate']
+           
+@metric(name='electricity_GWP',units='kg CO2 eq',element='LCA')
+def get_electricity_GWP():
+    table_other = lca_diesel.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+    return table_other['Electricity [kWh]']
+
+@metric(name='cooling_GWP',units='kg CO2 eq',element='LCA')
+def get_cooling_GWP():
+    table_other = lca_diesel.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+    return table_other['Cooling [MJ]']
+
+#%%
 @metric(name='MFSP',units='$/gal diesel',element='TEA')
 def get_MFSP():
     return tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg
+
+@metric(name='sludge_treatment_price',units='$/ton dry sludge',element='TEA')
+def get_sludge_treatment_price():
+    return -tea.solve_price(WWTP.ins[0])*_MMgal_to_L/WWTP.ww_2_dry_sludge
 
 @metric(name='GWP_diesel',units='g CO2/MMBTU diesel',element='LCA')
 def get_LCA_diesel():

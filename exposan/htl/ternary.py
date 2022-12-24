@@ -45,8 +45,11 @@ _kg_to_g = auom('kg').conversion_factor('g')
 
 _MJ_to_MMBTU = auom('MJ').conversion_factor('MMBTU')
 
+_MMgal_to_L = auom('gal').conversion_factor('L')*1000000
+
 ternary_results_dict = {'lipid':[], 'protein':[], 'carbohydrate':[],
                         'TEA_5th':[], 'TEA_50th':[], 'TEA_95th':[],
+                        'sludge_price_5th':[], 'sludge_price_50th':[], 'sludge_price_95th':[],
                         'LCA_diesel_5th':[], 'LCA_diesel_50th':[], 'LCA_diesel_95th':[],
                         'LCA_sludge_5th':[], 'LCA_sludge_50th':[], 'LCA_sludge_95th':[]}
 
@@ -1309,259 +1312,13 @@ for a in (0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1):
             
             metric = model.metric
             
-            # @metric(name='sludge_C',units='kg/hr',element='Sankey')
-            # def get_sludge_C():
-            #     return WWTP.sludge_C
-            
-            # @metric(name='sludge_N',units='kg/hr',element='Sankey')
-            # def get_sludge_N():
-            #     return WWTP.sludge_N
-            
-            # @metric(name='sludge_P',units='kg/hr',element='Sankey')
-            # def get_sludge_P():
-            #     return WWTP.sludge_P
-            
-            # @metric(name='sludge_E',units='GJ/hr',element='Sankey')
-            # def get_sludge_E():
-            #     return (WWTP.outs[0].F_mass-WWTP.outs[0].imass['H2O'])*WWTP.sludge_HHV/1000
-            
-            # @metric(name='HTLaqueous_C',units='kg/hr',element='Sankey')
-            # def get_HTLaqueous_C():
-            #     return HTL.HTLaqueous_C
-            
-            # @metric(name='HTLaqueous_N',units='kg/hr',element='Sankey')
-            # def get_HTLaqueous_N():
-            #     return HTL.HTLaqueous_N
-            
-            # @metric(name='HTLaqueous_P',units='kg/hr',element='Sankey')
-            # def get_HTLaqueous_P():
-            #     return HTL.HTLaqueous_P
-            
-            # @metric(name='biocrude_C',units='kg/hr',element='Sankey')
-            # def get_biocrude_C():
-            #     return HTL.biocrude_C
-            
-            # @metric(name='biocrude_N',units='kg/hr',element='Sankey')
-            # def get_biocrude_N():
-            #     return HTL.biocrude_N
-            
-            # @metric(name='biocrude_E',units='GJ/hr',element='Sankey')
-            # def get_biocrude_E():
-            #     return HTL.biocrude_HHV*HTL.outs[2].imass['Biocrude']/1000
-            
-            # @metric(name='offgas_C',units='kg/hr',element='Sankey')
-            # def get_offgas_C():
-            #     return HTL.offgas_C
-            
-            # @metric(name='offgas_E',units='GJ/hr',element='Sankey')
-            # def get_offgas_E():
-            #     return HTL.outs[3].HHV/1000000
-            
-            # @metric(name='biochar_C',units='kg/hr',element='Sankey')
-            # def get_biochar_C():
-            #     return HTL.biochar_C
-            
-            # @metric(name='biochar_P',units='kg/hr',element='Sankey')
-            # def get_biochar_P():
-            #     return HTL.biochar_P
-            
-            # @metric(name='HT_gasoline_C',units='kg/hr',element='Sankey')
-            # def get_HT_gasoline_C():
-            #     carbon = 0
-            #     for name in cmps:
-            #         carbon += D2.outs[0].imass[str(name)]*cmps[str(name)].i_C
-            #     return carbon
-            
-            # @metric(name='HT_gasoline_N',units='kg/hr',element='Sankey')
-            # def get_HT_gasoline_N():
-            #     nitrogen = 0
-            #     for name in cmps:
-            #         nitrogen += D2.outs[0].imass[str(name)]*cmps[str(name)].i_N
-            #     return nitrogen
-            
-            # @metric(name='HT_gasoline_E',units='GJ/hr',element='Sankey')
-            # def get_HT_gasoline_E():
-            #     return D2.outs[0].HHV/1000000
-            
-            # @metric(name='HT_diesel_C',units='kg/hr',element='Sankey')
-            # def get_HT_diesel_C():
-            #     carbon = 0
-            #     for name in cmps:
-            #         carbon += D3.outs[0].imass[str(name)]*cmps[str(name)].i_C
-            #     return carbon
-            
-            # @metric(name='HT_diesel_E',units='GJ/hr',element='Sankey')
-            # def get_HT_diesel_E():
-            #     return D3.outs[0].HHV/1000000
-            
-            # @metric(name='HT_heavy_oil_C',units='kg/hr',element='Sankey')
-            # def get_HT_heavy_oil_C():
-            #     carbon = 0
-            #     for name in cmps:
-            #         carbon += D3.outs[1].imass[str(name)]*cmps[str(name)].i_C
-            #     return carbon
-            
-            # @metric(name='HT_heavy_oil_E',units='GJ/hr',element='Sankey')
-            # def get_HT_heavy_oil_E():
-            #     return D3.outs[1].HHV/1000000
-            
-            # @metric(name='HT_gas_C',units='kg/hr',element='Sankey')
-            # def get_HT_gas_C():
-            #     carbon = 0
-            #     for name in cmps:
-            #         carbon += F2.outs[0].imass[str(name)]*cmps[str(name)].i_C
-            #         carbon += D1.outs[0].imass[str(name)]*cmps[str(name)].i_C
-            #     return carbon
-            
-            # @metric(name='HT_gas_N',units='kg/hr',element='Sankey')
-            # def get_HT_gas_N():
-            #     nitrogen = 0
-            #     for name in cmps:
-            #         nitrogen += F2.outs[0].imass[str(name)]*cmps[str(name)].i_N
-            #         nitrogen += D1.outs[0].imass[str(name)]*cmps[str(name)].i_N
-            #     return nitrogen
-            
-            # @metric(name='HT_gas_E',units='GJ/hr',element='Sankey')
-            # def get_HT_gas_E():
-            #     return (F2.outs[0].HHV+D1.outs[0].HHV)/1000000
-            
-            # @metric(name='HT_ww_C',units='kg/hr',element='Sankey')
-            # def get_HT_ww_C():
-            #     carbon = 0
-            #     for name in cmps:
-            #         carbon += D2.outs[0].imass[str(name)]*cmps[str(name)].i_C
-            #         carbon += D3.outs[0].imass[str(name)]*cmps[str(name)].i_C
-            #         carbon += D3.outs[1].imass[str(name)]*cmps[str(name)].i_C
-            #         carbon += F2.outs[0].imass[str(name)]*cmps[str(name)].i_C
-            #         carbon += D1.outs[0].imass[str(name)]*cmps[str(name)].i_C
-            #     return HTL.biocrude_C - carbon
-            
-            # @metric(name='HT_ww_N',units='kg/hr',element='Sankey')
-            # def get_HT_ww_N():
-            #     nitrogen = 0
-            #     for name in cmps:
-            #         nitrogen += D2.outs[0].imass[str(name)]*cmps[str(name)].i_N
-            #         nitrogen += D3.outs[0].imass[str(name)]*cmps[str(name)].i_N
-            #         nitrogen += D3.outs[1].imass[str(name)]*cmps[str(name)].i_N
-            #         nitrogen += F2.outs[0].imass[str(name)]*cmps[str(name)].i_N
-            #         nitrogen += D1.outs[0].imass[str(name)]*cmps[str(name)].i_N
-            #     return HTL.biocrude_N - nitrogen
-            
-            # @metric(name='HC_gasoline_C',units='kg/hr',element='Sankey')
-            # def get_HC_gasoline_C():
-            #     carbon = 0
-            #     for name in cmps:
-            #         carbon += D4.outs[0].imass[str(name)]*cmps[str(name)].i_C
-            #     return carbon
-            
-            # @metric(name='HC_gasoline_E',units='GJ/hr',element='Sankey')
-            # def get_HC_gasoline_E():
-            #     return D4.outs[0].HHV/1000000
-            
-            # @metric(name='HC_diesel_C',units='kg/hr',element='Sankey')
-            # def get_HC_diesel_C():
-            #     carbon = 0
-            #     for name in cmps:
-            #         carbon += D4.outs[1].imass[str(name)]*cmps[str(name)].i_C
-            #     return carbon
-            
-            # @metric(name='HC_diesel_E',units='GJ/hr',element='Sankey')
-            # def get_HC_diesel_E():
-            #     return D4.outs[1].HHV/1000000
-            
-            # @metric(name='HC_gas_C',units='kg/hr',element='Sankey')
-            # def get_HC_gas_C():
-            #     carbon = 0
-            #     for name in cmps:
-            #         carbon += F3.outs[0].imass[str(name)]*cmps[str(name)].i_C
-            #     return carbon
-            
-            # @metric(name='HC_gas_E',units='GJ/hr',element='Sankey')
-            # def get_HC_gas_E():
-            #     return F3.outs[0].HHV/1000000
-            
-            # @metric(name='HT_H2_E',units='GJ/hr',element='Sankey')
-            # def get_HT_H2_E():
-            #     return HT.ins[1].HHV/HT.hydrogen_excess/1000000
-            
-            # @metric(name='HC_H2_E',units='GJ/hr',element='Sankey')
-            # def get_HC_H2_E():
-            #     return HC.ins[1].HHV/HC.hydrogen_excess/1000000
-            
-            # @metric(name='extracted_P',units='kg/hr',element='Sankey')
-            # def get_extracted_P():
-            #     return AcidEx.outs[1].imass['P']
-            
-            # @metric(name='residual_P',units='kg/hr',element='Sankey')
-            # def get_residual_P():
-            #     return HTL.biochar_P-AcidEx.outs[1].imass['P']
-            
-            # @metric(name='residual_C',units='kg/hr',element='Sankey')
-            # def get_residual_C():
-            #     return HTL.biochar_C
-            
-            # @metric(name='struvite_N',units='kg/hr',element='Sankey')
-            # def get_struvite_N():
-            #     return StruPre.struvite_N
-            
-            # @metric(name='struvite_P',units='kg/hr',element='Sankey')
-            # def get_struvite_P():
-            #     return StruPre.struvite_P
-            
-            # @metric(name='CHG_feed_C',units='kg/hr',element='Sankey')
-            # def get_CHG_feed_C():
-            #     return StruPre.outs[1].imass['C']
-            
-            # @metric(name='CHG_feed_N',units='kg/hr',element='Sankey')
-            # def get_CHG_feed_N():
-            #     return StruPre.outs[1].imass['N']
-            
-            # @metric(name='CHG_feed_P',units='kg/hr',element='Sankey')
-            # def get_CHG_feed_P():
-            #     return StruPre.outs[1].imass['P']
-            
-            # @metric(name='CHG_out_C',units='kg/hr',element='Sankey')
-            # def get_CHG_out_C():
-            #     return CHG.CHGout_C
-            
-            # @metric(name='CHG_out_N',units='kg/hr',element='Sankey')
-            # def get_CHG_out_N():
-            #     return CHG.CHGout_N
-            
-            # @metric(name='CHG_out_P',units='kg/hr',element='Sankey')
-            # def get_CHG_out_P():
-            #     return CHG.CHGout_P
-            
-            # @metric(name='CHG_gas_C',units='kg/hr',element='Sankey')
-            # def get_CHG_gas_C():
-            #     carbon = 0
-            #     for name in cmps:
-            #         carbon += F1.outs[0].imass[str(name)]*cmps[str(name)].i_C
-            #     return carbon
-            
-            # @metric(name='CHG_gas_E',units='GJ/hr',element='Sankey')
-            # def get_CHG_gas_E():
-            #     return F1.outs[0].HHV/1000000
-            
-            # @metric(name='ammoniumsulfate_N',units='kg/hr',element='Sankey')
-            # def get_ammoniumsulfate_N():
-            #     return MemDis.outs[0].F_mass*14.0067*2/132.14
-            
-            # @metric(name='MemDis_ww_C',units='kg/hr',element='Sankey')
-            # def get_MemDis_ww_C():
-            #     return MemDis.outs[1].imass['C']
-            
-            # @metric(name='MemDis_ww_N',units='kg/hr',element='Sankey')
-            # def get_MemDis_ww_N():
-            #     return MemDis.outs[1].imass['N']
-            
-            # @metric(name='MemDis_ww_P',units='kg/hr',element='Sankey')
-            # def get_MemDis_ww_P():
-            #     return MemDis.outs[1].imass['P']
-            
             @metric(name='MFSP',units='$/gal diesel',element='TEA')
             def get_MFSP():
                 return tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg
+            
+            @metric(name='sludge_treatment_price',units='$/ton dry sludge',element='TEA')
+            def get_sludge_treatment_price():
+                return -tea.solve_price(WWTP.ins[0])*_MMgal_to_L/WWTP.ww_2_dry_sludge
             
             @metric(name='GWP_diesel',units='g CO2/MMBTU diesel',element='LCA')
             def get_LCA_diesel():
@@ -1582,6 +1339,10 @@ for a in (0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1):
             TEA_50 = np.percentile(model.table['TEA']['MFSP [$/gal diesel]'].dropna(),50)
             TEA_95 = np.percentile(model.table['TEA']['MFSP [$/gal diesel]'].dropna(),95)
             
+            sludge_price_5 = np.percentile(model.table['TEA']['sludge_treatment_price [$/ton dry sludge]'].dropna(),5)
+            sludge_price_50 = np.percentile(model.table['TEA']['sludge_treatment_price [$/ton dry sludge]'].dropna(),50)
+            sludge_price_95 = np.percentile(model.table['TEA']['sludge_treatment_price [$/ton dry sludge]'].dropna(),95)
+            
             LCA_diesel_5 = np.percentile(model.table['LCA']['GWP_diesel [g CO2/MMBTU diesel]'].dropna(),5)
             LCA_diesel_50 = np.percentile(model.table['LCA']['GWP_diesel [g CO2/MMBTU diesel]'].dropna(),50)
             LCA_diesel_95 = np.percentile(model.table['LCA']['GWP_diesel [g CO2/MMBTU diesel]'].dropna(),95)
@@ -1590,5 +1351,8 @@ for a in (0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1):
             LCA_sludge_50 = np.percentile(model.table['LCA']['GWP_sludge [kg CO2/ton dry sludge]'].dropna(),50)
             LCA_sludge_95 = np.percentile(model.table['LCA']['GWP_sludge [kg CO2/ton dry sludge]'].dropna(),95)
             
-            ternary_results.loc[len(ternary_results.index)] = [100*a, 100*b, round(100-100*a-100*b), TEA_5, TEA_50, TEA_95, LCA_diesel_5, LCA_diesel_50, LCA_diesel_95, LCA_sludge_5, LCA_sludge_50, LCA_sludge_95]
-            
+            ternary_results.loc[len(ternary_results.index)] = [100*a, 100*b, round(100-100*a-100*b),
+                                                               TEA_5, TEA_50, TEA_95,
+                                                               sludge_price_5, sludge_price_50, sludge_price_95,
+                                                               LCA_diesel_5, LCA_diesel_50, LCA_diesel_95,
+                                                               LCA_sludge_5, LCA_sludge_50, LCA_sludge_95]

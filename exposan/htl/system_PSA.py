@@ -46,6 +46,8 @@ _kg_to_g = auom('kg').conversion_factor('g')
 
 _MJ_to_MMBTU = auom('MJ').conversion_factor('MMBTU')
 
+_MMgal_to_L = auom('gal').conversion_factor('L')*1000000
+
 # __all__ = ('create_system',)
 
 # def create_system():
@@ -236,7 +238,7 @@ D4 = su.HTLdistillation('A450', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
                         y_top=360/546, x_bot=7/708, k=2, is_divided=True)
 
 # =============================================================================
-# CHP, storage, and disposal (Area 500)
+# Storage, and disposal (Area 500)
 # =============================================================================
 
 GasolineMixer = qsu.Mixer('S500', ins=(D2-0, D4-0), outs='mixed_gasoline',
@@ -1686,6 +1688,10 @@ def get_other_utilities_VOC():
 def get_MFSP():
     return tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg
 
+@metric(name='sludge_treatment_price',units='$/ton dry sludge',element='TEA')
+def get_sludge_treatment_price():
+    return -tea.solve_price(WWTP.ins[0])*_MMgal_to_L/WWTP.ww_2_dry_sludge
+
 @metric(name='GWP_diesel',units='g CO2/MMBTU diesel',element='LCA')
 def get_LCA_diesel():
     return lca_diesel.get_total_impacts()['GlobalWarming']/FuelMixer.outs[0].F_mass/sys_PSA.operating_hours/lca_diesel.lifetime*_kg_to_g/45.5/_MJ_to_MMBTU
@@ -1713,6 +1719,7 @@ def organize_results(model, path):
         results.to_excel(writer, sheet_name='Results')
         percentiles.to_excel(writer, sheet_name='Percentiles')
 organize_results(model, 'example_model.xlsx')
+
 #%%
 fig, ax = qs.stats.plot_uncertainties(model)
 fig
