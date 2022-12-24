@@ -1639,20 +1639,28 @@ def get_CHG_catalyst_VOC():
 def get_MgCl2_VOC():
     return StruPre.ins[1].price*StruPre.ins[1].F_mass*sys_PSA.operating_hours
 
-@metric(name='other_materials_VOC',units='$/yr',element='TEA')
-def get_other_materials_VOC():
-    a = 0 
-    for i in range (max(len(unit.ins) for unit in sys_PSA.units)):
-        for unit in sys_PSA.units:
-            if len(unit.ins) == i:
-                for j in range (i):
-                    if unit.ins[j].price*unit.ins[j].F_mass*sys_PSA.operating_hours != 0:
-                        a+=unit.ins[j].price*unit.ins[j].F_mass*sys_PSA.operating_hours
-    a -= (H2SO4_Tank.ins[0].price*H2SO4_Tank.ins[0].F_mass +\
-          RSP1.ins[0].price*RSP1.ins[0].F_mass +\
-          CHG.ins[1].price*CHG.ins[1].F_mass +\
-          StruPre.ins[1].price*StruPre.ins[1].F_mass)*sys_PSA.operating_hours
-    return a
+@metric(name='HT_catalyst_VOC',units='$/yr',element='TEA')
+def get_HT_catalyst_VOC():
+    return HT.ins[2].price*HT.ins[2].F_mass*sys_PSA.operating_hours
+
+
+@metric(name='HC_catalyst_VOC',units='$/yr',element='TEA')
+def get_HC_catalyst_VOC():
+    return HC.ins[2].price*HC.ins[2].F_mass*sys_PSA.operating_hours
+
+
+@metric(name='MgO_VOC',units='$/yr',element='TEA')
+def get_MgO_VOC():
+    return StruPre.ins[3].price*StruPre.ins[3].F_mass*sys_PSA.operating_hours
+
+
+@metric(name='NaOH_VOC',units='$/yr',element='TEA')
+def get_NaOH_VOC():
+    return MemDis.ins[2].price*MemDis.ins[2].F_mass*sys_PSA.operating_hours
+
+@metric(name='membrane_VOC',units='$/yr',element='TEA')
+def get_membrane_VOC():
+    return MemDis.ins[3].price*MemDis.ins[3].F_mass*sys_PSA.operating_hours
 
 @metric(name='utility_VOC',units='$/yr',element='TEA')
 def get_utility_VOC():
