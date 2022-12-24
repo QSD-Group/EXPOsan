@@ -1684,6 +1684,57 @@ def get_other_utilities_VOC():
     return a
 
 #%%
+@metric(name='construction_GWP',units='kg CO2 eq',element='LCA')
+def get_construction_GWP():
+    return lca_diesel.get_construction_impacts()['GlobalWarming']
+
+@metric(name='stream_GWP',units='kg CO2 eq',element='LCA')
+def get_stream_GWP():
+    return lca_diesel.get_stream_impacts()['GlobalWarming']
+
+@metric(name='other_GWP',units='kg CO2 eq',element='LCA')
+def get_other_GWP():
+    return lca_diesel.get_other_impacts()['GlobalWarming']
+
+@metric(name='CHG_GWP',units='kg CO2 eq',element='LCA')
+def get_CHG_GWP():
+    table_construction = lca_diesel.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
+    table_stream = lca_diesel.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+    return table_construction['Stainless_steel [kg]']['A230']+table_stream['CHG_catalyst_out']
+
+@metric(name='HT_HC_GWP',units='kg CO2 eq',element='LCA')
+def get_HT_HC_GWP():
+    table_construction = lca_diesel.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
+    table_stream = lca_diesel.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+    return table_construction['Carbon_steel [kg]']['T500']+table_construction['Carbon_steel [kg]']['T510']+\
+           table_construction['Stainless_steel [kg]']['A300']+table_construction['Stainless_steel [kg]']['A310']+\
+           table_construction['Stainless_steel [kg]']['A330']+table_construction['Stainless_steel [kg]']['A360']+\
+           table_construction['Stainless_steel [kg]']['A400']+table_construction['Stainless_steel [kg]']['A410']+\
+           table_construction['Stainless_steel [kg]']['A420']+table_construction['Stainless_steel [kg]']['A500']+\
+           table_construction['Stainless_steel [kg]']['A510']+\
+           table_stream['H2']+table_stream['HT_catalyst_out']+table_stream['HC_catalyst_out']
+
+@metric(name='nutrient_GWP',units='kg CO2 eq',element='LCA')
+def get_nutrient_GWP():
+    table_construction = lca_diesel.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
+    table_stream = lca_diesel.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+    return table_construction['Carbon_steel [kg]']['A220']+\
+           table_construction['Stainless_steel [kg]']['A200']+table_construction['Stainless_steel [kg]']['T200']+\
+           table_construction['RO [m2]']['A260']+\
+           table_stream['H2SO4']+table_stream['MgCl2']+table_stream['MgO']+table_stream['struvite']+\
+           table_stream['NH4Cl']+table_stream['Membrane_in']+table_stream['NaOH']+table_stream['ammonium_sulfate']
+           
+@metric(name='electricity_GWP',units='kg CO2 eq',element='LCA')
+def get_electricity_GWP():
+    table_other = lca_diesel.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+    return table_other['Electricity [kWh]']
+
+@metric(name='cooling_GWP',units='kg CO2 eq',element='LCA')
+def get_cooling_GWP():
+    table_other = lca_diesel.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+    return table_other['Cooling [MJ]']
+
+#%%
 @metric(name='MFSP',units='$/gal diesel',element='TEA')
 def get_MFSP():
     return tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg
