@@ -1587,16 +1587,13 @@ def get_MgCl2_VOC():
 def get_HT_catalyst_VOC():
     return HT.ins[2].price*HT.ins[2].F_mass*sys_no_P.operating_hours
 
-
 @metric(name='HC_catalyst_VOC',units='$/yr',element='TEA')
 def get_HC_catalyst_VOC():
     return HC.ins[2].price*HC.ins[2].F_mass*sys_no_P.operating_hours
 
-
 @metric(name='MgO_VOC',units='$/yr',element='TEA')
 def get_MgO_VOC():
     return StruPre.ins[3].price*StruPre.ins[3].F_mass*sys_no_P.operating_hours
-
 
 @metric(name='NaOH_VOC',units='$/yr',element='TEA')
 def get_NaOH_VOC():
@@ -1610,30 +1607,28 @@ def get_membrane_VOC():
 def get_utility_VOC():
     return sys_no_P.utility_cost
 
-@metric(name='HTL_heating_VOC',units='$/yr',element='TEA')
-def get_HTL_heating_VOC():
-    return H1.utility_cost*sys_no_P.operating_hours
+@metric(name='HTL_utility_VOC',units='$/yr',element='TEA')
+def get_HTL_utility_VOC():
+    return (SluC.utility_cost+P1.utility_cost+H1.utility_cost+HTL.utility_cost)*sys_no_P.operating_hours
 
-@metric(name='CHG_heating_VOC',units='$/yr',element='TEA')
-def get_CHG_heating_VOC():
-    return CHG_heating.utility_cost*sys_no_P.operating_hours
+@metric(name='CHG_utility_VOC',units='$/yr',element='TEA')
+def get_CHG_utility_VOC():
+    return (CHG.utility_cost+F1.utility_cost)*sys_no_P.operating_hours
 
-@metric(name='HXN_VOC',units='$/yr',element='TEA')
-def get_HXN_VOC():
+@metric(name='HT_HC_utility_VOC',units='$/yr',element='TEA')
+def get_HT_HC_utility_VOC():
+    a = 0
+    for unit in (P2, HT, H2, F2, H3, D1, D2, D3, P3, HC, H4, F3, D4, H5, H6):
+        a += unit.utility_cost
+    return a*sys_no_P.operating_hours
+
+@metric(name='HXN_utility_VOC',units='$/yr',element='TEA')
+def get_HXN_utility_VOC():
     return HXN.utility_cost*sys_no_P.operating_hours
 
-@metric(name='CHP_VOC',units='$/yr',element='TEA')
-def get_CHP_VOC():
+@metric(name='CHP_utility_VOC',units='$/yr',element='TEA')
+def get_CHP_utility_VOC():
     return CHP.utility_cost*sys_no_P.operating_hours
-
-@metric(name='other_utilities_VOC',units='$/yr',element='TEA')
-def get_other_utilities_VOC():
-    a = 0
-    for unit in sys_no_P.units:
-        if unit.utility_cost:
-            a += unit.utility_cost*sys_no_P.operating_hours
-    a -= (H1.utility_cost + CHG_heating.utility_cost + HXN.utility_cost + CHP.utility_cost)*sys_no_P.operating_hours
-    return a
 
 #%%
 @metric(name='construction_GWP',units='kg CO2 eq',element='LCA')
@@ -1648,33 +1643,109 @@ def get_stream_GWP():
 def get_other_GWP():
     return lca_diesel.get_other_impacts()['GlobalWarming']
 
-@metric(name='CHG_GWP',units='kg CO2 eq',element='LCA')
-def get_CHG_GWP():
+@metric(name='HTL_constrution_GWP',units='kg CO2 eq',element='LCA')
+def get_HTL_constrution_GWP():
     table_construction = lca_diesel.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
-    table_stream = lca_diesel.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
-    return table_construction['Stainless_steel [kg]']['A230']+table_stream['CHG_catalyst_out']
+    return table_construction['Stainless_steel [kg]']['A000']+table_construction['Stainless_steel [kg]']['A100']+\
+           table_construction['Stainless_steel [kg]']['A110']+table_construction['Stainless_steel [kg]']['A120']
 
-@metric(name='HT_HC_GWP',units='kg CO2 eq',element='LCA')
-def get_HT_HC_GWP():
+@metric(name='nutrient_constrution_GWP',units='kg CO2 eq',element='LCA')
+def get_nutrient_constrution_GWP():
     table_construction = lca_diesel.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
-    table_stream = lca_diesel.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+    return table_construction['Carbon_steel [kg]']['A220']+table_construction['RO [m2]']['A260']+\
+           table_construction['Stainless_steel [kg]']['T200']
+
+@metric(name='CHG_constrution_GWP',units='kg CO2 eq',element='LCA')
+def get_CHG_constrution_GWP():
+    table_construction = lca_diesel.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
+    return table_construction['Stainless_steel [kg]']['A230']
+
+@metric(name='HT_HC_construction_GWP',units='kg CO2 eq',element='LCA')
+def get_HT_HC_construction_GWP():
+    table_construction = lca_diesel.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
     return table_construction['Carbon_steel [kg]']['T500']+table_construction['Carbon_steel [kg]']['T510']+\
            table_construction['Stainless_steel [kg]']['A300']+table_construction['Stainless_steel [kg]']['A310']+\
            table_construction['Stainless_steel [kg]']['A330']+table_construction['Stainless_steel [kg]']['A360']+\
            table_construction['Stainless_steel [kg]']['A400']+table_construction['Stainless_steel [kg]']['A410']+\
            table_construction['Stainless_steel [kg]']['A420']+table_construction['Stainless_steel [kg]']['A500']+\
-           table_construction['Stainless_steel [kg]']['A510']+\
-           table_stream['H2']+table_stream['HT_catalyst_out']+table_stream['HC_catalyst_out']
+           table_construction['Stainless_steel [kg]']['A510']
 
-@metric(name='nutrient_GWP',units='kg CO2 eq',element='LCA')
-def get_nutrient_GWP():
+@metric(name='CHP_constrution_GWP',units='kg CO2 eq',element='LCA')
+def get_CHP_constrution_GWP():
     table_construction = lca_diesel.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
+    return table_construction['Carbon_steel [kg]']['CHP']+table_construction['Concrete [kg]']['CHP']+\
+           table_construction['Furnace [kg]']['CHP']+table_construction['Reinforcing_steel [kg]']['CHP']
+
+@metric(name='CHG_stream_GWP',units='kg CO2 eq',element='LCA')
+def get_CHG_stream_GWP():
     table_stream = lca_diesel.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
-    return table_construction['Carbon_steel [kg]']['A220']+\
-           table_construction['Stainless_steel [kg]']['T200']+\
-           table_construction['RO [m2]']['A260']+\
-           table_stream['H2SO4']+table_stream['MgCl2']+table_stream['MgO']+table_stream['struvite']+\
+    return table_stream['CHG_catalyst_out']
+
+@metric(name='HT_HC_stream_GWP',units='kg CO2 eq',element='LCA')
+def get_HT_HC_stream_GWP():
+    table_stream = lca_diesel.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+    return table_stream['H2']+table_stream['HT_catalyst_out']+table_stream['HC_catalyst_out']
+
+@metric(name='nutrient_stream_GWP',units='kg CO2 eq',element='LCA')
+def get_nutrient_stream_GWP():
+    table_stream = lca_diesel.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+    return table_stream['H2SO4']+table_stream['MgCl2']+table_stream['MgO']+table_stream['struvite']+\
            table_stream['NH4Cl']+table_stream['Membrane_in']+table_stream['NaOH']+table_stream['ammonium_sulfate']
+           
+@metric(name='CHP_stream_GWP',units='kg CO2 eq',element='LCA')
+def get_CHP_stream_GWP():
+    table_stream = lca_diesel.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+    return table_stream['natural_gas']
+
+@metric(name='HTL_utility_GWP',units='kg CO2 eq',element='LCA')
+def get_HTL_utility_GWP():
+    table_other = lca_diesel.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+    a = 0
+    for i in range (len(HTL.heat_utilities)):
+        if HTL.heat_utilities[i].duty < 0:
+            a += HTL.heat_utilities[i].duty
+    return table_other['Cooling [MJ]']/sys_no_P.get_cooling_duty()*(-a*sys_no_P.operating_hours)+\
+           table_other['Electricity [kWh]']/(sys_no_P.get_electricity_consumption()-sys_no_P.get_electricity_production())*\
+           (SluC.power_utility.consumption+P1.power_utility.consumption)*sys_no_P.operating_hours
+
+@metric(name='CHG_utility_GWP',units='kg CO2 eq',element='LCA')
+def get_CHG_utility_GWP():
+    table_other = lca_diesel.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+    a = 0
+    for unit in (CHG, F1):
+        for i in range (len(unit.heat_utilities)):
+            if unit.heat_utilities[i].duty < 0:
+                a += unit.heat_utilities[i].duty
+    return table_other['Cooling [MJ]']/sys_no_P.get_cooling_duty()*(-a*sys_no_P.operating_hours)+\
+           table_other['Electricity [kWh]']/(sys_no_P.get_electricity_consumption()-sys_no_P.get_electricity_production())*\
+           CHG.power_utility.consumption*sys_no_P.operating_hours
+
+@metric(name='HT_HC_utility_GWP',units='kg CO2 eq',element='LCA')
+def get_HT_HC_utility_GWP():
+    table_other = lca_diesel.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+    a = 0
+    for unit in (HT, H2, F2, D1, D2, D3, HC, H4, F3, D4, H5, H6):
+        for i in range (len(unit.heat_utilities)):
+            if unit.heat_utilities[i].duty < 0:
+                a += unit.heat_utilities[i].duty
+    return table_other['Cooling [MJ]']/sys_no_P.get_cooling_duty()*(-a*sys_no_P.operating_hours)+\
+           table_other['Electricity [kWh]']/(sys_no_P.get_electricity_consumption()-sys_no_P.get_electricity_production())*\
+           (P2.power_utility.consumption+P3.power_utility.consumption)*sys_no_P.operating_hours
+
+@metric(name='HXN_utility_GWP',units='kg CO2 eq',element='LCA')
+def get_HXN_utility_GWP():
+    table_other = lca_diesel.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+    a = 0
+    for i in range (len(HXN.heat_utilities)):
+        if HXN.heat_utilities[i].duty > 0:
+            a += HXN.heat_utilities[i].duty
+    return table_other['Cooling [MJ]']/sys_no_P.get_cooling_duty()*(-a*sys_no_P.operating_hours)
+
+@metric(name='CHP_utility_GWP',units='kg CO2 eq',element='LCA')
+def get_CHP_utility_GWP():
+    table_other = lca_diesel.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+    return table_other['Electricity [kWh]']/(sys_no_P.get_electricity_consumption()-sys_no_P.get_electricity_production())*\
+           (-CHP.power_utility.production)*sys_no_P.operating_hours
            
 @metric(name='electricity_GWP',units='kg CO2 eq',element='LCA')
 def get_electricity_GWP():
