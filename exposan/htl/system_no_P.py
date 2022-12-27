@@ -1762,7 +1762,7 @@ def get_cooling_GWP():
 def get_MFSP():
     return tea.solve_price(FuelMixer.outs[0])*FuelMixer.diesel_gal_2_kg
 
-@metric(name='sludge_treatment_price',units='$/ton dry sludge',element='TEA')
+@metric(name='sludge_management_price',units='$/ton dry sludge',element='TEA')
 def get_sludge_treatment_price():
     return -tea.solve_price(WWTP.ins[0])*_MMgal_to_L/WWTP.ww_2_dry_sludge
 
