@@ -2507,7 +2507,7 @@ class WWmixer(SanUnit):
 
 class PhaseChanger(SanUnit):
     '''
-    Change the effluent phase to the desired one.
+    Change the effluent phase to the desired one, also allow the switch between stream types.
     
     Parameters
     ----------

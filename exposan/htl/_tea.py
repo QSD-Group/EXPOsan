@@ -27,8 +27,7 @@ import biosteam as bst
 import pandas as pd
 import numpy as np
 
-__all__ = ('HTL_TEA', 'create_tea', 
-           'capex_table', 'voc_table', 'foc_table')
+__all__ = ('HTL_TEA', 'create_tea',)
 
 class CAPEXTableBuilder:
     __slots__ = ('index', 'data')
