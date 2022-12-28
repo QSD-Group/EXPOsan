@@ -22,9 +22,10 @@ for license details.
 
 import biosteam as bst, qsdsan as qs
 from thermosteam import Chemical
-from qsdsan import PowerUtility
 
-def load_process_settings():
+__all__ = ('_load_process_settings',)
+
+def _load_process_settings():
 # =============================================================================
 #     add a heating agent
 # =============================================================================
@@ -73,4 +74,4 @@ def load_process_settings():
 # =============================================================================
 #     set electricity price
 # =============================================================================
-    PowerUtility.price = 0.06879
+    bst.PowerUtility.price = 0.06879

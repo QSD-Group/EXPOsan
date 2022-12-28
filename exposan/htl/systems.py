@@ -32,10 +32,11 @@ import os, qsdsan as qs
 import exposan.htl._sanunits as su
 from qsdsan import sanunits as qsu
 from biosteam.units import IsenthalpicValve
-from qsdsan.utils import auom
+from qsdsan.utils import auom, clear_lca_registries
 from exposan.htl import (
+    _load_components,
+    _load_process_settings,
     create_tea,
-    load_process_settings,
     )
 
 
@@ -49,8 +50,23 @@ _MMgal_to_L = auom('gal').conversion_factor('L')*1000000
 
 __all__ = ('create_system',)
 
-def create_system(config='baseline'):
-    load_process_settings()
+def create_system(configuration='baseline'):
+    if configuration not in ('baseline', 'no_P', 'PSA'):
+        raise ValueError('`configuration` can only be "baseline", '
+                         '"no_P" (without acid extraction and P recovery), '
+                         'or "PSA" (with H2 recovery through pressure swing adsorption), '
+                         f'not "{configuration}".')
+    flowsheet_ID = f'htl_{configuration}'
+    
+    # Clear flowsheet and registry for reloading
+    if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
+        getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
+        clear_lca_registries()
+    flowsheet = qs.Flowsheet(flowsheet_ID)
+    qs.main_flowsheet.set_flowsheet(flowsheet)
+    
+    _load_components()
+    _load_process_settings()
     
     # Construction here, StreamImpactItem after TEA
     folder = os.path.dirname(__file__)
@@ -118,15 +134,17 @@ def create_system(config='baseline'):
     # must put after AcidEx and MemDis in path during simulation to ensure input
     # not empty
     
-    AcidEx = su.AcidExtraction('A200', ins=(HTL-0, SP1-0),
-                               outs=('residual','extracted'))
-    AcidEx.register_alias('AcidEx')
-    
-    # AcidEx.outs[0].price = -0.055 # SS 2021 SOT PNNL report page 24 Table 9
-    # not include residual for TEA and LCA for now
-    
-    # baseline:
-    M1 = su.HTLmixer('A210', ins=(HTL-1, AcidEx-1), outs=('mixture'))
+    if configuration == 'no_P':
+        M1_outs1 = ''
+    else:
+        AcidEx = su.AcidExtraction('A200', ins=(HTL-0, SP1-0),
+                                   outs=('residual','extracted'))
+        AcidEx.register_alias('AcidEx')
+        # AcidEx.outs[0].price = -0.055 # SS 2021 SOT PNNL report page 24 Table 9
+        # not include residual for TEA and LCA for now
+        
+        M1_outs1 = AcidEx.outs[1]
+    M1 = su.HTLmixer('A210', ins=(HTL-1, M1_outs1), outs=('mixture',))
     M1.register_alias('M1')
     
     # if remove AcidEx:
@@ -317,24 +335,18 @@ def create_system(config='baseline'):
     # facilities
     # =============================================================================
     
-    HXN = su.HTLHXN('HXN')
+    su.HTLHXN('HXN')
     
     CHP = su.HTLCHP('CHP', ins=(GasMixer-0, 'natural_gas', 'air'),
                   outs=('emission','solid_ash'), init_with='WasteStream', supplement_power_utility=False)
     CHP.ins[1].price = 0.1685
     
-    sys = qs.System('sys',
-                    path=(WWTP, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
-                          M1, StruPre, CHG, V1, F1, MemDis, SP1,
-                          P2, HT, V2, H2, F2, V3, SP2, H3, D1, D2, D3, P3,
-                          HC, H4, V4, F3, D4, GasolineMixer, DieselMixer,
-                          H5, H6, PC1, PC2, PC3, PC4, PC5,
-                          GasolineTank, DieselTank, FuelMixer,
-                          GasMixer, WWmixer, RSP1),
-                    facilities=(HXN, CHP,),
-                    operating_hours=WWTP.operation_hours # 7920 hr Jones
-                    )
-    
+    sys = qs.System.from_units(
+        'sys',
+        units=list(flowsheet.unit), 
+        operating_hours=WWTP.operation_hours, # 7920 hr Jones
+        )
+
     ##### Add stream impact items #####
     # Biocrude upgrading   
     qs.StreamImpactItem(ID='H2_item',
@@ -540,7 +552,17 @@ def create_system(config='baseline'):
     # HC_hx_H2 = HC.heat_exchanger_H2
     # HC_hx_oil = HC.heat_exchanger_oil
     
-
+    # sys = qs.System('sys',
+    #                 path=(WWTP, SluC, P1, H1, HTL, H2SO4_Tank, AcidEx,
+    #                       M1, StruPre, CHG, V1, F1, MemDis, SP1,
+    #                       P2, HT, V2, H2, F2, V3, SP2, H3, D1, D2, D3, P3,
+    #                       HC, H4, V4, F3, D4, GasolineMixer, DieselMixer,
+    #                       H5, H6, PC1, PC2, PC3, PC4, PC5,
+    #                       GasolineTank, DieselTank, FuelMixer,
+    #                       GasMixer, WWmixer, RSP1),
+    #                 facilities=(HXN, CHP,),
+    #                 operating_hours=WWTP.operation_hours # 7920 hr Jones
+    #                 )
     
     # dct = globals()
     # for unit_alias in (

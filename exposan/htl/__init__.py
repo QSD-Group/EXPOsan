@@ -47,17 +47,17 @@ from ._tea import *
 from . import systems
 from .systems import *
 _system_loaded = False
-def _load_system(config='baseline'):
+def _load_system(configuration='baseline'):
     global sys, tea, lca, _system_loaded
-    sys = create_system(config)
+    sys = create_system(configuration)
     tea = sys.TEA
     lca = sys.LCA
     _system_loaded = True
 
 
-def load(config='baseline'):
+def load(configuration='baseline'):
     if not _components_loaded: _load_components()
-    if not _system_loaded: _load_system(config)
+    if not _system_loaded: _load_system(configuration)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
 
