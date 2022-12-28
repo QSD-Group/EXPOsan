@@ -32,7 +32,7 @@ from qsdsan import sanunits as qsu
 from biosteam.units import IsenthalpicValve
 from exposan.htl._process_settings import load_process_settings
 from exposan.htl._components import create_components
-from exposan.htl._TEA import *
+from exposan.htl._tea import *
 from qsdsan import PowerUtility, Model
 from biosteam import HeatUtility
 from qsdsan.utils import auom, DictAttrSetter
