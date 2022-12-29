@@ -811,12 +811,9 @@ class HTL(Reactor):
         
     @property
     def offgas_C(self):
-        breakpoint()
-        carbon = 0
-        cmps = self.components
-        for name in self.gas_composition.keys():
-            carbon += self.outs[3].imass[name]*cmps[name].i_C
-        return min(carbon, self.WWTP.sludge_C - self.biocrude_C - self.HTLaqueous_C)    
+        carbon = sum(self.outs[3].imass[self.gas_composition]*
+                     [cmp.i_C for cmp in self.components[self.gas_composition]])
+        return min(carbon, self.WWTP.sludge_C - self.biocrude_C - self.HTLaqueous_C)
         
     @property
     def biochar_C_ratio(self):
@@ -1882,20 +1879,14 @@ class HT(Reactor):
         # sludge. Otherwise, an exception will be raised.
         
     @property
-    def hydrocarbon_C(self):
-        cmps = self.components
-        carbon = 0
-        for name in self.HT_composition.keys():
-            carbon += self.outs[0].imass[name]*cmps[name].i_C
-        return carbon
+    def hydrocarbon_C(self):   
+        return sum(self.outs[0].imass[self.HT_composition]*
+                   [cmp.i_C for cmp in self.components[self.HT_composition]])
 
     @property
     def hydrocarbon_N(self):
-        cmps = self.components
-        nitrogen = 0
-        for name in self.HT_composition.keys():
-            nitrogen += self.outs[0].imass[name]*cmps[name].i_N
-        return nitrogen
+        return sum(self.outs[0].imass[self.HT_composition]*
+                   [cmp.i_N for cmp in self.components[self.HT_composition]])
 
     @property
     def HTaqueous_C(self):
@@ -2114,11 +2105,12 @@ class HT_PSA(Reactor):
         
         self.HTL = self.ins[0]._source.ins[0]._source
         
+        HT_composition = self.HT_composition
         if self.HTL.biocrude_N == 0:
-            remove = self.HT_composition['PIPERDIN']
-            for chemical in self.HT_composition.keys():  
-                self.HT_composition[chemical] /= (1-remove)
-            self.HT_composition['PIPERDIN'] = 0
+            remove = HT_composition['PIPERDIN']
+            for chemical in HT_composition.keys():  
+                HT_composition[chemical] /= (1-remove)
+            HT_composition['PIPERDIN'] = 0
         
         catalyst_in.imass['HT_catalyst'] = biocrude.F_mass/self.WHSV/self.catalyst_lifetime
         catalyst_in.phase = 's'
@@ -2171,21 +2163,16 @@ class HT_PSA(Reactor):
         # It's OK if the mass balance is within +/- 10% of total carbon in 
         # sludge. Otherwise, an exception will be raised.
         
+        
     @property
     def hydrocarbon_C(self):
-        cmps = self.components
-        carbon = 0
-        for name in self.HT_composition.keys():
-            carbon += self.outs[0].imass[name]*cmps[name].i_C
-        return carbon
+        return sum(self.outs[0].imass[self.HT_composition]*
+                   [cmp.i_C for cmp in self.components[self.HT_composition]])
 
     @property
     def hydrocarbon_N(self):
-        cmps = self.components
-        nitrogen = 0
-        for name in self.HT_composition.keys():
-            nitrogen += self.outs[0].imass[name]*cmps[name].i_N
-        return nitrogen
+        return sum(self.outs[0].imass[self.HT_composition]*
+                   [cmp.i_N for cmp in self.components[self.HT_composition]])
 
     @property
     def HTaqueous_C(self):
@@ -2416,12 +2403,9 @@ class HC(Reactor):
         # exception will be raised.
         
     @property
-    def hydrocarbon_C(self):
-        cmps = self.components
-        carbon = 0
-        for name in self.HC_composition.keys():
-            carbon += self.outs[0].imass[name]*cmps[name].i_C
-        return carbon
+    def hydrocarbon_C(self):   
+        return sum(self.outs[0].imass[self.HC_composition]*
+                   [cmp.i_C for cmp in self.components[self.HC_composition]])
 
     def _design(self):
         IC = self.compressor
