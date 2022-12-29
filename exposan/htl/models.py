@@ -1245,13 +1245,18 @@ def create_model(system=None, exclude_sludge_compositions=False, key_metrics_onl
             table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
             return table_construction['Stainless_steel [kg]']['A000']+table_construction['Stainless_steel [kg]']['A100']+\
                    table_construction['Stainless_steel [kg]']['A110']+table_construction['Stainless_steel [kg]']['A120']
-        
-        @metric(name='nutrient_constrution_GWP',units='kg CO2 eq',element='LCA')
-        def get_nutrient_constrution_GWP():
-            table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
-            return table_construction['Carbon_steel [kg]']['A220']+table_construction['RO [m2]']['A260']+\
-                   table_construction['Stainless_steel [kg]']['A200']+table_construction['Stainless_steel [kg]']['T200']
-        
+        if AcidEx:
+            def get_nutrient_constrution_GWP():
+                table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
+                return table_construction['Carbon_steel [kg]']['A220']+table_construction['RO [m2]']['A260']+\
+                       table_construction['Stainless_steel [kg]']['A200']+table_construction['Stainless_steel [kg]']['T200']
+        else:
+            def get_nutrient_constrution_GWP():
+                table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
+                return table_construction['Carbon_steel [kg]']['A220']+table_construction['RO [m2]']['A260']+\
+                       table_construction['Stainless_steel [kg]']['T200']
+        model.metric(getter=get_nutrient_constrution_GWP, name='nutrient_constrution_GWP',units='kg CO2 eq',element='LCA')
+
         @metric(name='CHG_constrution_GWP',units='kg CO2 eq',element='LCA')
         def get_CHG_constrution_GWP():
             table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
