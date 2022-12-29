@@ -962,14 +962,12 @@ def create_model(system=None, exclude_sludge_compositions=False, key_metrics_onl
         
         @metric(name='HT_ww_C',units='kg/hr',element='Sankey')
         def get_HT_ww_C():
-            mass = sum(i.outs[0].mass for i in (D1, D2, D3, F2))
-            mass += D3.outs[1]
+            mass = sum((i.outs[0].mass for i in (D1, D2, D3, F2)), D3.outs[1].mass)
             return HTL.biocrude_C - sum(mass*[cmp.i_C for cmp in cmps])
         
         @metric(name='HT_ww_N',units='kg/hr',element='Sankey')
         def get_HT_ww_N():
-            mass = sum(i.outs[0].mass for i in (D1, D2, D3, F2))
-            mass += D3.outs[1]
+            mass = sum((i.outs[0].mass for i in (D1, D2, D3, F2)), D3.outs[1].mass)
             return HTL.biocrude_N - sum(mass*[cmp.i_N for cmp in cmps])
         
         D4 = unit.D4
@@ -1217,7 +1215,7 @@ def create_model(system=None, exclude_sludge_compositions=False, key_metrics_onl
         
         @metric(name='HT_HC_utility_VOC',units='$/yr',element='TEA')
         def get_HT_HC_utility_VOC():
-            return [i.utility_cost for i in HT_HC_units]*sys.operating_hours
+            return sum(i.utility_cost for i in HT_HC_units)*sys.operating_hours
         
         @metric(name='HXN_utility_VOC',units='$/yr',element='TEA')
         def get_HXN_utility_VOC():

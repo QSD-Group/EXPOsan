@@ -3097,6 +3097,16 @@ class HTL_storage_tank(qsu.StorageTank):
         Design['Wall thickness'] = VWT # in
         return Design
 
+    @property
+    def vessel_material(self):
+        return self._vessel_material
+    @vessel_material.setter
+    def vessel_material(self, i):
+        exist_material = getattr(self, '_vessel_material', None)
+        if i and exist_material == i: return # type doesn't change, no need to do anything
+        self._vessel_material = i
+        self._init_lca()
+
 # =============================================================================
 # HTLcompressor
 # =============================================================================
