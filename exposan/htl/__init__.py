@@ -38,6 +38,23 @@ def _load_components(reload=False):
         qs.set_thermo(components)
         _components_loaded = True
 
+# from . import _process_settings
+# from ._process_settings import *
+
+# from . import _tea
+# from ._tea import *
+
+# from . import systems
+# from .systems import *
+# _system_loaded = False
+# def _load_system(configuration='baseline'):
+#     global sys, tea, lca, _system_loaded
+#     sys = create_system(configuration)
+#     tea = sys.TEA
+#     lca = sys.LCA
+#     _system_loaded = True
+
+
 from . import _process_settings
 from ._process_settings import *
 
@@ -46,18 +63,21 @@ from ._tea import *
 
 from . import systems
 from .systems import *
+
+# def _load_system(configuration='baseline'):
+#     global sys, tea, lca, _system_loaded
+#     sys = create_system(configuration)
+#     tea = sys.TEA
+#     lca = sys.LCA
+#     _system_loaded = True
+
 _system_loaded = False
-def _load_system(configuration='baseline'):
+def load(configuration='baseline'):
     global sys, tea, lca, _system_loaded
     sys = create_system(configuration)
     tea = sys.TEA
     lca = sys.LCA
     _system_loaded = True
-
-
-def load(configuration='baseline'):
-    if not _components_loaded: _load_components()
-    if not _system_loaded: _load_system(configuration)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
 
@@ -65,7 +85,7 @@ def load(configuration='baseline'):
 def __getattr__(name):
     if not _components_loaded or not _system_loaded:
         raise AttributeError(f'module "{__name__}" not yet loaded, '
-                             f'load module with `{__name__}.load()`.')
+                              f'load module with `{__name__}.load()`.')
         
         
         
