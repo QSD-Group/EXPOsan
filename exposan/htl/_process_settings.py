@@ -5,7 +5,9 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+
     Jianan Feng <jiananf2@illinois.edu>
+
     Yalin Li <mailto.yalin.li@gmail.com>
     
 References:
@@ -21,7 +23,6 @@ for license details.
 '''
 
 import biosteam as bst, qsdsan as qs
-from thermosteam import Chemical
 
 __all__ = ('_load_process_settings',)
 
@@ -36,8 +37,8 @@ def _load_process_settings():
     # https://www.dow.com/en-us/pdp.dowtherm-a-heat-transfer-fluid.238000z.\
     # html#tech-content (accessed 11-16-2022)
     
-    DPO_chem = Chemical('DPO_chem', search_ID='101-84-8')
-    BIP_chem = Chemical('BIP_chem', search_ID='92-52-4')
+    DPO_chem = qs.Chemical('DPO_chem', search_ID='101-84-8')
+    BIP_chem = qs.Chemical('BIP_chem', search_ID='92-52-4')
     
     DPO = qs.Component.from_chemical('DPO', chemical=DPO_chem, particle_size='Soluble',
                                      degradability='Slowly', organic=True)
@@ -57,21 +58,15 @@ def _load_process_settings():
     # en-us/app-tech-guide/176/176-01334-01-dowtherm-heat-transfer-fluids-\
     # engineering-manual.pdf?iframe=true (accessed on 11-16-2022)
     bst.HeatUtility.heating_agents.append(HTF)
-    
-# =============================================================================
-#     unify money
-# =============================================================================
-    qs.CEPCI_by_year[2015] = 557
-    qs.CEPCI_by_year[2016] = 542
-    qs.CEPCI_by_year[2017] = 568
-    qs.CEPCI_by_year[2019] = 608
-    qs.CEPCI_by_year[2020] = 596
-    qs.CEPCI_by_year[2021] = 708
-    # https://www.toweringskills.com/financial-analysis/cost-indices/ (accessed 11-25-22)
 
     bst.settings.CEPCI = qs.CEPCI = qs.CEPCI_by_year[2020] # use 2020$ to match up with latest PNNL report
     
 # =============================================================================
-#     set electricity price
+#     set utility prices
 # =============================================================================
     bst.PowerUtility.price = 0.06879
+    
+    # These utilities are provided by CHP thus cost already considered
+    for adj in ('low', 'medium', 'high'):
+        steam = bst.HeatUtility.get_agent(f'{adj}_pressure_steam')
+        steam.heat_transfer_price = steam.regeneration_price = 0.

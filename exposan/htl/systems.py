@@ -76,10 +76,10 @@ def create_system(configuration='baseline'):
     # =============================================================================
                 
     WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
-                        ww_2_dry_sludge=0.94,
-                        # how much metric ton/day sludge can be produced by 1 MGD of ww
-                        sludge_moisture=0.99, sludge_dw_ash=0.257, 
-                        sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, operation_hours=7920)
+                   ww_2_dry_sludge=0.94,
+                   # how much metric ton/day sludge can be produced by 1 MGD of ww
+                   sludge_moisture=0.99, sludge_dw_ash=0.257, 
+                   sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, operation_hours=7920)
     WWTP.register_alias('WWTP')
     
     SluC = su.HTL_sludge_centrifuge('A000', ins=WWTP-0,
