@@ -34,12 +34,8 @@ from qsdsan import sanunits as qsu
 from biosteam.units import IsenthalpicValve
 from qsdsan.utils import clear_lca_registries
 from exposan.htl import (
-    # _kg_to_g,
     _load_components,
     _load_process_settings,
-    # _m3perh_to_MGD,
-    # _MJ_to_MMBTU,
-    # _MMgal_to_L,
     create_tea,
     )
 
