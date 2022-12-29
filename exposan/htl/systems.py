@@ -32,25 +32,22 @@ import os, qsdsan as qs
 import exposan.htl._sanunits as su
 from qsdsan import sanunits as qsu
 from biosteam.units import IsenthalpicValve
-from qsdsan.utils import auom, clear_lca_registries
+from qsdsan.utils import clear_lca_registries
 from exposan.htl import (
+    # _kg_to_g,
     _load_components,
     _load_process_settings,
+    # _m3perh_to_MGD,
+    # _MJ_to_MMBTU,
+    # _MMgal_to_L,
     create_tea,
     )
 
 
-_m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
-
-_kg_to_g = auom('kg').conversion_factor('g')
-
-_MJ_to_MMBTU = auom('MJ').conversion_factor('MMBTU')
-
-_MMgal_to_L = auom('gal').conversion_factor('L')*1000000
-
 __all__ = ('create_system',)
 
 def create_system(configuration='baseline'):
+    configuration = configuration or 'baseline'
     if configuration not in ('baseline', 'no_P', 'PSA'):
         raise ValueError('`configuration` can only be "baseline", '
                          '"no_P" (without acid extraction and P recovery), '
@@ -63,6 +60,7 @@ def create_system(configuration='baseline'):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
         clear_lca_registries()
     flowsheet = qs.Flowsheet(flowsheet_ID)
+    stream = flowsheet.stream
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
     _load_components()
@@ -344,15 +342,16 @@ def create_system(configuration='baseline'):
     CHP.ins[1].price = 0.1685
     
     sys = qs.System.from_units(
-        'sys',
+        f'sys_{configuration}',
         units=list(flowsheet.unit), 
         operating_hours=WWTP.operation_hours, # 7920 hr Jones
         )
+    sys.register_alias('sys')
 
     ##### Add stream impact items #####
-    # Biocrude upgrading   
+    # Biocrude upgrading
     qs.StreamImpactItem(ID='H2_item',
-                        linked_stream=RSP1.ins[0],
+                        linked_stream=stream.H2,
                         Acidification=0.81014,
                         Ecotoxicity=0.42747,
                         Eutrophication=0.0029415,
@@ -364,7 +363,7 @@ def create_system(configuration='baseline'):
                         RespiratoryEffects=0.0036698)
 
     qs.StreamImpactItem(ID='CHG_catalyst_item',
-                        linked_stream=PC3.outs[0],
+                        linked_stream=stream.CHG_catalyst_out,
                         Acidification=991.6544196,
                         Ecotoxicity=15371.08292,
                         Eutrophication=0.45019348,
@@ -376,7 +375,7 @@ def create_system(configuration='baseline'):
                         RespiratoryEffects=3.517184526)
 
     qs.StreamImpactItem(ID='HT_catalyst_item',
-                        linked_stream=PC4.outs[0],
+                        linked_stream=stream.HT_catalyst_out,
                         Acidification=4.056401283,
                         Ecotoxicity=50.26926274,
                         Eutrophication=0.005759274,
@@ -388,7 +387,7 @@ def create_system(configuration='baseline'):
                         RespiratoryEffects=0.020809293)
 
     qs.StreamImpactItem(ID='HC_catalyst_item',
-                        linked_stream=PC5.outs[0],
+                        linked_stream=stream.HC_catalyst_out,
                         Acidification=4.056401283,
                         Ecotoxicity=50.26926274,
                         Eutrophication=0.005759274,
@@ -401,7 +400,7 @@ def create_system(configuration='baseline'):
     
     # Membrane distillation and acid extraction
     qs.StreamImpactItem(ID='H2SO4_item',
-                        linked_stream=H2SO4_Tank.ins[0],
+                        linked_stream=stream.H2SO4,
                         Acidification=0.019678922,
                         Ecotoxicity=0.069909345,
                         Eutrophication=4.05E-06,
@@ -414,7 +413,7 @@ def create_system(configuration='baseline'):
     
     # Membrane distillation
     qs.StreamImpactItem(ID='NaOH_item',
-                        linked_stream=MemDis.ins[2],
+                        linked_stream=stream.NaOH,
                         Acidification=0.33656,
                         Ecotoxicity=0.77272,
                         Eutrophication=0.00032908,
@@ -426,7 +425,7 @@ def create_system(configuration='baseline'):
                         RespiratoryEffects=0.0024543)
     
     qs.StreamImpactItem(ID='RO_item',
-                        linked_stream=MemDis.ins[3],
+                        linked_stream=stream.Membrane_in,
                         Acidification=0.53533,
                         Ecotoxicity=0.90848,
                         Eutrophication=0.0028322,
@@ -439,7 +438,7 @@ def create_system(configuration='baseline'):
     
     # Struvite precipitation
     qs.StreamImpactItem(ID='MgCl2_item',
-                        linked_stream=StruPre.ins[1],
+                        linked_stream=stream.MgCl2,
                         Acidification=0.77016,
                         Ecotoxicity=0.97878,
                         Eutrophication=0.00039767,
@@ -451,7 +450,7 @@ def create_system(configuration='baseline'):
                         RespiratoryEffects=0.004385)
 
     qs.StreamImpactItem(ID='NH4Cl_item',
-                        linked_stream=StruPre.ins[2],
+                        linked_stream=stream.NH4Cl,
                         Acidification=0.34682,
                         Ecotoxicity=0.90305, 
                         Eutrophication=0.0047381,
@@ -463,7 +462,7 @@ def create_system(configuration='baseline'):
                         RespiratoryEffects=0.0018387)
     
     qs.StreamImpactItem(ID='MgO_item',
-                        linked_stream=StruPre.ins[3],
+                        linked_stream=stream.MgO,
                         Acidification=0.12584,
                         Ecotoxicity=2.7949,
                         Eutrophication=0.00063607,
@@ -476,7 +475,7 @@ def create_system(configuration='baseline'):
     
     # Heating and power utilities
     qs.StreamImpactItem(ID='natural_gas_item',
-                        linked_stream=CHP.ins[1],
+                        linked_stream=stream.natural_gas,
                         Acidification=0.083822558,
                         Ecotoxicity=0.063446198,
                         Eutrophication=7.25E-05,
@@ -489,7 +488,7 @@ def create_system(configuration='baseline'):
     
     # Struvite
     qs.StreamImpactItem(ID='struvite_item',
-                        linked_stream=StruPre.outs[0],
+                        linked_stream=stream.struvite,
                         Acidification=-0.122829597,
                         Ecotoxicity=-0.269606396,
                         Eutrophication=-0.000174952,
@@ -502,7 +501,7 @@ def create_system(configuration='baseline'):
     
     # Ammonium sulfate
     qs.StreamImpactItem(ID='NH42SO4_item',
-                        linked_stream=MemDis.outs[0],
+                        linked_stream=stream.ammonium_sulfate,
                         Acidification=-0.72917,
                         Ecotoxicity=-3.4746,
                         Eutrophication=-0.0024633,
@@ -515,7 +514,7 @@ def create_system(configuration='baseline'):
     
     # Diesel
     qs.StreamImpactItem(ID='diesel_item',
-                        linked_stream=FuelMixer.outs[0],
+                        linked_stream=stream.fuel,
                         Acidification=-0.25164,
                         Ecotoxicity=-0.18748,
                         Eutrophication=-0.0010547,
