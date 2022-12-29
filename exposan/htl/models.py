@@ -28,7 +28,7 @@ from exposan.htl import (
 
 __all__ = ('create_model',)
 
-def create_model(system=None):
+def create_model(system=None, exclude_sludge_compositions=False, key_metrics_only=False):
     '''
     Create a model based on the given system
     (or create the system based on the given configuration).
@@ -80,25 +80,26 @@ def create_model(system=None):
     def set_sludge_dw_ash(i):
         WWTP.sludge_dw_ash=i
     
-    dist = shape.Triangle(0.08,0.204,0.308)
-    @param(name='sludge_afdw_lipid',
-            element=WWTP,
-            kind='coupled',
-            units='-',
-            baseline=0.204,
-            distribution=dist)
-    def set_sludge_afdw_lipid(i):
-        WWTP.sludge_afdw_lipid=i
-    
-    dist = shape.Triangle(0.38,0.463,0.51)
-    @param(name='sludge_afdw_protein',
-            element=WWTP,
-            kind='coupled',
-            units='-',
-            baseline=0.463,
-            distribution=dist)
-    def set_sludge_afdw_protein(i):
-        WWTP.sludge_afdw_protein=i
+    if not exclude_sludge_compositions:
+        dist = shape.Triangle(0.08,0.204,0.308)
+        @param(name='sludge_afdw_lipid',
+                element=WWTP,
+                kind='coupled',
+                units='-',
+                baseline=0.204,
+                distribution=dist)
+        def set_sludge_afdw_lipid(i):
+            WWTP.sludge_afdw_lipid=i
+        
+        dist = shape.Triangle(0.38,0.463,0.51)
+        @param(name='sludge_afdw_protein',
+                element=WWTP,
+                kind='coupled',
+                units='-',
+                baseline=0.463,
+                distribution=dist)
+        def set_sludge_afdw_protein(i):
+            WWTP.sludge_afdw_protein=i
     
     dist = shape.Uniform(0.675,0.825)
     @param(name='lipid_2_C',
@@ -880,480 +881,482 @@ def create_model(system=None):
     # =========================================================================
     # metrics
     # =========================================================================
-    
+
     metric = model.metric
-    @metric(name='sludge_C',units='kg/hr',element='Sankey')
-    def get_sludge_C():
-        return WWTP.sludge_C
     
-    @metric(name='sludge_N',units='kg/hr',element='Sankey')
-    def get_sludge_N():
-        return WWTP.sludge_N
-    
-    @metric(name='sludge_P',units='kg/hr',element='Sankey')
-    def get_sludge_P():
-        return WWTP.sludge_P
-    
-    @metric(name='HTLaqueous_C',units='kg/hr',element='Sankey')
-    def get_HTLaqueous_C():
-        return HTL.HTLaqueous_C
-    
-    @metric(name='HTLaqueous_N',units='kg/hr',element='Sankey')
-    def get_HTLaqueous_N():
-        return HTL.HTLaqueous_N
-    
-    @metric(name='HTLaqueous_P',units='kg/hr',element='Sankey')
-    def get_HTLaqueous_P():
-        return HTL.HTLaqueous_P
-    
-    @metric(name='biocrude_C',units='kg/hr',element='Sankey')
-    def get_biocrude_C():
-        return HTL.biocrude_C
-    
-    @metric(name='biocrude_N',units='kg/hr',element='Sankey')
-    def get_biocrude_N():
-        return HTL.biocrude_N
-    
-    @metric(name='offgas_C',units='kg/hr',element='Sankey')
-    def get_offgas_C():
-        return HTL.offgas_C
-    
-    @metric(name='biochar_C',units='kg/hr',element='Sankey')
-    def get_biochar_C():
-        return HTL.biochar_C
-    
-    @metric(name='biochar_P',units='kg/hr',element='Sankey')
-    def get_biochar_P():
-        return HTL.biochar_P
-    
-    cmps = qs.get_components()
-    D2 = unit.D2
-    @metric(name='HT_gasoline_C',units='kg/hr',element='Sankey')
-    def get_HT_gasoline_C():
-        return sum(D2.outs[0].mass*[cmp.i_C for cmp in cmps])
-    
-    @metric(name='HT_gasoline_N',units='kg/hr',element='Sankey')
-    def get_HT_gasoline_N():
-        return sum(D2.outs[0].mass*[cmp.i_N for cmp in cmps])
-    
-    D3 = unit.D3
-    @metric(name='HT_diesel_C',units='kg/hr',element='Sankey')
-    def get_HT_diesel_C():
-        return sum(D3.outs[0].mass*[cmp.i_C for cmp in cmps])
-    
-    @metric(name='HT_heavy_oil_C',units='kg/hr',element='Sankey')
-    def get_HT_heavy_oil_C():
-        return sum(D3.outs[1].mass*[cmp.i_C for cmp in cmps])
-
-    F2, D1 = unit.F2, unit.D1
-    @metric(name='HT_gas_C',units='kg/hr',element='Sankey')
-    def get_HT_gas_C():
-        mass = F2.outs[0].mass + D1.outs[0].mass
-        return sum(mass*[cmp.i_C for cmp in cmps])
-    
-    @metric(name='HT_gas_N',units='kg/hr',element='Sankey')
-    def get_HT_gas_N():
-        mass = F2.outs[0].mass + D1.outs[0].mass
-        return sum(mass*[cmp.i_N for cmp in cmps])
-
-    
-    @metric(name='HT_ww_C',units='kg/hr',element='Sankey')
-    def get_HT_ww_C():
-        mass = sum(i.outs[0].mass for i in (D1, D2, D3, F2))
-        mass += D3.outs[1]
-        return HTL.biocrude_C - sum(mass*[cmp.i_C for cmp in cmps])
-    
-    @metric(name='HT_ww_N',units='kg/hr',element='Sankey')
-    def get_HT_ww_N():
-        mass = sum(i.outs[0].mass for i in (D1, D2, D3, F2))
-        mass += D3.outs[1]
-        return HTL.biocrude_N - sum(mass*[cmp.i_N for cmp in cmps])
-    
-    D4 = unit.D4
-    @metric(name='HC_gasoline_C',units='kg/hr',element='Sankey')
-    def get_HC_gasoline_C():
-        return sum(D4.outs[0].mass*[cmp.i_C for cmp in cmps])
-    
-    @metric(name='HC_diesel_C',units='kg/hr',element='Sankey')
-    def get_HC_diesel_C():
-        return sum(D4.outs[1].mass*[cmp.i_C for cmp in cmps])
-    
-    F3 = unit.F3
-    @metric(name='HC_gas_C',units='kg/hr',element='Sankey')
-    def get_HC_gas_C():
-        return sum(F3.outs[0].mass*[cmp.i_C for cmp in cmps])
-    
-    if AcidEx:
-        @metric(name='extracted_P',units='kg/hr',element='Sankey')
-        def get_extracted_P():
-            return AcidEx.outs[1].imass['P']
+    if not key_metrics_only:
+        @metric(name='sludge_C',units='kg/hr',element='Sankey')
+        def get_sludge_C():
+            return WWTP.sludge_C
         
-        @metric(name='residual_P',units='kg/hr',element='Sankey')
-        def get_residual_P():
-            return HTL.biochar_P-AcidEx.outs[1].imass['P']
-    
-    @metric(name='residual_C',units='kg/hr',element='Sankey')
-    def get_residual_C():
-        return HTL.biochar_C
-    
-    @metric(name='struvite_N',units='kg/hr',element='Sankey')
-    def get_struvite_N():
-        return StruPre.struvite_N
-    
-    @metric(name='struvite_P',units='kg/hr',element='Sankey')
-    def get_struvite_P():
-        return StruPre.struvite_P
-    
-    @metric(name='CHG_feed_C',units='kg/hr',element='Sankey')
-    def get_CHG_feed_C():
-        return StruPre.outs[1].imass['C']
-    
-    @metric(name='CHG_feed_N',units='kg/hr',element='Sankey')
-    def get_CHG_feed_N():
-        return StruPre.outs[1].imass['N']
-    
-    @metric(name='CHG_feed_P',units='kg/hr',element='Sankey')
-    def get_CHG_feed_P():
-        return StruPre.outs[1].imass['P']
-    
-    @metric(name='CHG_out_C',units='kg/hr',element='Sankey')
-    def get_CHG_out_C():
-        return CHG.CHGout_C
-    
-    @metric(name='CHG_out_N',units='kg/hr',element='Sankey')
-    def get_CHG_out_N():
-        return CHG.CHGout_N
-    
-    @metric(name='CHG_out_P',units='kg/hr',element='Sankey')
-    def get_CHG_out_P():
-        return CHG.CHGout_P
-    
-    F1 = unit.F1
-    @metric(name='CHG_gas_C',units='kg/hr',element='Sankey')
-    def get_CHG_gas_C():
-        return sum(F1.outs[0].mass*[cmp.i_C for cmp in cmps])
-
-    @metric(name='ammoniumsulfate_N',units='kg/hr',element='Sankey')
-    def get_ammoniumsulfate_N():
-        return MemDis.outs[0].F_mass*14.0067*2/132.14
-    
-    @metric(name='MemDis_ww_C',units='kg/hr',element='Sankey')
-    def get_MemDis_ww_C():
-        return MemDis.outs[1].imass['C']
-    
-    @metric(name='MemDis_ww_N',units='kg/hr',element='Sankey')
-    def get_MemDis_ww_N():
-        return MemDis.outs[1].imass['N']
-    
-    @metric(name='MemDis_ww_P',units='kg/hr',element='Sankey')
-    def get_MemDis_ww_P():
-        return MemDis.outs[1].imass['P']
-    
-    #%%
-    @metric(name='sludge_E',units='GJ/hr',element='Sankey')
-    def get_sludge_E():
-        return (WWTP.outs[0].F_mass-WWTP.outs[0].imass['H2O'])*WWTP.sludge_HHV/1000
-    
-    @metric(name='biocrude_E',units='GJ/hr',element='Sankey')
-    def get_biocrude_E():
-        return HTL.biocrude_HHV*HTL.outs[2].imass['Biocrude']/1000
-    
-    @metric(name='offgas_E',units='GJ/hr',element='Sankey')
-    def get_offgas_E():
-        return HTL.outs[3].HHV/1000000
-    
-    @metric(name='HT_gasoline_E',units='GJ/hr',element='Sankey')
-    def get_HT_gasoline_E():
-        return D2.outs[0].HHV/1000000
-    
-    @metric(name='HT_diesel_E',units='GJ/hr',element='Sankey')
-    def get_HT_diesel_E():
-        return D3.outs[0].HHV/1000000
-    
-    @metric(name='HT_heavy_oil_E',units='GJ/hr',element='Sankey')
-    def get_HT_heavy_oil_E():
-        return D3.outs[1].HHV/1000000
-    
-    @metric(name='HT_gas_E',units='GJ/hr',element='Sankey')
-    def get_HT_gas_E():
-        return (F2.outs[0].HHV+D1.outs[0].HHV)/1000000
-    
-    @metric(name='HC_gasoline_E',units='GJ/hr',element='Sankey')
-    def get_HC_gasoline_E():
-        return D4.outs[0].HHV/1000000
-    
-    @metric(name='HC_diesel_E',units='GJ/hr',element='Sankey')
-    def get_HC_diesel_E():
-        return D4.outs[1].HHV/1000000
-    
-    @metric(name='HC_gas_E',units='GJ/hr',element='Sankey')
-    def get_HC_gas_E():
-        return F3.outs[0].HHV/1000000
-    
-    @metric(name='HT_H2_E',units='GJ/hr',element='Sankey')
-    def get_HT_H2_E():
-        return HT.ins[1].HHV/1000000
-    
-    @metric(name='HC_H2_E',units='GJ/hr',element='Sankey')
-    def get_HC_H2_E():
-        return HC.ins[1].HHV/1000000
-    
-    @metric(name='CHG_gas_E',units='GJ/hr',element='Sankey')
-    def get_CHG_gas_E():
-        return F1.outs[0].HHV/1000000
-    
-    #%%
-    @metric(name='CAPEX',units='$',element='TEA')
-    def get_CAPEX():
-        return sys.installed_equipment_cost
-    
-    SluC, P1 = unit.SluC, unit.P1
-    @metric(name='HTL_CAPEX',units='$',element='TEA')
-    def get_HTL_CAPEX():
-        return sum(i.installed_cost for i in (SluC, P1, H1, HTL))
-    
-    SP1, H2SO4_Tank = unit.SP1, unit.H2SO4_Tank
-    if AcidEx:
-        def get_Phosphorus_CAPEX():
-            return (AcidEx.installed_cost +
-                    StruPre.installed_cost +
-                    H2SO4_Tank.installed_cost*SP1.outs[0].F_mass/SP1.F_mass_out)
-    else:
-        def get_Phosphorus_CAPEX():
-            return (StruPre.installed_cost +
-                    H2SO4_Tank.installed_cost*SP1.outs[0].F_mass/SP1.F_mass_out)
-    model.metric(getter=get_Phosphorus_CAPEX, name='Phosphorus_CAPEX',units='$',element='TEA')
-    
-    @metric(name='CHG_CAPEX',units='$',element='TEA')
-    def get_CHG_CAPEX():
-        return CHG.installed_cost + F1.installed_cost
-    
-    @metric(name='Nitrogen_CAPEX',units='$',element='TEA')
-    def get_Nitrogen_CAPEX():
-        return MemDis.installed_cost+H2SO4_Tank.installed_cost*SP1.outs[1].F_mass/SP1.F_mass_out
-    
-    HT_HC_units = (unit.P2, HT, unit.H2, F2, unit.H3, D1, D2, D3, unit.P3, HC,
-                   unit.H4, F3, D4, unit.H5, unit.H6, unit.GasolineTank, unit.DieselTank)
-    @metric(name='HT_HC_CAPEX',units='$',element='TEA')
-    def get_HT_HC_CAPEX():
-        return sum(i.installed_cost for i in HT_HC_units)
-    
-    HXN = unit.HXN
-    @metric(name='HXN_CAPEX',units='$',element='TEA')
-    def get_HXN_CAPEX():
-        return HXN.installed_cost
-    
-    @metric(name='CHP_CAPEX',units='$',element='TEA')
-    def get_CHP_CAPEX():
-        return CHP.installed_cost
-    
-    @metric(name='AOC',units='$/yr',element='TEA')
-    def get_AOC():
-        return tea.AOC
-    
-    @metric(name='FOC',units='$/yr',element='TEA')
-    def get_FOC():
-        return tea.FOC
-    
-    @metric(name='VOC',units='$/yr',element='TEA')
-    def get_VOC():
-        return tea.VOC
-    
-    @metric(name='material_VOC',units='$/yr',element='TEA')
-    def get_material_VOC():
-        return sys.material_cost
-    
-    @metric(name='H2SO4_VOC',units='$/yr',element='TEA')
-    def get_H2SO4_VOC():
-        return H2SO4.cost*sys.operating_hours
-    
-    @metric(name='H2_VOC',units='$/yr',element='TEA')
-    def get_H2_VOC():
-        return H2.cost*sys.operating_hours
-    
-    @metric(name='CHG_catalyst_VOC',units='$/yr',element='TEA')
-    def get_CHG_catalyst_VOC():
-        return CHG_catalyst_in.cost*sys.operating_hours
-    
-    @metric(name='MgCl2_VOC',units='$/yr',element='TEA')
-    def get_MgCl2_VOC():
-        return MgCl2.cost*sys.operating_hours
-    
-    @metric(name='HT_catalyst_VOC',units='$/yr',element='TEA')
-    def get_HT_catalyst_VOC():
-        return CoMo_alumina_HT.cost*sys.operating_hours
-    
-    @metric(name='HC_catalyst_VOC',units='$/yr',element='TEA')
-    def get_HC_catalyst_VOC():
-        return CoMo_alumina_HC.cost*sys.operating_hours
-    
-    @metric(name='MgO_VOC',units='$/yr',element='TEA')
-    def get_MgO_VOC():
-        return MgO.cost*sys.operating_hours
-    
-    @metric(name='NaOH_VOC',units='$/yr',element='TEA')
-    def get_NaOH_VOC():
-        return NaOH.cost*sys.operating_hours
-    
-    Membrane_in = stream.Membrane_in
-    @metric(name='membrane_VOC',units='$/yr',element='TEA')
-    def get_membrane_VOC():
-        return Membrane_in.cost*sys.operating_hours
-    
-    @metric(name='utility_VOC',units='$/yr',element='TEA')
-    def get_utility_VOC():
-        return sys.utility_cost
-    
-    @metric(name='HTL_utility_VOC',units='$/yr',element='TEA')
-    def get_HTL_utility_VOC():
-        return (SluC.utility_cost+P1.utility_cost+H1.utility_cost+HTL.utility_cost)*sys.operating_hours
-    
-    @metric(name='CHG_utility_VOC',units='$/yr',element='TEA')
-    def get_CHG_utility_VOC():
-        return (CHG.utility_cost+F1.utility_cost)*sys.operating_hours
-    
-    @metric(name='HT_HC_utility_VOC',units='$/yr',element='TEA')
-    def get_HT_HC_utility_VOC():
-        return [i.utility_cost for i in HT_HC_units]*sys.operating_hours
-    
-    @metric(name='HXN_utility_VOC',units='$/yr',element='TEA')
-    def get_HXN_utility_VOC():
-        return HXN.utility_cost*sys.operating_hours
-    
-    @metric(name='CHP_utility_VOC',units='$/yr',element='TEA')
-    def get_CHP_utility_VOC():
-        return CHP.utility_cost*sys.operating_hours
-    
-    #%%
-    lca = sys.LCA
-    @metric(name='construction_GWP',units='kg CO2 eq',element='LCA')
-    def get_construction_GWP():
-        return lca.get_construction_impacts()['GlobalWarming']
-    
-    fuel = stream.fuel
-    @metric(name='stream_GWP',units='kg CO2 eq',element='LCA')
-    def get_stream_GWP():
-        return lca.get_stream_impacts(exclude=(fuel,))['GlobalWarming']
-    
-    @metric(name='other_GWP',units='kg CO2 eq',element='LCA')
-    def get_other_GWP():
-        return lca.get_other_impacts()['GlobalWarming']
-    
-    @metric(name='HTL_constrution_GWP',units='kg CO2 eq',element='LCA')
-    def get_HTL_constrution_GWP():
-        table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
-        return table_construction['Stainless_steel [kg]']['A000']+table_construction['Stainless_steel [kg]']['A100']+\
-               table_construction['Stainless_steel [kg]']['A110']+table_construction['Stainless_steel [kg]']['A120']
-    
-    @metric(name='nutrient_constrution_GWP',units='kg CO2 eq',element='LCA')
-    def get_nutrient_constrution_GWP():
-        table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
-        return table_construction['Carbon_steel [kg]']['A220']+table_construction['RO [m2]']['A260']+\
-               table_construction['Stainless_steel [kg]']['A200']+table_construction['Stainless_steel [kg]']['T200']
-    
-    @metric(name='CHG_constrution_GWP',units='kg CO2 eq',element='LCA')
-    def get_CHG_constrution_GWP():
-        table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
-        return table_construction['Stainless_steel [kg]']['A230']
-    
-    @metric(name='HT_HC_construction_GWP',units='kg CO2 eq',element='LCA')
-    def get_HT_HC_construction_GWP():
-        table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
-        return table_construction['Carbon_steel [kg]']['T500']+table_construction['Carbon_steel [kg]']['T510']+\
-               table_construction['Stainless_steel [kg]']['A300']+table_construction['Stainless_steel [kg]']['A310']+\
-               table_construction['Stainless_steel [kg]']['A330']+table_construction['Stainless_steel [kg]']['A360']+\
-               table_construction['Stainless_steel [kg]']['A400']+table_construction['Stainless_steel [kg]']['A410']+\
-               table_construction['Stainless_steel [kg]']['A420']+table_construction['Stainless_steel [kg]']['A500']+\
-               table_construction['Stainless_steel [kg]']['A510']
-    
-    @metric(name='CHP_constrution_GWP',units='kg CO2 eq',element='LCA')
-    def get_CHP_constrution_GWP():
-        table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
-        return table_construction['Carbon_steel [kg]']['CHP']+table_construction['Concrete [kg]']['CHP']+\
-               table_construction['Furnace [kg]']['CHP']+table_construction['Reinforcing_steel [kg]']['CHP']
-    
-    @metric(name='CHG_stream_GWP',units='kg CO2 eq',element='LCA')
-    def get_CHG_stream_GWP():
-        table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
-        return table_stream['CHG_catalyst_out']
-    
-    @metric(name='HT_HC_stream_GWP',units='kg CO2 eq',element='LCA')
-    def get_HT_HC_stream_GWP():
-        table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
-        return table_stream['H2']+table_stream['HT_catalyst_out']+table_stream['HC_catalyst_out']
-    
-    @metric(name='nutrient_stream_GWP',units='kg CO2 eq',element='LCA')
-    def get_nutrient_stream_GWP():
-        table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
-        return table_stream['H2SO4']+table_stream['MgCl2']+table_stream['MgO']+table_stream['struvite']+\
-               table_stream['NH4Cl']+table_stream['Membrane_in']+table_stream['NaOH']+table_stream['ammonium_sulfate']
-               
-    @metric(name='CHP_stream_GWP',units='kg CO2 eq',element='LCA')
-    def get_CHP_stream_GWP():
-        table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
-        return table_stream['natural_gas']
-    
-    @metric(name='HTL_utility_GWP',units='kg CO2 eq',element='LCA')
-    def get_HTL_utility_GWP():
-        table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
-        a = 0
-        for i in range (len(HTL.heat_utilities)):
-            if HTL.heat_utilities[i].duty < 0:
-                a += HTL.heat_utilities[i].duty
-        return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
-               table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
-               (SluC.power_utility.consumption+P1.power_utility.consumption)*sys.operating_hours
-    
-    @metric(name='CHG_utility_GWP',units='kg CO2 eq',element='LCA')
-    def get_CHG_utility_GWP():
-        table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
-        a = 0
-        for unit in (CHG, F1):
-            for i in range (len(unit.heat_utilities)):
-                if unit.heat_utilities[i].duty < 0:
-                    a += unit.heat_utilities[i].duty
-        return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
-               table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
-               CHG.power_utility.consumption*sys.operating_hours
-    
-    P2, P3 = unit.P2, unit.P3
-    HT_HC_utility_units = (HT, unit.H2, F2, D1, D2, D3, HC, unit.H4, F3, D4, unit.H5, unit.H6)
-    @metric(name='HT_HC_utility_GWP',units='kg CO2 eq',element='LCA')
-    def get_HT_HC_utility_GWP():
-        table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
-        a = 0
-        for unit in HT_HC_utility_units:
-            for i in range (len(unit.heat_utilities)):
-                if unit.heat_utilities[i].duty < 0:
-                    a += unit.heat_utilities[i].duty
-        return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
-               table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
-               (P2.power_utility.consumption+P3.power_utility.consumption)*sys.operating_hours
-    
-    @metric(name='HXN_utility_GWP',units='kg CO2 eq',element='LCA')
-    def get_HXN_utility_GWP():
-        table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
-        a = 0
-        for i in range (len(HXN.heat_utilities)):
-            if HXN.heat_utilities[i].duty > 0:
-                a += HXN.heat_utilities[i].duty
-        return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)
-    
-    @metric(name='CHP_utility_GWP',units='kg CO2 eq',element='LCA')
-    def get_CHP_utility_GWP():
-        table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
-        return table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
-               (-CHP.power_utility.production)*sys.operating_hours
-    
-    @metric(name='electricity_GWP',units='kg CO2 eq',element='LCA')
-    def get_electricity_GWP():
-        table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
-        return table_other['Electricity [kWh]']
-    
-    @metric(name='cooling_GWP',units='kg CO2 eq',element='LCA')
-    def get_cooling_GWP():
-        table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
-        return table_other['Cooling [MJ]']
+        @metric(name='sludge_N',units='kg/hr',element='Sankey')
+        def get_sludge_N():
+            return WWTP.sludge_N
+        
+        @metric(name='sludge_P',units='kg/hr',element='Sankey')
+        def get_sludge_P():
+            return WWTP.sludge_P
+        
+        @metric(name='HTLaqueous_C',units='kg/hr',element='Sankey')
+        def get_HTLaqueous_C():
+            return HTL.HTLaqueous_C
+        
+        @metric(name='HTLaqueous_N',units='kg/hr',element='Sankey')
+        def get_HTLaqueous_N():
+            return HTL.HTLaqueous_N
+        
+        @metric(name='HTLaqueous_P',units='kg/hr',element='Sankey')
+        def get_HTLaqueous_P():
+            return HTL.HTLaqueous_P
+        
+        @metric(name='biocrude_C',units='kg/hr',element='Sankey')
+        def get_biocrude_C():
+            return HTL.biocrude_C
+        
+        @metric(name='biocrude_N',units='kg/hr',element='Sankey')
+        def get_biocrude_N():
+            return HTL.biocrude_N
+        
+        @metric(name='offgas_C',units='kg/hr',element='Sankey')
+        def get_offgas_C():
+            return HTL.offgas_C
+        
+        @metric(name='biochar_C',units='kg/hr',element='Sankey')
+        def get_biochar_C():
+            return HTL.biochar_C
+        
+        @metric(name='biochar_P',units='kg/hr',element='Sankey')
+        def get_biochar_P():
+            return HTL.biochar_P
+        
+        cmps = qs.get_components()
+        D2 = unit.D2
+        @metric(name='HT_gasoline_C',units='kg/hr',element='Sankey')
+        def get_HT_gasoline_C():
+            return sum(D2.outs[0].mass*[cmp.i_C for cmp in cmps])
+        
+        @metric(name='HT_gasoline_N',units='kg/hr',element='Sankey')
+        def get_HT_gasoline_N():
+            return sum(D2.outs[0].mass*[cmp.i_N for cmp in cmps])
+        
+        D3 = unit.D3
+        @metric(name='HT_diesel_C',units='kg/hr',element='Sankey')
+        def get_HT_diesel_C():
+            return sum(D3.outs[0].mass*[cmp.i_C for cmp in cmps])
+        
+        @metric(name='HT_heavy_oil_C',units='kg/hr',element='Sankey')
+        def get_HT_heavy_oil_C():
+            return sum(D3.outs[1].mass*[cmp.i_C for cmp in cmps])
+    
+        F2, D1 = unit.F2, unit.D1
+        @metric(name='HT_gas_C',units='kg/hr',element='Sankey')
+        def get_HT_gas_C():
+            mass = F2.outs[0].mass + D1.outs[0].mass
+            return sum(mass*[cmp.i_C for cmp in cmps])
+        
+        @metric(name='HT_gas_N',units='kg/hr',element='Sankey')
+        def get_HT_gas_N():
+            mass = F2.outs[0].mass + D1.outs[0].mass
+            return sum(mass*[cmp.i_N for cmp in cmps])
+    
+        
+        @metric(name='HT_ww_C',units='kg/hr',element='Sankey')
+        def get_HT_ww_C():
+            mass = sum(i.outs[0].mass for i in (D1, D2, D3, F2))
+            mass += D3.outs[1]
+            return HTL.biocrude_C - sum(mass*[cmp.i_C for cmp in cmps])
+        
+        @metric(name='HT_ww_N',units='kg/hr',element='Sankey')
+        def get_HT_ww_N():
+            mass = sum(i.outs[0].mass for i in (D1, D2, D3, F2))
+            mass += D3.outs[1]
+            return HTL.biocrude_N - sum(mass*[cmp.i_N for cmp in cmps])
+        
+        D4 = unit.D4
+        @metric(name='HC_gasoline_C',units='kg/hr',element='Sankey')
+        def get_HC_gasoline_C():
+            return sum(D4.outs[0].mass*[cmp.i_C for cmp in cmps])
+        
+        @metric(name='HC_diesel_C',units='kg/hr',element='Sankey')
+        def get_HC_diesel_C():
+            return sum(D4.outs[1].mass*[cmp.i_C for cmp in cmps])
+        
+        F3 = unit.F3
+        @metric(name='HC_gas_C',units='kg/hr',element='Sankey')
+        def get_HC_gas_C():
+            return sum(F3.outs[0].mass*[cmp.i_C for cmp in cmps])
+        
+        if AcidEx:
+            @metric(name='extracted_P',units='kg/hr',element='Sankey')
+            def get_extracted_P():
+                return AcidEx.outs[1].imass['P']
+            
+            @metric(name='residual_P',units='kg/hr',element='Sankey')
+            def get_residual_P():
+                return HTL.biochar_P-AcidEx.outs[1].imass['P']
+        
+        @metric(name='residual_C',units='kg/hr',element='Sankey')
+        def get_residual_C():
+            return HTL.biochar_C
+        
+        @metric(name='struvite_N',units='kg/hr',element='Sankey')
+        def get_struvite_N():
+            return StruPre.struvite_N
+        
+        @metric(name='struvite_P',units='kg/hr',element='Sankey')
+        def get_struvite_P():
+            return StruPre.struvite_P
+        
+        @metric(name='CHG_feed_C',units='kg/hr',element='Sankey')
+        def get_CHG_feed_C():
+            return StruPre.outs[1].imass['C']
+        
+        @metric(name='CHG_feed_N',units='kg/hr',element='Sankey')
+        def get_CHG_feed_N():
+            return StruPre.outs[1].imass['N']
+        
+        @metric(name='CHG_feed_P',units='kg/hr',element='Sankey')
+        def get_CHG_feed_P():
+            return StruPre.outs[1].imass['P']
+        
+        @metric(name='CHG_out_C',units='kg/hr',element='Sankey')
+        def get_CHG_out_C():
+            return CHG.CHGout_C
+        
+        @metric(name='CHG_out_N',units='kg/hr',element='Sankey')
+        def get_CHG_out_N():
+            return CHG.CHGout_N
+        
+        @metric(name='CHG_out_P',units='kg/hr',element='Sankey')
+        def get_CHG_out_P():
+            return CHG.CHGout_P
+        
+        F1 = unit.F1
+        @metric(name='CHG_gas_C',units='kg/hr',element='Sankey')
+        def get_CHG_gas_C():
+            return sum(F1.outs[0].mass*[cmp.i_C for cmp in cmps])
+    
+        @metric(name='ammoniumsulfate_N',units='kg/hr',element='Sankey')
+        def get_ammoniumsulfate_N():
+            return MemDis.outs[0].F_mass*14.0067*2/132.14
+        
+        @metric(name='MemDis_ww_C',units='kg/hr',element='Sankey')
+        def get_MemDis_ww_C():
+            return MemDis.outs[1].imass['C']
+        
+        @metric(name='MemDis_ww_N',units='kg/hr',element='Sankey')
+        def get_MemDis_ww_N():
+            return MemDis.outs[1].imass['N']
+        
+        @metric(name='MemDis_ww_P',units='kg/hr',element='Sankey')
+        def get_MemDis_ww_P():
+            return MemDis.outs[1].imass['P']
+        
+        #%%
+        @metric(name='sludge_E',units='GJ/hr',element='Sankey')
+        def get_sludge_E():
+            return (WWTP.outs[0].F_mass-WWTP.outs[0].imass['H2O'])*WWTP.sludge_HHV/1000
+        
+        @metric(name='biocrude_E',units='GJ/hr',element='Sankey')
+        def get_biocrude_E():
+            return HTL.biocrude_HHV*HTL.outs[2].imass['Biocrude']/1000
+        
+        @metric(name='offgas_E',units='GJ/hr',element='Sankey')
+        def get_offgas_E():
+            return HTL.outs[3].HHV/1000000
+        
+        @metric(name='HT_gasoline_E',units='GJ/hr',element='Sankey')
+        def get_HT_gasoline_E():
+            return D2.outs[0].HHV/1000000
+        
+        @metric(name='HT_diesel_E',units='GJ/hr',element='Sankey')
+        def get_HT_diesel_E():
+            return D3.outs[0].HHV/1000000
+        
+        @metric(name='HT_heavy_oil_E',units='GJ/hr',element='Sankey')
+        def get_HT_heavy_oil_E():
+            return D3.outs[1].HHV/1000000
+        
+        @metric(name='HT_gas_E',units='GJ/hr',element='Sankey')
+        def get_HT_gas_E():
+            return (F2.outs[0].HHV+D1.outs[0].HHV)/1000000
+        
+        @metric(name='HC_gasoline_E',units='GJ/hr',element='Sankey')
+        def get_HC_gasoline_E():
+            return D4.outs[0].HHV/1000000
+        
+        @metric(name='HC_diesel_E',units='GJ/hr',element='Sankey')
+        def get_HC_diesel_E():
+            return D4.outs[1].HHV/1000000
+        
+        @metric(name='HC_gas_E',units='GJ/hr',element='Sankey')
+        def get_HC_gas_E():
+            return F3.outs[0].HHV/1000000
+        
+        @metric(name='HT_H2_E',units='GJ/hr',element='Sankey')
+        def get_HT_H2_E():
+            return HT.ins[1].HHV/1000000
+        
+        @metric(name='HC_H2_E',units='GJ/hr',element='Sankey')
+        def get_HC_H2_E():
+            return HC.ins[1].HHV/1000000
+        
+        @metric(name='CHG_gas_E',units='GJ/hr',element='Sankey')
+        def get_CHG_gas_E():
+            return F1.outs[0].HHV/1000000
+        
+        #%%
+        @metric(name='CAPEX',units='$',element='TEA')
+        def get_CAPEX():
+            return sys.installed_equipment_cost
+        
+        SluC, P1 = unit.SluC, unit.P1
+        @metric(name='HTL_CAPEX',units='$',element='TEA')
+        def get_HTL_CAPEX():
+            return sum(i.installed_cost for i in (SluC, P1, H1, HTL))
+        
+        SP1, H2SO4_Tank = unit.SP1, unit.H2SO4_Tank
+        if AcidEx:
+            def get_Phosphorus_CAPEX():
+                return (AcidEx.installed_cost +
+                        StruPre.installed_cost +
+                        H2SO4_Tank.installed_cost*SP1.outs[0].F_mass/SP1.F_mass_out)
+        else:
+            def get_Phosphorus_CAPEX():
+                return (StruPre.installed_cost +
+                        H2SO4_Tank.installed_cost*SP1.outs[0].F_mass/SP1.F_mass_out)
+        model.metric(getter=get_Phosphorus_CAPEX, name='Phosphorus_CAPEX',units='$',element='TEA')
+        
+        @metric(name='CHG_CAPEX',units='$',element='TEA')
+        def get_CHG_CAPEX():
+            return CHG.installed_cost + F1.installed_cost
+        
+        @metric(name='Nitrogen_CAPEX',units='$',element='TEA')
+        def get_Nitrogen_CAPEX():
+            return MemDis.installed_cost+H2SO4_Tank.installed_cost*SP1.outs[1].F_mass/SP1.F_mass_out
+        
+        HT_HC_units = (unit.P2, HT, unit.H2, F2, unit.H3, D1, D2, D3, unit.P3, HC,
+                       unit.H4, F3, D4, unit.H5, unit.H6, unit.GasolineTank, unit.DieselTank)
+        @metric(name='HT_HC_CAPEX',units='$',element='TEA')
+        def get_HT_HC_CAPEX():
+            return sum(i.installed_cost for i in HT_HC_units)
+        
+        HXN = unit.HXN
+        @metric(name='HXN_CAPEX',units='$',element='TEA')
+        def get_HXN_CAPEX():
+            return HXN.installed_cost
+        
+        @metric(name='CHP_CAPEX',units='$',element='TEA')
+        def get_CHP_CAPEX():
+            return CHP.installed_cost
+        
+        @metric(name='AOC',units='$/yr',element='TEA')
+        def get_AOC():
+            return tea.AOC
+        
+        @metric(name='FOC',units='$/yr',element='TEA')
+        def get_FOC():
+            return tea.FOC
+        
+        @metric(name='VOC',units='$/yr',element='TEA')
+        def get_VOC():
+            return tea.VOC
+        
+        @metric(name='material_VOC',units='$/yr',element='TEA')
+        def get_material_VOC():
+            return sys.material_cost
+        
+        @metric(name='H2SO4_VOC',units='$/yr',element='TEA')
+        def get_H2SO4_VOC():
+            return H2SO4.cost*sys.operating_hours
+        
+        @metric(name='H2_VOC',units='$/yr',element='TEA')
+        def get_H2_VOC():
+            return H2.cost*sys.operating_hours
+        
+        @metric(name='CHG_catalyst_VOC',units='$/yr',element='TEA')
+        def get_CHG_catalyst_VOC():
+            return CHG_catalyst_in.cost*sys.operating_hours
+        
+        @metric(name='MgCl2_VOC',units='$/yr',element='TEA')
+        def get_MgCl2_VOC():
+            return MgCl2.cost*sys.operating_hours
+        
+        @metric(name='HT_catalyst_VOC',units='$/yr',element='TEA')
+        def get_HT_catalyst_VOC():
+            return CoMo_alumina_HT.cost*sys.operating_hours
+        
+        @metric(name='HC_catalyst_VOC',units='$/yr',element='TEA')
+        def get_HC_catalyst_VOC():
+            return CoMo_alumina_HC.cost*sys.operating_hours
+        
+        @metric(name='MgO_VOC',units='$/yr',element='TEA')
+        def get_MgO_VOC():
+            return MgO.cost*sys.operating_hours
+        
+        @metric(name='NaOH_VOC',units='$/yr',element='TEA')
+        def get_NaOH_VOC():
+            return NaOH.cost*sys.operating_hours
+        
+        Membrane_in = stream.Membrane_in
+        @metric(name='membrane_VOC',units='$/yr',element='TEA')
+        def get_membrane_VOC():
+            return Membrane_in.cost*sys.operating_hours
+        
+        @metric(name='utility_VOC',units='$/yr',element='TEA')
+        def get_utility_VOC():
+            return sys.utility_cost
+        
+        @metric(name='HTL_utility_VOC',units='$/yr',element='TEA')
+        def get_HTL_utility_VOC():
+            return (SluC.utility_cost+P1.utility_cost+H1.utility_cost+HTL.utility_cost)*sys.operating_hours
+        
+        @metric(name='CHG_utility_VOC',units='$/yr',element='TEA')
+        def get_CHG_utility_VOC():
+            return (CHG.utility_cost+F1.utility_cost)*sys.operating_hours
+        
+        @metric(name='HT_HC_utility_VOC',units='$/yr',element='TEA')
+        def get_HT_HC_utility_VOC():
+            return [i.utility_cost for i in HT_HC_units]*sys.operating_hours
+        
+        @metric(name='HXN_utility_VOC',units='$/yr',element='TEA')
+        def get_HXN_utility_VOC():
+            return HXN.utility_cost*sys.operating_hours
+        
+        @metric(name='CHP_utility_VOC',units='$/yr',element='TEA')
+        def get_CHP_utility_VOC():
+            return CHP.utility_cost*sys.operating_hours
+        
+        #%%
+        lca = sys.LCA
+        @metric(name='construction_GWP',units='kg CO2 eq',element='LCA')
+        def get_construction_GWP():
+            return lca.get_construction_impacts()['GlobalWarming']
+        
+        fuel = stream.fuel
+        @metric(name='stream_GWP',units='kg CO2 eq',element='LCA')
+        def get_stream_GWP():
+            return lca.get_stream_impacts(exclude=(fuel,))['GlobalWarming']
+        
+        @metric(name='other_GWP',units='kg CO2 eq',element='LCA')
+        def get_other_GWP():
+            return lca.get_other_impacts()['GlobalWarming']
+        
+        @metric(name='HTL_constrution_GWP',units='kg CO2 eq',element='LCA')
+        def get_HTL_constrution_GWP():
+            table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
+            return table_construction['Stainless_steel [kg]']['A000']+table_construction['Stainless_steel [kg]']['A100']+\
+                   table_construction['Stainless_steel [kg]']['A110']+table_construction['Stainless_steel [kg]']['A120']
+        
+        @metric(name='nutrient_constrution_GWP',units='kg CO2 eq',element='LCA')
+        def get_nutrient_constrution_GWP():
+            table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
+            return table_construction['Carbon_steel [kg]']['A220']+table_construction['RO [m2]']['A260']+\
+                   table_construction['Stainless_steel [kg]']['A200']+table_construction['Stainless_steel [kg]']['T200']
+        
+        @metric(name='CHG_constrution_GWP',units='kg CO2 eq',element='LCA')
+        def get_CHG_constrution_GWP():
+            table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
+            return table_construction['Stainless_steel [kg]']['A230']
+        
+        @metric(name='HT_HC_construction_GWP',units='kg CO2 eq',element='LCA')
+        def get_HT_HC_construction_GWP():
+            table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
+            return table_construction['Carbon_steel [kg]']['T500']+table_construction['Carbon_steel [kg]']['T510']+\
+                   table_construction['Stainless_steel [kg]']['A300']+table_construction['Stainless_steel [kg]']['A310']+\
+                   table_construction['Stainless_steel [kg]']['A330']+table_construction['Stainless_steel [kg]']['A360']+\
+                   table_construction['Stainless_steel [kg]']['A400']+table_construction['Stainless_steel [kg]']['A410']+\
+                   table_construction['Stainless_steel [kg]']['A420']+table_construction['Stainless_steel [kg]']['A500']+\
+                   table_construction['Stainless_steel [kg]']['A510']
+        
+        @metric(name='CHP_constrution_GWP',units='kg CO2 eq',element='LCA')
+        def get_CHP_constrution_GWP():
+            table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
+            return table_construction['Carbon_steel [kg]']['CHP']+table_construction['Concrete [kg]']['CHP']+\
+                   table_construction['Furnace [kg]']['CHP']+table_construction['Reinforcing_steel [kg]']['CHP']
+        
+        @metric(name='CHG_stream_GWP',units='kg CO2 eq',element='LCA')
+        def get_CHG_stream_GWP():
+            table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+            return table_stream['CHG_catalyst_out']
+        
+        @metric(name='HT_HC_stream_GWP',units='kg CO2 eq',element='LCA')
+        def get_HT_HC_stream_GWP():
+            table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+            return table_stream['H2']+table_stream['HT_catalyst_out']+table_stream['HC_catalyst_out']
+        
+        @metric(name='nutrient_stream_GWP',units='kg CO2 eq',element='LCA')
+        def get_nutrient_stream_GWP():
+            table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+            return table_stream['H2SO4']+table_stream['MgCl2']+table_stream['MgO']+table_stream['struvite']+\
+                   table_stream['NH4Cl']+table_stream['Membrane_in']+table_stream['NaOH']+table_stream['ammonium_sulfate']
+                   
+        @metric(name='CHP_stream_GWP',units='kg CO2 eq',element='LCA')
+        def get_CHP_stream_GWP():
+            table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+            return table_stream['natural_gas']
+        
+        @metric(name='HTL_utility_GWP',units='kg CO2 eq',element='LCA')
+        def get_HTL_utility_GWP():
+            table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+            a = 0
+            for i in range (len(HTL.heat_utilities)):
+                if HTL.heat_utilities[i].duty < 0:
+                    a += HTL.heat_utilities[i].duty
+            return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
+                   table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
+                   (SluC.power_utility.consumption+P1.power_utility.consumption)*sys.operating_hours
+        
+        @metric(name='CHG_utility_GWP',units='kg CO2 eq',element='LCA')
+        def get_CHG_utility_GWP():
+            table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+            a = 0
+            for unit in (CHG, F1):
+                for i in range (len(unit.heat_utilities)):
+                    if unit.heat_utilities[i].duty < 0:
+                        a += unit.heat_utilities[i].duty
+            return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
+                   table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
+                   CHG.power_utility.consumption*sys.operating_hours
+        
+        P2, P3 = unit.P2, unit.P3
+        HT_HC_utility_units = (HT, unit.H2, F2, D1, D2, D3, HC, unit.H4, F3, D4, unit.H5, unit.H6)
+        @metric(name='HT_HC_utility_GWP',units='kg CO2 eq',element='LCA')
+        def get_HT_HC_utility_GWP():
+            table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+            a = 0
+            for unit in HT_HC_utility_units:
+                for i in range (len(unit.heat_utilities)):
+                    if unit.heat_utilities[i].duty < 0:
+                        a += unit.heat_utilities[i].duty
+            return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
+                   table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
+                   (P2.power_utility.consumption+P3.power_utility.consumption)*sys.operating_hours
+        
+        @metric(name='HXN_utility_GWP',units='kg CO2 eq',element='LCA')
+        def get_HXN_utility_GWP():
+            table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+            a = 0
+            for i in range (len(HXN.heat_utilities)):
+                if HXN.heat_utilities[i].duty > 0:
+                    a += HXN.heat_utilities[i].duty
+            return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)
+        
+        @metric(name='CHP_utility_GWP',units='kg CO2 eq',element='LCA')
+        def get_CHP_utility_GWP():
+            table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+            return table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
+                   (-CHP.power_utility.production)*sys.operating_hours
+        
+        @metric(name='electricity_GWP',units='kg CO2 eq',element='LCA')
+        def get_electricity_GWP():
+            table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+            return table_other['Electricity [kWh]']
+        
+        @metric(name='cooling_GWP',units='kg CO2 eq',element='LCA')
+        def get_cooling_GWP():
+            table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+            return table_other['Cooling [MJ]']
     
     #%%
     @metric(name='MFSP',units='$/gal diesel',element='TEA')
