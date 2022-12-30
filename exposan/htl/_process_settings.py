@@ -66,7 +66,10 @@ def _load_process_settings():
 # =============================================================================
     bst.PowerUtility.price = 0.06879
     
-    # These utilities are provided by CHP thus cost already considered
-    for adj in ('low', 'medium', 'high'):
-        steam = bst.HeatUtility.get_agent(f'{adj}_pressure_steam')
-        steam.heat_transfer_price = steam.regeneration_price = 0.
+    # # These utilities are provided by CHP thus cost already considered
+    # # setting the regeneration price to 0 or not will not affect the final results
+    # # as the utility cost will be positive for the unit that consumes it
+    # # but negative for HXN/CHP as they produce it
+    # for adj in ('low', 'medium', 'high'):
+    #     steam = bst.HeatUtility.get_agent(f'{adj}_pressure_steam')
+    #     steam.heat_transfer_price = steam.regeneration_price = 0.
