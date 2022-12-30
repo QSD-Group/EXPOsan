@@ -246,8 +246,7 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
         purchase_costs = self.baseline_purchase_costs
 
         if Design['Total volume'] == 0:
-            for i, j in purchase_costs.items():
-                purchase_costs[i] = 0
+            purchase_costs.clear()
 
         else:
             purchase_costs.update(self._vessel_purchase_cost(
@@ -256,22 +255,6 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
                 purchase_costs[i] *= Design['Number of reactors']
 
             self.power_utility(self.kW_per_m3*Design['Total volume'])
-
-    @property
-    def vessel_type(self):
-        return self._vessel_type
-    @vessel_type.setter
-    def vessel_type(self, i):
-        exist_type = getattr(self, '_vessel_type', None)
-        if i and exist_type == i: return # type doesn't change, no need to do anything
-        if i == 'Vertical':
-            self.BM = getattr(self, 'BM_vertical', None)
-        elif i == 'Horizontal':
-            self.BM = getattr(self, 'BM_horizontal', None)
-        else:
-            raise ValueError('`vessel_type` can only be "Vertical" or "Horizontal", '
-                             f'the type "{i}" is not valid.')
-        self._vessel_type = i
         
     @property
     def vessel_material(self):
@@ -280,7 +263,7 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
     def vessel_material(self, i):
         exist_material = getattr(self, '_vessel_material', None)
         if i and exist_material == i: return # type doesn't change, no need to do anything
-        self._vessel_material = i
+        PressureVessel.vessel_material.fset(self, i)        
         self._init_lca()
 
     @property
