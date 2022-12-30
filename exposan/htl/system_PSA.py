@@ -33,7 +33,7 @@ from exposan.htl import results_path, create_model, simulate_and_save
 model = create_model('PSA')
 df = model.metrics_at_baseline()
 df.to_csv(os.path.join(results_path, 'PSA.csv'))
-simulate_and_save(model, N=100)
+# simulate_and_save(model, samples_kwargs={'N':100})
 
 
 #%%

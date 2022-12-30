@@ -80,7 +80,9 @@ def simulate_and_save(model,
                       include_spearman=True, spearman_kwargs={'nan_policy': 'omit'},
                       export_results=True, path='',):
     if resample:
-        samples = model.sample(**samples_kwargs)
+        kwargs = {'N':1000, 'rule':'L', 'seed':None}
+        kwargs.update(samples_kwargs)
+        samples = model.sample(**kwargs)
         model.load_samples(samples)
     model.evaluate()
     idx = len(model.parameters)
@@ -88,7 +90,9 @@ def simulate_and_save(model,
     results = model.table.iloc[:, idx:]
     percentiles = results.quantile([0, 0.05, 0.25, 0.5, 0.75, 0.95, 1])
     if include_spearman:
-        r_df, p_df = qs.stats.get_correlations(model, kind='Spearman', **spearman_kwargs)
+        kwargs = {'nan_policy': 'omit'}
+        kwargs.update(spearman_kwargs)
+        r_df, p_df = qs.stats.get_correlations(model, kind='Spearman', **kwargs)
 
     if export_results:
         ID = model.system.flowsheet.ID
