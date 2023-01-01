@@ -188,8 +188,10 @@ def create_system(configuration='baseline'):
     RSP1.ins[0].price = 1.61
     RSP1.register_alias('RSP1')
     
-    HT_cls = su.HT if configuration != 'PSA' else su.HT_PSA
-    HT = HT_cls('A310', ins=(P2-0, RSP1-0, 'CoMo_alumina_HT'), outs=('HTout', 'CoMo_alumina_HT_out'))
+    # HT_cls = su.HT if configuration != 'PSA' else su.HT_PSA
+    include_PSA = False if 'PSA' not in configuration else True
+    HT = su.HT('A310', ins=(P2-0, RSP1-0, 'CoMo_alumina_HT'),
+               outs=('HTout', 'CoMo_alumina_HT_out'), include_PSA=include_PSA)
         
     HT.ins[2].price = 38.79
     HT.register_alias('HT')
