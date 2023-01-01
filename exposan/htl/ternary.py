@@ -73,4 +73,4 @@ for lipid in lipids:
                 get_quantiles(LCA_sludge)
                 )
 
-ternary_results.to_excel(os.path.join(results_path, f'_tenary_{N}.csv'))
+ternary_results.to_excel(os.path.join(results_path, f'_ternary_{N}.csv'))
