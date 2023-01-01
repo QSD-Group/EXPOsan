@@ -39,6 +39,11 @@ from exposan.htl import (
     create_tea,
     )
 
+from .units_to_move import (
+    BinaryDistillation,
+    Flash,
+    )
+
 
 __all__ = ('create_system',)
 
@@ -157,7 +162,7 @@ def create_system(configuration='baseline'):
     V1 = IsenthalpicValve('A240', ins=CHG-0, outs='depressed_cooled_CHG', P=50*6894.76, vle=True)
     V1.register_alias('V1')
     
-    F1 = su.HTLflash('A250', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
+    F1 = su.Flash('A250', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                      T=60+273.15, P=50*6894.76)
     F1.register_alias('F1')
     
@@ -201,8 +206,8 @@ def create_system(configuration='baseline'):
                         init_with='Stream', rigorous=True)
     H2.register_alias('H2')
     
-    F2 = su.HTLflash('A340', ins=H2-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
-                     P=717.4*6894.76) # outflow P
+    F2 = Flash('A340', ins=H2-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
+               P=717.4*6894.76) # outflow P
     F2.register_alias('F2')
     
     V3 = IsenthalpicValve('A350', ins=F2-1, outs='depressed_flash_effluent', P=55*6894.76, vle=True)
@@ -217,19 +222,19 @@ def create_system(configuration='baseline'):
     # temperature: Jones stream #334 (we remove the first distillation column)
     H3.register_alias('H3')
     
-    D1 = su.HTLdistillation('A370', ins=H3-0,
+    D1 = BinaryDistillation('A370', ins=H3-0,
                             outs=('HT_light','HT_heavy'),
                             LHK=('C4H10','TWOMBUTAN'), P=50*6894.76, # outflow P
                             y_top=188/253, x_bot=53/162, k=2, is_divided=True)
     D1.register_alias('D1')
     
-    D2 = su.HTLdistillation('A380', ins=D1-1,
+    D2 = BinaryDistillation('A380', ins=D1-1,
                             outs=('HT_Gasoline','HT_other_oil'),
                             LHK=('C10H22','C4BENZ'), P=25*6894.76, # outflow P
                             y_top=116/122, x_bot=114/732, k=2, is_divided=True)
     D2.register_alias('D2')
     
-    D3 = su.HTLdistillation('A390', ins=D2-1,
+    D3 = BinaryDistillation('A390', ins=D2-1,
                             outs=('HT_Diesel','HT_heavy_oil'),
                             LHK=('C19H40','C21H44'),P=18.7*6894.76, # outflow P
                             y_top=2421/2448, x_bot=158/2448, k=2, is_divided=True)
@@ -259,11 +264,11 @@ def create_system(configuration='baseline'):
     V4 = IsenthalpicValve('A430', ins=H4-0, outs='cooled_depressed_HC', P=30*6894.76, vle=True)
     V4.register_alias('V4')
     
-    F3 = su.HTLflash('A440', ins=V4-0, outs=('HC_fuel_gas','HC_aqueous'), T=60.2+273,
-                     P=30*6894.76) # outflow P
+    F3 = Flash('A440', ins=V4-0, outs=('HC_fuel_gas','HC_aqueous'), T=60.2+273,
+               P=30*6894.76) # outflow P
     F3.register_alias('F3')
     
-    D4 = su.HTLdistillation('A450', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
+    D4 = BinaryDistillation('A450', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
                             LHK=('C9H20','C10H22'), P=20*6894.76, # outflow P
                             y_top=360/546, x_bot=7/708, k=2, is_divided=True)
     D4.register_alias('D4')
