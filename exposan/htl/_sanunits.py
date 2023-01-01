@@ -51,7 +51,6 @@ __all__ = (
     'HTLcompressor',
     'HTLflash',
     'HTLdistillation',
-    'HTLHXN'
     )
 
 yearly_operation_hour = 7920 # Jones
@@ -2872,16 +2871,16 @@ class HTLdistillation(BinaryDistillation):
                 ]
 
 
-# =============================================================================
-# HTLHXN
-# =============================================================================
+# # =============================================================================
+# # HTLHXN
+# # =============================================================================
 
-class HTLHXN(qsu.HeatExchangerNetwork):
-    '''
-    Similar to qsdsan.sanunits.HeatExchangerNetwork, but enable LCA.
-    '''
+# class HTLHXN(qsu.HeatExchangerNetwork):
+#     '''
+#     Similar to qsdsan.sanunits.HeatExchangerNetwork, but enable LCA.
+#     '''
     
-    def _design(self):
-        super()._design()
-        self.construction = []
-        self.transportation = []
+#     def _design(self):
+#         super()._design()
+#         self.construction = []
+#         self.transportation = []

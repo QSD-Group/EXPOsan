@@ -331,7 +331,7 @@ def create_system(configuration='baseline'):
     # facilities
     # =============================================================================
     
-    su.HTLHXN('HXN')
+    qsu.HeatExchangerNetwork('HXN')
     
     CHP = su.HTLCHP('CHP', ins=(GasMixer-0, 'natural_gas', 'air'),
                   outs=('emission','solid_ash'), init_with='WasteStream', supplement_power_utility=False)
