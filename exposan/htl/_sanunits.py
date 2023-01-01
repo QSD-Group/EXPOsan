@@ -2869,18 +2869,3 @@ class HTLdistillation(BinaryDistillation):
                 Construction('carbon_steel', linked_unit=self, item='Carbon_steel', 
                              quantity=(D['Rectifier weight'] + D['Stripper weight'])*_lb_to_kg, quantity_unit='kg'),
                 ]
-
-
-# # =============================================================================
-# # HTLHXN
-# # =============================================================================
-
-# class HTLHXN(qsu.HeatExchangerNetwork):
-#     '''
-#     Similar to qsdsan.sanunits.HeatExchangerNetwork, but enable LCA.
-#     '''
-    
-#     def _design(self):
-#         super()._design()
-#         self.construction = []
-#         self.transportation = []
