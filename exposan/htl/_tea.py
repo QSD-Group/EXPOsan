@@ -4,7 +4,9 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+
     Jianan Feng <jiananf2@illinois.edu>
+
     Yalin Li <mailto.yalin.li@gmail.com>
     
 This module is under the University of Illinois/NCSA Open Source License.
@@ -27,8 +29,7 @@ import biosteam as bst
 import pandas as pd
 import numpy as np
 
-__all__ = ('HTL_TEA', 'create_tea', 
-           'capex_table', 'voc_table', 'foc_table')
+__all__ = ('HTL_TEA', 'create_tea',)
 
 class CAPEXTableBuilder:
     __slots__ = ('index', 'data')

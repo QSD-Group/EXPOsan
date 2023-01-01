@@ -5,7 +5,9 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+
     Jianan Feng <jiananf2@illinois.edu>
+
     Yalin Li <mailto.yalin.li@gmail.com>
     
 This module is under the University of Illinois/NCSA Open Source License.
@@ -14,50 +16,45 @@ for license details.
 '''
 
 import biosteam as bst
-from qsdsan import SanUnit, Construction
-import qsdsan.sanunits as qsu
+from warnings import warn
+from math import pi, ceil, log, floor, exp
+from thermosteam import indexer, equilibrium
+from biosteam.exceptions import DesignError, bounds_warning, DesignWarning
 from biosteam.units import IsothermalCompressor, Flash, BinaryDistillation
-from exposan.htl._components import create_components
+from biosteam.units.decorators import cost
 from biosteam.units.design_tools import PressureVessel, flash_vessel_design
 from biosteam.units.design_tools.cost_index import CEPCI_by_year as CEPCI
-from math import pi, ceil, log, floor, exp
-from biosteam.exceptions import DesignError, bounds_warning, DesignWarning
-from biosteam import Stream
-from biosteam.units.decorators import cost
-from thermosteam import indexer, equilibrium
-from exposan.htl._process_settings import load_process_settings
-from qsdsan.utils import auom, select_pipe
 from biosteam.units.design_tools.specification_factors import material_densities_lb_per_ft3
-from warnings import warn
+from qsdsan import Stream, SanUnit, Construction, sanunits as qsu
+from qsdsan.utils import auom, select_pipe
 
-__all__ = ('Reactor',
-           'WWTP',
-           'HTL',
-           'AcidExtraction',
-           'HTLmixer',
-           'HTLsplitter',
-           'StruvitePrecipitation',
-           'CHG',
-           'MembraneDistillation',
-           'HT',
-           'HT_PSA',
-           'HC',
-           'WWmixer',
-           'PhaseChanger',
-           'FuelMixer',
-           'HTLpump',
-           'HTLHX',
-           'HTL_sludge_centrifuge',
-           'HTLCHP',
-           'HTL_storage_tank',
-           'HTLcompressor',
-           'HTLflash',
-           'HTLdistillation',
-           'HTLHXN')
 
-cmps = create_components()
-
-load_process_settings()
+__all__ = (
+    'Reactor',
+    'WWTP',
+    'HTL',
+    'AcidExtraction',
+    'HTLmixer',
+    'HTLsplitter',
+    'StruvitePrecipitation',
+    'CHG',
+    'MembraneDistillation',
+    'HT',
+    'HT_PSA',
+    'HC',
+    'WWmixer',
+    'PhaseChanger',
+    'FuelMixer',
+    'HTLpump',
+    'HTLHX',
+    'HTL_sludge_centrifuge',
+    'HTLCHP',
+    'HTL_storage_tank',
+    'HTLcompressor',
+    'HTLflash',
+    'HTLdistillation',
+    'HTLHXN'
+    )
 
 yearly_operation_hour = 7920 # Jones
 
@@ -87,11 +84,12 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
     '''
     Create an abstract class for reactor unit, purchase cost of the reactor
     is based on volume calculated by residence time.
+    
     Parameters
     ----------
-    ins: stream
+    ins : Iterable(stream)
         Inlet.
-    outs: stream
+    outs : Iterable(stream)
         Outlet.
     tau: float
         Residence time, [hr].
@@ -104,7 +102,7 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
     V: float
         Volume of reactor, [m3].
     auxiliary: bool
-        Whether or not the reactor is an auxiliart unit.      
+        Whether or not the reactor is an auxiliary unit.      
     mixing_intensity: float
         Mechanical mixing intensity, [/s].
     kW_per_m3: float
@@ -118,6 +116,7 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
         Vessel material. Default to 'Stainless steel 316'.
     vessel_type : str, optional
         Vessel type. Can only be 'Horizontal' or 'Vertical'.
+        
     References
     ----------
     .. [1] Seider, W. D.; Lewin, D. R.; Seader, J. D.; Widagdo, S.; Gani, R.;
@@ -145,6 +144,8 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
     
     _F_BM_default = PressureVessel._F_BM_default
 
+    _vessel_material = 'Stainless steel 316'
+
     def __init__(self, ID='', ins=None, outs=(), *,
                  P=101325, tau=0.5, V_wf=0.8,
                  length_to_diameter=2, N=None, V=None, auxiliary=False,
@@ -152,7 +153,6 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical'):
-
         SanUnit.__init__(self, ID, ins, outs)
         self.P = P
         self.tau = tau
@@ -162,10 +162,19 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
         self.V = V
         self.auxiliary = auxiliary
         self.mixing_intensity = mixing_intensity
+        self._mixture = Stream(f'{self.ID}_mixture')
         self.kW_per_m3 = kW_per_m3
         self.wall_thickness_factor = wall_thickness_factor
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
+
+        
+    def _init_lca(self):
+        for i in self.construction: i.registry.discard(i)
+        item_name = self._vessel_material.replace(' ', '_').rstrip('_316').rstrip('_304')
+        self.construction = [
+            Construction(item_name.lower(), linked_unit=self, item=item_name, quantity_unit='kg'),
+            ]
         
     def _design(self):
         Design = self.design_results
@@ -229,22 +238,15 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
              # Weight is proportional to wall thickness in PressureVessel design
              Design['Weight'] = round(Design['Weight']*wall_thickness_factor, 2)
              
-        quantity = Design['Weight']*Design['Number of reactors']*_lb_to_kg
-        construction = getattr(self, 'construction', ())
-        item_name = self.vessel_material.replace(' ', '_').rstrip('_316').rstrip('_304')
-        if construction: construction[0].quantity = quantity
-        else:
-            self.construction = (
-                Construction(item_name.lower(), linked_unit=self, item=item_name, quantity_unit='kg', quantity=quantity),
-                )
+        self.construction[0].quantity = Design['Weight']*Design['Number of reactors']*_lb_to_kg
+
 
     def _cost(self):
         Design = self.design_results
         purchase_costs = self.baseline_purchase_costs
 
         if Design['Total volume'] == 0:
-            for i, j in purchase_costs.items():
-                purchase_costs[i] = 0
+            purchase_costs.clear()
 
         else:
             purchase_costs.update(self._vessel_purchase_cost(
@@ -253,18 +255,16 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
                 purchase_costs[i] *= Design['Number of reactors']
 
             self.power_utility(self.kW_per_m3*Design['Total volume'])
-
+        
     @property
-    def BM(self):
-        vessel_type = self.vessel_type
-        if not vessel_type:
-            raise AttributeError('Vessel type not defined')
-        elif vessel_type == 'Vertical':
-            return self.BM_vertical
-        elif vessel_type == 'Horizontal':
-            return self.BM_horizontal
-        else:
-            raise RuntimeError('Invalid vessel type')
+    def vessel_material(self):
+        return self._vessel_material
+    @vessel_material.setter
+    def vessel_material(self, i):
+        exist_material = getattr(self, '_vessel_material', None)
+        PressureVessel.vessel_material.fset(self, i)
+        if i and exist_material == i: return # type doesn't change, no need to reload construction items
+        self._init_lca()
 
     @property
     def kW_per_m3(self):
@@ -272,7 +272,7 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
         if G is None:
             return self._kW_per_m3
         else:
-            mixture = Stream()
+            mixture = self._mixture
             mixture.mix_from(self.ins)
             kW_per_m3 = mixture.mu*(G**2)/1e3
             return kW_per_m3
@@ -280,7 +280,7 @@ class Reactor(SanUnit, PressureVessel, isabstract=True):
     @kW_per_m3.setter
     def kW_per_m3(self, i):
         if self.mixing_intensity and i is not None:
-            raise AttributeError('mixing_intensity is provided, kw_per_m3 will be calculated.')
+            raise AttributeError('`mixing_intensity` is provided, kw_per_m3 will be calculated.')
         else:
             self._kW_per_m3 = i
 
@@ -292,11 +292,12 @@ class WWTP(SanUnit):
     '''
     WWTP is a fake unit that can set up sludge biochemical compositions
     and calculate sludge elemental compositions.
+    
     Parameters
     ----------
-    ins: stream
+    ins : Iterable(stream)
         ww.
-    outs: stream
+    outs : Iterable(stream)
         sludge, treated.
     ww_2_dry_sludge: float
         Wastewater-to-dry-sludge conversion factor, [metric ton/day/MGD].
@@ -322,6 +323,7 @@ class WWTP(SanUnit):
         Nitrogen to phosphorus factor. 
     operation_hour: float
         Plant yearly operation hour, [hr/yr].
+        
     References
     ----------
     .. [1] Metcalf and Eddy, Incorporated. 1991. Wastewater Engineering:
@@ -331,6 +333,8 @@ class WWTP(SanUnit):
         Liquefaction of Algal Biomass. Green Chem. 2017, 19 (4), 1163–1174.
         https://doi.org/10.1039/C6GC03294J.
     '''
+    _N_ins = 1
+    _N_outs = 2
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', 
@@ -357,9 +361,6 @@ class WWTP(SanUnit):
         self.protein_2_N = protein_2_N
         self.N_2_P = N_2_P
         self.operation_hours = operation_hours
-
-    _N_ins = 1
-    _N_outs = 2
     
     def _run(self):
         
@@ -451,12 +452,7 @@ class WWTP(SanUnit):
     @property
     def H_C_eff(self):
         return (self.sludge_H/1.00784-2*self.sludge_O/15.999)/self.sludge_C*12.011
-        
-    def _design(self):
-        pass
-    
-    def _cost(self):
-        pass
+
 
 # =============================================================================
 # KOdrum
@@ -464,14 +460,23 @@ class WWTP(SanUnit):
 
 class KOdrum(Reactor):
     '''
-    Konckout drum is a HTL auxiliary unit.
+    Konckout drum is an auxiliary unit for :class:`HTL`.
+    
     References
     ----------
     .. [1] Knorr, D.; Lukas, J.; Schoen, P. Production of Advanced Biofuels via
         Liquefaction - Hydrothermal Liquefaction Reactor Design: April 5, 2013;
         NREL/SR-5100-60462, 1111191; 2013; p NREL/SR-5100-60462, 1111191.
         https://doi.org/10.2172/1111191.
+        
+    See Also
+    --------
+    :class:`qsdsan.sanunits.HTL`
     '''
+    _N_ins = 3
+    _N_outs = 2
+    _ins_size_is_fixed = False
+    _outs_size_is_fixed = False
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
@@ -497,30 +502,19 @@ class KOdrum(Reactor):
         self.wall_thickness_factor = wall_thickness_factor
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
-
-    _N_ins = 3
-    _N_outs = 2
-    _ins_size_is_fixed = False
-    _outs_size_is_fixed = False
     
     def _run(self):
         pass
-        
-    def _design(self):
-        Reactor._design(self)
-    
-    def _cost(self):
-        Reactor._cost(self)
+
 
 # =============================================================================
 # HTL (ignore three phase separator for now, ask Yalin)
 # =============================================================================
 
+# separator
 @cost(basis='Treatment capacity', ID='Solids filter oil/water separator', units='lb/h',
       cost=3945523, S=1219765,
       CE=CEPCI[2011], n=0.68, BM=1.9)
-# separator
-
 class HTL(Reactor):
     '''
     HTL converts dewatered sludge to biocrude, aqueous, off-gas, and biochar
@@ -528,6 +522,7 @@ class HTL(Reactor):
     (wt%) can be evaluated using revised MCA model (Li et al., 2017,
     Leow et al., 2018) with known sludge composition (protein%, lipid%,
     and carbohydrate%, all afdw%).
+                                                      
     Notice that for HTL we just calculate each phases' total mass (except gas)
     and calculate C, N, and P amount in each phase as properties. We don't
     specify components for oil/char since we want to use MCA model to calculate
@@ -537,11 +532,12 @@ class HTL(Reactor):
     P based on mass balance closure. But later for CHG, HT, and HC, we specify
     each components (except aqueous phase) for the application of flash,
     distillation column, and CHP units.
+    
     Parameters
     ----------
-    ins: stream
+    ins : Iterable(stream)
         dewatered_sludge.
-    outs: stream
+    outs : Iterable(stream)
         biochar, HTLaqueous, biocrude, offgas.
     lipid_2_biocrude: float
         Lipid to biocrude factor.
@@ -587,6 +583,7 @@ class HTL(Reactor):
         HTL effluent temperature, [K].
     CAPEX_factor: float
         Factor used to adjust CAPEX.
+        
     References
     ----------
     .. [1] Leow, S.; Witter, J. R.; Vardon, D. R.; Sharma, B. K.;
@@ -617,6 +614,10 @@ class HTL(Reactor):
         April 5, 2013; NREL/SR-5100-60462, 1111191; 2013; p NREL/SR-5100-60462,
         1111191. https://doi.org/10.2172/1111191.
     '''
+    _N_ins = 1
+    _N_outs = 4
+    _units= {'Treatment capacity': 'lb/h',
+             'Solid filter and separator weight': 'lb'}
     
     auxiliary_unit_names=('heat_exchanger','kodrum')
 
@@ -695,10 +696,6 @@ class HTL(Reactor):
         self.vessel_type = vessel_type
         self.CAPEX_factor = CAPEX_factor
 
-    _N_ins = 1
-    _N_outs = 4
-    _units= {'Treatment capacity': 'lb/h',
-             'Solid filter and separator weight': 'lb'}
     
     def _run(self):
         
@@ -724,7 +721,7 @@ class HTL(Reactor):
                                           0.154*afdw_lipid_ratio)*\
                                           dewatered_sludge_afdw
         # HTLaqueous is TDS in aqueous phase
-        # 0.377, 0.481, and 0.154 don't have uncertainties becasue they are calculated values
+        # 0.377, 0.481, and 0.154 don't have uncertainties because they are calculated values
          
         gas_mass = (self.protein_2_gas*afdw_protein_ratio + self.carbo_2_gas*afdw_carbo_ratio)*\
                        dewatered_sludge_afdw
@@ -753,7 +750,7 @@ class HTL(Reactor):
         biocrude.P = self.biocrude_pre
         offgas.P = self.offgas_pre
         
-        for stream in self.outs: stream.T = self.heat_exchanger.T
+        for stream in self.outs : stream.T = self.heat_exchanger.T
 
     @property
     def biocrude_C_ratio(self):
@@ -799,10 +796,9 @@ class HTL(Reactor):
         
     @property
     def offgas_C(self):
-        carbon = 0
-        for name in self.gas_composition.keys():
-            carbon += self.outs[3].imass[name]*cmps[name].i_C
-        return min(carbon, self.WWTP.sludge_C - self.biocrude_C - self.HTLaqueous_C)    
+        carbon = sum(self.outs[3].imass[self.gas_composition]*
+                     [cmp.i_C for cmp in self.components[self.gas_composition]])
+        return min(carbon, self.WWTP.sludge_C - self.biocrude_C - self.HTLaqueous_C)
         
     @property
     def biochar_C_ratio(self):
@@ -877,17 +873,19 @@ class HTL(Reactor):
 
 class AcidExtraction(Reactor):
     '''
-    H2SO4 is added to biochar from HTL to extract phosphorus. 
+    H2SO4 is added to biochar from HTL to extract phosphorus.
+    
     Parameters
     ----------
-    ins: stream
+    ins : Iterable(stream)
         biochar, acid.
-    outs: stream
+    outs : Iterable(stream)
         residual, extracted.
     acid_vol: float
         0.5 M H2SO4 to biochar ratio: mL/g.
     P_acid_recovery_ratio: float
         The ratio of phosphorus that can be extracted.
+        
     References
     ----------
     .. [1] Zhu, Y.; Schmidt, A.; Valdez, P.; Snowden-Swan, L.; Edmundson, S.
@@ -895,7 +893,8 @@ class AcidExtraction(Reactor):
         2021 State of Technology; PNNL-32695, 1855835; 2022; p PNNL-32695, 1855835.
         https://doi.org/10.2172/1855835.
     '''
-    
+    _N_ins = 2
+    _N_outs = 2
     _F_BM_default = {**Reactor._F_BM_default}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
@@ -923,9 +922,6 @@ class AcidExtraction(Reactor):
         self.wall_thickness_factor = wall_thickness_factor
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
-
-    _N_ins = 2
-    _N_outs = 2
         
     def _run(self):
         
@@ -975,9 +971,7 @@ class AcidExtraction(Reactor):
         # 1/788.627455 m3 reactor/m3 wastewater/h (50 MGD ~ 10 m3)
         self.P = self.ins[1].P
         Reactor._design(self)
-        
-    def _cost(self):
-        Reactor._cost(self)
+
     
 # =============================================================================
 # HTL mixer
@@ -987,12 +981,14 @@ class HTLmixer(SanUnit):
     '''
     A fake unit that calculates C, N, P, and H2O amount in the mixture of HTL
     aqueous and AcidEx effluent.
+    
     Parameters
     ----------
-    ins: stream
+    ins : Iterable(stream)
         HTLaqueous, extracted
-    outs: stream
+    outs : Iterable(stream)
         mixture
+        
     References
     ----------
     .. [1] Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J. 
@@ -1041,12 +1037,7 @@ class HTLmixer(SanUnit):
             dilution_factor = self.F_mass_in/self.ins[1].F_mass if self.ins[1].imass['P'] != 0 else 1
             hydrogen_ion_conc = 10**0/dilution_factor
             return -log(hydrogen_ion_conc, 10)
-        
-    def _design(self):
-        pass
-    
-    def _cost(self):
-        pass
+
     
 # =============================================================================
 # HTLsplitter
@@ -1055,13 +1046,16 @@ class HTLmixer(SanUnit):
 class HTLsplitter(SanUnit):
     '''
     A fake unit that calculates influent based on effluents.
+    
     Parameters
     ----------
-    ins: stream
-    flow_in
-    outs: stream
-    flow_out_1, flow_out_2
+    ins : Iterable(stream)
+        flow_in
+    outs : Iterable(stream)
+        flow_out_1, flow_out_2
     '''
+    _N_ins = 1
+    _N_outs = 2
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
@@ -1069,8 +1063,6 @@ class HTLsplitter(SanUnit):
         
         SanUnit.__init__(self, ID, ins, outs, thermo,init_with)
 
-    _N_ins = 1
-    _N_outs = 2
         
     def _run(self):
         
@@ -1078,12 +1070,7 @@ class HTLsplitter(SanUnit):
         flow_out_1, flow_out_2 = self.outs
         
         flow_in.mix_from((flow_out_1, flow_out_2))
-    
-    def _design(self):
-        pass
-    
-    def _cost(self):
-        pass
+
 
 # =============================================================================
 # Struvite Precipitation
@@ -1093,11 +1080,12 @@ class StruvitePrecipitation(Reactor):
     '''
     Extracted and HTL aqueous are mixed together before adding MgCl2 for struvite precipitation.
     If mol(N)<mol(P), add NH4Cl to mol(N):mol(P)=1:1.
+    
     Parameters
     ----------
-    ins: stream
+    ins : Iterable(stream)
         mixture, supply_MgCl2, supply_NH4Cl, base.
-    outs: stream
+    outs : Iterable(stream)
         struvite, effluent.
     target_pH: float
         Target pH for struvite precipitation.
@@ -1107,6 +1095,7 @@ class StruvitePrecipitation(Reactor):
         Ratio of phosphorus that can be precipitated out.
     HTLaqueous_NH3_N_2_total_N: float
         Ratio of NH3-N to TN in HTL aqueous phase.
+        
     References
     ----------
     .. [1] Zhu, Y.; Schmidt, A.; Valdez, P.; Snowden-Swan, L.; Edmundson, S.
@@ -1120,7 +1109,8 @@ class StruvitePrecipitation(Reactor):
         Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
         PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
     '''
-    
+    _N_ins = 4
+    _N_outs = 2
     _F_BM_default = {**Reactor._F_BM_default}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
@@ -1154,9 +1144,7 @@ class StruvitePrecipitation(Reactor):
         self.wall_thickness_factor = wall_thickness_factor
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
-        
-    _N_ins = 4
-    _N_outs = 2
+    
         
     def _run(self):
         
@@ -1212,29 +1200,27 @@ class StruvitePrecipitation(Reactor):
         # 2/788.627455 m3 reactor/m3 wastewater/h (50 MGD ~ 20 m3)
         self.P = self.ins[0].P
         Reactor._design(self)
-        
-    def _cost(self):
-        Reactor._cost(self)
+
     
 # =============================================================================
 # CHG
 # =============================================================================
 
+# hydrocyclone
 @cost(basis='Treatment capacity', ID='Hydrocyclone', units='lb/h',
       cost=5000000, S=968859,
       CE=CEPCI[2009], n=0.65, BM=2.1)
-# hydrocyclone
-
 class CHG(Reactor):
     '''
     CHG serves to reduce the COD content in the aqueous phase and produce fuel
     gas under elevated temperature (350°C) and pressure. The outlet will be
     cooled down and separated by a flash unit.
+    
     Parameters
     ----------
-    ins: stream
+    ins : Iterable(stream)
         chg_in, catalyst_in.
-    outs: stream
+    outs : Iterable(stream)
         chg_out, catalyst_out.
     pump_pressure: float
         CHG influent pressure, [Pa].
@@ -1252,6 +1238,7 @@ class CHG(Reactor):
         CHG gas carbon content to feed carbon content.
     CAPEX_factor: float
         Factor used to adjust CAPEX.
+        
     References
     ----------
     .. [1] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
@@ -1273,14 +1260,16 @@ class CHG(Reactor):
         Rahardjo, S. A. T. Catalytic Hydrothermal Gasification of Lignin-Rich
         Biorefinery Residues and Algae Final Report. 87.
     '''
-
-    auxiliary_unit_names=('pump','heat_ex_heating','heat_ex_cooling')
+    _N_ins = 2
+    _N_outs = 2
     
     _F_BM_default = {**Reactor._F_BM_default,
                      'Heat exchanger': 3.17,
                      'Sulfur guard': 2.0}
-    _units= {'Treatment capacity': 'lb/h',
+    _units= {'Treatment capacity': 'lb/h', # hydrocyclone
              'Hydrocyclone weight': 'lb'}
+    
+    auxiliary_unit_names=('pump','heat_ex_heating','heat_ex_cooling')
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
@@ -1337,9 +1326,6 @@ class CHG(Reactor):
         self.vessel_type = vessel_type
         self.CAPEX_factor = CAPEX_factor
         
-    _N_ins = 2
-    _N_outs = 2
-    _units= {'Treatment capacity': 'lb/h'} # hydrocyclone
         
     def _run(self):
         
@@ -1352,6 +1338,7 @@ class CHG(Reactor):
         # catalysts amount is quite low compared to the main stream, therefore do not consider
         # heating/cooling of catalysts
             
+        cmps = self.components
         gas_C_ratio = 0
         for name, ratio in self.gas_composition.items():
             gas_C_ratio += ratio*cmps[name].i_C
@@ -1450,11 +1437,12 @@ class MembraneDistillation(SanUnit):
     Membrane distillation recovers nitrogen as ammonia sulfate based on vapor
     pressure difference across the hydrophobic membrane. Ignore water flux across
     membrane since it will not affect system performance (either TEA or LCA).
+    
     Parameters
     ----------
-    ins: stream
+    ins : Iterable(stream)
         influent, acid, base, mem_in.
-    outs: stream
+    outs : Iterable(stream)
         ammoniumsulfate, ww, mem_out.
     influent_pH: float
         Influent pH.
@@ -1480,6 +1468,7 @@ class MembraneDistillation(SanUnit):
         Membrane treatement capacity (permeate flux), [kg/m2/h].
     membrane_price: float
         Membrane price, [$/kg] ([$/m2]).
+        
     References
     ----------
     .. [1] Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J. 
@@ -1515,7 +1504,8 @@ class MembraneDistillation(SanUnit):
         Trimmer, J.; van der Kolk, O.; Vaneeckhaute, C.; Verstraete, W.; Resource
         Recovery from Water: Principles and Applicaiton. IWA 2022.
     '''
-    
+    _N_ins = 4
+    _N_outs = 4
     _F_BM_default = {'Membrane': 1}
     
     _units = {'Area': 'm2',
@@ -1561,9 +1551,6 @@ class MembraneDistillation(SanUnit):
         self.construction = (
             Construction('membrane', linked_unit=self, item='RO', quantity_unit='m2'),
             )
-
-    _N_ins = 4
-    _N_outs = 4
     
     def _run(self):
         
@@ -1683,11 +1670,12 @@ class HT(Reactor):
     '''
     Biocrude mixed with H2 are hydrotreated at elevated temperature (405°C)
     and pressure to produce upgraded biooil. Co-product includes fuel gas.
+    
     Parameters
     ----------
-    ins: stream
+    ins : Iterable(stream)
         biocrude, hydrogen, catalyst_in.
-    outs: stream
+    outs : Iterable(stream)
         ht_out, catalyst_out = self.outs.
     WHSV: float
         Weight Hourly Space velocity, [kg feed/hr/kg catalyst].
@@ -1709,6 +1697,7 @@ class HT(Reactor):
         HT effluent composition.
     CAPEX_factor: float
         Factor used to adjust CAPEX.
+        
     References
     ----------
     .. [1] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
@@ -1722,7 +1711,8 @@ class HT(Reactor):
         Eds.; Butterworth-Heinemann: Boston, 2013; pp 563–629.
         https://doi.org/10.1016/B978-0-08-096659-5.00014-6.
     '''
-    
+    _N_ins = 3
+    _N_outs = 2
     auxiliary_unit_names=('compressor','heat_exchanger',)
     
     _F_BM_default = {**Reactor._F_BM_default,
@@ -1811,9 +1801,6 @@ class HT(Reactor):
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
         self.CAPEX_factor = CAPEX_factor
-
-    _N_ins = 3
-    _N_outs = 2
         
     def _run(self):
         
@@ -1877,18 +1864,14 @@ class HT(Reactor):
         # sludge. Otherwise, an exception will be raised.
         
     @property
-    def hydrocarbon_C(self):
-        carbon = 0
-        for name in self.HT_composition.keys():
-            carbon += self.outs[0].imass[name]*cmps[name].i_C
-        return carbon
+    def hydrocarbon_C(self):   
+        return sum(self.outs[0].imass[self.HT_composition]*
+                   [cmp.i_C for cmp in self.components[self.HT_composition]])
 
     @property
     def hydrocarbon_N(self):
-        nitrogen = 0
-        for name in self.HT_composition.keys():
-            nitrogen += self.outs[0].imass[name]*cmps[name].i_N
-        return nitrogen
+        return sum(self.outs[0].imass[self.HT_composition]*
+                   [cmp.i_N for cmp in self.components[self.HT_composition]])
 
     @property
     def HTaqueous_C(self):
@@ -1950,21 +1933,22 @@ class HT(Reactor):
 # =============================================================================
 # HT_PSA
 # =============================================================================
+
+# PSA
 @cost(basis='Hydrogen_PSA', ID='PSA', units='mmscfd',
       cost=1750000, S=10,
       CE=CEPCI[2004], n=0.8, BM=2.47)
-# PSA
-
 class HT_PSA(Reactor):
     '''
     Biocrude mixed with H2 are hydrotreated at elevated temperature (405°C)
     and pressure to produce upgraded biooil. Co-product includes fuel gas.
     Include a PSA unit to recover H2.
+    
     Parameters
     ----------
-    ins: stream
+    ins : Iterable(stream)
         biocrude, hydrogen, catalyst_in.
-    outs: stream
+    outs : Iterable(stream)
         ht_out, catalyst_out = self.outs.
     WHSV: float
         Weight Hourly Space velocity, [kg feed/hr/kg catalyst].
@@ -1986,6 +1970,7 @@ class HT_PSA(Reactor):
         HT effluent composition.
     CAPEX_factor: float
         Factor used to adjust CAPEX.
+        
     References
     ----------
     .. [1] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
@@ -1999,6 +1984,8 @@ class HT_PSA(Reactor):
         Eds.; Butterworth-Heinemann: Boston, 2013; pp 563–629.
         https://doi.org/10.1016/B978-0-08-096659-5.00014-6.
     '''
+    _N_ins = 3
+    _N_outs = 2
     
     auxiliary_unit_names=('compressor','heat_exchanger',)
     
@@ -2095,9 +2082,6 @@ class HT_PSA(Reactor):
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
         self.CAPEX_factor = CAPEX_factor
-
-    _N_ins = 3
-    _N_outs = 2
         
     def _run(self):
         
@@ -2106,11 +2090,12 @@ class HT_PSA(Reactor):
         
         self.HTL = self.ins[0]._source.ins[0]._source
         
+        HT_composition = self.HT_composition
         if self.HTL.biocrude_N == 0:
-            remove = self.HT_composition['PIPERDIN']
-            for chemical in self.HT_composition.keys():  
-                self.HT_composition[chemical] /= (1-remove)
-            self.HT_composition['PIPERDIN'] = 0
+            remove = HT_composition['PIPERDIN']
+            for chemical in HT_composition.keys():  
+                HT_composition[chemical] /= (1-remove)
+            HT_composition['PIPERDIN'] = 0
         
         catalyst_in.imass['HT_catalyst'] = biocrude.F_mass/self.WHSV/self.catalyst_lifetime
         catalyst_in.phase = 's'
@@ -2163,19 +2148,16 @@ class HT_PSA(Reactor):
         # It's OK if the mass balance is within +/- 10% of total carbon in 
         # sludge. Otherwise, an exception will be raised.
         
+        
     @property
     def hydrocarbon_C(self):
-        carbon = 0
-        for name in self.HT_composition.keys():
-            carbon += self.outs[0].imass[name]*cmps[name].i_C
-        return carbon
+        return sum(self.outs[0].imass[self.HT_composition]*
+                   [cmp.i_C for cmp in self.components[self.HT_composition]])
 
     @property
     def hydrocarbon_N(self):
-        nitrogen = 0
-        for name in self.HT_composition.keys():
-            nitrogen += self.outs[0].imass[name]*cmps[name].i_N
-        return nitrogen
+        return sum(self.outs[0].imass[self.HT_composition]*
+                   [cmp.i_N for cmp in self.components[self.HT_composition]])
 
     @property
     def HTaqueous_C(self):
@@ -2254,11 +2236,12 @@ class HC(Reactor):
     '''
     Biocrude mixed with H2 are hydrotreated at elevated temperature (405°C)
     and pressure to produce upgraded biooil. Co-product includes fuel gas.
+    
     Parameters
     ----------
-    ins: stream
+    ins : Iterable(stream)
         heavy_oil, hydrogen, catalyst_in.
-    outs: stream
+    outs : Iterable(stream)
         hc_out, catalyst_out.
     WHSV: float
         Weight Hourly Space velocity, [kg feed/hr/kg catalyst].
@@ -2278,6 +2261,7 @@ class HC(Reactor):
         HC effluent (after reaction) temperature, [K].
     HC_composition: dict
         HC effluent composition.
+        
     References
     ----------
     .. [1] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
@@ -2287,6 +2271,8 @@ class HC(Reactor):
         Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
         PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
     '''
+    _N_ins = 3
+    _N_outs = 2
     
     auxiliary_unit_names=('compressor','heat_exchanger',)
     
@@ -2358,9 +2344,6 @@ class HC(Reactor):
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
         
-    _N_ins = 3
-    _N_outs = 2
-        
     def _run(self):
         
         heavy_oil, hydrogen, catalyst_in = self.ins
@@ -2391,6 +2374,7 @@ class HC(Reactor):
         
         hc_out.vle(T=hc_out.T, P=hc_out.P)
         
+        cmps = self.components
         C_in = 0
         total_num = len(list(cmps))
         for num in range(total_num):
@@ -2404,11 +2388,9 @@ class HC(Reactor):
         # exception will be raised.
         
     @property
-    def hydrocarbon_C(self):
-        carbon = 0
-        for name in self.HC_composition.keys():
-            carbon += self.outs[0].imass[name]*cmps[name].i_C
-        return carbon
+    def hydrocarbon_C(self):   
+        return sum(self.outs[0].imass[self.HC_composition]*
+                   [cmp.i_C for cmp in self.components[self.HC_composition]])
 
     def _design(self):
         IC = self.compressor
@@ -2444,8 +2426,6 @@ class HC(Reactor):
         self.V_wf = self.void_fraciton*V_biocrude/(V_biocrude + V_H2)
         Reactor._design(self)
     
-    def _cost(self):
-        Reactor._cost(self)
 
 # =============================================================================
 # WWmixer
@@ -2457,20 +2437,19 @@ class WWmixer(SanUnit):
     amount.
     Parameters
     ----------
-    ins: stream
+    ins : Iterable(stream)
         supernatant_1, supernatant_2, memdis_ww, ht_ww
-    outs: stream
+    outs : Iterable(stream)
         mixture
     '''
+    _N_ins = 3
+    _N_outs = 1
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
                  **kwargs):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-
-    _N_ins = 3
-    _N_outs = 1
         
     def _run(self):
         
@@ -2490,11 +2469,6 @@ class WWmixer(SanUnit):
             mixture.imass['N'] += HT.HTaqueous_N
             mixture.imass['H2O'] -= HT.HTaqueous_N
 
-    def _design(self):
-        pass
-    
-    def _cost(self):
-        pass
     
 # =============================================================================
 # PhaseChanger
@@ -2502,14 +2476,21 @@ class WWmixer(SanUnit):
 
 class PhaseChanger(SanUnit):
     '''
-    Correct phase.
+    Change the effluent phase to the desired one, also allow the switch between stream types.
+    
     Parameters
     ----------
-    ins: stream
+    ins : Iterable(stream)
         influent
-    outs: stream
+    outs : Iterable(stream)
         effluent
+    phase : str
+        Desired phase, can only be one of ("g", "l", or "s").
     '''
+    _N_ins = 1
+    _N_outs = 1
+    _ins_size_is_fixed = False
+    _outs_size_is_fixed = False
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', phase='l',
@@ -2518,27 +2499,24 @@ class PhaseChanger(SanUnit):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.phase = phase
 
-    _N_ins = 1
-    _N_outs = 1
-    _ins_size_is_fixed = False
-    _outs_size_is_fixed = False
         
     def _run(self):
         
         influent = self.ins[0]
         effluent = self.outs[0]
-        
-        if self.phase not in ('g','l','s'):
-            raise Exception("phase must be 'g','l', or 's'")
-        
         effluent.copy_like(influent)
         effluent.phase = self.phase
-
-    def _design(self):
-        pass
-    
-    def _cost(self):
-        pass
+        
+    @property
+    def phase(self):
+        return self._phase
+    @phase.setter
+    def phase(self, i):
+        if not i in ('g', 'l', 's'):
+            raise ValueError('`phase` must be one of ("g", "l", or "s"), '
+                             f'not "{i}".')
+        self._phase = i
+        
     
 # =============================================================================
 # FuelMixer
@@ -2547,11 +2525,12 @@ class PhaseChanger(SanUnit):
 class FuelMixer(SanUnit):
     '''
     Convert gasoline to diesel or diesel to gasoline based on LHV.
+    
     Parameters
     ----------
-    ins: stream
+    ins : Iterable(stream)
         gasoline, diesel
-    outs: stream
+    outs : Iterable(stream)
         fuel
     target: str
         The target can only be 'gasoline' or 'diesel'.
@@ -2560,6 +2539,8 @@ class FuelMixer(SanUnit):
     diesel_price: float
         Diesel price, [$/kg].
     '''
+    _N_ins = 2
+    _N_outs = 1
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', target='diesel',
@@ -2576,38 +2557,40 @@ class FuelMixer(SanUnit):
         self.gasoline_price = gasoline_price
         self.diesel_price = diesel_price
 
-    _N_ins = 2
-    _N_outs = 1
 
     def _run(self):
         
         gasoline, diesel = self.ins
         fuel = self.outs[0]
-        
-        if self.target not in ('gasoline','diesel'):
-            raise RuntimeError ("target must be either 'gasoline' or 'diesel'")
+        target = self.target
         
         gasoline_LHV_2_diesel_LHV = (gasoline.LHV/gasoline.F_mass)/(diesel.LHV/diesel.F_mass)
         # KJ/kg gasoline:KJ/kg diesel
         
-        if self.target == 'gasoline':
+        if target == 'gasoline':
             fuel.imass['Gasoline'] = gasoline.F_mass + diesel.F_mass/gasoline_LHV_2_diesel_LHV
             fuel.T = gasoline.T
             fuel.P = gasoline.P
-        
-        if self.target == 'diesel':
+        elif target == 'diesel':
             fuel.imass['Diesel'] = diesel.F_mass + gasoline.F_mass*gasoline_LHV_2_diesel_LHV
             fuel.T = diesel.T
             fuel.P = diesel.P
-            
-    def _design(self):
-        pass
     
     def _cost(self):
         if self.target == 'gasoline':
             self.outs[0].price = self.gasoline_price
-        if self.target == 'diesel':
+        elif self.target == 'diesel':
             self.outs[0].price = self.diesel_price
+            
+    @property
+    def target(self):
+        return self._target
+    @target.setter
+    def target(self, i):
+        if i not in ('gasoline', 'diesel'):
+            raise ValueError('`target` must be either "gasoline" or "diesel" ',
+                             f'the provided "{i}" is not valid.')
+        self._target = i
             
 # =============================================================================
 # HTLpump            
@@ -2619,16 +2602,24 @@ class HTLpump(qsu.Pump):
     See qsdsan.sanunits.WWTpump for pipe and pump weight calculation
     See bst.units.Pump for other functions
     All pumps are assumed to be made of stainless steel and specific for sludge.
+    
     Parameters
     ----------
     P : float
         pump pressure
+        
     References
     ----------
     .. [1] Shoener et al., Design of Anaerobic Membrane Bioreactors for the
         Valorization of Dilute Organic Carbon Waste Streams.
         Energy Environ. Sci. 2016, 9 (3), 1102–1112.
         https://doi.org/10.1039/C5EE03715H.
+        
+    See Also
+    --------
+    :class:`qsdsan.sanunits.WWTpump`
+    
+    :class:`biosteam.units.Pump`
     '''
     
     _N_pump = 1
@@ -2778,6 +2769,7 @@ class HTLpump(qsu.Pump):
 class HTLHX(qsu.HXutility):
     '''
     Similar to qsdsan.sanunits.HXutility, but can calculate material usage.
+    
     References
     ----------
     .. [1] Seider, W. D., Lewin, D. R., Seader, J. D., Widagdo, S., Gani, R., &
@@ -2898,6 +2890,7 @@ class HTLHX(qsu.HXutility):
 class HTL_sludge_centrifuge(qsu.SludgeThickening, bst.units.SolidsCentrifuge):
     '''
     Similar to qsdsan.sanunits.SludgeCentrifuge, but can calculate material usage.
+    
     References
     ----------
     .. [1] https://dolphincentrifuge.com/wastewater-centrifuge/ (accessed 12-4-2022).
@@ -2980,9 +2973,18 @@ class HTLCHP(qsu.CHP):
               'Concrete': 'kg',
               'Reinforcing steel': 'kg'}
     
+    def _init_lca(self):
+        self.construction = [
+            Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg'),
+            Construction('furnace', linked_unit=self, item='Furnace', quantity_unit='kg'),
+            Construction('concrete', linked_unit=self, item='Concrete', quantity_unit='kg'),
+            Construction('reinforcing_steel', linked_unit=self, item='Reinforcing_steel', quantity_unit='kg'),
+            ]
+    
     def _design(self):
         super()._design()
         D = self.design_results
+        constr = self.construction
         
         # material calculation based on [1], linearly scaled on power (kW)
         # in [1], a 580 kW CHP:
@@ -2992,24 +2994,11 @@ class HTLCHP(qsu.CHP):
         # 1 m3 reinforced concrete: 98 v/v% concrete with a density of 2500 kg/m3 (2450 kg)
         #                            2 v/v% reinforcing steel with a density of 7850 kg/m3 (157kg)
         factor = self.H_net_feeds/3600/580
-        D['Steel'] = factor*20098
-        D['Furnace'] = factor*12490
-        D['Concrete'] = factor*15000*2450/(2450 + 157)
-        D['Reinforcing steel'] = factor*15000*157/(2450 + 157)
-        
-        construction = getattr(self, 'construction', ())
-        if construction: 
-            construction[0].quantity = D['Steel']
-            construction[1].quantity = D['Furnace']
-            construction[2].quantity = D['Concrete']
-            construction[3].quantity = D['Reinforcing steel']
-        else:
-            self.construction = (
-                Construction('carbon_steel', linked_unit=self, item='Carbon_steel', quantity_unit='kg', quantity=D['Steel']),
-                Construction('furnace', linked_unit=self, item='Furnace', quantity_unit='kg', quantity=D['Furnace']),
-                Construction('concrete', linked_unit=self, item='Concrete', quantity_unit='kg', quantity=D['Concrete']),
-                Construction('reinforcing_steel', linked_unit=self, item='Reinforcing_steel', quantity_unit='kg', quantity=D['Reinforcing steel']),
-                )
+        constr[0].quantity = D['Steel'] = factor*20098
+        constr[1].quantity = D['Furnace'] = factor*12490
+        constr[2].quantity = D['Concrete'] = factor*15000*2450/(2450 + 157)
+        constr[3].quantity = D['Reinforcing steel'] = factor*15000*157/(2450 + 157)
+
 
 # =============================================================================
 # HTL_storage_tank
@@ -3028,6 +3017,7 @@ class HTL_storage_tank(qsu.StorageTank):
                'Horizontal vessel weight': (1e3, 9.2e5),
                'Horizontal vessel diameter': (3, 21),
                'Vertical vessel length': (12, 40)}
+    _vessel_material = 'Stainless steel'
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                   vessel_type=None, tau=None, V_wf=None,
@@ -3038,6 +3028,13 @@ class HTL_storage_tank(qsu.StorageTank):
                       vessel_material=vessel_material, kW_per_m3=kW_per_m3,
                       init_with=init_with, F_BM_default=F_BM_default)
         self.length_to_diameter = length_to_diameter
+        
+    def _init_lca(self):
+        item_name = self.vessel_material.replace(' ', '_')
+        self.construction = [
+            Construction(item_name.lower(), linked_unit=self, item=item_name, quantity_unit='kg'),
+            ]
+        
     
     def _design(self):
         super()._design()
@@ -3053,17 +3050,8 @@ class HTL_storage_tank(qsu.StorageTank):
         D['Length'] = L
         D['Wall thickness'] = Tank_design['Wall thickness']
         D['Material'] = self.vessel_material
-        D['Weight'] = Tank_design['Weight']*_lb_to_kg
-        
-        construction = getattr(self, 'construction', ())
-        item_name = self.vessel_material.replace(' ', '_')
-        if construction: construction[0].quantity = D['Weight']
-        # N = 1, don't have to * numbers of the tank
-        else:
-            self.construction = (
-                Construction(item_name.lower(), linked_unit=self, item=item_name,
-                             quantity=D['Weight'], quantity_unit='kg'),
-                )
+        self.construction[0].quantity = D['Weight'] = Tank_design['Weight']*_lb_to_kg
+
 
     def _horizontal_vessel_design(self, pressure, diameter, length) -> dict:
         pressure = pressure
@@ -3092,6 +3080,17 @@ class HTL_storage_tank(qsu.StorageTank):
         Design['Wall thickness'] = VWT # in
         return Design
 
+    @property
+    def vessel_material(self):
+        return self._vessel_material
+    @vessel_material.setter
+    def vessel_material(self, i):
+        exist_material = getattr(self, '_vessel_material', None)
+        qsu.StorageTank.vessel_material.fset(self, i)
+        if i and exist_material == i: return # type doesn't change, no need to reload construction items
+        self._init_lca()
+
+
 # =============================================================================
 # HTLcompressor
 # =============================================================================
@@ -3115,15 +3114,16 @@ class HTLcompressor(IsothermalCompressor):
         else:
             D['Number of 300 kW unit'] += 1
         
-        construction = getattr(self, 'construction', ())
+        construction = getattr(self, 'construction', [])
         if construction:
             construction[0].quantity = D['Number of 4 kW unit']
             construction[1].quantity = D['Number of 300 kW unit']
         else:
-            self.construction = (
+            self.construction = [
                 Construction('compressor_4kW', linked_unit=self, item='Compressor_4kW', quantity_unit='ea', quantity=D['Number of 4 kW unit']),
                 Construction('compressor_300kW', linked_unit=self, item='Compressor_300kW', quantity_unit='ea', quantity=D['Number of 4 kW unit'])
-                )
+                ]
+
 
 # =============================================================================
 # HTLflash
@@ -3132,6 +3132,10 @@ class HTLcompressor(IsothermalCompressor):
 class HTLflash(Flash):
     '''
     Similar to biosteam.units.Flash, but includes construction.
+    
+    See Also
+    --------
+    :class:`biosteam.units.Flash`
     '''
     
     def _design(self):
@@ -3139,14 +3143,15 @@ class HTLflash(Flash):
         D = self.design_results
         
         if self.outs[0].F_mass != 0:
-            construction = getattr(self, 'construction', ())
+            construction = getattr(self, 'construction', [])
             if construction: construction[0].quantity = D['Weight']*_lb_to_kg
             # N = 1, don't have to * numbers of the reactor
             else:
-                self.construction = (
+                self.construction = [
                     Construction('carbon_steel', linked_unit=self, item='Carbon_steel', 
                                  quantity=D['Weight']*_lb_to_kg, quantity_unit='kg'),
-                    )
+                    ]
+
 
 # =============================================================================
 # HTLdistillation
@@ -3155,19 +3160,23 @@ class HTLflash(Flash):
 class HTLdistillation(BinaryDistillation):
     '''
     Similar to biosteam.units.BinaryDistillation, but includes construction.
+    
+    See Also
+    --------
+    :class:`biosteam.units.BinaryDistillation`
     '''
     
     def _design(self):
         super()._design()
         D = self.design_results
-        
-        construction = getattr(self, 'construction', ())
+        construction = getattr(self, 'construction', [])
         if construction: construction[0].quantity = (D['Rectifier weight'] + D['Stripper weight'])*_lb_to_kg
         else:
-            self.construction = (
+            self.construction = [
                 Construction('carbon_steel', linked_unit=self, item='Carbon_steel', 
                              quantity=(D['Rectifier weight'] + D['Stripper weight'])*_lb_to_kg, quantity_unit='kg'),
-                )
+                ]
+
 
 # =============================================================================
 # HTLHXN
@@ -3180,5 +3189,5 @@ class HTLHXN(qsu.HeatExchangerNetwork):
     
     def _design(self):
         super()._design()
-        self.construction = ()
-        self.transportation = ()
+        self.construction = []
+        self.transportation = []

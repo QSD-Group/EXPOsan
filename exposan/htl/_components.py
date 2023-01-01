@@ -5,7 +5,9 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+
     Jianan Feng <jiananf2@illinois.edu>
+
     Yalin Li <mailto.yalin.li@gmail.com>
     
 This module is under the University of Illinois/NCSA Open Source License.
@@ -128,6 +130,7 @@ def create_components(set_thermo=True):
     H2O = Component('H2O', particle_size='Soluble',
                     degradability='Undegradable', organic=False)
     
+    # Intentionally using the molecular formula and MW of water for C/N/P
     C = Component('C', search_ID='water', particle_size='Soluble',
                   degradability='Undegradable', organic=False)
     
