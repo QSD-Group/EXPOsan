@@ -527,4 +527,5 @@ def create_system(configuration='baseline'):
         Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
         Cooling=lambda:sys.get_cooling_duty()/1000*30,
         )
+    sys.simulate()
     return sys
