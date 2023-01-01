@@ -122,8 +122,9 @@ def create_system(configuration='baseline'):
     H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
     H2SO4_Tank.register_alias('H2SO4_Tank')
     
-    SP1 = su.HTLsplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
-                         init_with='Stream')
+
+    SP1 = qsu.ReversedSplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
+                               init_with='Stream')
     SP1.register_alias('SP1')
     # must put after AcidEx and MemDis in path during simulation to ensure input
     # not empty
@@ -140,9 +141,6 @@ def create_system(configuration='baseline'):
         M1_outs1 = AcidEx.outs[1]
     M1 = su.HTLmixer('A210', ins=(HTL-1, M1_outs1), outs=('mixture',))
     M1.register_alias('M1')
-    
-    # if remove AcidEx:
-    # M1 = su.HTLmixer('A210', ins=(HTL-1, ''), outs=('mixture'))
     
     StruPre = su.StruvitePrecipitation('A220', ins=(M1-0,'MgCl2','NH4Cl','MgO'),
                                        outs=('struvite','CHG_feed'))

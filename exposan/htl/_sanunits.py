@@ -35,7 +35,6 @@ __all__ = (
     'HTL',
     'AcidExtraction',
     'HTLmixer',
-    'HTLsplitter',
     'StruvitePrecipitation',
     'CHG',
     'MembraneDistillation',
@@ -1030,37 +1029,6 @@ class HTLmixer(SanUnit):
             dilution_factor = self.F_mass_in/self.ins[1].F_mass if self.ins[1].imass['P'] != 0 else 1
             hydrogen_ion_conc = 10**0/dilution_factor
             return -log(hydrogen_ion_conc, 10)
-
-    
-# =============================================================================
-# HTLsplitter
-# =============================================================================
-
-class HTLsplitter(SanUnit):
-    '''
-    A fake unit that calculates influent based on effluents.
-    
-    Parameters
-    ----------
-    ins : Iterable(stream)
-        flow_in
-    outs : Iterable(stream)
-        flow_out_1, flow_out_2
-    '''
-    _N_ins = 1
-    _N_outs = 2
-    
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream'):
-        
-        SanUnit.__init__(self, ID, ins, outs, thermo,init_with)
-
-        
-    def _run(self):
-        
-        flow_in = self.ins[0]
-        flow_out_1, flow_out_2 = self.outs
-        
-        flow_in.mix_from((flow_out_1, flow_out_2))
 
 
 # =============================================================================
