@@ -18,13 +18,13 @@ for license details.
 import qsdsan as qs
 from qsdsan import Construction
 
-__all__ = ('CHP',)
+__all__ = ('CombinedHeatPower',)
 
 # =============================================================================
 # HTLCHP
 # =============================================================================
     
-class CHP(qs.sanunits.CHP):
+class CombinedHeatPower(qs.sanunits.CHP):
     '''
     Similar to qsdsan.sanunits.CHP, but can calculate material usage.
     References

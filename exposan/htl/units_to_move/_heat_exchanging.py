@@ -45,8 +45,8 @@ class HXutility(qs.sanunits.HXutility):
            Chapter 12: Heat Exchanger Design.
     '''
     
-    line = qs.unit.HXutility.line
-    _graphics = qs.unit.HXutility._graphics
+    line = qs.sanunits.HXutility.line
+    _graphics = qs.sanunits.HXutility._graphics
     _units = {'Area': 'ft^2',
               'Total tube length': 'ft',
               'Inner pipe weight': 'kg',
