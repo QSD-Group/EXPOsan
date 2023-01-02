@@ -18,22 +18,8 @@ for license details.
 # import biosteam as bst
 from math import ceil, log
 from qsdsan import SanUnit
-from exposan.htl.units_to_move import Reactor
-
-# from warnings import warn
-# from math import pi, ceil, log, floor, exp
-# from thermosteam import indexer, equilibrium
-# from biosteam.exceptions import DesignError, bounds_warning, DesignWarning
-# from biosteam.units import IsothermalCompressor, Flash, BinaryDistillation
-# from biosteam.units.decorators import cost
-# from biosteam.units.design_tools import PressureVessel, flash_vessel_design
-# from biosteam.units.design_tools.cost_index import CEPCI_by_year as CEPCI
-# from biosteam.units.design_tools.specification_factors import material_densities_lb_per_ft3
-# from qsdsan import Stream, SanUnit, Construction, sanunits as qsu
+from qsdsan.sanunits import Reactor
 from qsdsan.utils import auom
-
-
-
 
 __all__ = (
     'AcidExtraction',
@@ -46,25 +32,6 @@ __all__ = (
 
 yearly_operation_hour = 7920 # Jones
 _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
-
-# _m3_to_gal = auom('m3').conversion_factor('gallon')
-
-# _lb_to_kg = auom('lb').conversion_factor('kg')
-
-# _ft3_to_gal = auom('ft3').conversion_factor('gallon')
-
-# _ft3_to_m3 = auom('ft3').conversion_factor('m3')
-
-# _in_to_ft = auom('in').conversion_factor('ft')
-
-# _m_to_ft = auom('m').conversion_factor('ft')
-
-# _Pa_to_psi = auom('Pa').conversion_factor('psi')
-
-
-
-# _m3perh_to_mmscfd = 1/1177.17 # H2
-
 
 # =============================================================================
 # Sludge Lab
