@@ -884,7 +884,8 @@ def create_model(system=None, exclude_sludge_compositions=False, key_metrics_onl
 
     metric = model.metric
     
-    if not key_metrics_only:
+    if not key_metrics_only: # all metrics
+        # Element metrics
         @metric(name='sludge_C',units='kg/hr',element='Sankey')
         def get_sludge_C():
             return WWTP.sludge_C
@@ -1050,7 +1051,7 @@ def create_model(system=None, exclude_sludge_compositions=False, key_metrics_onl
         def get_MemDis_ww_P():
             return MemDis.outs[1].imass['P']
         
-        #%%
+        # Energy metrics
         @metric(name='sludge_E',units='GJ/hr',element='Sankey')
         def get_sludge_E():
             return (WWTP.outs[0].F_mass-WWTP.outs[0].imass['H2O'])*WWTP.sludge_HHV/1000
@@ -1103,7 +1104,7 @@ def create_model(system=None, exclude_sludge_compositions=False, key_metrics_onl
         def get_CHG_gas_E():
             return F1.outs[0].HHV/1000000
         
-        #%%
+        # CAPEX metrics
         @metric(name='CAPEX',units='$',element='TEA')
         def get_CAPEX():
             return sys.installed_equipment_cost
@@ -1225,7 +1226,7 @@ def create_model(system=None, exclude_sludge_compositions=False, key_metrics_onl
         def get_CHP_utility_VOC():
             return CHP.utility_cost*sys.operating_hours
         
-        #%%
+        # LCA metrics
         lca = sys.LCA
         @metric(name='construction_GWP',units='kg CO2 eq',element='LCA')
         def get_construction_GWP():
@@ -1360,8 +1361,12 @@ def create_model(system=None, exclude_sludge_compositions=False, key_metrics_onl
         def get_cooling_GWP():
             table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
             return table_other['Cooling [MJ]']
+
+    else:
+        fuel = stream.fuel
+        lca = sys.LCA
     
-    #%%
+    # Key metrics
     @metric(name='MFSP',units='$/gal diesel',element='TEA')
     def get_MFSP():
         return tea.solve_price(fuel)*FuelMixer.diesel_gal_2_kg

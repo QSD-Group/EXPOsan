@@ -39,23 +39,6 @@ from exposan.htl import (
     _load_process_settings,
     create_tea,
     )
-
-
-from exposan.htl.units_to_move import (
-    BinaryDistillation,
-    CatalyticHydrothermalGasification,
-    CombinedHeatPower,
-    Flash,
-    Hydrocracking,
-    HydrothermalLiquefaction,
-    Hydrotreating,
-    HXutility,
-    MembraneDistillation,
-    PhaseChanger,
-    Pump,
-    SludgeCentrifuge,
-    StorageTank,
-    )
 from exposan.htl import _sanunits as su
 
 __all__ = ('create_system',)
@@ -100,7 +83,7 @@ def create_system(configuration='baseline'):
                    sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, operation_hours=7920)
     WWTP.register_alias('WWTP')
     
-    SluC = SludgeCentrifuge('A000', ins=WWTP-0,
+    SluC = qsu.SludgeCentrifuge('A000', ins=WWTP-0,
                             outs=('supernatant','compressed_sludge'),
                             init_with='Stream',
                             solids=('Sludge_lipid','Sludge_protein',
@@ -112,12 +95,13 @@ def create_system(configuration='baseline'):
     # HTL (Area 100)
     # =============================================================================
     
-    P1 = Pump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76,
+    P1 = qsu.SludgePump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76,
               init_with='Stream')
     P1.register_alias('P1')
     # Jones 2014: 3049.7 psia
     
-    H1 = HXutility('A110', ins=P1-0, outs='heated_sludge', T=351+273.15,
+    H1 = qsu.HXutility('A110', include_construction=True,
+                       ins=P1-0, outs='heated_sludge', T=351+273.15,
                        U=0.0795, init_with='Stream', rigorous=True)
     # feed T is low, thus high viscosity and low U (case B in Knorr 2013)
     # U: 3, 14, 15 BTU/hr/ft2/F as minimum, baseline, and maximum
@@ -127,14 +111,14 @@ def create_system(configuration='baseline'):
     # unit conversion: https://www.unitsconverters.com/en/Btu(It)/Hmft2mdegf-To-W/M2mk/Utu-4404-4398
     H1.register_alias('H1')
     
-    HTL = HydrothermalLiquefaction('A120', ins=H1-0, outs=('biochar','HTL_aqueous','biocrude','offgas_HTL'))
+    HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('biochar','HTL_aqueous','biocrude','offgas_HTL'))
     HTL.register_alias('HTL')
     
     # =============================================================================
     # CHG (Area 200)
     # =============================================================================
     
-    H2SO4_Tank = StorageTank('T200', ins='H2SO4', outs=('H2SO4_out'),
+    H2SO4_Tank = qsu.StorageTank('T200', ins='H2SO4', outs=('H2SO4_out'),
                              init_with='WasteStream', tau=24, vessel_material='Stainless steel')
     H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
     H2SO4_Tank.register_alias('H2SO4_Tank')
@@ -167,7 +151,7 @@ def create_system(configuration='baseline'):
     StruPre.outs[0].price = 0.661
     StruPre.register_alias('StruPre')
     
-    CHG = CatalyticHydrothermalGasification(
+    CHG = qsu.CatalyticHydrothermalGasification(
         'A230', ins=(StruPre-1, '7.8%_Ru/C'), outs=('CHG_out', '7.8%_Ru/C_out'))
     CHG.ins[1].price = 134.53
     CHG.register_alias('CHG')
@@ -175,11 +159,11 @@ def create_system(configuration='baseline'):
     V1 = IsenthalpicValve('A240', ins=CHG-0, outs='depressed_cooled_CHG', P=50*6894.76, vle=True)
     V1.register_alias('V1')
     
-    F1 = Flash('A250', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
+    F1 = qsu.Flash('A250', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                      T=60+273.15, P=50*6894.76)
     F1.register_alias('F1')
     
-    MemDis = MembraneDistillation('A260', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
+    MemDis = qsu.MembraneDistillation('A260', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
                                   outs=('ammonium_sulfate','MemDis_ww', 'Membrane_out','solution'), init_with='WasteStream')
     MemDis.ins[2].price = 0.5256
     MemDis.outs[0].price = 0.3236
@@ -189,7 +173,7 @@ def create_system(configuration='baseline'):
     # HT (Area 300)
     # =============================================================================
     
-    P2 = Pump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76,
+    P2 = qsu.SludgePump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76,
               init_with='Stream')
     # Jones 2014: 1530.0 psia
     P2.register_alias('P2')
@@ -206,7 +190,7 @@ def create_system(configuration='baseline'):
     
     # HT_cls = su.HT if configuration != 'PSA' else su.HT_PSA
     include_PSA = False if 'PSA' not in configuration else True
-    HT = Hydrotreating('A310', ins=(P2-0, RSP1-0, 'CoMo_alumina_HT'),
+    HT = qsu.Hydrotreating('A310', ins=(P2-0, RSP1-0, 'CoMo_alumina_HT'),
                outs=('HTout', 'CoMo_alumina_HT_out'), include_PSA=include_PSA)
         
     HT.ins[2].price = 38.79
@@ -215,11 +199,11 @@ def create_system(configuration='baseline'):
     V2 = IsenthalpicValve('A320', ins=HT-0, outs='depressed_HT', P=717.4*6894.76, vle=True)
     V2.register_alias('V2')
     
-    H2 = HXutility('A330', ins=V2-0, outs='cooled_HT', T=60+273.15,
+    H2 = qsu.HXutility('A330', ins=V2-0, outs='cooled_HT', T=60+273.15,
                         init_with='Stream', rigorous=True)
     H2.register_alias('H2')
     
-    F2 = Flash('A340', ins=H2-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
+    F2 = qsu.Flash('A340', ins=H2-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
                P=717.4*6894.76) # outflow P
     F2.register_alias('F2')
     
@@ -231,23 +215,23 @@ def create_system(configuration='baseline'):
     # separate water and oil based on gravity
     SP2.register_alias('SP2')
     
-    H3 = HXutility('A360', ins=SP2-1, outs='heated_oil', T=104+273.15, rigorous=True)
+    H3 = qsu.HXutility('A360', ins=SP2-1, outs='heated_oil', T=104+273.15, rigorous=True)
     # temperature: Jones stream #334 (we remove the first distillation column)
     H3.register_alias('H3')
     
-    D1 = BinaryDistillation('A370', ins=H3-0,
+    D1 = qsu.BinaryDistillation('A370', ins=H3-0,
                             outs=('HT_light','HT_heavy'),
                             LHK=('C4H10','TWOMBUTAN'), P=50*6894.76, # outflow P
                             y_top=188/253, x_bot=53/162, k=2, is_divided=True)
     D1.register_alias('D1')
     
-    D2 = BinaryDistillation('A380', ins=D1-1,
+    D2 = qsu.BinaryDistillation('A380', ins=D1-1,
                             outs=('HT_Gasoline','HT_other_oil'),
                             LHK=('C10H22','C4BENZ'), P=25*6894.76, # outflow P
                             y_top=116/122, x_bot=114/732, k=2, is_divided=True)
     D2.register_alias('D2')
     
-    D3 = BinaryDistillation('A390', ins=D2-1,
+    D3 = qsu.BinaryDistillation('A390', ins=D2-1,
                             outs=('HT_Diesel','HT_heavy_oil'),
                             LHK=('C19H40','C21H44'),P=18.7*6894.76, # outflow P
                             y_top=2421/2448, x_bot=158/2448, k=2, is_divided=True)
@@ -257,7 +241,7 @@ def create_system(configuration='baseline'):
     # HC (Area 400)
     # =============================================================================
     
-    P3 = Pump('A400', ins=D3-1, outs='press_heavy_oil', P=1034.7*6894.76,
+    P3 = qsu.SludgePump('A400', ins=D3-1, outs='press_heavy_oil', P=1034.7*6894.76,
                   init_with='Stream')
     # Jones 2014: 1034.7 psia
     P3.register_alias('P3')
@@ -266,23 +250,23 @@ def create_system(configuration='baseline'):
     # releases a lot of heat and increase the temperature of effluent to 451 C
     # (844.6 F).
     
-    HC = Hydrocracking('A410', ins=(P3-0, RSP1-1, 'CoMo_alumina_HC'),
+    HC = qsu.Hydrocracking('A410', ins=(P3-0, RSP1-1, 'CoMo_alumina_HC'),
                        outs=('HC_out', 'CoMo_alumina_HC_out'))
     HC.ins[2].price = 38.79
     HC.register_alias('HC')
     
-    H4 = HXutility('A420', ins=HC-0, outs='cooled_HC', T=60+273.15,
+    H4 = qsu.HXutility('A420', ins=HC-0, outs='cooled_HC', T=60+273.15,
                         init_with='Stream', rigorous=True)
     H4.register_alias('H4')
     
     V4 = IsenthalpicValve('A430', ins=H4-0, outs='cooled_depressed_HC', P=30*6894.76, vle=True)
     V4.register_alias('V4')
     
-    F3 = Flash('A440', ins=V4-0, outs=('HC_fuel_gas','HC_aqueous'), T=60.2+273,
+    F3 = qsu.Flash('A440', ins=V4-0, outs=('HC_fuel_gas','HC_aqueous'), T=60.2+273,
                P=30*6894.76) # outflow P
     F3.register_alias('F3')
     
-    D4 = BinaryDistillation('A450', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
+    D4 = qsu.BinaryDistillation('A450', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
                             LHK=('C9H20','C10H22'), P=20*6894.76, # outflow P
                             y_top=360/546, x_bot=7/708, k=2, is_divided=True)
     D4.register_alias('D4')
@@ -299,35 +283,35 @@ def create_system(configuration='baseline'):
                             init_with='Stream', rigorous=True)
     DieselMixer.register_alias('DieselMixer')
     
-    H5 = HXutility('A500', ins=GasolineMixer-0, outs='cooled_gasoline',
+    H5 = qsu.HXutility('A500', ins=GasolineMixer-0, outs='cooled_gasoline',
                         T=60+273.15, init_with='Stream', rigorous=True)
     H5.register_alias('H5')
     
-    H6 = HXutility('A510', ins=DieselMixer-0, outs='cooled_diesel',
+    H6 = qsu.HXutility('A510', ins=DieselMixer-0, outs='cooled_diesel',
                         T=60+273.15, init_with='Stream', rigorous=True)
     H6.register_alias('H6')
     
-    PC1 = PhaseChanger('S520', ins=H5-0, outs='cooled_gasoline_liquid')
+    PC1 = qsu.PhaseChanger('S520', ins=H5-0, outs='cooled_gasoline_liquid')
     PC1.register_alias('PC1')
     
-    PC2 = PhaseChanger('S530', ins=H6-0, outs='cooled_diesel_liquid')
+    PC2 = qsu.PhaseChanger('S530', ins=H6-0, outs='cooled_diesel_liquid')
     PC2.register_alias('PC2')
     
-    PC3 = PhaseChanger('S540', ins=CHG-1, outs='CHG_catalyst_out', phase='s')
+    PC3 = qsu.PhaseChanger('S540', ins=CHG-1, outs='CHG_catalyst_out', phase='s')
     PC3.register_alias('PC3')
     
-    PC4 = PhaseChanger('S550', ins=HT-1, outs='HT_catalyst_out', phase='s')
+    PC4 = qsu.PhaseChanger('S550', ins=HT-1, outs='HT_catalyst_out', phase='s')
     PC4.register_alias('PC4')
     
-    PC5 = PhaseChanger('S560', ins=HC-1, outs='HC_catalyst_out', phase='s')
+    PC5 = qsu.PhaseChanger('S560', ins=HC-1, outs='HC_catalyst_out', phase='s')
     PC5.register_alias('PC5')
     
-    GasolineTank = StorageTank('T500', ins=PC1-0, outs=('gasoline'),
+    GasolineTank = qsu.StorageTank('T500', ins=PC1-0, outs=('gasoline'),
                                     tau=3*24, init_with='Stream', vessel_material='Carbon steel')
     # store for 3 days based on Jones 2014
     GasolineTank.register_alias('GasolineTank')
     
-    DieselTank = StorageTank('T510', ins=PC2-0, outs=('diesel'),
+    DieselTank = qsu.StorageTank('T510', ins=PC2-0, outs=('diesel'),
                                   tau=3*24, init_with='Stream', vessel_material='Carbon steel')
     # store for 3 days based on Jones 2014
     DieselTank.register_alias('DieselTank')
@@ -352,8 +336,10 @@ def create_system(configuration='baseline'):
     
     qsu.HeatExchangerNetwork('HXN')
     
-    CHP = CombinedHeatPower('CHP', ins=(GasMixer-0, 'natural_gas', 'air'),
-                  outs=('emission','solid_ash'), init_with='WasteStream', supplement_power_utility=False)
+    CHP = qsu.CombinedHeatPower('CHP', include_construction=True,
+                                ins=(GasMixer-0, 'natural_gas', 'air'),
+                  outs=('emission','solid_ash'), init_with='WasteStream',
+                  supplement_power_utility=False)
     CHP.ins[1].price = 0.1685
     
     sys = qs.System.from_units(
