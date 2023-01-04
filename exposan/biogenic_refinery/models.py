@@ -128,8 +128,42 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
     # Add these parameters if not running country-specific analysis,
     # in which they would be updated separately
     if not country_specific:
-        # Household size
+        # Price ratio
+        # Just want to have this parameter so that can be used in other analyses,
+        # set the distribution to be a really tight one
+        old_price_dct = price_dct.copy()
         excretion_unit = unit_dct['Excretion']
+        b = 1
+        D = shape.Uniform(lower=b-(10**(-6)), upper=b+(10**(-6)))
+        item_ref = {
+            'Concrete': 'Concrete',
+            'Steel': 'Steel',
+        }
+        stream_ref = {
+            'Polymer': 'polymer',
+            'Resin': 'resin',
+            'FilterBag': 'filter_bag',
+            'MgOH2': 'MgOH2',
+            'MgCO3': 'MgCO3',
+            'H2SO4': 'H2SO4',
+            'biochar': 'biochar',
+        }
+        @param(name='Price ratio', element=excretion_unit, kind='cost', units='-',
+               baseline=b, distribution=D)
+        def set_price_ratio(i):
+            br.price_ratio = i
+            for obj_name in (*item_ref.keys(), *stream_ref.keys()):
+                old_price = old_price_dct[obj_name]
+                new_price = old_price * i
+                if obj_name in item_ref.keys():
+                    ImpactItem.get_item(item_ref[obj_name]).price = new_price
+                else:
+                    getattr(sys_stream, stream_ref[obj_name]).price = new_price
+            for u in sys.units:
+                if hasattr(u, 'price_ratio'):
+                    u.price_ratio = i
+        
+        # Household size
         b = br.household_size
         D = shape.Normal(mu=b, sigma=0.012)
         @param(name='Household size', element=excretion_unit, kind='coupled', units='cap/household',
