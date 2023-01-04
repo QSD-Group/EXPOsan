@@ -61,7 +61,7 @@ for lipid in lipids:
             WWTP.sludge_afdw_lipid = lipid
             model.evaluate()            
             MFSP = model.table['TEA']['MFSP [$/gal diesel]'].dropna()
-            sludge_price = model.table['TEA']['sludge_treatment_price [$/ton dry sludge]'].dropna()
+            sludge_price = model.table['TEA']['sludge_management_price [$/ton dry sludge]'].dropna()
             LCA_diesel = model.table['LCA']['GWP_diesel [g CO2/MMBTU diesel]'].dropna()
             LCA_sludge = model.table['LCA']['GWP_sludge [kg CO2/ton dry sludge]'].dropna()
             
@@ -73,4 +73,4 @@ for lipid in lipids:
                 get_quantiles(LCA_sludge)
                 )
 
-ternary_results.to_excel(os.path.join(results_path, f'_ternary_{N}.csv'))
+ternary_results.to_excel(os.path.join(results_path, f'_ternary_{N}.xlsx'))

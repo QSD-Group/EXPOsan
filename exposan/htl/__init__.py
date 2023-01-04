@@ -105,7 +105,6 @@ def simulate_and_save(model,
             if include_spearman:
                 r_df.to_excel(writer, sheet_name='Spearman_r')
                 p_df.to_excel(writer, sheet_name='Spearman_p')
-        writer.save()
 
 
 __all__ = (
