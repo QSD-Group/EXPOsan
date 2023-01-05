@@ -18,7 +18,7 @@ def test_interface():
     from exposan import interface as inter
     inter.load()
     sys = inter.interface_sys
-    sys.simulate(t_span=(0, 3))
+    sys.simulate(t_span=(0, 50))
     
     # # Below copied from bsm1
     # assert sys.outs[0].isempty() == False
