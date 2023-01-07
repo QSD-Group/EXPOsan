@@ -21,16 +21,18 @@ def test_htl():
     from exposan import htl
 
     clear_lca_registries()
-    m1 = htl.create_model('baseline', key_metrics_only=True)
-    df1 = m1.metrics_at_baseline()
-    values1 = [5.117, 169.9, 49380.0, 440.1]
-    assert_allclose(df1.values, values1, rtol=1e-2)
+    # m1 = htl.create_model('baseline', key_metrics_only=True)
+    # df1 = m1.metrics_at_baseline()
+    # values1 = [5.117, 169.9, 49380.0, 440.1]
+    # assert_allclose(df1.values, values1, rtol=1e-2)
     
-    m2 = htl.create_model('no_P', key_metrics_only=True)
-    df2 = m2.metrics_at_baseline()
-    values2 = [5.482, 201.2, 35210.0, 272.3]
-    assert_allclose(df2.values, values2, rtol=1e-2)
+    # m2 = htl.create_model('no_P', key_metrics_only=True)
+    # df2 = m2.metrics_at_baseline()
+    # values2 = [5.482, 201.2, 35210.0, 272.3]
+    # assert_allclose(df2.values, values2, rtol=1e-2)
 
+    # Test one should be sufficient (one system is about 1 min),
+    # QSDsan checks for the baseline configuration
     m3 = htl.create_model('PSA', key_metrics_only=True)
     df3 = m3.metrics_at_baseline()
     values3 = [4.364, 105.9, 64470.0, 621.0]
