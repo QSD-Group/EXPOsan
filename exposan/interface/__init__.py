@@ -44,8 +44,10 @@ def load():
 
 def __getattr__(name):
     if not _system_loaded:
-        raise AttributeError(f'module "{__name__}" not yet loaded, '
-                             f'load module with `{__name__}.load()`.')
+        raise AttributeError(
+            f'Module {__name__} does not have the attribute "{name}" '
+            'and the module has not been loaded, '
+            f'loading the module with `{__name__}.load()` may solve the issue.')
 
 
 __all__ = (

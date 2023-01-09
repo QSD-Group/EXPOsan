@@ -1,0 +1,10 @@
+﻿indicator,alias,unit,method,category,description
+Acidification,AF,moles of H+-eq,TRACI,environmental impact,The increasing concentration of H+ within a local environment
+Ecotoxicity,ECO,"kg 2,4-D-eq",TRACI,environmental impact,The toxicity on ecosystem
+Eutrophication,EU,kg N,TRACI,environmental impact,"The enrichment of an aquatic ecosystem with nutrients (nitrates, phosphates)"
+GlobalWarming,GWP,kg CO2-eq,TRACI,environmental impact,Potential global warming based on chemical's radiative forcing and lifetime
+OzoneDepletion,OD,kg CFC-11-eq,TRACI,environmental impact,The decreasing of the stratospheric ozone level
+PhotochemicalOxidation,PO,kg NOx-eq,TRACI,environmental impact,Photochemical smogs
+Carcinogenics,CA,kg benzene-eq,TRACI, human health  ,Carcinogenic effect on human health
+NonCarcinogenics,NCA,kg toluene-eq,TRACI, human health  ,Non-carcinogenic effect on human health
+RespiratoryEffects,RE,kg PM2.5-eq,TRACI, human health  ,Toxicity on human respiratory system
