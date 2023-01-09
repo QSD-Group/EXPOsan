@@ -55,7 +55,8 @@ def create_system(flowsheet=None):
     M1 = qs.sanunits.Mixer('M1', ins=[stream.RWW, J2.outs[0]], isdynamic=True)
     unit.A1.ins[1] = M1.outs[0]
     
-    sys = System('interface_sys', path=(*bsm1_sys.units, J1, AD1, J2, M1), recycle=(M1-0, stream.RAS, stream.RWW))
+    sys = System('interface_sys', path=(*bsm1_sys.units, J1, AD1, J2, M1), 
+                 recycle=(M1-0, stream.RAS, stream.RWW))
     sys.set_dynamic_tracker(unit.A1, unit.C1, J1, AD1, J2, M1)
     # sys = System(path=(*bsm1_sys.units, J1, AD1, J2), recycle=(stream.RAS, stream.RWW))
     # sys.set_dynamic_tracker(unit.A1, unit.C1, J1, AD1, J2)
