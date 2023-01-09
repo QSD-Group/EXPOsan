@@ -52,7 +52,12 @@ def create_system(flowsheet=None):
     # Subsequent units should be using ASM1 components
     qs.set_thermo(thermo_asm1)
     stream.RWW.disconnect_sink() # disconnect from A1 to avoid replacement warning
-    M1 = qs.sanunits.Mixer('M1', ins=[stream.RWW, J2.outs[0]], isdynamic=True)
+    
+    #!!! Temporary fix (disconnect J2.outs[0] from M1)
+    # as the current design will run into errors for long-term simulation
+    M1 = qs.sanunits.Mixer('M1', ins=[stream.RWW,], isdynamic=True)
+    # M1 = qs.sanunits.Mixer('M1', ins=[stream.RWW, J2.outs[0]], isdynamic=True)
+    
     unit.A1.ins[1] = M1.outs[0]
     
     sys = System('interface_sys', path=(*bsm1_sys.units, J1, AD1, J2, M1), 
