@@ -50,16 +50,18 @@ def create_system(flowsheet=None):
     J2 = ADMtoASM('J2', upstream=AD1-1, thermo=thermo_asm1, isdynamic=True, adm1_model=adm1)
     
     # Subsequent units should be using ASM1 components
-    qs.set_thermo(thermo_asm1)
-    stream.RWW.disconnect_sink() # disconnect from A1 to avoid replacement warning
-    M1 = qs.sanunits.Mixer('M1', ins=[stream.RWW, J2.outs[0]], isdynamic=True)
-    unit.A1.ins[1] = M1.outs[0]
+    # qs.set_thermo(thermo_asm1)
+    # stream.RWW.disconnect_sink() # disconnect from A1 to avoid replacement warning
+    # M1 = qs.sanunits.Mixer('M1', ins=[stream.RWW, J2.outs[0]], isdynamic=True)
+    # unit.A1.ins[1] = M1.outs[0]
     
-    sys = System('interface_sys', path=(*bsm1_sys.units, J1, AD1, J2, M1), 
-                 recycle=(M1-0, stream.RAS, stream.RWW))
-    sys.set_dynamic_tracker(unit.A1, unit.C1, J1, AD1, J2, M1)
-    # sys = System(path=(*bsm1_sys.units, J1, AD1, J2), recycle=(stream.RAS, stream.RWW))
-    # sys.set_dynamic_tracker(unit.A1, unit.C1, J1, AD1, J2)
+    # sys = System('interface_sys', path=(*bsm1_sys.units, J1, AD1, J2, M1), 
+    #              recycle=(M1-0, stream.RAS, stream.RWW))
+    # sys.set_dynamic_tracker(unit.A1, unit.C1, J1, AD1, J2, M1)
+    
+    #!!! Temporary fix
+    sys = System(path=(*bsm1_sys.units, J1, AD1, J2), recycle=(stream.RAS, stream.RWW))
+    sys.set_dynamic_tracker(unit.A1, unit.C1, J1, AD1, J2)
     return sys
 
 
@@ -67,7 +69,7 @@ if __name__ == '__main__':
     t = 50
     t_step = 1
     t_eval = np.arange(0, t+t_step, t_step)
-    method = 'RK23'
+    method = 'BDF'
     sys = create_system()
     sys.simulate(
         state_reset_hook='reset_cache',
