@@ -72,6 +72,8 @@ def create_system(flowsheet=None):
     A1.ins[1:] = qs.WasteStream('filler0'), qs.WasteStream('filler1')
     
     sys = flowsheet.create_system('interface_sys')
+    sys.set_tolerance(mol=1e-5, rmol=1e-5)
+    sys.maxiter = 5000
     sys.set_dynamic_tracker(unit.A1, unit.C1, J1, AD1, J2)
     # sys.set_dynamic_tracker(unit.A1, unit.C1, J1, AD1, J2, M1)
     
