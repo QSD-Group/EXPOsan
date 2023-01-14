@@ -5,6 +5,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+
     Yalin Li <mailto.yalin.li@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -33,7 +34,7 @@ def test_reclaimer():
 
     # modelC = re.create_model('C')
     # dfC = modelC.metrics_at_baseline()
-    # valuesC = [71.445, 91.795, 17.949, 82.905, 150.254, 0.189, 34.307, 4.657]
+    # valuesC = [71.445, 91.795, 17.949, 82.905, 152.469, 0.199, 34.469, 4.759]
     # assert_allclose(dfC.values, valuesC, rtol=1e-2)
 
     # modelD = re.create_model('D')
@@ -57,7 +58,7 @@ def test_reclaimer():
 
     modelC2 = re.create_model('C')
     dfC2 = modelC2.metrics_at_baseline()
-    valuesC2 = [71.445, 91.795, 17.949, 79.582, 128.123, -0.138, 28.512, 1.332]
+    valuesC2 = [71.45, 91.79, 17.95, 79.58, 130.3, -0.1286, 28.67, 1.434]
     assert_allclose(dfC2.values, valuesC2, rtol=1e-2)
 
     modelD2 = re.create_model('D')

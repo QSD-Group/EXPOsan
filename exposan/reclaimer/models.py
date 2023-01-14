@@ -111,8 +111,22 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
     # Add these parameters if not running country-specific analysis,
     # in which they would be updated separately
 
+    excretion_unit = unit_dct['Excretion']
+    
     if not country_specific:
-
+        # Price ratio
+        # Just want to have this parameter so that can be used in other analyses,
+        # set the distribution to be a really tight one
+        b = 1
+        D = shape.Uniform(lower=b-(10**(-6)), upper=b+(10**(-6)))
+        @param(name='Price ratio', element=excretion_unit, kind='cost', units='-',
+               baseline=b, distribution=D)
+        def set_price_ratio(i):
+            re.price_ratio = i
+            for u in sys.units:
+                if hasattr(u, 'price_ratio'):
+                    u.price_ratio = i
+        
         # Labor wage
         b = price_dct['wages']
         D = shape.Triangle(lower=1.82, midpoint=b, upper=5.46)  # wage in USD/hour
@@ -209,7 +223,6 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
 
     ##### Specific units #####
     # Diet and excretion
-    excretion_unit = unit_dct['Excretion']
     exclude = ('e_cal', 'p_anim', 'p_veg') if country_specific else ()
     batch_setting_unit_params(excretion_data, model, excretion_unit, exclude)
 
@@ -255,7 +268,7 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
 
     # Sludge pasteurization
     # `wages` should be excluded for all units this this attribute
-    exclude = 'wages' if country_specific else ()
+    exclude = 'wages'
     pasteurization_unit = unit_dct.get('Pasteurization')
     if pasteurization_unit: batch_setting_unit_params(pasteurization_data, model, pasteurization_unit, exclude)
 

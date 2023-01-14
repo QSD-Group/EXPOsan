@@ -14,8 +14,8 @@ for license details.
 import qsdsan as qs
 # from warnings import warn
 from chaospy import distributions as shape
-from qsdsan.utils import ospath, time_printer, get_SRT
-from exposan.metab_mock import systems as s, results_path, biomass_IDs
+from qsdsan.utils import ospath, time_printer, get_SRT, AttrFuncSetter
+from exposan.metab_mock import systems as s, results_path, biomass_IDs, vfa_IDs
 from biosteam.evaluation._utils import var_indices
 # import pandas as pd
 import numpy as np
@@ -24,13 +24,13 @@ import os
 __all__ = ('create_modelA', 
            'create_modelB',
            'create_modelC',
+           'create_modelD',
            'create_ss_model',
            'run_model',
            'run_modelB',
            'run_ss_model'
            )
 #%%
-sysA, sysB, sysC = s.create_systems()
 Ys_bl, mus_bl, Ks_bl = s.yields_bl, s.mus_bl, s.Ks_bl
 n_Ys = len(Ys_bl)
 n_mus = len(mus_bl)
@@ -40,51 +40,44 @@ n_mus = len(mus_bl)
 # =============================================================================
 get_uniform_w_frac = lambda b, frac: shape.Uniform(lower=b*(1-frac), upper=b*(1+frac))
 
+fset_recir = lambda r: [r, 1]
+
 def add_degas_params(model, bioreactors, membranes, 
-                     b_split=0.5, var_split=0.8, 
-                     b_ermv=0.75, bounds_ermv=(0., 0.8)):
+                     recirculation=(1, 19),  # ratio to influent Q
+                     b_ermv=0.85, bounds_ermv=(0.5, 1)):
     param = model.parameter
-    H2E, CH4E = bioreactors
-    DM1, DM2 = membranes
+    # H2E, CH4E = bioreactors
+    # DM1, DM2 = membranes
+    lb, ub = recirculation
     
-    b = b_split
-    D = get_uniform_w_frac(b, var_split)
-    @param(name='H2E_sidestream_split', element=H2E, kind='coupled', units='',
-           baseline=b, distribution=D)
-    def H2E_split_setter(s):
-        try: H2E.split = [s, 1-s]
-        except: H2E.split = s
-
-    D = get_uniform_w_frac(b, var_split)
-    @param(name='CH4E_sidestream_split', element=CH4E, kind='coupled', units='',
-           baseline=b, distribution=D)
-    def CH4E_split_setter(s):
-        try: CH4E.split = [s, 1-s]
-        except: CH4E.split = s
+    for u in bioreactors:
+        b = 1
+        D = shape.Uniform(lb, ub)  # equivalent to split varied in [0.5, 0.95]
+        param(setter=AttrFuncSetter(u, 'split', fset_recir), 
+              name=f'{u.ID}_recirculation_rate', element=u, kind='coupled', 
+              units='', baseline=b, distribution=D)
     
-    b = b_ermv
-    D = shape.Uniform(*bounds_ermv)
-    @param(name='H2_removal_efficiency', element=DM1, kind='coupled', units='',
-           baseline=b, distribution=D)
-    def H2_e_rmv(e):
-        DM1.H2_degas_efficiency = e
-        DM2.H2_degas_efficiency = e
+    # b = b_ermv
+    # D = shape.Uniform(*bounds_ermv)
+    # @param(name='H2_removal_efficiency', element=membranes[0], kind='coupled', units='',
+    #         baseline=b, distribution=D)
+    # def H2_e_rmv(e):
+    #     for dm in membranes:
+    #         dm.H2_degas_efficiency = e
 
-    D = shape.Uniform(*bounds_ermv)        
-    @param(name='CH4_removal_efficiency', element=DM1, kind='coupled', units='',
-           baseline=b, distribution=D)
-    def CH4_e_rmv(e):
-        DM1.CH4_degas_efficiency = e
-        DM2.CH4_degas_efficiency = e
+    # D = shape.Uniform(*bounds_ermv)        
+    # @param(name='CH4_removal_efficiency', element=membranes[0], kind='coupled', units='',
+    #         baseline=b, distribution=D)
+    # def CH4_e_rmv(e):
+    #     for dm in membranes:
+    #         dm.CH4_degas_efficiency = e
         
-    D = shape.Uniform(*bounds_ermv)
-    @param(name='CO2_removal_efficiency', element=DM1, kind='coupled', units='',
-           baseline=b, distribution=D)
-    def CO2_e_rmv(e):
-        DM1.CO2_degas_efficiency = e
-        DM2.CO2_degas_efficiency = e
-
-vfa_IDs = ('S_va', 'S_bu', 'S_pro', 'S_ac')
+    # D = shape.Uniform(*bounds_ermv)
+    # @param(name='CO2_removal_efficiency', element=DM1, kind='coupled', units='',
+    #        baseline=b, distribution=D)
+    # def CO2_e_rmv(e):
+    #     DM1.CO2_degas_efficiency = e
+    #     DM2.CO2_degas_efficiency = e
 
 def add_metrics(model, biogas, wastewater, units):
     metric = model.metric
@@ -93,50 +86,70 @@ def add_metrics(model, biogas, wastewater, units):
     S_h2_i_mass = eff.components.S_h2.i_mass
     S_ch4_i_mass = eff.components.S_ch4.i_mass
     cmps_i_COD = eff.components.i_COD
+        
+    # @metric(name='R1 H2', units='mg/L', element='Stage_1')
+    # def get_H2():
+    #     return R1.outs[1].iconc['S_h2']*S_h2_i_mass
+
+    # @metric(name='R1 minimum H2 inhibition factor', units='', element='Stage_1')
+    # def get_Ih2():
+    #     return min(R1._tempstate['Ih2'])
     
-    @metric(name='SRT', units='d', element='System')
-    def get_sys_SRT():
-        return get_SRT(model._system, biomass_IDs, (R1.ID, R2.ID))
+    # @metric(name='R1 pH', units='', element='Stage_1')
+    # def get_pH():
+    #     return R1._tempstate['pH']
     
-    @metric(name='R1 VFAs', units='g/L', element='Stage_1')
-    def get_stage1_VFAs():
-        return R1.outs[1].composite('COD', subgroup=vfa_IDs)/1000
+    # @metric(name='R1 pH inhibition factor', units='', element='Stage_1')
+    # def get_Iph():
+    #     return R1._tempstate['Iph'][0]
+        
+    # @metric(name='R2 CH4', units='mg/L', element='Stage_2')
+    # def get_CH4():
+    #     return eff.iconc['S_ch4']*S_ch4_i_mass
     
-    @metric(name='R1 H2', units='mg/L', element='Stage_1')
-    def get_H2():
-        return R1.outs[1].iconc['S_h2']*S_h2_i_mass
+    # @metric(name='H2 production', units='kg/d', element='Biogas')
+    # def get_QH2():
+    #     return sum([bg.imass['S_h2'] for bg in biogas])*S_h2_i_mass*24
+
+    # @metric(name='CH4 production', units='kg/d', element='Biogas')
+    # def get_QCH4():
+    #     return sum([bg.imass['S_ch4'] for bg in biogas])*S_ch4_i_mass*24
     
-    @metric(name='R2 CH4', units='mg/L', element='Stage_2')
-    def get_CH4():
-        return eff.iconc['S_ch4']*S_ch4_i_mass
-    
-    @metric(name='Effluent COD', units='g/L', element='System')
-    def get_eff_COD():
-        return eff.COD/1000
-    
+    @metric(name='Stage 1 COD removal', units='%', element='Stage 1')
+    def get_rCOD1():
+        return (1 - sum(R2.ins[0].mass*cmps_i_COD)/sum(inf.mass*cmps_i_COD))*100
+ 
     @metric(name='Total COD removal', units='%', element='System')
     def get_rCOD():
         return (1 - sum(eff.mass*cmps_i_COD)/sum(inf.mass*cmps_i_COD))*100
     
-    @metric(name='H2 production', units='kg/d', element='Biogas')
+    @metric(name='H2 production', units='kgCOD/d', element='Biogas')
     def get_QH2():
-        return sum([bg.imass['S_h2'] for bg in biogas])*S_h2_i_mass*24
+        return sum([bg.imass['S_h2'] for bg in biogas])*24
 
-    @metric(name='CH4 production', units='kg/d', element='Biogas')
+    @metric(name='CH4 production', units='kgCOD/d', element='Biogas')
     def get_QCH4():
-        return sum([bg.imass['S_ch4'] for bg in biogas])*S_ch4_i_mass*24
+        return sum([bg.imass['S_ch4'] for bg in biogas])*24
+    
+    # @metric(name='R1 VFAs', units='g/L', element='Stage_1')
+    # def get_stage1_VFAs():
+    #     return R1.outs[1].composite('COD', subgroup=vfa_IDs)/1000
+   
 
-def create_modelA():
+def create_modelA(sys=None):
+    sysA = sys or s.create_systems(which='A')[0]
     model = qs.Model(system=sysA, exception_hook='raise')
     ws_reg = sysA.flowsheet.stream
     inf, eff, bg1, bg2 = ws_reg.BreweryWW_A, ws_reg.Effluent_A, ws_reg.biogas_1A, ws_reg.biogas_2A
     u_reg = sysA.flowsheet.unit
     H2E, DM1, CH4E, DM2 = u_reg.H2E, u_reg.DM1, u_reg.CH4E, u_reg.DM2
     add_degas_params(model, (H2E, CH4E), (DM1, DM2))
+    # add_degas_params(model, (H2E,), (DM1, DM2))
     add_metrics(model, (bg1, bg2), (inf, eff), (H2E, CH4E))   
     return model
     
-def create_modelC():
+def create_modelC(sys=None):
+    sysC = sys or s.create_systems(which='C')[0]
     model = qs.Model(system=sysC, exception_hook='raise')
     ws_reg = sysC.flowsheet.stream
     inf, eff, bgm1, bgm2, bgh1, bgh2 = (
@@ -150,6 +163,25 @@ def create_modelC():
     u_reg = sysC.flowsheet.unit
     R1, DM1, R2, DM2 = u_reg.R1, u_reg.DM1_c, u_reg.R2, u_reg.DM2_c
     add_degas_params(model, (R1, R2), (DM1, DM2))
+    # add_degas_params(model, (R1,), (DM1, DM2))
+    add_metrics(model, (bgm1, bgm2, bgh1, bgh2), (inf, eff), (R1, R2))
+    return model
+
+def create_modelD(sys=None):
+    sysD = sys or s.create_systems(which='D')[0]
+    model = qs.Model(system=sysD, exception_hook='raise')
+    u_reg = sysD.flowsheet.unit
+    R1, DM1, R2, DM2 = u_reg.R1d, u_reg.DM1d, u_reg.R2d, u_reg.DM2d
+    ws_reg = sysD.flowsheet.stream
+    inf, eff, bgm1, bgm2, bgh1, bgh2 = (
+        ws_reg.BreweryWW_D, 
+        ws_reg.Effluent_D, 
+        ws_reg.biogas_mem_1d, 
+        ws_reg.biogas_mem_2d,
+        ws_reg.biogas_hsp_1d, 
+        ws_reg.biogas_hsp_2d
+        )
+    add_degas_params(model, (R1,), (DM1, DM2), recirculation=(1,500))
     add_metrics(model, (bgm1, bgm2, bgh1, bgh2), (inf, eff), (R1, R2))
     return model
 
@@ -185,7 +217,8 @@ def add_adm_params(model, adm1, units):
         def K_setter(K):
             pass
 
-def create_modelB():
+def create_modelB(sys=None):
+    sysB = sys or s.create_systems(which='B')
     model = qs.Model(system=sysB, exception_hook='raise')
     ws_reg = sysB.flowsheet.stream
     inf, eff, bg1, bg2 = ws_reg.BreweryWW_B, ws_reg.Effluent_B, ws_reg.biogas_1B, ws_reg.biogas_2B
@@ -273,10 +306,11 @@ def run_ss_model(model, N, T, t_step, method='BDF', sys_ID=None,
             
 #%%
 @time_printer
-def run_model(model, N, T, t_step, method='BDF', sys_ID=None,
+def run_model(model, N, T, t_step, method='BDF', 
               metrics_path='', timeseries_path='',
               rule='L', seed=None, pickle=False):
     if seed: np.random.seed(seed)
+    sys_ID = model._system.flowsheet.ID[-1]
     samples = model.sample(N=N, rule=rule)
     model.load_samples(samples)
     t_span = (0, T)

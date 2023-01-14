@@ -61,9 +61,10 @@ def create_system_without_cmps(flowsheet=None):
                          checkbounds=False)
     GBT.add_specification(GBT_spec)
     
-    AD = su.SludgeDigester('AD', ins=GBT-1, outs=('disposed', 'biogas'))
+    AD = su.SludgeDigester('AD', ins=GBT-1, outs=('disposed', 'biogas'), include_construction=False)
     
-    CHP = su.CHP('CHP', ins=(AD-1, 'natural_gas', 'CHP_air'), outs=('emission', 'solids'))
+    CHP = su.CombinedHeatPower('CHP', ins=(AD-1, 'natural_gas', 'CHP_air'), outs=('emission', 'solids'),
+                               include_construction=False)
     
     sys = qs.System('sys', path=(U1, M1, ASP, GBT, AD, CHP))
 
@@ -72,7 +73,8 @@ def create_system_without_cmps(flowsheet=None):
 
 def create_system(flowsheet=None):
     try: sys = create_system_without_cmps(flowsheet=flowsheet)
-    except: # mostly for testing where components from the previous system will be carried over
+    except: # mostly for testing where objs from the previous system will be carried over
+        qs.utils.clear_lca_registries()
         create_components()
         sys = create_system_without_cmps(flowsheet=flowsheet)
     return sys
