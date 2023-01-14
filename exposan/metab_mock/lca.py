@@ -55,6 +55,7 @@ def export_ei_CFs(save_to=''):
     ei.load_activities('polyurethane production', limit=1, add=True)
     
     ei.load_activities('"polyethylene production"', limit=3, add=True) # HDPE, LDPE
+    # ei.load_activities('propylene production', limit=1, add=True)
     ei.load_activities('pvc', limit=3, add=True)
     ei.load_activities('epoxy resin', limit=1, add=True)
     ei.load_activities('polysulfone production', add=True)
@@ -78,6 +79,8 @@ def export_ei_CFs(save_to=''):
     # biogas pretreatment -- iron sponge (wood chips + iron oxide)
     ei.load_activities('ferric oxide', limit=1, add=True)
     ei.load_activities('"wood chips production"', add=True)
+    ei.load_activities('soda ash, dense, neutralising agent', add=True)
+    ei.load_activities('calcium carbonate', limit=1, add=True)
     ei.load_activities('"heat pump production, for mini CHP plant"', add=True)
     # CHP
     ei.load_activities('"mini CHP plant construction"', add=True)
@@ -92,7 +95,7 @@ def export_ei_CFs(save_to=''):
     ei.load_activities('electricity production mix US-MRO', limit=1, add=True)
     ei.load_activities('heat production, natural gas, boiler <100kW', limit=1, add=True)
     
-    # ei.get_CFs(show=False, path=save_to)
+    ei.get_CFs(show=False, path=save_to)
     return ei
 
 #%%
