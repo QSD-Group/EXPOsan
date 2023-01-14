@@ -14,6 +14,7 @@ for license details.
 '''
 
 import os, numpy as np, qsdsan as qs
+from biosteam.utils import ignore_docking_warnings
 from qsdsan import System
 from qsdsan.sanunits import ADMtoASM, ASMtoADM
 from exposan.bsm1 import create_system as create_bsm1_system
@@ -26,6 +27,7 @@ __all__ = ('create_system',)
 # methanogens = ('X_ac', 'X_h2')
 # biomass_IDs = (*fermenters, *methanogens)
 
+@ignore_docking_warnings # avoid stream replacement warning
 def create_system(flowsheet=None):
     flowsheet = flowsheet or qs.Flowsheet('interface')
     qs.main_flowsheet.set_flowsheet(flowsheet)
@@ -50,18 +52,31 @@ def create_system(flowsheet=None):
     J2 = ADMtoASM('J2', upstream=AD1-1, thermo=thermo_asm1, isdynamic=True, adm1_model=adm1)
     
     # Subsequent units should be using ASM1 components
-    # qs.set_thermo(thermo_asm1)
+    qs.set_thermo(thermo_asm1)
     # stream.RWW.disconnect_sink() # disconnect from A1 to avoid replacement warning
-    # M1 = qs.sanunits.Mixer('M1', ins=[stream.RWW, J2.outs[0]], isdynamic=True)
-    # unit.A1.ins[1] = M1.outs[0]
     
-    # sys = System('interface_sys', path=(*bsm1_sys.units, J1, AD1, J2, M1), 
-    #              recycle=(M1-0, stream.RAS, stream.RWW))
+    # !!! Unsure why the following can work:
+    #     S1. Use M1 to mix all streams, then pass to A1
+    #     S2. Completely eliminate M1 and directly pass all streams to A1
+    #     S3. Use a HydraulicDelay to connect RWW then to A1
+    # but the following does not work:
+    #     F1. Use M1 to connect RWW then to A1
+    #     F2. Use M1 to connect RWW and J2.outs[0] and send both to A1
+    # currently setup S1 is used
+    A1 = unit.A1
+    M1 = qs.sanunits.Mixer('M1',
+                           ins=[stream.wastewater, stream.RWW, J2.outs[0], stream.RAS],
+                           isdynamic=True)
+    A1.ins[0] = M1.outs[0]
+    # Otherwise these two spots will be filled with `Stream` insteand of `WasteStream`
+    A1.ins[1:] = qs.WasteStream('filler0'), qs.WasteStream('filler1')
+    
+    sys = flowsheet.create_system('interface_sys')
+    sys.set_tolerance(mol=1e-5, rmol=1e-5)
+    sys.maxiter = 5000
+    sys.set_dynamic_tracker(unit.A1, unit.C1, J1, AD1, J2)
     # sys.set_dynamic_tracker(unit.A1, unit.C1, J1, AD1, J2, M1)
     
-    #!!! Temporary fix
-    sys = System(path=(*bsm1_sys.units, J1, AD1, J2), recycle=(stream.RAS, stream.RWW))
-    sys.set_dynamic_tracker(unit.A1, unit.C1, J1, AD1, J2)
     return sys
 
 
@@ -77,11 +92,12 @@ if __name__ == '__main__':
         # t_eval=t_eval,
         method=method,
         )
+    
     # # Just to test a random state
     # states = ('S_su',)
     # AD1 = sys.flowsheet.unit.AD1
     # fig, ax = AD1.scope.plot_time_series(states)
     
-    # # # Output all states, #!!! seems to have problems
+    # Output all states, #!!! seems to have problems
     sys.scope.export(os.path.join(results_path, f'states_{t}_{method}.xlsx'), 
                       t_eval=t_eval)
