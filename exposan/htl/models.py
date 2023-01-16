@@ -1367,9 +1367,9 @@ def create_model(system=None, exclude_sludge_compositions=False, key_metrics_onl
         lca = sys.LCA
     
     # Key metrics
-    @metric(name='MFSP',units='$/gal diesel',element='TEA')
+    @metric(name='MFSP',units='$/GGE',element='TEA')
     def get_MFSP():
-        return tea.solve_price(fuel)*FuelMixer.diesel_gal_2_kg
+        return tea.solve_price(fuel)*FuelMixer.gasoline_gal_2_kg
     
     raw_wastewater = stream.raw_wastewater
     @metric(name='sludge_management_price',units='$/ton dry sludge',element='TEA')
@@ -1378,8 +1378,9 @@ def create_model(system=None, exclude_sludge_compositions=False, key_metrics_onl
     
     @metric(name='GWP_diesel',units='g CO2/MMBTU diesel',element='LCA')
     def get_LCA_diesel():
-        return lca.get_total_impacts(exclude=(fuel,))['GlobalWarming']/fuel.F_mass/sys.operating_hours/lca.lifetime*_kg_to_g/45.5/_MJ_to_MMBTU
-    # diesel: 45.5 MJ/kg
+        return lca.get_total_impacts(exclude=(fuel,))['GlobalWarming']/fuel.F_mass/sys.operating_hours/lca.lifetime*_kg_to_g/46.4/_MJ_to_MMBTU
+    # gasoline : 46.4 MJ/kg
+    # diesel: 45.6 MJ/kg
     
     @metric(name='GWP_sludge',units='kg CO2/ton dry sludge',element='LCA')
     def get_LCA_sludge():

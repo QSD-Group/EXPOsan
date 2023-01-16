@@ -317,7 +317,7 @@ def create_system(configuration='baseline'):
     DieselTank.register_alias('DieselTank')
     
     FuelMixer = su.FuelMixer('S570', ins=(GasolineTank-0, DieselTank-0),
-                             outs='fuel', target='diesel')
+                             outs='fuel', target='gasoline')
     # integrate gasoline and diesel based on their LHV for MFSP calculation
     FuelMixer.register_alias('FuelMixer')
     
