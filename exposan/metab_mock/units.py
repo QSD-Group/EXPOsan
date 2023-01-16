@@ -4,10 +4,14 @@ Created on Tue Oct  4 12:17:42 2022
 
 @author: joy_c
 """
+from biosteam import Stream
 from qsdsan import SanUnit
-from qsdsan.sanunits import AnaerobicCSTR, CSTR
+from qsdsan.sanunits import AnaerobicCSTR, CSTR, Pump, HXutility
+from qsdsan.utils import auom, ospath, load_data
+from exposan.metab_mock import data_path
 import numpy as np
 from warnings import warn
+from math import pi
 
 __all__ = ('rhos_adm1_ph_ctrl',
            'DegassingMembrane',
@@ -94,8 +98,6 @@ def rhos_adm1_ph_ctrl(state_arr, params):
         'S_cat':S_cat
         }
     return rhos
-
-
 
 #%%
 class DegassingMembrane(SanUnit):
@@ -190,24 +192,6 @@ class DegassingMembrane(SanUnit):
         if liquid.dstate is None: liquid.dstate = arr*0.0    
         liquid.dstate[:-1] = (1-s) * arr[:-1]
         liquid.dstate[-1] = arr[-1]
-     
-    # @property
-    # def AE(self):
-    #     if self._AE is None:
-    #         self._compile_AE()
-    #     return self._AE
-
-    # def _compile_AE(self):
-    #     _state = self._state
-    #     _dstate = self._dstate
-    #     _update_state = self._update_state
-    #     _update_dstate = self._update_dstate
-    #     def yt(t, QC_ins, dQC_ins):
-    #         _state[:] = QC_ins[0]
-    #         _dstate[:] = dQC_ins[0]
-    #         _update_state()
-    #         _update_dstate()
-    #     self._AE = yt
 
     @property
     def ODE(self):
@@ -227,111 +211,206 @@ class DegassingMembrane(SanUnit):
 
 #%%
 
-class METAB_AnCSTR(AnaerobicCSTR, CSTR):
-    
-    _N_ins = 1
-    _N_outs = 2
-    _ins_size_is_fixed = False
-    _outs_size_is_fixed = False
-    _R = 8.3145e-2 # Universal gas constant, [bar/M/K]
-    
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', V_liq=3400, V_gas=300, split=None,
-                 model=None, T=308.15, max_headspace_P=30, 
-                 retain_cmps=(), fraction_retain=0.95,
-                 isdynamic=True, exogenous_vars=(), **kwargs):
-        AnaerobicCSTR.__init__(self, ID=ID, ins=ins, outs=outs, thermo=thermo, 
-                        init_with=init_with, V_liq=V_liq, V_gas=V_gas, model=model,  
-                        T=T, retain_cmps=retain_cmps, fraction_retain=fraction_retain,
-                        isdynamic=isdynamic, exogenous_vars=exogenous_vars, **kwargs)
-        self.max_headspace_P = max_headspace_P
-        self.split = split
-        self._fixed_P_gas = None
-        self.f_q_gas_fixed_P_headspace = self.f_q_gas_var_P_headspace = lambda *args: 0.
-        self._biogas = None
-        self._tempstate = []
-    
-    # split = property(CSTR.split.fget, CSTR.split.fset)
-    split = CSTR.split
-        
-    headspace_P = property(AnaerobicCSTR.headspace_P.fget)
-    @headspace_P.setter
-    def headspace_P(self, P):
-        pass
-        
-    @property
-    def external_P(self):
-        return None
-    @external_P.setter
-    def external_P(self, P):
-        pass
-    
-    @property
-    def pipe_resistance(self):
-        return None
-    @pipe_resistance.setter
-    def pipe_resistance(self, k):
-        pass
+_fts2mhr = auom('ft/s').conversion_factor('m/hr')
+_m2in = auom('m').conversion_factor('inch')
+_cmph_2_gpm = auom('m3/hr').conversion_factor('gpm')
+_ft2m = auom('ft').conversion_factor('m')
 
-    @property
-    def fixed_headspace_P(self):
-        return None
-    @fixed_headspace_P.setter
-    def fixed_headspace_P(self, b):
-        pass
-    
-    @property
-    def max_headspace_P(self):
-        '''Maximum headspace pressure [bar]'''
-        return self._Pmax_hs
-    @max_headspace_P.setter
-    def max_headspace_P(self, p):
-        p_vap = self.p_vapor()
-        if p < p_vap:
-            raise ValueError(f'max_headspace_P must at least be the saturated '
-                             f'vapor pressure {p_vap} bar, not {p}')
-        self._Pmax_hs = p
-    
-    _run = CSTR._run
+def pipe_design(F_vol, vmin, data):
+    ID = (F_vol/vmin/pi)**(1/2) * 2 * _m2in
+    df = data[(data.ID <= ID).to_numpy()]
+    f_unit = auom(data.Weight.columns[0]).conversion_factor('kg/m')
+    if len(df) == 0: 
+        ID = data.ID.iloc[0,0] # inch
+        kg_per_m = data.Weight.iloc[0,0] * f_unit
+    else: 
+        ID = df.ID.iloc[-1,0]
+        kg_per_m = df.Weight.iloc[-1,0] * f_unit
+    return ID, kg_per_m
 
-    def _update_state(self):
-        arr = self._state
-        f_rtn = self._f_retain
-        n_cmps = len(self.components)
-        Cs = arr[:n_cmps]*(1-f_rtn)*1e3  # kg/m3 to mg/L
-        S_gas = arr[n_cmps: (n_cmps+self._n_gas)]
-        p_gas = sum(self._R * self.T * S_gas) + self.p_vapor()
-        if p_gas> self._Pmax_hs:
-            warn(f'headspace pressure is {p_gas} bar, exceeding design maximum {self._Pmax_hs}')
-        if self.split is None:
-            out, = self.outs
-            if out.state is None:
-                out.state = np.append(Cs, arr[-1])
-            else: 
-                out.state[:n_cmps] = Cs
-                out.state[-1] = arr[-1]
+def pipe_friction_head(q, L, c, ID):
+    '''Hazen-Williams equation. 
+    https://www.engineeringtoolbox.com/hazen-williams-water-d_797.html'''
+    return 2.083e-3 * (100*q / c)**1.852 / ID**4.8655 * L * _ft2m
+
+class METAB_AnCSTR(AnaerobicCSTR):
+    
+    def __init__(self, ID='', **kwargs):
+        super().__init__(ID, **kwargs)
+        hx_in = Stream(f'{ID}_hx_in')
+        hx_out = Stream(f'{ID}_hx_out')
+        self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
+        self.pumps = []
+        for ws in self.ins:
+            p_in = Stream(f'{ws.ID}_proxy')
+            self.pumps.append(Pump(ws.ID+'_Pump', ins=p_in))
+    
+    _reactor_height_to_diameter = 1.5
+    _steel_separator_thickness = 15    # mm
+    _steel_wall_thickness = 30         # mm
+    _steel_base_thickness = 40         # mm
+    _insulate_thickness = 25           # mm
+    _concrete_cover_thickness = 100    # mm
+    _concrete_wall_thickness = 300     # mm
+    _concrete_base_thickness = 300     # mm
+    _alum_facing_thickness = 3         # mm
+    _gas_separator_r_frac = 0.75       # cone radius to reactor radius
+    _gas_separator_h2r = 1/3**(1/2)    # cone height to cone radius
+    _baffle_slope = 2/3**(1/2)         # slant/base of the baffles on the side wall
+    
+    _density = {
+        'Aluminum': 2710,        # 2,640 - 2,810 kg/m3
+        'Stainless steel': 7930, # kg/m3, 18/8 Chromium
+        'Rockwool': 100,         # kg/m3
+        }
+    
+    _h_air = 37.5       # W/m2/K, convective heat transfer coefficient, assume at free air relative velocity = 10 m/s, https://www.engineeringtoolbox.com/convective-heat-transfer-d_430.html
+    _h_water = 3000     # W/m2/K, assume moderate forced flow, https://www.engineersedge.com/heat_transfer/convective_heat_transfer_coefficients__13378.htm
+    _k_rockwool = 0.038 # 0.035 – 0.040 W/m/K, thermal conductivity
+    _k_ssteel = 20      # 16-24 W/m/K
+    _k_alum = 230       # 205-250
+    
+    T_air = 273.15 + 20
+    T_earth = 273.15 + 20
+    
+    _l_min_velocity = 3*_fts2mhr
+    _g_min_velocity = 10*_fts2mhr
+    
+    _HDPE_pipe_path = ospath.join(data_path, 'HDPE_pipe_chart.xlsx')               # https://www.piping-designer.com/index.php/datasheets/piping-datasheets/1651-pipe-hdpe-ansi-dr-11-0-ips-in
+    _ssteel_pipe_path = ospath.join(data_path, 'stainless_steel_pipe_chart.xlsx')  # https://amerpipe.com/wp-content/uploads/2015/10/APP-chart-v7-web.pdf
+    
+    _heat_transfer_coefficients = {
+        'Concrete wall, insulated': 0.7, # 0.6-0.8 W/m2/K
+        'Concrete floor': 1.7,
+        'Concrete cover, insulated': 1.4, # 1.2-1.6 W/m2/K
+        }
+    
+    _Hazen_Williams_coefficients = {
+        'Stainless steel': 110,
+        'HDPE': 140
+        }
+    
+    _units = {
+        'Volume': 'm3',
+        'Area': 'm2',
+        'Height': 'm',
+        'Wall concrete': 'm3',
+        'Slab concrete': 'm3',
+        'Stainless steel': 'kg',
+        'Rockwool': 'kg',
+        'Aluminum sheet': 'kg',
+        'HDPE': 'kg'
+        }
+    
+    def add_pump(self, ws, dP):
+        if not hasattr(self, 'pumps'): self.pumps = []
+        pump = Pump(ws.ID+'_Pump', ins=ws.proxy(), dP_design=dP, isdynamic=False)
+        self.pumps.append(pump)
+    
+    def _design(self):
+        D = self.design_results
+        den = self._density
+        V = D['Volume'] = self.V_liq + self.V_gas
+        dia = (V*4/self._reactor_height_to_diameter/pi) ** (1/3)
+        h = D['Height'] = dia * self._height_to_diameter
+        r_cone = dia/2*self._gas_separator_r_frac
+        Vg = 1/3*pi*r_cone**3*self._gas_separator_h2r
+        if Vg < 1.5*self.V_gas:
+            Vg = 1.5*self.V_gas
+            h_cone = Vg/(1/3*pi*r_cone**2)
+        S_cone = pi*r_cone*(r_cone + (r_cone**2 + h_cone**2)**(1/2))
+        S_baffle = 2*(pi*(dia/2)**2*self._baffle_slope \
+            - pi*(dia/2*(self._gas_separator_r_frac-1))**2*self._baffle_slope)
+        tface = self._alum_facing_thickness/1e3
+        tinsl = self._insulate_thickness/1e3
+        tsep = self._steel_separator_thickness/1e3
+        if V >= 25:
+            twall = self._concrete_wall_thickness/1e3
+            tcover = self._concrete_cover_thickness/1e3
+            tbase = self._concrete_base_thickness/1e3
+            OD = dia + twall * 2
+            S_wall = pi*OD*h
+            S_base = D['Area'] = pi*(OD/2)**2
+            D['Wall concrete'] = S_wall * twall
+            D['Slab concrete'] = S_base*(tcover + tbase)
+            D['Stainless steel'] = (S_cone+S_baffle) * tsep * den['Stainless steel']
+            D['Rockwool'] = (S_base+S_wall) * tinsl * den['Rockwool']
+            D['Aluminum sheet'] = (S_base+S_wall) * tface * den['Aluminum']
+            U = self._heat_transfer_coefficients
+            Uwall = U['Concrete wall, insulated']
+            Ucover = U['Concrete cover, insulated']
+            Ubase = U['Concrete floor']
         else:
-            for ws, spl in zip(self._outs, self.split):
-                if ws.state is None: ws.state = np.empty(n_cmps+1)
-                ws.state[:n_cmps] = Cs
-                ws.state[-1] = arr[-1]*spl
-
-    def _update_dstate(self):
-        self._tempstate = self.model.rate_function._params['root'].data.copy()
-        arr = self._dstate
-        f_rtn = self._f_retain
-        n_cmps = len(self.components)
-        dCs = arr[:n_cmps]*(1-f_rtn)*1e3  # kg/m3 to mg/L
-        if self.split is None:
-            out, = self.outs
-            if out.dstate is None:
-                out.dstate = np.append(dCs, arr[-1])
-            else: 
-                out.dstate[:n_cmps] = dCs
-                out.dstate[-1] = arr[-1]
-        else:
-            for ws, spl in zip(self._outs, self.split):
-                if ws.dstate is None: ws.dstate = np.empty(n_cmps+1)
-                ws.dstate[:n_cmps] = dCs
-                ws.dstate[-1] = arr[-1]*spl
+            twall = tcover = self._steel_wall_thickness/1e3
+            tbase = self._steel_base_thickness/1e3
+            OD = dia + twall*2
+            S_wall = pi*OD*h
+            S_base = D['Area'] = pi*(OD/2)**2
+            V_stainless = S_wall * twall + S_base*(tcover + tbase)
+            D['Wall concrete'] = 0
+            D['Slab concrete'] = 0
+            D['Stainless steel'] = ((S_cone+S_baffle) * tsep + V_stainless) * den['Stainless steel']
+            D['Rockwool'] = (S_base*2+S_wall) * tinsl * den['Rockwool']
+            D['Aluminum sheet'] = (S_base*2+S_wall) * tface * den['Aluminum']
+            Uwall = Ucover = 1/(1/self._h_water + 1/self._h_air \
+                                + twall/self._k_ssteel \
+                                + tinsl/self._k_rockwool \
+                                + tface/self._k_alum)
+            Ubase = 1/(1/self._h_water \
+                       + tbase/self._k_ssteel \
+                       + tinsl/self._k_rockwool \
+                       + tface/self._k_alum)
+        
+        # Calculate needed heating
+        T = self.T
+        hx = self.heat_exchanger
+        mixed = self._mixed
+        hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
+        mixed.mix_from(self.ins)
+        hx_ins0.copy_flow(mixed)
+        hx_outs0.copy_flow(mixed)
+        hx_ins0.T = mixed.T
+        hx_outs0.T = T
+        hx_ins0.P = hx_outs0.P = mixed.T
+        
+        #!!! Heat loss
+        wall_loss = Uwall * S_wall * (T-self.T_air) # [W]
+        base_loss = Ubase * S_base * (T-self.T_earth) # [W]
+        cover_loss = Ucover * S_base * (T-self.T_air) # [W]
+        duty = (wall_loss+base_loss+cover_loss)*60*60/1e3 # kJ/hr
+        hx.H = hx_ins0.H + duty # stream heating and heat loss
+        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
+        
+        # Piping
+        df_l = load_data(self._HDPE_pipe_path, header=[0,1], index_col=None)
+        df_g = load_data(self._ssteel_pipe_path, header=[0,1], index_col=None)
+        L_inlets = OD * 1.25
+        L_outlets = h + OD*0.25
+        L_gas = h + OD
+        inf_pipe_IDs = []
+        steel_pipe = 0
+        HDPE_pipe = 0
+        for ws in self.ins:
+            _inch, _kg_per_m = pipe_design(ws.F_vol, self._l_min_velocity, df_l)
+            inf_pipe_IDs.append(_inch)
+            HDPE_pipe += _kg_per_m * L_inlets
+        for ws in self.outs:
+            if ws.phase == 'g':
+                steel_pipe += pipe_design(ws.F_vol, self._g_min_velocity, df_g)[1] * L_gas                
+            else:
+                HDPE_pipe += pipe_design(ws.F_vol, self._l_min_velocity, df_l)[1] * L_outlets
+        D['Stainless steel'] += steel_pipe
+        D['HDPE'] = HDPE_pipe
+        
+        # Pumps
+        HWc = self._Hazen_Williams_coefficients
+        for ws, ID, pump in zip(self.ins, inf_pipe_IDs, self.pumps):
+            hf = pipe_friction_head(ws.F_vol*_cmph_2_gpm, L_inlets, HWc['HDPE'], ID)  # friction head loss
+            TDH = hf + h # in m, assume suction head = 0, discharge head = reactor height
+            pump.ins[0].copy_flow(ws)
+            pump.dP_design = TDH * 9804.14  # in Pa
+            pump.simulate()
+            for k, v in pump.design_results:
+                D[f'{pump.ID}_{k}'] = v
+            
     

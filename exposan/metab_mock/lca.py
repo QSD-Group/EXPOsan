@@ -32,6 +32,8 @@ def export_ei_CFs(save_to=''):
     ei.load_activities('cellulose fibre production', add=True)
     ei.load_activities('concrete', limit=2, add=True)
     ei.load_activities('concrete production North America', limit=3, add=True)
+    ei.load_activities('aluminium production, ingot', limit=2, add=True)
+    ei.load_activities('sheet rolling, aluminium', add=True, limit=1)
     
     # bead materials
     ei.load_activities('"ethylene glycol production"', add=True)
@@ -95,7 +97,7 @@ def export_ei_CFs(save_to=''):
     ei.load_activities('electricity production mix US-MRO', limit=1, add=True)
     ei.load_activities('heat production, natural gas, boiler <100kW', limit=1, add=True)
     
-    ei.get_CFs(show=False, path=save_to)
+    # ei.get_CFs(show=False, path=save_to)
     return ei
 
 #%%
