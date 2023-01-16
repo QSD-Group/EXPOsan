@@ -117,7 +117,7 @@ def update_resource_recovery_settings():
         'MgOH2': 1.176277921,
         'MgCO3': 1.176277921,
         'H2SO4': 0.158899487,
-        # Assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
+        #!!! Assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
         'biochar': -0.2*0.9*(44/12)*RR_factor,
         'struvite': -4.9*(31/245)*RR_factor,
         'conc_NH3': -5.4*(14/17)*RR_factor,
@@ -136,7 +136,7 @@ def update_resource_recovery_settings():
         'MgOH2': 0.209556136,
         'MgCO3': 0.209556136,
         'H2SO4': 0.000808874,
-        # Assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
+        #!!! Assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
         'biochar': -0.2*0.9*(44/12)*EcosystemQuality_factor*RR_factor,
         'struvite': -0.093269908*(31/245)*RR_factor,
         'conc_NH3': -0.0461961*(14/17)*RR_factor,
@@ -155,7 +155,7 @@ def update_resource_recovery_settings():
         'MgOH2': 4.639146841,
         'MgCO3': 4.639146841,
         'H2SO4': 0.026124187,
-        # Assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
+        #!!! Assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
         'biochar': -0.2*0.9*(44/12)*HumanHealth_factor*RR_factor,
         'struvite': -1.774294425*(31/245)*RR_factor,
         'conc_NH3': -0.637826734*(14/17)*RR_factor,
@@ -426,7 +426,7 @@ def get_recoveries(system, include_breakdown=False):
     P_dct['bed_liq'] = get_P(liq_bed.outs[0])
     K_dct['bed_liq'] = get_K(liq_bed.outs[0])
 
-    # Pyrolysis
+    #!!! Pyrolysis - need to change based on recalcitrance potential
     C_dct['pyrolysis_biochar'] = pyrolysis.outs[0].imass['C'] * hr_per_yr
     C_dct['pyrolysis_gas'] = get_C(pyrolysis.ins[0]) * pyrolysis.pyrolysis_C_loss
     N_dct['pyrolysis_biochar'] = pyrolysis.outs[0].imass['N'] * hr_per_yr

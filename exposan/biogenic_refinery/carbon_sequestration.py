@@ -39,9 +39,8 @@ def get_default_uniform(b, ratio, lb=None, ub=None): # lb/ub for upper/lower bou
     upper = min(b*(1+ratio), ub) if ub else b*(1+ratio)
     return shape.Uniform(lower=lower, upper=upper)
 
-def get_recalcitrance_pontential(ID, model=None):
-    model = model.copy()
-    sys = model.system
+def get_recalcitrance_pontential(ID, system=None):
+    sys = system.copy()
     pyrolysis_unit = sys.path[7] #carbonizer base in biogenic refinery system
     
     def set_pyrolysis_temp(i):
@@ -64,6 +63,7 @@ def get_recalcitrance_pontential(ID, model=None):
     
     # predictive equation for carbon recalcitrance potential (Klasson 2017)
     recalcitrance_potential = 0.17 * (0.474 * b_volatile_matter + 0.963 * b_fixed_carbon + 0.067 * b_ash_content) / (100 - b_ash_content) + 0.00479
+    
     return recalcitrance_potential
     
         
