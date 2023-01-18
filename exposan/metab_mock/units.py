@@ -5,15 +5,17 @@ Created on Tue Oct  4 12:17:42 2022
 @author: joy_c
 """
 from biosteam import Stream
-from qsdsan import SanUnit
+from qsdsan import SanUnit, Equipment
 from qsdsan.sanunits import AnaerobicCSTR, CSTR, Pump, HXutility
 from qsdsan.utils import auom, ospath, load_data
 from exposan.metab_mock import data_path
+from exposan.metab_mock.utils import encap_lci
 import numpy as np
 from warnings import warn
 from math import pi
 
 __all__ = ('rhos_adm1_ph_ctrl',
+           'Beads',
            'DegassingMembrane',
            'METAB_AnCSTR')
 
@@ -98,6 +100,42 @@ def rhos_adm1_ph_ctrl(state_arr, params):
         'S_cat':S_cat
         }
     return rhos
+
+#%%
+class Beads(Equipment):
+    
+    def __init__(F_BM=1.1, lifetime=1, **kwargs):
+        super().__init__(F_BM=F_BM, lifetime=lifetime, **kwargs)
+        
+    # encapsulation recipe
+    _recipe = dict(
+        n_bead=45,
+        d_bead=0.4,         # inch
+        PEGDMA_1000=4.5e-3, # kg
+        BIS=2.25e-4,        # kg
+        TEMED=6e-5,         # L
+        APS=3e-5,           # kg
+        PAC=3e-4            # kg        
+        )
+
+    _price = {
+        'PEGDMA_1000': 1017.00,            # USD/kg; https://www.polysciences.com/default/polyethylene-glycol-dimethacrylate-pegdma-1000
+        'BIS': 137/0.5,                    # USD/kg; https://www.sigmaaldrich.com/US/en/product/sial/146072
+        'TEMED': 169.00,                   # USD/L;  https://www.sigmaaldrich.com/US/en/product/mm/808742
+        'APS': 237/2.5,                    # USD/kg; https://www.sigmaaldrich.com/US/en/product/sigald/215589    
+        'PAC': 393/5                       # USD/kg; https://www.sigmaaldrich.com/US/en/product/sigald/161551
+        }
+    
+    _units = {k:v[1] for k,v in encap_lci.encap_items.items()}
+    
+    def _design(self):
+        V_beads = self.linked_unit.design_results['Bead volume']
+        return encap_lci.encap_material_input(V_beads, **self._recipe)
+        
+    def _cost(self):
+        V_beads = self.linked_unit.design_results['Bead volume']
+        return encap_lci.encap_material_cost(V_beads, **self._recipe, 
+                                             unit_prices=self._price.values())
 
 #%%
 class DegassingMembrane(SanUnit):
@@ -233,26 +271,55 @@ def pipe_friction_head(q, L, c, ID):
     https://www.engineeringtoolbox.com/hazen-williams-water-d_797.html'''
     return 2.083e-3 * (100*q / c)**1.852 / ID**4.8655 * L * _ft2m
 
+def hdpe_price(ID):
+    '''Price in [USD/kg] as a function of inner diameter [inch],
+    projection based on prices in https://hdpesupply.com/hdpe-straight-length-pipe/'''
+    return 9.625*ID**(-0.368)
+
 class METAB_AnCSTR(AnaerobicCSTR):
     
-    def __init__(self, ID='', **kwargs):
+    auxiliary_unit_names = ('heat_exchanger', )
+    
+    def __init__(self, ID='', encapsulate_concentration=25, 
+                 wall_concrete_unit_cost=1081.73,
+                 slab_concrete_unit_cost=582.48,
+                 stainless_steel_unit_cost=4.19,
+                 rockwool_unit_cost=0.59,
+                 aluminum_unit_cost=15.56,
+                 **kwargs):
         super().__init__(ID, **kwargs)
+        self.encapsulate_concentration = encapsulate_concentration
+        self.wall_concrete_unit_cost = wall_concrete_unit_cost
+        self.slab_concrete_unit_cost = slab_concrete_unit_cost
+        self.stainless_steel_unit_cost = stainless_steel_unit_cost
+        self.rockwool_unit_cost = rockwool_unit_cost
+        self.aluminum_unit_cost = aluminum_unit_cost
         hx_in = Stream(f'{ID}_hx_in')
         hx_out = Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
-        self.pumps = []
-        for ws in self.ins:
-            p_in = Stream(f'{ws.ID}_proxy')
-            self.pumps.append(Pump(ws.ID+'_Pump', ins=p_in))
+        self.auxiliary_unit_names = ['heat_exchanger',]
+        self.equipment.append(Beads(ID=f'{ID}_encap'))
+    
+    def _setup(self):
+        hasfield = hasattr
+        setfield = setattr
+        for i, ws in enumerate(self.ins):
+            field = f'Pump_ins{i}'
+            if not hasfield(self, field):
+                setfield(self, field, Pump(ws.ID+'_Pump', ins=Stream(f'{ws.ID}_proxy')))
+            self.auxiliary_unit_names.append(field)
+        super()._setup()
+        
     
     _reactor_height_to_diameter = 1.5
     _steel_separator_thickness = 15    # mm
     _steel_wall_thickness = 30         # mm
     _steel_base_thickness = 40         # mm
-    _insulate_thickness = 25           # mm
+    _steel_insulate_thickness = 50     # mm
     _concrete_cover_thickness = 100    # mm
     _concrete_wall_thickness = 300     # mm
     _concrete_base_thickness = 300     # mm
+    _cncr_insulate_thickness = 25      # mm
     _alum_facing_thickness = 3         # mm
     _gas_separator_r_frac = 0.75       # cone radius to reactor radius
     _gas_separator_h2r = 1/3**(1/2)    # cone height to cone radius
@@ -292,20 +359,16 @@ class METAB_AnCSTR(AnaerobicCSTR):
     
     _units = {
         'Volume': 'm3',
-        'Area': 'm2',
         'Height': 'm',
+        'Outer diameter': 'm',
         'Wall concrete': 'm3',
         'Slab concrete': 'm3',
         'Stainless steel': 'kg',
         'Rockwool': 'kg',
         'Aluminum sheet': 'kg',
-        'HDPE': 'kg'
+        'HDPE pipes': 'kg',
+        'Bead volume': 'm3'
         }
-    
-    def add_pump(self, ws, dP):
-        if not hasattr(self, 'pumps'): self.pumps = []
-        pump = Pump(ws.ID+'_Pump', ins=ws.proxy(), dP_design=dP, isdynamic=False)
-        self.pumps.append(pump)
     
     def _design(self):
         D = self.design_results
@@ -319,16 +382,16 @@ class METAB_AnCSTR(AnaerobicCSTR):
             Vg = 1.5*self.V_gas
             h_cone = Vg/(1/3*pi*r_cone**2)
         S_cone = pi*r_cone*(r_cone + (r_cone**2 + h_cone**2)**(1/2))
-        S_baffle = 2*(pi*(dia/2)**2*self._baffle_slope \
-            - pi*(dia/2*(self._gas_separator_r_frac-1))**2*self._baffle_slope)
+        S_baffle = (pi*(dia/2)**2 - pi*(dia/2*(self._gas_separator_r_frac-1))**2)\
+            *self._baffle_slope*2
         tface = self._alum_facing_thickness/1e3
-        tinsl = self._insulate_thickness/1e3
         tsep = self._steel_separator_thickness/1e3
         if V >= 25:
             twall = self._concrete_wall_thickness/1e3
             tcover = self._concrete_cover_thickness/1e3
             tbase = self._concrete_base_thickness/1e3
-            OD = dia + twall * 2
+            tinsl = self._cncr_insulate_thickness/1e3
+            D['Outer diameter'] = OD = dia + twall * 2
             S_wall = pi*OD*h
             S_base = D['Area'] = pi*(OD/2)**2
             D['Wall concrete'] = S_wall * twall
@@ -343,7 +406,8 @@ class METAB_AnCSTR(AnaerobicCSTR):
         else:
             twall = tcover = self._steel_wall_thickness/1e3
             tbase = self._steel_base_thickness/1e3
-            OD = dia + twall*2
+            tinsl = self._steel_insulate_thickness/1e3
+            D['Outer diameter'] = OD = dia + twall*2
             S_wall = pi*OD*h
             S_base = D['Area'] = pi*(OD/2)**2
             V_stainless = S_wall * twall + S_base*(tcover + tbase)
@@ -373,7 +437,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
         hx_outs0.T = T
         hx_ins0.P = hx_outs0.P = mixed.T
         
-        #!!! Heat loss
+        # Heat loss
         wall_loss = Uwall * S_wall * (T-self.T_air) # [W]
         base_loss = Ubase * S_base * (T-self.T_earth) # [W]
         cover_loss = Ucover * S_base * (T-self.T_air) # [W]
@@ -387,30 +451,50 @@ class METAB_AnCSTR(AnaerobicCSTR):
         L_inlets = OD * 1.25
         L_outlets = h + OD*0.25
         L_gas = h + OD
-        inf_pipe_IDs = []
-        steel_pipe = 0
-        HDPE_pipe = 0
+        pipe_IDs = []
+        HDPE_pipes = []
         for ws in self.ins:
             _inch, _kg_per_m = pipe_design(ws.F_vol, self._l_min_velocity, df_l)
-            inf_pipe_IDs.append(_inch)
-            HDPE_pipe += _kg_per_m * L_inlets
+            pipe_IDs.append(_inch)
+            HDPE_pipes.append(_kg_per_m*L_inlets)
         for ws in self.outs:
             if ws.phase == 'g':
-                steel_pipe += pipe_design(ws.F_vol, self._g_min_velocity, df_g)[1] * L_gas                
+                D['Stainless steel'] += pipe_design(ws.F_vol, self._g_min_velocity, df_g)[1] * L_gas                
             else:
-                HDPE_pipe += pipe_design(ws.F_vol, self._l_min_velocity, df_l)[1] * L_outlets
-        D['Stainless steel'] += steel_pipe
-        D['HDPE'] = HDPE_pipe
+                _inch, _kg_per_m = pipe_design(ws.F_vol, self._l_min_velocity, df_l)
+                pipe_IDs.append(_inch)
+                HDPE_pipes.append(_kg_per_m*L_outlets)
+        D['HDPE pipes'] = sum(HDPE_pipes)
+        self._hdpe_ids, self._hdpe_kgs = pipe_IDs, HDPE_pipes
         
         # Pumps
         HWc = self._Hazen_Williams_coefficients
-        for ws, ID, pump in zip(self.ins, inf_pipe_IDs, self.pumps):
+        for i, ws, in enumerate(self.ins):
+            ID = pipe_IDs[i]
             hf = pipe_friction_head(ws.F_vol*_cmph_2_gpm, L_inlets, HWc['HDPE'], ID)  # friction head loss
+            #!!! consider adding velocity head to promote mixing?
             TDH = hf + h # in m, assume suction head = 0, discharge head = reactor height
+            pump = self.get_auxiliary_units_with_names(f'Pump_ins{i}')
             pump.ins[0].copy_flow(ws)
             pump.dP_design = TDH * 9804.14  # in Pa
             pump.simulate()
-            for k, v in pump.design_results:
-                D[f'{pump.ID}_{k}'] = v
-            
+        
+        # Beads
+        cmps = mixed.components
+        idx = cmps.indices(self.retain_cmps)
+        retained_concentration = sum(self._state[idx] * cmps.i_mass[idx])    # kg mass/m3
+        V_beads = D['Bead volume'] = self.V_liq * retained_concentration / self.encapsulate_concentration
+        if V_beads < self.V_liq:
+            raise RuntimeError('retained biomass concentration > design encapsualation concentration')
+        self.add_equipment_design()
     
+    def _cost(self):
+        D = self.design_results
+        C = self.baseline_purchase_costs
+        C['Wall concrete'] = D['Wall concrete']*self.wall_concrete_unit_cost
+        C['Slab concrete'] = D['Slab concrete']*self.slab_concrete_unit_cost
+        C['Stainless steel'] = D['Stainless steel']*self.stainless_steel_unit_cost
+        C['Rockwool'] = D['Rockwool']*self.rockwool_unit_cost
+        C['Aluminum sheet'] = D['Aluminum sheet']*self.aluminum_unit_cost
+        C['HDPE pipes'] = sum(hdpe_price(inch)*kg for inch, kg in zip(self._hdpe_ids, self._hdpe_kgs))
+        self.add_equipment_cost()

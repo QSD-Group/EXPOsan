@@ -48,7 +48,6 @@ unit_price = {
     'PAC': 393/5                       # USD/kg; https://www.sigmaaldrich.com/US/en/product/sigald/161551
     }
 
-# USD/m3 beads
 def encap_material_cost(V_beads, n_bead=45, d_bead=0.4, PEGDMA_1000=4.5e-3, 
                         BIS=2.25e-4, TEMED=6e-5, APS=3e-5, PAC=3e-4, 
                         unit_prices=[]):
@@ -69,7 +68,7 @@ def encap_material_cost(V_beads, n_bead=45, d_bead=0.4, PEGDMA_1000=4.5e-3,
     BIS : float, optional
         Amount of BIS input per batch, in kg. The default is 2.25e-4.
     TEMED : float, optional
-        Amount of TEMED input per batch, in kg. The default is 6e-5.
+        Amount of TEMED input per batch, in L. The default is 6e-5.
     APS : float, optional
         Amount of APS input per batch, in kg. The default is 3e-5.
     PAC : float, optional
@@ -174,7 +173,7 @@ def encap_material_input(V_beads, n_bead=45, d_bead=0.4, PEGDMA_1000=4.5e-3,
     BIS : float, optional
         Amount of BIS input per batch, in kg. The default is 2.25e-4.
     TEMED : float, optional
-        Amount of TEMED input per batch, in kg. The default is 6e-5.
+        Amount of TEMED input per batch, in L. The default is 6e-5.
     APS : float, optional
         Amount of APS input per batch, in kg. The default is 3e-5.
     PAC : float, optional
