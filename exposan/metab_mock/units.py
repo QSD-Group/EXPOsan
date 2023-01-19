@@ -9,17 +9,17 @@ from qsdsan import SanUnit, Equipment
 from qsdsan.sanunits import AnaerobicCSTR, CSTR, Pump, HXutility
 from qsdsan.utils import auom, ospath, load_data
 from exposan.metab_mock import data_path
-from exposan.metab_mock.utils import encap_lci
+from exposan.metab_mock.utils import encap_lci, dm_lci, er_lci
 import numpy as np
 from warnings import warn
-from math import pi
+from math import pi, ceil
 
 __all__ = ('rhos_adm1_ph_ctrl',
            'Beads',
            'DegassingMembrane',
            'METAB_AnCSTR')
 
-#%%
+#%% rhos_adm1_ph_ctrl
 rhos = np.zeros(22) # 22 kinetic processes
 Cs = np.empty(19)
 
@@ -101,7 +101,7 @@ def rhos_adm1_ph_ctrl(state_arr, params):
         }
     return rhos
 
-#%%
+#%% Beads
 class Beads(Equipment):
     
     def __init__(F_BM=1.1, lifetime=1, **kwargs):
@@ -137,27 +137,34 @@ class Beads(Equipment):
         return encap_lci.encap_material_cost(V_beads, **self._recipe, 
                                              unit_prices=self._price.values())
 
-#%%
+#%% DegassingMembrane
 class DegassingMembrane(SanUnit):
     
     _N_ins = 1
     _N_outs = 2
-    
+    auxiliary_unit_names = ('vacuum_pump', 'water_pump',)
+
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', F_BM_default=None, isdynamic=True,
-                 tau=0.01,
+                 tau=0.01, vacuum_pressure=6e4, water_pressure=6e5,
                  H2_degas_efficiency=0.85, CH4_degas_efficiency=0.85, 
-                 CO2_degas_efficiency=0.05, gas_IDs=('S_h2', 'S_ch4', 'S_IC')):
+                 CO2_degas_efficiency=0.05, gas_IDs=('S_h2', 'S_ch4', 'S_IC'),
+                 design_liquid_flow=(1,11), # m3/hr, DuPont Ligasep LDM-040
+                 unit_price=4126):
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
                          init_with=init_with, F_BM_default=F_BM_default,
                          isdynamic=isdynamic)
         self.tau = tau
+        self.vacuum_pressure = vacuum_pressure
+        self.water_pressure = water_pressure
         self.H2_degas_efficiency = H2_degas_efficiency
         self.CH4_degas_efficiency = CH4_degas_efficiency
         self.CO2_degas_efficiency = CO2_degas_efficiency
         self.gas_IDs = gas_IDs
         self._split = np.zeros(len(self.components))
         self._gas_idx = self.components.indices(gas_IDs)
+        self.design_liquid_flow = design_liquid_flow
+        self.unit_price = unit_price
     
     @property
     def H2_degas_efficiency(self):
@@ -194,6 +201,20 @@ class DegassingMembrane(SanUnit):
         s = self._split * 0
         s[self._gas_idx] = [self._h2_ermv, self._ch4_ermv, self._co2_ermv]
         return s   
+    
+    def _setup(self):
+        hasfield = hasattr
+        inf, = self.ins
+        gas = self.outs[0]
+        aux = self.auxiliary_unit_names
+        if not hasfield(self, 'vacuum_pump'):
+            self.vacuum_pump = Pump('VacPump', ins=Stream(f'{gas.ID}_proxy'),
+                                    dP_design=self.vacuum_pressure)
+        if not hasfield(self, 'water_pump'):
+            self.water_pump = Pump(f'{inf.ID}_Pump', ins=Stream(f'{inf.ID}_proxy'),
+                                   P=self.water_pressure)
+        self.auxiliary_unit_names = tuple({*aux, 'vacuum_pump', 'water_pump'})
+        super()._setup()
     
     def _run(self):
         inf, = self.ins
@@ -246,8 +267,43 @@ class DegassingMembrane(SanUnit):
             _dstate[-1] = dQC_ins[0,-1]
             _update_dstate()
         self._ODE = dy_dt
+    
+    _units = {k:v[1] for k,v in dm_lci.DuPont_items.items()}
+    
+    # https://www.dupont.com/content/dam/dupont/amer/us/en/water-solutions/public/documents/en/MDG-Ligasep-LDM-040-PDS-45-D00501-en.pdf
+    _DuPont_specs = dict(
+        od_fiber = 210e-6,           # 180-240 um
+        dw_fiber = 35e-6,            # 30-40 um
+        l_fiber = 536e-3,            # 536 mm
+        od_shell = 165e-3,           # 165 mm
+        dw_shell = 2.5e-3,           # assume 2.5 mm thick housing plastic
+        l_shell = 536e-3,            # 536 mm
+        od_potting = 180e-3,         # 180 mm
+        l_potting = 36e-3 * 2,       # assume 36 mm of potting length on each end
+        od_pipe = 108e-3,            # 108 mm
+        h_pipe = (159-165/2)*1e-3,   # mm
+        V_liq = 6.5e-3,              # 6.5 L
+        total_mass = 10,             # kg
+        )
 
-#%%
+    def _design(self):
+        D = self.design_results
+        inf, = self.ins
+        D['Number'] = self.parallel['self'] = ceil(inf.F_vol/self.design_liquid_flow[1])
+        dm_specs = self._DuPont_specs
+        D.update(dm_lci.DuPont_input(**dm_specs))
+        vac, wat = self.vacuum_pump, self.water_pump        
+        vac.ins[0].copy_like(self.outs[0])
+        vac.dP_design = self.vacuum_pressure
+        vac.simulate()
+        wat.ins[0].copy_like(self.ins[0])
+        wat.P = self.water_pressure
+        wat.simulate()
+    
+    def _cost(self):
+        self.baseline_purchase_costs['Each'] = self.unit_price
+
+#%% METAB_AnCSTR
 
 _fts2mhr = auom('ft/s').conversion_factor('m/hr')
 _m2in = auom('m').conversion_factor('inch')
@@ -498,3 +554,5 @@ class METAB_AnCSTR(AnaerobicCSTR):
         C['Aluminum sheet'] = D['Aluminum sheet']*self.aluminum_unit_cost
         C['HDPE pipes'] = sum(hdpe_price(inch)*kg for inch, kg in zip(self._hdpe_ids, self._hdpe_kgs))
         self.add_equipment_cost()
+
+#%% Biogas
