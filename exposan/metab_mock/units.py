@@ -642,7 +642,7 @@ class IronSpongeTreatment(Equipment):
         t_replace = D['Media lifetime'] = 3.14e-8 * Fe * dia**2 * H * self.reaction_efficiency \
             /(Qg*self.influent_H2S_ppmv*1e-6)
         self.lifetime['Iron sponge'] = t_replace / 365
-        hp = 144*P*(Qg*1e6/24/60)*1.41/(33000*0.41)*((psia/P)**(0.41/1.41)-1)
+        hp = 144*P*(Qg*1e6/24/60)*1.41/(33000*0.41)*((psia/P)**(0.41/1.41)-1)   # https://www.engineeringtoolbox.com/horsepower-compressed-air-d_1363.html
         kW = D['Compressor'] = auom('hp').convert(hp/self.blower_efficiency, 'kW')
         self.linked_unit.power_utility.consumption += kW
         S = D['Vessel surface area'] = pi*d*(d/2+h) * 1.05
