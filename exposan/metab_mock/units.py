@@ -17,7 +17,9 @@ from math import pi, ceil
 __all__ = ('rhos_adm1_ph_ctrl',
            'Beads',
            'DegassingMembrane',
-           'METAB_AnCSTR')
+           'METAB_AnCSTR',
+           'IronSpongeTreatment',
+           'DoubleMembraneGasHolder')
 
 #%% rhos_adm1_ph_ctrl
 rhos = np.zeros(22) # 22 kinetic processes
@@ -354,7 +356,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
         hx_out = Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
         self.auxiliary_unit_names = ['heat_exchanger',]
-        self.equipment.append(Beads(ID=f'{ID}_encap'))
+        self.equipment.append(Beads(ID='beads'))
     
     def _setup(self):
         hasfield = hasattr
@@ -363,7 +365,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
             field = f'Pump_ins{i}'
             if not hasfield(self, field):
                 setfield(self, field, Pump(ws.ID+'_Pump', ins=Stream(f'{ws.ID}_proxy')))
-            self.auxiliary_unit_names.append(field)
+            self.auxiliary_unit_names = tuple({*self.auxiliary_unit_names, field})
         super()._setup()
         
     
@@ -555,4 +557,170 @@ class METAB_AnCSTR(AnaerobicCSTR):
         C['HDPE pipes'] = sum(hdpe_price(inch)*kg for inch, kg in zip(self._hdpe_ids, self._hdpe_kgs))
         self.add_equipment_cost()
 
-#%% Biogas
+#%% IronSpongeTreatment
+
+class IronSpongeTreatment(Equipment):
+
+    # https://projects.sare.org/wp-content/uploads/3b-Iron-Sponge-design-Considerations.pdf
+    
+    _default_lifetime = {
+        'Vessel': 10,
+        'Compressor': 10,
+        'Control system': 10,
+        'Iron sponge': 1,
+        }
+    
+    def __init__(self, influent_H2S_ppmv=5000, reaction_efficiency=0.7, 
+                 empty_contact_time=90.0, blower_efficiency=0.6, 
+                 design_psia=15, lifetime=None, **kwargs):
+        lt = lifetime or self._default_lifetime
+        super().__init__(lifetime=lt, **kwargs)
+        self._mixed = Stream(phase='g')
+        self.influent_H2S_ppmv = influent_H2S_ppmv
+        self.reaction_efficiency = reaction_efficiency
+        self.empty_contact_time = empty_contact_time
+        self.blower_efficiency = blower_efficiency
+        self.design_psia = design_psia
+    
+    _vessel_thickness = 5            # mm
+    _carbon_steel_density = 7850     # kg/m3
+    _iron_sponge_bulk_density = 800  # kg/m3
+    _Fe2O3_content = 15              # lb Fe2O3/bushel
+    _min_contact_time = 60           # s
+    _compressibility = 1.
+    
+    _prices = {
+        'Control system': 10400,      # $ per
+        'Compressor': 5180,           # $/kW
+        'Vessel': 3110,               # $/m2, 15 psig
+        'Iron sponge': 2.07           # $/kg
+        }
+    
+    _units = {
+        'Vessel volume': 'm3',
+        'Diameter': 'm',
+        'Bed height': 'm',
+        'Vessel surface area': 'm2',
+        'Carbon steel': 'kg',
+        'Iron sponge': 'kg',
+        'Media lifetime': 'd',
+        'Compressor': 'kW',
+        }
+    
+    def get_F_mol(self):
+        'Total molar flow in kmol/hr.'
+        mixed = self._mixed
+        mf = self.influent_H2S_ppmv/1e6
+        cmps = mixed.components
+        return sum(mixed.mass * cmps.i_mass / cmps.chem_MW)/(1-mf)
+       
+    def _design(self):
+        D = self.design_results
+        mixed = self._mixed
+        product_bgs = [ws for ws in self.linked_unit._system.products\
+                       if ws.phase == 'g']
+        mixed.mix_from(product_bgs)
+        T, P = mixed.T, auom('Pa').convert(mixed.P, 'psi')
+        psia = self.design_psia
+        Z = self._compressibility
+        kmolph = self.get_F_mol()
+        Qg = auom('m3/hr').convert(kmolph * 22.4, 'ft3/d') * 1e-6  # million cubic feet per day
+        degree_R = T*1.8
+        _V = Qg*degree_R*Z/psia
+        ID_min = (360*_V)**(1/2)
+        ID_max = 5**(1/2) * ID_min
+        ID_min = max(ID_min, (5.34*Qg*self.influent_H2S_ppmv)**(1/2))
+        dia = (ID_min + ID_max)/2
+        d = D['Diameter'] = auom('inch').convert(dia, 'm')              
+        tau = max(self.empty_contact_time, self._min_contact_time)
+        H = tau * 60 * _V/dia**2
+        h = D['Bed height'] = auom('ft').convert(H, 'm')
+        Bu = 4.4e-3 * dia**2 * H   # US bushel
+        V = D['Vessel volume'] = auom('bushel').convert(Bu, 'm3')
+        D['Iron sponge'] = V * self._iron_sponge_bulk_density
+        Fe = self._Fe2O3_content
+        t_replace = D['Media lifetime'] = 3.14e-8 * Fe * dia**2 * H * self.reaction_efficiency \
+            /(Qg*self.influent_H2S_ppmv*1e-6)
+        self.lifetime['Iron sponge'] = t_replace / 365
+        hp = 144*P*(Qg*1e6/24/60)*1.41/(33000*0.41)*((psia/P)**(0.41/1.41)-1)
+        kW = D['Compressor'] = auom('hp').convert(hp/self.blower_efficiency, 'kW')
+        self.linked_unit.power_utility.consumption += kW
+        S = D['Vessel surface area'] = pi*d*(d/2+h) * 1.05
+        D['Carbon steel'] = S * self._vessel_thickness/1e3 * self._carbon_steel_density
+        return D
+    
+    def _cost(self):
+        D, C = self.design_results, self.baseline_purchase_costs
+        _p = self._prices
+        C['Vessel'] = D['Vessel surface area'] * _p['Vessel']
+        C['Control system'] = _p['Control system']
+        C['Compressor'] = D['Compressor'] * _p['Compressor']
+        C['Iron sponge'] = D['Iron sponge'] * _p['Iron sponge']
+        return C
+
+#%% DoubleMembraneGasHolder
+
+class DoubleMembraneGasHolder(Equipment):
+    
+    def __init__(self, max_holding_time=12, T=293.15, P=101325, 
+                 slab_concrete_unit_cost=582.48,
+                 membrane_unit_cost=1.88,
+                 F_BM=1.2, **kwargs):
+        super().__init__(F_BM=F_BM, **kwargs)
+        self._mixed = Stream(phase='g')
+        self.max_holding_time = max_holding_time
+        self.T = T
+        self.P = P
+        self.slab_concrete_unit_cost = slab_concrete_unit_cost
+        self.membrane_unit_cost = membrane_unit_cost
+
+    _density = {
+        'PE': 1300,  # 1230-1380 kg/m3
+        'PVC': 1380, # kg/m3
+        'varnish': 900, # https://www.industrialcoatingsltd.com/app/uploads/2020/10/Selett-Clear-Varnish-Data-Sheet.pdf
+        }
+    
+    d_pe = 1e-3     # assume membrane thickness 1 mm
+    d_pvc = 75e-6   # assume surface treatment thickness = 75 um
+    d_slab = 0.2    # assume 20 cm
+    # https://www.industrialcoatingsltd.com/app/uploads/2020/10/Selett-Clear-Varnish-Data-Sheet.pdf
+    varnish_spreading_rate = 10.65e3 # 11.6 - 9.7 m2/L
+    
+    _units =  {
+        'PE': 'kg',
+        'PVC': 'kg',
+        'Varnish': 'kg',
+        'Slab concrete': 'm3',
+        'Capacity': 'm3',
+        'Diameter': 'm',
+        'Membrane surface area': 'm2'
+        }
+    
+    def get_F_mol(self):
+        'Total molar flow in kmol/hr.'
+        mixed = self._mixed
+        cmps = mixed.components
+        return sum(mixed.mass * cmps.i_mass / cmps.chem_MW)
+    
+    def _design(self):
+        D = self.design_results
+        mixed = self._mixed
+        product_bgs = [ws for ws in self.linked_unit._system.products\
+                       if ws.phase == 'g']
+        mixed.mix_from(product_bgs)
+        Q = self.get_F_mol()*1e3 * 8.314 * self.T/self.P  # m3/hr
+        V_max = D['Capcity'] = Q * self.max_holding_time
+        D.update(er_lci.gas_holder_input(V_max, self.d_pe, self.d_pvc, 
+                                         self.d_slab, self.varnish_spreading_rate))
+        r = er_lci.cap_radius_from_V(V_max)
+        D['Diameter'] = r*2
+        D['Membrane surface area'] = er_lci.A_cap(r)
+        return D
+    
+    def _cost(self):
+        D, C = self.design_results, self.baseline_purchase_costs
+        C['Slab concrete'] = D['Slab concrete']*self.slab_concrete_unit_cost
+        A = D['Membrane surface area']
+        C['Membrane'] = A*2*self.membrane_unit_cost
+        return C
+        

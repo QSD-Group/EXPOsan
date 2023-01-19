@@ -16,24 +16,24 @@ __all__ = ('gas_holder_items',
 gas_holder_items = {
     'PE': ['textile production, nonwoven polyester, needle-punched', 'kg'],
     'PVC': ['polyvinylchloride production, emulsion polymerisation', 'kg'],
-    'varnish': ['acrylic varnish production, product in 87.5% solution state', 'kg'],
+    'Varnish': ['acrylic varnish production, product in 87.5% solution state', 'kg'],
     'Slab concrete': ['concrete slab production', 'm3']
     }
 
 # http://mvseer.com/wp-content/uploads/MV_IRON_SPONGE-MSDS.pdf
 iron_sponge_items = {
-    'wood': ['wood chips production, softwood, at sawmill', 'kg'],
-    'iron_oxide': ['portafer production', 'kg'],
-    'soda_ash': ['soda ash, dense, to generic market for neutralising agent', 'kg'],
+    'Wood chips': ['wood chips production, softwood, at sawmill', 'kg'],
+    'Iron oxide': ['portafer production', 'kg'],
+    'Soda ash': ['soda ash, dense, to generic market for neutralising agent', 'kg'],
     'CaCO3': ['calcium carbonate production, precipitated', 'kg'],
-    'carbon_steel': ['reinforcing steel production', 'kg']
+    # 'Carbon steel': ['reinforcing steel production', 'kg']
     }
 
 density = {
     'PE': 1300,  # 1230-1380 kg/m3
     'PVC': 1380, # kg/m3
     'varnish': 900, # https://www.industrialcoatingsltd.com/app/uploads/2020/10/Selett-Clear-Varnish-Data-Sheet.pdf
-    'iron_sponge': 2222, # https://www.bimco.org/cargo/solid-bulk-cargo/solid-bulk-cargo-database/solid_cargo_database-0519/iron_oxide_spent#:~:text=Bulk%20density%3A%202%2C222%20kg%2Fm3.
+    'iron_sponge': 800, 
     'steel': 7850  # https://intotheboxes.com/unit-weight-for-steel/517/#:~:text=Density%20of%20steel%20rebar%20in,is%207850%20kg%2Fm3.
     }
 
@@ -67,19 +67,12 @@ def gas_holder_input(V_tank, d_pe=1e-3, d_pvc=75e-6, d_slab=0.2,
 
 # V_sponge = 1.5 # m3
 
-def iron_sponge_input(V_sponge, h2r_sponge=3, d_steel=5e-3):
-    r_isp = (V_sponge/pi/h2r_sponge)**(1/3)
-    h_isp = r_isp * h2r_sponge
-
-    V_steel = d_steel * 2*pi*r_isp*(r_isp + h_isp)
-    m_steel = V_steel * density['steel']
-    
-    # Iron sponge
-    m_isp = pi * r_isp**2 * h_isp * density['iron_sponge']
-    m_wood = 0.25 * m_isp
-    m_iron_oxide = 0.3 * m_isp
-    m_soda_ash = 0.03 * m_isp / 1.325     # Convert from Na2CO3 to 2*(NaOH)
-    m_caco3 = 0.015 * m_isp
+def iron_sponge_input(density=800, Fe2O3_content=15):
+    '''mass fractions of media materials, in kg/kg iron sponge'''
+    m_iron_oxide = Fe2O3_content * 12.872 / density
+    m_wood = 0.25
+    m_soda_ash = 0.03 / 1.325     # Convert from Na2CO3 to 2*(NaOH)
+    m_caco3 = 0.015
 
     return dict(zip(iron_sponge_items.keys(), 
-                    [m_wood, m_iron_oxide, m_caco3, m_soda_ash, m_steel]))
+                    [m_wood, m_iron_oxide, m_caco3, m_soda_ash]))
