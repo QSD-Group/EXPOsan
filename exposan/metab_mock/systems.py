@@ -298,12 +298,12 @@ def create_systems(flowsheet_A=None, flowsheet_B=None,
 #%%
 if __name__ == '__main__':
     sysA, sysB = systems = create_systems()
-    for sys in systems:
-        sys.simulate(
-            t_span=(0,400),
-            state_reset_hook='reset_cache',
-            method='BDF'
-            )
-        sys.diagram()
+    # for sys in systems:
+    #     sys.simulate(
+    #         t_span=(0,400),
+    #         state_reset_hook='reset_cache',
+    #         method='BDF'
+    #         )
+        # sys.diagram()
     au = sysA.flowsheet.unit
     bu = sysB.flowsheet.unit

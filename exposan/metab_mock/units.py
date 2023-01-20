@@ -138,15 +138,15 @@ class Beads(Equipment):
     
     def _design(self):
         V_beads = self.linked_unit.design_results['Bead volume']
-        D = self.design_results
+        D = self._design_results
         D.update(encap_lci.encap_material_input(V_beads, **self._recipe))
         return D
         
     def _cost(self):
         V_beads = self.linked_unit.design_results['Bead volume']
-        C = self.baseline_purchase_costs
-        C.update(encap_lci.encap_material_cost(V_beads, **self._recipe, 
-                                               unit_prices=self._price.values()))
+        C = encap_lci.encap_material_cost(V_beads, **self._recipe, 
+                                          unit_prices=self._price.values())
+        self._baseline_purchase_costs = C
         return C
 
 #%% DegassingMembrane
@@ -348,7 +348,8 @@ class METAB_AnCSTR(AnaerobicCSTR):
     
     auxiliary_unit_names = ('heat_exchanger', )
     
-    def __init__(self, ID='', encapsulate_concentration=25, 
+    def __init__(self, ID='', lifetime=20,
+                 encapsulate_concentration=25, 
                  wall_concrete_unit_cost=1081.73,
                  slab_concrete_unit_cost=582.48,
                  stainless_steel_unit_cost=4.19,
@@ -357,7 +358,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
                  **kwargs):
         equip = kwargs.pop('equipment', [])
         equip.append(Beads(ID=f'{ID}_beads'))
-        super().__init__(ID, equipment=equip, **kwargs)
+        super().__init__(ID, lifetime=lifetime, equipment=equip, **kwargs)
         self.encapsulate_concentration = encapsulate_concentration
         self.wall_concrete_unit_cost = wall_concrete_unit_cost
         self.slab_concrete_unit_cost = slab_concrete_unit_cost
@@ -622,11 +623,11 @@ class IronSpongeTreatment(Equipment):
         'Total molar flow in kmol/hr.'
         mixed = self._mixed
         mf = self.influent_H2S_ppmv/1e6
-        cmps = mixed.components
+        cmps = mixed.chemicals
         return sum(mixed.mass * cmps.i_mass / cmps.chem_MW)/(1-mf)
        
     def _design(self):
-        D = self.design_results
+        D = self._design_results
         mixed = self._mixed
         product_bgs = [ws for ws in self.linked_unit._system.products\
                        if ws.phase == 'g']
@@ -661,7 +662,7 @@ class IronSpongeTreatment(Equipment):
         return D
     
     def _cost(self):
-        D, C = self.design_results, self.baseline_purchase_costs
+        D, C = self._design_results, self._baseline_purchase_costs
         _p = self._prices
         C['Vessel'] = D['Vessel surface area'] * _p['Vessel']
         C['Control system'] = _p['Control system']
@@ -710,11 +711,11 @@ class DoubleMembraneGasHolder(Equipment):
     def get_F_mol(self):
         'Total molar flow in kmol/hr.'
         mixed = self._mixed
-        cmps = mixed.components
+        cmps = mixed.chemicals
         return sum(mixed.mass * cmps.i_mass / cmps.chem_MW)
     
     def _design(self):
-        D = self.design_results
+        D = self._design_results
         mixed = self._mixed
         product_bgs = [ws for ws in self.linked_unit._system.products\
                        if ws.phase == 'g']
@@ -729,7 +730,7 @@ class DoubleMembraneGasHolder(Equipment):
         return D
     
     def _cost(self):
-        D, C = self.design_results, self.baseline_purchase_costs
+        D, C = self._design_results, self._baseline_purchase_costs
         C['Slab concrete'] = D['Slab concrete']*self.slab_concrete_unit_cost
         A = D['Membrane surface area']
         C['Membrane'] = A*2*self.membrane_unit_cost
