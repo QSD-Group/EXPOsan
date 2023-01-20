@@ -14,6 +14,8 @@ for license details.
 from exposan.metab_mock import data_path
 from qsdsan.utils import ospath
 from bw2qsd import DataDownloader as ddld, CFgetter, remove_setups_pickle
+from bw2qsd.utils import format_name
+from qsdsan import ImpactIndicator as IInd, ImpactItem as IItm
 
 # dld = ddld()
 # dld.available_databases
@@ -100,8 +102,29 @@ def export_ei_CFs(save_to=''):
     # ei.get_CFs(show=False, path=save_to)
     return ei
 
+def format_name_TRACI(name):
+    name = name.split(' (')[0]
+    name = name.replace(': ', ' ')
+    return format_name(name)
+
+def format_alias_TRACI(ind):
+    name = ind[2].split(' (')
+    if len(name) > 1:
+        return name[1].rstrip(')')
+    else:
+        name = name[0]
+        for i in (', ', '-', ': '): name = name.replace(i, ' ')
+        return ''.join([i[0].capitalize() for i in name.split(' ')])
+
+
+
 #%%
 if __name__ == '__main__':
     path = ospath.join(data_path, 'CFs.xlsx')
     ei = export_ei_CFs(path)
+    df = ei.export_indicators(name_formatter=format_name_TRACI, 
+                              alias_formatter=format_alias_TRACI,
+                              path=ospath.join(data_path, 'TRACI_indicators.xlsx'))
+    IInd.load_from_file(df)
+    traci_inds = IInd.get_all_indicators()
     remove_setups_pickle()

@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Oct  4 12:17:42 2022
+'''
+EXPOsan: Exposition of sanitation and resource recovery systems
 
-@author: joy_c
-"""
+This module is developed by:
+    
+    Joy Zhang <joycheung1994@gmail.com>
+
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
+'''
 from biosteam import Stream
 from qsdsan import SanUnit, Equipment
 from qsdsan.sanunits import AnaerobicCSTR, CSTR, Pump, HXutility
@@ -106,7 +112,7 @@ def rhos_adm1_ph_ctrl(state_arr, params):
 #%% Beads
 class Beads(Equipment):
     
-    def __init__(F_BM=1.1, lifetime=1, **kwargs):
+    def __init__(self, F_BM=1.1, lifetime=1, **kwargs):
         super().__init__(F_BM=F_BM, lifetime=lifetime, **kwargs)
         
     # encapsulation recipe
@@ -132,12 +138,16 @@ class Beads(Equipment):
     
     def _design(self):
         V_beads = self.linked_unit.design_results['Bead volume']
-        return encap_lci.encap_material_input(V_beads, **self._recipe)
+        D = self.design_results
+        D.update(encap_lci.encap_material_input(V_beads, **self._recipe))
+        return D
         
     def _cost(self):
         V_beads = self.linked_unit.design_results['Bead volume']
-        return encap_lci.encap_material_cost(V_beads, **self._recipe, 
-                                             unit_prices=self._price.values())
+        C = self.baseline_purchase_costs
+        C.update(encap_lci.encap_material_cost(V_beads, **self._recipe, 
+                                               unit_prices=self._price.values()))
+        return C
 
 #%% DegassingMembrane
 class DegassingMembrane(SanUnit):
@@ -345,7 +355,9 @@ class METAB_AnCSTR(AnaerobicCSTR):
                  rockwool_unit_cost=0.59,
                  aluminum_unit_cost=15.56,
                  **kwargs):
-        super().__init__(ID, **kwargs)
+        equip = kwargs.pop('equipment', [])
+        equip.append(Beads(ID=f'{ID}_beads'))
+        super().__init__(ID, equipment=equip, **kwargs)
         self.encapsulate_concentration = encapsulate_concentration
         self.wall_concrete_unit_cost = wall_concrete_unit_cost
         self.slab_concrete_unit_cost = slab_concrete_unit_cost
@@ -355,8 +367,6 @@ class METAB_AnCSTR(AnaerobicCSTR):
         hx_in = Stream(f'{ID}_hx_in')
         hx_out = Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
-        self.auxiliary_unit_names = ['heat_exchanger',]
-        self.equipment.append(Beads(ID='beads'))
     
     def _setup(self):
         hasfield = hasattr
@@ -433,7 +443,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
         den = self._density
         V = D['Volume'] = self.V_liq + self.V_gas
         dia = (V*4/self._reactor_height_to_diameter/pi) ** (1/3)
-        h = D['Height'] = dia * self._height_to_diameter
+        h = D['Height'] = dia * self._reactor_height_to_diameter
         r_cone = dia/2*self._gas_separator_r_frac
         Vg = 1/3*pi*r_cone**3*self._gas_separator_h2r
         if Vg < 1.5*self.V_gas:
@@ -527,22 +537,23 @@ class METAB_AnCSTR(AnaerobicCSTR):
         
         # Pumps
         HWc = self._Hazen_Williams_coefficients
+        getfield = getattr
         for i, ws, in enumerate(self.ins):
             ID = pipe_IDs[i]
             hf = pipe_friction_head(ws.F_vol*_cmph_2_gpm, L_inlets, HWc['HDPE'], ID)  # friction head loss
             #!!! consider adding velocity head to promote mixing?
             TDH = hf + h # in m, assume suction head = 0, discharge head = reactor height
-            pump = self.get_auxiliary_units_with_names(f'Pump_ins{i}')
+            pump = getfield(self, f'Pump_ins{i}')
             pump.ins[0].copy_flow(ws)
             pump.dP_design = TDH * 9804.14  # in Pa
             pump.simulate()
         
         # Beads
         cmps = mixed.components
-        idx = cmps.indices(self.retain_cmps)
-        retained_concentration = sum(self._state[idx] * cmps.i_mass[idx])    # kg mass/m3
+        conc = self._state[:len(cmps)]        
+        retained_concentration = sum(conc * cmps.i_mass * (self._f_retain > 0))    # kg mass/m3
         V_beads = D['Bead volume'] = self.V_liq * retained_concentration / self.encapsulate_concentration
-        if V_beads < self.V_liq:
+        if V_beads >= self.V_liq:
             raise RuntimeError('retained biomass concentration > design encapsualation concentration')
         self.add_equipment_design()
     
