@@ -117,7 +117,7 @@ def make_bis(m):
     m_pam = 0.5*mw_am
     m_fmd = 0.25*mw_fmd
     #!!! assume CuSO4 and H2SO4 reused for 500 batches on average
-    n_reuse = 500
+    n_reuse = 50000
     m_CuSO4 = 0.4/mw_CuCl2*mw_CuSO4/n_reuse
     m_H2SO4 = 18.9/1.18*3*mw_H2SO4/n_reuse  # 6N sulfuric acid (i.e., 3M H2SO4) has a density of 1.18 kg/L
     return m_pam*n_batch, m_fmd*n_batch, m_CuSO4*n_batch, m_H2SO4*n_batch

@@ -11,7 +11,7 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 from biosteam import Stream
-from qsdsan import SanUnit, Equipment
+from qsdsan import SanUnit, Equipment, Construction
 from qsdsan.sanunits import AnaerobicCSTR, CSTR, Pump, HXutility
 from qsdsan.utils import auom, ospath, load_data
 from exposan.metab_mock import data_path
@@ -19,6 +19,7 @@ from exposan.metab_mock.utils import encap_lci, dm_lci, er_lci
 import numpy as np
 from warnings import warn
 from math import pi, ceil
+from collections import defaultdict
 
 __all__ = ('rhos_adm1_ph_ctrl',
            'Beads',
@@ -26,6 +27,26 @@ __all__ = ('rhos_adm1_ph_ctrl',
            'METAB_AnCSTR',
            'IronSpongeTreatment',
            'DoubleMembraneGasHolder')
+
+#%%
+add_prefix = lambda dct, prefix: {f'{prefix} - {k}':v for k,v in dct.items()}
+
+def _construct_water_pump(pump):
+    hp = pump.design_results['power'] * pump.parallel['self']
+    if hp > 29.5: 
+        pump.construction = [
+            Construction(linked_unit=pump, item='pump_22kW', quantity=hp/29.5)
+            ]
+    else:
+        pump.construction = [
+            Construction(linked_unit=pump, item='pump_40W', quantity=ceil(hp/0.05364))
+            ]
+
+def _construct_vacuum_pump(pump):
+    kW = pump.design_results['power'] * pump.parallel['self'] * 0.7457
+    pump.construction = [
+        Construction(linked_unit=pump, item='air_compressor', quantity=(kW/4)**0.6)
+        ]
 
 #%% rhos_adm1_ph_ctrl
 rhos = np.zeros(22) # 22 kinetic processes
@@ -114,6 +135,7 @@ class Beads(Equipment):
     
     def __init__(self, F_BM=1.1, lifetime=1, **kwargs):
         super().__init__(F_BM=F_BM, lifetime=lifetime, **kwargs)
+        self.construction = []
         
     # encapsulation recipe
     _recipe = dict(
@@ -134,12 +156,33 @@ class Beads(Equipment):
         'PAC': 393/5                       # USD/kg; https://www.sigmaaldrich.com/US/en/product/sigald/161551
         }
     
-    _units = {k:v[1] for k,v in encap_lci.encap_items.items()}
+    _units = {
+        'EG': 'kg',
+        'MAA': 'kg',
+        'PAM': 'kg',
+        'FMD': 'kg',
+        'CuSO4': 'kg',
+        'H2SO4': 'kg',
+        'DMA': 'kg',
+        'EDCl': 'kg',
+        'KOH': 'kg',
+        'NaPS': 'kg',
+        'GAC': 'kg'
+        }
     
     def _design(self):
-        V_beads = self.linked_unit.design_results['Bead volume']
+        linked_unit = self.linked_unit
+        units = self._units
+        lifetime = self.lifetime
+        V_beads = linked_unit.design_results['Bead volume']
         D = self._design_results
         D.update(encap_lci.encap_material_input(V_beads, **self._recipe))
+        for k, v in D.items():
+            self.construction.append(
+                Construction(ID=f'beads_{k}', linked_unit=linked_unit,
+                             item=k, quantity=v, quantity_unit=units[k],
+                             lifetime=lifetime)
+                )
         return D
         
     def _cost(self):
@@ -280,7 +323,15 @@ class DegassingMembrane(SanUnit):
             _update_dstate()
         self._ODE = dy_dt
     
-    _units = {k:v[1] for k,v in dm_lci.DuPont_items.items()}
+    _units = {
+        'PP': 'kg',
+        'PVC': 'kg',
+        'PS': 'kg',
+        'epoxy': 'kg',
+        'electricity': 'kWh',
+        'molding': 'kg',
+        'extrusion': 'kg'
+        }
     
     # https://www.dupont.com/content/dam/dupont/amer/us/en/water-solutions/public/documents/en/MDG-Ligasep-LDM-040-PDS-45-D00501-en.pdf
     _DuPont_specs = dict(
@@ -311,6 +362,15 @@ class DegassingMembrane(SanUnit):
         wat.ins[0].copy_like(self.ins[0])
         wat.P = self.water_pressure
         wat.simulate()
+        if self.include_construction:
+            for i, u in self._units.items():
+                self.construction.append(
+                    Construction(ID=i, linked_unit=self, item=i, 
+                                 quantity=D[i], quantity_unit=u)
+                    )
+            _construct_water_pump(wat)
+            _construct_vacuum_pump(vac)
+            self.construction += wat.construction + vac.construction
     
     def _cost(self):
         self.baseline_purchase_costs['Each'] = self.unit_price
@@ -348,8 +408,9 @@ class METAB_AnCSTR(AnaerobicCSTR):
     
     auxiliary_unit_names = ('heat_exchanger', )
     
-    def __init__(self, ID='', lifetime=20,
+    def __init__(self, ID='', lifetime=20, bead_lifetime=3,
                  encapsulate_concentration=25, 
+                 reactor_height_to_diameter=1.5,
                  wall_concrete_unit_cost=1081.73,
                  slab_concrete_unit_cost=582.48,
                  stainless_steel_unit_cost=4.19,
@@ -357,9 +418,10 @@ class METAB_AnCSTR(AnaerobicCSTR):
                  aluminum_unit_cost=15.56,
                  **kwargs):
         equip = kwargs.pop('equipment', [])
-        equip.append(Beads(ID=f'{ID}_beads'))
+        equip.append(Beads(ID=f'{ID}_beads', lifetime=bead_lifetime))
         super().__init__(ID, lifetime=lifetime, equipment=equip, **kwargs)
         self.encapsulate_concentration = encapsulate_concentration
+        self.reactor_height_to_diameter = reactor_height_to_diameter
         self.wall_concrete_unit_cost = wall_concrete_unit_cost
         self.slab_concrete_unit_cost = slab_concrete_unit_cost
         self.stainless_steel_unit_cost = stainless_steel_unit_cost
@@ -379,8 +441,6 @@ class METAB_AnCSTR(AnaerobicCSTR):
             self.auxiliary_unit_names = tuple({*self.auxiliary_unit_names, field})
         super()._setup()
         
-    
-    _reactor_height_to_diameter = 1.5
     _steel_separator_thickness = 15    # mm
     _steel_wall_thickness = 30         # mm
     _steel_base_thickness = 40         # mm
@@ -443,8 +503,8 @@ class METAB_AnCSTR(AnaerobicCSTR):
         D = self.design_results
         den = self._density
         V = D['Volume'] = self.V_liq + self.V_gas
-        dia = (V*4/self._reactor_height_to_diameter/pi) ** (1/3)
-        h = D['Height'] = dia * self._reactor_height_to_diameter
+        dia = (V*4/self.reactor_height_to_diameter/pi) ** (1/3)
+        h = D['Height'] = dia * self.reactor_height_to_diameter
         r_cone = dia/2*self._gas_separator_r_frac
         Vg = 1/3*pi*r_cone**3*self._gas_separator_h2r
         if Vg < 1.5*self.V_gas:
@@ -548,7 +608,19 @@ class METAB_AnCSTR(AnaerobicCSTR):
             pump.ins[0].copy_flow(ws)
             pump.dP_design = TDH * 9804.14  # in Pa
             pump.simulate()
+            _construct_water_pump(pump)
         
+        if self.include_construction:
+            #!!! need to make impactitem for hdpe pipes = hdpe granule + injection moulding
+            for i in ('Wall concrete', 'Slab concrete', 'Stainless steel', 
+                      'Rockwool', 'Aluminum sheet', 'HDPE pipes'):
+                name = i.lower().replace(' ', '_')
+                const = Construction(ID=name, linked_unit=self, item=name, quantity=D[i],
+                                     quantity_unit=self._units[i])
+                self.construction.append(const)
+            for aux in self.auxiliary_units:
+                self.construction += aux.construction
+                        
         # Beads
         cmps = mixed.components
         conc = self._state[:len(cmps)]        
@@ -557,6 +629,8 @@ class METAB_AnCSTR(AnaerobicCSTR):
         if V_beads >= self.V_liq:
             raise RuntimeError('retained biomass concentration > design encapsualation concentration')
         self.add_equipment_design()
+        #!!! needs definition
+        if self.include_construction: self.add_equipment_construction()
     
     def _cost(self):
         D = self.design_results
@@ -568,6 +642,40 @@ class METAB_AnCSTR(AnaerobicCSTR):
         C['Aluminum sheet'] = D['Aluminum sheet']*self.aluminum_unit_cost
         C['HDPE pipes'] = sum(hdpe_price(inch)*kg for inch, kg in zip(self._hdpe_ids, self._hdpe_kgs))
         self.add_equipment_cost()
+    
+    def add_equipment_design(self):
+        unit_design = self.design_results
+        unit_units = self._units
+        isa = isinstance
+        get = getattr
+        if isa(self.equipment_lifetime, int):
+            lt = self.equipment_lifetime
+            self.equipment_lifetime = defaultdict(lambda: lt)
+        F_BM, F_D, F_P, F_M, lifetime = \
+            self.F_BM, self.F_D, self.F_P, self.F_M, self.equipment_lifetime
+
+        for equip in self.equipment:
+            equip_ID = equip.ID
+            prefix = f'{equip.__class__.__name__} {equip_ID}'
+            equip_design = equip._design_results = equip._design()
+            equip_design = {} if not equip_design else equip_design
+            unit_design.update(add_prefix(equip_design, prefix))
+
+            equip_units = {} if not equip.units else equip.units
+            unit_units.update(add_prefix(equip_units, prefix))
+            for unit_attr, equip_attr in zip(
+                    (F_BM, F_D, F_P, F_M, lifetime),
+                    ('F_BM', 'F_D', 'F_P', 'F_M', 'lifetime'),
+                    ):
+                equip_attr = get(equip, equip_attr)
+                if isa(equip_attr, dict):
+                    unit_attr.update(add_prefix(equip_attr, prefix))
+                else:
+                    unit_attr[equip_ID] = equip_attr
+                    
+    def add_equipment_construction(self):
+        for equip in self.equipment:
+            self.construction += equip.construction
 
 #%% IronSpongeTreatment
 
@@ -593,6 +701,7 @@ class IronSpongeTreatment(Equipment):
         self.empty_contact_time = empty_contact_time
         self.blower_efficiency = blower_efficiency
         self.design_psia = design_psia
+        self.construction = []
     
     _vessel_thickness = 5            # mm
     _carbon_steel_density = 7850     # kg/m3
@@ -628,8 +737,11 @@ class IronSpongeTreatment(Equipment):
        
     def _design(self):
         D = self._design_results
+        linked_unit = self.linked_unit
+        units = self._units
+        lifetime = self.lifetime
         mixed = self._mixed
-        product_bgs = [ws for ws in self.linked_unit._system.products\
+        product_bgs = [ws for ws in linked_unit._system.products\
                        if ws.phase == 'g']
         mixed.mix_from(product_bgs)
         T, P = mixed.T, auom('Pa').convert(mixed.P, 'psi')
@@ -653,12 +765,27 @@ class IronSpongeTreatment(Equipment):
         Fe = self._Fe2O3_content
         t_replace = D['Media lifetime'] = 3.14e-8 * Fe * dia**2 * H * self.reaction_efficiency \
             /(Qg*self.influent_H2S_ppmv*1e-6)
-        self.lifetime['Iron sponge'] = t_replace / 365
+        yr_replace = int(t_replace/365)
+        if yr_replace == 0: yr_replace = 1
+        D['Iron sponge'] *= yr_replace*365/t_replace
+        lifetime['Iron sponge'] = yr_replace
         hp = 144*P*(Qg*1e6/24/60)*1.41/(33000*0.41)*((psia/P)**(0.41/1.41)-1)   # https://www.engineeringtoolbox.com/horsepower-compressed-air-d_1363.html
         kW = D['Compressor'] = auom('hp').convert(hp/self.blower_efficiency, 'kW')
-        self.linked_unit.power_utility.consumption += kW
+        linked_unit.power_utility.consumption += kW
         S = D['Vessel surface area'] = pi*d*(d/2+h) * 1.05
         D['Carbon steel'] = S * self._vessel_thickness/1e3 * self._carbon_steel_density
+        self.construction = [
+            Construction(ID=f'{self.ID}_carbon_steel', linked_unit=linked_unit,
+                         item='carbon_steel', quantity=D['Carbon steel'], 
+                         quantity_unit=units['Carbon steel'], lifetime=lifetime['Vessel']),
+            #!!! need to make iron sponge an impact item
+            Construction(ID=f'{self.ID}_iron_sponge', linked_unit=linked_unit,
+                         item='iron_sponge', quantity=D['Iron sponge'],
+                         quantity_unit=units['Iron sponge'], lifetime=lifetime['Iron sponge']),
+            #!!! need to make compressor an impact item
+            Construction(ID=f'{self.ID}_compressor', linked_unit=linked_unit,
+                         item='air_compressor', quantity=(kW/4)**0.6, lifetime=lifetime['Compressor']),
+            ]
         return D
     
     def _cost(self):
@@ -676,15 +803,18 @@ class DoubleMembraneGasHolder(Equipment):
     
     def __init__(self, max_holding_time=12, T=293.15, P=101325, 
                  slab_concrete_unit_cost=582.48,
-                 membrane_unit_cost=1.88,
+                 membrane_unit_cost=1.88, 
                  F_BM=1.2, **kwargs):
+        lt = kwargs.pop('lifetime', {})
         super().__init__(F_BM=F_BM, **kwargs)
+        self.lifetime = lt
         self._mixed = Stream(phase='g')
         self.max_holding_time = max_holding_time
         self.T = T
         self.P = P
         self.slab_concrete_unit_cost = slab_concrete_unit_cost
         self.membrane_unit_cost = membrane_unit_cost
+        self.construction = []
 
     _density = {
         'PE': 1300,  # 1230-1380 kg/m3
@@ -716,8 +846,10 @@ class DoubleMembraneGasHolder(Equipment):
     
     def _design(self):
         D = self._design_results
+        linked_unit = self.linked_unit
+        units = self._units
         mixed = self._mixed
-        product_bgs = [ws for ws in self.linked_unit._system.products\
+        product_bgs = [ws for ws in linked_unit._system.products\
                        if ws.phase == 'g']
         mixed.mix_from(product_bgs)
         Q = self.get_F_mol()*1e3 * 8.314 * self.T/self.P  # m3/hr
@@ -727,6 +859,14 @@ class DoubleMembraneGasHolder(Equipment):
         r = er_lci.cap_radius_from_V(V_max)
         D['Diameter'] = r*2
         D['Membrane surface area'] = er_lci.A_cap(r)
+        const = []
+        for i in ('PE', 'PVC', 'Varnish', 'Slab concrete'):
+            name = i.lower().replace(' ', '_') if len(i) > 3 else i
+            const.append(
+                Construction(ID=f'{self.ID}_{name}', linked_unit=linked_unit, 
+                             item=name, quantity=D[i], quantity_unit=units[i])
+                )
+        self.construction = const
         return D
     
     def _cost(self):

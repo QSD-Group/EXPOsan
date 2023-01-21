@@ -15,8 +15,8 @@ DuPont_items = {
     'PP': ['polypropylene production', 'kg'],
     'PVC': ['polyvinylchloride production, emulsion polymerisation', 'kg'],
     'PS': ['polysulfone production, for membrane filtration production', 'kg'],
-    'Epoxy': ['epoxy resin production, liquid', 'kg'],
-    'electric': ['electricity, high voltage, production mix', 'kWh'],
+    'epoxy': ['epoxy resin production, liquid', 'kg'],
+    'electricity': ['electricity, high voltage, production mix', 'kWh'],
     'molding': ['injection moulding', 'kg'],
     'extrusion': ['extrusion, plastic pipes', 'kg']
     }
@@ -25,7 +25,7 @@ density = {
     'PMP': 833,    # kg/m3
     'PVC': 1380,
     'PS': 1240,
-    'Epoxy': 1100, 
+    'epoxy': 1100, 
     }
 
 # https://www.dupont.com/content/dam/dupont/amer/us/en/water-solutions/public/documents/en/MDG-Ligasep-LDM-040-PDS-45-D00501-en.pdf
@@ -99,7 +99,7 @@ def DuPont_input(od_fiber=2.1e-4, dw_fiber=3.5e-5, l_fiber=0.536,
     V_pipe = pi * (od_pipe/2)**2 * h_pipe * 4
     m_ps = (V_cap + V_pipe) * density['PS']
     V_epoxy = V_cylinder(od_potting-dw_shell*2, l_potting) - V_fibers * l_potting/l_fiber
-    m_epoxy = V_epoxy * density['Epoxy']
+    m_epoxy = V_epoxy * density['epoxy']
     m_pp = total_mass - (m_pvc + m_ps + m_ps)
     m_mold = m_pvc + V_cap * density['PS']
     m_extru = m_pp + V_pipe * density['PS']
