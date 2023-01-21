@@ -164,10 +164,10 @@ def create_system(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
     # S1 = su.Sampler('S1', C1-0, effluent)
     
     # System setup
-    sys = System('sys', path=(A1, A2, O1, O2, O3, C1), recycle=(RWW, RAS))
-    # sys = System('sys', path=(A1, A2, O1, O2, O3, C1, S1), recycle=(RWW, RAS))
-    # bio = System('bio', path=(A1, A2, O1, O2, O3), recycle=(RWW,))
-    # sys = System('sys', path=(bio, C1, S1), recycle=(RAS,))
+    sys = System('bsm1_sys', path=(A1, A2, O1, O2, O3, C1), recycle=(RWW, RAS))
+    # sys = System('bsm1_sys', path=(A1, A2, O1, O2, O3, C1, S1), recycle=(RWW, RAS))
+    # bio = System('bsm1_sys_bio', path=(A1, A2, O1, O2, O3), recycle=(RWW,))
+    # sys = System('bsm1_sys', path=(bio, C1, S1), recycle=(RAS,))
 
     if init_conds:
         for i in [A1, A2, O1, O2, O3]: i.set_init_conc(**init_conds)
