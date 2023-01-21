@@ -145,10 +145,10 @@ if __name__ == '__main__':
     t_step = 5
     n = 2
     # method = 'RK45'
-    method = 'RK23'
+    # method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    # method = 'BDF'
+    method = 'BDF'
     # method = 'LSODA'
     model_ss = create_model()
     run_wdiff_init(model_ss, n, t, t_step, method=method, seed=seed)
