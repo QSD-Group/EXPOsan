@@ -14,8 +14,7 @@ for license details.
 import os, numpy as np, qsdsan as qs
 from warnings import warn
 from chaospy import distributions as shape
-from qsdsan.utils import DictAttrSetter, AttrGetter, FuncGetter, \
-    get_SRT as srt, ospath, time_printer
+from qsdsan.utils import DictAttrSetter, ospath, time_printer
       
 from exposan.pm2 import (
     biomass_IDs,
@@ -122,7 +121,7 @@ def create_model(system=None):
 # =============================================================================
 
 @time_printer
-def run_uncertainty(model, N, T, t_step, method='LSODA', 
+def run_uncertainty(model, N, T, t_step, method='BDF', 
                     metrics_path='', timeseries_path='', 
                     rule='L', seed=None, pickle=False):
     if seed: np.random.seed(seed)
@@ -131,12 +130,12 @@ def run_uncertainty(model, N, T, t_step, method='LSODA',
     model.load_samples(samples)
     t_span = (0, T)
     t_eval = np.arange(0, T+t_step, t_step)
-    mpath = metrics_path or os.path.join(results_path, f'table_{seed}.xlsx')
+    mpath = metrics_path or ospath.join(results_path, f'table_{seed}.xlsx')
     if timeseries_path: tpath = timeseries_path
     else:
-        folder = os.path.join(results_path, f'time_series_data_{seed}')
+        folder = ospath.join(results_path, f'time_series_data_{seed}')
         os.mkdir(folder)
-        tpath = os.path.join(folder, 'state.npy')    
+        tpath = ospath.join(folder, 'state.npy')    
     model.evaluate(
         state_reset_hook='reset_cache',
         t_span=t_span,
@@ -145,73 +144,6 @@ def run_uncertainty(model, N, T, t_step, method='LSODA',
         export_state_to=tpath
         )
     model.table.to_excel(mpath)
-
-#%% 
-# =============================================================================
-# UA with random initial conditions to test steady state
-# =============================================================================
-
-'''
-def create_model(flowsheet=None):
-    sys = create_system(flowsheet)
-
-    unit = sys.flowsheet.unit
-    MIX = unit.MIX
-
-    model_ss = qs.Model(system=sys, exception_hook='raise')
-    param_ss = model_ss.parameter
-    # metric_ss = model_ss.metric
-    
-    get_uniform_w_frac = lambda b, frac: shape.Uniform(lower=b*(1-frac), upper=b*(1+frac))
-    
-    # Set initial conditions of all bioreactors
-    for k, v in _ic.items():
-        b = v
-        D = get_uniform_w_frac(b, 0.5)
-        @param_ss(name='initial '+k, element=MIX, kind='coupled', units='mg/L',
-                  baseline=b, distribution=D)
-        def ic_setter(conc): pass
-    
-    return model_ss
-
-@time_printer
-def run_wdiff_init(model, N, T, t_step, method='RK23', 
-                   metrics_path='', timeseries_path='', 
-                   rule='L', seed=None, pickle=False):
-    if seed: np.random.seed(seed)
-    # model = create_model(kind='steady state')
-    samples = model.sample(N=N, rule=rule)
-    t_span = (0, T)
-    t_eval = np.arange(0, T+t_step, t_step)
-    if timeseries_path: tpath = timeseries_path
-    else:
-        folder = ospath.join(results_path, f'time_series_data_{seed}')
-        os.mkdir(folder)
-        tpath = os.path.join(folder, 'state.npy')
-        
-    cmps = model.system.units[0].components
-      
-    for i, smp in enumerate(samples):
-        concs = dict(zip(cmps.IDs[0:-1], smp))
-        for u in model._system.units:
-            if u.ID in ('MIX', 'PBR1', 'PBR2', 'PBR3', 'PBR4', 'PBR5', 'PBR6', 'PBR7', 'PBR8', 'PBR9', 'PBR10', 
-            'PBR11', 'PBR12', 'PBR13', 'PBR14', 'PBR15', 'PBR16', 'PBR17', 'PBR18', 'PBR19', 'PBR20', 'MEV', 'RET'):
-                u.set_init_conc(**concs)
-            
-        model._system.simulate(
-            state_reset_hook='reset_cache',
-            t_span=t_span,
-            t_eval=t_eval,
-            method=method,
-            export_state_to=tpath,
-            sample_id=i,
-            )
-        
-    for u in model._system.units:
-        if u.ID in ('MIX', 'PBR1', 'PBR2', 'PBR3', 'PBR4', 'PBR5', 'PBR6', 'PBR7', 'PBR8', 'PBR9', 'PBR10', 
-        'PBR11', 'PBR12', 'PBR13', 'PBR14', 'PBR15', 'PBR16', 'PBR17', 'PBR18', 'PBR19', 'PBR20', 'MEV', 'RET'):
-            u.set_init_conc(**concs)
-'''
  
 #%%
 if __name__ == '__main__':
