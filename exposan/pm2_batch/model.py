@@ -22,8 +22,7 @@ from exposan.pm2 import (
     create_system, 
     default_init_conds as _ic, 
     results_path,
-    Q, Temp, V_mix, V_pbr, V_mem, V_ret,
-    T_pbr, T_mix, I_pbr, I_mix,
+    T, I,
     )
 
 __all__ = ('create_model', 'run_uncertainty',)
@@ -66,22 +65,15 @@ baseline_values_hifrac = {
 
 #%%
 
-def create_model(system=None, flowsheet=None):
-    sys = system or create_system(flowsheet)
-
-    stream = sys.flowsheet.stream
-    INF, PHO, ME, INT, TE, RETEN, RE, CE, CEN, ALG, RAA = stream.INF, stream.PHO, stream.ME, stream.INT, stream.TE, stream.RETEN, stream.RE, stream.CE, stream.CEN, stream.ALG, stream.RAA 
-
-    cmps = INF.components    
-
-    unit = sys.flowsheet.unit
-    MIX, PBR1, PBR2, PBR3, PBR4, PBR5, PBR6, PBR7, PBR8, PBR9, PBR10, PBR11, PBR12, PBR13, PBR14, PBR15, PBR16, PBR17, PBR18, PBR19, PBR20, MEM, MEV, POST_MEM, CENT, RET = unit.MIX, unit.PBR1, unit.PBR2, unit.PBR3, unit.PBR4, unit.PBR5, unit.PBR6, unit.PBR7, unit.PBR8, unit.PBR9, unit.PBR10, unit.PBR11, unit.PBR12, unit.PBR13, unit.PBR14, unit.PBR15, unit.PBR16, unit.PBR17, unit.PBR18, unit.PBR19, unit.PBR20, unit.MEM, unit.MEV, unit.POST_MEM, unit.CENT, unit.RET
+def create_model(system=None):
+    sys = system or create_system()
 
     model = qs.Model(system=sys, exception_hook='raise')
     param = model.parameter
     metric = model.metric
     
-    pm2 = MIX.suspended_growth_model
+    PBR = sys.units[0]
+    pm2 = PBR.model
 
     ##### General model with all uncertain variables #####
 
@@ -92,23 +84,34 @@ def create_model(system=None, flowsheet=None):
         b, units = v
         D = get_uniform_w_frac(b, 0.25)
         param(setter=DictAttrSetter(pm2.rate_function, '_params', k),
-              name=k, element=MIX, kind='coupled', units=units, distribution=D)     # element = MIX? INF?
+              name=k, element=PBR, kind='coupled', units=units, distribution=D)     # element = MIX? INF?
 
     for k, v in baseline_values_hifrac.items():
         b, units = v
         D = get_uniform_w_frac(b, 0.50)
         param(setter=DictAttrSetter(pm2.rate_function, '_params', k),
-              name=k, element=MIX, kind='coupled', units=units, distribution=D)
+              name=k, element=PBR, kind='coupled', units=units, distribution=D)
         
     ##### Add universal evaluation metrics #####   
-
-    for i in ('S_NH', 'S_P'): 
-        metric(getter=AttrGetter(TE, attr=i), name='Effluent '+i, 
-               units='mg/L', element='TE')                              # element?
+    @metric(name='Biomass', units='mg/L', element='')
+    def get_X_ALG():
+        return PBR.state['X_ALG']
     
-    for i in ('X_ALG', 'X_CH', 'X_LI'): 
-        metric(getter=AttrGetter(RET, attr=i), name='Return tank '+i, 
-               units='mg/L', element='RET')                             # element?
+    @metric(name='Carbohydrate', units='mg/L', element='')
+    def get_X_CH():
+        return PBR.state['X_CH']
+    
+    @metric(name='Lipid', units='mg/L', element='')
+    def get_X_LI():
+        return PBR.state['X_LI']
+    
+    @metric(name='Nitrogen', units='mg/L', element='')
+    def get_S_NH():
+        return PBR.state['S_NH']  
+    
+    @metric(name='Phosphorus', units='mg/L', element='')
+    def get_S_P():
+        return PBR.state['S_P']  
     
     return model
 
