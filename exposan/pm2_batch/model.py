@@ -16,8 +16,7 @@ from warnings import warn
 from chaospy import distributions as shape
 from qsdsan.utils import DictAttrSetter, ospath, time_printer
       
-from exposan.pm2 import (
-    biomass_IDs,
+from exposan.pm2_batch import (
     create_system, 
     default_init_conds as _ic, 
     results_path,
@@ -73,6 +72,8 @@ def create_model(system=None):
     
     PBR = sys.units[0]
     pm2 = PBR.model
+    
+    cmps = PBR.components
 
     ##### General model with all uncertain variables #####
 
@@ -103,7 +104,15 @@ def create_model(system=None):
     @metric(name='Lipid', units='mg/L', element='')
     def get_X_LI():
         return PBR.state['X_LI']
+ 
+    @metric(name='Stored N', units='mg/L', element='')
+    def get_X_N_ALG():
+        return PBR.state['X_N_ALG']
     
+    @metric(name='Stored P', units='mg/L', element='')
+    def get_X_P_ALG():
+        return PBR.state['X_P_ALG']
+        
     @metric(name='Nitrogen', units='mg/L', element='')
     def get_S_NH():
         return PBR.state['S_NH']  
@@ -111,6 +120,14 @@ def create_model(system=None):
     @metric(name='Phosphorus', units='mg/L', element='')
     def get_S_P():
         return PBR.state['S_P']  
+    
+    # Added
+    @metric(name='VSS', units='mg/L', element='')
+    def get_VSS():
+        return PBR.state['X_ALG'] * cmps.X_ALG.i_mass + \
+               PBR.state['X_CH'] * cmps.X_CH.i_mass + \
+               PBR.state['X_LI'] * cmps.X_LI.i_mass + \
+               PBR.state['X_N_ALG'] + PBR.state['X_P_ALG']    
     
     return model
 
@@ -148,9 +165,10 @@ def run_uncertainty(model, N, T, t_step, method='BDF',
 #%%
 if __name__ == '__main__':
     seed = 119
-    t = 50
-    t_step = 5
-    n = 2
+    t = 7
+    t_step = 0.05
+    # t_step = 0.25/24
+    n = 1000
     # method = 'RK45'
     # method = 'RK23'
     # method = 'DOP853'

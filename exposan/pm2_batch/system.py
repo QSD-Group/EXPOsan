@@ -32,19 +32,19 @@ __all__ = (
 T, I = EDV.batch_init(os.path.join(data_path, 'exo_vars.xlsx'), 'linear')
 
 default_init_conds = {
-    'X_CHL':2.31,
-    'X_ALG':461.18,
-    'X_CH':11.34,
-    'X_LI':59.58,
+    'X_CHL':3.91,
+    'X_ALG':782.30,
+    'X_CH':19.24,
+    'X_LI':101.06,
     'S_CO2':30.0,
     'S_A':5.0,
     'S_F':5.0,
-    'S_O2':5.0,
-    'S_NH':35.80,
-    'S_NO':0.7,
-    'S_P':0.36,
-    'X_N_ALG':2.94,
-    'X_P_ALG':10.55,
+    'S_O2':20.36,
+    'S_NH':27.84,
+    'S_NO':10.72,
+    'S_P':0.617,
+    'X_N_ALG':0.92,
+    'X_P_ALG':8.06,
     }
 
 default_pm2_kwargs = dict(

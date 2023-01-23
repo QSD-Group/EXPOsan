@@ -13,7 +13,7 @@ for license details.
 import os
 from time import time
 # from copy import deepcopy
-from qsdsan.utils import ospath
+from qsdsan.utils import ospath, load_data
 from qsdsan.stats import get_correlations
 from exposan.pm2_batch import (
     results_path, 
@@ -27,9 +27,13 @@ from exposan.pm2_batch import (
 # mpl.rcParams['font.sans-serif'] = 'arial'
 # mpl.rcParams["figure.autolayout"] = True
 
+# N = 10000
+# T = 20
+# t_step = 1/24
+
 N = 10000
-T = 20
-t_step = 1/24
+T = 7
+t_step = 0.25/24
 
 #%%
 def seed_RGT():
@@ -58,3 +62,23 @@ def run_UA_SA(seed=None, N=N, T=T, t_step=t_step, rmse_thresholds=[]):
 if __name__ == '__main__':
     seed = 119
     mdl = run_UA_SA(seed=seed)
+    
+    
+#%%
+
+# import experiemental data
+folder = ospath.dirname(__file__)
+file = ospath.join(folder, 'data/batch_exp_result.xlsx')
+exp_data = load_data(file, sheet=None)
+
+
+# import uncertainty & sensitivity analysis results as time-series data
+
+simul_data = 
+# one-to-one correspondence
+
+corr_VSS = exp_data.merge(simul_data[['t_stamp', 'VSS']], on='t_stamp', how='left')
+corr_NH = exp_data.merge(simul_data[['t_stamp', 'S_NH']], on='t_stamp', how='left')
+corr_P = exp_data.merge(simul_data[['t_stamp', 'S_P']], on='t_stamp', how='left')
+
+# calculation of RMSE
