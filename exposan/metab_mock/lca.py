@@ -15,7 +15,6 @@ from exposan.metab_mock import data_path
 from qsdsan.utils import ospath
 from bw2qsd import DataDownloader as ddld, CFgetter, remove_setups_pickle
 from bw2qsd.utils import format_name
-from qsdsan import ImpactIndicator as IInd, ImpactItem as IItm
 
 # dld = ddld()
 # dld.available_databases
@@ -128,13 +127,10 @@ def format_alias_TRACI(ind):
 
 #%%
 if __name__ == '__main__':
-    # path = ospath.join(data_path, 'CFs.xlsx')
-    # ei = export_ei_CFs(path)
-    # df = ei.export_indicators(name_formatter=format_name_TRACI, 
-    #                           alias_formatter=format_alias_TRACI,
-    #                           path=ospath.join(data_path, 'TRACI_indicators.xlsx'))
-    # traci_inds = IInd.get_all_indicators()
-    ei = export_ei_CFs()
-    IInd.load_from_file(ospath.join(data_path, 'TRACI_indicators.xlsx'), sheet=0)
-    IItm.load_from_file(ospath.join(data_path, '_impact_items.xlsx'))
+    path = ospath.join(data_path, 'ecoinvent38_CFs.xlsx')
+    ei = export_ei_CFs(path)
+    df = ei.export_indicators(name_formatter=format_name_TRACI, 
+                              alias_formatter=format_alias_TRACI,
+                              path=ospath.join(data_path, 'TRACI_indicators.xlsx'))
+    # ei = export_ei_CFs()
     remove_setups_pickle()

@@ -32,7 +32,7 @@ __all__ = ('rhos_adm1_ph_ctrl',
 add_prefix = lambda dct, prefix: {f'{prefix} - {k}':v for k,v in dct.items()}
 
 def _construct_water_pump(pump):
-    hp = pump.design_results['power'] * pump.parallel['self']
+    hp = pump.design_results['Power'] * pump.parallel['self']
     if hp > 29.5: 
         q22 = hp/29.5
         q40 = 0    
@@ -42,7 +42,7 @@ def _construct_water_pump(pump):
     return q22, q40
 
 def _construct_vacuum_pump(pump):
-    kW = pump.design_results['power'] * pump.parallel['self'] * 0.7457
+    kW = pump.design_results['Power'] * pump.parallel['self'] * 0.7457
     return (kW/4)**0.6
 
 #%% rhos_adm1_ph_ctrl
@@ -130,17 +130,33 @@ def rhos_adm1_ph_ctrl(state_arr, params):
 #%% Beads
 class Beads(Equipment):
     
+    _units = {
+        'EG': 'kg',
+        'MAA': 'kg',
+        'PAM': 'kg',
+        'FMD': 'kg',
+        'CuSO4': 'kg',
+        'H2SO4': 'kg',
+        'DMA': 'kg',
+        'EDCl': 'kg',
+        'KOH': 'kg',
+        'NaPS': 'kg',
+        'GAC': 'kg'
+        }
+    
     def __init__(self, F_BM=1.1, lifetime=1, **kwargs):
-        super().__init__(F_BM=F_BM, lifetime=lifetime, **kwargs)
+        super().__init__(F_BM=F_BM, lifetime=lifetime, 
+                         units=Beads._units, **kwargs)
         const = []
+        # breakpoint()
         for k, v in self._units.items():
             const.append(
-                Construction(ID=f'beads_{k}', linked_unit=self.linked_unit,
+                Construction(ID=f'{self.ID}_{k}',
                              item=k, lifetime=lifetime)
                 )
         for k in self._manufacturing_unit_input.keys():
             const.append(
-                Construction(ID=f'beads_{k}', linked_unit=self.linked_unit,
+                Construction(ID=f'{self.ID}_{k}', 
                              item=k, lifetime=lifetime)
                 )
         self.construction = const
@@ -164,26 +180,12 @@ class Beads(Equipment):
         'PAC': 393/5                       # USD/kg; https://www.sigmaaldrich.com/US/en/product/sigald/161551
         }
     
-    _bead_density = 1400    # kg/m3
+    _bead_density = 1860    # kg/m3
     _manufacturing_unit_input = {
         'chemical_factory': (4e-10, ''),    # unit/kg
         'electricty': (0.02, 'kWh'),        # kWh/kg
         'heat': (1.6e-6, 'MJ'),             # MJ/kg
         'trucking': (15e-3, 'tonne*km')     # km, assume transport distance is always 15 km
-        }
-    
-    _units = {
-        'EG': 'kg',
-        'MAA': 'kg',
-        'PAM': 'kg',
-        'FMD': 'kg',
-        'CuSO4': 'kg',
-        'H2SO4': 'kg',
-        'DMA': 'kg',
-        'EDCl': 'kg',
-        'KOH': 'kg',
-        'NaPS': 'kg',
-        'GAC': 'kg'
         }
     
     def _design(self):
@@ -195,11 +197,11 @@ class Beads(Equipment):
         creg = Construction.registry
         get = getattr
         for k, v in D.items():
-            const = get(creg, f'{linked_unit.ID}_beads_{k}')
+            const = get(creg, f'{self.ID}_{k}')
             const.quantity = v
         for k, v in self._manufacturing_unit_input.items():
             qt, qu = v
-            const = get(creg, f'{linked_unit.ID}_beads_{k}')
+            const = get(creg, f'{self.ID}_{k}')
             const.quantity = m_beads*qt
         return D
         
@@ -394,16 +396,17 @@ class DegassingMembrane(SanUnit):
         creg = Construction.registry
         get = getattr
         if self.include_construction:
+            flowsheet_ID = self.system.flowsheet.ID
             for i in self._units.keys():
-                const = get(creg, f'{self.ID}_{i}')
+                const = get(creg, f'{flowsheet_ID}_{self.ID}_{i}')
                 const.quantity = D[i]
             q22, q40 = _construct_water_pump(wat)
-            p22 = get(creg, f'{wat.ID}_22kW')
-            p40 = get(creg, f'{wat.ID}_40W')
+            p22 = get(creg, f'{flowsheet_ID}_{wat.ID}_22kW')
+            p40 = get(creg, f'{flowsheet_ID}_{wat.ID}_40W')
             p22.quantity = q22
             p40.quantity = q40
             qvac = _construct_vacuum_pump(vac)
-            pvac = get(creg, f'{vac.ID}_surrogate')
+            pvac = get(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
             pvac.quantity = qvac
     
     def _cost(self):
@@ -647,6 +650,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
         self._hdpe_ids, self._hdpe_kgs = pipe_IDs, HDPE_pipes
         
         # Pumps
+        flowsheet_ID = self.system.flowsheet.ID
         HWc = self._Hazen_Williams_coefficients
         getfield = getattr
         creg = Construction.registry
@@ -662,8 +666,8 @@ class METAB_AnCSTR(AnaerobicCSTR):
             pump.simulate()
             if self.include_construction:
                 q22, q40 = _construct_water_pump(pump)
-                p22 = getfield(creg, f'{pump.ID}_22kW')
-                p40 = getfield(creg, f'{pump.ID}_40W')
+                p22 = getfield(creg, f'{flowsheet_ID}_{pump.ID}_22kW')
+                p40 = getfield(creg, f'{flowsheet_ID}_{pump.ID}_40W')
                 p22.quantity = q22
                 p40.quantity = q40
         
@@ -671,7 +675,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
             for i in ('Wall concrete', 'Slab concrete', 'Stainless steel', 
                       'Rockwool', 'Aluminum sheet', 'HDPE pipes'):
                 name = i.lower().replace(' ', '_')
-                const = getfield(creg, f'{self.ID}_{name}')
+                const = getfield(creg, f'{flowsheet_ID}_{self.ID}_{name}')
                 const.quantity = D[i]
                         
         # Beads
@@ -752,11 +756,11 @@ class IronSpongeTreatment(Equipment):
         linked_unit = self.linked_unit
         self.construction = [
             Construction(ID=f'{self.ID}_carbon_steel', linked_unit=linked_unit,
-                         item='carbon_steel', lifetime=lifetime['Vessel']),
+                         item='carbon_steel', lifetime=lt['Vessel']),
             Construction(ID=f'{self.ID}_iron_sponge', linked_unit=linked_unit,
-                         item='iron_sponge', lifetime=lifetime['Iron sponge']),
+                         item='iron_sponge', lifetime=lt['Iron sponge']),
             Construction(ID=f'{self.ID}_compressor', linked_unit=linked_unit,
-                         item='air_compressor', lifetime=lifetime['Compressor']),
+                         item='air_compressor', lifetime=lt['Compressor']),
             ]
     
     _vessel_thickness = 5            # mm
