@@ -184,7 +184,7 @@ def encap_material_input(V_beads, n_bead=45, d_bead=0.4, PEGDMA_1000=4.5e-3,
     n_batch = V_beads / (n_bead*v_bead)
     EG, MAA = make_pegdma(n_batch*PEGDMA_1000)
     PAM, FMD, CuSO4, H2SO4 = make_bis(n_batch*BIS)
-    DMA, EDCl, KOH = make_temed(n_batch*TEMED)
+    DMA, EDCl, KOH = make_temed(n_batch*TEMED*0.78)   # TEMED density is 0.78 kg/L at 20 degree C
     NaPS = sub_APS(n_batch*APS)
     GAC = n_batch*PAC
     return dict(zip(encap_items.keys(), [EG, MAA, PAM, FMD, CuSO4, H2SO4, DMA, EDCl, KOH, NaPS, GAC]))

@@ -156,6 +156,14 @@ class Beads(Equipment):
         'PAC': 393/5                       # USD/kg; https://www.sigmaaldrich.com/US/en/product/sigald/161551
         }
     
+    _bead_density = 1400    # kg/m3
+    _manufacturing_unit_input = {
+        'chemical_factory': (4e-10, ''),   # unit/kg
+        'electricty': (0.02, 'kWh'),          # kWh/kg
+        'heat': (1.6e-3, 'kJ'),             # kJ/kg
+        'trucking': (15, 'km*kg')              # km
+        }
+    
     _units = {
         'EG': 'kg',
         'MAA': 'kg',
@@ -175,12 +183,20 @@ class Beads(Equipment):
         units = self._units
         lifetime = self.lifetime
         V_beads = linked_unit.design_results['Bead volume']
+        m_beads = V_beads * self._bead_density
         D = self._design_results
         D.update(encap_lci.encap_material_input(V_beads, **self._recipe))
         for k, v in D.items():
             self.construction.append(
                 Construction(ID=f'beads_{k}', linked_unit=linked_unit,
                              item=k, quantity=v, quantity_unit=units[k],
+                             lifetime=lifetime)
+                )
+        for k, v in self._manufacturing_unit_input.items():
+            qt, qu = v
+            self.construction.append(
+                Construction(ID=f'beads_{k}', linked_unit=linked_unit,
+                             item=k, quantity=m_beads*qt, quantity_unit=qu,
                              lifetime=lifetime)
                 )
         return D
