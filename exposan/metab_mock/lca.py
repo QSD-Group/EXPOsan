@@ -107,7 +107,7 @@ def export_ei_CFs(save_to=''):
     ei.load_activities('"transport, freight, lorry 3.5-7.5 metric ton", RoW', add=True)
     ei.load_activities('natural gas, low pressure, RoW', limit=1, add=True)  # offset
     
-    ei.get_CFs(show=False, path=save_to)
+    if save_to: ei.get_CFs(show=False, path=save_to)
     return ei
 
 def format_name_TRACI(name):
@@ -128,11 +128,13 @@ def format_alias_TRACI(ind):
 
 #%%
 if __name__ == '__main__':
-    path = ospath.join(data_path, 'CFs.xlsx')
-    ei = export_ei_CFs(path)
+    # path = ospath.join(data_path, 'CFs.xlsx')
+    # ei = export_ei_CFs(path)
     # df = ei.export_indicators(name_formatter=format_name_TRACI, 
     #                           alias_formatter=format_alias_TRACI,
     #                           path=ospath.join(data_path, 'TRACI_indicators.xlsx'))
-    # IInd.load_from_file(df)
     # traci_inds = IInd.get_all_indicators()
+    ei = export_ei_CFs()
+    IInd.load_from_file(ospath.join(data_path, 'TRACI_indicators.xlsx'), sheet=0)
+    IItm.load_from_file(ospath.join(data_path, '_impact_items.xlsx'))
     remove_setups_pickle()
