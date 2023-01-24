@@ -41,11 +41,11 @@ encap_items = {
 #     }
 
 unit_price = {
-    'PEGDMA_1000': 1017.00,            # USD/kg; https://www.polysciences.com/default/polyethylene-glycol-dimethacrylate-pegdma-1000
-    'BIS': 137/0.5,                    # USD/kg; https://www.sigmaaldrich.com/US/en/product/sial/146072
-    'TEMED': 169.00,                   # USD/L;  https://www.sigmaaldrich.com/US/en/product/mm/808742
-    'APS': 237/2.5,                    # USD/kg; https://www.sigmaaldrich.com/US/en/product/sigald/215589    
-    'PAC': 393/5                       # USD/kg; https://www.sigmaaldrich.com/US/en/product/sigald/161551
+    'PEGDMA_1000': 21,            # 20-22 USD/kg; https://www.echemi.com/produce/pr2210112485-polyethyleneglycoldimethacrylate-99-colourless-liquid-c8h4na2o4-pharmacy-grade-senwayer.html
+    'BIS': 10,                    # 5-15 USD/kg; https://www.alibaba.com/product-detail/Best-price-N-N-Methylenebisacrylamide-CAS_1600724924581.html?spm=a2700.galleryofferlist.normal_offer.d_title.58d341d0GVNAh1
+    'TEMED': 16*0.775,            # 3-30 USD/kg, 0.775 kg/L; https://www.alibaba.com/product-detail/TMEDA-N-N-N-N-tetramethylethylenediamine_1600669191140.html?spm=a2700.galleryofferlist.normal_offer.d_title.78635f0fXo3DvL
+    'APS': 2.8,                   # 1.6-4.0 USD/kg; https://www.alibaba.com/product-detail/Persulfate-Ammonium-Molecular-formula-NH4-2S2O8_1600618995452.html?spm=a2700.galleryofferlist.normal_offer.d_title.17b42c417WytQh    
+    'PAC': 1.5,                   # 1.38-1.60 USD/kg; https://www.alibaba.com/product-detail/Best-Sale-325mesh-Wood-Based-Powder_1600694829290.html?spm=a2700.galleryofferlist.normal_offer.d_title.62c1efdbTj3aHI&s=p
     }
 
 def encap_material_cost(V_beads, n_bead=45, d_bead=0.4, PEGDMA_1000=4.5e-3, 
@@ -184,7 +184,7 @@ def encap_material_input(V_beads, n_bead=45, d_bead=0.4, PEGDMA_1000=4.5e-3,
     n_batch = V_beads / (n_bead*v_bead)
     EG, MAA = make_pegdma(n_batch*PEGDMA_1000)
     PAM, FMD, CuSO4, H2SO4 = make_bis(n_batch*BIS)
-    DMA, EDCl, KOH = make_temed(n_batch*TEMED*0.78)   # TEMED density is 0.78 kg/L at 20 degree C
+    DMA, EDCl, KOH = make_temed(n_batch*TEMED*0.775)   # TEMED density is 0.775 kg/L at 20 degree C
     NaPS = sub_APS(n_batch*APS)
     GAC = n_batch*PAC
     return dict(zip(encap_items.keys(), [EG, MAA, PAM, FMD, CuSO4, H2SO4, DMA, EDCl, KOH, NaPS, GAC]))

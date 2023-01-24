@@ -173,11 +173,11 @@ class Beads(Equipment):
         )
 
     _price = {
-        'PEGDMA_1000': 1017.00,            # USD/kg; https://www.polysciences.com/default/polyethylene-glycol-dimethacrylate-pegdma-1000
-        'BIS': 137/0.5,                    # USD/kg; https://www.sigmaaldrich.com/US/en/product/sial/146072
-        'TEMED': 169.00,                   # USD/L;  https://www.sigmaaldrich.com/US/en/product/mm/808742
-        'APS': 237/2.5,                    # USD/kg; https://www.sigmaaldrich.com/US/en/product/sigald/215589    
-        'PAC': 393/5                       # USD/kg; https://www.sigmaaldrich.com/US/en/product/sigald/161551
+        'PEGDMA_1000': 21,            # 20-22 USD/kg; https://www.echemi.com/produce/pr2210112485-polyethyleneglycoldimethacrylate-99-colourless-liquid-c8h4na2o4-pharmacy-grade-senwayer.html
+        'BIS': 10,                    # 5-15 USD/kg; https://www.alibaba.com/product-detail/Best-price-N-N-Methylenebisacrylamide-CAS_1600724924581.html?spm=a2700.galleryofferlist.normal_offer.d_title.58d341d0GVNAh1
+        'TEMED': 16*0.775,            # 3-30 USD/kg, 0.775 kg/L; https://www.alibaba.com/product-detail/TMEDA-N-N-N-N-tetramethylethylenediamine_1600669191140.html?spm=a2700.galleryofferlist.normal_offer.d_title.78635f0fXo3DvL
+        'APS': 2.8,                   # 1.6-4.0 USD/kg; https://www.alibaba.com/product-detail/Persulfate-Ammonium-Molecular-formula-NH4-2S2O8_1600618995452.html?spm=a2700.galleryofferlist.normal_offer.d_title.17b42c417WytQh    
+        'PAC': 1.5,                   # 1.38-1.60 USD/kg; https://www.alibaba.com/product-detail/Best-Sale-325mesh-Wood-Based-Powder_1600694829290.html?spm=a2700.galleryofferlist.normal_offer.d_title.62c1efdbTj3aHI&s=p
         }
     
     _bead_density = 1860    # kg/m3
@@ -446,8 +446,8 @@ class METAB_AnCSTR(AnaerobicCSTR):
     
     auxiliary_unit_names = ('heat_exchanger', )
     
-    def __init__(self, ID='', lifetime=20, bead_lifetime=3,
-                 encapsulate_concentration=25, 
+    def __init__(self, ID='', lifetime=20, bead_lifetime=10,
+                 encapsulate_concentration=25,
                  reactor_height_to_diameter=1.5,
                  wall_concrete_unit_cost=1081.73,
                  slab_concrete_unit_cost=582.48,
@@ -494,7 +494,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
             self.auxiliary_unit_names = tuple({*self.auxiliary_unit_names, field})
         super()._setup()
         
-    _steel_separator_thickness = 15    # mm
+    _steel_separator_thickness = 5     # mm
     _steel_wall_thickness = 30         # mm
     _steel_base_thickness = 40         # mm
     _steel_insulate_thickness = 50     # mm
@@ -626,6 +626,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
         duty = (wall_loss+base_loss+cover_loss)*60*60/1e3 # kJ/hr
         hx.H = hx_ins0.H + duty # stream heating and heat loss
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
+        if T <= mixed.T: hx.heat_utilities[0].cost = 0
         
         # Piping
         df_l = load_data(self._HDPE_pipe_path, header=[0,1], index_col=None)
@@ -736,9 +737,9 @@ class IronSpongeTreatment(Equipment):
     # https://projects.sare.org/wp-content/uploads/3b-Iron-Sponge-design-Considerations.pdf
     
     _default_lifetime = {
-        'Vessel': 10,
-        'Compressor': 10,
-        'Control system': 10,
+        'Vessel': int(10),
+        'Compressor': int(10),
+        'Control system': int(10),
         'Iron sponge': 1,
         }
     
@@ -771,7 +772,7 @@ class IronSpongeTreatment(Equipment):
     _compressibility = 1.
     
     _prices = {
-        'Control system': 10400,      # $ per
+        'Control system': 104,        # $ per
         'Compressor': 5180,           # $/kW
         'Vessel': 3110,               # $/m2, 15 psig
         'Iron sponge': 2.07           # $/kg
@@ -798,7 +799,6 @@ class IronSpongeTreatment(Equipment):
     def _design(self):
         D = self._design_results
         linked_unit = self.linked_unit
-        units = self._units
         lifetime = self.lifetime
         mixed = self._mixed
         product_bgs = [ws for ws in linked_unit._system.products\
