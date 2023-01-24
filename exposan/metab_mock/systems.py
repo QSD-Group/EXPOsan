@@ -41,17 +41,17 @@ __all__ = (
     )
 
 #%% default values
-
-Q = 5           # influent flowrate [m3/d]
+scale = 1
+Q = 5*scale          # influent flowrate [m3/d]
 # T1 = 273.15+35  # temperature [K]
 T1 = 273.15+25
-Vl1 = 5         # liquid volume [m^3]
-Vg1 = 0.556     # headspace volume [m^3]
+Vl1 = 5*scale         # liquid volume [m^3]
+Vg1 = 0.556*(scale**0.5)     # headspace volume [m^3]
 ph1 = 5.8
 
 T2 = 273.15+25    
-Vl2 = 75
-Vg2 = 5
+Vl2 = 75*scale
+Vg2 = 5*(scale**0.5)
 ph2 = 7.2
 
 Temp1 = EDV('T1', function=lambda t: T1)
