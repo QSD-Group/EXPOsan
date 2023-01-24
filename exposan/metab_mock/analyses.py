@@ -24,7 +24,12 @@ lt = 20
 irr = 0.1
 
 sysA, = create_systems(which='A')
-sysA.simulate(state_reset_hook='reset_cache', t_span=(0, 400), method='BDF')
-# teaA = TEA(sysA, discount_rate=irr, lifetime=lt)
+# sysA.simulate(state_reset_hook='reset_cache', t_span=(0, 400), method='BDF')
+teaA = TEA(sysA, discount_rate=irr, lifetime=lt, 
+           simulate_kwargs=dict(
+               state_reset_hook='reset_cache', 
+               t_span=(0, 400), 
+               method='BDF'
+               ))
 # #!!! add operation electricity, fugitive CH4, biogas offset
-# lcaA = LCA(sysA, lifetime=lt)
+# lcaA = LCA(sysA, lifetime=lt, simulate_system=False)
