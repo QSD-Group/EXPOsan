@@ -43,7 +43,8 @@ __all__ = (
 #%% default values
 
 Q = 5           # influent flowrate [m3/d]
-T1 = 273.15+35  # temperature [K]
+# T1 = 273.15+35  # temperature [K]
+T1 = 273.15+25
 Vl1 = 5         # liquid volume [m^3]
 Vg1 = 0.556     # headspace volume [m^3]
 ph1 = 5.8

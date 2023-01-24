@@ -183,7 +183,7 @@ class Beads(Equipment):
     _bead_density = 1860    # kg/m3
     _manufacturing_unit_input = {
         'chemical_factory': (4e-10, ''),    # unit/kg
-        'electricty': (0.02, 'kWh'),        # kWh/kg
+        'electricity': (0.02, 'kWh'),       # kWh/kg
         'heat': (1.6e-6, 'MJ'),             # MJ/kg
         'trucking': (15e-3, 'tonne*km')     # km, assume transport distance is always 15 km
         }
@@ -410,8 +410,8 @@ class DegassingMembrane(SanUnit):
             pvac.quantity = qvac
     
     def _cost(self):
-        D = self.design_results
-        self.baseline_purchase_costs = self.unit_price * D['Number']
+        D, C = self.design_results, self.baseline_purchase_costs
+        C['Module'] = self.unit_price * D['Number']
 
 #%% METAB_AnCSTR
 
@@ -499,8 +499,8 @@ class METAB_AnCSTR(AnaerobicCSTR):
     _steel_base_thickness = 40         # mm
     _steel_insulate_thickness = 50     # mm
     _concrete_cover_thickness = 100    # mm
-    _concrete_wall_thickness = 300     # mm
-    _concrete_base_thickness = 300     # mm
+    _concrete_wall_thickness = 150     # mm
+    _concrete_base_thickness = 160     # mm
     _cncr_insulate_thickness = 25      # mm
     _alum_facing_thickness = 3         # mm
     _gas_separator_r_frac = 0.75       # cone radius to reactor radius
@@ -516,6 +516,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
     _h_air = 37.5       # W/m2/K, convective heat transfer coefficient, assume at free air relative velocity = 10 m/s, https://www.engineeringtoolbox.com/convective-heat-transfer-d_430.html
     _h_water = 3000     # W/m2/K, assume moderate forced flow, https://www.engineersedge.com/heat_transfer/convective_heat_transfer_coefficients__13378.htm
     _k_rockwool = 0.038 # 0.035 – 0.040 W/m/K, thermal conductivity
+    _k_concrete = 2.4   # 1.6-3.2 W/m/K  # http://www.jett.dormaj.com/docs/Volume8/Issue%203/Investigation%20of%20Thermal%20Properties%20of%20Normal%20Weight%20Concrete%20for%20Different%20Strength%20Classes.pdf
     _k_ssteel = 20      # 16-24 W/m/K
     _k_alum = 230       # 205-250
     
@@ -568,7 +569,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
             *self._baffle_slope*2
         tface = self._alum_facing_thickness/1e3
         tsep = self._steel_separator_thickness/1e3
-        if V >= 25:
+        if V >= 5:
             twall = self._concrete_wall_thickness/1e3
             tcover = self._concrete_cover_thickness/1e3
             tbase = self._concrete_base_thickness/1e3
@@ -581,10 +582,18 @@ class METAB_AnCSTR(AnaerobicCSTR):
             D['Stainless steel'] = (S_cone+S_baffle) * tsep * den['Stainless steel']
             D['Rockwool'] = (S_base+S_wall) * tinsl * den['Rockwool']
             D['Aluminum sheet'] = (S_base+S_wall) * tface * den['Aluminum']
-            U = self._heat_transfer_coefficients
-            Uwall = U['Concrete wall, insulated']
-            Ucover = U['Concrete cover, insulated']
-            Ubase = U['Concrete floor']
+            # U = self._heat_transfer_coefficients
+            # Uwall = U['Concrete wall, insulated']
+            # Ucover = U['Concrete cover, insulated']
+            # Ubase = U['Concrete floor']
+            Uwall = Ucover = 1/(1/self._h_water + 1/self._h_air \
+                                + twall/self._k_concrete \
+                                + tinsl/self._k_rockwool \
+                                + tface/self._k_alum)
+            Ubase = 1/(1/self._h_water \
+                       + tbase/self._k_concrete \
+                       + tinsl/self._k_rockwool \
+                       + tface/self._k_alum)
         else:
             twall = tcover = self._steel_wall_thickness/1e3
             tbase = self._steel_base_thickness/1e3
