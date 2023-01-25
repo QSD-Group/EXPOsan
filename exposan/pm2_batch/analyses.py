@@ -16,8 +16,8 @@ from time import time
 from qsdsan.utils import ospath, load_data
 from qsdsan.stats import get_correlations
 from exposan.pm2_batch import (
-    results_path, 
-    # figures_path, 
+    results_path,
+    # figures_path,
     create_model,
     run_uncertainty
     )
@@ -31,9 +31,10 @@ from exposan.pm2_batch import (
 # T = 20
 # t_step = 1/24
 
-N = 10000
+N = 1000
 T = 7
-t_step = 0.25/24
+t_step = 0.01
+rmse_threshholds = 25
 
 #%%
 def seed_RGT():
@@ -51,10 +52,14 @@ def seed_RGT():
 def run_UA_SA(seed=None, N=N, T=T, t_step=t_step, rmse_thresholds=[]):
     seed = seed or seed_RGT()
     mdl = create_model()
+
     #!!! Need to define algorithm that determines an acceptable rmse for each metric
+
     run_uncertainty(mdl, N, T, t_step, seed=seed)
+
     D, p = get_correlations(mdl, kind='KS', thresholds=rmse_thresholds,
                             file=ospath.join(results_path, f'KS_test_{seed}.xlsx'))
+
     #!!! Can add functions to plot SA results
     return mdl
 
@@ -62,23 +67,3 @@ def run_UA_SA(seed=None, N=N, T=T, t_step=t_step, rmse_thresholds=[]):
 if __name__ == '__main__':
     seed = 119
     mdl = run_UA_SA(seed=seed)
-    
-    
-#%%
-
-# import experiemental data
-folder = ospath.dirname(__file__)
-file = ospath.join(folder, 'data/batch_exp_result.xlsx')
-exp_data = load_data(file, sheet=None)
-
-
-# import uncertainty & sensitivity analysis results as time-series data
-
-simul_data = 
-# one-to-one correspondence
-
-corr_VSS = exp_data.merge(simul_data[['t_stamp', 'VSS']], on='t_stamp', how='left')
-corr_NH = exp_data.merge(simul_data[['t_stamp', 'S_NH']], on='t_stamp', how='left')
-corr_P = exp_data.merge(simul_data[['t_stamp', 'S_P']], on='t_stamp', how='left')
-
-# calculation of RMSE
