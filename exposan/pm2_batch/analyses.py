@@ -14,7 +14,7 @@ import os
 from time import time
 # from copy import deepcopy
 from qsdsan.utils import ospath, load_data
-from qsdsan.stats import get_correlations
+from qsdsan.stats import get_correlations, plot_correlations
 from exposan.pm2_batch import (
     results_path,
     # figures_path,
@@ -26,10 +26,6 @@ from exposan.pm2_batch import (
 
 # mpl.rcParams['font.sans-serif'] = 'arial'
 # mpl.rcParams["figure.autolayout"] = True
-
-# N = 10000
-# T = 20
-# t_step = 1/24
 
 N = 1000
 T = 7
@@ -59,6 +55,8 @@ def run_UA_SA(seed=None, N=N, T=T, t_step=t_step, rmse_thresholds=[]):
 
     D, p = get_correlations(mdl, kind='KS', thresholds=rmse_thresholds,
                             file=ospath.join(results_path, f'KS_test_{seed}.xlsx'))
+
+    fig, ax = plot_correlations(D)
 
     #!!! Can add functions to plot SA results
     return mdl
