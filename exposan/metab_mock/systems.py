@@ -247,12 +247,14 @@ def create_systems(flowsheet_A=None, flowsheet_B=None,
         R1A = AB('R1A', ins=brewery_ww, outs=(bg1A, ''), 
                  V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
                  retain_cmps=R1_retain, 
-                 exogenous_vars=(Temp1, pH1))
+                 exogenous_vars=(Temp1, pH1),
+                 F_BM_default=1)
         R2A = AB('R2A', ins=R1A-1, outs=(bg2A, effA), 
                  V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
                  retain_cmps=R2_retain, 
                  exogenous_vars=(Temp2, pH2),
-                 equipment=[ISTA, GHA])
+                 equipment=[ISTA, GHA],
+                 F_BM_default=1)
     
         R1A.set_init_conc(**R1_init_conds)
         R2A.set_init_conc(**R2_init_conds)
@@ -278,13 +280,16 @@ def create_systems(flowsheet_A=None, flowsheet_B=None,
         R1B = AB('R1B', ins=infB, outs=(bg1B, ''), 
                  V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1,
                  retain_cmps=R1_retain, 
-                 exogenous_vars=(Temp1, pH1))
+                 exogenous_vars=(Temp1, pH1),
+                 F_BM_default=1)
         R2B = AB('R2B', ins=R1B-1, outs=(bgh2B, ''), 
                  V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
                  retain_cmps=R2_retain, 
                  exogenous_vars=(Temp2, pH2),
-                 equipment=[ISTB, GHB])
-        DM2B = DM('DM2B', ins=R2B-1, outs=(bgm2B, effB))
+                 equipment=[ISTB, GHB],
+                 F_BM_default=1)
+        DM2B = DM('DM2B', ins=R2B-1, outs=(bgm2B, effB),
+                  F_BM_default=1)
     
         R1B.set_init_conc(**R1_init_conds)
         R2B.set_init_conc(**R2_init_conds)

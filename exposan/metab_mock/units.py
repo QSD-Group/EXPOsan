@@ -453,6 +453,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
                  slab_concrete_unit_cost=582.48,
                  stainless_steel_unit_cost=4.19,
                  rockwool_unit_cost=0.59,
+                 carbon_steel_unit_cost=0.5, # https://www.alibaba.com/product-detail/ASTM-A106-Ss400-Q235-Standard-Ms_1600406694387.html?s=p
                  aluminum_unit_cost=15.56,
                  **kwargs):
         equip = kwargs.pop('equipment', [])
@@ -464,12 +465,14 @@ class METAB_AnCSTR(AnaerobicCSTR):
         self.slab_concrete_unit_cost = slab_concrete_unit_cost
         self.stainless_steel_unit_cost = stainless_steel_unit_cost
         self.rockwool_unit_cost = rockwool_unit_cost
+        self.carbon_steel_unit_cost = carbon_steel_unit_cost
         self.aluminum_unit_cost = aluminum_unit_cost
         hx_in = Stream(f'{ID}_hx_in')
         hx_out = Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
         for i in ('Wall concrete', 'Slab concrete', 'Stainless steel', 
-                  'Rockwool', 'Aluminum sheet', 'HDPE pipes'):
+                  'Rockwool', 'Carbon steel', 'HDPE pipes'):
+                  # 'Rockwool', 'Aluminum sheet', 'HDPE pipes'):
             name = i.lower().replace(' ', '_')
             self.construction.append(
                 Construction(ID=name, linked_unit=self, item=name)
@@ -511,6 +514,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
         'Aluminum': 2710,        # 2,640 - 2,810 kg/m3
         'Stainless steel': 7930, # kg/m3, 18/8 Chromium
         'Rockwool': 100,         # kg/m3
+        'Carbon steel': 7840
         }
     
     _h_air = 37.5       # W/m2/K, convective heat transfer coefficient, assume at free air relative velocity = 10 m/s, https://www.engineeringtoolbox.com/convective-heat-transfer-d_430.html
@@ -519,6 +523,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
     _k_concrete = 2.4   # 1.6-3.2 W/m/K  # http://www.jett.dormaj.com/docs/Volume8/Issue%203/Investigation%20of%20Thermal%20Properties%20of%20Normal%20Weight%20Concrete%20for%20Different%20Strength%20Classes.pdf
     _k_ssteel = 20      # 16-24 W/m/K
     _k_alum = 230       # 205-250
+    _k_csteel = 45
     
     T_air = 273.15 + 20
     T_earth = 273.15 + 20
@@ -544,11 +549,13 @@ class METAB_AnCSTR(AnaerobicCSTR):
         'Volume': 'm3',
         'Height': 'm',
         'Outer diameter': 'm',
+        'Area': 'm2',
         'Wall concrete': 'm3',
         'Slab concrete': 'm3',
         'Stainless steel': 'kg',
         'Rockwool': 'kg',
-        'Aluminum sheet': 'kg',
+        # 'Aluminum sheet': 'kg',
+        'Carbon steel': 'kg',
         'HDPE pipes': 'kg',
         'Bead volume': 'm3'
         }
@@ -581,7 +588,8 @@ class METAB_AnCSTR(AnaerobicCSTR):
             D['Slab concrete'] = S_base*(tcover + tbase)
             D['Stainless steel'] = (S_cone+S_baffle) * tsep * den['Stainless steel']
             D['Rockwool'] = (S_base+S_wall) * tinsl * den['Rockwool']
-            D['Aluminum sheet'] = (S_base+S_wall) * tface * den['Aluminum']
+            # D['Aluminum sheet'] = (S_base+S_wall) * tface * den['Aluminum']
+            D['Carbon steel'] = (S_base+S_wall) * tface * den['Carbon steel']
             # U = self._heat_transfer_coefficients
             # Uwall = U['Concrete wall, insulated']
             # Ucover = U['Concrete cover, insulated']
@@ -606,7 +614,8 @@ class METAB_AnCSTR(AnaerobicCSTR):
             D['Slab concrete'] = 0
             D['Stainless steel'] = ((S_cone+S_baffle) * tsep + V_stainless) * den['Stainless steel']
             D['Rockwool'] = (S_base*2+S_wall) * tinsl * den['Rockwool']
-            D['Aluminum sheet'] = (S_base*2+S_wall) * tface * den['Aluminum']
+            # D['Aluminum sheet'] = (S_base*2+S_wall) * tface * den['Aluminum']
+            D['Carbon steel'] = (S_base+S_wall) * tface * den['Carbon steel']
             Uwall = Ucover = 1/(1/self._h_water + 1/self._h_air \
                                 + twall/self._k_ssteel \
                                 + tinsl/self._k_rockwool \
@@ -683,7 +692,8 @@ class METAB_AnCSTR(AnaerobicCSTR):
         
         if self.include_construction:
             for i in ('Wall concrete', 'Slab concrete', 'Stainless steel', 
-                      'Rockwool', 'Aluminum sheet', 'HDPE pipes'):
+                      # 'Rockwool', 'Aluminum sheet', 'HDPE pipes'):
+                      'Rockwool', 'Carbon steel', 'HDPE pipes'):
                 name = i.lower().replace(' ', '_')
                 const = getfield(creg, f'{flowsheet_ID}_{self.ID}_{name}')
                 const.quantity = D[i]
@@ -705,7 +715,8 @@ class METAB_AnCSTR(AnaerobicCSTR):
         C['Slab concrete'] = D['Slab concrete']*self.slab_concrete_unit_cost
         C['Stainless steel'] = D['Stainless steel']*self.stainless_steel_unit_cost
         C['Rockwool'] = D['Rockwool']*self.rockwool_unit_cost
-        C['Aluminum sheet'] = D['Aluminum sheet']*self.aluminum_unit_cost
+        # C['Aluminum sheet'] = D['Aluminum sheet']*self.aluminum_unit_cost
+        C['Carbon steel'] = D['Carbon steel']*self.carbon_steel_unit_cost
         C['HDPE pipes'] = sum(hdpe_price(inch)*kg for inch, kg in zip(self._hdpe_ids, self._hdpe_kgs))
         self.add_equipment_cost()
     

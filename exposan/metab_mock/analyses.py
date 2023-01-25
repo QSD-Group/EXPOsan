@@ -27,7 +27,7 @@ p_ng = 0.688 # USD/therm of natural gas
 op_hr = 365*24
 get = getattr
 
-def run_tea_lca(sys):
+def run_tea_lca(sys, save_report=True):
     sys.simulate(state_reset_hook='reset_cache', t_span=(0, 400), method='BDF')
     F = sys.flowsheet
     inf = get(F.stream, f'BreweryWW_{F.ID}')
@@ -55,7 +55,7 @@ def run_tea_lca(sys):
             )
         )
     levelized_cost = -tea.annualized_NPV/(rCOD * op_hr *1e-3)
-    print(f'{sys.ID} TEA: levelized cost = ${levelized_cost}.2f/ton COD removed.')
+    print(f'{sys.ID} TEA: levelized cost = ${round(levelized_cost, 1)}/ton COD removed.')
     
     lca = LCA(
         sys, lifetime=lt, simulate_system=False,
@@ -65,12 +65,13 @@ def run_tea_lca(sys):
         biogas_offset = (-V_offset*lt*op_hr, 'm3')
         )
     
-    gwp = lca.get_total_impacts()['GlobalWarmingPotential']
+    gwp = lca.get_total_impacts()['GWP100']
     gwp_per_rcod = gwp/(rCOD * op_hr * lt *1e-3)
-    print(f'{sys.ID} LCA: GWP100 = {gwp_per_rcod}.2f kg CO2eq/ton COD removed.')
+    print(f'{sys.ID} LCA: GWP100 = {round(gwp_per_rcod, 1)} kg CO2eq/ton COD removed.')
     
-    sys.save_report(ospath.join(results_path, f'{F.ID}_tea_report.xlsx'))
-    lca.save_report(ospath.join(results_path, f'{F.ID}_lca_report.xlsx'))
+    if save_report:
+        sys.save_report(ospath.join(results_path, f'{F.ID}_csteel_tea_report.xlsx'))
+        lca.save_report(ospath.join(results_path, f'{F.ID}_csteel_lca_report.xlsx'))
     
     return sys
 
