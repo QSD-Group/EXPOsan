@@ -211,6 +211,11 @@ class Beads(Equipment):
                                           unit_prices=self._price.values())
         self._baseline_purchase_costs = C
         return C
+    
+    def update_lifetime(self, lt):
+        self.lifetime = int(lt)
+        for const in self.construction:
+            const.lifetime = lt
 
 #%% DegassingMembrane
 class DegassingMembrane(SanUnit):
@@ -380,6 +385,7 @@ class DegassingMembrane(SanUnit):
         total_mass = 10,             # kg
         )
 
+    #!!! need to add maintenance requirement, e.g., backwash, cleaning etc.
     def _design(self):
         D = self.design_results
         inf, = self.ins
@@ -449,12 +455,12 @@ class METAB_AnCSTR(AnaerobicCSTR):
     def __init__(self, ID='', lifetime=20, bead_lifetime=10,
                  encapsulate_concentration=25,
                  reactor_height_to_diameter=1.5,
-                 wall_concrete_unit_cost=1081.73,
-                 slab_concrete_unit_cost=582.48,
-                 stainless_steel_unit_cost=4.19,
-                 rockwool_unit_cost=0.59,
-                 carbon_steel_unit_cost=0.5, # https://www.alibaba.com/product-detail/ASTM-A106-Ss400-Q235-Standard-Ms_1600406694387.html?s=p
-                 aluminum_unit_cost=15.56,
+                 wall_concrete_unit_cost=1081.73,   # $850/m3 in 2014 USD, converted to 2021 USD with concrete PPI
+                 slab_concrete_unit_cost=582.48,    # $458/m3 in 2014 USD 
+                 stainless_steel_unit_cost=1.8,     # https://www.alibaba.com/product-detail/brushed-stainless-steel-plate-304l-stainless_1600391656401.html?spm=a2700.details.0.0.230e67e6IKwwFd
+                 rockwool_unit_cost=0.59,           # https://www.alibaba.com/product-detail/mineral-wool-insulation-price-mineral-wool_60101640303.html?spm=a2700.7724857.0.0.262334d1rZXb48
+                 carbon_steel_unit_cost=0.5,        # https://www.alibaba.com/product-detail/ASTM-A106-Ss400-Q235-Standard-Ms_1600406694387.html?s=p
+                 aluminum_unit_cost=2.32,           # https://www.alibaba.com/product-detail/High-Quality-Aluminum-Printing-Plate-Aluminum_1600498084965.html?spm=a2700.galleryofferlist.normal_offer.d_title.11395381QD1i3q
                  **kwargs):
         equip = kwargs.pop('equipment', [])
         equip.append(Beads(ID=f'{ID}_beads', lifetime=bead_lifetime))
@@ -482,6 +488,17 @@ class METAB_AnCSTR(AnaerobicCSTR):
         for equip in self.equipment:
             self.construction += equip.construction
     
+    @property
+    def bead_lifetime(self):
+        for equip in self.equipment:
+            if isinstance(equip, Beads): return equip.lifetime
+            
+    @bead_lifetime.setter
+    def bead_lifetime(self, lt):
+        for equip in self.equipment:
+            if isinstance(equip, Beads): 
+                equip.update_lifetime(lt)
+    
     def _setup(self):
         hasfield = hasattr
         setfield = setattr
@@ -505,7 +522,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
     _concrete_wall_thickness = 150     # mm
     _concrete_base_thickness = 160     # mm
     _cncr_insulate_thickness = 25      # mm
-    _alum_facing_thickness = 3         # mm
+    _facing_thickness = 3              # mm
     _gas_separator_r_frac = 0.75       # cone radius to reactor radius
     _gas_separator_h2r = 1/3**(1/2)    # cone height to cone radius
     _baffle_slope = 2/3**(1/2)         # slant/base of the baffles on the side wall
@@ -574,7 +591,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
         S_cone = pi*r_cone*(r_cone + (r_cone**2 + h_cone**2)**(1/2))
         S_baffle = (pi*(dia/2)**2 - pi*(dia/2*(self._gas_separator_r_frac-1))**2)\
             *self._baffle_slope*2
-        tface = self._alum_facing_thickness/1e3
+        tface = self._facing_thickness/1e3
         tsep = self._steel_separator_thickness/1e3
         if V >= 5:
             twall = self._concrete_wall_thickness/1e3
@@ -597,11 +614,14 @@ class METAB_AnCSTR(AnaerobicCSTR):
             Uwall = Ucover = 1/(1/self._h_water + 1/self._h_air \
                                 + twall/self._k_concrete \
                                 + tinsl/self._k_rockwool \
-                                + tface/self._k_alum)
+                                # + tface/self._k_alum)
+                                + tface/self._k_csteel)
             Ubase = 1/(1/self._h_water \
                        + tbase/self._k_concrete \
                        + tinsl/self._k_rockwool \
-                       + tface/self._k_alum)
+                       # + tface/self._k_alum)
+                       + tface/self._k_csteel)
+
         else:
             twall = tcover = self._steel_wall_thickness/1e3
             tbase = self._steel_base_thickness/1e3
@@ -619,11 +639,13 @@ class METAB_AnCSTR(AnaerobicCSTR):
             Uwall = Ucover = 1/(1/self._h_water + 1/self._h_air \
                                 + twall/self._k_ssteel \
                                 + tinsl/self._k_rockwool \
-                                + tface/self._k_alum)
+                                # + tface/self._k_alum)
+                                + tface/self._k_csteel)
             Ubase = 1/(1/self._h_water \
                        + tbase/self._k_ssteel \
                        + tinsl/self._k_rockwool \
-                       + tface/self._k_alum)
+                       # + tface/self._k_alum)
+                       + tface/self._k_csteel)
         
         # Calculate needed heating
         T = self.T

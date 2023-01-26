@@ -12,12 +12,8 @@ for license details.
 '''
 
 import numpy as np, qsdsan as qs
-from qsdsan import sanunits as su, processes as pc, WasteStream, System
-from qsdsan.utils import (
-    time_printer, ospath, auom,
-    ExogenousDynamicVariable as EDV,
-    )
-from chemicals.elements import molecular_weight as get_mw
+from qsdsan import processes as pc, WasteStream, System
+from qsdsan.utils import ospath, ExogenousDynamicVariable as EDV
 from exposan.metab_mock import (
     rhos_adm1_ph_ctrl,
     DegassingMembrane as DM, 
@@ -33,6 +29,7 @@ __all__ = (
     'default_inf_concs',
     'default_R1_init_conds',
     'default_R2_init_conds',
+    'default_R_init_conds',
     'R1_ss_conds',
     'R2_ss_conds',
     'yields_bl', 'mus_bl', 'Ks_bl',
@@ -43,8 +40,8 @@ __all__ = (
 #%% default values
 scale = 1
 Q = 5*scale          # influent flowrate [m3/d]
-# T1 = 273.15+35  # temperature [K]
-T1 = 273.15+25
+T1 = 273.15+35  # temperature [K]
+# T1 = 273.15+25
 Vl1 = 5*scale         # liquid volume [m^3]
 Vg1 = 0.556*(scale**0.5)     # headspace volume [m^3]
 ph1 = 5.8
@@ -53,6 +50,9 @@ T2 = 273.15+25
 Vl2 = 75*scale
 Vg2 = 5*(scale**0.5)
 ph2 = 7.2
+
+bl = 1   # yr, bead lifetime
+# bl = 10
 
 Temp1 = EDV('T1', function=lambda t: T1)
 Temp2 = EDV('T2', function=lambda t: T2)
@@ -152,6 +152,35 @@ default_R2_init_conds = {
     'X_h2': 3.70*1e3,
     }
 
+default_R_init_conds = {
+ 'S_su': 0.32679646003805314,
+ 'S_aa': 0.3801610819236484,
+ 'S_fa': 12.437222319633748,
+ 'S_va': 0.3719673543175543,
+ 'S_bu': 0.47283246583627593,
+ 'S_pro': 0.3946420365926535,
+ 'S_ac': 10.182894473261367,
+ 'S_h2': 1.1655700001506622e-05,
+ 'S_ch4': 67.17348627201263,
+ 'S_IC': 846.4879614661522,
+ 'S_IN': 222.13725282096297,
+ 'S_I': 110.71467278942289,
+ 'X_c': 107.43132381172228,
+ 'X_ch': 1.2600235711799973,
+ 'X_pr': 1.3804329631122664,
+ 'X_li': 1.7696259648387357,
+ 'X_su': 732.9760678333023,
+ 'X_aa': 224.81751931525334,
+ 'X_fa': 126.7301174776879,
+ 'X_c4': 227.8726398428066,
+ 'X_pro': 140.2738127019708,
+ 'X_ac': 669.4626559278454,
+ 'X_h2': 245.67774602566578,
+ 'X_I': 206.42934561053158,
+ 'S_cat': 40.0,
+ 'S_an': 20.0,
+ }
+
 R1_ss_conds = {
     'S_su': 0.0145871088552909*1e3,
     'S_aa': 0.00643308564144693*1e3,
@@ -208,11 +237,11 @@ R2_ss_conds = {
 
 #%% Systems
 
-def create_systems(flowsheet_A=None, flowsheet_B=None, 
-                   inf_concs={}, R1_init_conds={}, R2_init_conds={}, which=None,
-                   selective=False):
+def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowsheet_D=None,
+                   inf_concs={}, R1_init_conds={}, R2_init_conds={}, R_init_conds={}, 
+                   which=None, selective=False):
     
-    which = which or ('A', 'B')
+    which = which or ('A', 'B', 'C', 'D')
     if isinstance(which, str): which = (which,)
     
     if selective: 
@@ -221,15 +250,18 @@ def create_systems(flowsheet_A=None, flowsheet_B=None,
     else: R1_retain = R2_retain = biomass_IDs
     pc.create_adm1_cmps()
     adm1 = pc.ADM1()
-    dyn_params = adm1.rate_function.params.copy()
-    adm1.set_rate_function(rhos_adm1_ph_ctrl)
-    adm1.rate_function._params = dyn_params
+    adm1_phctrl = pc.ADM1()
+    dyn_params = adm1_phctrl.rate_function.params.copy()
+    adm1_phctrl.set_rate_function(rhos_adm1_ph_ctrl)
+    adm1_phctrl.rate_function._params = dyn_params
+    
     inf_concs = inf_concs or default_inf_concs.copy()
     brewery_ww = WasteStream('BreweryWW_A')
     brewery_ww.set_flow_by_concentration(Q, concentrations=inf_concs, 
                                          units=('m3/d', 'kg/m3'))
     R1_init_conds = R1_init_conds or R1_ss_conds
     R2_init_conds = R2_init_conds or R2_ss_conds
+    R_init_conds = R_init_conds or default_R_init_conds
     systems = []
     
     if 'A' in which:
@@ -245,13 +277,13 @@ def create_systems(flowsheet_A=None, flowsheet_B=None,
         GHA = GH(ID='GHA')
         
         R1A = AB('R1A', ins=brewery_ww, outs=(bg1A, ''), 
-                 V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1, 
-                 retain_cmps=R1_retain, 
+                 V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1_phctrl, 
+                 retain_cmps=R1_retain, bead_lifetime=bl,
                  exogenous_vars=(Temp1, pH1),
                  F_BM_default=1)
         R2A = AB('R2A', ins=R1A-1, outs=(bg2A, effA), 
-                 V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
-                 retain_cmps=R2_retain, 
+                 V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1_phctrl,
+                 retain_cmps=R2_retain, bead_lifetime=bl,
                  exogenous_vars=(Temp2, pH2),
                  equipment=[ISTA, GHA],
                  F_BM_default=1)
@@ -278,13 +310,13 @@ def create_systems(flowsheet_A=None, flowsheet_B=None,
         GHB = GH(ID='GHB')
         
         R1B = AB('R1B', ins=infB, outs=(bg1B, ''), 
-                 V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1,
-                 retain_cmps=R1_retain, 
+                 V_liq=Vl1, V_gas=Vg1, T=T1, model=adm1_phctrl,
+                 retain_cmps=R1_retain, bead_lifetime=bl,
                  exogenous_vars=(Temp1, pH1),
                  F_BM_default=1)
         R2B = AB('R2B', ins=R1B-1, outs=(bgh2B, ''), 
-                 V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
-                 retain_cmps=R2_retain, 
+                 V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1_phctrl,
+                 retain_cmps=R2_retain, bead_lifetime=bl,
                  exogenous_vars=(Temp2, pH2),
                  equipment=[ISTB, GHB],
                  F_BM_default=1)
@@ -299,17 +331,62 @@ def create_systems(flowsheet_A=None, flowsheet_B=None,
         
         systems.append(sysB)
     
+    if 'C' in which:
+        flowsheet_C = flowsheet_C or qs.Flowsheet('C')
+        qs.main_flowsheet.set_flowsheet(flowsheet_C)
+        
+        infC = brewery_ww.copy('BreweryWW_C')
+        effC = WasteStream('Effluent_C', T=T2)
+        bgC = WasteStream('Biogas_C', phase='g')
+
+        ISTC = IST(ID='ISTC')
+        GHC = GH(ID='GHC')
+        
+        RC = AB('RC', ins=infC, outs=(bgC, effC), 
+                V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
+                retain_cmps=biomass_IDs, bead_lifetime=bl,
+                equipment=[ISTC, GHC],
+                F_BM_default=1)        
+        RC.set_init_conc(**R_init_conds)
+    
+        sysC = System('sysC', path=(RC,))
+        sysC.set_dynamic_tracker(RC, bgC, effC)
+        systems.append(sysC)
+        
+    if 'D' in which:
+        flowsheet_D = flowsheet_D or qs.Flowsheet('D')
+        qs.main_flowsheet.set_flowsheet(flowsheet_D)
+        
+        infD = brewery_ww.copy('BreweryWW_D')
+        effD = WasteStream('Effluent_D', T=T2)
+        bghD = WasteStream('Biogas_hsp_D', phase='g')
+        bgmD = WasteStream('Biogas_mem_D', phase='g')
+
+        ISTD = IST(ID='ISTD')
+        GHD = GH(ID='GHD')
+        
+        RD = AB('RD', ins=infD, outs=(bghD, ''), 
+                V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
+                retain_cmps=biomass_IDs, bead_lifetime=bl,
+                equipment=[ISTD, GHD],
+                F_BM_default=1)
+        DMD = DM('DMD', ins=RD-1, outs=(bgmD, effD),
+                  F_BM_default=1)
+        RD.set_init_conc(**R_init_conds)
+    
+        sysD = System('sysD', path=(RD, DMD))
+        sysD.set_dynamic_tracker(RD, bghD, bgmD, effD)
+        systems.append(sysD)
+    
     return systems
 
 #%%
 if __name__ == '__main__':
-    sysA, sysB = systems = create_systems()
-    # for sys in systems:
-    #     sys.simulate(
-    #         t_span=(0,400),
-    #         state_reset_hook='reset_cache',
-    #         method='BDF'
-    #         )
-        # sys.diagram()
-    au = sysA.flowsheet.unit
-    bu = sysB.flowsheet.unit
+    systems = create_systems()
+    for sys in systems:
+        sys.simulate(
+            t_span=(0,200),
+            state_reset_hook='reset_cache',
+            method='BDF'
+            )
+        sys.diagram()
