@@ -138,7 +138,8 @@ def create_model(system=None):
         mape_snh = sum(np.abs(snh_exp - snh_simul)/np.abs(snh_exp))/len(t_exp) * 100
 
         return mape_snh
-
+    
+    # denominator '0'?sp
     @metric (name='MAPE_SP', units='%', element='')
     def get_MAPE_SP():
         t_simul = PBR.scope.time_series
@@ -225,7 +226,7 @@ if __name__ == '__main__':
     t = 7
     t_step = 0.01
     # t_step = 0.25/24
-    n = 1
+    n = 1000
     # method = 'RK45'
     # method = 'RK23'
     # method = 'DOP853'

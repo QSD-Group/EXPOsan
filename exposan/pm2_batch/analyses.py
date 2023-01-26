@@ -30,7 +30,7 @@ from exposan.pm2_batch import (
 N = 1000
 T = 7
 t_step = 0.01
-rmse_threshholds = 25
+rmse_threshholds = [25, 25, 25]
 
 #%%
 def seed_RGT():
