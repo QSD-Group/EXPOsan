@@ -130,7 +130,7 @@ def create_model(system=None):
     @metric (name='MAPE_SNH', units='%', element='')
     def get_MAPE_SNH():
         t_simul = PBR.scope.time_series
-        result_simul_snh = PBR.scope.record[:,idx_snh]
+        result_simul_snh = PBR.scope.record[:,idx_snh].flatten()
 
         f = interp1d(t_simul, result_simul_snh)
         snh_simul = f(t_exp)
@@ -142,7 +142,7 @@ def create_model(system=None):
     @metric (name='MAPE_SP', units='%', element='')
     def get_MAPE_SP():
         t_simul = PBR.scope.time_series
-        result_simul_sp = PBR.scope.record[:,idx_sp]
+        result_simul_sp = PBR.scope.record[:,idx_sp].flatten()
 
         f = interp1d(t_simul, result_simul_sp)
         sp_simul = f(t_exp)
@@ -225,7 +225,7 @@ if __name__ == '__main__':
     t = 7
     t_step = 0.01
     # t_step = 0.25/24
-    n = 1000
+    n = 1
     # method = 'RK45'
     # method = 'RK23'
     # method = 'DOP853'
