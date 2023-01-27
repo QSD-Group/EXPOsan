@@ -19,9 +19,8 @@ from qsdsan.utils import DictAttrSetter, ospath, time_printer, load_data
 
 from exposan.pm2_batch import (
     create_system,
-    default_init_conds as _ic,
+    data_path,
     results_path,
-    T, I,
     )
 
 __all__ = ('create_model', 'run_uncertainty',)
@@ -62,15 +61,18 @@ baseline_values_hifrac = {
     'V_P': (0.016, 'g P/g COD/d'),
     }
 
-folder = ospath.dirname(__file__)
-file = ospath.join(folder, 'data/batch_exp_result.xlsx')
+file = ospath.join(data_path, 'batch_exp_result.xlsx')
 result_exp = load_data(file, sheet=0, index_col=None)
 
 t_exp = result_exp.t_stamp.to_numpy()
 
 vss_exp = result_exp.VSS.to_numpy()
 snh_exp = result_exp.S_NH.to_numpy()
-sp_exp = result_exp.S_P.to_numpy()
+sp_exp = np.maximum(result_exp.S_P.to_numpy(), 0.015)
+
+vss_range = max(vss_exp) - min(vss_exp)
+snh_range = max(snh_exp) - min(snh_exp)
+sp_range = max(sp_exp) - min(sp_exp)
 
 #%%
 
@@ -111,8 +113,10 @@ def create_model(system=None):
 
     imass = cmps.i_mass[idx_vss]
 
-    @metric (name='MAPE_VSS', units='%', element='')
-    def get_MAPE_VSS():
+    # @metric (name='MAPE_VSS', units='%', element='')
+    # def get_MAPE_VSS():
+    @metric(element='Error')
+    def NRMSE_VSS():
         t_simul = PBR.scope.time_series
         result_simul_vss = PBR.scope.record[:,idx_vss]
 
@@ -122,35 +126,41 @@ def create_model(system=None):
         f = interp1d(t_simul, vss)
         vss_simul = f(t_exp)
 
-        mape_vss = sum(np.abs(vss_exp - vss_simul)/np.abs(vss_exp))/len(t_exp) * 100
-        # rmse_vss = (sum((vss_exp - vss_simul)**2)/len(t_exp))**0.5
+        # mape_vss = sum(np.abs(vss_exp - vss_simul)/np.abs(vss_exp))/len(t_exp) * 100
+        # return mape_vss
+        rmse_vss = (sum((vss_exp - vss_simul)**2)/len(t_exp))**0.5
+        return rmse_vss/vss_range
+        
 
-        return mape_vss
-
-    @metric (name='MAPE_SNH', units='%', element='')
-    def get_MAPE_SNH():
+    # @metric (name='MAPE_SNH', units='%', element='')
+    # def get_MAPE_SNH():
+    @metric(element='Error')
+    def NRMSE_SNH():
         t_simul = PBR.scope.time_series
         result_simul_snh = PBR.scope.record[:,idx_snh].flatten()
 
         f = interp1d(t_simul, result_simul_snh)
         snh_simul = f(t_exp)
 
-        mape_snh = sum(np.abs(snh_exp - snh_simul)/np.abs(snh_exp))/len(t_exp) * 100
+        # mape_snh = sum(np.abs(snh_exp - snh_simul)/np.abs(snh_exp))/len(t_exp) * 100
+        # return mape_snh
+        rmse_snh = (sum((snh_exp - snh_simul)**2)/len(t_exp))**0.5
+        return rmse_snh/snh_range
 
-        return mape_snh
     
-    # denominator '0'?sp
-    @metric (name='MAPE_SP', units='%', element='')
-    def get_MAPE_SP():
+    # @metric (name='MAPE_SP', units='%', element='')
+    # def get_MAPE_SP():
+    @metric(element='Error')
+    def NRMSE_SP():
         t_simul = PBR.scope.time_series
         result_simul_sp = PBR.scope.record[:,idx_sp].flatten()
 
         f = interp1d(t_simul, result_simul_sp)
         sp_simul = f(t_exp)
-
-        mape_sp = sum(np.abs(sp_exp - sp_simul)/np.abs(sp_exp))/len(t_exp) * 100
-
-        return mape_sp
+        # mape_sp = sum(np.abs(sp_exp - sp_simul)/np.abs(sp_exp))/len(t_exp) * 100
+        # return mape_sp
+        rmse_sp = (sum((sp_exp - sp_simul)**2)/len(t_exp))**0.5
+        return rmse_sp/sp_range
 
     # @metric(name='Biomass', units='mg/L', element='')
     # def get_X_ALG():
@@ -219,14 +229,15 @@ def run_uncertainty(model, N, T, t_step, method='BDF',
         export_state_to=tpath
         )
     model.table.to_excel(mpath)
+    return model
 
 #%%
 if __name__ == '__main__':
-    seed = 119
+    seed = 120
     t = 7
     t_step = 0.01
     # t_step = 0.25/24
-    n = 1000
+    n = 10
     # method = 'RK45'
     # method = 'RK23'
     # method = 'DOP853'
@@ -234,4 +245,4 @@ if __name__ == '__main__':
     method = 'BDF'
     # method = 'LSODA'
     model = create_model()
-    run_uncertainty(model, n, t, t_step, method=method, seed=seed)
+    model = run_uncertainty(model, n, t, t_step, method=method, seed=seed)
