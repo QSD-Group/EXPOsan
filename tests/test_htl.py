@@ -17,10 +17,12 @@ __all__ = ('test_htl',)
 
 def test_htl():
     from numpy.testing import assert_allclose
-    from qsdsan.utils import clear_lca_registries
     from exposan import htl
 
+    # Because of different CF settings for ImpactItem with the same ID
+    from qsdsan.utils import clear_lca_registries
     clear_lca_registries()
+
     # m1 = htl.create_model('baseline', key_metrics_only=True)
     # df1 = m1.metrics_at_baseline()
     # values1 = [5.117, 169.9, 49380.0, 440.1]
