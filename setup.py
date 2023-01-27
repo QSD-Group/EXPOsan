@@ -5,6 +5,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+
     Yalin Li <mailto.yalin.li@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -49,6 +50,8 @@ setup(
             'htl/data/*',
             'interface/*',
             'metab_mock/*',
+            'new_generator/*',
+            'new_generator/data/*',
             'reclaimer/*',
             'reclaimer/data/*',
         ]},
