@@ -19,7 +19,8 @@ from qsdsan.utils import ospath, time_printer, \
     ExogenousDynamicVariable as EDV
 
 cmps = pc.create_pm2_cmps()
-pm2 = pc.PM2(mu_max=2, I_n=1000, I_opt=2000, V_NH=0.062, V_NO=0.003, V_P=0.0022, q_CH=1.2, q_LI=10)
+
+pm2 = pc.PM2(mu_max=1.4, I_n=1000, I_opt=2000, V_NH=0.062, V_NO=0.003, V_P=0.002, q_CH=1.2, q_LI=10, arr_a=4*10**10, f_CH_max=1.2, f_LI_max=3.9)
 
 pm2_path = ospath.dirname(__file__)
 data_path = ospath.join(pm2_path, 'data/exo_vars_batch_nov_kinetic.xlsx')
