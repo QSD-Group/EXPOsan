@@ -18,7 +18,7 @@ from setuptools import setup
 setup(
     name='exposan',
     packages=['exposan'],
-    version='1.2.4',
+    version='1.2.5',
     license='UIUC',
     author='Quantitative Sustainable Design Group',
     author_email='quantitative.sustainable.design@gmail.com',
@@ -30,7 +30,7 @@ setup(
         'Documentation': 'https://qsdsan.readthedocs.io',
         'Repository': 'https://github.com/QSD-Group/EXPOsan',
     },
-    install_requires=['qsdsan>=1.2.4',],
+    install_requires=['qsdsan>=1.2.5',],
     package_data=
         {'exposan': [
             'adm/*',
@@ -50,6 +50,8 @@ setup(
             'htl/data/*',
             'interface/*',
             'metab_mock/*',
+            'metab_mock/data/*',
+            'metab_mock/utils/*',
             'new_generator/*',
             'new_generator/data/*',
             'reclaimer/*',
