@@ -59,7 +59,8 @@ def run_UA_SA(seed=None, N=N, T=T, t_step=t_step, thresholds=[], plot=False):
                             )
     if plot: 
         plot_cdf_by_group(mdl, thresholds=thresholds)
-    # fig, ax = plot_correlations(D)
+    fig, ax = plot_correlations(D, close_fig=False, 
+                                file=ospath.join(figures_path, 'KS_test_D.png'))
     return mdl
 
 def update_thresholds(mdl, thresholds, metrics=None, quantile=0.25):
