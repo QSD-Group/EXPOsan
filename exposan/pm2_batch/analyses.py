@@ -111,20 +111,28 @@ def KS_test_var_thresholds(mdl=None, seed=None):
     if mdl is None:
         mdl = create_model()
         mdl.table = load_data(ospath.join(results_path, f'table_{seed}.xlsx'), 
-                              skiprows=[0,2], header=[0])
+                              header=[0,1])
     sig = []
+    thresholds = []
     quantiles = np.linspace(0.05, 0.5, 10)
     for q in quantiles:
         thrs = update_thresholds(mdl, [], quantile=q)
         D, p = mdl.kolmogorov_smirnov_d(thresholds=thrs)
+        thresholds.append(thrs)
         sig.append(p < 0.05)
     out = {m: pd.DataFrame() for m in var_indices(mdl.metrics)}
+    thresholds = np.asarray(thresholds).T
+    
     for s, q in zip(sig, quantiles):
         for m, df in out.items():
             df[q] = s[m]
     with pd.ExcelWriter(ospath.join(results_path, 'sig_params.xlsx')) as writer:
-        for m, df in out.items():
+        for m, thrs in zip(out, thresholds):
+            df = out[m]
             df.index = df.index.droplevel()
+            df.columns = pd.MultiIndex.from_tuples([(col, t) for col,t \
+                                                    in zip(df.columns, thrs)],
+                                                   names=['quantile', 'NRMSE'])
             df.to_excel(writer, sheet_name=m[-1])
 
 #%%
