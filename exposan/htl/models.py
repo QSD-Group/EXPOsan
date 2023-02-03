@@ -28,7 +28,7 @@ from exposan.htl import (
 
 __all__ = ('create_model',)
 
-def create_model(system=None, exclude_sludge_compositions=False, key_metrics_only=False):
+def create_model(system=None, exclude_sludge_compositions=False, exclude_yield=False, key_metrics_only=False):
     '''
     Create a model based on the given system
     (or create the system based on the given configuration).
@@ -408,15 +408,16 @@ def create_model(system=None, exclude_sludge_compositions=False, key_metrics_onl
     def set_CHG_catalyst_lifetime(i):
         CHG.catalyst_lifetime=i
     
-    dist = shape.Triangle(0.1893,0.5981,0.7798)
-    @param(name='gas_C_2_total_C',
-            element=CHG,
-            kind='coupled',
-            units='-',
-            baseline=0.5981,
-            distribution=dist)
-    def set_gas_C_2_total_C(i):
-        CHG.gas_C_2_total_C=i
+    if not exclude_yield:
+        dist = shape.Triangle(0.1893,0.5981,0.7798)
+        @param(name='gas_C_2_total_C',
+                element=CHG,
+                kind='coupled',
+                units='-',
+                baseline=0.5981,
+                distribution=dist)
+        def set_gas_C_2_total_C(i):
+            CHG.gas_C_2_total_C=i
     
     # =========================================================================
     # MemDis
@@ -567,15 +568,16 @@ def create_model(system=None, exclude_sludge_compositions=False, key_metrics_onl
     def set_HT_hydrogen_excess(i):
         HT.hydrogen_excess=i
     
-    dist = shape.Uniform(0.7875,0.9625)
-    @param(name='hydrocarbon_ratio',
-            element=HT,
-            kind='coupled',
-            units='-',
-            baseline=0.875,
-            distribution=dist)
-    def set_HT_hydrocarbon_ratio(i):
-        HT.hydrocarbon_ratio=i
+    if not exclude_yield:
+        dist = shape.Uniform(0.7875,0.9625)
+        @param(name='hydrocarbon_ratio',
+                element=HT,
+                kind='coupled',
+                units='-',
+                baseline=0.875,
+                distribution=dist)
+        def set_HT_hydrocarbon_ratio(i):
+            HT.hydrocarbon_ratio=i
     
     # =========================================================================
     # HC
