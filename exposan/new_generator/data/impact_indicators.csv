@@ -1,0 +1,5 @@
+﻿indicator,alias,unit,method,category,description
+GlobalWarming,GWP,kg CO2-eq,TRACI,environmental impact,Potential global warming based on chemical's radiative forcing and lifetime
+H_Ecosystems,,points,"ReCiPe Endpoint (H,A) (obsolete)",ecosystem quality,"('ReCiPe Endpoint (H,A) (obsolete)', 'ecosystem quality', 'total')"
+H_Health,,points,"ReCiPe Endpoint (H,A) (obsolete)",human health,"('ReCiPe Endpoint (H,A) (obsolete)', 'human health', 'total')"
+H_Resources,,points,"ReCiPe Endpoint (H,A) (obsolete)",resources,"('ReCiPe Endpoint (H,A) (obsolete)', 'resources', 'total')"

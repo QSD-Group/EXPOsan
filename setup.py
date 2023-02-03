@@ -5,6 +5,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+
     Yalin Li <mailto.yalin.li@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -17,7 +18,7 @@ from setuptools import setup
 setup(
     name='exposan',
     packages=['exposan'],
-    version='1.2.3',
+    version='1.2.5',
     license='UIUC',
     author='Quantitative Sustainable Design Group',
     author_email='quantitative.sustainable.design@gmail.com',
@@ -29,7 +30,7 @@ setup(
         'Documentation': 'https://qsdsan.readthedocs.io',
         'Repository': 'https://github.com/QSD-Group/EXPOsan',
     },
-    install_requires=['qsdsan>=1.2.2',],
+    install_requires=['qsdsan>=1.2.5',],
     package_data=
         {'exposan': [
             'adm/*',
@@ -49,6 +50,10 @@ setup(
             'htl/data/*',
             'interface/*',
             'metab_mock/*',
+            'metab_mock/data/*',
+            'metab_mock/utils/*',
+            'new_generator/*',
+            'new_generator/data/*',
             'reclaimer/*',
             'reclaimer/data/*',
         ]},

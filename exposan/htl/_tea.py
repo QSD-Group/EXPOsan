@@ -24,10 +24,7 @@ References:
 '''
 
 from biosteam import TEA
-import thermosteam as tmo
-import biosteam as bst
-import pandas as pd
-import numpy as np
+import numpy as np, pandas as pd, thermosteam as tmo, biosteam as bst
 
 __all__ = ('HTL_TEA', 'create_tea',)
 

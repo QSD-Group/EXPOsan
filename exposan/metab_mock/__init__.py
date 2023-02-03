@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Aug  4 13:50:10 2022
+'''
+EXPOsan: Exposition of sanitation and resource recovery systems
 
-@author: joy_c
-"""
+This module is developed by:
+    
+    Joy Zhang <joycheung1994@gmail.com>
+
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
+'''
 
 import os
 folder = os.path.dirname(__file__)
@@ -21,8 +27,8 @@ from .units import *
 from . import systems
 from .systems import *
 
-from . import models
-from .models import *
+# from . import models
+# from .models import *
 
 __all__ = (
     'folder',
@@ -31,5 +37,5 @@ __all__ = (
     'figures_path',
     *units.__all__,
     *systems.__all__,
-    *models.__all__,
+    # *models.__all__,
 	)

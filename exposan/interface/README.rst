@@ -20,7 +20,7 @@ Load the system
 	>>> from exposan import interface as inter
 	>>> inter.load()
 	>>> sys = inter.sys
-	>>> sys.simulate(t_span=(0, 50))
+	>>> sys.simulate(method='BDF', t_span=(0, 15)) # the default 'RK45' method can't solve it
 	>>> u = sys.flowsheet.unit # unit registry
 	>>> # Check the states of any one or more components
 	>>> fig, axis = u.AD1.scope.plot_time_series(u.AD1.components.IDs[:3])
