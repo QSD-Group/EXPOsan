@@ -309,19 +309,18 @@ def create_system(configuration='baseline'):
     PC5.register_alias('PC5')
     
     GasolineTank = qsu.StorageTank('T500', ins=PC1-0, outs=('gasoline'),
-                                    tau=3*24, init_with='Stream', vessel_material='Carbon steel')
+                                    tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
     # store for 3 days based on Jones 2014
     GasolineTank.register_alias('GasolineTank')
     
+    GasolineTank.outs[0].price = 0.9388
+    
     DieselTank = qsu.StorageTank('T510', ins=PC2-0, outs=('diesel'),
-                                  tau=3*24, init_with='Stream', vessel_material='Carbon steel')
+                                  tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
     # store for 3 days based on Jones 2014
     DieselTank.register_alias('DieselTank')
     
-    FuelMixer = su.FuelMixer('S570', ins=(GasolineTank-0, DieselTank-0),
-                             outs='fuel', target='gasoline')
-    # integrate gasoline and diesel based on their LHV for MFSP calculation
-    FuelMixer.register_alias('FuelMixer')
+    DieselTank.outs[0].price = 0.9722
     
     GasMixer = qsu.Mixer('S580', ins=(HTL-3, F1-0, F2-0, D1-0, F3-0),
                           outs=('fuel_gas'), init_with='Stream')
@@ -515,9 +514,22 @@ def create_system(configuration='baseline'):
                         NonCarcinogenics=-62.932,
                         RespiratoryEffects=-0.0031315)
     
+    # Gasoline (naphtha)
+    qs.StreamImpactItem(ID='gasoline_item',
+                        linked_stream=stream.gasoline,
+                        Acidification=-0.21813,
+                        Ecotoxicity=-0.15887,
+                        Eutrophication=-0.0010594,
+                        GlobalWarming=-0.36865,
+                        OzoneDepletion=-6.4977E-07,
+                        PhotochemicalOxidation=-0.00182,
+                        Carcinogenics=-0.00053932,
+                        NonCarcinogenics=-2.2524,
+                        RespiratoryEffects=-0.0009461)
+    
     # Diesel
     qs.StreamImpactItem(ID='diesel_item',
-                        linked_stream=stream.fuel,
+                        linked_stream=stream.diesel,
                         Acidification=-0.25164,
                         Ecotoxicity=-0.18748,
                         Eutrophication=-0.0010547,
