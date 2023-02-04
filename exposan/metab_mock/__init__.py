@@ -21,6 +21,12 @@ if not os.path.isdir(results_path): os.mkdir(results_path)
 if not os.path.isdir(figures_path): os.mkdir(figures_path)
 del os
 
+from . import process
+from .process import *
+
+from . import equipment
+from .equipment import *
+
 from . import units
 from .units import *
 
@@ -35,6 +41,8 @@ __all__ = (
     'data_path',
     'results_path',
     'figures_path',
+    *process.__all__,
+    *equipment.__all__,
     *units.__all__,
     *systems.__all__,
     # *models.__all__,

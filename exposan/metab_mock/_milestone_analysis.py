@@ -22,11 +22,11 @@ fugitive_ch4 = IItm(ID='fugitive_ch4', functional_unit='kg',
 
 #%%
 irr = 0.1
-# p_treatment = 0.28 # assume USD/kg COD centralized treatment
-p_ng = 0.688 # USD/therm of natural gas
+# p_ng = 0.65165 # USD/therm of natural gas charged to the brewery in 2016 (including tax and delivert etc.)
+p_ng = 0.85 # 5.47 2021USD/Mcf vs. 4.19 2016USD/Mcf
 op_hr = 365*24
 get = getattr
-PowerUtility.price = 0.0913
+PowerUtility.price = 0.0913 # 2021$ for minnesota area
 
 def run_tea_lca(sys, save_report=True, info='', lt=30):
     sys.simulate(state_reset_hook='reset_cache', t_span=(0, 400), method='BDF')
@@ -49,7 +49,7 @@ def run_tea_lca(sys, save_report=True, info='', lt=30):
     rCOD = inf.composite('COD', flow=True) - eff.composite('COD', flow=True)  # kgCOD/hr
 
     tea = TEA(
-        sys, discount_rate=irr, lifetime=lt, simulate_system=False, 
+        sys, discount_rate=irr, lifetime=lt, simulate_system=False, CEPCI=708,
         system_add_OPEX=dict(
             # COD_discharge_reduction = -rCOD*p_treatment*op_hr,
             NG_purchase_reduction = -auom('kJ').convert(offset,'therm')*p_ng*op_hr,
