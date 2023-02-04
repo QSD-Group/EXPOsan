@@ -40,6 +40,7 @@ from exposan.htl import (
     create_tea,
     )
 from exposan.htl import _sanunits as su
+from biosteam import settings
 
 __all__ = ('create_system',)
 
@@ -67,6 +68,7 @@ def create_system(configuration='baseline'):
     folder = os.path.dirname(__file__)
     qs.ImpactIndicator.load_from_file(os.path.join(folder, 'data/impact_indicators.csv'))
     qs.ImpactItem.load_from_file(os.path.join(folder, 'data/impact_items.xlsx'))
+    
     
     raw_wastewater = qs.Stream('raw_wastewater', H2O=100, units='MGD', T=25+273.15)
     # Jones baseline: 1276.6 MGD, 1.066e-4 $/kg ww
@@ -202,9 +204,9 @@ def create_system(configuration='baseline'):
     H2 = qsu.HXutility('A330', ins=V2-0, outs='cooled_HT', T=60+273.15,
                         init_with='Stream', rigorous=True)
     H2.register_alias('H2')
-    
+
     F2 = qsu.Flash('A340', ins=H2-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
-               P=717.4*6894.76) # outflow P
+               P=717.4*6894.76, thermo=settings.thermo.ideal()) # outflow P
     F2.register_alias('F2')
     
     V3 = IsenthalpicValve('A350', ins=F2-1, outs='depressed_flash_effluent', P=55*6894.76, vle=True)
@@ -317,7 +319,7 @@ def create_system(configuration='baseline'):
     DieselTank.register_alias('DieselTank')
     
     FuelMixer = su.FuelMixer('S570', ins=(GasolineTank-0, DieselTank-0),
-                             outs='fuel', target='diesel')
+                             outs='fuel', target='gasoline')
     # integrate gasoline and diesel based on their LHV for MFSP calculation
     FuelMixer.register_alias('FuelMixer')
     
@@ -334,7 +336,7 @@ def create_system(configuration='baseline'):
     # facilities
     # =============================================================================
     
-    qsu.HeatExchangerNetwork('HXN')
+    qsu.HeatExchangerNetwork('HXN', force_ideal_thermo=True)
     
     CHP = qsu.CombinedHeatPower('CHP', include_construction=True,
                                 ins=(GasMixer-0, 'natural_gas', 'air'),
