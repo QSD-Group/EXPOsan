@@ -195,6 +195,8 @@ class DegassingMembrane(SanUnit):
         'extrusion': 'kg'
         }
     
+    _NG_price = 0.85*auom('kJ').conversion_factor('therm') # [USD/kJ] 5.47 2021USD/Mcf vs. 4.19 2016USD/Mcf
+    
     # https://www.dupont.com/content/dam/dupont/amer/us/en/water-solutions/public/documents/en/MDG-Ligasep-LDM-040-PDS-45-D00501-en.pdf
     _DuPont_specs = dict(
         od_fiber = 210e-6,           # 180-240 um
@@ -242,6 +244,10 @@ class DegassingMembrane(SanUnit):
             pvac.quantity = qvac
     
     def _cost(self):
+        bg = self.outs[0]
+        cmps = bg.components
+        KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
+        bg.price = -sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
         D, C = self.design_results, self.baseline_purchase_costs
         C['Module'] = self.unit_price * D['Number']
 
@@ -454,8 +460,14 @@ class UASB(AnaerobicCSTR):
                 name = i.lower().replace(' ', '_')
                 const = getfield(creg, f'{flowsheet_ID}_{self.ID}_{name}')
                 const.quantity = D[i]
+    
+    _NG_price = 0.85*auom('kJ').conversion_factor('therm') # [USD/kJ] 5.47 2021USD/Mcf vs. 4.19 2016USD/Mcf
 
     def _cost(self):
+        bg = self.outs[0]
+        cmps = bg.components
+        KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
+        bg.price = -sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
         D = self.design_results
         C = self.baseline_purchase_costs
         C['Wall concrete'] = D['Wall concrete']*self.wall_concrete_unit_cost
@@ -651,13 +663,11 @@ class METAB_AnCSTR(AnaerobicCSTR):
         
         # Pumps
         flowsheet_ID = self.system.flowsheet.ID
-        HWc = self._Hazen_Williams_coefficients
         getfield = getattr
         creg = Construction.registry
         for i, ws, in enumerate(self.ins):
             ID = pipe_IDs[i]
-            hf = pipe_friction_head(ws.F_vol*_cmph_2_gpm, L_inlets, HWc['HDPE'], ID)  # friction head loss
-            #!!! consider adding velocity head to promote mixing?
+            hf = pipe_friction_head(ws.F_vol*_cmph_2_gpm, L_inlets, ID)  # friction head loss
             TDH = hf + h # in m, assume suction head = 0, discharge head = reactor height
             field = f'Pump_ins{i}'
             pump = getfield(self, field)
@@ -687,8 +697,13 @@ class METAB_AnCSTR(AnaerobicCSTR):
             raise RuntimeError('retained biomass concentration > design encapsualation concentration')
         self.add_equipment_design()
 
-    
+    _NG_price = 0.85*auom('kJ').conversion_factor('therm') # [USD/kJ] 5.47 2021USD/Mcf vs. 4.19 2016USD/Mcf    
+
     def _cost(self):
+        bg = self.outs[0]
+        cmps = bg.components
+        KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
+        bg.price = -sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
         D = self.design_results
         C = self.baseline_purchase_costs
         C['Wall concrete'] = D['Wall concrete']*self.wall_concrete_unit_cost
@@ -699,7 +714,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
         C['HDPE pipes'] = sum(hdpe_price(inch)*kg for inch, kg in zip(self._hdpe_ids, self._hdpe_kgs))
         hp = D['Agitator']
         D['Stainless steel'] += 29.792*hp**0.4785   # Empirical function based on data on https://www.agitadoresfluidmix.com/wp-content/uploads/2023/01/4.Data%20sheet%20VTA%20ENG.pdf
-        if hp < 2: C['Agitator'] = 2610*hp**0.34 * 708/567 # Seider et al., 2017; adjusted to 2021$
+        if hp < 2: C['Agitator'] = 2610*hp**0.34 * 708/567 # Seider et al., 2017, pp481; adjusted to 2021$ using CEPCI
         else: C['Agitator'] = 3730*hp**0.54 * 708/567
         self.add_equipment_cost()
     
