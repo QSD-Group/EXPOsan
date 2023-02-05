@@ -28,7 +28,7 @@ from exposan.htl import (
 
 __all__ = ('create_model',)
 
-def create_model(system=None, exclude_sludge_compositions=False, key_metrics_only=False):
+def create_model(system=None, exclude_sludge_compositions=False, exclude_yield=False, key_metrics_only=False):
     '''
     Create a model based on the given system
     (or create the system based on the given configuration).
@@ -408,15 +408,16 @@ def create_model(system=None, exclude_sludge_compositions=False, key_metrics_onl
     def set_CHG_catalyst_lifetime(i):
         CHG.catalyst_lifetime=i
     
-    dist = shape.Triangle(0.1893,0.5981,0.7798)
-    @param(name='gas_C_2_total_C',
-            element=CHG,
-            kind='coupled',
-            units='-',
-            baseline=0.5981,
-            distribution=dist)
-    def set_gas_C_2_total_C(i):
-        CHG.gas_C_2_total_C=i
+    if not exclude_yield:
+        dist = shape.Triangle(0.1893,0.5981,0.7798)
+        @param(name='gas_C_2_total_C',
+                element=CHG,
+                kind='coupled',
+                units='-',
+                baseline=0.5981,
+                distribution=dist)
+        def set_gas_C_2_total_C(i):
+            CHG.gas_C_2_total_C=i
     
     # =========================================================================
     # MemDis
@@ -567,15 +568,16 @@ def create_model(system=None, exclude_sludge_compositions=False, key_metrics_onl
     def set_HT_hydrogen_excess(i):
         HT.hydrogen_excess=i
     
-    dist = shape.Uniform(0.7875,0.9625)
-    @param(name='hydrocarbon_ratio',
-            element=HT,
-            kind='coupled',
-            units='-',
-            baseline=0.875,
-            distribution=dist)
-    def set_HT_hydrocarbon_ratio(i):
-        HT.hydrocarbon_ratio=i
+    if not exclude_yield:
+        dist = shape.Uniform(0.7875,0.9625)
+        @param(name='hydrocarbon_ratio',
+                element=HT,
+                kind='coupled',
+                units='-',
+                baseline=0.875,
+                distribution=dist)
+        def set_HT_hydrocarbon_ratio(i):
+            HT.hydrocarbon_ratio=i
     
     # =========================================================================
     # HC
@@ -1367,9 +1369,9 @@ def create_model(system=None, exclude_sludge_compositions=False, key_metrics_onl
         lca = sys.LCA
     
     # Key metrics
-    @metric(name='MFSP',units='$/gal diesel',element='TEA')
+    @metric(name='MFSP',units='$/GGE',element='TEA')
     def get_MFSP():
-        return tea.solve_price(fuel)*FuelMixer.diesel_gal_2_kg
+        return tea.solve_price(fuel)*FuelMixer.gasoline_gal_2_kg
     
     raw_wastewater = stream.raw_wastewater
     @metric(name='sludge_management_price',units='$/ton dry sludge',element='TEA')
@@ -1378,8 +1380,9 @@ def create_model(system=None, exclude_sludge_compositions=False, key_metrics_onl
     
     @metric(name='GWP_diesel',units='g CO2/MMBTU diesel',element='LCA')
     def get_LCA_diesel():
-        return lca.get_total_impacts(exclude=(fuel,))['GlobalWarming']/fuel.F_mass/sys.operating_hours/lca.lifetime*_kg_to_g/45.5/_MJ_to_MMBTU
-    # diesel: 45.5 MJ/kg
+        return lca.get_total_impacts(exclude=(fuel,))['GlobalWarming']/fuel.F_mass/sys.operating_hours/lca.lifetime*_kg_to_g/46.4/_MJ_to_MMBTU
+    # gasoline : 46.4 MJ/kg
+    # diesel: 45.6 MJ/kg
     
     @metric(name='GWP_sludge',units='kg CO2/ton dry sludge',element='LCA')
     def get_LCA_sludge():

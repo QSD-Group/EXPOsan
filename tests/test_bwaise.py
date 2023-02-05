@@ -19,6 +19,10 @@ def test_bwaise():
     from numpy.testing import assert_allclose
     from exposan import bwaise as bw
 
+    # Because of different CF settings for ImpactItem with the same ID
+    from qsdsan.utils import clear_lca_registries
+    clear_lca_registries()
+
     bw.load()
     assert_allclose(bw.teaA.NPV, -42012332.26576174, rtol=1e-2)
     assert_allclose(bw.teaB.NPV, -3452718.4819053616, rtol=1e-2)
