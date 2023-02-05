@@ -13,11 +13,11 @@ for license details.
 from biosteam import Stream
 from qsdsan import SanUnit, Construction
 from qsdsan.sanunits import AnaerobicCSTR, Pump, HXutility
-from qsdsan.utils import auom, ospath, load_data
-from exposan.metab_mock import data_path, Beads
+from qsdsan.utils import auom
+from exposan.metab_mock.equipment import Beads
 from exposan.metab_mock.utils import dm_lci, pipe_design, \
     pipe_friction_head, hdpe_price, heat_transfer_U, \
-    stainless_steel_wall_thickness as wt_ssteel
+    stainless_steel_wall_thickness as wt_ssteel, UASB_sizing
 import numpy as np
 from math import pi, ceil
 from collections import defaultdict
@@ -253,7 +253,8 @@ class UASB(AnaerobicCSTR):
     
     auxiliary_unit_names = ('heat_exchanger', )
     def __init__(self, ID='', lifetime=30, 
-                 reactor_height_to_diameter=1.5,
+                 max_depth_to_diameter=4,
+                 design_upflow_velocity=1,          # m/h
                  wall_concrete_unit_cost=1081.73,   # $850/m3 in 2014 USD, converted to 2021 USD with concrete PPI
                  slab_concrete_unit_cost=582.48,    # $458/m3 in 2014 USD 
                  stainless_steel_unit_cost=1.8,     # https://www.alibaba.com/product-detail/brushed-stainless-steel-plate-304l-stainless_1600391656401.html?spm=a2700.details.0.0.230e67e6IKwwFd
@@ -262,7 +263,8 @@ class UASB(AnaerobicCSTR):
                  **kwargs):
 
         super().__init__(ID, lifetime=lifetime, **kwargs)
-        self.reactor_height_to_diameter = reactor_height_to_diameter
+        self.max_depth_to_diameter = max_depth_to_diameter
+        self.design_upflow_velocity = design_upflow_velocity
         self.wall_concrete_unit_cost = wall_concrete_unit_cost
         self.slab_concrete_unit_cost = slab_concrete_unit_cost
         self.stainless_steel_unit_cost = stainless_steel_unit_cost
@@ -333,16 +335,18 @@ class UASB(AnaerobicCSTR):
         'Carbon steel': 'kg',
         'HDPE pipes': 'kg',
         'Bead volume': 'm3',
-        'Agitator': 'hp'
         }
     
     def _design(self):
         D = self.design_results
         den = self._density
-        V = D['Volume'] = self.V_liq + self.V_gas
-        #!!! consider upflow velocity range
-        dia = (V*4/self.reactor_height_to_diameter/pi) ** (1/3)
-        h = D['Height'] = dia * self.reactor_height_to_diameter
+        Q = self.mixed.F_vol * 24
+        V, h, dia, h_vel = UASB_sizing(Q, self.V_liq, self.V_gas, 
+                                       self.max_depth_to_diameter, 
+                                       self.design_upflow_velocity, 
+                                       self._l_min_velocity)
+        D['Volume'] = V
+        D['Height'] = h
         r_cone = dia/2*self._gas_separator_r_frac
         Vg = 1/3*pi*r_cone**3*self._gas_separator_h2r
         if Vg < 1.5*self.V_gas:
@@ -431,7 +435,7 @@ class UASB(AnaerobicCSTR):
         for i, ws, in enumerate(self.ins):
             ID = pipe_IDs[i]
             hf = pipe_friction_head(ws.F_vol*_cmph_2_gpm, L_inlets, ID)  # friction head loss
-            TDH = hf + h # in m, assume suction head = 0, discharge head = reactor height
+            TDH = hf + h + h_vel # in m, assume suction head = 0, discharge head = reactor height
             field = f'Pump_ins{i}'
             pump = getfield(self, field)
             pump.ins[0].copy_flow(ws)

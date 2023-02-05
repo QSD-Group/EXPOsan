@@ -13,12 +13,13 @@ for license details.
 
 from qsdsan.utils import auom
 from biosteam.units.design_tools.flash_vessel_design import compute_vessel_weight_and_wall_thickness
+from math import pi
 
-__all__ = ('heat_transfer_U', 'stainless_steel_wall_thickness')
+__all__ = ('heat_transfer_U', 'stainless_steel_wall_thickness', 'UASB_sizing')
 
 #%%
 
-_h_air = 37.5       # W/m2/K, convective heat transfer coefficient, assume at free air relative velocity = 10 m/s, https://www.engineeringtoolbox.com/convective-heat-transfer-d_430.html
+_h_air = 10         # W/m2/K, convective heat transfer coefficient, assume free convection, https://www.engineeringtoolbox.com/convective-heat-transfer-d_430.html
 _h_water = 3000     # W/m2/K, assume moderate forced flow, https://www.engineersedge.com/heat_transfer/convective_heat_transfer_coefficients__13378.htm
 _k_rockwool = 0.038 # 0.035 – 0.040 W/m/K, thermal conductivity
 _k_concrete = 2.4   # 1.6-3.2 W/m/K  # http://www.jett.dormaj.com/docs/Volume8/Issue%203/Investigation%20of%20Thermal%20Properties%20of%20Normal%20Weight%20Concrete%20for%20Different%20Strength%20Classes.pdf
@@ -83,4 +84,48 @@ def stainless_steel_wall_thickness(P, D, h):
     D *= _m2ft
     h *= _m2ft
     return compute_vessel_weight_and_wall_thickness(P, D, h, _rho_ssteel)[1] * _in2m
-    
+
+def UASB_sizing(Q, Vliq, Vgas, max_h2d, upflow_velocity, pipe_velocity):
+    '''
+    Determine aspect ratio of the reactor based on design upflow velocity.
+
+    Parameters
+    ----------
+    Q : float
+        Total influent flowrate [m3/d].
+    Vliq : float
+        Liquid phase volume [m3].
+    Vgas : float
+        Gas phase volume [m3].
+    max_h2d : float
+        Maximum liquid depth to diameter ratio.
+    upflow_velocity : float
+        Design upflow velocity [m/h].
+    pipe_velocity : float
+        Flow velocity through the influent pipe [m/h]
+
+    Returns
+    -------
+    Vtot : float
+        Reactor total volume [m3].
+    H : float
+        Reactor height [m].
+    dia : float
+        Reactor diameter [m].
+    velocity_head : float
+        Additional velocity head for pumping.
+    '''
+    hrt = Vliq/Q  # d
+    vlim_h2d = (4*Q*max_h2d**2/pi/hrt**2)**(1/3) # m/d
+    vpipe = pipe_velocity/3600 # m/s
+    if vlim_h2d < upflow_velocity*24:
+        h = hrt * vlim_h2d
+        dia = h/max_h2d
+        velocity_head = ((vpipe * upflow_velocity*24/vlim_h2d)**2 - vpipe**2)/2/9.80665 # m
+    else:
+        h = hrt * upflow_velocity*24
+        dia = (4*Q/pi/(upflow_velocity*24))**(1/2)
+        velocity_head = 0.
+    H = h*(1+Vgas/Vliq)
+    Vtot = Vgas + Vliq
+    return Vtot, H, dia, velocity_head
