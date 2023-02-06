@@ -53,7 +53,11 @@ for lipid in lipids:
             WWTP.sludge_afdw_protein = protein
             sys.simulate()
             print('\n\n', f'Lipid: {WWTP.sludge_afdw_lipid}\n', f'Protein: {WWTP.sludge_afdw_protein}\n', f'Carbohydrate: {WWTP.sludge_afdw_carbo}', '\n\n')
-            model = create_model(sys, exclude_sludge_compositions=True, include_HTL_yield_as_metrics=False, key_metrics_only=True, include_other_LCIA=False)
+            model = create_model(sys, exclude_sludge_compositions=True,
+                                 include_HTL_yield_as_metrics=False,
+                                 include_other_metrics=False,
+                                 include_other_LCIA_as_metrics=False,
+                                 include_check=False)
             N = 200
             samples = model.sample(N=N, rule='L', seed=3221)
             model.load_samples(samples)
