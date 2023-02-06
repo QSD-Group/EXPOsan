@@ -19,7 +19,6 @@ from chaospy import distributions as shape
 from qsdsan.utils import DictAttrSetter
 
 from exposan.htl import (
-    _kg_to_g,
     _m3perh_to_MGD,
     _MJ_to_MMBTU,
     _MMgal_to_L,
@@ -28,7 +27,9 @@ from exposan.htl import (
 
 __all__ = ('create_model',)
 
-def create_model(system=None, exclude_sludge_compositions=False, include_HTL_yield_as_metrics=True, key_metrics_only=False, include_other_LCIA=True):
+def create_model(system=None, exclude_sludge_compositions=False,
+                 include_HTL_yield_as_metrics=True, include_other_metrics=True,
+                 include_other_LCIA_as_metrics=True, include_check=True):
     '''
     Create a model based on the given system
     (or create the system based on the given configuration).
@@ -885,7 +886,7 @@ def create_model(system=None, exclude_sludge_compositions=False, include_HTL_yie
 
     metric = model.metric
     
-    if not key_metrics_only: # all metrics
+    if include_other_metrics: # all metrics
         # Element metrics
         @metric(name='sludge_C',units='kg/hr',element='Sankey')
         def get_sludge_C():
@@ -1116,23 +1117,36 @@ def create_model(system=None, exclude_sludge_compositions=False, include_HTL_yie
         
         SP1, H2SO4_Tank = unit.SP1, unit.H2SO4_Tank
         if AcidEx:
-            def get_Phosphorus_CAPEX():
-                return (AcidEx.installed_cost +
-                        StruPre.installed_cost +
-                        H2SO4_Tank.installed_cost*SP1.outs[0].F_mass/SP1.F_mass_out)
+            if SP1.F_mass_out != 0:
+                def get_Phosphorus_CAPEX():
+                    return (AcidEx.installed_cost +
+                            StruPre.installed_cost +
+                            H2SO4_Tank.installed_cost*SP1.outs[0].F_mass/SP1.F_mass_out)
+            else:
+                def get_Phosphorus_CAPEX():
+                    return 0
         else:
-            def get_Phosphorus_CAPEX():
-                return (StruPre.installed_cost +
-                        H2SO4_Tank.installed_cost*SP1.outs[0].F_mass/SP1.F_mass_out)
+            if SP1.F_mass_out != 0:
+                def get_Phosphorus_CAPEX():
+                    return (StruPre.installed_cost +
+                            H2SO4_Tank.installed_cost*SP1.outs[0].F_mass/SP1.F_mass_out)
+            else:
+                def get_Phosphorus_CAPEX():
+                    return 0
         model.metric(getter=get_Phosphorus_CAPEX, name='Phosphorus_CAPEX',units='$',element='TEA')
         
         @metric(name='CHG_CAPEX',units='$',element='TEA')
         def get_CHG_CAPEX():
             return CHG.installed_cost + F1.installed_cost
         
-        @metric(name='Nitrogen_CAPEX',units='$',element='TEA')
-        def get_Nitrogen_CAPEX():
-            return MemDis.installed_cost+H2SO4_Tank.installed_cost*SP1.outs[1].F_mass/SP1.F_mass_out
+        if SP1.F_mass_out != 0:
+            def get_Nitrogen_CAPEX():
+                return MemDis.installed_cost+H2SO4_Tank.installed_cost*SP1.outs[1].F_mass/SP1.F_mass_out
+        else:
+            def get_Nitrogen_CAPEX():
+                return 0
+        model.metric(getter=get_Nitrogen_CAPEX, name='Nitrogen_CAPEX',units='$',element='TEA')
+        
         
         HT_HC_units = (unit.P2, HT, unit.H2, F2, unit.H3, D1, D2, D3, unit.P3, HC,
                        unit.H4, F3, D4, unit.H5, unit.H6, unit.GasolineTank, unit.DieselTank)
@@ -1385,7 +1399,7 @@ def create_model(system=None, exclude_sludge_compositions=False, include_HTL_yie
             return HTL.gas_yield
         
     # Key metrics
-    @metric(name='MDSP',units='$/gal_diesel',element='TEA')
+    @metric(name='MDSP',units='$/gal diesel',element='TEA')
     def get_MDSP():
         diesel_gal_2_kg=3.220628346
         return tea.solve_price(diesel)*diesel_gal_2_kg
@@ -1405,7 +1419,7 @@ def create_model(system=None, exclude_sludge_compositions=False, include_HTL_yie
     def get_GWP_sludge():
         return lca.get_total_impacts()['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
-    if include_other_LCIA:
+    if include_other_LCIA_as_metrics:
     
         @metric(name='OzoneDepletion_diesel',units='kg CFC-11-eq/MMBTU diesel',element='LCA')
         def get_OZP_diesel():
@@ -1470,5 +1484,11 @@ def create_model(system=None, exclude_sludge_compositions=False, include_HTL_yie
         @metric(name='NonCarcinogenics_sludge',units='kg toluene-eq/MMBTU diesel',element='LCA')
         def get_NCA_sludge():
             return lca.get_total_impacts()['NonCarcinogenics']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
+        
+    if include_check:
+        
+        @metric(name='sludge_afdw_carbohydrate',units='-',element='test')
+        def get_sludge_afdw_carbohydrate():
+            return unit.WWTP.sludge_afdw_carbo
     
     return model

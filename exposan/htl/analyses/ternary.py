@@ -29,48 +29,46 @@ References:
 '''
 
 import os, pandas as pd
-from exposan.htl import results_path, create_model
+from exposan.htl import results_path, create_system, create_model
+from datetime import date
 
 ternary_results_dict = {'lipid':[], 'protein':[], 'carbohydrate':[],
-                        'TEA_5th':[], 'TEA_50th':[], 'TEA_95th':[],
+                        'MDSP_5th':[], 'MDSP_50th':[], 'MDSP_95th':[],
                         'sludge_price_5th':[], 'sludge_price_50th':[], 'sludge_price_95th':[],
-                        'LCA_diesel_5th':[], 'LCA_diesel_50th':[], 'LCA_diesel_95th':[],
-                        'LCA_sludge_5th':[], 'LCA_sludge_50th':[], 'LCA_sludge_95th':[]}
+                        'GWP_diesel_5th':[], 'GWP_diesel_50th':[], 'GWP_diesel_95th':[],
+                        'GWP_sludge_5th':[], 'GWP_sludge_50th':[], 'GWP_sludge_95th':[]}
 
 ternary_results = pd.DataFrame(ternary_results_dict)
 lipids = (0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
-proteins = lipids
-
-model = create_model('baseline', exclude_sludge_compositions=True, key_metrics_only=True)
-N = 200
-samples = model.sample(N=N, rule='L', seed=3221)
-model.load_samples(samples)
-
-sys = model.system
-tea = sys.TEA
-WWTP = sys.flowsheet.unit.WWTP
+proteins = (0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
 
 get_quantiles = lambda data, quantiles=(0.05, 0.5, 0.95): [data.quantile(q) for q in quantiles]
 
 for lipid in lipids:
     for protein in proteins:
-        WWTP.sludge_afdw_protein = protein
-        
         if lipid + protein <= 1:
-            print('\n\n', f'Lipid: {lipid}\n', f'Protein: {protein}', '\n\n')
+            sys = create_system()
+            WWTP = sys.flowsheet.unit.WWTP
             WWTP.sludge_afdw_lipid = lipid
+            WWTP.sludge_afdw_protein = protein
+            sys.simulate()
+            print('\n\n', f'Lipid: {WWTP.sludge_afdw_lipid}\n', f'Protein: {WWTP.sludge_afdw_protein}\n', f'Carbohydrate: {WWTP.sludge_afdw_carbo}', '\n\n')
+            model = create_model(sys, exclude_sludge_compositions=True, include_HTL_yield_as_metrics=False, key_metrics_only=True, include_other_LCIA=False)
+            N = 200
+            samples = model.sample(N=N, rule='L', seed=3221)
+            model.load_samples(samples)
             model.evaluate()            
-            MFSP = model.table['TEA']['MFSP [$/GGE]'].dropna()
+            MDSP = model.table['TEA']['MDSP [$/gal diesel]'].dropna()
             sludge_price = model.table['TEA']['sludge_management_price [$/ton dry sludge]'].dropna()
-            LCA_diesel = model.table['LCA']['GWP_diesel [g CO2/MMBTU diesel]'].dropna()
+            LCA_diesel = model.table['LCA']['GWP_diesel [kg CO2/MMBTU diesel]'].dropna()
             LCA_sludge = model.table['LCA']['GWP_sludge [kg CO2/ton dry sludge]'].dropna()
             
             ternary_results.loc[len(ternary_results.index)] = (
                 [100*lipid, 100*protein, round(100-100*lipid-100*protein),] +
-                get_quantiles(MFSP) +
+                get_quantiles(MDSP) +
                 get_quantiles(sludge_price) +
                 get_quantiles(LCA_diesel) +
                 get_quantiles(LCA_sludge)
                 )
 
-ternary_results.to_excel(os.path.join(results_path, f'_ternary_{N}.xlsx'))
+ternary_results.to_excel(os.path.join(results_path, f'{lipids}_{date.today()}_ternary_{N}.xlsx'))
