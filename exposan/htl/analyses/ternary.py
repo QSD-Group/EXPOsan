@@ -56,7 +56,7 @@ for lipid in lipids:
             model = create_model(sys, exclude_sludge_compositions=True,
                                  include_HTL_yield_as_metrics=False,
                                  include_other_metrics=False,
-                                 include_other_LCIA_as_metrics=False,
+                                 include_other_CFs_as_metrics=False,
                                  include_check=False)
             N = 200
             samples = model.sample(N=N, rule='L', seed=3221)
@@ -75,4 +75,4 @@ for lipid in lipids:
                 get_quantiles(LCA_sludge)
                 )
 
-ternary_results.to_excel(os.path.join(results_path, f'{lipids}_{date.today()}_ternary_{N}.xlsx'))
+ternary_results.to_excel(os.path.join(results_path, f'{lipids}_{proteins}_{date.today()}_ternary_{N}.xlsx'))
