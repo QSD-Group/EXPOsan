@@ -73,7 +73,7 @@ class DegassingMembrane(SanUnit):
         self.unit_price = unit_price
         self.construction += [
             Construction(ID=i, linked_unit=self, item=i)\
-                for i, u in self._units.items()
+                for i, u in self._material_units.items()
             ]
     
     @property
@@ -185,14 +185,20 @@ class DegassingMembrane(SanUnit):
             _update_dstate()
         self._ODE = dy_dt
     
-    _units = {
+    _material_units = {
         'PP': 'kg',
         'PVC': 'kg',
         'PS': 'kg',
         'epoxy': 'kg',
         'electricity': 'kWh',
         'molding': 'kg',
-        'extrusion': 'kg'
+        'extrusion': 'kg',
+        }
+    
+    _units = {
+        **_material_units,
+        'Number': '',
+        'Cleaning frequncy': 'month^(-1)'
         }
     
     _NG_price = 0.85*auom('kJ').conversion_factor('therm') # [USD/kJ] 5.47 2021USD/Mcf vs. 4.19 2016USD/Mcf
@@ -212,7 +218,14 @@ class DegassingMembrane(SanUnit):
         V_liq = 6.5e-3,              # 6.5 L
         total_mass = 10,             # kg
         )
-
+    
+    _min_cleaning_frequency = 0.5    # times per month, assuming operated at 11 m3/h, TSS = 1 ppm, TOC = 1 ppm
+    
+    # _cleaning = {
+    #     'citric_acid': 451.62  # g/yr/(kgTSS/m3)
+    #     'NaOCl': 
+    #     }
+    
     #!!! need to add maintenance requirement, e.g., backwash, cleaning etc.
     def _design(self):
         D = self.design_results
@@ -227,11 +240,13 @@ class DegassingMembrane(SanUnit):
         wat.ins[0].copy_like(self.ins[0])
         wat.P = self.water_pressure
         wat.simulate()
+        D['Cleaning frequncy'] = (max(inf.get_TSS(), inf.composite('C', organic=True))\
+            * inf.F_vol/11)**0.6 * self._min_cleaning_frequency # mg/L * m3/hr = g/h
         creg = Construction.registry
         get = getattr
         if self.include_construction:
             flowsheet_ID = self.system.flowsheet.ID
-            for i in self._units.keys():
+            for i in self._material_units.keys():
                 const = get(creg, f'{flowsheet_ID}_{self.ID}_{i}')
                 const.quantity = D[i]
             q22, q40 = _construct_water_pump(wat)
@@ -250,6 +265,10 @@ class DegassingMembrane(SanUnit):
         bg.price = -sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
         D, C = self.design_results, self.baseline_purchase_costs
         C['Module'] = self.unit_price * D['Number']
+        freq = D['Cleaning frequency']   # per month
+        V_cleaning_sol = self._DuPont_specs['V_liq'] * 2 * freq * 12  # L/yr
+        self.add_OPEX['NaOCl'] = V_cleaning_sol * 1.22 * 0.78/365/24 # USD/hr, 1.22 kg/L density of 12.5% solution, $0.78/kg, https://www.alibaba.com/product-detail/wholesale-sodium-hypochlorite-NaClO-15-Industrial_1600307294563.html?spm=a2700.galleryofferlist.normal_offer.d_title.21145d84U7uilV
+        self.add_OPEX['citric_acid'] = V_cleaning_sol * 0.03 * 193/1000 * 0.75/365/24 # USD/yr, 30mM solution, MW ~ 193, https://www.alibaba.com/product-detail/Best-selling-powder-lemon-acid-price_1600657054188.html?spm=a2700.galleryofferlist.0.0.7141505dSfKzKN
 
 #%% UASB
 _fts2mhr = auom('ft/s').conversion_factor('m/hr')

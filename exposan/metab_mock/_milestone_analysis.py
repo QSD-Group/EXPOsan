@@ -97,7 +97,7 @@ def run_tea_lca(sys, save_report=True, info='', lt=30):
                 rs.to_excel(writer, sheet_name=u.ID)
         lca.save_report(ospath.join(results_path, f'{F.ID}_{info}_lca.xlsx'))
     
-    # return sys
+    return sys
 
 #%%
 if __name__ == '__main__':
@@ -107,7 +107,7 @@ if __name__ == '__main__':
     lt = 20
     sysA, sysB = create_systems(which=('A', 'B'))
     print(info)
-    run_tea_lca(sysA, save, info, lt)
+    sysA = run_tea_lca(sysA, save, info, lt)
     # run_tea_lca(sysB, save, info, lt)
     # systems = create_systems(which=('C', 'D'))
     # for sys in systems:
