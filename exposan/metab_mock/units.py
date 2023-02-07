@@ -75,6 +75,7 @@ class DegassingMembrane(SanUnit):
             Construction(ID=i, linked_unit=self, item=i)\
                 for i, u in self._material_units.items()
             ]
+        # just to account for env impacts & additional OPEX
         self.NaOCl = SanStream(f'{ID}_NaOCl', H2O=1)
         self.citric_acid = SanStream(f'{ID}_citric_acid', H2O=1)
     
@@ -264,8 +265,8 @@ class DegassingMembrane(SanUnit):
             qvac = _construct_vacuum_pump(vac)
             pvac = get(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
             pvac.quantity = qvac
-        self.NaOCl.F_mass = self.calc_NaOCl(freq)
-        self.citric_acid.F_mass = self.calc_citric_acid(freq)
+        self.NaOCl.F_mass = self._calc_NaOCl(freq)
+        self.citric_acid.F_mass = self._calc_citric_acid(freq)
         
     def _cost(self):
         bg = self.outs[0]

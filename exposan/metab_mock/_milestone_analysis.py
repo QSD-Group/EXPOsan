@@ -19,6 +19,7 @@ import pandas as pd
 
 IInd.load_from_file(ospath.join(data_path, 'TRACI_indicators.xlsx'), sheet=0)
 IItm.load_from_file(ospath.join(data_path, '_impact_items.xlsx'))
+IItm('Stainless_steel', source='stainless_steel')
 bg_offset_CFs = IItm.get_item('biogas_offset').CFs
 NaOCl_item = IItm.get_item('NaOCl')
 citric_acid_item = IItm.get_item('citric_acid')
@@ -50,17 +51,15 @@ def run_tea_lca(sys, save_report=True, info='', lt=30):
                   **bg_offset_CFs)
     for u in sys.units:
         if isinstance(u, DegassingMembrane):
-            SIItm(linked_stream=u.NaOCl, source=NaOCl_item)
-            SIItm(linked_stream=u.citric_acid, source=citric_acid_item)
+            SIItm(linked_stream=u.NaOCl, **NaOCl_item.CFs)
+            SIItm(linked_stream=u.citric_acid, **citric_acid_item.CFs)
     
     # Operation items
-    kWh = lambda lca: lca.system.power_utility.consumption*lca.lifetime_hr
+    kWh = lambda lca: lca.system.power_utility.rate*lca.lifetime_hr
     def MJ(lca):
         sys = lca.system
         duties = [hu.duty for hu in sys.heat_utilities]
-        heat = sum(d for d in duties if d > 0)
-        cool = sum(d for d in duties if d < 0)
-        MJ_per_hr = (heat + cool * 0.2)*1e-3 # assume 20% efficiency in recoverying heat from R1 eff (i.e., R2 inf)
+        MJ_per_hr = sum(d for d in duties if d > 0)*1e-3
         return MJ_per_hr*lca.lifetime_hr
     
     rCOD = inf.composite('COD', flow=True) - eff.composite('COD', flow=True)  # kgCOD/hr
@@ -109,17 +108,19 @@ def run_tea_lca(sys, save_report=True, info='', lt=30):
 if __name__ == '__main__':
     # save = True
     save = False
-    info = '35C_20yr_1yr'
-    lt = 20
-    sysA, sysB = create_systems(which=('A', 'B'))
-    print(info)
-    sysA = run_tea_lca(sysA, save, info, lt)
+    info = '35C_30yr_1yr'
+    lt = 30
+    # sysA, sysB = create_systems(which=('A', 'B'))
+    # print(info)
+    # sysA = run_tea_lca(sysA, save, info, lt)
     # run_tea_lca(sysB, save, info, lt)
-    # systems = create_systems(which=('C', 'D'))
-    # for sys in systems:
-    #     u = sys.units[0]
-    #     for tau in (1, 2, 4, 8):
-    #         u.V_liq = tau*5
-    #         u.V_gas = tau*5/10
-    #         info = f'HRT{tau}'
-    #         run_tea_lca(sys, save, info, lt)
+    systems = create_systems(which=('C', 'D'))
+    for sys in systems:
+        u = sys.units[0]
+        # for tau in (1, 2):
+        tau = 2
+        u.V_liq = tau*5
+        u.V_gas = tau*5/10
+        info = f'HRT{tau}'
+        # IItm.clear_registry()
+        run_tea_lca(sys, save, info, lt)
