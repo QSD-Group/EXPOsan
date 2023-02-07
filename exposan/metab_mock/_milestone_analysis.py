@@ -14,12 +14,14 @@ from qsdsan import ImpactIndicator as IInd, ImpactItem as IItm, \
     StreamImpactItem as SIItm, \
     TEA, LCA, PowerUtility
 from qsdsan.utils import ospath, auom
-from exposan.metab_mock import create_systems, data_path, results_path
+from exposan.metab_mock import create_systems, data_path, results_path, DegassingMembrane
 import pandas as pd
 
 IInd.load_from_file(ospath.join(data_path, 'TRACI_indicators.xlsx'), sheet=0)
 IItm.load_from_file(ospath.join(data_path, '_impact_items.xlsx'))
 bg_offset_CFs = IItm.get_item('biogas_offset').CFs
+NaOCl_item = IItm.get_item('NaOCl')
+citric_acid_item = IItm.get_item('citric_acid')
 
 #%%
 irr = 0.1
@@ -46,6 +48,10 @@ def run_tea_lca(sys, save_report=True, info='', lt=30):
             SIItm(ID=f'{ws.ID}_NG_offset', linked_stream=ws, functional_unit='m3',
                   flow_getter=fget, # m3/hr natural-gas-equivalent
                   **bg_offset_CFs)
+    for u in sys.units:
+        if isinstance(u, DegassingMembrane):
+            SIItm(linked_stream=u.NaOCl, source=NaOCl_item)
+            SIItm(linked_stream=u.citric_acid, source=citric_acid_item)
     
     # Operation items
     kWh = lambda lca: lca.system.power_utility.consumption*lca.lifetime_hr

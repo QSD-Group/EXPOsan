@@ -11,7 +11,7 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 from biosteam import Stream
-from qsdsan import SanUnit, Construction
+from qsdsan import SanUnit, Construction, SanStream
 from qsdsan.sanunits import AnaerobicCSTR, Pump, HXutility
 from qsdsan.utils import auom
 from exposan.metab_mock.equipment import Beads
@@ -75,6 +75,8 @@ class DegassingMembrane(SanUnit):
             Construction(ID=i, linked_unit=self, item=i)\
                 for i, u in self._material_units.items()
             ]
+        self.NaOCl = SanStream(f'{ID}_NaOCl', H2O=1)
+        self.citric_acid = SanStream(f'{ID}_citric_acid', H2O=1)
     
     @property
     def H2_degas_efficiency(self):
@@ -220,13 +222,17 @@ class DegassingMembrane(SanUnit):
         )
     
     _min_cleaning_frequency = 0.5    # times per month, assuming operated at 11 m3/h, TSS = 1 ppm, TOC = 1 ppm
+       
+    def _calc_NaOCl(self, freq):
+        V_sol = self._DuPont_specs['V_liq'] * 2 * freq * 12  # L/yr
+        m_NaOCl = V_sol * 1.22 * 0.125   # kg/yr, 1.22 kg/L density of 12.5% solution
+        return m_NaOCl/365/24   # kg/hr pure NaOCl
     
-    # _cleaning = {
-    #     'citric_acid': 451.62  # g/yr/(kgTSS/m3)
-    #     'NaOCl': 
-    #     }
-    
-    #!!! need to add maintenance requirement, e.g., backwash, cleaning etc.
+    def _calc_citric_acid(self, freq):
+        V_sol = self._DuPont_specs['V_liq'] * 2 * freq * 12  # L/yr
+        m_ca = V_sol * 0.03 * 193/1000   # kg/yr, 30mM solution, MW ~ 193
+        return m_ca/365/24      # kg/hr pure citric acid
+
     def _design(self):
         D = self.design_results
         inf, = self.ins
@@ -240,7 +246,8 @@ class DegassingMembrane(SanUnit):
         wat.ins[0].copy_like(self.ins[0])
         wat.P = self.water_pressure
         wat.simulate()
-        D['Cleaning frequncy'] = (max(inf.get_TSS(), inf.composite('C', organic=True))\
+        freq = D['Cleaning frequncy'] = \
+            (max(inf.get_TSS(), inf.composite('C', organic=True))\
             * inf.F_vol/11)**0.6 * self._min_cleaning_frequency # mg/L * m3/hr = g/h
         creg = Construction.registry
         get = getattr
@@ -257,7 +264,9 @@ class DegassingMembrane(SanUnit):
             qvac = _construct_vacuum_pump(vac)
             pvac = get(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
             pvac.quantity = qvac
-    
+        self.NaOCl.F_mass = self.calc_NaOCl(freq)
+        self.citric_acid.F_mass = self.calc_citric_acid(freq)
+        
     def _cost(self):
         bg = self.outs[0]
         cmps = bg.components
@@ -265,10 +274,8 @@ class DegassingMembrane(SanUnit):
         bg.price = -sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
         D, C = self.design_results, self.baseline_purchase_costs
         C['Module'] = self.unit_price * D['Number']
-        freq = D['Cleaning frequency']   # per month
-        V_cleaning_sol = self._DuPont_specs['V_liq'] * 2 * freq * 12  # L/yr
-        self.add_OPEX['NaOCl'] = V_cleaning_sol * 1.22 * 0.78/365/24 # USD/hr, 1.22 kg/L density of 12.5% solution, $0.78/kg, https://www.alibaba.com/product-detail/wholesale-sodium-hypochlorite-NaClO-15-Industrial_1600307294563.html?spm=a2700.galleryofferlist.normal_offer.d_title.21145d84U7uilV
-        self.add_OPEX['citric_acid'] = V_cleaning_sol * 0.03 * 193/1000 * 0.75/365/24 # USD/yr, 30mM solution, MW ~ 193, https://www.alibaba.com/product-detail/Best-selling-powder-lemon-acid-price_1600657054188.html?spm=a2700.galleryofferlist.0.0.7141505dSfKzKN
+        self.add_OPEX['NaOCl'] = self.NaOCl.F_mass/0.125 * 0.78 # USD/hr, $0.78/kg 12.5% solution, https://www.alibaba.com/product-detail/wholesale-sodium-hypochlorite-NaClO-15-Industrial_1600307294563.html?spm=a2700.galleryofferlist.normal_offer.d_title.21145d84U7uilV
+        self.add_OPEX['citric_acid'] = self.citric_acid.F_mass * 0.75 # USD/hr, $0.75/kg https://www.alibaba.com/product-detail/Best-selling-powder-lemon-acid-price_1600657054188.html?spm=a2700.galleryofferlist.0.0.7141505dSfKzKN
 
 #%% UASB
 _fts2mhr = auom('ft/s').conversion_factor('m/hr')
