@@ -114,7 +114,7 @@ if __name__ == '__main__':
     # print(info)
     # sysA = run_tea_lca(sysA, save, info, lt)
     # run_tea_lca(sysB, save, info, lt)
-    systems = create_systems(which=('C', 'D'))
+    systems = create_systems(which=('C',))
     for sys in systems:
         u = sys.units[0]
         # for tau in (1, 2):
