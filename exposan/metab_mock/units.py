@@ -494,7 +494,7 @@ class UASB(AnaerobicCSTR):
         bg = self.outs[0]
         cmps = bg.components
         KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
-        bg.price = -sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
+        self.add_OPEX['NG_offset'] = -sum(bg.mass*KJ_per_kg)*self._NG_price # kJ/hr * USD/kJ = USD/hr
         D = self.design_results
         C = self.baseline_purchase_costs
         C['Wall concrete'] = D['Wall concrete']*self.wall_concrete_unit_cost
@@ -629,7 +629,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
             D['Carbon steel'] = S_wall * tface * den['Carbon steel']
             Uwall, Ucover, Ubase = heat_transfer_U(twall, tinsl, tface, tbase, concrete=True)
         else:
-            P_liq = self.external_P * 1e5 + self.mixed.rho * 9.80665 * h * self.V_liq/V
+            P_liq = self.external_P * 1e5 + self._mixed.rho * 9.80665 * h * self.V_liq/V
             twall = tbase = wt_ssteel(P_liq, dia, h)
             tcover = twall/2
             tinsl = self._steel_insulate_thickness/1e3
@@ -730,7 +730,7 @@ class METAB_AnCSTR(AnaerobicCSTR):
         bg = self.outs[0]
         cmps = bg.components
         KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
-        bg.price = -sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
+        self.add_OPEX['NG_offset'] = -sum(bg.mass*KJ_per_kg)*self._NG_price # kJ/hr * USD/kJ = USD/hr
         D = self.design_results
         C = self.baseline_purchase_costs
         C['Wall concrete'] = D['Wall concrete']*self.wall_concrete_unit_cost

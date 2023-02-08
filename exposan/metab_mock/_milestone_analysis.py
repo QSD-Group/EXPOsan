@@ -13,7 +13,7 @@ for license details.
 from qsdsan import ImpactIndicator as IInd, ImpactItem as IItm, \
     StreamImpactItem as SIItm, \
     TEA, LCA, PowerUtility
-from qsdsan.utils import ospath, auom
+from qsdsan.utils import ospath
 from exposan.metab_mock import create_systems, data_path, results_path, DegassingMembrane
 import pandas as pd
 
