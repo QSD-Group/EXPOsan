@@ -36,10 +36,15 @@ def create_components(set_thermo=True):
                     degradability='Undegradable', organic=False)
         
     VolatileMatter = Component('VolatileMatter', particle_size='Particulate', 
-                    degradability='Readily', organic=False)
+                    degradability='Readily', organic=False, Tb=391) #Tb added to fix "missing thermodynamic property" error
     
     FixedCarbon = Component('FixedCarbon', phase='s', particle_size='Particulate', 
                     degradability='Undegradable', organic=False)
+
+    #following lines are to fix errors due to missing thermodynamic properties
+    VolatileMatter.copy_models_from(Chemical('Acetic Acid'))
+    for i in (AshContent, FixedCarbon):
+        i.default()
 
     FilterBag = Component('FilterBag', search_ID='Poly(hexamethylene adipamide)',
                           formula='C12H20N2O2', phase='s', particle_size='Particulate',
