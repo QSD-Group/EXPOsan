@@ -12,18 +12,18 @@ sys, = create_systems(which='C')
 u = sys.units[0]
 bg, eff = u.outs
 inf, = u.ins
+idx = inf.components.indices(biomass_IDs)
+_ic = u._concs[idx].copy()
+init_bm = np.linspace(1, 10, 10)
 
 u.V_liq = 2.5
-u.V_gas = 0.3
-idx = inf.components.indices(biomass_IDs)
+u.V_gas = 0.25
 
-_ic = u._concs[idx].copy()
 rcod = []
 bm = []
 bm_dist = []
 fug_ch4 = []
 
-init_bm = np.linspace(1, 10, 10)
 for i in init_bm:
     u._concs[idx] = _ic*i
     sys.simulate(state_reset_hook='reset_cache', t_span=(0, 400), method='BDF')
