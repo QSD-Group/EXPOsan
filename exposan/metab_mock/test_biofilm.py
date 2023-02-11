@@ -250,3 +250,4 @@ df = pd.DataFrame(record, index=rows,
                       [['rCOD', 'biomass [mg TSS/L]'], ['Suspended', 'Encapsulated']]
                       ))
 df.index.name = 'HRT [d]'
+df.to_excel(ospath.join(results_path, 'suspended_vs_encap.xlsx'))
