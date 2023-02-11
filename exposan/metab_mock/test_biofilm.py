@@ -163,23 +163,23 @@ from scipy.integrate import solve_ivp
 import pandas as pd
 from exposan.metab_mock import results_path, biomass_IDs, create_systems
 # HRT = 1
-# C0 = np.array([
-#     1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
-#     4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
-#     2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 4.708e+00, 1.239e+00,
-#     4.838e-01, 1.423e+00, 8.978e-01, 2.959e+00, 1.467e+00, 4.924e-02,
-#     4.000e-02, 2.000e-02, 9.900e+02
-#     ])
-# y0_bulk = np.array([
-#     1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
-#     4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
-#     2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 0, 0,
-#     0, 0, 0, 0, 0, 0,   # no biomass in bulk liquid initially
-#     4.000e-02, 2.000e-02, 9.900e+02, 3.922e-07, 2.228e-02, 1.732e-02,
-#     Q, 298.15 
-#     ])
-# y0 = np.tile(C0, n_dz)
-# y0 = np.append(y0, y0_bulk)
+C0 = np.array([
+    1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
+    4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
+    2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 4.708e+00, 1.239e+00,
+    4.838e-01, 1.423e+00, 8.978e-01, 2.959e+00, 1.467e+00, 4.924e-02,
+    4.000e-02, 2.000e-02, 9.900e+02
+    ])
+y0_bulk = np.array([
+    1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
+    4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
+    2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 0, 0,
+    0, 0, 0, 0, 0, 0,   # no biomass in bulk liquid initially
+    4.000e-02, 2.000e-02, 9.900e+02, 3.922e-07, 2.228e-02, 1.732e-02,
+    Q, 298.15 
+    ])
+y0 = np.tile(C0, n_dz)
+y0 = np.append(y0, y0_bulk)
 
 # sol = solve_ivp(dydt, t_span=(0, 100), y0=y0, method='BDF',
 #                 t_eval=np.arange(0, 101, 5), args=(HRT,))
@@ -200,35 +200,39 @@ u.encapsulate_concentration = 1e5
 inf, = sys.feeds
 bg, eff = sys.products
 _ic = u._concs[bm_idx].copy()
-init_bm = np.linspace(1, 10, 10)
+
+good_y = y0
 
 def suspended_vs_attached(HRT):
     print('\n')
-    print('='*15)
-    print(f'HRT: {HRT:.4f} d')
+    print('='*12)
+    print(f'HRT: {HRT:.3f} d')
     u.V_liq = HRT * 5
     u.V_gas = HRT * 0.5
     sys.simulate(state_reset_hook='reset_cache', t_span=(0, 400), method='BDF')
     sus_rcod = 1-eff.COD/inf.COD
     i = 0
-    while sus_rcod < 0.7:
+    while sus_rcod < 0.7 and i <= 5:
         i += 1
         print('add VSS...')
         u._concs[bm_idx] *= 2
         sys.simulate(state_reset_hook='reset_cache', t_span=(0, 400), method='BDF')
         sus_rcod = 1-eff.COD/inf.COD
-        if i > 10: return
     sus_bm = sum(u._state[bm_idx] * cmps.i_mass[bm_idx])
     y0_bulk = np.append(u._state, 298.15)
     y0_bulk[bm_idx] = 0.
     y0 = np.append(np.tile(u._state[:n_cmps], n_dz), y0_bulk)
     try: sol = solve_ivp(dydt, t_span=(0, 100), y0=y0, method='BDF', args=(HRT,))
-    except: return sus_rcod, np.nan, sus_bm, np.nan
-    bk_Cs = sol.y.T[-1][-(n_cmps+5):-5]
-    en_Cs = sol.y.T[-2][-(n_cmps+5):-5]
+    except: 
+        try: sol = solve_ivp(dydt, t_span=(0, 100), y0=good_y, method='BDF', args=(HRT,))
+        except: return sus_rcod, np.nan, sus_bm, np.nan
+    y = sol.y.T[-1]
+    bk_Cs = y[-(n_cmps+5):-5]
+    en_Cs = y[-(2*n_cmps+5):-(n_cmps+5)]
     att_COD = sum(bk_Cs * cmps.i_COD * (1-cmps.g)) * 1e3
     att_rcod = 1-att_COD/inf.COD
-    att_bm = sum(en_Cs[bm_idx] * cmps.i_mass[bm_idx]) * 1e3
+    att_bm = sum(en_Cs[bm_idx] * cmps.i_mass[bm_idx])
+    if att_rcod > 0.5: good_y[:] = y
     return sus_rcod, att_rcod, sus_bm, att_bm
 
 #%%
