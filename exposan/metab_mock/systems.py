@@ -180,13 +180,13 @@ default_R_init_conds = {
  'X_ch': 1.2600235711799973,
  'X_pr': 1.3804329631122664,
  'X_li': 1.7696259648387357,
- 'X_su': 732.9760678333023,
- 'X_aa': 224.81751931525334,
- 'X_fa': 126.7301174776879,
- 'X_c4': 227.8726398428066,
- 'X_pro': 140.2738127019708,
- 'X_ac': 669.4626559278454,
- 'X_h2': 245.67774602566578,
+ 'X_su': 732.9760678333023*5,
+ 'X_aa': 224.81751931525334*5,
+ 'X_fa': 126.7301174776879*5,
+ 'X_c4': 227.8726398428066*5,
+ 'X_pro': 140.2738127019708*5,
+ 'X_ac': 669.4626559278454*5,
+ 'X_h2': 245.67774602566578*5,
  'X_I': 206.42934561053158,
  'S_cat': 40.0,
  'S_an': 20.0,
@@ -247,6 +247,8 @@ R2_ss_conds = {
     }
 
 #%% Systems
+IInd.clear_registry()
+IItm.clear_registry()
 IInd.load_from_file(ospath.join(data_path, 'TRACI_indicators.xlsx'), sheet=0)
 IItm.load_from_file(ospath.join(data_path, '_impact_items.xlsx'))
 IItm('Stainless_steel', source='stainless_steel')
@@ -451,7 +453,7 @@ if __name__ == '__main__':
     systems = create_systems()
     for sys in systems:
         sys.simulate(
-            t_span=(0,200),
+            t_span=(0,400),
             state_reset_hook='reset_cache',
             method='BDF'
             )
