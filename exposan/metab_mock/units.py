@@ -287,7 +287,7 @@ class UASB(AnaerobicCSTR):
     auxiliary_unit_names = ('heat_exchanger', )
     def __init__(self, ID='', lifetime=30, 
                  max_depth_to_diameter=4,
-                 design_upflow_velocity=1,          # m/h
+                 design_upflow_velocity=0.5,        # m/h
                  wall_concrete_unit_cost=1081.73,   # $850/m3 in 2014 USD, converted to 2021 USD with concrete PPI
                  slab_concrete_unit_cost=582.48,    # $458/m3 in 2014 USD 
                  stainless_steel_unit_cost=1.8,     # https://www.alibaba.com/product-detail/brushed-stainless-steel-plate-304l-stainless_1600391656401.html?spm=a2700.details.0.0.230e67e6IKwwFd

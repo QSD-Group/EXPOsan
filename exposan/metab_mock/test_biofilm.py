@@ -68,12 +68,11 @@ def Rho_en(state_arr, params=Rho_bk._params, T_op=298.15):
     if S_va > 0: rhos[7] *= 1/(1+S_bu/S_va)
     if S_bu > 0: rhos[8] *= 1/(1+S_va/S_bu)
 
-    try:
-        h = brenth(acid_base_rxn, 1e-14, 1.0,
-                args=(weak_acids, Kas),
-                xtol=1e-12, maxiter=100)
-    except:
-        h = 10**(-6.5)
+    h = brenth(acid_base_rxn, 1e-14, 1.0,
+            args=(weak_acids, Kas),
+            xtol=1e-12, maxiter=100)
+    # except:
+    #     h = 10**(-6.5)
         
     nh3 = Kas[1] * weak_acids[2] / (Kas[1] + h)
     
@@ -193,9 +192,11 @@ y0 = np.append(y0, y0_bulk)
 
 #%%
 bm_idx = cmps.indices(biomass_IDs)
+frac_retain = 0.9
 
 sys, = create_systems(which='C')
 u, = sys.units
+u._f_retain = (u._f_retain > 0) * frac_retain
 u.encapsulate_concentration = 1e5
 inf, = sys.feeds
 bg, eff = sys.products
@@ -222,9 +223,9 @@ def suspended_vs_attached(HRT):
     y0_bulk = np.append(u._state, 298.15)
     y0_bulk[bm_idx] = 0.
     y0 = np.append(np.tile(u._state[:n_cmps], n_dz), y0_bulk)
-    try: sol = solve_ivp(dydt, t_span=(0, 100), y0=y0, method='BDF', args=(HRT,))
+    try: sol = solve_ivp(dydt, t_span=(0, 400), y0=y0, method='BDF', args=(HRT,))
     except: 
-        try: sol = solve_ivp(dydt, t_span=(0, 100), y0=good_y, method='BDF', args=(HRT,))
+        try: sol = solve_ivp(dydt, t_span=(0, 400), y0=good_y, method='BDF', args=(HRT,))
         except: return sus_rcod, np.nan, sus_bm, np.nan
     y = sol.y.T[-1]
     bk_Cs = y[-(n_cmps+5):-5]
@@ -247,7 +248,7 @@ for tau in HRTs:
 
 df = pd.DataFrame(record, index=rows, 
                   columns=pd.MultiIndex.from_product(
-                      [['rCOD', 'biomass [mg TSS/L]'], ['Suspended', 'Encapsulated']]
+                      [['rCOD', 'biomass [g TSS/L]'], ['Suspended', 'Encapsulated']]
                       ))
 df.index.name = 'HRT [d]'
-df.to_excel(ospath.join(results_path, 'suspended_vs_encap.xlsx'))
+df.to_excel(ospath.join(results_path, f'suspended_{frac_retain}_vs_encap.xlsx'))

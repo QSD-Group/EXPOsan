@@ -12,7 +12,13 @@ for license details.
 '''
 
 import numpy as np, qsdsan as qs
-from qsdsan import processes as pc, WasteStream, System
+from qsdsan import (
+    processes as pc, 
+    WasteStream, System, TEA, LCA, PowerUtility,
+    ImpactIndicator as IInd, 
+    ImpactItem as IItm, 
+    StreamImpactItem as SIItm,
+    )
 from qsdsan.utils import ospath, ExogenousDynamicVariable as EDV
 from exposan.metab_mock import (
     rhos_adm1_ph_ctrl,
@@ -20,6 +26,7 @@ from exposan.metab_mock import (
     METAB_AnCSTR as AB,
     IronSpongeTreatment as IST,
     DoubleMembraneGasHolder as GH,
+    data_path
     )
 
 folder = ospath.dirname(__file__)
@@ -50,6 +57,10 @@ T2 = 273.15+25
 Vl2 = 75*scale
 Vg2 = 5*(scale**0.5)
 ph2 = 7.2
+
+T3 = T2
+Vl3 = 5*scale
+Vg3 = 0.556*(scale**0.5)
 
 bl = 1   # yr, bead lifetime
 # bl = 10
@@ -236,11 +247,60 @@ R2_ss_conds = {
     }
 
 #%% Systems
+IInd.load_from_file(ospath.join(data_path, 'TRACI_indicators.xlsx'), sheet=0)
+IItm.load_from_file(ospath.join(data_path, '_impact_items.xlsx'))
+IItm('Stainless_steel', source='stainless_steel')
+bg_offset_CFs = IItm.get_item('biogas_offset').CFs
+NaOCl_item = IItm.get_item('NaOCl')
+citric_acid_item = IItm.get_item('citric_acid')
 
-def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowsheet_D=None,
+def get_fug_ch4(ws):
+    '''Returns kg/hr fugitive CH4.'''
+    cmps = ws.components
+    return ws.imass['S_ch4']*cmps.S_ch4.i_mass
+
+def get_NG_eq(bg):
+    '''Returns m3/hr natural gas equivalent.'''
+    cmps = bg.components
+    KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
+    return -sum(bg.mass*KJ_per_kg)*1e-3/39
+
+def add_strm_iitm(sys):
+    for ws in sys.products:
+        if ws.phase == 'l':
+            SIItm(ID=f'{ws.ID}_fugitive_ch4', linked_stream=ws, 
+                  flow_getter=get_fug_ch4,
+                  GWP100=28, MIR=0.0143794871794872)
+        elif ws.phase == 'g':
+            SIItm(ID=f'{ws.ID}_NG_offset', linked_stream=ws, functional_unit='m3',
+                  flow_getter=get_NG_eq, # m3/hr natural-gas-equivalent
+                  **bg_offset_CFs)
+    for u in sys.units:
+        if isinstance(u, DM):
+            SIItm(linked_stream=u.NaOCl, **NaOCl_item.CFs)
+            SIItm(linked_stream=u.citric_acid, **citric_acid_item.CFs)
+
+# Operation items
+kWh = lambda lca: lca.system.power_utility.rate*lca.lifetime_hr
+def MJ(lca):
+    sys = lca.system
+    duties = [hu.duty for hu in sys.heat_utilities]
+    MJ_per_hr = sum(d for d in duties if d > 0)*1e-3
+    return MJ_per_hr*lca.lifetime_hr
+    
+def add_TEA_LCA(sys, irr, lt):
+    TEA(sys, discount_rate=irr, lifetime=lt, simulate_system=False, CEPCI=708)   
+    LCA(
+        sys, lifetime=lt, simulate_system=False,
+        electricity = kWh,
+        heat_onsite = MJ
+        )
+
+def create_systems(lifetime=30, discount_rate=0.1, electric_price=0.0913,
+                   flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowsheet_D=None,
                    inf_concs={}, R1_init_conds={}, R2_init_conds={}, R_init_conds={}, 
                    which=None, selective=False):
-    
+    PowerUtility.price = electric_price
     which = which or ('A', 'B', 'C', 'D')
     if isinstance(which, str): which = (which,)
     
@@ -293,7 +353,8 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowshe
     
         sysA = System('sysA', path=(R1A, R2A))
         sysA.set_dynamic_tracker(R1A, R2A, bg1A, bg2A, effA)
-        
+        add_strm_iitm(sysA)
+        add_TEA_LCA(sysA, discount_rate, lifetime)
         systems.append(sysA)
         
     if 'B' in which:
@@ -328,7 +389,8 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowshe
         
         sysB = System('sysB', path=(R1B, R2B, DM2B))
         sysB.set_dynamic_tracker(R1B, R2B, bg1B, bgh2B, bgm2B, effB)
-        
+        add_strm_iitm(sysB)
+        add_TEA_LCA(sysB, discount_rate, lifetime)
         systems.append(sysB)
     
     if 'C' in which:
@@ -343,7 +405,7 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowshe
         GHC = GH(ID='GHC')
         
         RC = AB('RC', ins=infC, outs=(bgC, effC), 
-                V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
+                V_liq=Vl3, V_gas=Vg3, T=T3, model=adm1,
                 retain_cmps=biomass_IDs, bead_lifetime=bl,
                 equipment=[ISTC, GHC],
                 F_BM_default=1)        
@@ -351,6 +413,8 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowshe
     
         sysC = System('sysC', path=(RC,))
         sysC.set_dynamic_tracker(RC, bgC, effC)
+        add_strm_iitm(sysC)
+        add_TEA_LCA(sysC, discount_rate, lifetime)
         systems.append(sysC)
         
     if 'D' in which:
@@ -366,7 +430,7 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowshe
         GHD = GH(ID='GHD')
         
         RD = AB('RD', ins=infD, outs=(bghD, ''), 
-                V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
+                V_liq=Vl3, V_gas=Vg3, T=T3, model=adm1,
                 retain_cmps=biomass_IDs, bead_lifetime=bl,
                 equipment=[ISTD, GHD],
                 F_BM_default=1)
@@ -376,6 +440,8 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowshe
     
         sysD = System('sysD', path=(RD, DMD))
         sysD.set_dynamic_tracker(RD, bghD, bgmD, effD)
+        add_strm_iitm(sysD)
+        add_TEA_LCA(sysD, discount_rate, lifetime)
         systems.append(sysD)
     
     return systems
