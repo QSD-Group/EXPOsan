@@ -12,11 +12,19 @@ from exposan.metab_mock import results_path, biomass_IDs, create_systems
 
 Q = 5 # m3/d
 
-r_beads = 5e-3  # m; 5 mm
-l_bl = 1e-5     # m, boundary layer thickness
-n_dz = 10
+# r_beads = 5e-3  # m; 5 mm
+# r_beads = 1e-3    # 1 mm
+r_beads = 1e-4    # 0.1 mm
+# r_beads = 1e-5    # 0.01 mm
+# r_beads = 1e-6    # 0.001 mm
+l_bl = 1e-6     # m, boundary layer thickness
+# n_dz = 10
+n_dz = 25
 dz = r_beads / n_dz
 zs = np.linspace(dz, r_beads, n_dz)
+dV = 4/3*np.pi*(zs)**3
+dV[1:] -= dV[:-1]
+V_bead = (4/3*np.pi*r_beads**3)
 
 cmps = pc.create_adm1_cmps()
 bm_idx = cmps.indices(biomass_IDs)
@@ -26,7 +34,8 @@ stoi_bk = adm1.stoichio_eval()
 stoi_en = stoi_bk[:-3]  # no liquid-gas transfer
 Rho_bk = adm1.rate_function
 
-#%%
+#%% functions & constants
+
 from qsdsan.processes._adm1 import (
     mass2mol_conversion,
     T_correction_factor,
@@ -97,6 +106,8 @@ Diff[-3:-1] = 1.17e-4
 f_diff = 0.75       # bead-to-water diffusivity fraction
 D = Diff * f_diff   # Diffusivity in beads
 k = Diff/l_bl       # mass transfer coeffient through liquid boundary layer
+k_de = 1e-2         # detach rate constant [d^-1]
+K_tss = 25/2        # TSS half saturation coefficient
 
 Cs_in = np.array([
     3.000e+03, 6.000e+02, 4.000e+02, 4.000e+02, 4.000e+02, 4.000e+02,
@@ -119,7 +130,7 @@ def f_qgas(S_gas, T):
     q_gas = max(0, _k_p * (P - _P_atm))
     return q_gas
 
-def dydt(t, y, HRT):
+def dydt(t, y, HRT, detach=False):
     Q, T = y[-2:]
     V_liq = HRT * Q
     V_bed = V_liq / 0.1
@@ -130,6 +141,15 @@ def dydt(t, y, HRT):
     S_gas = y[-5:-2]
     Cs_bk = y[-(n_cmps+5):-5]        # bulk liquid concentrations
     Cs_en = y[:n_dz*n_cmps].reshape((n_dz, n_cmps))  # each row is one control volume
+    
+    # Detachment
+    if detach:
+        tss = np.sum(Cs_en * (cmps.x*cmps.i_mass), axis=1)
+        u_de = 1/(1+np.exp(K_tss-tss))*k_de
+        de_en = np.diag(u_de) @ (Cs_en * cmps.x)
+        tot_de = np.sum(np.diag(dV) @ de_en, axis=0) / V_bead  # detachment per unit volume of beads
+    else:
+        de_en = tot_de = 0.
     
     # Transformation
     rhos_en = np.apply_along_axis(Rho_en, 1, Cs_en, T_op=T)
@@ -150,8 +170,8 @@ def dydt(t, y, HRT):
     d2Cdz2[-1,:] = ((1+dz/zs[-1])**2*(C_lf-Cs_en[-2]) - (1-dz/zs[-1])**2*(Cs_en[-2]-Cs_en[-3]))/(dz**2)  # backward difference
     
     # Mass balance
-    dCdt_en = D*(d2Cdz2 + np.diag(2/zs) @ dCdz) + Rs_en
-    dCdt_bk = (Cs_in-Cs_bk)/HRT - A_beads/V_liq*k*(Cs_bk-C_lf) + Rs_bk
+    dCdt_en = D*(d2Cdz2 + np.diag(2/zs) @ dCdz) + Rs_en - de_en
+    dCdt_bk = (Cs_in-Cs_bk)/HRT - A_beads/V_liq*k*(Cs_bk-C_lf) + Rs_bk + V_beads*tot_de/V_liq
     
     dy = y*0.
     dy[:n_dz*n_cmps] = dCdt_en.flatten()
@@ -177,8 +197,7 @@ y0_bulk = np.array([
     4.000e-02, 2.000e-02, 9.900e+02, 3.922e-07, 2.228e-02, 1.732e-02,
     Q, 298.15 
     ])
-y0 = np.tile(C0, n_dz)
-y0 = np.append(y0, y0_bulk)
+y0 = np.append(np.tile(C0, n_dz), y0_bulk)
 
 # sol = solve_ivp(dydt, t_span=(0, 100), y0=y0, method='BDF',
 #                 t_eval=np.arange(0, 101, 5), args=(HRT,))
@@ -191,27 +210,29 @@ y0 = np.append(y0, y0_bulk)
 # out.to_excel(ospath.join(results_path, f'sol_bfm_{HRT}d.xlsx'))
 
 #%% steady-state spatial profile
-HRTs = [1, 0.5, 10/24, 8/24]
-TSS0 = 2
-C0_even = C0.copy()
-C0_even[bm_idx] = TSS0/0.777/7
-y0_even = np.append(np.tile(C0_even, n_dz), y0_bulk)
-dfs = {}
-for tau in HRTs:
-    sol = solve_ivp(dydt, t_span=(0, 400), y0=y0_even, method='BDF', args=(tau,))
-    y_ss = sol.y.T[-1]
-    C_ss = y_ss[:n_cmps*n_dz].reshape((n_dz, n_cmps))
-    Xbio_ss = C_ss[:, bm_idx]
-    df_c = pd.DataFrame(C_ss, columns=cmps.IDs)
-    df_c['biomass_TSS'] = np.sum(Xbio_ss, axis=1)
-    dfs[f'{tau:.2f}'] = df_c
+def y0_even(TSS0):
+    C0_even = C0.copy()
+    C0_even[bm_idx] = TSS0/0.777/7
+    return np.append(np.tile(C0_even, n_dz), y0_bulk)
 
-with pd.ExcelWriter(ospath.join(results_path, f'TSS0_{TSS0}.xlsx')) as writer:
-    for k, df in dfs.items():
-        df.to_excel(writer, sheet_name=k)
+def spatial_profiling(HRTs=[1, 0.5, 10/24, 8/24], TSS0=5):
+    y0 = y0_even(TSS0)
+    dfs = {}
+    for tau in HRTs:
+        sol = solve_ivp(dydt, t_span=(0, 400), y0=y0, method='BDF', args=(tau,))
+        y_ss = sol.y.T[-1]
+        C_ss = y_ss[:n_cmps*n_dz].reshape((n_dz, n_cmps))
+        Xbio_ss = C_ss[:, bm_idx]
+        df_c = pd.DataFrame(C_ss, columns=cmps.IDs)
+        df_c['biomass_TSS'] = np.sum(Xbio_ss, axis=1)
+        dfs[f'{tau:.2f}'] = df_c
+    
+    with pd.ExcelWriter(ospath.join(results_path, f'TSS0_{TSS0}_detach.xlsx')) as writer:
+        for k, df in dfs.items():
+            df.to_excel(writer, sheet_name=k)
 
 #%% suspended vs. attached growth
-frac_retain = 0.9
+frac_retain = 1.0
 
 sys, = create_systems(which='C')
 u, = sys.units
@@ -223,6 +244,7 @@ _ic = u._concs[bm_idx].copy()
 
 good_y = y0
 
+@time_printer
 def suspended_vs_attached(HRT):
     print('\n')
     print('='*12)
@@ -239,13 +261,13 @@ def suspended_vs_attached(HRT):
         sys.simulate(state_reset_hook='reset_cache', t_span=(0, 400), method='BDF')
         sus_rcod = 1-eff.COD/inf.COD
     sus_bm = sum(u._state[bm_idx] * cmps.i_mass[bm_idx])
-    # y0_bulk = np.append(u._state, 298.15)
-    # y0_bulk[bm_idx] = 0.
-    # y0 = np.append(np.tile(u._state[:n_cmps], n_dz), y0_bulk)
-    # try: sol = solve_ivp(dydt, t_span=(0, 400), y0=y0, method='BDF', args=(HRT,))
-    try: sol = solve_ivp(dydt, t_span=(0, 400), y0=y0_even, method='BDF', args=(HRT,))
+    y0_bulk = np.append(u._state, 298.15)
+    y0_bulk[bm_idx] = 0.
+    y0 = np.append(np.tile(u._state[:n_cmps], n_dz), y0_bulk)
+    try: sol = solve_ivp(dydt, t_span=(0, 400), y0=y0, method='BDF', args=(HRT, False))
+    # try: sol = solve_ivp(dydt, t_span=(0, 400), y0=y0_even, method='BDF', args=(HRT, False))
     except: 
-        try: sol = solve_ivp(dydt, t_span=(0, 400), y0=good_y, method='BDF', args=(HRT,))
+        try: sol = solve_ivp(dydt, t_span=(0, 400), y0=good_y, method='BDF', args=(HRT, False))
         except: return sus_rcod, np.nan, sus_bm, np.nan
     y = sol.y.T[-1]
     bk_Cs = y[-(n_cmps+5):-5]
@@ -270,22 +292,16 @@ df = pd.DataFrame(record, index=rows,
                       [['rCOD', 'biomass [g TSS/L]'], ['Suspended', 'Encapsulated']]
                       ))
 df.index.name = 'HRT [d]'
-df.to_excel(ospath.join(results_path, f'suspended_{frac_retain}_vs_encap.xlsx'))
+df.to_excel(ospath.join(results_path, f'suspended_vs_encap_{r_beads}.xlsx'))
 
 
 #%% encapsulated biomass, HRT
-TSS = [1, 2, 5, 10, 30]
-rcod = []
-ss_bm = []
-
 @time_printer
 def encap(TSS_init, HRT):
     msg = f'TSS {TSS_init}g/L, HRT {HRT:.3f}d'
     print(f'\n{msg}\n{"="*len(msg)}')
-    C0_even = C0.copy()
-    C0_even[16:23] = TSS_init/0.777/7
-    y0_even = np.append(np.tile(C0_even, n_dz), y0_bulk)
-    try: sol = solve_ivp(dydt, t_span=(0, 400), y0=y0_even, method='BDF', args=(HRT,))
+    y0 = y0_even(TSS_init)
+    try: sol = solve_ivp(dydt, t_span=(0, 400), y0=y0, method='BDF', args=(HRT,))
     except: return np.nan, np.nan
     y = sol.y.T[-1]
     bk_Cs = y[-(n_cmps+5):-5]
@@ -296,25 +312,27 @@ def encap(TSS_init, HRT):
     if att_rcod > 0.5: good_y[:] = y
     return att_rcod, att_bm
 
-
-for tss in TSS:
-    l_rcod = []
-    l_bm = []
-    for tau in HRTs:
-        out = encap(tss, tau)
-        l_rcod.append(out[0])
-        l_bm.append(out[1])
-    rcod.append(l_rcod)
-    ss_bm.append(l_bm)
-
-df_rcod = pd.DataFrame(rcod).T
-df_bm = pd.DataFrame(ss_bm).T
-
-for i in (df_rcod, df_bm):
-    i.columns = pd.MultiIndex.from_product([['initial TSS [g/L]'], TSS])
-    i.index = HRTs
-    i.index.name = 'HRT [d]'
-
-with pd.ExcelWriter(ospath.join(results_path, 'HRT_vs_encapTSS.xlsx')) as writer:
-    df_rcod.to_excel(writer, sheet_name='rCOD')
-    df_bm.to_excel(writer, sheet_name='Biomass TSS')
+def HRT_init_TSS(TSS=[1, 2, 5, 10, 30], HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24]):
+    rcod = []
+    ss_bm = []
+    for tss in TSS:
+        l_rcod = []
+        l_bm = []
+        for tau in HRTs:
+            out = encap(tss, tau)
+            l_rcod.append(out[0])
+            l_bm.append(out[1])
+        rcod.append(l_rcod)
+        ss_bm.append(l_bm)
+    
+    df_rcod = pd.DataFrame(rcod).T
+    df_bm = pd.DataFrame(ss_bm).T
+    
+    for i in (df_rcod, df_bm):
+        i.columns = pd.MultiIndex.from_product([['initial TSS [g/L]'], TSS])
+        i.index = HRTs
+        i.index.name = 'HRT [d]'
+    
+    with pd.ExcelWriter(ospath.join(results_path, 'HRT_vs_encapTSS_detach.xlsx')) as writer:
+        df_rcod.to_excel(writer, sheet_name='rCOD')
+        df_bm.to_excel(writer, sheet_name='Biomass TSS')
