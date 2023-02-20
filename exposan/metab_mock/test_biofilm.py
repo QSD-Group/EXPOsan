@@ -118,7 +118,7 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, n_dz=10, f_diff=0.75, k_de=1e-2, K_tss=
     V_bead = (4/3*np.pi*r_beads**3)
     D = Diff * f_diff   # Diffusivity in beads
     k = Diff/l_bl       # mass transfer coeffient through liquid boundary layer
-
+    
     def dydt(t, y, HRT, detach=False):
         Q, T = y[-2:]
         V_liq = HRT * Q
@@ -190,7 +190,7 @@ y0_bulk = np.array([
     Q, 298.15 
     ])
 
-y0_bulk = lambda n_dz: np.append(np.tile(C0, n_dz), y0_bulk)
+y0_from_bulk = lambda n_dz: np.append(np.tile(C0, n_dz), y0_bulk)
     
 # sol = solve_ivp(dydt, t_span=(0, 100), y0=y0, method='BDF',
 #                 t_eval=np.arange(0, 101, 5), args=(HRT,))
@@ -225,6 +225,7 @@ def spatial_profiling(HRTs=[1, 0.5, 10/24, 8/24], TSS0=5, n_dz=10,
     with pd.ExcelWriter(ospath.join(results_path, f'TSS0_{TSS0}_{detach}.xlsx')) as writer:
         for k, df in dfs.items():
             df.to_excel(writer, sheet_name=k)
+    return dfs
 
 #%% suspended vs. attached growth
 
@@ -240,7 +241,7 @@ def suspended_vs_attached(HRT, dydt, n_dz, sys):
     bg, eff = sys.products
     sys.simulate(state_reset_hook='reset_cache', t_span=(0, 400), method='BDF')
     sus_rcod = 1-eff.COD/inf.COD
-    good_y = y0_bulk(n_dz)
+    good_y = y0_from_bulk(n_dz)
     i = 0
     while sus_rcod < 0.7 and i <= 5:
         i += 1
@@ -294,12 +295,17 @@ def HRT_suspended_vs_encap(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
 
 #%% encapsulated biomass, HRT
 @time_printer
-def encap(TSS_init, HRT, dydt, n_dz):
+def encap(TSS_init, HRT, dydt, n_dz, detach=False):
     msg = f'TSS {TSS_init}g/L, HRT {HRT:.3f}d'
     print(f'\n{msg}\n{"="*len(msg)}')
     y0 = y0_even(n_dz, TSS_init)
-    try: sol = solve_ivp(dydt, t_span=(0, 400), y0=y0, method='BDF', args=(HRT,))
-    except: return np.nan, np.nan
+    try: sol = solve_ivp(dydt, t_span=(0, 400), y0=y0, method='BDF', args=(HRT, detach))
+    except: 
+        try: 
+            print('Doubled TSS...')
+            sol = solve_ivp(dydt, t_span=(0, 400), y0=y0_even(n_dz, TSS_init*2), 
+                             method='BDF', args=(HRT, detach))
+        except: return np.nan, np.nan
     y = sol.y.T[-1]
     bk_Cs = y[-(n_cmps+5):-5]
     en_Cs = y[-(2*n_cmps+5):-(n_cmps+5)]
@@ -309,7 +315,7 @@ def encap(TSS_init, HRT, dydt, n_dz):
     return att_rcod, att_bm
 
 def HRT_init_TSS(TSS=[1, 2, 5, 10, 30], HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
-                 **ode_kwargs):
+                 detach=False, **ode_kwargs):
     rcod = []
     ss_bm = []
     dydt = compile_ode(**ode_kwargs)
@@ -318,7 +324,7 @@ def HRT_init_TSS(TSS=[1, 2, 5, 10, 30], HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1
         l_rcod = []
         l_bm = []
         for tau in HRTs:
-            out = encap(tss, tau, dydt, n_dz)
+            out = encap(tss, tau, dydt, n_dz, detach=detach)
             l_rcod.append(out[0])
             l_bm.append(out[1])
         rcod.append(l_rcod)
@@ -337,3 +343,38 @@ def HRT_init_TSS(TSS=[1, 2, 5, 10, 30], HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1
         df_bm.to_excel(writer, sheet_name='Biomass TSS')
         
 #%% bead size
+
+def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24], 
+                  bead_size=[5e-3, 1e-3, 1e-4, 1e-5],
+                  detach=False, **ode_kwargs):
+    # ode_kwargs.pop('r_beads', None)
+    rcod = []
+    ss_bm = []
+    n_dz = ode_kwargs.pop('n_dz', 10)
+    for r_beads in bead_size:
+        dydt = compile_ode(r_beads=r_beads, n_dz=n_dz, **ode_kwargs)
+        l_rcod = []
+        l_bm = []
+        for tau in HRTs:
+            tss = 5/tau
+            z1, z2 = encap(tss, tau, dydt, n_dz, detach)
+            l_rcod.append(z1)
+            l_bm.append(z2)
+        rcod.append(l_rcod)
+        ss_bm.append(l_bm)
+    
+    df_rcod = pd.DataFrame(rcod).T
+    df_bm = pd.DataFrame(ss_bm).T
+    
+    for i in (df_rcod, df_bm):
+        i.columns = pd.MultiIndex.from_product([['bead size'], bead_size])
+        i.index = HRTs
+        i.index.name = 'HRT [d]'
+    with pd.ExcelWriter(ospath.join(results_path, 
+                                    f'HRT_vs_rbeads_{n_dz}_{detach}.xlsx')) as writer:
+        df_rcod.to_excel(writer, sheet_name='rCOD')
+        df_bm.to_excel(writer, sheet_name='Biomass TSS')
+
+    return df_rcod, df_bm
+
+df_rcod, df_bm = bead_size_HRT()

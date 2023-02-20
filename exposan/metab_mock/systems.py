@@ -15,12 +15,13 @@ import numpy as np, qsdsan as qs
 from qsdsan import (
     processes as pc, 
     WasteStream, System, TEA, LCA, PowerUtility,
-    ImpactIndicator as IInd, 
     ImpactItem as IItm, 
     StreamImpactItem as SIItm,
     )
 from qsdsan.utils import ospath, ExogenousDynamicVariable as EDV
 from exposan.metab_mock import (
+    _impact_item_loaded,
+    load_lca_data,
     rhos_adm1_ph_ctrl,
     DegassingMembrane as DM, 
     METAB_AnCSTR as AB,
@@ -247,11 +248,7 @@ R2_ss_conds = {
     }
 
 #%% Systems
-IInd.clear_registry()
-IItm.clear_registry()
-IInd.load_from_file(ospath.join(data_path, 'TRACI_indicators.xlsx'), sheet=0)
-IItm.load_from_file(ospath.join(data_path, '_impact_items.xlsx'))
-IItm('Stainless_steel', source='stainless_steel')
+if not _impact_item_loaded: load_lca_data()
 bg_offset_CFs = IItm.get_item('biogas_offset').CFs
 NaOCl_item = IItm.get_item('NaOCl')
 citric_acid_item = IItm.get_item('citric_acid')
