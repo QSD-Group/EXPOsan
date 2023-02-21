@@ -131,15 +131,6 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, n_dz=10, f_diff=0.75, k_de=1e-2, K_tss=
         Cs_bk = y[-(n_cmps+5):-5]        # bulk liquid concentrations
         Cs_en = y[:n_dz*n_cmps].reshape((n_dz, n_cmps))  # each row is one control volume
         
-        # Detachment
-        if detach:
-            tss = np.sum(Cs_en * (cmps.x*cmps.i_mass), axis=1)
-            u_de = 1/(1+np.exp(K_tss-tss))*k_de
-            de_en = np.diag(u_de) @ (Cs_en * cmps.x)
-            tot_de = np.sum(np.diag(dV) @ de_en, axis=0) / V_bead  # detachment per unit volume of beads
-        else:
-            de_en = tot_de = 0.
-        
         # Transformation
         rhos_en = np.apply_along_axis(Rho_en, 1, Cs_en, T_op=T)
         Rs_en = rhos_en @ stoi_en       # n_dz * n_cmps
@@ -148,6 +139,20 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, n_dz=10, f_diff=0.75, k_de=1e-2, K_tss=
         q_gas = f_qgas(S_gas, T)
         gas_transfer = - q_gas*S_gas/V_gas + rhos_bk[-3:] * V_liq/V_gas * gas_mass2mol_conversion
         
+        # Detachment
+        if detach:
+            tss = np.sum(Cs_en * (cmps.x*cmps.i_mass), axis=1)
+            # u_de = 1/(1+np.exp(K_tss-tss))*k_de            
+            x_net_growth = np.sum(Rs_en * cmps.x, axis=1)/np.sum(Cs_en * cmps.x, axis=1) # d^(-1), equivalent to k_de
+            u_de = 1/(1+np.exp(K_tss-tss)) * x_net_growth
+            de_en = np.diag(u_de) @ (Cs_en * cmps.x)
+            
+            # x_net_growth = Rs_en * cmps.x    # d^(-1), equivalent to k_de
+            # de_en = np.diag(1/(1+np.exp(K_tss-tss))) @ x_net_growth
+            tot_de = np.sum(np.diag(dV) @ de_en, axis=0) / V_bead  # detachment per unit volume of beads
+        else:
+            de_en = tot_de = 0.
+            
         # Mass transfer (centered differences)
         dCdz = Cs_en * 0.
         d2Cdz2 = Cs_en * 0.
@@ -386,15 +391,14 @@ def run(tau=0.5, TSS0=5, r_beads=5e-3, l_bl=1e-5, n_dz=10, f_diff=0.75,
         k_de=1e-2, K_tss=11, detach=False):
     y0 = y0_even(n_dz, TSS0)
     dydt = compile_ode(r_beads, l_bl, n_dz, f_diff, k_de, K_tss)
-    print(f'HRT = {tau} d')
+    print(f'HRT = {tau:.2f} d')
     sol = solve_ivp(dydt, t_span=(0, 400), y0=y0, method='BDF', args=(tau, detach))
-    # y_ss = sol.y.T[-1]
-    # C_ss = y_ss[:n_cmps*(n_dz+1)].reshape((n_dz+1, n_cmps))
-    # Xbio_ss = C_ss[:, bm_idx]
-    # df_c = pd.DataFrame(C_ss, columns=cmps.IDs, index=[*range(n_dz), 'bulk'])
-    # df_c['biomass_TSS'] = np.sum(Xbio_ss, axis=1)
-    # dfs[f'{tau:.2f}'] = df_c
-    return sol
+    y_ss = sol.y.T[-1]
+    C_ss = y_ss[:n_cmps*(n_dz+1)].reshape((n_dz+1, n_cmps))
+    Xbio_ss = C_ss[:, bm_idx]
+    df_c = pd.DataFrame(C_ss, columns=cmps.IDs, index=[*range(n_dz), 'bulk'])
+    df_c['biomass_TSS'] = np.sum(Xbio_ss, axis=1)
+    return df_c
     
 
 if __name__ == '__main__':
@@ -411,4 +415,4 @@ if __name__ == '__main__':
     #             save_to=f'spatial_r{r_beads}_{detach}.xlsx'
     #             )
 
-    sol = run(tau=1, TSS0=6, detach=True)
+    df = run(tau=1/3, TSS0=6, detach=True)
