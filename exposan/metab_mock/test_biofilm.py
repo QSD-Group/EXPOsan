@@ -365,7 +365,7 @@ def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
         l_rcod = []
         l_bm = []
         for tau in HRTs:
-            tss = 2.5/tau
+            tss = min(2.5/tau, 22)
             z1, z2 = encap(tss, tau, dydt, n_dz, detach)
             l_rcod.append(z1)
             l_bm.append(z2)
@@ -380,7 +380,7 @@ def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
         i.index = HRTs
         i.index.name = 'HRT [d]'
     with pd.ExcelWriter(ospath.join(results_path, 
-                                    f'HRT_vs_rbeads_{n_dz}_{detach}.xlsx')) as writer:
+                                    f'HRT_vs_rbeads_{n_dz}_{detach}_new.xlsx')) as writer:
         df_rcod.to_excel(writer, sheet_name='rCOD')
         df_bm.to_excel(writer, sheet_name='Biomass TSS')
 
@@ -402,7 +402,9 @@ def run(tau=0.5, TSS0=5, r_beads=5e-3, l_bl=1e-5, n_dz=10, f_diff=0.75,
     
 
 if __name__ == '__main__':
-    # df_rcod, df_bm = bead_size_HRT()
+    # df_rcod, df_bm = bead_size_HRT(detach=True)
+    df_rcod, df_bm = bead_size_HRT(bead_size=[5e-3, 1e-3], 
+                                   detach=True)
     # de_rcod, de_bm = bead_size_HRT(detach=True, n_dz=20)
 
     # for detach in (True, False):
@@ -415,4 +417,4 @@ if __name__ == '__main__':
     #             save_to=f'spatial_r{r_beads}_{detach}.xlsx'
     #             )
 
-    df = run(tau=1/3, TSS0=6, detach=True)
+    # df = run(tau=1/6, TSS0=6, detach=True)
