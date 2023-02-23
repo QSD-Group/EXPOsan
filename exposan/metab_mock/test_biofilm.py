@@ -219,13 +219,13 @@ def spatial_profiling(HRTs=[1, 0.5, 10/24, 8/24], TSS0=5, n_dz=10,
     dfs = {}
     dydt = compile_ode(n_dz=n_dz, **ode_kwargs)
     for tau in HRTs:
-        print(f'HRT = {tau} d')
+        print(f'HRT = {tau:.2f} d')
         sol = solve_ivp(dydt, t_span=(0, 400), y0=y0, method='BDF', args=(tau, detach))
         y_ss = sol.y.T[-1]
         C_ss = y_ss[:n_cmps*(n_dz+1)].reshape((n_dz+1, n_cmps))
         Xbio_ss = C_ss[:, bm_idx]
         df_c = pd.DataFrame(C_ss, columns=cmps.IDs, index=[*range(n_dz), 'bulk'])
-        df_c['biomass_TSS'] = np.sum(Xbio_ss, axis=1)
+        df_c['biomass_COD'] = np.sum(Xbio_ss, axis=1)
         dfs[f'{tau:.2f}'] = df_c
     
     file_name = save_to or f'TSS0_{TSS0}_{detach}.xlsx'
@@ -302,8 +302,19 @@ def HRT_suspended_vs_encap(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
 
 
 #%% encapsulated biomass, HRT
+def SRT(y, n_dz, HRT, r_beads):
+    en_bm = np.sum(y[:n_dz*n_cmps].reshape((n_dz, n_cmps))[:,bm_idx], axis=1)
+    bk_bm = np.sum(y[n_dz*n_cmps: ((n_dz+1)*n_cmps)][bm_idx])
+    dz = r_beads / n_dz
+    zs = np.linspace(dz, r_beads, n_dz)
+    dV = 4/3*np.pi*(zs)**3
+    V_bead = dV[-1]
+    dV[1:] -= dV[:-1]
+    C_en_avg = np.dot(en_bm, dV)/V_bead
+    return (1 + 9*C_en_avg/bk_bm) * HRT
+
 @time_printer
-def encap(TSS_init, HRT, dydt, n_dz, detach=False):
+def encap(TSS_init, HRT, dydt, n_dz, r_beads=5e-3, detach=False):
     msg = f'TSS {TSS_init}g/L, HRT {HRT:.3f}d'
     print(f'\n{msg}\n{"="*len(msg)}')
     y0 = y0_even(n_dz, TSS_init)
@@ -320,7 +331,8 @@ def encap(TSS_init, HRT, dydt, n_dz, detach=False):
     att_COD = sum(bk_Cs * cmps.i_COD * (1-cmps.g)) * 1e3
     att_rcod = 1-att_COD/6801
     att_bm = sum(en_Cs[bm_idx] * cmps.i_mass[bm_idx])
-    return att_rcod, att_bm
+    srt = SRT(y, n_dz, HRT, r_beads)
+    return att_rcod, att_bm, srt
 
 def HRT_init_TSS(TSS=[1, 2, 5, 10, 30], HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
                  detach=False, **ode_kwargs):
@@ -353,38 +365,44 @@ def HRT_init_TSS(TSS=[1, 2, 5, 10, 30], HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1
 #%% bead size
 
 def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24], 
-                  bead_size=[5e-3, 1e-3, 1e-4, 1e-5],
+                  bead_size=[5e-3, 1e-3, 5e-4, 1e-4, 1e-5],
                   detach=False, **ode_kwargs):
     # ode_kwargs.pop('r_beads', None)
     rcod = []
     ss_bm = []
+    srt = []
     n_dz = ode_kwargs.pop('n_dz', 10)
     for r_beads in bead_size:
         l_bl = min(1e-5, r_beads/10)
         dydt = compile_ode(r_beads=r_beads, l_bl=l_bl, n_dz=n_dz, **ode_kwargs)
         l_rcod = []
         l_bm = []
+        l_srt = []
         for tau in HRTs:
             tss = min(2.5/tau, 22)
-            z1, z2 = encap(tss, tau, dydt, n_dz, detach)
+            z1, z2, z3 = encap(tss, tau, dydt, n_dz, r_beads, detach)
             l_rcod.append(z1)
             l_bm.append(z2)
+            l_srt.append(z3)
         rcod.append(l_rcod)
         ss_bm.append(l_bm)
+        srt.append(l_srt)
     
     df_rcod = pd.DataFrame(rcod).T
     df_bm = pd.DataFrame(ss_bm).T
+    df_srt = pd.DataFrame(srt).T
     
-    for i in (df_rcod, df_bm):
-        i.columns = pd.MultiIndex.from_product([['bead size'], bead_size])
+    for i in (df_rcod, df_bm, df_srt):
+        i.columns = pd.MultiIndex.from_product([['bead size [m]'], bead_size])
         i.index = HRTs
         i.index.name = 'HRT [d]'
     with pd.ExcelWriter(ospath.join(results_path, 
-                                    f'HRT_vs_rbeads_{n_dz}_{detach}_new.xlsx')) as writer:
+                                    f'HRT_vs_rbeads_{n_dz}_{detach}_srt.xlsx')) as writer:
         df_rcod.to_excel(writer, sheet_name='rCOD')
         df_bm.to_excel(writer, sheet_name='Biomass TSS')
+        df_srt.to_excel(writer, sheet_name='SRT')
 
-    return df_rcod, df_bm
+    return df_rcod, df_bm, df_srt
 
 #%%
 def run(tau=0.5, TSS0=5, r_beads=5e-3, l_bl=1e-5, n_dz=10, f_diff=0.75, 
@@ -398,23 +416,22 @@ def run(tau=0.5, TSS0=5, r_beads=5e-3, l_bl=1e-5, n_dz=10, f_diff=0.75,
     Xbio_ss = C_ss[:, bm_idx]
     df_c = pd.DataFrame(C_ss, columns=cmps.IDs, index=[*range(n_dz), 'bulk'])
     df_c['biomass_TSS'] = np.sum(Xbio_ss, axis=1)
-    return df_c
+    return df_c, y_ss, dydt
     
 
 if __name__ == '__main__':
     # df_rcod, df_bm = bead_size_HRT(detach=True)
-    df_rcod, df_bm = bead_size_HRT(bead_size=[5e-3, 1e-3], 
-                                   detach=True)
+    dfs = bead_size_HRT(detach=True)
     # de_rcod, de_bm = bead_size_HRT(detach=True, n_dz=20)
 
-    # for detach in (True, False):
+    # for detach in (True,):
     #     print(f'detach: {detach}')
-    #     for r_beads in (5e-3, 1e-3, 5e-4):
+    #     for r_beads in (5e-3, 1e-3, 5e-4, 1e-4, 1e-5):
     #         print(f'r_beads: {r_beads}\n{"="*15}')
     #         dfs = spatial_profiling(
-    #             HRTs=[1, 0.5, 1/3], TSS0=6,
+    #             HRTs=[1, 0.5, 1/3], TSS0=6, 
     #             r_beads=r_beads,  detach=detach,
-    #             save_to=f'spatial_r{r_beads}_{detach}.xlsx'
+    #             save_to=f'spatial_r{r_beads}_{detach}_new.xlsx'
     #             )
 
     # df = run(tau=1/6, TSS0=6, detach=True)
