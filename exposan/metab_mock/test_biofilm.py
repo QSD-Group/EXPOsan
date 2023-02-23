@@ -313,26 +313,36 @@ def SRT(y, n_dz, HRT, r_beads):
     C_en_avg = np.dot(en_bm, dV)/V_bead
     return (1 + 9*C_en_avg/bk_bm) * HRT
 
+def converge(dydt, y, args, threshold=1e-4):
+    dy_max = 1.
+    while dy_max > threshold:
+        sol = solve_ivp(dydt, t_span=(0, 400), y0=y, method='BDF', args=args)
+        y = sol.y.T[-1]
+        dy = dydt(0, y, *args)
+        dy_max = np.max(np.abs(dy))
+    return y
+
 @time_printer
-def encap(TSS_init, HRT, dydt, n_dz, r_beads=5e-3, detach=False):
+def encap(TSS_init, HRT, dydt, n_dz, r_beads=5e-3, detach=False, y0=None):
     msg = f'TSS {TSS_init}g/L, HRT {HRT:.3f}d'
     print(f'\n{msg}\n{"="*len(msg)}')
-    y0 = y0_even(n_dz, TSS_init)
-    try: sol = solve_ivp(dydt, t_span=(0, 400), y0=y0, method='BDF', args=(HRT, detach))
+    if y0 is None: y = y0_even(n_dz, TSS_init)
+    else: y = y0
+    try: 
+        y = converge(dydt, y, args=(HRT, detach))
     except: 
         try: 
             print('Doubled TSS...')
-            sol = solve_ivp(dydt, t_span=(0, 400), y0=y0_even(n_dz, TSS_init*2), 
-                             method='BDF', args=(HRT, detach))
+            y = y0_even(n_dz, TSS_init*2)
+            y = converge(dydt, y, args=(HRT, detach))
         except: return np.nan, np.nan
-    y = sol.y.T[-1]
     bk_Cs = y[-(n_cmps+5):-5]
     en_Cs = y[-(2*n_cmps+5):-(n_cmps+5)]
     att_COD = sum(bk_Cs * cmps.i_COD * (1-cmps.g)) * 1e3
     att_rcod = 1-att_COD/6801
     att_bm = sum(en_Cs[bm_idx] * cmps.i_mass[bm_idx])
     srt = SRT(y, n_dz, HRT, r_beads)
-    return att_rcod, att_bm, srt
+    return att_rcod, att_bm, srt, y
 
 def HRT_init_TSS(TSS=[1, 2, 5, 10, 30], HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
                  detach=False, **ode_kwargs):
@@ -373,14 +383,16 @@ def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
     srt = []
     n_dz = ode_kwargs.pop('n_dz', 10)
     for r_beads in bead_size:
+        print(f'r_beads: {r_beads}\n')
         l_bl = min(1e-5, r_beads/10)
         dydt = compile_ode(r_beads=r_beads, l_bl=l_bl, n_dz=n_dz, **ode_kwargs)
         l_rcod = []
         l_bm = []
         l_srt = []
+        y0 = None
         for tau in HRTs:
             tss = min(2.5/tau, 22)
-            z1, z2, z3 = encap(tss, tau, dydt, n_dz, r_beads, detach)
+            z1, z2, z3, y0 = encap(tss, tau, dydt, n_dz, r_beads, detach, y0)
             l_rcod.append(z1)
             l_bm.append(z2)
             l_srt.append(z3)
@@ -397,7 +409,7 @@ def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
         i.index = HRTs
         i.index.name = 'HRT [d]'
     with pd.ExcelWriter(ospath.join(results_path, 
-                                    f'HRT_vs_rbeads_{n_dz}_{detach}_srt.xlsx')) as writer:
+                                    f'HRT_vs_rbeads_{n_dz}_{detach}_ss.xlsx')) as writer:
         df_rcod.to_excel(writer, sheet_name='rCOD')
         df_bm.to_excel(writer, sheet_name='Biomass TSS')
         df_srt.to_excel(writer, sheet_name='SRT')
@@ -405,18 +417,18 @@ def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
     return df_rcod, df_bm, df_srt
 
 #%%
+@time_printer
 def run(tau=0.5, TSS0=5, r_beads=5e-3, l_bl=1e-5, n_dz=10, f_diff=0.75, 
         k_de=1e-2, K_tss=11, detach=False):
     y0 = y0_even(n_dz, TSS0)
     dydt = compile_ode(r_beads, l_bl, n_dz, f_diff, k_de, K_tss)
     print(f'HRT = {tau:.2f} d')
-    sol = solve_ivp(dydt, t_span=(0, 400), y0=y0, method='BDF', args=(tau, detach))
-    y_ss = sol.y.T[-1]
+    y_ss = converge(dydt, y0, args=(tau, detach))
     C_ss = y_ss[:n_cmps*(n_dz+1)].reshape((n_dz+1, n_cmps))
     Xbio_ss = C_ss[:, bm_idx]
     df_c = pd.DataFrame(C_ss, columns=cmps.IDs, index=[*range(n_dz), 'bulk'])
-    df_c['biomass_TSS'] = np.sum(Xbio_ss, axis=1)
-    return df_c, y_ss, dydt
+    df_c['biomass_COD'] = np.sum(Xbio_ss, axis=1)
+    return df_c
     
 
 if __name__ == '__main__':
