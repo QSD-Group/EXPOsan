@@ -165,7 +165,10 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, n_dz=10, f_diff=0.75, k_de=1e-2, K_tss=
         
         # Mass balance
         dCdt_en = D*(d2Cdz2 + np.diag(2/zs) @ dCdz) + Rs_en - de_en
-        dCdt_bk = (Cs_in-Cs_bk)/HRT - A_beads/V_liq*k*(Cs_bk-C_lf) + Rs_bk + V_beads*tot_de/V_liq
+        Cs_eff = Cs_bk.copy()
+        Cs_eff[bm_idx] = 0.
+        dCdt_bk = (Cs_in-Cs_eff)/HRT - A_beads/V_liq*k*(Cs_bk-C_lf) + Rs_bk + V_beads*tot_de/V_liq       
+        # dCdt_bk = (Cs_in-Cs_bk)/HRT - A_beads/V_liq*k*(Cs_bk-C_lf) + Rs_bk + V_beads*tot_de/V_liq
         
         dy = y*0.
         dy[:n_dz*n_cmps] = dCdt_en.flatten()
@@ -383,7 +386,7 @@ def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
     srt = []
     n_dz = ode_kwargs.pop('n_dz', 10)
     for r_beads in bead_size:
-        print(f'r_beads: {r_beads}\n')
+        print(f'\nr_beads: {r_beads}')
         l_bl = min(1e-5, r_beads/10)
         dydt = compile_ode(r_beads=r_beads, l_bl=l_bl, n_dz=n_dz, **ode_kwargs)
         l_rcod = []
@@ -428,12 +431,12 @@ def run(tau=0.5, TSS0=5, r_beads=5e-3, l_bl=1e-5, n_dz=10, f_diff=0.75,
     Xbio_ss = C_ss[:, bm_idx]
     df_c = pd.DataFrame(C_ss, columns=cmps.IDs, index=[*range(n_dz), 'bulk'])
     df_c['biomass_COD'] = np.sum(Xbio_ss, axis=1)
-    return df_c
+    return df_c, y_ss
     
 
 if __name__ == '__main__':
     # df_rcod, df_bm = bead_size_HRT(detach=True)
-    dfs = bead_size_HRT(detach=True)
+    # dfs = bead_size_HRT(detach=True)
     # de_rcod, de_bm = bead_size_HRT(detach=True, n_dz=20)
 
     # for detach in (True,):
@@ -445,5 +448,5 @@ if __name__ == '__main__':
     #             r_beads=r_beads,  detach=detach,
     #             save_to=f'spatial_r{r_beads}_{detach}_new.xlsx'
     #             )
-
+    df, y = run(r_beads=1e-5, l_bl=1e-6, detach=True)
     # df = run(tau=1/6, TSS0=6, detach=True)
