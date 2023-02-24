@@ -101,7 +101,6 @@ _P_atm = 1.013
 Pa_to_bar = auom('Pa').conversion_factor('bar')
 p_vapor = lambda T: cmps.H2O.Psat(T)*Pa_to_bar
 gas_mass2mol_conversion = (cmps.i_mass / cmps.chem_MW)[cmps.indices(('S_h2', 'S_ch4', 'S_IC'))]
-# k_de = 1e-2         # detach rate constant [d^-1]
 # K_tss = 25/2        # TSS half saturation coefficient
 
 def f_qgas(S_gas, T):
@@ -110,7 +109,8 @@ def f_qgas(S_gas, T):
     q_gas = max(0, _k_p * (P - _P_atm))
     return q_gas
     
-def compile_ode(r_beads=5e-3, l_bl=1e-5, n_dz=10, f_diff=0.75, k_de=1e-2, K_tss=11):
+def compile_ode(r_beads=5e-3, l_bl=1e-5, f_void=0.1, 
+                n_dz=10, f_diff=0.75, K_tss=11):
     dz = r_beads / n_dz
     zs = np.linspace(dz, r_beads, n_dz)
     dV = 4/3*np.pi*(zs)**3
@@ -119,10 +119,10 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, n_dz=10, f_diff=0.75, k_de=1e-2, K_tss=
     D = Diff * f_diff   # Diffusivity in beads
     k = Diff/l_bl       # mass transfer coeffient through liquid boundary layer
     
-    def dydt(t, y, HRT, detach=False):
+    def dydt(t, y, HRT, detach=False, retain=False):
         Q, T = y[-2:]
         V_liq = HRT * Q
-        V_bed = V_liq / 0.1
+        V_bed = V_liq / f_void
         V_beads = V_bed - V_liq
         V_gas = V_bed * 0.1
         A_beads = 3 * V_beads / r_beads # m2, total bead surface area
@@ -142,13 +142,9 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, n_dz=10, f_diff=0.75, k_de=1e-2, K_tss=
         # Detachment
         if detach:
             tss = np.sum(Cs_en * (cmps.x*cmps.i_mass), axis=1)
-            # u_de = 1/(1+np.exp(K_tss-tss))*k_de            
             x_net_growth = np.sum(Rs_en * cmps.x, axis=1)/np.sum(Cs_en * cmps.x, axis=1) # d^(-1), equivalent to k_de
             u_de = 1/(1+np.exp(K_tss-tss)) * x_net_growth
             de_en = np.diag(u_de) @ (Cs_en * cmps.x)
-            
-            # x_net_growth = Rs_en * cmps.x    # d^(-1), equivalent to k_de
-            # de_en = np.diag(1/(1+np.exp(K_tss-tss))) @ x_net_growth
             tot_de = np.sum(np.diag(dV) @ de_en, axis=0) / V_bead  # detachment per unit volume of beads
         else:
             de_en = tot_de = 0.
@@ -162,13 +158,19 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, n_dz=10, f_diff=0.75, k_de=1e-2, K_tss=
         C_lf = Cs_en[-1].copy()
         C_lf[S_idx] = (D*Cs_en[-2] + k*Cs_bk*dz)[S_idx]/(D+k*dz)[S_idx]  # Only solubles based on outer b.c.
         d2Cdz2[-1,:] = ((1+dz/zs[-1])**2*(C_lf-Cs_en[-2]) - (1-dz/zs[-1])**2*(Cs_en[-2]-Cs_en[-3]))/(dz**2)  # backward difference
+        #!!!
+        # Cs_en[-1, S_idx] = (D*Cs_en[-2] + k*Cs_bk*dz)[S_idx]/(D+k*dz)[S_idx]  # Only solubles based on outer b.c.
+        # C_lf = Cs_en[-1]
+        # dCdz[-1, S_idx] = (k*(Cs_bk - C_lf))[S_idx]/D[S_idx]
         
         # Mass balance
         dCdt_en = D*(d2Cdz2 + np.diag(2/zs) @ dCdz) + Rs_en - de_en
-        Cs_eff = Cs_bk.copy()
-        Cs_eff[bm_idx] = 0.
-        dCdt_bk = (Cs_in-Cs_eff)/HRT - A_beads/V_liq*k*(Cs_bk-C_lf) + Rs_bk + V_beads*tot_de/V_liq       
-        # dCdt_bk = (Cs_in-Cs_bk)/HRT - A_beads/V_liq*k*(Cs_bk-C_lf) + Rs_bk + V_beads*tot_de/V_liq
+        if retain:
+            Cs_eff = Cs_bk.copy()
+            Cs_eff[bm_idx] = 0.
+            dCdt_bk = (Cs_in-Cs_eff)/HRT - A_beads/V_liq*k*(Cs_bk-C_lf) + Rs_bk + V_beads*tot_de/V_liq
+        else:
+            dCdt_bk = (Cs_in-Cs_bk)/HRT - A_beads/V_liq*k*(Cs_bk-C_lf) + Rs_bk + V_beads*tot_de/V_liq
         
         dy = y*0.
         dy[:n_dz*n_cmps] = dCdt_en.flatten()
@@ -241,7 +243,8 @@ def spatial_profiling(HRTs=[1, 0.5, 10/24, 8/24], TSS0=5, n_dz=10,
 #%% suspended vs. attached growth
 
 @time_printer
-def suspended_vs_attached(HRT, dydt, n_dz, sys):
+def suspended_vs_attached(HRT, dydt, n_dz, r_beads, sys, f_void=0.1,
+                          y0=None, detach=False, retain=False):
     print('\n')
     print('='*12)
     print(f'HRT: {HRT:.3f} d')
@@ -252,7 +255,6 @@ def suspended_vs_attached(HRT, dydt, n_dz, sys):
     bg, eff = sys.products
     sys.simulate(state_reset_hook='reset_cache', t_span=(0, 400), method='BDF')
     sus_rcod = 1-eff.COD/inf.COD
-    good_y = y0_from_bulk(n_dz)
     i = 0
     while sus_rcod < 0.7 and i <= 5:
         i += 1
@@ -261,51 +263,60 @@ def suspended_vs_attached(HRT, dydt, n_dz, sys):
         sys.simulate(state_reset_hook='reset_cache', t_span=(0, 400), method='BDF')
         sus_rcod = 1-eff.COD/inf.COD
     sus_bm = sum(u._state[bm_idx] * cmps.i_mass[bm_idx])
-    y0_susp = np.append(u._state, 298.15)
-    y0_susp[bm_idx] = 0.
-    y0 = np.append(np.tile(u._state[:n_cmps], n_dz), y0_susp)
-    try: sol = solve_ivp(dydt, t_span=(0, 400), y0=y0, method='BDF', args=(HRT, False))
-    # try: sol = solve_ivp(dydt, t_span=(0, 400), y0=y0_even, method='BDF', args=(HRT, False))
-    except: 
-        try: sol = solve_ivp(dydt, t_span=(0, 400), y0=good_y, method='BDF', args=(HRT, False))
-        except: return sus_rcod, np.nan, sus_bm, np.nan
-    y = sol.y.T[-1]
-    bk_Cs = y[-(n_cmps+5):-5]
-    en_Cs = y[-(2*n_cmps+5):-(n_cmps+5)]
+    if y0 is None:
+        y0_susp = np.append(u._state, 298.15)
+        if not retain: y0_susp[bm_idx] = 0.
+        y0 = np.append(np.tile(u._state[:n_cmps], n_dz), y0_susp)
+    try: y = converge(dydt, y0, args=(HRT, detach, retain))
+    except:
+        try:
+            y0 = y0_even(n_dz, TSS0=min(2.5/HRT, 22))
+            y = converge(dydt, y0, args=(HRT, detach, retain))
+        except:
+            return sus_rcod, np.nan, sus_bm, np.nan, None        
+    bk_Cs = y[-(n_cmps+5):-5].copy()
+    if retain: bk_Cs[bm_idx] = 0.
     att_COD = sum(bk_Cs * cmps.i_COD * (1-cmps.g)) * 1e3
     att_rcod = 1-att_COD/inf.COD
-    att_bm = sum(en_Cs[bm_idx] * cmps.i_mass[bm_idx])
-    if att_rcod > 0.5: good_y[:] = y
-    return sus_rcod, att_rcod, sus_bm, att_bm
+    bk_bm, en_bm = biomass_CODs(y, n_dz, r_beads)
+    att_bm = ((1-f_void)*en_bm + f_void*bk_bm) * 0.777
+    print(bk_bm*0.777, en_bm*0.777)
+    return [sus_rcod, att_rcod, sus_bm, att_bm, y]
 
 def HRT_suspended_vs_encap(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24], 
-                           frac_retain=1.0, **ode_kwargs):
+                           frac_retain=1.0, r_beads=1e-5, l_bl=1e-6, n_dz=8,
+                           **ode_kwargs):
     record = []
-    rows = []
-    dydt = compile_ode(**ode_kwargs)
-    r_beads = ode_kwargs.pop('r_beads', 5e-3)
-    n_dz = ode_kwargs.pop('n_dz', 10)
+    # rows = []
+    dydt = compile_ode(r_beads=r_beads, l_bl=l_bl, n_dz=n_dz, **ode_kwargs)
+    # r_beads = ode_kwargs.pop('r_beads', 5e-3)
+    # n_dz = ode_kwargs.pop('n_dz', 10)
     
     sys, = create_systems(which='C')
     u, = sys.units
     u._f_retain = (u._f_retain > 0) * frac_retain
     u.encapsulate_concentration = 1e5
+    y = y0_even(n_dz, TSS0=2.5)
+    # y = None
     for tau in HRTs:
-        out = suspended_vs_attached(tau, dydt, n_dz, sys)
-        if out: 
-            record.append(out)
-            rows.append(tau)
+        out = suspended_vs_attached(tau, dydt, n_dz, r_beads, sys, y,
+                                    detach=True, retain=True)
+        y = out.pop(-1)
+        record.append(out)
+        # rows.append(tau)
     
-    df = pd.DataFrame(record, index=rows, 
+    # df = pd.DataFrame(record, index=rows, 
+    df = pd.DataFrame(record, index=HRTs, 
                       columns=pd.MultiIndex.from_product(
                           [['rCOD', 'biomass [g TSS/L]'], ['Suspended', 'Encapsulated']]
                           ))
     df.index.name = 'HRT [d]'
-    df.to_excel(ospath.join(results_path, f'suspended_vs_encap_{r_beads}.xlsx'))
+    df.to_excel(ospath.join(results_path, 'suspended_vs_encap_retain.xlsx'))
 
+    return df
 
 #%% encapsulated biomass, HRT
-def SRT(y, n_dz, HRT, r_beads):
+def biomass_CODs(y, n_dz, r_beads):
     en_bm = np.sum(y[:n_dz*n_cmps].reshape((n_dz, n_cmps))[:,bm_idx], axis=1)
     bk_bm = np.sum(y[n_dz*n_cmps: ((n_dz+1)*n_cmps)][bm_idx])
     dz = r_beads / n_dz
@@ -314,9 +325,14 @@ def SRT(y, n_dz, HRT, r_beads):
     V_bead = dV[-1]
     dV[1:] -= dV[:-1]
     C_en_avg = np.dot(en_bm, dV)/V_bead
-    return (1 + 9*C_en_avg/bk_bm) * HRT
+    return bk_bm, C_en_avg
 
-def converge(dydt, y, args, threshold=1e-4):
+def SRT(y, n_dz, HRT, r_beads, f_void):
+    '''SRT given there's no retention of biomass in bulk liquid'''
+    bk_bm, C_en_avg = biomass_CODs(y, n_dz, r_beads)
+    return (1 + (1-f_void)/f_void*C_en_avg/bk_bm) * HRT
+
+def converge(dydt, y, args, threshold=5e-5):
     dy_max = 1.
     while dy_max > threshold:
         sol = solve_ivp(dydt, t_span=(0, 400), y0=y, method='BDF', args=args)
@@ -326,38 +342,42 @@ def converge(dydt, y, args, threshold=1e-4):
     return y
 
 @time_printer
-def encap(TSS_init, HRT, dydt, n_dz, r_beads=5e-3, detach=False, y0=None):
+def encap(TSS_init, HRT, dydt, n_dz, f_void=0.1, r_beads=5e-3, 
+          detach=False, retain=False, y0=None):
     msg = f'TSS {TSS_init}g/L, HRT {HRT:.3f}d'
     print(f'\n{msg}\n{"="*len(msg)}')
     if y0 is None: y = y0_even(n_dz, TSS_init)
     else: y = y0
     try: 
-        y = converge(dydt, y, args=(HRT, detach))
+        y = converge(dydt, y, args=(HRT, detach, retain))
     except: 
         try: 
             print('Doubled TSS...')
             y = y0_even(n_dz, TSS_init*2)
-            y = converge(dydt, y, args=(HRT, detach))
-        except: return np.nan, np.nan
+            y = converge(dydt, y, args=(HRT, detach, retain))
+        except: return [np.nan]*4
     bk_Cs = y[-(n_cmps+5):-5]
     en_Cs = y[-(2*n_cmps+5):-(n_cmps+5)]
     att_COD = sum(bk_Cs * cmps.i_COD * (1-cmps.g)) * 1e3
     att_rcod = 1-att_COD/6801
     att_bm = sum(en_Cs[bm_idx] * cmps.i_mass[bm_idx])
-    srt = SRT(y, n_dz, HRT, r_beads)
+    srt = SRT(y, n_dz, HRT, r_beads, f_void)
     return att_rcod, att_bm, srt, y
 
 def HRT_init_TSS(TSS=[1, 2, 5, 10, 30], HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
-                 detach=False, **ode_kwargs):
+                 detach=False, retain=False, **ode_kwargs):
     rcod = []
     ss_bm = []
-    dydt = compile_ode(**ode_kwargs)
+    dydt = compile_ode(detach=detach, **ode_kwargs)
+    r_beads = ode_kwargs.pop('r_beads', 5e-3)
+    f_void = ode_kwargs.pop('f_void', 0.1)
     n_dz = ode_kwargs.pop('n_dz', 10)
     for tss in TSS:
         l_rcod = []
         l_bm = []
         for tau in HRTs:
-            out = encap(tss, tau, dydt, n_dz, detach=detach)
+            out = encap(tss, tau, dydt, n_dz, f_void=f_void, r_beads=r_beads, 
+                        detach=detach, retain=retain)
             l_rcod.append(out[0])
             l_bm.append(out[1])
         rcod.append(l_rcod)
@@ -378,24 +398,26 @@ def HRT_init_TSS(TSS=[1, 2, 5, 10, 30], HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1
 #%% bead size
 
 def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24], 
-                  bead_size=[5e-3, 1e-3, 5e-4, 1e-4, 1e-5],
-                  detach=False, **ode_kwargs):
+                  bead_size=[5e-3, 1e-3, 5e-4, 1e-4, 1e-5], 
+                  detach=False, retain=False, **ode_kwargs):
     # ode_kwargs.pop('r_beads', None)
     rcod = []
     ss_bm = []
     srt = []
     n_dz = ode_kwargs.pop('n_dz', 10)
+    f_void = ode_kwargs.pop('f_void', 0.1)
     for r_beads in bead_size:
         print(f'\nr_beads: {r_beads}')
         l_bl = min(1e-5, r_beads/10)
-        dydt = compile_ode(r_beads=r_beads, l_bl=l_bl, n_dz=n_dz, **ode_kwargs)
+        dydt = compile_ode(r_beads=r_beads, l_bl=l_bl, f_void=f_void, n_dz=n_dz, **ode_kwargs)
         l_rcod = []
         l_bm = []
         l_srt = []
         y0 = None
         for tau in HRTs:
             tss = min(2.5/tau, 22)
-            z1, z2, z3, y0 = encap(tss, tau, dydt, n_dz, r_beads, detach, y0)
+            z1, z2, z3, y0 = encap(tss, tau, dydt, n_dz, f_void, 
+                                   r_beads, detach, retain, y0)
             l_rcod.append(z1)
             l_bm.append(z2)
             l_srt.append(z3)
@@ -412,7 +434,7 @@ def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
         i.index = HRTs
         i.index.name = 'HRT [d]'
     with pd.ExcelWriter(ospath.join(results_path, 
-                                    f'HRT_vs_rbeads_{n_dz}_{detach}_ss.xlsx')) as writer:
+                                    f'HRT_vs_rbeads_{n_dz}_{detach}_{f_void}.xlsx')) as writer:
         df_rcod.to_excel(writer, sheet_name='rCOD')
         df_bm.to_excel(writer, sheet_name='Biomass TSS')
         df_srt.to_excel(writer, sheet_name='SRT')
@@ -421,22 +443,28 @@ def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
 
 #%%
 @time_printer
-def run(tau=0.5, TSS0=5, r_beads=5e-3, l_bl=1e-5, n_dz=10, f_diff=0.75, 
-        k_de=1e-2, K_tss=11, detach=False):
+def run(tau=0.5, TSS0=5, r_beads=5e-3, l_bl=1e-5, f_void=0.1, n_dz=10, 
+        f_diff=0.75, K_tss=11, detach=False, retain=False):
     y0 = y0_even(n_dz, TSS0)
-    dydt = compile_ode(r_beads, l_bl, n_dz, f_diff, k_de, K_tss)
+    dydt = compile_ode(r_beads, l_bl, f_void, n_dz, f_diff, K_tss)
     print(f'HRT = {tau:.2f} d')
-    y_ss = converge(dydt, y0, args=(tau, detach))
+    y_ss = converge(dydt, y0, args=(tau, detach, retain))
     C_ss = y_ss[:n_cmps*(n_dz+1)].reshape((n_dz+1, n_cmps))
     Xbio_ss = C_ss[:, bm_idx]
     df_c = pd.DataFrame(C_ss, columns=cmps.IDs, index=[*range(n_dz), 'bulk'])
     df_c['biomass_COD'] = np.sum(Xbio_ss, axis=1)
-    return df_c, y_ss
+    bk = C_ss[-1].copy()
+    if retain: bk[bm_idx] = 0.
+    eff_cod = np.sum(bk * cmps.i_COD * (1-cmps.g))
+    rcod = 1-eff_cod/6.801
+    srt = SRT(y_ss, n_dz=n_dz, HRT=tau, r_beads=r_beads, f_void=f_void)
+    return df_c, y_ss, rcod, srt
     
 
 if __name__ == '__main__':
     # df_rcod, df_bm = bead_size_HRT(detach=True)
-    # dfs = bead_size_HRT(detach=True)
+    # dfs = bead_size_HRT(bead_size=[1e-4, 1e-5], detach=True, retain=False, 
+    #                     n_dz=8, f_void=0.95)
     # de_rcod, de_bm = bead_size_HRT(detach=True, n_dz=20)
 
     # for detach in (True,):
@@ -448,5 +476,8 @@ if __name__ == '__main__':
     #             r_beads=r_beads,  detach=detach,
     #             save_to=f'spatial_r{r_beads}_{detach}_new.xlsx'
     #             )
-    df, y = run(r_beads=1e-5, l_bl=1e-6, detach=True)
+    df, y, rcod, srt = run(tau=1, TSS0=2.5, r_beads=1e-5, l_bl=1e-6, n_dz=8,
+                            f_void=0.95, detach=True, retain=False)
     # df = run(tau=1/6, TSS0=6, detach=True)
+   
+    # df = HRT_suspended_vs_encap()
