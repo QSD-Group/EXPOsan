@@ -151,15 +151,26 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, f_void=0.1,
         else:
             de_en = tot_de = 0.
             
-        # Mass transfer (centered differences) -- solubles only
-        dCdz = Cs_en * 0.
-        d2Cdz2 = Cs_en * 0.
-        dCdz[1:-1] = (Cs_en[2:] - Cs_en[:-2])/(2*dz)
-        d2Cdz2[1:-1] = (Cs_en[2:] + Cs_en[:-2] - 2*Cs_en[1:-1])/(dz**2)
-        d2Cdz2[0,:] = (Cs_en[1] - Cs_en[0])*(1+dz/(2*zs[0]))**2/dz  # inner boundary condition, forward difference
+        # Mass transfer (centered differences) -- MATLAB/Simulink
+        S_en = Cs_en[:, S_idx]
+        dSdz2 = np.zeros_like(Cs_en)
+        dSdz2[0, S_idx] = (1+dz/(2*zs[0]))**2 * (S_en[1] - S_en[0])/dz
+        dSdz2[1:-1, S_idx] = np.diag((1+dz/(2*zs[1:-1]))**2) @ (S_en[2:]-S_en[1:-1])/(dz**2) \
+            - np.diag((1-dz/(2*zs[1:-1]))**2) @ (S_en[1:-1]-S_en[:-2])/(dz**2)
         C_lf = Cs_en[-1].copy()
-        C_lf[S_idx] = (D*Cs_en[-2] + k*Cs_bk*dz)[S_idx]/(D+k*dz)[S_idx]  # Only solubles based on outer b.c.
-        d2Cdz2[-1,:] = ((1+dz/zs[-1])**2*(C_lf-Cs_en[-2]) - (1-dz/zs[-1])**2*(Cs_en[-2]-Cs_en[-3]))/(dz**2)  # backward difference
+        S_en[-1] = C_lf[S_idx] = (D*Cs_en[-2] + k*Cs_bk*dz)[S_idx]/(D+k*dz)[S_idx]  # Only solubles based on outer b.c.
+        dSdz2[-1, S_idx] = (1+dz/(2*zs[-1]))**2 * (S_en[-1]-S_en[-2])/(dz**2) \
+            -(1-dz/(2*zs[-1]))**2 * (S_en[-2]-S_en[-3])/(dz**2)
+         
+        
+        # dCdz = Cs_en * 0.
+        # d2Cdz2 = Cs_en * 0.
+        # dCdz[1:-1] = (Cs_en[2:] - Cs_en[:-2])/(2*dz)
+        # d2Cdz2[1:-1] = (Cs_en[2:] + Cs_en[:-2] - 2*Cs_en[1:-1])/(dz**2)
+        # d2Cdz2[0,:] = (Cs_en[1] - Cs_en[0])*(1+dz/(2*zs[0]))**2/dz  # inner boundary condition, forward difference
+        # C_lf = Cs_en[-1].copy()
+        # C_lf[S_idx] = (D*Cs_en[-2] + k*Cs_bk*dz)[S_idx]/(D+k*dz)[S_idx]  # Only solubles based on outer b.c.
+        # d2Cdz2[-1,:] = ((1+dz/(2*zs[-1]))**2*(C_lf-Cs_en[-2]) - (1-dz/(2*zs[-1]))**2*(Cs_en[-2]-Cs_en[-3]))/(dz**2)  # backward difference
         
         #!!! Mass transfer (centered differences) -- solubles only
         # C_lf = Cs_en[-1]
@@ -176,7 +187,8 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, f_void=0.1,
         # dJ_dz[:, S_idx] = D[S_idx]*(d2Sdz2 + np.diag(2/zs) @ dSdz)
         
         # Mass balance
-        dCdt_en = D*(d2Cdz2 + np.diag(2/zs) @ dCdz) + Rs_en - de_en
+        dCdt_en = D*dSdz2 + Rs_en - de_en        
+        # dCdt_en = D*(d2Cdz2 + np.diag(2/zs) @ dCdz) + Rs_en - de_en
         # dCdt_en = dJ_dz + Rs_en - de_en
         # dCdt_en[:,-1] = 0.
         if retain:
@@ -492,7 +504,7 @@ if __name__ == '__main__':
     #             r_beads=r_beads,  detach=detach,
     #             save_to=f'spatial_r{r_beads}_{detach}_new.xlsx'
     #             )
-    df, y, rcod, srt = run(tau=1, TSS0=5, r_beads=1e-5, l_bl=1e-6, n_dz=8,
+    df, y, rcod, srt = run(tau=1, TSS0=5, r_beads=1e-5, l_bl=1e-6, n_dz=8, K_tss=6,
                            f_void=0.95, detach=True, retain=False)
     # df = run(tau=1/6, TSS0=6, detach=True)
    
