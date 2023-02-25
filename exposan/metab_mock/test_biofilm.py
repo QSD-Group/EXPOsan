@@ -130,6 +130,7 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, f_void=0.1,
         S_gas = y[-5:-2]
         Cs_bk = y[-(n_cmps+5):-5]        # bulk liquid concentrations
         Cs_en = y[:n_dz*n_cmps].reshape((n_dz, n_cmps))  # each row is one control volume
+        # Cs_en[:,-1] = Cs_bk[-1]
         
         # Transformation
         rhos_en = np.apply_along_axis(Rho_en, 1, Cs_en, T_op=T)
@@ -141,47 +142,51 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, f_void=0.1,
         
         # Detachment -- particulates
         if detach:
-            tss = np.sum(Cs_en * (cmps.x*cmps.i_mass), axis=1)
+            try: tss = np.sum(Cs_en * (cmps.x*cmps.i_mass), axis=1)
+            except: breakpoint()
             x_net_growth = np.sum(Rs_en * cmps.x, axis=1)/np.sum(Cs_en * cmps.x, axis=1) # d^(-1), equivalent to k_de
-            u_de = 1/(1+np.exp(K_tss-tss)) * x_net_growth
+            u_de = 1/(1+np.exp(K_tss-tss)) * np.maximum(x_net_growth, 0.)
             de_en = np.diag(u_de) @ (Cs_en * cmps.x)
             tot_de = np.sum(np.diag(dV) @ de_en, axis=0) / V_bead  # detachment per unit volume of beads
         else:
             de_en = tot_de = 0.
             
         # Mass transfer (centered differences) -- solubles only
-        # dCdz = Cs_en * 0.
-        # d2Cdz2 = Cs_en * 0.
-        # dCdz[1:-1] = (Cs_en[2:] - Cs_en[:-2])/(2*dz)
-        # d2Cdz2[1:-1] = (Cs_en[2:] + Cs_en[:-2] - 2*Cs_en[1:-1])/(dz**2)
-        # d2Cdz2[0,:] = (Cs_en[1] - Cs_en[0])*(1+dz/(2*zs[0]))**2/dz  # inner boundary condition, forward difference
-        # C_lf = Cs_en[-1].copy()
-        # C_lf[S_idx] = (D*Cs_en[-2] + k*Cs_bk*dz)[S_idx]/(D+k*dz)[S_idx]  # Only solubles based on outer b.c.
-        # d2Cdz2[-1,:] = ((1+dz/zs[-1])**2*(C_lf-Cs_en[-2]) - (1-dz/zs[-1])**2*(Cs_en[-2]-Cs_en[-3]))/(dz**2)  # backward difference
+        dCdz = Cs_en * 0.
+        d2Cdz2 = Cs_en * 0.
+        dCdz[1:-1] = (Cs_en[2:] - Cs_en[:-2])/(2*dz)
+        d2Cdz2[1:-1] = (Cs_en[2:] + Cs_en[:-2] - 2*Cs_en[1:-1])/(dz**2)
+        d2Cdz2[0,:] = (Cs_en[1] - Cs_en[0])*(1+dz/(2*zs[0]))**2/dz  # inner boundary condition, forward difference
+        C_lf = Cs_en[-1].copy()
+        C_lf[S_idx] = (D*Cs_en[-2] + k*Cs_bk*dz)[S_idx]/(D+k*dz)[S_idx]  # Only solubles based on outer b.c.
+        d2Cdz2[-1,:] = ((1+dz/zs[-1])**2*(C_lf-Cs_en[-2]) - (1-dz/zs[-1])**2*(Cs_en[-2]-Cs_en[-3]))/(dz**2)  # backward difference
         
         #!!! Mass transfer (centered differences) -- solubles only
-        S_en = Cs_en[:, S_idx]
-        J_lf = k[S_idx]*(Cs_bk[S_idx] - S_en[-1])
-        dSdz = S_en * 0.
-        d2Sdz2 = S_en * 0.
-        dSdz[1:-1] = (S_en[2:] - S_en[:-2])/(2*dz)
-        d2Sdz2[1:-1] = (S_en[2:] + S_en[:-2] - 2*S_en[1:-1])/(dz**2)
-        d2Sdz2[0,:] = 2*(S_en[1] - S_en[0])/dz**2
-        dSdz[-1,:] = J_lf/D[S_idx]
-        d2Sdz2[-1,:] = 2*(S_en[-2] - S_en[-1])/dz**2 + 2*J_lf/D[S_idx]/dz
-        C_lf = Cs_en[-1]
-        dJ_dz = Cs_en * 0.
-        dJ_dz[:, S_idx] = D[S_idx]*(d2Sdz2 + np.diag(2/zs) @ dSdz)
+        # C_lf = Cs_en[-1]
+        # J_lf = k*(Cs_bk - C_lf)
+        # S_en = Cs_en[:, S_idx]
+        # dSdz = S_en * 0.
+        # d2Sdz2 = S_en * 0.
+        # dSdz[1:-1] = (S_en[2:] - S_en[:-2])/(2*dz)
+        # d2Sdz2[1:-1] = (S_en[2:] + S_en[:-2] - 2*S_en[1:-1])/(dz**2)
+        # d2Sdz2[0,:] = 2*(S_en[1] - S_en[0])/(dz**2)
+        # dSdz[-1,:] = J_lf[S_idx]/D[S_idx]
+        # d2Sdz2[-1,:] = 2*(S_en[-2] - S_en[-1])/(dz**2) + 2*J_lf[S_idx]/D[S_idx]/dz
+        # dJ_dz = Cs_en * 0.
+        # dJ_dz[:, S_idx] = D[S_idx]*(d2Sdz2 + np.diag(2/zs) @ dSdz)
         
         # Mass balance
-        # dCdt_en = D*(d2Cdz2 + np.diag(2/zs) @ dCdz) + Rs_en - de_en
-        dCdt_en = dJ_dz + Rs_en - de_en
+        dCdt_en = D*(d2Cdz2 + np.diag(2/zs) @ dCdz) + Rs_en - de_en
+        # dCdt_en = dJ_dz + Rs_en - de_en
+        # dCdt_en[:,-1] = 0.
         if retain:
             Cs_eff = Cs_bk.copy()
             Cs_eff[bm_idx] = 0.
             dCdt_bk = (Cs_in-Cs_eff)/HRT - A_beads/V_liq*k*(Cs_bk-C_lf) + Rs_bk + V_beads*tot_de/V_liq
+            # dCdt_bk = (Cs_in-Cs_eff)/HRT - A_beads/V_liq*J_lf + Rs_bk + V_beads*tot_de/V_liq
         else:
             dCdt_bk = (Cs_in-Cs_bk)/HRT - A_beads/V_liq*k*(Cs_bk-C_lf) + Rs_bk + V_beads*tot_de/V_liq
+            # dCdt_bk = (Cs_in-Cs_bk)/HRT - A_beads/V_liq*J_lf + Rs_bk + V_beads*tot_de/V_liq
         
         dy = y*0.
         dy[:n_dz*n_cmps] = dCdt_en.flatten()
@@ -487,7 +492,7 @@ if __name__ == '__main__':
     #             r_beads=r_beads,  detach=detach,
     #             save_to=f'spatial_r{r_beads}_{detach}_new.xlsx'
     #             )
-    df, y, rcod, srt = run(tau=1, TSS0=2.5, r_beads=1e-5, l_bl=1e-6, n_dz=8,
+    df, y, rcod, srt = run(tau=1, TSS0=5, r_beads=1e-5, l_bl=1e-6, n_dz=8,
                            f_void=0.95, detach=True, retain=False)
     # df = run(tau=1/6, TSS0=6, detach=True)
    
