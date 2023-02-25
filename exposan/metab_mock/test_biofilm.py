@@ -85,6 +85,7 @@ n_cmps = len(cmps)
 Diff = np.zeros(n_cmps)
 Diff[:12] = [4.56e-6, 8.62e-6, 5.33e-6, 5.00e-6, 5.04e-6, 6.00e-6, 
              6.48e-6, 4.02e-4, 1.36e-4, 1.71e-4, 1.52e-4, 6.00e-6]
+
 Diff[-3:-1] = 1.17e-4
 # f_diff = 0.75       # bead-to-water diffusivity fraction
 Cs_in = np.array([
@@ -130,7 +131,6 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, f_void=0.1,
         S_gas = y[-5:-2]
         Cs_bk = y[-(n_cmps+5):-5]        # bulk liquid concentrations
         Cs_en = y[:n_dz*n_cmps].reshape((n_dz, n_cmps))  # each row is one control volume
-        # Cs_en[:,-1] = Cs_bk[-1]
         
         # Transformation
         rhos_en = np.apply_along_axis(Rho_en, 1, Cs_en, T_op=T)
@@ -142,8 +142,7 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, f_void=0.1,
         
         # Detachment -- particulates
         if detach:
-            try: tss = np.sum(Cs_en * (cmps.x*cmps.i_mass), axis=1)
-            except: breakpoint()
+            tss = np.sum(Cs_en * (cmps.x*cmps.i_mass), axis=1)
             x_net_growth = np.sum(Rs_en * cmps.x, axis=1)/np.sum(Cs_en * cmps.x, axis=1) # d^(-1), equivalent to k_de
             u_de = 1/(1+np.exp(K_tss-tss)) * np.maximum(x_net_growth, 0.)
             de_en = np.diag(u_de) @ (Cs_en * cmps.x)
@@ -187,10 +186,9 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, f_void=0.1,
         # dJ_dz[:, S_idx] = D[S_idx]*(d2Sdz2 + np.diag(2/zs) @ dSdz)
         
         # Mass balance
-        dCdt_en = D*dSdz2 + Rs_en - de_en        
+        dCdt_en = D*dSdz2 + Rs_en - de_en
         # dCdt_en = D*(d2Cdz2 + np.diag(2/zs) @ dCdz) + Rs_en - de_en
         # dCdt_en = dJ_dz + Rs_en - de_en
-        # dCdt_en[:,-1] = 0.
         if retain:
             Cs_eff = Cs_bk.copy()
             Cs_eff[bm_idx] = 0.
@@ -199,7 +197,7 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, f_void=0.1,
         else:
             dCdt_bk = (Cs_in-Cs_bk)/HRT - A_beads/V_liq*k*(Cs_bk-C_lf) + Rs_bk + V_beads*tot_de/V_liq
             # dCdt_bk = (Cs_in-Cs_bk)/HRT - A_beads/V_liq*J_lf + Rs_bk + V_beads*tot_de/V_liq
-        
+
         dy = y*0.
         dy[:n_dz*n_cmps] = dCdt_en.flatten()
         dy[-(n_cmps+5):-5] = dCdt_bk
@@ -213,7 +211,7 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, f_void=0.1,
 # HRT = 1
 C0 = np.array([
     1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
-    4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
+    4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 2e-02,
     2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 4.708e+00, 1.239e+00,
     4.838e-01, 1.423e+00, 8.978e-01, 2.959e+00, 1.467e+00, 4.924e-02,
     4.000e-02, 2.000e-02, 9.900e+02
@@ -243,6 +241,7 @@ y0_from_bulk = lambda n_dz: np.append(np.tile(C0, n_dz), y0_bulk)
 #%% steady-state spatial profile
 def y0_even(n_dz, TSS0):
     C0_even = C0.copy()
+    # C0_even = Cs_in.copy()
     C0_even[bm_idx] = TSS0/0.777/7
     return np.append(np.tile(C0_even, n_dz), y0_bulk)
 
@@ -504,8 +503,10 @@ if __name__ == '__main__':
     #             r_beads=r_beads,  detach=detach,
     #             save_to=f'spatial_r{r_beads}_{detach}_new.xlsx'
     #             )
-    df, y, rcod, srt = run(tau=1, TSS0=5, r_beads=1e-5, l_bl=1e-6, n_dz=8, K_tss=6,
-                           f_void=0.95, detach=True, retain=False)
+    f = 0.3
+    # f=0.5
+    # df, y, rcod, srt = run(tau=1, TSS0=5, r_beads=1e-5, l_bl=1e-6, n_dz=8, 
+    #                         f_void=f, detach=True, retain=False)
     # df = run(tau=1/6, TSS0=6, detach=True)
    
     # df = HRT_suspended_vs_encap()
