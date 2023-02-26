@@ -419,7 +419,7 @@ def HRT_init_TSS(TSS=[1, 2, 5, 10, 30], HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1
 
 def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24], 
                   bead_size=[5e-3, 1e-3, 5e-4, 1e-4, 1e-5], 
-                  voidage=[0.39, 0.39, 0.39, 0.39, 0.39],
+                  voidage=[0.39, 0.39, 0.5, 0.6, 0.7],
                   detach=False, retain=False, **ode_kwargs):
     # ode_kwargs.pop('r_beads', None)
     rcod = []
