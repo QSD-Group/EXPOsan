@@ -119,7 +119,10 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, f_void=0.1,
     V_bead = (4/3*np.pi*r_beads**3)
     D = Diff * f_diff   # Diffusivity in beads
     k = Diff/l_bl       # mass transfer coeffient through liquid boundary layer
-    
+    D_ov_dz2 = D[S_idx]/(dz**2)     # (n_soluble,)
+    D_ov_dz = D[S_idx]/dz
+    _1_ov_z = 1/zs                  # (n_dz,)
+        
     def dydt(t, y, HRT, detach=False, retain=False):
         Q, T = y[-2:]
         V_liq = HRT * Q
@@ -170,13 +173,10 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, f_void=0.1,
         # C_lf[S_idx] = (D*Cs_en[-2] + k*Cs_bk*dz)[S_idx]/(D+k*dz)[S_idx]  # Only solubles based on outer b.c.
         # d2Cdz2[-1,:] = ((1+dz/(2*zs[-1]))**2*(C_lf-Cs_en[-2]) - (1-dz/(2*zs[-1]))**2*(Cs_en[-2]-Cs_en[-3]))/(dz**2)  # backward difference
         
-        #!!! Mass transfer (centered differences) -- solubles only
+        #!!! Mass transfer (centered differences) -- MOL solubles only
         C_lf = Cs_en[-1]
         J_lf = k*(Cs_bk - C_lf)
         S_en = Cs_en[:, S_idx]
-        D_ov_dz2 = D[S_idx]/(dz**2)     # (n_soluble,)
-        D_ov_dz = D[S_idx]/dz
-        _1_ov_z = 1/zs                  # (n_dz,)
         M_transfer = np.zeros_like(Cs_en)
         M_transfer[1:-1, S_idx] = D_ov_dz2 * (S_en[2:] - 2*S_en[1:-1] + S_en[:-2])\
             + D_ov_dz * (np.diag(_1_ov_z[1:-1]) @ (S_en[2:] - S_en[:-2]))
@@ -231,6 +231,7 @@ y0_from_bulk = lambda n_dz: np.append(np.tile(C0, n_dz), y0_bulk)
 #%% steady-state spatial profile
 def y0_even(n_dz, TSS0):
     C0_even = C0.copy()
+    # C0_even = Cs_in.copy()    
     C0_even[bm_idx] = TSS0/0.777/7
     return np.append(np.tile(C0_even, n_dz), y0_bulk)
 
@@ -348,29 +349,32 @@ def SRT(y, n_dz, HRT, r_beads, f_void):
     bk_bm, C_en_avg = biomass_CODs(y, n_dz, r_beads)
     return (1 + (1-f_void)/f_void*C_en_avg/bk_bm) * HRT
 
-def converge(dydt, y, args, threshold=5e-6):
+def converge(dydt, y, args, threshold=1e-4):
     dy_max = 1.
     while dy_max > threshold:
         sol = solve_ivp(dydt, t_span=(0, 400), y0=y, method='BDF', args=args)
         y = sol.y.T[-1]
+        # rcod = 1 - sum(y[-(n_cmps+5):-5] * cmps.i_COD)/6.801
         dy = dydt(0, y, *args)
         dy_max = np.max(np.abs(dy))
+        # print(f'rCOD: {rcod:.3f}, dy_max: {dy_max:.2e}')
     return y
 
 @time_printer
 def encap(TSS_init, HRT, dydt, n_dz, f_void=0.1, r_beads=5e-3, 
-          detach=False, retain=False, y0=None):
-    msg = f'TSS {TSS_init}g/L, HRT {HRT:.3f}d'
+          detach=False, retain=False, y0=None, threshold=1e-4):
+    msg = f'r_beads {r_beads*1e3:.2f}mm, HRT {HRT:.2f}d'
     print(f'\n{msg}\n{"="*len(msg)}')
     if y0 is None: y = y0_even(n_dz, TSS_init)
     else: y = y0
     try: 
-        y = converge(dydt, y, args=(HRT, detach, retain))
+        y = converge(dydt, y, args=(HRT, detach, retain), threshold=threshold)
     except: 
         try: 
-            print('Doubled TSS...')
-            y = y0_even(n_dz, TSS_init*2)
-            y = converge(dydt, y, args=(HRT, detach, retain))
+            print('Try bulk y0...')
+            # y = y0_even(n_dz, TSS_init*2)
+            y = y0_from_bulk(n_dz)
+            y = converge(dydt, y, args=(HRT, detach, retain), threshold=threshold)
         except: return [np.nan]*4
     bk_Cs = y[-(n_cmps+5):-5]
     en_Cs = y[-(2*n_cmps+5):-(n_cmps+5)]
@@ -415,7 +419,7 @@ def HRT_init_TSS(TSS=[1, 2, 5, 10, 30], HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1
 
 def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24], 
                   bead_size=[5e-3, 1e-3, 5e-4, 1e-4, 1e-5], 
-                  voidage=[0.3, 0.3, 0.6, 0.6, 0.9],
+                  voidage=[0.39, 0.39, 0.39, 0.39, 0.39],
                   detach=False, retain=False, **ode_kwargs):
     # ode_kwargs.pop('r_beads', None)
     rcod = []
@@ -424,19 +428,19 @@ def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
     # n_dz = ode_kwargs.pop('n_dz', 8)
     # f_void = ode_kwargs.pop('f_void', 0.1)
     for r_beads, f_void in zip(bead_size, voidage):
-        print(f'\nr_beads: {r_beads}')
         l_bl = min(1e-5, r_beads/10)
         if r_beads > 1e-3: n_dz = 10
+        elif r_beads < 1e-4: n_dz = 5
         else: n_dz = 8
         dydt = compile_ode(r_beads=r_beads, l_bl=l_bl, f_void=f_void, n_dz=n_dz, **ode_kwargs)
         l_rcod = []
         l_bm = []
         l_srt = []
-        y0 = None
+        y0 = y0_from_bulk(n_dz)
         for tau in HRTs:
             tss = min(2.5/tau, 22)
             z1, z2, z3, y0 = encap(tss, tau, dydt, n_dz, f_void, 
-                                   r_beads, detach, retain, y0)
+                                   r_beads, detach, retain, y0, 5e-4)
             l_rcod.append(z1)
             l_bm.append(z2)
             l_srt.append(z3)
@@ -444,15 +448,16 @@ def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
         ss_bm.append(l_bm)
         srt.append(l_srt)
     
-    f_retain = [1-tau/srt for tau, srt in zip(HRTs, srt[-1])]
     sys, = create_systems(which='C')
     u, = sys.units
     inf, = sys.feeds
     bg, eff = sys.products
     u.encapsulate_concentration = 1e5
     l_rcod = []
-    for f in f_retain:
-        u._f_retain = cmps.x * f
+    for tau, tau_s in zip(HRTs, srt[-1]):
+        u._f_retain[bm_idx] = 1-tau/tau_s
+        u.V_liq = tau*5
+        u.V_gas = tau*0.5
         sys.simulate(state_reset_hook='reset_cache',
                      t_span=(0, 400), method='BDF')
         l_rcod.append(1-eff.COD/inf.COD)
@@ -478,7 +483,9 @@ def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
 @time_printer
 def run(tau=0.5, TSS0=5, r_beads=5e-3, l_bl=1e-5, f_void=0.1, n_dz=10, 
         f_diff=0.75, K_tss=11, detach=False, retain=False, y0=None):
-    if y0 is None: y0 = y0_even(n_dz, TSS0)
+    if y0 is None: 
+        # y0 = y0_even(n_dz, TSS0)
+        y0 = y0_from_bulk(n_dz)
     dydt = compile_ode(r_beads, l_bl, f_void, n_dz, f_diff, K_tss)
     print(f'HRT = {tau:.2f} d')
     y_ss = converge(dydt, y0, args=(tau, detach, retain))
@@ -495,7 +502,7 @@ def run(tau=0.5, TSS0=5, r_beads=5e-3, l_bl=1e-5, f_void=0.1, n_dz=10,
     
 
 if __name__ == '__main__':
-    # dfs = bead_size_HRT(detach=True)
+    dfs = bead_size_HRT(detach=True)
     # dfs = bead_size_HRT(bead_size=[1e-4, 1e-5], detach=True, retain=False, 
     #                     n_dz=8, f_void=0.95)
     # de_rcod, de_bm = bead_size_HRT(detach=True, n_dz=20)
@@ -509,9 +516,8 @@ if __name__ == '__main__':
     #             r_beads=r_beads,  detach=detach,
     #             save_to=f'spatial_r{r_beads}_{detach}_new.xlsx'
     #             )
-    f = 0.2
-    # df, y, rcod, srt = run(tau=1, TSS0=2.5, r_beads=5e-3, l_bl=1e-5, n_dz=10, 
-    #                        f_void=f, detach=True, retain=False)
+    # df, y, rcod, srt = run(tau=1, TSS0=2.5, r_beads=1e-5, l_bl=1e-6, n_dz=5, 
+    #                        f_void=0.5, detach=True, retain=False)
     # df = run(tau=1/6, TSS0=6, detach=True)
    
     # df = HRT_suspended_vs_encap()
