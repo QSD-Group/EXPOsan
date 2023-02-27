@@ -349,15 +349,16 @@ def SRT(y, n_dz, HRT, r_beads, f_void):
     bk_bm, C_en_avg = biomass_CODs(y, n_dz, r_beads)
     return (1 + (1-f_void)/f_void*C_en_avg/bk_bm) * HRT
 
-def converge(dydt, y, args, threshold=1e-4):
+def converge(dydt, y, args, threshold=1e-4, once=False):
     dy_max = 1.
     while dy_max > threshold:
         sol = solve_ivp(dydt, t_span=(0, 400), y0=y, method='BDF', args=args)
         y = sol.y.T[-1]
-        # rcod = 1 - sum(y[-(n_cmps+5):-5] * cmps.i_COD)/6.801
+        rcod = 1 - sum(y[-(n_cmps+5):-5] * cmps.i_COD)/6.801
         dy = dydt(0, y, *args)
         dy_max = np.max(np.abs(dy))
-        # print(f'rCOD: {rcod:.3f}, dy_max: {dy_max:.2e}')
+        print(f'rCOD {rcod:.3f}, dy_max {dy_max:.2e}')
+        if once: break
     return y
 
 @time_printer
@@ -480,6 +481,60 @@ def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
     return df_rcod, df_bm, df_srt
 
 #%%
+def voidage_vs_hrt(voidage = np.linspace(0.39, 0.9, 10),
+                   HRTs=np.array([1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24]),
+                   r_beads=1e-5, l_bl=1e-6, n_dz=5, f_diff=0.75, K_tss=11):
+    sys, = create_systems(which='C')
+    u, = sys.units
+    inf, = sys.feeds
+    bg, eff = sys.products
+    u.encapsulate_concentration = 1e5
+    df_rcod = pd.DataFrame(index=np.int32(HRTs*24), 
+                           columns=pd.MultiIndex.from_product(
+                               [np.round(voidage,3), ['encap','suspend']]
+                               ))
+    df_rcod.index.name = 'HRT [h]'
+    df_rcod.columns.names = ['voidage', 'biomass']
+    df_bm = df_rcod.copy()
+    df_srt = df_rcod.copy()
+    # df_srt = pd.DataFrame(index=np.int32(HRTs*24), columns=np.round(voidage,3))
+    # df_srt.index.name = df_rcod.index.name
+    # df_srt.columns.name = 'voidage'
+    for f_void in voidage:
+        dydt = compile_ode(r_beads=r_beads, l_bl=l_bl, f_void=f_void, n_dz=n_dz,
+                           f_diff=f_diff, K_tss=K_tss)
+        y0 = y0_from_bulk(n_dz)
+        for tau in HRTs:
+            itau = int(tau*24)
+            ivoid = round(f_void,3)
+            msg = f'voidage {ivoid}, HRT {itau}h'
+            print(f'\n{msg}\n{"="*len(msg)}')
+            y0 = converge(dydt, y0, (tau, True, False), 
+                          threshold=1e-4, once=False)           
+            bk_Cs = y0[-(n_cmps+5):-5].copy()
+            att_COD = sum(bk_Cs * cmps.i_COD * (1-cmps.g)) * 1e3
+            df_rcod.loc[itau, (ivoid, 'encap')] = 1-att_COD/inf.COD
+            bk_bm, en_bm = biomass_CODs(y0, n_dz, r_beads)
+            df_bm.loc[itau, (ivoid, 'encap')] = ((1-f_void)*en_bm + f_void*bk_bm) * 0.777
+            df_srt.loc[itau, (ivoid, 'encap')] = srt = SRT(y0, n_dz, tau, r_beads, f_void)
+            
+            u._f_retain[bm_idx] = 1-tau/srt
+            u.V_liq = tau*5
+            u.V_gas = tau*0.5
+            sys.simulate(state_reset_hook='reset_cache',
+                         t_span=(0, 400), method='BDF')
+            df_rcod.loc[itau, (ivoid, 'suspend')] = 1-eff.COD/inf.COD
+            df_bm.loc[itau, (ivoid, 'suspend')] = sp_bm = sum(u._state[bm_idx]) * 0.777
+            df_srt.loc[itau, (ivoid, 'suspend')] = tau * sp_bm/(sum(eff.state[bm_idx])/1e3*0.777)
+            
+    with pd.ExcelWriter(ospath.join(results_path, 'void_vs_HRT.xlsx')) as writer:
+        df_rcod.to_excel(writer, sheet_name='rCOD')
+        df_bm.to_excel(writer, sheet_name='biomass TSS')
+        df_srt.to_excel(writer, sheet_name='SRT')
+    
+    return df_rcod, df_bm, df_srt
+
+#%%
 @time_printer
 def run(tau=0.5, TSS0=5, r_beads=5e-3, l_bl=1e-5, f_void=0.1, n_dz=10, 
         f_diff=0.75, K_tss=11, detach=False, retain=False, y0=None):
@@ -502,7 +557,7 @@ def run(tau=0.5, TSS0=5, r_beads=5e-3, l_bl=1e-5, f_void=0.1, n_dz=10,
     
 
 if __name__ == '__main__':
-    dfs = bead_size_HRT(detach=True)
+    # dfs = bead_size_HRT(detach=True)
     # dfs = bead_size_HRT(bead_size=[1e-4, 1e-5], detach=True, retain=False, 
     #                     n_dz=8, f_void=0.95)
     # de_rcod, de_bm = bead_size_HRT(detach=True, n_dz=20)
@@ -521,3 +576,4 @@ if __name__ == '__main__':
     # df = run(tau=1/6, TSS0=6, detach=True)
    
     # df = HRT_suspended_vs_encap()
+    rcod, tss, srt = voidage_vs_hrt()
