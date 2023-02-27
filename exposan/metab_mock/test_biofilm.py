@@ -123,7 +123,7 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, f_void=0.1,
     D_ov_dz = D[S_idx]/dz
     _1_ov_z = 1/zs                  # (n_dz,)
         
-    def dydt(t, y, HRT, detach=False, retain=False):
+    def dydt(t, y, HRT, detach=False):
         Q, T = y[-2:]
         V_liq = HRT * Q
         V_bed = V_liq / f_void
@@ -189,16 +189,11 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, f_void=0.1,
         # dCdt_en = D*(d2Cdz2 + np.diag(2/zs) @ dCdz) + Rs_en - de_en
         # dCdt_en = dJ_dz + Rs_en - de_en
         dCdt_en = M_transfer + Rs_en - de_en
-        if retain:
-            Cs_eff = Cs_bk.copy()
-            Cs_eff[bm_idx] = 0.
-            # dCdt_bk = (Cs_in-Cs_eff)/HRT - A_beads/V_liq*k*(Cs_bk-C_lf) + Rs_bk + V_beads*tot_de/V_liq
-            dCdt_bk = (Cs_in-Cs_eff)/HRT - A_beads/V_liq*J_lf + Rs_bk + V_beads*tot_de/V_liq
-        else:
-            # dCdt_bk = (Cs_in-Cs_bk)/HRT - A_beads/V_liq*k*(Cs_bk-C_lf) + Rs_bk + V_beads*tot_de/V_liq
-            dCdt_bk = (Cs_in-Cs_bk)/HRT - A_beads/V_liq*J_lf + Rs_bk + V_beads*tot_de/V_liq
+        
+        # dCdt_bk = (Cs_in-Cs_bk)/HRT - A_beads/V_liq*k*(Cs_bk-C_lf) + Rs_bk + V_beads*tot_de/V_liq
+        dCdt_bk = (Cs_in-Cs_bk)/HRT - A_beads/V_liq*J_lf + Rs_bk + V_beads*tot_de/V_liq
 
-        dy = y*0.
+        dy = np.zeros_like(y)
         dy[:n_dz*n_cmps] = dCdt_en.flatten()
         dy[-(n_cmps+5):-5] = dCdt_bk
         dy[-5:-2] = gas_transfer
@@ -238,6 +233,7 @@ def y0_even(n_dz, TSS0):
 def spatial_profiling(HRTs=[1, 0.5, 10/24, 8/24], TSS0=5, n_dz=10, 
                       detach=False, save_to='', **ode_kwargs):
     y0 = y0_even(n_dz, TSS0)
+    # y0 = y0_from_bulk(n_dz)
     dfs = {}
     dydt = compile_ode(n_dz=n_dz, **ode_kwargs)
     for tau in HRTs:
@@ -261,7 +257,7 @@ def spatial_profiling(HRTs=[1, 0.5, 10/24, 8/24], TSS0=5, n_dz=10,
 
 @time_printer
 def suspended_vs_attached(HRT, dydt, n_dz, r_beads, sys, f_void=0.1,
-                          y0=None, detach=False, retain=False):
+                          y0=None, detach=False):
     print('\n')
     print('='*12)
     print(f'HRT: {HRT:.3f} d')
@@ -282,17 +278,16 @@ def suspended_vs_attached(HRT, dydt, n_dz, r_beads, sys, f_void=0.1,
     sus_bm = sum(u._state[bm_idx] * cmps.i_mass[bm_idx])
     if y0 is None:
         y0_susp = np.append(u._state, 298.15)
-        if not retain: y0_susp[bm_idx] = 0.
+        y0_susp[bm_idx] = 0.
         y0 = np.append(np.tile(u._state[:n_cmps], n_dz), y0_susp)
-    try: y = converge(dydt, y0, args=(HRT, detach, retain))
+    try: y = converge(dydt, y0, args=(HRT, detach))
     except:
         try:
             y0 = y0_even(n_dz, TSS0=min(2.5/HRT, 22))
-            y = converge(dydt, y0, args=(HRT, detach, retain))
+            y = converge(dydt, y0, args=(HRT, detach))
         except:
             return sus_rcod, np.nan, sus_bm, np.nan, None        
     bk_Cs = y[-(n_cmps+5):-5].copy()
-    if retain: bk_Cs[bm_idx] = 0.
     att_COD = sum(bk_Cs * cmps.i_COD * (1-cmps.g)) * 1e3
     att_rcod = 1-att_COD/inf.COD
     bk_bm, en_bm = biomass_CODs(y, n_dz, r_beads)
@@ -304,10 +299,7 @@ def HRT_suspended_vs_encap(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
                            frac_retain=1.0, r_beads=1e-5, l_bl=1e-6, n_dz=8,
                            **ode_kwargs):
     record = []
-    # rows = []
     dydt = compile_ode(r_beads=r_beads, l_bl=l_bl, n_dz=n_dz, **ode_kwargs)
-    # r_beads = ode_kwargs.pop('r_beads', 5e-3)
-    # n_dz = ode_kwargs.pop('n_dz', 10)
     
     sys, = create_systems(which='C')
     u, = sys.units
@@ -317,19 +309,16 @@ def HRT_suspended_vs_encap(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
     # y = None
     for tau in HRTs:
         out = suspended_vs_attached(tau, dydt, n_dz, r_beads, sys, y,
-                                    detach=True, retain=True)
+                                    detach=True)
         y = out.pop(-1)
         record.append(out)
-        # rows.append(tau)
     
-    # df = pd.DataFrame(record, index=rows, 
     df = pd.DataFrame(record, index=HRTs, 
                       columns=pd.MultiIndex.from_product(
                           [['rCOD', 'biomass [g TSS/L]'], ['Suspended', 'Encapsulated']]
                           ))
     df.index.name = 'HRT [d]'
     df.to_excel(ospath.join(results_path, 'suspended_vs_encap_retain.xlsx'))
-
     return df
 
 #%% encapsulated biomass, HRT
@@ -363,19 +352,19 @@ def converge(dydt, y, args, threshold=1e-4, once=False):
 
 @time_printer
 def encap(TSS_init, HRT, dydt, n_dz, f_void=0.1, r_beads=5e-3, 
-          detach=False, retain=False, y0=None, threshold=1e-4):
+          detach=True, y0=None, threshold=1e-4):
     msg = f'r_beads {r_beads*1e3:.2f}mm, HRT {HRT:.2f}d'
     print(f'\n{msg}\n{"="*len(msg)}')
     if y0 is None: y = y0_even(n_dz, TSS_init)
     else: y = y0
     try: 
-        y = converge(dydt, y, args=(HRT, detach, retain), threshold=threshold)
+        y = converge(dydt, y, args=(HRT, detach), threshold=threshold)
     except: 
         try: 
             print('Try bulk y0...')
             # y = y0_even(n_dz, TSS_init*2)
             y = y0_from_bulk(n_dz)
-            y = converge(dydt, y, args=(HRT, detach, retain), threshold=threshold)
+            y = converge(dydt, y, args=(HRT, detach), threshold=threshold)
         except: return [np.nan]*4
     bk_Cs = y[-(n_cmps+5):-5]
     en_Cs = y[-(2*n_cmps+5):-(n_cmps+5)]
@@ -385,8 +374,9 @@ def encap(TSS_init, HRT, dydt, n_dz, f_void=0.1, r_beads=5e-3,
     srt = SRT(y, n_dz, HRT, r_beads, f_void)
     return att_rcod, att_bm, srt, y
 
-def HRT_init_TSS(TSS=[1, 2, 5, 10, 30], HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
-                 detach=False, retain=False, **ode_kwargs):
+def HRT_init_TSS(TSS=[1, 2, 5, 10, 30], 
+                 HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
+                 detach=False, **ode_kwargs):
     rcod = []
     ss_bm = []
     dydt = compile_ode(detach=detach, **ode_kwargs)
@@ -398,7 +388,7 @@ def HRT_init_TSS(TSS=[1, 2, 5, 10, 30], HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1
         l_bm = []
         for tau in HRTs:
             out = encap(tss, tau, dydt, n_dz, f_void=f_void, r_beads=r_beads, 
-                        detach=detach, retain=retain)
+                        detach=detach)
             l_rcod.append(out[0])
             l_bm.append(out[1])
         rcod.append(l_rcod)
@@ -418,16 +408,14 @@ def HRT_init_TSS(TSS=[1, 2, 5, 10, 30], HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1
         
 #%% bead size
 
-def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24], 
-                  bead_size=[5e-3, 1e-3, 5e-4, 1e-4, 1e-5], 
-                  voidage=[0.39, 0.39, 0.5, 0.6, 0.7],
-                  detach=False, retain=False, **ode_kwargs):
-    # ode_kwargs.pop('r_beads', None)
+def bead_size_HRT(HRTs=np.array([1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24]), 
+                  bead_size=np.array([5e-3, 1e-3, 5e-4, 1e-4, 1e-5]), 
+                  voidage=[0.39, 0.4, 0.5, 0.6, 0.7],
+                  # voidage=[0.39]*5,
+                  detach=False, **ode_kwargs):
     rcod = []
     ss_bm = []
     srt = []
-    # n_dz = ode_kwargs.pop('n_dz', 8)
-    # f_void = ode_kwargs.pop('f_void', 0.1)
     for r_beads, f_void in zip(bead_size, voidage):
         l_bl = min(1e-5, r_beads/10)
         if r_beads > 1e-3: n_dz = 10
@@ -441,7 +429,7 @@ def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
         for tau in HRTs:
             tss = min(2.5/tau, 22)
             z1, z2, z3, y0 = encap(tss, tau, dydt, n_dz, f_void, 
-                                   r_beads, detach, retain, y0, 5e-4)
+                                   r_beads, detach, y0, 5e-4)
             l_rcod.append(z1)
             l_bm.append(z2)
             l_srt.append(z3)
@@ -449,33 +437,35 @@ def bead_size_HRT(HRTs=[1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24],
         ss_bm.append(l_bm)
         srt.append(l_srt)
     
-    sys, = create_systems(which='C')
-    u, = sys.units
-    inf, = sys.feeds
-    bg, eff = sys.products
-    u.encapsulate_concentration = 1e5
-    l_rcod = []
-    for tau, tau_s in zip(HRTs, srt[-1]):
-        u._f_retain[bm_idx] = 1-tau/tau_s
-        u.V_liq = tau*5
-        u.V_gas = tau*0.5
-        sys.simulate(state_reset_hook='reset_cache',
-                     t_span=(0, 400), method='BDF')
-        l_rcod.append(1-eff.COD/inf.COD)
+    # sys, = create_systems(which='C')
+    # u, = sys.units
+    # inf, = sys.feeds
+    # bg, eff = sys.products
+    # u.encapsulate_concentration = 1e5
+    # l_rcod = []
+    # for tau, tau_s in zip(HRTs, srt[-1]):
+    #     u._f_retain[bm_idx] = 1-tau/tau_s
+    #     u.V_liq = tau*5
+    #     u.V_gas = tau*0.5
+    #     sys.simulate(state_reset_hook='reset_cache',
+    #                  t_span=(0, 400), method='BDF')
+    #     l_rcod.append(1-eff.COD/inf.COD)
         
     df_rcod = pd.DataFrame(rcod).T
     df_bm = pd.DataFrame(ss_bm).T
     df_srt = pd.DataFrame(srt).T
     
     for i in (df_rcod, df_bm, df_srt):
-        i.columns = pd.MultiIndex.from_product([['bead size [m]'], bead_size])
-        i.index = HRTs
-        i.index.name = 'HRT [d]'
-    df_rcod[('Suspended','')] = l_rcod
+        # i.columns = pd.MultiIndex.from_product([['bead size [m]'], bead_size])
+        i.columns = pd.MultiIndex.from_tuples(zip(np.round(bead_size*1e3, 2), voidage))
+        i.columns.names = ['bead size [mm]', 'voidage']
+        i.index = np.int32(HRTs*24)
+        i.index.name = 'HRT [h]'
+    # df_rcod[('Suspended','')] = l_rcod
     with pd.ExcelWriter(ospath.join(results_path, 
-                                    'HRT_vs_rbeads_vs_suspended.xlsx')) as writer:
+                                    'HRT_vs_rbeads_incre.xlsx')) as writer:
         df_rcod.to_excel(writer, sheet_name='rCOD')
-        df_bm.to_excel(writer, sheet_name='Biomass TSS')
+        df_bm.to_excel(writer, sheet_name='encapsulated TSS')
         df_srt.to_excel(writer, sheet_name='SRT')
 
     return df_rcod, df_bm, df_srt
@@ -509,8 +499,8 @@ def voidage_vs_hrt(voidage = np.linspace(0.39, 0.9, 10),
             ivoid = round(f_void,3)
             msg = f'voidage {ivoid}, HRT {itau}h'
             print(f'\n{msg}\n{"="*len(msg)}')
-            y0 = converge(dydt, y0, (tau, True, False), 
-                          threshold=1e-4, once=False)           
+            y0 = converge(dydt, y0, (tau, True), 
+                          threshold=1e-4, once=True)           
             bk_Cs = y0[-(n_cmps+5):-5].copy()
             att_COD = sum(bk_Cs * cmps.i_COD * (1-cmps.g)) * 1e3
             df_rcod.loc[itau, (ivoid, 'encap')] = 1-att_COD/inf.COD
@@ -527,7 +517,7 @@ def voidage_vs_hrt(voidage = np.linspace(0.39, 0.9, 10),
             df_bm.loc[itau, (ivoid, 'suspend')] = sp_bm = sum(u._state[bm_idx]) * 0.777
             df_srt.loc[itau, (ivoid, 'suspend')] = tau * sp_bm/(sum(eff.state[bm_idx])/1e3*0.777)
             
-    with pd.ExcelWriter(ospath.join(results_path, 'void_vs_HRT.xlsx')) as writer:
+    with pd.ExcelWriter(ospath.join(results_path, 'void_vs_HRT_once.xlsx')) as writer:
         df_rcod.to_excel(writer, sheet_name='rCOD')
         df_bm.to_excel(writer, sheet_name='biomass TSS')
         df_srt.to_excel(writer, sheet_name='SRT')
@@ -537,19 +527,18 @@ def voidage_vs_hrt(voidage = np.linspace(0.39, 0.9, 10),
 #%%
 @time_printer
 def run(tau=0.5, TSS0=5, r_beads=5e-3, l_bl=1e-5, f_void=0.1, n_dz=10, 
-        f_diff=0.75, K_tss=11, detach=False, retain=False, y0=None):
+        f_diff=0.75, K_tss=11, detach=True, y0=None):
     if y0 is None: 
         # y0 = y0_even(n_dz, TSS0)
         y0 = y0_from_bulk(n_dz)
     dydt = compile_ode(r_beads, l_bl, f_void, n_dz, f_diff, K_tss)
-    print(f'HRT = {tau:.2f} d')
-    y_ss = converge(dydt, y0, args=(tau, detach, retain))
+    # print(f'HRT = {tau:.2f} d')
+    y_ss = converge(dydt, y0, args=(tau, detach), threshold=5e-4)
     C_ss = y_ss[:n_cmps*(n_dz+1)].reshape((n_dz+1, n_cmps))
     Xbio_ss = C_ss[:, bm_idx]
-    df_c = pd.DataFrame(C_ss, columns=cmps.IDs, index=[*range(n_dz), 'bulk'])
+    df_c = pd.DataFrame(C_ss, columns=cmps.IDs, index=[*range(1, n_dz+1), 'bulk'])
     df_c['biomass_COD'] = np.sum(Xbio_ss, axis=1)
     bk = C_ss[-1].copy()
-    if retain: bk[bm_idx] = 0.
     eff_cod = np.sum(bk * cmps.i_COD * (1-cmps.g))
     rcod = 1-eff_cod/6.801
     srt = SRT(y_ss, n_dz=n_dz, HRT=tau, r_beads=r_beads, f_void=f_void)
@@ -558,7 +547,7 @@ def run(tau=0.5, TSS0=5, r_beads=5e-3, l_bl=1e-5, f_void=0.1, n_dz=10,
 
 if __name__ == '__main__':
     # dfs = bead_size_HRT(detach=True)
-    # dfs = bead_size_HRT(bead_size=[1e-4, 1e-5], detach=True, retain=False, 
+    # dfs = bead_size_HRT(bead_size=[1e-4, 1e-5], detach=True,
     #                     n_dz=8, f_void=0.95)
     # de_rcod, de_bm = bead_size_HRT(detach=True, n_dz=20)
 
@@ -572,8 +561,33 @@ if __name__ == '__main__':
     #             save_to=f'spatial_r{r_beads}_{detach}_new.xlsx'
     #             )
     # df, y, rcod, srt = run(tau=1, TSS0=2.5, r_beads=1e-5, l_bl=1e-6, n_dz=5, 
-    #                        f_void=0.5, detach=True, retain=False)
+    #                        f_void=0.5, detach=True)
     # df = run(tau=1/6, TSS0=6, detach=True)
    
     # df = HRT_suspended_vs_encap()
-    rcod, tss, srt = voidage_vs_hrt()
+    # rcod, tss, srt = voidage_vs_hrt()
+    dfs = {}
+    rcods = []
+    srts = []
+    for f_void in (0.6, 0.8):
+        l_rcod = []
+        l_srt = []
+        for n_dz in (5, 10, 20):
+            print(f'\nvoidage {f_void}, n = {n_dz}')
+            df, y, rcod, srt = run(r_beads=1e-5, l_bl=1e-6, 
+                                   f_void=f_void, n_dz=n_dz)
+            dfs[f'void {f_void} (n={n_dz})'] = df
+            l_rcod.append(rcod)
+            l_srt.append(srt)
+        rcods.append(l_rcod)
+        srts.append(l_srt)
+    summary = rcods + srts
+    summary = pd.DataFrame(summary).T
+    summary.index = [5,10,20]
+    summary.index.name = 'n_dz'
+    summary.columns = pd.MultiIndex.from_product([['rCOD', 'SRT [d]'], [0.6, 0.8]])
+    summary.columns.names = ['','voidage']
+    with pd.ExcelWriter(ospath.join(results_path, 'ndz_vs_spatial.xlsx')) as writer:
+        summary.to_excel(writer, sheet_name='summary')
+        for k,v in dfs.items():
+            v.to_excel(writer, sheet_name=k)
