@@ -173,7 +173,7 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, f_void=0.1,
         # C_lf[S_idx] = (D*Cs_en[-2] + k*Cs_bk*dz)[S_idx]/(D+k*dz)[S_idx]  # Only solubles based on outer b.c.
         # d2Cdz2[-1,:] = ((1+dz/(2*zs[-1]))**2*(C_lf-Cs_en[-2]) - (1-dz/(2*zs[-1]))**2*(Cs_en[-2]-Cs_en[-3]))/(dz**2)  # backward difference
         
-        #!!! Mass transfer (centered differences) -- MOL solubles only
+        #!!! Mass transfer (centered differences) -- MOL; solubles only
         C_lf = Cs_en[-1]
         J_lf = k*(Cs_bk - C_lf)
         S_en = Cs_en[:, S_idx]
@@ -206,7 +206,7 @@ def compile_ode(r_beads=5e-3, l_bl=1e-5, f_void=0.1,
 # HRT = 1
 C0 = np.array([
     1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
-    4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 2e-02,
+    4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
     2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 4.708e+00, 1.239e+00,
     4.838e-01, 1.423e+00, 8.978e-01, 2.959e+00, 1.467e+00, 4.924e-02,
     4.000e-02, 2.000e-02, 9.900e+02
@@ -343,7 +343,7 @@ def converge(dydt, y, args, threshold=1e-4, once=False):
     while dy_max > threshold:
         sol = solve_ivp(dydt, t_span=(0, 400), y0=y, method='BDF', args=args)
         y = sol.y.T[-1]
-        rcod = 1 - sum(y[-(n_cmps+5):-5] * cmps.i_COD)/6.801
+        rcod = 1 - sum(y[-(n_cmps+5):-5] * cmps.i_COD * (1-cmps.g))/6.801
         dy = dydt(0, y, *args)
         dy_max = np.max(np.abs(dy))
         print(f'rCOD {rcod:.3f}, dy_max {dy_max:.2e}')
@@ -471,7 +471,7 @@ def bead_size_HRT(HRTs=np.array([1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24]),
     return df_rcod, df_bm, df_srt
 
 #%%
-def voidage_vs_hrt(voidage = np.linspace(0.39, 0.9, 10),
+def voidage_vs_hrt(voidage = np.linspace(0.39, 0.8, 10),
                    HRTs=np.array([1, 0.5, 10/24, 8/24, 4/24, 2/24, 1/24]),
                    r_beads=1e-5, l_bl=1e-6, n_dz=5, f_diff=0.75, K_tss=11):
     sys, = create_systems(which='C')
@@ -479,7 +479,8 @@ def voidage_vs_hrt(voidage = np.linspace(0.39, 0.9, 10),
     inf, = sys.feeds
     bg, eff = sys.products
     u.encapsulate_concentration = 1e5
-    df_rcod = pd.DataFrame(index=np.int32(HRTs*24), 
+    # df_rcod = pd.DataFrame(index=np.int32(HRTs*24), 
+    df_rcod = pd.DataFrame(index=np.round(HRTs*24, 1),     
                            columns=pd.MultiIndex.from_product(
                                [np.round(voidage,3), ['encap','suspend']]
                                ))
@@ -494,21 +495,25 @@ def voidage_vs_hrt(voidage = np.linspace(0.39, 0.9, 10),
         dydt = compile_ode(r_beads=r_beads, l_bl=l_bl, f_void=f_void, n_dz=n_dz,
                            f_diff=f_diff, K_tss=K_tss)
         y0 = y0_from_bulk(n_dz)
+        y = y0.copy()
         for tau in HRTs:
-            itau = int(tau*24)
+            # itau = int(tau*24)
+            itau = round(tau*24, 1)
             ivoid = round(f_void,3)
             msg = f'voidage {ivoid}, HRT {itau}h'
             print(f'\n{msg}\n{"="*len(msg)}')
-            y0 = converge(dydt, y0, (tau, True), 
-                          threshold=1e-4, once=True)           
-            bk_Cs = y0[-(n_cmps+5):-5].copy()
+            if f_void < 0.4: y = y0.copy()
+            y = converge(dydt, y, (tau, True), 
+                         threshold=5e-4, once=False)      
+            bk_Cs = y[-(n_cmps+5):-5].copy()
             att_COD = sum(bk_Cs * cmps.i_COD * (1-cmps.g)) * 1e3
             df_rcod.loc[itau, (ivoid, 'encap')] = 1-att_COD/inf.COD
-            bk_bm, en_bm = biomass_CODs(y0, n_dz, r_beads)
+            bk_bm, en_bm = biomass_CODs(y, n_dz, r_beads)
             df_bm.loc[itau, (ivoid, 'encap')] = ((1-f_void)*en_bm + f_void*bk_bm) * 0.777
-            df_srt.loc[itau, (ivoid, 'encap')] = srt = SRT(y0, n_dz, tau, r_beads, f_void)
+            df_srt.loc[itau, (ivoid, 'encap')] = srt = SRT(y, n_dz, tau, r_beads, f_void)
             
-            u._f_retain[bm_idx] = 1-tau/srt
+            # u._f_retain[bm_idx] = 1-tau/srt
+            u._f_retain[:] = (1-tau/srt) * cmps.x
             u.V_liq = tau*5
             u.V_gas = tau*0.5
             sys.simulate(state_reset_hook='reset_cache',
@@ -517,7 +522,7 @@ def voidage_vs_hrt(voidage = np.linspace(0.39, 0.9, 10),
             df_bm.loc[itau, (ivoid, 'suspend')] = sp_bm = sum(u._state[bm_idx]) * 0.777
             df_srt.loc[itau, (ivoid, 'suspend')] = tau * sp_bm/(sum(eff.state[bm_idx])/1e3*0.777)
             
-    with pd.ExcelWriter(ospath.join(results_path, 'void_vs_HRT_once.xlsx')) as writer:
+    with pd.ExcelWriter(ospath.join(results_path, 'void_vs_HRT_opty0.xlsx')) as writer:
         df_rcod.to_excel(writer, sheet_name='rCOD')
         df_bm.to_excel(writer, sheet_name='biomass TSS')
         df_srt.to_excel(writer, sheet_name='SRT')
@@ -565,29 +570,29 @@ if __name__ == '__main__':
     # df = run(tau=1/6, TSS0=6, detach=True)
    
     # df = HRT_suspended_vs_encap()
-    # rcod, tss, srt = voidage_vs_hrt()
-    dfs = {}
-    rcods = []
-    srts = []
-    for f_void in (0.6, 0.8):
-        l_rcod = []
-        l_srt = []
-        for n_dz in (5, 10, 20):
-            print(f'\nvoidage {f_void}, n = {n_dz}')
-            df, y, rcod, srt = run(r_beads=1e-5, l_bl=1e-6, 
-                                   f_void=f_void, n_dz=n_dz)
-            dfs[f'void {f_void} (n={n_dz})'] = df
-            l_rcod.append(rcod)
-            l_srt.append(srt)
-        rcods.append(l_rcod)
-        srts.append(l_srt)
-    summary = rcods + srts
-    summary = pd.DataFrame(summary).T
-    summary.index = [5,10,20]
-    summary.index.name = 'n_dz'
-    summary.columns = pd.MultiIndex.from_product([['rCOD', 'SRT [d]'], [0.6, 0.8]])
-    summary.columns.names = ['','voidage']
-    with pd.ExcelWriter(ospath.join(results_path, 'ndz_vs_spatial.xlsx')) as writer:
-        summary.to_excel(writer, sheet_name='summary')
-        for k,v in dfs.items():
-            v.to_excel(writer, sheet_name=k)
+    rcod, tss, srt = voidage_vs_hrt()
+    # dfs = {}
+    # rcods = []
+    # srts = []
+    # for f_void in (0.6, 0.8):
+    #     l_rcod = []
+    #     l_srt = []
+    #     for n_dz in (5, 10, 20):
+    #         print(f'\nvoidage {f_void}, n = {n_dz}')
+    #         df, y, rcod, srt = run(r_beads=1e-5, l_bl=1e-6, 
+    #                                f_void=f_void, n_dz=n_dz)
+    #         dfs[f'void {f_void} (n={n_dz})'] = df
+    #         l_rcod.append(rcod)
+    #         l_srt.append(srt)
+    #     rcods.append(l_rcod)
+    #     srts.append(l_srt)
+    # summary = rcods + srts
+    # summary = pd.DataFrame(summary).T
+    # summary.index = [5,10,20]
+    # summary.index.name = 'n_dz'
+    # summary.columns = pd.MultiIndex.from_product([['rCOD', 'SRT [d]'], [0.6, 0.8]])
+    # summary.columns.names = ['','voidage']
+    # with pd.ExcelWriter(ospath.join(results_path, 'ndz_vs_spatial.xlsx')) as writer:
+    #     summary.to_excel(writer, sheet_name='summary')
+    #     for k,v in dfs.items():
+    #         v.to_excel(writer, sheet_name=k)
