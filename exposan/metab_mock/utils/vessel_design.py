@@ -85,7 +85,8 @@ def stainless_steel_wall_thickness(P, D, h):
     h *= _m2ft
     return compute_vessel_weight_and_wall_thickness(P, D, h, _rho_ssteel)[1] * _in2m
 
-def UASB_sizing(Q, Vliq, Vgas, max_h2d, upflow_velocity, pipe_velocity):
+# def UASB_sizing(Q, Vliq, Vgas, max_h2d, upflow_velocity, pipe_velocity):
+def UASB_sizing(Q, Vliq, Vgas, max_h2d, upflow_velocity):
     '''
     Determine aspect ratio of the reactor based on design upflow velocity.
 
@@ -101,8 +102,6 @@ def UASB_sizing(Q, Vliq, Vgas, max_h2d, upflow_velocity, pipe_velocity):
         Maximum liquid depth to diameter ratio.
     upflow_velocity : float
         Design upflow velocity [m/h].
-    pipe_velocity : float
-        Flow velocity through the influent pipe [m/h]
 
     Returns
     -------
@@ -112,20 +111,19 @@ def UASB_sizing(Q, Vliq, Vgas, max_h2d, upflow_velocity, pipe_velocity):
         Reactor height [m].
     dia : float
         Reactor diameter [m].
-    velocity_head : float
-        Additional velocity head for pumping.
     '''
     hrt = Vliq/Q  # d
     vlim_h2d = (4*Q*max_h2d**2/pi/hrt**2)**(1/3) # m/d
-    vpipe = pipe_velocity/3600 # m/s
+    # vpipe = pipe_velocity/3600 # m/s
     if vlim_h2d < upflow_velocity*24:
         h = hrt * vlim_h2d
         dia = h/max_h2d
-        velocity_head = ((vpipe * upflow_velocity*24/vlim_h2d)**2 - vpipe**2)/2/9.80665 # m
+        # velocity_head = ((vpipe * upflow_velocity*24/vlim_h2d)**2 - vpipe**2)/2/9.80665 # m
     else:
         h = hrt * upflow_velocity*24
         dia = (4*Q/pi/(upflow_velocity*24))**(1/2)
-        velocity_head = 0.
+        # velocity_head = 0.
     H = h*(1+Vgas/Vliq)
     Vtot = Vgas + Vliq
-    return Vtot, H, dia, velocity_head
+    return Vtot, H, dia
+    # return Vtot, H, dia, velocity_head

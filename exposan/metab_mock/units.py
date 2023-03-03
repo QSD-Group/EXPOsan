@@ -24,7 +24,8 @@ from collections import defaultdict
 
 __all__ = ('DegassingMembrane',
            'UASB',
-           'METAB_AnCSTR')
+           'METAB_AnCSTR',
+           'METAB_FluidizedBed')
 
 #%%
 add_prefix = lambda dct, prefix: {f'{prefix} - {k}':v for k,v in dct.items()}
@@ -374,10 +375,9 @@ class UASB(AnaerobicCSTR):
         D = self.design_results
         den = self._density
         Q = self.mixed.F_vol * 24
-        V, h, dia, h_vel = UASB_sizing(Q, self.V_liq, self.V_gas, 
-                                       self.max_depth_to_diameter, 
-                                       self.design_upflow_velocity, 
-                                       self._l_min_velocity)
+        V, h, dia = UASB_sizing(Q, self.V_liq, self.V_gas,
+                                self.max_depth_to_diameter, 
+                                self.design_upflow_velocity)
         D['Volume'] = V
         D['Height'] = h
         r_cone = dia/2*self._gas_separator_r_frac
@@ -468,7 +468,7 @@ class UASB(AnaerobicCSTR):
         for i, ws, in enumerate(self.ins):
             ID = pipe_IDs[i]
             hf = pipe_friction_head(ws.F_vol*_cmph_2_gpm, L_inlets, ID)  # friction head loss
-            TDH = hf + h + h_vel # in m, assume suction head = 0, discharge head = reactor height
+            TDH = hf + h # in m, assume suction head = 0, discharge head = reactor height
             field = f'Pump_ins{i}'
             pump = getfield(self, field)
             pump.ins[0].copy_flow(ws)
@@ -774,3 +774,436 @@ class METAB_AnCSTR(AnaerobicCSTR):
                     unit_attr.update(add_prefix(equip_attr, prefix))
                 else:
                     unit_attr[equip_ID] = equip_attr
+
+#%%
+from qsdsan import WasteStream, CompiledProcesses
+
+class METAB_FluidizedBed(AnaerobicCSTR):
+    
+    _N_ins = 1
+    _N_outs = 2
+    _ins_size_is_fixed = False
+    _outs_size_is_fixed = False
+    _R = 8.3145e-2 # Universal gas constant, [bar/M/K]
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='WasteStream', V_liq=3400, V_gas=300, 
+                 voidage=0.6, bead_diameter=4, n_layer=10,
+                 boundary_layer_thickness=0.01, diffusivity=None,
+                 f_diff=0.75, max_encapsulation_tss=22., model=None,
+                 pH_ctrl=False, T=298.15, headspace_P=1.013, external_P=1.013, 
+                 pipe_resistance=5.0e4, fixed_headspace_P=False,
+                 isdynamic=True, exogenous_vars=(), 
+                 **kwargs):
+    
+        SanUnit.__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
+                         init_with=init_with, isdynamic=isdynamic, 
+                         exogenous_vars=exogenous_vars, **kwargs)
+        self.V_gas = V_gas
+        self.V_liq = V_liq
+        self.voidage = voidage
+        self.bead_diameter = bead_diameter
+        self.n_layer = n_layer
+        self.boundary_layer_thickness = boundary_layer_thickness
+        self.diffusivity = diffusivity
+        self.f_diff = f_diff
+        self.max_encapsulation_tss = max_encapsulation_tss
+        
+        self.pH_ctrl = pH_ctrl
+        self.T = T
+        self._q_gas = 0
+        self._n_gas = None
+        self._gas_cmp_idx = None
+        self._state_keys = None
+        self._S_vapor = None
+        self.model = model
+        self._biogas = WasteStream(phase='g')
+        self.headspace_P = headspace_P
+        self.external_P = external_P
+        self.pipe_resistance = pipe_resistance
+        self.fixed_headspace_P = fixed_headspace_P
+        self._mixed = WasteStream()
+        self._tempstate = []
+    
+        
+    @property
+    def V_liq(self):
+        '''[float] The liquid-phase volume, in m^3.'''
+        return self._V_liq
+    @V_liq.setter
+    def V_liq(self, V):
+        self._V_liq = V
+
+    @property
+    def V_gas(self):
+        '''[float] The total gas phase volume, in m^3.'''
+        return self._V_gas
+    @V_gas.setter
+    def V_gas(self, V):
+        self._V_gas = V        
+
+    @property
+    def voidage(self):
+        '''[float] Void fraction of the fluidized bed, unitless.'''
+        return self.f_void
+    @voidage.setter
+    def voidage(self, f):
+        if f <= 0 or f >= 1:
+            raise ValueError(f'voidage must be in (0,1), not {f}')
+        self.f_void = f
+    
+    @property
+    def V_beads(self):
+        '''[float] Total encapsulant bead volume, in m^3'''
+        f_void = self.voidage
+        return self.V_liq / f_void * (1-f_void)
+    @property
+    def V_bed(self):
+        '''[float] Total reactor volume, in m^3'''
+        return self.V_liq / self.voidage + self.V_gas
+    
+    @property
+    def bead_diameter(self):
+        '''[float] Encapsulation bead diameter in mm.'''
+        return self.r_beads * 2e3
+    @bead_diameter.setter
+    def bead_diameter(self, db):
+        self.r_beads = db/2 * 1e-3
+    
+    @property
+    def n_layer(self):
+        '''[int] Number of layers for discretization of encapsulation beads along radius.'''
+        return self._n_dz
+    @n_layer.setter
+    def n_layer(self, n):
+        self._n_dz = int(n)
+    
+    @property
+    def boundary_layer_thickness(self):
+        '''[float] Thickness of liquid boundary layer around beads, in mm.'''
+        return self.l_bl * 1e3
+    @boundary_layer_thickness.setter
+    def boundary_layer_thickness(self, l):
+        self.l_bl = min(l, self.r_beads/10)
+    
+    _diffusivities = {
+        'S_su': 4.56e-06,
+        'S_aa': 8.62e-06,
+        'S_fa': 5.33e-06,
+        'S_va': 5e-06,
+        'S_bu': 5.04e-06,
+        'S_pro': 6e-06,
+        'S_ac': 6.48e-06,
+        'S_h2': 0.000402,
+        'S_ch4': 0.000136,
+        'S_IC': 0.000171,
+        'S_IN': 0.000152,
+        'S_I': 6e-06,
+        'S_cat': 0.000117,
+        'S_an': 0.000117
+        }
+    
+    
+    @property
+    def diffusivity(self):
+        '''[numpy.ndarray] Diffusivities of components in pure water, in m^2/d.'''
+        return self._diff
+    @diffusivity.setter
+    def diffusivity(self, arr):
+        isa = isinstance
+        if arr is None:
+            self._set_diffusivities(**self._diffusivities)
+        elif isa(arr, (list, tuple, np.ndarray)):
+            arr = np.asarray(arr)
+            if arr.shape == (len(self.thermo.chemicals)):
+                self._diff = arr
+            else: raise ValueError(f'diffusivity should be an array of the same length'
+                                   f'as the components, not of shape {arr.shape}')
+        elif isa(arr, dict):
+            self._set_diffusivities(**arr)
+        else:
+            raise TypeError(f'diffusivity must be array-like or a dict, if not None, not {type(arr)}')
+        
+    def _set_diffusivities(self, **kwargs):
+        cmps = self.thermo.chemicals            
+        idx = cmps.indices(kwargs.keys())
+        if not hasattr(self, '_diff'):
+            self._diff = np.zeros(len(cmps))
+        self._diff[idx] = kwargs.values()
+        
+    @property
+    def f_diff(self):
+        '''[float] Encapsulant/water diffusivity ratio, unitless.'''
+        return self._f_diff
+    @f_diff.setter
+    def f_diff(self, f):
+        self._f_diff = f
+    
+    @property
+    def k_bl(self):
+        '''[float] Mass transfer coefficients through the liquid boundary layer, in m/d.'''
+        return self._diff / self.l_bl
+    
+    @property
+    def D(self):
+        '''[float] Diffusivities through encapsulant, in m^2/d'''
+        return self._diff * self.f_diff
+        
+    @property
+    def max_encapsulation_tss(self):
+        '''[float] Maximum biomass encapsulation density, in gTSS/L'''
+        return self.K_tss * 2
+    @max_encapsulation_tss.setter
+    def max_encapsulation_tss(self, tss):
+        self.K_tss = tss / 2
+    
+    @property
+    def detachment_half_saturation_tss(self):
+        '''[float] Half saturation coefficient for particulate detachment from 
+        the encapsulation matrix, in gTSS/L'''
+        return self.K_tss
+    
+    @property
+    def model(self):
+        return self._model
+    @model.setter
+    def model(self, model):
+        '''[:class:`CompiledProcesses`] Anaerobic digestion model.'''
+        if isinstance(model, CompiledProcesses) or model: self._model = model
+        else: raise TypeError(f'model must be a CompiledProesses, not {type(model)}')
+        self._S_vapor = self.ideal_gas_law(p=self.p_vapor())
+        self._n_gas = len(model._biogas_IDs)
+        cmps = self.thermo.chemicals
+        layers = [*range(self.n_dz), 'bulk']
+        self._state_keys = [f'{cmp}-{i}' for i in layers for cmp in cmps.IDs] \
+            + [ID+'_gas' for ID in self.model._biogas_IDs] \
+            + ['Q']
+        self._gas_cmp_idx = cmps.indices(self.model._biogas_IDs)
+        self._state_header = self._state_keys
+        self._gas_state_idx = dict(self.model._biogas_IDs, zip(range(self._n_gas)))
+
+    
+    def state_index(self, IDs, location=None):
+        isa = isinstance
+        cmps = self.thermo.chemicals
+        n_cmps = len(cmps)
+        n_dz = self.n_dz
+        if isa(IDs, str): IDs = [IDs]
+        if location == 'gas':
+            return [n_cmps*n_dz + self._gas_state_idx[i] for i in IDs]
+        else:
+            cmp_idx = cmps.indices(IDs)   # list
+            if location is None:
+                locs = range(self.n_dz + 1)
+            elif isa(location, list):
+                locs = location
+            elif isa(location, (float, int)):
+                locs = [int(location)]
+            elif location == 'bulk': 
+                locs = [self.n_dz]
+            else: raise ValueError('unrecognized location')
+            return [i*n_cmps + j for i in locs for j in cmp_idx]
+    
+    def set_init_conc(self, arr=None, **kwargs):
+        '''set the initial concentrations [kg/m3] of components in the fluidized bed, 
+        applies uniformly to all layers in beads and bulk liquid unless an array is input.'''
+        cmps = self.thermo.chemicals
+        cmpx = cmps.index
+        n_dz = self.n_dz
+        if arr is None:
+            Cs = np.zeros(len(cmps))
+            for k, v in kwargs.items(): Cs[cmpx(k)] = v
+            self._concs = np.tile(Cs, n_dz+1)
+        else:
+            arr = np.asarray(arr)
+            if arr.shape != (len(cmps)*(n_dz+1),):
+                raise ValueError(f'arr must be None or a 1d array of length {len(cmps)*(n_dz+1)}, '
+                                 f'not {arr.shape}')
+            self._concs = arr
+    
+    def _init_state(self):
+        mixed = self._mixed
+        Q = mixed.get_total_flow('m3/d')
+        if self._concs is not None: Cs = self._concs
+        else: Cs = mixed.conc
+        self._state = np.append(Cs, [0]*self._n_gas + [Q]).astype('float64')
+        self._dstate = self._state * 0.
+
+    def _update_state(self):
+        cmps = self.components
+        n_cmps = len(cmps)
+        n_gas = self._n_gas
+        y = self._state[-(n_cmps+n_gas+1):]
+        i_mass = cmps.i_mass
+        chem_MW = self.components.chem_MW
+        Cs = y[:n_cmps]*1e3 # kg/m3 to mg/L
+        if self.split is None:
+            gas, liquid = self._outs
+            if liquid.state is None:
+                liquid.state = np.append(Cs, y[-1])
+            else:
+                liquid.state[:n_cmps] = Cs
+                liquid.state[-1] = y[-1]
+        else:
+            gas = self._outs[0]
+            liquids = self._outs[1:]
+            for liquid, spl in zip(liquids, self.split):
+                if liquid.state is None:
+                    liquid.state = np.append(Cs, y[-1]*spl)
+                else:
+                    liquid.state[:n_cmps] = Cs
+                    liquid.state[-1] = y[-1]*spl        
+        if gas.state is None:
+            gas.state = np.zeros(n_cmps+1)
+        gas.state[self._gas_cmp_idx] = y[n_cmps:(n_cmps + n_gas)]
+        gas.state[cmps.index('H2O')] = self._S_vapor
+        gas.state[-1] = self._q_gas
+        gas.state[:n_cmps] = gas.state[:n_cmps] * chem_MW / i_mass * 1e3 # i.e., M biogas to mg (measured_unit) / L
+
+    def _update_dstate(self):
+        self._tempstate = self.model.rate_function._params['root'].data.copy()
+        n_cmps = len(self.components)
+        n_gas = self._n_gas
+        dy = self._dstate[-(n_cmps+n_gas+1):]
+        dCs = dy[:n_cmps]*1e3
+        if self.split is None:
+            gas, liquid = self._outs
+            if liquid.dstate is None:
+                liquid.dstate = np.append(dCs, dy[-1])
+            else:
+                liquid.dstate[:n_cmps] = dCs
+                liquid.dstate[-1] = dy[-1]
+        else:
+            gas = self._outs[0]
+            liquids = self._outs[1:]
+            for liquid, spl in zip(liquids, self.split):
+                if liquid.dstate is None:
+                    liquid.dstate = np.append(dCs, dy[-1]*spl)
+                else:
+                    liquid.dstate[:n_cmps] = dCs
+                    liquid.dstate[-1] = dy[-1]*spl
+        if gas.dstate is None:
+            # contains no info on dstate
+            gas.dstate = np.zeros(n_cmps+1)
+
+    
+    @property
+    def ODE(self):
+        if self._ODE is None:
+            self._compile_ODE()
+        return self._ODE
+    
+    def _compile_ODE(self):
+        cmps = self.components
+        _dstate = self._dstate
+        _update_dstate = self._update_dstate
+        n_cmps = len(cmps)
+        n_dz = self.n_layer
+        n_gas = self._n_gas
+        T = self.T
+        
+        _f_rhos = self.model.flex_rate_function
+        _params = self.model.rate_function.params
+        stoi_bk = self.model.stoichio_eval()
+        stoi_en = stoi_bk[:-n_gas]  # no liquid-gas transfer
+        Rho_bk = lambda state_arr: _f_rhos(state_arr, _params, 
+                                           T_op=T, pH=self.pH_ctrl, 
+                                           gas_transfer=True)
+        Rho_en = lambda state_arr: _f_rhos(state_arr, _params, 
+                                           T_op=T, pH=self.pH_ctrl, 
+                                           gas_transfer=False)
+        gas_mass2mol_conversion = (cmps.i_mass / cmps.chem_MW)[self._gas_cmp_idx]
+
+        V_liq = self.V_liq
+        V_gas = self.V_gas
+        V_beads = self.V_beads
+        r_beads = self.r_beads
+        A_beads = 3 * V_beads / r_beads # m2, total bead surface area
+
+        dz = r_beads / n_dz
+        zs = np.linspace(dz, r_beads, n_dz)
+        dV = 4/3*np.pi*(zs)**3
+        dV[1:] -= dV[:-1]
+        V_bead = (4/3*np.pi*r_beads**3)
+        
+        D = self.D          # Diffusivity in beads
+        k = self.k_bl       # mass transfer coeffient through liquid boundary layer
+        K_tss = self.K_tss
+        S_idx = D.nonzero()
+        D_ov_dz2 = D[S_idx]/(dz**2)     # (n_soluble,)
+        D_ov_dz = D[S_idx]/dz
+        _1_ov_z = 1/zs                  # (n_dz,)
+        
+        if self._fixed_P_gas:
+            f_qgas = self.f_q_gas_fixed_P_headspace
+        else:
+            f_qgas = self.f_q_gas_var_P_headspace
+        
+        def dy_dt(t, y_ins, y, dy_ins):
+            S_gas = y[-(n_gas+1):-1]
+            Cs_bk = y[-(n_cmps+n_gas+1):-(n_gas+1)]          # bulk liquid concentrations
+            Cs_en = y[:n_dz*n_cmps].reshape((n_dz, n_cmps))  # each row is one control volume
+            Q_ins = y_ins[:, -1]
+            Cs_ins = y_ins[:, :-1] * 1e-3  # mg/L to kg/m3
+            Q = sum(Q_ins)
+            
+            # Transformation
+            rhos_en = np.apply_along_axis(Rho_en, 1, Cs_en)
+            Rs_en = rhos_en @ stoi_en       # n_dz * n_cmps
+            rhos_bk = Rho_bk(Cs_bk)
+            Rs_bk = np.dot(stoi_bk.T, rhos_bk) # n_cmps+5
+            q_gas = f_qgas(rhos_bk[-n_gas:], S_gas, T)
+            gas_transfer = - q_gas*S_gas/V_gas + rhos_bk[-n_gas:] * V_liq/V_gas * gas_mass2mol_conversion
+            
+            # Detachment -- particulates
+            tss = np.sum(Cs_en * (cmps.x*cmps.i_mass), axis=1)
+            x_net_growth = np.sum(Rs_en * cmps.x, axis=1)/np.sum(Cs_en * cmps.x, axis=1) # d^(-1), equivalent to k_de
+            u_de = 1/(1+np.exp(K_tss-tss)) * np.maximum(x_net_growth, 0)
+            de_en = np.diag(u_de) @ (Cs_en * cmps.x)
+            tot_de = np.sum(np.diag(dV) @ de_en, axis=0) / V_bead  # detachment per unit volume of beads
+
+            #!!! Mass transfer (centered differences) -- MOL; solubles only
+            C_lf = Cs_en[-1]
+            J_lf = k*(Cs_bk - C_lf)
+            S_en = Cs_en[:, S_idx]
+            M_transfer = np.zeros_like(Cs_en)
+            M_transfer[1:-1, S_idx] = D_ov_dz2 * (S_en[2:] - 2*S_en[1:-1] + S_en[:-2])\
+                + D_ov_dz * (np.diag(_1_ov_z[1:-1]) @ (S_en[2:] - S_en[:-2]))
+            M_transfer[0, S_idx] = 2 * D_ov_dz2 * (S_en[1] - S_en[0])
+            M_transfer[-1, S_idx] = 2 * D_ov_dz2 * (S_en[-2] - S_en[-1])\
+                + 2 * (1/dz + _1_ov_z[-1]) * J_lf[S_idx]
+ 
+            # Mass balance
+            dCdt_en = M_transfer + Rs_en - de_en
+            dCdt_bk = (Q_ins @ Cs_ins - Q*Cs_bk)/V_liq \
+                - A_beads/V_liq*J_lf + Rs_bk + V_beads*tot_de/V_liq
+    
+            _dstate[:n_dz*n_cmps] = dCdt_en.flatten()
+            _dstate[-(n_cmps+n_gas+1):-(n_gas+1)] = dCdt_bk
+            _dstate[-(n_gas+1):-1] = gas_transfer
+            _dstate[-1] = sum(dy_ins[:,-1])
+            _update_dstate()
+        
+        self._ODE = dy_dt
+
+    def biomass_tss(self, biomass_IDs):
+        '''Returns a 2-tuple of biomass TSS [kg/m3] in bulk and in encapsulation matrix (on average)'''
+        y = self._state
+        cmps = self.components
+        n_cmps = len(cmps)
+        n_dz = self.n_dz
+        bm_idx = cmps.indices(biomass_IDs)
+        en_bm = np.sum(y[:n_dz*n_cmps].reshape((n_dz, n_cmps))[:,bm_idx] * cmps.i_mass[bm_idx], axis=1)
+        bk_bm = np.sum((y[n_dz*n_cmps: ((n_dz+1)*n_cmps)] * cmps.i_mass)[bm_idx])
+        
+        dz = self.r_beads / n_dz
+        zs = np.linspace(dz, self.r_beads, n_dz)
+        dV = 4/3*np.pi*(zs)**3
+        V_bead = dV[-1]
+        dV[1:] -= dV[:-1]
+        C_en_avg = np.dot(en_bm, dV)/V_bead
+        return bk_bm, C_en_avg
+    
+    def get_retained_mass(self, biomass_IDs):
+        bk_bm, C_en_avg = self.biomass_tss(biomass_IDs)
+        return self.V_liq * bk_bm + self.V_beads * C_en_avg
