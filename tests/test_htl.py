@@ -22,19 +22,26 @@ def test_htl():
 
     clear_lca_registries()
     
-    # m1 = htl.create_model('baseline', key_metrics_only=True)
+    kwargs = dict(
+        include_HTL_yield_as_metrics=False,
+        include_other_metrics=False,
+        include_other_CFs_as_metrics=False,
+        include_check=False,
+        )
+    
+    # m1 = htl.create_model('baseline', **kwargs)
     # df1 = m1.metrics_at_baseline()
-    # values1 = [4.545, 181.4, 48872.2, 441.4]
+    # values1 = [5.687, 157.57, -25.312, -321.006]
     # assert_allclose(df1.values, values1, rtol=5e-2)
     
-    # m2 = htl.create_model('no_P', key_metrics_only=True)
+    # m2 = htl.create_model('no_P', **kwargs)
     # df2 = m2.metrics_at_baseline()
-    # values2 = [4.870, 212.7, 34854.5, 273.6]
+    # values2 = [6.181, 188.063, -36.281, -414.864]
     # assert_allclose(df2.values, values2, rtol=5e-2)
 
-    m3 = htl.create_model('PSA', key_metrics_only=True)
+    m3 = htl.create_model('PSA', **kwargs)
     df3 = m3.metrics_at_baseline()
-    values3 = [3.877, 117.4, 63819.9, 622.3]
+    values3 = [4.67, 94.854, -4.472, -142.698]
     assert_allclose(df3.values, values3, rtol=5e-2)
 
 
