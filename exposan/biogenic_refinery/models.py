@@ -731,21 +731,21 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
             H_Resources_dct['struvite'] = ImpactItem.get_item('struvite_item').CFs['H_Resources'] = -i
     
         # Recovered biochar - impact of carbon sequestered 
-        b = (br.CS / 100) * (44 / 12)  # CS [% carbon that remains in soil] multiplied by carbon to CO2 ratio for CO2-eqs
+        b = (carbonizer_unit.CS / 100) * (44 / 12)  # CS [% carbon that remains in soil] multiplied by carbon to CO2 ratio for CO2-eqs
         D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
         @param(name='biochar CF', element='LCA', kind='isolated',
                units='kg CO2-eq/kg biochar', baseline=b, distribution=D)
         def set_biochar_CF(i):
             GWP_dct['biochar'] = ImpactItem.get_item('biochar_item').CFs['GlobalWarming'] = -i
     
-        b = (br.CS / 100) * (44 / 12) * br.EcosystemQuality_factor  # CS [% carbon that remains in soil] multiplied by carbon to CO2 ratio for CO2-eqs
+        b = (carbonizer_unit.CS / 100) * (44 / 12) * br.EcosystemQuality_factor  # CS [% carbon that remains in soil] multiplied by carbon to CO2 ratio for CO2-eqs
         D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
         @param(name='biochar ecosystems CF', element='LCA', kind='isolated',
                units='points/kg biochar', baseline=b, distribution=D)
         def set_biochar_ecosystems_CF(i):
             H_Ecosystems_dct['biochar'] = ImpactItem.get_item('biochar_item').CFs['H_Ecosystems'] = -i
     
-        b = (br.CS / 100) * (44 / 12) * br.HumanHealth_factor  # CS [% carbon that remains in soil] multiplied by carbon to CO2 ratio for CO2-eqs
+        b = (carbonizer_unit.CS / 100) * (44 / 12) * br.HumanHealth_factor  # CS [% carbon that remains in soil] multiplied by carbon to CO2 ratio for CO2-eqs
         D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
         @param(name='biochar health CF', element='LCA', kind='isolated',
                units='points/kg biochar', baseline=b, distribution=D)
