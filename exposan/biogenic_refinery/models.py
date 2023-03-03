@@ -61,6 +61,7 @@ def add_metrics(model):
         Metric('Total P', funcs[2], '% P', 'P recovery'),
         Metric('Total K', funcs[3], '% K', 'K recovery'),
     ]
+    
     # Net cost
     metrics.append(
         Metric('Annual net cost', get_TEA_metrics(system)[0], f'{qs.currency}/cap/yr', 'TEA results'),
@@ -191,6 +192,7 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
                 u.const_daily_wage = i
         
         if br.INCLUDE_RESOURCE_RECOVERY:
+            
             # N fertilizer price
             b = 1.507
             D = shape.Uniform(lower=b*0.8, upper=b*1.2)
@@ -585,6 +587,13 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
         H_Resources_dct['FilterBag'] = ImpactItem.get_item('filter_bag_item').CFs['H_Resources'] = i
 
     if br.INCLUDE_RESOURCE_RECOVERY:
+        
+        # b = C_dct['pyrolysis_biochar']
+        # @param(name='Pyrolysis biochar C', element='C recovery', kind='isolated',
+        #        units='%', baseline=b)
+        # def set_pyrolysis_biochar_C(i):
+        #     C_dct['pyrolysis_biochar'] = i
+        
         # Recovered N fertilizer
         b = -GWP_dct['N']
         D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
@@ -877,7 +886,9 @@ def create_modelA(country_specific=False, **model_kwargs):
         'HHXdryer': unitA.A12,
         }
     add_shared_parameters(modelA, unit_dctA, country_specific)
-
+    
+                    
+        
     # Pit latrine and conveyance
     add_pit_latrine_parameters(modelA, unit_dctA)
 
