@@ -85,6 +85,8 @@ def create_system(configuration='baseline'):
                    sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, operation_hours=7920)
     WWTP.register_alias('WWTP')
     
+    raw_wastewater.price = -WWTP.ww_2_dry_sludge*1000/3.79/(10**6)
+    
     SluC = qsu.SludgeCentrifuge('A000', ins=WWTP-0,
                             outs=('supernatant','compressed_sludge'),
                             init_with='Stream',
