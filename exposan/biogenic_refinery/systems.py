@@ -40,7 +40,7 @@ from exposan.biogenic_refinery import (
     update_resource_recovery_settings,
     )
 
-__all__ = ('create_system',)
+__all__ = ('create_system',) #what is called during external import
 
 
 # %%
@@ -339,7 +339,7 @@ def create_systemB(flowsheet=None):
 # %%
 
 # =============================================================================
-# Scenario C (sysC): pit latrine with 10,000 users
+# Scenario C (sysC): pit latrine with 10,000 users, ag waste feedstock mixing
 # =============================================================================
 
 def create_systemC(flowsheet=None):

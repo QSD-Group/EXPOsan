@@ -22,7 +22,7 @@ from exposan.utils import (
     )
 
 # Module-wise setting on whether to allow resource recovery
-INCLUDE_RESOURCE_RECOVERY = False
+INCLUDE_RESOURCE_RECOVERY = True
 
 br_path = os.path.dirname(__file__)
 module = os.path.split(br_path)[-1]
@@ -447,6 +447,7 @@ def get_recoveries(system, include_breakdown=False):
     # % N, P, and K recovered as a usable fertilizer product,
     # for model metrics and also the Resource Recovery criterion in DMsan analysis
     functions = [
+            lambda: C_dct['pyrolysis_biochar'] / C_dct['input'] * 100, # total_C_recovery
             lambda: (N_dct['bed_liq']+N_dct['NH3']+N_dct['struvite']) / N_dct['input'] * 100, # total_N_recovery
             lambda: (P_dct['bed_liq']+P_dct['struvite']) / P_dct['input'] * 100, # total_P_recovery
             lambda: K_dct['bed_liq'] / K_dct['input'] * 100, # total_K_recovery
@@ -455,6 +456,7 @@ def get_recoveries(system, include_breakdown=False):
 
     return [
         *functions,
+        lambda: C_dct['pyrolysis_biochar'] / C_dct['input'] * 100, # C_carbonizer_base
         lambda: N_dct['bed_liq'] / N_dct['input'] * 100, # N_liquid_treatment_bed
         lambda: N_dct['NH3'] / N_dct['input'] * 100, # N_ion_exchange
         lambda: N_dct['struvite'] / N_dct['input'] * 100, # N_struvite

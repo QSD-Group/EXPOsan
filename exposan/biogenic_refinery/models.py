@@ -56,9 +56,10 @@ def add_metrics(model):
     # Recoveries
     funcs = get_recoveries(system)
     metrics = [
-        Metric('Total N', funcs[0], '% N', 'N recovery'),
-        Metric('Total P', funcs[1], '% P', 'P recovery'),
-        Metric('Total K', funcs[2], '% K', 'K recovery'),
+        Metric('Total C', funcs[0], '% C', 'C recovery'),
+        Metric('Total N', funcs[1], '% N', 'N recovery'),
+        Metric('Total P', funcs[2], '% P', 'P recovery'),
+        Metric('Total K', funcs[3], '% K', 'K recovery'),
     ]
     # Net cost
     metrics.append(
@@ -729,22 +730,22 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
         def set_struvite_fertilizer_resources_CF(i):
             H_Resources_dct['struvite'] = ImpactItem.get_item('struvite_item').CFs['H_Resources'] = -i
     
-        # Recovered biochar
-        b = 0.2 * 0.9 * (44 / 12)  # assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
+        # Recovered biochar - impact of carbon sequestered 
+        b = (br.CS / 100) * (44 / 12)  # CS [% carbon that remains in soil] multiplied by carbon to CO2 ratio for CO2-eqs
         D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
         @param(name='biochar CF', element='LCA', kind='isolated',
                units='kg CO2-eq/kg biochar', baseline=b, distribution=D)
         def set_biochar_CF(i):
             GWP_dct['biochar'] = ImpactItem.get_item('biochar_item').CFs['GlobalWarming'] = -i
     
-        b = 0.2 * 0.9 * (44 / 12) * br.EcosystemQuality_factor  # assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
+        b = (br.CS / 100) * (44 / 12) * br.EcosystemQuality_factor  # CS [% carbon that remains in soil] multiplied by carbon to CO2 ratio for CO2-eqs
         D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
         @param(name='biochar ecosystems CF', element='LCA', kind='isolated',
                units='points/kg biochar', baseline=b, distribution=D)
         def set_biochar_ecosystems_CF(i):
             H_Ecosystems_dct['biochar'] = ImpactItem.get_item('biochar_item').CFs['H_Ecosystems'] = -i
     
-        b = 0.2 * 0.9 * (44 / 12) * br.HumanHealth_factor  # assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
+        b = (br.CS / 100) * (44 / 12) * br.HumanHealth_factor  # CS [% carbon that remains in soil] multiplied by carbon to CO2 ratio for CO2-eqs
         D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
         @param(name='biochar health CF', element='LCA', kind='isolated',
                units='points/kg biochar', baseline=b, distribution=D)
