@@ -1524,19 +1524,25 @@ class METAB_PackedBed(METAB_FluidizedBed):
         super().__init__(voidage=voidage, **kwargs)
         self.n_cstr = n_cstr
     
-    @property
-    def n_cstr(self):
-        return self._n_cstr
-    @n_cstr.setter
-    def n_cstr(self, n):
-        n = n or ceil(self.reactor_height_to_diameter)
-        self._n_cstr = int(max(n, 2))
-    
     recirculation_ratio = property(METAB_FluidizedBed.recirculation_ratio.fget)
     @recirculation_ratio.setter
     def recirculation_ratio(self, r):
         self._rQ = r
     
+    @property
+    def n_cstr(self):
+        return self._n_cstr
+    @n_cstr.setter
+    def n_cstr(self, n):
+        if self.recirculation_ratio:
+            if self.recirculation_ratio >= 1:
+                self._n_cstr = 1
+                warn('n_cstr is forced to be 1 due to recirculation ratio >= 1')
+        else:
+            n = n or ceil(self.reactor_height_to_diameter)
+            self._n_cstr = int(max(n, 2))
+    
+
     model = property(METAB_FluidizedBed.model.fget)
     @model.setter
     def model(self, model):
