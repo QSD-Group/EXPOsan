@@ -786,7 +786,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
     _outs_size_is_fixed = False
     _R = 8.3145e-2 # Universal gas constant, [bar/M/K]
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+    def __init__(self, ID='', ins=None, outs=(), split=None, thermo=None,
                  init_with='WasteStream', V_liq=3400, V_gas=300, 
                  voidage=0.6, bead_diameter=4, n_layer=10,
                  boundary_layer_thickness=0.01, diffusivity=None,
@@ -796,9 +796,10 @@ class METAB_FluidizedBed(AnaerobicCSTR):
                  isdynamic=True, exogenous_vars=(), 
                  **kwargs):
     
-        SanUnit.__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
+        SanUnit.__init__(self, ID=ID, ins=ins, outs=outs, thermo=thermo,
                          init_with=init_with, isdynamic=isdynamic, 
                          exogenous_vars=exogenous_vars, **kwargs)
+        self.split = split
         self.V_gas = V_gas
         self.V_liq = V_liq
         self.voidage = voidage
@@ -873,10 +874,10 @@ class METAB_FluidizedBed(AnaerobicCSTR):
     @property
     def n_layer(self):
         '''[int] Number of layers for discretization of encapsulation beads along radius.'''
-        return self._n_dz
+        return self.n_dz
     @n_layer.setter
     def n_layer(self, n):
-        self._n_dz = int(n)
+        self.n_dz = int(n)
     
     @property
     def boundary_layer_thickness(self):
@@ -929,7 +930,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         idx = cmps.indices(kwargs.keys())
         if not hasattr(self, '_diff'):
             self._diff = np.zeros(len(cmps))
-        self._diff[idx] = kwargs.values()
+        self._diff[idx] = list(kwargs.values())
         
     @property
     def f_diff(self):
@@ -980,7 +981,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             + ['Q']
         self._gas_cmp_idx = cmps.indices(self.model._biogas_IDs)
         self._state_header = self._state_keys
-        self._gas_state_idx = dict(self.model._biogas_IDs, zip(range(self._n_gas)))
+        self._gas_state_idx = dict(zip(self.model._biogas_IDs, range(self._n_gas)))
 
     
     def state_index(self, IDs, location=None):
@@ -1129,7 +1130,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         D = self.D          # Diffusivity in beads
         k = self.k_bl       # mass transfer coeffient through liquid boundary layer
         K_tss = self.K_tss
-        S_idx = D.nonzero()
+        S_idx = list(*(D.nonzero()))
         D_ov_dz2 = D[S_idx]/(dz**2)     # (n_soluble,)
         D_ov_dz = D[S_idx]/dz
         _1_ov_z = 1/zs                  # (n_dz,)
@@ -1150,7 +1151,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             # Transformation
             rhos_en = np.apply_along_axis(Rho_en, 1, Cs_en)
             Rs_en = rhos_en @ stoi_en       # n_dz * n_cmps
-            rhos_bk = Rho_bk(Cs_bk)
+            rhos_bk = Rho_bk(y[-(n_cmps+n_gas+1):-1])
             Rs_bk = np.dot(stoi_bk.T, rhos_bk) # n_cmps+5
             q_gas = f_qgas(rhos_bk[-n_gas:], S_gas, T)
             gas_transfer = - q_gas*S_gas/V_gas + rhos_bk[-n_gas:] * V_liq/V_gas * gas_mass2mol_conversion
