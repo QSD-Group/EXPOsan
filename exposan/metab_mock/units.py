@@ -20,6 +20,7 @@ from exposan.metab_mock.utils import dm_lci, pipe_design, \
     stainless_steel_wall_thickness as wt_ssteel, UASB_sizing
 import numpy as np
 from math import pi, ceil
+from warnings import warn
 from collections import defaultdict
 
 __all__ = ('DegassingMembrane',
@@ -788,7 +789,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
                  pH_ctrl=False, T=298.15, headspace_P=1.013, external_P=1.013, 
                  pipe_resistance=5.0e4, fixed_headspace_P=False,
                  isdynamic=True, exogenous_vars=(), lifetime=30, bead_lifetime=10,
-                 reactor_height_to_diameter=1.5,
+                 reactor_height_to_diameter=1.5, recirculation_ratio=None,
                  wall_concrete_unit_cost=1081.73,   # $850/m3 in 2014 USD, converted to 2021 USD with concrete PPI
                  slab_concrete_unit_cost=582.48,    # $458/m3 in 2014 USD 
                  stainless_steel_unit_cost=1.8,     # https://www.alibaba.com/product-detail/brushed-stainless-steel-plate-304l-stainless_1600391656401.html?spm=a2700.details.0.0.230e67e6IKwwFd
@@ -827,8 +828,9 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         self.fixed_headspace_P = fixed_headspace_P
         self._mixed = WasteStream()
         self._tempstate = []
-    
+        
         self.reactor_height_to_diameter = reactor_height_to_diameter
+        self.recirculation_ratio = recirculation_ratio
         self.wall_concrete_unit_cost = wall_concrete_unit_cost
         self.slab_concrete_unit_cost = slab_concrete_unit_cost
         self.stainless_steel_unit_cost = stainless_steel_unit_cost
@@ -857,6 +859,54 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         for equip in self.equipment:
             if isinstance(equip, Beads): 
                 equip.update_lifetime(lt)
+    
+    def min_fluidizing_velocity(self, bead_density):
+        '''
+        Estimate minimum fluidizing velocity based on bead size, bead density, 
+        voidage, and fluid properties.
+
+        Parameters
+        ----------
+        bead_density : float
+            Overall density of encapsulation beads, in kg/m3.
+
+        Returns
+        -------
+        [float] Minimal upflow velocity to fluidize beads, in m/h.
+        '''
+        mixed = self._mixed
+        mixed.mix_from(self.ins)
+        rho = mixed.rho
+        if bead_density <= rho: return 0.
+        mu = mixed.mu
+        d = self.bead_diameter * 1e-3
+        e = self.voidage
+        return 5.5e-3 * (e**3/(1-e)) * d**2 (bead_density - rho) * 9.81 / mu * 3600
+    
+    @property
+    def recirculation_ratio(self):
+        '''
+        [float] Recirculation ratio, as in recirculation flowrate over influent flowrate. 
+        
+        .. note::
+            Only used for design and costing. If recirculation streams have been 
+            considered in process simulation, should set recirculation_ratio to 0 
+            or None to avoid double counting.
+        
+        '''
+        return self._rQ
+    @recirculation_ratio.setter
+    def recirculation_ratio(self, r):
+        if r:
+            A_bed = (pi*self.V_bed**2/4/self.reactor_height_to_diameter**2)**(1/3)
+            A_liq = A_bed * self.voidage
+            u_min = self.min_fluidizing_velocity(Beads._bead_density)
+            u = self._mixed.F_vol * (1+r)/A_liq
+            if u < u_min:
+                warn(f'Recirculation rate {r} too low to fluidize beads, '
+                     f'current estimated upflow velocity is {u} m/h, minimal '
+                     f'fluidizing velocity is {u_min} m/h')
+        self._rQ = r
         
     @property
     def V_liq(self):
@@ -1022,6 +1072,16 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             if not hasfield(self, field):
                 pump = Pump(ws.ID+'_Pump', ins=Stream(f'{ws.ID}_proxy'))
                 setfield(self, field, pump)
+                self.construction += [
+                    Construction(ID='22kW', linked_unit=pump, item='pump_22kW'),
+                    Construction(ID='40W', linked_unit=pump, item='pump_40W')
+                    ]
+            self.auxiliary_unit_names = tuple({*self.auxiliary_unit_names, field})
+        if self.recirculation_ratio:
+            if not hasfield(self, 'Pump_recirculation'):
+                ws = self._mixed
+                pump = Pump(ws.ID+'_Pump', ins=Stream(f'{ws.ID}_proxy'))
+                self.Pump_recirculation = pump
                 self.construction += [
                     Construction(ID='22kW', linked_unit=pump, item='pump_22kW'),
                     Construction(ID='40W', linked_unit=pump, item='pump_40W')
@@ -1362,6 +1422,11 @@ class METAB_FluidizedBed(AnaerobicCSTR):
                 _inch, _kg_per_m = pipe_design(ws.F_vol, self._l_min_velocity)
                 pipe_IDs.append(_inch)
                 HDPE_pipes.append(_kg_per_m*L_outlets)
+        rQ = self.recirculation_ratio
+        if rQ:
+            _inch, _kg_per_m = pipe_design(self._mixed.F_vol * rQ, self._l_min_velocity)
+            pipe_IDs.append(_inch)
+            HDPE_pipes.append(_kg_per_m*L_inlets)
         D['HDPE pipes'] = sum(HDPE_pipes)
         self._hdpe_ids, self._hdpe_kgs = pipe_IDs, HDPE_pipes
         
@@ -1376,6 +1441,21 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             field = f'Pump_ins{i}'
             pump = getfield(self, field)
             pump.ins[0].copy_flow(ws)
+            pump.dP_design = TDH * 9804.14  # in Pa
+            pump.simulate()
+            if self.include_construction:
+                q22, q40 = _construct_water_pump(pump)
+                p22 = getfield(creg, f'{flowsheet_ID}_{pump.ID}_22kW')
+                p40 = getfield(creg, f'{flowsheet_ID}_{pump.ID}_40W')
+                p22.quantity = q22
+                p40.quantity = q40
+        if rQ:
+            ws = self._mixed
+            ID = pipe_IDs[i]
+            hf = pipe_friction_head(ws.F_vol*rQ*_cmph_2_gpm, L_inlets, ID)  # friction head loss
+            TDH = hf + h # in m, assume suction head = 0, discharge head = reactor height
+            pump = self.Pump_recirculation
+            pump.ins[0].set_total_flow(ws.F_vol*rQ, 'm3/h')
             pump.dP_design = TDH * 9804.14  # in Pa
             pump.simulate()
             if self.include_construction:
