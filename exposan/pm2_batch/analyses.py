@@ -57,16 +57,16 @@ def run_UA_SA(seed=None, N=N, T=T, t_step=t_step, thresholds=[], plot=False):
     D, p = get_correlations(mdl, kind='KS', thresholds=thresholds,
                             file=ospath.join(results_path, f'KS_test_{seed}.xlsx')
                             )
-    if plot: 
+    if plot:
         plot_cdf_by_group(mdl, thresholds=thresholds)
-    fig, ax = plot_correlations(D, close_fig=False, 
+    fig, ax = plot_correlations(D, close_fig=False,
                                 file=ospath.join(figures_path, 'KS_test_D.png'))
     return mdl
 
 def update_thresholds(mdl, thresholds, metrics=None, quantile=0.25):
     metrics = metrics or mdl.metrics
     thresholds = thresholds or [None]*len(metrics)
-    data = mdl.table[var_indices(metrics)] 
+    data = mdl.table[var_indices(metrics)]
     for i, col in enumerate(data):
         if thresholds[i] is None:
             thresholds[i] = data[col].quantile(quantile)
@@ -87,7 +87,7 @@ def plot_cdf_by_group(mdl=None, seed=None, thresholds=None, parameters=None, met
     for m, t in zip(y_df.items(), thresholds):
         y, err = m
         group = err <= t
-        fig, axes = plt.subplots(nrow, ncol, #sharey=True, 
+        fig, axes = plt.subplots(nrow, ncol, #sharey=True,
                                  figsize=(ncol*4, nrow*4),
                                  layout='constrained')
         for col, ax in zip(x_df, axes.ravel()):
@@ -104,14 +104,14 @@ def plot_cdf_by_group(mdl=None, seed=None, thresholds=None, parameters=None, met
             ax.set_xlabel(col[-1])
             ax.set_ylabel('density')
         # fig.subplots_adjust(hspace=0.4, wspace=0.05, bottom=0.2)
-        fig.savefig(ospath.join(figures_path, f'pdf_{y[-1]}_v2.png'), 
+        fig.savefig(ospath.join(figures_path, f'pdf_{y[-1]}_v2.png'),
                     dpi=300, facecolor='white')
         del fig, axes
 
 def KS_test_var_thresholds(mdl=None, seed=None):
     if mdl is None:
         mdl = create_model()
-        mdl.table = load_data(ospath.join(results_path, f'table_{seed}.xlsx'), 
+        mdl.table = load_data(ospath.join(results_path, f'table_{seed}.xlsx'),
                               header=[0,1])
     sig = []
     thresholds = []
@@ -123,7 +123,7 @@ def KS_test_var_thresholds(mdl=None, seed=None):
         sig.append(p < 0.05)
     out = {m: pd.DataFrame() for m in var_indices(mdl.metrics)}
     thresholds = np.asarray(thresholds).T
-    
+
     for s, q in zip(sig, quantiles):
         for m, df in out.items():
             df[q] = s[m]
@@ -138,10 +138,10 @@ def KS_test_var_thresholds(mdl=None, seed=None):
 
 #%%
 if __name__ == '__main__':
-    seed = 231
+    seed = 119
     # mdl = run_UA_SA(seed=seed)
-    
+
     # thrs = [0.343, 0.05, 0.08]
-    # plot_cdf_by_group(seed=seed, thresholds=thrs)
-    
+    plot_cdf_by_group(seed=seed)
+
     KS_test_var_thresholds(seed=seed)

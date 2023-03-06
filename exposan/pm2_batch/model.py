@@ -50,8 +50,8 @@ baseline_values = {
     }
 
 baseline_values_hifrac = {
-    'I_n': (1000, 'uE/m^2/s'),  # Increased baseline
-    'I_opt': (1500, 'uE/m^2/s'),   # Increased baseline
+    'I_n': (1000, 'uE/m^2/s'),              # Increased baseline
+    'I_opt': (1500, 'uE/m^2/s'),            # Increased baseline
     'm_ATP': (15.835, 'g ATP/g COD/d'),
     'mu_max': (1.969, 'd^(-1)'),
     'q_CH': (0.594, 'g COD/g COD/d'),
@@ -130,7 +130,7 @@ def create_model(system=None):
         # return mape_vss
         rmse_vss = (sum((vss_exp - vss_simul)**2)/len(t_exp))**0.5
         return rmse_vss/vss_range
-        
+
 
     # @metric (name='MAPE_SNH', units='%', element='')
     # def get_MAPE_SNH():
@@ -147,7 +147,7 @@ def create_model(system=None):
         rmse_snh = (sum((snh_exp - snh_simul)**2)/len(t_exp))**0.5
         return rmse_snh/snh_range
 
-    
+
     # @metric (name='MAPE_SP', units='%', element='')
     # def get_MAPE_SP():
     @metric(element='Error')
