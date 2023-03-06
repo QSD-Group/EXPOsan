@@ -323,6 +323,15 @@ class UASB(AnaerobicCSTR):
     def _setup(self):
         hasfield = hasattr
         setfield = setattr
+        if self.fixed_headspace_P and not hasfield(self, 'vacuum_pump'):
+            gas = self.outs[0]
+            dP = max(0, (self._P_atm-self._P_gas)*1e5)
+            pump = self.vacuum_pump = Pump(gas.ID+'_VacPump', ins=Stream(f'{gas.ID}_proxy'),
+                                           dP_design=dP)
+            self.construction.append(
+                Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
+                )
+            self.auxiliary_unit_names = tuple(*self.auxiliary_unit_names, 'vacuum_pump')
         for i, ws in enumerate(self.ins):
             field = f'Pump_ins{i}'
             if not hasfield(self, field):
@@ -353,8 +362,8 @@ class UASB(AnaerobicCSTR):
         'Carbon steel': 7840
         }
     
-    T_air = 273.15 + 20
-    T_earth = 273.15 + 20
+    T_air = 273.15 + 22
+    T_earth = 273.15 + 22
     
     _l_min_velocity = 3*_fts2mhr
     _g_min_velocity = 10*_fts2mhr
@@ -370,7 +379,6 @@ class UASB(AnaerobicCSTR):
         'Rockwool': 'kg',
         'Carbon steel': 'kg',
         'HDPE pipes': 'kg',
-        'Bead volume': 'm3',
         }
     
     def _design(self):
@@ -467,6 +475,13 @@ class UASB(AnaerobicCSTR):
         flowsheet_ID = self.system.flowsheet.ID
         getfield = getattr
         creg = Construction.registry
+        if self.fixed_headspace_P:
+            vac = self.vacuum_pump
+            vac.ins[0].copy_like(self.outs[0])
+            vac.simulate()
+            qvac = _construct_vacuum_pump(vac)
+            pvac = getfield(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
+            pvac.quantity = qvac
         for i, ws, in enumerate(self.ins):
             ID = pipe_IDs[i]
             hf = pipe_friction_head(ws.F_vol*_cmph_2_gpm, L_inlets, ID)  # friction head loss
@@ -1073,21 +1088,20 @@ class METAB_FluidizedBed(AnaerobicCSTR):
     def _setup(self):
         hasfield = hasattr
         setfield = setattr
+        if self.fixed_headspace_P and not hasfield(self, 'vacuum_pump'):
+            gas = self.outs[0]
+            dP = max(0, (self._P_atm-self._P_gas)*1e5)
+            pump = self.vacuum_pump = Pump(gas.ID+'_VacPump', ins=Stream(f'{gas.ID}_proxy'),
+                                           dP_design=dP)
+            self.construction.append(
+                Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
+                )
+            self.auxiliary_unit_names = tuple(*self.auxiliary_unit_names, 'vacuum_pump')
         for i, ws in enumerate(self.ins):
             field = f'Pump_ins{i}'
             if not hasfield(self, field):
                 pump = Pump(ws.ID+'_Pump', ins=Stream(f'{ws.ID}_proxy'))
                 setfield(self, field, pump)
-                self.construction += [
-                    Construction(ID='22kW', linked_unit=pump, item='pump_22kW'),
-                    Construction(ID='40W', linked_unit=pump, item='pump_40W')
-                    ]
-            self.auxiliary_unit_names = tuple({*self.auxiliary_unit_names, field})
-        if self.recirculation_ratio:
-            if not hasfield(self, 'Pump_recirculation'):
-                ws = self._mixed
-                pump = Pump(ws.ID+'_Pump', ins=Stream(f'{ws.ID}_proxy'))
-                self.Pump_recirculation = pump
                 self.construction += [
                     Construction(ID='22kW', linked_unit=pump, item='pump_22kW'),
                     Construction(ID='40W', linked_unit=pump, item='pump_40W')
@@ -1327,8 +1341,8 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         'Carbon steel': 7840
         }
     
-    T_air = 273.15 + 20
-    T_earth = 273.15 + 20
+    T_air = 273.15 + 22
+    T_earth = 273.15 + 22
     
     _l_min_velocity = 3*_fts2mhr
     _g_min_velocity = 10*_fts2mhr
@@ -1410,22 +1424,18 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         L_gas = h + OD
         pipe_IDs = []
         HDPE_pipes = []
+        rQ = self.recirculation_ratio or 0
         for ws in self.ins:
-            _inch, _kg_per_m = pipe_design(ws.F_vol, self._l_min_velocity)
+            _inch, _kg_per_m = pipe_design(ws.F_vol*(1+rQ), self._l_min_velocity)
             pipe_IDs.append(_inch)
             HDPE_pipes.append(_kg_per_m*L_inlets)
         for ws in self.outs:
             if ws.phase == 'g':
                 D['Stainless steel'] += pipe_design(ws.F_vol, self._g_min_velocity, True)[1] * L_gas                
             else:
-                _inch, _kg_per_m = pipe_design(ws.F_vol, self._l_min_velocity)
+                _inch, _kg_per_m = pipe_design(ws.F_vol*(1+rQ), self._l_min_velocity)
                 pipe_IDs.append(_inch)
                 HDPE_pipes.append(_kg_per_m*L_outlets)
-        rQ = self.recirculation_ratio
-        if rQ:
-            _inch, _kg_per_m = pipe_design(self._mixed.F_vol * rQ, self._l_min_velocity)
-            pipe_IDs.append(_inch)
-            HDPE_pipes.append(_kg_per_m*L_inlets)
         D['HDPE pipes'] = sum(HDPE_pipes)
         self._hdpe_ids, self._hdpe_kgs = pipe_IDs, HDPE_pipes
         
@@ -1433,28 +1443,20 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         flowsheet_ID = self.system.flowsheet.ID
         getfield = getattr
         creg = Construction.registry
+        if self.fixed_headspace_P:
+            vac = self.vacuum_pump
+            vac.ins[0].copy_like(self.outs[0])
+            vac.simulate()
+            qvac = _construct_vacuum_pump(vac)
+            pvac = getfield(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
+            pvac.quantity = qvac
         for i, ws, in enumerate(self.ins):
             ID = pipe_IDs[i]
-            hf = pipe_friction_head(ws.F_vol*_cmph_2_gpm, L_inlets, ID)  # friction head loss
+            hf = pipe_friction_head(ws.F_vol*(1+rQ)*_cmph_2_gpm, L_inlets, ID)  # friction head loss
             TDH = hf + h # in m, assume suction head = 0, discharge head = reactor height
             field = f'Pump_ins{i}'
             pump = getfield(self, field)
-            pump.ins[0].copy_flow(ws)
-            pump.dP_design = TDH * 9804.14  # in Pa
-            pump.simulate()
-            if self.include_construction:
-                q22, q40 = _construct_water_pump(pump)
-                p22 = getfield(creg, f'{flowsheet_ID}_{pump.ID}_22kW')
-                p40 = getfield(creg, f'{flowsheet_ID}_{pump.ID}_40W')
-                p22.quantity = q22
-                p40.quantity = q40
-        if rQ:
-            ws = self._mixed
-            ID = pipe_IDs[i]
-            hf = pipe_friction_head(ws.F_vol*rQ*_cmph_2_gpm, L_inlets, ID)  # friction head loss
-            TDH = hf + h # in m, assume suction head = 0, discharge head = reactor height
-            pump = self.Pump_recirculation
-            pump.ins[0].set_total_flow(ws.F_vol*rQ, 'm3/h')
+            pump.ins[0].set_total_flow(ws.F_vol*(1+rQ), 'm3/h')
             pump.dP_design = TDH * 9804.14  # in Pa
             pump.simulate()
             if self.include_construction:
@@ -1529,7 +1531,24 @@ class METAB_PackedBed(METAB_FluidizedBed):
     def __init__(self, voidage=0.38, n_cstr=None, **kwargs):
         self._n_cstr = n_cstr
         self._checked_ncstr = False
-        super().__init__(voidage=voidage, **kwargs)
+        V_liq = kwargs.pop('V_liq', 3400)
+        V_gas = kwargs.pop('V_gas', 300)
+        V_tot = V_liq/0.38 + V_gas
+        V_gas = V_tot - V_liq/voidage
+        if V_gas <= 0: V_gas = 0.1
+        super().__init__(V_liq=V_liq, V_gas=V_gas, voidage=voidage, **kwargs)
+
+    voidage = property(METAB_FluidizedBed.voidage.fget)
+    @voidage.setter
+    def voidage(self, f):
+        if f < 0.35 or f > 0.45:
+            raise ValueError(f'voidage must be in [0.35, 0.45], not {f}')
+        if hasattr(self, 'f_void'):
+            f_old = self.f_void
+            Vg = self.V_gas
+            Vg_subtract = self.V_liq/(1/f - 1/f_old)
+            self.V_gas = max(0.1, Vg-Vg_subtract)
+        self.f_void = f
     
     recirculation_ratio = property(METAB_FluidizedBed.recirculation_ratio.fget)
     @recirculation_ratio.setter
