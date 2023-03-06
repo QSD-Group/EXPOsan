@@ -18,7 +18,7 @@ from exposan.metab_mock.equipment import Beads
 from exposan.metab_mock.utils import dm_lci, pipe_design, \
     pipe_friction_head, hdpe_price, heat_transfer_U, \
     stainless_steel_wall_thickness as wt_ssteel, UASB_sizing
-import numpy as np
+import numpy as np, flexsolve as flx
 from math import pi, ceil
 from warnings import warn
 from collections import defaultdict
@@ -778,6 +778,9 @@ class METAB_AnCSTR(AnaerobicCSTR):
                     unit_attr[equip_ID] = equip_attr
 
 #%% METAB_FluidizedBed
+def Ergun_equation(u, rho_p, rho, d_p, mu, e=0.4):
+    return 1.75*rho*u**2/d_p/e**3 + 150*mu*(1-e)*u/d_p**2/e**3 - 9.81*(rho_p-rho)
+
 class METAB_FluidizedBed(AnaerobicCSTR):
     
     auxiliary_unit_names = ('heat_exchanger', )
@@ -875,13 +878,6 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         Returns
         -------
         [float] Minimal upflow velocity to fluidize beads, in m/h.
-        
-        Reference
-        ---------
-        Richardson, J. F., Harker, J. H., & Backhurst, J. R. (2002). Fluidisation. 
-        In Chemical Engineering (5th ed., Vol. 2, pp. 291–371). Butterworth-Heinemann. 
-        https://doi.org/10.1016/B978-0-08-049064-9.50017-5
-        
         '''
         mixed = self._mixed
         mixed.mix_from(self.ins)
@@ -889,8 +885,9 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         if bead_density <= rho: return 0.
         mu = mixed.mu
         d = self.bead_diameter * 1e-3
-        e = self.voidage
-        return 5.5e-3 * (e**3/(1-e)) * d**2 * (bead_density - rho) * 9.81 / mu * 3600
+        u_min = flx.IQ_interpolation(f=Ergun_equation, x0=0, x1=1e3, 
+                                     args=(bead_density, rho, d, mu))
+        return u_min*3600
     
     @property
     def recirculation_ratio(self):
@@ -908,13 +905,13 @@ class METAB_FluidizedBed(AnaerobicCSTR):
     def recirculation_ratio(self, r):
         if r:
             A_bed = (pi*self.V_bed**2/4/self.reactor_height_to_diameter**2)**(1/3)
-            A_liq = A_bed * self.voidage
+            A_liq = A_bed * 0.4
             u_min = self.min_fluidizing_velocity(Beads._bead_density)
             u = self._mixed.F_vol * (1+r)/A_liq
-            if u < u_min:
-                warn(f'Recirculation rate {r} too low to fluidize beads, '
-                     f'current estimated upflow velocity is {u} m/h, minimal '
-                     f'fluidizing velocity is {u_min} m/h')
+            if u_min and u < u_min:
+                warn(f'Recirculation rate {r} is too low to fluidize beads, '
+                     f'current estimated flow velocity through bed is {u:.2f} m/h, '
+                     f'minimal fluidizing velocity is {u_min:.2f} m/h')
         self._rQ = r
         
     @property
