@@ -26,7 +26,8 @@ from collections import defaultdict
 __all__ = ('DegassingMembrane',
            'UASB',
            'METAB_AnCSTR',
-           'METAB_FluidizedBed')
+           'METAB_FluidizedBed',
+           'METAB_PackedBed')
 
 #%%
 add_prefix = lambda dct, prefix: {f'{prefix} - {k}':v for k,v in dct.items()}
@@ -820,7 +821,6 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         self._gas_cmp_idx = None
         self._state_keys = None
         self._S_vapor = None
-        self.model = model
         self._biogas = WasteStream(phase='g')
         self.headspace_P = headspace_P
         self.external_P = external_P
@@ -835,6 +835,8 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         self.slab_concrete_unit_cost = slab_concrete_unit_cost
         self.stainless_steel_unit_cost = stainless_steel_unit_cost
         self.rockwool_unit_cost = rockwool_unit_cost
+        self.carbon_steel_unit_cost = carbon_steel_unit_cost
+        self.model = model
         
         hx_in = Stream(f'{ID}_hx_in')
         hx_out = Stream(f'{ID}_hx_out')
@@ -873,6 +875,13 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         Returns
         -------
         [float] Minimal upflow velocity to fluidize beads, in m/h.
+        
+        Reference
+        ---------
+        Richardson, J. F., Harker, J. H., & Backhurst, J. R. (2002). Fluidisation. 
+        In Chemical Engineering (5th ed., Vol. 2, pp. 291–371). Butterworth-Heinemann. 
+        https://doi.org/10.1016/B978-0-08-049064-9.50017-5
+        
         '''
         mixed = self._mixed
         mixed.mix_from(self.ins)
@@ -1521,8 +1530,9 @@ class METAB_FluidizedBed(AnaerobicCSTR):
 class METAB_PackedBed(METAB_FluidizedBed):
     
     def __init__(self, voidage=0.38, n_cstr=None, **kwargs):
+        self._n_cstr = n_cstr
+        self._checked_ncstr = False
         super().__init__(voidage=voidage, **kwargs)
-        self.n_cstr = n_cstr
     
     recirculation_ratio = property(METAB_FluidizedBed.recirculation_ratio.fget)
     @recirculation_ratio.setter
@@ -1531,6 +1541,9 @@ class METAB_PackedBed(METAB_FluidizedBed):
     
     @property
     def n_cstr(self):
+        if not self._checked_ncstr:
+            n = self._n_cstr
+            self.n_cstr = n
         return self._n_cstr
     @n_cstr.setter
     def n_cstr(self, n):
@@ -1541,8 +1554,8 @@ class METAB_PackedBed(METAB_FluidizedBed):
         else:
             n = n or ceil(self.reactor_height_to_diameter)
             self._n_cstr = int(max(n, 2))
+        self._checked_ncstr = True
     
-
     model = property(METAB_FluidizedBed.model.fget)
     @model.setter
     def model(self, model):
@@ -1620,7 +1633,7 @@ class METAB_PackedBed(METAB_FluidizedBed):
         V_gas = self.V_gas
         V_beads = self.V_beads/n_cstr
         r_beads = self.r_beads
-        A_beads = 3 * V_beads / r_beads # m2, total bead surface area
+        A_beads = 3 * V_beads / r_beads # m2, total bead surface area per cstr
 
         dz = r_beads / n_dz
         zs = np.linspace(dz, r_beads, n_dz)
@@ -1691,7 +1704,7 @@ class METAB_PackedBed(METAB_FluidizedBed):
                 
                 flow_in = Q * Cs_bk             # for next CSTR
             
-            q_gas = np.apply_along_axis(f_qgas, 1, rhos_gas, args=(S_gas, T))
+            q_gas = np.apply_along_axis(f_qgas, 1, rhos_gas, S_gas, T)
             d_gas = - sum(q_gas)*S_gas/V_gas + np.sum(rhos_gas*V_liq, axis=0)/V_gas * gas_mass2mol_conversion
             _dstate[-(n_gas+1):-1] = d_gas
             _dstate[-1] = sum(dy_ins[:,-1])
