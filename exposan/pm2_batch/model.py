@@ -146,7 +146,7 @@ def import_exp_data(kind=''):
 
 #%%
 def create_model(system=None, kind=''):
-    sys = create_system()
+    sys = create_system(kind=kind)
     # sys = system or create_system()
 
     model = qs.Model(system=sys, exception_hook='raise')

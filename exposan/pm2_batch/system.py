@@ -20,7 +20,8 @@ __all__ = (
     'create_system',
     'default_pm2_kwargs',
     'default_init_conds',
-    'T', 'I',
+    'T_exc', 'I_exc',
+    'T_inc', 'I_inc',
     )
 
 #%%
@@ -29,7 +30,8 @@ __all__ = (
 # Parameters and util functions
 # =============================================================================
 
-T, I = EDV.batch_init(os.path.join(data_path, 'exo_vars.xlsx'), 'linear')
+T_exc, I_exc = EDV.batch_init(os.path.join(data_path, 'exo_vars_batch_may_kinetic.xlsx'), 'linear')
+T_inc, I_inc = EDV.batch_init(os.path.join(data_path, 'exo_vars_batch_may_unit.xlsx'), 'linear')
 
 default_init_conds = {
     'X_CHL':3.91,
@@ -69,7 +71,7 @@ default_pm2_kwargs = dict(
 # Validation & Verification of PM2
 # =============================================================================
 
-def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
+def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}, kind=''):
     flowsheet = flowsheet or qs.Flowsheet('pm2_batch')
     qs.main_flowsheet.set_flowsheet(flowsheet)
 
@@ -80,8 +82,12 @@ def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
     pm2_kwargs = pm2_kwargs or default_pm2_kwargs
     pm2 = pc.PM2(**pm2_kwargs)
 
-    # Create unit operations
-    PBR = su.BatchExperiment('PBR', model=pm2, exogenous_vars=(T, I))
+    # Create unit operations\
+
+    if kind == 'include':
+        PBR = su.BatchExperiment('PBR', model=pm2, exogenous_vars=(T_inc, I_inc))
+    else:
+        PBR = su.BatchExperiment('PBR', model=pm2, exogenous_vars=(T_exc, I_exc))
 
     init_conds = init_conds or default_init_conds
     PBR.set_init_conc(**init_conds)
