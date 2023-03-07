@@ -30,16 +30,16 @@ mpl.rcParams['font.sans-serif'] = 'arial'
 mpl.rcParams["figure.autolayout"] = True
 mpl.rcParams['xtick.minor.visible'] = True
 
-N = 1000
+N = 10000
 
-# T = 0.25
-T = 7
+T = 0.25
+# T = 7
 t_step = 0.01
 # rmse_thresholds = [25, 25, 25]
 nrmse_thresholds = [None, 0.1, 0.1]
 
-# kind='include'
-kind='exclude'
+kind='include'
+# kind='exclude'
 
 #%%
 def seed_RGT():
@@ -143,8 +143,12 @@ def KS_test_var_thresholds(mdl=None, seed=None, kind=kind):
 
 #%%
 if __name__ == '__main__':
-    # seed = 125          # include
-    seed = 130          # exclude,  119 = DOE verification ver.
+    # seed = 125          # include, N=1000
+    seed = 150          # include, N=10000
+
+    # seed = 130          # exclude, N=1000,
+    # seed = 119          # DOE verification ver.
+
     mdl = run_UA_SA(seed=seed)
 
     # thrs = [0.343, 0.05, 0.08]
