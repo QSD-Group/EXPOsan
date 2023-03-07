@@ -923,10 +923,12 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             A_liq = A_bed * 0.4
             u_min = self.min_fluidizing_velocity(Beads._bead_density)
             u = self._mixed.F_vol * (1+r)/A_liq
+            r_min = u_min * A_liq/self._mixed.F_vol - 1
             if u_min and u < u_min:
-                warn(f'Recirculation rate {r} is too low to fluidize beads, '
+                warn(f'Recirculation ratio {r} is too low to fluidize beads, '
                      f'current estimated flow velocity through bed is {u:.2f} m/h, '
-                     f'minimal fluidizing velocity is {u_min:.2f} m/h')
+                     f'minimal fluidizing velocity is {u_min:.2f} m/h. '
+                     f'Recirculation ratio should at least be {r_min:.1f}.')
         self._rQ = r
         
     @property
@@ -1072,8 +1074,12 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         return self._model
     @model.setter
     def model(self, model):
-        if isinstance(model, CompiledProcesses) or model: self._model = model
-        else: raise TypeError(f'model must be a CompiledProesses, not {type(model)}')
+        if not isinstance(model, CompiledProcesses): 
+            raise TypeError(f'model must be a CompiledProesses, not {type(model)}')
+        self._model = model
+
+    def _prep_model(self):
+        model = self.model
         self._S_vapor = self.ideal_gas_law(p=self.p_vapor())
         self._n_gas = len(model._biogas_IDs)
         cmps = self.thermo.chemicals
@@ -1096,7 +1102,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             self.construction.append(
                 Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
                 )
-            self.auxiliary_unit_names = tuple(*self.auxiliary_unit_names, 'vacuum_pump')
+            self.auxiliary_unit_names = tuple([*self.auxiliary_unit_names, 'vacuum_pump'])
         for i, ws in enumerate(self.ins):
             field = f'Pump_ins{i}'
             if not hasfield(self, field):
@@ -1213,6 +1219,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             gas.dstate = np.zeros(n_cmps+1)
     
     def _compile_ODE(self):
+        self._prep_model()
         cmps = self.components
         _dstate = self._dstate
         _update_dstate = self._update_dstate
@@ -1456,6 +1463,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             TDH = hf + h # in m, assume suction head = 0, discharge head = reactor height
             field = f'Pump_ins{i}'
             pump = getfield(self, field)
+            pump.ins[0].copy_flow(ws)
             pump.ins[0].set_total_flow(ws.F_vol*(1+rQ), 'm3/h')
             pump.dP_design = TDH * 9804.14  # in Pa
             pump.simulate()
@@ -1571,12 +1579,9 @@ class METAB_PackedBed(METAB_FluidizedBed):
             n = n or ceil(self.reactor_height_to_diameter)
             self._n_cstr = int(max(n, 2))
         self._checked_ncstr = True
-    
-    model = property(METAB_FluidizedBed.model.fget)
-    @model.setter
-    def model(self, model):
-        if isinstance(model, CompiledProcesses) or model: self._model = model
-        else: raise TypeError(f'model must be a CompiledProesses, not {type(model)}')
+        
+    def _prep_model(self):
+        model = self.model
         self._S_vapor = self.ideal_gas_law(p=self.p_vapor())
         self._n_gas = len(model._biogas_IDs)
         cmps = self.thermo.chemicals
@@ -1624,6 +1629,7 @@ class METAB_PackedBed(METAB_FluidizedBed):
         return self._q_gas
     
     def _compile_ODE(self):
+        self._prep_model()
         cmps = self.components
         _dstate = self._dstate
         _update_dstate = self._update_dstate
