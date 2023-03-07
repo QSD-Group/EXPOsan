@@ -149,7 +149,7 @@ def create_model(system=None, kind=''):
     sys = create_system(kind=kind)
     # sys = system or create_system()
 
-    model = qs.Model(system=sys, exception_hook='raise')
+    model = qs.Model(system=sys, exception_hook='warn')
     param = model.parameter
     metric = model.metric
 

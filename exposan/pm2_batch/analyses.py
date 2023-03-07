@@ -32,14 +32,14 @@ mpl.rcParams['xtick.minor.visible'] = True
 
 N = 10000
 
-T = 0.25
-# T = 7
+# T = 0.25
+T = 7
 t_step = 0.01
 # rmse_thresholds = [25, 25, 25]
 nrmse_thresholds = [None, 0.1, 0.1]
 
-kind='include'
-# kind='exclude'
+# kind='include'
+kind='exclude'
 
 #%%
 def seed_RGT():
@@ -143,13 +143,14 @@ def KS_test_var_thresholds(mdl=None, seed=None, kind=kind):
 
 #%%
 if __name__ == '__main__':
-    seed = 160            # include, N=10000, exo_vars_batch_may_unit
+    # seed = 160            # include, N=10000, exo_vars_batch_may_unit
     # seed = 150          # include, N=10000, exo_vars_may_kinetic
     # seed = 125          # include, N=1000, exo_vars_may_kinetic
 
+    seed = 170            # exclude, N=10000
     # seed = 130          # exclude, N=1000,
     # seed = 119          # DOE verification ver.
-    # seed = 111              # exclude, N=10000
+    # seed = 111          # exclude, N=10000
 
     mdl = run_UA_SA(seed=seed)
 
