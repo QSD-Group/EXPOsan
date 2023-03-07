@@ -31,10 +31,14 @@ mpl.rcParams["figure.autolayout"] = True
 mpl.rcParams['xtick.minor.visible'] = True
 
 N = 1000
-T = 7
+
+T = 0.25
+# T = 7
 t_step = 0.01
 # rmse_thresholds = [25, 25, 25]
 nrmse_thresholds = [None, 0.1, 0.1]
+
+kind='include'
 
 #%%
 def seed_RGT():
@@ -49,9 +53,9 @@ def seed_RGT():
     return seed
 
 #%%
-def run_UA_SA(seed=None, N=N, T=T, t_step=t_step, thresholds=[], plot=False):
+def run_UA_SA(seed=None, N=N, T=T, t_step=t_step, thresholds=[], kind=kind, plot=False):
     seed = seed or seed_RGT()
-    mdl = create_model()
+    mdl = create_model(kind=kind)
     mdl = run_uncertainty(mdl, N, T, t_step, seed=seed)
     thresholds = update_thresholds(mdl, thresholds)
     D, p = get_correlations(mdl, kind='KS', thresholds=thresholds,
@@ -72,10 +76,10 @@ def update_thresholds(mdl, thresholds, metrics=None, quantile=0.25):
             thresholds[i] = data[col].quantile(quantile)
     return thresholds
 
-def plot_cdf_by_group(mdl=None, seed=None, thresholds=None, parameters=None, metrics=None):
+def plot_cdf_by_group(mdl=None, seed=None, thresholds=None, parameters=None, metrics=None, kind=kind):
     if mdl is None:
         # global mdl
-        mdl = create_model()
+        mdl = create_model(kind=kind)
         mdl.table = load_data(ospath.join(results_path, f'table_{seed}.xlsx'), header=[0, 1])
     metrics = metrics or mdl.metrics
     parameters = parameters or mdl.parameters
@@ -108,9 +112,9 @@ def plot_cdf_by_group(mdl=None, seed=None, thresholds=None, parameters=None, met
                     dpi=300, facecolor='white')
         del fig, axes
 
-def KS_test_var_thresholds(mdl=None, seed=None):
+def KS_test_var_thresholds(mdl=None, seed=None, kind=kind):
     if mdl is None:
-        mdl = create_model()
+        mdl = create_model(kind=kind)
         mdl.table = load_data(ospath.join(results_path, f'table_{seed}.xlsx'),
                               header=[0,1])
     sig = []
@@ -138,10 +142,10 @@ def KS_test_var_thresholds(mdl=None, seed=None):
 
 #%%
 if __name__ == '__main__':
-    seed = 119
-    # mdl = run_UA_SA(seed=seed)
+    seed = 125
+    mdl = run_UA_SA(seed=seed)
 
     # thrs = [0.343, 0.05, 0.08]
     plot_cdf_by_group(seed=seed)
 
-    KS_test_var_thresholds(seed=seed)
+    KS_test_var_thresholds(mdl=mdl,seed=seed)

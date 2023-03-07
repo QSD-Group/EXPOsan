@@ -61,23 +61,93 @@ baseline_values_hifrac = {
     'V_P': (0.016, 'g P/g COD/d'),
     }
 
-file = ospath.join(data_path, 'batch_exp_result.xlsx')
-result_exp = load_data(file, sheet=0, index_col=None)
+def import_exp_data(kind=''):
+    if kind == 'include':
+        file = ospath.join(data_path, 'batch_exp_result_chli.xlsx')
+        result_exp = load_data(file, sheet=0, index_col=None)
 
-t_exp = result_exp.t_stamp.to_numpy()
+        t_exp_x = result_exp.t_stamp_x.to_numpy()
+        t_exp_nh = result_exp.t_stamp_nh.to_numpy()
+        t_exp_p = result_exp.t_stamp_p.to_numpy()
 
-vss_exp = result_exp.VSS.to_numpy()
-snh_exp = result_exp.S_NH.to_numpy()
-sp_exp = np.maximum(result_exp.S_P.to_numpy(), 0.015)
+        t_exp_x=t_exp_x[~np.isnan(t_exp_x)]
+        t_exp_p=t_exp_p[~np.isnan(t_exp_p)]
 
-vss_range = max(vss_exp) - min(vss_exp)
-snh_range = max(snh_exp) - min(snh_exp)
-sp_range = max(sp_exp) - min(sp_exp)
+        vss_exp = result_exp.VSS.to_numpy()
+        ch_exp = result_exp.CH.to_numpy()
+        li_exp = result_exp.LI.to_numpy()
+        snh_exp = result_exp.S_NH.to_numpy()
+        sp_exp = np.maximum(result_exp.S_P.to_numpy(), 0.015)
+
+        vss_exp=vss_exp[~np.isnan(vss_exp)]
+        ch_exp=ch_exp[~np.isnan(ch_exp)]
+        li_exp=li_exp[~np.isnan(li_exp)]
+        sp_exp=sp_exp[~np.isnan(sp_exp)]
+
+        # vss_range = max(vss_exp) - min(vss_exp)
+        # ch_range = max(ch_exp) - min(ch_exp)
+        # li_range = max(li_exp) - min(li_exp)
+        # snh_range = max(snh_exp) - min(snh_exp)
+        # sp_range = max(sp_exp) - min(sp_exp)
+
+        return (t_exp_x, vss_exp), (t_exp_nh, snh_exp), (t_exp_p, sp_exp), (t_exp_x, ch_exp), (t_exp_x, li_exp)
+
+    else:
+        file = ospath.join(data_path, 'batch_exp_result.xlsx')
+        result_exp = load_data(file, sheet=0, index_col=None)
+
+        t_exp = result_exp.t_stamp.to_numpy()
+
+        vss_exp = result_exp.VSS.to_numpy()
+        snh_exp = result_exp.S_NH.to_numpy()
+        sp_exp = np.maximum(result_exp.S_P.to_numpy(), 0.015)
+
+        # vss_range = max(vss_exp) - min(vss_exp)
+        # snh_range = max(snh_exp) - min(snh_exp)
+        # sp_range = max(sp_exp) - min(sp_exp)
+
+        return (t_exp, vss_exp), (t_exp, snh_exp), (t_exp, sp_exp), (), ()
 
 #%%
+#### 'kind=include': using metrics of VSS, CH, LI, SNH, SP with unit process experiment data (May 2022) #########
+# file = ospath.join(data_path, 'batch_exp_result_chli.xlsx')
+# result_exp = load_data(file, sheet=0, index_col=None)
 
-def create_model(system=None):
-    sys = system or create_system()
+# t_exp_x = result_exp.t_stamp_x.to_numpy()
+# t_exp_nh = result_exp.t_stamp_nh.to_numpy()
+# t_exp_p = result_exp.t_stamp_p.to_numpy()
+
+# vss_exp = result_exp.VSS.to_numpy()
+# ch_exp = result_exp.CH.to_numpy()
+# li_exp = result_exp.LI.to_numpy()
+# snh_exp = result_exp.S_NH.to_numpy()
+# sp_exp = np.maximum(result_exp.S_P.to_numpy(), 0.015)
+
+# vss_range = max(vss_exp) - min(vss_exp)
+# ch_range = max(ch_exp) - min(ch_exp)
+# li_range = max(li_exp) - min(li_exp)
+# snh_range = max(snh_exp) - min(snh_exp)
+# sp_range = max(sp_exp) - min(sp_exp)
+
+#%%
+#### 'kind=exclude': using metrics of VSS, SNH, SP with kinetic assay data (May 2022) #########
+# file = ospath.join(data_path, 'batch_exp_result.xlsx')
+# result_exp = load_data(file, sheet=0, index_col=None)
+
+# t_exp = result_exp.t_stamp.to_numpy()
+
+# vss_exp = result_exp.VSS.to_numpy()
+# snh_exp = result_exp.S_NH.to_numpy()
+# sp_exp = np.maximum(result_exp.S_P.to_numpy(), 0.015)
+
+# vss_range = max(vss_exp) - min(vss_exp)
+# snh_range = max(snh_exp) - min(snh_exp)
+# sp_range = max(sp_exp) - min(sp_exp)
+
+#%%
+def create_model(system=None, kind=''):
+    sys = create_system()
+    # sys = system or create_system()
 
     model = qs.Model(system=sys, exception_hook='raise')
     param = model.parameter
@@ -95,7 +165,7 @@ def create_model(system=None):
 
     for k, v in baseline_values.items():
         b, units = v
-        D = get_uniform_w_frac(b, 0.25)
+        D = get_uniform_w_frac(b, 0.50)
         param(setter=DictAttrSetter(pm2.rate_function, '_params', k),
               name=k, element=PBR, kind='coupled', units=units, distribution=D)
 
@@ -110,13 +180,27 @@ def create_model(system=None):
     idx_vss = cmps.indices(['X_ALG', 'X_CH', 'X_LI', 'X_N_ALG', 'X_P_ALG'])
     idx_snh = cmps.indices(['S_NH'])
     idx_sp = cmps.indices(['S_P'])
+    idx_ch = cmps.indices(['X_CH'])
+    idx_li = cmps.indices(['X_LI'])
 
     imass = cmps.i_mass[idx_vss]
 
-    # @metric (name='MAPE_VSS', units='%', element='')
-    # def get_MAPE_VSS():
+    # import_exp_data
+    exp_data = import_exp_data(kind)
+
+    vss_pair, snh_pair, sp_pair, ch_pair, li_pair = exp_data
+
+    t_exp_vss, vss_exp = vss_pair
+    t_exp_nh, snh_exp = snh_pair
+    t_exp_p, sp_exp = sp_pair
+
+    vss_range = max(vss_exp) - min(vss_exp)
+    snh_range = max(snh_exp) - min(snh_exp)
+    sp_range = max(sp_exp) - min(sp_exp)
+
     @metric(element='Error')
     def NRMSE_VSS():
+
         t_simul = PBR.scope.time_series
         result_simul_vss = PBR.scope.record[:,idx_vss]
 
@@ -124,43 +208,114 @@ def create_model(system=None):
         # vss = result_simul[:,0] * cmps.X_ALG.i_mass + result_simul[0:,1] * cmps.X_CH.i_mass + result_simul[0:,2] * cmps.X_LI.i_mass + result_simul[0:,3] + result_simul[0:,4]
 
         f = interp1d(t_simul, vss)
-        vss_simul = f(t_exp)
+        vss_simul = f(t_exp_vss)
 
-        # mape_vss = sum(np.abs(vss_exp - vss_simul)/np.abs(vss_exp))/len(t_exp) * 100
-        # return mape_vss
-        rmse_vss = (sum((vss_exp - vss_simul)**2)/len(t_exp))**0.5
-        return rmse_vss/vss_range
+        rmse_vss = (sum((vss_exp - vss_simul)**2)/len(t_exp_vss))**0.5
+        nrmse_vss = rmse_vss/vss_range
+        return nrmse_vss
 
-
-    # @metric (name='MAPE_SNH', units='%', element='')
-    # def get_MAPE_SNH():
     @metric(element='Error')
     def NRMSE_SNH():
         t_simul = PBR.scope.time_series
         result_simul_snh = PBR.scope.record[:,idx_snh].flatten()
 
         f = interp1d(t_simul, result_simul_snh)
-        snh_simul = f(t_exp)
+        snh_simul = f(t_exp_nh)
 
-        # mape_snh = sum(np.abs(snh_exp - snh_simul)/np.abs(snh_exp))/len(t_exp) * 100
-        # return mape_snh
-        rmse_snh = (sum((snh_exp - snh_simul)**2)/len(t_exp))**0.5
-        return rmse_snh/snh_range
+        rmse_snh = (sum((snh_exp - snh_simul)**2)/len(t_exp_nh))**0.5
+        nrmse_snh = rmse_snh/snh_range
+        return nrmse_snh
 
-
-    # @metric (name='MAPE_SP', units='%', element='')
-    # def get_MAPE_SP():
     @metric(element='Error')
     def NRMSE_SP():
         t_simul = PBR.scope.time_series
         result_simul_sp = PBR.scope.record[:,idx_sp].flatten()
 
         f = interp1d(t_simul, result_simul_sp)
-        sp_simul = f(t_exp)
-        # mape_sp = sum(np.abs(sp_exp - sp_simul)/np.abs(sp_exp))/len(t_exp) * 100
-        # return mape_sp
-        rmse_sp = (sum((sp_exp - sp_simul)**2)/len(t_exp))**0.5
-        return rmse_sp/sp_range
+        sp_simul = f(t_exp_p)
+
+        rmse_sp = (sum((sp_exp - sp_simul)**2)/len(t_exp_p))**0.5
+        nrmse_sp = rmse_sp/sp_range
+        return nrmse_sp
+
+    if kind == 'include':
+        t_exp_ch, ch_exp = ch_pair
+        t_exp_li, li_exp = li_pair
+
+        ch_range = max(ch_exp) - min(ch_exp)
+        li_range = max(li_exp) - min(li_exp)
+
+        @metric(element='Error')
+        def NRMSE_CH():
+            t_simul = PBR.scope.time_series
+            result_simul_ch = PBR.scope.record[:,idx_ch].flatten()
+
+            f = interp1d(t_simul, result_simul_ch)
+            ch_simul = f(t_exp_ch)
+            rmse_ch = (sum((ch_exp - ch_simul)**2)/len(t_exp_ch))**0.5
+            nrmse_ch = rmse_ch/ch_range
+            return nrmse_ch
+
+        @metric(element='Error')
+        def NRMSE_LI():
+            t_simul = PBR.scope.time_series
+            result_simul_li = PBR.scope.record[:,idx_li].flatten()
+
+            f = interp1d(t_simul, result_simul_li)
+            li_simul = f(t_exp_li)
+            rmse_li = (sum((li_exp - li_simul)**2)/len(t_exp_li))**0.5
+            nrmse_li = rmse_li/li_range
+            return nrmse_li
+
+
+        # vss_pair, snh_pair, sp_pair = exp_data
+
+        # t_exp, vss_exp = vss_pair
+        # t_exp, snh_exp = snh_pair
+        # t_exp, sp_exp = sp_pair
+
+        # vss_range = max(vss_exp) - min(vss_exp)
+        # snh_range = max(snh_exp) - min(snh_exp)
+        # sp_range = max(sp_exp) - min(sp_exp)
+
+        # @metric(element='Error')
+        # def NRMSE_VSS_t():
+        #     t_simul = PBR.scope.time_series
+        #     result_simul_vss = PBR.scope.record[:,idx_vss]
+
+        #     vss = np.sum(result_simul_vss * imass, axis = 1)
+        #     # vss = result_simul[:,0] * cmps.X_ALG.i_mass + result_simul[0:,1] * cmps.X_CH.i_mass + result_simul[0:,2] * cmps.X_LI.i_mass + result_simul[0:,3] + result_simul[0:,4]
+
+        #     f = interp1d(t_simul, vss)
+        #     vss_simul = f(t_exp)
+
+        #     rmse_vss = (sum((vss_exp - vss_simul)**2)/len(t_exp))**0.5
+        #     nrmse_vss = rmse_vss/vss_range
+        #     return nrmse_vss
+
+        # @metric(element='Error')
+        # def NRMSE_SNH_t():
+        #     t_simul = PBR.scope.time_series
+        #     result_simul_snh = PBR.scope.record[:,idx_snh].flatten()
+
+        #     f = interp1d(t_simul, result_simul_snh)
+        #     snh_simul = f(t_exp)
+
+        #     rmse_snh = (sum((snh_exp - snh_simul)**2)/len(t_exp))**0.5
+        #     nrmse_shh = rmse_snh/snh_range
+        #     return nrmse_shh
+
+        # @metric(element='Error')
+        # def NRMSE_SP_t():
+        #     t_simul = PBR.scope.time_series
+        #     result_simul_sp = PBR.scope.record[:,idx_sp].flatten()
+
+        #     f = interp1d(t_simul, result_simul_sp)
+        #     sp_simul = f(t_exp)
+
+        #     rmse_sp = (sum((sp_exp - sp_simul)**2)/len(t_exp))**0.5
+        #     nrmse_sp = rmse_sp/sp_range
+        #     return nrmse_sp
 
     # @metric(name='Biomass', units='mg/L', element='')
     # def get_X_ALG():
@@ -210,7 +365,7 @@ def run_uncertainty(model, N, T, t_step, method='BDF',
                     metrics_path='', timeseries_path='',
                     rule='L', seed=None, pickle=False):
     if seed: np.random.seed(seed)
-    model = create_model()
+    # model = create_model()
     samples = model.sample(N=N, rule=rule)
     model.load_samples(samples)
     t_span = (0, T)
