@@ -143,9 +143,9 @@ def KS_test_var_thresholds(mdl=None, seed=None, kind=kind):
 
 #%%
 if __name__ == '__main__':
-    # seed = 125          # include, N=1000, exo_vars_may_kinetic
     seed = 160            # include, N=10000, exo_vars_batch_may_unit
     # seed = 150          # include, N=10000, exo_vars_may_kinetic
+    # seed = 125          # include, N=1000, exo_vars_may_kinetic
 
     # seed = 130          # exclude, N=1000,
     # seed = 119          # DOE verification ver.
