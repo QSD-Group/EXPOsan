@@ -13,7 +13,7 @@ for license details.
 from biosteam import Stream
 from qsdsan import Equipment, Construction
 from qsdsan.utils import auom
-from exposan.metab_mock.utils import encap_lci, er_lci
+from exposan.metab.utils import encap_lci, er_lci
 from math import pi
 
 __all__ = ('Beads',
