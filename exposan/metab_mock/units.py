@@ -55,7 +55,7 @@ class DegassingMembrane(SanUnit):
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', F_BM_default=None, isdynamic=True,
-                 tau=0.01, vacuum_pressure=6e4, water_pressure=6e5,
+                 tau=0.01, vacuum_pressure=7e4, water_pressure=6e5,
                  H2_degas_efficiency=0.85, CH4_degas_efficiency=0.85, 
                  CO2_degas_efficiency=0.05, gas_IDs=('S_h2', 'S_ch4', 'S_IC'),
                  design_liquid_flow=(1,11), # m3/hr, DuPont Ligasep LDM-040
@@ -381,10 +381,28 @@ class UASB(AnaerobicCSTR):
         'HDPE pipes': 'kg',
         }
     
+    def _run(self):
+        super()._run()
+        if self._mixed.T > self.T:
+            if self.T < self.T_air: self.T_air = self.T.copy()
+            self._correct_T()
+    
+    def _correct_T(self):
+        U = 1.2e-3      # kW/m2
+        c = 4.186       # kJ/kg/C
+        m = self._mixed.F_mass/3600 # kg/s
+        V, h, dia = UASB_sizing(self._mixed.F_vol*24, self.V_liq, self.V_gas,
+                                self.max_depth_to_diameter, 
+                                self.design_upflow_velocity)
+        S = pi*dia*h + pi*dia**2/2  # m2
+        T_in = self._mixed.T
+        T_ext = self.T_air
+        self.T = (m*c*T_in + U*S*T_ext)/(m*c+U*S)
+    
     def _design(self):
         D = self.design_results
         den = self._density
-        Q = self.mixed.F_vol * 24
+        Q = self._mixed.F_vol * 24
         V, h, dia = UASB_sizing(Q, self.V_liq, self.V_gas,
                                 self.max_depth_to_diameter, 
                                 self.design_upflow_velocity)
@@ -415,7 +433,7 @@ class UASB(AnaerobicCSTR):
             D['Carbon steel'] = S_wall * tface * den['Carbon steel']
             Uwall, Ucover, Ubase = heat_transfer_U(twall, tinsl, tface, tbase, concrete=True)
         else:
-            P_liq = self.external_P * 1e5 + self.mixed.rho * 9.80665 * h * self.V_liq/V
+            P_liq = self.external_P * 1e5 + self._mixed.rho * 9.80665 * h * self.V_liq/V
             twall = tbase = wt_ssteel(P_liq, dia, h)
             tcover = twall/2
             tinsl = self._steel_insulate_thickness/1e3
@@ -1115,26 +1133,23 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             self.auxiliary_unit_names = tuple({*self.auxiliary_unit_names, field})
         super()._setup()
             
-    # def state_index(self, IDs, location=None):
-    #     isa = isinstance
-    #     cmps = self.thermo.chemicals
-    #     n_cmps = len(cmps)
-    #     n_dz = self.n_dz
-    #     if isa(IDs, str): IDs = [IDs]
-    #     if location == 'gas':
-    #         return [n_cmps*n_dz + self._gas_state_idx[i] for i in IDs]
-    #     else:
-    #         cmp_idx = cmps.indices(IDs)   # list
-    #         if location is None:
-    #             locs = range(self.n_dz + 1)
-    #         elif isa(location, list):
-    #             locs = location
-    #         elif isa(location, (float, int)):
-    #             locs = [int(location)]
-    #         elif location == 'bulk': 
-    #             locs = [self.n_dz]
-    #         else: raise ValueError('unrecognized location')
-    #         return [i*n_cmps + j for i in locs for j in cmp_idx]
+    def _run(self):
+        super()._run()
+        if self._mixed.T > self.T:
+            if self.T < self.T_air: self.T_air = self.T.copy()
+            self._correct_T()
+    
+    def _correct_T(self):
+        U = 1.2e-3      # kW/m2
+        c = 4.186       # kJ/kg/C
+        m = self._mixed.F_mass/3600 # kg/s
+        V, h, dia = UASB_sizing(self._mixed.F_vol*24, self.V_liq, self.V_gas,
+                                self.max_depth_to_diameter, 
+                                self.design_upflow_velocity)
+        S = pi*dia*h + pi*dia**2/2  # m2
+        T_in = self._mixed.T
+        T_ext = self.T_air
+        self.T = (m*c*T_in + U*S*T_ext)/(m*c+U*S)
     
     def set_init_conc(self, arr=None, **kwargs):
         '''set the initial concentrations [kg/m3] of components in the fluidized bed, 
