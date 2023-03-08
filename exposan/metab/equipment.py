@@ -73,7 +73,7 @@ class Beads(Equipment):
         'PAC': 1.5,                   # 1.38-1.60 USD/kg; https://www.alibaba.com/product-detail/Best-Sale-325mesh-Wood-Based-Powder_1600694829290.html?spm=a2700.galleryofferlist.normal_offer.d_title.62c1efdbTj3aHI&s=p
         }
     
-    _bead_density = 1860    # kg/m3
+    _bead_density = 1420    # kg/m3
     _manufacturing_unit_input = {
         'chemical_factory': (4e-10, ''),    # unit/kg
         'electricity': (0.02, 'kWh'),       # kWh/kg

@@ -48,8 +48,8 @@ class DegassingMembrane(SanUnit):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', F_BM_default=None, isdynamic=True,
                  tau=0.01, vacuum_pressure=7e4, water_pressure=6e5,
-                 H2_degas_efficiency=0.85, CH4_degas_efficiency=0.85, 
-                 CO2_degas_efficiency=0.05, gas_IDs=('S_h2', 'S_ch4', 'S_IC'),
+                 H2_degas_efficiency=0.7, CH4_degas_efficiency=0.6, 
+                 CO2_degas_efficiency=0.5, gas_IDs=('S_h2', 'S_ch4', 'S_IC'),
                  design_liquid_flow=(1,11), # m3/hr, DuPont Ligasep LDM-040
                  unit_price=4126):
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
@@ -278,6 +278,7 @@ class UASB(AnaerobicCSTR):
     
     auxiliary_unit_names = ('heat_exchanger', )
     def __init__(self, ID='', lifetime=30, 
+                 fraction_retain=0.963,
                  max_depth_to_diameter=4,
                  design_upflow_velocity=0.5,        # m/h
                  wall_concrete_unit_cost=1081.73,   # $850/m3 in 2014 USD, converted to 2021 USD with concrete PPI
@@ -288,6 +289,7 @@ class UASB(AnaerobicCSTR):
                  **kwargs):
 
         super().__init__(ID, lifetime=lifetime, **kwargs)
+        self._f_retain = self.thermo.chemcials.x * fraction_retain
         self.max_depth_to_diameter = max_depth_to_diameter
         self.design_upflow_velocity = design_upflow_velocity
         self.wall_concrete_unit_cost = wall_concrete_unit_cost
@@ -539,10 +541,10 @@ class METAB_FluidizedBed(AnaerobicCSTR):
     
     def __init__(self, ID='', ins=None, outs=(), split=None, thermo=None,
                  init_with='WasteStream', V_liq=3400, V_gas=300, 
-                 voidage=0.6, bead_diameter=4, n_layer=10,
+                 voidage=0.6, bead_diameter=2, n_layer=5,
                  boundary_layer_thickness=0.01, diffusivity=None,
-                 f_diff=0.75, max_encapsulation_tss=22., model=None,
-                 pH_ctrl=False, T=298.15, headspace_P=1.013, external_P=1.013, 
+                 f_diff=0.55, max_encapsulation_tss=16, model=None,
+                 pH_ctrl=False, T=298.15, headspace_P=0.1, external_P=1.013, 
                  pipe_resistance=5.0e4, fixed_headspace_P=False,
                  isdynamic=True, exogenous_vars=(), lifetime=30, bead_lifetime=10,
                  reactor_height_to_diameter=1.5, recirculation_ratio=None,
@@ -1273,7 +1275,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
 
 class METAB_PackedBed(METAB_FluidizedBed):
     
-    def __init__(self, voidage=0.38, n_cstr=None, **kwargs):
+    def __init__(self, voidage=0.39, n_cstr=None, **kwargs):
         self._n_cstr = n_cstr
         self._checked_ncstr = False
         V_liq = kwargs.pop('V_liq', 3400)
