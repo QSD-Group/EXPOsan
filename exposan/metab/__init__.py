@@ -42,12 +42,17 @@ def load_lca_data():
 from . import process
 from .process import *
 
+from . import equipment
+from .equipment import *
+
 from . import units
 from .units import *
 
-from . import systems
-from .systems import *
+# from . import systems
+# from .systems import *
 
+# from . import models
+# from .models import *
 
 __all__ = (
     'folder',
@@ -55,8 +60,10 @@ __all__ = (
     'results_path',
     'figures_path',
     *process.__all__,
+    *equipment.__all__,
     *units.__all__,
-    *systems.__all__,
+    # *systems.__all__,
+    # *models.__all__,
 	)
 
 

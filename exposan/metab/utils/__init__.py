@@ -16,12 +16,14 @@ from . import encap_lci
 from . import er_lci
 from . import piping_design
 from . import vessel_design
+from . import misc
 
 from .dm_lci import *
 from .encap_lci import *
 from .er_lci import *
 from .piping_design import *
 from .vessel_design import *
+from .misc import *
 
 __all__ = (
     *dm_lci.__all__,
@@ -29,4 +31,5 @@ __all__ = (
     *er_lci.__all__,
     *piping_design.__all__,
     *vessel_design.__all__,
+    *misc.__all__,
 	)

@@ -21,13 +21,14 @@ from bw2qsd.utils import format_name
 
 def export_ei_CFs(save_to=''):
     ei = CFgetter('ei')
-    ei.load_database('ecoinvent_cutoff38')
+    # ei.load_database('ecoinvent_cutoff38')
+    ei.load_database('ecoinvent_apos38')
     ei.load_indicators(method='TRACI', method_exclude='no LT', add=True)
     
     # *********** construction *************
     # reactor (maybe gas holding tank also)
     # consider a double-wall design for better insulation of H2E
-    # ei.load_activities('steel production, 18/8', limit=1, add=True)
+    # ei.load_activities('steel production, 18/8', limit=1, add=True)t
     ei.load_activities('market for steel, chromium steel 18/8', add=True)
     # ei.load_activities('polystyrene foam slab, insulation', limit=1, add=True)  # for insulation
     ei.load_activities('market for stone wool', limit=2, add=True)
@@ -106,6 +107,10 @@ def export_ei_CFs(save_to=''):
     ei.load_activities('"transport, freight, lorry 3.5-7.5 metric ton", RoW', add=True)
     ei.load_activities('natural gas, low pressure, RoW', limit=1, add=True)  # offset
     
+    # membrane cleaning
+    ei.load_activities('sodium hypochlorite, RoW', limit=1, add=True)
+    ei.load_activities('citric acid GLO', limit=1, add=True)
+    
     if save_to: ei.get_CFs(show=False, path=save_to)
     return ei
 
@@ -127,10 +132,10 @@ def format_alias_TRACI(ind):
 
 #%%
 if __name__ == '__main__':
-    path = ospath.join(data_path, 'ecoinvent38_CFs.xlsx')
+    path = ospath.join(data_path, 'ecoinvent38apos_CFs.xlsx')
     ei = export_ei_CFs(path)
-    df = ei.export_indicators(name_formatter=format_name_TRACI, 
-                              alias_formatter=format_alias_TRACI,
-                              path=ospath.join(data_path, 'TRACI_indicators.xlsx'))
+    # df = ei.export_indicators(name_formatter=format_name_TRACI, 
+    #                           alias_formatter=format_alias_TRACI,
+    #                           path=ospath.join(data_path, 'TRACI_indicators.xlsx'))
     # ei = export_ei_CFs()
     remove_setups_pickle()
