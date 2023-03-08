@@ -23,11 +23,12 @@ from exposan.metab_mock import (
     _impact_item_loaded,
     load_lca_data,
     rhos_adm1_ph_ctrl,
+    METAB_AnCSTR as AB
+    )
+from exposan.metab import (
     DegassingMembrane as DM, 
-    METAB_AnCSTR as AB,
     IronSpongeTreatment as IST,
     DoubleMembraneGasHolder as GH,
-    data_path
     )
 
 folder = ospath.dirname(__file__)
