@@ -11,7 +11,7 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-from exposan.metab_mock import data_path
+from exposan.metab import data_path
 from qsdsan.utils import ospath
 from bw2qsd import DataDownloader as ddld, CFgetter, remove_setups_pickle
 from bw2qsd.utils import format_name
