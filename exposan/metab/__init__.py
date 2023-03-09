@@ -48,8 +48,8 @@ from .equipment import *
 from . import units
 from .units import *
 
-# from . import systems
-# from .systems import *
+from . import systems
+from .systems import *
 
 # from . import models
 # from .models import *
@@ -62,7 +62,7 @@ __all__ = (
     *process.__all__,
     *equipment.__all__,
     *units.__all__,
-    # *systems.__all__,
+    *systems.__all__,
     # *models.__all__,
 	)
 

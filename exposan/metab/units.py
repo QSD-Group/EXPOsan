@@ -48,8 +48,8 @@ class DegassingMembrane(SanUnit):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', F_BM_default=None, isdynamic=True,
                  tau=0.01, vacuum_pressure=7e4, water_pressure=6e5,
-                 H2_degas_efficiency=0.7, CH4_degas_efficiency=0.6, 
-                 CO2_degas_efficiency=0.5, gas_IDs=('S_h2', 'S_ch4', 'S_IC'),
+                 H2_degas_efficiency=0.625, CH4_degas_efficiency=0.455, 
+                 CO2_degas_efficiency=0.13, gas_IDs=('S_h2', 'S_ch4', 'S_IC'),
                  design_liquid_flow=(1,11), # m3/hr, DuPont Ligasep LDM-040
                  unit_price=4126):
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
@@ -278,7 +278,7 @@ class UASB(AnaerobicCSTR):
     
     auxiliary_unit_names = ('heat_exchanger', )
     def __init__(self, ID='', lifetime=30, 
-                 fraction_retain=0.963,
+                 fraction_retain=0.963, pH_ctrl=False,
                  max_depth_to_diameter=4,
                  design_upflow_velocity=0.5,        # m/h
                  wall_concrete_unit_cost=1081.73,   # $850/m3 in 2014 USD, converted to 2021 USD with concrete PPI
@@ -289,7 +289,8 @@ class UASB(AnaerobicCSTR):
                  **kwargs):
 
         super().__init__(ID, lifetime=lifetime, **kwargs)
-        self._f_retain = self.thermo.chemcials.x * fraction_retain
+        self._f_retain = self.thermo.chemicals.x * fraction_retain
+        self.pH_ctrl = pH_ctrl
         self.max_depth_to_diameter = max_depth_to_diameter
         self.design_upflow_velocity = design_upflow_velocity
         self.wall_concrete_unit_cost = wall_concrete_unit_cost
@@ -389,6 +390,42 @@ class UASB(AnaerobicCSTR):
         T_in = self._mixed.T
         T_ext = self.T_air
         self.T = (m*c*T_in + U*S*T_ext)/(m*c+U*S)
+    
+    def _compile_ODE(self):
+        cmps = self.components
+        f_rtn = self._f_retain
+        _dstate = self._dstate
+        _update_dstate = self._update_dstate
+        T = self.T
+        _params = self.model.rate_function._params
+        _f_rhos = lambda state_arr: self.model.flex_rate_function(
+            state_arr, _params, T_op=T, pH=self.pH_ctrl, gas_transfer=True
+            )
+        M_stoichio = self.model.stoichio_eval()
+        n_cmps = len(cmps)
+        n_gas = self._n_gas
+        V_liq = self.V_liq
+        V_gas = self.V_gas
+        gas_mass2mol_conversion = (cmps.i_mass / cmps.chem_MW)[self._gas_cmp_idx]
+        if self._fixed_P_gas:
+            f_qgas = self.f_q_gas_fixed_P_headspace
+        else:
+            f_qgas = self.f_q_gas_var_P_headspace
+        def dy_dt(t, QC_ins, QC, dQC_ins):
+            S_liq = QC[:n_cmps]
+            S_gas = QC[n_cmps: (n_cmps+n_gas)]
+            Q_ins = QC_ins[:, -1]
+            S_ins = QC_ins[:, :-1] * 1e-3  # mg/L to kg/m3
+            Q = sum(Q_ins)
+            rhos = _f_rhos(QC)
+            _dstate[:n_cmps] = (Q_ins @ S_ins - Q*S_liq*(1-f_rtn))/V_liq \
+                + np.dot(M_stoichio.T, rhos)
+            q_gas = f_qgas(rhos[-3:], S_gas, T)
+            _dstate[n_cmps: (n_cmps+n_gas)] = - q_gas*S_gas/V_gas \
+                + rhos[-3:] * V_liq/V_gas * gas_mass2mol_conversion
+            _dstate[-1] = dQC_ins[0,-1]
+            _update_dstate()
+        self._ODE = dy_dt
     
     def _design(self):
         D = self.design_results
@@ -513,6 +550,8 @@ class UASB(AnaerobicCSTR):
                 name = i.lower().replace(' ', '_')
                 const = getfield(creg, f'{flowsheet_ID}_{self.ID}_{name}')
                 const.quantity = D[i]
+        
+        self.add_equipment_design()
     
     _NG_price = 0.85*auom('kJ').conversion_factor('therm') # [USD/kJ] 5.47 2021USD/Mcf vs. 4.19 2016USD/Mcf
 
