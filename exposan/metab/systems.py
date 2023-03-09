@@ -96,16 +96,20 @@ def add_ngoffset_iitm(ws):
           flow_getter=get_NG_eq, # m3/hr natural-gas-equivalent
           **bg_offset_CFs)
     
-def add_chemicals_iitm(u):
-    SIItm(linked_stream=u.NaOCl, **NaOCl_item.CFs)
-    SIItm(linked_stream=u.citric_acid, **citric_acid_item.CFs)
+def add_chemicals_iitm(sys):
+    lca = sys.LCA
+    for u in sys.units:
+        if isinstance(u, DegassingMembrane):
+            SIItm(ID=u.NaOCl.ID, linked_stream=u.NaOCl, **NaOCl_item.CFs)
+            SIItm(ID=u.citric_acid.ID, linked_stream=u.citric_acid, **citric_acid_item.CFs)
+            lca._lca_streams += [u.NaOCl, u.citric_acid]
+    lca._lca_streams = sorted(set(lca._lca_streams), key=lambda s:s.ID)
 
 def add_strm_iitm(sys):
     for ws in sys.products:
         if ws.phase == 'l': add_fugch4_iitm(ws)
         elif ws.phase == 'g': add_ngoffset_iitm(ws)
-    for u in sys.units:
-        if isinstance(u, DegassingMembrane): add_chemicals_iitm(u)
+    add_chemicals_iitm(sys)
 
 # Operation items
 kWh = lambda lca: lca.system.power_utility.rate*lca.lifetime_hr
@@ -189,7 +193,6 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
                          T=273.15+35, pH_ctrl=5.8, model=adm1, 
                          F_BM_default=1, lifetime=lifetime)
             DMs = DegassingMembrane('DMs', ins=R1-1, outs=(bgs, 1-R1), F_BM_default=1)
-            add_chemicals_iitm(DMs)
             R2 = Reactor('R2', ins=R1-2, outs=(bg2, eff), V_liq=Q*tot_HRT*11/12, 
                          V_gas=Q*tot_HRT*11/12*0.1, T=273.15+22, pH_ctrl=7.2, 
                          model=adm1, equipment=[IST, GH],
@@ -214,13 +217,15 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
         set_init_concs(R2)
     
     add_TEA_LCA(sys, discount_rate, lifetime)
+    add_chemicals_iitm(sys)
     
     DMe = DegassingMembrane('DMe', ins=eff, outs=(bge, eff_dg), F_BM_default=1)
-    add_chemicals_iitm(DMe)
     add_fugch4_iitm(eff_dg)
     add_ngoffset_iitm(bge)
     
     sys_dg = System(f'{sys_ID}_edg', path=(sys, DMe))
     add_TEA_LCA(sys_dg, discount_rate, lifetime)
+    add_chemicals_iitm(sys_dg)
+    
     return sys, sys_dg
     
