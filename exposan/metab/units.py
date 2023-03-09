@@ -47,17 +47,14 @@ class DegassingMembrane(SanUnit):
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', F_BM_default=None, isdynamic=True,
-                 tau=0.01, vacuum_pressure=7e4, water_pressure=6e5,
-                 H2_degas_efficiency=0.625, CH4_degas_efficiency=0.455, 
+                 vacuum_pressure=7e4, H2_degas_efficiency=0.625, CH4_degas_efficiency=0.455, 
                  CO2_degas_efficiency=0.13, gas_IDs=('S_h2', 'S_ch4', 'S_IC'),
                  design_liquid_flow=(1,11), # m3/hr, DuPont Ligasep LDM-040
                  unit_price=4126):
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
                          init_with=init_with, F_BM_default=F_BM_default,
                          isdynamic=isdynamic)
-        self.tau = tau
         self.vacuum_pressure = vacuum_pressure
-        self.water_pressure = water_pressure
         self.H2_degas_efficiency = H2_degas_efficiency
         self.CH4_degas_efficiency = CH4_degas_efficiency
         self.CO2_degas_efficiency = CO2_degas_efficiency
@@ -73,6 +70,23 @@ class DegassingMembrane(SanUnit):
         # just to account for env impacts & additional OPEX
         self.NaOCl = SanStream(f'{ID}_NaOCl', H2O=1)
         self.citric_acid = SanStream(f'{ID}_citric_acid', H2O=1)
+    
+    @property
+    def tau(self):
+        '''HRT in d.'''
+        return self._DuPont_specs['V_liq'] / self.design_liquid_flow[1] / 24
+    
+    @property
+    def pressure_drop(self):
+        '''Pressure drop in Pa.'''
+        specs = self._DuPont_specs
+        Q = self.design_liquid_flow[1]
+        d = specs['od_fiber'] - specs['dw_fiber'] * 2
+        tau = specs['V_liq'] / Q * 3600
+        L = specs['l_fiber']
+        v = L/tau
+        mu = self.ins[0].mu
+        return 32*mu*L*v/d**2
     
     @property
     def H2_degas_efficiency(self):
@@ -122,8 +136,7 @@ class DegassingMembrane(SanUnit):
                 Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
                 )
         if not hasfield(self, 'water_pump'):
-            pump = self.water_pump = Pump(f'{inf.ID}_Pump', ins=Stream(f'{inf.ID}_proxy'),
-                                          P=self.water_pressure)
+            pump = self.water_pump = Pump(f'{inf.ID}_Pump', ins=Stream(f'{inf.ID}_proxy'))
             self.construction += [
                 Construction(ID='22kW', linked_unit=pump, item='pump_22kW'),
                 Construction(ID='40W', linked_unit=pump, item='pump_40W')
@@ -240,7 +253,7 @@ class DegassingMembrane(SanUnit):
         vac.dP_design = self.vacuum_pressure
         vac.simulate()
         wat.ins[0].copy_like(self.ins[0])
-        wat.P = self.water_pressure
+        wat.dP_design = self.pressure_drop
         wat.simulate()
         freq = D['Cleaning frequncy'] = \
             (max(inf.get_TSS(), inf.composite('C', organic=True))\
