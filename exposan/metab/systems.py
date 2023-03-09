@@ -27,8 +27,7 @@ from exposan.metab.units import *
 from exposan.metab.equipment import *
 
 __all__ = ('get_fug_ch4', 'get_NG_eq', 'add_strm_iitm',
-           'kWh', 'MJ', 'add_TEA_LCA',
-           )
+           'kWh', 'MJ', 'add_TEA_LCA', 'create_system')
 
 #%%
 C_mw = 12.0107
@@ -70,6 +69,13 @@ C0_bulk = np.array([
     4.000e-02, 2.000e-02, 9.900e+02
     ])
 
+C1_bulk = C0_bulk.copy()
+C2_bulk = C0_bulk.copy()
+fermenters = ('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro')
+methanogens = ('X_ac', 'X_h2')
+biomass_IDs = (*fermenters, *methanogens)
+vfa_IDs = ('S_va', 'S_bu', 'S_pro', 'S_ac')
+
 if not _impact_item_loaded: load_lca_data()
 bg_offset_CFs = IItm.get_item('biogas_offset').CFs
 NaOCl_item = IItm.get_item('NaOCl')
@@ -100,8 +106,10 @@ def add_chemicals_iitm(sys):
     lca = sys.LCA
     for u in sys.units:
         if isinstance(u, DegassingMembrane):
-            SIItm(ID=u.NaOCl.ID, linked_stream=u.NaOCl, **NaOCl_item.CFs)
-            SIItm(ID=u.citric_acid.ID, linked_stream=u.citric_acid, **citric_acid_item.CFs)
+            if not u.NaOCl.stream_impact_item:
+                SIItm(ID=u.NaOCl.ID, linked_stream=u.NaOCl, **NaOCl_item.CFs)
+            if not u.citric_acid.stream_impact_item:
+                SIItm(ID=u.citric_acid.ID, linked_stream=u.citric_acid, **citric_acid_item.CFs)
             lca._lca_streams += [u.NaOCl, u.citric_acid]
     lca._lca_streams = sorted(set(lca._lca_streams), key=lambda s:s.ID)
 
@@ -135,16 +143,6 @@ reactor_classes = {
     'PB': METAB_PackedBed
     }
 
-def set_init_concs(unit):
-    isa = isinstance
-    if isa(unit, UASB):
-        C0 = C0_bulk.copy()
-    elif isa(unit, METAB_FluidizedBed):
-        C0 = np.tile(C0_bulk, unit.n_layer+1)
-    else:
-        C0 = np.tile(C0_bulk, (unit.n_layer+1)*unit.n_cstr)
-    unit._concs = C0
-
 def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P', 
                   lifetime=30, discount_rate=0.1, 
                   Q=5, inf_concs={}, tot_HRT=12,
@@ -156,12 +154,20 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
     flowsheet = flowsheet or qs.Flowsheet(sys_ID)
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
-    pc.create_adm1_cmps()
+    cmps = pc.create_adm1_cmps()
     adm1 = pc.ADM1(flex_rate_function=flex_rhos_adm1)
     inf_concs = inf_concs or default_inf_concs.copy()
     inf = WasteStream('inf')
     inf.set_flow_by_concentration(Q, concentrations=inf_concs, 
-                                  units=('m3/d', 'kg/m3'))   
+                                  units=('m3/d', 'kg/m3'))
+    C0 = dict(zip(cmps.IDs, C0_bulk))
+    C1_bulk[cmps.indices(fermenters)] *= 2
+    C1_bulk[cmps.indices(methanogens)] /= 10
+    C1 = dict(zip(cmps.IDs, C1_bulk))
+    C2_bulk[cmps.indices(fermenters)] /= 10
+    C2_bulk[cmps.indices(methanogens)] *= 2
+    C2 = dict(zip(cmps.IDs, C2_bulk))
+    
     eff = WasteStream('eff')
     eff_dg = WasteStream('eff_dg')
     bge = WasteStream('bge', phase='g')
@@ -174,10 +180,10 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
         bg = WasteStream('bg', phase='g')
         add_ngoffset_iitm(bg)
         R1 = Reactor('R1', ins=inf, outs=(bg, eff), V_liq=Q*tot_HRT, 
-                     V_gas=Q*tot_HRT*0.1, T=273.15+35, model=adm1, 
-                     equipment=[IST, GH],
+                     V_gas=Q*tot_HRT*0.1, T=273.15+35, pH_ctrl=6.5,
+                     model=adm1, equipment=[IST, GH],
                      F_BM_default=1, lifetime=lifetime)
-        set_init_concs(R1)
+        R1.set_init_conc(**C0)
         sys = System(sys_ID, path=(R1,), )
         sys.set_dynamic_tracker(R1, eff, bg)
     else:
@@ -204,7 +210,7 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
             else: fixed_headspace_P = True
             R1 = Reactor('R1', ins=inf, outs=(bg1, ''), V_liq=Q*tot_HRT/12, 
                          V_gas=Q*tot_HRT/12*0.1, T=273.15+35, pH_ctrl=5.8, 
-                         model=adm1, fixed_headspace_P=fixed_headspace_P, headspace_P=0.1,
+                         model=adm1, fixed_headspace_P=fixed_headspace_P, 
                          F_BM_default=1, lifetime=lifetime)
             R2 = Reactor('R2', ins=R1-1, outs=(bg2, eff), V_liq=Q*tot_HRT*11/12, 
                          V_gas=Q*tot_HRT*11/12*0.1, T=273.15+22, pH_ctrl=7.2, 
@@ -213,9 +219,9 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
             sys = System(sys_ID, path=(R1, R2))
             sys.set_dynamic_tracker(R1, R2, eff, bg1, bg2)
         
-        set_init_concs(R1)
-        set_init_concs(R2)
-    
+        R1.set_init_conc(**C0)
+        R2.set_init_conc(**C0)
+
     add_TEA_LCA(sys, discount_rate, lifetime)
     add_chemicals_iitm(sys)
     
@@ -227,5 +233,5 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
     add_TEA_LCA(sys_dg, discount_rate, lifetime)
     add_chemicals_iitm(sys_dg)
     
-    return sys, sys_dg
+    return sys_dg
     

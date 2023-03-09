@@ -130,7 +130,7 @@ class DegassingMembrane(SanUnit):
         gas = self.outs[0]
         aux = self.auxiliary_unit_names
         if not hasfield(self, 'vacuum_pump'):
-            pump = self.vacuum_pump = Pump('VacPump', ins=Stream(f'{gas.ID}_proxy'),
+            pump = self.vacuum_pump = Pump(f'{self.ID}_VacPump', ins=Stream(f'{gas.ID}_proxy'),
                                            dP_design=self.vacuum_pressure)
             self.construction.append(
                 Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
@@ -537,6 +537,7 @@ class UASB(AnaerobicCSTR):
         if self.fixed_headspace_P:
             vac = self.vacuum_pump
             vac.ins[0].copy_like(self.outs[0])
+            vac.dP_design = (self.external_P - self.headspace_P) * 1e5
             vac.simulate()
             qvac = _construct_vacuum_pump(vac)
             pvac = getfield(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
@@ -868,6 +869,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         if not isinstance(model, CompiledProcesses): 
             raise TypeError(f'model must be a CompiledProesses, not {type(model)}')
         self._model = model
+        self._prep_model()
 
     def _prep_model(self):
         model = self.model
@@ -916,9 +918,9 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         U = 1.2e-3      # kW/m2
         c = 4.186       # kJ/kg/C
         m = self._mixed.F_mass/3600 # kg/s
-        V, h, dia = UASB_sizing(self._mixed.F_vol*24, self.V_liq, self.V_gas,
-                                self.max_depth_to_diameter, 
-                                self.design_upflow_velocity)
+        h2d = self.reactor_height_to_diameter
+        dia = (4*self.V_bed/pi/h2d)**(1/3)
+        h = dia * h2d
         S = pi*dia*h + pi*dia**2/2  # m2
         T_in = self._mixed.T
         T_ext = self.T_air
@@ -1009,8 +1011,14 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             # contains no info on dstate
             gas.dstate = np.zeros(n_cmps+1)
     
+    @property
+    def ODE(self):
+        if self._ODE is None:
+            self._prep_model()
+            self._compile_ODE()
+        return self._ODE
+    
     def _compile_ODE(self):
-        self._prep_model()
         cmps = self.components
         _dstate = self._dstate
         _update_dstate = self._update_dstate
@@ -1244,6 +1252,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         if self.fixed_headspace_P:
             vac = self.vacuum_pump
             vac.ins[0].copy_like(self.outs[0])
+            vac.dP_design = (self.external_P - self.headspace_P) * 1e5            
             vac.simulate()
             qvac = _construct_vacuum_pump(vac)
             pvac = getfield(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
@@ -1327,7 +1336,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
 
 class METAB_PackedBed(METAB_FluidizedBed):
     
-    def __init__(self, voidage=0.39, n_cstr=None, **kwargs):
+    def __init__(self, ID='', voidage=0.39, n_cstr=None, **kwargs):
         self._n_cstr = n_cstr
         self._checked_ncstr = False
         V_liq = kwargs.pop('V_liq', 3400)
@@ -1335,7 +1344,7 @@ class METAB_PackedBed(METAB_FluidizedBed):
         V_tot = V_liq/0.38 + V_gas
         V_gas = V_tot - V_liq/voidage
         if V_gas <= 0: V_gas = 0.1
-        super().__init__(V_liq=V_liq, V_gas=V_gas, voidage=voidage, **kwargs)
+        super().__init__(ID=ID, V_liq=V_liq, V_gas=V_gas, voidage=voidage, **kwargs)
 
     voidage = property(METAB_FluidizedBed.voidage.fget)
     @voidage.setter
@@ -1420,7 +1429,6 @@ class METAB_PackedBed(METAB_FluidizedBed):
         return self._q_gas
     
     def _compile_ODE(self):
-        self._prep_model()
         cmps = self.components
         _dstate = self._dstate
         _update_dstate = self._update_dstate
