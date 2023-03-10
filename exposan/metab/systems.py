@@ -200,7 +200,7 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
                      F_BM_default=1, lifetime=lifetime)
         R1.set_init_conc(**C0)
         sys = System(sys_ID, path=(R1,), )
-        sys.set_dynamic_tracker(R1, eff, bg)
+        to_track = (R1, eff, bg)
     else:
         bg1 = WasteStream('bg1', phase='g')
         bg2 = WasteStream('bg2', phase='g')
@@ -219,7 +219,7 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
                          model=adm1, equipment=[IST, GH],
                          F_BM_default=1, lifetime=lifetime)
             sys = System(sys_ID, path=(R1, DMs, R2))
-            sys.set_dynamic_tracker(R1, R2, eff, bg1, bgs, bg2)
+            to_track = (R1, R2, eff, bg1, bgs, bg2)
         else:
             if gas_extraction == 'P': fixed_headspace_P = False
             else: fixed_headspace_P = True
@@ -232,7 +232,7 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
                          model=adm1, equipment=[IST, GH],
                          F_BM_default=1, lifetime=lifetime)
             sys = System(sys_ID, path=(R1, R2))
-            sys.set_dynamic_tracker(R1, R2, eff, bg1, bg2)
+            to_track = (R1, R2, eff, bg1, bg2)
         
         R1.set_init_conc(**C1)
         R2.set_init_conc(**C2)
@@ -245,6 +245,7 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
     add_ngoffset_iitm(bge)
     
     sys_dg = System(f'{sys_ID}_edg', path=(sys, DMe))
+    sys_dg.set_dynamic_tracker(*to_track)
     add_TEA_LCA(sys_dg, discount_rate, lifetime)
     add_chemicals_iitm(sys_dg)
     

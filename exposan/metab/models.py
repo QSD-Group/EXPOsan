@@ -87,9 +87,9 @@ def add_metrics(model):
     u = sys.flowsheet.unit
     s = sys.flowsheet.stream
     cmps = s.inf.components
-    C0 = dict(zip(cmps.ID, C0_bulk))
-    C1 = dict(zip(cmps.ID, C1_bulk))
-    C2 = dict(zip(cmps.ID, C2_bulk))
+    C0 = dict(zip(cmps.IDs, C0_bulk))
+    C1 = dict(zip(cmps.IDs, C1_bulk))
+    C2 = dict(zip(cmps.IDs, C2_bulk))
     h2_i_mass = cmps.S_h2.i_mass
     ch4_i_mass = cmps.S_ch4.i_mass
     
@@ -190,7 +190,7 @@ def add_metrics(model):
 
 def create_model(sys=None, kind='DV', **kwargs):
     sys = sys or create_system(**kwargs)
-    mdl = qs.Model(sys)
+    mdl = qs.Model(sys, exception_hook='raise')
     if kind == 'DV':
         add_discrete_dv(mdl)
     add_metrics(mdl)
