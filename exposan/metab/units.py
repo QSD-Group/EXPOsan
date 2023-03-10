@@ -440,6 +440,15 @@ class UASB(AnaerobicCSTR):
             _update_dstate()
         self._ODE = dy_dt
     
+    def biomass_tss(self, biomass_IDs):
+        y = self._state
+        cmps = self.components
+        bm_idx = cmps.indices(biomass_IDs)
+        return sum(y[bm_idx] * cmps.i_mass[bm_idx])
+    
+    def get_retained_mass(self, biomass_IDs):
+        return self.biomass_tss(biomass_IDs) * self.V_liq
+    
     def _design(self):
         D = self.design_results
         den = self._density
@@ -1532,3 +1541,28 @@ class METAB_PackedBed(METAB_FluidizedBed):
             _update_dstate()
         
         self._ODE = dy_dt
+
+    def biomass_tss(self, biomass_IDs):
+        '''Returns a 2-tuple of biomass TSS [kg/m3] in bulk and in encapsulation matrix (on average)'''
+        y = self._state
+        cmps = self.components
+        n_cmps = len(cmps)
+        n_dz = self.n_dz
+        n_cstr = self.n_cstr
+        bm_idx = cmps.indices(biomass_IDs)
+        outs = []
+        dz = self.r_beads / n_dz
+        zs = np.linspace(dz, self.r_beads, n_dz)
+        dV = 4/3*np.pi*(zs)**3
+        V_bead = dV[-1]
+        dV[1:] -= dV[:-1]
+        for i in range(n_cstr):
+            start = i*((n_dz+1)*n_cmps)
+            stop_en = start + n_dz*n_cmps
+            stop_bk = stop_en + n_cmps
+            en_bm = np.sum(y[start: stop_en].reshape((n_dz, n_cmps))[:,bm_idx] * cmps.i_mass[bm_idx], axis=1)
+            bk_bm = np.sum((y[stop_en: stop_bk] * cmps.i_mass)[bm_idx])
+            C_en_avg = np.dot(en_bm, dV)/V_bead
+            outs.append([bk_bm, C_en_avg])
+        outs = np.asarray(outs)
+        return np.mean(outs, axis=0)

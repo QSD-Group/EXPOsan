@@ -27,7 +27,9 @@ from exposan.metab.units import *
 from exposan.metab.equipment import *
 
 __all__ = ('get_fug_ch4', 'get_NG_eq', 'add_strm_iitm',
-           'kWh', 'MJ', 'add_TEA_LCA', 'create_system')
+           'kWh', 'MJ', 'add_TEA_LCA', 'create_system', 
+           'C0_bulk', 'C1_bulk', 'C2_bulk',
+           'fermenters', 'methanogens')
 
 #%%
 C_mw = 12.0107
@@ -64,13 +66,30 @@ default_inf_concs = {
 C0_bulk = np.array([
     1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
     4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
-    2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 4.708e+00, 1.239e+00,
-    4.838e-01, 1.423e+00, 8.978e-01, 2.959e+00, 1.467e+00, 4.924e-02,
-    4.000e-02, 2.000e-02, 9.900e+02
+    2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 
+    4.708e+00, 1.239e+00, 4.838e-01, 1.423e+00, 8.978e-01, 
+    2.959e+00, 1.467e+00, 
+    4.924e-02, 4.000e-02, 2.000e-02, 9.900e+02
     ])
 
-C1_bulk = C0_bulk.copy()
-C2_bulk = C0_bulk.copy()
+C1_bulk = np.array([
+    1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
+    4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
+    2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 
+    9.416, 2.478, 0.968, 2.846, 1.796, 
+    2.959e-01, 1.467e-01, 
+    4.924e-02, 4.000e-02, 2.000e-02, 9.900e+02
+    ])
+
+C2_bulk = np.array([
+    1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
+    4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
+    2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 
+    4.708e-01, 1.239e-01, 4.838e-02, 1.423e-01, 8.978e-02,
+    5.918, 2.934, 
+    4.924e-02, 4.000e-02, 2.000e-02, 9.900e+02
+    ])
+
 fermenters = ('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro')
 methanogens = ('X_ac', 'X_h2')
 biomass_IDs = (*fermenters, *methanogens)
@@ -161,11 +180,7 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
     inf.set_flow_by_concentration(Q, concentrations=inf_concs, 
                                   units=('m3/d', 'kg/m3'))
     C0 = dict(zip(cmps.IDs, C0_bulk))
-    C1_bulk[cmps.indices(fermenters)] *= 2
-    C1_bulk[cmps.indices(methanogens)] /= 10
     C1 = dict(zip(cmps.IDs, C1_bulk))
-    C2_bulk[cmps.indices(fermenters)] /= 10
-    C2_bulk[cmps.indices(methanogens)] *= 2
     C2 = dict(zip(cmps.IDs, C2_bulk))
     
     eff = WasteStream('eff')
@@ -219,8 +234,8 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
             sys = System(sys_ID, path=(R1, R2))
             sys.set_dynamic_tracker(R1, R2, eff, bg1, bg2)
         
-        R1.set_init_conc(**C0)
-        R2.set_init_conc(**C0)
+        R1.set_init_conc(**C1)
+        R2.set_init_conc(**C2)
 
     add_TEA_LCA(sys, discount_rate, lifetime)
     add_chemicals_iitm(sys)
