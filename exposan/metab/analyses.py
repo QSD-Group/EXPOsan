@@ -12,21 +12,34 @@ for license details.
 '''
 from qsdsan.utils import ospath, load_data
 from exposan.metab import create_system, create_model, run_model, data_path
-# import numpy as np, pandas as pd
+import qsdsan as qs
 
 #%%
-
 def run_discrete_DVs(samples_path):
+    qs.PowerUtility.price = 0.0913
     dct = load_data(samples_path, sheet=None)
-    for n in (1, 2):
-        for i in ('UASB', 'FB', 'PB'):
-        # for i in ('UASB',):
-            for j in 'PHM':
-                sys = create_system(n_stages=n, reactor_type=i, gas_extraction=j)
-                mdl = create_model(sys, kind='DV')
-                sample = dct[i+'_'+j].to_numpy()
-                run_model(mdl, sample)
-        
+    n = 1
+    j = 'P'
+    for i in ('UASB', 'FB', 'PB'):
+        sys = create_system(n_stages=n, reactor_type=i, gas_extraction=j)
+        print(sys.ID)
+        mdl = create_model(sys, kind='DV')
+        sample = dct[i+'_'+j].to_numpy()
+        run_model(mdl, sample)
+    n = 2
+    for i in ('UASB', 'FB', 'PB'):
+        for j in 'PMH':
+            sys = create_system(n_stages=n, reactor_type=i, gas_extraction=j)
+            print(sys.ID)
+            mdl = create_model(sys, kind='DV')
+            sample = dct[i+'_'+j].to_numpy()
+            run_model(mdl, sample)
+
+
+#%%
+# def plot_clusters()
+
+
 #%%
 if __name__ == '__main__':
     path = ospath.join(data_path, 'analysis_framework.xlsx')

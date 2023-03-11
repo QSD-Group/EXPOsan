@@ -14,7 +14,7 @@ for license details.
 import numpy as np, qsdsan as qs
 from qsdsan import (
     processes as pc, 
-    WasteStream, System, TEA, LCA, PowerUtility,
+    WasteStream, System, TEA, LCA, PowerUtility, Construction, Equipment,
     ImpactItem as IItm, 
     StreamImpactItem as SIItm,
     )
@@ -112,12 +112,16 @@ def get_NG_eq(bg):
     return -sum(bg.mass*KJ_per_kg)*1e-3/39
 
 def add_fugch4_iitm(ws):
-    SIItm(ID=f'{ws.ID}_fugitive_ch4', linked_stream=ws, 
+    ID = f'{ws.ID}_fugitive_ch4'
+    if ID in IItm.registry: IItm.registry.discard(ID)
+    SIItm(ID=ID, linked_stream=ws, 
           flow_getter=get_fug_ch4,
           GWP100=28, MIR=0.0143794871794872)
 
 def add_ngoffset_iitm(ws):
-    SIItm(ID=f'{ws.ID}_NG_offset', linked_stream=ws, functional_unit='m3',
+    ID = f'{ws.ID}_NG_offset'
+    if ID in IItm.registry: IItm.registry.discard(ID)
+    SIItm(ID=ID, linked_stream=ws, functional_unit='m3',
           flow_getter=get_NG_eq, # m3/hr natural-gas-equivalent
           **bg_offset_CFs)
     
@@ -167,6 +171,10 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
                   Q=5, inf_concs={}, tot_HRT=12,
                   flowsheet=None):
     
+    Construction.registry.clear()
+    Equipment.registry.clear()
+    isa = isinstance
+    IItm.registry.safe_to_replace.update({i for i in IItm.registry if isa(i, SIItm)})
     Reactor = reactor_classes[reactor_type]
     sys_ID = f'{reactor_type}{n_stages}{gas_extraction}'
     
@@ -233,9 +241,12 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
                          F_BM_default=1, lifetime=lifetime)
             sys = System(sys_ID, path=(R1, R2))
             to_track = (R1, R2, eff, bg1, bg2)
-        
-        R1.set_init_conc(**C1)
-        R2.set_init_conc(**C2)
+        if Reactor == UASB:
+            R1.set_init_conc(**C0)
+            R2.set_init_conc(**C0)
+        else:
+            R1.set_init_conc(**C1)
+            R2.set_init_conc(**C2)
 
     add_TEA_LCA(sys, discount_rate, lifetime)
     add_chemicals_iitm(sys)

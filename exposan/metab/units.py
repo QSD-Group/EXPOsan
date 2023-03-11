@@ -336,7 +336,7 @@ class UASB(AnaerobicCSTR):
             self.construction.append(
                 Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
                 )
-            self.auxiliary_unit_names = tuple(*self.auxiliary_unit_names, 'vacuum_pump')
+            self.auxiliary_unit_names = tuple({*self.auxiliary_unit_names, 'vacuum_pump'})
         for i, ws in enumerate(self.ins):
             field = f'Pump_ins{i}'
             if not hasfield(self, field):
@@ -404,6 +404,9 @@ class UASB(AnaerobicCSTR):
         T_ext = self.T_air
         self.T = (m*c*T_in + U*S*T_ext)/(m*c+U*S)
     
+    def _cache_state(self):
+        self._concs = self._state[:-(self._n_gas+1)].copy()
+        
     def _compile_ODE(self):
         cmps = self.components
         f_rtn = self._f_retain

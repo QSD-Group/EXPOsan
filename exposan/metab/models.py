@@ -74,7 +74,9 @@ def add_discrete_dv(model):
     def set_temp(T):
         u.R1.T = 273.15 + T
         u.R1._ODE = None
-        if n_stage == 2: u.R2._ODE = None
+        if n_stage == 2: 
+            u.R2.T = (273.15 + T + u.R2.T_air)/2
+            u.R2._ODE = None
 
 def add_metrics(model):
     metric = model.metric
@@ -96,47 +98,46 @@ def add_metrics(model):
     @metric(name='COD removal', units='%', element='Process')
     def get_rcod():
         rcod = 1 - s.eff_dg.COD/s.inf.COD
-        if reactor_type in ('FB','PB'):
-            if rcod >= 0.7:
-                u.R1._cache_state()
-                if n_stage == 2: u.R2._cache_state()
+        if rcod >= 0.7:
+            u.R1._cache_state()
+            if n_stage == 2: u.R2._cache_state()
+        else:
+            if n_stage == 1: u.R1.set_init_conc(**C0)
             else:
-                if n_stage == 1: u.R1.set_init_conc(**C0)
-                else:
-                    u.R1.set_init_conc(**C1)
-                    u.R2.set_init_conc(**C2)
+                u.R1.set_init_conc(**C1)
+                u.R2.set_init_conc(**C2)
         return rcod*100
     
     @metric(name='H2 yield', units='kg H2/kg rCOD', element='Process')
     def get_yh2():
         qh2 = sum([bg.imass['S_h2'] for bg in sys.products if bg.phase == 'g'])*h2_i_mass # kg H2/h
-        qrcod = (s.inf.COD - s.eff_dg.COD) * s.eff_dg.F_vol
+        qrcod = (s.inf.COD - s.eff_dg.COD) * s.eff_dg.F_vol * 1e-3 # kg COD/h
         return qh2/qrcod
 
     @metric(name='CH4 yield', units='kg CH4/kg rCOD', element='Process')
     def get_ych4():
         qch4 = sum([bg.imass['S_ch4'] for bg in sys.products if bg.phase == 'g'])*ch4_i_mass
-        qrcod = (s.inf.COD - s.eff_dg.COD) * s.eff_dg.F_vol
+        qrcod = (s.inf.COD - s.eff_dg.COD) * s.eff_dg.F_vol * 1e-3 # kg COD/h
         return qch4/qrcod
     
     kwargs = dict(units='g/L', element='Biomass')
     isa = isinstance
     def get_cost(system, bead_lt=None):
         s = system.flowsheet.stream
-        qrcod = (s.inf.COD - s.eff_dg.COD) * s.eff_dg.F_vol  # kg/hr
+        qrcod = (s.inf.COD - s.eff_dg.COD) * s.eff_dg.F_vol * 1e-6 # ton/hr
         if bead_lt: 
             for unit in system.units:
                 if isa(unit, AnaerobicCSTR): unit.bead_lifetime = bead_lt
-        return -system.TEA.annualized_NPV/(qrcod * op_hr * 1e-3)
+        return -system.TEA.annualized_NPV/(qrcod * op_hr)
     
     def get_gwp(system, bead_lt=None):
         s = system.flowsheet.stream
-        qrcod = (s.inf.COD - s.eff_dg.COD) * s.eff_dg.F_vol  # kg/hr
+        qrcod = (s.inf.COD - s.eff_dg.COD) * s.eff_dg.F_vol * 1e-6  # ton/hr
         if bead_lt: 
             for unit in system.units:
                 if isa(unit, AnaerobicCSTR): unit.bead_lifetime = bead_lt
         gwp_per_hr = system.LCA.get_total_impacts()['GWP100']/system.LCA.lifetime_hr       
-        return gwp_per_hr/(qrcod * 1e-3)    
+        return gwp_per_hr/qrcod 
     
     if reactor_type == 'UASB':
         if n_stage == 1:
@@ -149,7 +150,7 @@ def add_metrics(model):
                 metric(getter=FuncGetter(Ri.biomass_tss, (fermenters,)),
                        name=f'{Ri.ID} fermenters TSS', **kwargs)
                 metric(getter=FuncGetter(Ri.biomass_tss, (methanogens,)),
-                       name=f'{Ri.ID}  ethanogens TSS', **kwargs)
+                       name=f'{Ri.ID} methanogens TSS', **kwargs)
         metric(getter=FuncGetter(get_cost, (sys,)),
                name='Levelized cost (w/ degas)', units='$/ton rCOD', element='TEA')
         metric(getter=FuncGetter(get_cost, (sub,)),
@@ -190,7 +191,7 @@ def add_metrics(model):
 
 def create_model(sys=None, kind='DV', **kwargs):
     sys = sys or create_system(**kwargs)
-    mdl = qs.Model(sys, exception_hook='raise')
+    mdl = qs.Model(sys, exception_hook='warn')
     if kind == 'DV':
         add_discrete_dv(mdl)
     add_metrics(mdl)
