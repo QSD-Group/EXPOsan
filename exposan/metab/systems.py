@@ -226,7 +226,7 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
                          V_gas=Q*tot_HRT*11/12*0.1, T=273.15+22, pH_ctrl=7.2, 
                          model=adm1, equipment=[IST, GH],
                          F_BM_default=1, lifetime=lifetime)
-            sys = System(sys_ID, path=(R1, DMs, R2))
+            sys = System(sys_ID, path=(R1, DMs, R2), recycle=(DMs-1,))
             to_track = (R1, R2, eff, bg1, bgs, bg2)
         else:
             if gas_extraction == 'P': fixed_headspace_P = False

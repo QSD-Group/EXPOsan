@@ -465,7 +465,7 @@ class UASB(AnaerobicCSTR):
         Vg = 1/3*pi*r_cone**3*self._gas_separator_h2r
         if Vg < 1.5*self.V_gas:
             Vg = 1.5*self.V_gas
-            h_cone = Vg/(1/3*pi*r_cone**2)
+        h_cone = Vg/(1/3*pi*r_cone**2)
         S_cone = pi*r_cone*(r_cone + (r_cone**2 + h_cone**2)**(1/2))
         S_baffle = (pi*(dia/2)**2 - pi*(dia/2*(self._gas_separator_r_frac-1))**2)\
             *self._baffle_slope*2

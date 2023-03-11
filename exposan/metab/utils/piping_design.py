@@ -59,14 +59,14 @@ def pipe_design(F_vol, vmin, stainless_steel=False):
         weights = ssteel_lb_per_ft
     else:
         IDs = hdpe_ID_inch
-        weights = ssteel_lb_per_ft
+        weights = hdpe_lb_per_ft
     ids = IDs[IDs <= ID]
     if ids.size == 0: 
         ID = IDs[0] # inch
         kg_per_m = weights[0] * _lbft2kgm
     else: 
         ID = ids[-1]
-        kg_per_m = weights[IDs == ID] * _lbft2kgm
+        kg_per_m = weights[IDs == ID][0] * _lbft2kgm
     return ID, kg_per_m
 
 def pipe_friction_head(q, L, ID, stainless_steel=False):
