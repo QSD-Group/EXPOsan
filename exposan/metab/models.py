@@ -18,7 +18,7 @@ from exposan.metab import (
     results_path
     )
 import qsdsan as qs, os, numpy as np
-from qsdsan.utils import FuncGetter, AttrSetter, AttrFuncSetter
+from qsdsan.utils import FuncGetter, AttrSetter, AttrFuncSetter, SanUnitScope
 from qsdsan.sanunits import AnaerobicCSTR
 
 __all__ = ('add_discrete_dv', 
@@ -34,16 +34,26 @@ def add_discrete_dv(model):
     reactor_type, gas_xt = sys.ID.rstrip('_edg').split(str(n_stage))
     u = sys.flowsheet.unit
     s = sys.flowsheet.stream
+    cmps = s.inf.components
+    C0 = dict(zip(cmps.IDs, C0_bulk))
+    C1 = dict(zip(cmps.IDs, C1_bulk))
+    C2 = dict(zip(cmps.IDs, C2_bulk))
        
     if reactor_type in ('PB', 'FB'):
         @param(name='Bead diameter', units='mm', kind='coupled', element='Beads')
         def set_db(d):
             n_dz = 10 if d > 5 else 5
             u.R1.bead_diameter = d
-            u.R1.n_layer = n_dz
-            if n_stage == 2: 
+            if n_stage == 1:
+                if n_dz != u.R1.n_layer:
+                    u.R1.n_layer = n_dz
+                    u.R1.set_init_conc(**C0)
+            else: 
                 u.R2.bead_diameter = d
-                u.R2.n_layer = n_dz
+                if n_dz != u.R2.n_layer:
+                    u.R2.n_layer = n_dz
+                    u.R1.set_init_conc(**C1)
+                    u.R2.set_init_conc(**C2)
         
         if reactor_type == 'FB':
             @param(name='Voidage', units='', kind='coupled', element='Beads')
@@ -73,10 +83,15 @@ def add_discrete_dv(model):
     @param(name='Temperature', units='C', kind='coupled', element='Reactors')
     def set_temp(T):
         u.R1.T = 273.15 + T
-        u.R1._ODE = None
+        u.R1._prep_model()
+        u.R1._compile_ODE()
+        u.R1.scope = SanUnitScope(u.R1)
+        breakpoint()
         if n_stage == 2: 
             u.R2.T = (273.15 + T + u.R2.T_air)/2
-            u.R2._ODE = None
+            u.R2._prep_model()
+            u.R2._compile_ODE()
+            u.R2.scope = SanUnitScope(u.R2)
 
 def add_metrics(model):
     metric = model.metric
@@ -189,9 +204,9 @@ def add_metrics(model):
                    name=f'GWP100 (w/o degas, {blt}yr)', units='kg CO2eq/ton rCOD', element='LCA')
 
 
-def create_model(sys=None, kind='DV', **kwargs):
+def create_model(sys=None, kind='DV', exception_hook='warn', **kwargs):
     sys = sys or create_system(**kwargs)
-    mdl = qs.Model(sys, exception_hook='warn')
+    mdl = qs.Model(sys, exception_hook=exception_hook)
     if kind == 'DV':
         add_discrete_dv(mdl)
     add_metrics(mdl)
