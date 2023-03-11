@@ -98,7 +98,7 @@ def add_metrics(model):
     @metric(name='COD removal', units='%', element='Process')
     def get_rcod():
         rcod = 1 - s.eff_dg.COD/s.inf.COD
-        if rcod >= 0.7:
+        if rcod >= 0.75:
             u.R1._cache_state()
             if n_stage == 2: u.R2._cache_state()
         else:
