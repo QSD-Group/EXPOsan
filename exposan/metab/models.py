@@ -27,16 +27,18 @@ __all__ = ('add_discrete_dv',
            'run_model')
 
 #%%
-def reset_init_conc(sys, selective=True):
+def reset_init_conc(sys):
     cmps = sys.feeds[0].components
     n = len(cmps)
     u = sys.flowsheet.unit
     if '1' in sys.ID:
         C0 = dict(zip(cmps.IDs, u.R1._concs[:n]))
+        u.R1._cached_state = None
         u.R1.set_init_conc(**C0)
     else:
         for unit in (u.R1, u.R2):
             C0 = dict(zip(cmps.IDs, unit._concs[:n]))
+            unit._cached_state = None
             unit.set_init_conc(**C0)
 
 def add_discrete_dv(model):

@@ -20,18 +20,18 @@ def run_discrete_DVs(samples_path):
     dct = load_data(samples_path, sheet=None)
     for i in (
             # 'UASB', 
-              'FB', 
-             # 'PB',
+              # 'FB', 
+              'PB',
              ):
         for n, j in (
                 (1,'P'), 
-                # (2,'P'), 
-                # (2,'M'), 
-                # (2,'H'),
+                (2,'P'), 
+                (2,'M'), 
+                (2,'H'),
                 ):
             sys = create_system(n_stages=n, reactor_type=i, gas_extraction=j)
             print(sys.ID)
-            mdl = create_model(sys, kind='DV', exception_hook='raise')
+            mdl = create_model(sys, kind='DV', exception_hook='warn')
             sample = dct[i+'_'+j].to_numpy()
             run_model(mdl, sample)
 
