@@ -77,7 +77,7 @@ C1_bulk = np.array([
     4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
     2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 
     9.416, 2.478, 0.968, 2.846, 1.796, 
-    2.959e-01, 1.467e-01, 
+    1.48 , 0.734, 
     4.924e-02, 4.000e-02, 2.000e-02, 9.900e+02
     ])
 
@@ -85,7 +85,7 @@ C2_bulk = np.array([
     1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
     4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
     2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 
-    4.708e-01, 1.239e-01, 4.838e-02, 1.423e-01, 8.978e-02,
+    2.354, 0.62 , 0.242, 0.712, 0.449,
     5.918, 2.934, 
     4.924e-02, 4.000e-02, 2.000e-02, 9.900e+02
     ])
@@ -241,7 +241,7 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
                          F_BM_default=1, lifetime=lifetime)
             sys = System(sys_ID, path=(R1, R2))
             to_track = (R1, R2, eff, bg1, bg2)
-        if Reactor == UASB and gas_extraction == 'M':
+        if (Reactor == UASB and gas_extraction == 'M') or Reactor == METAB_FluidizedBed:
             R1.set_init_conc(**C0)
             R2.set_init_conc(**C0)
         else:

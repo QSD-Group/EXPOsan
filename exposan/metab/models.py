@@ -27,6 +27,18 @@ __all__ = ('add_discrete_dv',
            'run_model')
 
 #%%
+def reset_init_conc(sys, selective=True):
+    cmps = sys.feeds[0].components
+    n = len(cmps)
+    u = sys.flowsheet.unit
+    if '1' in sys.ID:
+        C0 = dict(zip(cmps.IDs, u.R1._concs[:n]))
+        u.R1.set_init_conc(**C0)
+    else:
+        for unit in (u.R1, u.R2):
+            C0 = dict(zip(cmps.IDs, unit._concs[:n]))
+            unit.set_init_conc(**C0)
+
 def add_discrete_dv(model):
     param = model.parameter
     sys = model.system
@@ -34,10 +46,6 @@ def add_discrete_dv(model):
     reactor_type, gas_xt = sys.ID.rstrip('_edg').split(str(n_stage))
     u = sys.flowsheet.unit
     s = sys.flowsheet.stream
-    cmps = s.inf.components
-    C0 = dict(zip(cmps.IDs, C0_bulk))
-    C1 = dict(zip(cmps.IDs, C1_bulk))
-    C2 = dict(zip(cmps.IDs, C2_bulk))
        
     if reactor_type in ('PB', 'FB'):
         @param(name='Bead diameter', units='mm', kind='coupled', element='Beads')
@@ -47,13 +55,12 @@ def add_discrete_dv(model):
             if n_stage == 1:
                 if n_dz != u.R1.n_layer:
                     u.R1.n_layer = n_dz
-                    u.R1.set_init_conc(**C0)
+                    reset_init_conc(sys)
             else: 
                 u.R2.bead_diameter = d
                 if n_dz != u.R2.n_layer:
                     u.R2.n_layer = n_dz
-                    u.R1.set_init_conc(**C1)
-                    u.R2.set_init_conc(**C2)
+                    reset_init_conc(sys)
         
         if reactor_type == 'FB':
             @param(name='Voidage', units='', kind='coupled', element='Beads')
@@ -79,6 +86,7 @@ def add_discrete_dv(model):
             u.R1.V_gas = V/12*0.1
             u.R2.V_liq = V*11/12
             u.R2.V_gas = V*11/12*0.1
+
     
     @param(name='Temperature', units='C', kind='coupled', element='Reactors')
     def set_temp(T):
@@ -86,7 +94,6 @@ def add_discrete_dv(model):
         u.R1._prep_model()
         u.R1._compile_ODE()
         u.R1.scope = SanUnitScope(u.R1)
-        breakpoint()
         if n_stage == 2: 
             u.R2.T = (273.15 + T + u.R2.T_air)/2
             u.R2._prep_model()
@@ -104,9 +111,9 @@ def add_metrics(model):
     u = sys.flowsheet.unit
     s = sys.flowsheet.stream
     cmps = s.inf.components
-    C0 = dict(zip(cmps.IDs, C0_bulk))
-    C1 = dict(zip(cmps.IDs, C1_bulk))
-    C2 = dict(zip(cmps.IDs, C2_bulk))
+    # C0 = dict(zip(cmps.IDs, C0_bulk))
+    # C1 = dict(zip(cmps.IDs, C1_bulk))
+    # C2 = dict(zip(cmps.IDs, C2_bulk))
     h2_i_mass = cmps.S_h2.i_mass
     ch4_i_mass = cmps.S_ch4.i_mass
     
@@ -117,10 +124,8 @@ def add_metrics(model):
             u.R1._cache_state()
             if n_stage == 2: u.R2._cache_state()
         else:
-            if n_stage == 1: u.R1.set_init_conc(**C0)
-            else:
-                u.R1.set_init_conc(**C1)
-                u.R2.set_init_conc(**C2)
+            u.R1._cached_state = None
+            if n_stage == 2: u.R2._cached_state = None
         return rcod*100
     
     @metric(name='H2 yield', units='kg H2/kg rCOD', element='Process')
@@ -187,12 +192,15 @@ def add_metrics(model):
                 metric(getter=FuncGetter(get_overall_tss, (u.R1, group)),
                        name=f'Overall {name} TSS', **kwargs)
         else:
-            for Ri in (u.R1, u.R2):
-                for group, name in iters:
-                    metric(getter=FuncGetter(get_encap_tss, (Ri, group)),
-                           name=f'{Ri.ID} encapsulated {name} TSS', **kwargs)
-                    metric(getter=FuncGetter(get_overall_tss, (Ri, group)),
-                           name=f'{Ri.ID} overall {name} TSS', **kwargs)
+            for group, name in iters:
+                metric(getter=FuncGetter(get_encap_tss, (u.R1, group)),
+                       name=f'R1 encapsulated {name} TSS', **kwargs)
+                metric(getter=FuncGetter(get_overall_tss, (u.R1, group)),
+                       name=f'R1 overall {name} TSS', **kwargs)
+                metric(getter=FuncGetter(get_encap_tss, (u.R2, group)),
+                       name=f'R2 encapsulated {name} TSS', **kwargs)
+                metric(getter=FuncGetter(get_overall_tss, (u.R2, group)),
+                       name=f'R2 overall {name} TSS', **kwargs)
         for blt in (1, 10, 30):
             metric(getter=FuncGetter(get_cost, (sys, blt)),
                    name=f'Levelized cost (w/ degas, {blt}yr)', units='$/ton rCOD', element='TEA')

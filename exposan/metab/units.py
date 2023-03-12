@@ -405,7 +405,15 @@ class UASB(AnaerobicCSTR):
         self.T = (m*c*T_in + U*S*T_ext)/(m*c+U*S)
     
     def _cache_state(self):
-        self._concs = self._state[:-(self._n_gas+1)].copy()
+        self._cached_state = self._state[:-(self._n_gas+1)].copy()
+    
+    def _init_state(self):
+        if self._cached_state is not None:
+            Q = self._mixed.F_vol * 24
+            self._state = np.append(self._cache_state, Q)
+            self._dstate = self._state * 0.
+        else:
+            super()._init_state()
         
     def _compile_ODE(self):
         cmps = self.components
@@ -659,6 +667,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         self.rockwool_unit_cost = rockwool_unit_cost
         self.carbon_steel_unit_cost = carbon_steel_unit_cost
         self.model = model
+        self._cached_state = None
         
         hx_in = Stream(f'{ID}_hx_in')
         hx_out = Stream(f'{ID}_hx_out')
@@ -956,12 +965,13 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             self._concs = arr
     
     def _cache_state(self):
-        self._concs = self._state[:-(self._n_gas+1)].copy()
+        self._cached_state = self._state[:-(self._n_gas+1)].copy()
     
     def _init_state(self):
         mixed = self._mixed
         Q = mixed.get_total_flow('m3/d')
-        if self._concs is not None: Cs = self._concs
+        if self._cached_state is not None: Cs = self._cached_state
+        elif self._concs is not None: Cs = self._concs
         else: Cs = np.tile(mixed.conc, (self.n_dz+1))
         self._state = np.append(Cs, [0]*self._n_gas + [Q]).astype('float64')
         self._dstate = self._state * 0.
@@ -1428,7 +1438,8 @@ class METAB_PackedBed(METAB_FluidizedBed):
     def _init_state(self):
         mixed = self._mixed
         Q = mixed.get_total_flow('m3/d')
-        if self._concs is not None: Cs = self._concs
+        if self._cached_state is not None: Cs = self._cached_state
+        elif self._concs is not None: Cs = self._concs
         else: Cs = np.tile(mixed.conc, (self.n_dz+1)*self.n_cstr)
         self._state = np.append(Cs, [0]*self._n_gas + [Q]).astype('float64')
         self._dstate = self._state * 0.
