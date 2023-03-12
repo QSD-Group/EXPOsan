@@ -241,7 +241,8 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
                          F_BM_default=1, lifetime=lifetime)
             sys = System(sys_ID, path=(R1, R2))
             to_track = (R1, R2, eff, bg1, bg2)
-        if (Reactor == UASB and gas_extraction == 'M') or Reactor == METAB_FluidizedBed:
+        if (Reactor == UASB and gas_extraction == 'M') or \
+            Reactor in (METAB_FluidizedBed, METAB_PackedBed):
             R1.set_init_conc(**C0)
             R2.set_init_conc(**C0)
         else:

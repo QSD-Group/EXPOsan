@@ -18,17 +18,8 @@ import qsdsan as qs
 def run_discrete_DVs(samples_path):
     qs.PowerUtility.price = 0.0913
     dct = load_data(samples_path, sheet=None)
-    for i in (
-            # 'UASB', 
-              # 'FB', 
-              'PB',
-             ):
-        for n, j in (
-                (1,'P'), 
-                (2,'P'), 
-                (2,'M'), 
-                (2,'H'),
-                ):
+    for i in ('UASB','FB','PB',):
+        for n, j in ((1,'P'), (2,'P'), (2,'M'), (2,'H'),):
             sys = create_system(n_stages=n, reactor_type=i, gas_extraction=j)
             print(sys.ID)
             mdl = create_model(sys, kind='DV', exception_hook='warn')
