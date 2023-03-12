@@ -1447,9 +1447,15 @@ class METAB_PackedBed(METAB_FluidizedBed):
     def f_q_gas_fixed_P_headspace(self, rhoTs, S_gas, T):
         cmps = self.components
         gas_mass2mol_conversion = (cmps.i_mass / cmps.chem_MW)[self._gas_cmp_idx]
-        self._q_gas = self._R*T/(self._P_gas-self.p_vapor(convert_to_bar=True))\
+        q_gas = self._R*T/(self._P_gas-self.p_vapor(convert_to_bar=True))\
                                 *self.V_liq/self.n_cstr*sum(rhoTs*gas_mass2mol_conversion)
-        return self._q_gas
+        return q_gas
+    
+    def f_q_gas_var_P_headspace(self, rhoTs, S_gas, T):
+        p_gas = S_gas * self._R * T
+        self._P_gas = P = sum(p_gas) + self.p_vapor(convert_to_bar=True) 
+        q_gas = max(0, self._k_p * (P - self._P_atm))
+        return q_gas
     
     def _compile_ODE(self):
         cmps = self.components
@@ -1549,6 +1555,7 @@ class METAB_PackedBed(METAB_FluidizedBed):
                 flow_in = Q * Cs_bk             # for next CSTR
             
             q_gas = np.apply_along_axis(f_qgas, 1, rhos_gas, S_gas, T)
+            self._q_gas = sum(q_gas)
             d_gas = - sum(q_gas)*S_gas/V_gas + np.sum(rhos_gas*V_liq, axis=0)/V_gas * gas_mass2mol_conversion
             _dstate[-(n_gas+1):-1] = d_gas
             _dstate[-1] = sum(dy_ins[:,-1])
