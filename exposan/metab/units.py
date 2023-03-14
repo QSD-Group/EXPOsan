@@ -729,13 +729,11 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         
         '''
         if not self._rQ: 
-            if not hasattr(self, '_rQ_min'):
-                u_min = self.min_fluidizing_velocity(Beads._bead_density)
-                A_bed = (pi*self.V_bed**2/4/self.reactor_height_to_diameter**2)**(1/3)
-                A_liq = A_bed * 0.4
-                self._rQ_min = u_min * A_liq/self._mixed.F_vol - 1
-            return self._rQ_min
-        return self._rQ 
+            u_min = self.min_fluidizing_velocity(Beads._bead_density)
+            A_bed = (pi*self.V_bed**2/4/self.reactor_height_to_diameter**2)**(1/3)
+            A_liq = A_bed * 0.4
+            return u_min * A_liq/self._mixed.F_vol - 1
+        return self._rQ
     @recirculation_ratio.setter
     def recirculation_ratio(self, r):
         if r:
