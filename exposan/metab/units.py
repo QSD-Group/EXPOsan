@@ -1384,7 +1384,9 @@ class METAB_PackedBed(METAB_FluidizedBed):
             self.V_gas = max(0.1, Vg-Vg_subtract)
         self.f_void = f
     
-    recirculation_ratio = property(METAB_FluidizedBed.recirculation_ratio.fget)
+    @property
+    def recirculation_ratio(self):
+        return self._rQ or 0.
     @recirculation_ratio.setter
     def recirculation_ratio(self, r):
         self._rQ = r
