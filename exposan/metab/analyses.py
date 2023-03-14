@@ -117,10 +117,57 @@ def plot_clusters(data=None, save_as='', partial=True):
     
     return fig, ax
     
+#%%
+label_diff = lambda row, bl: f'{row}-{bl}'
 
+def calc_diff(df, factor, baseline_value):    
+    bl = df.xs(key=baseline_value, axis=1, level=factor)
+    df.drop(labels=baseline_value, axis=1, level=factor, inplace=True)
+    df.index = range(df.shape[0])
+    out = []
+    for i in ('Levelized cost', 'GWP100'):
+        diff = df.xs(i, axis=1)
+        diff -= bl[i].values
+        diff = pd.melt(diff, value_name=i, ignore_index=False)
+        diff['id'] = diff.index
+        diff = diff.set_index([c for c in diff.columns if c != i])
+        out.append(diff)
+    out = out[0].join(out[1])    
+    out['factor'] = factor
+    out['pair'] = [label_diff(fct, baseline_value) for fct in out.index.get_level_values(factor)]
+    out.index = range(out.shape[0])
+    return out
+
+groups = (
+    ('Reactor type', ['Bead lifetime','Bead diameter', 'Voidage'], 'UASB'),
+    ('Number of stages', [], 1),
+    ('Gas extraction', ['Recirculation ratio', 'Headspace pressure'], 'P'),
+    ('Temperature', [], 22),
+    ('Effluent degassing', [], 0),
+    )
+
+def compare_DVs(data=None):
+    if data is None:
+        data = load_data(ospath.join(results_path, 'table_compiled.xlsx'))
+    vals = ['Levelized cost', 'GWP100']
+    dvs = set(data.columns) - set(vals)
+    out = []
+    for factor, covar, bl in groups:
+        idx = list(dvs - {factor, *covar})
+        cols = [factor, *covar]
+        df = data.pivot(index=idx, columns=cols, values=vals)
+        # df.dropna(axis=0, inplace=True)
+        #!!! not right
+        try: out.append(calc_diff(df, factor, bl))
+        except: breakpoint()
+    out = pd.concat(out)
+    return out
+        
 #%%
 if __name__ == '__main__':
-    path = ospath.join(data_path, 'analysis_framework.xlsx')
-    run_discrete_DVs(path)
+    # path = ospath.join(data_path, 'analysis_framework.xlsx')
+    # run_discrete_DVs(path)
+    # data = data_compile()
     # plot_clusters(partial=True)
     # plot_clusters(partial=False)
+    compare_DVs()
