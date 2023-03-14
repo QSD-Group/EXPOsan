@@ -29,7 +29,7 @@ def run_discrete_DVs(samples_path):
     for i in ('FB',):
         for n, j in (
                 (1,'P'), 
-                # (2,'P'), (2,'M'), (2,'H'),
+                (2,'P'), (2,'M'), (2,'H'),
                 ):
             sys = create_system(n_stages=n, reactor_type=i, gas_extraction=j)
             print(sys.ID)
