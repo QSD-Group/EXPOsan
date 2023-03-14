@@ -324,6 +324,7 @@ class UASB(AnaerobicCSTR):
             self.construction += aux.construction
         for equip in self.equipment:
             self.construction += equip.construction
+        self._cached_state = None
     
     def _setup(self):
         hasfield = hasattr
