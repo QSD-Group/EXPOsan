@@ -184,7 +184,7 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
     cmps = pc.create_adm1_cmps()
     adm1 = pc.ADM1(flex_rate_function=flex_rhos_adm1)
     inf_concs = inf_concs or default_inf_concs.copy()
-    inf = WasteStream('inf')
+    inf = WasteStream('inf', T=295.15)
     inf.set_flow_by_concentration(Q, concentrations=inf_concs, 
                                   units=('m3/d', 'kg/m3'))
     C0 = dict(zip(cmps.IDs, C0_bulk))
