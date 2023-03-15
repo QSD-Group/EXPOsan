@@ -127,7 +127,7 @@ def calc_diff(df, factor, baseline_value):
     out = []
     for i in ('Levelized cost', 'GWP100'):
         diff = df.xs(i, axis=1)
-        diff -= bl[i].values
+        diff = diff.sub(bl[i].values, axis=0)
         diff = pd.melt(diff, value_name=i, ignore_index=False)
         diff['id'] = diff.index
         diff = diff.set_index([c for c in diff.columns if c != i])
@@ -149,6 +149,7 @@ groups = (
 def compare_DVs(data=None):
     if data is None:
         data = load_data(ospath.join(results_path, 'table_compiled.xlsx'))
+    data.drop('id', axis=1, inplace=True)
     vals = ['Levelized cost', 'GWP100']
     dvs = set(data.columns) - set(vals)
     out = []
@@ -156,10 +157,8 @@ def compare_DVs(data=None):
         idx = list(dvs - {factor, *covar})
         cols = [factor, *covar]
         df = data.pivot(index=idx, columns=cols, values=vals)
-        # df.dropna(axis=0, inplace=True)
-        #!!! not right
-        try: out.append(calc_diff(df, factor, bl))
-        except: breakpoint()
+        df.dropna(axis=0, inplace=True)
+        out.append(calc_diff(df, factor, bl))
     out = pd.concat(out)
     return out
         
@@ -170,4 +169,4 @@ if __name__ == '__main__':
     # data = data_compile()
     # plot_clusters(partial=True)
     # plot_clusters(partial=False)
-    compare_DVs()
+    out = compare_DVs()
