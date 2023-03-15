@@ -122,7 +122,7 @@ def plot_clusters(data=None, save_as='', partial=True):
     return fig, ax
     
 #%%
-label_diff = lambda row, bl: f'{row}-{bl}'
+# label_diff = lambda row, bl: f'{row}-{bl}'
 
 def calc_diff(df, factor, baseline_value):    
     bl = df.xs(key=baseline_value, axis=1, level=factor)
@@ -137,33 +137,46 @@ def calc_diff(df, factor, baseline_value):
         diff = diff.set_index([c for c in diff.columns if c != i])
         out.append(diff)
     out = out[0].join(out[1])    
-    out['factor'] = factor
-    out['pair'] = [label_diff(fct, baseline_value) for fct in out.index.get_level_values(factor)]
+    out['factor'] = f'{factor}_{baseline_value}'
+    # out['pair'] = [label_diff(fct, baseline_value) for fct in out.index.get_level_values(factor)]
+    out['pair'] = out.index.get_level_values(factor)   
     out.index = range(out.shape[0])
     return out
 
-groups = (
-    ('Reactor type', ['Bead lifetime','Bead diameter', 'Voidage'], 'UASB'),
-    ('Number of stages', [], 1),
-    ('Gas extraction', ['Recirculation ratio', 'Headspace pressure'], 'P'),
-    ('Temperature', [], 22),
-    ('Effluent degassing', [], 0),
-    )
+cat = (
+       ('Reactor type', ['Bead lifetime','Bead diameter', 'Voidage'], 'UASB'),
+       ('Number of stages', [], 1),
+       ('Gas extraction', ['Recirculation ratio', 'Headspace pressure'], 'P'),
+       ('Temperature', [], 22),
+       ('Effluent degassing', [], 0),
+       ('Headspace pressure', [], 0.1),
+       ('Recirculation ratio', [], 50),
+       )
 
-def compare_DVs(data=None):
+cont = (
+        ('Total HRT', [], 12),
+        ('Bead diameter', [], 10),
+        ('Voidage', [], 0.6),
+        )
+
+def compare_DVs(data=None, save_to='', categorical=True):
     if data is None:
         data = load_data(ospath.join(results_path, 'table_compiled.xlsx'))
     data.drop('id', axis=1, inplace=True)
     vals = ['Levelized cost', 'GWP100']
     dvs = set(data.columns) - set(vals)
     out = []
+    groups = cat if categorical else cont
     for factor, covar, bl in groups:
         idx = list(dvs - {factor, *covar})
         cols = [factor, *covar]
-        df = data.pivot(index=idx, columns=cols, values=vals)
+        df = data.dropna(axis=0, subset=factor)
+        df = df.pivot(index=idx, columns=cols, values=vals)
         df.dropna(axis=0, inplace=True)
         out.append(calc_diff(df, factor, bl))
     out = pd.concat(out)
+    path = save_to or ospath.join(results_path, f'diff_{categorical}.xlsx')
+    out.to_excel(path)
     return out
         
 #%%
@@ -171,6 +184,7 @@ if __name__ == '__main__':
     # path = ospath.join(data_path, 'analysis_framework.xlsx')
     # run_discrete_DVs(path)
     # data = data_compile()
-    plot_clusters(partial=True)
-    plot_clusters(partial=False)
-    # out = compare_DVs()
+    # plot_clusters(partial=True)
+    # plot_clusters(partial=False)
+    out = compare_DVs(categorical=True)
+    # out = compare_DVs(categorical=False)
