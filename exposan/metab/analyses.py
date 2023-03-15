@@ -149,7 +149,7 @@ groups = (
           ('Effluent degassing', [], 0),
           ('Total HRT', [], 1),
           ('Bead diameter', [], 2),
-          ('Voidage', [], 0.6),
+          ('Voidage', [], 0.9),
           ('Bead lifetime', [], 30),
           )
 
@@ -176,27 +176,32 @@ def compare_DVs(data=None, save_as=''):
     
 
 #%%
-boxprops = dict(alpha=0.7)
-# flierprops = dict(marker='.', markersize=1, markerfacecolor='#90918e', markeredgecolor='#90918e')
+boxprops = dict(alpha=0.7, edgecolor='black')
+flierprops = dict(marker='.', markersize=1, markerfacecolor='#90918e', markeredgecolor='#90918e')
 meanprops = dict(marker='^', markersize=2.5, markerfacecolor='black', markeredgecolor='black')
 medianprops = dict(color='black', lw=1)
 
+pal = ['#60C1CF', '#F98F60', '#79BF82', '#F3C354', '#A280B9', '#ED586F', 
+       '#35767F', '#733763', '#4D7E53', '#AB8937', '#5184EF']
+
 def plot_joint(df, save_as='', kde=True):
-    g = sns.JointGrid(height=8, ratio=5, space=0, marginal_ticks=True, palette='viridis')
+    g = sns.JointGrid(height=8, ratio=5, space=0, marginal_ticks=True)
     x, y = df['Levelized cost'], df['GWP100']
     group = df['group']
     g.refline(x=0, y=0, color='#90918e', lw=1)
     if kde:
         sns.kdeplot(x=x, y=y, hue=group, ax=g.ax_joint,
+                    palette=pal,
                     common_norm=False,
-                    thresh=0.2,
+                    # thresh=0.2,
                     fill=True,
-                    legend='auto',
-                    alpha=0.5,
+                    legend=False,
+                    alpha=0.6,
                     )
     else:
         sns.scatterplot(x=x, y=y, hue=group, ax=g.ax_joint,
-                        legend='auto',
+                        palette=pal,
+                        legend=False,
                         size=36,
                         alpha=0.7,
                         )
@@ -205,18 +210,20 @@ def plot_joint(df, save_as='', kde=True):
     g.ax_joint.set_xlabel('')
     g.ax_joint.set_ylabel('')
     bxp_kwargs = dict(
+        palette=pal,
+        linewidth=1,
         showcaps=True,
         showmeans=True,
         showfliers=False,
         dodge=False,
         saturation=1,
-        fliersize=1,
-        # width=0.3,
+        width=0.3,
         boxprops=boxprops,
-        # flierprops=flierprops,
+        flierprops=flierprops,
         meanprops=meanprops,
         medianprops=medianprops,
         )
+    if group.nunique() > 3: bxp_kwargs.pop('width')
     sns.boxplot(x=x, y=group, hue=group, ax=g.ax_marg_x, **bxp_kwargs)
     sns.boxplot(y=y, x=group, hue=group, ax=g.ax_marg_y, **bxp_kwargs)
     for ax in (g.ax_marg_x, g.ax_marg_y): ax.legend_.remove()
@@ -238,8 +245,8 @@ def plot_diff(data=None):
     singles = ('Reactor type', 'Total HRT', 'Bead lifetime')
     for i in singles:
         df = data[i]
-        df['group'] = df['pair']
-        plot_joint(df, f'{i}.png')
+        df['group'] = df['pair'].astype(str)
+        plot_joint(df, f'{i}.png', kde=(i != 'Bead lifetime'))
     others = []
     for k, v in data.items():
         if k not in singles:
@@ -256,5 +263,5 @@ if __name__ == '__main__':
     # data = data_compile()
     # plot_clusters(partial=True)
     # plot_clusters(partial=False)
-    # out = compare_DVs()
-    plot_diff()
+    out = compare_DVs()
+    plot_diff(out)
