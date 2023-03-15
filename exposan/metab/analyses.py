@@ -75,13 +75,15 @@ def plot_clusters(data=None, save_as='', partial=True):
         data = load_data(ospath.join(results_path, 'table_compiled.xlsx'))
     if partial: fig, ax = plt.subplots(figsize=(8,8))
     else: fig, ax = plt.subplots(figsize=(18,12))
-    edge = ['#000000' if i else '#FFFFFF' for i in data['Effluent degassing'].to_numpy()]
+    pal = {'UASB':'#60c1cf', 'FB':'#F98F60', 'PB':'#a280b9'}
+    edge = ['#000000' if dg else pal[rct] for dg, rct in 
+            data.loc[:,['Effluent degassing','Reactor type']].to_numpy()]
     ax = sns.scatterplot(
         data=data,
         x='Levelized cost',
         y='GWP100',
         hue='Reactor type',
-        palette={'UASB':'#60c1cf', 'FB':'#F98F60', 'PB':'#a280b9'},
+        palette=pal,
         size='Number of stages',
         sizes=(30, 45),
         style='Gas extraction',
