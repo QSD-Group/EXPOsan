@@ -122,63 +122,133 @@ def plot_clusters(data=None, save_as='', partial=True):
     return fig, ax
     
 #%%
-# label_diff = lambda row, bl: f'{row}-{bl}'
-
-def calc_diff(df, factor, baseline_value):    
+def calc_diff(df, factor, baseline_value, norms):    
     bl = df.xs(key=baseline_value, axis=1, level=factor)
     df.drop(labels=baseline_value, axis=1, level=factor, inplace=True)
     df.index = range(df.shape[0])
     out = []
     for i in ('Levelized cost', 'GWP100'):
         diff = df.xs(i, axis=1)
-        diff = diff.sub(bl[i].values, axis=0)
+        diff = diff.sub(bl[i].values, axis=0)/norms[i]
         diff = pd.melt(diff, value_name=i, ignore_index=False)
         diff['id'] = diff.index
         diff = diff.set_index([c for c in diff.columns if c != i])
         out.append(diff)
-    out = out[0].join(out[1])    
-    out['factor'] = f'{factor}_{baseline_value}'
-    # out['pair'] = [label_diff(fct, baseline_value) for fct in out.index.get_level_values(factor)]
+    out = out[0].join(out[1])
     out['pair'] = out.index.get_level_values(factor)   
     out.index = range(out.shape[0])
     return out
 
-cat = (
-       ('Reactor type', ['Bead lifetime','Bead diameter', 'Voidage'], 'UASB'),
-       ('Number of stages', [], 1),
-       ('Gas extraction', ['Recirculation ratio', 'Headspace pressure'], 'P'),
-       ('Temperature', [], 22),
-       ('Effluent degassing', [], 0),
-       ('Headspace pressure', [], 0.1),
-       ('Recirculation ratio', [], 50),
-       )
+groups = (
+          ('Reactor type', ['Bead lifetime','Bead diameter', 'Voidage'], 'UASB'),
+          ('Gas extraction', ['Recirculation ratio', 'Headspace pressure'], 'P'),
+          ('Headspace pressure', [], 0.4),
+          ('Recirculation ratio', [], 1),
+          ('Number of stages', [], 1),
+          ('Temperature', [], 22),
+          ('Effluent degassing', [], 0),
+          ('Total HRT', [], 1),
+          ('Bead diameter', [], 2),
+          ('Voidage', [], 0.6),
+          ('Bead lifetime', [], 30),
+          )
 
-cont = (
-        ('Total HRT', [], 12),
-        ('Bead diameter', [], 10),
-        ('Voidage', [], 0.6),
-        )
-
-def compare_DVs(data=None, save_to='', categorical=True):
+def compare_DVs(data=None, save_as=''):
     if data is None:
         data = load_data(ospath.join(results_path, 'table_compiled.xlsx'))
     data.drop('id', axis=1, inplace=True)
     vals = ['Levelized cost', 'GWP100']
+    norms = data.loc[:,vals].max(axis=0) - data.loc[:,vals].min(axis=0)
     dvs = set(data.columns) - set(vals)
-    out = []
-    groups = cat if categorical else cont
+    out = {}
     for factor, covar, bl in groups:
         idx = list(dvs - {factor, *covar})
         cols = [factor, *covar]
         df = data.dropna(axis=0, subset=factor)
         df = df.pivot(index=idx, columns=cols, values=vals)
         df.dropna(axis=0, inplace=True)
-        out.append(calc_diff(df, factor, bl))
-    out = pd.concat(out)
-    path = save_to or ospath.join(results_path, f'diff_{categorical}.xlsx')
-    out.to_excel(path)
-    return out
-        
+        out[factor] = calc_diff(df, factor, bl, norms)
+    path = save_as or ospath.join(results_path, 'diff.xlsx')
+    with pd.ExcelWriter(path) as writer:
+        for k,v in out.items():
+            v.to_excel(writer, sheet_name=k)
+    return out  
+    
+
+#%%
+boxprops = dict(alpha=0.7)
+# flierprops = dict(marker='.', markersize=1, markerfacecolor='#90918e', markeredgecolor='#90918e')
+meanprops = dict(marker='^', markersize=2.5, markerfacecolor='black', markeredgecolor='black')
+medianprops = dict(color='black', lw=1)
+
+def plot_joint(df, save_as='', kde=True):
+    g = sns.JointGrid(height=8, ratio=5, space=0, marginal_ticks=True, palette='viridis')
+    x, y = df['Levelized cost'], df['GWP100']
+    group = df['group']
+    g.refline(x=0, y=0, color='#90918e', lw=1)
+    if kde:
+        sns.kdeplot(x=x, y=y, hue=group, ax=g.ax_joint,
+                    common_norm=False,
+                    thresh=0.2,
+                    fill=True,
+                    legend='auto',
+                    alpha=0.5,
+                    )
+    else:
+        sns.scatterplot(x=x, y=y, hue=group, ax=g.ax_joint,
+                        legend='auto',
+                        size=36,
+                        alpha=0.7,
+                        )
+    g.ax_joint.tick_params(axis='both', which='major', direction='inout', length=10, labelsize=18)
+    g.ax_joint.tick_params(axis='both', which='minor', direction='inout', length=6)
+    g.ax_joint.set_xlabel('')
+    g.ax_joint.set_ylabel('')
+    bxp_kwargs = dict(
+        showcaps=True,
+        showmeans=True,
+        showfliers=False,
+        dodge=False,
+        saturation=1,
+        fliersize=1,
+        # width=0.3,
+        boxprops=boxprops,
+        # flierprops=flierprops,
+        meanprops=meanprops,
+        medianprops=medianprops,
+        )
+    sns.boxplot(x=x, y=group, hue=group, ax=g.ax_marg_x, **bxp_kwargs)
+    sns.boxplot(y=y, x=group, hue=group, ax=g.ax_marg_y, **bxp_kwargs)
+    for ax in (g.ax_marg_x, g.ax_marg_y): ax.legend_.remove()
+    g.ax_marg_x.tick_params(axis='x', which='major', direction='out', length=5)
+    g.ax_marg_x.tick_params(axis='x', which='minor', direction='out', length=3)    
+    g.ax_marg_x.tick_params(left=False, which='both', labelleft=False)    
+    g.ax_marg_x.spines['left'].set_color('white')
+    g.ax_marg_y.tick_params(axis='y', which='major', direction='out', length=5)
+    g.ax_marg_y.tick_params(axis='y', which='minor', direction='out', length=3) 
+    g.ax_marg_y.tick_params(bottom=False, which='both', labelbottom=False)    
+    g.ax_marg_y.spines['bottom'].set_color('white')
+    
+    path = ospath.join(figures_path, save_as)
+    g.savefig(path, dpi=300, facecolor='white')
+
+def plot_diff(data=None):
+    if data is None:
+        data = load_data(ospath.join(results_path, 'diff.xlsx'), sheet=None)
+    singles = ('Reactor type', 'Total HRT', 'Bead lifetime')
+    for i in singles:
+        df = data[i]
+        df['group'] = df['pair']
+        plot_joint(df, f'{i}.png')
+    others = []
+    for k, v in data.items():
+        if k not in singles:
+            v['group'] = v.apply(lambda row: f"{k}_{row['pair']}", axis=1)
+            others.append(v)
+    df = pd.concat(others)
+    plot_joint(df, 'other_DVs.png')
+    
+
 #%%
 if __name__ == '__main__':
     # path = ospath.join(data_path, 'analysis_framework.xlsx')
@@ -186,5 +256,5 @@ if __name__ == '__main__':
     # data = data_compile()
     # plot_clusters(partial=True)
     # plot_clusters(partial=False)
-    out = compare_DVs(categorical=True)
-    # out = compare_DVs(categorical=False)
+    # out = compare_DVs()
+    plot_diff()
