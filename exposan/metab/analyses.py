@@ -78,6 +78,7 @@ def plot_clusters(data=None, save_as='', partial=True):
     pal = {'UASB':'#60c1cf', 'FB':'#F98F60', 'PB':'#a280b9'}
     edge = ['#000000' if dg else pal[rct] for dg, rct in 
             data.loc[:,['Effluent degassing','Reactor type']].to_numpy()]
+    leg = False if partial else 'auto'
     ax = sns.scatterplot(
         data=data,
         x='Levelized cost',
@@ -89,7 +90,7 @@ def plot_clusters(data=None, save_as='', partial=True):
         style='Gas extraction',
         markers={'H':'s', 'M':'^', 'P':'o'},
         edgecolor=edge,
-        legend=False,
+        legend=leg,
         alpha=0.7,
         linewidths=2,
         ax=ax,
@@ -102,6 +103,7 @@ def plot_clusters(data=None, save_as='', partial=True):
     else:
         ax.set_xlim(left=0)
         ax.set_ylim(bottom=-100)
+        ax.legend(fontsize=16)
     ax.set_xlabel('')
     ax.set_ylabel('')
     ax2x = ax.secondary_xaxis('top')
@@ -169,6 +171,6 @@ if __name__ == '__main__':
     # path = ospath.join(data_path, 'analysis_framework.xlsx')
     # run_discrete_DVs(path)
     # data = data_compile()
-    # plot_clusters(partial=True)
-    # plot_clusters(partial=False)
-    out = compare_DVs()
+    plot_clusters(partial=True)
+    plot_clusters(partial=False)
+    # out = compare_DVs()
