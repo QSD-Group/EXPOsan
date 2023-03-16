@@ -193,7 +193,6 @@ def plot_joint(df, save_as='', kde=True):
         sns.kdeplot(x=x, y=y, hue=group, ax=g.ax_joint,
                     palette=pal,
                     common_norm=False,
-                    # thresh=0.2,
                     fill=True,
                     legend=False,
                     alpha=0.6,
@@ -202,7 +201,7 @@ def plot_joint(df, save_as='', kde=True):
         sns.scatterplot(x=x, y=y, hue=group, ax=g.ax_joint,
                         palette=pal,
                         legend=False,
-                        size=36,
+                        size=30,
                         alpha=0.7,
                         )
     g.ax_joint.tick_params(axis='both', which='major', direction='inout', length=10, labelsize=18)
@@ -263,5 +262,5 @@ if __name__ == '__main__':
     # data = data_compile()
     # plot_clusters(partial=True)
     # plot_clusters(partial=False)
-    out = compare_DVs()
-    plot_diff(out)
+    # out = compare_DVs()
+    plot_diff()
