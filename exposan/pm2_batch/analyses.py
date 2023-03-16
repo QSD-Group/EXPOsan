@@ -30,16 +30,16 @@ mpl.rcParams['font.sans-serif'] = 'arial'
 mpl.rcParams["figure.autolayout"] = True
 mpl.rcParams['xtick.minor.visible'] = True
 
-N = 10000
+N = 20000
 
-# T = 0.25
-T = 7
+T = 0.25
+# T = 7    # exclude
 t_step = 0.01
 # rmse_thresholds = [25, 25, 25]
 nrmse_thresholds = [None, 0.1, 0.1]
 
-# kind='include'
-kind='exclude'
+kind='include'
+# kind='exclude'
 
 #%%
 def seed_RGT():
@@ -132,7 +132,7 @@ def KS_test_var_thresholds(mdl=None, seed=None, kind=kind):
     for s, q in zip(sig, quantiles):
         for m, df in out.items():
             df[q] = s[m]
-    with pd.ExcelWriter(ospath.join(results_path, 'sig_params.xlsx')) as writer:
+    with pd.ExcelWriter(ospath.join(results_path, f'sig_params_{seed}.xlsx')) as writer:
         for m, thrs in zip(out, thresholds):
             df = out[m]
             df.index = df.index.droplevel()
@@ -143,11 +143,20 @@ def KS_test_var_thresholds(mdl=None, seed=None, kind=kind):
 
 #%%
 if __name__ == '__main__':
-    # seed = 160            # include, N=10000, exo_vars_batch_may_unit
-    # seed = 150          # include, N=10000, exo_vars_may_kinetic
-    # seed = 125          # include, N=1000, exo_vars_may_kinetic
 
-    seed = 170            # exclude, N=10000
+    # seed = 100          # include, N=1000, exo_vars_batch_may_unit
+    # seed = 101          # include, N=2000, exo_vars_batch_may_unit
+    # seed = 102          # include, N=3000, exo_vars_batch_may_unit
+    # seed = 103          # include, N=5000, exo_vars_batch_may_unit
+    # seed = 107          # include, N=10000, exo_vars_batch_may_unit
+    # seed = 105          # include, N=15000, exo_vars_batch_may_unit
+    seed = 106          # include, N=20000, exo_vars_batch_may_unit
+
+    # seed = 160          # include, N=10000, exo_vars_batch_may_unit
+    # seed = 150          # include, N=10000, exo_vars_may_kinetic (wrong)
+    # seed = 125          # include, N=1000, exo_vars_may_kinetic (wrong)
+
+    # seed = 170          # exclude, N=10000 (final)
     # seed = 130          # exclude, N=1000,
     # seed = 119          # DOE verification ver.
     # seed = 111          # exclude, N=10000

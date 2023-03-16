@@ -33,21 +33,39 @@ __all__ = (
 T_exc, I_exc = EDV.batch_init(os.path.join(data_path, 'exo_vars_batch_may_kinetic.xlsx'), 'linear')
 T_inc, I_inc = EDV.batch_init(os.path.join(data_path, 'exo_vars_batch_may_unit.xlsx'), 'linear')
 
+# default for 'include'
 default_init_conds = {
-    'X_CHL':3.91,
-    'X_ALG':782.30,
-    'X_CH':19.24,
-    'X_LI':101.06,
+    'X_CHL':2.81,
+    'X_ALG':561.57,
+    'X_CH':13.74,
+    'X_LI':62.22,
     'S_CO2':30.0,
     'S_A':5.0,
     'S_F':5.0,
     'S_O2':20.36,
-    'S_NH':27.84,
-    'S_NO':10.72,
-    'S_P':0.617,
-    'X_N_ALG':0.92,
-    'X_P_ALG':8.06,
+    'S_NH':25,
+    'S_NO':9.30,
+    'S_P':0.383,
+    'X_N_ALG':3.62,
+    'X_P_ALG':12.60,
     }
+
+# default for 'exclude'
+# default_init_conds = {
+#     'X_CHL':3.91,
+#     'X_ALG':782.30,
+#     'X_CH':19.24,
+#     'X_LI':101.06,
+#     'S_CO2':30.0,
+#     'S_A':5.0,
+#     'S_F':5.0,
+#     'S_O2':20.36,
+#     'S_NH':27.84,
+#     'S_NO':10.72,
+#     'S_P':0.617,
+#     'X_N_ALG':0.92,
+#     'X_P_ALG':8.06,
+#     }
 
 default_pm2_kwargs = dict(
     a_c=0.049, I_n=1500, arr_a=1.8e10, arr_e=6842, beta_1=2.90,

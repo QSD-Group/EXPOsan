@@ -22,7 +22,7 @@ __all__ = (
     'default_pm2_kwargs',
     'default_inf_kwargs',
     'default_init_conds',
-    'Q', 'Temp', 'V_mix', 'V_pbr', 'V_mem', 'V_ret',
+    'Temp', 'V_mix', 'V_pbr', 'V_mem', 'V_ret',
     'T_pbr', 'T_mix', 'I_pbr', 'I_mix',
     )
 
@@ -32,10 +32,10 @@ __all__ = (
 # Parameters and util functions
 # =============================================================================
 
-Q = 445.26           # influent flowrate [m3/d]
-Temp = 295.94        # temperature [K]
+# Q = 445.26           # influent flowrate [m3/d]
+Temp = 286.14        # temperature [K]
 
-V_mix = 66.09  
+V_mix = 66.09
 V_pbr = 77.49
 V_mem = 7.03
 V_ret = 6.14
@@ -66,22 +66,22 @@ default_inf_kwargs = {
     }
 
 default_pm2_kwargs = dict(
-    a_c=0.049, I_n=1500, arr_a=1.8e10, arr_e=6842, beta_1=2.90, 
-    beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5, 
-    K_N=0.1, K_P=1.0, K_A=6.3, K_F=6.3, rho=1.186, K_STO=1.566, 
-    f_CH_max=0.819, f_LI_max=3.249, m_ATP=15.835, 
-    mu_max=1.969, q_CH=0.594, q_LI=0.910, 
-    Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163, 
+    a_c=0.049, I_n=1500, arr_a=1.8e10, arr_e=6842, beta_1=2.90,
+    beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
+    K_N=0.1, K_P=1.0, K_A=6.3, K_F=6.3, rho=1.186, K_STO=1.566,
+    f_CH_max=0.819, f_LI_max=3.249, m_ATP=15.835,
+    mu_max=1.969, q_CH=0.594, q_LI=0.910,
+    Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163,
     V_NH=0.254, V_NO=0.254, V_P=0.016, exponent=4,
     Y_ATP_PHO=55.073, Y_CH_PHO=0.754, Y_LI_PHO=0.901, Y_X_ALG_PHO=0.450,
-    Y_ATP_HET_ACE=39.623, Y_CH_NR_HET_ACE=0.625, Y_CH_ND_HET_ACE=0.600, 
+    Y_ATP_HET_ACE=39.623, Y_CH_NR_HET_ACE=0.625, Y_CH_ND_HET_ACE=0.600,
     Y_LI_NR_HET_ACE=1.105, Y_LI_ND_HET_ACE=0.713, Y_X_ALG_HET_ACE=0.216,
-    Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880, 
+    Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880,
     Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317, n_dark=0.7,
     path=None,
     )
     # path=os.path.join(data_path, '_pm2.tsv')
-    
+
 default_init_conds = {
         'X_CHL':2.31,
         'X_ALG':461.18,
@@ -98,17 +98,17 @@ default_init_conds = {
         'X_P_ALG':10.55,
     }
 
-def batch_init(sys, path, sheet):                        
-    df = load_data(path, sheet)                   
-    dct = df.to_dict('index')                       
+def batch_init(sys, path, sheet):
+    df = load_data(path, sheet)
+    dct = df.to_dict('index')
     u = sys.flowsheet.unit #unit registry
-    for k in [u.MIX, 
-              u.PBR1, u.PBR2, u.PBR3, u.PBR4, u.PBR5, 
-              u.PBR6, u.PBR7, u.PBR8, u.PBR9, u.PBR10, 
-              u.PBR11, u.PBR12, u.PBR13, u.PBR14, u.PBR15, 
+    for k in [u.MIX,
+              u.PBR1, u.PBR2, u.PBR3, u.PBR4, u.PBR5,
+              u.PBR6, u.PBR7, u.PBR8, u.PBR9, u.PBR10,
+              u.PBR11, u.PBR12, u.PBR13, u.PBR14, u.PBR15,
               u.PBR16, u.PBR17, u.PBR18, u.PBR19, u.PBR20,
               u.MEV, u.RET]:
-        k.set_init_conc(**dct[k._ID[:3]])  
+        k.set_init_conc(**dct[k._ID[:3]])
 
 # %%
 
@@ -122,7 +122,7 @@ def create_system(flowsheet=None, inf_kwargs={}, pm2_kwargs={}, init_conds={}):
 
     # Components
     cmps = pc.create_pm2_cmps()
-        
+
     # Streams
     INF = WasteStream('Secondary_effluent', T=Temp)
     inf_kwargs = inf_kwargs or default_inf_kwargs
@@ -143,11 +143,11 @@ def create_system(flowsheet=None, inf_kwargs={}, pm2_kwargs={}, init_conds={}):
     ALG = WasteStream('Harvested_biomass', T=Temp)
 
     RAA = WasteStream('Return_activated_algae', T=Temp)
-        
+
     # Process models
     pm2_kwargs = pm2_kwargs or default_pm2_kwargs
     pm2 = pc.PM2(**pm2_kwargs)
-    
+
     # Create unit operations
     MIX = su.CSTR('MIX', ins=[INF, RAA], outs=[PHO], V_max=V_mix,
                   aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_mix, I_mix))
@@ -216,24 +216,24 @@ def create_system(flowsheet=None, inf_kwargs={}, pm2_kwargs={}, init_conds={}):
 
     RET = su.CSTR('RET', ins=[PBR20-1, POST_MEM-0, CENT-0], outs=[RAA], V_max=V_ret,
                   aeration=None, suspended_growth_model=None)
-    
+
     # System setup
     sys = System('sys',
-                 path=(MIX, PBR1, PBR2, PBR3, PBR4, PBR5, PBR6, PBR7, PBR8, PBR9, PBR10, 
-                 PBR11, PBR12, PBR13, PBR14, PBR15, PBR16, PBR17, PBR18, PBR19, PBR20, 
-                 MEM, MEV, POST_MEM, CENT, RET), 
+                 path=(MIX, PBR1, PBR2, PBR3, PBR4, PBR5, PBR6, PBR7, PBR8, PBR9, PBR10,
+                 PBR11, PBR12, PBR13, PBR14, PBR15, PBR16, PBR17, PBR18, PBR19, PBR20,
+                 MEM, MEV, POST_MEM, CENT, RET),
                  recycle=(RAA,))
 
     init_conds = init_conds or default_init_conds
     batch_init(sys, os.path.join(data_path, 'initial_conditions.xlsx'), 'default')
-    
+
     sys.set_dynamic_tracker(MIX, PBR1, PBR20, RET, TE, ALG)
-    sys.set_tolerance(rmol=1e-6)    
-       
+    sys.set_tolerance(rmol=1e-6)
+
     return sys
 
 # %%
-  
+
 @time_printer
 def run(t, t_step, method=None, **kwargs):
     sys = create_system()
