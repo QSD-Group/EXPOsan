@@ -148,9 +148,9 @@ if __name__ == '__main__':
     # seed = 101          # include, N=2000, exo_vars_batch_may_unit
     # seed = 102          # include, N=3000, exo_vars_batch_may_unit
     # seed = 103          # include, N=5000, exo_vars_batch_may_unit
-    # seed = 107          # include, N=10000, exo_vars_batch_may_unit
+    seed = 107          # include, N=10000, exo_vars_batch_may_unit
     # seed = 105          # include, N=15000, exo_vars_batch_may_unit
-    seed = 106          # include, N=20000, exo_vars_batch_may_unit
+    # seed = 106          # include, N=20000, exo_vars_batch_may_unit
 
     # seed = 160          # include, N=10000, exo_vars_batch_may_unit
     # seed = 150          # include, N=10000, exo_vars_may_kinetic (wrong)

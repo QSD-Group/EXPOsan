@@ -35,9 +35,9 @@ def load(reload=False, pm2_kwargs={}, init_conds={}):
             pm2_kwargs=pm2_kwargs,
             init_conds=init_conds,
             )
-        PBR = sys.flowsheet.unit.MIX
+        PBR = sys.flowsheet.unit.PBR
         cmps = components = PBR.components
-        pm2 = PBR.suspended_growth_model  
+        pm2 = PBR.model
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     _system_loaded = True
