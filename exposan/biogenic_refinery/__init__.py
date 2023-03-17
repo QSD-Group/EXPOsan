@@ -22,7 +22,7 @@ from exposan.utils import (
     )
 
 # Module-wise setting on whether to allow resource recovery
-INCLUDE_RESOURCE_RECOVERY = True
+INCLUDE_RESOURCE_RECOVERY = False
 
 br_path = os.path.dirname(__file__)
 module = os.path.split(br_path)[-1]
@@ -303,167 +303,90 @@ def __getattr__(name):
 # =============================================================================
 
 ##### Recoveries #####
-# Calculate recoveries as in kg C/N/P/K per yr
-hr_per_yr = 365 * 24
-def get_C(stream):
-    sys = stream.source.system
-    for unit in sys.units:
-        if hasattr(unit, 'carbon_COD_ratio'): carbon_COD_ratio = unit.carbon_COD_ratio
-    return stream.COD*stream.F_vol/1e3*carbon_COD_ratio*hr_per_yr
-get_C_gas = lambda stream: stream.imol['CH4']*12*hr_per_yr
-get_N = lambda stream: stream.TN*stream.F_vol/1e3*hr_per_yr
-get_N_gas = lambda stream: stream.imol['N2O']*28*hr_per_yr
-get_P = lambda stream: stream.TP*stream.F_vol/1e3*hr_per_yr
-get_K = lambda stream: stream.TK*stream.F_vol/1e3*hr_per_yr
 
-# Only for `sysA` or `sysB`
+# Only for sysA, sysB, sysC
 def get_recoveries(system, include_breakdown=False):
-    AB = system.ID[-1]
-    if AB not in ('A', 'B'):
-        if AB in ('C', 'D'): return [lambda: 0]*3 # recoveries all 0 for sysC and sysD
+    sysID = system.ID[-1]
+    if sysID not in ('A', 'B', 'C'):
+        if sysID in ('D'): return [lambda: 0]*3 # recoveries all 0 for sysD
         raise ValueError('This function is only applicable for `sysA`, `sysB`, `sysC`, or `sysD`, '
                          f'not `{system.ID}`.')
 
-    u_reg = system.flowsheet.unit
-    ppl = get_ppl(AB)
-    dct = globals()
-    dct['C_dct'] = C_dct = {}
-    dct['N_dct'] = N_dct = {}
-    dct['P_dct'] = P_dct = {}
-    dct['K_dct'] = K_dct = {}
+    u = system.flowsheet.unit
+    ppl = get_ppl(sysID)
+    hr_per_yr = 365 * 24
 
     ##### Unique to A or B #####
-    if AB == 'A':
-        sol_num = 0
-        toilet = u_reg.A2
-        trans_sol = u_reg.A3
-        pretreat = u_reg.A6
-        liq_bed = u_reg.A7
-        pyrolysis = u_reg.A8
-        dryer = u_reg.A12
-        # Pretreatment
-        C_dct['pretreat_liq'] = get_C(pretreat.outs[0])
-        N_dct['pretreat_liq'] = get_N(pretreat.outs[0])
-        P_dct['pretreat_liq'] = get_P(pretreat.outs[0])
-        K_dct['pretreat_liq'] = get_K(pretreat.outs[0])
-        # Struvite and ion exchange all 0 for sysA
-        N_dct['struvite'] = N_dct['NH3'] = P_dct['struvite'] = 0
-    else: # unique to sysB
-        sol_num = 1
-        toilet = u_reg.B2
-        trans_liq = u_reg.B3
-        trans_sol = u_reg.B4
-        struvite = u_reg.B5
-        ix = u_reg.B6
-        liq_bed = u_reg.B7
-        pretreat = u_reg.B10
-        pyrolysis = u_reg.B11
-        dryer = u_reg.B15
-        # In
-        C_dct['toilet_liq'] = get_C(toilet.outs[0])
-        N_dct['toilet_liq'] = get_N(toilet.outs[0])
-        P_dct['toilet_liq'] = get_P(toilet.outs[0])
-        K_dct['toilet_liq'] = get_K(toilet.outs[0])
-        # Transported
-        C_dct['trans_liq'] = get_C(trans_liq.outs[0])
-        C_dct['trans_liq_loss'] = get_C(trans_liq.outs[1])
-        N_dct['trans_liq'] = get_N(trans_liq.outs[0])
-        N_dct['trans_liq_loss'] = get_N(trans_liq.outs[1])
-        P_dct['trans_liq'] = get_P(trans_liq.outs[0])
-        P_dct['trans_liq_loss'] = get_P(trans_liq.outs[1])
-        K_dct['trans_liq'] = get_K(trans_liq.outs[0])
-        K_dct['trans_liq_loss'] = get_K(trans_liq.outs[1])
+    if sysID == 'A':
+        toilet = u.A2
+        liq_bed = u.A7
+        pyrolysis = u.A8        
+        N_struvite = N_NH3 = P_struvite = 0 # Struvite and ion exchange all 0 for sysA
+    elif sysID == 'B': # unique to sysB
+        toilet = u.B2
+        struvite = u.B5
+        ix = u.B6
+        liq_bed = u.B7
+        pyrolysis = u.B11
         # Struvite and ion exchange
-        N_dct['struvite'] = struvite.outs[1].imol['Struvite'] * 14 * hr_per_yr # 14 is the MW of N
-        N_dct['NH3'] = ix.outs[2].imol['NH3'] * 14 * hr_per_yr
-        P_dct['struvite'] = struvite.outs[1].imol['Struvite'] * 31 * hr_per_yr # 31 is the MW of P
+        N_struvite = struvite.outs[1].imol['Struvite'] * 14 * hr_per_yr # 14 is the MW of N
+        N_NH3 = ix.outs[2].imol['NH3'] * 14 * hr_per_yr
+        P_struvite = struvite.outs[1].imol['Struvite'] * 31 * hr_per_yr # 31 is the MW of P
+    elif sysID == 'C':
+        toilet = u.C2
+        liq_bed = u.C7
+        pyrolysis = u.C8
+        N_struvite = N_NH3 = P_struvite = 0 # Struvite and ion exchange all 0 for sysC
+    else:
+        toilet = u.D2
 
-    ##### Applicable for both A and B #####
-    # In
-    C_dct['urine'] = get_C(toilet.ins[0]) * ppl
-    C_dct['feces'] = get_C(toilet.ins[1]) * ppl
-    C_dct['input'] = C_dct['urine'] + C_dct['feces']
-    N_dct['urine'] = get_N(toilet.ins[0]) * ppl
-    N_dct['feces'] = get_N(toilet.ins[1]) * ppl
-    N_dct['input'] = N_dct['urine'] + N_dct['feces']
-    P_dct['urine'] = get_P(toilet.ins[0]) * ppl
-    P_dct['feces'] = get_P(toilet.ins[1]) * ppl
-    P_dct['input'] = P_dct['urine'] + P_dct['feces']
-    K_dct['urine'] = get_K(toilet.ins[0]) * ppl
-    K_dct['feces'] = get_K(toilet.ins[1]) * ppl
-    K_dct['input'] = K_dct['urine'] + K_dct['feces']
-
-    # Toilet, leachate does not contain COD or C
-    C_dct['toilet_sol'] = get_C(toilet.outs[sol_num])
-    C_dct['toilet_gas'] = get_C_gas(toilet.outs[-2]) # C in fugitive CH4
-    N_dct['toilet_sol'] = get_N(toilet.outs[sol_num])
-    N_dct['toilet_gas'] = get_N_gas(toilet.outs[-1]) # N in fugitive N2O
-    P_dct['toilet_sol'] = get_P(toilet.outs[sol_num])
-    K_dct['toilet_sol'] = get_K(toilet.outs[sol_num])
-
-    # Transported
-    C_dct['trans_sol'] = get_C(trans_sol.outs[0])
-    C_dct['trans_sol_loss'] = get_C(trans_sol.outs[1])
-    N_dct['trans_sol'] = get_N(trans_sol.outs[0])
-    N_dct['trans_sol_loss'] = get_N(trans_sol.outs[1])
-    P_dct['trans_sol'] = get_P(trans_sol.outs[0])
-    P_dct['trans_sol_loss'] = get_P(trans_sol.outs[1])
-    K_dct['trans_sol'] = get_K(trans_sol.outs[0])
-    K_dct['trans_sol_loss'] = get_K(trans_sol.outs[1])
-
-    # Pretreatment
-    sol_num = 1 - sol_num # want 1 for sysA and 0 for sysB
-    C_dct['pretreat_sol'] = get_C(pretreat.outs[sol_num])
-    N_dct['pretreat_sol'] = get_N(pretreat.outs[sol_num])
-    P_dct['pretreat_sol'] = get_P(pretreat.outs[sol_num])
-    K_dct['pretreat_sol'] = get_K(pretreat.outs[sol_num])
+    # Calculate recoveries in kg C/N/P/K per yr
+    # Inputs
+    COD_urine = toilet.ins[0].COD * toilet.ins[0].F_vol
+    COD_feces = toilet.ins[1].COD * toilet.ins[1].F_vol
+    C_input = (COD_urine + COD_feces) / 1e3 * pyrolysis.carbon_COD_ratio * hr_per_yr * ppl
+    N_urine = toilet.ins[0].TN * toilet.ins[0].F_vol
+    N_feces = toilet.ins[1].TN * toilet.ins[1].F_vol 
+    N_input = (N_urine + N_feces) / 1e3 * hr_per_yr * ppl 
+    P_urine = toilet.ins[0].TP * toilet.ins[0].F_vol
+    P_feces = toilet.ins[1].TP * toilet.ins[1].F_vol
+    P_input = (P_urine + P_feces) / 1e3 * hr_per_yr * ppl 
+    K_urine = toilet.ins[0].TK * toilet.ins[0].F_vol
+    K_feces = toilet.ins[1].TK * toilet.ins[1].F_vol
+    K_input = (K_urine + K_feces) / 1e3 * hr_per_yr * ppl 
 
     # Liq bed
-    C_dct['bed_liq'] = get_C(liq_bed.outs[0])
-    C_dct['bed_gas'] = get_C_gas(liq_bed.outs[1])
-    N_dct['bed_liq'] = get_N(liq_bed.outs[0])
-    N_dct['bed_gas'] = get_N_gas(liq_bed.outs[2])
-    P_dct['bed_liq'] = get_P(liq_bed.outs[0])
-    K_dct['bed_liq'] = get_K(liq_bed.outs[0])
+    N_bed_liq = liq_bed.outs[0].TN * liq_bed.outs[0].F_vol / 1e3 * hr_per_yr 
+    P_bed_liq = liq_bed.outs[0].TP * liq_bed.outs[0].F_vol / 1e3 * hr_per_yr
+    K_bed_liq = liq_bed.outs[0].TK * liq_bed.outs[0].F_vol / 1e3 * hr_per_yr
 
-    #!!! Pyrolysis - need to change based on recalcitrance potential
-    C_dct['pyrolysis_biochar'] = pyrolysis.outs[0].imass['C'] * hr_per_yr
-    C_dct['pyrolysis_gas'] = get_C(pyrolysis.ins[0]) * pyrolysis.pyrolysis_C_loss
-    N_dct['pyrolysis_biochar'] = pyrolysis.outs[0].imass['N'] * hr_per_yr
-    N_dct['pyrolysis_gas'] = get_N(pyrolysis.ins[0]) * pyrolysis.pyrolysis_N_loss
-    P_dct['pyrolysis_biochar'] = pyrolysis.outs[0].imass['P'] * hr_per_yr
-    P_dct['pyrolysis_gas'] = get_P(pyrolysis.ins[0]) * pyrolysis.pyrolysis_P_loss
-    K_dct['pyrolysis_biochar'] = pyrolysis.outs[0].imass['K'] * hr_per_yr
-    K_dct['pyrolysis_gas'] = get_K(pyrolysis.ins[0]) * pyrolysis.pyrolysis_K_loss
+    # Pyrolysis 
+    C_pyrolysis_biochar = pyrolysis.outs[0].imass['C'] * hr_per_yr
 
-    # Dryer
-    C_dct['dryer_sol'] = get_C(dryer.outs[0])
-    C_dct['dryer_gas'] = get_C_gas(dryer.outs[2])
-    N_dct['dryer_sol'] = get_N(dryer.outs[0])
-    N_dct['dryer_gas'] = get_N_gas(dryer.outs[1])
-    P_dct['dryer_sol'] = get_P(dryer.outs[0])
-    K_dct['dryer_sol'] = get_K(dryer.outs[0])
 
-    # % N, P, and K recovered as a usable fertilizer product,
+    # % N, P, and K recovered as a usable fertilizer product, %C recovered as biochar
     # for model metrics and also the Resource Recovery criterion in DMsan analysis
     functions = [
-            lambda: C_dct['pyrolysis_biochar'] / C_dct['input'] * 100, # total_C_recovery
-            lambda: (N_dct['bed_liq']+N_dct['NH3']+N_dct['struvite']) / N_dct['input'] * 100, # total_N_recovery
-            lambda: (P_dct['bed_liq']+P_dct['struvite']) / P_dct['input'] * 100, # total_P_recovery
-            lambda: K_dct['bed_liq'] / K_dct['input'] * 100, # total_K_recovery
+            lambda: C_pyrolysis_biochar / C_input * 100, # total_C_recovery
+            lambda: (N_bed_liq + N_struvite + N_NH3) / N_input * 100, # total_N_recovery
+            lambda: (P_bed_liq+P_struvite) / P_input * 100, # total_P_recovery
+            lambda: K_bed_liq / K_input * 100, # total_K_recovery
             ]
     if not include_breakdown: return functions
 
     return [
         *functions,
-        lambda: C_dct['pyrolysis_biochar'] / C_dct['input'] * 100, # C_carbonizer_base
-        lambda: N_dct['bed_liq'] / N_dct['input'] * 100, # N_liquid_treatment_bed
-        lambda: N_dct['NH3'] / N_dct['input'] * 100, # N_ion_exchange
-        lambda: N_dct['struvite'] / N_dct['input'] * 100, # N_struvite
-        lambda: P_dct['bed_liq'] / P_dct['input'] * 100, # P_liquid_treatment_bed
-        lambda: P_dct['struvite'] / P_dct['input'] * 100, # P_struvite
-        lambda: K_dct['bed_liq'] / K_dct['input'] * 100, # K_liquid_treatment_bed
+        lambda: C_pyrolysis_biochar / C_input * 100, # C_carbonizer_base
+        lambda: N_bed_liq / N_input * 100, # N_liquid_treatment_bed
+        lambda: N_NH3 / N_input * 100, # N_ion_exchange
+        lambda: N_struvite / N_input * 100, # N_struvite
+        lambda: P_bed_liq / P_input * 100, # P_liquid_treatment_bed
+        lambda: P_struvite / P_input * 100, # P_struvite
+        lambda: K_bed_liq / K_input * 100, # K_liquid_treatment_bed
         ]
+
+# def get_biochar(system):
+    
 
 
 ##### Costs #####

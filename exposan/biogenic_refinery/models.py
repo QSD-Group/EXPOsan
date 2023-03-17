@@ -34,12 +34,15 @@ from exposan.biogenic_refinery import (
     create_system,
     data_path as br_data_path,
     get_decay_k,
-    get_LCA_metrics,
-    get_TEA_metrics,
     get_recoveries,
+    get_LCA_metrics,
     results_path,
     update_resource_recovery_settings,
     )
+
+# Filter out warnings related to uptime ratio
+import warnings
+warnings.filterwarnings('ignore', message='uptime_ratio')
 
 __all__ = ('create_model', 'run_uncertainty',)
 
@@ -52,29 +55,54 @@ __all__ = ('create_model', 'run_uncertainty',)
 
 def add_metrics(model):
     br._load_lca_data()
-    system = model.system
-    # Recoveries
-    funcs = get_recoveries(system)
-    metrics = [
-        Metric('Total C', funcs[0], '% C', 'C recovery'),
-        Metric('Total N', funcs[1], '% N', 'N recovery'),
-        Metric('Total P', funcs[2], '% P', 'P recovery'),
-        Metric('Total K', funcs[3], '% K', 'K recovery'),
-    ]
-    
-    # Net cost
-    metrics.append(
-        Metric('Annual net cost', get_TEA_metrics(system)[0], f'{qs.currency}/cap/yr', 'TEA results'),
-        )
-    # Net emissions
-    funcs = get_LCA_metrics(system)
+    sys = model.system
+    u = sys.flowsheet.unit
+
+    funcs = get_LCA_metrics(sys)
     cat = 'LCA results'
-    metrics.extend([
-        Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),
-        Metric('H_Ecosystems', funcs[1], 'points/cap/yr', cat),
-        Metric('H_Health', funcs[2], 'points/cap/yr', cat),
-        Metric('H_Resources', funcs[3], 'points/cap/yr', cat),
-        ])
+
+    if model.system.ID == 'sysA':
+        CS_metrics = [
+            u.A8.yield_db,
+            u.A8.outs[0].F_mass * 24,
+            u.A8.CS,
+            u.A8.outs[0].imass['C'] * 24
+            ]
+        metrics = [
+            Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),
+            Metric('H_Ecosystems', funcs[1], 'points/cap/yr', cat),
+            Metric('H_Health', funcs[2], 'points/cap/yr', cat),
+            Metric('H_Resources', funcs[3], 'points/cap/yr', cat),
+            Metric('Biochar Yield', CS_metrics[0], '% db'),
+            Metric('Mass Biochar Produced', CS_metrics[1], 'kg/day'),
+            Metric('Carbon Sequestration Potential', CS_metrics[2], '%'),
+            Metric('Mass Carbon Sequestered', CS_metrics[3], 'kg/day')
+            ]
+    elif model.system.ID == 'sysB':
+        CS_metrics = [
+            u.B11.yield_db,
+            u.B11.outs[0].F_mass * 24,
+            u.B11.CS,
+            u.B11.outs[0].imass['C'] * 24
+            ]
+        metrics = [
+            Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),
+            Metric('H_Ecosystems', funcs[1], 'points/cap/yr', cat),
+            Metric('H_Health', funcs[2], 'points/cap/yr', cat),
+            Metric('H_Resources', funcs[3], 'points/cap/yr', cat),
+            Metric('Biochar Yield', CS_metrics[0], '% db'),
+            Metric('Mass Biochar Produced', CS_metrics[1], 'kg/day'),
+            Metric('Carbon Sequestration Potential', CS_metrics[2], '%'),
+            Metric('Mass Carbon Sequestered', CS_metrics[3], 'kg/day')
+            ]
+    else:
+        metrics = [
+            Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),
+            Metric('H_Ecosystems', funcs[1], 'points/cap/yr', cat),
+            Metric('H_Health', funcs[2], 'points/cap/yr', cat),
+            Metric('H_Resources', funcs[3], 'points/cap/yr', cat),
+            ]
+    
     model.metrics = metrics
 
 
@@ -173,78 +201,7 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
         def set_household_size(i):
             br.household_size = max(1, i)
 
-        # Operator labor wage
-        b = br.operator_daily_wage
-        D = shape.Triangle(lower=(14.55), midpoint=b, upper=(43.68))
-        @param(name='Operator daily wages', element='TEA', kind='cost', units='USD/d',
-              baseline=b, distribution=D)
-        def set_operator_daily_wage(i):
-            sys._TEA.annual_labor = i*3*365
-
-        # Construction labor wage
-        b = br.const_daily_wage
-        D = shape.Triangle(lower=(b*0.5), midpoint=b, upper=(b*1.5))
-        @param(name='Construction daily wages', element='TEA', kind='cost', units='USD/d',
-              baseline=b, distribution=D)
-        def set_const_daily_wage(i):
-            for u in sys.units:
-                if isinstance(u, qs.sanunits.BiogenicRefineryHousing): break
-                u.const_daily_wage = i
         
-        if br.INCLUDE_RESOURCE_RECOVERY:
-            
-            # N fertilizer price
-            b = 1.507
-            D = shape.Uniform(lower=b*0.8, upper=b*1.2)
-            @param(name='N fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
-                    baseline=b, distribution=D)
-            def set_N_price(i):
-                price_dct['N'] = sys_stream.liq_N.price = sys_stream.sol_N.price = i * br.price_factor
-    
-            # P fertilizer price
-            b = 3.983
-            D = shape.Uniform(lower=b*0.8, upper=b*1.2)
-            @param(name='P fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
-                   baseline=b, distribution=D)
-            def set_P_price(i):
-                price_dct['P'] = sys_stream.liq_P.price = sys_stream.sol_P.price = i * br.price_factor
-    
-            # K fertilizer price
-            b = 1.333
-            D = shape.Uniform(lower=b*0.8, upper=b*1.2)
-            @param(name='K fertilizer price', element='TEA', kind='isolated', units='USD/kg K',
-                   baseline=b, distribution=D)
-            def set_K_price(i):
-                price_dct['K'] = sys_stream.liq_K.price = sys_stream.sol_K.price = i * br.price_factor
-    
-            # NH3 fertilizer price
-            D = shape.Uniform(lower=(1.507*(14/17)*0.8), upper=(1.507*(14/17)*1.2))
-            @param(name='NH3 fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
-                   baseline=(1.507*(14/17)), distribution=D)
-            def set_con_NH3_price(i):
-                price_dct['conc_NH3'] = sys_stream.conc_NH3.price = i * br.price_factor
-    
-            # Struvite fertilizer price
-            D = shape.Uniform(lower=(3.983*(31/245)*0.8), upper=(3.983*(31/245)*1.2))
-            @param(name='Struvite fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
-                   baseline=(3.983*(31/245)), distribution=D)
-            def set_struvite_price(i):
-                price_dct['struvite'] = sys_stream.struvite.price = i * br.price_factor
-    
-            # Commented out because not taking into account economic value of biochar
-            # D = shape.Uniform(lower=(0.014*0.8), upper=(0.014*1.2))
-            # @param(name='Biochar  price', element='TEA', kind='isolated', units='USD/kg biochar',
-            #         baseline=(0.014), distribution=D)
-            # def set_biochar_price(i):
-            #     price_dct['biochar'] = sys_stream.biochar.price = i * br.price_factor
-
-        # Electricity price
-        b = price_dct['Electricity']
-        D = shape.Triangle(lower=0.08, midpoint=b, upper=0.14)
-        @param(name='Electricity price', element='TEA', kind='isolated',
-               units='$/kWh', baseline=b, distribution=D)
-        def set_electricity_price(i):
-            PowerUtility.price = i
 
         # Electricity GWP
         b = GWP_dct['Electricity']
@@ -887,8 +844,6 @@ def create_modelA(country_specific=False, **model_kwargs):
         }
     add_shared_parameters(modelA, unit_dctA, country_specific)
     
-                    
-        
     # Pit latrine and conveyance
     add_pit_latrine_parameters(modelA, unit_dctA)
 
@@ -974,6 +929,7 @@ def create_modelB(country_specific=False, **model_kwargs):
 
     # Ion exchange
     batch_setting_unit_params(ix_data, modelB, unitB.B6)
+    
 
     return modelB
 

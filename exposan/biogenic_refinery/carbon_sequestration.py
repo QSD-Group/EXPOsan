@@ -1,69 +1,106 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
-"""
-EXPOsan: Exposition of sanitation and resource recovery systems
-
-This module is developed by:
-    Yalin Li <mailto.yalin.li@gmail.com>
-    Lane To <lane20@illinois.edu>
-    Lewis Rowles <stetsonsc@gmail.com>
-    Hannah Lohman <hlohman94@gmail.com>
-
-This module is under the University of Illinois/NCSA Open Source License.
-Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
-for license details.
-"""
-
+import pandas as pd, qsdsan as qs
+import models as m
 from chaospy import distributions as shape
-import math
+from qsdsan import Model, Metric
 from exposan import biogenic_refinery as br
-from exposan.biogenic_refinery import (
-    create_model,
-    run_uncertainty,
-    results_path,
-    )
+from exposan.biogenic_refinery import create_system, results_path, run_uncertainty
 
-__all__ = ('get_recalcitrance_pontential',)
+# Filter out warnings related to uptime ratio
+import warnings
+warnings.filterwarnings('ignore', message='uptime_ratio')
 
-
-# %%
+# input data for changing ash content and temperature
+input_dct = {
+    'LitData': {'f_ash_content': ('triangle', 17, 38.45, 58.7),
+                'pyrolysis_temp': ('uniform', 400, 600, 800)},
+    'SysA': {'f_ash_content': ('uniform', 46.08, 51.2, 56.32),
+             'pyrolysis_temp': ('uniform', 400, 600, 800)},
+    'SysB': {'f_ash_content': ('uniform', 34.02, 37.8, 41.58),
+             'pyrolysis_temp': ('uniform', 400, 600, 800)}
+    }
 
 # =============================================================================
-# Create module for biochar analysis
+# Functions to create models (only working with sysA and sysB here)
 # =============================================================================
 
+def create_modelA(country_specific=False, **model_kwargs):
+    flowsheet = model_kwargs.pop('flowsheet', None)
+    sysA = br.create_system('A', flowsheet=flowsheet)
+    modelA = Model(sysA, **model_kwargs)
+    return modelA
 
-def get_default_uniform(b, ratio, lb=None, ub=None): # lb/ub for upper/lower bounds
-    lower = max(b*(1-ratio), lb) if lb else b*(1-ratio)
-    upper = min(b*(1+ratio), ub) if ub else b*(1+ratio)
-    return shape.Uniform(lower=lower, upper=upper)
+def create_modelB(country_specific=False, **model_kwargs):
+    flowsheet = model_kwargs.pop('flowsheet', None)
+    sysB = br.create_system('B', flowsheet=flowsheet)
+    modelB = Model(sysB, **model_kwargs)
+    return modelB
 
-def get_recalcitrance_pontential(ID, system=None):
-    sys = system.copy()
-    pyrolysis_unit = sys.path[7] #carbonizer base in biogenic refinery system
-    
-    def set_pyrolysis_temp(i):
-        pyrolysis_unit.pyrolysis_temp = i
-    
-    f_AC_dec = pyrolysis_unit.f_ash_content/10 #converts % ash content of feedstock to decimal
-    
-    # predictive equation for biochar yield based on feedstock ash content and pyrolysis temperature
-    dry_basis_yield = 1.18 * f_AC_dec ** 0.843 + (1 - f_AC_dec) * 2.106 * math.exp(-0.0066 * pyrolysis_unit.pyrolysis_temp)
-    
-    # predictive equation for ash-free biochar yield (Neves et al. 2011)
-    ash_free_yield = 100 * (0.106 + 2.43 * math.exp(-0.0066 * pyrolysis_unit.pyrolysis_temp))
-    
-    # predictive equation for biochar fixed carbon content 
-    b_fixed_carbon = 87.786 * ash_free_yield ** -0.483
-    
-    # calculate biochar volatile matter and ash content 
-    b_ash_content = (dry_basis_yield - ash_free_yield) * 100 / dry_basis_yield
-    b_volatile_matter = 100 - b_ash_content - b_fixed_carbon
-    
-    # predictive equation for carbon recalcitrance potential (Klasson 2017)
-    recalcitrance_potential = 0.17 * (0.474 * b_volatile_matter + 0.963 * b_fixed_carbon + 0.067 * b_ash_content) / (100 - b_ash_content) + 0.00479
-    
-    return recalcitrance_potential
-    
+# =============================================================================
+# Function to run models for biochar/carbon sequestration metrics
+# =============================================================================
+
+def run_CS(dct):
+    results = []    
+    for sys_name, sys_dct in dct.items():
         
+        # create model according to system
+        if sys_name == 'SysB':
+            model = create_modelB(country_specific=False)
+            sys = model.system
+            u = sys.flowsheet.unit
+            pyrolysis = u.B11
+        else:
+            model = create_modelA(country_specific=False)
+            sys = model.system
+            u = sys.flowsheet.unit            
+            pyrolysis = u.A8
+                    
+        # create metrics related to biochar production
+        CS_metrics = [
+            pyrolysis.yield_db,
+            pyrolysis.outs[0].F_mass * 24,
+            pyrolysis.CS,
+            pyrolysis.outs[0].imass['C'] * 24
+            ]
+        model.metrics = [
+            Metric('Biochar Yield', CS_metrics[0], '% db'),
+            Metric('Mass Biochar Produced', CS_metrics[1], 'kg/day'),
+            Metric('Carbon Sequestration Potential', CS_metrics[2], '%'),
+            Metric('Mass Carbon Sequestered', CS_metrics[3], 'kg/day')
+            ]
+            
+        # set parameters
+        param = model.parameter
+        
+        # feedstock ash content
+        kind, low_val, peak_val, max_val = sys_dct['f_ash_content']
+        b = peak_val
+        if kind == 'triangle':
+            D = shape.Triangle(lower=low_val, midpoint=peak_val, upper=max_val)
+        else:
+            D = shape.Uniform(lower=low_val,upper=max_val)
+        @param(name='Feedstock ash content', element=pyrolysis, kind='coupled', units='%',
+               baseline=b, distribution=D)
+        def set_ash_content(i):
+            pyrolysis.f_ash_content = i
+            
+        # pyrolysis temperature
+        kind, low_val, peak_val, max_val = sys_dct['pyrolysis_temp']
+        b = peak_val
+        if kind == 'triangle':
+            D = shape.Triangle(lower=low_val, midpoint=peak_val, upper=max_val)
+        else:
+            D = shape.Uniform(lower=low_val,upper=max_val)
+        @param(name='Pyrolysis temperature', element=pyrolysis, kind='coupled', units='deg C',
+               baseline=b, distribution=D)
+        def set_pyrolysis_temp(i):
+            pyrolysis.pyrolysis_temp = i
+
+        results[sys_name] = m.run_uncertainty(model)
+        del sys, model
+        
+    return results
+
+results = run_CS(dct=input_dct)
