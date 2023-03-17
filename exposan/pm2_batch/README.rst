@@ -13,6 +13,10 @@ This module is used to calibrate and validate the Phototrophic-Mixotrophic Proce
 - ``system.py`` constructs the batch system above.
 - ``model.py`` creates a model for uncertainty and sensitivity analysis.
 - ``analyses.py`` runs uncertainty and sensitivity analysis and plots the results.
+- ``_batch_nov_kinetic.py`` is for the calibration of PM2 using kinetic assay results.
+- ``_batch_may_kinetic.py`` is for the calibration and validation of PM2 using kinetic assay results.
+- ``_batch_may_unit.py`` is for the calibration and validation of PM2 using unit process experiment results.
+
 
 
 Load the system
@@ -29,5 +33,5 @@ Load the system
 
 .. figure:: ./readme_figures/pm2_batch_phosphorus.png
 
-    *Phosphorus removal in the batch setting*
+    *Phosphorus removal in the batch reactor setting*
 
