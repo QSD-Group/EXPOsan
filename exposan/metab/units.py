@@ -594,7 +594,8 @@ class UASB(AnaerobicCSTR):
         bg = self.outs[0]
         cmps = bg.components
         KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
-        self.add_OPEX['NG_offset'] = -sum(bg.mass*KJ_per_kg)*self._NG_price # kJ/hr * USD/kJ = USD/hr
+        # self.add_OPEX['NG_offset'] = -sum(bg.mass*KJ_per_kg)*self._NG_price # kJ/hr * USD/kJ = USD/hr
+        bg.price = -sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
         D = self.design_results
         C = self.baseline_purchase_costs
         C['Wall concrete'] = D['Wall concrete']*self.wall_concrete_unit_cost
@@ -1317,7 +1318,8 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         bg = self.outs[0]
         cmps = bg.components
         KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
-        self.add_OPEX['NG_offset'] = -sum(bg.mass*KJ_per_kg)*self._NG_price # kJ/hr * USD/kJ = USD/hr
+        # self.add_OPEX['NG_offset'] = -sum(bg.mass*KJ_per_kg)*self._NG_price # kJ/hr * USD/kJ = USD/hr
+        bg.price = -sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
         D = self.design_results
         C = self.baseline_purchase_costs
         C['Wall concrete'] = D['Wall concrete']*self.wall_concrete_unit_cost

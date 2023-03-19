@@ -170,7 +170,7 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
                   lifetime=30, discount_rate=0.1, 
                   Q=5, inf_concs={}, tot_HRT=12,
                   flowsheet=None):
-    
+    PowerUtility.price = 0.0913
     Construction.registry.clear()
     Equipment.registry.clear()
     isa = isinstance
