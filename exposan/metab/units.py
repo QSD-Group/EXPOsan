@@ -586,7 +586,35 @@ class UASB(AnaerobicCSTR):
                 const = getfield(creg, f'{flowsheet_ID}_{self.ID}_{name}')
                 const.quantity = D[i]
         
-        self.add_equipment_design()
+        self.add_equipment_design()  
+        
+    def add_equipment_design(self):
+        unit_design = self.design_results
+        unit_units = self._units
+        isa = isinstance
+        get = getattr
+        if isa(self.equipment_lifetime, int):
+            lt = self.equipment_lifetime
+            self.equipment_lifetime = defaultdict(lambda: lt)
+        F_BM, F_D, F_P, F_M, lifetime = \
+            self.F_BM, self.F_D, self.F_P, self.F_M, self.equipment_lifetime
+        for equip in self.equipment:
+            equip_ID = equip.ID
+            prefix = f'{equip.__class__.__name__} {equip_ID}'
+            equip_design = equip._design_results = equip._design()
+            equip_design = {} if not equip_design else equip_design
+            unit_design.update(add_prefix(equip_design, prefix))
+            equip_units = {} if not equip.units else equip.units
+            unit_units.update(add_prefix(equip_units, prefix))
+            for unit_attr, equip_attr in zip(
+                    (F_BM, F_D, F_P, F_M, lifetime),
+                    ('F_BM', 'F_D', 'F_P', 'F_M', 'lifetime'),
+                    ):
+                equip_attr = get(equip, equip_attr)
+                if isa(equip_attr, dict):
+                    unit_attr.update(add_prefix(equip_attr, prefix))
+                else:
+                    unit_attr[equip_ID] = equip_attr
     
     _NG_price = 0.85*auom('kJ').conversion_factor('therm') # [USD/kJ] 5.47 2021USD/Mcf vs. 4.19 2016USD/Mcf
 
@@ -1314,51 +1342,8 @@ class METAB_FluidizedBed(AnaerobicCSTR):
 
     _NG_price = 0.85*auom('kJ').conversion_factor('therm') # [USD/kJ] 5.47 2021USD/Mcf vs. 4.19 2016USD/Mcf    
 
-    def _cost(self):
-        bg = self.outs[0]
-        cmps = bg.components
-        KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
-        # self.add_OPEX['NG_offset'] = -sum(bg.mass*KJ_per_kg)*self._NG_price # kJ/hr * USD/kJ = USD/hr
-        bg.price = sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
-        D = self.design_results
-        C = self.baseline_purchase_costs
-        C['Wall concrete'] = D['Wall concrete']*self.wall_concrete_unit_cost
-        C['Slab concrete'] = D['Slab concrete']*self.slab_concrete_unit_cost
-        C['Stainless steel'] = D['Stainless steel']*self.stainless_steel_unit_cost
-        C['Rockwool'] = D['Rockwool']*self.rockwool_unit_cost
-        C['Carbon steel'] = D['Carbon steel']*self.carbon_steel_unit_cost
-        C['HDPE pipes'] = sum(hdpe_price(inch)*kg for inch, kg in zip(self._hdpe_ids, self._hdpe_kgs))
-        self.add_equipment_cost()
-    
-    def add_equipment_design(self):
-        unit_design = self.design_results
-        unit_units = self._units
-        isa = isinstance
-        get = getattr
-        if isa(self.equipment_lifetime, int):
-            lt = self.equipment_lifetime
-            self.equipment_lifetime = defaultdict(lambda: lt)
-        F_BM, F_D, F_P, F_M, lifetime = \
-            self.F_BM, self.F_D, self.F_P, self.F_M, self.equipment_lifetime
-
-        for equip in self.equipment:
-            equip_ID = equip.ID
-            prefix = f'{equip.__class__.__name__} {equip_ID}'
-            equip_design = equip._design_results = equip._design()
-            equip_design = {} if not equip_design else equip_design
-            unit_design.update(add_prefix(equip_design, prefix))
-
-            equip_units = {} if not equip.units else equip.units
-            unit_units.update(add_prefix(equip_units, prefix))
-            for unit_attr, equip_attr in zip(
-                    (F_BM, F_D, F_P, F_M, lifetime),
-                    ('F_BM', 'F_D', 'F_P', 'F_M', 'lifetime'),
-                    ):
-                equip_attr = get(equip, equip_attr)
-                if isa(equip_attr, dict):
-                    unit_attr.update(add_prefix(equip_attr, prefix))
-                else:
-                    unit_attr[equip_ID] = equip_attr
+    _cost = UASB._cost
+    add_equipment_design = UASB.add_equipment_design
 
 #%% METAB_PackedBed
 
