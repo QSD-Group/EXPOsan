@@ -406,12 +406,12 @@ class UASB(AnaerobicCSTR):
         self.T = (m*c*T_in + U*S*T_ext)/(m*c+U*S)
     
     def _cache_state(self):
-        self._cached_state = self._state[:-(self._n_gas+1)].copy()
+        self._cached_state = self._state[:-1].copy()
     
     def _init_state(self):
         if self._cached_state is not None:
             Q = self._mixed.F_vol * 24
-            self._state = np.append(self._cache_state, Q)
+            self._state = np.append(self._cached_state, Q)
             self._dstate = self._state * 0.
         else:
             super()._init_state()
@@ -620,10 +620,11 @@ class UASB(AnaerobicCSTR):
 
     def _cost(self):
         bg = self.outs[0]
-        cmps = bg.components
-        KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
-        # self.add_OPEX['NG_offset'] = -sum(bg.mass*KJ_per_kg)*self._NG_price # kJ/hr * USD/kJ = USD/hr
-        bg.price = sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
+        if bg.F_mass > 0:
+            cmps = bg.components
+            KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
+            # self.add_OPEX['NG_offset'] = -sum(bg.mass*KJ_per_kg)*self._NG_price # kJ/hr * USD/kJ = USD/hr
+            bg.price = sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
         D = self.design_results
         C = self.baseline_purchase_costs
         C['Wall concrete'] = D['Wall concrete']*self.wall_concrete_unit_cost

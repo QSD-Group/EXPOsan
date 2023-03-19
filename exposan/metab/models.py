@@ -13,7 +13,7 @@ for license details.
 
 from exposan.metab import (
     create_system,
-    C0_bulk, C1_bulk, C2_bulk,
+    # C0_bulk, C1_bulk, C2_bulk,
     fermenters, methanogens,
     results_path
     )
@@ -93,12 +93,12 @@ def add_discrete_dv(model):
     @param(name='Temperature', units='C', kind='coupled', element='Reactors')
     def set_temp(T):
         u.R1.T = 273.15 + T
-        u.R1._prep_model()
+        if reactor_type in ('FB','PB'): u.R1._prep_model()
         u.R1._compile_ODE()
         u.R1.scope = SanUnitScope(u.R1)
         if n_stage == 2: 
             u.R2.T = (273.15 + T + u.R2.T_air)/2
-            u.R2._prep_model()
+            if reactor_type in ('FB','PB'): u.R2._prep_model()
             u.R2._compile_ODE()
             u.R2.scope = SanUnitScope(u.R2)
 
