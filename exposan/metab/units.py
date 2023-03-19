@@ -280,7 +280,7 @@ class DegassingMembrane(SanUnit):
         bg = self.outs[0]
         cmps = bg.components
         KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
-        bg.price = -sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
+        bg.price = sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
         D, C = self.design_results, self.baseline_purchase_costs
         C['Module'] = self.unit_price * D['Number']
         self.add_OPEX['NaOCl'] = self.NaOCl.F_mass/0.125 * 0.78 # USD/hr, $0.78/kg 12.5% solution, https://www.alibaba.com/product-detail/wholesale-sodium-hypochlorite-NaClO-15-Industrial_1600307294563.html?spm=a2700.galleryofferlist.normal_offer.d_title.21145d84U7uilV
@@ -595,7 +595,7 @@ class UASB(AnaerobicCSTR):
         cmps = bg.components
         KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
         # self.add_OPEX['NG_offset'] = -sum(bg.mass*KJ_per_kg)*self._NG_price # kJ/hr * USD/kJ = USD/hr
-        bg.price = -sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
+        bg.price = sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
         D = self.design_results
         C = self.baseline_purchase_costs
         C['Wall concrete'] = D['Wall concrete']*self.wall_concrete_unit_cost
@@ -1319,7 +1319,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         cmps = bg.components
         KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
         # self.add_OPEX['NG_offset'] = -sum(bg.mass*KJ_per_kg)*self._NG_price # kJ/hr * USD/kJ = USD/hr
-        bg.price = -sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
+        bg.price = sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
         D = self.design_results
         C = self.baseline_purchase_costs
         C['Wall concrete'] = D['Wall concrete']*self.wall_concrete_unit_cost
