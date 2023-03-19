@@ -41,6 +41,9 @@ nrmse_thresholds = [None, 0.1, 0.1]
 kind='include'
 # kind='exclude'
 
+analysis='uasa'
+# analysis='cali'
+
 #%%
 def seed_RGT():
     files = os.listdir(results_path)
@@ -54,9 +57,9 @@ def seed_RGT():
     return seed
 
 #%%
-def run_UA_SA(seed=None, N=N, T=T, t_step=t_step, thresholds=[], kind=kind, plot=False):
+def run_UA_SA(seed=None, N=N, T=T, t_step=t_step, thresholds=[], kind=kind, analysis=analysis, plot=False):
     seed = seed or seed_RGT()
-    mdl = create_model(kind=kind)
+    mdl = create_model(kind=kind, analysis=analysis)
     mdl = run_uncertainty(mdl, N, T, t_step, seed=seed)
     thresholds = update_thresholds(mdl, thresholds)
     D, p = get_correlations(mdl, kind='KS', thresholds=thresholds,
@@ -77,10 +80,10 @@ def update_thresholds(mdl, thresholds, metrics=None, quantile=0.25):
             thresholds[i] = data[col].quantile(quantile)
     return thresholds
 
-def plot_cdf_by_group(mdl=None, seed=None, thresholds=None, parameters=None, metrics=None, kind=kind):
+def plot_cdf_by_group(mdl=None, seed=None, thresholds=None, parameters=None, metrics=None, kind=kind, analysis=analysis):
     if mdl is None:
         # global mdl
-        mdl = create_model(kind=kind)
+        mdl = create_model(kind=kind, analysis=analysis)
         mdl.table = load_data(ospath.join(results_path, f'table_{seed}.xlsx'), header=[0, 1])
     metrics = metrics or mdl.metrics
     parameters = parameters or mdl.parameters
@@ -113,9 +116,9 @@ def plot_cdf_by_group(mdl=None, seed=None, thresholds=None, parameters=None, met
                     dpi=300, facecolor='white')
         del fig, axes
 
-def KS_test_var_thresholds(mdl=None, seed=None, kind=kind):
+def KS_test_var_thresholds(mdl=None, seed=None, kind=kind, analysis=analysis):
     if mdl is None:
-        mdl = create_model(kind=kind)
+        mdl = create_model(kind=kind, analysis=analysis)
         mdl.table = load_data(ospath.join(results_path, f'table_{seed}.xlsx'),
                               header=[0,1])
     sig = []

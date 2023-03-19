@@ -19,7 +19,8 @@ from exposan.pm2_batch import data_path
 __all__ = (
     'create_system',
     'default_pm2_kwargs',
-    'default_init_conds',
+    'default_init_conds_inc',
+    'default_init_conds_exc',
     'T_exc', 'I_exc',
     'T_inc', 'I_inc',
     )
@@ -34,7 +35,7 @@ T_exc, I_exc = EDV.batch_init(os.path.join(data_path, 'exo_vars_batch_may_kineti
 T_inc, I_inc = EDV.batch_init(os.path.join(data_path, 'exo_vars_batch_may_unit.xlsx'), 'linear')
 
 # default for 'include'
-default_init_conds = {
+default_init_conds_inc = {
     'X_CHL':2.81,
     'X_ALG':561.57,
     'X_CH':13.74,
@@ -51,21 +52,21 @@ default_init_conds = {
     }
 
 # default for 'exclude'
-# default_init_conds = {
-#     'X_CHL':3.91,
-#     'X_ALG':782.30,
-#     'X_CH':19.24,
-#     'X_LI':101.06,
-#     'S_CO2':30.0,
-#     'S_A':5.0,
-#     'S_F':5.0,
-#     'S_O2':20.36,
-#     'S_NH':27.84,
-#     'S_NO':10.72,
-#     'S_P':0.617,
-#     'X_N_ALG':0.92,
-#     'X_P_ALG':8.06,
-#     }
+default_init_conds_exc = {
+    'X_CHL':3.91,
+    'X_ALG':782.30,
+    'X_CH':19.24,
+    'X_LI':101.06,
+    'S_CO2':30.0,
+    'S_A':5.0,
+    'S_F':5.0,
+    'S_O2':20.36,
+    'S_NH':27.84,
+    'S_NO':10.72,
+    'S_P':0.617,
+    'X_N_ALG':0.92,
+    'X_P_ALG':8.06,
+    }
 
 default_pm2_kwargs = dict(
     a_c=0.049, I_n=1500, arr_a=1.8e10, arr_e=6842, beta_1=2.90,
@@ -104,10 +105,12 @@ def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}, kind=''):
 
     if kind == 'include':
         PBR = su.BatchExperiment('PBR', model=pm2, exogenous_vars=(T_inc, I_inc))
+        init_conds = init_conds or default_init_conds_inc
+
     else:
         PBR = su.BatchExperiment('PBR', model=pm2, exogenous_vars=(T_exc, I_exc))
+        init_conds = init_conds or default_init_conds_exc
 
-    init_conds = init_conds or default_init_conds
     PBR.set_init_conc(**init_conds)
 
     # System setup
