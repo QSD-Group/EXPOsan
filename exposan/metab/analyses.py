@@ -86,7 +86,7 @@ def plot_clusters(data=None, save_as='', partial=True):
         hue='Reactor type',
         palette=pal,
         size='Number of stages',
-        sizes=(30, 45),
+        sizes=(30, 55),
         style='Gas extraction',
         markers={'H':'s', 'M':'^', 'P':'o'},
         edgecolor=edge,
