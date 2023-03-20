@@ -101,5 +101,6 @@ def categorize_all_impacts(lca, time=None, time_unit='hr'):
     om = categorize_OM_impacts(lca, time, time_unit)
     dct = {**const, **om}
     dct['total'] = lca.get_total_impacts(time=time, time_unit=time_unit)
+    # return dct
     out = pd.DataFrame.from_dict(dct)
     return out

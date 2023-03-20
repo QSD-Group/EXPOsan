@@ -106,7 +106,9 @@ class Beads(Equipment):
         return C
     
     def update_lifetime(self, lt):
-        self.lifetime = self.linked_unit.lifetime[self.ID] = int(lt)
+        self.lifetime = int(lt)
+        if isinstance(self.linked_unit.lifetime, dict):
+            self.linked_unit.lifetime[self.ID] = int(lt)
         for const in self.construction:
             const.lifetime = lt
 

@@ -13,7 +13,8 @@ for license details.
 from qsdsan.utils import ospath, load_data
 from exposan.metab import create_system, create_model, run_model, \
     data_path, results_path, figures_path
-import qsdsan as qs, pandas as pd
+from exposan.metab.utils import categorize_cashflow, categorize_all_impacts
+import qsdsan as qs, pandas as pd, numpy as np
 import matplotlib as mpl, matplotlib.pyplot as plt, seaborn as sns
 
 mpl.rcParams['font.sans-serif'] = 'arial'
@@ -259,6 +260,73 @@ def plot_diff(data=None):
     df = pd.concat(others)
     plot_joint(df, 'other_DVs.png')
     
+#%%
+def best_breakdown():
+    kwargs = dict(state_reset_hook='reset_cache', t_span=(0,400), method='BDF')
+    llc_bd = {}
+    imp_bd = {}
+    
+    # UASB
+    mdl1 = create_model()
+    sys1 = mdl1.system
+    sub1, = sys1.subsystems
+    
+    # best at TEA
+    smp = np.array([1, 22])
+    for p, v in zip(mdl1.parameters, smp): p.setter(v)
+    sys1.simulate(**kwargs)
+    llc_bd['uasb_t1'] = categorize_cashflow(sub1.TEA)
+    imp_bd['uasb_t1'] = categorize_all_impacts(sub1.LCA)
+    # best at LCA
+    smp = np.array([2, 22])
+    for p, v in zip(mdl1.parameters, smp): p.setter(v)
+    sys1.simulate(**kwargs)
+    llc_bd['uasb_l1'] = categorize_cashflow(sys1.TEA)
+    imp_bd['uasb_l1'] = categorize_all_impacts(sys1.LCA)
+    
+    # FB
+    mdl2 = create_model(reactor_type='FB')
+    sys2 = mdl2.system
+    sys2.units[0].bead_lifetime = 30
+    sub2, = sys2.subsystems
+    
+    # best at TEA
+    smp = np.array([2, 0.9, 2, 22])
+    for p, v in zip(mdl2.parameters, smp): p.setter(v)
+    sys2.simulate(**kwargs)
+    llc_bd['fb_t1'] = categorize_cashflow(sub2.TEA)
+    imp_bd['fb_t1'] = categorize_all_impacts(sub2.LCA)
+    # best at LCA
+    smp = np.array([2, 0.75, 1, 22])
+    for p, v in zip(mdl2.parameters, smp): p.setter(v)
+    sys2.simulate(**kwargs)
+    llc_bd['fb_l1'] = categorize_cashflow(sys2.TEA)
+    imp_bd['fb_l1'] = categorize_all_impacts(sys2.LCA)
+    
+    # PB
+    mdl3 = create_model(reactor_type='PB')
+    sys3 = mdl3.system
+    sys3.units[0].bead_lifetime = 30
+    sub3, = sys3.subsystems
+    
+    smp = np.array([2, 1, 22])
+    for p, v in zip(mdl3.parameters, smp): p.setter(v)
+    sys3.simulate(**kwargs)
+    # best at TEA
+    llc_bd['pb_t1'] = categorize_cashflow(sub3.TEA)
+    imp_bd['pb_t1'] = categorize_all_impacts(sub3.LCA)
+    # best at LCA
+    llc_bd['pb_l1'] = categorize_cashflow(sys3.TEA)
+    imp_bd['pb_l1'] = categorize_all_impacts(sys3.LCA)
+    
+    llc_bd = pd.DataFrame.from_dict(llc_bd).transpose()
+    imp_bd = pd.concat(imp_bd).swaplevel(0, 1)
+    with pd.ExcelWriter(ospath.join(results_path, 'breakdown.xlsx')) as writer:
+        llc_bd.to_excel(writer, sheet_name='cost')
+        for i in sys3.LCA.indicators:
+            imp_bd.loc[i.ID].to_excel(writer, sheet_name=i.ID)
+    
+        
 
 #%%
 if __name__ == '__main__':
@@ -268,4 +336,5 @@ if __name__ == '__main__':
     # plot_clusters(partial=True)
     # plot_clusters(partial=False)
     # out = compare_DVs()
-    plot_diff()
+    # plot_diff()
+    best_breakdown()
