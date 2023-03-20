@@ -25,14 +25,18 @@ mpl.rcParams['ytick.minor.visible'] = True
 def run_discrete_DVs(samples_path):
     qs.PowerUtility.price = 0.0913
     dct = load_data(samples_path, sheet=None)
-    # for i in ('UASB','FB','PB',):
-    for i in ('FB',):
+    for i in (
+            'UASB',
+            'FB',
+            'PB',
+            ):
         for n, j in (
-                (1,'P'), 
-                (2,'P'), (2,'M'), (2,'H'),
+                (1,'P'), (2,'P'), 
+                (2,'M'), (2,'H'),
                 ):
             sys = create_system(n_stages=n, reactor_type=i, gas_extraction=j)
             print(sys.ID)
+            print('='*len(sys.ID))
             mdl = create_model(sys, kind='DV', exception_hook='warn')
             sample = dct[i+'_'+j].to_numpy()
             run_model(mdl, sample)
@@ -176,10 +180,10 @@ def compare_DVs(data=None, save_as=''):
     
 
 #%%
-boxprops = dict(alpha=0.7, edgecolor='black')
-flierprops = dict(marker='.', markersize=1, markerfacecolor='#90918e', markeredgecolor='#90918e')
-meanprops = dict(marker='^', markersize=2.5, markerfacecolor='black', markeredgecolor='black')
-medianprops = dict(color='black', lw=1)
+boxprops = dict(alpha=1, edgecolor='black')
+# flierprops = dict(marker='.', markersize=1, markerfacecolor='#90918e', markeredgecolor='#90918e')
+meanprops = dict(marker='^', markersize=1.5, markerfacecolor='black', markeredgecolor='black', lw=0.5)
+medianprops = dict(color='black', lw=0.5)
 
 pal = ['#60C1CF', '#F98F60', '#79BF82', '#F3C354', '#A280B9', '#ED586F', 
        '#35767F', '#733763', '#4D7E53', '#AB8937', '#5184EF']
@@ -210,7 +214,7 @@ def plot_joint(df, save_as='', kde=True):
     g.ax_joint.set_ylabel('')
     bxp_kwargs = dict(
         palette=pal,
-        linewidth=1,
+        linewidth=0.5,
         showcaps=True,
         showmeans=True,
         showfliers=False,
@@ -218,7 +222,7 @@ def plot_joint(df, save_as='', kde=True):
         saturation=1,
         width=0.3,
         boxprops=boxprops,
-        flierprops=flierprops,
+        # flierprops=flierprops,
         meanprops=meanprops,
         medianprops=medianprops,
         )
