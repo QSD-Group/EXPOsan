@@ -1139,7 +1139,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             # Detachment -- particulates
             tss = np.sum(Cs_en * (cmps.x*cmps.i_mass), axis=1)
             x_net_growth = np.sum(Rs_en * cmps.x, axis=1)/np.sum(Cs_en * cmps.x, axis=1) # d^(-1), equivalent to k_de
-            u_de = 1/(1+np.exp(K_tss-tss)) * np.maximum(x_net_growth, 0)
+            u_de = 1/(1+np.exp(K_tss-tss)) * np.maximum(x_net_growth, 0) * (tss > 0)
             de_en = np.diag(u_de) @ (Cs_en * cmps.x)
             tot_de = np.sum(np.diag(dV) @ de_en, axis=0) / V_bead  # detachment per unit volume of beads
 
@@ -1520,7 +1520,7 @@ class METAB_PackedBed(METAB_FluidizedBed):
                 # Detachment -- particulates
                 tss = np.sum(Cs_en * (cmps.x*cmps.i_mass), axis=1)
                 x_net_growth = np.sum(Rs_en * cmps.x, axis=1)/np.sum(Cs_en * cmps.x, axis=1) # d^(-1), equivalent to k_de
-                u_de = 1/(1+np.exp(K_tss-tss)) * np.maximum(x_net_growth, 0)
+                u_de = 1/(1+np.exp(K_tss-tss)) * np.maximum(x_net_growth, 0) * (tss > 0)
                 de_en = np.diag(u_de) @ (Cs_en * cmps.x)
                 tot_de = np.sum(np.diag(dV) @ de_en, axis=0) / V_bead  # detachment per unit volume of beads
     
