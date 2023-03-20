@@ -320,13 +320,66 @@ def best_breakdown():
     imp_bd['pb_l1'] = categorize_all_impacts(sys3.LCA)
     
     llc_bd = pd.DataFrame.from_dict(llc_bd).transpose()
+    llc_bd['fug_ch4'] = 0
     imp_bd = pd.concat(imp_bd).swaplevel(0, 1)
     with pd.ExcelWriter(ospath.join(results_path, 'breakdown.xlsx')) as writer:
         llc_bd.to_excel(writer, sheet_name='cost')
         for i in sys3.LCA.indicators:
             imp_bd.loc[i.ID].to_excel(writer, sheet_name=i.ID)
     
-        
+    return llc_bd, imp_bd
+
+#%%
+# palette = ['#60C1CF', '#F98F60', '#79BF82', '#F3C354', '#A280B9', '#ED586F', 
+#            '#35767F', '#733763', '#4D7E53', '#AB8937', '#5184EF']
+patch_dct = {
+    'vessel': ('#60C1CF', r'\\\\\\'),
+    'beads': ('#79BF82', ''),
+    'dm': ('#35767F', ''),
+    'others': ('#ED586F', ''),
+    'electricity': ('#A280B9', '////'),
+    'heat_onsite': ('#90918e', ''),
+    'chemicals': ('#733763', ''),
+    'biogas_offset': ('#F98F60', ''),
+    'fug_ch4': ('#F3C354', '')
+    }
+
+def stacked_bar(data, save_as=''):
+    fig, ax = plt.subplots(figsize=(5, 4))    
+    x = range(data.shape[0])
+    ax.axhline(y=0, color='black', linewidth=1)
+    yp = np.zeros(data.shape[0])
+    yn = yp.copy()
+    for k, v in patch_dct.items():
+        c, hat = v
+        y = data.loc[:,k]
+        y_offset = (y>=0)*yp + (y<0)*yn
+        ax.bar(x, y, width=0.6, bottom=y_offset, color=c, hatch=hat)
+        yp += (y>=0) * y
+        yn += (y<0) * y
+
+    ax.tick_params(axis='y', which='major', direction='inout', length=10, labelsize=12)
+    ax.tick_params(axis='y', which='minor', direction='inout', length=6)
+    ax.ticklabel_format(axis='y', scilimits=[-2,3], useMathText=True)
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+    ax2y = ax.secondary_yaxis('right')
+    ax2y.tick_params(axis='y', which='major', direction='in', length=5)
+    ax2y.tick_params(axis='y', which='minor', direction='in', length=3)
+    ax2y.yaxis.set_major_formatter(plt.NullFormatter())
+    ax.tick_params(bottom=False, which='both', labelbottom=False)  
+
+    if save_as:
+        folder = ospath.join(figures_path, 'breakdown')
+        fig.savefig(ospath.join(folder, save_as), dpi=300, transparent=True)
+    else: return fig, ax
+    
+def plot_breakdown(data=None):
+    if data is None:
+        data = load_data(ospath.join(results_path, 'breakdown.xlsx'), sheet=None)
+    for k, df in data.items():
+        stacked_bar(df, save_as=f'{k}.png')
+    
 
 #%%
 if __name__ == '__main__':
@@ -337,4 +390,5 @@ if __name__ == '__main__':
     # plot_clusters(partial=False)
     # out = compare_DVs()
     # plot_diff()
-    best_breakdown()
+    # llc, imp = best_breakdown()
+    plot_breakdown()
