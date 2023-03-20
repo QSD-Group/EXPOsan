@@ -185,13 +185,14 @@ boxprops = dict(alpha=1, edgecolor='black')
 meanprops = dict(marker='^', markersize=1.5, markerfacecolor='black', markeredgecolor='black', lw=0.5)
 medianprops = dict(color='black', lw=0.5)
 
-pal = ['#60C1CF', '#F98F60', '#79BF82', '#F3C354', '#A280B9', '#ED586F', 
-       '#35767F', '#733763', '#4D7E53', '#AB8937', '#5184EF']
+palette = ['#60C1CF', '#F98F60', '#79BF82', '#F3C354', '#A280B9', '#ED586F', 
+           '#35767F', '#733763', '#4D7E53', '#AB8937', '#5184EF']
 
 def plot_joint(df, save_as='', kde=True):
     g = sns.JointGrid(height=8, ratio=5, space=0, marginal_ticks=True)
     x, y = df['Levelized cost'], df['GWP100']
     group = df['group']
+    pal = palette[:group.nunique()]
     g.refline(x=0, y=0, color='#90918e', lw=1)
     if kde:
         sns.kdeplot(x=x, y=y, hue=group, ax=g.ax_joint,
