@@ -115,8 +115,75 @@ def add_continuous_params(model):
     u = sys.flowsheet.unit
     s = sys.flowsheet.stream
     adm1 = u.R1.model
+        
+    #************ common uncertainty/DVs *************
+    ks = (
+        ('uptake k_fa', 'uptake_LCFA', 6, 0.6, 24),
+        ('uptake k_pro', 'uptake_propionate', 13, 1.3, 26),
+        ('uptake k_ac', 'uptake_acetate', 8, 0.8, 16)
+        )
     
-    # config-specific uncertainty/DVs
+    for name, pid, b, lb, ub in ks:
+        # D = shape.Triangle(lb, b, ub)
+        #!!! narrower range
+        D = shape.Triangle(b*0.5, b, b*1.5)
+        param(setter=MethodSetter(adm1, 'set_rate_constant', key='k', process=pid),
+              name=name, units='COD/COD/d', kind='coupled', element='ADM1',
+              baseline=b, distribution=D)
+    
+    Ks = (
+        ('K_pro', 'uptake_propionate', 0.1, 0.01, 0.2),
+        ('K_ac', 'uptake_acetate', 0.15, 0.015, 0.3)
+        )
+    
+    for name, pid, b, lb, ub in Ks:
+        # D = shape.Triangle(lb, b, ub)
+        D = shape.Triangle(b*0.5, b, b*1.5)
+        param(setter=MethodSetter(adm1, 'set_half_sat_K', key='K', process=pid),
+              name=name, units='COD/COD/d', kind='coupled', element='ADM1',
+              baseline=b, distribution=D)
+    
+    start = adm1._find_index('decay_Xsu')
+    b = 0.02
+    # D = shape.Triangle(0.002, b, 0.04)
+    D = shape.Triangle(b*0.5, b, b*1.5)    
+    @param(name='k_dec', units='d^(-1)', kind='coupled', element='ADM1',
+           baseline=b, distribution=D)
+    def set_k_dec(k):
+        adm1.rate_function._params['rate_constants'][start:] = k
+
+    b = 0.5
+    D = shape.Uniform(0, 1)
+    @param(name='Degassing factor', units='-', kind='coupled', element='Membrane',
+           baseline=b, distribution=D)
+    def set_f_degas(f):
+        eh2 = 0.55 + f*(0.7-0.55)
+        ech4 = 0.36 + f*(0.55-0.36)
+        eco2 = 0.06 + f*(0.2-0.06)
+        u.DMe._h2_ermv = eh2
+        u.DMe._ch4_ermv = ech4
+        u.DMe._co2_ermv = eco2
+        if gas_xt == 'M':
+            u.DMs._h2_ermv = eh2
+            u.DMs._ch4_ermv = ech4
+            u.DMs._co2_ermv = eco2
+    
+    b = 1
+    D = shape.Uniform(1/6, 2)
+    @param(name='Total HRT', units='d', kind='coupled', element='System',
+           baseline=b, distribution=D)
+    def set_tau(tau):
+        V = s.inf.F_vol * 24 * tau
+        if n_stage == 1:
+            u.R1.V_liq = V
+            u.R1.V_gas = V*0.1
+        else:
+            u.R1.V_liq = V/12
+            u.R1.V_gas = V/12*0.1
+            u.R2.V_liq = V*11/12
+            u.R2.V_gas = V*11/12*0.1
+    
+    #*********** config-specific uncertainty/DVs ************
     b = 0.963
     D = shape.Triangle(0.87, b, 0.995)
     @param(name='UASB solid retention efficacy', units='', kind='coupled', 
@@ -126,6 +193,11 @@ def add_continuous_params(model):
             u.R1._f_retain = (u.R1._f_retain > 0) * f
             if n_stage == 2:
                 u.R2._f_retain = (u.R2._f_retain > 0) * f
+            u.R1._compile_ODE()
+            u.R1.scope = SanUnitScope(u.R1)
+            if n_stage == 2: 
+                u.R2._compile_ODE()
+                u.R2.scope = SanUnitScope(u.R2)
     
     b = 16
     lb, ub = (11, 22)
@@ -191,7 +263,14 @@ def add_continuous_params(model):
     def set_FB_h2d(r):
         if reactor_type == 'FB':
             u.R1.reactor_height_to_diameter = r
-            if n_stage == 2: u.R2.reactor_height_to_diameter = r
+            u.R1._prep_model()
+            u.R1._compile_ODE()
+            u.R1.scope = SanUnitScope(u.R1)
+            if n_stage == 2: 
+                u.R2.reactor_height_to_diameter = r
+                u.R2._prep_model()
+                u.R2._compile_ODE()
+                u.R2.scope = SanUnitScope(u.R2)
             
     b = 0.39
     D = shape.Triangle(0.35, b, 0.45)
@@ -203,83 +282,20 @@ def add_continuous_params(model):
             if n_stage == 2: u.R2.voidage = f
 
     b = 1.5
-    D = shape.Uniform(1, 4)
+    D = shape.Uniform(1, 5)
     @param(name='PB height-to-diameter', units='', kind='coupled', element='PB',
            baseline=b, distribution=D)
     def set_PB_h2d(r):
         if reactor_type == 'PB':
             u.R1.reactor_height_to_diameter = r
-            if n_stage == 2: u.R2.reactor_height_to_diameter = r
-    
-    # common uncertainty/DVs 
-    ks = (
-        ('uptake k_fa', 'uptake_LCFA', 6, 0.6, 24),
-        ('uptake k_pro', 'uptake_propionate', 13, 1.3, 26),
-        ('uptake k_ac', 'uptake_acetate', 8, 0.8, 16)
-        )
-    
-    for name, pid, b, lb, ub in ks:
-        D = shape.Triangle(lb, b, ub)
-        param(setter=MethodSetter(adm1, 'set_rate_constant', key='k', process=pid),
-              name=name, units='COD/COD/d', kind='coupled', element='ADM1',
-              baseline=b, distribution=D)
-    
-    Ks = (
-        ('K_pro', 'uptake_propionate', 0.1, 0.01, 0.2),
-        ('K_ac', 'uptake_acetate', 0.15, 0.015, 0.3)
-        )
-    
-    for name, pid, b, lb, ub in Ks:
-        D = shape.Triangle(lb, b, ub)
-        param(setter=MethodSetter(adm1, 'set_half_sat_K', key='K', process=pid),
-              name=name, units='COD/COD/d', kind='coupled', element='ADM1',
-              baseline=b, distribution=D)
-    
-    start = adm1._find_index('decay_Xsu')
-    b = 0.02
-    D = shape.Triangle(0.002, b, 0.04)    
-    @param(name='k_dec', units='d^(-1)', kind='coupled', element='ADM1',
-           baseline=b, distribution=D)
-    def set_k_dec(k):
-        adm1.rate_function._params['rate_constants'][start:] = k
-
-    b = 0.5
-    D = shape.Uniform(0, 1)
-    @param(name='Degassing factor', units='-', kind='coupled', element='Membrane',
-           baseline=b, distribution=D)
-    def set_f_degas(f):
-        eh2 = 0.55 + f*(0.7-0.55)
-        ech4 = 0.36 + f*(0.55-0.36)
-        eco2 = 0.06 + f*(0.2-0.06)
-        u.DMe._h2_ermv = eh2
-        u.DMe._ch4_ermv = ech4
-        u.DMe._co2_ermv = eco2
-        if gas_xt == 'M':
-            u.DMs._h2_ermv = eh2
-            u.DMs._ch4_ermv = ech4
-            u.DMs._co2_ermv = eco2
-    
-    b = 1
-    D = shape.Uniform(1/6, 2)
-    @param(name='Total HRT', units='d', kind='coupled', element='System',
-           baseline=b, distribution=D)
-    def set_tau(tau):
-        V = s.inf.F_vol * 24 * tau
-        if n_stage == 1:
-            u.R1.V_liq = V
-            u.R1.V_gas = V*0.1
-        else:
-            u.R1.V_liq = V/12
-            u.R1.V_gas = V/12*0.1
-            u.R2.V_liq = V*11/12
-            u.R2.V_gas = V*11/12*0.1
-        if reactor_type in ('FB','PB'): u.R1._prep_model()
-        u.R1._compile_ODE()
-        u.R1.scope = SanUnitScope(u.R1)
-        if n_stage == 2: 
-            if reactor_type in ('FB','PB'): u.R2._prep_model()
-            u.R2._compile_ODE()
-            u.R2.scope = SanUnitScope(u.R2)
+            u.R1._prep_model()
+            u.R1._compile_ODE()
+            u.R1.scope = SanUnitScope(u.R1)
+            if n_stage == 2: 
+                u.R2.reactor_height_to_diameter = r
+                u.R2._prep_model()
+                u.R2._compile_ODE()
+                u.R2.scope = SanUnitScope(u.R2)
 
 #%%
 def add_metrics(model, kind='DV'):
