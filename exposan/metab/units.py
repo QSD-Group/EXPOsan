@@ -290,7 +290,7 @@ class DegassingMembrane(SanUnit):
 class UASB(AnaerobicCSTR):
     
     auxiliary_unit_names = ('heat_exchanger', )
-    def __init__(self, ID='', lifetime=30, 
+    def __init__(self, ID='', lifetime=30, T=295.15,
                  fraction_retain=0.963, pH_ctrl=False,
                  max_depth_to_diameter=4,
                  design_upflow_velocity=0.5,        # m/h
@@ -300,8 +300,8 @@ class UASB(AnaerobicCSTR):
                  rockwool_unit_cost=0.59,           # https://www.alibaba.com/product-detail/mineral-wool-insulation-price-mineral-wool_60101640303.html?spm=a2700.7724857.0.0.262334d1rZXb48
                  carbon_steel_unit_cost=0.5,        # https://www.alibaba.com/product-detail/ASTM-A106-Ss400-Q235-Standard-Ms_1600406694387.html?s=p
                  **kwargs):
-
-        super().__init__(ID, lifetime=lifetime, **kwargs)
+        
+        super().__init__(ID, lifetime=lifetime, T=T, **kwargs)
         self._f_retain = self.thermo.chemicals.x * fraction_retain
         self.pH_ctrl = pH_ctrl
         self.max_depth_to_diameter = max_depth_to_diameter
@@ -648,7 +648,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
                  voidage=0.6, bead_diameter=2, n_layer=5,
                  boundary_layer_thickness=0.01, diffusivity=None,
                  f_diff=0.55, max_encapsulation_tss=16, model=None,
-                 pH_ctrl=False, T=298.15, headspace_P=0.1, external_P=1.013, 
+                 pH_ctrl=False, T=295.15, headspace_P=0.1, external_P=1.013, 
                  pipe_resistance=5.0e4, fixed_headspace_P=False,
                  isdynamic=True, exogenous_vars=(), lifetime=30, bead_lifetime=10,
                  reactor_height_to_diameter=1.5, recirculation_ratio=None,
