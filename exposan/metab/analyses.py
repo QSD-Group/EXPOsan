@@ -14,6 +14,7 @@ from qsdsan.utils import ospath, load_data
 from exposan.metab import create_system, create_model, run_model, \
     data_path, results_path, figures_path
 from exposan.metab.utils import categorize_cashflow, categorize_all_impacts
+from time import time
 import qsdsan as qs, pandas as pd, numpy as np
 import matplotlib as mpl, matplotlib.pyplot as plt, seaborn as sns
 
@@ -41,6 +42,17 @@ def run_discrete_DVs(samples_path):
             mdl = create_model(sys, kind='DV', exception_hook='warn')
             sample = dct[i+'_'+j].to_numpy()
             run_model(mdl, sample)
+
+def run_UA_SA(seed=None, N=1000, rule='L'):
+    seed = seed or int(str(time())[-3:])
+    qs.PowerUtility.price = 0.0913
+    sample = None
+    for rt in ('UASB', 'FB', 'PB'):
+        sys = create_system(n_stages=1, reactor_type=rt, gas_extraction='P')
+        mdl = create_model(sys, kind='uasa', exception_hook='warn')
+        if sample is None: sample = mdl.sample(N=N, rule=rule, seed=seed)
+        run_model(mdl, sample, seed=seed)
+    return seed
 
 #%%
 def data_compile(save=True):
@@ -391,4 +403,5 @@ if __name__ == '__main__':
     # out = compare_DVs()
     # plot_diff()
     # llc, imp = best_breakdown()
-    plot_breakdown()
+    # plot_breakdown()
+    run_UA_SA(N=10)

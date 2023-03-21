@@ -167,7 +167,7 @@ reactor_classes = {
     }
 
 def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P', 
-                  lifetime=30, discount_rate=0.1, 
+                  lifetime=30, discount_rate=0.1, T=22,
                   Q=5, inf_concs={}, tot_HRT=12,
                   flowsheet=None):
     PowerUtility.price = 0.0913
@@ -203,7 +203,7 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
         bg = WasteStream('bg', phase='g')
         add_ngoffset_iitm(bg)
         R1 = Reactor('R1', ins=inf, outs=(bg, eff), V_liq=Q*tot_HRT, 
-                     V_gas=Q*tot_HRT*0.1, T=273.15+35, pH_ctrl=6.5,
+                     V_gas=Q*tot_HRT*0.1, T=273.15+T, pH_ctrl=6.5,
                      model=adm1, equipment=[IST, GH],
                      F_BM_default=1, lifetime=lifetime)
         R1.set_init_conc(**C0)
@@ -219,7 +219,7 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
             add_ngoffset_iitm(bgs)
             R1 = Reactor('R1', ins=[inf, ''], outs=(bg1, '', ''), split=[400, 1],
                          V_liq=Q*tot_HRT/12, V_gas=Q*tot_HRT/12*0.1, 
-                         T=273.15+35, pH_ctrl=5.8, model=adm1, 
+                         T=273.15+T, pH_ctrl=5.8, model=adm1, 
                          F_BM_default=1, lifetime=lifetime)
             DMs = DegassingMembrane('DMs', ins=R1-1, outs=(bgs, 1-R1), F_BM_default=1)
             R2 = Reactor('R2', ins=R1-2, outs=(bg2, eff), V_liq=Q*tot_HRT*11/12, 
@@ -232,7 +232,7 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
             if gas_extraction == 'P': fixed_headspace_P = False
             else: fixed_headspace_P = True
             R1 = Reactor('R1', ins=inf, outs=(bg1, ''), V_liq=Q*tot_HRT/12, 
-                         V_gas=Q*tot_HRT/12*0.1, T=273.15+35, pH_ctrl=5.8, 
+                         V_gas=Q*tot_HRT/12*0.1, T=273.15+T, pH_ctrl=5.8, 
                          model=adm1, fixed_headspace_P=fixed_headspace_P, 
                          F_BM_default=1, lifetime=lifetime)
             R2 = Reactor('R2', ins=R1-1, outs=(bg2, eff), V_liq=Q*tot_HRT*11/12, 

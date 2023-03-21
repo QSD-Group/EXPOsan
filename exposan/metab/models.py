@@ -14,14 +14,14 @@ for license details.
 from exposan.metab import (
     Beads,
     create_system,
-    # C0_bulk, C1_bulk, C2_bulk,
     fermenters, methanogens,
     results_path
     )
+from exposan.metab.utils import categorize_cashflow, categorize_all_impacts
 import qsdsan as qs, os, numpy as np
 from chaospy import distributions as shape
-from qsdsan.utils import FuncGetter, AttrSetter, AttrFuncSetter, MethodSetter, \
-    SanUnitScope, categorize_cashflow, categorize_all_impacts
+from math import log
+from qsdsan.utils import FuncGetter, AttrSetter, AttrFuncSetter, MethodSetter, SanUnitScope
 from qsdsan.sanunits import AnaerobicCSTR
 
 __all__ = ('add_discrete_dv', 
@@ -128,7 +128,8 @@ def add_continuous_params(model):
                 u.R2._f_retain = (u.R2._f_retain > 0) * f
     
     b = 16
-    D = shape.LogUniform(11, 22)
+    lb, ub = (11, 22)
+    D = shape.LogUniform(log(lb), log(ub))
     @param(name='Max encapsulation density', units='gTSS/L', kind='coupled',
            element='Encapsulation', baseline=b, distribution=D)
     def set_max_tss(tss):
@@ -144,7 +145,7 @@ def add_continuous_params(model):
         Beads._bead_density = rho
     
     b = 0.55
-    D = shape.LogUniform(0.2, 1.1)
+    D = shape.Triangle(0.2, b, 1.1)
     @param(name='Bead-to-water diffusivity fraction', units='', kind='coupled',
            element='Encapsulation', baseline=b, distribution=D)
     def set_f_diff(f):
@@ -212,9 +213,9 @@ def add_continuous_params(model):
     
     # common uncertainty/DVs 
     ks = (
-        ('k_fa', 'uptake_LCFA', 6, 0.6, 24),
-        ('k_pro', 'uptake_propionate', 13, 1.3, 26),
-        ('k_ac', 'uptake_acetate', 8, 0.8, 16)
+        ('uptake k_fa', 'uptake_LCFA', 6, 0.6, 24),
+        ('uptake k_pro', 'uptake_propionate', 13, 1.3, 26),
+        ('uptake k_ac', 'uptake_acetate', 8, 0.8, 16)
         )
     
     for name, pid, b, lb, ub in ks:
@@ -402,15 +403,22 @@ def add_metrics(model, kind='DV'):
         
         biomass = (*fermenters, *methanogens)
         kwargs = dict(units='g/L', element='Biomass')
-        metric(getter=FuncGetter(get_overall_tss, (u.R1, biomass)),
-               name='R1 Overall TSS', **kwargs)
-        if reactor_type in ('FB', 'PB'):
+
+        if reactor_type == 'UASB':
+            metric(getter=FuncGetter(u.R1.biomass_tss, (biomass,)),
+                   name='R1 Overall TSS', **kwargs)
+        else:
+            metric(getter=FuncGetter(get_overall_tss, (u.R1, biomass)),
+                   name='R1 Overall TSS', **kwargs)
             metric(getter=FuncGetter(get_encap_tss, (u.R1, biomass)),
                    name='R1 Encapsulated TSS', **kwargs)
         if n_stage == 2:
-            metric(getter=FuncGetter(get_overall_tss, (u.R2, biomass)),
-                   name='R2 Overall TSS', **kwargs)
-            if reactor_type in ('FB', 'PB'):
+            if reactor_type == 'UASB':
+                metric(getter=FuncGetter(u.R2.biomass_tss, (biomass,)),
+                       name='R2 Overall TSS', **kwargs)
+            else:
+                metric(getter=FuncGetter(get_overall_tss, (u.R2, biomass)),
+                       name='R2 Overall TSS', **kwargs)
                 metric(getter=FuncGetter(get_encap_tss, (u.R2, biomass)),
                        name='R2 Encapsulated TSS', **kwargs)
         
@@ -425,7 +433,7 @@ def add_metrics(model, kind='DV'):
             return share[item]
 
         def get_vessel_gwp(suffix, system):
-            gwp_bd = categorize_all_impacts(system.LCA)
+            gwp_bd = categorize_all_impacts(system.LCA).loc['GWP100'].to_dict()
             tot = abs(gwp_bd.pop('total'))
             _cached_metrics[f'gwp_{suffix}'] = share = {k: v/tot*100 for k, v in gwp_bd.items()}
             return share['vessel']
@@ -438,22 +446,22 @@ def add_metrics(model, kind='DV'):
         
         for suffix, system in (('(w/ degas)', sys), ('(w/o degas)', sub)):
             metric(getter=FuncGetter(get_cost, (system,)),
-                   name=f'Levelized cost {suffix}', units='$/ton rCOD', element='TEA')
+                   name=f'Levelized cost {suffix}', units='$/ton rCOD', element=f'TEA {suffix}')
 
             metric(getter=FuncGetter(get_vessel_cost, params=(suffix, system)),
-                   name=f'llc vessel {suffix}', units='%', element='TEA')
+                   name=f'llc vessel {suffix}', units='%', element=f'TEA {suffix}')
             for i in other_items:
                 metric(getter=FuncGetter(get_other_cost, params=(suffix, i)),
-                       name=f'llc {i} {suffix}', units='%', element='TEA')
+                       name=f'llc {i} {suffix}', units='%', element=f'TEA {suffix}')
 
             metric(getter=FuncGetter(get_gwp, (system,)),
-                   name=f'GWP100 {suffix}', units='kg CO2eq/ton rCOD', element='LCA')
+                   name=f'GWP100 {suffix}', units='kg CO2eq/ton rCOD', element=f'LCA {suffix}')
             
             metric(getter=FuncGetter(get_vessel_gwp, params=(suffix, system)),
-                   name=f'gwp vessel {suffix}', units='%', element='LCA')
+                   name=f'gwp vessel {suffix}', units='%', element=f'LCA {suffix}')
             for i in (*other_items, 'fug_ch4'):
                 metric(getter=FuncGetter(get_other_gwp, params=(suffix, i)),
-                       name=f'gwp {i} {suffix}', units='%', element='LCA')
+                       name=f'gwp {i} {suffix}', units='%', element=f'LCA {suffix}')
 
 
 #%%
@@ -466,14 +474,15 @@ def create_model(sys=None, kind='DV', exception_hook='warn', **kwargs):
     return mdl
 
 def run_model(model, sample, T=400, t_step=10, method='BDF', 
-              mpath='', tpath=''):
+              mpath='', tpath='', seed=None):
     name = model.system.ID.rstrip('_edg')
     model.load_samples(sample)
     t_span = (0, T)
     t_eval = np.arange(0, T+t_step, t_step)
-    mpath = mpath or os.path.join(results_path, f'{name}.xlsx')
+    suffix = f'_{seed}' if seed else ''
+    mpath = mpath or os.path.join(results_path, f'{name}{suffix}.xlsx')
     if not tpath:
-        folder = os.path.join(results_path, f'ty_data_{name}')
+        folder = os.path.join(results_path, f'ty_data_{name}{suffix}')
         os.mkdir(folder)
         tpath = os.path.join(folder, 'state.npy')    
     model.evaluate(
