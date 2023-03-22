@@ -45,7 +45,7 @@ sensitive_params = {
 #%%
 def import_scada_data():
 
-    file = ospath.join(data_path, 'condti_scada_result.xlsx')
+    file = ospath.join(data_path, 'conti_scada_result.xlsx')
     result_scada = load_data(file, sheet=0, index_col=None)
 
     t_scada = result_scada.t_stamp.to_numpy()
@@ -64,7 +64,7 @@ def create_model(system=None, flowsheet=None):
     sys = system or create_system(flowsheet)
 
     stream = sys.flowsheet.stream
-    DYINF, PHO, ME, INT, TE, RETEN, RE, CE, CEN, ALG, RAA = stream.DYINF, stream.PHO, stream.ME, stream.INT, stream.TE, stream.RETEN, stream.RE, stream.CE, stream.CEN, stream.ALG, stream.RAA
+    DYINF, PHO, ME, INT, TE, RETEN, RE, CE, CEN, ALG, RAA = stream.Dynamic_influent, stream.To_PBR, stream.To_membrane, stream.Internal_recycle, stream.Effluent, stream.Retentate, stream.To_return_tank, stream.To_centrifuge, stream.Centrate, stream.Harvested_biomass, stream.Return_activated_algae
 
     unit = sys.flowsheet.unit
     SE, MIX, PBR1, PBR2, PBR3, PBR4, PBR5, PBR6, PBR7, PBR8, PBR9, PBR10, PBR11, PBR12, PBR13, PBR14, PBR15, PBR16, PBR17, PBR18, PBR19, PBR20, MEM, MEV, POST_MEM, CENT, RET = unit.SE, unit.MIX, unit.PBR1, unit.PBR2, unit.PBR3, unit.PBR4, unit.PBR5, unit.PBR6, unit.PBR7, unit.PBR8, unit.PBR9, unit.PBR10, unit.PBR11, unit.PBR12, unit.PBR13, unit.PBR14, unit.PBR15, unit.PBR16, unit.PBR17, unit.PBR18, unit.PBR19, unit.PBR20, unit.MEM, unit.MEV, unit.POST_MEM, unit.CENT, unit.RET

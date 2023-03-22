@@ -33,35 +33,42 @@ __all__ = (
 
 # Parameters used for UA & SA
 baseline_values = {
-    'a_c': (0.049, 'm^2/g TSS'),
-    'arr_a': (1.8e10, ''),
-    'arr_e': (6842, 'K'),
-    'beta_1': (2.9, ''),
-    'beta_2': (3.5, ''),
-    'b_reactor': (0.03, 'm'),
-    'k_gamma': (1e-05, ''),
-    'K_N': (0.1, 'g N/m^3'),
-    'K_P': (1.0, 'g P/m^3'),
-    'K_A': (6.3, 'g COD/m^3'),
-    'K_F': (6.3, 'g COD/m^3'),
-    'rho': (1.186, ''),
-    'K_STO': (1.566, 'g COD/g COD'),
-    'f_CH_max': (0.819, 'g COD/g COD'),
-    'f_LI_max': (3.249, 'g COD/g COD'),
-    'Q_N_max': (0.417, 'g N/g COD'),
-    'Q_P_max': (0.092, 'g P/g COD'),
-    'exponent': (4, ''),
-    'n_dark': (0.7, ''),
-    'I_n': (1000, 'uE/m^2/s'),              # Increased baseline, differ from default_pm2_kwargs
-    'I_opt': (1500, 'uE/m^2/s'),            # Increased baseline, differ from default_pm2_kwargs
-    'm_ATP': (15.835, 'g ATP/g COD/d'),
-    'mu_max': (1.969, 'd^(-1)'),
-    'q_CH': (0.594, 'g COD/g COD/d'),
-    'q_LI': (0.91, 'g COD/g COD/d'),
-    'V_NH': (0.254, 'g N/g COD/d'),
-    'V_NO': (0.254, 'g N/g COD/d'),
-    'V_P': (0.016, 'g P/g COD/d')
+    'a_c': (0.049, 'm^2/g TSS'),                # (0.0245, 0.0735)
+    'arr_a': (1.8e10, ''),                      # (0.9e10, 2.7e10)    v
+    'arr_e': (6842, 'K'),                       # (3421, 10263)
+    'beta_1': (2.9, ''),                        # (1.45, 4.35)
+    'beta_2': (3.5, ''),                        # (1.75, 5.25)
+    'b_reactor': (0.03, 'm'),                   # (0.015, 0.045)
+    'k_gamma': (1e-05, ''),                     # (0.5e-05, 1.5e-05)
+    'K_N': (0.1, 'g N/m^3'),                    # (0.05, 0.15)
+    'K_P': (1.0, 'g P/m^3'),                    # (0.5, 1.5)
+    'K_A': (6.3, 'g COD/m^3'),                  # (3.15, 9.45)
+    'K_F': (6.3, 'g COD/m^3'),                  # (3.15, 9.45)
+    'rho': (1.186, ''),                         # (0.593, 1.779)
+    'K_STO': (1.566, 'g COD/g COD'),            # (0.783, 2.349)
+    'f_CH_max': (0.819, 'g COD/g COD'),         # (0.4095, 1.2285)
+    'f_LI_max': (3.249, 'g COD/g COD'),         # (1.6245, 4.8735)
+    'Q_N_max': (0.417, 'g N/g COD'),            # (0.2085, 0.6255)
+    'Q_P_max': (0.092, 'g P/g COD'),            # (0.046, 0.138)
+    'exponent': (4, ''),                        # (2, 6)
+    'n_dark': (0.7, ''),                        # (0.35, 1.05)
+    'I_n': (1000, 'uE/m^2/s'),                  # (500, 1500)           # Increased baseline, differ from default_pm2_kwargs
+    'I_opt': (1500, 'uE/m^2/s'),                # (750, 2250)           # Increased baseline, differ from default_pm2_kwargs
+    'm_ATP': (15.835, 'g ATP/g COD/d'),         # (7.9175, 23.7525) v
+    'mu_max': (1.969, 'd^(-1)'),                # (0.9845, 2.9535)
+    'q_CH': (0.594, 'g COD/g COD/d'),           # (0.297, 0.891)    v
+    'q_LI': (0.91, 'g COD/g COD/d'),            # (0.455, 1.365)    v
+    'V_NH': (0.254, 'g N/g COD/d'),             # (0.127, 0.381)
+    'V_NO': (0.254, 'g N/g COD/d'),             # (0.127, 0.381)    v
+    'V_P': (0.016, 'g P/g COD/d')               # (0.008, 0.024)    v
     }
+
+# pm2 = pc.PM2(mu_max=2, I_n=1000, I_opt=2000, V_NH=0.12, V_NO=0.0035, V_P=0.24, q_CH=1.5, q_LI=24,
+#              arr_a=4*10**10, f_CH_max=1.2, f_LI_max=3.9)    # GY gutfeeling optimized - batch
+
+# pm2 = pc.PM2(I_n=1200, I_opt=2000, mu_max=1, V_NH=0.09, V_NO=0.003, V_P=0.17, \
+#              q_CH=0.6, q_LI=13, Q_N_max=0.6, arr_e=6650, m_ATP=5)    # GY gutfeeling optimized - conti
+
 
 # Parameters used for calibration - sensitive parameters (baseline_value, units, bounds)
 
