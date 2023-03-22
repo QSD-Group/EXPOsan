@@ -64,6 +64,57 @@ baseline_values = {
     }
 
 # Parameters used for calibration - sensitive parameters (baseline_value, units, bounds)
+
+# sensitive_params = {
+#     'arr_e': (5000, 'K', (1000, 10000)),
+#     'K_P': (1.0, 'g P/m^3', (0.0001, 10)),
+#     'K_STO': (1, 'g COD/g COD', (0.0001, 20)),
+#     'exponent': (4, '', (1, 10)),
+#     'm_ATP': (1, 'g ATP/g COD/d', (1, 50)),
+#     'q_CH': (1, 'g COD/g COD/d', (0.001, 10)),
+#     'V_NH': (0.1, 'g N/g COD/d', (0.0001, 5)),
+#     'V_P': (0.1, 'g P/g COD/d', (0.0001, 5))
+#     }
+
+# sensitive_params = {
+#     'mu_max': (2, 'd^(-1)', (1, 4)),
+#     'I_n': (1000, 'uE/m^2/s', (500, 2000)),
+#     'I_opt': (2000, 'uE/m^2/s', (500, 3000)),
+#     'V_NH': (0.12, 'g N/g COD/d', (0.01, 1)),
+#     'V_NO': (0.0035, 'g N/g COD/d', (0.001, 1)),
+#     'V_P': (0.24, 'g P/g COD/d', (0.01, 1)),
+#     'q_CH': (1.5, 'g COD/g COD/d', (0.1, 5)),
+#     'q_LI': (24, 'g COD/g COD/d', (1, 50)),
+#     'arr_a': (4e10, '', (1e8, 1e12)),
+#     'f_CH_max': (1.2, 'g COD/g COD', (0.1, 10)),
+#     'f_LI_max': (3.9, 'g COD/g COD', (0.1, 10)),
+#     } gut feeling optimizer
+
+# sensitive_params = {
+#     'arr_e': (4996, 'K', (1000, 10000)),
+#     'K_P': (1.008, 'g P/m^3', (0.0001, 10)),
+#     'K_STO': (1.018, 'g COD/g COD', (0.0001, 20)),
+#     'exponent': (4.003, '', (1, 10)),
+#     'm_ATP': (1.048, 'g ATP/g COD/d', (1, 50)),
+#     'q_CH': (1.5, 'g COD/g COD/d', (0.001, 10)),
+#     'V_NH': (0.12, 'g N/g COD/d', (0.0001, 5)),
+#     'V_P': (0.24, 'g P/g COD/d', (0.0001, 5))
+#     } # 4th
+
+# pm2 = pc.PM2(mu_max=2, I_n=1000, I_opt=2000, V_NH=0.12, V_NO=0.0035, V_P=0.24, q_CH=1.5, q_LI=24,
+# arr_a=4*10**10, f_CH_max=1.2, f_LI_max=3.9)    # GY gutfeeling optimized
+
+
+# sensitive_params = {
+#     'arr_e': (5000, 'K', (1000, 10000)),
+#     'K_P': (1.0, 'g P/m^3', (0.0001, 10)),
+#     'K_STO': (1, 'g COD/g COD', (0.0001, 20)),
+#     'exponent': (4, '', (1, 10)),
+#     'm_ATP': (1, 'g ATP/g COD/d', (1, 50)),
+#     'q_CH': (1, 'g COD/g COD/d', (0.001, 10)),
+#     'V_NH': (0.1, 'g N/g COD/d', (0.0001, 5)),
+#     'V_P': (0.1, 'g P/g COD/d', (0.0001, 5))
+#     }    # 2nd
 sensitive_params = {
     'arr_e': (6842, 'K', (1000, 10000)),
     'K_P': (1.0, 'g P/m^3', (0.0001, 10)),
@@ -73,7 +124,10 @@ sensitive_params = {
     'q_CH': (0.594, 'g COD/g COD/d', (0.001, 10)),
     'V_NH': (0.254, 'g N/g COD/d', (0.0001, 5)),
     'V_P': (0.016, 'g P/g COD/d', (0.0001, 5))
-    }
+    } # original
+
+
+# may_kinetic_gutfeeling_cali = mu_max=2, I_n=1000, I_opt=2000, V_NH=0.12, V_NO=0.0035, V_P=0.24, q_CH=1.5, q_LI=24, arr_a=4*10**10, f_CH_max=1.2, f_LI_max=3.9
 
 #%%
 # sens_baseline_values = {

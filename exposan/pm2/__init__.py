@@ -20,34 +20,23 @@ data_path, results_path, figures_path = \
 del os
 
 from . import system
-# from . import system_batch
 
 from .system import *
-# from .system_batch import *
 
 _system_loaded = False
-def load(reload=False, inf_kwargs={}, pm2_kwargs={}, init_conds={}):
-# def load(reload=False, pm2_kwargs={}, init_conds={}):
+def load(reload=False, pm2_kwargs={}, init_conds={}):
 
     global _system_loaded
     if not _system_loaded: reload = True
     if reload:
         global cmps, components, pm2, sys
         sys = create_system(
-            inf_kwargs=inf_kwargs,
             pm2_kwargs=pm2_kwargs,
             init_conds=init_conds,
             )
-        # sys = create_system(
-        #     pm2_kwargs=pm2_kwargs,
-        #     init_conds=init_conds,
-        #     )
         MIX = sys.flowsheet.unit.MIX
         cmps = components = MIX.components
-        pm2 = MIX.suspended_growth_model  
-        # PBR = sys.flowsheet.unit.MIX
-        # cmps = components = PBR.components
-        # pm2 = PBR.suspended_growth_model  
+        pm2 = MIX.suspended_growth_model
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     _system_loaded = True

@@ -1,4 +1,4 @@
-    # -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 '''
 EXPOsan: Exposition of sanitation and resource recovery systems
 
@@ -20,7 +20,6 @@ __all__ = (
     'biomass_IDs',
     'create_system',
     'default_pm2_kwargs',
-    'default_inf_kwargs',
     'default_init_conds',
     'Temp', 'V_mix', 'V_pbr', 'V_mem', 'V_ret',
     'T_pbr', 'T_mix', 'I_pbr', 'I_mix',
@@ -32,7 +31,7 @@ __all__ = (
 # Parameters and util functions
 # =============================================================================
 
-# Q = 445.26           # influent flowrate [m3/d]
+# Q = 445.26         # influent flowrate [m3/d]
 Temp = 286.14        # temperature [K]
 
 V_mix = 66.09
@@ -41,29 +40,29 @@ V_mem = 7.03
 V_ret = 6.14
 biomass_IDs = ('X_ALG',)
 
-T_pbr, I_pbr = EDV.batch_init(os.path.join(data_path, 'exo_vars.xlsx'), 'linear')
+T_pbr, I_pbr = EDV.batch_init(os.path.join(data_path, 'exo_vars_dynamic_influent.xlsx'), 'linear')
 
 T_mix = T_pbr
 I_mix = EDV('light_I_mix', function=lambda t: 0)
 
-default_inf_kwargs = {
-    'concentrations': {
-        'X_CHL':0.0,
-        'X_ALG':0.0,
-        'X_CH':0.0,
-        'X_LI':0.0,
-        'S_CO2':30.0,
-        'S_A':5.0,
-        'S_F':5.0,
-        'S_O2':5.0,
-        'S_NH':35.8,
-        'S_NO':0.7,
-        'S_P':0.36,
-        'X_N_ALG':0.0,
-        'X_P_ALG':0.0,
-        },
-    'units': ('m3/d', 'mg/L'),
-    }
+# default_inf_kwargs = {
+#     'concentrations': {
+#         'X_CHL':0.0,
+#         'X_ALG':0.0,
+#         'X_CH':0.0,
+#         'X_LI':0.0,
+#         'S_CO2':30.0,
+#         'S_A':5.0,
+#         'S_F':5.0,
+#         'S_O2':5.0,
+#         'S_NH':35.8,
+#         'S_NO':0.7,
+#         'S_P':0.36,
+#         'X_N_ALG':0.0,
+#         'X_P_ALG':0.0,
+#         },
+#     'units': ('m3/d', 'mg/L'),
+#     }
 
 default_pm2_kwargs = dict(
     a_c=0.049, I_n=1500, arr_a=1.8e10, arr_e=6842, beta_1=2.90,
@@ -80,13 +79,12 @@ default_pm2_kwargs = dict(
     Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317, n_dark=0.7,
     path=None,
     )
-    # path=os.path.join(data_path, '_pm2.tsv')
 
 default_init_conds = {
-        'X_CHL':2.31,
-        'X_ALG':461.18,
-        'X_CH':11.34,
-        'X_LI':59.58,
+        'X_CHL':1.86,
+        'X_ALG':372.67,
+        'X_CH':16.93,
+        'X_LI':69.07,
         'S_CO2':30.0,
         'S_A':5.0,
         'S_F':5.0,
@@ -94,14 +92,14 @@ default_init_conds = {
         'S_NH':35.80,
         'S_NO':0.7,
         'S_P':0.36,
-        'X_N_ALG':2.94,
-        'X_P_ALG':10.55,
+        'X_N_ALG':2.38,
+        'X_P_ALG':0.14,
     }
 
 def batch_init(sys, path, sheet):
     df = load_data(path, sheet)
     dct = df.to_dict('index')
-    u = sys.flowsheet.unit #unit registry
+    u = sys.flowsheet.unit                  #unit registry
     for k in [u.MIX,
               u.PBR1, u.PBR2, u.PBR3, u.PBR4, u.PBR5,
               u.PBR6, u.PBR7, u.PBR8, u.PBR9, u.PBR10,
@@ -116,7 +114,9 @@ def batch_init(sys, path, sheet):
 # Validation & Verification of PM2
 # =============================================================================
 
-def create_system(flowsheet=None, inf_kwargs={}, pm2_kwargs={}, init_conds={}):
+def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
+# def create_system(flowsheet=None, inf_kwargs={}, pm2_kwargs={}, init_conds={}):
+
     flowsheet = flowsheet or qs.Flowsheet('pm2')
     qs.main_flowsheet.set_flowsheet(flowsheet)
 
@@ -124,10 +124,12 @@ def create_system(flowsheet=None, inf_kwargs={}, pm2_kwargs={}, init_conds={}):
     cmps = pc.create_pm2_cmps()
 
     # Streams
-    INF = WasteStream('Secondary_effluent', T=Temp)
-    inf_kwargs = inf_kwargs or default_inf_kwargs
-    INF.set_flow_by_concentration(Q, **inf_kwargs)
 
+    # INF = WasteStream('Secondary_effluent', T=Temp)
+    # inf_kwargs = inf_kwargs or default_inf_kwargs
+    # INF.set_flow_by_concentration(Q, **inf_kwargs)
+
+    DYINF = WasteStream('Dynamic_influent', T=Temp)
     PHO = WasteStream('To_PBR', T=Temp)
 
     ME = WasteStream('To_membrane', T=Temp)
@@ -149,7 +151,11 @@ def create_system(flowsheet=None, inf_kwargs={}, pm2_kwargs={}, init_conds={}):
     pm2 = pc.PM2(**pm2_kwargs)
 
     # Create unit operations
-    MIX = su.CSTR('MIX', ins=[INF, RAA], outs=[PHO], V_max=V_mix,
+
+    SE = su.DynamicInfluent('SE', outs=[DYINF],
+                            data_file=os.path.join(data_path, 'dynamic_influent.tsv'))
+
+    MIX = su.CSTR('MIX', ins=[DYINF, RAA], outs=[PHO], V_max=V_mix,
                   aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_mix, I_mix))
 
     PBR1 = su.CSTR('PBR1', ins=MIX-0, V_max=V_pbr/20,
@@ -197,7 +203,7 @@ def create_system(flowsheet=None, inf_kwargs={}, pm2_kwargs={}, init_conds={}):
 
     MEV = su.CSTR('MEV', ins=MEM-1, V_max=V_mem, aeration=None, suspended_growth_model=None)
 
-    POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.96)
+    POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.97)
 
     CENT = su.Splitter('CENT', POST_MEM-1, outs=[CEN, ALG], split={'X_CHL':0.33,
                                                                     'X_ALG':0.33,
@@ -219,15 +225,18 @@ def create_system(flowsheet=None, inf_kwargs={}, pm2_kwargs={}, init_conds={}):
 
     # System setup
     sys = System('sys',
-                 path=(MIX, PBR1, PBR2, PBR3, PBR4, PBR5, PBR6, PBR7, PBR8, PBR9, PBR10,
-                 PBR11, PBR12, PBR13, PBR14, PBR15, PBR16, PBR17, PBR18, PBR19, PBR20,
-                 MEM, MEV, POST_MEM, CENT, RET),
+                 path=(SE, MIX,
+                       PBR1, PBR2, PBR3, PBR4, PBR5, PBR6, PBR7, PBR8, PBR9, PBR10,
+                       PBR11, PBR12, PBR13, PBR14, PBR15, PBR16, PBR17, PBR18, PBR19, PBR20,
+                       MEM, MEV, POST_MEM, CENT, RET),
                  recycle=(RAA,))
 
     init_conds = init_conds or default_init_conds
-    batch_init(sys, os.path.join(data_path, 'initial_conditions.xlsx'), 'default')
+    batch_init(sys,
+               os.path.join(data_path, 'initial_conditions_pm2_dynamic_influent.xlsx'), 'default')
 
-    sys.set_dynamic_tracker(MIX, PBR1, PBR20, RET, TE, ALG)
+    sys.set_dynamic_tracker(SE, MIX, PBR1, PBR20, RET, TE, CEN, ALG)
+    # sys.set_dynamic_tracker(MIX, PBR1, PBR20, RET, TE, ALG)
     sys.set_tolerance(rmol=1e-6)
 
     return sys
@@ -246,7 +255,9 @@ def run(t, t_step, method=None, **kwargs):
         # atol=1e-3,
         export_state_to=f'results/sol_{t}d_{method}.xlsx',
         **kwargs)
-    srt = get_SRT(sys, biomass_IDs)
+
+    unit_IDs = [u.ID for u in sys.units if isinstance(u, su.CSTR)]
+    srt = get_SRT(sys, biomass_IDs, active_unit_IDs=unit_IDs)
     print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
 
 if __name__ == '__main__':

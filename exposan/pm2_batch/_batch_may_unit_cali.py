@@ -20,40 +20,30 @@ from qsdsan.utils import ospath, time_printer, \
 
 cmps = pc.create_pm2_cmps()
 
-pm2 = pc.PM2(arr_e=4973, K_P=1.071, K_STO=1.297, exponent=4.002, m_ATP=1.489, q_CH=1.545, V_NH=0.2065, V_P=0.3299)  # 4rd, initial baseline as optimized value
-
-
-# pm2 = pc.PM2(arr_e=4996, K_P=1.008, K_STO=1.018, exponent=4.003, m_ATP=1.048, q_CH=1.008, V_NH=0.09981, V_P=0.1047)  # 3rd_e-4
-
-
-# pm2 = pc.PM2(arr_e=4996, K_P=1.009, K_STO=1.019, exponent=4.006, m_ATP=1, q_CH=1.009, V_NH=0.0999, V_P=0.1048)    # 2nd
-
-
-# pm2 = pc.PM2(arr_e=6845, K_P=1.009, K_STO=1.584, exponent=4.006, m_ATP=15.87, q_CH=0.6032, V_NH=0.2586, V_P=0.001598)    _init
-
-# pm2 = pc.PM2(mu_max=2, I_n=1000, I_opt=2000, V_NH=0.12, V_NO=0.0035, V_P=0.24, q_CH=1.5, q_LI=24, arr_a=4*10**10, f_CH_max=1.2, f_LI_max=3.9)
+pm2 = pc.PM2(arr_e=6843, K_P=0.8056, K_STO=3.797, exponent=3.806, m_ATP=15.81, q_CH=2.594, V_NH=0.3537, V_P=0.3631) #minimize with original init
+# pm2 = pc.PM2(mu_max=2, I_n=1000, I_opt=2000, V_NH=0.12, V_NO=0.0035, V_P=0.24, q_CH=1.5, q_LI=24, arr_a=4*10**10, f_CH_max=1.2, f_LI_max=3.9) original
 
 pm2_path = ospath.dirname(__file__)
-data_path = ospath.join(pm2_path, 'data/exo_vars_batch_may_kinetic.xlsx')
+data_path = ospath.join(pm2_path, 'data/exo_vars_batch_may_unit.xlsx')
 
 T, I = EDV.batch_init(data_path, 'linear')
 
 PBR = su.BatchExperiment('PBR', model=pm2, exogenous_vars=(T, I))
 
 init_concs = {
-    'X_CHL':3.91,
-    'X_ALG':782.30,
-    'X_CH':19.24,
-    'X_LI':101.06,
+    'X_CHL':2.81,
+    'X_ALG':561.57,
+    'X_CH':13.74,
+    'X_LI':62.22,
     'S_CO2':30.0,
     'S_A':5.0,
     'S_F':5.0,
     'S_O2':20.36,
-    'S_NH':27.84,
-    'S_NO':10.72,
-    'S_P':0.617,
-    'X_N_ALG':0.92,
-    'X_P_ALG':8.06,
+    'S_NH':25,
+    'S_NO':9.30,
+    'S_P':0.383,
+    'X_N_ALG':3.62,
+    'X_P_ALG':12.60,
     }
 
 PBR.set_init_conc(**init_concs)
@@ -70,7 +60,7 @@ def run(t, t_step, method=None, print_t=False, **kwargs):
                       method=method,
                       # rtol=1e-2,
                       # atol=1e-3,
-                      export_state_to=f'results/sol_{t}d_{method}_batch_may_kinetic_cali.xlsx',
+                      export_state_to=f'results/sol_{t}d_{method}_batch_may_unit_cali.xlsx',
                       print_t=print_t,
                       **kwargs)
     else:
@@ -83,8 +73,8 @@ def run(t, t_step, method=None, print_t=False, **kwargs):
                       **kwargs)
 
 if __name__ == '__main__':
-    t = 7
-    t_step = 0.1
+    t = 0.25
+    t_step = 0.01
     # method = 'RK45'
     method = 'RK23'
     # method = 'DOP853'
@@ -98,3 +88,5 @@ if __name__ == '__main__':
     run(t, t_step, method=method,
         print_t = True,
         )
+
+
