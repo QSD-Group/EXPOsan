@@ -47,14 +47,18 @@ def run_UA_SA(seed=None, N=1000, rule='L'):
     seed = seed or int(str(time())[-3:])
     qs.PowerUtility.price = 0.0913
     sample = None
-    for rt in ('UASB', 'FB', 'PB'):
+    for rt in (
+            'UASB', 
+            # 'FB', 
+            'PB'
+            ):
         sys = create_system(n_stages=1, reactor_type=rt, gas_extraction='P')
         print(sys.ID)
         print('='*len(sys.ID))
         mdl = create_model(sys, kind='uasa', exception_hook='warn')
         if sample is None: sample = mdl.sample(N=N, rule=rule, seed=seed)
         run_model(mdl, sample, seed=seed)
-    return seed
+    return sample
 
 #%%
 def data_compile(save=True):
@@ -406,4 +410,4 @@ if __name__ == '__main__':
     # plot_diff()
     # llc, imp = best_breakdown()
     # plot_breakdown()
-    run_UA_SA(N=1000)
+    run_UA_SA(seed=364, N=1000)

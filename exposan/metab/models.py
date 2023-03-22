@@ -337,12 +337,13 @@ def add_metrics(model, kind='DV'):
     @metric(name='COD removal', units='%', element='Process')
     def get_rcod():
         rcod = 1 - s.eff_dg.COD/s.inf.COD
-        if rcod > 0.8:
-            u.R1._cache_state()
-            if n_stage == 2: u.R2._cache_state()
-        else:
-            u.R1._cached_state = None
-            if n_stage == 2: u.R2._cached_state = None
+        if reactor_type in ('FB', 'PB'):
+            if rcod > 0.8:
+                u.R1._cache_state()
+                if n_stage == 2: u.R2._cache_state()
+            else:
+                u.R1._cached_state = None
+                if n_stage == 2: u.R2._cached_state = None
         return rcod*100
     
     if kind == 'DV':
