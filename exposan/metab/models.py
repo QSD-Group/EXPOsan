@@ -140,7 +140,7 @@ def add_continuous_params(model):
         # D = shape.Triangle(lb, b, ub)
         D = shape.Triangle(b*0.5, b, b*1.5)
         param(setter=MethodSetter(adm1, 'set_half_sat_K', key='K', process=pid),
-              name=name, units='COD/COD/d', kind='coupled', element='ADM1',
+              name=name, units='kg COD/m3', kind='coupled', element='ADM1',
               baseline=b, distribution=D)
     
     start = adm1._find_index('decay_Xsu')
@@ -337,13 +337,13 @@ def add_metrics(model, kind='DV'):
     @metric(name='COD removal', units='%', element='Process')
     def get_rcod():
         rcod = 1 - s.eff_dg.COD/s.inf.COD
-        if reactor_type in ('FB', 'PB'):
-            if rcod > 0.8:
-                u.R1._cache_state()
-                if n_stage == 2: u.R2._cache_state()
-            else:
-                u.R1._cached_state = None
-                if n_stage == 2: u.R2._cached_state = None
+        # if reactor_type in ('FB', 'PB'):
+        #     if rcod > 0.8:
+        #         u.R1._cache_state()
+        #         if n_stage == 2: u.R2._cache_state()
+        #     else:
+        #         u.R1._cached_state = None
+        #         if n_stage == 2: u.R2._cached_state = None
         return rcod*100
     
     if kind == 'DV':
