@@ -761,6 +761,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         '''
         if not self._rQ: 
             u_min = self.min_fluidizing_velocity(Beads._bead_density)
+            if u_min <= 0: return 0
             A_bed = (pi*self.V_bed**2/4/self.reactor_height_to_diameter**2)**(1/3)
             A_liq = A_bed * 0.4
             return u_min * A_liq/self._mixed.F_vol - 1
