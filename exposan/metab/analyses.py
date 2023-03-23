@@ -60,6 +60,36 @@ def run_UA_SA(seed=None, N=1000, rule='L'):
         run_model(mdl, sample, seed=seed)
     return sample
 
+def _rerun_failed_samples(seed, rt='PB'):
+    qs.PowerUtility.price = 0.0913  
+    sample = load_data(ospath.join(results_path, f'{rt}1P_{seed}.xlsx'),
+                       header=[0,1], skiprows=[2,])
+    sample = sample[sample.isna().any(axis=1)]
+    sample = sample.iloc[:, :18].to_numpy()
+
+    sys = create_system(n_stages=1, reactor_type=rt, gas_extraction='P')
+    cmps = sys.feeds[0].components
+    C_bulk = np.array([
+        # 1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
+        0,0,0,0,0,0,
+        # 4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
+        0,0,0,0,0,0,
+        # 2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 
+        0,0,0,0,
+        9.416, 2.478, 0.968, 2.846, 1.796, 
+        # 1.48 , 0.734, 
+        1, 0.6,
+        # 4.708e+00, 1.239e+00, 4.838e-01, 1.423e+00, 8.978e-01, 
+        # 2.959e+00, 1.467e+00,
+        # 4.924e-02, 4.000e-02, 2.000e-02, 9.900e+02
+        0, 4.000e-02, 2.000e-02, 9.900e+02
+        ])
+    C = dict(zip(cmps.IDs, C_bulk))
+    sys.units[0].set_init_conc(**C)
+    mdl = create_model(sys, kind='uasa', exception_hook='raise')
+    run_model(mdl, sample, seed='temp')
+
+
 #%%
 def data_compile(save=True):
     dfs = []
