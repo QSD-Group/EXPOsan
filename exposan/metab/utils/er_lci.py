@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Dec 29 14:18:10 2022
+'''
+EXPOsan: Exposition of sanitation and resource recovery systems
 
-@author: joy_c
-"""
+This module is developed by:
+    
+    Joy Zhang <joycheung1994@gmail.com>
+
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
+'''
 
 from math import pi
 

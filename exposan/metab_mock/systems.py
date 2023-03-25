@@ -12,17 +12,25 @@ for license details.
 '''
 
 import numpy as np, qsdsan as qs
-from qsdsan import processes as pc, WasteStream, System
-from qsdsan.utils import ospath, ExogenousDynamicVariable as EDV
+from qsdsan import (
+    processes as pc, 
+    WasteStream, System, TEA, LCA, PowerUtility,
+    ImpactItem as IItm, 
+    StreamImpactItem as SIItm,
+    )
+from qsdsan.utils import ExogenousDynamicVariable as EDV
 from exposan.metab_mock import (
+    _impact_item_loaded,
+    load_lca_data,
     rhos_adm1_ph_ctrl,
+    METAB_AnCSTR as AB
+    )
+from exposan.metab import (
     DegassingMembrane as DM, 
-    METAB_AnCSTR as AB,
     IronSpongeTreatment as IST,
     DoubleMembraneGasHolder as GH,
+    add_strm_iitm, add_TEA_LCA
     )
-
-folder = ospath.dirname(__file__)
 
 __all__ = (
     'create_systems', 
@@ -50,6 +58,10 @@ T2 = 273.15+25
 Vl2 = 75*scale
 Vg2 = 5*(scale**0.5)
 ph2 = 7.2
+
+T3 = T2
+Vl3 = 5*scale
+Vg3 = 0.556*(scale**0.5)
 
 bl = 1   # yr, bead lifetime
 # bl = 10
@@ -169,13 +181,13 @@ default_R_init_conds = {
  'X_ch': 1.2600235711799973,
  'X_pr': 1.3804329631122664,
  'X_li': 1.7696259648387357,
- 'X_su': 732.9760678333023,
- 'X_aa': 224.81751931525334,
- 'X_fa': 126.7301174776879,
- 'X_c4': 227.8726398428066,
- 'X_pro': 140.2738127019708,
- 'X_ac': 669.4626559278454,
- 'X_h2': 245.67774602566578,
+ 'X_su': 732.9760678333023*5,
+ 'X_aa': 224.81751931525334*5,
+ 'X_fa': 126.7301174776879*5,
+ 'X_c4': 227.8726398428066*5,
+ 'X_pro': 140.2738127019708*5,
+ 'X_ac': 669.4626559278454*5,
+ 'X_h2': 245.67774602566578*5,
  'X_I': 206.42934561053158,
  'S_cat': 40.0,
  'S_an': 20.0,
@@ -236,11 +248,13 @@ R2_ss_conds = {
     }
 
 #%% Systems
+if not _impact_item_loaded: load_lca_data()
 
-def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowsheet_D=None,
+def create_systems(lifetime=30, discount_rate=0.1, electric_price=0.0913,
+                   flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowsheet_D=None,
                    inf_concs={}, R1_init_conds={}, R2_init_conds={}, R_init_conds={}, 
                    which=None, selective=False):
-    
+    PowerUtility.price = electric_price
     which = which or ('A', 'B', 'C', 'D')
     if isinstance(which, str): which = (which,)
     
@@ -293,7 +307,8 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowshe
     
         sysA = System('sysA', path=(R1A, R2A))
         sysA.set_dynamic_tracker(R1A, R2A, bg1A, bg2A, effA)
-        
+        add_strm_iitm(sysA)
+        add_TEA_LCA(sysA, discount_rate, lifetime)
         systems.append(sysA)
         
     if 'B' in which:
@@ -328,7 +343,8 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowshe
         
         sysB = System('sysB', path=(R1B, R2B, DM2B))
         sysB.set_dynamic_tracker(R1B, R2B, bg1B, bgh2B, bgm2B, effB)
-        
+        add_strm_iitm(sysB)
+        add_TEA_LCA(sysB, discount_rate, lifetime)
         systems.append(sysB)
     
     if 'C' in which:
@@ -343,7 +359,7 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowshe
         GHC = GH(ID='GHC')
         
         RC = AB('RC', ins=infC, outs=(bgC, effC), 
-                V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
+                V_liq=Vl3, V_gas=Vg3, T=T3, model=adm1,
                 retain_cmps=biomass_IDs, bead_lifetime=bl,
                 equipment=[ISTC, GHC],
                 F_BM_default=1)        
@@ -351,6 +367,8 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowshe
     
         sysC = System('sysC', path=(RC,))
         sysC.set_dynamic_tracker(RC, bgC, effC)
+        add_strm_iitm(sysC)
+        add_TEA_LCA(sysC, discount_rate, lifetime)
         systems.append(sysC)
         
     if 'D' in which:
@@ -366,7 +384,7 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowshe
         GHD = GH(ID='GHD')
         
         RD = AB('RD', ins=infD, outs=(bghD, ''), 
-                V_liq=Vl2, V_gas=Vg2, T=T2, model=adm1,
+                V_liq=Vl3, V_gas=Vg3, T=T3, model=adm1,
                 retain_cmps=biomass_IDs, bead_lifetime=bl,
                 equipment=[ISTD, GHD],
                 F_BM_default=1)
@@ -376,6 +394,8 @@ def create_systems(flowsheet_A=None, flowsheet_B=None, flowsheet_C=None, flowshe
     
         sysD = System('sysD', path=(RD, DMD))
         sysD.set_dynamic_tracker(RD, bghD, bgmD, effD)
+        add_strm_iitm(sysD)
+        add_TEA_LCA(sysD, discount_rate, lifetime)
         systems.append(sysD)
     
     return systems
@@ -385,7 +405,7 @@ if __name__ == '__main__':
     systems = create_systems()
     for sys in systems:
         sys.simulate(
-            t_span=(0,200),
+            t_span=(0,400),
             state_reset_hook='reset_cache',
             method='BDF'
             )

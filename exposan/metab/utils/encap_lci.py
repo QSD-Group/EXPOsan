@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Dec 23 14:09:53 2022
+'''
+EXPOsan: Exposition of sanitation and resource recovery systems
 
-@author: joy_c
-"""
+This module is developed by:
+    
+    Joy Zhang <joycheung1994@gmail.com>
+
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
+'''
 from qsdsan.utils import auom
 from chemicals.elements import molecular_weight as get_mw
 from math import pi
