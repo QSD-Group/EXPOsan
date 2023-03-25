@@ -865,6 +865,7 @@ def create_model(system=None, exclude_sludge_compositions=False,
     # LCA (unifrom ± 10%)
     # =========================================================================
     # don't get joint distribution for multiple times, since the baselines for LCA will change.
+    qs.ImpactItem.get_all_items().pop('waste_sludge_item')
     for item in qs.ImpactItem.get_all_items().keys():
         for CF in qs.ImpactIndicator.get_all_indicators().keys():
             abs_small = 0.9*qs.ImpactItem.get_item(item).CFs[CF]
@@ -1511,7 +1512,7 @@ def create_model(system=None, exclude_sludge_compositions=False,
     
     @metric(name='GWP_sludge',units='kg CO2/ton dry sludge',element='LCA')
     def get_GWP_sludge():
-        return lca.get_total_impacts()['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
+        return lca.get_total_impacts(exclude=(raw_wastewater,))['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
     if include_other_CFs_as_metrics:
     
