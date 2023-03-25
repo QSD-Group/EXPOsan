@@ -30,7 +30,7 @@ mpl.rcParams['font.sans-serif'] = 'arial'
 mpl.rcParams["figure.autolayout"] = True
 mpl.rcParams['xtick.minor.visible'] = True
 
-N = 20000
+N = 5000
 
 T = 0.25
 # T = 7    # exclude
@@ -151,9 +151,31 @@ if __name__ == '__main__':
     # seed = 101          # include, N=2000, exo_vars_batch_may_unit
     # seed = 102          # include, N=3000, exo_vars_batch_may_unit
     # seed = 103          # include, N=5000, exo_vars_batch_may_unit
-    seed = 107          # include, N=10000, exo_vars_batch_may_unit
+    # seed = 107          # include, N=10000, exo_vars_batch_may_unit
     # seed = 105          # include, N=15000, exo_vars_batch_may_unit
     # seed = 106          # include, N=20000, exo_vars_batch_may_unit
+
+    # seed = 200          # include, N=10000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 201          # include, N=1000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 202          # include, N=2000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 203          # include, N=3000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 205          # include, N=5000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 206          # include, N=15000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 210          # include, N=20000, exo_vars_batch_may_unit, modified_pm2_kwargs
+
+    # seed = 300          # include, N=10000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 301          # include, N=1000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 302          # include, N=2000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 303          # include, N=3000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 305          # include, N=5000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 306          # include, N=15000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 310          # include, N=20000, exo_vars_batch_may_unit, modified_pm2_kwargs
+
+    # seed = 400          # include, N=10000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 502          # include, N=2000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 503          # include, N=3000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    seed = 505          # include, N=5000, exo_vars_batch_may_unit, modified_pm2_kwargs
+
 
     # seed = 160          # include, N=10000, exo_vars_batch_may_unit
     # seed = 150          # include, N=10000, exo_vars_may_kinetic (wrong)

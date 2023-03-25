@@ -26,8 +26,8 @@ __all__ = ('cali_setup', 'optimizer', 'objective_function')
 
 #%%
 
-mdl = create_model(kind='include', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
-# mdl = create_model(kind='exclude', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
+# mdl = create_model(kind='include', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
+mdl = create_model(kind='exclude', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
 
 def cali_setup():
     params = []
@@ -69,7 +69,7 @@ def optimizer():
     # tol=1e-4 warning, success
 
     opt_as_series = pd.Series(opt)
-    opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_include.xlsx')))
+    opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_exclude_newbase.xlsx')))
     # opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_exclude.xlsx')))
 
     # scipy.optimize.minimize(fun, x0, args=(), method=None, jac=None, hess=None, hessp=None, bounds=None,\
@@ -111,8 +111,8 @@ def objective_function(opt_params, *args):
 
     try:
 
-        mdl._update_state(opt_params, t_span=(0, 0.25), t_eval = np.arange(0, 0.26, 0.01), method='BDF', state_reset_hook='reset_cache')
-        # mdl._update_state(opt_params, t_span=(0, 7), t_eval = np.arange(0, 7.01, 0.01), method='BDF', state_reset_hook='reset_cache')
+        # mdl._update_state(opt_params, t_span=(0, 0.25), t_eval = np.arange(0, 0.26, 0.01), method='BDF', state_reset_hook='reset_cache')
+        mdl._update_state(opt_params, t_span=(0, 7), t_eval = np.arange(0, 7.01, 0.01), method='BDF', state_reset_hook='reset_cache')
 
     except:
         return 1

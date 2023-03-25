@@ -31,22 +31,6 @@ __all__ = (
     'run_uncertainty',
     )
 
-modified_pm2_kwargs = dict(
-    a_c=0.049, I_n=1500, arr_a=1.8e10, arr_e=6842, beta_1=2.90,
-    beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
-    K_N=0.1, K_P=1.0, K_A=6.3, K_F=6.3, rho=1.186, K_STO=1.566,
-    f_CH_max=0.819, f_LI_max=3.249, m_ATP=10,
-    mu_max=1.969, q_CH=1, q_LI=15,
-    Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163,
-    V_NH=0.1, V_NO=0.003, V_P=0.2, exponent=4,
-    Y_ATP_PHO=55.073, Y_CH_PHO=0.754, Y_LI_PHO=0.901, Y_X_ALG_PHO=0.450,
-    Y_ATP_HET_ACE=39.623, Y_CH_NR_HET_ACE=0.625, Y_CH_ND_HET_ACE=0.600,
-    Y_LI_NR_HET_ACE=1.105, Y_LI_ND_HET_ACE=0.713, Y_X_ALG_HET_ACE=0.216,
-    Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880,
-    Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317, n_dark=0.7,
-    path=None,
-    )
-
 # Parameters used for UA & SA
 baseline_values = {
     'a_c': (0.049, 'm^2/g TSS'),                # (0.0245, 0.0735)
@@ -68,47 +52,113 @@ baseline_values = {
     'Q_P_max': (0.092, 'g P/g COD'),            # (0.046, 0.138)
     'exponent': (4, ''),                        # (2, 6)
     'n_dark': (0.7, ''),                        # (0.35, 1.05)
-    'I_n': (1500, 'uE/m^2/s'),                  # (750, 2250)            # Increased baseline, differ from default_pm2_kwargs
-    'I_opt': (2000, 'uE/m^2/s'),                # (1000, 3000)           # Increased baseline, differ from default_pm2_kwargs
-    'm_ATP': (10, 'g ATP/g COD/d'),             # (5, 15) v
+    'I_n': (1000, 'uE/m^2/s'),                  # (500, 1500)           # Increased baseline, differ from default_pm2_kwargs
+    'I_opt': (1500, 'uE/m^2/s'),                # (750, 2250)           # Increased baseline, differ from default_pm2_kwargs
+    'm_ATP': (15.835, 'g ATP/g COD/d'),         # (7.9175, 23.7525) v
     'mu_max': (1.969, 'd^(-1)'),                # (0.9845, 2.9535)
-    'q_CH': (1, 'g COD/g COD/d'),               # (0.5, 1.5)          v
-    'q_LI': (15, 'g COD/g COD/d'),              # (7.5, 22.5)         v
-    'V_NH': (0.1, 'g N/g COD/d'),               # (0.05, 0.15)
-    'V_NO': (0.003, 'g N/g COD/d'),             # (0.0015, 0.0045)    v
-    'V_P': (0.2, 'g P/g COD/d')                 # (0.1, 0.3)          v
+    'q_CH': (0.594, 'g COD/g COD/d'),           # (0.297, 0.891)    v
+    'q_LI': (0.91, 'g COD/g COD/d'),            # (0.455, 1.365)    v
+    'V_NH': (0.254, 'g N/g COD/d'),             # (0.127, 0.381)
+    'V_NO': (0.254, 'g N/g COD/d'),             # (0.127, 0.381)    v
+    'V_P': (0.016, 'g P/g COD/d')               # (0.008, 0.024)    v
     }
 
 # pm2 = pc.PM2(mu_max=2, I_n=1000, I_opt=2000, V_NH=0.12, V_NO=0.0035, V_P=0.24, q_CH=1.5, q_LI=24,
 #              arr_a=4*10**10, f_CH_max=1.2, f_LI_max=3.9)    # GY gutfeeling optimized - batch
 
-# pm2 = pc.PM2(mu_max=1, I_n=1200, I_opt=2000, V_NH=0.09, V_NO=0.003, V_P=0.17, q_CH=0.6, q_LI=13,
-#              Q_N_max=0.6, arr_e=6650, m_ATP=5)    # GY gutfeeling optimized - conti
+# pm2 = pc.PM2(I_n=1200, I_opt=2000, mu_max=1, V_NH=0.09, V_NO=0.003, V_P=0.17, \
+#              q_CH=0.6, q_LI=13, Q_N_max=0.6, arr_e=6650, m_ATP=5)    # GY gutfeeling optimized - conti
+
 
 # Parameters used for calibration - sensitive parameters (baseline_value, units, bounds)
 
-sensitive_params = {
-    'arr_e': (6842, 'K', (1000, 10000)),
-    'K_P': (1.0, 'g P/m^3', (0.01, 100)),
-    'f_CH_max': (0.819, 'g COD/g COD', (0.1, 10)),
-    'exponent': (4, '', (1, 10)),
-    'q_CH': (1, 'g COD/g COD/d', (0.1, 10)),
-    'q_LI': (15, 'g COD/g COD/d', (1.5, 50)),
-    'V_NH': (0.1, 'g N/g COD/d', (0.01, 1)),
-    'V_P': (0.2, 'g P/g COD/d', (0.01, 1))
-    }  # with new baseline, new sens_params
+# sensitive_params = {
+#     'arr_e': (5000, 'K', (1000, 10000)),
+#     'K_P': (1.0, 'g P/m^3', (0.0001, 10)),
+#     'K_STO': (1, 'g COD/g COD', (0.0001, 20)),
+#     'exponent': (4, '', (1, 10)),
+#     'm_ATP': (1, 'g ATP/g COD/d', (1, 50)),
+#     'q_CH': (1, 'g COD/g COD/d', (0.001, 10)),
+#     'V_NH': (0.1, 'g N/g COD/d', (0.0001, 5)),
+#     'V_P': (0.1, 'g P/g COD/d', (0.0001, 5))
+#     }
+
+# sensitive_params = {
+#     'mu_max': (2, 'd^(-1)', (1, 4)),
+#     'I_n': (1000, 'uE/m^2/s', (500, 2000)),
+#     'I_opt': (2000, 'uE/m^2/s', (500, 3000)),
+#     'V_NH': (0.12, 'g N/g COD/d', (0.01, 1)),
+#     'V_NO': (0.0035, 'g N/g COD/d', (0.001, 1)),
+#     'V_P': (0.24, 'g P/g COD/d', (0.01, 1)),
+#     'q_CH': (1.5, 'g COD/g COD/d', (0.1, 5)),
+#     'q_LI': (24, 'g COD/g COD/d', (1, 50)),
+#     'arr_a': (4e10, '', (1e8, 1e12)),
+#     'f_CH_max': (1.2, 'g COD/g COD', (0.1, 10)),
+#     'f_LI_max': (3.9, 'g COD/g COD', (0.1, 10)),
+#     } gut feeling optimizer
+
+# sensitive_params = {
+#     'arr_e': (4996, 'K', (1000, 10000)),
+#     'K_P': (1.008, 'g P/m^3', (0.0001, 10)),
+#     'K_STO': (1.018, 'g COD/g COD', (0.0001, 20)),
+#     'exponent': (4.003, '', (1, 10)),
+#     'm_ATP': (1.048, 'g ATP/g COD/d', (1, 50)),
+#     'q_CH': (1.5, 'g COD/g COD/d', (0.001, 10)),
+#     'V_NH': (0.12, 'g N/g COD/d', (0.0001, 5)),
+#     'V_P': (0.24, 'g P/g COD/d', (0.0001, 5))
+#     } # 4th
+
+# pm2 = pc.PM2(mu_max=2, I_n=1000, I_opt=2000, V_NH=0.12, V_NO=0.0035, V_P=0.24, q_CH=1.5, q_LI=24,
+# arr_a=4*10**10, f_CH_max=1.2, f_LI_max=3.9)    # GY gutfeeling optimized
 
 
 # sensitive_params = {
-#     'arr_e': (6842, 'K', (1000, 10000)),
+#     'arr_e': (5000, 'K', (1000, 10000)),
 #     'K_P': (1.0, 'g P/m^3', (0.0001, 10)),
-#     'K_STO': (1.566, 'g COD/g COD', (0.0001, 20)),
+#     'K_STO': (1, 'g COD/g COD', (0.0001, 20)),
 #     'exponent': (4, '', (1, 10)),
-#     'm_ATP': (10, 'g ATP/g COD/d', (1, 50)),
+#     'm_ATP': (1, 'g ATP/g COD/d', (1, 50)),
 #     'q_CH': (1, 'g COD/g COD/d', (0.001, 10)),
 #     'V_NH': (0.1, 'g N/g COD/d', (0.0001, 5)),
-#     'V_P': (0.2, 'g P/g COD/d', (0.0001, 5))
-#     } # original
+#     'V_P': (0.1, 'g P/g COD/d', (0.0001, 5))
+#     }    # 2nd
+sensitive_params = {
+    'arr_e': (6842, 'K', (1000, 10000)),
+    'K_P': (1.0, 'g P/m^3', (0.0001, 10)),
+    'K_STO': (1.566, 'g COD/g COD', (0.0001, 20)),
+    'exponent': (4, '', (1, 10)),
+    'm_ATP': (15.835, 'g ATP/g COD/d', (1, 50)),
+    'q_CH': (0.594, 'g COD/g COD/d', (0.001, 10)),
+    'V_NH': (0.254, 'g N/g COD/d', (0.0001, 5)),
+    'V_P': (0.016, 'g P/g COD/d', (0.0001, 5))
+    } # original
+
+
+# may_kinetic_gutfeeling_cali = mu_max=2, I_n=1000, I_opt=2000, V_NH=0.12, V_NO=0.0035, V_P=0.24, q_CH=1.5, q_LI=24, arr_a=4*10**10, f_CH_max=1.2, f_LI_max=3.9
+
+#%%
+# sens_baseline_values = {
+#     'arr_e': (6842, 'K'),
+#     'K_P': (1.0, 'g P/m^3'),
+#     'K_STO': (1.566, 'g COD/g COD'),
+#     'exponent': (4, ''),
+#     'm_ATP': (15.835, 'g ATP/g COD/d'),
+#     'q_CH': (0.594, 'g COD/g COD/d'),
+#     'V_NH': (0.254, 'g N/g COD/d'),
+#     'V_P': (0.016, 'g P/g COD/d'),
+#     }
+
+# # Min & Max of the sensitive parameters
+# sens_bounds = {
+#     'arr_e': (1000, 10000),
+#     'K_P': (0.0001, 10),
+#     'K_STO': (0.0001, 20),
+#     'exponent': (1, 10),
+#     'm_ATP': (1, 50),
+#     'q_CH': (0.001, 10),
+#     'V_NH': (0.0001, 5),
+#     'V_P': (0.0001, 5),
+#     }
 
 #%%
 def import_exp_data(kind=''):
@@ -150,7 +200,7 @@ def import_exp_data(kind=''):
 
 #%%
 def create_model(system=None, kind='', analysis=''):
-    sys = create_system(kind=kind, pm2_kwargs=modified_pm2_kwargs)
+    sys = create_system(kind=kind)
     # sys = system or create_system()
 
     model = qs.Model(system=sys, exception_hook='warn')

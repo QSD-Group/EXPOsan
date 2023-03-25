@@ -19,8 +19,9 @@ from qsdsan.utils import ospath, time_printer, \
     ExogenousDynamicVariable as EDV
 
 cmps = pc.create_pm2_cmps()
+pm2 = pc.PM2(arr_e=6832, K_P=1.363, f_CH_max=0.8239, exponent=3.980, q_CH=1.032, q_LI=15.02, V_NH=0.1022, V_P=0.2005)  # new base, new sens_params
 
-pm2 = pc.PM2(arr_e=4973, K_P=1.071, K_STO=1.297, exponent=4.002, m_ATP=1.489, q_CH=1.545, V_NH=0.2065, V_P=0.3299)  # 4rd, initial baseline as optimized value
+# pm2 = pc.PM2(arr_e=4973, K_P=1.071, K_STO=1.297, exponent=4.002, m_ATP=1.489, q_CH=1.545, V_NH=0.2065, V_P=0.3299)  # 4rd, initial baseline as optimized value
 
 
 # pm2 = pc.PM2(arr_e=4996, K_P=1.008, K_STO=1.018, exponent=4.003, m_ATP=1.048, q_CH=1.008, V_NH=0.09981, V_P=0.1047)  # 3rd_e-4
