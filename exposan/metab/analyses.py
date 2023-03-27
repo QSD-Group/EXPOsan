@@ -23,7 +23,7 @@ mpl.rcParams["figure.autolayout"] = False
 mpl.rcParams['xtick.minor.visible'] = True
 mpl.rcParams['ytick.minor.visible'] = True
 
-#%%
+#%% run simulations
 def run_discrete_DVs(samples_path):
     qs.PowerUtility.price = 0.0913
     dct = load_data(samples_path, sheet=None)
@@ -90,7 +90,7 @@ def _rerun_failed_samples(seed, rt='PB'):
     run_model(mdl, sample, seed='temp')
 
 
-#%%
+#%% discrete-DV scatter plot
 def data_compile(save=True):
     dfs = []
     for i in ('UASB','FB','PB',):
@@ -174,7 +174,7 @@ def plot_clusters(data=None, save_as='', partial=True):
     
     return fig, ax
     
-#%%
+#%% compute diff by discrete-DV
 def calc_diff(df, factor, baseline_value, norms):    
     bl = df.xs(key=baseline_value, axis=1, level=factor)
     df.drop(labels=baseline_value, axis=1, level=factor, inplace=True)
@@ -228,7 +228,7 @@ def compare_DVs(data=None, save_as=''):
     return out  
     
 
-#%%
+#%% contour of diff
 boxprops = dict(alpha=1, edgecolor='black')
 # flierprops = dict(marker='.', markersize=1, markerfacecolor='#90918e', markeredgecolor='#90918e')
 meanprops = dict(marker='^', markersize=1.5, markerfacecolor='black', markeredgecolor='black', lw=0.5)
@@ -258,6 +258,7 @@ def plot_joint(df, save_as='', kde=True):
                         size=30,
                         alpha=0.7,
                         )
+    # g.ax_joint.set_ylim(top=3000)
     g.ax_joint.tick_params(axis='both', which='major', direction='inout', length=10, labelsize=18)
     g.ax_joint.tick_params(axis='both', which='minor', direction='inout', length=6)
     g.ax_joint.set_xlabel('')
@@ -284,6 +285,7 @@ def plot_joint(df, save_as='', kde=True):
     g.ax_marg_x.tick_params(axis='x', which='minor', direction='out', length=3)    
     g.ax_marg_x.tick_params(left=False, which='both', labelleft=False)    
     g.ax_marg_x.spines['left'].set_color('white')
+    # g.ax_marg_y.set_ylim(top=3000)
     g.ax_marg_y.tick_params(axis='y', which='major', direction='out', length=5)
     g.ax_marg_y.tick_params(axis='y', which='minor', direction='out', length=3) 
     g.ax_marg_y.tick_params(bottom=False, which='both', labelbottom=False)    
@@ -308,7 +310,7 @@ def plot_diff(data=None):
     df = pd.concat(others)
     plot_joint(df, 'other_DVs.png')
     
-#%%
+#%% cost & impact breakdowns
 def best_breakdown():
     kwargs = dict(state_reset_hook='reset_cache', t_span=(0,400), method='BDF')
     llc_bd = {}
@@ -377,9 +379,7 @@ def best_breakdown():
     
     return llc_bd, imp_bd
 
-#%%
-# palette = ['#60C1CF', '#F98F60', '#79BF82', '#F3C354', '#A280B9', '#ED586F', 
-#            '#35767F', '#733763', '#4D7E53', '#AB8937', '#5184EF']
+#%% stacked bar of breakdowns
 patch_dct = {
     'vessel': ('#60C1CF', r'\\\\\\'),
     'beads': ('#79BF82', ''),
@@ -428,6 +428,16 @@ def plot_breakdown(data=None):
     for k, df in data.items():
         stacked_bar(df, save_as=f'{k}.png')
     
+#%% 
+# data = {}
+# seed = 364
+# for i in ('UASB', 'FB', 'PB'):
+#     data[i] = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
+#                         header=[0,1], skiprows=[2,])
+
+# pb = data['PB']
+# plt.boxplot(pb.xs('Process', axis=1, level='Element'))
+
 
 #%%
 if __name__ == '__main__':

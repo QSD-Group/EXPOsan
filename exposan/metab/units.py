@@ -10,7 +10,7 @@ This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
-from biosteam import Stream
+from biosteam import Stream, VacuumSystem
 from qsdsan import SanStream, WasteStream, CompiledProcesses, SanUnit, Construction
 from qsdsan.sanunits import AnaerobicCSTR, Pump, HXutility
 from qsdsan.utils import auom
@@ -23,7 +23,8 @@ from exposan.metab.utils import (
     UASB_sizing,
     add_prefix,
     _construct_water_pump,
-    _construct_vacuum_pump
+    _construct_vacuum_pump,
+    _F_mass, _F_vol
     )
 import numpy as np, flexsolve as flx
 from math import pi, ceil
@@ -80,13 +81,16 @@ class DegassingMembrane(SanUnit):
     def pressure_drop(self):
         '''Pressure drop in Pa.'''
         specs = self._DuPont_specs
-        Q = self.design_liquid_flow[1]
-        d = specs['od_fiber'] - specs['dw_fiber'] * 2
-        tau = specs['V_liq'] / Q * 3600
+        # Q = self.design_liquid_flow[1]
+        # d = specs['od_fiber'] - specs['dw_fiber'] * 2
+        # tau = specs['V_liq'] / Q * 3600
         L = specs['l_fiber']
-        v = L/tau
-        mu = self.ins[0].mu
-        return 32*mu*L*v/d**2
+        # v = L/tau
+        # mu = self.ins[0].mu
+        # return 32*mu*L*v/d**2
+        dP = 2*6895 # 2 psi pressure drop, shell side liquid, PermSelect, max liquid flowrate, fiber length 14.2 cm
+        return dP * L/14.2e-2
+
     
     @property
     def H2_degas_efficiency(self):
@@ -127,13 +131,16 @@ class DegassingMembrane(SanUnit):
     def _setup(self):
         hasfield = hasattr
         inf, = self.ins
-        gas = self.outs[0]
+        # gas = self.outs[0]
         aux = self.auxiliary_unit_names
         if not hasfield(self, 'vacuum_pump'):
-            pump = self.vacuum_pump = Pump(f'{self.ID}_VacPump', ins=Stream(f'{gas.ID}_proxy'),
-                                           dP_design=self.vacuum_pressure)
+        #     pump = self.vacuum_pump = Pump(f'{self.ID}_VacPump', ins=Stream(f'{gas.ID}_proxy'),
+        #                                     dP_design=self.vacuum_pressure)
+        #     self.construction.append(
+        #         Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
+        #         )
             self.construction.append(
-                Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
+                Construction(ID='VacPump_surrogate', linked_unit=self, item='air_compressor')
                 )
         if not hasfield(self, 'water_pump'):
             pump = self.water_pump = Pump(f'{inf.ID}_Pump', ins=Stream(f'{inf.ID}_proxy'))
@@ -248,10 +255,17 @@ class DegassingMembrane(SanUnit):
         D['Number'] = ceil(inf.F_vol/self.design_liquid_flow[1])
         dm_specs = self._DuPont_specs
         D.update(dm_lci.DuPont_input(**dm_specs))
-        vac, wat = self.vacuum_pump, self.water_pump        
-        vac.ins[0].copy_like(self.outs[0])
-        vac.dP_design = self.vacuum_pressure
-        vac.simulate()
+        # vac, wat = self.vacuum_pump, self.water_pump        
+        # vac.ins[0].copy_like(self.outs[0])
+        # vac.dP_design = self.vacuum_pressure
+        # vac.simulate()
+        gas = self.outs[0]
+        V_gas = dm_lci.V_lumen(**dm_specs)
+        self.vacuum_pump = vac = VacuumSystem(
+            self, F_mass=_F_mass(gas), F_vol=_F_vol(gas), 
+            P_suction=101325-self.vacuum_pressure, vessel_volume=V_gas
+            )
+        wat = self.water_pump
         wat.ins[0].copy_like(self.ins[0])
         wat.dP_design = self.pressure_drop
         wat.simulate()
@@ -271,7 +285,8 @@ class DegassingMembrane(SanUnit):
             p22.quantity = q22
             p40.quantity = q40
             qvac = _construct_vacuum_pump(vac)
-            pvac = get(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
+            # pvac = get(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
+            pvac = get(creg, f'{flowsheet_ID}_{self.ID}_VacPump_surrogate')
             pvac.quantity = qvac
         self.NaOCl.F_mass = self._calc_NaOCl(freq)
         self.citric_acid.F_mass = self._calc_citric_acid(freq)
@@ -330,12 +345,15 @@ class UASB(AnaerobicCSTR):
         hasfield = hasattr
         setfield = setattr
         if self.fixed_headspace_P and not hasfield(self, 'vacuum_pump'):
-            gas = self.outs[0]
-            dP = max(0, (self._P_atm-self._P_gas)*1e5)
-            pump = self.vacuum_pump = Pump(gas.ID+'_VacPump', ins=Stream(f'{gas.ID}_proxy'),
-                                           dP_design=dP)
+            # gas = self.outs[0]
+            # dP = max(0, (self._P_atm-self._P_gas)*1e5)
+            # pump = self.vacuum_pump = Pump(gas.ID+'_VacPump', ins=Stream(f'{gas.ID}_proxy'),
+            #                                dP_design=dP)
+            # self.construction.append(
+            #     Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
+            #     )
             self.construction.append(
-                Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
+                Construction(ID='VacPump_surrogate', linked_unit=self, item='air_compressor')
                 )
             self.auxiliary_unit_names = tuple({*self.auxiliary_unit_names, 'vacuum_pump'})
         for i, ws in enumerate(self.ins):
@@ -556,12 +574,19 @@ class UASB(AnaerobicCSTR):
         getfield = getattr
         creg = Construction.registry
         if self.fixed_headspace_P:
-            vac = self.vacuum_pump
-            vac.ins[0].copy_like(self.outs[0])
-            vac.dP_design = (self.external_P - self.headspace_P) * 1e5
-            vac.simulate()
+            # vac = self.vacuum_pump
+            # vac.ins[0].copy_like(self.outs[0])
+            # vac.dP_design = (self.external_P - self.headspace_P) * 1e5
+            # vac.simulate()
+            gas = self.outs[0]
+            self.vacuum_pump = vac = VacuumSystem(
+                self, F_mass=_F_mass(gas), F_vol=_F_vol(gas), 
+                P_suction=self.headspace_P * 1e5,
+                vessel_volume=self.V_gas
+                )
             qvac = _construct_vacuum_pump(vac)
-            pvac = getfield(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
+            # pvac = getfield(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
+            pvac = getfield(creg, f'{flowsheet_ID}_{self.ID}_VacPump_surrogate')
             pvac.quantity = qvac
         for i, ws, in enumerate(self.ins):
             ID = pipe_IDs[i]
@@ -944,14 +969,17 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         hasfield = hasattr
         setfield = setattr
         if self.fixed_headspace_P and not hasfield(self, 'vacuum_pump'):
-            gas = self.outs[0]
-            dP = max(0, (self._P_atm-self._P_gas)*1e5)
-            pump = self.vacuum_pump = Pump(gas.ID+'_VacPump', ins=Stream(f'{gas.ID}_proxy'),
-                                           dP_design=dP)
+            # gas = self.outs[0]
+            # dP = max(0, (self._P_atm-self._P_gas)*1e5)
+            # pump = self.vacuum_pump = Pump(gas.ID+'_VacPump', ins=Stream(f'{gas.ID}_proxy'),
+            #                                dP_design=dP)
+            # self.construction.append(
+            #     Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
+            #     )
             self.construction.append(
-                Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
+                Construction(ID='VacPump_surrogate', linked_unit=self, item='air_compressor')
                 )
-            self.auxiliary_unit_names = tuple([*self.auxiliary_unit_names, 'vacuum_pump'])
+            self.auxiliary_unit_names = tuple({*self.auxiliary_unit_names, 'vacuum_pump'})
         for i, ws in enumerate(self.ins):
             field = f'Pump_ins{i}'
             if not hasfield(self, field):
@@ -1307,12 +1335,19 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         getfield = getattr
         creg = Construction.registry
         if self.fixed_headspace_P:
-            vac = self.vacuum_pump
-            vac.ins[0].copy_like(self.outs[0])
-            vac.dP_design = (self.external_P - self.headspace_P) * 1e5            
-            vac.simulate()
+            # vac = self.vacuum_pump
+            # vac.ins[0].copy_like(self.outs[0])
+            # vac.dP_design = (self.external_P - self.headspace_P) * 1e5            
+            # vac.simulate()
+            gas = self.outs[0]
+            self.vacuum_pump = vac = VacuumSystem(
+                self, F_mass=_F_mass(gas), F_vol=_F_vol(gas), 
+                P_suction=self.headspace_P * 1e5,
+                vessel_volume=self.V_gas
+                )
             qvac = _construct_vacuum_pump(vac)
-            pvac = getfield(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
+            # pvac = getfield(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
+            pvac = getfield(creg, f'{flowsheet_ID}_{self.ID}_VacPump_surrogate')
             pvac.quantity = qvac
         for i, ws, in enumerate(self.ins):
             ID = pipe_IDs[i]

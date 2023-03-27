@@ -58,7 +58,15 @@ def S_cylinder_wall(od, dw, h):
 
 def specific_area(od, dw):
     '''membrane area per unit volume of cylindrical fiber [m2/m3].'''
-    return (od-dw/2) / (od/2)**2
+    return (od-dw) / (od/2)**2
+
+def V_lumen(od_fiber=2.1e-4, dw_fiber=3.5e-5, l_fiber=0.536,
+            od_shell=0.165, dw_shell=2.5e-3, l_shell=0.536,
+            od_potting=0.180, l_potting=0.072, od_pipe=0.108, 
+            h_pipe=0.0765, V_liq=6.5e-3, total_mass=10):
+    V_fibers = V_cylinder(od_shell-dw_shell*2, l_shell) - V_liq
+    V_lumen = V_fibers * (od_fiber-dw_fiber*2)**2 / od_fiber**2
+    return V_lumen
 
 def DuPont_input(od_fiber=2.1e-4, dw_fiber=3.5e-5, l_fiber=0.536,
                  od_shell=0.165, dw_shell=2.5e-3, l_shell=0.536,
