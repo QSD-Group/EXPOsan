@@ -34,15 +34,11 @@ from exposan.biogenic_refinery import (
     create_system,
     data_path as br_data_path,
     get_decay_k,
-    get_recoveries,
+    get_TEA_metrics,
     get_LCA_metrics,
     results_path,
     update_resource_recovery_settings,
     )
-
-# Filter out warnings related to uptime ratio
-import warnings
-warnings.filterwarnings('ignore', message='uptime_ratio')
 
 __all__ = ('create_model', 'run_uncertainty',)
 
@@ -57,52 +53,44 @@ def add_metrics(model):
     br._load_lca_data()
     sys = model.system
     u = sys.flowsheet.unit
-
-    funcs = get_LCA_metrics(sys)
-    cat = 'LCA results'
-
-    if model.system.ID == 'sysA':
-        CS_metrics = [
-            u.A8.yield_db,
-            u.A8.outs[0].F_mass * 24,
-            u.A8.CS,
-            u.A8.outs[0].imass['C'] * 24
-            ]
+    # Biochar metrics
+    cat = 'Biochar results'
+    if sys.ID == 'sysA':
         metrics = [
-            Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),
-            Metric('H_Ecosystems', funcs[1], 'points/cap/yr', cat),
-            Metric('H_Health', funcs[2], 'points/cap/yr', cat),
-            Metric('H_Resources', funcs[3], 'points/cap/yr', cat),
-            Metric('Biochar Yield', CS_metrics[0], '% db'),
-            Metric('Mass Biochar Produced', CS_metrics[1], 'kg/day'),
-            Metric('Carbon Sequestration Potential', CS_metrics[2], '%'),
-            Metric('Mass Carbon Sequestered', CS_metrics[3], 'kg/day')
+            Metric('Biochar Yield', lambda: u.A8.yield_db, '% db', cat),
+            Metric('Mass Biochar Produced', lambda: u.A8.biochar_prcd * 24, 'kg/day', cat),
+            Metric('Carbon Sequestration Potential', lambda: u.A8.CS, '%', cat),
+            Metric('Mass Carbon Sequestered', lambda: u.A8.outs[0].imass['C'] * 24, 'kg/day', cat)
             ]
-    elif model.system.ID == 'sysB':
-        CS_metrics = [
-            u.B11.yield_db,
-            u.B11.outs[0].F_mass * 24,
-            u.B11.CS,
-            u.B11.outs[0].imass['C'] * 24
-            ]
+    elif sys.ID == 'sysB':
         metrics = [
-            Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),
-            Metric('H_Ecosystems', funcs[1], 'points/cap/yr', cat),
-            Metric('H_Health', funcs[2], 'points/cap/yr', cat),
-            Metric('H_Resources', funcs[3], 'points/cap/yr', cat),
-            Metric('Biochar Yield', CS_metrics[0], '% db'),
-            Metric('Mass Biochar Produced', CS_metrics[1], 'kg/day'),
-            Metric('Carbon Sequestration Potential', CS_metrics[2], '%'),
-            Metric('Mass Carbon Sequestered', CS_metrics[3], 'kg/day')
+            Metric('Biochar Yield', lambda: u.B11.yield_db, '% db', cat),
+            Metric('Mass Biochar Produced', lambda: u.B11.biochar_prcd * 24, 'kg/day', cat),
+            Metric('Carbon Sequestration Potential', lambda: u.B11.CS, '%', cat),
+            Metric('Mass Carbon Sequestered', lambda: u.B11.outs[0].imass['C'] * 24, 'kg/day', cat)
+            ]
+    elif sys.ID == 'sysC':
+        metrics = [
+            Metric('Biochar Yield', lambda: u.C8.yield_db, '% db', cat),
+            Metric('Mass Biochar Produced', lambda: u.C8.biochar_prcd * 24, 'kg/day', cat),
+            Metric('Carbon Sequestration Potential', lambda: u.C8.CS, '%', cat),
+            Metric('Mass Carbon Sequestered', lambda: u.C8.outs[0].imass['C'] * 24, 'kg/day', cat)
             ]
     else:
-        metrics = [
-            Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),
-            Metric('H_Ecosystems', funcs[1], 'points/cap/yr', cat),
-            Metric('H_Health', funcs[2], 'points/cap/yr', cat),
-            Metric('H_Resources', funcs[3], 'points/cap/yr', cat),
-            ]
-    
+        metrics = []
+    # Net cost
+    metrics.append(
+        Metric('Annual net cost', get_TEA_metrics(sys)[0], f'{qs.currency}/cap/yr', 'TEA results')
+        )
+    # Net emissions
+    funcs = get_LCA_metrics(sys)
+    cat = 'LCA results'
+    metrics.extend([
+        Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),
+        Metric('H_Ecosystems', funcs[1], 'points/cap/yr', cat),
+        Metric('H_Health', funcs[2], 'points/cap/yr', cat),
+        Metric('H_Resources', funcs[3], 'points/cap/yr', cat)
+            ])
     model.metrics = metrics
 
 
@@ -1015,7 +1003,7 @@ def create_model(model_ID='A', country_specific=False, **model_kwargs):
     return model
 
 
-def run_uncertainty(model, path='', **kwargs):
+def run_uncertainty(model, path='', **kwargs):   
     kwargs['path'] = os.path.join(results_path, f'sys{model.system.ID[-1]}_model.xlsx') if path=='' else path
     run(model=model, **kwargs)
     return

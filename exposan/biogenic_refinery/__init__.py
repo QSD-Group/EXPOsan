@@ -302,6 +302,8 @@ def __getattr__(name):
 # Util functions
 # =============================================================================
 
+import numpy as np
+
 ##### Recoveries #####
 
 # Only for sysA, sysB, sysC
@@ -385,8 +387,37 @@ def get_recoveries(system, include_breakdown=False):
         lambda: K_bed_liq / K_input * 100, # K_liquid_treatment_bed
         ]
 
-# def get_biochar(system):
+##### Biochar functions #####
+
+# Calculate dry basis biochar yield (% mass)
+def get_yield(temp, AC): 
+    f_AC_dec = AC/100 #converts % ash content of feedstock to decimal
     
+    # predictive equation for % biochar dry basis (db) yield - derived via Excel solver
+    db_yield = 100 * (1.18 * f_AC_dec ** 0.843 + (1 - f_AC_dec) * 2.106 * np.exp(-0.0066 * temp))
+    return db_yield
+   
+# Calculate carbon sequestration potential of biochar produced (% mass)
+def get_CS(temp, AC): 
+    db_yield = get_yield(temp, AC)  
+    
+    # predictive equation for % biochar dry ash-free (daf) yield - Neves et al. 2011
+    daf_yield = 100 * (0.106 + 2.43 * np.exp(-0.0066 * temp))
+    
+    # predictive equation for % biochar fixed carbon - derived via Excel solver
+    FC_biochar = 87.786 * daf_yield ** -0.483
+
+    # calculate biochar volatile matter and ash content using calculated values from above eqns
+    AC_biochar = (db_yield - daf_yield) * 100 / db_yield
+    VM_biochar = 100 - AC_biochar - FC_biochar
+    
+    # calculations for carbon sequestration (CS) potential [% mass C/mass biochar] 
+    C_biochar = (0.474 * VM_biochar + 0.963 * FC_biochar + 0.067 * AC_biochar) / 100 # Klasson 2017
+    Cafb = (0.474 * VM_biochar + 0.963 * FC_biochar + 0.067 * AC_biochar) / (100 - AC_biochar) # Klasson 2017
+    C_feedstock = -0.50 * AC + 54.51 # Krueger et al. 2021
+    R50 = 0.17 * Cafb + 0.00479 # Klasson 2017
+    CS = db_yield * (C_biochar*100) * R50 / C_feedstock # Zhao et al. 2013
+    return CS  
 
 
 ##### Costs #####

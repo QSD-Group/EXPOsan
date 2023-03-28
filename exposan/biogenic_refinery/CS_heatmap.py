@@ -8,16 +8,20 @@ Created on Thu Mar  9 21:19:51 2023
     
 import matplotlib.pyplot as plt
 import numpy as np
+import csv
+import pandas as pd
 from matplotlib.ticker import MultipleLocator
 
-def get_yield(temp, AC):
+# Calculate dry basis biochar yield (% mass)
+def get_yield(temp, AC): 
     f_AC_dec = AC/100 #converts % ash content of feedstock to decimal
     
     # predictive equation for % biochar dry basis (db) yield - derived via Excel solver
     db_yield = 100 * (1.18 * f_AC_dec ** 0.843 + (1 - f_AC_dec) * 2.106 * np.exp(-0.0066 * temp))
     return db_yield
    
-def get_CS(temp, AC):
+# Calculate carbon sequestration potential of biochar produced (% mass)
+def get_CS(temp, AC): 
     db_yield = get_yield(temp, AC)  
     
     # predictive equation for % biochar dry ash-free (daf) yield - Neves et al. 2011
@@ -36,7 +40,7 @@ def get_CS(temp, AC):
     C_feedstock = -0.50 * AC + 54.51 # Krueger et al. 2021
     R50 = 0.17 * Cafb + 0.00479 # Klasson 2017
     CS = db_yield * (C_biochar*100) * R50 / C_feedstock # Zhao et al. 2013
-    return CS
+    return CS  
 
 def heatmap(X, Y, Z, x_label="", y_label="", cbarlabel="", no_labels=False, **kwargs):
     """
@@ -75,8 +79,8 @@ def heatmap(X, Y, Z, x_label="", y_label="", cbarlabel="", no_labels=False, **kw
 
     else:    
         # set colorbar label properties
-        cbar.ax.set_ylabel("\n"+cbarlabel, va="top", fontsize=12)
-        cbar.fontsize = 12
+        cbar.ax.set_ylabel("\n"+cbarlabel, va="top", fontsize=16)
+        cbar.fontsize = 16
 
         # show ticks at intervals and label them
         ax.xaxis.set_major_locator(MultipleLocator(100))
@@ -85,12 +89,12 @@ def heatmap(X, Y, Z, x_label="", y_label="", cbarlabel="", no_labels=False, **kw
         ax.yaxis.set_major_locator(MultipleLocator(10))
         ax.yaxis.set_minor_locator(MultipleLocator(5))
         
-        ax.tick_params(which='major', direction='inout', length=8, width=1, labelsize=12)
+        ax.tick_params(which='major', direction='inout', length=8, width=1, labelsize=16)
         ax.tick_params(which='minor', direction='inout', length=4, width=1)
         
         # label x and y axes
-        ax.xaxis.set_label_text(x_label, fontsize=12)
-        ax.yaxis.set_label_text(y_label, fontsize=12)
+        ax.xaxis.set_label_text(x_label, fontsize=16)
+        ax.yaxis.set_label_text(y_label, fontsize=16)
     
         ax.spines[:].set_lw(0.75)
         ax.spines.bottom.set_bounds(X.min(), X.max())
@@ -107,15 +111,16 @@ x = np.arange(400, 801)
 y = np.linspace(15.0, 60.0, num=400)
 X, Y = np.meshgrid(x, y)
 
-# generate data for yield plot
-Z = get_yield(X, Y)
+# # generate data for yield plot
+# Z = get_yield(X, Y)
+
     
-# plot yields heatmap
-yieldplot = heatmap(X, Y, Z, 
-                    x_label="Pyrolysis temperature [deg C]", 
-                    y_label="Feedstock ash content [% db]", 
-                    cmap = 'YlGnBu', 
-                    cbarlabel="Biochar yield [% db]")
+# # plot yields heatmap
+# yieldplot = heatmap(X, Y, Z, 
+#                     x_label="Pyrolysis temperature [deg C]", 
+#                     y_label="Feedstock ash content [% db]", 
+#                     cmap = 'YlGnBu', 
+#                     cbarlabel="Biochar yield [% db]")
 
 # generate data for carbon sequestration plot
 Z = get_CS(X, Y)
@@ -124,4 +129,15 @@ CSplot = heatmap(X, Y, Z,
                     y_label="Feedstock ash content [% db]", 
                     cmap = 'YlGnBu', 
                     cbarlabel="Carbon sequestration potential [% biochar mass]")
+# z = np.zeros((len(x),len(y)))
+# i = 0
+# for a in x:
+#     j = 0
+#     for b in y:
+#         z[i, j] = get_yield(a, b)
+#         j += 1
+#     i += 1
+
+# df = pd.DataFrame({"temperature" : x, "ash content" : y, "yield" : z})
+# df.to_csv("yields.csv", index=False)
 
