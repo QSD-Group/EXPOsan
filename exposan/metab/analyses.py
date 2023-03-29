@@ -33,7 +33,8 @@ def run_discrete_DVs(samples_path):
             'PB',
             ):
         for n, j in (
-                (1,'P'), (2,'P'), 
+                (1,'P'), 
+                (2,'P'), 
                 (2,'M'), (2,'H'),
                 ):
             sys = create_system(n_stages=n, reactor_type=i, gas_extraction=j)
@@ -49,7 +50,7 @@ def run_UA_SA(seed=None, N=1000, rule='L'):
     sample = None
     for rt in (
             'UASB', 
-            # 'FB', 
+            'FB', 
             'PB'
             ):
         sys = create_system(n_stages=1, reactor_type=rt, gas_extraction='P')
@@ -152,7 +153,7 @@ def plot_clusters(data=None, save_as='', partial=True):
     ax.tick_params(axis='both', which='minor', direction='inout', length=6)
     if partial:
         ax.set_xlim(0, 5000)
-        ax.set_ylim(-100, 500)
+        ax.set_ylim(-100, 1500)
     else:
         ax.set_xlim(left=0)
         ax.set_ylim(bottom=-100)
@@ -331,8 +332,8 @@ def best_breakdown():
     smp = np.array([2, 22])
     for p, v in zip(mdl1.parameters, smp): p.setter(v)
     sys1.simulate(**kwargs)
-    llc_bd['uasb_l1'] = categorize_cashflow(sys1.TEA)
-    imp_bd['uasb_l1'] = categorize_all_impacts(sys1.LCA)
+    llc_bd['uasb_l1'] = categorize_cashflow(sub1.TEA)
+    imp_bd['uasb_l1'] = categorize_all_impacts(sub1.LCA)
     
     # FB
     mdl2 = create_model(reactor_type='FB')
@@ -350,8 +351,8 @@ def best_breakdown():
     smp = np.array([2, 0.75, 1, 22])
     for p, v in zip(mdl2.parameters, smp): p.setter(v)
     sys2.simulate(**kwargs)
-    llc_bd['fb_l1'] = categorize_cashflow(sys2.TEA)
-    imp_bd['fb_l1'] = categorize_all_impacts(sys2.LCA)
+    llc_bd['fb_l1'] = categorize_cashflow(sub2.TEA)
+    imp_bd['fb_l1'] = categorize_all_impacts(sub2.LCA)
     
     # PB
     mdl3 = create_model(reactor_type='PB')
@@ -366,8 +367,8 @@ def best_breakdown():
     llc_bd['pb_t1'] = categorize_cashflow(sub3.TEA)
     imp_bd['pb_t1'] = categorize_all_impacts(sub3.LCA)
     # best at LCA
-    llc_bd['pb_l1'] = categorize_cashflow(sys3.TEA)
-    imp_bd['pb_l1'] = categorize_all_impacts(sys3.LCA)
+    # llc_bd['pb_l1'] = categorize_cashflow(sys3.TEA)
+    # imp_bd['pb_l1'] = categorize_all_impacts(sys3.LCA)
     
     llc_bd = pd.DataFrame.from_dict(llc_bd).transpose()
     llc_bd['fug_ch4'] = 0
@@ -393,7 +394,7 @@ patch_dct = {
     }
 
 def stacked_bar(data, save_as=''):
-    fig, ax = plt.subplots(figsize=(5, 4))    
+    fig, ax = plt.subplots(figsize=(4, 4))    
     x = range(data.shape[0])
     ax.axhline(y=0, color='black', linewidth=1)
     yp = np.zeros(data.shape[0])
@@ -402,7 +403,7 @@ def stacked_bar(data, save_as=''):
         c, hat = v
         y = data.loc[:,k]
         y_offset = (y>=0)*yp + (y<0)*yn
-        ax.bar(x, y, width=0.6, bottom=y_offset, color=c, hatch=hat)
+        ax.bar(x, y, width=0.55, bottom=y_offset, color=c, hatch=hat)
         yp += (y>=0) * y
         yn += (y<0) * y
 
@@ -450,4 +451,4 @@ if __name__ == '__main__':
     # plot_diff()
     # llc, imp = best_breakdown()
     # plot_breakdown()
-    run_UA_SA(seed=364, N=1000)
+    smp = run_UA_SA(seed=364, N=1000)
