@@ -247,6 +247,7 @@ def add_continuous_params(model):
                 u.R1.n_layer = n_dz
                 if n_stage == 2: u.R2.n_layer = n_dz
                 reset_init_conc(sys)
+    
     b = 0.75
     D = shape.Uniform(0.6, 0.9)
     @param(name='FB voidage', units='', kind='coupled', element='FB',

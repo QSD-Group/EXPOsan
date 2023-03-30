@@ -17,6 +17,7 @@ from exposan.metab.utils import categorize_cashflow, categorize_all_impacts
 from time import time
 import qsdsan as qs, pandas as pd, numpy as np
 import matplotlib as mpl, matplotlib.pyplot as plt, seaborn as sns
+from scipy.stats import kstest
 
 mpl.rcParams['font.sans-serif'] = 'arial'
 mpl.rcParams["figure.autolayout"] = False
@@ -71,15 +72,15 @@ def _rerun_failed_samples(seed, rt='PB'):
     sys = create_system(n_stages=1, reactor_type=rt, gas_extraction='P')
     cmps = sys.feeds[0].components
     C_bulk = np.array([
-        # 1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
-        0,0,0,0,0,0,
-        # 4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
-        0,0,0,0,0,0,
+        1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
+        # 0,0,0,0,0,0,
+        4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
+        # 0,0,0,0,0,0,
         # 2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 
         0,0,0,0,
         9.416, 2.478, 0.968, 2.846, 1.796, 
-        # 1.48 , 0.734, 
-        1, 0.6,
+        1.48 , 0.734, 
+        # 1, 0.6,
         # 4.708e+00, 1.239e+00, 4.838e-01, 1.423e+00, 8.978e-01, 
         # 2.959e+00, 1.467e+00,
         # 4.924e-02, 4.000e-02, 2.000e-02, 9.900e+02
@@ -429,16 +430,54 @@ def plot_breakdown(data=None):
     for k, df in data.items():
         stacked_bar(df, save_as=f'{k}.png')
     
-#%% 
-# data = {}
-# seed = 364
-# for i in ('UASB', 'FB', 'PB'):
-#     data[i] = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
-#                         header=[0,1], skiprows=[2,])
+#%% Monte-Carlo Filtering
 
-# pb = data['PB']
-# plt.boxplot(pb.xs('Process', axis=1, level='Element'))
-
+def MCF_encap_to_susp(seed):
+    data = {}
+    for i in ('UASB', 'FB', 'PB'):
+        data[i] = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
+                            header=[0,1], skiprows=[2,])
+    uasb = data['UASB']
+    mdl = create_model(kind='uasa')
+    nx = len(mdl.parameters)
+    x = uasb.iloc[:, :nx]
+    pair_cols = [
+            ('Process', 'COD removal [%]'),
+            ('TEA (w/ degas)', 'Levelized cost (w/ degas) [$/ton rCOD]'),
+            ('LCA (w/ degas)', 'GWP100 (w/ degas) [kg CO2eq/ton rCOD]'),
+            ('TEA (w/o degas)', 'Levelized cost (w/o degas) [$/ton rCOD]'),
+            ('LCA (w/o degas)',  'GWP100 (w/o degas) [kg CO2eq/ton rCOD]'),    
+        ]
+    outs = {}
+    for rt in ('FB', 'PB'):
+        ys = data[rt]
+        dys = ys.loc[:,pair_cols] - uasb.loc[:,pair_cols]
+        dct = {'D': pd.DataFrame(), 'p': pd.DataFrame(), f'{rt}-UASB': dys}
+        for y, col in dys.items():
+            lower_xs = x.loc[col <= 0]
+            higher_xs = x.loc[col > 0]
+            Ds = []
+            ps = []
+            for i in range(nx):
+                D, p = kstest(lower_xs.iloc[:,i], higher_xs.iloc[:,i])
+                Ds.append(D)
+                ps.append(p)
+            y_name = y[1].split(' [')[0]
+            dct['D'][y_name] = Ds
+            dct['p'][y_name] = ps
+        dct['D'].index = dct['p'].index = x.columns
+        if rt == 'FB': dct['D'].loc['PB'] = dct['p'].loc['PB'] = None
+        else: dct['D'].loc['FB'] = dct['p'].loc['FB'] = None
+        
+        out = []
+        with pd.ExcelWriter(ospath.join(results_path, f'KStest_{rt}-v-UASB.xlsx')) as writer:
+            for name, df in dct.items(): 
+                df.to_excel(writer, sheet_name=name)
+                if name in 'Dp': 
+                    df['Parameter'] = df.index.get_level_values('Feature')
+                    out.append(df.melt(id_vars='Parameter', var_name='Metric', value_name=name))
+        outs[rt] = out[0].merge(out[1])
+    return outs
 
 #%%
 if __name__ == '__main__':
@@ -451,4 +490,6 @@ if __name__ == '__main__':
     # plot_diff()
     # llc, imp = best_breakdown()
     # plot_breakdown()
-    smp = run_UA_SA(seed=364, N=1000)
+    # smp = run_UA_SA(seed=364, N=1000)
+    # _rerun_failed_samples(364)
+    out = MCF_encap_to_susp(364)
