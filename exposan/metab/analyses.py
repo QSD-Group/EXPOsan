@@ -432,7 +432,7 @@ def plot_breakdown(data=None):
     
 #%% Monte-Carlo Filtering
 
-def MCF_encap_to_susp(seed):
+def MCF_encap_to_susp(seed, save=True):
     data = {}
     for i in ('UASB', 'FB', 'PB'):
         data[i] = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
@@ -468,16 +468,48 @@ def MCF_encap_to_susp(seed):
         dct['D'].index = dct['p'].index = x.columns
         if rt == 'FB': dct['D'].loc['PB'] = dct['p'].loc['PB'] = None
         else: dct['D'].loc['FB'] = dct['p'].loc['FB'] = None
+        dct['D'].loc['Membrane', ['Levelized cost (w/o degas)', 'GWP100 (w/o degas)']] = None
+        dct['p'].loc['Membrane', ['Levelized cost (w/o degas)', 'GWP100 (w/o degas)']] = None
+        if save:
+            with pd.ExcelWriter(ospath.join(results_path, f'KStest_{rt}-v-UASB.xlsx')) as writer:
+                for name, df in dct.items(): df.to_excel(writer, sheet_name=name)
         
         out = []
-        with pd.ExcelWriter(ospath.join(results_path, f'KStest_{rt}-v-UASB.xlsx')) as writer:
-            for name, df in dct.items(): 
-                df.to_excel(writer, sheet_name=name)
-                if name in 'Dp': 
-                    df['Parameter'] = df.index.get_level_values('Feature')
-                    out.append(df.melt(id_vars='Parameter', var_name='Metric', value_name=name))
+        for name, df in dct.items(): 
+            if name in 'Dp': 
+                df['Parameter'] = df.index.get_level_values('Feature')
+                out.append(df.melt(id_vars='Parameter', var_name='Metric', value_name=name))
         outs[rt] = out[0].merge(out[1])
     return outs
+
+def MCF_bubble_plot(data=None, seed=None):
+    if data is None: 
+        data = MCF_encap_to_susp(seed, False)
+    mpl.rcParams['xtick.minor.visible'] = False
+    mpl.rcParams['ytick.minor.visible'] = False
+    fig, axes = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(6,9))
+    pal = {'FB':'#F98F60', 'PB':'#a280b9'}
+    for kv, ax in zip(data.items(), axes):
+        k, df = kv
+
+        sns.scatterplot(df, x='Metric', y='Parameter', 
+                        hue=df.p<0.05, size='D', sizes=(0, 350),
+                        palette=['black', pal[k]], legend=False,
+                        ax=ax,
+                        )
+        ax.set_xlim(-0.5, 4.5)
+        ax.set_axisbelow(True)
+        ax.grid(True, which='major', color='k', linestyle='--', 
+                linewidth=0.7, alpha=0.5)
+        ax.set_xlabel('')
+        ax.set_ylabel('')
+        ax.tick_params(axis='both', which='major', direction='inout', length=8)
+        ax.xaxis.set_major_formatter(plt.NullFormatter())
+        ax.yaxis.set_major_formatter(plt.NullFormatter())
+
+    fig.subplots_adjust(wspace=0)
+    fig.savefig(ospath.join(figures_path, 'MCF.png'), dpi=300, transparent=True)
+        
 
 #%%
 if __name__ == '__main__':
@@ -492,4 +524,5 @@ if __name__ == '__main__':
     # plot_breakdown()
     # smp = run_UA_SA(seed=364, N=1000)
     # _rerun_failed_samples(364)
-    out = MCF_encap_to_susp(364)
+    data = MCF_encap_to_susp(364, False)
+    MCF_bubble_plot(data)
