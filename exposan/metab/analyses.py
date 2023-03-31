@@ -493,8 +493,9 @@ def MCF_bubble_plot(data=None, seed=None):
         k, df = kv
 
         sns.scatterplot(df, x='Metric', y='Parameter', 
-                        hue=df.p<0.05, size='D', sizes=(0, 350),
-                        palette=['black', pal[k]], legend=False,
+                        hue=df.p<0.05, palette=['black', pal[k]], 
+                        size='D', sizes=(0, 350), size_norm=(0,1),
+                        legend=False,
                         ax=ax,
                         )
         ax.set_xlim(-0.5, 4.5)
