@@ -501,7 +501,7 @@ def MCF_bubble_plot(data=None, seed=None):
         ax.set_xlim(-0.5, 4.5)
         ax.set_axisbelow(True)
         ax.grid(True, which='major', color='k', linestyle='--', 
-                linewidth=0.7, alpha=0.5)
+                linewidth=0.7, alpha=0.3)
         ax.set_xlabel('')
         ax.set_ylabel('')
         ax.tick_params(axis='both', which='major', direction='inout', length=8)
@@ -510,8 +510,125 @@ def MCF_bubble_plot(data=None, seed=None):
 
     fig.subplots_adjust(wspace=0)
     fig.savefig(ospath.join(figures_path, 'MCF.png'), dpi=300, transparent=True)
-        
 
+#%% pair-wise comparisons, three-way
+def calc_3way_diff(seed, save=True):
+    data = {}
+    for i in ('UASB', 'FB', 'PB'):
+        data[i] = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
+                            header=[0,1], skiprows=[2,])
+    pair_cols = [
+            ('Process', 'COD removal [%]'),
+            ('Biogas', 'H2 production [kg/d]'),
+            ('Biogas', 'CH4 production [kg/d]'),
+            ('Biomass', 'R1 Overall TSS [g/L]'),
+            # ('Biomass', 'R1 Encapsulated TSS [g/L]'),
+            ('TEA (w/ degas)', 'Levelized cost (w/ degas) [$/ton rCOD]'),
+            ('LCA (w/ degas)', 'GWP100 (w/ degas) [kg CO2eq/ton rCOD]'),
+            ('TEA (w/o degas)', 'Levelized cost (w/o degas) [$/ton rCOD]'),
+            ('LCA (w/o degas)',  'GWP100 (w/o degas) [kg CO2eq/ton rCOD]'),    
+        ]
+    _col = ('Biomass', 'R1 Encapsulated TSS [g/L]')
+    out = {}
+    out['pu'] = (data['PB'].loc[:, pair_cols] - data['UASB'].loc[:, pair_cols])
+    out['fu'] = (data['FB'].loc[:, pair_cols] - data['UASB'].loc[:, pair_cols])
+    pair_cols.insert(4, _col)
+    out['pu'][_col] = out['fu'][_col] = None
+    out['pu'] = out['pu'].loc[:, pair_cols]
+    out['fu'] = out['fu'].loc[:, pair_cols]
+    out['pf'] = (data['PB'].loc[:, pair_cols] - data['FB'].loc[:, pair_cols])
+    
+    if save:
+        with pd.ExcelWriter(ospath.join(results_path, 'diff_3ways.xlsx')) as writer:
+            for k, df in out.items(): df.to_excel(writer, sheet_name=k)
+    return out
+
+#%%
+
+pb = load_data(ospath.join(results_path, 'PB1P_364.xlsx'),
+               header=[0,1], skiprows=[2,])
+
+x = pb.loc[:, ('TEA (w/o degas)', 'Levelized cost (w/o degas) [$/ton rCOD]')]
+y = pb.loc[:, ('LCA (w/o degas)',  'GWP100 (w/o degas) [kg CO2eq/ton rCOD]')]
+# zs = pb.iloc[:, :18]
+sens = [
+        ('ADM1', 'Uptake k pro [COD/COD/d]'),
+        ('ADM1', 'Uptake k ac [COD/COD/d]'),
+        ('System',  'Total HRT [d]'),
+        ('Encapsulation', 'Max encapsulation density [gTSS/L]'),
+        ('Encapsulation', 'Bead lifetime [yr]'),
+        ('Encapsulation', 'Bead diameter [mm]')
+        ]
+
+for i, col in enumerate(sens):
+    fig, ax = plt.subplots(figsize=(4,3))
+    pos = ax.scatter(x=x, y=y, c=pb.loc[:,col], cmap='viridis', s=1, alpha=0.7)
+    # ax.set_xlim(100)
+    # ax.set_ylim(10)
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    # ax.legend('right')
+    fig.colorbar(pos, ax=ax)
+    fig.savefig(ospath.join(figures_path, f'scatter_{i}.png'), dpi=300, facecolor='white')
+    
+#%% breakdown all cost & gwp
+
+def breakdown_and_sort(data):
+    tea = data.loc[:,'TEA (w/ degas)'].copy()
+    tea.sort_values(by='Levelized cost (w/ degas) [$/ton rCOD]', inplace=True)
+    llc = tea.pop('Levelized cost (w/ degas) [$/ton rCOD]')
+    # tea = (tea / 100).mul(llc.abs(), axis='rows')
+    tea.columns = [col.split(' ')[1] for col in tea.columns]
+    tea['fug_ch4'] = 0
+    tea['total'] = llc
+    
+    lca = data.loc[:,'LCA (w/ degas)'].copy()
+    lca.sort_values(by='GWP100 (w/ degas) [kg CO2eq/ton rCOD]', inplace=True)
+    gwp = lca.pop('GWP100 (w/ degas) [kg CO2eq/ton rCOD]')
+    absolute = (gwp<=0).any()
+    if absolute: lca = (lca / 100).mul(gwp.abs(), axis='rows')
+    lca.columns = [col.split(' ')[1] for col in lca.columns]
+    lca['total'] = gwp
+    return tea, lca, absolute
+
+def plot_area(df, absolute=False):
+    fig, ax = plt.subplots(figsize=(5,4))
+    x = range(df.shape[0])
+    ax.axhline(y=0, color='black', linewidth=0.5)
+    yp = np.zeros(df.shape[0])
+    yn = yp.copy()
+    for k, v in patch_dct.items():
+        c, hat = v
+        y = df.loc[:,k]
+        y_offset = (y>=0)*yp + (y<0)*yn
+        ax.fill_between(x, y+y_offset, y_offset, facecolor=c, hatch=hat, linewidth=0.5)
+        yp += (y>=0) * y
+        yn += (y<0) * y
+    ax.set_xlim(0, df.shape[0])
+    ax.tick_params(axis='y', which='major', direction='inout', length=6)
+    ax.tick_params(axis='y', which='minor', direction='inout', length=3)
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+    if absolute: 
+        ax.yaxis.set_ticklabels([])
+        ax2y = ax.secondary_yaxis('right')
+    else:
+        ax2y = ax.twinx()
+        ax2y.plot(x, df['total'], color='black', linewidth=0.5)
+    ax2y.tick_params(axis='y', which='major', direction='inout', length=6)
+    ax2y.tick_params(axis='y', which='minor', direction='inout', length=3)
+    return fig, ax
+
+def breakdown_uasa(seed):
+    for i in ('UASB', 'FB', 'PB'):
+        data = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
+                         header=[0,1], skiprows=[2,])
+        tea, lca, absolute = breakdown_and_sort(data)
+        for suffix, df in (('TEA', tea), ('LCA', lca)):
+            fig, ax = plot_area(df, absolute and suffix=='LCA')
+            fig.savefig(ospath.join(figures_path, f'breakdown/{i}_{suffix}.png'),
+                        dpi=300, facecolor='white')
+    
 #%%
 if __name__ == '__main__':
     # path = ospath.join(data_path, 'analysis_framework.xlsx')
@@ -525,5 +642,6 @@ if __name__ == '__main__':
     # plot_breakdown()
     # smp = run_UA_SA(seed=364, N=1000)
     # _rerun_failed_samples(364)
-    data = MCF_encap_to_susp(364, False)
-    MCF_bubble_plot(data)
+    # data = MCF_encap_to_susp(364, False)
+    # MCF_bubble_plot(data)
+    breakdown_uasa(364)
