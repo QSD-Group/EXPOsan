@@ -577,7 +577,7 @@ def breakdown_and_sort(data):
     tea = data.loc[:,'TEA (w/ degas)'].copy()
     tea.sort_values(by='Levelized cost (w/ degas) [$/ton rCOD]', inplace=True)
     llc = tea.pop('Levelized cost (w/ degas) [$/ton rCOD]')
-    # tea = (tea / 100).mul(llc.abs(), axis='rows')
+    tea = (tea / 100).mul(llc.abs(), axis='rows')
     tea.columns = [col.split(' ')[1] for col in tea.columns]
     tea['fug_ch4'] = 0
     tea['total'] = llc
@@ -585,14 +585,15 @@ def breakdown_and_sort(data):
     lca = data.loc[:,'LCA (w/ degas)'].copy()
     lca.sort_values(by='GWP100 (w/ degas) [kg CO2eq/ton rCOD]', inplace=True)
     gwp = lca.pop('GWP100 (w/ degas) [kg CO2eq/ton rCOD]')
-    absolute = (gwp<=0).any()
-    if absolute: lca = (lca / 100).mul(gwp.abs(), axis='rows')
+    # absolute = (gwp<=0).any()
+    # if absolute: 
+    lca = (lca / 100).mul(gwp.abs(), axis='rows')
     lca.columns = [col.split(' ')[1] for col in lca.columns]
     lca['total'] = gwp
-    return tea, lca, absolute
+    return tea, lca#, absolute
 
 def plot_area(df, absolute=False):
-    fig, ax = plt.subplots(figsize=(5,4))
+    fig, ax = plt.subplots(figsize=(4,4))
     x = range(df.shape[0])
     ax.axhline(y=0, color='black', linewidth=0.5)
     yp = np.zeros(df.shape[0])
@@ -610,24 +611,33 @@ def plot_area(df, absolute=False):
     ax.set_xlabel('')
     ax.set_ylabel('')
     if absolute: 
-        ax.yaxis.set_ticklabels([])
+        # ax.yaxis.set_ticklabels([])
+        ax.ticklabel_format(axis='y', scilimits=[-2,3], useMathText=True)
         ax2y = ax.secondary_yaxis('right')
+        ax2y.tick_params(axis='y', which='major', direction='in', length=3)
+        ax2y.tick_params(axis='y', which='minor', direction='in', length=1.5)
+        ax2y.yaxis.set_ticklabels([])
     else:
         ax2y = ax.twinx()
         ax2y.plot(x, df['total'], color='black', linewidth=0.5)
-    ax2y.tick_params(axis='y', which='major', direction='inout', length=6)
-    ax2y.tick_params(axis='y', which='minor', direction='inout', length=3)
+        ax2y.tick_params(axis='y', which='major', direction='inout', length=6)
+        ax2y.tick_params(axis='y', which='minor', direction='inout', length=3)
     return fig, ax
 
 def breakdown_uasa(seed):
     for i in ('UASB', 'FB', 'PB'):
         data = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
                          header=[0,1], skiprows=[2,])
-        tea, lca, absolute = breakdown_and_sort(data)
+        # tea, lca, absolute = breakdown_and_sort(data)
+        tea, lca = breakdown_and_sort(data)
         for suffix, df in (('TEA', tea), ('LCA', lca)):
-            fig, ax = plot_area(df, absolute and suffix=='LCA')
-            fig.savefig(ospath.join(figures_path, f'breakdown/{i}_{suffix}.png'),
-                        dpi=300, facecolor='white')
+            # fig, ax = plot_area(df, absolute and suffix=='LCA')
+            fig, ax = plot_area(df, True)            
+            fig.savefig(ospath.join(figures_path, f'breakdown/{i}_{suffix}_abs.png'),
+                        dpi=300, 
+                        # facecolor='white',
+                        transparent=True,
+                        )
     
 #%%
 if __name__ == '__main__':
