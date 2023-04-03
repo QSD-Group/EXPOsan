@@ -353,7 +353,7 @@ def add_mapping_params(model, common=True):
     
     if common:
         b = 10
-        D = shape.Uniform(5, 30)
+        D = shape.Uniform(5, 35)
         @param(name='Bead lifetime', units='yr', kind='coupled', 
                element='Encapsulation', baseline=b, distribution=D)
         def set_blt(lt):
