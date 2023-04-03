@@ -545,31 +545,31 @@ def calc_3way_diff(seed, save=True):
 
 #%%
 
-pb = load_data(ospath.join(results_path, 'PB1P_364.xlsx'),
-               header=[0,1], skiprows=[2,])
+# pb = load_data(ospath.join(results_path, 'PB1P_364.xlsx'),
+#                header=[0,1], skiprows=[2,])
 
-x = pb.loc[:, ('TEA (w/o degas)', 'Levelized cost (w/o degas) [$/ton rCOD]')]
-y = pb.loc[:, ('LCA (w/o degas)',  'GWP100 (w/o degas) [kg CO2eq/ton rCOD]')]
-# zs = pb.iloc[:, :18]
-sens = [
-        ('ADM1', 'Uptake k pro [COD/COD/d]'),
-        ('ADM1', 'Uptake k ac [COD/COD/d]'),
-        ('System',  'Total HRT [d]'),
-        ('Encapsulation', 'Max encapsulation density [gTSS/L]'),
-        ('Encapsulation', 'Bead lifetime [yr]'),
-        ('Encapsulation', 'Bead diameter [mm]')
-        ]
+# x = pb.loc[:, ('TEA (w/o degas)', 'Levelized cost (w/o degas) [$/ton rCOD]')]
+# y = pb.loc[:, ('LCA (w/o degas)',  'GWP100 (w/o degas) [kg CO2eq/ton rCOD]')]
+# # zs = pb.iloc[:, :18]
+# sens = [
+#         ('ADM1', 'Uptake k pro [COD/COD/d]'),
+#         ('ADM1', 'Uptake k ac [COD/COD/d]'),
+#         ('System',  'Total HRT [d]'),
+#         ('Encapsulation', 'Max encapsulation density [gTSS/L]'),
+#         ('Encapsulation', 'Bead lifetime [yr]'),
+#         ('Encapsulation', 'Bead diameter [mm]')
+#         ]
 
-for i, col in enumerate(sens):
-    fig, ax = plt.subplots(figsize=(4,3))
-    pos = ax.scatter(x=x, y=y, c=pb.loc[:,col], cmap='viridis', s=1, alpha=0.7)
-    # ax.set_xlim(100)
-    # ax.set_ylim(10)
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-    # ax.legend('right')
-    fig.colorbar(pos, ax=ax)
-    fig.savefig(ospath.join(figures_path, f'scatter_{i}.png'), dpi=300, facecolor='white')
+# for i, col in enumerate(sens):
+#     fig, ax = plt.subplots(figsize=(4,3))
+#     pos = ax.scatter(x=x, y=y, c=pb.loc[:,col], cmap='viridis', s=1, alpha=0.7)
+#     # ax.set_xlim(100)
+#     # ax.set_ylim(10)
+#     ax.set_xscale('log')
+#     ax.set_yscale('log')
+#     # ax.legend('right')
+#     fig.colorbar(pos, ax=ax)
+#     fig.savefig(ospath.join(figures_path, f'scatter_{i}.png'), dpi=300, facecolor='white')
     
 #%% breakdown all cost & gwp
 
@@ -638,7 +638,55 @@ def breakdown_uasa(seed):
                         # facecolor='white',
                         transparent=True,
                         )
-    
+
+#%% heatmaps
+from scipy.interpolate import griddata
+
+def togrid(df, x_bounds, y_bounds):
+    xy = df.iloc[:,:2].to_numpy()
+    zs = df.iloc[:,2:]
+    gridx, gridy = np.meshgrid(np.linspace(*x_bounds), np.linspace(*y_bounds))
+    gridzs = []
+    for k, z in zs.items():
+        gridzs.append(griddata(xy, z, (gridx, gridy), method='cubic').T)
+    return gridx, gridy, gridzs
+
+def plot_heatmap(xx, yy, z, save_as=''):
+    fig, ax = plt.subplots(figsize=(4, 3.5))
+    pos = ax.pcolormesh(xx, yy, z, shading='gouraud')
+    cbar = fig.colorbar(pos, ax=ax)
+    cbar.ax.tick_params(labelsize=10)
+    ax.tick_params(axis='both', which='major', direction='inout', length=6)
+    ax.tick_params(axis='both', which='minor', direction='inout', length=3)
+    ax2x = ax.secondary_xaxis('top')
+    ax2x.tick_params(direction='in', which='major', length=3)
+    ax2x.tick_params(direction='in', which='minor', length=1.5)
+    ax2x.xaxis.set_ticklabels([])
+    ax2y = ax.secondary_yaxis('right')
+    ax2y.tick_params(direction='in', which='major', length=3)
+    ax2y.tick_params(direction='in', which='minor', length=1.5)
+    ax2y.yaxis.set_ticklabels([])
+    cs = ax.contour(xx, yy, z, 
+                    colors='white', origin='lower', 
+                    linestyles='dashed', linewidths=1, 
+                    extent=(xx[0,0], xx[0,-1], yy[0,0], yy[-1,0]))
+    ax.clabel(cs, cs.levels, inline=True, fmt=lambda x: f"{x:.2g}", fontsize=11)
+    fig.savefig(ospath.join(figures_path, save_as), dpi=300)
+
+def mapping(data=None, seed=None, reactor_type='PB', suffix=''):
+    if data is None:
+        data = load_data(ospath.join(results_path, f'optimized_{reactor_type}_{seed}.xlsx'),
+                         header=[0,1], skiprows=[2,])
+    sys = create_system(reactor_type=reactor_type)
+    mdl = create_model(sys, kind='mapping')
+    opt = create_model(sys, kind='optimize')
+    npopt = len(opt.parameters)
+    bounds = [p.bounds for p in mdl.parameters]
+    xx, yy, zs = togrid(data.iloc[:, npopt:], *bounds)
+    for z, m in zip(zs, mdl.metrics):
+        file = f'heatmaps/{reactor_type}/{m.ID}_{suffix}.png'
+        plot_heatmap(xx, yy, z, save_as=file)
+
 #%%
 if __name__ == '__main__':
     # path = ospath.join(data_path, 'analysis_framework.xlsx')
