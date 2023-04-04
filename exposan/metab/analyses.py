@@ -640,16 +640,16 @@ def breakdown_uasa(seed):
                         )
 
 #%% heatmaps
-from scipy.interpolate import griddata
+# from scipy.interpolate import griddata
+from exposan.metab.models import meshgrid_sample
 
-def togrid(df, x_bounds, y_bounds):
-    xy = df.iloc[:,:2].to_numpy()
-    zs = df.iloc[:,2:]
-    gridx, gridy = np.meshgrid(np.linspace(*x_bounds), np.linspace(*y_bounds))
-    gridzs = []
-    for k, z in zs.items():
-        gridzs.append(griddata(xy, z, (gridx, gridy), method='cubic').T)
-    return gridx, gridy, gridzs
+def togrid(df, mdl, n):
+    zs = df.iloc[:,-len(mdl.metrics):].to_numpy().T
+    samples, xx, yy = meshgrid_sample(*mdl.parameters, n)
+    zzs = []
+    for z in zs:
+        zzs.append(zs.reshape(xx.shape))
+    return xx, yy, zzs
 
 def plot_heatmap(xx, yy, z, save_as=''):
     fig, ax = plt.subplots(figsize=(4, 3.5))
@@ -673,22 +673,19 @@ def plot_heatmap(xx, yy, z, save_as=''):
     ax.clabel(cs, cs.levels, inline=True, fmt=lambda x: f"{x:.2g}", fontsize=11)
     fig.savefig(ospath.join(figures_path, save_as), dpi=300)
 
-def mapping(data=None, seed=None, reactor_type='PB', suffix=''):
+def mapping(data=None, n=20, reactor_type='PB', suffix=''):
     if data is None:
-        data = load_data(ospath.join(results_path, f'optimized_{reactor_type}_{seed}.xlsx'),
+        data = load_data(ospath.join(results_path, f'optimized_{reactor_type}.xlsx'),
                          header=[0,1], skiprows=[2,])
     sys = create_system(reactor_type=reactor_type)
     mdl = create_model(sys, kind='mapping')
-    opt = create_model(sys, kind='optimize')
-    npopt = len(opt.parameters)
-    bounds = [p.bounds for p in mdl.parameters]
-    xx, yy, zs = togrid(data.iloc[:, npopt:], *bounds)
-    for z, m in zip(zs, mdl.metrics):
+    xx, yy, zzs = togrid(data, mdl, n)
+    for z, m in zip(zzs, mdl.metrics):
         file = f'heatmaps/{reactor_type}/{m.ID}_{suffix}.png'
         plot_heatmap(xx, yy, z, save_as=file)
 
 #%%
-if __name__ == '__main__':
+# if __name__ == '__main__':
     # path = ospath.join(data_path, 'analysis_framework.xlsx')
     # run_discrete_DVs(path)
     # data = data_compile()
@@ -702,4 +699,4 @@ if __name__ == '__main__':
     # _rerun_failed_samples(364)
     # data = MCF_encap_to_susp(364, False)
     # MCF_bubble_plot(data)
-    breakdown_uasa(364)
+    # breakdown_uasa(364)

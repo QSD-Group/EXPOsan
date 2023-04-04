@@ -353,7 +353,7 @@ def add_mapping_params(model, common=True):
     
     if common:
         b = 10
-        D = shape.Uniform(5, 35)
+        D = shape.Uniform(2, 30)
         @param(name='Bead lifetime', units='yr', kind='coupled', 
                element='Encapsulation', baseline=b, distribution=D)
         def set_blt(lt):
@@ -670,15 +670,30 @@ def f_obj(vals, mdl):
     
     return mdl.metrics[0]()
     
-#%%
-def optimize(mapping, mdl_opt, N=100, rule='L', seed=None, mpath=''):
-    samples = mapping.sample(N=N, rule=rule, seed=seed)
+def meshgrid_sample(p1, p2, n):
+    if p1.name == 'Bead lifetime':
+        ll, ul = p1.bounds
+        if ul - ll + 1 <= n:
+            x = np.arange(ll, ul+1)
+        else:
+            x = np.sort(np.round(30 / np.unique(np.ceil(30/ np.arange(ll, ul+1)))))
+    else:
+        x = np.linspace(*p1.bounds, n)
+    y = np.linspace(*p2.bounds, n)
+    xx, yy = np.meshgrid(x, y)
+    samples = np.array([xx.flatten(), yy.flatten()])
+    return samples.T, xx, yy
+
+def optimize(mapping, mdl_opt, n=20, mpath=''):
+    samples, gridx, gridy = meshgrid_sample(*mapping.parameters, n)
     x0 = np.asarray([p.baseline for p in mdl_opt.parameters])
     bounds = [p.bounds for p in mdl_opt.parameters]
     xs = []
     ys = []
+    i = 0
     for smp in samples:
-        print("="*10)
+        i += 1
+        print(f'\n{i}  {"="*20}')
         for p, v in zip(mapping.parameters, smp): p.setter(v)
         if len(x0) == 1:
             res = minimize_scalar(f_obj, args=(mdl_opt,), bounds=bounds[0], 
@@ -696,12 +711,13 @@ def optimize(mapping, mdl_opt, N=100, rule='L', seed=None, mpath=''):
             x0 = res.x
         xs.append(res.x)
         ys.append([m() for m in mapping.metrics])
+        
     df_x = pd.DataFrame(xs, columns=var_columns(mdl_opt.parameters), dtype=float)
     table = pd.DataFrame(np.hstack((samples, np.asarray(ys))),
                          columns=var_columns(mapping._parameters + mapping._metrics),
                          dtype=float)
     table = df_x.join(table)
-    mpath = mpath or ospath.join(results_path, f'optimized_{mapping.system.ID[:2]}_{seed}.xlsx')
+    mpath = mpath or ospath.join(results_path, f'optimized_{mapping.system.ID[:2]}.xlsx')
     table.to_excel(mpath)
 
 #%%
@@ -709,4 +725,4 @@ if __name__ == '__main__':
     sys = create_system(reactor_type='PB')
     mp = create_model(sys, kind='mapping')
     opt = create_model(sys, kind='optimize')
-    optimize(mp, opt, seed=145)
+    optimize(mp, opt)
