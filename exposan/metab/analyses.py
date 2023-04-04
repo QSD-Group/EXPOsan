@@ -639,6 +639,34 @@ def breakdown_uasa(seed):
                         transparent=True,
                         )
 
+#%% Spearman's rho between cost & GWP
+from scipy.stats import spearmanr
+def Spearman_corr(seed, save=True):
+    cols = [
+            ('TEA (w/ degas)', 'Levelized cost (w/ degas) [$/ton rCOD]'),
+            ('LCA (w/ degas)', 'GWP100 (w/ degas) [kg CO2eq/ton rCOD]'),
+            ('TEA (w/o degas)', 'Levelized cost (w/o degas) [$/ton rCOD]'),
+            ('LCA (w/o degas)',  'GWP100 (w/o degas) [kg CO2eq/ton rCOD]'),    
+        ]
+    stats = {}
+    for i in ('FB', 'PB'):
+        data = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
+                         header=[0,1], skiprows=[2,])
+        m = data.loc[:, cols]
+        m.droplevel(1, axis=1)
+        stats[i] = spearmanr(m)
+    if save:
+        with pd.ExcelWriter(ospath.join(results_path, 'spearman.xlsx')) as writer:
+            for k,v in stats.items():
+                r, p = v
+                r = pd.DataFrame(r, index=m.columns, columns=m.columns)
+                r.to_excel(writer, sheet_name=f'{k}_rho')
+                p = pd.DataFrame(p, index=m.columns, columns=m.columns)
+                p.to_excel(writer, sheet_name=f'{k}_p')
+    return stats
+
+out = Spearman_corr(364, True)
+
 #%% heatmaps
 # from scipy.interpolate import griddata
 from exposan.metab.models import meshgrid_sample
