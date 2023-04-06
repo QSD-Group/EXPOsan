@@ -22,12 +22,18 @@ from exposan.pm2_batch import (
 import numpy as np, pandas as pd
 from scipy.optimize import minimize, basinhopping, shgo
 
+import winsound as sd
+from datetime import datetime
+
 __all__ = ('cali_setup', 'optimizer', 'objective_function')
+
+start_time = datetime.now()
+print('Started (hh:mm:ss.ms) {}'.format(start_time))
 
 #%%
 
-# mdl = create_model(kind='include', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
-mdl = create_model(kind='exclude', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
+mdl = create_model(kind='include', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
+# mdl = create_model(kind='exclude', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
 
 def cali_setup():
     params = []
@@ -54,7 +60,7 @@ bnds: min & max of sensitive parameters
 #%%
 def optimizer():
 
-    # opt = shgo(objective_function, bounds=bnds, iters=10, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-4})   #2_with gygutfeeling_init->error
+    opt = shgo(objective_function, bounds=bnds, iters=5, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3})   #2_with gygutfeeling_init->error
 
     # opt = shgo(objective_function, bounds=bnds, iters=1, minimizer_kwargs={'method':'SLSQP'})   #1_with gygutfeeling_init
 
@@ -62,14 +68,14 @@ def optimizer():
     # opt = shgo(objective_function, bounds=bnds, iters=1, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3}, sampling_method='simplicial')
     # opt = basinhopping(objective_function, opt_params, niter=3, minimizer_kwargs={'method':'SLSQP'}, niter_success=5)
 
-    opt = minimize(objective_function, opt_params, method='SLSQP', bounds=bnds, tol=1e-4)
+    # opt = minimize(objective_function, opt_params, method='SLSQP', bounds=bnds, tol=1e-4)
 
     # tol=1e-6 warning, fail
     # tol=1e-5 warning, fail
     # tol=1e-4 warning, success
 
     opt_as_series = pd.Series(opt)
-    opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_exclude_newbase.xlsx')))
+    opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_exclude_newbase_shgo.xlsx')))
     # opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_exclude.xlsx')))
 
     # scipy.optimize.minimize(fun, x0, args=(), method=None, jac=None, hess=None, hessp=None, bounds=None,\
@@ -111,11 +117,11 @@ def objective_function(opt_params, *args):
 
     try:
 
-        # mdl._update_state(opt_params, t_span=(0, 0.25), t_eval = np.arange(0, 0.26, 0.01), method='BDF', state_reset_hook='reset_cache')
-        mdl._update_state(opt_params, t_span=(0, 7), t_eval = np.arange(0, 7.01, 0.01), method='BDF', state_reset_hook='reset_cache')
+        mdl._update_state(opt_params, t_span=(0, 0.25), t_eval = np.arange(0, 0.26, 0.01), method='BDF', state_reset_hook='reset_cache')
+        # mdl._update_state(opt_params, t_span=(0, 7), t_eval = np.arange(0, 7.01, 0.01), method='BDF', state_reset_hook='reset_cache')
 
     except:
-        return 1
+        return 0.5
 
     out = [metric() for metric in mdl.metrics]
     obj = np.average(out)
@@ -123,3 +129,8 @@ def objective_function(opt_params, *args):
     return obj
 
 optimizer()
+
+time_elapsed = datetime.now()-start_time
+print('Time elapsed (hh:mm:ss.ms) {}'.format(time_elapsed))
+
+sd.Beep(2000, 1000)

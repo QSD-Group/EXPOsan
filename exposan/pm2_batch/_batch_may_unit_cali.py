@@ -20,7 +20,9 @@ from qsdsan.utils import ospath, time_printer, \
 
 cmps = pc.create_pm2_cmps()
 
-pm2 = pc.PM2(arr_e=6842, K_P=0.8017, f_CH_max=0.4432, exponent=4.009, q_CH=2.021, q_LI=15.08, V_NH=0.1625, V_P=0.4) # with new baseline, new sens_params
+pm2 = pc.PM2(arr_e=5500, K_P=0.01297, f_CH_max=0.1, exponent=9.952, q_CH=4.927, q_LI=1.617, V_NH=0.09811, V_P=0.4950) # with shgo, iter 3, tot -3, ret 0.5
+
+# pm2 = pc.PM2(arr_e=6842, K_P=0.8017, f_CH_max=0.4432, exponent=4.009, q_CH=2.021, q_LI=15.08, V_NH=0.1625, V_P=0.4) # with new baseline, new sens_params
 
 # sensitive_params = {
 #     'arr_e': (6842, 'K', (1000, 10000)),
@@ -73,7 +75,7 @@ def run(t, t_step, method=None, print_t=False, **kwargs):
                       method=method,
                       # rtol=1e-2,
                       # atol=1e-3,
-                      export_state_to=f'results/sol_{t}d_{method}_batch_may_unit_cali.xlsx',
+                      export_state_to=f'results/sol_{t}d_{method}_batch_may_unit_cali_shgo.xlsx',
                       print_t=print_t,
                       **kwargs)
     else:

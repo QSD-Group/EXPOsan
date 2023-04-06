@@ -11,7 +11,7 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-from qsdsan.utils import ospath
+from qsdsan.utils import ospath, time_printer
 from exposan.pm2 import (
     results_path,
     create_model,
@@ -104,7 +104,7 @@ nfev, njev, nhev: Number of evaluations of the objective functions and of its Ja
 nit: Number of iterations performed by the optimizer.
 '''
 #%%
-
+@time_printer
 def objective_function(opt_params, *args):
 
     try:
