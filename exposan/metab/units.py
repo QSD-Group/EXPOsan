@@ -408,7 +408,7 @@ class UASB(AnaerobicCSTR):
     def _run(self):
         super()._run()
         if self._mixed.T > self.T:
-            if self.T < self.T_air: self.T_air = self.T.copy()
+            if self.T < self.T_air: self.T_air = self.T
             self._correct_T()
     
     def _correct_T(self):
@@ -995,7 +995,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
     def _run(self):
         super()._run()
         if self._mixed.T > self.T:
-            if self.T < self.T_air: self.T_air = self.T.copy()
+            if self.T < self.T_air: self.T_air = self.T
             self._correct_T()
     
     def _correct_T(self):
