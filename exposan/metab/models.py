@@ -717,12 +717,12 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
                          columns=var_columns(mapping._parameters + mapping._metrics),
                          dtype=float)
     table = df_x.join(table)
-    mpath = mpath or ospath.join(results_path, f'optimized_{mapping.system.ID[:2]}.xlsx')
+    mpath = mpath or ospath.join(results_path, f'optimized_{mapping.system.ID[:2]}_specific.xlsx')
     table.to_excel(mpath)
 
 #%%
 if __name__ == '__main__':
     sys = create_system(reactor_type='PB')
-    mp = create_model(sys, kind='mapping')
+    mp = create_model(sys, kind='mapping', common=False)
     opt = create_model(sys, kind='optimize')
     optimize(mp, opt)

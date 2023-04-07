@@ -673,33 +673,37 @@ from exposan.metab.models import meshgrid_sample
 
 def togrid(df, mdl, n):
     zs = df.iloc[:,-len(mdl.metrics):].to_numpy().T
+    us = df.iloc[:, :-(-len(mdl.metrics)+len(mdl.parameters))].to_numpy().T
     samples, xx, yy = meshgrid_sample(*mdl.parameters, n)
-    zzs = []
-    for z in zs:
-        zzs.append(zs.reshape(xx.shape))
+    zzs = np.vstack((us, zs))
+    zzs = zzs.reshape((zzs.shape[0], *xx.shape))
     return xx, yy, zzs
 
 def plot_heatmap(xx, yy, z, save_as=''):
-    fig, ax = plt.subplots(figsize=(4, 3.5))
+    fig, ax = plt.subplots(figsize=(5, 4.5))
     pos = ax.pcolormesh(xx, yy, z, shading='gouraud')
     cbar = fig.colorbar(pos, ax=ax)
     cbar.ax.tick_params(labelsize=10)
-    ax.tick_params(axis='both', which='major', direction='inout', length=6)
+    ax.tick_params(axis='both', which='major', direction='inout', length=6, labelsize=10)
     ax.tick_params(axis='both', which='minor', direction='inout', length=3)
-    ax2x = ax.secondary_xaxis('top')
+    ax2x = ax.secondary_xaxis('top', zorder=3)
     ax2x.tick_params(direction='in', which='major', length=3)
     ax2x.tick_params(direction='in', which='minor', length=1.5)
     ax2x.xaxis.set_ticklabels([])
-    ax2y = ax.secondary_yaxis('right')
+    ax2y = ax.secondary_yaxis('right', zorder=3)
     ax2y.tick_params(direction='in', which='major', length=3)
     ax2y.tick_params(direction='in', which='minor', length=1.5)
     ax2y.yaxis.set_ticklabels([])
-    cs = ax.contour(xx, yy, z, 
+    cs = ax.contour(xx, yy, z, levels=8,
                     colors='white', origin='lower', 
-                    linestyles='dashed', linewidths=1, 
-                    extent=(xx[0,0], xx[0,-1], yy[0,0], yy[-1,0]))
-    ax.clabel(cs, cs.levels, inline=True, fmt=lambda x: f"{x:.2g}", fontsize=11)
-    fig.savefig(ospath.join(figures_path, save_as), dpi=300)
+                    linestyles='dashed', linewidths=0.6, 
+                    extent=(xx[0,0], xx[0,-1], yy[0,0], yy[-1,0]),
+                    algorithm='serial',
+                    )
+    ax.clabel(cs, cs.levels, inline=True, 
+              # fmt=lambda x: f"{x:.2g}", 
+              fontsize=7.5)
+    fig.savefig(ospath.join(figures_path, save_as), dpi=300, transparent=True)
 
 def mapping(data=None, n=20, reactor_type='PB', suffix=''):
     if data is None:
@@ -707,13 +711,14 @@ def mapping(data=None, n=20, reactor_type='PB', suffix=''):
                          header=[0,1], skiprows=[2,])
     sys = create_system(reactor_type=reactor_type)
     mdl = create_model(sys, kind='mapping')
+    opt = create_model(sys, kind='optimize')
     xx, yy, zzs = togrid(data, mdl, n)
-    for z, m in zip(zzs, mdl.metrics):
-        file = f'heatmaps/{reactor_type}/{m.ID}_{suffix}.png'
+    for z, m in zip(zzs, (*opt.parameters, *mdl.metrics)):
+        file = f'heatmaps/{reactor_type}/{m.name}_{suffix}.png'
         plot_heatmap(xx, yy, z, save_as=file)
 
 #%%
-# if __name__ == '__main__':
+if __name__ == '__main__':
     # path = ospath.join(data_path, 'analysis_framework.xlsx')
     # run_discrete_DVs(path)
     # data = data_compile()
@@ -728,3 +733,4 @@ def mapping(data=None, n=20, reactor_type='PB', suffix=''):
     # data = MCF_encap_to_susp(364, False)
     # MCF_bubble_plot(data)
     # breakdown_uasa(364)
+    mapping(suffix='common')
