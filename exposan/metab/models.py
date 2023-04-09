@@ -625,17 +625,28 @@ from scipy.optimize import minimize, minimize_scalar
 from biosteam.evaluation._utils import var_columns
 import pandas as pd
 
+C0_bulk = np.array([
+    1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
+    4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
+    2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 
+    4.708e+00, 1.239e+00, 4.838e-01, 1.423e+00, 8.978e-01, 
+    2.959e+00, 1.467e+00, 
+    4.924e-02, 4.000e-02, 2.000e-02, 9.900e+02
+    ])
+
 def f_obj(vals, mdl):
     if len(mdl.parameters) == 1: 
         mdl.parameters[0].setter(vals)
     else: 
         for p, v in zip(mdl.parameters, vals): p.setter(v)
     sys = mdl.system
+    cmps = sys.feeds[0].components
     kwargs = dict(state_reset_hook='reset_cache', method='BDF', t_span=(0, 400))
+    # sys.simulate(**kwargs)
+
     try:
         sys.simulate(**kwargs)
     except:
-        cmps = sys.feeds[0].components
         C_bulk = np.array([
             1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
             # 0,0,0,0,0,0,
@@ -691,10 +702,13 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
     xs = []
     ys = []
     i = 0
+    cmps = mapping.system.feeds[0].components
+    C0 = dict(zip(cmps.IDs, C0_bulk))
     for smp in samples:
         i += 1
         print(f'\n{i}  {"="*20}')
         for p, v in zip(mapping.parameters, smp): p.setter(v)
+        mapping.system.units[0].set_init_conc(**C0)
         if len(x0) == 1:
             res = minimize_scalar(f_obj, args=(mdl_opt,), bounds=bounds[0], 
                                   method='Bounded', 

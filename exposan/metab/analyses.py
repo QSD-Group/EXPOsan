@@ -491,7 +491,6 @@ def MCF_bubble_plot(data=None, seed=None):
     pal = {'FB':'#F98F60', 'PB':'#a280b9'}
     for kv, ax in zip(data.items(), axes):
         k, df = kv
-
         sns.scatterplot(df, x='Metric', y='Parameter', 
                         hue=df.p<0.05, palette=['black', pal[k]], 
                         size='D', sizes=(0, 350), size_norm=(0,1),
