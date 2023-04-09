@@ -737,6 +737,6 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
 #%%
 if __name__ == '__main__':
     sys = create_system(reactor_type='PB')
-    mp = create_model(sys, kind='mapping', common=False)
+    mp = create_model(sys, kind='mapping', common=True)
     opt = create_model(sys, kind='optimize')
     optimize(mp, opt)

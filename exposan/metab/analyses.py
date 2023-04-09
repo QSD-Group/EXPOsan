@@ -233,53 +233,131 @@ def compare_DVs(data=None, save_as=''):
 #%% contour of diff
 boxprops = dict(alpha=1, edgecolor='black')
 # flierprops = dict(marker='.', markersize=1, markerfacecolor='#90918e', markeredgecolor='#90918e')
-meanprops = dict(marker='^', markersize=1.5, markerfacecolor='black', markeredgecolor='black', lw=0.5)
-medianprops = dict(color='black', lw=0.5)
+meanprops = dict(marker='x', markersize=6, markerfacecolor='black', markeredgecolor='black', lw=0.6)
+medianprops = dict(color='black', lw=0.6)
 
-palette = ['#60C1CF', '#F98F60', '#79BF82', '#F3C354', '#A280B9', '#ED586F', 
-           '#35767F', '#733763', '#4D7E53', '#AB8937', '#5184EF']
+# palette = ['#60C1CF', '#F98F60', '#79BF82', '#F3C354', '#A280B9', '#ED586F', 
+#            '#35767F', '#733763', '#4D7E53', '#AB8937', '#5184EF']
+
+# def plot_joint(df, save_as='', kde=True):
+#     g = sns.JointGrid(height=8, ratio=5, space=0, marginal_ticks=True)
+#     x, y = df['Levelized cost'], df['GWP100']
+#     group = df['group']
+#     pal = palette[:group.nunique()]
+#     g.refline(x=0, y=0, color='#90918e', lw=1)
+#     if kde:
+#         sns.kdeplot(x=x, y=y, hue=group, ax=g.ax_joint,
+#                     palette=pal,
+#                     common_norm=False,
+#                     fill=True,
+#                     legend=False,
+#                     alpha=0.6,
+#                     )
+#     else:
+#         sns.scatterplot(x=x, y=y, hue=group, ax=g.ax_joint,
+#                         palette=pal,
+#                         legend=False,
+#                         size=30,
+#                         alpha=0.7,
+#                         )
+#     # g.ax_joint.set_ylim(top=3000)
+#     g.ax_joint.tick_params(axis='both', which='major', direction='inout', length=10, labelsize=18)
+#     g.ax_joint.tick_params(axis='both', which='minor', direction='inout', length=6)
+#     g.ax_joint.set_xlabel('')
+#     g.ax_joint.set_ylabel('')
+#     bxp_kwargs = dict(
+#         palette=pal,
+#         linewidth=0.5,
+#         showcaps=True,
+#         showmeans=True,
+#         showfliers=False,
+#         dodge=False,
+#         saturation=1,
+#         width=0.3,
+#         boxprops=boxprops,
+#         # flierprops=flierprops,
+#         meanprops=meanprops,
+#         medianprops=medianprops,
+#         )
+#     if group.nunique() > 3: bxp_kwargs.pop('width')
+#     sns.boxplot(x=x, y=group, hue=group, ax=g.ax_marg_x, **bxp_kwargs)
+#     sns.boxplot(y=y, x=group, hue=group, ax=g.ax_marg_y, **bxp_kwargs)
+#     for ax in (g.ax_marg_x, g.ax_marg_y): ax.legend_.remove()
+#     g.ax_marg_x.tick_params(axis='x', which='major', direction='out', length=5)
+#     g.ax_marg_x.tick_params(axis='x', which='minor', direction='out', length=3)    
+#     g.ax_marg_x.tick_params(left=False, which='both', labelleft=False)    
+#     g.ax_marg_x.spines['left'].set_color('white')
+#     # g.ax_marg_y.set_ylim(top=3000)
+#     g.ax_marg_y.tick_params(axis='y', which='major', direction='out', length=5)
+#     g.ax_marg_y.tick_params(axis='y', which='minor', direction='out', length=3) 
+#     g.ax_marg_y.tick_params(bottom=False, which='both', labelbottom=False)    
+#     g.ax_marg_y.spines['bottom'].set_color('white')
+    
+#     path = ospath.join(figures_path, save_as)
+#     g.savefig(path, dpi=300, facecolor='white')
+
+
+
+# def plot_diff(data=None):
+#     if data is None:
+#         data = load_data(ospath.join(results_path, 'diff.xlsx'), sheet=None)
+#     singles = ('Reactor type', 'Total HRT', 'Bead lifetime')
+#     for i in singles:
+#         df = data[i]
+#         df['group'] = df['pair'].astype(str)
+#         plot_joint(df, f'{i}.png', kde=(i != 'Bead lifetime'))
+#     others = []
+#     for k, v in data.items():
+#         if k not in singles:
+#             v['group'] = v.apply(lambda row: f"{k}_{row['pair']}", axis=1)
+#             others.append(v)
+#     df = pd.concat(others)
+#     plot_joint(df, 'other_DVs.png')
+
+palette = ['#79BF82', '#60C1CF', '#90918E']
 
 def plot_joint(df, save_as='', kde=True):
     g = sns.JointGrid(height=8, ratio=5, space=0, marginal_ticks=True)
     x, y = df['Levelized cost'], df['GWP100']
     group = df['group']
     pal = palette[:group.nunique()]
-    g.refline(x=0, y=0, color='#90918e', lw=1)
+    g.refline(x=0, y=0, color='#4e4e4e', lw=1)
     if kde:
         sns.kdeplot(x=x, y=y, hue=group, ax=g.ax_joint,
                     palette=pal,
                     common_norm=False,
                     fill=True,
+                    # linewidths=1.5,
                     legend=False,
-                    alpha=0.6,
+                    # alpha=0.5,
+                    thresh=0.05,
                     )
     else:
-        sns.scatterplot(x=x, y=y, hue=group, ax=g.ax_joint,
+        sns.scatterplot(x=x, y=y, hue=group, style=group, ax=g.ax_joint,
                         palette=pal,
                         legend=False,
-                        size=30,
-                        alpha=0.7,
+                        s=100,
+                        markers=['P', 'o'],
+                        alpha=0.5,
                         )
-    # g.ax_joint.set_ylim(top=3000)
-    g.ax_joint.tick_params(axis='both', which='major', direction='inout', length=10, labelsize=18)
+    g.ax_joint.tick_params(axis='both', which='major', direction='inout', length=10, labelsize=24)
     g.ax_joint.tick_params(axis='both', which='minor', direction='inout', length=6)
+    g.ax_joint.set_xlim(-0.2, 1.0)
+    g.ax_joint.set_ylim(-0.3, 1.0)
     g.ax_joint.set_xlabel('')
     g.ax_joint.set_ylabel('')
     bxp_kwargs = dict(
         palette=pal,
-        linewidth=0.5,
+        width=0.5,
         showcaps=True,
         showmeans=True,
         showfliers=False,
         dodge=False,
         saturation=1,
-        width=0.3,
         boxprops=boxprops,
-        # flierprops=flierprops,
         meanprops=meanprops,
         medianprops=medianprops,
         )
-    if group.nunique() > 3: bxp_kwargs.pop('width')
     sns.boxplot(x=x, y=group, hue=group, ax=g.ax_marg_x, **bxp_kwargs)
     sns.boxplot(y=y, x=group, hue=group, ax=g.ax_marg_y, **bxp_kwargs)
     for ax in (g.ax_marg_x, g.ax_marg_y): ax.legend_.remove()
@@ -287,7 +365,6 @@ def plot_joint(df, save_as='', kde=True):
     g.ax_marg_x.tick_params(axis='x', which='minor', direction='out', length=3)    
     g.ax_marg_x.tick_params(left=False, which='both', labelleft=False)    
     g.ax_marg_x.spines['left'].set_color('white')
-    # g.ax_marg_y.set_ylim(top=3000)
     g.ax_marg_y.tick_params(axis='y', which='major', direction='out', length=5)
     g.ax_marg_y.tick_params(axis='y', which='minor', direction='out', length=3) 
     g.ax_marg_y.tick_params(bottom=False, which='both', labelbottom=False)    
@@ -299,18 +376,14 @@ def plot_joint(df, save_as='', kde=True):
 def plot_diff(data=None):
     if data is None:
         data = load_data(ospath.join(results_path, 'diff.xlsx'), sheet=None)
-    singles = ('Reactor type', 'Total HRT', 'Bead lifetime')
-    for i in singles:
-        df = data[i]
+    for i, df in data.items():
         df['group'] = df['pair'].astype(str)
+        if i in ('Total HRT', 'Bead diameter', ):
+            df = df.sort_values('pair', ascending=False)
+        elif i == 'Gas extraction':
+            df = df.sort_values('pair', ascending=True)            
         plot_joint(df, f'{i}.png', kde=(i != 'Bead lifetime'))
-    others = []
-    for k, v in data.items():
-        if k not in singles:
-            v['group'] = v.apply(lambda row: f"{k}_{row['pair']}", axis=1)
-            others.append(v)
-    df = pd.concat(others)
-    plot_joint(df, 'other_DVs.png')
+    
     
 #%% cost & impact breakdowns
 def best_breakdown():
@@ -672,15 +745,18 @@ from exposan.metab.models import meshgrid_sample
 
 def togrid(df, mdl, n):
     zs = df.iloc[:,-len(mdl.metrics):].to_numpy().T
-    us = df.iloc[:, :-(-len(mdl.metrics)+len(mdl.parameters))].to_numpy().T
+    us = df.iloc[:, :-(len(mdl.metrics)+len(mdl.parameters))].to_numpy().T
     samples, xx, yy = meshgrid_sample(*mdl.parameters, n)
     zzs = np.vstack((us, zs))
     zzs = zzs.reshape((zzs.shape[0], *xx.shape))
     return xx, yy, zzs
 
-def plot_heatmap(xx, yy, z, save_as=''):
+def plot_heatmap(xx, yy, z, baseline=[], save_as='', specific=True, hrt=True):
     fig, ax = plt.subplots(figsize=(5, 4.5))
-    pos = ax.pcolormesh(xx, yy, z, shading='gouraud')
+    if specific:
+        nm = mpl.colors.TwoSlopeNorm(vmin=z.min(), vcenter=np.median(z), vmax=z.max())
+    else: nm = 'linear'
+    pos = ax.pcolormesh(xx, yy, z, shading='gouraud', norm=nm)
     cbar = fig.colorbar(pos, ax=ax)
     cbar.ax.tick_params(labelsize=10)
     ax.tick_params(axis='both', which='major', direction='inout', length=6, labelsize=10)
@@ -693,28 +769,38 @@ def plot_heatmap(xx, yy, z, save_as=''):
     ax2y.tick_params(direction='in', which='major', length=3)
     ax2y.tick_params(direction='in', which='minor', length=1.5)
     ax2y.yaxis.set_ticklabels([])
-    cs = ax.contour(xx, yy, z, levels=8,
+    if specific: 
+        lct = mpl.ticker.FixedLocator(np.arange(0.2, 0.71, 0.1)) if hrt \
+            else mpl.ticker.FixedLocator(np.percentile(z, np.linspace(0,100,7)))
+    else:
+        lct = mpl.ticker.MaxNLocator(7)
+    cs = ax.contour(xx, yy, z, 
                     colors='white', origin='lower', 
-                    linestyles='dashed', linewidths=0.6, 
+                    linestyles='dashed', linewidths=1, 
                     extent=(xx[0,0], xx[0,-1], yy[0,0], yy[-1,0]),
-                    algorithm='serial',
+                    locator=lct
                     )
     ax.clabel(cs, cs.levels, inline=True, 
-              # fmt=lambda x: f"{x:.2g}", 
-              fontsize=7.5)
+              fontsize=9)
+    if baseline:
+        ax.plot(*baseline, marker='^', ms=7, mfc='white', mec='black', mew=0.5)
     fig.savefig(ospath.join(figures_path, save_as), dpi=300, transparent=True)
 
 def mapping(data=None, n=20, reactor_type='PB', suffix=''):
     if data is None:
-        data = load_data(ospath.join(results_path, f'optimized_{reactor_type}.xlsx'),
+        data = load_data(ospath.join(results_path, f'optimized_{reactor_type}_{suffix}.xlsx'),
                          header=[0,1], skiprows=[2,])
     sys = create_system(reactor_type=reactor_type)
-    mdl = create_model(sys, kind='mapping')
+    mdl = create_model(sys, kind='mapping', common=(suffix == 'common'))
+    bl = [p.baseline for p in mdl.parameters]
     opt = create_model(sys, kind='optimize')
     xx, yy, zzs = togrid(data, mdl, n)
+    hrt = True
     for z, m in zip(zzs, (*opt.parameters, *mdl.metrics)):
         file = f'heatmaps/{reactor_type}/{m.name}_{suffix}.png'
-        plot_heatmap(xx, yy, z, save_as=file)
+        plot_heatmap(xx, yy, z, bl, save_as=file, 
+                     specific=(suffix=='specific'), hrt=hrt)
+        hrt = False
 
 #%%
 if __name__ == '__main__':
@@ -724,7 +810,7 @@ if __name__ == '__main__':
     # plot_clusters(partial=True)
     # plot_clusters(partial=False)
     # out = compare_DVs()
-    # plot_diff()
+    plot_diff()
     # llc, imp = best_breakdown()
     # plot_breakdown()
     # smp = run_UA_SA(seed=364, N=1000)
@@ -732,4 +818,5 @@ if __name__ == '__main__':
     # data = MCF_encap_to_susp(364, False)
     # MCF_bubble_plot(data)
     # breakdown_uasa(364)
-    mapping(suffix='common')
+    # mapping(suffix='specific')
+    # mapping(suffix='common')
