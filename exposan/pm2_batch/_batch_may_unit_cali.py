@@ -20,7 +20,33 @@ from qsdsan.utils import ospath, time_printer, \
 
 cmps = pc.create_pm2_cmps()
 
-pm2 = pc.PM2(arr_e=5500, K_P=0.01297, f_CH_max=0.1, exponent=9.952, q_CH=4.927, q_LI=1.617, V_NH=0.09811, V_P=0.4950) # with shgo, iter 3, tot -3, ret 0.5
+pm2 = pc.PM2(arr_e=3249, K_P=25.03, f_CH_max=7.527, exponent=7.752, q_CH=2.575, q_LI=13.64, V_NH=0.2577, V_P=0.7527,
+              a_c=0.049, I_n=1500, arr_a=1.8e10, beta_1=2.90,
+              beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
+              K_N=0.1, K_A=6.3, K_F=6.3, rho=1.186, K_STO=1.566,
+              f_LI_max=3.249, m_ATP=10,
+              mu_max=1.969, Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163,
+              V_NO=0.003, n_dark=0.7,
+              Y_ATP_PHO=55.073, Y_CH_PHO=0.754, Y_LI_PHO=0.901, Y_X_ALG_PHO=0.450,
+              Y_ATP_HET_ACE=39.623, Y_CH_NR_HET_ACE=0.625, Y_CH_ND_HET_ACE=0.600,
+              Y_LI_NR_HET_ACE=1.105, Y_LI_ND_HET_ACE=0.713, Y_X_ALG_HET_ACE=0.216,
+              Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880,
+              Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317) # from kinetic assay optimzed results
+
+
+
+# pm2 = pc.PM2(arr_e=5500, K_P=0.01297, f_CH_max=0.1, exponent=9.952, q_CH=4.927, q_LI=1.617, V_NH=0.09811, V_P=0.4950,
+#              a_c=0.049, I_n=1500, arr_a=1.8e10, beta_1=2.90,
+#              beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
+#              K_N=0.1, K_A=6.3, K_F=6.3, rho=1.186, K_STO=1.566,
+#              f_LI_max=3.249, m_ATP=10,
+#              mu_max=1.969, Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163,
+#              V_NO=0.003, n_dark=0.7,
+#              Y_ATP_PHO=55.073, Y_CH_PHO=0.754, Y_LI_PHO=0.901, Y_X_ALG_PHO=0.450,
+#              Y_ATP_HET_ACE=39.623, Y_CH_NR_HET_ACE=0.625, Y_CH_ND_HET_ACE=0.600,
+#              Y_LI_NR_HET_ACE=1.105, Y_LI_ND_HET_ACE=0.713, Y_X_ALG_HET_ACE=0.216,
+#              Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880,
+#              Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317) # with shgo, iter 3, tot -3, ret 0.5
 
 # pm2 = pc.PM2(arr_e=6842, K_P=0.8017, f_CH_max=0.4432, exponent=4.009, q_CH=2.021, q_LI=15.08, V_NH=0.1625, V_P=0.4) # with new baseline, new sens_params
 
@@ -75,7 +101,7 @@ def run(t, t_step, method=None, print_t=False, **kwargs):
                       method=method,
                       # rtol=1e-2,
                       # atol=1e-3,
-                      export_state_to=f'results/sol_{t}d_{method}_batch_may_unit_cali_shgo.xlsx',
+                      export_state_to=f'results/sol_{t}d_{method}_batch_may_unit_cali_shgo_iter3_tol-3_ret0.5_new_kinetic_used.xlsx',
                       print_t=print_t,
                       **kwargs)
     else:
@@ -91,10 +117,10 @@ if __name__ == '__main__':
     t = 0.25
     t_step = 0.01
     # method = 'RK45'
-    method = 'RK23'
+    # method = 'RK23'  # original
     # method = 'DOP853'
     # method = 'Radau'
-    # method = 'BDF'
+    method = 'BDF'
     # method = 'LSODA'
     # method = None
     msg = f'Method {method}'

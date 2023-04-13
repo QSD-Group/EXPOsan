@@ -22,7 +22,7 @@ from exposan.pm2_batch import (
 import numpy as np, pandas as pd
 from scipy.optimize import minimize, basinhopping, shgo
 
-import winsound as sd
+# import winsound as sd
 from datetime import datetime
 
 __all__ = ('cali_setup', 'optimizer', 'objective_function')
@@ -32,7 +32,7 @@ print('Started (hh:mm:ss.ms) {}'.format(start_time))
 
 #%%
 
-mdl = create_model(kind='include', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
+mdl = create_model(kind='exclude', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
 # mdl = create_model(kind='exclude', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
 
 def cali_setup():
@@ -75,7 +75,11 @@ def optimizer():
     # tol=1e-4 warning, success
 
     opt_as_series = pd.Series(opt)
+<<<<<<< Updated upstream
     opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_include_newbase_shgo.xlsx')))
+=======
+    opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_exclude_newbase_shgo_kinetic.xlsx')))
+>>>>>>> Stashed changes
     # opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_exclude.xlsx')))
 
     # scipy.optimize.minimize(fun, x0, args=(), method=None, jac=None, hess=None, hessp=None, bounds=None,\
@@ -117,8 +121,8 @@ def objective_function(opt_params, *args):
 
     try:
 
-        mdl._update_state(opt_params, t_span=(0, 0.25), t_eval = np.arange(0, 0.26, 0.01), method='BDF', state_reset_hook='reset_cache')
-        # mdl._update_state(opt_params, t_span=(0, 7), t_eval = np.arange(0, 7.01, 0.01), method='BDF', state_reset_hook='reset_cache')
+        # mdl._update_state(opt_params, t_span=(0, 0.25), t_eval = np.arange(0, 0.26, 0.01), method='BDF', state_reset_hook='reset_cache')
+        mdl._update_state(opt_params, t_span=(0, 7), t_eval = np.arange(0, 7.01, 0.01), method='BDF', state_reset_hook='reset_cache')
 
     except:
         return 0.5
@@ -133,4 +137,4 @@ optimizer()
 time_elapsed = datetime.now()-start_time
 print('Time elapsed (hh:mm:ss.ms) {}'.format(time_elapsed))
 
-sd.Beep(2000, 1000)
+# sd.Beep(2000, 1000)

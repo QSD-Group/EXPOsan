@@ -31,6 +31,23 @@ __all__ = (
     'create_model',
     )
 
+
+modified_pm2_kwargs = dict(
+    a_c=0.049, I_n=1500, arr_a=1.8e10, arr_e=6842, beta_1=2.90,
+    beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
+    K_N=0.1, K_P=1.0, K_A=6.3, K_F=6.3, rho=1.186, K_STO=1.566,
+    f_CH_max=0.819, f_LI_max=3.249, m_ATP=10,
+    mu_max=1.969, q_CH=1, q_LI=15,
+    Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163,
+    V_NH=0.1, V_NO=0.003, V_P=0.2, exponent=4,
+    Y_ATP_PHO=55.073, Y_CH_PHO=0.754, Y_LI_PHO=0.901, Y_X_ALG_PHO=0.450,
+    Y_ATP_HET_ACE=39.623, Y_CH_NR_HET_ACE=0.625, Y_CH_ND_HET_ACE=0.600,
+    Y_LI_NR_HET_ACE=1.105, Y_LI_ND_HET_ACE=0.713, Y_X_ALG_HET_ACE=0.216,
+    Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880,
+    Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317, n_dark=0.7,
+    path=None,
+    )
+
 sensitive_params = {
     'arr_e': (6842, 'K', (1000, 10000)),
     'K_P': (1.0, 'g P/m^3', (0.01, 100)),
@@ -113,7 +130,7 @@ def import_scada_data():
 
 def create_model(system=None, flowsheet=None):
     # sys = create_system(flowsheet)
-    sys = system or create_system(flowsheet)
+    sys = create_system(pm2_kwargs=modified_pm2_kwargs)
 
     stream = sys.flowsheet.stream
     DYINF, PHO, ME, INT, TE, RETEN, RE, CE, CEN, ALG, RAA = stream.Dynamic_influent, stream.To_PBR, stream.To_membrane, stream.Internal_recycle, stream.Effluent, stream.Retentate, stream.To_return_tank, stream.To_centrifuge, stream.Centrate, stream.Harvested_biomass, stream.Return_activated_algae

@@ -52,7 +52,7 @@ bnds: min & max of sensitive parameters
 #%%
 def optimizer():
 
-    # opt = shgo(objective_function, bounds=bnds, iters=10, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-4})   #2_with gygutfeeling_init->error
+    opt = shgo(objective_function, bounds=bnds, iters=2, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3})   #2_with gygutfeeling_init->error
 
     # opt = shgo(objective_function, bounds=bnds, iters=1, minimizer_kwargs={'method':'SLSQP'})   #1_with gygutfeeling_init
 
@@ -60,14 +60,22 @@ def optimizer():
     # opt = shgo(objective_function, bounds=bnds, iters=1, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3}, sampling_method='simplicial')
     # opt = basinhopping(objective_function, opt_params, niter=3, minimizer_kwargs={'method':'SLSQP'}, niter_success=5)
 
+<<<<<<< Updated upstream
     opt = minimize(objective_function, opt_params, method='SLSQP', bounds=bnds, tol=1e-3)
+=======
+    # opt = minimize(objective_function, opt_params, method='SLSQP', bounds=bnds, tol=1e-4)
+>>>>>>> Stashed changes
 
     # tol=1e-6 warning, fail
     # tol=1e-5 warning, fail
     # tol=1e-4 warning, success
 
     opt_as_series = pd.Series(opt)
+<<<<<<< Updated upstream
     opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_newbase_conti_minimize.xlsx')))
+=======
+    opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_newbase_conti_iter2.xlsx')))
+>>>>>>> Stashed changes
     # opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_exclude.xlsx')))
 
     # scipy.optimize.minimize(fun, x0, args=(), method=None, jac=None, hess=None, hessp=None, bounds=None,\
@@ -106,6 +114,14 @@ nit: Number of iterations performed by the optimizer.
 #%%
 @time_printer
 def objective_function(opt_params, *args):
+    
+    # for p,v in zip(mdl.parameters, opt_params):
+    #     p.setter(v)
+    
+    # sys = mdl.system
+    # sys.simulate(t_span=(0, 50), t_eval = np.arange(0, 51, 1), method='RK23', state_reset_hook='reset_cache', print_t=True)
+
+    # sys.simulate(t_span=(0, 50), t_eval = np.arange(0, 51, 1), method='RK23', state_reset_hook='reset_cache', print_t=True)
 
     try:
         mdl._update_state(opt_params, t_span=(0, 50), t_eval = np.arange(0, 51, 1), method='RK23', state_reset_hook='reset_cache', print_t=True)
@@ -116,6 +132,8 @@ def objective_function(opt_params, *args):
 
     out = [metric() for metric in mdl.metrics]
     obj = np.average(out)
+    
+    print('succeed')
 
     return obj
 
