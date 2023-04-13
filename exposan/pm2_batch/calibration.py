@@ -75,11 +75,9 @@ def optimizer():
     # tol=1e-4 warning, success
 
     opt_as_series = pd.Series(opt)
-<<<<<<< Updated upstream
-    opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_include_newbase_shgo.xlsx')))
-=======
+
     opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_exclude_newbase_shgo_kinetic.xlsx')))
->>>>>>> Stashed changes
+
     # opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_exclude.xlsx')))
 
     # scipy.optimize.minimize(fun, x0, args=(), method=None, jac=None, hess=None, hessp=None, bounds=None,\

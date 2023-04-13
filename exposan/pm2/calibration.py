@@ -60,22 +60,17 @@ def optimizer():
     # opt = shgo(objective_function, bounds=bnds, iters=1, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3}, sampling_method='simplicial')
     # opt = basinhopping(objective_function, opt_params, niter=3, minimizer_kwargs={'method':'SLSQP'}, niter_success=5)
 
-<<<<<<< Updated upstream
-    opt = minimize(objective_function, opt_params, method='SLSQP', bounds=bnds, tol=1e-3)
-=======
+    # opt = minimize(objective_function, opt_params, method='SLSQP', bounds=bnds, tol=1e-3)
+
     # opt = minimize(objective_function, opt_params, method='SLSQP', bounds=bnds, tol=1e-4)
->>>>>>> Stashed changes
 
     # tol=1e-6 warning, fail
     # tol=1e-5 warning, fail
     # tol=1e-4 warning, success
 
     opt_as_series = pd.Series(opt)
-<<<<<<< Updated upstream
-    opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_newbase_conti_minimize.xlsx')))
-=======
     opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_newbase_conti_iter2.xlsx')))
->>>>>>> Stashed changes
+
     # opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_exclude.xlsx')))
 
     # scipy.optimize.minimize(fun, x0, args=(), method=None, jac=None, hess=None, hessp=None, bounds=None,\
