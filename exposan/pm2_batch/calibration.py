@@ -12,7 +12,7 @@ for license details.
 '''
 #%% Import everything for now
 
-from qsdsan.utils import ospath
+from qsdsan.utils import ospath, time_printer
 from exposan.pm2_batch import (
     results_path,
     create_model,
@@ -60,7 +60,7 @@ bnds: min & max of sensitive parameters
 #%%
 def optimizer():
 
-    opt = shgo(objective_function, bounds=bnds, iters=5, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3})   #2_with gygutfeeling_init->error
+    opt = shgo(objective_function, bounds=bnds, iters=5, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-2})   #2_with gygutfeeling_init->error
 
     # opt = shgo(objective_function, bounds=bnds, iters=1, minimizer_kwargs={'method':'SLSQP'})   #1_with gygutfeeling_init
 
@@ -75,7 +75,7 @@ def optimizer():
     # tol=1e-4 warning, success
 
     opt_as_series = pd.Series(opt)
-    opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_exclude_newbase_shgo.xlsx')))
+    opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_include_newbase_shgo.xlsx')))
     # opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_exclude.xlsx')))
 
     # scipy.optimize.minimize(fun, x0, args=(), method=None, jac=None, hess=None, hessp=None, bounds=None,\
@@ -112,7 +112,7 @@ nfev, njev, nhev: Number of evaluations of the objective functions and of its Ja
 nit: Number of iterations performed by the optimizer.
 '''
 #%%
-
+@time_printer
 def objective_function(opt_params, *args):
 
     try:
