@@ -314,7 +314,7 @@ medianprops = dict(color='black', lw=0.6)
 #     df = pd.concat(others)
 #     plot_joint(df, 'other_DVs.png')
 
-palette = ['#79BF82', '#60C1CF', '#90918E']
+palette = ['#a280b9', '#f3c354', '#90918E']
 
 def plot_joint(df, save_as='', kde=True):
     g = sns.JointGrid(height=8, ratio=5, space=0, marginal_ticks=True)
@@ -333,11 +333,11 @@ def plot_joint(df, save_as='', kde=True):
                     thresh=0.05,
                     )
     else:
-        sns.scatterplot(x=x, y=y, hue=group, style=group, ax=g.ax_joint,
+        sns.scatterplot(x=x, y=y, hue=group, style=group, size=group, ax=g.ax_joint,
                         palette=pal,
                         legend=False,
-                        s=100,
-                        markers=['P', 'o'],
+                        sizes=[100, 200],
+                        markers=['P', 'v'],
                         alpha=0.5,
                         )
     g.ax_joint.tick_params(axis='both', which='major', direction='inout', length=10, labelsize=24)
@@ -561,7 +561,7 @@ def MCF_bubble_plot(data=None, seed=None):
     mpl.rcParams['xtick.minor.visible'] = False
     mpl.rcParams['ytick.minor.visible'] = False
     fig, axes = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(6,9))
-    pal = {'FB':'#F98F60', 'PB':'#a280b9'}
+    pal = {'PB':'#f3c354', 'FB':'#a280b9'}
     for kv, ax in zip(data.items(), axes):
         k, df = kv
         sns.scatterplot(df, x='Metric', y='Parameter', 
@@ -678,13 +678,14 @@ def plot_area(df, absolute=False):
         yp += (y>=0) * y
         yn += (y<0) * y
     ax.set_xlim(0, df.shape[0])
+    ax.tick_params(labelsize=12)
     ax.tick_params(axis='y', which='major', direction='inout', length=6)
     ax.tick_params(axis='y', which='minor', direction='inout', length=3)
     ax.set_xlabel('')
     ax.set_ylabel('')
     if absolute: 
-        # ax.yaxis.set_ticklabels([])
         ax.ticklabel_format(axis='y', scilimits=[-2,3], useMathText=True)
+        ax.yaxis.get_offset_text().set_fontsize(12)
         ax2y = ax.secondary_yaxis('right')
         ax2y.tick_params(axis='y', which='major', direction='in', length=3)
         ax2y.tick_params(axis='y', which='minor', direction='in', length=1.5)
@@ -737,7 +738,7 @@ def Spearman_corr(seed, save=True):
                 p.to_excel(writer, sheet_name=f'{k}_p')
     return stats
 
-out = Spearman_corr(364, True)
+# out = Spearman_corr(364, True)
 
 #%% heatmaps
 # from scipy.interpolate import griddata
@@ -810,13 +811,13 @@ if __name__ == '__main__':
     # plot_clusters(partial=True)
     # plot_clusters(partial=False)
     # out = compare_DVs()
-    plot_diff()
+    # plot_diff()
     # llc, imp = best_breakdown()
     # plot_breakdown()
     # smp = run_UA_SA(seed=364, N=1000)
     # _rerun_failed_samples(364)
-    # data = MCF_encap_to_susp(364, False)
-    # MCF_bubble_plot(data)
+    data = MCF_encap_to_susp(364, False)
+    MCF_bubble_plot(data)
     # breakdown_uasa(364)
     # mapping(suffix='specific')
     # mapping(suffix='common')
