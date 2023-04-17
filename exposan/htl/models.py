@@ -865,6 +865,7 @@ def create_model(system=None, exclude_sludge_compositions=False,
     # LCA (unifrom ± 10%)
     # =========================================================================
     # don't get joint distribution for multiple times, since the baselines for LCA will change.
+    qs.ImpactItem.get_all_items().pop('waste_sludge_item')
     for item in qs.ImpactItem.get_all_items().keys():
         for CF in qs.ImpactIndicator.get_all_indicators().keys():
             abs_small = 0.9*qs.ImpactItem.get_item(item).CFs[CF]
@@ -1375,6 +1376,100 @@ def create_model(system=None, exclude_sludge_compositions=False,
         def get_cooling_GWP():
             table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
             return table_other['Cooling [MJ]']
+        
+        @metric(name='HTL_cooling_percentage',units='-',element='utilities')
+        def get_HTL_cooling_percentage():
+            HTL_cool=0
+            for i in range(len(unit.HTL.heat_utilities)):
+                if unit.HTL.heat_utilities[i].duty < 0:
+                    HTL_cool+=unit.HTL.heat_utilities[i].duty
+                    
+            sys_cool=0
+            for i in range(len(sys.heat_utilities)):
+                if sys.heat_utilities[i].duty < 0:
+                    sys_cool+=sys.heat_utilities[i].duty
+                    
+            HXN_cool=0
+            for i in range(len(unit.HXN.heat_utilities)):
+                if unit.HXN.heat_utilities[i].duty > 0:
+                    HXN_cool+=unit.HXN.heat_utilities[i].duty
+            
+            return HTL_cool/(sys_cool-HXN_cool)
+        
+        @metric(name='CHG_cooling_percentage',units='-',element='utilities')
+        def get_CHG_cooling_percentage():
+            CHG_cool=0
+            for i in range(len(unit.CHG.heat_utilities)):
+                if unit.CHG.heat_utilities[i].duty < 0:
+                    CHG_cool+=unit.CHG.heat_utilities[i].duty
+                    
+            sys_cool=0
+            for i in range(len(sys.heat_utilities)):
+                if sys.heat_utilities[i].duty < 0:
+                    sys_cool+=sys.heat_utilities[i].duty
+                    
+            HXN_cool=0
+            for i in range(len(unit.HXN.heat_utilities)):
+                if unit.HXN.heat_utilities[i].duty > 0:
+                    HXN_cool+=unit.HXN.heat_utilities[i].duty
+            
+            return CHG_cool/(sys_cool-HXN_cool)
+        
+        @metric(name='HTL_heating_percentage',units='-',element='utilities')
+        def get_HTL_heating_percentage():
+            HTL_heat=0
+            for i in range(len(unit.H1.heat_utilities)):
+                if unit.H1.heat_utilities[i].duty > 0:
+                    HTL_heat+=unit.H1.heat_utilities[i].duty
+                    
+            sys_heat=0
+            for i in range(len(sys.heat_utilities)):
+                if sys.heat_utilities[i].duty > 0:
+                    sys_heat+=sys.heat_utilities[i].duty
+                    
+            HXN_heat=0
+            for i in range(len(unit.HXN.heat_utilities)):
+                if unit.HXN.heat_utilities[i].duty < 0:
+                    HXN_heat+=unit.HXN.heat_utilities[i].duty
+                    
+            CHP_heat=0
+            for i in range(len(unit.CHP.heat_utilities)):
+                if unit.CHP.heat_utilities[i].duty < 0:
+                    CHP_heat+=unit.CHP.heat_utilities[i].duty
+            
+            return HTL_heat/(sys_heat-HXN_heat-CHP_heat)
+        
+        @metric(name='CHG_heating_percentage',units='-',element='utilities')
+        def get_CHG_heating_percentage():
+            CHG_heat=0
+            for i in range(len(unit.CHG.heat_utilities)):
+                if unit.CHG.heat_utilities[i].duty > 0:
+                    CHG_heat+=unit.CHG.heat_utilities[i].duty
+                    
+            sys_heat=0
+            for i in range(len(sys.heat_utilities)):
+                if sys.heat_utilities[i].duty > 0:
+                    sys_heat+=sys.heat_utilities[i].duty
+                    
+            HXN_heat=0
+            for i in range(len(unit.HXN.heat_utilities)):
+                if unit.HXN.heat_utilities[i].duty < 0:
+                    HXN_heat+=unit.HXN.heat_utilities[i].duty
+                    
+            CHP_heat=0
+            for i in range(len(unit.CHP.heat_utilities)):
+                if unit.CHP.heat_utilities[i].duty < 0:
+                    CHP_heat+=unit.CHP.heat_utilities[i].duty
+            
+            return CHG_heat/(sys_heat-HXN_heat-CHP_heat)
+        
+        @metric(name='HXN_heat_offset',units='-',element='utilities')
+        def get_HXN_heat_offset():
+            return 1-unit.HXN.actual_heat_util_load/unit.HXN.original_heat_util_load
+        
+        @metric(name='HXN_cool_offset',units='-',element='utilities')
+        def get_HXN_cool_offset():
+            return 1-unit.HXN.actual_cool_util_load/unit.HXN.original_cool_util_load
 
     else:
         diesel = stream.diesel
@@ -1417,7 +1512,7 @@ def create_model(system=None, exclude_sludge_compositions=False,
     
     @metric(name='GWP_sludge',units='kg CO2/ton dry sludge',element='LCA')
     def get_GWP_sludge():
-        return lca.get_total_impacts()['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
+        return lca.get_total_impacts(exclude=(raw_wastewater,))['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
     if include_other_CFs_as_metrics:
     

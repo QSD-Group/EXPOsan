@@ -31,17 +31,17 @@ def test_htl():
     
     # m1 = htl.create_model('baseline', **kwargs)
     # df1 = m1.metrics_at_baseline()
-    # values1 = [5.789, 163.853, -25.312, -321.006]
+    # values1 = [5.903, 170.894, 61.503, 421.798]
     # assert_allclose(df1.values, values1, rtol=5e-2)
     
     # m2 = htl.create_model('no_P', **kwargs)
     # df2 = m2.metrics_at_baseline()
-    # values2 = [6.279, 194.064, -36.281, -414.864]
+    # values2 = [6.407, 201.992, 41.812, 253.322]
     # assert_allclose(df2.values, values2, rtol=5e-2)
 
     m3 = htl.create_model('PSA', **kwargs)
     df3 = m3.metrics_at_baseline()
-    values3 = [4.768, 100.938, -4.472, -142.698]
+    values3 = [4.884286, 108.089427, 82.473614, 601.240978]
     assert_allclose(df3.values, values3, rtol=5e-2)
 
 

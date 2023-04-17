@@ -44,7 +44,7 @@ from biosteam import settings
 
 __all__ = ('create_system',)
 
-def create_system(configuration='baseline'):
+def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     configuration = configuration or 'baseline'
     if configuration not in ('baseline', 'no_P', 'PSA'):
         raise ValueError('`configuration` can only be "baseline", '
@@ -70,7 +70,7 @@ def create_system(configuration='baseline'):
     qs.ImpactItem.load_from_file(os.path.join(folder, 'data/impact_items.xlsx'))
     
     
-    raw_wastewater = qs.Stream('raw_wastewater', H2O=100, units='MGD', T=25+273.15)
+    raw_wastewater = qs.WasteStream('raw_wastewater', H2O=100, units='MGD', T=25+273.15)
     # Jones baseline: 1276.6 MGD, 1.066e-4 $/kg ww
     # set H2O equal to the total raw wastewater into the WWTP
     
@@ -84,6 +84,8 @@ def create_system(configuration='baseline'):
                    sludge_moisture=0.99, sludge_dw_ash=0.257, 
                    sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, operation_hours=7920)
     WWTP.register_alias('WWTP')
+    
+    raw_wastewater.price = -WWTP.ww_2_dry_sludge*waste_price/3.79/(10**6)
     
     SluC = qsu.SludgeCentrifuge('A000', ins=WWTP-0,
                             outs=('supernatant','compressed_sludge'),
@@ -162,7 +164,7 @@ def create_system(configuration='baseline'):
     V1.register_alias('V1')
     
     F1 = qsu.Flash('A250', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
-                     T=60+273.15, P=50*6894.76)
+                     T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
     F1.register_alias('F1')
     
     MemDis = qsu.MembraneDistillation('A260', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
@@ -204,6 +206,7 @@ def create_system(configuration='baseline'):
     H2 = qsu.HXutility('A330', ins=V2-0, outs='cooled_HT', T=60+273.15,
                         init_with='Stream', rigorous=True)
     H2.register_alias('H2')
+
 
     F2 = qsu.Flash('A340', ins=H2-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
                P=717.4*6894.76, thermo=settings.thermo.ideal()) # outflow P
@@ -351,6 +354,20 @@ def create_system(configuration='baseline'):
     sys.register_alias('sys')
 
     ##### Add stream impact items #####
+
+    # add impact for waste sludge
+    qs.StreamImpactItem(ID='waste_sludge_item',
+                        linked_stream=stream.raw_wastewater,
+                        Acidification=0,
+                        Ecotoxicity=0,
+                        Eutrophication=0,
+                        GlobalWarming=-WWTP.ww_2_dry_sludge*waste_GWP/3.79/(10**6),
+                        OzoneDepletion=0,
+                        PhotochemicalOxidation=0,
+                        Carcinogenics=0,
+                        NonCarcinogenics=0,
+                        RespiratoryEffects=0)
+    
     # Biocrude upgrading
     qs.StreamImpactItem(ID='H2_item',
                         linked_stream=stream.H2,
