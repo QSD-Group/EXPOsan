@@ -12,7 +12,6 @@ for license details.
 '''
 
 import numpy as np
-from qsdsan.sanunits import AnaerobicCSTR
 from biosteam._tea import add_replacement_cost_to_cashflow_array
 
 __all__ = ('categorize_construction_cashflow',
