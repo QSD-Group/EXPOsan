@@ -8,8 +8,6 @@ Created on Thu Mar  9 21:19:51 2023
     
 import matplotlib.pyplot as plt
 import numpy as np
-import csv
-import pandas as pd
 from matplotlib.ticker import MultipleLocator
 
 # Calculate dry basis biochar yield (% mass)
@@ -42,7 +40,15 @@ def get_CS(temp, AC):
     CS = db_yield * (C_biochar*100) * R50 / C_feedstock # Zhao et al. 2013
     return CS  
 
-def heatmap(X, Y, Z, x_label="", y_label="", cbarlabel="", no_labels=False, **kwargs):
+def get_mass_C(temp, AC):
+    db_yield = get_yield(temp, AC)
+    CS = get_CS(temp, AC)
+    # Biogenic Refinery loading rate of 18 kg feedstock/h (dry basis) 
+    daily_in = 18*24
+    mass_C = daily_in * (db_yield/100) * (CS/100)
+    return mass_C
+    
+def heatmap(X, Y, Z, x_label="", y_label="", cbarlabel="", filename="", no_labels=False, **kwargs):
     """
     Create a heatmap from a numpy meshgrid, array-like, and two lists of labels.
 
@@ -79,8 +85,11 @@ def heatmap(X, Y, Z, x_label="", y_label="", cbarlabel="", no_labels=False, **kw
 
     else:    
         # set colorbar label properties
-        cbar.ax.set_ylabel("\n"+cbarlabel, va="top", fontsize=16)
-        cbar.fontsize = 16
+        cbar.ax.set_ylabel("\n"+cbarlabel, va="top", 
+                           #fontsize=16
+                           )
+        cbar.minorticks_on()
+        # cbar.fontsize = 16
 
         # show ticks at intervals and label them
         ax.xaxis.set_major_locator(MultipleLocator(100))
@@ -89,12 +98,15 @@ def heatmap(X, Y, Z, x_label="", y_label="", cbarlabel="", no_labels=False, **kw
         ax.yaxis.set_major_locator(MultipleLocator(10))
         ax.yaxis.set_minor_locator(MultipleLocator(5))
         
-        ax.tick_params(which='major', direction='inout', length=8, width=1, labelsize=16)
-        ax.tick_params(which='minor', direction='inout', length=4, width=1)
+        ax.tick_params(which='both', direction='inout')
         
         # label x and y axes
-        ax.xaxis.set_label_text(x_label, fontsize=16)
-        ax.yaxis.set_label_text(y_label, fontsize=16)
+        ax.xaxis.set_label_text(x_label, 
+                                #fontsize=16
+                                )
+        ax.yaxis.set_label_text(y_label, 
+                                #fontsize=16
+                                )
     
         ax.spines[:].set_lw(0.75)
         ax.spines.bottom.set_bounds(X.min(), X.max())
@@ -102,42 +114,44 @@ def heatmap(X, Y, Z, x_label="", y_label="", cbarlabel="", no_labels=False, **kw
         ax.spines.left.set_bounds(Y.min(), Y.max())
         ax.spines.right.set_bounds(Y.min(), Y.max())
 
-    fig.set_size_inches((15,13))
-
+    # fig.set_size_inches((15,13))
+    plt.savefig('/Users/lanet/Desktop/GitHub/EXPOsan/exposan/biogenic_refinery/results/'+filename+'.pdf', format='pdf')
     return im, cbar
 
 # create  x and y variables
-x = np.arange(400, 801)
-y = np.linspace(15.0, 60.0, num=400)
+x = np.arange(300, 901)
+y = np.linspace(15.0, 75.0, num=600)
 X, Y = np.meshgrid(x, y)
 
 # # generate data for yield plot
 # Z = get_yield(X, Y)
 
-    
 # # plot yields heatmap
 # yieldplot = heatmap(X, Y, Z, 
-#                     x_label="Pyrolysis temperature [deg C]", 
+#                     x_label="Pyrolysis temperature [\N{DEGREE CELSIUS}]", 
 #                     y_label="Feedstock ash content [% db]", 
-#                     cmap = 'YlGnBu', 
-#                     cbarlabel="Biochar yield [% db]")
+#                     cmap='YlGnBu', 
+#                     cbarlabel="Biochar yield [% db]", 
+#                     filename="YieldPlot")
 
-# generate data for carbon sequestration plot
-Z = get_CS(X, Y)
-CSplot = heatmap(X, Y, Z, 
-                    x_label="Pyrolysis temperature [deg C]", 
+# # generate data for carbon sequestration plot
+# Z = get_CS(X, Y)
+
+# # plot CS heatmap
+# CSplot = heatmap(X, Y, Z, 
+#                     x_label="Pyrolysis temperature [\N{DEGREE CELSIUS}]", 
+#                     y_label="Feedstock ash content [% db]", 
+#                     cmap='YlGnBu', 
+#                     cbarlabel="Carbon sequestration potential [%]",
+#                     filename="CSplot")
+
+# generate data for carbon mass plot
+Z = get_mass_C(X, Y)
+
+# plot mass C heatmap
+massCplot = heatmap(X, Y, Z, 
+                    x_label="Pyrolysis temperature [\N{DEGREE CELSIUS}]", 
                     y_label="Feedstock ash content [% db]", 
-                    cmap = 'YlGnBu', 
-                    cbarlabel="Carbon sequestration potential [% biochar mass]")
-# z = np.zeros((len(x),len(y)))
-# i = 0
-# for a in x:
-#     j = 0
-#     for b in y:
-#         z[i, j] = get_yield(a, b)
-#         j += 1
-#     i += 1
-
-# df = pd.DataFrame({"temperature" : x, "ash content" : y, "yield" : z})
-# df.to_csv("yields.csv", index=False)
-
+                    cmap='YlGnBu', 
+                    cbarlabel="Carbon sequestered [kg\N{DOT OPERATOR}d\N{SUPERSCRIPT MINUS}\N{SUPERSCRIPT ONE}]",
+                    filename="massCplot")
