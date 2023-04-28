@@ -99,7 +99,8 @@ def data_compile(save=True):
         for n, j in ((1,'P'), (2,'P'), (2,'M'), (2,'H'),):
             df = load_data(ospath.join(results_path, f'{i}{n}{j}.xlsx'), 
                            header=[0,1], skiprows=[2,])
-            df.drop(columns=['Biomass','Process'], level='Element', inplace=True)
+            # df.drop(columns=['Biomass','Process'], level='Element', inplace=True)
+            df.drop(columns=['Biomass'], level='Element', inplace=True)            
             df = df.droplevel('Element', axis=1)
             df['Reactor type'] = i
             df['Number of stages'] = n
@@ -122,7 +123,7 @@ def data_compile(save=True):
                                      10 if '10yr' in row['Bead lifetime'] else \
                                       30  if '30yr' in row['Bead lifetime'] else None, axis=1)
     if save:
-        out.to_excel(ospath.join(results_path, 'table_compiled.xlsx'))
+        out.to_excel(ospath.join(results_path, 'table_compiled_rcod.xlsx'))
     return out
 
 def plot_clusters(data=None, save_as='', partial=True):
@@ -182,14 +183,17 @@ def calc_diff(df, factor, baseline_value, norms):
     df.drop(labels=baseline_value, axis=1, level=factor, inplace=True)
     df.index = range(df.shape[0])
     out = []
-    for i in ('Levelized cost', 'GWP100'):
+    # for i in ('Levelized cost', 'GWP100'):
+    for i in ('COD removal', 'Levelized cost', 'GWP100'):        
         diff = df.xs(i, axis=1)
-        diff = diff.sub(bl[i].values, axis=0)/norms[i]
+        if i == 'COD removal': diff = diff.sub(bl[i].values, axis=0)
+        else: diff = diff.sub(bl[i].values, axis=0)/norms[i]
         diff = pd.melt(diff, value_name=i, ignore_index=False)
         diff['id'] = diff.index
         diff = diff.set_index([c for c in diff.columns if c != i])
         out.append(diff)
-    out = out[0].join(out[1])
+    # out = out[0].join(out[1])
+    out = out[0].join(out[1]).join(out[2])    
     out['pair'] = out.index.get_level_values(factor)   
     out.index = range(out.shape[0])
     return out
@@ -211,19 +215,21 @@ groups = (
 def compare_DVs(data=None, save_as=''):
     if data is None:
         data = load_data(ospath.join(results_path, 'table_compiled.xlsx'))
-    data.drop('id', axis=1, inplace=True)
-    vals = ['Levelized cost', 'GWP100']
+    data = data.drop(['id', 'H2 yield', 'CH4 yield'], axis=1)
+    # vals = ['Levelized cost', 'GWP100']
+    vals = ['COD removal', 'Levelized cost', 'GWP100']
     norms = data.loc[:,vals].max(axis=0) - data.loc[:,vals].min(axis=0)
     dvs = set(data.columns) - set(vals)
     out = {}
     for factor, covar, bl in groups:
+        # breakpoint()
         idx = list(dvs - {factor, *covar})
         cols = [factor, *covar]
         df = data.dropna(axis=0, subset=factor)
         df = df.pivot(index=idx, columns=cols, values=vals)
         df.dropna(axis=0, inplace=True)
         out[factor] = calc_diff(df, factor, bl, norms)
-    path = save_as or ospath.join(results_path, 'diff.xlsx')
+    path = save_as or ospath.join(results_path, 'diff_rcod.xlsx')
     with pd.ExcelWriter(path) as writer:
         for k,v in out.items():
             v.to_excel(writer, sheet_name=k)
@@ -581,8 +587,117 @@ def MCF_bubble_plot(data=None, seed=None):
         ax.yaxis.set_major_formatter(plt.NullFormatter())
 
     fig.subplots_adjust(wspace=0)
-    fig.savefig(ospath.join(figures_path, 'MCF.png'), dpi=300, transparent=True)
+    fig.savefig(ospath.join(figures_path, 'MCF_2575.png'), dpi=300, transparent=True)
 
+#%% MCF intra-system
+def MCF_25_vs_75(seed, save=True):
+    data = {}
+    for i in ('FB', 'PB'):
+        data[i] = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
+                            header=[0,1], skiprows=[2,])
+    pb = data['PB']
+    mdl = create_model(kind='uasa')
+    nx = len(mdl.parameters)
+    x = pb.iloc[:, :nx]
+    pair_cols = [
+            ('Process', 'COD removal [%]'),
+            ('TEA (w/ degas)', 'Levelized cost (w/ degas) [$/ton rCOD]'),
+            ('LCA (w/ degas)', 'GWP100 (w/ degas) [kg CO2eq/ton rCOD]'),
+            ('TEA (w/o degas)', 'Levelized cost (w/o degas) [$/ton rCOD]'),
+            ('LCA (w/o degas)',  'GWP100 (w/o degas) [kg CO2eq/ton rCOD]'),    
+        ]
+    outs = {}
+    for rt in ('FB', 'PB'):
+        ys = data[rt].loc[:,pair_cols]
+        dct = {'D': pd.DataFrame(), 'p': pd.DataFrame(), f'{rt}': ys}
+        for y, col in ys.items():
+            y_name = y[1].split(' [')[0]
+            if y_name == 'COD removal': thres = np.percentile(col, 75)
+            else: thres = np.percentile(col, 25)
+            lower_xs = x.loc[col <= thres]
+            higher_xs = x.loc[col > thres]
+            Ds = []
+            ps = []
+            for i in range(nx):
+                D, p = kstest(lower_xs.iloc[:,i], higher_xs.iloc[:,i])
+                Ds.append(D)
+                ps.append(p)
+            dct['D'][y_name] = Ds
+            dct['p'][y_name] = ps
+        dct['D'].index = dct['p'].index = x.columns
+        if rt == 'FB': dct['D'].loc['PB'] = dct['p'].loc['PB'] = None
+        else: dct['D'].loc['FB'] = dct['p'].loc['FB'] = None
+        dct['D'].loc['UASB'] = dct['p'].loc['UASB'] = None
+        dct['D'].loc['Membrane', ['Levelized cost (w/o degas)', 'GWP100 (w/o degas)']] = None
+        dct['p'].loc['Membrane', ['Levelized cost (w/o degas)', 'GWP100 (w/o degas)']] = None
+        if save:
+            with pd.ExcelWriter(ospath.join(results_path, f'KStest_{rt}.xlsx')) as writer:
+                for name, df in dct.items(): df.to_excel(writer, sheet_name=name)
+        
+        out = []
+        for name, df in dct.items(): 
+            if name in 'Dp': 
+                df['Parameter'] = df.index.get_level_values('Feature')
+                out.append(df.melt(id_vars='Parameter', var_name='Metric', value_name=name))
+        outs[rt] = out[0].merge(out[1])
+    return outs
+
+def plot_1dkde(x, groups, x_bounds, prefix=''):
+    n = groups.shape[1]
+    i = 0
+    for m, group in groups.items():
+        i += 1
+        fig, ax = plt.subplots(figsize=(5, 2))
+        sns.kdeplot(x=x, hue=group, ax=ax,
+                    palette=['#1A85FF','#D41159'],
+                    common_norm=False,
+                    fill=True,
+                    legend=False,
+                    alpha=0.3,
+                    cut=0,
+                    )
+        ax.set_xlim(*x_bounds)
+        if 'FB' in prefix: ax.set_ylim(0, 0.55)
+        else: ax.set_ylim(0, 0.7)
+        ax.tick_params(axis='both', which='major', direction='inout', length=8, labelsize=11)
+        ax.tick_params(axis='both', which='minor', direction='inout', length=5)
+        ax.ticklabel_format(axis='y', scilimits=[-2,3], useMathText=True)
+        if i < n: ax.xaxis.set_ticklabels([])
+        ax.set_xlabel('')
+        ax.set_ylabel('')
+        ax2x = ax.secondary_xaxis('top')
+        ax2x.tick_params(direction='in', which='major', length=4)
+        ax2x.tick_params(direction='in', which='minor', length=2.5)
+        ax2x.xaxis.set_ticklabels([])
+        ax2y = ax.secondary_yaxis('right')
+        ax2y.tick_params(direction='in', which='major', length=4, labelsize=11)
+        ax2y.tick_params(direction='in', which='minor', length=2.5)
+        ax2y.yaxis.set_ticklabels([])
+        m_name = m[0].replace('/', '')
+        fig.savefig(ospath.join(figures_path, f'kde_{prefix}_{m_name}.png'),
+                    dpi=300, transparent=True)
+        del fig, ax
+
+def plot_univariate_kdes(seed):
+    pair_cols = [
+            ('Process', 'COD removal [%]'),
+            ('TEA (w/ degas)', 'Levelized cost (w/ degas) [$/ton rCOD]'),
+            ('LCA (w/ degas)', 'GWP100 (w/ degas) [kg CO2eq/ton rCOD]'),
+            ('TEA (w/o degas)', 'Levelized cost (w/o degas) [$/ton rCOD]'),
+            ('LCA (w/o degas)',  'GWP100 (w/o degas) [kg CO2eq/ton rCOD]'),    
+        ]
+    for i in ('FB', 'PB'):
+        df = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
+                       header=[0,1], skiprows=[2,])
+        ys = df.loc[:,pair_cols]
+        x = df.loc[:,('Encapsulation', 'Bead diameter [mm]')]
+        thres = ys.quantile(0.25)
+        thres[0] = np.percentile(ys.iloc[:,0], 75)
+        groups = ys > thres
+        groups.iloc[:,0] = ys.iloc[:,0] < thres[0]
+        plot_1dkde(x, groups, [1,5], i+'-beaddia')
+        print(thres)
+    
 #%% pair-wise comparisons, three-way
 def calc_3way_diff(seed, save=True):
     data = {}
@@ -752,7 +867,7 @@ def togrid(df, mdl, n):
     zzs = zzs.reshape((zzs.shape[0], *xx.shape))
     return xx, yy, zzs
 
-def plot_heatmap(xx, yy, z, baseline=[], save_as='', specific=True, hrt=True):
+def plot_heatmap(xx, yy, z, baseline=[], save_as='', specific=False, hrt=True):
     fig, ax = plt.subplots(figsize=(5, 4.5))
     if specific:
         nm = mpl.colors.TwoSlopeNorm(vmin=z.min(), vcenter=np.median(z), vmax=z.max())
@@ -787,20 +902,21 @@ def plot_heatmap(xx, yy, z, baseline=[], save_as='', specific=True, hrt=True):
         ax.plot(*baseline, marker='^', ms=7, mfc='white', mec='black', mew=0.5)
     fig.savefig(ospath.join(figures_path, save_as), dpi=300, transparent=True)
 
-def mapping(data=None, n=20, reactor_type='PB', suffix=''):
+def mapping(data=None, n=20, reactor_type='PB'):
     if data is None:
-        data = load_data(ospath.join(results_path, f'optimized_{reactor_type}_{suffix}.xlsx'),
+        data = load_data(ospath.join(results_path, f'optimized_{reactor_type}.xlsx'),
                          header=[0,1], skiprows=[2,])
     sys = create_system(reactor_type=reactor_type)
-    mdl = create_model(sys, kind='mapping', common=(suffix == 'common'))
+    mdl = create_model(sys, kind='mapping')
     bl = [p.baseline for p in mdl.parameters]
     opt = create_model(sys, kind='optimize')
     xx, yy, zzs = togrid(data, mdl, n)
     hrt = True
     for z, m in zip(zzs, (*opt.parameters, *mdl.metrics)):
-        file = f'heatmaps/{reactor_type}/{m.name}_{suffix}.png'
+        file = f'heatmaps/{reactor_type}/{m.name}.png'
         plot_heatmap(xx, yy, z, bl, save_as=file, 
-                     specific=(suffix=='specific'), hrt=hrt)
+                     # specific=(suffix=='specific'), 
+                     hrt=hrt)
         hrt = False
 
 #%%
@@ -816,8 +932,10 @@ if __name__ == '__main__':
     # plot_breakdown()
     # smp = run_UA_SA(seed=364, N=1000)
     # _rerun_failed_samples(364)
-    data = MCF_encap_to_susp(364, False)
-    MCF_bubble_plot(data)
+    # data = MCF_encap_to_susp(364, False)
+    # MCF_bubble_plot(data)
     # breakdown_uasa(364)
     # mapping(suffix='specific')
     # mapping(suffix='common')
+    # plot_univariate_kdes(364)
+    mapping(reactor_type='PB')

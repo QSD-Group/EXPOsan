@@ -306,35 +306,36 @@ def add_continuous_params(model):
 def add_optimizing_DVs(model):
     param = model.parameter
     sys = model.system
-    n_stage = 1 if '1' in sys.ID else 2
-    reactor_type, gas_xt = sys.ID.rstrip('_edg').split(str(n_stage))
+    # n_stage = 1 if '1' in sys.ID else 2
+    # reactor_type, gas_xt = sys.ID.rstrip('_edg').split(str(n_stage))
     u = sys.flowsheet.unit
     s = sys.flowsheet.stream
     
-    if reactor_type == 'FB':
-        @param(name='Bead diameter', units='mm', kind='coupled', 
-               element='Encapsulation', baseline=2, bounds=(1, 5))
-        def set_db(d):
-            n_dz = 10 if d > 5 else 5
-            u.R1.bead_diameter = d
-            if n_dz != u.R1.n_layer:
-                u.R1.n_layer = n_dz
-                reset_init_conc(sys)
+    u.R1.bead_diameter = 1.0
+    # if reactor_type == 'FB':
+    #     @param(name='Bead diameter', units='mm', kind='coupled', 
+    #            element='Encapsulation', baseline=2, bounds=(1, 5))
+    #     def set_db(d):
+    #         n_dz = 10 if d > 5 else 5
+    #         u.R1.bead_diameter = d
+    #         if n_dz != u.R1.n_layer:
+    #             u.R1.n_layer = n_dz
+    #             reset_init_conc(sys)
         
-        @param(name='Voidage', units='', kind='coupled', element='FB',
-               baseline=0.75, bounds=(0.55, 0.95))
-        def set_FB_void(f):
-            u.R1.voidage = f
+    #     @param(name='Voidage', units='', kind='coupled', element='FB',
+    #            baseline=0.75, bounds=(0.55, 0.95))
+    #     def set_FB_void(f):
+    #         u.R1.voidage = f
         
 
-        @param(name='Height-to-diameter', units='', kind='coupled', element='FB',
-               baseline=1.5, bounds=(0.5, 2))
-        def set_FB_h2d(r):
-            if reactor_type == 'FB':
-                u.R1.reactor_height_to_diameter = r
-                u.R1._prep_model()
-                u.R1._compile_ODE()
-                u.R1.scope = SanUnitScope(u.R1)
+    #     @param(name='Height-to-diameter', units='', kind='coupled', element='FB',
+    #            baseline=1.5, bounds=(0.5, 2))
+    #     def set_FB_h2d(r):
+    #         if reactor_type == 'FB':
+    #             u.R1.reactor_height_to_diameter = r
+    #             u.R1._prep_model()
+    #             u.R1._compile_ODE()
+    #             u.R1.scope = SanUnitScope(u.R1)
 
     @param(name='HRT', units='d', kind='coupled', element='System',
            baseline=1/3, bounds=(1/24, 2))
@@ -346,50 +347,53 @@ def add_optimizing_DVs(model):
         u.R1._compile_ODE()
         u.R1.scope = SanUnitScope(u.R1)
 
-def add_mapping_params(model, common=True):
+# def add_mapping_params(model, common=True):
+def add_mapping_params(model):
     param = model.parameter
     sys = model.system
     u = sys.flowsheet.unit
-    
-    if common:
-        b = 10
-        D = shape.Uniform(2, 30)
-        @param(name='Bead lifetime', units='yr', kind='coupled', 
-               element='Encapsulation', baseline=b, distribution=D)
-        def set_blt(lt):
-            u.R1.bead_lifetime = lt
+    n_stage = 1 if '1' in sys.ID else 2
+    reactor_type, gas_xt = sys.ID.rstrip('_edg').split(str(n_stage))
         
+    # if common:
+    b = 10
+    D = shape.Uniform(2, 30)
+    @param(name='Bead lifetime', units='yr', kind='coupled', 
+            element='Encapsulation', baseline=b, distribution=D)
+    def set_blt(lt):
+        u.R1.bead_lifetime = lt
+    
+    if reactor_type == 'PB':
         b = 16
         D = shape.Uniform(11, 30)
         @param(name='Max encapsulation density', units='gTSS/L', kind='coupled',
-               element='Encapsulation', baseline=b, distribution=D)
+                element='Encapsulation', baseline=b, distribution=D)
         def set_max_tss(tss):
             u.R1.max_encapsulation_tss = tss
 
-    else:
-        n_stage = 1 if '1' in sys.ID else 2
-        reactor_type, gas_xt = sys.ID.rstrip('_edg').split(str(n_stage))
-        if reactor_type == 'FB':
-            b = 1420
-            D = shape.Uniform(970, 1860)
-            @param(name='Bead density', units='kg/m3', kind='coupled', 
-                   element='Encapsulation', baseline=b, distribution=D)
-            def set_rho_b(rho):
-                Beads._bead_density = rho
-        else:
-            b = 8
-            D = shape.Uniform(0.8, 20)
-            param(setter=MethodSetter(u.R1.model, 'set_rate_constant', key='k', 
-                                      process='uptake_acetate'),
-                  name='uptake k_ac', units='COD/COD/d', kind='coupled', element='ADM1',
-                  baseline=b, distribution=D)
+    else:        
+        # if reactor_type == 'FB':
+        b = 1420
+        D = shape.Uniform(970, 1860)
+        @param(name='Bead density', units='kg/m3', kind='coupled', 
+                element='Encapsulation', baseline=b, distribution=D)
+        def set_rho_b(rho):
+            Beads._bead_density = rho
             
-        b = 13
-        D = shape.Uniform(1.3, 32.5)
-        param(setter=MethodSetter(u.R1.model, 'set_rate_constant', key='k', 
-                                  process='uptake_propionate'),
-              name='uptake k_pro', units='COD/COD/d', kind='coupled', element='ADM1',
-              baseline=b, distribution=D)
+        # else:
+        #     b = 8
+        #     D = shape.Uniform(0.8, 20)
+        #     param(setter=MethodSetter(u.R1.model, 'set_rate_constant', key='k', 
+        #                               process='uptake_acetate'),
+        #           name='uptake k_ac', units='COD/COD/d', kind='coupled', element='ADM1',
+        #           baseline=b, distribution=D)
+            
+        # b = 13
+        # D = shape.Uniform(1.3, 32.5)
+        # param(setter=MethodSetter(u.R1.model, 'set_rate_constant', key='k', 
+        #                           process='uptake_propionate'),
+        #       name='uptake k_pro', units='COD/COD/d', kind='coupled', element='ADM1',
+        #       baseline=b, distribution=D)
 
 #%%
 def add_metrics(model, kind='DV'):
@@ -586,13 +590,12 @@ def add_metrics(model, kind='DV'):
 
 #%%
 def create_model(sys=None, kind='DV', exception_hook='warn', **kwargs):
-    cm = kwargs.pop('common', True)
     sys = sys or create_system(**kwargs)
     mdl = qs.Model(sys, exception_hook=exception_hook)
     if kind == 'DV': add_discrete_dv(mdl)
     elif kind == 'uasa': add_continuous_params(mdl)
     elif kind == 'optimize': add_optimizing_DVs(mdl)
-    elif kind == 'mapping': add_mapping_params(mdl, cm)
+    elif kind == 'mapping': add_mapping_params(mdl)
     else:
         raise ValueError(f'kind must be one of {"DV", "uasa", "optimize", "mapping"}, not {kind}')
     add_metrics(mdl, kind=kind)
@@ -731,12 +734,12 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
                          columns=var_columns(mapping._parameters + mapping._metrics),
                          dtype=float)
     table = df_x.join(table)
-    mpath = mpath or ospath.join(results_path, f'optimized_{mapping.system.ID[:2]}_specific.xlsx')
+    mpath = mpath or ospath.join(results_path, f'optimized_{mapping.system.ID[:2]}.xlsx')
     table.to_excel(mpath)
 
 #%%
 if __name__ == '__main__':
     sys = create_system(reactor_type='PB')
-    mp = create_model(sys, kind='mapping', common=True)
+    mp = create_model(sys, kind='mapping')
     opt = create_model(sys, kind='optimize')
-    optimize(mp, opt)
+    # optimize(mp, opt, n=20)
