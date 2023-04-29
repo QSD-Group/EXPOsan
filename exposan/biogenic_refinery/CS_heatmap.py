@@ -75,7 +75,7 @@ def heatmap(X, Y, Z, x_label="", y_label="", cbarlabel="", filename="", no_label
     im = ax.pcolormesh(X, Y, Z, **kwargs)
 
     # Create colorbar
-    cbar = ax.figure.colorbar(im, ax=ax, shrink=0.5)
+    cbar = ax.figure.colorbar(im, ax=ax, shrink=0.5, location='bottom')
     
     if no_labels:
         # removes ticks, borders, labels
@@ -124,34 +124,34 @@ y = np.linspace(15.0, 75.0, num=600)
 X, Y = np.meshgrid(x, y)
 
 # # generate data for yield plot
-# Z = get_yield(X, Y)
+Z = get_yield(X, Y)
 
-# # plot yields heatmap
-# yieldplot = heatmap(X, Y, Z, 
-#                     x_label="Pyrolysis temperature [\N{DEGREE CELSIUS}]", 
-#                     y_label="Feedstock ash content [% db]", 
-#                     cmap='YlGnBu', 
-#                     cbarlabel="Biochar yield [% db]", 
-#                     filename="YieldPlot")
-
-# # generate data for carbon sequestration plot
-# Z = get_CS(X, Y)
-
-# # plot CS heatmap
-# CSplot = heatmap(X, Y, Z, 
-#                     x_label="Pyrolysis temperature [\N{DEGREE CELSIUS}]", 
-#                     y_label="Feedstock ash content [% db]", 
-#                     cmap='YlGnBu', 
-#                     cbarlabel="Carbon sequestration potential [%]",
-#                     filename="CSplot")
-
-# generate data for carbon mass plot
-Z = get_mass_C(X, Y)
-
-# plot mass C heatmap
-massCplot = heatmap(X, Y, Z, 
+# plot yields heatmap
+yieldplot = heatmap(X, Y, Z, 
                     x_label="Pyrolysis temperature [\N{DEGREE CELSIUS}]", 
                     y_label="Feedstock ash content [% db]", 
                     cmap='YlGnBu', 
-                    cbarlabel="Carbon sequestered [kg\N{DOT OPERATOR}d\N{SUPERSCRIPT MINUS}\N{SUPERSCRIPT ONE}]",
-                    filename="massCplot")
+                    cbarlabel="Biochar yield [% db]", 
+                    filename="YieldPlot")
+
+# generate data for carbon sequestration plot
+Z = get_CS(X, Y)
+
+# plot CS heatmap
+CSplot = heatmap(X, Y, Z, 
+                    x_label="Pyrolysis temperature [\N{DEGREE CELSIUS}]", 
+                    y_label="Feedstock ash content [% db]", 
+                    cmap='YlGnBu', 
+                    cbarlabel="Carbon sequestration potential [%]",
+                    filename="CSplot")
+
+# generate data for carbon mass plot
+# Z = get_mass_C(X, Y)
+
+# # plot mass C heatmap
+# massCplot = heatmap(X, Y, Z, 
+#                     x_label="Pyrolysis temperature [\N{DEGREE CELSIUS}]", 
+#                     y_label="Feedstock ash content [% db]", 
+#                     cmap='YlGnBu', 
+#                     cbarlabel="Carbon sequestered [kg\N{DOT OPERATOR}d\N{SUPERSCRIPT MINUS}\N{SUPERSCRIPT ONE}]",
+#                     filename="massCplot")
