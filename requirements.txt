@@ -1,3 +1,4 @@
 # Needed by exposan
 git+https://github.com/QSD-Group/QSDsan.git
+importlib_metadata
 scikit-learn
