@@ -21,6 +21,7 @@ from exposan.pm2_batch import (
 
 import numpy as np, pandas as pd
 from scipy.optimize import minimize, basinhopping, shgo
+from joblib import Parallel, delayed
 
 # import winsound as sd
 # from datetime import datetime
@@ -32,7 +33,7 @@ __all__ = ('cali_setup', 'optimizer', 'objective_function')
 
 #%%
 
-mdl = create_model(kind='exclude', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
+mdl = create_model(kind='include', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
 # mdl = create_model(kind='exclude', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
 
 def cali_setup():
@@ -60,11 +61,19 @@ bnds: min & max of sensitive parameters
 #%%
 def optimizer():
 
-    opt = shgo(objective_function, bounds=bnds, iters=5, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-2})
+    # opt = shgo(objective_function, bounds=bnds, iters=5, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-2})
+    # opt = shgo(objective_function, bounds=bnds, iters=3, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3})
 
-    opt_as_series = pd.Series(opt)
+    n_jobs=6
+    results = Parallel(n_jobs=n_jobs)(delayed(shgo)(objective_function, bounds=bnds, iters=3, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3}) for i in range(n_jobs))
 
-    opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_exclude_newbase_shgo_kinetic.xlsx')))
+    best_result = min(results, key=lambda res: res.fun)
+    print('Optimized parameters:', best_result.x)
+    print('Objective function value:', best_result.fun)
+
+    # opt_as_series = pd.Series(opt)
+
+    # opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_include_newbase_shgo_unit_paralleltest.xlsx')))
 
 #%%
 @time_printer
@@ -72,8 +81,8 @@ def objective_function(opt_params, *args):
 
     try:
 
-        # mdl._update_state(opt_params, t_span=(0, 0.25), t_eval = np.arange(0, 0.26, 0.01), method='BDF', state_reset_hook='reset_cache')
-        mdl._update_state(opt_params, t_span=(0, 7), t_eval = np.arange(0, 7.01, 0.01), method='BDF', state_reset_hook='reset_cache')
+        mdl._update_state(opt_params, t_span=(0, 0.25), t_eval = np.arange(0, 0.26, 0.01), method='BDF', state_reset_hook='reset_cache')
+        # mdl._update_state(opt_params, t_span=(0, 7), t_eval = np.arange(0, 7.01, 0.01), method='BDF', state_reset_hook='reset_cache')
 
     except:
         return 0.5

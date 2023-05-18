@@ -33,7 +33,6 @@ cmps = pc.create_pm2_cmps()
 #              Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880,
 #              Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317) # with shgo, iter 3, tot -3, ret 0.5, took 4 hrs
 
-
 pm2 = pc.PM2(arr_e=5500, K_P=0.01297, f_CH_max=0.1, exponent=9.952, q_CH=4.927, q_LI=1.617, V_NH=0.09811, V_P=0.4950,
              a_c=0.049, I_n=1500, arr_a=1.8e10, beta_1=2.90,
              beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
@@ -46,9 +45,6 @@ pm2 = pc.PM2(arr_e=5500, K_P=0.01297, f_CH_max=0.1, exponent=9.952, q_CH=4.927, 
              Y_LI_NR_HET_ACE=1.105, Y_LI_ND_HET_ACE=0.713, Y_X_ALG_HET_ACE=0.216,
              Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880,
              Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317)   #optimized from unit exp. using shgo
-
-
-
 
 # modified_pm2_kwargs = dict(
 #     a_c=0.049, I_n=1500, arr_a=1.8e10, arr_e=6842, beta_1=2.90,
@@ -66,7 +62,6 @@ pm2 = pc.PM2(arr_e=5500, K_P=0.01297, f_CH_max=0.1, exponent=9.952, q_CH=4.927, 
 #     path=None,
 #     )
 
-
 # sensitive_params = {
 #     'arr_e': (6842, 'K', (1000, 10000)),
 #     'K_P': (1.0, 'g P/m^3', (0.01, 100)),
@@ -78,21 +73,14 @@ pm2 = pc.PM2(arr_e=5500, K_P=0.01297, f_CH_max=0.1, exponent=9.952, q_CH=4.927, 
 #     'V_P': (0.2, 'g P/g COD/d', (0.01, 1))
 #     }
 
+######################## Previous optimization results #########################################
 # pm2 = pc.PM2(arr_e=6832, K_P=1.363, f_CH_max=0.8239, exponent=3.980, q_CH=1.032, q_LI=15.02, V_NH=0.1022, V_P=0.2005)  # new base, new sens_params
-
 # pm2 = pc.PM2(arr_e=4973, K_P=1.071, K_STO=1.297, exponent=4.002, m_ATP=1.489, q_CH=1.545, V_NH=0.2065, V_P=0.3299)  # 4rd, initial baseline as optimized value
-
-
 # pm2 = pc.PM2(arr_e=4996, K_P=1.008, K_STO=1.018, exponent=4.003, m_ATP=1.048, q_CH=1.008, V_NH=0.09981, V_P=0.1047)  # 3rd_e-4
-
-
 # pm2 = pc.PM2(arr_e=4996, K_P=1.009, K_STO=1.019, exponent=4.006, m_ATP=1, q_CH=1.009, V_NH=0.0999, V_P=0.1048)    # 2nd
-
-
 # pm2 = pc.PM2(arr_e=6845, K_P=1.009, K_STO=1.584, exponent=4.006, m_ATP=15.87, q_CH=0.6032, V_NH=0.2586, V_P=0.001598)    _init
-
 # pm2 = pc.PM2(mu_max=2, I_n=1000, I_opt=2000, V_NH=0.12, V_NO=0.0035, V_P=0.24, q_CH=1.5, q_LI=24, arr_a=4*10**10, f_CH_max=1.2, f_LI_max=3.9)
-# 
+
 pm2_path = ospath.dirname(__file__)
 data_path = ospath.join(pm2_path, 'data/exo_vars_batch_may_kinetic.xlsx')
 

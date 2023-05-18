@@ -40,7 +40,8 @@ V_mem = 7.03
 V_ret = 6.14
 biomass_IDs = ('X_ALG',)
 
-T_pbr, I_pbr = EDV.batch_init(os.path.join(data_path, 'exo_vars_dynamic_influent.xlsx'), 'linear')
+T_pbr, I_pbr = EDV.batch_init(os.path.join(data_path, 'exo_vars_dynamic_influent_revised.xlsx'), 'linear')
+# T_pbr, I_pbr = EDV.batch_init(os.path.join(data_path, 'exo_vars_dynamic_influent.xlsx'), 'linear')
 
 T_mix = T_pbr
 I_mix = EDV('light_I_mix', function=lambda t: 0)
@@ -81,10 +82,10 @@ default_pm2_kwargs = dict(
     )
 
 default_init_conds = {
-        'X_CHL':1.86,
-        'X_ALG':372.67,
-        'X_CH':16.93,
-        'X_LI':69.07,
+        'X_CHL':2.56,
+        'X_ALG':512.72,
+        'X_CH':23.30,
+        'X_LI':95.03,
         'S_CO2':30.0,
         'S_A':5.0,
         'S_F':5.0,
@@ -92,9 +93,25 @@ default_init_conds = {
         'S_NH':35.80,
         'S_NO':0.7,
         'S_P':0.36,
-        'X_N_ALG':2.38,
-        'X_P_ALG':0.14,
+        'X_N_ALG':3.27,
+        'X_P_ALG':0.19,
     }
+
+# default_init_conds = {
+#         'X_CHL':1.86,
+#         'X_ALG':372.67,
+#         'X_CH':16.93,
+#         'X_LI':69.07,
+#         'S_CO2':30.0,
+#         'S_A':5.0,
+#         'S_F':5.0,
+#         'S_O2':5.0,
+#         'S_NH':35.80,
+#         'S_NO':0.7,
+#         'S_P':0.36,
+#         'X_N_ALG':2.38,
+#         'X_P_ALG':0.14,
+#     }
 
 def batch_init(sys, path, sheet):
     df = load_data(path, sheet)
@@ -153,7 +170,9 @@ def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
     # Create unit operations
 
     SE = su.DynamicInfluent('SE', outs=[DYINF],
-                            data_file=os.path.join(data_path, 'dynamic_influent.tsv'))
+                            data_file=os.path.join(data_path, 'dynamic_influent_revised.tsv'))
+    # SE = su.DynamicInfluent('SE', outs=[DYINF],
+    #                         data_file=os.path.join(data_path, 'dynamic_influent.tsv'))
 
     MIX = su.CSTR('MIX', ins=[DYINF, RAA], outs=[PHO], V_max=V_mix,
                   aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_mix, I_mix))
@@ -203,7 +222,8 @@ def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
 
     MEV = su.CSTR('MEV', ins=MEM-1, V_max=V_mem, aeration=None, suspended_growth_model=None)
 
-    POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.97)
+    POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.96)
+    # POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.97)
 
     CENT = su.Splitter('CENT', POST_MEM-1, outs=[CEN, ALG], split={'X_CHL':0.33,
                                                                     'X_ALG':0.33,
@@ -233,7 +253,7 @@ def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
 
     init_conds = init_conds or default_init_conds
     batch_init(sys,
-               os.path.join(data_path, 'initial_conditions_pm2_dynamic_influent.xlsx'), 'default')
+               os.path.join(data_path, 'initial_conditions_pm2_dynamic_influent_revised.xlsx'), 'default')
 
     sys.set_dynamic_tracker(SE, MIX, PBR1, PBR20, RET, TE, CEN, ALG)
     # sys.set_dynamic_tracker(MIX, PBR1, PBR20, RET, TE, ALG)

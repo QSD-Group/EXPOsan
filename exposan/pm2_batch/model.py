@@ -50,7 +50,7 @@ modified_pm2_kwargs = dict(
 # Parameters used for UA & SA
 baseline_values = {
     'a_c': (0.049, 'm^2/g TSS'),                # (0.0245, 0.0735)
-    'arr_a': (1.8e10, ''),                      # (0.9e10, 2.7e10)    v
+    'arr_a': (1.8e10, ''),                      # (0.9e10, 2.7e10)
     'arr_e': (6842, 'K'),                       # (3421, 10263)
     'beta_1': (2.9, ''),                        # (1.45, 4.35)
     'beta_2': (3.5, ''),                        # (1.75, 5.25)
@@ -72,11 +72,11 @@ baseline_values = {
     'I_opt': (2000, 'uE/m^2/s'),                # (1000, 3000)           # Increased baseline, differ from default_pm2_kwargs
     'm_ATP': (10, 'g ATP/g COD/d'),             # (5, 15) v
     'mu_max': (1.969, 'd^(-1)'),                # (0.9845, 2.9535)
-    'q_CH': (1, 'g COD/g COD/d'),               # (0.5, 1.5)          v
-    'q_LI': (15, 'g COD/g COD/d'),              # (7.5, 22.5)         v
+    'q_CH': (1, 'g COD/g COD/d'),               # (0.5, 1.5)
+    'q_LI': (15, 'g COD/g COD/d'),              # (7.5, 22.5)
     'V_NH': (0.1, 'g N/g COD/d'),               # (0.05, 0.15)
-    'V_NO': (0.003, 'g N/g COD/d'),             # (0.0015, 0.0045)    v
-    'V_P': (0.2, 'g P/g COD/d')                 # (0.1, 0.3)          v
+    'V_NO': (0.003, 'g N/g COD/d'),             # (0.0015, 0.0045)
+    'V_P': (0.2, 'g P/g COD/d')                 # (0.1, 0.3)
     }
 
 # pm2 = pc.PM2(mu_max=2, I_n=1000, I_opt=2000, V_NH=0.12, V_NO=0.0035, V_P=0.24, q_CH=1.5, q_LI=24,

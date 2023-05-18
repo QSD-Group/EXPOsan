@@ -176,7 +176,6 @@ if __name__ == '__main__':
     # seed = 503          # include, N=3000, exo_vars_batch_may_unit, modified_pm2_kwargs
     seed = 505          # include, N=5000, exo_vars_batch_may_unit, modified_pm2_kwargs
 
-
     # seed = 160          # include, N=10000, exo_vars_batch_may_unit
     # seed = 150          # include, N=10000, exo_vars_may_kinetic (wrong)
     # seed = 125          # include, N=1000, exo_vars_may_kinetic (wrong)
