@@ -22,6 +22,7 @@ from exposan.pm2_batch import (
 import numpy as np, pandas as pd
 from scipy.optimize import minimize, basinhopping, shgo
 from joblib import Parallel, delayed
+from multiprocessing import Pool
 
 # import winsound as sd
 # from datetime import datetime
@@ -59,21 +60,35 @@ bnds: min & max of sensitive parameters
 '''
 
 #%%
-def optimizer():
+def optimizer(args):
 
     # opt = shgo(objective_function, bounds=bnds, iters=5, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-2})
-    # opt = shgo(objective_function, bounds=bnds, iters=3, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3})
+    opt = shgo(objective_function, bounds=bnds, iters=3, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3})
 
-    n_jobs=6
-    results = Parallel(n_jobs=n_jobs)(delayed(shgo)(objective_function, bounds=bnds, iters=3, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3}) for i in range(n_jobs))
-
-    best_result = min(results, key=lambda res: res.fun)
-    print('Optimized parameters:', best_result.x)
-    print('Objective function value:', best_result.fun)
-
+    return opt
     # opt_as_series = pd.Series(opt)
 
     # opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_include_newbase_shgo_unit_paralleltest.xlsx')))
+
+
+
+
+#%%
+# def optimizer():
+
+#     # opt = shgo(objective_function, bounds=bnds, iters=5, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-2})
+#     # opt = shgo(objective_function, bounds=bnds, iters=3, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3})
+
+#     n_jobs=2
+#     results = Parallel(n_jobs=n_jobs)(delayed(shgo)(objective_function, bounds=bnds, iters=3, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3}) for i in range(n_jobs))
+
+#     best_result = min(results, key=lambda res: res.fun)
+#     print('Optimized parameters:', best_result.x)
+#     print('Objective function value:', best_result.fun)
+
+#     # opt_as_series = pd.Series(opt)
+
+#     # opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_include_newbase_shgo_unit_paralleltest.xlsx')))
 
 #%%
 @time_printer
@@ -92,7 +107,21 @@ def objective_function(opt_params, *args):
 
     return obj
 
-optimizer()
+# optimizer()
+
+
+# doesnt return errors, but takes longer with the increased num_processes
+if __name__ == '__main__':
+
+    num_processes = 6
+    pool = Pool(num_processes)
+
+    results = pool.map(optimizer, range(num_processes))
+    best_result = min(results, key=lambda res: res.fun)
+    print('Best Result:', best_result)
+
+
+
 
 # time_elapsed = datetime.now()-start_time
 # print('Time elapsed (hh:mm:ss.ms) {}'.format(time_elapsed))
