@@ -10,7 +10,7 @@ This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
-#%% Import everything for now
+#%% Import packages
 
 from qsdsan.utils import ospath, time_printer
 from exposan.pm2_batch import (
@@ -20,9 +20,8 @@ from exposan.pm2_batch import (
     )
 
 import numpy as np, pandas as pd
-from scipy.optimize import minimize, basinhopping, shgo, differential_evolution
+from scipy.optimize import shgo
 from joblib import Parallel, delayed
-from multiprocessing import Pool
 
 # import winsound as sd
 # from datetime import datetime
@@ -64,17 +63,27 @@ def optimizer():
 
     # opt = shgo(objective_function, bounds=bnds, iters=5, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-2})
     # opt = shgo(objective_function, bounds=bnds, iters=3, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3})
+    # opt_as_series = pd.Series(opt)
+    # opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_include_newbase_shgo_unit_paralleltest.xlsx')))
 
-    opt = differential_evolution(objective_function, bounds=bnds, tol=1e-3, workers=-1, disp=True, maxiter=10)  # didnt converge
+    n_jobs=1
+    results = Parallel(n_jobs=n_jobs, prefer='threads')(delayed(shgo)(objective_function, bounds=bnds, iters=3, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3}) for i in range(n_jobs))
+    # results = Parallel(n_jobs=n_jobs, backend='multiprocessing')(delayed(shgo)(objective_function, bounds=bnds, iters=3, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3}) for i in range(n_jobs))
 
-    print(opt.x, opt.fun)
+    # n_jobs=-1  -->  entire cpus
+    # default = loky --> not working
+    # threads --> does not converge
+    # multiprocessing --> cannot print time (using 100% cpu all the time, takes longer than using 1, couldn't finish)
+
+    best_result = min(results, key=lambda res: res.fun)
+    print('Optimized parameters:', best_result.x)
+    print('Objective function value:', best_result.fun)
 
 #%%
 @time_printer
 def objective_function(opt_params, *args):
 
     try:
-
         mdl._update_state(opt_params, t_span=(0, 0.25), t_eval = np.arange(0, 0.26, 0.01), method='BDF', state_reset_hook='reset_cache')
         # mdl._update_state(opt_params, t_span=(0, 7), t_eval = np.arange(0, 7.01, 0.01), method='BDF', state_reset_hook='reset_cache')
 

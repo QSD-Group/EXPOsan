@@ -13,7 +13,7 @@ for license details.
 #%% Import everything for now
 
 from qsdsan.utils import ospath, time_printer
-from exposan.pm2_batch import (
+from exposan.pm2 import (
     results_path,
     create_model,
     sensitive_params,
@@ -32,10 +32,10 @@ __all__ = ('objective')
 
 #%%
 
-# mdl = create_model(kind='include', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
-mdl = create_model(kind='exclude', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
+mdl = create_model()
 
 #%%
+@time_printer
 def objective(trial):
 
     params = {
@@ -57,7 +57,8 @@ def objective(trial):
     # mdl._update_state(current_params, t_span=(0, 0.25), t_eval = np.arange(0, 0.26, 0.01), method='BDF', state_reset_hook='reset_cache')
 
     try:
-        mdl._update_state(current_params, t_span=(0, 7), t_eval = np.arange(0, 7.01, 0.01), method='BDF', state_reset_hook='reset_cache')
+        mdl._update_state(current_params, t_span=(0, 50), t_eval = np.arange(0, 51, 1), method='RK23', state_reset_hook='reset_cache')
+        # if time
 
     except:
         return 0.5
@@ -65,25 +66,23 @@ def objective(trial):
     out = [metric() for metric in mdl.metrics]
     obj = np.average(out)
 
-    for step in range(100):
-        trial.report(obj, step)
+    # for step in range(100):
+    #     trial.report(obj, step)
 
-        if trial.should_prune():
-            raise optuna.TrialPruned()
+    #     if trial.should_prune():
+    #         raise optuna.TrialPruned()
 
     return obj
 
 if __name__ == '__main__':
 
-    sampler = optuna.samplers.TPESampler(seed=777) #unit: 1000:0.195 (3 min), 5000:0.1363 (30-35min) (best~2670), 10000:0.1239 (2hr) (best~8593)
-    sampler = optuna.samplers.TPESampler(seed=333) #unit: 1000:0.195 (3 min), 5000:0.1363 (30-35min) (best~2670), 10000:0.1239 (2hr) (best~8593)
+    sampler = optuna.samplers.TPESampler(seed=333)
 
-    # study = optuna.create_study(sampler=sampler, direction='minimize')
-    study = optuna.create_study(sampler=sampler, direction='minimize', pruner=optuna.pruners.MedianPruner())
+    study = optuna.create_study(sampler=sampler, direction='minimize')
+    # study = optuna.create_study(sampler=sampler, direction='minimize', pruner=optuna.pruners.MedianPruner())
     # w/ or w/o lead to the same results & the same time required, but hyperparameter importances and optimization history changes
 
-    # study.optimize(objective, n_trials=10000)  # obj자체는 10000이 더 낫지만, 결과plot해보면 5000이 더 나음
-    study.optimize(objective, n_trials=5000)
+    study.optimize(objective, n_trials=2)
 
     # study.optimize(objective, n_trials=100, n_jobs=-1)  # errors due to python's GIL?
     # parallelization -sql
@@ -93,9 +92,9 @@ if __name__ == '__main__':
     df = study.trials_dataframe()
     assert isinstance(df, pd.DataFrame)
     # assert df.shape[0] == 10000
-    assert df.shape[0] == 5000
+    assert df.shape[0] == 2
 
-    df.to_excel(ospath.join(results_path, 'batch_exclude_kinetic_optuna.xlsx'))
+    df.to_excel(ospath.join(results_path, 'conti_optuna.xlsx'))
 
     optuna.visualization.matplotlib.plot_param_importances(study)
     optuna.visualization.matplotlib.plot_optimization_history(study)
