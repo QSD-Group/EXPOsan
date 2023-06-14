@@ -1,5 +1,4 @@
 # Needed by exposan
 git+https://github.com/QSD-Group/QSDsan.git
 importlib_metadata
-numpy<=1.23.5
 scikit-learn
