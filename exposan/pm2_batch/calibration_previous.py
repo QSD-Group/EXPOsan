@@ -60,16 +60,19 @@ bnds: min & max of sensitive parameters
 '''
 
 #%%
-def optimizer(args):
+def optimizer():
 
     # opt = shgo(objective_function, bounds=bnds, iters=5, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-2})
-    opt = shgo(objective_function, bounds=bnds, iters=3, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3})
+    opt = shgo(objective_function, bounds=bnds, iters=3, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3}, workers=-1)
+
+    # breakpoint()
+    # print(opt.res)
+
+    opt_as_series = pd.Series(opt)
+
+    opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_include_newbase_shgo_unit_workerstest.xlsx')))
 
     return opt
-    # opt_as_series = pd.Series(opt)
-
-    # opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_include_newbase_shgo_unit_paralleltest.xlsx')))
-
 
 
 
@@ -107,18 +110,18 @@ def objective_function(opt_params, *args):
 
     return obj
 
-# optimizer()
+optimizer()
 
 
-# doesnt return errors, but takes longer with the increased num_processes
-if __name__ == '__main__':
+# # doesnt return errors, but takes longer with the increased num_processes
+# if __name__ == '__main__':
 
-    num_processes = 6
-    pool = Pool(num_processes)
+#     num_processes = 6
+#     pool = Pool(num_processes)
 
-    results = pool.map(optimizer, range(num_processes))
-    best_result = min(results, key=lambda res: res.fun)
-    print('Best Result:', best_result)
+#     results = pool.map(optimizer, range(num_processes))
+#     best_result = min(results, key=lambda res: res.fun)
+#     print('Best Result:', best_result)
 
 
 

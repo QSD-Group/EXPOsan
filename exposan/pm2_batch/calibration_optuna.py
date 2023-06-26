@@ -32,8 +32,8 @@ __all__ = ('objective')
 
 #%%
 
-# mdl = create_model(kind='include', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
-mdl = create_model(kind='exclude', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
+mdl = create_model(kind='include', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
+# mdl = create_model(kind='exclude', analysis='cali')   # with uniform distribution of sensitive params (in model.py)
 
 #%%
 def objective(trial):
@@ -73,36 +73,61 @@ def objective(trial):
 
     return obj
 
+#%%
+# if __name__ == '__main__':
+
+#     sampler = optuna.samplers.TPESampler(seed=777) #unit: 1000:0.195 (3 min), 5000:0.1363 (30-35min) (best~2670), 10000:0.1239 (2hr) (best~8593)
+#     sampler = optuna.samplers.TPESampler(seed=333) #unit: 1000:0.195 (3 min), 5000:0.1363 (30-35min) (best~2670), 10000:0.1239 (2hr) (best~8593)
+
+#     # study = optuna.create_study(sampler=sampler, direction='minimize')
+#     study = optuna.create_study(sampler=sampler, direction='minimize', pruner=optuna.pruners.MedianPruner())
+#     # w/ or w/o lead to the same results & the same time required, but hyperparameter importances and optimization history changes
+
+#     # study.optimize(objective, n_trials=10000)  # obj자체는 10000이 더 낫지만, 결과plot해보면 5000이 더 나음
+#     study.optimize(objective, n_trials=5000)
+
+#     # study.optimize(objective, n_trials=100, n_jobs=-1)  # errors due to python's GIL?
+#     # parallelization -sql
+
+#     print(study.best_params)
+
+#     df = study.trials_dataframe()
+#     assert isinstance(df, pd.DataFrame)
+#     # assert df.shape[0] == 10000
+#     assert df.shape[0] == 5000
+
+#     df.to_excel(ospath.join(results_path, 'batch_exclude_kinetic_optuna.xlsx'))
+
+#     optuna.visualization.matplotlib.plot_param_importances(study)
+#     optuna.visualization.matplotlib.plot_optimization_history(study)
+    # optuna.visualization.matplotlib.plot_intermediate_values(study)
+
+    # optuna.visualization.plot_param_importances(study).show(renderer='browser')
+    # optuna.visualization.plot_optimization_history(study).show(renderer='browser')
+
+#%% parallelization
+
 if __name__ == '__main__':
 
     sampler = optuna.samplers.TPESampler(seed=777) #unit: 1000:0.195 (3 min), 5000:0.1363 (30-35min) (best~2670), 10000:0.1239 (2hr) (best~8593)
-    sampler = optuna.samplers.TPESampler(seed=333) #unit: 1000:0.195 (3 min), 5000:0.1363 (30-35min) (best~2670), 10000:0.1239 (2hr) (best~8593)
 
-    # study = optuna.create_study(sampler=sampler, direction='minimize')
-    study = optuna.create_study(sampler=sampler, direction='minimize', pruner=optuna.pruners.MedianPruner())
-    # w/ or w/o lead to the same results & the same time required, but hyperparameter importances and optimization history changes
+    study = optuna.create_study(sampler=sampler, direction='minimize', pruner=optuna.pruners.MedianPruner(),
+                                storage="mysql://root@localhost/example")
 
-    # study.optimize(objective, n_trials=10000)  # obj자체는 10000이 더 낫지만, 결과plot해보면 5000이 더 나음
-    study.optimize(objective, n_trials=5000)
-
-    # study.optimize(objective, n_trials=100, n_jobs=-1)  # errors due to python's GIL?
-    # parallelization -sql
+    study.optimize(objective, n_trials=1000)
 
     print(study.best_params)
 
     df = study.trials_dataframe()
     assert isinstance(df, pd.DataFrame)
-    # assert df.shape[0] == 10000
-    assert df.shape[0] == 5000
+    assert df.shape[0] == 1000
 
-    df.to_excel(ospath.join(results_path, 'batch_exclude_kinetic_optuna.xlsx'))
+    df.to_excel(ospath.join(results_path, 'batch_include_kinetic_optuna_parallel.xlsx'))
 
     optuna.visualization.matplotlib.plot_param_importances(study)
     optuna.visualization.matplotlib.plot_optimization_history(study)
-    # optuna.visualization.matplotlib.plot_intermediate_values(study)
 
-    # optuna.visualization.plot_param_importances(study).show(renderer='browser')
-    # optuna.visualization.plot_optimization_history(study).show(renderer='browser')
+
 
 #%% print time & beep
 
