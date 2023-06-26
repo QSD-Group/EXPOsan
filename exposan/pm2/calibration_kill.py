@@ -65,6 +65,8 @@ def objective_function(opt_params, *args):
     try:
         mdl._update_state(opt_params, t_span=(0, 50), t_eval = np.arange(0, 51, 1), method='RK23', state_reset_hook='reset_cache', print_t=True)
 
+    # kill solve_ivp using time_printer?
+
     except:
         return 0.5
 
