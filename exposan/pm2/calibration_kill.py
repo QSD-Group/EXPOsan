@@ -69,20 +69,9 @@ print('Start time:', start_time)
 def time_track(t, y):
     global start_time
 
-    # start_time = time.time()
-    # # start_time = datetime.now()
-
     elapsed_time = time.time() - start_time
 
-    # t_spent = datetime.now() - start_time
-    # (unit mins)
-
     return elapsed_time-600
-
-    # start_time = datetime.now()
-    # print('Started (hh:mm:ss.ms) {}'.format(start_time))
-    # time_elapsed = datetime.now()-start_time
-    # print('Time elapsed (hh:mm:ss.ms) {}'.format(time_elapsed))
 
 #%%
 time_track.terminal = True
