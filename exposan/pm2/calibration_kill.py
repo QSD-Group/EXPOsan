@@ -21,6 +21,9 @@ from exposan.pm2 import (
 import numpy as np, pandas as pd
 from scipy.optimize import shgo
 
+# from datetime import datetime
+import time
+
 __all__ = ('cali_setup', 'optimizer', 'objective_function')
 
 #%%
@@ -52,29 +55,60 @@ bnds: min & max of sensitive parameters
 #%%
 def optimizer():
 
-    # opt = shgo(objective_function, bounds=bnds, iters=2, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3})
-    opt = shgo(objective_function, bounds=bnds, iters=2, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3}, workers=-1)
+    opt = shgo(objective_function, bounds=bnds, iters=1, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3})
+    # opt = shgo(objective_function, bounds=bnds, iters=1, minimizer_kwargs={'method':'SLSQP', 'ftol':1e-3}, workers=-1)
 
     opt_as_series = pd.Series(opt)
     opt_as_series.to_excel(excel_writer=(ospath.join(results_path, 'calibration_result_kill.xlsx')))
 
 #%%
+
+start_time = time.time()
+print('Start time:', start_time)
+
+def time_track(t, y):
+    global start_time
+
+    # start_time = time.time()
+    # # start_time = datetime.now()
+
+    elapsed_time = time.time() - start_time
+
+    # t_spent = datetime.now() - start_time
+    # (unit mins)
+
+    return elapsed_time-600
+
+    # start_time = datetime.now()
+    # print('Started (hh:mm:ss.ms) {}'.format(start_time))
+    # time_elapsed = datetime.now()-start_time
+    # print('Time elapsed (hh:mm:ss.ms) {}'.format(time_elapsed))
+
+#%%
+time_track.terminal = True
+
 @time_printer
 def objective_function(opt_params, *args):
+    global start_time
+    start_time = time.time()    # reset start_time to be here
+
+    print('Renewed start time:', start_time)
+    print('Parameters:', opt_params)
 
     try:
-        mdl._update_state(opt_params, t_span=(0, 50), t_eval = np.arange(0, 51, 1), method='RK23', state_reset_hook='reset_cache', print_t=True)
+        # mdl._update_state(opt_params, t_span=(0, 50), t_eval = np.arange(0, 51, 1), method='RK23', state_reset_hook='reset_cache', print_t=True)
+        mdl._update_state(opt_params, t_span=(0, 50), t_eval = np.arange(0, 51, 1), method='RK23', state_reset_hook='reset_cache', print_t=False, events=time_track)
 
-    # kill solve_ivp using time_printer?
+        # when terminated, what to return?
 
     except:
-        return 0.5
+        print('Fail & return 1.5')
+        return 1.5
 
     out = [metric() for metric in mdl.metrics]
     obj = np.average(out)
 
-    print('succeed')
-
+    print('Objective function:', obj)
     return obj
 
 optimizer()
