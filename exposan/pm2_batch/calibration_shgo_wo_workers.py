@@ -70,16 +70,21 @@ def optimizer():
 @time_printer
 def objective_function(opt_params, *args):
 
+    print('Parameters:', opt_params)
+
     try:
 
         mdl._update_state(opt_params, t_span=(0, 0.25), t_eval = np.arange(0, 0.26, 0.01), method='BDF', state_reset_hook='reset_cache')
         # mdl._update_state(opt_params, t_span=(0, 7), t_eval = np.arange(0, 7.01, 0.01), method='BDF', state_reset_hook='reset_cache')
 
     except:
+        print('Fail & return 0.5')
         return 0.5
 
     out = [metric() for metric in mdl.metrics]
     obj = np.average(out)
+
+    print('Objective function:', obj)
 
     return obj
 
