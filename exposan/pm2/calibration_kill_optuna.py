@@ -39,7 +39,7 @@ def time_track(t, y):
 
     elapsed_time = time.time() - start_time
 
-    return elapsed_time-600
+    return elapsed_time-720
 
 #%%
 mdl = create_model()
@@ -71,7 +71,7 @@ def objective(trial):
     start_time = time.time()    # reset start_time to be here
 
     print('Renewed start time:', start_time)
-    print('Parameters:', current_params)
+    # print('Parameters:', current_params)
 
     try:
         # mdl._update_state(current_params, t_span=(0, 50), t_eval = np.arange(0, 51, 1), method='RK23', state_reset_hook='reset_cache')
@@ -92,11 +92,13 @@ def objective(trial):
     #         raise optuna.TrialPruned()
 
     print('Objective function:', obj)
-    return obj
+    return min(obj, 5.1)
 
 if __name__ == '__main__':
 
-    sampler = optuna.samplers.TPESampler(seed=333)
+    # sampler = optuna.samplers.TPESampler(seed=333)
+    sampler = optuna.samplers.TPESampler(seed=777)
+
 
     # study = optuna.create_study(sampler=sampler, direction='minimize')
     study = optuna.create_study(sampler=sampler, direction='minimize', pruner=optuna.pruners.MedianPruner())
