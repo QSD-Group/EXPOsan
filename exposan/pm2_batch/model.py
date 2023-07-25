@@ -88,15 +88,22 @@ baseline_values = {
 # Parameters used for calibration - sensitive parameters (baseline_value, units, bounds)
 
 sensitive_params = {
-    'arr_e': (6842, 'K', (1000, 10000)),
-    'K_P': (1.0, 'g P/m^3', (0.01, 100)),
-    'f_CH_max': (0.819, 'g COD/g COD', (0.1, 10)),
-    'exponent': (4, '', (1, 10)),
     'q_CH': (1, 'g COD/g COD/d', (0.1, 10)),
     'q_LI': (15, 'g COD/g COD/d', (1.5, 50)),
     'V_NH': (0.1, 'g N/g COD/d', (0.01, 1)),
     'V_P': (0.2, 'g P/g COD/d', (0.01, 1))
-    }  # with new baseline, new sens_params
+    } # sequential calibration purpose
+
+# sensitive_params = {
+#     'arr_e': (6842, 'K', (1000, 10000)),
+#     'K_P': (1.0, 'g P/m^3', (0.01, 100)),
+#     'f_CH_max': (0.819, 'g COD/g COD', (0.1, 10)),
+#     'exponent': (4, '', (1, 10)),
+#     'q_CH': (1, 'g COD/g COD/d', (0.1, 10)),
+#     'q_LI': (15, 'g COD/g COD/d', (1.5, 50)),
+#     'V_NH': (0.1, 'g N/g COD/d', (0.01, 1)),
+#     'V_P': (0.2, 'g P/g COD/d', (0.01, 1))
+#     }  # with new baseline, new sens_params
 
 
 # sensitive_params = {
