@@ -39,7 +39,7 @@ def time_track(t, y):
 
     elapsed_time = time.time() - start_time
 
-    return elapsed_time-720
+    return elapsed_time-300
 
 #%%
 mdl = create_model()
@@ -79,7 +79,7 @@ def objective(trial):
 
     except:
         print('Fail & return 5.0')
-        return 5
+        return 15
         # return 0.5
 
     out = [metric() for metric in mdl.metrics]
@@ -92,12 +92,12 @@ def objective(trial):
     #         raise optuna.TrialPruned()
 
     print('Objective function:', obj)
-    return min(obj, 5.1)
+    return min(obj, 15.1)
 
 if __name__ == '__main__':
 
-    # sampler = optuna.samplers.TPESampler(seed=333)
-    sampler = optuna.samplers.TPESampler(seed=777)
+    sampler = optuna.samplers.TPESampler(seed=333)
+    # sampler = optuna.samplers.TPESampler(seed=777)
 
 
     # study = optuna.create_study(sampler=sampler, direction='minimize')
@@ -115,7 +115,7 @@ if __name__ == '__main__':
     df = study.trials_dataframe()
     assert isinstance(df, pd.DataFrame)
     # assert df.shape[0] == 10000
-    assert df.shape[0] == 1000
+    assert df.shape[0] == 500
 
     df.to_excel(ospath.join(results_path, 'conti_optuna_kill_cali.xlsx'))
 

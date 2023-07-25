@@ -86,7 +86,7 @@ def objective_function(opt_params, *args):
 
     try:
         # mdl._update_state(opt_params, t_span=(0, 50), t_eval = np.arange(0, 51, 1), method='RK23', state_reset_hook='reset_cache', print_t=True)
-        mdl._update_state(opt_params, t_span=(0, 15), t_eval = np.arange(0, 16, 1), method='RK23', state_reset_hook='reset_cache', print_t=True, events=time_track)
+        mdl._update_state(opt_params, t_span=(0, 15), t_eval = np.arange(0, 16, 1), method='RK23', state_reset_hook='reset_cache', print_t=False, events=time_track)
 
         # when terminated, what to return?
 
