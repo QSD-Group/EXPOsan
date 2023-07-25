@@ -14,7 +14,7 @@ for license details.
 import os, numpy as np, qsdsan as qs
 from qsdsan import processes as pc, sanunits as su, WasteStream, System
 from qsdsan.utils import time_printer, load_data, get_SRT, ExogenousDynamicVariable as EDV
-from exposan.pm2_cali import data_path
+from exposan.pm2_half import data_path
 
 __all__ = (
     'biomass_IDs',
@@ -40,7 +40,7 @@ V_mem = 7.03
 V_ret = 6.14
 biomass_IDs = ('X_ALG',)
 
-T_pbr, I_pbr = EDV.batch_init(os.path.join(data_path, 'exo_vars_dynamic_influent_revised_cali.xlsx'), 'linear')
+T_pbr, I_pbr = EDV.batch_init(os.path.join(data_path, 'exo_vars_dynamic_influent_revised_half_cali.xlsx'), 'linear')
 # T_pbr, I_pbr = EDV.batch_init(os.path.join(data_path, 'exo_vars_dynamic_influent.xlsx'), 'linear')
 
 T_mix = T_pbr
@@ -82,19 +82,19 @@ default_pm2_kwargs = dict(
     )
 
 default_init_conds = {
-        'X_CHL':2.58,
-        'X_ALG':515.75,
-        'X_CH':23.43,
-        'X_LI':95.59,
+        'X_CHL':2.56,
+        'X_ALG':512.72,
+        'X_CH':23.30,
+        'X_LI':95.03,
         'S_CO2':30.0,
         'S_A':5.0,
         'S_F':5.0,
         'S_O2':5.0,
-        'S_NH':27.12,
-        'S_NO':1.32,
-        'S_P':0.37,
-        'X_N_ALG':3.29,
-        'X_P_ALG':0.20,
+        'S_NH':35.80,
+        'S_NO':0.7,
+        'S_P':0.36,
+        'X_N_ALG':3.27,
+        'X_P_ALG':0.19,
     }
 
 # default_init_conds = {
@@ -134,7 +134,7 @@ def batch_init(sys, path, sheet):
 def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
 # def create_system(flowsheet=None, inf_kwargs={}, pm2_kwargs={}, init_conds={}):
 
-    flowsheet = flowsheet or qs.Flowsheet('pm2_cali')
+    flowsheet = flowsheet or qs.Flowsheet('pm2_half')
     qs.main_flowsheet.set_flowsheet(flowsheet)
 
     # Components
@@ -170,7 +170,7 @@ def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
     # Create unit operations
 
     SE = su.DynamicInfluent('SE', outs=[DYINF],
-                            data_file=os.path.join(data_path, 'dynamic_influent_revised_cali.tsv'))
+                            data_file=os.path.join(data_path, 'dynamic_influent_revised_half_cali.tsv'))
     # SE = su.DynamicInfluent('SE', outs=[DYINF],
     #                         data_file=os.path.join(data_path, 'dynamic_influent.tsv'))
 
@@ -253,7 +253,7 @@ def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
 
     init_conds = init_conds or default_init_conds
     batch_init(sys,
-               os.path.join(data_path, 'initial_conditions_pm2_dynamic_influent_revised_cali.xlsx'), 'default')
+               os.path.join(data_path, 'initial_conditions_pm2_dynamic_influent_revised_half_cali.xlsx'), 'default')
 
     sys.set_dynamic_tracker(SE, MIX, PBR1, PBR20, RET, TE, CEN, ALG)
     # sys.set_dynamic_tracker(MIX, PBR1, PBR20, RET, TE, ALG)
@@ -281,7 +281,7 @@ def run(t, t_step, method=None, **kwargs):
     print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
 
 if __name__ == '__main__':
-    t = 15
+    t = 25
     t_step = 1
     # method = 'RK45'
     method = 'RK23'

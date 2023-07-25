@@ -17,7 +17,7 @@ from scipy.interpolate import interp1d
 from chaospy import distributions as shape
 from qsdsan.utils import DictAttrSetter, ospath, load_data
 
-from exposan.pm2 import (
+from exposan.pm2_half import (
     create_system,
     data_path,
     )
@@ -98,7 +98,7 @@ sensitive_params = {
 #%%
 def import_scada_data():
 
-    file = ospath.join(data_path, 'conti_scada_result_revised.xlsx')
+    file = ospath.join(data_path, 'conti_scada_result_revised_half_cali.xlsx')
     # file = ospath.join(data_path, 'conti_scada_result.xlsx')
 
     result_scada = load_data(file, sheet=0, index_col=None)
