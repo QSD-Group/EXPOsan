@@ -103,7 +103,7 @@ sensitive_params = {
 #     'q_LI': (15, 'g COD/g COD/d', (1.5, 50)),
 #     'V_NH': (0.1, 'g N/g COD/d', (0.01, 1)),
 #     'V_P': (0.2, 'g P/g COD/d', (0.01, 1))
-#     }  # with new baseline, new sens_params
+#     }  # with new baseline, new sens_params  (for UA & SA)
 
 
 # sensitive_params = {
