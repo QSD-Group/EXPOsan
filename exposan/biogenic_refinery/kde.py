@@ -10,9 +10,15 @@ import seaborn as sns
 import pandas as pd
 import matplotlib as mpl
 
+import os
+from exposan.biogenic_refinery import data_path
+folder = os.path.dirname(__file__)
+path = os.path.join(data_path, 'kde_combined.xlsx')
 
+df = pd.read_excel(path)
 
-df = pd.read_excel('/Users/stetsonrowles/Dropbox/Mac (3)/Documents/GitHub/EXPOsan/exposan/biogenic_refinery/data/kde_combined.xlsx')
+# %%
+
 mpl.rcParams['xtick.minor.visible'] = True
 mpl.rcParams['ytick.minor.visible'] = True
 
