@@ -10,8 +10,9 @@ import seaborn as sns
 import pandas as pd
 import matplotlib as mpl
 
-df = pd.read_excel('/Users/lanet/Desktop/GitHub/EXPOsan/exposan/biogenic_refinery/data/kde_combined.xlsx')
 
+
+df = pd.read_excel('/Users/stetsonrowles/Dropbox/Mac (3)/Documents/GitHub/EXPOsan/exposan/biogenic_refinery/data/kde_combined.xlsx')
 mpl.rcParams['xtick.minor.visible'] = True
 mpl.rcParams['ytick.minor.visible'] = True
 
