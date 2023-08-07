@@ -12,7 +12,7 @@ for license details.
 '''
 
 from qsdsan.utils import ospath, time_printer
-from exposan.pm2_twenty import (
+from exposan.pm2_half import (
     results_path,
     create_model,
     sensitive_params,
@@ -82,7 +82,7 @@ def objective(trial):
 
     try:
         # mdl._update_state(current_params, t_span=(0, 50), t_eval = np.arange(0, 51, 1), method='RK23', state_reset_hook='reset_cache')
-        mdl._update_state(current_params, t_span=(0, 20), t_eval = np.arange(0, 21, 1), method='RK23', state_reset_hook='reset_cache', print_t=False, events=time_track)
+        mdl._update_state(current_params, t_span=(0, 25), t_eval = np.arange(0, 26, 1), method='RK23', state_reset_hook='reset_cache', print_t=False, events=time_track)
 
     except:
         print('Fail & return 15')
@@ -123,7 +123,7 @@ if __name__ == '__main__':
     # assert df.shape[0] == 10000
     assert df.shape[0] == 500
 
-    df.to_excel(ospath.join(results_path, 'conti_optuna_kill_twenty_cali_seed333.xlsx'))
+    df.to_excel(ospath.join(results_path, 'conti_optuna_kill_half_cali_seed333.xlsx'))
     # df.to_excel(ospath.join(results_path, 'conti_optuna_kill.xlsx'))
 
     # optuna.visualization.matplotlib.plot_param_importances(study)
