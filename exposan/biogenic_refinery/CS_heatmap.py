@@ -9,6 +9,8 @@ Created on Thu Mar  9 21:19:51 2023
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import MultipleLocator
+from exposan.biogenic_refinery import results_path
+import os
 
 # Calculate dry basis biochar yield (% mass)
 def get_yield(temp, AC): 
@@ -115,7 +117,8 @@ def heatmap(X, Y, Z, x_label="", y_label="", cbarlabel="", filename="", no_label
         ax.spines.right.set_bounds(Y.min(), Y.max())
 
     # fig.set_size_inches((15,13))
-    plt.savefig('/Users/lanet/Desktop/GitHub/EXPOsan/exposan/biogenic_refinery/results/'+filename+'.pdf', format='pdf')
+    filename += '.pdf'
+    plt.savefig(os.path.join(results_path, filename), format='pdf')
     return im, cbar
 
 # create  x and y variables
