@@ -15,19 +15,14 @@ from qsdsan.utils import ospath, time_printer
 from exposan.pm2_half import (
     results_path,
     create_model,
-    sensitive_params,
     )
 
 import numpy as np, pandas as pd
 import optuna
 
-# from scipy.optimize import shgo
-
-# from datetime import datetime
 import time
 
 __all__ = ('objective')
-# __all__ = ('cali_setup', 'optimizer', 'objective_function')
 
 #%%
 
@@ -56,23 +51,10 @@ def objective(trial):
         'exponent': trial.suggest_uniform('exponent', 1, 10)
         }
 
-    # params = {
-    #     'arr_e': trial.suggest_uniform('arr_e', 1000, 10000),
-    #     'K_P': trial.suggest_uniform('K_P', 0.01, 100),
-    #     'f_CH_max': trial.suggest_uniform('f_CH_max', 0.1, 10),
-    #     'exponent': trial.suggest_uniform('exponent', 1, 10),
-    #     'q_CH': trial.suggest_uniform('q_CH', 0.1, 10),
-    #     'q_LI': trial.suggest_uniform('q_LI', 1.5, 50),
-    #     'V_NH': trial.suggest_uniform('V_NH', 0.01, 1),
-    #     'V_P': trial.suggest_uniform('V_P', 0.01, 1),
-    #     }
-
     current_params = np.array([])
 
     for k, v in params.items():
         current_params = np.append(current_params, v)
-
-    # mdl._update_state(current_params, t_span=(0, 0.25), t_eval = np.arange(0, 0.26, 0.01), method='BDF', state_reset_hook='reset_cache')
 
     global start_time
     start_time = time.time()    # reset start_time to be here
@@ -87,25 +69,17 @@ def objective(trial):
     except:
         print('Fail & return 15')
         return 15
-        # return 0.5
 
     out = [metric() for metric in mdl.metrics]
     obj = np.average(out)
-
-    # for step in range(100):
-    #     trial.report(obj, step)
-
-    #     if trial.should_prune():
-    #         raise optuna.TrialPruned()
 
     print('Objective function:', obj)
     return min(obj, 15.1)
 
 if __name__ == '__main__':
 
-    sampler = optuna.samplers.TPESampler(seed=333)
+    sampler = optuna.samplers.TPESampler(seed=111)
     # sampler = optuna.samplers.TPESampler(seed=777)
-
 
     # study = optuna.create_study(sampler=sampler, direction='minimize')
     study = optuna.create_study(sampler=sampler, direction='minimize', pruner=optuna.pruners.MedianPruner())
@@ -113,23 +87,17 @@ if __name__ == '__main__':
 
     study.optimize(objective, n_trials=500)
 
-    # study.optimize(objective, n_trials=100, n_jobs=-1)  # errors due to python's GIL?
-    # parallelization -sql
-
     print(study.best_params)
 
     df = study.trials_dataframe()
     assert isinstance(df, pd.DataFrame)
-    # assert df.shape[0] == 10000
     assert df.shape[0] == 500
 
-    df.to_excel(ospath.join(results_path, 'conti_optuna_kill_half_cali_seed333.xlsx'))
+    df.to_excel(ospath.join(results_path, 'conti_optuna_kill_half_cali_seed111.xlsx'))
     # df.to_excel(ospath.join(results_path, 'conti_optuna_kill.xlsx'))
 
     # optuna.visualization.matplotlib.plot_param_importances(study)
     # optuna.visualization.matplotlib.plot_optimization_history(study)
-
-
 
     # optuna.visualization.matplotlib.plot_intermediate_values(study)
 
