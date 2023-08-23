@@ -41,11 +41,10 @@ def get_CS(temp, AC):
     return CS  
 
 def get_mass_C(temp, AC):
-    db_yield = get_yield(temp, AC)
     CS = get_CS(temp, AC)
-    # Biogenic Refinery loading rate of 18 kg feedstock/h (dry basis) 
-    daily_in = 18*24
-    mass_C = daily_in * (db_yield/100) * (CS/100)
+    C_feedstock = -0.50 * AC + 54.51 # Krueger et al. 2021
+    daily_in = 18*24 # Biogenic Refinery loading rate of 18 kg feedstock/h (dry basis) * 24 h/d
+    mass_C = daily_in * (C_feedstock/100) * (CS/100)
     return mass_C
     
 def heatmap(X, Y, Z, x_label="", y_label="", cbarlabel="", filename="", no_labels=False, **kwargs):
@@ -71,11 +70,11 @@ def heatmap(X, Y, Z, x_label="", y_label="", cbarlabel="", filename="", no_label
     """
 
     # Plot the heatmap
-    fig , ax = plt.subplots()
+    fig , ax = plt.subplots(figsize=[6,5])
     im = ax.pcolormesh(X, Y, Z, **kwargs)
 
     # Create colorbar
-    cbar = ax.figure.colorbar(im, ax=ax, shrink=0.5, location='bottom')
+    cbar = ax.figure.colorbar(im, ax=ax, location='right')
     
     if no_labels:
         # removes ticks, borders, labels
@@ -85,11 +84,14 @@ def heatmap(X, Y, Z, x_label="", y_label="", cbarlabel="", filename="", no_label
 
     else:    
         # set colorbar label properties
-        cbar.ax.set_ylabel("\n"+cbarlabel, va="top", 
-                           #fontsize=16
-                           )
+        # cbar.ax.set_ylabel("\n"+cbarlabel, va="top", 
+        #                    #fontsize=16
+        #                    )
         cbar.minorticks_on()
         # cbar.fontsize = 16
+
+        # set plot title
+        ax.set_title(cbarlabel)
 
         # show ticks at intervals and label them
         ax.xaxis.set_major_locator(MultipleLocator(100))
@@ -123,7 +125,7 @@ x = np.arange(300, 901)
 y = np.linspace(15.0, 75.0, num=600)
 X, Y = np.meshgrid(x, y)
 
-# # generate data for yield plot
+# generate data for yield plot
 Z = get_yield(X, Y)
 
 # plot yields heatmap
@@ -145,7 +147,7 @@ CSplot = heatmap(X, Y, Z,
                     cbarlabel="Carbon sequestration potential [%]",
                     filename="CSplot")
 
-# generate data for carbon mass plot
+# # generate data for carbon mass plot
 # Z = get_mass_C(X, Y)
 
 # # plot mass C heatmap
