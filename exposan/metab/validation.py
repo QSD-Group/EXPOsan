@@ -15,9 +15,9 @@ cmps = pc.create_adm1_cmps()
 adm1 = pc.ADM1(flex_rate_function=flex_rhos_adm1)
 adm1.rate_function.params['rate_constants'][1:4] /= 16
 # adm1.rate_function.params['rate_constants'][4:12] *= 0.8
-adm1.rate_function.params['rate_constants'][12:19] *= 2
+# adm1.rate_function.params['rate_constants'][12:19] *= 2
 
-fy = 0.3
+fy = 0.45
 adm1.set_parameters(
     # f_bu_su=0.18, f_pro_su=0.35, f_ac_su=0.33, f_h2_su=0.14,
     # Y_su=0.1*fy,
@@ -80,10 +80,11 @@ tex1 = [0,1,2,3,4,5,7]
 yex1 = [0, 0.18, 0.225, 0.145, 0.125, 0.13, 0.035]
 yerr1 = [0, 0.012, 0.005, 0.08, 0.07, 0.09, 0.03]
 fig, ax = plt.subplots()
-ax.plot(t1, rh2, color='black')
-ax.errorbar(tex1, yex1, yerr=yerr1, 
+ax.plot(t1, rh2, color='black', label='simulated')
+ax.errorbar(tex1, yex1, yerr=yerr1, label='PEG',
             marker='o', color='red', linestyle='dashed',
             capsize=2)
+ax.legend()
 ax.set_xlabel('Days')
 ax.set_ylabel('H2 production rate [mmol/d]')
 ax.tick_params(axis='both', which='major', direction='inout')
@@ -94,7 +95,7 @@ fig.savefig(ospath.join(figures_path, 'validation_H2E_batch.png'),
 # yields ~ 1.0g/L VSS
 ch4r_seed = dict(
     X_su=4.708e-1, 
-    # X_su=0.45,
+    # X_su=0.5,
     X_aa=0.13, 
     X_fa=0.08, 
     # X_aa=4.838e-2,
@@ -132,20 +133,48 @@ rch4 = rch4 * cmps.S_ch4.i_mass / cmps.S_ch4.chem_MW # mg/d -> mmol/d
 t2 = bg2.scope.time_series
 
 #%%
+# PEG, suspended AS
 tex2 = [0,1,2,3,5,7,8]
 yex2 = [0, 0.025, 0.042, 0.052, 0.065, 0.055, 0.062]
 yerr2 = [0, 5e-3, 7.5e-3, 0.015, 0.02, 0.012, 0.02]
+
+# alginate, suspended AS
 tex3 = [0,1,2,3,5,6,7]
 yex3 = [0,0,0,0.019, 0.07, 0.075, 0.108]
 yerr3 = [0,0,0, 6e-3, 6e-3, 0.01, 0.018]
+
+# PEG, granular AS
+tex4 = [0,1,2,3,4,7,8]
+yex4 = [0, 8e-3, 12.5e-3, 19e-3, 18e-3, 2e-2, 2.3e-2]
+yex4 = [x*13 for x in yex4]
+
+# PEG, PAC-supported biofilm
+tex5 = [0,1,2,4,6]
+yex5 = [0, 1.26e-2, 3.1e-2, 0.105, 0.121]
+yex5 = [x*11 for x in yex5]
+
+# PEG, PAC-supported biofilm, replicate
+tex5 = [0,1,2,4,6]
+yex5 = [0, 1.26e-2, 3.1e-2, 0.105, 0.121]
+yex5 = [x*11 for x in yex5]
+
+tex6 = [0,1,2,3,4,7,8]
+yex6 = [0, 0.028, 0.056, 0.118, 0.15, 0.175, 0.19]
+yex6 = [x*11 for x in yex6]
+
 fig, ax = plt.subplots()
-ax.plot(t2, rch4, color='black')
-ax.errorbar(tex2, yex2, yerr=yerr2, 
-            marker='o', color='red', linestyle='dashed',
+ax.plot(t2, rch4, color='black', label='simulated')
+ax.errorbar(tex2, yex2, yerr=yerr2, label='PEG, suspended AS',
+            marker='s', linestyle='dashed',
             capsize=2)
-ax.errorbar(tex3, yex3, yerr=yerr3, 
-            marker='^', color='blue', linestyle='dashed',
-            capsize=2)
+# ax.errorbar(tex3, yex3, yerr=yerr3, label='alginate, suspended AS',
+#             marker='x', color='grey', linestyle='dashed',
+#             capsize=2)
+ax.plot(tex4, yex4, 'D--', label='PEG, granular AS')
+ax.plot(tex5, yex5, '^--', label='PEG, PAC-supported biofilm')
+ax.plot(tex6, yex6, 'o--', label='PEG, biofilm, replicate')
+ax.legend(loc='upper left')
+ax.set_ylim(-0.1, 2.6)
 ax.set_xlabel('Days')
 ax.set_ylabel('CH4 production rate [mmol/d]')
 ax.tick_params(axis='both', which='major', direction='inout')
