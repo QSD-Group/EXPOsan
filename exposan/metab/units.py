@@ -456,12 +456,16 @@ class UASB(AnaerobicCSTR):
         else:
             f_qgas = self.f_q_gas_var_P_headspace
         def dy_dt(t, QC_ins, QC, dQC_ins):
+            #!!! to avoid accumulation of floating error due to limited precision
+            QC[np.abs(QC) < 2.22044604925e-16] = 0
             S_liq = QC[:n_cmps]
             S_gas = QC[n_cmps: (n_cmps+n_gas)]
             Q_ins = QC_ins[:, -1]
             S_ins = QC_ins[:, :-1] * 1e-3  # mg/L to kg/m3
             Q = sum(Q_ins)
             rhos = _f_rhos(QC)
+            #!!! to avoid accumulation of floating error due to limited precision
+            rhos[np.abs(rhos) < 2.22044604925e-16] = 0
             _dstate[:n_cmps] = (Q_ins @ S_ins - Q*S_liq*(1-f_rtn))/V_liq \
                 + np.dot(M_stoichio.T, rhos)
             q_gas = f_qgas(rhos[-3:], S_gas, T)
