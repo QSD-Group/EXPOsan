@@ -1704,7 +1704,9 @@ class METAB_BatchExp(METAB_FluidizedBed):
         self._encap_concs = np.tile(Cs, n_dz)
 
     def _init_state(self):
-        if self._cached_state is not None: Cs = self._cached_state
+        if self._cached_state is not None: 
+            Cs = self._cached_state
+            Cs[-len(self._bulk_concs):] = self._bulk_concs
         else: Cs = np.append(self._encap_concs, self._bulk_concs)
         self._state = np.append(Cs, [0]*self._n_gas + [0]).astype('float64')
         self._dstate = self._state * 0.
