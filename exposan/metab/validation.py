@@ -14,7 +14,7 @@ from exposan.metab import flex_rhos_adm1, METAB_BatchExp, figures_path
 cmps = pc.create_adm1_cmps()
 adm1 = pc.ADM1(flex_rate_function=flex_rhos_adm1)
 # adm1.rate_function.params['rate_constants'][1:4] /= 16
-# adm1.rate_function.params['rate_constants'][4:12] *= 1.5
+# adm1.rate_function.params['rate_constants'][4:10] *= 1.5
 # adm1.rate_function.params['half_sat_coeffs'][:-2] *= 0.5
 # adm1.rate_function.params['rate_constants'][10:12] *= 1.5
 # adm1.rate_function.params['half_sat_coeffs'][-2:] *= 0.5
@@ -32,12 +32,16 @@ adm1 = pc.ADM1(flex_rate_function=flex_rhos_adm1)
 #     )
 
 syn_ww = dict(
-    X_ch=2.065,
-    X_pr=5.832,
+    # X_ch=2.065,
+    # X_pr=5.832,
+    X_ch=2.033,
+    X_pr=5.812,
+    X_li=0.004,
+    S_su=1.4e-3,
     S_aa=0.159,
     S_fa=2.755,
     S_IC=0.0143,
-    S_IN=0.014,
+    # S_IN=0.014,
     S_cat=0.0075,
     S_an=0.0058
     )
@@ -62,11 +66,11 @@ sys.simulate(state_reset_hook='reset_cache', t_span=(0,200), method='BDF')
 #     )
 
 h2r_seed = {
-    'X_su': 1.956e-2,
-    'X_aa': 4.229e-2,
-    'X_fa': 1.546e-2,
-    'X_c4': 1.561e-2,
-    'X_pro': 0.511e-2,
+    'X_su': 1.956e-2/0.7,
+    'X_aa': 4.229e-2/0.7,
+    'X_fa': 1.546e-2/0.7,
+    'X_c4': 1.561e-2/0.7,
+    'X_pro': 1.511e-2/0.7,
     # 'X_su': 1.1795398908390478/100,
     # 'X_aa': 2.5184674870545223/100,
     # 'X_fa': 0.9329873586793094/100,
@@ -120,22 +124,22 @@ fig.savefig(ospath.join(figures_path, 'validation_H2E_batch.png'),
 # yields ~ 1.0g/L VSS
 # ch4r_seed = dict(
 #     X_su=4.708e-1, 
-#     # X_aa=4.838e-2,
-#     # X_fa=1.239e-1,
+#     X_aa=4.838e-2,
+#     X_fa=1.239e-1,
 #     X_c4=1.423e-1, 
 #     X_pro=8.978e-2, 
-#     # X_ac=2.959e-1, 
-#     # X_h2=1.467e-1, 
+#     X_ac=2.959e-1, 
+#     X_h2=1.467e-1, 
 #     # X_su=0.5,
-#     X_aa=0.13, 
-#     X_fa=0.08, 
+#     # X_aa=0.13, 
+#     # X_fa=0.08, 
 #     # X_c4=0.2,
 #     # X_pro=0.1,
-#     X_ac=0.25,
-#     X_h2=0.15
+#     # X_ac=0.25,
+#     # X_h2=0.15
 #     )
 
-ch4r_seed = {
+ch4r_seed0 = {
     'X_su': 1.956004638872764,
     'X_aa': 4.229473465645631,
     'X_fa': 1.5466419486676024,
@@ -143,18 +147,13 @@ ch4r_seed = {
     'X_pro': 0.511117652665559,
     'X_ac': 3.2327967588577007,
     'X_h2': 1.390562414197235,
-    # 'X_su': 1.1795398908390478,
-    # 'X_aa': 2.5184674870545223,
-    # 'X_fa': 0.9329873586793094,
-    # 'X_c4': 0.9313043558027272,
-    # 'X_pro': 0.3060024744735877,
-    # 'X_ac': 1.9359643800709951,
-    # 'X_h2': 0.8342225195583577
+    # 'X_pro': 0.7,
+    # 'X_ac': 3.0,
+    # 'X_h2':1.8
     }
 
-
-
-ch4r_seed = {k: v/10 for k,v in ch4r_seed.items()}
+T = []
+CCH4 = []
 
 bg2 = qs.WasteStream('bg2', phase='g')
 BE2 = METAB_BatchExp('BE2', outs=(bg2,), V_liq=25, V_gas=35, V_beads=10, 
@@ -163,21 +162,27 @@ BE2 = METAB_BatchExp('BE2', outs=(bg2,), V_liq=25, V_gas=35, V_beads=10,
                     model=adm1, fixed_headspace_P=True)
 BE2.f_diff = 0.8
 BE2.set_bulk_init(**syn_ww)
-BE2.set_encap_init(**ch4r_seed)
 
 sys2 = qs.System('batch_2', path=(BE2,))
 sys2.set_dynamic_tracker(BE2, bg2)
 
-sys2.simulate(state_reset_hook='reset_cache', t_span=(0,8), method='BDF')
-# bg2.scope.plot_time_series(('S_h2', 'S_IC', 'S_ch4', 'Q'))
-rch4 = bg2.scope.record[:, cmps.index('S_ch4')] * bg2.scope.record[:, -1] # mg/L * m3/d = g(COD)/d
-rch4 *= 1e3 # g(COD)/d -> mg(COD)/d
-rch4 /= 1e6 # m3 reactor -> mL reactor
-rch4 = rch4 * cmps.S_ch4.i_mass / cmps.S_ch4.chem_MW # mg/d -> mmol/d
-t2 = bg2.scope.time_series
-dt2 = t2[1:] - t2[:-1]
-cch4 = np.cumsum(rch4[1:]*dt2)
-cch4 = np.insert(cch4, 0, 0)
+# f = 0.75
+for f in [0.4, 0.75]:
+    ch4r_seed = {k: v*f for k,v in ch4r_seed0.items()}
+    BE2.set_encap_init(**ch4r_seed)
+    
+    sys2.simulate(state_reset_hook='reset_cache', t_span=(0,8), method='BDF')
+    # bg2.scope.plot_time_series(('S_h2', 'S_IC', 'S_ch4', 'Q'))
+    rch4 = bg2.scope.record[:, cmps.index('S_ch4')] * bg2.scope.record[:, -1] # mg/L * m3/d = g(COD)/d
+    rch4 *= 1e3 # g(COD)/d -> mg(COD)/d
+    rch4 /= 1e6 # m3 reactor -> mL reactor
+    rch4 = rch4 * cmps.S_ch4.i_mass / cmps.S_ch4.chem_MW # mg/d -> mmol/d
+    t2 = bg2.scope.time_series
+    dt2 = t2[1:] - t2[:-1]
+    cch4 = np.cumsum(rch4[1:]*dt2)
+    cch4 = np.insert(cch4, 0, 0)
+    T.append(t2)
+    CCH4.append(cch4)
 
 
 #%%
@@ -209,10 +214,12 @@ yerr6 = [x*11 for x in yerr6]
 
 fig, ax = plt.subplots()
 # ax.plot(t2, rch4, color='black', label='simulated')
-ax.plot(t2, cch4, color='black', label='simulated')
-ax.errorbar(tex2, yex2, yerr=yerr2, label='PEG, suspended AS',
+# ax.plot(t2, cch4, color='black', label='simulated')
+for t, c in zip(T, CCH4):
+    ax.plot(t, c, color='black')    
+ax.errorbar(tex2, yex2, yerr=yerr2, label='PEG, suspended ADS',
             marker='s', linestyle='dashed', capsize=2)
-ax.errorbar(tex4, yex4, yerr=yerr4, label='PEG, granular AS',
+ax.errorbar(tex4, yex4, yerr=yerr4, label='PEG, granular ADS',
             marker='D', linestyle='dashed', capsize=2)
 ax.errorbar(tex5, yex5, yerr=yerr5, label='PEG, PAC-supported biofilm',
             marker='^', linestyle='dashed', capsize=2)
