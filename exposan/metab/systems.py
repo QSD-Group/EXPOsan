@@ -14,7 +14,7 @@ for license details.
 import numpy as np, qsdsan as qs
 from qsdsan import (
     processes as pc, 
-    WasteStream, System, TEA, LCA, PowerUtility,
+    WasteStream, System, TEA, LCA, PowerUtility, Construction, Equipment,
     ImpactItem as IItm, 
     StreamImpactItem as SIItm,
     )
@@ -27,7 +27,9 @@ from exposan.metab.units import *
 from exposan.metab.equipment import *
 
 __all__ = ('get_fug_ch4', 'get_NG_eq', 'add_strm_iitm',
-           'kWh', 'MJ', 'add_TEA_LCA', 'create_system')
+           'kWh', 'MJ', 'add_TEA_LCA', 'create_system', 
+           'C0_bulk', 'C1_bulk', 'C2_bulk',
+           'fermenters', 'methanogens')
 
 #%%
 C_mw = 12.0107
@@ -64,13 +66,30 @@ default_inf_concs = {
 C0_bulk = np.array([
     1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
     4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
-    2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 4.708e+00, 1.239e+00,
-    4.838e-01, 1.423e+00, 8.978e-01, 2.959e+00, 1.467e+00, 4.924e-02,
-    4.000e-02, 2.000e-02, 9.900e+02
+    2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 
+    4.708e+00, 1.239e+00, 4.838e-01, 1.423e+00, 8.978e-01, 
+    2.959e+00, 1.467e+00, 
+    4.924e-02, 4.000e-02, 2.000e-02, 9.900e+02
     ])
 
-C1_bulk = C0_bulk.copy()
-C2_bulk = C0_bulk.copy()
+C1_bulk = np.array([
+    1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
+    4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
+    2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 
+    9.416, 2.478, 0.968, 2.846, 1.796, 
+    1.48 , 0.734, 
+    4.924e-02, 4.000e-02, 2.000e-02, 9.900e+02
+    ])
+
+C2_bulk = np.array([
+    1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
+    4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
+    2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 
+    2.354, 0.62 , 0.242, 0.712, 0.449,
+    5.918, 2.934, 
+    4.924e-02, 4.000e-02, 2.000e-02, 9.900e+02
+    ])
+
 fermenters = ('X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro')
 methanogens = ('X_ac', 'X_h2')
 biomass_IDs = (*fermenters, *methanogens)
@@ -93,12 +112,16 @@ def get_NG_eq(bg):
     return -sum(bg.mass*KJ_per_kg)*1e-3/39
 
 def add_fugch4_iitm(ws):
-    SIItm(ID=f'{ws.ID}_fugitive_ch4', linked_stream=ws, 
+    ID = f'{ws.ID}_fugitive_ch4'
+    if ID in IItm.registry: IItm.registry.discard(ID)
+    SIItm(ID=ID, linked_stream=ws, 
           flow_getter=get_fug_ch4,
           GWP100=28, MIR=0.0143794871794872)
 
 def add_ngoffset_iitm(ws):
-    SIItm(ID=f'{ws.ID}_NG_offset', linked_stream=ws, functional_unit='m3',
+    ID = f'{ws.ID}_NG_offset'
+    if ID in IItm.registry: IItm.registry.discard(ID)
+    SIItm(ID=ID, linked_stream=ws, functional_unit='m3',
           flow_getter=get_NG_eq, # m3/hr natural-gas-equivalent
           **bg_offset_CFs)
     
@@ -144,10 +167,14 @@ reactor_classes = {
     }
 
 def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P', 
-                  lifetime=30, discount_rate=0.1, 
+                  lifetime=30, discount_rate=0.1, T=22,
                   Q=5, inf_concs={}, tot_HRT=12,
                   flowsheet=None):
-    
+    PowerUtility.price = 0.0913
+    Construction.registry.clear()
+    Equipment.registry.clear()
+    isa = isinstance
+    IItm.registry.safe_to_replace.update({i for i in IItm.registry if isa(i, SIItm)})
     Reactor = reactor_classes[reactor_type]
     sys_ID = f'{reactor_type}{n_stages}{gas_extraction}'
     
@@ -157,15 +184,11 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
     cmps = pc.create_adm1_cmps()
     adm1 = pc.ADM1(flex_rate_function=flex_rhos_adm1)
     inf_concs = inf_concs or default_inf_concs.copy()
-    inf = WasteStream('inf')
+    inf = WasteStream('inf', T=295.15)
     inf.set_flow_by_concentration(Q, concentrations=inf_concs, 
                                   units=('m3/d', 'kg/m3'))
     C0 = dict(zip(cmps.IDs, C0_bulk))
-    C1_bulk[cmps.indices(fermenters)] *= 2
-    C1_bulk[cmps.indices(methanogens)] /= 10
     C1 = dict(zip(cmps.IDs, C1_bulk))
-    C2_bulk[cmps.indices(fermenters)] /= 10
-    C2_bulk[cmps.indices(methanogens)] *= 2
     C2 = dict(zip(cmps.IDs, C2_bulk))
     
     eff = WasteStream('eff')
@@ -180,12 +203,12 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
         bg = WasteStream('bg', phase='g')
         add_ngoffset_iitm(bg)
         R1 = Reactor('R1', ins=inf, outs=(bg, eff), V_liq=Q*tot_HRT, 
-                     V_gas=Q*tot_HRT*0.1, T=273.15+35, pH_ctrl=6.5,
+                     V_gas=Q*tot_HRT*0.1, T=273.15+T, pH_ctrl=6.5,
                      model=adm1, equipment=[IST, GH],
                      F_BM_default=1, lifetime=lifetime)
         R1.set_init_conc(**C0)
         sys = System(sys_ID, path=(R1,), )
-        sys.set_dynamic_tracker(R1, eff, bg)
+        to_track = (R1, eff, bg)
     else:
         bg1 = WasteStream('bg1', phase='g')
         bg2 = WasteStream('bg2', phase='g')
@@ -196,20 +219,20 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
             add_ngoffset_iitm(bgs)
             R1 = Reactor('R1', ins=[inf, ''], outs=(bg1, '', ''), split=[400, 1],
                          V_liq=Q*tot_HRT/12, V_gas=Q*tot_HRT/12*0.1, 
-                         T=273.15+35, pH_ctrl=5.8, model=adm1, 
+                         T=273.15+T, pH_ctrl=5.8, model=adm1, 
                          F_BM_default=1, lifetime=lifetime)
             DMs = DegassingMembrane('DMs', ins=R1-1, outs=(bgs, 1-R1), F_BM_default=1)
             R2 = Reactor('R2', ins=R1-2, outs=(bg2, eff), V_liq=Q*tot_HRT*11/12, 
                          V_gas=Q*tot_HRT*11/12*0.1, T=273.15+22, pH_ctrl=7.2, 
                          model=adm1, equipment=[IST, GH],
                          F_BM_default=1, lifetime=lifetime)
-            sys = System(sys_ID, path=(R1, DMs, R2))
-            sys.set_dynamic_tracker(R1, R2, eff, bg1, bgs, bg2)
+            sys = System(sys_ID, path=(R1, DMs, R2), recycle=(DMs-1,))
+            to_track = (R1, R2, eff, bg1, bgs, bg2)
         else:
             if gas_extraction == 'P': fixed_headspace_P = False
             else: fixed_headspace_P = True
             R1 = Reactor('R1', ins=inf, outs=(bg1, ''), V_liq=Q*tot_HRT/12, 
-                         V_gas=Q*tot_HRT/12*0.1, T=273.15+35, pH_ctrl=5.8, 
+                         V_gas=Q*tot_HRT/12*0.1, T=273.15+T, pH_ctrl=5.8, 
                          model=adm1, fixed_headspace_P=fixed_headspace_P, 
                          F_BM_default=1, lifetime=lifetime)
             R2 = Reactor('R2', ins=R1-1, outs=(bg2, eff), V_liq=Q*tot_HRT*11/12, 
@@ -217,10 +240,14 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
                          model=adm1, equipment=[IST, GH],
                          F_BM_default=1, lifetime=lifetime)
             sys = System(sys_ID, path=(R1, R2))
-            sys.set_dynamic_tracker(R1, R2, eff, bg1, bg2)
-        
-        R1.set_init_conc(**C0)
-        R2.set_init_conc(**C0)
+            to_track = (R1, R2, eff, bg1, bg2)
+        if (Reactor == UASB and gas_extraction == 'M') or \
+            Reactor in (METAB_FluidizedBed, METAB_PackedBed):
+            R1.set_init_conc(**C0)
+            R2.set_init_conc(**C0)
+        else:
+            R1.set_init_conc(**C1)
+            R2.set_init_conc(**C2)
 
     add_TEA_LCA(sys, discount_rate, lifetime)
     add_chemicals_iitm(sys)
@@ -230,6 +257,7 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
     add_ngoffset_iitm(bge)
     
     sys_dg = System(f'{sys_ID}_edg', path=(sys, DMe))
+    sys_dg.set_dynamic_tracker(*to_track)
     add_TEA_LCA(sys_dg, discount_rate, lifetime)
     add_chemicals_iitm(sys_dg)
     

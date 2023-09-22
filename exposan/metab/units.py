@@ -10,7 +10,7 @@ This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
-from biosteam import Stream
+from biosteam import Stream, VacuumSystem
 from qsdsan import SanStream, WasteStream, CompiledProcesses, SanUnit, Construction
 from qsdsan.sanunits import AnaerobicCSTR, Pump, HXutility
 from qsdsan.utils import auom
@@ -23,7 +23,8 @@ from exposan.metab.utils import (
     UASB_sizing,
     add_prefix,
     _construct_water_pump,
-    _construct_vacuum_pump
+    _construct_vacuum_pump,
+    _F_mass, _F_vol
     )
 import numpy as np, flexsolve as flx
 from math import pi, ceil
@@ -80,13 +81,16 @@ class DegassingMembrane(SanUnit):
     def pressure_drop(self):
         '''Pressure drop in Pa.'''
         specs = self._DuPont_specs
-        Q = self.design_liquid_flow[1]
-        d = specs['od_fiber'] - specs['dw_fiber'] * 2
-        tau = specs['V_liq'] / Q * 3600
+        # Q = self.design_liquid_flow[1]
+        # d = specs['od_fiber'] - specs['dw_fiber'] * 2
+        # tau = specs['V_liq'] / Q * 3600
         L = specs['l_fiber']
-        v = L/tau
-        mu = self.ins[0].mu
-        return 32*mu*L*v/d**2
+        # v = L/tau
+        # mu = self.ins[0].mu
+        # return 32*mu*L*v/d**2
+        dP = 2*6895 # 2 psi pressure drop, shell side liquid, PermSelect, max liquid flowrate, fiber length 14.2 cm
+        return dP * L/14.2e-2
+
     
     @property
     def H2_degas_efficiency(self):
@@ -127,13 +131,16 @@ class DegassingMembrane(SanUnit):
     def _setup(self):
         hasfield = hasattr
         inf, = self.ins
-        gas = self.outs[0]
+        # gas = self.outs[0]
         aux = self.auxiliary_unit_names
         if not hasfield(self, 'vacuum_pump'):
-            pump = self.vacuum_pump = Pump(f'{self.ID}_VacPump', ins=Stream(f'{gas.ID}_proxy'),
-                                           dP_design=self.vacuum_pressure)
+        #     pump = self.vacuum_pump = Pump(f'{self.ID}_VacPump', ins=Stream(f'{gas.ID}_proxy'),
+        #                                     dP_design=self.vacuum_pressure)
+        #     self.construction.append(
+        #         Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
+        #         )
             self.construction.append(
-                Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
+                Construction(ID='VacPump_surrogate', linked_unit=self, item='air_compressor')
                 )
         if not hasfield(self, 'water_pump'):
             pump = self.water_pump = Pump(f'{inf.ID}_Pump', ins=Stream(f'{inf.ID}_proxy'))
@@ -248,10 +255,17 @@ class DegassingMembrane(SanUnit):
         D['Number'] = ceil(inf.F_vol/self.design_liquid_flow[1])
         dm_specs = self._DuPont_specs
         D.update(dm_lci.DuPont_input(**dm_specs))
-        vac, wat = self.vacuum_pump, self.water_pump        
-        vac.ins[0].copy_like(self.outs[0])
-        vac.dP_design = self.vacuum_pressure
-        vac.simulate()
+        # vac, wat = self.vacuum_pump, self.water_pump        
+        # vac.ins[0].copy_like(self.outs[0])
+        # vac.dP_design = self.vacuum_pressure
+        # vac.simulate()
+        gas = self.outs[0]
+        V_gas = dm_lci.V_lumen(**dm_specs)
+        self.vacuum_pump = vac = VacuumSystem(
+            self, F_mass=_F_mass(gas), F_vol=_F_vol(gas), 
+            P_suction=101325-self.vacuum_pressure, vessel_volume=V_gas
+            )
+        wat = self.water_pump
         wat.ins[0].copy_like(self.ins[0])
         wat.dP_design = self.pressure_drop
         wat.simulate()
@@ -271,7 +285,8 @@ class DegassingMembrane(SanUnit):
             p22.quantity = q22
             p40.quantity = q40
             qvac = _construct_vacuum_pump(vac)
-            pvac = get(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
+            # pvac = get(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
+            pvac = get(creg, f'{flowsheet_ID}_{self.ID}_VacPump_surrogate')
             pvac.quantity = qvac
         self.NaOCl.F_mass = self._calc_NaOCl(freq)
         self.citric_acid.F_mass = self._calc_citric_acid(freq)
@@ -280,7 +295,7 @@ class DegassingMembrane(SanUnit):
         bg = self.outs[0]
         cmps = bg.components
         KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
-        bg.price = -sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
+        bg.price = sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
         D, C = self.design_results, self.baseline_purchase_costs
         C['Module'] = self.unit_price * D['Number']
         self.add_OPEX['NaOCl'] = self.NaOCl.F_mass/0.125 * 0.78 # USD/hr, $0.78/kg 12.5% solution, https://www.alibaba.com/product-detail/wholesale-sodium-hypochlorite-NaClO-15-Industrial_1600307294563.html?spm=a2700.galleryofferlist.normal_offer.d_title.21145d84U7uilV
@@ -290,7 +305,7 @@ class DegassingMembrane(SanUnit):
 class UASB(AnaerobicCSTR):
     
     auxiliary_unit_names = ('heat_exchanger', )
-    def __init__(self, ID='', lifetime=30, 
+    def __init__(self, ID='', lifetime=30, T=295.15,
                  fraction_retain=0.963, pH_ctrl=False,
                  max_depth_to_diameter=4,
                  design_upflow_velocity=0.5,        # m/h
@@ -300,8 +315,8 @@ class UASB(AnaerobicCSTR):
                  rockwool_unit_cost=0.59,           # https://www.alibaba.com/product-detail/mineral-wool-insulation-price-mineral-wool_60101640303.html?spm=a2700.7724857.0.0.262334d1rZXb48
                  carbon_steel_unit_cost=0.5,        # https://www.alibaba.com/product-detail/ASTM-A106-Ss400-Q235-Standard-Ms_1600406694387.html?s=p
                  **kwargs):
-
-        super().__init__(ID, lifetime=lifetime, **kwargs)
+        
+        super().__init__(ID, lifetime=lifetime, T=T, **kwargs)
         self._f_retain = self.thermo.chemicals.x * fraction_retain
         self.pH_ctrl = pH_ctrl
         self.max_depth_to_diameter = max_depth_to_diameter
@@ -324,19 +339,23 @@ class UASB(AnaerobicCSTR):
             self.construction += aux.construction
         for equip in self.equipment:
             self.construction += equip.construction
+        self._cached_state = None
     
     def _setup(self):
         hasfield = hasattr
         setfield = setattr
         if self.fixed_headspace_P and not hasfield(self, 'vacuum_pump'):
-            gas = self.outs[0]
-            dP = max(0, (self._P_atm-self._P_gas)*1e5)
-            pump = self.vacuum_pump = Pump(gas.ID+'_VacPump', ins=Stream(f'{gas.ID}_proxy'),
-                                           dP_design=dP)
+            # gas = self.outs[0]
+            # dP = max(0, (self._P_atm-self._P_gas)*1e5)
+            # pump = self.vacuum_pump = Pump(gas.ID+'_VacPump', ins=Stream(f'{gas.ID}_proxy'),
+            #                                dP_design=dP)
+            # self.construction.append(
+            #     Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
+            #     )
             self.construction.append(
-                Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
+                Construction(ID='VacPump_surrogate', linked_unit=self, item='air_compressor')
                 )
-            self.auxiliary_unit_names = tuple(*self.auxiliary_unit_names, 'vacuum_pump')
+            self.auxiliary_unit_names = tuple({*self.auxiliary_unit_names, 'vacuum_pump'})
         for i, ws in enumerate(self.ins):
             field = f'Pump_ins{i}'
             if not hasfield(self, field):
@@ -389,7 +408,7 @@ class UASB(AnaerobicCSTR):
     def _run(self):
         super()._run()
         if self._mixed.T > self.T:
-            if self.T < self.T_air: self.T_air = self.T.copy()
+            if self.T < self.T_air: self.T_air = self.T
             self._correct_T()
     
     def _correct_T(self):
@@ -404,6 +423,17 @@ class UASB(AnaerobicCSTR):
         T_ext = self.T_air
         self.T = (m*c*T_in + U*S*T_ext)/(m*c+U*S)
     
+    def _cache_state(self):
+        self._cached_state = self._state[:-1].copy()
+    
+    def _init_state(self):
+        if self._cached_state is not None:
+            Q = self._mixed.F_vol * 24
+            self._state = np.append(self._cached_state, Q)
+            self._dstate = self._state * 0.
+        else:
+            super()._init_state()
+        
     def _compile_ODE(self):
         cmps = self.components
         f_rtn = self._f_retain
@@ -440,6 +470,15 @@ class UASB(AnaerobicCSTR):
             _update_dstate()
         self._ODE = dy_dt
     
+    def biomass_tss(self, biomass_IDs):
+        y = self._state
+        cmps = self.components
+        bm_idx = cmps.indices(biomass_IDs)
+        return sum(y[bm_idx] * cmps.i_mass[bm_idx])
+    
+    def get_retained_mass(self, biomass_IDs):
+        return self.biomass_tss(biomass_IDs) * self.V_liq
+    
     def _design(self):
         D = self.design_results
         den = self._density
@@ -453,7 +492,7 @@ class UASB(AnaerobicCSTR):
         Vg = 1/3*pi*r_cone**3*self._gas_separator_h2r
         if Vg < 1.5*self.V_gas:
             Vg = 1.5*self.V_gas
-            h_cone = Vg/(1/3*pi*r_cone**2)
+        h_cone = Vg/(1/3*pi*r_cone**2)
         S_cone = pi*r_cone*(r_cone + (r_cone**2 + h_cone**2)**(1/2))
         S_baffle = (pi*(dia/2)**2 - pi*(dia/2*(self._gas_separator_r_frac-1))**2)\
             *self._baffle_slope*2
@@ -535,12 +574,19 @@ class UASB(AnaerobicCSTR):
         getfield = getattr
         creg = Construction.registry
         if self.fixed_headspace_P:
-            vac = self.vacuum_pump
-            vac.ins[0].copy_like(self.outs[0])
-            vac.dP_design = (self.external_P - self.headspace_P) * 1e5
-            vac.simulate()
+            # vac = self.vacuum_pump
+            # vac.ins[0].copy_like(self.outs[0])
+            # vac.dP_design = (self.external_P - self.headspace_P) * 1e5
+            # vac.simulate()
+            gas = self.outs[0]
+            self.vacuum_pump = vac = VacuumSystem(
+                self, F_mass=_F_mass(gas), F_vol=_F_vol(gas), 
+                P_suction=self.headspace_P * 1e5,
+                vessel_volume=self.V_gas
+                )
             qvac = _construct_vacuum_pump(vac)
-            pvac = getfield(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
+            # pvac = getfield(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
+            pvac = getfield(creg, f'{flowsheet_ID}_{self.ID}_VacPump_surrogate')
             pvac.quantity = qvac
         for i, ws, in enumerate(self.ins):
             ID = pipe_IDs[i]
@@ -565,15 +611,45 @@ class UASB(AnaerobicCSTR):
                 const = getfield(creg, f'{flowsheet_ID}_{self.ID}_{name}')
                 const.quantity = D[i]
         
-        self.add_equipment_design()
+        self.add_equipment_design()  
+        
+    def add_equipment_design(self):
+        unit_design = self.design_results
+        unit_units = self._units
+        isa = isinstance
+        get = getattr
+        if isa(self.equipment_lifetime, int):
+            lt = self.equipment_lifetime
+            self.equipment_lifetime = defaultdict(lambda: lt)
+        F_BM, F_D, F_P, F_M, lifetime = \
+            self.F_BM, self.F_D, self.F_P, self.F_M, self.equipment_lifetime
+        for equip in self.equipment:
+            equip_ID = equip.ID
+            prefix = f'{equip.__class__.__name__} {equip_ID}'
+            equip_design = equip._design_results = equip._design()
+            equip_design = {} if not equip_design else equip_design
+            unit_design.update(add_prefix(equip_design, prefix))
+            equip_units = {} if not equip.units else equip.units
+            unit_units.update(add_prefix(equip_units, prefix))
+            for unit_attr, equip_attr in zip(
+                    (F_BM, F_D, F_P, F_M, lifetime),
+                    ('F_BM', 'F_D', 'F_P', 'F_M', 'lifetime'),
+                    ):
+                equip_attr = get(equip, equip_attr)
+                if isa(equip_attr, dict):
+                    unit_attr.update(add_prefix(equip_attr, prefix))
+                else:
+                    unit_attr[equip_ID] = equip_attr
     
     _NG_price = 0.85*auom('kJ').conversion_factor('therm') # [USD/kJ] 5.47 2021USD/Mcf vs. 4.19 2016USD/Mcf
 
     def _cost(self):
         bg = self.outs[0]
-        cmps = bg.components
-        KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
-        self.add_OPEX['NG_offset'] = -sum(bg.mass*KJ_per_kg)*self._NG_price # kJ/hr * USD/kJ = USD/hr
+        if bg.F_mass > 0:
+            cmps = bg.components
+            KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
+            # self.add_OPEX['NG_offset'] = -sum(bg.mass*KJ_per_kg)*self._NG_price # kJ/hr * USD/kJ = USD/hr
+            bg.price = sum(bg.mass*KJ_per_kg)/bg.F_mass*self._NG_price # kJ/kg * USD/kJ = USD/kg
         D = self.design_results
         C = self.baseline_purchase_costs
         C['Wall concrete'] = D['Wall concrete']*self.wall_concrete_unit_cost
@@ -597,7 +673,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
                  voidage=0.6, bead_diameter=2, n_layer=5,
                  boundary_layer_thickness=0.01, diffusivity=None,
                  f_diff=0.55, max_encapsulation_tss=16, model=None,
-                 pH_ctrl=False, T=298.15, headspace_P=0.1, external_P=1.013, 
+                 pH_ctrl=False, T=295.15, headspace_P=0.1, external_P=1.013, 
                  pipe_resistance=5.0e4, fixed_headspace_P=False,
                  isdynamic=True, exogenous_vars=(), lifetime=30, bead_lifetime=10,
                  reactor_height_to_diameter=1.5, recirculation_ratio=None,
@@ -647,6 +723,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         self.rockwool_unit_cost = rockwool_unit_cost
         self.carbon_steel_unit_cost = carbon_steel_unit_cost
         self.model = model
+        self._cached_state = None
         
         hx_in = Stream(f'{ID}_hx_in')
         hx_out = Stream(f'{ID}_hx_out')
@@ -707,20 +784,24 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             or None to avoid double counting.
         
         '''
+        if not self._rQ: 
+            u_min = self.min_fluidizing_velocity(Beads._bead_density)
+            if u_min <= 0: return 0
+            A_bed = (pi*self.V_bed**2/4/self.reactor_height_to_diameter**2)**(1/3)
+            A_liq = A_bed * 0.4
+            return u_min * A_liq/self._mixed.F_vol - 1
         return self._rQ
     @recirculation_ratio.setter
     def recirculation_ratio(self, r):
         if r:
+            u_min = self.min_fluidizing_velocity(Beads._bead_density)
             A_bed = (pi*self.V_bed**2/4/self.reactor_height_to_diameter**2)**(1/3)
             A_liq = A_bed * 0.4
-            u_min = self.min_fluidizing_velocity(Beads._bead_density)
             u = self._mixed.F_vol * (1+r)/A_liq
-            r_min = u_min * A_liq/self._mixed.F_vol - 1
             if u_min and u < u_min:
                 warn(f'Recirculation ratio {r} is too low to fluidize beads, '
                      f'current estimated flow velocity through bed is {u:.2f} m/h, '
-                     f'minimal fluidizing velocity is {u_min:.2f} m/h. '
-                     f'Recirculation ratio should at least be {r_min:.1f}.')
+                     f'minimal fluidizing velocity is {u_min:.2f} m/h. ')
         self._rQ = r
         
     @property
@@ -888,14 +969,17 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         hasfield = hasattr
         setfield = setattr
         if self.fixed_headspace_P and not hasfield(self, 'vacuum_pump'):
-            gas = self.outs[0]
-            dP = max(0, (self._P_atm-self._P_gas)*1e5)
-            pump = self.vacuum_pump = Pump(gas.ID+'_VacPump', ins=Stream(f'{gas.ID}_proxy'),
-                                           dP_design=dP)
+            # gas = self.outs[0]
+            # dP = max(0, (self._P_atm-self._P_gas)*1e5)
+            # pump = self.vacuum_pump = Pump(gas.ID+'_VacPump', ins=Stream(f'{gas.ID}_proxy'),
+            #                                dP_design=dP)
+            # self.construction.append(
+            #     Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
+            #     )
             self.construction.append(
-                Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
+                Construction(ID='VacPump_surrogate', linked_unit=self, item='air_compressor')
                 )
-            self.auxiliary_unit_names = tuple([*self.auxiliary_unit_names, 'vacuum_pump'])
+            self.auxiliary_unit_names = tuple({*self.auxiliary_unit_names, 'vacuum_pump'})
         for i, ws in enumerate(self.ins):
             field = f'Pump_ins{i}'
             if not hasfield(self, field):
@@ -911,7 +995,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
     def _run(self):
         super()._run()
         if self._mixed.T > self.T:
-            if self.T < self.T_air: self.T_air = self.T.copy()
+            if self.T < self.T_air: self.T_air = self.T
             self._correct_T()
     
     def _correct_T(self):
@@ -944,12 +1028,13 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             self._concs = arr
     
     def _cache_state(self):
-        self._concs = self._state[:-(self._n_gas+1)].copy()
+        self._cached_state = self._state[:-(self._n_gas+1)].copy()
     
     def _init_state(self):
         mixed = self._mixed
         Q = mixed.get_total_flow('m3/d')
-        if self._concs is not None: Cs = self._concs
+        if self._cached_state is not None: Cs = self._cached_state
+        elif self._concs is not None: Cs = self._concs
         else: Cs = np.tile(mixed.conc, (self.n_dz+1))
         self._state = np.append(Cs, [0]*self._n_gas + [Q]).astype('float64')
         self._dstate = self._state * 0.
@@ -1083,7 +1168,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             # Detachment -- particulates
             tss = np.sum(Cs_en * (cmps.x*cmps.i_mass), axis=1)
             x_net_growth = np.sum(Rs_en * cmps.x, axis=1)/np.sum(Cs_en * cmps.x, axis=1) # d^(-1), equivalent to k_de
-            u_de = 1/(1+np.exp(K_tss-tss)) * np.maximum(x_net_growth, 0)
+            u_de = 1/(1+np.exp(K_tss-tss)) * np.maximum(x_net_growth, 0) * (tss > 0)
             de_en = np.diag(u_de) @ (Cs_en * cmps.x)
             tot_de = np.sum(np.diag(dV) @ de_en, axis=0) / V_bead  # detachment per unit volume of beads
 
@@ -1250,12 +1335,19 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         getfield = getattr
         creg = Construction.registry
         if self.fixed_headspace_P:
-            vac = self.vacuum_pump
-            vac.ins[0].copy_like(self.outs[0])
-            vac.dP_design = (self.external_P - self.headspace_P) * 1e5            
-            vac.simulate()
+            # vac = self.vacuum_pump
+            # vac.ins[0].copy_like(self.outs[0])
+            # vac.dP_design = (self.external_P - self.headspace_P) * 1e5            
+            # vac.simulate()
+            gas = self.outs[0]
+            self.vacuum_pump = vac = VacuumSystem(
+                self, F_mass=_F_mass(gas), F_vol=_F_vol(gas), 
+                P_suction=self.headspace_P * 1e5,
+                vessel_volume=self.V_gas
+                )
             qvac = _construct_vacuum_pump(vac)
-            pvac = getfield(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
+            # pvac = getfield(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
+            pvac = getfield(creg, f'{flowsheet_ID}_{self.ID}_VacPump_surrogate')
             pvac.quantity = qvac
         for i, ws, in enumerate(self.ins):
             ID = pipe_IDs[i]
@@ -1287,50 +1379,8 @@ class METAB_FluidizedBed(AnaerobicCSTR):
 
     _NG_price = 0.85*auom('kJ').conversion_factor('therm') # [USD/kJ] 5.47 2021USD/Mcf vs. 4.19 2016USD/Mcf    
 
-    def _cost(self):
-        bg = self.outs[0]
-        cmps = bg.components
-        KJ_per_kg = cmps.i_mass/cmps.chem_MW*cmps.LHV
-        self.add_OPEX['NG_offset'] = -sum(bg.mass*KJ_per_kg)*self._NG_price # kJ/hr * USD/kJ = USD/hr
-        D = self.design_results
-        C = self.baseline_purchase_costs
-        C['Wall concrete'] = D['Wall concrete']*self.wall_concrete_unit_cost
-        C['Slab concrete'] = D['Slab concrete']*self.slab_concrete_unit_cost
-        C['Stainless steel'] = D['Stainless steel']*self.stainless_steel_unit_cost
-        C['Rockwool'] = D['Rockwool']*self.rockwool_unit_cost
-        C['Carbon steel'] = D['Carbon steel']*self.carbon_steel_unit_cost
-        C['HDPE pipes'] = sum(hdpe_price(inch)*kg for inch, kg in zip(self._hdpe_ids, self._hdpe_kgs))
-        self.add_equipment_cost()
-    
-    def add_equipment_design(self):
-        unit_design = self.design_results
-        unit_units = self._units
-        isa = isinstance
-        get = getattr
-        if isa(self.equipment_lifetime, int):
-            lt = self.equipment_lifetime
-            self.equipment_lifetime = defaultdict(lambda: lt)
-        F_BM, F_D, F_P, F_M, lifetime = \
-            self.F_BM, self.F_D, self.F_P, self.F_M, self.equipment_lifetime
-
-        for equip in self.equipment:
-            equip_ID = equip.ID
-            prefix = f'{equip.__class__.__name__} {equip_ID}'
-            equip_design = equip._design_results = equip._design()
-            equip_design = {} if not equip_design else equip_design
-            unit_design.update(add_prefix(equip_design, prefix))
-
-            equip_units = {} if not equip.units else equip.units
-            unit_units.update(add_prefix(equip_units, prefix))
-            for unit_attr, equip_attr in zip(
-                    (F_BM, F_D, F_P, F_M, lifetime),
-                    ('F_BM', 'F_D', 'F_P', 'F_M', 'lifetime'),
-                    ):
-                equip_attr = get(equip, equip_attr)
-                if isa(equip_attr, dict):
-                    unit_attr.update(add_prefix(equip_attr, prefix))
-                else:
-                    unit_attr[equip_ID] = equip_attr
+    _cost = UASB._cost
+    add_equipment_design = UASB.add_equipment_design
 
 #%% METAB_PackedBed
 
@@ -1358,7 +1408,9 @@ class METAB_PackedBed(METAB_FluidizedBed):
             self.V_gas = max(0.1, Vg-Vg_subtract)
         self.f_void = f
     
-    recirculation_ratio = property(METAB_FluidizedBed.recirculation_ratio.fget)
+    @property
+    def recirculation_ratio(self):
+        return self._rQ or 0.
     @recirculation_ratio.setter
     def recirculation_ratio(self, r):
         self._rQ = r
@@ -1416,7 +1468,8 @@ class METAB_PackedBed(METAB_FluidizedBed):
     def _init_state(self):
         mixed = self._mixed
         Q = mixed.get_total_flow('m3/d')
-        if self._concs is not None: Cs = self._concs
+        if self._cached_state is not None: Cs = self._cached_state
+        elif self._concs is not None: Cs = self._concs
         else: Cs = np.tile(mixed.conc, (self.n_dz+1)*self.n_cstr)
         self._state = np.append(Cs, [0]*self._n_gas + [Q]).astype('float64')
         self._dstate = self._state * 0.
@@ -1424,9 +1477,15 @@ class METAB_PackedBed(METAB_FluidizedBed):
     def f_q_gas_fixed_P_headspace(self, rhoTs, S_gas, T):
         cmps = self.components
         gas_mass2mol_conversion = (cmps.i_mass / cmps.chem_MW)[self._gas_cmp_idx]
-        self._q_gas = self._R*T/(self._P_gas-self.p_vapor(convert_to_bar=True))\
+        q_gas = self._R*T/(self._P_gas-self.p_vapor(convert_to_bar=True))\
                                 *self.V_liq/self.n_cstr*sum(rhoTs*gas_mass2mol_conversion)
-        return self._q_gas
+        return q_gas
+    
+    def f_q_gas_var_P_headspace(self, rhoTs, S_gas, T):
+        p_gas = S_gas * self._R * T
+        self._P_gas = P = sum(p_gas) + self.p_vapor(convert_to_bar=True) 
+        q_gas = max(0, self._k_p * (P - self._P_atm))
+        return q_gas
     
     def _compile_ODE(self):
         cmps = self.components
@@ -1497,7 +1556,7 @@ class METAB_PackedBed(METAB_FluidizedBed):
                 # Detachment -- particulates
                 tss = np.sum(Cs_en * (cmps.x*cmps.i_mass), axis=1)
                 x_net_growth = np.sum(Rs_en * cmps.x, axis=1)/np.sum(Cs_en * cmps.x, axis=1) # d^(-1), equivalent to k_de
-                u_de = 1/(1+np.exp(K_tss-tss)) * np.maximum(x_net_growth, 0)
+                u_de = 1/(1+np.exp(K_tss-tss)) * np.maximum(x_net_growth, 0) * (tss > 0)
                 de_en = np.diag(u_de) @ (Cs_en * cmps.x)
                 tot_de = np.sum(np.diag(dV) @ de_en, axis=0) / V_bead  # detachment per unit volume of beads
     
@@ -1526,9 +1585,35 @@ class METAB_PackedBed(METAB_FluidizedBed):
                 flow_in = Q * Cs_bk             # for next CSTR
             
             q_gas = np.apply_along_axis(f_qgas, 1, rhos_gas, S_gas, T)
+            self._q_gas = sum(q_gas)
             d_gas = - sum(q_gas)*S_gas/V_gas + np.sum(rhos_gas*V_liq, axis=0)/V_gas * gas_mass2mol_conversion
             _dstate[-(n_gas+1):-1] = d_gas
             _dstate[-1] = sum(dy_ins[:,-1])
             _update_dstate()
         
         self._ODE = dy_dt
+
+    def biomass_tss(self, biomass_IDs):
+        '''Returns a 2-tuple of biomass TSS [kg/m3] in bulk and in encapsulation matrix (on average)'''
+        y = self._state
+        cmps = self.components
+        n_cmps = len(cmps)
+        n_dz = self.n_dz
+        n_cstr = self.n_cstr
+        bm_idx = cmps.indices(biomass_IDs)
+        outs = []
+        dz = self.r_beads / n_dz
+        zs = np.linspace(dz, self.r_beads, n_dz)
+        dV = 4/3*np.pi*(zs)**3
+        V_bead = dV[-1]
+        dV[1:] -= dV[:-1]
+        for i in range(n_cstr):
+            start = i*((n_dz+1)*n_cmps)
+            stop_en = start + n_dz*n_cmps
+            stop_bk = stop_en + n_cmps
+            en_bm = np.sum(y[start: stop_en].reshape((n_dz, n_cmps))[:,bm_idx] * cmps.i_mass[bm_idx], axis=1)
+            bk_bm = np.sum((y[stop_en: stop_bk] * cmps.i_mass)[bm_idx])
+            C_en_avg = np.dot(en_bm, dV)/V_bead
+            outs.append([bk_bm, C_en_avg])
+        outs = np.asarray(outs)
+        return np.mean(outs, axis=0)

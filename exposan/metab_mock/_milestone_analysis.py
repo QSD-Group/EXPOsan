@@ -26,7 +26,7 @@ citric_acid_item = IItm.get_item('citric_acid')
 
 #%%
 irr = 0.1
-# p_ng = 0.65165 # USD/therm of natural gas charged to the brewery in 2016 (including tax and delivert etc.)
+# p_ng = 0.65165 # USD/therm of natural gas charged to the brewery in 2016 (including tax and delivery etc.)
 # p_ng = 0.85*auom('kJ').conversion_factor('therm') # [USD/kJ] 5.47 2021USD/Mcf vs. 4.19 2016USD/Mcf
 op_hr = 365*24
 get = getattr
