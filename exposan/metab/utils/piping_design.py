@@ -59,14 +59,14 @@ def pipe_design(F_vol, vmin, stainless_steel=False):
         weights = ssteel_lb_per_ft
     else:
         IDs = hdpe_ID_inch
-        weights = ssteel_lb_per_ft
+        weights = hdpe_lb_per_ft
     ids = IDs[IDs <= ID]
     if ids.size == 0: 
         ID = IDs[0] # inch
         kg_per_m = weights[0] * _lbft2kgm
     else: 
         ID = ids[-1]
-        kg_per_m = weights[IDs == ID] * _lbft2kgm
+        kg_per_m = weights[IDs == ID][0] * _lbft2kgm
     return ID, kg_per_m
 
 def pipe_friction_head(q, L, ID, stainless_steel=False):
@@ -74,7 +74,7 @@ def pipe_friction_head(q, L, ID, stainless_steel=False):
     https://www.engineeringtoolbox.com/hazen-williams-water-d_797.html'''
     if stainless_steel: c = _Hazen_Williams_coefficients['Stainless steel']
     else: c = _Hazen_Williams_coefficients['HDPE']
-    return 2.083e-3 * (100*q / c)**1.852 / ID**4.8655 * L * _ft2m
+    return 2.083e-3 * (100*q / c)**1.852 / ID**4.8655 * L
 
 def hdpe_price(ID):
     '''Price in [USD/kg] as a function of inner diameter [inch],

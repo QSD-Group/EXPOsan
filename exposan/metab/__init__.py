@@ -51,8 +51,8 @@ from .units import *
 from . import systems
 from .systems import *
 
-# from . import models
-# from .models import *
+from . import models
+from .models import *
 
 __all__ = (
     'folder',
@@ -63,7 +63,7 @@ __all__ = (
     *equipment.__all__,
     *units.__all__,
     *systems.__all__,
-    # *models.__all__,
+    *models.__all__,
 	)
 
 
