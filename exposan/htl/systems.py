@@ -28,8 +28,6 @@ References:
     https://doi.org/10.2172/1111191.
 '''
 
-
-
 import os, qsdsan as qs
 from qsdsan import sanunits as qsu
 from biosteam.units import IsenthalpicValve
@@ -115,7 +113,7 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     # unit conversion: https://www.unitsconverters.com/en/Btu(It)/Hmft2mdegf-To-W/M2mk/Utu-4404-4398
     H1.register_alias('H1')
     
-    HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('biochar','HTL_aqueous','biocrude','offgas_HTL'))
+    HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('biochar','HTL_aqueous','biocrude','offgas_HTL'), dewatered_unit_exist_in_the_system=True)
     HTL.register_alias('HTL')
     
     # =============================================================================

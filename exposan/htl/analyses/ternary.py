@@ -39,8 +39,8 @@ ternary_results_dict = {'lipid':[], 'protein':[], 'carbohydrate':[],
                         'GWP_sludge_5th':[], 'GWP_sludge_50th':[], 'GWP_sludge_95th':[]}
 
 ternary_results = pd.DataFrame(ternary_results_dict)
-lipids = (0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
-proteins = (0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
+lipids = (0, )
+proteins = (0, )
 
 get_quantiles = lambda data, quantiles=(0.05, 0.5, 0.95): [data.quantile(q) for q in quantiles]
 

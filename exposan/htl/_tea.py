@@ -175,7 +175,7 @@ def create_tea(sys, OSBL_units=None, cls=None):
     if cls is None: cls = HTL_TEA
     tea = cls(
         system=sys, 
-        IRR=0.10, # Jones
+        IRR=0.1, # use 0%-3%-5% triangular distribution for waste management, and 5%-10%-15% triangular distribution for biofuel production
         duration=(2022, 2052), # Jones
         depreciation='MACRS7', # Jones
         income_tax=0.35, # Jones
@@ -187,7 +187,7 @@ def create_tea(sys, OSBL_units=None, cls=None):
         startup_salesfrac=0.5, # Davis NREL 2018
         startup_VOCfrac=0.75, # Davis NREL 2018
         WC_over_FCI=0.05, # Jones
-        finance_interest=0.08, # Jones
+        finance_interest=0.08, # for waste management, use 3%, for biofuel, use 8%
         finance_years=10, # Jones
         finance_fraction=0.6, # debt: Jones
         OSBL_units=OSBL_units,

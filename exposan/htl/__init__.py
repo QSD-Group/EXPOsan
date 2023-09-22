@@ -77,7 +77,7 @@ from . import models
 from .models import *
 
 def simulate_and_save(model,
-                      resample=True, samples_kwargs={'N':1000, 'rule':'L', 'seed':None},
+                      resample=True, samples_kwargs={'N':1000, 'rule':'L', 'seed':3221},
                       include_spearman=True, spearman_kwargs={'nan_policy': 'omit'},
                       export_results=True, path='',notes=''):
     if resample:
@@ -98,7 +98,7 @@ def simulate_and_save(model,
     if export_results:
         ID = model.system.flowsheet.ID
         N = model.table.shape[0]
-        path = path or os.path.join(results_path, f'{date.today()}__{ID}_{N}_{notes}.xlsx')
+        path = path or os.path.join(results_path, f'{date.today()}_{ID}_{N}_{notes}.xlsx')
         with pd.ExcelWriter(path) as writer:
             parameters.to_excel(writer, sheet_name='Parameters')
             results.to_excel(writer, sheet_name='Results')

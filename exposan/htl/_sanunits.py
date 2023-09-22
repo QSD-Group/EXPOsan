@@ -23,6 +23,7 @@ from qsdsan.utils import auom
 
 __all__ = (
     'AcidExtraction',
+    'Crude_transportation',
     'FuelMixer',
     'HTLmixer',
     'StruvitePrecipitation',
@@ -552,9 +553,9 @@ class FuelMixer(SanUnit):
     
     Parameters
     ----------
-    ins : Iterable(stream)
+    ins: Iterable(stream)
         gasoline, diesel
-    outs : Iterable(stream)
+    outs: Iterable(stream)
         fuel
     target: str
         The target can only be 'gasoline' or 'diesel'.
@@ -614,3 +615,61 @@ class FuelMixer(SanUnit):
             raise ValueError('`target` must be either "gasoline" or "diesel" ',
                              f'the provided "{i}" is not valid.')
         self._target = i
+        
+# =============================================================================
+# Crude_transportation
+# ============================================================================= 
+class Crude_transportation(SanUnit):
+    '''
+    Calculate cost and environmental impacts for transporting crude oil
+    
+    Parameters
+    ----------
+    ins: Iterable(stream)
+        crude_oil
+    outs: Iterable(stream)
+        transported_crude_oil
+    price: float
+        Transportation price, [$/gal/mile].
+    '''
+    
+    _N_ins = 1
+    _N_outs = 1
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='WasteStream', distance=1, price=-0.00011724956320070381, sold_price=0.4402869614299816, round_trip=True):
+    # https://financialpost.com/commodities/energy/canadian-producers-turns-to-oil-trucks-as-supply-glut-grows
+    # distance in km, price in $/kg/km
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.distance = distance
+        self.price = price
+        self.sold_price = sold_price
+        self.round_trip = round_trip
+
+    def _run(self):
+        
+        crude_oil = self.ins[0]
+        transported_crude_oil = self.outs[0]
+        
+        transported_crude_oil.copy_like(crude_oil)
+    
+    def _cost(self):
+        if self.round_trip == True:
+            self.outs[0].price = self.price*self.distance*2+self.sold_price
+        else:
+            self.outs[0].price = self.price*self.distance+self.sold_price
+            
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    

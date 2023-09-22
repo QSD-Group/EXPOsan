@@ -27,7 +27,7 @@ from exposan.htl import (
 
 __all__ = ('create_model',)
 
-def create_model(system=None, exclude_sludge_compositions=False,
+def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=False,
                  include_HTL_yield_as_metrics=True, include_other_metrics=True,
                  include_other_CFs_as_metrics=True, include_check=True):
     '''
@@ -46,10 +46,26 @@ def create_model(system=None, exclude_sludge_compositions=False,
     stream = flowsheet.stream
     model = qs.Model(sys)
     param = model.parameter
+    if feedstock not in ['sludge', 'food', 'fogs', 'green', 'manure']:
+        raise ValueError("invalid feedstock, select from 'sludge', 'food', 'fogs', 'green', and 'manure'")
     
     # =========================================================================
     # WWTP
     # =========================================================================
+    
+    # add plant size for Spearman's
+    
+    # raw_wastewater = stream.raw_wastewater
+    # dist = shape.Uniform(12618039,18927059)
+    # @param(name='plant_size',
+    #         element=raw_wastewater,
+    #         kind='coupled',
+    #         units='MGD',
+    #         baseline=15772549,
+    #         distribution=dist)
+    # def set_plant_size(i):
+    #     raw_wastewater.F_mass=i
+    
     WWTP = unit.WWTP
     dist = shape.Uniform(0.846,1.034)
     @param(name='ww_2_dry_sludge',
@@ -82,25 +98,110 @@ def create_model(system=None, exclude_sludge_compositions=False,
         WWTP.sludge_dw_ash=i
     
     if not exclude_sludge_compositions:
-        dist = shape.Triangle(0.08,0.204,0.308)
-        @param(name='sludge_afdw_lipid',
-                element=WWTP,
-                kind='coupled',
-                units='-',
-                baseline=0.204,
-                distribution=dist)
-        def set_sludge_afdw_lipid(i):
-            WWTP.sludge_afdw_lipid=i
-        
-        dist = shape.Triangle(0.38,0.463,0.51)
-        @param(name='sludge_afdw_protein',
-                element=WWTP,
-                kind='coupled',
-                units='-',
-                baseline=0.463,
-                distribution=dist)
-        def set_sludge_afdw_protein(i):
-            WWTP.sludge_afdw_protein=i
+        if feedstock == 'sludge':
+            dist = shape.Triangle(0.08,0.204,0.308)
+            @param(name='sludge_afdw_lipid',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.204,
+                    distribution=dist)
+            def set_sludge_afdw_lipid(i):
+                WWTP.sludge_afdw_lipid=i
+            
+            dist = shape.Triangle(0.38,0.463,0.51)
+            @param(name='sludge_afdw_protein',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.463,
+                    distribution=dist)
+            def set_sludge_afdw_protein(i):
+                WWTP.sludge_afdw_protein=i
+                
+        if feedstock == 'food':
+            dist = shape.Uniform(0.13,0.30)
+            @param(name='sludge_afdw_lipid', # I will keep using 'sludge' in the name
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.22,
+                    distribution=dist)
+            def set_sludge_afdw_lipid(i):
+                WWTP.sludge_afdw_lipid=i
+            
+            dist = shape.Uniform(0.15,0.25)
+            @param(name='sludge_afdw_protein',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.2,
+                    distribution=dist)
+            def set_sludge_afdw_protein(i):
+                WWTP.sludge_afdw_protein=i
+
+        if feedstock == 'fogs':
+            dist = shape.Uniform(0.919,1)
+            @param(name='sludge_afdw_lipid', # I will keep using 'sludge' in the name
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.96,
+                    distribution=dist)
+            def set_sludge_afdw_lipid(i):
+                WWTP.sludge_afdw_lipid=i
+            
+            dist = shape.Uniform(0,0.0123)
+            @param(name='sludge_afdw_protein',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.006,
+                    distribution=dist)
+            def set_sludge_afdw_protein(i):
+                WWTP.sludge_afdw_protein=i
+                
+        if feedstock == 'green':
+            dist = shape.Uniform(0.0104,0.0259)
+            @param(name='sludge_afdw_lipid', # I will keep using 'sludge' in the name
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.018,
+                    distribution=dist)
+            def set_sludge_afdw_lipid(i):
+                WWTP.sludge_afdw_lipid=i
+            
+            dist = shape.Uniform(0.016,0.082)
+            @param(name='sludge_afdw_protein',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.049,
+                    distribution=dist)
+            def set_sludge_afdw_protein(i):
+                WWTP.sludge_afdw_protein=i
+                
+        if feedstock == 'manure':
+            dist = shape.Uniform(0.0377,0.247)
+            @param(name='sludge_afdw_lipid', # I will keep using 'sludge' in the name
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.14,
+                    distribution=dist)
+            def set_sludge_afdw_lipid(i):
+                WWTP.sludge_afdw_lipid=i
+            
+            dist = shape.Uniform(0.143,0.264)
+            @param(name='sludge_afdw_protein',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.2,
+                    distribution=dist)
+            def set_sludge_afdw_protein(i):
+                WWTP.sludge_afdw_protein=i
     
     dist = shape.Uniform(0.675,0.825)
     @param(name='lipid_2_C',
@@ -677,12 +778,12 @@ def create_model(system=None, exclude_sludge_compositions=False,
         CHP.unit_CAPEX=i
     
     tea = sys.TEA
-    dist = shape.Triangle(0,0.1,0.2)
+    dist = shape.Triangle(0,0.03,0.05)
     @param(name='IRR',
             element='TEA',
             kind='isolated',
             units='-',
-            baseline=0.1,
+            baseline=0.03,
             distribution=dist)
     def set_IRR(i):
         tea.IRR=i
@@ -1522,7 +1623,7 @@ def create_model(system=None, exclude_sludge_compositions=False,
 
         @metric(name='OzoneDepletion_sludge',units='kg CFC-11-eq/ton dry sludge',element='LCA')
         def get_OZP_sludge():
-            return lca.get_total_impacts()['OzoneDepletion']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
+            return lca.get_total_impacts(exclude=(raw_wastewater,))['OzoneDepletion']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
         @metric(name='Carcinogenics_diesel',units='kg benzene-eq/MMBTU diesel',element='LCA')
         def get_CAR_diesel():
@@ -1530,7 +1631,7 @@ def create_model(system=None, exclude_sludge_compositions=False,
 
         @metric(name='Carcinogenics_sludge',units='kg benzene-eq/ton dry sludge',element='LCA')
         def get_CAR_sludge():
-            return lca.get_total_impacts()['Carcinogenics']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
+            return lca.get_total_impacts(exclude=(raw_wastewater,))['Carcinogenics']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
         @metric(name='Acidification_diesel',units='moles of H+-eq/MMBTU diesel',element='LCA')
         def get_ACD_diesel():
@@ -1538,7 +1639,7 @@ def create_model(system=None, exclude_sludge_compositions=False,
 
         @metric(name='Acidification_sludge',units='moles of H+-eq/ton dry sludge',element='LCA')
         def get_ACD_sludge():
-            return lca.get_total_impacts()['Acidification']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
+            return lca.get_total_impacts(exclude=(raw_wastewater,))['Acidification']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
         @metric(name='RespiratoryEffects_diesel',units='kg PM2.5-eq/MMBTU diesel',element='LCA')
         def get_RES_diesel():
@@ -1546,7 +1647,7 @@ def create_model(system=None, exclude_sludge_compositions=False,
 
         @metric(name='RespiratoryEffects_sludge',units='kg PM2.5-eq/ton dry sludge',element='LCA')
         def get_RES_sludge():
-            return lca.get_total_impacts()['RespiratoryEffects']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
+            return lca.get_total_impacts(exclude=(raw_wastewater,))['RespiratoryEffects']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
         @metric(name='Eutrophication_diesel',units='kg N/MMBTU diesel',element='LCA')
         def get_EUT_diesel():
@@ -1554,7 +1655,7 @@ def create_model(system=None, exclude_sludge_compositions=False,
 
         @metric(name='Eutrophication_sludge',units='kg N/ton dry sludge',element='LCA')
         def get_EUT_sludge():
-            return lca.get_total_impacts()['Eutrophication']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
+            return lca.get_total_impacts(exclude=(raw_wastewater,))['Eutrophication']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
         @metric(name='PhotochemicalOxidation_diesel',units='kg NOx-eq/MMBTU diesel',element='LCA')
         def get_PHO_diesel():
@@ -1562,7 +1663,7 @@ def create_model(system=None, exclude_sludge_compositions=False,
 
         @metric(name='PhotochemicalOxidation_sludge',units='kg NOx-eq/ton dry sludge',element='LCA')
         def get_PHO_sludge():
-            return lca.get_total_impacts()['PhotochemicalOxidation']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
+            return lca.get_total_impacts(exclude=(raw_wastewater,))['PhotochemicalOxidation']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
         @metric(name='Ecotoxicity_diesel',units='kg 2,4-D-eq/MMBTU diesel',element='LCA')
         def get_ECO_diesel():
@@ -1570,7 +1671,7 @@ def create_model(system=None, exclude_sludge_compositions=False,
 
         @metric(name='Ecotoxicity_sludge',units='kg 2,4-D-eq/ton dry sludge',element='LCA')
         def get_ECO_sludge():
-            return lca.get_total_impacts()['Ecotoxicity']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
+            return lca.get_total_impacts(exclude=(raw_wastewater,))['Ecotoxicity']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
         @metric(name='NonCarcinogenics_diesel',units='kg toluene-eq/MMBTU diesel',element='LCA')
         def get_NCA_diesel():
@@ -1578,7 +1679,7 @@ def create_model(system=None, exclude_sludge_compositions=False,
 
         @metric(name='NonCarcinogenics_sludge',units='kg toluene-eq/ton dry sludge',element='LCA')
         def get_NCA_sludge():
-            return lca.get_total_impacts()['NonCarcinogenics']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
+            return lca.get_total_impacts(exclude=(raw_wastewater,))['NonCarcinogenics']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
         
     if include_check:
         
