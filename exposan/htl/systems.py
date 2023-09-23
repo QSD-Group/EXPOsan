@@ -113,7 +113,7 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     # unit conversion: https://www.unitsconverters.com/en/Btu(It)/Hmft2mdegf-To-W/M2mk/Utu-4404-4398
     H1.register_alias('H1')
     
-    HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('biochar','HTL_aqueous','biocrude','offgas_HTL'), dewatered_unit_exist_in_the_system=True)
+    HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'), dewatered_unit_exist_in_the_system=True)
     HTL.register_alias('HTL')
     
     # =============================================================================

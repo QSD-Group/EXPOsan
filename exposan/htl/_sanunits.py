@@ -315,16 +315,16 @@ class HTLmixer(SanUnit):
 
 class AcidExtraction(Reactor):
     '''
-    H2SO4 is added to biochar from HTL to extract phosphorus.
+    H2SO4 is added to hydrochar from HTL to extract phosphorus.
     
     Parameters
     ----------
     ins : Iterable(stream)
-        biochar, acid.
+        hydrochar, acid.
     outs : Iterable(stream)
         residual, extracted.
     acid_vol: float
-        0.5 M H2SO4 to biochar ratio: mL/g.
+        0.5 M H2SO4 to hydrochar ratio: mL/g.
     P_acid_recovery_ratio: float
         The ratio of phosphorus that can be extracted.
         
@@ -366,46 +366,46 @@ class AcidExtraction(Reactor):
         
     def _run(self):
         
-        biochar, acid = self.ins
+        hydrochar, acid = self.ins
         residual, extracted = self.outs
         
         self.HTL = self.ins[0]._source
         
-        if biochar.F_mass <= 0:
+        if hydrochar.F_mass <= 0:
             pass
         else:
-            if self.HTL.biochar_P <= 0:
-                residual.copy_like(biochar)
+            if self.HTL.hydrochar_P <= 0:
+                residual.copy_like(hydrochar)
             else: 
-                acid.imass['H2SO4'] = biochar.F_mass*self.acid_vol*0.5*98.079/1000
-                #0.5 M H2SO4 acid_vol (10 mL/1 g) Biochar
-                acid.imass['H2O'] = biochar.F_mass*self.acid_vol*1.05 -\
+                acid.imass['H2SO4'] = hydrochar.F_mass*self.acid_vol*0.5*98.079/1000
+                # 0.5 M H2SO4 acid_vol (10 mL/1 g) hydrochar
+                acid.imass['H2O'] = hydrochar.F_mass*self.acid_vol*1.05 -\
                                     acid.imass['H2SO4']
                 # 0.5 M H2SO4 density: 1.05 kg/L 
                 # https://www.fishersci.com/shop/products/sulfuric-acid-1n-0-5m-
                 # standard-solution-thermo-scientific/AC124240010 (accessed 10-6-2022)
                 
-                residual.imass['Residual'] = biochar.F_mass - self.ins[0]._source.\
-                                             biochar_P*self.P_acid_recovery_ratio
+                residual.imass['Residual'] = hydrochar.F_mass - self.ins[0]._source.\
+                                             hydrochar_P*self.P_acid_recovery_ratio
                 
                 extracted.copy_like(acid)
-                extracted.imass['P'] = biochar.F_mass - residual.F_mass
+                extracted.imass['P'] = hydrochar.F_mass - residual.F_mass
                 # assume just P can be extracted
                 
                 residual.phase = 's'
                 
-                residual.T = extracted.T = biochar.T
-                residual.P = biochar.P
-                # H2SO4 reacts with biochar to release heat and temperature will be
+                residual.T = extracted.T = hydrochar.T
+                residual.P = hydrochar.P
+                # H2SO4 reacts with hydrochar to release heat and temperature will be
                 # increased mixture's temperature
             
     @property
     def residual_C(self):
-        return self.ins[0]._source.biochar_C
+        return self.ins[0]._source.hydrochar_C
     
     @property
     def residual_P(self):
-        return self.ins[0]._source.biochar_P - self.outs[1].imass['P']
+        return self.ins[0]._source.hydrochar_P - self.outs[1].imass['P']
         
     def _design(self):
         self.N = ceil(self.HTL.WWTP.ins[0].F_vol/788.627455/self.V)

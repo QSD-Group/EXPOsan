@@ -409,14 +409,14 @@ def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=Fa
         HTL.TOC_TC=i
     
     dist = shape.Normal(1.750,0.122)
-    @param(name='biochar_C_slope',
+    @param(name='hydrochar_C_slope',
             element=HTL,
             kind='coupled',
             units='-',
             baseline=1.750,
             distribution=dist)
-    def set_biochar_C_slope(i):
-        HTL.biochar_C_slope=i
+    def set_hydrochar_C_slope(i):
+        HTL.hydrochar_C_slope=i
     
     dist = shape.Triangle(0.035,0.063,0.102)
     @param(name='biocrude_moisture_content',
@@ -429,14 +429,14 @@ def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=Fa
         HTL.biocrude_moisture_content=i
     
     dist = shape.Uniform(0.84,0.88)
-    @param(name='biochar_P_recovery_ratio',
+    @param(name='hydrochar_P_recovery_ratio',
             element=HTL,
             kind='coupled',
             units='-',
             baseline=0.86,
             distribution=dist)
-    def set_biochar_P_recovery_ratio(i):
-        HTL.biochar_P_recovery_ratio=i
+    def set_hydrochar_P_recovery_ratio(i):
+        HTL.hydrochar_P_recovery_ratio=i
     
     # =========================================================================
     # AcidEx
@@ -1026,13 +1026,13 @@ def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=Fa
         def get_offgas_C():
             return HTL.offgas_C
         
-        @metric(name='biochar_C',units='kg/hr',element='Sankey')
-        def get_biochar_C():
-            return HTL.biochar_C
+        @metric(name='hydrochar_C',units='kg/hr',element='Sankey')
+        def get_hydrochar_C():
+            return HTL.hydrochar_C
         
-        @metric(name='biochar_P',units='kg/hr',element='Sankey')
-        def get_biochar_P():
-            return HTL.biochar_P
+        @metric(name='hydrochar_P',units='kg/hr',element='Sankey')
+        def get_hydrochar_P():
+            return HTL.hydrochar_P
         
         cmps = qs.get_components()
         D2 = unit.D2
@@ -1095,11 +1095,11 @@ def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=Fa
             
             @metric(name='residual_P',units='kg/hr',element='Sankey')
             def get_residual_P():
-                return HTL.biochar_P-AcidEx.outs[1].imass['P']
+                return HTL.hydrochar_P-AcidEx.outs[1].imass['P']
         
         @metric(name='residual_C',units='kg/hr',element='Sankey')
         def get_residual_C():
-            return HTL.biochar_C
+            return HTL.hydrochar_C
         
         @metric(name='struvite_N',units='kg/hr',element='Sankey')
         def get_struvite_N():
@@ -1586,9 +1586,9 @@ def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=Fa
         def get_HTL_aqueous_yield():
             return HTL.aqueous_yield
         
-        @metric(name='HTL_biochar_yield',units='-',element='HTL')
-        def get_HTL_biochar_yield():
-            return HTL.biochar_yield
+        @metric(name='HTL_hydrochar_yield',units='-',element='HTL')
+        def get_HTL_hydrochar_yield():
+            return HTL.hydrochar_yield
         
         @metric(name='HTL_gasyield',units='-',element='HTL')
         def get_HTL_gas_yield():

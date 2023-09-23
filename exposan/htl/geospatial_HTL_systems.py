@@ -14,6 +14,9 @@ from exposan.htl import (
     create_tea,
     )
 from exposan.htl import _sanunits as su
+from biosteam.units import IsenthalpicValve
+from exposan.htl import _sanunits as su
+from biosteam import settings
 
 __all__ = ('create_spatial_system',)
 
@@ -95,7 +98,6 @@ def create_spatial_system(waste_price=400, waste_GHG=800, size=50, distance=30, 
     qs.ImpactItem.load_from_file(os.path.join(folder, 'data/impact_items.xlsx'))
     
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
-    # Jones baseline: 1276.6 MGD, 1.066e-4 $/kg ww
     # set H2O equal to the total raw wastewater into the WWTP
     
     # =============================================================================
@@ -142,14 +144,14 @@ def create_spatial_system(waste_price=400, waste_GHG=800, size=50, distance=30, 
         
     WWTP.register_alias('WWTP')
     
+    P1.register_alias('P1')
+    # Jones 2014: 3049.7 psia
+    
     raw_wastewater.price = -WWTP.ww_2_dry_sludge*waste_price/3.79/(10**6)
 
     # =============================================================================
     # HTL (Area 100)
     # =============================================================================
-    
-    P1.register_alias('P1')
-    # Jones 2014: 3049.7 psia
     
     H1 = qsu.HXutility('A110', include_construction=True,
                        ins=P1-0, outs='heated_sludge', T=351+273.15,
@@ -163,10 +165,62 @@ def create_spatial_system(waste_price=400, waste_GHG=800, size=50, distance=30, 
     H1.register_alias('H1')
     
     if solid_fate == 8:
-        HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('biochar','HTL_aqueous','biocrude','offgas_HTL'), dewatered_unit_exist_in_the_system=True)
+        HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'), dewatered_unit_exist_in_the_system=True)
     else:
-        HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('biochar','HTL_aqueous','biocrude','offgas_HTL'), dewatered_unit_exist_in_the_system=False)
+        HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'), dewatered_unit_exist_in_the_system=False)
     HTL.register_alias('HTL')
+    
+    # =============================================================================
+    # CHG (Area 200)
+    # =============================================================================
+    
+    H2SO4_Tank = qsu.StorageTank('T200', ins='H2SO4', outs=('H2SO4_out'),
+                             init_with='WasteStream', tau=24, vessel_material='Stainless steel')
+    H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
+    H2SO4_Tank.register_alias('H2SO4_Tank')
+    
+    SP1 = qsu.ReversedSplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
+                               init_with='Stream')
+    SP1.register_alias('SP1')
+    # must put after AcidEx and MemDis in path during simulation to ensure input
+    # not empty
+    
+
+    AcidEx = su.AcidExtraction('A200', ins=(HTL-0, SP1-0),
+                               outs=('residual','extracted'))
+    AcidEx.register_alias('AcidEx')
+    # AcidEx.outs[0].price = -0.055 # SS 2021 SOT PNNL report page 24 Table 9
+    # not include residual for TEA and LCA for now
+    
+    M1_outs1 = AcidEx.outs[1]
+    M1 = su.HTLmixer('A210', ins=(HTL-1, M1_outs1), outs=('mixture',))
+    M1.register_alias('M1')
+    
+    StruPre = su.StruvitePrecipitation('A220', ins=(M1-0,'MgCl2','NH4Cl','MgO'),
+                                       outs=('struvite','CHG_feed'))
+    StruPre.ins[1].price = 0.5452
+    StruPre.ins[2].price = 0.13
+    StruPre.ins[3].price = 0.2
+    StruPre.outs[0].price = 0.661
+    StruPre.register_alias('StruPre')
+    
+    CHG = qsu.CatalyticHydrothermalGasification(
+        'A230', ins=(StruPre-1, '7.8%_Ru/C'), outs=('CHG_out', '7.8%_Ru/C_out'))
+    CHG.ins[1].price = 134.53
+    CHG.register_alias('CHG')
+    
+    V1 = IsenthalpicValve('A240', ins=CHG-0, outs='depressed_cooled_CHG', P=50*6894.76, vle=True)
+    V1.register_alias('V1')
+    
+    F1 = qsu.Flash('A250', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
+                      T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
+    F1.register_alias('F1')
+    
+    MemDis = qsu.MembraneDistillation('A260', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
+                                  outs=('ammonium_sulfate','MemDis_ww', 'Membrane_out','solution'), init_with='WasteStream')
+    MemDis.ins[2].price = 0.5256
+    MemDis.outs[0].price = 0.3236
+    MemDis.register_alias('MemDis')
     
     # =============================================================================
     # Storage, and disposal (Area 500)
@@ -178,12 +232,25 @@ def create_spatial_system(waste_price=400, waste_GHG=800, size=50, distance=30, 
     CrudeOilTank.register_alias('CrudeOilTank')
     
     CrudeOilTank.outs[0].price = -0.000075*distance + 0.3847
-
+    
+    PC1 = qsu.PhaseChanger('S540', ins=CHG-1, outs='CHG_catalyst_out', phase='s')
+    PC1.register_alias('PC1')
+    
+    GasMixer = qsu.Mixer('S580', ins=(HTL-3, F1-0,),
+                          outs=('fuel_gas'), init_with='Stream')
+    GasMixer.register_alias('GasMixer')
+    
     # =============================================================================
     # facilities
     # =============================================================================
     
     qsu.HeatExchangerNetwork('HXN', force_ideal_thermo=True)
+    
+    CHP = qsu.CombinedHeatPower('CHP', include_construction=True,
+                                ins=(GasMixer-0, 'natural_gas', 'air'),
+                  outs=('emission','solid_ash'), init_with='WasteStream',
+                  supplement_power_utility=False)
+    CHP.ins[1].price = 0.1685
     
     sys = qs.System.from_units(
         'sys_geospatial',
@@ -207,7 +274,134 @@ def create_spatial_system(waste_price=400, waste_GHG=800, size=50, distance=30, 
                         NonCarcinogenics=1.9859/1000*distance-1.0441,
                         RespiratoryEffects=0.00022076/1000*distance-0.00068606)
     
-    create_tea(sys)
+    # CHG catalyst
+    qs.StreamImpactItem(ID='CHG_catalyst_item',
+                        linked_stream=stream.CHG_catalyst_out,
+                        Acidification=991.6544196,
+                        Ecotoxicity=15371.08292,
+                        Eutrophication=0.45019348,
+                        GlobalWarming=484.7862509,
+                        OzoneDepletion=2.23437E-05,
+                        PhotochemicalOxidation=6.735405072,
+                        Carcinogenics=1.616793132,
+                        NonCarcinogenics=27306.37232,
+                        RespiratoryEffects=3.517184526)
+    
+    # Membrane distillation and acid extraction
+    qs.StreamImpactItem(ID='H2SO4_item',
+                        linked_stream=stream.H2SO4,
+                        Acidification=0.019678922,
+                        Ecotoxicity=0.069909345,
+                        Eutrophication=4.05E-06,
+                        GlobalWarming=0.008205666,
+                        OzoneDepletion=8.94E-10,
+                        PhotochemicalOxidation=5.04E-05,
+                        Carcinogenics=1.74E-03,
+                        NonCarcinogenics=1.68237815,
+                        RespiratoryEffects=9.41E-05)
+    
+    # Membrane distillation
+    qs.StreamImpactItem(ID='NaOH_item',
+                        linked_stream=stream.NaOH,
+                        Acidification=0.33656,
+                        Ecotoxicity=0.77272,
+                        Eutrophication=0.00032908,
+                        GlobalWarming=1.2514,
+                        OzoneDepletion=7.89E-07,
+                        PhotochemicalOxidation=0.0033971,
+                        Carcinogenics=0.0070044,
+                        NonCarcinogenics=13.228,
+                        RespiratoryEffects=0.0024543)
+    
+    qs.StreamImpactItem(ID='RO_item',
+                        linked_stream=stream.Membrane_in,
+                        Acidification=0.53533,
+                        Ecotoxicity=0.90848,
+                        Eutrophication=0.0028322,
+                        GlobalWarming=2.2663,
+                        OzoneDepletion=0.00000025541,
+                        PhotochemicalOxidation=0.0089068,
+                        Carcinogenics=0.034791,
+                        NonCarcinogenics=31.8,
+                        RespiratoryEffects=0.0028778)
+    
+    # Struvite precipitation
+    qs.StreamImpactItem(ID='MgCl2_item',
+                        linked_stream=stream.MgCl2,
+                        Acidification=0.77016,
+                        Ecotoxicity=0.97878,
+                        Eutrophication=0.00039767,
+                        GlobalWarming=2.8779,
+                        OzoneDepletion=4.94E-08,
+                        PhotochemicalOxidation=0.0072306,
+                        Carcinogenics=0.0050938,
+                        NonCarcinogenics=8.6916,
+                        RespiratoryEffects=0.004385)
+
+    qs.StreamImpactItem(ID='NH4Cl_item',
+                        linked_stream=stream.NH4Cl,
+                        Acidification=0.34682,
+                        Ecotoxicity=0.90305, 
+                        Eutrophication=0.0047381,
+                        GlobalWarming=1.525,
+                        OzoneDepletion=9.22E-08,
+                        PhotochemicalOxidation=0.0030017,
+                        Carcinogenics=0.010029,
+                        NonCarcinogenics=14.85,
+                        RespiratoryEffects=0.0018387)
+    
+    qs.StreamImpactItem(ID='MgO_item',
+                        linked_stream=stream.MgO,
+                        Acidification=0.12584,
+                        Ecotoxicity=2.7949,
+                        Eutrophication=0.00063607,
+                        GlobalWarming=1.1606,
+                        OzoneDepletion=1.54E-08,
+                        PhotochemicalOxidation=0.0017137,
+                        Carcinogenics=0.018607,
+                        NonCarcinogenics=461.54,
+                        RespiratoryEffects=0.0008755)
+    
+    # Heating and power utilities
+    qs.StreamImpactItem(ID='natural_gas_item',
+                        linked_stream=stream.natural_gas,
+                        Acidification=0.083822558,
+                        Ecotoxicity=0.063446198,
+                        Eutrophication=7.25E-05,
+                        GlobalWarming=1.584234288,
+                        OzoneDepletion=1.23383E-07,
+                        PhotochemicalOxidation=0.000973731,
+                        Carcinogenics=0.000666424,
+                        NonCarcinogenics=3.63204,
+                        RespiratoryEffects=0.000350917)
+    
+    # Struvite
+    qs.StreamImpactItem(ID='struvite_item',
+                        linked_stream=stream.struvite,
+                        Acidification=-0.122829597,
+                        Ecotoxicity=-0.269606396,
+                        Eutrophication=-0.000174952,
+                        GlobalWarming=-0.420850152,
+                        OzoneDepletion=-2.29549E-08,
+                        PhotochemicalOxidation=-0.001044087,
+                        Carcinogenics=-0.002983018,
+                        NonCarcinogenics=-4.496533528,
+                        RespiratoryEffects=-0.00061764)
+    
+    # Ammonium sulfate
+    qs.StreamImpactItem(ID='NH42SO4_item',
+                        linked_stream=stream.ammonium_sulfate,
+                        Acidification=-0.72917,
+                        Ecotoxicity=-3.4746,
+                        Eutrophication=-0.0024633,
+                        GlobalWarming=-1.2499,
+                        OzoneDepletion=-6.12E-08,
+                        PhotochemicalOxidation=-0.0044519,
+                        Carcinogenics=-0.036742,
+                        NonCarcinogenics=-62.932,
+                        RespiratoryEffects=-0.0031315)
+    
+    create_tea(sys, IRR_value=0.1, finance_interest_value=0.08)
     qs.LCA(
         system=sys, lifetime=30, lifetime_unit='yr',
         Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())/0.67848*elec_GHG*30, # 0.67848 is the GHG level with the Electricity item, we can adjust the electricity amount to reflect different GHG of electricity at different locations
