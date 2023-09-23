@@ -1,28 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jun  5 08:46:28 2023
+Created on Mon Jun 5 08:46:28 2023
 
 @author: jiananfeng
 """
 
-import os, qsdsan as qs, biosteam as bst, pandas as pd
+import os
+import qsdsan as qs, biosteam as bst
+import pandas as pd
 from qsdsan import sanunits as qsu
 from qsdsan.utils import clear_lca_registries
-from exposan.htl import (
-    _load_components,
-    create_tea,
-    )
+from exposan.htl import (_load_components, create_tea,)
 from exposan.htl import _sanunits as su
 from biosteam.units import IsenthalpicValve
-from exposan.htl import _sanunits as su
 from biosteam import settings
 
 __all__ = ('create_spatial_system',)
 
 def _load_process_settings(location='IL'):
 # =============================================================================
-#     add a heating agent
+# add a heating agent
 # =============================================================================
     # use DOWTHERM(TM) A Heat Transfer Fluid (HTF) as the heating agent
     # DOWTHERM(TM) A HTF = 73.5% diphenyl oxide (DPO) + 26.5% Biphenyl (BIP)
@@ -56,7 +54,7 @@ def _load_process_settings(location='IL'):
     bst.CE = qs.CEPCI_by_year[2020] # use 2020$ to match up with latest PNNL report
     
 # =============================================================================
-#     set utility prices
+# set utility prices
 # =============================================================================
 
     folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/'
@@ -64,20 +62,20 @@ def _load_process_settings(location='IL'):
     elec_input = pd.read_excel(folder + 'HTL_spatial_model_input.xlsx')
 
     bst.PowerUtility.price = elec_input[elec_input['state']==location]['price (10-year median)'].iloc[0]/100
-    
-    # # These utilities are provided by CHP thus cost already considered
-    # # setting the regeneration price to 0 or not will not affect the final results
-    # # as the utility cost will be positive for the unit that consumes it
-    # # but negative for HXN/CHP as they produce it
-    # for adj in ('low', 'medium', 'high'):
-    #     steam = bst.HeatUtility.get_agent(f'{adj}_pressure_steam')
-    #     steam.heat_transfer_price = steam.regeneration_price = 0.
 
-def create_spatial_system(waste_price=400, waste_GHG=800, size=50, distance=30, solid_fate=1, ww_2_dry_sludge_ratio=1, solid_reduction=0, state='IL', elec_GHG=0.365593393303875):
-# 400: Seiple et al. 2020, use 400 for now,
-# later, we may want to give different prices according to the original disposal methods.
-# size in MGD
-# distance in km
+# =============================================================================
+# create the HTL spatial system
+# =============================================================================
+
+def create_spatial_system(waste_price=400, # determined by the solid fate
+                          waste_GHG=800, # determined by the solid fate
+                          size=100, # in MGD
+                          distance=30, # in km, using Google Maps API
+                          solid_fate=1, # from Seiple et al. 2020
+                          ww_2_dry_sludge_ratio=1, # use real solid amount/WRRFs influent
+                          solid_reduction=0, # determined by the solid fate
+                          state='IL',
+                          elec_GHG=0.365593393303875):
 
     flowsheet_ID = 'htl_geospatial'
     
@@ -92,7 +90,6 @@ def create_spatial_system(waste_price=400, waste_GHG=800, size=50, distance=30, 
     _load_components()
     _load_process_settings(location=state)
     
-    # Construction here, StreamImpactItem after TEA
     folder = os.path.dirname(__file__)
     qs.ImpactIndicator.load_from_file(os.path.join(folder, 'data/impact_indicators.csv'))
     qs.ImpactItem.load_from_file(os.path.join(folder, 'data/impact_items.xlsx'))
@@ -104,12 +101,15 @@ def create_spatial_system(waste_price=400, waste_GHG=800, size=50, distance=30, 
     # pretreatment (Area 000)
     # =============================================================================
     
-    if solid_fate == 8:
+    if solid_fate == 8: # lagoon and constructed wetland
         WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
-                       ww_2_dry_sludge=ww_2_dry_sludge_ratio*(1-solid_reduction), # use real sludge data
+                       ww_2_dry_sludge=ww_2_dry_sludge_ratio*(1-solid_reduction),
                        # how much metric ton/day sludge can be produced by 1 MGD of ww
-                       sludge_moisture=0.99, sludge_dw_ash=0.257, 
-                       sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, operation_hours=7920)
+                       sludge_moisture=0.99, # dewatering needed
+                       sludge_dw_ash=0.257, # w/o digestion
+                       sludge_afdw_lipid=0.204, # w/o digestion
+                       sludge_afdw_protein=0.463, # w/o digestion
+                       operation_hours=7920)
         
         SluC = qsu.SludgeCentrifuge('A000', ins=WWTP-0,
                                 outs=('supernatant','compressed_sludge'),
@@ -122,22 +122,28 @@ def create_spatial_system(waste_price=400, waste_GHG=800, size=50, distance=30, 
         P1 = qsu.SludgePump('A100', ins=SluC-1, outs='pressed_sludge', P=3049.7*6894.76,
                   init_with='Stream')
     
-    elif solid_fate in (1,2,4):
+    elif solid_fate in (1, 2, 4):
         WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
-                       ww_2_dry_sludge=ww_2_dry_sludge_ratio*(1-solid_reduction), # use real sludge data
+                       ww_2_dry_sludge=ww_2_dry_sludge_ratio*(1-solid_reduction),
                        # how much metric ton/day sludge can be produced by 1 MGD of ww
-                       sludge_moisture=0.8, sludge_dw_ash=0.454166666666667, 
-                       sludge_afdw_lipid=0.1693, sludge_afdw_protein=0.5185, operation_hours=7920)
+                       sludge_moisture=0.8, # dewatering not needed
+                       sludge_dw_ash=0.454166666666667, # w/ digestion
+                       sludge_afdw_lipid=0.1693, # w/ digestion
+                       sludge_afdw_protein=0.5185, # w/ digestion
+                       operation_hours=7920)
         
         P1 = qsu.SludgePump('A100', ins=WWTP-0, outs='pressed_sludge', P=3049.7*6894.76,
                   init_with='Stream')
         
     else:
         WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
-                       ww_2_dry_sludge=ww_2_dry_sludge_ratio*(1-solid_reduction), # use real sludge data
+                       ww_2_dry_sludge=ww_2_dry_sludge_ratio*(1-solid_reduction),
                        # how much metric ton/day sludge can be produced by 1 MGD of ww
-                       sludge_moisture=0.8, sludge_dw_ash=0.257, 
-                       sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, operation_hours=7920)
+                       sludge_moisture=0.8, # dewatering not needed
+                       sludge_dw_ash=0.257, # w/o digestion
+                       sludge_afdw_lipid=0.204, # w/o digestion
+                       sludge_afdw_protein=0.463, # w/o digestion
+                       operation_hours=7920)
         
         P1 = qsu.SludgePump('A100', ins=WWTP-0, outs='pressed_sludge', P=3049.7*6894.76,
                   init_with='Stream')
@@ -147,7 +153,7 @@ def create_spatial_system(waste_price=400, waste_GHG=800, size=50, distance=30, 
     P1.register_alias('P1')
     # Jones 2014: 3049.7 psia
     
-    raw_wastewater.price = -WWTP.ww_2_dry_sludge*waste_price/3.79/(10**6)
+    raw_wastewater.price = -WWTP.ww_2_dry_sludge*waste_price/3.79/(10**6) # 1 gal water = 3.79 kg water
 
     # =============================================================================
     # HTL (Area 100)
@@ -165,9 +171,13 @@ def create_spatial_system(waste_price=400, waste_GHG=800, size=50, distance=30, 
     H1.register_alias('H1')
     
     if solid_fate == 8:
-        HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'), dewatered_unit_exist_in_the_system=True)
+        HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0,
+                                           outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'),
+                                           dewatered_unit_exist_in_the_system=True)
     else:
-        HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'), dewatered_unit_exist_in_the_system=False)
+        HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0,
+                                           outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'),
+                                           dewatered_unit_exist_in_the_system=False)
     HTL.register_alias('HTL')
     
     # =============================================================================
@@ -182,9 +192,6 @@ def create_spatial_system(waste_price=400, waste_GHG=800, size=50, distance=30, 
     SP1 = qsu.ReversedSplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
                                init_with='Stream')
     SP1.register_alias('SP1')
-    # must put after AcidEx and MemDis in path during simulation to ensure input
-    # not empty
-    
 
     AcidEx = su.AcidExtraction('A200', ins=(HTL-0, SP1-0),
                                outs=('residual','extracted'))
@@ -204,8 +211,9 @@ def create_spatial_system(waste_price=400, waste_GHG=800, size=50, distance=30, 
     StruPre.outs[0].price = 0.661
     StruPre.register_alias('StruPre')
     
-    CHG = qsu.CatalyticHydrothermalGasification(
-        'A230', ins=(StruPre-1, '7.8%_Ru/C'), outs=('CHG_out', '7.8%_Ru/C_out'))
+    CHG = qsu.CatalyticHydrothermalGasification('A230',
+                                                ins=(StruPre-1, '7.8%_Ru/C'),
+                                                outs=('CHG_out', '7.8%_Ru/C_out'))
     CHG.ins[1].price = 134.53
     CHG.register_alias('CHG')
     
@@ -217,26 +225,27 @@ def create_spatial_system(waste_price=400, waste_GHG=800, size=50, distance=30, 
     F1.register_alias('F1')
     
     MemDis = qsu.MembraneDistillation('A260', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
-                                  outs=('ammonium_sulfate','MemDis_ww', 'Membrane_out','solution'), init_with='WasteStream')
+                                  outs=('ammonium_sulfate','MemDis_ww', 'Membrane_out','solution'),
+                                  init_with='WasteStream')
     MemDis.ins[2].price = 0.5256
     MemDis.outs[0].price = 0.3236
     MemDis.register_alias('MemDis')
     
     # =============================================================================
-    # Storage, and disposal (Area 500)
+    # Storage, and disposal (Area 300)
     # =============================================================================
     
-    CrudeOilTank = qsu.StorageTank('T500', ins=HTL-2, outs=('crude_oil'),
+    CrudeOilTank = qsu.StorageTank('T300', ins=HTL-2, outs=('crude_oil'),
                                     tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
     # store for 3 days based on Jones 2014
     CrudeOilTank.register_alias('CrudeOilTank')
     
-    CrudeOilTank.outs[0].price = -0.000075*distance + 0.3847
+    CrudeOilTank.outs[0].price = -0.000075*distance + 0.3847 #!!! Transporation cost was orginally considered here, but...want it more expensive and distance-related
     
-    PC1 = qsu.PhaseChanger('S540', ins=CHG-1, outs='CHG_catalyst_out', phase='s')
+    PC1 = qsu.PhaseChanger('S300', ins=CHG-1, outs='CHG_catalyst_out', phase='s')
     PC1.register_alias('PC1')
     
-    GasMixer = qsu.Mixer('S580', ins=(HTL-3, F1-0,),
+    GasMixer = qsu.Mixer('S310', ins=(HTL-3, F1-0,),
                           outs=('fuel_gas'), init_with='Stream')
     GasMixer.register_alias('GasMixer')
     
@@ -252,16 +261,16 @@ def create_spatial_system(waste_price=400, waste_GHG=800, size=50, distance=30, 
                   supplement_power_utility=False)
     CHP.ins[1].price = 0.1685
     
-    sys = qs.System.from_units(
-        'sys_geospatial',
-        units=list(flowsheet.unit), 
-        operating_hours=WWTP.operation_hours, # 7920 hr Jones
-        )
+    sys = qs.System.from_units('sys_geospatial',
+                               units=list(flowsheet.unit),
+                               operating_hours=WWTP.operation_hours) # 7920 hr Jones
     sys.register_alias('sys')
 
-    ##### Add stream impact items #####
-
-    # add impact for waste sludge
+# =============================================================================
+# add stream impact items
+# =============================================================================
+   
+    # transportation - crude oil
     qs.StreamImpactItem(ID='transportation_item',
                         linked_stream=stream.crude_oil,
                         Acidification=0.12698/1000*distance-0.1617,
@@ -402,11 +411,13 @@ def create_spatial_system(waste_price=400, waste_GHG=800, size=50, distance=30, 
                         RespiratoryEffects=-0.0031315)
     
     create_tea(sys, IRR_value=0.1, finance_interest_value=0.08)
-    qs.LCA(
-        system=sys, lifetime=30, lifetime_unit='yr',
-        Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())/0.67848*elec_GHG*30, # 0.67848 is the GHG level with the Electricity item, we can adjust the electricity amount to reflect different GHG of electricity at different locations
-        Cooling=lambda:sys.get_cooling_duty()/1000*30,
-        )
+    
+    qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30/0.67848*elec_GHG,
+           # 0.67848 is the GHG level with the Electricity item,
+           # we can adjust the electricity amount to reflect different GHG of electricity at different locations
+           Cooling=lambda:sys.get_cooling_duty()/1000*30)
+    
     sys.simulate()
     
     biocrude_barrel = CrudeOilTank.outs[0].F_mass/0.98/3.78541/42*7920/365 # in BPD (barrel per day)
