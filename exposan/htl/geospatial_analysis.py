@@ -40,6 +40,8 @@ refinery = gpd.GeoDataFrame(refinery, crs='EPSG:4269',
                                                         y=refinery.Latitude))
 
 US = gpd.read_file(folder + 'US/cb_2018_us_state_500k.shp')
+# confirmed from the wesbite (next line): this is no change in US map since June 1, 1995. So, using 2018 US map data is OK.
+# https://en.wikipedia.org/wiki/Territorial_evolution_of_the_United_States#1946%E2%80%93present_(Decolonization)
 US = US[['NAME', 'geometry']]
 
 for excluded in ('Alaska',
@@ -138,9 +140,9 @@ refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=5000, edgecolor='k', lin
 
 set_plot()
 
-US.plot(ax=ax, color='w', edgecolor='k')
-sludge.plot(ax=ax, color=Guest.gray.HEX, markersize=20)
-refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=300, edgecolor='k', linewidth=1.5)
+US.plot(ax=ax, color='w', edgecolor='k', linewidth=3.5)
+sludge.plot(ax=ax, color=Guest.gray.HEX, markersize=15)
+refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=500, edgecolor='k', linewidth=3.5)
 
 #%%
 # electricity price and carbon intensity visualization
@@ -233,10 +235,6 @@ result = result.merge(refinery, how='left', on='site_id')
 result.to_excel(folder + 'results/100km_results_MGD_vs_distance.xlsx')
 
 #%%
-
-
-
-
 
 # this part is the analysis for CO2 abatement cost
 # run analysis for every row
