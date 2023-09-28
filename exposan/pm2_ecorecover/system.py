@@ -63,10 +63,10 @@ default_pm2_kwargs = dict(
     )
 
 default_init_conds = {
-        'X_CHL':2.56,
-        'X_ALG':512.72,
-        'X_CH':23.30,
-        'X_LI':95.03,
+        'X_CHL':2.53,
+        'X_ALG':505.97,
+        'X_CH':22.99,
+        'X_LI':93.78,
         'S_CO2':30.0,
         'S_A':5.0,
         'S_F':5.0,
@@ -74,7 +74,7 @@ default_init_conds = {
         'S_NH':35.80,
         'S_NO':0.7,
         'S_P':0.36,
-        'X_N_ALG':3.27,
+        'X_N_ALG':3.23,
         'X_P_ALG':0.19,
     }
 
