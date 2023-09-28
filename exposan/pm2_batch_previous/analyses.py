@@ -30,18 +30,11 @@ mpl.rcParams['font.sans-serif'] = 'arial'
 mpl.rcParams["figure.autolayout"] = True
 mpl.rcParams['xtick.minor.visible'] = True
 
-# N = 1000        # takes 3.5 min
-# N = 2000        # takes 6.5 min
-# N = 3000        # takes 8 min
-# N = 5000        # takes 14 min
-# N = 10000       # takes 23.5 min
-# N = 15000       # takes 33 min
-N = 20000       # takes 43.5 min
+N = 5000
 
-T = 0.25    # T for include
-# T = 7       # T for exclude
+T = 0.25
+# T = 7    # exclude
 t_step = 0.01
-
 # rmse_thresholds = [25, 25, 25]
 nrmse_thresholds = [None, 0.1, 0.1]
 
@@ -119,7 +112,7 @@ def plot_cdf_by_group(mdl=None, seed=None, thresholds=None, parameters=None, met
             ax.set_xlabel(col[-1])
             ax.set_ylabel('density')
         # fig.subplots_adjust(hspace=0.4, wspace=0.05, bottom=0.2)
-        fig.savefig(ospath.join(figures_path, f'pdf_{y[-1]}.png'),
+        fig.savefig(ospath.join(figures_path, f'pdf_{y[-1]}_v2.png'),
                     dpi=300, facecolor='white')
         del fig, axes
 
@@ -154,14 +147,47 @@ def KS_test_var_thresholds(mdl=None, seed=None, kind=kind, analysis=analysis):
 #%%
 if __name__ == '__main__':
 
-    # seed = 201          # include, N=1000
-    # seed = 502          # include, N=2000
-    # seed = 503          # include, N=3000
-    # seed = 505          # include, N=5000
-    # seed = 400          # include, N=10000
-    # seed = 206          # include, N=15000
-    seed = 210          # include, N=20000
+    # seed = 100          # include, N=1000, exo_vars_batch_may_unit
+    # seed = 101          # include, N=2000, exo_vars_batch_may_unit
+    # seed = 102          # include, N=3000, exo_vars_batch_may_unit
+    # seed = 103          # include, N=5000, exo_vars_batch_may_unit
+    # seed = 107          # include, N=10000, exo_vars_batch_may_unit
+    # seed = 105          # include, N=15000, exo_vars_batch_may_unit
+    # seed = 106          # include, N=20000, exo_vars_batch_may_unit
+
+    # seed = 200          # include, N=10000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 201          # include, N=1000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 202          # include, N=2000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 203          # include, N=3000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 205          # include, N=5000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 206          # include, N=15000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 210          # include, N=20000, exo_vars_batch_may_unit, modified_pm2_kwargs
+
+    # seed = 300          # include, N=10000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 301          # include, N=1000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 302          # include, N=2000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 303          # include, N=3000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 305          # include, N=5000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 306          # include, N=15000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 310          # include, N=20000, exo_vars_batch_may_unit, modified_pm2_kwargs
+
+    # seed = 400          # include, N=10000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 502          # include, N=2000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    # seed = 503          # include, N=3000, exo_vars_batch_may_unit, modified_pm2_kwargs
+    seed = 505          # include, N=5000, exo_vars_batch_may_unit, modified_pm2_kwargs
+
+    # seed = 160          # include, N=10000, exo_vars_batch_may_unit
+    # seed = 150          # include, N=10000, exo_vars_may_kinetic (wrong)
+    # seed = 125          # include, N=1000, exo_vars_may_kinetic (wrong)
+
+    # seed = 170          # exclude, N=10000 (final)
+    # seed = 130          # exclude, N=1000,
+    # seed = 119          # DOE verification ver.
+    # seed = 111          # exclude, N=10000
 
     mdl = run_UA_SA(seed=seed)
+
+    # thrs = [0.343, 0.05, 0.08]
     plot_cdf_by_group(seed=seed)
+
     KS_test_var_thresholds(mdl=mdl,seed=seed)

@@ -28,7 +28,7 @@ __all__ = (
 #%%
 
 # =============================================================================
-# Parameters and initial conditions
+# Parameters and util functions
 # =============================================================================
 
 T_exc, I_exc = EDV.batch_init(os.path.join(data_path, 'exo_vars_batch_may_kinetic.xlsx'), 'linear')
@@ -82,12 +82,12 @@ default_pm2_kwargs = dict(
     Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880,
     Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317, n_dark=0.7,
     path=None,
-    ) # original baseline
+    ) # original
 
 # %%
 
 # =============================================================================
-# Batch system
+# Validation & Verification of PM2
 # =============================================================================
 
 def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}, kind=''):
@@ -101,7 +101,7 @@ def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}, kind=''):
     pm2_kwargs = pm2_kwargs or default_pm2_kwargs
     pm2 = pc.PM2(**pm2_kwargs)
 
-    # Create unit operations
+    # Create unit operations\
 
     if kind == 'include':
         PBR = su.BatchExperiment('PBR', model=pm2, exogenous_vars=(T_inc, I_inc))

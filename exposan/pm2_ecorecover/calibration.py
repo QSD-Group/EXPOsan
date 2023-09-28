@@ -12,7 +12,7 @@ for license details.
 '''
 
 from qsdsan.utils import ospath, time_printer
-from exposan.pm2_half import (
+from exposan.pm2_ecorecover import (
     results_path,
     create_model,
     )
@@ -60,10 +60,8 @@ def objective(trial):
     start_time = time.time()    # reset start_time to be here
 
     print('Renewed start time:', start_time)
-    # print('Parameters:', current_params)
 
     try:
-        # mdl._update_state(current_params, t_span=(0, 50), t_eval = np.arange(0, 51, 1), method='RK23', state_reset_hook='reset_cache')
         mdl._update_state(current_params, t_span=(0, 25), t_eval = np.arange(0, 26, 1), method='RK23', state_reset_hook='reset_cache', print_t=False, events=time_track)
 
     except:
@@ -78,11 +76,11 @@ def objective(trial):
 
 if __name__ == '__main__':
 
-    sampler = optuna.samplers.TPESampler(seed=555)
-    # sampler = optuna.samplers.TPESampler(seed=777)
+    # sampler = optuna.samplers.TPESampler(seed=555)
+    sampler = optuna.samplers.TPESampler(seed=777)
 
-    # study = optuna.create_study(sampler=sampler, direction='minimize')
-    study = optuna.create_study(sampler=sampler, direction='minimize', pruner=optuna.pruners.MedianPruner())
+    study = optuna.create_study(sampler=sampler, direction='minimize')
+    # study = optuna.create_study(sampler=sampler, direction='minimize', pruner=optuna.pruners.MedianPruner())
     # w/ or w/o lead to the same results & the same time required, but hyperparameter importances and optimization history changes
 
     study.optimize(objective, n_trials=500)
@@ -93,7 +91,7 @@ if __name__ == '__main__':
     assert isinstance(df, pd.DataFrame)
     assert df.shape[0] == 500
 
-    df.to_excel(ospath.join(results_path, 'conti_optuna_kill_half_cali_seed555.xlsx'))
+    df.to_excel(ospath.join(results_path, 'optuna_cali_seed777.xlsx'))
     # df.to_excel(ospath.join(results_path, 'conti_optuna_kill.xlsx'))
 
     # optuna.visualization.matplotlib.plot_param_importances(study)

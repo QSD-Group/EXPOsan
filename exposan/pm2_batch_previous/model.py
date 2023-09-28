@@ -13,6 +13,7 @@ for license details.
 
 import os, numpy as np, qsdsan as qs
 from scipy.interpolate import interp1d
+# from warnings import warn
 from chaospy import distributions as shape
 from qsdsan.utils import DictAttrSetter, ospath, time_printer, load_data
 
@@ -44,7 +45,7 @@ modified_pm2_kwargs = dict(
     Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880,
     Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317, n_dark=0.7,
     path=None,
-    )  # modified baseline
+    )
 
 # Parameters used for UA & SA
 baseline_values = {
@@ -78,13 +79,43 @@ baseline_values = {
     'V_P': (0.2, 'g P/g COD/d')                 # (0.1, 0.3)
     }
 
+# pm2 = pc.PM2(mu_max=2, I_n=1000, I_opt=2000, V_NH=0.12, V_NO=0.0035, V_P=0.24, q_CH=1.5, q_LI=24,
+#              arr_a=4*10**10, f_CH_max=1.2, f_LI_max=3.9)    # GY gutfeeling optimized - batch
+
+# pm2 = pc.PM2(mu_max=1, I_n=1200, I_opt=2000, V_NH=0.09, V_NO=0.003, V_P=0.17, q_CH=0.6, q_LI=13,
+#              Q_N_max=0.6, arr_e=6650, m_ATP=5)    # GY gutfeeling optimized - conti
+
 # Parameters used for calibration - sensitive parameters (baseline_value, units, bounds)
+
 sensitive_params = {
     'q_CH': (1, 'g COD/g COD/d', (0.1, 10)),
     'q_LI': (15, 'g COD/g COD/d', (1.5, 50)),
     'V_NH': (0.1, 'g N/g COD/d', (0.01, 1)),
     'V_P': (0.2, 'g P/g COD/d', (0.01, 1))
-    }  # sequential calibration
+    } # sequential calibration purpose
+
+# sensitive_params = {
+#     'arr_e': (6842, 'K', (1000, 10000)),
+#     'K_P': (1.0, 'g P/m^3', (0.01, 100)),
+#     'f_CH_max': (0.819, 'g COD/g COD', (0.1, 10)),
+#     'exponent': (4, '', (1, 10)),
+#     'q_CH': (1, 'g COD/g COD/d', (0.1, 10)),
+#     'q_LI': (15, 'g COD/g COD/d', (1.5, 50)),
+#     'V_NH': (0.1, 'g N/g COD/d', (0.01, 1)),
+#     'V_P': (0.2, 'g P/g COD/d', (0.01, 1))
+#     }  # with new baseline, new sens_params  (for UA & SA)
+
+
+# sensitive_params = {
+#     'arr_e': (6842, 'K', (1000, 10000)),
+#     'K_P': (1.0, 'g P/m^3', (0.0001, 10)),
+#     'K_STO': (1.566, 'g COD/g COD', (0.0001, 20)),
+#     'exponent': (4, '', (1, 10)),
+#     'm_ATP': (10, 'g ATP/g COD/d', (1, 50)),
+#     'q_CH': (1, 'g COD/g COD/d', (0.001, 10)),
+#     'V_NH': (0.1, 'g N/g COD/d', (0.0001, 5)),
+#     'V_P': (0.2, 'g P/g COD/d', (0.0001, 5))
+#     } # original
 
 #%%
 def import_exp_data(kind=''):
@@ -168,7 +199,7 @@ def create_model(system=None, kind='', analysis=''):
 
     imass = cmps.i_mass[idx_vss]
 
-    # Import_exp_data
+    # import_exp_data
     exp_data = import_exp_data(kind)
 
     vss_pair, snh_pair, sp_pair, ch_pair, li_pair = exp_data
