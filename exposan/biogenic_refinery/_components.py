@@ -49,7 +49,7 @@ def create_components(set_thermo=True):
     H2SO4 = Component('H2SO4', phase='l', particle_size='Soluble',
                       degradability='Undegradable', organic=False)
 
-    MgOH2 = Component('MagnesiumHydroxide', formula='Mg(OH)2',
+    MgOH2 = Component('MagnesiumHydroxide',
                       phase='s', particle_size='Particulate',
                       degradability='Slowly', organic=False)
 
