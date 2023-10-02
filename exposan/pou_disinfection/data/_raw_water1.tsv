@@ -1,0 +1,7 @@
+parameter	name (if diff)	unit	expected	low	high	distribution	references
+E_coli		CFU/mg	200000	150000	250000	uniform	
+Turbidity		NTU	5	1	10	uniform	
+TOC		mg/L	5	1	10	uniform	
+Ca		mg/L	30	20	40	uniform	
+Mg		mg/L	30	20	40	uniform	
+UVT		%	80	72	88	uniform	

@@ -1,0 +1,11 @@
+	indicator	alias	unit	method	category	description	full_name
+1	E_EcosystemQuality_Total		points	ReCiPe Endpoint (E,A) (obsolete)	ecosystem quality		('ReCiPe Endpoint (E,A) (obsolete)', 'ecosystem quality', 'total')
+6	E_HumanHealth_Total		points	ReCiPe Endpoint (E,A) (obsolete)	human health		('ReCiPe Endpoint (E,A) (obsolete)', 'human health', 'total')
+5	E_Resources_Total		points	ReCiPe Endpoint (E,A) (obsolete)	resources		('ReCiPe Endpoint (E,A) (obsolete)', 'resources', 'total')
+3	H_EcosystemQuality_Total		points	ReCiPe Endpoint (H,A) (obsolete)	ecosystem quality		('ReCiPe Endpoint (H,A) (obsolete)', 'ecosystem quality', 'total')
+2	H_HumanHealth_Total		points	ReCiPe Endpoint (H,A) (obsolete)	human health		('ReCiPe Endpoint (H,A) (obsolete)', 'human health', 'total')
+4	H_Resources_Total		points	ReCiPe Endpoint (H,A) (obsolete)	resources		('ReCiPe Endpoint (H,A) (obsolete)', 'resources', 'total')
+9	I_EcosystemQuality_Total		points	ReCiPe Endpoint (I,A) (obsolete)	ecosystem quality		('ReCiPe Endpoint (I,A) (obsolete)', 'ecosystem quality', 'total')
+8	I_HumanHealth_Total		points	ReCiPe Endpoint (I,A) (obsolete)	human health		('ReCiPe Endpoint (I,A) (obsolete)', 'human health', 'total')
+7	I_Resources_Total		points	ReCiPe Endpoint (I,A) (obsolete)	resources		('ReCiPe Endpoint (I,A) (obsolete)', 'resources', 'total')
+0	GlobalWarming		kg CO2-Eq	TRACI (obsolete)	environmental impact		('TRACI (obsolete)', 'environmental impact', 'global warming')
