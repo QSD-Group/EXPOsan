@@ -12,19 +12,19 @@ of the required acid/base dosing by directly setting a target pH.
 
 Multiple reactor types for the METAB system are included in the ``units.py`` file in this module:
 
-  - upflow sludge blanket reactor (`UASB`)
-  - fluidized bed reactor (`METAB_FluidizedBed`)
-  - packed bed reactor (`METAB_PackedBed`)
-  - batch experiment reactor (`METAB_BatchExp`)
+  - upflow sludge blanket reactor (``UASB``)
+  - fluidized bed reactor (``METAB_FluidizedBed``)
+  - packed bed reactor (``METAB_PackedBed``)
+  - batch experiment reactor (``METAB_BatchExp``)
 
-Among them, `METAB_FluidizedBed`, `METAB_PackedBed`, and `METAB_BatchExp` include a micro-scale mechanistic model of mass transfer through
+Among them, ``METAB_FluidizedBed``, ``METAB_PackedBed``, and ``METAB_BatchExp`` include a micro-scale mechanistic model of mass transfer through
 encapsulation matrix in reactor mass balance.
 
 .. figure:: ./readme_figures/example_system.png
 
     *An example system layout: two packed bed reactors in series with sidestream membrane gas extraction at the 1st stage and effluent degassing.*
 
-To reproduce the results and figures included in Zhang et al. [1]_, run corresponding functions in `analyses.py`. You can find a full list of the
+To reproduce the results and figures included in Zhang et al. [1]_, run corresponding functions in ``analyses.py``. You can find a full list of the
 packages in the environment used to generate the results in `qsdsan.yml <https://github.com/QSD-Group/EXPOsan/blob/main/exposan/metab/qsdsan.yml>`_.
 
 Getting Started
@@ -113,5 +113,5 @@ Getting Started
 
 References
 ----------
-.. [1] Zhang et al., Pathway toward sustainable distributed treatment of high strength food industry wastewater with encapsulated anaerobic technology (2023): _In preparation_
+.. [1] Zhang et al., Pathway toward sustainable distributed treatment of high strength food industry wastewater with encapsulated anaerobic technology. 2023, *In preparation*
 .. [2] IWA Task Group for Mathematical Modelling of Anaerobic Digestion Processes. Anaerobic Digestion Model No.1 (ADM1); IWA Publishing, 2005. `<https://doi.org/10.2166/9781780403052>`_
