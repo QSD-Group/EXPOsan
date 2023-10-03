@@ -22,7 +22,7 @@ encapsulation matrix in reactor mass balance.
 
 .. figure:: ./readme_figures/example_system.png
 
-    *An example system layout: two packed bed reactors in series with sidestream membrane gas extraction at the 1st stage and effluent degassing.*
+    *An example METAB system layout: two packed bed reactors in series with sidestream membrane gas extraction at the 1st stage and effluent degassing.*
 
 To reproduce the results and figures included in Zhang et al. [1]_, run corresponding functions in ``analyses.py``. You can find a full list of the
 packages in the environment used to generate the results in `qsdsan.yml <https://github.com/QSD-Group/EXPOsan/blob/main/exposan/metab/qsdsan.yml>`_.
@@ -33,7 +33,7 @@ Getting Started
 
     >>> # create a METAB system by specifying reactor type, gas extraction method, design HRT etc.
     >>> from exposan.metab import create_system
-    >>> sys = mt.create_system(
+    >>> sys = create_system(
     ...     n_stages=2,         # number of stages
     ...     reactor_type='PB',  # PB for packed bed, FB for fluidized bed, or UASB
     ...     gas_extraction='M', # M for membrane gas extraction, V for vacuum extraction, P for passive venting
