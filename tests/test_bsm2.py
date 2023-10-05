@@ -6,6 +6,8 @@ This module is developed by:
 
     Joy Zhang <joycheung1994@gmail.com>
 
+    Yalin Li <mailto.yalin.li@gmail.com>
+
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
@@ -13,11 +15,11 @@ for license details.
 
 __all__ = ('test_interface',)
 
-def test_interface():
+def test_bsm2():
     from numpy.testing import assert_allclose as ac
-    from exposan import interface as inter
-    inter.load()
-    sys = inter.interface_sys
+    # from exposan import bsm2
+    bsm2.load()
+    # sys = inter.interface_sys
     
     #!!! Temporarily disabled while trying to figuring out the problem
     
@@ -35,4 +37,4 @@ def test_interface():
 
 
 if __name__ == '__main__':
-    test_interface()
+    test_bsm2()
