@@ -1,0 +1,16 @@
+﻿parameter,name (if diff),unit,expected,low,high,distribution,references
+NaClO_dose,,mg NaClO/L,1.87,1.4025,2.3375,uniform,"Hussein, M., Brown, J., Njee, R. M., Clasen, T., Malebo, H. M., & Mbuligwe, S. (2015). Point-of-use"
+contact_time,,min,30,22.5,37.5,uniform,"Hussein, M., Brown, J., Njee, R. M., Clasen, T., Malebo, H. M., & Mbuligwe, S. (2015). Point-of-use chlorination of turbid water: Results from a field study in Tanzania. Journal of Water and Health, 13(2), 544?552. http://dx.doi.org/10.2166/wh.2014.002"
+container_cost,,USD,1.6,1.2,2,uniform,https://www.alibaba.com/product-detail/5L-10L-20L-25L-Plastic-Stacking_62585479207.html?spm=a2700.pccps_detail.0.0.3d8f13a046xAC2
+container_volume,,L,20,,,constant,"Hussein, M., Brown, J., Njee, R. M., Clasen, T., Malebo, H. M., & Mbuligwe, S. (2015). Point-of-use chlorination of turbid water: Results from a field study in Tanzania. Journal of Water and Health, 13(2), 544?552. http://dx.doi.org/10.2166/wh.2014.003"
+container_vol,,L/container,20,,,constant,"Hussein, M., Brown, J., Njee, R. M., Clasen, T., Malebo, H. M., & Mbuligwe, S. (2015). Point-of-use chlorination of turbid water: Results from a field study in Tanzania. Journal of Water and Health, 13(2), 544?552. http://dx.doi.org/10.2166/wh.2014.003"
+NaCLO_cost,,USD/kg,1.96,1.47,2.45,uniform,"https://www.engineeringforchange.org/solutions/product/waterguard/ Garrett, V., Ogutu, P., Mabonga, P., Ombeki, S., Mwaki, A., Aluoch, G., Phelan, M., & Quick, R. E. (2008). Diarrhoea prevention in a high-risk rural Kenyan population through point-of-use chlorination, safe water storage, sanitation, and rainwater harvesting. Epidemiology and Infection, 136(11), 1463–1471. https://doi.org/10.1017/S095026880700026X"
+NaCLO_volume,,L/bottle,0.15,,,constant,"Hussein, M., Brown, J., Njee, R. M., Clasen, T., Malebo, H. M., & Mbuligwe, S. (2015). Point-of-use"
+NaClO_density,,kg/L,1.21,,,constant,https://www.aqua-calc.com/page/density-table/substance/sodium-blank-hypochlorite-coma-and-blank-14-percent-sign--blank-aqueous-blank-solution
+Rate_coefficient,,,3.2185,,,constant,"Cheswick, R., Moore, G., Nocker, A., Hassard, F., Jefferson, B., & Jarvis, P. (2020). Chlorine disinfection of drinking water assessed by flow cytometry: New insights. Environmental Technology & Innovation, 19, 101032. https://doi.org/10.1016/j.eti.2020.101032"
+Intercept,,,0.0845,,,constant,"Cheswick, R., Moore, G., Nocker, A., Hassard, F., Jefferson, B., & Jarvis, P. (2020). Chlorine disinfection of drinking water assessed by flow cytometry: New insights. Environmental Technology & Innovation, 19, 101032. https://doi.org/10.1016/j.eti.2020.101033"
+PE_in_container,,kg,0.9,0.675,1.125,uniform,https://www.tanksinternational.it/en/category/3/13/PLASTIC-APPROVED-JERRYCAN-20-LITRES-VOLUME/80
+PE_to_NaClO,,KgPE/kgNaClO,0.096,,,constant,
+operator_refill_cost,,USD/refill,10,9,11,uniform,
+steel_pole_mass,,kg,1,,,constant,
+NaCLO_bottle_mass,,kg,0.023,0.01725,0.02875,uniform,https://www.gerschon.de/en/Pharma/Dispenser-Lotion-Pump/Dispenser-Lotion-Pump/150-ml-bottle-white-PE-dispenser-twist-lock.html
