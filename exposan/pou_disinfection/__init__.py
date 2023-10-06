@@ -14,13 +14,14 @@ for license details.
 '''
 
 import os
-POU_dis_path = os.path.dirname(__file__)
-data_path = os.path.join(POU_dis_path, 'data')
-results_path = os.path.join(POU_dis_path, 'results')
-figures_path = os.path.join(POU_dis_path, 'figures')
+from qsdsan.utils import time_printer
+from exposan.utils import _init_modules
+pou_path = os.path.dirname(__file__)
+module = os.path.split(pou_path)[-1]
+data_path, results_path = _init_modules(module, include_data_path=True)
 del os
 
-from qsdsan.utils import time_printer
+
 
 @time_printer
 def evaluate(model, samples=None):
@@ -48,3 +49,51 @@ __all__ = (
     'evaluate',
     'get_key_metrics',
 	)
+
+# %%
+
+# # =============================================================================
+# # Load components and system
+# # =============================================================================
+
+# from . import _components
+# from ._components import create_components
+# _components_loaded = False
+# def _load_components(reload=False):
+#     global components, _components_loaded
+#     if not _components_loaded or reload:
+#         components = create_components()
+#         qs.set_thermo(components)
+#         _components_loaded = True
+
+
+# from . import system
+# from .system import create_system
+# _system_loaded = False
+# def _load_system():
+#     global sys, _system_loaded
+#     sys = create_system()
+#     _system_loaded = True
+
+
+# def load():
+#     if not _components_loaded: _load_components()
+#     if not _system_loaded: _load_system()
+#     sys.simulate()
+#     dct = globals()
+#     dct.update(sys.flowsheet.to_dict())
+
+
+# def __getattr__(name):
+#     if not _components_loaded or not _system_loaded:
+#         raise AttributeError(
+#             f'Module {__name__} does not have the attribute "{name}" '
+#             'and the module has not been loaded, '
+#             f'loading the module with `{__name__}.load()` may solve the issue.')
+
+
+# __all__ = (
+#     'cas_path',
+#     *_components.__all__,
+#     *system.__all__,
+#  	)
