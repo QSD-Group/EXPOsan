@@ -336,7 +336,7 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     # facilities
     # =============================================================================
     
-    qsu.HeatExchangerNetwork('HXN', force_ideal_thermo=True)
+    qsu.HeatExchangerNetwork('HXN', T_min_app=86, force_ideal_thermo=True)
     
     CHP = qsu.CombinedHeatPower('CHP', include_construction=True,
                                 ins=(GasMixer-0, 'natural_gas', 'air'),

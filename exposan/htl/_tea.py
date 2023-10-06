@@ -187,7 +187,7 @@ def create_tea(sys, OSBL_units=None, cls=None, IRR_value=0.1, finance_interest_v
         startup_salesfrac=0.5, # Davis NREL 2018
         startup_VOCfrac=0.75, # Davis NREL 2018
         WC_over_FCI=0.05, # Jones
-        finance_interest=finance_interest_value, # for waste management, use 3%, for biofuel, use 8%
+        finance_interest=finance_interest_value, # use 3% for waste management, use 8% for biofuel
         finance_years=10, # Jones
         finance_fraction=0.6, # debt: Jones
         OSBL_units=OSBL_units,
