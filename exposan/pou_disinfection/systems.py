@@ -15,23 +15,13 @@ for license details.
 
 # %%
 
-# Filter out warnings related to solid content
-import warnings
-warnings.filterwarnings('ignore', message='Solid content')
-
-import graphviz as graphviz
-import numpy as np
 import biosteam as bst
 import qsdsan as qs
-from collections.abc import Iterable
-from sklearn.linear_model import LinearRegression as LR
-from qsdsan import sanunits as su
 from qsdsan import WasteStream, ImpactIndicator, ImpactItem, StreamImpactItem, SimpleTEA, LCA
+from . import _units as u
 from exposan.POU_dis import results_path
 
 from exposan.bwaise._cmps import cmps
-#from exposan.POU_dis._cmps import cmps
-from exposan.POU_dis._lca_data import lca_data_kind, load_lca_data, _ImpactItem_LOADED
 
 
 
@@ -41,7 +31,6 @@ from exposan.POU_dis._lca_data import lca_data_kind, load_lca_data, _ImpactItem_
 
 currency = qs.currency = 'USD'
 qs.CEPCI = qs.CEPCI_by_year[2018]
-
 
 discount_rate = 0.05
 
@@ -173,10 +162,10 @@ bst.main_flowsheet.set_flowsheet(flowsheetD)
 streamsD = batch_create_streams('D')
 
 #################### Human Inputs ####################
-D1 = su.RawWater('D1', outs=('raw_water'), household_size=household_size, 
+D1 = u.RawWater('D1', outs=('raw_water'), household_size=household_size, 
                  number_of_households=(get_ppl('1k')/household_size))
 
-D2 = su.POUChlorination('D2', ins=(D1-0, streamsD['NaClO'], streamsD['Polyethylene']), 
+D2 = u.POUChlorination('D2', ins=(D1-0, streamsD['NaClO'], streamsD['Polyethylene']), 
                         outs='treated_water', 
                         number_of_households=(get_ppl('1k')/household_size))
 
@@ -207,10 +196,10 @@ bst.main_flowsheet.set_flowsheet(flowsheetE)
 streamsE = batch_create_streams('E')
 
 #################### Human Inputs ####################
-E1 = su.RawWater('E1', outs=('raw_water'), household_size=household_size, 
+E1 = u.RawWater('E1', outs=('raw_water'), household_size=household_size, 
                   number_of_households=(get_ppl('1k')/household_size))
 
-E2 = su.AgNP_CWF('E2', ins=(E1-0), outs='treated_water', 
+E2 = u.AgNP_CWF('E2', ins=(E1-0), outs='treated_water', 
                         number_of_households=(get_ppl('1k')/household_size))
 
 ############### Simulation, TEA, and LCA ###############
@@ -240,10 +229,10 @@ bst.main_flowsheet.set_flowsheet(flowsheetF)
 streamsF = batch_create_streams('F')
 
 #################### Human Inputs ####################
-F1 = su.RawWater('F1', outs=('raw_water'), household_size=household_size, 
+F1 = u.RawWater('F1', outs=('raw_water'), household_size=household_size, 
                   number_of_households=(get_ppl('1k')/household_size))
 
-F2 = su.POU_UV('F2', ins=(F1-0), outs='treated_water', 
+F2 = u.POU_UV('F2', ins=(F1-0), outs='treated_water', 
                         number_of_households=(get_ppl('1k')/household_size))
 
 ############### Simulation, TEA, and LCA ###############
@@ -273,10 +262,10 @@ bst.main_flowsheet.set_flowsheet(flowsheetG)
 streamsG = batch_create_streams('G')
 
 #################### Human Inputs ####################
-G1 = su.RawWater('G1', outs=('raw_water'), household_size=household_size, 
+G1 = u.RawWater('G1', outs=('raw_water'), household_size=household_size, 
                   number_of_households=(get_ppl('1k')/household_size))
 
-G2 = su.UV_LED('G2', ins=(G1-0), outs='treated_water', 
+G2 = u.UV_LED('G2', ins=(G1-0), outs='treated_water', 
                         number_of_households=(get_ppl('1k')/household_size))
 
 ############### Simulation, TEA, and LCA ###############
@@ -299,38 +288,6 @@ lcaG = LCA(system=sysG, lifetime=5, lifetime_unit='yr', uptime_ratio=1,
  
 # =============================================================================
 # Util functions
-# =============================================================================
-
-
-def update_lca_data(kind):
-    '''
-    Load impact indicator and impact item data.
-
-    Parameters
-    ----------
-    kind : str
-        "original" loads the data from Trimmer et al.
-        (TRACI, ecoinvent v3.2),
-        "new" loads the data for ReCiPe and TRACI
-        (ecoinvent 3.7.1, at the point of substitution).
-    '''
-    global lca_data_kind
-
-    if lca_data_kind != kind:
-        load_lca_data(kind)
-        batch_create_stream_items(kind)
-
-        for lca in (lcaD, lcaE, lcaF, lcaG):
-            for i in lca.lca_streams:
-                # To refresh the impact items
-                source_ID = i.stream_impact_item.source.ID
-                i.stream_impact_item.source = ImpactItem.get_item(source_ID)
-
-
-        for i in sysD, sysE, sysF, sysG:
-            i.simulate()
-
-        lca_data_kind = kind
 
 def get_total_inputs(unit, multiplier=1):
     if len(unit.ins) == 0: # 

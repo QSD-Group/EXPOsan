@@ -5,7 +5,8 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    Yalin Li <zoe.yalin.li@gmail.com>
+    
+    Yalin Li <mailto.yalin.li@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
@@ -36,16 +37,12 @@ def get_key_metrics(model, alt_names={}):
     return key_metrics
 
 
-from . import _cmps, _lca_data, systems, models
+from . import systems, models
 
-from ._cmps import *
-from ._lca_data import *
 from .systems import *
 from .models import *
 
 __all__ = (
-	*_cmps.__all__,
-    *_lca_data.__all__,
 	*systems.__all__,
     *models.__all__,
     'evaluate',
