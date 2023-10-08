@@ -58,14 +58,14 @@ for lipid in lipids:
                                  include_other_metrics=False,
                                  include_other_CFs_as_metrics=False,
                                  include_check=False)
-            N = 200
+            N = 1000
             samples = model.sample(N=N, rule='L', seed=3221)
             model.load_samples(samples)
             model.evaluate()            
             MDSP = model.table['TEA']['MDSP [$/gal diesel]'].dropna()
-            sludge_price = model.table['TEA']['sludge_management_price [$/ton dry sludge]'].dropna()
-            LCA_diesel = model.table['LCA']['GWP_diesel [kg CO2/MMBTU diesel]'].dropna()
-            LCA_sludge = model.table['LCA']['GWP_sludge [kg CO2/ton dry sludge]'].dropna()
+            sludge_price = model.table['TEA']['Sludge management price [$/ton dry sludge]'].dropna()
+            LCA_diesel = model.table['LCA']['GWP diesel [kg CO2/MMBTU diesel]'].dropna()
+            LCA_sludge = model.table['LCA']['GWP sludge [kg CO2/ton dry sludge]'].dropna()
             
             ternary_results.loc[len(ternary_results.index)] = (
                 [100*lipid, 100*protein, round(100-100*lipid-100*protein),] +
