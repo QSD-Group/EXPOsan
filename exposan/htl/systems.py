@@ -555,7 +555,7 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
                         NonCarcinogenics=-2.9281,
                         RespiratoryEffects=-0.0011096)
     
-    create_tea(sys)
+    create_tea(sys, IRR_value=0.03, finance_interest_value=0.03)
     qs.LCA(
         system=sys, lifetime=30, lifetime_unit='yr',
         Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,

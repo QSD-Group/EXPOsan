@@ -179,7 +179,7 @@ def create_tea(sys, OSBL_units=None, cls=None, IRR_value=0.1, finance_interest_v
         duration=(2022, 2052), # Jones
         depreciation='MACRS7', # Jones
         income_tax=0.35, # Jones
-        operating_days=330, # Jones
+        operating_days=sys.operating_hours/24, # Jones
         lang_factor=None, # related to expansion, not needed here
         construction_schedule=(0.08, 0.60, 0.32), # Jones
         startup_months=6, # Jones
