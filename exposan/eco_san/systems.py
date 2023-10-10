@@ -20,7 +20,7 @@ from qsdsan import (
     WasteStream,
     sanunits as su,
     ImpactItem,
-    System, SimpleTEA, LCA,
+    System, TEA, LCA,
     )
 from qsdsan.utils import clear_lca_registries
 from exposan.utils import add_fugitive_items, get_generic_tanker_truck_fee as get_tanker_truck_fee
