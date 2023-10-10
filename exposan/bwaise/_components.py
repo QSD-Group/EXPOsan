@@ -65,9 +65,8 @@ def create_components(set_thermo=True):
     CO2 = Component('CO2', phase='g', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
 
-    P4O10 = Component.from_chemical('P4O10', Chemical('P4O10'),
-                                    phase='s', particle_size='Particulate',
-                                    degradability='Undegradable', organic=False)
+    P4O10 = Component('P4O10', phase='s', particle_size='Particulate',
+                      degradability='Undegradable', organic=False)
     # https://en.wikipedia.org/wiki/Phosphorus_pentoxide (accessed 2022-09-08)
     add_V_from_rho(P4O10, 2390)
     # The following will lead to an error as it won't be able to copy the V model
