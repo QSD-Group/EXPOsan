@@ -48,13 +48,13 @@ class RawWater(SanUnit):
     TOC : float
         Total organic carbon.
     Ca : float
-        Calsium, mg/L.
+        Calcium, mg/L.
     Mg : float
         Magnesium, mg/L.
     UVT : float
         UV transmittance.
     household_size : int
-        Number of people per househould.
+        Number of people per household.
     number_of_households : int
         Number of household sharing the disinfection unit.
     water_demand : float
@@ -120,7 +120,7 @@ agnp_path = ospath.join(data_path, '_AgNP_CWF_2.csv')
 
 class AgNP_CWF(SanUnit):
     '''
-    Point of use water treatment technology: Desinfection through Silver Nanoparticles.
+    Point of use water treatment technology: Disinfection through silver nanoparticles.
     
     Parameters
     ----------
@@ -160,7 +160,7 @@ class AgNP_CWF(SanUnit):
 
         #set the equation for log reduction following the Chick Watson Kinetic Model for log removal. Log(N/No) = -K*co*t
         #This was adopted from <https://pubs.acs.org/doi/full/10.1021/es4026084>
-        #Here the log reduction value was set in the san sunit data (this wil be improved to accomodate changes in the raw water quality)
+        #Here the log reduction value was set in the san sunit data (this wil be improved to accommodate changes in the raw water quality)
         
         No = raw_water.imass['Ecoli']/raw_water.F_vol * 10**-4  # E coli CFU/ mL ICC/ml (intact cells counts) used by (Cheswick et al., 2020)
         
@@ -181,7 +181,7 @@ class AgNP_CWF(SanUnit):
             self.AgNP_lifetime = 0.5
             
              
-    #_design will include all the construction or captial impacts  
+    #_design will include all the construction or capital impacts  
     def _design(self):
         design = self.design_results
         
@@ -225,7 +225,7 @@ class AgNP_CWF(SanUnit):
         
         # AgNP_lifetime = 0.1
         
-        #certain parts need to be replaced based on an expected lifefime
+        #certain parts need to be replaced based on an expected lifetime
         #the cost of these parts is considered along with  the cost of the labor to replace them
         # USD/yr
         replacement_cost = (self.CWF_AgNP_cost*self.AgNP/self.Argenol_AgNP_content) * number_of_households / self.AgNP_lifetime
@@ -242,12 +242,12 @@ poucl_path = ospath.join(data_path, '_pou_chlorination.csv')
 
 class POUChlorination(SanUnit):
     '''
-    Point of use water treatment technology: Desinfection through chlorination.
+    Point of use water treatment technology: Disinfection through chlorination.
     
     Parameters
     ----------
     ins : obj
-        Raw water, chlorine, chlorine bottle.
+        Raw water, chlorine, polyethylene bottle for chlorine.
     outs : obj
         Treated water.
     
@@ -284,7 +284,7 @@ class POUChlorination(SanUnit):
         raw_water, chlorine, Cl_bottle = self.ins
         treated_water = self.outs[0]
         
-        # give treated water all the properties and cmps of raw water
+        # give treated water all the properties and components of raw water
         # these will be changed below
         treated_water.copy_like(raw_water)
         chlorine.phase = 'l'
@@ -307,7 +307,7 @@ class POUChlorination(SanUnit):
       
         No = raw_water.imass['Ecoli']/raw_water.F_vol * 10**-4  # E coli CFU/ mL ICC/ml (intact cells counts) used by (Cheswick et al., 2020)
              
-    #_design will include all the construction or captial impacts  
+    #_design will include all the construction or capital impacts  
     def _design(self):
         design = self.design_results
         
@@ -329,7 +329,7 @@ class POUChlorination(SanUnit):
         #can be broken down as specific items within purchase_costs or grouped (e.g., 'Misc. parts')
         self.baseline_purchase_costs['WaterContainer'] = (self.container_cost)*self.number_of_households
        
-        #certain parts need to be replaced based on an expected lifefime
+        #certain parts need to be replaced based on an expected lifetime
         #the cost of these parts is considered along with  the cost of the labor to replace them
 
         #self.add_OPEX = self.chlorine_rate / self.NaClO_density / self.container_vol * self.operator_refill_cost  # USD/hr (all items are per hour)
@@ -342,7 +342,7 @@ pou_uv_path = ospath.join(data_path, '_pou_uv.csv')
 
 class POU_UV(SanUnit):
     '''
-    Point of use water treatment technology: Desinfection through POU UV.
+    Point of use water treatment technology: Disinfection through POU UV.
     
     Parameters
     ----------
@@ -376,7 +376,7 @@ class POU_UV(SanUnit):
         raw_water,  = self.ins
         treated_water = self.outs[0]
         
-        # give treated water all the properties and cmps of raw water
+        # give treated water all the properties and components of raw water
         # these will be changed below
         treated_water.copy_like(self.ins[0])
         
@@ -427,7 +427,7 @@ class POU_UV(SanUnit):
         ## factor this time into power demand cost and into lamp replacement lifetime.
 
              
-    #_design will include all the construction or captial impacts  
+    #_design will include all the construction or capital impacts  
     def _design(self):
         design = self.design_results
         
@@ -442,7 +442,7 @@ class POU_UV(SanUnit):
         self.construction = (
             Construction(item='PE', quantity = uv_storage, quantity_unit = 'kg'),
             Construction(item='PVC', quantity = uv_pvc, quantity_unit = 'kg'),
-            Construction(item='Uvlamp', quantity = uv_lamp_mecury, quantity_unit = 'kg', lifetime = (self.lamp_life_span ), lifetime_unit='hr'),
+            Construction(item='Uvlamp', quantity = uv_lamp_mecury, quantity_unit = 'kg', lifetime = self.lamp_life_span, lifetime_unit='hr'),
             Construction(item='Aluminum', quantity = uv_aluminum_foil, quantity_unit = 'kg')
             )
         self.add_construction(add_cost=False)
@@ -463,7 +463,7 @@ class POU_UV(SanUnit):
         power_demand = (self.uv_electric_demand / 1000) * self.run_time / self.lamp_lifespan_factor
         self.power_utility(power_demand)
         
-        #certain parts need to be replaced based on an expected lifefime
+        #certain parts need to be replaced based on an expected lifetime
         #the cost of these parts is considered along with  the cost of the labor to replace them
 
         #self.add_OPEX = self.chlorine_rate / self.NaClO_density / self.container_vol * self.operator_refill_cost  # USD/hr (all items are per hour)
@@ -474,7 +474,7 @@ uv_led_path = ospath.join(data_path, '_uv_led.csv')
 
 class UV_LED(SanUnit):
     '''
-    Point of use water treatment technology: Desinfection through UV LED.
+    Point of use water treatment technology: Disinfection through UV LED.
     
     Parameters
     ----------
@@ -506,7 +506,7 @@ class UV_LED(SanUnit):
         raw_water,  = self.ins
         treated_water = self.outs[0]
         
-        # give treated water all the properties and cmps of raw water
+        # give treated water all the properties and components of raw water
         # these will be changed below
         treated_water.copy_like(raw_water)
         No = raw_water.imass['Ecoli']/raw_water.F_vol * 10**-4  # E coli CFU/ mL ICC/ml (intact cells counts) used by (Cheswick et al., 2020)
@@ -557,7 +557,7 @@ class UV_LED(SanUnit):
          
 
              
-    #_design will include all the construction or captial impacts  
+    #_design will include all the construction or capital impacts  
     def _design(self):
         design = self.design_results
         
@@ -594,7 +594,7 @@ class UV_LED(SanUnit):
         self.power_utility.rate = (self.led_electricity_demand / 1000) * self.run_time /self.led_lifespan_factor
 
         
-        #certain parts need to be replaced based on an expected lifefime
+        #certain parts need to be replaced based on an expected lifetime
         #the cost of these parts is considered along with  the cost of the labor to replace them
 
         #self.add_OPEX = self.chlorine_rate / self.NaClO_density / self.container_vol * self.operator_refill_cost  # USD/hr (all items are per hour)
