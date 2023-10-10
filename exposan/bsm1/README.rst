@@ -14,7 +14,7 @@ The Activated Sludge Model No. 1 (ASM1) [3]_ was used to describe biochemical pr
 
 As of now, the BSM1 system can be simulated dynamically with constant or dynamic influents. Fixed aeration is enabled. Idealized aeration control can also be implemented by setting target dissolved oxygen concentration.
 
-To reproduce the results and figures included in Li and Zhang et al. [5]_ (archived in a separate `repository <https://github.com/QSD-Group/publication-archives/tree/main/Li_and_Zhang_et_al_2022>`_), directly run ``analyses.py``. You can find a full list of the packages in the environment used to generate the results in `qsdsan.yml <https://github.com/QSD-Group/EXPOsan/blob/main/exposan/bwaise/qsdsan.yml>`_. Note that the environment was in macOS, other OS users can consult it for the versions of the dependency packages and install them accordingly.
+To reproduce the results and figures included in Li and Zhang et al. [5]_ (archived in a separate `repository <https://github.com/QSD-Group/QSDsan-Introductory-Publication-Archive>`_), directly run ``analyses.py``. You can find a full list of the packages in the environment used to generate the results in `qsdsan.yml <https://github.com/QSD-Group/EXPOsan/blob/main/exposan/bwaise/qsdsan.yml>`_. Note that the environment was in macOS, other OS users can consult it for the versions of the dependency packages and install them accordingly.
 
 If you want to look at unit/system diagram, you will want to have the package ``Graphviz`` correctly installed in your environment (read more about this on `QSDsan's documentation <https://qsdsan.readthedocs.io/en/latest/FAQ.html#graphviz>`_).
 
