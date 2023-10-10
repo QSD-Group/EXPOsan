@@ -20,7 +20,7 @@ from qsdsan import (
     WasteStream,
     sanunits as su,
     ImpactItem,
-    System, SimpleTEA, LCA,
+    System, TEA, LCA,
     )
 from qsdsan.utils import clear_lca_registries
 from exposan.utils import add_fugitive_items
@@ -194,10 +194,10 @@ def create_systemA(flowsheet=None):
 
     ##### Simulation, TEA, and LCA #####
     sysA = System('sysA', path=(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15))
-    teaA = SimpleTEA(system=sysA, discount_rate=discount_rate,
-                      start_year=2020, lifetime=20, uptime_ratio=1,
-                      lang_factor=None, annual_maintenance=0,
-                      annual_labor=(operator_daily_wage*3*365))
+    teaA = TEA(system=sysA, discount_rate=discount_rate,
+               start_year=2020, lifetime=20, uptime_ratio=1,
+               lang_factor=None, annual_maintenance=0,
+               annual_labor=(operator_daily_wage*3*365))
 
     # 12 is assuming the device is running 12 hr per day (50% of the time)
     # this isn't adjusted through `uptime_ratio` because other OPEX calculation
@@ -321,10 +321,10 @@ def create_systemB(flowsheet=None):
 
     ##### Simulation, TEA, and LCA #####
     sysB = System('sysB', path=(B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15, B16, B17, B18))
-    teaB = SimpleTEA(system=sysB, discount_rate=discount_rate,
-                      start_year=2020, lifetime=20, uptime_ratio=1,
-                      lang_factor=None, annual_maintenance=0,
-                      annual_labor=(operator_daily_wage*3*365))
+    teaB = TEA(system=sysB, discount_rate=discount_rate,
+               start_year=2020, lifetime=20, uptime_ratio=1,
+               lang_factor=None, annual_maintenance=0,
+               annual_labor=(operator_daily_wage*3*365))
 
     # 12 is assuming the device is running 12 hr per day (50% of the time)
     # this isn't adjusted through `uptime_ratio` because other OPEX calculation
@@ -430,10 +430,10 @@ def create_systemC(flowsheet=None):
     ##### Simulation, TEA, and LCA #####
     sysC = System('sysC', path=(C1, C2, C3, C4, C5, C6, C7, C_ag_mixer, C8, C9, C10, C11, C12, C13, C14))
 
-    teaC = SimpleTEA(system=sysC, discount_rate=discount_rate,
-                     start_year=2020, lifetime=20, uptime_ratio=1,
-                     lang_factor=None, annual_maintenance=0,
-                     annual_labor=(operator_daily_wage*3*365))
+    teaC = TEA(system=sysC, discount_rate=discount_rate,
+               start_year=2020, lifetime=20, uptime_ratio=1,
+               lang_factor=None, annual_maintenance=0,
+               annual_labor=(operator_daily_wage*3*365))
 
     # 12 is assuming the device is running 12 hr per day (50% of the time)
     # this isn't adjusted through `uptime_ratio` because other OPEX calculation
@@ -512,9 +512,9 @@ def create_systemD(flowsheet=None):
     sysD = System('sysD', path=(D1, D2, D3, D4, D5, D6, D7))
     sysD.simulate()
 
-    teaD = SimpleTEA(system=sysD, discount_rate=discount_rate,
-                     start_year=2020, lifetime=20, uptime_ratio=1,
-                     lang_factor=None, annual_maintenance=0)
+    teaD = TEA(system=sysD, discount_rate=discount_rate,
+               start_year=2020, lifetime=20, uptime_ratio=1,
+               lang_factor=None, annual_maintenance=0)
 
     # 12 is assuming the device is running 12 hr per day (50% of the time)
     # this isn't adjusted through `uptime_ratio` because other OPEX calculation
