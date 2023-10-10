@@ -24,7 +24,7 @@ from qsdsan import (
     WasteStream,
     sanunits as su,
     ImpactItem,
-    System, SimpleTEA, LCA,
+    System, TEA, LCA,
     )
 from qsdsan.utils import clear_lca_registries
 from exposan.utils import add_fugitive_items, clear_unit_costs
@@ -204,9 +204,9 @@ def create_systemA(flowsheet=None):
 
     exist_staff_num = 12
     annual_labor = exist_staff_num*3e6*12/exchange_rate
-    SimpleTEA(system=sysA, discount_rate=discount_rate, start_year=2018,
-              lifetime=get_A4_lifetime(), uptime_ratio=1, lang_factor=None,
-              annual_maintenance=0, annual_labor=annual_labor)
+    TEA(system=sysA, discount_rate=discount_rate, start_year=2018,
+        lifetime=get_A4_lifetime(), uptime_ratio=1, lang_factor=None,
+        annual_maintenance=0, annual_labor=annual_labor)
 
     LCA(system=sysA, lifetime=get_A4_lifetime(), lifetime_unit='yr', uptime_ratio=1,
         annualize_construction=True,
@@ -330,9 +330,9 @@ def create_systemB(flowsheet=None):
     ##### Simulation, TEA, and LCA #####
     sysB = System('sysB', path=(B1, B2, B3, treatB, B9, B10, B11, B12, B13, B14, B15))
 
-    SimpleTEA(system=sysB, discount_rate=discount_rate, start_year=2018,
-              lifetime=get_B4_lifetime(), uptime_ratio=1, lang_factor=None,
-              annual_maintenance=0, annual_labor=get_alt_salary())
+    TEA(system=sysB, discount_rate=discount_rate, start_year=2018,
+        lifetime=get_B4_lifetime(), uptime_ratio=1, lang_factor=None,
+        annual_maintenance=0, annual_labor=get_alt_salary())
 
     LCA(system=sysB, lifetime=get_B4_lifetime(), lifetime_unit='yr', uptime_ratio=1,
         annualize_construction=True,
@@ -463,9 +463,9 @@ def create_systemC(flowsheet=None):
     ##### Simulation, TEA, and LCA #####
     sysC = System('sysC', path=(C1, C2, C3, C4, treatC, C9, C10, C11, C12, C13, C14))
 
-    SimpleTEA(system=sysC, discount_rate=discount_rate, start_year=2018,
-              lifetime=get_C5_lifetime(), uptime_ratio=1, lang_factor=None,
-              annual_maintenance=0, annual_labor=12*3e6*12/exchange_rate)
+    TEA(system=sysC, discount_rate=discount_rate, start_year=2018,
+        lifetime=get_C5_lifetime(), uptime_ratio=1, lang_factor=None,
+        annual_maintenance=0, annual_labor=12*3e6*12/exchange_rate)
 
     LCA(system=sysC, lifetime=get_C5_lifetime(), lifetime_unit='yr', uptime_ratio=1,
         annualize_construction=True,
