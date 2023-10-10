@@ -31,6 +31,8 @@ from exposan.pou_disinfection import (
     discount_rate,
     household_size,
     get_number_of_households,
+    lifetime,
+    start_year,
     )
 
 __all__ = ('create_system',)
@@ -60,11 +62,11 @@ def create_systemA(flowsheet=None):
     
     sysA = System('sysA', path=(A1, A2))    
     
-    TEA(system=sysA, discount_rate=discount_rate, start_year=2018,
-               lifetime=5, uptime_ratio=1, lang_factor=None,
+    TEA(system=sysA, discount_rate=discount_rate, start_year=start_year,
+               lifetime=lifetime, uptime_ratio=1, lang_factor=None,
                annual_maintenance=0, annual_labor=0)
     
-    LCA(system=sysA, lifetime=5, lifetime_unit='yr', uptime_ratio=1,
+    LCA(system=sysA, lifetime=lifetime, lifetime_unit='yr', uptime_ratio=1,
         annualize_construction=True)
     
     return sysA
@@ -84,11 +86,11 @@ def create_systemB(flowsheet=None):
     ############### Simulation, TEA, and LCA ###############
     sysB = System('sysV', path=(B1, B2))
     
-    TEA(system=sysB, discount_rate=discount_rate, start_year=2018,
-        lifetime=5, uptime_ratio=1, lang_factor=None,
+    TEA(system=sysB, discount_rate=discount_rate, start_year=start_year,
+        lifetime=lifetime, uptime_ratio=1, lang_factor=None,
         annual_maintenance=0, annual_labor=0)
     
-    LCA(system=sysB, lifetime=5, lifetime_unit='yr', uptime_ratio=1,
+    LCA(system=sysB, lifetime=lifetime, lifetime_unit='yr', uptime_ratio=1,
         annualize_construction=True)
     
     return sysB
@@ -107,11 +109,11 @@ def create_systemC(flowsheet=None):
     
     sysC = System('sysC', path=(C1, C2))
     
-    TEA(system=sysC, discount_rate=discount_rate, start_year=2018,
-        lifetime=5, uptime_ratio=1, lang_factor=None,
+    TEA(system=sysC, discount_rate=discount_rate, start_year=start_year,
+        lifetime=lifetime, uptime_ratio=1, lang_factor=None,
         annual_maintenance=0, annual_labor=0)
     
-    LCA(system=sysC, lifetime=5, lifetime_unit='yr', uptime_ratio=1,
+    LCA(system=sysC, lifetime=lifetime, lifetime_unit='yr', uptime_ratio=1,
         annualize_construction=True)
     
     return sysC
@@ -129,11 +131,11 @@ def create_systemD(flowsheet=None):
     
     sysD = System('sysD', path=(D1, D2))
     
-    TEA(system=sysD, discount_rate=discount_rate, start_year=2018,
-        lifetime=5, uptime_ratio=1, lang_factor=None,
+    TEA(system=sysD, discount_rate=discount_rate, start_year=start_year,
+        lifetime=lifetime, uptime_ratio=1, lang_factor=None,
         annual_maintenance=0, annual_labor=0)
     
-    LCA(system=sysD, lifetime=5, lifetime_unit='yr', uptime_ratio=1,
+    LCA(system=sysD, lifetime=lifetime, lifetime_unit='yr', uptime_ratio=1,
         annualize_construction=True)
     
     return sysD
