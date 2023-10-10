@@ -10,6 +10,7 @@ from exposan.htl.geospatial_HTL_systems import create_spatial_system
 from exposan.htl import _m3perh_to_MGD
 from qsdsan.utils import palettes
 import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
 import geopy.distance, googlemaps
 from datetime import date
 from warnings import filterwarnings
@@ -93,7 +94,7 @@ def set_plot(figure_size=(30,30)):
 
 set_plot()
 
-US.plot(ax=ax, color='w', edgecolor='k', linewidth=5)
+US.plot(ax=ax, color='w', edgecolor='k', linewidth=5) # for figures in SI, use default linewidth
 
 less_than_10 = sludge['Influent Flow (MMGal/d)'] <= 10
 sludge[less_than_10].plot(ax=ax, color=Guest.gray.HEX, markersize=5, alpha=0.5)
@@ -120,7 +121,7 @@ US.plot(ax=ax,
         edgecolor='k',
         linewidth=0)
 
-US.plot(ax=ax, color='none', edgecolor='k', linewidth=5)
+US.plot(ax=ax, color='none', edgecolor='k', linewidth=5) # for figures in SI, use default linewidth
 
 refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=1000, edgecolor='k', linewidth=5)
 
@@ -207,10 +208,36 @@ WWTP_within = WWTP_within.merge(solid_amount, left_on=('FACILITY','ST','CITY'), 
 WWTP_within.to_excel(folder + f'HTL_geospatial_model_input_{date.today()}.xlsx') # this will be the input for the future analysis
 
 #%%
+# WRRFs GHG map (after filter out some WRRFs)
+
+WWTP_within = pd.read_excel(folder + 'HTL_geospatial_model_input_final.xlsx')
+
+WWTP_within = gpd.GeoDataFrame(WWTP_within, crs='EPSG:4269',
+                               geometry=gpd.points_from_xy(x=WWTP_within.Longitude_left,
+                                                           y=WWTP_within.Latitude_left))
+
+WWTP_within = WWTP_within.to_crs(crs='EPSG:3857')
+
+set_plot()
+
+US.plot(ax=ax, color='w', edgecolor='k')
+
+# use k-ton/yr
+
+less_than_10 = WWTP_within['30_years_emission_ton_CO2']/30/1000 <= 10
+WWTP_within[less_than_10].plot(ax=ax, color=Guest.gray.HEX, markersize=5, alpha=0.5)
+
+between_10_and_100 = (WWTP_within['30_years_emission_ton_CO2']/30/1000 > 10) & (WWTP_within['30_years_emission_ton_CO2']/30/1000 <= 100)
+WWTP_within[between_10_and_100].plot(ax=ax, color=Guest.red.HEX, markersize=100, edgecolor='k', linewidth=1.5, alpha=0.8)
+
+more_than_100 = WWTP_within['30_years_emission_ton_CO2']/30/1000 > 100
+WWTP_within[more_than_100].plot(ax=ax, color=Guest.green.HEX, markersize=500, edgecolor='k', linewidth=2)
+
+#%%
 # cumulative WRRFs capacity vs distances
 
 # remember to use the correct file
-WWTP_within = pd.read_excel(folder + 'HTL_geospatial_model_input_modified_FACILITY_name.xlsx')
+WWTP_within = pd.read_excel(folder + 'HTL_geospatial_model_input_final.xlsx')
 
 result = WWTP_within[['site_id']].drop_duplicates()
 
@@ -258,7 +285,7 @@ WRRF_CO2_reduction_ratio = []
 USD_decarbonization = []
 oil_BPD = []
     
-for i in range(4200, 4500):
+for i in range(14100, len(final_WWTPs)):
 # for i in [0, 76, 718]:
         
     sys, barrel = create_spatial_system(waste_price=400,
@@ -321,3 +348,101 @@ result = {'facility': facility,
 result = pd.DataFrame(result)
 
 result.to_excel(folder + f'results/decarbonization_{date.today()}_{i}.xlsx')
+
+#%%
+
+# this part is to make plant-level decarbonization cost vs decarbonization ratio figure
+
+decarbonization_result = pd.read_excel(folder + 'results/decarbonization_results_10_7_2023/carbonization_summary.xlsx')
+
+WWTP_within = pd.read_excel(folder + 'HTL_geospatial_model_input_final.xlsx')
+
+decarbonization_result = decarbonization_result.merge(WWTP_within[['FACILITY','CITY_x','Influent Flow (MMGal/d)', 'category']], how='left', left_on=['facility','city'], right_on=['FACILITY','CITY_x'])
+
+decarbonization_result.loc[decarbonization_result['category'].isin((1, 2, 4)) ,'AD'] = b # blue
+
+decarbonization_result.loc[~decarbonization_result['category'].isin((1, 2, 4)) ,'AD'] = r # red
+
+decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'].notna()]
+
+decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'] <= 500]
+
+decarbonization_result_more = decarbonization_result[decarbonization_result['USD_decarbonization'] > -2000]
+
+decarbonization_result_less = decarbonization_result[decarbonization_result['USD_decarbonization'] < -2000]
+
+fig, ax_more = plt.subplots(figsize = (15, 10))
+
+plt.rcParams['axes.linewidth'] = 2
+plt.rcParams['xtick.labelsize'] = 30
+plt.rcParams['ytick.labelsize'] = 30
+plt.xticks(fontname = 'Arial')
+plt.yticks(fontname = 'Arial')
+
+ax_more = plt.gca()
+ax_more.set_xlim([-3, 53])
+ax_more.set_ylim([-1625, 625])
+ax_more.xaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
+ax_more.tick_params(direction='inout', length=15, width=2, bottom=True, top=False, left=True, right=False)
+
+ax_more_right = ax_more.twinx()
+ax_more_right.set_ylim(ax_more.get_ylim())
+ax_more_right.tick_params(direction='in', length=15, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+ax_more_top = ax_more.twiny()
+ax_more_top.set_xlim(ax_more.get_xlim())
+ax_more_top.tick_params(direction='in', length=15, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+plt.xticks(np.arange(0, 55, 5))
+
+ax_more.scatter(x = decarbonization_result_more['WRRF_CO2_reduction_ratio']*100,
+                y = decarbonization_result_more['USD_decarbonization'],
+                s = decarbonization_result_more['Influent Flow (MMGal/d)']*4,
+                c = decarbonization_result_more['AD'],
+                linewidths = 0,
+                alpha = 0.7)
+
+ax_more.scatter(x = decarbonization_result_more['WRRF_CO2_reduction_ratio']*100,
+                y = decarbonization_result_more['USD_decarbonization'],
+                s = decarbonization_result_more['Influent Flow (MMGal/d)']*4,
+                color = 'none',
+                linewidths = 2,
+                edgecolors = 'k')
+
+ax_less = fig.add_axes([0.5, 0.2, 0.36, 0.32])   
+
+plt.rcParams['axes.linewidth'] = 2
+plt.rcParams['xtick.labelsize'] = 30
+plt.rcParams['ytick.labelsize'] = 30
+plt.xticks(fontname = 'Arial')
+plt.yticks(fontname = 'Arial')
+
+ax_less.set_xlim([-0.5, 3.5])
+ax_less.set_ylim([-40000, 0])
+ax_less.xaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
+ax_less.tick_params(direction='inout', length=15, width=2, bottom=True, top=False, left=True, right=False)
+
+ax_less_right = ax_less.twinx()
+ax_less_right.set_ylim(ax_less.get_ylim())
+plt.yticks(np.arange(-35000, 5000, 10000))
+ax_less_right.tick_params(direction='in', length=15, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+ax_less_top = ax_less.twiny()
+ax_less_top.set_xlim(ax_less.get_xlim())
+ax_less_top.tick_params(direction='in', length=15, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+plt.yticks(np.arange(-35000, 5000, 10000))
+
+ax_less.scatter(x = decarbonization_result_less['WRRF_CO2_reduction_ratio']*100,
+            y = decarbonization_result_less['USD_decarbonization'],
+            s = decarbonization_result_less['Influent Flow (MMGal/d)']*4,
+            c = decarbonization_result_less['AD'],
+            linewidths = 0,
+            alpha = 0.7)
+
+ax_less.scatter(x = decarbonization_result_less['WRRF_CO2_reduction_ratio']*100,
+            y = decarbonization_result_less['USD_decarbonization'],
+            s = decarbonization_result_less['Influent Flow (MMGal/d)']*4,
+            color = 'none',
+            linewidths = 2,
+            edgecolors = 'k')

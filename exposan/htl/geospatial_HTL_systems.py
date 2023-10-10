@@ -124,7 +124,7 @@ def create_spatial_system(waste_price=400, # assumed to be 400 for all WRRFs
         P1 = qsu.SludgePump('A100', ins=SluC-1, outs='pressed_sludge', P=3049.7*6894.76,
                   init_with='Stream')
     
-    elif solid_fate in (1, 2, 4):
+    elif solid_fate in (1, 2, 4): # anaerobic/aerobic digestion
         WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
                        ww_2_dry_sludge=ww_2_dry_sludge_ratio,
                        # how much metric ton/day sludge can be produced by 1 MGD of ww
@@ -257,6 +257,7 @@ def create_spatial_system(waste_price=400, # assumed to be 400 for all WRRFs
     # =============================================================================
     
     qsu.HeatExchangerNetwork('HXN', T_min_app=86, force_ideal_thermo=True)
+    # 86 K: Jones et al. PNNL, 2014
     
     CHP = qsu.CombinedHeatPower('CHP', include_construction=True,
                                 ins=(GasMixer-0, 'natural_gas', 'air'),
