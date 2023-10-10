@@ -33,9 +33,6 @@ __all__ = (
 
 # %%
 
-raw_water_path = ospath.join(data_path, '_raw_water1.tsv')
-#raw_water_path = ospath.join(data_path, '_raw_water2.tsv')
-
 class RawWater(SanUnit):
     '''       
     Parameters
@@ -44,6 +41,24 @@ class RawWater(SanUnit):
         None.
     outs : obj
         Raw water.
+    Ecoli : float
+        E coli count, CFU/mg.
+    turbidity : float
+        Turbidity, NTU.
+    TOC : float
+        Total organic carbon.
+    Ca : float
+        Calsium, mg/L.
+    Mg : float
+        Magnesium, mg/L.
+    UVT : float
+        UV transmittance.
+    household_size : int
+        Number of people per househould.
+    number_of_households : int
+        Number of household sharing the disinfection unit.
+    water_demand : float
+        Drinking water demand, L/cap/d.
     
     References
     ----------
@@ -69,35 +84,33 @@ class RawWater(SanUnit):
     _N_outs = 1
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 household_size=6, number_of_households=1, water_demand=3.7, **kwargs):
+                 Ecoli=200000, turbidity=5, TOC=5, Ca=30, Mg=30, UVT=0.8,
+                 household_size=6, number_of_households=1, water_demand=3.7):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.Ecoli = Ecoli
+        self.turbidity = turbidity
+        self.TOC = TOC
+        self.Ca = Ca
+        self.Mg = Mg
+        self.UVT = UVT
         self.household_size = household_size
         self.number_of_households = number_of_households
         self.water_demand = water_demand
-
-
-        data = load_data(path=raw_water_path)
-        for para in data.index:
-            value = float(data.loc[para]['expected'])
-            setattr(self, para, value)
-        del data
-
-        for attr, value in kwargs.items():
-            setattr(self, attr, value)                                                                                  
+                                                                               
 
     def _run(self):
         water = self.outs[0]
         water.empty() 
     
-        factor = self.household_size * self.water_demand / 24 # from L per day of water to kg per hour
-        water.imass['Ecoli'] = self.E_coli/1000*factor 
+        water_usage = self.household_size * self.water_demand / 24 # from L per day of water to kg per hour
+        water.imass['Ecoli'] = self.Ecoli/1000*water_usage 
         ###! units are MPN/hr need to confirm this is done correctly
 
         water._TOC = self.TOC # mg/L
-        water.imass['Ca'] = self.Ca/1000*factor # kg/hr
-        water.imass['Mg'] = self.Ca/1000*factor # kg/hr
-        water._turbidity = self.Turbidity # NTU
-        water.F_vol = factor
+        water.imass['Ca'] = self.Ca/1000*water_usage # kg/hr
+        water.imass['Mg'] = self.Mg/1000*water_usage # kg/hr
+        water._turbidity = self.turbidity # NTU
+        water.F_vol = water_usage/1000 # F_vol in m3/hr
         # water._UVT = self.UVT # %
 
 
@@ -115,6 +128,8 @@ class AgNP_CWF(SanUnit):
         Raw water, AgNP.
     outs : obj
         Treated water.
+    number_of_households : int
+        Number of household sharing the disinfection unit.
     '''
     _N_ins = 1
     _N_outs = 1
@@ -172,10 +187,11 @@ class AgNP_CWF(SanUnit):
         
         # defining the quantities of materials/items
         # note that these items to be to be in the _impacts_items.xlsx
-        design['CWFClay'] = CWF_clay = self.number_of_households * self.Clay_mass
-        design['SilverNP'] =  AgNP = self.number_of_households * self.AgNP
-        design['Sawdust'] =  Sawdust = self.number_of_households *self.Sawdust_mass
-        design['PE'] = Container = self.number_of_households * self.PE_in_container/2
+        number_of_households = self.number_of_households 
+        design['CWFClay'] = CWF_clay = number_of_households * self.Clay_mass
+        design['SilverNP'] =  AgNP = number_of_households * self.AgNP
+        design['Sawdust'] =  Sawdust = number_of_households *self.Sawdust_mass
+        design['PE'] = Container = number_of_households * self.PE_in_container/2
         
 
         self.construction = (
