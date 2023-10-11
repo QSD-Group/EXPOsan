@@ -34,31 +34,29 @@ __all__ = (
 # %%
 
 class RawWater(SanUnit):
-    '''       
+    '''
+    Set properties of raw water for the point-of-use disinfection technologies.
+    
     Parameters
     ----------
     ins : obj
         None.
     outs : obj
         Raw water.
-    Ecoli : float
-        E coli count, CFU/mg.
-    turbidity : float
-        Turbidity, NTU.
-    TOC : float
-        Total organic carbon.
-    Ca : float
-        Calcium, mg/L.
-    Mg : float
-        Magnesium, mg/L.
-    UVT : float
-        UV transmittance.
     household_size : int
         Number of people per household.
     number_of_households : int
         Number of household sharing the disinfection unit.
     water_demand : float
         Drinking water demand, L/cap/d.
+    water_source : str
+        "GW" for groundwater or "SW" for surface water.
+        Will use default values for water properties.
+    water_properties : dict
+        Can specify properties different from the default values,
+        including Ecoli [CFU/mg], turbidity [NTU],
+        TOC (total organic carbon, mg/L), Ca [mg/L], Mg [mg/L],
+        and UVT (UV transmittance, %).
     
     References
     ----------
@@ -82,22 +80,62 @@ class RawWater(SanUnit):
 
     _N_ins = 0
     _N_outs = 1
+    
+    # Default properties for ground- and surface water
+    _gw_prop = {
+        'Ecoli': 200000, # CFU/mg
+        'turbidity': 5, # NTU
+        'TOC': 5, # mg/L
+        'Ca': 30, # mg/L
+        'Mg': 30, # mg/L
+        'UVT': 0.8,
+        }
+    
+    _sw_prop = {
+        'Ecoli': 200000, # CFU/mg
+        'turbidity': 20, # NTU
+        'TOC': 10, # mg/L
+        'Ca': 10, # mg/L
+        'Mg': 10, # mg/L
+        'UVT': 0.8,
+        }
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 Ecoli=200000, turbidity=5, TOC=5, Ca=30, Mg=30, UVT=0.8,
-                 household_size=6, number_of_households=1, water_demand=3.7):
+                 household_size=6, number_of_households=1,
+                 water_demand=3.7, water_source='GW', **water_properties):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.Ecoli = Ecoli
-        self.turbidity = turbidity
-        self.TOC = TOC
-        self.Ca = Ca
-        self.Mg = Mg
-        self.UVT = UVT
         self.household_size = household_size
         self.number_of_households = number_of_households
         self.water_demand = water_demand
-                                                                               
-
+        self.water_source = water_source
+        # Update individual properties if provided
+        for k, v in water_properties.items(): setattr(self, k, v)
+        
+    @property
+    def water_source(self):
+        '''
+        [str]
+        
+        "GW" for groundwater or "SW" for surface water.
+        Will use default values for water properties.
+        
+        Note
+        ----
+        Setting `water_source` will overwrite any customize properties
+        (Ecoli, turbidity, TOC, Ca, Mg, and UVT).
+        '''
+        return self._water_source
+    @water_source.setter
+    def water_source(self, i):
+        i_lower = i.lower()
+        if i_lower in ('gw', 'groundwater'): prop_dct = self._gw_prop
+        elif i_lower in ('sw', 'surface water'): prop_dct = self._sw_prop
+        else: raise ValueError(f'`water_source` can only be "GW" or "SW", not {i}.')
+            
+        for k, v in prop_dct.items(): setattr(self, k, v)
+        
+        self._water_source = i
+           
     def _run(self):
         water = self.outs[0]
         water.empty() 
@@ -112,6 +150,8 @@ class RawWater(SanUnit):
         water._turbidity = self.turbidity # NTU
         water.F_vol = water_usage/1000 # F_vol in m3/hr
         # water._UVT = self.UVT # %
+        
+    
 
 
 # %%
@@ -436,13 +476,13 @@ class POU_UV(SanUnit):
         number_of_households = self.number_of_households
         design['PE'] = uv_storage = number_of_households * self.storage_PE*2
         design['PVC'] = uv_pvc = number_of_households * self.uv_PVC 
-        design['Uvlamp'] = uv_lamp_mecury = number_of_households * self.number_of_uv_lamps
+        design['UVlamp'] = uv_lamp_mecury = number_of_households * self.number_of_uv_lamps
         design['Aluminum'] =  uv_aluminum_foil = number_of_households * self.uv_aluminum_foil
         
         self.construction = (
             Construction(item='PE', quantity = uv_storage, quantity_unit = 'kg'),
             Construction(item='PVC', quantity = uv_pvc, quantity_unit = 'kg'),
-            Construction(item='Uvlamp', quantity = uv_lamp_mecury, quantity_unit = 'kg', lifetime = self.lamp_life_span, lifetime_unit='hr'),
+            Construction(item='UVlamp', quantity = uv_lamp_mecury, quantity_unit = 'kg', lifetime = self.lamp_life_span, lifetime_unit='hr'),
             Construction(item='Aluminum', quantity = uv_aluminum_foil, quantity_unit = 'kg')
             )
         self.add_construction(add_cost=False)
@@ -456,9 +496,9 @@ class POU_UV(SanUnit):
         #can be broken down as specific items within purchase_costs or grouped (e.g., 'Misc. parts')
         C = self.baseline_purchase_costs
         number_of_households = self.number_of_households
-        C['uv_unit'] = self.uv_unit_cost*number_of_households
-        C['uv_storage'] = self.uv_storage_cost*2*number_of_households
-        self.add_OPEX['uvlamp'] = (self.uv_lamp_cost/(self.lamp_life_span)) 
+        C['UV unit'] = self.uv_unit_cost*number_of_households
+        C['UV storage'] = self.uv_storage_cost*2*number_of_households
+        self.add_OPEX['UV lamp'] = (self.uv_lamp_cost/(self.lamp_life_span)) 
          
         power_demand = (self.uv_electric_demand / 1000) * self.run_time / self.lamp_lifespan_factor
         self.power_utility(power_demand)
@@ -535,7 +575,7 @@ class UV_LED(SanUnit):
         self.uv_led_lifespan *= self.led_lifespan_factor
         
         if raw_water.F_vol > (self.uv_led_flow*60):
-            breakpoint()
+            raise RuntimeError('Exceed flow capacity.')
             
         self.run_time = raw_water.F_vol/(self.uv_led_flow*60)
         
@@ -586,8 +626,8 @@ class UV_LED(SanUnit):
         #can be broken down as specific items within purchase_costs or grouped (e.g., 'Misc. parts')
         C = self.baseline_purchase_costs
         number_of_households = self.number_of_households
-        C['uv_led_unit'] = self.uv_led_unit_cost * number_of_households
-        C['uv_led_storage'] = self.uv_led_storage_cost*2*number_of_households
+        C['UV LED unit'] = self.uv_led_unit_cost * number_of_households
+        C['UV LED storage'] = self.uv_led_storage_cost*2*number_of_households
         # C['uv_pump'] = self.uv_led_pump_cost*number_of_households
         self.add_OPEX['LED'] = self.uv_led_cost/(self.uv_led_lifespan)
          
