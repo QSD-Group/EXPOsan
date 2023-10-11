@@ -69,16 +69,20 @@ def get_number_of_households(household_size=household_size, ppl=ppl):
 #!!! Definitely not complete, need updating
 price_dct = {
     'Electricity': 0.17,
-    'NaClO': 1.96,
+    'Concrete': 194,
+    'Steel': 2.665,
+    'NaClO': 1.96/0.15/1.21/0.125,
     'Polyethylene': 0,
     }
 
 GWP_dct = {
     'Electricity': 0.1135,
-    'NaClO': 1.0,
-    'Polyethylene': 1.0,
+    'CH4': 28,
+    'N2O': 265,
+    'N': -5.4,
+    'NaClO': 2.6287, 
+    'Polyethylene': 2.7933, 
     }
-
 
 # %%
 
@@ -170,9 +174,79 @@ def __getattr__(name):
 # Util functions
 # =============================================================================
 
-#!!! Need to add summarizing functions
+def get_TEA_metrics(system, ppl=ppl, include_breakdown=False):
+    tea = system.TEA
+    functions = [lambda: tea.EAC/ppl] # annual cost
+    
+    if not include_breakdown: return functions
+    
+    get_AOC = lambda: tea.AOC/ppl # OPEX
+    get_annual_electricity = lambda: system.power_utility.cost*system.operating_hours
+    functions.extend([
+        lambda: tea.annualized_CAPEX/ppl,
+        get_AOC,
+        get_annual_electricity,
+        lambda: get_AOC()-get_annual_electricity(), # OPEX other than energy
+        ])
+
+    return functions
+
+def get_LCA_metrics(system, ppl=ppl, include_breakdown=False):
+    lca = system.LCA
+    factor = lca.lifetime/ppl
+    functions = [lambda ind: lca.total_impacts[ind.ID]/factor
+                 for ind in lca.indicators]
+    
+    if not include_breakdown: return functions
+    
+    for ind in lca.indicators:
+        ID = ind.ID
+        functions.extend([
+            lambda: lca.total_construction_impacts[ID]/factor,
+            lambda: lca.total_transportation_impacts[ID]/factor,
+            lambda: lca.total_stream_impacts[ID]/factor, # including fugitive gases and offsets
+            lambda: lca.total_other_impacts[ID]/factor, # e.g., electricity
+            ])
+
+    return functions
 
 
+def print_summaries(systems, include_breakdown=False):
+    try: iter(systems)
+    except: systems = (systems, )
+
+    for system in systems:
+        system.simulate()
+
+        print(f'\n---------- Summary for {system.ID} ----------\n')
+
+        TEA_functions = get_TEA_metrics(system, include_breakdown=include_breakdown)
+        LCA_functions = get_LCA_metrics(system, include_breakdown=include_breakdown)
+        indicators = system.LCA.indicators
+        
+        unit = f'{qs.currency}/cap/yr'
+        print(f'\nTotal cost: {TEA_functions[0]():.2f} {unit}.')
+        
+        if include_breakdown:
+            print(f'\nCAPEX: {TEA_functions[1]():.2f} {unit}.')
+            print(f'\nOPEX: {TEA_functions[2]():.2f} {unit}.')
+            print(f'\nElectricity: {TEA_functions[3]():.2f} {unit}.')
+            print(f'\nOthers: {TEA_functions[4]():.2f} {unit}.') 
+        else:
+            for n, ind in enumerate(indicators):
+                ID, unit = ind.ID, ind.unit+'/cap/year'
+                print(f'\nTotal {ID}: {LCA_functions[n-1]():.2f} {unit}.')
+
+        n = len(indicators)
+        if include_breakdown:
+            for ind in indicators:
+                ID, unit = ind.ID, ind.unit+'/cap/year'
+                print(f'\nFor indicator {ID}:')
+                print(f'\nConstruction: {LCA_functions[n]():.2f} {unit}.')
+                print(f'\nTransportation: {LCA_functions[n+1]():.2f} {unit}.')
+                print(f'\nStreams: {LCA_functions[n+2]():.2f} {unit}.')
+                print(f'\nOthers: {LCA_functions[n+3]():.2f} {unit}.')
+                n += 4
 
 
 #!!! Model not yet updated

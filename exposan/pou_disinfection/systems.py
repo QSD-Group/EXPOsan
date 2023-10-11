@@ -17,6 +17,8 @@ for license details.
 
 # %%
 
+#!!! Consider adding option to change water source and ppl (get_number_of_households)
+
 from qsdsan import (
     Flowsheet, main_flowsheet,
     WasteStream,
@@ -73,7 +75,7 @@ def create_systemA(flowsheet=None):
 
 
 # =============================================================================
-# Sytem B: AgNP CWF
+# System B: AgNP CWF
 # =============================================================================
 
 def create_systemB(flowsheet=None):
@@ -114,7 +116,7 @@ def create_systemC(flowsheet=None):
         annual_maintenance=0, annual_labor=0)
     
     LCA(system=sysC, lifetime=lifetime, lifetime_unit='yr', uptime_ratio=1,
-        annualize_construction=True)
+        annualize_construction=True, E_item=lambda: C2.power_utility.rate*(365*12*5))
     
     return sysC
 
@@ -136,7 +138,7 @@ def create_systemD(flowsheet=None):
         annual_maintenance=0, annual_labor=0)
     
     LCA(system=sysD, lifetime=lifetime, lifetime_unit='yr', uptime_ratio=1,
-        annualize_construction=True)
+        annualize_construction=True, E_item=lambda: D2.power_utility.rate*(365*24*5))
     
     return sysD
 
