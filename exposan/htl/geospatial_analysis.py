@@ -387,11 +387,11 @@ ax_more.tick_params(direction='inout', length=15, width=2, bottom=True, top=Fals
 
 ax_more_right = ax_more.twinx()
 ax_more_right.set_ylim(ax_more.get_ylim())
-ax_more_right.tick_params(direction='in', length=15, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_more_right.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 ax_more_top = ax_more.twiny()
 ax_more_top.set_xlim(ax_more.get_xlim())
-ax_more_top.tick_params(direction='in', length=15, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_more_top.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 plt.xticks(np.arange(0, 55, 5))
 
@@ -425,11 +425,11 @@ ax_less.tick_params(direction='inout', length=15, width=2, bottom=True, top=Fals
 ax_less_right = ax_less.twinx()
 ax_less_right.set_ylim(ax_less.get_ylim())
 plt.yticks(np.arange(-35000, 5000, 10000))
-ax_less_right.tick_params(direction='in', length=15, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_less_right.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 ax_less_top = ax_less.twiny()
 ax_less_top.set_xlim(ax_less.get_xlim())
-ax_less_top.tick_params(direction='in', length=15, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_less_top.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 plt.yticks(np.arange(-35000, 5000, 10000))
 
