@@ -31,33 +31,10 @@ discount_rate = 0.05
 start_year = 2018
 lifetime = 5
 
-GW_water = {
-    'Ecoli': 200000, # CFU/mg
-    'turbidity': 5, # NTU
-    'TOC': 5, # mg/L
-    'Ca': 30, # mg/L
-    'Mg': 30, # mg/L
-    'UVT': 0.8,
-    }
-
-SW_water = {
-    'Ecoli': 200000, # CFU/mg
-    'turbidity': 20, # NTU
-    'TOC': 10, # mg/L
-    'Ca': 10, # mg/L
-    'Mg': 10, # mg/L
-    'UVT': 0.8,
-    }
-
-
+water_source = 'GW'
 household_size = 6
 household_per_container = 1
-def get_pou_user(household_size=household_size, household_per_container=household_per_container):
-    return household_size * household_per_container
-
 ppl = 1000 # 1k or 500
-def get_number_of_households(household_size=household_size, ppl=ppl):
-    return ppl / household_size
 
 
 # %%
@@ -66,7 +43,7 @@ def get_number_of_households(household_size=household_size, ppl=ppl):
 # Prices and GWP CFs
 # =============================================================================
 
-#!!! Definitely not complete, need updating
+#!!! Might need updating
 price_dct = {
     'Electricity': 0.17,
     'Concrete': 194,
@@ -83,6 +60,7 @@ GWP_dct = {
     'NaClO': 2.6287, 
     'Polyethylene': 2.7933, 
     }
+
 
 # %%
 
@@ -174,6 +152,17 @@ def __getattr__(name):
 # Util functions
 # =============================================================================
 
+def update_water_source(system, water_source='GW'):
+    setattr(system.flowsheet.unit[0], 'water_source', water_source)
+    
+def update_number_of_householdsize(system, household_size=household_size, ppl=ppl):
+    u0, u1 = system.path
+    number_of_households = get_number_of_households()
+    setattr(u0, 'household_size', household_size)
+    setattr(u0, 'number_of_households', number_of_households)
+    setattr(u1, 'number_of_households', number_of_households)
+
+
 def get_TEA_metrics(system, ppl=ppl, include_breakdown=False):
     tea = system.TEA
     functions = [lambda: tea.EAC/ppl] # annual cost
@@ -249,10 +238,8 @@ def print_summaries(systems, include_breakdown=False):
                 n += 4
 
 
-#!!! Model not yet updated
-# from . import models
-# from .models import *
-
+from . import models
+from .models import *
 
 __all__ = (
     'pou_path',
@@ -260,5 +247,5 @@ __all__ = (
     'results_path',
     *_components.__all__,
     *systems.__all__,
-    # *models.__all__,
+    *models.__all__,
 )

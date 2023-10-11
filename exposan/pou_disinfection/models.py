@@ -33,8 +33,13 @@ from exposan.pou_disinfection import (
     get_LCA_metrics,
     get_TEA_metrics,
     GWP_dct,
+    household_size,
+    ppl,
     price_dct,
     results_path,
+    update_number_of_householdsize,
+    update_water_source,
+    water_source,
     )
 
 __all__ = ('create_model', 'run_uncertainty',)
@@ -229,7 +234,7 @@ uv_led_data = load_data(uv_led_path)
 # System A: POU Chlorination
 def create_modelA(**model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
-    sysA = create_system('A', flowsheet=flowsheet)
+    sysA = create_system('A', flowsheet=flowsheet, **model_kwargs)
     unitA = sysA.flowsheet.unit
     
     # Shared metrics/parameters
@@ -249,7 +254,7 @@ def create_modelA(**model_kwargs):
 # System B: AgNP CWF
 def create_modelB(**model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
-    sysB = create_system('B', flowsheet=flowsheet)
+    sysB = create_system('B', flowsheet=flowsheet, **model_kwargs)
     unitB = sysB.flowsheet.unit
     
     # Shared metrics/parameters
@@ -268,7 +273,7 @@ def create_modelB(**model_kwargs):
 # System C: POU UV
 def create_modelC(**model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
-    sysC = create_system('C', flowsheet=flowsheet)
+    sysC = create_system('C', flowsheet=flowsheet, **model_kwargs)
     unitC = sysC.flowsheet.unit
     
     # Shared metrics/parameters
@@ -288,7 +293,7 @@ def create_modelC(**model_kwargs):
 # System D: UV LED
 def create_modelD(**model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
-    sysD = create_system('D', flowsheet=flowsheet)
+    sysD = create_system('D', flowsheet=flowsheet, **model_kwargs)
     unitD = sysD.flowsheet.unit
     
     # Shared metrics/parameters
@@ -306,12 +311,17 @@ def create_modelD(**model_kwargs):
 
 
 # Wrapper function so that it'd work for all
-def create_model(model_ID='A', country_specific=False, **model_kwargs):
+def create_model(model_ID='A', water_source=water_source, household_size=household_size, ppl=ppl):
     model_ID = model_ID.lower().rsplit('model')[-1].rsplit('sys')[-1].upper() # works for "modelA"/"sysA"/"A"
-    if model_ID == 'A': model = create_modelA(country_specific, **model_kwargs)
-    elif model_ID == 'B': model = create_modelB(country_specific, **model_kwargs)
-    elif model_ID == 'C': model = create_modelC(country_specific, **model_kwargs)
-    elif model_ID == 'D': model = create_modelD(country_specific, **model_kwargs)
+    model_kwargs = {
+        'water_source': water_source,
+        'household_size': household_size,
+        'ppl': ppl,
+        }
+    if model_ID == 'A': model = create_modelA(**model_kwargs)
+    elif model_ID == 'B': model = create_modelB(**model_kwargs)
+    elif model_ID == 'C': model = create_modelC(**model_kwargs)
+    elif model_ID == 'D': model = create_modelD(**model_kwargs)
     else: raise ValueError(f'`model_ID` can only be "A", "B", "C", or "D", not "{model_ID}".')
     return model
 

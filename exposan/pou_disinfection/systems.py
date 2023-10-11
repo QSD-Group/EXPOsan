@@ -17,8 +17,6 @@ for license details.
 
 # %%
 
-#!!! Consider adding option to change water source and ppl (get_number_of_households)
-
 from qsdsan import (
     Flowsheet, main_flowsheet,
     WasteStream,
@@ -32,12 +30,16 @@ from exposan.pou_disinfection import (
     _units as u,
     discount_rate,
     household_size,
-    get_number_of_households,
     lifetime,
+    ppl,
     start_year,
+    water_source,
     )
 
 __all__ = ('create_system',)
+
+# def get_number_of_households(household_size=household_size, ppl=ppl):
+#     return ppl / household_size
 
 
 # %%
@@ -47,20 +49,21 @@ __all__ = ('create_system',)
 # =============================================================================
 
 #!!! Seems like only sysA needs NaClO and PE
-def create_systemA(flowsheet=None):
+def create_systemA(flowsheet=None,
+                   water_source=water_source, household_size=household_size, ppl=ppl):
     item = ImpactItem.get_item('NaClO_item')
     A_naclo = WasteStream('A_naclo', phase='g', stream_impact_item=item)
 
     item = ImpactItem.get_item('Polyethylene_item')
     A_polyethylene = WasteStream('A_polyethylene', phase='g', stream_impact_item=item)
-
     
+    number_of_households = ppl / household_size
     A1 = u.RawWater('A1', outs=('raw_water'), household_size=household_size, 
-                    number_of_households=get_number_of_households())
+                    number_of_households=number_of_households)
     
     A2 = u.POUChlorination('A2', ins=(A1-0, A_naclo, A_polyethylene), 
                             outs='treated_water', 
-                            number_of_households=get_number_of_households())
+                            number_of_households=number_of_households)
     
     sysA = System('sysA', path=(A1, A2))    
     
@@ -78,12 +81,14 @@ def create_systemA(flowsheet=None):
 # System B: AgNP CWF
 # =============================================================================
 
-def create_systemB(flowsheet=None):
+def create_systemB(flowsheet=None,
+                   water_source=water_source, household_size=household_size, ppl=ppl):
+    number_of_households = ppl / household_size
     B1 = u.RawWater('B1', outs=('raw_water'), household_size=household_size, 
-                    number_of_households=get_number_of_households())
+                    number_of_households=number_of_households)
     
     B2 = u.AgNP_CWF('B2', ins=B1-0, outs='treated_water', 
-                    number_of_households=get_number_of_households())
+                    number_of_households=number_of_households)
     
     ############### Simulation, TEA, and LCA ###############
     sysB = System('sysV', path=(B1, B2))
@@ -102,12 +107,14 @@ def create_systemB(flowsheet=None):
 # System C: POU UV
 # =============================================================================
 
-def create_systemC(flowsheet=None):
+def create_systemC(flowsheet=None,
+                   water_source=water_source, household_size=household_size, ppl=ppl):
+    number_of_households = ppl / household_size
     C1 = u.RawWater('C1', outs=('raw_water'), household_size=household_size, 
-                      number_of_households=get_number_of_households())
+                      number_of_households=number_of_households)
     
     C2 = u.POU_UV('C2', ins=(C1-0), outs='treated_water', 
-                  number_of_households=get_number_of_households())
+                  number_of_households=number_of_households)
     
     sysC = System('sysC', path=(C1, C2))
     
@@ -124,12 +131,14 @@ def create_systemC(flowsheet=None):
 #  system D: UV LED
 # =============================================================================
 
-def create_systemD(flowsheet=None):
+def create_systemD(flowsheet=None,
+                   water_source=water_source, household_size=household_size, ppl=ppl):
+    number_of_households = ppl / household_size
     D1 = u.RawWater('D1', outs=('raw_water'), household_size=household_size, 
-                      number_of_households=get_number_of_households())
+                      number_of_households=number_of_households)
     
     D2 = u.UV_LED('D2', ins=(D1-0), outs='treated_water', 
-                  number_of_households=get_number_of_households())
+                  number_of_households=number_of_households)
     
     sysD = System('sysD', path=(D1, D2))
     
@@ -149,7 +158,8 @@ def create_systemD(flowsheet=None):
 # Wrapper function
 # =============================================================================
 
-def create_system(system_ID='A', flowsheet=None):
+def create_system(system_ID='A', flowsheet=None,
+                  water_source=water_source, household_size=household_size, ppl=ppl):
     ID = system_ID.lower().lstrip('sys').upper()  # so that it'll work for "sysA"/"A"
     reload_lca = False
 
@@ -175,6 +185,11 @@ def create_system(system_ID='A', flowsheet=None):
     try: system = f(flowsheet)
     except:
         _load_components(reload=True)
-        system = f(flowsheet)
+        system = f(
+            flowsheet,
+            water_source=water_source,
+            household_size=household_size,
+            ppl=ppl,
+            )
 
     return system
