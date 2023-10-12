@@ -49,11 +49,9 @@ setup(
             'htl/*',
             'htl/data/*',
             'interface/*',
-            'metab_mock/*',
-            'metab_mock/data/*',
-            'metab_mock/utils/*',
             'new_generator/*',
             'new_generator/data/*',
+            'pou_disinfection/data/*'
             'reclaimer/*',
             'reclaimer/data/*',
         ]},
