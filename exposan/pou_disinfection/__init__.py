@@ -24,8 +24,11 @@ data_path, results_path = _init_modules(module, include_data_path=True)
 # %%
 
 # =============================================================================
-# Unit parameters
+# Parameters
 # =============================================================================
+
+qs.currency = 'USD'
+qs.PowerUtility.price = 0.17
 
 discount_rate = 0.05
 start_year = 2018
@@ -79,8 +82,6 @@ from . import systems
 from .systems import *
 _system_loaded = False
 def _load_system():
-    qs.currency = 'USD'
-    qs.PowerUtility.price = 0.17
     global sysA, sysB, sysC, sysD, teaA, teaB, teaC, teaD, lcaA, lcaB, lcaC, lcaD, _system_loaded
     sysA = create_system('A')
     teaA = sysA.TEA

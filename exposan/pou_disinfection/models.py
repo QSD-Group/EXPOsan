@@ -90,7 +90,7 @@ def add_metrics(model, include_breakdown=False):
     return metrics
 
 
-def add_shared_parameters(model, water):
+def add_shared_parameters(model):
     sys = model.system
     sys_stream = sys.flowsheet.stream
     param = model.parameter
@@ -135,14 +135,7 @@ def add_shared_parameters(model, water):
     def set_electricity_price(i):
         PowerUtility.price = i
         
-    # NaClO price
-    b = sys_stream['NaClO'].price
-    if b != 1.96/0.15/1.21/0.125: raise ValueError('baseline price of NaClO changed!')
-    D = shape.Uniform(lower=b*0.75, upper=b*1.25)
-    @param(name='NaClO price', element='TEA', kind='isolated',
-            units='$/kg', baseline=b, distribution=D)
-    def set_NaClO_price(i):
-        sys_stream['NaClO'].price = i
+
         
     ######## General LCA settings ########
     lca = sys.LCA
@@ -209,9 +202,9 @@ def import_water_data(water_source):
 # =============================================================================
 
 # System A: POU Chlorination
-def create_modelA(**model_kwargs):
+def create_modelA(system_kwargs={}, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
-    sysA = create_system('A', flowsheet=flowsheet, **model_kwargs)
+    sysA = create_system('A', flowsheet=flowsheet, **system_kwargs)
     unitA = sysA.flowsheet.unit
     
     # Shared metrics/parameters
@@ -219,8 +212,20 @@ def create_modelA(**model_kwargs):
     add_metrics(modelA)
     add_shared_parameters(modelA)
     
+    # NaClO price
+    A_naclo = sysA.flowsheet.stream['A_naclo']
+    b = A_naclo.price
+    if b != 1.96/0.15/1.21/0.125: raise ValueError('baseline price of NaClO changed!')
+    D = shape.Uniform(lower=b*0.75, upper=b*1.25)
+    @modelA.parameter(
+        name='NaClO price', element='TEA', kind='isolated',
+        units='$/kg', baseline=b, distribution=D,
+        )
+    def set_NaClO_price(i):
+        A_naclo.price = i
+    
     # RawWater
-    water_data = import_water_data(model_kwargs.pop('water_source'))
+    water_data = import_water_data(system_kwargs['water_source'])
     batch_setting_unit_params(water_data, modelA, unitA.A1)
 
     # Chlorination
@@ -232,9 +237,9 @@ def create_modelA(**model_kwargs):
 
 
 # System B: AgNP CWF
-def create_modelB(**model_kwargs):
+def create_modelB(system_kwargs={}, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
-    sysB = create_system('B', flowsheet=flowsheet, **model_kwargs)
+    sysB = create_system('B', flowsheet=flowsheet, **system_kwargs)
     unitB = sysB.flowsheet.unit
     
     # Shared metrics/parameters
@@ -243,7 +248,7 @@ def create_modelB(**model_kwargs):
     add_shared_parameters(modelB)
     
     # RawWater
-    water_data = import_water_data(model_kwargs.pop('water_source'))
+    water_data = import_water_data(system_kwargs['water_source'])
     batch_setting_unit_params(water_data, modelB, unitB.B1)
     
     # AgNP CWF
@@ -254,9 +259,9 @@ def create_modelB(**model_kwargs):
     return modelB
 
 # System C: POU UV
-def create_modelC(**model_kwargs):
+def create_modelC(system_kwargs={}, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
-    sysC = create_system('C', flowsheet=flowsheet, **model_kwargs)
+    sysC = create_system('C', flowsheet=flowsheet, **system_kwargs)
     unitC = sysC.flowsheet.unit
     
     # Shared metrics/parameters
@@ -265,7 +270,7 @@ def create_modelC(**model_kwargs):
     add_shared_parameters(modelC)
     
     # RawWater
-    water_data = import_water_data(model_kwargs.pop('water_source'))
+    water_data = import_water_data(system_kwargs['water_source'])
     batch_setting_unit_params(water_data, modelC, unitC.C1)
     
     # UV lamp
@@ -277,9 +282,9 @@ def create_modelC(**model_kwargs):
 
 
 # System D: UV LED
-def create_modelD(**model_kwargs):
+def create_modelD(system_kwargs={}, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
-    sysD = create_system('D', flowsheet=flowsheet, **model_kwargs)
+    sysD = create_system('D', flowsheet=flowsheet, **system_kwargs)
     unitD = sysD.flowsheet.unit
     
     # Shared metrics/parameters
@@ -288,7 +293,7 @@ def create_modelD(**model_kwargs):
     add_shared_parameters(modelD)
     
     # RawWater
-    water_data = import_water_data(model_kwargs.pop('water_source'))
+    water_data = import_water_data(system_kwargs['water_source'])
     batch_setting_unit_params(water_data, modelD, unitD.D1)
     
     # UV LED
@@ -300,17 +305,18 @@ def create_modelD(**model_kwargs):
 
 
 # Wrapper function so that it'd work for all
-def create_model(model_ID='A', water_source=water_source, household_size=household_size, ppl=ppl):
+def create_model(model_ID='A', water_source=water_source, household_size=household_size, ppl=ppl,
+                 **model_kwargs):
     model_ID = model_ID.lower().rsplit('model')[-1].rsplit('sys')[-1].upper() # works for "modelA"/"sysA"/"A"
-    model_kwargs = {
+    system_kwargs = {
         'water_source': water_source,
         'household_size': household_size,
         'ppl': ppl,
         }
-    if model_ID == 'A': model = create_modelA(**model_kwargs)
-    elif model_ID == 'B': model = create_modelB(**model_kwargs)
-    elif model_ID == 'C': model = create_modelC(**model_kwargs)
-    elif model_ID == 'D': model = create_modelD(**model_kwargs)
+    if model_ID == 'A': model = create_modelA(system_kwargs=system_kwargs, **model_kwargs)
+    elif model_ID == 'B': model = create_modelB(system_kwargs=system_kwargs, **model_kwargs)
+    elif model_ID == 'C': model = create_modelC(system_kwargs=system_kwargs, **model_kwargs)
+    elif model_ID == 'D': model = create_modelD(system_kwargs=system_kwargs, **model_kwargs)
     else: raise ValueError(f'`model_ID` can only be "A", "B", "C", or "D", not "{model_ID}".')
     return model
 
