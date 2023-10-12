@@ -195,24 +195,11 @@ def add_shared_parameters(model, water):
     return model
 
 
-# =============================================================================
-# Datasheets
-# =============================================================================
-
-# Groundwater
-gw_path = os.path.join(data_path, '_raw_water1_gw.tsv')
-gw_data = load_data(gw_path)
-# Surface water
-sw_path = os.path.join(data_path, '_raw_water2_sw.tsv')
-sw_data = load_data(sw_path)
-chlorination_data_path = os.path.join(data_path, '_pou_chlorination.csv')
-chlorination_data = load_data(chlorination_data_path)
-cwf_path = os.path.join(data_path, '_AgNP_CWF_2.csv')
-cwf_data = load_data(cwf_path)
-pou_uv_path = os.path.join(data_path, '_pou_uv.csv')
-pou_uv_data = load_data(pou_uv_path)
-uv_led_path = os.path.join(data_path, '_uv_led.csv')
-uv_led_data = load_data(uv_led_path)
+def import_water_data(water_source):
+    suffix = '1_gw.tsv' if water_source.lower() in ('gw', 'groundwater') \
+        else '2_sw.tsv'
+    water_path = os.path.join(data_path, f'_raw_water{suffix}')
+    return load_data(water_path)
 
 
 # %%
@@ -233,9 +220,12 @@ def create_modelA(**model_kwargs):
     add_shared_parameters(modelA)
     
     # RawWater
-    batch_setting_unit_params(gw_data, modelA, unitA.A1)
+    water_data = import_water_data(model_kwargs.pop('water_source'))
+    batch_setting_unit_params(water_data, modelA, unitA.A1)
 
     # Chlorination
+    chlorination_data_path = os.path.join(data_path, '_pou_chlorination.csv')
+    chlorination_data = load_data(chlorination_data_path)
     batch_setting_unit_params(chlorination_data, modelA, unitA.A2)
 
     return modelA
@@ -253,10 +243,13 @@ def create_modelB(**model_kwargs):
     add_shared_parameters(modelB)
     
     # RawWater
-    batch_setting_unit_params(gw_data, modelB, unitB.B1)
+    water_data = import_water_data(model_kwargs.pop('water_source'))
+    batch_setting_unit_params(water_data, modelB, unitB.B1)
     
     # AgNP CWF
-    batch_setting_unit_params(cwf_data, modelB, unitB.B2)
+    agnp_cwf_path = os.path.join(data_path, '_AgNP_CWF_2.csv')
+    agnp_cwf_data = load_data(agnp_cwf_path)
+    batch_setting_unit_params(agnp_cwf_data, modelB, unitB.B2)
 
     return modelB
 
@@ -272,9 +265,12 @@ def create_modelC(**model_kwargs):
     add_shared_parameters(modelC)
     
     # RawWater
-    batch_setting_unit_params(gw_data, modelC, unitC.C1)
+    water_data = import_water_data(model_kwargs.pop('water_source'))
+    batch_setting_unit_params(water_data, modelC, unitC.C1)
     
     # UV lamp
+    pou_uv_path = os.path.join(data_path, '_pou_uv.csv')
+    pou_uv_data = load_data(pou_uv_path)
     batch_setting_unit_params(pou_uv_data, modelC, unitC.C2)
 
     return modelC
@@ -292,9 +288,12 @@ def create_modelD(**model_kwargs):
     add_shared_parameters(modelD)
     
     # RawWater
-    batch_setting_unit_params(gw_data, modelD, unitD.D1)
+    water_data = import_water_data(model_kwargs.pop('water_source'))
+    batch_setting_unit_params(water_data, modelD, unitD.D1)
     
     # UV LED
+    uv_led_path = os.path.join(data_path, '_uv_led.csv')
+    uv_led_data = load_data(uv_led_path)
     batch_setting_unit_params(uv_led_data, modelD, unitD.D2)
 
     return modelD
