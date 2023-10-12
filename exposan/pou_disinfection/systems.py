@@ -38,9 +38,6 @@ from exposan.pou_disinfection import (
 
 __all__ = ('create_system',)
 
-# def get_number_of_households(household_size=household_size, ppl=ppl):
-#     return ppl / household_size
-
 
 # %%
 
@@ -51,17 +48,16 @@ __all__ = ('create_system',)
 #!!! Seems like only sysA needs NaClO and PE
 def create_systemA(flowsheet=None,
                    water_source=water_source, household_size=household_size, ppl=ppl):
-    item = ImpactItem.get_item('NaClO_item')
-    A_naclo = WasteStream('A_naclo', phase='g', stream_impact_item=item)
-
-    item = ImpactItem.get_item('Polyethylene_item')
-    A_polyethylene = WasteStream('A_polyethylene', phase='g', stream_impact_item=item)
+    item = ImpactItem.get_item('NaClO')
+    A_naclo = WasteStream('A_naclo', phase='l',
+                          stream_impact_item=item.copy('A_naclo', set_as_source=True),
+                          price=1.96/0.15/1.21/0.125)
     
     number_of_households = ppl / household_size
     A1 = u.RawWater('A1', outs=('raw_water'), household_size=household_size, 
                     number_of_households=number_of_households)
     
-    A2 = u.POUChlorination('A2', ins=(A1-0, A_naclo, A_polyethylene), 
+    A2 = u.POUChlorination('A2', ins=(A1-0, A_naclo), 
                             outs='treated_water', 
                             number_of_households=number_of_households)
     
@@ -123,7 +119,7 @@ def create_systemC(flowsheet=None,
         annual_maintenance=0, annual_labor=0)
     
     LCA(system=sysC, lifetime=lifetime, lifetime_unit='yr', uptime_ratio=1,
-        annualize_construction=True, E_item=lambda: C2.power_utility.rate*(365*12*5))
+        annualize_construction=True, Electricity=lambda: C2.power_utility.rate*(365*12*5))
     
     return sysC
 
@@ -147,7 +143,7 @@ def create_systemD(flowsheet=None,
         annual_maintenance=0, annual_labor=0)
     
     LCA(system=sysD, lifetime=lifetime, lifetime_unit='yr', uptime_ratio=1,
-        annualize_construction=True, E_item=lambda: D2.power_utility.rate*(365*24*5))
+        annualize_construction=True, Electricity=lambda: D2.power_utility.rate*(365*24*5))
     
     return sysD
 

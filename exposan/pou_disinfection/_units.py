@@ -287,7 +287,7 @@ class POUChlorination(SanUnit):
     Parameters
     ----------
     ins : obj
-        Raw water, chlorine, polyethylene bottle for chlorine.
+        Raw water, chlorine.
     outs : obj
         Treated water.
     number_of_households : int
@@ -335,16 +335,11 @@ class POUChlorination(SanUnit):
         Cl_bottle.phase = 's'
         
         # add chlorine to the treated_water
-        NaClO_dose_total = self.NaClO_dose_total
-        
-        chlorine.imass['NaClO'] = NaClO_dose_total * treated_water.F_vol / 1000 # kg NaClO/hr
-        self.chlorine_rate = chlorine.imass['NaClO']
-        Cl_bottle.imass['Polyethylene'] = chlorine.imass['NaClO'] * self.PE_to_NaClO
-        
+        NaClO_dose_total = self.NaClO_dose_total        
+        self.chlorine_rate = chlorine.imass['NaClO'] = NaClO_dose_total * treated_water.F_vol / 1000 # kg NaClO/hr
+
         # disinfect bacteria from treated_water
-        
         Cl_Concentration = NaClO_dose_total #mg/L
-      
         No = raw_water.imass['Ecoli']/raw_water.F_vol * 10**-4  # E coli CFU/ mL ICC/ml (intact cells counts) used by (Cheswick et al., 2020)
              
     #_design will include all the construction or capital impacts  
@@ -353,11 +348,12 @@ class POUChlorination(SanUnit):
         
         # defining the quantities of materials/items
         # note that these items are in the _impacts_items.xlsx data
-        design['PE'] = Container = self.number_of_households * self.PE_in_container
-
-
+        PE_container = self.number_of_households * self.PE_in_container
+        PE_bottle = self.ins[1].imass['NaClO'] * self.PE_to_NaClO
+        design['PE'] = PE_container + PE_bottle
+        
         self.construction = (
-            Construction(item='PE', quantity = Container, quantity_unit = 'kg'),
+            Construction(item='PE', quantity = design['PE'], quantity_unit = 'kg'),
             )
         self.add_construction(add_cost=False)       
     

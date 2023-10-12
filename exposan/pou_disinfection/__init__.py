@@ -40,26 +40,6 @@ ppl = 1000 # 1k or 500
 # %%
 
 # =============================================================================
-# Prices and GWP CFs
-# =============================================================================
-
-#!!! Might need updating
-price_dct = {
-    'Electricity': 0.17,
-    'NaClO': 1.96/0.15/1.21/0.125,
-    'Polyethylene': 0,
-    }
-
-GWP_dct = {
-    'Electricity': 0.1135,
-    'NaClO': 2.6287, 
-    'Polyethylene': 2.7933, 
-    }
-
-
-# %%
-
-# =============================================================================
 # Load components and system
 # =============================================================================
 
@@ -86,20 +66,10 @@ def _load_lca_data(reload=False):
     '''
     global _impact_item_loaded
     if not _impact_item_loaded or reload:
-        ImpactIndicator('GWP', unit='kg CO2') # global warming potential
+        ImpactIndicator('GWP', unit='kg CO2-eq') # global warming potential
 
         item_path = os.path.join(data_path, 'impact_items.xlsx')
         qs.ImpactItem.load_from_file(item_path)
-
-        # Impacts associated with streams and electricity
-        def create_stream_impact_item(item_ID):
-            StreamImpactItem(ID=item_ID,
-                             GWP=GWP_dct[item_ID.rsplit('_item')[0]])
-
-        create_stream_impact_item(item_ID='NaClO_item')
-        create_stream_impact_item(item_ID='Polyethylene_item')
-        ImpactItem(ID='E_item', functional_unit='kWh', GWP=GWP_dct['Electricity'])
-
         _impact_item_loaded = True
 
     return _impact_item_loaded
@@ -110,7 +80,7 @@ from .systems import *
 _system_loaded = False
 def _load_system():
     qs.currency = 'USD'
-    qs.PowerUtility.price = price_dct['Electricity']
+    qs.PowerUtility.price = 0.17
     global sysA, sysB, sysC, sysD, teaA, teaB, teaC, teaD, lcaA, lcaB, lcaC, lcaD, _system_loaded
     sysA = create_system('A')
     teaA = sysA.TEA

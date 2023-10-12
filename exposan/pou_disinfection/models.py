@@ -32,13 +32,10 @@ from exposan.pou_disinfection import (
     data_path,
     get_LCA_metrics,
     get_TEA_metrics,
-    GWP_dct,
     household_size,
     ppl,
-    price_dct,
     results_path,
     update_number_of_householdsize,
-    update_water_source,
     water_source,
     )
 
@@ -102,12 +99,23 @@ def add_shared_parameters(model, water):
     # Household size
     raw_water = sys.path[0]
     b = pou.household_size
-    #!!! Need to update this sigma
+    # This use of sigma should be correct since we are not multiplying it to get to the 
     D = shape.Trunc(shape.Normal(mu=b, sigma=1.8), lower=1)
     @param(name='Household size', element=raw_water, kind='coupled', units='cap/household',
             baseline=b, distribution=D)
     def set_household_size(i):
         pou.household_size = max(1, i)
+        update_number_of_householdsize(sys, household_size=i, ppl=ppl)
+        
+    #!!! Might need to be updated
+    # # 1.8/((844/4%)^0.5) is for standard error of a mean,
+    # # standard deviation divided by the square root of the population size,
+    # # 844 and 4% from Trimmer et al., changed from the distribution used in Trimmer et al.
+    # D = shape.Trunc(shape.Normal(mu=b, sigma=0.012), lower=1)
+    # @param(name='Household size', element=Toilet, kind='coupled', units='cap/household',
+    #        baseline=b, distribution=D)
+    # def set_household_size(i):
+    #     bw.household_size = i
 
     ######## General TEA settings ########
     # Money discount rate
@@ -115,12 +123,12 @@ def add_shared_parameters(model, water):
     b = pou.discount_rate
     D = shape.Uniform(lower=0.03, upper=0.06)
     @param(name='Discount rate', element='TEA', kind='isolated', units='fraction',
-            baseline=b, distribution=D)
+           baseline=b, distribution=D)
     def set_discount_rate(i):
         pou.discount_rate = tea.discount_rate = i
 
     # Electricity price
-    b = price_dct['Electricity']
+    b = PowerUtility.price
     D = shape.Triangle(lower=0.08, midpoint=b, upper=0.21)
     @param(name='Electricity price', element='TEA', kind='isolated',
             units='$/kWh', baseline=b, distribution=D)
@@ -128,64 +136,46 @@ def add_shared_parameters(model, water):
         PowerUtility.price = i
         
     # NaClO price
-    b = price_dct['NaClO']
+    b = sys_stream['NaClO'].price
+    if b != 1.96/0.15/1.21/0.125: raise ValueError('baseline price of NaClO changed!')
     D = shape.Uniform(lower=b*0.75, upper=b*1.25)
     @param(name='NaClO price', element='TEA', kind='isolated',
             units='$/kg', baseline=b, distribution=D)
     def set_NaClO_price(i):
-        price_dct['NaClO'] = sys_stream['NaClO'].price = i
+        sys_stream['NaClO'].price = i
         
     ######## General LCA settings ########
     lca = sys.LCA
-    #!!! Why not add electricity, etc., through spreadsheet?
-    b = GWP_dct['Electricity']
-    D = shape.Uniform(lower=0.106, upper=0.121)
-    @param(name='Electricity CF', element='LCA', kind='isolated',
-            units='kg CO2-eq/kWh', baseline=b, distribution=D)
-    def set_electricity_CF(i):
-        GWP_dct['Electricity'] = ImpactItem.get_item('E_item').CFs['GlobalWarming'] = i
+    # Streams uncertainties need to be added separately
+    # #!!! Probably need to be updated to "GWP"
+    # b = ImpactItem.get_item('Electricity').CFs['GWP']
+    # D = shape.Uniform(lower=0.106, upper=0.121)
+    # @param(name='Electricity CF', element='LCA', kind='isolated',
+    #         units='kg CO2-eq/kWh', baseline=b, distribution=D)
+    # def set_electricity_CF(i):
+    #     ImpactItem.get_item('E_item').CFs['GlobalWarming'] = i
 
-    b = GWP_dct['NaClO']
+    b = ImpactItem.get_item('NaClO').CFs['GWP']
     D = shape.Triangle(lower=2.6287*0.75, midpoint=b, upper=2.6287*1.25)
     @param(name='NaClO CF', element='LCA', kind='isolated',
             units='kg CO2-eq/kg NaClO', baseline=b, distribution=D)
     def set_NaClO_CF(i):
-        GWP_dct['NaClO'] = ImpactItem.get_item('NaClO_item').CFs['GlobalWarming'] = i
+        ImpactItem.get_item('NaClO').CFs['GlobalWarming'] = i
 
-    b = GWP_dct['Polyethylene']
-    D = shape.Triangle(lower=2.7933*0.75, midpoint=b, upper=2.7933*1.25)
-    @param(name='Polyethylene CF', element='LCA', kind='isolated',
-            units='kg CO2-eq/kg Polyethylene', baseline=b, distribution=D)
-    def set_Polyethylene_CF(i):
-        GWP_dct['Polyethylene'] = ImpactItem.get_item('Polyethylene_item').CFs['GlobalWarming'] = i
+    # b = ImpactItem.get_item('Polyethylene_item').CFs['GWP']
+    # D = shape.Triangle(lower=2.7933*0.75, midpoint=b, upper=2.7933*1.25)
+    # @param(name='Polyethylene CF', element='LCA', kind='isolated',
+    #         units='kg CO2-eq/kg Polyethylene', baseline=b, distribution=D)
+    # def set_Polyethylene_CF(i):
+    #     ImpactItem.get_item('Polyethylene_item').CFs['GlobalWarming'] = i
 
-    # b = GWP_dct['PVC']
-    # D = shape.Triangle(lower=1.0*0.75, midpoint=b, upper=1.0*1.25)
-    # @param(name='PVC CF', element='LCA', kind='isolated',
-    #         units='kg CO2-eq/kg PVC', baseline=b, distribution=D)
-    # def set_PVC_CF(i):
-    #     GWP_dct['PVC'] = ImpactItem.get_item('PVC_item').CFs['GlobalWarming'] = i
-        
-    # b = GWP_dct['Mecury']
-    # D = shape.Triangle(lower=1.0*0.75, midpoint=b, upper=1.0*1.25)
-    # @param(name='Mecury CF', element='LCA', kind='isolated',
-    #         units='kg CO2-eq/kg Mecury', baseline=b, distribution=D)
-    # def set_Mecury_CF(i):
-    #     GWP_dct['Mecury'] = ImpactItem.get_item('Mecury_item').CFs['GlobalWarming'] = i
-        
-    # b = GWP_dct['Aluminum']
-    # D = shape.Triangle(lower=1.0*0.75, midpoint=b, upper=1.0*1.25)
-    # @param(name='Aluminum CF', element='LCA', kind='isolated',
-    #         units='kg CO2-eq/kg Mecury', baseline=b, distribution=D)
-    # def set_Aluminum_CF(i):
-    #     GWP_dct['Aluminum'] = ImpactItem.get_item('Aluminum_item').CFs['GlobalWarming'] = i
         
     item_path = os.path.join(pou.data_path, 'impact_items.xlsx')
     for ind in lca.indicators:
         data = load_data(item_path, sheet=ind.ID)
         for p in data.index:
             item = ImpactItem.get_item(p)
-            b = item.CFs['GlobalWarming']
+            b = item.CFs['GWP']
             lower = float(data.loc[p]['low'])
             upper = float(data.loc[p]['high'])
             dist = data.loc[p]['distribution']
@@ -197,7 +187,7 @@ def add_shared_parameters(model, water):
             else:
                 raise ValueError(f'Distribution {dist} not recognized.')
             model.parameter(name=p+'CF',
-                            setter=DictAttrSetter(item, 'CFs', 'GlobalWarming'),
+                            setter=DictAttrSetter(item, 'CFs', 'GWP'),
                             element='LCA', kind='isolated',
                             units=f'kg CO2-eq/{item.functional_unit}',
                             baseline=b, distribution=D)
