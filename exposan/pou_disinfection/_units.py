@@ -204,19 +204,7 @@ class AgNP_CWF(SanUnit):
         log_reduction = self.log_reduction_cwf
         
         log_N = log_reduction + log10(No) #CFU/mL
-        # N = 10**(log_N)
-        
-        #set conditional statement for simulation to capture the impact of raw water quality parameters
-
-        hardness = self.hardness = raw_water.imass['Ca'] + raw_water.imass['Mg'] 
-        
-        turbidity = raw_water.additional_properties['turbidity']
-        if turbidity <= 10 and hardness <= 60:
-            self.AgNP_lifetime = 2
-        elif turbidity > 10 and hardness > 60:
-            self.AgNP_lifetime = 0.5
-        else: self.AgNP_lifetime = 1.5
-            
+        # N = 10**(log_N)            
 
     #_design will include all the construction or capital impacts  
     def _design(self):
@@ -269,6 +257,21 @@ class AgNP_CWF(SanUnit):
         
         #self.add_OPEX = self.chlorine_rate / self.NaClO_density / self.container_vol * self.operator_refill_cost  # USD/hr (all items are per hour)
         self.add_OPEX = replacement_cost / (365*24)
+        
+    @property
+    def AgNP_lifetime(self):
+        '''
+        [float] Lifetime in years of the Ag nanoparticles
+        depending on the turbidity,
+        2 if turbidity<=10 and hardness<=60, 1.5 if turbidity>10 or hardness>60,
+        0.5 if turbidity>10 and hardness>60.
+        '''
+        raw_water = self.ins[0]
+        hardness = self.hardness = raw_water.imass['Ca'] + raw_water.imass['Mg'] 
+        turbidity = raw_water.additional_properties['turbidity']
+        if turbidity <= 10 and hardness <= 60: return 2
+        if turbidity > 10 and hardness > 60: return 0.5
+        return 1.5
         
 
 # %%

@@ -46,17 +46,12 @@ ppl = 1000 # 1k or 500
 #!!! Might need updating
 price_dct = {
     'Electricity': 0.17,
-    'Concrete': 194,
-    'Steel': 2.665,
     'NaClO': 1.96/0.15/1.21/0.125,
     'Polyethylene': 0,
     }
 
 GWP_dct = {
     'Electricity': 0.1135,
-    'CH4': 28,
-    'N2O': 265,
-    'N': -5.4,
     'NaClO': 2.6287, 
     'Polyethylene': 2.7933, 
     }
