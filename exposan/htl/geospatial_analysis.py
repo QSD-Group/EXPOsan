@@ -15,9 +15,27 @@ import geopy.distance, googlemaps
 from datetime import date
 from warnings import filterwarnings
 
-# read data
 folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/'
 
+# color palette
+Guest = palettes['Guest']
+b = Guest.blue.HEX
+g = Guest.green.HEX
+r = Guest.red.HEX
+o = Guest.orange.HEX
+y = Guest.yellow.HEX
+a =Guest.gray.HEX
+
+def set_plot(figure_size=(30,30)):
+    global fig, ax
+    fig, ax = plt.subplots(figsize=(30, 30))
+    ax.tick_params(top=False, bottom=False, left=False, right=False,
+                   labelleft=False, labelbottom=False)
+    ax.set_frame_on(False)
+
+#%%
+
+# read data
 sludge = pd.read_excel(folder + 'WWTP/sludge_catagorized_Seiple.xlsx', 'datasheet')
 
 sludge['solid_fate'] = sludge['BASELINE:Process Code'].str[-1].astype(int)
@@ -74,22 +92,8 @@ solid_amount = pd.read_excel(folder + 'WWTP/sludge_uncategorized_Seiple.xlsx')
 electricity = pd.merge(elec, US, left_on='name', right_on='NAME')
 electricity = gpd.GeoDataFrame(electricity)
 
-# color palette
-Guest = palettes['Guest']
-b = Guest.blue.HEX
-g = Guest.green.HEX
-r = Guest.red.HEX
-o = Guest.orange.HEX
-y = Guest.yellow.HEX
-
-def set_plot(figure_size=(30,30)):
-    global fig, ax
-    fig, ax = plt.subplots(figsize=(30, 30))
-    ax.tick_params(top=False, bottom=False, left=False, right=False,
-                   labelleft=False, labelbottom=False)
-    ax.set_frame_on(False)
-
 #%%
+
 # WRRFs visualization
 
 set_plot()
@@ -109,6 +113,7 @@ sludge[more_than_100].plot(ax=ax, color=Guest.green.HEX, markersize=500, edgecol
 # sludge.plot(ax=ax, color=Guest.gray.HEX, markersize=10)
 
 #%%
+
 # oil refinery visualization
 
 set_plot()
@@ -126,6 +131,7 @@ US.plot(ax=ax, color='none', edgecolor='k', linewidth=5) # for figures in SI, us
 refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=1000, edgecolor='k', linewidth=5)
 
 #%%
+
 # WRRFs+oil refineries visualization (just select states)
 
 set_plot()
@@ -138,6 +144,7 @@ sludge.plot(ax=ax, color=Guest.gray.HEX, markersize=200)
 refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=5000, edgecolor='k', linewidth=10)
 
 #%%
+
 # WRRFs+oil refineries visualization
 
 set_plot()
@@ -147,6 +154,7 @@ sludge.plot(ax=ax, color=Guest.gray.HEX, markersize=15)
 refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=500, edgecolor='k', linewidth=3.5)
 
 #%%
+
 # electricity price and carbon intensity visualization
 
 set_plot()
@@ -156,6 +164,7 @@ set_plot()
 electricity.plot('GHG (10-year median)', ax=ax, cmap='Blues', edgecolor='k', legend=True, legend_kwds={'shrink': 0.35})
 
 #%%
+
 # transporation distance calculation
 
 # if want select WWTPs that are within certain ranges of refineries, set max_distance in sjoin_nearest.
@@ -208,6 +217,42 @@ WWTP_within = WWTP_within.merge(solid_amount, left_on=('FACILITY','ST','CITY'), 
 WWTP_within.to_excel(folder + f'HTL_geospatial_model_input_{date.today()}.xlsx') # this will be the input for the future analysis
 
 #%%
+
+# travel distance box plot
+
+WWTP_within = pd.read_excel(folder + 'HTL_geospatial_model_input_final.xlsx')
+#%%
+fig, ax = plt.subplots(figsize = (5, 8))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 30
+plt.rcParams['ytick.labelsize'] = 30
+plt.yticks(fontname = 'Arial')
+
+ax = plt.gca()
+ax.set_ylim([-50, 850])
+ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+bp = plt.boxplot(WWTP_within.real_distance_km, showfliers=False, widths=0.5)
+
+for box in bp['boxes']:
+    box.set(color='k', linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+    
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+
+#%%
+
 # WRRFs GHG map (after filter out some WRRFs)
 
 WWTP_within = pd.read_excel(folder + 'HTL_geospatial_model_input_final.xlsx')
@@ -234,6 +279,7 @@ more_than_100 = WWTP_within['30_years_emission_ton_CO2']/30/1000 > 100
 WWTP_within[more_than_100].plot(ax=ax, color=Guest.green.HEX, markersize=500, edgecolor='k', linewidth=2)
 
 #%%
+
 # cumulative WRRFs capacity vs distances
 
 # remember to use the correct file
@@ -267,7 +313,7 @@ result.to_excel(folder + f'results/MGD_vs_distance_{date.today()}.xlsx')
 
 #%%
 
-# this part is the analysis for CO2 abatement cost
+# CO2 abatement cost analysis
 # run analysis for every row
 
 filterwarnings('ignore')
@@ -308,7 +354,7 @@ for i in range(14100, len(final_WWTPs)):
 
     kg_CO2_per_ton_dry_sludge = lca.get_total_impacts(exclude=(raw_wastewater,))['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
 
-    CO2_reduction_result = final_WWTPs.iloc[i]['BASELINE:SOLIDS (dry kg/y):Disposed (Biosolids)']/1000*30*(final_WWTPs.iloc[i]['sludge_management_kg_per_ton']-kg_CO2_per_ton_dry_sludge)
+    CO2_reduction_result = final_WWTPs.iloc[i]['BASELINE:SOLIDS (dry kg/y):Disposed (Biosolids)']/1000*30*(final_WWTPs.iloc[i]['sludge_management_kg_per_ton']-kg_CO2_per_ton_dry_sludge) # kg CO2
     
     sludge_CO2_reduction_ratio_result = CO2_reduction_result/final_WWTPs.iloc[i]['sludge_management_kg_CO2_per_day_AD_included']/365/30
     
@@ -351,13 +397,13 @@ result.to_excel(folder + f'results/decarbonization_{date.today()}_{i}.xlsx')
 
 #%%
 
-# this part is to make plant-level decarbonization cost vs decarbonization ratio figure
+# plant-level decarbonization cost vs decarbonization ratio figure
 
 decarbonization_result = pd.read_excel(folder + 'results/decarbonization_results_10_7_2023/carbonization_summary.xlsx')
 
 WWTP_within = pd.read_excel(folder + 'HTL_geospatial_model_input_final.xlsx')
 
-decarbonization_result = decarbonization_result.merge(WWTP_within[['FACILITY','CITY_x','Influent Flow (MMGal/d)', 'category']], how='left', left_on=['facility','city'], right_on=['FACILITY','CITY_x'])
+decarbonization_result = decarbonization_result.merge(WWTP_within[['FACILITY','CITY_x','Influent Flow (MMGal/d)','category']], how='left', left_on=['facility','city'], right_on=['FACILITY','CITY_x'])
 
 decarbonization_result.loc[decarbonization_result['category'].isin((1, 2, 4)) ,'AD'] = b # blue
 
@@ -385,15 +431,16 @@ ax_more.set_ylim([-1625, 625])
 ax_more.xaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
 ax_more.tick_params(direction='inout', length=15, width=2, bottom=True, top=False, left=True, right=False)
 
+plt.xticks(np.arange(0, 55, 5))
+
 ax_more_right = ax_more.twinx()
 ax_more_right.set_ylim(ax_more.get_ylim())
 ax_more_right.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 ax_more_top = ax_more.twiny()
 ax_more_top.set_xlim(ax_more.get_xlim())
-ax_more_top.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
-
 plt.xticks(np.arange(0, 55, 5))
+ax_more_top.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 ax_more.scatter(x = decarbonization_result_more['WRRF_CO2_reduction_ratio']*100,
                 y = decarbonization_result_more['USD_decarbonization'],
@@ -422,6 +469,8 @@ ax_less.set_ylim([-40000, 0])
 ax_less.xaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
 ax_less.tick_params(direction='inout', length=15, width=2, bottom=True, top=False, left=True, right=False)
 
+plt.yticks(np.arange(-35000, 5000, 10000))
+
 ax_less_right = ax_less.twinx()
 ax_less_right.set_ylim(ax_less.get_ylim())
 plt.yticks(np.arange(-35000, 5000, 10000))
@@ -430,8 +479,6 @@ ax_less_right.tick_params(direction='in', length=7.5, width=2, bottom=False, top
 ax_less_top = ax_less.twiny()
 ax_less_top.set_xlim(ax_less.get_xlim())
 ax_less_top.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
-
-plt.yticks(np.arange(-35000, 5000, 10000))
 
 ax_less.scatter(x = decarbonization_result_less['WRRF_CO2_reduction_ratio']*100,
             y = decarbonization_result_less['USD_decarbonization'],
@@ -446,3 +493,153 @@ ax_less.scatter(x = decarbonization_result_less['WRRF_CO2_reduction_ratio']*100,
             color = 'none',
             linewidths = 2,
             edgecolors = 'k')
+
+#%%
+
+# regional level analysis
+
+decarbonization_result = pd.read_excel(folder + 'results/decarbonization_results_10_7_2023/carbonization_summary.xlsx')
+
+WWTP_within = pd.read_excel(folder + 'HTL_geospatial_model_input_final.xlsx')
+
+decarbonization_result = decarbonization_result.merge(WWTP_within[['FACILITY','CITY_x','PADD']], how='left', left_on=['facility','city'], right_on=['FACILITY','CITY_x'])
+
+decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'].notna()]
+
+decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'] <= 1000]
+
+PADD_1 = decarbonization_result[decarbonization_result['PADD'] == 1]
+PADD_1.sort_values(by='USD_decarbonization', inplace=True)
+PADD_1['cummulative_oil_BPD'] = PADD_1['oil_BPD'].cumsum()
+
+PADD_2 = decarbonization_result[decarbonization_result['PADD'] == 2]
+PADD_2.sort_values(by='USD_decarbonization', inplace=True)
+PADD_2['cummulative_oil_BPD'] = PADD_2['oil_BPD'].cumsum()
+
+PADD_3 = decarbonization_result[decarbonization_result['PADD'] == 3]
+PADD_3.sort_values(by='USD_decarbonization', inplace=True)
+PADD_3['cummulative_oil_BPD'] = PADD_3['oil_BPD'].cumsum()
+
+PADD_4 = decarbonization_result[decarbonization_result['PADD'] == 4]
+PADD_4.sort_values(by='USD_decarbonization', inplace=True)
+PADD_4['cummulative_oil_BPD'] = PADD_4['oil_BPD'].cumsum()
+
+PADD_5 = decarbonization_result[decarbonization_result['PADD'] == 5]
+PADD_5.sort_values(by='USD_decarbonization', inplace=True)
+PADD_5['cummulative_oil_BPD'] = PADD_5['oil_BPD'].cumsum()
+
+fig, ax_more = plt.subplots(figsize = (15, 10))
+
+plt.rcParams['axes.linewidth'] = 2
+plt.rcParams['xtick.labelsize'] = 30
+plt.rcParams['ytick.labelsize'] = 30
+plt.xticks(fontname = 'Arial')
+plt.yticks(fontname = 'Arial')
+
+ax_more.set_xlim([0, 5000])
+ax_more.set_ylim([-1500, 1000])
+
+plt.axvspan(xmin=0, xmax=5000, ymin=0, ymax=0.6, facecolor=a, alpha=0.3)
+plt.axvspan(xmin=0, xmax=5000, ymin=0, ymax=0.6, facecolor='none', linewidth=2, edgecolor='k')
+
+def plot_line(ax, data, color):
+    ax.plot((0, *data['cummulative_oil_BPD']), (0, *data['USD_decarbonization']),
+             color=color, marker='x', markersize=10, markeredgewidth=2, linewidth=2)
+    
+plot_line(ax_more, PADD_1, b)
+plot_line(ax_more, PADD_2, g)
+plot_line(ax_more, PADD_3, r)
+plot_line(ax_more, PADD_4, o)
+plot_line(ax_more, PADD_5, y)
+
+ax_more.tick_params(direction='inout', length=15, width=2, bottom=True, top=False, left=True, right=False)
+
+ax_more_right = ax_more.twinx()
+ax_more_right.set_ylim(ax_more.get_ylim())
+ax_more_right.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+ax_more_top = ax_more.twiny()
+ax_more_top.set_xlim(ax_more.get_xlim())
+ax_more_top.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+ax_less = fig.add_axes([0.6, 0.2, 0.25, 0.3]) 
+
+plt.rcParams['axes.linewidth'] = 2
+plt.rcParams['xtick.labelsize'] = 30
+plt.rcParams['ytick.labelsize'] = 30
+plt.xticks(fontname = 'Arial')
+plt.yticks(fontname = 'Arial')
+
+ax_less.set_xlim([0, 1500])
+ax_less.set_ylim([-33500, -1500])
+
+plt.axvspan(xmin=0, xmax=1500, facecolor=a, alpha=0.3)
+
+plot_line(ax_less, PADD_1, b)
+plot_line(ax_less, PADD_2, g)
+plot_line(ax_less, PADD_3, r)
+plot_line(ax_less, PADD_4, o)
+plot_line(ax_less, PADD_5, y)
+
+plt.xticks(np.arange(0, 2000, 500))
+plt.yticks(np.arange(-30000, 0, 5000))
+
+ax_less.tick_params(direction='inout', length=15, width=2, bottom=True, top=False, left=True, right=False)
+
+ax_less_right = ax_less.twinx()
+ax_less_right.set_ylim(ax_less.get_ylim())
+plt.yticks(np.arange(-30000, 0, 5000))
+ax_less_right.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+ax_less_top = ax_less.twiny()
+ax_less_top.set_xlim(ax_less.get_xlim())
+plt.xticks(np.arange(0, 2000, 500))
+ax_less_top.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+#%%
+
+# national level analysis
+
+decarbonization_result = pd.read_excel(folder + 'results/decarbonization_results_10_7_2023/carbonization_summary.xlsx')
+
+WWTP_within = pd.read_excel(folder + 'HTL_geospatial_model_input_final.xlsx')
+
+decarbonization_result = decarbonization_result.merge(WWTP_within[['FACILITY','CITY_x','site_id',
+                                                                   'AD_Mbpd','Vdist_Mbpd','CaDis_Mbpd',
+                                                                   'HyCrk_Mbpd','VRedu_Mbpd','CaRef_Mbpd',
+                                                                   'Isal_Mbpd','HDS_Mbpd','Cokin_Mbpd',
+                                                                   'Asph_Mbpd','30_years_emission_ton_CO2',
+                                                                   'sludge_management_kg_CO2_per_day_AD_included']],
+                                                      how='left', left_on=['facility','city'], right_on=['FACILITY','CITY_x'])
+
+total_CO2_emission = decarbonization_result.sum(axis=0)['30_years_emission_ton_CO2']
+
+total_sludge_CO2_emission = decarbonization_result.sum(axis=0)['sludge_management_kg_CO2_per_day_AD_included']*365*30/1000
+
+oil = decarbonization_result[['site_id','AD_Mbpd','Vdist_Mbpd','CaDis_Mbpd','HyCrk_Mbpd','VRedu_Mbpd','CaRef_Mbpd','Isal_Mbpd','HDS_Mbpd','Cokin_Mbpd','Asph_Mbpd']]
+
+oil = oil.drop_duplicates(subset='site_id')
+
+oil = oil.drop(labels='site_id', axis=1)
+
+total_oil = oil.sum().sum()
+
+decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'].notna()]
+
+decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'] <= 500]
+
+reduced_CO2_emission = decarbonization_result.sum(axis=0)['CO2_reduction']/1000
+
+added_oil = decarbonization_result.sum(axis=0)['oil_BPD']/1000000
+
+national_CO2_reduction_ratio = reduced_CO2_emission/total_CO2_emission
+
+national_CO2_recuction_ratio_sludge_management = reduced_CO2_emission/total_sludge_CO2_emission
+
+national_oil_production_ratio = added_oil/total_oil
+
+print(f'National decarbonization ratio of wastewater treatment sector is {national_CO2_reduction_ratio*100:.2f}%')
+
+print(f'National decarbonization ratio of sludge management is {national_CO2_recuction_ratio_sludge_management*100:.2f}%')
+
+print(f'National increase ratio of crude oil production is {national_oil_production_ratio*100:.5f}%')
