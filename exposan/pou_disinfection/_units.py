@@ -147,11 +147,8 @@ class RawWater(SanUnit):
         water._TOC = self.TOC # mg/L
         water.imass['Ca'] = self.Ca/1000*water_usage # kg/hr
         water.imass['Mg'] = self.Mg/1000*water_usage # kg/hr
-        water._turbidity = self.turbidity # NTU
         water.F_vol = water_usage/1000 # F_vol in m3/hr
-        # water._UVT = self.UVT # %
-        
-    
+        water.additional_properties['turbidity'] = self.turbidity
 
 
 # %%
@@ -160,7 +157,7 @@ agnp_path = ospath.join(data_path, '_AgNP_CWF_2.csv')
 
 class AgNP_CWF(SanUnit):
     '''
-    Point of use water treatment technology: Disinfection through silver nanoparticles.
+    Point-of-use water treatment technology: Disinfection through silver nanoparticles.
     
     Parameters
     ----------
@@ -177,7 +174,7 @@ class AgNP_CWF(SanUnit):
     def __init__(self, ID='', ins=None, outs=(), thermo=None, 
                  F_BM_default=1, init_with='WasteStream',
                  number_of_households=1, **kwargs):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
         self.number_of_households = number_of_households      
         
         data = load_data(path=agnp_path)     
@@ -207,20 +204,20 @@ class AgNP_CWF(SanUnit):
         log_reduction = self.log_reduction_cwf
         
         log_N = log_reduction + log10(No) #CFU/mL
-        N = 10**(log_N)
+        # N = 10**(log_N)
         
         #set conditional statement for simulation to capture the impact of raw water quality parameters
 
-        self.hardness = raw_water.imass['Ca'] + raw_water.imass['Mg'] 
+        hardness = self.hardness = raw_water.imass['Ca'] + raw_water.imass['Mg'] 
         
-        if raw_water._turbidity <= 10 and self.hardness <= 60:
+        turbidity = raw_water.additional_properties['turbidity']
+        if turbidity <= 10 and hardness <= 60:
             self.AgNP_lifetime = 2
-        elif raw_water._turbidity > 10 or self.hardness > 60:
-            self.AgNP_lifetime = 1.5
-        elif raw_water._turbidity > 10 and self.hardness > 60:
+        elif turbidity > 10 and hardness > 60:
             self.AgNP_lifetime = 0.5
+        else: self.AgNP_lifetime = 1.5
             
-             
+
     #_design will include all the construction or capital impacts  
     def _design(self):
         design = self.design_results
@@ -282,7 +279,7 @@ poucl_path = ospath.join(data_path, '_pou_chlorination.csv')
 
 class POUChlorination(SanUnit):
     '''
-    Point of use water treatment technology: Disinfection through chlorination.
+    Point-of-use water treatment technology: Disinfection through chlorination.
     
     Parameters
     ----------
@@ -290,6 +287,8 @@ class POUChlorination(SanUnit):
         Raw water, chlorine, polyethylene bottle for chlorine.
     outs : obj
         Treated water.
+    number_of_households : int
+        Number of household sharing the disinfection unit.
     
     References
     ----------
@@ -308,7 +307,7 @@ class POUChlorination(SanUnit):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  F_BM_default=1, init_with='WasteStream',
                  number_of_households=1, **kwargs,):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
         self.number_of_households = number_of_households
 
         data = load_data(path=poucl_path)     
@@ -319,6 +318,8 @@ class POUChlorination(SanUnit):
         
         for attr, value in kwargs.items():
             setattr(self, attr, value)
+            
+        self.NaClO_dose_default = self.NaClO_dose
         
     def _run(self):
         raw_water, chlorine, Cl_bottle = self.ins
@@ -331,19 +332,15 @@ class POUChlorination(SanUnit):
         Cl_bottle.phase = 's'
         
         # add chlorine to the treated_water
-        if raw_water.turbidity <= 10:
-            pass
-        elif raw_water.turbidity > 10:
-            self.NaClO_dose *= 2
-      
+        NaClO_dose_total = self.NaClO_dose_total
         
-        chlorine.imass['NaClO'] = self.NaClO_dose * treated_water.F_vol / 1000 # kg NaClO/hr
+        chlorine.imass['NaClO'] = NaClO_dose_total * treated_water.F_vol / 1000 # kg NaClO/hr
         self.chlorine_rate = chlorine.imass['NaClO']
         Cl_bottle.imass['Polyethylene'] = chlorine.imass['NaClO'] * self.PE_to_NaClO
         
         # disinfect bacteria from treated_water
         
-        Cl_Concentration = self.NaClO_dose #mg/L
+        Cl_Concentration = NaClO_dose_total #mg/L
       
         No = raw_water.imass['Ecoli']/raw_water.F_vol * 10**-4  # E coli CFU/ mL ICC/ml (intact cells counts) used by (Cheswick et al., 2020)
              
@@ -374,6 +371,19 @@ class POUChlorination(SanUnit):
 
         #self.add_OPEX = self.chlorine_rate / self.NaClO_density / self.container_vol * self.operator_refill_cost  # USD/hr (all items are per hour)
 
+    @property
+    def NaClO_dose_factor(self):
+        '''
+        [float] NaClO dose factor depending on the turbidity,
+        1 if turbidity<=10, otherwise 2.
+        '''
+        return 1 if self.ins[0].additional_properties['turbidity']<=10 else 2
+
+    @property
+    def NaClO_dose_total(self):
+        '''[float] Total NaClO dosage.'''
+        return self.NaClO_dose * self.NaClO_dose_factor
+
 
 
 # %%
@@ -382,14 +392,16 @@ pou_uv_path = ospath.join(data_path, '_pou_uv.csv')
 
 class POU_UV(SanUnit):
     '''
-    Point of use water treatment technology: Disinfection through POU UV.
+    Point-of-use water treatment technology: Disinfection through POU UV.
     
     Parameters
     ----------
     ins : obj
         Raw water.
     outs : obj
-        Treated water. 
+        Treated water.
+    number_of_households : int
+        Number of household sharing the disinfection unit.
     '''
     _N_ins = 1
     _N_outs = 1
@@ -397,7 +409,7 @@ class POU_UV(SanUnit):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  F_BM_default=1, init_with='WasteStream',
                  number_of_households=1, **kwargs,):        
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
         self.number_of_households = number_of_households
 
         data = load_data(path=pou_uv_path)     
@@ -410,7 +422,7 @@ class POU_UV(SanUnit):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
 
-# in _run: define influent and effluent streams and treatment processes 
+
     def _run(self):
      
         raw_water,  = self.ins
@@ -421,7 +433,7 @@ class POU_UV(SanUnit):
         treated_water.copy_like(self.ins[0])
         
         if raw_water.F_vol > (self.uv_flow*60):
-            breakpoint()
+            raise RuntimeError('Raw water flow exceeds capacity.')
             
         self.run_time = raw_water.F_vol/(self.uv_flow*60)
         
@@ -443,13 +455,7 @@ class POU_UV(SanUnit):
         N = 10**(log_N)
         # N = exp(log_red  uction + log10(No))
          
-        ################ Log (N0/N) = Kd × UV dose where kd = inactivation rate constant
-        if raw_water._turbidity <= 10:
-            self.lamp_lifespan_factor = 1
-        elif raw_water._turbidity > 10:
-            self.lamp_lifespan_factor = 0.5
-        
-        self.lamp_life_span *= self.lamp_lifespan_factor
+        # Log (N0/N) = Kd × UV dose where kd = inactivation rate constant
         
         ## determine the flowrate
         
@@ -478,11 +484,11 @@ class POU_UV(SanUnit):
         design['PVC'] = uv_pvc = number_of_households * self.uv_PVC 
         design['UVlamp'] = uv_lamp_mecury = number_of_households * self.number_of_uv_lamps
         design['Aluminum'] =  uv_aluminum_foil = number_of_households * self.uv_aluminum_foil
-        
+
         self.construction = (
             Construction(item='PE', quantity = uv_storage, quantity_unit = 'kg'),
             Construction(item='PVC', quantity = uv_pvc, quantity_unit = 'kg'),
-            Construction(item='UVlamp', quantity = uv_lamp_mecury, quantity_unit = 'kg', lifetime = self.lamp_life_span, lifetime_unit='hr'),
+            Construction(item='UVlamp', quantity = uv_lamp_mecury, quantity_unit = 'kg', lifetime = self.lamp_total_lifetime, lifetime_unit='hr'),
             Construction(item='Aluminum', quantity = uv_aluminum_foil, quantity_unit = 'kg')
             )
         self.add_construction(add_cost=False)
@@ -498,15 +504,28 @@ class POU_UV(SanUnit):
         number_of_households = self.number_of_households
         C['UV unit'] = self.uv_unit_cost*number_of_households
         C['UV storage'] = self.uv_storage_cost*2*number_of_households
-        self.add_OPEX['UV lamp'] = (self.uv_lamp_cost/(self.lamp_life_span)) 
+        self.add_OPEX['UV lamp'] = self.uv_lamp_cost/self.lamp_total_lifetime
          
-        power_demand = (self.uv_electric_demand / 1000) * self.run_time / self.lamp_lifespan_factor
-        self.power_utility(power_demand)
+        self.power_utility.rate = self.uv_electric_demand / 1000 * self.run_time / self.lamp_lifespan_factor
         
         #certain parts need to be replaced based on an expected lifetime
         #the cost of these parts is considered along with  the cost of the labor to replace them
 
         #self.add_OPEX = self.chlorine_rate / self.NaClO_density / self.container_vol * self.operator_refill_cost  # USD/hr (all items are per hour)
+
+    @property
+    def lamp_lifespan_factor(self):
+        '''
+        [float] Lamp lifetime factor depending on the turbidity,
+        1 if turbidity<=10, otherwise 0.5.
+        '''
+        return 1 if self.ins[0].additional_properties['turbidity']<=10 else 0.5
+
+    @property
+    def lamp_total_lifetime(self):
+        '''[float] Total lifetime of the lamp.'''
+        return self.lamp_lifespan * self.lamp_lifespan_factor
+
 
 # %%
 
@@ -514,14 +533,16 @@ uv_led_path = ospath.join(data_path, '_uv_led.csv')
 
 class UV_LED(SanUnit):
     '''
-    Point of use water treatment technology: Disinfection through UV LED.
+    Point-of-use water treatment technology: Disinfection through UV LED.
     
     Parameters
     ----------
     ins : obj
-        Raw water, AgNP.
+        Raw water.
     outs : obj
-        Treated water.    
+        Treated water.
+    number_of_households : int
+        Number of household sharing the disinfection unit.
     '''
     _N_ins = 1
     _N_outs = 1
@@ -530,7 +551,7 @@ class UV_LED(SanUnit):
                  F_BM_default=1, init_with='WasteStream',
                  number_of_households=1, **kwargs,):
         
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
         self.number_of_households = number_of_households
  
         data = load_data(path = uv_led_path)     
@@ -566,13 +587,6 @@ class UV_LED(SanUnit):
         log_N = log_removal + log10(No) #CFU/mL
         N = 10**(log_N)
         # N = exp(log_reduction + log10(No))
-        
-        if raw_water._turbidity <= 10:
-            self.led_lifespan_factor = 1
-        elif raw_water._turbidity > 10:
-            self.led_lifespan_factor = 0.5
-            
-        self.uv_led_lifespan *= self.led_lifespan_factor
         
         if raw_water.F_vol > (self.uv_led_flow*60):
             raise RuntimeError('Exceed flow capacity.')
@@ -613,7 +627,7 @@ class UV_LED(SanUnit):
             Construction(item='Quartz', quantity = uv_led_quartz, quantity_unit = 'kg'),
             Construction(item='PE', quantity = uv_led_storage, quantity_unit = 'kg'),
             Construction(item='StainlessSteel', quantity = uv_led_steel, quantity_unit = 'kg'),
-            Construction(item='LED', quantity = uv_led, quantity_unit = 'kg', lifetime = (self.uv_led_lifespan), lifetime_unit='hr'),
+            Construction(item='LED', quantity = uv_led, quantity_unit = 'kg', lifetime = self.uv_led_total_lifetime, lifetime_unit='hr'),
             )
         self.add_construction(add_cost=False)
         
@@ -629,12 +643,19 @@ class UV_LED(SanUnit):
         C['UV LED unit'] = self.uv_led_unit_cost * number_of_households
         C['UV LED storage'] = self.uv_led_storage_cost*2*number_of_households
         # C['uv_pump'] = self.uv_led_pump_cost*number_of_households
-        self.add_OPEX['LED'] = self.uv_led_cost/(self.uv_led_lifespan)
+        self.add_OPEX['LED'] = self.uv_led_cost/self.uv_led_total_lifetime
          
-        self.power_utility.rate = (self.led_electricity_demand / 1000) * self.run_time /self.led_lifespan_factor
+        self.power_utility.rate = self.led_electricity_demand/1000 * self.run_time /self.uv_led_lifespan_factor
 
-        
-        #certain parts need to be replaced based on an expected lifetime
-        #the cost of these parts is considered along with  the cost of the labor to replace them
+    @property
+    def uv_led_lifespan_factor(self):
+        '''
+        [float] UV LED lifetime factor depending on the turbidity,
+        1 if turbidity<=10, otherwise 0.5.
+        '''
+        return 1 if self.ins[0].additional_properties['turbidity']<=10 else 0.5
 
-        #self.add_OPEX = self.chlorine_rate / self.NaClO_density / self.container_vol * self.operator_refill_cost  # USD/hr (all items are per hour)
+    @property
+    def uv_led_total_lifetime(self):
+        '''[float] Total lifetime of the UV LED unit.'''
+        return self.uv_led_lifespan * self.uv_led_lifespan_factor

@@ -97,12 +97,13 @@ def _load_lca_data(reload=False):
         qs.ImpactItem.load_from_file(item_path)
 
         # Impacts associated with streams and electricity
-        def create_stream_impact_item(item_ID, dct_key=''):
-            StreamImpactItem(ID=item_ID, GWP=GWP_dct[dct_key])
+        def create_stream_impact_item(item_ID):
+            StreamImpactItem(ID=item_ID,
+                             GWP=GWP_dct[item_ID.rsplit('_item')[0]])
 
         create_stream_impact_item(item_ID='NaClO_item')
         create_stream_impact_item(item_ID='Polyethylene_item')
-        ImpactItem(ID='e_item', functional_unit='kWh', GWP=GWP_dct['Electricity'])
+        ImpactItem(ID='E_item', functional_unit='kWh', GWP=GWP_dct['Electricity'])
 
         _impact_item_loaded = True
 
@@ -157,7 +158,7 @@ def update_water_source(system, water_source='GW'):
     
 def update_number_of_householdsize(system, household_size=household_size, ppl=ppl):
     u0, u1 = system.path
-    number_of_households = get_number_of_households()
+    number_of_households = ppl / household_size
     setattr(u0, 'household_size', household_size)
     setattr(u0, 'number_of_households', number_of_households)
     setattr(u1, 'number_of_households', number_of_households)
@@ -182,8 +183,8 @@ def get_TEA_metrics(system, ppl=ppl, include_breakdown=False):
 
 def get_LCA_metrics(system, ppl=ppl, include_breakdown=False):
     lca = system.LCA
-    factor = lca.lifetime/ppl
-    functions = [lambda ind: lca.total_impacts[ind.ID]/factor
+    factor = lca.lifetime * ppl
+    functions = [lambda: lca.total_impacts[ind.ID]/factor
                  for ind in lca.indicators]
     
     if not include_breakdown: return functions

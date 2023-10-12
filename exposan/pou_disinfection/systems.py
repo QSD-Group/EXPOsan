@@ -179,7 +179,7 @@ def create_system(system_ID='A', flowsheet=None,
     if system_ID == 'A': f = create_systemA
     elif system_ID == 'B': f = create_systemB
     elif system_ID == 'C': f = create_systemC
-    elif system_ID == 'D': f = create_systemC
+    elif system_ID == 'D': f = create_systemD
     else: raise ValueError(f'`system_ID` can only be "A" , "B", "C", or "D", not "{ID}".')
 
     try: system = f(flowsheet)
