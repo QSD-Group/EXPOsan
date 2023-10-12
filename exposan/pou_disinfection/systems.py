@@ -45,7 +45,6 @@ __all__ = ('create_system',)
 # System A: POU Chlorination
 # =============================================================================
 
-#!!! Seems like only sysA needs NaClO and PE
 def create_systemA(flowsheet=None,
                    water_source=water_source, household_size=household_size, ppl=ppl):
     item = ImpactItem.get_item('NaClO')
