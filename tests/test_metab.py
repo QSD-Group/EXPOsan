@@ -14,8 +14,13 @@ for license details.
 __all__ = ('test_metab', )
 
 def test_metab():
-    from exposan.metab import create_system
+    from exposan.metab import create_system, load_lca_data
     import qsdsan as qs, numpy as np
+    
+    # LCA obj between modules might interference each other
+    from qsdsan.utils import clear_lca_registries
+    clear_lca_registries()
+    load_lca_data()
     
     rtol=1e-3
     qs.PowerUtility.price = 0.0913
