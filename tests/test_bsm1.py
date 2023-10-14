@@ -26,17 +26,18 @@ def test_bsm1():
         ])
     bsm1_ss_c1tss = array([12.5, 18.1, 29.5, 69.0, 356., 356., 356., 356., 356., 6394])
     bsm1.load()
+    rtol = 0.01
     sys = bsm1.sys
     sys.simulate(t_span=(0,100), method='BDF', state_reset_hook='reset_cache')
     assert sys.outs[0].isempty() == False
-    # ac(float(sys.outs[0].iconc['S_S']), 0.895, rtol=1e-2)
-    # ac(float(sys.outs[1].iconc['X_BH']), 4994.3, rtol=1e-2)
-    # ac(sys.outs[0].COD, 47.5, rtol=1e-2)
-    # ac(sys.outs[1].get_TSS(), 6377.9, rtol=1e-2)
+    # ac(float(sys.outs[0].iconc['S_S']), 0.895, rtol=rtol)
+    # ac(float(sys.outs[1].iconc['X_BH']), 4994.3, rtol=rtol)
+    # ac(sys.outs[0].COD, 47.5, rtol=rtol)
+    # ac(sys.outs[1].get_TSS(), 6377.9, rtol=rtol)
     u = sys.flowsheet.unit
     concs = vstack((u.A1._state[:13], u.A2._state[:13], u.O1._state[:13], u.O2._state[:13], u.O3._state[:13]))
-    ac(concs, bsm1_ss_concs, rtol=2e-2)
-    ac(u.C1._state[-10:], bsm1_ss_c1tss, rtol=2e-2)
+    ac(concs, bsm1_ss_concs, rtol=rtol)
+    ac(u.C1._state[-10:], bsm1_ss_c1tss, rtol=rtol)
 
 if __name__ == '__main__':
     test_bsm1()
