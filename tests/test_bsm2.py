@@ -13,7 +13,7 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-__all__ = ('test_interface',)
+__all__ = ('test_bsm2',)
 
 def test_bsm2():
     from numpy.testing import assert_allclose as ac
