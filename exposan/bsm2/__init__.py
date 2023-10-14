@@ -16,8 +16,8 @@ for license details.
 import os, qsdsan as qs
 from exposan.utils import _init_modules
 
-interface_path = os.path.dirname(__file__)
-module = os.path.split(interface_path)[-1]
+bsm2_path = os.path.dirname(__file__)
+module = os.path.split(bsm2_path)[-1]
 data_path, results_path = _init_modules(module, include_data_path=True)
 
 
@@ -51,7 +51,7 @@ def __getattr__(name):
 
 
 __all__ = (
-    'interface_path',
+    'bsm2_path',
     'results_path',
     *system.__all__,
 )
