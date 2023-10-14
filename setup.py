@@ -41,6 +41,7 @@ setup(
             'biogenic_refinery/data/*',
             'bsm1/*',
             'bsm1/data/*',
+            'bsm2/*',
             'bwaise/*',
             'bwaise/data/*',
             'cas/*',
@@ -48,7 +49,9 @@ setup(
             'eco_san/data/*',
             'htl/*',
             'htl/data/*',
-            'interface/*',
+            'metab/*',
+            'metab/data',
+            'metro/*',
             'new_generator/*',
             'new_generator/data/*',
             'pou_disinfection/data/*'
