@@ -18,6 +18,8 @@ for license details.
 import os, numpy as np, qsdsan as qs
 from qsdsan import processes as pc, sanunits as su, WasteStream, System
 
+__all__ = ('create_components',)
+
 def create_components():
      asm2d_cmps = pc.create_asm2d_cmps()
      asm2d_cmps.X_S.f_BOD5_COD = 0.54
