@@ -1,0 +1,21 @@
+﻿parameter,name (if diff),unit,expected,low,high,distribution,references
+UVT,,%,95,,,constant,
+uv_led_unit_cost,,USD,245,183.75,306,uniform,"Chatterley, C.; Linden, K. Demonstration and Evaluation of Germicidal UV-LEDs for Point-of-Use Water Disinfection. Journal of Water and Health 2010, 8 (3), 479–486. https://doi.org/10.2166/wh.2010.124."
+uv_led_electric_cost,,USD,0.2,0.15,0.25,uniform,"Chatterley, C.; Linden, K. Demonstration and Evaluation of Germicidal UV-LEDs for Point-of-Use Water Disinfection. Journal of Water and Health 2010, 8 (3), 479–486. https://doi.org/10.2166/wh.2010.124."
+uv_led_flow,,L/min,0.19,0.1425,0.2375,uniform,
+residence_time,,s,8,,,constant,
+uv_led_cost,,USD,26,19.5,32.5,uniform,https://led.cdiweb.com/products/detail/80338000100-audax-electronics-ltda/674080/?pid=568&utm_campaign=12531755904&adgroupid=120952605964&utm_content=505723769668&utm_term=&gclid=Cj0KCQjwtsCgBhDEARIsAE7RYh1m8IDhy7d9xQYbMSbIP2Q82J5Be7x51BvCOlwPmi_SCfnjZ3XtGc0aAtupEALw_wcB
+uv_led_lifespan,,hr,10000,7500,12500,uniform,"Chatterley, C., & Linden, K. (2010). Demonstration and evaluation of germicidal UV-LEDs for point-of-use water disinfection. Journal of Water and Health, 8(3), 479–486. https://doi.org/10.2166/wh.2010.124"
+uv_led_pump_cost,,USD,75,56.25,93.75,uniform,https://www.vevor.com/beer-pump-c_10707/115-127v-ac-bottled-water-dispensing-pump-system-replaces-bunn-excellent-p_010875527879?utm_source=google&utm_campaign=18020380753&utm_term=138677238903&gclid=CjwKCAjwsfuYBhAZEiwA5a6CDOXk8Ty6xKpR7ttSPDG1qg80bDTKw9BcCCKcZ7nY6rTca2KqhkaqhBoCjsMQAvD_BwE
+uv_led_per_unit,,,30,,,constant,"Jenny, R. M., Simmons, O. D., Shatalov, M., & Ducoste, J. J. (2014). Modeling a continuous flow ultraviolet Light Emitting Diode reactor using computational fluid dynamics. Chemical Engineering Science, 116, 524–535. https://doi.org/10.1016/j.ces.2014.05.020"
+uv_led_storage_cost,,USD,1.6,1.2,2,uniform,https://www.alibaba.com/product-detail/5L-10L-20L-25L-Plastic-Stacking_62585479207.html?spm=a2700.pccps_detail.0.0.3d8f13a046xAC2
+uv_led_quartz,,kg,0.081236439,0.060927329,0.101545549,triangular,"Jenny, R. M., Simmons, O. D., Shatalov, M., & Ducoste, J. J. (2014). Modeling a continuous flow ultraviolet Light Emitting Diode reactor using computational fluid dynamics. Chemical Engineering Science, 116, 524–535. https://doi.org/10.1016/j.ces.2014.05.020"
+StainlessSteel,,kg,1.32859575,0.996446813,1.660744688,uniform,"Jenny, R. M., Simmons, O. D., Shatalov, M., & Ducoste, J. J. (2014). Modeling a continuous flow ultraviolet Light Emitting Diode reactor using computational fluid dynamics. Chemical Engineering Science, 116, 524–535. https://doi.org/10.1016/j.ces.2014.05.020"
+uv_led_dose,,mJ/cm2,187,95,215,uniform,
+uv_led_slope,,,0.217,,,constant,
+uv_led_intercept,,,0.2,,,constant,
+led_electricity_demand,,W,23,11,35,uniform,"Lui, G. Y., Roser, D., Corkish, R., Ashbolt, N. J., & Stuetz, R. (2016). Point-of-use water disinfection using ultraviolet and visible light-emitting diodes. Science of The Total Environment, 553, 626–635. https://doi.org/10.1016/j.scitotenv.2016.02.039"
+uv_quartz,,kg,0.233106175,0.174829631,0.291382719,uniform,
+unit_volume,,L,20,,,constant,
+uv_led_weight,,kg,0.0105,0.007875,0.013125,uniform,ecoinvent
+uv_led_storage_PE,,kg/container,0.9,0.675,1.125,uniform,https://www.tanksinternational.it/en/category/3/13/PLASTIC-APPROVED-JERRYCAN-20-LITRES-VOLUME/80

@@ -20,7 +20,7 @@ from qsdsan import (
     )
 from exposan.metab import (
     _impact_item_loaded,
-    load_lca_data,
+    _load_lca_data,
     flex_rhos_adm1
     )
 from exposan.metab.units import *
@@ -95,7 +95,7 @@ methanogens = ('X_ac', 'X_h2')
 biomass_IDs = (*fermenters, *methanogens)
 vfa_IDs = ('S_va', 'S_bu', 'S_pro', 'S_ac')
 
-if not _impact_item_loaded: load_lca_data()
+if not _impact_item_loaded: _load_lca_data()
 bg_offset_CFs = IItm.get_item('biogas_offset').CFs
 NaOCl_item = IItm.get_item('NaOCl')
 citric_acid_item = IItm.get_item('citric_acid')
@@ -170,6 +170,7 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
                   lifetime=30, discount_rate=0.1, T=22,
                   Q=5, inf_concs={}, tot_HRT=12,
                   flowsheet=None):
+    if not _impact_item_loaded: _load_lca_data()
     PowerUtility.price = 0.0913
     Construction.registry.clear()
     Equipment.registry.clear()

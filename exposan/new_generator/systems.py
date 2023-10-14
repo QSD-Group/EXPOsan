@@ -22,7 +22,7 @@ from qsdsan import (
     WasteStream,
     sanunits as su,
     ImpactItem,
-    System, SimpleTEA, LCA,
+    System, TEA, LCA,
     )
 from qsdsan.utils import clear_lca_registries
 from exposan.utils import add_fugitive_items
@@ -174,10 +174,10 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
     ##### Simulation, TEA, and LCA #####
     sysA = System('sysA', path=(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14))
 
-    teaA = SimpleTEA(system=sysA, discount_rate=discount_rate,
-                     start_year=2020, lifetime=25, uptime_ratio=1,
-                     lang_factor=None, annual_maintenance=0,
-                     annual_labor=0)
+    teaA = TEA(system=sysA, discount_rate=discount_rate,
+               start_year=2020, lifetime=25, uptime_ratio=1,
+               lang_factor=None, annual_maintenance=0,
+               annual_labor=0)
 
     get_powerA = sum([u.power_utility.rate for u in sysA.units]) * (24 * 365 * teaA.lifetime)
 
@@ -264,10 +264,10 @@ def create_systemB(flowsheet=None, ppl=default_ppl):
     ##### Simulation, TEA, and LCA #####
     sysB = System('sysB', path=(B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14))
 
-    teaB = SimpleTEA(system=sysB, discount_rate=discount_rate,
-                     start_year=2020, lifetime=25, uptime_ratio=1,
-                     lang_factor=None, annual_maintenance=0,
-                     annual_labor=0)
+    teaB = TEA(system=sysB, discount_rate=discount_rate,
+               start_year=2020, lifetime=25, uptime_ratio=1,
+               lang_factor=None, annual_maintenance=0,
+               annual_labor=0)
 
     get_powerB = sum([u.power_utility.rate for u in sysB.units]) * (24 * 365 * teaB.lifetime)
 
