@@ -51,6 +51,7 @@ setup(
             'htl/data/*',
             'metab/*',
             'metab/data',
+            'metab/utils',
             'metro/*',
             'new_generator/*',
             'new_generator/data/*',
