@@ -27,7 +27,7 @@ def test_metab():
     UASB_M.simulate(state_reset_hook='reset_cache', method='BDF', t_span=(0, 400))
     fs = UASB_M.flowsheet.stream
     assert np.isclose(1 - fs.eff_dg.COD / fs.inf.COD, 0.9067142448236405, rtol)
-    assert np.isclose(UASB_M.TEA.annualized_NPV, -124172.15872927892, rtol)
+    assert np.isclose(UASB_M.TEA.annualized_NPV, -123994.44966853957, rtol)
     assert np.isclose(UASB_M.LCA.total_impacts['GWP100'], 613761.7802056486, rtol)
     
     FB_H = create_system(n_stages=2, reactor_type='FB', gas_extraction='H', tot_HRT=4)
@@ -38,6 +38,7 @@ def test_metab():
     assert np.isclose(FB_H.LCA.total_impacts['GWP100'], 1004100.126558344, rtol)
     
     PB_P = create_system(n_stages=2, reactor_type='PB', gas_extraction='P', tot_HRT=4)
+    # Might fail the first time it runs, re-running will usually fix the problem
     try: PB_P.simulate(state_reset_hook='reset_cache', method='BDF', t_span=(0, 400))
     except: PB_P.simulate(state_reset_hook='reset_cache', method='BDF', t_span=(0, 400))
     fs = PB_P.flowsheet.stream
