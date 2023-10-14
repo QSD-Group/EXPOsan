@@ -335,7 +335,6 @@ for i in range(14100, len(final_WWTPs)):
 # for i in [0, 76, 718]:
         
     sys, barrel = create_spatial_system(waste_price=400,
-                                        waste_GHG=final_WWTPs.iloc[i]['sludge_management_kg_per_ton'],
                                         size=final_WWTPs.iloc[i]['Influent Flow (MMGal/d)'],
                                         distance=final_WWTPs.iloc[i]['real_distance_km'],
                                         solid_fate=final_WWTPs.iloc[i]['solid_fate'],
@@ -354,7 +353,7 @@ for i in range(14100, len(final_WWTPs)):
 
     kg_CO2_per_ton_dry_sludge = lca.get_total_impacts(exclude=(raw_wastewater,))['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
 
-    CO2_reduction_result = final_WWTPs.iloc[i]['BASELINE:SOLIDS (dry kg/y):Disposed (Biosolids)']/1000*30*(final_WWTPs.iloc[i]['sludge_management_kg_per_ton']-kg_CO2_per_ton_dry_sludge) # kg CO2
+    CO2_reduction_result = final_WWTPs.iloc[i]['BASELINE:SOLIDS (dry kg/y):Disposed (Biosolids)']/1000*30*(final_WWTPs.iloc[i]['sludge_management_kg_CO2_per_ton']-kg_CO2_per_ton_dry_sludge) # kg CO2
     
     sludge_CO2_reduction_ratio_result = CO2_reduction_result/final_WWTPs.iloc[i]['sludge_management_kg_CO2_per_day_AD_included']/365/30
     

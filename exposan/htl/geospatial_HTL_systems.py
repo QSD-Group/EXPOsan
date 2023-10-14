@@ -70,7 +70,6 @@ def _load_process_settings(location='IL'):
 # =============================================================================
 
 def create_spatial_system(waste_price=400, # assumed to be 400 for all WRRFs
-                          waste_GHG=800, # use plant-wide data
                           size=100, # in MGD
                           distance=30, # in km, using Google Maps API
                           solid_fate=1, # from Seiple et al. 2020

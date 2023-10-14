@@ -67,7 +67,6 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     qs.ImpactIndicator.load_from_file(os.path.join(folder, 'data/impact_indicators.csv'))
     qs.ImpactItem.load_from_file(os.path.join(folder, 'data/impact_items.xlsx'))
     
-    
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=100, units='MGD', T=25+273.15)
     # Jones baseline: 1276.6 MGD, 1.066e-4 $/kg ww
     # set H2O equal to the total raw wastewater into the WWTP
