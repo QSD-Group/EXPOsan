@@ -21,7 +21,7 @@ def test_metab():
     from qsdsan.utils import clear_lca_registries
     clear_lca_registries()
     
-    rtol=1e-3
+    rtol = 1e-3
     qs.PowerUtility.price = 0.0913
     UASB_M = create_system(n_stages=2, reactor_type='UASB', gas_extraction='M', tot_HRT=4)
     UASB_M.simulate(state_reset_hook='reset_cache', method='BDF', t_span=(0, 400))
