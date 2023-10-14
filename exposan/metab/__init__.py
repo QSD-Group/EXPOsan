@@ -27,7 +27,7 @@ from qsdsan import (
     )
 
 _impact_item_loaded = False
-def load_lca_data():
+def _load_lca_data():
     global _impact_item_loaded
     if _impact_item_loaded:
         IInd.clear_registry()
