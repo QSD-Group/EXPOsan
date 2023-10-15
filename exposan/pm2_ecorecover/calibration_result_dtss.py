@@ -19,7 +19,10 @@ from qsdsan.utils import ospath, time_printer, load_data, get_SRT, \
     ExogenousDynamicVariable as EDV
 from scipy.interpolate import interp1d
 
-from exposan.pm2_ecorecover import data_path
+from exposan.pm2_ecorecover import (
+    data_path,
+    results_path,
+    )
 
 def batch_init(path, sheet):
     df = load_data(path, sheet)
@@ -70,7 +73,7 @@ V_pbr = 77.49
 V_mem = 7.03
 V_ret = 6.21
 
-pm2 = pc.PM2(arr_e=5062.74332739501, K_P=3.31710221491787, f_CH_max=5.77949013016476, exponent=4.64900911811842, q_CH=1.92792246509906, q_LI=26.1535941900048, V_NH=0.150722549179019, V_P=0.540050768528713,
+pm2 = pc.PM2(arr_e=6663.36141724313, K_P=6.06569854392092, f_CH_max=9.60813888591872, exponent=7.56541058257826, q_CH=1.92792246509906, q_LI=26.1535941900048, V_NH=0.150722549179019, V_P=0.540050768528713,
               a_c=0.049, I_n=1500, arr_a=1.8e10, beta_1=2.90,
               beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
               K_N=0.1, K_A=6.3, K_F=6.3, rho=1.186, K_STO=1.566,
@@ -81,7 +84,7 @@ pm2 = pc.PM2(arr_e=5062.74332739501, K_P=3.31710221491787, f_CH_max=5.7794901301
               Y_ATP_HET_ACE=39.623, Y_CH_NR_HET_ACE=0.625, Y_CH_ND_HET_ACE=0.600,
               Y_LI_NR_HET_ACE=1.105, Y_LI_ND_HET_ACE=0.713, Y_X_ALG_HET_ACE=0.216,
               Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880,
-              Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317)  # half_cali (optuna results) seed777
+              Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317)  # ecorecover_cali (optuna results) seed777
 
 #%%
 ############# create unit operations #####################
@@ -246,7 +249,7 @@ def run(t, t_step, method=None, print_t=False, **kwargs):
     df.index = t_eval
     df.index.name = 't'
     df['total TSS [g]'] = tss
-    df.to_csv('results/cali_system_tss.csv')
+    df.to_csv(ospath.join(results_path, 'cali_system_tss.csv'))
     unit_IDs = [u.ID for u in eco.units if isinstance(u, su.CSTR)]
     srt = get_SRT(eco, bio_IDs, active_unit_IDs=unit_IDs)
     print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
