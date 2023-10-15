@@ -21,7 +21,8 @@ from exposan.bsm1 import data_path
 __all__ = (
     'biomass_IDs',
     'create_system',
-    'default_asm_kwargs', 'default_inf_kwargs', 'default_init_conds',
+    'default_asm1_kwargs', 'default_asm2d_kwargs',
+    'default_asm1_inf_kwargs', 'default_asm2d_inf_kwargs',
     'Q', 'Q_ras', 'Q_was', 'Temp', 'V_an', 'V_ae', 
     )
 
@@ -47,7 +48,7 @@ biomass_IDs = ('X_BH', 'X_BA')
 # aer.B = 1750.286
 # aer.C = 235.0
 
-default_inf_kwargs = {
+default_asm1_inf_kwargs = {
     'concentrations': {
         'S_S':69.5,
         'X_BH':28.17,
@@ -62,7 +63,28 @@ default_inf_kwargs = {
     'units': ('m3/d', 'mg/L'),
     }
 
-default_asm_kwargs = dict(
+default_asm2d_inf_kwargs = {
+    'concentrations': {
+      'S_I': 14,
+      'X_I': 26.5,
+      'S_F': 20.1,
+      'S_A': 94.3,
+      'X_S': 409.75,
+      'S_NH4': 31,
+      'S_N2': 0,
+      'S_NO3': 0.266, 
+      'S_PO4': 2.8,
+      'X_PP': 0.05,
+      'X_PHA': 0.5,
+      'X_H': 0.15,
+      'X_AUT': 0, 
+      'X_PAO': 0, 
+      'S_ALK':7*12,
+        },
+    'units': ('m3/d', 'mg/L'),
+    }
+
+default_asm1_kwargs = dict(
     Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
     mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
     eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
@@ -70,20 +92,38 @@ default_asm_kwargs = dict(
     path=os.path.join(data_path, '_asm1.tsv'),
     )
 
-default_init_conds = {
-        'S_S':5,
-        'X_I':1000,
-        'X_S':100,
-        'X_BH':500,
-        'X_BA':100,
-        'X_P':100,
-        'S_O':2,
-        'S_NO':20,
-        'S_NH':2,
-        'S_ND':1,
-        'X_ND':1,
-        'S_ALK':7*12,
-    }
+default_asm2d_kwargs = dict(iN_SI=0.01, iN_SF=0.03, iN_XI=0.02, iN_XS=0.04, iN_BM=0.07,
+            iP_SI=0.0, iP_SF=0.01, iP_XI=0.01, iP_XS=0.01, iP_BM=0.02,
+            iTSS_XI=0.75, iTSS_XS=0.75, iTSS_BM=0.9,
+            f_SI=0.0, Y_H=0.625, f_XI_H=0.1,
+            Y_PAO=0.625, Y_PO4=0.4, Y_PHA=0.2, f_XI_PAO=0.1,
+            Y_A=0.24, f_XI_AUT=0.1,
+            K_h=3.0, eta_NO3=0.6, eta_fe=0.4, K_O2=0.2, K_NO3=0.5, K_X=0.1,
+            mu_H=6.0, q_fe=3.0, eta_NO3_H=0.8, b_H=0.4, K_O2_H=0.2, K_F=4.0,
+            K_fe=4.0, K_A_H=4.0, K_NO3_H=0.5, K_NH4_H=0.05, K_P_H=0.01, K_ALK_H=0.1,
+            q_PHA=3.0, q_PP=1.5, mu_PAO=1.0, eta_NO3_PAO=0.6, b_PAO=0.2, b_PP=0.2,
+            b_PHA=0.2, K_O2_PAO=0.2, K_NO3_PAO=0.5, K_A_PAO=4.0, K_NH4_PAO=0.05,
+            K_PS=0.2, K_P_PAO=0.01, K_ALK_PAO=0.1,
+            K_PP=0.01, K_MAX=0.34, K_IPP=0.02, K_PHA=0.01,
+            mu_AUT=1.0, b_AUT=0.15, K_O2_AUT=0.5, K_NH4_AUT=1.0, K_ALK_AUT=0.5, K_P_AUT=0.01,
+            k_PRE=1.0, k_RED=0.6, K_ALK_PRE=0.5,
+            )
+
+# # Replaced by `batch_init`
+# default_asm1_init_conds = {
+#         'S_S':5,
+#         'X_I':1000,
+#         'X_S':100,
+#         'X_BH':500,
+#         'X_BA':100,
+#         'X_P':100,
+#         'S_O':2,
+#         'S_NO':20,
+#         'S_NH':2,
+#         'S_ND':1,
+#         'X_ND':1,
+#         'S_ALK':7*12,
+#     }
 
 def batch_init(sys, path, sheet):
     df = load_data(path, sheet)
@@ -105,13 +145,46 @@ def batch_init(sys, path, sheet):
 # Benchmark Simulation Model No. 1
 # =============================================================================
 
-def create_system(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
+def create_system(flowsheet=None, 
+                  suspended_growth_model='ASM1',
+                  inf_kwargs={}, asm_kwargs={}, init_conds={},
                   aeration_processes=()):
+    '''
+    Create the system Benchmark Simulation Model No.1.
+    
+    Parameters
+    ----------
+    flowsheet : obj
+        Flowsheet where this system will be created on.
+    suspended_growth_model : str
+        Either "ASM1" using Activated Sludge Model No. 1,
+        or "ASM2d" using Activated Sludge Model No. 2d.
+    inf_kwargs : dict
+        Keyword arguments for influent.
+    asm_kwargs : dict
+        Keyword arguments for the ASM model (ASM1 or ASM2d).
+    init_conds : dict
+        Keyword arguments for initial conditions for the unit operations.
+    '''
     flowsheet = flowsheet or qs.Flowsheet('bsm1')
     qs.main_flowsheet.set_flowsheet(flowsheet)
 
     # Components and stream
-    pc.create_asm1_cmps()
+    kind = suspended_growth_model.lower().replace('-', '').replace('_', '')
+    if kind == 'asm1':
+        cmps_f = pc.create_asm1_cmps
+        pc_f = pc.ASM1
+        default_inf_kwargs = default_asm1_inf_kwargs
+        default_asm_kwargs = default_asm1_kwargs
+    elif kind == 'asm2d':
+        cmps_f = pc.create_asm2d_cmps
+        pc_f = pc.ASM2d
+        default_inf_kwargs = default_asm2d_inf_kwargs
+        default_asm_kwargs = default_asm2d_kwargs
+    else: raise ValueError('`suspended_growth_model` can only be "ASM1" or "ASM2d", '
+                           f'not {suspended_growth_model}.')
+    
+    cmps_f()
     
     wastewater = WasteStream('wastewater', T=Temp)
     inf_kwargs = inf_kwargs or default_inf_kwargs
@@ -129,24 +202,24 @@ def create_system(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
         aer1 = aer2 = pc.DiffusedAeration('aer1', 'S_O', KLa=240, DOsat=8.0, V=V_ae)
         aer3 = pc.DiffusedAeration('aer3', 'S_O', KLa=84, DOsat=8.0, V=V_ae)
     asm_kwargs = asm_kwargs or default_asm_kwargs
-    asm1 = pc.ASM1(**asm_kwargs)
+    asm = pc_f(**asm_kwargs)
     
     # Create unit operations
     A1 = su.CSTR('A1', ins=[wastewater, RWW, RAS], V_max=V_an,
-                  aeration=None, suspended_growth_model=asm1)
+                  aeration=None, suspended_growth_model=asm)
     
     A2 = su.CSTR('A2', A1-0, V_max=V_an,
-                  aeration=None, suspended_growth_model=asm1)
+                  aeration=None, suspended_growth_model=asm)
     
     O1 = su.CSTR('O1', A2-0, V_max=V_ae, aeration=aer1,
-                  DO_ID='S_O', suspended_growth_model=asm1)
+                  DO_ID='S_O', suspended_growth_model=asm)
     
     O2 = su.CSTR('O2', O1-0, V_max=V_ae, aeration=aer2,
-                  DO_ID='S_O', suspended_growth_model=asm1)
+                  DO_ID='S_O', suspended_growth_model=asm)
     
     O3 = su.CSTR('O3', O2-0, [RWW, 'treated'], split=[0.6, 0.4],
                  V_max=V_ae, aeration=aer3,
-                  DO_ID='S_O', suspended_growth_model=asm1)
+                  DO_ID='S_O', suspended_growth_model=asm)
     
     C1 = su.FlatBottomCircularClarifier('C1', O3-1, [effluent, RAS, WAS],
                                         underflow=Q_ras, wastage=Q_was, surface_area=1500,
@@ -171,7 +244,7 @@ def create_system(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
 
     if init_conds:
         for i in [A1, A2, O1, O2, O3]: i.set_init_conc(**init_conds)
-    else: batch_init(sys, os.path.join(data_path, 'initial_conditions.xlsx'), 'default')
+    else: batch_init(sys, os.path.join(data_path, f'initial_conditions_{kind}.xlsx'), 'default')
     sys.set_dynamic_tracker(A1, effluent)
     sys.set_tolerance(rmol=1e-6)
     
