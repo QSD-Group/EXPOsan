@@ -15,21 +15,16 @@ import os, numpy as np, qsdsan as qs
 from warnings import warn
 from chaospy import distributions as shape
 from qsdsan.utils import DictAttrSetter, AttrGetter, FuncGetter, \
-    load_data, get_SRT as srt, time_printer
+    get_SRT as srt, time_printer
 from exposan.bsm1 import (
     biomass_IDs,
     create_system,
-    data_path,
+    default_asm1_init_conds as _ic,
     results_path,
     Q, Q_was, V_an, V_ae,
     )
 
 __all__ = ('create_model', 'run_uncertainty', 'run_wdiff_init',)
-
-# Default init condition
-path = os.path.join(data_path, 'initial_conditions_asm1.xlsx')
-df = load_data(path, sheet='default')
-_ic = df.to_dict('index')
 
 
 #%%

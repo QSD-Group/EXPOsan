@@ -23,6 +23,7 @@ __all__ = (
     'create_system',
     'default_asm1_kwargs', 'default_asm2d_kwargs',
     'default_asm1_inf_kwargs', 'default_asm2d_inf_kwargs',
+    'default_asm1_init_conds', 'default_asm2d_init_conds',
     'Q', 'Q_ras', 'Q_was', 'Temp', 'V_an', 'V_ae', 
     )
 
@@ -109,24 +110,37 @@ default_asm2d_kwargs = dict(iN_SI=0.01, iN_SF=0.03, iN_XI=0.02, iN_XS=0.04, iN_B
             k_PRE=1.0, k_RED=0.6, K_ALK_PRE=0.5,
             )
 
-# # Replaced by `batch_init`
-# default_asm1_init_conds = {
-#         'S_S':5,
-#         'X_I':1000,
-#         'X_S':100,
-#         'X_BH':500,
-#         'X_BA':100,
-#         'X_P':100,
-#         'S_O':2,
-#         'S_NO':20,
-#         'S_NH':2,
-#         'S_ND':1,
-#         'X_ND':1,
-#         'S_ALK':7*12,
-#     }
+default_asm1_init_conds = {
+        'S_S':5,
+        'X_I':1000,
+        'X_S':100,
+        'X_BH':500,
+        'X_BA':100,
+        'X_P':100,
+        'S_O':2,
+        'S_NO':20,
+        'S_NH':2,
+        'S_ND':1,
+        'X_ND':1,
+        'S_ALK':7*12,
+    }
 
-def batch_init(sys, path, sheet):
-    df = load_data(path, sheet)
+default_asm2d_init_conds = {
+        'S_F':5,
+        'S_A':2,
+        'X_I':1000,
+        'X_S':100,
+        'X_H':500,
+        'X_AUT':100,
+        #'X_P':100,
+        'S_O2':2,
+        'S_NO3':20,
+        'S_NH4':2,
+        'S_ALK':7*12,
+    }
+
+
+def batch_init(sys, df):
     dct = df.to_dict('index')
     u = sys.flowsheet.unit # unit registry
     for k in [u.A1, u.A2, u.O1, u.O2, u.O3]:
@@ -145,10 +159,14 @@ def batch_init(sys, path, sheet):
 # Benchmark Simulation Model No. 1
 # =============================================================================
 
-def create_system(flowsheet=None, 
-                  suspended_growth_model='ASM1',
-                  inf_kwargs={}, asm_kwargs={}, init_conds={},
-                  aeration_processes=()):
+def create_system(
+        flowsheet=None, 
+        suspended_growth_model='ASM1',
+        inf_kwargs={},
+        asm_kwargs={},
+        init_conds=None,
+        aeration_processes=(),
+        ):
     '''
     Create the system Benchmark Simulation Model No.1.
     
@@ -163,8 +181,11 @@ def create_system(flowsheet=None,
         Keyword arguments for influent.
     asm_kwargs : dict
         Keyword arguments for the ASM model (ASM1 or ASM2d).
-    init_conds : dict
-        Keyword arguments for initial conditions for the unit operations.
+    init_conds : dict or DataFrame
+        For a dict, keyword arguments for initial conditions for all bioreactors in the system
+        (the same initial conditions will be used),
+        or a pandas.DataFrame that contains initial conditions for each unit.
+        Default initial conditions will be used if not given.
     '''
     flowsheet = flowsheet or qs.Flowsheet('bsm1')
     qs.main_flowsheet.set_flowsheet(flowsheet)
@@ -176,11 +197,13 @@ def create_system(flowsheet=None,
         pc_f = pc.ASM1
         default_inf_kwargs = default_asm1_inf_kwargs
         default_asm_kwargs = default_asm1_kwargs
+        DO_ID = 'S_O'
     elif kind == 'asm2d':
         cmps_f = pc.create_asm2d_cmps
         pc_f = pc.ASM2d
         default_inf_kwargs = default_asm2d_inf_kwargs
         default_asm_kwargs = default_asm2d_kwargs
+        DO_ID = 'S_O2'
     else: raise ValueError('`suspended_growth_model` can only be "ASM1" or "ASM2d", '
                            f'not {suspended_growth_model}.')
     
@@ -199,8 +222,8 @@ def create_system(flowsheet=None,
     if aeration_processes:
         aer1, aer2, aer3 = aeration_processes
     else:
-        aer1 = aer2 = pc.DiffusedAeration('aer1', 'S_O', KLa=240, DOsat=8.0, V=V_ae)
-        aer3 = pc.DiffusedAeration('aer3', 'S_O', KLa=84, DOsat=8.0, V=V_ae)
+        aer1 = aer2 = pc.DiffusedAeration('aer1', DO_ID, KLa=240, DOsat=8.0, V=V_ae)
+        aer3 = pc.DiffusedAeration('aer3', DO_ID, KLa=84, DOsat=8.0, V=V_ae)
     asm_kwargs = asm_kwargs or default_asm_kwargs
     asm = pc_f(**asm_kwargs)
     
@@ -212,14 +235,14 @@ def create_system(flowsheet=None,
                   aeration=None, suspended_growth_model=asm)
     
     O1 = su.CSTR('O1', A2-0, V_max=V_ae, aeration=aer1,
-                  DO_ID='S_O', suspended_growth_model=asm)
+                  DO_ID=DO_ID, suspended_growth_model=asm)
     
     O2 = su.CSTR('O2', O1-0, V_max=V_ae, aeration=aer2,
-                  DO_ID='S_O', suspended_growth_model=asm)
+                  DO_ID=DO_ID, suspended_growth_model=asm)
     
     O3 = su.CSTR('O3', O2-0, [RWW, 'treated'], split=[0.6, 0.4],
                  V_max=V_ae, aeration=aer3,
-                  DO_ID='S_O', suspended_growth_model=asm)
+                  DO_ID=DO_ID, suspended_growth_model=asm)
     
     C1 = su.FlatBottomCircularClarifier('C1', O3-1, [effluent, RAS, WAS],
                                         underflow=Q_ras, wastage=Q_was, surface_area=1500,
@@ -243,8 +266,14 @@ def create_system(flowsheet=None,
     # sys = System('bsm1_sys', path=(bio, C1, S1), recycle=(RAS,))
 
     if init_conds:
-        for i in [A1, A2, O1, O2, O3]: i.set_init_conc(**init_conds)
-    else: batch_init(sys, os.path.join(data_path, f'initial_conditions_{kind}.xlsx'), 'default')
+        if type(init_conds) is dict:
+            for i in [A1, A2, O1, O2, O3]: i.set_init_conc(**init_conds)
+        else:
+            df = init_conds
+    else: 
+        path = os.path.join(data_path, f'initial_conditions_{kind}.xlsx')
+        df = load_data(path, sheet='default')
+        batch_init(sys, df)
     sys.set_dynamic_tracker(A1, effluent)
     sys.set_tolerance(rmol=1e-6)
     
