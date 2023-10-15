@@ -25,12 +25,12 @@ def test_bwaise():
 
     bw.load()
     rtol = 0.01
-    assert_allclose(bw.teaA.NPV, -42012332.26576174, rtol=rtol)
-    assert_allclose(bw.teaB.NPV, -3452718.4819053616, rtol=rtol)
-    assert_allclose(bw.teaC.NPV, -65123672.010664254, rtol=rtol)
-    assert_allclose(bw.lcaA.total_impacts['GlobalWarming'], 214197344.34531045, rtol=rtol)
-    assert_allclose(bw.lcaB.total_impacts['GlobalWarming'], 10181296.352069596, rtol=rtol)
-    assert_allclose(bw.lcaC.total_impacts['GlobalWarming'], 55327236.9006904, rtol=rtol)
+    assert_allclose(bw.teaA.NPV, -42012130.74978592, rtol=rtol)
+    assert_allclose(bw.teaB.NPV, -3452692.1218514927, rtol=rtol)
+    assert_allclose(bw.teaC.NPV, -65123164.62142904, rtol=rtol)
+    assert_allclose(bw.lcaA.total_impacts['GlobalWarming'], 214197341.89556617, rtol=rtol)
+    assert_allclose(bw.lcaB.total_impacts['GlobalWarming'], 10181296.352069594, rtol=rtol)
+    assert_allclose(bw.lcaC.total_impacts['GlobalWarming'], 55345261.818116374, rtol=rtol)
 
 
 if __name__ == '__main__':
