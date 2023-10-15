@@ -168,7 +168,7 @@ def create_system(
         aeration_processes=(),
         ):
     '''
-    Create the system Benchmark Simulation Model No.1.
+    Create the system as described in Benchmark Simulation Model No.1.
     
     Parameters
     ----------
@@ -194,15 +194,13 @@ def create_system(
     kind = suspended_growth_model.lower().replace('-', '').replace('_', '')
     if kind == 'asm1':
         cmps_f = pc.create_asm1_cmps
-        pc_f = pc.ASM1
         default_inf_kwargs = default_asm1_inf_kwargs
-        default_asm_kwargs = default_asm1_kwargs
+        asm = pc.ASM1(**default_asm1_kwargs)
         DO_ID = 'S_O'
     elif kind == 'asm2d':
         cmps_f = pc.create_asm2d_cmps
-        pc_f = pc.ASM2d
         default_inf_kwargs = default_asm2d_inf_kwargs
-        default_asm_kwargs = default_asm2d_kwargs
+        asm = pc.ASM2d(**default_asm2d_kwargs)
         DO_ID = 'S_O2'
     else: raise ValueError('`suspended_growth_model` can only be "ASM1" or "ASM2d", '
                            f'not {suspended_growth_model}.')
@@ -224,25 +222,23 @@ def create_system(
     else:
         aer1 = aer2 = pc.DiffusedAeration('aer1', DO_ID, KLa=240, DOsat=8.0, V=V_ae)
         aer3 = pc.DiffusedAeration('aer3', DO_ID, KLa=84, DOsat=8.0, V=V_ae)
-    asm_kwargs = asm_kwargs or default_asm_kwargs
-    asm = pc_f(**asm_kwargs)
     
     # Create unit operations
     A1 = su.CSTR('A1', ins=[wastewater, RWW, RAS], V_max=V_an,
-                  aeration=None, suspended_growth_model=asm)
+                 aeration=None, suspended_growth_model=asm)
     
     A2 = su.CSTR('A2', A1-0, V_max=V_an,
-                  aeration=None, suspended_growth_model=asm)
+                 aeration=None, suspended_growth_model=asm)
     
     O1 = su.CSTR('O1', A2-0, V_max=V_ae, aeration=aer1,
-                  DO_ID=DO_ID, suspended_growth_model=asm)
+                 DO_ID=DO_ID, suspended_growth_model=asm)
     
     O2 = su.CSTR('O2', O1-0, V_max=V_ae, aeration=aer2,
-                  DO_ID=DO_ID, suspended_growth_model=asm)
+                 DO_ID=DO_ID, suspended_growth_model=asm)
     
     O3 = su.CSTR('O3', O2-0, [RWW, 'treated'], split=[0.6, 0.4],
                  V_max=V_ae, aeration=aer3,
-                  DO_ID=DO_ID, suspended_growth_model=asm)
+                 DO_ID=DO_ID, suspended_growth_model=asm)
     
     C1 = su.FlatBottomCircularClarifier('C1', O3-1, [effluent, RAS, WAS],
                                         underflow=Q_ras, wastage=Q_was, surface_area=1500,
