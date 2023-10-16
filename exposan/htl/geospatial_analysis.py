@@ -221,7 +221,7 @@ WWTP_within.to_excel(folder + f'HTL_geospatial_model_input_{date.today()}.xlsx')
 # travel distance box plot
 
 WWTP_within = pd.read_excel(folder + 'HTL_geospatial_model_input_final.xlsx')
-#%%
+
 fig, ax = plt.subplots(figsize = (5, 8))
 
 plt.rcParams['axes.linewidth'] = 3
@@ -276,6 +276,33 @@ between_10_and_100 = (WWTP_within['30_years_emission_ton_CO2']/30/1000 > 10) & (
 WWTP_within[between_10_and_100].plot(ax=ax, color=Guest.red.HEX, markersize=100, edgecolor='k', linewidth=1.5, alpha=0.8)
 
 more_than_100 = WWTP_within['30_years_emission_ton_CO2']/30/1000 > 100
+WWTP_within[more_than_100].plot(ax=ax, color=Guest.green.HEX, markersize=500, edgecolor='k', linewidth=2)
+
+#%%
+
+# WRRFs sludge management GHG map (after filter out some WRRFs)
+
+WWTP_within = pd.read_excel(folder + 'HTL_geospatial_model_input_final.xlsx')
+
+WWTP_within = gpd.GeoDataFrame(WWTP_within, crs='EPSG:4269',
+                               geometry=gpd.points_from_xy(x=WWTP_within.Longitude_left,
+                                                           y=WWTP_within.Latitude_left))
+
+WWTP_within = WWTP_within.to_crs(crs='EPSG:3857')
+
+set_plot()
+
+US.plot(ax=ax, color='w', edgecolor='k')
+
+# use k-ton/yr
+
+less_than_10 = WWTP_within['sludge_management_kg_CO2_per_day_AD_included']*365/1000000 <= 5
+WWTP_within[less_than_10].plot(ax=ax, color=Guest.gray.HEX, markersize=5, alpha=0.5)
+
+between_10_and_100 = (WWTP_within['sludge_management_kg_CO2_per_day_AD_included']*365/1000000 > 5) & (WWTP_within['sludge_management_kg_CO2_per_day_AD_included']*365/1000000 <= 20)
+WWTP_within[between_10_and_100].plot(ax=ax, color=Guest.red.HEX, markersize=100, edgecolor='k', linewidth=1.5, alpha=0.8)
+
+more_than_100 = WWTP_within['sludge_management_kg_CO2_per_day_AD_included']*365/1000000 > 20
 WWTP_within[more_than_100].plot(ax=ax, color=Guest.green.HEX, markersize=500, edgecolor='k', linewidth=2)
 
 #%%
