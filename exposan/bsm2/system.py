@@ -23,13 +23,13 @@ from qsdsan import (
     )
 #!!! Need to verify system settings
 from exposan.bsm1 import (
-    default_asm1_kwargs,
-    default_asm1_inf_kwargs,
-    default_asm1_init_conds,
+    default_asm_kwargs,
+    default_inf_kwargs,
+    default_init_conds,
     Q, Q_ras, Q_was, Temp, V_an, V_ae, 
     )
 
-from exposan.bsm2 import results_path
+from exposan.bsm2 import figures_path, results_path
 from exposan.adm import default_init_conds as default_adm1_init_conds
 
 __all__ = ('create_system',)
@@ -55,6 +55,54 @@ __all__ = ('create_system',)
 #      cmps.compile()
 #      return cmps
 
+#!!! Not sure if this is already provided as the steady state
+# Qin0 = 20648;
+Q = 20648.361 # influent flowrate [m3/d]
+Q_intr = 3 * Q #!!! what is this?
+Q_ras = Q # recycle sludge flowrate
+Q_was = 300 # sludge wastage flowrate
+Temp = 273.15+14.85808 # temperature [K]
+
+default_inf_kwargs = {
+    'concentrations': {
+        'S_I': 27.226191,
+        'S_S': 58.176186,
+        'X_I': 92.499001,
+        'X_S': 363.94347,
+        'X_BH': 50.683288,
+        'S_NH': 23.859466,
+        'S_ND': 5.651606,
+        'X_ND': 16.129816,
+        'S_ALK': 7*12,
+        },
+    'units': ('m3/d', 'mg/L'),
+    }
+
+# default_adm_kwargs = dict(
+#     Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
+#     mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
+#     eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
+#     K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05, fr_SS_COD=0.75,
+#     )
+
+# def __new__(cls, components=None, path=None, N_xc=2.686e-3, N_I=4.286e-3, N_aa=7e-3,
+#             f_ch_xc=0.2, f_pr_xc=0.2, f_li_xc=0.3, f_xI_xc=0.2,
+#             f_fa_li=0.95, f_bu_su=0.13, f_pro_su=0.27, f_ac_su=0.41,
+#             f_va_aa=0.23, f_bu_aa=0.26, f_pro_aa=0.05, f_ac_aa=0.4,
+#             f_ac_fa=0.7, f_pro_va=0.54, f_ac_va=0.31, f_ac_bu=0.8, f_ac_pro=0.57,
+#             Y_su=0.1, Y_aa=0.08, Y_fa=0.06, Y_c4=0.06, Y_pro=0.04, Y_ac=0.05, Y_h2=0.06,
+#             q_dis=0.5, q_ch_hyd=10, q_pr_hyd=10, q_li_hyd=10,
+#             k_su=30, k_aa=50, k_fa=6, k_c4=20, k_pro=13, k_ac=8, k_h2=35,
+#             K_su=0.5, K_aa=0.3, K_fa=0.4, K_c4=0.2, K_pro=0.1, K_ac=0.15, K_h2=7e-6,
+#             b_su=0.02, b_aa=0.02, b_fa=0.02, b_c4=0.02, b_pro=0.02, b_ac=0.02, b_h2=0.02,
+#             KI_h2_fa=5e-6, KI_h2_c4=1e-5, KI_h2_pro=3.5e-6, KI_nh3=1.8e-3, KS_IN=1e-4,
+#             pH_limits_aa=(4,5.5), pH_limits_ac=(6,7), pH_limits_h2=(5,6),
+#             T_base=298.15, pKa_base=[14, 9.25, 6.35, 4.76, 4.88, 4.82, 4.86],
+#             Ka_dH=[55900, 51965, 7646, 0, 0, 0, 0],
+#             kLa=200, K_H_base=[7.8e-4, 1.4e-3, 3.5e-2],
+#             K_H_dH=[-4180, -14240, -19410],
+#             **kwargs):
+
 def create_system(flowsheet=None):
     flowsheet = flowsheet or qs.Flowsheet('bsm2')
     qs.main_flowsheet.set_flowsheet(flowsheet)
@@ -64,15 +112,15 @@ def create_system(flowsheet=None):
     cmps_asm1 = pc.create_asm1_cmps()
     thermo_asm1 = qs.get_thermo()
     DO_ID = 'S_O'
-    asm1 = pc.ASM1(**default_asm1_kwargs)
+    asm1 = pc.ASM1(**default_asm_kwargs['asm1'])
     aer1 = aer2 = pc.DiffusedAeration('aer1', DO_ID, KLa=240, DOsat=8.0, V=V_ae)
     aer3 = pc.DiffusedAeration('aer3', DO_ID, KLa=84, DOsat=8.0, V=V_ae)
     
     # Influent
     wastewater = WasteStream('wastewater', T=Temp)
-    wastewater.set_flow_by_concentration(Q, **default_asm1_inf_kwargs)
+    wastewater.set_flow_by_concentration(Q, **default_inf_kwargs)
     
-    # Primary clarifier
+    # Primary clarifier using the Otterpohl-Freund model
     C1 = su.PrimaryClarifierBSM2(
         'C1',
         ins=(wastewater, 'thickener_recycle', 'storage_recycle'),
@@ -97,6 +145,7 @@ def create_system(flowsheet=None):
                  V_max=V_ae, aeration=aer3,
                  DO_ID=DO_ID, suspended_growth_model=asm1)
     
+    # 10-layer one-dimensional settler model
     C2 = su.FlatBottomCircularClarifier(
         'C2', O3-0, ['effluent', 1-A1, 'WAS'],
         underflow=Q_ras, wastage=Q_was, surface_area=1500,
@@ -122,11 +171,11 @@ def create_system(flowsheet=None):
     J2 = su.ADMtoASM('J2', upstream=AD1-1, thermo=thermo_asm1, isdynamic=True, adm1_model=adm1)
     qs.set_thermo(thermo_asm1)
     
-    C3 = su.Centrifuge(ID='C3', ins=J2-0, outs = ['digested_sludge', 'C3_eff'],
+    C3 = su.Centrifuge(ID='C3', ins=J2-0, outs=['digested_sludge', 'C3_eff'],
                        thickener_perc=27, TSS_removal_perc=96.29)
 
     #!!! Should be a stroage tank with HRT = 1
-    T1 = su.HydraulicDelay('T1', C3-1, t_delay=1)
+    T1 = su.HydraulicDelay('T1', C3-1, outs='liquid_recycle', t_delay=1)
     T1-0-2-C1
     
     sys = flowsheet.create_system('bsm2_sys')
@@ -141,3 +190,4 @@ def create_system(flowsheet=None):
 
 if __name__ == '__main__':
     bsm2_sys = create_system()
+    bsm2_sys.diagram(file=os.path.join(figures_path, 'bsm2_sys'), format='png')

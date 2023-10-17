@@ -21,9 +21,9 @@ from exposan.bsm1 import data_path
 __all__ = (
     'biomass_IDs',
     'create_system',
-    'default_asm1_kwargs', 'default_asm2d_kwargs',
-    'default_asm1_inf_kwargs', 'default_asm2d_inf_kwargs',
-    'default_asm1_init_conds', 'default_asm2d_init_conds',
+    'default_asm_kwargs',
+    'default_inf_kwargs',
+    'default_init_conds',
     'Q', 'Q_ras', 'Q_was', 'Temp', 'V_an', 'V_ae', 
     )
 
@@ -49,7 +49,9 @@ biomass_IDs = ('X_BH', 'X_BA')
 # aer.B = 1750.286
 # aer.C = 235.0
 
-default_asm1_inf_kwargs = {
+valid_models = ('asm1', 'asm2d')
+default_inf_kwargs = dict.fromkeys(valid_models)
+default_inf_kwargs['asm1'] = {
     'concentrations': {
         'S_S':69.5,
         'X_BH':28.17,
@@ -64,7 +66,7 @@ default_asm1_inf_kwargs = {
     'units': ('m3/d', 'mg/L'),
     }
 
-default_asm2d_inf_kwargs = {
+default_inf_kwargs ['asm2d'] = {
     'concentrations': {
       'S_I': 14,
       'X_I': 26.5,
@@ -81,11 +83,12 @@ default_asm2d_inf_kwargs = {
       'X_AUT': 0, 
       'X_PAO': 0, 
       'S_ALK':7*12,
-        },
+      },
     'units': ('m3/d', 'mg/L'),
     }
 
-default_asm1_kwargs = dict(
+default_asm_kwargs = dict.fromkeys(valid_models)
+default_asm_kwargs['asm1'] = dict(
     Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
     mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
     eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
@@ -93,50 +96,52 @@ default_asm1_kwargs = dict(
     path=os.path.join(data_path, '_asm1.tsv'),
     )
 
-default_asm2d_kwargs = dict(iN_SI=0.01, iN_SF=0.03, iN_XI=0.02, iN_XS=0.04, iN_BM=0.07,
-            iP_SI=0.0, iP_SF=0.01, iP_XI=0.01, iP_XS=0.01, iP_BM=0.02,
-            iTSS_XI=0.75, iTSS_XS=0.75, iTSS_BM=0.9,
-            f_SI=0.0, Y_H=0.625, f_XI_H=0.1,
-            Y_PAO=0.625, Y_PO4=0.4, Y_PHA=0.2, f_XI_PAO=0.1,
-            Y_A=0.24, f_XI_AUT=0.1,
-            K_h=3.0, eta_NO3=0.6, eta_fe=0.4, K_O2=0.2, K_NO3=0.5, K_X=0.1,
-            mu_H=6.0, q_fe=3.0, eta_NO3_H=0.8, b_H=0.4, K_O2_H=0.2, K_F=4.0,
-            K_fe=4.0, K_A_H=4.0, K_NO3_H=0.5, K_NH4_H=0.05, K_P_H=0.01, K_ALK_H=0.1,
-            q_PHA=3.0, q_PP=1.5, mu_PAO=1.0, eta_NO3_PAO=0.6, b_PAO=0.2, b_PP=0.2,
-            b_PHA=0.2, K_O2_PAO=0.2, K_NO3_PAO=0.5, K_A_PAO=4.0, K_NH4_PAO=0.05,
-            K_PS=0.2, K_P_PAO=0.01, K_ALK_PAO=0.1,
-            K_PP=0.01, K_MAX=0.34, K_IPP=0.02, K_PHA=0.01,
-            mu_AUT=1.0, b_AUT=0.15, K_O2_AUT=0.5, K_NH4_AUT=1.0, K_ALK_AUT=0.5, K_P_AUT=0.01,
-            k_PRE=1.0, k_RED=0.6, K_ALK_PRE=0.5,
-            )
+default_asm_kwargs['asm2d'] = dict(
+    iN_SI=0.01, iN_SF=0.03, iN_XI=0.02, iN_XS=0.04, iN_BM=0.07,
+    iP_SI=0.0, iP_SF=0.01, iP_XI=0.01, iP_XS=0.01, iP_BM=0.02,
+    iTSS_XI=0.75, iTSS_XS=0.75, iTSS_BM=0.9,
+    f_SI=0.0, Y_H=0.625, f_XI_H=0.1,
+    Y_PAO=0.625, Y_PO4=0.4, Y_PHA=0.2, f_XI_PAO=0.1,
+    Y_A=0.24, f_XI_AUT=0.1,
+    K_h=3.0, eta_NO3=0.6, eta_fe=0.4, K_O2=0.2, K_NO3=0.5, K_X=0.1,
+    mu_H=6.0, q_fe=3.0, eta_NO3_H=0.8, b_H=0.4, K_O2_H=0.2, K_F=4.0,
+    K_fe=4.0, K_A_H=4.0, K_NO3_H=0.5, K_NH4_H=0.05, K_P_H=0.01, K_ALK_H=0.1,
+    q_PHA=3.0, q_PP=1.5, mu_PAO=1.0, eta_NO3_PAO=0.6, b_PAO=0.2, b_PP=0.2,
+    b_PHA=0.2, K_O2_PAO=0.2, K_NO3_PAO=0.5, K_A_PAO=4.0, K_NH4_PAO=0.05,
+    K_PS=0.2, K_P_PAO=0.01, K_ALK_PAO=0.1,
+    K_PP=0.01, K_MAX=0.34, K_IPP=0.02, K_PHA=0.01,
+    mu_AUT=1.0, b_AUT=0.15, K_O2_AUT=0.5, K_NH4_AUT=1.0, K_ALK_AUT=0.5, K_P_AUT=0.01,
+    k_PRE=1.0, k_RED=0.6, K_ALK_PRE=0.5,
+    )
 
-default_asm1_init_conds = {
-        'S_S':5,
-        'X_I':1000,
-        'X_S':100,
-        'X_BH':500,
-        'X_BA':100,
-        'X_P':100,
-        'S_O':2,
-        'S_NO':20,
-        'S_NH':2,
-        'S_ND':1,
-        'X_ND':1,
-        'S_ALK':7*12,
+default_init_conds = dict.fromkeys(valid_models)
+default_init_conds['asm1'] = {
+    'S_S':5,
+    'X_I':1000,
+    'X_S':100,
+    'X_BH':500,
+    'X_BA':100,
+    'X_P':100,
+    'S_O':2,
+    'S_NO':20,
+    'S_NH':2,
+    'S_ND':1,
+    'X_ND':1,
+    'S_ALK':7*12,
     }
 
-default_asm2d_init_conds = {
-        'S_F':5,
-        'S_A':2,
-        'X_I':1000,
-        'X_S':100,
-        'X_H':500,
-        'X_AUT':100,
-        #'X_P':100,
-        'S_O2':2,
-        'S_NO3':20,
-        'S_NH4':2,
-        'S_ALK':7*12,
+default_init_conds['asm2d'] = {
+    'S_F':5,
+    'S_A':2,
+    'X_I':1000,
+    'X_S':100,
+    'X_H':500,
+    'X_AUT':100,
+    #'X_P':100,
+    'S_O2':2,
+    'S_NO3':20,
+    'S_NH4':2,
+    'S_ALK':7*12,
     }
 
 
@@ -193,22 +198,18 @@ def create_system(
     # Components and stream
     kind = suspended_growth_model.lower().replace('-', '').replace('_', '')
     if kind == 'asm1':
-        cmps_f = pc.create_asm1_cmps
-        default_inf_kwargs = default_asm1_inf_kwargs
-        asm = pc.ASM1(**default_asm1_kwargs)
+        pc.create_asm1_cmps()
+        asm = pc.ASM1(**default_asm_kwargs[kind])
         DO_ID = 'S_O'
     elif kind == 'asm2d':
-        cmps_f = pc.create_asm2d_cmps
-        default_inf_kwargs = default_asm2d_inf_kwargs
-        asm = pc.ASM2d(**default_asm2d_kwargs)
+        pc.create_asm2d_cmps()
+        asm = pc.ASM2d(**default_asm_kwargs[kind])
         DO_ID = 'S_O2'
     else: raise ValueError('`suspended_growth_model` can only be "ASM1" or "ASM2d", '
                            f'not {suspended_growth_model}.')
     
-    cmps_f()
-    
     wastewater = WasteStream('wastewater', T=Temp)
-    inf_kwargs = inf_kwargs or default_inf_kwargs
+    inf_kwargs = inf_kwargs or default_inf_kwargs[kind]
     wastewater.set_flow_by_concentration(Q, **inf_kwargs)
     
     effluent = WasteStream('effluent', T=Temp)
