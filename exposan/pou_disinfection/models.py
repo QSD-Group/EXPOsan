@@ -20,7 +20,7 @@ for license details.
 
 import os, qsdsan as qs
 from chaospy import distributions as shape
-from qsdsan import Model, Metric, PowerUtility
+from qsdsan import Model, Metric, PowerUtility, ImpactItem
 from qsdsan.utils import load_data
 from exposan.utils import (
     batch_setting_LCA_params,
@@ -93,6 +93,7 @@ def add_shared_parameters(model, ppl=pou.ppl):
     param = model.parameter
 
     ########## Related to multiple units ##########
+    #!!! Needs to be updated using the UN global household size
     # Household size
     raw_water = sys.path[0]
     b = pou.household_size
@@ -131,9 +132,11 @@ def add_shared_parameters(model, ppl=pou.ppl):
             units='$/kWh', baseline=b, distribution=D)
     def set_electricity_price(i):
         PowerUtility.price = i
-        
+
+    # CF of PE_stream should be the same as PE,
+    # will be added separately for POU chlorination (the only system that uses it)
     item_path = os.path.join(pou.data_path, 'impact_items.xlsx')
-    batch_setting_LCA_params(item_path, model)
+    batch_setting_LCA_params(item_path, model, exclude=('PE_stream'))
 
 
 def import_water_data(water_source):
@@ -164,7 +167,6 @@ def create_modelA(system_kwargs={}, **model_kwargs):
     # NaClO price
     A_naclo = sysA.flowsheet.stream['A_naclo']
     b = A_naclo.price
-    if b != 1.96/0.15/1.21/0.125: raise ValueError('baseline price of NaClO changed!')
     D = shape.Uniform(lower=b*0.75, upper=b*1.25)
     @modelA.parameter(
         name='NaClO price', element='TEA', kind='isolated',
@@ -172,6 +174,21 @@ def create_modelA(system_kwargs={}, **model_kwargs):
         )
     def set_NaClO_price(i):
         A_naclo.price = i
+    
+    # Since the chlorine bottle also uses PE as the container,
+    # adjust so they will be using the same value
+    A_naclo = sysA.flowsheet.stream['A_cl_bottle']
+    PE, PE_stream = ImpactItem.get_item('PE'), ImpactItem.get_item('PE_stream')
+    # The distribution of this dummy parameter actually doesn't matter
+    # (since it's not actually used anywhere)
+    b = PE_stream.CFs['GWP']
+    D = shape.Uniform(lower=b*0.75, upper=b*1.25)
+    @modelA.parameter(
+        name='PE_stream_dummy', element='LCA', kind='isolated',
+        units='kg CO2-eq/kg', baseline=b, distribution=D,
+        )
+    def set_PE_stream_CF(i):
+        PE_stream.CFs['GWP'] = PE.CFs['GWP']
     
     # RawWater
     water_data = import_water_data(system_kwargs.get('water_source', pou.water_source))

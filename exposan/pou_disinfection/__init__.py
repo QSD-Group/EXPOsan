@@ -37,7 +37,7 @@ lifetime = 5
 water_source = 'GW'
 household_size = 6
 household_per_container = 1
-ppl = 1000 # 1k or 500
+ppl = 1000 # population would not change the results
 
 
 # %%

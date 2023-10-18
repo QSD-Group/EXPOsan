@@ -186,13 +186,10 @@ class AgNP_CWF(SanUnit):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
 
-    # in _run: define influent and effluent streams and treatment processes 
+
     def _run(self):
         raw_water,  = self.ins
         treated_water = self.outs[0]
-        
-        # give treated water all the properties and cmps of raw water
-        # these will be changed below
         treated_water.copy_like(raw_water)
 
         #set the equation for log reduction following the Chick Watson Kinetic Model for log removal. Log(N/No) = -K*co*t
@@ -206,7 +203,6 @@ class AgNP_CWF(SanUnit):
         log_N = log_reduction + log10(No) #CFU/mL
         # N = 10**(log_N)            
 
-    #_design will include all the construction or capital impacts  
     def _design(self):
         design = self.design_results
         
@@ -218,7 +214,6 @@ class AgNP_CWF(SanUnit):
         design['Sawdust'] =  Sawdust = number_of_households *self.Sawdust_mass
         design['PE'] = Container = number_of_households * self.PE_in_container/2
         
-
         self.construction = (
             Construction(item='CWFClay', quantity = CWF_clay, quantity_unit = 'kg'),
             Construction(item='SilverNP', quantity = AgNP, quantity_unit = 'kg', lifetime = self.AgNP_lifetime, lifetime_unit='yr'),
@@ -228,9 +223,7 @@ class AgNP_CWF(SanUnit):
         self.add_construction(add_cost=False)
         
     
-    #_cost based on amount of steel and stainless plus individual components
     def _cost(self):
-        #purchase_costs is used for capital costs
         C = self.baseline_purchase_costs
         number_of_households = self.number_of_households
         # C['cwf'] = (self.CWF_cost)*self.number_of_households
@@ -246,9 +239,6 @@ class AgNP_CWF(SanUnit):
         C['Lid'] = self.CWF_lid
         C['Spout'] = self.CWF_spout
         for k, v in C.items(): C[k] = v * number_of_households
-
-        
-        # AgNP_lifetime = 0.1
         
         #certain parts need to be replaced based on an expected lifetime
         #the cost of these parts is considered along with  the cost of the labor to replace them
@@ -322,14 +312,11 @@ class POUChlorination(SanUnit):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
             
-        self.NaClO_dose_default = self.NaClO_dose
         
     def _run(self):
         raw_water, chlorine, Cl_bottle = self.ins
         treated_water = self.outs[0]
-        
-        # give treated water all the properties and components of raw water
-        # these will be changed below
+
         treated_water.copy_like(raw_water)
         chlorine.phase = 'l'
         Cl_bottle.phase = 's'
@@ -337,37 +324,26 @@ class POUChlorination(SanUnit):
         # add chlorine to the treated_water
         NaClO_dose_total = self.NaClO_dose_total        
         self.chlorine_rate = chlorine.imass['NaClO'] = NaClO_dose_total * treated_water.F_vol / 1000 # kg NaClO/hr
+        Cl_bottle.imass['Polyethylene'] = chlorine.imass['NaClO'] * self.PE_to_NaClO
 
         # disinfect bacteria from treated_water
         Cl_Concentration = NaClO_dose_total #mg/L
         No = raw_water.imass['Ecoli']/raw_water.F_vol * 10**-4  # E coli CFU/ mL ICC/ml (intact cells counts) used by (Cheswick et al., 2020)
-             
-    #_design will include all the construction or capital impacts  
+
     def _design(self):
         design = self.design_results
         
         # defining the quantities of materials/items
         # note that these items are in the _impacts_items.xlsx data
-        PE_container = self.number_of_households * self.PE_in_container
-        PE_bottle = self.ins[1].imass['NaClO'] * self.PE_to_NaClO
-        design['PE'] = PE_container + PE_bottle
+        design['PE'] = self.number_of_households * self.PE_in_container
         
         self.construction = (
             Construction(item='PE', quantity = design['PE'], quantity_unit = 'kg'),
             )
         self.add_construction(add_cost=False)       
     
-    #_cost based on amount of steel and stainless plus individual components
     def _cost(self):
-        
-        #purchase_costs is used for capital costs
-        #can use quantities from above (e.g., self.design_results['StainlessSteel'])
-        #can be broken down as specific items within purchase_costs or grouped (e.g., 'Misc. parts')
         self.baseline_purchase_costs['WaterContainer'] = (self.container_cost)*self.number_of_households
-       
-        #certain parts need to be replaced based on an expected lifetime
-        #the cost of these parts is considered along with  the cost of the labor to replace them
-
         #self.add_OPEX = self.chlorine_rate / self.NaClO_density / self.container_vol * self.operator_refill_cost  # USD/hr (all items are per hour)
 
     @property
@@ -426,9 +402,6 @@ class POU_UV(SanUnit):
      
         raw_water,  = self.ins
         treated_water = self.outs[0]
-        
-        # give treated water all the properties and components of raw water
-        # these will be changed below
         treated_water.copy_like(self.ins[0])
         
         if raw_water.F_vol > (self.uv_flow*60):
@@ -471,8 +444,7 @@ class POU_UV(SanUnit):
         
         ## factor this time into power demand cost and into lamp replacement lifetime.
 
-             
-    #_design will include all the construction or capital impacts  
+
     def _design(self):
         design = self.design_results
         
@@ -487,25 +459,22 @@ class POU_UV(SanUnit):
         self.construction = (
             Construction(item='PE', quantity = uv_storage, quantity_unit = 'kg'),
             Construction(item='PVC', quantity = uv_pvc, quantity_unit = 'kg'),
+            # The unit is supposed to be "kg" as the characterization factor was normalized
+            # from a different lamp
             Construction(item='UVlamp', quantity = uv_lamp_mecury, quantity_unit = 'kg', lifetime = self.lamp_total_lifetime, lifetime_unit='hr'),
             Construction(item='Aluminum', quantity = uv_aluminum_foil, quantity_unit = 'kg')
             )
         self.add_construction(add_cost=False)
         
-    
-    #_cost based on amount of steel and stainless plus individual components
+
     def _cost(self):
-        
-        #purchase_costs is used for capital costs
-        #can use quantities from above (e.g., self.design_results['StainlessSteel'])
-        #can be broken down as specific items within purchase_costs or grouped (e.g., 'Misc. parts')
         C = self.baseline_purchase_costs
         number_of_households = self.number_of_households
         C['UV unit'] = self.uv_unit_cost*number_of_households
         C['UV storage'] = self.uv_storage_cost*2*number_of_households
         self.add_OPEX['UV lamp'] = self.uv_lamp_cost/self.lamp_total_lifetime
          
-        self.power_utility.rate = self.uv_electric_demand / 1000 * self.run_time / self.lamp_lifespan_factor
+        self.power_utility.consumption = self.uv_electric_demand / 1000 * self.run_time / self.lamp_lifespan_factor
         
         #certain parts need to be replaced based on an expected lifetime
         #the cost of these parts is considered along with  the cost of the labor to replace them
@@ -607,10 +576,8 @@ class UV_LED(SanUnit):
         # self.residence_time = (self.unit_volume*1000) / self.flowrate /60    #time in hr
         
         ## factor this time into power demand cost and into lamp replacement lifetime.
-         
 
-             
-    #_design will include all the construction or capital impacts  
+
     def _design(self):
         design = self.design_results
         
@@ -626,17 +593,14 @@ class UV_LED(SanUnit):
             Construction(item='Quartz', quantity = uv_led_quartz, quantity_unit = 'kg'),
             Construction(item='PE', quantity = uv_led_storage, quantity_unit = 'kg'),
             Construction(item='StainlessSteel', quantity = uv_led_steel, quantity_unit = 'kg'),
+            # The unit is supposed to be "kg" as the characterization factor was normalized
+            # from a different LED
             Construction(item='LED', quantity = uv_led, quantity_unit = 'kg', lifetime = self.uv_led_total_lifetime, lifetime_unit='hr'),
             )
         self.add_construction(add_cost=False)
         
     
-    #_cost based on amount of steel and stainless plus individual components
     def _cost(self):
-        
-        #purchase_costs is used for capital costs
-        #can use quantities from above (e.g., self.design_results['StainlessSteel'])
-        #can be broken down as specific items within purchase_costs or grouped (e.g., 'Misc. parts')
         C = self.baseline_purchase_costs
         number_of_households = self.number_of_households
         C['UV LED unit'] = self.uv_led_unit_cost * number_of_households
@@ -644,7 +608,7 @@ class UV_LED(SanUnit):
         # C['uv_pump'] = self.uv_led_pump_cost*number_of_households
         self.add_OPEX['LED'] = self.uv_led_cost/self.uv_led_total_lifetime
          
-        self.power_utility.rate = self.led_electricity_demand/1000 * self.run_time /self.uv_led_lifespan_factor
+        self.power_utility.consumption = self.led_electricity_demand/1000 * self.run_time /self.uv_led_lifespan_factor
 
     @property
     def uv_led_lifespan_factor(self):
