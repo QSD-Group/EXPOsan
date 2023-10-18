@@ -55,6 +55,7 @@ setup(
             'metro/*',
             'new_generator/*',
             'new_generator/data/*',
+            'pou_disinfection/*',
             'pou_disinfection/data/*',
             'reclaimer/*',
             'reclaimer/data/*',
