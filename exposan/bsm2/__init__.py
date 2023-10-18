@@ -18,7 +18,8 @@ from exposan.utils import _init_modules
 
 bsm2_path = os.path.dirname(__file__)
 module = os.path.split(bsm2_path)[-1]
-data_path, results_path = _init_modules(module, include_data_path=True)
+data_path, results_path, figures_path = \
+    _init_modules(module, include_data_path=True, include_figures_path=True)
 
 
 # %%
@@ -52,6 +53,7 @@ def __getattr__(name):
 
 __all__ = (
     'bsm2_path',
+    'figures_path',
     'results_path',
     *system.__all__,
 )
