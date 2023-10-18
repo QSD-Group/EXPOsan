@@ -23,10 +23,7 @@ from qsdsan import (
     )
 #!!! Need to verify system settings
 from exposan.bsm1 import (
-    default_asm_kwargs,
-    default_inf_kwargs,
     default_init_conds,
-    Q, Q_ras, Q_was, Temp, V_an, V_ae, 
     )
 
 from exposan.bsm2 import figures_path, results_path
@@ -62,6 +59,37 @@ Q_intr = 3 * Q #!!! what is this?
 Q_ras = Q # recycle sludge flowrate
 Q_was = 300 # sludge wastage flowrate
 Temp = 273.15+14.85808 # temperature [K]
+V_an = 1500 # anoxic zone tank volume
+V_ae = 3000 # aerated zone tank volume
+
+# Parameters for AS system at 15 degC, based on BSM1
+default_asm_kwargs = dict(
+    mu_H=4.0, #6.0;
+    K_S=10.0, #20;
+    K_O_H=0.2, # K_OH = 0.2;
+    K_NO=0.5,
+    b_H=0.3, #0.62;
+    mu_A=0.5, #0.8;
+    K_NH=1.0,
+    K_O_A=0.4, # K_OA = 0.4;
+    b_A=0.05, #0.2;
+    eta_g=0.8, # ny_g
+    k_a=0.05, #0.08;
+    k_h=3.0,
+    K_X=0.1, #0.03;
+    eta_h=0.8, # ny_h #0.4;
+    Y_H=0.67,
+    Y_A=0.24,
+    f_P=0.08,
+    i_XB=0.08, #0.086;
+    i_XP=0.06,
+    fr_SS_COD=0.75, # X_I2TSS, X_S2TSS, X_BH2TSS, X_BA2TSS, X_P2TSS
+    # path=os.path.join(data_path, '_asm1.tsv'),
+    )
+
+
+# O2 saturation concentration at 15 degC, based on BSM1
+SOSAT1 = 8;
 
 default_inf_kwargs = {
     'concentrations': {
@@ -113,6 +141,7 @@ def create_system(flowsheet=None):
     thermo_asm1 = qs.get_thermo()
     DO_ID = 'S_O'
     asm1 = pc.ASM1(**default_asm_kwargs['asm1'])
+    # The O2 saturation concentration of 8 is at 15 degC, based on BSM1
     aer1 = aer2 = pc.DiffusedAeration('aer1', DO_ID, KLa=240, DOsat=8.0, V=V_ae)
     aer3 = pc.DiffusedAeration('aer3', DO_ID, KLa=84, DOsat=8.0, V=V_ae)
     
