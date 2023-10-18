@@ -779,8 +779,9 @@ def breakdown_and_sort(data):
     lca['total'] = gwp
     return tea, lca#, absolute
 
-def plot_area(df, absolute=False):
+def plot_area(df, absolute=False, ylims=None):
     fig, ax = plt.subplots(figsize=(4,4))
+    fig.subplots_adjust(left=0.15, right=0.95)
     x = range(df.shape[0])
     ax.axhline(y=0, color='black', linewidth=0.5)
     yp = np.zeros(df.shape[0])
@@ -793,13 +794,14 @@ def plot_area(df, absolute=False):
         yp += (y>=0) * y
         yn += (y<0) * y
     ax.set_xlim(0, df.shape[0])
+    if ylims: ax.set_ylim(*ylims)
     ax.tick_params(labelsize=12)
     ax.tick_params(axis='y', which='major', direction='inout', length=6)
     ax.tick_params(axis='y', which='minor', direction='inout', length=3)
     ax.set_xlabel('')
     ax.set_ylabel('')
     if absolute: 
-        ax.ticklabel_format(axis='y', scilimits=[-2,3], useMathText=True)
+        # ax.ticklabel_format(axis='y', scilimits=[-2,3], useMathText=True)
         ax.yaxis.get_offset_text().set_fontsize(12)
         ax2y = ax.secondary_yaxis('right')
         ax2y.tick_params(axis='y', which='major', direction='in', length=3)
@@ -815,12 +817,17 @@ def plot_area(df, absolute=False):
 def breakdown_uasa(seed):
     for i in ('UASB', 'FB', 'PB'):
         data = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
-                         header=[0,1], skiprows=[2,])
+                         header=[0,1], skiprows=[2,], nrows=1000)
         # tea, lca, absolute = breakdown_and_sort(data)
         tea, lca = breakdown_and_sort(data)
         for suffix, df in (('TEA', tea), ('LCA', lca)):
             # fig, ax = plot_area(df, absolute and suffix=='LCA')
-            fig, ax = plot_area(df, True)            
+            if i in ('FB', 'PB'):
+                if suffix == 'TEA': ylims = (-400, 15000)
+                else: ylims = (-300, 4000)
+            else:
+                ylims = None
+            fig, ax = plot_area(df, True, ylims)            
             fig.savefig(ospath.join(figures_path, f'breakdown/{i}_{suffix}_abs.png'),
                         dpi=300, 
                         # facecolor='white',
@@ -934,8 +941,8 @@ if __name__ == '__main__':
     # _rerun_failed_samples(364)
     # data = MCF_encap_to_susp(364, False)
     # MCF_bubble_plot(data)
-    # breakdown_uasa(364)
+    breakdown_uasa(364)
     # mapping(suffix='specific')
     # mapping(suffix='common')
     # plot_univariate_kdes(364)
-    mapping(reactor_type='PB')
+    # mapping(reactor_type='PB')
