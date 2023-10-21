@@ -1,0 +1,22 @@
+﻿parameter,name (if diff),unit,expected,low,high,distribution,references
+uv_dose,,mJ/cm2,187,140.25,233.75,uniform,"Younis, B. A., Mahoney, L. E., & Yao, S. (2019). Field evaluation of a novel UV water disinfection system for use in underserved rural communities. Water Environment Research, 91(1), 75–82. https://doi.org/10.2175/106143017X15131012188141"
+UVT,,%,95,,,constant,"Younis, B. A., Mahoney, L. E., & Yao, S. (2019). Field evaluation of a novel UV water disinfection system for use in underserved rural communities. Water Environment Research, 91(1), 75–82. https://doi.org/10.2175/106143017X15131012188141"
+uv_unit_cost,,USD,90,67.5,112.5,uniform,"Younis, B. A., Mahoney, L. E., & Yao, S. (2019). Field evaluation of a novel UV water disinfection system for use in underserved rural communities. Water Environment Research, 91(1), 75–82. https://doi.org/10.2175/106143017X15131012188141"
+uv_flow,,L/min,9.46,7.095,11.825,uniform,"Younis, B. A., Mahoney, L. E., & Yao, S. (2019). Field evaluation of a novel UV water disinfection system for use in underserved rural communities. Water Environment Research, 91(1), 75–82. https://doi.org/10.2175/106143017X15131012188141"
+residence_time,,s,8,,,constant,"Younis, B. A., Mahoney, L. E., & Yao, S. (2019). Field evaluation of a novel UV water disinfection system for use in underserved rural communities. Water Environment Research, 91(1), 75–82. https://doi.org/10.2175/106143017X15131012188141"
+quartz_tube_volume,,L,1.54,,,constant,"Younis, B. A., Mahoney, L. E., & Yao, S. (2019). Field evaluation of a novel UV water disinfection system for use in underserved rural communities. Water Environment Research, 91(1), 75–82. https://doi.org/10.2175/106143017X15131012188141"
+uv_lamp_cost,,USD,26,19.5,32.5,uniform,"Younis, B. A., Mahoney, L. E., & Yao, S. (2019). Field evaluation of a novel UV water disinfection system for use in underserved rural communities. Water Environment Research, 91(1), 75–82. https://doi.org/10.2175/106143017X15131012188141"
+lamp_lifespan,,hr,2000,1500,2500,uniform,"Younis, B. A., Mahoney, L. E., & Yao, S. (2019). Field evaluation of a novel UV water disinfection system for use in underserved rural communities. Water Environment Research, 91(1), 75–82. https://doi.org/10.2175/106143017X15131012188141"
+uv_pump_cost,,USD,75,56.25,93.75,uniform,https://www.vevor.com/beer-pump-c_10707/115-127v-ac-bottled-water-dispensing-pump-system-replaces-bunn-excellent-p_010875527879?utm_source=google&utm_campaign=18020380753&utm_term=138677238903&gclid=CjwKCAjwsfuYBhAZEiwA5a6CDOXk8Ty6xKpR7ttSPDG1qg80bDTKw9BcCCKcZ7nY6rTca2KqhkaqhBoCjsMQAvD_BwE
+uv_PVC,,kg,0.384405277,0.288303958,0.480506596,uniform,
+uv_aluminum_foil,,kg,0.39163094,0.293723205,0.489538675,uniform,
+storage_PE,,kg/container,0.9,0.675,1.125,uniform,https://www.tanksinternational.it/en/category/3/13/PLASTIC-APPROVED-JERRYCAN-20-LITRES-VOLUME/80
+uv_water_volume,,L,20,,,constant,
+unit_volume,,L,20,,,constant,
+uv_slope,,,0.205,,,constant,
+uv_intercept,,,0.45,,,constant,
+uv_storage_cost,,USD,1.6,1.2,2,uniform,https://www.alibaba.com/product-detail/5L-10L-20L-25L-Plastic-Stacking_62585479207.html?spm=a2700.pccps_detail.0.0.3d8f13a046xAC2
+uv_electric_cost,,USD/l,0.000015,0.00001125,0.00001875,uniform,"Younis, B. A., Mahoney, L. E., & Yao, S. (2019). Field evaluation of a novel UV water disinfection system for use in underserved rural communities. Water Environment Research, 91(1), 75–82. https://doi.org/10.2175/106143017X15131012188141"
+uv_lamp_mecury,,mg/uv_unit,1,,,constant,
+uv_electric_demand,,W,30,22.5,37.5,uniform,"Younis, B. A., Mahoney, L. E., & Yao, S. (2019). Field evaluation of a novel UV water disinfection system for use in underserved rural communities. Water Environment Research, 91(1), 75–82. https://doi.org/10.2175/106143017X15131012188141"
+number_of_uv_lamps,,number of lamps,2,,,constant,https://uv-light.co.uk/product/uv-60w-germicidal-unit-aluminium/

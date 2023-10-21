@@ -19,12 +19,14 @@ from qsdsan.utils import DictAttrSetter, AttrGetter, FuncGetter, \
 from exposan.bsm1 import (
     biomass_IDs,
     create_system,
-    default_init_conds as _ic,
+    default_init_conds,
     results_path,
     Q, Q_was, V_an, V_ae,
     )
 
 __all__ = ('create_model', 'run_uncertainty', 'run_wdiff_init',)
+
+_ic = default_init_conds['asm1']
 
 
 #%%

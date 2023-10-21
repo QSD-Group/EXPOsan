@@ -24,12 +24,13 @@ def test_eco_san():
     clear_lca_registries()
 
     es.load()
-    assert_allclose(es.teaA.NPV, -99282.30904085489, rtol=1e-2)
-    assert_allclose(es.teaB.NPV, -78656.64103836296, rtol=1e-2)
-    assert_allclose(es.teaC.NPV, -64039.20450181706, rtol=1e-2)
-    assert_allclose(es.lcaA.total_impacts['GlobalWarming'], 284386.4993382638, rtol=1e-2)
-    assert_allclose(es.lcaB.total_impacts['GlobalWarming'], 205035.34951036863, rtol=1e-2)
-    assert_allclose(es.lcaC.total_impacts['GlobalWarming'], 243717.22113291494, rtol=1e-2)
+    rtol = 0.01
+    assert_allclose(es.teaA.NPV, -99282.30904085489, rtol=rtol)
+    assert_allclose(es.teaB.NPV, -78656.64103836296, rtol=rtol)
+    assert_allclose(es.teaC.NPV, -64039.20450181706, rtol=rtol)
+    assert_allclose(es.lcaA.total_impacts['GlobalWarming'], 284386.4993382638, rtol=rtol)
+    assert_allclose(es.lcaB.total_impacts['GlobalWarming'], 205035.34951036863, rtol=rtol)
+    assert_allclose(es.lcaC.total_impacts['GlobalWarming'], 243717.22113291494, rtol=rtol)
 
 
 if __name__ == '__main__':

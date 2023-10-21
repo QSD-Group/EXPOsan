@@ -18,7 +18,7 @@ from biosteam.utils import ignore_docking_warnings
 from qsdsan import System
 from qsdsan.sanunits import ADMtoASM, ASMtoADM
 from exposan.bsm1 import create_system as create_bsm1_system
-from exposan.interface import results_path
+from exposan.bsm2 import results_path
 from exposan.adm import default_init_conds
 
 __all__ = ('create_system',)
