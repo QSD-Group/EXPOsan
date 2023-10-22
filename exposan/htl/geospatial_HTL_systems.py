@@ -174,11 +174,11 @@ def create_spatial_system(waste_price=400, # assumed to be 400 for all WRRFs
     if solid_fate == 8:
         HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0,
                                            outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'),
-                                           dewatered_unit_exist_in_the_system=True)
+                                           mositure_adjustment_exist_in_the_system=True)
     else:
         HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0,
                                            outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'),
-                                           dewatered_unit_exist_in_the_system=False)
+                                           mositure_adjustment_exist_in_the_system=False)
     HTL.register_alias('HTL')
     
     # =============================================================================

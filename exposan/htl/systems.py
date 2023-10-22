@@ -76,30 +76,45 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     # =============================================================================
                 
     WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
-                   ww_2_dry_sludge=0.94,
+                   ww_2_dry_sludge=1,
                    # how much metric ton/day sludge can be produced by 1 MGD of ww
-                   sludge_moisture=0.99, sludge_dw_ash=0.257, 
+                   sludge_moisture=0.8, sludge_dw_ash=0.257, 
                    sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, operation_hours=7920)
     WWTP.register_alias('WWTP')
     
     raw_wastewater.price = -WWTP.ww_2_dry_sludge*waste_price/3.79/(10**6)
     
-    SluC = qsu.SludgeCentrifuge('A000', ins=WWTP-0,
-                            outs=('supernatant','compressed_sludge'),
-                            init_with='Stream',
-                            solids=('Sludge_lipid','Sludge_protein',
-                                    'Sludge_carbo','Sludge_ash'),
-                            sludge_moisture=0.8)
-    SluC.register_alias('SluC')
+    if WWTP.sludge_moisture <= 0.8:
+        
+        Humidifier = su.Humidifier(ID='S010', ins=(WWTP-0, 'added_water'), outs='HTL_influent')
+        
+        # we can even use wastewater, so assume no cost and environemental impacts associated with added_water
+
+        Humidifier.register_alias('Humidifier')
+        
+        P1 = qsu.SludgePump('A100', ins=Humidifier-0, outs='press_sludge', P=3049.7*6894.76,
+                  init_with='Stream')
+        P1.register_alias('P1')
+        # Jones 2014: 3049.7 psia
+    
+    elif WWTP.sludge_moisture > 0.8:
+
+        SluC = qsu.SludgeCentrifuge('A000', ins=WWTP-0,
+                                outs=('supernatant','compressed_sludge'),
+                                init_with='Stream',
+                                solids=('Sludge_lipid','Sludge_protein',
+                                        'Sludge_carbo','Sludge_ash'),
+                                sludge_moisture=0.8)
+        SluC.register_alias('SluC')
+        
+        P1 = qsu.SludgePump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76,
+                  init_with='Stream')
+        P1.register_alias('P1')
+        # Jones 2014: 3049.7 psia
     
     # =============================================================================
     # HTL (Area 100)
     # =============================================================================
-    
-    P1 = qsu.SludgePump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76,
-              init_with='Stream')
-    P1.register_alias('P1')
-    # Jones 2014: 3049.7 psia
     
     H1 = qsu.HXutility('A110', include_construction=True,
                        ins=P1-0, outs='heated_sludge', T=351+273.15,
@@ -108,11 +123,12 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     # U: 3, 14, 15 BTU/hr/ft2/F as minimum, baseline, and maximum
     # U: 0.0170348, 0.0794957, 0.085174 kW/m2/K
     # H1: SS PNNL 2020: 50 (17-76) Btu/hr/ft2/F ~ U = 0.284 (0.096-0.4313) kW/m2/K
-    # but not in other pumps (low viscosity, don't need U to enforce total heat transfer efficiency)
+    # but not in other heat exchangers (low viscosity, don't need U to enforce total heat transfer efficiency)
     # unit conversion: https://www.unitsconverters.com/en/Btu(It)/Hmft2mdegf-To-W/M2mk/Utu-4404-4398
     H1.register_alias('H1')
     
-    HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'), dewatered_unit_exist_in_the_system=True)
+    HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'),
+                                       mositure_adjustment_exist_in_the_system=True)
     HTL.register_alias('HTL')
     
     # =============================================================================
@@ -326,8 +342,12 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
                           outs=('fuel_gas'), init_with='Stream')
     GasMixer.register_alias('GasMixer')
     
-    WWmixer = su.WWmixer('S590', ins=(SluC-0, MemDis-1, SP2-0),
-                        outs='wastewater', init_with='Stream')
+    try:
+        WWmixer = su.WWmixer('S590', ins=(SluC-0, MemDis-1, SP2-0),
+                            outs='wastewater', init_with='Stream')
+    except UnboundLocalError:
+        WWmixer = su.WWmixer('S590', ins=('', MemDis-1, SP2-0),
+                    outs='wastewater', init_with='Stream')
     # effluent of WWmixer goes back to WWTP
     WWmixer.register_alias('WWmixer')
     

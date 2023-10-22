@@ -77,28 +77,29 @@ def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=Fa
     def set_ww_2_dry_sludge(i):
         WWTP.ww_2_dry_sludge=i
     
-    dist = shape.Uniform(0.97,0.995)
-    @param(name='sludge_moisture',
-            element=WWTP,
-            kind='coupled',
-            units='-',
-            baseline=0.99,
-            distribution=dist)
-    def set_WWTP_sludge_moisture(i):
-        WWTP.sludge_moisture=i
-    
-    dist = shape.Triangle(0.174,0.257,0.414)
-    @param(name='sludge_dw_ash',
-            element=WWTP,
-            kind='coupled',
-            units='-',
-            baseline=0.257,
-            distribution=dist)
-    def set_sludge_dw_ash(i):
-        WWTP.sludge_dw_ash=i
-    
     if not exclude_sludge_compositions:
         if feedstock == 'sludge':
+            
+            dist = shape.Uniform(0.6,0.8)
+            @param(name='sludge_moisture',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.7,
+                    distribution=dist)
+            def set_WWTP_sludge_moisture(i):
+                WWTP.sludge_moisture=i
+            
+            dist = shape.Triangle(0.174,0.257,0.414)
+            @param(name='sludge_dw_ash',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.257,
+                    distribution=dist)
+            def set_sludge_dw_ash(i):
+                WWTP.sludge_dw_ash=i
+            
             dist = shape.Triangle(0.08,0.204,0.308)
             @param(name='sludge_afdw_lipid',
                     element=WWTP,
@@ -119,7 +120,38 @@ def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=Fa
             def set_sludge_afdw_protein(i):
                 WWTP.sludge_afdw_protein=i
                 
+            dist = shape.Triangle(0.1944,0.3927,0.5556)
+            @param(name='N_2_P',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.3927,
+                    distribution=dist)
+            def set_N_2_P(i):
+                WWTP.N_2_P=i
+                
         if feedstock == 'food':
+            
+            dist = shape.Uniform(0.073,0.1095)
+            @param(name='sludge_moisture',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.09125,
+                    distribution=dist)
+            def set_WWTP_sludge_moisture(i):
+                WWTP.sludge_moisture=i
+            
+            dist = shape.Triangle(0.025,0.0679,0.126)
+            @param(name='sludge_dw_ash',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.0679,
+                    distribution=dist)
+            def set_sludge_dw_ash(i):
+                WWTP.sludge_dw_ash=i
+            
             dist = shape.Uniform(0.13,0.30)
             @param(name='sludge_afdw_lipid', # I will keep using 'sludge' in the name
                     element=WWTP,
@@ -140,29 +172,91 @@ def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=Fa
             def set_sludge_afdw_protein(i):
                 WWTP.sludge_afdw_protein=i
 
+            dist = shape.Triangle(0.1146,0.1502,0.2857)
+            @param(name='N_2_P',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.1502,
+                    distribution=dist)
+            def set_N_2_P(i):
+                WWTP.N_2_P=i
+
         if feedstock == 'fogs':
-            dist = shape.Uniform(0.919,1)
+            
+            dist = shape.Uniform(0.1,0.6)
+            @param(name='sludge_moisture',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.35,
+                    distribution=dist)
+            def set_WWTP_sludge_moisture(i):
+                WWTP.sludge_moisture=i
+            
+            dist = shape.Uniform(0.01492,0.02238)
+            @param(name='sludge_dw_ash',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.01865,
+                    distribution=dist)
+            def set_sludge_dw_ash(i):
+                WWTP.sludge_dw_ash=i
+            
+            dist = shape.Triangle(0.912,0.987,1)
             @param(name='sludge_afdw_lipid', # I will keep using 'sludge' in the name
                     element=WWTP,
                     kind='coupled',
                     units='-',
-                    baseline=0.96,
+                    baseline=0.987,
                     distribution=dist)
             def set_sludge_afdw_lipid(i):
                 WWTP.sludge_afdw_lipid=i
             
-            dist = shape.Uniform(0,0.0123)
+            dist = shape.Triangle(0,0.002,0.0123)
             @param(name='sludge_afdw_protein',
                     element=WWTP,
                     kind='coupled',
                     units='-',
-                    baseline=0.006,
+                    baseline=0.002,
                     distribution=dist)
             def set_sludge_afdw_protein(i):
                 WWTP.sludge_afdw_protein=i
-                
+
+            dist = shape.Triangle(0,0.01055,0.03472)
+            @param(name='N_2_P',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.01055,
+                    distribution=dist)
+            def set_N_2_P(i):
+                WWTP.N_2_P=i
+
         if feedstock == 'green':
-            dist = shape.Uniform(0.0104,0.0259)
+            
+            dist = shape.Triangle(0.052,0.342,0.69)
+            @param(name='sludge_moisture',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.342,
+                    distribution=dist)
+            def set_WWTP_sludge_moisture(i):
+                WWTP.sludge_moisture=i
+            
+            dist = shape.Triangle(0.012,0.134,0.483)
+            @param(name='sludge_dw_ash',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.134,
+                    distribution=dist)
+            def set_sludge_dw_ash(i):
+                WWTP.sludge_dw_ash=i
+            
+            dist = shape.Uniform(0.0104,0.0259) # two points found in literature, but consider this as a range, since one point is for leaves and one is for branches
             @param(name='sludge_afdw_lipid', # I will keep using 'sludge' in the name
                     element=WWTP,
                     kind='coupled',
@@ -181,28 +275,69 @@ def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=Fa
                     distribution=dist)
             def set_sludge_afdw_protein(i):
                 WWTP.sludge_afdw_protein=i
-                
+
+            dist = shape.Uniform(0.1871,0.2287)
+            @param(name='N_2_P',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.2079,
+                    distribution=dist)
+            def set_N_2_P(i):
+                WWTP.N_2_P=i
+
         if feedstock == 'manure':
-            dist = shape.Uniform(0.0377,0.247)
+            
+            dist = shape.Triangle(0.1735,0.6634,0.7975)
+            @param(name='sludge_moisture',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.6634,
+                    distribution=dist)
+            def set_WWTP_sludge_moisture(i):
+                WWTP.sludge_moisture=i
+            
+            dist = shape.Triangle(0.138,0.3056,0.4295)
+            @param(name='sludge_dw_ash',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.3056,
+                    distribution=dist)
+            def set_sludge_dw_ash(i):
+                WWTP.sludge_dw_ash=i
+            
+            dist = shape.Triangle(0.0377,0.092325,0.247)
             @param(name='sludge_afdw_lipid', # I will keep using 'sludge' in the name
                     element=WWTP,
                     kind='coupled',
                     units='-',
-                    baseline=0.14,
+                    baseline=0.092325,
                     distribution=dist)
             def set_sludge_afdw_lipid(i):
                 WWTP.sludge_afdw_lipid=i
             
-            dist = shape.Uniform(0.143,0.264)
+            dist = shape.Triangle(0.143,0.216375,0.264)
             @param(name='sludge_afdw_protein',
                     element=WWTP,
                     kind='coupled',
                     units='-',
-                    baseline=0.2,
+                    baseline=0.216375,
                     distribution=dist)
             def set_sludge_afdw_protein(i):
                 WWTP.sludge_afdw_protein=i
-    
+
+            dist = shape.Uniform(0.2534,0.3801)
+            @param(name='N_2_P',
+                    element=WWTP,
+                    kind='coupled',
+                    units='-',
+                    baseline=0.3167,
+                    distribution=dist)
+            def set_N_2_P(i):
+                WWTP.N_2_P=i
+
     dist = shape.Uniform(0.675,0.825)
     @param(name='lipid_2_C',
             element=WWTP,
@@ -233,17 +368,38 @@ def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=Fa
     def set_carbo_2_C(i):
         WWTP.carbo_2_C=i
     
-    dist = shape.Triangle(0.1348,0.1427,0.1647)
-    @param(name='C_2_H',
+    
+    dist = shape.Uniform(0.1125,0.1375)
+    @param(name='lipid_2_H',
             element=WWTP,
             kind='coupled',
             units='-',
-            baseline=0.1427,
+            baseline=0.125,
             distribution=dist)
-    def set_C_2_H(i):
-        WWTP.C_2_H=i
+    def set_lipid_2_H(i):
+        WWTP.lipid_2_H=i
     
-    dist = shape.Uniform(0.1431,0.1749)
+    dist = shape.Uniform(0.0614,0.075)
+    @param(name='protein_2_H',
+            element=WWTP,
+            kind='coupled',
+            units='-',
+            baseline=0.0682,
+            distribution=dist)
+    def set_protein_2_H(i):
+        WWTP.protein_2_H=i
+    
+    dist = shape.Uniform(0.06,0.0733)
+    @param(name='carbo_2_H',
+            element=WWTP,
+            kind='coupled',
+            units='-',
+            baseline=0.0667,
+            distribution=dist)
+    def set_carbo_2_H(i):
+        WWTP.carbo_2_H=i
+
+    dist = shape.Uniform(0.1432,0.1750)
     @param(name='protein_2_N',
             element=WWTP,
             kind='coupled',
@@ -252,17 +408,7 @@ def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=Fa
             distribution=dist)
     def set_protein_2_N(i):
         WWTP.protein_2_N=i
-        
-    dist = shape.Triangle(0.1944,0.3927,0.5556)
-    @param(name='N_2_P',
-            element=WWTP,
-            kind='coupled',
-            units='-',
-            baseline=0.3927,
-            distribution=dist)
-    def set_N_2_P(i):
-        WWTP.N_2_P=i
-    
+
     dist = shape.Triangle(7392,7920,8448)
     @param(name='operation_hour',
             element=WWTP,
@@ -1207,62 +1353,69 @@ def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=Fa
         def get_CHG_gas_E():
             return F1.outs[0].HHV/1000000
         
-        # CAPEX metrics
-        @metric(name='CAPEX',units='$',element='TEA')
-        def get_CAPEX():
+        # CAPEX metrics (as total installed cost)
+        @metric(name='TIC',units='$',element='TEA')
+        def get_TIC():
             return sys.installed_equipment_cost
         
-        SluC, P1 = unit.SluC, unit.P1
-        @metric(name='HTL_CAPEX',units='$',element='TEA')
-        def get_HTL_CAPEX():
-            return sum(i.installed_cost for i in (SluC, P1, H1, HTL))
+        P1 = unit.P1
+        
+        try:
+            SluC = unit.SluC
+            @metric(name='HTL_TIC',units='$',element='TEA')
+            def get_HTL_TIC():
+                return sum(i.installed_cost for i in (SluC, P1, H1, HTL))
+        except AttributeError:
+            @metric(name='HTL_TIC',units='$',element='TEA')
+            def get_HTL_TIC():
+                return sum(i.installed_cost for i in (P1, H1, HTL))
         
         SP1, H2SO4_Tank = unit.SP1, unit.H2SO4_Tank
         if AcidEx:
             if SP1.F_mass_out != 0:
-                def get_Phosphorus_CAPEX():
+                def get_Phosphorus_TIC():
                     return (AcidEx.installed_cost +
                             StruPre.installed_cost +
                             H2SO4_Tank.installed_cost*SP1.outs[0].F_mass/SP1.F_mass_out)
             else:
-                def get_Phosphorus_CAPEX():
+                def get_Phosphorus_TIC():
                     return 0
         else:
             if SP1.F_mass_out != 0:
-                def get_Phosphorus_CAPEX():
+                def get_Phosphorus_TIC():
                     return (StruPre.installed_cost +
                             H2SO4_Tank.installed_cost*SP1.outs[0].F_mass/SP1.F_mass_out)
             else:
-                def get_Phosphorus_CAPEX():
+                def get_Phosphorus_TIC():
                     return 0
-        model.metric(getter=get_Phosphorus_CAPEX, name='Phosphorus_CAPEX',units='$',element='TEA')
+        model.metric(getter=get_Phosphorus_TIC, name='Phosphorus_TIC',units='$',element='TEA')
         
-        @metric(name='CHG_CAPEX',units='$',element='TEA')
-        def get_CHG_CAPEX():
+        @metric(name='CHG_TIC',units='$',element='TEA')
+        def get_CHG_TIC():
             return CHG.installed_cost + F1.installed_cost
         
         if SP1.F_mass_out != 0:
-            def get_Nitrogen_CAPEX():
+            def get_Nitrogen_TIC():
                 return MemDis.installed_cost+H2SO4_Tank.installed_cost*SP1.outs[1].F_mass/SP1.F_mass_out
         else:
-            def get_Nitrogen_CAPEX():
+            def get_Nitrogen_TIC():
                 return 0
-        model.metric(getter=get_Nitrogen_CAPEX, name='Nitrogen_CAPEX',units='$',element='TEA')
+        model.metric(getter=get_Nitrogen_TIC, name='Nitrogen_TIC',units='$',element='TEA')
         
         
         HT_HC_units = (unit.P2, HT, unit.H2, F2, unit.H3, D1, D2, D3, unit.P3, HC,
                        unit.H4, F3, D4, unit.H5, unit.H6, unit.GasolineTank, unit.DieselTank)
-        @metric(name='HT_HC_CAPEX',units='$',element='TEA')
-        def get_HT_HC_CAPEX():
+        @metric(name='HT_HC_TIC',units='$',element='TEA')
+        def get_HT_HC_TIC():
             return sum(i.installed_cost for i in HT_HC_units)
         
         HXN = unit.HXN
-        @metric(name='HXN_CAPEX',units='$',element='TEA')
-        def get_HXN_CAPEX():
+        @metric(name='HXN_TIC',units='$',element='TEA')
+        def get_HXN_TIC():
             return HXN.installed_cost
         
-        @metric(name='CHP_CAPEX',units='$',element='TEA')
-        def get_CHP_CAPEX():
+        @metric(name='CHP_TIC',units='$',element='TEA')
+        def get_CHP_TIC():
             return CHP.installed_cost
         
         @metric(name='AOC',units='$/yr',element='TEA')
@@ -1322,9 +1475,15 @@ def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=Fa
         def get_utility_VOC():
             return sys.utility_cost
         
-        @metric(name='HTL_utility_VOC',units='$/yr',element='TEA')
-        def get_HTL_utility_VOC():
-            return (SluC.utility_cost+P1.utility_cost+H1.utility_cost+HTL.utility_cost)*sys.operating_hours
+        try:
+            SluC = unit.SluC
+            @metric(name='HTL_utility_VOC',units='$/yr',element='TEA')
+            def get_HTL_utility_VOC():
+                return (SluC.utility_cost+P1.utility_cost+H1.utility_cost+HTL.utility_cost)*sys.operating_hours
+        except AttributeError:
+            @metric(name='HTL_utility_VOC',units='$/yr',element='TEA')
+            def get_HTL_utility_VOC():
+                return (P1.utility_cost+H1.utility_cost+HTL.utility_cost)*sys.operating_hours
         
         @metric(name='CHG_utility_VOC',units='$/yr',element='TEA')
         def get_CHG_utility_VOC():
@@ -1357,11 +1516,20 @@ def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=Fa
         def get_other_GWP():
             return lca.get_other_impacts()['GlobalWarming']
         
-        @metric(name='HTL_constrution_GWP',units='kg CO2 eq',element='LCA')
-        def get_HTL_constrution_GWP():
-            table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
-            return table_construction['Stainless_steel [kg]']['A000']+table_construction['Stainless_steel [kg]']['A100']+\
-                   table_construction['Stainless_steel [kg]']['A110']+table_construction['Stainless_steel [kg]']['A120']
+        try:
+            SluC = unit.SluC
+            @metric(name='HTL_constrution_GWP',units='kg CO2 eq',element='LCA')
+            def get_HTL_constrution_GWP():
+                table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
+                return table_construction['Stainless_steel [kg]']['A000']+table_construction['Stainless_steel [kg]']['A100']+\
+                       table_construction['Stainless_steel [kg]']['A110']+table_construction['Stainless_steel [kg]']['A120']
+        except AttributeError:
+            @metric(name='HTL_constrution_GWP',units='kg CO2 eq',element='LCA')
+            def get_HTL_constrution_GWP():
+                table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
+                return +table_construction['Stainless_steel [kg]']['A100']+\
+                       table_construction['Stainless_steel [kg]']['A110']+table_construction['Stainless_steel [kg]']['A120']       
+        
         if AcidEx:
             def get_nutrient_constrution_GWP():
                 table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
@@ -1416,17 +1584,31 @@ def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=Fa
             table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
             return table_stream['natural_gas']
         
-        @metric(name='HTL_utility_GWP',units='kg CO2 eq',element='LCA')
-        def get_HTL_utility_GWP():
-            table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
-            a = 0
-            for i in range (len(HTL.heat_utilities)):
-                if HTL.heat_utilities[i].duty < 0:
-                    a += HTL.heat_utilities[i].duty
-            return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
-                   table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
-                   (SluC.power_utility.consumption+P1.power_utility.consumption)*sys.operating_hours
+        try:
+            SluC = unit.SluC
+            @metric(name='HTL_utility_GWP',units='kg CO2 eq',element='LCA')
+            def get_HTL_utility_GWP():
+                table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+                a = 0
+                for i in range (len(HTL.heat_utilities)):
+                    if HTL.heat_utilities[i].duty < 0:
+                        a += HTL.heat_utilities[i].duty
+                return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
+                       table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
+                       (SluC.power_utility.consumption+P1.power_utility.consumption)*sys.operating_hours
         
+        except AttributeError:
+            @metric(name='HTL_utility_GWP',units='kg CO2 eq',element='LCA')
+            def get_HTL_utility_GWP():
+                table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+                a = 0
+                for i in range (len(HTL.heat_utilities)):
+                    if HTL.heat_utilities[i].duty < 0:
+                        a += HTL.heat_utilities[i].duty
+                return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
+                       table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
+                       (P1.power_utility.consumption)*sys.operating_hours    
+    
         @metric(name='CHG_utility_GWP',units='kg CO2 eq',element='LCA')
         def get_CHG_utility_GWP():
             table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']

@@ -23,9 +23,9 @@ from qsdsan.utils import auom
 
 __all__ = (
     'AcidExtraction',
-    'Crude_transportation',
     'FuelMixer',
     'HTLmixer',
+    'Humidifier'
     'StruvitePrecipitation',
     'WWmixer',
     'WWTP',
@@ -33,281 +33,6 @@ __all__ = (
 
 yearly_operation_hour = 7920 # Jones
 _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
-
-# =============================================================================
-# Sludge Lab
-# =============================================================================
-
-class WWTP(SanUnit):
-    '''
-    WWTP is a fake unit that can set up sludge biochemical compositions
-    and calculate sludge elemental compositions.
-    
-    Parameters
-    ----------
-    ins : Iterable(stream)
-        ww.
-    outs : Iterable(stream)
-        sludge, treated.
-    ww_2_dry_sludge: float
-        Wastewater-to-dry-sludge conversion factor, [metric ton/day/MGD].
-    sludge_moisture: float
-        Sludge moisture content.
-    sludge_dw_ash: float
-        Sludge dry weight ash content.
-    sludge_afdw_lipid: float
-        Sludge ash free dry weight lipid content.
-    sludge_afdw_protein: float
-        Sludge ash free dry weight protein content.
-    lipid_2_C: float
-        Lipid to carbon factor.     
-    protein_2_C: float
-        Protein to carbon factor.
-    carbo_2_C: float
-        Carbohydrate to carbon factor.
-    C_2_H: float
-        Carbon to hydrogen factor.
-    protein_2_N: float
-        Protein to nitrogen factor.
-    N_2_P: float
-        Nitrogen to phosphorus factor. 
-    operation_hour: float
-        Plant yearly operation hour, [hr/yr].
-        
-    References
-    ----------
-    .. [1] Metcalf and Eddy, Incorporated. 1991. Wastewater Engineering:
-        Treatment Disposal and Reuse. New York: McGraw-Hill.
-    .. [2] Li, Y.; Leow, S.; Fedders, A. C.; Sharma, B. K.; Guest, J. S.;
-        Strathmann, T. J. Quantitative Multiphase Model for Hydrothermal
-        Liquefaction of Algal Biomass. Green Chem. 2017, 19 (4), 1163–1174.
-        https://doi.org/10.1039/C6GC03294J.
-    '''
-    _N_ins = 1
-    _N_outs = 2
-
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', 
-                 ww_2_dry_sludge=0.94, # [1]
-                 sludge_moisture=0.99, sludge_dw_ash=0.257, 
-                 sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, 
-                 lipid_2_C=0.750, protein_2_C=0.545,
-                 carbo_2_C=0.400, C_2_H=0.1427,
-                 protein_2_N=0.159, N_2_P=0.3927,
-                 operation_hours=yearly_operation_hour):
-        
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.ww_2_dry_sludge = ww_2_dry_sludge
-        self.sludge_moisture = sludge_moisture
-        self.sludge_dw_ash = sludge_dw_ash
-        self.sludge_afdw_lipid = sludge_afdw_lipid
-        self.sludge_afdw_protein = sludge_afdw_protein
-        self.lipid_2_C = lipid_2_C
-        self.protein_2_C = protein_2_C
-        self.carbo_2_C = carbo_2_C
-        self.C_2_H = C_2_H
-        self.protein_2_N = protein_2_N
-        self.N_2_P = N_2_P
-        self.operation_hours = operation_hours
-    
-    def _run(self):
-        
-        ww = self.ins[0]
-        sludge, treated = self.outs
-
-        self.sludge_afdw_carbo = round(1 - self.sludge_afdw_protein - self.sludge_afdw_lipid, 5)   
-        
-        if self.sludge_dw_ash >= 1:
-            raise Exception ('ash can not be larger than or equal to 1')
-        
-        if self.sludge_afdw_protein + self.sludge_afdw_lipid > 1:
-            raise Exception ('protein and lipid exceed 1')
-            
-        self.sludge_dw = ww.F_vol*_m3perh_to_MGD*self.ww_2_dry_sludge*1000/24
-
-        sludge.imass['H2O'] = self.sludge_dw/(1-self.sludge_moisture)*self.sludge_moisture
-        sludge.imass['Sludge_ash'] = self.sludge_dw*self.sludge_dw_ash
-
-        sludge_afdw = self.sludge_dw*(1 - self.sludge_dw_ash)
-        sludge.imass['Sludge_lipid'] = sludge_afdw*self.sludge_afdw_lipid
-        sludge.imass['Sludge_protein'] = sludge_afdw*self.sludge_afdw_protein
-        sludge.imass['Sludge_carbo'] = sludge_afdw*self.sludge_afdw_carbo
-
-        treated.imass['H2O'] = ww.F_mass - sludge.F_mass
-    
-    @property
-    def sludge_dw_protein(self):
-        return self.sludge_afdw_protein*(1-self.sludge_dw_ash)
-    
-    @property
-    def sludge_dw_lipid(self):
-        return self.sludge_afdw_lipid*(1-self.sludge_dw_ash)
-    
-    @property
-    def sludge_dw_carbo(self):
-        return self.sludge_afdw_carbo*(1-self.sludge_dw_ash)
-    
-    @property
-    def sludge_C_ratio(self):
-       return self.sludge_dw_protein*self.protein_2_C + self.sludge_dw_lipid*self.lipid_2_C +\
-           self.sludge_dw_carbo*self.carbo_2_C
-           
-    @property
-    def sludge_H_ratio(self):
-       return self.sludge_C_ratio*self.C_2_H
-   
-    @property
-    def sludge_N_ratio(self):
-       return self.sludge_dw_protein*self.protein_2_N
-   
-    @property
-    def sludge_P_ratio(self):
-       return self.sludge_N_ratio*self.N_2_P
-    
-    @property
-    def sludge_O_ratio(self):
-       return 1 - self.sludge_C_ratio - self.sludge_H_ratio -\
-           self.sludge_N_ratio - self.sludge_dw_ash
-
-    @property
-    def sludge_C(self):
-       return self.sludge_C_ratio*self.sludge_dw
-           
-    @property
-    def sludge_H(self):
-       return self.sludge_H_ratio*self.sludge_dw
-   
-    @property
-    def sludge_N(self):
-       return self.sludge_N_ratio*self.sludge_dw
-   
-    @property
-    def sludge_P(self):
-       return self.sludge_P_ratio*self.sludge_dw
-    
-    @property
-    def sludge_O(self):
-       return self.sludge_O_ratio*self.sludge_dw
-           
-    @property
-    def AOSc(self):
-       return (3*self.sludge_N_ratio/14.0067 + 2*self.sludge_O_ratio/15.999 -\
-               self.sludge_H_ratio/1.00784)/(self.sludge_C_ratio/12.011)
-
-    @property
-    def sludge_HHV(self):
-       return 100*(0.338*self.sludge_C_ratio + 1.428*(self.sludge_H_ratio -\
-              self.sludge_O_ratio/8)) # [2]
-
-    @property
-    def H_C_eff(self):
-        return (self.sludge_H/1.00784-2*self.sludge_O/15.999)/self.sludge_C*12.011
-
-
-# =============================================================================
-# WWmixer
-# =============================================================================
-
-class WWmixer(SanUnit):
-    '''
-    A fake unit that mix all wastewater streams and calculates C, N, P, and H2O
-    amount.
-    Parameters
-    ----------
-    ins : Iterable(stream)
-        supernatant_1, supernatant_2, memdis_ww, ht_ww
-    outs : Iterable(stream)
-        mixture
-    '''
-    _N_ins = 3
-    _N_outs = 1
-    
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream'):
-        
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        
-    def _run(self):
-        
-        supernatant, memdis_ww, ht_ww = self.ins
-        mixture = self.outs[0]
-        
-        mixture.mix_from(self.ins)
-        
-        HT = self.ins[2]._source.ins[0]._source.ins[0]._source.ins[0]._source.\
-             ins[0]._source.ins[0]._source
-        
-        # only account for C and N from HT if they are not less than 0
-        if HT.HTaqueous_C >= 0:
-            mixture.imass['C'] += HT.HTaqueous_C
-            mixture.imass['H2O'] -= HT.HTaqueous_C
-        if HT.HTaqueous_N >=0:
-            mixture.imass['N'] += HT.HTaqueous_N
-            mixture.imass['H2O'] -= HT.HTaqueous_N
-
-
-# =============================================================================
-# HTL mixer
-# =============================================================================
-
-class HTLmixer(SanUnit):
-    '''
-    A fake unit that calculates C, N, P, and H2O amount in the mixture of HTL
-    aqueous and AcidEx effluent.
-    
-    Parameters
-    ----------
-    ins : Iterable(stream)
-        HTLaqueous, extracted
-    outs : Iterable(stream)
-        mixture
-        
-    References
-    ----------
-    .. [1] Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J. 
-        Quantitative Evaluation of an Integrated System for Valorization of
-        Wastewater Algae as Bio-Oil, Fuel Gas, and Fertilizer Products. 
-        Environ. Sci. Technol. 2018, 52 (21), 12717–12727. 
-        https://doi.org/10.1021/acs.est.8b04035.
-    '''
-    
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream'):
-        
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-
-    _N_ins = 2
-    _N_outs = 1
-    _ins_size_is_fixed = False
-        
-    def _run(self):
-        
-        HTLaqueous, extracted = self.ins
-        mixture = self.outs[0]
-        
-        mixture.mix_from(self.ins)
-        mixture.empty()
-        
-        mixture.imass['C'] = self.ins[0]._source.HTLaqueous_C
-        mixture.imass['N'] = self.ins[0]._source.HTLaqueous_N
-        mixture.imass['P'] = self.ins[0]._source.HTLaqueous_P +\
-                             extracted.imass['P']
-        mixture.imass['H2O'] = HTLaqueous.F_mass + extracted.F_mass -\
-                               mixture.imass['C'] - mixture.imass['N'] -\
-                               mixture.imass['P']
-        # represented by H2O except C, N, P
-        
-    @property
-    def pH(self):
-        # assume HTLaqueous pH = 9 [1] (9.08 ± 0.30)
-        # extracted pH = 0 (0.5 M H2SO4)
-        # since HTLaqueous pH is near to neutral
-        # assume pH is dominant by extracted and will be calculate based on dilution
-        if self.ins[1].F_mass == 0:
-            return 9
-        else:
-            dilution_factor = self.F_mass_in/self.ins[1].F_mass if self.ins[1].imass['P'] != 0 else 1
-            hydrogen_ion_conc = 10**0/dilution_factor
-            return -log(hydrogen_ion_conc, 10)
-
 
 # =============================================================================
 # Acid Extraction
@@ -413,6 +138,174 @@ class AcidExtraction(Reactor):
         self.P = self.ins[1].P
         Reactor._design(self)
 
+# =============================================================================
+# FuelMixer
+# =============================================================================
+
+class FuelMixer(SanUnit):
+    '''
+    Convert gasoline to diesel or diesel to gasoline based on LHV.
+    
+    Parameters
+    ----------
+    ins: Iterable(stream)
+        gasoline, diesel
+    outs: Iterable(stream)
+        fuel
+    target: str
+        The target can only be 'gasoline' or 'diesel'.
+    gasoline_price: float
+        Gasoline price, [$/kg].
+    diesel_price: float
+        Diesel price, [$/kg].
+    '''
+    _N_ins = 2
+    _N_outs = 1
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='WasteStream', target='diesel',
+                 gasoline_gal_2_kg=2.834894885,
+                 diesel_gal_2_kg=3.220628346,
+                 gasoline_price=0.9388,
+                 diesel_price=0.9722):
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.target = target
+        self.gasoline_gal_2_kg = gasoline_gal_2_kg
+        self.diesel_gal_2_kg = diesel_gal_2_kg
+        self.gasoline_price = gasoline_price
+        self.diesel_price = diesel_price
+
+    def _run(self):
+        
+        gasoline, diesel = self.ins
+        fuel = self.outs[0]
+        target = self.target
+        
+        gasoline_LHV_2_diesel_LHV = (gasoline.LHV/gasoline.F_mass)/(diesel.LHV/diesel.F_mass)
+        # KJ/kg gasoline:KJ/kg diesel
+        
+        if target == 'gasoline':
+            fuel.imass['Gasoline'] = gasoline.F_mass + diesel.F_mass/gasoline_LHV_2_diesel_LHV
+            fuel.T = gasoline.T
+            fuel.P = gasoline.P
+        elif target == 'diesel':
+            fuel.imass['Diesel'] = diesel.F_mass + gasoline.F_mass*gasoline_LHV_2_diesel_LHV
+            fuel.T = diesel.T
+            fuel.P = diesel.P
+    
+    def _cost(self):
+        if self.target == 'gasoline':
+            self.outs[0].price = self.gasoline_price
+        elif self.target == 'diesel':
+            self.outs[0].price = self.diesel_price
+            
+    @property
+    def target(self):
+        return self._target
+    @target.setter
+    def target(self, i):
+        if i not in ('gasoline', 'diesel'):
+            raise ValueError('`target` must be either "gasoline" or "diesel" ',
+                             f'the provided "{i}" is not valid.')
+        self._target = i
+
+# =============================================================================
+# HTL mixer
+# =============================================================================
+
+class HTLmixer(SanUnit):
+    '''
+    A fake unit that calculates C, N, P, and H2O amount in the mixture of HTL
+    aqueous and AcidEx effluent.
+    
+    Parameters
+    ----------
+    ins : Iterable(stream)
+        HTLaqueous, extracted
+    outs : Iterable(stream)
+        mixture
+        
+    References
+    ----------
+    .. [1] Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J. 
+        Quantitative Evaluation of an Integrated System for Valorization of
+        Wastewater Algae as Bio-Oil, Fuel Gas, and Fertilizer Products. 
+        Environ. Sci. Technol. 2018, 52 (21), 12717–12727. 
+        https://doi.org/10.1021/acs.est.8b04035.
+    '''
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream'):
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+
+    _N_ins = 2
+    _N_outs = 1
+    _ins_size_is_fixed = False
+        
+    def _run(self):
+        
+        HTLaqueous, extracted = self.ins
+        mixture = self.outs[0]
+        
+        mixture.mix_from(self.ins)
+        mixture.empty()
+        
+        mixture.imass['C'] = self.ins[0]._source.HTLaqueous_C
+        mixture.imass['N'] = self.ins[0]._source.HTLaqueous_N
+        mixture.imass['P'] = self.ins[0]._source.HTLaqueous_P +\
+                             extracted.imass['P']
+        mixture.imass['H2O'] = HTLaqueous.F_mass + extracted.F_mass -\
+                               mixture.imass['C'] - mixture.imass['N'] -\
+                               mixture.imass['P']
+        # represented by H2O except C, N, P
+        
+    @property
+    def pH(self):
+        # assume HTLaqueous pH = 9 [1] (9.08 ± 0.30)
+        # extracted pH = 0 (0.5 M H2SO4)
+        # since HTLaqueous pH is near to neutral
+        # assume pH is dominant by extracted and will be calculate based on dilution
+        if self.ins[1].F_mass == 0:
+            return 9
+        else:
+            dilution_factor = self.F_mass_in/self.ins[1].F_mass if self.ins[1].imass['P'] != 0 else 1
+            hydrogen_ion_conc = 10**0/dilution_factor
+            return -log(hydrogen_ion_conc, 10)
+
+# =============================================================================
+# Humidifier
+# =============================================================================
+
+class Humidifier(SanUnit):
+    '''
+    A fake unit increases the moisture content of HTL feedstocks to 80%.
+    
+    Parameters
+    ----------
+    ins : Iterable(stream)
+        feedstock, water
+    outs : Iterable(stream)
+        mixture
+    '''
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream'):
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+
+    _N_ins = 2
+    _N_outs = 1
+        
+    def _run(self):
+        
+        feedstock, water = self.ins
+        mixture = self.outs[0]
+        
+        if feedstock.imass['H2O']/feedstock.F_mass <= 0.8:
+            water.imass['H2O'] = (feedstock.F_mass - feedstock.imass['H2O'])/0.2 - feedstock.F_mass
+            mixture.mix_from(self.ins)
+        else:
+            mixture.copy_like(feedstock)
 
 # =============================================================================
 # Struvite Precipitation
@@ -542,134 +435,235 @@ class StruvitePrecipitation(Reactor):
         self.P = self.ins[0].P
         Reactor._design(self)
 
-
 # =============================================================================
-# FuelMixer
+# WWmixer
 # =============================================================================
 
-class FuelMixer(SanUnit):
+class WWmixer(SanUnit):
     '''
-    Convert gasoline to diesel or diesel to gasoline based on LHV.
-    
+    A fake unit that mix all wastewater streams and calculates C, N, P, and H2O
+    amount.
     Parameters
     ----------
-    ins: Iterable(stream)
-        gasoline, diesel
-    outs: Iterable(stream)
-        fuel
-    target: str
-        The target can only be 'gasoline' or 'diesel'.
-    gasoline_price: float
-        Gasoline price, [$/kg].
-    diesel_price: float
-        Diesel price, [$/kg].
+    ins : Iterable(stream)
+        supernatant_1, supernatant_2, memdis_ww, ht_ww
+    outs : Iterable(stream)
+        mixture
     '''
-    _N_ins = 2
+    _N_ins = 3
     _N_outs = 1
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', target='diesel',
-                 gasoline_gal_2_kg=2.834894885,
-                 diesel_gal_2_kg=3.220628346,
-                 gasoline_price=0.9388,
-                 diesel_price=0.9722):
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream'):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.target = target
-        self.gasoline_gal_2_kg = gasoline_gal_2_kg
-        self.diesel_gal_2_kg = diesel_gal_2_kg
-        self.gasoline_price = gasoline_price
-        self.diesel_price = diesel_price
-
-
+        
     def _run(self):
         
-        gasoline, diesel = self.ins
-        fuel = self.outs[0]
-        target = self.target
+        supernatant, memdis_ww, ht_ww = self.ins
+        mixture = self.outs[0]
         
-        gasoline_LHV_2_diesel_LHV = (gasoline.LHV/gasoline.F_mass)/(diesel.LHV/diesel.F_mass)
-        # KJ/kg gasoline:KJ/kg diesel
+        mixture.mix_from(self.ins)
         
-        if target == 'gasoline':
-            fuel.imass['Gasoline'] = gasoline.F_mass + diesel.F_mass/gasoline_LHV_2_diesel_LHV
-            fuel.T = gasoline.T
-            fuel.P = gasoline.P
-        elif target == 'diesel':
-            fuel.imass['Diesel'] = diesel.F_mass + gasoline.F_mass*gasoline_LHV_2_diesel_LHV
-            fuel.T = diesel.T
-            fuel.P = diesel.P
-    
-    def _cost(self):
-        if self.target == 'gasoline':
-            self.outs[0].price = self.gasoline_price
-        elif self.target == 'diesel':
-            self.outs[0].price = self.diesel_price
-            
-    @property
-    def target(self):
-        return self._target
-    @target.setter
-    def target(self, i):
-        if i not in ('gasoline', 'diesel'):
-            raise ValueError('`target` must be either "gasoline" or "diesel" ',
-                             f'the provided "{i}" is not valid.')
-        self._target = i
+        HT = self.ins[2]._source.ins[0]._source.ins[0]._source.ins[0]._source.\
+             ins[0]._source.ins[0]._source
         
+        # only account for C and N from HT if they are not less than 0
+        if HT.HTaqueous_C >= 0:
+            mixture.imass['C'] += HT.HTaqueous_C
+            mixture.imass['H2O'] -= HT.HTaqueous_C
+        if HT.HTaqueous_N >=0:
+            mixture.imass['N'] += HT.HTaqueous_N
+            mixture.imass['H2O'] -= HT.HTaqueous_N
+
 # =============================================================================
-# Crude_transportation
-# ============================================================================= 
-class Crude_transportation(SanUnit):
+# WWTP
+# =============================================================================
+
+class WWTP(SanUnit):
     '''
-    Calculate cost and environmental impacts for transporting crude oil
+    WWTP is a fake unit that can set up sludge biochemical compositions
+    and calculate sludge elemental compositions.
     
     Parameters
     ----------
-    ins: Iterable(stream)
-        crude_oil
-    outs: Iterable(stream)
-        transported_crude_oil
-    price: float
-        Transportation price, [$/gal/mile].
+    ins : Iterable(stream)
+        ww.
+    outs : Iterable(stream)
+        sludge, treated.
+    ww_2_dry_sludge: float
+        Wastewater-to-dry-sludge conversion factor, [metric ton/day/MGD].
+    sludge_moisture: float
+        Sludge moisture content.
+    sludge_dw_ash: float
+        Sludge dry weight ash content.
+    sludge_afdw_lipid: float
+        Sludge ash free dry weight lipid content.
+    sludge_afdw_protein: float
+        Sludge ash free dry weight protein content.
+    lipid_2_C: float
+        Lipid to carbon factor.     
+    protein_2_C: float
+        Protein to carbon factor.
+    carbo_2_C: float
+        Carbohydrate to carbon factor.
+    C_2_H: float
+        Carbon to hydrogen factor.
+    protein_2_N: float
+        Protein to nitrogen factor.
+    N_2_P: float
+        Nitrogen to phosphorus factor. 
+    operation_hour: float
+        Plant yearly operation hour, [hr/yr].
+        
+    References
+    ----------
+    .. [1] Metcalf and Eddy, Incorporated. 1991. Wastewater Engineering:
+        Treatment Disposal and Reuse. New York: McGraw-Hill.
+    .. [2] Li, Y.; Leow, S.; Fedders, A. C.; Sharma, B. K.; Guest, J. S.;
+        Strathmann, T. J. Quantitative Multiphase Model for Hydrothermal
+        Liquefaction of Algal Biomass. Green Chem. 2017, 19 (4), 1163–1174.
+        https://doi.org/10.1039/C6GC03294J.
     '''
-    
     _N_ins = 1
-    _N_outs = 1
-    
+    _N_outs = 2
+
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', distance=1, price=-0.00011724956320070381, sold_price=0.4402869614299816, round_trip=True):
-    # https://financialpost.com/commodities/energy/canadian-producers-turns-to-oil-trucks-as-supply-glut-grows
-    # distance in km, price in $/kg/km
+                 init_with='WasteStream', 
+                 ww_2_dry_sludge=0.94, # [1]
+                 sludge_moisture=0.99, sludge_dw_ash=0.257, 
+                 sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, 
+                 lipid_2_C=0.750,
+                 protein_2_C=0.545,
+                 carbo_2_C=0.400, 
+                 
+                 
+                 lipid_2_H=0.125,
+                 protein_2_H=0.068,
+                 carbo_2_H=0.067, 
+                 
+                 
+                 
+                 
+
+                 protein_2_N=0.159,
+                 
+                 
+                 N_2_P=0.3927,
+                 
+                 
+                 operation_hours=yearly_operation_hour):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.distance = distance
-        self.price = price
-        self.sold_price = sold_price
-        self.round_trip = round_trip
+        self.ww_2_dry_sludge = ww_2_dry_sludge
+        self.sludge_moisture = sludge_moisture
+        self.sludge_dw_ash = sludge_dw_ash
+        self.sludge_afdw_lipid = sludge_afdw_lipid
+        self.sludge_afdw_protein = sludge_afdw_protein
+        self.lipid_2_C = lipid_2_C
+        self.protein_2_C = protein_2_C
+        self.carbo_2_C = carbo_2_C
+        
+        
+        self.lipid_2_H = lipid_2_H
+        self.protein_2_H = protein_2_H
+        self.carbo_2_H = carbo_2_H
+        
+        
 
+        self.protein_2_N = protein_2_N
+        self.N_2_P = N_2_P
+        self.operation_hours = operation_hours
+    
     def _run(self):
         
-        crude_oil = self.ins[0]
-        transported_crude_oil = self.outs[0]
+        ww = self.ins[0]
+        sludge, treated = self.outs
+
+        self.sludge_afdw_carbo = round(1 - self.sludge_afdw_protein - self.sludge_afdw_lipid, 5)   
         
-        transported_crude_oil.copy_like(crude_oil)
-    
-    def _cost(self):
-        if self.round_trip == True:
-            self.outs[0].price = self.price*self.distance*2+self.sold_price
-        else:
-            self.outs[0].price = self.price*self.distance+self.sold_price
+        if self.sludge_dw_ash >= 1:
+            raise Exception ('ash can not be larger than or equal to 1')
+        
+        if self.sludge_afdw_protein + self.sludge_afdw_lipid > 1:
+            raise Exception ('protein and lipid exceed 1')
             
+        self.sludge_dw = ww.F_vol*_m3perh_to_MGD*self.ww_2_dry_sludge*1000/24
+
+        sludge.imass['H2O'] = self.sludge_dw/(1-self.sludge_moisture)*self.sludge_moisture
+        sludge.imass['Sludge_ash'] = self.sludge_dw*self.sludge_dw_ash
+
+        sludge_afdw = self.sludge_dw*(1 - self.sludge_dw_ash)
+        sludge.imass['Sludge_lipid'] = sludge_afdw*self.sludge_afdw_lipid
+        sludge.imass['Sludge_protein'] = sludge_afdw*self.sludge_afdw_protein
+        sludge.imass['Sludge_carbo'] = sludge_afdw*self.sludge_afdw_carbo
+
+        treated.imass['H2O'] = ww.F_mass - sludge.F_mass
     
+    @property
+    def sludge_dw_protein(self):
+        return self.sludge_afdw_protein*(1-self.sludge_dw_ash)
     
+    @property
+    def sludge_dw_lipid(self):
+        return self.sludge_afdw_lipid*(1-self.sludge_dw_ash)
     
+    @property
+    def sludge_dw_carbo(self):
+        return self.sludge_afdw_carbo*(1-self.sludge_dw_ash)
     
+    @property
+    def sludge_C_ratio(self):
+       return self.sludge_dw_protein*self.protein_2_C + self.sludge_dw_lipid*self.lipid_2_C +\
+           self.sludge_dw_carbo*self.carbo_2_C
+           
+    @property
+    def sludge_H_ratio(self):
+       return self.sludge_dw_protein*self.protein_2_H + self.sludge_dw_lipid*self.lipid_2_H +\
+           self.sludge_dw_carbo*self.carbo_2_H
+   
+    @property
+    def sludge_N_ratio(self):
+       return self.sludge_dw_protein*self.protein_2_N
+   
+    @property
+    def sludge_P_ratio(self):
+       return self.sludge_N_ratio*self.N_2_P
     
+    @property
+    def sludge_O_ratio(self):
+       return 1 - self.sludge_C_ratio - self.sludge_H_ratio -\
+           self.sludge_N_ratio - self.sludge_dw_ash
+
+    @property
+    def sludge_C(self):
+       return self.sludge_C_ratio*self.sludge_dw
+           
+    @property
+    def sludge_H(self):
+       return self.sludge_H_ratio*self.sludge_dw
+   
+    @property
+    def sludge_N(self):
+       return self.sludge_N_ratio*self.sludge_dw
+   
+    @property
+    def sludge_P(self):
+       return self.sludge_P_ratio*self.sludge_dw
     
-    
-    
-    
-    
-    
-    
-    
+    @property
+    def sludge_O(self):
+       return self.sludge_O_ratio*self.sludge_dw
+           
+    @property
+    def AOSc(self):
+       return (3*self.sludge_N_ratio/14.0067 + 2*self.sludge_O_ratio/15.999 -\
+               self.sludge_H_ratio/1.00784)/(self.sludge_C_ratio/12.011)
+
+    @property
+    def sludge_HHV(self):
+       return 100*(0.338*self.sludge_C_ratio + 1.428*(self.sludge_H_ratio -\
+              self.sludge_O_ratio/8)) # [2]
+
+    @property
+    def H_C_eff(self):
+        return (self.sludge_H/1.00784-2*self.sludge_O/15.999)/self.sludge_C*12.011
