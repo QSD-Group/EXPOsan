@@ -120,7 +120,7 @@ def __getattr__(name):
 # =============================================================================
 
 def update_water_source(system, water_source='GW'):
-    setattr(system.flowsheet.unit[0], 'water_source', water_source)
+    setattr(system.units[0], 'water_source', water_source)
     
 def update_number_of_householdsize(system, household_size=household_size, ppl=ppl):
     u0, u1 = system.path
