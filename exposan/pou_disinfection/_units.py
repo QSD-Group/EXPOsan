@@ -407,7 +407,7 @@ class POU_UV(SanUnit):
         if raw_water.F_vol > (self.uv_flow*60):
             raise RuntimeError('Raw water flow exceeds capacity.')
             
-        self.run_time = raw_water.F_vol/(self.uv_flow*60)
+        self.run_time = raw_water.F_vol*1000/(self.uv_flow*60)
         
       
         No = raw_water.imass['Ecoli']/raw_water.F_vol * 10**-4  # E coli CFU/ mL ICC/ml (intact cells counts) used by (Cheswick et al., 2020)
@@ -556,10 +556,10 @@ class UV_LED(SanUnit):
         N = 10**(log_N)
         # N = exp(log_reduction + log10(No))
         
-        if raw_water.F_vol > (self.uv_led_flow*60):
+        if raw_water.F_vol*1000 > (self.uv_led_flow*60):
             raise RuntimeError('Exceed flow capacity.')
             
-        self.run_time = raw_water.F_vol/(self.uv_led_flow*60)
+        self.run_time = raw_water.F_vol*1000/(self.uv_led_flow*60)
         
         
         ## determine the flowrate
