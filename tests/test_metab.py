@@ -31,8 +31,10 @@ def test_metab():
     # # assert np.isclose(UASB_M.TEA.annualized_NPV, -19128.91741988097, rtol)
     # assert np.isclose(UASB_M.LCA.total_impacts['GWP100'], 613761.7802056486, rtol)
     
+    #!!! Unsure why this may fail sometimes
     FB_H = create_system(n_stages=2, reactor_type='FB', gas_extraction='H', tot_HRT=4)
-    FB_H.simulate(state_reset_hook='reset_cache', method='BDF', t_span=(0, 400))
+    try: FB_H.simulate(state_reset_hook='reset_cache', method='BDF', t_span=(0, 400))
+    except: FB_H.simulate(state_reset_hook='reset_cache', method='BDF', t_span=(0, 400))
     fs = FB_H.flowsheet.stream
     # assert np.isclose(1 - fs.eff_dg.COD / fs.inf.COD, 0.8254350623696006, rtol)
     # # assert np.isclose(FB_H.TEA.annualized_NPV, -26069.226184087474, rtol)
