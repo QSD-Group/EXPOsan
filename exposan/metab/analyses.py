@@ -54,7 +54,7 @@ def run_UA_SA(seed=None, N=1000, rule='L'):
             'FB', 
             'PB'
             ):
-        sys = create_system(n_stages=1, reactor_type=rt, gas_extraction='P')
+        sys = create_system(n_stages=1, reactor_type=rt, gas_extraction='P', T=22)
         print(sys.ID)
         print('='*len(sys.ID))
         mdl = create_model(sys, kind='uasa', exception_hook='warn')
@@ -69,7 +69,7 @@ def _rerun_failed_samples(seed, rt='PB'):
     sample = sample[sample.isna().any(axis=1)]
     sample = sample.iloc[:, :18].to_numpy()
 
-    sys = create_system(n_stages=1, reactor_type=rt, gas_extraction='P')
+    sys = create_system(n_stages=1, reactor_type=rt, gas_extraction='P', T=22)
     cmps = sys.feeds[0].components
     C_bulk = np.array([
         1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
@@ -123,7 +123,7 @@ def data_compile(save=True):
                                      10 if '10yr' in row['Bead lifetime'] else \
                                       30  if '30yr' in row['Bead lifetime'] else None, axis=1)
     if save:
-        out.to_excel(ospath.join(results_path, 'table_compiled_rcod.xlsx'))
+        out.to_excel(ospath.join(results_path, 'table_compiled.xlsx'))
     return out
 
 def plot_clusters(data=None, save_as='', partial=True):
@@ -131,21 +131,23 @@ def plot_clusters(data=None, save_as='', partial=True):
         data = load_data(ospath.join(results_path, 'table_compiled.xlsx'))
     if partial: fig, ax = plt.subplots(figsize=(8,8))
     else: fig, ax = plt.subplots(figsize=(18,12))
-    pal = {'UASB':'#60c1cf', 'FB':'#F98F60', 'PB':'#a280b9'}
-    edge = ['#000000' if dg else pal[rct] for dg, rct in 
-            data.loc[:,['Effluent degassing','Reactor type']].to_numpy()]
+    # pal = {'UASB':'#60c1cf', 'FB':'#F98F60', 'PB':'#a280b9'}
+    # pal = {'UASB': (96,193,207), 'FB': (249,143,96), 'PB':(162,128,185)}
+    # edge = ['#000000' if dg else pal[rct] for dg, rct in 
+    # edge = [(0,0,0) if dg else pal[rct] for dg, rct in 
+            # data.loc[:,['Effluent degassing','Reactor type']].to_numpy()]
     leg = False if partial else 'auto'
     ax = sns.scatterplot(
         data=data,
         x='Levelized cost',
         y='GWP100',
         hue='Reactor type',
-        palette=pal,
+        # palette=pal,
         size='Number of stages',
         sizes=(30, 55),
         style='Gas extraction',
         markers={'H':'s', 'M':'^', 'P':'o'},
-        edgecolor=edge,
+        # edgecolors=edge,
         legend=leg,
         alpha=0.7,
         linewidths=2,
@@ -173,7 +175,9 @@ def plot_clusters(data=None, save_as='', partial=True):
     
     suffix = 'partial' if partial else 'full'
     path = save_as or ospath.join(figures_path, f'clusters_{suffix}.png')
-    fig.savefig(path, dpi=300, facecolor='white')
+    fig.savefig(path, dpi=300, 
+                facecolor='white'
+                )
     
     return fig, ax
     
@@ -199,17 +203,18 @@ def calc_diff(df, factor, baseline_value, norms):
     return out
 
 groups = (
-          ('Reactor type', ['Bead lifetime','Bead diameter', 'Voidage'], 'UASB'),
-          ('Gas extraction', ['Recirculation ratio', 'Headspace pressure'], 'P'),
-          ('Headspace pressure', [], 0.4),
-          ('Recirculation ratio', [], 1),
-          ('Number of stages', [], 1),
-          ('Temperature', [], 22),
-          ('Effluent degassing', [], 0),
-          ('Total HRT', [], 1),
-          ('Bead diameter', [], 2),
-          ('Voidage', [], 0.9),
-          ('Bead lifetime', [], 30),
+           # ('Reactor type', ['Voidage'], 'PB'),
+           ('Reactor type', ['Bead lifetime','Bead diameter', 'Voidage'], 'UASB'),
+           ('Gas extraction', ['Recirculation ratio', 'Headspace pressure'], 'P'),
+           ('Headspace pressure', [], 0.4),
+           ('Recirculation ratio', [], 1),
+           ('Number of stages', [], 1),
+           ('Temperature', [], 22),
+           ('Effluent degassing', [], 0),
+           ('Total HRT', [], 1),
+           ('Bead diameter', [], 2),
+           ('Voidage', [], 0.9),
+           ('Bead lifetime', [], 30),
           )
 
 def compare_DVs(data=None, save_as=''):
@@ -222,7 +227,6 @@ def compare_DVs(data=None, save_as=''):
     dvs = set(data.columns) - set(vals)
     out = {}
     for factor, covar, bl in groups:
-        # breakpoint()
         idx = list(dvs - {factor, *covar})
         cols = [factor, *covar]
         df = data.dropna(axis=0, subset=factor)
@@ -366,7 +370,7 @@ def plot_joint(df, save_as='', kde=True):
         )
     sns.boxplot(x=x, y=group, hue=group, ax=g.ax_marg_x, **bxp_kwargs)
     sns.boxplot(y=y, x=group, hue=group, ax=g.ax_marg_y, **bxp_kwargs)
-    for ax in (g.ax_marg_x, g.ax_marg_y): ax.legend_.remove()
+    # for ax in (g.ax_marg_x, g.ax_marg_y): ax.legend_.remove()
     g.ax_marg_x.tick_params(axis='x', which='major', direction='out', length=5)
     g.ax_marg_x.tick_params(axis='x', which='minor', direction='out', length=3)    
     g.ax_marg_x.tick_params(left=False, which='both', labelleft=False)    
@@ -381,10 +385,10 @@ def plot_joint(df, save_as='', kde=True):
 
 def plot_diff(data=None):
     if data is None:
-        data = load_data(ospath.join(results_path, 'diff.xlsx'), sheet=None)
+        data = load_data(ospath.join(results_path, 'diff_rcod.xlsx'), sheet=None)
     for i, df in data.items():
         df['group'] = df['pair'].astype(str)
-        if i in ('Total HRT', 'Bead diameter', ):
+        if i in ('Total HRT', 'Bead diameter', 'Reactor type'):
             df = df.sort_values('pair', ascending=False)
         elif i == 'Gas extraction':
             df = df.sort_values('pair', ascending=True)            
@@ -409,7 +413,7 @@ def best_breakdown():
     llc_bd['uasb_t1'] = categorize_cashflow(sub1.TEA)
     imp_bd['uasb_t1'] = categorize_all_impacts(sub1.LCA)
     # best at LCA
-    smp = np.array([2, 22])
+    smp = np.array([4, 22])
     for p, v in zip(mdl1.parameters, smp): p.setter(v)
     sys1.simulate(**kwargs)
     llc_bd['uasb_l1'] = categorize_cashflow(sub1.TEA)
@@ -422,13 +426,13 @@ def best_breakdown():
     sub2, = sys2.subsystems
     
     # best at TEA
-    smp = np.array([2, 0.9, 2, 22])
+    smp = np.array([2, 0.9, 2, 35])
     for p, v in zip(mdl2.parameters, smp): p.setter(v)
     sys2.simulate(**kwargs)
     llc_bd['fb_t1'] = categorize_cashflow(sub2.TEA)
     imp_bd['fb_t1'] = categorize_all_impacts(sub2.LCA)
     # best at LCA
-    smp = np.array([2, 0.75, 1, 22])
+    smp = np.array([2, 0.75, 2, 22])
     for p, v in zip(mdl2.parameters, smp): p.setter(v)
     sys2.simulate(**kwargs)
     llc_bd['fb_l1'] = categorize_cashflow(sub2.TEA)
@@ -443,7 +447,7 @@ def best_breakdown():
     smp = np.array([2, 1, 22])
     for p, v in zip(mdl3.parameters, smp): p.setter(v)
     sys3.simulate(**kwargs)
-    # best at TEA
+    # best at TEA & LCA
     llc_bd['pb_t1'] = categorize_cashflow(sub3.TEA)
     imp_bd['pb_t1'] = categorize_all_impacts(sub3.LCA)
     # best at LCA
@@ -474,7 +478,8 @@ patch_dct = {
     }
 
 def stacked_bar(data, save_as=''):
-    fig, ax = plt.subplots(figsize=(4, 4))    
+    fig, ax = plt.subplots(figsize=(4, 4))
+    fig.subplots_adjust(left=0.2, right=0.95)
     x = range(data.shape[0])
     ax.axhline(y=0, color='black', linewidth=1)
     yp = np.zeros(data.shape[0])
@@ -486,10 +491,11 @@ def stacked_bar(data, save_as=''):
         ax.bar(x, y, width=0.55, bottom=y_offset, color=c, hatch=hat)
         yp += (y>=0) * y
         yn += (y<0) * y
+    ax.scatter(x, data.loc[:,'total'], marker='x', c='white')
 
     ax.tick_params(axis='y', which='major', direction='inout', length=10, labelsize=12)
     ax.tick_params(axis='y', which='minor', direction='inout', length=6)
-    ax.ticklabel_format(axis='y', scilimits=[-2,3], useMathText=True)
+    # ax.ticklabel_format(axis='y', scilimits=[-2,3], useMathText=True)
     ax.set_xlabel('')
     ax.set_ylabel('')
     ax2y = ax.secondary_yaxis('right')
@@ -561,40 +567,97 @@ def MCF_encap_to_susp(seed, save=True):
         outs[rt] = out[0].merge(out[1])
     return outs
 
+def MCF_pb_to_fb(seed, save=True):
+    dys = load_data(ospath.join(results_path, f'diff_3ways_{seed}.xlsx'),
+                   sheet='pf', header=[0,1], skiprows=[2,], nrows=1000)
+    mdl = create_model(kind='uasa')
+    nx = len(mdl.parameters)
+    pb = load_data(ospath.join(results_path, f'PB1P_{seed}.xlsx'),
+                   header=[0,1], skiprows=[2,], nrows=1000)
+    x = pb.iloc[:, :nx]
+    pair_cols = [
+            ('Process', 'COD removal [%]'),
+            ('TEA (w/ degas)', 'Levelized cost (w/ degas) [$/ton rCOD]'),
+            ('LCA (w/ degas)', 'GWP100 (w/ degas) [kg CO2eq/ton rCOD]'),
+            ('TEA (w/o degas)', 'Levelized cost (w/o degas) [$/ton rCOD]'),
+            ('LCA (w/o degas)',  'GWP100 (w/o degas) [kg CO2eq/ton rCOD]'),    
+        ]
+    dys = dys.loc[:,pair_cols]
+    dct = {'D': pd.DataFrame(), 'p': pd.DataFrame()}
+    for y, col in dys.items():
+        lower_xs = x.loc[col <= 0]
+        higher_xs = x.loc[col > 0]
+        if 0 < len(lower_xs) < 1000:
+            Ds = []
+            ps = []
+            for i in range(nx):
+                D, p = kstest(lower_xs.iloc[:,i], higher_xs.iloc[:,i])
+                Ds.append(D)
+                ps.append(p)
+            y_name = y[1].split(' [')[0]
+            dct['D'][y_name] = Ds
+            dct['p'][y_name] = ps
+    dct['D'].index = dct['p'].index = x.columns
+    dct['D'].loc['UASB'] = dct['p'].loc['UASB'] = None
+    dct['D'].loc['Membrane', ['Levelized cost (w/o degas)', 'GWP100 (w/o degas)']] = None
+    dct['p'].loc['Membrane', ['Levelized cost (w/o degas)', 'GWP100 (w/o degas)']] = None
+    if save:
+        with pd.ExcelWriter(ospath.join(results_path, 'KStest_pb_v_fb.xlsx')) as writer:
+            for name, df in dct.items(): df.to_excel(writer, sheet_name=name)
+    
+    out = []
+    for name, df in dct.items(): 
+        if name in 'Dp': 
+            df['Parameter'] = df.index.get_level_values('Feature')
+            out.append(df.melt(id_vars='Parameter', var_name='Metric', value_name=name))
+    outs = out[0].merge(out[1])
+    return outs
+
+def _plot_bubble(df, ax, pal):
+    sns.scatterplot(df, x='Metric', y='Parameter', 
+                    hue=df.p<0.05, palette=['black', pal], 
+                    size='D', sizes=(0, 350), size_norm=(0,1),
+                    legend=False,
+                    ax=ax,
+                    )
+    ax.set_xlim(-0.5, len(set(df.Metric))-0.5)
+    ax.set_axisbelow(True)
+    ax.grid(True, which='major', color='k', linestyle='--', 
+            linewidth=0.7, alpha=0.3)
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+    ax.tick_params(axis='both', which='major', direction='inout', length=8)
+    ax.xaxis.set_major_formatter(plt.NullFormatter())
+    ax.yaxis.set_major_formatter(plt.NullFormatter())
+
 def MCF_bubble_plot(data=None, seed=None):
     if data is None: 
         data = MCF_encap_to_susp(seed, False)
     mpl.rcParams['xtick.minor.visible'] = False
     mpl.rcParams['ytick.minor.visible'] = False
-    fig, axes = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(6,9))
-    pal = {'PB':'#f3c354', 'FB':'#a280b9'}
-    for kv, ax in zip(data.items(), axes):
-        k, df = kv
-        sns.scatterplot(df, x='Metric', y='Parameter', 
-                        hue=df.p<0.05, palette=['black', pal[k]], 
-                        size='D', sizes=(0, 350), size_norm=(0,1),
-                        legend=False,
-                        ax=ax,
-                        )
-        ax.set_xlim(-0.5, 4.5)
-        ax.set_axisbelow(True)
-        ax.grid(True, which='major', color='k', linestyle='--', 
-                linewidth=0.7, alpha=0.3)
-        ax.set_xlabel('')
-        ax.set_ylabel('')
-        ax.tick_params(axis='both', which='major', direction='inout', length=8)
-        ax.xaxis.set_major_formatter(plt.NullFormatter())
-        ax.yaxis.set_major_formatter(plt.NullFormatter())
+    if isinstance(data, dict):
+        fig, axes = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(6,9))
+        pal = {'FB':'#f3c354', 'PB':'#a280b9'}
+        for kv, ax in zip(data.items(), axes):
+            k, df = kv
+            clr = pal[k]
+            _plot_bubble(df, ax, clr)
+        save_as = 'MCF_2575.png'
+    else:
+        fig, ax = plt.subplots(figsize=(2.4,9))
+        clr = '#60c1cf'
+        _plot_bubble(data, ax, clr)
+        save_as = 'MCF_pb_v_fb.png'
 
     fig.subplots_adjust(wspace=0)
-    fig.savefig(ospath.join(figures_path, 'MCF_2575.png'), dpi=300, transparent=True)
+    fig.savefig(ospath.join(figures_path, save_as), dpi=300, transparent=True)
 
 #%% MCF intra-system
 def MCF_25_vs_75(seed, save=True):
     data = {}
     for i in ('FB', 'PB'):
         data[i] = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
-                            header=[0,1], skiprows=[2,])
+                            header=[0,1], skiprows=[2,], nrows=1000)
     pb = data['PB']
     mdl = create_model(kind='uasa')
     nx = len(mdl.parameters)
@@ -708,25 +771,25 @@ def calc_3way_diff(seed, save=True):
             ('Process', 'COD removal [%]'),
             ('Biogas', 'H2 production [kg/d]'),
             ('Biogas', 'CH4 production [kg/d]'),
-            ('Biomass', 'R1 Overall TSS [g/L]'),
+            # ('Biomass', 'R1 Overall TSS [g/L]'),
             # ('Biomass', 'R1 Encapsulated TSS [g/L]'),
             ('TEA (w/ degas)', 'Levelized cost (w/ degas) [$/ton rCOD]'),
             ('LCA (w/ degas)', 'GWP100 (w/ degas) [kg CO2eq/ton rCOD]'),
             ('TEA (w/o degas)', 'Levelized cost (w/o degas) [$/ton rCOD]'),
             ('LCA (w/o degas)',  'GWP100 (w/o degas) [kg CO2eq/ton rCOD]'),    
         ]
-    _col = ('Biomass', 'R1 Encapsulated TSS [g/L]')
+    # _col = ('Biomass', 'R1 Encapsulated TSS [g/L]')
     out = {}
     out['pu'] = (data['PB'].loc[:, pair_cols] - data['UASB'].loc[:, pair_cols])
     out['fu'] = (data['FB'].loc[:, pair_cols] - data['UASB'].loc[:, pair_cols])
-    pair_cols.insert(4, _col)
-    out['pu'][_col] = out['fu'][_col] = None
+    # pair_cols.insert(4, _col)
+    # out['pu'][_col] = out['fu'][_col] = None
     out['pu'] = out['pu'].loc[:, pair_cols]
     out['fu'] = out['fu'].loc[:, pair_cols]
     out['pf'] = (data['PB'].loc[:, pair_cols] - data['FB'].loc[:, pair_cols])
     
     if save:
-        with pd.ExcelWriter(ospath.join(results_path, 'diff_3ways.xlsx')) as writer:
+        with pd.ExcelWriter(ospath.join(results_path, f'diff_3ways_{seed}.xlsx')) as writer:
             for k, df in out.items(): df.to_excel(writer, sheet_name=k)
     return out
 
@@ -765,7 +828,7 @@ def breakdown_and_sort(data):
     tea.sort_values(by='Levelized cost (w/ degas) [$/ton rCOD]', inplace=True)
     llc = tea.pop('Levelized cost (w/ degas) [$/ton rCOD]')
     tea = (tea / 100).mul(llc.abs(), axis='rows')
-    tea.columns = [col.split(' ')[1] for col in tea.columns]
+    tea.columns = [col[4:-15].replace(' ', '_') for col in tea.columns]
     tea['fug_ch4'] = 0
     tea['total'] = llc
     
@@ -775,7 +838,7 @@ def breakdown_and_sort(data):
     # absolute = (gwp<=0).any()
     # if absolute: 
     lca = (lca / 100).mul(gwp.abs(), axis='rows')
-    lca.columns = [col.split(' ')[1] for col in lca.columns]
+    lca.columns = [col[4:-15].replace(' ', '_') for col in lca.columns]
     lca['total'] = gwp
     return tea, lca#, absolute
 
@@ -783,6 +846,7 @@ def plot_area(df, absolute=False, ylims=None):
     fig, ax = plt.subplots(figsize=(4,4))
     fig.subplots_adjust(left=0.15, right=0.95)
     x = range(df.shape[0])
+    ax.plot(x, df.total, color='white', linewidth=1.5, linestyle='dashed')
     ax.axhline(y=0, color='black', linewidth=0.5)
     yp = np.zeros(df.shape[0])
     yn = yp.copy()
@@ -823,11 +887,12 @@ def breakdown_uasa(seed):
         for suffix, df in (('TEA', tea), ('LCA', lca)):
             # fig, ax = plot_area(df, absolute and suffix=='LCA')
             if i in ('FB', 'PB'):
-                if suffix == 'TEA': ylims = (-400, 15000)
-                else: ylims = (-300, 4000)
+                if suffix == 'TEA': ylims = (-500, 14000)
+                else: ylims = (-250, 2500)
             else:
                 ylims = None
-            fig, ax = plot_area(df, True, ylims)            
+            fig, ax = plot_area(df, True, ylims)
+            # fig, ax = plot_area(df, True)
             fig.savefig(ospath.join(figures_path, f'breakdown/{i}_{suffix}_abs.png'),
                         dpi=300, 
                         # facecolor='white',
@@ -860,7 +925,6 @@ def Spearman_corr(seed, save=True):
                 p.to_excel(writer, sheet_name=f'{k}_p')
     return stats
 
-# out = Spearman_corr(364, True)
 
 #%% heatmaps
 # from scipy.interpolate import griddata
@@ -937,12 +1001,20 @@ if __name__ == '__main__':
     # plot_diff()
     # llc, imp = best_breakdown()
     # plot_breakdown()
-    # smp = run_UA_SA(seed=364, N=1000)
-    # _rerun_failed_samples(364)
-    # data = MCF_encap_to_susp(364, False)
-    # MCF_bubble_plot(data)
-    breakdown_uasa(364)
+    # dt = load_data(ospath.join(results_path, 'table_compiled.xlsx'), nrows=3553)
+    # dt = dt[dt.loc[:,'Reactor type'] != 'UASB']
+    # encap_out = compare_DVs(dt, save_as='FB_vs_PB.xlsx')
+    # smp = run_UA_SA(N=1000)
+    # _rerun_failed_samples(187, 'FB')
+    # out = calc_3way_diff(187)
+    # outs = MCF_pb_to_fb(187)
+    data = MCF_25_vs_75(187, False)
+    MCF_bubble_plot(data)
+    # breakdown_uasa(187)
     # mapping(suffix='specific')
     # mapping(suffix='common')
     # plot_univariate_kdes(364)
     # mapping(reactor_type='PB')
+    # out = Spearman_corr(187, True)
+
+    
