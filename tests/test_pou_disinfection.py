@@ -27,12 +27,12 @@ def test_pou_disinfection():
     rtol = 0.01
     assert_allclose(pou.teaA.NPV, -272.3341764464383, rtol=rtol)
     assert_allclose(pou.teaB.NPV, -2144.868750994307, rtol=rtol)
-    assert_allclose(pou.teaC.NPV, -16026.374451801337, rtol=rtol)
-    assert_allclose(pou.teaD.NPV, -41465.286859741536, rtol=rtol)
+    assert_allclose(pou.teaC.NPV, -16026.689353149706, rtol=rtol)
+    assert_allclose(pou.teaD.NPV, -41477.30725191316, rtol=rtol)
     assert_allclose(pou.lcaA.total_impacts['GWP'], 419.1941587933792, rtol=rtol)
     assert_allclose(pou.lcaB.total_impacts['GWP'], 235.51873625370752, rtol=rtol)
-    assert_allclose(pou.lcaC.total_impacts['GWP'], 9141.66937353872, rtol=rtol)
-    assert_allclose(pou.lcaD.total_impacts['GWP'], 3694.7137460627887, rtol=rtol)
+    assert_allclose(pou.lcaC.total_impacts['GWP'], 9141.790775601286, rtol=rtol)
+    assert_allclose(pou.lcaD.total_impacts['GWP'], 3703.982048088447, rtol=rtol)
 
 
 if __name__ == '__main__':
