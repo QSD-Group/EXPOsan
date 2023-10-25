@@ -27,9 +27,15 @@ from exposan.htl import (
 
 __all__ = ('create_model',)
 
-def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=False,
-                 include_HTL_yield_as_metrics=True, include_other_metrics=True,
-                 include_other_CFs_as_metrics=True, include_check=True):
+def create_model(system=None,
+                 feedstock='sludge',
+                 plant_size=False,
+                 ternary=False,
+                 exclude_sludge_compositions=False,
+                 include_HTL_yield_as_metrics=True,
+                 include_other_metrics=True,
+                 include_other_CFs_as_metrics=True,
+                 include_check=True):
     '''
     Create a model based on the given system
     (or create the system based on the given configuration).
@@ -67,15 +73,37 @@ def create_model(system=None, feedstock='sludge', exclude_sludge_compositions=Fa
     #     raw_wastewater.F_mass=i
     
     WWTP = unit.WWTP
-    dist = shape.Uniform(0.846,1.034)
-    @param(name='ww_2_dry_sludge',
-            element=WWTP,
-            kind='coupled',
-            units='ton/d/MGD',
-            baseline=0.94,
-            distribution=dist)
-    def set_ww_2_dry_sludge(i):
-        WWTP.ww_2_dry_sludge=i
+    if plant_size and feedstock == 'sludge':
+        dist = shape.Uniform(0.846,1.034) # only needed for sludge and when the independent variable is plant-size
+        @param(name='ww_2_dry_sludge',
+                element=WWTP,
+                kind='coupled',
+                units='ton/d/MGD',
+                baseline=0.94,
+                distribution=dist)
+        def set_ww_2_dry_sludge(i):
+            WWTP.ww_2_dry_sludge=i
+    
+    if ternary:
+        dist = shape.Triangle(0.052,0.5,0.8) # only needed for ternary
+        @param(name='sludge_moisture',
+                element=WWTP,
+                kind='coupled',
+                units='-',
+                baseline=0.5,
+                distribution=dist)
+        def set_WWTP_sludge_moisture(i):
+            WWTP.sludge_moisture=i
+        
+        dist = shape.Triangle(0.012,0.15,0.483) # only needed for ternary
+        @param(name='sludge_dw_ash',
+                element=WWTP,
+                kind='coupled',
+                units='-',
+                baseline=0.15,
+                distribution=dist)
+        def set_sludge_dw_ash(i):
+            WWTP.sludge_dw_ash=i
     
     if not exclude_sludge_compositions:
         if feedstock == 'sludge':

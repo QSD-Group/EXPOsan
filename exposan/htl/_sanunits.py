@@ -25,7 +25,7 @@ __all__ = (
     'AcidExtraction',
     'FuelMixer',
     'HTLmixer',
-    'Humidifier'
+    'Humidifier',
     'StruvitePrecipitation',
     'WWmixer',
     'WWTP',
@@ -280,11 +280,16 @@ class HTLmixer(SanUnit):
 class Humidifier(SanUnit):
     '''
     A fake unit increases the moisture content of HTL feedstocks to 80%.
+    Assume 80% of the water can be recovered from the end. Calcalute makeup water.
+        feedstock: X H2O + Y dry matter
+        target:    4Y H2O + Y dry matter
+        water recovery = 0.8 = (4Y - X - makeup water)/4Y
+        makeup water = 0.8Y - X
     
     Parameters
     ----------
     ins : Iterable(stream)
-        feedstock, water
+        feedstock, makeup, recycle
     outs : Iterable(stream)
         mixture
     '''
@@ -293,19 +298,19 @@ class Humidifier(SanUnit):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
 
-    _N_ins = 2
+    _N_ins = 3
     _N_outs = 1
         
     def _run(self):
         
-        feedstock, water = self.ins
+        feedstock, makeup, recycle = self.ins
         mixture = self.outs[0]
         
-        if feedstock.imass['H2O']/feedstock.F_mass <= 0.8:
-            water.imass['H2O'] = (feedstock.F_mass - feedstock.imass['H2O'])/0.2 - feedstock.F_mass
-            mixture.mix_from(self.ins)
-        else:
-            mixture.copy_like(feedstock)
+        makeup.imass['H2O'] = max(0, 0.8*(feedstock.F_mass - feedstock.imass['H2O']) - feedstock.imass['H2O'])
+        
+        recycle.imass['H2O'] = (feedstock.F_mass - feedstock.imass['H2O'])/0.2 - feedstock.F_mass - makeup.imass['H2O']
+
+        mixture.mix_from(self.ins)
 
 # =============================================================================
 # Struvite Precipitation
@@ -535,22 +540,11 @@ class WWTP(SanUnit):
                  lipid_2_C=0.750,
                  protein_2_C=0.545,
                  carbo_2_C=0.400, 
-                 
-                 
                  lipid_2_H=0.125,
                  protein_2_H=0.068,
                  carbo_2_H=0.067, 
-                 
-                 
-                 
-                 
-
                  protein_2_N=0.159,
-                 
-                 
                  N_2_P=0.3927,
-                 
-                 
                  operation_hours=yearly_operation_hour):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -562,14 +556,9 @@ class WWTP(SanUnit):
         self.lipid_2_C = lipid_2_C
         self.protein_2_C = protein_2_C
         self.carbo_2_C = carbo_2_C
-        
-        
         self.lipid_2_H = lipid_2_H
         self.protein_2_H = protein_2_H
         self.carbo_2_H = carbo_2_H
-        
-        
-
         self.protein_2_N = protein_2_N
         self.N_2_P = N_2_P
         self.operation_hours = operation_hours

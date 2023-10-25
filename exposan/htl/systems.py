@@ -86,10 +86,11 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     
     if WWTP.sludge_moisture <= 0.8:
         
-        Humidifier = su.Humidifier(ID='S010', ins=(WWTP-0, 'added_water'), outs='HTL_influent')
+        Humidifier = su.Humidifier(ID='S010', ins=(WWTP-0, 'makeup_water', 'recycle'), outs='HTL_influent')
         
         # we can even use wastewater, so assume no cost and environemental impacts associated with added_water
-
+        
+        Humidifier.ins[1].price = 0.00018 # U.S. average price: 1.5 $/gal (1 gal = 8.35 lb)
         Humidifier.register_alias('Humidifier')
         
         P1 = qsu.SludgePump('A100', ins=Humidifier-0, outs='press_sludge', P=3049.7*6894.76,
@@ -385,6 +386,19 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
                         Carcinogenics=0,
                         NonCarcinogenics=0,
                         RespiratoryEffects=0)
+    
+    # add impact for makeup water
+    qs.StreamImpactItem(ID='makeup_water_item',
+                        linked_stream=stream.makeup_water,
+                        Acidification=0.00011676,
+                        Ecotoxicity=0.0050151,
+                        Eutrophication=0.000000073096,
+                        GlobalWarming=0.00030228,
+                        OzoneDepletion=0.00000000016107,
+                        PhotochemicalOxidation=0.00000074642,
+                        Carcinogenics=0.0000061925,
+                        NonCarcinogenics=0.009977,
+                        RespiratoryEffects=0.00000068933)
     
     # Biocrude upgrading
     qs.StreamImpactItem(ID='H2_item',

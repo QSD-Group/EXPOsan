@@ -51,11 +51,12 @@ for lipid in lipids:
             WWTP = sys.flowsheet.unit.WWTP
             WWTP.sludge_afdw_lipid = lipid
             WWTP.sludge_afdw_protein = protein
-            WWTP.sludge_moisture = 0.8
-            WWTP.sludge_dw_ash = 
             sys.simulate()
             print('\n\n', f'Lipid: {WWTP.sludge_afdw_lipid}\n', f'Protein: {WWTP.sludge_afdw_protein}\n', f'Carbohydrate: {WWTP.sludge_afdw_carbo}', '\n\n')
-            model = create_model(sys, exclude_sludge_compositions=True,
+            model = create_model(sys,
+                                 plant_size=False,
+                                 ternary=True,
+                                 exclude_sludge_compositions=True,
                                  include_HTL_yield_as_metrics=False,
                                  include_other_metrics=False,
                                  include_other_CFs_as_metrics=False,
