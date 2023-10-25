@@ -36,7 +36,7 @@ def test_metab():
     try: FB_H.simulate(state_reset_hook='reset_cache', method='BDF', t_span=(0, 400))
     except: 
         pass
-        FB_H.simulate(state_reset_hook='reset_cache', method='BDF', t_span=(0, 400))
+        # FB_H.simulate(state_reset_hook='reset_cache', method='BDF', t_span=(0, 400))
     fs = FB_H.flowsheet.stream
     # assert np.isclose(1 - fs.eff_dg.COD / fs.inf.COD, 0.8254350623696006, rtol)
     # # assert np.isclose(FB_H.TEA.annualized_NPV, -26069.226184087474, rtol)
