@@ -119,10 +119,10 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     
     H1 = qsu.HXutility('A110', include_construction=True,
                        ins=P1-0, outs='heated_sludge', T=351+273.15,
-                       U=0.0795, init_with='Stream', rigorous=True)
+                       U=0.0198739, init_with='Stream', rigorous=True)
     # feed T is low, thus high viscosity and low U (case B in Knorr 2013)
-    # U: 3, 14, 15 BTU/hr/ft2/F as minimum, baseline, and maximum
-    # U: 0.0170348, 0.0794957, 0.085174 kW/m2/K
+    # U: 3, 3.5, 4 BTU/hr/ft2/F as minimum, baseline, and maximum
+    # U: 0.0170348, 0.0198739, 0.0227131 kW/m2/K
     # H1: SS PNNL 2020: 50 (17-76) Btu/hr/ft2/F ~ U = 0.284 (0.096-0.4313) kW/m2/K
     # but not in other heat exchangers (low viscosity, don't need U to enforce total heat transfer efficiency)
     # unit conversion: https://www.unitsconverters.com/en/Btu(It)/Hmft2mdegf-To-W/M2mk/Utu-4404-4398

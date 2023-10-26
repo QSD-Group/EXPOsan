@@ -451,12 +451,12 @@ def create_model(system=None,
     # HTL
     # =========================================================================
     H1 = unit.H1
-    dist = shape.Triangle(0.017035,0.0795,0.085174)
+    dist = shape.Uniform(0.0170348,0.0227131)
     @param(name='enforced heating transfer coefficient',
             element=H1,
             kind='coupled',
             units='kW/m2/K',
-            baseline=0.0795,
+            baseline=0.0198739,
             distribution=dist)
     def set_U(i):
         H1.U=i
@@ -1164,6 +1164,19 @@ def create_model(system=None,
     
     if include_other_metrics: # all metrics
         # Element metrics
+        
+        @metric(name='C_afdw',units='%',element='Sankey')
+        def get_C_afdw():
+            return WWTP.sludge_C*24/1000/(sys.flowsheet.stream.raw_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
+        
+        @metric(name='N_afdw',units='%',element='Sankey')
+        def get_N_afdw():
+            return WWTP.sludge_N*24/1000/(sys.flowsheet.stream.raw_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
+        
+        @metric(name='P_afdw',units='%',element='Sankey')
+        def get_P_afdw():
+            return WWTP.sludge_P*24/1000/(sys.flowsheet.stream.raw_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
+        
         @metric(name='sludge_C',units='kg/hr',element='Sankey')
         def get_sludge_C():
             return WWTP.sludge_C
@@ -1329,6 +1342,11 @@ def create_model(system=None,
             return MemDis.outs[1].imass['P']
         
         # Energy metrics
+        
+        @metric(name='sludge_HHV',units='MJ/kg',element='Sankey')
+        def get_sludge_HHV():
+            return WWTP.sludge_HHV
+        
         @metric(name='sludge_E',units='GJ/hr',element='Sankey')
         def get_sludge_E():
             return (WWTP.outs[0].F_mass-WWTP.outs[0].imass['H2O'])*WWTP.sludge_HHV/1000
