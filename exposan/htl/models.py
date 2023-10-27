@@ -446,21 +446,6 @@ def create_model(system=None,
     def set_operation_hour(i):
         WWTP.operation_hours=sys.operating_hours=i
     
-    # =============================================================================
-    # Humidifier
-    # =============================================================================
-    
-    makeup_water = stream.makeup_water
-    dist = shape.Uniform(0.000475,0.000581)
-    @param(name='makeup water price',
-            element='TEA',
-            kind='isolated',
-            units='$/kg',
-            baseline=0.000528,
-            distribution=dist)
-    def set_makeup_water_price(i):
-        makeup_water.price=i
-    
     # =========================================================================
     # HTL
     # =========================================================================
@@ -975,6 +960,17 @@ def create_model(system=None,
             distribution=dist)
     def set_IRR(i):
         tea.IRR=i
+    
+    makeup_water = stream.makeup_water
+    dist = shape.Uniform(0.000475,0.000581)
+    @param(name='makeup water price',
+            element='TEA',
+            kind='isolated',
+            units='$/kg',
+            baseline=0.000528,
+            distribution=dist)
+    def set_makeup_water_price(i):
+        makeup_water.price=i
     
     H2SO4 = stream.H2SO4
     dist = shape.Triangle(0.005994,0.00658,0.014497)
