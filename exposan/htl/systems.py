@@ -87,10 +87,10 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     if WWTP.sludge_moisture <= 0.8:
         
         Humidifier = su.Humidifier(ID='S010', ins=(WWTP-0, 'makeup_water', 'recycle'), outs='HTL_influent')
-        
-        # we can even use wastewater, so assume no cost and environemental impacts associated with added_water
-        
-        Humidifier.ins[1].price = 0.00018 # U.S. average price: 1.5 $/gal (1 gal = 8.35 lb)
+
+        Humidifier.ins[1].price = 0.000528 # U.S. average price: 2 $/1000 gal (1 gal = 3.79 kg)
+        # water weight: https://www.omnicalculator.com/conversion/kg-to-gallons#:~:text=1%20gal%20%3D%203.79%20kg%20of%20water (accessed 2023-10-27)
+        # tap water price: https://portal.ct.gov/-/media/Departments-and-Agencies/DPH/dph/drinking_water/pdf/dwcfedfundpdf.pdf (accessed 2023-10-27)
         Humidifier.register_alias('Humidifier')
         
         P1 = qsu.SludgePump('A100', ins=Humidifier-0, outs='press_sludge', P=3049.7*6894.76,
