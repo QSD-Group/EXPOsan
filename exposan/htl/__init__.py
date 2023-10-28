@@ -65,7 +65,6 @@ def load(configuration='baseline'):
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
 
-
 def __getattr__(name):
     if not _components_loaded or not _system_loaded:
         raise AttributeError(
@@ -106,7 +105,6 @@ def simulate_and_save(model,
             if include_spearman:
                 r_df.to_excel(writer, sheet_name='Spearman_r')
                 p_df.to_excel(writer, sheet_name='Spearman_p')
-
 
 __all__ = (
     'htl_path',

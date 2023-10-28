@@ -160,12 +160,12 @@ def create_model(system=None,
                 
         if feedstock == 'food':
             
-            dist = shape.Uniform(0.073,0.1095)
+            dist = shape.Uniform(0.68,0.8)
             @param(name='sludge_moisture',
                     element=WWTP,
                     kind='coupled',
                     units='-',
-                    baseline=0.09125,
+                    baseline=0.74,
                     distribution=dist)
             def set_WWTP_sludge_moisture(i):
                 WWTP.sludge_moisture=i
