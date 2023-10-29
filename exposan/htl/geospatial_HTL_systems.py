@@ -69,7 +69,7 @@ def _load_process_settings(location='IL'):
 # create the HTL spatial system
 # =============================================================================
 
-def create_spatial_system(waste_price=400, # assumed to be 400 for all WRRFs
+def create_spatial_system(waste_cost=400, # assumed to be 400 for all WRRFs
                           size=100, # in MGD
                           distance=30, # in km, using Google Maps API
                           solid_fate=1, # from Seiple et al. 2020
@@ -154,7 +154,7 @@ def create_spatial_system(waste_price=400, # assumed to be 400 for all WRRFs
     P1.register_alias('P1')
     # Jones 2014: 3049.7 psia
     
-    raw_wastewater.price = -WWTP.ww_2_dry_sludge*waste_price/3.79/(10**6) # 1 gal water = 3.79 kg water
+    raw_wastewater.price = -WWTP.ww_2_dry_sludge*waste_cost/3.79/(10**6) # 1 gal water = 3.79 kg water
 
     # =============================================================================
     # HTL (Area 100)

@@ -361,7 +361,7 @@ oil_BPD = []
 for i in range(14100, len(final_WWTPs)):
 # for i in [0, 76, 718]:
         
-    sys, barrel = create_spatial_system(waste_price=400,
+    sys, barrel = create_spatial_system(waste_cost=400,
                                         size=final_WWTPs.iloc[i]['Influent Flow (MMGal/d)'],
                                         distance=final_WWTPs.iloc[i]['real_distance_km'],
                                         solid_fate=final_WWTPs.iloc[i]['solid_fate'],

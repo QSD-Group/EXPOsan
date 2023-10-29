@@ -42,7 +42,7 @@ from biosteam import settings
 
 __all__ = ('create_system',)
 
-def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
+def create_system(configuration='baseline', waste_cost=0, waste_GWP=0):
     configuration = configuration or 'baseline'
     if configuration not in ('baseline', 'no_P', 'PSA'):
         raise ValueError('`configuration` can only be "baseline", '
@@ -82,7 +82,7 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
                    sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, operation_hours=7920)
     WWTP.register_alias('WWTP')
     
-    raw_wastewater.price = -WWTP.ww_2_dry_sludge*waste_price/3.79/(10**6)
+    raw_wastewater.price = -WWTP.ww_2_dry_sludge*waste_cost/3.79/(10**6)
     
     if WWTP.sludge_moisture <= 0.8:
         
