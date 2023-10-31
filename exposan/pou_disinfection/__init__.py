@@ -35,7 +35,7 @@ start_year = 2018
 lifetime = 5
 
 water_source = 'GW'
-household_size = 6
+household_size = 4 # normal distribution with mu=4 and signma=1.4 based on global distribution of household sizes
 household_per_container = 1
 ppl = 1000 # population would not change the results
 
