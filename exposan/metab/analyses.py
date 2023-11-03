@@ -963,8 +963,8 @@ def plot_heatmap(xx, yy, z, baseline=[], save_as='', specific=False, hrt=True):
     else: nm = 'linear'
     pos = ax.pcolormesh(xx, yy, z, shading='gouraud', norm=nm)
     cbar = fig.colorbar(pos, ax=ax)
-    cbar.ax.tick_params(labelsize=10)
-    ax.tick_params(axis='both', which='major', direction='inout', length=6, labelsize=10)
+    cbar.ax.tick_params(labelsize=11)
+    ax.tick_params(axis='both', which='major', direction='inout', length=6, labelsize=11)
     ax.tick_params(axis='both', which='minor', direction='inout', length=3)
     ax2x = ax.secondary_xaxis('top', zorder=3)
     ax2x.tick_params(direction='in', which='major', length=3)
@@ -986,7 +986,7 @@ def plot_heatmap(xx, yy, z, baseline=[], save_as='', specific=False, hrt=True):
                     locator=lct
                     )
     ax.clabel(cs, cs.levels, inline=True, 
-              fontsize=9)
+              fontsize=10)
     if baseline:
         ax.plot(*baseline, marker='^', ms=7, mfc='white', mec='black', mew=0.5)
     fig.savefig(ospath.join(figures_path, save_as), dpi=300, transparent=True)
@@ -1024,7 +1024,7 @@ if __name__ == '__main__':
     # dt = load_data(ospath.join(results_path, 'table_compiled.xlsx'), nrows=3553)
     # dt = dt[dt.loc[:,'Reactor type'] != 'UASB']
     # encap_out = compare_DVs(dt, save_as='FB_vs_PB.xlsx')
-    # smp = run_UA_SA(seed=187, N=1000)
+    smp = run_UA_SA(seed=187, N=1000)
     # _rerun_failed_samples(187, 'PB')
     # out = calc_3way_diff(187)
     # outs = MCF_pb_to_fb(187)
@@ -1034,7 +1034,7 @@ if __name__ == '__main__':
     # mapping(suffix='specific')
     # mapping(suffix='common')
     # plot_univariate_kdes(187)
-    mapping(reactor_type='FB')
+    # mapping(reactor_type='FB')
     # out = Spearman_corr(187, True)
 
     

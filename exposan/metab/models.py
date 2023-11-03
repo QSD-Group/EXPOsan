@@ -130,7 +130,7 @@ def add_continuous_params(model):
     u = sys.flowsheet.unit
     s = sys.flowsheet.stream
     adm1 = u.R1.model
-    if u.R1.T == 22: ks_b = ks_22
+    if u.R1.T == 273.15+22: ks_b = ks_22
     else: ks_b = ks_35
         
     #************ common uncertainty/DVs *************
@@ -378,7 +378,7 @@ def add_mapping_params(model):
     n_stage = 1 if '1' in sys.ID else 2
     reactor_type, gas_xt = sys.ID.rstrip('_edg').split(str(n_stage))
     adm1 = u.R1.model
-    if u.R1.T == 22: ks_b = ks_22
+    if u.R1.T == 273.15+22: ks_b = ks_22
     else: ks_b = ks_35
     adm1.rate_function.params['rate_constants'] = ks_b
     
