@@ -160,8 +160,8 @@ def add_continuous_params(model):
         )
     
     for name, pid, b, lb, ub in Ks:
-        # D = shape.Triangle(lb, b, ub)
-        D = shape.Triangle(b*0.5, b, b*1.5)
+        D = shape.Triangle(lb, b, ub)
+        # D = shape.Triangle(b*0.5, b, b*1.5)
         param(setter=MethodSetter(adm1, 'set_half_sat_K', key='K', process=pid),
               name=name, units='kg COD/m3', kind='coupled', element='ADM1',
               baseline=b, distribution=D)
@@ -192,7 +192,7 @@ def add_continuous_params(model):
             u.DMs._co2_ermv = eco2
     
     b = 1
-    D = shape.Uniform(1/6, 2)
+    D = shape.Uniform(1/6, 3)
     @param(name='Total HRT', units='d', kind='coupled', element='System',
            baseline=b, distribution=D)
     def set_tau(tau):
@@ -342,7 +342,10 @@ def add_optimizing_DVs(model):
     #             reset_init_conc(sys)
         
         @param(name='Voidage', units='', kind='coupled', element='FB',
-                baseline=0.75, bounds=(0.55, 0.95))
+               baseline=0.75, 
+               # bounds=(0.55, 0.95)
+               bounds=(0.85, 0.95)
+               )
         def set_FB_void(f):
             u.R1.voidage = f
         
@@ -357,7 +360,8 @@ def add_optimizing_DVs(model):
     #             u.R1.scope = SanUnitScope(u.R1)
 
     @param(name='HRT', units='d', kind='coupled', element='System',
-           baseline=1/3, bounds=(1/24, 4))
+           baseline=1/3, bounds=(1/24, 1.5))
+            # baseline=2.5, bounds=(1.5, 3))
     def set_tau(tau):
         V = s.inf.F_vol * 24 * tau
         u.R1.V_liq = V
@@ -669,7 +673,8 @@ C0_bulk = np.array([
     ])
 
 def f_obj(vals, mdl):
-    if len(mdl.parameters) == 1: 
+    # if len(mdl.parameters) == 1: 
+    if len(mdl.parameters) == -1: 
         mdl.parameters[0].setter(vals)
     else: 
         for p, v in zip(mdl.parameters, vals): p.setter(v)
@@ -732,7 +737,8 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
     samples, gridx, gridy = meshgrid_sample(*mapping.parameters, n)
     x0 = np.asarray([p.baseline for p in mdl_opt.parameters])
     bounds = [p.bounds for p in mdl_opt.parameters]
-    if len(x0) > 1:
+    # if len(x0) > 1:
+    if len(x0) > -1:
         import optuna
         names = [p.name for p in mdl_opt.parameters]
         def objective(trial):
@@ -743,12 +749,15 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
     i = 0
     cmps = mapping.system.feeds[0].components
     C0 = dict(zip(cmps.IDs, C0_bulk))
+    # _rerun = [33,60,78,87,96]
+    # for smp in samples[_rerun]:
     for smp in samples:
         i += 1
         print(f'\n{i}  {"="*20}')
         for p, v in zip(mapping.parameters, smp): p.setter(v)
         mapping.system.units[0].set_init_conc(**C0)
-        if len(x0) == 1:
+        # if len(x0) == 1:
+        if len(x0) == -1:
             res = minimize_scalar(f_obj, args=(mdl_opt,), bounds=bounds[0], 
                                   method='Bounded', 
                                   options=dict(
@@ -759,8 +768,13 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
                                   )
             xs.append(res.x)
         else:
-            study = optuna.create_study(direction='minimize')
-            study.optimize(objective, n_trials=100, timeout=300)
+            study = optuna.create_study(direction='minimize',
+                                        pruner=optuna.pruners.HyperbandPruner(),
+                                        )
+            study.optimize(objective, 
+                           n_trials=100, 
+                           timeout=1000
+                           )
             res = np.array([v for k,v in study.best_params.items()])
             for p, v in zip(mdl_opt.parameters, res): p.setter(v)
             mdl_opt.system.simulate(state_reset_hook='reset_cache', 
@@ -770,9 +784,10 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
     
     # return xs, ys
     df_x = pd.DataFrame(xs, columns=var_columns(mdl_opt.parameters), dtype=float)
+    # table = pd.DataFrame(np.hstack((samples[_rerun], np.asarray(ys))),
     table = pd.DataFrame(np.hstack((samples, np.asarray(ys))),
-                          columns=var_columns(mapping._parameters + mapping._metrics),
-                          dtype=float)
+                         columns=var_columns(mapping._parameters + mapping._metrics),
+                         dtype=float)
     table = df_x.join(table)
     mpath = mpath or ospath.join(results_path, f'optimized_{mapping.system.ID[:2]}.xlsx')
     table.to_excel(mpath)
@@ -782,4 +797,4 @@ if __name__ == '__main__':
     sys = create_system(reactor_type='FB')
     mp = create_model(sys, kind='mapping')
     opt = create_model(sys, kind='optimize')
-    optimize(mp, opt, n=20)
+    # optimize(mp, opt, n=20)

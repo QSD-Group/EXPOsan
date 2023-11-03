@@ -720,8 +720,9 @@ def plot_1dkde(x, groups, x_bounds, prefix=''):
                     cut=0,
                     )
         ax.set_xlim(*x_bounds)
-        if 'FB' in prefix: ax.set_ylim(0, 0.55)
-        else: ax.set_ylim(0, 0.7)
+        ax.set_ylim(0, 2.2)
+        # if 'FB' in prefix: ax.set_ylim(0, 0.55)
+        # else: ax.set_ylim(0, 0.7)
         ax.tick_params(axis='both', which='major', direction='inout', length=8, labelsize=11)
         ax.tick_params(axis='both', which='minor', direction='inout', length=5)
         ax.ticklabel_format(axis='y', scilimits=[-2,3], useMathText=True)
@@ -751,14 +752,16 @@ def plot_univariate_kdes(seed):
         ]
     for i in ('FB', 'PB'):
         df = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
-                       header=[0,1], skiprows=[2,])
+                       header=[0,1], skiprows=[2,], nrows=1000)
         ys = df.loc[:,pair_cols]
-        x = df.loc[:,('Encapsulation', 'Bead diameter [mm]')]
+        # x = df.loc[:,('Encapsulation', 'Bead diameter [mm]')]
+        x = df.loc[:,('Encapsulation', 'Bead-to-water diffusivity fraction')]
         thres = ys.quantile(0.25)
         thres[0] = np.percentile(ys.iloc[:,0], 75)
         groups = ys > thres
         groups.iloc[:,0] = ys.iloc[:,0] < thres[0]
-        plot_1dkde(x, groups, [1,5], i+'-beaddia')
+        # plot_1dkde(x, groups, [1,5], i+'-beaddia')
+        plot_1dkde(x, groups, [0.2,1.1], i+'-diffu')
         print(thres)
     
 #%% pair-wise comparisons, three-way
@@ -887,8 +890,8 @@ def breakdown_uasa(seed):
         for suffix, df in (('TEA', tea), ('LCA', lca)):
             # fig, ax = plot_area(df, absolute and suffix=='LCA')
             if i in ('FB', 'PB'):
-                if suffix == 'TEA': ylims = (-500, 14000)
-                else: ylims = (-250, 2500)
+                if suffix == 'TEA': ylims = (-500, 20000)
+                else: ylims = (-300, 3500)
             else:
                 ylims = None
             fig, ax = plot_area(df, True, ylims)
@@ -900,6 +903,7 @@ def breakdown_uasa(seed):
                         )
 
 #%% Spearman's rho between cost & GWP
+
 from scipy.stats import spearmanr
 def Spearman_corr(seed, save=True):
     cols = [
@@ -911,7 +915,7 @@ def Spearman_corr(seed, save=True):
     stats = {}
     for i in ('FB', 'PB'):
         data = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
-                         header=[0,1], skiprows=[2,])
+                         header=[0,1], skiprows=[2,], nrows=1000)
         m = data.loc[:, cols]
         m.droplevel(1, axis=1)
         stats[i] = spearmanr(m)
@@ -925,6 +929,20 @@ def Spearman_corr(seed, save=True):
                 p.to_excel(writer, sheet_name=f'{k}_p')
     return stats
 
+#%%
+#%% Spearman's rho between K_TSS and steady-state TSS
+# fb = load_data(ospath.join(results_path, 'FB1P_187.xlsx'),
+#                header=[0,1], skiprows=[2,], nrows=1000)
+# pb = load_data(ospath.join(results_path, 'PB1P_187.xlsx'),
+#                header=[0,1], skiprows=[2,], nrows=1000)
+# mtss = fb.loc[:,('Encapsulation', 'Max encapsulation density [gTSS/L]')]
+# ftss = fb.loc[:,('Biomass', 'R1 encapsulated TSS [g/L]')]
+# ptss = pb.loc[:,('Biomass', 'R1 encapsulated TSS [g/L]')]
+
+# sum(ftss / mtss)/1000
+# sum(ptss / mtss)/1000
+# f_sprho = spearmanr(ftss, mtss)
+# p_sprho = spearmanr(ptss, mtss)
 
 #%% heatmaps
 # from scipy.interpolate import griddata
@@ -979,13 +997,15 @@ def mapping(data=None, n=20, reactor_type='PB'):
                          header=[0,1], skiprows=[2,])
     sys = create_system(reactor_type=reactor_type)
     mdl = create_model(sys, kind='mapping')
-    bl = [p.baseline for p in mdl.parameters]
+    # bl = [p.baseline for p in mdl.parameters]
     opt = create_model(sys, kind='optimize')
     xx, yy, zzs = togrid(data, mdl, n)
     hrt = True
     for z, m in zip(zzs, (*opt.parameters, *mdl.metrics)):
         file = f'heatmaps/{reactor_type}/{m.name}.png'
-        plot_heatmap(xx, yy, z, bl, save_as=file, 
+        plot_heatmap(xx, yy, z, 
+                     # bl, 
+                     save_as=file, 
                      # specific=(suffix=='specific'), 
                      hrt=hrt)
         hrt = False
@@ -1004,17 +1024,17 @@ if __name__ == '__main__':
     # dt = load_data(ospath.join(results_path, 'table_compiled.xlsx'), nrows=3553)
     # dt = dt[dt.loc[:,'Reactor type'] != 'UASB']
     # encap_out = compare_DVs(dt, save_as='FB_vs_PB.xlsx')
-    # smp = run_UA_SA(N=1000)
-    # _rerun_failed_samples(187, 'FB')
+    # smp = run_UA_SA(seed=187, N=1000)
+    # _rerun_failed_samples(187, 'PB')
     # out = calc_3way_diff(187)
     # outs = MCF_pb_to_fb(187)
-    data = MCF_25_vs_75(187, False)
-    MCF_bubble_plot(data)
+    # data = MCF_25_vs_75(187)
+    # MCF_bubble_plot(outs)
     # breakdown_uasa(187)
     # mapping(suffix='specific')
     # mapping(suffix='common')
-    # plot_univariate_kdes(364)
-    # mapping(reactor_type='PB')
+    # plot_univariate_kdes(187)
+    mapping(reactor_type='FB')
     # out = Spearman_corr(187, True)
 
     
