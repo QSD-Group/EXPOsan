@@ -52,7 +52,7 @@ def create_model(system=None,
     stream = flowsheet.stream
     model = qs.Model(sys)
     param = model.parameter
-    if feedstock not in ['sludge', 'food', 'fogs', 'green', 'manure']:
+    if feedstock not in ['sludge','food','fogs','green','manure']:
         raise ValueError("invalid feedstock, select from 'sludge', 'food', 'fogs', 'green', and 'manure'")
     
     # =========================================================================

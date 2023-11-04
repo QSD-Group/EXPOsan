@@ -44,7 +44,7 @@ __all__ = ('create_system',)
 
 def create_system(configuration='baseline', waste_cost=0, waste_GWP=0):
     configuration = configuration or 'baseline'
-    if configuration not in ('baseline', 'no_P', 'PSA'):
+    if configuration not in ('baseline','no_P','PSA'):
         raise ValueError('`configuration` can only be "baseline", '
                          '"no_P" (without acid extraction and P recovery), '
                          'or "PSA" (with H2 recovery through pressure swing adsorption), '
@@ -170,7 +170,7 @@ def create_system(configuration='baseline', waste_cost=0, waste_GWP=0):
     StruPre.register_alias('StruPre')
     
     CHG = qsu.CatalyticHydrothermalGasification(
-        'A230', ins=(StruPre-1, '7.8%_Ru/C'), outs=('CHG_out', '7.8%_Ru/C_out'))
+        'A230', ins=(StruPre-1, '7.8%_Ru/C'), outs=('CHG_out','7.8%_Ru/C_out'))
     CHG.ins[1].price = 134.53
     CHG.register_alias('CHG')
     
@@ -182,7 +182,7 @@ def create_system(configuration='baseline', waste_cost=0, waste_GWP=0):
     F1.register_alias('F1')
     
     MemDis = qsu.MembraneDistillation('A260', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
-                                  outs=('ammonium_sulfate','MemDis_ww', 'Membrane_out','solution'), init_with='WasteStream')
+                                  outs=('ammonium_sulfate','MemDis_ww','Membrane_out','solution'), init_with='WasteStream')
     MemDis.ins[2].price = 0.5256
     MemDis.outs[0].price = 0.3236
     MemDis.register_alias('MemDis')
@@ -209,7 +209,7 @@ def create_system(configuration='baseline', waste_cost=0, waste_GWP=0):
     # HT_cls = su.HT if configuration != 'PSA' else su.HT_PSA
     include_PSA = False if 'PSA' not in configuration else True
     HT = qsu.Hydrotreating('A310', ins=(P2-0, RSP1-0, 'CoMo_alumina_HT'),
-               outs=('HTout', 'CoMo_alumina_HT_out'), include_PSA=include_PSA)
+               outs=('HTout','CoMo_alumina_HT_out'), include_PSA=include_PSA)
         
     HT.ins[2].price = 38.79
     HT.register_alias('HT')
@@ -270,7 +270,7 @@ def create_system(configuration='baseline', waste_cost=0, waste_GWP=0):
     # (844.6 F).
     
     HC = qsu.Hydrocracking('A410', ins=(P3-0, RSP1-1, 'CoMo_alumina_HC'),
-                       outs=('HC_out', 'CoMo_alumina_HC_out'))
+                       outs=('HC_out','CoMo_alumina_HC_out'))
     HC.ins[2].price = 38.79
     HC.register_alias('HC')
     
