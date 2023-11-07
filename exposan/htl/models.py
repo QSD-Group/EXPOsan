@@ -910,45 +910,45 @@ def create_model(system=None,
     # TEA
     # =========================================================================
     dist = shape.Triangle(0.6,1,1.4)
-    @param(name='HTL_CAPEX_factor',
+    @param(name='HTL_TIC_factor',
             element='TEA',
             kind='isolated',
             units='-',
             baseline=1,
             distribution=dist)
-    def set_HTL_CAPEX_factor(i):
-        HTL.CAPEX_factor=i
+    def set_HTL_TIC_factor(i):
+        HTL.TIC_factor=i
         
     dist = shape.Triangle(0.6,1,1.4)
-    @param(name='CHG_CAPEX_factor',
+    @param(name='CHG_TIC_factor',
             element='TEA',
             kind='isolated',
             units='-',
             baseline=1,
             distribution=dist)
-    def set_CHG_CAPEX_factor(i):
-        CHG.CAPEX_factor=i
+    def set_CHG_TIC_factor(i):
+        CHG.TIC_factor=i
     
     dist = shape.Triangle(0.6,1,1.4)
-    @param(name='HT_CAPEX_factor',
+    @param(name='HT_TIC_factor',
             element='TEA',
             kind='isolated',
             units='-',
             baseline=1,
             distribution=dist)
-    def set_HT_CAPEX_factor(i):
-        HT.CAPEX_factor=i
+    def set_HT_TIC_factor(i):
+        HT.TIC_factor=i
     
     CHP = unit.CHP
     dist = shape.Uniform(980,1470)
-    @param(name='unit_CAPEX',
+    @param(name='unit_TIC',
             element='TEA',
             kind='isolated',
             units='-',
             baseline=1225,
             distribution=dist)
-    def set_unit_CAPEX(i):
-        CHP.unit_CAPEX=i
+    def set_unit_TIC(i):
+        CHP.unit_TIC=i
     
     tea = sys.TEA
     dist = shape.Triangle(0,0.03,0.05)
@@ -1409,7 +1409,7 @@ def create_model(system=None,
         def get_CHG_gas_E():
             return F1.outs[0].HHV/1000000
         
-        # CAPEX metrics (as total installed cost)
+        # CAPEX metrics (as total installed cost, TIC)
         @metric(name='TIC',units='$',element='TEA')
         def get_TIC():
             return sys.installed_equipment_cost
