@@ -332,36 +332,20 @@ def add_optimizing_DVs(model):
     
     u.R1.bead_diameter = 1.0
     if reactor_type == 'FB':
-    #     @param(name='Bead diameter', units='mm', kind='coupled', 
-    #            element='Encapsulation', baseline=2, bounds=(1, 5))
-    #     def set_db(d):
-    #         n_dz = 10 if d > 5 else 5
-    #         u.R1.bead_diameter = d
-    #         if n_dz != u.R1.n_layer:
-    #             u.R1.n_layer = n_dz
-    #             reset_init_conc(sys)
+        # hrt_bounds = (1, 3)
+        hrt_bounds = (3, 5)
         
-        @param(name='Voidage', units='', kind='coupled', element='FB',
-               baseline=0.75, 
-               # bounds=(0.55, 0.95)
-               bounds=(0.85, 0.95)
+        @param(name='Bead volume fraction', units='', kind='coupled', element='FB',
+               baseline=0.2, 
+               bounds=(0.05, 0.25)
                )
-        def set_FB_void(f):
-            u.R1.voidage = f
-        
-
-    #     @param(name='Height-to-diameter', units='', kind='coupled', element='FB',
-    #            baseline=1.5, bounds=(0.5, 2))
-    #     def set_FB_h2d(r):
-    #         if reactor_type == 'FB':
-    #             u.R1.reactor_height_to_diameter = r
-    #             u.R1._prep_model()
-    #             u.R1._compile_ODE()
-    #             u.R1.scope = SanUnitScope(u.R1)
+        def set_FB_bead_fvol(f):
+            u.R1.voidage = 1-f
+    else:
+        hrt_bounds = (1/24, 2)
 
     @param(name='HRT', units='d', kind='coupled', element='System',
-           baseline=1/3, bounds=(1/24, 1.5))
-            # baseline=2.5, bounds=(1.5, 3))
+           baseline=1/3, bounds=hrt_bounds)
     def set_tau(tau):
         V = s.inf.F_vol * 24 * tau
         u.R1.V_liq = V
@@ -370,7 +354,6 @@ def add_optimizing_DVs(model):
         u.R1._compile_ODE()
         u.R1.scope = SanUnitScope(u.R1)
 
-# def add_mapping_params(model, common=True):
 def add_mapping_params(model):
     param = model.parameter
     sys = model.system
@@ -382,7 +365,6 @@ def add_mapping_params(model):
     else: ks_b = ks_35
     adm1.rate_function.params['rate_constants'] = ks_b
     
-    # if common:
     b = 10
     D = shape.Uniform(2, 30)
     @param(name='Bead lifetime', units='yr', kind='coupled', 
@@ -390,45 +372,21 @@ def add_mapping_params(model):
     def set_blt(lt):
         u.R1.bead_lifetime = lt
     
-    b = ks_b[10]
-    D = shape.Uniform(min(ks_b[10], 4.0), ks_b[10]*4)
-    @param(name='uptake k_ac', units='COD/COD/d', kind='coupled', 
-            element='ADM1', baseline=b, distribution=D)
-    def set_kac(k):
-        u.R1.model.rate_function.params['rate_constants'][10] = k
-    
-    
-    # if reactor_type == 'PB':
-    #     b = 16
-    #     D = shape.Uniform(11, 30)
-    #     @param(name='Max encapsulation density', units='gTSS/L', kind='coupled',
-    #             element='Encapsulation', baseline=b, distribution=D)
-    #     def set_max_tss(tss):
-    #         u.R1.max_encapsulation_tss = tss
+    if reactor_type == 'FB':
+        b = ks_b[10]
+        D = shape.Uniform(min(ks_b[10], 4.0), ks_b[10]*4)
+        @param(name='uptake k_ac', units='COD/COD/d', kind='coupled', 
+               element='ADM1', baseline=b, distribution=D)
+        def set_kac(k):
+            u.R1.model.rate_function.params['rate_constants'][10] = k
+    else:
+        b = 7e-6
+        D = shape.Uniform(1e-6, 2.8e-5)
+        @param(name='K_h2', units='kgCOD/m3', kind='coupled', 
+               element='ADM1', baseline=b, distribution=D)
+        def set_Kh2(K):
+            u.R1.model.rate_function.params['half_sat_coeffs'][7] = K
 
-    # else:        
-    #     # if reactor_type == 'FB':
-    #     b = 1420
-    #     D = shape.Uniform(970, 1860)
-    #     @param(name='Bead density', units='kg/m3', kind='coupled', 
-    #             element='Encapsulation', baseline=b, distribution=D)
-    #     def set_rho_b(rho):
-    #         Beads._bead_density = rho
-            
-        # else:
-        #     b = 8
-        #     D = shape.Uniform(0.8, 20)
-        #     param(setter=MethodSetter(u.R1.model, 'set_rate_constant', key='k', 
-        #                               process='uptake_acetate'),
-        #           name='uptake k_ac', units='COD/COD/d', kind='coupled', element='ADM1',
-        #           baseline=b, distribution=D)
-            
-        # b = 13
-        # D = shape.Uniform(1.3, 32.5)
-        # param(setter=MethodSetter(u.R1.model, 'set_rate_constant', key='k', 
-        #                           process='uptake_propionate'),
-        #       name='uptake k_pro', units='COD/COD/d', kind='coupled', element='ADM1',
-        #       baseline=b, distribution=D)
 
 #%%
 def add_metrics(model, kind='DV'):
@@ -615,12 +573,12 @@ def add_metrics(model, kind='DV'):
                        name=f'gwp {i} {suffix}', units='%', element=f'LCA {suffix}')
 
     elif kind == 'optimize':
-        metric(getter=FuncGetter(get_gwp, (sys,)),
+        metric(getter=FuncGetter(get_gwp, (sub,)),
                name='GWP100', units='$/ton rCOD', element='LCA')
     elif kind == 'mapping':
-        metric(getter=FuncGetter(get_cost, (sys,)),
+        metric(getter=FuncGetter(get_cost, (sub,)),
                name='Levelized cost', units='$/ton rCOD', element='TEA')
-        metric(getter=FuncGetter(get_gwp, (sys,)),
+        metric(getter=FuncGetter(get_gwp, (sub,)),
                name='GWP100', units='$/ton rCOD', element='LCA')
 
 #%%
@@ -659,7 +617,7 @@ def run_model(model, sample, T=400, t_step=10, method='BDF',
 
 #%% optimization
 
-from scipy.optimize import minimize, minimize_scalar
+from scipy.optimize import minimize_scalar
 from biosteam.evaluation._utils import var_columns
 import pandas as pd
 
@@ -749,8 +707,6 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
     i = 0
     cmps = mapping.system.feeds[0].components
     C0 = dict(zip(cmps.IDs, C0_bulk))
-    # _rerun = [33,60,78,87,96]
-    # for smp in samples[_rerun]:
     for smp in samples:
         i += 1
         print(f'\n{i}  {"="*20}')
@@ -761,7 +717,7 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
             res = minimize_scalar(f_obj, args=(mdl_opt,), bounds=bounds[0], 
                                   method='Bounded', 
                                   options=dict(
-                                      maxiter=20, 
+                                      maxiter=25, 
                                       xatol=1e-3,
                                       disp=3
                                       )
@@ -773,7 +729,7 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
                                         )
             study.optimize(objective, 
                            n_trials=100, 
-                           timeout=1000
+                           timeout=500
                            )
             res = np.array([v for k,v in study.best_params.items()])
             for p, v in zip(mdl_opt.parameters, res): p.setter(v)
@@ -784,7 +740,6 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
     
     # return xs, ys
     df_x = pd.DataFrame(xs, columns=var_columns(mdl_opt.parameters), dtype=float)
-    # table = pd.DataFrame(np.hstack((samples[_rerun], np.asarray(ys))),
     table = pd.DataFrame(np.hstack((samples, np.asarray(ys))),
                          columns=var_columns(mapping._parameters + mapping._metrics),
                          dtype=float)
@@ -794,7 +749,7 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
 
 #%%
 if __name__ == '__main__':
-    sys = create_system(reactor_type='FB')
+    sys = create_system(reactor_type='PB')
     mp = create_model(sys, kind='mapping')
     opt = create_model(sys, kind='optimize')
-    # optimize(mp, opt, n=20)
+    optimize(mp, opt, n=20)

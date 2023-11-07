@@ -705,7 +705,7 @@ def MCF_25_vs_75(seed, save=True):
         outs[rt] = out[0].merge(out[1])
     return outs
 
-def plot_1dkde(x, groups, x_bounds, prefix=''):
+def plot_1dkde(x, groups, x_bounds, y_bounds, prefix=''):
     n = groups.shape[1]
     i = 0
     for m, group in groups.items():
@@ -720,9 +720,7 @@ def plot_1dkde(x, groups, x_bounds, prefix=''):
                     cut=0,
                     )
         ax.set_xlim(*x_bounds)
-        ax.set_ylim(0, 2.2)
-        # if 'FB' in prefix: ax.set_ylim(0, 0.55)
-        # else: ax.set_ylim(0, 0.7)
+        ax.set_ylim(*y_bounds)
         ax.tick_params(axis='both', which='major', direction='inout', length=8, labelsize=11)
         ax.tick_params(axis='both', which='minor', direction='inout', length=5)
         ax.ticklabel_format(axis='y', scilimits=[-2,3], useMathText=True)
@@ -750,18 +748,25 @@ def plot_univariate_kdes(seed):
             ('TEA (w/o degas)', 'Levelized cost (w/o degas) [$/ton rCOD]'),
             ('LCA (w/o degas)',  'GWP100 (w/o degas) [kg CO2eq/ton rCOD]'),    
         ]
-    for i in ('FB', 'PB'):
+    for i in (
+            # 'FB', 
+            'PB',
+              ):
         df = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
                        header=[0,1], skiprows=[2,], nrows=1000)
         ys = df.loc[:,pair_cols]
         # x = df.loc[:,('Encapsulation', 'Bead diameter [mm]')]
-        x = df.loc[:,('Encapsulation', 'Bead-to-water diffusivity fraction')]
+        x = df.loc[:,('System', 'Total HRT [d]')]
+        # x = df.loc[:,('FB', 'FB voidage')]
+        # x = df.loc[:,('ADM1', 'Uptake k ac [COD/COD/d]')]
         thres = ys.quantile(0.25)
         thres[0] = np.percentile(ys.iloc[:,0], 75)
         groups = ys > thres
         groups.iloc[:,0] = ys.iloc[:,0] < thres[0]
-        # plot_1dkde(x, groups, [1,5], i+'-beaddia')
-        plot_1dkde(x, groups, [0.2,1.1], i+'-diffu')
+        # plot_1dkde(x, groups, [0.6,0.9], [0, 5], i+'-void')
+        plot_1dkde(x, groups, [1/6, 3], [0, 1], i+'-hrt')
+        # plot_1dkde(x, groups, [1,5], [0, 0.55], i+'-beaddia')
+        # plot_1dkde(x, groups, [3.9,16], [0, 0.16], i+'-kac')
         print(thres)
     
 #%% pair-wise comparisons, three-way
@@ -1024,7 +1029,7 @@ if __name__ == '__main__':
     # dt = load_data(ospath.join(results_path, 'table_compiled.xlsx'), nrows=3553)
     # dt = dt[dt.loc[:,'Reactor type'] != 'UASB']
     # encap_out = compare_DVs(dt, save_as='FB_vs_PB.xlsx')
-    smp = run_UA_SA(seed=187, N=1000)
+    # smp = run_UA_SA(seed=187, N=1000)
     # _rerun_failed_samples(187, 'PB')
     # out = calc_3way_diff(187)
     # outs = MCF_pb_to_fb(187)
@@ -1033,7 +1038,7 @@ if __name__ == '__main__':
     # breakdown_uasa(187)
     # mapping(suffix='specific')
     # mapping(suffix='common')
-    # plot_univariate_kdes(187)
+    plot_univariate_kdes(187)
     # mapping(reactor_type='FB')
     # out = Spearman_corr(187, True)
 
