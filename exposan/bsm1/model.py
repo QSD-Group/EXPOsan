@@ -178,7 +178,7 @@ def create_model(system=None, flowsheet=None, kind='general'):
             aer3.DOsat = i
 
     
-    ##### UA with random initial conditions to test steady state #####  
+    ##### UA with random initial conditions to test steady state #####
     elif kind in ('steady state', 'ss'):
         # Set initial conditions of all bioreactors
         for k, v in _ic.items():
@@ -189,7 +189,7 @@ def create_model(system=None, flowsheet=None, kind='general'):
                       baseline=b, distribution=D)
             def ic_setter(conc): pass
 
-    ##### UUA with 2 decision variables as parameters #####  
+    ##### UUA with 2 decision variables as parameters #####
     elif kind.lower() in ('decision variable', 'decision variables', 'dv', 'dvs'):
         b = aer1.Q_air
         D = shape.Uniform(lower=2.4e3, upper=b*1.25)
