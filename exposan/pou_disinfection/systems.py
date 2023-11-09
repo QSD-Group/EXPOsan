@@ -48,15 +48,20 @@ __all__ = ('create_system',)
 def create_systemA(flowsheet=None,
                    water_source=water_source, household_size=household_size, ppl=ppl):
     item = ImpactItem.get_item('NaClO')
-    A_naclo = WasteStream('A_naclo', phase='l',
-                          stream_impact_item=item.copy('A_naclo', set_as_source=True),
-                          price=1.96/0.15/1.21/0.125)
+    A_naclo = WasteStream(
+        'A_naclo', phase='l',
+        stream_impact_item=item.copy('A_naclo', set_as_source=True),
+        price=1.96/0.15/1.21/0.125)
+    item = ImpactItem.get_item('PE_stream')
+    A_cl_bottle = WasteStream(
+        'A_cl_bottle', phase='s',
+        stream_impact_item=item.copy('A_cl_bottle', set_as_source=True))
     
     number_of_households = ppl / household_size
     A1 = u.RawWater('A1', outs=('raw_water'), household_size=household_size, 
                     number_of_households=number_of_households)
     
-    A2 = u.POUChlorination('A2', ins=(A1-0, A_naclo), 
+    A2 = u.POUChlorination('A2', ins=(A1-0, A_naclo, A_cl_bottle), 
                             outs='treated_water', 
                             number_of_households=number_of_households)
     
@@ -86,7 +91,7 @@ def create_systemB(flowsheet=None,
                     number_of_households=number_of_households)
     
     ############### Simulation, TEA, and LCA ###############
-    sysB = System('sysV', path=(B1, B2))
+    sysB = System('sysB', path=(B1, B2))
     
     TEA(system=sysB, discount_rate=discount_rate, start_year=start_year,
         lifetime=lifetime, uptime_ratio=1, lang_factor=None,

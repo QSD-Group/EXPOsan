@@ -50,6 +50,7 @@ def flex_rhos_adm1(state_arr, params, T_op=298.15, pH=False, gas_transfer=True):
     T_base = params['T_base']
     root = params['root']
     
+    state_arr[state_arr < 1e-15] = 0.
     Cs_flex[:8] = state_arr[12:20]
     Cs_flex[8:12] = state_arr[19:23]
     Cs_flex[12:] = state_arr[16:23]
@@ -59,15 +60,27 @@ def flex_rhos_adm1(state_arr, params, T_op=298.15, pH=False, gas_transfer=True):
     unit_conversion = mass2mol_conversion(cmps)
     cmps_in_M = state_arr[:27] * unit_conversion
     weak_acids = cmps_in_M[[24, 25, 10, 9, 6, 5, 4, 3]]
+    
+    if T_op == T_base:
+        Kas = Kab
+        KH = KHb / unit_conversion[7:10]
+    else:
+        T_temp = params.pop('T_op', None)
+        if T_op == T_temp:
+            params['T_op'] = T_op
+            Kas = params['Ka']
+            KH = params['KH']
+        else:
+            params['T_op'] = T_op
+            Kas = params['Ka'] = Kab * T_correction_factor(T_base, T_op, Ka_dH)
+            KH = params['KH'] = KHb * T_correction_factor(T_base, T_op, KH_dH) / unit_conversion[7:10]
 
     if pH: 
-        Kas = Kab * T_correction_factor(T_base, T_op, Ka_dH)
         h = 10**(-pH)
         delta = acid_base_rxn(h, weak_acids, Kas)
         S_cat = weak_acids[0] - delta
         root.data['S_cat'] = S_cat
     else: 
-        Kas = Kab * T_correction_factor(T_base, T_op, Ka_dH)
         h = brenth(acid_base_rxn, 1e-14, 1.0,
                    args=(weak_acids, Kas),
                    xtol=1e-12, maxiter=100)
@@ -91,7 +104,6 @@ def flex_rhos_adm1(state_arr, params, T_op=298.15, pH=False, gas_transfer=True):
     if gas_transfer:
         biogas_S = state_arr[7:10].copy()
         biogas_p = R * T_op * state_arr[27:30]
-        KH = KHb * T_correction_factor(T_base, T_op, KH_dH) / unit_conversion[7:10]
         co2 = weak_acids[3] - Kas[2] * weak_acids[3] / (Kas[2] + h)
         biogas_S[-1] = co2 / unit_conversion[9]
         rhos_flex[-3:] = kLa * (biogas_S - KH * biogas_p)

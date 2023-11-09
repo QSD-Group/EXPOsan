@@ -136,7 +136,7 @@ def batch_setting_LCA_params(path, model, exclude=()):
     for ind in lca.indicators:
         ind_ID = ind.ID
         ind_unit = ind.unit
-        if ind_ID in (exclude): continue
+        if ind_ID in exclude: continue
         data = load_data(path, sheet=ind_ID)
         for p in data.index:
             item = ImpactItem.get_item(p)

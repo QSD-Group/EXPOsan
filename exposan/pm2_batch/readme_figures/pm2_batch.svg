@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="135pt" height="51pt" viewBox="0.00 0.00 135.00 51.00">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 47)">
+<title>%3</title>
+<!-- PBR
+Batch experiment -->
+<g id="node1" class="node"><title>PBR
+Batch experiment</title>
+<g id="a_node1"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="127,-43 -7.10543e-015,-43 -7.10543e-015,-0 127,-0 127,-43"/>
+<text text-anchor="middle" x="63.5" y="-25.3" font-family="Arial" font-size="14.00" fill="white">PBR</text>
+<text text-anchor="middle" x="63.5" y="-10.3" font-family="Arial" font-size="14.00" fill="white">Batch experiment</text>
+</a>
+</g>
+</g>
+</g>
+</svg>

@@ -20,7 +20,7 @@ for license details.
 
 import os, qsdsan as qs
 from chaospy import distributions as shape
-from qsdsan import Model, Metric, PowerUtility
+from qsdsan import Model, Metric, PowerUtility, ImpactItem
 from qsdsan.utils import load_data
 from exposan.utils import (
     batch_setting_LCA_params,
@@ -33,11 +33,8 @@ from exposan.pou_disinfection import (
     data_path,
     get_LCA_metrics,
     get_TEA_metrics,
-    household_size,
-    ppl,
     results_path,
     update_number_of_householdsize,
-    water_source,
     )
 
 __all__ = ('create_model', 'run_uncertainty',)
@@ -49,11 +46,11 @@ __all__ = ('create_model', 'run_uncertainty',)
 # Functions for batch-making metrics and -setting parameters
 # =============================================================================
 
-def add_metrics(model, include_breakdown=False):
+def add_metrics(model, ppl=pou.ppl, include_breakdown=False):
     pou._load_lca_data()
     system = model.system
-    TEA_functions = get_TEA_metrics(system, include_breakdown=include_breakdown)
-    LCA_functions = get_LCA_metrics(system, include_breakdown=include_breakdown)
+    TEA_functions = get_TEA_metrics(system, ppl=ppl, include_breakdown=include_breakdown)
+    LCA_functions = get_LCA_metrics(system, ppl=ppl, include_breakdown=include_breakdown)
     indicators = system.LCA.indicators
     
     unit = f'{qs.currency}/cap/yr'
@@ -91,11 +88,12 @@ def add_metrics(model, include_breakdown=False):
     model.metrics = metrics
 
 
-def add_shared_parameters(model):
+def add_shared_parameters(model, ppl=pou.ppl):
     sys = model.system
     param = model.parameter
 
     ########## Related to multiple units ##########
+    #!!! Needs to be updated using the UN global household size
     # Household size
     raw_water = sys.path[0]
     b = pou.household_size
@@ -134,9 +132,11 @@ def add_shared_parameters(model):
             units='$/kWh', baseline=b, distribution=D)
     def set_electricity_price(i):
         PowerUtility.price = i
-        
+
+    # CF of PE_stream should be the same as PE,
+    # will be added separately for POU chlorination (the only system that uses it)
     item_path = os.path.join(pou.data_path, 'impact_items.xlsx')
-    batch_setting_LCA_params(item_path, model)
+    batch_setting_LCA_params(item_path, model, exclude=('PE_stream'))
 
 
 def import_water_data(water_source):
@@ -160,13 +160,13 @@ def create_modelA(system_kwargs={}, **model_kwargs):
     
     # Shared metrics/parameters
     modelA = Model(sysA, **model_kwargs)
-    add_metrics(modelA)
-    add_shared_parameters(modelA)
+    ppl = system_kwargs.get('ppl', pou.ppl)
+    add_metrics(modelA, ppl=ppl)
+    add_shared_parameters(modelA, ppl=ppl)
     
     # NaClO price
     A_naclo = sysA.flowsheet.stream['A_naclo']
     b = A_naclo.price
-    if b != 1.96/0.15/1.21/0.125: raise ValueError('baseline price of NaClO changed!')
     D = shape.Uniform(lower=b*0.75, upper=b*1.25)
     @modelA.parameter(
         name='NaClO price', element='TEA', kind='isolated',
@@ -175,8 +175,23 @@ def create_modelA(system_kwargs={}, **model_kwargs):
     def set_NaClO_price(i):
         A_naclo.price = i
     
+    # Since the chlorine bottle also uses PE as the container,
+    # adjust so they will be using the same value
+    A_naclo = sysA.flowsheet.stream['A_cl_bottle']
+    PE, PE_stream = ImpactItem.get_item('PE'), ImpactItem.get_item('PE_stream')
+    # The distribution of this dummy parameter actually doesn't matter
+    # (since it's not actually used anywhere)
+    b = PE_stream.CFs['GWP']
+    D = shape.Uniform(lower=b*0.75, upper=b*1.25)
+    @modelA.parameter(
+        name='PE_stream_dummy', element='LCA', kind='isolated',
+        units='kg CO2-eq/kg', baseline=b, distribution=D,
+        )
+    def set_PE_stream_CF(i):
+        PE_stream.CFs['GWP'] = PE.CFs['GWP']
+    
     # RawWater
-    water_data = import_water_data(system_kwargs['water_source'])
+    water_data = import_water_data(system_kwargs.get('water_source', pou.water_source))
     batch_setting_unit_params(water_data, modelA, unitA.A1)
 
     # Chlorination
@@ -195,11 +210,12 @@ def create_modelB(system_kwargs={}, **model_kwargs):
     
     # Shared metrics/parameters
     modelB = Model(sysB, **model_kwargs)
-    add_metrics(modelB)
-    add_shared_parameters(modelB)
+    ppl = system_kwargs.get('ppl', pou.ppl)
+    add_metrics(modelB, ppl=ppl)
+    add_shared_parameters(modelB, ppl=ppl)
     
     # RawWater
-    water_data = import_water_data(system_kwargs['water_source'])
+    water_data = import_water_data(system_kwargs.get('water_source', pou.water_source))
     batch_setting_unit_params(water_data, modelB, unitB.B1)
     
     # AgNP CWF
@@ -217,11 +233,12 @@ def create_modelC(system_kwargs={}, **model_kwargs):
     
     # Shared metrics/parameters
     modelC = Model(sysC, **model_kwargs)
-    add_metrics(modelC)
-    add_shared_parameters(modelC)
+    ppl = system_kwargs.get('ppl', pou.ppl)
+    add_metrics(modelC, ppl=ppl)
+    add_shared_parameters(modelC, ppl=ppl)
     
     # RawWater
-    water_data = import_water_data(system_kwargs['water_source'])
+    water_data = import_water_data(system_kwargs.get('water_source', pou.water_source))
     batch_setting_unit_params(water_data, modelC, unitC.C1)
     
     # UV lamp
@@ -240,11 +257,12 @@ def create_modelD(system_kwargs={}, **model_kwargs):
     
     # Shared metrics/parameters
     modelD = Model(sysD, **model_kwargs)
-    add_metrics(modelD)
-    add_shared_parameters(modelD)
+    ppl = system_kwargs.get('ppl', pou.ppl)
+    add_metrics(modelD, ppl=ppl)
+    add_shared_parameters(modelD, ppl=ppl)
     
     # RawWater
-    water_data = import_water_data(system_kwargs['water_source'])
+    water_data = import_water_data(system_kwargs.get('water_source', pou.water_source))
     batch_setting_unit_params(water_data, modelD, unitD.D1)
     
     # UV LED
@@ -256,7 +274,10 @@ def create_modelD(system_kwargs={}, **model_kwargs):
 
 
 # Wrapper function so that it'd work for all
-def create_model(model_ID='A', water_source=water_source, household_size=household_size, ppl=ppl,
+def create_model(model_ID='A',
+                 water_source=pou.water_source,
+                 household_size=pou.household_size,
+                 ppl=pou.ppl,
                  **model_kwargs):
     model_ID = model_ID.lower().rsplit('model')[-1].rsplit('sys')[-1].upper() # works for "modelA"/"sysA"/"A"
     system_kwargs = {
