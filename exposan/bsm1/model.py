@@ -179,8 +179,6 @@ def create_model(system=None, flowsheet=None, kind='general'):
 
     
     ##### UA with random initial conditions to test steady state #####  
-    '''initial condition'''
-    
     elif kind in ('steady state', 'ss'):
         # Set initial conditions of all bioreactors
         for k, v in _ic.items():
@@ -191,10 +189,7 @@ def create_model(system=None, flowsheet=None, kind='general'):
                       baseline=b, distribution=D)
             def ic_setter(conc): pass
 
-    ##### UUA with 2 decision variables as parameters #####
-    '''flow rate of aeration and wastage'''
-    '''parameter of reactors not model'''
-    
+    ##### UUA with 2 decision variables as parameters #####  
     elif kind.lower() in ('decision variable', 'decision variables', 'dv', 'dvs'):
         b = aer1.Q_air
         D = shape.Uniform(lower=2.4e3, upper=b*1.25)
@@ -222,15 +217,13 @@ def create_model(system=None, flowsheet=None, kind='general'):
         
     ##### Add universal evaluation metrics #####   
     # Effluent composite variables and daily sludge production
-    for i in ('COD', 'BOD5', 'TN'): # biomass, p, n, X_CH, X_LI
+    for i in ('COD', 'BOD5', 'TN'):
         metric(getter=AttrGetter(effluent, attr=i), name='Effluent '+i, 
                units='mg/L', element='Effluent')
     
     @metric(name='Effluent TKN', units='mg/L', element='Effluent')
     def get_TKN():
         return effluent.composite('N', subgroup=('S_NH', 'S_ND', 'X_ND'))
-    
-    return effluent.iconc['X_ALG']
     
     metric(getter=effluent.get_TSS, name='Effluent TSS', units='mg/L', element='Effluent')
     
