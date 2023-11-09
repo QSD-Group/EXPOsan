@@ -4,7 +4,7 @@ pm2_ecorecover: Calibration & Validation of Phototrophic-Mixotrophic Process Mod
 
 Summary
 -------
-This module is used to calibrate and validate the Phototrophic-Mixotrophic Process Model (PM2; ``qsdsan.processes.PM2``) using the continuous online monitoring data from the EcoRecover plant.
+This module is used to calibrate and validate the Phototrophic-Mixotrophic Process Model (PM2; ``qsdsan.processes.PM2``) using the continuous online monitoring data from the EcoRecover plant. Note that the package `optuna <https://optuna.org/>`_ is needed to run the calibration script.
 
 .. figure:: ./readme_figures/pm2_ecorecover.svg
 

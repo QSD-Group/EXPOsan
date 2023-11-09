@@ -4,7 +4,7 @@ pm2_batch: Calibration of Phototrophic-Mixotrophic Process Model (PM2)
 
 Summary
 -------
-This module is used to calibrate the Phototrophic-Mixotrophic Process Model (PM2; ``qsdsan.processes.PM2``) using batch experiment results.
+This module is used to calibrate the Phototrophic-Mixotrophic Process Model (PM2; ``qsdsan.processes.PM2``) using batch experiment results. Note that the package `optuna <https://optuna.org/>`_ is needed to run the calibration script.
 
 .. figure:: ./readme_figures/pm2_batch.svg
 
