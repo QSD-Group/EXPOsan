@@ -40,10 +40,11 @@ from exposan.htl import (
     create_tea,
     )
 from exposan.htl import _sanunits as su
+from biosteam import settings
 
 __all__ = ('create_system',)
 
-def create_system(configuration='baseline'):
+def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     configuration = configuration or 'baseline'
     if configuration not in ('baseline', 'no_P', 'PSA'):
         raise ValueError('`configuration` can only be "baseline", '
@@ -68,7 +69,8 @@ def create_system(configuration='baseline'):
     qs.ImpactIndicator.load_from_file(os.path.join(folder, 'data/impact_indicators.csv'))
     qs.ImpactItem.load_from_file(os.path.join(folder, 'data/impact_items.xlsx'))
     
-    raw_wastewater = qs.Stream('raw_wastewater', H2O=100, units='MGD', T=25+273.15)
+    
+    raw_wastewater = qs.WasteStream('raw_wastewater', H2O=100, units='MGD', T=25+273.15)
     # Jones baseline: 1276.6 MGD, 1.066e-4 $/kg ww
     # set H2O equal to the total raw wastewater into the WWTP
     
@@ -82,6 +84,8 @@ def create_system(configuration='baseline'):
                    sludge_moisture=0.99, sludge_dw_ash=0.257, 
                    sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, operation_hours=7920)
     WWTP.register_alias('WWTP')
+    
+    raw_wastewater.price = -WWTP.ww_2_dry_sludge*waste_price/3.79/(10**6)
     
     SluC = qsu.SludgeCentrifuge('A000', ins=WWTP-0,
                             outs=('supernatant','compressed_sludge'),
@@ -160,7 +164,7 @@ def create_system(configuration='baseline'):
     V1.register_alias('V1')
     
     F1 = qsu.Flash('A250', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
-                     T=60+273.15, P=50*6894.76)
+                     T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
     F1.register_alias('F1')
     
     MemDis = qsu.MembraneDistillation('A260', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
@@ -202,9 +206,10 @@ def create_system(configuration='baseline'):
     H2 = qsu.HXutility('A330', ins=V2-0, outs='cooled_HT', T=60+273.15,
                         init_with='Stream', rigorous=True)
     H2.register_alias('H2')
-    
+
+
     F2 = qsu.Flash('A340', ins=H2-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
-               P=717.4*6894.76) # outflow P
+               P=717.4*6894.76, thermo=settings.thermo.ideal()) # outflow P
     F2.register_alias('F2')
     
     V3 = IsenthalpicValve('A350', ins=F2-1, outs='depressed_flash_effluent', P=55*6894.76, vle=True)
@@ -307,19 +312,18 @@ def create_system(configuration='baseline'):
     PC5.register_alias('PC5')
     
     GasolineTank = qsu.StorageTank('T500', ins=PC1-0, outs=('gasoline'),
-                                    tau=3*24, init_with='Stream', vessel_material='Carbon steel')
+                                    tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
     # store for 3 days based on Jones 2014
     GasolineTank.register_alias('GasolineTank')
     
+    GasolineTank.outs[0].price = 0.9388
+    
     DieselTank = qsu.StorageTank('T510', ins=PC2-0, outs=('diesel'),
-                                  tau=3*24, init_with='Stream', vessel_material='Carbon steel')
+                                  tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
     # store for 3 days based on Jones 2014
     DieselTank.register_alias('DieselTank')
     
-    FuelMixer = su.FuelMixer('S570', ins=(GasolineTank-0, DieselTank-0),
-                             outs='fuel', target='diesel')
-    # integrate gasoline and diesel based on their LHV for MFSP calculation
-    FuelMixer.register_alias('FuelMixer')
+    DieselTank.outs[0].price = 0.9722
     
     GasMixer = qsu.Mixer('S580', ins=(HTL-3, F1-0, F2-0, D1-0, F3-0),
                           outs=('fuel_gas'), init_with='Stream')
@@ -334,7 +338,7 @@ def create_system(configuration='baseline'):
     # facilities
     # =============================================================================
     
-    qsu.HeatExchangerNetwork('HXN')
+    qsu.HeatExchangerNetwork('HXN', force_ideal_thermo=True)
     
     CHP = qsu.CombinedHeatPower('CHP', include_construction=True,
                                 ins=(GasMixer-0, 'natural_gas', 'air'),
@@ -350,6 +354,20 @@ def create_system(configuration='baseline'):
     sys.register_alias('sys')
 
     ##### Add stream impact items #####
+
+    # add impact for waste sludge
+    qs.StreamImpactItem(ID='waste_sludge_item',
+                        linked_stream=stream.raw_wastewater,
+                        Acidification=0,
+                        Ecotoxicity=0,
+                        Eutrophication=0,
+                        GlobalWarming=-WWTP.ww_2_dry_sludge*waste_GWP/3.79/(10**6),
+                        OzoneDepletion=0,
+                        PhotochemicalOxidation=0,
+                        Carcinogenics=0,
+                        NonCarcinogenics=0,
+                        RespiratoryEffects=0)
+    
     # Biocrude upgrading
     qs.StreamImpactItem(ID='H2_item',
                         linked_stream=stream.H2,
@@ -513,9 +531,22 @@ def create_system(configuration='baseline'):
                         NonCarcinogenics=-62.932,
                         RespiratoryEffects=-0.0031315)
     
+    # Gasoline (naphtha)
+    qs.StreamImpactItem(ID='gasoline_item',
+                        linked_stream=stream.gasoline,
+                        Acidification=-0.21813,
+                        Ecotoxicity=-0.15887,
+                        Eutrophication=-0.0010594,
+                        GlobalWarming=-0.36865,
+                        OzoneDepletion=-6.4977E-07,
+                        PhotochemicalOxidation=-0.00182,
+                        Carcinogenics=-0.00053932,
+                        NonCarcinogenics=-2.2524,
+                        RespiratoryEffects=-0.0009461)
+    
     # Diesel
     qs.StreamImpactItem(ID='diesel_item',
-                        linked_stream=stream.fuel,
+                        linked_stream=stream.diesel,
                         Acidification=-0.25164,
                         Ecotoxicity=-0.18748,
                         Eutrophication=-0.0010547,

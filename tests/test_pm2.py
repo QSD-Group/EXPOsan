@@ -8,6 +8,8 @@ This module is developed by:
 
     Yalin Li <mailto.yalin.li@gmail.com>
 
+    Ga-Yeong Kim <gayeong1225@gmail.com>
+
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.

@@ -101,7 +101,6 @@ class WWTP(SanUnit):
         self.sludge_dw_ash = sludge_dw_ash
         self.sludge_afdw_lipid = sludge_afdw_lipid
         self.sludge_afdw_protein = sludge_afdw_protein
-        self.sludge_afdw_carbo = round(1 - sludge_afdw_protein - sludge_afdw_lipid, 5)
         self.lipid_2_C = lipid_2_C
         self.protein_2_C = protein_2_C
         self.carbo_2_C = carbo_2_C
@@ -114,6 +113,8 @@ class WWTP(SanUnit):
         
         ww = self.ins[0]
         sludge, treated = self.outs
+
+        self.sludge_afdw_carbo = round(1 - self.sludge_afdw_protein - self.sludge_afdw_lipid, 5)   
         
         if self.sludge_dw_ash >= 1:
             raise Exception ('ash can not be larger than or equal to 1')

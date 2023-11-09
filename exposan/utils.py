@@ -21,7 +21,12 @@ from sklearn.linear_model import LinearRegression as LR
 from chaospy import distributions as shape
 from thermosteam.functional import rho_to_V
 from qsdsan import ImpactItem, sanunits as su
-from qsdsan.utils import time_printer, AttrSetter
+from qsdsan.utils import (
+    AttrSetter,
+    DictAttrSetter,
+    load_data,
+    time_printer, 
+    )
 from . import es_path
 
 
@@ -30,6 +35,7 @@ __all__ = (
     '_init_modules',
     'add_fugitive_items',
     'add_V_from_rho',
+    'batch_setting_LCA_params',
     'batch_setting_unit_params',
     'clear_unit_costs',
     'general_country_specific_inputs',
@@ -107,7 +113,70 @@ def add_V_from_rho(component, rho, phase=''):
     handle.add_model(V_model)
 
 
+def batch_setting_LCA_params(path, model, exclude=()):
+    '''
+    Adding LCA uncertain parameters (characterization factors of different impact items)
+    through an Excel spreadsheet.
+    
+    Parameters
+    ----------
+    path : str
+        Path of the Excel spreadsheet containing the CF distributions.
+    model : obj
+        The model object where the parameters will be added to.
+    exclude : iterable
+        IDs of the indicators to be excluded from being added to the model.
+        
+    See Also
+    --------
+    Refer to the `pou_disinfection` module (models.py) for an example usage.
+    '''
+    lca = model.system.LCA
+    if isinstance(exclude, str): exclude = (exclude,)
+    for ind in lca.indicators:
+        ind_ID = ind.ID
+        ind_unit = ind.unit
+        if ind_ID in exclude: continue
+        data = load_data(path, sheet=ind_ID)
+        for p in data.index:
+            item = ImpactItem.get_item(p)
+            b = item.CFs[ind_ID]
+            lower = float(data.loc[p]['low'])
+            upper = float(data.loc[p]['high'])
+            dist = data.loc[p]['distribution']
+            if dist == 'uniform':
+                D = shape.Uniform(lower=lower, upper=upper)
+            elif dist == 'triangular':
+                D = shape.Triangle(lower=lower, midpoint=b, upper=upper)
+            elif dist == 'constant': continue
+            else:
+                raise ValueError(f'Distribution {dist} not recognized.')
+            model.parameter(name=p+'CF',
+                            setter=DictAttrSetter(item, 'CFs', ind_ID),
+                            element='LCA', kind='isolated',
+                            units=f'{ind_unit}/{item.functional_unit}',
+                            baseline=b, distribution=D)
+
+
 def batch_setting_unit_params(df, model, unit, exclude=()):
+    '''
+    Adding unit uncertain parameters through an Excel spreadsheet.
+    
+    Parameters
+    ----------
+    df : pandas DataFrame
+        Datasheet containing the uncertain parameters and distributions.
+    model : obj
+        The model object where the parameters will be added to.
+    unit : obj
+        The unit object that the parameters are related to.
+    exclude : iterable
+        IDs of the parameters (i.e., unit attributes) to be excluded from being added to the model.
+        
+    See Also
+    --------
+    Refer to the `pou_disinfection` module (models.py) for an example usage.
+    '''
     if isinstance(exclude, str): exclude = (exclude,)
     for para in df.index:
         if para in exclude: continue
@@ -218,6 +287,27 @@ def get_generic_tanker_truck_fee(capacity,
 def organize_and_save_results(
         model, percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
         spearman_results=None, path=''):
+    '''
+    Organize model simulation results and save as an Excel spreadsheet.
+    
+    Parameters
+    ----------
+    model : obj
+        Model object (with `model.table` containing simulation results).
+    percentiles : iterable
+        Characteristic percentiles of the parameters values/results to be generated.
+    spearman_results : df
+        Either None (if no Spearman rank correlation has been run),
+        or one df containing the rho values of the Spearman results,
+        or two dfs containing the rho and p-values of the Spearman results.
+    path : str
+        Path where the output Excel to be saved to.
+        Will be saved to the "/results" folder if not provided.
+        
+    Note
+    ----
+    The `model` object needs to be evaluated (i.e., simulated) first.
+    '''
     dct = {}
     index_p = len(model.get_parameters())
     dct['parameters'] = model.table.iloc[:, :index_p].copy()
@@ -225,7 +315,11 @@ def organize_and_save_results(
     if percentiles:
         dct['percentiles_parameters'] = dct['parameters'].quantile(q=percentiles)
         dct['percentiles_results'] = dct['data'].quantile(q=percentiles)
-    dct['spearman'] = spearman_results
+    try:
+        iter(spearman_results)
+        dct['spearman_rho'] = spearman_results[0]
+        dct['spearman_p'] = spearman_results[1]
+    except: dct['spearman_rho'] = spearman_results
 
     path = os.path.join(es_path, f'sys{model.system.ID[-1]}_model.xlsx') if path=='' else path
     with pd.ExcelWriter(path) as writer:
@@ -234,7 +328,9 @@ def organize_and_save_results(
         if percentiles:
             dct['percentiles_parameters'].to_excel(writer, sheet_name='Parameter percentiles')
             dct['percentiles_results'].to_excel(writer, sheet_name='Result percentiles')
-        if spearman_results is not None: dct['spearman'].to_excel(writer, sheet_name='Spearman')
+        if spearman_results is not None:
+            dct['spearman_rho'].to_excel(writer, sheet_name='Spearman_rho')
+            if dct.get('spearman_p') is not None: dct['spearman_p'].to_excel(writer, sheet_name='Spearman_p')
         model.table.to_excel(writer, sheet_name='Raw data')
 
 
@@ -248,10 +344,10 @@ def run_uncertainty(model, seed=None, N=1000, rule='L',
     model.load_samples(samples)
     model.evaluate()
     # Spearman's rank correlation
-    spearman_results = model.spearman()
-    spearman_results.columns = pd.Index([i.name_with_units for i in model.metrics])
+    rho, p = model.spearman_r()
+    rho.columns = p.columns = pd.Index([i.name_with_units for i in model.metrics])
     organize_and_save_results(model=model, percentiles=percentiles,
-                              spearman_results=spearman_results, path=path)
+                              spearman_results=(rho, p), path=path)
 
 
 # Example input dict for country-specific analysis

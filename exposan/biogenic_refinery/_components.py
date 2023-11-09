@@ -5,7 +5,9 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+
     Lewis Rowles <stetsonsc@gmail.com>
+
     Yalin Li <mailto.yalin.li@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -49,7 +51,7 @@ def create_components(set_thermo=True):
     H2SO4 = Component('H2SO4', phase='l', particle_size='Soluble',
                       degradability='Undegradable', organic=False)
 
-    MgOH2 = Component('MagnesiumHydroxide', formula='Mg(OH)2',
+    MgOH2 = Component('MagnesiumHydroxide',
                       phase='s', particle_size='Particulate',
                       degradability='Slowly', organic=False)
 

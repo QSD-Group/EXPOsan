@@ -18,6 +18,8 @@ __all__ = ('test_asm',)
 def test_asm():
     import numpy as np
     from exposan import asm
+    
+    rtol = 0.01
     t = 10
     t_step = 0.5
     states_dct = {
@@ -38,7 +40,7 @@ def test_asm():
                          method='BDF')
             CSTR = sys.flowsheet.unit.CSTR
             for k, v in states.items():
-                assert np.isclose(v, CSTR.state[k], rtol=0.01)
+                assert np.isclose(v, CSTR.state[k], rtol=rtol)
 
 if __name__ == '__main__':
     test_asm()
