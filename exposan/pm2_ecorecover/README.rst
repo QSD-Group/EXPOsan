@@ -4,13 +4,13 @@ pm2_ecorecover: Calibration & Validation of Phototrophic-Mixotrophic Process Mod
 
 Summary
 -------
-This module is used to calibrate and validate the Phototrophic-Mixotrophic Process Model (PM2; ``qsdsan.processes.PM2``) using the continuous online monitoring data from the EcoRecover plant
+This module is used to calibrate and validate the Phototrophic-Mixotrophic Process Model (PM2; ``qsdsan.processes.PM2``) using the continuous online monitoring data from the EcoRecover plant.
 
 .. figure:: ./readme_figures/pm2_ecorecover.svg
 
    *Layout of the system used for the calibration and validation of PM2 implemented in QSDsan*
 
-- ``system.py`` constructs the batch system above.
+- ``system.py`` constructs EcoRecover system above.
 - ``model.py`` creates a model for uncertainty and sensitivity analysis.
 - ``analyses.py`` runs uncertainty and sensitivity analysis and plots the results.
 - ``calibration.py`` calibrates model parameters.
