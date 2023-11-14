@@ -631,8 +631,8 @@ C0_bulk = np.array([
     ])
 
 def f_obj(vals, mdl):
-    # if len(mdl.parameters) == 1: 
-    if len(mdl.parameters) == -1: 
+    if len(mdl.parameters) == 1: 
+    # if len(mdl.parameters) == -1: 
         mdl.parameters[0].setter(vals)
     else: 
         for p, v in zip(mdl.parameters, vals): p.setter(v)
@@ -695,8 +695,8 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
     samples, gridx, gridy = meshgrid_sample(*mapping.parameters, n)
     x0 = np.asarray([p.baseline for p in mdl_opt.parameters])
     bounds = [p.bounds for p in mdl_opt.parameters]
-    # if len(x0) > 1:
-    if len(x0) > -1:
+    if len(x0) > 1:
+    # if len(x0) > -1:
         import optuna
         names = [p.name for p in mdl_opt.parameters]
         def objective(trial):
@@ -712,8 +712,8 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
         print(f'\n{i}  {"="*20}')
         for p, v in zip(mapping.parameters, smp): p.setter(v)
         mapping.system.units[0].set_init_conc(**C0)
-        # if len(x0) == 1:
-        if len(x0) == -1:
+        if len(x0) == 1:
+        # if len(x0) == -1:
             res = minimize_scalar(f_obj, args=(mdl_opt,), bounds=bounds[0], 
                                   method='Bounded', 
                                   options=dict(
@@ -749,7 +749,7 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
 
 #%%
 if __name__ == '__main__':
-    sys = create_system(reactor_type='PB')
+    sys = create_system(reactor_type='FB')
     mp = create_model(sys, kind='mapping')
     opt = create_model(sys, kind='optimize')
-    optimize(mp, opt, n=20)
+    # optimize(mp, opt, n=20)

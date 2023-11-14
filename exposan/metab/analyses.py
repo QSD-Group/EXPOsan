@@ -969,6 +969,7 @@ def plot_heatmap(xx, yy, z, baseline=[], save_as='', specific=False, hrt=True):
     pos = ax.pcolormesh(xx, yy, z, shading='gouraud', norm=nm)
     cbar = fig.colorbar(pos, ax=ax)
     cbar.ax.tick_params(labelsize=11)
+    # ax.ticklabel_format(axis='y', scilimits=[-2,3], useMathText=False)
     ax.tick_params(axis='both', which='major', direction='inout', length=6, labelsize=11)
     ax.tick_params(axis='both', which='minor', direction='inout', length=3)
     ax2x = ax.secondary_xaxis('top', zorder=3)
@@ -1002,18 +1003,24 @@ def mapping(data=None, n=20, reactor_type='PB'):
                          header=[0,1], skiprows=[2,])
     sys = create_system(reactor_type=reactor_type)
     mdl = create_model(sys, kind='mapping')
-    # bl = [p.baseline for p in mdl.parameters]
+    bl = [p.baseline for p in mdl.parameters]
     opt = create_model(sys, kind='optimize')
     xx, yy, zzs = togrid(data, mdl, n)
     hrt = True
     for z, m in zip(zzs, (*opt.parameters, *mdl.metrics)):
         file = f'heatmaps/{reactor_type}/{m.name}.png'
         plot_heatmap(xx, yy, z, 
-                     # bl, 
-                     save_as=file, 
-                     # specific=(suffix=='specific'), 
-                     hrt=hrt)
+                      bl, 
+                      save_as=file, 
+                      # specific=(suffix=='specific'), 
+                      hrt=hrt)
         hrt = False
+    if reactor_type == 'FB':  z = zzs[1]*5/(1-zzs[0])*zzs[0]
+    else: z = zzs[0]*5*(1-0.39)/0.39
+    file = f'heatmaps/{reactor_type}/Total bead volume.png'    
+    plot_heatmap(xx, yy, z, 
+                 bl, 
+                 save_as=file)
 
 #%%
 if __name__ == '__main__':
@@ -1038,8 +1045,8 @@ if __name__ == '__main__':
     # breakdown_uasa(187)
     # mapping(suffix='specific')
     # mapping(suffix='common')
-    plot_univariate_kdes(187)
-    # mapping(reactor_type='FB')
+    # plot_univariate_kdes(187)
+    mapping(reactor_type='PB')
     # out = Spearman_corr(187, True)
 
     
