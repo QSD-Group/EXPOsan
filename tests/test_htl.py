@@ -24,6 +24,11 @@ def test_htl():
     
     rtol = 5e-2
     kwargs = dict(
+        feedstock='sludge',
+        plant_size=False,
+        ternary=False,
+        high_IRR=False,
+        exclude_sludge_compositions=False,
         include_HTL_yield_as_metrics=False,
         include_other_metrics=False,
         include_other_CFs_as_metrics=False,
@@ -32,17 +37,17 @@ def test_htl():
     
     # m1 = htl.create_model('baseline', **kwargs)
     # df1 = m1.metrics_at_baseline()
-    # values1 = [5.81, 165.134, 58.689, 397.735]
+    # values1 = [3.994, 53.217, 50.398, 326.790]
     # assert_allclose(df1.values, values1, rtol=rtol)
     
     # m2 = htl.create_model('no_P', **kwargs)
     # df2 = m2.metrics_at_baseline()
-    # values2 = [6.323, 196.806, 40.221, 239.713]
+    # values2 = [4.549, 87.407, 37.748, 218.554]
     # assert_allclose(df2.values, values2, rtol=rtol)
 
     m3 = htl.create_model('PSA', **kwargs)
     df3 = m3.metrics_at_baseline()
-    values3 = [4.791, 102.337, 79.657, 577.158]
+    values3 = [3.319, 11.595, 64.928, 451.126]
     assert_allclose(df3.values, values3, rtol=rtol)
 
 

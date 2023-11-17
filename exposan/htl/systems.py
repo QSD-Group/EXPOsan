@@ -28,8 +28,6 @@ References:
     https://doi.org/10.2172/1111191.
 '''
 
-
-
 import os, qsdsan as qs
 from qsdsan import sanunits as qsu
 from biosteam.units import IsenthalpicValve
@@ -44,9 +42,12 @@ from biosteam import settings
 
 __all__ = ('create_system',)
 
-def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
+def create_system(configuration='baseline', capacity=100,
+                  sludge_moisture_content=0.8, sludge_dw_ash_content=0.257, 
+                  sludge_afdw_lipid_content=0.204, sludge_afdw_protein_content=0.463,
+                  waste_cost=0, waste_GWP=0):
     configuration = configuration or 'baseline'
-    if configuration not in ('baseline', 'no_P', 'PSA'):
+    if configuration not in ('baseline','no_P','PSA'):
         raise ValueError('`configuration` can only be "baseline", '
                          '"no_P" (without acid extraction and P recovery), '
                          'or "PSA" (with H2 recovery through pressure swing adsorption), '
@@ -69,8 +70,7 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     qs.ImpactIndicator.load_from_file(os.path.join(folder, 'data/impact_indicators.csv'))
     qs.ImpactItem.load_from_file(os.path.join(folder, 'data/impact_items.xlsx'))
     
-    
-    raw_wastewater = qs.WasteStream('raw_wastewater', H2O=100, units='MGD', T=25+273.15)
+    raw_wastewater = qs.WasteStream('feedstock_assumed_in_wastewater', H2O=capacity, units='MGD', T=25+273.15)
     # Jones baseline: 1276.6 MGD, 1.066e-4 $/kg ww
     # set H2O equal to the total raw wastewater into the WWTP
     
@@ -79,43 +79,61 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     # =============================================================================
                 
     WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
-                   ww_2_dry_sludge=0.94,
+                   ww_2_dry_sludge=1,
                    # how much metric ton/day sludge can be produced by 1 MGD of ww
-                   sludge_moisture=0.99, sludge_dw_ash=0.257, 
-                   sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, operation_hours=7920)
+                   sludge_moisture=sludge_moisture_content, sludge_dw_ash=sludge_dw_ash_content, 
+                   sludge_afdw_lipid=sludge_afdw_lipid_content, sludge_afdw_protein=sludge_afdw_protein_content,
+                   operation_hours=7920)
     WWTP.register_alias('WWTP')
     
-    raw_wastewater.price = -WWTP.ww_2_dry_sludge*waste_price/3.79/(10**6)
+    raw_wastewater.price = -WWTP.ww_2_dry_sludge*waste_cost/3.79/(10**6)
     
-    SluC = qsu.SludgeCentrifuge('A000', ins=WWTP-0,
-                            outs=('supernatant','compressed_sludge'),
-                            init_with='Stream',
-                            solids=('Sludge_lipid','Sludge_protein',
-                                    'Sludge_carbo','Sludge_ash'),
-                            sludge_moisture=0.8)
-    SluC.register_alias('SluC')
+    if WWTP.sludge_moisture <= 0.8:
+        
+        Humidifier = su.Humidifier(ID='S010', ins=(WWTP-0, 'makeup_water', 'recycle'), outs='HTL_influent')
+
+        Humidifier.ins[1].price = 0.000528 # U.S. average price: 2 $/1000 gal (1 gal = 3.79 kg)
+        # water weight: https://www.omnicalculator.com/conversion/kg-to-gallons#:~:text=1%20gal%20%3D%203.79%20kg%20of%20water (accessed 2023-10-27)
+        # tap water price: https://portal.ct.gov/-/media/Departments-and-Agencies/DPH/dph/drinking_water/pdf/dwcfedfundpdf.pdf (accessed 2023-10-27)
+        Humidifier.register_alias('Humidifier')
+        
+        P1 = qsu.SludgePump('A100', ins=Humidifier-0, outs='press_sludge', P=3049.7*6894.76,
+                  init_with='Stream')
+        P1.register_alias('P1')
+        # Jones 2014: 3049.7 psia
+    
+    elif WWTP.sludge_moisture > 0.8:
+
+        SluC = qsu.SludgeCentrifuge('A000', ins=WWTP-0,
+                                outs=('supernatant','compressed_sludge'),
+                                init_with='Stream',
+                                solids=('Sludge_lipid','Sludge_protein',
+                                        'Sludge_carbo','Sludge_ash'),
+                                sludge_moisture=0.8)
+        SluC.register_alias('SluC')
+        
+        P1 = qsu.SludgePump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76,
+                  init_with='Stream')
+        P1.register_alias('P1')
+        # Jones 2014: 3049.7 psia
     
     # =============================================================================
     # HTL (Area 100)
     # =============================================================================
     
-    P1 = qsu.SludgePump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76,
-              init_with='Stream')
-    P1.register_alias('P1')
-    # Jones 2014: 3049.7 psia
-    
     H1 = qsu.HXutility('A110', include_construction=True,
                        ins=P1-0, outs='heated_sludge', T=351+273.15,
-                       U=0.0795, init_with='Stream', rigorous=True)
+                       U=0.0198739, init_with='Stream', rigorous=True)
     # feed T is low, thus high viscosity and low U (case B in Knorr 2013)
-    # U: 3, 14, 15 BTU/hr/ft2/F as minimum, baseline, and maximum
-    # U: 0.0170348, 0.0794957, 0.085174 kW/m2/K
+    # U: 3, 3.5, 4 BTU/hr/ft2/F as minimum, baseline, and maximum
+    # U: 0.0170348, 0.0198739, 0.0227131 kW/m2/K
     # H1: SS PNNL 2020: 50 (17-76) Btu/hr/ft2/F ~ U = 0.284 (0.096-0.4313) kW/m2/K
-    # but not in other pumps (low viscosity, don't need U to enforce total heat transfer efficiency)
+    # but not in other heat exchangers (low viscosity, don't need U to enforce total heat transfer efficiency)
     # unit conversion: https://www.unitsconverters.com/en/Btu(It)/Hmft2mdegf-To-W/M2mk/Utu-4404-4398
     H1.register_alias('H1')
     
-    HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('biochar','HTL_aqueous','biocrude','offgas_HTL'))
+    HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'),
+                                       mositure_adjustment_exist_in_the_system=True)
     HTL.register_alias('HTL')
     
     # =============================================================================
@@ -156,7 +174,7 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     StruPre.register_alias('StruPre')
     
     CHG = qsu.CatalyticHydrothermalGasification(
-        'A230', ins=(StruPre-1, '7.8%_Ru/C'), outs=('CHG_out', '7.8%_Ru/C_out'))
+        'A230', ins=(StruPre-1, '7.8%_Ru/C'), outs=('CHG_out','7.8%_Ru/C_out'))
     CHG.ins[1].price = 134.53
     CHG.register_alias('CHG')
     
@@ -168,7 +186,7 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     F1.register_alias('F1')
     
     MemDis = qsu.MembraneDistillation('A260', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
-                                  outs=('ammonium_sulfate','MemDis_ww', 'Membrane_out','solution'), init_with='WasteStream')
+                                  outs=('ammonium_sulfate','MemDis_ww','Membrane_out','solution'), init_with='WasteStream')
     MemDis.ins[2].price = 0.5256
     MemDis.outs[0].price = 0.3236
     MemDis.register_alias('MemDis')
@@ -195,7 +213,7 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     # HT_cls = su.HT if configuration != 'PSA' else su.HT_PSA
     include_PSA = False if 'PSA' not in configuration else True
     HT = qsu.Hydrotreating('A310', ins=(P2-0, RSP1-0, 'CoMo_alumina_HT'),
-               outs=('HTout', 'CoMo_alumina_HT_out'), include_PSA=include_PSA)
+               outs=('HTout','CoMo_alumina_HT_out'), include_PSA=include_PSA)
         
     HT.ins[2].price = 38.79
     HT.register_alias('HT')
@@ -256,7 +274,7 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     # (844.6 F).
     
     HC = qsu.Hydrocracking('A410', ins=(P3-0, RSP1-1, 'CoMo_alumina_HC'),
-                       outs=('HC_out', 'CoMo_alumina_HC_out'))
+                       outs=('HC_out','CoMo_alumina_HC_out'))
     HC.ins[2].price = 38.79
     HC.register_alias('HC')
     
@@ -329,8 +347,12 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
                           outs=('fuel_gas'), init_with='Stream')
     GasMixer.register_alias('GasMixer')
     
-    WWmixer = su.WWmixer('S590', ins=(SluC-0, MemDis-1, SP2-0),
-                        outs='wastewater', init_with='Stream')
+    try:
+        WWmixer = su.WWmixer('S590', ins=(SluC-0, MemDis-1, SP2-0),
+                            outs='wastewater', init_with='Stream')
+    except UnboundLocalError:
+        WWmixer = su.WWmixer('S590', ins=('', MemDis-1, SP2-0),
+                    outs='wastewater', init_with='Stream')
     # effluent of WWmixer goes back to WWTP
     WWmixer.register_alias('WWmixer')
     
@@ -338,7 +360,8 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     # facilities
     # =============================================================================
     
-    qsu.HeatExchangerNetwork('HXN', force_ideal_thermo=True)
+    qsu.HeatExchangerNetwork('HXN', T_min_app=86, force_ideal_thermo=True)
+    # 86 K: Jones et al. PNNL, 2014
     
     CHP = qsu.CombinedHeatPower('CHP', include_construction=True,
                                 ins=(GasMixer-0, 'natural_gas', 'air'),
@@ -356,8 +379,8 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
     ##### Add stream impact items #####
 
     # add impact for waste sludge
-    qs.StreamImpactItem(ID='waste_sludge_item',
-                        linked_stream=stream.raw_wastewater,
+    qs.StreamImpactItem(ID='feedstock_item',
+                        linked_stream=stream.feedstock_assumed_in_wastewater,
                         Acidification=0,
                         Ecotoxicity=0,
                         Eutrophication=0,
@@ -367,6 +390,19 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
                         Carcinogenics=0,
                         NonCarcinogenics=0,
                         RespiratoryEffects=0)
+    
+    # add impact for makeup water
+    qs.StreamImpactItem(ID='makeup_water_item',
+                        linked_stream=stream.makeup_water,
+                        Acidification=0.00011676,
+                        Ecotoxicity=0.0050151,
+                        Eutrophication=0.000000073096,
+                        GlobalWarming=0.00030228,
+                        OzoneDepletion=0.00000000016107,
+                        PhotochemicalOxidation=0.00000074642,
+                        Carcinogenics=0.0000061925,
+                        NonCarcinogenics=0.009977,
+                        RespiratoryEffects=0.00000068933)
     
     # Biocrude upgrading
     qs.StreamImpactItem(ID='H2_item',
@@ -557,7 +593,7 @@ def create_system(configuration='baseline', waste_price=0, waste_GWP=0):
                         NonCarcinogenics=-2.9281,
                         RespiratoryEffects=-0.0011096)
     
-    create_tea(sys)
+    create_tea(sys, IRR_value=0.03, finance_interest_value=0.03)
     qs.LCA(
         system=sys, lifetime=30, lifetime_unit='yr',
         Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,

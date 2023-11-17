@@ -39,8 +39,8 @@ ternary_results_dict = {'lipid':[], 'protein':[], 'carbohydrate':[],
                         'GWP_sludge_5th':[], 'GWP_sludge_50th':[], 'GWP_sludge_95th':[]}
 
 ternary_results = pd.DataFrame(ternary_results_dict)
-lipids = (0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
-proteins = (0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
+lipids = (0, )
+proteins = (0, )
 
 get_quantiles = lambda data, quantiles=(0.05, 0.5, 0.95): [data.quantile(q) for q in quantiles]
 
@@ -53,19 +53,22 @@ for lipid in lipids:
             WWTP.sludge_afdw_protein = protein
             sys.simulate()
             print('\n\n', f'Lipid: {WWTP.sludge_afdw_lipid}\n', f'Protein: {WWTP.sludge_afdw_protein}\n', f'Carbohydrate: {WWTP.sludge_afdw_carbo}', '\n\n')
-            model = create_model(sys, exclude_sludge_compositions=True,
+            model = create_model(sys,
+                                 plant_size=False,
+                                 ternary=True,
+                                 exclude_sludge_compositions=True,
                                  include_HTL_yield_as_metrics=False,
                                  include_other_metrics=False,
                                  include_other_CFs_as_metrics=False,
                                  include_check=False)
-            N = 200
+            N = 1000
             samples = model.sample(N=N, rule='L', seed=3221)
             model.load_samples(samples)
             model.evaluate()            
             MDSP = model.table['TEA']['MDSP [$/gal diesel]'].dropna()
-            sludge_price = model.table['TEA']['sludge_management_price [$/ton dry sludge]'].dropna()
-            LCA_diesel = model.table['LCA']['GWP_diesel [kg CO2/MMBTU diesel]'].dropna()
-            LCA_sludge = model.table['LCA']['GWP_sludge [kg CO2/ton dry sludge]'].dropna()
+            sludge_price = model.table['TEA']['Sludge management price [$/ton dry sludge]'].dropna()
+            LCA_diesel = model.table['LCA']['GWP diesel [kg CO2/MMBTU diesel]'].dropna()
+            LCA_sludge = model.table['LCA']['GWP sludge [kg CO2/ton dry sludge]'].dropna()
             
             ternary_results.loc[len(ternary_results.index)] = (
                 [100*lipid, 100*protein, round(100-100*lipid-100*protein),] +
