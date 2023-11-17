@@ -31,6 +31,7 @@ def create_model(system=None,
                  feedstock='sludge',
                  plant_size=False,
                  ternary=False,
+                 high_IRR=False,
                  exclude_sludge_compositions=False,
                  include_HTL_yield_as_metrics=True,
                  include_other_metrics=True,
@@ -951,15 +952,28 @@ def create_model(system=None,
         CHP.unit_TIC=i
     
     tea = sys.TEA
-    dist = shape.Triangle(0,0.03,0.05)
-    @param(name='IRR',
-            element='TEA',
-            kind='isolated',
-            units='-',
-            baseline=0.03,
-            distribution=dist)
-    def set_IRR(i):
-        tea.IRR=i
+    
+    if high_IRR == False:
+        dist = shape.Triangle(0,0.03,0.05)
+        @param(name='IRR',
+                element='TEA',
+                kind='isolated',
+                units='-',
+                baseline=0.03,
+                distribution=dist)
+        def set_IRR(i):
+            tea.IRR=i
+            
+    else:
+        dist = shape.Triangle(0.05,0.1,0.15)
+        @param(name='IRR',
+                element='TEA',
+                kind='isolated',
+                units='-',
+                baseline=0.1,
+                distribution=dist)
+        def set_IRR(i):
+            tea.IRR=i
     
     makeup_water = stream.makeup_water
     dist = shape.Uniform(0.000475,0.000581)
@@ -1150,7 +1164,7 @@ def create_model(system=None,
     # LCA (unifrom ± 10%)
     # =========================================================================
     # don't get joint distribution for multiple times, since the baselines for LCA will change.
-    qs.ImpactItem.get_all_items().pop('waste_sludge_item')
+    qs.ImpactItem.get_all_items().pop('feedstock_item')
     for item in qs.ImpactItem.get_all_items().keys():
         for CF in qs.ImpactIndicator.get_all_indicators().keys():
             abs_small = 0.9*qs.ImpactItem.get_item(item).CFs[CF]
@@ -1838,7 +1852,7 @@ def create_model(system=None,
         diesel_gal_2_kg=3.220628346
         return tea.solve_price(diesel)*diesel_gal_2_kg
     
-    raw_wastewater = stream.raw_wastewater
+    raw_wastewater = stream.feedstock_assumed_in_wastewater
     @metric(name='sludge_management_price',units='$/ton dry sludge',element='TEA')
     def get_sludge_treatment_price():
         return -tea.solve_price(raw_wastewater)*_MMgal_to_L/WWTP.ww_2_dry_sludge
