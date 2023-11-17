@@ -42,7 +42,10 @@ from biosteam import settings
 
 __all__ = ('create_system',)
 
-def create_system(configuration='baseline', waste_cost=0, waste_GWP=0):
+def create_system(configuration='baseline', capacity=100,
+                  sludge_moisture_content=0.8, sludge_dw_ash_content=0.257, 
+                  sludge_afdw_lipid_content=0.204, sludge_afdw_protein_content=0.463,
+                  waste_cost=0, waste_GWP=0):
     configuration = configuration or 'baseline'
     if configuration not in ('baseline','no_P','PSA'):
         raise ValueError('`configuration` can only be "baseline", '
@@ -67,7 +70,7 @@ def create_system(configuration='baseline', waste_cost=0, waste_GWP=0):
     qs.ImpactIndicator.load_from_file(os.path.join(folder, 'data/impact_indicators.csv'))
     qs.ImpactItem.load_from_file(os.path.join(folder, 'data/impact_items.xlsx'))
     
-    raw_wastewater = qs.WasteStream('raw_wastewater', H2O=100, units='MGD', T=25+273.15)
+    raw_wastewater = qs.WasteStream('feedstock_assumed_in_wastewater', H2O=capacity, units='MGD', T=25+273.15)
     # Jones baseline: 1276.6 MGD, 1.066e-4 $/kg ww
     # set H2O equal to the total raw wastewater into the WWTP
     
@@ -78,8 +81,9 @@ def create_system(configuration='baseline', waste_cost=0, waste_GWP=0):
     WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
                    ww_2_dry_sludge=1,
                    # how much metric ton/day sludge can be produced by 1 MGD of ww
-                   sludge_moisture=0.8, sludge_dw_ash=0.257, 
-                   sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, operation_hours=7920)
+                   sludge_moisture=sludge_moisture_content, sludge_dw_ash=sludge_dw_ash_content, 
+                   sludge_afdw_lipid=sludge_afdw_lipid_content, sludge_afdw_protein=sludge_afdw_protein_content,
+                   operation_hours=7920)
     WWTP.register_alias('WWTP')
     
     raw_wastewater.price = -WWTP.ww_2_dry_sludge*waste_cost/3.79/(10**6)
@@ -375,8 +379,8 @@ def create_system(configuration='baseline', waste_cost=0, waste_GWP=0):
     ##### Add stream impact items #####
 
     # add impact for waste sludge
-    qs.StreamImpactItem(ID='waste_sludge_item',
-                        linked_stream=stream.raw_wastewater,
+    qs.StreamImpactItem(ID='feedstock_item',
+                        linked_stream=stream.feedstock_assumed_in_wastewater,
                         Acidification=0,
                         Ecotoxicity=0,
                         Eutrophication=0,
