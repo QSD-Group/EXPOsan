@@ -208,7 +208,7 @@ def create_system(flowsheet=None):
     # Switch to ADM1 components for the anaerobic digester
     cmps_adm1 = pc.create_adm1_cmps()
     thermo_adm1 = qs.get_thermo()
-    adm1 = qs.processes.ADM1()
+    adm1 = pc.ADM1()
     cmps_adm1.X_I.i_N = cmps_asm1.X_I.i_N    
     
     J1 = su.ASMtoADM('J1', upstream=M1-0, thermo=thermo_adm1, isdynamic=True, adm1_model=adm1) # WAS is C1.outs[2]
