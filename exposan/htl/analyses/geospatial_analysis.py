@@ -522,6 +522,9 @@ filterwarnings('ignore')
 
 WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
 
+# if just want to see the two plants in Urbana-Champaign:
+# WRRF_input = WRRF_input[WRRF_input['CWNS'].isin([17000112001, 17000112002])]
+
 print(len(WRRF_input))
 
 # sludge disposal cost in $/kg sludge
@@ -550,9 +553,21 @@ WRRF_CO2_reduction_ratio = []
 NPV = []
 USD_decarbonization = []
 oil_BPD = []
-    
-for i in range(10000, len(WRRF_input)): # !!! run in different consoles to speed up
-# for i in range(0, 2):
+
+# if just want to see the two plants in Urbana-Champaign (after sludge transportation):
+# sys, barrel = create_geospatial_system(waste_cost=584.8378378378378,
+#                                        waste_GHG=436.72688477951635,
+#                                        size=21.165,
+#                                        distance=200,
+#                                        anaerobic_digestion=WRRF_input.iloc[i]['sludge_anaerobic_digestion'],
+#                                        aerobic_digestion=WRRF_input.iloc[i]['sludge_aerobic_digestion'],
+#                                        ww_2_dry_sludge_ratio=0.27300175723037196,
+#                                        # ww_2_dry_sludge_ratio: how much metric tonne/day sludge can be produced by 1 MGD of ww
+#                                        state=WRRF_input.iloc[0]['state'],
+#                                        elec_GHG=float(elec[elec['state']==WRRF_input.iloc[0]['state']]['GHG (10-year median)']))
+
+# for i in range(10000, len(WRRF_input)): # !!! run in different consoles to speed up
+for i in range(0, 2):
     
     sys, barrel = create_geospatial_system(waste_cost=WRRF_input.iloc[i]['waste_cost'],
                                            waste_GHG=WRRF_input.iloc[i]['waste_GHG'],
@@ -618,7 +633,11 @@ result.to_excel(folder + f'results/decarbonization_{date.today()}_{i}.xlsx')
 
 input_data = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
 
-output_result = pd.read_excel(folder + 'results/decarbonization_result_2023-12-26.xlsx')
+output_result_1 = pd.read_excel(folder + 'results/decarbonization_2023-12-27_4999.xlsx')
+output_result_2 = pd.read_excel(folder + 'results/decarbonization_2023-12-27_9999.xlsx')
+output_result_3 = pd.read_excel(folder + 'results/decarbonization_2023-12-27_14952.xlsx')
+
+output_result = pd.concat([output_result_1, output_result_2, output_result_3])
 
 assert input_data[['CWNS','facility_code']].duplicated().sum() == 0
 

@@ -243,21 +243,6 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                         Carcinogenics=0,
                         NonCarcinogenics=0,
                         RespiratoryEffects=0)
-
-    # crude oil (transportation is included in crude oil item, we offset that first, but we need to add our own transportation)
-    qs.StreamImpactItem(ID='transportation_item',
-                        linked_stream=stream.crude_oil,
-                        Acidification=89/1000/biocrude_density/(0.12917/1000)*0.12698/1000*distance-0.1617,
-                        Ecotoxicity=89/1000/biocrude_density/(0.12917/1000)*0.25445/1000*distance-0.10666,
-                        Eutrophication=89/1000/biocrude_density/(0.12917/1000)*0.00024901/1000*distance-0.00096886,
-                        GlobalWarming=89/1000/biocrude_density*distance-0.22304,
-                        OzoneDepletion=89/1000/biocrude_density/(0.12917/1000)*0.000000016986/1000*distance-0.00000060605,
-                        PhotochemicalOxidation=89/1000/biocrude_density/(0.12917/1000)*0.001655/1000*distance-0.0013914,
-                        Carcinogenics=89/1000/biocrude_density/(0.12917/1000)*0.00046431/1000*distance-0.00030447,
-                        NonCarcinogenics=89/1000/biocrude_density/(0.12917/1000)*1.9859/1000*distance-1.0441,
-                        RespiratoryEffects=89/1000/biocrude_density/(0.12917/1000)*0.00022076/1000*distance-0.00068606)
-    # 89 g CO2/m3/km: carbon intensity of truck transportation (Pootakham et al. A comparison of pipeline versus truck transport of bio-oil. Bioresource Technology, 2010)
-    # others are scaled based on transportation data from EcoInvent and GWP from the paper above
     
     # CHG catalyst
     qs.StreamImpactItem(ID='CHG_catalyst_item',
@@ -335,6 +320,21 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                         Carcinogenics=-0.036742,
                         NonCarcinogenics=-62.932,
                         RespiratoryEffects=-0.0031315)
+    
+    # crude oil/petroleum (transportation is included in crude oil item, we offset that first, but we need to add our own transportation)
+    qs.StreamImpactItem(ID='transportation_item',
+                        linked_stream=stream.crude_oil,
+                        Acidification=89/1000/biocrude_density/(0.12917/1000)*0.12698/1000*distance-0.1617,
+                        Ecotoxicity=89/1000/biocrude_density/(0.12917/1000)*0.25445/1000*distance-0.10666,
+                        Eutrophication=89/1000/biocrude_density/(0.12917/1000)*0.00024901/1000*distance-0.00096886,
+                        GlobalWarming=89/1000/biocrude_density*distance-0.22304,
+                        OzoneDepletion=89/1000/biocrude_density/(0.12917/1000)*0.000000016986/1000*distance-0.00000060605,
+                        PhotochemicalOxidation=89/1000/biocrude_density/(0.12917/1000)*0.001655/1000*distance-0.0013914,
+                        Carcinogenics=89/1000/biocrude_density/(0.12917/1000)*0.00046431/1000*distance-0.00030447,
+                        NonCarcinogenics=89/1000/biocrude_density/(0.12917/1000)*1.9859/1000*distance-1.0441,
+                        RespiratoryEffects=89/1000/biocrude_density/(0.12917/1000)*0.00022076/1000*distance-0.00068606)
+    # 89 g CO2/m3/km: carbon intensity of truck transportation (Pootakham et al. A comparison of pipeline versus truck transport of bio-oil. Bioresource Technology, 2010)
+    # others are scaled based on transportation data from EcoInvent and GWP from the paper above
     
     sys.simulate() # simulate first to enable the calculation of the income tax rate
     
