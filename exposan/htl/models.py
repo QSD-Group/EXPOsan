@@ -47,14 +47,14 @@ def create_model(system=None,
         Can be either a :class:`System` objective for which the model will be created,
         or one of the allowed configurations ("baseline", "no_P", "PSA").
     '''
-    sys = create_system(system) if (not system) or isinstance(system, str) else system
+    sys = create_system(system, high_IRR=high_IRR) if (not system) or isinstance(system, str) else system
     flowsheet = sys.flowsheet
     unit = flowsheet.unit
     stream = flowsheet.stream
     model = qs.Model(sys)
     param = model.parameter
-    if feedstock not in ['sludge','food','fogs','green','manure']:
-        raise ValueError("invalid feedstock, select from 'sludge', 'food', 'fogs', 'green', and 'manure'")
+    if feedstock not in ['sludge','food','fog','green','manure']:
+        raise ValueError("invalid feedstock, select from 'sludge', 'food', 'fog', 'green', and 'manure'")
     
     # =========================================================================
     # WWTP
@@ -62,7 +62,7 @@ def create_model(system=None,
     
     # add plant size for Spearman's
     
-    # raw_wastewater = stream.raw_wastewater
+    # raw_wastewater = stream.feedstock_assumed_in_wastewater
     # dist = shape.Uniform(12618039,18927059)
     # @param(name='plant_size',
     #         element=raw_wastewater,
@@ -211,7 +211,7 @@ def create_model(system=None,
             def set_N_2_P(i):
                 WWTP.N_2_P=i
 
-        if feedstock == 'fogs':
+        if feedstock == 'fog':
             
             dist = shape.Uniform(0.1,0.6)
             @param(name='sludge_moisture',
@@ -953,24 +953,24 @@ def create_model(system=None,
     
     tea = sys.TEA
     
-    if high_IRR == False:
-        dist = shape.Triangle(0,0.03,0.05)
-        @param(name='IRR',
-                element='TEA',
-                kind='isolated',
-                units='-',
-                baseline=0.03,
-                distribution=dist)
-        def set_IRR(i):
-            tea.IRR=i
-            
-    else:
+    if high_IRR:
         dist = shape.Triangle(0.05,0.1,0.15)
         @param(name='IRR',
                 element='TEA',
                 kind='isolated',
                 units='-',
                 baseline=0.1,
+                distribution=dist)
+        def set_IRR(i):
+            tea.IRR=i
+            
+    else:
+        dist = shape.Triangle(0,0.03,0.05)
+        @param(name='IRR',
+                element='TEA',
+                kind='isolated',
+                units='-',
+                baseline=0.03,
                 distribution=dist)
         def set_IRR(i):
             tea.IRR=i
@@ -1191,15 +1191,15 @@ def create_model(system=None,
         
         @metric(name='C_afdw',units='%',element='Sankey')
         def get_C_afdw():
-            return WWTP.sludge_C*24/1000/(sys.flowsheet.stream.raw_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
+            return WWTP.sludge_C*24/1000/(sys.flowsheet.stream.feedstock_assumed_in_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
         
         @metric(name='N_afdw',units='%',element='Sankey')
         def get_N_afdw():
-            return WWTP.sludge_N*24/1000/(sys.flowsheet.stream.raw_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
+            return WWTP.sludge_N*24/1000/(sys.flowsheet.stream.feedstock_assumed_in_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
         
         @metric(name='P_afdw',units='%',element='Sankey')
         def get_P_afdw():
-            return WWTP.sludge_P*24/1000/(sys.flowsheet.stream.raw_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
+            return WWTP.sludge_P*24/1000/(sys.flowsheet.stream.feedstock_assumed_in_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
         
         @metric(name='sludge_C',units='kg/hr',element='Sankey')
         def get_sludge_C():

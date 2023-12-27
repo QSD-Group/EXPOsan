@@ -45,7 +45,7 @@ __all__ = ('create_system',)
 def create_system(configuration='baseline', capacity=100,
                   sludge_moisture_content=0.8, sludge_dw_ash_content=0.257, 
                   sludge_afdw_lipid_content=0.204, sludge_afdw_protein_content=0.463,
-                  waste_cost=0, waste_GWP=0):
+                  N_2_P_value=0.3927, waste_cost=0, waste_GWP=0, high_IRR=False):
     configuration = configuration or 'baseline'
     if configuration not in ('baseline','no_P','PSA'):
         raise ValueError('`configuration` can only be "baseline", '
@@ -54,7 +54,7 @@ def create_system(configuration='baseline', capacity=100,
                          f'not "{configuration}".')
     flowsheet_ID = f'htl_{configuration}'
     
-    # Clear flowsheet and registry for reloading
+    # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
         clear_lca_registries()
@@ -83,7 +83,7 @@ def create_system(configuration='baseline', capacity=100,
                    # how much metric ton/day sludge can be produced by 1 MGD of ww
                    sludge_moisture=sludge_moisture_content, sludge_dw_ash=sludge_dw_ash_content, 
                    sludge_afdw_lipid=sludge_afdw_lipid_content, sludge_afdw_protein=sludge_afdw_protein_content,
-                   operation_hours=7920)
+                   N_2_P=N_2_P_value, operation_hours=7920)
     WWTP.register_alias('WWTP')
     
     raw_wastewater.price = -WWTP.ww_2_dry_sludge*waste_cost/3.79/(10**6)
@@ -127,7 +127,6 @@ def create_system(configuration='baseline', capacity=100,
     # feed T is low, thus high viscosity and low U (case B in Knorr 2013)
     # U: 3, 3.5, 4 BTU/hr/ft2/F as minimum, baseline, and maximum
     # U: 0.0170348, 0.0198739, 0.0227131 kW/m2/K
-    # H1: SS PNNL 2020: 50 (17-76) Btu/hr/ft2/F ~ U = 0.284 (0.096-0.4313) kW/m2/K
     # but not in other heat exchangers (low viscosity, don't need U to enforce total heat transfer efficiency)
     # unit conversion: https://www.unitsconverters.com/en/Btu(It)/Hmft2mdegf-To-W/M2mk/Utu-4404-4398
     H1.register_alias('H1')
@@ -365,8 +364,8 @@ def create_system(configuration='baseline', capacity=100,
     
     CHP = qsu.CombinedHeatPower('CHP', include_construction=True,
                                 ins=(GasMixer-0, 'natural_gas', 'air'),
-                  outs=('emission','solid_ash'), init_with='WasteStream',
-                  supplement_power_utility=False)
+                                outs=('emission','solid_ash'), init_with='WasteStream',
+                                supplement_power_utility=False)
     CHP.ins[1].price = 0.1685
     
     sys = qs.System.from_units(
@@ -404,7 +403,7 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=0.009977,
                         RespiratoryEffects=0.00000068933)
     
-    # Biocrude upgrading
+    # biocrude upgrading
     qs.StreamImpactItem(ID='H2_item',
                         linked_stream=stream.H2,
                         Acidification=0.81014,
@@ -453,7 +452,7 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=369.791688,
                         RespiratoryEffects=0.020809293)
     
-    # Membrane distillation and acid extraction
+    # membrane distillation and acid extraction
     qs.StreamImpactItem(ID='H2SO4_item',
                         linked_stream=stream.H2SO4,
                         Acidification=0.019678922,
@@ -466,7 +465,7 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=1.68237815,
                         RespiratoryEffects=9.41E-05)
     
-    # Membrane distillation
+    # membrane distillation
     qs.StreamImpactItem(ID='NaOH_item',
                         linked_stream=stream.NaOH,
                         Acidification=0.33656,
@@ -491,7 +490,7 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=31.8,
                         RespiratoryEffects=0.0028778)
     
-    # Struvite precipitation
+    # struvite precipitation
     qs.StreamImpactItem(ID='MgCl2_item',
                         linked_stream=stream.MgCl2,
                         Acidification=0.77016,
@@ -507,7 +506,7 @@ def create_system(configuration='baseline', capacity=100,
     qs.StreamImpactItem(ID='NH4Cl_item',
                         linked_stream=stream.NH4Cl,
                         Acidification=0.34682,
-                        Ecotoxicity=0.90305, 
+                        Ecotoxicity=0.90305,
                         Eutrophication=0.0047381,
                         GlobalWarming=1.525,
                         OzoneDepletion=9.22E-08,
@@ -528,20 +527,20 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=461.54,
                         RespiratoryEffects=0.0008755)
     
-    # Heating and power utilities
+    # natural gas
     qs.StreamImpactItem(ID='natural_gas_item',
                         linked_stream=stream.natural_gas,
-                        Acidification=0.083822558,
-                        Ecotoxicity=0.063446198,
-                        Eutrophication=7.25E-05,
+                        Acidification=0.086654753,
+                        Ecotoxicity=0.104609119,
+                        Eutrophication=7.60E-05,
                         GlobalWarming=1.584234288,
-                        OzoneDepletion=1.23383E-07,
-                        PhotochemicalOxidation=0.000973731,
-                        Carcinogenics=0.000666424,
-                        NonCarcinogenics=3.63204,
-                        RespiratoryEffects=0.000350917)
+                        OzoneDepletion=1.36924E-07,
+                        PhotochemicalOxidation=0.001115155,
+                        Carcinogenics=0.00144524,
+                        NonCarcinogenics=3.506685032,
+                        RespiratoryEffects=0.000326529)
     
-    # Struvite
+    # struvite
     qs.StreamImpactItem(ID='struvite_item',
                         linked_stream=stream.struvite,
                         Acidification=-0.122829597,
@@ -554,7 +553,7 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=-4.496533528,
                         RespiratoryEffects=-0.00061764)
     
-    # Ammonium sulfate
+    # ammonium sulfate
     qs.StreamImpactItem(ID='NH42SO4_item',
                         linked_stream=stream.ammonium_sulfate,
                         Acidification=-0.72917,
@@ -567,7 +566,7 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=-62.932,
                         RespiratoryEffects=-0.0031315)
     
-    # Gasoline (naphtha)
+    # gasoline (naphtha)
     qs.StreamImpactItem(ID='gasoline_item',
                         linked_stream=stream.gasoline,
                         Acidification=-0.21813,
@@ -580,7 +579,7 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=-2.2524,
                         RespiratoryEffects=-0.0009461)
     
-    # Diesel
+    # diesel
     qs.StreamImpactItem(ID='diesel_item',
                         linked_stream=stream.diesel,
                         Acidification=-0.25164,
@@ -593,11 +592,40 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=-2.9281,
                         RespiratoryEffects=-0.0011096)
     
-    create_tea(sys, IRR_value=0.03, finance_interest_value=0.03)
-    qs.LCA(
-        system=sys, lifetime=30, lifetime_unit='yr',
-        Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
-        Cooling=lambda:sys.get_cooling_duty()/1000*30,
-        )
+    # TODO: decide to use 0.35 (old federal income tax rate) or 0.21 (new federal income tax rate) as the income tax rate
+    # TODO: or use a number in between to also include state income tax (e.g., 0.25)
+    # TODO: both Snowden-Swan et al. 2022 SOT and Davis et al. 2018 used 0.21
+    if high_IRR:
+        create_tea(sys, IRR_value=0.1, income_tax_value=0.21, finance_interest_value=0.08, labor_cost_value=(0.51+1.67*capacity*WWTP.ww_2_dry_sludge/100)*10**6)
+    else:
+        create_tea(sys, IRR_value=0.03, income_tax_value=0.21, finance_interest_value=0.03, labor_cost_value=(0.51+1.67*capacity*WWTP.ww_2_dry_sludge/100)*10**6)
+
+    # for labor cost (2020 salary level)
+   
+    # 1 plant manager (0.18 MM$/year)
+    # 1 plant engineer (0.09 MM$/year)
+    # 1 maintenance supervisor (0.07 MM$/year)
+    # 1 lab manager (0.07 MM$/year)
+    # variable cost (proportional to the sludge amount, the following is for a plant of 100 dry metric tonne per day)
+    # 3 shift supervisors (0.17 MM$/year)
+    # 1 lab technican (0.05 MM$/year)
+    # 1 maintenance technician (0.05 MM$/year)
+    # 4 shift operators (0.23 MM$/year)
+    # 1 yard employee (0.04 MM$/year)
+    # 1 clerk & secretary (0.05 MM$/year)
+    
+    # the labor index can be found in https://data.bls.gov/cgi-bin/srgate with the series id CEU3232500008, remember to select 'include annual average'
+    # the labor cost would be considered as the same for both the systems in the HTL model paper (including hydroprocessing and struvite recovery) and in the HTL geospatial paper
+    # this is reasonable based on the labor cost data from
+    # Snowden-Swan et al. 2017. Conceptual Biorefinery Design and Research Targeted for 2022: Hydrothermal Liquefaction Processing of Wet Waste to Fuels
+    # (having separate tables for the HTL plant and the hydroprocessing plant serving 10 HTL plants) and
+    # Jones et al. 2014. Process Design and Economics for the Conversion of Algal Biomass to Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading
+    # (including hydroprocessing and CHG)
+        
+    qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
+           Cooling=lambda:sys.get_cooling_duty()/1000*30)
+    
     sys.simulate()
+    
     return sys

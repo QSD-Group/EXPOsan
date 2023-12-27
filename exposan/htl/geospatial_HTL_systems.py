@@ -1,36 +1,32 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
+'''
 Created on Mon Jun 5 08:46:28 2023
 
 @author: jiananfeng
-"""
 
-import os
-import qsdsan as qs, biosteam as bst
-import pandas as pd
+References:
+    
+(1) Lang, C.; Lee, B. Heat Transfer Fluid Life Time Analysis of Diphenyl
+    Oxide/Biphenyl Grades for Concentrated Solar Power Plants. Energy Procedia
+    2015, 69, 672–680. https://doi.org/10.1016/j.egypro.2015.03.077.
+'''
+
+import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
 from qsdsan.utils import clear_lca_registries
-from exposan.htl import (_load_components, create_tea,)
-from exposan.htl import _sanunits as su
+from exposan.htl import _load_components, create_tea, _oil_barrel_to_L, _sanunits as su
+from exposan.htl.income_tax import state_income_tax_rate
 from biosteam.units import IsenthalpicValve
 from biosteam import settings
 
-__all__ = ('create_spatial_system',)
+__all__ = ('create_geospatial_system',)
 
-density_biocrude = 980 # kg/m3 Snowden-Swan et al. 2022 SOT, PNNL
+biocrude_density = 980 # kg/m3 Snowden-Swan et al. 2022 SOT, PNNL
 
 def _load_process_settings(location='IL'):
-# =============================================================================
-# add a heating agent
-# =============================================================================
-    # use DOWTHERM(TM) A Heat Transfer Fluid (HTF) as the heating agent
-    # DOWTHERM(TM) A HTF = 73.5% diphenyl oxide (DPO) + 26.5% Biphenyl (BIP)
-    # critical temperature for HTF: 497 C
-    # critical pressure for HTF: 313.4 kPa
-    # https://www.dow.com/en-us/pdp.dowtherm-a-heat-transfer-fluid.238000z.\
-    # html#tech-content (accessed 11-16-2022)
-    
+
+    # see _process_settings.py in htl module for more information
     DPO_chem = qs.Chemical('DPO_chem', search_ID='101-84-8')
     BIP_chem = qs.Chemical('BIP_chem', search_ID='92-52-4')
     
@@ -42,44 +38,34 @@ def _load_process_settings(location='IL'):
     
     HTF_thermo = bst.Thermo((DPO, BIP,))
     
-    HTF = bst.UtilityAgent('HTF', DPO=0.735, BIP=0.265, T=673.15, P=951477, phase='g',
-                           # 400 C (673.15 K) and 138 psig (951477 pa) are max temp and pressure for HTF
-                           thermo=HTF_thermo,
-                           # T_limit = 495 F (530.372 K) is the highest temp that vapor can exist
-                           regeneration_price=1) # Lang
-                           # use default heat transfer efficiency (1)
-    # Temperature and pressure: https://www.dow.com/content/dam/dcc/documents/\
-    # en-us/app-tech-guide/176/176-01334-01-dowtherm-heat-transfer-fluids-\
-    # engineering-manual.pdf?iframe=true (accessed on 11-16-2022)
-    bst.HeatUtility.heating_agents.append(HTF)
-
-    bst.CE = qs.CEPCI_by_year[2020] # use 2020$ to match up with latest PNNL report
+    HTF = bst.UtilityAgent('HTF', DPO=0.735, BIP=0.265, T=673.15, P=951477,
+                           phase='g', thermo=HTF_thermo, regeneration_price=1)
     
-# =============================================================================
-# set utility prices
-# =============================================================================
-
+    bst.HeatUtility.heating_agents.append(HTF)
+    
+    # use 2020$ to match up with latest PNNL report
+    bst.CE = qs.CEPCI_by_year[2020]
+    
     folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/'
     
-    elec_input = pd.read_excel(folder + 'HTL_geospatial_model_input.xlsx')
+    elec = pd.read_excel(folder + 'state_elec_price_GHG.xlsx', 'summary')
+    
+    bst.PowerUtility.price = elec[elec['state']==location]['price (10-year median)'].iloc[0]/100
 
-    bst.PowerUtility.price = elec_input[elec_input['state']==location]['price (10-year median)'].iloc[0]/100
-
-# =============================================================================
-# create the HTL spatial system
-# =============================================================================
-
-def create_spatial_system(waste_cost=400, # assumed to be 400 for all WRRFs
-                          size=100, # in MGD
-                          distance=30, # in km, using Google Maps API
-                          solid_fate=1, # from Seiple et al. 2020
-                          ww_2_dry_sludge_ratio=1, # use real solid amount/WRRFs influent
-                          state='IL',
-                          elec_GHG=0.365593393303875):
+def create_geospatial_system(waste_cost=450, # based on the share of sludge management methods of each facilities
+                             waste_GHG=600, # based on the share of sludge management methods of each facilities
+                             size=8, # in MGD
+                             distance=100, # in km, using Google Maps API
+                             anaerobic_digestion=0,
+                             aerobic_digestion=0,
+                             ww_2_dry_sludge_ratio=1,
+                             state='IL',
+                             elec_GHG=0.37 # use state-avarage values
+                             ):
 
     flowsheet_ID = 'htl_geospatial'
     
-    # Clear flowsheet and registry for reloading
+    # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
         clear_lca_registries()
@@ -90,64 +76,49 @@ def create_spatial_system(waste_cost=400, # assumed to be 400 for all WRRFs
     _load_components()
     _load_process_settings(location=state)
     
-    # folder = os.path.dirname(__file__)
     folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/'
     qs.ImpactIndicator.load_from_file(os.path.join(folder, 'data/impact_indicators.csv'))
     qs.ImpactItem.load_from_file(os.path.join(folder, 'data/impact_items.xlsx'))
     
-    raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
+    raw_wastewater = qs.WasteStream('feedstock_assumed_in_wastewater', H2O=size, units='MGD', T=25+273.15)
     # set H2O equal to the total raw wastewater into the WWTP
     
     # =============================================================================
     # pretreatment (Area 000)
     # =============================================================================
-    
-    if solid_fate == 8: # lagoon and constructed wetland
+    # see 12/25/2023 notes for the compositions of different types of sludge
+    if anaerobic_digestion == 1:
         WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
                        ww_2_dry_sludge=ww_2_dry_sludge_ratio,
-                       # how much metric ton/day sludge can be produced by 1 MGD of ww
-                       sludge_moisture=0.99, # dewatering needed
-                       sludge_dw_ash=0.257, # w/o digestion
-                       sludge_afdw_lipid=0.204, # w/o digestion
-                       sludge_afdw_protein=0.463, # w/o digestion
+                       # how much metric tonne/day sludge can be produced by 1 MGD of ww
+                       sludge_moisture=0.8,
+                       sludge_dw_ash=0.414,
+                       sludge_afdw_lipid=0.193,
+                       sludge_afdw_protein=0.510,
                        operation_hours=8760)
         
-        SluC = qsu.SludgeCentrifuge('A000', ins=WWTP-0,
-                                outs=('supernatant','compressed_sludge'),
-                                init_with='Stream',
-                                solids=('Sludge_lipid','Sludge_protein',
-                                        'Sludge_carbo','Sludge_ash'),
-                                sludge_moisture=0.8)
-        SluC.register_alias('SluC')
-        
-        P1 = qsu.SludgePump('A100', ins=SluC-1, outs='pressed_sludge', P=3049.7*6894.76,
-                  init_with='Stream')
-    
-    elif solid_fate in (1, 2, 4): # anaerobic/aerobic digestion
+    elif aerobic_digestion == 1:
         WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
                        ww_2_dry_sludge=ww_2_dry_sludge_ratio,
-                       # how much metric ton/day sludge can be produced by 1 MGD of ww
-                       sludge_moisture=0.8, # dewatering not needed
-                       sludge_dw_ash=0.454166666666667, # w/ digestion
-                       sludge_afdw_lipid=0.1693, # w/ digestion
-                       sludge_afdw_protein=0.5185, # w/ digestion
+                       # how much metric tonne/day sludge can be produced by 1 MGD of ww
+                       sludge_moisture=0.8,
+                       sludge_dw_ash=0.468,
+                       sludge_afdw_lipid=0.193,
+                       sludge_afdw_protein=0.510,
                        operation_hours=8760)
-        
-        P1 = qsu.SludgePump('A100', ins=WWTP-0, outs='pressed_sludge', P=3049.7*6894.76,
-                  init_with='Stream')
         
     else:
         WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
                        ww_2_dry_sludge=ww_2_dry_sludge_ratio,
-                       # how much metric ton/day sludge can be produced by 1 MGD of ww
-                       sludge_moisture=0.8, # dewatering not needed
-                       sludge_dw_ash=0.257, # w/o digestion
-                       sludge_afdw_lipid=0.204, # w/o digestion
-                       sludge_afdw_protein=0.463, # w/o digestion
+                       # how much metric tonne/day sludge can be produced by 1 MGD of ww
+                       sludge_moisture=0.8,
+                       sludge_dw_ash=0.231,
+                       sludge_afdw_lipid=0.206,
+                       sludge_afdw_protein=0.456,
                        operation_hours=8760)
         
-        P1 = qsu.SludgePump('A100', ins=WWTP-0, outs='pressed_sludge', P=3049.7*6894.76,
-                  init_with='Stream')
+    P1 = qsu.SludgePump('A100', ins=WWTP-0, outs='pressed_sludge', P=3049.7*6894.76,
+              init_with='Stream')
         
     WWTP.register_alias('WWTP')
     
@@ -162,23 +133,21 @@ def create_spatial_system(waste_cost=400, # assumed to be 400 for all WRRFs
     
     H1 = qsu.HXutility('A110', include_construction=True,
                        ins=P1-0, outs='heated_sludge', T=351+273.15,
-                       U=0.0795, init_with='Stream', rigorous=True)
+                       U=0.0198739, init_with='Stream', rigorous=True)
     # feed T is low, thus high viscosity and low U (case B in Knorr 2013)
-    # U: 3, 14, 15 BTU/hr/ft2/F as minimum, baseline, and maximum
-    # U: 0.0170348, 0.0794957, 0.085174 kW/m2/K
-    # H1: SS PNNL 2020: 50 (17-76) Btu/hr/ft2/F ~ U = 0.284 (0.096-0.4313) kW/m2/K
-    # but not in other pumps (low viscosity, don't need U to enforce total heat transfer efficiency)
+    # U: 3, 3.5, 4 BTU/hr/ft2/F as minimum, baseline, and maximum
+    # U: 0.0170348, 0.0198739, 0.0227131 kW/m2/K
+    # but not in other heat exchangers (low viscosity, don't need U to enforce total heat transfer efficiency)
     # unit conversion: https://www.unitsconverters.com/en/Btu(It)/Hmft2mdegf-To-W/M2mk/Utu-4404-4398
+    
     H1.register_alias('H1')
     
-    if solid_fate == 8:
-        HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0,
-                                           outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'),
-                                           mositure_adjustment_exist_in_the_system=True)
-    else:
-        HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0,
-                                           outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'),
-                                           mositure_adjustment_exist_in_the_system=False)
+    # !!! we assume we don't need to adjust moisture content (all = 80%)
+    # for lagoon, the sludge will dry at the base of the lagoon (see https://www.sludgeprocessing.com/sludge-dewatering/sludge-drying-beds-lagoons/)
+    
+    HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0,
+                                       outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'),
+                                       mositure_adjustment_exist_in_the_system=False)
     HTL.register_alias('HTL')
     
     # =============================================================================
@@ -194,26 +163,13 @@ def create_spatial_system(waste_cost=400, # assumed to be 400 for all WRRFs
                                init_with='Stream')
     SP1.register_alias('SP1')
 
-    AcidEx = su.AcidExtraction('A200', ins=(HTL-0, SP1-0),
-                               outs=('residual','extracted'))
-    AcidEx.register_alias('AcidEx')
-    # AcidEx.outs[0].price = -0.055 # SS 2021 SOT PNNL report page 24 Table 9
-    # not include residual for TEA and LCA for now
+    M1_outs1 = ''
     
-    M1_outs1 = AcidEx.outs[1]
     M1 = su.HTLmixer('A210', ins=(HTL-1, M1_outs1), outs=('mixture',))
     M1.register_alias('M1')
     
-    StruPre = su.StruvitePrecipitation('A220', ins=(M1-0,'MgCl2','NH4Cl','MgO'),
-                                       outs=('struvite','CHG_feed'))
-    StruPre.ins[1].price = 0.5452
-    StruPre.ins[2].price = 0.13
-    StruPre.ins[3].price = 0.2
-    StruPre.outs[0].price = 0.661
-    StruPre.register_alias('StruPre')
-    
     CHG = qsu.CatalyticHydrothermalGasification('A230',
-                                                ins=(StruPre-1, '7.8%_Ru/C'),
+                                                ins=(M1-0, '7.8%_Ru/C'),
                                                 outs=('CHG_out', '7.8%_Ru/C_out'))
     CHG.ins[1].price = 134.53
     CHG.register_alias('CHG')
@@ -241,8 +197,10 @@ def create_spatial_system(waste_cost=400, # assumed to be 400 for all WRRFs
     # store for 3 days based on Jones 2014
     CrudeOilTank.register_alias('CrudeOilTank')
     
-    CrudeOilTank.outs[0].price = -5.67/density_biocrude - 0.07/density_biocrude*distance + 0.3847
-    # 5.67: fixed cost, 0.07: variable cost (Pootakham et al. Bio-oil transport by pipeline: A techno-economic assessment. Bioresource Technology, 2010)
+    CrudeOilTank.outs[0].price = -5.67*1.20/biocrude_density - 0.07*1.20/biocrude_density*distance + 0.3847
+    # 5.67: fixed cost, 0.07: variable cost ($/m3, Pootakham et al. Bio-oil transport by pipeline: A techno-economic assessment. Bioresource Technology, 2010)
+    # note cost in this paper was in 2008$, we need to convert it to 2020$ based on Gross Domestic Product chain-type price index
+    # 1 2008$ = 1.20 $2020 based on https://fred.stlouisfed.org/series/GDPCTPI
     
     PC1 = qsu.PhaseChanger('S300', ins=CHG-1, outs='CHG_catalyst_out', phase='s')
     PC1.register_alias('PC1')
@@ -260,8 +218,8 @@ def create_spatial_system(waste_cost=400, # assumed to be 400 for all WRRFs
     
     CHP = qsu.CombinedHeatPower('CHP', include_construction=True,
                                 ins=(GasMixer-0, 'natural_gas', 'air'),
-                  outs=('emission','solid_ash'), init_with='WasteStream',
-                  supplement_power_utility=False)
+                                outs=('emission','solid_ash'), init_with='WasteStream',
+                                supplement_power_utility=False)
     CHP.ins[1].price = 0.1685
     
     sys = qs.System.from_units('sys_geospatial',
@@ -273,18 +231,31 @@ def create_spatial_system(waste_cost=400, # assumed to be 400 for all WRRFs
 # add stream impact items
 # =============================================================================
    
-    # transportation - crude oil   
+    # add impact for waste sludge
+    qs.StreamImpactItem(ID='sludge_item',
+                        linked_stream=stream.feedstock_assumed_in_wastewater,
+                        Acidification=0,
+                        Ecotoxicity=0,
+                        Eutrophication=0,
+                        GlobalWarming=-WWTP.ww_2_dry_sludge*waste_GHG/3.79/(10**6), # 1 gal water = 3.79 kg water
+                        OzoneDepletion=0,
+                        PhotochemicalOxidation=0,
+                        Carcinogenics=0,
+                        NonCarcinogenics=0,
+                        RespiratoryEffects=0)
+
+    # crude oil (transportation is included in crude oil item, we offset that first, but we need to add our own transportation)
     qs.StreamImpactItem(ID='transportation_item',
                         linked_stream=stream.crude_oil,
-                        Acidification=89/1000/density_biocrude/(0.12917/1000)*0.12698/1000*distance-0.1617,
-                        Ecotoxicity=89/1000/density_biocrude/(0.12917/1000)*0.25445/1000*distance-0.10666,
-                        Eutrophication=89/1000/density_biocrude/(0.12917/1000)*0.00024901/1000*distance-0.00096886,
-                        GlobalWarming=89/1000/density_biocrude*distance-0.22304,
-                        OzoneDepletion=89/1000/density_biocrude/(0.12917/1000)*0.000000016986/1000*distance-0.00000060605,
-                        PhotochemicalOxidation=89/1000/density_biocrude/(0.12917/1000)*0.001655/1000*distance-0.0013914,
-                        Carcinogenics=89/1000/density_biocrude/(0.12917/1000)*0.00046431/1000*distance-0.00030447,
-                        NonCarcinogenics=89/1000/density_biocrude/(0.12917/1000)*1.9859/1000*distance-1.0441,
-                        RespiratoryEffects=89/1000/density_biocrude/(0.12917/1000)*0.00022076/1000*distance-0.00068606)
+                        Acidification=89/1000/biocrude_density/(0.12917/1000)*0.12698/1000*distance-0.1617,
+                        Ecotoxicity=89/1000/biocrude_density/(0.12917/1000)*0.25445/1000*distance-0.10666,
+                        Eutrophication=89/1000/biocrude_density/(0.12917/1000)*0.00024901/1000*distance-0.00096886,
+                        GlobalWarming=89/1000/biocrude_density*distance-0.22304,
+                        OzoneDepletion=89/1000/biocrude_density/(0.12917/1000)*0.000000016986/1000*distance-0.00000060605,
+                        PhotochemicalOxidation=89/1000/biocrude_density/(0.12917/1000)*0.001655/1000*distance-0.0013914,
+                        Carcinogenics=89/1000/biocrude_density/(0.12917/1000)*0.00046431/1000*distance-0.00030447,
+                        NonCarcinogenics=89/1000/biocrude_density/(0.12917/1000)*1.9859/1000*distance-1.0441,
+                        RespiratoryEffects=89/1000/biocrude_density/(0.12917/1000)*0.00022076/1000*distance-0.00068606)
     # 89 g CO2/m3/km: carbon intensity of truck transportation (Pootakham et al. A comparison of pipeline versus truck transport of bio-oil. Bioresource Technology, 2010)
     # others are scaled based on transportation data from EcoInvent and GWP from the paper above
     
@@ -301,7 +272,7 @@ def create_spatial_system(waste_cost=400, # assumed to be 400 for all WRRFs
                         NonCarcinogenics=27306.37232,
                         RespiratoryEffects=3.517184526)
     
-    # Membrane distillation and acid extraction
+    # membrane distillation and acid extraction
     qs.StreamImpactItem(ID='H2SO4_item',
                         linked_stream=stream.H2SO4,
                         Acidification=0.019678922,
@@ -314,7 +285,7 @@ def create_spatial_system(waste_cost=400, # assumed to be 400 for all WRRFs
                         NonCarcinogenics=1.68237815,
                         RespiratoryEffects=9.41E-05)
     
-    # Membrane distillation
+    # membrane distillation
     qs.StreamImpactItem(ID='NaOH_item',
                         linked_stream=stream.NaOH,
                         Acidification=0.33656,
@@ -339,70 +310,20 @@ def create_spatial_system(waste_cost=400, # assumed to be 400 for all WRRFs
                         NonCarcinogenics=31.8,
                         RespiratoryEffects=0.0028778)
     
-    # Struvite precipitation
-    qs.StreamImpactItem(ID='MgCl2_item',
-                        linked_stream=stream.MgCl2,
-                        Acidification=0.77016,
-                        Ecotoxicity=0.97878,
-                        Eutrophication=0.00039767,
-                        GlobalWarming=2.8779,
-                        OzoneDepletion=4.94E-08,
-                        PhotochemicalOxidation=0.0072306,
-                        Carcinogenics=0.0050938,
-                        NonCarcinogenics=8.6916,
-                        RespiratoryEffects=0.004385)
-
-    qs.StreamImpactItem(ID='NH4Cl_item',
-                        linked_stream=stream.NH4Cl,
-                        Acidification=0.34682,
-                        Ecotoxicity=0.90305, 
-                        Eutrophication=0.0047381,
-                        GlobalWarming=1.525,
-                        OzoneDepletion=9.22E-08,
-                        PhotochemicalOxidation=0.0030017,
-                        Carcinogenics=0.010029,
-                        NonCarcinogenics=14.85,
-                        RespiratoryEffects=0.0018387)
-    
-    qs.StreamImpactItem(ID='MgO_item',
-                        linked_stream=stream.MgO,
-                        Acidification=0.12584,
-                        Ecotoxicity=2.7949,
-                        Eutrophication=0.00063607,
-                        GlobalWarming=1.1606,
-                        OzoneDepletion=1.54E-08,
-                        PhotochemicalOxidation=0.0017137,
-                        Carcinogenics=0.018607,
-                        NonCarcinogenics=461.54,
-                        RespiratoryEffects=0.0008755)
-    
-    # Heating and power utilities
+    # natural gas
     qs.StreamImpactItem(ID='natural_gas_item',
                         linked_stream=stream.natural_gas,
-                        Acidification=0.083822558,
-                        Ecotoxicity=0.063446198,
-                        Eutrophication=7.25E-05,
+                        Acidification=0.086654753,
+                        Ecotoxicity=0.104609119,
+                        Eutrophication=7.60E-05,
                         GlobalWarming=1.584234288,
-                        OzoneDepletion=1.23383E-07,
-                        PhotochemicalOxidation=0.000973731,
-                        Carcinogenics=0.000666424,
-                        NonCarcinogenics=3.63204,
-                        RespiratoryEffects=0.000350917)
+                        OzoneDepletion=1.36924E-07,
+                        PhotochemicalOxidation=0.001115155,
+                        Carcinogenics=0.00144524,
+                        NonCarcinogenics=3.506685032,
+                        RespiratoryEffects=0.000326529)
     
-    # Struvite
-    qs.StreamImpactItem(ID='struvite_item',
-                        linked_stream=stream.struvite,
-                        Acidification=-0.122829597,
-                        Ecotoxicity=-0.269606396,
-                        Eutrophication=-0.000174952,
-                        GlobalWarming=-0.420850152,
-                        OzoneDepletion=-2.29549E-08,
-                        PhotochemicalOxidation=-0.001044087,
-                        Carcinogenics=-0.002983018,
-                        NonCarcinogenics=-4.496533528,
-                        RespiratoryEffects=-0.00061764)
-    
-    # Ammonium sulfate
+    # ammonium sulfate
     qs.StreamImpactItem(ID='NH42SO4_item',
                         linked_stream=stream.ammonium_sulfate,
                         Acidification=-0.72917,
@@ -415,16 +336,50 @@ def create_spatial_system(waste_cost=400, # assumed to be 400 for all WRRFs
                         NonCarcinogenics=-62.932,
                         RespiratoryEffects=-0.0031315)
     
-    create_tea(sys, IRR_value=0.03, finance_interest_value=0.03)
+    sys.simulate() # simulate first to enable the calculation of the income tax rate
+    
+    federal_income_tax_rate_value = 0.21
+    
+    annual_sales = CrudeOilTank.outs[0].F_mass*365*24*0.3847 + MemDis.outs[0].F_mass*365*24*0.3236
+    annual_material_cost = sum([s.cost for s in sys.feeds[1:] if ((s.price > 0) & (s.ID != 'feedstock_assumed_in_wastewater'))]) * sys.operating_hours
+    annual_utility_cost = sum([u.utility_cost for u in sys.cost_units]) * sys.operating_hours
+    annual_net_income = annual_sales - annual_material_cost - annual_utility_cost
+    
+    state_income_tax_rate_value = state_income_tax_rate(state=state, sales=annual_sales, net_income=annual_net_income)
+    
+    income_tax_rate = federal_income_tax_rate_value + state_income_tax_rate_value
+    
+    create_tea(sys, IRR_value=0.03, income_tax_value=income_tax_rate, finance_interest_value=0.03, labor_cost_value=(0.41+0.59*size*ww_2_dry_sludge_ratio/100)*10**6)
+    
+    # for labor cost (2020 salary level)
+
+    # 1 plant manager (0.18 MM$/year)
+    # 1 plant engineer (0.09 MM$/year)
+    # 1 maintenance supervisor (0.07 MM$/year)
+    # 1 lab manager (0.07 MM$/year)
+    # variable cost (proportional to the sludge amount, the following is for a plant of 100 dry metric tonne per day)
+    # 3 shift supervisors (0.17 MM$/year)
+    # 1 lab technican (0.05 MM$/year)
+    # 1 maintenance technician (0.05 MM$/year)
+    # 4 shift operators (0.23 MM$/year)
+    # 1 yard employee (0.04 MM$/year)
+    # 1 clerk & secretary (0.05 MM$/year)
+    
+    # the labor index can be found in https://data.bls.gov/cgi-bin/srgate with the series id CEU3232500008, remember to select 'include annual average'
+    # the labor cost would be considered as the same for both the systems in the HTL model paper (including hydroprocessing and struvite recovery) and in the HTL geospatial paper
+    # this is reasonable based on the labor cost data from
+    # Snowden-Swan et al. 2017. Conceptual Biorefinery Design and Research Targeted for 2022: Hydrothermal Liquefaction Processing of Wet Waste to Fuels
+    # (having separate tables for the HTL plant and the hydroprocessing plant serving 10 HTL plants) and
+    # Jones et al. 2014. Process Design and Economics for the Conversion of Algal Biomass to Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading
+    # (including hydroprocessing and CHG)
     
     qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30/0.67848*elec_GHG,
-           # 0.67848 is the GHG level with the Electricity item,
-           # we can adjust the electricity amount to reflect different GHG of electricity at different locations
+           # 0.67848 is the GHG level with the Electricity item from ecoinvent,
+           # we cannot list electricity GHG one state by one state,
+           # but we can adjust the electricity amount to reflect different GHG of electricity at different states
            Cooling=lambda:sys.get_cooling_duty()/1000*30)
     
-    sys.simulate()
-    
-    biocrude_barrel = CrudeOilTank.outs[0].F_mass/0.98/3.78541/42*24 # in BPD (barrel per day)
+    biocrude_barrel = CrudeOilTank.outs[0].F_mass/biocrude_density*1000/_oil_barrel_to_L*24 # in BPD (barrel per day)
     
     return sys, biocrude_barrel
