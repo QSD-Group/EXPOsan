@@ -353,17 +353,17 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     
     # for labor cost (2020 salary level)
 
-    # 1 plant manager (0.18 MM$/year)
-    # 1 plant engineer (0.09 MM$/year)
-    # 1 maintenance supervisor (0.07 MM$/year)
-    # 1 lab manager (0.07 MM$/year)
+    # 1 plant manager
+    # 1 plant engineer
+    # 1 maintenance supervisor
+    # 1 lab manager
     # variable cost (proportional to the sludge amount, the following is for a plant of 100 dry metric tonne per day)
-    # 3 shift supervisors (0.17 MM$/year)
-    # 1 lab technican (0.05 MM$/year)
-    # 1 maintenance technician (0.05 MM$/year)
-    # 4 shift operators (0.23 MM$/year)
-    # 1 yard employee (0.04 MM$/year)
-    # 1 clerk & secretary (0.05 MM$/year)
+    # 3 shift supervisors
+    # 1 lab technican
+    # 1 maintenance technician
+    # 4 shift operators
+    # 1 yard employee
+    # 1 clerk & secretary
     
     # the labor index can be found in https://data.bls.gov/cgi-bin/srgate with the series id CEU3232500008, remember to select 'include annual average'
     # the labor cost would be considered as the same for both the systems in the HTL model paper (including hydroprocessing and struvite recovery) and in the HTL geospatial paper

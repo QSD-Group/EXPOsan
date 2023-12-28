@@ -592,27 +592,28 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=-2.9281,
                         RespiratoryEffects=-0.0011096)
     
-    # TODO: decide to use 0.35 (old federal income tax rate) or 0.21 (new federal income tax rate) as the income tax rate
-    # TODO: or use a number in between to also include state income tax (e.g., 0.25)
-    # TODO: both Snowden-Swan et al. 2022 SOT and Davis et al. 2018 used 0.21
+    # for income tax, 0.35 is the old federal income tax rate
+    # in the future, use 0.21 (new federal income tax rate) as the income tax rate
+    # if it is necessary to add a state income tax, see exposan.htl.income_tax
     if high_IRR:
-        create_tea(sys, IRR_value=0.1, income_tax_value=0.21, finance_interest_value=0.08, labor_cost_value=(0.51+1.67*capacity*WWTP.ww_2_dry_sludge/100)*10**6)
+        create_tea(sys, IRR_value=0.1, income_tax_value=0.21, finance_interest_value=0.08, labor_cost_value=(0.41+1.40*capacity*WWTP.ww_2_dry_sludge/100)*10**6)
     else:
-        create_tea(sys, IRR_value=0.03, income_tax_value=0.21, finance_interest_value=0.03, labor_cost_value=(0.51+1.67*capacity*WWTP.ww_2_dry_sludge/100)*10**6)
+        create_tea(sys, IRR_value=0.03, income_tax_value=0.21, finance_interest_value=0.03, labor_cost_value=(0.41+1.40*capacity*WWTP.ww_2_dry_sludge/100)*10**6)
 
     # for labor cost (2020 salary level)
    
-    # 1 plant manager (0.18 MM$/year)
-    # 1 plant engineer (0.09 MM$/year)
-    # 1 maintenance supervisor (0.07 MM$/year)
-    # 1 lab manager (0.07 MM$/year)
+    # 1 plant manager
+    # 1 plant engineer
+    # 1 maintenance supervisor
+    # 1 lab manager
     # variable cost (proportional to the sludge amount, the following is for a plant of 100 dry metric tonne per day)
-    # 3 shift supervisors (0.17 MM$/year)
-    # 1 lab technican (0.05 MM$/year)
-    # 1 maintenance technician (0.05 MM$/year)
-    # 4 shift operators (0.23 MM$/year)
-    # 1 yard employee (0.04 MM$/year)
-    # 1 clerk & secretary (0.05 MM$/year)
+    # added people to some positions compared to Snowden-Swan et al. 2017 as we also have HT, HC, CHG, N/P recovery, and CHP
+    # 5 shift supervisors
+    # 3 lab technican
+    # 3 maintenance technician
+    # 12 shift operators
+    # 2 yard employee
+    # 1 clerk & secretary
     
     # the labor index can be found in https://data.bls.gov/cgi-bin/srgate with the series id CEU3232500008, remember to select 'include annual average'
     # the labor cost would be considered as the same for both the systems in the HTL model paper (including hydroprocessing and struvite recovery) and in the HTL geospatial paper
