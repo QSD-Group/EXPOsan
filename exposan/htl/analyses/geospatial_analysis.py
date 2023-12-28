@@ -7,7 +7,7 @@ Created on Sun Jun 11 08:12:41 2023
 '''
 
 import geopy.distance, googlemaps
-import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.ticker as mtick
+import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.colors as colors, matplotlib.ticker as mtick
 from exposan.htl.geospatial_HTL_systems import create_geospatial_system
 from qsdsan.utils import palettes
 from datetime import date
@@ -196,9 +196,11 @@ refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=500, edgecolor='k', line
 
 set_plot()
 
-electricity.plot('price (10-year median)', ax=ax, cmap='Oranges', edgecolor='k', legend=True, legend_kwds={'shrink': 0.35})
+# norm = colors.TwoSlopeNorm(vmin=4, vcenter=10, vmax=16)
+# electricity.plot('price (10-year median)', ax=ax, cmap='Oranges', edgecolor='k', legend=True, legend_kwds={'shrink': 0.35}, norm=norm)
 
-# electricity.plot('GHG (10-year median)', ax=ax, cmap='Blues', edgecolor='k', legend=True, legend_kwds={'shrink': 0.35})
+norm = colors.TwoSlopeNorm(vmin=0, vcenter=0.5, vmax=1)
+electricity.plot('GHG (10-year median)', ax=ax, cmap='Blues', edgecolor='k', legend=True, legend_kwds={'shrink': 0.35}, norm=norm)
 
 #%% transporation distance calculation
 
@@ -317,6 +319,73 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
+#%% travel distance box plot (per region)
+
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
+
+WRRF_input.loc[WRRF_input['state'].isin(['CT','DC','DE','FL','GA','MA','MD','ME','NC','NH','NJ','NY','PA','RI','SC','VA','VT','WV']), 'WRRF_PADD'] = 1
+WRRF_input.loc[WRRF_input['state'].isin(['IA','IL','IN','KS','KY','MI','MN','MO','ND','NE','OH','OK','SD','TN','WI']), 'WRRF_PADD'] = 2
+WRRF_input.loc[WRRF_input['state'].isin(['AL','AR','LA','MS','NM','TX']), 'WRRF_PADD'] = 3
+WRRF_input.loc[WRRF_input['state'].isin(['CO','ID','MT','UT','WY']), 'WRRF_PADD'] = 4
+WRRF_input.loc[WRRF_input['state'].isin(['AZ','CA','NV','OR','WA']), 'WRRF_PADD'] = 5
+
+fig = plt.figure(figsize=(20, 10))
+
+gs = fig.add_gridspec(1, 5, hspace=0, wspace=0)
+
+def set_cf_plot():
+    plt.rcParams['axes.linewidth'] = 3
+    plt.rcParams['xtick.labelsize'] = 30
+    plt.rcParams['ytick.labelsize'] = 30
+    plt.xticks(fontname = 'Arial')
+    plt.yticks(fontname = 'Arial')
+
+def add_region(position, region, color=b):
+    ax = fig.add_subplot(gs[0, position])
+    
+    set_cf_plot()
+    
+    ax = plt.gca()
+    ax.set_ylim([-100, 1500])
+    ax.set_xlabel(region, fontname='Arial', fontsize=30, labelpad=15)
+    
+    if position == 0:
+        ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
+        ax.set_ylabel('Distance [km]', fontname='Arial', fontsize=35, labelpad=10)
+    
+    elif position == 4:
+        ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, labelcolor='none')
+        
+        ax_right = ax.twinx()
+        ax_right.set_ylim(ax.get_ylim())
+        ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+    
+    else:
+        ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, labelcolor='none')
+    
+    bp = ax.boxplot(WRRF_input[WRRF_input['WRRF_PADD'] == position+1]['real_distance_km'], showfliers=True, widths=0.5, patch_artist=True)
+    
+    for box in bp['boxes']:
+        box.set(color='k', facecolor=color, linewidth=3)
+
+    for whisker in bp['whiskers']:
+        whisker.set(color='k', linewidth=3)
+
+    for median in bp['medians']:
+        median.set(color='k', linewidth=3)
+        
+    for cap in bp['caps']:
+        cap.set(color='k', linewidth=3)
+        
+    for flier in bp['fliers']:
+        flier.set(marker='o', markersize=7, markerfacecolor=color, markeredgewidth=1.5)
+
+add_region(0, 'East Coast', b)
+add_region(1, 'Midwest', g)
+add_region(2, 'Gulf Coast', r)
+add_region(3, 'Rocky Mountain', o)
+add_region(4, 'West Coast', y)
+
 #%% WRRFs GHG map
 
 WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
@@ -382,7 +451,7 @@ WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx'
 
 result = WRRF_input[['site_id']].drop_duplicates()
 
-max_distance = 1000
+max_distance = 1500 # this will cover all WRRFs
 for distance in np.linspace(0, max_distance, max_distance+1):
     WRRF_input_distance = WRRF_input[WRRF_input['linear_distance_km'] <= distance]
     WRRF_input_distance = WRRF_input_distance.groupby('site_id').sum('flow_2022_MGD')
@@ -405,12 +474,12 @@ for item in refineries_left_id:
 
 result = result.merge(refinery, how='left', on='site_id')
 
-result.to_excel(folder + f'results/MGD_vs_distance_{date.today()}.xlsx')
+result.to_excel(folder + f'results/MGD_vs_distance_{max_distance}_km.xlsx')
 
 #%% make the plot of cumulative WRRFs capacity vs distances (data preparation)
 
 # import file for the cumulative figure (CF)
-CF_input = pd.read_excel(folder + 'results/MGD_vs_distance_2023-12-26.xlsx')
+CF_input = pd.read_excel(folder + f'results/MGD_vs_distance_1500_km.xlsx')
 
 CF_input[0] = 0
 
@@ -425,6 +494,10 @@ CF_input.sort_values(by='PADD', inplace=True)
 CF_input = CF_input[['PADD','State', *CF_input.columns[0:-2]]]
 
 CF_input = CF_input.transpose()
+
+max_distance_on_the_plot = 1500
+
+CF_input = CF_input[0:max_distance_on_the_plot+3]
 
 #%% make the plot of cumulative WRRFs capacity vs distances (separated WRRF) # !!! need to run 2 times to make the label font and size right # TODO: not sure whether this problem happens to facility-level and regional level plots
 
@@ -443,53 +516,60 @@ PADD_4 = (CF_input.loc['PADD',:].isin([1,2,3,4])).sum()
 PADD_5 = (CF_input.loc['PADD',:].isin([1,2,3,4,5])).sum()
 
 def set_cf_plot():
-    plt.rcParams['axes.linewidth'] = 2
-    plt.rcParams['xtick.labelsize'] = 20
-    plt.rcParams['ytick.labelsize'] = 20
+    plt.rcParams['axes.linewidth'] = 3
+    plt.rcParams['xtick.labelsize'] = 30
+    plt.rcParams['ytick.labelsize'] = 30
     plt.xticks(fontname = 'Arial')
     plt.yticks(fontname = 'Arial')
 
-def add_region(position, left_label, start_region, end_region, color):
+def add_region(position, start_region, end_region, color):
     ax = fig.add_subplot(gs[0, position])
     
     set_cf_plot()
     
     for i in range(start_region, end_region):
-        CF_input.iloc[2:, i].plot(ax=ax, color=color, linewidth=2)
+        CF_input.iloc[2:, i].plot(ax=ax, color=color, linewidth=3)
         
     ax.set_xlim([0, max_distance])
-    ax.set_ylim([0, 8000])
+    ax.set_ylim([0, 7000])
     
     if position == 4:
-        ax.tick_params(direction='inout', length=15, width=2, bottom=True, top=False, left=False, right=False, labelleft=left_label, labelbottom=True)
+        ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
         
         ax_right = ax.twinx()
         ax_right.set_ylim(ax.get_ylim())
-        plt.yticks(np.arange(0, 8000, 1000))
-        ax_right.tick_params(direction='in', length=7.5, width=2, bottom=False, top=False, left=False, right=True, labelcolor='none')
+        plt.yticks(np.arange(0, 7000, 1000))
+        ax_right.tick_params(direction='in', length=7.5, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
         
     if position == 0:
-        ax.tick_params(direction='inout', length=15, width=2, bottom=True, top=False, left=True, right=False, labelleft=left_label, labelbottom=True)
+        ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False, labelleft=True, labelbottom=True)
         plt.xticks(np.arange(0, max_distance*1.2, max_distance*0.2))
+        ax.set_ylabel('Cumulative WRRFs capacity [MGD]', fontname='Arial', fontsize=35, labelpad=10)
     else:
-        ax.tick_params(direction='inout', length=15, width=2, bottom=True, top=False, left=False, right=False, labelleft=left_label, labelbottom=True)
+        if position == 2:
+            ax.set_xlabel('Distance [km]', fontname='Arial', fontsize=35, labelpad=7)
+        ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
         plt.xticks(np.arange(max_distance*0.2, max_distance*1.2, max_distance*0.2))
+    
+    for label in ax.get_xticklabels():
+        label.set_rotation(45)
+        # label.set_ha('right')
     
     ax_top = ax.twiny()
     ax_top.set_xlim(ax.get_xlim())
     plt.xticks(np.arange(max_distance*0.2, max_distance*1.2, max_distance*0.2))
-    ax_top.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=False, labelcolor='none')
+    ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
-add_region(0, True, 0, PADD_1, b)
-add_region(1, False, PADD_1, PADD_2, g)
-add_region(2, False, PADD_2, PADD_3, r)
-add_region(3, False, PADD_3, PADD_4, o)
-add_region(4, False, PADD_4, PADD_5, y)
+add_region(0, 0, PADD_1, b)
+add_region(1, PADD_1, PADD_2, g)
+add_region(2, PADD_2, PADD_3, r)
+add_region(3, PADD_3, PADD_4, o)
+add_region(4, PADD_4, PADD_5, y)
 #%% make the plot of cumulative WRRFs capacity vs distances (regional total) # !!! need to run 2 times to make the label font and size right # TODO: not sure whether this problem happens to facility-level and regional level plots
 
-fig, ax = plt.subplots(figsize=(5, 10))
+fig, ax = plt.subplots(figsize=(10, 10))
 
-set_cf_plot()
+set_cf_plot() # TODO: this is run two times?
 
 CF_input.iloc[2:, 0:PADD_1].sum(axis=1).plot(ax=ax, color=b, linewidth=2)
 
@@ -761,6 +841,8 @@ decarbonization_result = decarbonization_result.merge(WRRF_input[['FACILITY','CI
 decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'].notna()]
 
 decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'] <= 1000] # TODO: decide the upper threshold, 0, 100, or other values? # TODO: discuss with Jeremy, how to deal with very negative decarbonization cost (due to low decarbonization ratio)
+
+# TODO: this is not correct, we should group the results based on the location of WRRFs but not oil refineries
 
 PADD_1 = decarbonization_result[decarbonization_result['PADD'] == 1]
 PADD_1.sort_values(by='USD_decarbonization', inplace=True)
