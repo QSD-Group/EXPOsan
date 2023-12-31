@@ -654,8 +654,8 @@ oil_BPD = []
 #                                        state=WRRF_input.iloc[0]['state'],
 #                                        elec_GHG=float(elec[elec['state']==WRRF_input.iloc[0]['state']]['GHG (10-year median)']))
 
-# for i in range(10000, len(WRRF_input)): # !!! run in different consoles to speed up
-for i in range(0, 2):
+for i in range(0, len(WRRF_input)): # !!! run in different consoles to speed up
+# for i in range(0, 2):
     
     sys, barrel = create_geospatial_system(waste_cost=WRRF_input.iloc[i]['waste_cost'],
                                            waste_GHG=WRRF_input.iloc[i]['waste_GHG'],

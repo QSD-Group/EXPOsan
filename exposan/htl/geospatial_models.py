@@ -1,19 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
+'''
 Created on Sat Dec 30 08:01:06 2023
 
 @author: jiananfeng
-"""
-
-# 12/20/2023:
-
-# TODO: update packages (push and pull all changes)
-# TODO: rerunning baseline analysis
-# TODO: in models.py, add LCA for SludgePump, HXutility, Flash, BinaryDistillation
-# TODO: add model to geospatial_analysis.py
-# TODO: test model, pay attention to sludge_afdw_carbohydrate
-# TODO: run model for WRRFs w/ a negative decarbonization cost in multiple consoles
+'''
 
 import qsdsan as qs
 from chaospy import distributions as shape

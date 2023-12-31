@@ -325,8 +325,8 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                         RespiratoryEffects=-0.0031315)
     
     # crude oil/petroleum (transportation is included in crude oil item, we offset that first, but we need to add our own transportation)
-    qs.StreamImpactItem(ID='transportation_item',
-                        linked_stream=stream.crude_oil,
+    qs.StreamImpactItem(ID='biocrude_item',
+                        linked_stream=stream.biocrude,
                         Acidification=89/1000/biocrude_density/(0.12917/1000)*0.12698/1000*distance-0.1617,
                         Ecotoxicity=89/1000/biocrude_density/(0.12917/1000)*0.25445/1000*distance-0.10666,
                         Eutrophication=89/1000/biocrude_density/(0.12917/1000)*0.00024901/1000*distance-0.00096886,
