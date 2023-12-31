@@ -8,6 +8,7 @@ Created on Sun Jun 11 08:12:41 2023
 
 import geopy.distance, googlemaps
 import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.colors as colors, matplotlib.ticker as mtick
+from matplotlib.mathtext import _mathtext as mathtext
 from exposan.htl.geospatial_HTL_systems import create_geospatial_system
 from qsdsan.utils import palettes
 from datetime import date
@@ -23,6 +24,7 @@ r = Guest.red.HEX
 o = Guest.orange.HEX
 y = Guest.yellow.HEX
 a = Guest.gray.HEX
+p = Guest.purple.HEX
 
 def set_plot(figure_size=(30, 30)):
     global fig, ax
@@ -148,7 +150,7 @@ more_than_100 = WRRF_flow > 100
 WRRF[more_than_100].plot(ax=ax, color=Guest.green.HEX, markersize=WRRF.loc[more_than_100, WRRF_flow.name]**0.5*25, edgecolor='k', linewidth=2, alpha=0.9)
 
 # if you want to show all WRRFs together with the same symbols, comment the codes above and uncomment the next line of code
-# sludge.plot(ax=ax, color=Guest.gray.HEX, markersize=10)
+# WRRF.plot(ax=ax, color=Guest.gray.HEX, markersize=10)
 
 #%% oil refinery visualization
 
@@ -169,7 +171,9 @@ refinery['total_capacity'] = refinery[[i for i in refinery.columns if i[-4:] == 
 
 refinery = refinery.sort_values(by='total_capacity', ascending=False)
 
-refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=refinery['total_capacity']**0.5*25, edgecolor='k', linewidth=2, alpha=0.9)
+# refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=refinery['total_capacity']**0.5*25, edgecolor='k', linewidth=2, alpha=0.9)
+
+refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=1000, edgecolor='k', linewidth=5)
 
 #%% WRRFs+oil refineries visualization (just select states, search 'NOTE 1')
 
@@ -301,6 +305,8 @@ ax = plt.gca()
 ax.set_ylim([-50, 850])
 ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
 
+ax.set_ylabel('Distance [km]', fontname='Arial', fontsize=35, labelpad=10)
+
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
@@ -318,6 +324,8 @@ for median in bp['medians']:
     
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
+    
+# fig.savefig('distance.png', transparent=True, bbox_inches='tight')
 
 #%% travel distance box plot (per region)
 
@@ -400,20 +408,20 @@ WRRF_input = WRRF_input.to_crs(crs='EPSG:3857')
 
 set_plot()
 
-US.plot(ax=ax, color='w', edgecolor='k', linewidth=5)
+US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
 
 # use tonne/day
 
 WRRF_GHG_tonne_per_day = WRRF_input['total_emission']/1000
 
 less_than_50 = WRRF_GHG_tonne_per_day <= 50
-WRRF_input[less_than_50].plot(ax=ax, color=Guest.gray.HEX, markersize=WRRF_input.loc[less_than_50, WRRF_GHG_tonne_per_day.name]**0.5/3, alpha=0.5)
+WRRF_input[less_than_50].plot(ax=ax, color=Guest.gray.HEX, markersize=WRRF_input.loc[less_than_50, WRRF_GHG_tonne_per_day.name]**0.5, alpha=0.5)
 
 between_50_and_500 = (WRRF_GHG_tonne_per_day > 50) & (WRRF_GHG_tonne_per_day <= 500)
-WRRF_input[between_50_and_500].plot(ax=ax, color=Guest.red.HEX, markersize=WRRF_input.loc[between_50_and_500, WRRF_GHG_tonne_per_day.name]**0.5/3, edgecolor='k', linewidth=1.5, alpha=0.7)
+WRRF_input[between_50_and_500].plot(ax=ax, color=Guest.red.HEX, markersize=WRRF_input.loc[between_50_and_500, WRRF_GHG_tonne_per_day.name]**0.5, edgecolor='k', linewidth=1.5, alpha=0.7)
 
 more_than_500 = WRRF_GHG_tonne_per_day > 500
-WRRF_input[more_than_500].plot(ax=ax, color=Guest.green.HEX, markersize=WRRF_input.loc[more_than_500, WRRF_GHG_tonne_per_day.name]**0.5/3, edgecolor='k', linewidth=2, alpha=0.9)
+WRRF_input[more_than_500].plot(ax=ax, color=Guest.green.HEX, markersize=WRRF_input.loc[more_than_500, WRRF_GHG_tonne_per_day.name]**0.5, edgecolor='k', linewidth=2, alpha=0.9)
 
 #%% # WRRFs sludge management GHG map
 
@@ -436,13 +444,13 @@ US.plot(ax=ax, color='w', edgecolor='k', linewidth=5)
 sludge_GHG_tonne_per_day = WRRF_input['biosolids_emission']/1000
 
 less_than_50 = sludge_GHG_tonne_per_day <= 50
-WRRF_input[less_than_50].plot(ax=ax, color=Guest.gray.HEX, markersize=WRRF_input.loc[less_than_50, sludge_GHG_tonne_per_day.name]**0.5/3, alpha=0.5)
+WRRF_input[less_than_50].plot(ax=ax, color=Guest.gray.HEX, markersize=WRRF_input.loc[less_than_50, sludge_GHG_tonne_per_day.name]**0.5, alpha=0.5)
 
 between_50_and_500 = (sludge_GHG_tonne_per_day > 50) & (sludge_GHG_tonne_per_day <= 500)
-WRRF_input[between_50_and_500].plot(ax=ax, color=Guest.red.HEX, markersize=WRRF_input.loc[between_50_and_500, sludge_GHG_tonne_per_day.name]**0.5/3, edgecolor='k', linewidth=1.5, alpha=0.7)
+WRRF_input[between_50_and_500].plot(ax=ax, color=Guest.red.HEX, markersize=WRRF_input.loc[between_50_and_500, sludge_GHG_tonne_per_day.name]**0.5, edgecolor='k', linewidth=1.5, alpha=0.7)
 
 more_than_500 = sludge_GHG_tonne_per_day > 500
-WRRF_input[more_than_500].plot(ax=ax, color=Guest.green.HEX, markersize=WRRF_input.loc[more_than_500, sludge_GHG_tonne_per_day.name]**0.5/3, edgecolor='k', linewidth=2, alpha=0.9)
+WRRF_input[more_than_500].plot(ax=ax, color=Guest.green.HEX, markersize=WRRF_input.loc[more_than_500, sludge_GHG_tonne_per_day.name]**0.5, edgecolor='k', linewidth=2, alpha=0.9)
 
 #%% cumulative WRRFs capacity vs distances
 
@@ -479,7 +487,7 @@ result.to_excel(folder + f'results/MGD_vs_distance_{max_distance}_km.xlsx')
 #%% make the plot of cumulative WRRFs capacity vs distances (data preparation)
 
 # import file for the cumulative figure (CF)
-CF_input = pd.read_excel(folder + f'results/MGD_vs_distance_1500_km.xlsx')
+CF_input = pd.read_excel(folder + 'results/MGD_vs_distance_1500_km.xlsx')
 
 CF_input[0] = 0
 
@@ -727,160 +735,297 @@ integrated_result = input_data.merge(output_result, how='left', on=['CWNS','faci
 
 integrated_result.to_excel(folder + f'results/integrated_decarbonization_result_{date.today()}.xlsx')
 
-#%% facility-level decarbonization cost vs decarbonization ratio figure
+#%% read decarbonization data
 
-# TODO: pick up from here after getting new results
-
-decarbonization_result = pd.read_excel(folder + 'results/decarbonization_results_10_7_2023/carbonization_summary.xlsx')
+decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2023-12-27.xlsx')
 
 WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
 
-# TODO: may remove the merge since we may add more parameters eailier (line 388)
-decarbonization_result = decarbonization_result.merge(WRRF_input[['FACILITY','CITY_x','flow_2022_MGD','category']], how='left', left_on=['facility','city'], right_on=['FACILITY','CITY_x']) # TODO: change to use 2022 MGD data
+decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'].notna()]
 
-decarbonization_result.loc[decarbonization_result['category'].isin((1, 2, 4)) ,'AD'] = b # blue # TODO: update based on AMO data instead of Seiple data
+decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'] <= 0]
 
-decarbonization_result.loc[~decarbonization_result['category'].isin((1, 2, 4)) ,'AD'] = r # red # TODO: update based on AMO data instead of Seiple data
+#%% decarbonization map
+
+decarbonization_map = decarbonization_result.sort_values(by='total_emission', ascending=False)
+
+decarbonization_map = gpd.GeoDataFrame(decarbonization_map, crs='EPSG:4269',
+                                       geometry=gpd.points_from_xy(x=decarbonization_map.longitude,
+                                                                   y=decarbonization_map.latitude))
+
+decarbonization_map = decarbonization_map.to_crs(crs='EPSG:3857')
+
+set_plot()
+
+US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
+
+# use tonne/day
+
+decarbonization_map['CO2_reduction_tonne_per_day'] = decarbonization_map['CO2_reduction']/30/365/1000
+
+WRRF_GHG_reduction_tonne_per_day = decarbonization_map['CO2_reduction_tonne_per_day']
+
+less_than_50 = WRRF_GHG_reduction_tonne_per_day <= 5
+decarbonization_map[less_than_50].plot(ax=ax, color=Guest.gray.HEX, markersize=decarbonization_map.loc[less_than_50, WRRF_GHG_reduction_tonne_per_day.name]**0.5*120, alpha=0.5)
+
+between_50_and_500 = (WRRF_GHG_reduction_tonne_per_day > 5) & (WRRF_GHG_reduction_tonne_per_day <= 50)
+decarbonization_map[between_50_and_500].plot(ax=ax, color=Guest.red.HEX, markersize=decarbonization_map.loc[between_50_and_500, WRRF_GHG_reduction_tonne_per_day.name]**0.5*120, edgecolor='k', linewidth=1.5, alpha=0.7)
+
+more_than_500 = WRRF_GHG_reduction_tonne_per_day > 50
+decarbonization_map[more_than_500].plot(ax=ax, color=Guest.green.HEX, markersize=decarbonization_map.loc[more_than_500, WRRF_GHG_reduction_tonne_per_day.name]**0.5*120, edgecolor='k', linewidth=2, alpha=0.9)
+
+#%% facility level decarbonizaiton ratio and biocrude production
+
+fig = plt.figure(figsize=(15, 10))
+
+gs = fig.add_gridspec(1, 3, hspace=0, wspace=0)
+
+def facility_plot(position, color):
+    ax = fig.add_subplot(gs[0, position])
+    
+    plt.rcParams['axes.linewidth'] = 3
+    plt.rcParams['xtick.labelsize'] = 30
+    plt.rcParams['ytick.labelsize'] = 30
+    plt.xticks(fontname = 'Arial')
+    plt.yticks(fontname = 'Arial')
+    
+    ax = plt.gca()
+    ax.set_xlim([-6, 36])
+    ax.set_ylim([0, 700])
+    ax.xaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
+    
+    if position == 0:
+        data = decarbonization_result[(decarbonization_result['sludge_anaerobic_digestion'] != 1) & (decarbonization_result['sludge_aerobic_digestion'] != 1)]
+        
+        ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False)
+        
+        plt.xticks(np.arange(0, 40, 10))
+        
+        ax_top = ax.twiny()
+        ax_top.set_xlim(ax.get_xlim())
+        plt.xticks(np.arange(0, 40, 10))
+        ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+        
+        ax.set_ylabel('Biocrude production [BPD]', fontname='Arial', fontsize=35, labelpad=7)
+        
+    if position == 1:
+        data = decarbonization_result[decarbonization_result['sludge_aerobic_digestion'] == 1]
+
+        ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
+        
+        plt.xticks(np.arange(0, 40, 10))
+        
+        ax_top = ax.twiny()
+        ax_top.set_xlim(ax.get_xlim())
+        plt.xticks(np.arange(0, 40, 10))
+        ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+        
+        ax.set_xlabel('Decarbonization potential', fontname='Arial', fontsize=35, labelpad=7)
+        
+    if position == 2:
+        data = decarbonization_result[decarbonization_result['sludge_anaerobic_digestion'] == 1]
+        
+        ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
+        
+        plt.xticks(np.arange(0, 40, 10))
+        
+        ax_right = ax.twinx()
+        ax_right.set_ylim(ax.get_ylim())
+        ax_right.tick_params(direction='in', length=7.5, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+        
+        ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
+        
+        ax_top = ax.twiny()
+        ax_top.set_xlim(ax.get_xlim())
+        plt.xticks(np.arange(0, 40, 10))
+        ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+    
+    ax.scatter(x = data['WRRF_CO2_reduction_ratio']*100,
+                    y = data['oil_BPD'],
+                    s = data['flow_2022_MGD']*2,
+                    c = color,
+                    linewidths = 0,
+                    alpha = 0.9)
+    
+    ax.scatter(x = data['WRRF_CO2_reduction_ratio']*100,
+                    y = data['oil_BPD'],
+                    s = data['flow_2022_MGD']*2,
+                    c = 'none',
+                    linewidths = 2,
+                    edgecolors = 'k')
+    
+facility_plot(0, p)
+facility_plot(1, y)
+facility_plot(2, b)
+
+#%% facility level decarbonizaiton amount and biocrude production
+
+fig = plt.figure(figsize=(16, 8))
+
+gs = fig.add_gridspec(1, 3, hspace=0, wspace=0)
+
+def facility_plot(position, color):
+    
+    ax = fig.add_subplot(gs[0, position])
+    
+    plt.rcParams['axes.linewidth'] = 3
+    plt.rcParams['xtick.labelsize'] = 30
+    plt.rcParams['ytick.labelsize'] = 30
+    plt.xticks(fontname = 'Arial')
+    plt.yticks(fontname = 'Arial')
+    plt.rcParams.update({'mathtext.default':  'regular' })
+    
+    ax = plt.gca()
+    ax.set_xlim([-15, 165])
+    ax.set_ylim([0, 600])
+    
+    if position == 0:
+        data = decarbonization_result[(decarbonization_result['sludge_anaerobic_digestion'] != 1) & (decarbonization_result['sludge_aerobic_digestion'] != 1)]
+        
+        ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False)
+        
+        plt.xticks(np.arange(0, 180, 30))
+        
+        ax_top = ax.twiny()
+        ax_top.set_xlim(ax.get_xlim())
+        plt.xticks(np.arange(0, 180, 30))
+        ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+        
+        ax.set_ylabel('Biocrude production [BPD]', fontname='Arial', fontsize=35, labelpad=7)
+        
+    if position == 1:
+        data = decarbonization_result[decarbonization_result['sludge_aerobic_digestion'] == 1]
+
+        ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
+        
+        plt.xticks(np.arange(0, 180, 30))
+        
+        ax_top = ax.twiny()
+        ax_top.set_xlim(ax.get_xlim())
+        plt.xticks(np.arange(0, 180, 30))
+        ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+        
+        ax.set_xlabel('Decarbonization amount [tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=35, labelpad=7)
+
+        mathtext.FontConstantsBase.sup1 = 0.35
+        
+    if position == 2:
+        data = decarbonization_result[decarbonization_result['sludge_anaerobic_digestion'] == 1]
+    
+        ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
+        
+        plt.xticks(np.arange(0, 180, 30))
+        
+        ax_right = ax.twinx()
+        ax_right.set_ylim(ax.get_ylim())
+        ax_right.tick_params(direction='in', length=7.5, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+        
+        ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
+        
+        ax_top = ax.twiny()
+        ax_top.set_xlim(ax.get_xlim())
+        plt.xticks(np.arange(0, 180, 30))
+        ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+    
+    ax.scatter(x = data['CO2_reduction']/30/365/1000,
+                    y = data['oil_BPD'],
+                    s = data['flow_2022_MGD']*2,
+                    c = color,
+                    linewidths = 0,
+                    alpha = 0.9)
+    
+    ax.scatter(x = data['CO2_reduction']/30/365/1000,
+                    y = data['oil_BPD'],
+                    s = data['flow_2022_MGD']*2,
+                    c = 'none',
+                    linewidths = 2,
+                    edgecolors = 'k')
+    
+facility_plot(0, p)
+facility_plot(1, y)
+facility_plot(2, b)
+#%% find WRRFs with max decarbonization ratio, decarbonization amount, and biocrude production
+
+no_digestion_WRRFs = decarbonization_result[(decarbonization_result['sludge_anaerobic_digestion'] != 1) & (decarbonization_result['sludge_aerobic_digestion'] != 1)]
+print(no_digestion_WRRFs.sort_values('CO2_reduction', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
+print(no_digestion_WRRFs.sort_values('WRRF_CO2_reduction_ratio', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
+print(no_digestion_WRRFs.sort_values('oil_BPD', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
+
+aerobic_digestion_WRRFs = decarbonization_result[decarbonization_result['sludge_aerobic_digestion'] == 1]
+print(aerobic_digestion_WRRFs.sort_values('CO2_reduction', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
+print(aerobic_digestion_WRRFs.sort_values('WRRF_CO2_reduction_ratio', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
+print(aerobic_digestion_WRRFs.sort_values('oil_BPD', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
+
+anaerobic_digestion_WRRFs = decarbonization_result[decarbonization_result['sludge_anaerobic_digestion'] == 1]
+print(anaerobic_digestion_WRRFs.sort_values('CO2_reduction', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
+print(anaerobic_digestion_WRRFs.sort_values('WRRF_CO2_reduction_ratio', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
+print(anaerobic_digestion_WRRFs.sort_values('oil_BPD', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
+
+#%% regional level analysis
+
+decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2023-12-27.xlsx')
+
+decarbonization_result.loc[decarbonization_result['state'].isin(['CT','DC','DE','FL','GA','MA','MD','ME','NC','NH','NJ','NY','PA','RI','SC','VA','VT','WV']), 'WRRF_PADD'] = 1
+decarbonization_result.loc[decarbonization_result['state'].isin(['IA','IL','IN','KS','KY','MI','MN','MO','ND','NE','OH','OK','SD','TN','WI']), 'WRRF_PADD'] = 2
+decarbonization_result.loc[decarbonization_result['state'].isin(['AL','AR','LA','MS','NM','TX']), 'WRRF_PADD'] = 3
+decarbonization_result.loc[decarbonization_result['state'].isin(['CO','ID','MT','UT','WY']), 'WRRF_PADD'] = 4
+decarbonization_result.loc[decarbonization_result['state'].isin(['AZ','CA','NV','OR','WA']), 'WRRF_PADD'] = 5
 
 decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'].notna()]
 
-decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'] <= 500] # TODO: decide the upper threshold, 0, 100, or other values?
+decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'] <= 0]
 
-decarbonization_result_more = decarbonization_result[decarbonization_result['USD_decarbonization'] > -2000]
-
-decarbonization_result_less = decarbonization_result[decarbonization_result['USD_decarbonization'] < -2000] # TODO: discuss with Jeremy, how to deal with these data (very negative decarbonization cost due to low decarbonization ratio)
-
-fig, ax_more = plt.subplots(figsize = (15, 10))
-
-plt.rcParams['axes.linewidth'] = 2
-plt.rcParams['xtick.labelsize'] = 30
-plt.rcParams['ytick.labelsize'] = 30
-plt.xticks(fontname = 'Arial')
-plt.yticks(fontname = 'Arial')
-
-ax_more = plt.gca()
-ax_more.set_xlim([-3, 53])
-ax_more.set_ylim([-1625, 625])
-ax_more.xaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
-ax_more.tick_params(direction='inout', length=15, width=2, bottom=True, top=False, left=True, right=False)
-
-plt.xticks(np.arange(0, 55, 5))
-
-ax_more_right = ax_more.twinx()
-ax_more_right.set_ylim(ax_more.get_ylim())
-ax_more_right.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
-
-ax_more_top = ax_more.twiny()
-ax_more_top.set_xlim(ax_more.get_xlim())
-plt.xticks(np.arange(0, 55, 5))
-ax_more_top.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
-
-ax_more.scatter(x = decarbonization_result_more['WRRF_CO2_reduction_ratio']*100,
-                y = decarbonization_result_more['USD_decarbonization'],
-                s = decarbonization_result_more['flow_2022_MGD']*4, # TODO: change to use 2022 MGD data
-                c = decarbonization_result_more['AD'],
-                linewidths = 0,
-                alpha = 0.7)
-
-ax_more.scatter(x = decarbonization_result_more['WRRF_CO2_reduction_ratio']*100,
-                y = decarbonization_result_more['USD_decarbonization'],
-                s = decarbonization_result_more['flow_2022_MGD']*4, # TODO: change to use 2022 MGD data
-                color = 'none',
-                linewidths = 2,
-                edgecolors = 'k')
-
-ax_less = fig.add_axes([0.5, 0.2, 0.36, 0.32])   
-
-plt.rcParams['axes.linewidth'] = 2
-plt.rcParams['xtick.labelsize'] = 30
-plt.rcParams['ytick.labelsize'] = 30
-plt.xticks(fontname = 'Arial')
-plt.yticks(fontname = 'Arial')
-
-ax_less.set_xlim([-0.5, 3.5])
-ax_less.set_ylim([-40000, 0])
-ax_less.xaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
-ax_less.tick_params(direction='inout', length=15, width=2, bottom=True, top=False, left=True, right=False)
-
-plt.yticks(np.arange(-35000, 5000, 10000))
-
-ax_less_right = ax_less.twinx()
-ax_less_right.set_ylim(ax_less.get_ylim())
-plt.yticks(np.arange(-35000, 5000, 10000))
-ax_less_right.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
-
-ax_less_top = ax_less.twiny()
-ax_less_top.set_xlim(ax_less.get_xlim())
-ax_less_top.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
-
-ax_less.scatter(x = decarbonization_result_less['WRRF_CO2_reduction_ratio']*100,
-                y = decarbonization_result_less['USD_decarbonization'],
-                s = decarbonization_result_less['flow_2022_MGD']*4, # TODO: change to use 2022 MGD data
-                c = decarbonization_result_less['AD'],
-                linewidths = 0,
-                alpha = 0.7)
-
-ax_less.scatter(x = decarbonization_result_less['WRRF_CO2_reduction_ratio']*100,
-                y = decarbonization_result_less['USD_decarbonization'],
-                s = decarbonization_result_less['flow_2022_MGD']*4, # TODO: change to use 2022 MGD data 
-                color = 'none',
-                linewidths = 2,
-                edgecolors = 'k')
-
-#%%
-
-# regional level analysis
-
-decarbonization_result = pd.read_excel(folder + 'results/decarbonization_results_10_7_2023/carbonization_summary.xlsx')
-
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
-
-# TODO: may remove the merge since we may add more parameters eailier (line 388)
-decarbonization_result = decarbonization_result.merge(WRRF_input[['FACILITY','CITY_x','PADD']], how='left', left_on=['facility','city'], right_on=['FACILITY','CITY_x'])
-
-decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'].notna()]
-
-decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'] <= 1000] # TODO: decide the upper threshold, 0, 100, or other values? # TODO: discuss with Jeremy, how to deal with very negative decarbonization cost (due to low decarbonization ratio)
-
-# TODO: this is not correct, we should group the results based on the location of WRRFs but not oil refineries
-
-PADD_1 = decarbonization_result[decarbonization_result['PADD'] == 1]
-PADD_1.sort_values(by='USD_decarbonization', inplace=True)
+PADD_1 = decarbonization_result[decarbonization_result['WRRF_PADD'] == 1]
+PADD_1.sort_values(by='CO2_reduction', inplace=True)
+PADD_1['cummulative_CO2_reduction'] = PADD_1['CO2_reduction'].cumsum()
 PADD_1['cummulative_oil_BPD'] = PADD_1['oil_BPD'].cumsum()
 
-PADD_2 = decarbonization_result[decarbonization_result['PADD'] == 2]
-PADD_2.sort_values(by='USD_decarbonization', inplace=True)
+PADD_2 = decarbonization_result[decarbonization_result['WRRF_PADD'] == 2]
+PADD_2.sort_values(by='CO2_reduction', inplace=True)
+PADD_2['cummulative_CO2_reduction'] = PADD_2['CO2_reduction'].cumsum()
 PADD_2['cummulative_oil_BPD'] = PADD_2['oil_BPD'].cumsum()
 
-PADD_3 = decarbonization_result[decarbonization_result['PADD'] == 3]
-PADD_3.sort_values(by='USD_decarbonization', inplace=True)
+PADD_3 = decarbonization_result[decarbonization_result['WRRF_PADD'] == 3]
+PADD_3.sort_values(by='CO2_reduction', inplace=True)
+PADD_3['cummulative_CO2_reduction'] = PADD_3['CO2_reduction'].cumsum()
 PADD_3['cummulative_oil_BPD'] = PADD_3['oil_BPD'].cumsum()
 
-PADD_4 = decarbonization_result[decarbonization_result['PADD'] == 4]
-PADD_4.sort_values(by='USD_decarbonization', inplace=True)
+PADD_4 = decarbonization_result[decarbonization_result['WRRF_PADD'] == 4]
+PADD_4.sort_values(by='CO2_reduction', inplace=True)
+PADD_4['cummulative_CO2_reduction'] = PADD_4['CO2_reduction'].cumsum()
 PADD_4['cummulative_oil_BPD'] = PADD_4['oil_BPD'].cumsum()
 
-PADD_5 = decarbonization_result[decarbonization_result['PADD'] == 5]
-PADD_5.sort_values(by='USD_decarbonization', inplace=True)
+PADD_5 = decarbonization_result[decarbonization_result['WRRF_PADD'] == 5]
+PADD_5.sort_values(by='CO2_reduction', inplace=True)
+PADD_5['cummulative_CO2_reduction'] = PADD_5['CO2_reduction'].cumsum()
 PADD_5['cummulative_oil_BPD'] = PADD_5['oil_BPD'].cumsum()
 
 fig, ax_more = plt.subplots(figsize = (15, 10))
 
-plt.rcParams['axes.linewidth'] = 2
+plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 plt.xticks(fontname = 'Arial')
 plt.yticks(fontname = 'Arial')
 
-ax_more.set_xlim([0, 5000])
-ax_more.set_ylim([-1500, 1000])
+ax_more.set_xlim([0, 1600])
+ax_more.set_ylim([0, 10000])
 
-plt.axvspan(xmin=0, xmax=5000, ymin=0, ymax=0.6, facecolor=a, alpha=0.3)
-plt.axvspan(xmin=0, xmax=5000, ymin=0, ymax=0.6, facecolor='none', linewidth=2, edgecolor='k')
+plt.xticks(np.arange(0, 1800, 200))
+plt.yticks(np.arange(0, 11000, 1000))
+
+# ax_more.set_xlim([0, 50])
+# ax_more.set_ylim([0, 500])
+
+# plt.xticks(np.arange(0, 55, 5))
+# plt.yticks(np.arange(0, 550, 50))
+
+ax_more.set_xlabel('Decarbonization amount [tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=35, labelpad=7)
+ax_more.set_ylabel('Biocrude production [BPD]', fontname='Arial', fontsize=35, labelpad=7)
 
 def plot_line(ax, data, color):
-    ax.plot((0, *data['cummulative_oil_BPD']), (0, *data['USD_decarbonization']),
-             color=color, marker='x', markersize=10, markeredgewidth=2, linewidth=2)
+    ax.plot((0, *data['cummulative_CO2_reduction']/30/365/1000), (0, *data['cummulative_oil_BPD']),
+             color=color, marker='o', markersize=5, markeredgewidth=3, linewidth=2)
     
 plot_line(ax_more, PADD_1, b)
 plot_line(ax_more, PADD_2, g)
@@ -888,69 +1033,31 @@ plot_line(ax_more, PADD_3, r)
 plot_line(ax_more, PADD_4, o)
 plot_line(ax_more, PADD_5, y)
 
-ax_more.tick_params(direction='inout', length=15, width=2, bottom=True, top=False, left=True, right=False)
+ax_more.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False)
 
 ax_more_right = ax_more.twinx()
 ax_more_right.set_ylim(ax_more.get_ylim())
-ax_more_right.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_more_right.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+plt.xticks(np.arange(0, 1800, 200))
+plt.yticks(np.arange(0, 11000, 1000))
 
 ax_more_top = ax_more.twiny()
 ax_more_top.set_xlim(ax_more.get_xlim())
-ax_more_top.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_more_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-ax_less = fig.add_axes([0.6, 0.2, 0.25, 0.3]) 
+plt.xticks(np.arange(0, 1800, 200))
+plt.yticks(np.arange(0, 11000, 1000))
 
-plt.rcParams['axes.linewidth'] = 2
-plt.rcParams['xtick.labelsize'] = 30
-plt.rcParams['ytick.labelsize'] = 30
-plt.xticks(fontname = 'Arial')
-plt.yticks(fontname = 'Arial')
+#%% national level analysis
 
-ax_less.set_xlim([0, 1500])
-ax_less.set_ylim([-33500, -1500])
+decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2023-12-27.xlsx')
 
-plt.axvspan(xmin=0, xmax=1500, facecolor=a, alpha=0.3)
+# kg/day
+total_CO2_emission = decarbonization_result.sum(axis=0)['total_emission']
 
-plot_line(ax_less, PADD_1, b)
-plot_line(ax_less, PADD_2, g)
-plot_line(ax_less, PADD_3, r)
-plot_line(ax_less, PADD_4, o)
-plot_line(ax_less, PADD_5, y)
-
-plt.xticks(np.arange(0, 2000, 500))
-plt.yticks(np.arange(-30000, 0, 5000))
-
-ax_less.tick_params(direction='inout', length=15, width=2, bottom=True, top=False, left=True, right=False)
-
-ax_less_right = ax_less.twinx()
-ax_less_right.set_ylim(ax_less.get_ylim())
-plt.yticks(np.arange(-30000, 0, 5000))
-ax_less_right.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
-
-ax_less_top = ax_less.twiny()
-ax_less_top.set_xlim(ax_less.get_xlim())
-plt.xticks(np.arange(0, 2000, 500))
-ax_less_top.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
-
-#%%
-
-# national level analysis
-
-decarbonization_result = pd.read_excel(folder + 'results/decarbonization_results_10_7_2023/carbonization_summary.xlsx')
-
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
-
-decarbonization_result = decarbonization_result.merge(WRRF_input[['FACILITY','CITY_x','site_id',
-                                                                   'AD_Mbpd','Vdist_Mbpd','CaDis_Mbpd',
-                                                                   'HyCrk_Mbpd','VRedu_Mbpd','CaRef_Mbpd',
-                                                                   'Isal_Mbpd','HDS_Mbpd','Cokin_Mbpd',
-                                                                   'Asph_Mbpd','30_years_emission_tonne_CO2',
-                                                                   'sludge_management_kg_CO2_per_day_AD_included']],
-                                                      how='left', left_on=['facility','city'], right_on=['FACILITY','CITY_x'])
-
-total_CO2_emission = decarbonization_result.sum(axis=0)['30_years_emission_tonne_CO2']
-
-total_sludge_CO2_emission = decarbonization_result.sum(axis=0)['sludge_management_kg_CO2_per_day_AD_included']*365*30/1000
+# kg/day
+total_sludge_CO2_emission = decarbonization_result.sum(axis=0)['biosolids_emission']
 
 oil = decarbonization_result[['site_id','AD_Mbpd','Vdist_Mbpd','CaDis_Mbpd','HyCrk_Mbpd','VRedu_Mbpd','CaRef_Mbpd','Isal_Mbpd','HDS_Mbpd','Cokin_Mbpd','Asph_Mbpd']]
 
@@ -962,9 +1069,10 @@ total_oil = oil.sum().sum()
 
 decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'].notna()]
 
-decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'] <= 500] # TODO: decide the upper threshold, 0, 100, or other values?
+decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'] <= 0]
 
-reduced_CO2_emission = decarbonization_result.sum(axis=0)['CO2_reduction']/1000
+# kg/day
+reduced_CO2_emission = decarbonization_result.sum(axis=0)['CO2_reduction']/30/365
 
 added_oil = decarbonization_result.sum(axis=0)['oil_BPD']/1000000
 
@@ -979,3 +1087,5 @@ print(f'National decarbonization ratio of wastewater treatment sector is {nation
 print(f'National decarbonization ratio of sludge management is {national_CO2_recuction_ratio_sludge_management*100:.2f}%')
 
 print(f'National increase ratio of crude oil production is {national_oil_production_ratio*100:.5f}%')
+
+#%% uncertainty analysis

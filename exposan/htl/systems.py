@@ -183,6 +183,7 @@ def create_system(configuration='baseline', capacity=100,
     F1 = qsu.Flash('A250', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                      T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
     F1.register_alias('F1')
+    F1.include_construction = True
     
     MemDis = qsu.MembraneDistillation('A260', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
                                   outs=('ammonium_sulfate','MemDis_ww','Membrane_out','solution'), init_with='WasteStream')
@@ -228,6 +229,7 @@ def create_system(configuration='baseline', capacity=100,
     F2 = qsu.Flash('A340', ins=H2-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
                P=717.4*6894.76, thermo=settings.thermo.ideal()) # outflow P
     F2.register_alias('F2')
+    F2.include_construction = True
     
     V3 = IsenthalpicValve('A350', ins=F2-1, outs='depressed_flash_effluent', P=55*6894.76, vle=True)
     V3.register_alias('V3')
@@ -246,18 +248,21 @@ def create_system(configuration='baseline', capacity=100,
                             LHK=('C4H10','TWOMBUTAN'), P=50*6894.76, # outflow P
                             y_top=188/253, x_bot=53/162, k=2, is_divided=True)
     D1.register_alias('D1')
+    D1.include_construction = True
     
     D2 = qsu.BinaryDistillation('A380', ins=D1-1,
                             outs=('HT_Gasoline','HT_other_oil'),
                             LHK=('C10H22','C4BENZ'), P=25*6894.76, # outflow P
                             y_top=116/122, x_bot=114/732, k=2, is_divided=True)
     D2.register_alias('D2')
+    D2.include_construction = True
     
     D3 = qsu.BinaryDistillation('A390', ins=D2-1,
                             outs=('HT_Diesel','HT_heavy_oil'),
                             LHK=('C19H40','C21H44'),P=18.7*6894.76, # outflow P
                             y_top=2421/2448, x_bot=158/2448, k=2, is_divided=True)
     D3.register_alias('D3')
+    D3.include_construction = True
     
     # =============================================================================
     # HC (Area 400)
@@ -287,11 +292,13 @@ def create_system(configuration='baseline', capacity=100,
     F3 = qsu.Flash('A440', ins=V4-0, outs=('HC_fuel_gas','HC_aqueous'), T=60.2+273,
                P=30*6894.76) # outflow P
     F3.register_alias('F3')
+    F3.include_construction = True
     
     D4 = qsu.BinaryDistillation('A450', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
                             LHK=('C9H20','C10H22'), P=20*6894.76, # outflow P
                             y_top=360/546, x_bot=7/708, k=2, is_divided=True)
     D4.register_alias('D4')
+    D4.include_construction = True
     
     # =============================================================================
     # Storage, and disposal (Area 500)

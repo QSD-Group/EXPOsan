@@ -15,12 +15,11 @@ References:
 import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
 from qsdsan.utils import clear_lca_registries
-from exposan.htl import _load_components, create_tea, _oil_barrel_to_L, _sanunits as su
-from exposan.htl.income_tax import state_income_tax_rate
+from exposan.htl import _load_components, create_tea, _oil_barrel_to_L, state_income_tax_rate, _sanunits as su
 from biosteam.units import IsenthalpicValve
 from biosteam import settings
 
-__all__ = ('create_geospatial_system',)
+__all__ = ('create_geospatial_system','biocrude_density')
 
 biocrude_density = 980 # kg/m3 Snowden-Swan et al. 2022 SOT, PNNL
 
@@ -119,6 +118,7 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
         
     P1 = qsu.SludgePump('A100', ins=WWTP-0, outs='pressed_sludge', P=3049.7*6894.76,
               init_with='Stream')
+    P1.include_construction = True
         
     WWTP.register_alias('WWTP')
     
@@ -146,7 +146,7 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     # for lagoon, the sludge will dry at the base of the lagoon (see https://www.sludgeprocessing.com/sludge-dewatering/sludge-drying-beds-lagoons/)
     
     HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0,
-                                       outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'),
+                                       outs=('hydrochar','HTL_aqueous','biocrude_to_be_stored','offgas_HTL'),
                                        mositure_adjustment_exist_in_the_system=False)
     HTL.register_alias('HTL')
     
@@ -180,6 +180,7 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     F1 = qsu.Flash('A250', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                       T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
     F1.register_alias('F1')
+    F1.include_construction = True
     
     MemDis = qsu.MembraneDistillation('A260', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
                                   outs=('ammonium_sulfate','MemDis_ww', 'Membrane_out','solution'),
@@ -192,12 +193,12 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     # Storage, and disposal (Area 300)
     # =============================================================================
     
-    CrudeOilTank = qsu.StorageTank('T300', ins=HTL-2, outs=('crude_oil'),
+    BiocrudeTank = qsu.StorageTank('T300', ins=HTL-2, outs=('biocrude'),
                                     tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
     # store for 3 days based on Jones 2014
-    CrudeOilTank.register_alias('CrudeOilTank')
+    BiocrudeTank.register_alias('CrudeOilTank')
     
-    CrudeOilTank.outs[0].price = -5.67*1.20/biocrude_density - 0.07*1.20/biocrude_density*distance + 0.3847
+    BiocrudeTank.outs[0].price = -5.67*1.20/biocrude_density - 0.07*1.20/biocrude_density*distance + 0.3847
     # 5.67: fixed cost, 0.07: variable cost ($/m3, Pootakham et al. Bio-oil transport by pipeline: A techno-economic assessment. Bioresource Technology, 2010)
     # note cost in this paper was in 2008$, we need to convert it to 2020$ based on Gross Domestic Product chain-type price index
     # 1 2008$ = 1.20 $2020 based on https://fred.stlouisfed.org/series/GDPCTPI
@@ -231,13 +232,15 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
 # add stream impact items
 # =============================================================================
    
+    # only GlobalWarming can be used, since the values for other CFs are 0 for the sludge_item
+
     # add impact for waste sludge
-    qs.StreamImpactItem(ID='sludge_item',
+    qs.StreamImpactItem(ID='sludge_in_wastewater_item',
                         linked_stream=stream.feedstock_assumed_in_wastewater,
                         Acidification=0,
                         Ecotoxicity=0,
                         Eutrophication=0,
-                        GlobalWarming=-WWTP.ww_2_dry_sludge*waste_GHG/3.79/(10**6), # 1 gal water = 3.79 kg water
+                        GlobalWarming=-WWTP.ww_2_dry_sludge*waste_GHG/3.79/(10**6), # 1 gal water = 3.79 kg water # TODO: make sure the calculation here and the calculation of price are right
                         OzoneDepletion=0,
                         PhotochemicalOxidation=0,
                         Carcinogenics=0,
@@ -340,7 +343,7 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     
     federal_income_tax_rate_value = 0.21
     
-    annual_sales = CrudeOilTank.outs[0].F_mass*365*24*0.3847 + MemDis.outs[0].F_mass*365*24*0.3236
+    annual_sales = BiocrudeTank.outs[0].F_mass*365*24*0.3847 + MemDis.outs[0].F_mass*365*24*0.3236
     annual_material_cost = sum([s.cost for s in sys.feeds[1:] if ((s.price > 0) & (s.ID != 'feedstock_assumed_in_wastewater'))]) * sys.operating_hours
     annual_utility_cost = sum([u.utility_cost for u in sys.cost_units]) * sys.operating_hours
     annual_net_income = annual_sales - annual_material_cost - annual_utility_cost
@@ -380,6 +383,6 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
            # but we can adjust the electricity amount to reflect different GHG of electricity at different states
            Cooling=lambda:sys.get_cooling_duty()/1000*30)
     
-    biocrude_barrel = CrudeOilTank.outs[0].F_mass/biocrude_density*1000/_oil_barrel_to_L*24 # in BPD (barrel per day)
+    biocrude_barrel = BiocrudeTank.outs[0].F_mass/biocrude_density*1000/_oil_barrel_to_L*24 # in BPD (barrel per day)
     
     return sys, biocrude_barrel

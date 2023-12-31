@@ -1187,7 +1187,7 @@ def create_model(system=None,
     metric = model.metric
     
     if include_other_metrics: # all metrics
-        # Element metrics
+        # element metrics
         
         @metric(name='C_afdw',units='%',element='Sankey')
         def get_C_afdw():
@@ -1365,7 +1365,7 @@ def create_model(system=None,
         def get_MemDis_ww_P():
             return MemDis.outs[1].imass['P']
         
-        # Energy metrics
+        # energy metrics
         
         @metric(name='sludge_HHV',units='MJ/kg',element='Sankey')
         def get_sludge_HHV():
@@ -1842,18 +1842,18 @@ def create_model(system=None,
         def get_HTL_hydrochar_yield():
             return HTL.hydrochar_yield
         
-        @metric(name='HTL_gasyield',units='-',element='HTL')
+        @metric(name='HTL_gas_yield',units='-',element='HTL')
         def get_HTL_gas_yield():
             return HTL.gas_yield
         
-    # Key metrics
+    # key metrics
     @metric(name='MDSP',units='$/gal diesel',element='TEA')
     def get_MDSP():
         diesel_gal_2_kg=3.220628346
         return tea.solve_price(diesel)*diesel_gal_2_kg
     
     raw_wastewater = stream.feedstock_assumed_in_wastewater
-    @metric(name='sludge_management_price',units='$/ton dry sludge',element='TEA')
+    @metric(name='sludge_management_price',units='$/tonne dry sludge',element='TEA')
     def get_sludge_treatment_price():
         return -tea.solve_price(raw_wastewater)*_MMgal_to_L/WWTP.ww_2_dry_sludge
     
@@ -1863,7 +1863,7 @@ def create_model(system=None,
     # gasoline : 46.4 MJ/kg
     # diesel: 45.6 MJ/kg
     
-    @metric(name='GWP_sludge',units='kg CO2/ton dry sludge',element='LCA')
+    @metric(name='GWP_sludge',units='kg CO2/tonne dry sludge',element='LCA')
     def get_GWP_sludge():
         return lca.get_total_impacts(exclude=(raw_wastewater,))['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
@@ -1873,7 +1873,7 @@ def create_model(system=None,
         def get_OZP_diesel():
             return lca.get_total_impacts(exclude=(diesel,))['OzoneDepletion']/diesel.F_mass/sys.operating_hours/lca.lifetime/45.6/_MJ_to_MMBTU
 
-        @metric(name='OzoneDepletion_sludge',units='kg CFC-11-eq/ton dry sludge',element='LCA')
+        @metric(name='OzoneDepletion_sludge',units='kg CFC-11-eq/tonne dry sludge',element='LCA')
         def get_OZP_sludge():
             return lca.get_total_impacts(exclude=(raw_wastewater,))['OzoneDepletion']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
@@ -1881,7 +1881,7 @@ def create_model(system=None,
         def get_CAR_diesel():
             return lca.get_total_impacts(exclude=(diesel,))['Carcinogenics']/diesel.F_mass/sys.operating_hours/lca.lifetime/45.6/_MJ_to_MMBTU
 
-        @metric(name='Carcinogenics_sludge',units='kg benzene-eq/ton dry sludge',element='LCA')
+        @metric(name='Carcinogenics_sludge',units='kg benzene-eq/tonne dry sludge',element='LCA')
         def get_CAR_sludge():
             return lca.get_total_impacts(exclude=(raw_wastewater,))['Carcinogenics']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
@@ -1889,7 +1889,7 @@ def create_model(system=None,
         def get_ACD_diesel():
             return lca.get_total_impacts(exclude=(diesel,))['Acidification']/diesel.F_mass/sys.operating_hours/lca.lifetime/45.6/_MJ_to_MMBTU
 
-        @metric(name='Acidification_sludge',units='moles of H+-eq/ton dry sludge',element='LCA')
+        @metric(name='Acidification_sludge',units='moles of H+-eq/tonne dry sludge',element='LCA')
         def get_ACD_sludge():
             return lca.get_total_impacts(exclude=(raw_wastewater,))['Acidification']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
@@ -1897,7 +1897,7 @@ def create_model(system=None,
         def get_RES_diesel():
             return lca.get_total_impacts(exclude=(diesel,))['RespiratoryEffects']/diesel.F_mass/sys.operating_hours/lca.lifetime/45.6/_MJ_to_MMBTU
 
-        @metric(name='RespiratoryEffects_sludge',units='kg PM2.5-eq/ton dry sludge',element='LCA')
+        @metric(name='RespiratoryEffects_sludge',units='kg PM2.5-eq/tonne dry sludge',element='LCA')
         def get_RES_sludge():
             return lca.get_total_impacts(exclude=(raw_wastewater,))['RespiratoryEffects']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
@@ -1905,7 +1905,7 @@ def create_model(system=None,
         def get_EUT_diesel():
             return lca.get_total_impacts(exclude=(diesel,))['Eutrophication']/diesel.F_mass/sys.operating_hours/lca.lifetime/45.6/_MJ_to_MMBTU
 
-        @metric(name='Eutrophication_sludge',units='kg N/ton dry sludge',element='LCA')
+        @metric(name='Eutrophication_sludge',units='kg N/tonne dry sludge',element='LCA')
         def get_EUT_sludge():
             return lca.get_total_impacts(exclude=(raw_wastewater,))['Eutrophication']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
@@ -1913,7 +1913,7 @@ def create_model(system=None,
         def get_PHO_diesel():
             return lca.get_total_impacts(exclude=(diesel,))['PhotochemicalOxidation']/diesel.F_mass/sys.operating_hours/lca.lifetime/45.6/_MJ_to_MMBTU
 
-        @metric(name='PhotochemicalOxidation_sludge',units='kg NOx-eq/ton dry sludge',element='LCA')
+        @metric(name='PhotochemicalOxidation_sludge',units='kg NOx-eq/tonne dry sludge',element='LCA')
         def get_PHO_sludge():
             return lca.get_total_impacts(exclude=(raw_wastewater,))['PhotochemicalOxidation']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
@@ -1921,7 +1921,7 @@ def create_model(system=None,
         def get_ECO_diesel():
             return lca.get_total_impacts(exclude=(diesel,))['Ecotoxicity']/diesel.F_mass/sys.operating_hours/lca.lifetime/45.6/_MJ_to_MMBTU
 
-        @metric(name='Ecotoxicity_sludge',units='kg 2,4-D-eq/ton dry sludge',element='LCA')
+        @metric(name='Ecotoxicity_sludge',units='kg 2,4-D-eq/tonne dry sludge',element='LCA')
         def get_ECO_sludge():
             return lca.get_total_impacts(exclude=(raw_wastewater,))['Ecotoxicity']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
@@ -1929,7 +1929,7 @@ def create_model(system=None,
         def get_NCA_diesel():
             return lca.get_total_impacts(exclude=(diesel,))['NonCarcinogenics']/diesel.F_mass/sys.operating_hours/lca.lifetime/45.6/_MJ_to_MMBTU
 
-        @metric(name='NonCarcinogenics_sludge',units='kg toluene-eq/ton dry sludge',element='LCA')
+        @metric(name='NonCarcinogenics_sludge',units='kg toluene-eq/tonne dry sludge',element='LCA')
         def get_NCA_sludge():
             return lca.get_total_impacts(exclude=(raw_wastewater,))['NonCarcinogenics']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
         

@@ -48,6 +48,9 @@ def _load_components(reload=False):
 from . import _process_settings
 from ._process_settings import *
 
+from . import income_tax
+from .income_tax import *
+
 from . import _tea
 from ._tea import *
 
@@ -77,6 +80,9 @@ def __getattr__(name):
         
 from . import models
 from .models import *
+
+from . import geospatial_models
+from .geospatial_models import *
 
 def simulate_and_save(model,
                       resample=True, samples_kwargs={'N':1000, 'rule':'L', 'seed':3221},
@@ -116,8 +122,10 @@ __all__ = (
     'simulate_and_save',
     *_components.__all__,
     *_process_settings.__all__,
+    *income_tax.__all__,
     *_tea.__all__,
     *systems.__all__,
     *geospatial_HTL_systems.__all__,
     *models.__all__,
+    *geospatial_models.__all__,
 )
