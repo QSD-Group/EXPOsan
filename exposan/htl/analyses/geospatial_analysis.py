@@ -127,8 +127,7 @@ electricity = gpd.GeoDataFrame(electricity)
 
 set_plot()
 
-# !!! for plot in SI, can use default linewidth for the US map
-US.plot(ax=ax, color='w', edgecolor='k', linewidth=5)
+US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
 
 WRRF = WRRF.sort_values(by='flow_2022_MGD', ascending=False)
 
@@ -141,13 +140,13 @@ WRRF_flow = WRRF['flow_2022_MGD']
 # see https://stackoverflow.com/questions/14827650/pyplot-scatter-plot-marker-size
 
 less_than_10 = WRRF_flow <= 10
-WRRF[less_than_10].plot(ax=ax, color=Guest.gray.HEX, markersize=WRRF.loc[less_than_10, WRRF_flow.name]**0.5*25, alpha=0.5)
+WRRF[less_than_10].plot(ax=ax, color=Guest.gray.HEX, markersize=WRRF.loc[less_than_10, WRRF_flow.name]**0.5*50, alpha=0.5)
 
 between_10_and_100 = (WRRF_flow > 10) & (WRRF_flow <= 100)
-WRRF[between_10_and_100].plot(ax=ax, color=Guest.red.HEX, markersize=WRRF.loc[between_10_and_100, WRRF_flow.name]**0.5*25, edgecolor='k', linewidth=1.5, alpha=0.7)
+WRRF[between_10_and_100].plot(ax=ax, color=Guest.red.HEX, markersize=WRRF.loc[between_10_and_100, WRRF_flow.name]**0.5*50, edgecolor='k', linewidth=2, alpha=0.7)
 
 more_than_100 = WRRF_flow > 100
-WRRF[more_than_100].plot(ax=ax, color=Guest.green.HEX, markersize=WRRF.loc[more_than_100, WRRF_flow.name]**0.5*25, edgecolor='k', linewidth=2, alpha=0.9)
+WRRF[more_than_100].plot(ax=ax, color=Guest.green.HEX, markersize=WRRF.loc[more_than_100, WRRF_flow.name]**0.5*50, edgecolor='k', linewidth=2, alpha=0.9)
 
 # if you want to show all WRRFs together with the same symbols, comment the codes above and uncomment the next line of code
 # WRRF.plot(ax=ax, color=Guest.gray.HEX, markersize=10)
@@ -164,16 +163,15 @@ US.plot(ax=ax,
         edgecolor='k',
         linewidth=0)
 
-# !!! for plot in SI, can use default linewidth for the US map
-US.plot(ax=ax, color='none', edgecolor='k', linewidth=5)
+US.plot(ax=ax, color='none', edgecolor='k', linewidth=3)
 
 refinery['total_capacity'] = refinery[[i for i in refinery.columns if i[-4:] == 'Mbpd']].sum(axis=1)
 
 refinery = refinery.sort_values(by='total_capacity', ascending=False)
 
-# refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=refinery['total_capacity']**0.5*25, edgecolor='k', linewidth=2, alpha=0.9)
+refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=refinery['total_capacity']**0.5*50, edgecolor='k', linewidth=3, alpha=0.9)
 
-refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=1000, edgecolor='k', linewidth=5)
+# refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=1000, edgecolor='k', linewidth=3)
 
 #%% WRRFs+oil refineries visualization (just select states, search 'NOTE 1')
 
@@ -200,11 +198,11 @@ refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=500, edgecolor='k', line
 
 set_plot()
 
-# norm = colors.TwoSlopeNorm(vmin=4, vcenter=10, vmax=16)
-# electricity.plot('price (10-year median)', ax=ax, cmap='Oranges', edgecolor='k', legend=True, legend_kwds={'shrink': 0.35}, norm=norm)
+norm = colors.TwoSlopeNorm(vmin=4, vcenter=10, vmax=16)
+electricity.plot('price (10-year median)', ax=ax, linewidth=3, cmap='Oranges', edgecolor='k', legend=True, legend_kwds={'shrink': 0.35}, norm=norm)
 
-norm = colors.TwoSlopeNorm(vmin=0, vcenter=0.5, vmax=1)
-electricity.plot('GHG (10-year median)', ax=ax, cmap='Blues', edgecolor='k', legend=True, legend_kwds={'shrink': 0.35}, norm=norm)
+# norm = colors.TwoSlopeNorm(vmin=0, vcenter=0.5, vmax=1)
+# electricity.plot('GHG (10-year median)', ax=ax, linewidth=3, cmap='Blues', edgecolor='k', legend=True, legend_kwds={'shrink': 0.35}, norm=norm)
 
 #%% transporation distance calculation
 
@@ -655,7 +653,7 @@ oil_BPD = []
 #                                        state=WRRF_input.iloc[0]['state'],
 #                                        elec_GHG=float(elec[elec['state']==WRRF_input.iloc[0]['state']]['GHG (10-year median)']))
 
-for i in range(10000, len(WRRF_input)): # !!! run in different consoles to speed up
+for i in range(0, len(WRRF_input)): # !!! run in different consoles to speed up
 # for i in range(0, 2):
     
     sys, barrel = create_geospatial_system(waste_cost=WRRF_input.iloc[i]['waste_cost'],
@@ -754,9 +752,9 @@ decarbonization_map = gpd.GeoDataFrame(decarbonization_map, crs='EPSG:4269',
 
 decarbonization_map = decarbonization_map.to_crs(crs='EPSG:3857')
 
-set_plot()
+set_plot(figure_size=(15, 10))
 
-US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
+US.plot(ax=ax, color='w', edgecolor='k', linewidth=2)
 
 # use tonne/day
 
@@ -765,15 +763,15 @@ decarbonization_map['CO2_reduction_tonne_per_day'] = decarbonization_map['CO2_re
 WRRF_GHG_reduction_tonne_per_day = decarbonization_map['CO2_reduction_tonne_per_day']
 
 less_than_50 = WRRF_GHG_reduction_tonne_per_day <= 5
-decarbonization_map[less_than_50].plot(ax=ax, color=Guest.gray.HEX, markersize=decarbonization_map.loc[less_than_50, WRRF_GHG_reduction_tonne_per_day.name]**0.5*120, alpha=0.5)
+decarbonization_map[less_than_50].plot(ax=ax, color=Guest.gray.HEX, markersize=decarbonization_map.loc[less_than_50, WRRF_GHG_reduction_tonne_per_day.name]**0.5*60, alpha=0.5)
 
 between_50_and_500 = (WRRF_GHG_reduction_tonne_per_day > 5) & (WRRF_GHG_reduction_tonne_per_day <= 50)
-decarbonization_map[between_50_and_500].plot(ax=ax, color=Guest.red.HEX, markersize=decarbonization_map.loc[between_50_and_500, WRRF_GHG_reduction_tonne_per_day.name]**0.5*120, edgecolor='k', linewidth=1.5, alpha=0.7)
+decarbonization_map[between_50_and_500].plot(ax=ax, color=Guest.red.HEX, markersize=decarbonization_map.loc[between_50_and_500, WRRF_GHG_reduction_tonne_per_day.name]**0.5*60, edgecolor='k', linewidth=1.5, alpha=0.7)
 
 more_than_500 = WRRF_GHG_reduction_tonne_per_day > 50
-decarbonization_map[more_than_500].plot(ax=ax, color=Guest.green.HEX, markersize=decarbonization_map.loc[more_than_500, WRRF_GHG_reduction_tonne_per_day.name]**0.5*120, edgecolor='k', linewidth=2, alpha=0.9)
+decarbonization_map[more_than_500].plot(ax=ax, color=Guest.green.HEX, markersize=decarbonization_map.loc[more_than_500, WRRF_GHG_reduction_tonne_per_day.name]**0.5*60, edgecolor='k', linewidth=1.5, alpha=0.9)
 
-#%% facility level decarbonizaiton ratio and biocrude production
+#%% facility level decarbonizaiton ratio and biocrude production # !!! need to run 2 times to make the label font and size right
 
 fig = plt.figure(figsize=(15, 10))
 
@@ -857,7 +855,7 @@ facility_plot(0, p)
 facility_plot(1, y)
 facility_plot(2, b)
 
-#%% facility level decarbonizaiton amount and biocrude production
+#%% facility level decarbonizaiton amount and biocrude production # !!! need to run 2 times to make the label font and size right
 
 fig = plt.figure(figsize=(16, 8))
 
@@ -1177,7 +1175,7 @@ for i in range(0, len(decarbonization_result)): # !!! run in different consoles 
                                                      0.67848,
                                                      0.67848*elec[elec['state']==decarbonization_result.iloc[i]['state']]['GHG (10-year 95th)']/elec[elec['state']==decarbonization_result.iloc[i]['state']]['GHG (10-year median)']])
     
-    kwargs = {'N':100, 'rule':'L', 'seed':3221}
+    kwargs = {'N':1000, 'rule':'L', 'seed':3221}
     samples = model.sample(**kwargs)
     model.load_samples(samples)
     model.evaluate()
@@ -1188,6 +1186,9 @@ for i in range(0, len(decarbonization_result)): # !!! run in different consoles 
     
     geo_uncertainty_biocrude[decarbonization_result.iloc[i]['facility']] = results[('Geospatial','Biocrude production [BPD]')]
     geo_uncertainty_decarbonization[decarbonization_result.iloc[i]['facility']] = results[('Geospatial','Decarbonization amount [tonne_per_day]')]
+    
+    if i%5 == 0:
+        print(i) # check progress
     
 geo_uncertainty_biocrude.to_excel(folder + f'results/regional_biocrude_uncertainty_{date.today()}_{i}.xlsx')
 geo_uncertainty_decarbonization.to_excel(folder + f'results/regional_decarbonization_uncertainty_{date.today()}_{i}.xlsx')

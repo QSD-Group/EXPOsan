@@ -224,8 +224,9 @@ def create_system(configuration='baseline', capacity=100,
     V2 = IsenthalpicValve('A320', ins=HT-0, outs='depressed_HT', P=717.4*6894.76, vle=True)
     V2.register_alias('V2')
     
-    H2 = qsu.HXutility('A330', ins=V2-0, outs='cooled_HT', T=60+273.15,
-                        init_with='Stream', rigorous=True)
+    H2 = qsu.HXutility('A330', include_construction=True,
+                       ins=V2-0, outs='cooled_HT', T=60+273.15,
+                       init_with='Stream', rigorous=True)
     H2.register_alias('H2')
 
 
@@ -242,7 +243,8 @@ def create_system(configuration='baseline', capacity=100,
     # separate water and oil based on gravity
     SP2.register_alias('SP2')
     
-    H3 = qsu.HXutility('A360', ins=SP2-1, outs='heated_oil', T=104+273.15, rigorous=True)
+    H3 = qsu.HXutility('A360', include_construction=True,
+                       ins=SP2-1, outs='heated_oil', T=104+273.15, rigorous=True)
     # temperature: Jones stream #334 (we remove the first distillation column)
     H3.register_alias('H3')
     
@@ -286,8 +288,9 @@ def create_system(configuration='baseline', capacity=100,
     HC.ins[2].price = 38.79
     HC.register_alias('HC')
     
-    H4 = qsu.HXutility('A420', ins=HC-0, outs='cooled_HC', T=60+273.15,
-                        init_with='Stream', rigorous=True)
+    H4 = qsu.HXutility('A420', include_construction=True,
+                       ins=HC-0, outs='cooled_HC', T=60+273.15,
+                       init_with='Stream', rigorous=True)
     H4.register_alias('H4')
     
     V4 = IsenthalpicValve('A430', ins=H4-0, outs='cooled_depressed_HC', P=30*6894.76, vle=True)
@@ -316,12 +319,14 @@ def create_system(configuration='baseline', capacity=100,
                             init_with='Stream', rigorous=True)
     DieselMixer.register_alias('DieselMixer')
     
-    H5 = qsu.HXutility('A500', ins=GasolineMixer-0, outs='cooled_gasoline',
-                        T=60+273.15, init_with='Stream', rigorous=True)
+    H5 = qsu.HXutility('A500', include_construction=True,
+                       ins=GasolineMixer-0, outs='cooled_gasoline',
+                       T=60+273.15, init_with='Stream', rigorous=True)
     H5.register_alias('H5')
     
-    H6 = qsu.HXutility('A510', ins=DieselMixer-0, outs='cooled_diesel',
-                        T=60+273.15, init_with='Stream', rigorous=True)
+    H6 = qsu.HXutility('A510', include_construction=True,
+                       ins=DieselMixer-0, outs='cooled_diesel',
+                       T=60+273.15, init_with='Stream', rigorous=True)
     H6.register_alias('H6')
     
     PC1 = qsu.PhaseChanger('S520', ins=H5-0, outs='cooled_gasoline_liquid')

@@ -1617,16 +1617,19 @@ def create_model(system=None,
         @metric(name='CHG_constrution_GWP',units='kg CO2 eq',element='LCA')
         def get_CHG_constrution_GWP():
             table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
-            return table_construction['Stainless_steel [kg]']['A230']
+            return table_construction['Stainless_steel [kg]']['A230']+table_construction['Carbon_steel [kg]']['A250']
         
         @metric(name='HT_HC_construction_GWP',units='kg CO2 eq',element='LCA')
         def get_HT_HC_construction_GWP():
             table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
             return table_construction['Carbon_steel [kg]']['T500']+table_construction['Carbon_steel [kg]']['T510']+\
                    table_construction['Stainless_steel [kg]']['A300']+table_construction['Stainless_steel [kg]']['A310']+\
-                   table_construction['Stainless_steel [kg]']['A330']+table_construction['Stainless_steel [kg]']['A360']+\
+                   table_construction['Stainless_steel [kg]']['A330']+table_construction['Carbon_steel [kg]']['A340']+\
+                   table_construction['Stainless_steel [kg]']['A360']+table_construction['Carbon_steel [kg]']['A370']+\
+                   table_construction['Carbon_steel [kg]']['A380']+table_construction['Carbon_steel [kg]']['A390']+\
                    table_construction['Stainless_steel [kg]']['A400']+table_construction['Stainless_steel [kg]']['A410']+\
-                   table_construction['Stainless_steel [kg]']['A420']+table_construction['Stainless_steel [kg]']['A500']+\
+                   table_construction['Stainless_steel [kg]']['A420']+table_construction['Carbon_steel [kg]']['A440']+\
+                   table_construction['Carbon_steel [kg]']['A450']+table_construction['Stainless_steel [kg]']['A500']+\
                    table_construction['Stainless_steel [kg]']['A510']
         
         @metric(name='CHP_constrution_GWP',units='kg CO2 eq',element='LCA')
