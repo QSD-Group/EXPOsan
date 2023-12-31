@@ -99,8 +99,9 @@ def create_system(configuration='baseline', capacity=100,
         
         P1 = qsu.SludgePump('A100', ins=Humidifier-0, outs='press_sludge', P=3049.7*6894.76,
                   init_with='Stream')
-        P1.register_alias('P1')
         # Jones 2014: 3049.7 psia
+        P1.register_alias('P1')
+        P1.include_construction = True
     
     elif WWTP.sludge_moisture > 0.8:
 
@@ -115,6 +116,7 @@ def create_system(configuration='baseline', capacity=100,
         P1 = qsu.SludgePump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76,
                   init_with='Stream')
         P1.register_alias('P1')
+        P1.include_construction = True
         # Jones 2014: 3049.7 psia
     
     # =============================================================================
@@ -199,6 +201,7 @@ def create_system(configuration='baseline', capacity=100,
               init_with='Stream')
     # Jones 2014: 1530.0 psia
     P2.register_alias('P2')
+    P2.include_construction = True
     
     # Tin = 174 C (345 F) based on Jones PNNL report. However, the reaction
     # releases a lot of heat and increase the temperature of effluent to 402 C
@@ -272,6 +275,7 @@ def create_system(configuration='baseline', capacity=100,
                   init_with='Stream')
     # Jones 2014: 1034.7 psia
     P3.register_alias('P3')
+    P3.include_construction = True
     
     # Tin = 394 C (741.2 F) based on Jones PNNL report. However, the reaction
     # releases a lot of heat and increase the temperature of effluent to 451 C
