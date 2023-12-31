@@ -9,7 +9,7 @@ Created on Sun Jun 11 08:12:41 2023
 import geopy.distance, googlemaps
 import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.colors as colors, matplotlib.ticker as mtick
 from matplotlib.mathtext import _mathtext as mathtext
-from exposan.htl.geospatial_HTL_systems import create_geospatial_system
+from exposan.htl import create_geospatial_system, create_geospatial_model
 from qsdsan.utils import palettes
 from datetime import date
 from warnings import filterwarnings
@@ -609,6 +609,7 @@ ax_top.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, 
 filterwarnings('ignore')
 
 WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
+elec = pd.read_excel(folder + 'state_elec_price_GHG.xlsx', 'summary')
 
 # if just want to see the two plants in Urbana-Champaign:
 # WRRF_input = WRRF_input[WRRF_input['CWNS'].isin([17000112001, 17000112002])]
@@ -654,7 +655,7 @@ oil_BPD = []
 #                                        state=WRRF_input.iloc[0]['state'],
 #                                        elec_GHG=float(elec[elec['state']==WRRF_input.iloc[0]['state']]['GHG (10-year median)']))
 
-for i in range(0, len(WRRF_input)): # !!! run in different consoles to speed up
+for i in range(10000, len(WRRF_input)): # !!! run in different consoles to speed up
 # for i in range(0, 2):
     
     sys, barrel = create_geospatial_system(waste_cost=WRRF_input.iloc[i]['waste_cost'],
@@ -721,9 +722,9 @@ result.to_excel(folder + f'results/decarbonization_{date.today()}_{i}.xlsx')
 
 input_data = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
 
-output_result_1 = pd.read_excel(folder + 'results/decarbonization_2023-12-27_4999.xlsx')
-output_result_2 = pd.read_excel(folder + 'results/decarbonization_2023-12-27_9999.xlsx')
-output_result_3 = pd.read_excel(folder + 'results/decarbonization_2023-12-27_14952.xlsx')
+output_result_1 = pd.read_excel(folder + 'results/decarbonization_2023-12-31_4999.xlsx')
+output_result_2 = pd.read_excel(folder + 'results/decarbonization_2023-12-31_9999.xlsx')
+output_result_3 = pd.read_excel(folder + 'results/decarbonization_2023-12-31_14952.xlsx')
 
 output_result = pd.concat([output_result_1, output_result_2, output_result_3])
 
@@ -737,9 +738,7 @@ integrated_result.to_excel(folder + f'results/integrated_decarbonization_result_
 
 #%% read decarbonization data
 
-decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2023-12-27.xlsx')
-
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
+decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2023-12-31.xlsx')
 
 decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'].notna()]
 
@@ -963,7 +962,7 @@ print(anaerobic_digestion_WRRFs.sort_values('oil_BPD', ascending=False).iloc[0,]
 
 #%% regional level analysis
 
-decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2023-12-27.xlsx')
+decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2023-12-31.xlsx')
 
 decarbonization_result.loc[decarbonization_result['state'].isin(['CT','DC','DE','FL','GA','MA','MD','ME','NC','NH','NJ','NY','PA','RI','SC','VA','VT','WV']), 'WRRF_PADD'] = 1
 decarbonization_result.loc[decarbonization_result['state'].isin(['IA','IL','IN','KS','KY','MI','MN','MO','ND','NE','OH','OK','SD','TN','WI']), 'WRRF_PADD'] = 2
@@ -1051,7 +1050,7 @@ plt.yticks(np.arange(0, 11000, 1000))
 
 #%% national level analysis
 
-decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2023-12-27.xlsx')
+decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2023-12-31.xlsx')
 
 # kg/day
 total_CO2_emission = decarbonization_result.sum(axis=0)['total_emission']
@@ -1089,3 +1088,106 @@ print(f'National decarbonization ratio of sludge management is {national_CO2_rec
 print(f'National increase ratio of crude oil production is {national_oil_production_ratio*100:.5f}%')
 
 #%% uncertainty analysis
+
+filterwarnings('ignore')
+
+decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2023-12-31.xlsx')
+elec = pd.read_excel(folder + 'state_elec_price_GHG.xlsx', 'summary')
+
+decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'].notna()]
+
+decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'] <= 0]
+
+print(len(decarbonization_result))
+
+# sludge disposal cost in $/kg sludge
+# assume the cost for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
+sludge_disposal_cost = {'landfill': 0.413,
+                        'land_application': 0.606,
+                        'incineration': 0.441,
+                        'other_sludge_management': 0.413*0.3 + 0.606*0.55 + 0.441*0.15}
+
+# sludge emission factor in kg CO2 eq/kg sludge
+# assume the GHG for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
+sludge_emission_factor = {'landfill': 1.36,
+                          'land_application': 0.353,
+                          'incineration': 0.519,
+                          'other_sludge_management': 1.36*0.3 + 0.353*0.55 + 0.519*0.15}
+
+decarbonization_result['waste_cost'] = sum(decarbonization_result[i]*sludge_disposal_cost[i] for i in sludge_disposal_cost.keys())/decarbonization_result['total_sludge_amount_kg_per_year']*1000
+
+decarbonization_result['waste_GHG'] =  sum(decarbonization_result[i]*sludge_emission_factor[i] for i in sludge_emission_factor.keys())/decarbonization_result['total_sludge_amount_kg_per_year']*1000
+
+# if just want to see the two plants in Urbana-Champaign (after sludge transportation):
+# sys, barrel = create_geospatial_system(waste_cost=584.8378378378378,
+#                                        waste_GHG=436.72688477951635,
+#                                        size=21.165,
+#                                        distance=200,
+#                                        anaerobic_digestion=WRRF_input.iloc[i]['sludge_anaerobic_digestion'],
+#                                        aerobic_digestion=WRRF_input.iloc[i]['sludge_aerobic_digestion'],
+#                                        ww_2_dry_sludge_ratio=0.27300175723037196,
+#                                        # ww_2_dry_sludge_ratio: how much metric tonne/day sludge can be produced by 1 MGD of ww
+#                                        state=WRRF_input.iloc[0]['state'],
+#                                        elec_GHG=float(elec[elec['state']==WRRF_input.iloc[0]['state']]['GHG (10-year median)']))
+
+geo_uncertainty_biocrude = pd.DataFrame()
+geo_uncertainty_decarbonization = pd.DataFrame()
+
+for i in range(0, len(decarbonization_result)): # !!! run in different consoles to speed up
+# for i in range(0, 2):
+    
+    sys, barrel = create_geospatial_system(waste_cost=decarbonization_result.iloc[i]['waste_cost'],
+                                           waste_GHG=decarbonization_result.iloc[i]['waste_GHG'],
+                                           size=decarbonization_result.iloc[i]['flow_2022_MGD'],
+                                           distance=decarbonization_result.iloc[i]['real_distance_km'],
+                                           anaerobic_digestion=decarbonization_result.iloc[i]['sludge_anaerobic_digestion'],
+                                           aerobic_digestion=decarbonization_result.iloc[i]['sludge_aerobic_digestion'],
+                                           ww_2_dry_sludge_ratio=decarbonization_result.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/decarbonization_result.iloc[i]['flow_2022_MGD'],
+                                           # ww_2_dry_sludge_ratio: how much metric tonne/day sludge can be produced by 1 MGD of ww
+                                           state=decarbonization_result.iloc[i]['state'],
+                                           elec_GHG=float(elec[elec['state']==decarbonization_result.iloc[i]['state']]['GHG (10-year median)']))
+    
+    if decarbonization_result.iloc[i]['sludge_aerobic_digestion'] == 1:
+        sludge_ash_values=[0.374, 0.468, 0.562, 'aerobic_digestion']
+        sludge_lipid_values=[0.154, 0.193, 0.232]
+        sludge_protein_values=[0.408, 0.510, 0.612]
+        
+    elif decarbonization_result.iloc[i]['sludge_anaerobic_digestion'] == 1:
+        sludge_ash_values=[0.331, 0.414, 0.497, 'anaerobic_digestion']
+        sludge_lipid_values=[0.154, 0.193, 0.232]
+        sludge_protein_values=[0.408, 0.510, 0.612]
+        
+    else:
+        sludge_ash_values=[0.174, 0.231, 0.308, 'no_digestion']
+        sludge_lipid_values=[0.080, 0.206, 0.308]
+        sludge_protein_values=[0.380, 0.456, 0.485]
+    
+    model = create_geospatial_model(system=sys,
+                                    sludge_ash=sludge_ash_values,
+                                    sludge_lipid=sludge_lipid_values,
+                                    sludge_protein=sludge_protein_values,
+                                    raw_wastewater_price_baseline=sys.flowsheet.stream.sludge_assumed_in_wastewater.price,
+                                    biocrude_and_transportation_price=[sys.flowsheet.stream.biocrude.price/6.80*4.21,
+                                                                       sys.flowsheet.stream.biocrude.price,
+                                                                       sys.flowsheet.stream.biocrude.price/6.80*11.9],
+                                    electricity_cost=[elec[elec['state']==decarbonization_result.iloc[i]['state']]['price (10-year 5th)'].iloc[0]/100,
+                                                      elec[elec['state']==decarbonization_result.iloc[i]['state']]['price (10-year median)'].iloc[0]/100,
+                                                      elec[elec['state']==decarbonization_result.iloc[i]['state']]['price (10-year 95th)'].iloc[0]/100],
+                                    electricity_GHG=[0.67848*elec[elec['state']==decarbonization_result.iloc[i]['state']]['GHG (10-year 5th)']/elec[elec['state']==decarbonization_result.iloc[i]['state']]['GHG (10-year median)'],
+                                                     0.67848,
+                                                     0.67848*elec[elec['state']==decarbonization_result.iloc[i]['state']]['GHG (10-year 95th)']/elec[elec['state']==decarbonization_result.iloc[i]['state']]['GHG (10-year median)']])
+    
+    kwargs = {'N':100, 'rule':'L', 'seed':3221}
+    samples = model.sample(**kwargs)
+    model.load_samples(samples)
+    model.evaluate()
+    
+    idx = len(model.parameters)
+    parameters = model.table.iloc[:, :idx]
+    results = model.table.iloc[:, idx:]
+    
+    geo_uncertainty_biocrude[decarbonization_result.iloc[i]['facility']] = results[('Geospatial','Biocrude production [BPD]')]
+    geo_uncertainty_decarbonization[decarbonization_result.iloc[i]['facility']] = results[('Geospatial','Decarbonization amount [tonne_per_day]')]
+    
+geo_uncertainty_biocrude.to_excel(folder + f'results/regional_biocrude_uncertainty_{date.today()}_{i}.xlsx')
+geo_uncertainty_decarbonization.to_excel(folder + f'results/regional_decarbonization_uncertainty_{date.today()}_{i}.xlsx')

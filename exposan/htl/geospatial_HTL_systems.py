@@ -61,7 +61,7 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                              state='IL',
                              elec_GHG=0.37 # use state-avarage values
                              ):
-
+    
     flowsheet_ID = 'htl_geospatial'
     
     # clear flowsheet and registry for reloading
@@ -79,7 +79,7 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     qs.ImpactIndicator.load_from_file(os.path.join(folder, 'data/impact_indicators.csv'))
     qs.ImpactItem.load_from_file(os.path.join(folder, 'data/impact_items.xlsx'))
     
-    raw_wastewater = qs.WasteStream('feedstock_assumed_in_wastewater', H2O=size, units='MGD', T=25+273.15)
+    raw_wastewater = qs.WasteStream('sludge_assumed_in_wastewater', H2O=size, units='MGD', T=25+273.15)
     # set H2O equal to the total raw wastewater into the WWTP
     
     # =============================================================================
@@ -236,7 +236,7 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
 
     # add impact for waste sludge
     qs.StreamImpactItem(ID='sludge_in_wastewater_item',
-                        linked_stream=stream.feedstock_assumed_in_wastewater,
+                        linked_stream=stream.sludge_assumed_in_wastewater,
                         Acidification=0,
                         Ecotoxicity=0,
                         Eutrophication=0,
@@ -344,7 +344,7 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     federal_income_tax_rate_value = 0.21
     
     annual_sales = BiocrudeTank.outs[0].F_mass*365*24*0.3847 + MemDis.outs[0].F_mass*365*24*0.3236
-    annual_material_cost = sum([s.cost for s in sys.feeds[1:] if ((s.price > 0) & (s.ID != 'feedstock_assumed_in_wastewater'))]) * sys.operating_hours
+    annual_material_cost = sum([s.cost for s in sys.feeds[1:] if ((s.price > 0) & (s.ID != 'sludge_assumed_in_wastewater'))]) * sys.operating_hours
     annual_utility_cost = sum([u.utility_cost for u in sys.cost_units]) * sys.operating_hours
     annual_net_income = annual_sales - annual_material_cost - annual_utility_cost
     

@@ -22,11 +22,17 @@ from exposan.htl import (
 __all__ = ('create_geospatial_model',)
 
 def create_geospatial_model(system=None,
-                            exclude_sludge_compositions=False,
                             include_HTL_yield_as_metrics=False,
                             include_other_metrics=False,
                             include_old_metrics=False,
-                            include_check=True):
+                            include_check=True,
+                            sludge_ash=[],
+                            sludge_lipid=[],
+                            sludge_protein=[],
+                            raw_wastewater_price_baseline=None,
+                            biocrude_and_transportation_price=[],
+                            electricity_cost=[],
+                            electricity_GHG=[]):
     '''
     Create a model based on the given system
     (or create the system based on the given configuration).
@@ -38,8 +44,6 @@ def create_geospatial_model(system=None,
         or one of the allowed configurations ("baseline", "no_P", "PSA").
     '''
     
-    # TODO: remember create_geospatial_system returns a tuple
-    
     sys = create_geospatial_system(system) if (not system) or isinstance(system, str) else system
     flowsheet = sys.flowsheet
     unit = flowsheet.unit
@@ -50,65 +54,80 @@ def create_geospatial_model(system=None,
     # =========================================================================
     # WWTP
     # =========================================================================
-    
-    # add plant size for Spearman's
-    
-    # raw_wastewater = stream.feedstock_assumed_in_wastewater
-    # dist = shape.Uniform(12618039,18927059)
-    # @param(name='plant_size',
-    #         element=raw_wastewater,
-    #         kind='coupled',
-    #         units='MGD',
-    #         baseline=15772549,
-    #         distribution=dist)
-    # def set_plant_size(i):
-    #     raw_wastewater.F_mass=i
-    
+        
     WWTP = unit.WWTP
     
-    if not exclude_sludge_compositions:
-        
-        # TODO: update the sludge composition based on digestion
-        
-        dist = shape.Triangle(0.174,0.257,0.414)
+    if sludge_ash[-1] == 'no_digestion':
+        dist = shape.Triangle(sludge_ash[0],sludge_ash[1],sludge_ash[2])
         @param(name='sludge_dw_ash',
                 element=WWTP,
                 kind='coupled',
                 units='-',
-                baseline=0.257,
+                baseline=sludge_ash[1],
                 distribution=dist)
         def set_sludge_dw_ash(i):
             WWTP.sludge_dw_ash=i
         
-        dist = shape.Triangle(0.08,0.204,0.308)
+        dist = shape.Triangle(sludge_lipid[0],sludge_lipid[1],sludge_lipid[2])
         @param(name='sludge_afdw_lipid',
                 element=WWTP,
                 kind='coupled',
                 units='-',
-                baseline=0.204,
+                baseline=sludge_lipid[1],
                 distribution=dist)
         def set_sludge_afdw_lipid(i):
             WWTP.sludge_afdw_lipid=i
         
-        dist = shape.Triangle(0.38,0.463,0.51)
+        dist = shape.Triangle(sludge_protein[0],sludge_protein[1],sludge_protein[2])
         @param(name='sludge_afdw_protein',
                 element=WWTP,
                 kind='coupled',
                 units='-',
-                baseline=0.463,
+                baseline=sludge_protein[1],
                 distribution=dist)
         def set_sludge_afdw_protein(i):
             WWTP.sludge_afdw_protein=i
             
-        dist = shape.Triangle(0.1944,0.3927,0.5556)
-        @param(name='N_2_P',
+    else:
+        dist = shape.Uniform(sludge_ash[0],sludge_ash[2])
+        @param(name='sludge_dw_ash',
                 element=WWTP,
                 kind='coupled',
                 units='-',
-                baseline=0.3927,
+                baseline=sludge_ash[1],
                 distribution=dist)
-        def set_N_2_P(i):
-            WWTP.N_2_P=i
+        def set_sludge_dw_ash(i):
+            WWTP.sludge_dw_ash=i
+        
+        dist = shape.Uniform(sludge_lipid[0],sludge_lipid[2])
+        @param(name='sludge_afdw_lipid',
+                element=WWTP,
+                kind='coupled',
+                units='-',
+                baseline=sludge_lipid[1],
+                distribution=dist)
+        def set_sludge_afdw_lipid(i):
+            WWTP.sludge_afdw_lipid=i
+        
+        dist = shape.Uniform(sludge_protein[0],sludge_protein[2])
+        @param(name='sludge_afdw_protein',
+                element=WWTP,
+                kind='coupled',
+                units='-',
+                baseline=sludge_protein[1],
+                distribution=dist)
+        def set_sludge_afdw_protein(i):
+            WWTP.sludge_afdw_protein=i
+        
+    dist = shape.Triangle(0.1944,0.3927,0.5556)
+    @param(name='N_2_P',
+            element=WWTP,
+            kind='coupled',
+            units='-',
+            baseline=0.3927,
+            distribution=dist)
+    def set_N_2_P(i):
+        WWTP.N_2_P=i
 
     dist = shape.Uniform(0.675,0.825)
     @param(name='lipid_2_C',
@@ -519,6 +538,17 @@ def create_geospatial_model(system=None,
     def set_IRR(i):
         tea.IRR=i
     
+    raw_wastewater = stream.sludge_assumed_in_wastewater
+    dist = shape.Uniform(raw_wastewater_price_baseline*1.2,raw_wastewater_price_baseline*0.8)
+    @param(name='raw wastewater price',
+            element='TEA',
+            kind='isolated',
+            units='$/kg',
+            baseline=raw_wastewater_price_baseline,
+            distribution=dist)
+    def set_raw_wastewater_price(i):
+        raw_wastewater.price=i
+    
     H2SO4 = stream.H2SO4
     dist = shape.Triangle(0.005994,0.00658,0.014497)
     @param(name='5% H2SO4 price',
@@ -583,23 +613,24 @@ def create_geospatial_model(system=None,
             distribution=dist)
     def set_CH4_price(i):
         natural_gas.price=i
-        
-        
     
-    # TODO: add crude oil price
-    
-    
-    
-    # TODO: add transportation cost
-    
-    
-    
-    dist = shape.Triangle(0.0667,0.06879,0.07180)
-    @param(name='electricity price',
+    biocrude = stream.biocrude
+    dist = shape.Triangle(biocrude_and_transportation_price[0],biocrude_and_transportation_price[1],biocrude_and_transportation_price[2])
+    @param(name='biocrude and transportation price',
             element='TEA',
             kind='isolated',
             units='$/kg',
-            baseline=0.06879,
+            baseline=biocrude_and_transportation_price[1],
+            distribution=dist)
+    def set_biocrude_transportation_price(i):
+        biocrude.price=i
+    
+    dist = shape.Triangle(electricity_cost[0],electricity_cost[1],electricity_cost[2])
+    @param(name='electricity price',
+            element='TEA',
+            kind='isolated',
+            units='$/kWh',
+            baseline=electricity_cost[1],
             distribution=dist)
     def set_electrivity_price(i):
         qs.PowerUtility.price=i
@@ -611,8 +642,8 @@ def create_geospatial_model(system=None,
     for item in qs.ImpactItem.get_all_items().keys():
         if item == 'sludge_in_wastewater_item':
             CF = 'GlobalWarming'
-            abs_small = 0.9*qs.ImpactItem.get_item(item).CFs[CF]
-            abs_large = 1.1*qs.ImpactItem.get_item(item).CFs[CF]
+            abs_small = 0.8*qs.ImpactItem.get_item(item).CFs[CF]
+            abs_large = 1.2*qs.ImpactItem.get_item(item).CFs[CF]
             dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
             @param(name=f'{item}_{CF}',
                    setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
@@ -623,6 +654,34 @@ def create_geospatial_model(system=None,
                    distribution=dist)
             def set_LCA(i):
                 qs.ImpactItem.get_item(item).CFs[CF]=i
+        
+        elif item == 'Electricity':
+            if CF == 'GlobalWarming':
+                abs_small = electricity_GHG[0]
+                abs_large = electricity_GHG[2]
+                dist = shape.Triangle(min(abs_small,abs_large),max(abs_small,abs_large))
+                @param(name=f'{item}_{CF}',
+                       setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
+                       element='LCA',
+                       kind='isolated',
+                       units=qs.ImpactIndicator.get_indicator(CF).unit,
+                       baseline=electricity_GHG[1],
+                       distribution=dist)
+                def set_LCA(i):
+                    qs.ImpactItem.get_item(item).CFs[CF]=i
+            else:
+                abs_small = 0.9*qs.ImpactItem.get_item(item).CFs[CF]
+                abs_large = 1.1*qs.ImpactItem.get_item(item).CFs[CF]
+                dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
+                @param(name=f'{item}_{CF}',
+                       setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
+                       element='LCA',
+                       kind='isolated',
+                       units=qs.ImpactIndicator.get_indicator(CF).unit,
+                       baseline=qs.ImpactItem.get_item(item).CFs[CF],
+                       distribution=dist)
+                def set_LCA(i):
+                    qs.ImpactItem.get_item(item).CFs[CF]=i
         
         else:
             for CF in qs.ImpactIndicator.get_all_indicators().keys():
@@ -650,15 +709,15 @@ def create_geospatial_model(system=None,
         
         @metric(name='C_afdw',units='%',element='Sankey')
         def get_C_afdw():
-            return WWTP.sludge_C*24/1000/(sys.flowsheet.stream.feedstock_assumed_in_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
+            return WWTP.sludge_C*24/1000/(raw_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
         
         @metric(name='N_afdw',units='%',element='Sankey')
         def get_N_afdw():
-            return WWTP.sludge_N*24/1000/(sys.flowsheet.stream.feedstock_assumed_in_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
+            return WWTP.sludge_N*24/1000/(raw_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
         
         @metric(name='P_afdw',units='%',element='Sankey')
         def get_P_afdw():
-            return WWTP.sludge_P*24/1000/(sys.flowsheet.stream.feedstock_assumed_in_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
+            return WWTP.sludge_P*24/1000/(raw_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
         
         @metric(name='sludge_C',units='kg/hr',element='Sankey')
         def get_sludge_C():
@@ -1062,9 +1121,6 @@ def create_geospatial_model(system=None,
         @metric(name='HTL_gas_yield',units='-',element='HTL')
         def get_HTL_gas_yield():
             return HTL.gas_yield
-        
-        
-    biocrude = stream.biocrude
     
     # key metrics
     if include_old_metrics:
@@ -1073,7 +1129,6 @@ def create_geospatial_model(system=None,
             biocrude_gal_2_kg=3.70970428357 # 980 kg/m3 Snowden-Swan et al. 2022 SOT, PNNL
             return tea.solve_price(biocrude)*biocrude_gal_2_kg
         
-        raw_wastewater = stream.feedstock_assumed_in_wastewater
         @metric(name='sludge_management_price',units='$/tonne dry sludge',element='TEA')
         def get_sludge_treatment_price():
             return -tea.solve_price(raw_wastewater)*_MMgal_to_L/WWTP.ww_2_dry_sludge

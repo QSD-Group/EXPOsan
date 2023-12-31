@@ -1186,20 +1186,22 @@ def create_model(system=None,
 
     metric = model.metric
     
+    raw_wastewater = stream.feedstock_assumed_in_wastewater
+    
     if include_other_metrics: # all metrics
         # element metrics
         
         @metric(name='C_afdw',units='%',element='Sankey')
         def get_C_afdw():
-            return WWTP.sludge_C*24/1000/(sys.flowsheet.stream.feedstock_assumed_in_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
+            return WWTP.sludge_C*24/1000/(raw_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
         
         @metric(name='N_afdw',units='%',element='Sankey')
         def get_N_afdw():
-            return WWTP.sludge_N*24/1000/(sys.flowsheet.stream.feedstock_assumed_in_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
+            return WWTP.sludge_N*24/1000/(raw_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
         
         @metric(name='P_afdw',units='%',element='Sankey')
         def get_P_afdw():
-            return WWTP.sludge_P*24/1000/(sys.flowsheet.stream.feedstock_assumed_in_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
+            return WWTP.sludge_P*24/1000/(raw_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
         
         @metric(name='sludge_C',units='kg/hr',element='Sankey')
         def get_sludge_C():
@@ -1852,7 +1854,6 @@ def create_model(system=None,
         diesel_gal_2_kg=3.220628346
         return tea.solve_price(diesel)*diesel_gal_2_kg
     
-    raw_wastewater = stream.feedstock_assumed_in_wastewater
     @metric(name='sludge_management_price',units='$/tonne dry sludge',element='TEA')
     def get_sludge_treatment_price():
         return -tea.solve_price(raw_wastewater)*_MMgal_to_L/WWTP.ww_2_dry_sludge
