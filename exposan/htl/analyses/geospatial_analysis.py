@@ -6,9 +6,11 @@ Created on Sun Jun 11 08:12:41 2023
 @author: jiananfeng
 '''
 
-import geopy.distance, googlemaps
+import geopy.distance, googlemaps, random
 import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.colors as colors, matplotlib.ticker as mtick
 from matplotlib.mathtext import _mathtext as mathtext
+from matplotlib.patches import Rectangle
+from colorpalette import Color
 from exposan.htl import create_geospatial_system, create_geospatial_model
 from qsdsan.utils import palettes
 from datetime import date
@@ -25,6 +27,15 @@ o = Guest.orange.HEX
 y = Guest.yellow.HEX
 a = Guest.gray.HEX
 p = Guest.purple.HEX
+
+# TODO: consider adding these dark colors to qsdsan
+db = Color('dark_blue', (53, 118, 127)).HEX
+dg = Color('dark_green', (77, 126, 83)).HEX
+dr = Color('dark_red', (156, 75, 80)).HEX
+do = Color('dark_orange', (167, 95, 62)).HEX
+dy = Color('dark_yellow', (171, 137, 55)).HEX
+da = Color('dark_gray', (78, 78, 78)).HEX
+dp = Color('dark_purple', (76, 56, 90)).HEX
 
 def set_plot(figure_size=(30, 30)):
     global fig, ax
@@ -128,6 +139,7 @@ electricity = gpd.GeoDataFrame(electricity)
 set_plot()
 
 US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
+# US.plot(ax=ax, color='w', edgecolor='k', linewidth=6) # for all WRRFs together with the same symbols
 
 WRRF = WRRF.sort_values(by='flow_2022_MGD', ascending=False)
 
@@ -165,13 +177,16 @@ US.plot(ax=ax,
 
 US.plot(ax=ax, color='none', edgecolor='k', linewidth=3)
 
+US.plot(ax=ax, color='none', edgecolor='k', linewidth=6) # for all oil refineries together with the same symbols
+
 refinery['total_capacity'] = refinery[[i for i in refinery.columns if i[-4:] == 'Mbpd']].sum(axis=1)
 
 refinery = refinery.sort_values(by='total_capacity', ascending=False)
 
 refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=refinery['total_capacity']**0.5*50, edgecolor='k', linewidth=3, alpha=0.9)
 
-# refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=1000, edgecolor='k', linewidth=3)
+# if you want to show all oil refineries together with the same symbols, comment the codes above and uncomment the next line of code
+# refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=1000, edgecolor='k', linewidth=6)
 
 #%% WRRFs+oil refineries visualization (just select states, search 'NOTE 1')
 
@@ -297,13 +312,19 @@ fig, ax = plt.subplots(figsize = (5, 8))
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
+
+plt.xticks(fontname = 'Arial')
 plt.yticks(fontname = 'Arial')
+
+plt.rcParams.update({'mathtext.fontset': 'custom'})
+plt.rcParams.update({'mathtext.default': 'regular'})
+plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
 ax = plt.gca()
 ax.set_ylim([-50, 850])
 ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
 
-ax.set_ylabel('Distance [km]', fontname='Arial', fontsize=35, labelpad=10)
+ax.set_ylabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=35, labelpad=10)
 
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
@@ -323,7 +344,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
     
-# fig.savefig('distance.png', transparent=True, bbox_inches='tight')
+# fig.savefig('/Users/jiananfeng/Desktop/distance.png', transparent=True, bbox_inches='tight')
 
 #%% travel distance box plot (per region)
 
@@ -343,8 +364,13 @@ def set_cf_plot():
     plt.rcParams['axes.linewidth'] = 3
     plt.rcParams['xtick.labelsize'] = 30
     plt.rcParams['ytick.labelsize'] = 30
+    
     plt.xticks(fontname = 'Arial')
     plt.yticks(fontname = 'Arial')
+    
+    plt.rcParams.update({'mathtext.fontset': 'custom'})
+    plt.rcParams.update({'mathtext.default': 'regular'})
+    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
 def add_region(position, region, color=b):
     ax = fig.add_subplot(gs[0, position])
@@ -357,7 +383,7 @@ def add_region(position, region, color=b):
     
     if position == 0:
         ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
-        ax.set_ylabel('Distance [km]', fontname='Arial', fontsize=35, labelpad=10)
+        ax.set_ylabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=35, labelpad=10)
     
     elif position == 4:
         ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, labelcolor='none')
@@ -386,6 +412,7 @@ def add_region(position, region, color=b):
     for flier in bp['fliers']:
         flier.set(marker='o', markersize=7, markerfacecolor=color, markeredgewidth=1.5)
 
+# TODO: there are still ticks on the left axis of the leftmost figure, use PS for now
 add_region(0, 'East Coast', b)
 add_region(1, 'Midwest', g)
 add_region(2, 'Gulf Coast', r)
@@ -491,6 +518,8 @@ CF_input[0] = 0
 
 CF_input = CF_input[[0, *CF_input.columns[2:-1]]]
 
+max_distance = 1500
+
 CF_input = CF_input.iloc[:, 0:max_distance+6]
 
 CF_input.drop(['Company','Corp','Site'], axis=1, inplace=True)
@@ -525,8 +554,13 @@ def set_cf_plot():
     plt.rcParams['axes.linewidth'] = 3
     plt.rcParams['xtick.labelsize'] = 30
     plt.rcParams['ytick.labelsize'] = 30
+    
     plt.xticks(fontname = 'Arial')
     plt.yticks(fontname = 'Arial')
+    
+    plt.rcParams.update({'mathtext.fontset': 'custom'})
+    plt.rcParams.update({'mathtext.default': 'regular'})
+    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
 def add_region(position, start_region, end_region, color):
     ax = fig.add_subplot(gs[0, position])
@@ -550,10 +584,10 @@ def add_region(position, start_region, end_region, color):
     if position == 0:
         ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False, labelleft=True, labelbottom=True)
         plt.xticks(np.arange(0, max_distance*1.2, max_distance*0.2))
-        ax.set_ylabel('Cumulative WRRFs capacity [MGD]', fontname='Arial', fontsize=35, labelpad=10)
+        ax.set_ylabel(r'$\mathbf{Cumulative\ WRRFs\ capacity}$ [MGD]', fontname='Arial', fontsize=35, labelpad=10)
     else:
         if position == 2:
-            ax.set_xlabel('Distance [km]', fontname='Arial', fontsize=35, labelpad=7)
+            ax.set_xlabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=35, labelpad=7)
         ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
         plt.xticks(np.arange(max_distance*0.2, max_distance*1.2, max_distance*0.2))
     
@@ -653,7 +687,7 @@ oil_BPD = []
 #                                        state=WRRF_input.iloc[0]['state'],
 #                                        elec_GHG=float(elec[elec['state']==WRRF_input.iloc[0]['state']]['GHG (10-year median)']))
 
-for i in range(0, len(WRRF_input)): # !!! run in different consoles to speed up
+for i in range(10000, len(WRRF_input)): # !!! run in different consoles to speed up
 # for i in range(0, 2):
     
     sys, barrel = create_geospatial_system(waste_cost=WRRF_input.iloc[i]['waste_cost'],
@@ -720,9 +754,9 @@ result.to_excel(folder + f'results/decarbonization_{date.today()}_{i}.xlsx')
 
 input_data = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
 
-output_result_1 = pd.read_excel(folder + 'results/decarbonization_2023-12-31_4999.xlsx')
-output_result_2 = pd.read_excel(folder + 'results/decarbonization_2023-12-31_9999.xlsx')
-output_result_3 = pd.read_excel(folder + 'results/decarbonization_2023-12-31_14952.xlsx')
+output_result_1 = pd.read_excel(folder + 'results/decarbonization_biocrude_baseline_data/decarbonization_2023-12-31_4999.xlsx')
+output_result_2 = pd.read_excel(folder + 'results/decarbonization_biocrude_baseline_data/decarbonization_2023-12-31_9999.xlsx')
+output_result_3 = pd.read_excel(folder + 'results/decarbonization_biocrude_baseline_data/decarbonization_2023-12-31_14952.xlsx')
 
 output_result = pd.concat([output_result_1, output_result_2, output_result_3])
 
@@ -783,8 +817,13 @@ def facility_plot(position, color):
     plt.rcParams['axes.linewidth'] = 3
     plt.rcParams['xtick.labelsize'] = 30
     plt.rcParams['ytick.labelsize'] = 30
+    
     plt.xticks(fontname = 'Arial')
     plt.yticks(fontname = 'Arial')
+    
+    plt.rcParams.update({'mathtext.fontset': 'custom'})
+    plt.rcParams.update({'mathtext.default': 'regular'})
+    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
     
     ax = plt.gca()
     ax.set_xlim([-6, 36])
@@ -803,7 +842,7 @@ def facility_plot(position, color):
         plt.xticks(np.arange(0, 40, 10))
         ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
         
-        ax.set_ylabel('Biocrude production [BPD]', fontname='Arial', fontsize=35, labelpad=7)
+        ax.set_ylabel(r'$\mathbf{Biocrude\ production}$ [BPD]', fontname='Arial', fontsize=35, labelpad=7)
         
     if position == 1:
         data = decarbonization_result[decarbonization_result['sludge_aerobic_digestion'] == 1]
@@ -817,7 +856,7 @@ def facility_plot(position, color):
         plt.xticks(np.arange(0, 40, 10))
         ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
         
-        ax.set_xlabel('Decarbonization potential', fontname='Arial', fontsize=35, labelpad=7)
+        ax.set_xlabel(r'$\mathbf{Decarbonization\ potential}$', fontname='Arial', fontsize=35, labelpad=7)
         
     if position == 2:
         data = decarbonization_result[decarbonization_result['sludge_anaerobic_digestion'] == 1]
@@ -837,19 +876,19 @@ def facility_plot(position, color):
         plt.xticks(np.arange(0, 40, 10))
         ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
     
-    ax.scatter(x = data['WRRF_CO2_reduction_ratio']*100,
-                    y = data['oil_BPD'],
-                    s = data['flow_2022_MGD']*2,
-                    c = color,
-                    linewidths = 0,
-                    alpha = 0.9)
+    ax.scatter(x=data['WRRF_CO2_reduction_ratio']*100,
+               y=data['oil_BPD'],
+               s=data['flow_2022_MGD']*2,
+               c=color,
+               linewidths=0,
+               alpha=0.9)
     
-    ax.scatter(x = data['WRRF_CO2_reduction_ratio']*100,
-                    y = data['oil_BPD'],
-                    s = data['flow_2022_MGD']*2,
-                    c = 'none',
-                    linewidths = 2,
-                    edgecolors = 'k')
+    ax.scatter(x=data['WRRF_CO2_reduction_ratio']*100,
+               y=data['oil_BPD'],
+               s=data['flow_2022_MGD']*2,
+               c='none',
+               linewidths=2,
+               edgecolors='k')
     
 facility_plot(0, p)
 facility_plot(1, y)
@@ -868,9 +907,13 @@ def facility_plot(position, color):
     plt.rcParams['axes.linewidth'] = 3
     plt.rcParams['xtick.labelsize'] = 30
     plt.rcParams['ytick.labelsize'] = 30
+    
     plt.xticks(fontname = 'Arial')
     plt.yticks(fontname = 'Arial')
-    plt.rcParams.update({'mathtext.default':  'regular' })
+    
+    plt.rcParams.update({'mathtext.fontset': 'custom'})
+    plt.rcParams.update({'mathtext.default': 'regular'})
+    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
     
     ax = plt.gca()
     ax.set_xlim([-15, 165])
@@ -888,7 +931,7 @@ def facility_plot(position, color):
         plt.xticks(np.arange(0, 180, 30))
         ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
         
-        ax.set_ylabel('Biocrude production [BPD]', fontname='Arial', fontsize=35, labelpad=7)
+        ax.set_ylabel(r'$\mathbf{Biocrude\ production}$ [BPD]', fontname='Arial', fontsize=35, labelpad=7)
         
     if position == 1:
         data = decarbonization_result[decarbonization_result['sludge_aerobic_digestion'] == 1]
@@ -902,7 +945,7 @@ def facility_plot(position, color):
         plt.xticks(np.arange(0, 180, 30))
         ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
         
-        ax.set_xlabel('Decarbonization amount [tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=35, labelpad=7)
+        ax.set_xlabel(r'$\mathbf{Decarbonization\ amount}$ [tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=35, labelpad=7)
 
         mathtext.FontConstantsBase.sup1 = 0.35
         
@@ -924,19 +967,19 @@ def facility_plot(position, color):
         plt.xticks(np.arange(0, 180, 30))
         ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
     
-    ax.scatter(x = data['CO2_reduction']/30/365/1000,
-                    y = data['oil_BPD'],
-                    s = data['flow_2022_MGD']*2,
-                    c = color,
-                    linewidths = 0,
-                    alpha = 0.9)
+    ax.scatter(x=data['CO2_reduction']/30/365/1000,
+               y=data['oil_BPD'],
+               s=data['flow_2022_MGD']*2,
+               c=color,
+               linewidths=0,
+               alpha=0.9)
     
-    ax.scatter(x = data['CO2_reduction']/30/365/1000,
-                    y = data['oil_BPD'],
-                    s = data['flow_2022_MGD']*2,
-                    c = 'none',
-                    linewidths = 2,
-                    edgecolors = 'k')
+    ax.scatter(x=data['CO2_reduction']/30/365/1000,
+               y=data['oil_BPD'],
+               s=data['flow_2022_MGD']*2,
+               c='none',
+               linewidths=2,
+               edgecolors='k')
     
 facility_plot(0, p)
 facility_plot(1, y)
@@ -997,16 +1040,17 @@ PADD_5.sort_values(by='CO2_reduction', inplace=True)
 PADD_5['cummulative_CO2_reduction'] = PADD_5['CO2_reduction'].cumsum()
 PADD_5['cummulative_oil_BPD'] = PADD_5['oil_BPD'].cumsum()
 
-fig, ax_more = plt.subplots(figsize = (15, 10))
+fig, ax = plt.subplots(figsize = (15, 10))
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 plt.xticks(fontname = 'Arial')
 plt.yticks(fontname = 'Arial')
+plt.rcParams.update({'mathtext.default': 'regular'})
 
-ax_more.set_xlim([0, 1600])
-ax_more.set_ylim([0, 10000])
+ax.set_xlim([0, 1600])
+ax.set_ylim([0, 10000])
 
 plt.xticks(np.arange(0, 1800, 200))
 plt.yticks(np.arange(0, 11000, 1000))
@@ -1017,31 +1061,33 @@ plt.yticks(np.arange(0, 11000, 1000))
 # plt.xticks(np.arange(0, 55, 5))
 # plt.yticks(np.arange(0, 550, 50))
 
-ax_more.set_xlabel('Decarbonization amount [tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=35, labelpad=7)
-ax_more.set_ylabel('Biocrude production [BPD]', fontname='Arial', fontsize=35, labelpad=7)
+ax.set_xlabel('Decarbonization amount [tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=35, labelpad=7)
+ax.set_ylabel('Biocrude production [BPD]', fontname='Arial', fontsize=35, labelpad=7)
+
+mathtext.FontConstantsBase.sup1 = 0.35
 
 def plot_line(ax, data, color):
     ax.plot((0, *data['cummulative_CO2_reduction']/30/365/1000), (0, *data['cummulative_oil_BPD']),
              color=color, marker='o', markersize=5, markeredgewidth=3, linewidth=2)
     
-plot_line(ax_more, PADD_1, b)
-plot_line(ax_more, PADD_2, g)
-plot_line(ax_more, PADD_3, r)
-plot_line(ax_more, PADD_4, o)
-plot_line(ax_more, PADD_5, y)
+plot_line(ax, PADD_1, b)
+plot_line(ax, PADD_2, g)
+plot_line(ax, PADD_3, r)
+plot_line(ax, PADD_4, o)
+plot_line(ax, PADD_5, y)
 
-ax_more.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False)
+ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False)
 
-ax_more_right = ax_more.twinx()
-ax_more_right.set_ylim(ax_more.get_ylim())
-ax_more_right.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 plt.xticks(np.arange(0, 1800, 200))
 plt.yticks(np.arange(0, 11000, 1000))
 
-ax_more_top = ax_more.twiny()
-ax_more_top.set_xlim(ax_more.get_xlim())
-ax_more_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_top = ax.twiny()
+ax_top.set_xlim(ax.get_xlim())
+ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 plt.xticks(np.arange(0, 1800, 200))
 plt.yticks(np.arange(0, 11000, 1000))
@@ -1131,7 +1177,7 @@ decarbonization_result['waste_GHG'] =  sum(decarbonization_result[i]*sludge_emis
 geo_uncertainty_biocrude = pd.DataFrame()
 geo_uncertainty_decarbonization = pd.DataFrame()
 
-for i in range(0, len(decarbonization_result)): # !!! run in different consoles to speed up
+for i in range(490, len(decarbonization_result)): # !!! run in different consoles to speed up
 # for i in range(0, 2):
     
     sys, barrel = create_geospatial_system(waste_cost=decarbonization_result.iloc[i]['waste_cost'],
@@ -1192,3 +1238,262 @@ for i in range(0, len(decarbonization_result)): # !!! run in different consoles 
     
 geo_uncertainty_biocrude.to_excel(folder + f'results/regional_biocrude_uncertainty_{date.today()}_{i}.xlsx')
 geo_uncertainty_decarbonization.to_excel(folder + f'results/regional_decarbonization_uncertainty_{date.today()}_{i}.xlsx')
+
+#%% regional uncertainty (data preparation)
+
+# decarbonization
+regional_decarbonization_1 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2023-12-31_69.xlsx')
+regional_decarbonization_2 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2023-12-31_139.xlsx')
+regional_decarbonization_3 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2023-12-31_209.xlsx')
+regional_decarbonization_4 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2023-12-31_279.xlsx')
+regional_decarbonization_5 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2023-12-31_349.xlsx')
+regional_decarbonization_6 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2023-12-31_419.xlsx')
+regional_decarbonization_7 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2023-12-31_489.xlsx')
+regional_decarbonization_8 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2023-12-31_559.xlsx')
+
+regional_decarbonization_1.drop('Unnamed: 0', axis=1, inplace=True)
+regional_decarbonization_2.drop('Unnamed: 0', axis=1, inplace=True)
+regional_decarbonization_3.drop('Unnamed: 0', axis=1, inplace=True)
+regional_decarbonization_4.drop('Unnamed: 0', axis=1, inplace=True)
+regional_decarbonization_5.drop('Unnamed: 0', axis=1, inplace=True)
+regional_decarbonization_6.drop('Unnamed: 0', axis=1, inplace=True)
+regional_decarbonization_7.drop('Unnamed: 0', axis=1, inplace=True)
+regional_decarbonization_8.drop('Unnamed: 0', axis=1, inplace=True)
+
+regional_decarbonization = pd.concat([regional_decarbonization_1, regional_decarbonization_2], axis=1)
+regional_decarbonization = pd.concat([regional_decarbonization, regional_decarbonization_3], axis=1)
+regional_decarbonization = pd.concat([regional_decarbonization, regional_decarbonization_4], axis=1)
+regional_decarbonization = pd.concat([regional_decarbonization, regional_decarbonization_5], axis=1)
+regional_decarbonization = pd.concat([regional_decarbonization, regional_decarbonization_6], axis=1)
+regional_decarbonization = pd.concat([regional_decarbonization, regional_decarbonization_7], axis=1)
+regional_decarbonization = pd.concat([regional_decarbonization, regional_decarbonization_8], axis=1)
+
+regional_decarbonization.to_excel(folder + f'results/integrated_regional_decarbonization_uncertainty_{date.today()}.xlsx')
+
+# biocrude
+regional_biocrude_1 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2023-12-31_69.xlsx')
+regional_biocrude_2 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2023-12-31_139.xlsx')
+regional_biocrude_3 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2023-12-31_209.xlsx')
+regional_biocrude_4 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2023-12-31_279.xlsx')
+regional_biocrude_5 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2023-12-31_349.xlsx')
+regional_biocrude_6 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2023-12-31_419.xlsx')
+regional_biocrude_7 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2023-12-31_489.xlsx')
+regional_biocrude_8 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2023-12-31_559.xlsx')
+
+regional_biocrude_1.drop('Unnamed: 0', axis=1, inplace=True)
+regional_biocrude_2.drop('Unnamed: 0', axis=1, inplace=True)
+regional_biocrude_3.drop('Unnamed: 0', axis=1, inplace=True)
+regional_biocrude_4.drop('Unnamed: 0', axis=1, inplace=True)
+regional_biocrude_5.drop('Unnamed: 0', axis=1, inplace=True)
+regional_biocrude_6.drop('Unnamed: 0', axis=1, inplace=True)
+regional_biocrude_7.drop('Unnamed: 0', axis=1, inplace=True)
+regional_biocrude_8.drop('Unnamed: 0', axis=1, inplace=True)
+
+regional_biocrude = pd.concat([regional_biocrude_1, regional_biocrude_2], axis=1)
+regional_biocrude = pd.concat([regional_biocrude, regional_biocrude_3], axis=1)
+regional_biocrude = pd.concat([regional_biocrude, regional_biocrude_4], axis=1)
+regional_biocrude = pd.concat([regional_biocrude, regional_biocrude_5], axis=1)
+regional_biocrude = pd.concat([regional_biocrude, regional_biocrude_6], axis=1)
+regional_biocrude = pd.concat([regional_biocrude, regional_biocrude_7], axis=1)
+regional_biocrude = pd.concat([regional_biocrude, regional_biocrude_8], axis=1)
+
+regional_biocrude.to_excel(folder + f'results/integrated_regional_biocrude_uncertainty_{date.today()}.xlsx')
+
+#%% regional uncertainty (build and run model)
+
+# import PADD information
+WRRF_PADD = pd.read_excel(folder + 'results/integrated_decarbonization_result_2023-12-31.xlsx')
+
+WRRF_PADD = WRRF_PADD[WRRF_PADD['USD_decarbonization'].notna()]
+
+WRRF_PADD = WRRF_PADD[WRRF_PADD['USD_decarbonization'] <= 0]
+
+WRRF_PADD.loc[WRRF_PADD['state'].isin(['CT','DC','DE','FL','GA','MA','MD','ME','NC','NH','NJ','NY','PA','RI','SC','VA','VT','WV']), 'WRRF_PADD'] = 1
+WRRF_PADD.loc[WRRF_PADD['state'].isin(['IA','IL','IN','KS','KY','MI','MN','MO','ND','NE','OH','OK','SD','TN','WI']), 'WRRF_PADD'] = 2
+WRRF_PADD.loc[WRRF_PADD['state'].isin(['AL','AR','LA','MS','NM','TX']), 'WRRF_PADD'] = 3
+WRRF_PADD.loc[WRRF_PADD['state'].isin(['CO','ID','MT','UT','WY']), 'WRRF_PADD'] = 4
+WRRF_PADD.loc[WRRF_PADD['state'].isin(['AZ','CA','NV','OR','WA']), 'WRRF_PADD'] = 5
+
+WRRF_PADD = WRRF_PADD[['facility','WRRF_PADD']]
+
+# decarbonization
+regional_decarbonization_uncertainty = pd.read_excel(folder + 'results/integrated_regional_decarbonization_uncertainty_2024-01-01.xlsx')
+
+regional_decarbonization_uncertainty.drop('Unnamed: 0', axis=1, inplace=True)
+
+regional_decarbonization_uncertainty = regional_decarbonization_uncertainty.transpose()
+
+regional_decarbonization_uncertainty.reset_index(inplace=True, names='facility')
+
+regional_decarbonization_uncertainty = regional_decarbonization_uncertainty.merge(WRRF_PADD, how='left', on='facility')
+
+regional_decarbonization_uncertainty_PADD_1 = regional_decarbonization_uncertainty[regional_decarbonization_uncertainty['WRRF_PADD'] == 1].iloc[:,1:-1]
+regional_decarbonization_uncertainty_PADD_2 = regional_decarbonization_uncertainty[regional_decarbonization_uncertainty['WRRF_PADD'] == 2].iloc[:,1:-1]
+regional_decarbonization_uncertainty_PADD_3 = regional_decarbonization_uncertainty[regional_decarbonization_uncertainty['WRRF_PADD'] == 3].iloc[:,1:-1]
+regional_decarbonization_uncertainty_PADD_4 = regional_decarbonization_uncertainty[regional_decarbonization_uncertainty['WRRF_PADD'] == 4].iloc[:,1:-1]
+regional_decarbonization_uncertainty_PADD_5 = regional_decarbonization_uncertainty[regional_decarbonization_uncertainty['WRRF_PADD'] == 5].iloc[:,1:-1]
+
+PADD_1_decarbonization_uncertainty = []
+PADD_2_decarbonization_uncertainty = []
+PADD_3_decarbonization_uncertainty = []
+PADD_4_decarbonization_uncertainty = []
+PADD_5_decarbonization_uncertainty = []
+
+for (region, result) in [(regional_decarbonization_uncertainty_PADD_1, PADD_1_decarbonization_uncertainty),
+                         (regional_decarbonization_uncertainty_PADD_2, PADD_2_decarbonization_uncertainty),
+                         (regional_decarbonization_uncertainty_PADD_3, PADD_3_decarbonization_uncertainty),
+                         (regional_decarbonization_uncertainty_PADD_4, PADD_4_decarbonization_uncertainty),
+                         (regional_decarbonization_uncertainty_PADD_5, PADD_5_decarbonization_uncertainty)]:
+    for i in range(0,1000): # Monte Carlo simulation and Latin hypercube sampling
+        if i%100 == 0:
+            print(i) # check progress
+        regional_total_decarbonization = 0
+        for j in range(0, len(region)):
+            regional_total_decarbonization += random.uniform(region.iloc[j,:].quantile(i/1000), region.iloc[j,:].quantile((i+1)/1000))
+        result.append(regional_total_decarbonization)
+            
+integrated_regional_decarbonization_result = pd.DataFrame({'PADD_1':PADD_1_decarbonization_uncertainty,
+                                                           'PADD_2':PADD_2_decarbonization_uncertainty,
+                                                           'PADD_3':PADD_3_decarbonization_uncertainty,
+                                                           'PADD_4':PADD_4_decarbonization_uncertainty,
+                                                           'PADD_5':PADD_5_decarbonization_uncertainty})
+        
+integrated_regional_decarbonization_result.to_excel(folder + f'results/integrated_regional_total_decarbonization_uncertainty_{date.today()}.xlsx')
+
+# biocrude
+regional_biocrude_uncertainty = pd.read_excel(folder + 'results/integrated_regional_biocrude_uncertainty_2024-01-01.xlsx')
+
+regional_biocrude_uncertainty.drop('Unnamed: 0', axis=1, inplace=True)
+
+regional_biocrude_uncertainty = regional_biocrude_uncertainty.transpose()
+
+regional_biocrude_uncertainty.reset_index(inplace=True, names='facility')
+
+regional_biocrude_uncertainty = regional_biocrude_uncertainty.merge(WRRF_PADD, how='left', on='facility')
+
+regional_biocrude_uncertainty_PADD_1 = regional_biocrude_uncertainty[regional_biocrude_uncertainty['WRRF_PADD'] == 1].iloc[:,1:-1]
+regional_biocrude_uncertainty_PADD_2 = regional_biocrude_uncertainty[regional_biocrude_uncertainty['WRRF_PADD'] == 2].iloc[:,1:-1]
+regional_biocrude_uncertainty_PADD_3 = regional_biocrude_uncertainty[regional_biocrude_uncertainty['WRRF_PADD'] == 3].iloc[:,1:-1]
+regional_biocrude_uncertainty_PADD_4 = regional_biocrude_uncertainty[regional_biocrude_uncertainty['WRRF_PADD'] == 4].iloc[:,1:-1]
+regional_biocrude_uncertainty_PADD_5 = regional_biocrude_uncertainty[regional_biocrude_uncertainty['WRRF_PADD'] == 5].iloc[:,1:-1]
+
+PADD_1_biocrude_uncertainty = []
+PADD_2_biocrude_uncertainty = []
+PADD_3_biocrude_uncertainty = []
+PADD_4_biocrude_uncertainty = []
+PADD_5_biocrude_uncertainty = []
+
+for (region, result) in [(regional_biocrude_uncertainty_PADD_1, PADD_1_biocrude_uncertainty),
+                         (regional_biocrude_uncertainty_PADD_2, PADD_2_biocrude_uncertainty),
+                         (regional_biocrude_uncertainty_PADD_3, PADD_3_biocrude_uncertainty),
+                         (regional_biocrude_uncertainty_PADD_4, PADD_4_biocrude_uncertainty),
+                         (regional_biocrude_uncertainty_PADD_5, PADD_5_biocrude_uncertainty)]:
+    for i in range(0,1000): # Monte Carlo simulation and Latin hypercube sampling
+        if i%100 == 0:
+            print(i) # check progress
+        regional_total_biocrude = 0
+        for j in range(0, len(region)):
+            regional_total_biocrude += random.uniform(region.iloc[j,:].quantile(i/1000), region.iloc[j,:].quantile((i+1)/1000))
+        result.append(regional_total_biocrude)
+            
+integrated_regional_biocrude_result = pd.DataFrame({'PADD_1':PADD_1_biocrude_uncertainty,
+                                                    'PADD_2':PADD_2_biocrude_uncertainty,
+                                                    'PADD_3':PADD_3_biocrude_uncertainty,
+                                                    'PADD_4':PADD_4_biocrude_uncertainty,
+                                                    'PADD_5':PADD_5_biocrude_uncertainty})
+        
+integrated_regional_biocrude_result.to_excel(folder + f'results/integrated_regional_total_biocrude_uncertainty_{date.today()}.xlsx')
+
+#%% regional uncertainty visualization # !!! need to run 2 times to make the label font and size right
+
+decarbonization = pd.read_excel(folder + f'results/integrated_regional_total_decarbonization_uncertainty_2024-01-01.xlsx')
+biocrude = pd.read_excel(folder + f'results/integrated_regional_total_biocrude_uncertainty_2024-01-01.xlsx')
+
+fig, ax = plt.subplots(figsize = (12, 10))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 30
+plt.rcParams['ytick.labelsize'] = 30
+
+plt.xticks(fontname = 'Arial')
+plt.yticks(fontname = 'Arial')
+
+plt.rcParams.update({'mathtext.fontset': 'custom'})
+plt.rcParams.update({'mathtext.default': 'regular'})
+plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+ax.set_xlim([0, 2400])
+ax.set_ylim([0, 12000])
+
+ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False)
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+plt.xticks(np.arange(0, 2800, 400))
+plt.yticks(np.arange(0, 14000, 2000))
+
+ax_top = ax.twiny()
+ax_top.set_xlim(ax.get_xlim())
+ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+plt.xticks(np.arange(0, 2800, 400))
+plt.yticks(np.arange(0, 14000, 2000))
+
+ax.set_xlabel(r'$\mathbf{Decarbonization\ amount}$ [tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=35, labelpad=7)
+ax.set_ylabel(r'$\mathbf{Biocrude\ production}$ [BPD]', fontname='Arial', fontsize=35, labelpad=7)
+
+mathtext.FontConstantsBase.sup1 = 0.35
+
+def add_rectangle(region, color, edgecolor):
+    rectangle_fill = Rectangle((decarbonization[region].quantile(0.05), biocrude[region].quantile(0.05)),
+                               decarbonization[region].quantile(0.95) - decarbonization[region].quantile(0.05),
+                               biocrude[region].quantile(0.95) - biocrude[region].quantile(0.05),
+                               fc=color, alpha=0.5)
+    ax.add_patch(rectangle_fill)
+    
+    rectangle_edge = Rectangle((decarbonization[region].quantile(0.05), biocrude[region].quantile(0.05)),
+                               decarbonization[region].quantile(0.95) - decarbonization[region].quantile(0.05),
+                               biocrude[region].quantile(0.95) - biocrude[region].quantile(0.05),
+                               color=edgecolor, lw=2.5, fc='none', alpha=1)
+    ax.add_patch(rectangle_edge)
+    
+def add_line(region, color):
+    plt.plot([decarbonization[region].quantile(0.25), decarbonization[region].quantile(0.75)],
+             [biocrude[region].quantile(0.5), biocrude[region].quantile(0.5)],
+             lw=2.5, color=color, solid_capstyle='round', zorder=1)
+    plt.plot([decarbonization[region].quantile(0.5), decarbonization[region].quantile(0.5)],
+             [biocrude[region].quantile(0.25), biocrude[region].quantile(0.75)],
+             lw=2.5, color=color, solid_capstyle='round', zorder=1)
+
+def add_point(region, edgecolor):
+    ax_top.scatter(x=decarbonization[region].quantile(0.5),
+                   y=biocrude[region].quantile(0.5),
+                   marker='s',
+                   s=100,
+                   c='w',
+                   linewidths=2.5,
+                   alpha=1,
+                   edgecolor=edgecolor)
+    
+add_rectangle('PADD_1', b, db)
+add_line('PADD_1', db)
+
+add_rectangle('PADD_2', g, dg)
+add_line('PADD_2', dg)
+
+add_rectangle('PADD_3', r, dr)
+add_line('PADD_3', dr)
+
+add_rectangle('PADD_4', o, do)
+add_line('PADD_4', do)
+
+add_rectangle('PADD_5', y, dy)
+add_line('PADD_5', dy)
+
+add_point('PADD_1', db)
+add_point('PADD_2', dg)
+add_point('PADD_3', dr)
+# add_point('PADD_4', do)
+add_point('PADD_5', dy)
