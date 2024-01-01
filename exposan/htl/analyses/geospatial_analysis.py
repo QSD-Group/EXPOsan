@@ -673,7 +673,7 @@ for i in range(0, len(WRRF_input)): # !!! run in different consoles to speed up
     unit = flowsheet.unit
     stream = flowsheet.stream
     WRRF = unit.WWTP
-    raw_wastewater = stream.feedstock_assumed_in_wastewater
+    raw_wastewater = stream.sludge_assumed_in_wastewater
     
     CO2_reduction_result = -lca.get_total_impacts()['GlobalWarming']
   
