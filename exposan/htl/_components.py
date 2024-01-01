@@ -100,10 +100,10 @@ def create_components(set_thermo=True):
     # made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
     # (NREL 2013 appendix B)
 
-    Biochar = Component('Biochar', phase='s', particle_size='Particulate',
+    Hydrochar = Component('Hydrochar', phase='s', particle_size='Particulate',
                         degradability='Undegradable', organic=False)
-    add_V_from_rho(Biochar, 1500)  # assume 1500kg/m3
-    Biochar.copy_models_from(Chemical('CaCO3'),('Cn',))
+    add_V_from_rho(Hydrochar, 1500)  # assume 1500kg/m3
+    Hydrochar.copy_models_from(Chemical('CaCO3'),('Cn',))
     
     Biocrude = Component('Biocrude', search_ID='629-54-9',
                          particle_size='Soluble', degradability='Slowly',
@@ -384,7 +384,7 @@ def create_components(set_thermo=True):
     Membrane.copy_models_from(Chemical('CaCO3'),('Cn',))
     
     cmps = Components([Sludge_lipid, Sludge_protein, Sludge_carbo, Sludge_ash,
-                       Struvite, Biochar, Residual,
+                       Struvite, Hydrochar, Residual,
                        Biocrude, HTLaqueous, H2O, C, N, P,
                        O2, N2, CH4, C2H6, C3H8, CO2, CO, H2, NH3,
                        H2SO4, H3PO4, MgCl2, MgO, NaOH, NH42SO4, NH4Cl,
