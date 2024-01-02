@@ -372,7 +372,7 @@ def set_cf_plot():
     plt.rcParams.update({'mathtext.default': 'regular'})
     plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
-def add_region(position, region, color=b):
+def add_region(position, region, color):
     ax = fig.add_subplot(gs[0, position])
     
     set_cf_plot()
@@ -674,18 +674,6 @@ WRRF_CO2_reduction_ratio = []
 NPV = []
 USD_decarbonization = []
 oil_BPD = []
-
-# if just want to see the two plants in Urbana-Champaign (after sludge transportation):
-# sys, barrel = create_geospatial_system(waste_cost=584.8378378378378,
-#                                        waste_GHG=436.72688477951635,
-#                                        size=21.165,
-#                                        distance=200,
-#                                        anaerobic_digestion=WRRF_input.iloc[i]['sludge_anaerobic_digestion'],
-#                                        aerobic_digestion=WRRF_input.iloc[i]['sludge_aerobic_digestion'],
-#                                        ww_2_dry_sludge_ratio=0.27300175723037196,
-#                                        # ww_2_dry_sludge_ratio: how much metric tonne/day sludge can be produced by 1 MGD of ww
-#                                        state=WRRF_input.iloc[0]['state'],
-#                                        elec_GHG=float(elec[elec['state']==WRRF_input.iloc[0]['state']]['GHG (10-year median)']))
 
 for i in range(10000, len(WRRF_input)): # !!! run in different consoles to speed up
 # for i in range(0, 2):
@@ -1162,20 +1150,8 @@ decarbonization_result['waste_cost'] = sum(decarbonization_result[i]*sludge_disp
 
 decarbonization_result['waste_GHG'] =  sum(decarbonization_result[i]*sludge_emission_factor[i] for i in sludge_emission_factor.keys())/decarbonization_result['total_sludge_amount_kg_per_year']*1000
 
-# if just want to see the two plants in Urbana-Champaign (after sludge transportation):
-# sys, barrel = create_geospatial_system(waste_cost=584.8378378378378,
-#                                        waste_GHG=436.72688477951635,
-#                                        size=21.165,
-#                                        distance=200,
-#                                        anaerobic_digestion=WRRF_input.iloc[i]['sludge_anaerobic_digestion'],
-#                                        aerobic_digestion=WRRF_input.iloc[i]['sludge_aerobic_digestion'],
-#                                        ww_2_dry_sludge_ratio=0.27300175723037196,
-#                                        # ww_2_dry_sludge_ratio: how much metric tonne/day sludge can be produced by 1 MGD of ww
-#                                        state=WRRF_input.iloc[0]['state'],
-#                                        elec_GHG=float(elec[elec['state']==WRRF_input.iloc[0]['state']]['GHG (10-year median)']))
-
-geo_uncertainty_biocrude = pd.DataFrame()
 geo_uncertainty_decarbonization = pd.DataFrame()
+geo_uncertainty_biocrude = pd.DataFrame()
 
 for i in range(490, len(decarbonization_result)): # !!! run in different consoles to speed up
 # for i in range(0, 2):
@@ -1230,14 +1206,14 @@ for i in range(490, len(decarbonization_result)): # !!! run in different console
     parameters = model.table.iloc[:, :idx]
     results = model.table.iloc[:, idx:]
     
-    geo_uncertainty_biocrude[decarbonization_result.iloc[i]['facility']] = results[('Geospatial','Biocrude production [BPD]')]
     geo_uncertainty_decarbonization[decarbonization_result.iloc[i]['facility']] = results[('Geospatial','Decarbonization amount [tonne_per_day]')]
+    geo_uncertainty_biocrude[decarbonization_result.iloc[i]['facility']] = results[('Geospatial','Biocrude production [BPD]')]
     
     if i%5 == 0:
         print(i) # check progress
     
-geo_uncertainty_biocrude.to_excel(folder + f'results/regional_biocrude_uncertainty_{date.today()}_{i}.xlsx')
 geo_uncertainty_decarbonization.to_excel(folder + f'results/regional_decarbonization_uncertainty_{date.today()}_{i}.xlsx')
+geo_uncertainty_biocrude.to_excel(folder + f'results/regional_biocrude_uncertainty_{date.today()}_{i}.xlsx')
 
 #%% regional uncertainty (data preparation)
 
@@ -1406,8 +1382,8 @@ integrated_regional_biocrude_result.to_excel(folder + f'results/integrated_regio
 
 #%% regional uncertainty visualization # !!! need to run 2 times to make the label font and size right
 
-decarbonization = pd.read_excel(folder + f'results/integrated_regional_total_decarbonization_uncertainty_2024-01-01.xlsx')
-biocrude = pd.read_excel(folder + f'results/integrated_regional_total_biocrude_uncertainty_2024-01-01.xlsx')
+decarbonization = pd.read_excel(folder + 'results/integrated_regional_total_decarbonization_uncertainty_2024-01-01.xlsx')
+biocrude = pd.read_excel(folder + 'results/integrated_regional_total_biocrude_uncertainty_2024-01-01.xlsx')
 
 fig, ax = plt.subplots(figsize = (12, 10))
 
@@ -1450,7 +1426,7 @@ def add_rectangle(region, color, edgecolor):
     rectangle_fill = Rectangle((decarbonization[region].quantile(0.05), biocrude[region].quantile(0.05)),
                                decarbonization[region].quantile(0.95) - decarbonization[region].quantile(0.05),
                                biocrude[region].quantile(0.95) - biocrude[region].quantile(0.05),
-                               fc=color, alpha=0.5)
+                               fc=color, alpha=0.7)
     ax.add_patch(rectangle_fill)
     
     rectangle_edge = Rectangle((decarbonization[region].quantile(0.05), biocrude[region].quantile(0.05)),
@@ -1497,3 +1473,276 @@ add_point('PADD_2', dg)
 add_point('PADD_3', dr)
 # add_point('PADD_4', do)
 add_point('PADD_5', dy)
+
+#%% sludge transportation (Urbana-Champaign)
+
+# two separated WRRFs
+filterwarnings('ignore')
+
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
+elec = pd.read_excel(folder + 'state_elec_price_GHG.xlsx', 'summary')
+
+# if just want to see the two plants in Urbana-Champaign:
+# WRRF_input = WRRF_input[WRRF_input['CWNS'].isin([17000112001, 17000112002])]
+
+print(len(WRRF_input))
+
+# sludge disposal cost in $/kg sludge
+# assume the cost for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
+sludge_disposal_cost = {'landfill': 0.413,
+                        'land_application': 0.606,
+                        'incineration': 0.441,
+                        'other_sludge_management': 0.413*0.3 + 0.606*0.55 + 0.441*0.15}
+
+# sludge emission factor in kg CO2 eq/kg sludge
+# assume the GHG for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
+sludge_emission_factor = {'landfill': 1.36,
+                          'land_application': 0.353,
+                          'incineration': 0.519,
+                          'other_sludge_management': 1.36*0.3 + 0.353*0.55 + 0.519*0.15}
+
+WRRF_input['waste_cost'] = sum(WRRF_input[i]*sludge_disposal_cost[i] for i in sludge_disposal_cost.keys())/WRRF_input['total_sludge_amount_kg_per_year']*1000
+
+WRRF_input['waste_GHG'] =  sum(WRRF_input[i]*sludge_emission_factor[i] for i in sludge_emission_factor.keys())/WRRF_input['total_sludge_amount_kg_per_year']*1000
+
+Urbana_Champaign = WRRF_input[WRRF_input['CWNS'].isin([17000112001,17000112002])]
+
+CU_uncertainty_NPV = pd.DataFrame()
+CU_uncertainty_biocrude = pd.DataFrame()
+CU_uncertainty_decarbonization = pd.DataFrame()
+CU_uncertainty_decarbonization_cost = pd.DataFrame()
+
+for i in range(0, 2):
+    
+    sys, barrel = create_geospatial_system(waste_cost=Urbana_Champaign.iloc[i]['waste_cost'],
+                                           waste_GHG=Urbana_Champaign.iloc[i]['waste_GHG'],
+                                           size=Urbana_Champaign.iloc[i]['flow_2022_MGD'],
+                                           distance=Urbana_Champaign.iloc[i]['real_distance_km'],
+                                           anaerobic_digestion=Urbana_Champaign.iloc[i]['sludge_anaerobic_digestion'],
+                                           aerobic_digestion=Urbana_Champaign.iloc[i]['sludge_aerobic_digestion'],
+                                           ww_2_dry_sludge_ratio=Urbana_Champaign.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/Urbana_Champaign.iloc[i]['flow_2022_MGD'],
+                                           # ww_2_dry_sludge_ratio: how much metric tonne/day sludge can be produced by 1 MGD of ww
+                                           state=Urbana_Champaign.iloc[i]['state'],
+                                           elec_GHG=float(elec[elec['state']==Urbana_Champaign.iloc[i]['state']]['GHG (10-year median)']))
+    
+    if Urbana_Champaign.iloc[i]['sludge_aerobic_digestion'] == 1:
+        sludge_ash_values=[0.374, 0.468, 0.562, 'aerobic_digestion']
+        sludge_lipid_values=[0.154, 0.193, 0.232]
+        sludge_protein_values=[0.408, 0.510, 0.612]
+        
+    elif Urbana_Champaign.iloc[i]['sludge_anaerobic_digestion'] == 1:
+        sludge_ash_values=[0.331, 0.414, 0.497, 'anaerobic_digestion']
+        sludge_lipid_values=[0.154, 0.193, 0.232]
+        sludge_protein_values=[0.408, 0.510, 0.612]
+        
+    else:
+        sludge_ash_values=[0.174, 0.231, 0.308, 'no_digestion']
+        sludge_lipid_values=[0.080, 0.206, 0.308]
+        sludge_protein_values=[0.380, 0.456, 0.485]
+    
+    model = create_geospatial_model(system=sys,
+                                    sludge_ash=sludge_ash_values,
+                                    sludge_lipid=sludge_lipid_values,
+                                    sludge_protein=sludge_protein_values,
+                                    raw_wastewater_price_baseline=sys.flowsheet.stream.sludge_assumed_in_wastewater.price,
+                                    biocrude_and_transportation_price=[sys.flowsheet.stream.biocrude.price/6.80*4.21, # TODO: add notations to these numbers
+                                                                       sys.flowsheet.stream.biocrude.price,
+                                                                       sys.flowsheet.stream.biocrude.price/6.80*11.9],
+                                    electricity_cost=[elec[elec['state']==Urbana_Champaign.iloc[i]['state']]['price (10-year 5th)'].iloc[0]/100,
+                                                      elec[elec['state']==Urbana_Champaign.iloc[i]['state']]['price (10-year median)'].iloc[0]/100,
+                                                      elec[elec['state']==Urbana_Champaign.iloc[i]['state']]['price (10-year 95th)'].iloc[0]/100],
+                                    electricity_GHG=[0.67848*elec[elec['state']==Urbana_Champaign.iloc[i]['state']]['GHG (10-year 5th)']/elec[elec['state']==Urbana_Champaign.iloc[i]['state']]['GHG (10-year median)'],
+                                                     0.67848,
+                                                     0.67848*elec[elec['state']==Urbana_Champaign.iloc[i]['state']]['GHG (10-year 95th)']/elec[elec['state']==Urbana_Champaign.iloc[i]['state']]['GHG (10-year median)']])
+    
+    kwargs = {'N':1000, 'rule':'L', 'seed':3221}
+    samples = model.sample(**kwargs)
+    model.load_samples(samples)
+    model.evaluate()
+    
+    idx = len(model.parameters)
+    parameters = model.table.iloc[:, :idx]
+    results = model.table.iloc[:, idx:]
+    
+    CU_uncertainty_NPV[Urbana_Champaign.iloc[i]['facility']] = results[('Geospatial','NPV [$]')]
+    CU_uncertainty_biocrude[Urbana_Champaign.iloc[i]['facility']] = results[('Geospatial','Biocrude production [BPD]')]
+    CU_uncertainty_decarbonization[Urbana_Champaign.iloc[i]['facility']] = results[('Geospatial','Decarbonization amount [tonne_per_day]')]
+    CU_uncertainty_decarbonization_cost[Urbana_Champaign.iloc[i]['facility']] = -results[('Geospatial','NPV [$]')]/results[('Geospatial','Decarbonization amount [tonne_per_day]')]/365/30
+
+# after sludge transportation
+CU_combined_uncertainty_NPV = pd.DataFrame()
+CU_combined_uncertainty_biocrude = pd.DataFrame()
+CU_combined_uncertainty_decarbonization = pd.DataFrame()
+CU_combined_uncertainty_decarbonization_cost = pd.DataFrame()
+
+average_cost = (Urbana_Champaign.iloc[0]['waste_cost']*Urbana_Champaign.iloc[0]['total_sludge_amount_kg_per_year'] +\
+                Urbana_Champaign.iloc[1]['waste_cost']*Urbana_Champaign.iloc[1]['total_sludge_amount_kg_per_year']) /\
+               (Urbana_Champaign.iloc[0]['total_sludge_amount_kg_per_year'] + Urbana_Champaign.iloc[1]['total_sludge_amount_kg_per_year'])
+
+average_GHG = (Urbana_Champaign.iloc[0]['waste_GHG']*Urbana_Champaign.iloc[0]['total_sludge_amount_kg_per_year'] +\
+               Urbana_Champaign.iloc[1]['waste_GHG']*Urbana_Champaign.iloc[1]['total_sludge_amount_kg_per_year']) /\
+              (Urbana_Champaign.iloc[0]['total_sludge_amount_kg_per_year'] + Urbana_Champaign.iloc[1]['total_sludge_amount_kg_per_year'])
+               
+total_size = Urbana_Champaign.iloc[0]['flow_2022_MGD']+Urbana_Champaign.iloc[1]['flow_2022_MGD']
+
+distance_to_refinery = Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001]['real_distance_km'].iloc[0]
+
+total_ash = 0
+total_lipid = 0
+total_protein = 0
+total_sludge = Urbana_Champaign.iloc[0]['total_sludge_amount_kg_per_year']+Urbana_Champaign.iloc[1]['total_sludge_amount_kg_per_year']
+
+for i in range(len(Urbana_Champaign)):
+
+    if Urbana_Champaign.iloc[i]['sludge_aerobic_digestion'] == 1:
+        sludge_ash_value=0.468
+        sludge_lipid_value=0.193
+        sludge_protein_value=0.510
+        
+    elif Urbana_Champaign.iloc[i]['sludge_anaerobic_digestion'] == 1:
+        sludge_ash_value=0.414
+        sludge_lipid_value=0.193
+        sludge_protein_value=0.510
+        
+    else:
+        sludge_ash_value=0.231
+        sludge_lipid_value=0.206
+        sludge_protein_value=0.456
+
+    total_ash += sludge_ash_value*Urbana_Champaign.iloc[i]['total_sludge_amount_kg_per_year']
+    total_lipid += sludge_lipid_value*Urbana_Champaign.iloc[i]['total_sludge_amount_kg_per_year']*(1-sludge_ash_value)
+    total_protein += sludge_protein_value*Urbana_Champaign.iloc[i]['total_sludge_amount_kg_per_year']*(1-sludge_ash_value)
+
+average_ash_dw = total_ash/total_sludge
+average_lipid_afdw = total_lipid/(total_sludge-total_ash)
+average_protein_afdw = total_protein/(total_sludge-total_ash)
+
+sludge_ash_values = [average_ash_dw*0.8, average_ash_dw, average_ash_dw*1.2, 'digestion'] # set sludge_ash_values[-1] = 'digestion', this does not necessarily mean there is digestion, but this will set the uncertainty distribution of ash, lipid, and protein to uniform in the model
+sludge_lipid_values = [average_lipid_afdw*0.8, average_lipid_afdw, average_lipid_afdw*1.2]
+sludge_protein_values = [average_protein_afdw*0.8, average_protein_afdw, average_protein_afdw*1.2]
+
+average_ww_2_dry_sludge_ratio = (Urbana_Champaign.iloc[0]['total_sludge_amount_kg_per_year'] +\
+                                 Urbana_Champaign.iloc[1]['total_sludge_amount_kg_per_year']) /\
+                                 1000/365/(Urbana_Champaign.iloc[0]['flow_2022_MGD']+Urbana_Champaign.iloc[1]['flow_2022_MGD'])
+
+state = Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001]['state'].iloc[0]
+
+elec_GHG = float(elec[elec['state']==Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001].iloc[0]['state']]['GHG (10-year median)'])
+
+sys, barrel = create_geospatial_system(waste_cost=average_cost,
+                                       waste_GHG=average_GHG,
+                                       size=total_size,
+                                       distance=distance_to_refinery,
+                                       sludge_transportation=1,
+                                       sludge_distance=16.2, # from Google Maps
+                                       average_sludge_dw_ash=sludge_ash_values[1],
+                                       average_sludge_afdw_lipid=sludge_lipid_values[1],
+                                       average_sludge_afdw_protein=sludge_protein_values[1],
+                                       anaerobic_digestion=None,
+                                       aerobic_digestion=None,
+                                       ww_2_dry_sludge_ratio=average_ww_2_dry_sludge_ratio,
+                                       # ww_2_dry_sludge_ratio: how much metric tonne/day sludge can be produced by 1 MGD of ww
+                                       state=state,
+                                       elec_GHG=elec_GHG)
+
+model = create_geospatial_model(system=sys,
+                                sludge_ash=sludge_ash_values,
+                                sludge_lipid=sludge_lipid_values,
+                                sludge_protein=sludge_protein_values,
+                                raw_wastewater_price_baseline=sys.flowsheet.stream.sludge_assumed_in_wastewater.price,
+                                biocrude_and_transportation_price=[sys.flowsheet.stream.biocrude.price/6.80*4.21,
+                                                                   sys.flowsheet.stream.biocrude.price,
+                                                                   sys.flowsheet.stream.biocrude.price/6.80*11.9],
+                                electricity_cost=[elec[elec['state']==Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001].iloc[0]['state']]['price (10-year 5th)'].iloc[0]/100,
+                                                  elec[elec['state']==Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001].iloc[0]['state']]['price (10-year median)'].iloc[0]/100,
+                                                  elec[elec['state']==Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001].iloc[0]['state']]['price (10-year 95th)'].iloc[0]/100],
+                                electricity_GHG=[0.67848*elec[elec['state']==Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001].iloc[0]['state']]['GHG (10-year 5th)']/elec[elec['state']==Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001].iloc[0]['state']]['GHG (10-year median)'],
+                                                  0.67848,
+                                                  0.67848*elec[elec['state']==Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001].iloc[0]['state']]['GHG (10-year 95th)']/elec[elec['state']==Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001].iloc[0]['state']]['GHG (10-year median)']])
+
+kwargs = {'N':1000, 'rule':'L', 'seed':3221}
+samples = model.sample(**kwargs)
+model.load_samples(samples)
+model.evaluate()
+
+idx = len(model.parameters)
+parameters = model.table.iloc[:, :idx]
+results = model.table.iloc[:, idx:]
+
+CU_combined_uncertainty_NPV['combined'] = results[('Geospatial','NPV [$]')]
+CU_combined_uncertainty_biocrude['combined'] = results[('Geospatial','Biocrude production [BPD]')]
+CU_combined_uncertainty_decarbonization['combined'] = results[('Geospatial','Decarbonization amount [tonne_per_day]')]
+CU_combined_uncertainty_decarbonization_cost['combined'] = -results[('Geospatial','NPV [$]')]/results[('Geospatial','Decarbonization amount [tonne_per_day]')]/365/30
+
+CU_NPV_results = pd.concat([CU_uncertainty_NPV, CU_combined_uncertainty_NPV], axis=1)
+CU_biocrude_results = pd.concat([CU_uncertainty_biocrude, CU_combined_uncertainty_biocrude], axis=1)
+CU_decarbonization_results = pd.concat([CU_uncertainty_decarbonization, CU_combined_uncertainty_decarbonization], axis=1)
+CU_decarbonization_cost_results = pd.concat([CU_uncertainty_decarbonization_cost, CU_combined_uncertainty_decarbonization_cost], axis=1)
+
+CU_NPV_results.to_excel(folder + f'results/Urbana-Champaign/NPV_{date.today()}.xlsx')
+CU_biocrude_results.to_excel(folder + f'results/Urbana-Champaign/biocrude_{date.today()}.xlsx')
+CU_decarbonization_results.to_excel(folder + f'results/Urbana-Champaign/decarbonization_{date.today()}.xlsx')
+CU_decarbonization_cost_results.to_excel(folder + f'results/Urbana-Champaign/decarbonization_cost_{date.today()}.xlsx')
+
+fig = plt.figure(figsize=(10, 10))
+
+gs = fig.add_gridspec(1, 3, hspace=0, wspace=0)
+
+
+def set_cf_plot():
+    plt.rcParams['axes.linewidth'] = 3
+    plt.rcParams['xtick.labelsize'] = 38
+    plt.rcParams['ytick.labelsize'] = 38
+    
+    plt.xticks(fontname = 'Arial')
+    plt.yticks(fontname = 'Arial')
+    
+    plt.rcParams.update({'mathtext.fontset': 'custom'})
+    plt.rcParams.update({'mathtext.default': 'regular'})
+    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+def add_region(position, xlabel, color):
+    ax = fig.add_subplot(gs[0, position])
+    
+    set_cf_plot()
+    
+    ax = plt.gca()
+    ax.set_ylim([-20, 10])
+    ax.set_xlabel(xlabel, fontname='Arial', fontsize=38, labelpad=15)
+    
+    if position == 0:
+        ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
+        ax.set_ylabel(r'$\mathbf{Net\ present\ value}$ [MM\$]', fontname='Arial', fontsize=45, labelpad=10)
+    
+    elif position == 2:
+        ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, labelcolor='none')
+        
+        ax_right = ax.twinx()
+        ax_right.set_ylim(ax.get_ylim())
+        ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+    
+    else:
+        ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, labelcolor='none')
+    
+    bp = ax.boxplot(CU_NPV_results.iloc[:,position]/1000000, showfliers=False, widths=0.7, patch_artist=True)
+    
+    for box in bp['boxes']:
+        box.set(color='k', facecolor=color, linewidth=3)
+
+    for whisker in bp['whiskers']:
+        whisker.set(color='k', linewidth=3)
+
+    for median in bp['medians']:
+        median.set(color='k', linewidth=3)
+        
+    for cap in bp['caps']:
+        cap.set(color='k', linewidth=3)
+        
+    for flier in bp['fliers']:
+        flier.set(marker='o', markersize=7, markerfacecolor=color, markeredgewidth=1.5)
+
+# TODO: remove the middle y-axes using PS
+# TODO: add y=0 line in PowerPoint
+add_region(0, 'Northeast', o)
+add_region(1, 'Southwest', o)
+add_region(2, 'Combined', b)

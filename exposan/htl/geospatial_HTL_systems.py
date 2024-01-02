@@ -21,7 +21,8 @@ from biosteam import settings
 
 __all__ = ('create_geospatial_system','biocrude_density')
 
-biocrude_density = 980 # kg/m3 Snowden-Swan et al. 2022 SOT, PNNL
+biocrude_density = 980 # kg/m3, Snowden-Swan et al. 2022 SOT, PNNL
+sludge_density = 1000 # kg/m3, this is for sludge with a moisture content higher than 80%, google 'Design of wastewater treatment sludge thickeners Iowa State University'
 
 def _load_process_settings(location='IL'):
 
@@ -55,6 +56,11 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                              waste_GHG=600, # based on the share of sludge management methods of each facilities
                              size=8, # in MGD
                              distance=100, # in km, using Google Maps API
+                             sludge_transportation=0, # if 0, there is no sludge transportation; if 1, there is sludge transportation
+                             sludge_distance=0, # in km, this is the slduge transportation total distance (normalized to total sludge amount)
+                             average_sludge_dw_ash=None,
+                             average_sludge_afdw_lipid=None,
+                             average_sludge_afdw_protein=None,
                              anaerobic_digestion=0,
                              aerobic_digestion=0,
                              ww_2_dry_sludge_ratio=1,
@@ -86,34 +92,45 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     # pretreatment (Area 000)
     # =============================================================================
     # see 12/25/2023 notes for the compositions of different types of sludge
-    if anaerobic_digestion == 1:
-        WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
-                       ww_2_dry_sludge=ww_2_dry_sludge_ratio,
-                       # how much metric tonne/day sludge can be produced by 1 MGD of ww
-                       sludge_moisture=0.8,
-                       sludge_dw_ash=0.414,
-                       sludge_afdw_lipid=0.193,
-                       sludge_afdw_protein=0.510,
-                       operation_hours=8760)
-        
-    elif aerobic_digestion == 1:
-        WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
-                       ww_2_dry_sludge=ww_2_dry_sludge_ratio,
-                       # how much metric tonne/day sludge can be produced by 1 MGD of ww
-                       sludge_moisture=0.8,
-                       sludge_dw_ash=0.468,
-                       sludge_afdw_lipid=0.193,
-                       sludge_afdw_protein=0.510,
-                       operation_hours=8760)
-        
+    if sludge_transportation == 0:
+        if anaerobic_digestion == 1:
+            WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
+                           ww_2_dry_sludge=ww_2_dry_sludge_ratio,
+                           # how much metric tonne/day sludge can be produced by 1 MGD of ww
+                           sludge_moisture=0.8,
+                           sludge_dw_ash=0.414,
+                           sludge_afdw_lipid=0.193,
+                           sludge_afdw_protein=0.510,
+                           operation_hours=8760)
+            
+        elif aerobic_digestion == 1:
+            WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
+                           ww_2_dry_sludge=ww_2_dry_sludge_ratio,
+                           # how much metric tonne/day sludge can be produced by 1 MGD of ww
+                           sludge_moisture=0.8,
+                           sludge_dw_ash=0.468,
+                           sludge_afdw_lipid=0.193,
+                           sludge_afdw_protein=0.510,
+                           operation_hours=8760)
+            
+        else:
+            WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
+                           ww_2_dry_sludge=ww_2_dry_sludge_ratio,
+                           # how much metric tonne/day sludge can be produced by 1 MGD of ww
+                           sludge_moisture=0.8,
+                           sludge_dw_ash=0.231,
+                           sludge_afdw_lipid=0.206,
+                           sludge_afdw_protein=0.456,
+                           operation_hours=8760)
+            
     else:
         WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
                        ww_2_dry_sludge=ww_2_dry_sludge_ratio,
                        # how much metric tonne/day sludge can be produced by 1 MGD of ww
                        sludge_moisture=0.8,
-                       sludge_dw_ash=0.231,
-                       sludge_afdw_lipid=0.206,
-                       sludge_afdw_protein=0.456,
+                       sludge_dw_ash=average_sludge_dw_ash,
+                       sludge_afdw_lipid=average_sludge_afdw_lipid,
+                       sludge_afdw_protein=average_sludge_afdw_protein,
                        operation_hours=8760)
         
     P1 = qsu.SludgePump('A100', ins=WWTP-0, outs='pressed_sludge', P=3049.7*6894.76,
@@ -125,7 +142,7 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     P1.register_alias('P1')
     # Jones 2014: 3049.7 psia
     
-    raw_wastewater.price = -WWTP.ww_2_dry_sludge*waste_cost/3.79/(10**6) # 1 gal water = 3.79 kg water
+    raw_wastewater.price = -WWTP.ww_2_dry_sludge*(waste_cost - sludge_transportation*(5.06*5 + 0.05*5*sludge_distance))/3.79/(10**6) # 1 gal water = 3.79 kg water
 
     # =============================================================================
     # HTL (Area 100)
@@ -240,7 +257,7 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                         Acidification=0,
                         Ecotoxicity=0,
                         Eutrophication=0,
-                        GlobalWarming=-WWTP.ww_2_dry_sludge*waste_GHG/3.79/(10**6), # 1 gal water = 3.79 kg water # TODO: make sure the calculation here and the calculation of price are right
+                        GlobalWarming=-WWTP.ww_2_dry_sludge*(waste_GHG - sludge_transportation*(0.719*sludge_distance))/3.79/(10**6), # 1 gal water = 3.79 kg water
                         OzoneDepletion=0,
                         PhotochemicalOxidation=0,
                         Carcinogenics=0,
