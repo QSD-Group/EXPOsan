@@ -145,8 +145,9 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     P1.register_alias('P1')
     # Jones 2014: 3049.7 psia
     
-    # TODO: check the cost for sludge transportation again
-    raw_wastewater.price = -WWTP.ww_2_dry_sludge*(waste_cost - sludge_transportation*(5.06*5 + 0.05*5*sludge_distance))/3.79/(10**6) # 1 gal water = 3.79 kg water
+    raw_wastewater.price = -WWTP.ww_2_dry_sludge*(waste_cost - sludge_transportation*(5.06*5 + 0.05*5*sludge_distance))/3.79/(10**6)
+    # 1 gal water = 3.79 kg water
+    # 5.06 $/m3, 0.05 $/m3/km (Marufuzzaman et al. Transportation Research Part A. 2015, converted to 2020 price)
 
     # =============================================================================
     # HTL (Area 100)
@@ -255,14 +256,15 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
    
     # only GlobalWarming can be used, since the values for other CFs are 0 for the sludge_item
 
-    # TODO: check the GHG for sludge transportation again
     # add impact for waste sludge
     qs.StreamImpactItem(ID='sludge_in_wastewater_item',
                         linked_stream=stream.sludge_assumed_in_wastewater,
                         Acidification=0,
                         Ecotoxicity=0,
                         Eutrophication=0,
-                        GlobalWarming=-WWTP.ww_2_dry_sludge*(waste_GHG - sludge_transportation*(0.719*sludge_distance))/3.79/(10**6), # 1 gal water = 3.79 kg water
+                        GlobalWarming=-WWTP.ww_2_dry_sludge*(waste_GHG - sludge_transportation*(0.719*sludge_distance))/3.79/(10**6),
+                        # 1 gal water = 3.79 kg water
+                        # 0.719 kg CO2 eq/dry tonne/km (Zhao et al. Journal of Environmental Sciences. 2023)
                         OzoneDepletion=0,
                         PhotochemicalOxidation=0,
                         Carcinogenics=0,
