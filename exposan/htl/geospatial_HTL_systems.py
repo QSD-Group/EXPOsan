@@ -50,7 +50,10 @@ def _load_process_settings(location='IL'):
     
     elec = pd.read_excel(folder + 'state_elec_price_GHG.xlsx', 'summary')
     
-    bst.PowerUtility.price = elec[elec['state']==location]['price (10-year median)'].iloc[0]/100
+    if location == 'average':
+        bst.PowerUtility.price = elec['price (10-year median)'].mean()/100
+    else:
+        bst.PowerUtility.price = elec[elec['state']==location]['price (10-year median)'].iloc[0]/100
 
 def create_geospatial_system(waste_cost=450, # based on the share of sludge management methods of each facilities
                              waste_GHG=600, # based on the share of sludge management methods of each facilities
@@ -142,6 +145,7 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     P1.register_alias('P1')
     # Jones 2014: 3049.7 psia
     
+    # TODO: check the cost for sludge transportation again
     raw_wastewater.price = -WWTP.ww_2_dry_sludge*(waste_cost - sludge_transportation*(5.06*5 + 0.05*5*sludge_distance))/3.79/(10**6) # 1 gal water = 3.79 kg water
 
     # =============================================================================
@@ -251,6 +255,7 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
    
     # only GlobalWarming can be used, since the values for other CFs are 0 for the sludge_item
 
+    # TODO: check the GHG for sludge transportation again
     # add impact for waste sludge
     qs.StreamImpactItem(ID='sludge_in_wastewater_item',
                         linked_stream=stream.sludge_assumed_in_wastewater,
@@ -365,7 +370,10 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     annual_utility_cost = sum([u.utility_cost for u in sys.cost_units]) * sys.operating_hours
     annual_net_income = annual_sales - annual_material_cost - annual_utility_cost
     
-    state_income_tax_rate_value = state_income_tax_rate(state=state, sales=annual_sales, net_income=annual_net_income)
+    if state == 'average':
+        state_income_tax_rate_value = 0.065 # use the mode state income tax from Steward et al. ES&T 2023
+    else:
+        state_income_tax_rate_value = state_income_tax_rate(state=state, sales=annual_sales, net_income=annual_net_income)
     
     income_tax_rate = federal_income_tax_rate_value + state_income_tax_rate_value
     
