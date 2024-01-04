@@ -6,6 +6,12 @@ Created on Sun Jun 11 08:12:41 2023
 @author: jiananfeng
 '''
 
+# 1/4/2023 to-dos:
+# 1. update Urbana-Champaign figure (code has been updated)
+# 2. update sludge transportation distance for heat map (0 to 200) (code has been updated)
+# 3. make Minnesota figure
+
+#%% initialization
 import geopy.distance, googlemaps, random
 import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.colors as colors, matplotlib.ticker as mtick
 from matplotlib.mathtext import _mathtext as mathtext
@@ -268,7 +274,6 @@ WRRF_input_without_distance = WRRF_input[WRRF_input['real_distance_km'].isna()]
 
 # !!! run <5000 datapoints every time !!! get a google API key !!! do not upload to GitHub
 gmaps = googlemaps.Client(key='XXX')
-real_distance = []
 for i in WRRF_input_without_distance.index:
     try:
         print(i)
@@ -449,7 +454,7 @@ WRRF_input[between_50_and_500].plot(ax=ax, color=Guest.red.HEX, markersize=WRRF_
 more_than_500 = WRRF_GHG_tonne_per_day > 500
 WRRF_input[more_than_500].plot(ax=ax, color=Guest.green.HEX, markersize=WRRF_input.loc[more_than_500, WRRF_GHG_tonne_per_day.name]**0.5, edgecolor='k', linewidth=2, alpha=0.9)
 
-#%% # WRRFs sludge management GHG map
+#%% WRRFs sludge management GHG map
 
 WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
 
@@ -535,21 +540,17 @@ max_distance_on_the_plot = 1500
 
 CF_input = CF_input[0:max_distance_on_the_plot+3]
 
-#%% make the plot of cumulative WRRFs capacity vs distances (separated WRRF)
+#%% make the plot of cumulative WRRFs capacity vs distances (separated oil refinery)
+
+PADD_1 = (CF_input.loc['PADD',:].isin([1,])).sum()
+PADD_2 = (CF_input.loc['PADD',:].isin([1,2])).sum()
+PADD_3 = (CF_input.loc['PADD',:].isin([1,2,3])).sum()
+PADD_4 = (CF_input.loc['PADD',:].isin([1,2,3,4])).sum()
+PADD_5 = (CF_input.loc['PADD',:].isin([1,2,3,4,5])).sum()
 
 fig = plt.figure(figsize=(20, 10))
 
 gs = fig.add_gridspec(1, 5, hspace=0, wspace=0)
-
-PADD_1 = (CF_input.loc['PADD',:].isin([1,])).sum()
-
-PADD_2 = (CF_input.loc['PADD',:].isin([1,2])).sum()
-
-PADD_3 = (CF_input.loc['PADD',:].isin([1,2,3])).sum()
-
-PADD_4 = (CF_input.loc['PADD',:].isin([1,2,3,4])).sum()
-
-PADD_5 = (CF_input.loc['PADD',:].isin([1,2,3,4,5])).sum()
 
 def set_cf_plot():
     plt.rcParams['axes.linewidth'] = 3
@@ -608,34 +609,51 @@ add_region(3, PADD_3, PADD_4, o)
 add_region(4, PADD_4, PADD_5, y)
 #%% make the plot of cumulative WRRFs capacity vs distances (regional total)
 
-fig, ax = plt.subplots(figsize=(10, 10))
+PADD_1 = (CF_input.loc['PADD',:].isin([1,])).sum()
+PADD_2 = (CF_input.loc['PADD',:].isin([1,2])).sum()
+PADD_3 = (CF_input.loc['PADD',:].isin([1,2,3])).sum()
+PADD_4 = (CF_input.loc['PADD',:].isin([1,2,3,4])).sum()
+PADD_5 = (CF_input.loc['PADD',:].isin([1,2,3,4,5])).sum()
 
-set_cf_plot() # TODO: this is run two times?
+fig, ax = plt.subplots(figsize=(12, 10))
 
-CF_input.iloc[2:, 0:PADD_1].sum(axis=1).plot(ax=ax, color=b, linewidth=2)
+def set_cf_plot():
+    plt.rcParams['axes.linewidth'] = 3
+    plt.rcParams['xtick.labelsize'] = 30
+    plt.rcParams['ytick.labelsize'] = 30
+    
+    plt.xticks(fontname='Arial')
+    plt.yticks(fontname='Arial')
+    
+    plt.rcParams.update({'mathtext.fontset': 'custom'})
+    plt.rcParams.update({'mathtext.default': 'regular'})
+    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
-CF_input.iloc[2:, PADD_1:PADD_2].sum(axis=1).plot(ax=ax, color=g, linewidth=2)
+set_cf_plot()
 
-CF_input.iloc[2:, PADD_2:PADD_3].sum(axis=1).plot(ax=ax, color=r, linewidth=2)
-
-CF_input.iloc[2:, PADD_3:PADD_4].sum(axis=1).plot(ax=ax, color=o, linewidth=2)
-
-CF_input.iloc[2:, PADD_4:PADD_5].sum(axis=1).plot(ax=ax, color=y, linewidth=2)
+CF_input.iloc[2:, 0:PADD_1].sum(axis=1).plot(ax=ax, color=b, linewidth=3)
+CF_input.iloc[2:, PADD_1:PADD_2].sum(axis=1).plot(ax=ax, color=g, linewidth=3)
+CF_input.iloc[2:, PADD_2:PADD_3].sum(axis=1).plot(ax=ax, color=r, linewidth=3)
+CF_input.iloc[2:, PADD_3:PADD_4].sum(axis=1).plot(ax=ax, color=o, linewidth=3)
+CF_input.iloc[2:, PADD_4:PADD_5].sum(axis=1).plot(ax=ax, color=y, linewidth=3)
 
 ax.set_xlim([0, max_distance])
-ax.set_ylim([0, 20000])
+ax.set_ylim([0, 18000])
 
-ax.tick_params(direction='inout', length=15, width=2, bottom=True, top=False, left=True, right=False)
+ax.set_xlabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=35)
+ax.set_ylabel(r'$\mathbf{Cumulative\ WRRFs\ capacity}$ [MGD]', fontname='Arial', fontsize=35)
+
+ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False)
 
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
-plt.yticks(np.arange(0, 20000, 1000))
-ax_right.tick_params(direction='in', length=7.5, width=2, bottom=False, top=False, left=False, right=True, labelcolor='none')
+plt.yticks(np.arange(0, 20000, 2000))
+ax_right.tick_params(direction='in', length=7.5, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
-plt.xticks(np.arange(max_distance*0.2, max_distance*1.2, max_distance*0.2))
-ax_top.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=False, labelcolor='none')
+plt.xticks(np.arange(0, 1750, 250))
+ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 #%% CO2 abatement cost analysis
 
@@ -676,7 +694,7 @@ NPV = []
 USD_decarbonization = []
 oil_BPD = []
 
-for i in range(0, len(WRRF_input)): # !!! run in different consoles to speed up
+for i in range(0, len(WRRF_input)): # !!! run in different consoles to speed up: 0, 5000, 10000
 # for i in range(0, 2):
     
     sys, barrel = create_geospatial_system(waste_cost=WRRF_input.iloc[i]['waste_cost'],
@@ -990,6 +1008,218 @@ print(anaerobic_digestion_WRRFs.sort_values('CO2_reduction', ascending=False).il
 print(anaerobic_digestion_WRRFs.sort_values('WRRF_CO2_reduction_ratio', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
 print(anaerobic_digestion_WRRFs.sort_values('oil_BPD', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
 
+#%% facility level decarbonizaiton amount vs sludge amount
+
+decarbonization_vs_sludge = decarbonization_result[['total_sludge_amount_kg_per_year','CO2_reduction']]
+
+fig, ax = plt.subplots(figsize=((12.5, 10)))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 38
+plt.rcParams['ytick.labelsize'] = 38
+
+plt.xticks(fontname='Arial')
+plt.yticks(fontname='Arial')
+
+plt.rcParams.update({'mathtext.fontset': 'custom'})
+plt.rcParams.update({'mathtext.default': 'regular'})
+plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+ax = plt.gca()
+
+ax.set_xlim((0, 350))
+ax.set_ylim((0, 125))
+
+ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False, pad=6)
+
+ax.set_xlabel(r'$\mathbf{Sludge}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
+ax.set_ylabel(r'$\mathbf{Decarbonization}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=45)
+
+mathtext.FontConstantsBase.sup1 = 0.35
+
+plt.xticks(np.arange(0, 400, 50))
+plt.yticks(np.arange(0, 150, 25))
+
+ax_right = ax.twinx()
+ax_right.set_ylim((0, 125))
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+plt.xticks(np.arange(0, 400, 50))
+plt.yticks(np.arange(0, 150, 25))
+
+ax_top = ax.twiny()
+ax_top.set_xlim((0, 350))
+ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+
+plt.xticks(np.arange(0, 400, 50))
+plt.yticks(np.arange(0, 150, 25))
+
+ax.scatter(x=decarbonization_vs_sludge['total_sludge_amount_kg_per_year']/1000/365,
+           y=decarbonization_vs_sludge['CO2_reduction']/30/365/1000,
+           s=100,
+           c=a,
+           linewidths=2,
+           edgecolors='k')
+
+#%% facility level decarbonizaiton amount vs distance
+
+decarbonization_vs_sludge = decarbonization_result[['real_distance_km','CO2_reduction']]
+
+fig, ax = plt.subplots(figsize=((12.5, 10)))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 38
+plt.rcParams['ytick.labelsize'] = 38
+
+plt.xticks(fontname='Arial')
+plt.yticks(fontname='Arial')
+
+plt.rcParams.update({'mathtext.fontset': 'custom'})
+plt.rcParams.update({'mathtext.default': 'regular'})
+plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+ax = plt.gca()
+
+ax.set_xlim((0, 1200))
+ax.set_ylim((0, 125))
+
+ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False, pad=6)
+
+ax.set_xlabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=45)
+ax.set_ylabel(r'$\mathbf{Decarbonization}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=45)
+
+mathtext.FontConstantsBase.sup1 = 0.35
+
+plt.xticks(np.arange(0, 1400, 200))
+plt.yticks(np.arange(0, 150, 25))
+
+ax_right = ax.twinx()
+ax_right.set_ylim((0, 125))
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+plt.xticks(np.arange(0, 1400, 200))
+plt.yticks(np.arange(0, 150, 25))
+
+ax_top = ax.twiny()
+ax_top.set_xlim((0, 1200))
+ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+
+plt.xticks(np.arange(0, 1400, 200))
+plt.yticks(np.arange(0, 150, 25))
+
+ax.scatter(x=decarbonization_vs_sludge['real_distance_km'],
+           y=decarbonization_vs_sludge['CO2_reduction']/30/365/1000,
+           s=100,
+           c=a,
+           linewidths=2,
+           edgecolors='k')
+
+#%% facility level biocrude production vs sludge amount
+
+decarbonization_vs_sludge = decarbonization_result[['total_sludge_amount_kg_per_year','oil_BPD']]
+
+fig, ax = plt.subplots(figsize=((12.5, 10)))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 38
+plt.rcParams['ytick.labelsize'] = 38
+
+plt.xticks(fontname='Arial')
+plt.yticks(fontname='Arial')
+
+plt.rcParams.update({'mathtext.fontset': 'custom'})
+plt.rcParams.update({'mathtext.default': 'regular'})
+plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+ax = plt.gca()
+
+ax.set_xlim((0, 350))
+ax.set_ylim((0, 600))
+
+ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False, pad=6)
+
+ax.set_xlabel(r'$\mathbf{Sludge}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
+ax.set_ylabel(r'$\mathbf{Biocrude}$ [BPD]', fontname='Arial', fontsize=45)
+
+mathtext.FontConstantsBase.sup1 = 0.35
+
+plt.xticks(np.arange(0, 400, 50))
+plt.yticks(np.arange(0, 700, 100))
+
+ax_right = ax.twinx()
+ax_right.set_ylim((0, 125))
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+plt.xticks(np.arange(0, 400, 50))
+plt.yticks(np.arange(0, 700, 100))
+
+ax_top = ax.twiny()
+ax_top.set_xlim((0, 350))
+ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+
+plt.xticks(np.arange(0, 400, 50))
+plt.yticks(np.arange(0, 700, 100))
+
+ax.scatter(x=decarbonization_vs_sludge['total_sludge_amount_kg_per_year']/1000/365,
+           y=decarbonization_vs_sludge['oil_BPD'],
+           s=100,
+           c=a,
+           linewidths=2,
+           edgecolors='k')
+
+#%% facility level biocrude production vs distance
+
+decarbonization_vs_sludge = decarbonization_result[['real_distance_km','oil_BPD']]
+
+fig, ax = plt.subplots(figsize=((12.5, 10)))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 38
+plt.rcParams['ytick.labelsize'] = 38
+
+plt.xticks(fontname='Arial')
+plt.yticks(fontname='Arial')
+
+plt.rcParams.update({'mathtext.fontset': 'custom'})
+plt.rcParams.update({'mathtext.default': 'regular'})
+plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+ax = plt.gca()
+
+ax.set_xlim((0, 1200))
+ax.set_ylim((0, 600))
+
+ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False, pad=6)
+
+ax.set_xlabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=45)
+ax.set_ylabel(r'$\mathbf{Biocrude}$ [BPD]', fontname='Arial', fontsize=45)
+
+mathtext.FontConstantsBase.sup1 = 0.35
+
+plt.xticks(np.arange(0, 1400, 200))
+plt.yticks(np.arange(0, 700, 100))
+
+ax_right = ax.twinx()
+ax_right.set_ylim((0, 125))
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+plt.xticks(np.arange(0, 1400, 200))
+plt.yticks(np.arange(0, 700, 100))
+
+ax_top = ax.twiny()
+ax_top.set_xlim((0, 350))
+ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+
+plt.xticks(np.arange(0, 1400, 200))
+plt.yticks(np.arange(0, 700, 100))
+
+ax.scatter(x=decarbonization_vs_sludge['real_distance_km'],
+           y=decarbonization_vs_sludge['oil_BPD'],
+           s=100,
+           c=a,
+           linewidths=2,
+           edgecolors='k')
+
 #%% regional level analysis
 
 decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2023-12-31.xlsx')
@@ -1120,7 +1350,7 @@ print(f'National decarbonization ratio of sludge management is {national_CO2_rec
 
 print(f'National increase ratio of crude oil production is {national_oil_production_ratio*100:.5f}%')
 
-#%% uncertainty analysis
+#%% facility level uncertainty analysis
 
 filterwarnings('ignore')
 
@@ -1154,7 +1384,7 @@ decarbonization_result['waste_GHG'] =  sum(decarbonization_result[i]*sludge_emis
 geo_uncertainty_decarbonization = pd.DataFrame()
 geo_uncertainty_biocrude = pd.DataFrame()
 
-for i in range(0, len(decarbonization_result)): # !!! run in different consoles to speed up
+for i in range(0, len(decarbonization_result)): # !!! run in different consoles to speed up: 0, 70, 140, 210, 280, 350, 420, 490
 # for i in range(0, 2):
     
     sys, barrel = create_geospatial_system(waste_cost=decarbonization_result.iloc[i]['waste_cost'],
@@ -1381,7 +1611,7 @@ integrated_regional_biocrude_result = pd.DataFrame({'PADD_1':PADD_1_biocrude_unc
         
 integrated_regional_biocrude_result.to_excel(folder + f'results/integrated_regional_total_biocrude_uncertainty_{date.today()}.xlsx')
 
-#%% regional uncertainty visualization
+#%% regional uncertainty (visualization)
 
 decarbonization = pd.read_excel(folder + 'results/integrated_regional_total_decarbonization_uncertainty_2024-01-01.xlsx')
 biocrude = pd.read_excel(folder + 'results/integrated_regional_total_biocrude_uncertainty_2024-01-01.xlsx')
@@ -1474,6 +1704,55 @@ add_point('PADD_2', dg)
 add_point('PADD_3', dr)
 # add_point('PADD_4', do)
 add_point('PADD_5', dy)
+
+#%% national uncertainty
+
+# decarbonization
+national_decarbonization_uncertainty = pd.read_excel(folder + 'results/integrated_regional_decarbonization_uncertainty_2024-01-01.xlsx')
+
+national_decarbonization_uncertainty.drop('Unnamed: 0', axis=1, inplace=True)
+
+national_decarbonization_uncertainty = national_decarbonization_uncertainty.transpose()
+
+national_decarbonization_uncertainty.reset_index(inplace=True, names='facility')
+
+national_decarbonization_uncertainty = national_decarbonization_uncertainty.iloc[:,1:]
+
+national_decarbonization_uncertainty_result = []
+
+for i in range(0,1000): # Monte Carlo simulation and Latin hypercube sampling
+    if i%100 == 0:
+        print(i) # check progress
+    national_total_decarbonization = 0
+    for j in range(0, len(national_decarbonization_uncertainty)):
+        national_total_decarbonization += random.uniform(national_decarbonization_uncertainty.iloc[j,:].quantile(i/1000), national_decarbonization_uncertainty.iloc[j,:].quantile((i+1)/1000))
+    national_decarbonization_uncertainty_result.append(national_total_decarbonization)
+    
+# biocrude
+national_biocrude_uncertainty = pd.read_excel(folder + 'results/integrated_regional_biocrude_uncertainty_2024-01-01.xlsx')
+
+national_biocrude_uncertainty.drop('Unnamed: 0', axis=1, inplace=True)
+
+national_biocrude_uncertainty = national_biocrude_uncertainty.transpose()
+
+national_biocrude_uncertainty.reset_index(inplace=True, names='facility')
+
+national_biocrude_uncertainty = national_biocrude_uncertainty.iloc[:,1:]
+
+national_biocrude_uncertainty_result = []
+
+for i in range(0,1000): # Monte Carlo simulation and Latin hypercube sampling
+    if i%100 == 0:
+        print(i) # check progress
+    national_total_biocrude = 0
+    for j in range(0, len(national_biocrude_uncertainty)):
+        national_total_biocrude += random.uniform(national_biocrude_uncertainty.iloc[j,:].quantile(i/1000), national_biocrude_uncertainty.iloc[j,:].quantile((i+1)/1000))
+    national_biocrude_uncertainty_result.append(national_total_biocrude)
+            
+national_uncertainty_result = pd.DataFrame({'decarbonization':national_decarbonization_uncertainty_result,
+                                            'biocrude':national_biocrude_uncertainty_result})
+
+national_uncertainty_result.to_excel(folder + f'results/integrated_national_uncertainty_{date.today()}.xlsx')
 
 #%% sludge transportation (Urbana-Champaign)
 
@@ -1636,7 +1915,7 @@ sys, barrel = create_geospatial_system(waste_cost=average_cost,
                                        size=total_size,
                                        distance=distance_to_refinery,
                                        sludge_transportation=1,
-                                       sludge_distance=16.2, # from Google Maps
+                                       sludge_distance=16.2*Urbana_Champaign.iloc[1]['total_sludge_amount_kg_per_year']/(Urbana_Champaign.iloc[0]['total_sludge_amount_kg_per_year']+Urbana_Champaign.iloc[1]['total_sludge_amount_kg_per_year']), # from Google Maps
                                        average_sludge_dw_ash=sludge_ash_values[1],
                                        average_sludge_afdw_lipid=sludge_lipid_values[1],
                                        average_sludge_afdw_protein=sludge_protein_values[1],
@@ -1689,7 +1968,6 @@ CU_decarbonization_cost_results.to_excel(folder + f'results/Urbana-Champaign/dec
 fig = plt.figure(figsize=(10, 10))
 
 gs = fig.add_gridspec(1, 3, hspace=0, wspace=0)
-
 
 def set_cf_plot():
     plt.rcParams['axes.linewidth'] = 3
@@ -1749,7 +2027,260 @@ add_region(0, 'Northeast', o)
 add_region(1, 'Southwest', o)
 add_region(2, 'Combined', b)
 
-#%% sludge transportation (satellite, SA)
+#%% sludge transportation (satellite, SA) (data preparation)
+
+Minnesota = decarbonization_result[decarbonization_result['state']=='MN']
+
+Minnesota.sort_values(by='total_sludge_amount_kg_per_year', ascending=False, inplace=True)
+
+center_WRRF = Minnesota.iloc[0,:]
+
+# get all WRRFs in MN, WI, IA
+MN_WI_IA = WRRF[WRRF['state'].isin(['MN','WI','IA'])]
+
+# select WRRFs that are within 200 km (linear distance) from the center WRRF
+
+MN_WI_IA_distance = []
+for i in range(len(MN_WI_IA)):
+    MN_WI_IA_distance.append(geopy.distance.geodesic((MN_WI_IA['latitude'].iloc[i], MN_WI_IA['longitude'].iloc[i]), (center_WRRF.latitude, center_WRRF.longitude)).km)
+
+MN_WI_IA['linear_distance_to_center_WRRF_km'] = MN_WI_IA_distance
+
+MN_WI_IA = MN_WI_IA[MN_WI_IA['linear_distance_to_center_WRRF_km'] <= 200]
+
+# remove WRRFs that are already decarbonized without sludge transportation
+MN_WI_IA_decarbonized = decarbonization_result[decarbonization_result['state'].isin(['MN','WI','IA'])]
+
+MN_WI_IA_transportation = MN_WI_IA[~MN_WI_IA['facility_code'].isin(list(MN_WI_IA_decarbonized['facility_code']))]
+
+# calculate the travel distance using Google Maps API
+# !!! get a google API key !!! do not upload to GitHub
+gmaps = googlemaps.Client(key='XXX')
+real_distance = []
+for i in range(len(MN_WI_IA_transportation.index)):
+    try:
+        print(i)
+        real_distance.append(gmaps.distance_matrix((MN_WI_IA_transportation['latitude'].iloc[i], MN_WI_IA_transportation['longitude'].iloc[i]),
+                                                   (center_WRRF.latitude, center_WRRF.longitude),
+                                                   mode='driving')['rows'][0]['elements'][0]['distance']['value']/1000)
+    except KeyError:
+        print('--------------------------------')
+        WRRF_input['real_distance_km'].iloc[i] = np.nan
+
+MN_WI_IA_transportation['real_distance_to_center_WRRF_km'] = real_distance
+
+MN_WI_IA_transportation.to_excel(folder + 'results/Minnesota/satellite_WRRFs_{date.today()}.xlsx')
+
+#%% sludge transportation (satellite, SA) (center WRRF uncertainty)
+
+filterwarnings('ignore')
+# sludge disposal cost in $/kg sludge
+# assume the cost for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
+sludge_disposal_cost = {'landfill': 0.413,
+                        'land_application': 0.606,
+                        'incineration': 0.441,
+                        'other_sludge_management': 0.413*0.3 + 0.606*0.55 + 0.441*0.15}
+
+# sludge emission factor in kg CO2 eq/kg sludge
+# assume the GHG for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
+sludge_emission_factor = {'landfill': 1.36,
+                          'land_application': 0.353,
+                          'incineration': 0.519,
+                          'other_sludge_management': 1.36*0.3 + 0.353*0.55 + 0.519*0.15}
+
+Minnesota['waste_cost'] = sum(Minnesota[i]*sludge_disposal_cost[i] for i in sludge_disposal_cost.keys())/Minnesota['total_sludge_amount_kg_per_year']*1000
+
+Minnesota['waste_GHG'] =  sum(Minnesota[i]*sludge_emission_factor[i] for i in sludge_emission_factor.keys())/Minnesota['total_sludge_amount_kg_per_year']*1000
+
+sys, barrel = create_geospatial_system(waste_cost=Minnesota.iloc[0]['waste_cost'],
+                                       waste_GHG=Minnesota.iloc[0]['waste_GHG'],
+                                       size=Minnesota.iloc[0]['flow_2022_MGD'],
+                                       distance=Minnesota.iloc[0]['real_distance_km'],
+                                       anaerobic_digestion=Minnesota.iloc[0]['sludge_anaerobic_digestion'],
+                                       aerobic_digestion=Minnesota.iloc[0]['sludge_aerobic_digestion'],
+                                       ww_2_dry_sludge_ratio=Minnesota.iloc[0]['total_sludge_amount_kg_per_year']/1000/365/Minnesota.iloc[0]['flow_2022_MGD'],
+                                       # ww_2_dry_sludge_ratio: how much metric tonne/day sludge can be produced by 1 MGD of ww
+                                       state=Minnesota.iloc[0]['state'],
+                                       elec_GHG=float(elec[elec['state']==Minnesota.iloc[0]['state']]['GHG (10-year median)']))
+
+if Minnesota.iloc[0]['sludge_aerobic_digestion'] == 1:
+    sludge_ash_values=[0.374, 0.468, 0.562, 'aerobic_digestion']
+    sludge_lipid_values=[0.154, 0.193, 0.232]
+    sludge_protein_values=[0.408, 0.510, 0.612]
+    
+elif Minnesota.iloc[0]['sludge_anaerobic_digestion'] == 1:
+    sludge_ash_values=[0.331, 0.414, 0.497, 'anaerobic_digestion']
+    sludge_lipid_values=[0.154, 0.193, 0.232]
+    sludge_protein_values=[0.408, 0.510, 0.612]
+    
+else:
+    sludge_ash_values=[0.174, 0.231, 0.308, 'no_digestion']
+    sludge_lipid_values=[0.080, 0.206, 0.308]
+    sludge_protein_values=[0.380, 0.456, 0.485]
+
+model = create_geospatial_model(system=sys,
+                                sludge_ash=sludge_ash_values,
+                                sludge_lipid=sludge_lipid_values,
+                                sludge_protein=sludge_protein_values,
+                                raw_wastewater_price_baseline=sys.flowsheet.stream.sludge_assumed_in_wastewater.price,
+                                biocrude_and_transportation_price=[sys.flowsheet.stream.biocrude.price/6.80*4.21, # the distribution of biocrude transportation cost was assumed to be proportional to the distribution of biocrude price (triangular: 0.2384/0.3847/0.6703, or 4.21/6.80/11.9)
+                                                                   sys.flowsheet.stream.biocrude.price,
+                                                                   sys.flowsheet.stream.biocrude.price/6.80*11.9], # the distribution of biocrude transportation cost was assumed to be proportional to the distribution of biocrude price (triangular: 0.2384/0.3847/0.6703, or 4.21/6.80/11.9)
+                                electricity_cost=[elec[elec['state']==Minnesota.iloc[0]['state']]['price (10-year 5th)'].iloc[0]/100,
+                                                  elec[elec['state']==Minnesota.iloc[0]['state']]['price (10-year median)'].iloc[0]/100,
+                                                  elec[elec['state']==Minnesota.iloc[0]['state']]['price (10-year 95th)'].iloc[0]/100],
+                                electricity_GHG=[0.67848*elec[elec['state']==Minnesota.iloc[0]['state']]['GHG (10-year 5th)']/elec[elec['state']==Minnesota.iloc[0]['state']]['GHG (10-year median)'],
+                                                 0.67848,
+                                                 0.67848*elec[elec['state']==Minnesota.iloc[0]['state']]['GHG (10-year 95th)']/elec[elec['state']==Minnesota.iloc[0]['state']]['GHG (10-year median)']])
+
+kwargs = {'N':1000, 'rule':'L', 'seed':3221}
+samples = model.sample(**kwargs)
+model.load_samples(samples)
+model.evaluate()
+
+idx = len(model.parameters)
+parameters = model.table.iloc[:, :idx]
+results = model.table.iloc[:, idx:]
+
+biocrude_center = results[('Geospatial','Biocrude production [BPD]')]
+decarbonization_center = results[('Geospatial','Decarbonization amount [tonne_per_day]')]
+
+#%% sludge transportation (satellite, SA) (all WRRFs uncertainty)
+
+filterwarnings('ignore')
+
+print(len(MN_WI_IA_transportation))
+
+
+sludge_disposal_cost = {'landfill': 0.413,
+                        'land_application': 0.606,
+                        'incineration': 0.441,
+                        'other_sludge_management': 0.413*0.3 + 0.606*0.55 + 0.441*0.15}
+
+# sludge emission factor in kg CO2 eq/kg sludge
+# assume the GHG for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
+sludge_emission_factor = {'landfill': 1.36,
+                          'land_application': 0.353,
+                          'incineration': 0.519,
+                          'other_sludge_management': 1.36*0.3 + 0.353*0.55 + 0.519*0.15}
+
+MN_WI_IA_transportation['waste_cost'] = sum(MN_WI_IA_transportation[i]*sludge_disposal_cost[i] for i in sludge_disposal_cost.keys())/MN_WI_IA_transportation['total_sludge_amount_kg_per_year']*1000
+
+MN_WI_IA_transportation['waste_GHG'] =  sum(MN_WI_IA_transportation[i]*sludge_emission_factor[i] for i in sludge_emission_factor.keys())/MN_WI_IA_transportation['total_sludge_amount_kg_per_year']*1000
+
+total_cost_except_center = sum(MN_WI_IA_transportation.iloc[i]['waste_cost']*MN_WI_IA_transportation.iloc[i]['total_sludge_amount_kg_per_year'] for i in range(len(MN_WI_IA_transportation)))
+total_GHG_except_center = sum(MN_WI_IA_transportation.iloc[i]['waste_GHG']*MN_WI_IA_transportation.iloc[i]['total_sludge_amount_kg_per_year'] for i in range(len(MN_WI_IA_transportation)))
+total_sludge_except_center = sum(MN_WI_IA_transportation.iloc[i]['total_sludge_amount_kg_per_year'] for i in range(len(MN_WI_IA_transportation)))
+
+total_cost = total_cost_except_center + Minnesota.iloc[0]['waste_cost']*Minnesota.iloc[0]['total_sludge_amount_kg_per_year']
+total_GHG = total_GHG_except_center + Minnesota.iloc[0]['waste_GHG']*Minnesota.iloc[0]['total_sludge_amount_kg_per_year']
+total_sludge = total_sludge_except_center + Minnesota.iloc[0]['total_sludge_amount_kg_per_year']
+
+average_cost = total_cost/total_sludge
+
+average_GHG = total_GHG/total_sludge
+
+total_size = sum(MN_WI_IA_transportation.iloc[i]['flow_2022_MGD'] for i in range(len(MN_WI_IA_transportation))) + Minnesota.iloc[0]['flow_2022_MGD']
+
+distance_to_refinery = Minnesota.iloc[0]['real_distance_km']
+
+sludge_transporataion_distance = sum(MN_WI_IA_transportation.iloc[i]['real_distance_to_center_WRRF_km']*MN_WI_IA_transportation.iloc[i]['total_sludge_amount_kg_per_year'] for i in range(len(MN_WI_IA_transportation)))/total_sludge
+
+total_ash_except_center = 0
+total_lipid_except_center = 0
+total_protein_except_center = 0
+
+for i in range(len(MN_WI_IA_transportation)):
+
+    if MN_WI_IA_transportation.iloc[i]['sludge_aerobic_digestion'] == 1:
+        sludge_ash_value=0.468
+        sludge_lipid_value=0.193
+        sludge_protein_value=0.510
+        
+    elif MN_WI_IA_transportation.iloc[i]['sludge_anaerobic_digestion'] == 1:
+        sludge_ash_value=0.414
+        sludge_lipid_value=0.193
+        sludge_protein_value=0.510
+        
+    else:
+        sludge_ash_value=0.231
+        sludge_lipid_value=0.206
+        sludge_protein_value=0.456
+
+    total_ash_except_center += sludge_ash_value*MN_WI_IA_transportation.iloc[i]['total_sludge_amount_kg_per_year']
+    total_lipid_except_center += sludge_lipid_value*MN_WI_IA_transportation.iloc[i]['total_sludge_amount_kg_per_year']*(1-sludge_ash_value)
+    total_protein_except_center += sludge_protein_value*MN_WI_IA_transportation.iloc[i]['total_sludge_amount_kg_per_year']*(1-sludge_ash_value)
+
+# manually checked: the center WRRF does not have anaerobic or aerobic digestion
+
+total_ash = total_ash_except_center + Minnesota.iloc[0]['total_sludge_amount_kg_per_year']*0.231
+total_lipid = total_lipid_except_center + Minnesota.iloc[0]['total_sludge_amount_kg_per_year']*(1-0.231)*0.206
+total_protein = total_protein_except_center + Minnesota.iloc[0]['total_sludge_amount_kg_per_year']*(1-0.231)*0.456
+
+average_ash_dw = total_ash/total_sludge
+average_lipid_afdw = total_lipid/(total_sludge-total_ash)
+average_protein_afdw = total_protein/(total_sludge-total_ash)
+
+# !!! use uniform distribution (0.8x, 1x, 1.2x) for combined WRRFs
+sludge_ash_values = [average_ash_dw*0.8, average_ash_dw, average_ash_dw*1.2, 'digestion'] # set sludge_ash_values[-1] = 'digestion', this does not necessarily mean there is digestion, but this will set the uncertainty distribution of ash, lipid, and protein to uniform in the model
+sludge_lipid_values = [average_lipid_afdw*0.8, average_lipid_afdw, average_lipid_afdw*1.2]
+sludge_protein_values = [average_protein_afdw*0.8, average_protein_afdw, average_protein_afdw*1.2]
+
+average_ww_2_dry_sludge_ratio = total_sludge/1000/365/total_size
+
+state = 'MN'
+
+elec_GHG = float(elec[elec['state']==state]['GHG (10-year median)'])
+
+sys, barrel = create_geospatial_system(waste_cost=average_cost,
+                                       waste_GHG=average_GHG,
+                                       size=total_size,
+                                       distance=distance_to_refinery,
+                                       sludge_transportation=1,
+                                       sludge_distance=sludge_transporataion_distance,
+                                       average_sludge_dw_ash=sludge_ash_values[1],
+                                       average_sludge_afdw_lipid=sludge_lipid_values[1],
+                                       average_sludge_afdw_protein=sludge_protein_values[1],
+                                       anaerobic_digestion=None,
+                                       aerobic_digestion=None,
+                                       ww_2_dry_sludge_ratio=average_ww_2_dry_sludge_ratio,
+                                       # ww_2_dry_sludge_ratio: how much metric tonne/day sludge can be produced by 1 MGD of ww
+                                       state=state,
+                                       elec_GHG=elec_GHG)
+
+model = create_geospatial_model(system=sys,
+                                sludge_ash=sludge_ash_values,
+                                sludge_lipid=sludge_lipid_values,
+                                sludge_protein=sludge_protein_values,
+                                raw_wastewater_price_baseline=sys.flowsheet.stream.sludge_assumed_in_wastewater.price,
+                                biocrude_and_transportation_price=[sys.flowsheet.stream.biocrude.price/6.80*4.21, # the distribution of biocrude transportation cost was assumed to be proportional to the distribution of biocrude price (triangular: 0.2384/0.3847/0.6703, or 4.21/6.80/11.9)
+                                                                   sys.flowsheet.stream.biocrude.price,
+                                                                   sys.flowsheet.stream.biocrude.price/6.80*11.9], # the distribution of biocrude transportation cost was assumed to be proportional to the distribution of biocrude price (triangular: 0.2384/0.3847/0.6703, or 4.21/6.80/11.9)
+                                electricity_cost=[elec[elec['state']==state]['price (10-year 5th)'].iloc[0]/100,
+                                                  elec[elec['state']==state]['price (10-year median)'].iloc[0]/100,
+                                                  elec[elec['state']==state]['price (10-year 95th)'].iloc[0]/100],
+                                electricity_GHG=[0.67848*elec[elec['state']==state]['GHG (10-year 5th)']/elec[elec['state']==state]['GHG (10-year median)'],
+                                                  0.67848,
+                                                  0.67848*elec[elec['state']==state]['GHG (10-year 95th)']/elec[elec['state']==state]['GHG (10-year median)']])
+
+kwargs = {'N':1000, 'rule':'L', 'seed':3221}
+samples = model.sample(**kwargs)
+model.load_samples(samples)
+model.evaluate()
+
+idx = len(model.parameters)
+parameters = model.table.iloc[:, :idx]
+all_WRRFs_results = model.table.iloc[:, idx:]
+
+biocrude_all = all_WRRFs_results[('Geospatial','Biocrude production [BPD]')]
+decarbonization_all = all_WRRFs_results[('Geospatial','Decarbonization amount [tonne_per_day]')]
+
+SA_results = pd.DataFrame({'center_decarbonization': decarbonization_center,
+                           'all_decarbonization': decarbonization_all,
+                           'center_biocrude': biocrude_center,
+                           'all_biocrude': biocrude_all})
+
+SA_results.to_excel(folder + f'results/Minnesota/center_vs_all_{date.today()}.xlsx')
 
 #%% sludge transportation (heat map, HM)
 
@@ -1799,7 +2330,7 @@ ternary_results = pd.DataFrame(ternary_results_dict)
 get_quantiles = lambda data, quantiles=(0.05, 0.5, 0.95): [data.quantile(q) for q in quantiles]
 
 for size in np.linspace(2, 20, 10):
-    for sludge_distance in np.linspace(100, 1000, 10):
+    for sludge_distance in np.linspace(20, 200, 10):
         
         print('\n\n', f'sludge amount: {size} metric tonne/day\n', f'sludge travel distance: {sludge_distance} km\n')
 
@@ -1883,22 +2414,22 @@ ax.set_ylabel(r'$\mathbf{Total\ sludge}$ [tonne·day${^{-1}}$]', fontname='Arial
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-plt.xticks(np.arange(100, 1100, 150))
+plt.xticks(np.arange(20, 220, 30))
 plt.yticks(np.arange(2, 22, 3))
 
 ax_right = ax.twinx()
 ax_right.set_ylim((2, 20))
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.xticks(np.arange(100, 1100, 150))
+plt.xticks(np.arange(20, 220, 30))
 plt.yticks(np.arange(2, 22, 3))
 
 ax_top = ax.twiny()
-ax_top.set_xlim((100, 1000))
+ax_top.set_xlim((20, 200))
 # plt.xticks(np.arange(max_distance*0.2, max_distance*1.2, max_distance*0.2))
 ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
-plt.xticks(np.arange(100, 1100, 150))
+plt.xticks(np.arange(20, 220, 30))
 plt.yticks(np.arange(2, 22, 3))
 
 try:
@@ -1950,22 +2481,21 @@ ax.set_ylabel(r'$\mathbf{Total\ sludge}$ [tonne·day${^{-1}}$]', fontname='Arial
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-plt.xticks(np.arange(100, 1100, 150))
+plt.xticks(np.arange(20, 220, 30))
 plt.yticks(np.arange(2, 22, 3))
 
 ax_right = ax.twinx()
 ax_right.set_ylim((2, 20))
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.xticks(np.arange(100, 1100, 150))
+plt.xticks(np.arange(20, 220, 30))
 plt.yticks(np.arange(2, 22, 3))
 
 ax_top = ax.twiny()
-ax_top.set_xlim((100, 1000))
-# plt.xticks(np.arange(max_distance*0.2, max_distance*1.2, max_distance*0.2))
+ax_top.set_xlim((20, 200))
 ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
-plt.xticks(np.arange(100, 1100, 150))
+plt.xticks(np.arange(20, 220, 30))
 plt.yticks(np.arange(2, 22, 3))
 
 try:
@@ -1985,7 +2515,7 @@ fills = ax.tricontourf(x, y, z, levels=10000,
                       cmap=color_map_Guest)
 
 fig.colorbar(fills, ax=ax)
-#%% different biorude transporation (BT) distance
+#%% different biorude transporation (BT) distance (assuming 100 tonne sludge per day) (superseded)
 
 filterwarnings('ignore')
 
@@ -2081,7 +2611,7 @@ BT_uncertainty_NPV.to_excel(folder + f'results/biocrude_transportation_distance/
 BT_uncertainty_NPV.to_excel(folder + f'results/biocrude_transportation_distance/decarbonization_{date.today()}.xlsx')
 BT_uncertainty_NPV.to_excel(folder + f'results/biocrude_transportation_distance/decarbonization_cost_{date.today()}.xlsx')
 
-#%% different sludge amount (SA)
+#%% different sludge amount (SA) (assuming 100 km biocrude transportation distance) (superseded)
 
 filterwarnings('ignore')
 
