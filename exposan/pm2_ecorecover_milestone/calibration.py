@@ -49,10 +49,10 @@ time_track.terminal = True
 def objective(trial):
 
     params = {
-        'q_CH': (1, 'g COD/g COD/d', (0.1, 10)),
-        'q_LI': (15, 'g COD/g COD/d', (1.5, 50)),
-        'V_NH': (0.1, 'g N/g COD/d', (0.01, 1)),
-        'V_P': (0.2, 'g P/g COD/d', (0.01, 1)),
+        'q_CH': trial.suggest_uniform('q_CH', 0.1, 10),
+        'q_LI': trial.suggest_uniform('q_LI', 1.5, 50),
+        'V_NH': trial.suggest_uniform('V_NH', 0.01, 1),
+        'V_P': trial.suggest_uniform('V_P', 0.01, 1),
         'arr_e': trial.suggest_uniform('arr_e', 1000, 10000),
         'K_P': trial.suggest_uniform('K_P', 0.01, 100),
         'f_CH_max': trial.suggest_uniform('f_CH_max', 0.1, 10),
