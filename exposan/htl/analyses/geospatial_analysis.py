@@ -6,11 +6,6 @@ Created on Sun Jun 11 08:12:41 2023
 @author: jiananfeng
 '''
 
-# 1/4/2023 to-dos:
-# 1. update Urbana-Champaign figure (code has been updated)
-# 2. update sludge transportation distance for heat map (0 to 200) (code has been updated)
-# 3. make Minnesota figure
-
 #%% initialization
 import geopy.distance, googlemaps, random
 import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.colors as colors, matplotlib.ticker as mtick
@@ -2353,6 +2348,7 @@ ternary_results.to_excel(folder + f'results/heat_map_{size}_tonne_per_day_{sludg
 
 #%% sludge transportation (heat map, HM) visualization (decarbonization) 
 
+# HM = pd.read_excel(folder + 'results/heat_map_20.0_tonne_per_day_1000.0_km_2024-01-03.xlsx')
 HM = pd.read_excel(folder + 'results/heat_map_20.0_tonne_per_day_200.0_km_2024-01-05.xlsx')
 
 HM_decarbonization = HM[['sludge_amount','sludge_transportation_distance','decarbonization_amount_50th']]
@@ -2380,6 +2376,7 @@ ax.set_ylabel(r'$\mathbf{Total\ sludge}$ [tonne·day${^{-1}}$]', fontname='Arial
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
+# plt.xticks(np.arange(100, 1150, 150))
 plt.xticks(np.arange(20, 220, 30))
 plt.yticks(np.arange(2, 22, 3))
 
@@ -2387,14 +2384,17 @@ ax_right = ax.twinx()
 ax_right.set_ylim((2, 20))
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
+# plt.xticks(np.arange(100, 1150, 150))
 plt.xticks(np.arange(20, 220, 30))
 plt.yticks(np.arange(2, 22, 3))
 
 ax_top = ax.twiny()
+# ax_top.set_xlim((100, 1000))
 ax_top.set_xlim((20, 200))
 # plt.xticks(np.arange(max_distance*0.2, max_distance*1.2, max_distance*0.2))
 ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
+# plt.xticks(np.arange(100, 1150, 150))
 plt.xticks(np.arange(20, 220, 30))
 plt.yticks(np.arange(2, 22, 3))
 
@@ -2418,6 +2418,7 @@ fig.colorbar(fills, ax=ax)
 
 #%% sludge transportation (heat map, HM) visualization (NPV) 
 
+# HM = pd.read_excel(folder + 'results/heat_map_20.0_tonne_per_day_1000.0_km_2024-01-03.xlsx')
 HM = pd.read_excel(folder + 'results/heat_map_20.0_tonne_per_day_200.0_km_2024-01-05.xlsx')
 
 HM_NPV = HM[['sludge_amount','sludge_transportation_distance','NPV_50th']]
@@ -2447,6 +2448,7 @@ ax.set_ylabel(r'$\mathbf{Total\ sludge}$ [tonne·day${^{-1}}$]', fontname='Arial
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
+# plt.xticks(np.arange(100, 1150, 150))
 plt.xticks(np.arange(20, 220, 30))
 plt.yticks(np.arange(2, 22, 3))
 
@@ -2454,13 +2456,16 @@ ax_right = ax.twinx()
 ax_right.set_ylim((2, 20))
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
+# plt.xticks(np.arange(100, 1150, 150))
 plt.xticks(np.arange(20, 220, 30))
 plt.yticks(np.arange(2, 22, 3))
 
 ax_top = ax.twiny()
+# ax_top.set_xlim((100, 1000))
 ax_top.set_xlim((20, 200))
 ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
+# plt.xticks(np.arange(100, 1150, 150))
 plt.xticks(np.arange(20, 220, 30))
 plt.yticks(np.arange(2, 22, 3))
 
