@@ -229,7 +229,6 @@ def create_system(configuration='baseline', capacity=100,
                        init_with='Stream', rigorous=True)
     H2.register_alias('H2')
 
-
     F2 = qsu.Flash('A340', ins=H2-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
                P=717.4*6894.76, thermo=settings.thermo.ideal()) # outflow P
     F2.register_alias('F2')
