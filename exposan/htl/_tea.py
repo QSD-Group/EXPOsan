@@ -166,7 +166,7 @@ class HTL_TEA(TEA):
                 + self.labor_cost * (1 + self.labor_burden))
 
 
-def create_tea(sys, OSBL_units=None, cls=None):
+def create_tea(sys, OSBL_units=None, cls=None, IRR_value=0.1, finance_interest_value=0.08):
     if OSBL_units is None: OSBL_units = bst.get_OSBL(sys.cost_units)
     try:
         BT = tmo.utils.get_instance(OSBL_units, (bst.BoilerTurbogenerator, bst.Boiler))
@@ -175,11 +175,11 @@ def create_tea(sys, OSBL_units=None, cls=None):
     if cls is None: cls = HTL_TEA
     tea = cls(
         system=sys, 
-        IRR=0.10, # Jones
+        IRR=IRR_value, # use 0%-3%-5% triangular distribution for waste management, and 5%-10%-15% triangular distribution for biofuel production
         duration=(2022, 2052), # Jones
         depreciation='MACRS7', # Jones
         income_tax=0.35, # Jones
-        operating_days=330, # Jones
+        operating_days=sys.operating_hours/24, # Jones
         lang_factor=None, # related to expansion, not needed here
         construction_schedule=(0.08, 0.60, 0.32), # Jones
         startup_months=6, # Jones
@@ -187,7 +187,7 @@ def create_tea(sys, OSBL_units=None, cls=None):
         startup_salesfrac=0.5, # Davis NREL 2018
         startup_VOCfrac=0.75, # Davis NREL 2018
         WC_over_FCI=0.05, # Jones
-        finance_interest=0.08, # Jones
+        finance_interest=finance_interest_value, # use 3% for waste management, use 8% for biofuel
         finance_years=10, # Jones
         finance_fraction=0.6, # debt: Jones
         OSBL_units=OSBL_units,
