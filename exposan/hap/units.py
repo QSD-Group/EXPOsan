@@ -1,58 +1,22 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Jan 11 08:54:00 2024
+'''
+EXPOsan: Exposition of sanitation and resource recovery systems
 
-@author: joy_c
-"""
+This module is developed by:
+    
+    Joy Zhang <joycheung1994@gmail.com>
+
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
+'''
 import qsdsan as qs
-from qsdsan import SanUnit, Component, Components
+from qsdsan import SanUnit
 from biosteam.units import BatchBioreactor
-from biorefineries.cane import create_sugarcane_chemicals
+
 
 __all__ = ('HApFermenter',)
 
-def create_hap_cmps(set_thermo=True):
-    cmps_df = Components.load_default()
-    chems = create_sugarcane_chemicals()
-    Yeast = Component.from_chemical('Yeast', chemical=chems.Yeast,
-                                    particle_size='Particulate', organic=True,
-                                    degradability='Slowly')
-    NH3 = Component('NH3', particle_size='Dissolved_gas', 
-                    degradability='Undegradable', organic=False)
-    CO2 = Component('CO2', particle_size='Dissolved_gas', 
-                    degradability='Undegradable', organic=False)
-    HAP = Component('HAP', search_ID='hydroxyapatite', 
-                    particle_size='particulate', 
-                    degradability='Undegradable', organic=False)
-    CaCl2 = Component('CaCl2', particle_size='Soluble', 
-                    degradability='Undegradable', organic=False)
-    
-    # common urine consitituents
-    org_kwargs = dict(particle_size='Soluble', degradability='Readily', organic=True)
-    urea = Component('Urea', **org_kwargs)
-    creatinine = Component('Creatinine', **org_kwargs)
-    Hhip = Component('Hippuric acid', **org_kwargs)
-    Hcit = Component('Citric acid', **org_kwargs)
-    Hglu = Component.from_chemical('Glucuronic_acid', chemical='C6H10O7', **org_kwargs)
-    Huric = Component('Uric acid', **org_kwargs)
-    other_COD = cmps_df.S_F.copy('Other_COD')
-    
-    ig_kwargs = dict(particle_size='Soluble', degradability='Undegradable', organic=False)
-    chloride = Component('Cl-', **ig_kwargs)
-    sodium = Component('Na+', **ig_kwargs)
-    potassium = Component('K+', **ig_kwargs)
-    IS = Component('SO4-2', measured_as='S', **ig_kwargs)
-    IP = Component('PO4-3', measured_as='P', **ig_kwargs)
-    
-    ash = Component.from_chemical('Ash', chemical=chems.Ash, **ig_kwargs)
-    other_SS = ash.copy('other_SS')
-    
-    cmps = Components([cmps_df.H2O, Yeast, NH3, CO2, HAP, CaCl2, 
-                       urea, creatinine, Hhip, Hcit, Hglu, Huric, other_COD,
-                       chloride, sodium, potassium, IS, IP, ash, other_SS])
-    cmps.default_compile()
-    if set_thermo: qs.set_thermo(cmps)
-    return cmps
 
 class HApFermenter(qs.SanUnit, BatchBioreactor):
     
@@ -115,7 +79,7 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
         self._cinocu = c
     
     def _setup(self):
-        SanUnit._setup()
+        SanUnit._setup(self)
         vent, effluent, precip = self.outs
         vent.phase = 'g'
         vent.T = effluent.T = precip.T = self.T
