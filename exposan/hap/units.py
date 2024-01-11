@@ -27,7 +27,8 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  tau=5, N=2, T=273.15+37, P=101325,
                  f_maximum_hap_yield=0.66, precipitate_moisture=90,
-                 biomass_yield=0.1, inoculum_concentration=0.5):
+                 biomass_yield=0.1, inoculum_concentration=0.5,
+                 CaCl2_price=0.3):
 
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self._init(tau=tau*24, N=N, T=T, P=P)
@@ -35,6 +36,7 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
         self.precipitate_moisture=precipitate_moisture
         self.biomass_yield=biomass_yield
         self.inoculum_concentration=inoculum_concentration
+        self.ins[2].price=CaCl2_price
     
     @property
     def precipitate(self):
@@ -111,6 +113,4 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
         eff.mass[cmps.i_COD > 0] *= 1-y_bio # conservative estimation of COD degradation
         eff.imol['NH3'] += urine.imol['Urea'] * 2  # ignore gaseous NH3 in vent
         eff.imass['H2O'] -= m_h2o
-        
-        
     

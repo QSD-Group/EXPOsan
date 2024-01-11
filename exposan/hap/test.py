@@ -15,8 +15,10 @@ from exposan.hap import create_hap_cmps, HApFermenter
 
 cmps = create_hap_cmps()
 
+Q = 10 # L/hr
+
 urine = qs.WasteStream('urine')
-urine.set_flow_by_concentration(100, concentrations=dict(
+urine.set_flow_by_concentration(Q, concentrations=dict(
     Urea=16300,
     Cl=5135,
     Na=2780,
