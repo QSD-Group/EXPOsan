@@ -27,7 +27,7 @@ _kg_to_g = auom('kg').conversion_factor('g')
 _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
 _MJ_to_MMBTU = auom('MJ').conversion_factor('MMBTU')
 _MMgal_to_L = auom('gal').conversion_factor('L')*1000000
-
+_oil_barrel_to_L = auom('oil_barrel').conversion_factor('L')
 
 # %%
 
@@ -48,11 +48,17 @@ def _load_components(reload=False):
 from . import _process_settings
 from ._process_settings import *
 
+from . import income_tax
+from .income_tax import *
+
 from . import _tea
 from ._tea import *
 
 from . import systems
 from .systems import *
+
+from . import geospatial_HTL_systems
+from .geospatial_HTL_systems import *
 
 _system_loaded = False
 def load(configuration='baseline'):
@@ -74,6 +80,9 @@ def __getattr__(name):
         
 from . import models
 from .models import *
+
+from . import geospatial_models
+from .geospatial_models import *
 
 def simulate_and_save(model,
                       resample=True, samples_kwargs={'N':1000, 'rule':'L', 'seed':3221},
@@ -113,7 +122,10 @@ __all__ = (
     'simulate_and_save',
     *_components.__all__,
     *_process_settings.__all__,
+    *income_tax.__all__,
     *_tea.__all__,
     *systems.__all__,
+    *geospatial_HTL_systems.__all__,
     *models.__all__,
+    *geospatial_models.__all__,
 )
