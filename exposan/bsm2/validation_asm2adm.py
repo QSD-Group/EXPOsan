@@ -48,7 +48,9 @@ default_asm_kwargs = dict(
     )
 
 cmps_asm1 = pc.create_asm1_cmps()
+asm1 = pc.ASM1(components=cmps_asm1, **default_asm_kwargs)
 thermo_asm1 = qs.get_thermo()
+
 
 cmps_adm1 = pc.create_adm1_cmps()
 thermo_adm1 = qs.get_thermo()
@@ -133,34 +135,33 @@ sys.simulate(
 
 effluent_conc = dict(zip(effluent.components.IDs, effluent.iconc.data))
 
-# effluent_conc
-# S_su 0.0
-# S_aa 40.99187113202961
-# S_fa 0.0
-# S_va 0.0
-# S_bu 0.0
-# S_pro 0.0
-# S_ac 0.0
-# S_h2 0.0
-# S_ch4 0.0
-# S_IC 94.847730527175
-# S_IN 28.711513621117057
-# S_I 28.066499999999962
-# X_c 0.0
-# X_ch 3340.077084921927
-# X_pr 16560.50572492688
-# X_li 7793.513198151161
-# X_su 0.0
-# X_aa 0.0
-# X_fa 0.0
-# X_c4 0.0
-# X_pro 0.0
-# X_ac 0.0
-# X_h2 0.0
-# X_I 17010.64239199998
-# S_cat 0.0
-# S_an 5.210421371425576
-# H2O 966179.9215060878
+# {'S_su': 0.0,
+#  'S_aa': 40.99187113202965,
+#  'S_fa': 0.0,
+#  'S_va': 0.0,
+#  'S_bu': 0.0,
+#  'S_pro': 0.0,
+#  'S_ac': 0.0,
+#  'S_h2': 0.0,
+#  'S_ch4': 0.0,
+#  'S_IC': 94.08543013319388,
+#  'S_IN': 27.889165881077687,
+#  'S_I': 28.066499999999984,
+#  'X_c': 0.0,
+#  'X_ch': 3727.5278810973714,
+#  'X_pr': 15914.75439796782,
+#  'X_li': 8051.813728934794,
+#  'X_su': 0.0,
+#  'X_aa': 0.0,
+#  'X_fa': 0.0,
+#  'X_c4': 0.0,
+#  'X_pro': 0.0,
+#  'X_ac': 0.0,
+#  'X_h2': 0.0,
+#  'X_I': 17010.64239199999,
+#  'S_cat': 0.0,
+#  'S_an': 5.21042137142558,
+#  'H2O': 965998.6128923026}
 
 # MATLAB
 # ADM1 influent (post ASM2ADM interface)
