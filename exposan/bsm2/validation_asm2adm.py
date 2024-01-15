@@ -32,12 +32,12 @@ default_asm_kwargs = dict(
     # Table 3 Kinetic parameters
     mu_H=4.0, #6.0;
     K_S=10.0, #20;
-    K_O_H=0.2, # K_OH = 0.2;
+    K_O_H=0.2,
     K_NO=0.5,
     b_H=0.3, #0.62;
     mu_A=0.5, #0.8;
     K_NH=1.0,
-    K_O_A=0.4, # K_OA = 0.4;
+    K_O_A=0.4,
     b_A=0.05, #0.2;
     eta_g=0.8, # ny_g
     k_a=0.05, #0.08;
@@ -60,7 +60,26 @@ effluent = WasteStream('effluent', T=35+273.15)
 
 qs.set_thermo(thermo_asm1)
 
+# MATLAB
 # Anaerobic digester influent (pre ASM2ADM interface)
+# ***************************************************
+# SI = 28.0665 mg COD/l
+# SS = 48.9526 mg COD/l
+# XI = 10361.7101 mg COD/l
+# XS = 20375.0176 mg COD/l
+# XBH = 10210.0698 mg COD/l
+# XBA = 553.2808 mg COD/l
+# XP = 3204.6601 mg COD/l
+# SO = 0.25225 mg -COD/l
+# SNO = 1.6871 mg N/l
+# SNH = 28.9098 mg N/l
+# SND = 4.6834 mg N/l
+# XND = 906.0933 mg N/l
+# SALK = 7.1549 mol HCO3/m3
+# TSS = 33528.5538 mg SS/l
+# Flow rate = 178.4674 m3/d
+# Temperature = 14.8581 degC
+
 T_inf = 14.8581 + 273.15
 default_inf_kwargs = {
     'flow_tot': 178.4674,
@@ -84,7 +103,7 @@ default_inf_kwargs = {
 # TSS = 33528.5538 mg SS/l
 
 
-influent = WasteStream('influent', T=14.8581+273.15)
+influent = WasteStream('influent', T=T_inf)
 
 influent.set_flow_by_concentration(**default_inf_kwargs)
 
@@ -93,7 +112,7 @@ J1 = su.ASMtoADM('J1', upstream=influent, downstream=effluent,
 
 sys = qs.System('sys', path=(J1,))
 
-t = 1
+t = 1 # simulation time shouldn't matter
 t_step = 1
 # method = 'RK45'
 # method = 'RK23'
@@ -145,7 +164,8 @@ effluent_conc = dict(zip(effluent.components.IDs, effluent.iconc.data))
 
 # MATLAB
 # ADM1 influent (post ASM2ADM interface)
-# ************************************* Ssu = monosacharides (kg COD/m3) = 0
+# *************************************
+# Ssu = monosacharides (kg COD/m3) = 0
 # Saa = amino acids (kg COD/m3) = 0.04388
 # Sfa = long chain fatty acids (LCFA) (kg COD/m3) = 0
 # Sva = total valerate (kg COD/m3) = 0
