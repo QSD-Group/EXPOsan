@@ -114,6 +114,7 @@ J1 = su.ASMtoADM('J1', upstream=influent, downstream=effluent,
 
 sys = qs.System('sys', path=(J1,))
 
+#%%
 t = 1 # simulation time shouldn't matter
 t_step = 1
 # method = 'RK45'
@@ -133,10 +134,19 @@ sys.simulate(
     # export_state_to=f'results/sol_{t}d_{method}.xlsx',
     )
 
-effluent_conc = dict(zip(effluent.components.IDs, effluent.iconc.data))
+effluent_conc = dict(zip(effluent.components.IDs, effluent.iconc.data/1000))
+
+TKN_0 = influent.composite('N', subgroup=('S_NH', 'S_ND', 'X_ND', 'X_BH', 'X_BA', 'X_I', 'X_P'))
+TKN_qs = effluent.composite('N', 
+                            subgroup=(
+                                'S_IN', 'X_c', 'S_I', 'X_I',
+                                'X_pr', 'S_aa', 
+                                'X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro', 'X_ac', 'X_h2',
+                                )
+                            )
 
 # {'S_su': 0.0,
-#  'S_aa': 40.99187113202965,
+#  'S_aa': 0.04387524399999997,
 #  'S_fa': 0.0,
 #  'S_va': 0.0,
 #  'S_bu': 0.0,
@@ -144,13 +154,13 @@ effluent_conc = dict(zip(effluent.components.IDs, effluent.iconc.data))
 #  'S_ac': 0.0,
 #  'S_h2': 0.0,
 #  'S_ch4': 0.0,
-#  'S_IC': 94.08543013319388,
-#  'S_IN': 27.889165881077687,
-#  'S_I': 28.066499999999984,
+#  'S_IC': 0.093823367370313,
+#  'S_IN': 0.02760646010982909,
+#  'S_I': 0.028066499999999984,
 #  'X_c': 0.0,
-#  'X_ch': 3727.5278810973714,
-#  'X_pr': 15914.75439796782,
-#  'X_li': 8051.813728934794,
+#  'X_ch': 3.7275278810973713,
+#  'X_pr': 15.914754397967819,
+#  'X_li': 8.051813728934794,
 #  'X_su': 0.0,
 #  'X_aa': 0.0,
 #  'X_fa': 0.0,
@@ -158,10 +168,12 @@ effluent_conc = dict(zip(effluent.components.IDs, effluent.iconc.data))
 #  'X_pro': 0.0,
 #  'X_ac': 0.0,
 #  'X_h2': 0.0,
-#  'X_I': 17010.64239199999,
+#  'X_I': 17.01064239199999,
 #  'S_cat': 0.0,
-#  'S_an': 5.21042137142558,
-#  'H2O': 965998.6128923026}
+#  'S_an': 0.00521042137142558,
+#  'H2O': 965.9960285283943}
+
+TKN_mt = 1e3 * ((0.04388 + 15.9235)*0.007 + (0.028067+17.0166)*0.06/14 + 0.0019721) * 14
 
 # MATLAB
 # ADM1 influent (post ASM2ADM interface)
@@ -175,8 +187,8 @@ effluent_conc = dict(zip(effluent.components.IDs, effluent.iconc.data))
 # Sac = total acetate (kg COD/m3) = 0
 # Sh2 = hydrogen gas (kg COD/m3) = 0
 # Sch4 = methane gas (kg COD/m3) = 0
-# Sic = inorganic carbon (kmole C/m3) = 0.0079326
-# Sin = inorganic nitrogen (kmole N/m3) = 0.0019721 
+# Sic = inorganic carbon (kmole C/m3) = 0.0079326 ( * 12 = 0.0951912)
+# Sin = inorganic nitrogen (kmole N/m3) = 0.0019721 ( * 14 = 0.0276094)
 # Si = soluble inerts (kg COD/m3) = 0.028067
 # Xc = composites (kg COD/m3) = 0
 # Xch = carbohydrates (kg COD/m3) = 3.7236
@@ -194,3 +206,4 @@ effluent_conc = dict(zip(effluent.components.IDs, effluent.iconc.data))
 # San- = anions (acid) (kmole/m3) = 0.0052101
 # Flow rate (m3/d) = 178.4674
 # Temperature (degC) = 35
+
