@@ -48,6 +48,7 @@ default_asm_kwargs = dict(
     )
 
 cmps_asm1 = pc.create_asm1_cmps()
+asm1 = pc.ASM1(components=cmps_asm1, **default_asm_kwargs)
 thermo_asm1 = qs.get_thermo()
 effluent = WasteStream('effluent', T=14.8581+273.15)
 
@@ -119,7 +120,7 @@ qs.set_thermo(thermo_adm1)
 # Energy content of methane gas (MJ/d) = 53282.5305
 # Energy content of methane gas (kWh/d) = 14800.7029
 
-T_inf = 35 + 273.15
+T_inf = 14.8581 + 273.15
 default_inf_kwargs = {
     'flow_tot': 178.4674,
     'concentrations': {
@@ -161,7 +162,7 @@ influent.set_flow_by_concentration(**default_inf_kwargs)
 
 J1 = su.ADMtoASM('J1', upstream=influent, downstream=effluent, 
                  thermo=thermo_asm1, isdynamic=True, adm1_model=adm1)
-
+J1.bio_to_xs = 0.79
 sys = qs.System('sys', path=(J1,))
 
 t = 1 # simulation time shouldn't matter
@@ -185,22 +186,32 @@ sys.simulate(
 
 effluent_conc = dict(zip(effluent.components.IDs, effluent.iconc.data))
 
+xN_0 = influent.composite('N', particle_size='x')
+sN_0 = influent.composite('N', particle_size='s')
+
+xN_qs = effluent.composite('N', particle_size='x')
+sN_qs = effluent.composite('N', particle_size='s')
+
+
 # effluent_conc, #!!! to be updated
-# S_I 130.87
-# S_S 258.5822000000001
-# X_I 17216.20000000001
-# X_S 2343.1610000000005
-# X_BH 0.0
-# X_BA 0.0
-# X_P 894.3750000000006
-# S_O 0.0
-# S_NO 0.0
-# S_NH 1331.0197302115344
-# S_ND 0.5434935760800003
-# X_ND 197.1551757479041
-# S_ALK 1134.6817313124623
-# S_N2 0.0
-# H2O 977699.5425467064
+# {'S_I': 130.86999999999995,
+#  'S_S': 258.5822,
+#  'X_I': 17216.2,
+#  'X_S': 2611.4735000000005,
+#  'X_BH': 0.0,
+#  'X_BA': 0.0,
+#  'X_P': 626.0625,
+#  'S_O': 0.0,
+#  'S_NO': 0.0,
+#  'S_NH': 1331.019730211534,
+#  'S_ND': 0.54349357608,
+#  'X_ND': 213.25392574790402,
+#  'S_ALK': 1084.03114927017,
+#  'S_N2': 0.0,
+#  'H2O': 982763.1976913628}
+
+xN_mt = (17216.2434 + 626.0652) * 0.06 + 100.8668
+sN_mt = 1442.7882 + 0.54323
 
 # MATLAB
 # Anaerobic digester output (post ADM2ASM interface)
