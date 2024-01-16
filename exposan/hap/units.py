@@ -12,12 +12,14 @@ for license details.
 '''
 import qsdsan as qs
 from qsdsan import SanUnit
+from qsdsan.utils import auom
 from biosteam.units import BatchBioreactor
+from warnings import warn
 
 
 __all__ = ('HApFermenter',)
 
-
+#%%
 class HApFermenter(qs.SanUnit, BatchBioreactor):
     
     _units = BatchBioreactor._units
@@ -113,4 +115,9 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
         eff.mass[cmps.i_COD > 0] *= 1-y_bio # conservative estimation of COD degradation
         eff.imol['NH3'] += urine.imol['Urea'] * 2  # ignore gaseous NH3 in vent
         eff.imass['H2O'] -= m_h2o
+
+#%%
+
+class SeedFermenter(qs.SanUnit, BatchBioreactor):
     
+    pass
