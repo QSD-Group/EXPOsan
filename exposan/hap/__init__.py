@@ -73,7 +73,10 @@ def create_hap_cmps(set_thermo=True):
     ash = Component.from_chemical('Ash', chemical=chems.Ash, **ig_kwargs)
     other_SS = ash.copy('other_SS')
     
-    cmps = Components([cmps_df.H2O, Yeast, NH3, CO2, HAP, CaCl2, 
+    N2 = cmps_df.S_N2.copy('N2')
+    O2 = cmps_df.S_O2.copy('O2')
+    
+    cmps = Components([cmps_df.H2O, N2, O2, Yeast, NH3, CO2, HAP, CaCl2, 
                        urea, creatinine, Hhip, Hcit, Hglu, Huric, other_COD,
                        chloride, sodium, potassium, IS, IP, ash, other_SS])
     cmps.default_compile()

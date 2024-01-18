@@ -112,12 +112,90 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
         eff.copy_flow(urine)
         eff.mass[(cmps.i_P * cmps.s) > 0] *= 1-f_hap
         eff.imass['Yeast'] = eff.imass['Urea'] = 0
-        eff.mass[cmps.i_COD > 0] *= 1-y_bio # conservative estimation of COD degradation
+        eff.mass[cmps.i_COD > 0] *= 1-y_bio        # conservative estimation of COD degradation
         eff.imol['NH3'] += urine.imol['Urea'] * 2  # ignore gaseous NH3 in vent
         eff.imass['H2O'] -= m_h2o
 
 #%%
 
-class SeedFermenter(qs.SanUnit, BatchBioreactor):
+class YeastProductionFermenter(qs.SanUnit, BatchBioreactor):
     
-    pass
+    _units = BatchBioreactor._units
+    _N_ins = 3      # [0] carbon source (e.g., molasses + water), [1] nutrients (N & P), [2] minerals, vitamins etc.
+    _N_outs = 2     # [0] vent, [1] fermentation broth
+    V_wf = 0.9
+    auxiliary_unit_names = ('blower',)
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+                 tau=1.1, N=2, T=273.15+35, P=101325,
+                 yield_on_carbon_source=1.45, design_production_rate=80, 
+                 carbon_source_water_content=0.75,
+                 N_to_carbon_source_ratio=0.01245,
+                 P_to_carbon_source_ratio=0.00522,
+                 minerals_vitamins_to_carbon_source_ratio=0.005349,
+                 aeration_duty=60, carbon_source_price=None,
+                 nutrient_price=None, mineral_vitamin_price=None,
+                 ):
+
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self._init(tau=tau*24, N=N, T=T, P=P)
+        self.yield_on_carbon_source = yield_on_carbon_source  # kg yeast / kg carbon source (sugar)
+        self.design_production_rate = design_production_rate  # kg yeast / hr
+        self.N_to_carbon_source_ratio = N_to_carbon_source_ratio
+        self.P_to_carbon_source_ratio = P_to_carbon_source_ratio
+        self.minerals_vitamins_to_carbon_source_ratio = self.minerals_vitamins_to_carbon_source_ratio
+        self.aeration_duty = aeration_duty          # m3 sanitized air / m3 broth / hr
+        self.carbon_source_price = carbon_source_price
+        self.nutrient_price = nutrient_price
+        self.mineral_vitamin_price = mineral_vitamin_price
+        
+    @property
+    def design_production_rate(self):
+        '''[float] Design rate of production of fresh yeast biomass, in kg/hr.'''
+        return self._r_yeast
+    @design_production_rate.setter
+    def design_production_rate(self, r_yeast):
+        self._r_yeast = r_yeast
+        
+    @property
+    def yield_on_carbon_source(self):
+        '''[float] Yeast yield in kg fresh yeast biomass / kg carbon source fed.'''
+        return self._y_yeast
+    @yield_on_carbon_source.setter
+    def yield_on_carbon_source(self, y_yeast):
+        self._y_yeast = y_yeast
+        
+    @property
+    def N_to_carbon_source_ratio(self):
+        '''[float] Nitrogen-to-carbon-source ratio, in kg-N/kg carbon source fed.'''
+        return self._n2c
+    @N_to_carbon_source_ratio.setter
+    def N_to_carbon_source_ratio(self, n2c):
+        self._n2c = n2c
+
+    @property
+    def P_to_carbon_source_ratio(self):
+        '''[float] Phosphorus-to-carbon-source ratio, in kg-P/kg carbon source fed.'''
+        return self._p2c
+    @P_to_carbon_source_ratio.setter
+    def P_to_carbon_source_ratio(self, p2c):
+        self._p2c = p2c
+        
+    @property
+    def minerals_vitamins_to_carbon_source_ratio(self):
+        '''[float] Weight ratio of added minerals and vitamins relative to carbon source,
+        in kg mixture / kg carbon source fed.'''
+        return self._mv2c
+    @minerals_vitamins_to_carbon_source_ratio.setter
+    def minerals_vitamins_to_carbon_source_ratio(self, mv2c):
+        self._mv2c = mv2c
+        
+    @property
+    def aeration_duty(self):
+        '''[float] In m3 sanitized air / m3 fermentation broth / hr.'''
+        return self._aeration_duty
+    @aeration_duty.setter
+    def aeration_duty(self, duty):
+        self._aeration_duty = duty
+    
+    

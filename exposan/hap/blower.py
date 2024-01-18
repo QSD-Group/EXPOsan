@@ -29,7 +29,9 @@ from math import log, exp, ceil
 from warnings import warn
 from typing import NamedTuple, Tuple, Callable
 
+__all__ = ('Blower', 'SimpleBlower',)
 
+#%%
 class BlowerCostAlgorithm(NamedTuple): 
     #: Defines preliminary correlation algorithm for a compressor type
     compression_ratio_bounds: Tuple[float, float] #: Compression ratio (recommended range of operation, to autodetermine blower type and/or issue warning)
@@ -45,7 +47,20 @@ class Blower(Unit, isabstract=True):
     Abstract class for blowers that includes design and costing. Child classes
     should implement the `_run` method for mass and energy balances. Preliminary 
     design and costing is estimated according to [1]_.
-    
+
+    Parameters
+    ----------
+    P : float
+        Outlet pressure [Pa].
+    eta : float, optional
+        Blower mechanical efficiency. The default is None.
+    blower_type : str, optional
+        `Default` or `Centrifugal` or `Rotary straight-lobe`. The default is None.
+    material : str, optional
+        Blower material. The default is None.
+    dP_design : float, optional
+        Design pressure increase [Pa]. The default is 30000.
+
     """
     _N_ins = 1
     _N_outs = 1
@@ -111,7 +126,8 @@ class Blower(Unit, isabstract=True):
         return self._blower_type
     @blower_type.setter
     def blower_type(self, blower_type):
-        """[str] Type of blower. If 'Default', the type will be determined based on the outlet pressure."""
+        """[str] Type of blower. If 'Default', the type will be determined based 
+        on the inlet flowrate and the outlet pressure."""
         blower_type = blower_type.capitalize()
         if blower_type not in self.baseline_cost_algorithms and blower_type != 'Default':
             raise ValueError(
@@ -196,3 +212,11 @@ class Blower(Unit, isabstract=True):
         C['Blower(s)'] = N * bst.CE/ alg.CE * alg.cost(Pc)
         C['Motor(s)'] = Nm * electric_motor_cost(Pm)
         self.F_M['Blower(s)'] = self.material_factors[self.material]
+
+#%%
+class SimpleBlower(Blower):
+    
+    def _run(self):
+        out, = self.outs
+        out.copy_from(self.ins[0])
+        out.P = self.P
