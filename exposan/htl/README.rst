@@ -48,15 +48,16 @@ Getting Started
 ---------------
 .. code-block:: python
 
-    >>> # create an htl system by specifying system configuration, capacity, and feedstock's compositions:
+    >>> # create an htl system by specifying system configuration, capacity, and feedstock compositions:
     >>> from exposan.htl import create_system
     >>> sys = create_system(
-    ...     configuration='baseline',   # system configurations ('baseline','no_P','PSA')
-    ...     capacity=100,               # capacity in metric ton per day
-    ...     sludge_moisture_content=0.8,
-    ...     sludge_dw_ash_content=0.257,
-    ...     sludge_afdw_lipid_content=0.204,
-    ...     sludge_afdw_protein_content=0.463,
+    ...     configuration='baseline',             # system configurations ('baseline','no_P','PSA')
+    ...     capacity=100,                         # capacity in dry metric tonne per day
+    ...     sludge_moisture_content=0.7,          # the moisture content of the feedstock
+    ...     sludge_dw_ash_content=0.257,          # the ash content of the feedstock (dry weight%)
+    ...     sludge_afdw_lipid_content=0.204,      # the lipid content of the feedstock (ash-free dry weight%)
+    ...     sludge_afdw_protein_content=0.463,    # the protein content of the feedstock (ash-free dry weight%)
+    ...     N_2_P_value=0.3927,                     # the phosphorus to nitrogen mass ratio of the feedstock
     ...     )
 
     >>> sys.show()

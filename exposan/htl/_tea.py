@@ -21,6 +21,19 @@ References:
     Process Design and Economics for the Conversion of Algal Biomass to
     Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
     PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
+
+(2) Davis, R. E.; Grundl, N. J.; Tao, L.; Biddy, M. J.; Tan, E. C.;
+    Beckham, G. T.; Humbird, D.; Thompson, D. N.; Roni, M. S. Process Design
+    and Economics for the Conversion of Lignocellulosic Biomass to Hydrocarbon
+    Fuels and Coproducts: 2018 Biochemical Design Case Update; Biochemical
+    Deconstruction and Conversion of Biomass to Fuels and Products via
+    Integrated Biorefinery Pathways; NREL/TP--5100-71949, 1483234;
+    2018; p NREL/TP--5100-71949, 1483234. https://doi.org/10.2172/1483234.
+
+(3) Knorr, D.; Lukas, J.; Schoen, P. Production of Advanced Biofuels via
+    Liquefaction - Hydrothermal Liquefaction Reactor Design: April 5, 2013;
+    NREL/SR-5100-60462, 1111191; 2013; p NREL/SR-5100-60462, 1111191.
+    https://doi.org/10.2172/1111191.
 '''
 
 from biosteam import TEA
@@ -166,7 +179,7 @@ class HTL_TEA(TEA):
                 + self.labor_cost * (1 + self.labor_burden))
 
 
-def create_tea(sys, OSBL_units=None, cls=None, IRR_value=0.1, finance_interest_value=0.08):
+def create_tea(sys, OSBL_units=None, cls=None, IRR_value=0.03, income_tax_value=0.21, finance_interest_value=0.03, labor_cost_value=1e6):
     if OSBL_units is None: OSBL_units = bst.get_OSBL(sys.cost_units)
     try:
         BT = tmo.utils.get_instance(OSBL_units, (bst.BoilerTurbogenerator, bst.Boiler))
@@ -176,33 +189,33 @@ def create_tea(sys, OSBL_units=None, cls=None, IRR_value=0.1, finance_interest_v
     tea = cls(
         system=sys, 
         IRR=IRR_value, # use 0%-3%-5% triangular distribution for waste management, and 5%-10%-15% triangular distribution for biofuel production
-        duration=(2022, 2052), # Jones
-        depreciation='MACRS7', # Jones
-        income_tax=0.35, # Jones
-        operating_days=sys.operating_hours/24, # Jones
+        duration=(2022, 2052), # Jones et al. 2014
+        depreciation='MACRS7', # Jones et al. 2014
+        income_tax=income_tax_value, # Davis et al. 2018
+        operating_days=sys.operating_hours/24, # Jones et al. 2014
         lang_factor=None, # related to expansion, not needed here
-        construction_schedule=(0.08, 0.60, 0.32), # Jones
-        startup_months=6, # Jones
-        startup_FOCfrac=1, # Davis NREL 2018
-        startup_salesfrac=0.5, # Davis NREL 2018
-        startup_VOCfrac=0.75, # Davis NREL 2018
-        WC_over_FCI=0.05, # Jones
+        construction_schedule=(0.08, 0.60, 0.32), # Jones et al. 2014
+        startup_months=6, # Jones et al. 2014
+        startup_FOCfrac=1, # Davis et al. 2018
+        startup_salesfrac=0.5, # Davis et al. 2018
+        startup_VOCfrac=0.75, # Davis et al. 2018
+        WC_over_FCI=0.05, # Jones et al. 2014
         finance_interest=finance_interest_value, # use 3% for waste management, use 8% for biofuel
-        finance_years=10, # Jones
-        finance_fraction=0.6, # debt: Jones
+        finance_years=10, # Jones et al. 2014
+        finance_fraction=0.6, # debt: Jones et al. 2014
         OSBL_units=OSBL_units,
-        warehouse=0.04, # NREL 2013
-        site_development=0.09, # NREL 2013
-        additional_piping=0.045, # NREL 2013
-        proratable_costs=0.10, # NREL 2013
-        field_expenses=0.10, # NREL 2013
-        construction=0.20, # NREL 2013
-        contingency=0.10, # NREL 2013
-        other_indirect_costs=0.10, # NREL 2013
-        labor_cost=2.5e6, # use default value
-        labor_burden=0.90, # Jones and Davis
-        property_insurance=0.007, # Jones & NREL 2013
-        maintenance=0.03, # Jones & NREL 2013
+        warehouse=0.04, # Knorr et al. 2013
+        site_development=0.09, # Knorr et al. 2013
+        additional_piping=0.045, # Knorr et al. 2013
+        proratable_costs=0.10, # Knorr et al. 2013
+        field_expenses=0.10, # Knorr et al. 2013
+        construction=0.20, # Knorr et al. 2013
+        contingency=0.10, # Knorr et al. 2013
+        other_indirect_costs=0.10, # Knorr et al. 2013
+        labor_cost=labor_cost_value, # use default value
+        labor_burden=0.90, # Jones et al. 2014 & Davis et al. 2018
+        property_insurance=0.007, # Jones et al. 2014 & Knorr et al. 2013
+        maintenance=0.03, # Jones et al. 2014 & Knorr et al. 2013
         steam_power_depreciation='MACRS20',
         boiler_turbogenerator=BT)
     return tea
