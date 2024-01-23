@@ -81,6 +81,7 @@ class Blower(Unit, isabstract=True):
     }
     _F_BM_default = {
         'Blower(s)': 2.15,
+        'Motor(s)': 2.15,
     }
 
      #: dict[str, BlowerCostAlgorithm] Cost algorithms by compressor type.
@@ -103,7 +104,7 @@ class Blower(Unit, isabstract=True):
             ),
     }
 
-    def _init(self, P, eta=None, blower_type=None, material=None, dP_design=30000):
+    def _init(self, P=121590, eta=None, blower_type=None, material=None, dP_design=30000):
         self.P = P  #: Outlet pressure [Pa]
         self.eta = eta  #: Blower efficiency, if None given, determined based on compressor type
         self.blower_type = 'Default' if blower_type is None else blower_type
@@ -190,7 +191,7 @@ class Blower(Unit, isabstract=True):
         N = ceil(icfm / icfm_ub) if icfm > icfm_ub else 1
         
         k = self._specific_heat_ratio
-        Pi = self.ins[0].P
+        Pi = self.ins[0].P * 1.45038e-4 # in lbf/in^2
         eta_B = self.eta or sum(alg.efficiencies)/2
         rc = self.compression_ratio
         design_results['Brake horsepower'] = Pb = 0.00436 * k/(k-1) * (icfm/N*Pi/eta_B) * (rc**(1-1/k)-1) # braker horsepower per blower
@@ -217,6 +218,8 @@ class Blower(Unit, isabstract=True):
 class SimpleBlower(Blower):
     
     def _run(self):
+        in0, = self.ins
         out, = self.outs
-        out.copy_from(self.ins[0])
+        out.copy_flow(in0)
+        out.T = in0.T
         out.P = self.P

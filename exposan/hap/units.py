@@ -10,12 +10,11 @@ This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
-import qsdsan as qs
-from qsdsan import SanUnit
-from qsdsan.utils import auom
+import qsdsan as qs, numpy as np
+from qsdsan import SanUnit, WasteStream
+from biosteam import Stream
 from biosteam.units import BatchBioreactor
-from warnings import warn
-
+from exposan.hap import SimpleBlower
 
 __all__ = ('HApFermenter',)
 
@@ -118,36 +117,69 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
 
 #%%
 
-class YeastProductionFermenter(qs.SanUnit, BatchBioreactor):
+class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
     
-    _units = BatchBioreactor._units
-    _N_ins = 3      # [0] carbon source (e.g., molasses + water), [1] nutrients (N & P), [2] minerals, vitamins etc.
+    _units = {
+        **BatchBioreactor._units,
+        'Aeration duty': 'm3/hr',
+              }
+    _N_ins = 3      # [0] carbon source (e.g., molasses + water), [1] nutrients (N & P), [2] minerals, vitamins etc. + seed
     _N_outs = 2     # [0] vent, [1] fermentation broth
-    V_wf = 0.9
+    V_wf = 0.7
     auxiliary_unit_names = ('blower',)
     
+    # USD/kg
+    _prices = {
+        'molasses': 2.5,
+        'glucose': 3.5,
+        'ammonium sulfate': 0.18,
+        'H3PO4': 1.7,
+        'MgSO4': 0.35,
+        'VB1': 52.0,
+        'VB2': 35.0,
+        'VB5': 35.0,
+        'VB6': 30.0,
+        'VB7': 300,
+        'NaCl': 0.1,
+        }
+    
+    _micronutrient_mixture = (
+        150,  # MgSO4, mass-based
+        370,  # VB1
+        800,  # VB2
+        2300, # VB5
+        360,  # VB6
+        1200  # VB7
+        )
+    
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 tau=1.1, N=2, T=273.15+35, P=101325,
-                 yield_on_carbon_source=1.45, design_production_rate=80, 
-                 carbon_source_water_content=0.75,
-                 N_to_carbon_source_ratio=0.01245,
-                 P_to_carbon_source_ratio=0.00522,
-                 minerals_vitamins_to_carbon_source_ratio=0.005349,
-                 aeration_duty=60, carbon_source_price=None,
+                 tau=12, N=2, T=273.15+35, P=101325,
+                 yield_on_sugar=1.45, design_production_rate=80, 
+                 sugar_concentration=275.95,
+                 N_to_sugar_ratio=0.01245,
+                 P_to_sugar_ratio=0.00522,
+                 minerals_vitamins_to_sugar_ratio=0.005349,
+                 aeration_duty=60, sugar_price=None,
                  nutrient_price=None, mineral_vitamin_price=None,
+                 reactor_height_to_diameter_ratio=2,
                  ):
 
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self._init(tau=tau*24, N=N, T=T, P=P)
-        self.yield_on_carbon_source = yield_on_carbon_source  # kg yeast / kg carbon source (sugar)
-        self.design_production_rate = design_production_rate  # kg yeast / hr
-        self.N_to_carbon_source_ratio = N_to_carbon_source_ratio
-        self.P_to_carbon_source_ratio = P_to_carbon_source_ratio
-        self.minerals_vitamins_to_carbon_source_ratio = self.minerals_vitamins_to_carbon_source_ratio
-        self.aeration_duty = aeration_duty          # m3 sanitized air / m3 broth / hr
-        self.carbon_source_price = carbon_source_price
+        self._init(tau=tau, N=N, T=T, P=P)
+        self.blower = SimpleBlower(self.ID+'_blower', 
+                                   ins=Stream(self.ID+'blower_in', phase='g'),
+                                   outs=Stream(self.ID+'blower_out', phase='g'))
+        self.yield_on_sugar = yield_on_sugar                    # kg yeast / kg sugar
+        self.design_production_rate = design_production_rate    # kg yeast / hr
+        self.sugar_concentration = sugar_concentration          # kg / m3 fermentation broth
+        self.N_to_sugar_ratio = N_to_sugar_ratio
+        self.P_to_sugar_ratio = P_to_sugar_ratio
+        self.minerals_vitamins_to_sugar_ratio = minerals_vitamins_to_sugar_ratio
+        self.aeration_duty = aeration_duty                      # m3 sanitized air / m3 broth / hr
+        self.sugar_price = sugar_price
         self.nutrient_price = nutrient_price
         self.mineral_vitamin_price = mineral_vitamin_price
+        self.reactor_height_to_diameter_ratio = reactor_height_to_diameter_ratio
         
     @property
     def design_production_rate(self):
@@ -158,37 +190,45 @@ class YeastProductionFermenter(qs.SanUnit, BatchBioreactor):
         self._r_yeast = r_yeast
         
     @property
-    def yield_on_carbon_source(self):
-        '''[float] Yeast yield in kg fresh yeast biomass / kg carbon source fed.'''
+    def yield_on_sugar(self):
+        '''[float] Yeast yield in kg fresh yeast biomass / kg sugar fed.'''
         return self._y_yeast
-    @yield_on_carbon_source.setter
-    def yield_on_carbon_source(self, y_yeast):
+    @yield_on_sugar.setter
+    def yield_on_sugar(self, y_yeast):
         self._y_yeast = y_yeast
-        
+    
     @property
-    def N_to_carbon_source_ratio(self):
-        '''[float] Nitrogen-to-carbon-source ratio, in kg-N/kg carbon source fed.'''
-        return self._n2c
-    @N_to_carbon_source_ratio.setter
-    def N_to_carbon_source_ratio(self, n2c):
-        self._n2c = n2c
+    def sugar_concentration(self):
+        '''[float] Overall concentration of sugar, in kg / m3 fermentation broth.'''
+        return self._c_sugar
+    @sugar_concentration.setter
+    def sugar_concentration(self, c_sugar):
+        self._c_sugar = c_sugar    
+    
+    @property
+    def N_to_sugar_ratio(self):
+        '''[float] Nitrogen-to-sugar ratio, in kg-N/kg sugar fed.'''
+        return self._n2s
+    @N_to_sugar_ratio.setter
+    def N_to_sugar_ratio(self, n2s):
+        self._n2s = n2s
 
     @property
-    def P_to_carbon_source_ratio(self):
-        '''[float] Phosphorus-to-carbon-source ratio, in kg-P/kg carbon source fed.'''
-        return self._p2c
-    @P_to_carbon_source_ratio.setter
-    def P_to_carbon_source_ratio(self, p2c):
-        self._p2c = p2c
+    def P_to_sugar_ratio(self):
+        '''[float] Phosphorus-to-sugarratio, in kg-P/kg sugar fed.'''
+        return self._p2s
+    @P_to_sugar_ratio.setter
+    def P_to_sugar_ratio(self, p2s):
+        self._p2s = p2s
         
     @property
-    def minerals_vitamins_to_carbon_source_ratio(self):
-        '''[float] Weight ratio of added minerals and vitamins relative to carbon source,
-        in kg mixture / kg carbon source fed.'''
-        return self._mv2c
-    @minerals_vitamins_to_carbon_source_ratio.setter
-    def minerals_vitamins_to_carbon_source_ratio(self, mv2c):
-        self._mv2c = mv2c
+    def minerals_vitamins_to_sugar_ratio(self):
+        '''[float] Weight ratio of added minerals and vitamins relative to sugar,
+        in kg mixture / kg sugar fed.'''
+        return self._mv2s
+    @minerals_vitamins_to_sugar_ratio.setter
+    def minerals_vitamins_to_sugar_ratio(self, mv2s):
+        self._mv2s = mv2s
         
     @property
     def aeration_duty(self):
@@ -198,4 +238,115 @@ class YeastProductionFermenter(qs.SanUnit, BatchBioreactor):
     def aeration_duty(self, duty):
         self._aeration_duty = duty
     
+    @property
+    def sugar_price(self):
+        '''[float] in USD / kg sugar fed'''
+        if self._sugar_price is None:
+            pm = self._prices['molasses']
+            pg = self._prices['glucose']
+            sugars = self.ins[0]
+            mm, mg = sugars.imass['Molasses', 'Glucose']
+            if mm + mg == 0: 
+                return pm*2/3 + pg*1/3
+            else:
+                return (pm*mm + pg*mg) / (mm + mg)
+        return self._sugar_price
+    @sugar_price.setter
+    def sugar_price(self, p):
+        self._sugar_price = p
+    
+    @property
+    def nutrient_price(self):
+        '''[float] in USD / kg nutrient fed'''
+        if self._nutrient_price is None:
+            pn = self._prices['ammonium sulfate']
+            pp = self._prices['H3PO4']
+            nutrients = self.ins[1]
+            mn, mp = nutrients.imass['Ammonium_sulfate', 'H3PO4']
+            if mn + mp == 0: 
+                return pn*17/21 + pp*4/21
+            else:
+                return (pn*mn + pp*mp) / (mn + mp)
+        return self._nutrient_price
+    @nutrient_price.setter
+    def nutrient_price(self, p):
+        self._nutrient_price = p
+    
+    @property
+    def mineral_vitamin_price(self):
+        '''[float] in USD / kg mineral-vitamin mixture fed'''
+        if self._nutrient_price is None:
+            cmps = ['MgSO4', 'VB1', 'VB2', 'VB5', 'VB6', 'VB7']
+            prices = np.array([self._prices[k] for k in cmps])
+            seed = self.ins[2]
+            ms = seed.imass[cmps]
+            if sum(ms) == 0:
+                composition = np.array(self._micronutrient_mixture)
+                return sum(prices * composition)/sum(composition)
+            else:
+                return sum(prices * ms)/sum(ms)
+        return self._mineral_vitamin_price
+    @mineral_vitamin_price.setter
+    def mineral_vitamin_price(self, p):
+        self._mineral_vitamin_price = p
+
+    @property
+    def reactor_height_to_diameter_ratio(self):
+        '''[float] Height-to-diameter ratio of an individual cylindrical reactor.'''
+        return self._reactor_height_to_diameter_ratio
+    @reactor_height_to_diameter_ratio.setter
+    def reactor_height_to_diameter_ratio(self, ratio):
+        self._reactor_height_to_diameter_ratio = ratio
+        
+    def _setup(self):
+        super()._setup()
+
+    
+    def _run(self):
+        sugars, nutrients, seed = self.ins
+        y_yeast = self.yield_on_sugar
+        if sugars.isempty():
+            r_yeast = self.design_production_rate
+            c_sugar = self.sugar_concentration # kg/m3
+            n2s = self.N_to_sugar_ratio
+            p2s = self.P_to_sugar_ratio
+            mv2s = self.minerals_vitamins_to_sugar_ratio
+            _micro_nutrients = np.array(self._micronutrient_mixture)
+            Fm_molasses = r_yeast / y_yeast  # kg/hr
+            Q = Fm_molasses / c_sugar  # m3/hr
+            sugars.set_flow_by_concentration(Q, {'Molasses': c_sugar}, 
+                                             units=('m3/hr', 'kg/m3'))
+            nutrients.imass['Ammonium_sulfate'] = Fm_molasses * n2s / 0.212
+            nutrients.imass['H3PO4'] = Fm_molasses * p2s / 0.316
+            seed.imass['Yeast'] = r_yeast * 0.04
+            seed.imass['MgSO4', 'VB1', 'VB2', 'VB5', 'VB6', 'VB7'] = \
+                _micro_nutrients / sum(_micro_nutrients) * Fm_molasses * mv2s
+        vent, effluent = self.outs
+        effluent.imass['Yeast'] = yeast = (sugars.F_mass - sugars.imass['H2O']) * y_yeast
+        effluent.imass['Ethanol'] = ethanol = sugars.F_mass * 3.5e-4
+        effluent.imass['H2O'] = (nutrients.F_mass + seed.F_mass + sugars.F_mass) - ethanol - yeast
+
+    def _design(self):
+        super()._design()
+        D = self.design_results
+        V_i =  D['Reactor volume']
+        N = D['Number of reactors']
+        D['Aeration duty'] = Q_air = V_i * N * self.V_wf * self.aeration_duty
+        r_dim = self.reactor_height_to_diameter_ratio
+        d_diffuser = r_dim * self.V_wf * (4*V_i/np.pi/r_dim) ** (1/3)
+        blower = self.blower
+        blower.P = d_diffuser * 9804.14 * 1.05 + 101325
+        air, = blower.ins
+        air.imol['O2'] = 21
+        air.imol['N2'] = 78
+        air.set_total_flow(Q_air, 'm3/hr')
+        blower.simulate()
+    
+    def _cost(self):
+        super()._cost()
+        sugars, nutrients, seed = self.ins
+        sugars.price = self.sugar_price * (1 - sugars.imass['H2O']/sugars.F_mass)
+        nutrients.price = self.nutrient_price
+        seed.price = self.mineral_vitamin_price * (1 - seed.imass['Yeast']/seed.F_mass)
+        self.add_OPEX['NaCl'] = self.effluent.F_vol * 0.762 * self._prices['NaCl']
     
