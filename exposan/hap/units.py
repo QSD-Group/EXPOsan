@@ -9,6 +9,13 @@ This module is developed by:
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
+
+References
+----------
+.. [1] Zheng, G., Yu, X., Li, Z., Yu, M., Yao, J., Chi, B., & Wang, J. (2013). 
+    Boulardii active dry yeasts and production method thereof 
+    (Patent No. CN103374531A).
+
 '''
 import qsdsan as qs, numpy as np
 from qsdsan import SanUnit, WasteStream
@@ -16,7 +23,7 @@ from biosteam import Stream
 from biosteam.units import BatchBioreactor
 from exposan.hap import SimpleBlower
 
-__all__ = ('HApFermenter',)
+__all__ = ('HApFermenter', 'SBoulardiiFermenter', )
 
 #%%
 class HApFermenter(qs.SanUnit, BatchBioreactor):
@@ -26,13 +33,13 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
     _N_outs = 3     # [0] vent, [1] liquid effluent, [2] precipitates (yeast cells + HAP)
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 tau=5, N=2, T=273.15+37, P=101325,
+                 tau=120, N=2, T=273.15+37, P=101325,
                  f_maximum_hap_yield=0.66, precipitate_moisture=90,
                  biomass_yield=0.1, inoculum_concentration=0.5,
                  CaCl2_price=0.3):
 
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self._init(tau=tau*24, N=N, T=T, P=P)
+        self._init(tau=tau, N=N, T=T, P=P)
         self.f_maximum_hap_yield=f_maximum_hap_yield
         self.precipitate_moisture=precipitate_moisture
         self.biomass_yield=biomass_yield
@@ -118,6 +125,12 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
 #%%
 
 class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
+    
+    '''
+    Fermenter for the production of S. Boulardii active yeast, process design
+    follows [1]_.
+    
+    '''
     
     _units = {
         **BatchBioreactor._units,
@@ -348,5 +361,5 @@ class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
         sugars.price = self.sugar_price * (1 - sugars.imass['H2O']/sugars.F_mass)
         nutrients.price = self.nutrient_price
         seed.price = self.mineral_vitamin_price * (1 - seed.imass['Yeast']/seed.F_mass)
-        self.add_OPEX['NaCl'] = self.effluent.F_vol * 0.762 * self._prices['NaCl']
+        self.add_OPEX['NaCl'] = self.effluent.F_vol * 0.762 * self._prices['NaCl']  # final concentration of NaCl in kg/m3 fermentation broth
     
