@@ -20,6 +20,9 @@ figures_path = os.path.join(folder, 'figures')
 if not os.path.isdir(results_path): os.mkdir(results_path)
 if not os.path.isdir(figures_path): os.mkdir(figures_path)
 
+from . import blower
+from .blower import *
+
 from . import units
 from .units import *
 
@@ -29,6 +32,7 @@ __all__ = (
     'results_path',
     'figures_path',
     'create_hap_cmps',
+    *blower.__all__,
     *units.__all__,
 	)
 

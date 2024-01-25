@@ -18,7 +18,7 @@ References
 
 '''
 import qsdsan as qs, numpy as np
-from qsdsan import SanUnit, WasteStream
+from qsdsan import SanUnit
 from biosteam import Stream
 from biosteam.units import BatchBioreactor
 from exposan.hap import SimpleBlower

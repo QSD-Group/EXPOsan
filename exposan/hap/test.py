@@ -15,28 +15,28 @@ from exposan.hap import create_hap_cmps, SBoulardiiFermenter, HApFermenter
 
 cmps = create_hap_cmps()
 
-# Q = 10 # L/hr
+Q = 10 # L/hr
 
-# urine = qs.WasteStream('urine')
-# urine.set_flow_by_concentration(Q, concentrations=dict(
-#     Urea=16300,
-#     Cl=5135,
-#     Na=2780,
-#     K=1680,
-#     Creatinine=1410,
-#     IS=981.5,
-#     Hippuric_acid=860,
-#     IP=770,
-#     Citric_acid=510,
-#     Glucuronic_acid=475,
-#     NH3=465,
-#     Uric_acid=355,
-#     Other_COD=3497
-#     ))
+urine = qs.WasteStream('urine')
+urine.set_flow_by_concentration(Q, concentrations=dict(
+    Urea=16300,
+    Cl=5135,
+    Na=2780,
+    K=1680,
+    Creatinine=1410,
+    IS=981.5,
+    Hippuric_acid=860,
+    IP=770,
+    Citric_acid=510,
+    Glucuronic_acid=475,
+    NH3=465,
+    Uric_acid=355,
+    Other_COD=3497
+    ))
 
-# CaCl2 = qs.WasteStream('CaCl2')
-# inocu = qs.WasteStream('inocu')
+CaCl2 = qs.WasteStream('CaCl2')
+inocu = qs.WasteStream('inocu')
 
-# HF = HApFermenter('HF', ins=(urine, inocu, CaCl2), outs=['', 'eff', 'precip'])
+HF = HApFermenter('HF', ins=(urine, inocu, CaCl2), outs=['', 'eff', 'precip'])
 
 SBF = SBoulardiiFermenter('SBF')
