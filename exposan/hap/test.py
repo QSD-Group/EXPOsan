@@ -12,13 +12,27 @@ for license details.
 '''
 import qsdsan as qs
 from exposan.hap import create_hap_cmps, SBoulardiiFermenter, HApFermenter
+from qsdsan.utils import auom
 
 cmps = create_hap_cmps()
 
-Q = 10 # L/hr
+p_sta = 68500  # stadium capacity
+f_sta = 1/5
 
-urine = qs.WasteStream('urine')
-urine.set_flow_by_concentration(Q, concentrations=dict(
+n_sch = 114
+p_sch = 58000
+f_sch = 1/3
+
+q_sch = p_sch * f_sch * 1.4 / n_sch
+
+#%%
+population = 8.5e6
+N = 100
+Q = 1.4/24 * population * 0.01 # L/hr
+
+urine = qs.WasteStream('urine', T=273.15+30)
+urine.set_flow_by_concentration(q_sch, 
+                                concentrations=dict(
     Urea=16300,
     Cl=5135,
     Na=2780,
@@ -37,6 +51,13 @@ urine.set_flow_by_concentration(Q, concentrations=dict(
 CaCl2 = qs.WasteStream('CaCl2')
 inocu = qs.WasteStream('inocu')
 
-HF = HApFermenter('HF', ins=(urine, inocu, CaCl2), outs=['', 'eff', 'precip'])
+HF = HApFermenter('HF', tau=60, 
+                  ins=(urine, inocu, CaCl2), outs=['', 'eff', 'precip'])
+HF.simulate()
+vent, eff, pre = HF.outs
 
-SBF = SBoulardiiFermenter('SBF')
+SBF = SBoulardiiFermenter('SBF', design_production_rate=inocu.imass['Yeast']*n_sch)
+SBF.simulate()
+
+# sys = qs.System('sys', path=(HF, SBF))
+# sys.simulate()

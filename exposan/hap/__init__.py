@@ -46,7 +46,7 @@ def create_hap_cmps(set_thermo=True, industrial_yeast_production=True):
     chems = create_sugarcane_chemicals()
     Yeast = Component.from_chemical('Yeast', chemical=chems.Yeast,
                                     particle_size='Particulate', organic=True,
-                                    degradability='Slowly')
+                                    degradability='Slowly', f_Vmass_Totmass=0.872)
     NH3 = Component('NH3', particle_size='Dissolved_gas', 
                     degradability='Undegradable', organic=False)
     CO2 = Component('CO2', particle_size='Dissolved_gas', 
@@ -59,13 +59,14 @@ def create_hap_cmps(set_thermo=True, industrial_yeast_production=True):
     CaCl2 = Component('CaCl2', **ig_kwargs)
     
     # common urine consitituents
-    urea = Component('Urea', **org_kwargs)
+    urea = Component('Urea', **ig_kwargs)
     creatinine = Component('Creatinine', **org_kwargs)
     Hhip = Component('Hippuric_acid', search_ID='Hippuric acid', **org_kwargs)
     Hcit = Component('Citric_acid', search_ID='Citric acid', **org_kwargs)
     Hglu = Component.from_chemical('Glucuronic_acid', chemical='C6H10O7', **org_kwargs)
     Huric = Component('Uric_acid', search_ID='Uric acid', **org_kwargs)
     other_COD = cmps_df.S_F.copy('Other_COD')
+    other_COD.i_N = other_COD.i_P = 0
     
     chloride = Component('Cl', search_ID='Cl-', **ig_kwargs)
     sodium = Component('Na', search_ID='Na+', **ig_kwargs)

@@ -21,19 +21,31 @@ import qsdsan as qs, numpy as np
 from qsdsan import SanUnit
 from biosteam import Stream
 from biosteam.units import BatchBioreactor
+from biosteam.units.decorators import cost
 from exposan.hap import SimpleBlower
+from math import ceil
 
 __all__ = ('HApFermenter', 'SBoulardiiFermenter', )
 
 #%%
+@cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
+      cost=47200, n=0.8, BM=2.3, CE=522, N='Number of reactors')
+@cost('Reactor volume', 'Agitators', kW=2.2, CE=801, cost=245, S=1, n=0.54, 
+      lb=0.1, BM=1.5, N='Number of reactors')
+@cost('Reactor volume', 'Reactors', CE=801, cost=3936, S=1, n=0.54, 
+      lb=0.1, BM=1.5, N='Number of reactors')
+@cost('Reactor duty', 'Heat exchangers', CE=522, cost=23900,
+      S=20920000.0, n=0.7, BM=2.2, N='Number of reactors',
+      magnitude=True) # Based on a similar heat exchanger
 class HApFermenter(qs.SanUnit, BatchBioreactor):
     
+    cost_items = {}
     _units = BatchBioreactor._units
     _N_ins = 3      # [0] feed fresh urine, [1] osteoyeast, [2] CaCl2 
     _N_outs = 3     # [0] vent, [1] liquid effluent, [2] precipitates (yeast cells + HAP)
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 tau=120, N=2, T=273.15+37, P=101325,
+                 tau=60, N=2, T=273.15+37, P=101325,
                  f_maximum_hap_yield=0.66, precipitate_moisture=90,
                  biomass_yield=0.1, inoculum_concentration=0.5,
                  CaCl2_price=0.3):
@@ -123,7 +135,15 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
         eff.imass['H2O'] -= m_h2o
 
 #%%
-
+@cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
+      cost=47200, n=0.8, BM=2.3, CE=522, N='Number of reactors')
+@cost('Reactor volume', 'Agitators', kW=2.2, CE=801, cost=245, S=1, n=0.54, 
+      lb=0.1, BM=1.5, N='Number of reactors')
+@cost('Reactor volume', 'Reactors', CE=801, cost=3936, S=1, n=0.54, 
+      lb=0.1, BM=1.5, N='Number of reactors')
+@cost('Reactor duty', 'Heat exchangers', CE=522, cost=23900,
+      S=20920000.0, n=0.7, BM=2.2, N='Number of reactors',
+      magnitude=True) # Based on a similar heat exchanger
 class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
     
     '''
@@ -131,7 +151,7 @@ class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
     follows [1]_.
     
     '''
-    
+    cost_items = {}
     _units = {
         **BatchBioreactor._units,
         'Aeration duty': 'm3/hr',
@@ -193,7 +213,7 @@ class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
         self.nutrient_price = nutrient_price
         self.mineral_vitamin_price = mineral_vitamin_price
         self.reactor_height_to_diameter_ratio = reactor_height_to_diameter_ratio
-        
+
     @property
     def design_production_rate(self):
         '''[float] Design rate of production of fresh yeast biomass, in kg/hr.'''
@@ -310,10 +330,6 @@ class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
     @reactor_height_to_diameter_ratio.setter
     def reactor_height_to_diameter_ratio(self, ratio):
         self._reactor_height_to_diameter_ratio = ratio
-        
-    def _setup(self):
-        super()._setup()
-
     
     def _run(self):
         sugars, nutrients, seed = self.ins
@@ -343,12 +359,13 @@ class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
         super()._design()
         D = self.design_results
         V_i =  D['Reactor volume']
+        D['Effluent flowrate'] = self.effluent.F_vol
         N = D['Number of reactors']
         D['Aeration duty'] = Q_air = V_i * N * self.V_wf * self.aeration_duty
         r_dim = self.reactor_height_to_diameter_ratio
         d_diffuser = r_dim * self.V_wf * (4*V_i/np.pi/r_dim) ** (1/3)
         blower = self.blower
-        blower.P = d_diffuser * 9804.14 * 1.05 + 101325
+        blower.P = max(d_diffuser * 9804.14 * 1.05, 10132.5) + 101325
         air, = blower.ins
         air.imol['O2'] = 21
         air.imol['N2'] = 78
