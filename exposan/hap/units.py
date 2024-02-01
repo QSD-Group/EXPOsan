@@ -30,6 +30,7 @@ __all__ = ('HApFermenter', 'SBoulardiiFermenter', )
 #%%
 @cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
       cost=47200, n=0.8, BM=2.3, CE=522, N='Number of reactors')
+@cost('Reactor volume', 'Cleaning in place', CE=801, cost=2000, S=1, n=0.6, BM=1.8)  # assume ~1/2 reactor cost
 @cost('Reactor volume', 'Agitators', kW=2.2, CE=801, cost=245, S=1, n=0.54, 
       lb=0.1, BM=1.5, N='Number of reactors')
 @cost('Reactor volume', 'Reactors', CE=801, cost=3936, S=1, n=0.54, 
@@ -45,18 +46,21 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
     _N_outs = 3     # [0] vent, [1] liquid effluent, [2] precipitates (yeast cells + HAP)
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 tau=60, N=2, T=273.15+37, P=101325,
+                 tau=60, T=273.15+37, P=101325,
                  f_maximum_hap_yield=0.66, precipitate_moisture=90,
                  biomass_yield=0.1, inoculum_concentration=0.5,
-                 CaCl2_price=0.3):
+                 CaCl2_price=0.3,
+                 # labor_wage=21.68,  # assume 20% over San Francisco minimum wage by default
+                 ):
 
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self._init(tau=tau, N=N, T=T, P=P)
+        self._init(tau=tau, N=2, T=T, P=P)
         self.f_maximum_hap_yield=f_maximum_hap_yield
         self.precipitate_moisture=precipitate_moisture
         self.biomass_yield=biomass_yield
         self.inoculum_concentration=inoculum_concentration
         self.ins[2].price=CaCl2_price
+        # self.labor_wage = labor_wage
     
     @property
     def precipitate(self):
@@ -100,6 +104,15 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
     def inoculum_concentration(self, c):
         self._cinocu = c
     
+    # @property
+    # def labor_wage(self):
+    #     '''[float] Hourly labor wage for fermenter operation and maintenance, in USD/hr.'''
+    #     return self._wage
+    # @labor_wage.setter
+    # def labor_wage(self, wage):
+    #     self._wage = wage
+    
+    
     def _setup(self):
         SanUnit._setup(self)
         vent, effluent, precip = self.outs
@@ -133,6 +146,11 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
         eff.mass[cmps.i_COD > 0] *= 1-y_bio        # conservative estimation of COD degradation
         eff.imol['NH3'] += urine.imol['Urea'] * 2  # ignore gaseous NH3 in vent
         eff.imass['H2O'] -= m_h2o
+    
+    # def _cost(self):
+    #     super()._cost()
+    #     D = self.design_results
+    #     self.add_OPEX['Cleaning'] = self.tau_0 / D['Batch time'] * self.labor_wage
 
 #%%
 @cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
@@ -186,7 +204,7 @@ class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
         )
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 tau=12, N=2, T=273.15+35, P=101325,
+                 tau=12, T=273.15+35, P=101325,
                  yield_on_sugar=1.45, design_production_rate=80, 
                  sugar_concentration=275.95,
                  N_to_sugar_ratio=0.01245,
@@ -195,10 +213,11 @@ class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
                  aeration_duty=60, sugar_price=None,
                  nutrient_price=None, mineral_vitamin_price=None,
                  reactor_height_to_diameter_ratio=2,
+                 labor_wage=21.68,  # assume 20% over San Francisco minimum wage by default
                  ):
 
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self._init(tau=tau, N=N, T=T, P=P)
+        self._init(tau=tau, N=2, T=T, P=P)
         self.blower = SimpleBlower(self.ID+'_blower', 
                                    ins=Stream(self.ID+'blower_in', phase='g'),
                                    outs=Stream(self.ID+'blower_out', phase='g'))
@@ -213,6 +232,7 @@ class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
         self.nutrient_price = nutrient_price
         self.mineral_vitamin_price = mineral_vitamin_price
         self.reactor_height_to_diameter_ratio = reactor_height_to_diameter_ratio
+        self.labor_wage = labor_wage
 
     @property
     def design_production_rate(self):
@@ -331,6 +351,14 @@ class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
     def reactor_height_to_diameter_ratio(self, ratio):
         self._reactor_height_to_diameter_ratio = ratio
     
+    @property
+    def labor_wage(self):
+        '''[float] Hourly labor wage for fermenter operation and maintenance, in USD/hr.'''
+        return self._wage
+    @labor_wage.setter
+    def labor_wage(self, wage):
+        self._wage = wage
+    
     def _run(self):
         sugars, nutrients, seed = self.ins
         y_yeast = self.yield_on_sugar
@@ -379,4 +407,5 @@ class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
         nutrients.price = self.nutrient_price
         seed.price = self.mineral_vitamin_price * (1 - seed.imass['Yeast']/seed.F_mass)
         self.add_OPEX['NaCl'] = self.effluent.F_vol * 0.762 * self._prices['NaCl']  # final concentration of NaCl in kg/m3 fermentation broth
-    
+        D = self.design_results
+        self.add_OPEX['Cleaning'] = self.tau_0 / D['Batch time'] * self.labor_wage
