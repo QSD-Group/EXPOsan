@@ -129,6 +129,7 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
         p_h2o = self.precipitate_moisture / 100
         Q = urine.F_vol   # m3/hr
         yeast_i_COD = inocu.components.Yeast.i_COD
+        yeast_i_N = inocu.components.Yeast.i_N
         inocu.imass['Yeast'] = Qin_yeast = Q * c_inocu # kg/hr
         sol_IP = urine.composite('P', flow=True, particle_size='s', organic=False) # kg/hr
         sol_Ca = urine.composite('Ca', flow=True, particle_size='s', organic=False) # kg/hr
@@ -145,6 +146,7 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
         eff.imass['Yeast'] = eff.imass['Urea'] = 0
         eff.mass[cmps.i_COD > 0] *= 1-y_bio        # conservative estimation of COD degradation
         eff.imol['NH3'] += urine.imol['Urea'] * 2  # ignore gaseous NH3 in vent
+        eff.imass['NH3'] -= (m_bio - Qin_yeast) * yeast_i_N
         eff.imass['H2O'] -= m_h2o
     
     # def _cost(self):
@@ -155,6 +157,7 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
 #%%
 @cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
       cost=47200, n=0.8, BM=2.3, CE=522, N='Number of reactors')
+@cost('Reactor volume', 'Cleaning in place', CE=801, cost=2000, S=1, n=0.6, BM=1.8)  # assume ~1/2 reactor cost
 @cost('Reactor volume', 'Agitators', kW=2.2, CE=801, cost=245, S=1, n=0.54, 
       lb=0.1, BM=1.5, N='Number of reactors')
 @cost('Reactor volume', 'Reactors', CE=801, cost=3936, S=1, n=0.54, 
