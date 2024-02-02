@@ -9,6 +9,7 @@ This module is developed by:
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
+
 '''
 import qsdsan as qs
 from exposan.hap import create_hap_cmps, SBoulardiiFermenter, HApFermenter
