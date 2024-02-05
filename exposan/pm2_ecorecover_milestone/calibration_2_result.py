@@ -46,10 +46,10 @@ cmps = pc.create_pm2_cmps()
 ############# create WasteStream objects #################
 # Q = 402.42           # influent flowrate [m3/d]
 # Q = 449.06           # influent flowrate [m3/d]
-Temp = 288.32          # temperature [K]
+Temp = 285.88          # temperature [K]
 # Temp = 286.08          # temperature [K]
 
-T, I = EDV.batch_init(os.path.join(data_path, 'exo_vars_dynamic_influent_cali_1.xlsx'), 'linear')
+T, I = EDV.batch_init(os.path.join(data_path, 'exo_vars_dynamic_influent_cali_2.xlsx'), 'linear')
 # T, I = EDV.batch_init(os.path.join(data_path, 'exo_vars_dynamic_influent_cali.xlsx'), 'linear')
 
 T_mix = T
@@ -74,30 +74,16 @@ RAA = WasteStream('Return_activated_algae', T=Temp)
 
 #%%
 ############# load and tailor process models #############
-V_mix = 60.23
+V_mix = 60.09
 V_pbr = 77.49
-V_mem = 7.04
+V_mem = 7.09
 V_ret = 5.66
 # V_mix = 66.23
 # V_pbr = 77.49
 # V_mem = 7.03
 # V_ret = 6.21
 
-# pm2 = pc.PM2(arr_e=6235.73047399153, K_P=1.81014149397718, f_CH_max=8.78073329756972, exponent=8.06201336965664, q_CH=5.35949314110545, q_LI=31.2367276824268, V_NH=0.130743018834041, V_P=0.93757843720945,
-#               a_c=0.049, I_n=1500, arr_a=1.8e10, beta_1=2.90,
-#               beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
-#               K_N=0.1, K_A=6.3, K_F=6.3, rho=1.186, K_STO=1.566,
-#               f_LI_max=3.249, m_ATP=10,
-#               mu_max=1.969, Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163,
-#               V_NO=0.003, n_dark=0.7,
-#               Y_ATP_PHO=55.073, Y_CH_PHO=0.754, Y_LI_PHO=0.901, Y_X_ALG_PHO=0.450,
-#               Y_ATP_HET_ACE=39.623, Y_CH_NR_HET_ACE=0.625, Y_CH_ND_HET_ACE=0.600,
-#               Y_LI_NR_HET_ACE=1.105, Y_LI_ND_HET_ACE=0.713, Y_X_ALG_HET_ACE=0.216,
-#               Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880,
-#               Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317)  # [from cali2] ecorecover_milestone cali (optuna results) seed777
-
-
-pm2 = pc.PM2(arr_e=5694.6951415458, K_P=1.7164781324491, f_CH_max=9.66076386253266, exponent=1.86987433960317, q_CH=5.03027076056836, q_LI=2.53833531267749, V_NH=0.5091542637664, V_P=0.395474686784726,
+pm2 = pc.PM2(arr_e=6235.73047399153, K_P=1.81014149397718, f_CH_max=8.78073329756972, exponent=8.06201336965664, q_CH=5.35949314110545, q_LI=31.2367276824268, V_NH=0.130743018834041, V_P=0.93757843720945,
               a_c=0.049, I_n=1500, arr_a=1.8e10, beta_1=2.90,
               beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
               K_N=0.1, K_A=6.3, K_F=6.3, rho=1.186, K_STO=1.566,
@@ -129,7 +115,7 @@ pm2 = pc.PM2(arr_e=5694.6951415458, K_P=1.7164781324491, f_CH_max=9.660763862532
 
 # Dynamic influent
 SE = su.DynamicInfluent('SE', outs=[DYINF],
-                        data_file=ospath.join(data_path, 'dynamic_influent_cali_1.tsv'))
+                        data_file=ospath.join(data_path, 'dynamic_influent_cali_2.tsv'))
 # SE = su.DynamicInfluent('SE', outs=[DYINF],
 #                         data_file=ospath.join(data_path, 'dynamic_influent_cali.tsv'))
 
@@ -174,7 +160,7 @@ PBR18 = su.CSTR('PBR18', ins=PBR17-0, V_max=V_pbr/20,
               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T, I))
 PBR19 = su.CSTR('PBR19', ins=PBR18-0, V_max=V_pbr/20,
               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T, I))
-PBR20 = su.CSTR('PBR20', ins=PBR19-0, outs=[ME, INT], split=[0.74, 0.26], V_max=V_pbr/20,
+PBR20 = su.CSTR('PBR20', ins=PBR19-0, outs=[ME, INT], split=[0.78, 0.22], V_max=V_pbr/20,
               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T, I))
 # PBR20 = su.CSTR('PBR20', ins=PBR19-0, outs=[ME, INT], split=[0.52, 0.48], V_max=V_pbr/20,
 #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T, I))
@@ -184,7 +170,7 @@ MEM = su.Splitter('MEM', PBR20-0, outs=[TE, RETEN], split=0.45*(1-cmps.x))
 
 MEV = su.CSTR('MEV', ins=MEM-1, V_max=V_mem, aeration=None, suspended_growth_model=None)
 
-POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.96)                    # changed compared to previous ver.
+POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.95)                    # changed compared to previous ver.
 # POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.97)                    # changed compared to previous ver.
 
 CENT = su.Splitter('CENT', POST_MEM-1, outs=[CEN, ALG], split={'X_CHL':0.33,
@@ -208,19 +194,19 @@ RET = su.CSTR('RET', ins=[PBR20-1, POST_MEM-0, CENT-0], outs=[RAA], V_max=V_ret,
 #%%
 
 _init_conds = {
-        'X_CHL':0.55,
-        'X_ALG':110.72,
-        'X_CH':5.03,
-        'X_LI':20.52,
+        'X_CHL':0.65,
+        'X_ALG':129.02,
+        'X_CH':5.86,
+        'X_LI':23.91,
         'S_CO2':30.0,
         'S_A':5.0,
         'S_F':5.0,
         'S_O2':5.0,
-        'S_NH':8.16,
-        'S_NO':6.41,
-        'S_P':0.08,
-        'X_N_ALG':0.17,
-        'X_P_ALG':0.04,
+        'S_NH':21.38,
+        'S_NO':1.58,
+        'S_P':0.07,
+        'X_N_ALG':0.19,
+        'X_P_ALG':0.05,
     }
 # _init_conds = {
 #         'X_CHL':2.53,
@@ -238,7 +224,7 @@ _init_conds = {
 #         'X_P_ALG':0.19,
 #     }
 
-batch_init(ospath.join(data_path, 'initial_conditions_pm2_dynamic_influent_cali_1.xlsx'), 'default')
+batch_init(ospath.join(data_path, 'initial_conditions_pm2_dynamic_influent_cali_2.xlsx'), 'default')
 # batch_init(ospath.join(data_path, 'initial_conditions_pm2_dynamic_influent_cali.xlsx'), 'default')
 
 #%%
@@ -272,7 +258,7 @@ def run(t, t_step, method=None, print_t=False, **kwargs):
                       method=method,
                       # rtol=1e-2,
                       # atol=1e-3,
-                      export_state_to=ospath.join(results_path, f'sol_{t}d_{method}_milestone_calibration_1_result.xlsx'),
+                      export_state_to=ospath.join(results_path, f'sol_{t}d_{method}_milestone_calibration_2_result.xlsx'),
                       print_t=print_t,
                       **kwargs)
         # eco.simulate(state_reset_hook='reset_cache',

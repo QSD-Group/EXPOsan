@@ -207,6 +207,14 @@ def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
     # PBR20 = su.CSTR('PBR20', ins=PBR19-0, outs=[ME, INT], split=[0.52, 0.48], V_max=V_pbr/20,
     #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
 
+    PBR( define class)-> auxilary unit for tea & lca
+    def _design:
+    def _cost:
+
+    1. add as auxilary
+    2. stand alone unit connect in sthe sytem path (without affecting simulation results)
+
+
     MEM = su.Splitter('MEM', PBR20-0, outs=[TE, RETEN], split=0.45*(1-cmps.x))
     # MEM = su.Splitter('MEM', PBR20-0, outs=[TE, RETEN], split=0.39*(1-cmps.x))
 
@@ -248,6 +256,11 @@ def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
 
     sys.set_dynamic_tracker(SE, MIX, PBR1, PBR20, RET, TE, CEN, ALG)
     sys.set_tolerance(rmol=1e-6)
+
+
+
+    TEA =
+TEA(sys.....)
 
     return sys
 
