@@ -21,7 +21,7 @@ __all__ = (
     'default_asm_kwargs',
     'default_inf_kwargs',
     'default_init_conds',
-    'Q', 'Q_ras', 'Q_was', 'Temp', 'V_an', 'V_ae',
+    'Q_ras', 'Q_was', 'Temp', 'V_an', 'V_fa', 'V_ae',
     )
 
 # %%
@@ -30,12 +30,12 @@ __all__ = (
 # Parameters and util functions
 # =============================================================================
 
-Q = 117706.01           # influent flowrate [m3/d]  --------------------------------- need to contact organizer
+# Q = 117706.01           # influent flowrate [m3/d]  --------------------------------- need to contact organizer (54033.37: avg)
                         # 'train_val_test_online_dataset: Q_inf'
                         # does not match 'train_val_test_dynamic_influent: Q_in'
 
 Temp = 273.15 + 18.36     # temperature [K]
-                        # average from 'train_val_test_online_dataset': 18.36
+                          # average from 'train_val_test_online_dataset': 18.36
 
 V_an = 10920    # anoxic tank volume [m3]
 V_fa = 10100    # facultative tank volume [m3]
@@ -92,12 +92,19 @@ default_inf_kwargs ['asm2d'] = {
 default_asm_kwargs = dict.fromkeys(valid_models)
 default_asm_kwargs['asm1'] = dict(
     Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
-    mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
-    eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
-    K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05, fr_SS_COD=0.75,
+    mu_H=6.0, K_S=20.0, K_O_H=0.2, K_NO=0.5, b_H=0.62,
+    eta_g=0.8, eta_h=0.4, k_h=3.0, K_X=0.03, mu_A=0.8,
+    K_NH=1.0, b_A=0.1, K_O_A=0.4, k_a=0.08, fr_SS_COD=0.75,
     path=os.path.join(data_path, '_asm1.tsv'),
     )
 
+# default_asm_kwargs['asm1'] = dict(
+#     Y_A=0.24, Y_H=0.67, f_P=0.08, i_XB=0.08, i_XP=0.06,
+#     mu_H=4.0, K_S=10.0, K_O_H=0.2, K_NO=0.5, b_H=0.3,
+#     eta_g=0.8, eta_h=0.8, k_h=3.0, K_X=0.1, mu_A=0.5,
+#     K_NH=1.0, b_A=0.05, K_O_A=0.4, k_a=0.05, fr_SS_COD=0.75,
+#     path=os.path.join(data_path, '_asm1.tsv'),
+#     )
 ################################# Kaggle provided #################################
 
 # # Stoichiometric parameters at 20 degrees celsius
@@ -237,10 +244,11 @@ def create_system(
     else: raise ValueError('`suspended_growth_model` can only be "ASM1" or "ASM2d", '
                            f'not {suspended_growth_model}.')
 
-    wastewater = WasteStream('wastewater', T=Temp)
-    inf_kwargs = inf_kwargs or default_inf_kwargs[kind]
-    wastewater.set_flow_by_concentration(Q, **inf_kwargs)
+    # wastewater = WasteStream('wastewater', T=Temp)
+    # inf_kwargs = inf_kwargs or default_inf_kwargs[kind]
+    # wastewater.set_flow_by_concentration(Q, **inf_kwargs)
 
+    DYINF = WasteStream('Dynamic_influent', T=Temp)
     effluent = WasteStream('effluent', T=Temp)
     WAS = WasteStream('WAS', T=Temp)
     INT = WasteStream('INT', T=Temp)
@@ -250,10 +258,13 @@ def create_system(
     if aeration_processes:
         aer = aeration_processes
     else:
-        aer = pc.DiffusedAeration('aer1', DO_ID, KLa=240, DOsat=8.0, V=V_ae)                  #  need to think about
+        aer = pc.DiffusedAeration('aer1', DO_ID, KLa=240, DOsat=8.0, V=V_ae)                  #  need to think about KLa
 
     # Create unit operations
-    ANO = su.CSTR('ANO', ins=[wastewater, INT, RAS], V_max=V_an,
+    WW = su.DynamicInfluent('Waste_Water', outs=[DYINF],
+                            data_file=os.path.join(data_path, 'dynamic_influent_q_fixed.tsv'))
+
+    ANO = su.CSTR('ANO', ins=[DYINF, INT, RAS], V_max=V_an,
                  aeration=None, suspended_growth_model=asm)
 
     FAC = su.CSTR('FAC', ANO-0, V_max=V_fa,
@@ -265,18 +276,29 @@ def create_system(
     AER2 = su.CSTR('AER2', AER1-0, V_max=V_ae, aeration=aer,
                  DO_ID=DO_ID, suspended_growth_model=asm)
 
-    AER3 = su.CSTR('AER3', AER2-0, [INT, 'treated'],                             # split?
+    AER3 = su.CSTR('AER3', AER2-0, [INT, 'treated'], split=[0.601,0.399],                             # split ratio
                  V_max=V_ae, aeration=aer,
                  DO_ID=DO_ID, suspended_growth_model=asm)
 
     C1 = su.FlatBottomCircularClarifier('C1', AER3-1, [effluent, RAS, WAS],
-                                        underflow=Q_ras, wastage=Q_was, surface_area=1500,
-                                        height=4, N_layer=10, feed_layer=5,
+                                        underflow=Q_ras, wastage=Q_was, surface_area=1700,
+                                        height=2.3, N_layer=10, feed_layer=5,
                                         X_threshold=3000, v_max=474, v_max_practical=250,
-                                        rh=5.76e-4, rp=2.86e-3, fns=2.28e-3)
+                                        rh=0.00019, rp=0.0028, fns=0.001)
+
+    # C1 = su.FlatBottomCircularClarifier('C1', AER3-1, [effluent, RAS, WAS],
+    #                                 underflow=Q_ras, wastage=Q_was, surface_area=1500,
+    #                                 height=4, N_layer=10, feed_layer=5,
+    #                                 X_threshold=3000, v_max=474, v_max_practical=250,
+    #                                 rh=5.76e-4, rp=2.86e-3, fns=2.28e-3)
+
+    # num_layers=10,
+    # Xf=(lambda x: 0.75*sum(x[2:7])),  # Formula to calculate TSS from the states according to ASM1
+    # feedlayer=5,  # Stating to count at 0, thus this is the 6th layer
+    # A=1700, z=2.3, v0_max=250.0, v0=474.0, rh=0.00019, rp=0.0028, fns=0.001, Xt=3000.0,
 
     # System setup
-    sys = System('tilburg', path=(ANO, FAC, AER1, AER2, AER3, C1), recycle=(INT, RAS))
+    sys = System('tilburg', path=(WW, ANO, FAC, AER1, AER2, AER3, C1), recycle=(INT, RAS))
 
     if init_conds:
         if type(init_conds) is dict:
@@ -287,11 +309,10 @@ def create_system(
         path = os.path.join(data_path, f'initial_conditions_{kind}.xlsx')
         df = load_data(path, sheet='default')
         batch_init(sys, df)
-    sys.set_dynamic_tracker(ANO, FAC, AER1, AER2, AER3, C1, effluent)
+    sys.set_dynamic_tracker(WW, ANO, FAC, AER1, AER2, AER3, C1, effluent)
     sys.set_tolerance(rmol=1e-6)
 
     return sys
-
 
 #%%
 @time_printer
@@ -304,7 +325,7 @@ def run(t, t_step, method=None, **kwargs):
         method=method,
         # rtol=1e-2,
         # atol=1e-3,
-        # export_state_to=f'results/sol_{t}d_{method}.xlsx',
+        export_state_to=f'results/sol_{t}d_{method}.xlsx',
         **kwargs)
     srt = get_SRT(sys, biomass_IDs)
     print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
@@ -322,3 +343,4 @@ if __name__ == '__main__':
     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
     print(f'Time span 0-{t}d \n')
     run(t, t_step, method=method)
+
