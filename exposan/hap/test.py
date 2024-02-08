@@ -52,7 +52,7 @@ urine.set_flow_by_concentration(q_sch,
 CaCl2 = qs.WasteStream('CaCl2')
 inocu = qs.WasteStream('inocu')
 
-HF = HApFermenter('HF', tau=60, 
+HF = HApFermenter('HF', tau=60, precipitate_moisture=90,
                   ins=(urine, inocu, CaCl2), outs=['', 'eff', 'precip'])
 HF.simulate()
 vent, eff, pre = HF.outs
