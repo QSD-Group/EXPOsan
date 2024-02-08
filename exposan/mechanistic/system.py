@@ -258,26 +258,27 @@ def create_system(
     if aeration_processes:
         aer = aeration_processes
     else:
-        aer = pc.DiffusedAeration('aer1', DO_ID, KLa=240, DOsat=8.0, V=V_ae)                  #  need to think about KLa
+        aer1 = pc.DiffusedAeration('aer1', DO_ID, KLa=120, DOsat=8.0, V=V_ae)                  #  need to think about KLa
+        aer2 = pc.DiffusedAeration('aer2', DO_ID, KLa=240, DOsat=8.0, V=V_ae)                  #  need to think about KLa
 
     # Create unit operations
     WW = su.DynamicInfluent('Waste_Water', outs=[DYINF],
-                            data_file=os.path.join(data_path, 'dynamic_influent_q_fixed.tsv'))
+                            data_file=os.path.join(data_path, 'dynamic_influent_q_fixed_test.tsv'))
 
     ANO = su.CSTR('ANO', ins=[DYINF, INT, RAS], V_max=V_an,
                  aeration=None, suspended_growth_model=asm)
 
-    FAC = su.CSTR('FAC', ANO-0, V_max=V_fa,
-                 aeration=None, suspended_growth_model=asm)
+    FAC = su.CSTR('FAC', ANO-0, V_max=V_fa, aeration=aer1,
+                  DO_ID=DO_ID, suspended_growth_model=asm)
 
-    AER1 = su.CSTR('AER1', FAC-0, V_max=V_ae, aeration=aer,
+    AER1 = su.CSTR('AER1', FAC-0, V_max=V_ae, aeration=aer2,
                  DO_ID=DO_ID, suspended_growth_model=asm)
 
-    AER2 = su.CSTR('AER2', AER1-0, V_max=V_ae, aeration=aer,
+    AER2 = su.CSTR('AER2', AER1-0, V_max=V_ae, aeration=aer2,
                  DO_ID=DO_ID, suspended_growth_model=asm)
 
     AER3 = su.CSTR('AER3', AER2-0, [INT, 'treated'], split=[0.601,0.399],                             # split ratio
-                 V_max=V_ae, aeration=aer,
+                 V_max=V_ae, aeration=aer2,
                  DO_ID=DO_ID, suspended_growth_model=asm)
 
     C1 = su.FlatBottomCircularClarifier('C1', AER3-1, [effluent, RAS, WAS],
