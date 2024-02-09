@@ -12,12 +12,11 @@ for license details.
 
 """
 
-from math import sqrt
+from math import sqrt, ceil
 import numpy as np, scipy.spatial.distance as spa, matplotlib.pyplot as plt
 from tsp_solver.greedy import solve_tsp  # pypi: tsp-solver2; https://github.com/dmishin/tsp-solver/tree/master
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
-from math import ceil
 
 __all__ = ('Location', 'Locations', 'SimpleCVRP')
 
@@ -234,10 +233,25 @@ class SimpleCVRP:
         print(f"Total distance of all routes: {total_distance:.0f} m")
         print(f"Total load of all routes: {total_load}")
     
-    # def plot_routes(self):
+    def plot_routes(self):
+        locs = self._locations
+        fig, ax = plt.subplots(dpi=300)
+        xs, ys = locs.xs, locs.ys
+        routes = self.routes
+        cmap = plt.get_cmap('viridis', len(routes))
+        for route, c in zip(routes, cmap.colors):
+            t = np.array(route)
+            x = xs[t]
+            y = ys[t]
+            ax.scatter(x, y, color=c)
+            ax.plot(x, y, color=c)
+        ax.plot(xs[0], ys[0], marker='o', markersize=10,
+                mfc='white', mec='red', mew=2)
+        ax.set_aspect('equal')
+        return fig, ax
 
 #%%
-n = 100
+n = 101
 seed = 52
 locs = Locations.random_within_area(n, seed=seed, distance_metric='cityblock',
                                     x_range=(0, 13.36e3), # in meter
@@ -246,5 +260,9 @@ locs = Locations.random_within_area(n, seed=seed, distance_metric='cityblock',
 # path = locs.solve_best_roundtrip()
 # dist = locs.path_cost(path)
 # locs.plot_path(path)
+
+#%%
 cvr = SimpleCVRP(locs, vehicle_capcity=2000)
-cvr.solve(10)
+cvr.solve()
+# cvr._routes = _rs
+cvr.plot_routes()
