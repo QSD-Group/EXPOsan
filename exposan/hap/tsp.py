@@ -108,6 +108,15 @@ class Locations:
     def __repr__(self):
         return f'<Locations: {self.names}>\n'
     
+    def plot(self):
+        fig, ax = plt.subplots(dpi=300)
+        xs, ys = self.xs, self.ys
+        ax.scatter(xs, ys, c='black')
+        ax.plot(xs[0], ys[0], marker='o', markersize=10,
+                mfc='white', mec='red', mew=2)
+        ax.set_aspect('equal')
+        return fig, ax
+    
     def solve_best_roundtrip(self):
         return solve_tsp(self.distance_matrix, endpoints=(0,0))
     
@@ -116,7 +125,7 @@ class Locations:
         return sum(M[path[i]][path[i+1]] for i in range(len(path)-1))
     
     def plot_path(self, path):
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(dpi=300)
         xs, ys = self.xs, self.ys
         for i in range(len(path)-1):
             locs = path[i: i+2]
@@ -252,17 +261,24 @@ class SimpleCVRP:
 
 #%%
 n = 101
-seed = 52
-locs = Locations.random_within_area(n, seed=seed, distance_metric='cityblock',
-                                    x_range=(0, 13.36e3), # in meter
-                                    y_range=(0, 11.31e3),
-                                    demands=55,)
-# path = locs.solve_best_roundtrip()
-# dist = locs.path_cost(path)
-# locs.plot_path(path)
+seed = 958
+locs = Locations.random_within_area(
+    n, seed=seed, distance_metric='cityblock',
+    x_range=(0, 13.36e3), # in meter
+    y_range=(0, 11.31e3),
+    demands=55,
+    )
 
 #%%
 cvr = SimpleCVRP(locs, vehicle_capcity=2000)
 cvr.solve()
+
+# path = locs.solve_best_roundtrip()
+# dist = locs.path_cost(path)
+# locs.plot_path(path)
+# fig, ax = locs.plot()
+# fig.savefig('locations.png')
+
 # cvr._routes = _rs
-cvr.plot_routes()
+fig, ax = cvr.plot_routes()
+fig.savefig('routes.png')
