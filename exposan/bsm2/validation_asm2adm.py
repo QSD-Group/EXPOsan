@@ -175,37 +175,10 @@ TKN_qs = effluent.composite('N',
 #  'H2O': 965.9960219794004}
 
 TKN_mt = 1e3 * ((0.04388 + 15.9235)*0.007 + (0.028067+17.0166)*0.06/14 + 0.0019721) * 14
-=======
-effluent_conc = dict(zip(effluent.components.IDs, effluent.iconc.data))
-for ID, conc in effluent_conc.items(): print(ID, conc)
-# S_su 0.0
-# S_aa 40.99187113202962
-# S_fa 0.0
-# S_va 0.0
-# S_bu 0.0
-# S_pro 0.0
-# S_ac 0.0
-# S_h2 0.0
-# S_ch4 0.0
-# S_IC 94.08543013319382
-# S_IN 27.889165881077677
-# S_I 28.066499999999973
-# X_c 0.0
-# X_ch 3727.5278810973705
-# X_pr 15914.754397967812
-# X_li 8051.813728934792
-# X_su 0.0
-# X_aa 0.0
-# X_fa 0.0
-# X_c4 0.0
-# X_pro 0.0
-# X_ac 0.0
-# X_h2 0.0
-# X_I 17010.642391999983
-# S_cat 0.0
-# S_an 5.2104213714255785
-# H2O 965998.6128927051
->>>>>>> Stashed changes
+
+# effluent_conc = dict(zip(effluent.components.IDs, effluent.iconc.data))
+# for ID, conc in effluent_conc.items(): print(ID, conc)
+
 
 # MATLAB
 # ADM1 influent (post ASM2ADM interface)
@@ -219,13 +192,8 @@ for ID, conc in effluent_conc.items(): print(ID, conc)
 # Sac = total acetate (kg COD/m3) = 0
 # Sh2 = hydrogen gas (kg COD/m3) = 0
 # Sch4 = methane gas (kg COD/m3) = 0
-<<<<<<< Updated upstream
 # Sic = inorganic carbon (kmole C/m3) = 0.0079326 ( * 12 = 0.0951912)
 # Sin = inorganic nitrogen (kmole N/m3) = 0.0019721 ( * 14 = 0.0276094)
-=======
-# Sic = inorganic carbon (kmole C/m3) = 0.0079326; 0.0951912
-# Sin = inorganic nitrogen (kmole N/m3) = 0.0019721; 0.0276094
->>>>>>> Stashed changes
 # Si = soluble inerts (kg COD/m3) = 0.028067
 # Xc = composites (kg COD/m3) = 0
 # Xch = carbohydrates (kg COD/m3) = 3.7236
@@ -243,4 +211,3 @@ for ID, conc in effluent_conc.items(): print(ID, conc)
 # San- = anions (acid) (kmole/m3) = 0.0052101
 # Flow rate (m3/d) = 178.4674
 # Temperature (degC) = 35
-

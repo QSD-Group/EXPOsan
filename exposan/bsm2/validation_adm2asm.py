@@ -185,7 +185,6 @@ sys.simulate(
     )
 
 effluent_conc = dict(zip(effluent.components.IDs, effluent.iconc.data))
-<<<<<<< Updated upstream
 
 xN_0 = influent.composite('N', particle_size='x')
 sN_0 = influent.composite('N', particle_size='s')
@@ -213,24 +212,8 @@ sN_qs = effluent.composite('N', particle_size='s')
 
 xN_mt = (17216.2434 + 626.0652) * 0.06 + 100.8668
 sN_mt = 1442.7882 + 0.54323
-=======
-for ID, conc in effluent_conc.items(): print(ID, conc)
-# S_I 130.87
-# S_S 258.5822000000001
-# X_I 17216.20000000001
-# X_S 2343.1610000000005
-# X_BH 0.0
-# X_BA 0.0
-# X_P 894.3750000000006
-# S_O 0.0
-# S_NO 0.0
-# S_NH 1331.0197302115344
-# S_ND 0.5434935760800003
-# X_ND 197.1551757479041
-# S_ALK 1134.6817313124623
-# S_N2 0.0
-# H2O 977699.5425467064
->>>>>>> Stashed changes
+
+# for ID, conc in effluent_conc.items(): print(ID, conc)
 
 # MATLAB
 # Anaerobic digester output (post ADM2ASM interface)
