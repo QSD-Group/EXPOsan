@@ -168,7 +168,7 @@ reactor_classes = {
 
 def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P', 
                   lifetime=30, discount_rate=0.05, T=22,
-                  Q=5, inf_concs={}, tot_HRT=12,
+                  Q=50, inf_concs={}, tot_HRT=12,
                   flowsheet=None):
     if not _impact_item_loaded: _load_lca_data()
     PowerUtility.price = 0.0913
