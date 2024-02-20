@@ -192,7 +192,8 @@ def add_continuous_params(model):
             u.DMs._co2_ermv = eco2
     
     b = 1
-    D = shape.Uniform(1/6, 3)
+    # D = shape.Uniform(1/6, 3)
+    D = shape.Uniform(1/6, 5)
     @param(name='Total HRT', units='d', kind='coupled', element='System',
            baseline=b, distribution=D)
     def set_tau(tau):
@@ -271,8 +272,8 @@ def add_continuous_params(model):
                 if n_stage == 2: u.R2.n_layer = n_dz
                 reset_init_conc(sys)
     
-    b = 0.75
-    D = shape.Uniform(0.6, 0.9)
+    b = 0.9
+    D = shape.Uniform(0.75, 0.97)
     @param(name='FB voidage', units='', kind='coupled', element='FB',
            baseline=b, distribution=D)
     def set_FB_void(f):
@@ -333,16 +334,17 @@ def add_optimizing_DVs(model):
     u.R1.bead_diameter = 1.0
     if reactor_type == 'FB':
         # hrt_bounds = (1, 3)
-        hrt_bounds = (3, 5)
-        
+        hrt_bounds = (3, 5)        
         @param(name='Bead volume fraction', units='', kind='coupled', element='FB',
-               baseline=0.2, 
-               bounds=(0.05, 0.25)
-               )
+               baseline=0.1, bounds=(0.03, 0.25))
         def set_FB_bead_fvol(f):
             u.R1.voidage = 1-f
     else:
-        hrt_bounds = (1/24, 2)
+        hrt_bounds = (1/24, 1.5)
+        @param(name='Voidage', units='', kind='coupled', element='PB',
+               baseline=0.39, bounds=(0.35, 0.45))
+        def set_PB_voidage(v):
+            u.R1.voidage = v
 
     @param(name='HRT', units='d', kind='coupled', element='System',
            baseline=1/3, bounds=hrt_bounds)
@@ -365,8 +367,8 @@ def add_mapping_params(model):
     else: ks_b = ks_35
     adm1.rate_function.params['rate_constants'] = ks_b
     
-    b = 10
-    D = shape.Uniform(2, 30)
+    b = 2
+    D = shape.Uniform(1, 15)
     @param(name='Bead lifetime', units='yr', kind='coupled', 
             element='Encapsulation', baseline=b, distribution=D)
     def set_blt(lt):
@@ -380,13 +382,19 @@ def add_mapping_params(model):
         def set_kac(k):
             u.R1.model.rate_function.params['rate_constants'][10] = k
     else:
-        b = 7e-6
-        D = shape.Uniform(1e-6, 2.8e-5)
-        @param(name='K_h2', units='kgCOD/m3', kind='coupled', 
-               element='ADM1', baseline=b, distribution=D)
-        def set_Kh2(K):
-            u.R1.model.rate_function.params['half_sat_coeffs'][7] = K
-
+        # b = 7e-6
+        # D = shape.Uniform(1e-6, 2.8e-5)
+        # @param(name='K_h2', units='kgCOD/m3', kind='coupled', 
+        #        element='ADM1', baseline=b, distribution=D)
+        # def set_Kh2(K):
+        #     u.R1.model.rate_function.params['half_sat_coeffs'][7] = K
+        b = 0.55
+        D = shape.Triangle(0.2, b, 1.1)
+        @param(name='Bead-to-water diffusivity fraction', units='', kind='coupled',
+               element='Encapsulation', baseline=b, distribution=D)
+        def set_f_diff(f):
+            u.R1.f_diff = f
+        
 
 #%%
 def add_metrics(model, kind='DV'):
@@ -573,12 +581,12 @@ def add_metrics(model, kind='DV'):
                        name=f'gwp {i} {suffix}', units='%', element=f'LCA {suffix}')
 
     elif kind == 'optimize':
-        metric(getter=FuncGetter(get_gwp, (sub,)),
+        metric(getter=FuncGetter(get_gwp, (sys,)),
                name='GWP100', units='$/ton rCOD', element='LCA')
     elif kind == 'mapping':
-        metric(getter=FuncGetter(get_cost, (sub,)),
+        metric(getter=FuncGetter(get_cost, (sys,)),
                name='Levelized cost', units='$/ton rCOD', element='TEA')
-        metric(getter=FuncGetter(get_gwp, (sub,)),
+        metric(getter=FuncGetter(get_gwp, (sys,)),
                name='GWP100', units='$/ton rCOD', element='LCA')
 
 #%%
@@ -680,10 +688,10 @@ def f_obj(vals, mdl):
 def meshgrid_sample(p1, p2, n):
     if p1.name == 'Bead lifetime':
         ll, ul = p1.bounds
-        if ul - ll + 1 <= n:
-            x = np.arange(ll, ul+1)
-        else:
-            x = np.sort(np.round(30 / np.unique(np.ceil(30/ np.arange(ll, ul+1)))))
+        # if ul - ll + 1 <= n:
+        #     x = np.arange(ll, ul+1)
+        # else:
+        x = np.sort(np.round(30 / np.unique(np.ceil(30/ np.arange(ll, ul+1)))))
     else:
         x = np.linspace(*p1.bounds, n)
     y = np.linspace(*p2.bounds, n)
@@ -729,7 +737,7 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
                                         )
             study.optimize(objective, 
                            n_trials=100, 
-                           timeout=500
+                           timeout=1000
                            )
             res = np.array([v for k,v in study.best_params.items()])
             for p, v in zip(mdl_opt.parameters, res): p.setter(v)
@@ -749,7 +757,7 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
 
 #%%
 if __name__ == '__main__':
-    sys = create_system(reactor_type='FB')
+    sys = create_system(reactor_type='PB')
     mp = create_model(sys, kind='mapping')
     opt = create_model(sys, kind='optimize')
-    # optimize(mp, opt, n=20)
+    optimize(mp, opt, n=11)

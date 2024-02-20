@@ -402,7 +402,7 @@ def best_breakdown():
     imp_bd = {}
     
     # UASB
-    mdl1 = create_model()
+    mdl1 = create_model(n_stages=2, reactor_type='UASB')
     sys1 = mdl1.system
     sub1, = sys1.subsystems
     
@@ -412,36 +412,48 @@ def best_breakdown():
     sys1.simulate(**kwargs)
     llc_bd['uasb_t1'] = categorize_cashflow(sub1.TEA)
     imp_bd['uasb_t1'] = categorize_all_impacts(sub1.LCA)
-    # best at LCA
+    
+    # best at LCA  
+    mdl1 = create_model(n_stages=1, reactor_type='UASB')
+    sys1 = mdl1.system
+    sub1, = sys1.subsystems
     smp = np.array([4, 22])
     for p, v in zip(mdl1.parameters, smp): p.setter(v)
     sys1.simulate(**kwargs)
-    llc_bd['uasb_l1'] = categorize_cashflow(sub1.TEA)
-    imp_bd['uasb_l1'] = categorize_all_impacts(sub1.LCA)
+    llc_bd['uasb_l1'] = categorize_cashflow(sys1.TEA)
+    imp_bd['uasb_l1'] = categorize_all_impacts(sys1.LCA)
     
     # FB
-    mdl2 = create_model(reactor_type='FB')
+    mdl2 = create_model(n_stages=2, reactor_type='FB')
     sys2 = mdl2.system
-    sys2.units[0].bead_lifetime = 30
+    u2 = sys2.flowsheet.unit
+    u2.R1.bead_lifetime = u2.R2.bead_lifetime = 30
     sub2, = sys2.subsystems
     
     # best at TEA
-    smp = np.array([2, 0.9, 2, 35])
+    smp = np.array([2, 0.9, 2, 22])
     for p, v in zip(mdl2.parameters, smp): p.setter(v)
     sys2.simulate(**kwargs)
     llc_bd['fb_t1'] = categorize_cashflow(sub2.TEA)
     imp_bd['fb_t1'] = categorize_all_impacts(sub2.LCA)
+    
     # best at LCA
-    smp = np.array([2, 0.75, 2, 22])
+    mdl2 = create_model(n_stages=1, reactor_type='FB')
+    sys2 = mdl2.system
+    u2 = sys2.flowsheet.unit
+    u2.R1.bead_lifetime = 30
+    sub2, = sys2.subsystems
+    smp = np.array([2, 0.9, 4, 22])
     for p, v in zip(mdl2.parameters, smp): p.setter(v)
     sys2.simulate(**kwargs)
-    llc_bd['fb_l1'] = categorize_cashflow(sub2.TEA)
-    imp_bd['fb_l1'] = categorize_all_impacts(sub2.LCA)
+    llc_bd['fb_l1'] = categorize_cashflow(sys2.TEA)
+    imp_bd['fb_l1'] = categorize_all_impacts(sys2.LCA)
     
     # PB
-    mdl3 = create_model(reactor_type='PB')
+    mdl3 = create_model(n_stages=2, reactor_type='PB')
     sys3 = mdl3.system
-    sys3.units[0].bead_lifetime = 30
+    u3 = sys3.flowsheet.unit
+    u3.R1.bead_lifetime = u3.R2.bead_lifetime = 30
     sub3, = sys3.subsystems
     
     smp = np.array([2, 1, 22])
@@ -450,9 +462,18 @@ def best_breakdown():
     # best at TEA & LCA
     llc_bd['pb_t1'] = categorize_cashflow(sub3.TEA)
     imp_bd['pb_t1'] = categorize_all_impacts(sub3.LCA)
+    
     # best at LCA
-    # llc_bd['pb_l1'] = categorize_cashflow(sys3.TEA)
-    # imp_bd['pb_l1'] = categorize_all_impacts(sys3.LCA)
+    mdl3 = create_model(n_stages=1, reactor_type='PB')
+    sys3 = mdl3.system
+    u3 = sys3.flowsheet.unit
+    u3.R1.bead_lifetime = 30
+    sub3, = sys3.subsystems
+    smp = np.array([2, 1, 22])
+    for p, v in zip(mdl3.parameters, smp): p.setter(v)
+    sys3.simulate(**kwargs)
+    llc_bd['pb_l1'] = categorize_cashflow(sys3.TEA)
+    imp_bd['pb_l1'] = categorize_all_impacts(sys3.LCA)
     
     llc_bd = pd.DataFrame.from_dict(llc_bd).transpose()
     llc_bd['fug_ch4'] = 0
@@ -491,7 +512,7 @@ def stacked_bar(data, save_as=''):
         ax.bar(x, y, width=0.55, bottom=y_offset, color=c, hatch=hat)
         yp += (y>=0) * y
         yn += (y<0) * y
-    ax.scatter(x, data.loc[:,'total'], marker='x', c='white')
+    ax.scatter(x, data.loc[:,'total'], marker='x', c='white', zorder=10)
 
     ax.tick_params(axis='y', which='major', direction='inout', length=10, labelsize=12)
     ax.tick_params(axis='y', which='minor', direction='inout', length=6)
@@ -1036,17 +1057,18 @@ if __name__ == '__main__':
     # dt = load_data(ospath.join(results_path, 'table_compiled.xlsx'), nrows=3553)
     # dt = dt[dt.loc[:,'Reactor type'] != 'UASB']
     # encap_out = compare_DVs(dt, save_as='FB_vs_PB.xlsx')
-    # smp = run_UA_SA(seed=187, N=1000)
+    # smp = run_UA_SA(N=1000)
     # _rerun_failed_samples(187, 'PB')
-    # out = calc_3way_diff(187)
-    # outs = MCF_pb_to_fb(187)
-    # data = MCF_25_vs_75(187)
+    # breakdown_uasa(965)
+    # plot_univariate_kdes(965)
+    # out = calc_3way_diff(965)
+    # outs = MCF_pb_to_fb(965)
+    # data = MCF_25_vs_75(965)
     # MCF_bubble_plot(outs)
-    # breakdown_uasa(187)
+    # MCF_bubble_plot(data)
     # mapping(suffix='specific')
     # mapping(suffix='common')
-    # plot_univariate_kdes(187)
-    mapping(reactor_type='PB')
-    # out = Spearman_corr(187, True)
+    # mapping(reactor_type='PB')
+    out = Spearman_corr(965, True)
 
     

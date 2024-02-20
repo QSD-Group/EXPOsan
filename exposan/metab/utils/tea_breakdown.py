@@ -39,7 +39,7 @@ def categorize_construction_cashflow(vessel, beads, dm, others, units, start, co
             arr[:start] += installed_cost * construction_schedule
 
 def categorize_cashflow(tea):
-    C_D, C_FC, C_WC, D, L, LI, LP, LPl, C, S, T, I, NE, CF, DF, NPV, CNPV = tea.get_cashflow_table().to_numpy().transpose() * 1e6
+    C_D, C_FC, C_WC, D, L, LI, LP, LPl, C, S, T, I, TE, FL, NE, CF, DF, NPV, CNPV = tea.get_cashflow_table().to_numpy().transpose() * 1e6
     DF /= 1e6
     start = tea._start
     years = tea._years

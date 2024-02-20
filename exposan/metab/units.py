@@ -1431,8 +1431,9 @@ class METAB_PackedBed(METAB_FluidizedBed):
         if hasattr(self, 'f_void'):
             f_old = self.f_void
             Vg = self.V_gas
-            Vg_subtract = self.V_liq/(1/f - 1/f_old)
-            self.V_gas = max(0.1, Vg-Vg_subtract)
+            if f != f_old: 
+                Vg_subtract = self.V_liq/(1/f - 1/f_old)
+                self.V_gas = max(0.1, Vg-Vg_subtract)
         self.f_void = f
     
     @property
