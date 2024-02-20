@@ -62,7 +62,7 @@ default_inf_kwargs['asm1'] = {
         'S_NH':44.2,
         'S_NO':0.01,
         'S_O':0.01,
-        '    ':221.085,
+        'S_S':221.085,
         'X_BA':0.01,
         },
     'units': ('m3/d', 'mg/L'),
@@ -258,31 +258,28 @@ def create_system(
     if aeration_processes:
         aer = aeration_processes
     else:
-        # does Q matter for WW?
-        aerFac = pc.DiffusedAeration('aerFac', DO_ID, DOsat=8.0, V=V_fa, Q_air=576.1015981)        
-        aer1 = pc.DiffusedAeration('aer1', DO_ID, DOsat=0.513883933, V=V_ae, Q_air=764.3221021)                  #  need to think about KLa
-        aer2 = pc.DiffusedAeration('aer2', DO_ID, DOsat=0.335350912, V=V_ae, Q_air=1617.996689)                  #  need to think about KLa
-        aer3 = pc.DiffusedAeration('aer3', DO_ID, DOsat=0.544596125, V=V_ae, Q_air=578.9891202)                  #  need to think about KLa
+        aer1 = pc.DiffusedAeration('aer1', DO_ID, KLa=120, DOsat=8.0, V=V_ae)                  #  need to think about KLa
+        aer2 = pc.DiffusedAeration('aer2', DO_ID, KLa=240, DOsat=8.0, V=V_ae)                  #  need to think about KLa
 
     # Create unit operations
-    WW = su.DynamicInfluent('Waste_Water', outs=[DYINF], 
+    WW = su.DynamicInfluent('Waste_Water', outs=[DYINF],
                             data_file=os.path.join(data_path, 'dynamic_influent_q_fixed_test.tsv'))
 
     ANO = su.CSTR('ANO', ins=[DYINF, INT, RAS], V_max=V_an,
                  aeration=None, suspended_growth_model=asm)
 
-    FAC = su.CSTR('FAC', ANO-0, V_max=V_fa, aeration=aerFac,
+    FAC = su.CSTR('FAC', ANO-0, V_max=V_fa, aeration=aer1,
                   DO_ID=DO_ID, suspended_growth_model=asm)
 
-    AER1 = su.CSTR('AER1', FAC-0, V_max=V_ae, aeration=aer1, 
-                   DO_ID=DO_ID, suspended_growth_model=asm)
+    AER1 = su.CSTR('AER1', FAC-0, V_max=V_ae, aeration=aer2,
+                 DO_ID=DO_ID, suspended_growth_model=asm)
 
-    AER2 = su.CSTR('AER2', AER1-0, V_max=V_ae, aeration=aer2, 
-                   DO_ID=DO_ID, suspended_growth_model=asm)
+    AER2 = su.CSTR('AER2', AER1-0, V_max=V_ae, aeration=aer2,
+                 DO_ID=DO_ID, suspended_growth_model=asm)
 
-    AER3 = su.CSTR('AER3', AER2-0, [INT, 'treated'], split=[0.601,0.399],                               # split ratio
-                   V_max=V_ae, aeration=aer3,
-                   DO_ID=DO_ID, suspended_growth_model=asm)
+    AER3 = su.CSTR('AER3', AER2-0, [INT, 'treated'], split=[0.601,0.399],                             # split ratio
+                 V_max=V_ae, aeration=aer2,
+                 DO_ID=DO_ID, suspended_growth_model=asm)
 
     C1 = su.FlatBottomCircularClarifier('C1', AER3-1, [effluent, RAS, WAS],
                                         underflow=Q_ras, wastage=Q_was, surface_area=1700,
@@ -331,11 +328,11 @@ def run(t, t_step, method=None, **kwargs):
         # atol=1e-3,
         export_state_to=f'results/sol_{t}d_{method}.xlsx',
         **kwargs)
-    # srt = get_SRT(sys, biomass_IDs)
-    # print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
+    srt = get_SRT(sys, biomass_IDs)
+    print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
 
 if __name__ == '__main__':
-    t = 101
+    t = 50
     t_step = 1
     # method = 'RK45'
     # method = 'RK23'
@@ -347,3 +344,4 @@ if __name__ == '__main__':
     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
     print(f'Time span 0-{t}d \n')
     run(t, t_step, method=method)
+
