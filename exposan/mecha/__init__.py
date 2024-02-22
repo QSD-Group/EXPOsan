@@ -15,8 +15,8 @@ for license details.
 
 import os
 from exposan.utils import _init_modules
-mechanistic_path = os.path.dirname(__file__)
-module = os.path.split(mechanistic_path)[-1]
+mecha_path = os.path.dirname(__file__)
+module = os.path.split(mecha_path)[-1]
 data_path, results_path, figures_path = \
     _init_modules(module, include_data_path=True, include_figures_path=True)
 del os
@@ -62,7 +62,7 @@ from . import model
 from .model import *
 
 __all__ = (
-    'mechanistic_path',
+    'mecha_path',
     'data_path',
     'results_path',
     'figures_path',
