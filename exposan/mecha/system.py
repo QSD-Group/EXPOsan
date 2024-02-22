@@ -12,7 +12,7 @@ for license details.
 '''
 import os, numpy as np, qsdsan as qs
 from qsdsan import processes as pc, sanunits as su, WasteStream, System
-from qsdsan.utils import time_printer, load_data, get_SRT
+from qsdsan.utils import time_printer, load_data, get_SRT, ospath
 from exposan.mecha import data_path
 
 __all__ = (
@@ -365,8 +365,36 @@ sys.simulate(
     export_state_to=f'results/sol_{t}d_{method}.xlsx',
     )
 
+#%%
+
+answer = load_data(ospath.join(data_path, 'train_val_test_online_dataset_.xlsx'), sheet='train_val_test_online_dataset')
+
+from datetime import datetime
+day0 = datetime.strptime('5-5-2021 11:57 AM', '%m-%d-%Y %I:%M %p') # set the first time stamp as 'day0'
+calc_day = lambda t_stamp: (t_stamp-day0).total_seconds()/60/60/24
+
+t_stamp = answer.index
+t_intp = calc_day(t_stamp).to_numpy()
+
+import matplotlib.pyplot as plt, matplotlib.ticker as ticker
+
+def plot_raw_vs_smooth(x1, y1, x2, y2):
+    fig, ax = plt.subplots(figsize=(15, 3)) # figure size
+    l1, = ax.plot(x1, y1, label='Model') # first plot = raw data
+    l2, = ax.plot(x2, y2, label='Answer') # second plot = smoothed result
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(1)) # x-axis tick interval
+    ax.set_xlabel('Time [day]') # x-axis title
+    ax.legend(handles=[l1,l2])
+    return fig, ax
 
 
+
+
+
+
+
+
+#%%
 # @time_printer
 # def run(t, t_step, method=None, **kwargs):
 #     sys = create_system()
