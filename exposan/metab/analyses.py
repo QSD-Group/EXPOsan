@@ -10,8 +10,8 @@ This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
-from qsdsan.utils import ospath, load_data
-from exposan.metab import create_system, create_model, run_model, \
+from qsdsan.utils import ospath, load_data, SanUnitScope
+from exposan.metab import create_system, create_model, run_model, meshgrid_sample,\
     data_path, results_path, figures_path
 from exposan.metab.utils import categorize_cashflow, categorize_all_impacts
 from time import time
@@ -90,6 +90,73 @@ def _rerun_failed_samples(seed, rt='PB'):
     sys.units[0].set_init_conc(**C)
     mdl = create_model(sys, kind='uasa', exception_hook='raise')
     run_model(mdl, sample, seed='temp')
+
+from exposan.metab import ks_22
+def run_PB_over_diffusivity_HRT(n=10, run=True):
+    sys = create_system(reactor_type='PB')
+    mdl = qs.Model(sys, exception_hook='warn')
+    param = mdl.parameter
+    metric = mdl.metric
+    u = sys.flowsheet.unit
+    s = sys.flowsheet.stream
+    u.R1.bead_diameter = 1.0
+    u.R1.voidage = 0.45
+    u.R1.model.rate_function.params['rate_constants'] = ks_22
+
+    @param(name='Bead-to-water diffusivity fraction', units='', kind='coupled',
+           element='Encapsulation', baseline=0.55, bounds=(0.2, 1.1))
+    def set_f_diff(f):
+        u.R1.f_diff = f
+    
+    @param(name='HRT', units='d', kind='coupled', element='System',
+           baseline=1/3, bounds=(0.2, 1))
+    def set_tau(tau):
+        V = s.inf.F_vol * 24 * tau
+        u.R1.V_liq = V
+        u.R1.V_gas = V*0.1
+        u.R1._prep_model()
+        u.R1._compile_ODE()
+        u.R1.scope = SanUnitScope(u.R1)   
+    
+    @metric(name='COD removal', units='%', element='Process')
+    def get_rcod():
+        rcod = 1 - s.eff_dg.COD/s.inf.COD
+        return rcod*100
+    
+    @metric(name='CH4 collection', units='kg/d', element='Biogas')
+    def get_QCH4():
+        return (s.bg.imass['S_ch4'] + s.bge.imass['S_ch4'])*0.2506728377314149*24
+
+    @metric(name='fugitive CH4 emission', units='kg/d', element='Biogas')
+    def get_fug_CH4():
+        return s.eff_dg.imass['S_ch4']*0.2506728377314149*24
+    
+    C0_bulk = np.array([
+        1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
+        4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
+        2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 
+        4.708e+00, 1.239e+00, 4.838e-01, 1.423e+00, 8.978e-01, 
+        2.959e+00, 1.467e+00, 
+        4.924e-02, 4.000e-02, 2.000e-02, 9.900e+02
+        ])
+    C = dict(zip(s.inf.components.IDs, C0_bulk))
+    samples, gridx, gridy = meshgrid_sample(*mdl.parameters, n)
+    mdl.load_samples(samples)
+    if run:
+        ys = []
+        i = 0
+        for smp in samples:
+            i += 1
+            print(f'\n{i}  {"="*20}')
+            for p, v in zip(mdl.parameters, smp): p.setter(v)
+            u.R1.set_init_conc(**C)
+            sys.simulate(state_reset_hook='reset_cache', method='BDF', t_span=(0, 400))
+            ys.append([m() for m in mdl.metrics])
+        
+        mdl.table.iloc[:,-3:] = ys
+        mpath = ospath.join(results_path, 'PB_diffusivity_HRT.xlsx')
+        mdl.table.to_excel(mpath)
+    return mdl, samples
 
 
 #%% discrete-DV scatter plot
@@ -955,7 +1022,6 @@ def Spearman_corr(seed, save=True):
                 p.to_excel(writer, sheet_name=f'{k}_p')
     return stats
 
-#%%
 #%% Spearman's rho between K_TSS and steady-state TSS
 # fb = load_data(ospath.join(results_path, 'FB1P_187.xlsx'),
 #                header=[0,1], skiprows=[2,], nrows=1000)
@@ -972,7 +1038,6 @@ def Spearman_corr(seed, save=True):
 
 #%% heatmaps
 # from scipy.interpolate import griddata
-from exposan.metab.models import meshgrid_sample
 
 def togrid(df, mdl, n):
     zs = df.iloc[:,-len(mdl.metrics):].to_numpy().T
@@ -982,12 +1047,17 @@ def togrid(df, mdl, n):
     zzs = zzs.reshape((zzs.shape[0], *xx.shape))
     return xx, yy, zzs
 
-def plot_heatmap(xx, yy, z, baseline=[], save_as='', specific=False, hrt=True):
+def plot_heatmap(xx, yy, z, z2=None, baseline=[], save_as='', specific=False, hrt=True):
     fig, ax = plt.subplots(figsize=(5, 4.5))
     if specific:
         nm = mpl.colors.TwoSlopeNorm(vmin=z.min(), vcenter=np.median(z), vmax=z.max())
     else: nm = 'linear'
-    pos = ax.pcolormesh(xx, yy, z, shading='gouraud', norm=nm)
+    zmin = z.min()
+    zmax = z.max()
+    if z2 is not None: 
+        zmin = min(zmin, z2.min())
+        zmax = max(zmax, z2.max())
+    pos = ax.pcolormesh(xx, yy, z, shading='gouraud', norm=nm, vmin=zmin, vmax=zmax)
     cbar = fig.colorbar(pos, ax=ax)
     cbar.ax.tick_params(labelsize=11)
     # ax.ticklabel_format(axis='y', scilimits=[-2,3], useMathText=False)
@@ -1004,44 +1074,71 @@ def plot_heatmap(xx, yy, z, baseline=[], save_as='', specific=False, hrt=True):
     if specific: 
         lct = mpl.ticker.FixedLocator(np.arange(0.2, 0.71, 0.1)) if hrt \
             else mpl.ticker.FixedLocator(np.percentile(z, np.linspace(0,100,7)))
+        levels = 7
     else:
         lct = mpl.ticker.MaxNLocator(7)
+        levels = lct.tick_values(zmin, zmax)
+    if z2 is not None: 
+        cs2 = ax.contour(xx, yy, z2, 
+                        colors='#90918e', origin='lower', 
+                        linestyles='dashed', linewidths=1, 
+                        extent=(xx[0,0], xx[0,-1], yy[0,0], yy[-1,0]),
+                        # locator=lct
+                        levels=levels,
+                        )
+        ax.clabel(cs2, cs2.levels, inline=True, fontsize=10)   
     cs = ax.contour(xx, yy, z, 
                     colors='white', origin='lower', 
                     linestyles='dashed', linewidths=1, 
                     extent=(xx[0,0], xx[0,-1], yy[0,0], yy[-1,0]),
-                    locator=lct
+                    # locator=lct
+                    levels=levels,
                     )
-    ax.clabel(cs, cs.levels, inline=True, 
-              fontsize=10)
+    ax.clabel(cs, cs.levels, inline=True, fontsize=10)
+     
     if baseline:
         ax.plot(*baseline, marker='^', ms=7, mfc='white', mec='black', mew=0.5)
     fig.savefig(ospath.join(figures_path, save_as), dpi=300, transparent=True)
 
-def mapping(data=None, n=20, reactor_type='PB'):
+def mapping(data=None, data2=None, n=20, reactor_type='PB'):
     if data is None:
-        data = load_data(ospath.join(results_path, f'optimized_{reactor_type}.xlsx'),
-                         header=[0,1], skiprows=[2,])
+        if reactor_type == 'PB':
+            data = load_data(ospath.join(results_path, f'optimized_{reactor_type}_45.xlsx'),
+                             header=[0,1], skiprows=[2,])
+            data2 = load_data(ospath.join(results_path, f'optimized_{reactor_type}_35.xlsx'),
+                             header=[0,1], skiprows=[2,])
+        else:
+            data = load_data(ospath.join(results_path, f'optimized_{reactor_type}.xlsx'),
+                             header=[0,1], skiprows=[2,])
     sys = create_system(reactor_type=reactor_type)
     mdl = create_model(sys, kind='mapping')
-    bl = [p.baseline for p in mdl.parameters]
+    # bl = [p.baseline for p in mdl.parameters]
     opt = create_model(sys, kind='optimize')
     xx, yy, zzs = togrid(data, mdl, n)
-    hrt = True
-    for z, m in zip(zzs, (*opt.parameters, *mdl.metrics)):
+    if data2 is not None: 
+        xx2, yy2, zzs2 = togrid(data2, mdl, n)
+    for i, m in enumerate((*opt.parameters, *mdl.metrics)):
+        z = zzs[i]
+        z2 = None if data2 is None else zzs2[i]
         file = f'heatmaps/{reactor_type}/{m.name}.png'
-        plot_heatmap(xx, yy, z, 
-                      bl, 
-                      save_as=file, 
-                      # specific=(suffix=='specific'), 
-                      hrt=hrt)
-        hrt = False
-    if reactor_type == 'FB':  z = zzs[1]*5/(1-zzs[0])*zzs[0]
-    else: z = zzs[0]*5*(1-0.39)/0.39
+        plot_heatmap(xx, yy, z, z2, save_as=file)
+    if reactor_type == 'FB':  z = zzs[1]*50/(1-zzs[0])*zzs[0]
+    else: 
+        z = zzs[0]*50*(1-0.45)/0.45
+        z2 = zzs2[0]*50*(1-0.35)/0.35 if data2 is not None else None
     file = f'heatmaps/{reactor_type}/Total bead volume.png'    
-    plot_heatmap(xx, yy, z, 
-                 bl, 
-                 save_as=file)
+    plot_heatmap(xx, yy, z, z2, save_as=file)
+
+def _map_diff_hrt(mdl, data=None, n=10):
+    if data is None:
+        data = load_data(ospath.join(results_path, 'PB_diffusivity_HRT.xlsx'),
+                         header=[0,1], skiprows=[2,])
+    xx, yy, zzs = togrid(data, mdl, n)
+    for z, m in zip(zzs, mdl.metrics):
+        file = f'heatmaps/PB_diff_hrt/{m.name}.png'
+        plot_heatmap(xx, yy, z, save_as=file)
+    
+    
 
 #%%
 if __name__ == '__main__':
@@ -1068,7 +1165,10 @@ if __name__ == '__main__':
     # MCF_bubble_plot(data)
     # mapping(suffix='specific')
     # mapping(suffix='common')
-    # mapping(reactor_type='PB')
-    out = Spearman_corr(965, True)
+    # mapping(reactor_type='FB', n=20)
+    mapping(reactor_type='PB', n=11)
+    # out = Spearman_corr(965, True)
+    # mdl, smps = run_PB_over_diffusivity_HRT()
+    # _map_diff_hrt(mdl)
 
     

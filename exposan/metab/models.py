@@ -32,7 +32,9 @@ __all__ = ('add_discrete_dv',
            'add_metrics',
            'create_model',
            'run_model',
-           'optimize')
+           'optimize',
+           'meshgrid_sample', 
+           'ks_22')
 
 #%%
 def reset_init_conc(sys):
@@ -333,18 +335,22 @@ def add_optimizing_DVs(model):
     
     u.R1.bead_diameter = 1.0
     if reactor_type == 'FB':
-        # hrt_bounds = (1, 3)
-        hrt_bounds = (3, 5)        
+        hrt_bounds = (0.5, 3)
+        # hrt_bounds = (3, 5)        
         @param(name='Bead volume fraction', units='', kind='coupled', element='FB',
-               baseline=0.1, bounds=(0.03, 0.25))
+                baseline=0.1, bounds=(0.03, 0.25))
         def set_FB_bead_fvol(f):
             u.R1.voidage = 1-f
+        # hrt_bounds = (2.7, 5)
+        # u.R1.voidage = 0.97
     else:
         hrt_bounds = (1/24, 1.5)
-        @param(name='Voidage', units='', kind='coupled', element='PB',
-               baseline=0.39, bounds=(0.35, 0.45))
-        def set_PB_voidage(v):
-            u.R1.voidage = v
+        # @param(name='Voidage', units='', kind='coupled', element='PB',
+        #        baseline=0.39, bounds=(0.35, 0.45))
+        # def set_PB_voidage(v):
+        #     u.R1.voidage = v
+        # u.R1.voidage = 0.35
+        u.R1.voidage = 0.45
 
     @param(name='HRT', units='d', kind='coupled', element='System',
            baseline=1/3, bounds=hrt_bounds)
@@ -737,7 +743,7 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
                                         )
             study.optimize(objective, 
                            n_trials=100, 
-                           timeout=1000
+                           timeout=500
                            )
             res = np.array([v for k,v in study.best_params.items()])
             for p, v in zip(mdl_opt.parameters, res): p.setter(v)
@@ -757,7 +763,7 @@ def optimize(mapping, mdl_opt, n=20, mpath=''):
 
 #%%
 if __name__ == '__main__':
-    sys = create_system(reactor_type='PB')
+    sys = create_system(reactor_type='FB')
     mp = create_model(sys, kind='mapping')
     opt = create_model(sys, kind='optimize')
-    optimize(mp, opt, n=11)
+    optimize(mp, opt, n=20)
