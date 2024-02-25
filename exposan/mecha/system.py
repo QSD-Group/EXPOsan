@@ -150,22 +150,6 @@ default_asm_kwargs['asm1'] = dict(
 #     )
 
 default_init_conds = dict.fromkeys(valid_models)
-# default_init_conds['asm1'] = {
-#     'S_I':30,
-#     'S_S':69.5,
-#     'X_I':51.2,
-#     'X_S':202.32,
-#     'X_BH':28.17,
-#     'X_BA':0,
-#     'X_P':0,
-#     'S_O':0,
-#     'S_NO':0,
-#     'S_NH':31.56,
-#     'S_ND':6.95,
-#     'X_ND':10.59,
-#     'S_ALK':7*12,
-#     }              # same as initial condition excel file
-
 default_init_conds['asm1'] = {
     'S_I':30,
     'S_S':69.5,
@@ -176,11 +160,27 @@ default_init_conds['asm1'] = {
     'X_P':0,
     'S_O':0,
     'S_NO':0,
-    'S_NH':0.23,         # lower initial NO from 'train_val_test_online_dataset'
+    'S_NH':31.56,
     'S_ND':6.95,
     'X_ND':10.59,
     'S_ALK':7*12,
-    }
+    }              # same as initial condition excel file
+
+# default_init_conds['asm1'] = {
+#     'S_I':30,
+#     'S_S':69.5,
+#     'X_I':51.2,
+#     'X_S':202.32,
+#     'X_BH':28.17,
+#     'X_BA':0,
+#     'X_P':0,
+#     'S_O':0,
+#     'S_NO':0,
+#     'S_NH':0.23,         # lower initial NH from 'train_val_test_online_dataset'
+#     'S_ND':6.95,
+#     'X_ND':10.59,
+#     'S_ALK':7*12,
+#     }
 
 # default_init_conds['asm2d'] = {
 #     'S_F':5,
@@ -274,12 +274,12 @@ def create_system(
     if aeration_processes:
         aer = aeration_processes
     else:
-        aer1 = pc.DiffusedAeration('aer1', DO_ID, KLa=120, DOsat=8.0, V=V_ae)                  #  need to think about KLa
-        aer2 = pc.DiffusedAeration('aer2', DO_ID, KLa=240, DOsat=8.0, V=V_ae)                  #  need to think about KLa
-        # aerFac = pc.DiffusedAeration('aerFac', DO_ID, DOsat=8.0, V=V_fa, Q_air=576.1015981*24)
-        # aer1 = pc.DiffusedAeration('aer1', DO_ID, DOsat=8.0, V=V_ae, Q_air=764.3221021*24)                  #  need to think about KLa
-        # aer2 = pc.DiffusedAeration('aer2', DO_ID, DOsat=8.0, V=V_ae, Q_air=1617.996689*24)                  #  need to think about KLa
-        # aer3 = pc.DiffusedAeration('aer3', DO_ID, DOsat=8.0, V=V_ae, Q_air=578.9891202*24)
+        # aer1 = pc.DiffusedAeration('aer1', DO_ID, KLa=240, DOsat=8.0, V=V_ae)                  #  need to think about KLa
+        # aer2 = pc.DiffusedAeration('aer2', DO_ID, KLa=240, DOsat=8.0, V=V_ae)                  #  need to think about KLa
+        aerFac = pc.DiffusedAeration('aerFac', DO_ID, DOsat=8.0, V=V_fa, Q_air=576.1015981*24)
+        aer1 = pc.DiffusedAeration('aer1', DO_ID, DOsat=8.0, V=V_ae, Q_air=764.3221021*24)                  #  need to think about KLa
+        aer2 = pc.DiffusedAeration('aer2', DO_ID, DOsat=8.0, V=V_ae, Q_air=1617.996689*24)                  #  need to think about KLa
+        aer3 = pc.DiffusedAeration('aer3', DO_ID, DOsat=8.0, V=V_ae, Q_air=578.9891202*24)
 
     # Create unit operations
     WW = su.DynamicInfluent('Waste_Water', outs=[DYINF],
@@ -288,27 +288,27 @@ def create_system(
     ANO = su.CSTR('ANO', ins=[DYINF, INT, RAS], V_max=V_an,
                  aeration=None, suspended_growth_model=asm)
 
-    FAC = su.CSTR('FAC', ANO-0, V_max=V_fa, aeration=aer1,
-                  DO_ID=DO_ID, suspended_growth_model=asm)
-    # FAC = su.CSTR('FAC', ANO-0, V_max=V_fa, aeration=aerFac,
+    # FAC = su.CSTR('FAC', ANO-0, V_max=V_fa, aeration=aer1,
     #               DO_ID=DO_ID, suspended_growth_model=asm)
+    FAC = su.CSTR('FAC', ANO-0, V_max=V_fa, aeration=aerFac,
+                  DO_ID=DO_ID, suspended_growth_model=asm)
 
-    AER1 = su.CSTR('AER1', FAC-0, V_max=V_ae, aeration=aer2,
-                 DO_ID=DO_ID, suspended_growth_model=asm)
-    # AER1 = su.CSTR('AER1', FAC-0, V_max=V_ae, aeration=aer1,
-    #             DO_ID=DO_ID, suspended_growth_model=asm)
+    # AER1 = su.CSTR('AER1', FAC-0, V_max=V_ae, aeration=aer2,
+    #               DO_ID=DO_ID, suspended_growth_model=asm)
+    AER1 = su.CSTR('AER1', FAC-0, V_max=V_ae, aeration=aer1,
+                DO_ID=DO_ID, suspended_growth_model=asm)
 
-    AER2 = su.CSTR('AER2', AER1-0, V_max=V_ae, aeration=aer2,
-                 DO_ID=DO_ID, suspended_growth_model=asm)
     # AER2 = su.CSTR('AER2', AER1-0, V_max=V_ae, aeration=aer2,
     #               DO_ID=DO_ID, suspended_growth_model=asm)
+    AER2 = su.CSTR('AER2', AER1-0, V_max=V_ae, aeration=aer2,
+                  DO_ID=DO_ID, suspended_growth_model=asm)
 
-    AER3 = su.CSTR('AER3', AER2-0, [INT, 'treated'], split=[0.601,0.399],                             # split ratio
-                 V_max=V_ae, aeration=aer2,
-                 DO_ID=DO_ID, suspended_growth_model=asm)
-    # AER3 = su.CSTR('AER3', AER2-0, [INT, 'treated'], split=[0.601,0.399],                               # split ratio
-    #               V_max=V_ae, aeration=aer3,
+    # AER3 = su.CSTR('AER3', AER2-0, [INT, 'treated'], split=[0.601,0.399],                             # split ratio
+    #               V_max=V_ae, aeration=aer2,
     #               DO_ID=DO_ID, suspended_growth_model=asm)
+    AER3 = su.CSTR('AER3', AER2-0, [INT, 'treated'], split=[0.601,0.399],                               # split ratio
+                  V_max=V_ae, aeration=aer3,
+                  DO_ID=DO_ID, suspended_growth_model=asm)
 
     C1 = su.FlatBottomCircularClarifier('C1', AER3-1, [effluent, RAS, WAS],
                                         underflow=Q_ras, wastage=Q_was, surface_area=1700,
@@ -339,14 +339,16 @@ def create_system(
         path = os.path.join(data_path, f'initial_conditions_{kind}.xlsx')
         df = load_data(path, sheet='default')
         batch_init(sys, df)
-    sys.set_dynamic_tracker(WW, ANO, FAC, AER1, AER2, AER3, C1, effluent)
+    sys.set_dynamic_tracker(effluent)
+    # sys.set_dynamic_tracker(WW, ANO, FAC, AER1, AER2, AER3, C1, effluent)
+
     sys.set_tolerance(rmol=1e-6)
 
     return sys
 
 #%%
 
-t = 5
+t = 10
 t_step = 1
 # method = 'RK45'
 # method = 'RK23'
@@ -382,15 +384,16 @@ def plot_raw_vs_smooth(x1, y1, x2, y2):
     fig, ax = plt.subplots(figsize=(15, 3)) # figure size
     l1, = ax.plot(x1, y1, label='Model') # first plot = raw data
     l2, = ax.plot(x2, y2, label='Answer') # second plot = smoothed result
-    ax.xaxis.set_major_locator(ticker.MultipleLocator(1)) # x-axis tick interval
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(30)) # x-axis tick interval
     ax.set_xlabel('Time [day]') # x-axis title
     ax.legend(handles=[l1,l2])
     return fig, ax
 
+plot_raw_vs_smooth(sys.flowsheet.stream.effluent.scope.time_series, sys.flowsheet.stream.effluent.scope.record[:,sys.units[1].components.indices(['S_NH'])],
+                   t_intp, answer['NH4'])
 
-
-
-
+plot_raw_vs_smooth(sys.flowsheet.stream.effluent.scope.time_series, sys.flowsheet.stream.effluent.scope.record[:,sys.units[1].components.indices(['S_NO'])],
+                   t_intp, answer['NO3'])
 
 
 
