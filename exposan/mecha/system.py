@@ -25,14 +25,12 @@ __all__ = (
     )
 
 # %%
-
 # =============================================================================
 # Parameters and util functions
 # =============================================================================
 
-# Q = 117706.01           # influent flowrate [m3/d]  --------------------------------- need to contact organizer (54033.37: avg)
-                        # 'train_val_test_online_dataset: Q_inf'
-                        # does not match 'train_val_test_dynamic_influent: Q_in'
+# Q = 117706.01           # influent flowrate [m3/d]
+                          # average from 'train_val_test_dynamic_influent': 54033.37
 
 Temp = 273.15 + 18.36     # temperature [K]
                           # average from 'train_val_test_online_dataset': 18.36
@@ -61,7 +59,7 @@ default_inf_kwargs['asm1'] = {
         'S_ND':9.52,
         'S_NH':44.2,
         'S_NO':0.01,
-        'S_O':0.01,
+        'S_O':0.30,
         'S_S':221.085,
         'X_BA':0.01,
         },
@@ -150,22 +148,6 @@ default_asm_kwargs['asm1'] = dict(
 #     )
 
 default_init_conds = dict.fromkeys(valid_models)
-default_init_conds['asm1'] = {
-    'S_I':30,
-    'S_S':69.5,
-    'X_I':51.2,
-    'X_S':202.32,
-    'X_BH':28.17,
-    'X_BA':0,
-    'X_P':0,
-    'S_O':0,
-    'S_NO':0,
-    'S_NH':31.56,
-    'S_ND':6.95,
-    'X_ND':10.59,
-    'S_ALK':7*12,
-    }              # same as initial condition excel file
-
 # default_init_conds['asm1'] = {
 #     'S_I':30,
 #     'S_S':69.5,
@@ -176,11 +158,27 @@ default_init_conds['asm1'] = {
 #     'X_P':0,
 #     'S_O':0,
 #     'S_NO':0,
-#     'S_NH':0.23,         # lower initial NH from 'train_val_test_online_dataset'
+#     'S_NH':31.56,
 #     'S_ND':6.95,
 #     'X_ND':10.59,
 #     'S_ALK':7*12,
-#     }
+#     }              # same as initial condition excel file
+
+default_init_conds['asm1'] = {
+    'S_I':30,
+    'S_S':69.5,
+    'X_I':51.2,
+    'X_S':202.32,
+    'X_BH':28.17,
+    'X_BA':0,
+    'X_P':0,
+    'S_O':0,
+    'S_NO':0,
+    'S_NH':0.23,         # lower initial NH from 'train_val_test_online_dataset'
+    'S_ND':6.95,
+    'X_ND':10.59,
+    'S_ALK':7*12,
+    }
 
 # default_init_conds['asm2d'] = {
 #     'S_F':5,
@@ -271,44 +269,53 @@ def create_system(
     RAS = WasteStream('RAS', T=Temp)
 
     # Process models
-    if aeration_processes:
-        aer = aeration_processes
-    else:
-        # aer1 = pc.DiffusedAeration('aer1', DO_ID, KLa=240, DOsat=8.0, V=V_ae)                  #  need to think about KLa
+    # if aeration_processes:
+    #     aer = aeration_processes
+    # else:
+        # aer1 = pc.DiffusedAeration('aer1', DO_ID, KLa=120, DOsat=8.0, V=V_ae)                  #  need to think about KLa
         # aer2 = pc.DiffusedAeration('aer2', DO_ID, KLa=240, DOsat=8.0, V=V_ae)                  #  need to think about KLa
-        aerFac = pc.DiffusedAeration('aerFac', DO_ID, DOsat=8.0, V=V_fa, Q_air=576.1015981*24)
-        aer1 = pc.DiffusedAeration('aer1', DO_ID, DOsat=8.0, V=V_ae, Q_air=764.3221021*24)                  #  need to think about KLa
-        aer2 = pc.DiffusedAeration('aer2', DO_ID, DOsat=8.0, V=V_ae, Q_air=1617.996689*24)                  #  need to think about KLa
-        aer3 = pc.DiffusedAeration('aer3', DO_ID, DOsat=8.0, V=V_ae, Q_air=578.9891202*24)
+        # # aerFac = pc.DiffusedAeration('aerFac', DO_ID, DOsat=8.0, V=V_fa, Q_air=576.1015981*24)
+        # aer1 = pc.DiffusedAeration('aer1', DO_ID, DOsat=8.0, V=V_ae, Q_air=764.3221021*24)                  #  need to think about KLa
+        # aer2 = pc.DiffusedAeration('aer2', DO_ID, DOsat=8.0, V=V_ae, Q_air=1617.996689*24)                  #  need to think about KLa
+        # aer3 = pc.DiffusedAeration('aer3', DO_ID, DOsat=8.0, V=V_ae, Q_air=578.9891202*24)
 
     # Create unit operations
     WW = su.DynamicInfluent('Waste_Water', outs=[DYINF],
-                            data_file=os.path.join(data_path, 'dynamic_influent_q_fixed_test.tsv'))
+                            data_file=os.path.join(data_path, 'dynamic_influent_train_val_test.tsv'))
 
     ANO = su.CSTR('ANO', ins=[DYINF, INT, RAS], V_max=V_an,
                  aeration=None, suspended_growth_model=asm)
 
+    FAC = su.CSTR('FAC', ANO-0, V_max=V_fa, aeration=None,
+                  DO_ID=DO_ID, suspended_growth_model=asm)
     # FAC = su.CSTR('FAC', ANO-0, V_max=V_fa, aeration=aer1,
     #               DO_ID=DO_ID, suspended_growth_model=asm)
-    FAC = su.CSTR('FAC', ANO-0, V_max=V_fa, aeration=aerFac,
-                  DO_ID=DO_ID, suspended_growth_model=asm)
+    # FAC = su.CSTR('FAC', ANO-0, V_max=V_fa, aeration=aerFac,
+    #               DO_ID=DO_ID, suspended_growth_model=asm)
 
+    AER1 = su.CSTR('AER1', FAC-0, V_max=V_ae, aeration=None,
+                   DO_ID=DO_ID, suspended_growth_model=asm)
     # AER1 = su.CSTR('AER1', FAC-0, V_max=V_ae, aeration=aer2,
     #               DO_ID=DO_ID, suspended_growth_model=asm)
-    AER1 = su.CSTR('AER1', FAC-0, V_max=V_ae, aeration=aer1,
-                DO_ID=DO_ID, suspended_growth_model=asm)
+    # AER1 = su.CSTR('AER1', FAC-0, V_max=V_ae, aeration=aer1,
+    #             DO_ID=DO_ID, suspended_growth_model=asm)
 
+    AER2 = su.CSTR('AER2', AER1-0, V_max=V_ae, aeration=None,
+                   DO_ID=DO_ID, suspended_growth_model=asm)
     # AER2 = su.CSTR('AER2', AER1-0, V_max=V_ae, aeration=aer2,
     #               DO_ID=DO_ID, suspended_growth_model=asm)
-    AER2 = su.CSTR('AER2', AER1-0, V_max=V_ae, aeration=aer2,
-                  DO_ID=DO_ID, suspended_growth_model=asm)
+    # AER2 = su.CSTR('AER2', AER1-0, V_max=V_ae, aeration=aer2,
+    #               DO_ID=DO_ID, suspended_growth_model=asm)
 
+    AER3 = su.CSTR('AER3', AER2-0, [INT, 'treated'], split=[0.601,0.399],                             # split ratio
+                  V_max=V_ae, aeration=None,
+                  DO_ID=DO_ID, suspended_growth_model=asm)
     # AER3 = su.CSTR('AER3', AER2-0, [INT, 'treated'], split=[0.601,0.399],                             # split ratio
     #               V_max=V_ae, aeration=aer2,
     #               DO_ID=DO_ID, suspended_growth_model=asm)
-    AER3 = su.CSTR('AER3', AER2-0, [INT, 'treated'], split=[0.601,0.399],                               # split ratio
-                  V_max=V_ae, aeration=aer3,
-                  DO_ID=DO_ID, suspended_growth_model=asm)
+    # AER3 = su.CSTR('AER3', AER2-0, [INT, 'treated'], split=[0.601,0.399],                               # split ratio
+    #               V_max=V_ae, aeration=aer3,
+    #               DO_ID=DO_ID, suspended_growth_model=asm)
 
     C1 = su.FlatBottomCircularClarifier('C1', AER3-1, [effluent, RAS, WAS],
                                         underflow=Q_ras, wastage=Q_was, surface_area=1700,
@@ -336,7 +343,7 @@ def create_system(
         else:
             df = init_conds
     else:
-        path = os.path.join(data_path, f'initial_conditions_{kind}.xlsx')
+        path = os.path.join(data_path, f'initial_conditions_{kind}_lownh.xlsx')
         df = load_data(path, sheet='default')
         batch_init(sys, df)
     sys.set_dynamic_tracker(effluent)
@@ -348,82 +355,83 @@ def create_system(
 
 #%%
 
-t = 10
-t_step = 1
-# method = 'RK45'
+# t = 50
+# t_step = 1
+# # method = 'RK45'
 # method = 'RK23'
-# method = 'DOP853'
-# method = 'Radau'
-method = 'BDF'
+# # method = 'DOP853'
+# # method = 'Radau'
+# # method = 'BDF'
 
-sys = create_system()
-sys.simulate(
-    state_reset_hook='reset_cache',
-    t_span=(0,t),
-    t_eval=np.arange(0, t+t_step, t_step),
-    method=method,
-    # rtol=1e-2,
-    # atol=1e-3,
-    export_state_to=f'results/sol_{t}d_{method}.xlsx',
-    )
+# sys = create_system()
+# sys.simulate(
+#     state_reset_hook='reset_cache',
+#     t_span=(0,t),
+#     t_eval=np.arange(0, t+t_step, t_step),
+#     method=method,
+#     # rtol=1e-2,
+#     # atol=1e-3,
+#     print_t=True,
+#     export_state_to=f'results/sol_{t}d_{method}.xlsx',
+#     )
+
+# #%%
+
+# answer = load_data(ospath.join(data_path, 'train_val_test_online_dataset_.xlsx'), sheet='train_val_test_online_dataset')
+
+# from datetime import datetime
+# day0 = datetime.strptime('5-5-2021 11:57 AM', '%m-%d-%Y %I:%M %p') # set the first time stamp as 'day0'
+# calc_day = lambda t_stamp: (t_stamp-day0).total_seconds()/60/60/24
+
+# t_stamp = answer.index
+# t_intp = calc_day(t_stamp).to_numpy()
+
+# import matplotlib.pyplot as plt, matplotlib.ticker as ticker
+
+# def plot_raw_vs_smooth(x1, y1, x2, y2):
+#     fig, ax = plt.subplots(figsize=(15, 3)) # figure size
+#     l1, = ax.plot(x1, y1, label='Model') # first plot = raw data
+#     l2, = ax.plot(x2, y2, label='Answer') # second plot = smoothed result
+#     ax.xaxis.set_major_locator(ticker.MultipleLocator(30)) # x-axis tick interval
+#     ax.set_xlabel('Time [day]') # x-axis title
+#     ax.legend(handles=[l1,l2])
+#     return fig, ax
+
+# plot_raw_vs_smooth(t_intp, answer['NH4'],
+#                     sys.flowsheet.stream.effluent.scope.time_series, sys.flowsheet.stream.effluent.scope.record[:,sys.units[1].components.indices(['S_NH'])])
+
+# plot_raw_vs_smooth(t_intp, answer['NO3'],
+#                     sys.flowsheet.stream.effluent.scope.time_series, sys.flowsheet.stream.effluent.scope.record[:,sys.units[1].components.indices(['S_NO'])])
+
+# plot_raw_vs_smooth(t_intp, answer['DO_1'],
+#                     sys.flowsheet.stream.effluent.scope.time_series, sys.flowsheet.stream.effluent.scope.record[:,sys.units[1].components.indices(['S_O'])])
 
 #%%
+@time_printer
+def run(t, t_step, method=None, **kwargs):
+    sys = create_system()
+    sys.simulate(
+        state_reset_hook='reset_cache',
+        t_span=(0,t),
+        t_eval=np.arange(0, t+t_step, t_step),
+        method=method,
+        # rtol=1e-2,
+        # atol=1e-3,
+        export_state_to=f'results/sol_{t}d_{method}.xlsx',
+        **kwargs)
+    srt = get_SRT(sys, biomass_IDs)
+    print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
 
-answer = load_data(ospath.join(data_path, 'train_val_test_online_dataset_.xlsx'), sheet='train_val_test_online_dataset')
-
-from datetime import datetime
-day0 = datetime.strptime('5-5-2021 11:57 AM', '%m-%d-%Y %I:%M %p') # set the first time stamp as 'day0'
-calc_day = lambda t_stamp: (t_stamp-day0).total_seconds()/60/60/24
-
-t_stamp = answer.index
-t_intp = calc_day(t_stamp).to_numpy()
-
-import matplotlib.pyplot as plt, matplotlib.ticker as ticker
-
-def plot_raw_vs_smooth(x1, y1, x2, y2):
-    fig, ax = plt.subplots(figsize=(15, 3)) # figure size
-    l1, = ax.plot(x1, y1, label='Model') # first plot = raw data
-    l2, = ax.plot(x2, y2, label='Answer') # second plot = smoothed result
-    ax.xaxis.set_major_locator(ticker.MultipleLocator(30)) # x-axis tick interval
-    ax.set_xlabel('Time [day]') # x-axis title
-    ax.legend(handles=[l1,l2])
-    return fig, ax
-
-plot_raw_vs_smooth(sys.flowsheet.stream.effluent.scope.time_series, sys.flowsheet.stream.effluent.scope.record[:,sys.units[1].components.indices(['S_NH'])],
-                   t_intp, answer['NH4'])
-
-plot_raw_vs_smooth(sys.flowsheet.stream.effluent.scope.time_series, sys.flowsheet.stream.effluent.scope.record[:,sys.units[1].components.indices(['S_NO'])],
-                   t_intp, answer['NO3'])
-
-
-
-#%%
-# @time_printer
-# def run(t, t_step, method=None, **kwargs):
-#     sys = create_system()
-#     sys.simulate(
-#         state_reset_hook='reset_cache',
-#         t_span=(0,t),
-#         t_eval=np.arange(0, t+t_step, t_step),
-#         method=method,
-#         # rtol=1e-2,
-#         # atol=1e-3,
-#         export_state_to=f'results/sol_{t}d_{method}.xlsx',
-#         **kwargs)
-#     srt = get_SRT(sys, biomass_IDs)
-#     print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
-
-# if __name__ == '__main__':
-#     t = 50
-#     t_step = 1
-#     # method = 'RK45'
-#     # method = 'RK23'
-#     # method = 'DOP853'
-#     # method = 'Radau'
-#     method = 'BDF'
-#     # method = 'LSODA'
-#     msg = f'Method {method}'
-#     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
-#     print(f'Time span 0-{t}d \n')
-#     run(t, t_step, method=method)
-
+if __name__ == '__main__':
+    t = 50
+    t_step = 1
+    # method = 'RK45'
+    # method = 'RK23'
+    # method = 'DOP853'
+    # method = 'Radau'
+    method = 'BDF'
+    # method = 'LSODA'
+    msg = f'Method {method}'
+    print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
+    print(f'Time span 0-{t}d \n')
+    run(t, t_step, method=method)
