@@ -77,7 +77,9 @@ sensitive_params = {
 #%%
 def import_scada_data():
 
-    file = ospath.join(data_path, 'conti_scada_cali_1.xlsx')
+    # file = ospath.join(data_path, 'conti_scada_cali_1.xlsx')
+    file = ospath.join(data_path, 'conti_scada_cali_2.xlsx')
+
     # file = ospath.join(data_path, 'conti_scada_cali.xlsx')
 
     result_scada = load_data(file, sheet=0, index_col=None)

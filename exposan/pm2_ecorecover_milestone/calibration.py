@@ -105,7 +105,8 @@ if __name__ == '__main__':
     assert isinstance(df, pd.DataFrame)
     assert df.shape[0] == 500
 
-    df.to_excel(ospath.join(results_path, 'optuna_cali_1_seed777.xlsx'))
+    # df.to_excel(ospath.join(results_path, 'optuna_cali_1_seed777.xlsx'))
+    df.to_excel(ospath.join(results_path, 'optuna_cali_2_seed777.xlsx'))
     # df.to_excel(ospath.join(results_path, 'optuna_cali_seed777.xlsx'))
 
     # df.to_excel(ospath.join(results_path, 'conti_optuna_kill.xlsx'))

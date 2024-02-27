@@ -37,13 +37,20 @@ __all__ = (
 
 # Q = 402.42           # influent flowrate [m3/d]
 # Q = 449.06           # influent flowrate [m3/d]
-Temp = 288.32          # temperature [K]
+# Temp = 288.32          # temperature [K]                   cali1
+Temp = 285.88          # temperature [K]                     cali2
 # Temp = 286.08          # temperature [K]
 
-V_mix = 60.23
+# V_mix = 60.23          #                                    cali1
+# V_pbr = 77.49
+# V_mem = 7.04
+# V_ret = 5.66
+
+V_mix = 60.09             #                                   cali2
 V_pbr = 77.49
-V_mem = 7.04
+V_mem = 7.09
 V_ret = 5.66
+
 # V_mix = 66.23
 # V_pbr = 77.49
 # V_mem = 7.03
@@ -51,7 +58,9 @@ V_ret = 5.66
 
 biomass_IDs = ('X_ALG',)
 
-T_pbr, I_pbr = EDV.batch_init(os.path.join(data_path, 'exo_vars_dynamic_influent_cali_1.xlsx'), 'linear')
+# T_pbr, I_pbr = EDV.batch_init(os.path.join(data_path, 'exo_vars_dynamic_influent_cali_1.xlsx'), 'linear')
+T_pbr, I_pbr = EDV.batch_init(os.path.join(data_path, 'exo_vars_dynamic_influent_cali_2.xlsx'), 'linear')
+
 # T_pbr, I_pbr = EDV.batch_init(os.path.join(data_path, 'exo_vars_dynamic_influent_cali.xlsx'), 'linear')
 
 T_mix = T_pbr
@@ -74,20 +83,36 @@ default_pm2_kwargs = dict(
     )
 
 default_init_conds = {
-        'X_CHL':0.55,
-        'X_ALG':110.72,
-        'X_CH':5.03,
-        'X_LI':20.52,
+        'X_CHL':0.65,
+        'X_ALG':129.02,
+        'X_CH':5.86,
+        'X_LI':23.91,
         'S_CO2':30.0,
         'S_A':5.0,
         'S_F':5.0,
         'S_O2':5.0,
-        'S_NH':8.16,
-        'S_NO':6.41,
-        'S_P':0.08,
-        'X_N_ALG':0.17,
-        'X_P_ALG':0.04,
-    }
+        'S_NH':21.38,
+        'S_NO':1.58,
+        'S_P':0.07,
+        'X_N_ALG':0.19,
+        'X_P_ALG':0.05,
+        }                             # cali2
+
+# default_init_conds = {
+#         'X_CHL':0.55,
+#         'X_ALG':110.72,
+#         'X_CH':5.03,
+#         'X_LI':20.52,
+#         'S_CO2':30.0,
+#         'S_A':5.0,
+#         'S_F':5.0,
+#         'S_O2':5.0,
+#         'S_NH':8.16,
+#         'S_NO':6.41,
+#         'S_P':0.08,
+#         'X_N_ALG':0.17,
+#         'X_P_ALG':0.04,
+#     }                                    # cali1
 # default_init_conds = {
 #         'X_CHL':2.53,
 #         'X_ALG':505.97,
@@ -156,8 +181,10 @@ def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
 
     # Create unit operations
 
+    # SE = su.DynamicInfluent('SE', outs=[DYINF],
+    #                         data_file=os.path.join(data_path, 'dynamic_influent_cali_1.tsv'))
     SE = su.DynamicInfluent('SE', outs=[DYINF],
-                            data_file=os.path.join(data_path, 'dynamic_influent_cali_1.tsv'))
+                            data_file=os.path.join(data_path, 'dynamic_influent_cali_2.tsv'))
     # SE = su.DynamicInfluent('SE', outs=[DYINF],
     #                         data_file=os.path.join(data_path, 'dynamic_influent_cali.tsv'))
 
@@ -202,7 +229,9 @@ def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
                   aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
     PBR19 = su.CSTR('PBR19', ins=PBR18-0, V_max=V_pbr/20,
                   aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
-    PBR20 = su.CSTR('PBR20', ins=PBR19-0, outs=[ME, INT], split=[0.74, 0.26], V_max=V_pbr/20,
+    # PBR20 = su.CSTR('PBR20', ins=PBR19-0, outs=[ME, INT], split=[0.74, 0.26], V_max=V_pbr/20,
+    #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
+    PBR20 = su.CSTR('PBR20', ins=PBR19-0, outs=[ME, INT], split=[0.78, 0.22], V_max=V_pbr/20,
                   aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
     # PBR20 = su.CSTR('PBR20', ins=PBR19-0, outs=[ME, INT], split=[0.52, 0.48], V_max=V_pbr/20,
     #               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
@@ -212,7 +241,9 @@ def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
 
     MEV = su.CSTR('MEV', ins=MEM-1, V_max=V_mem, aeration=None, suspended_growth_model=None)
 
-    POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.96)
+    # POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.96)       # cali1
+    POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.95)          # cali2
+
     # POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.97)
 
     CENT = su.Splitter('CENT', POST_MEM-1, outs=[CEN, ALG], split={'X_CHL':0.33,
@@ -243,7 +274,8 @@ def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
 
     init_conds = init_conds or default_init_conds
     batch_init(sys,
-               os.path.join(data_path, 'initial_conditions_pm2_dynamic_influent_cali_1.xlsx'), 'default')
+               os.path.join(data_path, 'initial_conditions_pm2_dynamic_influent_cali_2.xlsx'), 'default')
+               # os.path.join(data_path, 'initial_conditions_pm2_dynamic_influent_cali_1.xlsx'), 'default')   # cali1
                # os.path.join(data_path, 'initial_conditions_pm2_dynamic_influent_cali.xlsx'), 'default')
 
     sys.set_dynamic_tracker(SE, MIX, PBR1, PBR20, RET, TE, CEN, ALG)
