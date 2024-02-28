@@ -153,7 +153,7 @@ class RawWater(SanUnit):
 
 # %%
 
-agnp_path = ospath.join(data_path, '_AgNP_CWF_2.csv')
+agnp_path = ospath.join(data_path, '_agnp_cwf.csv')
 
 class AgNP_CWF(SanUnit):
     '''
