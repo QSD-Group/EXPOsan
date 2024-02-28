@@ -1,0 +1,48 @@
+<ns0:svg xmlns:ns0="http://www.w3.org/2000/svg" xmlns:ns1="http://www.w3.org/1999/xlink" width="354pt" height="51pt" viewBox="0.00 0.00 354.00 51.00">
+<ns0:g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 47)">
+
+<ns0:g id="edge1" class="edge">
+<ns0:title>163059918243:c-&gt;163059918120:c</ns0:title>
+<ns0:path fill="none" stroke="#90918e" d="M82.19,-21.5C103.49,-21.5 129.72,-21.5 151.68,-21.5" />
+<ns0:polygon fill="#90918e" stroke="#90918e" points="151.76,-25 161.76,-21.5 151.76,-18 151.76,-25" />
+<ns0:g id="a_edge1-label"><ns0:a ns1:title="Temperature: 298.15 K&#10;Pressure: 101325 Pa&#10;Liquid flow: 0.308 kmol/hr">
+<ns0:text text-anchor="middle" x="122" y="-25.3" font-family="Arial" font-size="14.00" fill="#90918e"> raw water</ns0:text>
+</ns0:a>
+</ns0:g>
+</ns0:g>
+
+<ns0:g id="edge2" class="edge">
+<ns0:title>163059918120:c-&gt;163037916434:w</ns0:title>
+<ns0:path fill="none" stroke="#90918e" d="M233.1,-21.5C261.01,-21.5 301.28,-21.5 336.5,-21.5" />
+<ns0:g id="a_edge2-label"><ns0:a ns1:title="Temperature: 298.15 K&#10;Pressure: 101325 Pa&#10;Liquid flow: 0.308 kmol/hr">
+<ns0:text text-anchor="middle" x="284" y="-25.3" font-family="Arial" font-size="14.00" fill="#90918e"> treated water</ns0:text>
+</ns0:a>
+</ns0:g>
+</ns0:g>
+
+<ns0:g id="node1" class="node">
+<ns0:title>163059918243</ns0:title>
+<ns0:g id="a_node1"><ns0:a ns1:title="No capital costs or utilities">
+<ns0:polygon fill="#555f69" stroke="#90918e" points="82,-43 0,-43 0,0 82,0 82,-43" />
+<ns0:text text-anchor="middle" x="41" y="-25.3" font-family="Arial" font-size="14.00" fill="white">C1</ns0:text>
+<ns0:text text-anchor="middle" x="41" y="-10.3" font-family="Arial" font-size="14.00" fill="white">Raw water</ns0:text>
+</ns0:a>
+</ns0:g>
+</ns0:g>
+
+<ns0:g id="node2" class="node">
+<ns0:title>163059918120</ns0:title>
+<ns0:g id="a_node2"><ns0:a ns1:title="Electricity consumption: 3.26e-05 kW&#10;Utility cost: 5.54e-06 USD/hr&#10;Purchase cost: 23,300 USD&#10;Installed equipment cost: 23,300 USD">
+<ns0:polygon fill="#555f69" stroke="#90918e" points="233,-43 162,-43 162,0 233,0 233,-43" />
+<ns0:text text-anchor="middle" x="197.5" y="-25.3" font-family="Arial" font-size="14.00" fill="white">C2</ns0:text>
+<ns0:text text-anchor="middle" x="197.5" y="-10.3" font-family="Arial" font-size="14.00" fill="white">POU UV</ns0:text>
+</ns0:a>
+</ns0:g>
+</ns0:g>
+
+<ns0:g id="node3" class="node">
+<ns0:title>163037916434</ns0:title>
+<ns0:polygon fill="#f98f60" stroke="#90918e" points="346,-21.5 337.75,-28.5 337.75,-14.5 346,-21.5" />
+</ns0:g>
+</ns0:g>
+</ns0:svg>
