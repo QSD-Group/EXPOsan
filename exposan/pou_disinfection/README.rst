@@ -101,4 +101,4 @@ Uncertainty and sensitivity analyses are performed through :class:`Model` object
 
 References
 ----------
-.. [1] Elijah et al., Assessing the relative sustainability of point-of-use water disinfection technologies for off-grid communities. In Prep._
+.. [1] Elijah et al., Assessing the relative sustainability of point-of-use water disinfection technologies for off-grid communities. *In Prep*.
