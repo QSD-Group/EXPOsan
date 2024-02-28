@@ -133,10 +133,10 @@ def add_shared_parameters(model, ppl=pou.ppl):
 
 
 def import_water_data(water_source):
-    suffix = '1_gw.tsv' if water_source.lower() in ('gw', 'groundwater') \
-        else '2_sw.tsv'
-    water_path = os.path.join(data_path, f'_raw_water{suffix}')
-    return load_data(water_path)
+    water_path = os.path.join(data_path, '_raw_water.xlsx')
+    sheet = 'water1_gw' if water_source.lower() in ('gw', 'groundwater') \
+        else 'water2_sw'
+    return load_data(water_path, sheet=sheet)
 
 
 # %%
@@ -212,7 +212,7 @@ def create_modelB(system_kwargs={}, **model_kwargs):
     batch_setting_unit_params(water_data, modelB, unitB.B1)
     
     # AgNP CWF
-    agnp_cwf_path = os.path.join(data_path, '_AgNP_CWF_2.csv')
+    agnp_cwf_path = os.path.join(data_path, '_agnp_cwf.csv')
     agnp_cwf_data = load_data(agnp_cwf_path)
     batch_setting_unit_params(agnp_cwf_data, modelB, unitB.B2)
 
