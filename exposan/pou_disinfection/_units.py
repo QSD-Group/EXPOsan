@@ -86,8 +86,8 @@ class RawWater(SanUnit):
         'Ecoli': 200000, # CFU/mg
         'turbidity': 5, # NTU
         'TOC': 5, # mg/L
-        'Ca': 30, # mg/L
-        'Mg': 30, # mg/L
+        'Ca': 30, # hardness from Ca as CaCO3, mg/L
+        'Mg': 30, # hardness from Mg as CaCO3, mg/L
         'UVT': 0.8,
         }
     
@@ -95,8 +95,8 @@ class RawWater(SanUnit):
         'Ecoli': 200000, # CFU/mg
         'turbidity': 20, # NTU
         'TOC': 10, # mg/L
-        'Ca': 10, # mg/L
-        'Mg': 10, # mg/L
+        'Ca': 10, # hardness from Ca as CaCO3, mg/L
+        'Mg': 10, # hardness from Mg as CaCO3, mg/L
         'UVT': 0.8,
         }
 
