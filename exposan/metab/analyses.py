@@ -430,6 +430,7 @@ def plot_joint(df, save_as='', kde=True):
         showmeans=True,
         showfliers=False,
         dodge=False,
+        whis=(5,95),
         saturation=1,
         boxprops=boxprops,
         meanprops=meanprops,
@@ -1148,7 +1149,7 @@ if __name__ == '__main__':
     # plot_clusters(partial=True)
     # plot_clusters(partial=False)
     # out = compare_DVs()
-    # plot_diff()
+    plot_diff()
     # llc, imp = best_breakdown()
     # plot_breakdown()
     # dt = load_data(ospath.join(results_path, 'table_compiled.xlsx'), nrows=3553)
@@ -1166,7 +1167,7 @@ if __name__ == '__main__':
     # mapping(suffix='specific')
     # mapping(suffix='common')
     # mapping(reactor_type='FB', n=20)
-    mapping(reactor_type='PB', n=11)
+    # mapping(reactor_type='PB', n=11)
     # out = Spearman_corr(965, True)
     # mdl, smps = run_PB_over_diffusivity_HRT()
     # _map_diff_hrt(mdl)
