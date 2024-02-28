@@ -30,6 +30,7 @@ def test_metab():
     # #!!! add back test after biosteam pump design gets updated.
     # # assert np.isclose(UASB_M.TEA.annualized_NPV, -19128.91741988097, rtol)
     # assert np.isclose(UASB_M.LCA.total_impacts['GWP100'], 613761.7802056486, rtol)
+
     
     #!!! Unsure why this may fail sometimes
     FB_H = create_system(n_stages=2, reactor_type='FB', gas_extraction='H', tot_HRT=4)

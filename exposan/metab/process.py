@@ -46,7 +46,8 @@ def flex_rhos_adm1(state_arr, params, T_op=298.15, pH=False, gas_transfer=True):
     Kab = params['Ka_base']
     KH_dH = params['K_H_dH']
     Ka_dH = params['Ka_dH']
-    kLa = params['kLa']
+    # kLa = params['kLa']
+    kLa = T_op * 0.56 + 27.9
     T_base = params['T_base']
     root = params['root']
     
