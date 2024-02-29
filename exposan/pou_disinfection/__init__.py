@@ -18,7 +18,7 @@ from qsdsan import ImpactIndicator, ImpactItem, StreamImpactItem
 from exposan.utils import _init_modules
 pou_path = os.path.dirname(__file__)
 module = os.path.split(pou_path)[-1]
-data_path, results_path = _init_modules(module, include_data_path=True)
+data_path, results_path, figures_path = _init_modules(module, include_data_path=True, include_figures_path=True)
 
 
 # %%
