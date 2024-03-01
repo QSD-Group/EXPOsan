@@ -46,9 +46,15 @@ def run_contextual_analysis():
     e_item = ImpactItem.get_item('Electricity')
     
     all_results = {}
-    for ID in (sys.ID for sys in all_syses):
-        all_results[f'{ID}_cost'] = {}
-        all_results[f'{ID}_gwp'] = {}
+    # Sort by metric type
+    for metric in ('cost', 'gwp'):
+        for ID in (sys.ID for sys in all_syses):
+            all_results[f'{ID}_{metric}'] = {}
+    
+    # # Sort by country
+    # for ID in (sys.ID for sys in all_syses):
+    #     all_results[f'{ID}_cost'] = {}
+    #     all_results[f'{ID}_gwp'] = {}
     
     for community, data in contextual_data.iterrows():
         PowerUtility.price = data.e_cost
@@ -77,7 +83,7 @@ def plot_world_map():
     # https://www.naturalearthdata.com/downloads/110m-cultural-vectors/
     world_folder = os.path.join(data_path, 'ne_110m_admin_0_countries')
     world_shape = gpd.read_file(os.path.join(world_folder, 'ne_110m_admin_0_countries.shp'))
-    
+
     # Extract only useful columns
     world_trimmed = gpd.GeoDataFrame(geometry=world_shape['geometry'].copy())
     for column in ['NAME', 'ISO_A2', 'CONTINENT']:
@@ -110,5 +116,5 @@ def plot_world_map():
 # %%
 
 if __name__ == '__main__':
-    # run_contextual_analysis()
-    plot_world_map()
+    run_contextual_analysis()
+    # plot_world_map()

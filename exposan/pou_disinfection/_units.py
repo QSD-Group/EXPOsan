@@ -425,7 +425,7 @@ class POU_UV(SanUnit):
         log_removal =  self.uv_slope*self.uv_dose + self.uv_intercept
         log_N = log_removal + log10(No) #CFU/mL
         N = 10**(log_N)
-        # N = exp(log_red  uction + log10(No))
+        # N = exp(log_reduction + log10(No))
          
         # Log (N0/N) = Kd × UV dose where kd = inactivation rate constant
         
