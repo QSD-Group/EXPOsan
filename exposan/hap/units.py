@@ -20,12 +20,12 @@ References
 import qsdsan as qs, numpy as np
 from qsdsan import SanUnit
 from biosteam import Stream, Facility
-from biosteam.units import BatchBioreactor, StorageTank
+from biosteam.units import BatchBioreactor, StorageTank, RotaryVacuumFilter as RVF
 from biosteam.units.decorators import cost
-from exposan.hap import SimpleBlower
-from math import ceil
+from exposan.hap import SimpleBlower, Locations, SimpleCVRP
+# from math import ceil
 
-__all__ = ('HApFermenter', 'SBoulardiiFermenter', 'PrecipitateProcessing',)
+__all__ = ('HApFermenter', 'YeastProduction', 'PrecipitateProcessing',)
 
 #%%
 @cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
@@ -165,7 +165,7 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
 @cost('Reactor duty', 'Heat exchangers', CE=522, cost=23900,
       S=20920000.0, n=0.7, BM=2.2, N='Number of reactors',
       magnitude=True) # Based on a similar heat exchanger
-class SBoulardiiFermenter(Facility, qs.SanUnit, BatchBioreactor):
+class YeastProduction(Facility, qs.SanUnit, BatchBioreactor):
     
     '''
     Fermenter for the production of S. Boulardii active yeast, process design
@@ -176,12 +176,15 @@ class SBoulardiiFermenter(Facility, qs.SanUnit, BatchBioreactor):
     cost_items = {}
     _units = {
         **BatchBioreactor._units,
+        'Effluent flowrate': 'gal/hr',
         'Aeration duty': 'm3/hr',
               }
     _N_ins = 3      # [0] carbon source (e.g., molasses + water), [1] nutrients (N & P), [2] minerals, vitamins etc. + seed
     _N_outs = 2     # [0] vent, [1] fermentation broth
     V_wf = 0.7
-    auxiliary_unit_names = ('blower',)
+    auxiliary_unit_names = ('blower', )
+    
+    _centrifuge_cost_factor = 1.0
     
     # USD/kg
     _prices = {
@@ -210,7 +213,6 @@ class SBoulardiiFermenter(Facility, qs.SanUnit, BatchBioreactor):
     def __init__(self, ID='', N_parallel_HApFermenter=10,
                  tau=12, T=273.15+35, P=101325,
                  yield_on_sugar=1.45, 
-                 # design_production_rate=80, 
                  sugar_concentration=275.95,
                  N_to_sugar_ratio=0.01245,
                  P_to_sugar_ratio=0.00522,
@@ -221,7 +223,7 @@ class SBoulardiiFermenter(Facility, qs.SanUnit, BatchBioreactor):
                  labor_wage=21.68,  # assume 20% over San Francisco minimum wage by default
                  ):
 
-        SanUnit.__init__(self, ID, ins=None, outs=(), thermo=None, init_with='WasteStream')
+        SanUnit.__init__(self, ID, ins=None, outs=['vent', 'yeast'], thermo=None, init_with='WasteStream')
         self._system = None
         self._other_units = None
         self._init(tau=tau, N=2, T=T, P=P)
@@ -230,7 +232,6 @@ class SBoulardiiFermenter(Facility, qs.SanUnit, BatchBioreactor):
                                    ins=Stream(self.ID+'blower_in', phase='g'),
                                    outs=Stream(self.ID+'blower_out', phase='g'))
         self.yield_on_sugar = yield_on_sugar                    # kg yeast / kg sugar
-        # self.design_production_rate = design_production_rate    # kg yeast / hr
         self.sugar_concentration = sugar_concentration          # kg / m3 fermentation broth
         self.N_to_sugar_ratio = N_to_sugar_ratio
         self.P_to_sugar_ratio = P_to_sugar_ratio
@@ -254,12 +255,9 @@ class SBoulardiiFermenter(Facility, qs.SanUnit, BatchBioreactor):
         '''[float] Design rate of production of fresh yeast biomass, in kg/hr.'''
         isa = isinstance
         units = [u for u in self._system.path if isa(u, HApFermenter)]
-        r_yeast = sum(u.ins[1].imass['Yeast'] for u in units) * self.N_parallel_HApFermenter
+        r_yeast = sum(u.ins[1].imass['Yeast']/0.8 for u in units) * self.N_parallel_HApFermenter
         return r_yeast
-    # @design_production_rate.setter
-    # def design_production_rate(self, r_yeast):
-    #     self._r_yeast = r_yeast
-        
+
     @property
     def yield_on_sugar(self):
         '''[float] Yeast yield in kg fresh yeast biomass / kg sugar fed.'''
@@ -404,7 +402,7 @@ class SBoulardiiFermenter(Facility, qs.SanUnit, BatchBioreactor):
         super()._design()
         D = self.design_results
         V_i =  D['Reactor volume']
-        D['Effluent flowrate'] = self.effluent.F_vol
+        D['Effluent flowrate'] = self.effluent.get_total_flow('gal/hr')
         N = D['Number of reactors']
         D['Aeration duty'] = Q_air = V_i * N * self.V_wf * self.aeration_duty
         r_dim = self.reactor_height_to_diameter_ratio
@@ -419,13 +417,19 @@ class SBoulardiiFermenter(Facility, qs.SanUnit, BatchBioreactor):
     
     def _cost(self):
         super()._cost()
+        D = self.design_results
+        C = self.baseline_purchase_costs
+        q = D['Effluent flowrate']
+        C['Centrifuge'] = (894 + 211*q) * self._centrifuge_cost_factor
+        self.F_BM['Centrifuge'] = 1.5
+        self.power_utility.consumption += q*0.035
         sugars, nutrients, seed = self.ins
         sugars.price = self.sugar_price * (1 - sugars.imass['H2O']/sugars.F_mass)
         nutrients.price = self.nutrient_price
         seed.price = self.mineral_vitamin_price * (1 - seed.imass['Yeast']/seed.F_mass)
-        self.add_OPEX['NaCl'] = self.effluent.F_vol * 0.762 * self._prices['NaCl']  # final concentration of NaCl in kg/m3 fermentation broth
-        D = self.design_results
-        self.add_OPEX['Cleaning'] = self.tau_0 / D['Batch time'] * self.labor_wage
+        opex = self.add_OPEX = {}
+        opex['NaCl'] = self.effluent.F_vol * 0.762 * self._prices['NaCl']  # final concentration of NaCl in kg/m3 fermentation broth
+        opex['Operator'] = self.labor_wage * 8/24
 
 
 #%%

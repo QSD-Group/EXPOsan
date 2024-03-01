@@ -144,16 +144,37 @@ class Locations:
 #%%
 class SimpleCVRP:
     
-    def __init__(self, locations, vehicle_capcity):
+    def __init__(self, locations, vehicle_capacity):
         self._locations = locations
-        self._dm = dm = np.int64(locations.demands)
-        self.vehicle_capcity = vc = int(vehicle_capcity)
-        self._n_vehicle = nv = ceil(sum(dm) / vc)
+        self._dm = np.int64(locations.demands)
         self._M_dist = np.int64(locations.distance_matrix)
-        self._capacities = [vehicle_capcity] * nv
-        self.manager = manager = pywrapcp.RoutingIndexManager(locations.size, nv, 0)
-        self.routing = pywrapcp.RoutingModel(manager)
+        self.vehicle_capacity = vehicle_capacity
         self.register()
+    
+    @property
+    def vehicle_capacity(self):
+        return self._vc
+    @vehicle_capacity.setter
+    def vehicle_capacity(self, vc):
+        self._vc = vc = int(vc)
+        self._n_vehicle = nv = ceil(sum(self._dm)/vc)
+        self._capacities = [vc] * nv
+        self._manager = None
+        self._routing = None
+        
+    @property
+    def manager(self):
+        if self._manager is None:
+            n_loc = self._locations.size
+            nv = self._n_vehicle
+            self._manager = pywrapcp.RoutingIndexManager(n_loc, nv, 0)
+        return self._manager
+    
+    @property
+    def routing(self):
+        if self._routing is None:
+            self._routing = pywrapcp.RoutingModel(self.manager)
+        return self._routing
     
     def register(self):
         M_dist = self._M_dist
@@ -265,25 +286,25 @@ class SimpleCVRP:
         return fig, ax
 
 #%%
-n = 115
-seed = 958
-locs = Locations.random_within_area(
-    n, seed=seed, distance_metric='cityblock',
-    x_range=(0, 13.36e3), # in meter
-    y_range=(0, 11.31e3),
-    demands=110,
-    )
+# n = 115
+# seed = 958
+# locs = Locations.random_within_area(
+#     n, seed=seed, distance_metric='cityblock',
+#     x_range=(0, 13.36e3), # in meter
+#     y_range=(0, 11.31e3),
+#     demands=110,
+#     )
 
-#%%
-cvr = SimpleCVRP(locs, vehicle_capcity=2000)
-cvr.solve()
+# #%%
+# cvr = SimpleCVRP(locs, vehicle_capacity=2000)
+# cvr.solve()
 
-# path = locs.solve_best_roundtrip()
-# dist = locs.path_cost(path)
-# locs.plot_path(path)
-# fig, ax = locs.plot()
-# fig.savefig('locations.png')
+# # path = locs.solve_best_roundtrip()
+# # dist = locs.path_cost(path)
+# # locs.plot_path(path)
+# # fig, ax = locs.plot()
+# # fig.savefig('locations.png')
 
-# cvr._routes = _rs
-fig, ax = cvr.plot_routes()
-# fig.savefig('routes.png')
+# # cvr._routes = _rs
+# fig, ax = cvr.plot_routes()
+# # fig.savefig('routes.png')

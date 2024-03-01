@@ -20,30 +20,6 @@ figures_path = os.path.join(folder, 'figures')
 if not os.path.isdir(results_path): os.mkdir(results_path)
 if not os.path.isdir(figures_path): os.mkdir(figures_path)
 
-from . import blower
-from .blower import *
-
-from . import units
-from .units import *
-
-from . import routing
-from .routing import *
-
-from . import system
-from .system import *
-
-__all__ = (
-    'folder',
-    'data_path',
-    'results_path',
-    'figures_path',
-    'create_hap_cmps',
-    *blower.__all__,
-    *units.__all__,
-    *routing.__all__,
-    *system.__all__
-	)
-
 #%%
 import qsdsan as qs
 from qsdsan import Component, Components
@@ -126,3 +102,28 @@ def create_boulardii_cmps(default_compile=False):
         cmps.default_compile()
     return cmps
     
+#%%
+from . import blower
+from .blower import *
+
+from . import routing
+from .routing import *
+
+from . import units
+from .units import *
+
+from . import system
+from .system import *
+
+__all__ = (
+    'folder',
+    'data_path',
+    'results_path',
+    'figures_path',
+    'create_hap_cmps',
+    *blower.__all__,
+    *routing.__all__,
+    *units.__all__,
+    *system.__all__
+	)
+
