@@ -30,7 +30,7 @@ sys_IDs = ['A', 'B', 'C', 'D']
 # # Poulation would not affect the results
 # ppls = np.arange(500, 1100, 100)
 
-N = 1000
+N = 10000
 
 if __name__ == '__main__':
     for sys_ID in sys_IDs:

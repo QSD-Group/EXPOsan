@@ -4,7 +4,7 @@ pou_disinfection: Point-Of-Use Disinfection Technologies
 
 Summary
 -------
-Systems included in this module are developed for the manuscript Elijah et al. [1]_ for four point-of-use (POU) disinfection technologies.
+Systems included in this module are developed for the manuscript Elijah et al. [1]_ for four point-of-use (POU) disinfection technologies. Uncertainty, sensitivity, and contextual analyses performed in the manuscript can be reproduced using the scripts in the ``analyses`` directory.
 
 Four system configurations are included in this module, each corresponds to one technology.
 
