@@ -260,13 +260,13 @@ class SimpleCVRP:
         return fig, ax
 
 #%%
-n = 101
+n = 115
 seed = 958
 locs = Locations.random_within_area(
     n, seed=seed, distance_metric='cityblock',
     x_range=(0, 13.36e3), # in meter
     y_range=(0, 11.31e3),
-    demands=55,
+    demands=110,
     )
 
 #%%
@@ -281,4 +281,4 @@ cvr.solve()
 
 # cvr._routes = _rs
 fig, ax = cvr.plot_routes()
-fig.savefig('routes.png')
+# fig.savefig('routes.png')

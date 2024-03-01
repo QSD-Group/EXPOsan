@@ -52,7 +52,7 @@ def create_hap_cmps(set_thermo=True, industrial_yeast_production=True):
     CO2 = Component('CO2', particle_size='Dissolved_gas', 
                     degradability='Undegradable', organic=False)
     HAP = Component('HAP', search_ID='hydroxyapatite', 
-                    particle_size='particulate', 
+                    particle_size='Particulate', 
                     degradability='Undegradable', organic=False)
     ig_kwargs = dict(particle_size='Soluble', degradability='Undegradable', organic=False)
     org_kwargs = dict(particle_size='Soluble', degradability='Readily', organic=True)

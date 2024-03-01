@@ -12,7 +12,8 @@ for license details.
 
 '''
 import qsdsan as qs
-from exposan.hap import create_hap_cmps, SBoulardiiFermenter, HApFermenter
+from exposan.hap import create_hap_cmps
+from exposan.hap.units import *
 from qsdsan.utils import auom
 
 cmps = create_hap_cmps()
@@ -32,33 +33,37 @@ N = 100
 Q = 1.4/24 * population * 0.01 # L/hr
 
 urine = qs.WasteStream('urine', T=273.15+30)
-urine.set_flow_by_concentration(q_sch, 
-                                concentrations=dict(
-    Urea=16300,
-    Cl=5135,
-    Na=2780,
-    K=1680,
-    Creatinine=1410,
-    IS=981.5,
-    Hippuric_acid=860,
-    IP=770,
-    Citric_acid=510,
-    Glucuronic_acid=475,
-    NH3=465,
-    Uric_acid=355,
-    Other_COD=3497
-    ))
+urine.set_flow_by_concentration(
+    q_sch, 
+    concentrations=dict(
+        Urea=16300,
+        Cl=5135,
+        Na=2780,
+        K=1680,
+        Creatinine=1410,
+        IS=981.5,
+        Hippuric_acid=860,
+        IP=770,
+        Citric_acid=510,
+        Glucuronic_acid=475,
+        NH3=465,
+        Uric_acid=355,
+        Other_COD=3497
+        ))
 
 CaCl2 = qs.WasteStream('CaCl2')
 inocu = qs.WasteStream('inocu')
 
+#%%
+
 HF = HApFermenter('HF', tau=60, precipitate_moisture=90,
                   ins=(urine, inocu, CaCl2), outs=['', 'eff', 'precip'])
-HF.simulate()
-vent, eff, pre = HF.outs
+# HF.simulate()
+# vent, eff, pre = HF.outs
 
-SBF = SBoulardiiFermenter('SBF', design_production_rate=inocu.imass['Yeast']*n_sch)
-SBF.simulate()
+SBF = SBoulardiiFermenter('SBF', N_parallel_HApFermenter=n_sch)
+PP = PrecipitateProcessing('PP', N_parallel_HApFermenter=n_sch)
+# SBF.simulate()
 
-# sys = qs.System('sys', path=(HF, SBF))
-# sys.simulate()
+sys = qs.System('sys', path=(HF,), facilities=(SBF, PP))
+sys.simulate()

@@ -19,13 +19,13 @@ References
 '''
 import qsdsan as qs, numpy as np
 from qsdsan import SanUnit
-from biosteam import Stream
-from biosteam.units import BatchBioreactor
+from biosteam import Stream, Facility
+from biosteam.units import BatchBioreactor, StorageTank
 from biosteam.units.decorators import cost
 from exposan.hap import SimpleBlower
 from math import ceil
 
-__all__ = ('HApFermenter', 'SBoulardiiFermenter', )
+__all__ = ('HApFermenter', 'SBoulardiiFermenter', 'PrecipitateProcessing',)
 
 #%%
 @cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
@@ -165,13 +165,14 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
 @cost('Reactor duty', 'Heat exchangers', CE=522, cost=23900,
       S=20920000.0, n=0.7, BM=2.2, N='Number of reactors',
       magnitude=True) # Based on a similar heat exchanger
-class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
+class SBoulardiiFermenter(Facility, qs.SanUnit, BatchBioreactor):
     
     '''
     Fermenter for the production of S. Boulardii active yeast, process design
     follows [1]_.
     
     '''
+    network_priority = 0
     cost_items = {}
     _units = {
         **BatchBioreactor._units,
@@ -206,9 +207,10 @@ class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
         1200  # VB7
         )
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+    def __init__(self, ID='', N_parallel_HApFermenter=10,
                  tau=12, T=273.15+35, P=101325,
-                 yield_on_sugar=1.45, design_production_rate=80, 
+                 yield_on_sugar=1.45, 
+                 # design_production_rate=80, 
                  sugar_concentration=275.95,
                  N_to_sugar_ratio=0.01245,
                  P_to_sugar_ratio=0.00522,
@@ -219,13 +221,16 @@ class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
                  labor_wage=21.68,  # assume 20% over San Francisco minimum wage by default
                  ):
 
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        SanUnit.__init__(self, ID, ins=None, outs=(), thermo=None, init_with='WasteStream')
+        self._system = None
+        self._other_units = None
         self._init(tau=tau, N=2, T=T, P=P)
+        self.N_parallel_HApFermenter = N_parallel_HApFermenter
         self.blower = SimpleBlower(self.ID+'_blower', 
                                    ins=Stream(self.ID+'blower_in', phase='g'),
                                    outs=Stream(self.ID+'blower_out', phase='g'))
         self.yield_on_sugar = yield_on_sugar                    # kg yeast / kg sugar
-        self.design_production_rate = design_production_rate    # kg yeast / hr
+        # self.design_production_rate = design_production_rate    # kg yeast / hr
         self.sugar_concentration = sugar_concentration          # kg / m3 fermentation broth
         self.N_to_sugar_ratio = N_to_sugar_ratio
         self.P_to_sugar_ratio = P_to_sugar_ratio
@@ -238,12 +243,22 @@ class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
         self.labor_wage = labor_wage
 
     @property
+    def N_parallel_HApFermenter(self):
+        return self._np
+    @N_parallel_HApFermenter.setter
+    def N_parallel_HApFermenter(self, np):
+        self._np = int(np)
+
+    @property
     def design_production_rate(self):
         '''[float] Design rate of production of fresh yeast biomass, in kg/hr.'''
-        return self._r_yeast
-    @design_production_rate.setter
-    def design_production_rate(self, r_yeast):
-        self._r_yeast = r_yeast
+        isa = isinstance
+        units = [u for u in self._system.path if isa(u, HApFermenter)]
+        r_yeast = sum(u.ins[1].imass['Yeast'] for u in units) * self.N_parallel_HApFermenter
+        return r_yeast
+    # @design_production_rate.setter
+    # def design_production_rate(self, r_yeast):
+    #     self._r_yeast = r_yeast
         
     @property
     def yield_on_sugar(self):
@@ -364,24 +379,23 @@ class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
     
     def _run(self):
         sugars, nutrients, seed = self.ins
-        y_yeast = self.yield_on_sugar
-        if sugars.isempty():
-            r_yeast = self.design_production_rate
-            c_sugar = self.sugar_concentration # kg/m3
-            n2s = self.N_to_sugar_ratio
-            p2s = self.P_to_sugar_ratio
-            mv2s = self.minerals_vitamins_to_sugar_ratio
-            _micro_nutrients = np.array(self._micronutrient_mixture)
-            Fm_molasses = r_yeast / y_yeast  # kg/hr
-            Q = Fm_molasses / c_sugar  # m3/hr
-            sugars.set_flow_by_concentration(Q, {'Molasses': c_sugar}, 
-                                             units=('m3/hr', 'kg/m3'))
-            nutrients.imass['Ammonium_sulfate'] = Fm_molasses * n2s / 0.212
-            nutrients.imass['H3PO4'] = Fm_molasses * p2s / 0.316
-            seed.imass['Yeast'] = r_yeast * 0.04
-            seed.imass['MgSO4', 'VB1', 'VB2', 'VB5', 'VB6', 'VB7'] = \
-                _micro_nutrients / sum(_micro_nutrients) * Fm_molasses * mv2s
         vent, effluent = self.outs
+        y_yeast = self.yield_on_sugar
+        r_yeast = self.design_production_rate
+        c_sugar = self.sugar_concentration # kg/m3
+        n2s = self.N_to_sugar_ratio
+        p2s = self.P_to_sugar_ratio
+        mv2s = self.minerals_vitamins_to_sugar_ratio
+        _micro_nutrients = np.array(self._micronutrient_mixture)
+        Fm_molasses = r_yeast / y_yeast  # kg/hr
+        Q = Fm_molasses / c_sugar  # m3/hr
+        sugars.set_flow_by_concentration(Q, {'Molasses': c_sugar}, 
+                                         units=('m3/hr', 'kg/m3'))
+        nutrients.imass['Ammonium_sulfate'] = Fm_molasses * n2s / 0.212
+        nutrients.imass['H3PO4'] = Fm_molasses * p2s / 0.316
+        seed.imass['Yeast'] = r_yeast * 0.04
+        seed.imass['MgSO4', 'VB1', 'VB2', 'VB5', 'VB6', 'VB7'] = \
+            _micro_nutrients / sum(_micro_nutrients) * Fm_molasses * mv2s
         effluent.imass['Yeast'] = yeast = (sugars.F_mass - sugars.imass['H2O']) * y_yeast
         effluent.imass['Ethanol'] = ethanol = sugars.F_mass * 3.5e-4
         effluent.imass['H2O'] = (nutrients.F_mass + seed.F_mass + sugars.F_mass) - ethanol - yeast
@@ -412,3 +426,179 @@ class SBoulardiiFermenter(qs.SanUnit, BatchBioreactor):
         self.add_OPEX['NaCl'] = self.effluent.F_vol * 0.762 * self._prices['NaCl']  # final concentration of NaCl in kg/m3 fermentation broth
         D = self.design_results
         self.add_OPEX['Cleaning'] = self.tau_0 / D['Batch time'] * self.labor_wage
+
+
+#%%
+class PrecipitateProcessing(Facility, SanUnit):
+    
+    '''Simple precipitate post processing facility involving sizing and costing 
+    of storage tank, recessed plate filter press dryer, incinerator, and relevant equipment.'''
+    
+    network_priority = 1
+    _units = {
+        'Dry solid loading rate': 'lb/hr',
+        'Dryer cake volume': 'ft3/hr',
+        'Total dryer chamber volume': 'ft^3',
+        'Dryer power': 'kW',
+        'Incinerator burn rate': 'lb/hr',
+        'Incinerator power': 'kW',
+        'Auxiliary fuel demand': 'gal/hr',
+              }
+    _N_ins = 1      
+    _N_outs = 2     # [0] product, [1] wastewater
+
+    auxiliary_unit_names = ('storage',)
+    _dryer_cost_factor = 1.0
+    _incinerator_cost_factor = 1.0
+    _F_BM_default = {
+        'Recessed plate filter press': 3,
+        'Incinerator': 1.7,
+        }
+
+    def __init__(self, ID='', N_parallel_HApFermenter=10, dryer_operating_hours=8,
+                 dryer_cycle_time=None, dryer_cake_moisture=60, dryer_cake_density=71,
+                 auxiliary_fuel_HV=137381, auxiliary_fuel_price=5.23,
+                 labor_wage=21.68,  # assume 20% over San Francisco minimum wage by default
+                 ):
+        
+        super().__init__(ID, ins=None, outs=(), thermo=None)
+        self.N_parallel_HApFermenter = N_parallel_HApFermenter
+        self.storage = StorageTank(ID+'_storage', 
+                                   ins=Stream(ID+'_feed_proxy'),
+                                   tau=48, V_wf=0.9, vessel_type='Cone roof')
+        self.dryer_operating_hours = dryer_operating_hours
+        self.dryer_cycle_time = dryer_cycle_time
+        self.dryer_cake_moisture = dryer_cake_moisture
+        self.dryer_cake_density = dryer_cake_density
+        self.auxiliary_fuel_HV = auxiliary_fuel_HV
+        self.auxiliary_fuel_price = auxiliary_fuel_price
+        self.labor_wage = labor_wage
+        
+    @property
+    def N_parallel_HApFermenter(self):
+        return self._np
+    @N_parallel_HApFermenter.setter
+    def N_parallel_HApFermenter(self, np):
+        self._np = int(np)
+    
+    @property
+    def dryer_operating_hours(self):
+        '''[float] hours per day recessed plate filter press is operated, in hr.'''
+        return self._dryer_hpd
+    @dryer_operating_hours.setter
+    def dryer_operating_hours(self, hpd):
+        if hpd <= 0 or hpd > 24:
+            raise ValueError('invalid value of operating hours per day')
+        self._dryer_hpd = hpd
+    
+    @property
+    def dryer_cycle_time(self):
+        '''[float] recessed plate filter cycle time, in hr.'''
+        if self._fct is None:
+            feed, = self.ins
+            ss = sum(feed.mass * feed.chemicals.x) / feed.F_mass * 100
+            return 2.9 - 0.225 * ss + 0.0125 * ss**2
+        else:
+            return self._fct
+    @dryer_cycle_time.setter
+    def dryer_cycle_time(self, fct):
+        self._fct = fct
+    
+    @property
+    def dryer_cake_moisture(self):
+        '''[float] recessed plate filter press cake moisture content, in %.'''
+        return self._cm
+    @dryer_cake_moisture.setter
+    def dryer_cake_moisture(self, cm):
+        self._cm = cm
+        
+    @property
+    def dryer_cake_density(self):
+        '''[float] filter cake density, in lb/ft^3.'''
+        return self._crho
+    @dryer_cake_density.setter
+    def dryer_cake_density(self, rho):
+        self._crho = rho
+        
+    @property
+    def auxiliary_fuel_HV(self):
+        '''[float] heating value of auxiliary fuel, in Btu/gal.'''
+        return self._fuel_HV
+    @auxiliary_fuel_HV.setter
+    def auxiliary_fuel_HV(self, hv):
+        self._fuel_HV = hv
+    
+    @property
+    def auxiliary_fuel_price(self):
+        '''[float] price of auxiliary fuel, in USD/gal.'''
+        return self._fp
+    @auxiliary_fuel_price.setter
+    def auxiliary_fuel_price(self, p):
+        self._fp = p
+        
+    @property
+    def labor_wage(self):
+        '''[float] Hourly labor wage for facility operation and maintenance, in USD/hr.'''
+        return self._wage
+    @labor_wage.setter
+    def labor_wage(self, wage):
+        self._wage = wage
+        
+    def _setup(self):
+        feed, = self.ins
+        n = self.N_parallel_HApFermenter
+        isa = isinstance
+        precipitates = [u.outs[2] for u in self._system.path if isa(u, HApFermenter)]
+        feed.mix_from(precipitates)
+        feed.scale(n)
+    
+    def _run(self):
+        cake, ww = self.outs
+        feed, = self.ins
+        ww.copy_like(feed)
+        cake.copy_like(feed)
+        cm = self.dryer_cake_moisture
+        cake.imass['H2O'] = (cake.imass['Yeast'] + cake.imass['HAP'])/(100-cm)*cm
+        ww.separate_out(cake)
+        product = cake
+        yeast = cake.chemicals.Yeast
+        product.imass['Ash'] = cake.imass['Yeast'] * (1-yeast.f_Vmass_Totmass)
+        product.imass['Yeast'] = product.imass['H2O'] = 0.
+        
+    def _design(self):
+        tank = self.storage
+        feed, = self.ins
+        product, ww = self.outs
+        cmps = feed.chemicals
+        D = self.design_results
+        D['Dry solid loading rate'] = LR = sum(feed.mass * cmps.x) * 2.204623
+        fct = self.dryer_cycle_time
+        hpd = self.dryer_operating_hours
+        cm = self.dryer_cake_moisture
+        csg = self.dryer_cake_density
+        D['Dryer cake volume'] = CV = LR * 100 / (100-cm) / csg
+        D['Total dryer chamber volume'] = TCV = CV * 24 / fct / hpd
+        D['Dryer power'] = dkW = TCV / 10 * 19.863
+        D['Incinerator burn rate'] = BR = LR / (1-cm/100)
+        D['Incinerator power'] = ikW = BR / 87.5 * 3.5
+        HIR = 10**(3.247 + 0.0126*cm) * LR
+        D['Auxiliary fuel demand'] = (HIR - feed.HHV*0.94782)/self.auxiliary_fuel_HV
+        self.power_utility.consumption = dkW * hpd/24 + ikW
+        tank.ins[0].copy_like(feed)
+        tank.simulate()
+    
+    def _cost(self):
+        D = self.design_results
+        C = self.baseline_purchase_costs
+        fbm_dry, fbm_inc = self.F_BM.values()
+        TCV = D['Total dryer chamber volume']
+        BR = D['Incinerator burn rate']
+        C['Recessed plate filter press'] = capex_dry = \
+            (TCV * 829.7 + 4227.7)*self._dryer_cost_factor
+        C['Incinerator'] = capex_inc = 894.4*BR**0.8 *self._incinerator_cost_factor       
+        opex = self.add_OPEX = {}
+        opex['Dryer parts & maintenance'] = 0.0013 * fbm_dry * capex_dry /365/24
+        opex['Incinerater parts & maintenance'] = 0.0045 * fbm_inc * capex_inc /365/24
+        opex['Labor'] = 3 * self.labor_wage * self.dryer_cycle_time / 24
+        opex['Auxiliary fuel'] = D['Auxiliary fuel demand'] * self.auxiliary_fuel_price
+        
