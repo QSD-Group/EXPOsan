@@ -28,9 +28,9 @@ f_sch = 1/3
 q_sch = p_sch * f_sch * 1.4 / n_sch
 
 #%%
-population = 8.5e6
-N = 100
-Q = 1.4/24 * population * 0.01 # L/hr
+# population = 8.5e6
+# N = 100
+# Q = 1.4/24 * population * 0.01 # L/hr
 
 urine = qs.WasteStream('urine', T=273.15+30)
 urine.set_flow_by_concentration(

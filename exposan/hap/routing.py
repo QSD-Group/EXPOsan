@@ -51,25 +51,23 @@ class Locations:
             ds.append(d)
         self.xs = np.array(xs)
         self.ys = np.array(ys)
-        self.demands = np.array(ds)
         self.size = len(locations)
         self.names = [loc.name for loc in locations]
         self.index = dict(zip(range(self.size), self.names))
+        self.demands = np.array(ds)
 
     @classmethod
     def from_coordinates(cls, xs, ys, demands=None, distance_metric='euclidean'):
         new = cls(distance_metric=distance_metric)
         new.xs = np.asarray(xs)
         new.ys = np.asarray(ys)
-        if demands is not None:
-            assert len(demands) == len(xs)
-            new.demands = np.asarray(demands)
+        new.size = len(xs)
+        new.demands = demands
         names = []
         for i in range(len(xs)):
             ID = f'l{i}'
             names.append(ID)
-            setattr(new, ID, Location(ID, xs[i], ys[i], demands[i]))
-        new.size = len(xs)
+            setattr(new, ID, Location(ID, xs[i], ys[i], new.demands[i]))
         new.names = names
         new.index = dict(zip(range(new.size), new.names))
         return new
@@ -80,10 +78,17 @@ class Locations:
         rng = np.random.default_rng(seed)
         xs = rng.uniform(*x_range, size=n)
         ys = rng.uniform(*y_range, size=n)
-        if demands is not None:
-            if isinstance(demands, (int, float)):
-                demands = [0] + [demands] * (n-1)
         return cls.from_coordinates(xs, ys, demands, distance_metric)
+
+    @property
+    def demands(self):
+        return self._dm
+    @demands.setter
+    def demands(self, dm):
+        if dm is not None:
+            if isinstance(dm, (int, float)):
+                dm = [0] + [dm] * (self.size-1)
+            self._dm = np.asarray(dm)
 
     @property
     def distance_metric(self):
