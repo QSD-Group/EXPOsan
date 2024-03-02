@@ -51,7 +51,8 @@ default_urine_concs = dict(
 # N = 100
 # Q = 1.4/24 * population * 0.01 # L/hr
 def create_system(total_pe_served=50000, N_locations=90, urination_rate=1.4,
-                  urine_concentrations={}, flowsheet=None):
+                  urine_concentrations={}, lifetime=10, 
+                  income_tax=0.28, flowsheet=None):
     sys_ID = 'sys'
     
     flowsheet = flowsheet or qs.Flowsheet(sys_ID)
@@ -69,13 +70,17 @@ def create_system(total_pe_served=50000, N_locations=90, urination_rate=1.4,
 
     HF = HApFermenter('HF', N_parallel_HApFermenter=N_locations, 
                       tau=60, precipitate_moisture=90,
-                      ins=(urine, inocu, CaCl2), outs=['', 'eff', 'precipitates'])
+                      ins=(urine, inocu, CaCl2), 
+                      outs=['', 'eff', 'precipitates'])
     
     YP = YeastProduction('YP', N_parallel_HApFermenter=N_locations)
     PP = PrecipitateProcessing('PP', N_parallel_HApFermenter=N_locations)
     CD = CollectionDistribution('CD', N_parallel_HApFermenter=N_locations)
     sys = qs.System(sys_ID, path=(HF,), facilities=(YP, PP, CD))
     
+    qs.TEA(sys, lifetime=lifetime, income_tax=income_tax, 
+           simulate_system=False, CEPCI=801)   
+
     return sys
 
 #%%

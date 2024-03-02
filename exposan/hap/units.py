@@ -17,7 +17,7 @@ References
     (Patent No. CN103374531A).
 
 '''
-import qsdsan as qs, numpy as np
+import numpy as np
 from qsdsan import SanUnit
 from biosteam import Stream, Facility
 from biosteam.units import BatchBioreactor
@@ -42,7 +42,7 @@ __all__ = ('HApFermenter',
 @cost('Reactor duty', 'Heat exchangers', CE=522, cost=23900,
       S=20920000.0, n=0.7, BM=2.2, N='Total number of reactors',
       magnitude=True) # Based on a similar heat exchanger
-class HApFermenter(qs.SanUnit, BatchBioreactor):
+class HApFermenter(SanUnit, BatchBioreactor):
     
     cost_items = {}
     _units = BatchBioreactor._units
@@ -163,7 +163,7 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
 @cost('Reactor duty', 'Heat exchangers', CE=522, cost=23900,
       S=20920000.0, n=0.7, BM=2.2, N='Number of reactors',
       magnitude=True) # Based on a similar heat exchanger
-class YeastProduction(Facility, qs.SanUnit, BatchBioreactor):
+class YeastProduction(Facility, SanUnit, BatchBioreactor):
     
     '''
     Fermenter for the production of S. Boulardii active yeast, process design
@@ -452,8 +452,9 @@ class CollectionDistribution(Facility, SanUnit):
                  vehicle_fuel_cost=0.75, # USD/mile
                  vehicle_rental_price=200, # USD/day
                  labor_wage=21.68,  # assume 20% over San Francisco minimum wage by default
+                 solve_time=30,     # seconds
                  ):
-        super().__init__(ID, ins=None, outs=(), thermo=None)
+        SanUnit.__init__(self, ID, ins=None, outs=(), thermo=None)
         self.cvr = SimpleCVRP()
         self.N_parallel_HApFermenter = N_parallel_HApFermenter
         if locations is not None: self.locations = locations
@@ -462,7 +463,8 @@ class CollectionDistribution(Facility, SanUnit):
         self.duration_per_location = duration_per_location
         self.vehicle_fuel_cost = vehicle_fuel_cost
         self.vehicle_rental_price = vehicle_rental_price
-        self.labor_wage=labor_wage
+        self.labor_wage = labor_wage
+        self.solve_time = solve_time
 
     @property
     def N_parallel_HApFermenter(self):
@@ -509,7 +511,7 @@ class CollectionDistribution(Facility, SanUnit):
         self._t_max = int(t)
         
     @property
-    def duration_per_location(self):
+    def duration_per_location(self) -> int:
         return self._ti
     @duration_per_location.setter
     def duration_per_location(self, ti):
@@ -519,7 +521,7 @@ class CollectionDistribution(Facility, SanUnit):
         self._ti = int(ti)
     
     @property
-    def vol_per_location(self):
+    def vol_per_location(self) -> int:
         if self._system is None: return
         else:
             isa = isinstance
@@ -541,7 +543,7 @@ class CollectionDistribution(Facility, SanUnit):
         if self.cvr.vehicle_capacity != self.capacity:
             self.cvr.vehicle_capacity = self.capacity
         self.cvr.register()
-        self.cvr.solve(100, True)
+        self.cvr.solve(self.solve_time, True)
 
     def _design(self):
         D = self.design_results
@@ -592,7 +594,7 @@ class PrecipitateProcessing(Facility, SanUnit):
                  labor_wage=21.68,  # assume 20% over San Francisco minimum wage by default
                  ):
         
-        super().__init__(ID, ins=None, outs=['product', 'ww'], thermo=None)
+        SanUnit.__init__(self, ID, ins=None, outs=['product', 'ww'], thermo=None)
         self.N_parallel_HApFermenter = N_parallel_HApFermenter
         self.dryer_operating_hours = dryer_operating_hours
         self.dryer_cycle_time = dryer_cycle_time
