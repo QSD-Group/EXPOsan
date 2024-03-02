@@ -20,12 +20,15 @@ References
 import qsdsan as qs, numpy as np
 from qsdsan import SanUnit
 from biosteam import Stream, Facility
-from biosteam.units import BatchBioreactor, StorageTank, RotaryVacuumFilter as RVF
+from biosteam.units import BatchBioreactor, StorageTank
 from biosteam.units.decorators import cost
 from exposan.hap import SimpleBlower, Locations, SimpleCVRP
 # from math import ceil
 
-__all__ = ('HApFermenter', 'YeastProduction', 'PrecipitateProcessing',)
+__all__ = ('HApFermenter', 
+           'YeastProduction', 
+           'CollectionDistribution',
+           'PrecipitateProcessing',)
 
 #%%
 @cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
@@ -431,6 +434,136 @@ class YeastProduction(Facility, qs.SanUnit, BatchBioreactor):
         opex['NaCl'] = self.effluent.F_vol * 0.762 * self._prices['NaCl']  # final concentration of NaCl in kg/m3 fermentation broth
         opex['Operator'] = self.labor_wage * 8/24
 
+#%%
+class CollectionDistribution(Facility, SanUnit):
+    
+    network_priority = -1
+    _N_ins = 0     
+    _N_outs = 0
+    
+    _units = {
+        'Collection interval': 'hr',
+        'Total travel distance': 'mile/trip'
+        }
+    
+    _default_area = {
+        'x': (0, 13.36e3),  # in meter
+        'y': (0, 11.31e3)
+        }
+    
+    def __init__(self, ID='', N_parallel_HApFermenter=10, 
+                 locations=None, vehicle_vol_capacity=20, 
+                 route_max_duration=8*60, duration_per_location=20,
+                 vehicle_fuel_cost=0.75, # USD/mile
+                 vehicle_rental_price=200, # USD/day
+                 labor_wage=21.68,  # assume 20% over San Francisco minimum wage by default
+                 ):
+        super().__init__(ID, ins=None, outs=(), thermo=None)
+        self.cvr = SimpleCVRP()
+        self.N_parallel_HApFermenter = N_parallel_HApFermenter
+        if locations is not None: self.locations = locations
+        self.vehicle_vol_capacity = vehicle_vol_capacity
+        self.route_max_duration = route_max_duration
+        self.duration_per_location = duration_per_location
+        self.vehicle_fuel_cost = vehicle_fuel_cost
+        self.vehicle_rental_price = vehicle_rental_price
+        self.labor_wage=labor_wage
+
+    @property
+    def N_parallel_HApFermenter(self):
+        return self._np
+    @N_parallel_HApFermenter.setter
+    def N_parallel_HApFermenter(self, np):
+        self._np = int(np)
+        self.locations = None
+
+    @property
+    def locations(self):
+        return self._locs
+    @locations.setter
+    def locations(self, locs):
+        if locs is None:
+            area = self._default_area
+            locs = Locations.random_within_area(
+                self._np+1, distance_metric='cityblock',
+                x_range=area['x'], # in meter
+                y_range=area['y'],
+                demands=1,
+                )
+        else:
+            assert isinstance(locs, Locations)
+            self._np = locs.size - 1
+        self._locs = self.cvr.locations = locs
+
+    @property
+    def vehicle_vol_capacity(self) -> int:
+        '''[int] Vehicle volumetric capacity, in m3.'''
+        return self._vol_max
+    @vehicle_vol_capacity.setter
+    def vehicle_vol_capacity(self, vol):
+        self._capacity = None
+        self._vol_max = int(vol)
+    
+    @property
+    def route_max_duration(self) -> int:
+        return self._t_max
+    @route_max_duration.setter
+    def route_max_duration(self, t):
+        '''[int] Maximum duration allocated for each route, in min.'''
+        self._capacity = None
+        self._t_max = int(t)
+        
+    @property
+    def duration_per_location(self):
+        return self._ti
+    @duration_per_location.setter
+    def duration_per_location(self, ti):
+        '''[int] Amount of time needed to collect from and distribute to each 
+        location on average, in min.'''
+        self._capacity = None
+        self._ti = int(ti)
+    
+    @property
+    def vol_per_location(self):
+        if self._system is None: return
+        else:
+            isa = isinstance
+            for u in self._system.path:
+                if isa(u, HApFermenter):
+                    vol = u.design_results['Batch time'] * u.outs[2].F_vol # m3
+                    return vol
+            raise RuntimeError('no HApFermenter in system path')                    
+    
+    @property
+    def capacity(self):
+        if self._capacity is None:
+            cap_t = int(self.route_max_duration / self.duration_per_location)
+            cap_vol = int(self.vehicle_vol_capacity / self.vol_per_location)
+            self._capacity = min(cap_t, cap_vol)
+        return self._capacity
+    
+    def _run(self):
+        if self.cvr.vehicle_capacity != self.capacity:
+            self.cvr.vehicle_capacity = self.capacity
+        self.cvr.register()
+        self.cvr.solve(100, False)
+
+    def _design(self):
+        D = self.design_results
+        locs = self.locations
+        isa = isinstance
+        for u in self._system.path:
+            if isa(u, HApFermenter):
+                tau = u.design_results['Batch time'] # hr
+                break
+        D['Collection interval'] = tau
+        D['Total travel distance'] = dis = sum(locs.path_cost(r) for r in self.cvr.routes) * 6.2137e-4 # mile
+        D['Number of routes'] = n_routes = len(self.cvr.routes)
+        opex = self.add_OPEX = {}
+        opex['Fuel'] = self.vehicle_fuel_cost * dis / tau
+        opex['Vehicle rental'] = self.vehicle_rental_price * n_routes / tau
+        opex['Labor'] = self.labor_wage * n_routes * self.route_max_duration/60 / tau
+        
 
 #%%
 class PrecipitateProcessing(Facility, SanUnit):
@@ -547,18 +680,15 @@ class PrecipitateProcessing(Facility, SanUnit):
     @labor_wage.setter
     def labor_wage(self, wage):
         self._wage = wage
-        
-    def _setup(self):
+    
+    def _run(self):
+        cake, ww = self.outs
         feed, = self.ins
         n = self.N_parallel_HApFermenter
         isa = isinstance
         precipitates = [u.outs[2] for u in self._system.path if isa(u, HApFermenter)]
         feed.mix_from(precipitates)
         feed.scale(n)
-    
-    def _run(self):
-        cake, ww = self.outs
-        feed, = self.ins
         ww.copy_like(feed)
         cake.copy_like(feed)
         cm = self.dryer_cake_moisture

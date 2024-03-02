@@ -85,7 +85,9 @@ class Locations:
         return self._dm
     @demands.setter
     def demands(self, dm):
-        if dm is not None:
+        if dm is None:
+            self._dm = dm
+        else:
             if isinstance(dm, (int, float)):
                 dm = [0] + [dm] * (self.size-1)
             self._dm = np.asarray(dm)
@@ -144,23 +146,34 @@ class Locations:
 #%%
 class SimpleCVRP:
     
-    def __init__(self, locations, vehicle_capacity):
-        self._locations = locations
-        self._dm = np.int64(locations.demands)
-        self._M_dist = np.int64(locations.distance_matrix)
+    def __init__(self, locations=None, vehicle_capacity=None):
+        self._vc = None
+        self._locations = None
+        self.locations = locations
         self.vehicle_capacity = vehicle_capacity
-        self.register()
+        # self.register()
+    
+    @property
+    def locations(self):
+        return self._locations
+    @locations.setter
+    def locations(self, locs):
+        if isinstance(locs, Locations):
+            self._locations = locs
+            self._dm = np.int64(locs.demands)
+            self._M_dist = np.int64(locs.distance_matrix)
     
     @property
     def vehicle_capacity(self):
         return self._vc
     @vehicle_capacity.setter
     def vehicle_capacity(self, vc):
-        self._vc = vc = int(vc)
-        self._n_vehicle = nv = ceil(sum(self._dm)/vc)
-        self._capacities = [vc] * nv
-        self._manager = None
-        self._routing = None
+        if vc is not None:
+            self._vc = vc = int(vc)
+            self._n_vehicle = nv = ceil(sum(self._dm)/vc)
+            self._capacities = [vc] * nv
+            self._manager = None
+            self._routing = None
         
     @property
     def manager(self):
