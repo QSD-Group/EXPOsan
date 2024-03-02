@@ -584,7 +584,6 @@ class PrecipitateProcessing(Facility, SanUnit):
     _N_ins = 1      
     _N_outs = 2     # [0] product, [1] wastewater
 
-    auxiliary_unit_names = ('storage',)
     _dryer_cost_factor = 1.0
     _incinerator_cost_factor = 1.0
     _F_BM_default = {
@@ -598,11 +597,8 @@ class PrecipitateProcessing(Facility, SanUnit):
                  labor_wage=21.68,  # assume 20% over San Francisco minimum wage by default
                  ):
         
-        super().__init__(ID, ins=None, outs=(), thermo=None)
+        super().__init__(ID, ins=None, outs=['product', 'ww'], thermo=None)
         self.N_parallel_HApFermenter = N_parallel_HApFermenter
-        self.storage = StorageTank(ID+'_storage', 
-                                   ins=Stream(ID+'_feed_proxy'),
-                                   tau=48, V_wf=0.9, vessel_type='Cone roof')
         self.dryer_operating_hours = dryer_operating_hours
         self.dryer_cycle_time = dryer_cycle_time
         self.dryer_cake_moisture = dryer_cake_moisture
@@ -700,7 +696,6 @@ class PrecipitateProcessing(Facility, SanUnit):
         product.imass['Yeast'] = product.imass['H2O'] = 0.
         
     def _design(self):
-        tank = self.storage
         feed, = self.ins
         product, ww = self.outs
         cmps = feed.chemicals
@@ -718,8 +713,6 @@ class PrecipitateProcessing(Facility, SanUnit):
         HIR = 10**(3.247 + 0.0126*cm) * LR
         D['Auxiliary fuel demand'] = (HIR - feed.HHV*0.94782)/self.auxiliary_fuel_HV
         self.power_utility.consumption = dkW * hpd/24 + ikW
-        tank.ins[0].copy_like(feed)
-        tank.simulate()
     
     def _cost(self):
         D = self.design_results
@@ -729,7 +722,8 @@ class PrecipitateProcessing(Facility, SanUnit):
         BR = D['Incinerator burn rate']
         C['Recessed plate filter press'] = capex_dry = \
             (TCV * 829.7 + 4227.7)*self._dryer_cost_factor
-        C['Incinerator'] = capex_inc = 894.4*BR**0.8 *self._incinerator_cost_factor       
+        C['Incinerator'] = capex_inc = 894.4*BR**0.8 *self._incinerator_cost_factor
+        C['Storage tank'] = (capex_dry + capex_inc) * 0.1
         opex = self.add_OPEX = {}
         opex['Dryer parts & maintenance'] = 0.0013 * fbm_dry * capex_dry /365/24
         opex['Incinerater parts & maintenance'] = 0.0045 * fbm_inc * capex_inc /365/24
