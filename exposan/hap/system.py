@@ -67,7 +67,8 @@ def create_system(total_pe_served=50000, N_locations=90, urination_rate=1.4,
     CaCl2 = qs.WasteStream('CaCl2')
     inocu = qs.WasteStream('inoculum')
 
-    HF = HApFermenter('HF', tau=60, precipitate_moisture=90,
+    HF = HApFermenter('HF', N_parallel_HApFermenter=N_locations, 
+                      tau=60, precipitate_moisture=90,
                       ins=(urine, inocu, CaCl2), outs=['', 'eff', 'precipitates'])
     
     YP = YeastProduction('YP', N_parallel_HApFermenter=N_locations)

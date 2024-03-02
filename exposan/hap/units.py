@@ -20,7 +20,7 @@ References
 import qsdsan as qs, numpy as np
 from qsdsan import SanUnit
 from biosteam import Stream, Facility
-from biosteam.units import BatchBioreactor, StorageTank
+from biosteam.units import BatchBioreactor
 from biosteam.units.decorators import cost
 from exposan.hap import SimpleBlower, Locations, SimpleCVRP
 # from math import ceil
@@ -32,14 +32,15 @@ __all__ = ('HApFermenter',
 
 #%%
 @cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
-      cost=47200, n=0.8, BM=2.3, CE=522, N='Number of reactors')
-@cost('Reactor volume', 'Cleaning in place', CE=801, cost=2000, S=1, n=0.6, BM=1.8)  # assume ~1/2 reactor cost
+      cost=47200, n=0.8, BM=2.3, CE=522, N='Total number of reactors')
+@cost('Reactor volume', 'Cleaning in place', CE=801, cost=2000, S=1, n=0.6, 
+      BM=1.8, N='Sites in parallel')  # assume ~1/2 reactor cost
 @cost('Reactor volume', 'Agitators', kW=2.2, CE=801, cost=245, S=1, n=0.54, 
-      lb=0.1, BM=1.5, N='Number of reactors')
+      lb=0.1, BM=1.5, N='Total number of reactors')
 @cost('Reactor volume', 'Reactors', CE=801, cost=3936, S=1, n=0.54, 
-      lb=0.1, BM=1.5, N='Number of reactors')
+      lb=0.1, BM=1.5, N='Total number of reactors')
 @cost('Reactor duty', 'Heat exchangers', CE=522, cost=23900,
-      S=20920000.0, n=0.7, BM=2.2, N='Number of reactors',
+      S=20920000.0, n=0.7, BM=2.2, N='Total number of reactors',
       magnitude=True) # Based on a similar heat exchanger
 class HApFermenter(qs.SanUnit, BatchBioreactor):
     
@@ -49,7 +50,7 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
     _N_outs = 3     # [0] vent, [1] liquid effluent, [2] precipitates (yeast cells + HAP)
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 tau=60, T=273.15+37, P=101325,
+                 N_parallel_HApFermenter=10, tau=60, T=273.15+37, P=101325,
                  f_maximum_hap_yield=0.66, precipitate_moisture=90,
                  biomass_yield=0.1, inoculum_concentration=0.5,
                  CaCl2_price=0.3,
@@ -58,6 +59,7 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
 
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self._init(tau=tau, N=2, T=T, P=P)
+        self.N_parallel_HApFermenter = N_parallel_HApFermenter
         self.f_maximum_hap_yield=f_maximum_hap_yield
         self.precipitate_moisture=precipitate_moisture
         self.biomass_yield=biomass_yield
@@ -105,16 +107,7 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
         return self._cinocu
     @inoculum_concentration.setter
     def inoculum_concentration(self, c):
-        self._cinocu = c
-    
-    # @property
-    # def labor_wage(self):
-    #     '''[float] Hourly labor wage for fermenter operation and maintenance, in USD/hr.'''
-    #     return self._wage
-    # @labor_wage.setter
-    # def labor_wage(self, wage):
-    #     self._wage = wage
-    
+        self._cinocu = c   
     
     def _setup(self):
         SanUnit._setup(self)
@@ -152,10 +145,12 @@ class HApFermenter(qs.SanUnit, BatchBioreactor):
         eff.imass['NH3'] -= (m_bio - Qin_yeast) * yeast_i_N
         eff.imass['H2O'] -= m_h2o
     
-    # def _cost(self):
-    #     super()._cost()
-    #     D = self.design_results
-    #     self.add_OPEX['Cleaning'] = self.tau_0 / D['Batch time'] * self.labor_wage
+    def _design(self):
+        super()._design()
+        D = self.design_results
+        D['Sites in parallel'] = self.N_parallel_HApFermenter
+        D['Total number of reactors'] = D['Number of reactors'] * self.N_parallel_HApFermenter
+        
 
 #%%
 @cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
@@ -546,7 +541,7 @@ class CollectionDistribution(Facility, SanUnit):
         if self.cvr.vehicle_capacity != self.capacity:
             self.cvr.vehicle_capacity = self.capacity
         self.cvr.register()
-        self.cvr.solve(100, False)
+        self.cvr.solve(100, True)
 
     def _design(self):
         D = self.design_results
