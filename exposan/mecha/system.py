@@ -371,8 +371,8 @@ def create_system(
         else:
             df = init_conds
     else:
-        # path = os.path.join(data_path, f'initial_conditions_{kind}_new.xlsx')
-        path = os.path.join(data_path, f'initial_conditions_{kind}_lownh.xlsx')
+        path = os.path.join(data_path, f'initial_conditions_{kind}_new.xlsx')
+        # path = os.path.join(data_path, f'initial_conditions_{kind}_lownh.xlsx')
         df = load_data(path, sheet='default')
         batch_init(sys, df)
     # sys.set_dynamic_tracker(effluent)
@@ -384,119 +384,119 @@ def create_system(
 
 #%%
 
-t = 100
-t_step = 1
-# method = 'RK45'
-method = 'RK23'
-# method = 'DOP853'
-# method = 'Radau'
-# method = 'BDF'
+# t = 100
+# t_step = 1
+# # method = 'RK45'
+# method = 'RK23'
+# # method = 'DOP853'
+# # method = 'Radau'
+# # method = 'BDF'
 
-sys = create_system()
-sys.simulate(
-    state_reset_hook='reset_cache',
-    t_span=(0,t),
-    t_eval=np.arange(0, t+t_step, t_step),
-    method=method,
-    # rtol=1e-2,
-    # atol=1e-3,
-    print_t=True,
-    export_state_to=f'results/sol_{t}d_{method}.xlsx',
-    )
+# sys = create_system()
+# sys.simulate(
+#     state_reset_hook='reset_cache',
+#     t_span=(0,t),
+#     t_eval=np.arange(0, t+t_step, t_step),
+#     method=method,
+#     # rtol=1e-2,
+#     # atol=1e-3,
+#     print_t=True,
+#     export_state_to=f'results/sol_{t}d_{method}.xlsx',
+#     )
 
-#%%
+# #%%
 
-answer = load_data(ospath.join(data_path, 'train_val_test_online_dataset_.xlsx'), sheet='train_val_test_online_dataset')
+# answer = load_data(ospath.join(data_path, 'train_val_test_online_dataset_.xlsx'), sheet='train_val_test_online_dataset')
 
-from datetime import datetime
-day0 = datetime.strptime('5-5-2021 11:57 AM', '%m-%d-%Y %I:%M %p') # set the first time stamp as 'day0'
-calc_day = lambda t_stamp: (t_stamp-day0).total_seconds()/60/60/24
+# from datetime import datetime
+# day0 = datetime.strptime('5-5-2021 11:57 AM', '%m-%d-%Y %I:%M %p') # set the first time stamp as 'day0'
+# calc_day = lambda t_stamp: (t_stamp-day0).total_seconds()/60/60/24
 
-t_stamp = answer.index
-t_intp = calc_day(t_stamp).to_numpy()
+# t_stamp = answer.index
+# t_intp = calc_day(t_stamp).to_numpy()
 
-import matplotlib.pyplot as plt, matplotlib.ticker as ticker
+# import matplotlib.pyplot as plt, matplotlib.ticker as ticker
 
-def plot_raw_vs_smooth(x1, y1, x2, y2):
-    fig, ax = plt.subplots(figsize=(15, 3)) # figure size
-    l1, = ax.plot(x1, y1, label='Model') # first plot = raw data
-    l2, = ax.plot(x2, y2, label='Answer') # second plot = smoothed result
-    ax.xaxis.set_major_locator(ticker.MultipleLocator(30)) # x-axis tick interval
-    ax.set_xlabel('Time [day]') # x-axis title
-    ax.legend(handles=[l1,l2])
-    return fig, ax
+# def plot_raw_vs_smooth(x1, y1, x2, y2):
+#     fig, ax = plt.subplots(figsize=(15, 3)) # figure size
+#     l1, = ax.plot(x1, y1, label='Model') # first plot = raw data
+#     l2, = ax.plot(x2, y2, label='Answer') # second plot = smoothed result
+#     ax.xaxis.set_major_locator(ticker.MultipleLocator(30)) # x-axis tick interval
+#     ax.set_xlabel('Time [day]') # x-axis title
+#     ax.legend(handles=[l1,l2])
+#     return fig, ax
+
+# # plot_raw_vs_smooth(t_intp, answer['NH4'],
+# #                     sys.units.AER3.scope.time_series, sys.units.AER3.scope.record[:,sys.units[1].components.indices(['S_NH'])])
+
+# # plot_raw_vs_smooth(t_intp, answer['NO3'],
+# #                     sys.units.AER3.scope.time_series, sys.units.AER3.scope.record[:,sys.units[1].components.indices(['S_NO'])])
+
+# # plot_raw_vs_smooth(t_intp, answer['DO_1'],
+# #                     sys.units.AER3.scope.time_series, sys.units.AER3.scope.record[:,sys.units[1].components.indices(['S_O'])])
 
 # plot_raw_vs_smooth(t_intp, answer['NH4'],
-#                     sys.units.AER3.scope.time_series, sys.units.AER3.scope.record[:,sys.units[1].components.indices(['S_NH'])])
+#                     sys.flowsheet.stream.effluent.scope.time_series, sys.flowsheet.stream.effluent.scope.record[:,sys.units[1].components.indices(['S_NH'])])
 
 # plot_raw_vs_smooth(t_intp, answer['NO3'],
-#                     sys.units.AER3.scope.time_series, sys.units.AER3.scope.record[:,sys.units[1].components.indices(['S_NO'])])
+#                     sys.flowsheet.stream.effluent.scope.time_series, sys.flowsheet.stream.effluent.scope.record[:,sys.units[1].components.indices(['S_NO'])])
 
 # plot_raw_vs_smooth(t_intp, answer['DO_1'],
-#                     sys.units.AER3.scope.time_series, sys.units.AER3.scope.record[:,sys.units[1].components.indices(['S_O'])])
+#                     sys.flowsheet.stream.effluent.scope.time_series, sys.flowsheet.stream.effluent.scope.record[:,sys.units[1].components.indices(['S_O'])])
 
-plot_raw_vs_smooth(t_intp, answer['NH4'],
-                    sys.flowsheet.stream.effluent.scope.time_series, sys.flowsheet.stream.effluent.scope.record[:,sys.units[1].components.indices(['S_NH'])])
+# # sys.units.AER3.scope.plot_time_series(('S_I'))
+# # sys.units.AER3.scope.plot_time_series(('S_S'))
+# # sys.units.AER3.scope.plot_time_series(('X_I'))
+# # sys.units.AER3.scope.plot_time_series(('X_S'))
+# # sys.units.AER3.scope.plot_time_series(('X_BH'))
+# # sys.units.AER3.scope.plot_time_series(('X_BA'))
+# # sys.units.AER3.scope.plot_time_series(('X_P'))
+# # sys.units.AER3.scope.plot_time_series(('S_O'))
+# # sys.units.AER3.scope.plot_time_series(('S_NO'))
+# # sys.units.AER3.scope.plot_time_series(('S_NH'))
+# # sys.units.AER3.scope.plot_time_series(('S_ND'))
+# # sys.units.AER3.scope.plot_time_series(('X_ND'))
+# # sys.units.AER3.scope.plot_time_series(('S_ALK'))
 
-plot_raw_vs_smooth(t_intp, answer['NO3'],
-                    sys.flowsheet.stream.effluent.scope.time_series, sys.flowsheet.stream.effluent.scope.record[:,sys.units[1].components.indices(['S_NO'])])
-
-plot_raw_vs_smooth(t_intp, answer['DO_1'],
-                    sys.flowsheet.stream.effluent.scope.time_series, sys.flowsheet.stream.effluent.scope.record[:,sys.units[1].components.indices(['S_O'])])
-
-# sys.units.AER3.scope.plot_time_series(('S_I'))
-# sys.units.AER3.scope.plot_time_series(('S_S'))
-# sys.units.AER3.scope.plot_time_series(('X_I'))
-# sys.units.AER3.scope.plot_time_series(('X_S'))
-# sys.units.AER3.scope.plot_time_series(('X_BH'))
-# sys.units.AER3.scope.plot_time_series(('X_BA'))
-# sys.units.AER3.scope.plot_time_series(('X_P'))
-# sys.units.AER3.scope.plot_time_series(('S_O'))
-# sys.units.AER3.scope.plot_time_series(('S_NO'))
-# sys.units.AER3.scope.plot_time_series(('S_NH'))
-# sys.units.AER3.scope.plot_time_series(('S_ND'))
-# sys.units.AER3.scope.plot_time_series(('X_ND'))
-# sys.units.AER3.scope.plot_time_series(('S_ALK'))
-
-sys.flowsheet.stream.effluent.scope.plot_time_series(('S_I'))
-sys.flowsheet.stream.effluent.scope.plot_time_series(('S_S'))
-sys.flowsheet.stream.effluent.scope.plot_time_series(('X_I'))
-sys.flowsheet.stream.effluent.scope.plot_time_series(('X_S'))
-sys.flowsheet.stream.effluent.scope.plot_time_series(('X_BH'))
-sys.flowsheet.stream.effluent.scope.plot_time_series(('X_BA'))
-sys.flowsheet.stream.effluent.scope.plot_time_series(('X_P'))
-sys.flowsheet.stream.effluent.scope.plot_time_series(('S_O'))
-sys.flowsheet.stream.effluent.scope.plot_time_series(('S_NO'))
-sys.flowsheet.stream.effluent.scope.plot_time_series(('S_NH'))
-sys.flowsheet.stream.effluent.scope.plot_time_series(('S_ND'))
-sys.flowsheet.stream.effluent.scope.plot_time_series(('X_ND'))
-sys.flowsheet.stream.effluent.scope.plot_time_series(('S_ALK'))
+# sys.flowsheet.stream.effluent.scope.plot_time_series(('S_I'))
+# sys.flowsheet.stream.effluent.scope.plot_time_series(('S_S'))
+# sys.flowsheet.stream.effluent.scope.plot_time_series(('X_I'))
+# sys.flowsheet.stream.effluent.scope.plot_time_series(('X_S'))
+# sys.flowsheet.stream.effluent.scope.plot_time_series(('X_BH'))
+# sys.flowsheet.stream.effluent.scope.plot_time_series(('X_BA'))
+# sys.flowsheet.stream.effluent.scope.plot_time_series(('X_P'))
+# sys.flowsheet.stream.effluent.scope.plot_time_series(('S_O'))
+# sys.flowsheet.stream.effluent.scope.plot_time_series(('S_NO'))
+# sys.flowsheet.stream.effluent.scope.plot_time_series(('S_NH'))
+# sys.flowsheet.stream.effluent.scope.plot_time_series(('S_ND'))
+# sys.flowsheet.stream.effluent.scope.plot_time_series(('X_ND'))
+# sys.flowsheet.stream.effluent.scope.plot_time_series(('S_ALK'))
 #%%
-# @time_printer
-# def run(t, t_step, method=None, **kwargs):
-#     sys = create_system()
-#     sys.simulate(
-#         state_reset_hook='reset_cache',
-#         t_span=(0,t),
-#         t_eval=np.arange(0, t+t_step, t_step),
-#         method=method,
-#         # rtol=1e-2,
-#         # atol=1e-3,
-#         export_state_to=f'results/sol_{t}d_{method}.xlsx',
-#         **kwargs)
-#     srt = get_SRT(sys, biomass_IDs)
-#     print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
+@time_printer
+def run(t, t_step, method=None, **kwargs):
+    sys = create_system()
+    sys.simulate(
+        state_reset_hook='reset_cache',
+        t_span=(0,t),
+        t_eval=np.arange(0, t+t_step, t_step),
+        method=method,
+        # rtol=1e-2,
+        # atol=1e-3,
+        export_state_to=f'results/sol_{t}d_{method}.xlsx',
+        **kwargs)
+    srt = get_SRT(sys, biomass_IDs)
+    print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
 
-# if __name__ == '__main__':
-#     t = 50
-#     t_step = 1
-#     # method = 'RK45'
-#     # method = 'RK23'
-#     # method = 'DOP853'
-#     # method = 'Radau'
-#     method = 'BDF'
-#     # method = 'LSODA'
-#     msg = f'Method {method}'
-#     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
-#     print(f'Time span 0-{t}d \n')
-#     run(t, t_step, method=method)
+if __name__ == '__main__':
+    t = 50
+    t_step = 1
+    # method = 'RK45'
+    # method = 'RK23'
+    # method = 'DOP853'
+    # method = 'Radau'
+    method = 'BDF'
+    # method = 'LSODA'
+    msg = f'Method {method}'
+    print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
+    print(f'Time span 0-{t}d \n')
+    run(t, t_step, method=method)
