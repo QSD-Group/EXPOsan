@@ -60,6 +60,10 @@ def objective(trial):
         'b_A': trial.suggest_uniform('b_A', 0.01, 1),
         'K_O_A': trial.suggest_uniform('K_O_A', 0.04, 4),
         'k_a': trial.suggest_uniform('k_a', 0.008, 0.8),
+        # 'FAC KLa': trial.suggest_uniform('FAC KLa', 10, 50),
+        # 'AER1 KLa': trial.suggest_uniform('AER1 KLa', 10, 100),
+        # 'AER2 KLa': trial.suggest_uniform('AER2 KLa', 10, 100),
+        # 'AER3 KLa': trial.suggest_uniform('AER3 KLa', 10, 100),
         }
 
     current_params = np.array([])

@@ -58,6 +58,13 @@ sensitive_params = {
     # 'fr_SS_COD': (0.75, 'g SS/g COD', (,)),
     }
 
+# KLa_params = {
+#     'FAC KLa': (30, '', (10, 50)),
+#     'AER1 KLa': (60, '', (10, 100)),
+#     'AER2 KLa': (60, '', (10, 100)),
+#     'AER3 KLa': (60, '', (10, 100)),
+#     }
+
 #%%
 
 def import_measured_data():
@@ -112,6 +119,63 @@ def create_model(system=None, flowsheet=None):
               name=k, element=ANO, kind='coupled', units=units, distribution=D, bounds=bounds)   # distribution=D (optional)
         # param(setter=DictAttrSetter(asm1.rate_function, '_params', k),
         #       name=k, element=RET, kind='coupled', units=units, distribution=D, bounds=bounds)   # distribution=D (optional)
+
+    # for k, v in KLa_params.items():
+    #     b, units, bounds = v
+    #     D = shape.Uniform(lower=bounds[0], upper=bounds[1])
+
+    #     if k == 'FAC KLa':
+    #         @param(name=k, element=FAC, kind='coupled', units='',
+    #                baseline=b, distribution=D)
+    #         def set_FAC_KLa(i):
+    #             aerFac.KLa = i
+
+    #     elif k == 'AER1 KLa':
+    #         @param(name=k, element=AER1, kind='coupled', units='',
+    #                baseline=b, distribution=D)
+    #         def set_AER1_KLa(i):
+    #             aer1.KLa = i
+
+    #     elif k == 'AER2 KLa':
+    #         @param(name=k, element=AER2, kind='coupled', units='',
+    #                baseline=b, distribution=D)
+    #         def set_AER2_KLa(i):
+    #             aer2.KLa = i
+
+    #     else:
+    #         @param(name=k, element=AER3, kind='coupled', units='',
+    #                baseline=b, distribution=D)
+    #         def set_AER3_KLa(i):
+    #             aer3.KLa = i
+
+    # # Aeration
+    # b = aerFac.KLa
+    # D = shape.Uniform(lower=10, upper=50)
+    # @param(name='FAC KLa', element=FAC, kind='coupled', units='',
+    #        baseline=b, distribution=D)
+    # def set_Fac_KLa(i):
+    #     aerFac.KLa = i
+
+    # b = aer1.KLa
+    # D = shape.Uniform(lower=10, upper=100)
+    # @param(name='AER1 KLa', element=AER1, kind='coupled', units='',
+    #        baseline=b, distribution=D)
+    # def set_AER1_KLa(i):
+    #     aer1.KLa = i
+
+    # b = aer2.KLa
+    # D = shape.Uniform(lower=10, upper=100)
+    # @param(name='AER2 KLa', element=AER2, kind='coupled', units='',
+    #        baseline=b, distribution=D)
+    # def set_AER2_KLa(i):
+    #     aer2.KLa = i
+
+    # b = aer3.KLa
+    # D = shape.Uniform(lower=10, upper=100)
+    # @param(name='AER3 KLa', element=AER3, kind='coupled', units='',
+    #        baseline=b, distribution=D)
+    # def set_AER3_KLa(i):
+    #     aer3.KLa = i
 
     ##### Add universal evaluation metrics #####
 
