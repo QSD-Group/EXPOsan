@@ -148,8 +148,9 @@ class HApFermenter(SanUnit, BatchBioreactor):
     def _design(self):
         super()._design()
         D = self.design_results
-        D['Sites in parallel'] = self.N_parallel_HApFermenter
-        D['Total number of reactors'] = D['Number of reactors'] * self.N_parallel_HApFermenter
+        n = self.N_parallel_HApFermenter
+        D['Sites in parallel'] = n
+        D['Total number of reactors'] = D['Number of reactors'] * n
         
 
 #%%
@@ -182,7 +183,8 @@ class YeastProduction(Facility, SanUnit, BatchBioreactor):
     V_wf = 0.7
     auxiliary_unit_names = ('blower', )
     
-    _centrifuge_cost_factor = 1.0
+    _centrifuge_cost_factor = 1.0  # +/- 25%
+    _feedstock_cost_factor = 1.0 
     
     # USD/kg
     _prices = {
@@ -227,8 +229,8 @@ class YeastProduction(Facility, SanUnit, BatchBioreactor):
         self._init(tau=tau, N=2, T=T, P=P)
         self.N_parallel_HApFermenter = N_parallel_HApFermenter
         self.blower = SimpleBlower(self.ID+'_blower', 
-                                   ins=Stream(self.ID+'blower_in', phase='g'),
-                                   outs=Stream(self.ID+'blower_out', phase='g'))
+                                   ins=Stream(self.ID+'_blower_in', phase='g'),
+                                   outs=Stream(self.ID+'_blower_out', phase='g'))
         self.yield_on_sugar = yield_on_sugar                    # kg yeast / kg sugar
         self.sugar_concentration = sugar_concentration          # kg / m3 fermentation broth
         self.N_to_sugar_ratio = N_to_sugar_ratio
@@ -422,11 +424,12 @@ class YeastProduction(Facility, SanUnit, BatchBioreactor):
         self.F_BM['Centrifuge'] = 1.5
         self.power_utility.consumption += q*0.035
         sugars, nutrients, seed = self.ins
-        sugars.price = self.sugar_price * (1 - sugars.imass['H2O']/sugars.F_mass)
-        nutrients.price = self.nutrient_price
-        seed.price = self.mineral_vitamin_price * (1 - seed.imass['Yeast']/seed.F_mass)
+        _cf = self._feedstock_cost_factor
+        sugars.price = self.sugar_price * (1 - sugars.imass['H2O']/sugars.F_mass) * _cf
+        nutrients.price = self.nutrient_price * _cf
+        seed.price = self.mineral_vitamin_price * (1 - seed.imass['Yeast']/seed.F_mass) * _cf
         opex = self.add_OPEX = {}
-        opex['NaCl'] = self.effluent.F_vol * 0.762 * self._prices['NaCl']  # final concentration of NaCl in kg/m3 fermentation broth
+        opex['NaCl'] = self.effluent.F_vol * 0.762 * self._prices['NaCl'] * _cf # final concentration of NaCl in kg/m3 fermentation broth
         opex['Operator'] = self.labor_wage * 8/24
 
 #%%
@@ -586,6 +589,7 @@ class PrecipitateProcessing(Facility, SanUnit):
     _F_BM_default = {
         'Recessed plate filter press': 3,
         'Incinerator': 1.7,
+        'Storage tank': 1.3,
         }
 
     def __init__(self, ID='', N_parallel_HApFermenter=10, dryer_operating_hours=8,
