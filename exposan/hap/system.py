@@ -79,6 +79,7 @@ def create_system(total_pe_served=50000, N_locations=90, urination_rate=1.4,
     sys = qs.System(sys_ID, path=(HF,), facilities=(YP, PP, CD))
     
     qs.TEA(sys, lifetime=lifetime, income_tax=income_tax, 
+           system_add_OPEX={'Facility rent':10.96},
            simulate_system=False, CEPCI=801)   
 
     return sys

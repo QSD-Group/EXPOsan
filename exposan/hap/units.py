@@ -151,7 +151,9 @@ class HApFermenter(SanUnit, BatchBioreactor):
         n = self.N_parallel_HApFermenter
         D['Sites in parallel'] = n
         D['Total number of reactors'] = D['Number of reactors'] * n
-        
+        hu = self.heat_utilities.pop()
+        self.add_heat_utility(hu.duty*n, self.T)
+            
 
 #%%
 @cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
@@ -718,7 +720,7 @@ class PrecipitateProcessing(Facility, SanUnit):
     def _cost(self):
         D = self.design_results
         C = self.baseline_purchase_costs
-        fbm_dry, fbm_inc = self.F_BM.values()
+        fbm_dry, fbm_inc, fbm_tank = self.F_BM.values()
         TCV = D['Total dryer chamber volume']
         BR = D['Incinerator burn rate']
         C['Recessed plate filter press'] = capex_dry = \
