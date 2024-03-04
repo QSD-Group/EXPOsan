@@ -288,9 +288,9 @@ def create_system(
     if aeration_processes:
         aer = aeration_processes
     else:
-        aer1 = pc.DiffusedAeration('aer1', DO_ID, KLa=20, DOsat=8.0, V=V_ae)                  #  need to think about KLa
+        aer1 = pc.DiffusedAeration('aer1', DO_ID, KLa=20, DOsat=8.0, V=V_fa)                  #  need to think about KLa
 
-        aer2 = pc.DiffusedAeration('aer1', DO_ID, KLa=70, DOsat=8.0, V=V_ae)                  #  need to think about KLa
+        aer2 = pc.DiffusedAeration('aer2', DO_ID, KLa=70, DOsat=8.0, V=V_ae)                  #  need to think about KLa
         # aer2 = pc.DiffusedAeration('aer2', DO_ID, KLa=240, DOsat=8.0, V=V_ae)                  #  need to think about KLa
         # # aerFac = pc.DiffusedAeration('aerFac', DO_ID, DOsat=8.0, V=V_fa, Q_air=576.1015981*24)
         # aer1 = pc.DiffusedAeration('aer1', DO_ID, DOsat=8.0, V=V_ae, Q_air=764.3221021*24)                  #  need to think about KLa
@@ -315,18 +315,18 @@ def create_system(
     #               DO_ID=DO_ID, suspended_growth_model=asm)
 
     AER1 = su.CSTR('AER1', FAC-0, V_max=V_ae, aeration=aer2,
-                   DO_ID=DO_ID, suspended_growth_model=asm)
+                    DO_ID=DO_ID, suspended_growth_model=asm)
     # AER1 = su.CSTR('AER1', FAC-0, V_max=V_ae, aeration=None,
-    #                DO_ID=DO_ID, suspended_growth_model=asm)
+    #                 DO_ID=DO_ID, suspended_growth_model=asm)
     # AER1 = su.CSTR('AER1', FAC-0, V_max=V_ae, aeration=aer2,
     #               DO_ID=DO_ID, suspended_growth_model=asm)
     # AER1 = su.CSTR('AER1', FAC-0, V_max=V_ae, aeration=aer1,
     #             DO_ID=DO_ID, suspended_growth_model=asm)
 
     AER2 = su.CSTR('AER2', AER1-0, V_max=V_ae, aeration=aer2,
-                   DO_ID=DO_ID, suspended_growth_model=asm)
+                    DO_ID=DO_ID, suspended_growth_model=asm)
     # AER2 = su.CSTR('AER2', AER1-0, V_max=V_ae, aeration=None,
-    #                DO_ID=DO_ID, suspended_growth_model=asm)
+    #                 DO_ID=DO_ID, suspended_growth_model=asm)
     # AER2 = su.CSTR('AER2', AER1-0, V_max=V_ae, aeration=aer2,
     #               DO_ID=DO_ID, suspended_growth_model=asm)
     # AER2 = su.CSTR('AER2', AER1-0, V_max=V_ae, aeration=aer2,
@@ -375,8 +375,8 @@ def create_system(
         # path = os.path.join(data_path, f'initial_conditions_{kind}_lownh.xlsx')
         df = load_data(path, sheet='default')
         batch_init(sys, df)
-    # sys.set_dynamic_tracker(effluent)
-    sys.set_dynamic_tracker(WW, ANO, FAC, AER1, AER2, AER3, C1, effluent)
+    sys.set_dynamic_tracker(effluent)
+    # sys.set_dynamic_tracker(WW, ANO, FAC, AER1, AER2, AER3, C1, effluent)
 
     sys.set_tolerance(rmol=1e-6)
 
@@ -404,7 +404,7 @@ def create_system(
 #     export_state_to=f'results/sol_{t}d_{method}.xlsx',
 #     )
 
-# #%%
+#%%
 
 # answer = load_data(ospath.join(data_path, 'train_val_test_online_dataset_.xlsx'), sheet='train_val_test_online_dataset')
 
@@ -472,31 +472,31 @@ def create_system(
 # sys.flowsheet.stream.effluent.scope.plot_time_series(('X_ND'))
 # sys.flowsheet.stream.effluent.scope.plot_time_series(('S_ALK'))
 #%%
-@time_printer
-def run(t, t_step, method=None, **kwargs):
-    sys = create_system()
-    sys.simulate(
-        state_reset_hook='reset_cache',
-        t_span=(0,t),
-        t_eval=np.arange(0, t+t_step, t_step),
-        method=method,
-        # rtol=1e-2,
-        # atol=1e-3,
-        export_state_to=f'results/sol_{t}d_{method}.xlsx',
-        **kwargs)
-    srt = get_SRT(sys, biomass_IDs)
-    print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
+# @time_printer
+# def run(t, t_step, method=None, **kwargs):
+#     sys = create_system()
+#     sys.simulate(
+#         state_reset_hook='reset_cache',
+#         t_span=(0,t),
+#         t_eval=np.arange(0, t+t_step, t_step),
+#         method=method,
+#         # rtol=1e-2,
+#         # atol=1e-3,
+#         export_state_to=f'results/sol_{t}d_{method}.xlsx',
+#         **kwargs)
+#     srt = get_SRT(sys, biomass_IDs)
+#     print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
 
-if __name__ == '__main__':
-    t = 50
-    t_step = 1
-    # method = 'RK45'
-    # method = 'RK23'
-    # method = 'DOP853'
-    # method = 'Radau'
-    method = 'BDF'
-    # method = 'LSODA'
-    msg = f'Method {method}'
-    print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
-    print(f'Time span 0-{t}d \n')
-    run(t, t_step, method=method)
+# if __name__ == '__main__':
+#     t = 50
+#     t_step = 1
+#     # method = 'RK45'
+#     # method = 'RK23'
+#     # method = 'DOP853'
+#     # method = 'Radau'
+#     method = 'BDF'
+#     # method = 'LSODA'
+#     msg = f'Method {method}'
+#     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
+#     print(f'Time span 0-{t}d \n')
+#     run(t, t_step, method=method)

@@ -81,7 +81,7 @@ def objective(trial):
         # mdl._update_state(current_params, t_span=(0, 25), t_eval = np.arange(0, 26, 1), method='RK23', state_reset_hook='reset_cache', print_t=False, events=time_track)
 
     except:
-        print('Fail & return 15')
+        print('Fail & return 10000')
         return 10000
 
     out = [metric() for metric in mdl.metrics]
@@ -107,7 +107,7 @@ if __name__ == '__main__':
     assert isinstance(df, pd.DataFrame)
     assert df.shape[0] == 300
 
-    df.to_excel(ospath.join(results_path, 'optuna_cali_seed777.xlsx'))
+    df.to_excel(ospath.join(results_path, 'optuna_cali_seed777_fixed_aeration.xlsx'))
     # df.to_excel(ospath.join(results_path, 'conti_optuna_kill.xlsx'))
 
     # optuna.visualization.matplotlib.plot_param_importances(study)
