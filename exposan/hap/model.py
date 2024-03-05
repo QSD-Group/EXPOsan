@@ -262,7 +262,7 @@ def run_model(mdl=None, samples=None, N=100, seed=None):
 
 #%%
 if __name__ == '__main__':
-    N = 3
-    seed = 402
+    N = 2000
+    seed = 126
     mdl = run_model(N=N, seed=seed)
    
