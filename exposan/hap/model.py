@@ -15,15 +15,10 @@ from exposan.hap import (
     create_system,
     results_path
     )
-# from exposan.metab.utils import categorize_cashflow, categorize_all_impacts
-# import qsdsan as qs, os, numpy as np
 from chaospy import distributions as shape
-# from math import log
-from qsdsan.utils import FuncGetter, AttrSetter, AttrFuncSetter, MethodSetter, \
-    SanUnitScope, time_printer, ospath
-# from qsdsan.sanunits import AnaerobicCSTR
+from qsdsan.utils import AttrSetter, time_printer, ospath
 
-__all__ = ('create_model',)
+__all__ = ('create_model', 'run_model')
 
 #%%
 
@@ -161,12 +156,20 @@ def create_model(sys=None, exception_hook='warn', **kwargs):
         for unit in (u.YP, u.CD, u.PP):
             unit.labor_wage = w
     
-    b = 8000
-    D = shape.Uniform(5500, 12000)
-    @param(name='Centralized facility rent', units='USD/month', kind='coupled',
+    b = 0.17
+    D = shape.Uniform(0.12, 0.20)
+    @param(name='Electricity cost', units='USD/kWh', kind='coupled',
+           element='System', baseline=b, distribution=D)
+    def set_pu_cost(c):
+        qs.PowerUtility.price = c
+
+    
+    b = 35000
+    D = shape.Uniform(28000, 50000)
+    @param(name='Centralized facility rent', units='USD/yr', kind='coupled',
            element='System', baseline=b, distribution=D)
     def set_rent(r):
-        sys.TEA.system_add_OPEX['Facility rent'] = r*12/365/24
+        sys.TEA.system_add_OPEX['Facility rent'] = r
     
     b = 28
     D = shape.Uniform(24, 32)
@@ -181,13 +184,85 @@ def create_model(sys=None, exception_hook='warn', **kwargs):
     
     @metric(name='HAp recovery rate', units='kg/yr', element='System')
     def get_rHAp():
-        return s.product.imass['HAp'] * 24 * 365
+        return s.product.imass['HAP'] * 24 * 365
+    
+    @metric(name='Average transportation duty', units='mile/location', element='System')
+    def get_distance():
+        return u.CD.design_results['Total travel distance']/u.CD.N_parallel_HApFermenter
     
     @metric(name='MPSP', units='USD/kg', element='TEA')
     def get_MPSP():
         p = sys.TEA.solve_price([s.product])
         return p * s.product.F_mass / s.product.imass['HAP']
     
+    @metric(name='Annualized NPV', units='USD', element='TEA')
+    def get_ANPV():
+        return sys.TEA.annualized_NPV
+    
+    @metric(name='CAPEX', units='% ANPV', element='TEA')
+    def get_capex():
+        return sys.TEA.annualized_CAPEX / (-sys.TEA.annualized_NPV) * 100
+    
+    @metric(name='OPEX', units='% ANPV', element='TEA')
+    def get_opex():
+        return sys.TEA.AOC / (-sys.TEA.annualized_NPV) * 100
+    
+    @metric(name='HAp fermenter CAPEX', units='% total CAPEX', element='CAPEX')
+    def get_hf_capex():
+        return u.HF.installed_cost / sys.TEA.installed_equipment_cost * 100
+    
+    @metric(name='Yeast production CAPEX', units='% total CAPEX', element='CAPEX')
+    def get_yp_capex():
+        return u.YP.installed_cost / sys.TEA.installed_equipment_cost * 100
+    
+    @metric(name='Post processing CAPEX', units='% total CAPEX', element='CAPEX')
+    def get_pp_capex():
+        return u.PP.installed_cost / sys.TEA.installed_equipment_cost * 100
+    
+    def get_unit_opex(unit):
+        feed = sum(i.cost for i in unit.ins if i.price)
+        util = unit.utility_cost
+        others = sum(unit.add_OPEX.values())
+        return (feed + util + others)*24*365
+    
+    @metric(name='HAp fermenter OPEX', units='% total OPEX', element='OPEX')
+    def get_hf_opex():
+        return get_unit_opex(u.HF)/sys.TEA.AOC * 100
+    
+    @metric(name='Yeast production OPEX', units='% total OPEX', element='OPEX')
+    def get_yp_opex():
+        return get_unit_opex(u.YP)/sys.TEA.AOC * 100
+    
+    @metric(name='Transportation OPEX', units='% total OPEX', element='OPEX')
+    def get_cd_opex():
+        return get_unit_opex(u.CD)/sys.TEA.AOC * 100
+    
+    @metric(name='Post processing OPEX', units='% total OPEX', element='OPEX')
+    def get_pp_opex():
+        return get_unit_opex(u.PP)/sys.TEA.AOC * 100
+   
+    @metric(name='Other OPEX', units='% total OPEX', element='OPEX')
+    def get_other_opex():
+        return sum(sys.TEA.system_add_OPEX.values())/sys.TEA.AOC * 100
+    
     return mdl
 
 #%%
+@time_printer
+def run_model(mdl=None, samples=None, N=100, seed=None):
+    mdl = mdl or create_model()
+    if samples is None: 
+        samples = mdl.sample(N=N, rule='L', seed=seed)
+    mdl.load_samples(samples)
+    mdl.evaluate()
+    mpath = ospath.join(results_path, f'table_{seed}.xlsx')
+    mdl.table.to_excel(mpath)
+    return mdl
+
+
+#%%
+if __name__ == '__main__':
+    N = 3
+    seed = 402
+    mdl = run_model(N=N, seed=seed)
+   

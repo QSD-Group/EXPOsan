@@ -34,8 +34,8 @@ __all__ = ('HApFermenter',
 @cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
       cost=47200, n=0.8, BM=2.3, CE=522, N='Total number of reactors')
 @cost('Reactor volume', 'Cleaning in place', CE=801, cost=2000, S=1, n=0.6, 
-      BM=1.8, N='Sites in parallel')  # assume ~1/2 reactor cost
-@cost('Reactor volume', 'Agitators', kW=2.2, CE=801, cost=245, S=1, n=0.54, 
+      kW=0.25*3/24, BM=1.8, N='Sites in parallel')  # assume ~1/2 reactor cost
+@cost('Reactor volume', 'Agitators', kW=0.22, CE=801, cost=245, S=1, n=0.54, 
       lb=0.1, BM=1.5, N='Total number of reactors')
 @cost('Reactor volume', 'Reactors', CE=801, cost=3936, S=1, n=0.54, 
       lb=0.1, BM=1.5, N='Total number of reactors')
@@ -64,7 +64,7 @@ class HApFermenter(SanUnit, BatchBioreactor):
         self.precipitate_moisture=precipitate_moisture
         self.biomass_yield=biomass_yield
         self.inoculum_concentration=inoculum_concentration
-        self.ins[2].price=CaCl2_price
+        self.CaCl2_price=CaCl2_price
         # self.labor_wage = labor_wage
     
     @property
@@ -153,13 +153,15 @@ class HApFermenter(SanUnit, BatchBioreactor):
         D['Total number of reactors'] = D['Number of reactors'] * n
         hu = self.heat_utilities.pop()
         self.add_heat_utility(hu.duty*n, self.T)
+        self.ins[2].price = self.CaCl2_price * n
             
 
 #%%
 @cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
       cost=47200, n=0.8, BM=2.3, CE=522, N='Number of reactors')
-@cost('Reactor volume', 'Cleaning in place', CE=801, cost=2000, S=1, n=0.6, BM=1.8)  # assume ~1/2 reactor cost
-@cost('Reactor volume', 'Agitators', kW=2.2, CE=801, cost=245, S=1, n=0.54, 
+@cost('Reactor volume', 'Cleaning in place', kW=0.25*3/24, 
+      CE=801, cost=2000, S=1, n=0.6, BM=1.8)  # assume ~1/2 reactor cost
+@cost('Reactor volume', 'Agitators', kW=0.22, CE=801, cost=245, S=1, n=0.54, 
       lb=0.1, BM=1.5, N='Number of reactors')
 @cost('Reactor volume', 'Reactors', CE=801, cost=3936, S=1, n=0.54, 
       lb=0.1, BM=1.5, N='Number of reactors')
@@ -548,7 +550,7 @@ class CollectionDistribution(Facility, SanUnit):
         if self.cvr.vehicle_capacity != self.capacity:
             self.cvr.vehicle_capacity = self.capacity
         self.cvr.register()
-        self.cvr.solve(self.solve_time, True)
+        self.cvr.solve(self.solve_time, False)
 
     def _design(self):
         D = self.design_results
