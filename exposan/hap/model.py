@@ -10,7 +10,7 @@ This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
-import qsdsan as qs
+import qsdsan as qs, qsdsan.stats as qst
 from time import time
 from exposan.hap import (
     create_system,
@@ -38,7 +38,7 @@ def create_model(sys=None, exception_hook='warn', **kwargs):
     b = 770
     D = shape.Triangle(470, b, 1070)
     @param(name='urine TP', units='mg/L', kind='coupled', 
-           element='HAp', baseline=b, distribution=D)
+            element='HAp', baseline=b, distribution=D)
     def set_TP(c):
         s.urine.imass['IP'] = c/1000*s.urine.F_vol
         
@@ -267,12 +267,15 @@ def run_model(mdl=None, samples=None, N=100, seed=None):
     mdl.evaluate()
     mpath = ospath.join(results_path, f'table_{seed}.xlsx')
     mdl.table.to_excel(mpath)
-    return mdl
+    return seed, mdl
 
-def rerun_failed_samples(seed, mdl=None):
-    mdl = mdl or create_model()
-    smp = load_data(ospath.join(results_path, f'table_{seed}.xlsx'),
-                       header=[0,1], skiprows=[2,])
+def rerun_failed_samples(mdl=None, seed=None):
+    if mdl is None:
+        mdl = create_model()
+        smp = load_data(ospath.join(results_path, f'table_{seed}.xlsx'),
+                        header=[0,1], skiprows=[2,])
+    else:
+        smp = mdl.table
     smp = smp[smp.isna().any(axis=1)]
     smp = smp.iloc[:, :len(mdl.parameters)].to_numpy()
     mdl.load_samples(smp)
@@ -282,10 +285,21 @@ def rerun_failed_samples(seed, mdl=None):
     mpath = ospath.join(results_path, f'table_{seed}_rerun.xlsx')
     mdl.table.to_excel(mpath)
 
+def spearman(mdl=None, seed=None):
+    if mdl is None:
+        mdl = create_model()
+        mdl.table = load_data(ospath.join(results_path, f'table_{seed}.xlsx'),
+                              header=[0,1], skiprows=[2,])
+    path = ospath.join(results_path, f'spearman_{seed}.xlsx')
+    rho, p = qst.get_correlations(mdl, kind='Spearman', file=path)
+    return rho, p
 
 #%%
 if __name__ == '__main__':
     N = 2000
     seed = None
     mdl = run_model(N=N, seed=seed)
-   
+    rerun_failed_samples(mdl)
+    r, p = spearman(mdl)
+    # rerun_failed_samples(seed=292)
+    # r, p = spearman(seed=292)

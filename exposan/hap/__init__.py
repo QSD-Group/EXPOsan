@@ -115,6 +115,9 @@ from .units import *
 from . import system
 from .system import *
 
+from . import model
+from .model import *
+
 __all__ = (
     'folder',
     'data_path',
@@ -124,6 +127,7 @@ __all__ = (
     *blower.__all__,
     *routing.__all__,
     *units.__all__,
-    *system.__all__
+    *system.__all__,
+    *model.__all__,
 	)
 

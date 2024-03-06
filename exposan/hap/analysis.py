@@ -22,18 +22,20 @@ mpl.rcParams['font.sans-serif'] = 'arial'
 mpl.rcParams["figure.autolayout"] = False
 mpl.rcParams['xtick.minor.visible'] = True
 mpl.rcParams['ytick.minor.visible'] = True
+
 #%%
 boxprops = dict(alpha=1, facecolor='#60c1cf', edgecolor='black')
 meanprops = dict(marker='x', markersize=7, markeredgecolor='black')
 flierprops = dict(marker='.', markersize=2, markerfacecolor='#4e4e4e')
 medianprops = dict(color='black')
-#%%
-_market_prices={            # USD/kg
-    'low range': [136,      # puriss https://www.sigmaaldrich.com/US/en/product/sial/04238
-                  194],     # purum  https://www.sigmaaldrich.com/US/en/product/sial/21223
-    'high range': [4000,    # https://www.sigmaaldrich.com/US/en/product/aldrich/900203
-                   9600]    # https://www.sigmaaldrich.com/US/en/product/aldrich/677418
-    }
+
+# _market_prices={            # USD/kg
+#     'low range': [136,      # puriss https://www.sigmaaldrich.com/US/en/product/sial/04238
+#                   194],     # purum  https://www.sigmaaldrich.com/US/en/product/sial/21223
+#     'high range': [4000,    # https://www.sigmaaldrich.com/US/en/product/aldrich/900203
+#                    9600]    # https://www.sigmaaldrich.com/US/en/product/aldrich/677418
+#     }
+
 def plot_mpsp(data=None, seed=None, save=True, 
               market_ranges=[[136, 194], [4000, 9600]],
               single_values=[50, 170]):
@@ -51,8 +53,6 @@ def plot_mpsp(data=None, seed=None, save=True,
         ax2.axhline(v, color='black', linewidth=0.5)
     ax1.set_ylim(91, 11000)
     ax1.set_yscale('log')
-    # sns.boxplot(y=mpsp, ax=ax2, 
-    #             width=0.6,
     ax2.boxplot(mpsp,
                 whis=(5,95), 
                 widths=0.6,
@@ -89,4 +89,13 @@ def plot_mpsp(data=None, seed=None, save=True,
     else:
         return fig, ax
 
-plot_mpsp(seed=459, save=True)
+#%%
+
+def plot_npv_breakdown(data=None, seed=None, save=True):
+    pass
+
+#%%
+def plot_sensitivity(seed=None, save=True):
+    pass
+
+# plot_mpsp(seed=459, save=True)
