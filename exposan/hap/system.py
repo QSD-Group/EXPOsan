@@ -76,7 +76,7 @@ def create_system(total_pe_served=50000, N_locations=90, urination_rate=1.4,
     YP = YeastProduction('YP', N_parallel_HApFermenter=N_locations)
     PP = PrecipitateProcessing('PP', N_parallel_HApFermenter=N_locations)
     CD = CollectionDistribution('CD', N_parallel_HApFermenter=N_locations, 
-                                # solve_time=5
+                                solve_time=30
                                 )
     sys = qs.System(sys_ID, path=(HF,), facilities=(YP, PP, CD))
     

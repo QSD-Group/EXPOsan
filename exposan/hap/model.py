@@ -11,14 +11,15 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 import qsdsan as qs
+from time import time
 from exposan.hap import (
     create_system,
     results_path
     )
 from chaospy import distributions as shape
-from qsdsan.utils import AttrSetter, time_printer, ospath
+from qsdsan.utils import AttrSetter, time_printer, ospath, load_data
 
-__all__ = ('create_model', 'run_model')
+__all__ = ('create_model', 'run_model', 'rerun_failed_samples')
 
 #%%
 
@@ -251,18 +252,34 @@ def create_model(sys=None, exception_hook='warn', **kwargs):
 @time_printer
 def run_model(mdl=None, samples=None, N=100, seed=None):
     mdl = mdl or create_model()
-    if samples is None: 
+    if samples is None:
+        if seed is None: seed = int(str(time())[-3:])
         samples = mdl.sample(N=N, rule='L', seed=seed)
     mdl.load_samples(samples)
+    print(f'Seed = {seed}\n')
+    print('Monte Carlo simulations begin...\n')
     mdl.evaluate()
     mpath = ospath.join(results_path, f'table_{seed}.xlsx')
     mdl.table.to_excel(mpath)
     return mdl
 
+def rerun_failed_samples(seed, mdl=None):
+    mdl = mdl or create_model()
+    smp = load_data(ospath.join(results_path, f'table_{seed}.xlsx'),
+                       header=[0,1], skiprows=[2,])
+    smp = smp[smp.isna().any(axis=1)]
+    smp = smp.iloc[:, :len(mdl.parameters)].to_numpy()
+    mdl.load_samples(smp)
+    u = mdl.system.flowsheet.unit
+    u.CD.solve_time = 100
+    mdl.evaluate()
+    mpath = ospath.join(results_path, f'table_{seed}_rerun.xlsx')
+    mdl.table.to_excel(mpath)
+
 
 #%%
 if __name__ == '__main__':
     N = 2000
-    seed = 126
+    seed = None
     mdl = run_model(N=N, seed=seed)
    

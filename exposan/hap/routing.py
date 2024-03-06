@@ -162,6 +162,8 @@ class SimpleCVRP:
             self._locations = locs
             self._dm = np.int64(locs.demands)
             self._M_dist = np.int64(locs.distance_matrix)
+            self._manager = None
+            self._routing = None
     
     @property
     def vehicle_capacity(self):
@@ -232,7 +234,8 @@ class SimpleCVRP:
         self._routes = None
     
     def solve(self, time_limit=300, print_solution=True): 
-        self._routes = None
+        if self._manager is None: self.register()
+        else: self._routes = None
         params = self.search_parameters
         routing = self.routing
         params.time_limit.FromSeconds(time_limit)
