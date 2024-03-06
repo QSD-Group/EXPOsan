@@ -35,9 +35,15 @@ def create_model(sys=None, exception_hook='warn', **kwargs):
     # =============================================================================
     # uncertain parameters
     # =============================================================================
-    
+    b = 770
+    D = shape.Triangle(470, b, 1070)
+    @param(name='urine TP', units='mg/L', kind='coupled', 
+           element='HAp', baseline=b, distribution=D)
+    def set_TP(c):
+        s.urine.imass['IP'] = c/1000*s.urine.F_vol
+        
     b = 5
-    D = shape.Triangle(b-2, b, b+2)
+    D = shape.Triangle(b, b, b+2)
     N_rxt = u.HF.N
     tau_0 = u.HF.tau_0
     @param(name='HAp reactor design retention time', units='d', kind='coupled', 
@@ -47,14 +53,14 @@ def create_model(sys=None, exception_hook='warn', **kwargs):
         u.HF.tau = (1-1/N_rxt) * t - tau_0/N_rxt
     
     b = 66
-    D = shape.Triangle(b*0.5, b, b*1.5)
+    D = shape.Triangle(30, b, 80)
     @param(name='HAp yield', units='% theoretical maximum', kind='coupled',
            element='HAp', baseline=b, distribution=D)
     def set_HAp_yield(p):
         u.HF.f_maximum_hap_yield = p/100
     
     b = 0.5
-    D = shape.Triangle(b*0.5, b, b*1.5)
+    D = shape.Triangle(b, b, b*2)
     param(AttrSetter(u.HF, 'inoculum_concentration'),
           name='Inoculum concentration', units='g/L', kind='coupled',
           element='HAp', baseline=b, distribution=D)
@@ -66,7 +72,7 @@ def create_model(sys=None, exception_hook='warn', **kwargs):
           element='HAp', baseline=b, distribution=D)
     
     b = 1.45
-    D = shape.Triangle(b*0.5, b, b*1.5)
+    D = shape.Triangle(b*0.5, b, b*1.2)
     param(AttrSetter(u.YP, 'yield_on_sugar'),
           name='Osteoyeast biomass yield', units='kg/kg sugar fed', kind='coupled',
           element='Osteoyeast', baseline=b, distribution=D)
@@ -121,13 +127,13 @@ def create_model(sys=None, exception_hook='warn', **kwargs):
           element='Postprocessing', baseline=b, distribution=D)
     
     b = 1.0
-    D = shape.Uniform(0.75, 1.25)
+    D = shape.Uniform(1.0, 1.5)
     param(AttrSetter(u.PP, '_incinerator_cost_factor'),
           name='Incinerator cost factor', units='-', kind='isolated',
           element='Postprocessing', baseline=b, distribution=D)
     
     b = 5.23
-    D = shape.Uniform(3.49, 6.97)
+    D = shape.Uniform(b, 6.97)
     param(AttrSetter(u.PP, 'auxiliary_fuel_price'),
           name='Incinerator fuel price', units='USD/gal', kind='isolated',
           element='Postprocessing', baseline=b, distribution=D)

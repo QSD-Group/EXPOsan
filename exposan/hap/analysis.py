@@ -84,7 +84,7 @@ def plot_mpsp(data=None, seed=None, save=True,
     ax1.plot([0, 1], [0, 0], transform=ax1.transAxes, **kwargs)
     ax2.plot([0, 1], [1, 1], transform=ax2.transAxes, **kwargs)
     if save:
-        fig.savefig(ospath.join(figures_path, f'msps_{seed}.png'), 
+        fig.savefig(ospath.join(figures_path, 'msps.png'), 
                     dpi=300, transparent=True)
     else:
         return fig, ax
