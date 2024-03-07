@@ -155,16 +155,16 @@ def create_model(sys=None, exception_hook='warn', **kwargs):
         Q = pe * urination_rate / N_loc / 24 # L/hr
         s.urine.set_total_flow(Q, 'L/hr')
     
-    b = 21.68
-    D = shape.Uniform(18.50, 27.75)
+    b = 30
+    D = shape.Uniform(26, 40)
     @param(name='Hourly labor wage', units='USD/hr', kind='coupled',
            element='System', baseline=b, distribution=D)
     def set_wage(w):
         for unit in (u.YP, u.CD, u.PP):
             unit.labor_wage = w
     
-    b = 0.17
-    D = shape.Uniform(0.12, 0.20)
+    b = 0.19
+    D = shape.Uniform(0.17, 0.23)
     @param(name='Electricity cost', units='USD/kWh', kind='coupled',
            element='System', baseline=b, distribution=D)
     def set_pu_cost(c):
