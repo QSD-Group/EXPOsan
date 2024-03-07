@@ -290,16 +290,16 @@ def spearman(mdl=None, seed=None):
         mdl = create_model()
         mdl.table = load_data(ospath.join(results_path, f'table_{seed}.xlsx'),
                               header=[0,1], skiprows=[2,])
-    path = ospath.join(results_path, f'spearman_{seed}.xlsx')
+    path = ospath.join(results_path, f'Spearman_{seed}.xlsx')
     rho, p = qst.get_correlations(mdl, kind='Spearman', file=path)
     return rho, p
 
 #%%
 if __name__ == '__main__':
-    N = 2000
-    seed = None
-    mdl = run_model(N=N, seed=seed)
-    rerun_failed_samples(mdl)
-    r, p = spearman(mdl)
-    # rerun_failed_samples(seed=292)
+    # N = 2000
+    # seed = None
+    # mdl = run_model(N=N, seed=seed)
+    # rerun_failed_samples(mdl)
+    # r, p = spearman(mdl)
+    rerun_failed_samples(seed=292)
     # r, p = spearman(seed=292)
