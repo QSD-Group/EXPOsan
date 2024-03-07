@@ -280,7 +280,7 @@ def rerun_failed_samples(mdl=None, seed=None):
     smp = smp.iloc[:, :len(mdl.parameters)].to_numpy()
     mdl.load_samples(smp)
     u = mdl.system.flowsheet.unit
-    u.CD.solve_time = 100
+    u.CD.solve_time = 300
     mdl.evaluate()
     mpath = ospath.join(results_path, f'table_{seed}_rerun.xlsx')
     mdl.table.to_excel(mpath)
@@ -301,5 +301,5 @@ if __name__ == '__main__':
     # mdl = run_model(N=N, seed=seed)
     # rerun_failed_samples(mdl)
     # r, p = spearman(mdl)
-    rerun_failed_samples(seed=292)
-    # r, p = spearman(seed=292)
+    # rerun_failed_samples(seed=292)
+    r, p = spearman(seed=292)

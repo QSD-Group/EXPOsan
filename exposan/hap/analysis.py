@@ -93,7 +93,7 @@ def plot_mpsp(data=None, seed=None, save=True,
 #%%
 
 patch_dct = {
-    'CAPEX': ('white', '///'),
+    'CAPEX': ('white', r'\\\\'),
     'OPEX': ('white', ''),
     'HAp fermenter': ('#f98f60', ''),
     'Yeast production': ('#60c1cf', ''),
@@ -103,6 +103,7 @@ patch_dct = {
     }
 
 def plot_area(df, figsize=(1.5, 6)):
+    # df.sort_values(by=df.columns[0], inplace=True)
     fig, ax = plt.subplots(figsize=figsize)
     fig.subplots_adjust(left=0.3)
     x = range(df.shape[0])
@@ -114,18 +115,20 @@ def plot_area(df, figsize=(1.5, 6)):
             y = df.loc[:,k]
             y_offset = (y>=0)*yp + (y<0)*yn
             ax.fill_between(x, y+y_offset, y_offset, facecolor=c, hatch=hat, 
-                            linewidth=0.25, ec='black')
+                            zorder=0) 
+                            # linewidth=0.25, ec='black')
             yp += (y>=0) * y
             yn += (y<0) * y
     ax.set_xlim(0, max(x))
     ax.set_xticks([])
     ax.set_ylim(0,100)
+    ax.set_xlabel('')
+    ax.set_ylabel('')
     ax.tick_params(labelsize=13)
     ax.tick_params(axis='y', which='major', direction='inout', length=8)
     ax.tick_params(axis='y', which='minor', direction='inout', length=4)
-    ax.set_xlabel('')
-    ax.set_ylabel('')
     ax2y = ax.secondary_yaxis('right')
+    ax2y.set_yticks(ax.get_yticks())
     ax2y.tick_params(axis='y', which='major', direction='in', length=4)
     ax2y.tick_params(axis='y', which='minor', direction='in', length=2)
     ax2y.yaxis.set_ticklabels([])
@@ -135,7 +138,7 @@ def plot_npv_breakdown(data=None, seed=None):
     if data is None:
         data = load_data(ospath.join(results_path, f'table_{seed}.xlsx'),
                           header=[0,1], skiprows=[2,])
-    data.sort_values(by=('TEA', 'MPSP [USD/kg]'), inplace=True)
+    # data.sort_values(by=('TEA', 'MPSP [USD/kg]'), inplace=True)
     npv = data.TEA[['CAPEX [% ANPV]', 'OPEX [% ANPV]']]
     for j, df in enumerate([npv, data.CAPEX, data.OPEX]):
         df.columns = [i.split(' [')[0] for i in df.columns]
@@ -146,7 +149,8 @@ def plot_npv_breakdown(data=None, seed=None):
         if j == 2: 
             df.columns = [i.rstrip(' OPEX') for i in df.columns]
             figsize= (2, 3.9)
-        fig, ax = plot_area(df, figsize)
+        by = df.columns[0]
+        fig, ax = plot_area(df.sort_values(by), figsize)
         fig.savefig(ospath.join(figures_path, f'breakdown_{j}.png'), 
                     dpi=300, transparent=True)
 
@@ -159,7 +163,7 @@ color_dct = {
     }
 
 hatch_dct = {
-    'CAPEX': '///',
+    'CAPEX': r'\\\\',
     'OPEX': '',
     }
 
@@ -167,7 +171,7 @@ def plot_unified_breakdown(data=None, seed=None):
     if data is None:
         data = load_data(ospath.join(results_path, f'table_{seed}.xlsx'),
                           header=[0,1], skiprows=[2,])
-    data.sort_values(by=('TEA', 'MPSP [USD/kg]'), inplace=True)
+    data.sort_values(by=('TEA', 'CAPEX [% ANPV]'), inplace=True)
     npv = data.TEA[['CAPEX [% ANPV]', 'OPEX [% ANPV]']]
     npv.columns = [i.split(' [')[0] for i in npv.columns]
     df = pd.concat([data.CAPEX.mul(npv.CAPEX/100, axis=0), 
@@ -190,11 +194,12 @@ def plot_unified_breakdown(data=None, seed=None):
         hat = hatch_dct[hat]
         y_offset = (y>=0)*yp + (y<0)*yn
         ax.fill_between(x, y+y_offset, y_offset, facecolor=c, hatch=hat,
-                        linewidth=0.2, 
-                        ec='black')
+                        zorder=0)
+                        # linewidth=0.2, 
+                        # ec='black')
         yp += (y>=0) * y
         yn += (y<0) * y
-    ax.set_xlim(min(x), max(x)+1)
+    ax.set_xlim(min(x), max(x))
     ax.set_xticks([])
     ax.set_ylim(0,100)
     ax.tick_params(labelsize=13)
@@ -221,15 +226,15 @@ def plot_sensitivity(seed=None, save=True):
            '**' if i < 0.01 else
            '*' if i < 0.05 else 
            ''  for i in p.loc[:,col]]
-    colors = ['#4d7e53' if i<0 else '#9c4b50' for i in r]
-    # colors = ['#79bf82' if i<0 else '#ed586f' for i in r]    
+    # colors = ['#4d7e53' if i<0 else '#9c4b50' for i in r]
+    colors = ['#79bf82' if i<0 else '#ed586f' for i in r]    
     fig, ax = plt.subplots(figsize=(12, 6))
     y_pos = list(range(len(r)))
     ax.barh(y_pos, r, height=0.7, linewidth=0.7,
             color=colors, edgecolor='black')
     ax.axvline(x=0, color='black', linewidth=0.8)
     for s, x, y in zip(sig, r, y_pos):
-        off = -0.5*len(s)-0.1 if x < 0 else 0.5*len(s)-0.1
+        off = -0.5*len(s)-0.1 if x < 0 else 0.5*len(s)-1
         ax.annotate(s, (x,y), (off, -0.55), textcoords='offset fontsize',
                     fontsize='large')
     ax.set_xlim(-1, 1)
@@ -251,7 +256,7 @@ def plot_sensitivity(seed=None, save=True):
 #%%
 if __name__ == '__main__':
     seed = 292
-    # plot_mpsp(seed=seed)
-    # plot_npv_breakdown(seed=seed)
-    # plot_unified_breakdown(seed=seed)
-    # plot_sensitivity(seed)
+    plot_mpsp(seed=seed)
+    plot_npv_breakdown(seed=seed)
+    plot_unified_breakdown(seed=seed)
+    plot_sensitivity(seed)
