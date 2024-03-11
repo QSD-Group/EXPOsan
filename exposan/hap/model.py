@@ -53,7 +53,7 @@ def create_model(sys=None, exception_hook='warn', **kwargs):
         u.HF.tau = (1-1/N_rxt) * t - tau_0/N_rxt
     
     b = 66
-    D = shape.Triangle(30, b, 80)
+    D = shape.Triangle(50, b, 95)
     @param(name='HAp yield', units='% theoretical maximum', kind='coupled',
            element='HAp', baseline=b, distribution=D)
     def set_HAp_yield(p):
@@ -172,7 +172,7 @@ def create_model(sys=None, exception_hook='warn', **kwargs):
 
     
     b = 35000
-    D = shape.Uniform(28000, 50000)
+    D = shape.Uniform(28000, 60000)
     @param(name='Centralized facility rent', units='USD/yr', kind='coupled',
            element='System', baseline=b, distribution=D)
     def set_rent(r):
