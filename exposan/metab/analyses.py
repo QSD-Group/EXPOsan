@@ -417,8 +417,8 @@ def plot_joint(df, save_as='', kde=True):
                         markers=['P', 'v'],
                         alpha=0.5,
                         )
-    g.ax_joint.tick_params(axis='both', which='major', direction='inout', length=10, labelsize=24)
-    g.ax_joint.tick_params(axis='both', which='minor', direction='inout', length=6)
+    g.ax_joint.tick_params(axis='both', which='major', direction='inout', length=14, labelsize=24)
+    g.ax_joint.tick_params(axis='both', which='minor', direction='inout', length=8)
     g.ax_joint.set_xlim(-0.2, 1.0)
     g.ax_joint.set_ylim(-0.3, 1.0)
     g.ax_joint.set_xlabel('')
@@ -439,12 +439,12 @@ def plot_joint(df, save_as='', kde=True):
     sns.boxplot(x=x, y=group, hue=group, ax=g.ax_marg_x, **bxp_kwargs)
     sns.boxplot(y=y, x=group, hue=group, ax=g.ax_marg_y, **bxp_kwargs)
     # for ax in (g.ax_marg_x, g.ax_marg_y): ax.legend_.remove()
-    g.ax_marg_x.tick_params(axis='x', which='major', direction='out', length=5)
-    g.ax_marg_x.tick_params(axis='x', which='minor', direction='out', length=3)    
+    g.ax_marg_x.tick_params(axis='x', which='major', direction='out', length=7)
+    g.ax_marg_x.tick_params(axis='x', which='minor', direction='out', length=4)    
     g.ax_marg_x.tick_params(left=False, which='both', labelleft=False)    
     g.ax_marg_x.spines['left'].set_color('white')
-    g.ax_marg_y.tick_params(axis='y', which='major', direction='out', length=5)
-    g.ax_marg_y.tick_params(axis='y', which='minor', direction='out', length=3) 
+    g.ax_marg_y.tick_params(axis='y', which='major', direction='out', length=7)
+    g.ax_marg_y.tick_params(axis='y', which='minor', direction='out', length=4) 
     g.ax_marg_y.tick_params(bottom=False, which='both', labelbottom=False)    
     g.ax_marg_y.spines['bottom'].set_color('white')
     
@@ -951,28 +951,29 @@ def plot_area(df, absolute=False, ylims=None):
         c, hat = v
         y = df.loc[:,k]
         y_offset = (y>=0)*yp + (y<0)*yn
-        ax.fill_between(x, y+y_offset, y_offset, facecolor=c, hatch=hat, linewidth=0.5)
+        ax.fill_between(x, y+y_offset, y_offset, facecolor=c, 
+                        hatch=hat, linewidth=0.5, zorder=0)
         yp += (y>=0) * y
         yn += (y<0) * y
     ax.set_xlim(0, df.shape[0])
     if ylims: ax.set_ylim(*ylims)
     ax.tick_params(labelsize=12)
-    ax.tick_params(axis='y', which='major', direction='inout', length=6)
-    ax.tick_params(axis='y', which='minor', direction='inout', length=3)
+    ax.tick_params(axis='y', which='major', direction='inout', length=8)
+    ax.tick_params(axis='y', which='minor', direction='inout', length=4)
     ax.set_xlabel('')
     ax.set_ylabel('')
     if absolute: 
         # ax.ticklabel_format(axis='y', scilimits=[-2,3], useMathText=True)
-        ax.yaxis.get_offset_text().set_fontsize(12)
+        # ax.yaxis.get_offset_text().set_fontsize(12)
         ax2y = ax.secondary_yaxis('right')
-        ax2y.tick_params(axis='y', which='major', direction='in', length=3)
-        ax2y.tick_params(axis='y', which='minor', direction='in', length=1.5)
+        ax2y.tick_params(axis='y', which='major', direction='in', length=4)
+        ax2y.tick_params(axis='y', which='minor', direction='in', length=2)
         ax2y.yaxis.set_ticklabels([])
     else:
         ax2y = ax.twinx()
         ax2y.plot(x, df['total'], color='black', linewidth=0.5)
-        ax2y.tick_params(axis='y', which='major', direction='inout', length=6)
-        ax2y.tick_params(axis='y', which='minor', direction='inout', length=3)
+        ax2y.tick_params(axis='y', which='major', direction='inout', length=8)
+        ax2y.tick_params(axis='y', which='minor', direction='inout', length=4)
     return fig, ax
 
 def breakdown_uasa(seed):
