@@ -24,15 +24,17 @@ __all__ = ('create_components',)
 def create_components(set_thermo=True):
     
     # bauxite
-    Bauxite = Component(ID='Bauxite',
-                        phase='s',
-                        particle_size='Particulate',
-                        formula='',
-                        degradability='Undegradable',
-                        organic=False)
+    # Bauxite = Component(ID='Bauxite',
+    #                     # search_ID='1318-16-7',
+    #                     phase='s',
+    #                     particle_size='Particulate',
+    #                     formula='Al2H2O4',
+    #                     degradability='Undegradable',
+    #                     organic=False)
     
     # Al(OH)3
     AlOH3 = Component(ID='AlOH3',
+                      search_ID='21645-51-2',
                       phase='s',
                       particle_size='Particulate',
                       degradability='Undegradable',
@@ -40,24 +42,18 @@ def create_components(set_thermo=True):
     
     # formatic acid
     HCOOH = Component(ID='HCOOH',
+                      search_ID='64-18-6',
                       phase='l',
                       particle_size='Soluble',
                       degradability='Readily',
                       organic=True)
     
-    # ALF 7360-53-4
-    ALF = Component(ID='C3H3AlO6',
-                    search_ID='7360-53-4',
-                    particle_size='Particulate',
-                    degradability='Undegradable',
-                    organic=False)
-    
-    # Al(HCOO)2(OH) 
-    AlHCOO2OH = Component(ID='AlHCOO2OH',
-                          search_ID='',
-                          particle_size='Particulate',
-                          degradability='Undegradable',
-                          organic=False)
+    # # ALF 7360-53-4
+    # ALF = Component(ID='C3H3AlO6',
+    #                 search_ID='7360-53-4',
+    #                 particle_size='Particulate',
+    #                 degradability='Undegradable',
+    #                 organic=False)
     
     H2O = Component(ID='H2O',
                     particle_size='Soluble',
@@ -94,9 +90,8 @@ def create_components(set_thermo=True):
     add_V_from_rho(Membrane, 1500)
     Membrane.copy_models_from(Chemical('CaCO3'),('Cn',))
     
-    cmps = Components([Bauxite, AlOH3, HCOOH, ALF,
-                       AlHCOO2OH, H2O, O2, N2,
-                       CH4, CO2])
+    cmps = Components([AlOH3, HCOOH,
+                       H2O, O2, N2, CH4, CO2])
     
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):
@@ -108,21 +103,23 @@ def create_components(set_thermo=True):
 
     return cmps
     
-    # examples:
-    Sludge_lipid = Component('Sludge_lipid', phase='s',
-                              particle_size='Particulate',
-                              formula='C56H95O24N9P',
-                              degradability='Undegradable',
-                              organic=False)
-    add_V_from_rho(Sludge_lipid, 1400)
-    Sludge_lipid.HHV = 22.0*10**6*Sludge_lipid.MW/1000
-    Sludge_lipid.Cn.add_model(1.25*10**3*Sludge_lipid.MW/1000) 
-    Sludge_lipid.mu.add_model(6000)
-    
-    H2SO4 = Component('H2SO4', phase='l', particle_size='Soluble',
-                      degradability='Undegradable', organic=False)
-    
-
-    
-    NaOH = Component('NaOH', phase='l', particle_size='Soluble',
-                     degradability='Undegradable', organic=False)
+# =============================================================================
+#     # examples:
+#     Sludge_lipid = Component('Sludge_lipid', phase='s',
+#                               particle_size='Particulate',
+#                               formula='C56H95O24N9P',
+#                               degradability='Undegradable',
+#                               organic=False)
+#     add_V_from_rho(Sludge_lipid, 1400)
+#     Sludge_lipid.HHV = 22.0*10**6*Sludge_lipid.MW/1000
+#     Sludge_lipid.Cn.add_model(1.25*10**3*Sludge_lipid.MW/1000) 
+#     Sludge_lipid.mu.add_model(6000)
+#     
+#     H2SO4 = Component('H2SO4', phase='l', particle_size='Soluble',
+#                       degradability='Undegradable', organic=False)
+#     
+# 
+#     
+#     NaOH = Component('NaOH', phase='l', particle_size='Soluble',
+#                      degradability='Undegradable', organic=False)
+# =============================================================================

@@ -21,9 +21,9 @@ from biosteam.units import IsenthalpicValve
 from qsdsan.utils import clear_lca_registries
 from exposan.co2_sorbent import (
     _load_components,
-    create_tea,
+    # create_tea,
     )
-from exposan.htl import _sanunits as su
+# from exposan.co2_sorbent import _sanunits as su
 from biosteam import settings
 
 __all__ = (
@@ -47,7 +47,35 @@ def create_system_A():
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
     _load_components()
+    # TODO: update CEPCI year
     bst.CE = qs.CEPCI_by_year[2020]
+
+
+    # TODO: change the flow rate of AlOH3
+    # TODO: add price for Al(OH)3
+    aluminum_hydroxide = qs.WasteStream('aluminum_hydroxide', AlOH3=100, units='kg/h', T=25+273.15)
+    # aluminum_hydroxide.price =
+    
+    # TODO: change the flow rate of DI H2O
+    # TODO: add price for H2O
+    water = qs.WasteStream('water', H2O=100, units='kg/h', T=25+273.15)
+
+    M1 = qsu.Mixer('feed_mixer', ins=(aluminum_hydroxide, water), outs='AlOH3_H2O', init_with='Stream', rigorous=True)
+    M1.register_alias('M1')
+    
+    H1 = qsu.HXutility('feed_heater', include_construction=True,
+                       ins=M1-0, outs='heated_feed_mix', T=60+273.15,
+                       init_with='Stream', rigorous=True)
+    H1.register_alias('H1')
+
+
+    sys = qs.System.from_units(
+        f'sys_ALF_A',
+        units=list(flowsheet.unit), 
+        operating_hours=7920,
+        )
+
+
 
 Mixer
 
