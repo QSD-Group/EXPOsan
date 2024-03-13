@@ -40,8 +40,8 @@ def _load_components(reload=False):
 # from . import _tea
 # from ._tea import *
 
-# from . import systems
-# from .systems import *
+from . import systems
+from .systems import *
 
 # _system_loaded = False
 # def load(configuration='baseline'):
@@ -102,6 +102,6 @@ __all__ = (
     'simulate_and_save',
     *_components.__all__,
     # *_tea.__all__,
-    # *systems.__all__,
+    *systems.__all__,
     # *models.__all__,
 )

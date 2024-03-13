@@ -78,55 +78,56 @@ def create_system_A():
     sys.simulate()
     sys.diagram()
 
-
-ALF_crystallizer
-
-ALF_dryer
-
-CO2_absorber
-
-CO2_stripper
-
-Electrochemical_cell
-
-HXN
-
-Cooling_tower
-
-CHP
-
-    sys = qs.System.from_units(
-        f'sys_ALF_A',
-        units=list(flowsheet.unit), 
-        operating_hours=,
-        )
-    
-
-    qs.StreamImpactItem(ID='',
-                        linked_stream=stream.,
-                        Acidification=,
-                        Ecotoxicity=,
-                        Eutrophication=,
-                        GlobalWarming=,
-                        OzoneDepletion=,
-                        PhotochemicalOxidation=,
-                        Carcinogenics=,
-                        NonCarcinogenics=,
-                        RespiratoryEffects=)
-    
-    create_tea(system=sys,
-               IRR_value=,
-               income_tax_value=,
-               finance_interest_value=,
-               labor_cost_value=)
-    
-    qs.LCA(system=sys,
-           lifetime=,
-           lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
-           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
-    
-    sys.simulate()
+# =============================================================================
+# ALF_crystallizer
+# 
+# ALF_dryer
+# 
+# CO2_absorber
+# 
+# CO2_stripper
+# 
+# Electrochemical_cell
+# 
+# HXN
+# 
+# Cooling_tower
+# 
+# CHP
+# 
+#     sys = qs.System.from_units(
+#         f'sys_ALF_A',
+#         units=list(flowsheet.unit), 
+#         operating_hours=,
+#         )
+#     
+# 
+#     qs.StreamImpactItem(ID='',
+#                         linked_stream=stream.,
+#                         Acidification=,
+#                         Ecotoxicity=,
+#                         Eutrophication=,
+#                         GlobalWarming=,
+#                         OzoneDepletion=,
+#                         PhotochemicalOxidation=,
+#                         Carcinogenics=,
+#                         NonCarcinogenics=,
+#                         RespiratoryEffects=)
+#     
+#     create_tea(system=sys,
+#                IRR_value=,
+#                income_tax_value=,
+#                finance_interest_value=,
+#                labor_cost_value=)
+#     
+#     qs.LCA(system=sys,
+#            lifetime=,
+#            lifetime_unit='yr',
+#            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+#            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
+#     
+#     sys.simulate()
+# =============================================================================
     
     return sys
 

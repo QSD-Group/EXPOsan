@@ -39,6 +39,7 @@ class ALFProduction(bst.CSTR):
     
     _N_ins = 1
     _N_outs = 1
+    # TODO: confirm T and tau
     T_default = 60 + 273.15
     P_default = 101325
     tau_default = 8 # hr
