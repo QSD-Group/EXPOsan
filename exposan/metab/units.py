@@ -1171,7 +1171,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             tot_de = np.sum(np.diag(dV) @ de_en, axis=0) / V_bead  # detachment per unit volume of beads
 
             #!!! Mass transfer (centered differences) -- MOL; solubles only
-            C_lf = Cs_en[-1]
+            C_lf = Cs_en[-1]   #!!! potential to consider partitioning here
             J_lf = k*(Cs_bk - C_lf)
             S_en = Cs_en[:, S_idx]
             M_transfer = np.zeros_like(Cs_en)

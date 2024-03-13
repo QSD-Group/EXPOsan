@@ -492,13 +492,13 @@ def best_breakdown():
     imp_bd['uasb_l1'] = categorize_all_impacts(sys1.LCA)
     
     # FB
+    # best at TEA
     mdl2 = create_model(n_stages=2, reactor_type='FB')
     sys2 = mdl2.system
     u2 = sys2.flowsheet.unit
     u2.R1.bead_lifetime = u2.R2.bead_lifetime = 30
     sub2, = sys2.subsystems
     
-    # best at TEA
     smp = np.array([2, 0.9, 2, 22])
     for p, v in zip(mdl2.parameters, smp): p.setter(v)
     sys2.simulate(**kwargs)
@@ -518,6 +518,7 @@ def best_breakdown():
     imp_bd['fb_l1'] = categorize_all_impacts(sys2.LCA)
     
     # PB
+    # best at TEA & LCA
     mdl3 = create_model(n_stages=2, reactor_type='PB')
     sys3 = mdl3.system
     u3 = sys3.flowsheet.unit
@@ -527,7 +528,6 @@ def best_breakdown():
     smp = np.array([2, 1, 22])
     for p, v in zip(mdl3.parameters, smp): p.setter(v)
     sys3.simulate(**kwargs)
-    # best at TEA & LCA
     llc_bd['pb_t1'] = categorize_cashflow(sub3.TEA)
     imp_bd['pb_t1'] = categorize_all_impacts(sub3.LCA)
     
@@ -703,8 +703,12 @@ def MCF_pb_to_fb(seed, save=True):
     return outs
 
 def _plot_bubble(df, ax, pal):
+    # pal = ('#f3c354', '#a280b9')
+    pal = ('#79bf82', '#60c1cf')
+    dv = np.array(([0]*7+[1]+[0]*5+[1]*3+[0,1])*df.Metric.nunique())
     sns.scatterplot(df, x='Metric', y='Parameter', 
-                    hue=df.p<0.05, palette=['black', pal], 
+                    # hue=df.p<0.05, palette=['black', pal], 
+                    hue=(df.p<0.05)*(1+dv), palette=['black', *pal],                     
                     size='D', sizes=(0, 350), size_norm=(0,1),
                     legend=False,
                     ax=ax,
@@ -1161,8 +1165,8 @@ if __name__ == '__main__':
     # breakdown_uasa(965)
     # plot_univariate_kdes(965)
     # out = calc_3way_diff(965)
-    # outs = MCF_pb_to_fb(965)
-    # data = MCF_25_vs_75(965)
+    # outs = MCF_pb_to_fb(965, save=False)
+    # data = MCF_25_vs_75(965, save=False)
     # MCF_bubble_plot(outs)
     # MCF_bubble_plot(data)
     # mapping(suffix='specific')
