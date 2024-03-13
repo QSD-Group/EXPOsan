@@ -96,12 +96,6 @@ def create_components(set_thermo=True):
                     degradability='Undegradable',
                     organic=False)
     
-    # values for Membrane are made up since we just need to calculate cost for membrane
-    Membrane = Component('Membrane', phase='s', particle_size='Particulate',
-                             degradability='Undegradable', organic=False)
-    add_V_from_rho(Membrane, 1500)
-    Membrane.copy_models_from(Chemical('CaCO3'),('Cn',))
-    
     cmps = Components([Bauxite, AlH3O3, ALF, HCOOH,
                        H2O, O2, N2, CH4, CO2])
     

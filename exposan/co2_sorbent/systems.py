@@ -23,7 +23,7 @@ from exposan.co2_sorbent import (
     _load_components,
     # create_tea,
     )
-# from exposan.co2_sorbent import _sanunits as su
+from exposan.co2_sorbent import _sanunits as su
 from biosteam import settings
 
 __all__ = (
@@ -49,8 +49,7 @@ def create_system_A():
     _load_components()
     # TODO: update CEPCI year
     bst.CE = qs.CEPCI_by_year[2020]
-
-# TODO: change temperatures
+    
     # TODO: change the flow rate of AlOH3
     # TODO: add price for Al(OH)3
     aluminum_hydroxide = qs.WasteStream('aluminum_hydroxide', phase='s', AlH3O3=100, units='kg/h', T=25+273.15)
@@ -69,33 +68,18 @@ def create_system_A():
     M2 = qsu.Mixer('feed_mixer_2', ins=(M1-0, HCOOH_H2O), outs='AlOH3_H2O_HCOOH', init_with='Stream', rigorous=True, conserve_phases=True)
     M2.register_alias('M2')
     
-    # H1 = qsu.HXutility('feed_heater', include_construction=True,
-    #                     ins=M2-0, outs='heated_feed_mix', T=60+273.15,
-    #                     init_with='Stream')
-    # H1.register_alias('H1')
-    
-    R1 = ALFProduction('ALF_production', M2-0, outs='ALF_solution')
-    
-
-
-
-
-
-    sys = qs.System.from_units(
-        f'sys_ALF_A',
-        units=list(flowsheet.unit), 
-        operating_hours=7920,
-        )
+    R1 = su.ALFProduction('ALF_production', M2-0, outs='ALF_solution')
+    R1.register_alias('R1')
+        
+    # update operating hours if necessary
+    sys = qs.System.from_units(f'sys_ALF_A', units=list(flowsheet.unit), operating_hours=7920)
+    sys.register_alias('sys')
 
     sys.simulate()
     sys.diagram()
 
 
-Mixer
-
-H1
-
-ALF_reactor
+ALF_crystallizer
 
 ALF_dryer
 
@@ -116,7 +100,7 @@ CHP
         units=list(flowsheet.unit), 
         operating_hours=,
         )
-    sys.register_alias('sys')
+    
 
     qs.StreamImpactItem(ID='',
                         linked_stream=stream.,
@@ -152,70 +136,3 @@ CHP
 def create_system_B():
 
     flowsheet_ID = f'ALF_B'
-    
-    # clear flowsheet and registry for reloading
-    if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
-        getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
-    flowsheet = qs.Flowsheet(flowsheet_ID)
-    stream = flowsheet.stream
-    qs.main_flowsheet.set_flowsheet(flowsheet)
-    
-    _load_components()
-    bst.CE = qs.CEPCI_by_year[2020]
-
-Mixer
-
-H1
-
-ALF_reactor
-
-ALF_dryer
-
-CO2_absorber
-
-CO2_stripper
-
-Electrochemical_cell
-
-HXN
-
-Cooling_tower
-
-CHP
-
-
-    sys = qs.System.from_units(
-        f'sys_ALF_B',
-        units=list(flowsheet.unit), 
-        operating_hours=,
-        )
-    sys.register_alias('sys')
-
-    qs.StreamImpactItem(ID='',
-                        linked_stream=stream.,
-                        Acidification=,
-                        Ecotoxicity=,
-                        Eutrophication=,
-                        GlobalWarming=,
-                        OzoneDepletion=,
-                        PhotochemicalOxidation=,
-                        Carcinogenics=,
-                        NonCarcinogenics=,
-                        RespiratoryEffects=)
-    
-    create_tea(system=sys,
-               IRR_value=,
-               income_tax_value=,
-               finance_interest_value=,
-               labor_cost_value=)
-    
-    qs.LCA(system=sys,
-           lifetime=,
-           lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
-           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
-    
-    sys.simulate()
-    
-    return sys
