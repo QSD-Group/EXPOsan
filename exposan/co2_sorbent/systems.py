@@ -50,23 +50,35 @@ def create_system_A():
     # TODO: update CEPCI year
     bst.CE = qs.CEPCI_by_year[2020]
 
-
+# TODO: change temperatures
     # TODO: change the flow rate of AlOH3
     # TODO: add price for Al(OH)3
-    aluminum_hydroxide = qs.WasteStream('aluminum_hydroxide', AlOH3=100, units='kg/h', T=25+273.15)
-    # aluminum_hydroxide.price =
+    aluminum_hydroxide = qs.WasteStream('aluminum_hydroxide', phase='s', AlH3O3=100, units='kg/h', T=25+273.15)
     
     # TODO: change the flow rate of DI H2O
     # TODO: add price for H2O
     water = qs.WasteStream('water', H2O=100, units='kg/h', T=25+273.15)
 
-    M1 = qsu.Mixer('feed_mixer', ins=(aluminum_hydroxide, water), outs='AlOH3_H2O', init_with='Stream', rigorous=True)
+    M1 = qsu.Mixer('feed_mixer_1', ins=(aluminum_hydroxide, water), outs='AlOH3_H2O', init_with='Stream', rigorous=True, conserve_phases=True)
     M1.register_alias('M1')
     
-    H1 = qsu.HXutility('feed_heater', include_construction=True,
-                       ins=M1-0, outs='heated_feed_mix', T=60+273.15,
-                       init_with='Stream', rigorous=True)
-    H1.register_alias('H1')
+    # TODO: change the flow rate of formic acid
+    # TODO: add price for formic acid
+    HCOOH_H2O = qs.WasteStream('formic_acid', HCOOH=350, H2O=100, units='kg/h', T=25+273.15)
+    
+    M2 = qsu.Mixer('feed_mixer_2', ins=(M1-0, HCOOH_H2O), outs='AlOH3_H2O_HCOOH', init_with='Stream', rigorous=True, conserve_phases=True)
+    M2.register_alias('M2')
+    
+    # H1 = qsu.HXutility('feed_heater', include_construction=True,
+    #                     ins=M2-0, outs='heated_feed_mix', T=60+273.15,
+    #                     init_with='Stream')
+    # H1.register_alias('H1')
+    
+    R1 = ALFProduction('ALF_production', M2-0, outs='ALF_solution')
+    
+
+
+
 
 
     sys = qs.System.from_units(
@@ -75,6 +87,8 @@ def create_system_A():
         operating_hours=7920,
         )
 
+    sys.simulate()
+    sys.diagram()
 
 
 Mixer

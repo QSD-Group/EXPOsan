@@ -16,6 +16,7 @@ References:
 
 '''
 
+import qsdsan as qs
 from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
 from exposan.utils import add_V_from_rho
 
@@ -24,36 +25,47 @@ __all__ = ('create_components',)
 def create_components(set_thermo=True):
     
     # bauxite
-    # Bauxite = Component(ID='Bauxite',
-    #                     # search_ID='1318-16-7',
-    #                     phase='s',
-    #                     particle_size='Particulate',
-    #                     formula='Al2H2O4',
-    #                     degradability='Undegradable',
-    #                     organic=False)
+    Bauxite = Component(ID='Bauxite',
+                        search_ID='Bauxite',
+                        phase='s',
+                        particle_size='Particulate',
+                        degradability='Undegradable',
+                        organic=False)
+    # https://www.standardboksit.com.tr/en/Arge/Arge/8747#:~:text=Bauxite%20is%20a%20mixture%20of,2.5%2D3.5%20g%2Fcm3.
+    add_V_from_rho(Bauxite, 3000)
+
     
     # Al(OH)3
-    AlOH3 = Component(ID='AlOH3',
+    AlH3O3 = Component(ID='AlH3O3',
                       search_ID='21645-51-2',
                       phase='s',
                       particle_size='Particulate',
                       degradability='Undegradable',
                       organic=False)
     
+    # ALF
+    ALF = Component(ID='C3H3AlO6',
+                    search_ID='7360-53-4',
+                    phase='s',
+                    particle_size='Particulate',
+                    degradability='Undegradable',
+                    organic=False)
+    add_V_from_rho(ALF, 1650) # https://www.echemi.com/sds/aluminumformate-pid_Rock19153.html
+    
+    # https://www.chemsrc.com/en/cas/7360-53-4_311690.html
+    ALF.Tm = 8.4+273.15
+    # ALF.Tb = 100.6+273.15
+    
+    # assume similar to Al
+    # https://link.springer.com/article/10.1023/B:JMSC.0000048735.50256.96
+    ALF.mu.add_model(1000)
+    
     # formatic acid
     HCOOH = Component(ID='HCOOH',
                       search_ID='64-18-6',
-                      phase='l',
                       particle_size='Soluble',
                       degradability='Readily',
                       organic=True)
-    
-    # # ALF 7360-53-4
-    # ALF = Component(ID='C3H3AlO6',
-    #                 search_ID='7360-53-4',
-    #                 particle_size='Particulate',
-    #                 degradability='Undegradable',
-    #                 organic=False)
     
     H2O = Component(ID='H2O',
                     particle_size='Soluble',
@@ -90,7 +102,7 @@ def create_components(set_thermo=True):
     add_V_from_rho(Membrane, 1500)
     Membrane.copy_models_from(Chemical('CaCO3'),('Cn',))
     
-    cmps = Components([AlOH3, HCOOH,
+    cmps = Components([Bauxite, AlH3O3, ALF, HCOOH,
                        H2O, O2, N2, CH4, CO2])
     
     for i in cmps:
@@ -102,24 +114,3 @@ def create_components(set_thermo=True):
     if set_thermo: qs_set_thermo(cmps)
 
     return cmps
-    
-# =============================================================================
-#     # examples:
-#     Sludge_lipid = Component('Sludge_lipid', phase='s',
-#                               particle_size='Particulate',
-#                               formula='C56H95O24N9P',
-#                               degradability='Undegradable',
-#                               organic=False)
-#     add_V_from_rho(Sludge_lipid, 1400)
-#     Sludge_lipid.HHV = 22.0*10**6*Sludge_lipid.MW/1000
-#     Sludge_lipid.Cn.add_model(1.25*10**3*Sludge_lipid.MW/1000) 
-#     Sludge_lipid.mu.add_model(6000)
-#     
-#     H2SO4 = Component('H2SO4', phase='l', particle_size='Soluble',
-#                       degradability='Undegradable', organic=False)
-#     
-# 
-#     
-#     NaOH = Component('NaOH', phase='l', particle_size='Soluble',
-#                      degradability='Undegradable', organic=False)
-# =============================================================================
