@@ -22,7 +22,7 @@ from qsdsan.utils import auom
 
 __all__ = (
     'ALFProduction',
-    # 'XXX',
+    'ALFCrystallizer',
     )
 
 # =============================================================================
@@ -56,53 +56,40 @@ class ALFProduction(bst.CSTR):
         effluent.P = self.P
 
 # =============================================================================
-# class ALFCrystallizer(bst.BatchCrystallizer):
-#     
-#     def __init__(self, ID='', ins=None, outs=(), thermo=None, *, 
-#                  T, crystal_ALF_purity=0.95, melt_AcTAG_purity=0.90,
-#                  order=None):
-#         bst.BatchCrystallizer.__init__(self, ID, ins, outs, thermo,
-#                                        tau=5, V=1e6, T=T)
-#         self.melt_AcTAG_purity = melt_AcTAG_purity
-#         self.crystal_TAG_purity = crystal_TAG_purity
-# 
-#     @property
-#     def Hnet(self):
-#         feed = self.ins[0]
-#         effluent = self.outs[0]
-#         if 's' in feed.phases:
-#             H_in = - sum([i.Hfus * j for i,j in zip(self.chemicals, feed['s'].mol) if i.Hfus])
-#         else:
-#             H_in = 0.
-#         solids = effluent['s']
-#         H_out = - sum([i.Hfus * j for i,j in zip(self.chemicals, solids.mol) if i.Hfus])
-#         return H_out - H_in
-#         
-#     def _run(self):
-#         outlet = self.outs[0]
-#         outlet.phases = ('s', 'l')
-#         crystal_TAG_purity = self.crystal_TAG_purity
-#         melt_AcTAG_purity = self.melt_AcTAG_purity
-#         feed = self.ins[0]
-#         TAG, AcTAG = feed.imass['TAG', 'AcTAG']
-#         total = TAG + AcTAG
-#         minimum_melt_purity = AcTAG / total
-#         minimum_crystal_purity = TAG / total
-#         outlet.empty()
-#         if crystal_TAG_purity < minimum_crystal_purity:
-#             outlet.imol['s'] = feed.mol
-#         elif melt_AcTAG_purity < minimum_melt_purity:
-#             outlet.imol['l'] = feed.mol
-#         else: # Lever rule
-#             crystal_AcTAG_purity = (1. - crystal_TAG_purity)
-#             melt_fraction = (minimum_melt_purity - crystal_AcTAG_purity) / (melt_AcTAG_purity - crystal_AcTAG_purity)
-#             melt = melt_fraction * total
-#             AcTAG_melt = melt * melt_AcTAG_purity
-#             TAG_melt = melt - AcTAG
-#             outlet.imass['l', ('AcTAG', 'TAG')] = [AcTAG_melt, TAG_melt]
-#             outlet.imol['s'] = feed.mol - outlet.imol['l']
-#         outlet.T = self.T
+# ALFCrystallizer
 # =============================================================================
+class ALFCrystallizer(bst.BatchCrystallizer):
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, *, 
+                 T, crystal_ALF_yield=1, order=None):
+        bst.BatchCrystallizer.__init__(self, ID, ins, outs, thermo,
+                                       tau=5, V=1e6, T=T)
+        self.crystal_ALF_yield = crystal_ALF_yield
+
+    @property
+    def Hnet(self):
+        feed = self.ins[0]
+        effluent = self.outs[0]
+        if 's' in feed.phases:
+            H_in = - sum([i.Hfus * j for i,j in zip(self.chemicals, feed['s'].mol) if i.Hfus])
+        else:
+            H_in = 0.
+        solids = effluent['s']
+        H_out = - sum([i.Hfus * j for i,j in zip(self.chemicals, solids.mol) if i.Hfus])
+        return H_out - H_in
+        
+    def _run(self):
+        outlet = self.outs[0]
+        outlet.phases = ('s', 'l')
+        crystal_ALF_yield = self.crystal_ALF_yield
+        feed = self.ins[0]
+        ALF = feed.imass['C3H3AlO6']
+        outlet.empty()
+        
+        outlet.imass['s', 'C3H3AlO6'] = ALF*crystal_ALF_yield
+        outlet.imass['l', ('C3H3AlO6','HCOOH','H2O')] = [ALF*(1-crystal_ALF_yield), feed.imass['HCOOH'], feed.imass['H2O']]
+        
+        outlet.T = self.T
 
 # =============================================================================
 # class XXX():

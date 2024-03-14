@@ -17,7 +17,7 @@ References:
 
 import os, qsdsan as qs, biosteam as bst
 from qsdsan import sanunits as qsu
-from biosteam.units import IsenthalpicValve
+from biosteam.units import PressureFilter, DrumDryer
 from qsdsan.utils import clear_lca_registries
 from exposan.co2_sorbent import (
     _load_components,
@@ -36,7 +36,7 @@ __all__ = (
 # =============================================================================
 def create_system_A():
 
-    flowsheet_ID = f'ALF_A'
+    flowsheet_ID = 'ALF_A'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
@@ -70,9 +70,22 @@ def create_system_A():
     
     R1 = su.ALFProduction('ALF_production', M2-0, outs='ALF_solution')
     R1.register_alias('R1')
-        
-    # update operating hours if necessary
-    sys = qs.System.from_units(f'sys_ALF_A', units=list(flowsheet.unit), operating_hours=7920)
+    
+    # TODO: determine crystallization temperature
+    # TODO: confirm no cooling utility is needed (it said atmospheric batch crystallization, see _batch_crystallizer.py)
+    C1 = su.ALFCrystallizer('ALF_crystallizer', R1-0, outs='ALF_mixed', T=273.15, crystal_ALF_yield=1)
+    C1.register_alias('C1')   
+    
+    # TODO: determine split ratio for ALF and HCOOH
+    F1 = PressureFilter('ALF_filter', ins=C1-0, outs=('retentate','permeate'), moisture_content=0.35, split={'C3H3AlO6':0.83, 'HCOOH':0.05})
+    F1.register_alias('F1')
+    
+    # TODO: determine moisture content for ALF
+    D1 = DrumDryer('ALF_dryer', (F1-0,'dryer_air','natural_gas'), ('dryed_ALF','hot_air','emissions'), moisture_content=0.0, split={'HCOOH':1})
+    D1.register_alias('D1')
+    
+    # TODO: update operating hours if necessary
+    sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=7920)
     sys.register_alias('sys')
 
     sys.simulate()
@@ -136,4 +149,4 @@ def create_system_A():
 # =============================================================================
 def create_system_B():
 
-    flowsheet_ID = f'ALF_B'
+    flowsheet_ID = 'ALF_B'
