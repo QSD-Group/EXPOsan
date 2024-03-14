@@ -13,6 +13,13 @@ for license details.
 
 References:
 
+(1) Hu, L.; Wrubel, J. A.; Baez-Cotto, C. M.; Intia, F.; Park, J. H.;
+    Kropf, A. J.; Kariuki, N.; Huang, Z.; Farghaly, A.; Amichi, L.;
+    Saha, P.; Tao, L.; Cullen, D. A.; Myers, D. J.; Ferrandon, M. S.;
+    Neyerlin, K. C. A Scalable Membrane Electrode Assembly Architecture
+    for Efficient Electrochemical Conversion of CO2 to Formic Acid.
+    Nat Commun 2023, 14 (1), 7605. https://doi.org/10.1038/s41467-023-43409-6.
+
 '''
 
 import os, qsdsan as qs, biosteam as bst
@@ -21,7 +28,7 @@ from biosteam.units import PressureFilter, DrumDryer
 from qsdsan.utils import clear_lca_registries
 from exposan.co2_sorbent import (
     _load_components,
-    # create_tea,
+    create_tea,
     )
 from exposan.co2_sorbent import _sanunits as su
 from biosteam import settings
@@ -84,9 +91,11 @@ def create_system_A():
     D1 = DrumDryer('ALF_dryer', (F1-0,'dryer_air','natural_gas'), ('dryed_ALF','hot_air','emissions'), moisture_content=0.0, split={'HCOOH':1})
     D1.register_alias('D1')
     
-    # TODO: update operating hours if necessary
-    sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=7920)
+    # opearting hours: Hu et al. 2023 SI
+    sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=7884)
     sys.register_alias('sys')
+
+    create_tea(sys)
 
     sys.simulate()
     sys.diagram()

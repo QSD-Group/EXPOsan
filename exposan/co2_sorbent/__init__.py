@@ -37,8 +37,8 @@ def _load_components(reload=False):
         qs.set_thermo(components)
         _components_loaded = True
 
-# from . import _tea
-# from ._tea import *
+from . import _tea
+from ._tea import *
 
 from . import systems
 from .systems import *
@@ -101,7 +101,7 @@ __all__ = (
     'results_path',
     'simulate_and_save',
     *_components.__all__,
-    # *_tea.__all__,
+    *_tea.__all__,
     *systems.__all__,
     # *models.__all__,
 )
