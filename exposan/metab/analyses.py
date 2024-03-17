@@ -842,22 +842,24 @@ def plot_univariate_kdes(seed):
             ('LCA (w/o degas)',  'GWP100 (w/o degas) [kg CO2eq/ton rCOD]'),    
         ]
     for i in (
-            # 'FB', 
-            'PB',
+            'FB', 
+            # 'PB',
               ):
         df = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
                        header=[0,1], skiprows=[2,], nrows=1000)
         ys = df.loc[:,pair_cols]
         # x = df.loc[:,('Encapsulation', 'Bead diameter [mm]')]
-        x = df.loc[:,('System', 'Total HRT [d]')]
-        # x = df.loc[:,('FB', 'FB voidage')]
+        # x = df.loc[:,('System', 'Total HRT [d]')]
+        x = 1-df.loc[:,('FB', 'FB voidage')]
+        # x = df.loc[:,('PB', 'PB voidage')]
         # x = df.loc[:,('ADM1', 'Uptake k ac [COD/COD/d]')]
         thres = ys.quantile(0.25)
         thres[0] = np.percentile(ys.iloc[:,0], 75)
         groups = ys > thres
         groups.iloc[:,0] = ys.iloc[:,0] < thres[0]
-        # plot_1dkde(x, groups, [0.6,0.9], [0, 5], i+'-void')
-        plot_1dkde(x, groups, [1/6, 3], [0, 1], i+'-hrt')
+        plot_1dkde(x, groups, [0.03,0.25], [0, 8.5], i+'-void')
+        # plot_1dkde(x, groups, [0.35,0.45], [0, 22], i+'-void')
+        # plot_1dkde(x, groups, [1/6, 3], [0, 1], i+'-hrt')
         # plot_1dkde(x, groups, [1,5], [0, 0.55], i+'-beaddia')
         # plot_1dkde(x, groups, [3.9,16], [0, 0.16], i+'-kac')
         print(thres)
@@ -867,7 +869,7 @@ def calc_3way_diff(seed, save=True):
     data = {}
     for i in ('UASB', 'FB', 'PB'):
         data[i] = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
-                            header=[0,1], skiprows=[2,])
+                            header=[0,1], skiprows=[2,], nrows=1000)
     pair_cols = [
             ('Process', 'COD removal [%]'),
             ('Biogas', 'H2 production [kg/d]'),
@@ -981,7 +983,9 @@ def plot_area(df, absolute=False, ylims=None):
     return fig, ax
 
 def breakdown_uasa(seed):
-    for i in ('UASB', 'FB', 'PB'):
+    for i in (
+            # 'UASB', 'FB', 
+            'PB',):
         data = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
                          header=[0,1], skiprows=[2,], nrows=1000)
         # tea, lca, absolute = breakdown_and_sort(data)
@@ -1154,7 +1158,7 @@ if __name__ == '__main__':
     # plot_clusters(partial=True)
     # plot_clusters(partial=False)
     # out = compare_DVs()
-    plot_diff()
+    # plot_diff()
     # llc, imp = best_breakdown()
     # plot_breakdown()
     # dt = load_data(ospath.join(results_path, 'table_compiled.xlsx'), nrows=3553)
@@ -1163,10 +1167,10 @@ if __name__ == '__main__':
     # smp = run_UA_SA(N=1000)
     # _rerun_failed_samples(187, 'PB')
     # breakdown_uasa(965)
-    # plot_univariate_kdes(965)
+    plot_univariate_kdes(965)
     # out = calc_3way_diff(965)
-    # outs = MCF_pb_to_fb(965, save=False)
-    # data = MCF_25_vs_75(965, save=False)
+    # outs = MCF_pb_to_fb(965)
+    # data = MCF_25_vs_75(965)
     # MCF_bubble_plot(outs)
     # MCF_bubble_plot(data)
     # mapping(suffix='specific')
