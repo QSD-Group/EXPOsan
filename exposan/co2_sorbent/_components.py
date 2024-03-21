@@ -50,7 +50,7 @@ def create_components(set_thermo=True):
                     particle_size='Particulate',
                     degradability='Undegradable',
                     organic=False)
-    add_V_from_rho(ALF, 1650) # https://www.echemi.com/sds/aluminumformate-pid_Rock19153.html
+    add_V_from_rho(ALF, 1441) # Evans et al. Science Advances SI. Table S1
     
     # https://www.chemsrc.com/en/cas/7360-53-4_311690.html
     ALF.Tm = 8.4+273.15
