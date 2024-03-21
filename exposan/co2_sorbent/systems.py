@@ -13,7 +13,11 @@ for license details.
 
 References:
 
-(1) https://www.witpress.com/Secure/elibrary/papers/SDP07/SDP07088FU2.pdf 
+(1) David, E.; Stanciu, V.; Sandru, C.; Armeanu, A.; Niculescu, V.
+    Exhaust Gas Treatment Technologies for Pollutant Emission Abatement from
+    Fossil Fuel Power Plants. In Sustainable Development and Planning III;
+    WIT Press: Algarve, Portugal, 2007; Vol. II, pp 923–932.
+    https://doi.org/10.2495/SDP070882.
 (2) Huang, Z.; Grim, R. G.; Schaidle, J. A.; Tao, L. The Economic Outlook for
     Converting CO2 and Electrons to Molecules. Energy Environ. Sci.
     2021, 14 (7), 3664–3678. https://doi.org/10.1039/D0EE03525D.
@@ -95,7 +99,7 @@ def create_system_A():
     D1 = DrumDryer('ALF_dryer', (F1-0,'dryer_air','natural_gas'), ('dryed_ALF','hot_air','emissions'), moisture_content=0.0, split={'HCOOH':1})
     D1.register_alias('D1')
     
-    # coal-fired power plant flue gas composition: https://www.witpress.com/Secure/elibrary/papers/SDP07/SDP07088FU2.pdf
+    # coal-fired power plant flue gas composition: 13% CO2, 5% O2, and 82% N2 (David et al. 2007)
     # for a typical 1000 MWh plant, assume CO2=780000 kg/h (Huang et al. 2021)
     flue_gas = qs.WasteStream('flue_gas', CO2=780000, H2O=300000, N2=4920000, phase='g', units='kg/h', T=25+273.15)
     
