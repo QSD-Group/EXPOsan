@@ -16,7 +16,7 @@ for license details.
 # import biosteam as bst
 import biosteam as bst, flexsolve as flx
 from math import ceil, sqrt, pi
-from .splitting import Splitter
+from biosteam import Splitter
 from biosteam.units.design_tools import PressureVessel
 import numpy as np
 from numba import njit
@@ -28,8 +28,7 @@ __all__ = (
     )
 
 # =============================================================================
-# CO2 absorber/stripper
-# 
+# to be added:
 # electrochemical cells
 # =============================================================================
 
@@ -38,7 +37,9 @@ __all__ = (
 # =============================================================================
 
 class ALFProduction(bst.CSTR):
-    
+    '''
+    Reactor for ALF production.
+    '''
     _N_ins = 1
     _N_outs = 1
     # TODO: confirm T and tau
@@ -61,9 +62,17 @@ class ALFProduction(bst.CSTR):
 # ALFCrystallizer
 # =============================================================================
 class ALFCrystallizer(bst.BatchCrystallizer):
+    '''
+    Crystallier for ALF.
     
+    Parameters
+    ----------
+
+    crystal_ALF_yield : float, optional
+        ALF crystallization yield. Defacults to 1.
+    '''
     def __init__(self, ID='', ins=None, outs=(), thermo=None, *, 
-                 T, crystal_ALF_yield=1, order=None):
+                 T, crystal_ALF_yield=1):
         bst.BatchCrystallizer.__init__(self, ID, ins, outs, thermo,
                                        tau=5, V=1e6, T=T)
         self.crystal_ALF_yield = crystal_ALF_yield
@@ -93,17 +102,12 @@ class ALFCrystallizer(bst.BatchCrystallizer):
         
         outlet.T = self.T
 
-
-
-
-
-
-
 # =============================================================================
 # ALFTSA
 # =============================================================================
 class ALFTSA(PressureVessel, Splitter):
-    """
+    '''
+    TSA using ALF as adsorbent for CO2 adsorption.
     
     Parameters
     ----------
@@ -117,117 +121,82 @@ class ALFTSA(PressureVessel, Splitter):
         Mean velocity of the fluid used to regenerate the bed. Defaults to 1080 m/h. 
         Common velocity range for gasses is 540 to 2160 m/h [1]_.
     cycle_time : float, optional
-        Time at which the receiving vessel is switched. Defaults to 8 h [X]_.
-    rho_adsorbent_solid : float, optional
+        Time at which the receiving vessel is switched. Defaults to 8 h [2]_.
+    rho_adsorbent : float, optional
         The density of ALF. Defaults to 1441 [kg/m3] Table S1 [Y]_.
     adsorbent_capacity : float, optional
-        Amount of CO2 that ALF can hold. Defaults to 2.7 mmol/g Table S7 [Y]_.
+        Amount of CO2 that ALF can hold. Defaults to 2.7 mmol/g Table S7 [3]_.
     T_regeneration : float, optional
-        Temperature during the regeneration phase. Defaults to 418 K Table S8 [Y]_.
+        Temperature during the regeneration phase. Defaults to 418 K Table S8 [3]_.
     vessel_material : float, optional
         Vessel material. Defaults to 'Stainless steel 316',
     vessel_type : float, optional
         Vessel type. Defaults to 'Vertical'.
-        
-        
-        
-        
-        
-        
-        
-        
-        
-    regeneration_fluid : dict[str, float]
-        Arguments to initialize fluid used to regenerate the bed.
-
+    length_unused : float, optional
+        Additional length of a column to account for mass transfer limitations (due to unused bed). Defaults to 2 ft per column.
+    waste_ratio : float, optiona;
+        Wasted ALF ratio per run. Defaults to 0.07.
     
     References
     ----------
     [1] Adsorption basics Alan Gabelman (2017) Adsorption basics Part 1. AICHE
-    [2] Seader, J. D., Separation Process Principles: Chemical and Biochemical Operations,” 3rd ed., Wiley, Hoboken, NJ (2011).
-    [3] 
-    [4] Seider, W. D., Lewin,  D. R., Seader, J. D., Widagdo, S., Gani,
-        R., & Ng, M. K. (2017). Product and Process Design Principles. Wiley.
-        Cost Accounting and Capital Cost Estimation (Chapter 16)
-        
-    [X] https://www.chemicalprocessing.com/processing-equipment/fluid-handling/article/11302111/select-the-right-valves-for-adsorption-processes-chemical-processing
-    [Y] Evans et al. Science Advances SI.
+    [2] https://www.chemicalprocessing.com/processing-equipment/fluid-handling/article/11302111/select-the-right-valves-for-adsorption-processes-chemical-processing
+    [3] Evans et al. Science Advances SI. # TODO: update the reference
+    '''
+    auxiliary_unit_names = ('heat_exchanger_regeneration','heat_exchanger_cooling')
     
-    """
-    auxiliary_unit_names = ('heat_exchanger_regeneration')
+    # in $/ft3 # TODO: this cost is just for the initial ALF in 3 columns, replace the value
+    adsorbent_cost = 1
     
-    # in $/ft3
-    adsorbent_cost = XXX
+    # in year # TODO: confirm the value
+    _default_equipment_lifetime = 10
     
-    # in year
-    _default_equipment_lifetime = XXX
+    _N_ins = 3
+    _N_outs = 4
     
-    _N_ins = 2
-    _N_outs = 3
+    auxiliary_unit_names=('heat_exchanger_regeneration','heat_exchanger_cooling')
     
     def _init(self,
               split=dict(O2=0, N2=0, CO2=1),
               superficial_velocity=1080, # m/h
               regeneration_velocity=1080, # m/h # TODO: need to decide if this is needed since there is no carrier gas stream
               cycle_time=8, # h
-              rho_adsorbent_solid = 1441, # kg/m3
-              adsorbent_capacity=2.7, # mmol/g
+              rho_adsorbent = 1441, # kg/m3
+              adsorbent_capacity=2.7, # mmol/g # TODO: need to convert the unit
               T_regeneration=418, # K
               vessel_material='Stainless steel 316',
               vessel_type='Vertical',
-              
-              
-              void_fraction=0.47, # Only matters when K given; 0.30 - 0.35 for activated carbon
-              length_unused=1.219, # Additional length of a column to account for mass transfer limitations (due to unused bed). Defaults to +2 ft per column.
-              
-              
-              
+              length_unused=1.219, # m
               waste_ratio=0.07, # ratio of ALF that is wasted (and is sent for CO2 storage) each cycle # TODO: confirm this is for each cycle
-              
-
               ):
         bst.Splitter._init(self, split=split)
         self.superficial_velocity = superficial_velocity
         self.regeneration_velocity = regeneration_velocity
         self.cycle_time = cycle_time
+        self.rho_adsorbent = rho_adsorbent
         self.adsorbent_capacity = adsorbent_capacity
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
         self.T_regeneration = T_regeneration
-
-        self.void_fraction = void_fraction
         self.length_unused = length_unused
-
-
-        self.rho_adsorbent_solid = rho_adsorbent_solid
-        self.rho_adsorbent = rho_adsorbent_solid * (1-void_fraction)
+        self.waste_ratio = waste_ratio
         self.heat_exchanger_regeneration = bst.HXutility(None, None, None, thermo=self.thermo)
-        
-    @property
-    def effluent(self):
-        return self.outs[0]
-        
-    @property
-    def regeneration_purge(self):
-        return self.outs[1]
+        self.heat_exchanger_cooling = bst.HXutility(None, None, None, thermo=self.thermo)
     
     def _run(self):
-        feed, ALF = self.ins
-        offgas, CO2, used_ALF = self.outs 
+        feed, ALF, regen_in = self.ins
+        offgas, CO2, used_ALF, regen_out = self.outs
         
-        
-        
-        regen.empty()
-        dry_air.empty()
-        for i in self.outs: i.empty()
+        # TODO: flue gas temperature (may set high, and use a HX to cool first, then add HXN to offset)
+        # TODO: ALF temperature, should be room temperature (same as the flue gas above)
 
-        feed.split_to(effluent, purge, self.split)
+        for i in self.outs: i.empty()
+        
+        # TODO: make sure the order of CO2 and offgas is correct
+        feed.split_to(CO2, offgas, self.split)
         F_vol_feed = feed.F_vol
         superficial_velocity = self.superficial_velocity
-        adsorbate_ID = self.adsorbate_ID
-        F_mass_adsorbate = purge.imass[adsorbate_ID]
-
-       
+        F_mass_adsorbate = CO2.imass['CO2']
         
         self.diameter = diameter = 2 * sqrt(F_vol_feed / (superficial_velocity * pi))
         self.area = area = pi * diameter * diameter / 4
@@ -236,16 +205,22 @@ class ALFTSA(PressureVessel, Splitter):
         ) + self.length_unused # length of equilibrium section plus unused bed (LES + LUB)
         self.length = length = total_length / 2 # Size of each column
         self.vessel_volume = length * area
-        T_original = regen.T
-        regen.reset_flow(**self.regeneration_fluid)
-        purge.T = regen.T = self.T_regeneration
-        regen.F_vol = area * self.regeneration_velocity
-        regen.T = T_original
         
+        ALF.phase = 'l'
         
+        regen_in.copy_like(ALF)
+        regen_in.imass['C3H3AlO6'] /= self.waste_ratio
+        regen_in.T = ALF.T
+        
+        regen_out.copy_like(ALF)
+        regen_out.imass['C3H3AlO6'] /= self.waste_ratio
+        regen_out.T = self.T_regeneration
+        
+        used_ALF.copy_like(ALF)
     
     def _design(self):
-        feed, regen, dry_air = self.ins
+        feed, ALF, regen_in = self.ins
+        offgas, CO2, used_ALF, regen_out = self.outs 
         design_results = self.design_results
         diameter = self.diameter
         length = self.length
@@ -260,10 +235,18 @@ class ALFTSA(PressureVessel, Splitter):
         hxr = self.heat_exchanger_regeneration
         hxr.ins.empty()
         hxr.outs.empty()
-        hxr.ins[0] = regen.copy()
-        hxr.outs[0] = regen.copy()
-        hxr.T = self.T_regeneration
-        hxr.simulate()
+        hxr.ins[0] = regen_in.copy()
+        hxr.outs[0] = regen_out.copy()
+        hxr.T = regen_out.T
+        hxr.simulate_as_auxiliary_exchanger(ins=hxr.ins, outs=hxr.outs)
+        
+        hxc = self.heat_exchanger_cooling
+        hxc.ins.empty()
+        hxc.outs.empty()
+        hxc.ins[0] = regen_out.copy()
+        hxc.outs[0] = regen_in.copy()
+        hxc.T = regen_in.T
+        hxc.simulate_as_auxiliary_exchanger(ins=hxc.ins, outs=hxc.outs)
     
     def _cost(self):
         design_results = self.design_results
@@ -273,43 +256,4 @@ class ALFTSA(PressureVessel, Splitter):
         N_reactors = design_results['Number of reactors']
         for i, j in baseline_purchase_costs.items():
             baseline_purchase_costs[i] *= N_reactors
-        baseline_purchase_costs[self.adsorbent] = N_reactors * 35.3147 * self.vessel_volume * self.adsorbent_cost[self.adsorbent]
-
-# =============================================================================
-# class XXX():
-#     '''
-#     XXX.
-#     
-#     Parameters
-#     ----------
-#     ins : Iterable(stream)
-#         XXX, XXX.
-#     outs : Iterable(stream)
-#         XXX, XXX.
-#         
-#     References
-#     ----------
-# 
-#     '''
-#     _N_ins = 
-#     _N_outs = 
-#         
-#     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-#                  init_with='WasteStream'):
-#         
-#         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-#         self.XXX = XXX
-# 
-#     def _run(self):
-#         
-#         XXX, XXX = self.ins
-#         XXX, XXX = self.outs
-# 
-#     def _design(self):
-#         
-#     def _cost(self):
-#         
-#     @property
-#     def XXX(self):
-#         return
-# =============================================================================
+        baseline_purchase_costs['initial_ALF'] = N_reactors * 35.3147 * self.vessel_volume * self.adsorbent_cost
