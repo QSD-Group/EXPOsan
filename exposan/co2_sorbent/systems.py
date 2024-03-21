@@ -13,7 +13,11 @@ for license details.
 
 References:
 
-(1) Hu, L.; Wrubel, J. A.; Baez-Cotto, C. M.; Intia, F.; Park, J. H.;
+(1) https://www.witpress.com/Secure/elibrary/papers/SDP07/SDP07088FU2.pdf 
+(2) Huang, Z.; Grim, R. G.; Schaidle, J. A.; Tao, L. The Economic Outlook for
+    Converting CO2 and Electrons to Molecules. Energy Environ. Sci.
+    2021, 14 (7), 3664–3678. https://doi.org/10.1039/D0EE03525D.
+(3) Hu, L.; Wrubel, J. A.; Baez-Cotto, C. M.; Intia, F.; Park, J. H.;
     Kropf, A. J.; Kariuki, N.; Huang, Z.; Farghaly, A.; Amichi, L.;
     Saha, P.; Tao, L.; Cullen, D. A.; Myers, D. J.; Ferrandon, M. S.;
     Neyerlin, K. C. A Scalable Membrane Electrode Assembly Architecture
@@ -91,6 +95,8 @@ def create_system_A():
     D1 = DrumDryer('ALF_dryer', (F1-0,'dryer_air','natural_gas'), ('dryed_ALF','hot_air','emissions'), moisture_content=0.0, split={'HCOOH':1})
     D1.register_alias('D1')
     
+    # coal-fired power plant flue gas composition: https://www.witpress.com/Secure/elibrary/papers/SDP07/SDP07088FU2.pdf
+    # for a typical 1000 MWh plant, assume CO2=780000 kg/h (Huang et al. 2021)
     flue_gas = qs.WasteStream('flue_gas', CO2=780000, H2O=300000, N2=4920000, phase='g', units='kg/h', T=25+273.15)
     
     TSA = su.ALFTSA('ALF_TSA', ins=(flue_gas, D1-0, 'regenerated_ALF_in'), outs=('offgas','CO2','used_ALF','regenerated_ALF_in'))
@@ -106,7 +112,7 @@ def create_system_A():
     # from biorefineries.lactic import price
     # CT.ins[-1].price = price['Cooling tower chems']
 
-    # opearting hours: Hu et al. 2023 SI
+    # opearting hours: 7884 h/year (Hu et al. 2023 SI)
     sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=7884)
     sys.register_alias('sys')
 
