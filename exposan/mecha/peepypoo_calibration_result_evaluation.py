@@ -52,35 +52,33 @@ i_XB = 0.08 # nitrogen fraction in biomass (default 0.086 gN/gCOD)
 i_XP = 0.06 # nitrogen fraction in endogenous mass (default 0.01 gN/gCOD)
 
 # Kinetic parameters
-eta_g = 0.8 # anoxic growth correction factor (default 0.8 -)
-eta_h = 0.4 # anoxic hydrolysis correction factor (default 0.4 -)
-K_X = 0.03  # half-saturation coefficient for hydrolysis of XS (default 0.03 -)
-k_h = 3.0   # maximum specific hydrolysis rate (default 3.0 1/day)
-
-K_S = 20.0  # substrate saturation constant (default 20.0 gCOD/m3)
+K_S = 20.367752321307268 # substrate saturation constant (default 20.0 gCOD/m3)
+eta_g = 0.5261684641335724 # anoxic growth correction factor (default 0.8 -)
+eta_h = 0.31169390850599915 # anoxic hydrolysis correction factor (default 0.4 -)
+K_X = 0.044058108307171454  # half-saturation coefficient for hydrolysis of XS (default 0.03 -)
+k_h = 3.381562285229287  # maximum specific hydrolysis rate (default 3.0 1/day)
+b_H = 0.6652653700071046  # specific decay rate (default 0.62 1/day)
 
 # increase
-K_NH = 1.2  # ammonium saturation constant (default 1.0 gO2/m3)
+K_NH = 0.7387891854838559  # ammonium saturation constant (default 1.0 gO2/m3)
 # K_NH = 1.0  # ammonium saturation constant (default 1.0 gO2/m3)
-K_OA = 0.4  # oxygen saturation constant (default 0.4 gO2/m3)
+K_OA = 0.667039499635301  # oxygen saturation constant (default 0.4 gO2/m3)
 # K_OA = 0.4  # oxygen saturation constant (default 0.4 gO2/m3)
-b_H = 0.3  # specific decay rate (default 0.62 1/day)
-# b_H = 0.62  # specific decay rate (default 0.62 1/day)
 
 # decrease
-mu_A = 0.3  # maximum specific growth rate (default 0.8 1/day)
+mu_A = 0.9391048043883741  # maximum specific growth rate (default 0.8 1/day)
 # mu_A = 0.8  # maximum specific growth rate (default 0.8 1/day)
-K_NO = 0.3  # nitrate saturation constant (default 0.5 gNO3-N/m3)
+K_NO = 0.8476300010401595  # nitrate saturation constant (default 0.5 gNO3-N/m3)
 # K_NO = 0.5  # nitrate saturation constant (default 0.5 gNO3-N/m3)
 
-mu_H = 2.0  # maximum specific growth rate (default 6.0 1/day)
+mu_H = 6.005652674624498  # maximum specific growth rate (default 6.0 1/day)
 # mu_H = 6.0  # maximum specific growth rate (default 6.0 1/day)
-k_a = 0.01  # ammonification rate constant (default 0.08 m3/(gCOD*day))
+k_a = 0.06432781055983214 # ammonification rate constant (default 0.08 m3/(gCOD*day))
 # k_a = 0.08  # ammonification rate constant (default 0.08 m3/(gCOD*day))
 
-K_OH = 0.4  # Oxygen saturation constant (default 0.2 gO2/m3)
+K_OH = 0.9212811377762379  # Oxygen saturation constant (default 0.2 gO2/m3)
 # K_OH = 0.2  # Oxygen saturation constant (default 0.2 gO2/m3)
-b_A = 0.02   # specific decay rate (default 0.1 1/day)
+b_A = 0.010603380441689349   # specific decay rate (default 0.1 1/day)
 # b_A = 0.1   # specific decay rate (default 0.1 1/day)
 
 #X_BA
@@ -117,7 +115,7 @@ V_aer3 = 11179              # sum of aerobic tanks 3/3
 # adapt this path depending if you are in the main folder or the
 print("warning: please check if the input file has the same variables and the same order as in the ASM1 module of PeePyPoo defined")
 print("it is: | S_I | S_S  | X_I | X_S | X_BH| X_BA| X_P | S_O  |S_NO  |S_NH  |S_ND  | X_ND| S_ALK|")
-inf_dyn = pd.read_csv(os.path.join(data_path, 'peepypoo_training_dynamic_influent_kaggle.csv'), sep='\t', skiprows=[1])
+inf_dyn = pd.read_csv(os.path.join(data_path, 'peepypoo_evaluation_dynamic_influent_kaggle.csv'), sep='\t', skiprows=[1])
 # inf_dyn = pd.read_csv('data/peepypoo_training_dynamic_influent.csv', sep='\t', skiprows=[1])
 
 #%%
@@ -254,8 +252,8 @@ internal_rec.add_output_connection(unifier, [4, 5], [2, 3])
 # evaluation
 wrapper = peepypoo.BDWrapper([inflow]) # adds the whole connected tree gets added automatically to the wrapper
 # Simulate the water line of the plant in julia and returns a pandas dataframe
-out = wrapper.evaluate_blockdiagram_julia(0, 270, np.arange(0, 270, 1/96))
-out.to_excel('results/peepypoo_result_kaggle.xlsx')
+out = wrapper.evaluate_blockdiagram_julia(0, 90+1/96, np.arange(0, 90+1/96, 1/96))
+out.to_excel('results/peepypoo_result_kaggle_evaluation_result.xlsx')
 
 # %%
 # import matplotlib.pyplot as plt
@@ -283,45 +281,48 @@ out.to_excel('results/peepypoo_result_kaggle.xlsx')
 result=pd.DataFrame()
 result['t_stamp']=out.index
 
-for i in range(25920):
+for i in range(8642):
     index = out[r_aer3].index[i]
     result.loc[i,'S_NO'] = out[r_aer3][index][1][8]   # S_NO
     result.loc[i,'S_NH'] = out[r_aer3][index][1][9]   # S_NH
 
-result.to_excel('results/peepypoo_result_Aer3_NO_NH_only.xlsx')
+result['eq_predicted'] = 30 * result['S_NH'] + 10 * result['S_NO']
 
-answer = pd.read_excel('data/train_val_test_online_dataset_.xlsx', sheet_name=0, index_col='DATETIME')
+result.to_excel('results/peepypoo_result_Aer3_NO_NH_only_evaluation_result.xlsx')
 
-from datetime import datetime
-day0 = datetime.strptime('5-5-2021 11:57 AM', '%m-%d-%Y %I:%M %p') # set the first time stamp as 'day0'
-calc_day = lambda t_stamp: (t_stamp-day0).total_seconds()/60/60/24
+# answer = pd.read_excel('data/train_val_test_online_dataset_.xlsx', sheet_name=0, index_col='DATETIME')
+# answer = pd.read_excel(os.path.join(data_path, 'train_val_test_online_dataset_.xlsx'), sheet_name=0, index_col='DATETIME')
 
-t_stamp = answer.index
-t_intp = calc_day(t_stamp).to_numpy()
+# from datetime import datetime
+# day0 = datetime.strptime('5-5-2021 11:57 AM', '%m-%d-%Y %I:%M %p') # set the first time stamp as 'day0'
+# calc_day = lambda t_stamp: (t_stamp-day0).total_seconds()/60/60/24
 
-import matplotlib.pyplot as plt, matplotlib.ticker as ticker
+# t_stamp = answer.index
+# t_intp = calc_day(t_stamp).to_numpy()
 
-def plot_raw_vs_smooth(x1, y1, x2, y2):
-    fig, ax = plt.subplots(figsize=(15, 3)) # figure size
-    l1, = ax.plot(x1, y1, label='Model') # first plot = raw data
-    l2, = ax.plot(x2, y2, label='Answer') # second plot = smoothed result
-    ax.xaxis.set_major_locator(ticker.MultipleLocator(30)) # x-axis tick interval
-    ax.set_xlabel('Time [day]') # x-axis title
-    ax.legend(handles=[l1,l2])
-    return fig, ax
+# import matplotlib.pyplot as plt, matplotlib.ticker as ticker
 
-plot_raw_vs_smooth(t_intp, answer['NH4'], result['t_stamp'], result['S_NH'])
-plot_raw_vs_smooth(t_intp, answer['NO3'], result['t_stamp'], result['S_NO'])
+# def plot_raw_vs_smooth(x1, y1, x2, y2):
+#     fig, ax = plt.subplots(figsize=(15, 3)) # figure size
+#     l1, = ax.plot(x1, y1, label='Model') # first plot = raw data
+#     l2, = ax.plot(x2, y2, label='Answer') # second plot = smoothed result
+#     ax.xaxis.set_major_locator(ticker.MultipleLocator(30)) # x-axis tick interval
+#     ax.set_xlabel('Time [day]') # x-axis title
+#     ax.legend(handles=[l1,l2])
+#     return fig, ax
+
+# plot_raw_vs_smooth(t_intp, answer['NH4'], result['t_stamp'], result['S_NH'])
+# plot_raw_vs_smooth(t_intp, answer['NO3'], result['t_stamp'], result['S_NO'])
 
 #%%
 
-answer.drop(answer.tail(1).index, inplace=True)
-answer.index=result.index
+# answer.drop(answer.tail(1).index, inplace=True)
+# answer.index=result.index
 
-eq_predicted = 30 * result['S_NH'] + 10 * result['S_NO']
-eq_measured = 30 * answer['NH4'] + 10 * answer['NO3']
+# eq_predicted = 30 * result['S_NH'] + 10 * result['S_NO']
+# eq_measured = 30 * answer['NH4'] + 10 * answer['NO3']
 
-rmse = (sum((eq_predicted - eq_measured)**2)/len(answer.index))**0.5
+# rmse = (sum((eq_predicted - eq_measured)**2)/len(answer.index))**0.5
 
-print(rmse)
-print(Y_H, Y_A, f_P, i_XB, i_XP, mu_H, K_S, K_OH, K_NO, b_H, mu_A, K_NH, K_OA, b_A, eta_g, k_a, k_h, K_X, eta_h)
+# print(rmse)
+# print(Y_H, Y_A, f_P, i_XB, i_XP, mu_H, K_S, K_OH, K_NO, b_H, mu_A, K_NH, K_OA, b_A, eta_g, k_a, k_h, K_X, eta_h)

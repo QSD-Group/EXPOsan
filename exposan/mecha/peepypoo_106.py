@@ -45,44 +45,37 @@ import peepypoo # how to install: https://datinfo.gitlab.io/PeePyPoo/installatio
 
 # %%
 # Stoichiometric parameters at 20 degrees celsius
-Y_A = 0.24  # autotrophic yield (default 0.24 gCOD/gCOD)
-Y_H = 0.67  # heterotrophic yield (default 0.67 gCOD/gCOD)
 f_P = 0.08  # fraction of biomass leading to particulate material (default 0.08 -)
 i_XB = 0.08 # nitrogen fraction in biomass (default 0.086 gN/gCOD)
 i_XP = 0.06 # nitrogen fraction in endogenous mass (default 0.01 gN/gCOD)
 
 # Kinetic parameters
+mu_H = 6.0  # maximum specific growth rate (default 6.0 1/day)
+K_S = 20.0  # substrate saturation constant (default 20.0 gCOD/m3)
+K_OH = 0.2  # Oxygen saturation constant (default 0.2 gO2/m3)
+b_H = 0.62  # specific decay rate (default 0.62 1/day)
 eta_g = 0.8 # anoxic growth correction factor (default 0.8 -)
 eta_h = 0.4 # anoxic hydrolysis correction factor (default 0.4 -)
-K_X = 0.03  # half-saturation coefficient for hydrolysis of XS (default 0.03 -)
 k_h = 3.0   # maximum specific hydrolysis rate (default 3.0 1/day)
+K_X = 0.03  # half-saturation coefficient for hydrolysis of XS (default 0.03 -)
 
-K_S = 20.0  # substrate saturation constant (default 20.0 gCOD/m3)
+b_A = 0.1   # specific decay rate (default 0.1 1/day)
+K_OA = 0.4  # oxygen saturation constant (default 0.4 gO2/m3)
+k_a = 0.08  # ammonification rate constant (default 0.08 m3/(gCOD*day))
 
 # increase
-K_NH = 1.2  # ammonium saturation constant (default 1.0 gO2/m3)
-# K_NH = 1.0  # ammonium saturation constant (default 1.0 gO2/m3)
-K_OA = 0.4  # oxygen saturation constant (default 0.4 gO2/m3)
-# K_OA = 0.4  # oxygen saturation constant (default 0.4 gO2/m3)
-b_H = 0.3  # specific decay rate (default 0.62 1/day)
-# b_H = 0.62  # specific decay rate (default 0.62 1/day)
+Y_A = 0.6  # autotrophic yield (default 0.24 gCOD/gCOD)
+# Y_A = 0.24  # autotrophic yield (default 0.24 gCOD/gCOD)
+
 
 # decrease
-mu_A = 0.3  # maximum specific growth rate (default 0.8 1/day)
+Y_H = 0.67  # heterotrophic yield (default 0.67 gCOD/gCOD)
+mu_A = 0.8  # maximum specific growth rate (default 0.8 1/day)
 # mu_A = 0.8  # maximum specific growth rate (default 0.8 1/day)
-K_NO = 0.3  # nitrate saturation constant (default 0.5 gNO3-N/m3)
-# K_NO = 0.5  # nitrate saturation constant (default 0.5 gNO3-N/m3)
+K_NO = 0.5  # nitrate saturation constant (default 0.5 gNO3-N/m3)
 
-mu_H = 2.0  # maximum specific growth rate (default 6.0 1/day)
-# mu_H = 6.0  # maximum specific growth rate (default 6.0 1/day)
-k_a = 0.01  # ammonification rate constant (default 0.08 m3/(gCOD*day))
-# k_a = 0.08  # ammonification rate constant (default 0.08 m3/(gCOD*day))
-
-K_OH = 0.4  # Oxygen saturation constant (default 0.2 gO2/m3)
-# K_OH = 0.2  # Oxygen saturation constant (default 0.2 gO2/m3)
-b_A = 0.02   # specific decay rate (default 0.1 1/day)
-# b_A = 0.1   # specific decay rate (default 0.1 1/day)
-
+K_NH = 0.8  # ammonium saturation constant (default 1.0 gO2/m3)
+# K_NH = 1.0  # ammonium saturation constant (default 1.0 gO2/m3)
 #X_BA
 
 # Volume all in m3
@@ -324,4 +317,3 @@ eq_measured = 30 * answer['NH4'] + 10 * answer['NO3']
 rmse = (sum((eq_predicted - eq_measured)**2)/len(answer.index))**0.5
 
 print(rmse)
-print(Y_H, Y_A, f_P, i_XB, i_XP, mu_H, K_S, K_OH, K_NO, b_H, mu_A, K_NH, K_OA, b_A, eta_g, k_a, k_h, K_X, eta_h)
