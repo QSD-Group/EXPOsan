@@ -24,7 +24,7 @@ References:
 
 import os, qsdsan as qs, biosteam as bst
 from qsdsan import sanunits as qsu
-from biosteam.units import PressureFilter, DrumDryer
+from biosteam.units import PressureFilter, DrumDryer, AdsorptionColumnTSA
 from qsdsan.utils import clear_lca_registries
 from exposan.co2_sorbent import (
     _load_components,
@@ -90,6 +90,52 @@ def create_system_A():
     # TODO: determine moisture content for ALF
     D1 = DrumDryer('ALF_dryer', (F1-0,'dryer_air','natural_gas'), ('dryed_ALF','hot_air','emissions'), moisture_content=0.0, split={'HCOOH':1})
     D1.register_alias('D1')
+    
+# =============================================================================
+#     A1 = AdsorptionColumnTSA('TSA', ins=[flue_gas, S402-0, 'hot_air'],
+#                              outs=[flue_gas_post_adsorption, 'TAL_laden_ethanol', 'ethanol_laden_air'],
+#                              superficial_velocity=7.2, # m/h; typical velocities are 4 to 14.4 m/h for liquids; Adsorption basics Alan Gabelman (2017) Adsorption basics Part 1. AICHE
+#                              regeneration_velocity=14.4, # m/h; default value (updated in unit specification based on titer)
+#                              cycle_time=2., # 1-2 hours required for thermal-swing-adsorption (TSA) for silica gels (add 1 hr for conservativeness); Seader, J. D., Separation Process Principles: Chemical and Biochemical Operations,” 3rd ed., Wiley, Hoboken, NJ (2011).
+#                              # This is density of activated carbon packing, including voids.
+#                              # So rho_adsorbent = (1 - epsilon) * rho where epsilon is the void fraction
+#                              # and rho is the density of activated carbon with no voids.
+#                              adsorbent='Activated carbon',
+#                              rho_adsorbent=None, # Bulk density including void fraction; calculated based on void fraction and solid density
+#                              rho_adsorbent_solid=700, # Solid density excluding void fraction (in kg/m3)  # Seader et al. Table 15.2
+#                              void_fraction = 0.5, # v/v # Seader et al. Table 15.2
+#                              adsorbent_capacity=0.091, # default value for unsaturated capacity (updated in unit specification); conservative heuristic from Seider et. al. (2017) Product and Process Design Principles. Wiley
+#                              T_regeneration=30. + 273.15, 
+#                              drying_time = 0.55, # h # This is updated to 0.5 h after the first run
+#                              T_air = 351.39 + 10., # K # TAL_chemicals.Ethanol.Tb + 10
+#                              air_velocity = 2160, # m/h
+#                              vessel_material='Stainless steel 316',
+#                              vessel_type='Vertical',
+#                              regeneration_fluid=dict(phase='l', Ethanol=1., units='kg/hr'),
+#                              adsorbate_ID='TAL',  
+#                              split=dict(TAL=0, Water=1, VitaminA=1., VitaminD2=1., FermMicrobe=1.),
+#                              length_unused = 1.219, # m; 4 ft based on recommendation by Seader et al. (Separation Process Principles)
+#                              target_recovery=0.99,
+#                              wet_retention=0.5, # conservatively assume half a wash's worth of ethanol is retained in the column before dry air is passed through it
+#                              K = 0.07795, # back-calculated for 1 wash from experimental measurements for 3 washes pooled together; 0.125 for 3-wash # constant desorption partition coefficient; calculated for 1 wash from experimental data for 3 washes pooled together
+#                              )
+#     A1._default_equipment_lifetime['Activated carbon'] = 1.
+#     A1.adsorbent_cost['Activated carbon'] = price['Activated carbon'] # 41. $/ft^3
+#     
+#     @A1.add_specification
+#     def A1_spec(): # update recovery and capacity based on user-input adsorption time and temperature
+#         
+#         T = A1.ins[0].T
+#         t = A1.cycle_time
+#         capacity = cap_interp(t, T)
+#         A1.adsorbent_capacity = capacity[0]
+#         
+#         A1._run()
+#         
+#         M1.run()
+#         
+#         A1.ins[1].T = M1.outs[0].T
+# =============================================================================
     
     # opearting hours: Hu et al. 2023 SI
     sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=7884)
