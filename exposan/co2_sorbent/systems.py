@@ -103,7 +103,7 @@ def create_system_A():
     # for a typical 1000 MWh plant, assume CO2=780000 kg/h (Huang et al. 2021)
     flue_gas = qs.WasteStream('flue_gas', CO2=780000, H2O=300000, N2=4920000, phase='g', units='kg/h', T=25+273.15)
     
-    TSA = su.ALFTSA('ALF_TSA', ins=(flue_gas, D1-0, 'regenerated_ALF_in'), outs=('offgas','CO2','used_ALF','regenerated_ALF_in'))
+    TSA = su.ALFTemperatureSwingAdsorption('ALF_TSA', ins=(flue_gas, D1-0, 'regenerated_ALF_in'), outs=('offgas','CO2','used_ALF','regenerated_ALF_in'))
     TSA.register_alias('TSA')
     
     # TODO: need to match up temperatures
