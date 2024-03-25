@@ -1114,12 +1114,12 @@ def mapping(data=None, data2=None, n=20, reactor_type='PB'):
     if data is None:
         if reactor_type == 'PB':
             data = load_data(ospath.join(results_path, f'optimized_{reactor_type}_45.xlsx'),
-                             header=[0,1], skiprows=[2,])
+                             header=[0,1], skiprows=[2,], nrows=n*9)
             data2 = load_data(ospath.join(results_path, f'optimized_{reactor_type}_35.xlsx'),
-                             header=[0,1], skiprows=[2,])
+                             header=[0,1], skiprows=[2,], nrows=n*9)
         else:
             data = load_data(ospath.join(results_path, f'optimized_{reactor_type}.xlsx'),
-                             header=[0,1], skiprows=[2,])
+                             header=[0,1], skiprows=[2,], nrows=n*9)
     sys = create_system(reactor_type=reactor_type)
     mdl = create_model(sys, kind='mapping')
     # bl = [p.baseline for p in mdl.parameters]
@@ -1132,10 +1132,11 @@ def mapping(data=None, data2=None, n=20, reactor_type='PB'):
         z2 = None if data2 is None else zzs2[i]
         file = f'heatmaps/{reactor_type}/{m.name}.png'
         plot_heatmap(xx, yy, z, z2, save_as=file)
-    if reactor_type == 'FB':  z = zzs[1]*50/(1-zzs[0])*zzs[0]
+    if reactor_type == 'FB':  
+        z = zzs[1]*50/(1-zzs[0])*zzs[0]*np.ceil(30/xx)
     else: 
-        z = zzs[0]*50*(1-0.45)/0.45
-        z2 = zzs2[0]*50*(1-0.35)/0.35 if data2 is not None else None
+        z = zzs[0]*50*(1-0.45)/0.45*np.ceil(30/xx)
+        z2 = zzs2[0]*50*(1-0.35)/0.35*np.ceil(30/xx) if data2 is not None else None
     file = f'heatmaps/{reactor_type}/Total bead volume.png'    
     plot_heatmap(xx, yy, z, z2, save_as=file)
 
@@ -1167,7 +1168,7 @@ if __name__ == '__main__':
     # smp = run_UA_SA(N=1000)
     # _rerun_failed_samples(187, 'PB')
     # breakdown_uasa(965)
-    plot_univariate_kdes(965)
+    # plot_univariate_kdes(965)
     # out = calc_3way_diff(965)
     # outs = MCF_pb_to_fb(965)
     # data = MCF_25_vs_75(965)
@@ -1175,8 +1176,8 @@ if __name__ == '__main__':
     # MCF_bubble_plot(data)
     # mapping(suffix='specific')
     # mapping(suffix='common')
-    # mapping(reactor_type='FB', n=20)
-    # mapping(reactor_type='PB', n=11)
+    mapping(reactor_type='FB', n=20)
+    mapping(reactor_type='PB', n=11)
     # out = Spearman_corr(965, True)
     # mdl, smps = run_PB_over_diffusivity_HRT()
     # _map_diff_hrt(mdl)
