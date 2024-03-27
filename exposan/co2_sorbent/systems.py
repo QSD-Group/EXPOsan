@@ -76,7 +76,7 @@ def create_system_A():
     M1 = qsu.Mixer('feed_mixer_1', ins=(aluminum_hydroxide, water), outs='AlOH3_H2O', init_with='Stream', rigorous=True, conserve_phases=True)
     M1.register_alias('M1')
     
-    # TODO: change the flow rate of formic acid
+    # TODO: change the flow rate of formic acid (98% w/w, Xue et al. 2018)
     # TODO: add price for formic acid
     HCOOH_H2O = qs.WasteStream('formic_acid', HCOOH=350, H2O=100, units='kg/h', T=25+273.15)
     
@@ -103,8 +103,13 @@ def create_system_A():
     # for a typical 1000 MWh plant, assume CO2=780000 kg/h (Huang et al. 2021)
     flue_gas = qs.WasteStream('flue_gas', CO2=780000, H2O=300000, N2=4920000, phase='g', units='kg/h', T=25+273.15)
     
-    TSA = su.ALFTemperatureSwingAdsorption('ALF_TSA', ins=(flue_gas, D1-0, 'regenerated_ALF_in'), outs=('offgas','CO2','used_ALF','regenerated_ALF_in'))
+    TSA = su.ALFTemperatureSwingAdsorption('ALF_TSA', ins=(flue_gas, D1-0, 'regenerated_ALF_in'), outs=('offgas','CO2','used_ALF','regenerated_ALF_out'))
     TSA.register_alias('TSA')
+    
+    LTE = su.LowTemperatureElectrolysis('ALF_LTE', ins=(TSA-1, 'makeup_water'), outs=('FA_solution','oxygen'))
+    LTE.register_alias('LTE')
+    
+    # TODO: purify HCOOH through azeotropic distillation or change LTE to a solid state electrolyte (https://www.nature.com/articles/s41467-020-17403-1)
     
     # TODO: need to match up temperatures
     # HXN = qsu.HeatExchangerNetwork('HXN', T_min_app=5, force_ideal_thermo=True)

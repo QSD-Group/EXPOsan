@@ -276,16 +276,18 @@ class LowTemperatureElectrolysis(SanUnit):
     '''
 
     _N_ins = 2
-    _N_outs = 3
+    _N_outs = 2
     
     # TODO: need to determine OPEX_over_CAPEX
     # TODO: add another parameter to calculate the surface area of the electrode
-    def __init__(self, ID='', ins=(), outs=(), conversion_ratio=0.2, OPEX_over_CAPEX=0.2):
+    def __init__(self, ID='', ins=(), outs=(), conversion_ratio=0.2, FA_conc=0.15, OPEX_over_CAPEX=0.2):
         SanUnit.__init__(self=self, ID=ID, ins=ins, outs=outs)
         self.conversion_ratio = conversion_ratio
+        self.FA_conc = FA_conc
         self.OPEX_over_CAPEX = OPEX_over_CAPEX
         
-        # TODO: update electrode information
+        # TODO: update electrode information (5 times required area based on CO2 input due to the conversion rate of 0.2?)
+        # TODO: add memebranes
         self.equipment = [
             Electrode('Anode', linked_unit=self, N=1, electrode_type='anode',
                       material='Titanium grid catalyst welded to current collector tab both coated in iridium tantalum mixed metal oxide', surface_area=1, unit_cost=288), #288/unit, 1 unit
@@ -295,9 +297,15 @@ class LowTemperatureElectrolysis(SanUnit):
     
     def _run(self):
         carbon_dioxide_in, water = self.ins
-        effluent, carbon_dioxide_out, oxygen = self.outs
+        effluent, oxygen = self.outs
         
         # TODO: add mass balance here, need to determine if CO2 reacted = 20%, what is a good way to model this, like the area of the electrode is based on 20% CO2 or 100% CO2 (lean to 100% for now)
+
+        effluent.imol['HCOOH'] = carbon_dioxide_in.imol['CO2']
+        water.imass['H2O'] = effluent.imass['H2O'] = effluent.imol['HCOOH']*1000/self.FA_conc
+        oxygen.imol['O2'] = 0.5*carbon_dioxide_in.imol['CO2']
+        
+        oxygen.phase = 'g'
 
     def _design(self):
         self.add_equipment_design()
@@ -319,7 +327,8 @@ class LowTemperatureElectrolysis(SanUnit):
         self.equip_costs = self.baseline_purchase_costs.values()
         add_OPEX = sum(self.equip_costs)*self.OPEX_over_CAPEX
         recovered = self.outs[0]
-
-        self.power_utility.rate = recovered.imass['NH3']*0.67577
+        
+        # TODO: update electricity usage
+        # self.power_utility.rate = recovered.imass['NH3']*0.67577
         # steady state value derived from 17.57 kWh used over 26 hrs
         self._add_OPEX = {'Additional OPEX': add_OPEX}
