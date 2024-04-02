@@ -201,21 +201,19 @@ plt.ylabel("Total VFA [mg/l]")
 
 #%%
 #!!!Plot for varying pH over time
-pH_values = []
-time_steps = np.arange(0, 41, 1)
+time_series = adm1.root.data['time']  # 시간 데이터
+pH_values = adm1.root.data['pH']  # pH 값
 
-for time in time_steps:
-
-    pH_values.append(adm1.rate_function._params.root.data['pH'])
-
-
+# pH 시계열 데이터 플롯
 plt.figure(figsize=(10, 6))
-plt.plot(time_steps, pH_values, marker='o', linestyle='-', color='blue')
-plt.title('pH Variation Over Time')
+plt.plot(time_series, pH_values, label='pH over Time')
 plt.xlabel('Time (days)')
 plt.ylabel('pH')
+plt.title('Time Series Plot of pH from ADM1 State Variables')
+plt.legend()
 plt.grid(True)
 plt.show()
+
 #%%
 # pH levels
 pH_levels = [4, 5, 6, 7, 8]
