@@ -6,6 +6,7 @@ Created on Sun Oct 22 19:57:56 2023
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 from chemicals.elements import molecular_weight as get_mw
 from qsdsan import processes as pc, WasteStream, System
 # from qsdsan.utils import time_printer
@@ -31,6 +32,8 @@ adm1 = pc.ADM1_vfa()                     # create ADM1 processes
 # adm1.stoichiometry
 
 #%%
+# Kinetics
+#rhos = pc.rhos_adm1_vfa()
 # Flow rate, temperature, HRT (R3G20)
 # Q = 0.00007                                       # influent flowrate [m3/d]
 Q = 7                                               #!!! increasing Q shouldn't affect process simulation, but it'd increase numerical stability
@@ -176,19 +179,21 @@ eff.scope.plot_time_series(('X_aa', 'X_fa', 'X_la', 'X_et', 'X_c4', 'X_pro', 'X_
 gas.scope.plot_time_series(('S_h2'))
 
 gas.scope.plot_time_series(('S_h2','S_ch4', 'S_IC'))
+
+
 #%%
+# VFA change over days
 # Total VFAs = 'S_va' + 'S_bu' + 'S_pro' + 'S_ac'    (you can change the equations based on your assumption)
 idx_vfa = cmps.indices(['S_va', 'S_la', 'S_bu', 'S_pro', 'S_ac']) #S_la as vfa
 idx_h2 = cmps.indices(['S_h2'])
 idx_ch4 = cmps.indices(['S_ch4'])
 idx_co2 = cmps.indices(['S_IC'])
-
+#idx_pH = cmps.indices(root.data['pH'])
 t_stamp = eff.scope.time_series
 
 vfa = eff.scope.record[:,idx_vfa]
 total_vfa = np.sum(vfa, axis=1)
 
-import matplotlib.pyplot as plt
 plt.figure(figsize=(10, 6))
 
 plt.plot(t_stamp, total_vfa)
@@ -198,24 +203,73 @@ plt.ylabel("Total VFA [mg/l]")
 # max_vfa = np.max(total_vfa)
 # print(f"Maximum total VFA during the simulation is: {max_vfa:.2f} mg/L")
 
-
 #%%
-#!!!Plot for varying pH over time
-time_series = adm1.root.data['time']  # 시간 데이터
-pH_values = adm1.root.data['pH']  # pH 값
+#!!! pH change over days (right codes below?, if pH_ctrl has fixed value, below not work)
+t = 40  # total simulation time in days
+t_step = 1  # simulation time step in days
+time_stamps = np.arange(0, t + t_step, t_step)
 
-# pH 시계열 데이터 플롯
+# Prepare a list to hold pH values over time
+pH_values = []
+
+# Loop over the simulation period, simulate, and collect pH values
+for current_time in time_stamps:
+    # Simulate for the current time step
+    sys.simulate(state_reset_hook='reset_cache', t_span=(current_time, current_time + t_step), t_eval=[current_time])
+    
+    # Access and store the current pH value from the root data structure
+    current_pH = sys.path[0].model.rate_function._params['root'].data['pH']  # sys.path[0] should be your UASB reactor
+    pH_values.append(current_pH)
+
+# Plotting the pH values over time
 plt.figure(figsize=(10, 6))
-plt.plot(time_series, pH_values, label='pH over Time')
-plt.xlabel('Time (days)')
-plt.ylabel('pH')
-plt.title('Time Series Plot of pH from ADM1 State Variables')
+plt.plot(time_stamps, pH_values, label='pH Level', marker='o', linestyle='-')
+plt.xlabel("Time [days]")
+plt.ylabel("pH Level")
+plt.title("pH Levels Over Time")
 plt.legend()
 plt.grid(True)
 plt.show()
-
 #%%
-# pH levels
+#!!! Partial Pressure of gas over days (S_ch4 vs Partial Pressure of CH4)
+# Simulation settings
+t = 40  # total simulation time in days
+t_step = 1  # simulation time step in days
+time_stamps = np.arange(0, t + t_step, t_step)
+
+# Prepare lists to hold partial pressures of H2, CH4, and IC over time
+pH2_values = []
+pCH4_values = []
+pIC_values = []
+
+# Loop over the simulation period, simulate, and collect partial pressures
+for current_time in time_stamps:
+    # Simulate for the current time step
+    sys.simulate(state_reset_hook='reset_cache', t_span=(current_time, current_time + t_step), t_eval=[current_time])
+    
+    # Access and store the current partial pressures from the root data structure
+    current_pH2 = sys.path[0].model.rate_function._params['root'].data['biogas_p_h2']
+    current_pCH4 = sys.path[0].model.rate_function._params['root'].data['biogas_p_ch4']
+    current_pIC = sys.path[0].model.rate_function._params['root'].data['biogas_p_IC']
+    
+    pH2_values.append(current_pH2)
+    pCH4_values.append(current_pCH4)
+    pIC_values.append(current_pIC)
+
+# Plotting the partial pressures over time
+plt.figure(figsize=(12, 8))
+plt.plot(time_stamps, pH2_values, label='H2 Partial Pressure', marker='o', linestyle='-', color='blue')
+plt.plot(time_stamps, pCH4_values, label='CH4 Partial Pressure', marker='x', linestyle='-', color='green')
+plt.plot(time_stamps, pIC_values, label='IC Partial Pressure', marker='^', linestyle='-', color='red')
+
+plt.xlabel("Time [days]")
+plt.ylabel("Partial Pressure[Pa]")
+plt.title("Partial Pressures Over Time")
+plt.legend()
+plt.grid(True)
+plt.show()
+#%%
+# if pH levels varies
 pH_levels = [4, 5, 6, 7, 8]
 
 # Dictionaries to store VFA values and time stamps for each pH
