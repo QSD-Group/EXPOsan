@@ -33,7 +33,7 @@ adm1 = pc.ADM1_vfa()                     # create ADM1 processes
 
 #%%
 # Kinetics
-#rhos = pc.rhos_adm1_vfa()
+# rhos = pc.rhos_adm1_vfa()
 # Flow rate, temperature, HRT (R3G20)
 # Q = 0.00007                                       # influent flowrate [m3/d]
 Q = 7                                               #!!! increasing Q shouldn't affect process simulation, but it'd increase numerical stability
@@ -91,10 +91,11 @@ inf.set_flow_by_concentration(Q, **default_inf_kwargs)          # set influent c
 
 #%%
 # SanUnit
-U1 = UASB('UASB', ins=inf, outs=(gas, eff), model=adm1,
+U1 = UASB('UASB', ins=inf, outs=(gas, eff), model=adm1,        # Even though my model does not contain recirculation ratio, is it defined as CSTR?
           V_liq=Q*HRT, V_gas=Q*HRT*0.1,
           T=Temp, pH_ctrl=False,                               # pH adjustment X
-          fraction_retain=0.95)                                # needs to set this value properly to represent solid retention efficacy
+          fraction_retain=1.0,                                 # needs to set this value properly
+          )                                                    
 
                                                                # fraction_retain : float, optional
                                                                #     The assumed fraction of ideal retention of select components. The default is 0.95.
