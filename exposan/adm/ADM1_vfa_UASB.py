@@ -64,7 +64,7 @@ default_inf_kwargs = {
         'S_ac':0,
         'S_h2':0,
         'S_ch4':0,
-        'S_IC':10*C_mw,
+        'S_IC':10*C_mw,                                             # S_IC: M?, why different?
         'S_IN':10*N_mw,
         'S_I':0,
         'X_c':0,
