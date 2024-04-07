@@ -51,9 +51,47 @@ gas = WasteStream('Biogas')                         # gas
 C_mw = get_mw({'C':1})        # molecular weight of carbon
 N_mw = get_mw({'N':1})        # molecular weight of nitrogen
 
+# Default values
+'''
 default_inf_kwargs = {
     'concentrations': {
-        'S_su':20.168,                                              # fixed according to R3G20
+        'S_su':0.01,                                              
+        'S_aa':1e-3,
+        'S_fa':1e-3,
+        'S_la':1e-3,
+        'S_et':1e-3,
+        'S_va':1e-3,
+        'S_bu':1e-3,
+        'S_pro':1e-3,
+        'S_ac':1e-3,
+        'S_h2':1e-8,
+        'S_ch4':1e-5,
+        'S_IC':0.04*C_mw,                                             
+        'S_IN':0.01*N_mw,
+        'S_I':0.02,
+        'X_c':2.0,
+        'X_ch':5.0,
+        'X_pr':20.0,
+        'X_li':5.0,
+        'X_aa':1e-2,
+        'X_fa':1e-2,
+        'X_la':1e-2,
+        'X_et':1e-2,
+        'X_c4':1e-2,
+        'X_pro':1e-2,
+        'X_ac':1e-2,
+        'X_h2':1e-2,
+        'X_I':25,
+        'S_cat':0.04,
+        'S_an':0.02,
+        },
+    'units': ('m3/d', 'kg/m3'),                                 
+    }                                                           # concentration of each state variable in influent
+'''
+# Medium (Glucose)
+default_inf_kwargs = {
+    'concentrations': {
+        'S_su':20.168,                                              # glucose 10 g/L = 10.7 kg/m3, 20 g/L = 20.14 kg/m3
         'S_aa':0,
         'S_fa':0,
         'S_la':0,
@@ -64,8 +102,8 @@ default_inf_kwargs = {
         'S_ac':0,
         'S_h2':0,
         'S_ch4':0,
-        'S_IC':10*C_mw,                                             #!!! S_IC: M?, why different?
-        'S_IN':10*N_mw,
+        'S_IC':10*C_mw,                                             #!!! S_IC: kmole C / m3?, why different?
+        'S_IN':10*N_mw,                                             #!!! S_IN: kmole N / m3?, why different?
         'S_I':0,
         'X_c':0,
         'X_ch':0,
@@ -85,7 +123,6 @@ default_inf_kwargs = {
         },
     'units': ('m3/d', 'kg/m3'),                                 #!!! kg/m3 = g/L, Is it kg COD / m3?
     }                                                           # concentration of each state variable in influent
-
 inf.set_flow_by_concentration(Q, **default_inf_kwargs)          # set influent concentration
 # inf
 
@@ -106,6 +143,39 @@ U1 = UASB('UASB', ins=inf, outs=(gas, eff), model=adm1,        # !!!Even though 
 # print(f"The liquid volume of the reactor is: {U1.V_liq} m^3")
 
 # Set initial condition of the reactor (Cow manure (Inoculum) in bioreactor, 10% of total volume)
+# Default values
+'''
+default_init_conds = {
+    'S_su': 0.0124*1e3,                                        
+    'S_aa': 0.0055*1e3,
+    'S_fa': 0.1074*1e3,
+    'S_la': 0.0,
+    'S_et': 0.0,
+    'S_va': 0.0123*1e3,
+    'S_bu': 0.0140*1e3,                                  
+    'S_pro': 0.0176*1e3,                                  
+    'S_ac': 0.0893*1e3,                                      
+    'S_h2': 2.5055e-7*1e3,
+    'S_ch4': 0.0555*1e3,
+    'S_IC': 0.0951*C_mw*1e3,
+    'S_IN': 0.0945*N_mw*1e3,
+    'S_I': 0.1309*1e3,
+    'X_ch': 0.0205*1e3,
+    'X_pr': 0.0842*1e3,
+    'X_li': 0.0436*1e3,
+    'X_su': 0.3122*1e3,
+    'X_aa': 0.9317*1e3,
+    'X_fa': 0.3384*1e3,
+    'X_la': 0.0,
+    'X_et': 0.0,
+    'X_c4': 0.3258*1e3,
+    'X_pro': 0.1011*1e3,
+    'X_ac': 0.6772*1e3,
+    'X_h2': 0.2848*1e3,
+    'X_I': 17.2162*1e3
+    }                   # in mg/L                         
+'''
+# Inoculum (Cow manure)
 default_init_conds = {
     'S_su': 1.5*1e3,                                        # fixed according to R3G20 (No glucose)
     'S_aa': 1.0*1e2,
