@@ -103,7 +103,7 @@ default_inf_kwargs = {
         'S_h2':0.0,
         'S_ch4':0.0,
         'S_IC':0.0*C_mw,                                             
-        'S_IN':5.553*1e-5*N_mw,                                     #!!! S_IN: 4.283*1e-5 kmole N / m3? * N_mw, why different? Fixed value
+        'S_IN':5.553*1e-5*N_mw,                                     #!!! S_IN: 5.553*1e-5 kmole N / m3? * N_mw, why different? Fixed value
         'S_I':0.0,
         'X_c':0.0,
         'X_ch':0.0,
@@ -130,15 +130,15 @@ inf.set_flow_by_concentration(Q, **default_inf_kwargs)          # set influent c
 # SanUnit
 U1 = UASB('UASB', ins=inf, outs=(gas, eff), model=adm1,        # !!!Even though my model does not contain recirculation ratio, is it defined as CSTR? or PFR regarding HRT?
           V_liq=Q*HRT, V_gas=Q*HRT*0.1,                        # !!! Considering real experiments including either high recirculation rate or not
-          T=Temp, pH_ctrl=4,                               # pH adjustment X
-          fraction_retain=0.95,                                 # needs to set this value properly
+          T=Temp, pH_ctrl=4,                                   # pH adjustment X
+          fraction_retain=0.95,                                # needs to set this value properly
           )                                                    
 
                                                                # fraction_retain : float, optional
                                                                # The assumed fraction of ideal retention of select components. The default is 0.95.
                                                                # To make all solids sent to effluent
 
-# U1                                                             # anaerobic CSTR with influent, effluent, and biogas
+# U1                                                           # anaerobic CSTR with influent, effluent, and biogas
                                                                # before running the simulation, 'outs' have nothing
 # print(f"The liquid volume of the reactor is: {U1.V_liq} m^3")
 
