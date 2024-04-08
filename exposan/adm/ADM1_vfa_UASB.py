@@ -202,7 +202,7 @@ default_init_conds = {
     'X_c4': 2.0*1e2,
     'X_pro': 2.0*1e2,
     'X_ac': 4.0*1e3,
-    'X_h2': 4.0*1e3,
+    'X_h2': 10.0*1e3,
     'X_I': 1.0*1e3
     }                   # in mg/L                         #!!! Is it also mg COD/L?
 
