@@ -91,7 +91,7 @@ default_inf_kwargs = {
 # Medium (Glucose)
 default_inf_kwargs = {
     'concentrations': {
-        'S_su':20.168,                                              # glucose 10 g/L = 10.7 kg/m3, 20 g/L = 20.14 kg/m3
+        'S_su':20.14,                                               # glucose 10 g/L = 10.7 kg/m3, 20 g/L = 20.14 kg/m3
         'S_aa':0,
         'S_fa':0,
         'S_la':0,
@@ -102,8 +102,8 @@ default_inf_kwargs = {
         'S_ac':0,
         'S_h2':0,
         'S_ch4':0,
-        'S_IC':10*C_mw,                                             #!!! S_IC: kmole C / m3?, why different?
-        'S_IN':10*N_mw,                                             #!!! S_IN: kmole N / m3?, why different?
+        'S_IC':0*C_mw,                                             
+        'S_IN':5.553*1e-5*N_mw,                                     #!!! S_IN: 4.283*1e-5 kmole N / m3? * N_mw, why different? Fixed value
         'S_I':0,
         'X_c':0,
         'X_ch':0,
@@ -250,7 +250,7 @@ eff.scope.plot_time_series(('X_aa', 'X_fa', 'X_la', 'X_et', 'X_c4', 'X_pro', 'X_
 gas.scope.plot_time_series(('S_h2'))
 
 gas.scope.plot_time_series(('S_h2','S_ch4', 'S_IC'))
-
+#!!! Soluble biogas could be defined as biogas? Gas measurement in real experiments by Gas Chromatography, it could be partial pressure.
 
 #%%
 # VFA change over days
