@@ -130,7 +130,7 @@ inf.set_flow_by_concentration(Q, **default_inf_kwargs)          # set influent c
 # SanUnit
 U1 = UASB('UASB', ins=inf, outs=(gas, eff), model=adm1,        # !!!Even though my model does not contain recirculation ratio, is it defined as CSTR? or PFR regarding HRT?
           V_liq=Q*HRT, V_gas=Q*HRT*0.1,                        # !!! Considering real experiments including either high recirculation rate or not
-          T=Temp, pH_ctrl=False,                               # pH adjustment X
+          T=Temp, pH_ctrl=4,                               # pH adjustment X
           fraction_retain=0.95,                                 # needs to set this value properly
           )                                                    
 
@@ -184,13 +184,13 @@ default_init_conds = {
     'S_et': 0.0,
     'S_va': 0.0,
     'S_bu': 0.0,                                  # fixed according to R3G20
-    'S_pro': 0,                                  # fixed according to R3G20
-    'S_ac': 0,                                      # fixed according to R3G20
-    'S_h2': 0,
-    'S_ch4': 0,
-    'S_IC': 0,
-    'S_IN': 0,
-    'S_I': 0,
+    'S_pro': 0.0,                                  # fixed according to R3G20
+    'S_ac': 0.0,                                      # fixed according to R3G20
+    'S_h2': 0.0,
+    'S_ch4': 0.0,
+    'S_IC': 0.0,
+    'S_IN': 0.0,
+    'S_I': 0.0,
     'X_ch': 0.5*1e2,
     'X_pr': 0.5*1e2,
     'X_li': 0.5*1e2,
@@ -202,7 +202,7 @@ default_init_conds = {
     'X_c4': 2.0*1e2,
     'X_pro': 2.0*1e2,
     'X_ac': 4.0*1e3,
-    'X_h2': 1.0*1e3,
+    'X_h2': 4.0*1e3,
     'X_I': 1.0*1e3
     }                   # in mg/L                         #!!! Is it also mg COD/L?
 
