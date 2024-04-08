@@ -118,8 +118,8 @@ default_inf_kwargs = {
         'X_ac':0,
         'X_h2':0,
         'X_I':0,
-        'S_cat':2,
-        'S_an':1,
+        'S_cat':1e-5,
+        'S_an':1e-5,
         },
     'units': ('m3/d', 'kg/m3'),                                 #!!! kg/m3 = g/L, Is it kg COD / m3?
     }                                                           # concentration of each state variable in influent
@@ -177,15 +177,15 @@ default_init_conds = {
 '''
 # Inoculum (Cow manure)
 default_init_conds = {
-    'S_su': 1.5*1e3,                                        # fixed according to R3G20 (No glucose)
-    'S_aa': 1.0*1e2,
-    'S_fa': 1.0*1e2,
-    'S_la': 1.0*1e2,
-    'S_et': 0.1*1e2,
-    'S_va': 0.1*1e2,
-    'S_bu': 0.4899637*1e3,                                  # fixed according to R3G20
-    'S_pro': 1.015067*1e3,                                  # fixed according to R3G20
-    'S_ac': 1.721*1e3,                                      # fixed according to R3G20
+    'S_su': 0.0124*1e3,                                        # fixed according to R3G20 (No glucose)
+    'S_aa': 0.0055*1e3,
+    'S_fa': 0.1074*1e3,
+    'S_la': 0.0,
+    'S_et': 0.0,
+    'S_va': 0.0,
+    'S_bu': 0.0,                                  # fixed according to R3G20
+    'S_pro': 0,                                  # fixed according to R3G20
+    'S_ac': 0,                                      # fixed according to R3G20
     'S_h2': 0,
     'S_ch4': 0,
     'S_IC': 0,
