@@ -36,7 +36,7 @@ adm1 = pc.ADM1_vfa()                     # create ADM1 processes
 # rhos = pc.rhos_adm1_vfa()
 # Flow rate, temperature, HRT (R3G20)
 # Q = 0.00007                                       # influent flowrate [m3/d]
-Q = 14                                               #!!! increasing Q shouldn't affect process simulation, but it'd increase numerical stability
+Q = 7                                               #!!! increasing Q shouldn't affect process simulation, but it'd increase numerical stability
 Temp = 273.15 + 40                                  # temperature [K]
 HRT = 20                                            # HRT [d]
 
