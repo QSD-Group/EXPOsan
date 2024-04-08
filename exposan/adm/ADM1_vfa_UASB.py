@@ -131,7 +131,7 @@ inf.set_flow_by_concentration(Q, **default_inf_kwargs)          # set influent c
 U1 = UASB('UASB', ins=inf, outs=(gas, eff), model=adm1,        # !!!Even though my model does not contain recirculation ratio, is it defined as CSTR? or PFR regarding HRT?
           V_liq=Q*HRT, V_gas=Q*HRT*0.1,                        # !!! Considering real experiments including either high recirculation rate or not
           T=Temp, pH_ctrl=False,                               # pH adjustment X
-          fraction_retain=1.0,                                 # needs to set this value properly
+          fraction_retain=0.95,                                 # needs to set this value properly
           )                                                    
 
                                                                # fraction_retain : float, optional
