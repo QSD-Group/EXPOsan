@@ -177,7 +177,7 @@ default_init_conds = {
 '''
 # Inoculum (Cow manure)
 default_init_conds = {
-    'S_su': 0.0124*1e3,                                        # fixed according to R3G20 (No glucose)
+    'S_su': 0.5*1e3,                                        # fixed according to R3G20 (No glucose)
     'S_aa': 0.0055*1e3,
     'S_fa': 0.0055*1e3,
     'S_la': 0.1074*1e3,
