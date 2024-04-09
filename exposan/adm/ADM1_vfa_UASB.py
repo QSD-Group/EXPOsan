@@ -179,18 +179,18 @@ default_init_conds = {
 default_init_conds = {
     'S_su': 0.0124*1e3,                                        # fixed according to R3G20 (No glucose)
     'S_aa': 0.0055*1e3,
-    'S_fa': 0.1074*1e3,
-    'S_la': 0.0,
-    'S_et': 0.0,
-    'S_va': 0.0,
-    'S_bu': 0.0,                                  # fixed according to R3G20
-    'S_pro': 0.0,                                  # fixed according to R3G20
-    'S_ac': 0.0,                                      # fixed according to R3G20
-    'S_h2': 0.0,
-    'S_ch4': 0.0,
-    'S_IC': 0.0,
-    'S_IN': 0.0,
-    'S_I': 0.0,
+    'S_fa': 0.0055*1e3,
+    'S_la': 0.1074*1e3,
+    'S_et': 0.0124*1e3,
+    'S_va': 0.0124*1e3,
+    'S_bu': 0.0124*1e3,                                  # fixed according to R3G20
+    'S_pro': 0.0124*1e3,                                  # fixed according to R3G20
+    'S_ac': 0.0055*1e3,                                      # fixed according to R3G20
+    'S_h2': 2.5055e-7*1e3,
+    'S_ch4': 2.5055e-7*1e3,
+    'S_IC': 0.0124*C_mw*1e3,
+    'S_IN': 0.0945*N_mw*1e3,
+    'S_I': 0.1309*1e3,
     'X_ch': 0.5*1e2,
     'X_pr': 1.0*1e2,
     'X_li': 0.5*1e2,
@@ -202,7 +202,7 @@ default_init_conds = {
     'X_c4': 2.0*1e2,
     'X_pro': 2.0*1e2,
     'X_ac': 4.0*1e3,
-    'X_h2': 10.0*1e3,
+    'X_h2': 15*1e3,
     'X_I': 1.0*1e3
     }                   # in mg/L                         #!!! Is it also mg COD/L?
 
