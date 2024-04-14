@@ -237,7 +237,7 @@ sys.simulate(state_reset_hook='reset_cache',
              export_state_to=f'sol_{S_su}g COD/l_pH{pH_ctrl}_{t}d_{method}_AD.xlsx',               # export simulation result as excel file #!!! How to put name of glucose concentration?
             )
 #
-# sys                                                                      # now you have 'outs' info.
+sys                                                                      # now you have 'outs' info.
 
 #%%
 eff.scope.plot_time_series(('S_aa', 'S_fa', 'S_la', 'S_et', 'S_va', 'S_bu', 'S_pro', 'S_ac'))  # you can plot how each state variable changes over time
