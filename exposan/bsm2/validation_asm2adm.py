@@ -17,7 +17,7 @@ Reference:
     http://iwa-mia.org/wp-content/uploads/2022/09/TR3_BSM_TG_Tech_Report_no_3_BSM2_General_Description.pdf.
 
 '''
-import numpy as np, qsdsan as qs
+import numpy as np, pandas as pd, qsdsan as qs
 from qsdsan import WasteStream, sanunits as su, processes as pc
 
 # Parameters for ASM No. 1 at 15 degC, Tables 2-3
@@ -62,7 +62,7 @@ effluent = WasteStream('effluent', T=35+273.15)
 
 qs.set_thermo(thermo_asm1)
 
-# MATLAB
+# bsm2/Results/BSM2_steady_state (MATLAB package)
 # Anaerobic digester influent (pre ASM2ADM interface)
 # ***************************************************
 # SI = 28.0665 mg COD/l
@@ -134,8 +134,44 @@ sys.simulate(
     # export_state_to=f'results/sol_{t}d_{method}.xlsx',
     )
 
-<<<<<<< Updated upstream
-effluent_conc = dict(zip(effluent.components.IDs, effluent.iconc.data/1000))
+# All in kg/m3 except for H2O (flowrate in m3/d)
+simulated = dict(zip(effluent.components.IDs, effluent.iconc.data/1000))
+simulated['H2O'] = effluent.F_vol*24
+
+matlab = {
+    'S_su': 0.0, # monosacharides (kg COD/m3)
+    'S_aa': 0.04388, # amino acids (kg COD/m3)
+    'S_fa': 0.0, # long chain fatty acids (LCFA) (kg COD/m3)
+    'S_va': 0.0, # total valerate (kg COD/m3)
+    'S_bu': 0.0, # total butyrate (kg COD/m3)
+    'S_pro': 0.0, # total propionate (kg COD/m3)
+    'S_ac': 0.0, # total acetate (kg COD/m3)
+    'S_h2': 0.0, # hydrogen gas (kg COD/m3)
+    'S_ch4': 0.0, # methane gas (kg COD/m3)
+    'S_IC': 0.0079326*12, # inorganic carbon (kmole C/m3 -> kg C/m3) 0.0951912
+    'S_IN': 0.0019721*14, # inorganic nitrogen (kmole N/m3 -> kg N/m3) 0.0276094
+    'S_I': 0.028067, # soluble inerts (kg COD/m3)
+    'X_c': 0.0, # composites (kg COD/m3)
+    'X_ch': 3.7236, # carbohydrates (kg COD/m3)
+    'X_pr': 15.9235, # proteins (kg COD/m3)
+    'X_li': 8.047, # lipids (kg COD/m3)
+    'X_su': 0.0, # sugar degraders (kg COD/m3)
+    'X_aa': 0.0, # amino acid degraders (kg COD/m3)
+    'X_fa': 0.0, # LCFA degraders (kg COD/m3)
+    'X_c4': 0.0, # valerate and butyrate degraders (kg COD/m3)
+    'X_pro': 0.0, # propionate degraders (kg COD/m3)
+    'X_ac': 0.0, # acetate degraders (kg COD/m3)
+    'X_h2': 0.0, # hydrogen degraders (kg COD/m3)
+    'X_I': 17.0106, # particulate inerts (kg COD/m3)
+    'S_cat': 0.0, # cations (base) (kmole/m3)
+    'S_an': 0.0052101, # anions (acid) (kmole/m3)
+    'H2O': 178.4674, # Flow rate (m3/d)
+    }
+df = pd.DataFrame.from_dict({'simulated': simulated, 'matlab': matlab})
+df['err'] = df.simulated - df.matlab
+df['err_per'] = df.err/df.matlab
+df.err_per.fillna(0, inplace=True)
+print(df)
 
 TKN_0 = influent.composite('N', subgroup=('S_NH', 'S_ND', 'X_ND', 'X_BH', 'X_BA', 'X_I', 'X_P'))
 TKN_qs = effluent.composite('N', 
@@ -145,42 +181,18 @@ TKN_qs = effluent.composite('N',
                                 'X_su', 'X_aa', 'X_fa', 'X_c4', 'X_pro', 'X_ac', 'X_h2',
                                 )
                             )
-
-# {'S_su': 0.0,
-#  'S_aa': 0.04388255070751851,
-#  'S_fa': 0.0,
-#  'S_va': 0.0,
-#  'S_bu': 0.0,
-#  'S_pro': 0.0,
-#  'S_ac': 0.0,
-#  'S_h2': 0.0,
-#  'S_ch4': 0.0,
-#  'S_IC': 0.09382270328139782,
-#  'S_IN': 0.027605743709807683,
-#  'S_I': 0.02806649999999998,
-#  'X_c': 0.0,
-#  'X_ch': 3.727527881097371,
-#  'X_pr': 15.914754397967817,
-#  'X_li': 8.051813728934793,
-#  'X_su': 0.0,
-#  'X_aa': 0.0,
-#  'X_fa': 0.0,
-#  'X_c4': 0.0,
-#  'X_pro': 0.0,
-#  'X_ac': 0.0,
-#  'X_h2': 0.0,
-#  'X_I': 17.010642391999987,
-#  'S_cat': 0.0,
-#  'S_an': 0.005210421371425579,
-#  'H2O': 965.9960219794004}
-
-TKN_mt = 1e3 * ((0.04388 + 15.9235)*0.007 + (0.028067+17.0166)*0.06/14 + 0.0019721) * 14
-
-# effluent_conc = dict(zip(effluent.components.IDs, effluent.iconc.data))
-# for ID, conc in effluent_conc.items(): print(ID, conc)
+# Table 5 in bsm2/Documents/Description_BSM2_20090101 (MATLAB package)
+# NI, 0.06/14 kmole N.(kg COD)-1, 6% on weight basis in the ASM section
+# Naa, 0.007 kmole N.(kg COD)-1
+TKN_mt = 1e3 * ((
+    (matlab['S_aa'] + matlab['X_pr'])*0.007 + # organics
+    (matlab['S_I']+matlab['X_I'])*0.06/14 # inerts
+    ) * 14 + 
+    matlab['S_IN'] # inorganic N
+    )
 
 
-# MATLAB
+# bsm2/Results/BSM2_steady_state (MATLAB package)
 # ADM1 influent (post ASM2ADM interface)
 # *************************************
 # Ssu = monosacharides (kg COD/m3) = 0

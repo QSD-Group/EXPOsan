@@ -17,7 +17,7 @@ Reference:
     http://iwa-mia.org/wp-content/uploads/2022/09/TR3_BSM_TG_Tech_Report_no_3_BSM2_General_Description.pdf.
 
 '''
-import numpy as np, qsdsan as qs
+import numpy as np, pandas as pd, qsdsan as qs
 from qsdsan import WasteStream, sanunits as su, processes as pc
 
 # Parameters for ASM No. 1 at 15 degC, Tables 2-3
@@ -61,7 +61,7 @@ adm1 = pc.ADM1()
 
 qs.set_thermo(thermo_adm1)
 
-# MATLAB
+# bsm2/Results/BSM2_steady_state (MATLAB package)
 # ADM1 effluent (pre ADM2ASM interface)
 # ***************************************
 # Ssu = monosacharides (kg COD/m3) = 0.012394
@@ -184,7 +184,32 @@ sys.simulate(
     # export_state_to=f'results/sol_{t}d_{method}.xlsx',
     )
 
-effluent_conc = dict(zip(effluent.components.IDs, effluent.iconc.data))
+simulated = dict(zip(effluent.components.IDs, effluent.iconc.data))
+simulated['H2O'] = effluent.F_vol*24
+
+matlab = {
+    'S_I': 130.867, # soluble inert organic matter, mg COD/l
+    'S_S': 258.5789, # readily biodegradable substrate, mg COD/l
+    'X_I': 17216.2434, # particulate inert organic matter, mg COD/l
+    'X_S': 2611.4843, # slowly biodegradable substrate, mg COD/l
+    'X_BH': 0.0, # active heterotrophic biomass, mg COD/l
+    'X_BA': 0.0, # active autotrophic biomass, mg COD/l
+    'X_P': 626.0652, # particulate products arising from biomass decay, mg COD/l
+    'S_O': 0.0, # dissolved O2, mg -COD/l
+    'S_NO': 0.0, # nitrate and nitrite nitrogen, mg N/L
+    'S_NH': 1442.7882, # ammonium, mg N/L
+    'S_ND': 0.54323, # soluble biodegradable organic nitrogen
+    'X_ND': 100.8668, # particulate biodegradable organic nitrogen, mg N/l
+    'S_ALK': 97.8459*12, # alkalinity, assumed to be HCO3-, 97.8459, mol HCO3/m3 -> g C/m3
+    'S_N2': 0.0, # dissolved O2
+    'H2O': 178.4674, # Flow rate, m3/d
+    }
+
+df = pd.DataFrame.from_dict({'simulated': simulated, 'matlab': matlab})
+df['err'] = df.simulated - df.matlab
+df['err_per'] = df.err/df.matlab
+df.err_per.fillna(0, inplace=True)
+print(df)
 
 xN_0 = influent.composite('N', particle_size='x')
 sN_0 = influent.composite('N', particle_size='s')
@@ -192,30 +217,13 @@ sN_0 = influent.composite('N', particle_size='s')
 xN_qs = effluent.composite('N', particle_size='x')
 sN_qs = effluent.composite('N', particle_size='s')
 
+# Table 2 in bsm2/Documents/Description_BSM2_20090101 (MATLAB package)
+# iXP, g N.(g COD)-1 in particulate products
+xN_mt = (matlab['X_I'] + matlab['X_P']) * 0.06 + matlab['X_ND'] # particular N
+sN_mt = matlab['S_NH'] + matlab['S_ND'] # soluble N
 
-# effluent_conc, #!!! to be updated
-# {'S_I': 130.87,
-#  'S_S': 258.5822000000001,
-#  'X_I': 17216.200000000008,
-#  'X_S': 2611.4735000000014,
-#  'X_BH': 0.0,
-#  'X_BA': 0.0,
-#  'X_P': 626.0625000000002,
-#  'S_O': 0.0,
-#  'S_NO': 0.0,
-#  'S_NH': 1443.3491250362472,
-#  'S_ND': 0.5434935760800002,
-#  'X_ND': 100.92453092319155,
-#  'S_ALK': 1180.3134876913525,
-#  'S_N2': 0.0,
-#  'H2O': 982527.7939584954}
 
-xN_mt = (17216.2434 + 626.0652) * 0.06 + 100.8668
-sN_mt = 1442.7882 + 0.54323
-
-# for ID, conc in effluent_conc.items(): print(ID, conc)
-
-# MATLAB
+# bsm2/Results/BSM2_steady_state (MATLAB package)
 # Anaerobic digester output (post ADM2ASM interface)
 # **************************************************
 # SI = 130.867 mg COD/l
@@ -230,7 +238,8 @@ sN_mt = 1442.7882 + 0.54323
 # SNH = 1442.7882 mg N/l
 # SND = 0.54323 mg N/l
 # XND = 100.8668 mg N/l
-# SALK = 97.8459 mol HCO3/m3 (* 12 = 1174.1508 gC/m3)
+# SALK = 97.8459 mol HCO3/m3
 # TSS = 15340.3447 mg SS/l
 # Flow rate = 178.4674 m3/d
 # Temperature = 14.8581 degC
+
