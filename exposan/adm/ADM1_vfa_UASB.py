@@ -19,17 +19,17 @@ warnings.simplefilter(action='ignore', category=FutureWarning)        # to ignor
 #%%
 # Components
 cmps = pc.create_adm1_vfa_cmps()      # create state variables for ADM1_vfa
-# cmps.show()                         # 30 components in ADM1_vfa + water
+cmps.show()                         # 30 components in ADM1_vfa + water
 
 #%%
 # Processes
 adm1 = pc.ADM1_vfa()                     # create ADM1 processes
-# adm1.show()                            # 22 processes in ADM1
+adm1.show()                            # 22 processes in ADM1
 
-# adm1.__dict__                          # adm1 is composed of...
+adm1.__dict__                          # adm1 is composed of...
 
 # Petersen stoichiometric matrix
-# adm1.stoichiometry
+adm1.stoichiometry
 
 #%%
 # Kinetics
@@ -103,7 +103,7 @@ default_inf_kwargs = {
         'S_h2':0.0,
         'S_ch4':0.0,
         'S_IC':0.0*C_mw,                                             
-        'S_IN':5.553*1e-5*N_mw,                                     #!!! S_IN: 5.553*1e-5 kmole N / m3? * N_mw, why different? Fixed value
+        'S_IN':5.553*1e-5*N_mw,                                     #!!! 0.04975 g COD/L, S_IN: 5.553*1e-5 kmole N / m3? * N_mw, why different? Fixed value
         'S_I':0.0,
         'X_c':0.0,
         'X_ch':0.0,
@@ -120,17 +120,18 @@ default_inf_kwargs = {
         'X_I':0.0,
         'S_cat':1e-5,
         'S_an':1e-5,
-        },
+        },                                                      # 807.59 g COD/L
     'units': ('m3/d', 'kg/m3'),                                 #!!! kg/m3 = g/L, Is it kg COD / m3?
     }                                                           # concentration of each state variable in influent
 inf.set_flow_by_concentration(Q, **default_inf_kwargs)          # set influent concentration
-# inf
-
+inf
+S_su = default_inf_kwargs['concentrations']['S_su']
+print(S_su)
 #%%
 # SanUnit
 U1 = UASB('UASB', ins=inf, outs=(gas, eff), model=adm1,        # !!!Even though my model does not contain recirculation ratio, is it defined as CSTR? or PFR regarding HRT?
           V_liq=Q*HRT, V_gas=Q*HRT*0.1,                        # !!! Considering real experiments including either high recirculation rate or not
-          T=Temp, pH_ctrl=4,                                   # pH adjustment X
+          T=Temp, pH_ctrl=4.3,                                   # pH adjustment X
           fraction_retain=0.95,                                # needs to set this value properly
           )                                                    
 
@@ -138,9 +139,9 @@ U1 = UASB('UASB', ins=inf, outs=(gas, eff), model=adm1,        # !!!Even though 
                                                                # The assumed fraction of ideal retention of select components. The default is 0.95.
                                                                # To make all solids sent to effluent
 
-# U1                                                           # anaerobic CSTR with influent, effluent, and biogas
-                                                               # before running the simulation, 'outs' have nothing
-# print(f"The liquid volume of the reactor is: {U1.V_liq} m^3")
+U1                                                           # anaerobic CSTR with influent, effluent, and biogas
+pH_ctrl = U1.pH_ctrl                                                               # before running the simulation, 'outs' have nothing
+print(f"The liquid volume of the reactor is: {U1.V_liq} m^3")
 
 # Set initial condition of the reactor (Cow manure (Inoculum) in bioreactor, 10% of total volume)
 # Default values
@@ -186,33 +187,33 @@ default_init_conds = {
     'S_bu': 0.0124*1e3,                                  # fixed according to R3G20
     'S_pro': 0.0124*1e3,                                  # fixed according to R3G20
     'S_ac': 0.0055*1e3,                                   # fixed according to R3G20
-    'S_h2': 2.5055e-7*1e3,
+    'S_h2': 2.5055e-9*1e3,
     'S_ch4': 2.5055e-7*1e3,
-    'S_IC': 2.0*C_mw*1e3,
-    'S_IN': 0.0945*N_mw*1e3,
+    'S_IC': 0.2*C_mw*1e3,                                #76800 mg COD / L
+    'S_IN': 0.0945*N_mw*1e3,                             #84672 mg COD / L
     'S_I': 0.1309*1e3,
-    'X_ch': 9*1e3,
-    'X_pr': 3*1e3,
-    'X_li': 9*1e3,
-    'X_su': 0.8*1e3,
-    'X_aa': 0.8*1e3,
+    'X_ch': 27*1e3,
+    'X_pr': 7.5*1e3,
+    'X_li': 7.5*1e3,
+    'X_su': 1.8*1e3,
+    'X_aa': 2.0*1e3,
     'X_fa': 0.8*1e3,
-    'X_la': 0.08*1e3,
-    'X_et': 1.6*1e3,
-    'X_c4': 0.8*1e3,
-    'X_pro': 0.8*1e3,
-    'X_ac': 0.5*1e3,
-    'X_h2': 0.5*1e3,
+    'X_la': 18*1e3,
+    'X_et': 0.08*1e3,
+    'X_c4': 2.8*1e3,
+    'X_pro': 1.8*1e3,
+    'X_ac': 15*1e3,
+    'X_h2': 15*1e3,
     'X_I': 1.5*1e3
-    }                   # in mg/L                         #!!! Is it also mg COD/L?
+    }                   # in mg/L                         #!!! 262.56 g COD/L, Is it also mg COD/L?
 
 U1.set_init_conc(**default_init_conds)                          # set initial condition of AD
 
 #%%
 # System
 sys = System('Anaerobic_Digestion', path=(U1,))                 # aggregation of sanunits
-sys.set_dynamic_tracker(eff, gas, U1)                           # what you want to track changes in concentration
-# sys                                                           # before running the simulation, 'outs' have nothing
+sys.set_dynamic_tracker(inf, eff, gas, U1)                           # what you want to track changes in concentration
+sys                                                           # before running the simulation, 'outs' have nothing
 
 #%%
 # Simulation settings
@@ -233,7 +234,7 @@ sys.simulate(state_reset_hook='reset_cache',
              t_span=(0,t),
              t_eval=np.arange(0, t+t_step, t_step),
              method=method,
-             export_state_to=f'sol_{t}d_{method}_AD.xlsx',               # export simulation result as excel file
+             export_state_to=f'sol_{S_su}g COD/l_pH{pH_ctrl}_{t}d_{method}_AD.xlsx',               # export simulation result as excel file #!!! How to put name of glucose concentration?
             )
 #
 # sys                                                                      # now you have 'outs' info.
@@ -250,6 +251,7 @@ eff.scope.plot_time_series(('X_aa', 'X_fa', 'X_la', 'X_et', 'X_c4', 'X_pro', 'X_
 gas.scope.plot_time_series(('S_h2'))
 
 gas.scope.plot_time_series(('S_h2','S_ch4', 'S_IC'))
+
 #!!! Soluble biogas could be defined as biogas? Gas measurement in real experiments by Gas Chromatography, it could be partial pressure.
 
 #%%
