@@ -18,7 +18,7 @@ from qsdsan import ImpactIndicator, ImpactItem, StreamImpactItem
 from exposan.utils import _init_modules
 pou_path = os.path.dirname(__file__)
 module = os.path.split(pou_path)[-1]
-data_path, results_path = _init_modules(module, include_data_path=True)
+data_path, results_path, figures_path = _init_modules(module, include_data_path=True, include_figures_path=True)
 
 
 # %%
@@ -35,7 +35,7 @@ start_year = 2018
 lifetime = 5
 
 water_source = 'GW'
-household_size = 6
+household_size = 4 # normal distribution with mu=4 and sigma=1.4 based on global distribution of household sizes
 household_per_container = 1
 ppl = 1000 # population would not change the results
 
