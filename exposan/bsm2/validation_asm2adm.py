@@ -21,36 +21,37 @@ import numpy as np, pandas as pd, qsdsan as qs
 from qsdsan import WasteStream, sanunits as su, processes as pc
 
 # Parameters for ASM No. 1 at 15 degC, Tables 2-3
-default_asm_kwargs = dict(
-    # Table 2 Stoichiometric parameters
-    Y_H=0.67,
-    Y_A=0.24,
-    f_P=0.08,
-    i_XB=0.08, #0.086;
-    i_XP=0.06,
-    fr_SS_COD=0.75, # X_I2TSS, X_S2TSS, X_BH2TSS, X_BA2TSS, X_P2TSS
-    # Table 3 Kinetic parameters
-    mu_H=4.0, #6.0;
-    K_S=10.0, #20;
-    K_O_H=0.2,
-    K_NO=0.5,
-    b_H=0.3, #0.62;
-    mu_A=0.5, #0.8;
-    K_NH=1.0,
-    K_O_A=0.4,
-    b_A=0.05, #0.2;
-    eta_g=0.8, # ny_g
-    k_a=0.05, #0.08;
-    k_h=3.0,
-    K_X=0.1, #0.03;
-    eta_h=0.8, # ny_h #0.4;
-    # path=os.path.join(data_path, '_asm1.tsv'),
-    )
+# adding these does not make a difference
+# default_asm_kwargs = dict(
+#     # Table 2 Stoichiometric parameters
+#     Y_H=0.67,
+#     Y_A=0.24,
+#     f_P=0.08,
+#     i_XB=0.08, #0.086;
+#     i_XP=0.06,
+#     fr_SS_COD=0.75, # X_I2TSS, X_S2TSS, X_BH2TSS, X_BA2TSS, X_P2TSS
+#     # Table 3 Kinetic parameters
+#     mu_H=4.0, #6.0;
+#     K_S=10.0, #20;
+#     K_O_H=0.2,
+#     K_NO=0.5,
+#     b_H=0.3, #0.62;
+#     mu_A=0.5, #0.8;
+#     K_NH=1.0,
+#     K_O_A=0.4,
+#     b_A=0.05, #0.2;
+#     eta_g=0.8, # ny_g
+#     k_a=0.05, #0.08;
+#     k_h=3.0,
+#     K_X=0.1, #0.03;
+#     eta_h=0.8, # ny_h #0.4;
+#     # path=os.path.join(data_path, '_asm1.tsv'),
+#     )
 
 cmps_asm1 = pc.create_asm1_cmps()
-asm1 = pc.ASM1(components=cmps_asm1, **default_asm_kwargs)
+asm1 = pc.ASM1(components=cmps_asm1)
+# asm1 = pc.ASM1(components=cmps_asm1, **default_asm_kwargs)
 thermo_asm1 = qs.get_thermo()
-
 
 cmps_adm1 = pc.create_adm1_cmps()
 thermo_adm1 = qs.get_thermo()
@@ -104,9 +105,7 @@ default_inf_kwargs = {
     }
 # TSS = 33528.5538 mg SS/l
 
-
 influent = WasteStream('influent', T=T_inf)
-
 influent.set_flow_by_concentration(**default_inf_kwargs)
 
 J1 = su.ASMtoADM('J1', upstream=influent, downstream=effluent, 
