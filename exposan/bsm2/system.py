@@ -42,7 +42,6 @@ Q_was = 300 # sludge wastage flowrate
 Temp = 273.15+14.85808 # temperature [K]
 V_an = 1500 # anoxic zone tank volume
 V_ae = 3000 # aerated zone tank volume
-biomass_IDs = ('X_BH', 'X_BA')
 
 # O2 saturation concentration at 15 degC
 SOSAT1 = 8
@@ -52,13 +51,12 @@ asm1init = pd.read_csv(os.path.join(data_path, 'asm1init.csv'), index_col=0).to_
 settler1dinit = pd.read_csv(os.path.join(data_path, 'settler1dinit.csv'), index_col=0).to_dict('index')
 adm1init = pd.read_csv(os.path.join(data_path, 'adm1init.csv'), index_col=0).to_dict('index')
 
-
 default_inf_kwargs = {
-    'concentrations': default_inf.iloc[0].to_dict(),
+    'concentrations': asm1init['inf'],
     'units': ('m3/d', 'mg/L'),
     }
 
-def create_system(flowsheet=None):
+def create_system(flowsheet=None, default_init_conds=True):
     flowsheet = flowsheet or qs.Flowsheet('bsm2')
     qs.main_flowsheet.set_flowsheet(flowsheet)
     unit = flowsheet.unit
@@ -73,17 +71,17 @@ def create_system(flowsheet=None):
     aer3 = pc.DiffusedAeration('aer3', DO_ID, KLa=84, DOsat=SOSAT1, V=V_ae)
     
     # Influent
-    wastewater = WasteStream('wastewater', T=Temp)
-    wastewater.set_flow_by_concentration(Q, **default_inf_kwargs)
+    inf = WasteStream('inf', T=Temp)
+    inf.set_flow_by_concentration(Q, **default_inf_kwargs)
     
     # Primary clarifier using the Otterpohl-Freund model
-    #!!! Should set V, not HRT
     # Where are other parameters used?
     C1 = su.PrimaryClarifierBSM2(
         'C1',
-        ins=(wastewater, 'thickener_recycle', 'reject_water'),
+        ins=(inf, 'thickener_recycle', 'reject_water'),
         outs=('C1_eff', 'C1_underflow'),
         isdynamic=True,
+        HRT=1/24, #!!! should set V (900 m3), not HRT
         f_corr=0.65,
         ratio_uf=0.007, # f_PS
         )
@@ -94,7 +92,7 @@ def create_system(flowsheet=None):
     
     A2 = su.CSTR('A2', A1-0, V_max=V_an,
                  aeration=None, suspended_growth_model=asm1)
-    
+
     O1 = su.CSTR('O1', A2-0, V_max=V_ae, aeration=aer1,
                  DO_ID=DO_ID, suspended_growth_model=asm1)
     
@@ -115,6 +113,7 @@ def create_system(flowsheet=None):
         X_threshold=3000, v_max=474, v_max_practical=250,
         rh=5.76e-4, rp=2.86e-3, fns=2.28e-3,
         )
+    
     TC1 = su.Thickener('TC1', C2-2, outs=['thickened_sludge', 1-C1],
                        thickening_perc=7, TSS_removal_perc=98)
     M1 = su.Mixer('M1', ins=(C1-1, TC1-0))
@@ -147,10 +146,17 @@ def create_system(flowsheet=None):
     # T1 = su.HydraulicDelay('T1', C3-1, outs='liquid_recycle', t_delay=0)
     # T1-0-2-C1
     
+    # !!! Initial conditions not set for non-BSM1 units
+    # (primary clarifier C1, thickener TC1, anaerobic digestion AD1, dewatering C3)
+    if default_init_conds:
+        for i in ('A1', 'A2', 'O1', 'O2', 'O3'):
+            getattr(unit, i).set_init_conc(**asm1init[i])
+        C2.set_init_TSS(list(settler1dinit['C2'].values()))
+    
     sys = flowsheet.create_system('bsm2_sys')
     sys.set_tolerance(mol=1e-5, rmol=1e-5)
     sys.maxiter = 5000
-    sys.set_dynamic_tracker(unit.A1, unit.C1, J1, AD1, J2)
+    sys.set_dynamic_tracker(C1, A1, O3, C2, J1, AD1, J2, C3)
     
     return sys
 
@@ -172,8 +178,12 @@ def run(sys, t, t_step, method=None, **kwargs):
         # atol=1e-3,
         # export_state_to=f'results/sol_{t}d_{method}.xlsx',
         **kwargs)
-    srt = get_SRT(sys, biomass_IDs)
-    print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
+    
+    biomass_IDs = ('X_BH', 'X_BA')
+    srt = get_SRT(sys, biomass_IDs,
+                  wastage=[sys.flowsheet.stream.digested_sludge],
+                  active_unit_IDs=('C3'))
+    if srt: print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
 
 if __name__ == '__main__':
     sys = create_system()
@@ -183,7 +193,7 @@ if __name__ == '__main__':
     # cmps_adm1 = J1.components
     # cmps_asm1 = J2.components
     
-    t = 1
+    t = 50
     t_step = 1
     # method = 'RK45'
     # method = 'RK23'
@@ -201,3 +211,6 @@ if __name__ == '__main__':
     # y0, idx, nr = sys._load_state()
     
     run(sys, t, t_step, method=method)
+
+    J1.state # post ASM2ADM interface
+    J2.state # post ADM2ASM interface
