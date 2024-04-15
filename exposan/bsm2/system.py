@@ -20,15 +20,15 @@ Reference:
 
 '''
 
-import os, numpy as np, qsdsan as qs
+import os, numpy as np, pandas as pd, qsdsan as qs
 from qsdsan import (
     processes as pc,
     sanunits as su,
     WasteStream,
     )
 from qsdsan.utils import time_printer, load_data, get_SRT
-from exposan.bsm2 import figures_path, results_path
-from exposan.adm import default_init_conds as default_adm1_init_conds
+from exposan.bsm2 import data_path, figures_path, results_path
+# from exposan.adm import default_init_conds as default_adm1_init_conds
 
 __all__ = ('create_system',)
 
@@ -47,22 +47,16 @@ biomass_IDs = ('X_BH', 'X_BA')
 # O2 saturation concentration at 15 degC
 SOSAT1 = 8
 
-# Constant influent
+# Default initial conditions
+asm1init = pd.read_csv(os.path.join(data_path, 'asm1init.csv'), index_col=0).to_dict('index')
+settler1dinit = pd.read_csv(os.path.join(data_path, 'settler1dinit.csv'), index_col=0).to_dict('index')
+adm1init = pd.read_csv(os.path.join(data_path, 'adm1init.csv'), index_col=0).to_dict('index')
+
+
 default_inf_kwargs = {
-    'concentrations': {
-        'S_I': 27.226191,
-        'S_S': 58.176186,
-        'X_I': 92.499001,
-        'X_S': 363.94347,
-        'X_BH': 50.683288,
-        'S_NH': 23.859466,
-        'S_ND': 5.651606,
-        'X_ND': 16.129816,
-        'S_ALK': 7*12,
-        },
+    'concentrations': default_inf.iloc[0].to_dict(),
     'units': ('m3/d', 'mg/L'),
     }
-
 
 def create_system(flowsheet=None):
     flowsheet = flowsheet or qs.Flowsheet('bsm2')
@@ -137,13 +131,13 @@ def create_system(flowsheet=None):
                            V_liq=3400, V_gas=300, T=308.15,
                            model=adm1,
                            retain_cmps=[i for i in cmps_adm1.IDs if i.startswith('X_')])
-    AD1.set_init_conc(**default_adm1_init_conds)
+    # AD1.set_init_conc(**default_adm1_init_conds)
     # Switch back to ASM1 components
     J2 = su.ADMtoASM('J2', upstream=AD1-1, thermo=thermo_asm1, isdynamic=True, adm1_model=adm1)
     J2.bio_to_xs = 0.79
     qs.set_thermo(thermo_asm1)
     
-    # Dewater
+    # Dewatering
     C3 = su.Centrifuge(ID='C3', ins=J2-0, outs=['digested_sludge', 2-C1],
                        thickening_perc=28, TSS_removal_perc=96.29)
 
