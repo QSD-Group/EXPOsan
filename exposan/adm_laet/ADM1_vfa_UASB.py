@@ -19,17 +19,17 @@ warnings.simplefilter(action='ignore', category=FutureWarning)        # to ignor
 #%%
 # Components
 cmps = pc.create_adm1_vfa_cmps()      # create state variables for ADM1_vfa
-cmps.show()                         # 30 components in ADM1_vfa + water
+# cmps.show()                         # 30 components in ADM1_vfa + water
 
 #%%
 # Processes
 adm1 = pc.ADM1_vfa()                     # create ADM1 processes
-adm1.show()                            # 22 processes in ADM1
+# adm1.show()                            # 22 processes in ADM1
 
-adm1.__dict__                          # adm1 is composed of...
+# adm1.__dict__                          # adm1 is composed of...
 
 # Petersen stoichiometric matrix
-adm1.stoichiometry
+# adm1.stoichiometry
 
 #%%
 # Kinetics
@@ -124,9 +124,9 @@ default_inf_kwargs = {
     'units': ('m3/d', 'kg/m3'),                                 # kg COD/m3 = g COD/L
     }                                                           # concentration of each state variable in influent
 inf.set_flow_by_concentration(Q, **default_inf_kwargs)          # set influent concentration
-inf
+# inf
 S_su = default_inf_kwargs['concentrations']['S_su']
-print(S_su)
+# print(S_su)
 #%%
 # SanUnit
 U1 = UASB('UASB', ins=inf, outs=(gas, eff), model=adm1,        # This model is based on CSTR, need to decide application of recirculated experiments
@@ -217,7 +217,7 @@ sys                                                           # before running t
 
 #%%
 # Simulation settings
-t = 40                        # total time for simulation
+t = 100                        # total time for simulation
 t_step = 1                    # times at which to store the computed solution
 
 method = 'BDF'                  # integration method to use
@@ -237,7 +237,7 @@ sys.simulate(state_reset_hook='reset_cache',
              export_state_to=f'{S_su}gL_pH{pH_ctrl}_{t}d_AD.xlsx',               # export simulation result as excel file
             )
 #
-sys                                                                      # now you have 'outs' info.
+# sys                                                                      # now you have 'outs' info.
 
 #%%
 eff.scope.plot_time_series(('S_su', 'S_aa', 'S_fa', 'S_la', 'S_et', 'S_va', 'S_bu', 'S_pro', 'S_ac'))  # you can plot how each state variable changes over time
