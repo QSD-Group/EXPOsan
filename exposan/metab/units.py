@@ -441,11 +441,6 @@ class UASB(AnaerobicCSTR):
         _dstate = self._dstate
         _update_dstate = self._update_dstate
         T = self.T
-        _params = self.model.rate_function._params
-        _f_rhos = lambda state_arr: self.model.flex_rate_function(
-            state_arr, _params, T_op=T, pH=self.pH_ctrl, gas_transfer=True
-            )
-        M_stoichio = self.model.stoichio_eval()
         n_cmps = len(cmps)
         n_gas = self._n_gas
         V_liq = self.V_liq
@@ -455,6 +450,18 @@ class UASB(AnaerobicCSTR):
             f_qgas = self.f_q_gas_fixed_P_headspace
         else:
             f_qgas = self.f_q_gas_var_P_headspace
+        
+        _params = self.model.rate_function._params
+        _f_rhos = lambda state_arr: self.model.flex_rate_function(
+            state_arr, _params, T_op=T, pH=self.pH_ctrl, gas_transfer=True
+            )
+        if self.model._dyn_params:
+            def M_stoichio(state_arr):
+                self.model.params_eval(state_arr)
+                return self.model.stoichio_eval().T
+        else:
+            _M_stoichio = self.model.stoichio_eval().T
+            M_stoichio = lambda state_arr: _M_stoichio
         def dy_dt(t, QC_ins, QC, dQC_ins):
             #!!! to avoid accumulation of floating error due to limited precision
             QC[np.abs(QC) < 2.22044604925e-16] = 0
@@ -467,7 +474,7 @@ class UASB(AnaerobicCSTR):
             #!!! to avoid accumulation of floating error due to limited precision
             rhos[np.abs(rhos) < 2.22044604925e-16] = 0
             _dstate[:n_cmps] = (Q_ins @ S_ins - Q*S_liq*(1-f_rtn))/V_liq \
-                + np.dot(M_stoichio.T, rhos)
+                + np.dot(M_stoichio(QC), rhos)
             q_gas = f_qgas(rhos[-3:], S_gas, T)
             _dstate[n_cmps: (n_cmps+n_gas)] = - q_gas*S_gas/V_gas \
                 + rhos[-3:] * V_liq/V_gas * gas_mass2mol_conversion
