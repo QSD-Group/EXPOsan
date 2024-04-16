@@ -121,7 +121,7 @@ default_inf_kwargs = {
         'S_cat':1e-5,
         'S_an':1e-5,
         },                                                      # 807.59 g COD/L
-    'units': ('m3/d', 'kg/m3'),                                 #!!! kg/m3 = g/L, Is it kg COD / m3?
+    'units': ('m3/d', 'kg/m3'),                                 # kg COD/m3 = g COD/L
     }                                                           # concentration of each state variable in influent
 inf.set_flow_by_concentration(Q, **default_inf_kwargs)          # set influent concentration
 inf
@@ -129,10 +129,10 @@ S_su = default_inf_kwargs['concentrations']['S_su']
 print(S_su)
 #%%
 # SanUnit
-U1 = UASB('UASB', ins=inf, outs=(gas, eff), model=adm1,        # !!!Even though my model does not contain recirculation ratio, is it defined as CSTR? or PFR regarding HRT?
+U1 = UASB('UASB', ins=inf, outs=(gas, eff), model=adm1,        # This model is based on CSTR, need to decide application of recirculated experiments
           V_liq=Q*HRT, V_gas=Q*HRT*0.1,                        # !!! Considering real experiments including either high recirculation rate or not
-          T=Temp, pH_ctrl=False,                                 # pH adjustment X
-          fraction_retain=0.95,                                # needs to set this value properly
+          T=Temp, pH_ctrl=4.3,                               # pH adjustment X
+          fraction_retain=1.0,                                # needs to set this value properly
           )                                                    
 
                                                                # fraction_retain : float, optional
@@ -205,7 +205,7 @@ default_init_conds = {
     'X_ac': 15*1e3,
     'X_h2': 15*1e3,
     'X_I': 1.5*1e3
-    }                   # in mg/L                         #!!! 262.56 g COD/L, Is it also mg COD/L?
+    }                   # in mg/L                         # mg COD/L
 
 U1.set_init_conc(**default_init_conds)                          # set initial condition of AD
 
@@ -277,30 +277,28 @@ plt.ylabel("Total VFA [mg/l]")
 # print(f"Maximum total VFA during the simulation is: {max_vfa:.2f} mg/L")
 
 #%%
-#!!! pH change over days (right codes below?, if pH_ctrl has fixed value, below not work)
-t = 40  # total simulation time in days
-t_step = 1  # simulation time step in days
-time_stamps = np.arange(0, t + t_step, t_step)
+#!!! Plot for varying pH over time
+from scipy.optimize import brenth
+from qsdsan.processes._adm1_laet import mass2mol_conversion, acid_base_rxn
+unit_conversion = mass2mol_conversion(cmps)
+Ka = adm1.rate_function._params['Ka']
 
-# Prepare a list to hold pH values over time
-pH_values = []
+def calc_pH(state_arr):
+    cmps_in_M = state_arr[:31] * unit_conversion
+    weak_acids = cmps_in_M[[28, 29, 12, 11, 8, 7, 6, 5, 3]]
+    h = brenth(acid_base_rxn, 1e-14, 1.0,
+                args=(weak_acids, Ka),
+                xtol=1e-12, maxiter=100)
+    pH = -np.log10(h)
+    return pH
 
-# Loop over the simulation period, simulate, and collect pH values
-for current_time in time_stamps:
-    # Simulate for the current time step
-    sys.simulate(state_reset_hook='reset_cache', t_span=(current_time, current_time + t_step), t_eval=[current_time])
-    
-    # Access and store the current pH value from the root data structure
-    current_pH = sys.path[0].model.rate_function._params['root'].data['pH']  # sys.path[0] should be your UASB reactor
-    pH_values.append(current_pH)
+pH_values = [calc_pH(arr) for arr in eff.scope.record]
 
-# Plotting the pH values over time
 plt.figure(figsize=(10, 6))
-plt.plot(time_stamps, pH_values, label='pH Level', marker='o', linestyle='-')
-plt.xlabel("Time [days]")
-plt.ylabel("pH Level")
-plt.title("pH Levels Over Time")
-plt.legend()
+plt.plot(t_stamp, pH_values, marker='o', linestyle='-', color='blue')
+plt.title('pH levels Over Time')
+plt.xlabel('Time (days)')
+plt.ylabel('pH')
 plt.grid(True)
 plt.show()
 #%%
