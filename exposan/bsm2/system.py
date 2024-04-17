@@ -67,27 +67,31 @@ def create_system(flowsheet=None, default_init_conds=True):
     thermo_asm1 = qs.get_thermo()
     DO_ID = 'S_O'
     #!!! Not sure where KLa are from
-    aer1 = aer2 = pc.DiffusedAeration('aer1', DO_ID, KLa=240, DOsat=SOSAT1, V=V_ae)
-    aer3 = pc.DiffusedAeration('aer3', DO_ID, KLa=84, DOsat=SOSAT1, V=V_ae)
+    # the BSM STR Table 3.1 suggests kLa=120 for tanks 3&4, kLa=60 for tank 5
+    aer1 = aer2 = pc.DiffusedAeration('aer1', DO_ID, KLa=120, DOsat=SOSAT1, V=V_ae)
+    aer3 = pc.DiffusedAeration('aer3', DO_ID, KLa=60, DOsat=SOSAT1, V=V_ae)
     
     # Influent
     inf = WasteStream('inf', T=Temp)
     inf.set_flow_by_concentration(Q, **default_inf_kwargs)
+    carb = WasteStream('carbon', T=Temp)
+    carb.set_flow_by_concentration(2, {'S_S':400}, units=('m3/d', 'kg/m3'))
     
     # Primary clarifier using the Otterpohl-Freund model
     # Where are other parameters used?
     C1 = su.PrimaryClarifierBSM2(
         'C1',
         ins=(inf, 'thickener_recycle', 'reject_water'),
+        # ins=(inf, 'reject'),
         outs=('C1_eff', 'C1_underflow'),
         isdynamic=True,
-        HRT=1/24, #!!! should set V (900 m3), not HRT
+        # HRT=1/24, #!!! should set V (900 m3), not HRT
         f_corr=0.65,
         ratio_uf=0.007, # f_PS
         )
 
     # Unit operations in BSM1
-    A1 = su.CSTR('A1', ins=[C1-0, 'RWW', 'RAS'], V_max=V_an,
+    A1 = su.CSTR('A1', ins=[C1-0, 'RWW', 'RAS', carb], V_max=V_an,
                  aeration=None, suspended_growth_model=asm1)
     
     A2 = su.CSTR('A2', A1-0, V_max=V_an,
@@ -115,6 +119,7 @@ def create_system(flowsheet=None, default_init_conds=True):
         )
     
     TC1 = su.Thickener('TC1', C2-2, outs=['thickened_sludge', 1-C1],
+    # TC1 = su.Thickener('TC1', C2-2, outs=['thickened_sludge', ''],
                        thickening_perc=7, TSS_removal_perc=98)
     M1 = su.Mixer('M1', ins=(C1-1, TC1-0))
         
@@ -128,9 +133,7 @@ def create_system(flowsheet=None, default_init_conds=True):
     AD1 = su.AnaerobicCSTR('AD1', ins=J1.outs[0], outs=('biogas', 'AD_eff'), isdynamic=True,
                            # Tables 7-8
                            V_liq=3400, V_gas=300, T=308.15,
-                           model=adm1,
-                           retain_cmps=[i for i in cmps_adm1.IDs if i.startswith('X_')])
-    # AD1.set_init_conc(**default_adm1_init_conds)
+                           model=adm1,)
     # Switch back to ASM1 components
     J2 = su.ADMtoASM('J2', upstream=AD1-1, thermo=thermo_asm1, isdynamic=True, adm1_model=adm1)
     J2.bio_to_xs = 0.79
@@ -138,22 +141,32 @@ def create_system(flowsheet=None, default_init_conds=True):
     
     # Dewatering
     C3 = su.Centrifuge(ID='C3', ins=J2-0, outs=['digested_sludge', 2-C1],
+    # C3 = su.Centrifuge(ID='C3', ins=J2-0, outs=['digested_sludge', ''],
                        thickening_perc=28, TSS_removal_perc=96.29)
 
+    # M2 = su.Mixer('M2', ins=(TC1-1, C3-1), outs=1-C1)
+    
     #!!! Should have a storage tank with HRT = 1,
     # where the outs should have a bypass stream and an out stream.
     # Now equivalent to 100% bypass.
     # T1 = su.HydraulicDelay('T1', C3-1, outs='liquid_recycle', t_delay=0)
     # T1-0-2-C1
     
-    # !!! Initial conditions not set for non-BSM1 units
-    # (primary clarifier C1, thickener TC1, anaerobic digestion AD1, dewatering C3)
     if default_init_conds:
-        for i in ('A1', 'A2', 'O1', 'O2', 'O3'):
+        for i in ('C1', 'A1', 'A2', 'O1', 'O2', 'O3'):
             getattr(unit, i).set_init_conc(**asm1init[i])
         C2.set_init_TSS(list(settler1dinit['C2'].values()))
+        AD1.set_init_conc(**adm1init['AD1'])
+
     
-    sys = flowsheet.create_system('bsm2_sys')
+    # sys = flowsheet.create_system('bsm2_sys')
+    sys = qs.System('bsm2_sys', 
+                    path=(C1, A1, A2, O1, O2, O3, C2, 
+                            TC1, M1, J1, AD1, J2, C3),
+                    recycle=(O3-0, C2-1, TC1-1, C3-1, )
+                    #       TC1, M1, J1, AD1, J2, C3, M2),
+                    # recycle=(O3-0, C2-1, M2-0)
+                    )
     sys.set_tolerance(mol=1e-5, rmol=1e-5)
     sys.maxiter = 5000
     sys.set_dynamic_tracker(C1, A1, O3, C2, J1, AD1, J2, C3)
@@ -172,18 +185,18 @@ def run(sys, t, t_step, method=None, **kwargs):
     sys.simulate(
         state_reset_hook='reset_cache',
         t_span=(0,t),
-        t_eval=np.arange(0, t+t_step, t_step),
+        # t_eval=np.arange(0, t+t_step, t_step),
         method=method,
         # rtol=1e-2,
         # atol=1e-3,
         # export_state_to=f'results/sol_{t}d_{method}.xlsx',
         **kwargs)
     
-    biomass_IDs = ('X_BH', 'X_BA')
-    srt = get_SRT(sys, biomass_IDs,
-                  wastage=[sys.flowsheet.stream.digested_sludge],
-                  active_unit_IDs=('C3'))
-    if srt: print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
+    # biomass_IDs = ('X_BH', 'X_BA')
+    # srt = get_SRT(sys, biomass_IDs,
+    #               wastage=[sys.flowsheet.stream.digested_sludge],
+    #               active_unit_IDs=('C3'))
+    # if srt: print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
 
 if __name__ == '__main__':
     sys = create_system()
@@ -193,7 +206,7 @@ if __name__ == '__main__':
     # cmps_adm1 = J1.components
     # cmps_asm1 = J2.components
     
-    t = 50
+    t = 200
     t_step = 1
     # method = 'RK45'
     # method = 'RK23'
@@ -202,7 +215,10 @@ if __name__ == '__main__':
     method = 'BDF'
     # method = 'LSODA'
     
-    sys.diagram()
+    run(sys, t, t_step, method=method)
+    # sys._setup()
+    # sys.converge()
+    # sys.diagram()
     # sys.diagram(file=os.path.join(figures_path, 'bsm2_sys'), format='png')
     
     # sys.converge()
@@ -210,7 +226,6 @@ if __name__ == '__main__':
     #     if not hasattr(u, '_state'): u._init_dynamic()
     # y0, idx, nr = sys._load_state()
     
-    run(sys, t, t_step, method=method)
 
-    J1.state # post ASM2ADM interface
-    J2.state # post ADM2ASM interface
+    # J1.state # post ASM2ADM interface
+    # J2.state # post ADM2ASM interface
