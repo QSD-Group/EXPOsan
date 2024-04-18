@@ -6,6 +6,7 @@ Created on Sun Oct 22 19:57:56 2023
 """
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from chemicals.elements import molecular_weight as get_mw
 from qsdsan import processes as pc, WasteStream, System
@@ -118,7 +119,7 @@ default_inf_kwargs = {
         'X_ac':0.0,
         'X_h2':0.0,
         'X_I':0.0,
-        'S_cat':0.04,                                           # !!! kmole/m3, but in console, no unit.
+        'S_cat':0.0001,                                           # !!! kmole/m3, but in console, no unit.
         'S_an':0.02,                                            # !!! kmole/m3, but in console, no unit.
         },                                                      # 807.59 g COD/L
     'units': ('m3/d', 'kg/m3'),                                 # kg COD/m3 = g COD/L
@@ -179,32 +180,32 @@ default_init_conds = {
 # 10% Inoculum (Cow manure) + 90% Glucose (10g/L or 20g/L)
 default_init_conds = {
     'S_su': 21.89*1e3,                                  # fixed according to R4G20 (Glucose 20.538g/L)
-    'S_aa': 0.970*1e3,
-    'S_fa': 0.55*1e3,
+    'S_aa': 0.95*1e3,
+    'S_fa': 0.1*1e3,
     'S_la': 0.759*1e3,                                  # fixed according to R4G20 (LA: 0.7124g/L)
     'S_et': 0.471*1e3,                                  # fixed according to R4G20 (EtOH: 0.226g/L)
     'S_va': 0.169*1e3,                                  # fixed according to R4G20 (VA: 0.0828g/L)
     'S_bu': 0.493*1e3,                                  # fixed according to R4G20 (BA: 0.2686g/L)
     'S_pro': 0.371*1e3,                                 # fixed according to R4G20 (PA: 0.242g/L)
     'S_ac': 0.97*1e3,                                   # fixed according to R4G20 (AA: 0.8946g/L)
-    'S_h2': 2.5055e-9*1e3,
+    'S_h2': 2.5055e-7*1e3,
     'S_ch4': 2.5055e-7*1e3,
     'S_IC': 0.2*C_mw*1e3,                                #76800 mg COD / L
     'S_IN': 0.0945*N_mw*1e3,                             #84672 mg COD / L
     'S_I': 0.1309*1e3,
-    'X_ch': 0.02*1e3,
-    'X_pr': 1.75*1e3,
-    'X_li': 1.75*1e3,
-    'X_su': 1.0*1e3,
-    'X_aa': 0.2*1e3,
-    'X_fa': 0.08*1e3,
-    'X_la': 0.08*1e3,
-    'X_et': 0.08*1e3,
-    'X_c4': 0.8*1e3,
-    'X_pro': 0.8*1e3,
-    'X_ac': 0.85*1e3,
-    'X_h2': 0.8*1e3,
-    'X_I': 15*1e3
+    'X_ch': 2.8*1e3,
+    'X_pr': 2.8*1e3,
+    'X_li': 2.8*1e3,
+    'X_su': 4.8*1e3,
+    'X_aa': 4.8*1e3,
+    'X_fa': 6.8*1e3,
+    'X_la': 6.2*1e3,
+    'X_et': 3.2*1e3,
+    'X_c4': 2.2*1e3,
+    'X_pro': 2.2*1e3,
+    'X_ac': 2.2*1e3,
+    'X_h2': 1.9*1e3,
+    'X_I': 17*1e3
     }                   # in mg/L                         # mg COD/L
 
 U1.set_init_conc(**default_init_conds)                          # set initial condition of AD
@@ -246,7 +247,7 @@ eff.scope.plot_time_series(('S_su', 'S_et'))
 
 eff.scope.plot_time_series(('S_IC'))
 
-eff.scope.plot_time_series(('X_aa', 'X_fa', 'X_la', 'X_et', 'X_c4', 'X_pro', 'X_ac', 'X_h2'))
+eff.scope.plot_time_series(('X_su', 'X_aa', 'X_fa', 'X_la', 'X_et', 'X_c4', 'X_pro', 'X_ac', 'X_h2'))
 
 gas.scope.plot_time_series(('S_h2'))
 
@@ -301,6 +302,13 @@ plt.xlabel('Time (days)')
 plt.ylabel('pH')
 plt.grid(True)
 plt.show()
+
+# Export pH values to an Excel file
+df = pd.DataFrame({
+    'Time (days)': t_stamp,
+    'pH': pH_values
+})
+df.to_excel('pH_levels_over_time.xlsx', index=False)
 #%%
 #!!! Partial Pressure of gas over days (S_ch4 vs Partial Pressure of CH4)
 # Simulation settings
