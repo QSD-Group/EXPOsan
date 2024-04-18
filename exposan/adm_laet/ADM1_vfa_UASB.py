@@ -118,8 +118,8 @@ default_inf_kwargs = {
         'X_ac':0.0,
         'X_h2':0.0,
         'X_I':0.0,
-        'S_cat':1e-5,
-        'S_an':1e-5,
+        'S_cat':0.08,                                           # !!! kmole/m3, but in console, no unit.
+        'S_an':0.04,                                            # !!! kmole/m3, but in console, no unit.
         },                                                      # 807.59 g COD/L
     'units': ('m3/d', 'kg/m3'),                                 # kg COD/m3 = g COD/L
     }                                                           # concentration of each state variable in influent
@@ -131,8 +131,8 @@ S_su = default_inf_kwargs['concentrations']['S_su']
 # SanUnit
 U1 = UASB('UASB', ins=inf, outs=(gas, eff), model=adm1,        # This model is based on CSTR, need to decide application of recirculated experiments
           V_liq=Q*HRT, V_gas=Q*HRT*0.1,                        # !!! Considering real experiments including either high recirculation rate or not
-          T=Temp, pH_ctrl=4.3,                               # pH adjustment X
-          fraction_retain=1.0,                                # needs to set this value properly
+          T=Temp, pH_ctrl=False,                               # pH adjustment X
+          fraction_retain=0.95,                                # needs to set this value properly
           )                                                    
 
                                                                # fraction_retain : float, optional
@@ -178,15 +178,15 @@ default_init_conds = {
 '''
 # 10% Inoculum (Cow manure) + 90% Glucose (10g/L or 20g/L)
 default_init_conds = {
-    'S_su': 0.021909*1e3,                                # fixed according to R4G20 (Glucose 20.538g/L)
-    'S_aa': 0.000954*1e3,                                # fixed according to R4G20 (AA: 0.8946g/L)
-    'S_fa': 0.0055*1e3,
-    'S_la': 0.7599*1e3,                                  # fixed according to R4G20 (LA: 0.7124g/L)
-    'S_et': 0.0124*1e3,
-    'S_va': 0.0001949*1e3,                               # fixed according to R4G20 (VA: 0.0828g/L)
-    'S_bu': 0.00004886*1e3,                              # fixed according to R4G20 (BA: 0.2686g/L)
-    'S_pro': 0.000418*1e3,                               # fixed according to R4G20 (PA: 0.242g/L)
-    'S_ac': 0.0055*1e3,                                   # fixed according to R3G20
+    'S_su': 21.89*1e3,                                # fixed according to R4G20 (Glucose 20.538g/L)
+    'S_aa': 0.970*1e3,
+    'S_fa': 5.5*1e3,
+    'S_la': 0.759*1e3,                                  # fixed according to R4G20 (LA: 0.7124g/L)
+    'S_et': 0.471*1e3,                                    # fixed according to R4G20 (EtOH: g/L)
+    'S_va': 0.169*1e3,                               # fixed according to R4G20 (VA: 0.0828g/L)
+    'S_bu': 0.493*1e3,                              # fixed according to R4G20 (BA: 0.2686g/L)
+    'S_pro': 0.371*1e3,                               # fixed according to R4G20 (PA: 0.242g/L)
+    'S_ac': 0.97*1e3,                                   # fixed according to R4G20 (AA: 0.8946g/L)
     'S_h2': 2.5055e-9*1e3,
     'S_ch4': 2.5055e-7*1e3,
     'S_IC': 0.2*C_mw*1e3,                                #76800 mg COD / L
@@ -217,7 +217,7 @@ sys                                                           # before running t
 
 #%%
 # Simulation settings
-t = 100                        # total time for simulation
+t = 40                        # total time for simulation
 t_step = 1                    # times at which to store the computed solution
 
 method = 'BDF'                  # integration method to use
@@ -234,7 +234,7 @@ sys.simulate(state_reset_hook='reset_cache',
              t_span=(0,t),
              t_eval=np.arange(0, t+t_step, t_step),
              method=method,
-             export_state_to=f'{S_su}gL_pH{pH_ctrl}_{t}d_AD.xlsx',               # export simulation result as excel file
+             export_state_to=f'{S_su}gL_pH_{t}d_AD.xlsx',               # export simulation result as excel file
             )
 #
 # sys                                                                      # now you have 'outs' info.
@@ -279,7 +279,7 @@ plt.ylabel("Total VFA [mg/l]")
 #%%
 #!!! Plot for varying pH over time
 from scipy.optimize import brenth
-from qsdsan.processes._adm1_laet import mass2mol_conversion, acid_base_rxn
+from qsdsan.processes._adm1_vfa import mass2mol_conversion, acid_base_rxn
 unit_conversion = mass2mol_conversion(cmps)
 Ka = adm1.rate_function._params['Ka']
 
