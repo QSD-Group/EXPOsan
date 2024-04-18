@@ -91,7 +91,7 @@ default_inf_kwargs = {
 # Medium (Glucose)
 default_inf_kwargs = {
     'concentrations': {
-        'S_su':20.14,                                               # glucose 10 g/L = 10.7 kg/m3, 20 g/L = 20.14 kg/m3
+        'S_su':20.14,                                               # glucose 10 g/L = 10.7 kg COD/m3, 20 g/L = 20.14 kg COD/m3
         'S_aa':0.0,
         'S_fa':0.0,
         'S_la':0.0,
@@ -176,16 +176,16 @@ default_init_conds = {
     'X_I': 17.2162*1e3
     }                   # in mg/L                         
 '''
-# Inoculum (Cow manure)
+# 10% Inoculum (Cow manure) + 90% Glucose (10g/L or 20g/L)
 default_init_conds = {
-    'S_su': 0.0124*1e3,                                        # fixed according to R3G20 (No glucose)
-    'S_aa': 0.0055*1e3,
+    'S_su': 0.021909*1e3,                                # fixed according to R4G20 (Glucose 20.538g/L)
+    'S_aa': 0.000954*1e3,                                # fixed according to R4G20 (AA: 0.8946g/L)
     'S_fa': 0.0055*1e3,
-    'S_la': 0.1074*1e3,
+    'S_la': 0.7599*1e3,                                  # fixed according to R4G20 (LA: 0.7124g/L)
     'S_et': 0.0124*1e3,
-    'S_va': 0.0124*1e3,
-    'S_bu': 0.0124*1e3,                                  # fixed according to R3G20
-    'S_pro': 0.0124*1e3,                                  # fixed according to R3G20
+    'S_va': 0.0001949*1e3,                               # fixed according to R4G20 (VA: 0.0828g/L)
+    'S_bu': 0.00004886*1e3,                              # fixed according to R4G20 (BA: 0.2686g/L)
+    'S_pro': 0.000418*1e3,                               # fixed according to R4G20 (PA: 0.242g/L)
     'S_ac': 0.0055*1e3,                                   # fixed according to R3G20
     'S_h2': 2.5055e-9*1e3,
     'S_ch4': 2.5055e-7*1e3,
