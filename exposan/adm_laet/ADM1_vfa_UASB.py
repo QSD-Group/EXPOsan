@@ -100,7 +100,7 @@ default_inf_kwargs = {
         'S_bu':0.0,
         'S_pro':0.0,
         'S_ac':0.0,
-        'S_h2':0.0,
+        'S_h2':1e-8,
         'S_ch4':0.0,
         'S_IC':0.0*C_mw,                                             
         'S_IN':5.553*1e-5*N_mw,                                     #!!! 0.04975 g COD/L, S_IN: 5.553*1e-5 kmole N / m3? * N_mw, why different? Fixed value
@@ -118,8 +118,8 @@ default_inf_kwargs = {
         'X_ac':0.0,
         'X_h2':0.0,
         'X_I':0.0,
-        'S_cat':0.08,                                           # !!! kmole/m3, but in console, no unit.
-        'S_an':0.04,                                            # !!! kmole/m3, but in console, no unit.
+        'S_cat':0.04,                                           # !!! kmole/m3, but in console, no unit.
+        'S_an':0.02,                                            # !!! kmole/m3, but in console, no unit.
         },                                                      # 807.59 g COD/L
     'units': ('m3/d', 'kg/m3'),                                 # kg COD/m3 = g COD/L
     }                                                           # concentration of each state variable in influent
@@ -178,33 +178,33 @@ default_init_conds = {
 '''
 # 10% Inoculum (Cow manure) + 90% Glucose (10g/L or 20g/L)
 default_init_conds = {
-    'S_su': 21.89*1e3,                                # fixed according to R4G20 (Glucose 20.538g/L)
+    'S_su': 21.89*1e3,                                  # fixed according to R4G20 (Glucose 20.538g/L)
     'S_aa': 0.970*1e3,
-    'S_fa': 5.5*1e3,
+    'S_fa': 0.55*1e3,
     'S_la': 0.759*1e3,                                  # fixed according to R4G20 (LA: 0.7124g/L)
-    'S_et': 0.471*1e3,                                    # fixed according to R4G20 (EtOH: g/L)
-    'S_va': 0.169*1e3,                               # fixed according to R4G20 (VA: 0.0828g/L)
-    'S_bu': 0.493*1e3,                              # fixed according to R4G20 (BA: 0.2686g/L)
-    'S_pro': 0.371*1e3,                               # fixed according to R4G20 (PA: 0.242g/L)
+    'S_et': 0.471*1e3,                                  # fixed according to R4G20 (EtOH: 0.226g/L)
+    'S_va': 0.169*1e3,                                  # fixed according to R4G20 (VA: 0.0828g/L)
+    'S_bu': 0.493*1e3,                                  # fixed according to R4G20 (BA: 0.2686g/L)
+    'S_pro': 0.371*1e3,                                 # fixed according to R4G20 (PA: 0.242g/L)
     'S_ac': 0.97*1e3,                                   # fixed according to R4G20 (AA: 0.8946g/L)
     'S_h2': 2.5055e-9*1e3,
     'S_ch4': 2.5055e-7*1e3,
     'S_IC': 0.2*C_mw*1e3,                                #76800 mg COD / L
     'S_IN': 0.0945*N_mw*1e3,                             #84672 mg COD / L
     'S_I': 0.1309*1e3,
-    'X_ch': 27*1e3,
-    'X_pr': 7.5*1e3,
-    'X_li': 7.5*1e3,
-    'X_su': 1.8*1e3,
-    'X_aa': 2.0*1e3,
-    'X_fa': 0.8*1e3,
-    'X_la': 18*1e3,
+    'X_ch': 0.02*1e3,
+    'X_pr': 1.75*1e3,
+    'X_li': 1.75*1e3,
+    'X_su': 1.0*1e3,
+    'X_aa': 0.2*1e3,
+    'X_fa': 0.08*1e3,
+    'X_la': 0.08*1e3,
     'X_et': 0.08*1e3,
-    'X_c4': 2.8*1e3,
-    'X_pro': 1.8*1e3,
-    'X_ac': 15*1e3,
-    'X_h2': 15*1e3,
-    'X_I': 1.5*1e3
+    'X_c4': 0.8*1e3,
+    'X_pro': 0.8*1e3,
+    'X_ac': 0.85*1e3,
+    'X_h2': 0.8*1e3,
+    'X_I': 15*1e3
     }                   # in mg/L                         # mg COD/L
 
 U1.set_init_conc(**default_init_conds)                          # set initial condition of AD
