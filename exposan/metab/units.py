@@ -165,6 +165,7 @@ class DegassingMembrane(SanUnit):
         
     def _update_state(self):
         arr = self._state
+        arr[-1] = self._ins_QC[0,-1]
         gas, liquid = self.outs
         s = self.split
         Q_liq = arr[-1]
@@ -200,7 +201,8 @@ class DegassingMembrane(SanUnit):
         tau = self.tau
         def dy_dt(t, QC_ins, QC, dQC_ins):
             _dstate[:] = (QC_ins[0] - QC)/tau
-            _dstate[-1] = dQC_ins[0,-1]
+            # _dstate[-1] = dQC_ins[0,-1]
+            _dstate[-1] = 0.
             _update_dstate()
         self._ODE = dy_dt
     
@@ -478,7 +480,8 @@ class UASB(AnaerobicCSTR):
             q_gas = f_qgas(rhos[-3:], S_gas, T)
             _dstate[n_cmps: (n_cmps+n_gas)] = - q_gas*S_gas/V_gas \
                 + rhos[-3:] * V_liq/V_gas * gas_mass2mol_conversion
-            _dstate[-1] = dQC_ins[0,-1]
+            # _dstate[-1] = dQC_ins[0,-1]
+            _dstate[-1] = 0.            
             _update_dstate()
         self._ODE = dy_dt
     
