@@ -81,8 +81,8 @@ def create_system(flowsheet=None, default_init_conds=True):
     # Where are other parameters used?
     C1 = su.PrimaryClarifierBSM2(
         'C1',
-        ins=(inf, 'thickener_recycle', 'reject_water'),
-        # ins=(inf, 'reject'),
+        # ins=(inf, 'thickener_recycle', 'reject_water'),
+        ins=(inf, 'reject'),
         outs=('C1_eff', 'C1_underflow'),
         isdynamic=True,
         # HRT=1/24, #!!! should set V (900 m3), not HRT
@@ -103,7 +103,8 @@ def create_system(flowsheet=None, default_init_conds=True):
     O2 = su.CSTR('O2', O1-0, V_max=V_ae, aeration=aer2,
                  DO_ID=DO_ID, suspended_growth_model=asm1)
     
-    O3 = su.CSTR('O3', O2-0, [1-A1, 'treated'], split=[0.6, 0.4],
+    O3 = su.CSTR('O3', O2-0, [1-A1, 'treated'], 
+                 split=[0.5984, 0.4016],
                  V_max=V_ae, aeration=aer3,
                  DO_ID=DO_ID, suspended_growth_model=asm1)
     
@@ -118,8 +119,8 @@ def create_system(flowsheet=None, default_init_conds=True):
         rh=5.76e-4, rp=2.86e-3, fns=2.28e-3,
         )
     
-    TC1 = su.Thickener('TC1', C2-2, outs=['thickened_sludge', 1-C1],
-    # TC1 = su.Thickener('TC1', C2-2, outs=['thickened_sludge', ''],
+    # TC1 = su.Thickener('TC1', C2-2, outs=['thickened_sludge', 1-C1],
+    TC1 = su.Thickener('TC1', C2-2, outs=['thickened_sludge', ''],
                        thickening_perc=7, TSS_removal_perc=98)
     M1 = su.Mixer('M1', ins=(C1-1, TC1-0))
         
@@ -140,11 +141,11 @@ def create_system(flowsheet=None, default_init_conds=True):
     qs.set_thermo(thermo_asm1)
     
     # Dewatering
-    C3 = su.Centrifuge(ID='C3', ins=J2-0, outs=['digested_sludge', 2-C1],
-    # C3 = su.Centrifuge(ID='C3', ins=J2-0, outs=['digested_sludge', ''],
+    # C3 = su.Centrifuge(ID='C3', ins=J2-0, outs=['digested_sludge', 2-C1],
+    C3 = su.Centrifuge(ID='C3', ins=J2-0, outs=['digested_sludge', ''],
                        thickening_perc=28, TSS_removal_perc=96.29)
 
-    # M2 = su.Mixer('M2', ins=(TC1-1, C3-1), outs=1-C1)
+    M2 = su.Mixer('M2', ins=(TC1-1, C3-1), outs=1-C1)
     
     #!!! Should have a storage tank with HRT = 1,
     # where the outs should have a bypass stream and an out stream.
@@ -162,10 +163,10 @@ def create_system(flowsheet=None, default_init_conds=True):
     # sys = flowsheet.create_system('bsm2_sys')
     sys = qs.System('bsm2_sys', 
                     path=(C1, A1, A2, O1, O2, O3, C2, 
-                            TC1, M1, J1, AD1, J2, C3),
-                    recycle=(O3-0, C2-1, TC1-1, C3-1, )
-                    #       TC1, M1, J1, AD1, J2, C3, M2),
-                    # recycle=(O3-0, C2-1, M2-0)
+                    #         TC1, M1, J1, AD1, J2, C3),
+                    # recycle=(O3-0, C2-1, TC1-1, C3-1, )
+                          TC1, M1, J1, AD1, J2, C3, M2),
+                    recycle=(O3-0, C2-1, M2-0)
                     )
     sys.set_tolerance(mol=1e-5, rmol=1e-5)
     sys.maxiter = 5000
@@ -198,6 +199,7 @@ def run(sys, t, t_step, method=None, **kwargs):
     #               active_unit_IDs=('C3'))
     # if srt: print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
 
+#%%
 if __name__ == '__main__':
     sys = create_system()
     dct = globals()
