@@ -28,6 +28,7 @@ from qsdsan import (
     )
 from qsdsan.utils import time_printer, load_data, get_SRT
 from exposan.bsm2 import data_path, figures_path, results_path
+from exposan.bsm1 import data_path as bsm1_path
 # from exposan.adm import default_init_conds as default_adm1_init_conds
 
 __all__ = ('create_system',)
@@ -63,7 +64,8 @@ def create_system(flowsheet=None, default_init_conds=True):
     
     # ASM1 components and process model
     cmps_asm1 = pc.create_asm1_cmps()
-    asm1 = pc.ASM1(components=cmps_asm1)
+    asm1 = pc.ASM1(components=cmps_asm1, 
+                   path=os.path.join(bsm1_path, '_asm1.tsv'))
     thermo_asm1 = qs.get_thermo()
     DO_ID = 'S_O'
     #!!! Not sure where KLa are from
@@ -84,7 +86,8 @@ def create_system(flowsheet=None, default_init_conds=True):
         # ins=(inf, 'thickener_recycle', 'reject_water'),
         ins=(inf, 'reject'),
         outs=('C1_eff', 'C1_underflow'),
-        isdynamic=True,
+        isdynamic=True, 
+        volume=900,
         # HRT=1/24, #!!! should set V (900 m3), not HRT
         f_corr=0.65,
         ratio_uf=0.007, # f_PS
@@ -92,6 +95,7 @@ def create_system(flowsheet=None, default_init_conds=True):
 
     # Unit operations in BSM1
     A1 = su.CSTR('A1', ins=[C1-0, 'RWW', 'RAS', carb], V_max=V_an,
+    # A1 = su.CSTR('A1', ins=[C1-0, 'RWW', 'RAS'], V_max=V_an,
                  aeration=None, suspended_growth_model=asm1)
     
     A2 = su.CSTR('A2', A1-0, V_max=V_an,
@@ -104,7 +108,7 @@ def create_system(flowsheet=None, default_init_conds=True):
                  DO_ID=DO_ID, suspended_growth_model=asm1)
     
     O3 = su.CSTR('O3', O2-0, [1-A1, 'treated'], 
-                 split=[0.5984, 0.4016],
+                 split=[0.6, 0.4],
                  V_max=V_ae, aeration=aer3,
                  DO_ID=DO_ID, suspended_growth_model=asm1)
     
@@ -208,13 +212,13 @@ if __name__ == '__main__':
     # cmps_adm1 = J1.components
     # cmps_asm1 = J2.components
     
-    t = 200
+    t = 20
     t_step = 1
     # method = 'RK45'
-    # method = 'RK23'
+    method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    method = 'BDF'
+    # method = 'BDF'
     # method = 'LSODA'
     
     run(sys, t, t_step, method=method)
