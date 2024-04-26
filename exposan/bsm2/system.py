@@ -41,6 +41,7 @@ Q_intr = 3 * Q # activated sludge process internal recycle [m3/d]
 Q_ras = Q # recycle sludge flowrate
 Q_was = 300 # sludge wastage flowrate
 Temp = 273.15+14.85808 # temperature [K]
+T_ad = 273.15+35
 V_an = 1500 # anoxic zone tank volume
 V_ae = 3000 # aerated zone tank volume
 
@@ -88,7 +89,6 @@ def create_system(flowsheet=None, default_init_conds=True):
         outs=('C1_eff', 'C1_underflow'),
         isdynamic=True, 
         volume=900,
-        # HRT=1/24, #!!! should set V (900 m3), not HRT
         f_corr=0.65,
         ratio_uf=0.007, # f_PS
         )
@@ -134,11 +134,13 @@ def create_system(flowsheet=None, default_init_conds=True):
     adm1 = pc.ADM1()
     cmps_adm1.X_I.i_N = cmps_asm1.X_I.i_N # slight difference
     
-    J1 = su.ASMtoADM('J1', upstream=M1-0, thermo=thermo_adm1, isdynamic=True, adm1_model=adm1) # WAS is C1.outs[2]
+    # breakpoint()
+    J1 = su.ASMtoADM('J1', upstream=M1-0, thermo=thermo_adm1, isdynamic=True, 
+                     adm1_model=adm1, T=T_ad, pH=7.2631) # WAS is C1.outs[2]
+    # J1.ins[0].T = T_ad
+    # J1.ins[0].pH = 7.2631
     AD1 = su.AnaerobicCSTR('AD1', ins=J1.outs[0], outs=('biogas', 'AD_eff'), isdynamic=True,
-                           # Tables 7-8
-                           V_liq=3400, V_gas=300, T=308.15,
-                           model=adm1,)
+                           V_liq=3400, V_gas=300, T=T_ad, model=adm1,)
     # Switch back to ASM1 components
     J2 = su.ADMtoASM('J2', upstream=AD1-1, thermo=thermo_asm1, isdynamic=True, adm1_model=adm1)
     J2.bio_to_xs = 0.79

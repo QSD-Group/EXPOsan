@@ -159,7 +159,6 @@ def test_adm1junctions():
             ),
         units=('m3/d', 'mg/L')
         )
-    preAD_asm.pH=7.2631
     thermo_asm1 = qs.get_thermo()
     cmps_adm1 = pc.create_adm1_cmps()
     adm1 = pc.ADM1()
@@ -168,7 +167,8 @@ def test_adm1junctions():
     thermo_adm1 = qs.get_thermo()
     
     J1 = su.ASMtoADM('J1', upstream=preAD_asm, downstream='preAD_adm', 
-                     thermo=thermo_adm1, isdynamic=True, adm1_model=adm1)
+                     thermo=thermo_adm1, isdynamic=True, adm1_model=adm1,#)
+                     T=T, pH=7.2631)
     AD1 = su.AnaerobicCSTR('AD1', ins=J1-0, outs=('biogas', 'postAD_adm'), 
                            isdynamic=True, V_liq=3400, V_gas=300, T=T,
                            model=adm1,)
@@ -180,7 +180,7 @@ def test_adm1junctions():
     qs.set_thermo(thermo_asm1)
     
     sys = qs.System(path=(J1, AD1, J2))
-    sys.simulate(state_reset_hook='reset_cache', t_span=(0,200), method='BDF')
+    sys.simulate(state_reset_hook='reset_cache', t_span=(0, 200), method='BDF')
     fs = sys.flowsheet.stream
     
     for ws in sys.streams:
@@ -196,7 +196,8 @@ def test_adm1junctions():
     assert np.isclose(AD1.state['S_h2_gas'] * h2.chem_MW / h2.i_mass, 1.1032e-5, rtol=1e-3)
     assert np.isclose(AD1.state['S_ch4_gas'] * ch4.chem_MW / ch4.i_mass, 1.6535, rtol=1e-2)
     assert np.isclose(AD1.state['S_IC_gas'], 0.01354, rtol=1e-2)
-    
+    assert np.isclose(AD1.outs[1].pH, 7.2631, rtol=1e-3)
+
     assert np.isclose(fs.biogas.imass['S_h2']*24 * h2.i_mass, 0.0035541, rtol=1e-2)
     assert np.isclose(fs.biogas.imass['S_ch4']*24 * ch4.i_mass, 1065.3523, rtol=1e-2)
     assert np.isclose(fs.biogas.imass['S_IC']*24 * co2.i_mass, 1535.4118, rtol=1e-2)
