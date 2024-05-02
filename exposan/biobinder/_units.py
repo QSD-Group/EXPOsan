@@ -28,7 +28,7 @@ __all__ = (
 #!!! TO BE UPDATED THROUGHOUT
 pilot_flowrate = 11.46 # kg/h
 @cost(basis='Feedstock dry flowrate', ID='Feedstock Tank', units='kg/h',
-      cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2011], n=0.77, BM=1.5)
+      cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2023], n=0.77, BM=1.5)
 class PilotHTL(HydrothermalLiquefaction):   
     '''
     

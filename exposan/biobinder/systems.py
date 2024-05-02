@@ -45,8 +45,8 @@ def create_system():
 # =============================================================================
 
 feedstock = qs.WasteStream(
-    'feedstock', Lipids=62.45, Proteins=2.38, Carbohydrates=29.46, Ash=5.71,
-    Water=100/24.34*75.66,
+    'feedstock', Lipids=62.45*24.34, Proteins=2.38*24.34, Carbohydrates=29.46*24.34, Ash=5.71*24.34,
+    Water=75.66*100,
     )
 feedstock.F_mass = 11.46 # all component flowrates will be adjsuted accordingly
 
@@ -79,12 +79,12 @@ HTLaq_Tank = qsu.StorageTank(
 # Area 300 Biocrude Upgrading
 # =============================================================================
 
-#!!! Need to connect to the biocrude product
-D1 = qsu.BinaryDistillation('A370', ins=H3-0,
-                        outs=('HT_light','HT_heavy'),
-                        LHK=('C4H10','TWOMBUTAN'), P=50*6894.76, # outflow P
-                        y_top=188/253, x_bot=53/162, k=2, is_divided=True)
-D1.register_alias('D1')
+# #!!! Need to connect to the biocrude product
+# D1 = qsu.BinaryDistillation('A370', ins=H3-0,
+#                         outs=('HT_light','HT_heavy'),
+#                         LHK=('C4H10','TWOMBUTAN'), P=50*6894.76, # outflow P
+#                         y_top=188/253, x_bot=53/162, k=2, is_divided=True)
+# D1.register_alias('D1')
 
 
 # %%
