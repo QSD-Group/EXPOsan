@@ -56,6 +56,7 @@ T101 = qsu.MixTank('T101', ins=(feedstock, feedstock_water))
 @T101.add_specification
 def adjust_feedstock_water():
     feedstock_water.imass['Water'] = max(0, (feedstock.F_mass-feedstock.imass['Water'])/0.2-feedstock.imass['Water'])
+    T101._run()
 
 HTL = u.PilotHTL(
     'A102', ins=T101-0, outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'))
@@ -72,6 +73,19 @@ HTLaq_Tank = qsu.StorageTank(
     init_with='WasteStream', tau=24*7, vessel_material='Stainless steel')
 
 
+# %%
+
+# =============================================================================
+# Area 300 Biocrude Upgrading
+# =============================================================================
+
+#!!! Need to connect to the biocrude product
+D1 = qsu.BinaryDistillation('A370', ins=H3-0,
+                        outs=('HT_light','HT_heavy'),
+                        LHK=('C4H10','TWOMBUTAN'), P=50*6894.76, # outflow P
+                        y_top=188/253, x_bot=53/162, k=2, is_divided=True)
+D1.register_alias('D1')
+
 
 # %%
 
@@ -85,5 +99,6 @@ sys = qs.System.from_units(
     )
 sys.register_alias('sys')
 
+# sys.diagram() # see a diagram of the system
 # Currently won't work since there are many conversion factors not included
-# sys.simulate()
+sys.simulate()
