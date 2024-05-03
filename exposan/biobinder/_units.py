@@ -15,21 +15,25 @@ for license details.
 
 from math import ceil, log
 from biosteam.units.decorators import cost
-from qsdsan import SanUnit, Stream
-from qsdsan.sanunits import HydrothermalLiquefaction, HXutility
+from qsdsan import SanUnit, Stream, sanunits as qsu
 # from qsdsan.sanunits._hydrothermal import KnockOutDrum
 # from qsdsan.utils import auom
 from exposan.biobinder import CEPCI_by_year
 
 __all__ = (
+    'BiocrudeDeashing',
+    'BiocrudeDewatering',
+    # 'GasScrubber',
     'PilotHTL',
+    'SandFiltration',
+    'Transportation'
     )
 
 #!!! TO BE UPDATED THROUGHOUT
 pilot_flowrate = 11.46 # kg/h
 @cost(basis='Feedstock dry flowrate', ID='Feedstock Tank', units='kg/h',
       cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2011], n=0.77, BM=1.5)
-class PilotHTL(HydrothermalLiquefaction):   
+class PilotHTL(qsu.HydrothermalLiquefaction):   
     '''
     
     References
@@ -73,7 +77,7 @@ class PilotHTL(HydrothermalLiquefaction):
     # auxiliary_unit_names=('heat_exchanger','kodrum')
 
     _F_BM_default = {
-        **HydrothermalLiquefaction._F_BM_default,
+        **qsu.HydrothermalLiquefaction._F_BM_default,
         # 'Feedstock Tank': 1.5,
         }
     
@@ -113,7 +117,7 @@ class PilotHTL(HydrothermalLiquefaction):
         #!!! Need to compare the externally sourced HX cost and BioSTEAM default
         hx_in = Stream(f'{ID}_hx_in')
         hx_out = Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out, T=self.eff_T, rigorous=True)
+        self.heat_exchanger = qsu.HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out, T=self.eff_T, rigorous=True)
         #!!! Probably need to add the knockout drum
         # self.kodrum = KnockOutDrum(ID=f'.{ID}_KOdrum')
         self.P = P
@@ -307,6 +311,89 @@ class PilotHTL(HydrothermalLiquefaction):
             for item in purchase_costs.keys():
                 purchase_costs[item] *= self.CAPEX_factor
                 installed_costs[item] *= self.CAPEX_factor
-                
-                
-                
+
+# @cost(basis='Feedstock dry flowrate', ID='Feedstock Tank', units='kg/h',
+#       cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2011], n=0.77, BM=1.5)
+class BiocrudeSplitter(SanUnit):
+    '''
+    Split biocrude into the respective components.
+    '''
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                  init_with='WasteStream', F_BM_default=1,
+                  light_frac=0.5316, heavy_frac=0.4684,
+                  **kwargs,
+                  ):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
+        
+
+
+# # Included in the HTL reactor
+# class GasScrubber(qsu.Copier):
+#     '''
+#     Placeholder for the gas scrubber. All outs are copied from ins.
+#     '''
+
+
+# @cost(basis='Feedstock dry flowrate', ID='Feedstock Tank', units='kg/h',
+#       cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2011], n=0.77, BM=1.5)
+class SandFiltration(qsu.Copier):
+    '''
+    Placeholder for the aqueous filtration unit. All outs are copied from ins.
+    '''
+    
+# @cost(basis='Feedstock dry flowrate', ID='Feedstock Tank', units='kg/h',
+#       cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2011], n=0.77, BM=1.5)
+class BiocrudeDeashing(SanUnit):
+    '''
+    Placeholder for the deashing unit.
+    '''
+    
+    _N_outs = 2
+    target_ash = 0.01 # dry weight basis
+    
+    def _run(self):
+        biocrude = self.ins[0]
+        deashed, ash = self.outs
+        
+        deashed.copy_like(biocrude)
+        ash.empty()
+        dw = deashed.F_mass - deashed.imass['Water']
+        excess_ash = deashed.imass['Ash'] - dw * self.target_ash
+        # Remove excess ash
+        if excess_ash >= 0:
+            deashed.imass['Ash'] -= excess_ash
+            ash.imass['Ash'] = excess_ash
+            
+    
+    
+# @cost(basis='Feedstock dry flowrate', ID='Feedstock Tank', units='kg/h',
+#       cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2011], n=0.77, BM=1.5)
+class BiocrudeDewatering(SanUnit):
+    '''
+    Placeholder for the dewatering unit.
+    '''
+    
+    _N_outs = 2
+    target_moisture = 0.01 # weight basis
+    
+    def _run(self):
+        biocrude = self.ins[0]
+        dewatered, water = self.outs
+        
+        dewatered.copy_like(biocrude)
+        water.empty()
+        dw = dewatered.F_mass - dewatered.imass['Water']
+        excess_water = dw/(1-self.target_moisture) - dw
+        # Remove excess water
+        if excess_water >= 0:
+            dewatered.imass['Water'] -= excess_water
+            water.imass['Water'] = excess_water
+            
+            
+# @cost(basis='Feedstock dry flowrate', ID='Feedstock Tank', units='kg/h',
+#       cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2011], n=0.77, BM=1.5)
+class Transportation(qsu.Copier):
+    '''
+    Placeholder for transportation. All outs are copied from ins.
+    '''
