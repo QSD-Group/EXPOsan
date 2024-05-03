@@ -67,7 +67,7 @@ def create_components(set_thermo=True):
     # Add missing properties
     # http://www.chemspider.com/Chemical-Structure.500313.html?rid=d566de1c-676d-4064-a8c8-2fb172b244c9
     C5H9NS = biocrude_cmps['C5H9NS']
-    C5H9NS.Tb = (151.6+227.18)/2 # avg of ACD and EPIsuite
+    C5H9NS.Tb = 273.15+(151.6+227.18)/2 # avg of ACD and EPIsuite
     C5H9NS.Hvap.add_method(38.8e3) # Enthalpy of Vaporization, 38.8±3.0 kJ/mol
     C5H9NS.Psat.add_method((3.6+0.0759)/2*133.322) # Vapour Pressure, 3.6±0.3/0.0756 mmHg at 25°C, ACD/EPIsuite
 

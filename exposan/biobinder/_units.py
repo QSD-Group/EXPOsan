@@ -23,6 +23,7 @@ from exposan.biobinder import CEPCI_by_year
 __all__ = (
     'BiocrudeDeashing',
     'BiocrudeDewatering',
+    'BiocrudeSplitter',
     # 'GasScrubber',
     'PilotHTL',
     'SandFiltration',
@@ -312,21 +313,144 @@ class PilotHTL(qsu.HydrothermalLiquefaction):
                 purchase_costs[item] *= self.CAPEX_factor
                 installed_costs[item] *= self.CAPEX_factor
 
+# Jone et al., Table C-1
+default_biocrude_ratios = {
+    '1E2PYDIN':     0.067912,
+    'C5H9NS':       0.010257,
+    'ETHYLBEN':     0.025467,
+    '4M-PHYNO':     0.050934,
+    '4EPHYNOL':     0.050934,
+    'INDOLE':       0.050934,
+    '7MINDOLE':     0.033956,
+    'C14AMIDE':     0.033956,
+    'C16AMIDE':     0.152801,
+    'C18AMIDE':     0.067912,
+    'C16:1FA':      0.135823,
+    'C16:0FA':      0.101868,
+    'C18FACID':     0.016978,
+    'NAPHATH':      0.050934,
+    'CHOLESOL':     0.016978,
+    'AROAMINE':     0.081424,
+    'C30DICAD':     0.050934,
+    }
+
 # @cost(basis='Feedstock dry flowrate', ID='Feedstock Tank', units='kg/h',
 #       cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2011], n=0.77, BM=1.5)
 class BiocrudeSplitter(SanUnit):
     '''
     Split biocrude into the respective components.
     '''
+    _N_ins = _N_outs = 1
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                   init_with='WasteStream', F_BM_default=1,
-                  light_frac=0.5316, heavy_frac=0.4684,
+                  cutoff_Tb=273.15+343, light_frac=0.5316,
+                  biocrude_IDs=('Biocrude',),
+                  biocrude_ratios=default_biocrude_ratios,
                   **kwargs,
                   ):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
+        self.cutoff_Tb = cutoff_Tb
+        self.light_frac = light_frac
+        self.biocrude_IDs = biocrude_IDs
+        self.biocrude_ratios = biocrude_ratios
+        for kw, arg in kwargs.items(): setattr(self, kw, arg)
         
+    def _run(self):
+        biocrude_in = self.ins[0]
+        biocrude_out = self.outs[0]
+        
+        total_crude = biocrude_in.imass[self.biocrude_IDs].sum()
+        total_light = total_crude * self.light_frac
+        total_heavy = total_crude - total_light
+        
+        # Firstly copy the non-biocrude components
+        light_ratios, heavy_ratios = self.light_component_ratios, self.heavy_component_ratios
+        biocrude_out.copy_like(biocrude_in)
+        biocrude_out.imass[[*light_ratios, *heavy_ratios]] = 0
+        
+        # Set the mass for the biocrude components
+        biocrude_out.imass[light_ratios] = [total_light*i for i in light_ratios.values()]
+        biocrude_out.imass[heavy_ratios] = [total_heavy*i for i in heavy_ratios.values()]
 
+    def _update_component_ratios(self):
+        '''Update the light and heavy ratios of the biocrude components.'''
+        if not hasattr(self, 'cutoff_Tb'): return
+        if not hasattr(self, 'biocrude_ratios'): return
+
+        cmps = self.components
+        Tb = self.cutoff_Tb
+        ratios = self.biocrude_ratios
+        
+        light_ratios = {}
+        for ID, ratio in ratios.items():
+            if cmps[ID].Tb <= Tb:
+                light_ratios[ID] = ratio
+                light_key = ID
+            else:
+                heavy_key = ID
+                break
+        self._light_key = light_key
+        self._heavy_key = heavy_key
+        
+        heavy_cmps = set(ratios).difference(set(light_ratios))
+        heavy_ratios = {ID: ratios[ID] for ratio in heavy_cmps}
+        
+        # Normalize the ratios
+        ratio_light_sum = sum(light_ratios.values())
+        ratio_heavy_sum = sum(heavy_ratios.values())
+        for ID, ratio in light_ratios.items():
+            light_ratios[ID] = ratio/ratio_light_sum
+        for ID, ratio in heavy_ratios.items():
+            heavy_ratios[ID] = ratio/ratio_heavy_sum
+            
+        self._light_component_ratios = light_ratios    
+        self._heavy_component_ratios = heavy_ratios
+
+    @property
+    def cutoff_Tb(self):
+        '''[float] Cutoff of the boiling point of light and heavy fractions.'''
+        return self._cutoff_Tb
+    @cutoff_Tb.setter
+    def cutoff_Tb(self, Tb):
+        if hasattr(self, '_cutoff_Tb'):
+            if Tb == self._cutoff_Tb: return # no need to do anything if Tb unchanged
+        self._cutoff_Tb = Tb
+        self._update_component_ratios()
+
+    @property
+    def light_component_ratios(self):
+        '''Mass ratios of the components in the light fraction of the biocrude.'''
+        return self._light_component_ratios
+
+    @property
+    def heavy_component_ratios(self):
+        '''Mass ratios of the components in the heavy fraction of the biocrude.'''
+        return self._heavy_component_ratios
+    
+    @property
+    def light_key(self):
+        '''ID of the component that has the highest boiling point in the light fraction of the biocrude.'''
+        return self._light_key
+    
+    @property
+    def heavy_key(self):
+        '''ID of the component that has the lowest boiling point in the heavy fraction of the biocrude.'''
+        return self._heavy_key
+    
+    @property
+    def biocrude_ratios(self):
+        '''[dict] Mass ratios of the components used to model the biocrude.'''
+        return self._biocrude_ratios
+    @biocrude_ratios.setter
+    def biocrude_ratios(self, ratios):
+        cmps = self.components
+        # Sort the biocrude ratios by the boiling point
+        ratios = {ID: ratio for ID, ratio in 
+                  sorted(ratios.items(), key=lambda item: cmps[item[0]].Tb)}
+        self._biocrude_ratios = ratios
+        self._update_component_ratios()
+        
 
 # # Included in the HTL reactor
 # class GasScrubber(qsu.Copier):

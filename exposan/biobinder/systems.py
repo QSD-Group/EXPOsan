@@ -88,17 +88,25 @@ Deashing = u.BiocrudeDeashing('A301', HTL-2, outs=('deashed', 'excess_ash'))
 Deashing.register_alias('Deashing')
 Dewatering = u.BiocrudeDewatering('A302', Deashing-0, outs=('dewatered', 'excess_water'))
 Dewatering.register_alias('Dewatering')
+BiocrudeSplitter = u.BiocrudeSplitter('S303', ins=Dewatering-0,
+                                      cutoff_Tb=343+273.15, light_frac=0.5316)
+BiocrudeSplitter.register_alias('BiocrudeSplitter')
 
-FracDist = qsu.BinaryDistillation('D303', ins=Dewatering-0,
+FracDist = qsu.BinaryDistillation('D304', ins=BiocrudeSplitter-0,
                         outs=('biocrude_light','biocrude_heavy'),
-                        LHK=('C4H10','TWOMBUTAN'), P=50*6894.76, # outflow P
+                        LHK=('Biofuel', 'Biobinder'), # will be updated later
+                        P=50*6894.76, # outflow P
                         y_top=188/253, x_bot=53/162, k=2, is_divided=True)
 FracDist.register_alias('FracDist')
+@FracDist.add_specification
+def adjust_LHK():
+    FracDist.LHK = (BiocrudeSplitter.light_key, BiocrudeSplitter.heavy_key)
+    FracDist._run()
 
-LightFracStorage = qsu.StorageTank('T304', FracDist-0, outs='biofuel_additives',
+LightFracStorage = qsu.StorageTank('T305', FracDist-0, outs='biofuel_additives',
                                    tau=24*7, vessel_material='Stainless steel')
 LightFracStorage.register_alias('LightFracStorage')
-HeavyFracStorage = qsu.StorageTank('T305', FracDist-1, outs='biobinder',
+HeavyFracStorage = qsu.StorageTank('T306', FracDist-1, outs='biobinder',
                                    tau=24*7, vessel_material='Stainless steel')
 HeavyFracStorage.register_alias('HeavyFracStorage')
 
