@@ -59,8 +59,9 @@ def adjust_feedstock_water():
     T101._run()
 
 HTL = u.PilotHTL(
-    'A102', ins=T101-0, outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'))
+    'R102', ins=T101-0, outs=('hydrochar','HTL_aqueous','biocrude','HTL_offgas'))
 HTL.register_alias('HTL')
+
 
 # %%
 
@@ -68,8 +69,11 @@ HTL.register_alias('HTL')
 # Area 200 Aqueous Product Treatment
 # =============================================================================
 
-HTLaq_Tank = qsu.StorageTank(
-    'T200', ins=HTL-1, outs=('treated_aq'),
+SandFiltration = u.SandFiltration(
+    'S201', ins=HTL-1, outs=('treated_aq'), init_with='WasteStream')
+
+AqStorage = qsu.StorageTank(
+    'T202', ins=SandFiltration-0, outs=('stored_aq'),
     init_with='WasteStream', tau=24*7, vessel_material='Stainless steel')
 
 
@@ -79,12 +83,23 @@ HTLaq_Tank = qsu.StorageTank(
 # Area 300 Biocrude Upgrading
 # =============================================================================
 
-#!!! Need to connect to the biocrude product
-D1 = qsu.BinaryDistillation('A370', ins=H3-0,
-                        outs=('HT_light','HT_heavy'),
+Deashing = u.BiocrudeDeashing('A301', HTL-2, outs=('deashed', 'excess_ash'))
+Deashing.register_alias('Deashing')
+Dewatering = u.BiocrudeDewatering('A302', Deashing-0, outs=('dewatered', 'excess_water'))
+Dewatering.register_alias('Dewatering')
+
+FracDist = qsu.BinaryDistillation('D303', ins=Dewatering-0,
+                        outs=('biocrude_light','biocrude_heavy'),
                         LHK=('C4H10','TWOMBUTAN'), P=50*6894.76, # outflow P
                         y_top=188/253, x_bot=53/162, k=2, is_divided=True)
-D1.register_alias('D1')
+FracDist.register_alias('FracDist')
+
+LightFracStorage = qsu.StorageTank('T304', FracDist-0, outs='biofuel_additives',
+                                   tau=24*7, vessel_material='Stainless steel')
+LightFracStorage.register_alias('LightFracStorage')
+HeavyFracStorage = qsu.StorageTank('T305', FracDist-1, outs='biobinder',
+                                   tau=24*7, vessel_material='Stainless steel')
+HeavyFracStorage.register_alias('HeavyFracStorage')
 
 
 # %%
@@ -99,6 +114,4 @@ sys = qs.System.from_units(
     )
 sys.register_alias('sys')
 
-# sys.diagram() # see a diagram of the system
-# Currently won't work since there are many conversion factors not included
-sys.simulate()
+# sys.simulate()
