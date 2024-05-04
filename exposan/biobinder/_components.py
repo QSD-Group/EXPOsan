@@ -17,9 +17,38 @@ from qsdsan import Component, Components, set_thermo as qs_set_thermo
 # from exposan.utils import add_V_from_rho
 from exposan import htl
 
-
-
 __all__ = ('create_components',)
+
+
+def estimate_heating_values(component):
+    '''
+    Estimate the HHV of a component based on the Dulong's equation (MJ/kg):
+        
+        HHV [kJ/g] = 33.87*C + 122.3*(H-O/8) + 9.4*S
+        
+    where C, H, O, and S are the wt% of these elements.
+        
+    Estimate the LHV based on the HHV as:
+        
+        LHV [kJ/g] = HHV [kJ/g] – 2.51*(W + 9H)/100
+        
+    where W and H are the wt% of moisture and H in the fuel
+    
+    References
+    ----------
+    [1] https://en.wikipedia.org/wiki/Heat_of_combustion
+    [2] https://www.sciencedirect.com/science/article/abs/pii/B9780128203606000072
+        
+    '''
+    atoms = component.atoms
+    MW = component.MW
+    HHV = (33.87*atoms.get('C', 0)*12 +
+           122.3*(atoms.get('H', 0)-atoms.get('O', 0)/8) +
+           9.4*atoms.get('S', 0)*32
+           )/MW
+    LHV = HHV - 2.51*(9*atoms.get('H', 0)/MW)
+    
+    return HHV*MW*1000, LHV*MW*1000
 
 def create_components(set_thermo=True):
     htl_cmps = htl.create_components()
@@ -62,7 +91,12 @@ def create_components(set_thermo=True):
         }
     biocrude_cmps = {}
     for ID, search_ID in biocrude_dct.items():
-        biocrude_cmps[ID] = Component(ID, search_ID=search_ID, **org_kwargs)
+        cmp = Component(ID, search_ID=search_ID, **org_kwargs)
+        if not cmp.HHV or not cmp.LHV: 
+            HHV, LHV = estimate_heating_values(cmp)
+            cmp.HHV = cmp.HHV or HHV
+            cmp.LHV = cmp.LHV or LHV
+        biocrude_cmps[ID] = cmp
         
     # Add missing properties
     # http://www.chemspider.com/Chemical-Structure.500313.html?rid=d566de1c-676d-4064-a8c8-2fb172b244c9
@@ -70,7 +104,14 @@ def create_components(set_thermo=True):
     C5H9NS.Tb = 273.15+(151.6+227.18)/2 # avg of ACD and EPIsuite
     C5H9NS.Hvap.add_method(38.8e3) # Enthalpy of Vaporization, 38.8±3.0 kJ/mol
     C5H9NS.Psat.add_method((3.6+0.0759)/2*133.322) # Vapour Pressure, 3.6±0.3/0.0756 mmHg at 25°C, ACD/EPIsuite
+    C5H9NS.Hf = -265.73e3 # C5H9NO, https://webbook.nist.gov/cgi/cbook.cgi?ID=C872504&Mask=2
+    C5H9NS.copy_models_from(Component('C5H9NO'))
 
+    # Rough assumption based on the formula
+    biocrude_cmps['7MINDOLE'].Hf = biocrude_cmps['INDOLE'].Hf
+    biocrude_cmps['C30DICAD'].Hf = biocrude_cmps['CHOLESOL'].Hf
+    
+    
     # Components in the aqueous product
     H2O = htl_cmps.H2O
     C = htl_cmps.C
@@ -99,9 +140,10 @@ def create_components(set_thermo=True):
         Biofuel, Biobinder,
         ])
     
-    # for i in cmps:
-    #     for attr in ('HHV', 'LHV', 'Hf'):
-    #         if getattr(i, attr) is None: setattr(i, attr, 0)
+    for i in biobinder_cmps:
+        for attr in ('HHV', 'LHV', 'Hf'):
+            if getattr(i, attr) is None: setattr(i, attr, 0)
+        # i.default() # default properties to those of water
 
     biobinder_cmps.compile()
     biobinder_cmps.set_alias('H2O', 'Water')
