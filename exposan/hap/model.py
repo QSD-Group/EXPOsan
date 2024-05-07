@@ -301,5 +301,5 @@ if __name__ == '__main__':
     # mdl = run_model(N=N, seed=seed)
     # rerun_failed_samples(mdl)
     # r, p = spearman(mdl)
-    rerun_failed_samples(seed=983)
-    # r, p = spearman(seed=292)
+    # rerun_failed_samples(seed=983)
+    r, p = spearman(seed=983)
