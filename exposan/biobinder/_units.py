@@ -33,7 +33,57 @@ __all__ = (
 #!!! TO BE UPDATED THROUGHOUT
 pilot_flowrate = 11.46 # kg/h
 @cost(basis='Feedstock dry flowrate', ID='Feedstock Tank', units='kg/h',
-      cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2011], n=0.77, BM=1.5)
+      cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2023], n=0.77, BM=1.5)
+@cost(basis='Feedstock dry flowrate', ID= 'Feedstock Pump', units='kg/h',
+      cost=6180, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=2.3)
+@cost(basis='Feedstock dry flowrate', ID= 'Inverter', units='kg/h',
+      cost=240, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
+@cost(basis='Feedstock dry flowrate', ID= 'High Pressure Pump', units='kg/h',
+      cost=1634, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=2.3)
+@cost(basis='Feedstock dry flowrate', ID= 'Reactor Core', units='kg/h',
+      cost=30740, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=2)
+@cost(basis='Feedstock dry flowrate', ID= 'Reactor Vessel', units='kg/h',
+      cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.5)
+@cost(basis='Feedstock dry flowrate', ID= 'Heat Transfer Putty', units='kg/h',
+      cost=2723, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
+@cost(basis='Feedstock dry flowrate', ID= 'Electric Heaters', units='kg/h',
+      cost=8400, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
+@cost(basis='Feedstock dry flowrate', ID= 'J Type Thermocouples', units='kg/h',
+      cost=497, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
+@cost(basis='Feedstock dry flowrate', ID= 'Ceramic Fiber', units='kg/h',
+      cost=5154, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
+@cost(basis='Feedstock dry flowrate', ID= 'Steel Jacket', units='kg/h',
+      cost=22515, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
+@cost(basis='Feedstock dry flowrate', ID= 'Counterflow Heat Exchanger', units='kg/h',
+      cost=14355, S=pilot_flowrate, CE=CEPCI_by_year[2013],n=0.77, BM=2.2)
+@cost(basis='Feedstock dry flowrate', ID= 'Temperature Control and Data Logging Unit', units='kg/h',
+      cost=905, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.8)
+@cost(basis='Feedstock dry flowrate', ID= 'Pulsation Dampener', units='kg/h',
+      cost=3000, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.8)
+@cost(basis='Feedstock dry flowrate', ID= 'Fluid Accumulator', units='kg/h',
+      cost=995, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.8)
+@cost(basis='Feedstock dry flowrate', ID= 'Burst Rupture Discs', units='kg/h',
+      cost=1100, S=pilot_flowrate, CE=CEPCI_by_year[2023], n=0.77, BM=1.6)
+@cost(basis='Feedstock dry flowrate', ID= 'Pressure Relief Vessel', units='kg/h',
+      cost=4363, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=2)
+@cost(basis='Feedstock dry flowrate', ID= 'Gas Scrubber', units='kg/h',
+      cost=1100, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.8)
+@cost(basis='Feedstock dry flowrate', ID= 'BPR', units='kg/h',
+      cost=4900, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.6)
+@cost(basis='Feedstock dry flowrate', ID= 'Primary Collection Vessel', units='kg/h',
+      cost=7549, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.5)
+@cost(basis='Feedstock dry flowrate', ID= 'Belt Oil Skimmer', units='kg/h',
+      cost=2632, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.5)
+@cost(basis='Feedstock dry flowrate', ID= 'Bag Filter', units='kg/h',
+      cost=8800, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.7)
+@cost(basis='Feedstock dry flowrate', ID= 'Oil Vessel', units='kg/h',
+      cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.5)
+@cost(basis='Feedstock dry flowrate', ID= 'Mobile HTL system', units='kg/h',
+      cost=23718, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
+
+
+
+
 class PilotHTL(qsu.HydrothermalLiquefaction):   
     '''
     
