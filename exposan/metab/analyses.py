@@ -417,8 +417,8 @@ def plot_joint(df, save_as='', kde=True):
                         markers=['P', 'v'],
                         alpha=0.5,
                         )
-    g.ax_joint.tick_params(axis='both', which='major', direction='inout', length=10, labelsize=24)
-    g.ax_joint.tick_params(axis='both', which='minor', direction='inout', length=6)
+    g.ax_joint.tick_params(axis='both', which='major', direction='inout', length=14, labelsize=24)
+    g.ax_joint.tick_params(axis='both', which='minor', direction='inout', length=8)
     g.ax_joint.set_xlim(-0.2, 1.0)
     g.ax_joint.set_ylim(-0.3, 1.0)
     g.ax_joint.set_xlabel('')
@@ -439,12 +439,12 @@ def plot_joint(df, save_as='', kde=True):
     sns.boxplot(x=x, y=group, hue=group, ax=g.ax_marg_x, **bxp_kwargs)
     sns.boxplot(y=y, x=group, hue=group, ax=g.ax_marg_y, **bxp_kwargs)
     # for ax in (g.ax_marg_x, g.ax_marg_y): ax.legend_.remove()
-    g.ax_marg_x.tick_params(axis='x', which='major', direction='out', length=5)
-    g.ax_marg_x.tick_params(axis='x', which='minor', direction='out', length=3)    
+    g.ax_marg_x.tick_params(axis='x', which='major', direction='out', length=7)
+    g.ax_marg_x.tick_params(axis='x', which='minor', direction='out', length=4)    
     g.ax_marg_x.tick_params(left=False, which='both', labelleft=False)    
     g.ax_marg_x.spines['left'].set_color('white')
-    g.ax_marg_y.tick_params(axis='y', which='major', direction='out', length=5)
-    g.ax_marg_y.tick_params(axis='y', which='minor', direction='out', length=3) 
+    g.ax_marg_y.tick_params(axis='y', which='major', direction='out', length=7)
+    g.ax_marg_y.tick_params(axis='y', which='minor', direction='out', length=4) 
     g.ax_marg_y.tick_params(bottom=False, which='both', labelbottom=False)    
     g.ax_marg_y.spines['bottom'].set_color('white')
     
@@ -492,13 +492,13 @@ def best_breakdown():
     imp_bd['uasb_l1'] = categorize_all_impacts(sys1.LCA)
     
     # FB
+    # best at TEA
     mdl2 = create_model(n_stages=2, reactor_type='FB')
     sys2 = mdl2.system
     u2 = sys2.flowsheet.unit
     u2.R1.bead_lifetime = u2.R2.bead_lifetime = 30
     sub2, = sys2.subsystems
     
-    # best at TEA
     smp = np.array([2, 0.9, 2, 22])
     for p, v in zip(mdl2.parameters, smp): p.setter(v)
     sys2.simulate(**kwargs)
@@ -518,6 +518,7 @@ def best_breakdown():
     imp_bd['fb_l1'] = categorize_all_impacts(sys2.LCA)
     
     # PB
+    # best at TEA & LCA
     mdl3 = create_model(n_stages=2, reactor_type='PB')
     sys3 = mdl3.system
     u3 = sys3.flowsheet.unit
@@ -527,7 +528,6 @@ def best_breakdown():
     smp = np.array([2, 1, 22])
     for p, v in zip(mdl3.parameters, smp): p.setter(v)
     sys3.simulate(**kwargs)
-    # best at TEA & LCA
     llc_bd['pb_t1'] = categorize_cashflow(sub3.TEA)
     imp_bd['pb_t1'] = categorize_all_impacts(sub3.LCA)
     
@@ -703,8 +703,12 @@ def MCF_pb_to_fb(seed, save=True):
     return outs
 
 def _plot_bubble(df, ax, pal):
+    # pal = ('#f3c354', '#a280b9')
+    pal = ('#79bf82', '#60c1cf')
+    dv = np.array(([0]*7+[1]+[0]*5+[1]*3+[0,1])*df.Metric.nunique())
     sns.scatterplot(df, x='Metric', y='Parameter', 
-                    hue=df.p<0.05, palette=['black', pal], 
+                    # hue=df.p<0.05, palette=['black', pal], 
+                    hue=(df.p<0.05)*(1+dv), palette=['black', *pal],                     
                     size='D', sizes=(0, 350), size_norm=(0,1),
                     legend=False,
                     ax=ax,
@@ -838,22 +842,24 @@ def plot_univariate_kdes(seed):
             ('LCA (w/o degas)',  'GWP100 (w/o degas) [kg CO2eq/ton rCOD]'),    
         ]
     for i in (
-            # 'FB', 
-            'PB',
+            'FB', 
+            # 'PB',
               ):
         df = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
                        header=[0,1], skiprows=[2,], nrows=1000)
         ys = df.loc[:,pair_cols]
         # x = df.loc[:,('Encapsulation', 'Bead diameter [mm]')]
-        x = df.loc[:,('System', 'Total HRT [d]')]
-        # x = df.loc[:,('FB', 'FB voidage')]
+        # x = df.loc[:,('System', 'Total HRT [d]')]
+        x = 1-df.loc[:,('FB', 'FB voidage')]
+        # x = df.loc[:,('PB', 'PB voidage')]
         # x = df.loc[:,('ADM1', 'Uptake k ac [COD/COD/d]')]
         thres = ys.quantile(0.25)
         thres[0] = np.percentile(ys.iloc[:,0], 75)
         groups = ys > thres
         groups.iloc[:,0] = ys.iloc[:,0] < thres[0]
-        # plot_1dkde(x, groups, [0.6,0.9], [0, 5], i+'-void')
-        plot_1dkde(x, groups, [1/6, 3], [0, 1], i+'-hrt')
+        plot_1dkde(x, groups, [0.03,0.25], [0, 8.5], i+'-void')
+        # plot_1dkde(x, groups, [0.35,0.45], [0, 22], i+'-void')
+        # plot_1dkde(x, groups, [1/6, 3], [0, 1], i+'-hrt')
         # plot_1dkde(x, groups, [1,5], [0, 0.55], i+'-beaddia')
         # plot_1dkde(x, groups, [3.9,16], [0, 0.16], i+'-kac')
         print(thres)
@@ -863,7 +869,7 @@ def calc_3way_diff(seed, save=True):
     data = {}
     for i in ('UASB', 'FB', 'PB'):
         data[i] = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
-                            header=[0,1], skiprows=[2,])
+                            header=[0,1], skiprows=[2,], nrows=1000)
     pair_cols = [
             ('Process', 'COD removal [%]'),
             ('Biogas', 'H2 production [kg/d]'),
@@ -951,32 +957,35 @@ def plot_area(df, absolute=False, ylims=None):
         c, hat = v
         y = df.loc[:,k]
         y_offset = (y>=0)*yp + (y<0)*yn
-        ax.fill_between(x, y+y_offset, y_offset, facecolor=c, hatch=hat, linewidth=0.5)
+        ax.fill_between(x, y+y_offset, y_offset, facecolor=c, 
+                        hatch=hat, linewidth=0.5, zorder=0)
         yp += (y>=0) * y
         yn += (y<0) * y
     ax.set_xlim(0, df.shape[0])
     if ylims: ax.set_ylim(*ylims)
     ax.tick_params(labelsize=12)
-    ax.tick_params(axis='y', which='major', direction='inout', length=6)
-    ax.tick_params(axis='y', which='minor', direction='inout', length=3)
+    ax.tick_params(axis='y', which='major', direction='inout', length=8)
+    ax.tick_params(axis='y', which='minor', direction='inout', length=4)
     ax.set_xlabel('')
     ax.set_ylabel('')
     if absolute: 
         # ax.ticklabel_format(axis='y', scilimits=[-2,3], useMathText=True)
-        ax.yaxis.get_offset_text().set_fontsize(12)
+        # ax.yaxis.get_offset_text().set_fontsize(12)
         ax2y = ax.secondary_yaxis('right')
-        ax2y.tick_params(axis='y', which='major', direction='in', length=3)
-        ax2y.tick_params(axis='y', which='minor', direction='in', length=1.5)
+        ax2y.tick_params(axis='y', which='major', direction='in', length=4)
+        ax2y.tick_params(axis='y', which='minor', direction='in', length=2)
         ax2y.yaxis.set_ticklabels([])
     else:
         ax2y = ax.twinx()
         ax2y.plot(x, df['total'], color='black', linewidth=0.5)
-        ax2y.tick_params(axis='y', which='major', direction='inout', length=6)
-        ax2y.tick_params(axis='y', which='minor', direction='inout', length=3)
+        ax2y.tick_params(axis='y', which='major', direction='inout', length=8)
+        ax2y.tick_params(axis='y', which='minor', direction='inout', length=4)
     return fig, ax
 
 def breakdown_uasa(seed):
-    for i in ('UASB', 'FB', 'PB'):
+    for i in (
+            # 'UASB', 'FB', 
+            'PB',):
         data = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
                          header=[0,1], skiprows=[2,], nrows=1000)
         # tea, lca, absolute = breakdown_and_sort(data)
@@ -1105,12 +1114,12 @@ def mapping(data=None, data2=None, n=20, reactor_type='PB'):
     if data is None:
         if reactor_type == 'PB':
             data = load_data(ospath.join(results_path, f'optimized_{reactor_type}_45.xlsx'),
-                             header=[0,1], skiprows=[2,])
+                             header=[0,1], skiprows=[2,], nrows=n*9)
             data2 = load_data(ospath.join(results_path, f'optimized_{reactor_type}_35.xlsx'),
-                             header=[0,1], skiprows=[2,])
+                             header=[0,1], skiprows=[2,], nrows=n*9)
         else:
             data = load_data(ospath.join(results_path, f'optimized_{reactor_type}.xlsx'),
-                             header=[0,1], skiprows=[2,])
+                             header=[0,1], skiprows=[2,], nrows=n*9)
     sys = create_system(reactor_type=reactor_type)
     mdl = create_model(sys, kind='mapping')
     # bl = [p.baseline for p in mdl.parameters]
@@ -1123,10 +1132,11 @@ def mapping(data=None, data2=None, n=20, reactor_type='PB'):
         z2 = None if data2 is None else zzs2[i]
         file = f'heatmaps/{reactor_type}/{m.name}.png'
         plot_heatmap(xx, yy, z, z2, save_as=file)
-    if reactor_type == 'FB':  z = zzs[1]*50/(1-zzs[0])*zzs[0]
+    if reactor_type == 'FB':  
+        z = zzs[1]*50/(1-zzs[0])*zzs[0]*np.ceil(30/xx)
     else: 
-        z = zzs[0]*50*(1-0.45)/0.45
-        z2 = zzs2[0]*50*(1-0.35)/0.35 if data2 is not None else None
+        z = zzs[0]*50*(1-0.45)/0.45*np.ceil(30/xx)
+        z2 = zzs2[0]*50*(1-0.35)/0.35*np.ceil(30/xx) if data2 is not None else None
     file = f'heatmaps/{reactor_type}/Total bead volume.png'    
     plot_heatmap(xx, yy, z, z2, save_as=file)
 
@@ -1149,7 +1159,7 @@ if __name__ == '__main__':
     # plot_clusters(partial=True)
     # plot_clusters(partial=False)
     # out = compare_DVs()
-    plot_diff()
+    # plot_diff()
     # llc, imp = best_breakdown()
     # plot_breakdown()
     # dt = load_data(ospath.join(results_path, 'table_compiled.xlsx'), nrows=3553)
@@ -1166,8 +1176,8 @@ if __name__ == '__main__':
     # MCF_bubble_plot(data)
     # mapping(suffix='specific')
     # mapping(suffix='common')
-    # mapping(reactor_type='FB', n=20)
-    # mapping(reactor_type='PB', n=11)
+    mapping(reactor_type='FB', n=20)
+    mapping(reactor_type='PB', n=11)
     # out = Spearman_corr(965, True)
     # mdl, smps = run_PB_over_diffusivity_HRT()
     # _map_diff_hrt(mdl)

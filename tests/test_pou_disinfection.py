@@ -25,14 +25,14 @@ def test_pou_disinfection():
 
     pou.load()
     rtol = 0.01
-    assert_allclose(pou.teaA.NPV, -272.3341764464383, rtol=rtol)
-    assert_allclose(pou.teaB.NPV, -2144.868750994307, rtol=rtol)
-    assert_allclose(pou.teaC.NPV, -16026.689353149706, rtol=rtol)
-    assert_allclose(pou.teaD.NPV, -41477.30725191316, rtol=rtol)
-    assert_allclose(pou.lcaA.total_impacts['GWP'], 419.1941587933792, rtol=rtol)
-    assert_allclose(pou.lcaB.total_impacts['GWP'], 235.51873625370752, rtol=rtol)
-    assert_allclose(pou.lcaC.total_impacts['GWP'], 9141.790775601286, rtol=rtol)
-    assert_allclose(pou.lcaD.total_impacts['GWP'], 3703.982048088447, rtol=rtol)
+    assert_allclose(pou.teaA.NPV, -403.7783398531811, rtol=rtol)
+    assert_allclose(pou.teaB.NPV, -3217.303126491459, rtol=rtol)
+    assert_allclose(pou.teaC.NPV, -23793.25094762806, rtol=rtol)
+    assert_allclose(pou.teaD.NPV, -62156.62977704776, rtol=rtol)
+    assert_allclose(pou.lcaA.total_impacts['GWP'], 628.6388164710542, rtol=rtol)
+    assert_allclose(pou.lcaB.total_impacts['GWP'], 353.2781043805612, rtol=rtol)
+    assert_allclose(pou.lcaC.total_impacts['GWP'], 13713.001478741517, rtol=rtol)
+    assert_allclose(pou.lcaD.total_impacts['GWP'], 5810.257890744621, rtol=rtol)
 
 
 if __name__ == '__main__':

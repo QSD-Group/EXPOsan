@@ -45,7 +45,7 @@ __all__ = ('create_system',)
 def create_system(configuration='baseline', capacity=100,
                   sludge_moisture_content=0.8, sludge_dw_ash_content=0.257, 
                   sludge_afdw_lipid_content=0.204, sludge_afdw_protein_content=0.463,
-                  waste_cost=0, waste_GWP=0):
+                  N_2_P_value=0.3927, waste_cost=0, waste_GWP=0, high_IRR=False):
     configuration = configuration or 'baseline'
     if configuration not in ('baseline','no_P','PSA'):
         raise ValueError('`configuration` can only be "baseline", '
@@ -54,7 +54,7 @@ def create_system(configuration='baseline', capacity=100,
                          f'not "{configuration}".')
     flowsheet_ID = f'htl_{configuration}'
     
-    # Clear flowsheet and registry for reloading
+    # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
         clear_lca_registries()
@@ -83,7 +83,7 @@ def create_system(configuration='baseline', capacity=100,
                    # how much metric ton/day sludge can be produced by 1 MGD of ww
                    sludge_moisture=sludge_moisture_content, sludge_dw_ash=sludge_dw_ash_content, 
                    sludge_afdw_lipid=sludge_afdw_lipid_content, sludge_afdw_protein=sludge_afdw_protein_content,
-                   operation_hours=7920)
+                   N_2_P=N_2_P_value, operation_hours=7920)
     WWTP.register_alias('WWTP')
     
     raw_wastewater.price = -WWTP.ww_2_dry_sludge*waste_cost/3.79/(10**6)
@@ -99,8 +99,9 @@ def create_system(configuration='baseline', capacity=100,
         
         P1 = qsu.SludgePump('A100', ins=Humidifier-0, outs='press_sludge', P=3049.7*6894.76,
                   init_with='Stream')
-        P1.register_alias('P1')
         # Jones 2014: 3049.7 psia
+        P1.register_alias('P1')
+        P1.include_construction = True
     
     elif WWTP.sludge_moisture > 0.8:
 
@@ -115,6 +116,7 @@ def create_system(configuration='baseline', capacity=100,
         P1 = qsu.SludgePump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76,
                   init_with='Stream')
         P1.register_alias('P1')
+        P1.include_construction = True
         # Jones 2014: 3049.7 psia
     
     # =============================================================================
@@ -127,7 +129,6 @@ def create_system(configuration='baseline', capacity=100,
     # feed T is low, thus high viscosity and low U (case B in Knorr 2013)
     # U: 3, 3.5, 4 BTU/hr/ft2/F as minimum, baseline, and maximum
     # U: 0.0170348, 0.0198739, 0.0227131 kW/m2/K
-    # H1: SS PNNL 2020: 50 (17-76) Btu/hr/ft2/F ~ U = 0.284 (0.096-0.4313) kW/m2/K
     # but not in other heat exchangers (low viscosity, don't need U to enforce total heat transfer efficiency)
     # unit conversion: https://www.unitsconverters.com/en/Btu(It)/Hmft2mdegf-To-W/M2mk/Utu-4404-4398
     H1.register_alias('H1')
@@ -184,6 +185,7 @@ def create_system(configuration='baseline', capacity=100,
     F1 = qsu.Flash('A250', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                      T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
     F1.register_alias('F1')
+    F1.include_construction = True
     
     MemDis = qsu.MembraneDistillation('A260', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
                                   outs=('ammonium_sulfate','MemDis_ww','Membrane_out','solution'), init_with='WasteStream')
@@ -199,6 +201,7 @@ def create_system(configuration='baseline', capacity=100,
               init_with='Stream')
     # Jones 2014: 1530.0 psia
     P2.register_alias('P2')
+    P2.include_construction = True
     
     # Tin = 174 C (345 F) based on Jones PNNL report. However, the reaction
     # releases a lot of heat and increase the temperature of effluent to 402 C
@@ -221,14 +224,15 @@ def create_system(configuration='baseline', capacity=100,
     V2 = IsenthalpicValve('A320', ins=HT-0, outs='depressed_HT', P=717.4*6894.76, vle=True)
     V2.register_alias('V2')
     
-    H2 = qsu.HXutility('A330', ins=V2-0, outs='cooled_HT', T=60+273.15,
-                        init_with='Stream', rigorous=True)
+    H2 = qsu.HXutility('A330', include_construction=True,
+                       ins=V2-0, outs='cooled_HT', T=60+273.15,
+                       init_with='Stream', rigorous=True)
     H2.register_alias('H2')
-
 
     F2 = qsu.Flash('A340', ins=H2-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
                P=717.4*6894.76, thermo=settings.thermo.ideal()) # outflow P
     F2.register_alias('F2')
+    F2.include_construction = True
     
     V3 = IsenthalpicValve('A350', ins=F2-1, outs='depressed_flash_effluent', P=55*6894.76, vle=True)
     V3.register_alias('V3')
@@ -238,7 +242,8 @@ def create_system(configuration='baseline', capacity=100,
     # separate water and oil based on gravity
     SP2.register_alias('SP2')
     
-    H3 = qsu.HXutility('A360', ins=SP2-1, outs='heated_oil', T=104+273.15, rigorous=True)
+    H3 = qsu.HXutility('A360', include_construction=True,
+                       ins=SP2-1, outs='heated_oil', T=104+273.15, rigorous=True)
     # temperature: Jones stream #334 (we remove the first distillation column)
     H3.register_alias('H3')
     
@@ -247,18 +252,21 @@ def create_system(configuration='baseline', capacity=100,
                             LHK=('C4H10','TWOMBUTAN'), P=50*6894.76, # outflow P
                             y_top=188/253, x_bot=53/162, k=2, is_divided=True)
     D1.register_alias('D1')
+    D1.include_construction = True
     
     D2 = qsu.BinaryDistillation('A380', ins=D1-1,
                             outs=('HT_Gasoline','HT_other_oil'),
                             LHK=('C10H22','C4BENZ'), P=25*6894.76, # outflow P
                             y_top=116/122, x_bot=114/732, k=2, is_divided=True)
     D2.register_alias('D2')
+    D2.include_construction = True
     
     D3 = qsu.BinaryDistillation('A390', ins=D2-1,
                             outs=('HT_Diesel','HT_heavy_oil'),
                             LHK=('C19H40','C21H44'),P=18.7*6894.76, # outflow P
                             y_top=2421/2448, x_bot=158/2448, k=2, is_divided=True)
     D3.register_alias('D3')
+    D3.include_construction = True
     
     # =============================================================================
     # HC (Area 400)
@@ -268,6 +276,7 @@ def create_system(configuration='baseline', capacity=100,
                   init_with='Stream')
     # Jones 2014: 1034.7 psia
     P3.register_alias('P3')
+    P3.include_construction = True
     
     # Tin = 394 C (741.2 F) based on Jones PNNL report. However, the reaction
     # releases a lot of heat and increase the temperature of effluent to 451 C
@@ -278,8 +287,9 @@ def create_system(configuration='baseline', capacity=100,
     HC.ins[2].price = 38.79
     HC.register_alias('HC')
     
-    H4 = qsu.HXutility('A420', ins=HC-0, outs='cooled_HC', T=60+273.15,
-                        init_with='Stream', rigorous=True)
+    H4 = qsu.HXutility('A420', include_construction=True,
+                       ins=HC-0, outs='cooled_HC', T=60+273.15,
+                       init_with='Stream', rigorous=True)
     H4.register_alias('H4')
     
     V4 = IsenthalpicValve('A430', ins=H4-0, outs='cooled_depressed_HC', P=30*6894.76, vle=True)
@@ -288,11 +298,13 @@ def create_system(configuration='baseline', capacity=100,
     F3 = qsu.Flash('A440', ins=V4-0, outs=('HC_fuel_gas','HC_aqueous'), T=60.2+273,
                P=30*6894.76) # outflow P
     F3.register_alias('F3')
+    F3.include_construction = True
     
     D4 = qsu.BinaryDistillation('A450', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
                             LHK=('C9H20','C10H22'), P=20*6894.76, # outflow P
                             y_top=360/546, x_bot=7/708, k=2, is_divided=True)
     D4.register_alias('D4')
+    D4.include_construction = True
     
     # =============================================================================
     # Storage, and disposal (Area 500)
@@ -306,12 +318,14 @@ def create_system(configuration='baseline', capacity=100,
                             init_with='Stream', rigorous=True)
     DieselMixer.register_alias('DieselMixer')
     
-    H5 = qsu.HXutility('A500', ins=GasolineMixer-0, outs='cooled_gasoline',
-                        T=60+273.15, init_with='Stream', rigorous=True)
+    H5 = qsu.HXutility('A500', include_construction=True,
+                       ins=GasolineMixer-0, outs='cooled_gasoline',
+                       T=60+273.15, init_with='Stream', rigorous=True)
     H5.register_alias('H5')
     
-    H6 = qsu.HXutility('A510', ins=DieselMixer-0, outs='cooled_diesel',
-                        T=60+273.15, init_with='Stream', rigorous=True)
+    H6 = qsu.HXutility('A510', include_construction=True,
+                       ins=DieselMixer-0, outs='cooled_diesel',
+                       T=60+273.15, init_with='Stream', rigorous=True)
     H6.register_alias('H6')
     
     PC1 = qsu.PhaseChanger('S520', ins=H5-0, outs='cooled_gasoline_liquid')
@@ -365,8 +379,8 @@ def create_system(configuration='baseline', capacity=100,
     
     CHP = qsu.CombinedHeatPower('CHP', include_construction=True,
                                 ins=(GasMixer-0, 'natural_gas', 'air'),
-                  outs=('emission','solid_ash'), init_with='WasteStream',
-                  supplement_power_utility=False)
+                                outs=('emission','solid_ash'), init_with='WasteStream',
+                                supplement_power_utility=False)
     CHP.ins[1].price = 0.1685
     
     sys = qs.System.from_units(
@@ -404,7 +418,7 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=0.009977,
                         RespiratoryEffects=0.00000068933)
     
-    # Biocrude upgrading
+    # biocrude upgrading
     qs.StreamImpactItem(ID='H2_item',
                         linked_stream=stream.H2,
                         Acidification=0.81014,
@@ -453,7 +467,7 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=369.791688,
                         RespiratoryEffects=0.020809293)
     
-    # Membrane distillation and acid extraction
+    # membrane distillation and acid extraction
     qs.StreamImpactItem(ID='H2SO4_item',
                         linked_stream=stream.H2SO4,
                         Acidification=0.019678922,
@@ -466,7 +480,7 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=1.68237815,
                         RespiratoryEffects=9.41E-05)
     
-    # Membrane distillation
+    # membrane distillation
     qs.StreamImpactItem(ID='NaOH_item',
                         linked_stream=stream.NaOH,
                         Acidification=0.33656,
@@ -491,7 +505,7 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=31.8,
                         RespiratoryEffects=0.0028778)
     
-    # Struvite precipitation
+    # struvite precipitation
     qs.StreamImpactItem(ID='MgCl2_item',
                         linked_stream=stream.MgCl2,
                         Acidification=0.77016,
@@ -507,7 +521,7 @@ def create_system(configuration='baseline', capacity=100,
     qs.StreamImpactItem(ID='NH4Cl_item',
                         linked_stream=stream.NH4Cl,
                         Acidification=0.34682,
-                        Ecotoxicity=0.90305, 
+                        Ecotoxicity=0.90305,
                         Eutrophication=0.0047381,
                         GlobalWarming=1.525,
                         OzoneDepletion=9.22E-08,
@@ -528,20 +542,20 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=461.54,
                         RespiratoryEffects=0.0008755)
     
-    # Heating and power utilities
+    # natural gas
     qs.StreamImpactItem(ID='natural_gas_item',
                         linked_stream=stream.natural_gas,
-                        Acidification=0.083822558,
-                        Ecotoxicity=0.063446198,
-                        Eutrophication=7.25E-05,
+                        Acidification=0.086654753,
+                        Ecotoxicity=0.104609119,
+                        Eutrophication=7.60E-05,
                         GlobalWarming=1.584234288,
-                        OzoneDepletion=1.23383E-07,
-                        PhotochemicalOxidation=0.000973731,
-                        Carcinogenics=0.000666424,
-                        NonCarcinogenics=3.63204,
-                        RespiratoryEffects=0.000350917)
+                        OzoneDepletion=1.36924E-07,
+                        PhotochemicalOxidation=0.001115155,
+                        Carcinogenics=0.00144524,
+                        NonCarcinogenics=3.506685032,
+                        RespiratoryEffects=0.000326529)
     
-    # Struvite
+    # struvite
     qs.StreamImpactItem(ID='struvite_item',
                         linked_stream=stream.struvite,
                         Acidification=-0.122829597,
@@ -554,7 +568,7 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=-4.496533528,
                         RespiratoryEffects=-0.00061764)
     
-    # Ammonium sulfate
+    # ammonium sulfate
     qs.StreamImpactItem(ID='NH42SO4_item',
                         linked_stream=stream.ammonium_sulfate,
                         Acidification=-0.72917,
@@ -567,7 +581,7 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=-62.932,
                         RespiratoryEffects=-0.0031315)
     
-    # Gasoline (naphtha)
+    # gasoline (naphtha)
     qs.StreamImpactItem(ID='gasoline_item',
                         linked_stream=stream.gasoline,
                         Acidification=-0.21813,
@@ -580,7 +594,7 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=-2.2524,
                         RespiratoryEffects=-0.0009461)
     
-    # Diesel
+    # diesel
     qs.StreamImpactItem(ID='diesel_item',
                         linked_stream=stream.diesel,
                         Acidification=-0.25164,
@@ -593,11 +607,41 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=-2.9281,
                         RespiratoryEffects=-0.0011096)
     
-    create_tea(sys, IRR_value=0.03, finance_interest_value=0.03)
-    qs.LCA(
-        system=sys, lifetime=30, lifetime_unit='yr',
-        Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
-        Cooling=lambda:sys.get_cooling_duty()/1000*30,
-        )
+    # for income tax, 0.35 is the old federal income tax rate
+    # in the future, use 0.21 (new federal income tax rate) as the income tax rate
+    # if it is necessary to add a state income tax, see exposan.htl.income_tax
+    if high_IRR:
+        create_tea(sys, IRR_value=0.1, income_tax_value=0.21, finance_interest_value=0.08, labor_cost_value=(0.41+1.40*capacity*WWTP.ww_2_dry_sludge/100)*10**6)
+    else:
+        create_tea(sys, IRR_value=0.03, income_tax_value=0.21, finance_interest_value=0.03, labor_cost_value=(0.41+1.40*capacity*WWTP.ww_2_dry_sludge/100)*10**6)
+
+    # for labor cost (2020 salary level)
+   
+    # 1 plant manager
+    # 1 plant engineer
+    # 1 maintenance supervisor
+    # 1 lab manager
+    # variable cost (proportional to the sludge amount, the following is for a plant of 100 dry metric tonne per day)
+    # added people to some positions compared to Snowden-Swan et al. 2017 as we also have HT, HC, CHG, N/P recovery, and CHP
+    # 5 shift supervisors
+    # 3 lab technican
+    # 3 maintenance technician
+    # 12 shift operators
+    # 2 yard employee
+    # 1 clerk & secretary
+    
+    # the labor index can be found in https://data.bls.gov/cgi-bin/srgate with the series id CEU3232500008, remember to select 'include annual average'
+    # the labor cost would be considered as the same for both the systems in the HTL model paper (including hydroprocessing and struvite recovery) and in the HTL geospatial paper
+    # this is reasonable based on the labor cost data from
+    # Snowden-Swan et al. 2017. Conceptual Biorefinery Design and Research Targeted for 2022: Hydrothermal Liquefaction Processing of Wet Waste to Fuels
+    # (having separate tables for the HTL plant and the hydroprocessing plant serving 10 HTL plants) and
+    # Jones et al. 2014. Process Design and Economics for the Conversion of Algal Biomass to Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading
+    # (including hydroprocessing and CHG)
+        
+    qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
+           Cooling=lambda:sys.get_cooling_duty()/1000*30)
+    
     sys.simulate()
+    
     return sys

@@ -86,8 +86,8 @@ class RawWater(SanUnit):
         'Ecoli': 200000, # CFU/mg
         'turbidity': 5, # NTU
         'TOC': 5, # mg/L
-        'Ca': 30, # mg/L
-        'Mg': 30, # mg/L
+        'Ca': 30, # hardness from Ca as CaCO3, mg/L
+        'Mg': 30, # hardness from Mg as CaCO3, mg/L
         'UVT': 0.8,
         }
     
@@ -95,8 +95,8 @@ class RawWater(SanUnit):
         'Ecoli': 200000, # CFU/mg
         'turbidity': 20, # NTU
         'TOC': 10, # mg/L
-        'Ca': 10, # mg/L
-        'Mg': 10, # mg/L
+        'Ca': 10, # hardness from Ca as CaCO3, mg/L
+        'Mg': 10, # hardness from Mg as CaCO3, mg/L
         'UVT': 0.8,
         }
 
@@ -153,7 +153,7 @@ class RawWater(SanUnit):
 
 # %%
 
-agnp_path = ospath.join(data_path, '_AgNP_CWF_2.csv')
+agnp_path = ospath.join(data_path, '_agnp_cwf.csv')
 
 class AgNP_CWF(SanUnit):
     '''
@@ -425,7 +425,7 @@ class POU_UV(SanUnit):
         log_removal =  self.uv_slope*self.uv_dose + self.uv_intercept
         log_N = log_removal + log10(No) #CFU/mL
         N = 10**(log_N)
-        # N = exp(log_red  uction + log10(No))
+        # N = exp(log_reduction + log10(No))
          
         # Log (N0/N) = Kd × UV dose where kd = inactivation rate constant
         

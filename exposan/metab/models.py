@@ -217,11 +217,10 @@ def add_continuous_params(model):
     def set_f_retain(f):
         if reactor_type == 'UASB':
             u.R1._f_retain = (u.R1._f_retain > 0) * f
-            if n_stage == 2:
-                u.R2._f_retain = (u.R2._f_retain > 0) * f
             u.R1._compile_ODE()
             u.R1.scope = SanUnitScope(u.R1)
-            if n_stage == 2: 
+            if n_stage == 2:
+                u.R2._f_retain = (u.R2._f_retain > 0) * f
                 u.R2._compile_ODE()
                 u.R2.scope = SanUnitScope(u.R2)
     
