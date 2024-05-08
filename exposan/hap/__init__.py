@@ -21,16 +21,33 @@ if not os.path.isdir(results_path): os.mkdir(results_path)
 if not os.path.isdir(figures_path): os.mkdir(figures_path)
 
 #%%
-import qsdsan as qs
+import qsdsan as qs, thermosteam as tmo
 from qsdsan import Component, Components
-from biorefineries.cane import create_sugarcane_chemicals
+# from biorefineries.cane import create_sugarcane_chemicals
+
+def _yeast_cmp():
+    glucose = Component.from_chemical('glucose', phase='l')
+    glucose.N_solutes = 1
+    yeast = tmo.Chemical('Yeast', phase='s', phase_ref='s', search_db=False, 
+                         formula='CH1.61O0.56', rho=1540, Cp=glucose.Cp(298.15),
+                         default=True)
+    Yeast = Component.from_chemical('Yeast', chemical=yeast,
+                                    particle_size='Particulate', organic=True,
+                                    degradability='Slowly', f_Vmass_Totmass=0.872)
+    Yeast.Hf = glucose.Hf / glucose.MW * Yeast.MW
+    V = tmo.functional.rho_to_V(rho=1540, MW=Yeast.MW)
+    Yeast.V.add_model(V, top_priority=True)
+    return Yeast
 
 def create_hap_cmps(set_thermo=True, industrial_yeast_production=True):
     cmps_df = Components.load_default()
-    chems = create_sugarcane_chemicals()
-    Yeast = Component.from_chemical('Yeast', chemical=chems.Yeast,
-                                    particle_size='Particulate', organic=True,
-                                    degradability='Slowly', f_Vmass_Totmass=0.872)
+
+    # chems = create_sugarcane_chemicals()
+    # Yeast = Component.from_chemical('Yeast', chemical=chems.Yeast,
+    #                                 particle_size='Particulate', organic=True,
+    #                                 degradability='Slowly', f_Vmass_Totmass=0.872)
+    
+    Yeast = _yeast_cmp()
     NH3 = Component('NH3', particle_size='Dissolved_gas', 
                     degradability='Undegradable', organic=False)
     CO2 = Component('CO2', particle_size='Dissolved_gas', 
@@ -58,7 +75,11 @@ def create_hap_cmps(set_thermo=True, industrial_yeast_production=True):
     IS = Component('IS', search_ID='SO4-2', measured_as='S', **ig_kwargs)
     IP = Component('IP', search_ID='PO4-3', measured_as='P', **ig_kwargs)
     
-    ash = Component.from_chemical('Ash', chemical=chems.Ash, **ig_kwargs)
+    ash = Component('Ash', phase='s', MW=1., **ig_kwargs)
+    ash.Cn.add_model(0.09 * 4.184 * ash.MW)
+    V = tmo.functional.rho_to_V(rho=1540, MW=ash.MW)
+    ash.V.add_model(V, top_priority=True)
+        
     other_SS = ash.copy('other_SS')
     
     N2 = cmps_df.S_N2.copy('N2')
@@ -94,10 +115,11 @@ def create_boulardii_cmps(default_compile=False):
                        vb1, vb2, vb5, vb6, vb7, ethanol])
     if default_compile:
         cmps_df = Components.load_default()
-        chems = create_sugarcane_chemicals()
-        Yeast = Component.from_chemical('Yeast', chemical=chems.Yeast,
-                                        particle_size='Particulate', organic=True,
-                                        degradability='Slowly')
+        # chems = create_sugarcane_chemicals()
+        # Yeast = Component.from_chemical('Yeast', chemical=chems.Yeast,
+        #                                 particle_size='Particulate', organic=True,
+        #                                 degradability='Slowly')
+        Yeast = _yeast_cmp()
         cmps = Components([*cmps, cmps_df.H2O, Yeast])
         cmps.default_compile()
     return cmps
