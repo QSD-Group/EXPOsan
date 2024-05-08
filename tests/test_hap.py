@@ -24,10 +24,10 @@ def test_hap():
         p.setter(p.baseline)
     mdl.system.simulate()
     out = [m() for m in mdl.metrics]
+    transport_duty = out.pop(1)
     
     #!!! disabled test w.r.t. CVRP solution until figure out random seed setting
     # import numpy as np
-    # transport_duty = out.pop(1)
     # assert np.isclose(transport_duty, 0.966498304330359, rtol=0.1)
     
     ac(out, 
