@@ -7,7 +7,7 @@ Summary
 This module implements a city-scale system for HAp synthesis from source-separated urine using genetically engineered yeast cells. [1]_
 Techno-economic analysis (TEA) of the system under uncertainty is enabled.
 
-.. figure:: ./figures/hap_sys.png
+.. figure:: ./hap_sys.png
 
     *HAp system layout: distributed HAp fermenters and a centralized facility for yeast production and product processing connected through a collection-distribution system.*
 
@@ -136,10 +136,10 @@ Retrieve TEA results
 
 Simulate the HAp system with uncertainty
 ----------------------------------------
-Monte Carlo simulation of the HAp system can be performed with the `run_model` function built into the module.
-A sample size `N` can be specified. Otherwise, N=100 by default. A `seed` can be provided for the random number generator and used for reproduction of the simulation results.
-Simulation results can be visualized with the plotting functions in the `analysis.py` script.
+Monte Carlo simulation of the HAp system can be performed with the ``run_model`` function built into the module.
+A sample size ``N`` can be specified. Otherwise, N=100 by default. A ``seed`` can be provided for the random number generator and used for reproduction of the simulation results.
+Simulation results can be visualized with the plotting functions in the ``analysis.py`` script.
 
 References
 ----------
-.. [1] Müller, Lin, Otani, and Zhang et al., Cost-effective urine recycling enabled by a synthetic osteoyeast platform for production of hydroxyapatite. __In Preparation__.
+.. [1] Müller, Lin, Otani, and Zhang et al., Cost-effective urine recycling enabled by a synthetic osteoyeast platform for production of hydroxyapatite. *In Preparation*.
