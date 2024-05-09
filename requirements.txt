@@ -2,3 +2,5 @@
 git+https://github.com/QSD-Group/QSDsan.git
 importlib_metadata
 scikit-learn
+tsp_solver
+ortools

@@ -10,8 +10,8 @@ This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
-from qsdsan.utils import ospath, load_data
-from exposan.metab import create_system, create_model, run_model, \
+from qsdsan.utils import ospath, load_data, SanUnitScope
+from exposan.metab import create_system, create_model, run_model, meshgrid_sample,\
     data_path, results_path, figures_path
 from exposan.metab.utils import categorize_cashflow, categorize_all_impacts
 from time import time
@@ -90,6 +90,73 @@ def _rerun_failed_samples(seed, rt='PB'):
     sys.units[0].set_init_conc(**C)
     mdl = create_model(sys, kind='uasa', exception_hook='raise')
     run_model(mdl, sample, seed='temp')
+
+from exposan.metab import ks_22
+def run_PB_over_diffusivity_HRT(n=10, run=True):
+    sys = create_system(reactor_type='PB')
+    mdl = qs.Model(sys, exception_hook='warn')
+    param = mdl.parameter
+    metric = mdl.metric
+    u = sys.flowsheet.unit
+    s = sys.flowsheet.stream
+    u.R1.bead_diameter = 1.0
+    u.R1.voidage = 0.45
+    u.R1.model.rate_function.params['rate_constants'] = ks_22
+
+    @param(name='Bead-to-water diffusivity fraction', units='', kind='coupled',
+           element='Encapsulation', baseline=0.55, bounds=(0.2, 1.1))
+    def set_f_diff(f):
+        u.R1.f_diff = f
+    
+    @param(name='HRT', units='d', kind='coupled', element='System',
+           baseline=1/3, bounds=(0.2, 1))
+    def set_tau(tau):
+        V = s.inf.F_vol * 24 * tau
+        u.R1.V_liq = V
+        u.R1.V_gas = V*0.1
+        u.R1._prep_model()
+        u.R1._compile_ODE()
+        u.R1.scope = SanUnitScope(u.R1)   
+    
+    @metric(name='COD removal', units='%', element='Process')
+    def get_rcod():
+        rcod = 1 - s.eff_dg.COD/s.inf.COD
+        return rcod*100
+    
+    @metric(name='CH4 collection', units='kg/d', element='Biogas')
+    def get_QCH4():
+        return (s.bg.imass['S_ch4'] + s.bge.imass['S_ch4'])*0.2506728377314149*24
+
+    @metric(name='fugitive CH4 emission', units='kg/d', element='Biogas')
+    def get_fug_CH4():
+        return s.eff_dg.imass['S_ch4']*0.2506728377314149*24
+    
+    C0_bulk = np.array([
+        1.204e-02, 5.323e-03, 9.959e-02, 1.084e-02, 1.411e-02, 1.664e-02,
+        4.592e-02, 2.409e-07, 7.665e-02, 5.693e-01, 1.830e-01, 3.212e-02,
+        2.424e-01, 2.948e-02, 4.766e-02, 2.603e-02, 
+        4.708e+00, 1.239e+00, 4.838e-01, 1.423e+00, 8.978e-01, 
+        2.959e+00, 1.467e+00, 
+        4.924e-02, 4.000e-02, 2.000e-02, 9.900e+02
+        ])
+    C = dict(zip(s.inf.components.IDs, C0_bulk))
+    samples, gridx, gridy = meshgrid_sample(*mdl.parameters, n)
+    mdl.load_samples(samples)
+    if run:
+        ys = []
+        i = 0
+        for smp in samples:
+            i += 1
+            print(f'\n{i}  {"="*20}')
+            for p, v in zip(mdl.parameters, smp): p.setter(v)
+            u.R1.set_init_conc(**C)
+            sys.simulate(state_reset_hook='reset_cache', method='BDF', t_span=(0, 400))
+            ys.append([m() for m in mdl.metrics])
+        
+        mdl.table.iloc[:,-3:] = ys
+        mpath = ospath.join(results_path, 'PB_diffusivity_HRT.xlsx')
+        mdl.table.to_excel(mpath)
+    return mdl, samples
 
 
 #%% discrete-DV scatter plot
@@ -350,8 +417,8 @@ def plot_joint(df, save_as='', kde=True):
                         markers=['P', 'v'],
                         alpha=0.5,
                         )
-    g.ax_joint.tick_params(axis='both', which='major', direction='inout', length=10, labelsize=24)
-    g.ax_joint.tick_params(axis='both', which='minor', direction='inout', length=6)
+    g.ax_joint.tick_params(axis='both', which='major', direction='inout', length=14, labelsize=24)
+    g.ax_joint.tick_params(axis='both', which='minor', direction='inout', length=8)
     g.ax_joint.set_xlim(-0.2, 1.0)
     g.ax_joint.set_ylim(-0.3, 1.0)
     g.ax_joint.set_xlabel('')
@@ -363,6 +430,7 @@ def plot_joint(df, save_as='', kde=True):
         showmeans=True,
         showfliers=False,
         dodge=False,
+        whis=(5,95),
         saturation=1,
         boxprops=boxprops,
         meanprops=meanprops,
@@ -371,12 +439,12 @@ def plot_joint(df, save_as='', kde=True):
     sns.boxplot(x=x, y=group, hue=group, ax=g.ax_marg_x, **bxp_kwargs)
     sns.boxplot(y=y, x=group, hue=group, ax=g.ax_marg_y, **bxp_kwargs)
     # for ax in (g.ax_marg_x, g.ax_marg_y): ax.legend_.remove()
-    g.ax_marg_x.tick_params(axis='x', which='major', direction='out', length=5)
-    g.ax_marg_x.tick_params(axis='x', which='minor', direction='out', length=3)    
+    g.ax_marg_x.tick_params(axis='x', which='major', direction='out', length=7)
+    g.ax_marg_x.tick_params(axis='x', which='minor', direction='out', length=4)    
     g.ax_marg_x.tick_params(left=False, which='both', labelleft=False)    
     g.ax_marg_x.spines['left'].set_color('white')
-    g.ax_marg_y.tick_params(axis='y', which='major', direction='out', length=5)
-    g.ax_marg_y.tick_params(axis='y', which='minor', direction='out', length=3) 
+    g.ax_marg_y.tick_params(axis='y', which='major', direction='out', length=7)
+    g.ax_marg_y.tick_params(axis='y', which='minor', direction='out', length=4) 
     g.ax_marg_y.tick_params(bottom=False, which='both', labelbottom=False)    
     g.ax_marg_y.spines['bottom'].set_color('white')
     
@@ -402,7 +470,7 @@ def best_breakdown():
     imp_bd = {}
     
     # UASB
-    mdl1 = create_model()
+    mdl1 = create_model(n_stages=2, reactor_type='UASB')
     sys1 = mdl1.system
     sub1, = sys1.subsystems
     
@@ -412,47 +480,68 @@ def best_breakdown():
     sys1.simulate(**kwargs)
     llc_bd['uasb_t1'] = categorize_cashflow(sub1.TEA)
     imp_bd['uasb_t1'] = categorize_all_impacts(sub1.LCA)
-    # best at LCA
+    
+    # best at LCA  
+    mdl1 = create_model(n_stages=1, reactor_type='UASB')
+    sys1 = mdl1.system
+    sub1, = sys1.subsystems
     smp = np.array([4, 22])
     for p, v in zip(mdl1.parameters, smp): p.setter(v)
     sys1.simulate(**kwargs)
-    llc_bd['uasb_l1'] = categorize_cashflow(sub1.TEA)
-    imp_bd['uasb_l1'] = categorize_all_impacts(sub1.LCA)
+    llc_bd['uasb_l1'] = categorize_cashflow(sys1.TEA)
+    imp_bd['uasb_l1'] = categorize_all_impacts(sys1.LCA)
     
     # FB
-    mdl2 = create_model(reactor_type='FB')
+    # best at TEA
+    mdl2 = create_model(n_stages=2, reactor_type='FB')
     sys2 = mdl2.system
-    sys2.units[0].bead_lifetime = 30
+    u2 = sys2.flowsheet.unit
+    u2.R1.bead_lifetime = u2.R2.bead_lifetime = 30
     sub2, = sys2.subsystems
     
-    # best at TEA
-    smp = np.array([2, 0.9, 2, 35])
+    smp = np.array([2, 0.9, 2, 22])
     for p, v in zip(mdl2.parameters, smp): p.setter(v)
     sys2.simulate(**kwargs)
     llc_bd['fb_t1'] = categorize_cashflow(sub2.TEA)
     imp_bd['fb_t1'] = categorize_all_impacts(sub2.LCA)
+    
     # best at LCA
-    smp = np.array([2, 0.75, 2, 22])
+    mdl2 = create_model(n_stages=1, reactor_type='FB')
+    sys2 = mdl2.system
+    u2 = sys2.flowsheet.unit
+    u2.R1.bead_lifetime = 30
+    sub2, = sys2.subsystems
+    smp = np.array([2, 0.9, 4, 22])
     for p, v in zip(mdl2.parameters, smp): p.setter(v)
     sys2.simulate(**kwargs)
-    llc_bd['fb_l1'] = categorize_cashflow(sub2.TEA)
-    imp_bd['fb_l1'] = categorize_all_impacts(sub2.LCA)
+    llc_bd['fb_l1'] = categorize_cashflow(sys2.TEA)
+    imp_bd['fb_l1'] = categorize_all_impacts(sys2.LCA)
     
     # PB
-    mdl3 = create_model(reactor_type='PB')
+    # best at TEA & LCA
+    mdl3 = create_model(n_stages=2, reactor_type='PB')
     sys3 = mdl3.system
-    sys3.units[0].bead_lifetime = 30
+    u3 = sys3.flowsheet.unit
+    u3.R1.bead_lifetime = u3.R2.bead_lifetime = 30
     sub3, = sys3.subsystems
     
     smp = np.array([2, 1, 22])
     for p, v in zip(mdl3.parameters, smp): p.setter(v)
     sys3.simulate(**kwargs)
-    # best at TEA & LCA
     llc_bd['pb_t1'] = categorize_cashflow(sub3.TEA)
     imp_bd['pb_t1'] = categorize_all_impacts(sub3.LCA)
+    
     # best at LCA
-    # llc_bd['pb_l1'] = categorize_cashflow(sys3.TEA)
-    # imp_bd['pb_l1'] = categorize_all_impacts(sys3.LCA)
+    mdl3 = create_model(n_stages=1, reactor_type='PB')
+    sys3 = mdl3.system
+    u3 = sys3.flowsheet.unit
+    u3.R1.bead_lifetime = 30
+    sub3, = sys3.subsystems
+    smp = np.array([2, 1, 22])
+    for p, v in zip(mdl3.parameters, smp): p.setter(v)
+    sys3.simulate(**kwargs)
+    llc_bd['pb_l1'] = categorize_cashflow(sys3.TEA)
+    imp_bd['pb_l1'] = categorize_all_impacts(sys3.LCA)
     
     llc_bd = pd.DataFrame.from_dict(llc_bd).transpose()
     llc_bd['fug_ch4'] = 0
@@ -491,7 +580,7 @@ def stacked_bar(data, save_as=''):
         ax.bar(x, y, width=0.55, bottom=y_offset, color=c, hatch=hat)
         yp += (y>=0) * y
         yn += (y<0) * y
-    ax.scatter(x, data.loc[:,'total'], marker='x', c='white')
+    ax.scatter(x, data.loc[:,'total'], marker='x', c='white', zorder=10)
 
     ax.tick_params(axis='y', which='major', direction='inout', length=10, labelsize=12)
     ax.tick_params(axis='y', which='minor', direction='inout', length=6)
@@ -614,8 +703,12 @@ def MCF_pb_to_fb(seed, save=True):
     return outs
 
 def _plot_bubble(df, ax, pal):
+    # pal = ('#f3c354', '#a280b9')
+    pal = ('#79bf82', '#60c1cf')
+    dv = np.array(([0]*7+[1]+[0]*5+[1]*3+[0,1])*df.Metric.nunique())
     sns.scatterplot(df, x='Metric', y='Parameter', 
-                    hue=df.p<0.05, palette=['black', pal], 
+                    # hue=df.p<0.05, palette=['black', pal], 
+                    hue=(df.p<0.05)*(1+dv), palette=['black', *pal],                     
                     size='D', sizes=(0, 350), size_norm=(0,1),
                     legend=False,
                     ax=ax,
@@ -749,22 +842,24 @@ def plot_univariate_kdes(seed):
             ('LCA (w/o degas)',  'GWP100 (w/o degas) [kg CO2eq/ton rCOD]'),    
         ]
     for i in (
-            # 'FB', 
-            'PB',
+            'FB', 
+            # 'PB',
               ):
         df = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
                        header=[0,1], skiprows=[2,], nrows=1000)
         ys = df.loc[:,pair_cols]
         # x = df.loc[:,('Encapsulation', 'Bead diameter [mm]')]
-        x = df.loc[:,('System', 'Total HRT [d]')]
-        # x = df.loc[:,('FB', 'FB voidage')]
+        # x = df.loc[:,('System', 'Total HRT [d]')]
+        x = 1-df.loc[:,('FB', 'FB voidage')]
+        # x = df.loc[:,('PB', 'PB voidage')]
         # x = df.loc[:,('ADM1', 'Uptake k ac [COD/COD/d]')]
         thres = ys.quantile(0.25)
         thres[0] = np.percentile(ys.iloc[:,0], 75)
         groups = ys > thres
         groups.iloc[:,0] = ys.iloc[:,0] < thres[0]
-        # plot_1dkde(x, groups, [0.6,0.9], [0, 5], i+'-void')
-        plot_1dkde(x, groups, [1/6, 3], [0, 1], i+'-hrt')
+        plot_1dkde(x, groups, [0.03,0.25], [0, 8.5], i+'-void')
+        # plot_1dkde(x, groups, [0.35,0.45], [0, 22], i+'-void')
+        # plot_1dkde(x, groups, [1/6, 3], [0, 1], i+'-hrt')
         # plot_1dkde(x, groups, [1,5], [0, 0.55], i+'-beaddia')
         # plot_1dkde(x, groups, [3.9,16], [0, 0.16], i+'-kac')
         print(thres)
@@ -774,7 +869,7 @@ def calc_3way_diff(seed, save=True):
     data = {}
     for i in ('UASB', 'FB', 'PB'):
         data[i] = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
-                            header=[0,1], skiprows=[2,])
+                            header=[0,1], skiprows=[2,], nrows=1000)
     pair_cols = [
             ('Process', 'COD removal [%]'),
             ('Biogas', 'H2 production [kg/d]'),
@@ -862,32 +957,35 @@ def plot_area(df, absolute=False, ylims=None):
         c, hat = v
         y = df.loc[:,k]
         y_offset = (y>=0)*yp + (y<0)*yn
-        ax.fill_between(x, y+y_offset, y_offset, facecolor=c, hatch=hat, linewidth=0.5)
+        ax.fill_between(x, y+y_offset, y_offset, facecolor=c, 
+                        hatch=hat, linewidth=0.5, zorder=0)
         yp += (y>=0) * y
         yn += (y<0) * y
     ax.set_xlim(0, df.shape[0])
     if ylims: ax.set_ylim(*ylims)
     ax.tick_params(labelsize=12)
-    ax.tick_params(axis='y', which='major', direction='inout', length=6)
-    ax.tick_params(axis='y', which='minor', direction='inout', length=3)
+    ax.tick_params(axis='y', which='major', direction='inout', length=8)
+    ax.tick_params(axis='y', which='minor', direction='inout', length=4)
     ax.set_xlabel('')
     ax.set_ylabel('')
     if absolute: 
         # ax.ticklabel_format(axis='y', scilimits=[-2,3], useMathText=True)
-        ax.yaxis.get_offset_text().set_fontsize(12)
+        # ax.yaxis.get_offset_text().set_fontsize(12)
         ax2y = ax.secondary_yaxis('right')
-        ax2y.tick_params(axis='y', which='major', direction='in', length=3)
-        ax2y.tick_params(axis='y', which='minor', direction='in', length=1.5)
+        ax2y.tick_params(axis='y', which='major', direction='in', length=4)
+        ax2y.tick_params(axis='y', which='minor', direction='in', length=2)
         ax2y.yaxis.set_ticklabels([])
     else:
         ax2y = ax.twinx()
         ax2y.plot(x, df['total'], color='black', linewidth=0.5)
-        ax2y.tick_params(axis='y', which='major', direction='inout', length=6)
-        ax2y.tick_params(axis='y', which='minor', direction='inout', length=3)
+        ax2y.tick_params(axis='y', which='major', direction='inout', length=8)
+        ax2y.tick_params(axis='y', which='minor', direction='inout', length=4)
     return fig, ax
 
 def breakdown_uasa(seed):
-    for i in ('UASB', 'FB', 'PB'):
+    for i in (
+            # 'UASB', 'FB', 
+            'PB',):
         data = load_data(ospath.join(results_path, f'{i}1P_{seed}.xlsx'),
                          header=[0,1], skiprows=[2,], nrows=1000)
         # tea, lca, absolute = breakdown_and_sort(data)
@@ -934,7 +1032,6 @@ def Spearman_corr(seed, save=True):
                 p.to_excel(writer, sheet_name=f'{k}_p')
     return stats
 
-#%%
 #%% Spearman's rho between K_TSS and steady-state TSS
 # fb = load_data(ospath.join(results_path, 'FB1P_187.xlsx'),
 #                header=[0,1], skiprows=[2,], nrows=1000)
@@ -951,7 +1048,6 @@ def Spearman_corr(seed, save=True):
 
 #%% heatmaps
 # from scipy.interpolate import griddata
-from exposan.metab.models import meshgrid_sample
 
 def togrid(df, mdl, n):
     zs = df.iloc[:,-len(mdl.metrics):].to_numpy().T
@@ -961,12 +1057,17 @@ def togrid(df, mdl, n):
     zzs = zzs.reshape((zzs.shape[0], *xx.shape))
     return xx, yy, zzs
 
-def plot_heatmap(xx, yy, z, baseline=[], save_as='', specific=False, hrt=True):
+def plot_heatmap(xx, yy, z, z2=None, baseline=[], save_as='', specific=False, hrt=True):
     fig, ax = plt.subplots(figsize=(5, 4.5))
     if specific:
         nm = mpl.colors.TwoSlopeNorm(vmin=z.min(), vcenter=np.median(z), vmax=z.max())
     else: nm = 'linear'
-    pos = ax.pcolormesh(xx, yy, z, shading='gouraud', norm=nm)
+    zmin = z.min()
+    zmax = z.max()
+    if z2 is not None: 
+        zmin = min(zmin, z2.min())
+        zmax = max(zmax, z2.max())
+    pos = ax.pcolormesh(xx, yy, z, shading='gouraud', norm=nm, vmin=zmin, vmax=zmax)
     cbar = fig.colorbar(pos, ax=ax)
     cbar.ax.tick_params(labelsize=11)
     # ax.ticklabel_format(axis='y', scilimits=[-2,3], useMathText=False)
@@ -983,44 +1084,72 @@ def plot_heatmap(xx, yy, z, baseline=[], save_as='', specific=False, hrt=True):
     if specific: 
         lct = mpl.ticker.FixedLocator(np.arange(0.2, 0.71, 0.1)) if hrt \
             else mpl.ticker.FixedLocator(np.percentile(z, np.linspace(0,100,7)))
+        levels = 7
     else:
         lct = mpl.ticker.MaxNLocator(7)
+        levels = lct.tick_values(zmin, zmax)
+    if z2 is not None: 
+        cs2 = ax.contour(xx, yy, z2, 
+                        colors='#90918e', origin='lower', 
+                        linestyles='dashed', linewidths=1, 
+                        extent=(xx[0,0], xx[0,-1], yy[0,0], yy[-1,0]),
+                        # locator=lct
+                        levels=levels,
+                        )
+        ax.clabel(cs2, cs2.levels, inline=True, fontsize=10)   
     cs = ax.contour(xx, yy, z, 
                     colors='white', origin='lower', 
                     linestyles='dashed', linewidths=1, 
                     extent=(xx[0,0], xx[0,-1], yy[0,0], yy[-1,0]),
-                    locator=lct
+                    # locator=lct
+                    levels=levels,
                     )
-    ax.clabel(cs, cs.levels, inline=True, 
-              fontsize=10)
+    ax.clabel(cs, cs.levels, inline=True, fontsize=10)
+     
     if baseline:
         ax.plot(*baseline, marker='^', ms=7, mfc='white', mec='black', mew=0.5)
     fig.savefig(ospath.join(figures_path, save_as), dpi=300, transparent=True)
 
-def mapping(data=None, n=20, reactor_type='PB'):
+def mapping(data=None, data2=None, n=20, reactor_type='PB'):
     if data is None:
-        data = load_data(ospath.join(results_path, f'optimized_{reactor_type}.xlsx'),
-                         header=[0,1], skiprows=[2,])
+        if reactor_type == 'PB':
+            data = load_data(ospath.join(results_path, f'optimized_{reactor_type}_45.xlsx'),
+                             header=[0,1], skiprows=[2,], nrows=n*9)
+            data2 = load_data(ospath.join(results_path, f'optimized_{reactor_type}_35.xlsx'),
+                             header=[0,1], skiprows=[2,], nrows=n*9)
+        else:
+            data = load_data(ospath.join(results_path, f'optimized_{reactor_type}.xlsx'),
+                             header=[0,1], skiprows=[2,], nrows=n*9)
     sys = create_system(reactor_type=reactor_type)
     mdl = create_model(sys, kind='mapping')
-    bl = [p.baseline for p in mdl.parameters]
+    # bl = [p.baseline for p in mdl.parameters]
     opt = create_model(sys, kind='optimize')
     xx, yy, zzs = togrid(data, mdl, n)
-    hrt = True
-    for z, m in zip(zzs, (*opt.parameters, *mdl.metrics)):
+    if data2 is not None: 
+        xx2, yy2, zzs2 = togrid(data2, mdl, n)
+    for i, m in enumerate((*opt.parameters, *mdl.metrics)):
+        z = zzs[i]
+        z2 = None if data2 is None else zzs2[i]
         file = f'heatmaps/{reactor_type}/{m.name}.png'
-        plot_heatmap(xx, yy, z, 
-                      bl, 
-                      save_as=file, 
-                      # specific=(suffix=='specific'), 
-                      hrt=hrt)
-        hrt = False
-    if reactor_type == 'FB':  z = zzs[1]*5/(1-zzs[0])*zzs[0]
-    else: z = zzs[0]*5*(1-0.39)/0.39
+        plot_heatmap(xx, yy, z, z2, save_as=file)
+    if reactor_type == 'FB':  
+        z = zzs[1]*50/(1-zzs[0])*zzs[0]*np.ceil(30/xx)
+    else: 
+        z = zzs[0]*50*(1-0.45)/0.45*np.ceil(30/xx)
+        z2 = zzs2[0]*50*(1-0.35)/0.35*np.ceil(30/xx) if data2 is not None else None
     file = f'heatmaps/{reactor_type}/Total bead volume.png'    
-    plot_heatmap(xx, yy, z, 
-                 bl, 
-                 save_as=file)
+    plot_heatmap(xx, yy, z, z2, save_as=file)
+
+def _map_diff_hrt(mdl, data=None, n=10):
+    if data is None:
+        data = load_data(ospath.join(results_path, 'PB_diffusivity_HRT.xlsx'),
+                         header=[0,1], skiprows=[2,])
+    xx, yy, zzs = togrid(data, mdl, n)
+    for z, m in zip(zzs, mdl.metrics):
+        file = f'heatmaps/PB_diff_hrt/{m.name}.png'
+        plot_heatmap(xx, yy, z, save_as=file)
+    
+    
 
 #%%
 if __name__ == '__main__':
@@ -1036,17 +1165,21 @@ if __name__ == '__main__':
     # dt = load_data(ospath.join(results_path, 'table_compiled.xlsx'), nrows=3553)
     # dt = dt[dt.loc[:,'Reactor type'] != 'UASB']
     # encap_out = compare_DVs(dt, save_as='FB_vs_PB.xlsx')
-    # smp = run_UA_SA(seed=187, N=1000)
+    # smp = run_UA_SA(N=1000)
     # _rerun_failed_samples(187, 'PB')
-    # out = calc_3way_diff(187)
-    # outs = MCF_pb_to_fb(187)
-    # data = MCF_25_vs_75(187)
+    # breakdown_uasa(965)
+    # plot_univariate_kdes(965)
+    # out = calc_3way_diff(965)
+    # outs = MCF_pb_to_fb(965)
+    # data = MCF_25_vs_75(965)
     # MCF_bubble_plot(outs)
-    # breakdown_uasa(187)
+    # MCF_bubble_plot(data)
     # mapping(suffix='specific')
     # mapping(suffix='common')
-    # plot_univariate_kdes(187)
-    mapping(reactor_type='PB')
-    # out = Spearman_corr(187, True)
+    mapping(reactor_type='FB', n=20)
+    mapping(reactor_type='PB', n=11)
+    # out = Spearman_corr(965, True)
+    # mdl, smps = run_PB_over_diffusivity_HRT()
+    # _map_diff_hrt(mdl)
 
     

@@ -26,6 +26,7 @@ def test_metab():
     UASB_M = create_system(n_stages=2, reactor_type='UASB', gas_extraction='M', tot_HRT=4)
     UASB_M.simulate(state_reset_hook='reset_cache', method='BDF', t_span=(0, 400))
     fs = UASB_M.flowsheet.stream
+
     # assert np.isclose(1 - fs.eff_dg.COD / fs.inf.COD, 0.9067142448236405, rtol)
     # #!!! add back test after biosteam pump design gets updated.
     # # assert np.isclose(UASB_M.TEA.annualized_NPV, -19128.91741988097, rtol)
