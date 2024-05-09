@@ -436,6 +436,12 @@ class UASB(AnaerobicCSTR):
             self._dstate = self._state * 0.
         else:
             super()._init_state()
+
+    @property
+    def ODE(self):
+        if self._ODE is None:
+            self._compile_ODE()
+        return self._ODE
         
     def _compile_ODE(self):
         cmps = self.components
