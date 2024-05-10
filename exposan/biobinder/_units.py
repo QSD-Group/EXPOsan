@@ -80,10 +80,6 @@ pilot_flowrate = 11.46 # kg/h
       cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.5)
 @cost(basis='Feedstock dry flowrate', ID= 'Mobile HTL system', units='kg/h',
       cost=23718, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
-
-
-
-
 class PilotHTL(qsu.HydrothermalLiquefaction):   
     '''
     
@@ -353,6 +349,8 @@ class PilotHTL(qsu.HydrothermalLiquefaction):
         purchase_costs = self.baseline_purchase_costs
         for item in purchase_costs.keys():
             purchase_costs[item] *= self.CAPEX_factor
+        
+        self.baseline_purchase_costs['Piping'] = self.baseline_purchase_cost*0.15
             
         # purchase_costs['Horizontal pressure vessel'] *= self.HTL_steel_cost_factor
         
