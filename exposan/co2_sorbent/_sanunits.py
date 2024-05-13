@@ -14,7 +14,7 @@ for license details.
 '''
 
 # import biosteam as bst
-import biosteam as bst
+import pandas as pd, biosteam as bst
 from qsdsan import SanUnit
 from math import sqrt, pi
 from biosteam import Splitter
@@ -25,7 +25,7 @@ __all__ = (
     'ALFProduction',
     'ALFCrystallizer',
     'ALFTemperatureSwingAdsorption',
-    'LowTemperatureElectrolysis'
+    'CO2ElectrolyzerSystem'
     )
 
 # =============================================================================
@@ -135,7 +135,12 @@ class ALFTemperatureSwingAdsorption(PressureVessel, Splitter):
     ----------
     [1] Adsorption basics Alan Gabelman (2017) Adsorption basics Part 1. AICHE
     [2] https://www.chemicalprocessing.com/processing-equipment/fluid-handling/article/11302111/select-the-right-valves-for-adsorption-processes-chemical-processing
-    [3] Evans et al. Science Advances SI. # TODO: update the reference
+    [3] Evans, H. A.; Mullangi, D.; Deng, Z.; Wang, Y.; Peh, S. B.; Wei, F.;
+        Wang, J.; Brown, C. M.; Zhao, D.; Canepa, P.; Cheetham, A. K.
+        Aluminum Formate, Al(HCOO)3: An Earth-Abundant, Scalable, and Highly
+        Selective Material for CO2 Capture. Science Advances 2022, 8 (44),
+        eade1473. https://doi.org/10.1126/sciadv.ade1473.
+
     '''
     auxiliary_unit_names = ('heat_exchanger_regeneration','heat_exchanger_cooling')
     
@@ -251,84 +256,134 @@ class ALFTemperatureSwingAdsorption(PressureVessel, Splitter):
         for i, j in baseline_purchase_costs.items():
             baseline_purchase_costs[i] *= N_reactors
         baseline_purchase_costs['initial_ALF'] = N_reactors * 35.3147 * self.vessel_volume * self.adsorbent_cost
-
+        
 # =============================================================================
-# LowTemperatureElectrolysis
+# CO2ElectrolyzerSystem
 # =============================================================================
 
-class LowTemperatureElectrolysis(SanUnit):
+class CO2ElectrolyzerSystem(SanUnit):
     '''
-    Low Temperature Electrolysis (LTE) for CO2 reduction to HCOOH.
-
-    This unit has the following equipment:
-        - :class:`~.equipments.Electrode`
-
+    CO2 electrolyzer system that converts CO2 into reduced 1C, 2C, and nC products [1]_. 
+    
     Parameters
     ----------
-    conversion_ratio : float, optional
-        XXX. Defaults to 0.2.
+    product : str, optional
+        target product of the CO2 reduction system, can only be 'carbon monoxide',
+        'ethanol','ethylene','formic acid','methane','methanol', and 'propanol'.
+        Defaults to 'formic acid'.
+    current_density : float, optional
+        Defaults to 0.2 A/cm2.
+        
+        
+    cell_voltage : float, optional
+        Defaults to 2.3 V.
+    product_selectivity : float, optional
+        Defaults to 0.9.
+    converstion: float, optional
+        Defaults to 0.5.
+    
+    # TODO: Jouny et al. may have OPEX_over_CAPEX (they stated that maintenance
+    costs were 2.5% of the capital investment per year)
     OPEX_over_CAPEX : float, optional
         Ratio with which operating costs are calculated as a fraction of capital costs. Defaults to XXX.
     
     References
     ----------
-    
+    [1] Jouny, M.; Luc, W.; Jiao, F. General Techno-Economic Analysis of CO2
+        Electrolysis Systems. Ind. Eng. Chem. Res. 2018, 57 (6), 2165–2177.
+        https://doi.org/10.1021/acs.iecr.7b03514.
     '''
-
+    
+    # TODO: update numbers of ins and outs
     _N_ins = 2
     _N_outs = 2
     
     # TODO: need to determine OPEX_over_CAPEX
     # TODO: add another parameter to calculate the surface area of the electrode
-    def __init__(self, ID='', ins=(), outs=(), conversion_ratio=0.2, FA_conc=0.15, OPEX_over_CAPEX=0.2):
+    def __init__(self, ID='', ins=(), outs=(), product='formic acid', current_density=0.2, cell_voltage=2.3,
+                 product_selectivity=0.9, converstion=0.5, OPEX_over_CAPEX=0.2):
         SanUnit.__init__(self=self, ID=ID, ins=ins, outs=outs)
-        self.conversion_ratio = conversion_ratio
-        self.FA_conc = FA_conc
-        self.OPEX_over_CAPEX = OPEX_over_CAPEX
-        
-        # TODO: update electrode information (5 times required area based on CO2 input due to the conversion rate of 0.2?)
-        # TODO: add memebranes
-        self.equipment = [
-            Electrode('Anode', linked_unit=self, N=1, electrode_type='anode',
-                      material='Titanium grid catalyst welded to current collector tab both coated in iridium tantalum mixed metal oxide', surface_area=1, unit_cost=288), #288/unit, 1 unit
-            Electrode('Cathode', linked_unit=self, N=1, electrode_type='cathode',
-                      material='TIMESETL 3pcs Stainless Steel Woven Wire 20 Mesh - 12"x8"(30x21cm) Metal Mesh Sheet 1mm Hole Great for Air Ventilation - A4', surface_area=30.25, unit_cost=0.847), #in in^2
-            ]
+        self.product = product
+        self.current_density = current_density
+        self.cell_voltage = cell_voltage
+        self.product_selectivity = product_selectivity
+        self.converstion = converstion
     
     def _run(self):
-        carbon_dioxide_in, water = self.ins
+        
+        # TODO: update ins and outs
+        carbon_dioxide,  = self.ins
         effluent, oxygen = self.outs
         
-        # TODO: add mass balance here, need to determine if CO2 reacted = 20%, what is a good way to model this, like the area of the electrode is based on 20% CO2 or 100% CO2 (lean to 100% for now)
-
-        effluent.imol['HCOOH'] = carbon_dioxide_in.imol['CO2']
-        water.imass['H2O'] = effluent.imass['H2O'] = effluent.imol['HCOOH']*1000/self.FA_conc
-        oxygen.imol['O2'] = 0.5*carbon_dioxide_in.imol['CO2']
+        # TODO: remove unused parameters
+        product_info = {'chemical': ['carbon monoxide','ethanol','ethylene','formic acid','methane','methanol','propanol'],
+                        'market_price': [0.6, 1.003, 1.3, 0.735, 0.18, 0.577, 1.435], # $/kg
+                        'elec_number': [2, 12, 12, 2, 8, 6, 18],
+                        'elec_number_per_CO2': [2, 6, 6, 2, 8, 6, 6],
+                        'mole_ratio': [1, 2, 2, 1, 1, 1, 3],
+                        'MW': [28.01, 46.06, 28.05, 46.025, 16.04, 32.04, 60.06],
+                        'density': [1.14, 789, 1.18, 1221, 0.656, 792, 803], # kg/m3
+                        'state': ['gas','liq','gas','liq','gas','liq','liq'],
+                        'potential': [-0.106, 0.084, 0.064, -0.25, 0.169, 0.016, 0.095],
+                        'voltage_theory': [1.336, 1.146, 1.166, 1.48, 1.061, 1.214, 1.135],
+                        'voltage_practical': [1.736, 1.546, 1.566, 1.88, 1.461, 1.614, 1.535],
+                        'low_price': [i*0.85 for i in [0.6, 1.003, 1.3, 0.735, 0.18, 0.577, 1.435]],
+                        'high_price': [i*1.15 for i in [0.6, 1.003, 1.3, 0.735, 0.18, 0.577, 1.435]]}
         
-        oxygen.phase = 'g'
+        product_info = pd.DataFrame.from_dict(product_info)
+        
+        chemical_info = product_info[product_info['chemical'] == self.product]
+        
+        CO2_inlet_flow_rate = 15921.26212187
+        # CO2 inlet flow rate [kg/h]
+        CO2_inlet_flow_rate = carbon_dioxide.F_mass
+        
+        # converted CO2 amount [kg/day]
+        CO2_converted = CO2_inlet_flow_rate*24*self.converstion
+        
+        # CO2 outlet flow rate [kg/h]
+        CO2_outlet_flow_rate_kg_per_h = CO2_inlet_flow_rate - CO2_converted/24
+        
+        # CO2 outlet flow rate [m3/h]
+        CO2_outlet_flow_rate_m3_per_h = CO2_outlet_flow_rate_kg_per_h/1.98 # the density of CO2 is 1.98 kg/m3
+        
+        # production amount based on inlet CO2 [kg/day]
+        product_production = CO2_converted/44/float(chemical_info['mole_ratio'])*float(chemical_info['MW'])
+        
+        # required current [A]
+        current_needed = product_production/24/3600*1000/float(chemical_info['MW'])*float(chemical_info['elec_number'])*96485/self.product_selectivity
+        
+        # required electrolzer area [m2]
+        electrolyzer_area = current_needed/self.current_density/10000
+        
+        # required power [MW]
+        power_needed = current_needed*self.cell_voltage/1000000
+        
+        # gas product flow rate [m3/h]
+        gas_product_flow_rate = 0 if chemical_info['state'].to_string(index=False) == 'liq' else product_production/float(chemical_info['density'])/24
+        
+        # liquid product flow rate [m3/h]
+        liquid_product_flow_rate_m3_per_h = 0 if chemical_info['state'].to_string(index=False) == 'gas' else product_production/float(chemical_info['density'])/24
+        
+        # liquid product flow rate [l/min]
+        liquid_product_flow_rate_l_per_min = liquid_product_flow_rate_m3_per_h*1000/60
+        
+        # electrolyte flow rate [l/min]
+        electrolyte_flow_rate = liquid_product_flow_rate_l_per_min/0.1 # TODO: figure out what '0.1' represents here
+        
+        # hydrogen flow rate [mol/s]
+        hydrogen_flow_rate_mol_per_s = current_needed*(1-self.product_selectivity)/2/96485 # TODO: figure out what '2' represents here
+        
+        # hydrogen flow rate [m3/h]
+        hydrogen_flow_rate_m3_per_h = hydrogen_flow_rate_mol_per_s*2.008/1000/0.08375*3600 # TODO: figure out what '2.008' and '0.08375' represent here
+        
+        # process water flow rate [gal/day]
+        process_water_rate = current_needed/4/96485*18/1000*24*3600*0.2642 # TODO: figure out what '4' and '0.2642' represent here
+        
+        # total gas flow [m3/h]
+        total_gas_flow = CO2_outlet_flow_rate_m3_per_h + gas_product_flow_rate + hydrogen_flow_rate_m3_per_h
 
     def _design(self):
-        self.add_equipment_design()
-
+        pass
     def _cost(self):
-        self.add_equipment_cost()
-        self.baseline_purchase_costs['Exterior'] = 60.52
-        '''
-        TOTAL CELL_EXTERIOR_COST = 60.52 USD
-        Breakdown:
-        Exterior frame (7'' x 7'' x 11/16'')	$21.46
-        Interior half-cells (5.5'' x 5.5'' x 11/16'')	$19.87
-        Rubber Sheets	$9.196
-        Threaded Rods	$2.9696
-        Wingnuts	$2.5504
-        Flat Washers	$0.728
-        Nylon Cable Glands	$3.744
-        '''
-        self.equip_costs = self.baseline_purchase_costs.values()
-        add_OPEX = sum(self.equip_costs)*self.OPEX_over_CAPEX
-        recovered = self.outs[0]
-        
-        # TODO: update electricity usage
-        # self.power_utility.rate = recovered.imass['NH3']*0.67577
-        # steady state value derived from 17.57 kWh used over 26 hrs
-        self._add_OPEX = {'Additional OPEX': add_OPEX}
+        pass
