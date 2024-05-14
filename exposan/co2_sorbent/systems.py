@@ -106,6 +106,7 @@ def create_system_A():
     TSA = su.ALFTemperatureSwingAdsorption('ALF_TSA', ins=(flue_gas, D1-0, 'regenerated_ALF_in'), outs=('offgas','CO2','used_ALF','regenerated_ALF_out'))
     TSA.register_alias('TSA')
     
+    # TODO: replace LowTemperatureElectrolysis with CO2ElectrolyzerSystem
     LTE = su.LowTemperatureElectrolysis('ALF_LTE', ins=(TSA-1, 'makeup_water'), outs=('FA_solution','oxygen'))
     LTE.register_alias('LTE')
     

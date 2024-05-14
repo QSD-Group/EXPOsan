@@ -261,6 +261,23 @@ class ALFTemperatureSwingAdsorption(PressureVessel, Splitter):
 # CO2ElectrolyzerSystem
 # =============================================================================
 
+# TODO: add the cost decorator for 'electrolyzer'
+@cost(basis='Treatment capacity', ID='Solids filter oil/water separator', units='lb/h',
+      cost=3945523, S=1219765,
+      CE=CEPCI_by_year[2011], n=0.68, BM=1.9)
+
+# TODO: add the cost decorator for 'distiller'
+@cost(basis='Treatment capacity', ID='Solids filter oil/water separator', units='lb/h',
+      cost=3945523, S=1219765,
+      CE=CEPCI_by_year[2011], n=0.68, BM=1.9)
+
+# TODO: add the cost decorator for 'PSA'
+@cost(basis='Treatment capacity', ID='Solids filter oil/water separator', units='lb/h',
+      cost=3945523, S=1219765,
+      CE=CEPCI_by_year[2011], n=0.68, BM=1.9)
+
+
+
 class CO2ElectrolyzerSystem(SanUnit):
     '''
     CO2 electrolyzer system that converts CO2 into reduced 1C, 2C, and nC products [1]_. 
@@ -298,6 +315,10 @@ class CO2ElectrolyzerSystem(SanUnit):
     _N_ins = 2
     _N_outs = 2
     
+    # TODO: update _units
+    _units= {'Treatment capacity': 'lb/h',
+             'Solid filter and separator weight': 'lb'}
+    
     # TODO: need to determine OPEX_over_CAPEX
     # TODO: add another parameter to calculate the surface area of the electrode
     def __init__(self, ID='', ins=(), outs=(), product='formic acid', current_density=0.2, cell_voltage=2.3,
@@ -312,8 +333,8 @@ class CO2ElectrolyzerSystem(SanUnit):
     def _run(self):
         
         # TODO: update ins and outs
-        carbon_dioxide,  = self.ins
-        effluent, oxygen = self.outs
+        carbon_dioxide, water = self.ins
+        product, hydrogen = self.outs
         
         # TODO: remove unused parameters
         product_info = {'chemical': ['carbon monoxide','ethanol','ethylene','formic acid','methane','methanol','propanol'],
@@ -382,8 +403,25 @@ class CO2ElectrolyzerSystem(SanUnit):
         
         # total gas flow [m3/h]
         total_gas_flow = CO2_outlet_flow_rate_m3_per_h + gas_product_flow_rate + hydrogen_flow_rate_m3_per_h
-
+    
     def _design(self):
-        pass
+        # TODO: remove design results from _run to _design
+        D = self.design_results
+        D['Pump pipe stainless steel'] = pipe
+        D['Pump stainless steel'] = pumps
+        
+        # TODO: set electricity usage (see biosteam.units._pump.py)
+        self.add_power_utility
+        
+        # add construction for LCA
+        if self.include_construction:
+            construction = getattr(self, 'construction', []) # would work for both biosteam/qsdsan units
+            if construction: construction[0].quantity = pipe + pumps
+            else:
+                self.construction = [
+                    Construction('stainless_steel', linked_unit=self, item='Stainless_steel', 
+                                 quantity=pipe + pumps, quantity_unit='kg'),
+                    ]
+    
     def _cost(self):
-        pass
+        self._decorated_cost()
