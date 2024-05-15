@@ -19,7 +19,7 @@ from qsdsan import SanUnit
 from math import sqrt, pi
 from biosteam import Splitter
 from biosteam.units.design_tools import PressureVessel
-from qsdsan.equipments import Electrode
+from biosteam.units.decorators import cost
 
 __all__ = (
     'ALFProduction',
@@ -261,37 +261,34 @@ class ALFTemperatureSwingAdsorption(PressureVessel, Splitter):
 # CO2ElectrolyzerSystem
 # =============================================================================
 
-# TODO: add the cost decorator for 'electrolyzer'
-@cost(basis='Treatment capacity', ID='Solids filter oil/water separator', units='lb/h',
-      cost=3945523, S=1219765,
-      CE=CEPCI_by_year[2011], n=0.68, BM=1.9)
-
-# TODO: add the cost decorator for 'distiller'
-@cost(basis='Treatment capacity', ID='Solids filter oil/water separator', units='lb/h',
-      cost=3945523, S=1219765,
-      CE=CEPCI_by_year[2011], n=0.68, BM=1.9)
-
-# TODO: add the cost decorator for 'PSA'
-@cost(basis='Treatment capacity', ID='Solids filter oil/water separator', units='lb/h',
-      cost=3945523, S=1219765,
-      CE=CEPCI_by_year[2011], n=0.68, BM=1.9)
-
-
-
+# TODO: modify CEPCI if needed
+@cost(basis='Electrolyzer area', ID='Electrolyzer', units='m^2',
+      cost=250.25*1.75*175/1000*10*1.2*(1+1/0.65*0.35), S=1,
+      CE=bst.CE, n=1, BM=1)
+@cost(basis='Electrolyte flow rate (ethanol)', ID='Distiller (ethanol)', units='L/min',
+      cost=4162240, S=1000, CE=bst.CE, n=0.7, BM=1)
+@cost(basis='Electrolyte flow rate (formic acid)', ID='Distiller (formic acid)', units='L/min',
+      cost=6896190, S=1000, CE=bst.CE, n=0.7, BM=1)
+@cost(basis='Electrolyte flow rate (methanol)', ID='Distiller (methanol)', units='L/min',
+      cost=4514670, S=1000, CE=bst.CE, n=0.7, BM=1)
+@cost(basis='Electrolyte flow rate (propanol)', ID='Distiller (propanol)', units='L/min',
+      cost=4687910, S=1000, CE=bst.CE, n=0.7, BM=1)
+@cost(basis='Total gas flow for PSA', ID='PSA', units='m^3/h',
+      cost=1989043, S=1000, CE=bst.CE, n=0.7, BM=1)
 class CO2ElectrolyzerSystem(SanUnit):
     '''
     CO2 electrolyzer system that converts CO2 into reduced 1C, 2C, and nC products [1]_. 
     
     Parameters
     ----------
-    product : str, optional
+    target_product : str, optional
         target product of the CO2 reduction system, can only be 'carbon monoxide',
         'ethanol','ethylene','formic acid','methane','methanol', and 'propanol'.
         Defaults to 'formic acid'.
     current_density : float, optional
         Defaults to 0.2 A/cm2.
-        
-        
+    cathodic_overpotential : float, optional
+        Defaults to 0.454 V.
     cell_voltage : float, optional
         Defaults to 2.3 V.
     product_selectivity : float, optional
@@ -311,33 +308,35 @@ class CO2ElectrolyzerSystem(SanUnit):
         https://doi.org/10.1021/acs.iecr.7b03514.
     '''
     
-    # TODO: update numbers of ins and outs
     _N_ins = 2
     _N_outs = 2
     
     # TODO: update _units
-    _units= {'Treatment capacity': 'lb/h',
-             'Solid filter and separator weight': 'lb'}
+    _units= {'Electrolyzer area': 'm^2',
+             'Electrolyte flow rate (ethanol)': 'L/min',
+             'Electrolyte flow rate (formic acid)': 'L/min',
+             'Electrolyte flow rate (methanol)': 'L/min',
+             'Electrolyte flow rate (propanol)': 'L/min',
+             'Total gas flow for PSA': 'm^3/h'}
     
     # TODO: need to determine OPEX_over_CAPEX
-    # TODO: add another parameter to calculate the surface area of the electrode
-    def __init__(self, ID='', ins=(), outs=(), product='formic acid', current_density=0.2, cell_voltage=2.3,
-                 product_selectivity=0.9, converstion=0.5, OPEX_over_CAPEX=0.2):
+    def __init__(self, ID='', ins=(), outs=(), target_product='formic acid', current_density=0.2,
+                 cell_voltage=2.3, cathodic_overpotential=0.454, product_selectivity=0.9,
+                 converstion=0.5, OPEX_over_CAPEX=0.2):
         SanUnit.__init__(self=self, ID=ID, ins=ins, outs=outs)
-        self.product = product
+        self.target_product = target_product
         self.current_density = current_density
+        self.cathodic_overpotential = cathodic_overpotential
         self.cell_voltage = cell_voltage
         self.product_selectivity = product_selectivity
         self.converstion = converstion
     
     def _run(self):
-        
-        # TODO: update ins and outs
         carbon_dioxide, water = self.ins
-        product, hydrogen = self.outs
+        product, mixed_offgas = self.outs
         
-        # TODO: remove unused parameters
-        product_info = {'chemical': ['carbon monoxide','ethanol','ethylene','formic acid','methane','methanol','propanol'],
+        product_info = {'chemical': ['carbon monoxide','ethanol','ethylene','formic acid','methane','methanol','propanol'], # the propanol is n-propanol
+                        'formula': ['CO','C2H6O','C2H4','HCOOH','CH4','CH4O','C3H8O'],
                         'market_price': [0.6, 1.003, 1.3, 0.735, 0.18, 0.577, 1.435], # $/kg
                         'elec_number': [2, 12, 12, 2, 8, 6, 18],
                         'elec_number_per_CO2': [2, 6, 6, 2, 8, 6, 6],
@@ -353,11 +352,10 @@ class CO2ElectrolyzerSystem(SanUnit):
         
         product_info = pd.DataFrame.from_dict(product_info)
         
-        chemical_info = product_info[product_info['chemical'] == self.product]
+        chemical_info = self.chemical_info = product_info[product_info['chemical'] == self.target_product]
         
-        CO2_inlet_flow_rate = 15921.26212187
         # CO2 inlet flow rate [kg/h]
-        CO2_inlet_flow_rate = carbon_dioxide.F_mass
+        CO2_inlet_flow_rate = carbon_dioxide.imass['CO2']
         
         # converted CO2 amount [kg/day]
         CO2_converted = CO2_inlet_flow_rate*24*self.converstion
@@ -366,7 +364,7 @@ class CO2ElectrolyzerSystem(SanUnit):
         CO2_outlet_flow_rate_kg_per_h = CO2_inlet_flow_rate - CO2_converted/24
         
         # CO2 outlet flow rate [m3/h]
-        CO2_outlet_flow_rate_m3_per_h = CO2_outlet_flow_rate_kg_per_h/1.98 # the density of CO2 is 1.98 kg/m3
+        CO2_outlet_flow_rate_m3_per_h = self.CO2_outlet_flow_rate_m3_per_h = CO2_outlet_flow_rate_kg_per_h/1.98 # the density of CO2 is 1.98 kg/m3
         
         # production amount based on inlet CO2 [kg/day]
         product_production = CO2_converted/44/float(chemical_info['mole_ratio'])*float(chemical_info['MW'])
@@ -375,7 +373,7 @@ class CO2ElectrolyzerSystem(SanUnit):
         current_needed = product_production/24/3600*1000/float(chemical_info['MW'])*float(chemical_info['elec_number'])*96485/self.product_selectivity
         
         # required electrolzer area [m2]
-        electrolyzer_area = current_needed/self.current_density/10000
+        self.electrolyzer_area = current_needed/self.current_density/10000
         
         # required power [MW]
         power_needed = current_needed*self.cell_voltage/1000000
@@ -390,7 +388,7 @@ class CO2ElectrolyzerSystem(SanUnit):
         liquid_product_flow_rate_l_per_min = liquid_product_flow_rate_m3_per_h*1000/60
         
         # electrolyte flow rate [l/min]
-        electrolyte_flow_rate = liquid_product_flow_rate_l_per_min/0.1 # TODO: figure out what '0.1' represents here
+        self.electrolyte_flow_rate = liquid_product_flow_rate_l_per_min/0.1 # TODO: figure out what '0.1' represents here
         
         # hydrogen flow rate [mol/s]
         hydrogen_flow_rate_mol_per_s = current_needed*(1-self.product_selectivity)/2/96485 # TODO: figure out what '2' represents here
@@ -402,26 +400,39 @@ class CO2ElectrolyzerSystem(SanUnit):
         process_water_rate = current_needed/4/96485*18/1000*24*3600*0.2642 # TODO: figure out what '4' and '0.2642' represent here
         
         # total gas flow [m3/h]
-        total_gas_flow = CO2_outlet_flow_rate_m3_per_h + gas_product_flow_rate + hydrogen_flow_rate_m3_per_h
+        self.total_gas_flow = CO2_outlet_flow_rate_m3_per_h + gas_product_flow_rate + hydrogen_flow_rate_m3_per_h
+        
+        product.imass[chemical_info['formula'].to_string(index=False)] = product_production/24
+        product.phase = 'g' if chemical_info['state'].to_string(index=False) == 'gas' else 'l'
+        
+        water.imass['H2O'] = process_water_rate*0.00378541*1000/24
+        # TODO: use mixed_off_gas to meet mass balance (mixed_off_gas )
+        mixed_offgas.imass['CO2'] = CO2_outlet_flow_rate_kg_per_h
+        mixed_offgas.imass['H2'] = hydrogen_flow_rate_m3_per_h*0.08375 # H2 density: 0.08375 kg/m3 (https://h2tools.org/hyarc/hydrogen-data/basic-hydrogen-properties, accessed 5-15-2024)
+        mixed_offgas.imass['O2'] = carbon_dioxide.F_mass + water.F_mass - product.F_mass - mixed_offgas.imass['CO2'] - mixed_offgas.imass['H2']
+        mixed_offgas.phase = 'g'
     
     def _design(self):
-        # TODO: remove design results from _run to _design
         D = self.design_results
-        D['Pump pipe stainless steel'] = pipe
-        D['Pump stainless steel'] = pumps
+        D['Electrolyzer area'] = self.electrolyzer_area
         
-        # TODO: set electricity usage (see biosteam.units._pump.py)
-        self.add_power_utility
+        for liquid_product in ['ethanol','formic acid','methanol','propanol']:
+            D[f'Electrolyte flow rate ({liquid_product})'] = self.electrolyte_flow_rate if self.chemical_info['chemical'].to_string(index=False) == liquid_product else 0
         
-        # add construction for LCA
-        if self.include_construction:
-            construction = getattr(self, 'construction', []) # would work for both biosteam/qsdsan units
-            if construction: construction[0].quantity = pipe + pumps
-            else:
-                self.construction = [
-                    Construction('stainless_steel', linked_unit=self, item='Stainless_steel', 
-                                 quantity=pipe + pumps, quantity_unit='kg'),
-                    ]
+        D['Total gas flow for PSA'] = 0 if self.CO2_outlet_flow_rate_m3_per_h == self.total_gas_flow else self.total_gas_flow
+        
+        # TODO: set electricity usage (see biosteam.units._pump.py) (for electrolyzer and PSA)
+        # self.add_power_utility
+        
+        # TODO: add construction for LCA
+        # if self.include_construction:
+        #     construction = getattr(self, 'construction', []) # would work for both biosteam/qsdsan units
+        #     if construction: construction[0].quantity = pipe + pumps
+        #     else:
+        #         self.construction = [
+        #             Construction('stainless_steel', linked_unit=self, item='Stainless_steel', 
+        #                          quantity=pipe + pumps, quantity_unit='kg'),
+        #             ]
     
     def _cost(self):
         self._decorated_cost()

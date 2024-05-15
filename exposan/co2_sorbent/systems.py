@@ -67,48 +67,99 @@ def create_system_A():
     
     # TODO: change the flow rate of AlOH3
     # TODO: add price for Al(OH)3
-    aluminum_hydroxide = qs.WasteStream('aluminum_hydroxide', phase='s', AlH3O3=100, units='kg/h', T=25+273.15)
+    aluminum_hydroxide = qs.WasteStream(ID='aluminum_hydroxide',
+                                        phase='s',
+                                        AlH3O3=100,
+                                        units='kg/h',
+                                        T=25+273.15)
     
     # TODO: change the flow rate of DI H2O
     # TODO: add price for H2O
-    water = qs.WasteStream('water', H2O=100, units='kg/h', T=25+273.15)
+    water = qs.WasteStream(ID='water',
+                           H2O=100,
+                           units='kg/h',
+                           T=25+273.15)
 
-    M1 = qsu.Mixer('feed_mixer_1', ins=(aluminum_hydroxide, water), outs='AlOH3_H2O', init_with='Stream', rigorous=True, conserve_phases=True)
+    M1 = qsu.Mixer(ID='feed_mixer_1',
+                   ins=(aluminum_hydroxide, water),
+                   outs='AlOH3_H2O',
+                   init_with='Stream',
+                   rigorous=True,
+                   conserve_phases=True)
     M1.register_alias('M1')
     
     # TODO: change the flow rate of formic acid (98% w/w, Xue et al. 2018)
     # TODO: add price for formic acid
-    HCOOH_H2O = qs.WasteStream('formic_acid', HCOOH=350, H2O=100, units='kg/h', T=25+273.15)
+    HCOOH_H2O = qs.WasteStream(ID='formic_acid',
+                               HCOOH=350,
+                               H2O=100,
+                               units='kg/h',
+                               T=25+273.15)
     
-    M2 = qsu.Mixer('feed_mixer_2', ins=(M1-0, HCOOH_H2O), outs='AlOH3_H2O_HCOOH', init_with='Stream', rigorous=True, conserve_phases=True)
+    M2 = qsu.Mixer(ID='feed_mixer_2',
+                   ins=(M1-0, HCOOH_H2O),
+                   outs='AlOH3_H2O_HCOOH',
+                   init_with='Stream',
+                   rigorous=True,
+                   conserve_phases=True)
     M2.register_alias('M2')
     
-    R1 = su.ALFProduction('ALF_production', M2-0, outs='ALF_solution')
+    R1 = su.ALFProduction(ID='ALF_production',
+                          ins=M2-0,
+                          outs='ALF_solution')
     R1.register_alias('R1')
     
     # TODO: determine crystallization temperature
     # TODO: confirm no cooling utility is needed (it said atmospheric batch crystallization, see _batch_crystallizer.py)
-    C1 = su.ALFCrystallizer('ALF_crystallizer', R1-0, outs='ALF_mixed', T=273.15, crystal_ALF_yield=1)
+    C1 = su.ALFCrystallizer(ID='ALF_crystallizer',
+                            ins=R1-0,
+                            outs='ALF_mixed',
+                            T=273.15,
+                            crystal_ALF_yield=1)
     C1.register_alias('C1')   
     
     # TODO: determine split ratio for ALF and HCOOH
-    F1 = PressureFilter('ALF_filter', ins=C1-0, outs=('retentate','permeate'), moisture_content=0.35, split={'C3H3AlO6':0.83, 'HCOOH':0.05})
+    F1 = PressureFilter(ID='ALF_filter',
+                        ins=C1-0,
+                        outs=('retentate','permeate'),
+                        moisture_content=0.35,
+                        split={'C3H3AlO6':0.83,'HCOOH':0.05})
     F1.register_alias('F1')
     
     # TODO: determine moisture content for ALF
-    D1 = DrumDryer('ALF_dryer', (F1-0,'dryer_air','natural_gas'), ('dryed_ALF','hot_air','emissions'), moisture_content=0.0, split={'HCOOH':1})
+    D1 = DrumDryer(ID='ALF_dryer',
+                   ins=(F1-0,'dryer_air','natural_gas'),
+                   outs=('dryed_ALF','hot_air','emissions'),
+                   moisture_content=0.0,
+                   split={'HCOOH':1})
     D1.register_alias('D1')
     
     # coal-fired power plant flue gas composition: 13% CO2, 5% O2, and 82% N2 (David et al. 2007)
     # for a typical 1000 MWh plant, assume CO2=780000 kg/h (Huang et al. 2021)
-    flue_gas = qs.WasteStream('flue_gas', CO2=780000, H2O=300000, N2=4920000, phase='g', units='kg/h', T=25+273.15)
+    flue_gas = qs.WasteStream(ID='flue_gas',
+                              CO2=780000,
+                              H2O=300000,
+                              N2=4920000,
+                              phase='g',
+                              units='kg/h',
+                              T=25+273.15)
     
-    TSA = su.ALFTemperatureSwingAdsorption('ALF_TSA', ins=(flue_gas, D1-0, 'regenerated_ALF_in'), outs=('offgas','CO2','used_ALF','regenerated_ALF_out'))
+    TSA = su.ALFTemperatureSwingAdsorption(ID='ALF_TSA',
+                                           ins=(flue_gas, D1-0, 'regenerated_ALF_in'),
+                                           outs=('offgas','CO2','used_ALF','regenerated_ALF_out'))
     TSA.register_alias('TSA')
     
     # TODO: replace LowTemperatureElectrolysis with CO2ElectrolyzerSystem
-    LTE = su.LowTemperatureElectrolysis('ALF_LTE', ins=(TSA-1, 'makeup_water'), outs=('FA_solution','oxygen'))
-    LTE.register_alias('LTE')
+    E1 = su.CO2ElectrolyzerSystem(ID='CO2_electrolyzer',
+                                  ins=(TSA-1, 'process_water'),
+                                  outs=('product','mixed_offgas'),
+                                  target_product='formic acid',
+                                  current_density=0.2,
+                                  cell_voltage=2.3,
+                                  cathodic_overpotential=0.454,
+                                  product_selectivity=0.9,
+                                  converstion=0.5)
+    E1.register_alias('E1')
     
     # TODO: purify HCOOH through azeotropic distillation or change LTE to a solid state electrolyte (https://www.nature.com/articles/s41467-020-17403-1)
     

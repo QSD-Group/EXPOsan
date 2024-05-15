@@ -84,11 +84,23 @@ def create_components(set_thermo=True):
                    degradability='Undegradable',
                    organic=False)
     
+    H2 = Component(ID='H2',
+                   phase='g',
+                   particle_size='Dissolved gas',
+                   degradability='Undegradable',
+                   organic=False)
+    
     CH4 = Component(ID='CH4',
                     phase='g',
                     particle_size='Dissolved gas',
                     degradability='Slowly',
                     organic=True)
+    
+    C2H4 = Component(ID='C2H4',
+                     phase='g',
+                     particle_size='Dissolved gas',
+                     degradability='Slowly',
+                     organic=True)
     
     CO2 = Component(ID='CO2',
                     phase='g',
@@ -96,8 +108,36 @@ def create_components(set_thermo=True):
                     degradability='Undegradable',
                     organic=False)
     
-    cmps = Components([Bauxite, AlH3O3, ALF, HCOOH,
-                       H2O, O2, N2, CH4, CO2])
+    CO = Component(ID='CO',
+                   phase='g',
+                   particle_size='Dissolved gas',
+                   degradability='Undegradable',
+                   organic=False)
+    
+    # methanol
+    CH4O = Component(ID='CH4O',
+                     search_ID='67-56-1',
+                     particle_size='Soluble',
+                     degradability='Readily',
+                     organic=True)
+    
+    # ethanol
+    C2H6O = Component(ID='C2H6O',
+                      search_ID='64-17-5',
+                      particle_size='Soluble',
+                      degradability='Readily',
+                      organic=True)
+    
+    # n-propanol
+    C3H8O = Component(ID='C3H8O',
+                      search_ID='71-23-8',
+                      particle_size='Soluble',
+                      degradability='Readily',
+                      organic=True)
+    
+    cmps = Components([Bauxite, AlH3O3, ALF, HCOOH, H2O,
+                       O2, N2, H2, CH4, CO2, CO, C2H6O,
+                       C2H4, CH4O, C3H8O])
     
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):
