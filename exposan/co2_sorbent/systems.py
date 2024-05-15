@@ -49,7 +49,7 @@ __all__ = (
 # =============================================================================
 # Al(OH)3 + HCOOH
 # =============================================================================
-def create_system_A():
+def create_system_A(product='formic acid'):
 
     flowsheet_ID = 'ALF_A'
     
@@ -153,7 +153,7 @@ def create_system_A():
     E1 = su.CO2ElectrolyzerSystem(ID='CO2_electrolyzer',
                                   ins=(TSA-1, 'process_water'),
                                   outs=('product','mixed_offgas'),
-                                  target_product='formic acid',
+                                  target_product=product,
                                   current_density=0.2,
                                   cell_voltage=2.3,
                                   cathodic_overpotential=0.454,
@@ -161,7 +161,7 @@ def create_system_A():
                                   converstion=0.5)
     E1.register_alias('E1')
     
-    # TODO: purify HCOOH through azeotropic distillation or change LTE to a solid state electrolyte (https://www.nature.com/articles/s41467-020-17403-1)
+    # TODO: determine the offgas fate for E1 (maybe sending it to a CHP unit?)
     
     # TODO: need to match up temperatures
     # HXN = qsu.HeatExchangerNetwork('HXN', T_min_app=5, force_ideal_thermo=True)

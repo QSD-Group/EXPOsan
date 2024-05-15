@@ -14,7 +14,7 @@ for license details.
 '''
 
 # import biosteam as bst
-import pandas as pd, biosteam as bst
+import pandas as pd, biosteam as bst, qsdsan as qs
 from qsdsan import SanUnit
 from math import sqrt, pi
 from biosteam import Splitter
@@ -261,20 +261,19 @@ class ALFTemperatureSwingAdsorption(PressureVessel, Splitter):
 # CO2ElectrolyzerSystem
 # =============================================================================
 
-# TODO: modify CEPCI if needed
+# TODO: after determine CEPCI, update here, or find a way to match the CEPCI here with the CEPCI in the system (set CE here as bst.CE does not work)
 @cost(basis='Electrolyzer area', ID='Electrolyzer', units='m^2',
-      cost=250.25*1.75*175/1000*10*1.2*(1+1/0.65*0.35), S=1,
-      CE=bst.CE, n=1, BM=1)
+      cost=250.25*1.75*175/1000*10*1.2*(1+1/0.65*0.35), S=1, CE=qs.CEPCI_by_year[2020], n=1)
 @cost(basis='Electrolyte flow rate (ethanol)', ID='Distiller (ethanol)', units='L/min',
-      cost=4162240, S=1000, CE=bst.CE, n=0.7, BM=1)
+      cost=4162240, S=1000, CE=qs.CEPCI_by_year[2020], n=0.7)
 @cost(basis='Electrolyte flow rate (formic acid)', ID='Distiller (formic acid)', units='L/min',
-      cost=6896190, S=1000, CE=bst.CE, n=0.7, BM=1)
+      cost=6896190, S=1000, CE=qs.CEPCI_by_year[2020], n=0.7)
 @cost(basis='Electrolyte flow rate (methanol)', ID='Distiller (methanol)', units='L/min',
-      cost=4514670, S=1000, CE=bst.CE, n=0.7, BM=1)
+      cost=4514670, S=1000, CE=qs.CEPCI_by_year[2020], n=0.7)
 @cost(basis='Electrolyte flow rate (propanol)', ID='Distiller (propanol)', units='L/min',
-      cost=4687910, S=1000, CE=bst.CE, n=0.7, BM=1)
+      cost=4687910, S=1000, CE=qs.CEPCI_by_year[2020], n=0.7)
 @cost(basis='Total gas flow for PSA', ID='PSA', units='m^3/h',
-      cost=1989043, S=1000, CE=bst.CE, n=0.7, BM=1)
+      cost=1989043, S=1000, CE=qs.CEPCI_by_year[2020], n=0.7)
 class CO2ElectrolyzerSystem(SanUnit):
     '''
     CO2 electrolyzer system that converts CO2 into reduced 1C, 2C, and nC products [1]_. 
@@ -334,6 +333,9 @@ class CO2ElectrolyzerSystem(SanUnit):
     def _run(self):
         carbon_dioxide, water = self.ins
         product, mixed_offgas = self.outs
+        
+        if self.target_product not in ['carbon monoxide','ethanol','ethylene','formic acid','methane','methanol','propanol']:
+            raise ValueError("target product must be in 'carbon monoxide', 'ethanol', 'ethylene', 'formic acid', 'methane', 'methanol', and 'propanol'")
         
         product_info = {'chemical': ['carbon monoxide','ethanol','ethylene','formic acid','methane','methanol','propanol'], # the propanol is n-propanol
                         'formula': ['CO','C2H6O','C2H4','HCOOH','CH4','CH4O','C3H8O'],
