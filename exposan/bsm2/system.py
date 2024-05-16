@@ -69,8 +69,6 @@ def create_system(flowsheet=None, default_init_conds=True):
                    path=os.path.join(bsm1_path, '_asm1.tsv'))
     thermo_asm1 = qs.get_thermo()
     DO_ID = 'S_O'
-    #!!! Not sure where KLa are from
-    # the BSM STR Table 3.1 suggests kLa=120 for tanks 3&4, kLa=60 for tank 5
     aer1 = aer2 = pc.DiffusedAeration('aer1', DO_ID, KLa=120, DOsat=SOSAT1, V=V_ae)
     aer3 = pc.DiffusedAeration('aer3', DO_ID, KLa=60, DOsat=SOSAT1, V=V_ae)
     
@@ -83,9 +81,7 @@ def create_system(flowsheet=None, default_init_conds=True):
     # Primary clarifier using the Otterpohl-Freund model
     # Where are other parameters used?
     C1 = su.PrimaryClarifierBSM2(
-        'C1',
-        # ins=(inf, 'thickener_recycle', 'reject_water'),
-        ins=(inf, 'reject'),
+        'C1', ins=(inf, 'reject'),
         outs=('C1_eff', 'C1_underflow'),
         isdynamic=True, 
         volume=900,
@@ -95,7 +91,6 @@ def create_system(flowsheet=None, default_init_conds=True):
 
     # Unit operations in BSM1
     A1 = su.CSTR('A1', ins=[C1-0, 'RWW', 'RAS', carb], V_max=V_an,
-    # A1 = su.CSTR('A1', ins=[C1-0, 'RWW', 'RAS'], V_max=V_an,
                  aeration=None, suspended_growth_model=asm1)
     
     A2 = su.CSTR('A2', A1-0, V_max=V_an,
@@ -123,7 +118,6 @@ def create_system(flowsheet=None, default_init_conds=True):
         rh=5.76e-4, rp=2.86e-3, fns=2.28e-3,
         )
     
-    # TC1 = su.Thickener('TC1', C2-2, outs=['thickened_sludge', 1-C1],
     TC1 = su.Thickener('TC1', C2-2, outs=['thickened_sludge', ''],
                        thickening_perc=7, TSS_removal_perc=98)
     M1 = su.Mixer('M1', ins=(C1-1, TC1-0))
@@ -141,13 +135,13 @@ def create_system(flowsheet=None, default_init_conds=True):
     # J1.ins[0].pH = 7.2631
     AD1 = su.AnaerobicCSTR('AD1', ins=J1.outs[0], outs=('biogas', 'AD_eff'), isdynamic=True,
                            V_liq=3400, V_gas=300, T=T_ad, model=adm1,)
+    # AD1.algebraic_h2=False
     # Switch back to ASM1 components
     J2 = su.ADMtoASM('J2', upstream=AD1-1, thermo=thermo_asm1, isdynamic=True, adm1_model=adm1)
     J2.bio_to_xs = 0.79
     qs.set_thermo(thermo_asm1)
     
     # Dewatering
-    # C3 = su.Centrifuge(ID='C3', ins=J2-0, outs=['digested_sludge', 2-C1],
     C3 = su.Centrifuge(ID='C3', ins=J2-0, outs=['digested_sludge', ''],
                        thickening_perc=28, TSS_removal_perc=96.29)
 
@@ -166,11 +160,8 @@ def create_system(flowsheet=None, default_init_conds=True):
         AD1.set_init_conc(**adm1init['AD1'])
 
     
-    # sys = flowsheet.create_system('bsm2_sys')
     sys = qs.System('bsm2_sys', 
                     path=(C1, A1, A2, O1, O2, O3, C2, 
-                    #         TC1, M1, J1, AD1, J2, C3),
-                    # recycle=(O3-0, C2-1, TC1-1, C3-1, )
                           TC1, M1, J1, AD1, J2, C3, M2),
                     recycle=(O3-0, C2-1, M2-0)
                     )
@@ -214,7 +205,7 @@ if __name__ == '__main__':
     # cmps_adm1 = J1.components
     # cmps_asm1 = J2.components
     
-    t = 20
+    t = 30
     t_step = 1
     # method = 'RK45'
     method = 'RK23'
@@ -228,12 +219,3 @@ if __name__ == '__main__':
     # sys.converge()
     # sys.diagram()
     # sys.diagram(file=os.path.join(figures_path, 'bsm2_sys'), format='png')
-    
-    # sys.converge()
-    # for u in sys.units:
-    #     if not hasattr(u, '_state'): u._init_dynamic()
-    # y0, idx, nr = sys._load_state()
-    
-
-    # J1.state # post ASM2ADM interface
-    # J2.state # post ADM2ASM interface
