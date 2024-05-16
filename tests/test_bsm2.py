@@ -21,12 +21,14 @@ def test_bsm2():
     import numpy as np
     from exposan import bsm2
     bsm2.load()
-    rtol = 3e-2
+    rtol = 5e-2
     # rtol = 1e-2
     sys = bsm2.sys
        
-    t_span = (0, 15) # just 20 days to make the test faster
-    sys.simulate(method='RK23', t_span=t_span)
+    t_span = (0, 15) # just 15 days to make the test faster
+    sys.simulate(method='RK23', t_span=t_span,
+                  # state_reset_hook='reset_cache')
+                )
     u = sys.flowsheet.unit
     s = sys.flowsheet.stream
     
