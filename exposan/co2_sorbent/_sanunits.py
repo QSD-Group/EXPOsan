@@ -261,6 +261,8 @@ class ALFTemperatureSwingAdsorption(PressureVessel, Splitter):
 # CO2ElectrolyzerSystem
 # =============================================================================
 
+# TODO: do we need to update the cost data, e.g., H2A (see the referred paper) $/m2, e.g., 2018$ (the referred paper is published in 2018) to 2020$ (if correct and necessary)
+
 # TODO: after determine CEPCI, update here, or find a way to match the CEPCI here with the CEPCI in the system (set CE here as bst.CE does not work)
 @cost(basis='Electrolyzer area', ID='Electrolyzer', units='m^2',
       cost=250.25*1.75*175/1000*10*1.2*(1+1/0.65*0.35), S=1, CE=qs.CEPCI_by_year[2020], n=1)
@@ -292,13 +294,12 @@ class CO2ElectrolyzerSystem(SanUnit):
         Defaults to 2.3 V.
     product_selectivity : float, optional
         Defaults to 0.9.
-    converstion: float, optional
+    converstion : float, optional
         Defaults to 0.5.
-    
-    # TODO: Jouny et al. may have OPEX_over_CAPEX (they stated that maintenance
-    costs were 2.5% of the capital investment per year)
-    OPEX_over_CAPEX : float, optional
-        Ratio with which operating costs are calculated as a fraction of capital costs. Defaults to XXX.
+    PSA_operating_cost : float, optional
+        Defaults to 0.25 kWh/m3.
+    operating_days_per_year: float/int
+        Same to the operating day per year of the system.
     
     References
     ----------
@@ -318,10 +319,10 @@ class CO2ElectrolyzerSystem(SanUnit):
              'Electrolyte flow rate (propanol)': 'L/min',
              'Total gas flow for PSA': 'm^3/h'}
     
-    # TODO: need to determine OPEX_over_CAPEX
+    # TODO: may use 'add_OPEX' argument to add OPEX instead of OPEX_over_CAPEX (see qsdsan/_sanunit.py)
     def __init__(self, ID='', ins=(), outs=(), target_product='formic acid', current_density=0.2,
                  cell_voltage=2.3, cathodic_overpotential=0.454, product_selectivity=0.9,
-                 converstion=0.5, OPEX_over_CAPEX=0.2):
+                 converstion=0.5, PSA_operating_cost=0.25, operating_days_per_year=350):
         SanUnit.__init__(self=self, ID=ID, ins=ins, outs=outs)
         self.target_product = target_product
         self.current_density = current_density
@@ -329,6 +330,8 @@ class CO2ElectrolyzerSystem(SanUnit):
         self.cell_voltage = cell_voltage
         self.product_selectivity = product_selectivity
         self.converstion = converstion
+        self.PSA_operating_cost = PSA_operating_cost
+        self.operating_days_per_year = operating_days_per_year
     
     def _run(self):
         carbon_dioxide, water = self.ins
@@ -366,7 +369,7 @@ class CO2ElectrolyzerSystem(SanUnit):
         CO2_outlet_flow_rate_kg_per_h = CO2_inlet_flow_rate - CO2_converted/24
         
         # CO2 outlet flow rate [m3/h]
-        CO2_outlet_flow_rate_m3_per_h = self.CO2_outlet_flow_rate_m3_per_h = CO2_outlet_flow_rate_kg_per_h/1.98 # the density of CO2 is 1.98 kg/m3
+        self.CO2_outlet_flow_rate_m3_per_h = CO2_outlet_flow_rate_kg_per_h/1.98 # the density of CO2 is 1.98 kg/m3
         
         # production amount based on inlet CO2 [kg/day]
         product_production = CO2_converted/44/float(chemical_info['mole_ratio'])*float(chemical_info['MW'])
@@ -378,7 +381,7 @@ class CO2ElectrolyzerSystem(SanUnit):
         self.electrolyzer_area = current_needed/self.current_density/10000
         
         # required power [MW]
-        power_needed = current_needed*self.cell_voltage/1000000
+        self.power_needed = current_needed*self.cell_voltage/1000000
         
         # gas product flow rate [m3/h]
         gas_product_flow_rate = 0 if chemical_info['state'].to_string(index=False) == 'liq' else product_production/float(chemical_info['density'])/24
@@ -390,27 +393,27 @@ class CO2ElectrolyzerSystem(SanUnit):
         liquid_product_flow_rate_l_per_min = liquid_product_flow_rate_m3_per_h*1000/60
         
         # electrolyte flow rate [l/min]
-        self.electrolyte_flow_rate = liquid_product_flow_rate_l_per_min/0.1 # TODO: figure out what '0.1' represents here
+        # it is assumed that product-rich electrolyte is recycled until a steady-state volume concentration of 10% if reached
+        self.electrolyte_flow_rate = liquid_product_flow_rate_l_per_min/0.1
         
         # hydrogen flow rate [mol/s]
-        hydrogen_flow_rate_mol_per_s = current_needed*(1-self.product_selectivity)/2/96485 # TODO: figure out what '2' represents here
+        # 2 represents 2 e-
+        hydrogen_flow_rate_mol_per_s = current_needed*(1-self.product_selectivity)/2/96485
         
         # hydrogen flow rate [m3/h]
-        hydrogen_flow_rate_m3_per_h = hydrogen_flow_rate_mol_per_s*2.008/1000/0.08375*3600 # TODO: figure out what '2.008' and '0.08375' represent here
-        
-        # process water flow rate [gal/day]
-        process_water_rate = current_needed/4/96485*18/1000*24*3600*0.2642 # TODO: figure out what '4' and '0.2642' represent here
+        # hydrogen molar mass: 2.016, hydrogen density: 0.08375 kg/m3
+        hydrogen_flow_rate_m3_per_h = hydrogen_flow_rate_mol_per_s*2.016/1000/0.08375*3600
         
         # total gas flow [m3/h]
-        self.total_gas_flow = CO2_outlet_flow_rate_m3_per_h + gas_product_flow_rate + hydrogen_flow_rate_m3_per_h
+        self.total_gas_flow = self.CO2_outlet_flow_rate_m3_per_h + gas_product_flow_rate + hydrogen_flow_rate_m3_per_h
         
         product.imass[chemical_info['formula'].to_string(index=False)] = product_production/24
         product.phase = 'g' if chemical_info['state'].to_string(index=False) == 'gas' else 'l'
         
-        water.imass['H2O'] = process_water_rate*0.00378541*1000/24
-        # TODO: use mixed_off_gas to meet mass balance (mixed_off_gas )
+        water.imass['H2O'] = current_needed/4/96485*18/1000*3600
+        # TODO: check mass balance and energy balance
         mixed_offgas.imass['CO2'] = CO2_outlet_flow_rate_kg_per_h
-        mixed_offgas.imass['H2'] = hydrogen_flow_rate_m3_per_h*0.08375 # H2 density: 0.08375 kg/m3 (https://h2tools.org/hyarc/hydrogen-data/basic-hydrogen-properties, accessed 5-15-2024)
+        mixed_offgas.imass['H2'] = hydrogen_flow_rate_m3_per_h*0.08375 # hydrogen density: 0.08375 kg/m3
         mixed_offgas.imass['O2'] = carbon_dioxide.F_mass + water.F_mass - product.F_mass - mixed_offgas.imass['CO2'] - mixed_offgas.imass['H2']
         mixed_offgas.phase = 'g'
     
@@ -423,8 +426,7 @@ class CO2ElectrolyzerSystem(SanUnit):
         
         D['Total gas flow for PSA'] = 0 if self.CO2_outlet_flow_rate_m3_per_h == self.total_gas_flow else self.total_gas_flow
         
-        # TODO: set electricity usage (see biosteam.units._pump.py) (for electrolyzer and PSA)
-        # self.add_power_utility
+        self.add_power_utility(self.power_needed*1000 + D['Total gas flow for PSA']*self.PSA_operating_cost)
         
         # TODO: add construction for LCA
         # if self.include_construction:
@@ -438,3 +440,11 @@ class CO2ElectrolyzerSystem(SanUnit):
     
     def _cost(self):
         self._decorated_cost()
+        
+        distillation_OPEX = {'ethanol': 3463310,
+                             'formic acid': 11213200,
+                             'methanol': 4027820,
+                             'propanol': 5610420}
+        if self.chemical_info['chemical'].to_string(index=False) in list(distillation_OPEX.keys()):
+            self.add_OPEX = {f'{self.chemical_info["chemical"].to_string(index=False)}_distillation_OPEX':
+                             self.electrolyte_flow_rate/1000*distillation_OPEX[self.chemical_info['chemical'].to_string(index=False)]/self.operating_days_per_year/24}

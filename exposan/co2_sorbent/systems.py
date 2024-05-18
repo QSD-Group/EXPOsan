@@ -13,15 +13,18 @@ for license details.
 
 References:
 
-(1) David, E.; Stanciu, V.; Sandru, C.; Armeanu, A.; Niculescu, V.
+(1) Huang, Z.; Grim, R. G.; Schaidle, J. A.; Tao, L. The Economic Outlook for
+    Converting CO2 and Electrons to Molecules. Energy Environ. Sci.
+    2021, 14 (7), 3664–3678. https://doi.org/10.1039/D0EE03525D.
+(2) Jouny, M.; Luc, W.; Jiao, F. General Techno-Economic Analysis of CO2
+    Electrolysis Systems. Ind. Eng. Chem. Res. 2018, 57 (6), 2165–2177.
+    https://doi.org/10.1021/acs.iecr.7b03514.
+(3) David, E.; Stanciu, V.; Sandru, C.; Armeanu, A.; Niculescu, V.
     Exhaust Gas Treatment Technologies for Pollutant Emission Abatement from
     Fossil Fuel Power Plants. In Sustainable Development and Planning III;
     WIT Press: Algarve, Portugal, 2007; Vol. II, pp 923–932.
     https://doi.org/10.2495/SDP070882.
-(2) Huang, Z.; Grim, R. G.; Schaidle, J. A.; Tao, L. The Economic Outlook for
-    Converting CO2 and Electrons to Molecules. Energy Environ. Sci.
-    2021, 14 (7), 3664–3678. https://doi.org/10.1039/D0EE03525D.
-(3) Hu, L.; Wrubel, J. A.; Baez-Cotto, C. M.; Intia, F.; Park, J. H.;
+(4) Hu, L.; Wrubel, J. A.; Baez-Cotto, C. M.; Intia, F.; Park, J. H.;
     Kropf, A. J.; Kariuki, N.; Huang, Z.; Farghaly, A.; Amichi, L.;
     Saha, P.; Tao, L.; Cullen, D. A.; Myers, D. J.; Ferrandon, M. S.;
     Neyerlin, K. C. A Scalable Membrane Electrode Assembly Architecture
@@ -49,7 +52,7 @@ __all__ = (
 # =============================================================================
 # Al(OH)3 + HCOOH
 # =============================================================================
-def create_system_A(product='formic acid'):
+def create_system_A(product='formic acid', electricity_price=0.068, yearly_operating_days=350):
 
     flowsheet_ID = 'ALF_A'
     
@@ -60,6 +63,11 @@ def create_system_A(product='formic acid'):
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
     qs.main_flowsheet.set_flowsheet(flowsheet)
+    
+    # TODO: electricity price based on Huang et al. 2021:
+    # 0.068 $/kWh (current scenario), 0.030 $/kWh (future scenario), 0.020 $/kWh (theoretical scenario)
+    # Jouny et al. 2018 used 0.03 $/kWh
+    bst.PowerUtility.price = electricity_price
     
     _load_components()
     # TODO: update CEPCI year
@@ -158,7 +166,9 @@ def create_system_A(product='formic acid'):
                                   cell_voltage=2.3,
                                   cathodic_overpotential=0.454,
                                   product_selectivity=0.9,
-                                  converstion=0.5)
+                                  converstion=0.5,
+                                  PSA_operating_cost=0.25,
+                                  operating_days_per_year=yearly_operating_days)
     E1.register_alias('E1')
     
     # TODO: determine the offgas fate for E1 (maybe sending it to a CHP unit?)
@@ -174,7 +184,7 @@ def create_system_A(product='formic acid'):
     # CT.ins[-1].price = price['Cooling tower chems']
 
     # opearting hours: 7884 h/year (Hu et al. 2023 SI)
-    sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=7884)
+    sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=yearly_operating_days*24)
     sys.register_alias('sys')
 
     create_tea(sys)
