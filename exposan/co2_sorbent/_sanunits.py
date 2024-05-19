@@ -311,7 +311,6 @@ class CO2ElectrolyzerSystem(SanUnit):
     _N_ins = 2
     _N_outs = 2
     
-    # TODO: update _units
     _units= {'Electrolyzer area': 'm^2',
              'Electrolyte flow rate (ethanol)': 'L/min',
              'Electrolyte flow rate (formic acid)': 'L/min',
@@ -319,7 +318,6 @@ class CO2ElectrolyzerSystem(SanUnit):
              'Electrolyte flow rate (propanol)': 'L/min',
              'Total gas flow for PSA': 'm^3/h'}
     
-    # TODO: may use 'add_OPEX' argument to add OPEX instead of OPEX_over_CAPEX (see qsdsan/_sanunit.py)
     def __init__(self, ID='', ins=(), outs=(), target_product='formic acid', current_density=0.2,
                  cell_voltage=2.3, cathodic_overpotential=0.454, product_selectivity=0.9,
                  converstion=0.5, PSA_operating_cost=0.25, operating_days_per_year=350):

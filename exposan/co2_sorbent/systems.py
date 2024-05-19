@@ -157,7 +157,6 @@ def create_system_A(product='formic acid', electricity_price=0.068, yearly_opera
                                            outs=('offgas','CO2','used_ALF','regenerated_ALF_out'))
     TSA.register_alias('TSA')
     
-    # TODO: replace LowTemperatureElectrolysis with CO2ElectrolyzerSystem
     E1 = su.CO2ElectrolyzerSystem(ID='CO2_electrolyzer',
                                   ins=(TSA-1, 'process_water'),
                                   outs=('product','mixed_offgas'),
@@ -170,6 +169,24 @@ def create_system_A(product='formic acid', electricity_price=0.068, yearly_opera
                                   PSA_operating_cost=0.25,
                                   operating_days_per_year=yearly_operating_days)
     E1.register_alias('E1')
+    
+    # TODO: the current water price is form Jouny et al. 2018 (0.0054 $/gal), update if necessary
+    E1.ins[1].price = 0.0054/3.7854
+    
+    if product == 'carbon monoxide':
+        E1.outs[1].price = 0.6
+    if product == 'ethanol':
+        E1.outs[1].price = 1.003
+    if product == 'ethylene':
+        E1.outs[1].price = 1.3
+    if product == 'formic acid':
+        E1.outs[1].price = 0.735
+    if product == 'methane':
+        E1.outs[1].price = 0.18
+    if product == 'methanol':
+        E1.outs[1].price = 0.577
+    if product == 'propanol':
+        E1.outs[1].price = 1.435
     
     # TODO: determine the offgas fate for E1 (maybe sending it to a CHP unit?)
     
