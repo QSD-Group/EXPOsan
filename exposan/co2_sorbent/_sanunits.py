@@ -32,16 +32,23 @@ __all__ = (
 # ALFProduction
 # =============================================================================
 
+# TODO: decide if adding T and tau as uncertainty parameters
 class ALFProduction(bst.CSTR):
     '''
     Reactor for ALF production.
+        
+    References
+    ----------
+    [1] Xue, M.; Gao, B.; Li, R.; Sun, J. Aluminum Formate (AF): Synthesis,
+        Characterization and Application in Dye Wastewater Treatment.
+        Journal of Environmental Sciences 2018, 74, 95–106.
+        https://doi.org/10.1016/j.jes.2018.02.013.
     '''
     _N_ins = 1
     _N_outs = 1
-    # TODO: confirm T and tau
-    T_default = 60 + 273.15
-    P_default = 101325
-    tau_default = 8 # hr
+    T_default = 60 + 273.15 # [K]
+    P_default = 101325 # [Pa]
+    tau_default = 2 # [h]
     
     def _setup(self):
         super()._setup()
@@ -57,6 +64,7 @@ class ALFProduction(bst.CSTR):
 # =============================================================================
 # ALFCrystallizer
 # =============================================================================
+# TODO: decide if is is appropriate to assume the ALF crystallization yield is 1.
 class ALFCrystallizer(bst.BatchCrystallizer):
     '''
     Crystallier for ALF.
@@ -100,6 +108,7 @@ class ALFCrystallizer(bst.BatchCrystallizer):
 # =============================================================================
 # ALFTemperatureSwingAdsorption
 # =============================================================================
+# TODO: check this sanunit thoroughly
 class ALFTemperatureSwingAdsorption(PressureVessel, Splitter):
     '''
     TSA using ALF as adsorbent for CO2 adsorption.
@@ -128,7 +137,7 @@ class ALFTemperatureSwingAdsorption(PressureVessel, Splitter):
         Vessel type. Defaults to 'Vertical'.
     length_unused : float, optional
         Additional length of a column to account for mass transfer limitations (due to unused bed). Defaults to 2 ft per column.
-    waste_ratio : float, optiona;
+    waste_ratio : float, optional
         Wasted ALF ratio per run. Defaults to 0.07.
     
     References
@@ -140,7 +149,6 @@ class ALFTemperatureSwingAdsorption(PressureVessel, Splitter):
         Aluminum Formate, Al(HCOO)3: An Earth-Abundant, Scalable, and Highly
         Selective Material for CO2 Capture. Science Advances 2022, 8 (44),
         eade1473. https://doi.org/10.1126/sciadv.ade1473.
-
     '''
     auxiliary_unit_names = ('heat_exchanger_regeneration','heat_exchanger_cooling')
     
@@ -156,12 +164,12 @@ class ALFTemperatureSwingAdsorption(PressureVessel, Splitter):
     auxiliary_unit_names=('heat_exchanger_regeneration','heat_exchanger_cooling')
     
     def _init(self,
-              split=dict(O2=0, N2=0, CO2=1),
+              split=dict(O2=0, N2=0, CO2=1), # update in the system.py based on the flue gas composition and ALF soption purity (0.975) and recovery (0.945), Evans et al. 2022
               superficial_velocity=1080, # m/h
               regeneration_velocity=1080, # m/h # TODO: need to decide if this is needed since there is no carrier gas stream
               cycle_time=8, # h
               rho_adsorbent = 1441, # kg/m3
-              adsorbent_capacity=2.7, # mmol/g # TODO: need to convert the unit
+              adsorbent_capacity=2.7, # mmol/g
               T_regeneration=418, # K
               vessel_material='Stainless steel 316',
               vessel_type='Vertical',
@@ -200,7 +208,7 @@ class ALFTemperatureSwingAdsorption(PressureVessel, Splitter):
         self.diameter = diameter = 2 * sqrt(F_vol_feed / (superficial_velocity * pi))
         self.area = area = pi * diameter * diameter / 4
         total_length = (
-            self.cycle_time * F_mass_adsorbate / (self.adsorbent_capacity * self.rho_adsorbent * area)
+            self.cycle_time * F_mass_adsorbate / (self.adsorbent_capacity/1000*44 * self.rho_adsorbent * area)
         ) + self.length_unused # length of equilibrium section plus unused bed (LES + LUB)
         self.length = length = total_length / 2 # Size of each column
         self.vessel_volume = length * area

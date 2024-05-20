@@ -13,7 +13,7 @@ for license details.
 
 References:
 
-(1) Huang, Z.; Grim, R. G.; Schaidle, J. A.; Tao, L. The Economic Outlook for
+[1] Huang, Z.; Grim, R. G.; Schaidle, J. A.; Tao, L. The Economic Outlook for
     Converting CO2 and Electrons to Molecules. Energy Environ. Sci.
     2021, 14 (7), 3664–3678. https://doi.org/10.1039/D0EE03525D.
 
