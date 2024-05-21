@@ -16,14 +16,17 @@ for license details.
 # import biosteam as bst
 import pandas as pd, biosteam as bst, qsdsan as qs
 from qsdsan import SanUnit
+from biosteam import Unit
 from math import sqrt, pi
-from biosteam import Splitter
+from biosteam import SolidsSeparator, Splitter
 from biosteam.units.design_tools import PressureVessel
 from biosteam.units.decorators import cost
 
+# TODO: add LCA for all units
 __all__ = (
     'ALFProduction',
     'ALFCrystallizer',
+    'ALFPressureFilter',
     'ALFTemperatureSwingAdsorption',
     'CO2ElectrolyzerSystem'
     )
@@ -31,24 +34,12 @@ __all__ = (
 # =============================================================================
 # ALFProduction
 # =============================================================================
-
-# TODO: decide if adding T and tau as uncertainty parameters
 class ALFProduction(bst.CSTR):
     '''
     Reactor for ALF production.
-        
-    References
-    ----------
-    [1] Xue, M.; Gao, B.; Li, R.; Sun, J. Aluminum Formate (AF): Synthesis,
-        Characterization and Application in Dye Wastewater Treatment.
-        Journal of Environmental Sciences 2018, 74, 95–106.
-        https://doi.org/10.1016/j.jes.2018.02.013.
     '''
     _N_ins = 1
     _N_outs = 1
-    T_default = 60 + 273.15 # [K]
-    P_default = 101325 # [Pa]
-    tau_default = 2 # [h]
     
     def _setup(self):
         super()._setup()
@@ -64,7 +55,6 @@ class ALFProduction(bst.CSTR):
 # =============================================================================
 # ALFCrystallizer
 # =============================================================================
-# TODO: decide if is is appropriate to assume the ALF crystallization yield is 1.
 class ALFCrystallizer(bst.BatchCrystallizer):
     '''
     Crystallier for ALF.
@@ -73,28 +63,24 @@ class ALFCrystallizer(bst.BatchCrystallizer):
     ----------
     crystal_ALF_yield : float, optional
         ALF crystallization yield. Defacults to 1.
+    
+    References
+    ----------
+    [1] Evans, H. A.; Mullangi, D.; Deng, Z.; Wang, Y.; Peh, S. B.; Wei, F.;
+        Wang, J.; Brown, C. M.; Zhao, D.; Canepa, P.; Cheetham, A. K.
+        Aluminum Formate, Al(HCOO)3: An Earth-Abundant, Scalable, and Highly
+        Selective Material for CO2 Capture. Science Advances 2022, 8 (44),
+        eade1473. https://doi.org/10.1126/sciadv.ade1473.
     '''
     def __init__(self, ID='', ins=None, outs=(), thermo=None, *, 
-                 T, crystal_ALF_yield=1):
+                 tau=5, N=3, T=298.15, crystal_ALF_yield=1):
         bst.BatchCrystallizer.__init__(self, ID, ins, outs, thermo,
-                                       tau=5, V=1e6, T=T)
+                                       tau=tau, N=N, T=T)
         self.crystal_ALF_yield = crystal_ALF_yield
-
-    @property
-    def Hnet(self):
-        feed = self.ins[0]
-        effluent = self.outs[0]
-        if 's' in feed.phases:
-            H_in = - sum([i.Hfus * j for i,j in zip(self.chemicals, feed['s'].mol) if i.Hfus])
-        else:
-            H_in = 0.
-        solids = effluent['s']
-        H_out = - sum([i.Hfus * j for i,j in zip(self.chemicals, solids.mol) if i.Hfus])
-        return H_out - H_in
         
     def _run(self):
         outlet = self.outs[0]
-        outlet.phases = ('s', 'l')
+        outlet.phases = ('s','l')
         crystal_ALF_yield = self.crystal_ALF_yield
         feed = self.ins[0]
         ALF = feed.imass['C3H3AlO6']
@@ -104,6 +90,102 @@ class ALFCrystallizer(bst.BatchCrystallizer):
         outlet.imass['l', ('C3H3AlO6','HCOOH','H2O')] = [ALF*(1-crystal_ALF_yield), feed.imass['HCOOH'], feed.imass['H2O']]
         
         outlet.T = self.T
+
+# =============================================================================
+# ALFPressureFilter
+# =============================================================================
+_hp2kW = 0.7457
+@cost('Retentate flow rate', 'Flitrate tank agitator',
+      cost=26e3, CE=551, kW=7.5*_hp2kW, S=31815, n=0.5, BM=1.5)
+@cost('Retentate flow rate', 'Discharge pump',
+      cost=13040, CE=551, S=31815, n=0.8, BM=2.3)
+@cost('Retentate flow rate', 'Filtrate tank',
+      cost=103e3, S=31815, CE=551, BM=2.0, n=0.7)
+@cost('Retentate flow rate', 'Feed pump', kW=74.57,
+      cost= 18173, S=31815, CE=551, n=0.8, BM=2.3)
+@cost('Retentate flow rate', 'Stillage tank 531',
+      cost=174800, CE=551, S=31815, n=0.7, BM=2.0)
+@cost('Retentate flow rate', 'Mafifold flush pump', kW=74.57,
+      cost=17057, CE=551, S=31815, n=0.8, BM=2.3)
+@cost('Retentate flow rate', 'Recycled water tank',
+      cost=1520, CE=551, S=31815, n=0.7, BM=3.0)
+@cost('Retentate flow rate', 'Wet cake screw',  kW=15*_hp2kW,
+      cost=2e4, CE=521.9, S=28630, n=0.8, BM=1.7)
+@cost('Retentate flow rate', 'Wet cake conveyor', kW=10*_hp2kW,
+      cost=7e4, CE=521.9, S=28630, n=0.8, BM=1.7)
+@cost('Retentate flow rate', 'Pressure filter',
+      cost=3294700, CE=551, S=31815, n=0.8, BM=1.7)
+@cost('Retentate flow rate', 'Pressing air compressor receiver tank',
+      cost=8e3, CE=551, S=31815, n=0.7, BM=3.1)
+@cost('Retentate flow rate', 'Cloth wash pump', kW=150*_hp2kW,
+      cost=29154, CE=551, S=31815, n=0.8, BM=2.3)
+@cost('Retentate flow rate', 'Dry air compressor receiver tank',
+      cost=17e3, CE=551, S=31815, n=0.7, BM=3.1)
+@cost('Retentate flow rate', 'Pressing air pressure filter',
+      cost=75200, CE=521.9, S=31815, n=0.6, kW=112, BM=1.6)
+@cost('Retentate flow rate', 'Dry air pressure filter (2)',
+      cost=405000, CE=521.9, S=31815, n=0.6, kW=1044, BM=1.6)
+class ALFPressureFilter(Unit):
+    """
+    Create a pressure filter for the separation of ALF. Capital costs are based on [1]_.
+    
+    Parameters
+    ----------
+    ins : 
+        Contains structural carbohydrates, lignin, cell mass, and other solids.
+    outs : 
+        * [0] Retentate (i.e. solids)
+        * [1] Filtrate
+    split : array_like or dict[str, float]
+        Splits of chemicals to the retentate. Defaults to values used in
+        the 2011 NREL report on cellulosic ethanol as given in [2]_.
+    moisture_content : float, optional
+        Moisture content of retentate. Defaults to 0.35
+    
+    References
+    ----------
+    [1] Humbird, D., Davis, R., Tao, L., Kinchin, C., Hsu, D., Aden, A.,
+        Dudgeon, D. (2011). Process Design and Economics for Biochemical 
+        Conversion of Lignocellulosic Biomass to Ethanol: Dilute-Acid 
+        Pretreatment and Enzymatic Hydrolysis of Corn Stover
+        (No. NREL/TP-5100-47764, 1013269). https://doi.org/10.2172/1013269
+    
+    """
+    _units = {'Retentate flow rate': 'kg/hr'}
+    
+    _N_ins = 1
+    _N_outs = 2
+    
+    def _init(self, ID='', ins=None, outs=(),
+              moisture_content=0.35, split={'C3H3AlO6_s':1,
+                                            'C3H3AlO6_l':0,
+                                            'HCOOH':0.036}):
+        self.moisture_content = moisture_content
+        self.split = split
+    
+    def _run(self):
+        inlet = self.ins[0]
+        retentate, permeate = self.outs
+        
+        retentate.phases = ('s','l')
+        permeate.phases = ('s','l')
+        
+        retentate.imass['s','C3H3AlO6'] = inlet.imass['s','C3H3AlO6']*self.split['C3H3AlO6_s']
+        permeate.imass['s','C3H3AlO6'] = inlet.imass['s','C3H3AlO6']*(1-self.split['C3H3AlO6_s'])
+        
+        retentate.imass['l','C3H3AlO6'] = inlet.imass['l','C3H3AlO6']*self.split['C3H3AlO6_l']
+        permeate.imass['l','C3H3AlO6'] = inlet.imass['l','C3H3AlO6']*(1-self.split['C3H3AlO6_l'])
+        
+        retentate.imass['l','HCOOH'] = inlet.imass['l','HCOOH']*self.split['HCOOH']
+        permeate.imass['l','HCOOH'] = inlet.imass['l','HCOOH']*(1-self.split['HCOOH'])
+        
+        # TODO: retentate.F_mass here does not include water and include the above three?
+        # breakpoint()
+        retentate.imass['l','H2O'] = retentate.F_mass/(1-self.moisture_content)*self.moisture_content
+        permeate.imass['l','H2O'] = inlet.imass['l','H2O'] - retentate.imass['l','H2O']
+    
+    def _design(self):
+        self.design_results['Retentate flow rate'] = self.outs[0].F_mass
 
 # =============================================================================
 # ALFTemperatureSwingAdsorption
@@ -152,10 +234,7 @@ class ALFTemperatureSwingAdsorption(PressureVessel, Splitter):
     '''
     auxiliary_unit_names = ('heat_exchanger_regeneration','heat_exchanger_cooling')
     
-    # in $/ft3 # TODO: this cost is just for the initial ALF in 3 columns, replace the value
-    adsorbent_cost = 1
-    
-    # in year # TODO: confirm the value
+    # in year # TODO: confirm the value, and make sure changing the value here really changes the value during running
     _default_equipment_lifetime = 10
     
     _N_ins = 3
@@ -166,7 +245,6 @@ class ALFTemperatureSwingAdsorption(PressureVessel, Splitter):
     def _init(self,
               split=dict(O2=0, N2=0, CO2=1), # update in the system.py based on the flue gas composition and ALF soption purity (0.975) and recovery (0.945), Evans et al. 2022
               superficial_velocity=1080, # m/h
-              regeneration_velocity=1080, # m/h # TODO: need to decide if this is needed since there is no carrier gas stream
               cycle_time=8, # h
               rho_adsorbent = 1441, # kg/m3
               adsorbent_capacity=2.7, # mmol/g
@@ -174,11 +252,10 @@ class ALFTemperatureSwingAdsorption(PressureVessel, Splitter):
               vessel_material='Stainless steel 316',
               vessel_type='Vertical',
               length_unused=1.219, # m
-              waste_ratio=0.07, # ratio of ALF that is wasted (and is sent for CO2 storage) each cycle # TODO: confirm this is for each cycle
+              adsorbent_cost=1.3, # $/kg
               ):
         bst.Splitter._init(self, split=split)
         self.superficial_velocity = superficial_velocity
-        self.regeneration_velocity = regeneration_velocity
         self.cycle_time = cycle_time
         self.rho_adsorbent = rho_adsorbent
         self.adsorbent_capacity = adsorbent_capacity
@@ -186,7 +263,7 @@ class ALFTemperatureSwingAdsorption(PressureVessel, Splitter):
         self.vessel_type = vessel_type
         self.T_regeneration = T_regeneration
         self.length_unused = length_unused
-        self.waste_ratio = waste_ratio
+        self.adsorbent_cost = adsorbent_cost
         self.heat_exchanger_regeneration = bst.HXutility(None, None, None, thermo=self.thermo)
         self.heat_exchanger_cooling = bst.HXutility(None, None, None, thermo=self.thermo)
     
@@ -210,7 +287,7 @@ class ALFTemperatureSwingAdsorption(PressureVessel, Splitter):
         total_length = (
             self.cycle_time * F_mass_adsorbate / (self.adsorbent_capacity/1000*44 * self.rho_adsorbent * area)
         ) + self.length_unused # length of equilibrium section plus unused bed (LES + LUB)
-        self.length = length = total_length / 2 # Size of each column
+        self.length = length = total_length / 2 # size of each column
         self.vessel_volume = length * area
         
         ALF.phase = 'l'
@@ -263,11 +340,12 @@ class ALFTemperatureSwingAdsorption(PressureVessel, Splitter):
         N_reactors = design_results['Number of reactors']
         for i, j in baseline_purchase_costs.items():
             baseline_purchase_costs[i] *= N_reactors
-        baseline_purchase_costs['initial_ALF'] = N_reactors * 35.3147 * self.vessel_volume * self.adsorbent_cost
+        baseline_purchase_costs['ALF'] = N_reactors * self.vessel_volume * 1441 * self.adsorbent_cost
         
 # =============================================================================
 # CO2ElectrolyzerSystem
 # =============================================================================
+# TODO: do we really want CO2ElectrolyzerSystem as a subclass of SanUnit?
 
 # TODO: do we need to update the cost data, e.g., H2A (see the referred paper) $/m2, e.g., 2018$ (the referred paper is published in 2018) to 2020$ (if correct and necessary)
 
@@ -417,7 +495,7 @@ class CO2ElectrolyzerSystem(SanUnit):
         product.phase = 'g' if chemical_info['state'].to_string(index=False) == 'gas' else 'l'
         
         water.imass['H2O'] = current_needed/4/96485*18/1000*3600
-        # TODO: check mass balance and energy balance
+        # TODO: check mass balance and energy balance (question: O2 may be overestimated, since part of that mass could be unused processed water)
         mixed_offgas.imass['CO2'] = CO2_outlet_flow_rate_kg_per_h
         mixed_offgas.imass['H2'] = hydrogen_flow_rate_m3_per_h*0.08375 # hydrogen density: 0.08375 kg/m3
         mixed_offgas.imass['O2'] = carbon_dioxide.F_mass + water.F_mass - product.F_mass - mixed_offgas.imass['CO2'] - mixed_offgas.imass['H2']
