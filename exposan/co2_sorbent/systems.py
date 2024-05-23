@@ -37,19 +37,19 @@ References:
 
 import os, qsdsan as qs, biosteam as bst
 from qsdsan import sanunits as qsu
-from biosteam.units import PressureFilter, DrumDryer, AdsorptionColumnTSA
+from biosteam.units import DrumDryer, HammerMill
 from qsdsan.utils import clear_lca_registries
 from exposan.co2_sorbent import (
     _load_components,
     create_tea,
     )
 from exposan.co2_sorbent import _sanunits as su
-from biosteam import settings
 
 # TODO: add LCA for all systems
+# TODO: update all price/cost to the baseline year (2022)
 __all__ = (
     'create_system_A', # ALF production using Al(OH)3
-    # 'create_system_B', # ALF production using Bauxite
+    'create_system_B', # ALF production using Bauxite
     # 'create_system_C' # CO2 capture and utilization
     )
 
@@ -67,8 +67,7 @@ GDPCTPI = {2016: 98.208,
 # =============================================================================
 # ALF production: Al(OH)3 + HCOOH
 # =============================================================================
-def create_system_A(product='formic acid',
-                    AlH3O3=100, # TODO: this can be an x-axis variable
+def create_system_A(AlH3O3=100,
                     electricity_price=0.0832,
                     yearly_operating_days=350):
 
@@ -91,9 +90,7 @@ def create_system_A(product='formic acid',
     _load_components()
     # all costs in this analysis are 2022$
     bst.CE = qs.CEPCI_by_year[2022]
-    # TODO: update all price/cost to the baseline year (2022)
     
-    # Construction here, StreamImpactItem after TEA
     folder = os.path.dirname(__file__)
     qs.ImpactIndicator.load_from_file(os.path.join(folder, 'data/impact_indicators.csv'))
     qs.ImpactItem.load_from_file(os.path.join(folder, 'data/impact_items.xlsx'))
@@ -106,6 +103,7 @@ def create_system_A(product='formic acid',
     # 2022 average:
     # https://businessanalytiq.com/procurementanalytics/index/aluminum-hydroxide-price-index/
     # (accessed 2024-05-20)
+    # TODO: check if there are other sources for the price since this source seems not that reliable
     aluminum_hydroxide.price = 0.424
     
     # add water to generate a sludge that contains 5.1% w/w of aluminum, Mikola et al. 2013
@@ -132,6 +130,7 @@ def create_system_A(product='formic acid',
     # formic acid, 2022 average:
     # https://businessanalytiq.com/procurementanalytics/index/aluminum-hydroxide-price-index/
     # (accessed 2024-05-20)
+    # TODO: check if there are other sources for the price since this source seems not that reliable
     formic_acid.price = 0.82*0.8 + bst.stream_prices['Reverse osmosis water']*0.2
     
     M2 = qsu.Mixer(ID='feed_mixer_2',
@@ -177,9 +176,7 @@ def create_system_A(product='formic acid',
                             water_recovery=0.987)
     RO1.outs[0].price = bst.stream_prices['Reverse osmosis water']
     RO1.register_alias('RO1')
-    
-    # TODO: for LCA, ideally, EFs for natural gas include emission, and no need to account for CO2 in the 'emissions' stream
-    # TODO: for LCA, also consider HCOOH in the hot air
+
     # natural price is already included (bst.stream_prices['Natural gas'] = 0.218 $/kg)
     D1 = DrumDryer(ID='ALF_dryer',
                    ins=(F1-0,'dryer_air','natural_gas'),
@@ -240,7 +237,8 @@ def create_system_A(product='formic acid',
     
     create_tea(sys)
     
-    # TODO: also add LCA for construction
+    # from Jeremy: LCA for construction may not be needed
+    # TODO: postpone doing LCA for construction
     # TODO: make sure the lifetimes for TEA and LCA are the same and decide if 20 years is appropriate
     qs.LCA(system=sys,
            lifetime=20,
@@ -261,13 +259,216 @@ def create_system_A(product='formic acid',
     return sys
 
 # =============================================================================
-# # =============================================================================
-# # ALF production: Bauxite + HCOOH
-# # =============================================================================
-# def create_system_B():
-# 
-#     flowsheet_ID = 'ALF_production_B'
-# 
+# ALF production: Bauxite + HCOOH
+# =============================================================================
+def create_system_B(bauxite=100,
+                    bauxite_price=0.075, # $/kg, related to bauxite_purity
+                    bauxite_Al2O3=0.6, # Al2O3 weight ratio in bauxite, related to bauxite_price
+                    bauxite_SiO2=0.11, # SiO2 weight ratio in bauxite, related to bauxite_price
+                    electricity_price=0.0832,
+                    yearly_operating_days=350):
+
+    flowsheet_ID = 'ALF_production_B'
+    
+    # clear flowsheet and registry for reloading
+    if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
+        getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
+        clear_lca_registries()
+    flowsheet = qs.Flowsheet(flowsheet_ID)
+    stream = flowsheet.stream
+    qs.main_flowsheet.set_flowsheet(flowsheet)
+    
+    # 2022 industrial electricity price is 0.0832 $/kWh
+    # https://www.eia.gov/electricity/annual/html/epa_02_04.html (accessed 2024-05-20)
+    # electricity price in the future and theoretical scenarios are based on Huang et al. 2021:
+    # 0.030 $/kWh (future scenario), 0.020 $/kWh (theoretical scenario)
+    bst.PowerUtility.price = electricity_price
+    
+    _load_components()
+    # all costs in this analysis are 2022$
+    bst.CE = qs.CEPCI_by_year[2022]
+    
+    folder = os.path.dirname(__file__)
+    qs.ImpactIndicator.load_from_file(os.path.join(folder, 'data/impact_indicators.csv'))
+    qs.ImpactItem.load_from_file(os.path.join(folder, 'data/impact_items.xlsx'))
+    
+    bauxite_ore = qs.WasteStream(ID='bauxite_ore',
+                                 phase='s',
+                                 Al2O3=bauxite*bauxite_Al2O3,
+                                 SiO2=bauxite*bauxite_SiO2,
+                                 Fe2O3=bauxite*(1-bauxite_Al2O3-bauxite_SiO2),
+                                 units='kg/h',
+                                 T=25+273.15)
+    # https://en.institut-seltene-erden.de/aktuelle-preise-von-basismetallen/
+    # Al2O3 60% min
+    # TODO: check if there are other sources for the price since this source seems not that reliable
+    bauxite_ore.price = 0.075
+    
+    G1 = su.BauxiteHammerMill(ID='bauxite_hammer_mill',
+                              ins=bauxite_ore,
+                              outs='crushed_bauxite',
+                              Al2O3_ratio=0.6)
+    G1.register_alias('G1')
+    
+    # add water to generate a sludge that contains 5.1% w/w of aluminum, Mikola et al. 2013
+    water = qs.WasteStream(ID='water',
+                            H2O=bauxite*bauxite_Al2O3/102*54/0.051-bauxite,
+                            units='kg/h',
+                            T=25+273.15)
+    water.price = bst.stream_prices['Reverse osmosis water']
+
+    M1 = qsu.Mixer(ID='feed_mixer_1',
+                    ins=(G1-0, water),
+                    outs='bauxite_H2O',
+                    init_with='Stream',
+                    rigorous=True,
+                    conserve_phases=True)
+    M1.register_alias('M1')
+    
+    # add 80% w/w HCOOH to reach a 1:3.5 of Al/HCOOH ratio, Mikola et al. 2013
+    formic_acid = qs.WasteStream(ID='formic_acid',
+                                HCOOH=bauxite*bauxite_Al2O3/102*3.5*46,
+                                H2O=bauxite*bauxite_Al2O3/102*3.5*46/0.8*0.2,
+                                units='kg/h',
+                                T=25+273.15)
+    # formic acid, 2022 average:
+    # https://businessanalytiq.com/procurementanalytics/index/aluminum-hydroxide-price-index/
+    # (accessed 2024-05-20)
+    formic_acid.price = 0.82*0.8 + bst.stream_prices['Reverse osmosis water']*0.2
+    
+    M2 = qsu.Mixer(ID='feed_mixer_2',
+                    ins=(M1-0, formic_acid),
+                    outs='bauxite_H2O_HCOOH',
+                    init_with='Stream',
+                    rigorous=True,
+                    conserve_phases=True)
+    M2.register_alias('M2')    
+    
+    # R1 = su.ALFProduction(ID='ALF_production',
+    #                       ins=M2-0,
+    #                       outs='ALF_solution',
+    #                       T=333.15, # [K], Xue et al. 2018
+    #                       P=101325, # [Pa]
+    #                       tau=2) # [h], 2 h in Xue et al. 2018, 1 h in Mikola et al. 2013
+    # R1.register_alias('R1')
+    
+    # C1 = su.ALFCrystallizer(ID='ALF_crystallizer',
+    #                         ins=R1-0,
+    #                         outs='ALF_mixed',
+    #                         tau=5, # TODO: test in the uncertainty analysis if this is important, if important, then decide a more appropriate value
+    #                         N=3,
+    #                         T=298.15, # room temperature, Evans et al. 2022
+    #                         crystal_ALF_yield=0.83) # crystal_ALF_yield = 0.83, Evans et al. 2022
+    # C1.register_alias('C1')   
+    
+    # # split ratio can be found in biosteam/units/solids_separation.py (soluble chemicals~0.036)
+    # F1 = su.ALFPressureFilter(ID='ALF_filter',
+    #                           ins=C1-0,
+    #                           outs=('retentate','permeate'),
+    #                           moisture_content=0.35,
+    #                           split={'C3H3AlO6_s':1,
+    #                                  'C3H3AlO6_l':0,
+    #                                  'HCOOH':0.036})
+    # F1.register_alias('F1')    
+    
+    # # RO cake can be potentially reused
+    # # asssume no cost and environmental impact associated with it
+    # RO1 = su.ReverseOsmosis(ID='Reverse_osmosis',
+    #                         ins=F1-1,
+    #                         outs=('RO_water','brine'),
+    #                         water_recovery=0.987)
+    # RO1.outs[0].price = bst.stream_prices['Reverse osmosis water']
+    # RO1.register_alias('RO1')
+
+    # # natural price is already included (bst.stream_prices['Natural gas'] = 0.218 $/kg)
+    # D1 = DrumDryer(ID='ALF_dryer',
+    #                ins=(F1-0,'dryer_air','natural_gas'),
+    #                outs=('dryed_ALF','hot_air','emissions'),
+    #                moisture_content=0,
+    #                split={'HCOOH':1})
+    # D1.register_alias('D1')
+    
+    # NGLCA = su.NGLCA(ID='NGLCA',
+    #                ins=D1-2,
+    #                outs='emissions_LCA')
+    # NGLCA.register_alias('NGLCA')
+    
+    # S1 = bst.StorageTank('ALF_storage_tank', ins=D1-0, outs='ALF',
+    #                      tau=24*7, vessel_material='Stainless steel')
+    # S1.register_alias('S1')
+    
+    # # HXN (heat exchanger network), CWP (chilled water package)
+    # # and BT (BoilerTurbogenerator) don't help in this system
+    
+    sys = qs.System.from_units(ID='sys_ALF_B',
+                               units=list(flowsheet.unit),
+                               operating_hours=yearly_operating_days*24)
+    sys.register_alias('sys')
+    
+    # for LCA, using ecoinvent database 3.8 apos (default) and TRACI method for now
+    # TODO: can change to ecoinvent database 3.8 cutoff and IPCC method if necessary
+    # TODO: confirm HCOOH in the stream.hot_air does not contribute to GWP
+    
+    # market group for natural gas, high pressure, GLO
+    # does not include emissions
+    # 39 MJ/m3 (https://ecoquery.ecoinvent.org/3.8/apos/dataset/14395/documentation)
+    # 53.6 MJ/kg (https://www.sciencedirect.com/science/article/pii/B9780128095973003357)
+    # qs.StreamImpactItem(ID='natural_gas',
+    #                     linked_stream=stream.emissions_LCA,
+    #                     GlobalWarming=1+0.33690797/39*53.6/44*16,)
+    
+    # # market for aluminium hydroxide, GLO
+    # qs.StreamImpactItem(ID='aluminum_hydroxide',
+    #                     linked_stream=stream.aluminum_hydroxide,
+    #                     GlobalWarming=0.98853282,)
+    
+    # # water production, deionised, RoW
+    # qs.StreamImpactItem(ID='water',
+    #                     linked_stream=stream.water,
+    #                     GlobalWarming=0.00030228066,)
+    
+    # # market for formic acid, RoW
+    # # for 80% HCOOH
+    # qs.StreamImpactItem(ID='formic_acid',
+    #                     linked_stream=stream.formic_acid,
+    #                     GlobalWarming=2.8612976*0.8+0.00030228066*0.2,)
+    
+    # # water production, deionised, RoW
+    # qs.StreamImpactItem(ID='RO_water',
+    #                     linked_stream=stream.RO_water,
+    #                     GlobalWarming=-0.00030228066,)
+    
+    create_tea(sys)
+    
+    
+    # from Jeremy: LCA for construction may not be needed
+    # TODO: postpone doing LCA for construction
+    # TODO: make sure the lifetimes for TEA and LCA are the same and decide if 20 years is appropriate
+    # qs.LCA(system=sys,
+    #        lifetime=20,
+    #        lifetime_unit='yr',
+    #        Electricity=lambda:(sys.get_electricity_consumption()-\
+    #                            sys.get_electricity_production())*20,
+    #        Cooling=lambda:sys.get_cooling_duty()/1000*20,
+    #        Heating=lambda:sys.get_heating_duty()/1000*20)
+    
+    # !!! errors like 'UndefinedPhase: <DrumDryer: ALF_dryer> 'G'' is because the system being simulated for multiple times (note qs.LCA simulate the system as well)
+    # TODO: decide whether the above glitch affects creating models
+    sys.simulate()
+    sys.diagram()
+    
+    # print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.ALF):.2f} $/kg ALF")
+    # print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.ALF.F_mass/sys.operating_hours/sys.LCA.lifetime:.2f} kg CO2/kg ALF")
+    
+    return sys
+    
+    
+    
+    
+    
+    
+    
+
 # # =============================================================================
 # # CO2 capture and utilization
 # # =============================================================================
@@ -278,9 +479,9 @@ def create_system_A(product='formic acid',
 #                     recovery=0.945, # Evans et al. 2022
 #                     electricity_price=0.0832,
 #                     yearly_operating_days=350):
-# 
+
 #     flowsheet_ID = 'CCU'
-#     
+    
 #     # clear flowsheet and registry for reloading
 #     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
 #         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
@@ -288,17 +489,17 @@ def create_system_A(product='formic acid',
 #     flowsheet = qs.Flowsheet(flowsheet_ID)
 #     stream = flowsheet.stream
 #     qs.main_flowsheet.set_flowsheet(flowsheet)
-#     
+    
 #     # 2022 industrial electricity price is 0.0832 $/kWh, https://www.eia.gov/electricity/annual/html/epa_02_04.html (accessed 2024-05-20)
 #     # electricity price in the future and theoretical scenarios are based on Huang et al. 2021:
 #     # 0.030 $/kWh (future scenario), 0.020 $/kWh (theoretical scenario)
 #     bst.PowerUtility.price = electricity_price
-#     
+    
 #     _load_components()
 #     # all costs in this analysis are 2022$
 #     bst.CE = qs.CEPCI_by_year[2022]
 #     # TODO: update all price/cost to the baseline year (2022)
-#     
+    
 #     # coal-fired power plant flue gas composition: 13% CO2, 5% O2, and 82% N2 (David et al. 2007)
 #     # for a typical 1000 MWh plant, assume CO2=780000 kg/h (Huang et al. 2021)
 #     flue_gas = qs.WasteStream(ID='flue_gas',
@@ -308,14 +509,14 @@ def create_system_A(product='formic acid',
 #                               phase='g',
 #                               units='kg/h',
 #                               T=25+273.15)
-#     
+    
 #     if production_system == 'A':
 #         adsorbent_cost = XXX
 #         adsorbent_CI = XXX
 #     if production_system == 'B':
 #         adsorbent_cost = XXX
 #         adsorbent_CI = XXX
-#     
+    
 #     TSA = su.ALFTemperatureSwingAdsorption(ID='ALF_TSA',
 #                                             split=dict(O2=(0.13*recovery/purity-0.13*recovery)/0.87,
 #                                                        N2=(0.13*recovery/purity-0.13*recovery)/0.87,
@@ -324,7 +525,7 @@ def create_system_A(product='formic acid',
 #                                             outs=('offgas','CO2','used_ALF','regenerated_ALF_out'),
 #                                             adsorbent_cost=adsorbent_cost)
 #     TSA.register_alias('TSA')
-#     
+    
 #     E1 = su.CO2ElectrolyzerSystem(ID='CO2_electrolyzer',
 #                                   ins=(TSA-1, 'process_water'),
 #                                   outs=('product','mixed_offgas'),
@@ -338,28 +539,28 @@ def create_system_A(product='formic acid',
 #                                   operating_days_per_year=yearly_operating_days)
 #     E1.register_alias('E1')
 #     E1.ins[1].price = bst.stream_prices['Reverse osmosis water']
-#     
+    
 #     # TODO: determine the offgas fate for E1 (maybe sending it to a CHP unit?)
 #     # TODO: or separating and selling H2? See Huang et al. 2021 SI, Table S1 for price
-#     
+    
 #     # TODO: need to match up temperatures
 #     # HXN = qsu.HeatExchangerNetwork('HXN', T_min_app=5, force_ideal_thermo=True)
 #     # HXN.register_alias('HXN')
-#     
+    
 #     # TODO: only add a cooling tower if there is a big finanical benefit
 #     # CT = bst.facilities.CoolingTower('CT')
 #     # CT.register_alias('CT')
 #     # from biorefineries.lactic import price
 #     # CT.ins[-1].price = price['Cooling tower chems']
-#     
+    
 #     sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=yearly_operating_days*24)
 #     sys.register_alias('sys')
-# 
+
 #     create_tea(sys)
-# 
+
 #     sys.simulate()
 #     sys.diagram()
-# 
+
 # # =============================================================================
 # # HXN
 # # 
@@ -397,6 +598,5 @@ def create_system_A(product='formic acid',
 # #     
 # #     sys.simulate()
 # # =============================================================================
-#     
+    
 #     return sys
-# =============================================================================

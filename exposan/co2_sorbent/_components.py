@@ -24,6 +24,7 @@ __all__ = ('create_components',)
 
 def create_components(set_thermo=True):
     
+    # TODO: decide if 'Bauxite' is still needed since we can assume Bauxite is a mixture of Al2O3, SiO2, and Fe2O3 at certain ratios
     # bauxite
     Bauxite = Component(ID='Bauxite',
                         search_ID='Bauxite',
@@ -33,7 +34,30 @@ def create_components(set_thermo=True):
                         organic=False)
     # https://www.standardboksit.com.tr/en/Arge/Arge/8747#:~:text=Bauxite%20is%20a%20mixture%20of,2.5%2D3.5%20g%2Fcm3.
     add_V_from_rho(Bauxite, 3000)
-
+    
+    # Al2O3
+    Al2O3 = Component(ID='Al2O3',
+                      search_ID='1344-28-1',
+                      phase='s',
+                      particle_size='Particulate',
+                      degradability='Undegradable',
+                      organic=False)
+    
+    # SiO2
+    SiO2 = Component(ID='SiO2',
+                     search_ID='7631-86-9',
+                     phase='s',
+                     particle_size='Particulate',
+                     degradability='Undegradable',
+                     organic=False)
+    
+    # Fe2O3
+    Fe2O3 = Component(ID='Fe2O3',
+                      search_ID='1309-37-1',
+                      phase='s',
+                      particle_size='Particulate',
+                      degradability='Undegradable',
+                      organic=False)
     
     # Al(OH)3
     AlH3O3 = Component(ID='AlH3O3',
@@ -135,7 +159,7 @@ def create_components(set_thermo=True):
                       degradability='Readily',
                       organic=True)
     
-    cmps = Components([Bauxite, AlH3O3, ALF, HCOOH, H2O,
+    cmps = Components([Al2O3, SiO2, Fe2O3, AlH3O3, ALF, HCOOH, H2O,
                        O2, N2, H2, CH4, CO2, CO, C2H6O,
                        C2H4, CH4O, C3H8O])
     

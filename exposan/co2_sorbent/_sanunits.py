@@ -22,8 +22,8 @@ from qsdsan.utils import auom
 from biosteam.units.design_tools import PressureVessel
 from biosteam.units.decorators import cost
 
-# TODO: add LCA for all units
 __all__ = (
+    'BauxiteHammerMill',
     'ALFProduction',
     'ALFCrystallizer',
     'ALFPressureFilter',
@@ -37,11 +37,37 @@ _mgd_to_cmh = auom('gallon').conversion_factor('m3')*1e6/24
 CEPCI = bst.units.design_tools.CEPCI_by_year
 
 # =============================================================================
+# BauxiteHammerMill
+# =============================================================================
+
+@cost(basis='Flow rate', ID='Hammer mill', units='kg/hr',
+           kW=13.23*4.54, cost=105225, S=4540, CE=CEPCI[2011], n=1, BM=1,
+           lifetime=40000/(365*24))
+class BauxiteHammerMill(SanUnit):
+    '''
+    See biorefineries/ethanol_adipic/_preprocessing.py
+    
+    Parameters
+    ----------
+    ID : str, optional
+        Unit ID.
+    ins : iterable
+        Inlet streams.
+    outs : iterable
+        Outlet streams.
+    Al2O3_ratio : float, optional
+        The weight ratio of Al2O3 in bauxite. Defaults to 0.6.
+    '''
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, Al2O3_ratio=0.6):
+        super().__init__(ID, ins, outs, thermo)
+        self.Al2O3_ratio = Al2O3_ratio
+
+# =============================================================================
 # ALFProduction
 # =============================================================================
 class ALFProduction(bst.CSTR):
     '''
-    Reactor for ALF production.
+    Reactor for ALF production. See biosteam/units/stirred_tank_reactor.py.
     '''
     _N_ins = 1
     _N_outs = 1
@@ -64,7 +90,7 @@ class ALFProduction(bst.CSTR):
 # =============================================================================
 class ALFCrystallizer(bst.BatchCrystallizer):
     '''
-    Crystallier for ALF.
+    Crystallier for ALF. See biosteam/units/_batch_crystallizer.py.
     
     Parameters
     ----------
@@ -134,21 +160,23 @@ _hp2kW = 0.7457
       cost=405000, CE=521.9, S=31815, n=0.6, kW=1044, BM=1.6)
 class ALFPressureFilter(Unit):
     """
-    Create a pressure filter for the separation of ALF. Capital costs are based on [1]_.
+    Create a pressure filter for the separation of ALF. See biosteam/units/solids_separation.py.
+    Capital costs are based on [1]_.
     
-    # TODO: update parameters description here
     Parameters
     ----------
-    ins : 
-        Contains structural carbohydrates, lignin, cell mass, and other solids.
-    outs : 
-        * [0] Retentate (i.e. solids)
-        * [1] Filtrate
-    split : array_like or dict[str, float]
-        Splits of chemicals to the retentate. Defaults to values used in
-        the 2011 NREL report on cellulosic ethanol as given in [2]_.
+    ID : str, optional
+        Unit ID.
+    ins : iterable
+        Inlet streams.
+    outs : iterable
+        Outlet streams.
     moisture_content : float, optional
-        Moisture content of retentate. Defaults to 0.35
+        Moisture content of retentate. Defaults to 0.35.
+    split : array_like or dict[str, float]
+        Splits of chemicals to the retentate.
+        Assume completely separation for ALF.
+        From biosteam/units/solids_separation.py: soluble chemicals~0.036.
     
     References
     ----------
@@ -157,7 +185,6 @@ class ALFPressureFilter(Unit):
         Conversion of Lignocellulosic Biomass to Ethanol: Dilute-Acid 
         Pretreatment and Enzymatic Hydrolysis of Corn Stover
         (No. NREL/TP-5100-47764, 1013269). https://doi.org/10.2172/1013269
-    
     """
     _units = {'Retentate flow rate': 'kg/hr'}
     
@@ -205,28 +232,6 @@ class ReverseOsmosis(SanUnit):
     """
     See biorefineries/wwt/_wwt_process.py for cost.
     See biosteam/wastewater/conventional.py for the default water recovery rate.
-    
-    # TODO: update parameters description here
-    Parameters
-    ----------
-    ins : 
-        Contains structural carbohydrates, lignin, cell mass, and other solids.
-    outs : 
-        * [0] Retentate (i.e. solids)
-        * [1] Filtrate
-    split : array_like or dict[str, float]
-        Splits of chemicals to the retentate. Defaults to values used in
-        the 2011 NREL report on cellulosic ethanol as given in [2]_.
-    moisture_content : float, optional
-        Moisture content of retentate. Defaults to 0.35
-    
-    References
-    ----------
-    [1] Humbird, D., Davis, R., Tao, L., Kinchin, C., Hsu, D., Aden, A.,
-        Dudgeon, D. (2011). Process Design and Economics for Biochemical 
-        Conversion of Lignocellulosic Biomass to Ethanol: Dilute-Acid 
-        Pretreatment and Enzymatic Hydrolysis of Corn Stover
-        (No. NREL/TP-5100-47764, 1013269). https://doi.org/10.2172/1013269
     """
     _N_ins = 1
     _N_outs = 2
@@ -242,8 +247,7 @@ class ReverseOsmosis(SanUnit):
         water, brine = self.outs
 
         self.design_results['Volumetric flow'] = self.F_vol_in
-
-        # Based on stream 626 and 627 in ref [1]
+        
         water.imass['Water'] = influent.imass['Water']*self.water_recovery
         brine.mol = influent.mol - water.mol
         water.T = brine.T = influent.T
@@ -255,6 +259,15 @@ class NGLCA(SanUnit):
     """
     A fake unit that enables the calculation of LCA for natural gas based on
     the CO2 amount by converting 'Stream' to 'WasteStream'.
+    
+    Parameters
+    ----------
+    ID : str, optional
+        Unit ID.
+    ins : iterable
+        Inlet streams.
+    outs : iterable
+        Outlet streams.
     """
     _N_ins = 1
     _N_outs = 1
@@ -277,14 +290,21 @@ class ALFTemperatureSwingAdsorption(PressureVessel, bst.Splitter):
     
     Parameters
     ----------
+    ID : str, optional
+        Unit ID.
+    ins : iterable
+        Inlet streams.
+    outs : iterable
+        Outlet streams.
     split : dict[str, float] or list[float], optional
         Component splits towards the effluent (0th outlet).
     superficial_velocity : float, optional
         Superficial velocity of the feed. The diameter of the receiving vessel adjusts
         accordingly. Defaults to 1080 m/h. Typical velocities are 540 to 2160 m/h for liquids [1]_.
-    regeneration_velocity : float, optional
-        Mean velocity of the fluid used to regenerate the bed. Defaults to 1080 m/h. 
-        Common velocity range for gasses is 540 to 2160 m/h [1]_.
+    # TODO: remove this?
+    # regeneration_velocity : float, optional
+    #     Mean velocity of the fluid used to regenerate the bed. Defaults to 1080 m/h. 
+    #     Common velocity range for gasses is 540 to 2160 m/h [1]_.
     cycle_time : float, optional
         Time at which the receiving vessel is switched. Defaults to 8 h [2]_.
     rho_adsorbent : float, optional
@@ -299,8 +319,6 @@ class ALFTemperatureSwingAdsorption(PressureVessel, bst.Splitter):
         Vessel type. Defaults to 'Vertical'.
     length_unused : float, optional
         Additional length of a column to account for mass transfer limitations (due to unused bed). Defaults to 2 ft per column.
-    waste_ratio : float, optional
-        Wasted ALF ratio per run. Defaults to 0.07.
     
     References
     ----------
@@ -340,9 +358,9 @@ class ALFTemperatureSwingAdsorption(PressureVessel, bst.Splitter):
         self.cycle_time = cycle_time
         self.rho_adsorbent = rho_adsorbent
         self.adsorbent_capacity = adsorbent_capacity
+        self.T_regeneration = T_regeneration
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
-        self.T_regeneration = T_regeneration
         self.length_unused = length_unused
         self.adsorbent_cost = adsorbent_cost
         self.heat_exchanger_regeneration = bst.HXutility(None, None, None, thermo=self.thermo)
@@ -441,12 +459,20 @@ class ALFTemperatureSwingAdsorption(PressureVessel, bst.Splitter):
       cost=4687910, S=1000, CE=qs.CEPCI_by_year[2020], n=0.7)
 @cost(basis='Total gas flow for PSA', ID='PSA', units='m^3/h',
       cost=1989043, S=1000, CE=qs.CEPCI_by_year[2020], n=0.7)
+# TODO: may make this a subunit of SanUnit, so setting 'init_with='WasteStream' could enable LCA
+# TODO: or add a fake unit like 'NGLCA' to enable LCA
 class CO2ElectrolyzerSystem(Unit):
     '''
     CO2 electrolyzer system that converts CO2 into reduced 1C, 2C, and nC products [1]_. 
     
     Parameters
     ----------
+    ID : str, optional
+        Unit ID.
+    ins : iterable
+        Inlet streams.
+    outs : iterable
+        Outlet streams.
     target_product : str, optional
         target product of the CO2 reduction system, can only be 'carbon monoxide',
         'ethanol','ethylene','formic acid','methane','methanol', and 'propanol'.
@@ -484,7 +510,7 @@ class CO2ElectrolyzerSystem(Unit):
              'Total gas flow for PSA': 'm^3/h'}
     
     def __init__(self, ID='', ins=(), outs=(), thermo=None, target_product='formic acid', current_density=0.2,
-                 cell_voltage=2.3, cathodic_overpotential=0.454, product_selectivity=0.9,
+                 cathodic_overpotential=0.454, cell_voltage=2.3, product_selectivity=0.9,
                  converstion=0.5, PSA_operating_cost=0.25, operating_days_per_year=350):
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo)
         self.target_product = target_product
@@ -590,16 +616,6 @@ class CO2ElectrolyzerSystem(Unit):
         D['Total gas flow for PSA'] = 0 if self.CO2_outlet_flow_rate_m3_per_h == self.total_gas_flow else self.total_gas_flow
         
         self.add_power_utility(self.power_needed*1000 + D['Total gas flow for PSA']*self.PSA_operating_cost)
-        
-        # TODO: add construction for LCA
-        # if self.include_construction:
-        #     construction = getattr(self, 'construction', []) # would work for both biosteam/qsdsan units
-        #     if construction: construction[0].quantity = pipe + pumps
-        #     else:
-        #         self.construction = [
-        #             Construction('stainless_steel', linked_unit=self, item='Stainless_steel', 
-        #                          quantity=pipe + pumps, quantity_unit='kg'),
-        #             ]
     
     def _cost(self):
         self._decorated_cost()
