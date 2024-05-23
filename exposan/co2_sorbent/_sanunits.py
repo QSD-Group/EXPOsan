@@ -28,6 +28,7 @@ __all__ = (
     'ALFCrystallizer',
     'ALFPressureFilter',
     'ReverseOsmosis',
+    'NGLCA',
     'ALFTemperatureSwingAdsorption',
     'CO2ElectrolyzerSystem'
     )
@@ -226,7 +227,6 @@ class ReverseOsmosis(SanUnit):
         Conversion of Lignocellulosic Biomass to Ethanol: Dilute-Acid 
         Pretreatment and Enzymatic Hydrolysis of Corn Stover
         (No. NREL/TP-5100-47764, 1013269). https://doi.org/10.2172/1013269
-    
     """
     _N_ins = 1
     _N_outs = 2
@@ -247,6 +247,25 @@ class ReverseOsmosis(SanUnit):
         water.imass['Water'] = influent.imass['Water']*self.water_recovery
         brine.mol = influent.mol - water.mol
         water.T = brine.T = influent.T
+
+# =============================================================================
+# NGLCA
+# =============================================================================
+class NGLCA(SanUnit):
+    """
+    A fake unit that enables the calculation of LCA for natural gas based on
+    the CO2 amount by converting 'Stream' to 'WasteStream'.
+    """
+    _N_ins = 1
+    _N_outs = 1
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream'):
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with)
+
+    def _run(self):
+        emissions_in = self.ins[0]
+        emissions_out = self.outs[0]
+        emissions_out.copy_like(emissions_in)
 
 # =============================================================================
 # ALFTemperatureSwingAdsorption

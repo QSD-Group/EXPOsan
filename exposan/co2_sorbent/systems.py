@@ -188,6 +188,11 @@ def create_system_A(product='formic acid',
                    split={'HCOOH':1})
     D1.register_alias('D1')
     
+    NGLCA = su.NGLCA(ID='NGLCA',
+                   ins=D1-2,
+                   outs='emissions_LCA')
+    NGLCA.register_alias('NGLCA')
+    
     S1 = bst.StorageTank('ALF_storage_tank', ins=D1-0, outs='ALF',
                          tau=24*7, vessel_material='Stainless steel')
     S1.register_alias('S1')
@@ -200,31 +205,35 @@ def create_system_A(product='formic acid',
                                operating_hours=yearly_operating_days*24)
     sys.register_alias('sys')
     
-    # TODO: for LCA, using ecoinvent database 3.8 apos (default) and TRACI method for now
+    # for LCA, using ecoinvent database 3.8 apos (default) and TRACI method for now
     # TODO: can change to ecoinvent database 3.8 cutoff and IPCC method if necessary
+    # TODO: confirm HCOOH in the stream.hot_air does not contribute to GWP
     
-    # qs.StreamImpactItem(ID='natural_gas',
-    #                     linked_stream=stream.,
-    #                     GlobalWarming=,)
+    # market group for natural gas, high pressure, GLO
+    # does not include emissions
+    # 39 MJ/m3 (https://ecoquery.ecoinvent.org/3.8/apos/dataset/14395/documentation)
+    # 53.6 MJ/kg (https://www.sciencedirect.com/science/article/pii/B9780128095973003357)
+    qs.StreamImpactItem(ID='natural_gas',
+                        linked_stream=stream.emissions_LCA,
+                        GlobalWarming=1+0.33690797/39*53.6/44*16,)
     
+    # market for aluminium hydroxide, GLO
     qs.StreamImpactItem(ID='aluminum_hydroxide',
                         linked_stream=stream.aluminum_hydroxide,
                         GlobalWarming=0.98853282,)
     
+    # water production, deionised, RoW
     qs.StreamImpactItem(ID='water',
                         linked_stream=stream.water,
                         GlobalWarming=0.00030228066,)
     
+    # market for formic acid, RoW
+    # for 80% HCOOH
     qs.StreamImpactItem(ID='formic_acid',
                         linked_stream=stream.formic_acid,
                         GlobalWarming=2.8612976*0.8+0.00030228066*0.2,)
     
-    # TODO: pay attention to the +/- signs
-    # TODO: hot_air includes HCOOH, but does HCOOH contribute to GWP?
-    # qs.StreamImpactItem(ID='hot_air',
-    #                     linked_stream=stream.,
-    #                     GlobalWarming=,)
-    
+    # water production, deionised, RoW
     qs.StreamImpactItem(ID='RO_water',
                         linked_stream=stream.RO_water,
                         GlobalWarming=-0.00030228066,)
@@ -232,14 +241,14 @@ def create_system_A(product='formic acid',
     create_tea(sys)
     
     # TODO: also add LCA for construction
-    # TODO: make sure the lifetimes for TEA and LCA are the same
+    # TODO: make sure the lifetimes for TEA and LCA are the same and decide if 20 years is appropriate
     qs.LCA(system=sys,
            lifetime=20,
            lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-\
                                sys.get_electricity_production())*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,)
-           # Heating=lambda:sys.get_heating_duty()/1000*20)
+           Cooling=lambda:sys.get_cooling_duty()/1000*20,
+           Heating=lambda:sys.get_heating_duty()/1000*20)
     
     # !!! errors like 'UndefinedPhase: <DrumDryer: ALF_dryer> 'G'' is because the system being simulated for multiple times (note qs.LCA simulate the system as well)
     # TODO: decide whether the above glitch affects creating models
