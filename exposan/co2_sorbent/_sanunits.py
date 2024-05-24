@@ -25,10 +25,12 @@ from biosteam.units.decorators import cost
 __all__ = (
     'BauxiteHammerMill',
     'ALFProduction',
+    'PhaseChanger',
+    'SolidPressureFilter',
     'ALFCrystallizer',
     'ALFPressureFilter',
     'ReverseOsmosis',
-    'NGLCA',
+    'S2WS',
     'ALFTemperatureSwingAdsorption',
     'CO2ElectrolyzerSystem'
     )
@@ -46,6 +48,9 @@ CEPCI = bst.units.design_tools.CEPCI_by_year
 class BauxiteHammerMill(SanUnit):
     '''
     See biorefineries/ethanol_adipic/_preprocessing.py
+    Note there are two types of hammer mill: CPP (conventional pelleting process)
+    hammer mill and HMPP (high-moisture pelleting process) hammer mill.
+    CPP hammer mill is used for this system.
     
     Parameters
     ----------
@@ -73,17 +78,155 @@ class ALFProduction(bst.CSTR):
     _N_outs = 1
     
     # TODO: add a parameter for X (conversion rate), but it seems that X=1 makes sense since Al(OH)3 is a solid and HCOOH is over amount
-    
+    # TODO: check the reaction between Fe2O3 and HCOOH
     def _setup(self):
-        super()._setup()
-        self.ALF_production = bst.Reaction('AlH3O3,s + 3HCOOH,l -> C3H3AlO6,s + 3H2O,l', 'AlH3O3', 1)
+            self.ALF_production_AlH3O3 = bst.Reaction('AlH3O3,s + 3HCOOH,l -> C3H3AlO6,s + 3H2O,l', 'AlH3O3', 1)
+            self.ALF_production_bauxite = bst.Reaction('Al2O3,s + 6HCOOH,l -> 2C3H3AlO6,s + 3H2O,l', 'Al2O3', 1)
+            self.Fe_side_reaciton = bst.Reaction('Fe2O3,s + 6HCOOH,l -> 2Fe,s + 3H2O,l + 3CO2,l', 'Fe2O3', 1)
     
     def _run(self):
         effluent = self.outs[0]
         effluent.copy_like(self.ins[0])
-        self.ALF_production(effluent)
+        self.ALF_production_AlH3O3(effluent)
+        self.ALF_production_bauxite(effluent)
+        self.Fe_side_reaciton(effluent)
         effluent.T = self.T
         effluent.P = self.P
+
+# =============================================================================
+# PhaseChanger        
+# =============================================================================
+class PhaseChanger(Unit):
+    '''
+    A fake unit that change the phase of streams (specifically developed for the system B).
+    
+    Parameters
+    ----------
+    ID : str, optional
+        Unit ID.
+    ins : iterable
+        Inlet streams.
+    outs : iterable
+        Outlet streams.
+    '''
+    _N_ins = 1
+    _N_outs = 2
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None):
+        super().__init__(ID, ins, outs, thermo)
+        
+    def _run(self):
+        inlet = self.ins[0]
+        outlet, carbon_dioxide = self.outs
+        
+        carbon_dioxide.phase='g'
+        carbon_dioxide.imass['CO2'] = inlet.imass['CO2']
+        outlet.copy_like(inlet)
+        outlet.imass['l','CO2'] = 0
+        outlet.imass['l','C3H3AlO6'] = inlet.imass['C3H3AlO6']
+        outlet.imass['s','C3H3AlO6'] = 0
+
+# =============================================================================
+# SolidPressureFilter
+# =============================================================================
+_hp2kW = 0.7457
+@cost(basis='Retentate flow rate', ID='Flitrate tank agitator',
+      cost=26e3, CE=551, kW=7.5*_hp2kW, S=31815, n=0.5, BM=1.5)
+@cost(basis='Retentate flow rate', ID='Discharge pump',
+      cost=13040, CE=551, S=31815, n=0.8, BM=2.3)
+@cost(basis='Retentate flow rate', ID='Filtrate tank',
+      cost=103e3, S=31815, CE=551, BM=2.0, n=0.7)
+@cost(basis='Retentate flow rate', ID='Feed pump', kW=74.57,
+      cost= 18173, S=31815, CE=551, n=0.8, BM=2.3)
+@cost(basis='Retentate flow rate', ID='Stillage tank 531',
+      cost=174800, CE=551, S=31815, n=0.7, BM=2.0)
+@cost(basis='Retentate flow rate', ID='Mafifold flush pump', kW=74.57,
+      cost=17057, CE=551, S=31815, n=0.8, BM=2.3)
+@cost(basis='Retentate flow rate', ID='Recycled water tank',
+      cost=1520, CE=551, S=31815, n=0.7, BM=3.0)
+@cost(basis='Retentate flow rate', ID='Wet cake screw',  kW=15*_hp2kW,
+      cost=2e4, CE=521.9, S=28630, n=0.8, BM=1.7)
+@cost(basis='Retentate flow rate', ID='Wet cake conveyor', kW=10*_hp2kW,
+      cost=7e4, CE=521.9, S=28630, n=0.8, BM=1.7)
+@cost(basis='Retentate flow rate', ID='Pressure filter',
+      cost=3294700, CE=551, S=31815, n=0.8, BM=1.7)
+@cost(basis='Retentate flow rate', ID='Pressing air compressor receiver tank',
+      cost=8e3, CE=551, S=31815, n=0.7, BM=3.1)
+@cost(basis='Retentate flow rate', ID='Cloth wash pump', kW=150*_hp2kW,
+      cost=29154, CE=551, S=31815, n=0.8, BM=2.3)
+@cost(basis='Retentate flow rate', ID='Dry air compressor receiver tank',
+      cost=17e3, CE=551, S=31815, n=0.7, BM=3.1)
+@cost(basis='Retentate flow rate', ID='Pressing air pressure filter',
+      cost=75200, CE=521.9, S=31815, n=0.6, kW=112, BM=1.6)
+@cost(basis='Retentate flow rate', ID='Dry air pressure filter (2)',
+      cost=405000, CE=521.9, S=31815, n=0.6, kW=1044, BM=1.6)
+class SolidPressureFilter(Unit):
+    """
+    Create a pressure filter for the separation of ALF. See biosteam/units/solids_separation.py.
+    Capital costs are based on [1]_.
+    
+    Parameters
+    ----------
+    ID : str, optional
+        Unit ID.
+    ins : iterable
+        Inlet streams.
+    outs : iterable
+        Outlet streams.
+    moisture_content : float, optional
+        Moisture content of retentate. Defaults to 0.35.
+    split : array_like or dict[str, float]
+        Splits of chemicals to the retentate.
+        Assume completely separation for ALF.
+        From biosteam/units/solids_separation.py: soluble chemicals~0.036.
+    
+    References
+    ----------
+    [1] Humbird, D., Davis, R., Tao, L., Kinchin, C., Hsu, D., Aden, A.,
+        Dudgeon, D. (2011). Process Design and Economics for Biochemical 
+        Conversion of Lignocellulosic Biomass to Ethanol: Dilute-Acid 
+        Pretreatment and Enzymatic Hydrolysis of Corn Stover
+        (No. NREL/TP-5100-47764, 1013269). https://doi.org/10.2172/1013269
+    """
+    _units = {'Retentate flow rate': 'kg/hr'}
+    
+    _N_ins = 1
+    _N_outs = 2
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 moisture_content=0.35, split={'SiO2':1,
+                                               'Fe':1,
+                                               'C3H3AlO6':0.036,
+                                               'HCOOH':0.036}):
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo)
+        self.moisture_content = moisture_content
+        self.split = split
+    
+    def _run(self):
+        inlet = self.ins[0]
+        retentate, permeate = self.outs
+        
+        retentate.phases = ('s','l')
+        
+        retentate.imass['s','SiO2'] = inlet.imass['s','SiO2']*self.split['SiO2']
+        retentate.imass['s','Fe'] = inlet.imass['s','Fe']*self.split['Fe']
+        retentate.imass['l','C3H3AlO6'] = inlet.imass['C3H3AlO6']*self.split['C3H3AlO6']
+        retentate.imass['l','HCOOH'] = inlet.imass['l','HCOOH']*self.split['HCOOH']
+        retentate.imass['l','H2O'] = retentate.F_mass/(1-self.moisture_content)*self.moisture_content
+        
+        permeate.phases = ('s','l')
+        
+        permeate.imass['s','SiO2'] = inlet.imass['s','SiO2']*(1-self.split['SiO2'])
+        permeate.imass['s','Fe'] = inlet.imass['s','Fe']*(1-self.split['Fe'])
+        permeate.imass['l','C3H3AlO6'] = inlet.imass['C3H3AlO6']*(1-self.split['C3H3AlO6'])
+        permeate.imass['l','HCOOH'] = inlet.imass['l','HCOOH']*(1-self.split['HCOOH'])
+        permeate.imass['l','H2O'] = inlet.imass['l','H2O'] - retentate.imass['l','H2O']
+        
+        retentate.T = inlet.T
+        permeate.T = inlet.T
+        
+    def _design(self):
+        self.design_results['Retentate flow rate'] = self.outs[0].F_mass
 
 # =============================================================================
 # ALFCrystallizer
@@ -112,15 +255,17 @@ class ALFCrystallizer(bst.BatchCrystallizer):
         self.crystal_ALF_yield = crystal_ALF_yield
         
     def _run(self):
+        inlet = self.ins[0]
         outlet = self.outs[0]
         outlet.phases = ('s','l')
         crystal_ALF_yield = self.crystal_ALF_yield
-        feed = self.ins[0]
-        ALF = feed.imass['C3H3AlO6']
+        ALF = inlet.imass['C3H3AlO6']
         outlet.empty()
         
+        outlet.copy_like(inlet)
         outlet.imass['s','C3H3AlO6'] = ALF*crystal_ALF_yield
-        outlet.imass['l',('C3H3AlO6','HCOOH','H2O')] = [ALF*(1-crystal_ALF_yield), feed.imass['HCOOH'], feed.imass['H2O']]
+        outlet.imass['l','C3H3AlO6'] = ALF*(1-crystal_ALF_yield)
+        # outlet.imass['l',('C3H3AlO6','HCOOH','H2O')] = [ALF*(1-crystal_ALF_yield), inlet.imass['HCOOH'], inlet.imass['H2O']]
         
         outlet.T = self.T
 
@@ -204,18 +349,17 @@ class ALFPressureFilter(Unit):
         retentate, permeate = self.outs
         
         retentate.phases = ('s','l')
-        permeate.phases = ('s','l')
         
         retentate.imass['s','C3H3AlO6'] = inlet.imass['s','C3H3AlO6']*self.split['C3H3AlO6_s']
-        permeate.imass['s','C3H3AlO6'] = inlet.imass['s','C3H3AlO6']*(1-self.split['C3H3AlO6_s'])
-        
         retentate.imass['l','C3H3AlO6'] = inlet.imass['l','C3H3AlO6']*self.split['C3H3AlO6_l']
-        permeate.imass['l','C3H3AlO6'] = inlet.imass['l','C3H3AlO6']*(1-self.split['C3H3AlO6_l'])
-        
         retentate.imass['l','HCOOH'] = inlet.imass['l','HCOOH']*self.split['HCOOH']
-        permeate.imass['l','HCOOH'] = inlet.imass['l','HCOOH']*(1-self.split['HCOOH'])
-        
         retentate.imass['l','H2O'] = retentate.F_mass/(1-self.moisture_content)*self.moisture_content
+        
+        permeate.phases = ('s','l')
+        
+        permeate.imass['s','C3H3AlO6'] = inlet.imass['s','C3H3AlO6']*(1-self.split['C3H3AlO6_s'])
+        permeate.imass['l','C3H3AlO6'] = inlet.imass['l','C3H3AlO6']*(1-self.split['C3H3AlO6_l'])
+        permeate.imass['l','HCOOH'] = inlet.imass['l','HCOOH']*(1-self.split['HCOOH'])
         permeate.imass['l','H2O'] = inlet.imass['l','H2O'] - retentate.imass['l','H2O']
     
     def _design(self):
@@ -253,12 +397,13 @@ class ReverseOsmosis(SanUnit):
         water.T = brine.T = influent.T
 
 # =============================================================================
-# NGLCA
+# S2WS
 # =============================================================================
-class NGLCA(SanUnit):
+class S2WS(SanUnit):
     """
-    A fake unit that enables the calculation of LCA for natural gas based on
-    the CO2 amount by converting 'Stream' to 'WasteStream'.
+    S2WS: Stream to WasteStream.
+    A fake unit that enables the calculation of LCA for 'Stream'
+    by converting 'Stream' to 'WasteStream'.
     
     Parameters
     ----------
@@ -276,9 +421,15 @@ class NGLCA(SanUnit):
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with)
 
     def _run(self):
-        emissions_in = self.ins[0]
-        emissions_out = self.outs[0]
-        emissions_out.copy_like(emissions_in)
+        inlet = self.ins[0]
+        outlet = self.outs[0]
+        # TODO: if inlet is a 'MultiStream', for now, just assume the outlet
+        # contains water that has the same weight as the inlet
+        # TODO: need a better way to do this.
+        try:
+            outlet.copy_like(inlet)
+        except:
+            outlet.imass['H2O'] = inlet.F_mass
 
 # =============================================================================
 # ALFTemperatureSwingAdsorption

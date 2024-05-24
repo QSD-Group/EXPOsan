@@ -46,6 +46,9 @@ from exposan.co2_sorbent import (
 from exposan.co2_sorbent import _sanunits as su
 
 # TODO: add LCA for all systems
+# TODO: from Jeremy: check if LCA studies (e.g., reports from DOE) for DAC (direct air capture) includes constructin
+# TODO: if not, we don't need to include LCA for constructions
+# TODO: but we can add LCA for constructions if that's of interest later
 # TODO: update all price/cost to the baseline year (2022)
 __all__ = (
     'create_system_A', # ALF production using Al(OH)3
@@ -67,7 +70,7 @@ GDPCTPI = {2016: 98.208,
 # =============================================================================
 # ALF production: Al(OH)3 + HCOOH
 # =============================================================================
-def create_system_A(AlH3O3=100,
+def create_system_A(AlH3O3=1000,
                     electricity_price=0.0832,
                     yearly_operating_days=350):
 
@@ -156,7 +159,7 @@ def create_system_A(AlH3O3=100,
                             N=3,
                             T=298.15, # room temperature, Evans et al. 2022
                             crystal_ALF_yield=0.83) # crystal_ALF_yield = 0.83, Evans et al. 2022
-    C1.register_alias('C1')   
+    C1.register_alias('C1')
     
     # split ratio can be found in biosteam/units/solids_separation.py (soluble chemicals~0.036)
     F1 = su.ALFPressureFilter(ID='ALF_filter',
@@ -166,9 +169,9 @@ def create_system_A(AlH3O3=100,
                               split={'C3H3AlO6_s':1,
                                      'C3H3AlO6_l':0,
                                      'HCOOH':0.036})
-    F1.register_alias('F1')    
+    F1.register_alias('F1')
     
-    # RO cake can be potentially reused
+    # TODO: check if the RO cake (produced after evaporator) can be potentially reused
     # asssume no cost and environmental impact associated with it
     RO1 = su.ReverseOsmosis(ID='Reverse_osmosis',
                             ins=F1-1,
@@ -185,10 +188,10 @@ def create_system_A(AlH3O3=100,
                    split={'HCOOH':1})
     D1.register_alias('D1')
     
-    NGLCA = su.NGLCA(ID='NGLCA',
+    S2WS = su.S2WS(ID='S2WS',
                    ins=D1-2,
-                   outs='emissions_LCA')
-    NGLCA.register_alias('NGLCA')
+                   outs='natural_gas_LCA')
+    S2WS.register_alias('S2WS')
     
     S1 = bst.StorageTank('ALF_storage_tank', ins=D1-0, outs='ALF',
                          tau=24*7, vessel_material='Stainless steel')
@@ -211,29 +214,29 @@ def create_system_A(AlH3O3=100,
     # 39 MJ/m3 (https://ecoquery.ecoinvent.org/3.8/apos/dataset/14395/documentation)
     # 53.6 MJ/kg (https://www.sciencedirect.com/science/article/pii/B9780128095973003357)
     qs.StreamImpactItem(ID='natural_gas',
-                        linked_stream=stream.emissions_LCA,
-                        GlobalWarming=1+0.33690797/39*53.6/44*16,)
+                        linked_stream=stream.natural_gas_LCA,
+                        GlobalWarming=1+0.33690797/39*53.6/44*16)
     
     # market for aluminium hydroxide, GLO
     qs.StreamImpactItem(ID='aluminum_hydroxide',
                         linked_stream=stream.aluminum_hydroxide,
-                        GlobalWarming=0.98853282,)
+                        GlobalWarming=0.98853282)
     
     # water production, deionised, RoW
     qs.StreamImpactItem(ID='water',
                         linked_stream=stream.water,
-                        GlobalWarming=0.00030228066,)
+                        GlobalWarming=0.00030228066)
     
     # market for formic acid, RoW
     # for 80% HCOOH
     qs.StreamImpactItem(ID='formic_acid',
                         linked_stream=stream.formic_acid,
-                        GlobalWarming=2.8612976*0.8+0.00030228066*0.2,)
+                        GlobalWarming=2.8612976*0.8+0.00030228066*0.2)
     
     # water production, deionised, RoW
     qs.StreamImpactItem(ID='RO_water',
                         linked_stream=stream.RO_water,
-                        GlobalWarming=-0.00030228066,)
+                        GlobalWarming=-0.00030228066)
     
     create_tea(sys)
     
@@ -253,15 +256,16 @@ def create_system_A(AlH3O3=100,
     
     sys.diagram()
     
-    print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.ALF):.2f} $/kg ALF")
-    print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.ALF.F_mass/sys.operating_hours/sys.LCA.lifetime:.2f} kg CO2/kg ALF")
+    print(f"production: {sys.flowsheet.ALF.F_mass/1000*24} metric ton ALF/day")
+    print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.ALF)} $/kg ALF")
+    print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.ALF.F_mass/sys.operating_hours/sys.LCA.lifetime} kg CO2/kg ALF")
     
     return sys
 
 # =============================================================================
 # ALF production: Bauxite + HCOOH
 # =============================================================================
-def create_system_B(bauxite=100,
+def create_system_B(bauxite=1000,
                     bauxite_price=0.075, # $/kg, related to bauxite_purity
                     bauxite_Al2O3=0.6, # Al2O3 weight ratio in bauxite, related to bauxite_price
                     bauxite_SiO2=0.11, # SiO2 weight ratio in bauxite, related to bauxite_price
@@ -299,10 +303,10 @@ def create_system_B(bauxite=100,
                                  Fe2O3=bauxite*(1-bauxite_Al2O3-bauxite_SiO2),
                                  units='kg/h',
                                  T=25+273.15)
-    # https://en.institut-seltene-erden.de/aktuelle-preise-von-basismetallen/
+    # https://en.institut-seltene-erden.de/aktuelle-preise-von-basismetallen/ (accessed 2024-05-23)
     # Al2O3 60% min
     # TODO: check if there are other sources for the price since this source seems not that reliable
-    bauxite_ore.price = 0.075
+    bauxite_ore.price = bauxite_price
     
     G1 = su.BauxiteHammerMill(ID='bauxite_hammer_mill',
                               ins=bauxite_ore,
@@ -325,10 +329,13 @@ def create_system_B(bauxite=100,
                     conserve_phases=True)
     M1.register_alias('M1')
     
+    Al_mol = bauxite*bauxite_Al2O3/102*2
+    Fe_mol = bauxite*(1-bauxite_Al2O3-bauxite_SiO2)/160*2
+    
     # add 80% w/w HCOOH to reach a 1:3.5 of Al/HCOOH ratio, Mikola et al. 2013
     formic_acid = qs.WasteStream(ID='formic_acid',
-                                HCOOH=bauxite*bauxite_Al2O3/102*3.5*46,
-                                H2O=bauxite*bauxite_Al2O3/102*3.5*46/0.8*0.2,
+                                HCOOH=(Al_mol+Fe_mol)*3.5*46,
+                                H2O=(Al_mol+Fe_mol)*3.5*46/0.8*0.2,
                                 units='kg/h',
                                 T=25+273.15)
     # formic acid, 2022 average:
@@ -344,58 +351,92 @@ def create_system_B(bauxite=100,
                     conserve_phases=True)
     M2.register_alias('M2')    
     
-    # R1 = su.ALFProduction(ID='ALF_production',
-    #                       ins=M2-0,
-    #                       outs='ALF_solution',
-    #                       T=333.15, # [K], Xue et al. 2018
-    #                       P=101325, # [Pa]
-    #                       tau=2) # [h], 2 h in Xue et al. 2018, 1 h in Mikola et al. 2013
-    # R1.register_alias('R1')
+    # TODO: does Fe2O3 react with HCOOH? Seems yes. Then how to separate ALF with FEF? And if yes, we need to further increase HCOOH amount
+    # TODO: adjust reaction conditions if necessary
+    R1 = su.ALFProduction(ID='ALF_production',
+                          ins=M2-0,
+                          outs='ALF_solution',
+                          T=333.15, # [K], Xue et al. 2018
+                          P=101325, # [Pa]
+                          tau=2) # [h], 2 h in Xue et al. 2018, 1 h in Mikola et al. 2013
+    R1.register_alias('R1')    
     
-    # C1 = su.ALFCrystallizer(ID='ALF_crystallizer',
-    #                         ins=R1-0,
-    #                         outs='ALF_mixed',
-    #                         tau=5, # TODO: test in the uncertainty analysis if this is important, if important, then decide a more appropriate value
-    #                         N=3,
-    #                         T=298.15, # room temperature, Evans et al. 2022
-    #                         crystal_ALF_yield=0.83) # crystal_ALF_yield = 0.83, Evans et al. 2022
-    # C1.register_alias('C1')   
+    # TODO: adding CO2 in the 'gas' to LCA?
+    PC1 = su.PhaseChanger(ID='PhaseChanger',
+                          ins=R1-0,
+                          outs=('slurry','carbon_dioxide'))
+    PC1.register_alias('PC1')
     
-    # # split ratio can be found in biosteam/units/solids_separation.py (soluble chemicals~0.036)
-    # F1 = su.ALFPressureFilter(ID='ALF_filter',
-    #                           ins=C1-0,
-    #                           outs=('retentate','permeate'),
-    #                           moisture_content=0.35,
-    #                           split={'C3H3AlO6_s':1,
-    #                                  'C3H3AlO6_l':0,
-    #                                  'HCOOH':0.036})
-    # F1.register_alias('F1')    
+    S2WS1 = su.S2WS(ID='S2WS1',
+                    ins=PC1-1,
+                    outs='carbon_dioxide_LCA')
+    S2WS1.register_alias('S2WS1')
     
-    # # RO cake can be potentially reused
-    # # asssume no cost and environmental impact associated with it
-    # RO1 = su.ReverseOsmosis(ID='Reverse_osmosis',
-    #                         ins=F1-1,
-    #                         outs=('RO_water','brine'),
-    #                         water_recovery=0.987)
-    # RO1.outs[0].price = bst.stream_prices['Reverse osmosis water']
-    # RO1.register_alias('RO1')
+    # TODO: how to dispose the 'retentate' here?
+    # split ratio can be found in biosteam/units/solids_separation.py (soluble chemicals~0.036)
+    F1 = su.SolidPressureFilter(ID='solid_filter',
+                                ins=PC1-0,
+                                outs=('solid_waste','ALF_permeate'),
+                                moisture_content=0.35,
+                                split={'SiO2':1,
+                                       'Fe':1,
+                                       'C3H3AlO6':0.036, # TODO: part of C3H3AlO6 may become solid during filtering. Increase the C3H3AlO6 split ratio here?
+                                       'HCOOH':0.036})
+    F1.register_alias('F1')
+    
+    # TODO: update the price here
+    # 5-9 $/ton from https://www.sciencedirect.com/science/article/pii/S0892687521003137 # TODO: add this as a reference once deciding to use this source
+    F1.outs[0].price=-0.0077
+    
+    S2WS2 = su.S2WS(ID='S2WS2',
+                    ins=F1-0,
+                    outs='solid_waste_LCA')
+    S2WS2.register_alias('S2WS2')
+    
+    C1 = su.ALFCrystallizer(ID='ALF_crystallizer',
+                            ins=F1-1,
+                            outs='ALF_mixed',
+                            tau=5, # TODO: test in the uncertainty analysis if this is important, if important, then decide a more appropriate value
+                            N=3,
+                            T=298.15, # room temperature, Evans et al. 2022
+                            crystal_ALF_yield=0.83) # crystal_ALF_yield = 0.83, Evans et al. 2022
+    C1.register_alias('C1')
+    
+    # split ratio can be found in biosteam/units/solids_separation.py (soluble chemicals~0.036)
+    F2 = su.ALFPressureFilter(ID='ALF_filter',
+                              ins=C1-0,
+                              outs=('retentate','permeate'),
+                              moisture_content=0.35,
+                              split={'C3H3AlO6_s':1,
+                                      'C3H3AlO6_l':0,
+                                      'HCOOH':0.036})
+    F2.register_alias('F2')
+    
+    # TODO: check if the RO cake (produced after evaporator) can be potentially reused
+    # asssume no cost and environmental impact associated with it
+    RO1 = su.ReverseOsmosis(ID='Reverse_osmosis',
+                            ins=F2-1,
+                            outs=('RO_water','brine'),
+                            water_recovery=0.987)
+    RO1.outs[0].price = bst.stream_prices['Reverse osmosis water']
+    RO1.register_alias('RO1')
 
-    # # natural price is already included (bst.stream_prices['Natural gas'] = 0.218 $/kg)
-    # D1 = DrumDryer(ID='ALF_dryer',
-    #                ins=(F1-0,'dryer_air','natural_gas'),
-    #                outs=('dryed_ALF','hot_air','emissions'),
-    #                moisture_content=0,
-    #                split={'HCOOH':1})
-    # D1.register_alias('D1')
+    # natural price is already included (bst.stream_prices['Natural gas'] = 0.218 $/kg)
+    D1 = DrumDryer(ID='ALF_dryer',
+                    ins=(F2-0,'dryer_air','natural_gas'),
+                    outs=('dryed_ALF','hot_air','emissions'),
+                    moisture_content=0,
+                    split={'HCOOH':1})
+    D1.register_alias('D1')
     
-    # NGLCA = su.NGLCA(ID='NGLCA',
-    #                ins=D1-2,
-    #                outs='emissions_LCA')
-    # NGLCA.register_alias('NGLCA')
+    S2WS3 = su.S2WS(ID='S2WS3',
+                    ins=D1-2,
+                    outs='natural_gas_LCA')
+    S2WS3.register_alias('S2WS3')
     
-    # S1 = bst.StorageTank('ALF_storage_tank', ins=D1-0, outs='ALF',
-    #                      tau=24*7, vessel_material='Stainless steel')
-    # S1.register_alias('S1')
+    S1 = bst.StorageTank('ALF_storage_tank', ins=D1-0, outs='ALF',
+                          tau=24*7, vessel_material='Stainless steel')
+    S1.register_alias('S1')
     
     # # HXN (heat exchanger network), CWP (chilled water package)
     # # and BT (BoilerTurbogenerator) don't help in this system
@@ -413,61 +454,65 @@ def create_system_B(bauxite=100,
     # does not include emissions
     # 39 MJ/m3 (https://ecoquery.ecoinvent.org/3.8/apos/dataset/14395/documentation)
     # 53.6 MJ/kg (https://www.sciencedirect.com/science/article/pii/B9780128095973003357)
-    # qs.StreamImpactItem(ID='natural_gas',
-    #                     linked_stream=stream.emissions_LCA,
-    #                     GlobalWarming=1+0.33690797/39*53.6/44*16,)
+    qs.StreamImpactItem(ID='natural_gas',
+                        linked_stream=stream.natural_gas_LCA,
+                        GlobalWarming=1+0.33690797/39*53.6/44*16)
     
-    # # market for aluminium hydroxide, GLO
-    # qs.StreamImpactItem(ID='aluminum_hydroxide',
-    #                     linked_stream=stream.aluminum_hydroxide,
-    #                     GlobalWarming=0.98853282,)
+    # market for bauxite, GLO
+    qs.StreamImpactItem(ID='bauxite_ore',
+                        linked_stream=stream.bauxite_ore,
+                        GlobalWarming=0.026571501)
     
-    # # water production, deionised, RoW
-    # qs.StreamImpactItem(ID='water',
-    #                     linked_stream=stream.water,
-    #                     GlobalWarming=0.00030228066,)
+    # water production, deionised, RoW
+    qs.StreamImpactItem(ID='water',
+                        linked_stream=stream.water,
+                        GlobalWarming=0.00030228066)
     
-    # # market for formic acid, RoW
-    # # for 80% HCOOH
-    # qs.StreamImpactItem(ID='formic_acid',
-    #                     linked_stream=stream.formic_acid,
-    #                     GlobalWarming=2.8612976*0.8+0.00030228066*0.2,)
+    # market for formic acid, RoW
+    # for 80% HCOOH
+    qs.StreamImpactItem(ID='formic_acid',
+                        linked_stream=stream.formic_acid,
+                        GlobalWarming=2.8612976*0.8+0.00030228066*0.2)
     
-    # # water production, deionised, RoW
-    # qs.StreamImpactItem(ID='RO_water',
-    #                     linked_stream=stream.RO_water,
-    #                     GlobalWarming=-0.00030228066,)
+    # market for redmud from bauxite digestion
+    qs.StreamImpactItem(ID='solid_waste',
+                        linked_stream=stream.solid_waste_LCA,
+                        GlobalWarming=0.011072384)
+    
+    # water production, deionised, RoW
+    qs.StreamImpactItem(ID='RO_water',
+                        linked_stream=stream.RO_water,
+                        GlobalWarming=-0.00030228066)
+    
+    # TODO: confirm this
+    # CO2 direct emission
+    qs.StreamImpactItem(ID='carbon_dioxide',
+                        linked_stream=stream.carbon_dioxide_LCA,
+                        GlobalWarming=1)
     
     create_tea(sys)
-    
     
     # from Jeremy: LCA for construction may not be needed
     # TODO: postpone doing LCA for construction
     # TODO: make sure the lifetimes for TEA and LCA are the same and decide if 20 years is appropriate
-    # qs.LCA(system=sys,
-    #        lifetime=20,
-    #        lifetime_unit='yr',
-    #        Electricity=lambda:(sys.get_electricity_consumption()-\
-    #                            sys.get_electricity_production())*20,
-    #        Cooling=lambda:sys.get_cooling_duty()/1000*20,
-    #        Heating=lambda:sys.get_heating_duty()/1000*20)
+    qs.LCA(system=sys,
+            lifetime=20,
+            lifetime_unit='yr',
+            Electricity=lambda:(sys.get_electricity_consumption()-\
+                                sys.get_electricity_production())*20,
+            Cooling=lambda:sys.get_cooling_duty()/1000*20,
+            Heating=lambda:sys.get_heating_duty()/1000*20)
     
     # !!! errors like 'UndefinedPhase: <DrumDryer: ALF_dryer> 'G'' is because the system being simulated for multiple times (note qs.LCA simulate the system as well)
     # TODO: decide whether the above glitch affects creating models
-    sys.simulate()
+    
     sys.diagram()
     
-    # print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.ALF):.2f} $/kg ALF")
-    # print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.ALF.F_mass/sys.operating_hours/sys.LCA.lifetime:.2f} kg CO2/kg ALF")
+    print(f"production: {sys.flowsheet.ALF.F_mass/1000*24} metric ton ALF/day")
+    print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.ALF)} $/kg ALF")
+    print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.ALF.F_mass/sys.operating_hours/sys.LCA.lifetime} kg CO2/kg ALF")
     
-    return sys
-    
-    
-    
-    
-    
-    
-    
+    return sys    
 
 # # =============================================================================
 # # CO2 capture and utilization

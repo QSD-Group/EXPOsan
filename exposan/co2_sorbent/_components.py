@@ -16,8 +16,7 @@ References:
 
 '''
 
-import qsdsan as qs
-from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
+from qsdsan import Component, Components, set_thermo as qs_set_thermo
 from exposan.utils import add_V_from_rho
 
 __all__ = ('create_components',)
@@ -25,15 +24,15 @@ __all__ = ('create_components',)
 def create_components(set_thermo=True):
     
     # TODO: decide if 'Bauxite' is still needed since we can assume Bauxite is a mixture of Al2O3, SiO2, and Fe2O3 at certain ratios
-    # bauxite
-    Bauxite = Component(ID='Bauxite',
-                        search_ID='Bauxite',
-                        phase='s',
-                        particle_size='Particulate',
-                        degradability='Undegradable',
-                        organic=False)
-    # https://www.standardboksit.com.tr/en/Arge/Arge/8747#:~:text=Bauxite%20is%20a%20mixture%20of,2.5%2D3.5%20g%2Fcm3.
-    add_V_from_rho(Bauxite, 3000)
+    # # bauxite
+    # Bauxite = Component(ID='Bauxite',
+    #                     search_ID='Bauxite',
+    #                     phase='s',
+    #                     particle_size='Particulate',
+    #                     degradability='Undegradable',
+    #                     organic=False)
+    # # https://www.standardboksit.com.tr/en/Arge/Arge/8747#:~:text=Bauxite%20is%20a%20mixture%20of,2.5%2D3.5%20g%2Fcm3.
+    # add_V_from_rho(Bauxite, 3000)
     
     # Al2O3
     Al2O3 = Component(ID='Al2O3',
@@ -59,13 +58,21 @@ def create_components(set_thermo=True):
                       degradability='Undegradable',
                       organic=False)
     
+    # Fe
+    Fe = Component(ID='Fe',
+                   search_ID='7439-89-6',
+                   phase='s',
+                   particle_size='Particulate',
+                   degradability='Undegradable',
+                   organic=False)
+    
     # Al(OH)3
     AlH3O3 = Component(ID='AlH3O3',
-                      search_ID='21645-51-2',
-                      phase='s',
-                      particle_size='Particulate',
-                      degradability='Undegradable',
-                      organic=False)
+                       search_ID='21645-51-2',
+                       phase='s',
+                       particle_size='Particulate',
+                       degradability='Undegradable',
+                       organic=False)
     
     # ALF
     ALF = Component(ID='C3H3AlO6',
@@ -76,13 +83,14 @@ def create_components(set_thermo=True):
                     organic=False)
     add_V_from_rho(ALF, 1441) # Evans et al. Science Advances SI. Table S1
     
-    # https://www.chemsrc.com/en/cas/7360-53-4_311690.html
-    ALF.Tm = 8.4+273.15
-    # ALF.Tb = 100.6+273.15
+    # https://www.chemsrc.com/en/cas/7360-53-4_311690.html (accessed 05-24-2024)
+    ALF.Tm = 8.4+273.15 # normal melting temperature [K]
+    ALF.Tb = 100.6+273.15 # normal boiling temperature [K]
     
+    # TODO: update mu
     # assume similar to Al
     # https://link.springer.com/article/10.1023/B:JMSC.0000048735.50256.96
-    ALF.mu.add_model(1000)
+    ALF.mu.add_model(1)
     
     # formatic acid
     HCOOH = Component(ID='HCOOH',
@@ -159,9 +167,9 @@ def create_components(set_thermo=True):
                       degradability='Readily',
                       organic=True)
     
-    cmps = Components([Al2O3, SiO2, Fe2O3, AlH3O3, ALF, HCOOH, H2O,
-                       O2, N2, H2, CH4, CO2, CO, C2H6O,
-                       C2H4, CH4O, C3H8O])
+    cmps = Components([Al2O3, SiO2, Fe2O3, Fe, AlH3O3, ALF,
+                       HCOOH, H2O, O2, N2, H2, CH4, CO2, CO,
+                       C2H6O, C2H4, CH4O, C3H8O])
     
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):
