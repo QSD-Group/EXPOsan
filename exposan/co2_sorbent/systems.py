@@ -37,7 +37,7 @@ References:
 
 import os, qsdsan as qs, biosteam as bst
 from qsdsan import sanunits as qsu
-from biosteam.units import DrumDryer, HammerMill
+from biosteam.units import DrumDryer
 from qsdsan.utils import clear_lca_registries
 from exposan.co2_sorbent import (
     _load_components,
@@ -256,9 +256,9 @@ def create_system_A(AlH3O3=1000,
     
     sys.diagram()
     
-    print(f"production: {sys.flowsheet.ALF.F_mass/1000*24} metric ton ALF/day")
-    print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.ALF)} $/kg ALF")
-    print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.ALF.F_mass/sys.operating_hours/sys.LCA.lifetime} kg CO2/kg ALF")
+    print(f"production: {sys.flowsheet.ALF.F_mass/1000*24:.2f} metric ton ALF/day")
+    print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.ALF):.2f} $/kg ALF")
+    print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.ALF.F_mass/sys.operating_hours/sys.LCA.lifetime:.2f} kg CO2 eq/kg ALF")
     
     return sys
 
@@ -496,152 +496,169 @@ def create_system_B(bauxite=1000,
     # TODO: postpone doing LCA for construction
     # TODO: make sure the lifetimes for TEA and LCA are the same and decide if 20 years is appropriate
     qs.LCA(system=sys,
-            lifetime=20,
-            lifetime_unit='yr',
-            Electricity=lambda:(sys.get_electricity_consumption()-\
-                                sys.get_electricity_production())*20,
-            Cooling=lambda:sys.get_cooling_duty()/1000*20,
-            Heating=lambda:sys.get_heating_duty()/1000*20)
+           lifetime=20,
+           lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-\
+                               sys.get_electricity_production())*20,
+           Cooling=lambda:sys.get_cooling_duty()/1000*20,
+           Heating=lambda:sys.get_heating_duty()/1000*20)
     
     # !!! errors like 'UndefinedPhase: <DrumDryer: ALF_dryer> 'G'' is because the system being simulated for multiple times (note qs.LCA simulate the system as well)
     # TODO: decide whether the above glitch affects creating models
     
     sys.diagram()
     
-    print(f"production: {sys.flowsheet.ALF.F_mass/1000*24} metric ton ALF/day")
-    print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.ALF)} $/kg ALF")
-    print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.ALF.F_mass/sys.operating_hours/sys.LCA.lifetime} kg CO2/kg ALF")
+    print(f"production: {sys.flowsheet.ALF.F_mass/1000*24:.2f} metric ton ALF/day")
+    print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.ALF):.2f} $/kg ALF")
+    print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.ALF.F_mass/sys.operating_hours/sys.LCA.lifetime:.2f} kg CO2 eq/kg ALF")
     
     return sys    
 
-# # =============================================================================
-# # CO2 capture and utilization
-# # =============================================================================
-# def create_system_C(product='formic acid',
-#                     flue_gas=6000000, # Huang et al. 2021, for a 1000 MWh coal-fired power plant
-#                     production_system='A',
-#                     purity=0.975, # Evans et al. 2022
-#                     recovery=0.945, # Evans et al. 2022
-#                     electricity_price=0.0832,
-#                     yearly_operating_days=350):
+# =============================================================================
+# CO2 capture and utilization
+# =============================================================================
+def create_system_C(product='formic acid',
+                    ALF_system='A',
+                    flue_gas=6000000, # Huang et al. 2021, for a 1000 MWh coal-fired power plant
+                    purity=0.975, # Evans et al. 2022
+                    recovery=0.945, # Evans et al. 2022
+                    electricity_price=0.0832,
+                    yearly_operating_days=350):
 
-#     flowsheet_ID = 'CCU'
+    flowsheet_ID = 'CCU'
     
-#     # clear flowsheet and registry for reloading
-#     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
-#         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-#         clear_lca_registries()
-#     flowsheet = qs.Flowsheet(flowsheet_ID)
-#     stream = flowsheet.stream
-#     qs.main_flowsheet.set_flowsheet(flowsheet)
+    # clear flowsheet and registry for reloading
+    if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
+        getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
+        clear_lca_registries()
+    flowsheet = qs.Flowsheet(flowsheet_ID)
+    stream = flowsheet.stream
+    qs.main_flowsheet.set_flowsheet(flowsheet)
     
-#     # 2022 industrial electricity price is 0.0832 $/kWh, https://www.eia.gov/electricity/annual/html/epa_02_04.html (accessed 2024-05-20)
-#     # electricity price in the future and theoretical scenarios are based on Huang et al. 2021:
-#     # 0.030 $/kWh (future scenario), 0.020 $/kWh (theoretical scenario)
-#     bst.PowerUtility.price = electricity_price
+    # 2022 industrial electricity price is 0.0832 $/kWh, https://www.eia.gov/electricity/annual/html/epa_02_04.html (accessed 2024-05-20)
+    # electricity price in the future and theoretical scenarios are based on Huang et al. 2021:
+    # 0.030 $/kWh (future scenario), 0.020 $/kWh (theoretical scenario)
+    bst.PowerUtility.price = electricity_price
     
-#     _load_components()
-#     # all costs in this analysis are 2022$
-#     bst.CE = qs.CEPCI_by_year[2022]
-#     # TODO: update all price/cost to the baseline year (2022)
+    _load_components()
+    # all costs in this analysis are 2022$
+    bst.CE = qs.CEPCI_by_year[2022]
+    # TODO: update all price/cost to the baseline year (2022)
     
-#     # coal-fired power plant flue gas composition: 13% CO2, 5% O2, and 82% N2 (David et al. 2007)
-#     # for a typical 1000 MWh plant, assume CO2=780000 kg/h (Huang et al. 2021)
-#     flue_gas = qs.WasteStream(ID='flue_gas',
-#                               CO2=flue_gas*0.13,
-#                               O2=flue_gas*0.05,
-#                               N2=flue_gas*0.82,
-#                               phase='g',
-#                               units='kg/h',
-#                               T=25+273.15)
+    # coal-fired power plant flue gas composition: 13% CO2, 5% O2, and 82% N2 (David et al. 2007)
+    # for a typical 1000 MWh plant, assume CO2=780000 kg/h (Huang et al. 2021)
+    flue_gas = qs.WasteStream(ID='flue_gas',
+                              CO2=flue_gas*0.13,
+                              O2=flue_gas*0.05,
+                              N2=flue_gas*0.82,
+                              phase='g',
+                              units='kg/h',
+                              T=25+273.15)
     
-#     if production_system == 'A':
-#         adsorbent_cost = XXX
-#         adsorbent_CI = XXX
-#     if production_system == 'B':
-#         adsorbent_cost = XXX
-#         adsorbent_CI = XXX
+    # TODO: update ALF price and CI if necessary
+    if ALF_system == 'A':
+        adsorbent_cost = 1.40 # $/kg ALF
+        adsorbent_CI = 4.98 # kg CO2 eq/kg ALF
+    if ALF_system == 'B':
+        adsorbent_cost = 1.95 # $/kg ALF
+        adsorbent_CI = 7.77 # kg CO2 eq/kg ALF
     
-#     TSA = su.ALFTemperatureSwingAdsorption(ID='ALF_TSA',
-#                                             split=dict(O2=(0.13*recovery/purity-0.13*recovery)/0.87,
-#                                                        N2=(0.13*recovery/purity-0.13*recovery)/0.87,
-#                                                        CO2=recovery),
-#                                             ins=(flue_gas, D1-0, 'regenerated_ALF_in'),
-#                                             outs=('offgas','CO2','used_ALF','regenerated_ALF_out'),
-#                                             adsorbent_cost=adsorbent_cost)
-#     TSA.register_alias('TSA')
+    TSA = su.ALFTemperatureSwingAdsorption(ID='ALF_TSA',
+                                            split=dict(O2=(0.13*recovery/purity-0.13*recovery)/0.87,
+                                                        N2=(0.13*recovery/purity-0.13*recovery)/0.87,
+                                                        CO2=recovery),
+                                            ins=(flue_gas, D1-0, 'regenerated_ALF_in'),
+                                            outs=('offgas','CO2','used_ALF','regenerated_ALF_out'),
+                                            adsorbent_cost=adsorbent_cost)
+    TSA.register_alias('TSA')
     
-#     E1 = su.CO2ElectrolyzerSystem(ID='CO2_electrolyzer',
-#                                   ins=(TSA-1, 'process_water'),
-#                                   outs=('product','mixed_offgas'),
-#                                   target_product=product,
-#                                   current_density=0.2,
-#                                   cell_voltage=2.3,
-#                                   cathodic_overpotential=0.454,
-#                                   product_selectivity=0.9,
-#                                   converstion=0.5,
-#                                   PSA_operating_cost=0.25,
-#                                   operating_days_per_year=yearly_operating_days)
-#     E1.register_alias('E1')
-#     E1.ins[1].price = bst.stream_prices['Reverse osmosis water']
+    E1 = su.CO2ElectrolyzerSystem(ID='CO2_electrolyzer',
+                                  ins=(TSA-1, 'process_water'),
+                                  outs=('product','mixed_offgas'),
+                                  target_product=product,
+                                  current_density=0.2,
+                                  cell_voltage=2.3,
+                                  cathodic_overpotential=0.454,
+                                  product_selectivity=0.9,
+                                  converstion=0.5,
+                                  PSA_operating_cost=0.25,
+                                  operating_days_per_year=yearly_operating_days)
+    E1.register_alias('E1')
+    E1.ins[1].price = bst.stream_prices['Reverse osmosis water']
     
-#     # TODO: determine the offgas fate for E1 (maybe sending it to a CHP unit?)
-#     # TODO: or separating and selling H2? See Huang et al. 2021 SI, Table S1 for price
+    # TODO: determine the offgas fate for E1 (maybe sending it to a CHP unit?)
+    # TODO: or separating and selling H2? See Huang et al. 2021 SI, Table S1 for price
     
-#     # TODO: need to match up temperatures
-#     # HXN = qsu.HeatExchangerNetwork('HXN', T_min_app=5, force_ideal_thermo=True)
-#     # HXN.register_alias('HXN')
+    # TODO: need to match up temperatures
+    # HXN = qsu.HeatExchangerNetwork('HXN', T_min_app=5, force_ideal_thermo=True)
+    # HXN.register_alias('HXN')
     
-#     # TODO: only add a cooling tower if there is a big finanical benefit
-#     # CT = bst.facilities.CoolingTower('CT')
-#     # CT.register_alias('CT')
-#     # from biorefineries.lactic import price
-#     # CT.ins[-1].price = price['Cooling tower chems']
+    # TODO: only add a cooling tower if there is a big finanical benefit
+    # CT = bst.facilities.CoolingTower('CT')
+    # CT.register_alias('CT')
+    # from biorefineries.lactic import price
+    # CT.ins[-1].price = price['Cooling tower chems']
     
-#     sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=yearly_operating_days*24)
-#     sys.register_alias('sys')
+    sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=yearly_operating_days*24)
+    sys.register_alias('sys')
+    
+    
+    create_tea(sys)
+    
+    # TODO: add LCA for ALF in others
+    qs.LCA(system=sys,
+           lifetime=20,
+           lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-\
+                               sys.get_electricity_production())*20,
+               Cooling=lambda:sys.get_cooling_duty()/1000*20,
+               Heating=lambda:sys.get_heating_duty()/1000*20,
+               ALF=)
+    
+    
+    
 
-#     create_tea(sys)
 
+
+    sys.simulate()
+    sys.diagram()
+
+# =============================================================================
+# HXN
+# 
+# Cooling_tower
+# 
+#     sys = qs.System.from_units(
+#         f'sys_ALF_A',
+#         units=list(flowsheet.unit), 
+#         operating_hours=,
+#         )
+# 
+#     qs.StreamImpactItem(ID='',
+#                         linked_stream=stream.,
+#                         Acidification=,
+#                         Ecotoxicity=,
+#                         Eutrophication=,
+#                         GlobalWarming=,
+#                         OzoneDepletion=,
+#                         PhotochemicalOxidation=,
+#                         Carcinogenics=,
+#                         NonCarcinogenics=,
+#                         RespiratoryEffects=)
+#     
+#     create_tea(system=sys,
+#                IRR_value=,
+#                income_tax_value=,
+#                finance_interest_value=,
+#                labor_cost_value=)
+#     
+#     qs.LCA(system=sys,
+#            lifetime=,
+#            lifetime_unit='yr',
+#            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+#            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
+#     
 #     sys.simulate()
-#     sys.diagram()
-
-# # =============================================================================
-# # HXN
-# # 
-# # Cooling_tower
-# # 
-# #     sys = qs.System.from_units(
-# #         f'sys_ALF_A',
-# #         units=list(flowsheet.unit), 
-# #         operating_hours=,
-# #         )
-# # 
-# #     qs.StreamImpactItem(ID='',
-# #                         linked_stream=stream.,
-# #                         Acidification=,
-# #                         Ecotoxicity=,
-# #                         Eutrophication=,
-# #                         GlobalWarming=,
-# #                         OzoneDepletion=,
-# #                         PhotochemicalOxidation=,
-# #                         Carcinogenics=,
-# #                         NonCarcinogenics=,
-# #                         RespiratoryEffects=)
-# #     
-# #     create_tea(system=sys,
-# #                IRR_value=,
-# #                income_tax_value=,
-# #                finance_interest_value=,
-# #                labor_cost_value=)
-# #     
-# #     qs.LCA(system=sys,
-# #            lifetime=,
-# #            lifetime_unit='yr',
-# #            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
-# #            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
-# #     
-# #     sys.simulate()
-# # =============================================================================
+# =============================================================================
     
-#     return sys
+    return sys
