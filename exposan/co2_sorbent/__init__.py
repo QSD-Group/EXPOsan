@@ -21,8 +21,6 @@ sorbent_path = os.path.dirname(__file__)
 module = os.path.split(sorbent_path)[-1]
 data_path, results_path = _init_modules(module, include_data_path=True)
 
-# %%
-
 # =============================================================================
 # Load components and systems
 # =============================================================================
@@ -43,26 +41,26 @@ from ._tea import *
 from . import systems
 from .systems import *
 
-# _system_loaded = False
-# def load(configuration='baseline'):
-#     global sys, tea, lca, flowsheet, _system_loaded
-#     sys = create_system(configuration)
-#     tea = sys.TEA
-#     lca = sys.LCA
-#     flowsheet = sys.flowsheet
-#     _system_loaded = True
-#     dct = globals()
-#     dct.update(sys.flowsheet.to_dict())
+_system_loaded = False
+def load():
+    global sys, tea, lca, flowsheet, _system_loaded
+    sys = create_system()
+    tea = sys.TEA
+    lca = sys.LCA
+    flowsheet = sys.flowsheet
+    _system_loaded = True
+    dct = globals()
+    dct.update(sys.flowsheet.to_dict())
 
-# def __getattr__(name):
-#     if not _components_loaded or not _system_loaded:
-#         raise AttributeError(
-#             f'Module {__name__} does not have the attribute "{name}" '
-#             'and the module has not been loaded, '
-#             f'loading the module with `{__name__}.load()` may solve the issue.')
+def __getattr__(name):
+    if not _components_loaded or not _system_loaded:
+        raise AttributeError(
+            f'Module {__name__} does not have the attribute "{name}" '
+            'and the module has not been loaded, '
+            f'loading the module with `{__name__}.load()` may solve the issue.')
         
-# from . import models
-# from .models import *
+from . import models
+from .models import *
 
 # def simulate_and_save(model,
 #                       resample=True, samples_kwargs={'N':1000, 'rule':'L', 'seed':3221},
@@ -103,5 +101,5 @@ __all__ = (
     *_components.__all__,
     *_tea.__all__,
     *systems.__all__,
-    # *models.__all__,
+    *models.__all__,
 )

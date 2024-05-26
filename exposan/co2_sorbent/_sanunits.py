@@ -17,9 +17,7 @@ for license details.
 import pandas as pd, biosteam as bst, qsdsan as qs
 from qsdsan import SanUnit
 from biosteam import Unit
-from math import sqrt, pi
 from qsdsan.utils import auom
-from biosteam.units.design_tools import PressureVessel
 from biosteam.units.decorators import cost
 
 __all__ = (
@@ -63,7 +61,7 @@ class BauxiteHammerMill(SanUnit):
     Al2O3_ratio : float, optional
         The weight ratio of Al2O3 in bauxite. Defaults to 0.6.
     '''
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, Al2O3_ratio=0.6):
+    def __init__(self, ID='', ins=(), outs=(), thermo=None, Al2O3_ratio=0.6):
         super().__init__(ID, ins, outs, thermo)
         self.Al2O3_ratio = Al2O3_ratio
 
@@ -112,7 +110,7 @@ class PhaseChanger(Unit):
     _N_ins = 1
     _N_outs = 2
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None):
+    def __init__(self, ID='', ins=(), outs=(), thermo=None):
         super().__init__(ID, ins, outs, thermo)
         
     def _run(self):
@@ -193,7 +191,7 @@ class SolidPressureFilter(Unit):
     _N_ins = 1
     _N_outs = 2
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+    def __init__(self, ID='', ins=(), outs=(), thermo=None,
                  moisture_content=0.35, split={'SiO2':1,
                                                'Fe':1,
                                                'C3H3AlO6':0.036,
@@ -248,7 +246,7 @@ class ALFCrystallizer(bst.BatchCrystallizer):
         Selective Material for CO2 Capture. Science Advances 2022, 8 (44),
         eade1473. https://doi.org/10.1126/sciadv.ade1473.
     '''
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+    def __init__(self, ID='', ins=(), outs=(), thermo=None,
                  tau=5, N=3, T=298.15, crystal_ALF_yield=1):
         bst.BatchCrystallizer.__init__(self, ID, ins, outs, thermo,
                                        tau=tau, N=N, T=T)
@@ -265,6 +263,7 @@ class ALFCrystallizer(bst.BatchCrystallizer):
         outlet.copy_like(inlet)
         outlet.imass['s','C3H3AlO6'] = ALF*crystal_ALF_yield
         outlet.imass['l','C3H3AlO6'] = ALF*(1-crystal_ALF_yield)
+        # TODO: is the next line needed?
         # outlet.imass['l',('C3H3AlO6','HCOOH','H2O')] = [ALF*(1-crystal_ALF_yield), inlet.imass['HCOOH'], inlet.imass['H2O']]
         
         outlet.T = self.T
@@ -336,7 +335,7 @@ class ALFPressureFilter(Unit):
     _N_ins = 1
     _N_outs = 2
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+    def __init__(self, ID='', ins=(), outs=(), thermo=None,
                  moisture_content=0.35, split={'C3H3AlO6_s':1,
                                                'C3H3AlO6_l':0,
                                                'HCOOH':0.036}):
@@ -381,7 +380,7 @@ class ReverseOsmosis(SanUnit):
     _N_outs = 2
     _units = {'Volumetric flow': 'm3/hr'}
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+    def __init__(self, ID='', ins=(), outs=(), thermo=None,
                  init_with='WasteStream', water_recovery=0.987):
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with)
         self.water_recovery = water_recovery
@@ -434,37 +433,50 @@ class S2WS(SanUnit):
 # =============================================================================
 # ALFTSA
 # =============================================================================
-# TODO: check this sanunit thoroughly
 class ALFTSA(bst.AdsorptionColumnTSA):
     '''
     TSA using ALF as adsorbent for CO2 adsorption.
     
-    # TODO: update parameters
     Parameters
     ----------
+    ID : str, optional
+        Unit ID.
+    ins : iterable
+        Inlet streams.
+    outs : iterable
+        Outlet streams.
+    adsorbent : str
+        Defaults to 'ALF'.
+    adsorbent_cost : dict
+        Defaults to {'ALF': 60} [$/ft3].
+    # TODO: make sure the unit of equipment_lifetime is year.
+    # TODO: what does the lifetime mean here, for ALF or for the entire unit?
+    equipment_lifetime : dict
+        The lifetime of adsorbents. Defaults to {'ALF': 10} [year].
+    adsorbate_ID : str
+        Defaults to 'CO2'.
     split : dict[str, float] or list[float], optional
         Component splits towards the effluent (0th outlet).
     superficial_velocity : float, optional
         Superficial velocity of the feed. The diameter of the receiving vessel adjusts
         accordingly. Defaults to 1080 m/h. Typical velocities are 540 to 2160 m/h for liquids [1]_.
-    # TODO: remove this?
-    # regeneration_velocity : float, optional
-    #     Mean velocity of the fluid used to regenerate the bed. Defaults to 1080 m/h. 
-    #     Common velocity range for gasses is 540 to 2160 m/h [1]_.
+    regeneration_velocity : float, optional
+        Mean velocity of the fluid used to regenerate the bed. Defaults to 540 m/h. 
+        Common velocity range for gasses is 504-2160 m / hr [1]_.
     cycle_time : float, optional
         Time at which the receiving vessel is switched. Defaults to 8 h [2]_.
     rho_adsorbent : float, optional
-        The density of ALF. Defaults to 1441 [kg/m3] Table S1 [Y]_.
+        The density of ALF. Defaults to 1441 kg/m3, Table S1 [3]_.
     adsorbent_capacity : float, optional
-        Amount of CO2 that ALF can hold. Defaults to 2.7 mmol/g Table S7 [3]_.
+        Amount of CO2 that ALF can hold. Defaults to 0.1188 g/g (2.7 mmol/g), Table S7 [3]_.
     T_regeneration : float, optional
-        Temperature during the regeneration phase. Defaults to 418 K Table S8 [3]_.
+        Temperature during the regeneration phase. Defaults to 418 K, Table S8 [3]_.
     vessel_material : float, optional
         Vessel material. Defaults to 'Stainless steel 316',
     vessel_type : float, optional
         Vessel type. Defaults to 'Vertical'.
     length_unused : float, optional
-        Additional length of a column to account for mass transfer limitations (due to unused bed). Defaults to 2 ft per column.
+        Additional length of a column to account for mass transfer limitations (due to unused bed). Defaults to 1.219 m.
     
     References
     ----------
@@ -476,30 +488,30 @@ class ALFTSA(bst.AdsorptionColumnTSA):
         Selective Material for CO2 Capture. Science Advances 2022, 8 (44),
         eade1473. https://doi.org/10.1126/sciadv.ade1473.
     '''
-    def _init(self, ID='ALF_TSA',
-                        split=dict(O2=0,
-                                    N2=0,
-                                    CO2=1),
-                        adsorbent='ALF',
-                        adsorbate_ID='CO2',
-                        superficial_velocity=1080, # m/h
-                        cycle_time=8, # h
-                        rho_adsorbent = 1441, # kg/m3
-                        adsorbent_capacity=2.7, # mmol/g # TODO: update the value to match up with the required unit
-                        T_regeneration=418, # K
-                        vessel_material='Stainless steel 316',
-                        vessel_type='Vertical',
-                        length_unused=1.219,
-                        adsorbent_cost={'ALF': 1},
-                        equipment_lifetime={'ALF': 10}):
+    def _init(self, ID='ALF_TSA', ins=(), outs=(),
+              adsorbent='ALF',
+              adsorbent_cost={'ALF': 1},
+              equipment_lifetime={'ALF': 10},
+              adsorbate_ID='CO2',
+              split=dict(O2=0.0036, N2=0.0036, CO2=0.945),
+              superficial_velocity=1080,
+              regeneration_velocity=540,
+              cycle_time=8,
+              rho_adsorbent = 1441,
+              adsorbent_capacity=0.1188,
+              T_regeneration=418,
+              vessel_material='Stainless steel 316',
+              vessel_type='Vertical',
+              length_unused=1.219):
         super()._init(split=split,
                       adsorbent=adsorbent,
                       adsorbate_ID=adsorbate_ID,
-                      superficial_velocity=superficial_velocity, # m/h
-                      cycle_time=cycle_time, # h
-                      rho_adsorbent = rho_adsorbent, # kg/m3
-                      adsorbent_capacity=adsorbent_capacity, # mmol/g # TODO: update the unit
-                      T_regeneration=T_regeneration, # K
+                      superficial_velocity=superficial_velocity,
+                      regeneration_velocity=regeneration_velocity,
+                      cycle_time=cycle_time,
+                      rho_adsorbent = rho_adsorbent,
+                      adsorbent_capacity=adsorbent_capacity,
+                      T_regeneration=T_regeneration,
                       vessel_material=vessel_material,
                       vessel_type=vessel_type,
                       length_unused=length_unused)
@@ -524,9 +536,7 @@ class ALFTSA(bst.AdsorptionColumnTSA):
       cost=4687910, S=1000, CE=qs.CEPCI_by_year[2020], n=0.7)
 @cost(basis='Total gas flow for PSA', ID='PSA', units='m^3/h',
       cost=1989043, S=1000, CE=qs.CEPCI_by_year[2020], n=0.7)
-# TODO: may make this a subunit of SanUnit, so setting 'init_with='WasteStream' could enable LCA
-# TODO: or add a fake unit like 'NGLCA' to enable LCA
-class CO2ElectrolyzerSystem(Unit):
+class CO2ElectrolyzerSystem(SanUnit):
     '''
     CO2 electrolyzer system that converts CO2 into reduced 1C, 2C, and nC products [1]_. 
     

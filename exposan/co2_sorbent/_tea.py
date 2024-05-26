@@ -16,7 +16,6 @@ References:
 [1] Huang, Z.; Grim, R. G.; Schaidle, J. A.; Tao, L. The Economic Outlook for
     Converting CO2 and Electrons to Molecules. Energy Environ. Sci.
     2021, 14 (7), 3664–3678. https://doi.org/10.1039/D0EE03525D.
-
 '''
 
 from biosteam import TEA
@@ -162,7 +161,7 @@ class CO2_sorbent_TEA(TEA):
                 + self.labor_cost * (1 + self.labor_burden))
 
 
-def create_tea(sys, OSBL_units=None, cls=None, labor_cost_value=1e6):
+def create_tea(sys, OSBL_units=None, cls=None, lifetime=20, labor_cost_value=1e6):
     if OSBL_units is None: OSBL_units = bst.get_OSBL(sys.cost_units)
     try:
         BT = tmo.utils.get_instance(OSBL_units, (bst.BoilerTurbogenerator, bst.Boiler))
@@ -172,7 +171,7 @@ def create_tea(sys, OSBL_units=None, cls=None, labor_cost_value=1e6):
     tea = cls(
         system=sys, 
         IRR=0.1, # Huang et al. 2021
-        duration=(2024, 2044), # TODO: confirm lifetime (sys.TEA._years), Huang et al. used 20 years
+        duration=(2022, 2022+lifetime), # TODO: confirm lifetime (sys.TEA._years), Huang et al. used 20 years
         depreciation='MACRS7', # TODO: confirm
         income_tax=0.21, # Huang et al. 2021
         operating_days=sys.operating_hours/24,

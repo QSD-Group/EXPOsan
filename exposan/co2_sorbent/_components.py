@@ -11,9 +11,6 @@ This module is developed by:
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
-
-References:
-
 '''
 
 from qsdsan import Component, Components, set_thermo as qs_set_thermo
