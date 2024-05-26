@@ -53,7 +53,7 @@ from exposan.co2_sorbent import _sanunits as su
 __all__ = (
     'create_system_A', # ALF production using Al(OH)3
     'create_system_B', # ALF production using Bauxite
-    # 'create_system_C' # CO2 capture and utilization
+    'create_system_C' # CO2 capture and utilization
     )
 
 # GDPCTPI (Gross Domestic Product: Chain-type Price Index)
@@ -563,17 +563,28 @@ def create_system_C(product='formic acid',
         adsorbent_cost = 1.95 # $/kg ALF
         adsorbent_CI = 7.77 # kg CO2 eq/kg ALF
     
-    TSA = su.ALFTemperatureSwingAdsorption(ID='ALF_TSA',
-                                            split=dict(O2=(0.13*recovery/purity-0.13*recovery)/0.87,
-                                                        N2=(0.13*recovery/purity-0.13*recovery)/0.87,
-                                                        CO2=recovery),
-                                            ins=(flue_gas, D1-0, 'regenerated_ALF_in'),
-                                            outs=('offgas','CO2','used_ALF','regenerated_ALF_out'),
-                                            adsorbent_cost=adsorbent_cost)
+    # TODO: check all parameters
+    TSA = su.ALFTSA(ID='ALF_TSA',
+                    split=dict(O2=(0.13*recovery/purity-0.13*recovery)/0.87,
+                               N2=(0.13*recovery/purity-0.13*recovery)/0.87,
+                               CO2=recovery),
+                    ins=(flue_gas, 'air'),
+                    adsorbent='ALF',
+                    adsorbate_ID='CO2',
+                    superficial_velocity=1080, # m/h
+                    cycle_time=8, # h
+                    rho_adsorbent = 1441, # kg/m3
+                    adsorbent_capacity=2.7, # mmol/g # TODO: update the value to match up with the required unit
+                    T_regeneration=418, # K
+                    vessel_material='Stainless steel 316',
+                    vessel_type='Vertical',
+                    length_unused=1.219, # m
+                    adsorbent_cost={'ALF': 60}, # TODO: update cost, $/ft3
+                    equipment_lifetime={'ALF': 20}) # TODO: update lifetime
     TSA.register_alias('TSA')
     
     E1 = su.CO2ElectrolyzerSystem(ID='CO2_electrolyzer',
-                                  ins=(TSA-1, 'process_water'),
+                                  ins=(TSA-0, 'process_water'),
                                   outs=('product','mixed_offgas'),
                                   target_product=product,
                                   current_density=0.2,
@@ -589,9 +600,7 @@ def create_system_C(product='formic acid',
     # TODO: determine the offgas fate for E1 (maybe sending it to a CHP unit?)
     # TODO: or separating and selling H2? See Huang et al. 2021 SI, Table S1 for price
     
-    # TODO: need to match up temperatures
-    # HXN = qsu.HeatExchangerNetwork('HXN', T_min_app=5, force_ideal_thermo=True)
-    # HXN.register_alias('HXN')
+    # TODO: HXN does not help, what about cooling and heating?
     
     # TODO: only add a cooling tower if there is a big finanical benefit
     # CT = bst.facilities.CoolingTower('CT')
@@ -602,25 +611,25 @@ def create_system_C(product='formic acid',
     sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=yearly_operating_days*24)
     sys.register_alias('sys')
     
-    
     create_tea(sys)
     
     # TODO: add LCA for ALF in others
-    qs.LCA(system=sys,
-           lifetime=20,
-           lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-\
-                               sys.get_electricity_production())*20,
-               Cooling=lambda:sys.get_cooling_duty()/1000*20,
-               Heating=lambda:sys.get_heating_duty()/1000*20,
-               ALF=)
+    # qs.LCA(system=sys,
+    #        lifetime=20,
+    #        lifetime_unit='yr',
+    #        Electricity=lambda:(sys.get_electricity_consumption()-\
+    #                            sys.get_electricity_production())*20,
+    #            Cooling=lambda:sys.get_cooling_duty()/1000*20,
+    #            Heating=lambda:sys.get_heating_duty()/1000*20,
+    #            ALF=)
     
-    
-    
-
-
-
     sys.simulate()
+    
+    
+    
+    print(f"MSP: {sys.TEA.solve_price(sys.flowsheet.product):.2f} $/kg {product}")
+    
+    
     sys.diagram()
 
 # =============================================================================

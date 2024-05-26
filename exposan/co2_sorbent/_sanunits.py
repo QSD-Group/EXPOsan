@@ -31,7 +31,7 @@ __all__ = (
     'ALFPressureFilter',
     'ReverseOsmosis',
     'S2WS',
-    'ALFTemperatureSwingAdsorption',
+    'ALFTSA',
     'CO2ElectrolyzerSystem'
     )
 
@@ -432,21 +432,16 @@ class S2WS(SanUnit):
             outlet.imass['H2O'] = inlet.F_mass
 
 # =============================================================================
-# ALFTemperatureSwingAdsorption
+# ALFTSA
 # =============================================================================
 # TODO: check this sanunit thoroughly
-class ALFTemperatureSwingAdsorption(PressureVessel, bst.Splitter):
+class ALFTSA(bst.AdsorptionColumnTSA):
     '''
     TSA using ALF as adsorbent for CO2 adsorption.
     
+    # TODO: update parameters
     Parameters
     ----------
-    ID : str, optional
-        Unit ID.
-    ins : iterable
-        Inlet streams.
-    outs : iterable
-        Outlet streams.
     split : dict[str, float] or list[float], optional
         Component splits towards the effluent (0th outlet).
     superficial_velocity : float, optional
@@ -481,116 +476,35 @@ class ALFTemperatureSwingAdsorption(PressureVessel, bst.Splitter):
         Selective Material for CO2 Capture. Science Advances 2022, 8 (44),
         eade1473. https://doi.org/10.1126/sciadv.ade1473.
     '''
-    auxiliary_unit_names = ('heat_exchanger_regeneration','heat_exchanger_cooling')
-    
-    # in year # TODO: confirm the value, and make sure changing the value here really changes the value during running
-    _default_equipment_lifetime = 10
-    
-    _N_ins = 3
-    _N_outs = 4
-    
-    auxiliary_unit_names=('heat_exchanger_regeneration','heat_exchanger_cooling')
-    
-    # TODO: add ID, ins, outs, thermo?
-    def _init(self,
-              split=dict(O2=0, N2=0, CO2=1), # update in the system.py based on the flue gas composition and ALF soption purity (0.975) and recovery (0.945), Evans et al. 2022
-              superficial_velocity=1080, # m/h
-              cycle_time=8, # h
-              rho_adsorbent = 1441, # kg/m3
-              adsorbent_capacity=2.7, # mmol/g
-              T_regeneration=418, # K
-              vessel_material='Stainless steel 316',
-              vessel_type='Vertical',
-              length_unused=1.219, # m
-              adsorbent_cost=1.3, # $/kg
-              ):
-        bst.Splitter._init(self, split=split)
-        self.superficial_velocity = superficial_velocity
-        self.cycle_time = cycle_time
-        self.rho_adsorbent = rho_adsorbent
-        self.adsorbent_capacity = adsorbent_capacity
-        self.T_regeneration = T_regeneration
-        self.vessel_material = vessel_material
-        self.vessel_type = vessel_type
-        self.length_unused = length_unused
+    def _init(self, ID='ALF_TSA',
+                        split=dict(O2=0,
+                                    N2=0,
+                                    CO2=1),
+                        adsorbent='ALF',
+                        adsorbate_ID='CO2',
+                        superficial_velocity=1080, # m/h
+                        cycle_time=8, # h
+                        rho_adsorbent = 1441, # kg/m3
+                        adsorbent_capacity=2.7, # mmol/g # TODO: update the value to match up with the required unit
+                        T_regeneration=418, # K
+                        vessel_material='Stainless steel 316',
+                        vessel_type='Vertical',
+                        length_unused=1.219,
+                        adsorbent_cost={'ALF': 1},
+                        equipment_lifetime={'ALF': 10}):
+        super()._init(split=split,
+                      adsorbent=adsorbent,
+                      adsorbate_ID=adsorbate_ID,
+                      superficial_velocity=superficial_velocity, # m/h
+                      cycle_time=cycle_time, # h
+                      rho_adsorbent = rho_adsorbent, # kg/m3
+                      adsorbent_capacity=adsorbent_capacity, # mmol/g # TODO: update the unit
+                      T_regeneration=T_regeneration, # K
+                      vessel_material=vessel_material,
+                      vessel_type=vessel_type,
+                      length_unused=length_unused)
         self.adsorbent_cost = adsorbent_cost
-        self.heat_exchanger_regeneration = bst.HXutility(None, None, None, thermo=self.thermo)
-        self.heat_exchanger_cooling = bst.HXutility(None, None, None, thermo=self.thermo)
-    
-    def _run(self):
-        feed, ALF, regen_in = self.ins
-        offgas, carbon_dioxide, used_ALF, regen_out = self.outs
-        
-        # TODO: flue gas temperature (may set high, and use a HX to cool first, then add HXN to offset)
-        # TODO: ALF temperature, should be room temperature (same as the flue gas above)
-
-        for i in self.outs: i.empty()
-        
-        # TODO: make sure the order of CO2 and offgas is correct
-        feed.split_to(carbon_dioxide, offgas, self.split)
-        F_vol_feed = feed.F_vol
-        superficial_velocity = self.superficial_velocity
-        F_mass_adsorbate = carbon_dioxide.imass['CO2']
-        
-        self.diameter = diameter = 2 * sqrt(F_vol_feed / (superficial_velocity * pi))
-        self.area = area = pi * diameter * diameter / 4
-        total_length = (
-            self.cycle_time * F_mass_adsorbate / (self.adsorbent_capacity/1000*44 * self.rho_adsorbent * area)
-        ) + self.length_unused # length of equilibrium section plus unused bed (LES + LUB)
-        self.length = length = total_length / 2 # size of each column
-        self.vessel_volume = length * area
-        
-        ALF.phase = 'l'
-        
-        regen_in.copy_like(ALF)
-        regen_in.imass['C3H3AlO6'] /= self.waste_ratio
-        regen_in.T = ALF.T
-        
-        regen_out.copy_like(ALF)
-        regen_out.imass['C3H3AlO6'] /= self.waste_ratio
-        regen_out.T = self.T_regeneration
-        
-        used_ALF.copy_like(ALF)
-    
-    def _design(self):
-        feed, ALF, regen_in = self.ins
-        offgas, carbon_dioxide, used_ALF, regen_out = self.outs 
-        design_results = self.design_results
-        diameter = self.diameter
-        length = self.length
-        design_results['Number of reactors'] = 3
-        design_results.update(
-            self._vessel_design(
-                feed.P * 0.000145038, # Pa to psi
-                diameter * 3.28084, # m to ft
-                length * 3.28084, # m to ft
-            )
-        )
-        hxr = self.heat_exchanger_regeneration
-        hxr.ins.empty()
-        hxr.outs.empty()
-        hxr.ins[0] = regen_in.copy()
-        hxr.outs[0] = regen_out.copy()
-        hxr.T = regen_out.T
-        hxr.simulate_as_auxiliary_exchanger(ins=hxr.ins, outs=hxr.outs)
-        
-        hxc = self.heat_exchanger_cooling
-        hxc.ins.empty()
-        hxc.outs.empty()
-        hxc.ins[0] = regen_out.copy()
-        hxc.outs[0] = regen_in.copy()
-        hxc.T = regen_in.T
-        hxc.simulate_as_auxiliary_exchanger(ins=hxc.ins, outs=hxc.outs)
-    
-    def _cost(self):
-        design_results = self.design_results
-        baseline_purchase_costs = self.baseline_purchase_costs
-        baseline_purchase_costs.update(self._vessel_purchase_cost(
-            design_results['Weight'], design_results['Diameter'], design_results['Length']))
-        N_reactors = design_results['Number of reactors']
-        for i, j in baseline_purchase_costs.items():
-            baseline_purchase_costs[i] *= N_reactors
-        baseline_purchase_costs['ALF'] = N_reactors * self.vessel_volume * 1441 * self.adsorbent_cost
+        self._default_equipment_lifetime = self.equipment_lifetime = equipment_lifetime
         
 # =============================================================================
 # CO2ElectrolyzerSystem
