@@ -80,6 +80,7 @@ def create_components(set_thermo=True):
                     organic=False)
     add_V_from_rho(ALF, 1441) # Evans et al. Science Advances SI. Table S1
     
+    # TODO check the melting temperature for ALF (the current value seems too small)
     # https://www.chemsrc.com/en/cas/7360-53-4_311690.html (accessed 05-24-2024)
     ALF.Tm = 8.4+273.15 # normal melting temperature [K]
     ALF.Tb = 100.6+273.15 # normal boiling temperature [K]

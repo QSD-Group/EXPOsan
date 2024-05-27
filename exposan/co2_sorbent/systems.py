@@ -129,10 +129,10 @@ def create_system_A(AlH3O3=1000,
     
     # add 80% w/w HCOOH to reach a 1:3.5 of Al/HCOOH ratio, Mikola et al. 2013
     formic_acid = qs.WasteStream(ID='formic_acid',
-                               HCOOH=AlH3O3/78*3.5*46,
-                               H2O=AlH3O3/78*3.5*46/0.8*0.2,
-                               units='kg/h',
-                               T=25+273.15)
+                                 HCOOH=AlH3O3/78*3.5*46,
+                                 H2O=AlH3O3/78*3.5*46/0.8*0.2,
+                                 units='kg/h',
+                                 T=25+273.15)
     # formic acid, 2022 average:
     # https://businessanalytiq.com/procurementanalytics/index/aluminum-hydroxide-price-index/
     # (accessed 2024-05-20)
@@ -176,12 +176,12 @@ def create_system_A(AlH3O3=1000,
     
     # TODO: check if the RO cake (produced after evaporator) can be potentially reused
     # asssume no cost and environmental impact associated with it
-    RO1 = su.ReverseOsmosis(ID='Reverse_osmosis',
+    RO = su.ReverseOsmosis(ID='Reverse_osmosis',
                             ins=F1-1,
                             outs=('RO_water','brine'),
                             water_recovery=0.987)
-    RO1.outs[0].price = bst.stream_prices['Reverse osmosis water']
-    RO1.register_alias('RO1')
+    RO.outs[0].price = bst.stream_prices['Reverse osmosis water']
+    RO.register_alias('RO')
 
     # natural price is already included (bst.stream_prices['Natural gas'] = 0.218 $/kg)
     D1 = DrumDryer(ID='ALF_dryer',
@@ -209,7 +209,7 @@ def create_system_A(AlH3O3=1000,
     sys.register_alias('sys')
     
     # for LCA, using ecoinvent database 3.8 apos (default) and TRACI method for now
-    # TODO: can change to ecoinvent database 3.8 cutoff and IPCC method if necessary
+    # TODO: change to ecoinvent database 3.8 cutoff after determining using TRACI or IPCC method
     # TODO: confirm HCOOH in the stream.hot_air does not contribute to GWP
     
     # market group for natural gas, high pressure, GLO
@@ -314,15 +314,14 @@ def create_system_B(bauxite=1000,
     
     G1 = su.BauxiteHammerMill(ID='bauxite_hammer_mill',
                               ins=bauxite_ore,
-                              outs='crushed_bauxite',
-                              Al2O3_ratio=0.6)
+                              outs='crushed_bauxite')
     G1.register_alias('G1')
     
     # add water to generate a sludge that contains 5.1% w/w of aluminum, Mikola et al. 2013
     water = qs.WasteStream(ID='water',
-                            H2O=bauxite*bauxite_Al2O3/102*54/0.051-bauxite,
-                            units='kg/h',
-                            T=25+273.15)
+                           H2O=bauxite*bauxite_Al2O3/102*54/0.051-bauxite,
+                           units='kg/h',
+                           T=25+273.15)
     water.price = bst.stream_prices['Reverse osmosis water']
 
     M1 = qsu.Mixer(ID='feed_mixer_1',
@@ -338,10 +337,10 @@ def create_system_B(bauxite=1000,
     
     # add 80% w/w HCOOH to reach a 1:3.5 of Al/HCOOH ratio, Mikola et al. 2013
     formic_acid = qs.WasteStream(ID='formic_acid',
-                                HCOOH=(Al_mol+Fe_mol)*3.5*46,
-                                H2O=(Al_mol+Fe_mol)*3.5*46/0.8*0.2,
-                                units='kg/h',
-                                T=25+273.15)
+                                 HCOOH=(Al_mol+Fe_mol)*3.5*46,
+                                 H2O=(Al_mol+Fe_mol)*3.5*46/0.8*0.2,
+                                 units='kg/h',
+                                 T=25+273.15)
     # formic acid, 2022 average:
     # https://businessanalytiq.com/procurementanalytics/index/aluminum-hydroxide-price-index/
     # (accessed 2024-05-20)
@@ -412,18 +411,18 @@ def create_system_B(bauxite=1000,
                               outs=('retentate','permeate'),
                               moisture_content=0.35,
                               split={'C3H3AlO6_s':1,
-                                      'C3H3AlO6_l':0,
-                                      'HCOOH':0.036})
+                                     'C3H3AlO6_l':0,
+                                     'HCOOH':0.036})
     F2.register_alias('F2')
     
     # TODO: check if the RO cake (produced after evaporator) can be potentially reused
     # asssume no cost and environmental impact associated with it
-    RO1 = su.ReverseOsmosis(ID='Reverse_osmosis',
-                            ins=F2-1,
-                            outs=('RO_water','brine'),
-                            water_recovery=0.987)
-    RO1.outs[0].price = bst.stream_prices['Reverse osmosis water']
-    RO1.register_alias('RO1')
+    RO = su.ReverseOsmosis(ID='Reverse_osmosis',
+                           ins=F2-1,
+                           outs=('RO_water','brine'),
+                           water_recovery=0.987)
+    RO.outs[0].price = bst.stream_prices['Reverse osmosis water']
+    RO.register_alias('RO')
 
     # natural price is already included (bst.stream_prices['Natural gas'] = 0.218 $/kg)
     D1 = DrumDryer(ID='ALF_dryer',
@@ -451,7 +450,7 @@ def create_system_B(bauxite=1000,
     sys.register_alias('sys')
     
     # for LCA, using ecoinvent database 3.8 apos (default) and TRACI method for now
-    # TODO: can change to ecoinvent database 3.8 cutoff and IPCC method if necessary
+    # TODO: change to ecoinvent database 3.8 cutoff after determining using TRACI or IPCC method
     # TODO: confirm HCOOH in the stream.hot_air does not contribute to GWP
     
     # market group for natural gas, high pressure, GLO
@@ -572,12 +571,13 @@ def create_system_C(product='formic acid',
         adsorbent_cost = 1.95*1441/35.3147 # 1.95 $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
         adsorbent_CI = 7.77 # kg CO2 eq/kg ALF
     
+    # TODO: how the regeneration temperature was determined?
     TSA = su.ALFTSA(ID='ALF_TSA',
                     ins=(flue_gas,'air','dry_air'),
                     outs=('captured_carbon_dioxide','purge','air_purge'),
                     adsorbent='ALF',
                     adsorbent_cost={'ALF': adsorbent_cost}, # TODO: update cost, $/ft3
-                    equipment_lifetime={'ALF': 10}, # TODO: in year? Update if needed # TODO: what does the lifetime mean here, for ALF or for the entire unit?
+                    equipment_lifetime={'ALF': 20}, # TODO: in year? Update if needed # TODO: what does the lifetime mean here, for ALF or for the entire unit?
                     adsorbate_ID='CO2',
                     split=dict(O2=(0.13*recovery/purity-0.13*recovery)/0.87,
                                N2=(0.13*recovery/purity-0.13*recovery)/0.87,
@@ -602,7 +602,6 @@ def create_system_C(product='formic acid',
                                   cathodic_overpotential=0.454,
                                   product_selectivity=0.9,
                                   converstion=0.5,
-                                  PSA_operating_cost=0.25,
                                   operating_days_per_year=yearly_operating_days)
     E1.register_alias('E1')
     E1.ins[1].price = bst.stream_prices['Reverse osmosis water']
@@ -613,6 +612,10 @@ def create_system_C(product='formic acid',
     sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=yearly_operating_days*24)
     sys.register_alias('sys')
     
+    # for LCA, using ecoinvent database 3.8 apos (default) and TRACI method for now
+    # TODO: change to ecoinvent database 3.8 cutoff after determining using TRACI or IPCC method
+    # TODO: confirm HCOOH in the stream.hot_air does not contribute to GWP
+    
     # water production, deionised, RoW
     qs.StreamImpactItem(ID='water',
                         linked_stream=stream.process_water,
@@ -620,8 +623,8 @@ def create_system_C(product='formic acid',
     
     create_tea(sys, lifetime=lifetime)
     
-    # TODO: must simulate before LCA to get the CO2 amount
-    # TODO: not sure why it is OK to simulate here for system C but will not work for systems A and B
+    # simulate here before LCA to enable the calculation of outlet streams
+    # simulate twice (here and later in qs.LCA) in this system does not affect the results
     sys.simulate()
     
     # TODO: note LCA for ALF and CO2 are calculated as 'Other' not 'Construction' or 'Stream'
