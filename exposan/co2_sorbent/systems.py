@@ -46,12 +46,22 @@ from exposan.co2_sorbent import (
 from exposan.co2_sorbent import _sanunits as su
 from math import ceil
 
-# TODO: add LCA for all systems
-# TODO: from Jeremy: check if LCA studies (e.g., reports from DOE) for DAC (direct air capture) includes constructin
-# TODO: if not, we don't need to include LCA for constructions
-# TODO: but we can add LCA for constructions if that's of interest later
-# TODO: update all price/cost to the baseline year (2022)
-# TODO: code refactoring
+# HXN (heat exchanger network), CWP (chilled water package)
+# and BT (BoilerTurbogenerator) don't help in these systems
+
+# TODO: from Jeremy: check if LCA studies (e.g., reports from DOE) for
+# DAC (direct air capture) includes constructin
+# if not, we don't need to include LCA for constructions
+# but we can add LCA for constructions if that's of interest later
+
+# TODO: for LCA, determine using GLO, RoW, or US (US has lower electricity CI
+# than GLO and electricity is the dominator in system C)
+# several concerns: 1. some prices are based on US
+#                   2. some US LCA data may not be easy to find
+#                   3. when do LCA comparison between products from system C
+#                      and the products in the market, try to match up their
+#                      geological information (i.e., GLO vs GLO, US vs US)
+
 __all__ = (
     'create_system_A', # ALF production using Al(OH)3
     'create_system_B', # ALF production using Bauxite
@@ -72,7 +82,7 @@ GDPCTPI = {2016: 98.208,
 # =============================================================================
 # ALF production: Al(OH)3 + HCOOH
 # =============================================================================
-def create_system_A(AlH3O3=1000,
+def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
                     electricity_price=0.0832,
                     yearly_operating_days=350,
                     lifetime=20):
@@ -94,7 +104,6 @@ def create_system_A(AlH3O3=1000,
     bst.PowerUtility.price = electricity_price
     
     _load_components()
-    # all costs in this analysis are 2022$
     bst.CE = qs.CEPCI_by_year[2022]
     
     folder = os.path.dirname(__file__)
@@ -158,7 +167,7 @@ def create_system_A(AlH3O3=1000,
     C1 = su.ALFCrystallizer(ID='ALF_crystallizer',
                             ins=R1-0,
                             outs='ALF_mixed',
-                            tau=5, # TODO: test in the uncertainty analysis if this is important, if important, then decide a more appropriate value
+                            tau=5,
                             N=3,
                             T=298.15, # room temperature, Evans et al. 2022
                             crystal_ALF_yield=0.83) # crystal_ALF_yield = 0.83, Evans et al. 2022
@@ -182,8 +191,8 @@ def create_system_A(AlH3O3=1000,
                             water_recovery=0.987)
     RO.outs[0].price = bst.stream_prices['Reverse osmosis water']
     RO.register_alias('RO')
-
-    # natural price is already included (bst.stream_prices['Natural gas'] = 0.218 $/kg)
+    
+    # note natural price is already included (bst.stream_prices['Natural gas'] = 0.218 $/kg)
     D1 = DrumDryer(ID='ALF_dryer',
                    ins=(F1-0,'dryer_air','natural_gas'),
                    outs=('dryed_ALF','hot_air','emissions'),
@@ -200,16 +209,13 @@ def create_system_A(AlH3O3=1000,
                          tau=24*7, vessel_material='Stainless steel')
     S1.register_alias('S1')
     
-    # HXN (heat exchanger network), CWP (chilled water package)
-    # and BT (BoilerTurbogenerator) don't help in this system
-    
     sys = qs.System.from_units(ID='sys_ALF_A',
                                units=list(flowsheet.unit),
                                operating_hours=yearly_operating_days*24)
     sys.register_alias('sys')
     
-    # for LCA, using ecoinvent database 3.8 apos (default) and TRACI method for now
-    # TODO: change to ecoinvent database 3.8 cutoff after determining using TRACI or IPCC method
+    # for LCA, using ecoinvent database 3.8 cutoff and TRACI method for now
+    # TODO: determine using TRACI or IPCC method
     # TODO: confirm HCOOH in the stream.hot_air does not contribute to GWP
     
     # market group for natural gas, high pressure, GLO
@@ -218,34 +224,31 @@ def create_system_A(AlH3O3=1000,
     # 53.6 MJ/kg (https://www.sciencedirect.com/science/article/pii/B9780128095973003357)
     qs.StreamImpactItem(ID='natural_gas',
                         linked_stream=stream.natural_gas_LCA,
-                        GlobalWarming=1+0.33690797/39*53.6/44*16)
+                        GlobalWarming=1+0.33658049/39*53.6/44*16)
     
     # market for aluminium hydroxide, GLO
     qs.StreamImpactItem(ID='aluminum_hydroxide',
                         linked_stream=stream.aluminum_hydroxide,
-                        GlobalWarming=0.98853282)
+                        GlobalWarming=0.98811449)
     
     # water production, deionised, RoW
     qs.StreamImpactItem(ID='water',
                         linked_stream=stream.water,
-                        GlobalWarming=0.00030228066)
+                        GlobalWarming=0.00045239247)
     
     # market for formic acid, RoW
     # for 80% HCOOH
     qs.StreamImpactItem(ID='formic_acid',
                         linked_stream=stream.formic_acid,
-                        GlobalWarming=2.8612976*0.8+0.00030228066*0.2)
+                        GlobalWarming=2.8683493*0.8+0.00045239247*0.2)
     
     # water production, deionised, RoW
     qs.StreamImpactItem(ID='RO_water',
                         linked_stream=stream.RO_water,
-                        GlobalWarming=-0.00030228066)
+                        GlobalWarming=-0.00045239247)
     
     create_tea(sys, lifetime=lifetime)
     
-    # from Jeremy: LCA for construction may not be needed
-    # TODO: postpone doing LCA for construction
-    # TODO: make sure the lifetimes for TEA and LCA are the same and decide if 20 years is appropriate
     qs.LCA(system=sys,
            lifetime=lifetime,
            lifetime_unit='yr',
@@ -254,21 +257,21 @@ def create_system_A(AlH3O3=1000,
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
            Heating=lambda:sys.get_heating_duty()/1000*lifetime)
     
-    # !!! errors like 'UndefinedPhase: <DrumDryer: ALF_dryer> 'G'' is because the system being simulated for multiple times (note qs.LCA simulate the system as well)
+    # errors like 'UndefinedPhase: <DrumDryer: ALF_dryer> 'G'' is because the system being simulated for multiple times (note qs.LCA simulate the system as well)
     # TODO: decide whether the above glitch affects creating models
     
     sys.diagram()
     
-    print(f"production: {sys.flowsheet.ALF.F_mass/1000*24:.2f} metric ton ALF/day")
-    print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.ALF):.2f} $/kg ALF")
-    print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.ALF.F_mass/sys.operating_hours/sys.LCA.lifetime:.2f} kg CO2 eq/kg ALF")
+    print(f"production: {sys.flowsheet.ALF.F_mass/1000*24} metric ton ALF/day")
+    print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.ALF)} $/kg ALF")
+    print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.ALF.F_mass/sys.operating_hours/sys.LCA.lifetime} kg CO2 eq/kg ALF")
     
     return sys
 
 # =============================================================================
 # ALF production: Bauxite + HCOOH
 # =============================================================================
-def create_system_B(bauxite=1000,
+def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                     bauxite_price=0.075, # $/kg, related to bauxite_purity
                     bauxite_Al2O3=0.6, # Al2O3 weight ratio in bauxite, related to bauxite_price
                     bauxite_SiO2=0.11, # SiO2 weight ratio in bauxite, related to bauxite_price
@@ -293,7 +296,6 @@ def create_system_B(bauxite=1000,
     bst.PowerUtility.price = electricity_price
     
     _load_components()
-    # all costs in this analysis are 2022$
     bst.CE = qs.CEPCI_by_year[2022]
     
     folder = os.path.dirname(__file__)
@@ -364,7 +366,8 @@ def create_system_B(bauxite=1000,
                           tau=2) # [h], 2 h in Xue et al. 2018, 1 h in Mikola et al. 2013
     R1.register_alias('R1')    
     
-    # TODO: adding CO2 in the 'gas' to LCA?
+    # TODO: confirm the reaction between Fe2O3 and HCOOH product CO2
+    # TODO: if not, no need to include PC1 and S2WS1 here
     PC1 = su.PhaseChanger(ID='PhaseChanger',
                           ins=R1-0,
                           outs=('slurry','carbon_dioxide'))
@@ -375,7 +378,6 @@ def create_system_B(bauxite=1000,
                     outs='carbon_dioxide_LCA')
     S2WS1.register_alias('S2WS1')
     
-    # TODO: how to dispose the 'retentate' here?
     # split ratio can be found in biosteam/units/solids_separation.py (soluble chemicals~0.036)
     F1 = su.SolidPressureFilter(ID='solid_filter',
                                 ins=PC1-0,
@@ -399,7 +401,7 @@ def create_system_B(bauxite=1000,
     C1 = su.ALFCrystallizer(ID='ALF_crystallizer',
                             ins=F1-1,
                             outs='ALF_mixed',
-                            tau=5, # TODO: test in the uncertainty analysis if this is important, if important, then decide a more appropriate value
+                            tau=5,
                             N=3,
                             T=298.15, # room temperature, Evans et al. 2022
                             crystal_ALF_yield=0.83) # crystal_ALF_yield = 0.83, Evans et al. 2022
@@ -424,7 +426,7 @@ def create_system_B(bauxite=1000,
     RO.outs[0].price = bst.stream_prices['Reverse osmosis water']
     RO.register_alias('RO')
 
-    # natural price is already included (bst.stream_prices['Natural gas'] = 0.218 $/kg)
+    # note natural price is already included (bst.stream_prices['Natural gas'] = 0.218 $/kg)
     D1 = DrumDryer(ID='ALF_dryer',
                     ins=(F2-0,'dryer_air','natural_gas'),
                     outs=('dryed_ALF','hot_air','emissions'),
@@ -441,16 +443,13 @@ def create_system_B(bauxite=1000,
                           tau=24*7, vessel_material='Stainless steel')
     S1.register_alias('S1')
     
-    # # HXN (heat exchanger network), CWP (chilled water package)
-    # # and BT (BoilerTurbogenerator) don't help in this system
-    
     sys = qs.System.from_units(ID='sys_ALF_B',
                                units=list(flowsheet.unit),
                                operating_hours=yearly_operating_days*24)
     sys.register_alias('sys')
     
-    # for LCA, using ecoinvent database 3.8 apos (default) and TRACI method for now
-    # TODO: change to ecoinvent database 3.8 cutoff after determining using TRACI or IPCC method
+    # for LCA, using ecoinvent database 3.8 cutoff and TRACI method for now
+    # TODO: determine using TRACI or IPCC method
     # TODO: confirm HCOOH in the stream.hot_air does not contribute to GWP
     
     # market group for natural gas, high pressure, GLO
@@ -459,33 +458,33 @@ def create_system_B(bauxite=1000,
     # 53.6 MJ/kg (https://www.sciencedirect.com/science/article/pii/B9780128095973003357)
     qs.StreamImpactItem(ID='natural_gas',
                         linked_stream=stream.natural_gas_LCA,
-                        GlobalWarming=1+0.33690797/39*53.6/44*16)
+                        GlobalWarming=1+0.33658049/39*53.6/44*16)
     
     # market for bauxite, GLO
     qs.StreamImpactItem(ID='bauxite_ore',
                         linked_stream=stream.bauxite_ore,
-                        GlobalWarming=0.026571501)
+                        GlobalWarming=0.026592271)
     
     # water production, deionised, RoW
     qs.StreamImpactItem(ID='water',
                         linked_stream=stream.water,
-                        GlobalWarming=0.00030228066)
+                        GlobalWarming=0.00045239247)
     
     # market for formic acid, RoW
     # for 80% HCOOH
     qs.StreamImpactItem(ID='formic_acid',
                         linked_stream=stream.formic_acid,
-                        GlobalWarming=2.8612976*0.8+0.00030228066*0.2)
+                        GlobalWarming=2.8683493*0.8+0.00045239247*0.2)
     
-    # market for redmud from bauxite digestion
+    # market for redmud from bauxite digestion, GLO
     qs.StreamImpactItem(ID='solid_waste',
                         linked_stream=stream.solid_waste_LCA,
-                        GlobalWarming=0.011072384)
+                        GlobalWarming=0.011066165)
     
     # water production, deionised, RoW
     qs.StreamImpactItem(ID='RO_water',
                         linked_stream=stream.RO_water,
-                        GlobalWarming=-0.00030228066)
+                        GlobalWarming=-0.00045239247)
     
     # TODO: confirm this
     # CO2 direct emission
@@ -495,9 +494,6 @@ def create_system_B(bauxite=1000,
     
     create_tea(sys, lifetime=lifetime)
     
-    # from Jeremy: LCA for construction may not be needed
-    # TODO: postpone doing LCA for construction
-    # TODO: make sure the lifetimes for TEA and LCA are the same and decide if 20 years is appropriate
     qs.LCA(system=sys,
            lifetime=lifetime,
            lifetime_unit='yr',
@@ -506,14 +502,14 @@ def create_system_B(bauxite=1000,
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
            Heating=lambda:sys.get_heating_duty()/1000*lifetime)
     
-    # !!! errors like 'UndefinedPhase: <DrumDryer: ALF_dryer> 'G'' is because the system being simulated for multiple times (note qs.LCA simulate the system as well)
+    # errors like 'UndefinedPhase: <DrumDryer: ALF_dryer> 'G'' is because the system being simulated for multiple times (note qs.LCA simulate the system as well)
     # TODO: decide whether the above glitch affects creating models
     
     sys.diagram()
     
-    print(f"production: {sys.flowsheet.ALF.F_mass/1000*24:.2f} metric ton ALF/day")
-    print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.ALF):.2f} $/kg ALF")
-    print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.ALF.F_mass/sys.operating_hours/sys.LCA.lifetime:.2f} kg CO2 eq/kg ALF")
+    print(f"production: {sys.flowsheet.ALF.F_mass/1000*24} metric ton ALF/day")
+    print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.ALF)} $/kg ALF")
+    print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.ALF.F_mass/sys.operating_hours/sys.LCA.lifetime} kg CO2 eq/kg ALF")
     
     return sys    
 
@@ -545,9 +541,7 @@ def create_system_C(product='formic acid',
     bst.PowerUtility.price = electricity_price
     
     _load_components()
-    # all costs in this analysis are 2022$
     bst.CE = qs.CEPCI_by_year[2022]
-    # TODO: update all price/cost to the baseline year (2022)
     
     folder = os.path.dirname(__file__)
     qs.ImpactIndicator.load_from_file(os.path.join(folder, 'data/impact_indicators.csv'))
@@ -564,19 +558,22 @@ def create_system_C(product='formic acid',
                               T=25+273.15)
     
     # TODO: update ALF price and CI if necessary
+    # for system A, producing 100 metric ton ALF per day needs 2416.7 kg Al)OH)3 per hour
     if ALF_system == 'A':
-        adsorbent_cost = 1.40*1441/35.3147 # 1.40 $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
-        adsorbent_CI = 4.98 # kg CO2 eq/kg ALF
+        adsorbent_cost = 1.437*1441/35.3147 # 1.437 $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
+        adsorbent_CI = 4.992 # kg CO2 eq/kg ALF
+        
+    # for system B, producing 100 metric ton ALF per day needs 2730.8 kg bauxite per hour
     if ALF_system == 'B':
-        adsorbent_cost = 1.95*1441/35.3147 # 1.95 $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
-        adsorbent_CI = 7.77 # kg CO2 eq/kg ALF
+        adsorbent_cost = 1.935*1441/35.3147 # 1.935 $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
+        adsorbent_CI = 7.788 # kg CO2 eq/kg ALF
     
     # TODO: how the regeneration temperature was determined?
     TSA = su.ALFTSA(ID='ALF_TSA',
                     ins=(flue_gas,'air','dry_air'),
                     outs=('captured_carbon_dioxide','purge','air_purge'),
                     adsorbent='ALF',
-                    adsorbent_cost={'ALF': adsorbent_cost}, # TODO: update cost, $/ft3
+                    adsorbent_cost={'ALF': adsorbent_cost},
                     equipment_lifetime={'ALF': 20}, # TODO: in year? Update if needed # TODO: what does the lifetime mean here, for ALF or for the entire unit?
                     adsorbate_ID='CO2',
                     split=dict(O2=(0.13*recovery/purity-0.13*recovery)/0.87,
@@ -593,6 +590,7 @@ def create_system_C(product='formic acid',
                     length_unused=1.219) # m
     TSA.register_alias('TSA')
     
+    # mixed_offgas from E1 is assumed to be directly emitted to the air (consider the CO2 in this stream in LCA)
     E1 = su.CO2ElectrolyzerSystem(ID='CO2_electrolyzer',
                                   ins=(TSA-0, 'process_water'),
                                   outs=('product','mixed_offgas'),
@@ -606,20 +604,20 @@ def create_system_C(product='formic acid',
     E1.register_alias('E1')
     E1.ins[1].price = bst.stream_prices['Reverse osmosis water']
     
-    # TODO: determine the offgas fate for E1 (maybe sending it to a CHP unit?)
-    # TODO: or separating and selling H2? See Huang et al. 2021 SI, Table S1 for price
+    # TODO: do we want to add a gas compressor and storage tank for gas products (w/ hydrogen?)?
+    # TODO: do we want to add a storage tank for liquid products and sell hydrogen?
+    # Jouny et al. 2018 ignored these
     
     sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=yearly_operating_days*24)
     sys.register_alias('sys')
     
-    # for LCA, using ecoinvent database 3.8 apos (default) and TRACI method for now
-    # TODO: change to ecoinvent database 3.8 cutoff after determining using TRACI or IPCC method
-    # TODO: confirm HCOOH in the stream.hot_air does not contribute to GWP
+    # for LCA, using ecoinvent database 3.8 cutoff and TRACI method for now
+    # TODO: determine using TRACI or IPCC method
     
     # water production, deionised, RoW
     qs.StreamImpactItem(ID='water',
                         linked_stream=stream.process_water,
-                        GlobalWarming=0.00030228066)
+                        GlobalWarming=0.00045239247)
     
     create_tea(sys, lifetime=lifetime)
     
@@ -627,8 +625,7 @@ def create_system_C(product='formic acid',
     # simulate twice (here and later in qs.LCA) in this system does not affect the results
     sys.simulate()
     
-    # TODO: note LCA for ALF and CO2 are calculated as 'Other' not 'Construction' or 'Stream'
-    # TODO: add LCA for ALF in others
+    # note LCA for ALF and CO2 are calculated as 'Other', not 'Construction' or 'Stream'
     qs.LCA(system=sys,
            lifetime=lifetime,
            lifetime_unit='yr',
@@ -643,7 +640,7 @@ def create_system_C(product='formic acid',
     
     sys.diagram()
     
-    print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.product):.2f} $/kg {product}")
-    print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.product.F_mass/sys.operating_hours/sys.LCA.lifetime:.2f} kg CO2 eq/kg {product}")
+    print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.product)} $/kg {product}")
+    print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.product.F_mass/sys.operating_hours/sys.LCA.lifetime} kg CO2 eq/kg {product}")
     
     return sys

@@ -590,11 +590,12 @@ class CO2ElectrolyzerSystem(SanUnit):
                         'formula': ['CO','C2H6O','C2H4','HCOOH','CH4','CH4O','C3H8O'],
                         'elec_number': [2, 12, 12, 2, 8, 6, 18],
                         'mole_ratio': [1, 2, 2, 1, 1, 1, 3],
-                        'MW': [28.01, 46.06, 28.05, 46.025, 16.04, 32.04, 60.06],
+                        'MW': [28, 46, 28, 46, 16, 32, 60],
                         # kg/m3
                         'density': [1.14, 789, 1.18, 1221, 0.656, 792, 803],
                         'state': ['gas','liq','gas','liq','gas','liq','liq'],
-                        'potential': [-0.106, 0.084, 0.064, -0.25, 0.169, 0.016, 0.095]}
+                        'potential': [-0.106, 0.084, 0.064, -0.25, 0.169, 0.016, 0.095],
+                        'cathode_water_production': [1, 3, 4, 0, 2, 1, 5]}
         
         product_info = pd.DataFrame.from_dict(product_info)
         
@@ -651,8 +652,8 @@ class CO2ElectrolyzerSystem(SanUnit):
         hydrogen_flow_rate_mol_per_s = current_needed*(1-self.product_selectivity)/2/96485
         
         # hydrogen flow rate [m3/h]
-        # hydrogen molar mass: 2.016, hydrogen density: 0.08375 kg/m3, Jouny et al. 2018
-        hydrogen_flow_rate_m3_per_h = hydrogen_flow_rate_mol_per_s*2.016/1000/0.08375*3600
+        # hydrogen molar mass: 2, hydrogen density: 0.08375 kg/m3, Jouny et al. 2018
+        hydrogen_flow_rate_m3_per_h = hydrogen_flow_rate_mol_per_s*2/1000/0.08375*3600
         
         # total gas flow [m3/h]
         self.total_gas_flow = self.CO2_outlet_flow_rate_m3_per_h +\
@@ -661,10 +662,7 @@ class CO2ElectrolyzerSystem(SanUnit):
         product.imass[chemical_info['formula'].to_string(index=False)] = product_production/24
         product.phase = 'g' if chemical_info['state'].to_string(index=False) == 'gas' else 'l'
         
-        # TODO: this is the H2O consumed in the anode, but there is H2O production in the cathode
-        # (except HCOOH, that's why currently mass balance and energy balance only works for HCOOH)
-        # TODO: determine how to deal with the water produced in the cathode: discharge or flow to anode,
-        # and meet mass balance and energy balance (by also considering H2O production in the cathode)
+        # TODO: explain why for formic acid, the cathode does not produce water but it still needs distillation
         # note Jouny et al. 2018 calculated process water amount as 'current_needed/4/96485*18/1000*3600'
         # TODO: confirm it is correct to change it to 'current_needed/2/96485*18/1000*3600'
         # as every 18 g H2O can transfer 2 e-
@@ -673,8 +671,16 @@ class CO2ElectrolyzerSystem(SanUnit):
         mixed_offgas.empty()
         mixed_offgas.imass['CO2'] = CO2_outlet_flow_rate_kg_per_h
         # hydrogen density: 0.08375 kg/m3, Jouny et al. 2018
+        # TODO: hydrogen is produced in the cathode. Should it be in the stream 'product'?
+        # Jouny et al. 2018 kind of ingored this
+        # TODO: decide how to deal with it. Two cases: gas product (with mixed hydrogen) and liquid product (selling hydrogen?)
         mixed_offgas.imass['H2'] = hydrogen_flow_rate_m3_per_h*0.08375
         mixed_offgas.imass['N2'] = carbon_dioxide.imass['N2']
+        
+        # H2O after distillation or PSA
+        # TODO: clarify why formic acid is produced in the cathode with no water produced but still needs distillation?
+        mixed_offgas.imass['H2O'] = product.F_mass/float(chemical_info['MW'])*float(chemical_info['cathode_water_production'])*18
+        
         mixed_offgas.imass['O2'] = carbon_dioxide.F_mass + water.F_mass -\
             product.F_mass - mixed_offgas.F_mass
         mixed_offgas.phase = 'g'
