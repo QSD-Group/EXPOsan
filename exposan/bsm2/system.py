@@ -49,7 +49,8 @@ V_ae = 3000 # aerated zone tank volume
 SOSAT1 = 8
 
 # Default initial conditions
-asm1init = pd.read_csv(os.path.join(data_path, 'asm1init.csv'), index_col=0).to_dict('index')
+asinit = pd.read_csv(os.path.join(data_path, 'asm1init.csv'), index_col=0)
+asm1init = asinit.to_dict('index')
 settler1dinit = pd.read_csv(os.path.join(data_path, 'settler1dinit.csv'), index_col=0).to_dict('index')
 adm1init = pd.read_csv(os.path.join(data_path, 'adm1init.csv'), index_col=0).to_dict('index')
 
@@ -107,8 +108,16 @@ def create_system(flowsheet=None, default_init_conds=True):
                  V_max=V_ae, aeration=aer3,
                  DO_ID=DO_ID, suspended_growth_model=asm1)
     
+    # AS = su.PFR('AS', ins=[C1-0, 'RAS', carb], outs='treated', 
+    #             V_tanks=[V_an]*2+[V_ae]*3,
+    #             influent_fractions=[[1,0,0,0,0]]*3,
+    #             internal_recycles=[(4,0,Q_intr)],
+    #             kLa=[0,0,120,120,60], DO_ID=DO_ID, DO_sat=SOSAT1,
+    #             suspended_growth_model=asm1)
+    
     # 10-layer one-dimensional settler model, Table 4
     C2 = su.FlatBottomCircularClarifier(
+        # 'C2', AS-0, ['effluent', 1-AS, 'WAS'],
         'C2', O3-1, ['effluent', 2-A1, 'WAS'],
         underflow=Q_ras, wastage=Q_was,
         # Table 4 and the corresponding section
@@ -154,8 +163,11 @@ def create_system(flowsheet=None, default_init_conds=True):
     # T1-0-2-C1
     
     if default_init_conds:
-        for i in ('C1', 'A1', 'A2', 'O1', 'O2', 'O3'):
+        for i in ('C1', 
+                   'A1', 'A2', 'O1', 'O2', 'O3'):
+                  # ):
             getattr(unit, i).set_init_conc(**asm1init[i])
+        # AS.set_init_conc(concentrations=asinit.iloc[1:-1])
         C2.set_init_TSS(list(settler1dinit['C2'].values()))
         AD1.set_init_conc(**adm1init['AD1'])
 
@@ -164,10 +176,13 @@ def create_system(flowsheet=None, default_init_conds=True):
                     path=(C1, A1, A2, O1, O2, O3, C2, 
                           TC1, M1, J1, AD1, J2, C3, M2),
                     recycle=(O3-0, C2-1, M2-0)
+                    # path=(C1, AS, C2, TC1, M1, J1, AD1, J2, C3, M2),
+                    # recycle=(C2-1, M2-0)
                     )
     sys.set_tolerance(mol=1e-5, rmol=1e-5)
     sys.maxiter = 5000
     sys.set_dynamic_tracker(C1, A1, O3, C2, J1, AD1, J2, C3)
+    # sys.set_dynamic_tracker(C1, AS, C2, J1, AD1, J2, C3)
     
     return sys
 
