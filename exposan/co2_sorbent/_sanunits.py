@@ -19,6 +19,9 @@ from qsdsan import SanUnit
 from biosteam import Unit
 from qsdsan.utils import auom
 from biosteam.units.decorators import cost
+from biosteam.units.splitting import Splitter
+from biosteam.units.design_tools import PressureVessel
+from math import sqrt, pi, ceil
 
 __all__ = (
     'BauxiteHammerMill',
@@ -145,7 +148,7 @@ _hp2kW = 0.7457
 @cost(basis='Retentate flow rate', ID='Dry air pressure filter (2)',
       cost=405000, CE=521.9, S=31815, n=0.6, kW=1044, BM=1.6)
 class SolidPressureFilter(Unit):
-    """
+    '''
     Create a pressure filter for the separation of ALF. See biosteam/units/solids_separation.py.
     Capital costs are based on [1]_.
     
@@ -171,7 +174,7 @@ class SolidPressureFilter(Unit):
         Conversion of Lignocellulosic Biomass to Ethanol: Dilute-Acid 
         Pretreatment and Enzymatic Hydrolysis of Corn Stover
         (No. NREL/TP-5100-47764, 1013269). https://doi.org/10.2172/1013269
-    """
+    '''
     _units = {'Retentate flow rate': 'kg/hr'}
     
     _N_ins = 1
@@ -288,7 +291,7 @@ _hp2kW = 0.7457
 @cost(basis='Retentate flow rate', ID='Dry air pressure filter (2)',
       cost=405000, CE=521.9, S=31815, n=0.6, kW=1044, BM=1.6)
 class ALFPressureFilter(Unit):
-    """
+    '''
     Create a pressure filter for the separation of ALF. See biosteam/units/solids_separation.py.
     Capital costs are based on [1]_.
     
@@ -314,7 +317,7 @@ class ALFPressureFilter(Unit):
         Conversion of Lignocellulosic Biomass to Ethanol: Dilute-Acid 
         Pretreatment and Enzymatic Hydrolysis of Corn Stover
         (No. NREL/TP-5100-47764, 1013269). https://doi.org/10.2172/1013269
-    """
+    '''
     _units = {'Retentate flow rate': 'kg/hr'}
     
     _N_ins = 1
@@ -358,10 +361,10 @@ class ALFPressureFilter(Unit):
 @cost(basis='Volumetric flow', ID='Evaporator', units='m3/hr',
       kW=1103.636, cost=5000000, S=2.7*_mgd_to_cmh, CE=CEPCI[2012], n=0.6, BM=1.6)
 class ReverseOsmosis(SanUnit):
-    """
+    '''
     See biorefineries/wwt/_wwt_process.py for cost.
     See biosteam/wastewater/conventional.py for the default water recovery rate.
-    """
+    '''
     _N_ins = 1
     _N_outs = 2
     _units = {'Volumetric flow': 'm3/hr'}
@@ -385,7 +388,7 @@ class ReverseOsmosis(SanUnit):
 # S2WS
 # =============================================================================
 class S2WS(SanUnit):
-    """
+    '''
     S2WS: Stream to WasteStream.
     A fake unit that enables the calculation of LCA for 'Stream'
     by converting 'Stream' to 'WasteStream'.
@@ -398,7 +401,7 @@ class S2WS(SanUnit):
         Inlet streams.
     outs : iterable
         Outlet streams.
-    """
+    '''
     _N_ins = 1
     _N_outs = 1
     
@@ -418,9 +421,11 @@ class S2WS(SanUnit):
 # =============================================================================
 # ALFTSA
 # =============================================================================
-class ALFTSA(bst.AdsorptionColumnTSA):
+# TODO: check this unit thoroughly again
+class ALFTSA(PressureVessel, Splitter):
     '''
     TSA using ALF as adsorbent for CO2 adsorption.
+    See biosteam/units/adsorption.py.
     
     Parameters
     ----------
@@ -433,22 +438,21 @@ class ALFTSA(bst.AdsorptionColumnTSA):
     adsorbent : str
         Defaults to 'ALF'.
     adsorbent_cost : dict
-        Defaults to {'ALF': 60} [$/ft3].
-    # TODO: what does the lifetime mean here, for ALF or for the entire unit?
-    equipment_lifetime : dict
-        The lifetime of adsorbents. Defaults to {'ALF': 10} [year].
+        Defaults to 60 $/ft3.
+    adsorbent_lifetime : float
+        The lifetime of adsorbents. Defaults to 20 years.
     adsorbate_ID : str
         Defaults to 'CO2'.
     split : dict[str, float] or list[float], optional
         Component splits towards the effluent (0th outlet).
+        Defaults to dict(O2=0.9964, N2=0.9964, CO2=0.055).
     superficial_velocity : float, optional
         Superficial velocity of the feed. The diameter of the receiving vessel adjusts
-        accordingly. Defaults to 1080 m/h. Typical velocities are 540 to 2160 m/h for liquids [1]_.
+        accordingly. Defaults to 2160 m/h. Typical velocities are 540 to 2160 m/h for liquids [1]_.
     regeneration_velocity : float, optional
-        Mean velocity of the fluid used to regenerate the bed. Defaults to 540 m/h. 
-        Common velocity range for gasses is 504-2160 m / hr [1]_.
+        Mean velocity of the fluid used to regenerate the bed. Defaults to 1332 m/h.
     cycle_time : float, optional
-        Time at which the receiving vessel is switched. Defaults to 8 h [2]_.
+        Time at which the receiving vessel is switched. Defaults to a conservative time of 8 h [2]_.
     rho_adsorbent : float, optional
         The density of ALF. Defaults to 1441 kg/m3, Table S1 [3]_.
     adsorbent_capacity : float, optional
@@ -461,46 +465,123 @@ class ALFTSA(bst.AdsorptionColumnTSA):
         Vessel type. Defaults to 'Vertical'.
     length_unused : float, optional
         Additional length of a column to account for mass transfer limitations (due to unused bed). Defaults to 1.219 m.
+    treatment_capacity : float
+        Flow rate of flue gas to a single TSA unit. Defaults to 10000 m3/h.
     
     References
     ----------
     [1] Adsorption basics Alan Gabelman (2017) Adsorption basics Part 1. AICHE
-    [2] https://www.chemicalprocessing.com/processing-equipment/fluid-handling/article/11302111/select-the-right-valves-for-adsorption-processes-chemical-processing
+    [2] https://www.chemicalprocessing.com/processing-equipment/fluid-handling/\
+        article/11302111/select-the-right-valves-for-adsorption-processes-chemical-processing
     [3] Evans, H. A.; Mullangi, D.; Deng, Z.; Wang, Y.; Peh, S. B.; Wei, F.;
         Wang, J.; Brown, C. M.; Zhao, D.; Canepa, P.; Cheetham, A. K.
         Aluminum Formate, Al(HCOO)3: An Earth-Abundant, Scalable, and Highly
         Selective Material for CO2 Capture. Science Advances 2022, 8 (44),
         eade1473. https://doi.org/10.1126/sciadv.ade1473.
     '''
+    
+    auxiliary_unit_names = ('heat_exchanger_regeneration',)
+    
+    _N_ins = 2
+    _N_outs = 2
+    
     def _init(self, ID='ALF_TSA', ins=(), outs=(),
               adsorbent='ALF',
-              adsorbent_cost={'ALF': 1},
-              equipment_lifetime={'ALF': 10},
+              adsorbent_cost=60,
+              adsorbent_lifetime=20,
               adsorbate_ID='CO2',
               split=dict(O2=0.0036, N2=0.0036, CO2=0.945),
-              superficial_velocity=1080,
-              regeneration_velocity=540,
-              cycle_time=8,
-              rho_adsorbent = 1441,
+              superficial_velocity=2160,
+              regeneration_velocity=1332,
+              # TODO: citation
+              cycle_time=5, # 2-8 h
+              rho_adsorbent=1441,
               adsorbent_capacity=0.1188,
               T_regeneration=418,
               vessel_material='Stainless steel 316',
               vessel_type='Vertical',
-              length_unused=1.219):
-        super()._init(split=split,
-                      adsorbent=adsorbent,
-                      adsorbate_ID=adsorbate_ID,
-                      superficial_velocity=superficial_velocity,
-                      regeneration_velocity=regeneration_velocity,
-                      cycle_time=cycle_time,
-                      rho_adsorbent = rho_adsorbent,
-                      adsorbent_capacity=adsorbent_capacity,
-                      T_regeneration=T_regeneration,
-                      vessel_material=vessel_material,
-                      vessel_type=vessel_type,
-                      length_unused=length_unused)
+              length_unused=1.219,
+              # TODO: citation
+              treatment_capacity=10000): # 500-10000 m3/h
+        bst.Splitter._init(self, split=split)
+        self.adsorbent = adsorbent
         self.adsorbent_cost = adsorbent_cost
-        self._default_equipment_lifetime = self.equipment_lifetime = equipment_lifetime
+        self.adsorbent_lifetime = adsorbent_lifetime
+        self._default_equipment_lifetime = self.equipment_lifetime = {'ALF': adsorbent_lifetime}
+        self.adsorbate_ID = adsorbate_ID
+        self.superficial_velocity = superficial_velocity
+        self.regeneration_velocity = regeneration_velocity
+        self.cycle_time = cycle_time
+        self.rho_adsorbent = rho_adsorbent
+        self.adsorbent_capacity = adsorbent_capacity
+        self.T_regeneration = T_regeneration
+        self.vessel_material = vessel_material
+        self.vessel_type = vessel_type
+        self.length_unused = length_unused
+        self.treatment_capacity=treatment_capacity
+        self.heat_exchanger_regeneration = bst.HXutility(None, None, None, thermo=self.thermo)
+    
+    def _run(self):
+        feed, regen = self.ins
+        carbon_dioxide, effluent = self.outs 
+        regen.empty()
+        for i in self.outs: i.empty()
+        
+        self.N = ceil(feed.F_mass/self.treatment_capacity)
+
+        feed.split_to(carbon_dioxide, effluent, self.split)
+        F_vol_feed = feed.F_vol/self.N
+        
+        superficial_velocity = self.superficial_velocity
+        adsorbate_ID = self.adsorbate_ID
+        
+        F_mass_adsorbate = carbon_dioxide.imass[adsorbate_ID]/self.N
+        
+        self.diameter = diameter = 2*sqrt(F_vol_feed/(superficial_velocity*pi))
+        self.area = area = pi*diameter*diameter/4
+        # length of equilibrium section plus unused bed
+        total_length = self.cycle_time*F_mass_adsorbate/\
+            (self.adsorbent_capacity*self.rho_adsorbent*area) + self.length_unused
+        # size of each column
+        self.length = length = total_length/2
+        self.vessel_volume = length*area
+        T_original = regen.T
+        regen.reset_flow(N2=0.78, O2=0.32, phase='g', units='kg/hr')
+        carbon_dioxide.T = regen.T = self.T_regeneration
+        regen.F_vol = area*self.regeneration_velocity*self.N
+        regen.T = T_original
+    
+    def _design(self):
+        feed, regen = self.ins
+        design_results = self.design_results
+        diameter = self.diameter
+        length = self.length
+        design_results['Number of sets'] = self.N
+        design_results['Number of reactors'] = 3
+        design_results.update(self._vessel_design(feed.P*0.000145038, # Pa to psi
+                                                  diameter*3.28084, # m to ft
+                                                  length*3.28084)) # m to ft
+        hxr = self.heat_exchanger_regeneration
+        hxr.ins.empty()
+        hxr.outs.empty()
+        hxr.ins[0] = regen.copy()
+        hxr.outs[0] = regen.copy()
+        hxr.T = self.T_regeneration
+        hxr.simulate()
+    
+    def _cost(self):
+        design_results = self.design_results
+        baseline_purchase_costs = self.baseline_purchase_costs
+        baseline_purchase_costs.update(self._vessel_purchase_cost(design_results['Weight'],
+                                                                  design_results['Diameter'],
+                                                                  design_results['Length']))
+        N_sets = design_results['Number of sets']
+        N_reactors = design_results['Number of reactors']
+        for i, j in baseline_purchase_costs.items():
+            baseline_purchase_costs[i] *= N_sets*N_reactors
+        # 35.3147 ft3/m3
+        baseline_purchase_costs[self.adsorbent] = N_sets*N_reactors*35.3147*\
+            self.vessel_volume*self.adsorbent_cost
         
 # =============================================================================
 # CO2ElectrolyzerSystem
@@ -662,10 +743,8 @@ class CO2ElectrolyzerSystem(SanUnit):
         product.imass[chemical_info['formula'].to_string(index=False)] = product_production/24
         product.phase = 'g' if chemical_info['state'].to_string(index=False) == 'gas' else 'l'
         
-        # TODO: explain why for formic acid, the cathode does not produce water but it still needs distillation
         # note Jouny et al. 2018 calculated process water amount as 'current_needed/4/96485*18/1000*3600'
-        # TODO: confirm it is correct to change it to 'current_needed/2/96485*18/1000*3600'
-        # as every 18 g H2O can transfer 2 e-
+        # change it to 'current_needed/2/96485*18/1000*3600' as every 18 g H2O can transfer 2 e-
         water.imass['H2O'] = current_needed/2/96485*18/1000*3600
         # TODO: 
         mixed_offgas.empty()
@@ -676,10 +755,10 @@ class CO2ElectrolyzerSystem(SanUnit):
         # TODO: decide how to deal with it. Two cases: gas product (with mixed hydrogen) and liquid product (selling hydrogen?)
         mixed_offgas.imass['H2'] = hydrogen_flow_rate_m3_per_h*0.08375
         mixed_offgas.imass['N2'] = carbon_dioxide.imass['N2']
-        
         # H2O after distillation or PSA
         # TODO: clarify why formic acid is produced in the cathode with no water produced but still needs distillation?
-        mixed_offgas.imass['H2O'] = product.F_mass/float(chemical_info['MW'])*float(chemical_info['cathode_water_production'])*18
+        mixed_offgas.imass['H2O'] = product.F_mass/float(chemical_info['MW'])*\
+            float(chemical_info['cathode_water_production'])*18
         
         mixed_offgas.imass['O2'] = carbon_dioxide.F_mass + water.F_mass -\
             product.F_mass - mixed_offgas.F_mass

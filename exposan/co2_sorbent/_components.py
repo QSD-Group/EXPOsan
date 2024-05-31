@@ -20,17 +20,6 @@ __all__ = ('create_components',)
 
 def create_components(set_thermo=True):
     
-    # TODO: decide if 'Bauxite' is still needed since we can assume Bauxite is a mixture of Al2O3, SiO2, and Fe2O3 at certain ratios
-    # # bauxite
-    # Bauxite = Component(ID='Bauxite',
-    #                     search_ID='Bauxite',
-    #                     phase='s',
-    #                     particle_size='Particulate',
-    #                     degradability='Undegradable',
-    #                     organic=False)
-    # # https://www.standardboksit.com.tr/en/Arge/Arge/8747#:~:text=Bauxite%20is%20a%20mixture%20of,2.5%2D3.5%20g%2Fcm3.
-    # add_V_from_rho(Bauxite, 3000)
-    
     # Al2O3
     Al2O3 = Component(ID='Al2O3',
                       search_ID='1344-28-1',
@@ -79,15 +68,11 @@ def create_components(set_thermo=True):
                     degradability='Undegradable',
                     organic=False)
     add_V_from_rho(ALF, 1441) # Evans et al. Science Advances SI. Table S1
+    # https://www.harrellindustries.com/wp-content/uploads/2015/10/0200-Aluminum-Formate-SDS-US.pdf (accessed 05-30-2024)
+    ALF.Tm = 660+273.15 # normal melting temperature [K]
     
-    # TODO check the melting temperature for ALF (the current value seems too small)
-    # https://www.chemsrc.com/en/cas/7360-53-4_311690.html (accessed 05-24-2024)
-    ALF.Tm = 8.4+273.15 # normal melting temperature [K]
-    ALF.Tb = 100.6+273.15 # normal boiling temperature [K]
-    
-    # TODO: update mu
-    # assume similar to Al
-    # https://link.springer.com/article/10.1023/B:JMSC.0000048735.50256.96
+    # no information on ALF.mu
+    # assume it as 1 (changing it has minimal effect on TEA and LCA)
     ALF.mu.add_model(1)
     
     # formatic acid
