@@ -198,10 +198,11 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
                    split={'HCOOH':1})
     D1.register_alias('D1')
     
-    S2WS = su.S2WS(ID='S2WS',
-                   ins=D1-2,
-                   outs='natural_gas_LCA')
-    S2WS.register_alias('S2WS')
+    SP1 = qsu.Splitter('SP1',
+                       ins=D1-2,
+                       outs=('natural_gas_LCA','H2O_discharge'),
+                       split={'CO2':1,'H2O':0})
+    SP1.register_alias('SP1')
     
     # TODO: do we need to activate ALF here? see Evans et al. 2022 and Ben's slides
     
@@ -218,6 +219,7 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
     # does not include emissions
     # 39 MJ/m3 (https://ecoquery.ecoinvent.org/3.8/apos/dataset/14395/documentation)
     # 53.6 MJ/kg (https://www.sciencedirect.com/science/article/pii/B9780128095973003357)
+    # use produced CO2 amount to calculte the GlobalWarming for natural gas
     qs.StreamImpactItem(ID='natural_gas',
                         linked_stream=stream.natural_gas_LCA,
                         GlobalWarming=1+0.33658049/39*53.6/44*16)
@@ -435,10 +437,11 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                     split={'HCOOH':1})
     D1.register_alias('D1')
     
-    S2WS3 = su.S2WS(ID='S2WS3',
-                    ins=D1-2,
-                    outs='natural_gas_LCA')
-    S2WS3.register_alias('S2WS3')
+    SP1 = qsu.Splitter('SP1',
+                       ins=D1-2,
+                       outs=('natural_gas_LCA','H2O_discharge'),
+                       split={'CO2':1,'H2O':0})
+    SP1.register_alias('SP1')
     
     # TODO: do we need to activate ALF here? see Evans et al. 2022 and Ben's slides
     
@@ -455,6 +458,7 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
     # does not include emissions
     # 39 MJ/m3 (https://ecoquery.ecoinvent.org/3.8/apos/dataset/14395/documentation)
     # 53.6 MJ/kg (https://www.sciencedirect.com/science/article/pii/B9780128095973003357)
+    # use produced CO2 amount to calculte the GlobalWarming for natural gas
     qs.StreamImpactItem(ID='natural_gas',
                         linked_stream=stream.natural_gas_LCA,
                         GlobalWarming=1+0.33658049/39*53.6/44*16)
@@ -575,7 +579,7 @@ def create_system_C(product='formic acid',
     
     TSA = su.ALFTSA(ID='ALF_TSA',
                     ins=(flue_gas,'air'),
-                    outs=('captured_carbon_dioxide','offgas'),
+                    outs=('captured_carbon_dioxide','TSA_offgas'),
                     adsorbent='ALF',
                     adsorbent_cost=adsorbent_cost,
                     adsorbent_lifetime=10,
@@ -616,8 +620,8 @@ def create_system_C(product='formic acid',
                                     sys.get_electricity_production())*lifetime,
                 Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
                 Heating=lambda:sys.get_heating_duty()/1000*lifetime,
-                CO2=(-stream.flue_gas.imass['CO2']+stream.offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
-                # TODO: confirm ceil is right
+                CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
+                # use ceil to calculate the needed ALF to be conservative (assume no salvage value)
                 ALF=TSA.design_results['Number of sets']*\
                     TSA.design_results['Number of reactors']*\
                     TSA.vessel_volume*1441*\
@@ -634,8 +638,8 @@ def create_system_C(product='formic acid',
         # mixed_offgas from E1 is assumed to be directly emitted to the air (consider the CO2 in this stream in LCA)
         # TODO: but we have PSA, right? Should we recycle this part of CO2?
         E1 = su.CO2ElectrolyzerSystem(ID='CO2_electrolyzer',
-                                      ins=(TSA-0, 'process_water'),
-                                      outs=('product','mixed_offgas'),
+                                      ins=(TSA-0,'process_water'),
+                                      outs=('product','hydrogen','electro_offgas'),
                                       target_product=product,
                                       current_density=0.2,
                                       cell_voltage=2.3,
@@ -645,6 +649,10 @@ def create_system_C(product='formic acid',
                                       operating_days_per_year=yearly_operating_days)
         E1.register_alias('E1')
         E1.ins[1].price = bst.stream_prices['Reverse osmosis water']
+        # TODO: update hydrogen price (determine to use the price of grey hydrogen [fossil fuel]
+        # or blue hydrogen [natural gas and carbon capture and storage] or green hydrogen [water electrolysis])
+        # the LCA data for hydrogen only has grey hydrogen
+        E1.outs[1].price = 7
         
         # TODO: do we want to add a gas compressor and storage tank for gas products (w/ hydrogen?)?
         # TODO: do we want to add a storage tank for liquid products and sell hydrogen?
@@ -658,6 +666,11 @@ def create_system_C(product='formic acid',
         qs.StreamImpactItem(ID='water',
                             linked_stream=stream.process_water,
                             GlobalWarming=0.00045239247)
+        
+        # market for hydrogen, gaseous, GLO
+        qs.StreamImpactItem(ID='hydrogen',
+                            linked_stream=stream.hydrogen,
+                            GlobalWarming=-1.5621537)
         
         create_tea(sys, lifetime=lifetime)
         
@@ -673,8 +686,10 @@ def create_system_C(product='formic acid',
                                     sys.get_electricity_production())*lifetime,
                 Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
                 Heating=lambda:sys.get_heating_duty()/1000*lifetime,
-                CO2=(-stream.flue_gas.imass['CO2']+stream.offgas.imass['CO2']+stream.mixed_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
-                # TODO: confirm ceil is right
+                CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
+                # TODO: we don't consider LCA for construction for now (including its end-of-life disposal)
+                # TODO: but do we need to consider the end-of-life for ALF?
+                # use ceil to calculate the needed ALF to be conservative (assume no salvage value)
                 ALF=TSA.design_results['Number of sets']*\
                     TSA.design_results['Number of reactors']*\
                     TSA.vessel_volume*1441*\
