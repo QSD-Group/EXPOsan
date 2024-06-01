@@ -389,15 +389,14 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                                        'C3H3AlO6':0.036,
                                        'HCOOH':0.036})
     F1.register_alias('F1')
-    # TODO: update the price here
-    # 5-9 $/ton from https://www.sciencedirect.com/science/article/pii/S0892687521003137 # TODO: add this as a reference once deciding to use this source
-    # TODO: why changing the price here does not affect TEA?
-    F1.outs[0].price=-0.0077
     
     S2WS2 = su.S2WS(ID='S2WS2',
                     ins=F1-0,
                     outs='solid_waste_LCA')
     S2WS2.register_alias('S2WS2')
+    # TODO: update the price here
+    # 5-9 $/ton (1 ton = 907.185 kg) from https://www.sciencedirect.com/science/article/pii/S0892687521003137 # TODO: add this as a reference once deciding to use this source
+    S2WS2.outs[0].price=-0.0077
     
     C1 = su.ALFCrystallizer(ID='ALF_crystallizer',
                             ins=F1-1,
@@ -521,6 +520,8 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
 def create_system_C(product='formic acid',
                     ALF_system='A',
                     flue_gas_flow_rate=6000000, # Huang et al. 2021, for a typical 1000 MWh coal-fired power plant
+                    flue_gas_CO2=0.13,
+                    flue_gas_N2=0.82,
                     purity=0.975, # Evans et al. 2022
                     recovery=0.945, # Evans et al. 2022
                     electricity_price=0.0832,
@@ -551,14 +552,15 @@ def create_system_C(product='formic acid',
     qs.ImpactItem.load_from_file(os.path.join(folder, 'data/impact_items.xlsx'))
     
     # coal-fired power plant flue gas composition: 13% CO2, 5% O2, and 82% N2 (David et al. 2007)
+    # temperature of the flue gas: 160 C (David et al. 2007)
     # for a typical 1000 MWh plant, assume CO2=780000 kg/h (Huang et al. 2021)
     flue_gas = qs.WasteStream(ID='flue_gas',
-                              CO2=flue_gas_flow_rate*0.13,
-                              O2=flue_gas_flow_rate*0.05,
-                              N2=flue_gas_flow_rate*0.82,
+                              CO2=flue_gas_flow_rate*flue_gas_CO2,
+                              N2=flue_gas_flow_rate*flue_gas_N2,
+                              O2=flue_gas_flow_rate*(1-flue_gas_CO2-flue_gas_N2),
                               phase='g',
                               units='kg/h',
-                              T=25+273.15)
+                              T=160+273.15)
     
     # TODO: update ALF price and CI if necessary
     # for system A, producing 100 metric ton ALF per day needs 2416.7 kg Al)OH)3 per hour
@@ -571,7 +573,6 @@ def create_system_C(product='formic acid',
         adsorbent_cost = 1.935*1441/35.3147 # 1.935 $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
         adsorbent_CI = 7.788 # kg CO2 eq/kg ALF
     
-    # TODO: add notes to 0.13 an d0.87
     TSA = su.ALFTSA(ID='ALF_TSA',
                     ins=(flue_gas,'air'),
                     outs=('captured_carbon_dioxide','offgas'),
@@ -579,19 +580,22 @@ def create_system_C(product='formic acid',
                     adsorbent_cost=adsorbent_cost,
                     adsorbent_lifetime=10,
                     adsorbate_ID='CO2',
-                    split=dict(O2=(0.13*recovery/purity-0.13*recovery)/0.87,
-                               N2=(0.13*recovery/purity-0.13*recovery)/0.87,
+                    split=dict(O2=(flue_gas_CO2*recovery/purity-flue_gas_CO2*recovery)/(1-flue_gas_CO2),
+                               N2=(flue_gas_CO2*recovery/purity-flue_gas_CO2*recovery)/(1-flue_gas_CO2),
                                CO2=recovery),
                     superficial_velocity=2160,
                     regeneration_velocity=1332,
-                    cycle_time=5, # 2-8 h
+                    cycle_time=5,
                     rho_adsorbent=1441,
                     adsorbent_capacity=0.1188,
                     T_regeneration=418,
                     vessel_material='Stainless steel 316',
                     vessel_type='Vertical',
                     length_unused=1.219,    
-                    treatment_capacity=10000) # 500 to 10000 m3/h
+                    treatment_capacity=10000,
+                    regen_CO2=purity,
+                    regen_N2=(1-purity)*flue_gas_N2/(1-flue_gas_CO2),
+                    regen_O2=(1-purity)*(1-flue_gas_CO2-flue_gas_N2)/(1-flue_gas_CO2))
     TSA.register_alias('TSA')
     
     if not upgrade:
@@ -613,7 +617,6 @@ def create_system_C(product='formic acid',
                 Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
                 Heating=lambda:sys.get_heating_duty()/1000*lifetime,
                 CO2=(-stream.flue_gas.imass['CO2']+stream.offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
-                # TODO: does the ALF weight in sys.flowsheet.TSA.results() already consider ALF's lifetime?
                 # TODO: confirm ceil is right
                 ALF=TSA.design_results['Number of sets']*\
                     TSA.design_results['Number of reactors']*\
@@ -629,6 +632,7 @@ def create_system_C(product='formic acid',
         # TODO: do we need to cool down CO2 first?
         
         # mixed_offgas from E1 is assumed to be directly emitted to the air (consider the CO2 in this stream in LCA)
+        # TODO: but we have PSA, right? Should we recycle this part of CO2?
         E1 = su.CO2ElectrolyzerSystem(ID='CO2_electrolyzer',
                                       ins=(TSA-0, 'process_water'),
                                       outs=('product','mixed_offgas'),
@@ -670,7 +674,6 @@ def create_system_C(product='formic acid',
                 Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
                 Heating=lambda:sys.get_heating_duty()/1000*lifetime,
                 CO2=(-stream.flue_gas.imass['CO2']+stream.offgas.imass['CO2']+stream.mixed_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
-                # TODO: does the ALF weight in sys.flowsheet.TSA.results() already consider ALF's lifetime?
                 # TODO: confirm ceil is right
                 ALF=TSA.design_results['Number of sets']*\
                     TSA.design_results['Number of reactors']*\

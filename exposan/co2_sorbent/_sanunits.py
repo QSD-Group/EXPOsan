@@ -421,7 +421,6 @@ class S2WS(SanUnit):
 # =============================================================================
 # ALFTSA
 # =============================================================================
-# TODO: check this unit thoroughly again
 class ALFTSA(PressureVessel, Splitter):
     '''
     TSA using ALF as adsorbent for CO2 adsorption.
@@ -452,7 +451,8 @@ class ALFTSA(PressureVessel, Splitter):
     regeneration_velocity : float, optional
         Mean velocity of the fluid used to regenerate the bed. Defaults to 1332 m/h.
     cycle_time : float, optional
-        Time at which the receiving vessel is switched. Defaults to a conservative time of 8 h [2]_.
+        Time at which the receiving vessel is switched. Defaults to 5 h.
+        Typical 2 h [biosteam/units/adsorption.py] - 8 h [2]_.
     rho_adsorbent : float, optional
         The density of ALF. Defaults to 1441 kg/m3, Table S1 [3]_.
     adsorbent_capacity : float, optional
@@ -467,6 +467,13 @@ class ALFTSA(PressureVessel, Splitter):
         Additional length of a column to account for mass transfer limitations (due to unused bed). Defaults to 1.219 m.
     treatment_capacity : float
         Flow rate of flue gas to a single TSA unit. Defaults to 10000 m3/h.
+        10000 m3/h is an assumed value, at which the diameter of TSA columns is about the half of its length.
+    regen_CO2 : float
+        CO2 ratio in the regeneration gas. Defaults to 0.975 (CO2 purity in carbon_dioxide).
+    regen_N2 : float
+        N2 ratio in the regeneration gas. Defaults to 0.025*0.82/0.87 (flue gas N2:O2 = 82:5).
+    regen_O2 : float
+        O2 ratio in the regeneration gas. Defaults to 0.025*0.05/0.87 (flue gas N2:O2 = 82:5).
     
     References
     ----------
@@ -479,7 +486,6 @@ class ALFTSA(PressureVessel, Splitter):
         Selective Material for CO2 Capture. Science Advances 2022, 8 (44),
         eade1473. https://doi.org/10.1126/sciadv.ade1473.
     '''
-    
     auxiliary_unit_names = ('heat_exchanger_regeneration',)
     
     _N_ins = 2
@@ -493,16 +499,17 @@ class ALFTSA(PressureVessel, Splitter):
               split=dict(O2=0.0036, N2=0.0036, CO2=0.945),
               superficial_velocity=2160,
               regeneration_velocity=1332,
-              # TODO: citation
-              cycle_time=5, # 2-8 h
+              cycle_time=5,
               rho_adsorbent=1441,
               adsorbent_capacity=0.1188,
               T_regeneration=418,
               vessel_material='Stainless steel 316',
               vessel_type='Vertical',
               length_unused=1.219,
-              # TODO: citation
-              treatment_capacity=10000): # 500-10000 m3/h
+              treatment_capacity=10000,
+              regen_CO2=0.975,
+              regen_N2=0.025*0.82/0.87,
+              regen_O2=0.025*0.05/0.87):
         bst.Splitter._init(self, split=split)
         self.adsorbent = adsorbent
         self.adsorbent_cost = adsorbent_cost
@@ -519,6 +526,9 @@ class ALFTSA(PressureVessel, Splitter):
         self.vessel_type = vessel_type
         self.length_unused = length_unused
         self.treatment_capacity=treatment_capacity
+        self.regen_CO2 = regen_CO2
+        self.regen_N2 = regen_N2
+        self.regen_O2 = regen_O2
         self.heat_exchanger_regeneration = bst.HXutility(None, None, None, thermo=self.thermo)
     
     def _run(self):
@@ -527,7 +537,7 @@ class ALFTSA(PressureVessel, Splitter):
         regen.empty()
         for i in self.outs: i.empty()
         
-        self.N = ceil(feed.F_mass/self.treatment_capacity)
+        self.N = ceil(feed.F_vol/self.treatment_capacity)
 
         feed.split_to(carbon_dioxide, effluent, self.split)
         F_vol_feed = feed.F_vol/self.N
@@ -546,7 +556,9 @@ class ALFTSA(PressureVessel, Splitter):
         self.length = length = total_length/2
         self.vessel_volume = length*area
         T_original = regen.T
-        regen.reset_flow(N2=0.78, O2=0.32, phase='g', units='kg/hr')
+        # the regen should have the same gas composition as carbon_dioxide
+        # carbon dioxide: 97.5% CO2, the rest should be 0.82/0.87 N2 and 0.05/0.87 O2 (see flue gas composition)
+        regen.reset_flow(CO2=self.regen_CO2, N2=self.regen_N2, O2=self.regen_O2, phase='g', units='kg/hr')
         carbon_dioxide.T = regen.T = self.T_regeneration
         regen.F_vol = area*self.regeneration_velocity*self.N
         regen.T = T_original
@@ -582,7 +594,7 @@ class ALFTSA(PressureVessel, Splitter):
         # 35.3147 ft3/m3
         baseline_purchase_costs[self.adsorbent] = N_sets*N_reactors*35.3147*\
             self.vessel_volume*self.adsorbent_cost
-        
+
 # =============================================================================
 # CO2ElectrolyzerSystem
 # =============================================================================
