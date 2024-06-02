@@ -33,6 +33,13 @@ References:
 [5] Xue, M.; Gao, B.; Li, R.; Sun, J. Aluminum Formate (AF): Synthesis,
     Characterization and Application in Dye Wastewater Treatment.
     Journal of Environmental Sciences 2018, 74, 95–106.
+[6] Davis, R. E.; Grundl, N. J.; Tao, L.; Biddy, M. J.; Tan, E. C.;
+    Beckham, G. T.; Humbird, D.; Thompson, D. N.; Roni, M. S. Process Design
+    and Economics for the Conversion of Lignocellulosic Biomass to Hydrocarbon
+    Fuels and Coproducts: 2018 Biochemical Design Case Update;
+    Biochemical Deconstruction and Conversion of Biomass to Fuels and Products
+    via Integrated Biorefinery Pathways; NREL/TP--5100-71949, 1483234; 2018;
+    p NREL/TP--5100-71949, 1483234. https://doi.org/10.2172/1483234.
 '''
 
 import os, qsdsan as qs, biosteam as bst
@@ -44,6 +51,7 @@ from exposan.co2_sorbent import (
     create_tea,
     )
 from exposan.co2_sorbent import _sanunits as su
+from qsdsan.utils import auom
 from math import ceil
 
 # HXN (heat exchanger network), CWP (chilled water package)
@@ -65,9 +73,18 @@ __all__ = (
     'create_system_C' # CO2 capture and utilization
     )
 
+_lb_to_kg = auom('lb').conversion_factor('kg')
+_MMBTU_to_MJ = auom('MMBTU').conversion_factor('MJ')
+
 # GDPCTPI (Gross Domestic Product: Chain-type Price Index)
 # https://fred.stlouisfed.org/series/GDPCTPI (accessed 2024-05-20)
-GDPCTPI = {2016: 98.208,
+GDPCTPI = {2010: 89.619,
+           2011: 91.466,
+           2012: 93.176,
+           2013: 94.786,
+           2014: 96.436,
+           2015: 97.277,
+           2016: 98.208,
            2017: 100.000,
            2018: 102.290,
            2019: 104.008,
@@ -75,6 +92,15 @@ GDPCTPI = {2016: 98.208,
            2021: 110.220,
            2022: 117.995,
            2023: 122.284}
+
+# 5 2016$/MMBTU (Davis et al. 2018)
+# natural gas heating value 39 MJ/m3 (https://ecoquery.ecoinvent.org/3.8/apos/dataset/14395/documentation)
+# natural gas density: 0.678 kg/m3 (https://en.wikipedia.org/wiki/Natural_gas, accessed 2024-06-02)
+bst.stream_prices['Natural gas'] = 5/_MMBTU_to_MJ*39/0.678/GDPCTPI[2016]*GDPCTPI[2022]
+
+# 0.0054 2010$/gal (Jouny et al. 2018)
+# 1 gal water = 3.7854 kg water (https://www.inchcalculator.com/convert/gallon-to-kilogram/, accessed 2024-06-02)
+bst.stream_prices['Reverse osmosis water'] = 0.0054/3.7854/GDPCTPI[2010]*GDPCTPI[2022]
 
 # =============================================================================
 # ALF production: Al(OH)3 + HCOOH
@@ -215,38 +241,35 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
                                operating_hours=yearly_operating_days*24)
     sys.register_alias('sys')
     
+    # natural gas density: 0.678 kg/m3 (https://en.wikipedia.org/wiki/Natural_gas, accessed 06-02-2024)
+    # natural gas MW: 19 (16.8-22.8 from https://en.wikipedia.org/wiki/Natural_gas, accessed 06-02-2024)
     # market group for natural gas, high pressure, GLO
     # does not include emissions
-    # 39 MJ/m3 (https://ecoquery.ecoinvent.org/3.8/apos/dataset/14395/documentation)
-    # 53.6 MJ/kg (https://www.sciencedirect.com/science/article/pii/B9780128095973003357)
     # use produced CO2 amount to calculte the GlobalWarming for natural gas
     qs.StreamImpactItem(ID='natural_gas',
                         linked_stream=stream.natural_gas_LCA,
-                        GlobalWarming=1+0.33658049/39*53.6/44*16)
+                        GlobalWarming=1+0.33658049/0.678*19/44)
     
     # market for aluminium hydroxide, GLO
     qs.StreamImpactItem(ID='aluminum_hydroxide',
                         linked_stream=stream.aluminum_hydroxide,
                         GlobalWarming=0.98811449)
     
-    # TODO: change to market for water, ultrapure (ultrapure is from IX+RO and deionised if from IX)
-    # water production, deionised, RoW
+    # water production, ultrapure, RER
     qs.StreamImpactItem(ID='water',
                         linked_stream=stream.water,
-                        GlobalWarming=0.00045239247)
+                        GlobalWarming=0.0028140858)
     
-    # TODO: change to market for water, ultrapure (ultrapure is from IX+RO and deionised if from IX)
     # market for formic acid, RoW
     # for 80% HCOOH
     qs.StreamImpactItem(ID='formic_acid',
                         linked_stream=stream.formic_acid,
-                        GlobalWarming=2.8683493*0.8+0.00045239247*0.2)
+                        GlobalWarming=2.8683493*0.8+0.0028140858*0.2)
     
-    # TODO: change to market for water, ultrapure (ultrapure is from IX+RO and deionised if from IX)
-    # water production, deionised, RoW
+    # water production, ultrapure, RER
     qs.StreamImpactItem(ID='RO_water',
                         linked_stream=stream.RO_water,
-                        GlobalWarming=-0.00045239247)
+                        GlobalWarming=-0.0028140858)
     
     create_tea(sys, lifetime=lifetime)
     
@@ -454,43 +477,40 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                                operating_hours=yearly_operating_days*24)
     sys.register_alias('sys')
     
+    # natural gas density: 0.678 kg/m3 (https://en.wikipedia.org/wiki/Natural_gas, accessed 06-02-2024)
+    # natural gas MW: 19 (16.8-22.8 from https://en.wikipedia.org/wiki/Natural_gas, accessed 06-02-2024)
     # market group for natural gas, high pressure, GLO
     # does not include emissions
-    # 39 MJ/m3 (https://ecoquery.ecoinvent.org/3.8/apos/dataset/14395/documentation)
-    # 53.6 MJ/kg (https://www.sciencedirect.com/science/article/pii/B9780128095973003357)
     # use produced CO2 amount to calculte the GlobalWarming for natural gas
     qs.StreamImpactItem(ID='natural_gas',
                         linked_stream=stream.natural_gas_LCA,
-                        GlobalWarming=1+0.33658049/39*53.6/44*16)
+                        GlobalWarming=1+0.33658049/0.678*19/44)
     
     # market for bauxite, GLO
     qs.StreamImpactItem(ID='bauxite_ore',
                         linked_stream=stream.bauxite_ore,
                         GlobalWarming=0.026592271)
     
-    # TODO: change to market for water, ultrapure (ultrapure is from IX+RO and deionised if from IX)
-    # water production, deionised, RoW
+    # water production, ultrapure, RER
     qs.StreamImpactItem(ID='water',
                         linked_stream=stream.water,
-                        GlobalWarming=0.00045239247)
+                        GlobalWarming=0.0028140858)
     
-    # TODO: change to market for water, ultrapure (ultrapure is from IX+RO and deionised if from IX)
     # market for formic acid, RoW
     # for 80% HCOOH
     qs.StreamImpactItem(ID='formic_acid',
                         linked_stream=stream.formic_acid,
-                        GlobalWarming=2.8683493*0.8+0.00045239247*0.2)
+                        GlobalWarming=2.8683493*0.8+0.0028140858*0.2)
     
     # market for redmud from bauxite digestion, GLO
     qs.StreamImpactItem(ID='solid_waste',
                         linked_stream=stream.solid_waste_LCA,
                         GlobalWarming=0.011066165)
     
-    # TODO: change to market for water, ultrapure (ultrapure is from IX+RO and deionised if from IX)
-    # water production, deionised, RoW
+    # water production, ultrapure, RER
     qs.StreamImpactItem(ID='RO_water',
                         linked_stream=stream.RO_water,
-                        GlobalWarming=-0.00045239247)
+                        GlobalWarming=-0.0028140858)
     
     # CO2 direct emission
     qs.StreamImpactItem(ID='carbon_dioxide',
@@ -569,13 +589,13 @@ def create_system_C(product='formic acid',
     # TODO: update ALF price and CI if necessary
     # for system A, producing 100 metric ton ALF per day needs 2416.7 kg Al)OH)3 per hour
     if ALF_system == 'A':
-        adsorbent_cost = 1.437*1441/35.3147 # 1.437 $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
-        adsorbent_CI = 4.992 # kg CO2 eq/kg ALF
+        adsorbent_cost = 1.441*1441/35.3147 # 1.437 $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
+        adsorbent_CI = 4.907 # kg CO2 eq/kg ALF
         
     # for system B, producing 100 metric ton ALF per day needs 2730.8 kg bauxite per hour
     if ALF_system == 'B':
-        adsorbent_cost = 1.935*1441/35.3147 # 1.935 $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
-        adsorbent_CI = 7.788 # kg CO2 eq/kg ALF
+        adsorbent_cost = 1.943*1441/35.3147 # 1.935 $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
+        adsorbent_CI = 7.703 # kg CO2 eq/kg ALF
     
     TSA = su.ALFTSA(ID='ALF_TSA',
                     ins=(flue_gas,'air'),
@@ -613,6 +633,7 @@ def create_system_C(product='formic acid',
         sys.simulate()
     
         # note LCA for ALF and CO2 are calculated as 'Other', not 'Construction' or 'Stream'
+        # use ceil to calculate the needed ALF to be conservative (assume no salvage value)
         qs.LCA(system=sys,
                 lifetime=lifetime,
                 lifetime_unit='yr',
@@ -621,22 +642,18 @@ def create_system_C(product='formic acid',
                 Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
                 Heating=lambda:sys.get_heating_duty()/1000*lifetime,
                 CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
-                # use ceil to calculate the needed ALF to be conservative (assume no salvage value)
                 ALF=TSA.design_results['Number of sets']*\
                     TSA.design_results['Number of reactors']*\
                     TSA.vessel_volume*1441*\
                     ceil(lifetime/TSA.equipment_lifetime['ALF'])*\
                     adsorbent_CI) # 1441 kg/m3
         
-        print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.captured_carbon_dioxide)} $/kg CO2")
-        # TODO: check the formula here
-        print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.flue_gas.imass['CO2']/sys.operating_hours/sys.LCA.lifetime} kg CO2 eq/kg CO2")
+        print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.captured_carbon_dioxide)} $/kg CO2 captured")
+        print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.flue_gas.imass['CO2']/sys.operating_hours/sys.LCA.lifetime} kg CO2 eq reduction/kg CO2 captured")
     
     else:
         # TODO: do we need to cool down CO2 first?
         
-        # mixed_offgas from E1 is assumed to be directly emitted to the air (consider the CO2 in this stream in LCA)
-        # TODO: but we have PSA, right? Should we recycle this part of CO2?
         E1 = su.CO2ElectrolyzerSystem(ID='CO2_electrolyzer',
                                       ins=(TSA-0,'process_water'),
                                       outs=('product','hydrogen','electro_offgas'),
@@ -649,23 +666,22 @@ def create_system_C(product='formic acid',
                                       operating_days_per_year=yearly_operating_days)
         E1.register_alias('E1')
         E1.ins[1].price = bst.stream_prices['Reverse osmosis water']
-        # TODO: update hydrogen price (determine to use the price of grey hydrogen [fossil fuel]
-        # or blue hydrogen [natural gas and carbon capture and storage] or green hydrogen [water electrolysis])
-        # the LCA data for hydrogen only has grey hydrogen
-        E1.outs[1].price = 7
+        # use the price of gray hydrogen since the LCA data for hydrogen only has gray hydrogen
+        # and it makes more sense to replace gray hydrogen first
+        # 0.7306 2016$/lb (Davis et al. 2018)
+        E1.outs[1].price = 0.7306/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
         
-        # TODO: do we want to add a gas compressor and storage tank for gas products (w/ hydrogen?)?
-        # TODO: do we want to add a storage tank for liquid products and sell hydrogen?
+        # TODO: if gas products: do we want to add gas compressors and storage vessels for gas products and hydrogen?
+        # TODO: if liquid products: do we want to add storage tanks for liquid products and gas compressors and storage vessels for hydrogen?
         # Jouny et al. 2018 ignored these
         
         sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=yearly_operating_days*24)
         sys.register_alias('sys')
         
-        # TODO: change to market for water, ultrapure (ultrapure is from IX+RO and deionised if from IX)
-        # water production, deionised, RoW
+        # water production, ultrapure, RER
         qs.StreamImpactItem(ID='water',
                             linked_stream=stream.process_water,
-                            GlobalWarming=0.00045239247)
+                            GlobalWarming=0.0028140858)
         
         # market for hydrogen, gaseous, GLO
         qs.StreamImpactItem(ID='hydrogen',
@@ -679,6 +695,7 @@ def create_system_C(product='formic acid',
         sys.simulate()
         
         # note LCA for ALF and CO2 are calculated as 'Other', not 'Construction' or 'Stream'
+        # use ceil to calculate the needed ALF to be conservative (assume no salvage value)
         qs.LCA(system=sys,
                 lifetime=lifetime,
                 lifetime_unit='yr',
@@ -687,9 +704,6 @@ def create_system_C(product='formic acid',
                 Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
                 Heating=lambda:sys.get_heating_duty()/1000*lifetime,
                 CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
-                # TODO: we don't consider LCA for construction for now (including its end-of-life disposal)
-                # TODO: but do we need to consider the end-of-life for ALF?
-                # use ceil to calculate the needed ALF to be conservative (assume no salvage value)
                 ALF=TSA.design_results['Number of sets']*\
                     TSA.design_results['Number of reactors']*\
                     TSA.vessel_volume*1441*\

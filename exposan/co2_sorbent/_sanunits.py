@@ -468,6 +468,9 @@ class ALFTSA(PressureVessel, Splitter):
         Vessel type. Defaults to 'Vertical'.
     length_unused : float, optional
         Additional length of a column to account for mass transfer limitations (due to unused bed). Defaults to 1.219 m.
+    # TODO: confirm treatment_capacity
+    # https://pubs.acs.org/doi/10.1021/acs.iecr.0c01590 reported 1.74 m3/s for a temperature swing adsorption unit
+    # https://link.springer.com/article/10.1007/s10450-014-9603-2 reported 100000 m3/h at 50 kPa vacuum for a vacuum swing adsorption unit
     treatment_capacity : float
         Flow rate of flue gas to a single TSA unit. Defaults to 10000 m3/h.
         10000 m3/h is an assumed value, at which the diameter of TSA columns is about the half of its length.
@@ -690,14 +693,14 @@ class CO2ElectrolyzerSystem(SanUnit):
             raise ValueError("target product must be in 'carbon monoxide', 'ethanol', " + 
                              "'ethylene', 'formic acid', 'methane', 'methanol', and 'propanol'")
         
-        product_info = {# the propanol is n-propanol
-                        'chemical': ['carbon monoxide','ethanol','ethylene',
+        # propanol is n-propanol
+        # density in kg/m3
+        product_info = {'chemical': ['carbon monoxide','ethanol','ethylene',
                                      'formic acid','methane','methanol','propanol'],
                         'formula': ['CO','C2H6O','C2H4','HCOOH','CH4','CH4O','C3H8O'],
                         'elec_number': [2, 12, 12, 2, 8, 6, 18],
                         'mole_ratio': [1, 2, 2, 1, 1, 1, 3],
                         'MW': [28, 46, 28, 46, 16, 32, 60],
-                        # kg/m3
                         'density': [1.14, 789, 1.18, 1221, 0.656, 792, 803],
                         'state': ['gas','liq','gas','liq','gas','liq','liq'],
                         'potential': [-0.106, 0.084, 0.064, -0.25, 0.169, 0.016, 0.095],
@@ -711,6 +714,8 @@ class CO2ElectrolyzerSystem(SanUnit):
         # CO2 inlet flow rate [kg/h]
         CO2_inlet_flow_rate = carbon_dioxide.imass['CO2']
         
+        # TODO: confirm Jouny et al. 2018 did not consider CO2 recycle
+        # note compared to Jouny et al, 2018, we consider CO2 recycle
         # converted CO2 amount [kg/day]
         CO2_converted = CO2_inlet_flow_rate*24
         
