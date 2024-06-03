@@ -215,7 +215,7 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
     RO.outs[0].price = bst.stream_prices['Reverse osmosis water']
     RO.register_alias('RO')
     
-    # note natural price is already included (bst.stream_prices['Natural gas'] = 0.218 $/kg)
+    # note the price of natural price is already included (natural gas as a utility instead of a stream)
     # note hot_air contains a small amount of HCOOH, which is not considered as a greenhouse gas
     D1 = DrumDryer(ID='ALF_dryer',
                    ins=(F1-0,'dryer_air','natural_gas'),
@@ -451,7 +451,7 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
     RO.outs[0].price = bst.stream_prices['Reverse osmosis water']
     RO.register_alias('RO')
 
-    # note natural price is already included (bst.stream_prices['Natural gas'] = 0.218 $/kg)
+    # note the price of natural price is already included (natural gas as a utility instead of a stream)
     # note hot_air contains a small amount of HCOOH, which is not considered as a greenhouse gas
     D1 = DrumDryer(ID='ALF_dryer',
                     ins=(F2-0,'dryer_air','natural_gas'),
