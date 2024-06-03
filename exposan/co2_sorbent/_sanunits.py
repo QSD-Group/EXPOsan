@@ -65,23 +65,31 @@ class ALFProduction(bst.CSTR):
     Reactor for ALF production. See biosteam/units/stirred_tank_reactor.py.
     '''
     _N_ins = 1
-    _N_outs = 1
+    _N_outs = 2
+    T_default = 60 + 273.15
+    P_default = 101325
+    tau_default = 2
     
     # TODO: add a parameter for X (conversion rate), but it seems that X=1 makes sense since Al(OH)3 is a solid and HCOOH is over amount
     # TODO: check the reaction between Fe2O3 and HCOOH
     def _setup(self):
-            self.ALF_production_AlH3O3 = bst.Reaction('AlH3O3,s + 3HCOOH,l -> C3H3AlO6,s + 3H2O,l', 'AlH3O3', 1)
-            self.ALF_production_bauxite = bst.Reaction('Al2O3,s + 6HCOOH,l -> 2C3H3AlO6,s + 3H2O,l', 'Al2O3', 1)
-            self.Fe_side_reaciton = bst.Reaction('Fe2O3,s + 6HCOOH,l -> 2Fe,s + 3H2O,l + 3CO2,l', 'Fe2O3', 1)
+        super()._setup()
+        chemicals = self.chemicals
+        self.ALF_production_AlH3O3 = bst.Reaction('AlH3O3 + 3HCOOH -> C3H3AlO6 + 3H2O', 'AlH3O3', 1, chemicals)
+        self.ALF_production_bauxite = bst.Reaction('Al2O3 + 6HCOOH -> 2C3H3AlO6 + 3H2O', 'Al2O3', 1, chemicals)
+        self.Fe_side_reaciton = bst.Reaction('Fe2O3 + 6HCOOH -> 2Fe + 3H2O + 3CO2', 'Fe2O3', 1, chemicals)
     
     def _run(self):
-        effluent = self.outs[0]
-        effluent.copy_like(self.ins[0])
+        vent, effluent = self.outs
+        effluent.mix_from(self.ins, energy_balance=False)
         self.ALF_production_AlH3O3(effluent)
         self.ALF_production_bauxite(effluent)
         self.Fe_side_reaciton(effluent)
-        effluent.T = self.T
-        effluent.P = self.P
+        effluent.T = vent.T = self.T
+        effluent.P = vent.P = self.P
+        vent.phase = 'g'
+        vent.empty()
+        vent.receive_vent(effluent, energy_balance=False)
 
 # =============================================================================
 # PhaseChanger        
@@ -197,21 +205,18 @@ class SolidPressureFilter(Unit):
         retentate, permeate = self.outs
         
         retentate.empty()
-        retentate.phases = ('s','l')
         
-        retentate.imass['s','SiO2'] = inlet.imass['s','SiO2']*self.split['SiO2']
-        retentate.imass['s','Fe'] = inlet.imass['s','Fe']*self.split['Fe']
-        retentate.imass['l','C3H3AlO6'] = inlet.imass['C3H3AlO6']*self.split['C3H3AlO6']
-        retentate.imass['l','HCOOH'] = inlet.imass['l','HCOOH']*self.split['HCOOH']
-        retentate.imass['l','H2O'] = retentate.F_mass/(1-self.moisture_content)*self.moisture_content
+        retentate.imass['SiO2'] = inlet.imass['SiO2']*self.split['SiO2']
+        retentate.imass['Fe'] = inlet.imass['Fe']*self.split['Fe']
+        retentate.imass['C3H3AlO6'] = inlet.imass['C3H3AlO6']*self.split['C3H3AlO6']
+        retentate.imass['HCOOH'] = inlet.imass['HCOOH']*self.split['HCOOH']
+        retentate.imass['H2O'] = retentate.F_mass/(1-self.moisture_content)*self.moisture_content
         
-        permeate.phases = ('s','l')
-        
-        permeate.imass['s','SiO2'] = inlet.imass['s','SiO2']*(1-self.split['SiO2'])
-        permeate.imass['s','Fe'] = inlet.imass['s','Fe']*(1-self.split['Fe'])
-        permeate.imass['l','C3H3AlO6'] = inlet.imass['C3H3AlO6']*(1-self.split['C3H3AlO6'])
-        permeate.imass['l','HCOOH'] = inlet.imass['l','HCOOH']*(1-self.split['HCOOH'])
-        permeate.imass['l','H2O'] = inlet.imass['l','H2O'] - retentate.imass['l','H2O']
+        permeate.imass['SiO2'] = inlet.imass['SiO2']*(1-self.split['SiO2'])
+        permeate.imass['Fe'] = inlet.imass['Fe']*(1-self.split['Fe'])
+        permeate.imass['C3H3AlO6'] = inlet.imass['C3H3AlO6']*(1-self.split['C3H3AlO6'])
+        permeate.imass['HCOOH'] = inlet.imass['HCOOH']*(1-self.split['HCOOH'])
+        permeate.imass['H2O'] = inlet.imass['H2O'] - retentate.imass['H2O']
         
         retentate.T = inlet.T
         permeate.T = inlet.T

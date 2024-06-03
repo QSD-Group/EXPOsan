@@ -181,14 +181,14 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
     
     R1 = su.ALFProduction(ID='ALF_production',
                           ins=M2-0,
-                          outs='ALF_solution',
+                          outs=('vent','ALF_solution'),
                           T=333.15, # [K], Xue et al. 2018
                           P=101325, # [Pa]
                           tau=2) # [h], 2 h in Xue et al. 2018, 1 h in Mikola et al. 2013
     R1.register_alias('R1')
     
     C1 = su.ALFCrystallizer(ID='ALF_crystallizer',
-                            ins=R1-0,
+                            ins=R1-1,
                             outs='ALF_mixed',
                             tau=5,
                             N=3,
@@ -201,9 +201,7 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
                               ins=C1-0,
                               outs=('retentate','permeate'),
                               moisture_content=0.35,
-                              split={'C3H3AlO6_s':1,
-                                     'C3H3AlO6_l':0,
-                                     'HCOOH':0.036})
+                              split={'C3H3AlO6_s':1,'C3H3AlO6_l':0,'HCOOH':0.036})
     F1.register_alias('F1')
     
     # assume the RO cake (produced after evaporator) can be potentially reused
@@ -218,22 +216,25 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
     # note the price of natural price is already included (natural gas as a utility instead of a stream)
     # note hot_air contains a small amount of HCOOH, which is not considered as a greenhouse gas
     D1 = DrumDryer(ID='ALF_dryer',
-                   ins=(F1-0,'dryer_air','natural_gas'),
-                   outs=('dryed_ALF','hot_air','emissions'),
-                   moisture_content=0,
-                   split={'HCOOH':1})
+                    ins=(F1-0,'dryer_air','natural_gas'),
+                    outs=('dryed_ALF','hot_air','emissions'),
+                    moisture_content=0,
+                    split={'HCOOH':1})
     D1.register_alias('D1')
     
     SP1 = qsu.Splitter('SP1',
-                       ins=D1-2,
-                       outs=('natural_gas_LCA','H2O_discharge'),
-                       split={'CO2':1,'H2O':0})
+                        ins=D1-2,
+                        outs=('natural_gas_LCA','H2O_discharge'),
+                        split={'CO2':1,'H2O':0})
     SP1.register_alias('SP1')
     
     # TODO: do we need to activate ALF here? see Evans et al. 2022 and Ben's slides
     
-    S1 = bst.StorageTank('ALF_storage_tank', ins=D1-0, outs='ALF',
-                         tau=24*7, vessel_material='Stainless steel')
+    S1 = bst.StorageTank('ALF_storage_tank',
+                          ins=D1-0,
+                          outs='ALF',
+                          tau=24*7,
+                          vessel_material='Stainless steel')
     S1.register_alias('S1')
     
     sys = qs.System.from_units(ID='sys_ALF_A',
@@ -274,12 +275,12 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
     create_tea(sys, lifetime=lifetime)
     
     qs.LCA(system=sys,
-           lifetime=lifetime,
-           lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-\
-                               sys.get_electricity_production())*lifetime,
-           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
-           Heating=lambda:sys.get_heating_duty()/1000*lifetime)
+            lifetime=lifetime,
+            lifetime_unit='yr',
+            Electricity=lambda:(sys.get_electricity_consumption()-\
+                                sys.get_electricity_production())*lifetime,
+            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
+            Heating=lambda:sys.get_heating_duty()/1000*lifetime)
     
     # note simulating twice in this system may cause errors
     # TODO: does this affect creating models?
@@ -386,33 +387,24 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
     # TODO: adjust reaction conditions if necessary
     R1 = su.ALFProduction(ID='ALF_production',
                           ins=M2-0,
-                          outs='ALF_solution',
+                          outs=('vent','ALF_solution'),
                           T=333.15, # [K], Xue et al. 2018
                           P=101325, # [Pa]
                           tau=2) # [h], 2 h in Xue et al. 2018, 1 h in Mikola et al. 2013
-    R1.register_alias('R1')    
+    R1.register_alias('R1')   
     
-    # TODO: confirm the reaction between Fe2O3 and HCOOH product CO2
-    # TODO: if not, no need to include PC1 and S2WS1 here
-    PC1 = su.PhaseChanger(ID='PhaseChanger',
-                          ins=R1-0,
-                          outs=('slurry','carbon_dioxide'))
-    PC1.register_alias('PC1')
-    
-    S2WS1 = su.S2WS(ID='S2WS1',
-                    ins=PC1-1,
-                    outs='carbon_dioxide_LCA')
-    S2WS1.register_alias('S2WS1')
+    SP1 = qsu.Splitter('SP1',
+                        ins=R1-0,
+                        outs=('carbon_dioxide_LCA','vented_gas'),
+                        split={'CO2':1,'HCOOH':0,'H2O':0})
+    SP1.register_alias('SP1')
     
     # split ratio can be found in biosteam/units/solids_separation.py (soluble chemicals~0.036)
     F1 = su.SolidPressureFilter(ID='solid_filter',
-                                ins=PC1-0,
+                                ins=R1-1,
                                 outs=('solid_waste','ALF_permeate'),
                                 moisture_content=0.35,
-                                split={'SiO2':1,
-                                       'Fe':1,
-                                       'C3H3AlO6':0.036,
-                                       'HCOOH':0.036})
+                                split={'SiO2':1,'Fe':1,'C3H3AlO6':0.036,'HCOOH':0.036})
     F1.register_alias('F1')
     
     S2WS2 = su.S2WS(ID='S2WS2',
@@ -437,17 +429,15 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                               ins=C1-0,
                               outs=('retentate','permeate'),
                               moisture_content=0.35,
-                              split={'C3H3AlO6_s':1,
-                                     'C3H3AlO6_l':0,
-                                     'HCOOH':0.036})
+                              split={'C3H3AlO6_s':1,'C3H3AlO6_l':0,'HCOOH':0.036})
     F2.register_alias('F2')
     
     # assume the RO cake (produced after evaporator) can be potentially reused
     # therefore, no cost and environmental impact are given to it
     RO = su.ReverseOsmosis(ID='Reverse_osmosis',
-                           ins=F2-1,
-                           outs=('RO_water','brine'),
-                           water_recovery=0.987)
+                            ins=F2-1,
+                            outs=('RO_water','brine'),
+                            water_recovery=0.987)
     RO.outs[0].price = bst.stream_prices['Reverse osmosis water']
     RO.register_alias('RO')
 
@@ -460,21 +450,24 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                     split={'HCOOH':1})
     D1.register_alias('D1')
     
-    SP1 = qsu.Splitter('SP1',
-                       ins=D1-2,
-                       outs=('natural_gas_LCA','H2O_discharge'),
-                       split={'CO2':1,'H2O':0})
-    SP1.register_alias('SP1')
+    SP2 = qsu.Splitter('SP2',
+                        ins=D1-2,
+                        outs=('natural_gas_LCA','H2O_discharge'),
+                        split={'CO2':1,'H2O':0})
+    SP2.register_alias('SP2')
     
     # TODO: do we need to activate ALF here? see Evans et al. 2022 and Ben's slides
     
-    S1 = bst.StorageTank('ALF_storage_tank', ins=D1-0, outs='ALF',
-                          tau=24*7, vessel_material='Stainless steel')
+    S1 = bst.StorageTank('ALF_storage_tank',
+                         ins=D1-0,
+                         outs='ALF',
+                         tau=24*7,
+                         vessel_material='Stainless steel')
     S1.register_alias('S1')
     
     sys = qs.System.from_units(ID='sys_ALF_B',
-                               units=list(flowsheet.unit),
-                               operating_hours=yearly_operating_days*24)
+                                units=list(flowsheet.unit),
+                                operating_hours=yearly_operating_days*24)
     sys.register_alias('sys')
     
     # natural gas density: 0.678 kg/m3 (https://en.wikipedia.org/wiki/Natural_gas, accessed 06-02-2024)
@@ -520,12 +513,12 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
     create_tea(sys, lifetime=lifetime)
     
     qs.LCA(system=sys,
-           lifetime=lifetime,
-           lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-\
-                               sys.get_electricity_production())*lifetime,
-           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
-           Heating=lambda:sys.get_heating_duty()/1000*lifetime)
+            lifetime=lifetime,
+            lifetime_unit='yr',
+            Electricity=lambda:(sys.get_electricity_consumption()-\
+                                sys.get_electricity_production())*lifetime,
+            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
+            Heating=lambda:sys.get_heating_duty()/1000*lifetime)
     
     # note simulating twice in this system may cause errors
     # TODO: does this affect creating models?
@@ -596,8 +589,8 @@ def create_system_C(product='formic acid',
         
     # for system B, producing 100 metric ton ALF per day needs 2730.8 kg bauxite per hour
     if ALF_system == 'B':
-        adsorbent_cost = 1.943*1441/35.3147 # 1.935 $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
-        adsorbent_CI = 7.703 # kg CO2 eq/kg ALF
+        adsorbent_cost = 1.699*1441/35.3147 # 1.935 $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
+        adsorbent_CI = 7.260 # kg CO2 eq/kg ALF
     
     TSA = su.ALFTSA(ID='ALF_TSA',
                     ins=(flue_gas,'air'),
