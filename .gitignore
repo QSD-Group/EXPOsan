@@ -19,3 +19,4 @@ build
 dist
 docs/build/*
 htmlcov
+exposan/co2_sorbent/analysis.py

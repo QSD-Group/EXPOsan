@@ -468,12 +468,11 @@ class ALFTSA(PressureVessel, Splitter):
         Vessel type. Defaults to 'Vertical'.
     length_unused : float, optional
         Additional length of a column to account for mass transfer limitations (due to unused bed). Defaults to 1.219 m.
-    # TODO: confirm treatment_capacity
-    # https://pubs.acs.org/doi/10.1021/acs.iecr.0c01590 reported 1.74 m3/s for a temperature swing adsorption unit
-    # https://link.springer.com/article/10.1007/s10450-014-9603-2 reported 100000 m3/h at 50 kPa vacuum for a vacuum swing adsorption unit
     treatment_capacity : float
         Flow rate of flue gas to a single TSA unit. Defaults to 10000 m3/h.
         10000 m3/h is an assumed value, at which the diameter of TSA columns is about the half of its length.
+        1.74 m3/s for a temperature swing adsorption unit [4]_.
+        100000 m3/h at 50 kPa vacuum for a vacuum swing adsorption unit [5]_.
     regen_CO2 : float
         CO2 ratio in the regeneration gas. Defaults to 0.975 (CO2 purity in carbon_dioxide).
     regen_N2 : float
@@ -491,7 +490,15 @@ class ALFTSA(PressureVessel, Splitter):
         Aluminum Formate, Al(HCOO)3: An Earth-Abundant, Scalable, and Highly
         Selective Material for CO2 Capture. Science Advances 2022, 8 (44),
         eade1473. https://doi.org/10.1126/sciadv.ade1473.
-    [4] Ntiamoah, A.; Ling, J.; Xiao, P.; Webley, P. A.; Zhai, Y. CO2 Capture by
+    [4] Jareteg, A.; Maggiolo, D.; Larsson, A.; Thunman, H.; Sasic, S.; Ström,
+        H. Industrial-Scale Benzene Adsorption: Assessment of a Baseline
+        One-Dimensional Temperature Swing Model against Online Industrial Data.
+        Ind. Eng. Chem. Res. 2020, 59 (26), 12239–12249.
+        https://doi.org/10.1021/acs.iecr.0c01590.
+    [5] Webley, P. A. Adsorption Technology for CO2 Separation and Capture:
+        A Perspective. Adsorption 2014, 20 (2), 225–231.
+        https://doi.org/10.1007/s10450-014-9603-2.
+    [6] Ntiamoah, A.; Ling, J.; Xiao, P.; Webley, P. A.; Zhai, Y. CO2 Capture by
         Temperature Swing Adsorption: Use of Hot CO2-Rich Gas for Regeneration.
         Ind. Eng. Chem. Res. 2016, 55 (3), 703–713.
         https://doi.org/10.1021/acs.iecr.5b01384.
@@ -566,7 +573,7 @@ class ALFTSA(PressureVessel, Splitter):
         self.length = length = total_length/2
         self.vessel_volume = length*area
         T_original = regen.T
-        # the regen should have the same gas composition as carbon_dioxide, see [4]_
+        # the regen should have the same gas composition as carbon_dioxide, see [6]_
         # carbon dioxide: 97.5% CO2, the rest should be 0.82/0.87 N2 and 0.05/0.87 O2 (see flue gas composition)
         regen.reset_flow(CO2=self.regen_CO2, N2=self.regen_N2, O2=self.regen_O2, phase='g', units='kg/hr')
         carbon_dioxide.T = regen.T = self.T_regeneration
@@ -608,8 +615,8 @@ class ALFTSA(PressureVessel, Splitter):
 # =============================================================================
 # CO2ElectrolyzerSystem
 # =============================================================================
-# TODO: check through this unit
-# cost basis year: 2010, see Jouny et al. 2018 SI Excel - tab Data - cell C4
+# cost basis year: 2010 (may be later years, but to be conservative)
+# see Jouny et al. 2018 SI Excel - tab Data - cell C4
 @cost(basis='Electrolyzer area', ID='Electrolyzer', units='m2',
       cost=250.25*1.75*175/1000*10*(1+1/0.65*0.35), S=1, CE=qs.CEPCI_by_year[2010], n=1, BM=1.2)
 @cost(basis='Electrolyte flow rate (ethanol)', ID='Distiller (ethanol)', units='L/min',
@@ -627,8 +634,9 @@ class ALFTSA(PressureVessel, Splitter):
 class CO2ElectrolyzerSystem(SanUnit):
     '''
     CO2 electrolyzer system that converts CO2 into reduced 1C, 2C, and nC products [1]_.
-    Compared to [1]_, this system considers CO2 recycle and add a PSA (if gas products)
-    to separate H2.
+    Compared to [1]_, this system adds a PSA (if gas products) to separate H2.
+    Assume the CAPEX and OPEX of the PSA for H2 separation are the same as the PSA for
+    CO2 separation.
     
     Parameters
     ----------
@@ -688,12 +696,12 @@ class CO2ElectrolyzerSystem(SanUnit):
         carbon_dioxide, water = self.ins
         product, hydrogen, offgas = self.outs
         
+        # propanol is n-propanol
         if self.target_product not in ['carbon monoxide','ethanol','ethylene',
                                        'formic acid','methane','methanol','propanol']:
             raise ValueError("target product must be in 'carbon monoxide', 'ethanol', " + 
                              "'ethylene', 'formic acid', 'methane', 'methanol', and 'propanol'")
         
-        # propanol is n-propanol
         # density in kg/m3
         product_info = {'chemical': ['carbon monoxide','ethanol','ethylene',
                                      'formic acid','methane','methanol','propanol'],
@@ -714,17 +722,15 @@ class CO2ElectrolyzerSystem(SanUnit):
         # CO2 inlet flow rate [kg/h]
         CO2_inlet_flow_rate = carbon_dioxide.imass['CO2']
         
-        # TODO: confirm Jouny et al. 2018 did not consider CO2 recycle
-        # note compared to Jouny et al, 2018, we consider CO2 recycle
-        # converted CO2 amount [kg/day]
+        # unconverted CO2 will be recycled
         CO2_converted = CO2_inlet_flow_rate*24
         
-        # CO2 outlet flow rate [kg/h]
-        CO2_outlet_flow_rate_kg_per_h = CO2_inlet_flow_rate*(1-self.converstion)/self.converstion
+        # CO2 recycle flow rate [kg/h]
+        CO2_recycle_flow_rate_kg_per_h = CO2_inlet_flow_rate*(1-self.converstion)/self.converstion
         
-        # CO2 outlet flow rate [m3/h]
+        # CO2 recycle flow rate [m3/h]
         # the density of CO2 is 1.98 kg/m3, Jouny et al. 2018
-        self.CO2_outlet_flow_rate_m3_per_h = CO2_outlet_flow_rate_kg_per_h/1.98
+        self.CO2_recycle_flow_rate_m3_per_h = CO2_recycle_flow_rate_kg_per_h/1.98
         
         # production amount based on inlet CO2 [kg/day]
         product_production = CO2_converted/44/float(chemical_info['mole_ratio'])*\
@@ -767,7 +773,7 @@ class CO2ElectrolyzerSystem(SanUnit):
         hydrogen_flow_rate_m3_per_h = hydrogen_flow_rate_mol_per_s*2/1000/0.08375*3600
         
         # total gas flow [m3/h]
-        self.total_gas_flow = self.CO2_outlet_flow_rate_m3_per_h +\
+        self.total_gas_flow = self.CO2_recycle_flow_rate_m3_per_h +\
             self.gas_product_flow_rate + hydrogen_flow_rate_m3_per_h
         
         product.imass[chemical_info['formula'].to_string(index=False)] = product_production/24
@@ -777,13 +783,15 @@ class CO2ElectrolyzerSystem(SanUnit):
         # change it to 'current_needed/2/96485*18/1000*3600' as every 18 g H2O can transfer 2 e-
         water.imass['H2O'] = current_needed/2/96485*18/1000*3600
         
+        # we added a PSA to separate H2
         # hydrogen density: 0.08375 kg/m3, Jouny et al. 2018
         hydrogen.imass['H2'] = hydrogen_flow_rate_m3_per_h*0.08375
         
         offgas.empty()
         offgas.imass['N2'] = carbon_dioxide.imass['N2']
         # H2O after distillation or PSA
-        # note formic acid is produced in the cathode with no water produced but still needs distillation since there must be carried-out water
+        # note formic acid is produced in the cathode with no water produced
+        # but still needs distillation since there must be carried-out water
         offgas.imass['H2O'] = product.F_mass/float(chemical_info['MW'])*\
             float(chemical_info['cathode_water_production'])*18
         
@@ -801,17 +809,17 @@ class CO2ElectrolyzerSystem(SanUnit):
                     else 0
         
         D['Total gas flow for PSA'] = 0\
-            if self.CO2_outlet_flow_rate_m3_per_h == self.total_gas_flow\
+            if self.CO2_recycle_flow_rate_m3_per_h == self.total_gas_flow\
                 else self.total_gas_flow
         
         D['Gas product and hydrogen flow for PSA'] = 0\
             if self.gas_product_flow_rate == 0\
-            else self.total_gas_flow - self.CO2_outlet_flow_rate_m3_per_h
+            else self.total_gas_flow - self.CO2_recycle_flow_rate_m3_per_h
         
         # PSA operating power: 0.25 kWh/m3, Jouny et al. 2018
         self.add_power_utility(self.power_needed*1000 +\
                                D['Total gas flow for PSA']*0.25 +\
-                               + D['Gas product and hydrogen flow for PSA']*0.25)
+                               D['Gas product and hydrogen flow for PSA']*0.25)
     
     def _cost(self):
         self._decorated_cost()

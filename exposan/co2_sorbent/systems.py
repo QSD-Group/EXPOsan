@@ -586,6 +586,8 @@ def create_system_C(product='formic acid',
                               units='kg/h',
                               T=160+273.15)
     
+    # TODO: do we need to cool down flue gas first so ALF can absorb CO2?
+    
     # TODO: update ALF price and CI if necessary
     # for system A, producing 100 metric ton ALF per day needs 2416.7 kg Al)OH)3 per hour
     if ALF_system == 'A':
