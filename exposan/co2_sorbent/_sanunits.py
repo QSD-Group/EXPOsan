@@ -27,6 +27,7 @@ __all__ = (
     'BauxiteHammerMill',
     'ALFProduction',
     'PhaseChanger',
+    # TODO: combine 'SolidPressureFilter' and 'ALFPressureFilter' if possible
     'SolidPressureFilter',
     'ALFCrystallizer',
     'ALFPressureFilter',

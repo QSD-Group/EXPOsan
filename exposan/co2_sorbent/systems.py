@@ -584,12 +584,12 @@ def create_system_C(product='formic acid',
     # TODO: update ALF price and CI if necessary
     # for system A, producing 100 metric ton ALF per day needs 2416.7 kg Al)OH)3 per hour
     if ALF_system == 'A':
-        adsorbent_cost = 1.441*1441/35.3147 # 1.437 $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
+        adsorbent_cost = 1.441*1441/35.3147 # $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
         adsorbent_CI = 4.907 # kg CO2 eq/kg ALF
         
     # for system B, producing 100 metric ton ALF per day needs 2730.8 kg bauxite per hour
     if ALF_system == 'B':
-        adsorbent_cost = 1.699*1441/35.3147 # 1.935 $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
+        adsorbent_cost = 1.699*1441/35.3147 # $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
         adsorbent_CI = 7.260 # kg CO2 eq/kg ALF
     
     TSA = su.ALFTSA(ID='ALF_TSA',

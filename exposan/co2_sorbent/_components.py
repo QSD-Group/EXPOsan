@@ -23,7 +23,6 @@ def create_components(set_thermo=True):
     # Al2O3
     Al2O3 = Component(ID='Al2O3',
                       search_ID='1344-28-1',
-                      phase='s',
                       particle_size='Particulate',
                       degradability='Undegradable',
                       organic=False)
@@ -31,7 +30,6 @@ def create_components(set_thermo=True):
     # SiO2
     SiO2 = Component(ID='SiO2',
                      search_ID='7631-86-9',
-                     phase='s',
                      particle_size='Particulate',
                      degradability='Undegradable',
                      organic=False)
@@ -39,7 +37,6 @@ def create_components(set_thermo=True):
     # Fe2O3
     Fe2O3 = Component(ID='Fe2O3',
                       search_ID='1309-37-1',
-                      phase='s',
                       particle_size='Particulate',
                       degradability='Undegradable',
                       organic=False)
@@ -47,7 +44,6 @@ def create_components(set_thermo=True):
     # Fe
     Fe = Component(ID='Fe',
                    search_ID='7439-89-6',
-                   phase='s',
                    particle_size='Particulate',
                    degradability='Undegradable',
                    organic=False)
@@ -55,11 +51,11 @@ def create_components(set_thermo=True):
     # Al(OH)3
     AlH3O3 = Component(ID='AlH3O3',
                        search_ID='21645-51-2',
-                       phase='s',
                        particle_size='Particulate',
                        degradability='Undegradable',
                        organic=False)
     
+    # TODO: is there a way to remove the phase for ALF?
     # ALF
     ALF = Component(ID='C3H3AlO6',
                     search_ID='7360-53-4',
@@ -88,43 +84,36 @@ def create_components(set_thermo=True):
                     organic=False)
     
     O2 = Component(ID='O2',
-                   phase='g',
                    particle_size='Dissolved gas',
                    degradability='Undegradable',
                    organic=False)
     
     N2 = Component(ID='N2',
-                   phase='g',
                    particle_size='Dissolved gas',
                    degradability='Undegradable',
                    organic=False)
     
     H2 = Component(ID='H2',
-                   phase='g',
                    particle_size='Dissolved gas',
                    degradability='Undegradable',
                    organic=False)
     
     CH4 = Component(ID='CH4',
-                    phase='g',
                     particle_size='Dissolved gas',
                     degradability='Slowly',
                     organic=True)
     
     C2H4 = Component(ID='C2H4',
-                     phase='g',
                      particle_size='Dissolved gas',
                      degradability='Slowly',
                      organic=True)
     
     CO2 = Component(ID='CO2',
-                    phase='g',
                     particle_size='Dissolved gas',
                     degradability='Undegradable',
                     organic=False)
     
     CO = Component(ID='CO',
-                   phase='g',
                    particle_size='Dissolved gas',
                    degradability='Undegradable',
                    organic=False)
