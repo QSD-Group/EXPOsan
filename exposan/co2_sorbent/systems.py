@@ -107,6 +107,7 @@ bst.stream_prices['Reverse osmosis water'] = 0.0054/3.7854/GDPCTPI[2010]*GDPCTPI
 # =============================================================================
 def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
                     electricity_price=0.0832,
+                    clean_electricity=False,
                     yearly_operating_days=350,
                     lifetime=20):
 
@@ -274,13 +275,22 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
     
     create_tea(sys, lifetime=lifetime)
     
-    qs.LCA(system=sys,
-            lifetime=lifetime,
-            lifetime_unit='yr',
-            Electricity=lambda:(sys.get_electricity_consumption()-\
-                                sys.get_electricity_production())*lifetime,
-            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
-            Heating=lambda:sys.get_heating_duty()/1000*lifetime)
+    if clean_electricity:
+        qs.LCA(system=sys,
+               lifetime=lifetime,
+               lifetime_unit='yr',
+               Clean_electricity=lambda:(sys.get_electricity_consumption()-\
+                                         sys.get_electricity_production())*lifetime,
+               Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
+               Heating=lambda:sys.get_heating_duty()/1000*lifetime)
+    else:
+        qs.LCA(system=sys,
+               lifetime=lifetime,
+               lifetime_unit='yr',
+               Dirty_electricity=lambda:(sys.get_electricity_consumption()-\
+                                         sys.get_electricity_production())*lifetime,
+               Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
+               Heating=lambda:sys.get_heating_duty()/1000*lifetime)
     
     # note simulating twice in this system may cause errors
     # TODO: does this affect creating models?
@@ -301,6 +311,7 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                     bauxite_Al2O3=0.6, # Al2O3 weight ratio in bauxite, related to bauxite_price
                     bauxite_SiO2=0.11, # SiO2 weight ratio in bauxite, related to bauxite_price
                     electricity_price=0.0832,
+                    clean_electricity=False,
                     yearly_operating_days=350,
                     lifetime=20):
 
@@ -512,13 +523,22 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
     
     create_tea(sys, lifetime=lifetime)
     
-    qs.LCA(system=sys,
-            lifetime=lifetime,
-            lifetime_unit='yr',
-            Electricity=lambda:(sys.get_electricity_consumption()-\
-                                sys.get_electricity_production())*lifetime,
-            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
-            Heating=lambda:sys.get_heating_duty()/1000*lifetime)
+    if clean_electricity:
+        qs.LCA(system=sys,
+               lifetime=lifetime,
+               lifetime_unit='yr',
+               Clean_electricity=lambda:(sys.get_electricity_consumption()-\
+                                         sys.get_electricity_production())*lifetime,
+               Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
+               Heating=lambda:sys.get_heating_duty()/1000*lifetime)
+    else:
+        qs.LCA(system=sys,
+               lifetime=lifetime,
+               lifetime_unit='yr',
+               Dirty_electricity=lambda:(sys.get_electricity_consumption()-\
+                                         sys.get_electricity_production())*lifetime,
+               Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
+               Heating=lambda:sys.get_heating_duty()/1000*lifetime)
     
     # note simulating twice in this system may cause errors
     # TODO: does this affect creating models?
@@ -537,11 +557,13 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
 def create_system_C(product='formic acid',
                     ALF_system='A',
                     flue_gas_flow_rate=6000000, # Huang et al. 2021, for a typical 1000 MWh coal-fired power plant
+                    adsorbent_lifetime=10,
                     flue_gas_CO2=0.13,
                     flue_gas_N2=0.82,
                     purity=0.975, # Evans et al. 2022
                     recovery=0.945, # Evans et al. 2022
                     electricity_price=0.0832,
+                    clean_electricity=False,
                     yearly_operating_days=350,
                     lifetime=20,
                     upgrade=True):
@@ -580,24 +602,38 @@ def create_system_C(product='formic acid',
                               T=160+273.15)
     
     # TODO: do we need to cool down flue gas first so ALF can absorb CO2?
-    
-    # TODO: update ALF price and CI if necessary
     # for system A, producing 100 metric ton ALF per day needs 2416.7 kg Al)OH)3 per hour
     if ALF_system == 'A':
-        adsorbent_cost = 1.441*1441/35.3147 # $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
-        adsorbent_CI = 4.907 # kg CO2 eq/kg ALF
-        
+        sys_A = create_system_A(AlH3O3=2416.7,
+                                electricity_price=electricity_price,
+                                clean_electricity=clean_electricity)
+        # $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
+        adsorbent_cost = sys_A.TEA.solve_price(sys_A.flowsheet.ALF)*1441/35.3147
+        # kg CO2 eq/kg ALF
+        adsorbent_CI = sys_A.LCA.get_total_impacts()['GlobalWarming']/\
+            sys_A.flowsheet.ALF.F_mass/sys_A.operating_hours/sys_A.LCA.lifetime
+    
+    # TODO: check here
     # for system B, producing 100 metric ton ALF per day needs 2730.8 kg bauxite per hour
     if ALF_system == 'B':
-        adsorbent_cost = 1.699*1441/35.3147 # $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
-        adsorbent_CI = 7.260 # kg CO2 eq/kg ALF
+        sys_B = create_system_B(bauxite=2730.8,
+                                electricity_price=electricity_price,
+                                clean_electricity=clean_electricity)
+        # $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
+        adsorbent_cost = sys_B.TEA.solve_price(sys_B.flowsheet.ALF)*1441/35.3147
+        # kg CO2 eq/kg ALF
+        adsorbent_CI = sys_B.LCA.get_total_impacts()['GlobalWarming']/\
+            sys_B.flowsheet.ALF.F_mass/sys_B.operating_hours/sys_B.LCA.lifetime
+    
+    # TODO: check here
+    qs.main_flowsheet.set_flowsheet(flowsheet)
     
     TSA = su.ALFTSA(ID='ALF_TSA',
                     ins=(flue_gas,'air'),
                     outs=('captured_carbon_dioxide','TSA_offgas'),
                     adsorbent='ALF',
                     adsorbent_cost=adsorbent_cost,
-                    adsorbent_lifetime=10,
+                    adsorbent_lifetime=adsorbent_lifetime,
                     adsorbate_ID='CO2',
                     split=dict(O2=(flue_gas_CO2*recovery/purity-flue_gas_CO2*recovery)/(1-flue_gas_CO2),
                                N2=(flue_gas_CO2*recovery/purity-flue_gas_CO2*recovery)/(1-flue_gas_CO2),
@@ -629,19 +665,34 @@ def create_system_C(product='formic acid',
     
         # note LCA for ALF and CO2 are calculated as 'Other', not 'Construction' or 'Stream'
         # use ceil to calculate the needed ALF to be conservative (assume no salvage value)
-        qs.LCA(system=sys,
-                lifetime=lifetime,
-                lifetime_unit='yr',
-                Electricity=lambda:(sys.get_electricity_consumption()-\
-                                    sys.get_electricity_production())*lifetime,
-                Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
-                Heating=lambda:sys.get_heating_duty()/1000*lifetime,
-                CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
-                ALF=TSA.design_results['Number of sets']*\
-                    TSA.design_results['Number of reactors']*\
-                    TSA.vessel_volume*1441*\
-                    ceil(lifetime/TSA.equipment_lifetime['ALF'])*\
-                    adsorbent_CI) # 1441 kg/m3
+        if clean_electricity:
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Clean_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
+                   Heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
+                   ALF=TSA.design_results['Number of sets']*\
+                       TSA.design_results['Number of reactors']*\
+                       TSA.vessel_volume*1441*\
+                       ceil(lifetime/TSA.equipment_lifetime['ALF'])*\
+                       adsorbent_CI) # 1441 kg/m3
+        else:
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Dirty_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
+                   Heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
+                   ALF=TSA.design_results['Number of sets']*\
+                       TSA.design_results['Number of reactors']*\
+                       TSA.vessel_volume*1441*\
+                       ceil(lifetime/TSA.equipment_lifetime['ALF'])*\
+                       adsorbent_CI) # 1441 kg/m3
         
         print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.captured_carbon_dioxide)} $/kg CO2 captured")
         print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.flue_gas.imass['CO2']/sys.operating_hours/sys.LCA.lifetime} kg CO2 eq reduction/kg CO2 captured")
@@ -689,21 +740,39 @@ def create_system_C(product='formic acid',
         # simulate twice (here and later in qs.LCA) in this system does not affect the results
         sys.simulate()
         
+        # TODO: add a parameter named 'clean_electricity' and use if else to do LCA here
+        # TODO: in the LCA data spreadsheet, add two item for electricity ('Clean_electricity' and 'Dirty_electricity')
+        # TODO: can add more if needed
         # note LCA for ALF and CO2 are calculated as 'Other', not 'Construction' or 'Stream'
         # use ceil to calculate the needed ALF to be conservative (assume no salvage value)
-        qs.LCA(system=sys,
-                lifetime=lifetime,
-                lifetime_unit='yr',
-                Electricity=lambda:(sys.get_electricity_consumption()-\
-                                    sys.get_electricity_production())*lifetime,
-                Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
-                Heating=lambda:sys.get_heating_duty()/1000*lifetime,
-                CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
-                ALF=TSA.design_results['Number of sets']*\
-                    TSA.design_results['Number of reactors']*\
-                    TSA.vessel_volume*1441*\
-                    ceil(lifetime/TSA.equipment_lifetime['ALF'])*\
-                    adsorbent_CI) # 1441 kg/m3
+        if clean_electricity:
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Clean_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
+                   Heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
+                   ALF=TSA.design_results['Number of sets']*\
+                       TSA.design_results['Number of reactors']*\
+                       TSA.vessel_volume*1441*\
+                       ceil(lifetime/TSA.equipment_lifetime['ALF'])*\
+                       adsorbent_CI) # 1441 kg/m3
+        else:
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Dirty_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
+                   Heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
+                   ALF=TSA.design_results['Number of sets']*\
+                       TSA.design_results['Number of reactors']*\
+                       TSA.vessel_volume*1441*\
+                       ceil(lifetime/TSA.equipment_lifetime['ALF'])*\
+                       adsorbent_CI) # 1441 kg/m3
         
         print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.product)} $/kg {product}")
         print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.product.F_mass/sys.operating_hours/sys.LCA.lifetime} kg CO2 eq/kg {product}")
