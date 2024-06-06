@@ -49,9 +49,9 @@ default_init_conds_inc = {
     'X_N_ALG':3.62,
     'X_P_ALG':12.60,
     'S_N2': 0,           # Concentration of dinitrogen
-    'S_ALK':,          # Concentration of alkalinity
-    'S_I':,            # Concentration of inert soluble organic material
-    'X_I':,            # Concentration of inert particulate organic material
+    'S_ALK': 100,          # Concentration of alkalinity
+    'S_I': 1,            # Concentration of inert soluble organic material
+    'X_I': 1,            # Concentration of inert particulate organic material
     'X_S':,            # Concentration of slowly biodegradable substrates
     'X_H':,            # Concentration of heterotrophic organisms (including denitrifer)
     'X_AUT':,          # Concentration of nitrifying organisms
@@ -188,11 +188,11 @@ def run(t, t_step, method=None, **kwargs):
         method=method,
         # rtol=1e-2,
         # atol=1e-3,
-        export_state_to=f'results/sol_{t}d_{method}.xlsx',
+        export_state_to=f'results/pm2asm2d_sol_{t}d_{method}.xlsx',
         **kwargs)
 
 if __name__ == '__main__':
-    t = 7
+    t = 9
     t_step = 1
     # method = 'RK45'
     method = 'RK23'
