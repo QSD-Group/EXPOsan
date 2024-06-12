@@ -55,8 +55,10 @@ def create_components(set_thermo=True):
                        degradability='Undegradable',
                        organic=False)
     
-    # TODO: is there a way to remove the phase for ALF?
     # ALF
+    # ALF is typical solid at relevant (temperature and pressure) conditions
+    # set the phase of ALF as 's', otherwise, it is missing key thermodynamic properties
+    # also tested: changing the phase to 'l' does not change the results too much for all systems
     ALF = Component(ID='C3H3AlO6',
                     search_ID='7360-53-4',
                     phase='s',
@@ -66,7 +68,6 @@ def create_components(set_thermo=True):
     add_V_from_rho(ALF, 1441) # Evans et al. Science Advances SI. Table S1
     # https://www.harrellindustries.com/wp-content/uploads/2015/10/0200-Aluminum-Formate-SDS-US.pdf (accessed 05-30-2024)
     ALF.Tm = 660+273.15 # normal melting temperature [K]
-    
     # no information on ALF.mu
     # assume it as 1 (changing it has minimal effect on TEA and LCA)
     ALF.mu.add_model(1)

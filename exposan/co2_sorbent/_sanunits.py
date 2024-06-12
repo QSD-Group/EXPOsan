@@ -27,10 +27,8 @@ __all__ = (
     'BauxiteHammerMill',
     'ALFProduction',
     'PhaseChanger',
-    # TODO: combine 'SolidPressureFilter' and 'ALFPressureFilter' if possible
     'SolidPressureFilter',
     'ALFCrystallizer',
-    'ALFPressureFilter',
     'ReverseOsmosis',
     'S2WS',
     'ALFTSA',
@@ -61,6 +59,7 @@ class BauxiteHammerMill(SanUnit):
 # =============================================================================
 # ALFProduction
 # =============================================================================
+# TODO: from Ben: the reactants are slurry, should use a batch reactor and do not need a crystallizer
 class ALFProduction(bst.CSTR):
     '''
     Reactor for ALF production. See biosteam/units/stirred_tank_reactor.py.
@@ -206,21 +205,27 @@ class SolidPressureFilter(Unit):
         retentate, permeate = self.outs
         
         retentate.empty()
+        retentate.phases = permeate.phases = inlet.phase
         
-        retentate.imass['SiO2'] = inlet.imass['SiO2']*self.split['SiO2']
-        retentate.imass['Fe'] = inlet.imass['Fe']*self.split['Fe']
-        retentate.imass['C3H3AlO6'] = inlet.imass['C3H3AlO6']*self.split['C3H3AlO6']
-        retentate.imass['HCOOH'] = inlet.imass['HCOOH']*self.split['HCOOH']
-        retentate.imass['H2O'] = retentate.F_mass/(1-self.moisture_content)*self.moisture_content
+        if len(inlet.phase) == 1:
+            for chemical in self.split.keys():
+                retentate.imass[chemical] = inlet.imass[chemical]*self.split[chemical]
+                permeate.imass[chemical] = inlet.imass[chemical]*(1-self.split[chemical])
+            retentate.imass['H2O'] = retentate.F_mass/(1-self.moisture_content)*self.moisture_content
+            permeate.imass['H2O'] = inlet.imass['H2O'] - retentate.imass['H2O']
+        else:
+            for chemical in self.split.keys():
+                chem = chemical if chemical.rfind('_') == -1 else chemical[:chemical.rfind('_')]
+                if chemical[-2:] == '_s':
+                    retentate.imass['s', chem] = inlet.imass['s', chem]*self.split[chemical]
+                    permeate.imass['s', chem] = inlet.imass['s', chem]*(1-self.split[chemical])
+                else:
+                    retentate.imass['l', chem] = inlet.imass['l', chem]*self.split[chemical]
+                    permeate.imass['l', chem] = inlet.imass['l', chem]*(1-self.split[chemical])
+            retentate.imass['l','H2O'] = retentate.F_mass/(1-self.moisture_content)*self.moisture_content
+            permeate.imass['l','H2O'] = inlet.imass['l','H2O'] - retentate.imass['l','H2O']
         
-        permeate.imass['SiO2'] = inlet.imass['SiO2']*(1-self.split['SiO2'])
-        permeate.imass['Fe'] = inlet.imass['Fe']*(1-self.split['Fe'])
-        permeate.imass['C3H3AlO6'] = inlet.imass['C3H3AlO6']*(1-self.split['C3H3AlO6'])
-        permeate.imass['HCOOH'] = inlet.imass['HCOOH']*(1-self.split['HCOOH'])
-        permeate.imass['H2O'] = inlet.imass['H2O'] - retentate.imass['H2O']
-        
-        retentate.T = inlet.T
-        permeate.T = inlet.T
+        retentate.T = permeate.T = inlet.T
         
     def _design(self):
         self.design_results['Retentate flow rate'] = self.outs[0].F_mass
@@ -264,103 +269,6 @@ class ALFCrystallizer(bst.BatchCrystallizer):
         outlet.imass['l','C3H3AlO6'] = ALF*(1-crystal_ALF_yield)
         
         outlet.T = self.T
-
-# =============================================================================
-# ALFPressureFilter
-# =============================================================================
-_hp2kW = 0.7457
-@cost(basis='Retentate flow rate', ID='Flitrate tank agitator',
-      cost=26e3, CE=551, kW=7.5*_hp2kW, S=31815, n=0.5, BM=1.5)
-@cost(basis='Retentate flow rate', ID='Discharge pump',
-      cost=13040, CE=551, S=31815, n=0.8, BM=2.3)
-@cost(basis='Retentate flow rate', ID='Filtrate tank',
-      cost=103e3, S=31815, CE=551, BM=2.0, n=0.7)
-@cost(basis='Retentate flow rate', ID='Feed pump', kW=74.57,
-      cost= 18173, S=31815, CE=551, n=0.8, BM=2.3)
-@cost(basis='Retentate flow rate', ID='Stillage tank 531',
-      cost=174800, CE=551, S=31815, n=0.7, BM=2.0)
-@cost(basis='Retentate flow rate', ID='Mafifold flush pump', kW=74.57,
-      cost=17057, CE=551, S=31815, n=0.8, BM=2.3)
-@cost(basis='Retentate flow rate', ID='Recycled water tank',
-      cost=1520, CE=551, S=31815, n=0.7, BM=3.0)
-@cost(basis='Retentate flow rate', ID='Wet cake screw',  kW=15*_hp2kW,
-      cost=2e4, CE=521.9, S=28630, n=0.8, BM=1.7)
-@cost(basis='Retentate flow rate', ID='Wet cake conveyor', kW=10*_hp2kW,
-      cost=7e4, CE=521.9, S=28630, n=0.8, BM=1.7)
-@cost(basis='Retentate flow rate', ID='Pressure filter',
-      cost=3294700, CE=551, S=31815, n=0.8, BM=1.7)
-@cost(basis='Retentate flow rate', ID='Pressing air compressor receiver tank',
-      cost=8e3, CE=551, S=31815, n=0.7, BM=3.1)
-@cost(basis='Retentate flow rate', ID='Cloth wash pump', kW=150*_hp2kW,
-      cost=29154, CE=551, S=31815, n=0.8, BM=2.3)
-@cost(basis='Retentate flow rate', ID='Dry air compressor receiver tank',
-      cost=17e3, CE=551, S=31815, n=0.7, BM=3.1)
-@cost(basis='Retentate flow rate', ID='Pressing air pressure filter',
-      cost=75200, CE=521.9, S=31815, n=0.6, kW=112, BM=1.6)
-@cost(basis='Retentate flow rate', ID='Dry air pressure filter (2)',
-      cost=405000, CE=521.9, S=31815, n=0.6, kW=1044, BM=1.6)
-class ALFPressureFilter(Unit):
-    '''
-    Create a pressure filter for the separation of ALF. See biosteam/units/solids_separation.py.
-    Capital costs are based on [1]_.
-    
-    Parameters
-    ----------
-    ID : str, optional
-        Unit ID.
-    ins : iterable
-        Inlet streams.
-    outs : iterable
-        Outlet streams.
-    moisture_content : float, optional
-        Moisture content of retentate. Defaults to 0.35.
-    split : array_like or dict[str, float]
-        Splits of chemicals to the retentate.
-        Assume completely separation for ALF.
-        From biosteam/units/solids_separation.py: soluble chemicals~0.036.
-    
-    References
-    ----------
-    [1] Humbird, D., Davis, R., Tao, L., Kinchin, C., Hsu, D., Aden, A.,
-        Dudgeon, D. (2011). Process Design and Economics for Biochemical 
-        Conversion of Lignocellulosic Biomass to Ethanol: Dilute-Acid 
-        Pretreatment and Enzymatic Hydrolysis of Corn Stover
-        (No. NREL/TP-5100-47764, 1013269). https://doi.org/10.2172/1013269
-    '''
-    _units = {'Retentate flow rate':'kg/hr'}
-    
-    _N_ins = 1
-    _N_outs = 2
-    
-    def __init__(self, ID='', ins=(), outs=(), thermo=None,
-                 moisture_content=0.35, split={'C3H3AlO6_s':1,
-                                               'C3H3AlO6_l':0,
-                                               'HCOOH':0.036}):
-        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo)
-        self.moisture_content = moisture_content
-        self.split = split
-    
-    def _run(self):
-        inlet = self.ins[0]
-        retentate, permeate = self.outs
-        
-        retentate.empty()
-        retentate.phases = ('s','l')
-        
-        retentate.imass['s','C3H3AlO6'] = inlet.imass['s','C3H3AlO6']*self.split['C3H3AlO6_s']
-        retentate.imass['l','C3H3AlO6'] = inlet.imass['l','C3H3AlO6']*self.split['C3H3AlO6_l']
-        retentate.imass['l','HCOOH'] = inlet.imass['l','HCOOH']*self.split['HCOOH']
-        retentate.imass['l','H2O'] = retentate.F_mass/(1-self.moisture_content)*self.moisture_content
-        
-        permeate.phases = ('s','l')
-        
-        permeate.imass['s','C3H3AlO6'] = inlet.imass['s','C3H3AlO6']*(1-self.split['C3H3AlO6_s'])
-        permeate.imass['l','C3H3AlO6'] = inlet.imass['l','C3H3AlO6']*(1-self.split['C3H3AlO6_l'])
-        permeate.imass['l','HCOOH'] = inlet.imass['l','HCOOH']*(1-self.split['HCOOH'])
-        permeate.imass['l','H2O'] = inlet.imass['l','H2O'] - retentate.imass['l','H2O']
-    
-    def _design(self):
-        self.design_results['Retentate flow rate'] = self.outs[0].F_mass
 
 # =============================================================================
 # ReverseOsmosis
@@ -639,7 +547,7 @@ class ALFTSA(PressureVessel, Splitter):
       cost=1989043, S=1000, CE=qs.CEPCI_by_year[2010], n=0.7)
 class CO2ElectrolyzerSystem(SanUnit):
     '''
-    CO2 electrolyzer system that converts CO2 into reduced 1C, 2C, and nC products [1]_.
+    CO2 electrolyzer system that converts CO2 into reduced 1C, 2C, and 3C products [1]_.
     Compared to [1]_, this system adds a PSA (if gas products) to separate H2.
     Assume the CAPEX and OPEX of the PSA for H2 separation are the same as the PSA for
     CO2 separation.
@@ -782,6 +690,7 @@ class CO2ElectrolyzerSystem(SanUnit):
         self.total_gas_flow = self.CO2_recycle_flow_rate_m3_per_h +\
             self.gas_product_flow_rate + hydrogen_flow_rate_m3_per_h
         
+        product.empty()
         product.imass[chemical_info['formula'].to_string(index=False)] = product_production/24
         product.phase = 'g' if chemical_info['state'].to_string(index=False) == 'gas' else 'l'
         
@@ -791,6 +700,7 @@ class CO2ElectrolyzerSystem(SanUnit):
         
         # we added a PSA to separate H2
         # hydrogen density: 0.08375 kg/m3, Jouny et al. 2018
+        hydrogen.empty()
         hydrogen.imass['H2'] = hydrogen_flow_rate_m3_per_h*0.08375
         
         offgas.empty()

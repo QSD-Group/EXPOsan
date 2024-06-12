@@ -57,6 +57,8 @@ from math import ceil
 # HXN (heat exchanger network), CWP (chilled water package)
 # and BT (BoilerTurbogenerator) don't help in these systems
 
+# TODO: merge into QSDsan and EXPOsan
+
 # TODO: from Jeremy: check if LCA studies (e.g., reports from DOE) for
 # DAC (direct air capture) includes construction
 # if not, we don't need to include LCA for constructions
@@ -139,10 +141,9 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
                                         AlH3O3=AlH3O3,
                                         units='kg/h',
                                         T=25+273.15)
-    # TODO: check if there are other sources for the price since this source seems not that reliable
+    # 2022 average:
     # https://businessanalytiq.com/procurementanalytics/index/aluminum-hydroxide-price-index/
     # (accessed 2024-05-20)
-    # 2022 average:
     aluminum_hydroxide.price = 0.424
     
     # add water to generate a sludge that contains 5.1% w/w of aluminum, Mikola et al. 2013
@@ -166,10 +167,10 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
                                  H2O=AlH3O3/78*3.5*46/0.8*0.2,
                                  units='kg/h',
                                  T=25+273.15)
-    # TODO: check if there are other sources for the price since this source seems not that reliable
-    # https://businessanalytiq.com/procurementanalytics/index/formic-acid-price-index/
-    # (accessed 2024-05-20)
+    # TODO: is it ok to calculate the price of 80% formic acid in this way?
     # 2022 average:
+    # https://businessanalytiq.com/procurementanalytics/index/aluminum-hydroxide-price-index/
+    # (accessed 2024-05-20)
     formic_acid.price = 0.82*0.8 + bst.stream_prices['Reverse osmosis water']*0.2
     
     M2 = qsu.Mixer(ID='feed_mixer_2',
@@ -180,6 +181,7 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
                    conserve_phases=True)
     M2.register_alias('M2')
     
+    # TODO: from Ben: the reactants are slurry, should use a batch reactor and do not need a crystallizer
     R1 = su.ALFProduction(ID='ALF_production',
                           ins=M2-0,
                           outs=('vent','ALF_solution'),
@@ -198,11 +200,11 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
     C1.register_alias('C1')
     
     # split ratio can be found in biosteam/units/solids_separation.py (soluble chemicals~0.036)
-    F1 = su.ALFPressureFilter(ID='ALF_filter',
-                              ins=C1-0,
-                              outs=('retentate','permeate'),
-                              moisture_content=0.35,
-                              split={'C3H3AlO6_s':1,'C3H3AlO6_l':0,'HCOOH':0.036})
+    F1 = su.SolidPressureFilter(ID='ALF_filter',
+                                ins=C1-0,
+                                outs=('retentate','permeate'),
+                                moisture_content=0.35,
+                                split={'C3H3AlO6_s':1,'C3H3AlO6_l':0,'HCOOH':0.036})
     F1.register_alias('F1')
     
     # assume the RO cake (produced after evaporator) can be potentially reused
@@ -307,9 +309,11 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
 # ALF production: Bauxite + HCOOH
 # =============================================================================
 def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
-                    bauxite_price=0.075, # $/kg, related to bauxite_purity
-                    bauxite_Al2O3=0.6, # Al2O3 weight ratio in bauxite, related to bauxite_price
-                    bauxite_SiO2=0.11, # SiO2 weight ratio in bauxite, related to bauxite_price
+                    # 47 $/ton (1 ton = 907.185 kg)
+                    # https://www.indexbox.io/search/bauxite-price-the-united-states/ accessed 2024-06-12)
+                    bauxite_price=47/907.185, # $/kg (1 ton = 907.185 kg)
+                    bauxite_Al2O3=0.6, # Al2O3 weight ratio in bauxite
+                    bauxite_SiO2=0.11, # SiO2 weight ratio in bauxite
                     electricity_price=0.0832,
                     clean_electricity=False,
                     yearly_operating_days=350,
@@ -346,9 +350,8 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                                  Fe2O3=bauxite*(1-bauxite_Al2O3-bauxite_SiO2),
                                  units='kg/h',
                                  T=25+273.15)
-    # TODO: check if there are other sources for the price since this source seems not that reliable
-    # https://en.institut-seltene-erden.de/aktuelle-preise-von-basismetallen/ (accessed 2024-05-23)
-    # Al2O3 60% min
+    # 47 $/ton (1 ton = 907.185 kg)
+    # https://www.indexbox.io/search/bauxite-price-the-united-states/ accessed 2024-06-12)
     bauxite_ore.price = bauxite_price
     
     G1 = su.BauxiteHammerMill(ID='bauxite_hammer_mill',
@@ -380,10 +383,10 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                                  H2O=(Al_mol+Fe_mol)*3.5*46/0.8*0.2,
                                  units='kg/h',
                                  T=25+273.15)
-    # TODO: check if there are other sources for the price since this source seems not that reliable
+    # TODO: is it ok to calculate the price of 80% formic acid in this way?
+    # 2022 average:
     # https://businessanalytiq.com/procurementanalytics/index/aluminum-hydroxide-price-index/
     # (accessed 2024-05-20)
-    # 2022 average:
     formic_acid.price = 0.82*0.8 + bst.stream_prices['Reverse osmosis water']*0.2
     
     M2 = qsu.Mixer(ID='feed_mixer_2',
@@ -394,6 +397,7 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                     conserve_phases=True)
     M2.register_alias('M2')    
     
+    # TODO: from Ben: the reactants are slurry, should use a batch reactor and do not need a crystallizer
     # TODO: does Fe2O3 react with HCOOH? Seems yes. Then how to separate ALF with FEF? And if yes, we need to further increase HCOOH amount
     # TODO: adjust reaction conditions if necessary
     R1 = su.ALFProduction(ID='ALF_production',
@@ -422,9 +426,9 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                     ins=F1-0,
                     outs='solid_waste_LCA')
     S2WS2.register_alias('S2WS2')
-    # TODO: update the price here
-    # 5-9 $/ton (1 ton = 907.185 kg) from https://www.sciencedirect.com/science/article/pii/S0892687521003137 # TODO: add this as a reference once deciding to use this source
-    S2WS2.outs[0].price=-0.0077
+    # 5-50 $/ton (1 ton = 907.185 kg, likely 2013$)
+    # https://www.e-mj.com/features/cleaning-up-the-red-mud/ (accessed 2024-06-12)
+    S2WS2.outs[0].price=(5+50)/2/907.185/GDPCTPI[2013]*GDPCTPI[2022]
     
     C1 = su.ALFCrystallizer(ID='ALF_crystallizer',
                             ins=F1-1,
@@ -436,11 +440,11 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
     C1.register_alias('C1')
     
     # split ratio can be found in biosteam/units/solids_separation.py (soluble chemicals~0.036)
-    F2 = su.ALFPressureFilter(ID='ALF_filter',
-                              ins=C1-0,
-                              outs=('retentate','permeate'),
-                              moisture_content=0.35,
-                              split={'C3H3AlO6_s':1,'C3H3AlO6_l':0,'HCOOH':0.036})
+    F2 = su.SolidPressureFilter(ID='ALF_filter',
+                                ins=C1-0,
+                                outs=('retentate','permeate'),
+                                moisture_content=0.35,
+                                split={'C3H3AlO6_s':1,'C3H3AlO6_l':0,'HCOOH':0.036})
     F2.register_alias('F2')
     
     # assume the RO cake (produced after evaporator) can be potentially reused
@@ -602,6 +606,7 @@ def create_system_C(product='formic acid',
                               T=160+273.15)
     
     # TODO: do we need to cool down flue gas first so ALF can absorb CO2?
+    
     # for system A, producing 100 metric ton ALF per day needs 2416.7 kg Al)OH)3 per hour
     if ALF_system == 'A':
         sys_A = create_system_A(AlH3O3=2416.7,
@@ -613,7 +618,6 @@ def create_system_C(product='formic acid',
         adsorbent_CI = sys_A.LCA.get_total_impacts()['GlobalWarming']/\
             sys_A.flowsheet.ALF.F_mass/sys_A.operating_hours/sys_A.LCA.lifetime
     
-    # TODO: check here
     # for system B, producing 100 metric ton ALF per day needs 2730.8 kg bauxite per hour
     if ALF_system == 'B':
         sys_B = create_system_B(bauxite=2730.8,
@@ -625,7 +629,6 @@ def create_system_C(product='formic acid',
         adsorbent_CI = sys_B.LCA.get_total_impacts()['GlobalWarming']/\
             sys_B.flowsheet.ALF.F_mass/sys_B.operating_hours/sys_B.LCA.lifetime
     
-    # TODO: check here
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
     TSA = su.ALFTSA(ID='ALF_TSA',
@@ -698,6 +701,7 @@ def create_system_C(product='formic acid',
         print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.flue_gas.imass['CO2']/sys.operating_hours/sys.LCA.lifetime} kg CO2 eq reduction/kg CO2 captured")
     
     else:
+        
         # TODO: do we need to cool down CO2 first?
         
         E1 = su.CO2ElectrolyzerSystem(ID='CO2_electrolyzer',
@@ -740,9 +744,6 @@ def create_system_C(product='formic acid',
         # simulate twice (here and later in qs.LCA) in this system does not affect the results
         sys.simulate()
         
-        # TODO: add a parameter named 'clean_electricity' and use if else to do LCA here
-        # TODO: in the LCA data spreadsheet, add two item for electricity ('Clean_electricity' and 'Dirty_electricity')
-        # TODO: can add more if needed
         # note LCA for ALF and CO2 are calculated as 'Other', not 'Construction' or 'Stream'
         # use ceil to calculate the needed ALF to be conservative (assume no salvage value)
         if clean_electricity:
