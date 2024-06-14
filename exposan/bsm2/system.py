@@ -144,7 +144,7 @@ def create_system(flowsheet=None, default_init_conds=True):
     # J1.ins[0].pH = 7.2631
     AD1 = su.AnaerobicCSTR('AD1', ins=J1.outs[0], outs=('biogas', 'AD_eff'), isdynamic=True,
                            V_liq=3400, V_gas=300, T=T_ad, model=adm1,)
-    # AD1.algebraic_h2=False
+    AD1.algebraic_h2 = True
     # Switch back to ASM1 components
     J2 = su.ADMtoASM('J2', upstream=AD1-1, thermo=thermo_asm1, isdynamic=True, adm1_model=adm1)
     J2.bio_to_xs = 0.79

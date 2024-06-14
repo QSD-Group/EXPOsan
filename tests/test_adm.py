@@ -23,6 +23,9 @@ def test_adm():
     rtol = 1e-2
     t = 200
     sys = adm.sys
+    AD = sys.flowsheet.unit.AD
+    # AD.algebraic_h2 = True
+    # AD.algebraic_h2 = False
     sys.simulate(state_reset_hook='reset_cache',
                  t_span=(0, t),
                  method='BDF')
@@ -35,7 +38,6 @@ def test_adm():
         0.1373059089340, 0.7605626583132, 0.3170229533613, 25.6173953274430,
         0.04, 0.02
         ])
-    AD = sys.flowsheet.unit.AD
     AD_state = AD._state[:26]
     # assert np.isclose(AD_state['S_su'], 0.01195482763310878, rtol=rtol)
     # assert np.isclose(AD_state['S_ch4'], 0.05512674690208366, rtol=rtol)
