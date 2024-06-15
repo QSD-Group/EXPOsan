@@ -57,17 +57,11 @@ from math import ceil
 # HXN (heat exchanger network), CWP (chilled water package)
 # and BT (BoilerTurbogenerator) don't help in these systems
 
-# TODO: merge into QSDsan and EXPOsan
+# Jeremy confirmed: use IPCC 2013 for now
+# Jeremy confirmed: we do not need to include constrution in LCA
+# Jeremy confirmed: use US, then RER, then RoW, then GLO
 
-# TODO: from Jeremy: check if LCA studies (e.g., reports from DOE) for
-# DAC (direct air capture) includes construction
-# if not, we don't need to include LCA for constructions
-# but we can add LCA for constructions if that's of interest later
-
-# TODO: change all TEA and LCA data to the U.S.-based values
-# if impossible, especially for LCA: use US, then RER, then RoW, then GLO
-# also, remember to use LCA data collected for the 'cutoff' model and 'IPCC' method
-# TODO: confirm IPCC 2013 (no LT) is ok
+# TODO: merge into QSDsan (for select sanunits) and EXPOsan (for systems)
 
 __all__ = (
     'create_system_A', # ALF production using Al(OH)3
@@ -110,9 +104,13 @@ bst.stream_prices['Reverse osmosis water'] = 0.0054/3.7854/GDPCTPI[2010]*GDPCTPI
 def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
                     electricity_price=0.0832,
                     clean_electricity=False,
+                    heat_source='steam',
                     yearly_operating_days=350,
                     lifetime=20):
-
+    
+    if heat_source not in ['steam','future','waste']:
+        raise ValueError("Heat source can only be 'steam', 'future', and 'waste'.")
+    
     flowsheet_ID = 'ALF_production_A'
     
     # clear flowsheet and registry for reloading
@@ -167,7 +165,7 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
                                  H2O=AlH3O3/78*3.5*46/0.8*0.2,
                                  units='kg/h',
                                  T=25+273.15)
-    # TODO: is it ok to calculate the price of 80% formic acid in this way?
+    # calculate the price of 80% formic acid using formic acid price and water price as an approximation
     # 2022 average:
     # https://businessanalytiq.com/procurementanalytics/index/aluminum-hydroxide-price-index/
     # (accessed 2024-05-20)
@@ -247,52 +245,87 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
     
     # natural gas density: 0.678 kg/m3 (https://en.wikipedia.org/wiki/Natural_gas, accessed 06-02-2024)
     # natural gas MW: 19 (16.8-22.8 from https://en.wikipedia.org/wiki/Natural_gas, accessed 06-02-2024)
-    # market group for natural gas, high pressure, GLO
+    # market for natural gas, high pressure, US
     # does not include emissions
     # use produced CO2 amount to calculte the GlobalWarming for natural gas
     qs.StreamImpactItem(ID='natural_gas',
                         linked_stream=stream.natural_gas_LCA,
-                        GlobalWarming=1+0.33658049/0.678*19/44)
+                        GlobalWarming=1+0.4542941/0.678*19/44)
     
     # market for aluminium hydroxide, GLO
     qs.StreamImpactItem(ID='aluminum_hydroxide',
                         linked_stream=stream.aluminum_hydroxide,
-                        GlobalWarming=0.98811449)
+                        GlobalWarming=1.0099497)
     
-    # water production, ultrapure, RER
+    # market for water, ultrapure, RER
     qs.StreamImpactItem(ID='water',
                         linked_stream=stream.water,
-                        GlobalWarming=0.0028140858)
+                        GlobalWarming=0.002873296)
     
+    # calculate the CI of 80% formic acid using formic acid CI and water CI as an approximation
     # market for formic acid, RoW
     # for 80% HCOOH
     qs.StreamImpactItem(ID='formic_acid',
                         linked_stream=stream.formic_acid,
-                        GlobalWarming=2.8683493*0.8+0.0028140858*0.2)
+                        GlobalWarming=2.2843419*0.8+0.002873296*0.2)
     
-    # water production, ultrapure, RER
+    # market for water, ultrapure, RER
     qs.StreamImpactItem(ID='RO_water',
                         linked_stream=stream.RO_water,
-                        GlobalWarming=-0.0028140858)
+                        GlobalWarming=-0.002873296)
     
     create_tea(sys, lifetime=lifetime)
     
     if clean_electricity:
-        qs.LCA(system=sys,
-               lifetime=lifetime,
-               lifetime_unit='yr',
-               Clean_electricity=lambda:(sys.get_electricity_consumption()-\
-                                         sys.get_electricity_production())*lifetime,
-               Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
-               Heating=lambda:sys.get_heating_duty()/1000*lifetime)
+        if heat_source == 'steam':
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Clean_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Steam_heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
+        elif heat_source == 'future':
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Clean_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Future_heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
+        else:
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Clean_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Waste_heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     else:
-        qs.LCA(system=sys,
-               lifetime=lifetime,
-               lifetime_unit='yr',
-               Dirty_electricity=lambda:(sys.get_electricity_consumption()-\
-                                         sys.get_electricity_production())*lifetime,
-               Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
-               Heating=lambda:sys.get_heating_duty()/1000*lifetime)
+        if heat_source == 'steam':
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Dirty_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Steam_heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
+        elif heat_source == 'future':
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Dirty_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Future_heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
+        else:
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Dirty_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Waste_heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     # note simulating twice in this system may cause errors
     # TODO: does this affect creating models?
@@ -316,9 +349,13 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                     bauxite_SiO2=0.11, # SiO2 weight ratio in bauxite
                     electricity_price=0.0832,
                     clean_electricity=False,
+                    heat_source='steam',
                     yearly_operating_days=350,
                     lifetime=20):
-
+    
+    if heat_source not in ['steam','future','waste']:
+        raise ValueError("Heat source can only be 'steam', 'future', and 'waste'.")
+    
     flowsheet_ID = 'ALF_production_B'
     
     # clear flowsheet and registry for reloading
@@ -383,7 +420,7 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                                  H2O=(Al_mol+Fe_mol)*3.5*46/0.8*0.2,
                                  units='kg/h',
                                  T=25+273.15)
-    # TODO: is it ok to calculate the price of 80% formic acid in this way?
+    # calculate the price of 80% formic acid using formic acid price and water price as an approximation
     # 2022 average:
     # https://businessanalytiq.com/procurementanalytics/index/aluminum-hydroxide-price-index/
     # (accessed 2024-05-20)
@@ -487,38 +524,39 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
     
     # natural gas density: 0.678 kg/m3 (https://en.wikipedia.org/wiki/Natural_gas, accessed 06-02-2024)
     # natural gas MW: 19 (16.8-22.8 from https://en.wikipedia.org/wiki/Natural_gas, accessed 06-02-2024)
-    # market group for natural gas, high pressure, GLO
+    # market for natural gas, high pressure, US
     # does not include emissions
     # use produced CO2 amount to calculte the GlobalWarming for natural gas
     qs.StreamImpactItem(ID='natural_gas',
                         linked_stream=stream.natural_gas_LCA,
-                        GlobalWarming=1+0.33658049/0.678*19/44)
+                        GlobalWarming=1+0.4542941/0.678*19/44)
     
     # market for bauxite, GLO
     qs.StreamImpactItem(ID='bauxite_ore',
                         linked_stream=stream.bauxite_ore,
-                        GlobalWarming=0.026592271)
+                        GlobalWarming=0.026803665)
     
-    # water production, ultrapure, RER
+    # market for water, ultrapure, RER
     qs.StreamImpactItem(ID='water',
                         linked_stream=stream.water,
-                        GlobalWarming=0.0028140858)
+                        GlobalWarming=0.002873296)
     
+    # calculate the CI of 80% formic acid using formic acid CI and water CI as an approximation
     # market for formic acid, RoW
     # for 80% HCOOH
     qs.StreamImpactItem(ID='formic_acid',
                         linked_stream=stream.formic_acid,
-                        GlobalWarming=2.8683493*0.8+0.0028140858*0.2)
+                        GlobalWarming=2.2843419*0.8+0.002873296*0.2)
     
     # market for redmud from bauxite digestion, GLO
     qs.StreamImpactItem(ID='solid_waste',
                         linked_stream=stream.solid_waste_LCA,
-                        GlobalWarming=0.011066165)
+                        GlobalWarming=0.011398764)
     
-    # water production, ultrapure, RER
+    # market for water, ultrapure, RER
     qs.StreamImpactItem(ID='RO_water',
                         linked_stream=stream.RO_water,
-                        GlobalWarming=-0.0028140858)
+                        GlobalWarming=-0.002873296)
     
     # CO2 direct emission
     qs.StreamImpactItem(ID='carbon_dioxide',
@@ -528,21 +566,55 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
     create_tea(sys, lifetime=lifetime)
     
     if clean_electricity:
-        qs.LCA(system=sys,
-               lifetime=lifetime,
-               lifetime_unit='yr',
-               Clean_electricity=lambda:(sys.get_electricity_consumption()-\
-                                         sys.get_electricity_production())*lifetime,
-               Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
-               Heating=lambda:sys.get_heating_duty()/1000*lifetime)
+        if heat_source == 'steam':
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Clean_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Steam_heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
+        elif heat_source == 'future':
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Clean_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Future_heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
+        else:
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Clean_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Waste_heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     else:
-        qs.LCA(system=sys,
-               lifetime=lifetime,
-               lifetime_unit='yr',
-               Dirty_electricity=lambda:(sys.get_electricity_consumption()-\
-                                         sys.get_electricity_production())*lifetime,
-               Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
-               Heating=lambda:sys.get_heating_duty()/1000*lifetime)
+        if heat_source == 'steam':
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Dirty_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Steam_heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
+        elif heat_source == 'future':
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Dirty_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Future_heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
+        else:
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Dirty_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Waste_heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     # note simulating twice in this system may cause errors
     # TODO: does this affect creating models?
@@ -568,10 +640,14 @@ def create_system_C(product='formic acid',
                     recovery=0.945, # Evans et al. 2022
                     electricity_price=0.0832,
                     clean_electricity=False,
+                    heat_source='steam',
                     yearly_operating_days=350,
                     lifetime=20,
                     upgrade=True):
-
+    
+    if heat_source not in ['steam','future','waste']:
+        raise ValueError("Heat source can only be 'steam', 'future', and 'waste'.")
+    
     flowsheet_ID = 'CCU'
     
     # clear flowsheet and registry for reloading
@@ -611,7 +687,8 @@ def create_system_C(product='formic acid',
     if ALF_system == 'A':
         sys_A = create_system_A(AlH3O3=2416.7,
                                 electricity_price=electricity_price,
-                                clean_electricity=clean_electricity)
+                                clean_electricity=clean_electricity,
+                                heat_source=heat_source)
         # $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
         adsorbent_cost = sys_A.TEA.solve_price(sys_A.flowsheet.ALF)*1441/35.3147
         # kg CO2 eq/kg ALF
@@ -622,7 +699,8 @@ def create_system_C(product='formic acid',
     if ALF_system == 'B':
         sys_B = create_system_B(bauxite=2730.8,
                                 electricity_price=electricity_price,
-                                clean_electricity=clean_electricity)
+                                clean_electricity=clean_electricity,
+                                heat_source=heat_source)
         # $/kg ALF to $/ft3 (1441 kg/m3, 35.3147 ft3/m3)
         adsorbent_cost = sys_B.TEA.solve_price(sys_B.flowsheet.ALF)*1441/35.3147
         # kg CO2 eq/kg ALF
@@ -656,53 +734,9 @@ def create_system_C(product='formic acid',
                     regen_O2=(1-purity)*(1-flue_gas_CO2-flue_gas_N2)/(1-flue_gas_CO2))
     TSA.register_alias('TSA')
     
-    if not upgrade:
-        sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=yearly_operating_days*24)
-        sys.register_alias('sys')
-    
-        create_tea(sys, lifetime=lifetime)
+    if upgrade:
         
-        # simulate here before LCA to enable the calculation of outlet streams
-        # simulate twice (here and later in qs.LCA) in this system does not affect the results
-        sys.simulate()
-    
-        # note LCA for ALF and CO2 are calculated as 'Other', not 'Construction' or 'Stream'
-        # use ceil to calculate the needed ALF to be conservative (assume no salvage value)
-        if clean_electricity:
-            qs.LCA(system=sys,
-                   lifetime=lifetime,
-                   lifetime_unit='yr',
-                   Clean_electricity=lambda:(sys.get_electricity_consumption()-\
-                                             sys.get_electricity_production())*lifetime,
-                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
-                   Heating=lambda:sys.get_heating_duty()/1000*lifetime,
-                   CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
-                   ALF=TSA.design_results['Number of sets']*\
-                       TSA.design_results['Number of reactors']*\
-                       TSA.vessel_volume*1441*\
-                       ceil(lifetime/TSA.equipment_lifetime['ALF'])*\
-                       adsorbent_CI) # 1441 kg/m3
-        else:
-            qs.LCA(system=sys,
-                   lifetime=lifetime,
-                   lifetime_unit='yr',
-                   Dirty_electricity=lambda:(sys.get_electricity_consumption()-\
-                                             sys.get_electricity_production())*lifetime,
-                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
-                   Heating=lambda:sys.get_heating_duty()/1000*lifetime,
-                   CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
-                   ALF=TSA.design_results['Number of sets']*\
-                       TSA.design_results['Number of reactors']*\
-                       TSA.vessel_volume*1441*\
-                       ceil(lifetime/TSA.equipment_lifetime['ALF'])*\
-                       adsorbent_CI) # 1441 kg/m3
-        
-        print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.captured_carbon_dioxide)} $/kg CO2 captured")
-        print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.flue_gas.imass['CO2']/sys.operating_hours/sys.LCA.lifetime} kg CO2 eq reduction/kg CO2 captured")
-    
-    else:
-        
-        # TODO: do we need to cool down CO2 first?
+        # TODO: do we need to cool down captured CO2 first?
         
         E1 = su.CO2ElectrolyzerSystem(ID='CO2_electrolyzer',
                                       ins=(TSA-0,'process_water'),
@@ -725,35 +759,94 @@ def create_system_C(product='formic acid',
         # TODO: if liquid products: do we want to add storage tanks for liquid products and gas compressors and storage vessels for hydrogen?
         # Jouny et al. 2018 ignored these
         
-        sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=yearly_operating_days*24)
-        sys.register_alias('sys')
-        
-        # water production, ultrapure, RER
+        # market for water, ultrapure, RER
         qs.StreamImpactItem(ID='water',
                             linked_stream=stream.process_water,
-                            GlobalWarming=0.0028140858)
+                            GlobalWarming=0.002873296)
         
         # market for hydrogen, gaseous, GLO
         qs.StreamImpactItem(ID='hydrogen',
                             linked_stream=stream.hydrogen,
-                            GlobalWarming=-1.5621537)
-        
-        create_tea(sys, lifetime=lifetime)
-        
-        # simulate here before LCA to enable the calculation of outlet streams
-        # simulate twice (here and later in qs.LCA) in this system does not affect the results
-        sys.simulate()
-        
-        # note LCA for ALF and CO2 are calculated as 'Other', not 'Construction' or 'Stream'
-        # use ceil to calculate the needed ALF to be conservative (assume no salvage value)
-        if clean_electricity:
+                            GlobalWarming=-1.5906885)
+    
+    sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=yearly_operating_days*24)
+    sys.register_alias('sys')
+    
+    create_tea(sys, lifetime=lifetime)
+    
+    # simulate here before LCA to enable the calculation of outlet streams
+    # simulate twice (here and later in qs.LCA) in this system does not affect the results
+    sys.simulate()
+    
+    # TODO: when creating models, is LCA for ALF included in the unceratinty analysis?
+    # note LCA for ALF and CO2 are calculated as 'Other', not 'Construction' or 'Stream'
+    # use ceil to calculate the needed ALF to be conservative (assume no salvage value)
+    if clean_electricity:
+        if heat_source == 'steam':
             qs.LCA(system=sys,
                    lifetime=lifetime,
                    lifetime_unit='yr',
                    Clean_electricity=lambda:(sys.get_electricity_consumption()-\
                                              sys.get_electricity_production())*lifetime,
+                   Steam_heating=lambda:sys.get_heating_duty()/1000*lifetime,
                    Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
-                   Heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
+                   ALF=TSA.design_results['Number of sets']*\
+                       TSA.design_results['Number of reactors']*\
+                       TSA.vessel_volume*1441*\
+                       ceil(lifetime/TSA.equipment_lifetime['ALF'])*\
+                       adsorbent_CI) # 1441 kg/m3
+        elif heat_source == 'future':
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Clean_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Future_heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
+                   CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
+                   ALF=TSA.design_results['Number of sets']*\
+                       TSA.design_results['Number of reactors']*\
+                       TSA.vessel_volume*1441*\
+                       ceil(lifetime/TSA.equipment_lifetime['ALF'])*\
+                       adsorbent_CI) # 1441 kg/m3
+        else:
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Clean_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Waste_heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
+                   CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
+                   ALF=TSA.design_results['Number of sets']*\
+                       TSA.design_results['Number of reactors']*\
+                       TSA.vessel_volume*1441*\
+                       ceil(lifetime/TSA.equipment_lifetime['ALF'])*\
+                       adsorbent_CI) # 1441 kg/m3
+    else:
+        if heat_source == 'steam':
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Dirty_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Steam_heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
+                   CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
+                   ALF=TSA.design_results['Number of sets']*\
+                       TSA.design_results['Number of reactors']*\
+                       TSA.vessel_volume*1441*\
+                       ceil(lifetime/TSA.equipment_lifetime['ALF'])*\
+                       adsorbent_CI) # 1441 kg/m3
+        elif heat_source == 'future':
+            qs.LCA(system=sys,
+                   lifetime=lifetime,
+                   lifetime_unit='yr',
+                   Dirty_electricity=lambda:(sys.get_electricity_consumption()-\
+                                             sys.get_electricity_production())*lifetime,
+                   Future_heating=lambda:sys.get_heating_duty()/1000*lifetime,
+                   Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
                    CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
                    ALF=TSA.design_results['Number of sets']*\
                        TSA.design_results['Number of reactors']*\
@@ -766,17 +859,21 @@ def create_system_C(product='formic acid',
                    lifetime_unit='yr',
                    Dirty_electricity=lambda:(sys.get_electricity_consumption()-\
                                              sys.get_electricity_production())*lifetime,
+                   Waste_heating=lambda:sys.get_heating_duty()/1000*lifetime,
                    Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
-                   Heating=lambda:sys.get_heating_duty()/1000*lifetime,
                    CO2=(-stream.flue_gas.imass['CO2']+stream.TSA_offgas.imass['CO2'])*24*yearly_operating_days*lifetime,
                    ALF=TSA.design_results['Number of sets']*\
                        TSA.design_results['Number of reactors']*\
                        TSA.vessel_volume*1441*\
                        ceil(lifetime/TSA.equipment_lifetime['ALF'])*\
-                       adsorbent_CI) # 1441 kg/m3
-        
+                       adsorbent_CI) # 1441 kg/m3   
+
+    if upgrade:
         print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.product)} $/kg {product}")
         print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.product.F_mass/sys.operating_hours/sys.LCA.lifetime} kg CO2 eq/kg {product}")
+    else:
+        print(f"TEA: {sys.TEA.solve_price(sys.flowsheet.captured_carbon_dioxide)} $/kg CO2 captured")
+        print(f"LCA: {sys.LCA.get_total_impacts()['GlobalWarming']/sys.flowsheet.flue_gas.imass['CO2']/sys.operating_hours/sys.LCA.lifetime} kg CO2 eq reduction/kg CO2 captured")
     
     sys.diagram()
     

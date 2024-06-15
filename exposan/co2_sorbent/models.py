@@ -18,6 +18,9 @@ from exposan.co2_sorbent import create_system_A, create_system_B, create_system_
 from chaospy import distributions as shape
 from qsdsan.utils import DictAttrSetter
 
+# TODO: add all parameters first with distributions for some parameters which are already determined
+# TODO: later we can add distributions for other parameters
+
 __all__ = (
     'create_model_A', # ALF production using Al(OH)3
     'create_model_B', # ALF production using Bauxite
