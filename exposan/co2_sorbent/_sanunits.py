@@ -572,7 +572,7 @@ class CO2ElectrolyzerSystem(SanUnit):
         Defaults to 2.3 V.
     product_selectivity : float, optional
         Defaults to 0.9.
-    converstion : float, optional
+    conversion : float, optional
         Defaults to 0.5.
     operating_days_per_year: float/int
         Same to the operating day per year of the system.
@@ -596,14 +596,14 @@ class CO2ElectrolyzerSystem(SanUnit):
     
     def __init__(self, ID='', ins=(), outs=(), thermo=None, target_product='formic acid',
                  current_density=0.2, cathodic_overpotential=0.454, cell_voltage=2.3,
-                 product_selectivity=0.9, converstion=0.5, operating_days_per_year=350):
+                 product_selectivity=0.9, conversion=0.5, operating_days_per_year=350):
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo)
         self.target_product = target_product
         self.current_density = current_density
         self.cathodic_overpotential = cathodic_overpotential
         self.cell_voltage = cell_voltage
         self.product_selectivity = product_selectivity
-        self.converstion = converstion
+        self.conversion = conversion
         self.operating_days_per_year = operating_days_per_year
     
     def _run(self):
@@ -640,7 +640,7 @@ class CO2ElectrolyzerSystem(SanUnit):
         CO2_converted = CO2_inlet_flow_rate*24
         
         # CO2 recycle flow rate [kg/h]
-        CO2_recycle_flow_rate_kg_per_h = CO2_inlet_flow_rate*(1-self.converstion)/self.converstion
+        CO2_recycle_flow_rate_kg_per_h = CO2_inlet_flow_rate*(1-self.conversion)/self.conversion
         
         # CO2 recycle flow rate [m3/h]
         # the density of CO2 is 1.98 kg/m3, Jouny et al. 2018

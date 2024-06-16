@@ -345,6 +345,8 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                     # 47 $/ton (1 ton = 907.185 kg)
                     # https://www.indexbox.io/search/bauxite-price-the-united-states/ accessed 2024-06-12)
                     bauxite_price=47/907.185, # $/kg (1 ton = 907.185 kg)
+                    # TODO: if it is necessary to add bauxite_Al2O3 and bauxite_SiO2 as uncertainty parameters,
+                    # we can create a fake unit and and these as parameters
                     bauxite_Al2O3=0.6, # Al2O3 weight ratio in bauxite
                     bauxite_SiO2=0.11, # SiO2 weight ratio in bauxite
                     electricity_price=0.0832,
@@ -454,18 +456,18 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
     # split ratio can be found in biosteam/units/solids_separation.py (soluble chemicals~0.036)
     F1 = su.SolidPressureFilter(ID='solid_filter',
                                 ins=R1-1,
-                                outs=('solid_waste','ALF_permeate'),
+                                outs=('solid_waste_intermediate','ALF_permeate'),
                                 moisture_content=0.35,
                                 split={'SiO2':1,'Fe':1,'C3H3AlO6':0.036,'HCOOH':0.036})
     F1.register_alias('F1')
     
     S2WS2 = su.S2WS(ID='S2WS2',
                     ins=F1-0,
-                    outs='solid_waste_LCA')
+                    outs='solid_waste')
     S2WS2.register_alias('S2WS2')
     # 5-50 $/ton (1 ton = 907.185 kg, likely 2013$)
     # https://www.e-mj.com/features/cleaning-up-the-red-mud/ (accessed 2024-06-12)
-    S2WS2.outs[0].price=(5+50)/2/907.185/GDPCTPI[2013]*GDPCTPI[2022]
+    S2WS2.outs[0].price=-(5+50)/2/907.185/GDPCTPI[2013]*GDPCTPI[2022]
     
     C1 = su.ALFCrystallizer(ID='ALF_crystallizer',
                             ins=F1-1,
@@ -550,7 +552,7 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
     
     # market for redmud from bauxite digestion, GLO
     qs.StreamImpactItem(ID='solid_waste',
-                        linked_stream=stream.solid_waste_LCA,
+                        linked_stream=stream.solid_waste,
                         GlobalWarming=0.011398764)
     
     # market for water, ultrapure, RER
@@ -746,7 +748,7 @@ def create_system_C(product='formic acid',
                                       cell_voltage=2.3,
                                       cathodic_overpotential=0.454,
                                       product_selectivity=0.9,
-                                      converstion=0.5,
+                                      conversion=0.5,
                                       operating_days_per_year=yearly_operating_days)
         E1.register_alias('E1')
         E1.ins[1].price = bst.stream_prices['Reverse osmosis water']
