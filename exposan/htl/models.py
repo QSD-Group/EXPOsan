@@ -17,7 +17,6 @@ for license details.
 import qsdsan as qs
 from chaospy import distributions as shape
 from qsdsan.utils import DictAttrSetter
-
 from exposan.htl import (
     _m3perh_to_MGD,
     _MJ_to_MMBTU,
@@ -65,11 +64,11 @@ def create_model(system=None,
     # raw_wastewater = stream.feedstock_assumed_in_wastewater
     # dist = shape.Uniform(12618039,18927059)
     # @param(name='plant_size',
-    #         element=raw_wastewater,
-    #         kind='coupled',
-    #         units='MGD',
-    #         baseline=15772549,
-    #         distribution=dist)
+    #        element=raw_wastewater,
+    #        kind='coupled',
+    #        units='MGD',
+    #        baseline=15772549,
+    #        distribution=dist)
     # def set_plant_size(i):
     #     raw_wastewater.F_mass=i
     
@@ -77,32 +76,32 @@ def create_model(system=None,
     if plant_size and feedstock == 'sludge':
         dist = shape.Uniform(0.846,1.034) # only needed for sludge and when the independent variable is plant-size
         @param(name='ww_2_dry_sludge',
-                element=WWTP,
-                kind='coupled',
-                units='ton/d/MGD',
-                baseline=0.94,
-                distribution=dist)
+               element=WWTP,
+               kind='coupled',
+               units='ton/d/MGD',
+               baseline=0.94,
+               distribution=dist)
         def set_ww_2_dry_sludge(i):
             WWTP.ww_2_dry_sludge=i
     
     if ternary:
         dist = shape.Triangle(0.052,0.5,0.8) # only needed for ternary
         @param(name='sludge_moisture',
-                element=WWTP,
-                kind='coupled',
-                units='-',
-                baseline=0.5,
-                distribution=dist)
+               element=WWTP,
+               kind='coupled',
+               units='-',
+               baseline=0.5,
+               distribution=dist)
         def set_WWTP_sludge_moisture(i):
             WWTP.sludge_moisture=i
         
         dist = shape.Triangle(0.012,0.15,0.483) # only needed for ternary
         @param(name='sludge_dw_ash',
-                element=WWTP,
-                kind='coupled',
-                units='-',
-                baseline=0.15,
-                distribution=dist)
+               element=WWTP,
+               kind='coupled',
+               units='-',
+               baseline=0.15,
+               distribution=dist)
         def set_sludge_dw_ash(i):
             WWTP.sludge_dw_ash=i
     
@@ -111,51 +110,51 @@ def create_model(system=None,
             
             dist = shape.Uniform(0.6,0.8)
             @param(name='sludge_moisture',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.7,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.7,
+                   distribution=dist)
             def set_WWTP_sludge_moisture(i):
                 WWTP.sludge_moisture=i
             
             dist = shape.Triangle(0.174,0.257,0.414)
             @param(name='sludge_dw_ash',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.257,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.257,
+                   distribution=dist)
             def set_sludge_dw_ash(i):
                 WWTP.sludge_dw_ash=i
             
             dist = shape.Triangle(0.08,0.204,0.308)
             @param(name='sludge_afdw_lipid',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.204,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.204,
+                   distribution=dist)
             def set_sludge_afdw_lipid(i):
                 WWTP.sludge_afdw_lipid=i
             
             dist = shape.Triangle(0.38,0.463,0.51)
             @param(name='sludge_afdw_protein',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.463,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.463,
+                   distribution=dist)
             def set_sludge_afdw_protein(i):
                 WWTP.sludge_afdw_protein=i
                 
             dist = shape.Triangle(0.1944,0.3927,0.5556)
             @param(name='N_2_P',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.3927,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.3927,
+                   distribution=dist)
             def set_N_2_P(i):
                 WWTP.N_2_P=i
                 
@@ -163,51 +162,51 @@ def create_model(system=None,
             
             dist = shape.Uniform(0.68,0.8)
             @param(name='sludge_moisture',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.74,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.74,
+                   distribution=dist)
             def set_WWTP_sludge_moisture(i):
                 WWTP.sludge_moisture=i
             
             dist = shape.Triangle(0.025,0.0679,0.126)
             @param(name='sludge_dw_ash',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.0679,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.0679,
+                   distribution=dist)
             def set_sludge_dw_ash(i):
                 WWTP.sludge_dw_ash=i
             
             dist = shape.Uniform(0.13,0.30)
             @param(name='sludge_afdw_lipid', # I will keep using 'sludge' in the name
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.22,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.22,
+                   distribution=dist)
             def set_sludge_afdw_lipid(i):
                 WWTP.sludge_afdw_lipid=i
             
             dist = shape.Uniform(0.15,0.25)
             @param(name='sludge_afdw_protein',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.2,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.2,
+                   distribution=dist)
             def set_sludge_afdw_protein(i):
                 WWTP.sludge_afdw_protein=i
 
             dist = shape.Triangle(0.1146,0.1502,0.2857)
             @param(name='N_2_P',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.1502,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.1502,
+                   distribution=dist)
             def set_N_2_P(i):
                 WWTP.N_2_P=i
 
@@ -215,51 +214,51 @@ def create_model(system=None,
             
             dist = shape.Uniform(0.1,0.6)
             @param(name='sludge_moisture',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.35,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.35,
+                   distribution=dist)
             def set_WWTP_sludge_moisture(i):
                 WWTP.sludge_moisture=i
             
             dist = shape.Uniform(0.01492,0.02238)
             @param(name='sludge_dw_ash',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.01865,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.01865,
+                   distribution=dist)
             def set_sludge_dw_ash(i):
                 WWTP.sludge_dw_ash=i
             
             dist = shape.Triangle(0.912,0.987,1)
             @param(name='sludge_afdw_lipid', # I will keep using 'sludge' in the name
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.987,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.987,
+                   distribution=dist)
             def set_sludge_afdw_lipid(i):
                 WWTP.sludge_afdw_lipid=i
             
             dist = shape.Triangle(0,0.002,0.0123)
             @param(name='sludge_afdw_protein',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.002,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.002,
+                   distribution=dist)
             def set_sludge_afdw_protein(i):
                 WWTP.sludge_afdw_protein=i
 
             dist = shape.Triangle(0,0.01055,0.03472)
             @param(name='N_2_P',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.01055,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.01055,
+                   distribution=dist)
             def set_N_2_P(i):
                 WWTP.N_2_P=i
 
@@ -267,51 +266,51 @@ def create_model(system=None,
             
             dist = shape.Triangle(0.052,0.342,0.69)
             @param(name='sludge_moisture',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.342,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.342,
+                   distribution=dist)
             def set_WWTP_sludge_moisture(i):
                 WWTP.sludge_moisture=i
             
             dist = shape.Triangle(0.012,0.134,0.483)
             @param(name='sludge_dw_ash',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.134,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.134,
+                   distribution=dist)
             def set_sludge_dw_ash(i):
                 WWTP.sludge_dw_ash=i
             
             dist = shape.Uniform(0.0104,0.0259) # two points found in literature, but consider this as a range, since one point is for leaves and one is for branches
             @param(name='sludge_afdw_lipid', # I will keep using 'sludge' in the name
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.018,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.018,
+                   distribution=dist)
             def set_sludge_afdw_lipid(i):
                 WWTP.sludge_afdw_lipid=i
             
             dist = shape.Uniform(0.016,0.082)
             @param(name='sludge_afdw_protein',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.049,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.049,
+                   distribution=dist)
             def set_sludge_afdw_protein(i):
                 WWTP.sludge_afdw_protein=i
 
             dist = shape.Uniform(0.1871,0.2287)
             @param(name='N_2_P',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.2079,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.2079,
+                   distribution=dist)
             def set_N_2_P(i):
                 WWTP.N_2_P=i
 
@@ -319,131 +318,131 @@ def create_model(system=None,
             
             dist = shape.Triangle(0.1735,0.6634,0.7975)
             @param(name='sludge_moisture',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.6634,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.6634,
+                   distribution=dist)
             def set_WWTP_sludge_moisture(i):
                 WWTP.sludge_moisture=i
             
             dist = shape.Triangle(0.138,0.3056,0.4295)
             @param(name='sludge_dw_ash',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.3056,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.3056,
+                   distribution=dist)
             def set_sludge_dw_ash(i):
                 WWTP.sludge_dw_ash=i
             
             dist = shape.Triangle(0.0377,0.092325,0.247)
             @param(name='sludge_afdw_lipid', # I will keep using 'sludge' in the name
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.092325,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.092325,
+                   distribution=dist)
             def set_sludge_afdw_lipid(i):
                 WWTP.sludge_afdw_lipid=i
             
             dist = shape.Triangle(0.143,0.216375,0.264)
             @param(name='sludge_afdw_protein',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.216375,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.216375,
+                   distribution=dist)
             def set_sludge_afdw_protein(i):
                 WWTP.sludge_afdw_protein=i
 
             dist = shape.Uniform(0.2534,0.3801)
             @param(name='N_2_P',
-                    element=WWTP,
-                    kind='coupled',
-                    units='-',
-                    baseline=0.3167,
-                    distribution=dist)
+                   element=WWTP,
+                   kind='coupled',
+                   units='-',
+                   baseline=0.3167,
+                   distribution=dist)
             def set_N_2_P(i):
                 WWTP.N_2_P=i
 
     dist = shape.Uniform(0.675,0.825)
     @param(name='lipid_2_C',
-            element=WWTP,
-            kind='coupled',
-            units='-',
-            baseline=0.75,
-            distribution=dist)
+           element=WWTP,
+           kind='coupled',
+           units='-',
+           baseline=0.75,
+           distribution=dist)
     def set_lipid_2_C(i):
         WWTP.lipid_2_C=i
     
     dist = shape.Uniform(0.4905,0.5995)
     @param(name='protein_2_C',
-            element=WWTP,
-            kind='coupled',
-            units='-',
-            baseline=0.545,
-            distribution=dist)
+           element=WWTP,
+           kind='coupled',
+           units='-',
+           baseline=0.545,
+           distribution=dist)
     def set_protein_2_C(i):
         WWTP.protein_2_C=i
     
     dist = shape.Uniform(0.36,0.44)
     @param(name='carbo_2_C',
-            element=WWTP,
-            kind='coupled',
-            units='-',
-            baseline=0.4,
-            distribution=dist)
+           element=WWTP,
+           kind='coupled',
+           units='-',
+           baseline=0.4,
+           distribution=dist)
     def set_carbo_2_C(i):
         WWTP.carbo_2_C=i
     
     dist = shape.Uniform(0.1125,0.1375)
     @param(name='lipid_2_H',
-            element=WWTP,
-            kind='coupled',
-            units='-',
-            baseline=0.125,
-            distribution=dist)
+           element=WWTP,
+           kind='coupled',
+           units='-',
+           baseline=0.125,
+           distribution=dist)
     def set_lipid_2_H(i):
         WWTP.lipid_2_H=i
     
     dist = shape.Uniform(0.0614,0.075)
     @param(name='protein_2_H',
-            element=WWTP,
-            kind='coupled',
-            units='-',
-            baseline=0.0682,
-            distribution=dist)
+           element=WWTP,
+           kind='coupled',
+           units='-',
+           baseline=0.0682,
+           distribution=dist)
     def set_protein_2_H(i):
         WWTP.protein_2_H=i
     
     dist = shape.Uniform(0.06,0.0733)
     @param(name='carbo_2_H',
-            element=WWTP,
-            kind='coupled',
-            units='-',
-            baseline=0.0667,
-            distribution=dist)
+           element=WWTP,
+           kind='coupled',
+           units='-',
+           baseline=0.0667,
+           distribution=dist)
     def set_carbo_2_H(i):
         WWTP.carbo_2_H=i
 
     dist = shape.Uniform(0.1432,0.1750)
     @param(name='protein_2_N',
-            element=WWTP,
-            kind='coupled',
-            units='-',
-            baseline=0.159,
-            distribution=dist)
+           element=WWTP,
+           kind='coupled',
+           units='-',
+           baseline=0.159,
+           distribution=dist)
     def set_protein_2_N(i):
         WWTP.protein_2_N=i
 
     dist = shape.Triangle(7392,7920,8448)
     @param(name='operation_hour',
-            element=WWTP,
-            kind='coupled',
-            units='hr/yr',
-            baseline=7920,
-            distribution=dist)
+           element=WWTP,
+           kind='coupled',
+           units='hr/yr',
+           baseline=7920,
+           distribution=dist)
     def set_operation_hour(i):
         WWTP.operation_hours=sys.operating_hours=i
     
@@ -453,162 +452,162 @@ def create_model(system=None,
     H1 = unit.H1
     dist = shape.Uniform(0.0170348,0.0227131)
     @param(name='enforced heating transfer coefficient',
-            element=H1,
-            kind='coupled',
-            units='kW/m2/K',
-            baseline=0.0198739,
-            distribution=dist)
+           element=H1,
+           kind='coupled',
+           units='kW/m2/K',
+           baseline=0.0198739,
+           distribution=dist)
     def set_U(i):
         H1.U=i
     
     HTL = unit.HTL
     dist = shape.Triangle(0.692,0.846,1)
     @param(name='lipid_2_biocrude',
-            element=HTL,
-            kind='coupled',
-            units='-',
-            baseline=0.846,
-            distribution=dist)
+           element=HTL,
+           kind='coupled',
+           units='-',
+           baseline=0.846,
+           distribution=dist)
     def set_lipid_2_biocrude(i):
         HTL.lipid_2_biocrude=i
     
     dist = shape.Normal(0.445,0.030)
     @param(name='protein_2_biocrude',
-            element=HTL,
-            kind='coupled',
-            units='-',
-            baseline=0.445,
-            distribution=dist)
+           element=HTL,
+           kind='coupled',
+           units='-',
+           baseline=0.445,
+           distribution=dist)
     def set_protein_2_biocrude(i):
         HTL.protein_2_biocrude=i
     
     dist = shape.Normal(0.205,0.050)
     @param(name='carbo_2_biocrude',
-            element=HTL,
-            kind='coupled',
-            units='-',
-            baseline=0.205,
-            distribution=dist)
+           element=HTL,
+           kind='coupled',
+           units='-',
+           baseline=0.205,
+           distribution=dist)
     def set_carbo_2_biocrude(i):
         HTL.carbo_2_biocrude=i
     
     dist = shape.Normal(0.074,0.020)
     @param(name='protein_2_gas',
-            element=HTL,
-            kind='coupled',
-            units='-',
-            baseline=0.074,
-            distribution=dist)
+           element=HTL,
+           kind='coupled',
+           units='-',
+           baseline=0.074,
+           distribution=dist)
     def set_protein_2_gas(i):
         HTL.protein_2_gas=i
     
     dist = shape.Normal(0.418,0.030)
     @param(name='carbo_2_gas',
-            element=HTL,
-            kind='coupled',
-            units='-',
-            baseline=0.418,
-            distribution=dist)
+           element=HTL,
+           kind='coupled',
+           units='-',
+           baseline=0.418,
+           distribution=dist)
     def set_carbo_2_gas(i):
         HTL.carbo_2_gas=i
         
     dist = shape.Normal(-8.370,0.939)
     @param(name='biocrude_C_slope',
-            element=HTL,
-            kind='coupled',
-            units='-',
-            baseline=-8.370,
-            distribution=dist)
+           element=HTL,
+           kind='coupled',
+           units='-',
+           baseline=-8.370,
+           distribution=dist)
     def set_biocrude_C_slope(i):
         HTL.biocrude_C_slope=i
         
     dist = shape.Normal(68.55,0.367)
     @param(name='biocrude_C_intercept',
-            element=HTL,
-            kind='coupled',
-            units='-',
-            baseline=68.55,
-            distribution=dist)
+           element=HTL,
+           kind='coupled',
+           units='-',
+           baseline=68.55,
+           distribution=dist)
     def set_biocrude_C_intercept(i):
         HTL.biocrude_C_intercept=i
         
     dist = shape.Normal(0.133,0.005)
     @param(name='biocrude_N_slope',
-            element=HTL,
-            kind='coupled',
-            units='-',
-            baseline=0.133,
-            distribution=dist)
+           element=HTL,
+           kind='coupled',
+           units='-',
+           baseline=0.133,
+           distribution=dist)
     def set_biocrude_N_slope(i):
         HTL.biocrude_N_slope=i
         
     dist = shape.Normal(-2.610,0.352)
     @param(name='biocrude_H_slope',
-            element=HTL,
-            kind='coupled',
-            units='-',
-            baseline=-2.610,
-            distribution=dist)
+           element=HTL,
+           kind='coupled',
+           units='-',
+           baseline=-2.610,
+           distribution=dist)
     def set_biocrude_H_slope(i):
         HTL.biocrude_H_slope=i
     
     dist = shape.Normal(8.200,0.138)
     @param(name='biocrude_H_intercept',
-            element=HTL,
-            kind='coupled',
-            units='-',
-            baseline=8.200,
-            distribution=dist)
+           element=HTL,
+           kind='coupled',
+           units='-',
+           baseline=8.200,
+           distribution=dist)
     def set_biocrude_H_intercept(i):
         HTL.biocrude_H_intercept=i
         
     dist = shape.Normal(478,18.878)
     @param(name='HTLaqueous_C_slope',
-            element=HTL,
-            kind='coupled',
-            units='-',
-            baseline=478,
-            distribution=dist)
+           element=HTL,
+           kind='coupled',
+           units='-',
+           baseline=478,
+           distribution=dist)
     def set_HTLaqueous_C_slope(i):
         HTL.HTLaqueous_C_slope=i
         
     dist = shape.Triangle(0.715,0.764,0.813)
     @param(name='TOC_TC',
-            element=HTL,
-            kind='coupled',
-            units='-',
-            baseline=0.764,
-            distribution=dist)
+           element=HTL,
+           kind='coupled',
+           units='-',
+           baseline=0.764,
+           distribution=dist)
     def set_TOC_TC(i):
         HTL.TOC_TC=i
     
     dist = shape.Normal(1.750,0.122)
     @param(name='hydrochar_C_slope',
-            element=HTL,
-            kind='coupled',
-            units='-',
-            baseline=1.750,
-            distribution=dist)
+           element=HTL,
+           kind='coupled',
+           units='-',
+           baseline=1.750,
+           distribution=dist)
     def set_hydrochar_C_slope(i):
         HTL.hydrochar_C_slope=i
     
     dist = shape.Triangle(0.035,0.063,0.102)
     @param(name='biocrude_moisture_content',
-            element=HTL,
-            kind='coupled',
-            units='-',
-            baseline=0.063,
-            distribution=dist)
+           element=HTL,
+           kind='coupled',
+           units='-',
+           baseline=0.063,
+           distribution=dist)
     def set_biocrude_moisture_content(i):
         HTL.biocrude_moisture_content=i
     
     dist = shape.Uniform(0.84,0.88)
     @param(name='hydrochar_P_recovery_ratio',
-            element=HTL,
-            kind='coupled',
-            units='-',
-            baseline=0.86,
-            distribution=dist)
+           element=HTL,
+           kind='coupled',
+           units='-',
+           baseline=0.86,
+           distribution=dist)
     def set_hydrochar_P_recovery_ratio(i):
         HTL.hydrochar_P_recovery_ratio=i
     
@@ -618,21 +617,21 @@ def create_model(system=None,
     if AcidEx:= unit.search('AcidEx'):
         dist = shape.Uniform(4,10)
         @param(name='acid_vol',
-                element=AcidEx,
-                kind='coupled',
-                units='-',
-                baseline=7,
-                distribution=dist)
+               element=AcidEx,
+               kind='coupled',
+               units='-',
+               baseline=7,
+               distribution=dist)
         def set_acid_vol(i):
             AcidEx.acid_vol=i
         
         dist = shape.Uniform(0.7,0.9)
         @param(name='P_acid_recovery_ratio',
-                element=AcidEx,
-                kind='coupled',
-                units='-',
-                baseline=0.8,
-                distribution=dist)
+               element=AcidEx,
+               kind='coupled',
+               units='-',
+               baseline=0.8,
+               distribution=dist)
         def set_P_recovery_ratio(i):
             AcidEx.P_acid_recovery_ratio=i
     
@@ -642,21 +641,21 @@ def create_model(system=None,
     StruPre = unit.StruPre
     dist = shape.Uniform(8.5,9.5)
     @param(name='target_pH',
-            element=StruPre,
-            kind='coupled',
-            units='-',
-            baseline=9,
-            distribution=dist)
+           element=StruPre,
+           kind='coupled',
+           units='-',
+           baseline=9,
+           distribution=dist)
     def set_StruPre_target_pH(i):
         StruPre.target_pH=i
         
     dist = shape.Triangle(0.7,0.828,0.95)
     @param(name='P_pre_recovery_ratio',
-            element=StruPre,
-            kind='coupled',
-            units='-',
-            baseline=0.828,
-            distribution=dist)
+           element=StruPre,
+           kind='coupled',
+           units='-',
+           baseline=0.828,
+           distribution=dist)
     def set_P_pre_recovery_ratio(i):
         StruPre.P_pre_recovery_ratio=i
     
@@ -666,31 +665,31 @@ def create_model(system=None,
     CHG = unit.CHG
     dist = shape.Triangle(2.86,3.562,3.99)
     @param(name='WHSV',
-            element=CHG,
-            kind='coupled',
-            units='kg/hr/kg',
-            baseline=3.562,
-            distribution=dist)
+           element=CHG,
+           kind='coupled',
+           units='kg/hr/kg',
+           baseline=3.562,
+           distribution=dist)
     def set_CHG_WHSV(i):
         CHG.WHSV=i
     
     dist = shape.Triangle(3960,7920,15840)
     @param(name='catalyst_lifetime',
-            element=CHG,
-            kind='coupled',
-            units='hr',
-            baseline=7920,
-            distribution=dist)
+           element=CHG,
+           kind='coupled',
+           units='hr',
+           baseline=7920,
+           distribution=dist)
     def set_CHG_catalyst_lifetime(i):
         CHG.catalyst_lifetime=i
     
     dist = shape.Triangle(0.1893,0.5981,0.7798)
     @param(name='gas_C_2_total_C',
-            element=CHG,
-            kind='coupled',
-            units='-',
-            baseline=0.5981,
-            distribution=dist)
+           element=CHG,
+           kind='coupled',
+           units='-',
+           baseline=0.5981,
+           distribution=dist)
     def set_gas_C_2_total_C(i):
         CHG.gas_C_2_total_C=i
     
@@ -700,91 +699,91 @@ def create_model(system=None,
     MemDis = unit.MemDis
     dist = shape.Uniform(7.91,8.41)
     @param(name='influent_pH',
-            element=MemDis,
-            kind='coupled',
-            units='-',
-            baseline=8.16,
-            distribution=dist)
+           element=MemDis,
+           kind='coupled',
+           units='-',
+           baseline=8.16,
+           distribution=dist)
     def set_influent_pH(i):
         MemDis.influent_pH=i
     
     dist = shape.Uniform(10,11.8)
     @param(name='target_pH',
-            element=MemDis,
-            kind='coupled',
-            units='-',
-            baseline=10,
-            distribution=dist)
+           element=MemDis,
+           kind='coupled',
+           units='-',
+           baseline=10,
+           distribution=dist)
     def set_MemDis_target_pH(i):
         MemDis.target_pH=i
     
     dist = shape.Uniform(0.00075,0.000917)
     @param(name='m2_2_m3',
-            element=MemDis,
-            kind='coupled',
-            units='-',
-            baseline=1/1200,
-            distribution=dist)
+           element=MemDis,
+           kind='coupled',
+           units='-',
+           baseline=1/1200,
+           distribution=dist)
     def set_m2_2_m3(i):
         MemDis.m2_2_m3=i
     
     dist = shape.Uniform(0.0000205,0.0000251)
     @param(name='Dm',
-            element=MemDis,
-            kind='coupled',
-            units='m2/s',
-            baseline=0.0000228,
-            distribution=dist)
+           element=MemDis,
+           kind='coupled',
+           units='m2/s',
+           baseline=0.0000228,
+           distribution=dist)
     def set_Dm(i):
         MemDis.Dm=i
     
     dist = shape.Uniform(0.81,0.99)
     @param(name='porosity',
-            element=MemDis,
-            kind='coupled',
-            units='-',
-            baseline=0.9,
-            distribution=dist)
+           element=MemDis,
+           kind='coupled',
+           units='-',
+           baseline=0.9,
+           distribution=dist)
     def set_porosity(i):
         MemDis.porosity=i
     
     dist = shape.Uniform(0.000063,0.000077)
     @param(name='thickness',
-            element=MemDis,
-            kind='coupled',
-            units='m',
-            baseline=0.00007,
-            distribution=dist)
+           element=MemDis,
+           kind='coupled',
+           units='m',
+           baseline=0.00007,
+           distribution=dist)
     def set_thickness(i):
         MemDis.thickness=i
     
     dist = shape.Uniform(1.08,1.32)
     @param(name='tortuosity',
-            element=MemDis,
-            kind='coupled',
-            units='-',
-            baseline=1.2,
-            distribution=dist)
+           element=MemDis,
+           kind='coupled',
+           units='-',
+           baseline=1.2,
+           distribution=dist)
     def set_tortuosity(i):
         MemDis.tortuosity=i
     
     dist = shape.Uniform(0.0000158,0.0000193)
     @param(name='Ka',
-            element=MemDis,
-            kind='coupled',
-            units='-',
-            baseline=0.0000175,
-            distribution=dist)
+           element=MemDis,
+           kind='coupled',
+           units='-',
+           baseline=0.0000175,
+           distribution=dist)
     def set_Ka(i):
         MemDis.Ka=i
     
     dist = shape.Uniform(5.409,6.611)
     @param(name='capacity',
-            element=MemDis,
-            kind='coupled',
-            units='-',
-            baseline=6.01,
-            distribution=dist)
+           element=MemDis,
+           kind='coupled',
+           units='-',
+           baseline=6.01,
+           distribution=dist)
     def set_capacity(i):
         MemDis.capacity=i
     
@@ -794,62 +793,62 @@ def create_model(system=None,
     HT = unit.HT
     dist = shape.Uniform(0.5625,0.6875)
     @param(name='WHSV',
-            element=HT,
-            kind='coupled',
-            units='kg/hr/kg',
-            baseline=0.625,
-            distribution=dist)
+           element=HT,
+           kind='coupled',
+           units='kg/hr/kg',
+           baseline=0.625,
+           distribution=dist)
     def set_HT_WHSV(i):
         HT.WHSV=i
     
     dist = shape.Triangle(7920,15840,39600)
     @param(name='catalyst_lifetime',
-            element=HT,
-            kind='coupled',
-            units='hr',
-            baseline=15840,
-            distribution=dist)
+           element=HT,
+           kind='coupled',
+           units='hr',
+           baseline=15840,
+           distribution=dist)
     def set_HT_catalyst_lifetime(i):
         HT.catalyst_lifetime=i
     
     dist = shape.Uniform(0.0414,0.0506)
     @param(name='hydrogen_rxned_to_biocrude',
-            element=HT,
-            kind='coupled',
-            units='-',
-            baseline=0.046,
-            distribution=dist)
+           element=HT,
+           kind='coupled',
+           units='-',
+           baseline=0.046,
+           distribution=dist)
     def set_HT_hydrogen_rxned_to_biocrude(i):
         HT.hydrogen_rxned_to_biocrude=i
     
     if 'PSA' in flowsheet.ID:
         dist = shape.Uniform(0.8,0.9)
         @param(name='PSA_efficiency',
-                element=HT,
-                kind='coupled',
-                units='-',
-                baseline=0.9,
-                distribution=dist)
+               element=HT,
+               kind='coupled',
+               units='-',
+               baseline=0.9,
+               distribution=dist)
         def set_PSA_efficiency(i):
             HT.PSA_efficiency=i
     
     dist = shape.Uniform(2.4,3.6)
     @param(name='hydrogen_excess',
-            element=HT,
-            kind='coupled',
-            units='-',
-            baseline=3,
-            distribution=dist)
+           element=HT,
+           kind='coupled',
+           units='-',
+           baseline=3,
+           distribution=dist)
     def set_HT_hydrogen_excess(i):
         HT.hydrogen_excess=i
     
     dist = shape.Uniform(0.7875,0.9625)
     @param(name='hydrocarbon_ratio',
-            element=HT,
-            kind='coupled',
-            units='-',
-            baseline=0.875,
-            distribution=dist)
+           element=HT,
+           kind='coupled',
+           units='-',
+           baseline=0.875,
+           distribution=dist)
     def set_HT_hydrocarbon_ratio(i):
         HT.hydrocarbon_ratio=i
     
@@ -859,51 +858,51 @@ def create_model(system=None,
     HC = unit.HC
     dist = shape.Uniform(0.5625,0.6875)
     @param(name='WHSV',
-            element=HC,
-            kind='coupled',
-            units='kg/hr/kg',
-            baseline=0.625,
-            distribution=dist)
+           element=HC,
+           kind='coupled',
+           units='kg/hr/kg',
+           baseline=0.625,
+           distribution=dist)
     def set_HC_WHSV(i):
         HC.WHSV=i
     
     dist = shape.Uniform(35640,43560)
     @param(name='catalyst_lifetime',
-            element=HC,
-            kind='coupled',
-            units='hr',
-            baseline=39600,
-            distribution=dist)
+           element=HC,
+           kind='coupled',
+           units='hr',
+           baseline=39600,
+           distribution=dist)
     def set_HC_catalyst_lifetime(i):
         HC.catalyst_lifetime=i
     
     dist = shape.Uniform(0.010125,0.012375)
     @param(name='hydrogen_rxned_to_heavy_oil',
-            element=HC,
-            kind='coupled',
-            units='-',
-            baseline=0.01125,
-            distribution=dist)
+           element=HC,
+           kind='coupled',
+           units='-',
+           baseline=0.01125,
+           distribution=dist)
     def set_HC_hydrogen_rxned_to_heavy_oil(i):
         HC.hydrogen_rxned_to_heavy_oil=i
     
     dist = shape.Uniform(4.4448,6.6672)
     @param(name='hydrogen_excess',
-            element=HC,
-            kind='coupled',
-            units='-',
-            baseline=5.556,
-            distribution=dist)
+           element=HC,
+           kind='coupled',
+           units='-',
+           baseline=5.556,
+           distribution=dist)
     def set_HC_hydrogen_excess(i):
         HC.hydrogen_excess=i
     
     dist = shape.Uniform(0.9,1)
     @param(name='hydrocarbon_ratio',
-            element=HC,
-            kind='coupled',
-            units='-',
-            baseline=1,
-            distribution=dist)
+           element=HC,
+           kind='coupled',
+           units='-',
+           baseline=1,
+           distribution=dist)
     def set_HC_hydrocarbon_ratio(i):
         HC.hydrocarbon_ratio=i
     
@@ -912,42 +911,42 @@ def create_model(system=None,
     # =========================================================================
     dist = shape.Triangle(0.6,1,1.4)
     @param(name='HTL_TIC_factor',
-            element='TEA',
-            kind='isolated',
-            units='-',
-            baseline=1,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='-',
+           baseline=1,
+           distribution=dist)
     def set_HTL_TIC_factor(i):
         HTL.TIC_factor=i
         
     dist = shape.Triangle(0.6,1,1.4)
     @param(name='CHG_TIC_factor',
-            element='TEA',
-            kind='isolated',
-            units='-',
-            baseline=1,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='-',
+           baseline=1,
+           distribution=dist)
     def set_CHG_TIC_factor(i):
         CHG.TIC_factor=i
     
     dist = shape.Triangle(0.6,1,1.4)
     @param(name='HT_TIC_factor',
-            element='TEA',
-            kind='isolated',
-            units='-',
-            baseline=1,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='-',
+           baseline=1,
+           distribution=dist)
     def set_HT_TIC_factor(i):
         HT.TIC_factor=i
     
     CHP = unit.CHP
     dist = shape.Uniform(980,1470)
     @param(name='unit_TIC',
-            element='TEA',
-            kind='isolated',
-            units='-',
-            baseline=1225,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='-',
+           baseline=1225,
+           distribution=dist)
     def set_unit_TIC(i):
         CHP.unit_TIC=i
     
@@ -956,208 +955,208 @@ def create_model(system=None,
     if high_IRR:
         dist = shape.Triangle(0.05,0.1,0.15)
         @param(name='IRR',
-                element='TEA',
-                kind='isolated',
-                units='-',
-                baseline=0.1,
-                distribution=dist)
+               element='TEA',
+               kind='isolated',
+               units='-',
+               baseline=0.1,
+               distribution=dist)
         def set_IRR(i):
             tea.IRR=i
             
     else:
         dist = shape.Triangle(0,0.03,0.05)
         @param(name='IRR',
-                element='TEA',
-                kind='isolated',
-                units='-',
-                baseline=0.03,
-                distribution=dist)
+               element='TEA',
+               kind='isolated',
+               units='-',
+               baseline=0.03,
+               distribution=dist)
         def set_IRR(i):
             tea.IRR=i
     
     makeup_water = stream.makeup_water
     dist = shape.Uniform(0.000475,0.000581)
     @param(name='makeup water price',
-            element='TEA',
-            kind='isolated',
-            units='$/kg',
-            baseline=0.000528,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=0.000528,
+           distribution=dist)
     def set_makeup_water_price(i):
         makeup_water.price=i
     
     H2SO4 = stream.H2SO4
     dist = shape.Triangle(0.005994,0.00658,0.014497)
     @param(name='5% H2SO4 price',
-            element='TEA',
-            kind='isolated',
-            units='$/kg',
-            baseline=0.00658,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=0.00658,
+           distribution=dist)
     def set_H2SO4_price(i):
         H2SO4.price=i
     
     MgCl2 = stream.MgCl2
     dist = shape.Triangle(0.525,0.5452,0.57)
     @param(name='MgCl2 price',
-            element='TEA',
-            kind='isolated',
-            units='$/kg',
-            baseline=0.5452,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=0.5452,
+           distribution=dist)
     def set_MgCl2_price(i):
         MgCl2.price=i
     
     NH4Cl = stream.NH4Cl
     dist = shape.Uniform(0.12,0.14)
     @param(name='NH4Cl price',
-            element='TEA',
-            kind='isolated',
-            units='$/kg',
-            baseline=0.13,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=0.13,
+           distribution=dist)
     def set_NH4Cl_price(i):
         NH4Cl.price=i
     
     MgO = stream.MgO
     dist = shape.Uniform(0.1,0.3)
     @param(name='MgO price',
-            element='TEA',
-            kind='isolated',
-            units='$/kg',
-            baseline=0.2,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=0.2,
+           distribution=dist)
     def set_MgO_price(i):
         MgO.price=i
     
     struvite = stream.struvite
     dist = shape.Triangle(0.419,0.661,1.213)
     @param(name='struvite price',
-            element='TEA',
-            kind='isolated',
-            units='$/kg',
-            baseline=0.661,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=0.661,
+           distribution=dist)
     def set_struvite_price(i):
         struvite.price=i        
             
     H2 = stream.H2
     dist = shape.Uniform(1.450,1.772)
     @param(name='H2 price',
-            element='TEA',
-            kind='isolated',
-            units='$/kg',
-            baseline=1.611,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=1.611,
+           distribution=dist)
     def set_H2_price(i):
         H2.price=i
     
     NaOH = stream.NaOH
     dist = shape.Uniform(0.473,0.578)
     @param(name='NaOH price',
-            element='TEA',
-            kind='isolated',
-            units='$/kg',
-            baseline=0.5256,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=0.5256,
+           distribution=dist)
     def set_NaOH_price(i):
         NaOH.price=i
     
     ammonium_sulfate = stream.ammonium_sulfate
     dist = shape.Triangle(0.1636,0.3236,0.463)
     @param(name='ammonium sulfate price',
-            element='TEA',
-            kind='isolated',
-            units='$/kg',
-            baseline=0.3236,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=0.3236,
+           distribution=dist)
     def set_ammonium_sulfate_price(i):
         ammonium_sulfate.price=i
     
     dist = shape.Uniform(83.96,102.62)
     @param(name='membrane price',
-            element='TEA',
-            kind='isolated',
-            units='$/kg',
-            baseline=93.29,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=93.29,
+           distribution=dist)
     def set_membrane_price(i):
         MemDis.membrane_price=i
     
     CHG_catalyst_in = CHG.ins[1]
     dist = shape.Triangle(67.27,134.53,269.07)
     @param(name='CHG catalyst price',
-            element='TEA',
-            kind='isolated',
-            units='$/kg',
-            baseline=134.53,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=134.53,
+           distribution=dist)
     def set_catalyst_price(i):
         CHG_catalyst_in.price=i
     
     natural_gas = stream.natural_gas
     dist = shape.Triangle(0.121,0.1685,0.3608)
     @param(name='CH4 price',
-            element='TEA',
-            kind='isolated',
-            units='$/kg',
-            baseline=0.1685,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=0.1685,
+           distribution=dist)
     def set_CH4_price(i):
         natural_gas.price=i
     
     CoMo_alumina_HT, CoMo_alumina_HC = stream.CoMo_alumina_HT, stream.CoMo_alumina_HC
     dist = shape.Uniform(34.91,42.67)
     @param(name='HT & HC catalyst price',
-            element='TEA',
-            kind='isolated',
-            units='$/kg',
-            baseline=38.79,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=38.79,
+           distribution=dist)
     def set_HT_HC_catalyst_price(i):
         CoMo_alumina_HT.price=CoMo_alumina_HC.price=i
         
     gasoline = stream.gasoline
     dist = shape.Triangle(0.7085,0.9388,1.4493)
     @param(name='gasoline price',
-            element='TEA',
-            kind='isolated',
-            units='$/kg',
-            baseline=0.9388,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=0.9388,
+           distribution=dist)
     def set_gasoline_price(i):
         gasoline.price=i
     
     diesel = stream.diesel
     dist = shape.Triangle(0.7458,0.9722,1.6579)
     @param(name='diesel price',
-            element='TEA',
-            kind='isolated',
-            units='$/kg',
-            baseline=0.9722,
-            distribution=dist)
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=0.9722,
+           distribution=dist)
     def set_diesel_price(i):
         diesel.price=i
         
     # dist = shape.Uniform(-0.0605,-0.0495)
     # @param(name='residual disposal',
-    #         element='TEA',
-    #         kind='isolated',
-    #         units='$/kg',
-    #         baseline=-0.055,
-    #         distribution=dist)
+    #        element='TEA',
+    #        kind='isolated',
+    #        units='$/kg',
+    #        baseline=-0.055,
+    #        distribution=dist)
     # def set_residual_disposal(i):
     #     AcidEx.outs[0].price=i
     # not include residual for TEA and LCA for now
     
     dist = shape.Triangle(0.0667,0.06879,0.07180)
     @param(name='electricity price',
-            element='TEA',
-            kind='isolated',
-            units='$/kg',
-            baseline=0.06879,
-            distribution=dist)
-    def set_electrivity_price(i):
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=0.06879,
+           distribution=dist)
+    def set_electricity_price(i):
         qs.PowerUtility.price=i
     
     # =========================================================================
