@@ -59,26 +59,28 @@ class BauxiteHammerMill(SanUnit):
 # =============================================================================
 # ALFProduction
 # =============================================================================
-# TODO: from Ben: the reactants are slurry, should use a batch reactor and do not need a crystallizer
-class ALFProduction(bst.CSTR):
+class ALFProduction(bst.BatchBioreactor):
     '''
-    Reactor for ALF production. See biosteam/units/stirred_tank_reactor.py.
+    Batch reactor for ALF production. See biosteam/units/nrel_bioreactor.py.
     '''
     _N_ins = 1
     _N_outs = 2
-    T_default = 60 + 273.15
-    P_default = 101325
-    tau_default = 2
+    # TODO: autoselect_N = True will cause error (when the code try increasing N, the unit results are added in _run method)
+    # if this works, we do not need to set N
+    autoselect_N = False
     
     # TODO: add a parameter for X (conversion rate), but it seems that X=1 makes sense since Al(OH)3 is a solid and HCOOH is over amount
+    # if this is needed, see the parameter 'efficiency' in biosteam/units/nrel_bioreactor.py
     # TODO: check the reaction between Fe2O3 and HCOOH
-    def _setup(self):
-        super()._setup()
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, 
+                 N=2, T=60+273.15, P=101325, tau=2):
+        bst.BatchBioreactor.__init__(self, ID, ins, outs, thermo,
+                                     N=N, T=T, P=P, tau=tau)
         chemicals = self.chemicals
         self.ALF_production_AlH3O3 = bst.Reaction('AlH3O3 + 3HCOOH -> C3H3AlO6 + 3H2O', 'AlH3O3', 1, chemicals)
         self.ALF_production_bauxite = bst.Reaction('Al2O3 + 6HCOOH -> 2C3H3AlO6 + 3H2O', 'Al2O3', 1, chemicals)
         self.Fe_side_reaciton = bst.Reaction('Fe2O3 + 6HCOOH -> 2Fe + 3H2O + 3CO2', 'Fe2O3', 1, chemicals)
-    
+
     def _run(self):
         vent, effluent = self.outs
         effluent.mix_from(self.ins, energy_balance=False)

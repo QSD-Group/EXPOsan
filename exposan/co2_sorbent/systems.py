@@ -102,11 +102,14 @@ bst.stream_prices['Reverse osmosis water'] = 0.0054/3.7854/GDPCTPI[2010]*GDPCTPI
 # ALF production: Al(OH)3 + HCOOH
 # =============================================================================
 def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
-                    electricity_price=0.0832,
+                    electricity_price='current',
                     clean_electricity=False,
                     heat_source='steam',
                     yearly_operating_days=350,
                     lifetime=20):
+        
+    if electricity_price not in ['current','future','theoretical']:
+        raise ValueError("Electricity price can only be 'current', 'future', and 'theoretical'.")
     
     if heat_source not in ['steam','future','waste']:
         raise ValueError("Heat source can only be 'steam', 'future', and 'waste'.")
@@ -125,7 +128,7 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
     # https://www.eia.gov/electricity/annual/html/epa_02_04.html (accessed 2024-05-20)
     # electricity price in the future and theoretical scenarios are based on Huang et al. 2021:
     # 0.030 $/kWh (future scenario), 0.020 $/kWh (theoretical scenario)
-    bst.PowerUtility.price = electricity_price
+    bst.PowerUtility.price = 0.0832 if electricity_price == 'current' else 0.03 if electricity_price == 'future' else 0.02
     
     _load_components()
     bst.CE = qs.CEPCI_by_year[2022]
@@ -179,15 +182,17 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
                    conserve_phases=True)
     M2.register_alias('M2')
     
-    # TODO: from Ben: the reactants are slurry, should use a batch reactor and do not need a crystallizer
     R1 = su.ALFProduction(ID='ALF_production',
                           ins=M2-0,
                           outs=('vent','ALF_solution'),
+                          # TODO: remove N if autoselect_N works (currently N=2 has the lowest cost)
+                          N=2,
                           T=333.15, # [K], Xue et al. 2018
                           P=101325, # [Pa]
                           tau=2) # [h], 2 h in Xue et al. 2018, 1 h in Mikola et al. 2013
     R1.register_alias('R1')
     
+    # TODO: from Ben: the reactants are slurry, if we use a batch reactor, the crystallizer is not needed
     C1 = su.ALFCrystallizer(ID='ALF_crystallizer',
                             ins=R1-1,
                             outs='ALF_mixed',
@@ -349,11 +354,14 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                     # we can create a fake unit and and these as parameters
                     bauxite_Al2O3=0.6, # Al2O3 weight ratio in bauxite
                     bauxite_SiO2=0.11, # SiO2 weight ratio in bauxite
-                    electricity_price=0.0832,
+                    electricity_price='current',
                     clean_electricity=False,
                     heat_source='steam',
                     yearly_operating_days=350,
                     lifetime=20):
+    
+    if electricity_price not in ['current','future','theoretical']:
+        raise ValueError("Electricity price can only be 'current', 'future', and 'theoretical'.")
     
     if heat_source not in ['steam','future','waste']:
         raise ValueError("Heat source can only be 'steam', 'future', and 'waste'.")
@@ -372,7 +380,7 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
     # https://www.eia.gov/electricity/annual/html/epa_02_04.html (accessed 2024-05-20)
     # electricity price in the future and theoretical scenarios are based on Huang et al. 2021:
     # 0.030 $/kWh (future scenario), 0.020 $/kWh (theoretical scenario)
-    bst.PowerUtility.price = electricity_price
+    bst.PowerUtility.price = 0.0832 if electricity_price == 'current' else 0.03 if electricity_price == 'future' else 0.02
     
     _load_components()
     bst.CE = qs.CEPCI_by_year[2022]
@@ -436,12 +444,13 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                     conserve_phases=True)
     M2.register_alias('M2')    
     
-    # TODO: from Ben: the reactants are slurry, should use a batch reactor and do not need a crystallizer
     # TODO: does Fe2O3 react with HCOOH? Seems yes. Then how to separate ALF with FEF? And if yes, we need to further increase HCOOH amount
     # TODO: adjust reaction conditions if necessary
     R1 = su.ALFProduction(ID='ALF_production',
                           ins=M2-0,
                           outs=('vent','ALF_solution'),
+                          # TODO: remove N if autoselect_N works (currently N=2 has the lowest cost)
+                          N=2,
                           T=333.15, # [K], Xue et al. 2018
                           P=101325, # [Pa]
                           tau=2) # [h], 2 h in Xue et al. 2018, 1 h in Mikola et al. 2013
@@ -469,6 +478,7 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
     # https://www.e-mj.com/features/cleaning-up-the-red-mud/ (accessed 2024-06-12)
     S2WS2.outs[0].price=-(5+50)/2/907.185/GDPCTPI[2013]*GDPCTPI[2022]
     
+    # TODO: from Ben: the reactants are slurry, if we use a batch reactor, the crystallizer is not needed
     C1 = su.ALFCrystallizer(ID='ALF_crystallizer',
                             ins=F1-1,
                             outs='ALF_mixed',
@@ -640,12 +650,15 @@ def create_system_C(product='formic acid',
                     flue_gas_N2=0.82,
                     purity=0.975, # Evans et al. 2022
                     recovery=0.945, # Evans et al. 2022
-                    electricity_price=0.0832,
+                    electricity_price='current',
                     clean_electricity=False,
                     heat_source='steam',
                     yearly_operating_days=350,
                     lifetime=20,
                     upgrade=True):
+    
+    if electricity_price not in ['current','future','theoretical']:
+        raise ValueError("Electricity price can only be 'current', 'future', and 'theoretical'.")
     
     if heat_source not in ['steam','future','waste']:
         raise ValueError("Heat source can only be 'steam', 'future', and 'waste'.")
@@ -663,7 +676,7 @@ def create_system_C(product='formic acid',
     # 2022 industrial electricity price is 0.0832 $/kWh, https://www.eia.gov/electricity/annual/html/epa_02_04.html (accessed 2024-05-20)
     # electricity price in the future and theoretical scenarios are based on Huang et al. 2021:
     # 0.030 $/kWh (future scenario), 0.020 $/kWh (theoretical scenario)
-    bst.PowerUtility.price = electricity_price
+    bst.PowerUtility.price = 0.0832 if electricity_price == 'current' else 0.03 if electricity_price == 'future' else 0.02
     
     _load_components()
     bst.CE = qs.CEPCI_by_year[2022]
