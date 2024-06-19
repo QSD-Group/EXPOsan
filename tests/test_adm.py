@@ -25,7 +25,7 @@ def test_adm():
     sys = adm.sys
     AD = sys.flowsheet.unit.AD
     # AD.algebraic_h2 = True
-    # AD.algebraic_h2 = False
+    AD.algebraic_h2 = False
     sys.simulate(state_reset_hook='reset_cache',
                  t_span=(0, t),
                  method='BDF')
