@@ -34,6 +34,7 @@ def create_model(system=None,
                  high_IRR=False,
                  exclude_sludge_compositions=False,
                  include_HTL_yield_as_metrics=True,
+                 include_CFs_as_metrics=True,
                  include_other_metrics=True,
                  include_other_CFs_as_metrics=True,
                  include_check=True):
@@ -1164,21 +1165,22 @@ def create_model(system=None,
     # LCA (unifrom ± 10%)
     # =========================================================================
     # don't get joint distribution for multiple times, since the baselines for LCA will change.
-    qs.ImpactItem.get_all_items().pop('feedstock_item')
-    for item in qs.ImpactItem.get_all_items().keys():
-        for CF in qs.ImpactIndicator.get_all_indicators().keys():
-            abs_small = 0.9*qs.ImpactItem.get_item(item).CFs[CF]
-            abs_large = 1.1*qs.ImpactItem.get_item(item).CFs[CF]
-            dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
-            @param(name=f'{item}_{CF}',
-                   setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
-                   element='LCA',
-                   kind='isolated',
-                   units=qs.ImpactIndicator.get_indicator(CF).unit,
-                   baseline=qs.ImpactItem.get_item(item).CFs[CF],
-                   distribution=dist)
-            def set_LCA(i):
-                qs.ImpactItem.get_item(item).CFs[CF]=i
+    if include_CFs_as_metrics:
+        qs.ImpactItem.get_all_items().pop('feedstock_item')
+        for item in qs.ImpactItem.get_all_items().keys():
+            for CF in qs.ImpactIndicator.get_all_indicators().keys():
+                abs_small = 0.9*qs.ImpactItem.get_item(item).CFs[CF]
+                abs_large = 1.1*qs.ImpactItem.get_item(item).CFs[CF]
+                dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
+                @param(name=f'{item}_{CF}',
+                       setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
+                       element='LCA',
+                       kind='isolated',
+                       units=qs.ImpactIndicator.get_indicator(CF).unit,
+                       baseline=qs.ImpactItem.get_item(item).CFs[CF],
+                       distribution=dist)
+                def set_LCA(i):
+                    qs.ImpactItem.get_item(item).CFs[CF]=i
     
     # =========================================================================
     # metrics
