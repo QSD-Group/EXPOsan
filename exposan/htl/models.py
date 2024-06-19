@@ -67,7 +67,7 @@ def create_model(system=None,
     # @param(name='plant_size',
     #        element=raw_wastewater,
     #        kind='coupled',
-    #        units='MGD',
+    #        units='kg/hr',
     #        baseline=15772549,
     #        distribution=dist)
     # def set_plant_size(i):
