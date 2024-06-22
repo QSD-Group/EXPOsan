@@ -4,7 +4,6 @@ EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
     Ga-Yeong Kim <gayeong1225@gmail.com>
-    Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
@@ -13,7 +12,7 @@ for license details.
 from time import time
 from qsdsan.utils import ospath, load_data
 from qsdsan.stats import get_correlations, plot_correlations
-from exposan.pm2_batch import (
+from exposan.pm2asm2d import (
     results_path,
     figures_path,
     create_model,
@@ -34,18 +33,20 @@ mpl.rcParams['xtick.minor.visible'] = True
 # N = 2000        # takes 6.5 min
 # N = 3000        # takes 8 min
 # N = 5000        # takes 14 min
-# N = 10000       # takes 23.5 min
+N = 10000       # takes 23.5 min
 # N = 15000       # takes 33 min
-N = 20000       # takes 43.5 min
+# N = 20000       # takes 43.5 min
 
-T = 0.25    # T for include
+T = 9
+# T = 0.25    # T for include
 # T = 7       # T for exclude
 t_step = 0.01
 
 # rmse_thresholds = [25, 25, 25]
 nrmse_thresholds = [None, 0.1, 0.1]
 
-kind='include'
+kind=''
+# kind='include'
 # kind='exclude'
 
 analysis='uasa'
@@ -158,9 +159,9 @@ if __name__ == '__main__':
     # seed = 502          # include, N=2000
     # seed = 503          # include, N=3000
     # seed = 505          # include, N=5000
-    # seed = 400          # include, N=10000
+    seed = 400          # include, N=10000
     # seed = 206          # include, N=15000
-    seed = 210          # include, N=20000
+    # seed = 210          # include, N=20000
 
     mdl = run_UA_SA(seed=seed)
     plot_cdf_by_group(seed=seed)
