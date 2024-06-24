@@ -13,7 +13,7 @@ for license details.
 
 from chemicals.elements import molecular_weight as get_mw
 from qsdsan import sanunits as su, processes as pc, WasteStream, System, get_thermo
-from qsdsan.utils import load_data, ospath
+from qsdsan.utils import load_data, ospath, time_printer
 from exposan.bsm2 import data_path
 
 
@@ -132,30 +132,67 @@ out_asm2d = dict(
     X_struv=1578.52
     )
 
+# default_init_conds = {
+#     'S_su': 0.0124*1e3,
+#     'S_aa': 0.0055*1e3,
+#     'S_fa': 0.1074*1e3,
+#     'S_va': 0.0123*1e3,
+#     'S_bu': 0.0140*1e3,
+#     'S_pro': 0.0176*1e3,
+#     'S_ac': 0.0893*1e3,
+#     'S_h2': 2.5055e-7*1e3,
+#     'S_ch4': 0.0555*1e3,
+#     'S_IC': 0.0951*C_mw*1e3,
+#     'S_IN': 0.0945*N_mw*1e3,
+#     'S_I': 0.1309*1e3,
+#     'X_ch': 0.0205*1e3,
+#     'X_pr': 0.0842*1e3,
+#     'X_li': 0.0436*1e3,
+#     'X_su': 0.3122*1e3,
+#     'X_aa': 0.9317*1e3,
+#     'X_fa': 0.3384*1e3,
+#     'X_c4': 0.3258*1e3,
+#     'X_pro': 0.1011*1e3,
+#     'X_ac': 0.6772*1e3,
+#     'X_h2': 0.2848*1e3,
+#     'X_I': 17.2162*1e3
+#     }
+
 default_init_conds = {
-    'S_su': 0.0124*1e3,
-    'S_aa': 0.0055*1e3,
-    'S_fa': 0.1074*1e3,
-    'S_va': 0.0123*1e3,
-    'S_bu': 0.0140*1e3,
-    'S_pro': 0.0176*1e3,
-    'S_ac': 0.0893*1e3,
-    'S_h2': 2.5055e-7*1e3,
-    'S_ch4': 0.0555*1e3,
-    'S_IC': 0.0951*C_mw*1e3,
-    'S_IN': 0.0945*N_mw*1e3,
+    'S_su': 0.014*1e3,
+    'S_aa': 0.0062*1e3,
+    'S_fa': 0.126*1e3,
+    'S_va': 0.0129*1e3,
+    'S_bu': 0.0168*1e3,
+    'S_pro': 0.0204*1e3,
+    'S_ac': 0.0588*1e3,
+    'S_h2': 2.8309e-7*1e3,
+    'S_ch4': 0.0544*1e3,
+    'S_IC': 0.089*12*1e3,
+    'S_IN': 0.0663*14*1e3,
+    'S_IP': 0.028*31*1e3,
     'S_I': 0.1309*1e3,
-    'X_ch': 0.0205*1e3,
-    'X_pr': 0.0842*1e3,
-    'X_li': 0.0436*1e3,
-    'X_su': 0.3122*1e3,
-    'X_aa': 0.9317*1e3,
-    'X_fa': 0.3384*1e3,
-    'X_c4': 0.3258*1e3,
-    'X_pro': 0.1011*1e3,
-    'X_ac': 0.6772*1e3,
-    'X_h2': 0.2848*1e3,
-    'X_I': 17.2162*1e3
+    'X_ch': 1.302*1e3,
+    'X_pr': 1.3613*1e3,
+    'X_li': 1.8127*1e3,
+    'X_su': 0.5146*1e3,
+    'X_aa': 0.4017*1e3,
+    'X_fa': 0.3749*1e3,
+    'X_c4': 0.1596*1e3,
+    'X_pro': 0.0896*1e3,
+    'X_ac': 0.5006*1e3,
+    'X_h2': 0.258*1e3,
+    'X_I': 12.9232*1e3,
+    'X_PHA': 0.6697*1e3,
+    'X_PAO': 0.9154*1e3,
+    'S_K': 0.0129*1e3,
+    'S_Mg': 0.0001*1e3,
+    'S_Ca': 2e-4*1e3,
+    'X_struv':0.0161*1e3,
+    'X_ACP': 9e-4*1e3,
+    'X_FePO4': 0.001*1e3,
+    'S_Na': 0.061*1e3,
+    'S_Cl': 0.0126*1e3
     }
 
 #%%
@@ -170,33 +207,50 @@ inf_asm.set_flow_by_concentration(
 asm = pc.mASM2d()
 thermo_asm = get_thermo()
 cmps_adm = pc.create_adm1p_cmps()
+alt_inf_adm = WasteStream('alt_inf_adm', T=Temp)
+alt_inf_adm.set_flow_by_concentration(
+    flow_tot=Q,
+    concentrations=inf_adm1p,
+    units=('m3/d', 'kg/m3')
+    )
 alt_eff_adm = WasteStream('alt_eff_adm', T=Temp)
 alt_eff_adm.set_flow_by_concentration(
     flow_tot=Q, 
     concentrations=out_adm1p,
     units=('m3/d', 'kg/m3')
     )
-adm = pc.ADM1p()
+adm = pc.ADM1p(
+    f_bu_su=0.1328, f_pro_su=0.2691, f_ac_su= 0.4076,
+    q_ch_hyd=0.3, q_pr_hyd=0.3, q_li_hyd=0.3, 
+    )
 thermo_adm = get_thermo()
 
 J1 = su.mASM2dtoADM1p('J1', upstream=inf_asm, downstream='inf_adm', 
                       thermo=thermo_adm, isdynamic=True, 
                       adm1_model=adm, asm2d_model=asm)
 J1.xs_to_li = 0.6
-AD = su.AnaerobicCSTR('AD', ins=J1-0, outs=('biogas', 'eff_adm'), isdynamic=True, 
+AD = su.AnaerobicCSTR('AD', ins=alt_inf_adm, outs=('biogas', 'eff_adm'), isdynamic=True, 
+# AD = su.AnaerobicCSTR('AD', ins=J1-0, outs=('biogas', 'eff_adm'), isdynamic=True, 
                       V_liq=V_liq, V_gas=V_gas, T=Temp, model=adm)
+# AD.algebraic_h2 = True
 AD.algebraic_h2 = False
 # AD.set_init_conc(**adm1init['AD1'])
 AD.set_init_conc(**default_init_conds)
-# J2 = su.ADM1ptomASM2d('J2', upstream=AD-1, downstream='eff_asm', 
-J2 = su.ADM1ptomASM2d('J2', upstream=alt_eff_adm, downstream='eff_asm', 
+J2 = su.ADM1ptomASM2d('J2', upstream=AD-1, downstream='eff_asm', 
+# J2 = su.ADM1ptomASM2d('J2', upstream=alt_eff_adm, downstream='eff_asm', 
                       thermo=thermo_asm, isdynamic=True, 
                       adm1_model=adm, asm2d_model=asm)
 
 sys = System(path=(J1, AD, J2))
-#%%
-sys.simulate(state_reset_hook='reset_cache', t_span=(0, 200), method='BDF')
 fs = sys.flowsheet.stream
+sys.set_dynamic_tracker(AD, fs.biogas, fs.eff_adm)
+
+#%%
+@time_printer
+def run():
+    sys.simulate(state_reset_hook='reset_cache', t_span=(0, 400), method='BDF')
+
+run()
 
 # fs.inf_adm.conc vs. inf_adm1p
 # fs.eff_asm.conc vs. out_asm2d
