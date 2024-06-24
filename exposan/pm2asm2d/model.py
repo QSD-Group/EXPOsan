@@ -115,10 +115,20 @@ baseline_values = {
 
 # Parameters used for calibration - sensitive parameters (baseline_value, units, bounds)
 sensitive_params = {
-    'q_CH': (1, 'g COD/g COD/d', (0.1, 10)),
-    'q_LI': (15, 'g COD/g COD/d', (1.5, 50)),
-    'V_NH': (0.1, 'g N/g COD/d', (0.01, 1)),
-    'V_P': (0.2, 'g P/g COD/d', (0.01, 1))
+    'a_c': (0.049, 'm^2/g TSS', (0.005, 0.5)),
+    'arr_e': (6842, 'K', (4000, 8000)),
+    'K_P': (1.0, 'g P/m^3', (0.1, 10)),
+    'K_A': (6.3, 'g COD/m^3', (1, 10)),
+    'f_CH_max': (0.819, 'g COD/g COD', (0.1, 10)),
+    'f_LI_max': (3.249, 'g COD/g COD', (1, 10)),
+    'V_NH': (0.254, 'g N/g COD/d', (0.01, 1)),
+    'V_NO': (0.254, 'g N/g COD/d', (0.01, 1)),
+    'V_P': (0.016, 'g P/g COD/d', (0.001, 0.1)),
+    'eta_fe': (0.4, '', (0.1, 1)),
+    'K_O2': (0.2, 'g O2/m^3', (0.1, 1)),
+    'K_O2_H': (0.2, 'g O2/m^3', (0.1, 1)),
+    'K_P_H': (0.01, 'g P/m^3', (0.001, 0.1)),
+    'mu_AUT': (1.0, 'd^(-1)', (0.1, 5)),    
     }           # need to revise after UA & SA
 
 #%%
@@ -193,7 +203,7 @@ def create_model(system=None, kind='', analysis=''):
 
         for k, v in baseline_values.items():
             b, units = v
-            D = get_uniform_w_frac(b, 0.50)
+            D = get_uniform_w_frac(b, 0.2)
             param(setter=DictAttrSetter(pm2asm2d.rate_function, '_params', k),
                   name=k, element=PBR, kind='coupled', units=units, distribution=D)
 

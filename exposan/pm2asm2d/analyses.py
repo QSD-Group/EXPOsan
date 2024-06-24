@@ -25,6 +25,9 @@ import os, numpy as np, pandas as pd, matplotlib as mpl, seaborn as sns, \
     matplotlib.pyplot as plt
     # matplotlib.ticker as tk
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 mpl.rcParams['font.sans-serif'] = 'arial'
 mpl.rcParams["figure.autolayout"] = True
 mpl.rcParams['xtick.minor.visible'] = True
@@ -40,7 +43,7 @@ N = 10000       # takes 23.5 min
 T = 9
 # T = 0.25    # T for include
 # T = 7       # T for exclude
-t_step = 0.01
+t_step = 0.1
 
 # rmse_thresholds = [25, 25, 25]
 nrmse_thresholds = [None, 0.1, 0.1]
@@ -166,3 +169,36 @@ if __name__ == '__main__':
     mdl = run_UA_SA(seed=seed)
     plot_cdf_by_group(seed=seed)
     KS_test_var_thresholds(mdl=mdl,seed=seed)
+
+#%% resulted in FailedEvaluation: [RuntimeError] Extrapolation is tempted! t_eval must be within the range of [,]
+
+# 'BDF' with N=10000 led to 3609 samples successfully integrated
+# from raw result ('table_400.xlsx'), NaN was deleted ('table_400_dropna.xlsx')
+# after that, run KS test
+
+# mdl = create_model(analysis=analysis)
+# mdl.table = load_data(ospath.join(results_path, f'table_{seed}_dropna.xlsx'),
+#                       header=[0,1])
+
+# sig = []
+# thresholds = []
+# quantiles = np.linspace(0.05, 0.5, 10)
+# for q in quantiles:
+#     thrs = update_thresholds(mdl, [], quantile=q)
+#     D, p = mdl.kolmogorov_smirnov_d(thresholds=thrs)
+#     thresholds.append(thrs)
+#     sig.append(p < 0.05)
+# out = {m: pd.DataFrame() for m in var_indices(mdl.metrics)}
+# thresholds = np.asarray(thresholds).T
+
+# for s, q in zip(sig, quantiles):
+#     for m, df in out.items():
+#         df[q] = s[m]
+# with pd.ExcelWriter(ospath.join(results_path, f'sig_params_{seed}.xlsx')) as writer:
+#     for m, thrs in zip(out, thresholds):
+#         df = out[m]
+#         df.index = df.index.droplevel()
+#         df.columns = pd.MultiIndex.from_tuples([(col, t) for col,t \
+#                                                 in zip(df.columns, thrs)],
+#                                                names=['quantile', 'NRMSE'])
+#         df.to_excel(writer, sheet_name=m[-1])
