@@ -80,6 +80,18 @@ inf_adm1p = dict(
     # S_N2=0.0004*14
     )
 
+_inf_adm1p = dict(
+    S_IC=0.021,
+    S_IN=0.036,
+    S_IP=0.006,
+    X_PP=0.015,
+    S_K=0.001,
+    S_Mg=0.008,
+    S_Ca=0.007,
+    S_Na=0.003,
+    S_Cl=0.029,
+    )
+
 # Table 1.4 [kg/m3]
 out_adm1p = dict(
     S_su=0.013,
@@ -111,6 +123,20 @@ out_adm1p = dict(
     S_Na=0.003*23,
     S_Cl=0.029*35.5,
     # S_N2=0.0004*14
+    )
+
+_out_adm1p = dict(
+    S_IC=0.059,
+    S_IN=0.080,
+    S_IP=0.007,
+    X_PP=8.05e-6,
+    S_K=0.005,
+    S_Mg=0.001,
+    S_Ca=0.001,
+    X_ACP=0.002,
+    X_struv=0.011,
+    S_Na=0.003,
+    S_Cl=0.029,
     )
 
 # Table 1.5 [mg/L]
@@ -204,6 +230,12 @@ inf_asm.set_flow_by_concentration(
     concentrations=inf_asm2d,
     units=('m3/d', 'mg/L')
     )
+alt_eff_asm = WasteStream('alt_eff_asm', T=Temp)
+alt_eff_asm.set_flow_by_concentration(
+    flow_tot=Q, 
+    concentrations=out_asm2d,
+    units=('m3/d', 'mg/L')
+    )
 asm = pc.mASM2d()
 thermo_asm = get_thermo()
 cmps_adm = pc.create_adm1p_cmps()
@@ -229,8 +261,8 @@ J1 = su.mASM2dtoADM1p('J1', upstream=inf_asm, downstream='inf_adm',
                       thermo=thermo_adm, isdynamic=True, 
                       adm1_model=adm, asm2d_model=asm)
 J1.xs_to_li = 0.6
-AD = su.AnaerobicCSTR('AD', ins=alt_inf_adm, outs=('biogas', 'eff_adm'), isdynamic=True, 
-# AD = su.AnaerobicCSTR('AD', ins=J1-0, outs=('biogas', 'eff_adm'), isdynamic=True, 
+# AD = su.AnaerobicCSTR('AD', ins=alt_inf_adm, outs=('biogas', 'eff_adm'), isdynamic=True, 
+AD = su.AnaerobicCSTR('AD', ins=J1-0, outs=('biogas', 'eff_adm'), isdynamic=True, 
                       V_liq=V_liq, V_gas=V_gas, T=Temp, model=adm)
 # AD.algebraic_h2 = True
 AD.algebraic_h2 = False
