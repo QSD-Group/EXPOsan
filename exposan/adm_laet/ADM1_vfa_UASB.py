@@ -201,16 +201,16 @@ default_init_conds = {
     'X_ch': 0.3*1e3,
     'X_pr': 0.3*1e3,
     'X_li': 0.3*1e3,
-    'X_su': 0.66*1e3,
-    'X_aa': 0.6*1e3,
+    'X_su': 0.68*1e3,
+    'X_aa': 0.5*1e3,
     'X_fa': 0.8*1e3,
-    'X_la': 0.8*1e3,
+    'X_la': 0.9*1e3,
     'X_et': 0.3*1e3,
     'X_c4': 0.15*1e3,
     'X_pro': 0.15*1e3,
-    'X_ac': 0.1*1e3,
+    'X_ac': 0.05*1e3,
     'X_h2': 0.2*1e3,
-    'X_I': 0.77*1e3                                      # FS = 7.7 g/L 
+    'X_I': 0.77*1e3                                      # FS = 0.77 g/L 
     }                                               # mg COD/L
 
 U1.set_init_conc(**default_init_conds)                          # set initial condition of AD
