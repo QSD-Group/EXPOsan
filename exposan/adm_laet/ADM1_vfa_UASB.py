@@ -210,7 +210,7 @@ default_init_conds = {
     'X_pro': 0.2*1e3,
     'X_ac': 0.2*1e3,
     'X_h2': 0.2*1e3,
-    'X_I': 7.7*1e3                                      # FS = 7.7 g/L 
+    'X_I': 0.77*1e3                                      # FS = 7.7 g/L 
     }                                               # mg COD/L
 
 U1.set_init_conc(**default_init_conds)                          # set initial condition of AD
