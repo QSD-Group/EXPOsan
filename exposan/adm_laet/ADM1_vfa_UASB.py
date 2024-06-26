@@ -89,7 +89,7 @@ default_inf_kwargs = {
     'units': ('m3/d', 'kg/m3'),                                 
     }                                                           # concentration of each state variable in influent
 '''
-# Medium (Glucose)
+# Medium (Glucose 100%)
 default_inf_kwargs = {
     'concentrations': {
         'S_su':20.14,                                               # glucose 10 g/L = 10.7 kg COD/m3, 20 g/L = 20.14 kg COD/m3
@@ -133,7 +133,7 @@ S_su = default_inf_kwargs['concentrations']['S_su']
 U1 = UASB('UASB', ins=inf, outs=(gas, eff), model=adm1,        # This model is based on CSTR, need to decide application of recirculated experiments
           V_liq=Q*HRT, V_gas=Q*HRT*0.1,                        # !!! Considering real experiments including either high recirculation rate or not
           T=Temp, pH_ctrl=False,                               # pH adjustment X
-          fraction_retain=0.95,                                # needs to set this value properly
+          fraction_retain=0.95,                            # needs to set this value properly
           )                                                    
 
                                                                # fraction_retain : float, optional
@@ -178,6 +178,11 @@ default_init_conds = {
     }                   # in mg/L                         
 '''
 # 10% Inoculum (Cow manure) + 90% Glucose (10g/L or 20g/L)
+# Total COD (90 % Glucose 20 g/L + 10 % inoculum) = 22.93 g COD/L
+# Soluble COD (S) = 20.32 g COD/L
+# 10 % inoculum = 22.93 - 20.14 = 2.79 g COD/L
+# Non Soluble COD (X) = Total COD - S = 22.93 - 20.32 = 2.61 g COD/L
+# Cow manure -> VS = 2.27 g/L = 3.22 g COD/L (=Biomass), FS = 7.7 g/L = ~7.7 g COD/L
 default_init_conds = {
     'S_su': 21.89*1e3,                                  # fixed according to R4G20 (Glucose 20.538g/L)
     'S_aa': 0.95*1e3,
@@ -190,30 +195,30 @@ default_init_conds = {
     'S_ac': 0.97*1e3,                                   # fixed according to R4G20 (AA: 0.8946g/L)
     'S_h2': 2.5055e-7*1e3,
     'S_ch4': 2.5055e-7*1e3,
-    'S_IC': 0.2*C_mw*1e3,                                #76800 mg COD / L
-    'S_IN': 0.0945*N_mw*1e3,                             #84672 mg COD / L
+    'S_IC': 0.2*C_mw*1e3,                               # 76800 mg COD/L
+    'S_IN': 0.0945*N_mw*1e3,                            # 84672 mg COD/L
     'S_I': 0.1309*1e3,
-    'X_ch': 2.8*1e3,
-    'X_pr': 2.8*1e3,
-    'X_li': 2.8*1e3,
-    'X_su': 4.8*1e3,
-    'X_aa': 4.8*1e3,
-    'X_fa': 6.8*1e3,
-    'X_la': 6.2*1e3,
-    'X_et': 3.2*1e3,
-    'X_c4': 2.2*1e3,
-    'X_pro': 2.2*1e3,
-    'X_ac': 2.2*1e3,
-    'X_h2': 1.9*1e3,
-    'X_I': 17*1e3
-    }                   # in mg/L                         # mg COD/L
+    'X_ch': 0.3*1e3,
+    'X_pr': 0.3*1e3,
+    'X_li': 0.3*1e3,
+    'X_su': 0.6*1e3,
+    'X_aa': 0.6*1e3,
+    'X_fa': 0.8*1e3,
+    'X_la': 0.5*1e3,
+    'X_et': 0.4*1e3,
+    'X_c4': 0.2*1e3,
+    'X_pro': 0.2*1e3,
+    'X_ac': 0.2*1e3,
+    'X_h2': 0.2*1e3,
+    'X_I': 7.7*1e3                                      # FS = 7.7 g/L 
+    }                                               # mg COD/L
 
 U1.set_init_conc(**default_init_conds)                          # set initial condition of AD
 
 #%%
 # System
 sys = System('Anaerobic_Digestion', path=(U1,))                 # aggregation of sanunits
-sys.set_dynamic_tracker(inf, eff, gas, U1)                           # what you want to track changes in concentration
+sys.set_dynamic_tracker(inf, eff, gas, U1)                      # what you want to track changes in concentration
 sys                                                           # before running the simulation, 'outs' have nothing
 
 #%%
