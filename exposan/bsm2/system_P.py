@@ -130,14 +130,17 @@ def create_system(flowsheet=None, default_init_conds=True):
     # Switch to ADM1 components for the anaerobic digester
     cmps_adm = pc.create_adm1p_cmps()
     thermo_adm = qs.get_thermo()
-    adm = pc.ADM1p()
+    adm = pc.ADM1p(
+        f_bu_su=0.1328, f_pro_su=0.2691, f_ac_su= 0.4076,
+        q_ch_hyd=0.3, q_pr_hyd=0.3, q_li_hyd=0.3, 
+        )
     
     # breakpoint()
     J1 = su.mASM2dtoADM1p('J1', upstream=M1-0, thermo=thermo_adm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
     AD = su.AnaerobicCSTR('AD', ins=J1.outs[0], outs=('biogas', 'AD_eff'), isdynamic=True,
                            V_liq=3400, V_gas=300, T=T_ad, model=adm,)
-    AD.algebraic_h2 = False
+    AD.algebraic_h2 = True
     # Switch back to ASM1 components
     J2 = su.ADM1ptomASM2d('J2', upstream=AD-1, thermo=thermo_asm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)

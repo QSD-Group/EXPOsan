@@ -198,8 +198,9 @@ def run(sys, t, t_step, method=None, **kwargs):
     sys.simulate(
         state_reset_hook='reset_cache',
         t_span=(0,t),
-        # t_eval=np.arange(0, t+t_step, t_step),
+        t_eval=np.arange(0, t+t_step, t_step),
         method=method,
+        print_t=True,
         # rtol=1e-2,
         # atol=1e-3,
         # export_state_to=f'results/sol_{t}d_{method}.xlsx',
@@ -220,13 +221,13 @@ if __name__ == '__main__':
     # cmps_adm1 = J1.components
     # cmps_asm1 = J2.components
     
-    t = 30
+    t = 300
     t_step = 1
     # method = 'RK45'
-    method = 'RK23'
+    # method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    # method = 'BDF'
+    method = 'BDF'
     # method = 'LSODA'
     
     run(sys, t, t_step, method=method)
