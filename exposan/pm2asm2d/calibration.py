@@ -40,7 +40,7 @@ def objective(trial):
         'f_CH_max': trial.suggest_uniform('f_CH_max', 0.1, 10),
         'f_LI_max': trial.suggest_uniform('f_LI_max', 1, 10),
         'V_NH': trial.suggest_uniform('V_NH', 0.01, 1),
-        'V_NO': trial.suggest_uniform('V_NO', 0.01, 1),        
+        'V_NO': trial.suggest_uniform('V_NO', 0.0007, 0.01),        
         'V_P': trial.suggest_uniform('V_P', 0.001, 0.1),
         'eta_fe': trial.suggest_uniform('eta_fe', 0.1, 1),
         'K_O2': trial.suggest_uniform('K_O2', 0.1, 1),
@@ -83,15 +83,15 @@ if __name__ == '__main__':
     study = optuna.create_study(sampler=sampler, direction='minimize')
     # study = optuna.create_study(sampler=sampler, direction='minimize', pruner=optuna.pruners.MedianPruner())
 
-    study.optimize(objective, n_trials=10000)    # takes about 30 min
+    study.optimize(objective, n_trials=5000)    # takes about 30 min
 
     print(study.best_params)
 
     df = study.trials_dataframe()
     assert isinstance(df, pd.DataFrame)
-    assert df.shape[0] == 10000
+    assert df.shape[0] == 5000
 
-    df.to_excel(ospath.join(results_path, 'calibration_result_optuna.xlsx'))
+    df.to_excel(ospath.join(results_path, 'calibration_result_optuna_low_vno.xlsx'))
     # df.to_excel(ospath.join(results_path, 'calibration_result_include_optuna_sequential_cali.xlsx'))
     # df.to_excel(ospath.join(results_path, 'calibration_result_exclude_optuna_sequential_cali.xlsx'))
 
