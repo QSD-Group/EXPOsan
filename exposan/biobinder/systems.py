@@ -14,7 +14,8 @@ for license details.
 import os, qsdsan as qs
 from biosteam.units import IsenthalpicValve
 from biosteam import settings
-from biorefineries.tea import create_cellulosic_ethanol_tea
+from exposan.htl import create_tea
+# from biorefineries.tea import create_cellulosic_ethanol_tea
 from qsdsan import sanunits as qsu
 from qsdsan.utils import clear_lca_registries
 from exposan.biobinder import (
@@ -141,6 +142,7 @@ HeavyFracStorage.register_alias('HeavyFracStorage')
 sys = qs.System.from_units(
     f'sys_{configuration}',
     units=list(flowsheet.unit), 
+    operating_hours=7920, # same as the HTL module, about 90% updtime
     )
 sys.register_alias('sys')
 
@@ -150,8 +152,7 @@ biofuel_additives.price = 1.4 # $/kg
 
 biobinder = stream.biobinder
 
-tea = create_cellulosic_ethanol_tea(sys)
-
+tea = create_tea(sys)
 sys.simulate()
 
 biobinder_price = tea.solve_price(biobinder)

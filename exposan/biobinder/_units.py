@@ -519,14 +519,17 @@ class SandFiltration(qsu.Copier):
     Placeholder for the aqueous filtration unit. All outs are copied from ins.
     '''
     
-# @cost(basis='Feedstock dry flowrate', ID='Feedstock Tank', units='kg/h',
-#       cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2011], n=0.77, BM=1.5)
+@cost(basis='Biocrude flowrate', ID='Deashing Tank', units='kg/h',
+      cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2023], n=0.77, BM=1.5)
 class BiocrudeDeashing(SanUnit):
     '''
     Placeholder for the deashing unit.
     '''
     
     _N_outs = 2
+    _units= {
+        'Biocrude flowrate': 'kg/h',
+        }
     target_ash = 0.01 # dry weight basis
     
     def _run(self):
@@ -541,6 +544,10 @@ class BiocrudeDeashing(SanUnit):
         if excess_ash >= 0:
             deashed.imass['Ash'] -= excess_ash
             ash.imass['Ash'] = excess_ash
+            
+    def _design(self):
+        biocrude = self.ins[0]
+        self.design_results['Biocrude flowrate'] = biocrude.F_mass
             
     
     
