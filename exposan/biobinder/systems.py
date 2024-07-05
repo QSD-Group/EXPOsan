@@ -12,8 +12,10 @@ for license details.
 '''
 
 import os, qsdsan as qs
-from qsdsan import sanunits as qsu
 from biosteam.units import IsenthalpicValve
+from biosteam import settings
+from biorefineries.tea import create_cellulosic_ethanol_tea
+from qsdsan import sanunits as qsu
 from qsdsan.utils import clear_lca_registries
 from exposan.biobinder import (
     _load_components,
@@ -21,7 +23,7 @@ from exposan.biobinder import (
     create_tea,
     _units as u
     )
-from biosteam import settings
+
 
 # Create and set flowsheet
 configuration = 'pilot'
@@ -92,7 +94,10 @@ BiocrudeSplitter = u.BiocrudeSplitter('S303', ins=Dewatering-0,
                                       cutoff_Tb=343+273.15, light_frac=0.5316)
 BiocrudeSplitter.register_alias('BiocrudeSplitter')
 
-FracDist = qsu.BinaryDistillation('D304', ins=BiocrudeSplitter-0,
+# Shortcut column uses the Fenske-Underwood-Gilliland method,
+# better for hydrocarbons according to the tutorial
+# https://biosteam.readthedocs.io/en/latest/API/units/distillation.html
+FracDist = u.ShortcutColumn('D304', ins=BiocrudeSplitter-0,
                         outs=('biocrude_light','biocrude_heavy'),
                         LHK=('Biofuel', 'Biobinder'), # will be updated later
                         P=50*6894.76, # outflow P
@@ -103,20 +108,28 @@ def adjust_LHK():
     FracDist.LHK = (BiocrudeSplitter.light_key, BiocrudeSplitter.heavy_key)
     FracDist._run()
 
+
+# FracDist = qsu.BinaryDistillation('D304', ins=BiocrudeSplitter-0,
+#                         outs=('biocrude_light','biocrude_heavy'),
+#                         LHK=('7MINDOLE', 'C16:0FA'), # will be updated later
+#                         # P=50*6894.76, # outflow P
+#                         # P=101325*5, # outflow P
+#                         # Lr=0.1, Hr=0.5,
+#                         y_top=0.1134, x_bot=0.0136,
+#                         # y_top=188/253, x_bot=53/162,
+#                         k=2, is_divided=True)
+# FracDist.register_alias('FracDist')
+# @FracDist.add_specification
+# def adjust_LHK():
+#     FracDist.LHK = (BiocrudeSplitter.light_key, BiocrudeSplitter.heavy_key)
+#     FracDist._run()
+
 LightFracStorage = qsu.StorageTank('T305', FracDist-0, outs='biofuel_additives',
                                    tau=24*7, vessel_material='Stainless steel')
 LightFracStorage.register_alias('LightFracStorage')
 HeavyFracStorage = qsu.StorageTank('T306', FracDist-1, outs='biobinder',
                                    tau=24*7, vessel_material='Stainless steel')
 HeavyFracStorage.register_alias('HeavyFracStorage')
-
-# #!!! Need to connect to the biocrude product
-# D1 = qsu.BinaryDistillation('A370', ins=H3-0,
-#                         outs=('HT_light','HT_heavy'),
-#                         LHK=('C4H10','TWOMBUTAN'), P=50*6894.76, # outflow P
-#                         y_top=188/253, x_bot=53/162, k=2, is_divided=True)
-# D1.register_alias('D1')
-
 
 
 # %%
@@ -131,4 +144,15 @@ sys = qs.System.from_units(
     )
 sys.register_alias('sys')
 
-# sys.simulate() #!!! PAUSED, simulation doesn't work, still error with C5H9NS
+stream = sys.flowsheet.stream
+biofuel_additives = stream.biofuel_additives
+biofuel_additives.price = 1.4 # $/kg
+
+biobinder = stream.biobinder
+
+tea = create_cellulosic_ethanol_tea(sys)
+
+sys.simulate()
+
+biobinder_price = tea.solve_price(biobinder)
+print(f'Minimum selling price of the biobinder is ${biobinder_price:.2f}/kg.')

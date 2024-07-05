@@ -13,6 +13,10 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
+#!!! Temporarily ignoring warnings
+import warnings
+warnings.filterwarnings('ignore')
+
 from qsdsan import Component, Components, set_thermo as qs_set_thermo
 # from exposan.utils import add_V_from_rho
 from exposan import htl
@@ -72,7 +76,7 @@ def create_components(set_thermo=True):
         }
     biocrude_dct = { # ID, search_ID (CAS#)
         '1E2PYDIN':     '2687-91-4',
-        'C5H9NS':       '10441-57-3',
+        # 'C5H9NS':       '10441-57-3',
         'ETHYLBEN':     '100-41-4',
         '4M-PHYNO':     '106-44-5',
         '4EPHYNOL':     '123-07-9',
@@ -98,14 +102,16 @@ def create_components(set_thermo=True):
             cmp.LHV = cmp.LHV or LHV
         biocrude_cmps[ID] = cmp
         
-    # Add missing properties
-    # http://www.chemspider.com/Chemical-Structure.500313.html?rid=d566de1c-676d-4064-a8c8-2fb172b244c9
-    C5H9NS = biocrude_cmps['C5H9NS']
-    C5H9NS.Tb = 273.15+(151.6+227.18)/2 # avg of ACD and EPIsuite
-    C5H9NS.Hvap.add_method(38.8e3) # Enthalpy of Vaporization, 38.8±3.0 kJ/mol
-    C5H9NS.Psat.add_method((3.6+0.0759)/2*133.322) # Vapour Pressure, 3.6±0.3/0.0756 mmHg at 25°C, ACD/EPIsuite
-    C5H9NS.Hf = -265.73e3 # C5H9NO, https://webbook.nist.gov/cgi/cbook.cgi?ID=C872504&Mask=2
-    C5H9NS.copy_models_from(Component('C5H9NO'))
+    # # Add missing properties
+    # # http://www.chemspider.com/Chemical-Structure.500313.html?rid=d566de1c-676d-4064-a8c8-2fb172b244c9
+    # C5H9NS = biocrude_cmps['C5H9NS']
+    # C5H9NO = Component('C5H9NO')
+    # C5H9NS.V.l.add_method(C5H9NO.V.l)
+    # C5H9NS.copy_models_from(C5H9NO) #!!! add V.l.
+    # C5H9NS.Tb = 273.15+(151.6+227.18)/2 # avg of ACD and EPIsuite
+    # C5H9NS.Hvap.add_method(38.8e3) # Enthalpy of Vaporization, 38.8±3.0 kJ/mol
+    # C5H9NS.Psat.add_method((3.6+0.0759)/2*133.322) # Vapour Pressure, 3.6±0.3/0.0756 mmHg at 25°C, ACD/EPIsuite
+    # C5H9NS.Hf = -265.73e3 # C5H9NO, https://webbook.nist.gov/cgi/cbook.cgi?ID=C872504&Mask=2
 
     # Rough assumption based on the formula
     biocrude_cmps['7MINDOLE'].Hf = biocrude_cmps['INDOLE'].Hf
@@ -143,7 +149,7 @@ def create_components(set_thermo=True):
     for i in biobinder_cmps:
         for attr in ('HHV', 'LHV', 'Hf'):
             if getattr(i, attr) is None: setattr(i, attr, 0)
-        # i.default() # default properties to those of water
+        i.default() # default properties to those of water
 
     biobinder_cmps.compile()
     biobinder_cmps.set_alias('H2O', 'Water')

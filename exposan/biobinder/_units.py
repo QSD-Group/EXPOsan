@@ -13,6 +13,7 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
+import biosteam as bst, qsdsan as qs
 from math import ceil, log
 from biosteam.units.decorators import cost
 from qsdsan import SanUnit, Stream, sanunits as qsu
@@ -27,6 +28,7 @@ __all__ = (
     # 'GasScrubber',
     'PilotHTL',
     'SandFiltration',
+    'ShortcutColumn',
     'Transportation'
     )
 
@@ -362,9 +364,10 @@ class PilotHTL(qsu.HydrothermalLiquefaction):
                 installed_costs[item] *= self.CAPEX_factor
 
 # Jone et al., Table C-1
+#!!! Might want to redo this part by adjusting the components.
 default_biocrude_ratios = {
     '1E2PYDIN':     0.067912,
-    'C5H9NS':       0.010257,
+    # 'C5H9NS':       0.010257,
     'ETHYLBEN':     0.025467,
     '4M-PHYNO':     0.050934,
     '4EPHYNOL':     0.050934,
@@ -408,6 +411,7 @@ class BiocrudeSplitter(SanUnit):
         biocrude_in = self.ins[0]
         biocrude_out = self.outs[0]
         
+        biocrude_IDs = self.biocrude_IDs
         total_crude = biocrude_in.imass[self.biocrude_IDs].sum()
         total_light = total_crude * self.light_frac
         total_heavy = total_crude - total_light
@@ -420,6 +424,7 @@ class BiocrudeSplitter(SanUnit):
         # Set the mass for the biocrude components
         biocrude_out.imass[light_ratios] = [total_light*i for i in light_ratios.values()]
         biocrude_out.imass[heavy_ratios] = [total_heavy*i for i in heavy_ratios.values()]
+        biocrude_out.imass[biocrude_IDs] = 0 # clear out biocrude
 
     def _update_component_ratios(self):
         '''Update the light and heavy ratios of the biocrude components.'''
@@ -561,11 +566,24 @@ class BiocrudeDewatering(SanUnit):
         if excess_water >= 0:
             dewatered.imass['Water'] -= excess_water
             water.imass['Water'] = excess_water
+
             
+class ShortcutColumn(bst.units.ShortcutColumn, qs.SanUnit):
+    '''
+    Similar to biosteam.units.ShortcutColumn.
+    
+    See Also
+    --------
+    `biosteam.units.ShortcutColumn <https://biosteam.readthedocs.io/en/latest/API/units/distillation.html>`_
+    '''
             
+
 # @cost(basis='Feedstock dry flowrate', ID='Feedstock Tank', units='kg/h',
 #       cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2011], n=0.77, BM=1.5)
 class Transportation(qsu.Copier):
     '''
     Placeholder for transportation. All outs are copied from ins.
     '''
+    
+    
+
