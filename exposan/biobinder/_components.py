@@ -13,10 +13,6 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-#!!! Temporarily ignoring warnings
-import warnings
-warnings.filterwarnings('ignore')
-
 from qsdsan import Component, Components, set_thermo as qs_set_thermo
 # from exposan.utils import add_V_from_rho
 from exposan import htl

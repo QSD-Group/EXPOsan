@@ -27,7 +27,7 @@ __all__ = (
     'BiocrudeSplitter',
     # 'GasScrubber',
     'PilotHTL',
-    'SandFiltration',
+    'AqueousFiltration',
     'ShortcutColumn',
     'Transportation'
     )
@@ -513,36 +513,47 @@ class BiocrudeSplitter(SanUnit):
 
 
 ap_flowrate= 49.65 #kg/hr
-@cost(basis='Feedstock dry flowrate', ID= 'Sand Filtration Unit', units='kg/h',
+@cost(basis='Aqueous flowrate', ID= 'Sand Filtration Unit', units='kg/h',
       cost=318, S=ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.7)
-@cost(basis='Feedstock dry flowrate', ID= 'EC Oxidation Tank', units='kg/h',
+@cost(basis='Aqueous flowrate', ID= 'EC Oxidation Tank', units='kg/h',
       cost=1850, S=ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
-@cost(basis='Feedstock dry flowrate', ID= 'Biological Treatment Tank', units='kg/h',
+@cost(basis='Aqueous flowrate', ID= 'Biological Treatment Tank', units='kg/h',
       cost=4330, S=ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
-@cost(basis='Feedstock dry flowrate', ID= 'Liquid Fertilizer Storage', units='kg/h',
+@cost(basis='Aqueous flowrate', ID= 'Liquid Fertilizer Storage', units='kg/h',
       cost=7549, S=ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
-@cost(basis='Biocrude flowrate', ID='Deashing Tank', units='kg/h',
-      cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2023], n=0.77, BM=1.5)
-class SandFiltration(qsu.Copier):
+class AqueousFiltration(SanUnit):
     '''
     Placeholder for the aqueous filtration unit. All outs are copied from ins.
     '''
-    
-    
+     
+    _N_outs = 1
+    _units= {
+        'Aqueous flowrate': 'kg/h',
+        }
+    def _run(self):
+        HTL_aqueous = self.ins[0]
+        treated_aq = self.outs
+        
+        #treated_aq.copy_like(HTL_aqueous)
+        
+    def _design(self):
+                aqueous = self.ins[0]
+                self.design_results['Aqueous flowrate'] = aqueous.F_mass
+                
 biocrude_flowrate= 5.64 #kg/hr
-@cost(basis='Feedstock dry flowrate', ID= 'Biocrude Storage Tank', units='kg/h',
+@cost(basis='Biocrude flowrate', ID= 'Biocrude Storage Tank', units='kg/h',
       cost=7549, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
-@cost(basis='Feedstock dry flowrate', ID= 'Dewaering Tank', units='kg/h',
+@cost(basis='Biocrude flowrate', ID= 'Dewaering Tank', units='kg/h',
       cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
-@cost(basis='Feedstock dry flowrate', ID= 'Deashing Tank', units='kg/h',
+@cost(basis='Biocrude flowrate', ID= 'Deashing Tank', units='kg/h',
       cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
-@cost(basis='Feedstock dry flowrate', ID= 'Fractional Distillation Column', units='kg/h',
+@cost(basis='Biocrude flowrate', ID= 'Fractional Distillation Column', units='kg/h',
       cost=63270, S=biocrude_flowrate, CE=CEPCI_by_year[2007],n=0.75, BM=2)
-@cost(basis='Feedstock dry flowrate', ID= 'Heavy Fraction Tank', units='kg/h',
+@cost(basis='Biocrude flowrate', ID= 'Heavy Fraction Tank', units='kg/h',
       cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
-@cost(basis='Feedstock dry flowrate', ID= 'Medium Fraction Tank', units='kg/h',
+@cost(basis='Biocrude flowrate', ID= 'Medium Fraction Tank', units='kg/h',
       cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
-@cost(basis='Feedstock dry flowrate', ID= 'Light Fraction Tank', units='kg/h',
+@cost(basis='Biocrude flowrate', ID= 'Light Fraction Tank', units='kg/h',
       cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
 class BiocrudeDeashing(SanUnit):
     '''

@@ -11,6 +11,10 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
+#!!! Temporarily ignoring warnings
+# import warnings
+# warnings.filterwarnings('ignore')
+
 import os, qsdsan as qs
 from biosteam.units import IsenthalpicValve
 from biosteam import settings
@@ -51,7 +55,9 @@ feedstock = qs.WasteStream(
     'feedstock', Lipids=62.45*24.34, Proteins=2.38*24.34, Carbohydrates=29.46*24.34, Ash=5.71*24.34,
     Water=75.66*100,
     )
-feedstock.F_mass = 11.46 # all component flowrates will be adjsuted accordingly
+feed_factor= 0.93*0.2 #SDW feedstock desnity 0.93 g/ml, solid content=20 wt%
+feedstock.F_mass = 537.63*feed_factor  #dry feedstock flow rate kg/hr
+#all component flowrates will be adjsuted accordingly
 
 # Adjust feedstock moisture
 feedstock_water = qs.WasteStream('feedstock_water')
@@ -72,11 +78,11 @@ HTL.register_alias('HTL')
 # Area 200 Aqueous Product Treatment
 # =============================================================================
 
-SandFiltration = u.SandFiltration(
+AqueousFiltration = u.AqueousFiltration(
     'S201', ins=HTL-1, outs=('treated_aq'), init_with='WasteStream')
 
 AqStorage = qsu.StorageTank(
-    'T202', ins=SandFiltration-0, outs=('stored_aq'),
+    'T202', ins=AqueousFiltration-0, outs=('stored_aq'),
     init_with='WasteStream', tau=24*7, vessel_material='Stainless steel')
 
 
@@ -152,8 +158,19 @@ biofuel_additives.price = 1.4 # $/kg
 
 biobinder = stream.biobinder
 
-tea = create_tea(sys)
+base_labor = 338256 # for 1000 kg/hr
+
+
+tea = create_tea(
+    sys,
+    labor_cost_value=(feedstock.F_mass-feedstock.imass['Water'])/1000*base_labor,
+    )
 sys.simulate()
 
 biobinder_price = tea.solve_price(biobinder)
 print(f'Minimum selling price of the biobinder is ${biobinder_price:.2f}/kg.')
+c = qs.currency
+for attr in ('NPV','AOC', 'sales', 'net_earnings'):
+    uom = c if attr in ('NPV', 'CAPEX') else (c+('/yr'))
+    print(f'{attr} is {getattr(tea, attr):,.0f} {uom}')
+#sys.save_report(file= 'C:\Work\Rutgers\Biobinder\sys.xlsx')
