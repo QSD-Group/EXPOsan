@@ -385,8 +385,7 @@ default_biocrude_ratios = {
     'C30DICAD':     0.050934,
     }
 
-# @cost(basis='Feedstock dry flowrate', ID='Feedstock Tank', units='kg/h',
-#       cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2011], n=0.77, BM=1.5)
+
 class BiocrudeSplitter(SanUnit):
     '''
     Split biocrude into the respective components.
@@ -537,23 +536,21 @@ class AqueousFiltration(SanUnit):
         #treated_aq.copy_like(HTL_aqueous)
         
     def _design(self):
-                aqueous = self.ins[0]
-                self.design_results['Aqueous flowrate'] = aqueous.F_mass
+        aqueous = self.ins[0]
+        self.design_results['Aqueous flowrate'] = aqueous.F_mass
                 
 biocrude_flowrate= 5.64 #kg/hr
-@cost(basis='Biocrude flowrate', ID= 'Biocrude Storage Tank', units='kg/h',
-      cost=7549, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
-@cost(basis='Biocrude flowrate', ID= 'Dewaering Tank', units='kg/h',
-      cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
+# @cost(basis='Biocrude flowrate', ID= 'Biocrude Storage Tank', units='kg/h',
+#       cost=7549, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
+# @cost(basis='Biocrude flowrate', ID= 'Fractional Distillation Column', units='kg/h',
+#       cost=63270, S=biocrude_flowrate, CE=CEPCI_by_year[2007],n=0.75, BM=2)
+# @cost(basis='Biocrude flowrate', ID= 'Heavy Fraction Tank', units='kg/h',
+#       cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
+# @cost(basis='Biocrude flowrate', ID= 'Medium Fraction Tank', units='kg/h',
+#       cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
+# @cost(basis='Biocrude flowrate', ID= 'Light Fraction Tank', units='kg/h',
+#       cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
 @cost(basis='Biocrude flowrate', ID= 'Deashing Tank', units='kg/h',
-      cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
-@cost(basis='Biocrude flowrate', ID= 'Fractional Distillation Column', units='kg/h',
-      cost=63270, S=biocrude_flowrate, CE=CEPCI_by_year[2007],n=0.75, BM=2)
-@cost(basis='Biocrude flowrate', ID= 'Heavy Fraction Tank', units='kg/h',
-      cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
-@cost(basis='Biocrude flowrate', ID= 'Medium Fraction Tank', units='kg/h',
-      cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
-@cost(basis='Biocrude flowrate', ID= 'Light Fraction Tank', units='kg/h',
       cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
 class BiocrudeDeashing(SanUnit):
     '''
@@ -583,16 +580,18 @@ class BiocrudeDeashing(SanUnit):
         biocrude = self.ins[0]
         self.design_results['Biocrude flowrate'] = biocrude.F_mass
             
-    
-    
-# @cost(basis='Feedstock dry flowrate', ID='Feedstock Tank', units='kg/h',
-#       cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2011], n=0.77, BM=1.5)
+
+@cost(basis='Biocrude flowrate', ID= 'Dewatering Tank', units='kg/h',
+      cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
 class BiocrudeDewatering(SanUnit):
     '''
     Placeholder for the dewatering unit.
     '''
     
     _N_outs = 2
+    _units= {
+        'Biocrude flowrate': 'kg/h',
+        }
     target_moisture = 0.01 # weight basis
     
     def _run(self):
@@ -607,6 +606,10 @@ class BiocrudeDewatering(SanUnit):
         if excess_water >= 0:
             dewatered.imass['Water'] -= excess_water
             water.imass['Water'] = excess_water
+            
+    def _design(self):
+        biocrude = self.ins[0]
+        self.design_results['Biocrude flowrate'] = biocrude.F_mass
 
             
 class ShortcutColumn(bst.units.ShortcutColumn, qs.SanUnit):
