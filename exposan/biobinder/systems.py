@@ -167,7 +167,9 @@ tea = create_tea(
     )
 sys.simulate()
 
-biobinder_price = tea.solve_price(biobinder)
+#%%
+
+biobinder.price = biobinder_price = tea.solve_price(biobinder)
 print(f'Minimum selling price of the biobinder is ${biobinder_price:.2f}/kg.')
 c = qs.currency
 for attr in ('NPV','AOC', 'sales', 'net_earnings'):
