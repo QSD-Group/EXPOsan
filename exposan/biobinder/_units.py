@@ -13,76 +13,138 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-import biosteam as bst, qsdsan as qs
-from math import ceil, log
+import math, biosteam as bst, qsdsan as qs
 from biosteam.units.decorators import cost
 from qsdsan import SanUnit, Stream, sanunits as qsu
-# from qsdsan.sanunits._hydrothermal import KnockOutDrum
-# from qsdsan.utils import auom
 from exposan.biobinder import CEPCI_by_year
 
 __all__ = (
+    'AqueousFiltration',
     'BiocrudeDeashing',
     'BiocrudeDewatering',
     'BiocrudeSplitter',
+    'Disposal',
     # 'GasScrubber',
     'PilotHTL',
-    'AqueousFiltration',
+    'PreProcessing',
     'ShortcutColumn',
     'Transportation'
     )
 
+salad_dressing_composition = {
+    'Water': 0.7566,
+    'Lipids': 0.2434*0.6245,
+    'Proteins': 0.2434*0.0238,
+    'Carbohydrates': 0.2434*0.2946,
+    'Ash': 0.2434*0.0571,
+    }
+
+class PreProcessing(qsu.MixTank):
+    '''
+    Adjust the composition and moisture content of the feedstock.
+    '''
+    _N_ins = 2
+    _centralized_dry_flowrate = _decentralized_dry_flowrate = 1
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                  init_with='WasteStream', F_BM_default=1,
+                  feedstock_composition=salad_dressing_composition,
+                  decentralized_dry_flowrate=1, # dry kg/hr
+                  centralized_dry_flowrate=1, # dry kg/hr
+                  target_HTL_solid_loading=0.2,
+                  tau=1, **add_mixtank_kwargs,
+                  ):
+        mixtank_kwargs = add_mixtank_kwargs.copy()
+        mixtank_kwargs['tau'] = tau
+        qsu.MixTank.__init__(self, ID, ins, outs, thermo, 
+                             init_with=init_with, F_BM_default=F_BM_default, **mixtank_kwargs)
+        self.feedstock_composition = feedstock_composition
+        self.decentralized_dry_flowrate = decentralized_dry_flowrate
+        self.centralized_dry_flowrate = centralized_dry_flowrate
+        self.target_HTL_solid_loading = target_HTL_solid_loading
+
+    
+    def _run(self):
+        feedstock, htl_process_water = self.ins
+        feedstock.empty()
+        htl_process_water.empty()
+        
+        feedstock_composition = self.feedstock_composition
+        for i, j in self.feedstock_composition.items():
+            feedstock.imass[i] = j
+        
+        decentralized_dry_flowrate = self.decentralized_dry_flowrate
+        feedstock.F_mass = decentralized_dry_flowrate/(1-feedstock_composition['Water']) # scale flowrate
+        htl_wet_mass = decentralized_dry_flowrate/self.target_HTL_solid_loading
+        required_water = htl_wet_mass - feedstock.imass['Water']
+        htl_process_water.imass['Water'] = max(0, required_water)
+        
+        qsu.MixTank._run(self)
+        
+    def _cost(self):
+        qsu.MixTank._cost(self)
+        N = math.ceil(self.centralized_dry_flowrate / self.decentralized_dry_flowrate)
+        self.parallel['self'] *= N
+        # baseline_purchase_costs = self.baseline_purchase_costs
+        # for i, j in baseline_purchase_costs.items():
+        #     baseline_purchase_costs[i] *= N
+        # self.power_utility.consumption *= N
+        # self.power_utility.production *= N
+        
+
 #!!! TO BE UPDATED THROUGHOUT
-pilot_flowrate = 11.46 # kg/h
-@cost(basis='Feedstock dry flowrate', ID='Feedstock Tank', units='kg/h',
-      cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2023], n=0.77, BM=1.5)
-@cost(basis='Feedstock dry flowrate', ID= 'Feedstock Pump', units='kg/h',
-      cost=6180, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=2.3)
-@cost(basis='Feedstock dry flowrate', ID= 'Inverter', units='kg/h',
-      cost=240, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
-@cost(basis='Feedstock dry flowrate', ID= 'High Pressure Pump', units='kg/h',
-      cost=1634, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=2.3)
-@cost(basis='Feedstock dry flowrate', ID= 'Reactor Core', units='kg/h',
-      cost=30740, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=2)
-@cost(basis='Feedstock dry flowrate', ID= 'Reactor Vessel', units='kg/h',
-      cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.5)
-@cost(basis='Feedstock dry flowrate', ID= 'Heat Transfer Putty', units='kg/h',
-      cost=2723, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
-@cost(basis='Feedstock dry flowrate', ID= 'Electric Heaters', units='kg/h',
-      cost=8400, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
-@cost(basis='Feedstock dry flowrate', ID= 'J Type Thermocouples', units='kg/h',
-      cost=497, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
-@cost(basis='Feedstock dry flowrate', ID= 'Ceramic Fiber', units='kg/h',
-      cost=5154, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
-@cost(basis='Feedstock dry flowrate', ID= 'Steel Jacket', units='kg/h',
-      cost=22515, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
-@cost(basis='Feedstock dry flowrate', ID= 'Counterflow Heat Exchanger', units='kg/h',
-      cost=14355, S=pilot_flowrate, CE=CEPCI_by_year[2013],n=0.77, BM=2.2)
-@cost(basis='Feedstock dry flowrate', ID= 'Temperature Control and Data Logging Unit', units='kg/h',
-      cost=905, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.8)
-@cost(basis='Feedstock dry flowrate', ID= 'Pulsation Dampener', units='kg/h',
-      cost=3000, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.8)
-@cost(basis='Feedstock dry flowrate', ID= 'Fluid Accumulator', units='kg/h',
-      cost=995, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.8)
-@cost(basis='Feedstock dry flowrate', ID= 'Burst Rupture Discs', units='kg/h',
-      cost=1100, S=pilot_flowrate, CE=CEPCI_by_year[2023], n=0.77, BM=1.6)
-@cost(basis='Feedstock dry flowrate', ID= 'Pressure Relief Vessel', units='kg/h',
-      cost=4363, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=2)
-@cost(basis='Feedstock dry flowrate', ID= 'Gas Scrubber', units='kg/h',
-      cost=1100, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.8)
-@cost(basis='Feedstock dry flowrate', ID= 'BPR', units='kg/h',
-      cost=4900, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.6)
-@cost(basis='Feedstock dry flowrate', ID= 'Primary Collection Vessel', units='kg/h',
-      cost=7549, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.5)
-@cost(basis='Feedstock dry flowrate', ID= 'Belt Oil Skimmer', units='kg/h',
-      cost=2632, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.5)
-@cost(basis='Feedstock dry flowrate', ID= 'Bag Filter', units='kg/h',
-      cost=8800, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.7)
-@cost(basis='Feedstock dry flowrate', ID= 'Oil Vessel', units='kg/h',
-      cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.5)
-@cost(basis='Feedstock dry flowrate', ID= 'Mobile HTL system', units='kg/h',
-      cost=23718, S=pilot_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
-class PilotHTL(qsu.HydrothermalLiquefaction):   
+base_feedstock_flowrate = 11.46 # kg/h
+@cost(basis='Feedstock dry flowrate', ID='Feedstock Tank', units='kg/hr',
+      cost=4330, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023], n=0.77, BM=1.5)
+@cost(basis='Feedstock dry flowrate', ID= 'Feedstock Pump', units='kg/hr',
+      cost=6180, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=2.3)
+@cost(basis='Feedstock dry flowrate', ID= 'Inverter', units='kg/hr',
+      cost=240, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
+@cost(basis='Feedstock dry flowrate', ID= 'High Pressure Pump', units='kg/hr',
+      cost=1634, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=2.3)
+@cost(basis='Feedstock dry flowrate', ID= 'Reactor Core', units='kg/hr',
+      cost=30740, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=2)
+@cost(basis='Feedstock dry flowrate', ID= 'Reactor Vessel', units='kg/hr',
+      cost=4330, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.5)
+@cost(basis='Feedstock dry flowrate', ID= 'Heat Transfer Putty', units='kg/hr',
+      cost=2723, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
+@cost(basis='Feedstock dry flowrate', ID= 'Electric Heaters', units='kg/hr',
+      cost=8400, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
+@cost(basis='Feedstock dry flowrate', ID= 'J Type Thermocouples', units='kg/hr',
+      cost=497, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
+@cost(basis='Feedstock dry flowrate', ID= 'Ceramic Fiber', units='kg/hr',
+      cost=5154, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
+@cost(basis='Feedstock dry flowrate', ID= 'Steel Jacket', units='kg/hr',
+      cost=22515, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
+@cost(basis='Feedstock dry flowrate', ID= 'Counterflow Heat Exchanger', units='kg/hr',
+      cost=14355, S=base_feedstock_flowrate, CE=CEPCI_by_year[2013],n=0.77, BM=2.2)
+@cost(basis='Feedstock dry flowrate', ID= 'Temperature Control and Data Logging Unit', units='kg/hr',
+      cost=905, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.8)
+@cost(basis='Feedstock dry flowrate', ID= 'Pulsation Dampener', units='kg/hr',
+      cost=3000, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.8)
+@cost(basis='Feedstock dry flowrate', ID= 'Fluid Accumulator', units='kg/hr',
+      cost=995, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.8)
+@cost(basis='Feedstock dry flowrate', ID= 'Burst Rupture Discs', units='kg/hr',
+      cost=1100, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023], n=0.77, BM=1.6)
+@cost(basis='Feedstock dry flowrate', ID= 'Pressure Relief Vessel', units='kg/hr',
+      cost=4363, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=2)
+@cost(basis='Feedstock dry flowrate', ID= 'Gas Scrubber', units='kg/hr',
+      cost=1100, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.8)
+@cost(basis='Feedstock dry flowrate', ID= 'BPR', units='kg/hr',
+      cost=4900, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.6)
+@cost(basis='Feedstock dry flowrate', ID= 'Primary Collection Vessel', units='kg/hr',
+      cost=7549, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.5)
+@cost(basis='Feedstock dry flowrate', ID= 'Belt Oil Skimmer', units='kg/hr',
+      cost=2632, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.5)
+@cost(basis='Feedstock dry flowrate', ID= 'Bag Filter', units='kg/hr',
+      cost=8800, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.7)
+@cost(basis='Feedstock dry flowrate', ID= 'Oil Vessel', units='kg/hr',
+      cost=4330, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1.5)
+@cost(basis='Feedstock dry flowrate', ID= 'Mobile HTL system', units='kg/hr',
+      cost=23718, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023],n=0.77, BM=1)
+@cost(basis='Non-scaling factor', ID='Magnotrol Valves Set', units='ea',
+      cost=343, S=1, CE=CEPCI_by_year[2023], n=1, BM=1)
+class PilotHTL(SanUnit):
     '''
     
     References
@@ -120,26 +182,22 @@ class PilotHTL(qsu.HydrothermalLiquefaction):
     _N_outs = 4
     
     _units= {
-        'Feedstock dry flowrate': 'kg/h',
+        'Feedstock dry flowrate': 'kg/hr',
+        'Non-scaling factor': 'ea',
         }
     
-    # auxiliary_unit_names=('heat_exchanger','kodrum')
-
-    _F_BM_default = {
-        **qsu.HydrothermalLiquefaction._F_BM_default,
-        # 'Feedstock Tank': 1.5,
-        }
+    _centralized_dry_flowrate = _decentralized_dry_flowrate = 1
     
     # ID of the components that will be used in mass flowrate calculations
     ash_ID = 'Ash'
     water_ID = 'Water'
     
-    # Product condition adjustment based on 
+    # Product condition adjustment based on ref [4]
     gas_composition = {
         'CH4':0.050,
         'C2H6':0.032,
         'CO2':0.918
-        } # [4]
+        }
     
     # Product conditions per [4], pressure converted from psi to Pa
     biocrude_moisture_content = 0.063
@@ -148,17 +206,18 @@ class PilotHTL(qsu.HydrothermalLiquefaction):
     biocrude_P = 30*6894.76
     offgas_P = 30*6894.76
     eff_T = 60+273.15
+    
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                   init_with='WasteStream',
                   P=None, tau=15/60, V_wf=0.45,
-                  N=4, V=None, auxiliary=False,
-                  mixing_intensity=None, kW_per_m3=0,
-                  wall_thickness_factor=1,
-                  vessel_material='Stainless steel 316',
-                  vessel_type='Horizontal',
-                  CAPEX_factor=1,
-                  HTL_steel_cost_factor=2.7, # so the cost matches [6]
+                  decentralized_dry_flowrate=1, # dry kg/hr
+                  centralized_dry_flowrate=1, # dry kg/hr
+                  afdw_biocrude_yield=0.5219,
+                  afdw_aqueous_yield=0.2925,
+                  afdw_gas_yield=0.1756,
+                  piping_cost_ratio=0.15,
+                  accessory_cost_ratio=0.08,
                   **kwargs,
                   ):
         
@@ -167,28 +226,24 @@ class PilotHTL(qsu.HydrothermalLiquefaction):
         hx_in = Stream(f'{ID}_hx_in')
         hx_out = Stream(f'{ID}_hx_out')
         self.heat_exchanger = qsu.HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out, T=self.eff_T, rigorous=True)
-        #!!! Probably need to add the knockout drum
-        # self.kodrum = KnockOutDrum(ID=f'.{ID}_KOdrum')
         self.P = P
         self.tau = tau
         self.V_wf = V_wf
-        self.N = N
-        self.V = V
-        self.auxiliary = auxiliary
-        self.mixing_intensity = mixing_intensity
-        self.kW_per_m3 = kW_per_m3
-        self.wall_thickness_factor = wall_thickness_factor
-        self.vessel_material = vessel_material
-        self.vessel_type = vessel_type
-        self.CAPEX_factor = CAPEX_factor
+        self.decentralized_dry_flowrate = decentralized_dry_flowrate
+        self.centralized_dry_flowrate = centralized_dry_flowrate
+        self.afdw_biocrude_yield = afdw_biocrude_yield
+        self.afdw_aqueous_yield = afdw_aqueous_yield
+        self.afdw_gas_yield = afdw_gas_yield
+        self.piping_cost_ratio = piping_cost_ratio
+        self.accessory_cost_ratio = accessory_cost_ratio
         for attr, val in kwargs.items(): setattr(self, attr, val)
     
 
     def _run(self):        
         feedstock = self.ins[0]
         hydrochar, HTLaqueous, biocrude, offgas = self.outs
+        for i in self.outs: i.empty()
         
-        #!!! Should allow users to update the yields and properties
         afdw_in = self.afdw_mass_in
         hydrochar.imass['Hydrochar'] = afdw_in * self.afdw_hydrochar_yield
         # HTLaqueous is TDS in aqueous phase
@@ -211,111 +266,21 @@ class PilotHTL(qsu.HydrothermalLiquefaction):
         offgas.phase = 'g'
         HTLaqueous.phase = biocrude.phase = 'l'
         
-        # hydrochar.P = self.hydrochar_P
-        # HTLaqueous.P = self.HTLaqueous_P
-        # biocrude.P = self.biocrude_P
-        # offgas.P = self.offgas_P
+        hydrochar.P = self.hydrochar_P
+        HTLaqueous.P = self.HTLaqueous_P
+        biocrude.P = self.biocrude_P
+        offgas.P = self.offgas_P
         
-        for stream in self.outs : stream.T = self.heat_exchanger.T
+        self._refresh_parallel()
+        for stream in self.outs:
+            stream.T = self.heat_exchanger.T
+            stream.F_mass *= self.parallel['self']
         
-    @property
-    def afdw_mass_in(self):
-        '''Total ash-free dry mass of the feedstock.'''
-        feedstock = self.ins[0]
-        return feedstock.F_mass-feedstock.imass[self.ash_ID]-feedstock.imass[self.water_ID]
-
-    @property
-    def afdw_biocrude_yield(self):
-        '''Biocrude product yield on the ash-free dry weight basis of the feedstock.'''
-        return 0.5219
-
-    @property
-    def afdw_aqueous_yield(self):
-        '''Aqueous product yield on the ash-free dry weight basis of the feedstock.'''
-        return 0.2925
-
-    @property
-    def afdw_hydrochar_yield(self):
-        '''Hydrochar product yield on the ash-free dry weight basis of the feedstock.'''
-        return 0.01
-    
-    @property
-    def afdw_gas_yield(self):
-        '''Gas product yield on the ash-free dry weight basis of the feedstock.'''
-        return 0.1756
-
-    # @property
-    # def biocrude_C_ratio(self):
-    #     return (self.WWTP.AOSc*self.biocrude_C_slope + self.biocrude_C_intercept)/100 # [2]
-    
-    # @property
-    # def biocrude_H_ratio(self):
-    #     return (self.WWTP.AOSc*self.biocrude_H_slope + self.biocrude_H_intercept)/100 # [2]
-
-    # @property
-    # def biocrude_N_ratio(self):
-    #     return self.biocrude_N_slope*self.WWTP.sludge_dw_protein # [2]
-    
-    # @property
-    # def biocrude_C(self):
-    #     return min(self.outs[2].F_mass*self.biocrude_C_ratio, self.WWTP.sludge_C)
-
-
-    # @property
-    # def HTLaqueous_C(self):
-    #     return min(self.outs[1].F_vol*1000*self.HTLaqueous_C_slope*\
-    #                self.WWTP.sludge_dw_protein*100/1000000/self.TOC_TC,
-    #                self.WWTP.sludge_C - self.biocrude_C)
-
-    # @property
-    # def biocrude_H(self):
-    #     return self.outs[2].F_mass*self.biocrude_H_ratio
-
-    # @property
-    # def biocrude_N(self):
-    #     return min(self.outs[2].F_mass*self.biocrude_N_ratio, self.WWTP.sludge_N)
-    
-    # @property
-    # def biocrude_HHV(self):
-    #     return 30.74 - 8.52*self.WWTP.AOSc +\
-    #            0.024*self.WWTP.sludge_dw_protein # [2]
-               
-    # @property
-    # def energy_recovery(self):
-    #     return self.biocrude_HHV*self.outs[2].imass['Biocrude']/\
-    #            (self.WWTP.outs[0].F_mass -\
-    #            self.WWTP.outs[0].imass['H2O'])/self.WWTP.sludge_HHV # [2]
-        
-    # @property
-    # def offgas_C(self):
-    #     carbon = sum(self.outs[3].imass[self.gas_composition]*
-    #                  [cmp.i_C for cmp in self.components[self.gas_composition]])
-    #     return min(carbon, self.WWTP.sludge_C - self.biocrude_C - self.HTLaqueous_C)
-        
-    # @property
-    # def hydrochar_C_ratio(self):
-    #     return min(self.hydrochar_C_slope*self.WWTP.sludge_dw_carbo, 0.65) # [2]
-
-    # @property
-    # def hydrochar_C(self):
-    #     return min(self.outs[0].F_mass*self.hydrochar_C_ratio, self.WWTP.sludge_C -\
-    #                self.biocrude_C - self.HTLaqueous_C - self.offgas_C)
-
-    # @property
-    # def hydrochar_P(self):
-    #     return min(self.WWTP.sludge_P*self.hydrochar_P_recovery_ratio, self.outs[0].F_mass)
-
-    # @property
-    # def HTLaqueous_N(self):
-    #     return self.WWTP.sludge_N - self.biocrude_N
-        
-    # @property
-    # def HTLaqueous_P(self):
-    #     return self.WWTP.sludge_P*(1 - self.hydrochar_P_recovery_ratio)
 
     def _design(self):
         Design = self.design_results
-        Design['Feedstock dry flowrate'] = self.afdw_mass_in
+        Design['Feedstock dry flowrate'] = self.dry_mass_in
+        Design['Non-scaling factor'] = 1
         
         hx = self.heat_exchanger
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
@@ -325,43 +290,75 @@ class PilotHTL(qsu.HydrothermalLiquefaction):
         hx_outs0.T = hx.T
         hx_ins0.P = hx_outs0.P = self.outs[0].P # cooling before depressurized, heating after pressurized
         # in other words, both heating and cooling are performed under relatively high pressure
-        # hx_ins0.vle(T=hx_ins0.T, P=hx_ins0.P)
-        # hx_outs0.vle(T=hx_outs0.T, P=hx_outs0.P)
+        hx_ins0.vle(T=hx_ins0.T, P=hx_ins0.P)
+        hx_outs0.vle(T=hx_outs0.T, P=hx_outs0.P)
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
 
         self.P = self.ins[0].P
-        # Reactor._design(self)
-        # Design['Solid filter and separator weight'] = 0.2*Design['Weight']*Design['Number of reactors'] # assume stainless steel
-        # # based on [6], case D design table, the purchase price of solid filter and separator to
-        # # the purchase price of HTL reactor is around 0.2, therefore, assume the weight of solid filter
-        # # and separator is 0.2*single HTL weight*number of HTL reactors
-        # self.construction[0].quantity += Design['Solid filter and separator weight']*_lb_to_kg
-        
-        # self.kodrum.V = self.F_mass_out/_lb_to_kg/1225236*4230/_m3_to_gal
-        # # in [6], when knockout drum influent is 1225236 lb/hr, single knockout
-        # # drum volume is 4230 gal
-        
-        # self.kodrum.simulate()
+
         
     def _cost(self):
-        # HydrothermalLiquefaction._cost(self)
-        self.cost_items.clear() #!!! will not be needed if not inheriting from `HydrothermalLiquefaction`
+        self._refresh_parallel()
         self._decorated_cost()
+        baseline_purchase_cost = self.baseline_purchase_cost
+        self.baseline_purchase_costs['Piping'] = baseline_purchase_cost*self.piping_cost_ratio
+        self.baseline_purchase_costs['Accessories'] = baseline_purchase_cost*self.accessory_cost_ratio
         
-        purchase_costs = self.baseline_purchase_costs
-        for item in purchase_costs.keys():
-            purchase_costs[item] *= self.CAPEX_factor
         
-        self.baseline_purchase_costs['Piping'] = self.baseline_purchase_cost*0.15
+        # # If need to consider additional cost factors
+        # purchase_costs = self.baseline_purchase_costs
+        # for item in purchase_costs.keys():
+        #     purchase_costs[item] *= self.CAPEX_factor
             
-        # purchase_costs['Horizontal pressure vessel'] *= self.HTL_steel_cost_factor
+        # for aux_unit in self.auxiliary_units:
+        #     purchase_costs = aux_unit.baseline_purchase_costs
+        #     installed_costs = aux_unit.installed_costs
+        #     for item in purchase_costs.keys():
+        #         purchase_costs[item] *= self.CAPEX_factor
+        #         installed_costs[item] *= self.CAPEX_factor
         
-        for aux_unit in self.auxiliary_units:
-            purchase_costs = aux_unit.baseline_purchase_costs
-            installed_costs = aux_unit.installed_costs
-            for item in purchase_costs.keys():
-                purchase_costs[item] *= self.CAPEX_factor
-                installed_costs[item] *= self.CAPEX_factor
+
+    def _refresh_parallel(self):
+        self.parallel['self'] = math.ceil(self.centralized_dry_flowrate/self.decentralized_dry_flowrate)
+
+    @property
+    def dry_mass_in(self):
+        '''Total dry mass of the feedstock.'''
+        feedstock = self.ins[0]
+        return feedstock.F_mass-feedstock.imass[self.water_ID]
+
+    @property
+    def afdw_mass_in(self):
+        '''Total ash-free dry mass of the feedstock.'''
+        feedstock = self.ins[0]
+        return feedstock.F_mass-feedstock.imass[self.ash_ID]-feedstock.imass[self.water_ID]
+    
+    @property
+    def afdw_hydrochar_yield(self):
+        '''Hydrochar product yield on the ash-free dry weight basis of the feedstock.'''
+        char_yield = 1-self.afdw_biocrude_yield-self.afdw_aqueous_yield-self.afdw_gas_yield
+        if char_yield < 0:
+            raise ValueError('Sum of biocrude, aqueous, and gas product exceeds 100%.')
+        return char_yield
+    
+    @property
+    def decentralized_dry_flowrate(self):
+        '''Dry mass flowrate for the decentralized configuration.'''
+        return self._decentralized_dry_flowrate
+    @decentralized_dry_flowrate.setter
+    def decentralized_dry_flowrate(self, i):
+        self._decentralized_dry_flowrate = i
+        self._refresh_parallel()
+
+    @property
+    def centralized_dry_flowrate(self):
+        '''Dry mass flowrate for the centralzied configuration.'''
+        return self._centralized_dry_flowrate
+    @centralized_dry_flowrate.setter
+    def centralized_dry_flowrate(self, i):
+        self._centralized_dry_flowrate = i
+        self._refresh_parallel()
+        
 
 # Jone et al., Table C-1
 #!!! Might want to redo this part by adjusting the components.
@@ -511,15 +508,15 @@ class BiocrudeSplitter(SanUnit):
 #     '''
 
 
-ap_flowrate= 49.65 #kg/hr
-@cost(basis='Aqueous flowrate', ID= 'Sand Filtration Unit', units='kg/h',
-      cost=318, S=ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.7)
-@cost(basis='Aqueous flowrate', ID= 'EC Oxidation Tank', units='kg/h',
-      cost=1850, S=ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
-@cost(basis='Aqueous flowrate', ID= 'Biological Treatment Tank', units='kg/h',
-      cost=4330, S=ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
-@cost(basis='Aqueous flowrate', ID= 'Liquid Fertilizer Storage', units='kg/h',
-      cost=7549, S=ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
+base_ap_flowrate = 49.65 #kg/hr
+@cost(basis='Aqueous flowrate', ID= 'Sand Filtration Unit', units='kg/hr',
+      cost=318, S=base_ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.7)
+@cost(basis='Aqueous flowrate', ID= 'EC Oxidation Tank', units='kg/hr',
+      cost=1850, S=base_ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
+@cost(basis='Aqueous flowrate', ID= 'Biological Treatment Tank', units='kg/hr',
+      cost=4330, S=base_ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
+@cost(basis='Aqueous flowrate', ID= 'Liquid Fertilizer Storage', units='kg/hr',
+      cost=7549, S=base_ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
 class AqueousFiltration(SanUnit):
     '''
     Placeholder for the aqueous filtration unit. All outs are copied from ins.
@@ -527,7 +524,7 @@ class AqueousFiltration(SanUnit):
      
     _N_outs = 1
     _units= {
-        'Aqueous flowrate': 'kg/h',
+        'Aqueous flowrate': 'kg/hr',
         }
     def _run(self):
         HTL_aqueous = self.ins[0]
@@ -539,19 +536,9 @@ class AqueousFiltration(SanUnit):
         aqueous = self.ins[0]
         self.design_results['Aqueous flowrate'] = aqueous.F_mass
                 
-biocrude_flowrate= 5.64 #kg/hr
-# @cost(basis='Biocrude flowrate', ID= 'Biocrude Storage Tank', units='kg/h',
-#       cost=7549, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
-# @cost(basis='Biocrude flowrate', ID= 'Fractional Distillation Column', units='kg/h',
-#       cost=63270, S=biocrude_flowrate, CE=CEPCI_by_year[2007],n=0.75, BM=2)
-# @cost(basis='Biocrude flowrate', ID= 'Heavy Fraction Tank', units='kg/h',
-#       cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
-# @cost(basis='Biocrude flowrate', ID= 'Medium Fraction Tank', units='kg/h',
-#       cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
-# @cost(basis='Biocrude flowrate', ID= 'Light Fraction Tank', units='kg/h',
-#       cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
-@cost(basis='Biocrude flowrate', ID= 'Deashing Tank', units='kg/h',
-      cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
+base_biocrude_flowrate = 5.64 # kg/hr
+@cost(basis='Biocrude flowrate', ID= 'Deashing Tank', units='kg/hr',
+      cost=4330, S=base_biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
 class BiocrudeDeashing(SanUnit):
     '''
     Placeholder for the deashing unit.
@@ -559,7 +546,7 @@ class BiocrudeDeashing(SanUnit):
     
     _N_outs = 2
     _units= {
-        'Biocrude flowrate': 'kg/h',
+        'Biocrude flowrate': 'kg/hr',
         }
     target_ash = 0.01 # dry weight basis
     
@@ -581,8 +568,8 @@ class BiocrudeDeashing(SanUnit):
         self.design_results['Biocrude flowrate'] = biocrude.F_mass
             
 
-@cost(basis='Biocrude flowrate', ID= 'Dewatering Tank', units='kg/h',
-      cost=4330, S=biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
+@cost(basis='Biocrude flowrate', ID= 'Dewatering Tank', units='kg/hr',
+      cost=4330, S=base_biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
 class BiocrudeDewatering(SanUnit):
     '''
     Placeholder for the dewatering unit.
@@ -590,7 +577,7 @@ class BiocrudeDewatering(SanUnit):
     
     _N_outs = 2
     _units= {
-        'Biocrude flowrate': 'kg/h',
+        'Biocrude flowrate': 'kg/hr',
         }
     target_moisture = 0.01 # weight basis
     
@@ -622,12 +609,65 @@ class ShortcutColumn(bst.units.ShortcutColumn, qs.SanUnit):
     '''
             
 
-# @cost(basis='Feedstock dry flowrate', ID='Feedstock Tank', units='kg/h',
-#       cost=4330, S=pilot_flowrate, CE=CEPCI_by_year[2011], n=0.77, BM=1.5)
-class Transportation(qsu.Copier):
+class Transportation(qsu.Copier):    
     '''
-    Placeholder for transportation. All outs are copied from ins.
+    To account for transportation cost. All outs are copied from ins.
+    
+    Parameters
+    ----------
+    transportation_distance : float
+        Transportation distance in km.
+    transportation_price : float
+        Transportation price in $/kg/km.
     '''
     
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                  init_with='WasteStream', F_BM_default=1,
+                  transportation_distance=0, # km
+                  transportation_price=0, # $/kg/km
+                  **kwargs,
+                  ):
+        qsu.Copier.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
+        self.transportation_distance = transportation_distance
+        self.transportation_price = transportation_price
+        for kw, arg in kwargs.items(): setattr(self, kw, arg)
     
+    def _cost(self):
+        self.baseline_purchase_costs['Transportation'] = (
+            self.F_mass_in *
+            self.transportation_distance *
+            self.transportation_price
+            )
 
+    
+class Disposal(SanUnit):
+    '''
+    Update the cost for disposal, where the price is given for dry weights.
+    '''
+    
+    _N_ins = 1
+    _N_outs = 2
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                  init_with='WasteStream', F_BM_default=1,
+                  disposal_price=0,
+                  exclude_components=('Water',),
+                  **kwargs,
+                  ):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
+        self.disposal_price = disposal_price
+        self.exclude_components = exclude_components
+        for kw, arg in kwargs.items(): setattr(self, kw, arg)
+    
+    def _run(self):
+        inf = self.ins[0]
+        waste, others = self.outs        
+        
+        waste.copy_like(inf)
+        waste.imass[self.exclude_components] = 0
+        
+        others.copy_like(inf)
+        others.imass[self.components.IDs] -= waste.imass[self.components.IDs]
+        
+    def _cost(self):
+        self.outs[0].price = self.disposal_price

@@ -113,7 +113,6 @@ def create_components(set_thermo=True):
     biocrude_cmps['7MINDOLE'].Hf = biocrude_cmps['INDOLE'].Hf
     biocrude_cmps['C30DICAD'].Hf = biocrude_cmps['CHOLESOL'].Hf
     
-    
     # Components in the aqueous product
     H2O = htl_cmps.H2O
     C = htl_cmps.C
