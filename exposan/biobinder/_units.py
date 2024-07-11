@@ -23,15 +23,19 @@ __all__ = (
     'BiocrudeDeashing',
     'BiocrudeDewatering',
     'BiocrudeSplitter',
+    'Conditioning',
     'Disposal',
-    # 'GasScrubber',
     'PilotHTL',
-    'PreProcessing',
+    'ProcessWaterCenter',
+    'Scaler',
     'ShortcutColumn',
-    'Transportation'
+    'Transportation',
     )
 
-salad_dressing_composition = {
+
+# %%
+
+salad_dressing_waste_composition = {
     'Water': 0.7566,
     'Lipids': 0.2434*0.6245,
     'Proteins': 0.2434*0.0238,
@@ -39,30 +43,45 @@ salad_dressing_composition = {
     'Ash': 0.2434*0.0571,
     }
 
-class PreProcessing(qsu.MixTank):
+class Conditioning(qsu.MixTank):
     '''
     Adjust the composition and moisture content of the feedstock.
+    
+    Parameters
+    ----------
+    ins : seq(obj)
+        Raw feedstock, process water for moisture adjustment.
+    outs : obj
+        Conditioned feedstock with appropriate composition and moisture for conversion.
+    feedstock_dry_flowrate : float
+        Feedstock dry mass flowrate for 1 reactor.
+    target_HTL_solid_loading : float
+        Target solid loading.
+    N_unit : int
+        Number of required preprocessing units.
+        Note that one precessing unit may have multiple tanks.
+    tau : float
+        Retention time for the mix tank.
+    add_mixtank_kwargs : dict
+        Additional keyword arguments for MixTank unit.
     '''
     _N_ins = 2
-    _centralized_dry_flowrate = _decentralized_dry_flowrate = 1
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                   init_with='WasteStream', F_BM_default=1,
-                  feedstock_composition=salad_dressing_composition,
-                  decentralized_dry_flowrate=1, # dry kg/hr
-                  centralized_dry_flowrate=1, # dry kg/hr
+                  feedstock_composition=salad_dressing_waste_composition,
+                  feedstock_dry_flowrate=1,
                   target_HTL_solid_loading=0.2,
-                  tau=1, **add_mixtank_kwargs,
+                  N_unit=1, tau=1, **add_mixtank_kwargs,
                   ):
         mixtank_kwargs = add_mixtank_kwargs.copy()
         mixtank_kwargs['tau'] = tau
         qsu.MixTank.__init__(self, ID, ins, outs, thermo, 
                              init_with=init_with, F_BM_default=F_BM_default, **mixtank_kwargs)
         self.feedstock_composition = feedstock_composition
-        self.decentralized_dry_flowrate = decentralized_dry_flowrate
-        self.centralized_dry_flowrate = centralized_dry_flowrate
+        self.feedstock_dry_flowrate = feedstock_dry_flowrate
         self.target_HTL_solid_loading = target_HTL_solid_loading
-
+        self.N_unit = N_unit
     
     def _run(self):
         feedstock, htl_process_water = self.ins
@@ -73,27 +92,73 @@ class PreProcessing(qsu.MixTank):
         for i, j in self.feedstock_composition.items():
             feedstock.imass[i] = j
         
-        decentralized_dry_flowrate = self.decentralized_dry_flowrate
-        feedstock.F_mass = decentralized_dry_flowrate/(1-feedstock_composition['Water']) # scale flowrate
-        htl_wet_mass = decentralized_dry_flowrate/self.target_HTL_solid_loading
+        feedstock_dry_flowrate = self.feedstock_dry_flowrate
+        feedstock.F_mass = feedstock_dry_flowrate/(1-feedstock_composition['Water']) # scale flowrate
+        htl_wet_mass = feedstock_dry_flowrate/self.target_HTL_solid_loading
         required_water = htl_wet_mass - feedstock.imass['Water']
         htl_process_water.imass['Water'] = max(0, required_water)
         
         qsu.MixTank._run(self)
         
     def _cost(self):
-        qsu.MixTank._cost(self)
-        N = math.ceil(self.centralized_dry_flowrate / self.decentralized_dry_flowrate)
-        self.parallel['self'] *= N
+        qsu.MixTank._cost(self) # just for one unit
+        self.parallel['self'] = self.parallel.get('self', 1)*self.N_unit
         # baseline_purchase_costs = self.baseline_purchase_costs
         # for i, j in baseline_purchase_costs.items():
         #     baseline_purchase_costs[i] *= N
         # self.power_utility.consumption *= N
-        # self.power_utility.production *= N
+        # self.power_utility.production *= N        
+
+
+class Scaler(SanUnit):
+    '''
+    Scale up the influent or the effluent by a specified number.
+    
+    Parameters
+    ----------
+    ins : seq(obj)
+        Stream before scaling.
+    outs : seq(obj)
+        Stream after scaling.
+    scaling_factor : float
+        Factor for which the effluent will be scaled.
+    reverse : bool
+        If True, will scale the influent based on the effluent.
+        E.g., for a scaling factor of 2, when `reverse` is False, 
+        all components in the effluent will have a mass flowrate that is 2X of the influent;
+        when `reverse` is True,
+        all components in the influent will have a mass flowrate that is 2X of the effluent.
+    '''
+    
+    _N_ins = _N_outs = 1
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                  init_with='WasteStream', F_BM_default=1,
+                  scaling_factor=1, reverse=False, **kwargs,
+                  ):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
+        self.scaling_factor = scaling_factor
+        self.reverse = reverse
+        for kw, arg in kwargs.items(): setattr(self, kw, arg)
+        
+    def _run(self):
+        inf = self.ins[0]
+        eff = self.outs[0]
+        factor = self.scaling_factor
+        if self.reverse is False:
+            eff.copy_like(inf)
+            eff.F_mass *= factor
+        else:
+            inf.copy_like(eff)
+            inf.F_mass *= factor
+        
         
 
-#!!! TO BE UPDATED THROUGHOUT
-base_feedstock_flowrate = 11.46 # kg/h
+# %%
+
+base_feedstock_flowrate = 11.46 # kg/hr
+salad_dressing_waste_yields = (0.5219, 0.2925, 0.1756)
+
 @cost(basis='Feedstock dry flowrate', ID='Feedstock Tank', units='kg/hr',
       cost=4330, S=base_feedstock_flowrate, CE=CEPCI_by_year[2023], n=0.77, BM=1.5)
 @cost(basis='Feedstock dry flowrate', ID= 'Feedstock Pump', units='kg/hr',
@@ -146,36 +211,30 @@ base_feedstock_flowrate = 11.46 # kg/h
       cost=343, S=1, CE=CEPCI_by_year[2023], n=1, BM=1)
 class PilotHTL(SanUnit):
     '''
+    Pilot-scale reactor for hydrothermal liquefaction (HTL) of wet organics.
+    Biocrude from mulitple pilot-scale reactors will be transported to a central plant
+    for biocrude upgrading.
     
-    References
+    Parameters
     ----------
-    [1] Leow, S.; Witter, J. R.; Vardon, D. R.; Sharma, B. K.;
-        Guest, J. S.; Strathmann, T. J. Prediction of Microalgae Hydrothermal
-        Liquefaction Products from Feedstock Biochemical Composition.
-        Green Chem. 2015, 17 (6), 3584–3599. https://doi.org/10.1039/C5GC00574D.
-    [2] Li, Y.; Leow, S.; Fedders, A. C.; Sharma, B. K.; Guest, J. S.;
-        Strathmann, T. J. Quantitative Multiphase Model for Hydrothermal
-        Liquefaction of Algal Biomass. Green Chem. 2017, 19 (4), 1163–1174.
-        https://doi.org/10.1039/C6GC03294J.
-    [3] Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J.
-        Quantitative Evaluation of an Integrated System for Valorization of
-        Wastewater Algae as Bio-Oil, Fuel Gas, and Fertilizer Products.
-        Environ. Sci. Technol. 2018, 52 (21), 12717–12727.
-        https://doi.org/10.1021/acs.est.8b04035.
-    [4] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
-        Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
-        Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
-        Process Design and Economics for the Conversion of Algal Biomass to
-        Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
-        PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
-    [5] Matayeva, A.; Rasmussen, S. R.; Biller, P. Distribution of Nutrients and
-        Phosphorus Recovery in Hydrothermal Liquefaction of Waste Streams.
-        BiomassBioenergy 2022, 156, 106323.
-        https://doi.org/10.1016/j.biombioe.2021.106323.
-    [6] Knorr, D.; Lukas, J.; Schoen, P. Production of Advanced Biofuels
-        via Liquefaction - Hydrothermal Liquefaction Reactor Design:
-        April 5, 2013; NREL/SR-5100-60462, 1111191; 2013; p NREL/SR-5100-60462,
-        1111191. https://doi.org/10.2172/1111191.
+    ins : obj
+        Waste stream for HTL.
+    outs : seq(obj)
+        Hydrochar, aqueous, biocrude, offgas.
+    tau : float
+        Retention time, [hr].
+    V_wf : float
+        Reactor working volumne factor, volume of waste streams over total volume.
+    N_unit : int
+        Number of required HTL unit.
+    afdw_yields : seq(float)
+        Yields for biocrude, aqueous, and gas products on ash-free dry weight basis of the feedstock.
+        Yield of the hydrochar product will be calculated by subtraction to close the mass balance.
+        All ash assumed to go to the aqueous product.
+    piping_cost_ratio : float
+        Piping cost estimated as a ratio of the total reactor cost.
+    accessory_cost_ratio : float
+        Accessories (e.g., valves) cost estimated as a ratio of the total reactor cost.
     '''
     
     _N_ins = 1
@@ -186,7 +245,6 @@ class PilotHTL(SanUnit):
         'Non-scaling factor': 'ea',
         }
     
-    _centralized_dry_flowrate = _decentralized_dry_flowrate = 1
     
     # ID of the components that will be used in mass flowrate calculations
     ash_ID = 'Ash'
@@ -210,12 +268,9 @@ class PilotHTL(SanUnit):
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                   init_with='WasteStream',
-                  P=None, tau=15/60, V_wf=0.45,
-                  decentralized_dry_flowrate=1, # dry kg/hr
-                  centralized_dry_flowrate=1, # dry kg/hr
-                  afdw_biocrude_yield=0.5219,
-                  afdw_aqueous_yield=0.2925,
-                  afdw_gas_yield=0.1756,
+                  tau=15/60, V_wf=0.45,
+                  N_unit=1,
+                  afdw_yields=salad_dressing_waste_yields,
                   piping_cost_ratio=0.15,
                   accessory_cost_ratio=0.08,
                   **kwargs,
@@ -226,14 +281,10 @@ class PilotHTL(SanUnit):
         hx_in = Stream(f'{ID}_hx_in')
         hx_out = Stream(f'{ID}_hx_out')
         self.heat_exchanger = qsu.HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out, T=self.eff_T, rigorous=True)
-        self.P = P
         self.tau = tau
         self.V_wf = V_wf
-        self.decentralized_dry_flowrate = decentralized_dry_flowrate
-        self.centralized_dry_flowrate = centralized_dry_flowrate
-        self.afdw_biocrude_yield = afdw_biocrude_yield
-        self.afdw_aqueous_yield = afdw_aqueous_yield
-        self.afdw_gas_yield = afdw_gas_yield
+        self.N_unit = N_unit
+        self._afdw_yields = afdw_yields
         self.piping_cost_ratio = piping_cost_ratio
         self.accessory_cost_ratio = accessory_cost_ratio
         for attr, val in kwargs.items(): setattr(self, attr, val)
@@ -271,10 +322,8 @@ class PilotHTL(SanUnit):
         biocrude.P = self.biocrude_P
         offgas.P = self.offgas_P
         
-        self._refresh_parallel()
         for stream in self.outs:
             stream.T = self.heat_exchanger.T
-            stream.F_mass *= self.parallel['self']
         
 
     def _design(self):
@@ -294,16 +343,13 @@ class PilotHTL(SanUnit):
         hx_outs0.vle(T=hx_outs0.T, P=hx_outs0.P)
         hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
 
-        self.P = self.ins[0].P
-
         
     def _cost(self):
-        self._refresh_parallel()
+        self.parallel['self'] = self.N_unit
         self._decorated_cost()
         baseline_purchase_cost = self.baseline_purchase_cost
         self.baseline_purchase_costs['Piping'] = baseline_purchase_cost*self.piping_cost_ratio
         self.baseline_purchase_costs['Accessories'] = baseline_purchase_cost*self.accessory_cost_ratio
-        
         
         # # If need to consider additional cost factors
         # purchase_costs = self.baseline_purchase_costs
@@ -318,47 +364,53 @@ class PilotHTL(SanUnit):
         #         installed_costs[item] *= self.CAPEX_factor
         
 
-    def _refresh_parallel(self):
-        self.parallel['self'] = math.ceil(self.centralized_dry_flowrate/self.decentralized_dry_flowrate)
-
     @property
     def dry_mass_in(self):
-        '''Total dry mass of the feedstock.'''
+        '''[float] Total dry mass of the feedstock, kg/hr.'''
         feedstock = self.ins[0]
         return feedstock.F_mass-feedstock.imass[self.water_ID]
 
     @property
     def afdw_mass_in(self):
-        '''Total ash-free dry mass of the feedstock.'''
+        '''[float] Total ash-free dry mass of the feedstock, kg/hr.'''
         feedstock = self.ins[0]
         return feedstock.F_mass-feedstock.imass[self.ash_ID]-feedstock.imass[self.water_ID]
+
+    @property
+    def afdw_biocrude_yield(self):
+        '''[float] Biocrude product yield on the ash-free dry weight basis of the feedstock.'''
+        return self._afdw_yields[0]
+
+    @property
+    def afdw_aqueous_yield(self):
+        '''[float] Aquoues product yield on the ash-free dry weight basis of the feedstock.'''
+        return self._afdw_yields[1]
     
     @property
+    def afdw_gas_yield(self):
+        '''[float] Gas product yield on the ash-free dry weight basis of the feedstock.'''
+        return self._afdw_yields[2]
+
+    @property
     def afdw_hydrochar_yield(self):
-        '''Hydrochar product yield on the ash-free dry weight basis of the feedstock.'''
+        '''[float] Hydrochar product yield on the ash-free dry weight basis of the feedstock.'''
         char_yield = 1-self.afdw_biocrude_yield-self.afdw_aqueous_yield-self.afdw_gas_yield
         if char_yield < 0:
             raise ValueError('Sum of biocrude, aqueous, and gas product exceeds 100%.')
         return char_yield
     
     @property
-    def decentralized_dry_flowrate(self):
-        '''Dry mass flowrate for the decentralized configuration.'''
-        return self._decentralized_dry_flowrate
-    @decentralized_dry_flowrate.setter
-    def decentralized_dry_flowrate(self, i):
-        self._decentralized_dry_flowrate = i
-        self._refresh_parallel()
-
-    @property
-    def centralized_dry_flowrate(self):
-        '''Dry mass flowrate for the centralzied configuration.'''
-        return self._centralized_dry_flowrate
-    @centralized_dry_flowrate.setter
-    def centralized_dry_flowrate(self, i):
-        self._centralized_dry_flowrate = i
-        self._refresh_parallel()
+    def N_unit(self):
+        '''
+        [int] Number of HTL units.
+        '''
+        return self._N_unit
+    @N_unit.setter
+    def N_unit(self, i):
+        self.parallel['self'] = self._N_unit = math.ceil(i)
+    
         
+# %%
 
 # Jone et al., Table C-1
 #!!! Might want to redo this part by adjusting the components.
@@ -382,17 +434,32 @@ default_biocrude_ratios = {
     'C30DICAD':     0.050934,
     }
 
-
 class BiocrudeSplitter(SanUnit):
     '''
-    Split biocrude into the respective components.
+    Split biocrude into the respective components that meet specific boiling point
+    and light/heavy faction specifics.
+    
+    Parameters
+    ----------
+    ins : obj
+        HTL biocrude containing the gross components.
+    outs : obj
+        HTL biocrude split into specific components.
+    biocrude_IDs : seq(str)
+        IDs of the gross components used to represent biocrude in the influent.
+    cutoff_Tb : float
+        Boiling point cutoff of the biocrude split (into light/heavy fractions).
+    light_frac : float
+        Fraction of the biocrude that is the light cut.
+    biocrude_ratios : dict(str, float)
+        Ratios of all the components in the biocrude.
     '''
     _N_ins = _N_outs = 1
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                   init_with='WasteStream', F_BM_default=1,
-                  cutoff_Tb=273.15+343, light_frac=0.5316,
                   biocrude_IDs=('Biocrude',),
+                  cutoff_Tb=273.15+343, light_frac=0.5316,
                   biocrude_ratios=default_biocrude_ratios,
                   **kwargs,
                   ):
@@ -499,56 +566,36 @@ class BiocrudeSplitter(SanUnit):
                   sorted(ratios.items(), key=lambda item: cmps[item[0]].Tb)}
         self._biocrude_ratios = ratios
         self._update_component_ratios()
-        
-
-# # Included in the HTL reactor
-# class GasScrubber(qsu.Copier):
-#     '''
-#     Placeholder for the gas scrubber. All outs are copied from ins.
-#     '''
 
 
-base_ap_flowrate = 49.65 #kg/hr
-@cost(basis='Aqueous flowrate', ID= 'Sand Filtration Unit', units='kg/hr',
-      cost=318, S=base_ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.7)
-@cost(basis='Aqueous flowrate', ID= 'EC Oxidation Tank', units='kg/hr',
-      cost=1850, S=base_ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
-@cost(basis='Aqueous flowrate', ID= 'Biological Treatment Tank', units='kg/hr',
-      cost=4330, S=base_ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
-@cost(basis='Aqueous flowrate', ID= 'Liquid Fertilizer Storage', units='kg/hr',
-      cost=7549, S=base_ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
-class AqueousFiltration(SanUnit):
-    '''
-    Placeholder for the aqueous filtration unit. All outs are copied from ins.
-    '''
-     
-    _N_outs = 1
-    _units= {
-        'Aqueous flowrate': 'kg/hr',
-        }
-    def _run(self):
-        HTL_aqueous = self.ins[0]
-        treated_aq = self.outs
+# %%
         
-        #treated_aq.copy_like(HTL_aqueous)
-        
-    def _design(self):
-        aqueous = self.ins[0]
-        self.design_results['Aqueous flowrate'] = aqueous.F_mass
-                
 base_biocrude_flowrate = 5.64 # kg/hr
 @cost(basis='Biocrude flowrate', ID= 'Deashing Tank', units='kg/hr',
       cost=4330, S=base_biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
 class BiocrudeDeashing(SanUnit):
     '''
-    Placeholder for the deashing unit.
+    Biocrude deashing unit.
+    
+    Parameters
+    ----------
+    ins : obj
+        HTL biocrude.
+    outs : seq(obj)
+        Deashed biocrude, ash for disposal.
     '''
     
     _N_outs = 2
-    _units= {
-        'Biocrude flowrate': 'kg/hr',
-        }
+    _units= {'Biocrude flowrate': 'kg/hr',}
     target_ash = 0.01 # dry weight basis
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                  init_with='WasteStream', F_BM_default=1,
+                  N_unit=1, **kwargs,
+                  ):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
+        self.N_unit = N_unit
+        for kw, arg in kwargs.items(): setattr(self, kw, arg)
     
     def _run(self):
         biocrude = self.ins[0]
@@ -564,22 +611,45 @@ class BiocrudeDeashing(SanUnit):
             ash.imass['Ash'] = excess_ash
             
     def _design(self):
-        biocrude = self.ins[0]
-        self.design_results['Biocrude flowrate'] = biocrude.F_mass
+        self.design_results['Biocrude flowrate'] = self.ins[0].F_mass
+        self.parallel['self'] = self.N_unit
+
+    @property
+    def N_unit(self):
+        '''
+        [int] Number of deashing units.
+        '''
+        return self._N_unit
+    @N_unit.setter
+    def N_unit(self, i):
+        self.parallel['self'] = self._N_unit = math.ceil(i)
             
 
 @cost(basis='Biocrude flowrate', ID= 'Dewatering Tank', units='kg/hr',
       cost=4330, S=base_biocrude_flowrate, CE=CEPCI_by_year[2023],n=0.75, BM=1.5)
 class BiocrudeDewatering(SanUnit):
     '''
-    Placeholder for the dewatering unit.
+    Biocrude dewatering unit.
+    
+    Parameters
+    ----------
+    ins : obj
+        HTL biocrude.
+    outs : seq(obj)
+        Dewatered biocrude, water for treatment.
     '''
     
     _N_outs = 2
-    _units= {
-        'Biocrude flowrate': 'kg/hr',
-        }
+    _units= {'Biocrude flowrate': 'kg/hr',}
     target_moisture = 0.01 # weight basis
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                  init_with='WasteStream', F_BM_default=1,
+                  N_unit=1, **kwargs,
+                  ):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
+        self.N_unit = N_unit
+        for kw, arg in kwargs.items(): setattr(self, kw, arg)
     
     def _run(self):
         biocrude = self.ins[0]
@@ -595,57 +665,162 @@ class BiocrudeDewatering(SanUnit):
             water.imass['Water'] = excess_water
             
     def _design(self):
-        biocrude = self.ins[0]
-        self.design_results['Biocrude flowrate'] = biocrude.F_mass
+        self.design_results['Biocrude flowrate'] = self.ins[0].F_mass
+        self.parallel['self'] = self.N_unit
+        
+    @property
+    def N_unit(self):
+        '''
+        [int] Number of dewatering units.
+        '''
+        return self._N_unit
+    @N_unit.setter
+    def N_unit(self, i):
+        self.parallel['self'] = self._N_unit = math.ceil(i)
 
-            
-class ShortcutColumn(bst.units.ShortcutColumn, qs.SanUnit):
-    '''
-    Similar to biosteam.units.ShortcutColumn.
-    
-    See Also
-    --------
-    `biosteam.units.ShortcutColumn <https://biosteam.readthedocs.io/en/latest/API/units/distillation.html>`_
-    '''
-            
 
-class Transportation(qsu.Copier):    
+# %%
+
+base_ap_flowrate = 49.65 #kg/hr
+@cost(basis='Aqueous flowrate', ID= 'Sand Filtration Unit', units='kg/hr',
+      cost=318, S=base_ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.7)
+# @cost(basis='Aqueous flowrate', ID= 'EC Oxidation Tank', units='kg/hr',
+#       cost=1850, S=base_ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
+# @cost(basis='Aqueous flowrate', ID= 'Biological Treatment Tank', units='kg/hr',
+#       cost=4330, S=base_ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
+@cost(basis='Aqueous flowrate', ID= 'Liquid Fertilizer Storage', units='kg/hr',
+      cost=7549, S=base_ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
+class AqueousFiltration(SanUnit):
     '''
-    To account for transportation cost. All outs are copied from ins.
+    HTL aqueous filtration unit.
     
     Parameters
     ----------
-    transportation_distance : float
-        Transportation distance in km.
-    transportation_price : float
-        Transportation price in $/kg/km.
+    ins : seq(obj)
+        Any number of influent streams to be treated.
+    outs : seq(obj)
+        Fertilizer, recycled process water, waste.
+    N_unit : int
+        Number of required filtration unit.
     '''
+    _ins_size_is_fixed = False
+    _N_outs = 3
+    _units= {'Aqueous flowrate': 'kg/hr',}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                   init_with='WasteStream', F_BM_default=1,
-                  transportation_distance=0, # km
-                  transportation_price=0, # $/kg/km
-                  **kwargs,
+                  N_unit=1, **kwargs,
                   ):
-        qsu.Copier.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
-        self.transportation_distance = transportation_distance
-        self.transportation_price = transportation_price
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
+        self._mixed = self.ins[0].copy(f'{self.ID}_mixed')
+        self.N_unit = N_unit
         for kw, arg in kwargs.items(): setattr(self, kw, arg)
     
-    def _cost(self):
-        self.baseline_purchase_costs['Transportation'] = (
-            self.F_mass_in *
-            self.transportation_distance *
-            self.transportation_price
-            )
+    def _run(self):
+        mixed = self._mixed
+        mixed.mix_from(self.ins)
+        
+        fertilizer, water, solids = self.outs
+        
+        # Just to copy the conditions of the mixture
+        for i in self.outs:
+            i.copy_like(mixed)
+            i.empty()
+        
+        water.imass['Water'] = mixed.imass['Water']
+        fertilizer.copy_flow(mixed, exclude=('Water', 'Ash'))
+        solids.copy_flow(mixed, IDs=('Ash',))
+
+    def _design(self):
+        self.design_results['Aqueous flowrate'] = self.F_mass_in
+        self.parallel['self'] = self.N_unit
+        
+    @property
+    def N_unit(self):
+        '''
+        [int] Number of filtration units.
+        '''
+        return self._N_unit
+    @N_unit.setter
+    def N_unit(self, i):
+        self.parallel['self'] = self._N_unit = math.ceil(i)
+
+
+# %%
+
+class Transportation(SanUnit):    
+    '''
+    To account for transportation cost.
+    
+    Parameters
+    ----------
+    ins : seq(obj)
+        Influent streams to be transported,
+        with a surrogate flow to account for the transportation cost.
+    outs : obj
+        Mixsture of the influent streams to be transported.        
+    transportation_distance : float
+        Transportation distance in km.
+    transportation_cost : float
+        Transportation cost in $/kg.
+    N_unit : int
+        Number of required filtration unit.
+    copy_ins_from_outs : bool
+        If True, will copy influent from effluent, otherwise,
+        efflent will be copied from influent.
+    '''
+    
+    _N_ins = 2
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                  init_with='WasteStream', F_BM_default=1,
+                  transportation_distance=0,
+                  transportation_cost=0,
+                  N_unit=1,
+                  copy_ins_from_outs=False,
+                  **kwargs,
+                  ):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
+        self.transportation_distance = transportation_distance
+        self.transportation_cost = transportation_cost
+        self.N_unit = N_unit
+        self.copy_ins_from_outs = copy_ins_from_outs
+        for kw, arg in kwargs.items(): setattr(self, kw, arg)
+    
+    def _run(self):
+        inf, surrogate = self.ins
+        eff = self.outs[0]
+        if self.copy_ins_from_outs is False:
+            eff.copy_like(inf)
+        else:
+            inf.copy_like(eff)
+        
+        surrogate.copy_like(inf)
+        surrogate.F_mass *= self.N_unit
+        surrogate.price = self.transportation_cost
 
     
 class Disposal(SanUnit):
     '''
-    Update the cost for disposal, where the price is given for dry weights.
+    Mix any number of influents for waste disposal.
+    Price for the disposal stream is given for dry weights.
+    
+    Parameters
+    ----------
+    ins : seq(obj)
+        Any number of influent streams.
+    outs : seq(obj)
+        Waste, others. The "waste" stream is the disposal stream for price calculation,
+        the "other" stream is a dummy stream for components excluded from disposal cost calculation
+        (e.g., if the cost of a wastewater stream is given based on $/kg of organics,
+         the "other" stream should contain the non-organics).
+    disposal_price : float
+        Price for the disposal stream.
+    exclude_components : seq(str)
+        IDs of the components to be excluded from disposal price calculation.
     '''
     
-    _N_ins = 1
+    _ins_size_is_fixed = False
     _N_outs = 2
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
@@ -657,17 +832,45 @@ class Disposal(SanUnit):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
         self.disposal_price = disposal_price
         self.exclude_components = exclude_components
+        self._mixed = self.ins[0].copy(f'{self.ID}_mixed')
         for kw, arg in kwargs.items(): setattr(self, kw, arg)
     
     def _run(self):
-        inf = self.ins[0]
+        mixed = self._mixed
+        mixed.mix_from(self.ins)
         waste, others = self.outs        
         
-        waste.copy_like(inf)
+        waste.copy_like(mixed)
         waste.imass[self.exclude_components] = 0
         
-        others.copy_like(inf)
+        others.copy_like(mixed)
         others.imass[self.components.IDs] -= waste.imass[self.components.IDs]
         
     def _cost(self):
         self.outs[0].price = self.disposal_price
+
+
+# %%
+
+# =============================================================================
+# To be moved to qsdsan
+# =============================================================================
+
+class ShortcutColumn(bst.units.ShortcutColumn, qs.SanUnit):
+    '''
+    biosteam.units.ShortcutColumn with QSDsan properties.
+    
+    See Also
+    --------
+    `biosteam.units.ShortcutColumn <https://biosteam.readthedocs.io/en/latest/API/units/distillation.html>`_
+    '''
+    
+    
+class ProcessWaterCenter(bst.facilities.ProcessWaterCenter, qs.SanUnit):
+    '''
+    biosteam.facilities.ProcessWaterCenter with QSDsan properties.
+    
+    See Also
+    --------
+    `biosteam.facilities.ProcessWaterCenter <https://biosteam.readthedocs.io/en/latest/API/facilities/ProcessWaterCenter.html>`_
+    '''

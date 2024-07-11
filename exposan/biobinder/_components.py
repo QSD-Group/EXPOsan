@@ -115,10 +115,14 @@ def create_components(set_thermo=True):
     
     # Components in the aqueous product
     H2O = htl_cmps.H2O
-    C = htl_cmps.C
-    N = htl_cmps.N
+    C = Component('C', search_ID='Carbon', particle_size='Soluble',
+                  degradability='Undegradable', organic=False)
+    N = Component('N', search_ID='Nitrogen', particle_size='Soluble',
+                  degradability='Undegradable', organic=False)
     NH3 = htl_cmps.NH3
-    P = htl_cmps.P    
+    P = Component('P', search_ID='Phosphorus', particle_size='Soluble',
+                  degradability='Undegradable', organic=False)
+    for i in (C, N, P): i.at_state('l')
     
     # Components in the gas product
     CO2 = htl_cmps.CO2
@@ -148,6 +152,7 @@ def create_components(set_thermo=True):
 
     biobinder_cmps.compile()
     biobinder_cmps.set_alias('H2O', 'Water')
+    biobinder_cmps.set_alias('H2O', '7732-18-5')
     biobinder_cmps.set_alias('Carbohydrates', 'Carbs')
     biobinder_cmps.set_alias('C', 'Carbon')
     biobinder_cmps.set_alias('N', 'Nitrogen')

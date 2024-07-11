@@ -9,13 +9,18 @@ This module is developed by:
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
+
+References
+[1] Snowden-Swan et al., Wet Waste Hydrothermal Liquefaction and Biocrude Upgrading to Hydrocarbon Fuels:
+    2021 State of Technology; PNNL-32731; Pacific Northwest National Lab. (PNNL), Richland, WA (United States), 2022.
+    https://doi.org/10.2172/1863608.
 '''
 
 # !!! Temporarily ignoring warnings
 import warnings
 warnings.filterwarnings('ignore')
 
-import os, math, biosteam as bst, qsdsan as qs
+import os, biosteam as bst, qsdsan as qs
 # from biosteam.units import IsenthalpicValve
 # from biosteam import settings
 from qsdsan import sanunits as qsu
@@ -35,10 +40,6 @@ __all__ = ('create_system',)
 def create_system():
     pass
 
-#!!! PAUSED
-# Have two separate ReverseSplitters to fix feedstock tipping fee/process water
-# also need to consider recycling for the process water
-
 
 # %%
 
@@ -53,7 +54,7 @@ _load_process_settings()
 
 # Desired feedstock flowrate, in dry kg/hr
 decentralized_dry_flowrate = 11.46 # feedstock mass flowrate, dry kg/hr
-centralized_dry_flowrate = decentralized_dry_flowrate*1000 # PNNL is about 1900x of UIUC pilot reactor
+N_decentralized_HTL = 1000 # number of parallel HTL reactor, PNNL is about 1900x of UIUC pilot reactor
 
 # Salad dressing waste, all on weight basis
 feedstock_composition = {
@@ -69,107 +70,179 @@ target_HTL_solid_loading = 0.2
 # %%
 
 # =============================================================================
-# Area 100 Hydrothermal Liquefaction
+# Hydrothermal Liquefaction
 # =============================================================================
 
-feedstock = qs.WasteStream('feedstock')
-htl_process_water = qs.WasteStream('htl_process_water')
+scaled_feedstock = qs.WasteStream('scaled_feedstock')
+# fresh_process_water = qs.WasteStream('fresh_process_water')
 
-# Adjust feedstock moisture
-FeedstockPrep = T101 = u.PreProcessing(
-    'T101', ins=(feedstock, htl_process_water),
-    decentralized_dry_flowrate=decentralized_dry_flowrate,
-    centralized_dry_flowrate=centralized_dry_flowrate,    
+# Adjust feedstock composition
+FeedstockScaler = u.Scaler(
+    'FeedstockScaler', ins=scaled_feedstock, outs='feedstock',
+    scaling_factor=N_decentralized_HTL, reverse=True,
+    )
+
+ProcessWaterScaler = u.Scaler(
+    'ProcessWaterScaler', ins='scaled_process_water', outs='htl_process_water',
+    scaling_factor=N_decentralized_HTL, reverse=True,
+    )
+
+FeedstockTrans = u.Transportation(
+    'FeedstockTrans',
+    ins=(FeedstockScaler-0, 'feedstock_trans_surrogate'),
+    outs=('transported_feedstock',),
+    N_unit=N_decentralized_HTL,
+    copy_ins_from_outs=True,
+    transportation_distance=78, # km ref [1]
+    )
+
+FeedstockCond = u.Conditioning(
+    'FeedstockCond', ins=(FeedstockTrans-0, ProcessWaterScaler-0),
+    outs='conditioned_feedstock',
+    feedstock_composition=u.salad_dressing_waste_composition,
+    feedstock_dry_flowrate=decentralized_dry_flowrate,
+    N_unit=N_decentralized_HTL,
     )
 
 HTL = u.PilotHTL(
-    'R102', ins=T101-0, outs=('hydrochar','HTL_aqueous','biocrude','HTL_offgas'),
-    feedstock_composition=u.salad_dressing_composition,
-    decentralized_dry_flowrate=decentralized_dry_flowrate,
-    centralized_dry_flowrate=centralized_dry_flowrate,
-    ) 
-HTL.register_alias('HTL')
+    'HTL', ins=FeedstockCond-0, outs=('hydrochar','HTL_aqueous','biocrude','HTL_offgas'),
+    afdw_yields=u.salad_dressing_waste_yields,
+    N_unit=N_decentralized_HTL,
+    )
+HTL.register_alias('PilotHTL')
 
 
 # %%
 
 # =============================================================================
-# Area 200 Aqueous Product Treatment
+# Biocrude Upgrading
 # =============================================================================
 
-AqueousFiltration = u.AqueousFiltration(
-    'S201', ins=HTL-1, outs=('treated_aq'), init_with='WasteStream')
+BiocrudeDeashing = u.BiocrudeDeashing(
+    'BiocrudeDeashing', ins=HTL-2, outs=('deashed_biocrude', 'biocrude_ash'),
+    N_unit=N_decentralized_HTL,)
 
-AqStorage = qsu.StorageTank(
-    'T202', ins=AqueousFiltration-0, outs=('stored_aq'),
-    init_with='WasteStream', tau=24*7, vessel_material='Stainless steel')
+BiocrudeAshScaler = u.Scaler(
+    'BiocrudeAshScaler', ins=BiocrudeDeashing-1, outs='scaled_biocrude_ash',
+    scaling_factor=N_decentralized_HTL, reverse=False,
+    )
 
+BiocrudeDewatering = u.BiocrudeDewatering(
+    'BiocrudeDewatering', ins=BiocrudeDeashing-0, outs=('dewatered_biocrude', 'biocrude_water'),
+    N_unit=N_decentralized_HTL,)
 
-# %%
+BiocrudeWaterScaler = u.Scaler(
+    'BiocrudeWaterScaler', ins=BiocrudeDewatering-1, outs='scaled_biocrude_water',
+    scaling_factor=N_decentralized_HTL, reverse=False,
+    )
 
-# =============================================================================
-# Area 300 Biocrude Upgrading
-# =============================================================================
+BiocrudeTrans = u.Transportation(
+    'BiocrudeTrans',
+    ins=(BiocrudeDewatering-0, 'biocrude_trans_surrogate'),
+    outs=('transported_biocrude',),
+    N_unit=N_decentralized_HTL,
+    transportation_distance=78, # km ref [1]
+    )
 
-Deashing = u.BiocrudeDeashing('A301', ins=HTL-2, outs=('deashed', 'biocrude_ash'))
-Deashing.register_alias('Deashing')
-Dewatering = u.BiocrudeDewatering('A302', ins=Deashing-0, outs=('dewatered', 'biocrude_water'))
-Dewatering.register_alias('Dewatering')
-BiocrudeTrans = u.Transportation('U301', ins=Dewatering-0, outs='transported_biocrude')
+BiocrudeScaler = u.Scaler(
+    'BiocrudeScaler', ins=BiocrudeTrans-0, outs='scaled_biocrude',
+    scaling_factor=N_decentralized_HTL, reverse=False,
+    )
 
-BiocrudeSplitter = u.BiocrudeSplitter('S303', ins=Dewatering-0,
-                                      cutoff_Tb=343+273.15, light_frac=0.5316)
-BiocrudeSplitter.register_alias('BiocrudeSplitter')
+BiocrudeSplitter = u.BiocrudeSplitter(
+    'BiocrudeSplitter', ins=BiocrudeScaler-0, outs='splitted_biocrude',
+    cutoff_Tb=343+273.15, light_frac=0.5316)
 
 # Shortcut column uses the Fenske-Underwood-Gilliland method,
 # better for hydrocarbons according to the tutorial
 # https://biosteam.readthedocs.io/en/latest/API/units/distillation.html
-FracDist = u.ShortcutColumn('D304', ins=BiocrudeSplitter-0,
-                        outs=('biocrude_light','biocrude_heavy'),
-                        LHK=('Biofuel', 'Biobinder'), # will be updated later
-                        P=50*6894.76, # outflow P, 50 psig
-                        y_top=188/253, x_bot=53/162, k=2, is_divided=True)
-FracDist.register_alias('FracDist')
+FracDist = u.ShortcutColumn(
+    'FracDist', ins=BiocrudeSplitter-0,
+    outs=('biocrude_light','biocrude_heavy'),
+    LHK=('Biofuel', 'Biobinder'), # will be updated later
+    P=50*6894.76, # outflow P, 50 psig
+    # Lr=0.1, Hr=0.5,
+    y_top=188/253, x_bot=53/162,
+    k=2, is_divided=True)
 @FracDist.add_specification
 def adjust_LHK():
     FracDist.LHK = (BiocrudeSplitter.light_key, BiocrudeSplitter.heavy_key)
     FracDist._run()
 
+LightFracStorage = qsu.StorageTank(
+    'LightFracStorage',
+    FracDist-0, outs='biofuel_additives',
+    tau=24*7, vessel_material='Stainless steel')
+HeavyFracStorage = qsu.StorageTank(
+    'HeavyFracStorage', FracDist-1, outs='biobinder',
+    tau=24*7, vessel_material='Stainless steel')
 
-# FracDist = qsu.BinaryDistillation('D304', ins=BiocrudeSplitter-0,
-#                         outs=('biocrude_light','biocrude_heavy'),
-#                         LHK=('7MINDOLE', 'C16:0FA'), # will be updated later
-#                         # P=50*6894.76, # outflow P
-#                         # P=101325*5, # outflow P
-#                         # Lr=0.1, Hr=0.5,
-#                         y_top=0.1134, x_bot=0.0136,
-#                         # y_top=188/253, x_bot=53/162,
-#                         k=2, is_divided=True)
-# FracDist.register_alias('FracDist')
-# @FracDist.add_specification
-# def adjust_LHK():
-#     FracDist.LHK = (BiocrudeSplitter.light_key, BiocrudeSplitter.heavy_key)
-#     FracDist._run()
-
-LightFracStorage = qsu.StorageTank('T305', FracDist-0, outs='biofuel_additives',
-                                   tau=24*7, vessel_material='Stainless steel')
-LightFracStorage.register_alias('LightFracStorage')
-HeavyFracStorage = qsu.StorageTank('T306', FracDist-1, outs='biobinder',
-                                   tau=24*7, vessel_material='Stainless steel')
-HeavyFracStorage.register_alias('HeavyFracStorage')
 
 # %%
 
 # =============================================================================
-# Area 400 Waste disposal
+# Aqueous Product Treatment
 # =============================================================================
 
-AshDisposal = u.Disposal('U401', ins=Deashing-1,
+AqueousFiltration = u.AqueousFiltration(
+    'AqueousFiltration',
+    ins=(HTL-1,),
+    outs=('fertilizer', 'recycled_water', 'filtered_solids'),
+    N_unit=N_decentralized_HTL,)
+
+FertilizerScaler = u.Scaler(
+    'FertilizerScaler', ins=AqueousFiltration-0, outs='scaled_fertilizer',
+    scaling_factor=N_decentralized_HTL, reverse=False,
+    )
+
+RecycledWaterScaler = u.Scaler(
+    'RecycledWaterScaler', ins=AqueousFiltration-1, outs='scaled_recycled_water',
+    scaling_factor=N_decentralized_HTL, reverse=False,
+    )
+
+FilteredSolidsScaler = u.Scaler(
+    'FilteredSolidsScaler', ins=AqueousFiltration-2, outs='filterd_solids',
+    scaling_factor=N_decentralized_HTL, reverse=False,
+    )
+
+
+# %%
+
+# =============================================================================
+# Facilities and waste disposal
+# =============================================================================
+
+# Scale flows
+HydrocharScaler = u.Scaler(
+    'HydrocharScaler', ins=HTL-0, outs='scaled_hydrochar',
+    scaling_factor=N_decentralized_HTL, reverse=False,
+    )
+@HydrocharScaler.add_specification
+def scale_feedstock_flows():
+    FeedstockTrans._run()
+    FeedstockScaler._run()
+    ProcessWaterScaler._run()
+
+GasScaler = u.Scaler(
+    'GasScaler', ins=HTL-3, outs='scaled_gas',
+    scaling_factor=N_decentralized_HTL, reverse=False,
+    )
+
+# Potentially recycle the water from aqueous filtration (will be ins[2])
+ProcessWaterCenter = u.ProcessWaterCenter(
+    'ProcessWaterCenter',
+    process_water_streams=[ProcessWaterScaler.ins[0]],
+    )
+
+
+# No need to consider transportation as priced are based on mass
+AshDisposal = u.Disposal('AshDisposal', ins=(BiocrudeAshScaler-0, FilteredSolidsScaler-0),
                          outs=('ash_disposal', 'ash_others'),
                          exclude_components=('Water',))
-WaterDisposal = u.Disposal('U402', ins=Dewatering-1,
-                           outs=('water_disposal', 'water_others'),
-                           exclude_components=('Water', 'Ash'))
+
+WWDisposal = u.Disposal('WWDisposal', ins=BiocrudeWaterScaler-0,
+                        outs=('ww_disposal', 'ww_others'),
+                        exclude_components=('Water',))
 
 
 # %%
@@ -217,13 +290,16 @@ GDP_indices = {
     }
 
 # Inputs
-feedstock.price = -69.14/907.185 # tipping fee 69.14±21.14 for IL, https://erefdn.org/analyzing-municipal-solid-waste-landfill-tipping-fees/
+scaled_feedstock.price = -69.14/907.185 # tipping fee 69.14±21.14 for IL, https://erefdn.org/analyzing-municipal-solid-waste-landfill-tipping-fees/
 
 # Utilities, price from Table 17.1 in Seider et al., 2016$
 # Use bst.HeatUtility.cooling_agents/heating_agents to see all the heat utilities
 Seider_factor = GDP_indices[cost_year]/GDP_indices[2016]
 
-htl_process_water.price = 0.8/1e3/3.758*Seider_factor # process water for moisture adjustment
+transport_cost = 50/1e3 * GDP_indices[cost_year]/GDP_indices[2016] # $/kg ref [1]
+FeedstockTrans.transportation_cost = BiocrudeTrans.transportation_cost = transport_cost
+
+ProcessWaterCenter.process_water_price = 0.8/1e3/3.785*Seider_factor # process water for moisture adjustment
 
 hps = bst.HeatUtility.get_agent('high_pressure_steam') # 450 psig
 hps.regeneration_price = 17.6/(1000/18)*Seider_factor
@@ -251,7 +327,7 @@ bst.PowerUtility.price = 0.07*Seider_factor
 
 # Waste disposal
 AshDisposal.disposal_price = 0.17*Seider_factor # deashing, landfill price
-WaterDisposal.disposal_price = 0.17*Seider_factor # dewater, for organics removed
+WWDisposal.disposal_price = 0.33*Seider_factor # dewater, for organics removed
 
 # Products
 diesel_density = 3.167 # kg/gal, GREET1 2023, "Fuel_Specs", US conventional diesel
@@ -272,7 +348,7 @@ base_labor = 338256 # for 1000 kg/hr
 
 tea = create_tea(
     sys,
-    labor_cost=lambda: (feedstock.F_mass-feedstock.imass['Water'])/1000*base_labor,
+    labor_cost=lambda: (scaled_feedstock.F_mass-scaled_feedstock.imass['Water'])/1000*base_labor,
     )
 
 # To see out-of-boundary-limits units
