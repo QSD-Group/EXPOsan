@@ -137,11 +137,11 @@ def create_components(set_thermo=True):
     
     N = Component('N', search_ID='water', particle_size='Soluble',
                   degradability='Undegradable', organic=False)
-    N._CAS = 'C'
+    N._CAS = 'N'
     
     P = Component('P', search_ID='water', particle_size='Soluble',
                   degradability='Undegradable', organic=False)
-    P._CAS = 'C'
+    P._CAS = 'P'
     
     O2 = Component('O2', phase='g', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
