@@ -19,6 +19,11 @@ from exposan.htl import _load_components, create_tea, _oil_barrel_to_L, state_in
 from biosteam.units import IsenthalpicValve
 from biosteam import settings
 
+# TODO: change all TEA and LCA data to the U.S.-based values
+# if impossible, especially for LCA: use US, then RER, then RoW, then GLO
+# also, remember to use LCA data collected for the 'cutoff' model and 'IPCC' method
+# TODO: confirm IPCC 2013 (no LT) is ok
+
 __all__ = ('create_geospatial_system','biocrude_density')
 
 biocrude_density = 980 # kg/m3, Snowden-Swan et al. 2022 SOT, PNNL
