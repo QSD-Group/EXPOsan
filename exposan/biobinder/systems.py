@@ -55,16 +55,6 @@ _load_process_settings()
 # Desired feedstock flowrate, in dry kg/hr
 decentralized_dry_flowrate = 11.46 # feedstock mass flowrate, dry kg/hr
 N_decentralized_HTL = 1000 # number of parallel HTL reactor, PNNL is about 1900x of UIUC pilot reactor
-
-# Salad dressing waste, all on weight basis
-feedstock_composition = {
-    'Water': 0.7566,
-    'Lipids': 0.2434*0.6245,
-    'Proteins': 0.2434*0.0238,
-    'Carbohydrates': 0.2434*0.2946,
-    'Ash': 0.2434*0.0571,
-    }
-
 target_HTL_solid_loading = 0.2
 
 # %%
