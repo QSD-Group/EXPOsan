@@ -57,7 +57,7 @@ def create_tea(sys, IRR_value=0.1, income_tax_value=0.21, finance_interest_value
         finance_fraction=0.6, # debt: Jones et al. 2014
         OSBL_units=OSBL_units,
         warehouse=0.04, # Knorr et al. 2013
-        site_development=0.09, # Knorr et al. 2013
+        site_development=0.10, # Snowden-Swan et al. 2022
         additional_piping=0.045, # Knorr et al. 2013
         proratable_costs=0.10, # Knorr et al. 2013
         field_expenses=0.10, # Knorr et al. 2013
