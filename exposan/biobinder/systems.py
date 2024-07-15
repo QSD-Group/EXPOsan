@@ -256,27 +256,56 @@ stream = sys.flowsheet.stream
 cost_year = 2020
 
 # U.S. Energy Information Administration (EIA) Annual Energy Outlook (AEO)
-GDP_indices = {
-    2003: 0.808,
-    2005: 0.867,
-    2007: 0.913,
-    2008: 0.941,
-    2009: 0.951,
-    2010: 0.962,
-    2011: 0.983,
-    2012: 1.000,
-    2013: 1.014,
-    2014: 1.033,
-    2015: 1.046,
-    2016: 1.059,
-    2017: 1.078,
-    2018: 1.100,
-    2019: 1.123,
-    2020: 1.133,
-    2021: 1.181,
-    2022: 1.269,
-    2023: 1.322,
-    2024: 1.354,
+#GDP_indices = {
+#   2003: 0.808,
+#   2005: 0.867,
+#  2007: 0.913,
+#   2008: 0.941,
+#   2009: 0.951,
+#  2010: 0.962,
+#   2011: 0.983,
+#   2012: 1.000,
+#    2013: 1.014,
+#   2014: 1.033,
+#  2015: 1.046,
+#    2016: 1.059,
+#   2017: 1.078,
+#  2018: 1.100,
+#   2019: 1.123,
+#   2020: 1.133,
+#   2021: 1.181,
+#  2022: 1.269,
+#  2023: 1.322,
+#  2024: 1.354,
+#    }
+#Federal Reserve Economic Data, Personal Consumption Expenditures: Chain-type Price Index, Index 2017=1.00, Annual, Seasonally Adjusted
+
+PCE_indices = {
+    2000: 0.738,
+    2001: 0.753,
+    2002: 0.763,
+    2003: 0.779,
+    2004: 0.798,
+    2005: 0.821,
+    2006: 0.844,
+    2007: 0.866,
+    2008: 0.892,
+    2009: 0.889,
+    2010: 0.905,
+    2011: 0.928,
+    2012: 0.945,
+    2013: 0.958,
+    2014: 0.971,
+    2015: 0.973,
+    2016: 0.983,
+    2017: 1.000,
+    2018: 1.020,
+    2019: 1.035,
+    2020: 1.046,
+    2021: 1.090,
+    2022: 1.160,
+    2023: 1.204,
+    2024: 1.220,
     }
 
 # Inputs
@@ -284,9 +313,9 @@ scaled_feedstock.price = -69.14/907.185 # tipping fee 69.14±21.14 for IL, https
 
 # Utilities, price from Table 17.1 in Seider et al., 2016$
 # Use bst.HeatUtility.cooling_agents/heating_agents to see all the heat utilities
-Seider_factor = GDP_indices[cost_year]/GDP_indices[2016]
+Seider_factor = PCE_indices[cost_year]/PCE_indices[2016]
 
-transport_cost = 50/1e3 * GDP_indices[cost_year]/GDP_indices[2016] # $/kg ref [1]
+transport_cost = 50/1e3 * PCE_indices[cost_year]/PCE_indices[2016] # $/kg ref [1]
 FeedstockTrans.transportation_cost = BiocrudeTrans.transportation_cost = transport_cost
 
 ProcessWaterCenter.process_water_price = 0.8/1e3/3.785*Seider_factor # process water for moisture adjustment
