@@ -61,6 +61,7 @@ def create_system(flowsheet=None, default_init_conds=True):
     
     cmps_asm = pc.create_masm2d_cmps()
     asm = pc.mASM2d(components=cmps_asm, 
+                    electron_acceptor_dependent_decay=True,
                     k_h=2.46, mu_H=4.23, q_fe=2.11, b_H=0.28, mu_PAO=0.82, 
                     q_PP=1.23, q_PHA=2.46, b_PAO=0.14, b_PP=0.14, b_PHA=0.14, 
                     mu_AUT=0.61, b_AUT=0.09)
@@ -69,8 +70,8 @@ def create_system(flowsheet=None, default_init_conds=True):
     # Influent
     inf = WasteStream('inf', T=Temp)
     inf.set_flow_by_concentration(**default_inf_kwargs)
-    carb = WasteStream('carbon', T=Temp)
-    carb.set_flow_by_concentration(2, {'S_A':400}, units=('m3/d', 'kg/m3'))
+    # carb = WasteStream('carbon', T=Temp)
+    # carb.set_flow_by_concentration(2, {'S_A':400}, units=('m3/d', 'kg/m3'))
     
     # Primary clarifier using the Otterpohl-Freund model
     # Where are other parameters used?
@@ -103,16 +104,16 @@ def create_system(flowsheet=None, default_init_conds=True):
     #              V_max=V_ae, aeration=aer3,
     #              DO_ID=DO_ID, suspended_growth_model=asm1)
     
-    AS = su.PFR('AS', ins=[C1-0, 'RAS', carb], outs='treated', 
-    # AS = su.PFR('AS', ins=[C1-0, 'RAS'], outs='treated', 
+    # AS = su.PFR('AS', ins=[C1-0, 'RAS', carb], outs='treated', 
+    AS = su.PFR('AS', ins=[C1-0, 'RAS'], outs='treated', 
                 N_tanks_in_series=7,
                 V_tanks=[V_anae]*2+[V_anox]*2+[V_ae]*3,
-                influent_fractions=[[1]+[0]*6]*3,
-                # influent_fractions=[[1]+[0]*6]*2,
+                # influent_fractions=[[1]+[0]*6]*3,
+                influent_fractions=[[1]+[0]*6]*2,
                 internal_recycles=[(6,2,Q_intr)],
                 kLa=[0]*4+[120,120,60], DO_ID=DO_ID, DO_sat=SOSAT1,
-                suspended_growth_model=asm,)
-                # gas_stripping=True)
+                suspended_growth_model=asm,
+                gas_stripping=True)
     
     C2 = su.FlatBottomCircularClarifier(
         'C2', AS-0, ['effluent', 1-AS, 'WAS'],
@@ -140,7 +141,7 @@ def create_system(flowsheet=None, default_init_conds=True):
                           adm1_model=adm, asm2d_model=asm)
     AD = su.AnaerobicCSTR('AD', ins=J1.outs[0], outs=('biogas', 'AD_eff'), isdynamic=True,
                            V_liq=3400, V_gas=300, T=T_ad, model=adm,)
-    AD.algebraic_h2 = True
+    AD.algebraic_h2 = False
     # Switch back to ASM1 components
     J2 = su.ADM1ptomASM2d('J2', upstream=AD-1, thermo=thermo_asm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
@@ -172,10 +173,57 @@ def create_system(flowsheet=None, default_init_conds=True):
     sys.set_tolerance(mol=1e-5, rmol=1e-5)
     sys.maxiter = 5000
     # sys.set_dynamic_tracker(C1, A1, O3, C2, J1, AD, J2, C3)
-    sys.set_dynamic_tracker(C1, AS, C2, J1, AD, J2, C3)
+    # sys.set_dynamic_tracker(C1, AS, C2, J1, AD, J2, C3)
+    sys.set_dynamic_tracker(AS, AD, C2-0)    
     
     return sys
 
+def create_subsys():
+    flowsheet = qs.Flowsheet('bsm1p')
+    qs.main_flowsheet.set_flowsheet(flowsheet)
+    
+    cmps_asm = pc.create_masm2d_cmps()
+    asm = pc.mASM2d(components=cmps_asm, 
+                    electron_acceptor_dependent_decay=True,
+                    k_h=2.46, mu_H=4.23, q_fe=2.11, b_H=0.28, mu_PAO=0.82, 
+                    q_PP=1.23, q_PHA=2.46, b_PAO=0.14, b_PP=0.14, b_PHA=0.14, 
+                    mu_AUT=0.61, b_AUT=0.09)
+    
+    # Influent
+    inf = WasteStream('inf', T=Temp)
+    inf.set_flow_by_concentration(flow_tot=20446, concentrations=c1init, units=('m3/d', 'mg/L'))
+    # inf.set_flow_by_concentration(**default_inf_kwargs)
+
+    DO_ID = 'S_O2'
+
+    AS = su.PFR('AS', ins=[inf, 'RAS'], outs='treated', 
+                N_tanks_in_series=7,
+                V_tanks=[V_anae]*2+[V_anox]*2+[V_ae]*3,
+                # influent_fractions=[[1]+[0]*6]*3,
+                influent_fractions=[[1]+[0]*6]*2,
+                internal_recycles=[(6,2,Q_intr)],
+                kLa=[0]*4+[120,120,60], DO_ID=DO_ID, DO_sat=SOSAT1,
+                suspended_growth_model=asm,
+                gas_stripping=True)
+    
+    C2 = su.FlatBottomCircularClarifier(
+        'C2', AS-0, ['effluent', 1-AS, 'WAS'],
+        # 'C2', O3-1, ['effluent', 2-A1, 'WAS'],
+        underflow=Q_ras, wastage=Q_was,
+        surface_area=1500, height=4, N_layer=10, feed_layer=5,
+        X_threshold=3000, v_max=474, v_max_practical=250,
+        rh=5.76e-4, rp=2.86e-3, fns=2.28e-3
+        )
+
+    AS.set_init_conc(concentrations=asinit)
+    C2.set_init_solubles(**c2init['s'])
+    C2.set_init_sludge_solids(**c2init['x'])
+    C2.set_init_TSS(c2init['tss'])
+    
+    sub = qs.System('bsm1p', path=(AS, C2), recycle=(C2-1, ))
+    sub.set_dynamic_tracker(AS, C2-0)
+    
+    return sub
 
 # %%
 
@@ -204,17 +252,18 @@ def run(sys, t, t_step, method=None, **kwargs):
 
 #%%
 if __name__ == '__main__':
-    sys = create_system()
+    # sys = create_system()
+    sys = create_subsys()
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 5
+    t = 300
     t_step = 1
     # method = 'RK45'
-    method = 'RK23'
+    # method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    # method = 'BDF'
+    method = 'BDF'
     # method = 'LSODA'
     
     run(sys, t, t_step, method=method)

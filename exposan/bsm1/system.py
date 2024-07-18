@@ -280,6 +280,7 @@ def create_system(
 #%%
 @time_printer
 def run(t, t_step, method=None, **kwargs):
+    # sys = create_system(suspended_growth_model='ASM2d')
     sys = create_system()
     sys.simulate(
         state_reset_hook='reset_cache',
@@ -292,6 +293,7 @@ def run(t, t_step, method=None, **kwargs):
         **kwargs)
     srt = get_SRT(sys, biomass_IDs)
     print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
+    return sys
 
 if __name__ == '__main__':
     t = 50
@@ -305,4 +307,4 @@ if __name__ == '__main__':
     msg = f'Method {method}'
     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
     print(f'Time span 0-{t}d \n')
-    run(t, t_step, method=method)
+    sys = run(t, t_step, method=method)
