@@ -40,8 +40,8 @@ Temp = 273.15+20    # temperature [K]
 V_an = 1000    # anoxic zone tank volume
 V_ae = 1333    # aerated zone tank volume
 Q_was = 385    # sludge wastage flowrate
-Q_ras = 18446    # recycle sludge flowrate
-biomass_IDs = ('X_BH', 'X_BA')
+Q_ras = 1*Q    # recycle sludge flowrate
+Q_intr = 3*Q    # internal recirculation
 
 # aer = pc.DiffusedAeration('Fixed_Aeration', 'S_O', KLa_20=240, SOTE=0.3, V=V_ae,
 #                           T_air=Temp, T_water=Temp, d_submergence=4-0.3)
@@ -50,6 +50,10 @@ biomass_IDs = ('X_BH', 'X_BA')
 # aer.C = 235.0
 
 valid_models = ('asm1', 'asm2d')
+biomass_IDs = dict.fromkeys(valid_models)
+biomass_IDs['asm1'] = ('X_BH', 'X_BA')
+biomass_IDs['asm2d'] = ('X_H', 'X_PAO', 'X_AUT')
+
 default_inf_kwargs = dict.fromkeys(valid_models)
 default_inf_kwargs['asm1'] = {
     'concentrations': {
@@ -66,26 +70,35 @@ default_inf_kwargs['asm1'] = {
     'units': ('m3/d', 'mg/L'),
     }
 
-default_inf_kwargs ['asm2d'] = {
-    'concentrations': {
-      'S_I': 14,
-      'X_I': 26.5,
-      'S_F': 20.1,
-      'S_A': 94.3,
-      'X_S': 409.75,
-      'S_NH4': 31,
-      'S_N2': 0,
-      'S_NO3': 0.266, 
-      'S_PO4': 2.8,
-      'X_PP': 0.05,
-      'X_PHA': 0.5,
-      'X_H': 0.15,
-      'X_AUT': 0, 
-      'X_PAO': 0, 
-      'S_ALK':7*12,
-      },
+default_inf_kwargs['asm2d'] = {
+    # 'concentrations': {
+    #   'S_I': 14,
+    #   'X_I': 26.5,
+    #   'S_F': 20.1,
+    #   'S_A': 94.3,
+    #   'X_S': 409.75,
+    #   'S_NH4': 31,
+    #   'S_NO3': 0.266, 
+    #   'S_PO4': 2.8,
+    #   'X_PP': 0.05,
+    #   'X_PHA': 0.5,
+    #   'X_H': 0.15,
+    #   'S_ALK':7*12,
+    #   },
+    'concentrations': dict(
+        S_F=41.7,
+        S_A=27.8,
+        S_I=30.0,
+        S_NH4=40.04,
+        S_PO4=9.01,
+        S_ALK=7.0*12,
+        X_I=51.2,
+        X_S=202.32,
+        X_H=28.17,
+        ),
     'units': ('m3/d', 'mg/L'),
     }
+
 
 default_asm_kwargs = dict.fromkeys(valid_models)
 default_asm_kwargs['asm1'] = dict(
@@ -112,6 +125,13 @@ default_asm_kwargs['asm2d'] = dict(
     K_PP=0.01, K_MAX=0.34, K_IPP=0.02, K_PHA=0.01,
     mu_AUT=1.0, b_AUT=0.15, K_O2_AUT=0.5, K_NH4_AUT=1.0, K_ALK_AUT=0.5, K_P_AUT=0.01,
     k_PRE=1.0, k_RED=0.6, K_ALK_PRE=0.5,
+    )
+
+default_c1_kwargs = dict(
+    underflow=Q_ras, wastage=Q_was, surface_area=1500,
+    height=4, N_layer=10, feed_layer=5,
+    X_threshold=3000, v_max=474, v_max_practical=250,
+    rh=5.76e-4, rp=2.86e-3, fns=2.28e-3
     )
 
 default_init_conds = dict.fromkeys(valid_models)
@@ -148,8 +168,12 @@ default_init_conds['asm2d'] = {
 def batch_init(sys, df):
     dct = df.to_dict('index')
     u = sys.flowsheet.unit # unit registry
-    for k in [u.A1, u.A2, u.O1, u.O2, u.O3]:
-        k.set_init_conc(**dct[k._ID])
+    for k in u:
+        if k.ID == 'C1': continue
+        elif k.ID == 'AS':
+            k.set_init_conc(concentrations=df.iloc[:-3])
+        else:
+            k.set_init_conc(**dct[k.ID])
     c1s = {k:v for k,v in dct['C1_s'].items() if v>0}
     c1x = {k:v for k,v in dct['C1_x'].items() if v>0}
     tss = [v for v in dct['C1_tss'].values() if v>0]
@@ -167,8 +191,10 @@ def batch_init(sys, df):
 def create_system(
         flowsheet=None, 
         suspended_growth_model='ASM1',
+        reactor_model='CSTR',
         inf_kwargs={},
         asm_kwargs={},
+        settler_kwargs={},
         init_conds=None,
         aeration_processes=(),
         ):
@@ -182,10 +208,16 @@ def create_system(
     suspended_growth_model : str
         Either "ASM1" using Activated Sludge Model No. 1,
         or "ASM2d" using Activated Sludge Model No. 2d.
+    reactor_model : str
+        "CSTR" to model each zone in the activated sludge reactor as a CSTR and 
+        model the internal reciruclation explicitly; "PFR" to model the entire
+        activated sludge reactor as a single unit, with implicit internal recirculation.
     inf_kwargs : dict
         Keyword arguments for influent.
     asm_kwargs : dict
         Keyword arguments for the ASM model (ASM1 or ASM2d).
+    settler_kwargs : dict
+        Keyword arguments for the clarifier.
     init_conds : dict or DataFrame
         For a dict, keyword arguments for initial conditions for all bioreactors in the system
         (the same initial conditions will be used),
@@ -197,91 +229,120 @@ def create_system(
 
     # Components and stream
     kind = suspended_growth_model.lower().replace('-', '').replace('_', '')
+    asm_kwargs = asm_kwargs or default_asm_kwargs[kind]
     if kind == 'asm1':
         pc.create_asm1_cmps()
-        asm = pc.ASM1(**default_asm_kwargs[kind])
+        asm = pc.ASM1(**asm_kwargs)
         DO_ID = 'S_O'
     elif kind == 'asm2d':
         pc.create_asm2d_cmps()
-        asm = pc.ASM2d(**default_asm_kwargs[kind])
+        asm = pc.ASM2d(**asm_kwargs)
         DO_ID = 'S_O2'
-    else: raise ValueError('`suspended_growth_model` can only be "ASM1" or "ASM2d", '
+    else: 
+        raise ValueError('`suspended_growth_model` can only be "ASM1" or "ASM2d", '
                            f'not {suspended_growth_model}.')
     
     wastewater = WasteStream('wastewater', T=Temp)
     inf_kwargs = inf_kwargs or default_inf_kwargs[kind]
     wastewater.set_flow_by_concentration(Q, **inf_kwargs)
     
-    effluent = WasteStream('effluent', T=Temp)
-    WAS = WasteStream('WAS', T=Temp)
-    RWW = WasteStream('RWW', T=Temp)
-    RAS = WasteStream('RAS', T=Temp)
-    
     # Process models
     if aeration_processes:
         aer1, aer2, aer3 = aeration_processes
+        kLa = [aer.KLa for aer in aeration_processes]
     else:
         aer1 = aer2 = pc.DiffusedAeration('aer1', DO_ID, KLa=240, DOsat=8.0, V=V_ae)
-        aer3 = pc.DiffusedAeration('aer3', DO_ID, KLa=84, DOsat=8.0, V=V_ae)
+        if kind == 'asm1':
+            kLa = [240, 240, 84]
+            aer3 = pc.DiffusedAeration('aer3', DO_ID, KLa=84, DOsat=8.0, V=V_ae)
+        else:
+            kLa = [240]*3
+            aer3 = aer1
     
     # Create unit operations
-    A1 = su.CSTR('A1', ins=[wastewater, RWW, RAS], V_max=V_an,
-                 aeration=None, suspended_growth_model=asm)
-    
-    A2 = su.CSTR('A2', A1-0, V_max=V_an,
-                 aeration=None, suspended_growth_model=asm)
-    
-    O1 = su.CSTR('O1', A2-0, V_max=V_ae, aeration=aer1,
-                 DO_ID=DO_ID, suspended_growth_model=asm)
-    
-    O2 = su.CSTR('O2', O1-0, V_max=V_ae, aeration=aer2,
-                 DO_ID=DO_ID, suspended_growth_model=asm)
-    
-    O3 = su.CSTR('O3', O2-0, [RWW, 'treated'], split=[0.6, 0.4],
-                 V_max=V_ae, aeration=aer3,
-                 DO_ID=DO_ID, suspended_growth_model=asm)
-    
-    C1 = su.FlatBottomCircularClarifier('C1', O3-1, [effluent, RAS, WAS],
-                                        underflow=Q_ras, wastage=Q_was, surface_area=1500,
-                                        height=4, N_layer=10, feed_layer=5,
-                                        X_threshold=3000, v_max=474, v_max_practical=250,
-                                        rh=5.76e-4, rp=2.86e-3, fns=2.28e-3)
+    c1_kwargs = settler_kwargs or default_c1_kwargs
+    if reactor_model == 'CSTR':
+        an_kwargs = dict(V_max=V_an, aeration=None, suspended_growth_model=asm)
+        ae_kwargs = dict(V_max=V_ae, DO_ID=DO_ID, suspended_growth_model=asm)
+        if kind == 'asm1':
+            A1 = su.CSTR('A1', ins=[wastewater, 'RWW', 'RAS'], **an_kwargs)       
+            A2 = su.CSTR('A2', A1-0, **an_kwargs)        
+            O1 = su.CSTR('O1', A2-0, aeration=aer1, **ae_kwargs)
+            O2 = su.CSTR('O2', O1-0, aeration=aer2, **ae_kwargs)
+            O3 = su.CSTR('O3', O2-0, [1-A1, 'treated'], split=[Q_intr, Q+Q_ras],
+                         aeration=aer3, **ae_kwargs)
+            C1 = su.FlatBottomCircularClarifier('C1', O3-1, 
+                                                ['effluent', 2-A1, 'WAS'],
+                                                **c1_kwargs)
+            path=(A1, A2, O1, O2, O3, C1)
+        else:
+            A1 = su.CSTR('A1', ins=[wastewater, 'RAS'], **an_kwargs)       
+            A2 = su.CSTR('A2', A1-0, **an_kwargs)        
+            A3 = su.CSTR('A3', [A2-0, 'RWW'], **an_kwargs)        
+            A4 = su.CSTR('A4', A3-0, **an_kwargs)        
+            O1 = su.CSTR('O1', A4-0, aeration=aer1, **ae_kwargs)
+            O2 = su.CSTR('O2', O1-0, aeration=aer2, **ae_kwargs)
+            O3 = su.CSTR('O3', O2-0, [1-A3, 'treated'], split=[Q_intr, Q+Q_ras],
+                         aeration=aer3, **ae_kwargs)
+            C1 = su.FlatBottomCircularClarifier('C1', O3-1, 
+                                                ['effluent', 1-A1, 'WAS'],
+                                                **c1_kwargs)
+            path = (A1, A2, A3, A4, O1, O2, O3, C1)
+        sys = System('bsm1_sys', path=path, recycle=(O3-0, C1-1))
+        sys.set_dynamic_tracker(A1, C1-0)
+    elif reactor_model == 'PFR':
+        as_kwargs = dict(
+            DO_ID=DO_ID, DO_sat=8.0, suspended_growth_model=asm,
+            gas_stripping=False
+            )
+        if kind == 'asm1':
+            AS = su.PFR('AS', ins=[wastewater, 'RAS'], outs='treated', 
+                        N_tanks_in_series=5,
+                        V_tanks=[V_an]*2+[V_ae]*3,
+                        influent_fractions=[[1]+[0]*4]*2,
+                        internal_recycles=[(4,0,Q_intr)],
+                        kLa=[0]*2+kLa, **as_kwargs)
+        else:
+            AS = su.PFR('AS', ins=[wastewater, 'RAS'], outs='treated', 
+                        N_tanks_in_series=7,
+                        V_tanks=[V_an]*4+[V_ae]*3,
+                        influent_fractions=[[1]+[0]*6]*2,
+                        internal_recycles=[(6,2,Q_intr)],
+                        kLa=[0]*4+kLa, **as_kwargs)
+        C1 = su.FlatBottomCircularClarifier('C1', AS-0, 
+                                            ['effluent', 1-AS, 'WAS'],
+                                            **c1_kwargs)
+        sys = System('bsm1_sys', path=(AS, C1), recycle=(C1-1,))
+        sys.set_dynamic_tracker(AS, C1-0)
+    else:
+        raise ValueError('`reactor_model` can only be "CSTR" or "PFR", '
+                           f'not {reactor_model}.')
 
-    # # Legacy codes for debugging the `Sampler`    
-    # C1 = su.FlatBottomCircularClarifier('C1', O3-1, ['', RAS, WAS],
-    #                                     underflow=Q_ras, wastage=Q_was, surface_area=1500,
-    #                                     height=4, N_layer=10, feed_layer=5,
-    #                                     X_threshold=3000, v_max=474, v_max_practical=250,
-    #                                     rh=5.76e-4, rp=2.86e-3, fns=2.28e-3)
-
-    # S1 = su.Sampler('S1', C1-0, effluent)
+    sys.set_tolerance(rmol=1e-6)
     
-    # System setup
-    sys = System('bsm1_sys', path=(A1, A2, O1, O2, O3, C1), recycle=(RWW, RAS))
-    # sys = System('bsm1_sys', path=(A1, A2, O1, O2, O3, C1, S1), recycle=(RWW, RAS))
-    # bio = System('bsm1_sys_bio', path=(A1, A2, O1, O2, O3), recycle=(RWW,))
-    # sys = System('bsm1_sys', path=(bio, C1, S1), recycle=(RAS,))
-
     if init_conds:
-        if type(init_conds) is dict:
-            for i in [A1, A2, O1, O2, O3]: i.set_init_conc(**init_conds)
+        if isinstance(init_conds, dict):
+            for i in sys.units: 
+                if i.ID == 'C1': continue
+                i.set_init_conc(**init_conds)
         else:
             df = init_conds
     else: 
         path = os.path.join(data_path, f'initial_conditions_{kind}.xlsx')
         df = load_data(path, sheet='default')
-        batch_init(sys, df)
-    sys.set_dynamic_tracker(A1, effluent)
-    sys.set_tolerance(rmol=1e-6)
-    
+    batch_init(sys, df)
+
     return sys
 
 
 #%%
 @time_printer
 def run(t, t_step, method=None, **kwargs):
-    # sys = create_system(suspended_growth_model='ASM2d')
-    sys = create_system()
+    asm = 'ASM1'
+    # asm = 'ASM2d'
+    rxt = 'CSTR'
+    # rxt = 'PFR'
+    sys = create_system(suspended_growth_model=asm, reactor_model=rxt)
     sys.simulate(
         state_reset_hook='reset_cache',
         t_span=(0,t),
@@ -291,7 +352,7 @@ def run(t, t_step, method=None, **kwargs):
         # atol=1e-3,
         # export_state_to=f'results/sol_{t}d_{method}.xlsx',
         **kwargs)
-    srt = get_SRT(sys, biomass_IDs)
+    srt = get_SRT(sys, biomass_IDs[asm.lower()])
     print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
     return sys
 
