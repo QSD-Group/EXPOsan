@@ -27,7 +27,7 @@ __all__ = ('create_system',)
 
 Q = 20648.4 # influent flowrate [m3/d]
 Q_intr = 3 * Q # activated sludge process internal recycle [m3/d]
-Q_ras = Q # recycle sludge flowrate
+Q_ras = 1 * Q # recycle sludge flowrate
 Q_was = 600 # sludge wastage flowrate
 Temp = 273.15+15 # temperature [K]
 T_ad = 273.15+35
@@ -57,7 +57,6 @@ default_inf_kwargs = {
 def create_system(flowsheet=None, default_init_conds=True):
     flowsheet = flowsheet or qs.Flowsheet('bsm2p')
     qs.main_flowsheet.set_flowsheet(flowsheet)
-    unit = flowsheet.unit
     
     cmps_asm = pc.create_masm2d_cmps()
     asm = pc.mASM2d(components=cmps_asm, 
@@ -70,11 +69,10 @@ def create_system(flowsheet=None, default_init_conds=True):
     # Influent
     inf = WasteStream('inf', T=Temp)
     inf.set_flow_by_concentration(**default_inf_kwargs)
-    # carb = WasteStream('carbon', T=Temp)
-    # carb.set_flow_by_concentration(2, {'S_A':400}, units=('m3/d', 'kg/m3'))
+    carb = WasteStream('carbon', T=Temp)
+    carb.set_flow_by_concentration(2, {'S_A':400}, units=('m3/d', 'kg/m3'))
     
     # Primary clarifier using the Otterpohl-Freund model
-    # Where are other parameters used?
     C1 = su.PrimaryClarifierBSM2(
         'C1', ins=(inf, 'reject'),
         outs=('C1_eff', 'C1_underflow'),
@@ -85,44 +83,48 @@ def create_system(flowsheet=None, default_init_conds=True):
         )
 
     DO_ID = 'S_O2'
-    # aer1 = aer2 = pc.DiffusedAeration('aer1', DO_ID, KLa=120, DOsat=SOSAT1, V=V_ae)
-    # aer3 = pc.DiffusedAeration('aer3', DO_ID, KLa=60, DOsat=SOSAT1, V=V_ae)
-    # A1 = su.CSTR('A1', ins=[C1-0, 'RWW', 'RAS', carb], V_max=V_an,
-    #              aeration=None, suspended_growth_model=asm1)
-    
-    # A2 = su.CSTR('A2', A1-0, V_max=V_an,
-    #              aeration=None, suspended_growth_model=asm1)
-
-    # O1 = su.CSTR('O1', A2-0, V_max=V_ae, aeration=aer1,
-    #              DO_ID=DO_ID, suspended_growth_model=asm1)
-    
-    # O2 = su.CSTR('O2', O1-0, V_max=V_ae, aeration=aer2,
-    #              DO_ID=DO_ID, suspended_growth_model=asm1)
-    
-    # O3 = su.CSTR('O3', O2-0, [1-A1, 'treated'], 
-    #              split=[0.6, 0.4],
-    #              V_max=V_ae, aeration=aer3,
-    #              DO_ID=DO_ID, suspended_growth_model=asm1)
-    
-    # AS = su.PFR('AS', ins=[C1-0, 'RAS', carb], outs='treated', 
-    AS = su.PFR('AS', ins=[C1-0, 'RAS'], outs='treated', 
-                N_tanks_in_series=7,
-                V_tanks=[V_anae]*2+[V_anox]*2+[V_ae]*3,
-                # influent_fractions=[[1]+[0]*6]*3,
-                influent_fractions=[[1]+[0]*6]*2,
-                internal_recycles=[(6,2,Q_intr)],
-                kLa=[0]*4+[120,120,60], DO_ID=DO_ID, DO_sat=SOSAT1,
-                suspended_growth_model=asm,
-                gas_stripping=True)
-    
-    C2 = su.FlatBottomCircularClarifier(
-        'C2', AS-0, ['effluent', 1-AS, 'WAS'],
-        # 'C2', O3-1, ['effluent', 2-A1, 'WAS'],
+    aer1 = aer2 = pc.DiffusedAeration('aer1', DO_ID, KLa=120, DOsat=SOSAT1, V=V_ae)
+    aer3 = pc.DiffusedAeration('aer3', DO_ID, KLa=60, DOsat=SOSAT1, V=V_ae)
+    gstrip = True
+    anae_kwargs = dict(V_max=V_anae, aeration=None, suspended_growth_model=asm, gas_stripping=gstrip)
+    anox_kwargs = dict(V_max=V_anox, aeration=None, suspended_growth_model=asm, gas_stripping=gstrip)
+    ae_kwargs = dict(V_max=V_ae, DO_ID=DO_ID, suspended_growth_model=asm, gas_stripping=gstrip)
+    c2_kwargs = dict(
         underflow=Q_ras, wastage=Q_was,
         surface_area=1500, height=4, N_layer=10, feed_layer=5,
         X_threshold=3000, v_max=474, v_max_practical=250,
         rh=5.76e-4, rp=2.86e-3, fns=2.28e-3
         )
+    
+    A1 = su.CSTR('A1', ins=[C1-0, 'RAS'], **anae_kwargs)       
+    A2 = su.CSTR('A2', A1-0, **anae_kwargs)        
+    A3 = su.CSTR('A3', [A2-0, 'RWW', carb], **anox_kwargs)        
+    # A3 = su.CSTR('A3', [A2-0, 'RWW'], **anox_kwargs)        
+    A4 = su.CSTR('A4', A3-0, **anox_kwargs)        
+    O1 = su.CSTR('O1', A4-0, aeration=aer1, **ae_kwargs)
+    O2 = su.CSTR('O2', O1-0, aeration=aer2, **ae_kwargs)
+    O3 = su.CSTR('O3', O2-0, [1-A3, 'treated'], split=[Q_intr, Q+Q_ras],
+                 aeration=aer3, **ae_kwargs)
+    C2 = su.FlatBottomCircularClarifier(
+        'C2', O3-1, ['effluent', 1-A1, 'WAS'], 
+        **c2_kwargs
+        )
+    
+    # # AS = su.PFR('AS', ins=[C1-0, 'RAS', carb], outs='treated', 
+    # AS = su.PFR('AS', ins=[C1-0, 'RAS'], outs='treated', 
+    #             N_tanks_in_series=7,
+    #             V_tanks=[V_anae]*2+[V_anox]*2+[V_ae]*3,
+    #             # influent_fractions=[[1]+[0]*6]*3,
+    #             influent_fractions=[[1]+[0]*6]*2,
+    #             internal_recycles=[(6,2,Q_intr)],
+    #             kLa=[0]*4+[120,120,60], DO_ID=DO_ID, DO_sat=SOSAT1,
+    #             suspended_growth_model=asm,
+    #             gas_stripping=True)
+    
+    # C2 = su.FlatBottomCircularClarifier(
+    #     'C2', AS-0, ['effluent', 1-AS, 'WAS'],
+    #     **c2_kwargs
+    #     )
     
     TC1 = su.Thickener('TC1', C2-2, outs=['thickened_sludge', ''],
                        thickening_perc=7, TSS_removal_perc=98)
@@ -142,9 +144,9 @@ def create_system(flowsheet=None, default_init_conds=True):
     AD = su.AnaerobicCSTR('AD', ins=J1.outs[0], outs=('biogas', 'AD_eff'), isdynamic=True,
                            V_liq=3400, V_gas=300, T=T_ad, model=adm,)
     AD.algebraic_h2 = False
-    # Switch back to ASM1 components
     J2 = su.ADM1ptomASM2d('J2', upstream=AD-1, thermo=thermo_asm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
+    # Switch back to ASM1 components
     qs.set_thermo(thermo_asm)
     
     # Dewatering
@@ -154,29 +156,37 @@ def create_system(flowsheet=None, default_init_conds=True):
     M2 = su.Mixer('M2', ins=(TC1-1, C3-1), outs=1-C1)
     
     if default_init_conds:
-        # for i in ('A1', 'A2', 'O1', 'O2', 'O3'):
-        #     getattr(unit, i).set_init_conc(**asinit[i])
         C1.set_init_conc(**c1init)
-        AS.set_init_conc(concentrations=asinit)
+        # AS.set_init_conc(concentrations=asinit)
+        asdct = asinit.to_dict('index')
+        for i in (A1, A2, A3, A4, O1, O2, O3):
+            i.set_init_conc(**asdct[i.ID])
         C2.set_init_solubles(**c2init['s'])
         C2.set_init_sludge_solids(**c2init['x'])
         C2.set_init_TSS(c2init['tss'])
         AD.set_init_conc(**adinit)
     
     sys = qs.System('bsm2_sys', 
-                    # path=(C1, A1, A2, O1, O2, O3, C2, 
-                    #       TC1, M1, J1, AD, J2, C3, M2),
-                    # recycle=(O3-0, C2-1, M2-0)
-                    path=(C1, AS, C2, TC1, M1, J1, AD, J2, C3, M2),
-                    recycle=(C2-1, M2-0)
+                    path=(C1, A1, A2, A3, A4, O1, O2, O3, C2, 
+                          TC1, M1, J1, AD, J2, C3, M2),
+                    recycle=(O3-0, C2-1, M2-0)
+                    # path=(C1, AS, C2, TC1, M1, J1, AD, J2, C3, M2),
+                    # recycle=(C2-1, M2-0)
                     )
     sys.set_tolerance(mol=1e-5, rmol=1e-5)
     sys.maxiter = 5000
-    # sys.set_dynamic_tracker(C1, A1, O3, C2, J1, AD, J2, C3)
+    sys.set_dynamic_tracker(A1, O3, AD, C2-0)
     # sys.set_dynamic_tracker(C1, AS, C2, J1, AD, J2, C3)
-    sys.set_dynamic_tracker(AS, AD, C2-0)    
+    # sys.set_dynamic_tracker(AS, AD, C2-0)
     
     return sys
+
+#%%
+default_PE_concs = dict(
+    S_N2=18, S_NH4=25, S_F=87.0, S_I=21.8, X_S=112.7+39.6, X_I=29.0, S_PO4=8.0,
+    S_IC=75.6, S_Ca=140, S_Mg=50, S_K=28, S_Na=3.76*23, S_Cl=12*35.45,
+    S_A=30
+    )
 
 def create_subsys():
     flowsheet = qs.Flowsheet('bsm1p')
@@ -191,37 +201,66 @@ def create_subsys():
     
     # Influent
     inf = WasteStream('inf', T=Temp)
-    inf.set_flow_by_concentration(flow_tot=20446, concentrations=c1init, units=('m3/d', 'mg/L'))
+    inf.set_flow_by_concentration(20446, default_PE_concs, units=('m3/d', 'mg/L'))
     # inf.set_flow_by_concentration(**default_inf_kwargs)
 
     DO_ID = 'S_O2'
-
-    AS = su.PFR('AS', ins=[inf, 'RAS'], outs='treated', 
-                N_tanks_in_series=7,
-                V_tanks=[V_anae]*2+[V_anox]*2+[V_ae]*3,
-                # influent_fractions=[[1]+[0]*6]*3,
-                influent_fractions=[[1]+[0]*6]*2,
-                internal_recycles=[(6,2,Q_intr)],
-                kLa=[0]*4+[120,120,60], DO_ID=DO_ID, DO_sat=SOSAT1,
-                suspended_growth_model=asm,
-                gas_stripping=True)
-    
-    C2 = su.FlatBottomCircularClarifier(
-        'C2', AS-0, ['effluent', 1-AS, 'WAS'],
-        # 'C2', O3-1, ['effluent', 2-A1, 'WAS'],
+    aer1 = aer2 = pc.DiffusedAeration('aer1', DO_ID, KLa=120, DOsat=SOSAT1, V=V_ae)
+    aer3 = pc.DiffusedAeration('aer3', DO_ID, KLa=60, DOsat=SOSAT1, V=V_ae)
+    gstrip = True
+    anae_kwargs = dict(V_max=V_anae, aeration=None, suspended_growth_model=asm, gas_stripping=gstrip)
+    anox_kwargs = dict(V_max=V_anox, aeration=None, suspended_growth_model=asm, gas_stripping=gstrip)
+    ae_kwargs = dict(V_max=V_ae, DO_ID=DO_ID, suspended_growth_model=asm, gas_stripping=gstrip)
+    c2_kwargs = dict(
         underflow=Q_ras, wastage=Q_was,
         surface_area=1500, height=4, N_layer=10, feed_layer=5,
         X_threshold=3000, v_max=474, v_max_practical=250,
         rh=5.76e-4, rp=2.86e-3, fns=2.28e-3
         )
-
-    AS.set_init_conc(concentrations=asinit)
+    
+    A1 = su.CSTR('A1', ins=[inf, 'RAS'], **anae_kwargs)  
+    A2 = su.CSTR('A2', A1-0, **anae_kwargs)
+    A3 = su.CSTR('A3', [A2-0, 'RWW'], **anox_kwargs)
+    A4 = su.CSTR('A4', A3-0, **anox_kwargs)
+    O1 = su.CSTR('O1', A4-0, aeration=aer1, **ae_kwargs)
+    O2 = su.CSTR('O2', O1-0, aeration=aer2, **ae_kwargs)
+    O3 = su.CSTR('O3', O2-0, [1-A3, 'treated'], split=[Q_intr, Q+Q_ras],
+                 aeration=aer3, **ae_kwargs)
+    C2 = su.FlatBottomCircularClarifier(
+        'C2', O3-1, ['effluent', 1-A1, 'WAS'], 
+        **c2_kwargs
+        )
+    
+    # AS = su.PFR('AS', ins=[inf, 'RAS'], outs='treated', 
+    #             N_tanks_in_series=7,
+    #             V_tanks=[V_anae]*2+[V_anox]*2+[V_ae]*3,
+    #             # influent_fractions=[[1]+[0]*6]*3,
+    #             influent_fractions=[[1]+[0]*6]*2,
+    #             internal_recycles=[(6,2,Q_intr)],
+    #             kLa=[0]*4+[120,120,60], DO_ID=DO_ID, DO_sat=SOSAT1,
+    #             suspended_growth_model=asm,
+    #             gas_stripping=True)
+    
+    # C2 = su.FlatBottomCircularClarifier(
+    #     'C2', AS-0, ['effluent', 1-AS, 'WAS'],
+    #     **c2_kwargs
+    #     )
+    
+    asdct = asinit.to_dict('index')
+    for i in (A1, A2, A3, A4, O1, O2, O3):
+        i.set_init_conc(**asdct[i.ID])
+    # AS.set_init_conc(concentrations=asinit)
     C2.set_init_solubles(**c2init['s'])
     C2.set_init_sludge_solids(**c2init['x'])
     C2.set_init_TSS(c2init['tss'])
     
-    sub = qs.System('bsm1p', path=(AS, C2), recycle=(C2-1, ))
-    sub.set_dynamic_tracker(AS, C2-0)
+    sub = qs.System('bsm1p', 
+                    path=(A1, A2, A3, A4, O1, O2, O3, C2),
+                    recycle=(O3-0, C2-1,)
+                    )
+    sub.set_dynamic_tracker(A1, A3, O3, C2-0)
+    # sub = qs.System('bsm1p', path=(AS, C2), recycle=(C2-1, ))
+    # sub.set_dynamic_tracker(AS, C2-0)
     
     return sub
 
@@ -243,27 +282,21 @@ def run(sys, t, t_step, method=None, **kwargs):
         # atol=1e-3,
         # export_state_to=f'results/sol_{t}d_{method}.xlsx',
         **kwargs)
-    
-    # biomass_IDs = ('X_BH', 'X_BA')
-    # srt = get_SRT(sys, biomass_IDs,
-    #               wastage=[sys.flowsheet.stream.digested_sludge],
-    #               active_unit_IDs=('C3'))
-    # if srt: print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
 
 #%%
 if __name__ == '__main__':
-    # sys = create_system()
-    sys = create_subsys()
+    sys = create_system()
+    # sys = create_subsys()
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 300
+    t = 30
     t_step = 1
     # method = 'RK45'
-    # method = 'RK23'
+    method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    method = 'BDF'
+    # method = 'BDF'
     # method = 'LSODA'
     
     run(sys, t, t_step, method=method)
