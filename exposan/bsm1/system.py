@@ -24,7 +24,7 @@ __all__ = (
     'default_asm_kwargs',
     'default_inf_kwargs',
     'default_init_conds',
-    'Q', 'Q_ras', 'Q_was', 'Temp', 'V_an', 'V_ae', 
+    'Q', 'Q_ras', 'Q_was', 'V_an', 'V_ae', 
     )
 
 
@@ -35,7 +35,7 @@ __all__ = (
 # =============================================================================
 
 Q = 18446           # influent flowrate [m3/d]
-Temp = 273.15+20    # temperature [K]
+# Temp = 273.15+20    # temperature [K]
 
 V_an = 1000    # anoxic zone tank volume
 V_ae = 1333    # aerated zone tank volume
@@ -116,14 +116,14 @@ default_asm_kwargs['asm2d'] = dict(
     f_SI=0.0, Y_H=0.625, f_XI_H=0.1,
     Y_PAO=0.625, Y_PO4=0.4, Y_PHA=0.2, f_XI_PAO=0.1,
     Y_A=0.24, f_XI_AUT=0.1,
-    K_h=3.0, eta_NO3=0.6, eta_fe=0.4, K_O2=0.2, K_NO3=0.5, K_X=0.1,
-    mu_H=6.0, q_fe=3.0, eta_NO3_H=0.8, b_H=0.4, K_O2_H=0.2, K_F=4.0,
+    K_h=2.46, eta_NO3=0.6, eta_fe=0.4, K_O2=0.2, K_NO3=0.5, K_X=0.1,
+    mu_H=4.23, q_fe=2.11, eta_NO3_H=0.8, b_H=0.28, K_O2_H=0.2, K_F=4.0,
     K_fe=4.0, K_A_H=4.0, K_NO3_H=0.5, K_NH4_H=0.05, K_P_H=0.01, K_ALK_H=0.1,
-    q_PHA=3.0, q_PP=1.5, mu_PAO=1.0, eta_NO3_PAO=0.6, b_PAO=0.2, b_PP=0.2,
-    b_PHA=0.2, K_O2_PAO=0.2, K_NO3_PAO=0.5, K_A_PAO=4.0, K_NH4_PAO=0.05,
+    q_PHA=2.46, q_PP=1.23, mu_PAO=0.82, eta_NO3_PAO=0.6, b_PAO=0.14, b_PP=0.14,
+    b_PHA=0.14, K_O2_PAO=0.2, K_NO3_PAO=0.5, K_A_PAO=4.0, K_NH4_PAO=0.05,
     K_PS=0.2, K_P_PAO=0.01, K_ALK_PAO=0.1,
     K_PP=0.01, K_MAX=0.34, K_IPP=0.02, K_PHA=0.01,
-    mu_AUT=1.0, b_AUT=0.15, K_O2_AUT=0.5, K_NH4_AUT=1.0, K_ALK_AUT=0.5, K_P_AUT=0.01,
+    mu_AUT=0.61, b_AUT=0.09, K_O2_AUT=0.5, K_NH4_AUT=1.0, K_ALK_AUT=0.5, K_P_AUT=0.01,
     k_PRE=1.0, k_RED=0.6, K_ALK_PRE=0.5,
     )
 
@@ -234,10 +234,12 @@ def create_system(
         pc.create_asm1_cmps()
         asm = pc.ASM1(**asm_kwargs)
         DO_ID = 'S_O'
+        Temp = 273.15+20
     elif kind == 'asm2d':
         pc.create_asm2d_cmps()
         asm = pc.ASM2d(**asm_kwargs)
         DO_ID = 'S_O2'
+        Temp = 273.15+15
     else: 
         raise ValueError('`suspended_growth_model` can only be "ASM1" or "ASM2d", '
                            f'not {suspended_growth_model}.')
@@ -338,10 +340,10 @@ def create_system(
 #%%
 @time_printer
 def run(t, t_step, method=None, **kwargs):
-    asm = 'ASM1'
-    # asm = 'ASM2d'
-    rxt = 'CSTR'
-    # rxt = 'PFR'
+    # asm = 'ASM1'
+    asm = 'ASM2d'
+    # rxt = 'CSTR'
+    rxt = 'PFR'
     sys = create_system(suspended_growth_model=asm, reactor_model=rxt)
     sys.simulate(
         state_reset_hook='reset_cache',
@@ -357,7 +359,7 @@ def run(t, t_step, method=None, **kwargs):
     return sys
 
 if __name__ == '__main__':
-    t = 50
+    t = 200
     t_step = 1
     # method = 'RK45'
     # method = 'RK23'

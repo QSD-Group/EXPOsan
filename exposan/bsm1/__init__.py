@@ -41,11 +41,11 @@ def load(reload=False, suspended_growth_model='ASM1', reactor_model='CSTR',
             init_conds=init_conds,
             aeration_processes=aeration_processes,
             )
-        O1 = sys.flowsheet.unit.O1
-        cmps = components = O1.components
-        asm = O1.suspended_growth_model
+        # O1 = sys.flowsheet.unit.O1
+        # cmps = components = O1.components
+        # asm = O1.suspended_growth_model
         # Legacy names
-        global PE, SE, RE
+        global PE, SE#, RE
         stream = sys.flowsheet.stream
         PE = stream.wastewater
         SE = stream.effluent
