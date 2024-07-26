@@ -118,9 +118,9 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     # TODO: update LCA items to be US-based, see comments on the top
     qs.ImpactItem.load_from_file(os.path.join(folder, 'data/geo_impact_items.xlsx'))
     
-    # =============================================================================
+    # =========================================================================
     # pretreatment (Area 000)
-    # =============================================================================
+    # =========================================================================
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
     
@@ -183,9 +183,9 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     # 5.06 $/m3, 0.05 $/m3/km (Marufuzzaman et al. Transportation Research Part A. 2015, converted to 2020 price)
     raw_wastewater.price = -WWTP.ww_2_dry_sludge*(waste_cost-sludge_transportation*(5.06*5+0.05*5*sludge_distance))/3.79/(10**6)
     
-    # =============================================================================
+    # =========================================================================
     # HTL (Area 100)
-    # =============================================================================
+    # =========================================================================
     H1 = qsu.HXutility(ID='A110',
                        include_construction=True,
                        ins=P1-0,
@@ -206,9 +206,9 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                                        mositure_adjustment_exist_in_the_system=False)
     HTL.register_alias('HTL')
     
-    # =============================================================================
+    # =========================================================================
     # CHG (Area 200)
-    # =============================================================================
+    # =========================================================================
     H2SO4_Tank = qsu.StorageTank(ID='T200',
                                  ins='H2SO4',
                                  outs=('H2SO4_out'),
@@ -267,9 +267,9 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     MemDis.outs[0].price = 0.3236
     MemDis.register_alias('MemDis')
     
-    # =============================================================================
+    # =========================================================================
     # Storage, and disposal (Area 300)
-    # =============================================================================
+    # =========================================================================
     BiocrudeTank = qsu.StorageTank(ID='T300',
                                    ins=HTL-2,
                                    outs=('biocrude'),
@@ -298,9 +298,9 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                          init_with='Stream')
     GasMixer.register_alias('GasMixer')
     
-    # =============================================================================
+    # =========================================================================
     # facilities
-    # =============================================================================
+    # =========================================================================
     qsu.HeatExchangerNetwork(ID='HXN',
                              T_min_app=86,
                              force_ideal_thermo=True)
@@ -325,13 +325,13 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                                operating_hours=WWTP.operation_hours)
     sys.register_alias('sys')
 
-    # =============================================================================
+    # =========================================================================
     # add stream impact items
-    # =============================================================================
+    # =========================================================================
     # TODO: check the notes in impact_items
     impact_items = {# 1 gal water = 3.79 kg water
                     # 0.719 kg CO2 eq/dry tonne/km (Zhao et al. Journal of Environmental Sciences. 2023)
-                    'sludge':       [stream.sludge_assumed_in_wastewater,
+                    'sludge':       [stream.raw_wastewater,
                                      -WWTP.ww_2_dry_sludge*\
                                      (waste_GHG-sludge_transportation*\
                                      (0.719*sludge_distance))/3.79/(10**6)],
@@ -358,7 +358,7 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     
     # TODO: check the calculation here
     annual_sales = BiocrudeTank.outs[0].F_mass*365*24*0.3847 + MemDis.outs[0].F_mass*365*24*0.3236
-    annual_material_cost = sum([s.cost for s in sys.feeds[1:] if ((s.price > 0) & (s.ID != 'sludge_assumed_in_wastewater'))]) * sys.operating_hours
+    annual_material_cost = sum([s.cost for s in sys.feeds[1:] if ((s.price > 0) & (s.ID != 'raw_wastewater'))]) * sys.operating_hours
     annual_utility_cost = sum([u.utility_cost for u in sys.cost_units]) * sys.operating_hours
     annual_net_income = annual_sales - annual_material_cost - annual_utility_cost
     
@@ -403,7 +403,7 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     # TODO: since we have CT, do we still need Cooling here?
     # TODO: check the following lines of notes
     # 0.67848 is the GHG level with the Electricity item from ecoinvent,
-    # we cannot list electricity GHG one state by one state,
+    # we cannot update electricity CI one state by one state,
     # but we can adjust the electricity amount to reflect different GHG of electricity at different states
     qs.LCA(system=sys,
            lifetime=30,

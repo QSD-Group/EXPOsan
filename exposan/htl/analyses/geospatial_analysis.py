@@ -42,7 +42,7 @@ dy = Color('dark_yellow', (171, 137, 55)).HEX
 da = Color('dark_gray', (78, 78, 78)).HEX
 dp = Color('dark_purple', (76, 56, 90)).HEX
 
-# !!! for figures, run 2 times to make the ticks and font size right
+# TODO: is it a good idea to write this setting as a universal function?
 def set_plot(figure_size=(30, 30)):
     global fig, ax
     fig, ax = plt.subplots(figsize=figure_size)
@@ -51,6 +51,8 @@ def set_plot(figure_size=(30, 30)):
     ax.set_frame_on(False)
 
 #%% read data and data pre-processing
+
+# TODO: update the this block with the new dataset
 
 WRRF = pd.read_excel(folder + 'AMO_results_12262023.xlsx')
 
@@ -73,6 +75,7 @@ treatment_trains = np.array(['B1','B1E','B2','B3','B4','B5','B6',
 TT_indentifier = WRRF[treatment_trains].apply(lambda x: x > 0)
 WRRF['treatment_train'] = TT_indentifier.apply(lambda x: list(treatment_trains[x.values]), axis=1)
 
+# TODO: the new results has FLOW_2022_MGD_FINAL instead of FLOW_2022_MGD
 WRRF = WRRF[['FACILITY','CITY','STATE','CWNS_NUM','FACILITY_CODE','LATITUDE',
              'LONGITUDE','FLOW_2022_MGD','treatment_train',
              'sludge_anaerobic_digestion','sludge_aerobic_digestion','landfill',
@@ -109,11 +112,13 @@ refinery = gpd.GeoDataFrame(refinery, crs='EPSG:4269',
                             geometry=gpd.points_from_xy(x=refinery.Longitude,
                                                         y=refinery.Latitude))
 
+# TODO: replace U.S. map files to be consistent with the IEDO work
 US = gpd.read_file(folder + 'US/cb_2018_us_state_500k.shp')
-# confirmed from the wesbite (next line): this is no change in US map since June 1, 1995. So, using 2018 US map data is OK.
+# confirmed from the wesbite (next line): there is no change in US map since June 1, 1995. So, using 2018 US map data is OK.
 # https://en.wikipedia.org/wiki/Territorial_evolution_of_the_United_States#1946%E2%80%93present_(Decolonization)
 US = US[['NAME', 'geometry']]
 
+# TODO: if the input file does not have these regions, remove this part
 for excluded in ('Alaska',
                  'Hawaii',
                  'Puerto Rico',
@@ -122,7 +127,8 @@ for excluded in ('Alaska',
                  'Guam',
                  'United States Virgin Islands'):
     US = US.loc[US['NAME'] != excluded]
-    
+
+# TODO: check EPSG and keep consistent with the IEDO work
 WRRF = WRRF.to_crs(crs='EPSG:3857')
 refinery = refinery.to_crs(crs='EPSG:3857')
 US = US.to_crs(crs='EPSG:3857')
@@ -130,17 +136,22 @@ US = US.to_crs(crs='EPSG:3857')
 # NOTE 1: if only select states, uncomment the next line of code
 # US = US.loc[US['NAME'].isin(('Pennsylvania',))]
 
+# TODO: a small number of WRRFs may fall outside the boundary of the contiguous U.S. a little bit, which is fine
+# TODO: do not use sjoin here, as it will remove the above states WRRFs
 WRRF = gpd.sjoin(WRRF, US)
 WRRF = WRRF.drop(['index_right'], axis=1)
 refinery = gpd.sjoin(refinery, US)
 refinery = refinery.drop(['index_right'], axis=1)
 
+# TODO: update electricity price and CI to be balancing area based
 elec = pd.read_excel(folder + 'state_elec_price_GHG.xlsx', 'summary')
 
 electricity = pd.merge(elec, US, left_on='name', right_on='NAME')
 electricity = gpd.GeoDataFrame(electricity)
 
 #%% WRRFs visualization
+
+# TODO: update the code/figure during execution, if necessary
 
 set_plot()
 
@@ -166,6 +177,8 @@ WRRF[more_than_100].plot(ax=ax, color=Guest.green.HEX, markersize=WRRF.loc[more_
 # WRRF.plot(ax=ax, color=Guest.gray.HEX, markersize=10)
 
 #%% oil refinery visualization
+
+# TODO: update the code/figure during execution, if necessary
 
 set_plot()
 
@@ -194,6 +207,8 @@ refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=refinery['total_capacity
 
 #%% WRRFs+oil refineries visualization (just select states, search 'NOTE 1')
 
+# TODO: update the code/figure during execution, if necessary
+
 if len(set(US['NAME'])) == 1:
 
     set_plot()
@@ -207,6 +222,8 @@ if len(set(US['NAME'])) == 1:
 
 #%% WRRFs+oil refineries visualization (all)
 
+# TODO: update the code/figure during execution, if necessary
+
 set_plot()
 
 US.plot(ax=ax, color='w', edgecolor='k', linewidth=3.5)
@@ -214,6 +231,8 @@ WRRF.plot(ax=ax, color=Guest.gray.HEX, markersize=5)
 refinery.plot(ax=ax, color=Guest.orange.HEX, markersize=500, edgecolor='k', linewidth=3.5)
 
 #%% electricity price and carbon intensity visualization
+
+# TODO: update the code/figure during execution, if necessary
 
 set_plot()
 
@@ -225,16 +244,15 @@ electricity.plot('price (10-year median)', ax=ax, linewidth=3, cmap='Oranges', e
 
 #%% transporation distance calculation
 
-# if want select WRRFs that are within certain ranges of refineries, set max_distance in sjoin_nearest.
-# here we do not set a max distance
-
-WRRF_input = WRRF.sjoin_nearest(refinery, max_distance=None, distance_col='distance')
-
+# if want select WRRFs that are within certain ranges of refineries, set max_distance in sjoin_nearest
 # if set max_distance = 100000, we have a problem here, that is CRS 3857 is not accurate at all,
 # especially more far away from the equator, therefore we need use a larger distance here,
 # for example, 150000 (tested, when use 150000, all actual distances are smaller than 100000)
 # as the max_distance and then use geopy.distance.geodesic to recalculate the distance and
 # filter out those that are actually longer than 100000
+
+# here we do not set a max distance
+WRRF_input = WRRF.sjoin_nearest(refinery, max_distance=None, distance_col='distance')
 
 WRRF_input['WRRF_location'] = list(zip(WRRF_input.latitude, WRRF_input.longitude))
 WRRF_input['refinery_location'] = list(zip(WRRF_input.Latitude, WRRF_input.Longitude))
@@ -245,15 +263,18 @@ for i in range(len(WRRF_input)):
 
 WRRF_input['linear_distance_km'] = linear_distance
 
-# if we set the max_distance, then uncomment the next line (replace 100 km when necessary)
+# if we set the max_distance, then uncomment the next line (replace 100 km if necessary)
 # WRRF_input = WRRF_input[WRRF_input['linear_distance'] <= 100]
 
+# TODO: we could try this...if most of the new coordinates and the old coordinates could match, that's good
+# TODO: if not, we have to use Google Maps API to calculate distances for all WRRFs (actually perferred)
+# TODO: to avoid warnings from Google, we may run a subset at one time
 # we have previously calculated the distance using Google Maps API and the old dataset (based on Seiple et al.),
 # now, we are using the AMO dataset, and to avoid do this again (which may result in a warning from Google...),
-# we first merge these two datasets and only calculate distances that have not been calculated before.
+# we first merge these two datasets and only calculate distances that have not been calculated before
 # note there are 9 WRRFs in the old datasets whose locations were adjusted to enable distance calculation,
-# they will be removed after getting the new HTL geospatial model input file.
-# when calculate new distances, if there are WRRFs that cannot get a distance, remove them as well.
+# they will be removed after getting the new HTL geospatial model input file
+# when calculate new distances, if there are WRRFs that cannot get a distance, remove them as well
 
 old_dataset_based_on_Seiple = pd.read_excel(folder + 'HTL_geospatial_model_input_final_old.xlsx')
 
@@ -269,6 +290,7 @@ WRRF_input = WRRF_input.drop(['UID','FACILITY_CODE'], axis=1)
 
 WRRF_input_without_distance = WRRF_input[WRRF_input['real_distance_km'].isna()]
 
+# TODO: before running, check if Google Map API still provides monthly free credit
 # !!! run <5000 datapoints every time !!! get a google API key !!! do not upload to GitHub
 gmaps = googlemaps.Client(key='XXX')
 for i in WRRF_input_without_distance.index:
@@ -281,6 +303,8 @@ for i in WRRF_input_without_distance.index:
         print('--------------------------------')
         WRRF_input['real_distance_km'].iloc[i] = np.nan
 
+# TODO: manually calculate distances for these WRRFs later (remove is fine, actually preferred since the tank truck transportation must be viable)
+# TODO: if decide to removal these WRRFs, document these facilities
 # remove WRRFs whose distance to oil refineries cannot be calculated using Google Maps API
 # there are 2 WRRFs that are removed here, they are:
 # AVALON WWRF (0.915 MGD)
@@ -304,9 +328,12 @@ WRRF_input = WRRF_input[~WRRF_input['facility'].isin(['RICKARDSVILLE WWTP','MACK
                                                       'BIG PINE WWTF','NORTH HAVEN, WWTF',
                                                       'Eagle Nest, Village of'])]
 
-WRRF_input.to_excel(folder + f'HTL_geospatial_model_input_{date.today()}.xlsx') # this will be the input for the future analysis
+# input for following analyses
+WRRF_input.to_excel(folder + f'HTL_geospatial_model_input_{date.today()}.xlsx')
 
 #%% travel distance box plot
+
+# TODO: update the code/figure during execution, if necessary
 
 WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
 
@@ -350,6 +377,8 @@ for cap in bp['caps']:
 fig.savefig('/Users/jiananfeng/Desktop/distance.png', transparent=True, bbox_inches='tight')
 
 #%% travel distance box plot (per region)
+
+# TODO: update the code/figure during execution, if necessary
 
 WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
 
@@ -424,6 +453,8 @@ add_region(4, 'West Coast', y)
 
 #%% WRRFs GHG map
 
+# TODO: update the code/figure during execution, if necessary
+
 WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
 
 WRRF_input = WRRF_input.sort_values(by='total_emission', ascending=False)
@@ -452,6 +483,8 @@ more_than_500 = WRRF_GHG_tonne_per_day > 500
 WRRF_input[more_than_500].plot(ax=ax, color=Guest.green.HEX, markersize=WRRF_input.loc[more_than_500, WRRF_GHG_tonne_per_day.name]**0.5, edgecolor='k', linewidth=2, alpha=0.9)
 
 #%% WRRFs sludge management GHG map
+
+# TODO: update the code/figure during execution, if necessary
 
 WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
 
@@ -482,12 +515,15 @@ WRRF_input[more_than_500].plot(ax=ax, color=Guest.green.HEX, markersize=WRRF_inp
 
 #%% cumulative WRRFs capacity vs distances (data processing)
 
+# TOOO: update the file
 # remember to use the correct file
 WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
 
 result = WRRF_input[['site_id']].drop_duplicates()
 
-max_distance = 1500 # this will cover all WRRFs
+# TODO: it is better not to use a constant (i.e., 1500); use a formula instead
+# this will cover all WRRFs
+max_distance = 1500
 for distance in np.linspace(0, max_distance, max_distance+1):
     WRRF_input_distance = WRRF_input[WRRF_input['linear_distance_km'] <= distance]
     WRRF_input_distance = WRRF_input_distance.groupby('site_id').sum('flow_2022_MGD')
@@ -514,30 +550,41 @@ result.to_excel(folder + f'results/MGD_vs_distance_{max_distance}_km.xlsx')
 
 #%% make the plot of cumulative WRRFs capacity vs distances (data preparation)
 
+# TOOO: update the file, if necessary
 # import file for the cumulative figure (CF)
 CF_input = pd.read_excel(folder + 'results/MGD_vs_distance_1500_km.xlsx')
 
 CF_input[0] = 0
 
+# TODO: it is better not to use [2:-1]; use a formula instead
 CF_input = CF_input[[0, *CF_input.columns[2:-1]]]
 
+# TODO: change the name of max_distance to max_distance_plot; update this in the rest of the code
+# TODO: it is better not to use a constant (i.e., 1500); use a formula instead
+# TODO: should be equal to or smaller than the max_distance defined before
 max_distance = 1500
 
+# TODO: it is better not to use 0:max_distance+6; use a formula instead
 CF_input = CF_input.iloc[:, 0:max_distance+6]
 
 CF_input.drop(['Company','Corp','Site'], axis=1, inplace=True)
 
 CF_input.sort_values(by='PADD', inplace=True)
 
+# TODO: it is better not to use [0:-2]; use a formula instead
 CF_input = CF_input[['PADD','State', *CF_input.columns[0:-2]]]
 
 CF_input = CF_input.transpose()
 
+# TODO: why define max_distance and max_distance_on_the_plot? try to merge
 max_distance_on_the_plot = 1500
 
+# TODO: it is better not to use 0:max_distance_on_the_plot+3; use a formula instead
 CF_input = CF_input[0:max_distance_on_the_plot+3]
 
 #%% make the plot of cumulative WRRFs capacity vs distances (separated oil refinery)
+
+# TODO: update the code/figure during execution, if necessary
 
 PADD_1 = (CF_input.loc['PADD',:].isin([1,])).sum()
 PADD_2 = (CF_input.loc['PADD',:].isin([1,2])).sum()
@@ -606,6 +653,8 @@ add_region(3, PADD_3, PADD_4, o)
 add_region(4, PADD_4, PADD_5, y)
 #%% make the plot of cumulative WRRFs capacity vs distances (regional total)
 
+# TODO: update the code/figure during execution, if necessary
+
 PADD_1 = (CF_input.loc['PADD',:].isin([1,])).sum()
 PADD_2 = (CF_input.loc['PADD',:].isin([1,2])).sum()
 PADD_3 = (CF_input.loc['PADD',:].isin([1,2,3])).sum()
@@ -653,6 +702,54 @@ plt.xticks(np.arange(0, 1750, 250))
 ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 #%% CO2 abatement cost analysis
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# TODO: continue from here
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 filterwarnings('ignore')
 

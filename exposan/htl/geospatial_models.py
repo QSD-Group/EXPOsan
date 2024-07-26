@@ -538,7 +538,7 @@ def create_geospatial_model(system=None,
     def set_IRR(i):
         tea.IRR=i
     
-    raw_wastewater = stream.sludge_assumed_in_wastewater
+    raw_wastewater = stream.raw_wastewater
     dist = shape.Uniform(raw_wastewater_price_baseline*1.2,raw_wastewater_price_baseline*0.8)
     @param(name='raw wastewater price',
             element='TEA',

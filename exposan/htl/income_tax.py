@@ -10,6 +10,7 @@ Created on Tue Dec 26 08:51:34 2023
 
 __all__ = ('state_income_tax_rate',)
 
+# TODO: do we want to update this file to 2022 year (since we are using 2022$)
 # data source:
 # https://taxfoundation.org/data/all/state/state-corporate-income-tax-rates-brackets-2023/
 
