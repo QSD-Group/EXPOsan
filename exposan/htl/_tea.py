@@ -63,7 +63,6 @@ class CAPEXTableBuilder:
                             columns=('Notes', *[i + ' [MM$]' for i in names])
         )
 
-
 class HTL_TEA(TEA):
     
     __slots__ = ('OSBL_units', 'warehouse', 'site_development',
@@ -177,7 +176,6 @@ class HTL_TEA(TEA):
         return (FCI * self.property_insurance
                 + self._ISBL_DPI_cached * self.maintenance
                 + self.labor_cost * (1 + self.labor_burden))
-
 
 def create_tea(sys, OSBL_units=None, cls=None, IRR_value=0.03, income_tax_value=0.21, finance_interest_value=0.03, labor_cost_value=1e6):
     if OSBL_units is None: OSBL_units = bst.get_OSBL(sys.cost_units)
