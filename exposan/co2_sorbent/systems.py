@@ -470,13 +470,13 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                                 split={'SiO2':1,'Fe':1,'C3H3AlO6':0.036,'HCOOH':0.036})
     F1.register_alias('F1')
     
-    S2WS2 = su.S2WS(ID='S2WS2',
+    S2WS1 = su.S2WS(ID='S2WS1',
                     ins=F1-0,
                     outs='solid_waste')
-    S2WS2.register_alias('S2WS2')
+    S2WS1.register_alias('S2WS1')
     # 5-50 $/ton (1 ton = 907.185 kg, likely 2013$)
     # https://www.e-mj.com/features/cleaning-up-the-red-mud/ (accessed 2024-06-12)
-    S2WS2.outs[0].price=-(5+50)/2/907.185/GDPCTPI[2013]*GDPCTPI[2022]
+    S2WS1.outs[0].price=-(5+50)/2/907.185/GDPCTPI[2013]*GDPCTPI[2022]
     
     # TODO: from Ben: the reactants are slurry, if we use a batch reactor, the crystallizer is not needed
     C1 = su.ALFCrystallizer(ID='ALF_crystallizer',
@@ -765,6 +765,7 @@ def create_system_C(product='formic acid',
                                       operating_days_per_year=yearly_operating_days)
         E1.register_alias('E1')
         E1.ins[1].price = bst.stream_prices['Reverse osmosis water']
+        # TODO: refer to the hydrogen price in the U.S. in this paper: https://doi.org/10.1021/acs.est.3c03063
         # use the price of gray hydrogen since the LCA data for hydrogen only has gray hydrogen
         # and it makes more sense to replace gray hydrogen first
         # 0.7306 2016$/lb (Davis et al. 2018)
@@ -779,6 +780,8 @@ def create_system_C(product='formic acid',
                             linked_stream=stream.process_water,
                             GlobalWarming=0.002873296)
         
+        # TODO: refer to the hydrogen CI in the U.S. in this paper: https://doi.org/10.1021/acs.est.3c03063
+        # TODO: also update the hydrogen CI in the U.S. in /Users/jiananfeng/Desktop/PhD_CEE/CO2_sorbent/ALF_LCA_cutoff_data.xlsx
         # market for hydrogen, gaseous, GLO
         qs.StreamImpactItem(ID='hydrogen',
                             linked_stream=stream.hydrogen,
