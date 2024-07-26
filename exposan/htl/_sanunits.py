@@ -446,7 +446,7 @@ class StruvitePrecipitation(Reactor):
 
 class WWmixer(SanUnit):
     '''
-    A fake unit that mix all wastewater streams and calculates C, N, P, and H2O
+    A fake unit that mixes all wastewater streams and calculates C, N, P, and H2O
     amount.
     Parameters
     ----------

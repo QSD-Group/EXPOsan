@@ -61,7 +61,7 @@ def _load_process_settings(location='IL'):
         bst.PowerUtility.price = elec[elec['state']==location]['price (10-year median)'].iloc[0]/100
 
 def create_geospatial_system(waste_cost=450, # based on the share of sludge management methods of each facilities
-                             waste_GHG=600, # based on the share of sludge management methods of each facilities
+                             waste_GHG=200, # based on the share of sludge management methods of each facilities
                              size=8, # in MGD
                              distance=100, # in km, using Google Maps API
                              sludge_transportation=0, # if 0, there is no sludge transportation; if 1, there is sludge transportation
@@ -249,6 +249,8 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                                 outs=('emission','solid_ash'), init_with='WasteStream',
                                 supplement_power_utility=False)
     CHP.ins[1].price = 0.1685
+    
+    bst.facilities.CoolingTower('CT')
     
     sys = qs.System.from_units('sys_geospatial',
                                units=list(flowsheet.unit),

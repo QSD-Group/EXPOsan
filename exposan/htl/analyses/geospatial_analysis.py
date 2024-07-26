@@ -6,6 +6,10 @@ Created on Sun Jun 11 08:12:41 2023
 @author: jiananfeng
 '''
 
+# TODO 1: consider adding transportation cost and carbon intensity as contextual parameters
+# TODO 1: see if https://www.bls.gov/oes/tables.htm (from Abby) has some information
+# TODO 2: update electricity CI to match up balancing areas instead of states
+
 #%% initialization
 import geopy.distance, googlemaps, random
 import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.colors as colors, matplotlib.ticker as mtick
@@ -1009,7 +1013,7 @@ print(anaerobic_digestion_WRRFs.sort_values('oil_BPD', ascending=False).iloc[0,]
 
 decarbonization_vs_sludge = decarbonization_result[['total_sludge_amount_kg_per_year','CO2_reduction']]
 
-fig, ax = plt.subplots(figsize=((12.5, 10)))
+fig, ax = plt.subplots(figsize=(12.5, 10))
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
@@ -1046,6 +1050,7 @@ plt.yticks(np.arange(0, 150, 25))
 
 ax_top = ax.twiny()
 ax_top.set_xlim((0, 350))
+# TODO: why length was 20/10 but 7.5 here
 ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 plt.xticks(np.arange(0, 400, 50))
@@ -1062,7 +1067,7 @@ ax.scatter(x=decarbonization_vs_sludge['total_sludge_amount_kg_per_year']/1000/3
 
 decarbonization_vs_sludge = decarbonization_result[['real_distance_km','CO2_reduction']]
 
-fig, ax = plt.subplots(figsize=((12.5, 10)))
+fig, ax = plt.subplots(figsize=(12.5, 10))
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
@@ -1099,6 +1104,7 @@ plt.yticks(np.arange(0, 150, 25))
 
 ax_top = ax.twiny()
 ax_top.set_xlim((0, 1200))
+# TODO: why length was 20/10 but 7.5 here
 ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 plt.xticks(np.arange(0, 1400, 200))
@@ -1115,7 +1121,7 @@ ax.scatter(x=decarbonization_vs_sludge['real_distance_km'],
 
 decarbonization_vs_sludge = decarbonization_result[['total_sludge_amount_kg_per_year','oil_BPD']]
 
-fig, ax = plt.subplots(figsize=((12.5, 10)))
+fig, ax = plt.subplots(figsize=(12.5, 10))
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
@@ -1152,6 +1158,7 @@ plt.yticks(np.arange(0, 700, 100))
 
 ax_top = ax.twiny()
 ax_top.set_xlim((0, 350))
+# TODO: why length was 20/10 but 7.5 here
 ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 plt.xticks(np.arange(0, 400, 50))
@@ -1168,7 +1175,7 @@ ax.scatter(x=decarbonization_vs_sludge['total_sludge_amount_kg_per_year']/1000/3
 
 decarbonization_vs_sludge = decarbonization_result[['real_distance_km','oil_BPD']]
 
-fig, ax = plt.subplots(figsize=((12.5, 10)))
+fig, ax = plt.subplots(figsize=(12.5, 10))
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
@@ -1205,6 +1212,7 @@ plt.yticks(np.arange(0, 700, 100))
 
 ax_top = ax.twiny()
 ax_top.set_xlim((0, 350))
+# TODO: why length was 20/10 but 7.5 here
 ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 plt.xticks(np.arange(0, 1400, 200))
@@ -2353,7 +2361,7 @@ HM = pd.read_excel(folder + 'results/heat_map_20.0_tonne_per_day_200.0_km_2024-0
 
 HM_decarbonization = HM[['sludge_amount','sludge_transportation_distance','decarbonization_amount_50th']]
 
-fig, ax = plt.subplots(figsize=((12.5, 10)))
+fig, ax = plt.subplots(figsize=(12.5, 10))
 
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams['axes.linewidth'] = 3
@@ -2392,6 +2400,7 @@ ax_top = ax.twiny()
 # ax_top.set_xlim((100, 1000))
 ax_top.set_xlim((20, 200))
 # plt.xticks(np.arange(max_distance*0.2, max_distance*1.2, max_distance*0.2))
+# TODO: why length was 20/10 but 7.5 here
 ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 # plt.xticks(np.arange(100, 1150, 150))
@@ -2399,7 +2408,7 @@ plt.xticks(np.arange(20, 220, 30))
 plt.yticks(np.arange(2, 22, 3))
 
 try:
-    color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [r,o,y,g,b])
+    color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [r, o, y, g, b])
 except ValueError:
     pass
 
@@ -2407,14 +2416,15 @@ x = np.array(HM_decarbonization['sludge_transportation_distance'])
 y = np.array(HM_decarbonization['sludge_amount'])
 z = np.array(HM_decarbonization['decarbonization_amount_50th'])
 
+fills = ax.tricontourf(x, y, z, levels=10000, 
+                      cmap=color_map_Guest)
+fig.colorbar(fills, ax=ax)
+
+fig.delaxes(fig.axes[3])
+
 lines = ax.tricontour(x, y, z, levels=7, linewidths=3, linestyles='solid', colors='k')
 
 ax.clabel(lines, lines.levels, inline=True, fontsize=38)
-
-fills = ax.tricontourf(x, y, z, levels=10000, 
-                      cmap=color_map_Guest)
-
-fig.colorbar(fills, ax=ax)
 
 #%% sludge transportation (heat map, HM) visualization (NPV) 
 
@@ -2425,7 +2435,7 @@ HM_NPV = HM[['sludge_amount','sludge_transportation_distance','NPV_50th']]
 
 HM_NPV['NPV_50th'] = HM_NPV['NPV_50th']/1000000
 
-fig, ax = plt.subplots(figsize=((12.5, 10)))
+fig, ax = plt.subplots(figsize=(12.5, 10))
 
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams['axes.linewidth'] = 3
@@ -2463,6 +2473,7 @@ plt.yticks(np.arange(2, 22, 3))
 ax_top = ax.twiny()
 # ax_top.set_xlim((100, 1000))
 ax_top.set_xlim((20, 200))
+# TODO: why length was 20/10 but 7.5 here
 ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 # plt.xticks(np.arange(100, 1150, 150))
@@ -2470,7 +2481,7 @@ plt.xticks(np.arange(20, 220, 30))
 plt.yticks(np.arange(2, 22, 3))
 
 try:
-    color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [r,o,y,g,b])
+    color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [r, o, y, g, b])
 except ValueError:
     pass
 
@@ -2478,11 +2489,12 @@ x = np.array(HM_NPV['sludge_transportation_distance'])
 y = np.array(HM_NPV['sludge_amount'])
 z = np.array(HM_NPV['NPV_50th'])
 
+fills = ax.tricontourf(x, y, z, levels=10000, 
+                      cmap=color_map_Guest)
+fig.colorbar(fills, ax=ax)
+
+fig.delaxes(fig.axes[3])
+
 lines = ax.tricontour(x, y, z, levels=7, linewidths=3, linestyles='solid', colors='k')
 
 ax.clabel(lines, lines.levels, inline=True, fontsize=38)
-
-fills = ax.tricontourf(x, y, z, levels=10000, 
-                      cmap=color_map_Guest)
-
-fig.colorbar(fills, ax=ax)
