@@ -279,6 +279,7 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
                         linked_stream=stream.RO_water,
                         GlobalWarming=-0.002873296)
     
+    # TODO: confirm TEA parameters (especially label costs)
     create_tea(sys, lifetime=lifetime)
     
     if clean_electricity:
@@ -575,6 +576,7 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                         linked_stream=stream.carbon_dioxide_LCA,
                         GlobalWarming=1)
     
+    # TODO: confirm TEA parameters (especially label costs)
     create_tea(sys, lifetime=lifetime)
     
     if clean_electricity:
@@ -790,6 +792,7 @@ def create_system_C(product='formic acid',
     sys = qs.System.from_units('sys_ALF_A', units=list(flowsheet.unit), operating_hours=yearly_operating_days*24)
     sys.register_alias('sys')
     
+    # TODO: confirm TEA parameters (especially label costs)
     create_tea(sys, lifetime=lifetime)
     
     # simulate here before LCA to enable the calculation of outlet streams
