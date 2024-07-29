@@ -9,7 +9,6 @@ Created on Sat Dec 30 08:01:06 2023
 import qsdsan as qs
 from chaospy import distributions as shape
 from qsdsan.utils import DictAttrSetter
-
 from exposan.htl import (
     _m3perh_to_MGD,
     _MJ_to_MMBTU,
@@ -46,17 +45,39 @@ def create_geospatial_model(system=None,
     
     sys = create_geospatial_system(system) if (not system) or isinstance(system, str) else system
     flowsheet = sys.flowsheet
+    cmps = qs.get_components()
     unit = flowsheet.unit
     stream = flowsheet.stream
     model = qs.Model(sys)
     param = model.parameter
     
+    WWTP = unit.WWTP
+    H1 = unit.H1
+    HTL = unit.HTL
+    CHG = unit.CHG
+    MemDis = unit.MemDis
+    CHP = unit.CHP
+    F1 = unit.F1
+    P1 = unit.P1
+    SP1 = unit.SP1
+    H2SO4_Tank = unit.H2SO4_Tank
+    HXN = unit.HXN
+    
+    raw_wastewater = stream.raw_wastewater
+    H2SO4 = stream.H2SO4
+    NaOH = stream.NaOH
+    ammonium_sulfate = stream.ammonium_sulfate
+    natural_gas = stream.natural_gas
+    biocrude = stream.biocrude
+    Membrane_in = stream.Membrane_in
+    
+    tea = sys.TEA
+    lca = sys.LCA
+    
     # =========================================================================
     # WWTP
     # =========================================================================
-        
-    WWTP = unit.WWTP
-    
+    # TODO: check the distributions here; why triangle for no_digestion and uniform for others?
     if sludge_ash[-1] == 'no_digestion':
         dist = shape.Triangle(sludge_ash[0],sludge_ash[1],sludge_ash[2])
         @param(name='sludge_dw_ash',
@@ -86,8 +107,7 @@ def create_geospatial_model(system=None,
                 baseline=sludge_protein[1],
                 distribution=dist)
         def set_sludge_afdw_protein(i):
-            WWTP.sludge_afdw_protein=i
-            
+            WWTP.sludge_afdw_protein=i 
     else:
         dist = shape.Uniform(sludge_ash[0],sludge_ash[2])
         @param(name='sludge_dw_ash',
@@ -202,7 +222,6 @@ def create_geospatial_model(system=None,
     # =========================================================================
     # HTL
     # =========================================================================
-    H1 = unit.H1
     dist = shape.Uniform(0.0170348,0.0227131)
     @param(name='enforced heating transfer coefficient',
             element=H1,
@@ -213,7 +232,6 @@ def create_geospatial_model(system=None,
     def set_U(i):
         H1.U=i
     
-    HTL = unit.HTL
     dist = shape.Triangle(0.692,0.846,1)
     @param(name='lipid_2_biocrude',
             element=HTL,
@@ -367,7 +385,6 @@ def create_geospatial_model(system=None,
     # =========================================================================
     # CHG
     # =========================================================================
-    CHG = unit.CHG
     dist = shape.Triangle(2.86,3.562,3.99)
     @param(name='WHSV',
             element=CHG,
@@ -401,7 +418,6 @@ def create_geospatial_model(system=None,
     # =========================================================================
     # MemDis
     # =========================================================================
-    MemDis = unit.MemDis
     dist = shape.Uniform(7.91,8.41)
     @param(name='influent_pH',
             element=MemDis,
@@ -515,7 +531,6 @@ def create_geospatial_model(system=None,
     def set_CHG_TIC_factor(i):
         CHG.TIC_factor=i
     
-    CHP = unit.CHP
     dist = shape.Uniform(980,1470)
     @param(name='unit_TIC',
             element='TEA',
@@ -526,8 +541,7 @@ def create_geospatial_model(system=None,
     def set_unit_TIC(i):
         CHP.unit_TIC=i
     
-    tea = sys.TEA
-    
+    # TODO: confirm: once Jeremy said we could use 3% IRR as the main entity in this study is WRRFs
     dist = shape.Triangle(0,0.03,0.05)
     @param(name='IRR',
             element='TEA',
@@ -538,7 +552,7 @@ def create_geospatial_model(system=None,
     def set_IRR(i):
         tea.IRR=i
     
-    raw_wastewater = stream.raw_wastewater
+    # TODO: check if the values are set correctly (are these values passed on to the calculation?)
     dist = shape.Uniform(raw_wastewater_price_baseline*1.2,raw_wastewater_price_baseline*0.8)
     @param(name='raw wastewater price',
             element='TEA',
@@ -549,7 +563,7 @@ def create_geospatial_model(system=None,
     def set_raw_wastewater_price(i):
         raw_wastewater.price=i
     
-    H2SO4 = stream.H2SO4
+    # TODO: update the price to 2022$ and match up with that in the system
     dist = shape.Triangle(0.005994,0.00658,0.014497)
     @param(name='5% H2SO4 price',
             element='TEA',
@@ -560,7 +574,7 @@ def create_geospatial_model(system=None,
     def set_H2SO4_price(i):
         H2SO4.price=i
     
-    NaOH = stream.NaOH
+    # TODO: update the price to 2022$ and match up with that in the system
     dist = shape.Uniform(0.473,0.578)
     @param(name='NaOH price',
             element='TEA',
@@ -571,7 +585,7 @@ def create_geospatial_model(system=None,
     def set_NaOH_price(i):
         NaOH.price=i
     
-    ammonium_sulfate = stream.ammonium_sulfate
+    # TODO: update the price to 2022$ and match up with that in the system
     dist = shape.Triangle(0.1636,0.3236,0.463)
     @param(name='ammonium sulfate price',
             element='TEA',
@@ -582,6 +596,7 @@ def create_geospatial_model(system=None,
     def set_ammonium_sulfate_price(i):
         ammonium_sulfate.price=i
     
+    # TODO: update the price to 2022$ and match up with that in the system
     dist = shape.Uniform(83.96,102.62)
     @param(name='membrane price',
             element='TEA',
@@ -592,6 +607,7 @@ def create_geospatial_model(system=None,
     def set_membrane_price(i):
         MemDis.membrane_price=i
     
+    # TODO: update the price to 2022$ and match up with that in the system
     CHG_catalyst_in = CHG.ins[1]
     dist = shape.Triangle(67.27,134.53,269.07)
     @param(name='CHG catalyst price',
@@ -603,9 +619,9 @@ def create_geospatial_model(system=None,
     def set_catalyst_price(i):
         CHG_catalyst_in.price=i
     
-    natural_gas = stream.natural_gas
+    # TODO: update the price to 2022$ and match up with that in the system
     dist = shape.Triangle(0.121,0.1685,0.3608)
-    @param(name='CH4 price',
+    @param(name='natural gas price',
             element='TEA',
             kind='isolated',
             units='$/kg',
@@ -614,7 +630,7 @@ def create_geospatial_model(system=None,
     def set_CH4_price(i):
         natural_gas.price=i
     
-    biocrude = stream.biocrude
+    # TODO: update the price to 2022$ and match up with that in the system
     dist = shape.Triangle(biocrude_and_transportation_price[0],biocrude_and_transportation_price[1],biocrude_and_transportation_price[2])
     @param(name='biocrude and transportation price',
             element='TEA',
@@ -625,6 +641,7 @@ def create_geospatial_model(system=None,
     def set_biocrude_transportation_price(i):
         biocrude.price=i
     
+    # TODO: update the price to 2022$ and match up with that in the system
     dist = shape.Triangle(electricity_cost[0],electricity_cost[1],electricity_cost[2])
     @param(name='electricity price',
             element='TEA',
@@ -638,10 +655,11 @@ def create_geospatial_model(system=None,
     # =========================================================================
     # LCA (unifrom ± 10%)
     # =========================================================================
-    # don't get joint distribution for multiple times, since the baselines for LCA will change.
+    CF = 'GlobalWarming'
+    
+    # do not get joint distribution for multiple times, since the baselines for LCA will change
     for item in qs.ImpactItem.get_all_items().keys():
-        if item == 'sludge_in_wastewater_item':
-            CF = 'GlobalWarming'
+        if item == 'sludge':
             abs_small = 0.8*qs.ImpactItem.get_item(item).CFs[CF]
             abs_large = 1.2*qs.ImpactItem.get_item(item).CFs[CF]
             dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
@@ -654,59 +672,40 @@ def create_geospatial_model(system=None,
                    distribution=dist)
             def set_LCA(i):
                 qs.ImpactItem.get_item(item).CFs[CF]=i
-        
         elif item == 'Electricity':
-            if CF == 'GlobalWarming':
-                abs_small = electricity_GHG[0]
-                abs_large = electricity_GHG[2]
-                dist = shape.Triangle(min(abs_small,abs_large),max(abs_small,abs_large))
-                @param(name=f'{item}_{CF}',
-                       setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
-                       element='LCA',
-                       kind='isolated',
-                       units=qs.ImpactIndicator.get_indicator(CF).unit,
-                       baseline=electricity_GHG[1],
-                       distribution=dist)
-                def set_LCA(i):
-                    qs.ImpactItem.get_item(item).CFs[CF]=i
-            else:
-                abs_small = 0.9*qs.ImpactItem.get_item(item).CFs[CF]
-                abs_large = 1.1*qs.ImpactItem.get_item(item).CFs[CF]
-                dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
-                @param(name=f'{item}_{CF}',
-                       setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
-                       element='LCA',
-                       kind='isolated',
-                       units=qs.ImpactIndicator.get_indicator(CF).unit,
-                       baseline=qs.ImpactItem.get_item(item).CFs[CF],
-                       distribution=dist)
-                def set_LCA(i):
-                    qs.ImpactItem.get_item(item).CFs[CF]=i
-        
+            abs_small = electricity_GHG[0]
+            abs_large = electricity_GHG[2]
+            dist = shape.Triangle(min(abs_small,abs_large),max(abs_small,abs_large))
+            @param(name=f'{item}_{CF}',
+                   setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
+                   element='LCA',
+                   kind='isolated',
+                   units=qs.ImpactIndicator.get_indicator(CF).unit,
+                   baseline=electricity_GHG[1],
+                   distribution=dist)
+            def set_LCA(i):
+                qs.ImpactItem.get_item(item).CFs[CF]=i
         else:
-            for CF in qs.ImpactIndicator.get_all_indicators().keys():
-                abs_small = 0.9*qs.ImpactItem.get_item(item).CFs[CF]
-                abs_large = 1.1*qs.ImpactItem.get_item(item).CFs[CF]
-                dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
-                @param(name=f'{item}_{CF}',
-                       setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
-                       element='LCA',
-                       kind='isolated',
-                       units=qs.ImpactIndicator.get_indicator(CF).unit,
-                       baseline=qs.ImpactItem.get_item(item).CFs[CF],
-                       distribution=dist)
-                def set_LCA(i):
-                    qs.ImpactItem.get_item(item).CFs[CF]=i
+            abs_small = 0.9*qs.ImpactItem.get_item(item).CFs[CF]
+            abs_large = 1.1*qs.ImpactItem.get_item(item).CFs[CF]
+            dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
+            @param(name=f'{item}_{CF}',
+                   setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
+                   element='LCA',
+                   kind='isolated',
+                   units=qs.ImpactIndicator.get_indicator(CF).unit,
+                   baseline=qs.ImpactItem.get_item(item).CFs[CF],
+                   distribution=dist)
+            def set_LCA(i):
+                qs.ImpactItem.get_item(item).CFs[CF]=i
     
     # =========================================================================
     # metrics
     # =========================================================================
-
     metric = model.metric
     
-    if include_other_metrics: # all metrics
-        # element metrics
-        
+    if include_other_metrics:
+        # mass/element flow
         @metric(name='C_afdw',units='%',element='Sankey')
         def get_C_afdw():
             return WWTP.sludge_C*24/1000/(raw_wastewater.F_mass/157262.48454459725)/(1-WWTP.sludge_dw_ash)
@@ -775,8 +774,6 @@ def create_geospatial_model(system=None,
         def get_CHG_out_P():
             return CHG.CHGout_P
         
-        cmps = qs.get_components()
-        F1 = unit.F1
         @metric(name='CHG_gas_C',units='kg/hr',element='Sankey')
         def get_CHG_gas_C():
             return sum(F1.outs[0].mass*[cmp.i_C for cmp in cmps])
@@ -797,8 +794,7 @@ def create_geospatial_model(system=None,
         def get_MemDis_ww_P():
             return MemDis.outs[1].imass['P']
         
-        # energy metrics
-        
+        # energy flow
         @metric(name='sludge_HHV',units='MJ/kg',element='Sankey')
         def get_sludge_HHV():
             return WWTP.sludge_HHV
@@ -819,18 +815,14 @@ def create_geospatial_model(system=None,
         def get_CHG_gas_E():
             return F1.outs[0].HHV/1000000
         
-        # CAPEX metrics (as total installed cost, TIC)
+        # TEA
         @metric(name='TIC',units='$',element='TEA')
         def get_TIC():
             return sys.installed_equipment_cost
         
-        P1 = unit.P1
-        
         @metric(name='HTL_TIC',units='$',element='TEA')
         def get_HTL_TIC():
             return sum(i.installed_cost for i in (P1, H1, HTL))
-        
-        SP1, H2SO4_Tank = unit.SP1, unit.H2SO4_Tank
         
         @metric(name='CHG_TIC',units='$',element='TEA')
         def get_CHG_TIC():
@@ -844,7 +836,6 @@ def create_geospatial_model(system=None,
                 return 0
         model.metric(getter=get_Nitrogen_TIC, name='Nitrogen_TIC',units='$',element='TEA')
         
-        HXN = unit.HXN
         @metric(name='HXN_TIC',units='$',element='TEA')
         def get_HXN_TIC():
             return HXN.installed_cost
@@ -881,7 +872,6 @@ def create_geospatial_model(system=None,
         def get_NaOH_VOC():
             return NaOH.cost*sys.operating_hours
         
-        Membrane_in = stream.Membrane_in
         @metric(name='membrane_VOC',units='$/yr',element='TEA')
         def get_membrane_VOC():
             return Membrane_in.cost*sys.operating_hours
@@ -906,8 +896,9 @@ def create_geospatial_model(system=None,
         def get_CHP_utility_VOC():
             return CHP.utility_cost*sys.operating_hours
         
-        # LCA metrics
-        lca = sys.LCA
+        # TODO: remove constructions for LCA
+        # LCA
+        # TODO: remove this metric
         @metric(name='construction_GWP',units='kg CO2 eq',element='LCA')
         def get_construction_GWP():
             return lca.get_construction_impacts()['GlobalWarming']
@@ -920,6 +911,7 @@ def create_geospatial_model(system=None,
         def get_other_GWP():
             return lca.get_other_impacts()['GlobalWarming']
         
+        # TODO: remove this metric
         @metric(name='HTL_constrution_GWP',units='kg CO2 eq',element='LCA')
         def get_HTL_constrution_GWP():
             table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
@@ -928,16 +920,19 @@ def create_geospatial_model(system=None,
                    table_construction['Stainless_steel [kg]']['A120']+\
                    table_construction['Carbon_steel [kg]']['T300']
         
+        # TODO: remove this metric
         def get_nutrient_constrution_GWP():
             table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
             return table_construction['RO [m2]']['A260']+table_construction['Stainless_steel [kg]']['T200']
         model.metric(getter=get_nutrient_constrution_GWP, name='nutrient_constrution_GWP',units='kg CO2 eq',element='LCA')
 
+        # TODO: remove this metric
         @metric(name='CHG_constrution_GWP',units='kg CO2 eq',element='LCA')
         def get_CHG_constrution_GWP():
             table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
             return table_construction['Stainless_steel [kg]']['A230']
         
+        # TODO: remove this metric
         @metric(name='CHP_constrution_GWP',units='kg CO2 eq',element='LCA')
         def get_CHP_constrution_GWP():
             table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
@@ -949,6 +944,7 @@ def create_geospatial_model(system=None,
             table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
             return table_stream['CHG_catalyst_out']
         
+        # TODO: decide if Membrane_in should be considered as construction or stream (prefer stream)
         @metric(name='nutrient_stream_GWP',units='kg CO2 eq',element='LCA')
         def get_nutrient_stream_GWP():
             table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
@@ -959,6 +955,7 @@ def create_geospatial_model(system=None,
             table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
             return table_stream['natural_gas']
         
+        # TODO: do we need to remove Cooling here as we have a CoolingTower now?
         @metric(name='HTL_utility_GWP',units='kg CO2 eq',element='LCA')
         def get_HTL_utility_GWP():
             table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
@@ -969,7 +966,8 @@ def create_geospatial_model(system=None,
             return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
                    table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
                    (P1.power_utility.consumption)*sys.operating_hours    
-    
+        
+        # TODO: do we need to remove Cooling here as we have a CoolingTower now?
         @metric(name='CHG_utility_GWP',units='kg CO2 eq',element='LCA')
         def get_CHG_utility_GWP():
             table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
@@ -982,6 +980,7 @@ def create_geospatial_model(system=None,
                    table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
                    CHG.power_utility.consumption*sys.operating_hours
         
+        # TODO: do we need to remove Cooling here as we have a CoolingTower now?
         @metric(name='HXN_utility_GWP',units='kg CO2 eq',element='LCA')
         def get_HXN_utility_GWP():
             table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
@@ -1002,11 +1001,13 @@ def create_geospatial_model(system=None,
             table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
             return table_other['Electricity [kWh]']
         
+        # TODO: do we need to remove this metric as we have a CoolingTower now?
         @metric(name='cooling_GWP',units='kg CO2 eq',element='LCA')
         def get_cooling_GWP():
             table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
             return table_other['Cooling [MJ]']
         
+        # TODO: check the following metrics related to HTL/CHG utility percentage
         @metric(name='HTL_cooling_percentage',units='-',element='utilities')
         def get_HTL_cooling_percentage():
             HTL_cool=0
@@ -1100,11 +1101,8 @@ def create_geospatial_model(system=None,
         @metric(name='HXN_cool_offset',units='-',element='utilities')
         def get_HXN_cool_offset():
             return 1-unit.HXN.actual_cool_util_load/unit.HXN.original_cool_util_load
-
-    else:
-        lca = sys.LCA
-        HTL = unit.HTL
-        
+    
+    # HTL yield
     if include_HTL_yield_as_metrics:
         @metric(name='HTL_biocrude_yield',units='-',element='HTL')
         def get_HTL_biocrude_yield():
@@ -1122,40 +1120,44 @@ def create_geospatial_model(system=None,
         def get_HTL_gas_yield():
             return HTL.gas_yield
     
-    # key metrics
+    # key metrics in the original HTL model
     if include_old_metrics:
         @metric(name='MDSP',units='$/gal diesel',element='TEA')
         def get_MDSP():
-            biocrude_gal_2_kg=3.70970428357 # 980 kg/m3 Snowden-Swan et al. 2022 SOT, PNNL
+            # TODO: use a formula instead
+            # 980 kg/m3 Snowden-Swan et al. 2022 SOT, PNNL
+            biocrude_gal_2_kg=3.70970428357
             return tea.solve_price(biocrude)*biocrude_gal_2_kg
         
         @metric(name='sludge_management_price',units='$/tonne dry sludge',element='TEA')
         def get_sludge_treatment_price():
             return -tea.solve_price(raw_wastewater)*_MMgal_to_L/WWTP.ww_2_dry_sludge
         
+        # HTL.biocrude_HHV: MJ/kg
         @metric(name='GWP_diesel',units='kg CO2/MMBTU diesel',element='LCA')
         def get_GWP_diesel():
             return lca.get_total_impacts(exclude=(biocrude,))['GlobalWarming']/biocrude.F_mass/sys.operating_hours/lca.lifetime/HTL.biocrude_HHV/_MJ_to_MMBTU
-        # biocrude : HTL.biocrude_HHV MJ/kg
         
         @metric(name='GWP_sludge',units='kg CO2/tonne dry sludge',element='LCA')
         def get_GWP_sludge():
             return lca.get_total_impacts(exclude=(raw_wastewater,))['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
+    # TODO: check the calculations here
     @metric(name='NPV',units='$',element='geospatial')
     def get_NPV():
         return tea.NPV
     
+    # TODO: check the calculations here
     @metric(name='biocrude_production',units='BPD',element='geospatial')
     def get_biocrude_production():
         return biocrude.F_mass/biocrude_density*1000/_oil_barrel_to_L*24
     
+    # TODO: check the calculations here
     @metric(name='decarbonization_amount',units='tonne_per_day',element='geospatial')
     def get_decarbonization_amount():
         return -lca.get_total_impacts()['GlobalWarming']/30/365/1000
     
     if include_check:
-        
         @metric(name='sludge_afdw_carbohydrate',units='-',element='test')
         def get_sludge_afdw_carbohydrate():
             return unit.WWTP.sludge_afdw_carbo

@@ -763,8 +763,9 @@ for i in range(0, len(WRRF_input)): # !!! run in different consoles to speed up:
     unit = flowsheet.unit
     stream = flowsheet.stream
     WRRF = unit.WWTP
-    raw_wastewater = stream.sludge_assumed_in_wastewater
+    raw_wastewater = stream.raw_wastewater
     
+    # TODO: make sure constructions are removed for LCA
     lca = sys.LCA
     
     # TODO: check calculations here
@@ -1349,7 +1350,7 @@ for i in range(0, len(decarbonization_result)): # !!! run in different consoles 
                                            state=decarbonization_result.iloc[i]['state'],
                                            elec_GHG=float(elec[elec['state']==decarbonization_result.iloc[i]['state']]['GHG (10-year median)']))
     
-    # TODO: update if necessary, what if AD and AeD both exist or other co-existence scenarios?
+    # TODO: update if necessary; what if AD and AeD both exist or other co-existence scenarios?
     if decarbonization_result.iloc[i]['sludge_aerobic_digestion'] == 1:
         sludge_ash_values=[0.374, 0.468, 0.562, 'aerobic_digestion']
         sludge_lipid_values=[0.154, 0.193, 0.232]
@@ -1371,7 +1372,7 @@ for i in range(0, len(decarbonization_result)): # !!! run in different consoles 
                                     sludge_ash=sludge_ash_values,
                                     sludge_lipid=sludge_lipid_values,
                                     sludge_protein=sludge_protein_values,
-                                    raw_wastewater_price_baseline=sys.flowsheet.stream.sludge_assumed_in_wastewater.price,
+                                    raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price,
                                     biocrude_and_transportation_price=[sys.flowsheet.stream.biocrude.price/6.80*4.21,
                                                                        sys.flowsheet.stream.biocrude.price,
                                                                        sys.flowsheet.stream.biocrude.price/6.80*11.9],
@@ -1805,7 +1806,7 @@ for i in range(0, 2):
                                     sludge_ash=sludge_ash_values,
                                     sludge_lipid=sludge_lipid_values,
                                     sludge_protein=sludge_protein_values,
-                                    raw_wastewater_price_baseline=sys.flowsheet.stream.sludge_assumed_in_wastewater.price,
+                                    raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price,
                                     biocrude_and_transportation_price=[sys.flowsheet.stream.biocrude.price/6.80*4.21,
                                                                        sys.flowsheet.stream.biocrude.price,
                                                                        sys.flowsheet.stream.biocrude.price/6.80*11.9],
@@ -1920,7 +1921,7 @@ model = create_geospatial_model(system=sys,
                                 sludge_ash=sludge_ash_values,
                                 sludge_lipid=sludge_lipid_values,
                                 sludge_protein=sludge_protein_values,
-                                raw_wastewater_price_baseline=sys.flowsheet.stream.sludge_assumed_in_wastewater.price,
+                                raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price,
                                 biocrude_and_transportation_price=[sys.flowsheet.stream.biocrude.price/6.80*4.21,
                                                                    sys.flowsheet.stream.biocrude.price,
                                                                    sys.flowsheet.stream.biocrude.price/6.80*11.9],
@@ -2132,7 +2133,7 @@ model = create_geospatial_model(system=sys,
                                 sludge_ash=sludge_ash_values,
                                 sludge_lipid=sludge_lipid_values,
                                 sludge_protein=sludge_protein_values,
-                                raw_wastewater_price_baseline=sys.flowsheet.stream.sludge_assumed_in_wastewater.price,
+                                raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price,
                                 biocrude_and_transportation_price=[sys.flowsheet.stream.biocrude.price/6.80*4.21,
                                                                    sys.flowsheet.stream.biocrude.price,
                                                                    sys.flowsheet.stream.biocrude.price/6.80*11.9],
@@ -2271,7 +2272,7 @@ model = create_geospatial_model(system=sys,
                                 sludge_ash=sludge_ash_values,
                                 sludge_lipid=sludge_lipid_values,
                                 sludge_protein=sludge_protein_values,
-                                raw_wastewater_price_baseline=sys.flowsheet.stream.sludge_assumed_in_wastewater.price,
+                                raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price,
                                 biocrude_and_transportation_price=[sys.flowsheet.stream.biocrude.price/6.80*4.21,
                                                                    sys.flowsheet.stream.biocrude.price,
                                                                    sys.flowsheet.stream.biocrude.price/6.80*11.9],
@@ -2464,7 +2465,7 @@ for size in np.linspace(2, 20, 10):
                                         sludge_ash=HM_sludge_ash_values,
                                         sludge_lipid=HM_sludge_lipid_values,
                                         sludge_protein=HM_sludge_protein_values,
-                                        raw_wastewater_price_baseline=sys.flowsheet.stream.sludge_assumed_in_wastewater.price,
+                                        raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price,
                                         biocrude_and_transportation_price=[sys.flowsheet.stream.biocrude.price/6.80*4.21,
                                                                            sys.flowsheet.stream.biocrude.price,
                                                                            sys.flowsheet.stream.biocrude.price/6.80*11.9],

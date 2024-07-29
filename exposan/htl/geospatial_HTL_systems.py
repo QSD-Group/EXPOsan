@@ -10,7 +10,7 @@ import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
 from qsdsan.utils import clear_lca_registries
 # TODO: we are using 2022$, should we use 2022 tax rate for state_income_tax_rate?
-from exposan.htl import _load_components, create_tea, _oil_barrel_to_L, state_income_tax_rate, _sanunits as su
+from exposan.htl import _load_components, create_tea, _oil_barrel_to_L, state_income_tax_rate_2022, _sanunits as su
 from biosteam.units import IsenthalpicValve
 from biosteam import settings
 
@@ -18,6 +18,7 @@ from biosteam import settings
 # if impossible, especially for LCA: use US, then RER, then RoW, then GLO
 # also, remember to use LCA data collected for the 'cutoff' model and 'IPCC' method
 # TODO: confirm IPCC 2013 (no LT) is ok
+# TODO: remove constructions for LCA
 
 __all__ = ('create_geospatial_system','biocrude_density')
 
@@ -367,7 +368,7 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
         # use the mode state income tax from Steward et al. ES&T 2023
         state_income_tax_rate_value = 0.065
     else:
-        state_income_tax_rate_value = state_income_tax_rate(state=state, sales=annual_sales, net_income=annual_net_income)
+        state_income_tax_rate_value = state_income_tax_rate_2022(state=state, sales=annual_sales, net_income=annual_net_income)
     
     income_tax_rate = federal_income_tax_rate_value + state_income_tax_rate_value
     
