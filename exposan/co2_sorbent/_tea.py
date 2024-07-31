@@ -45,7 +45,6 @@ class CAPEXTableBuilder:
                             columns=('Notes', *[i + ' [MM$]' for i in names])
         )
 
-
 class CO2_sorbent_TEA(TEA):
     
     __slots__ = ('OSBL_units', 'warehouse', 'site_development',
@@ -159,7 +158,6 @@ class CO2_sorbent_TEA(TEA):
         return (FCI * self.property_insurance
                 + self._ISBL_DPI_cached * self.maintenance
                 + self.labor_cost * (1 + self.labor_burden))
-
 
 def create_tea(sys, OSBL_units=None, cls=None, lifetime=20, labor_cost_value=1e6):
     if OSBL_units is None: OSBL_units = bst.get_OSBL(sys.cost_units)
