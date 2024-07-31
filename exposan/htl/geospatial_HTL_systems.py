@@ -338,16 +338,16 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                                      -WWTP.ww_2_dry_sludge*\
                                      (waste_GHG-sludge_transportation*\
                                      (0.719*sludge_distance))/3.79/(10**6)],
-                    'CHG_catalyst': [stream.CHG_catalyst_out, 484.7862509],
-                    'H2SO4':        [stream.H2SO4, 0.008205666],
-                    'NaOH':         [stream.NaOH, 1.2514],
-                    'RO':           [stream.Membrane_in, 2.2663],
-                    'natural_gas':  [stream.natural_gas, 1.584234288],
-                    'NH42SO4':      [stream.ammonium_sulfate, -1.2499],
+                    'CHG_catalyst': [stream.CHG_catalyst_out, 471.10484135822],
+                    'H2SO4':        [stream.H2SO4, 0.005529872568],
+                    'NaOH':         [stream.NaOH, 1.2497984],
+                    'RO':           [stream.Membrane_in, 2.2709135],
+                    'natural_gas':  [stream.natural_gas, 1.2926912095],
+                    'NH42SO4':      [stream.ammonium_sulfate, -1.1391193],
                     # crude oil/petroleum (transportation is included in crude oil item, we offset that first, but we need to add our own transportation)
                     # 89 g CO2/m3/km: carbon intensity of truck transportation (Pootakham et al. A comparison of pipeline versus truck transport of bio-oil. Bioresource Technology, 2010)
                     # others are scaled based on transportation data from EcoInvent and GWP from the paper above
-                    'biocrude':     [stream.biocrude, 89/1000/biocrude_density*distance-0.22304]}
+                    'biocrude':     [stream.biocrude, 89/1000/biocrude_density*distance-0.22290007]}
     
     for item in impact_items.items():
         qs.StreamImpactItem(ID=item[0], linked_stream=item[1][0], GlobalWarming=item[1][1])
