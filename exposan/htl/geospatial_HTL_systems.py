@@ -403,13 +403,11 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     
     # TODO: since we have CT, do we still need Cooling here?
     # TODO: check the following lines of notes
-    # 0.67848 is the GHG level with the Electricity item from ecoinvent,
-    # we cannot update electricity CI one state by one state,
+    # 0.48748859 is the GHG level with the Electricity item from ecoinvent,
+    # we cannot list electricity GHG one state by one state,
     # but we can adjust the electricity amount to reflect different GHG of electricity at different states
-    qs.LCA(system=sys,
-           lifetime=30,
-           lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30/0.67848*elec_GHG,
+    qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30/0.48748859*elec_GHG,
            Cooling=lambda:sys.get_cooling_duty()/1000*30)
     
     # biocrude production in BPD (barrel per day)
