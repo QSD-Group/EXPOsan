@@ -835,19 +835,15 @@ integrated_result.to_excel(folder + f'results/integrated_decarbonization_result_
 
 # TODO: update this file
 decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2023-12-31.xlsx')
-
 decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'].notna()]
-
 decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'] <= 0]
 
 #%% decarbonization map
 
 decarbonization_map = decarbonization_result.sort_values(by='total_emission', ascending=False)
-
 decarbonization_map = gpd.GeoDataFrame(decarbonization_map, crs='EPSG:4269',
                                        geometry=gpd.points_from_xy(x=decarbonization_map.longitude,
                                                                    y=decarbonization_map.latitude))
-
 # TODO: make sure 3857 is consistent with the IEDO analysis
 decarbonization_map = decarbonization_map.to_crs(crs='EPSG:3857')
 

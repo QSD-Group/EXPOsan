@@ -14,6 +14,8 @@ from exposan.htl import _load_components, create_tea, _oil_barrel_to_L, state_in
 from biosteam.units import IsenthalpicValve
 from biosteam import settings
 
+# TODO: for LCA, use 3.8 cutoff, TRACI, update this in the manuscript as well
+# TODO: remove all constructions for LCA
 # TODO: change all TEA and LCA data to the U.S.-based values
 # if impossible, especially for LCA: use US, then RER, then RoW, then GLO
 # also, remember to use LCA data collected for the 'cutoff' model and 'IPCC' method
