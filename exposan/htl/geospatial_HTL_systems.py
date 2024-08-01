@@ -6,21 +6,15 @@ Created on Mon Jun 5 08:46:28 2023
 @author: jiananfeng
 '''
 
-import os, qsdsan as qs, biosteam as bst, pandas as pd
+import qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
 from qsdsan.utils import clear_lca_registries
-# TODO: we are using 2022$, should we use 2022 tax rate for state_income_tax_rate?
 from exposan.htl import _load_components, create_tea, _oil_barrel_to_L, state_income_tax_rate_2022, _sanunits as su
 from biosteam.units import IsenthalpicValve
 from biosteam import settings
 
-# TODO: for LCA, use 3.8 cutoff, TRACI, update this in the manuscript as well
-# TODO: remove all constructions for LCA
+# TODO: for LCA, use ecoinvent 3.8, cutoff, TRACI, update this in the manuscript as well
 # TODO: change all TEA and LCA data to the U.S.-based values
-# if impossible, especially for LCA: use US, then RER, then RoW, then GLO
-# also, remember to use LCA data collected for the 'cutoff' model and 'IPCC' method
-# TODO: confirm IPCC 2013 (no LT) is ok
-# TODO: remove constructions for LCA
 
 __all__ = ('create_geospatial_system','biocrude_density')
 
@@ -70,7 +64,7 @@ def _load_process_settings(location='IL'):
     # TODO: update all costs to 2022$
     bst.CE = qs.CEPCI_by_year[2022]
     
-    # TODO: for electricity, we aim to use balancing area for GHG. Need to decide the price - does price also follows balancing area?
+    # TODO: for electricity, we aim to use balancing area for GHG; need to decide the price - does price also follows balancing area?
     folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/'
     elec = pd.read_excel(folder + 'state_elec_price_GHG.xlsx', 'summary')
     
@@ -115,11 +109,6 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     
     _load_components()
     _load_process_settings(location=state)
-    
-    folder = os.path.dirname(__file__)
-    qs.ImpactIndicator.load_from_file(os.path.join(folder, 'data/geo_impact_indicators.csv'))
-    # TODO: update LCA items to be US-based, see comments on the top
-    qs.ImpactItem.load_from_file(os.path.join(folder, 'data/geo_impact_items.xlsx'))
     
     # =========================================================================
     # pretreatment (Area 000)
@@ -331,6 +320,12 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     # =========================================================================
     # add stream impact items
     # =========================================================================
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming', method='TRACI', category='environmental impact', unit='kg CO2-eq',
+                                       description='Effect of climate change measured as global warming potential.')
+    
+    Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
+    Electricity.add_indicator(GlobalWarming, 0.48748859)
+    
     # TODO: check the notes in impact_items
     impact_items = {# 1 gal water = 3.79 kg water
                     # 0.719 kg CO2 eq/dry tonne/km (Zhao et al. Journal of Environmental Sciences. 2023)
@@ -341,12 +336,11 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                     'CHG_catalyst': [stream.CHG_catalyst_out, 471.10484135822],
                     'H2SO4':        [stream.H2SO4, 0.005529872568],
                     'NaOH':         [stream.NaOH, 1.2497984],
-                    'RO':           [stream.Membrane_in, 2.2709135],
+                    'RO_membrane':  [stream.Membrane_in, 2.2709135],
                     'natural_gas':  [stream.natural_gas, 1.2926912095],
                     'NH42SO4':      [stream.ammonium_sulfate, -1.1391193],
                     # crude oil/petroleum (transportation is included in crude oil item, we offset that first, but we need to add our own transportation)
                     # 89 g CO2/m3/km: carbon intensity of truck transportation (Pootakham et al. A comparison of pipeline versus truck transport of bio-oil. Bioresource Technology, 2010)
-                    # others are scaled based on transportation data from EcoInvent and GWP from the paper above
                     'biocrude':     [stream.biocrude, 89/1000/biocrude_density*distance-0.22290007]}
     
     for item in impact_items.items():
@@ -403,14 +397,14 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                finance_interest_value=0.03,
                labor_cost_value=(0.41+0.59*size*ww_2_dry_sludge_ratio/100)*10**6)
     
+    # TODO: add assertation to make sure heating and cooling are 0
     # TODO: since we have CT, do we still need Cooling here?
     # TODO: check the following lines of notes
     # 0.48748859 is the GHG level with the Electricity item from ecoinvent,
     # we cannot list electricity GHG one state by one state,
     # but we can adjust the electricity amount to reflect different GHG of electricity at different states
     qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30/0.48748859*elec_GHG,
-           Cooling=lambda:sys.get_cooling_duty()/1000*30)
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30/0.48748859*elec_GHG)
     
     # biocrude production in BPD (barrel per day)
     biocrude_barrel = BiocrudeTank.outs[0].F_mass/biocrude_density*1000/_oil_barrel_to_L*24
