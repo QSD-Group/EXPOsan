@@ -333,11 +333,11 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                                      -WWTP.ww_2_dry_sludge*\
                                      (waste_GHG-sludge_transportation*\
                                      (0.719*sludge_distance))/3.79/(10**6)],
-                    'CHG_catalyst': [stream.CHG_catalyst_out, 471.10484135822],
+                    'CHG_catalyst': [stream.CHG_catalyst_out, 471.098936962268],
                     'H2SO4':        [stream.H2SO4, 0.005529872568],
                     'NaOH':         [stream.NaOH, 1.2497984],
                     'RO_membrane':  [stream.Membrane_in, 2.2709135],
-                    'natural_gas':  [stream.natural_gas, 1.2926912095],
+                    'natural_gas':  [stream.natural_gas, 2.444393016],
                     'NH42SO4':      [stream.ammonium_sulfate, -1.1391193],
                     # crude oil/petroleum (transportation is included in crude oil item, we offset that first, but we need to add our own transportation)
                     # 89 g CO2/m3/km: carbon intensity of truck transportation (Pootakham et al. A comparison of pipeline versus truck transport of bio-oil. Bioresource Technology, 2010)
