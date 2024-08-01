@@ -46,13 +46,13 @@ import os, qsdsan as qs, biosteam as bst
 from qsdsan import sanunits as qsu
 from biosteam.units import DrumDryer
 from qsdsan.utils import clear_lca_registries
-from exposan.co2_sorbent import (
-    _load_components,
-    create_tea,
-    )
+from exposan.co2_sorbent import _load_components, create_tea
 from exposan.co2_sorbent import _sanunits as su
 from qsdsan.utils import auom
 from math import ceil
+
+# TODO: update LCA for natural gas based on the LCA data collected for the HTL geospatial analysis on 07-31-2024
+# TODO: check to make sure LCA items were not double-counted
 
 # HXN (heat exchanger network), CWP (chilled water package)
 # and BT (BoilerTurbogenerator) don't help in these systems
@@ -248,14 +248,13 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
                                operating_hours=yearly_operating_days*24)
     sys.register_alias('sys')
     
-    # natural gas density: 0.678 kg/m3 (https://en.wikipedia.org/wiki/Natural_gas, accessed 06-02-2024)
+    # use market for heat, district or industrial, natural gas, Europe without Switzerland (0.050399856 kg CO2 eq/MJ)
+    # 48.5 MJ/kg (https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels, accessed 07-31-2024)
     # natural gas MW: 19 (16.8-22.8 from https://en.wikipedia.org/wiki/Natural_gas, accessed 06-02-2024)
-    # market for natural gas, high pressure, US
-    # does not include emissions
     # use produced CO2 amount to calculte the GlobalWarming for natural gas
     qs.StreamImpactItem(ID='natural_gas',
                         linked_stream=stream.natural_gas_LCA,
-                        GlobalWarming=1+0.4542941/0.678*19/44)
+                        GlobalWarming=0.050399856*48.5*19/44)
     
     # market for aluminium hydroxide, GLO
     qs.StreamImpactItem(ID='aluminum_hydroxide',
@@ -535,14 +534,13 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
                                 operating_hours=yearly_operating_days*24)
     sys.register_alias('sys')
     
-    # natural gas density: 0.678 kg/m3 (https://en.wikipedia.org/wiki/Natural_gas, accessed 06-02-2024)
+    # use market for heat, district or industrial, natural gas, Europe without Switzerland (0.050399856 kg CO2 eq/MJ)
+    # 48.5 MJ/kg (https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels, accessed 07-31-2024)
     # natural gas MW: 19 (16.8-22.8 from https://en.wikipedia.org/wiki/Natural_gas, accessed 06-02-2024)
-    # market for natural gas, high pressure, US
-    # does not include emissions
     # use produced CO2 amount to calculte the GlobalWarming for natural gas
     qs.StreamImpactItem(ID='natural_gas',
                         linked_stream=stream.natural_gas_LCA,
-                        GlobalWarming=1+0.4542941/0.678*19/44)
+                        GlobalWarming=0.050399856*48.5*19/44)
     
     # market for bauxite, GLO
     qs.StreamImpactItem(ID='bauxite_ore',
