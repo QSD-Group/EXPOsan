@@ -80,20 +80,20 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                              waste_GHG=200, # based on the share of sludge management methods of each facilities
                              size=8, # MGD
                              distance=100, # km
-                             sludge_transportation=0, # 0: no; 1: yes
+                             sludge_transportation=1, # 0: no; 1: yes
                              # TODO: pay attention to 'normalized to total sludge amount'
-                             sludge_distance=0, # in km, this is the slduge transportation total distance (normalized to total sludge amount)
+                             sludge_distance=100, # in km, this is the slduge transportation total distance (normalized to total sludge amount)
                              # TODO: average values below are for sludge aggregation analyses
                              average_sludge_dw_ash=None,
                              average_sludge_afdw_lipid=None,
                              average_sludge_afdw_protein=None,
                              anaerobic_digestion=0, # 0: no; 1: yes
                              aerobic_digestion=0, # 0: no; 1: yes
-                             ww_2_dry_sludge_ratio=1, # tonne sludge/MGD raw wastewater
+                             ww_2_dry_sludge_ratio=1, # tonne sludge/day/MGD raw wastewater
                              # TODO: replace 'state' with balancing are (balnc_area in short)
                              state='IL',
                              # TODO: use balancing area based electricity CI
-                             elec_GHG=0.37 # use state-avarage values
+                             elec_GHG=0.37 # kg CO2 eq/kWh, use state-avarage values
                              ):
     
     flowsheet_ID = 'htl_geospatial'
@@ -149,6 +149,10 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                            sludge_afdw_protein=0.456,
                            operation_hours=8760)
     else:
+        assert average_sludge_dw_ash != None, 'set average_sludge_dw_ash manually'
+        assert average_sludge_afdw_lipid != None, 'set average_sludge_afdw_lipid manually'
+        assert average_sludge_afdw_protein != None, 'set average_sludge_afdw_protein manually'
+        
         WWTP = su.WWTP(ID='S000',
                        ins=raw_wastewater,
                        outs=('sludge','treated_water'),
@@ -326,24 +330,26 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.48748859)
     
-    # TODO: check the notes in impact_items
-    impact_items = {# TODO: update this if needed
-                    # 1 gal water = 3.79 kg water
-                    # 0.719 kg CO2 eq/dry tonne/km (Zhao et al. Journal of Environmental Sciences. 2023)
+    impact_items = {# 1 gal water = 3.79 kg water
+                    # 'market for transport, freight, lorry, unspecified' (0.13004958 kg CO2 eq/metric ton/km)
+                    # assume the sludge/biosolids decomposition is minimal during transportation since our transportation distance is not long
                     'sludge':       [stream.raw_wastewater,
                                      -WWTP.ww_2_dry_sludge*\
                                      (waste_GHG-sludge_transportation*\
-                                     (0.719*sludge_distance))/3.79/(10**6)],
+                                     0.13004958*sludge_distance)/3.79/(10**6)],
                     'CHG_catalyst': [stream.CHG_catalyst_out, 471.098936962268],
                     'H2SO4':        [stream.H2SO4, 0.005529872568],
                     'NaOH':         [stream.NaOH, 1.2497984],
                     'RO_membrane':  [stream.Membrane_in, 2.2709135],
                     'natural_gas':  [stream.natural_gas, 2.444393016],
-                    'NH42SO4':      [stream.ammonium_sulfate, -1.1391193],
-                    # TODO: update this if needed
-                    # crude oil/petroleum (transportation is included in crude oil item, we offset that first, but we need to add our own transportation)
+                    # TODO: address this problem (i.e., do not use market or market group for products) for other systems (i.e., CO2 sorbent, HTL-PFAS)
+                    # use 'ammonium sulfate production' for 'NH42SO4' instead of market or market group since we don't offset things like transportation
+                    'NH42SO4':      [stream.ammonium_sulfate, -1.1139067],
+                    # use market or market group for biocrude since we want to offset transportation and then add our own transportation part
+                    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
+                    # TODO: we don't use the CI in the next line; we use 'market for transport, freight, lorry, unspecified' (0.13004958 kg CO2 eq/metric ton/km) from ecoinvent instead; update this in the manuscript 
                     # 89 g CO2/m3/km: carbon intensity of truck transportation (Pootakham et al. A comparison of pipeline versus truck transport of bio-oil. Bioresource Technology, 2010)
-                    'biocrude':     [stream.biocrude, 89/1000/biocrude_density*distance-0.22290007]}
+                    'biocrude':     [stream.biocrude, 0.13004958/1000*distance-0.22290007]}
     
     for item in impact_items.items():
         qs.StreamImpactItem(ID=item[0], linked_stream=item[1][0], GlobalWarming=item[1][1])
@@ -402,7 +408,6 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     assert sys.get_heating_duty() == 0
     assert sys.get_cooling_duty() == 0
     
-    # TODO: check the following lines of notes
     # 0.48748859 is the GHG level with the Electricity item from ecoinvent,
     # we cannot list electricity GHG one state by one state,
     # but we can adjust the electricity amount to reflect different GHG of electricity at different states
