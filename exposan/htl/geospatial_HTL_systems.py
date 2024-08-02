@@ -327,7 +327,8 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     Electricity.add_indicator(GlobalWarming, 0.48748859)
     
     # TODO: check the notes in impact_items
-    impact_items = {# 1 gal water = 3.79 kg water
+    impact_items = {# TODO: update this if needed
+                    # 1 gal water = 3.79 kg water
                     # 0.719 kg CO2 eq/dry tonne/km (Zhao et al. Journal of Environmental Sciences. 2023)
                     'sludge':       [stream.raw_wastewater,
                                      -WWTP.ww_2_dry_sludge*\
@@ -339,6 +340,7 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                     'RO_membrane':  [stream.Membrane_in, 2.2709135],
                     'natural_gas':  [stream.natural_gas, 2.444393016],
                     'NH42SO4':      [stream.ammonium_sulfate, -1.1391193],
+                    # TODO: update this if needed
                     # crude oil/petroleum (transportation is included in crude oil item, we offset that first, but we need to add our own transportation)
                     # 89 g CO2/m3/km: carbon intensity of truck transportation (Pootakham et al. A comparison of pipeline versus truck transport of bio-oil. Bioresource Technology, 2010)
                     'biocrude':     [stream.biocrude, 89/1000/biocrude_density*distance-0.22290007]}
@@ -397,8 +399,9 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                finance_interest_value=0.03,
                labor_cost_value=(0.41+0.59*size*ww_2_dry_sludge_ratio/100)*10**6)
     
-    # TODO: add assertation to make sure heating and cooling are 0
-    # TODO: since we have CT, do we still need Cooling here?
+    assert sys.get_heating_duty() == 0
+    assert sys.get_cooling_duty() == 0
+    
     # TODO: check the following lines of notes
     # 0.48748859 is the GHG level with the Electricity item from ecoinvent,
     # we cannot list electricity GHG one state by one state,
