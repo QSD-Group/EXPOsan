@@ -15,7 +15,6 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-# import biosteam as bst
 from math import ceil, log
 from qsdsan import SanUnit
 from qsdsan.sanunits import Reactor
@@ -104,11 +103,10 @@ class AcidExtraction(Reactor):
             else: 
                 acid.imass['H2SO4'] = hydrochar.F_mass*self.acid_vol*0.5*98.079/1000
                 # 0.5 M H2SO4 acid_vol (10 mL/1 g) hydrochar
-                acid.imass['H2O'] = hydrochar.F_mass*self.acid_vol*1.05 -\
+                acid.imass['H2O'] = hydrochar.F_mass*self.acid_vol*1.03 -\
                                     acid.imass['H2SO4']
-                # 0.5 M H2SO4 density: 1.05 kg/L 
-                # https://www.fishersci.com/shop/products/sulfuric-acid-1n-0-5m-
-                # standard-solution-thermo-scientific/AC124240010 (accessed 10-6-2022)
+                # 0.5 M H2SO4 density: 1.03 kg/L 
+                # https://www.fishersci.se/shop/products/sulfuric-acid-0-5m-4/11943303 (accessed 08-03-2024)
                 
                 residual.imass['Residual'] = hydrochar.F_mass - self.ins[0]._source.\
                                              hydrochar_P*self.P_acid_recovery_ratio

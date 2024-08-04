@@ -4,23 +4,36 @@
 Created on Mon Jun 5 08:46:28 2023
 
 @author: jiananfeng
+
+# TODO: summarize all citations to here; update all citation in the code
 '''
 
 import qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
-from qsdsan.utils import clear_lca_registries
+from qsdsan.utils import auom, clear_lca_registries
 from exposan.htl import _load_components, create_tea, _oil_barrel_to_L, state_income_tax_rate_2022, _sanunits as su
 from biosteam.units import IsenthalpicValve
 from biosteam import settings
 
+# TODO: big TODOs
 # TODO: for LCA, use ecoinvent 3.8, cutoff, TRACI, update this in the manuscript as well
 # TODO: change all TEA and LCA data to the U.S.-based values
+# TODO: update the format
+
+# TODO: small TODOs
+# TODO: N/A
 
 __all__ = ('create_geospatial_system','biocrude_density')
 
-biocrude_density = 980 # kg/m3, Snowden-Swan et al. 2022 SOT, PNNL
-# TODO: sludge_density is not used, do we still want to keep it here?
-sludge_density = 1000 # kg/m3, this is for sludge with a moisture content higher than 80%, google 'Design of wastewater treatment sludge thickeners Iowa State University'
+# kg/m3, Snowden-Swan et al. 2022 SOT, PNNL
+biocrude_density = 980
+# kg/m3, this is for sludge with a moisture content higher than 80%, google 'Design of wastewater treatment sludge thickeners Iowa State University'
+sludge_density = 1000
+
+_mile_to_km = auom('mile').conversion_factor('km')
+_lb_to_kg = auom('lb').conversion_factor('kg')
+_m3_to_ft3 = auom('m3').conversion_factor('ft3')
+_oil_barrel_to_m3 = auom('oil_barrel').conversion_factor('m3')
 
 # GDPCTPI (Gross Domestic Product: Chain-type Price Index)
 # https://fred.stlouisfed.org/series/GDPCTPI (accessed 2024-05-20)
@@ -61,7 +74,7 @@ def _load_process_settings(location='IL'):
     
     bst.HeatUtility.heating_agents.append(HTF)
     
-    # TODO: update all costs to 2022$
+    # TODO: update all stream costs to 2022$
     bst.CE = qs.CEPCI_by_year[2022]
     
     # TODO: for electricity, we aim to use balancing area for GHG; need to decide the price - does price also follows balancing area?
@@ -75,21 +88,21 @@ def _load_process_settings(location='IL'):
         bst.PowerUtility.price = elec[elec['state']==location]['price (10-year median)'].iloc[0]/100
 
 # TODO: check the units of waste_cost and waste_GHG
-# for unit parameters, unless otherwise states, refer to the original HTL system model
-def create_geospatial_system(waste_cost=450, # based on the share of sludge management methods of each facilities
-                             waste_GHG=200, # based on the share of sludge management methods of each facilities
-                             size=8, # MGD
+# for parameters, unless otherwise states, refer to the original HTL system model
+def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share of sludge management methods of each facilities
+                             waste_GHG=200, # kg CO2 eq/tonne, based on the share of sludge management methods of each facilities
+                             size=6.25, # MGD
                              distance=100, # km
-                             sludge_transportation=1, # 0: no; 1: yes
+                             sludge_transportation=0, # 0: no; 1: yes
                              # TODO: pay attention to 'normalized to total sludge amount'
-                             sludge_distance=100, # in km, this is the slduge transportation total distance (normalized to total sludge amount)
+                             sludge_distance=0, # in km, this is the slduge transportation total distance (normalized to total sludge amount)
                              # TODO: average values below are for sludge aggregation analyses
                              average_sludge_dw_ash=None,
                              average_sludge_afdw_lipid=None,
                              average_sludge_afdw_protein=None,
                              anaerobic_digestion=0, # 0: no; 1: yes
                              aerobic_digestion=0, # 0: no; 1: yes
-                             ww_2_dry_sludge_ratio=1, # tonne sludge/day/MGD raw wastewater
+                             ww_2_dry_sludge_ratio=1, # dry tonne sludge/day/MGD raw wastewater
                              # TODO: replace 'state' with balancing are (balnc_area in short)
                              state='IL',
                              # TODO: use balancing area based electricity CI
@@ -169,21 +182,23 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                         outs='pressed_sludge',
                         P=3049.7*6894.76,
                         init_with='Stream')
-    # TODO: include construction for cost only, but excluding it from LCA (although it is not a big part)
-    P1.include_construction = True
+    P1.include_construction = False
     P1.register_alias('P1')
     
-    # TODO: check the units and calculations, also update it to 2022$ if necessary
-    # TODO: adjust the format
+    # assume the transported sludge has 80% moisture content
+    # 4.56 $/m3, 0.072 $/m3/mile (Marufuzzaman et al. Transportation Research Part A. 2015, likely 2015$)
     # 1 gal water = 3.79 kg water
-    # 5.06 $/m3, 0.05 $/m3/km (Marufuzzaman et al. Transportation Research Part A. 2015, converted to 2020 price)
-    raw_wastewater.price = -WWTP.ww_2_dry_sludge*(waste_cost-sludge_transportation*(5.06*5+0.05*5*sludge_distance))/3.79/(10**6)
+    raw_wastewater.price = -WWTP.ww_2_dry_sludge*\
+        (waste_cost-sludge_transportation*\
+         (4.56/GDPCTPI[2015]*GDPCTPI[2022]/sludge_density*1000/0.2+\
+          0.072/GDPCTPI[2015]*GDPCTPI[2022]/_mile_to_km/sludge_density*1000/0.2*sludge_distance))/\
+            3.79/(10**6)
     
     # =========================================================================
     # HTL (Area 100)
     # =========================================================================
     H1 = qsu.HXutility(ID='A110',
-                       include_construction=True,
+                       include_construction=False,
                        ins=P1-0,
                        outs='heated_sludge',
                        T=351+273.15,
@@ -211,30 +226,24 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                                  init_with='WasteStream',
                                  tau=24,
                                  vessel_material='Stainless steel')
-    # TODO: update the cost to 2022$/kg; find a better price if possible
-    # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
-    H2SO4_Tank.ins[0].price = 0.00658
+    # 0.5 M H2SO4: ~5%
+    # based on 93% H2SO4 and fresh water (dilute to 5%) prices in Davis et al. Process Design and Economics for the Conversion of
+    # Lignocellulosic Biomass to Hydrocarbon Fuels and Coproducts: 2018 Biochemical Design Case Update; Biochemical Deconstruction and
+    # Conversion of Biomass to Fuels and Products via Integrated Biorefinery Pathways. 2018
+    H2SO4_Tank.ins[0].price = (0.043*1+0.0002*(93/5-1))/(93/5)/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     H2SO4_Tank.register_alias('H2SO4_Tank')
     
-    SP1 = qsu.ReversedSplitter(ID='S200',
-                               ins=H2SO4_Tank-0,
-                               outs=('H2SO4_P','H2SO4_N'),
-                               init_with='Stream')
-    SP1.register_alias('SP1')
-
-    # TODO: what is this? Can we just put '' in M1
-    M1_outs1 = ''
-    
     M1 = su.HTLmixer(ID='A210',
-                     ins=(HTL-1, M1_outs1),
+                     ins=(HTL-1, ''),
                      outs=('mixture',))
     M1.register_alias('M1')
     
     CHG = qsu.CatalyticHydrothermalGasification(ID='A230',
                                                 ins=(M1-0, '7.8%_Ru/C'),
                                                 outs=('CHG_out', '7.8%_Ru/C_out'))
-    # TODO: update the cost to 2022$/kg
-    CHG.ins[1].price = 134.53
+    # Jones et al. Process Design and Economics for the Conversion of Algal Biomass to
+    # Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading. 2014
+    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2022]
     CHG.register_alias('CHG')
     
     V1 = IsenthalpicValve(ID='A240',
@@ -251,16 +260,21 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                    P=50*6894.76,
                    thermo=settings.thermo.ideal())
     F1.register_alias('F1')
-    F1.include_construction = True
+    F1.include_construction = False
     
     MemDis = qsu.MembraneDistillation(ID='A260',
-                                      ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
+                                      ins=(F1-1, H2SO4_Tank-0, 'NaOH', 'Membrane_in'),
                                       outs=('ammonium_sulfate','MemDis_ww', 'Membrane_out','solution'),
                                       init_with='WasteStream')
-    # TODO: update the cost to 2022$/kg
-    # TODO: is membrane considered as part of construction? (tend to consider it as material instead)
-    MemDis.ins[2].price = 0.5256
-    MemDis.outs[0].price = 0.3236
+    MemDis.ins[2].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
+    # from Al-Obaidani et al. Potential of Membrane Distillation in Seawater Desalination:
+    # Thermal Efficiency, Sensitivity Study and Cost Estimation.
+    # Journal of Membrane Science 2008, 323 (1), 85–98.
+    # https://doi.org/10.1016/j.memsci.2008.06.006: 90 $/m2 (likely 2008$)
+    MemDis.ins[3].price = 90/GDPCTPI[2008]*GDPCTPI[2022]
+    # ammonium sulfate (2022 average): https://businessanalytiq.com/procurementanalytics/index/ammonium-sulfate-index/ (accesses 2024-08-03)
+    MemDis.outs[0].price = 0.41
+    MemDis.include_construction = False
     MemDis.register_alias('MemDis')
     
     # =========================================================================
@@ -272,15 +286,13 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                                    tau=3*24,
                                    init_with='WasteStream',
                                    vessel_material='Carbon steel')
-    # store for 3 days based on Jones 2014
+    # TODO: assume the biocrude has the same price as crude oil; add this in the main manuscript or the SI
+    # crude oil price: https://www.macrotrends.net/1369/crude-oil-price-history-chart (accessed 2024-08-03)
+    # 5.67 2008$/m3: fixed cost, 0.07 2008$/m3/km: variable cost (Pootakham et al. Bio-oil transport by pipeline: A techno-economic assessment. Bioresource Technology, 2010)
+    BiocrudeTank.outs[0].price = 94.53/_oil_barrel_to_m3/biocrude_density-(5.67/biocrude_density+0.07/biocrude_density*distance)/GDPCTPI[2008]*GDPCTPI[2022]
+    # store for 3 days based on Jones et al. Process Design and Economics for the Conversion of Algal Biomass to
+    # Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading. 2014
     BiocrudeTank.register_alias('CrudeOilTank')
-    
-    # TODO: update the price to 2022$ using GDPCTPI
-    # check the units and calculations here
-    # 5.67: fixed cost, 0.07: variable cost ($/m3, Pootakham et al. Bio-oil transport by pipeline: A techno-economic assessment. Bioresource Technology, 2010)
-    # note cost in this paper was in 2008$, we need to convert it to 2020$ based on Gross Domestic Product chain-type price index
-    # 1 2008$ = 1.20 $2020 based on https://fred.stlouisfed.org/series/GDPCTPI
-    BiocrudeTank.outs[0].price = -5.67*1.20/biocrude_density-0.07*1.20/biocrude_density*distance+0.3847
     
     PC1 = qsu.PhaseChanger(ID='S300',
                            ins=CHG-1,
@@ -289,7 +301,7 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     PC1.register_alias('PC1')
     
     GasMixer = qsu.Mixer(ID='S310',
-                         ins=(HTL-3, F1-0,),
+                         ins=(HTL-3, F1-0),
                          outs=('fuel_gas'),
                          init_with='Stream')
     GasMixer.register_alias('GasMixer')
@@ -301,20 +313,35 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
                              T_min_app=86,
                              force_ideal_thermo=True)
     
-    # TODO: compare with the CHP in the original HTL system, why supplement_power_utility=False?
+    # use CHP to produce electricity does not provide benefit; therefore, set supplement_power_utility=False
     CHP = qsu.CombinedHeatPower(ID='CHP',
-                                include_construction=True,
+                                include_construction=False,
                                 ins=(GasMixer-0, 'natural_gas', 'air'),
                                 outs=('emission','solid_ash'),
                                 init_with='WasteStream',
                                 supplement_power_utility=False)
-    # TODO: make sure the signs are correct for these two items
-    CHP.ins[1].price = bst.stream_prices['Natural gas']
-    CHP.outs[1].price = bst.stream_prices['Ash disposal']
+    # assume natural gas is CH4 (density is 0.657 kg/m3, https://en.wikipedia.org/wiki/Methane accessed 2024-08-03)
+    # 2022 US NG industrial price: 7.66 $/1000 ft3 (https://www.eia.gov/dnav/ng/hist/n3035us3A.htm accessed 2024-08-03)
+    CHP.ins[1].price = 7.66/1000*_m3_to_ft3/0.657
+    # 1.41 MM 2016$/year for 4270/4279 kg/hr ash, 7880 annual operating hours, from Davis et al. Process Design and Economics for the Conversion of
+    # Lignocellulosic Biomass to Hydrocarbon Fuels and Coproducts: 2018 Biochemical Design Case Update; Biochemical Deconstruction and
+    # Conversion of Biomass to Fuels and Products via Integrated Biorefinery Pathways. 2018
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2022]
+    CHP.register_alias('CHP')
     
-    # TODO: add LCA for the CT
-    # TODO: consider adding CT for the system in other places (original model, HTL-PFAS)
-    bst.facilities.CoolingTower(ID='CT')
+    # not sure if the construction cost for CT is right or not (based on return cooling water flow rate or makeup water flow rate or others)
+    # however, the effect of this is small (2%) and can be ignored
+    # the cost and CI of CT streams are also small and can be ignored
+    # note there is actually a default 3 $/kg for cooling_tower_chemicals
+    # we change the price to 1.7842 $/lb from Davis et al. Process Design and Economics for the Conversion of
+    # Lignocellulosic Biomass to Hydrocarbon Fuels and Coproducts: 2018 Biochemical Design Case Update; Biochemical Deconstruction and
+    # Conversion of Biomass to Fuels and Products via Integrated Biorefinery Pathways. 2018
+    # but the flow rate is so small, so there is actually no significant difference
+    # TODO: consider adding CT and its LCA items for other systems (HTL, HTL-PFAS)
+    CT = bst.facilities.CoolingTower(ID='CT')
+    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
+    CT.register_alias('CT')
+    
     
     sys = qs.System.from_units(ID='sys_geospatial',
                                units=list(flowsheet.unit),
@@ -330,21 +357,23 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.48748859)
     
-    impact_items = {# 1 gal water = 3.79 kg water
+    impact_items = {# assume the transported sludge has 80% moisture content
+                    # 1 gal water = 3.79 kg water
                     # 'market for transport, freight, lorry, unspecified' (0.13004958 kg CO2 eq/metric ton/km)
                     # assume the sludge/biosolids decomposition is minimal during transportation since our transportation distance is not long
                     'sludge':       [stream.raw_wastewater,
                                      -WWTP.ww_2_dry_sludge*\
                                      (waste_GHG-sludge_transportation*\
-                                     0.13004958*sludge_distance)/3.79/(10**6)],
+                                     0.13004958/0.2*sludge_distance)/3.79/(10**6)],
                     'CHG_catalyst': [stream.CHG_catalyst_out, 471.098936962268],
                     'H2SO4':        [stream.H2SO4, 0.005529872568],
                     'NaOH':         [stream.NaOH, 1.2497984],
                     'RO_membrane':  [stream.Membrane_in, 2.2709135],
-                    'natural_gas':  [stream.natural_gas, 2.444393016],
                     # TODO: address this problem (i.e., do not use market or market group for products) for other systems (i.e., CO2 sorbent, HTL-PFAS)
                     # use 'ammonium sulfate production' for 'NH42SO4' instead of market or market group since we don't offset things like transportation
                     'NH42SO4':      [stream.ammonium_sulfate, -1.1139067],
+                    # TODO: we used CH4 in CHP as natural gas; do we want to update the LCA item here?
+                    'natural_gas':  [stream.natural_gas, 2.444393016],
                     # use market or market group for biocrude since we want to offset transportation and then add our own transportation part
                     # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
                     # TODO: we don't use the CI in the next line; we use 'market for transport, freight, lorry, unspecified' (0.13004958 kg CO2 eq/metric ton/km) from ecoinvent instead; update this in the manuscript 
@@ -354,7 +383,6 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     for item in impact_items.items():
         qs.StreamImpactItem(ID=item[0], linked_stream=item[1][0], GlobalWarming=item[1][1])
     
-    # TODO: make sure doing the following does not affect the results
     # simulate first to enable the calculation of the income tax rate
     sys.simulate()
     
@@ -367,9 +395,10 @@ def create_geospatial_system(waste_cost=450, # based on the share of sludge mana
     annual_utility_cost = sum([u.utility_cost for u in sys.cost_units]) * sys.operating_hours
     annual_net_income = annual_sales - annual_material_cost - annual_utility_cost
     
+    # TODO: mention this in the main manuscript or the SI and add citation
     if state == 'average':
-        # TODO: check this citation
-        # use the mode state income tax from Steward et al. ES&T 2023
+        # use the mode state income tax from Steward et al. Implication of Biorefinery Policy Incentives and Location-Specific Economic Parameters for the Financial Viability of Biofuels. ES&T. 2023
+        # from this citation: state income tax: [min, mode, max]: [0%, 6.5%, 12%]
         state_income_tax_rate_value = 0.065
     else:
         state_income_tax_rate_value = state_income_tax_rate_2022(state=state, sales=annual_sales, net_income=annual_net_income)

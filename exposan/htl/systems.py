@@ -42,6 +42,25 @@ from biosteam import settings
 
 __all__ = ('create_system',)
 
+# GDPCTPI (Gross Domestic Product: Chain-type Price Index)
+# https://fred.stlouisfed.org/series/GDPCTPI (accessed 2024-05-20)
+GDPCTPI = {2008: 87.977,
+           2009: 88.557,
+           2010: 89.619,
+           2011: 91.466,
+           2012: 93.176,
+           2013: 94.786,
+           2014: 96.436,
+           2015: 97.277,
+           2016: 98.208,
+           2017: 100.000,
+           2018: 102.290,
+           2019: 104.008,
+           2020: 105.407,
+           2021: 110.220,
+           2022: 117.995,
+           2023: 122.284}
+
 def create_system(configuration='baseline', capacity=100,
                   sludge_moisture_content=0.8, sludge_dw_ash_content=0.257, 
                   sludge_afdw_lipid_content=0.204, sludge_afdw_protein_content=0.463,
@@ -143,6 +162,7 @@ def create_system(configuration='baseline', capacity=100,
     
     H2SO4_Tank = qsu.StorageTank('T200', ins='H2SO4', outs=('H2SO4_out'),
                              init_with='WasteStream', tau=24, vessel_material='Stainless steel')
+    # 0.5 M H2SO4: ~5%
     H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
     H2SO4_Tank.register_alias('H2SO4_Tank')
     
@@ -190,6 +210,11 @@ def create_system(configuration='baseline', capacity=100,
     MemDis = qsu.MembraneDistillation('A260', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
                                   outs=('ammonium_sulfate','MemDis_ww','Membrane_out','solution'), init_with='WasteStream')
     MemDis.ins[2].price = 0.5256
+    # from Al-Obaidani et al. Potential of Membrane Distillation in Seawater Desalination:
+    # Thermal Efficiency, Sensitivity Study and Cost Estimation.
+    # Journal of Membrane Science 2008, 323 (1), 85–98.
+    # https://doi.org/10.1016/j.memsci.2008.06.006: $90/m2 (likely 2008$)
+    MemDis.ins[3].price = 90/GDPCTPI[2008]*GDPCTPI[2020]
     MemDis.outs[0].price = 0.3236
     MemDis.register_alias('MemDis')
     
