@@ -376,6 +376,7 @@ base_labor = 338256 # for 1000 kg/hr
 tea = create_tea(
     sys,
     labor_cost=lambda: (scaled_feedstock.F_mass-scaled_feedstock.imass['Water'])/1000*base_labor,
+    land=0, #!!! need to be updated
     )
 
 # To see out-of-boundary-limits units

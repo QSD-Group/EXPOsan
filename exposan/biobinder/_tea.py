@@ -24,6 +24,32 @@ class TEA(HTL_TEA):
     '''
     With only minor modifications to the TEA class in the HTL module.
     '''
+    # __slots__ = (*HTL_TEA.__slots__, 'land')
+    
+    land = 0.
+    
+    def __init__(self, system, IRR, duration, depreciation, income_tax,
+                 operating_days, lang_factor, construction_schedule,
+                 startup_months, startup_FOCfrac, startup_VOCfrac,
+                 startup_salesfrac, WC_over_FCI,  finance_interest,
+                 finance_years, finance_fraction, OSBL_units, warehouse,
+                 site_development, additional_piping, proratable_costs,
+                 field_expenses, construction, contingency,
+                 other_indirect_costs, labor_cost, labor_burden,
+                 property_insurance, maintenance, steam_power_depreciation,
+                 boiler_turbogenerator, **kwargs):
+        HTL_TEA.__init__(self, system, IRR, duration, depreciation, income_tax,
+                     operating_days, lang_factor, construction_schedule,
+                     startup_months, startup_FOCfrac, startup_VOCfrac,
+                     startup_salesfrac, WC_over_FCI,  finance_interest,
+                     finance_years, finance_fraction, OSBL_units, warehouse,
+                     site_development, additional_piping, proratable_costs,
+                     field_expenses, construction, contingency,
+                     other_indirect_costs, labor_cost, labor_burden,
+                     property_insurance, maintenance, steam_power_depreciation,
+                     boiler_turbogenerator)
+        for attr, val in kwargs.items():
+            setattr(self, attr, val)
     
     @property
     def labor_cost(self):
@@ -33,7 +59,7 @@ class TEA(HTL_TEA):
     def labor_cost(self, i):
         self._labor_cost = i
     
-def create_tea(sys, IRR_value=0.1, income_tax_value=0.21, finance_interest_value=0.08, labor_cost=1e6):
+def create_tea(sys, IRR_value=0.1, income_tax_value=0.21, finance_interest_value=0.08, labor_cost=1e6, land=0.):
     OSBL_units = bst.get_OSBL(sys.cost_units)
     try:
         BT = tmo.utils.get_instance(OSBL_units, (bst.BoilerTurbogenerator, bst.Boiler))
@@ -70,5 +96,6 @@ def create_tea(sys, IRR_value=0.1, income_tax_value=0.21, finance_interest_value
         property_insurance=0.007, # Jones et al. 2014 & Knorr et al. 2013
         maintenance=0.03, # Jones et al. 2014 & Knorr et al. 2013
         steam_power_depreciation='MACRS20',
-        boiler_turbogenerator=BT)
+        boiler_turbogenerator=BT,
+        land=land)
     return tea
