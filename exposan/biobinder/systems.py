@@ -24,8 +24,10 @@ import os, biosteam as bst, qsdsan as qs
 # from biosteam.units import IsenthalpicValve
 # from biosteam import settings
 from qsdsan import sanunits as qsu
-# from qsdsan.utils import clear_lca_registries
+from qsdsan.utils import clear_lca_registries
+from exposan.htl import data_path as htl_data_path
 from exposan.biobinder import (
+    data_path,
     results_path,
     _load_components,
     _load_process_settings,
@@ -234,6 +236,10 @@ WWDisposal = u.Disposal('WWDisposal', ins=BiocrudeWaterScaler-0,
                         outs=('ww_disposal', 'ww_others'),
                         exclude_components=('Water',))
 
+# Heat exchanger network
+# 86 K: Jones et al. PNNL, 2014
+HXN = qsu.HeatExchangerNetwork('HXN', T_min_app=86, force_ideal_thermo=True)
+
 
 # %%
 
@@ -256,28 +262,29 @@ stream = sys.flowsheet.stream
 cost_year = 2020
 
 # U.S. Energy Information Administration (EIA) Annual Energy Outlook (AEO)
-#GDP_indices = {
+# GDP_indices = {
 #   2003: 0.808,
 #   2005: 0.867,
-#  2007: 0.913,
+#   2007: 0.913,
 #   2008: 0.941,
 #   2009: 0.951,
-#  2010: 0.962,
+#   2010: 0.962,
 #   2011: 0.983,
 #   2012: 1.000,
-#    2013: 1.014,
+#   2013: 1.014,
 #   2014: 1.033,
-#  2015: 1.046,
-#    2016: 1.059,
+#   2015: 1.046,
+#   2016: 1.059,
 #   2017: 1.078,
-#  2018: 1.100,
+#   2018: 1.100,
 #   2019: 1.123,
 #   2020: 1.133,
 #   2021: 1.181,
-#  2022: 1.269,
-#  2023: 1.322,
-#  2024: 1.354,
-#    }
+#   2022: 1.269,
+#   2023: 1.322,
+#   2024: 1.354,
+#     }
+
 #Federal Reserve Economic Data, Personal Consumption Expenditures: Chain-type Price Index, Index 2017=1.00, Annual, Seasonally Adjusted
 
 PCE_indices = {
@@ -362,6 +369,7 @@ biobinder.price = 0.67 # bitumnous, https://idot.illinois.gov/doing-business/pro
 
 # Other TEA assumptions
 bst.CE = qs.CEPCI_by_year[cost_year]
+lifetime = 30
 
 base_labor = 338256 # for 1000 kg/hr
 
@@ -377,6 +385,48 @@ tea = create_tea(
 # LCA
 # =============================================================================
 
+# Load impact indicators, TRACI
+clear_lca_registries()
+qs.ImpactIndicator.load_from_file(os.path.join(htl_data_path, 'impact_indicators.csv'))
+qs.ImpactItem.load_from_file(os.path.join(data_path, 'impact_items.xlsx'))
+
+# Add impact for streams
+streams_with_impacts = [i for i in sys.feeds+sys.products if (
+    i.isempty() is False and 
+    i.imass['Water']!=i.F_mass and
+    'surrogate' not in i.ID
+    )]
+for i in streams_with_impacts: print (i.ID)
+
+# scaled_feedstock
+# biofuel_additives
+# biobinder
+# scaled_gas
+feedstock_item = qs.StreamImpactItem(
+    ID='feedstock_item',
+    linked_stream=scaled_feedstock,
+    Acidification=0,
+    Ecotoxicity=0,
+    Eutrophication=0,
+    GlobalWarming=0,
+    OzoneDepletion=0,
+    PhotochemicalOxidation=0,
+    Carcinogenics=0,
+    NonCarcinogenics=0,
+    RespiratoryEffects=0
+    )
+qs.ImpactItem.get_item('Diesel').linked_stream = biofuel_additives
+
+#!!! Need to get heating duty
+lca = qs.LCA(
+    system=sys,
+    lifetime=lifetime,
+    uptime_ratio=sys.operating_hours/(365*24),
+    Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+    # Heating=lambda:sys.get_heating_duty()/1000*lifetime,
+    Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
+    )
+
 
 # %%
 
@@ -389,6 +439,10 @@ def simulate_and_print(save_report=False):
     for attr in ('NPV','AOC', 'sales', 'net_earnings'):
         uom = c if attr in ('NPV', 'CAPEX') else (c+('/yr'))
         print(f'{attr} is {getattr(tea, attr):,.0f} {uom}')
+        
+    all_impacts = lca.get_allocated_impacts(streams=(biobinder,), operation_only=True, annual=True)
+    GWP = all_impacts['GlobalWarming']/biobinder.F_mass
+    print(f'Global warming potential of the biobinder is {GWP:.2f} kg CO2e/kg.')
     if save_report:
         # Use `results_path` and the `join` func can make sure the path works for all users
         sys.save_report(file=os.path.join(results_path, 'sys.xlsx'))
