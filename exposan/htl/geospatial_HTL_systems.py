@@ -17,11 +17,10 @@ from biosteam import settings
 
 # TODO: big TODOs
 # TODO: for LCA, use ecoinvent 3.8, cutoff, TRACI, update this in the manuscript as well
-# TODO: change all TEA and LCA data to the U.S.-based values
-# TODO: update the format
+# TODO: refactor the code wherever necessary
 
 # TODO: small TODOs
-# TODO: N/A
+# TODO: do we want to include TEA and LCA for ash and CT?
 
 __all__ = ('create_geospatial_system','biocrude_density')
 
@@ -74,7 +73,6 @@ def _load_process_settings(location='IL'):
     
     bst.HeatUtility.heating_agents.append(HTF)
     
-    # TODO: update all stream costs to 2022$
     bst.CE = qs.CEPCI_by_year[2022]
     
     # TODO: for electricity, we aim to use balancing area for GHG; need to decide the price - does price also follows balancing area?
@@ -87,7 +85,6 @@ def _load_process_settings(location='IL'):
     else:
         bst.PowerUtility.price = elec[elec['state']==location]['price (10-year median)'].iloc[0]/100
 
-# TODO: check the units of waste_cost and waste_GHG
 # for parameters, unless otherwise states, refer to the original HTL system model
 def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share of sludge management methods of each facilities
                              waste_GHG=200, # kg CO2 eq/tonne, based on the share of sludge management methods of each facilities
@@ -211,6 +208,7 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
     # !!! we assume we don't need to adjust moisture content (all = 80%)
     # for lagoon, the sludge will dry at the base of the lagoon (see https://www.sludgeprocessing.com/sludge-dewatering/sludge-drying-beds-lagoons/)
     
+    # assume no value/cost and no environmental benefit/impact associated with hydrochar
     HTL = qsu.HydrothermalLiquefaction(ID='A120',
                                        ins=H1-0,
                                        outs=('hydrochar','HTL_aqueous','biocrude_to_be_stored','offgas_HTL'),
@@ -238,9 +236,12 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
                      outs=('mixture',))
     M1.register_alias('M1')
     
+    # TODO: add the following note to other HTL systems
+    # 7.8%_Ru/C and 7.8%_Ru/C_out are not valid names; they are not in sys.flowsheet.stream but the price and LCA are included
+    # although this have no impact on the results, still change the names to 'virgin_CHG_catalyst and 'used_CHG_catalyst'
     CHG = qsu.CatalyticHydrothermalGasification(ID='A230',
-                                                ins=(M1-0, '7.8%_Ru/C'),
-                                                outs=('CHG_out', '7.8%_Ru/C_out'))
+                                                ins=(M1-0, 'virgin_CHG_catalyst'),
+                                                outs=('CHG_out', 'used_CHG_catalyst'))
     # Jones et al. Process Design and Economics for the Conversion of Algal Biomass to
     # Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading. 2014
     CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2022]
@@ -262,9 +263,10 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
     F1.register_alias('F1')
     F1.include_construction = False
     
+    # assume no value/cost and no environmental benefit/impact associated with MemDis_ww (the system is in a WWTP) and solution
     MemDis = qsu.MembraneDistillation(ID='A260',
                                       ins=(F1-1, H2SO4_Tank-0, 'NaOH', 'Membrane_in'),
-                                      outs=('ammonium_sulfate','MemDis_ww', 'Membrane_out','solution'),
+                                      outs=('ammonium_sulfate','MemDis_ww','Membrane_out','solution'),
                                       init_with='WasteStream')
     MemDis.ins[2].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     # from Al-Obaidani et al. Potential of Membrane Distillation in Seawater Desalination:
@@ -313,6 +315,7 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
                              T_min_app=86,
                              force_ideal_thermo=True)
     
+    # assume no value/cost and no environmental benefit/impact associated with emission (they are not treated and are biogenic; only CO2 from natural gas is non-biogenic but we have included the environmental impact for it)
     # use CHP to produce electricity does not provide benefit; therefore, set supplement_power_utility=False
     CHP = qsu.CombinedHeatPower(ID='CHP',
                                 include_construction=False,
@@ -337,7 +340,7 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
     # Lignocellulosic Biomass to Hydrocarbon Fuels and Coproducts: 2018 Biochemical Design Case Update; Biochemical Deconstruction and
     # Conversion of Biomass to Fuels and Products via Integrated Biorefinery Pathways. 2018
     # but the flow rate is so small, so there is actually no significant difference
-    # TODO: consider adding CT and its LCA items for other systems (HTL, HTL-PFAS)
+    # TODO: consider adding CT and its TEA and LCA items (if any) for other systems (HTL, HTL-PFAS)
     CT = bst.facilities.CoolingTower(ID='CT')
     CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     CT.register_alias('CT')
