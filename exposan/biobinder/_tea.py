@@ -18,6 +18,7 @@ from exposan.htl import HTL_TEA
 __all__ = ('create_tea',)
 
 #!!! Need to see if we can follow all assumptions as in Jianan's paper
+#PNNL 32371 contains land costs for HTL & Upgrading 
 
 class TEA(HTL_TEA):
     '''
