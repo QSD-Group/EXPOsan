@@ -5,7 +5,57 @@ Created on Mon Jun 5 08:46:28 2023
 
 @author: jiananfeng
 
-# TODO: summarize all citations to here; update all citation in the code
+[1] Snowden-Swan, L. J.; Li, S.; Thorson, M. R.; Schmidt, A. J.; Cronin, D. J.;
+    Zhu, Y.; Hart, T. R.; Santosa, D. M.; Fox, S. P.; Lemmon, T. L.; Swita, M. S.
+    Wet Waste Hydrothermal Liquefaction and Biocrude Upgrading to Hydrocarbon Fuels:
+    2022 State of Technology; PNNL-33622; Pacific Northwest National Lab. (PNNL),
+    Richland, WA (United States), 2022. https://doi.org/10.2172/1897670.
+[2] Marufuzzaman, M.; Ekşioğlu, S. D.; Hernandez, R. Truck versus Pipeline
+    Transportation Cost Analysis of Wastewater Sludge. Transportation Research Part A:
+    Policy and Practice 2015, 74, 14–30. https://doi.org/10.1016/j.tra.2015.02.001.
+[3] https://www.sludgeprocessing.com/sludge-dewatering/sludge-drying-beds-lagoons/
+    (accessed 2024-08-03)
+[4] Davis, R. E.; Grundl, N. J.; Tao, L.; Biddy, M. J.; Tan, E. C.; Beckham, G. T.;
+    Humbird, D.; Thompson, D. N.; Roni, M. S. Process Design and Economics for the
+    Conversion of Lignocellulosic Biomass to Hydrocarbon Fuels and Coproducts:
+    2018 Biochemical Design Case Update; Biochemical Deconstruction and Conversion
+    of Biomass to Fuels and Products via Integrated Biorefinery Pathways;
+    NREL/TP--5100-71949, 1483234; 2018; p NREL/TP--5100-71949, 1483234.
+    https://doi.org/10.2172/1483234.
+[5] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.;
+    Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.;
+    Snowden-Swan, L. J.; Davis, R.; Kinchin, C. Process Design and Economics for
+    the Conversion of Algal Biomass to Hydrocarbons: Whole Algae Hydrothermal
+    Liquefaction and Upgrading; PNNL--23227, 1126336; 2014; p PNNL--23227, 1126336.
+    https://doi.org/10.2172/1126336.
+[6] Al-Obaidani, S.; Curcio, E.; Macedonio, F.; Di Profio, G.; Al-Hinai, H.;
+    Drioli, E. Potential of Membrane Distillation in Seawater Desalination:
+    Thermal Efficiency, Sensitivity Study and Cost Estimation. Journal of Membrane
+    Science 2008, 323 (1), 85–98. https://doi.org/10.1016/j.memsci.2008.06.006.
+[7] https://businessanalytiq.com/procurementanalytics/index/ammonium-sulfate-index/
+    (accessed 2024-08-03)
+[8] https://www.macrotrends.net/1369/crude-oil-price-history-chart
+    (accessed 2024-08-03)
+[9] Pootakham, T.; Kumar, A. Bio-Oil Transport by Pipeline: A Techno-Economic
+    Assessment. Bioresource Technology 2010, 101 (18), 7137–7143.
+    https://doi.org/10.1016/j.biortech.2010.03.136.
+[10] https://en.wikipedia.org/wiki/Methane accessed (2024-08-03)
+[11] https://www.eia.gov/dnav/ng/hist/n3035us3A.htm accessed (2024-08-03)
+[12] Pootakham, T.; Kumar, A. A Comparison of Pipeline versus Truck Transport of
+     Bio-Oil. Bioresource Technology 2010, 101 (1), 414–421.
+     https://doi.org/10.1016/j.biortech.2009.07.077.
+[13] Stewart, D. W.; Cortés-Peña, Y. R.; Li, Y.; Stillwell, A. S.; Khanna, M.;
+     Guest, J. S. Implications of Biorefinery Policy Incentives and
+     Location-SpecificEconomic Parameters for the Financial Viability of Biofuels.
+     Environ. Sci. Technol. 2023. https://doi.org/10.1021/acs.est.2c07936.
+[14] https://data.bls.gov/cgi-bin/srgate (accessed 2024-08-06)
+[15] Snowden-Swan, L. J.; Zhu, Y.; Bearden, M. D.; Seiple, T. E.; Jones, S. B.;
+     Schmidt, A. J.; Billing, J. M.; Hallen, R. T.; Hart, T. R.; Liu, J.;
+     Albrecht, K. O.; Fox, S. P.; Maupin, G. D.; Elliott, D. C.
+     Conceptual Biorefinery Design and Research Targeted for 2022:
+     Hydrothermal Liquefacation Processing of Wet Waste to Fuels; PNNL-27186;
+     Pacific Northwest National Lab. (PNNL), Richland, WA (United States), 2017.
+     https://doi.org/10.2172/1415710.
 '''
 
 import qsdsan as qs, biosteam as bst, pandas as pd
@@ -18,13 +68,14 @@ from biosteam import settings
 # TODO: big TODOs
 # TODO: for LCA, use ecoinvent 3.8, cutoff, TRACI, update this in the manuscript as well
 # TODO: refactor the code wherever necessary
+# TODO: adjust the date format in all systems (to access MM-DD-YYYY)
 
 # TODO: small TODOs
 # TODO: do we want to include TEA and LCA for ash and CT?
 
 __all__ = ('create_geospatial_system','biocrude_density')
 
-# kg/m3, Snowden-Swan et al. 2022 SOT, PNNL
+# kg/m3, [1]
 biocrude_density = 980
 # kg/m3, this is for sludge with a moisture content higher than 80%, google 'Design of wastewater treatment sludge thickeners Iowa State University'
 sludge_density = 1000
@@ -93,7 +144,7 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
                              sludge_transportation=0, # 0: no; 1: yes
                              # TODO: pay attention to 'normalized to total sludge amount'
                              sludge_distance=0, # in km, this is the slduge transportation total distance (normalized to total sludge amount)
-                             # TODO: average values below are for sludge aggregation analyses
+                             # average values below are for sludge aggregation analyses
                              average_sludge_dw_ash=None,
                              average_sludge_afdw_lipid=None,
                              average_sludge_afdw_protein=None,
@@ -183,7 +234,7 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
     P1.register_alias('P1')
     
     # assume the transported sludge has 80% moisture content
-    # 4.56 $/m3, 0.072 $/m3/mile (Marufuzzaman et al. Transportation Research Part A. 2015, likely 2015$)
+    # 4.56 $/m3, 0.072 $/m3/mile ([2], likely 2015$)
     # 1 gal water = 3.79 kg water
     raw_wastewater.price = -WWTP.ww_2_dry_sludge*\
         (waste_cost-sludge_transportation*\
@@ -206,7 +257,7 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
     
     # TODO: what is the implication of this?
     # !!! we assume we don't need to adjust moisture content (all = 80%)
-    # for lagoon, the sludge will dry at the base of the lagoon (see https://www.sludgeprocessing.com/sludge-dewatering/sludge-drying-beds-lagoons/)
+    # for lagoon, the sludge will dry at the base of the lagoon (see [3])
     
     # assume no value/cost and no environmental benefit/impact associated with hydrochar
     HTL = qsu.HydrothermalLiquefaction(ID='A120',
@@ -225,9 +276,7 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
                                  tau=24,
                                  vessel_material='Stainless steel')
     # 0.5 M H2SO4: ~5%
-    # based on 93% H2SO4 and fresh water (dilute to 5%) prices in Davis et al. Process Design and Economics for the Conversion of
-    # Lignocellulosic Biomass to Hydrocarbon Fuels and Coproducts: 2018 Biochemical Design Case Update; Biochemical Deconstruction and
-    # Conversion of Biomass to Fuels and Products via Integrated Biorefinery Pathways. 2018
+    # based on 93% H2SO4 and fresh water (dilute to 5%) prices in [4]
     H2SO4_Tank.ins[0].price = (0.043*1+0.0002*(93/5-1))/(93/5)/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     H2SO4_Tank.register_alias('H2SO4_Tank')
     
@@ -242,8 +291,7 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
     CHG = qsu.CatalyticHydrothermalGasification(ID='A230',
                                                 ins=(M1-0, 'virgin_CHG_catalyst'),
                                                 outs=('CHG_out', 'used_CHG_catalyst'))
-    # Jones et al. Process Design and Economics for the Conversion of Algal Biomass to
-    # Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading. 2014
+    # CHG price: [5]
     CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2022]
     CHG.register_alias('CHG')
     
@@ -269,12 +317,9 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
                                       outs=('ammonium_sulfate','MemDis_ww','Membrane_out','solution'),
                                       init_with='WasteStream')
     MemDis.ins[2].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
-    # from Al-Obaidani et al. Potential of Membrane Distillation in Seawater Desalination:
-    # Thermal Efficiency, Sensitivity Study and Cost Estimation.
-    # Journal of Membrane Science 2008, 323 (1), 85–98.
-    # https://doi.org/10.1016/j.memsci.2008.06.006: 90 $/m2 (likely 2008$)
+    # RO membrane price: [6] (likely 2008$)
     MemDis.ins[3].price = 90/GDPCTPI[2008]*GDPCTPI[2022]
-    # ammonium sulfate (2022 average): https://businessanalytiq.com/procurementanalytics/index/ammonium-sulfate-index/ (accesses 2024-08-03)
+    # ammonium sulfate (2022 average): [7]
     MemDis.outs[0].price = 0.41
     MemDis.include_construction = False
     MemDis.register_alias('MemDis')
@@ -288,12 +333,11 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
                                    tau=3*24,
                                    init_with='WasteStream',
                                    vessel_material='Carbon steel')
-    # TODO: assume the biocrude has the same price as crude oil; add this in the main manuscript or the SI
-    # crude oil price: https://www.macrotrends.net/1369/crude-oil-price-history-chart (accessed 2024-08-03)
-    # 5.67 2008$/m3: fixed cost, 0.07 2008$/m3/km: variable cost (Pootakham et al. Bio-oil transport by pipeline: A techno-economic assessment. Bioresource Technology, 2010)
+    # TODO: assume the biocrude has the same price as crude oil (for LCA: we assume the crude oil can be displaced by the biocrude); add this in the main manuscript or the SI
+    # crude oil price: [8]
+    # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), [9]
     BiocrudeTank.outs[0].price = 94.53/_oil_barrel_to_m3/biocrude_density-(5.67/biocrude_density+0.07/biocrude_density*distance)/GDPCTPI[2008]*GDPCTPI[2022]
-    # store for 3 days based on Jones et al. Process Design and Economics for the Conversion of Algal Biomass to
-    # Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading. 2014
+    # store for 3 days based on [5]
     BiocrudeTank.register_alias('CrudeOilTank')
     
     PC1 = qsu.PhaseChanger(ID='S300',
@@ -323,12 +367,10 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
                                 outs=('emission','solid_ash'),
                                 init_with='WasteStream',
                                 supplement_power_utility=False)
-    # assume natural gas is CH4 (density is 0.657 kg/m3, https://en.wikipedia.org/wiki/Methane accessed 2024-08-03)
-    # 2022 US NG industrial price: 7.66 $/1000 ft3 (https://www.eia.gov/dnav/ng/hist/n3035us3A.htm accessed 2024-08-03)
+    # assume natural gas is CH4 (density is 0.657 kg/m3, [10])
+    # 2022 US NG industrial price: 7.66 $/1000 ft3, [11]
     CHP.ins[1].price = 7.66/1000*_m3_to_ft3/0.657
-    # 1.41 MM 2016$/year for 4270/4279 kg/hr ash, 7880 annual operating hours, from Davis et al. Process Design and Economics for the Conversion of
-    # Lignocellulosic Biomass to Hydrocarbon Fuels and Coproducts: 2018 Biochemical Design Case Update; Biochemical Deconstruction and
-    # Conversion of Biomass to Fuels and Products via Integrated Biorefinery Pathways. 2018
+    # 1.41 MM 2016$/year for 4270/4279 kg/hr ash, 7880 annual operating hours, from [4]
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2022]
     CHP.register_alias('CHP')
     
@@ -336,9 +378,7 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
     # however, the effect of this is small (2%) and can be ignored
     # the cost and CI of CT streams are also small and can be ignored
     # note there is actually a default 3 $/kg for cooling_tower_chemicals
-    # we change the price to 1.7842 $/lb from Davis et al. Process Design and Economics for the Conversion of
-    # Lignocellulosic Biomass to Hydrocarbon Fuels and Coproducts: 2018 Biochemical Design Case Update; Biochemical Deconstruction and
-    # Conversion of Biomass to Fuels and Products via Integrated Biorefinery Pathways. 2018
+    # we change the price to 1.7842 $/lb from [4]
     # but the flow rate is so small, so there is actually no significant difference
     # TODO: consider adding CT and its TEA and LCA items (if any) for other systems (HTL, HTL-PFAS)
     CT = bst.facilities.CoolingTower(ID='CT')
@@ -379,8 +419,8 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
                     'natural_gas':  [stream.natural_gas, 2.444393016],
                     # use market or market group for biocrude since we want to offset transportation and then add our own transportation part
                     # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
-                    # TODO: we don't use the CI in the next line; we use 'market for transport, freight, lorry, unspecified' (0.13004958 kg CO2 eq/metric ton/km) from ecoinvent instead; update this in the manuscript 
-                    # 89 g CO2/m3/km: carbon intensity of truck transportation (Pootakham et al. A comparison of pipeline versus truck transport of bio-oil. Bioresource Technology, 2010)
+                    # TODO: we don't use the biocrude transportation CI from the literature; instead, we use 'market for transport, freight, lorry, unspecified' (0.13004958 kg CO2 eq/metric ton/km) from ecoinvent instead; update this in the manuscript 
+                    # 89 g CO2/m3/km: carbon intensity of truck transportation, [12]
                     'biocrude':     [stream.biocrude, 0.13004958/1000*distance-0.22290007]}
     
     for item in impact_items.items():
@@ -400,7 +440,7 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
     
     # TODO: mention this in the main manuscript or the SI and add citation
     if state == 'average':
-        # use the mode state income tax from Steward et al. Implication of Biorefinery Policy Incentives and Location-Specific Economic Parameters for the Financial Viability of Biofuels. ES&T. 2023
+        # use the mode state income tax from [13]
         # from this citation: state income tax: [min, mode, max]: [0%, 6.5%, 12%]
         state_income_tax_rate_value = 0.065
     else:
@@ -425,13 +465,11 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
     # 1 yard employee
     # 1 clerk & secretary
     
-    # the labor index can be found in https://data.bls.gov/cgi-bin/srgate with the series id CEU3232500008, remember to select 'include annual average'
+    # TODO: check if the labor index is up-to-date
+    # the labor index can be found in [14] with the series id CEU3232500008, remember to select 'include annual average'
     # the labor cost would be considered as the same for both the systems in the HTL model paper (including hydroprocessing and struvite recovery) and in the HTL geospatial paper
-    # this is reasonable based on the labor cost data from
-    # Snowden-Swan et al. 2017. Conceptual Biorefinery Design and Research Targeted for 2022: Hydrothermal Liquefaction Processing of Wet Waste to Fuels
-    # (having separate tables for the HTL plant and the hydroprocessing plant serving 10 HTL plants) and
-    # Jones et al. 2014. Process Design and Economics for the Conversion of Algal Biomass to Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading
-    # (including hydroprocessing and CHG)
+    # this is reasonable based on the labor cost data from [15] (having separate tables for the HTL plant and the hydroprocessing plant serving 10 HTL plants) and
+    # [5] (including hydroprocessing and CHG)
     create_tea(sys, IRR_value=0.03,
                income_tax_value=income_tax_rate,
                finance_interest_value=0.03,
