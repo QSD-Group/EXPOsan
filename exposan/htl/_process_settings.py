@@ -34,7 +34,7 @@ def _load_process_settings():
     # critical temperature for HTF: 497 C
     # critical pressure for HTF: 313.4 kPa
     # https://www.dow.com/en-us/pdp.dowtherm-a-heat-transfer-fluid.238000z.\
-    # html#tech-content (accessed 11-16-2022)
+    # html#tech-content (accessed 2022-11-16)
     
     DPO_chem = qs.Chemical('DPO_chem', search_ID='101-84-8')
     BIP_chem = qs.Chemical('BIP_chem', search_ID='92-52-4')
@@ -55,7 +55,7 @@ def _load_process_settings():
                            # use default heat transfer efficiency (1)
     # Temperature and pressure: https://www.dow.com/content/dam/dcc/documents/\
     # en-us/app-tech-guide/176/176-01334-01-dowtherm-heat-transfer-fluids-\
-    # engineering-manual.pdf?iframe=true (accessed on 11-16-2022)
+    # engineering-manual.pdf?iframe=true (accessed 2022-11-16)
     bst.HeatUtility.heating_agents.append(HTF)
 
     bst.CE = qs.CEPCI_by_year[2020] # use 2020$ to match up with latest PNNL report
