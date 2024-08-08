@@ -1121,41 +1121,45 @@ def create_geospatial_model(system=None,
             return HTL.gas_yield
     
     # key metrics in the original HTL model
-    if include_old_metrics:
-        @metric(name='MDSP',units='$/gal diesel',element='TEA')
-        def get_MDSP():
-            # TODO: use a formula instead
-            # 980 kg/m3 Snowden-Swan et al. 2022 SOT, PNNL
-            biocrude_gal_2_kg=3.70970428357
-            return tea.solve_price(biocrude)*biocrude_gal_2_kg
+    # if include_old_metrics:
+    #     @metric(name='MDSP',units='$/gal diesel',element='TEA')
+    #     def get_MDSP():
+    #         # TODO: use a formula instead
+    #         # 980 kg/m3 Snowden-Swan et al. 2022 SOT, PNNL
+    #         biocrude_gal_2_kg=3.70970428357
+    #         return tea.solve_price(biocrude)*biocrude_gal_2_kg
         
         @metric(name='sludge_management_price',units='$/tonne dry sludge',element='TEA')
         def get_sludge_treatment_price():
             return -tea.solve_price(raw_wastewater)*_MMgal_to_L/WWTP.ww_2_dry_sludge
         
         # HTL.biocrude_HHV: MJ/kg
-        @metric(name='GWP_diesel',units='kg CO2/MMBTU diesel',element='LCA')
-        def get_GWP_diesel():
-            return lca.get_total_impacts(exclude=(biocrude,))['GlobalWarming']/biocrude.F_mass/sys.operating_hours/lca.lifetime/HTL.biocrude_HHV/_MJ_to_MMBTU
+        # @metric(name='GWP_diesel',units='kg CO2/MMBTU diesel',element='LCA')
+        # def get_GWP_diesel():
+        #     return lca.get_total_impacts(exclude=(biocrude,))['GlobalWarming']/biocrude.F_mass/sys.operating_hours/lca.lifetime/HTL.biocrude_HHV/_MJ_to_MMBTU
         
         @metric(name='GWP_sludge',units='kg CO2/tonne dry sludge',element='LCA')
         def get_GWP_sludge():
-            return lca.get_total_impacts(exclude=(raw_wastewater,))['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
+            # return lca.get_total_impacts(exclude=(raw_wastewater,))['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
+            # TODO: add a parameter in the model like get_GWP_sludge; do not have to exclude raw_wastewater since that represents transportation
+            return lca.get_total_impacts()['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
+    # TODO: change this to saving (we remove waste_cost in the system), add a parameter in the model like get_sludge_treatment_price (if we add transportation cost in the system)
     # TODO: check the calculations here
-    @metric(name='NPV',units='$',element='geospatial')
-    def get_NPV():
-        return tea.NPV
+    # @metric(name='NPV',units='$',element='geospatial')
+    # def get_NPV():
+    #     return tea.NPV
     
     # TODO: check the calculations here
     @metric(name='biocrude_production',units='BPD',element='geospatial')
     def get_biocrude_production():
         return biocrude.F_mass/biocrude_density*1000/_oil_barrel_to_L*24
     
+    # TODO: add a parameter in the model like get_GWP_sludge; do not have to exclude raw_wastewater since it is not in the system and we add transportation GHG in the system
     # TODO: check the calculations here
-    @metric(name='decarbonization_amount',units='tonne_per_day',element='geospatial')
-    def get_decarbonization_amount():
-        return -lca.get_total_impacts()['GlobalWarming']/30/365/1000
+    # @metric(name='decarbonization_amount',units='tonne_per_day',element='geospatial')
+    # def get_decarbonization_amount():
+    #     return -lca.get_total_impacts()['GlobalWarming']/30/365/1000
     
     if include_check:
         @metric(name='sludge_afdw_carbohydrate',units='-',element='test')

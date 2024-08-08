@@ -41,16 +41,18 @@ Created on Mon Jun 5 08:46:28 2023
 [11] Pootakham, T.; Kumar, A. Bio-Oil Transport by Pipeline: A Techno-Economic
     Assessment. Bioresource Technology 2010, 101 (18), 7137–7143.
     https://doi.org/10.1016/j.biortech.2010.03.136.
-[12] https://en.wikipedia.org/wiki/Methane accessed (2024-08-03)
-[13] https://www.eia.gov/dnav/ng/hist/n3035us3A.htm accessed (2024-08-03)
-[14] Pootakham, T.; Kumar, A. A Comparison of Pipeline versus Truck Transport of
+[12] https://en.wikipedia.org/wiki/Methane (accessed 2024-08-03)
+[13] https://www.plinovodi.si/en/transmission-system/environment-and-safety/about-natural-gas/
+    (accessed 2024-08-08)
+[14] https://www.eia.gov/dnav/ng/hist/n3035us3A.htm accessed (2024-08-03)
+[15] Pootakham, T.; Kumar, A. A Comparison of Pipeline versus Truck Transport of
      Bio-Oil. Bioresource Technology 2010, 101 (1), 414–421.
      https://doi.org/10.1016/j.biortech.2009.07.077.
-[15] Stewart, D. W.; Cortés-Peña, Y. R.; Li, Y.; Stillwell, A. S.; Khanna, M.;
+[16] Stewart, D. W.; Cortés-Peña, Y. R.; Li, Y.; Stillwell, A. S.; Khanna, M.;
      Guest, J. S. Implications of Biorefinery Policy Incentives and
      Location-SpecificEconomic Parameters for the Financial Viability of Biofuels.
      Environ. Sci. Technol. 2023. https://doi.org/10.1021/acs.est.2c07936.
-[16] Snowden-Swan, L. J.; Zhu, Y.; Bearden, M. D.; Seiple, T. E.; Jones, S. B.;
+[17] Snowden-Swan, L. J.; Zhu, Y.; Bearden, M. D.; Seiple, T. E.; Jones, S. B.;
      Schmidt, A. J.; Billing, J. M.; Hallen, R. T.; Hart, T. R.; Liu, J.;
      Albrecht, K. O.; Fox, S. P.; Maupin, G. D.; Elliott, D. C.
      Conceptual Biorefinery Design and Research Targeted for 2022:
@@ -67,12 +69,9 @@ from exposan.htl import (_load_components, create_tea, _oil_barrel_to_L,
 from biosteam.units import IsenthalpicValve
 from biosteam import settings
 
-# TODO: big TODOs
 # TODO: for LCA, use ecoinvent 3.8, cutoff, TRACI, update this in the manuscript as well
 # TODO: refactor the code wherever necessary
-
-# TODO: small TODOs
-# TODO: do we want to include TEA and LCA for ash and CT?
+# TODO: do we want to include TEA and LCA for CT?
 
 __all__ = ('create_geospatial_system','biocrude_density')
 
@@ -151,13 +150,11 @@ def _load_process_settings(location='IL'):
         bst.PowerUtility.price = elec[elec['state']==location]['price (10-year median)'].iloc[0]/100
 
 # for parameters, unless otherwise stated, refer to the original HTL system model
-def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share of sludge management methods of each facilities
-                             waste_GHG=200, # kg CO2 eq/tonne, based on the share of sludge management methods of each facilities
-                             size=6.3, # MGD
+def create_geospatial_system(size=6.3, # MGD
                              distance=100, # km
                              sludge_transportation=0, # 0: no; 1: yes
-                             # TODO: pay attention to 'normalized to total sludge amount'
-                             sludge_distance=0, # in km, this is the slduge transportation total distance (normalized to total sludge amount)
+                             # TODO: remove sludge_distance, only add it in the analysis when necessay
+                              sludge_distance=100, # in km, this is the slduge transportation total distance (normalized to total sludge amount)
                              # average values below are for sludge aggregation analyses
                              average_sludge_dw_ash=None,
                              average_sludge_afdw_lipid=None,
@@ -191,7 +188,9 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
     
-    # TODO: check this note
+    # assume the moisture content of sludge is 80% in all cases
+    # for lagoon, the sludge will dry at the base of the lagoon (to an assumed 80% moisture content, see [5])
+    # TODO: check this note, update if necessary
     # see 12/25/2023 notes for the compositions of different types of sludge
     if sludge_transportation == 0:
         if anaerobic_digestion == 1:
@@ -247,14 +246,16 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
     P1.include_construction = False
     P1.register_alias('P1')
     
+    # TODO: only when sludge_transportation != 0
+    # TODO: add sludge transportation cost in the analysis
     # assume the transported sludge has 80% moisture content
     # 4.56 $/m3, 0.072 $/m3/mile ([4], likely 2015$)
     # 1 gal water = 3.79 kg water
-    raw_wastewater.price = -WWTP.ww_2_dry_sludge*\
-        (waste_cost-sludge_transportation*\
-         (4.56/GDPCTPI[2015]*GDPCTPI[2022]/sludge_density*1000/0.2+\
-          0.072/GDPCTPI[2015]*GDPCTPI[2022]/_mile_to_km/sludge_density*1000/0.2*sludge_distance))/\
-            3.79/(10**6)
+    # raw_wastewater.price = WWTP.ww_2_dry_sludge*\
+    #     sludge_transportation*\
+    #      (4.56/GDPCTPI[2015]*GDPCTPI[2022]/sludge_density*1000/0.2+\
+    #       0.072/GDPCTPI[2015]*GDPCTPI[2022]/_mile_to_km/sludge_density*1000/0.2*sludge_distance)/\
+    #         3.79/(10**6)
     
     # =========================================================================
     # HTL (Area 100)
@@ -268,10 +269,6 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
                        init_with='Stream',
                        rigorous=True)
     H1.register_alias('H1')
-    
-    # TODO: what is the implication of this?
-    # !!! we assume we don't need to adjust moisture content (all = 80%)
-    # for lagoon, the sludge will dry at the base of the lagoon (see [5])
     
     # assume no value/cost and no environmental benefit/impact associated with hydrochar
     HTL = qsu.HydrothermalLiquefaction(ID='A120',
@@ -386,7 +383,8 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
                                 init_with='WasteStream',
                                 supplement_power_utility=False)
     # assume natural gas is CH4 (density is 0.657 kg/m3, [12])
-    # 2022 US NG industrial price: 7.66 $/1000 ft3, [13]
+    # the density of natural gas (0.68 kg/m3, [13]) is larger than that of CH4, therefore, the calculation here is conservative
+    # 2022 US NG industrial price: 7.66 $/1000 ft3, [14]
     CHP.ins[1].price = 7.66/1000*_m3_to_ft3/0.657
     # 1.41 MM 2016$/year for 4270/4279 kg/hr ash, 7880 annual operating hours, from [6]
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2022]
@@ -402,7 +400,6 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
     CT = bst.facilities.CoolingTower(ID='CT')
     CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     CT.register_alias('CT')
-    
     
     sys = qs.System.from_units(ID='sys_geospatial',
                                units=list(flowsheet.unit),
@@ -421,14 +418,25 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.48748859)
     
-    impact_items = {# assume the transported sludge has 80% moisture content
+    # TODO: update parameters for Sludge_trucking
+    Sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    # TODO: update GWP and cost
+    Sludge_trucking.add_indicator(GlobalWarming, WWTP.ww_2_dry_sludge*\
+                      1*\
+                      0.13004958/0.2/3.79/(10**6))
+    # TODO: transportation was not included in TEA
+    Sludge_trucking.price = 1000000000
+    
+    impact_items = {# TODO: only when sludge_transportation != 0
+                    # TODO: add sludge transportation GHG in the analysis
+                    # assume the transported sludge has 80% moisture content
                     # 1 gal water = 3.79 kg water
                     # 'market for transport, freight, lorry, unspecified' (0.13004958 kg CO2 eq/metric ton/km)
                     # assume the sludge/biosolids decomposition is minimal during transportation since our transportation distance is not long
-                    'sludge':       [stream.raw_wastewater,
-                                     -WWTP.ww_2_dry_sludge*\
-                                     (waste_GHG-sludge_transportation*\
-                                     0.13004958/0.2*sludge_distance)/3.79/(10**6)],
+                    # 'sludge':       [stream.raw_wastewater,
+                    #                  WWTP.ww_2_dry_sludge*\
+                    #                  sludge_transportation*\
+                    #                  0.13004958/0.2*sludge_distance/3.79/(10**6)],
                     'CHG_catalyst': [stream.CHG_catalyst_out, 471.098936962268],
                     'H2SO4':        [stream.H2SO4, 0.005529872568],
                     'NaOH':         [stream.NaOH, 1.2497984],
@@ -436,16 +444,24 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
                     # TODO: address this problem (i.e., do not use market or market group for products) for other systems (i.e., CO2 sorbent, HTL-PFAS)
                     # use 'ammonium sulfate production' for 'NH42SO4' instead of market or market group since we don't offset things like transportation
                     'NH42SO4':      [stream.ammonium_sulfate, -1.1139067],
-                    # TODO: we used CH4 in CHP as natural gas; do we want to update the LCA item here?
-                    'natural_gas':  [stream.natural_gas, 2.444393016],
+                    'natural_gas':  [stream.natural_gas, 2.5199928],
                     # use market or market group for biocrude since we want to offset transportation and then add our own transportation part
                     # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
                     # TODO: we don't use the biocrude transportation CI from the literature; instead, we use 'market for transport, freight, lorry, unspecified' (0.13004958 kg CO2 eq/metric ton/km) from ecoinvent instead; update this in the manuscript 
-                    # 89 g CO2/m3/km: carbon intensity of truck transportation, [14]
-                    'biocrude':     [stream.biocrude, 0.13004958/1000*distance-0.22290007]}
+                    # 89 g CO2/m3/km: carbon intensity of truck transportation, [15]
+                    'biocrude':     [stream.biocrude, 0.13004958/1000*distance-0.22290007],
+                    'ash_disposal': [stream.solid_ash, 0.0082744841]}
     
     for item in impact_items.items():
         qs.StreamImpactItem(ID=item[0], linked_stream=item[1][0], GlobalWarming=item[1][1])
+    
+    # TODO: do we also want to separate biocrude transportation LCA and TEA?
+    # TODO: update parameters for Sludge_transportation
+    Sludge_transportation = qs.Transportation('Sludge_trucking', linked_unit=WWTP, item=Sludge_trucking,
+                                              load_type='mass', load=stream.raw_wastewater.F_mass, load_unit='kg',
+                                              distance=sludge_distance, distance_unit='km',
+                                              interval='1', interval_unit='h')
+    WWTP.transportation = Sludge_transportation
     
     # simulate first to enable the calculation of the income tax rate
     sys.simulate()
@@ -453,29 +469,45 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
     # TODO: do we want to include tax credit?
     federal_income_tax_rate_value = 0.21
     
-    annual_sales = BiocrudeTank.outs[0].F_mass*sys.operating_hours*94.53/_oil_barrel_to_m3/biocrude_density +\
-        MemDis.outs[0].F_mass*sys.operating_hours*0.41
-    # TODO: add ash disposal cost if we decide to consider that
-    annual_material_cost = sum([s.cost for s in sys.feeds if ((s.price > 0) & (s.ID != 'raw_wastewater'))])*\
-        sys.operating_hours
-    annual_utility_cost = sum([u.utility_cost for u in sys.units if u.utility_cost is not None])*\
-        sys.operating_hours
-    annual_net_income = annual_sales - annual_material_cost - annual_utility_cost
+    # TODO: ignore annualized depreciation, add this in the manuscript or in the SI
+    
+    # breakpoint()
+    
+    # TODO: check here
+    # consistent with the TEA parameters
+    wage = (0.34/labor_index[2014]*labor_index[2022]+\
+                      0.48/labor_index[2014]*labor_index[2022]*size*ww_2_dry_sludge_ratio/100)*\
+                     10**6
+    
+    TIC = sys.installed_cost
+    
+    TDC = TIC*(1 + 0.04+0.09+0.045)
+    
+    FCI = TDC * (1+0.1+0.2+0.4+0.1+0.1)
+    
+    FOC = wage + 0.9*wage + 0.03*TIC + 0.007*FCI
+    
+    VOC = sys.material_cost + sys.utility_cost
+    
+    annual_net_income = sys.sales - FOC - VOC
+    
+    # TODO: make sure BioSTEAM has already consider the situration when annual_net_income is less than 0
+    assert annual_net_income
     
     # TODO: mention this in the main manuscript or the SI and add citation
     if state == 'average':
-        # use the mode state income tax from [15]
+        # use the mode state income tax from [16]
         # from this citation: state income tax: [min, mode, max]: [0%, 6.5%, 12%]
         state_income_tax_rate_value = 0.065
     else:
         state_income_tax_rate_value = state_income_tax_rate_2022(state=state,
-                                                                 sales=annual_sales,
+                                                                 sales=sys.sales,
                                                                  net_income=annual_net_income)
     
     income_tax_rate = federal_income_tax_rate_value + state_income_tax_rate_value
     
     # TODO: update in other HTL systems as well (the original system, HTL-PFAS)
-    # based on the labor cost for the HTL plant from [16], 2014 level:
+    # based on the labor cost for the HTL plant from [17], 2014 level:
     # 1 plant manager (0.15 MM$/year)
     # 1 plant engineer (0.07 MM$/year)
     # 1 maintenance supervisor (0.06 MM$year)
@@ -490,9 +522,7 @@ def create_geospatial_system(waste_cost=450, # $/dry tonne, based on the share o
     create_tea(sys, IRR_value=0.03,
                income_tax_value=income_tax_rate,
                finance_interest_value=0.03,
-               labor_cost_value=(0.34/labor_index[2014]*labor_index[2022]+\
-                                 0.48/labor_index[2014]*labor_index[2022]*size*ww_2_dry_sludge_ratio/100)*\
-                                10**6)
+               labor_cost_value=wage)
     
     assert sys.get_heating_duty() == 0
     assert sys.get_cooling_duty() == 0
