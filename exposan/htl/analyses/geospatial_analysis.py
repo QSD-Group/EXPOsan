@@ -7,7 +7,7 @@ Created on Sun Jun 11 08:12:41 2023
 '''
 
 # TODO 1: consider adding transportation cost and carbon intensity as contextual parameters
-# TODO 1: see if https://www.bls.gov/oes/tables.htm (from Abby) has some information
+# see if https://www.bls.gov/oes/tables.htm (from Abby) has some information
 # TODO 2: update electricity CI to match up balancing areas instead of states
 # TODO 3: refactor/reformat all codes
 

@@ -10,54 +10,53 @@ Created on Mon Jun 5 08:46:28 2023
     Wet Waste Hydrothermal Liquefaction and Biocrude Upgrading to Hydrocarbon Fuels:
     2022 State of Technology; PNNL-33622; Pacific Northwest National Lab. (PNNL),
     Richland, WA (United States), 2022. https://doi.org/10.2172/1897670.
-[2] https://fred.stlouisfed.org/series/GDPCTPI (accessed 2024-05-20)
-[3] https://data.bls.gov/cgi-bin/srgate (accessed 2024-08-06)
+[2] https://fred.stlouisfed.org/series/GDPCTPI (accessed 2024-05-20).
+[3] https://data.bls.gov/cgi-bin/srgate (accessed 2024-08-06).
 [4] https://www.sludgeprocessing.com/sludge-dewatering/sludge-drying-beds-lagoons/
-    (accessed 2024-08-03)
-[5] Davis, R. E.; Grundl, N. J.; Tao, L.; Biddy, M. J.; Tan, E. C.; Beckham, G. T.;
+    (accessed 2024-08-03).
+[5] Metcalf & Eddy (2003) Wastewater Engineering: Treatment and Reuse. 4th Edition,
+    McGraw-Hill, New York.
+[6] Davis, R. E.; Grundl, N. J.; Tao, L.; Biddy, M. J.; Tan, E. C.; Beckham, G. T.;
     Humbird, D.; Thompson, D. N.; Roni, M. S. Process Design and Economics for the
     Conversion of Lignocellulosic Biomass to Hydrocarbon Fuels and Coproducts:
     2018 Biochemical Design Case Update; Biochemical Deconstruction and Conversion
     of Biomass to Fuels and Products via Integrated Biorefinery Pathways;
     NREL/TP--5100-71949, 1483234; 2018; p NREL/TP--5100-71949, 1483234.
     https://doi.org/10.2172/1483234.
-[6] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.;
+[7] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.;
     Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.;
     Snowden-Swan, L. J.; Davis, R.; Kinchin, C. Process Design and Economics for
     the Conversion of Algal Biomass to Hydrocarbons: Whole Algae Hydrothermal
     Liquefaction and Upgrading; PNNL--23227, 1126336; 2014; p PNNL--23227, 1126336.
     https://doi.org/10.2172/1126336.
-[7] Al-Obaidani, S.; Curcio, E.; Macedonio, F.; Di Profio, G.; Al-Hinai, H.;
+[8] Al-Obaidani, S.; Curcio, E.; Macedonio, F.; Di Profio, G.; Al-Hinai, H.;
     Drioli, E. Potential of Membrane Distillation in Seawater Desalination:
     Thermal Efficiency, Sensitivity Study and Cost Estimation. Journal of Membrane
     Science 2008, 323 (1), 85–98. https://doi.org/10.1016/j.memsci.2008.06.006.
-[8] https://businessanalytiq.com/procurementanalytics/index/ammonium-sulfate-index/
-    (accessed 2024-08-03)
-[9] https://www.macrotrends.net/1369/crude-oil-price-history-chart
-    (accessed 2024-08-03)
-[10] https://en.wikipedia.org/wiki/Methane (accessed 2024-08-03)
-[11] https://www.plinovodi.si/en/transmission-system/environment-and-safety/about-natural-gas/
-    (accessed 2024-08-08)
-[12] https://www.eia.gov/dnav/ng/hist/n3035us3A.htm accessed (2024-08-03)
-[13] Marufuzzaman, M.; Ekşioğlu, S. D.; Hernandez, R. Truck versus Pipeline
+[9] https://businessanalytiq.com/procurementanalytics/index/ammonium-sulfate-index/
+    (accessed 2024-08-03).
+[10] https://www.macrotrends.net/1369/crude-oil-price-history-chart
+    (accessed 2024-08-03).
+[11] https://en.wikipedia.org/wiki/Methane (accessed 2024-08-03).
+[12] https://www.plinovodi.si/en/transmission-system/environment-and-safety/about-natural-gas/
+    (accessed 2024-08-08).
+[13] https://www.eia.gov/dnav/ng/hist/n3035us3A.htm accessed (2024-08-03).
+[14] Marufuzzaman, M.; Ekşioğlu, S. D.; Hernandez, R. Truck versus Pipeline
     Transportation Cost Analysis of Wastewater Sludge. Transportation Research Part A:
     Policy and Practice 2015, 74, 14–30. https://doi.org/10.1016/j.tra.2015.02.001.
-[14] Pootakham, T.; Kumar, A. A Comparison of Pipeline versus Truck Transport of
+[15] Pootakham, T.; Kumar, A. A Comparison of Pipeline versus Truck Transport of
      Bio-Oil. Bioresource Technology 2010, 101 (1), 414–421.
      https://doi.org/10.1016/j.biortech.2009.07.077.
-[15] Pootakham, T.; Kumar, A. Bio-Oil Transport by Pipeline: A Techno-Economic
+[16] Pootakham, T.; Kumar, A. Bio-Oil Transport by Pipeline: A Techno-Economic
     Assessment. Bioresource Technology 2010, 101 (18), 7137–7143.
     https://doi.org/10.1016/j.biortech.2010.03.136.
-[16] Snowden-Swan, L. J.; Zhu, Y.; Bearden, M. D.; Seiple, T. E.; Jones, S. B.;
+[17] Snowden-Swan, L. J.; Zhu, Y.; Bearden, M. D.; Seiple, T. E.; Jones, S. B.;
      Schmidt, A. J.; Billing, J. M.; Hallen, R. T.; Hart, T. R.; Liu, J.;
      Albrecht, K. O.; Fox, S. P.; Maupin, G. D.; Elliott, D. C.
      Conceptual Biorefinery Design and Research Targeted for 2022:
      Hydrothermal Liquefacation Processing of Wet Waste to Fuels; PNNL-27186;
      Pacific Northwest National Lab. (PNNL), Richland, WA (United States), 2017.
      https://doi.org/10.2172/1415710.
-[17] Knorr, D.; Lukas, J.; Schoen, P. Production of Advanced Biofuels via Liquefaction -
-    Hydrothermal Liquefaction Reactor Design: April 5, 2013; NREL/SR-5100-60462,
-    1111191; 2013; p NREL/SR-5100-60462, 1111191. https://doi.org/10.2172/1111191.
 [18] Stewart, D. W.; Cortés-Peña, Y. R.; Li, Y.; Stillwell, A. S.; Khanna, M.;
      Guest, J. S. Implications of Biorefinery Policy Incentives and
      Location-SpecificEconomic Parameters for the Financial Viability of Biofuels.
@@ -191,8 +190,19 @@ def create_geospatial_system(size=100, # MGD
     
     # assume the moisture content of sludge is 80% in all cases
     # for lagoon, the sludge will dry at the base of the lagoon (to an assumed 80% moisture content, see [4])
-    # TODO: check this note, update if necessary
-    # see 12/25/2023 notes for the compositions of different types of sludge
+    # TODO: update the sludge/biosolids biochemical compositions in the manuscript and/or in the SI
+    # from [1]:
+    # ash (dw%) of undigested sludge: 0.266, 0.192, 0.237, 0.174, 0.206, 0.308 (average: 0.231)
+    # protein (afdw%) of undigested sludge: 0.464, 0.454, 0.38, 0.467, 0.485, 0.484 (average: 0.456)
+    # lipid (afdw%) of undigested sludge: 0.308, 0.08, 0.27, 0.176, 0.178, 0.225 (average: 0.206)
+    # ash (dw%), protein (afdw%), and lipid (afdw%) for anaerobically digested sludge are 0.414, 0.510, and 0.193, respectively
+    # for aerobically digested sludge, assume the same biological compositions as anaerobically digested sludge,
+    # but with a higher ash content
+    # mass reduction assumption (from IEDO work, originally from [5]):
+    # 42.5% VSS reduction for anaerobic digestion, 47.5% VSS reduction for aerobic digestion
+    # assume X in sludge-to-be-digested (not necessarily having the same biochemical compositions as sludge) is ash (cannot be digested), Y is VSS (can be digested)
+    # for anaerobic digestion: X/(X+Y*(1-0.425)) = 0.414
+    # we can calculate that for aerobic digestion: X/(X+Y*(1-0.475)) = 0.436
     if sludge_transportation == 0:
         if anaerobic_digestion == 1:
             WWTP = su.WWTP(ID='WWTP',
@@ -210,7 +220,7 @@ def create_geospatial_system(size=100, # MGD
                            outs=('sludge','treated_water'),
                            ww_2_dry_sludge=ww_2_dry_sludge_ratio,
                            sludge_moisture=0.8,
-                           sludge_dw_ash=0.468,
+                           sludge_dw_ash=0.436,
                            sludge_afdw_lipid=0.193,
                            sludge_afdw_protein=0.510,
                            operation_hours=8760)
@@ -274,7 +284,7 @@ def create_geospatial_system(size=100, # MGD
                                  tau=24,
                                  vessel_material='Stainless steel')
     # 0.5 M H2SO4: ~5%
-    # based on 93% H2SO4 and fresh water (dilute to 5%) prices in [5]
+    # based on 93% H2SO4 and fresh water (dilute to 5%) prices in [6]
     H2SO4_Tank.ins[0].price = (0.043*1+0.0002*(93/5-1))/(93/5)/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
     M1 = su.HTLmixer(ID='M1',
@@ -287,7 +297,7 @@ def create_geospatial_system(size=100, # MGD
     CHG = qsu.CatalyticHydrothermalGasification(ID='CHG',
                                                 ins=(M1-0, 'virgin_CHG_catalyst'),
                                                 outs=('CHG_out', 'used_CHG_catalyst'))
-    # CHG price: [6]
+    # CHG price: [7]
     CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2022]
     
     V1 = IsenthalpicValve(ID='V1',
@@ -310,16 +320,16 @@ def create_geospatial_system(size=100, # MGD
                                       outs=('ammonium_sulfate','MemDis_ww','Membrane_out','solution'),
                                       init_with='WasteStream')
     MemDis.ins[2].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
-    # RO membrane price: [7] (likely 2008$)
+    # RO membrane price: [8] (likely 2008$)
     MemDis.ins[3].price = 90/GDPCTPI[2008]*GDPCTPI[2022]
-    # ammonium sulfate (2022 average): [8]
+    # ammonium sulfate (2022 average): [9]
     MemDis.outs[0].price = 0.41
     MemDis.include_construction = False
     
     # =========================================================================
     # Storage, and disposal (Area 300)
     # =========================================================================
-    # store for 3 days based on [6]
+    # store for 3 days based on [7]
     BiocrudeTank = qsu.StorageTank(ID='BiocrudeTank',
                                    ins=HTL-2,
                                    outs=('biocrude'),
@@ -329,7 +339,7 @@ def create_geospatial_system(size=100, # MGD
     # TODO: in the main manuscript or the SI, specifically say we displace crude oil by biocrude
     # TODO: (compromise a little bit, like saying this blending may need further research, with citations, but also saying it is not impossible, also with citations)
     # assume the biocrude has the same price as crude oil (for LCA: we assume the crude oil can be displaced by the biocrude)
-    # 2022 average closing price for crude oil: 94.53 $/oil barrel, [9]
+    # 2022 average closing price for crude oil: 94.53 $/oil barrel, [10]
     BiocrudeTank.outs[0].price = 94.53/_oil_barrel_to_m3/biocrude_density
     
     PC1 = qsu.PhaseChanger(ID='PC1',
@@ -357,17 +367,17 @@ def create_geospatial_system(size=100, # MGD
                                 outs=('emission','solid_ash'),
                                 init_with='WasteStream',
                                 supplement_power_utility=False)
-    # assume natural gas is CH4 (density is 0.657 kg/m3, [10])
-    # the density of natural gas (0.68 kg/m3, [11]) is larger than that of CH4, therefore, the calculation here is conservative
-    # 2022 US NG industrial price: 7.66 $/1000 ft3, [12]
+    # assume natural gas is CH4 (density is 0.657 kg/m3, [11])
+    # the density of natural gas (0.68 kg/m3, [12]) is larger than that of CH4, therefore, the calculation here is conservative
+    # 2022 US NG industrial price: 7.66 $/1000 ft3, [13]
     CHP.ins[1].price = 7.66/1000*_m3_to_ft3/0.657
-    # 1.41 MM 2016$/year for 4270/4279 kg/hr ash, 7880 annual operating hours, from [5]
+    # 1.41 MM 2016$/year for 4270/4279 kg/hr ash, 7880 annual operating hours, from [6]
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2022]
     
     # TODO: consider adding CT and its TEA (price for cooling_tower_chemicals) and LCA items (CT_chemicals in the 'Other' category) for other systems (HTL, HTL-PFAS)
     # construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
-    # cooling_tower_chemicals: 1.7842 2016$/lb, [5]
+    # cooling_tower_chemicals: 1.7842 2016$/lb, [6]
     CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
     sys = qs.System.from_units(ID='sys_geospatial',
@@ -399,17 +409,17 @@ def create_geospatial_system(size=100, # MGD
     # TODO: consider adding the statement in the following line to the main manuscript or to the SI
     # assume the sludge/biosolids decomposition is minimal during transportation since our transportation distance is not long
     Sludge_trucking.add_indicator(GlobalWarming, WWTP.ww_2_dry_sludge*0.13004958/0.2/3.79/(10**6))
-    # 4.56 $/m3, 0.072 $/m3/mile ([13], likely 2015$)
+    # 4.56 $/m3, 0.072 $/m3/mile ([14], likely 2015$)
     Sludge_trucking.price = WWTP.ww_2_dry_sludge*\
         (4.56/GDPCTPI[2015]*GDPCTPI[2022]/sludge_density*1000/0.2+\
           0.072/GDPCTPI[2015]*GDPCTPI[2022]/_mile_to_km/sludge_density*1000/0.2*sludge_distance)\
             /3.79/(10**6)/sludge_distance
 
     Biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
-    # TODO: we don't use the biocrude transportation CI from the literature (89 g CO2/m3/km: carbon intensity of truck transportation, [14]);
+    # TODO: we don't use the biocrude transportation CI from the literature (89 g CO2/m3/km: carbon intensity of truck transportation, [15]);
     # instead, we use 'market for transport, freight, lorry, unspecified' (0.13004958 kg CO2 eq/metric ton/km) from ecoinvent; update this in the manuscript 
     Biocrude_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
-    # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), [15]
+    # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), [16]
     Biocrude_trucking.price = (5.67/biocrude_density+0.07/biocrude_density*biocrude_distance)/GDPCTPI[2008]*GDPCTPI[2022]/biocrude_distance
     
     impact_items = {'CHG_catalyst': [stream.CHG_catalyst_out, 471.098936962268],
@@ -468,7 +478,7 @@ def create_geospatial_system(size=100, # MGD
     # TEA
     # =========================================================================
     # TODO: update in other HTL systems as well (the original system, HTL-PFAS)
-    # based on the labor cost for the HTL plant from [16], 2014 level:
+    # based on the labor cost for the HTL plant from [17], 2014 level:
     # 1 plant manager (0.15 MM$/year)
     # 1 plant engineer (0.07 MM$/year)
     # 1 maintenance supervisor (0.06 MM$year)
