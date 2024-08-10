@@ -48,17 +48,20 @@ Created on Mon Jun 5 08:46:28 2023
 [15] Pootakham, T.; Kumar, A. Bio-Oil Transport by Pipeline: A Techno-Economic
     Assessment. Bioresource Technology 2010, 101 (18), 7137–7143.
     https://doi.org/10.1016/j.biortech.2010.03.136.
-[16] Stewart, D. W.; Cortés-Peña, Y. R.; Li, Y.; Stillwell, A. S.; Khanna, M.;
-     Guest, J. S. Implications of Biorefinery Policy Incentives and
-     Location-SpecificEconomic Parameters for the Financial Viability of Biofuels.
-     Environ. Sci. Technol. 2023. https://doi.org/10.1021/acs.est.2c07936.
-[17] Snowden-Swan, L. J.; Zhu, Y.; Bearden, M. D.; Seiple, T. E.; Jones, S. B.;
+[16] Snowden-Swan, L. J.; Zhu, Y.; Bearden, M. D.; Seiple, T. E.; Jones, S. B.;
      Schmidt, A. J.; Billing, J. M.; Hallen, R. T.; Hart, T. R.; Liu, J.;
      Albrecht, K. O.; Fox, S. P.; Maupin, G. D.; Elliott, D. C.
      Conceptual Biorefinery Design and Research Targeted for 2022:
      Hydrothermal Liquefacation Processing of Wet Waste to Fuels; PNNL-27186;
      Pacific Northwest National Lab. (PNNL), Richland, WA (United States), 2017.
      https://doi.org/10.2172/1415710.
+[17] Knorr, D.; Lukas, J.; Schoen, P. Production of Advanced Biofuels via Liquefaction -
+    Hydrothermal Liquefaction Reactor Design: April 5, 2013; NREL/SR-5100-60462,
+    1111191; 2013; p NREL/SR-5100-60462, 1111191. https://doi.org/10.2172/1111191.
+[18] Stewart, D. W.; Cortés-Peña, Y. R.; Li, Y.; Stillwell, A. S.; Khanna, M.;
+     Guest, J. S. Implications of Biorefinery Policy Incentives and
+     Location-SpecificEconomic Parameters for the Financial Viability of Biofuels.
+     Environ. Sci. Technol. 2023. https://doi.org/10.1021/acs.est.2c07936.
 '''
 
 import qsdsan as qs, biosteam as bst, pandas as pd
@@ -149,7 +152,7 @@ def _load_process_settings(location='IL'):
         bst.PowerUtility.price = elec[elec['state']==location]['price (10-year median)'].iloc[0]/100
 
 # for parameters, unless otherwise stated, refer to the original HTL system model
-def create_geospatial_system(size=6.3, # MGD
+def create_geospatial_system(size=100, # MGD
                              biocrude_distance=100, # km
                              sludge_transportation=0, # 0: no; 1: yes
                              sludge_distance=100, # in km, this is the slduge transportation total distance (normalized to total sludge amount)
@@ -362,7 +365,7 @@ def create_geospatial_system(size=6.3, # MGD
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2022]
     
     # TODO: consider adding CT and its TEA (price for cooling_tower_chemicals) and LCA items (CT_chemicals in the 'Other' category) for other systems (HTL, HTL-PFAS)
-    # note construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
+    # construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_chemicals: 1.7842 2016$/lb, [5]
     CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
@@ -431,14 +434,12 @@ def create_geospatial_system(size=6.3, # MGD
                                               load_type='mass',
                                               load=stream.raw_wastewater.F_mass,
                                               load_unit='kg',
-                                              # TODO: change '1' back to sludge_transportation
-                                              distance=1*sludge_distance,
+                                              distance=sludge_transportation*sludge_distance,
                                               distance_unit='km',
                                               interval='1',
                                               interval_unit='h')
     WWTP.transportation = Sludge_transportation
     
-    # TODO: check here
     Biocrude_transportation = qs.Transportation('Biocrude_trucking',
                                                 linked_unit=BiocrudeTank,
                                                 item=Biocrude_trucking,
@@ -460,71 +461,55 @@ def create_geospatial_system(size=6.3, # MGD
            # the effect is minimal since (i) this part of LCA is negligible and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
            CT_chemicals=lambda:CT.ins[2].F_mass*sys.flowsheet.WWTP.operation_hours*30)
     
+    assert sys.get_heating_duty() == 0
+    assert sys.get_cooling_duty() == 0
+    
     # =========================================================================
     # TEA
     # =========================================================================
-    # TODO: do we want to include tax credit?
-    federal_income_tax_rate_value = 0.21
-    
-    # TODO: ignore annualized depreciation for net income calculation (consistent with BioSTEAM), add this in the manuscript or in the SI
-    
-    # breakpoint()
-    
-    # TODO: check here
-    # consistent with the TEA parameters
-    wage = (0.34/labor_index[2014]*labor_index[2022]+\
-            0.48/labor_index[2014]*labor_index[2022]*size*ww_2_dry_sludge_ratio/100)*10**6
-    
-    TIC = sys.installed_cost
-    
-    # TODO: add notes
-    TDC = TIC*(1 + 0.04+0.09+0.045)
-    
-    # TODO: add notes
-    FCI = TDC * (1+0.1+0.2+0.4+0.1+0.1)
-    
-    # TODO: add notes
-    FOC = wage + 0.9*wage + 0.03*TIC + 0.007*FCI
-    
-    VOC = sys.material_cost + sys.utility_cost + sys.transportation_cost
-    
-    annual_net_income = sys.sales - FOC - VOC
-    
-    # TODO: make sure BioSTEAM has already consider the situration when annual_net_income is less than 0, so we don't need to finish the following line and can delete it
-    assert annual_net_income
-    
-    # TODO: mention this in the main manuscript or the SI and add citation
-    if state == 'average':
-        # use the mode state income tax from [16]
-        # from this citation: state income tax: [min, mode, max]: [0%, 6.5%, 12%]
-        state_income_tax_rate_value = 0.065
-    else:
-        state_income_tax_rate_value = state_income_tax_rate_2022(state=state,
-                                                                 sales=sys.sales,
-                                                                 net_income=annual_net_income)
-    
-    income_tax_rate = federal_income_tax_rate_value + state_income_tax_rate_value
-    
     # TODO: update in other HTL systems as well (the original system, HTL-PFAS)
-    # based on the labor cost for the HTL plant from [17], 2014 level:
+    # based on the labor cost for the HTL plant from [16], 2014 level:
     # 1 plant manager (0.15 MM$/year)
     # 1 plant engineer (0.07 MM$/year)
     # 1 maintenance supervisor (0.06 MM$year)
     # 1 lab manager (0.06 MM$year)
-    # variable cost (proportional to the sludge amount, the following is for a plant of 110 dry ton [100 dry metric tonne] sludge per day)
+    # variable cost (proportional to the sludge amount, the following is for a
+    # plant of 110 dry ton [100 dry metric tonne] sludge per day):
     # 3 shift supervisors (0.14 MM$/year)
     # 1 lab technican (0.04 MM$/year)
     # 1 maintenance technician (0.04 MM$/year)
     # 4 shift operators (0.19 MM$/year)
     # 1 yard employee (0.03 MM$/year)
     # 1 clerk & secretary (0.04 MM$/year)
+    # annual wage [$/year]
+    wage = (0.34/labor_index[2014]*labor_index[2022]+\
+            0.48/labor_index[2014]*labor_index[2022]*size*ww_2_dry_sludge_ratio/100)*10**6
+    
+    # set income_tax_value = 0 to calculate net income
+    create_tea(sys, IRR_value=0.03,
+               income_tax_value=0,
+               finance_interest_value=0.03,
+               labor_cost_value=wage)
+    
+    # TODO: do we want to include tax credit?
+    federal_income_tax_rate_value = 0.21
+    
+    # TODO: mention this in the main manuscript or the SI and add citation
+    if state == 'average':
+        # use the mode state income tax from [18]
+        # from this citation: state income tax: [min, mode, max]: [0%, 6.5%, 12%]
+        state_income_tax_rate_value = 0.065
+    else:
+        state_income_tax_rate_value = state_income_tax_rate_2022(state=state,
+                                                                 sales=sys.sales,
+                                                                 net_income=sys.TEA.net_earnings)
+    
+    income_tax_rate = federal_income_tax_rate_value + state_income_tax_rate_value
+    
     create_tea(sys, IRR_value=0.03,
                income_tax_value=income_tax_rate,
                finance_interest_value=0.03,
                labor_cost_value=wage)
-    
-    assert sys.get_heating_duty() == 0
-    assert sys.get_cooling_duty() == 0
     
     # biocrude production in BPD (barrel per day)
     biocrude_barrel = BiocrudeTank.outs[0].F_mass/biocrude_density*1000/_oil_barrel_to_L*24

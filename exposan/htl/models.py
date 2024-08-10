@@ -1600,7 +1600,7 @@ def create_model(system=None,
             @metric(name='HTL_constrution_GWP',units='kg CO2 eq',element='LCA')
             def get_HTL_constrution_GWP():
                 table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
-                return +table_construction['Stainless_steel [kg]']['A100']+\
+                return table_construction['Stainless_steel [kg]']['A100']+\
                        table_construction['Stainless_steel [kg]']['A110']+table_construction['Stainless_steel [kg]']['A120']       
         
         if AcidEx:

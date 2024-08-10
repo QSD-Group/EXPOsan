@@ -177,7 +177,7 @@ class HTL_TEA(TEA):
                 + self._ISBL_DPI_cached * self.maintenance
                 + self.labor_cost * (1 + self.labor_burden))
 
-def create_tea(sys, OSBL_units=None, cls=None, IRR_value=0.03, income_tax_value=0.21, finance_interest_value=0.03, labor_cost_value=1e6):
+def create_tea(sys, OSBL_units=None, cls=None, IRR_value=0.03, income_tax_value=0.275, finance_interest_value=0.03, labor_cost_value=1e6):
     if OSBL_units is None: OSBL_units = bst.get_OSBL(sys.cost_units)
     try:
         BT = tmo.utils.get_instance(OSBL_units, (bst.BoilerTurbogenerator, bst.Boiler))
