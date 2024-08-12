@@ -517,6 +517,10 @@ class WWTP(SanUnit):
         Nitrogen to phosphorus factor. 
     operation_hour: float
         Plant yearly operation hour, [hr/yr].
+    sludge_distance: float
+        Normalized sludge transportation distance, [km].
+    biocrude_distance: float
+        Distance between WRRFs and oil refineries, [km].
         
     References
     ----------
@@ -543,7 +547,9 @@ class WWTP(SanUnit):
                  carbo_2_H=0.067, 
                  protein_2_N=0.159,
                  N_2_P=0.3927,
-                 operation_hours=yearly_operation_hour):
+                 operation_hours=yearly_operation_hour,
+                 sludge_distance=100,
+                 biocrude_distance=100):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.ww_2_dry_sludge = ww_2_dry_sludge
@@ -560,6 +566,8 @@ class WWTP(SanUnit):
         self.protein_2_N = protein_2_N
         self.N_2_P = N_2_P
         self.operation_hours = operation_hours
+        self.sludge_distance = sludge_distance
+        self.biocrude_distance = biocrude_distance
     
     def _run(self):
         

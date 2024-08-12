@@ -16,15 +16,14 @@ for license details.
 
 import qsdsan as qs
 from chaospy import distributions as shape
-from qsdsan.utils import DictAttrSetter
-from exposan.htl import (
-    _m3perh_to_MGD,
-    _MJ_to_MMBTU,
-    _MMgal_to_L,
-    create_system,
-    )
+from qsdsan.utils import auom, DictAttrSetter
+from exposan.htl import create_system
 
 __all__ = ('create_model',)
+
+_m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
+_MMgal_to_L = auom('gal').conversion_factor('L')*1000000
+_MJ_to_MMBTU = auom('MJ').conversion_factor('MMBTU')
 
 def create_model(system=None,
                  feedstock='sludge',
@@ -1074,6 +1073,7 @@ def create_model(system=None,
     def set_ammonium_sulfate_price(i):
         ammonium_sulfate.price=i
     
+    Membrane_in = stream.Membrane_in
     dist = shape.Uniform(83.96,102.62)
     @param(name='membrane price',
            element='TEA',
@@ -1083,6 +1083,7 @@ def create_model(system=None,
            distribution=dist)
     def set_membrane_price(i):
         MemDis.membrane_price=i
+        Membrane_in.price=i
     
     CHG_catalyst_in = CHG.ins[1]
     dist = shape.Triangle(67.27,134.53,269.07)
@@ -1539,7 +1540,6 @@ def create_model(system=None,
         def get_NaOH_VOC():
             return NaOH.cost*sys.operating_hours
         
-        Membrane_in = stream.Membrane_in
         @metric(name='membrane_VOC',units='$/yr',element='TEA')
         def get_membrane_VOC():
             return Membrane_in.cost*sys.operating_hours

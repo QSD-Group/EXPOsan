@@ -63,11 +63,10 @@ Created on Mon Jun 5 08:46:28 2023
      Environ. Sci. Technol. 2023. https://doi.org/10.1021/acs.est.2c07936.
 '''
 
-import qsdsan as qs, biosteam as bst, pandas as pd
+import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
 from qsdsan.utils import auom, clear_lca_registries
-from exposan.htl import (_load_components, create_tea, _oil_barrel_to_L,
-                         state_income_tax_rate_2022, _sanunits as su)
+from exposan.htl import (_load_components, create_tea, state_income_tax_rate_2022, _sanunits as su)
 from biosteam.units import IsenthalpicValve
 from biosteam import settings
 
@@ -86,6 +85,7 @@ _mile_to_km = auom('mile').conversion_factor('km')
 _lb_to_kg = auom('lb').conversion_factor('kg')
 _m3_to_ft3 = auom('m3').conversion_factor('ft3')
 _oil_barrel_to_m3 = auom('oil_barrel').conversion_factor('m3')
+_oil_barrel_to_L = auom('oil_barrel').conversion_factor('L')
 
 # GDPCTPI (Gross Domestic Product: Chain-type Price Index), [2]
 GDPCTPI = {2008: 87.977,
@@ -118,13 +118,17 @@ labor_index = {2014: 21.49,
                2022: 27.36,
                2023: 29.77}
 
-def _load_process_settings(location='IL'):    
+def _load_process_settings(location='IL'):
+    folder = os.path.dirname(__file__)
+    
+    bst.CE = qs.CEPCI_by_year[2022]
+    
     DPO_chem = qs.Chemical(ID='DPO_chem', search_ID='101-84-8')
     DPO = qs.Component.from_chemical(ID='DPO', chemical=DPO_chem,
                                      particle_size='Soluble',
                                      degradability='Slowly',
                                      organic=True)
-    
+
     BIP_chem = qs.Chemical(ID='BIP_chem', search_ID='92-52-4')
     BIP = qs.Component.from_chemical(ID='BIP', chemical=BIP_chem,
                                      particle_size='Soluble',
@@ -138,23 +142,16 @@ def _load_process_settings(location='IL'):
     
     bst.HeatUtility.heating_agents.append(HTF)
     
-    bst.CE = qs.CEPCI_by_year[2022]
-    
-    # TODO: for electricity, we aim to use balancing area for GHG; need to decide the price - does price also follows balancing area?
-    folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/'
-    elec = pd.read_excel(folder + 'state_elec_price_GHG.xlsx', 'summary')
-    
-    # TODO: note 'average' is used for the scenario 3 of sludge aggregation. Change it to the balancing area avarage value
-    if location == 'average':
-        bst.PowerUtility.price = elec['price (10-year median)'].mean()/100
-    else:
-        bst.PowerUtility.price = elec[elec['state']==location]['price (10-year median)'].iloc[0]/100
+    # TODO: use state-level electricity price; confirm with Jeremy
+    elec = pd.read_excel(folder + '/data/state_elec_price_2022.xlsx', 'elec_price_2022')
+    # electricity price in 2022$/kWh
+    bst.PowerUtility.price = elec[elec['state']==location]['price'].iloc[0]/100
 
 # for parameters, unless otherwise stated, refer to the original HTL system model
 def create_geospatial_system(size=100, # MGD
-                             biocrude_distance=100, # km
                              sludge_transportation=0, # 0: no; 1: yes
                              sludge_distance=100, # in km, this is the slduge transportation total distance (normalized to total sludge amount)
+                             biocrude_distance=100, # km
                              # average values below are for sludge aggregation analyses
                              average_sludge_dw_ash=None,
                              average_sludge_afdw_lipid=None,
@@ -162,10 +159,11 @@ def create_geospatial_system(size=100, # MGD
                              anaerobic_digestion=0, # 0: no; 1: yes
                              aerobic_digestion=0, # 0: no; 1: yes
                              ww_2_dry_sludge_ratio=1, # dry tonne sludge/day/MGD raw wastewater
-                             # TODO: replace 'state' with balancing are (balnc_area in short)
                              state='IL',
-                             # TODO: use balancing area based electricity CI
-                             elec_GHG=0.37 # kg CO2 eq/kWh, use state-avarage values
+                             # TODO: update in the manuscript
+                             # 2022 electricty CI by balancing area based on the IEDO work
+                             # note change 2020 in the IEDO code for balancing area to 2022
+                             elec_GHG=0.44 # kg CO2 eq/kWh
                              ):
     
     flowsheet_ID = 'htl_geospatial'
@@ -213,7 +211,10 @@ def create_geospatial_system(size=100, # MGD
                            sludge_dw_ash=0.414,
                            sludge_afdw_lipid=0.193,
                            sludge_afdw_protein=0.510,
-                           operation_hours=8760)
+                           operation_hours=8760,
+                           sludge_distance=sludge_distance,
+                           biocrude_distance=biocrude_distance
+                           )
         elif aerobic_digestion == 1:
             WWTP = su.WWTP(ID='WWTP',
                            ins=raw_wastewater,
@@ -223,7 +224,9 @@ def create_geospatial_system(size=100, # MGD
                            sludge_dw_ash=0.436,
                            sludge_afdw_lipid=0.193,
                            sludge_afdw_protein=0.510,
-                           operation_hours=8760)
+                           operation_hours=8760,
+                           sludge_distance=sludge_distance,
+                           biocrude_distance=biocrude_distance)
         else:
             WWTP = su.WWTP(ID='WWTP',
                            ins=raw_wastewater, outs=('sludge','treated_water'),
@@ -232,7 +235,9 @@ def create_geospatial_system(size=100, # MGD
                            sludge_dw_ash=0.231,
                            sludge_afdw_lipid=0.206,
                            sludge_afdw_protein=0.456,
-                           operation_hours=8760)
+                           operation_hours=8760,
+                           sludge_distance=sludge_distance,
+                           biocrude_distance=biocrude_distance)
     else:
         assert average_sludge_dw_ash != None, 'set average_sludge_dw_ash manually'
         assert average_sludge_afdw_lipid != None, 'set average_sludge_afdw_lipid manually'
@@ -246,7 +251,9 @@ def create_geospatial_system(size=100, # MGD
                        sludge_dw_ash=average_sludge_dw_ash,
                        sludge_afdw_lipid=average_sludge_afdw_lipid,
                        sludge_afdw_protein=average_sludge_afdw_protein,
-                       operation_hours=8760)
+                       operation_hours=8760,
+                       sludge_distance=sludge_distance,
+                       biocrude_distance=biocrude_distance)
     
     P1 = qsu.SludgePump(ID='P1',
                         ins=WWTP-0,
@@ -319,11 +326,12 @@ def create_geospatial_system(size=100, # MGD
                                       ins=(F1-1, H2SO4_Tank-0, 'NaOH', 'Membrane_in'),
                                       outs=('ammonium_sulfate','MemDis_ww','Membrane_out','solution'),
                                       init_with='WasteStream')
+    # 0.2384 2016$/lb, [6]
     MemDis.ins[2].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     # RO membrane price: [8] (likely 2008$)
     MemDis.ins[3].price = 90/GDPCTPI[2008]*GDPCTPI[2022]
     # ammonium sulfate (2022 average): [9]
-    MemDis.outs[0].price = 0.41
+    MemDis.outs[0].price = 0.2825
     MemDis.include_construction = False
     
     # =========================================================================
@@ -383,7 +391,6 @@ def create_geospatial_system(size=100, # MGD
     sys = qs.System.from_units(ID='sys_geospatial',
                                units=list(flowsheet.unit),
                                operating_hours=WWTP.operation_hours)
-    
     sys.simulate()
     
     # =========================================================================
@@ -412,15 +419,15 @@ def create_geospatial_system(size=100, # MGD
     # 4.56 $/m3, 0.072 $/m3/mile ([14], likely 2015$)
     Sludge_trucking.price = WWTP.ww_2_dry_sludge*\
         (4.56/GDPCTPI[2015]*GDPCTPI[2022]/sludge_density*1000/0.2+\
-          0.072/GDPCTPI[2015]*GDPCTPI[2022]/_mile_to_km/sludge_density*1000/0.2*sludge_distance)\
-            /3.79/(10**6)/sludge_distance
+          0.072/GDPCTPI[2015]*GDPCTPI[2022]/_mile_to_km/sludge_density*1000/0.2*WWTP.sludge_distance)\
+            /3.79/(10**6)/WWTP.sludge_distance
 
     Biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
     # TODO: we don't use the biocrude transportation CI from the literature (89 g CO2/m3/km: carbon intensity of truck transportation, [15]);
-    # instead, we use 'market for transport, freight, lorry, unspecified' (0.13004958 kg CO2 eq/metric ton/km) from ecoinvent; update this in the manuscript 
+    # TODO: instead, we use 'market for transport, freight, lorry, unspecified' (0.13004958 kg CO2 eq/metric ton/km) from ecoinvent; update this in the manuscript 
     Biocrude_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), [16]
-    Biocrude_trucking.price = (5.67/biocrude_density+0.07/biocrude_density*biocrude_distance)/GDPCTPI[2008]*GDPCTPI[2022]/biocrude_distance
+    Biocrude_trucking.price = (5.67/biocrude_density+0.07/biocrude_density*WWTP.biocrude_distance)/GDPCTPI[2008]*GDPCTPI[2022]/WWTP.biocrude_distance
     
     impact_items = {'CHG_catalyst': [stream.CHG_catalyst_out, 471.098936962268],
                     'H2SO4':        [stream.H2SO4, 0.005529872568],
@@ -444,7 +451,7 @@ def create_geospatial_system(size=100, # MGD
                                               load_type='mass',
                                               load=stream.raw_wastewater.F_mass,
                                               load_unit='kg',
-                                              distance=sludge_transportation*sludge_distance,
+                                              distance=sludge_transportation*WWTP.sludge_distance,
                                               distance_unit='km',
                                               interval='1',
                                               interval_unit='h')
@@ -456,7 +463,7 @@ def create_geospatial_system(size=100, # MGD
                                                 load_type='mass',
                                                 load=stream.biocrude.F_mass,
                                                 load_unit='kg',
-                                                distance=biocrude_distance,
+                                                distance=WWTP.biocrude_distance,
                                                 distance_unit='km',
                                                 interval='1',
                                                 interval_unit='h')

@@ -23,12 +23,6 @@ htl_path = os.path.dirname(__file__)
 module = os.path.split(htl_path)[-1]
 data_path, results_path = _init_modules(module, include_data_path=True)
 
-_kg_to_g = auom('kg').conversion_factor('g')
-_m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
-_MJ_to_MMBTU = auom('MJ').conversion_factor('MMBTU')
-_MMgal_to_L = auom('gal').conversion_factor('L')*1000000
-_oil_barrel_to_L = auom('oil_barrel').conversion_factor('L')
-
 # %%
 
 # =============================================================================

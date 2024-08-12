@@ -105,6 +105,8 @@ WRRF = WRRF.rename({'FACILITY':'facility',
 
 WRRF = WRRF.sort_values(by='flow_2022_MGD', ascending=False)
 
+# TODO: check EPSG and keep consistent with the IEDO work (WRRF should be 4269, we want 4326 instead of 3857)
+# TODO: check all EPSG in this analysis
 WRRF = gpd.GeoDataFrame(WRRF, crs='EPSG:4269',
                         geometry=gpd.points_from_xy(x=WRRF.longitude,
                                                     y=WRRF.latitude))
@@ -130,7 +132,6 @@ for excluded in ('Alaska',
                  'United States Virgin Islands'):
     US = US.loc[US['NAME'] != excluded]
 
-# TODO: check EPSG and keep consistent with the IEDO work
 WRRF = WRRF.to_crs(crs='EPSG:3857')
 refinery = refinery.to_crs(crs='EPSG:3857')
 US = US.to_crs(crs='EPSG:3857')
@@ -1368,16 +1369,7 @@ for i in range(0, len(decarbonization_result)): # !!! run in different consoles 
                                     sludge_ash=sludge_ash_values,
                                     sludge_lipid=sludge_lipid_values,
                                     sludge_protein=sludge_protein_values,
-                                    raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price,
-                                    biocrude_and_transportation_price=[sys.flowsheet.stream.biocrude.price/6.80*4.21,
-                                                                       sys.flowsheet.stream.biocrude.price,
-                                                                       sys.flowsheet.stream.biocrude.price/6.80*11.9],
-                                    electricity_cost=[elec[elec['state']==decarbonization_result.iloc[i]['state']]['price (10-year 5th)'].iloc[0]/100,
-                                                      elec[elec['state']==decarbonization_result.iloc[i]['state']]['price (10-year median)'].iloc[0]/100,
-                                                      elec[elec['state']==decarbonization_result.iloc[i]['state']]['price (10-year 95th)'].iloc[0]/100],
-                                    electricity_GHG=[0.67848*elec[elec['state']==decarbonization_result.iloc[i]['state']]['GHG (10-year 5th)']/elec[elec['state']==decarbonization_result.iloc[i]['state']]['GHG (10-year median)'],
-                                                     0.67848,
-                                                     0.67848*elec[elec['state']==decarbonization_result.iloc[i]['state']]['GHG (10-year 95th)']/elec[elec['state']==decarbonization_result.iloc[i]['state']]['GHG (10-year median)']])
+                                    raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price)
     
     kwargs = {'N':1000, 'rule':'L', 'seed':3221}
     samples = model.sample(**kwargs)
@@ -1802,16 +1794,7 @@ for i in range(0, 2):
                                     sludge_ash=sludge_ash_values,
                                     sludge_lipid=sludge_lipid_values,
                                     sludge_protein=sludge_protein_values,
-                                    raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price,
-                                    biocrude_and_transportation_price=[sys.flowsheet.stream.biocrude.price/6.80*4.21,
-                                                                       sys.flowsheet.stream.biocrude.price,
-                                                                       sys.flowsheet.stream.biocrude.price/6.80*11.9],
-                                    electricity_cost=[elec[elec['state']==Urbana_Champaign.iloc[i]['state']]['price (10-year 5th)'].iloc[0]/100,
-                                                      elec[elec['state']==Urbana_Champaign.iloc[i]['state']]['price (10-year median)'].iloc[0]/100,
-                                                      elec[elec['state']==Urbana_Champaign.iloc[i]['state']]['price (10-year 95th)'].iloc[0]/100],
-                                    electricity_GHG=[0.67848*elec[elec['state']==Urbana_Champaign.iloc[i]['state']]['GHG (10-year 5th)']/elec[elec['state']==Urbana_Champaign.iloc[i]['state']]['GHG (10-year median)'],
-                                                     0.67848,
-                                                     0.67848*elec[elec['state']==Urbana_Champaign.iloc[i]['state']]['GHG (10-year 95th)']/elec[elec['state']==Urbana_Champaign.iloc[i]['state']]['GHG (10-year median)']])
+                                    raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price)
     
     kwargs = {'N':1000, 'rule':'L', 'seed':3221}
     samples = model.sample(**kwargs)
@@ -1917,16 +1900,7 @@ model = create_geospatial_model(system=sys,
                                 sludge_ash=sludge_ash_values,
                                 sludge_lipid=sludge_lipid_values,
                                 sludge_protein=sludge_protein_values,
-                                raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price,
-                                biocrude_and_transportation_price=[sys.flowsheet.stream.biocrude.price/6.80*4.21,
-                                                                   sys.flowsheet.stream.biocrude.price,
-                                                                   sys.flowsheet.stream.biocrude.price/6.80*11.9],
-                                electricity_cost=[elec[elec['state']==Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001].iloc[0]['state']]['price (10-year 5th)'].iloc[0]/100,
-                                                  elec[elec['state']==Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001].iloc[0]['state']]['price (10-year median)'].iloc[0]/100,
-                                                  elec[elec['state']==Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001].iloc[0]['state']]['price (10-year 95th)'].iloc[0]/100],
-                                electricity_GHG=[0.67848*elec[elec['state']==Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001].iloc[0]['state']]['GHG (10-year 5th)']/elec[elec['state']==Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001].iloc[0]['state']]['GHG (10-year median)'],
-                                                 0.67848,
-                                                 0.67848*elec[elec['state']==Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001].iloc[0]['state']]['GHG (10-year 95th)']/elec[elec['state']==Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001].iloc[0]['state']]['GHG (10-year median)']])
+                                raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price)
 
 kwargs = {'N':1000, 'rule':'L', 'seed':3221}
 samples = model.sample(**kwargs)
@@ -2129,16 +2103,7 @@ model = create_geospatial_model(system=sys,
                                 sludge_ash=sludge_ash_values,
                                 sludge_lipid=sludge_lipid_values,
                                 sludge_protein=sludge_protein_values,
-                                raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price,
-                                biocrude_and_transportation_price=[sys.flowsheet.stream.biocrude.price/6.80*4.21,
-                                                                   sys.flowsheet.stream.biocrude.price,
-                                                                   sys.flowsheet.stream.biocrude.price/6.80*11.9],
-                                electricity_cost=[elec[elec['state']==Minnesota.iloc[0]['state']]['price (10-year 5th)'].iloc[0]/100,
-                                                  elec[elec['state']==Minnesota.iloc[0]['state']]['price (10-year median)'].iloc[0]/100,
-                                                  elec[elec['state']==Minnesota.iloc[0]['state']]['price (10-year 95th)'].iloc[0]/100],
-                                electricity_GHG=[0.67848*elec[elec['state']==Minnesota.iloc[0]['state']]['GHG (10-year 5th)']/elec[elec['state']==Minnesota.iloc[0]['state']]['GHG (10-year median)'],
-                                                 0.67848,
-                                                 0.67848*elec[elec['state']==Minnesota.iloc[0]['state']]['GHG (10-year 95th)']/elec[elec['state']==Minnesota.iloc[0]['state']]['GHG (10-year median)']])
+                                raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price)
 
 kwargs = {'N':1000, 'rule':'L', 'seed':3221}
 samples = model.sample(**kwargs)
@@ -2268,16 +2233,7 @@ model = create_geospatial_model(system=sys,
                                 sludge_ash=sludge_ash_values,
                                 sludge_lipid=sludge_lipid_values,
                                 sludge_protein=sludge_protein_values,
-                                raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price,
-                                biocrude_and_transportation_price=[sys.flowsheet.stream.biocrude.price/6.80*4.21,
-                                                                   sys.flowsheet.stream.biocrude.price,
-                                                                   sys.flowsheet.stream.biocrude.price/6.80*11.9],
-                                electricity_cost=[elec[elec['state']==state]['price (10-year 5th)'].iloc[0]/100,
-                                                  elec[elec['state']==state]['price (10-year median)'].iloc[0]/100,
-                                                  elec[elec['state']==state]['price (10-year 95th)'].iloc[0]/100],
-                                electricity_GHG=[0.67848*elec[elec['state']==state]['GHG (10-year 5th)']/elec[elec['state']==state]['GHG (10-year median)'],
-                                                 0.67848,
-                                                 0.67848*elec[elec['state']==state]['GHG (10-year 95th)']/elec[elec['state']==state]['GHG (10-year median)']])
+                                raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price)
 
 kwargs = {'N':1000, 'rule':'L', 'seed':3221}
 samples = model.sample(**kwargs)
@@ -2452,7 +2408,7 @@ for size in np.linspace(2, 20, 10):
                                                anaerobic_digestion=None,
                                                aerobic_digestion=None,
                                                ww_2_dry_sludge_ratio=1,
-                                               state='average',
+                                               state='US',
                                                elec_GHG=HM_elec_GHG)
         
         # TODO: check parameters
@@ -2461,16 +2417,7 @@ for size in np.linspace(2, 20, 10):
                                         sludge_ash=HM_sludge_ash_values,
                                         sludge_lipid=HM_sludge_lipid_values,
                                         sludge_protein=HM_sludge_protein_values,
-                                        raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price,
-                                        biocrude_and_transportation_price=[sys.flowsheet.stream.biocrude.price/6.80*4.21,
-                                                                           sys.flowsheet.stream.biocrude.price,
-                                                                           sys.flowsheet.stream.biocrude.price/6.80*11.9],
-                                        electricity_cost=[elec['price (10-year 5th)'].mean()/100,
-                                                          elec['price (10-year median)'].mean()/100,
-                                                          elec['price (10-year 95th)'].mean()/100],
-                                        electricity_GHG=[0.67848*elec['GHG (10-year 5th)'].mean()/elec['GHG (10-year median)'].mean(),
-                                                         0.67848,
-                                                         0.67848*elec['GHG (10-year 95th)'].mean()/elec['GHG (10-year median)'].mean()])
+                                        raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price)
         
         kwargs = {'N':1000, 'rule':'L', 'seed':3221}
         samples = model.sample(**kwargs)

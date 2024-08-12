@@ -8,12 +8,48 @@ Created on Sat Dec 30 08:01:06 2023
 
 import qsdsan as qs
 from chaospy import distributions as shape
-from qsdsan.utils import DictAttrSetter
-from exposan.htl import (create_geospatial_system, _MMgal_to_L, _m3perh_to_MGD,
-                         _oil_barrel_to_L, biocrude_density)
+from qsdsan.utils import auom, DictAttrSetter
+from exposan.htl import create_geospatial_system
+
+# for parameters/numbers not explained in the model, see notes in the system for references
+
+# TODO: remove electricity price/CI as an uncertainty parameter, since they are contextual parameters; update this in the manuscript and/or in the SI
+# TODO: update uncertainty parameters in the SI
 
 __all__ = ('create_geospatial_model',)
 
+biocrude_density = 980
+# kg/m3, this is for sludge with a moisture content higher than 80%,
+# google 'Design of wastewater treatment sludge thickeners Iowa State University'
+sludge_density = 1000
+
+_m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
+_MMgal_to_L = auom('gal').conversion_factor('L')*1000000
+_oil_barrel_to_L = auom('oil_barrel').conversion_factor('L')
+_mile_to_km = auom('mile').conversion_factor('km')
+_lb_to_kg = auom('lb').conversion_factor('kg')
+_m3_to_ft3 = auom('m3').conversion_factor('ft3')
+_oil_barrel_to_m3 = auom('oil_barrel').conversion_factor('m3')
+
+# GDPCTPI (Gross Domestic Product: Chain-type Price Index), [2]
+GDPCTPI = {2008: 87.977,
+           2009: 88.557,
+           2010: 89.619,
+           2011: 91.466,
+           2012: 93.176,
+           2013: 94.786,
+           2014: 96.436,
+           2015: 97.277,
+           2016: 98.208,
+           2017: 100.000,
+           2018: 102.290,
+           2019: 104.008,
+           2020: 105.407,
+           2021: 110.220,
+           2022: 117.995,
+           2023: 122.284}
+
+# TODO: remove unnecessary parameters
 def create_geospatial_model(system=None,
                             include_HTL_yield_as_metrics=False,
                             include_other_metrics=False,
@@ -22,10 +58,7 @@ def create_geospatial_model(system=None,
                             sludge_ash=[],
                             sludge_lipid=[],
                             sludge_protein=[],
-                            raw_wastewater_price_baseline=None,
-                            biocrude_and_transportation_price=[],
-                            electricity_cost=[],
-                            electricity_GHG=[]):
+                            raw_wastewater_price_baseline=None):
     '''
     Create a model based on the given system
     (or create the system based on the given configuration).
@@ -53,17 +86,19 @@ def create_geospatial_model(system=None,
     CHP = unit.CHP
     F1 = unit.F1
     P1 = unit.P1
-    SP1 = unit.SP1
     H2SO4_Tank = unit.H2SO4_Tank
     HXN = unit.HXN
     
     raw_wastewater = stream.raw_wastewater
     H2SO4 = stream.H2SO4
+    CHG_catalyst_in = stream.virgin_CHG_catalyst
     NaOH = stream.NaOH
-    ammonium_sulfate = stream.ammonium_sulfate
-    natural_gas = stream.natural_gas
-    biocrude = stream.biocrude
     Membrane_in = stream.Membrane_in
+    ammonium_sulfate = stream.ammonium_sulfate
+    biocrude = stream.biocrude
+    natural_gas = stream.natural_gas
+    solid_ash = stream.solid_ash
+    cooling_tower_chemicals = stream.cooling_tower_chemicals
     
     tea = sys.TEA
     lca = sys.LCA
@@ -545,96 +580,139 @@ def create_geospatial_model(system=None,
     def set_IRR(i):
         tea.IRR=i
     
-    # TODO: add uncertainty for sludge and biocrude transportation
-    
-    # TODO: update the price to 2022$ and match up with that in the system
-    dist = shape.Triangle(0.005994,0.00658,0.014497)
+    H2SO4_price = (0.043*1+0.0002*(93/5-1))/(93/5)/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
+    dist = shape.Uniform(H2SO4_price*0.9,H2SO4_price*1.1)
     @param(name='5% H2SO4 price',
             element='TEA',
             kind='isolated',
             units='$/kg',
-            baseline=0.00658,
+            baseline=H2SO4_price,
             distribution=dist)
     def set_H2SO4_price(i):
         H2SO4.price=i
     
-    # TODO: updated
-    dist = shape.Uniform(0.568,0.695)
+    NaOH_price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
+    dist = shape.Uniform(NaOH_price*0.9,NaOH_price*1.1)
     @param(name='NaOH price',
             element='TEA',
             kind='isolated',
             units='$/kg',
-            baseline=0.631,
+            baseline=NaOH_price,
             distribution=dist)
     def set_NaOH_price(i):
         NaOH.price=i
     
-    # TODO: update the price to 2022$ and match up with that in the system
-    dist = shape.Triangle(0.1636,0.3236,0.463)
+    ammonium_sulfate_price_min = 0.22
+    ammonium_sulfate_price_max = 0.32
+    ammonium_sulfate_price_ave = 0.2825
+    dist = shape.Triangle(ammonium_sulfate_price_min,ammonium_sulfate_price_ave,ammonium_sulfate_price_max)
     @param(name='ammonium sulfate price',
             element='TEA',
             kind='isolated',
             units='$/kg',
-            baseline=0.3236,
+            baseline=ammonium_sulfate_price_ave,
             distribution=dist)
     def set_ammonium_sulfate_price(i):
         ammonium_sulfate.price=i
     
-    # TODO: updated
-    dist = shape.Uniform(109,133)
+    membrane_price = 90/GDPCTPI[2008]*GDPCTPI[2022]
+    dist = shape.Uniform(membrane_price*0.9,membrane_price*1.1)
     @param(name='membrane price',
             element='TEA',
             kind='isolated',
             units='$/kg',
-            baseline=121,
+            baseline=membrane_price,
             distribution=dist)
     def set_membrane_price(i):
         MemDis.membrane_price=i
+        Membrane_in.price=i
     
-    # TODO: update the price to 2022$ and match up with that in the system
-    CHG_catalyst_in = CHG.ins[1]
-    dist = shape.Triangle(67.27,134.53,269.07)
+    CHG_catalyst_price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2022]
+    dist = shape.Triangle(CHG_catalyst_price*0.5,CHG_catalyst_price,CHG_catalyst_price*2)
     @param(name='CHG catalyst price',
             element='TEA',
             kind='isolated',
             units='$/kg',
-            baseline=134.53,
+            baseline=CHG_catalyst_price,
             distribution=dist)
     def set_catalyst_price(i):
         CHG_catalyst_in.price=i
     
-    # TODO: update the price to 2022$ and match up with that in the system
-    dist = shape.Triangle(0.121,0.1685,0.3608)
+    biocrude_price_min = 71.59/_oil_barrel_to_m3/biocrude_density
+    biocrude_price_max = 123.70/_oil_barrel_to_m3/biocrude_density
+    biocrude_price_ave = 94.53/_oil_barrel_to_m3/biocrude_density
+    dist = shape.Triangle(biocrude_price_min,biocrude_price_ave,biocrude_price_max)
+    @param(name='biocrude price',
+            element='TEA',
+            kind='isolated',
+            units='$/kg',
+            baseline=biocrude_price_ave,
+            distribution=dist)
+    def set_biocrude_price(i):
+        biocrude.price=i
+    
+    natural_gas_price_min = 6.18/1000*_m3_to_ft3/0.657
+    natural_gas_price_max = 9.58/1000*_m3_to_ft3/0.657
+    natural_gas_price_ave = 7.66/1000*_m3_to_ft3/0.657
+    dist = shape.Triangle(natural_gas_price_min,natural_gas_price_ave,natural_gas_price_max)
     @param(name='natural gas price',
             element='TEA',
             kind='isolated',
             units='$/kg',
-            baseline=0.1685,
+            baseline=natural_gas_price_ave,
             distribution=dist)
     def set_CH4_price(i):
         natural_gas.price=i
     
-    # TODO: update the price to 2022$ and match up with that in the system
-    dist = shape.Triangle(biocrude_and_transportation_price[0],biocrude_and_transportation_price[1],biocrude_and_transportation_price[2])
-    @param(name='biocrude and transportation price',
+    ash_disposal_price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2022]
+    dist = shape.Uniform(ash_disposal_price*1.1,ash_disposal_price*0.9)
+    @param(name='ash disposal price',
             element='TEA',
             kind='isolated',
             units='$/kg',
-            baseline=biocrude_and_transportation_price[1],
+            baseline=ash_disposal_price,
             distribution=dist)
-    def set_biocrude_transportation_price(i):
-        biocrude.price=i
+    def set_ash_disposal_price(i):
+        solid_ash.price=i
     
-    # TODO: update the price to 2022$ and match up with that in the system
-    dist = shape.Triangle(electricity_cost[0],electricity_cost[1],electricity_cost[2])
-    @param(name='electricity price',
+    cooling_chemicals_price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
+    dist = shape.Uniform(cooling_chemicals_price*0.9,cooling_chemicals_price*1.1)
+    @param(name='cooling tower chemicals price',
             element='TEA',
             kind='isolated',
-            units='$/kWh',
-            baseline=electricity_cost[1],
+            units='$/kg',
+            baseline=cooling_chemicals_price,
             distribution=dist)
-    def set_electrivity_price(i):
-        qs.PowerUtility.price=i
+    def set_cooling_tower_chemicals_price(i):
+        cooling_tower_chemicals.price=i
+    
+    # TODO: check uncertainty for sludge and biocrude transportation (by altering WWTP.sludge_distance and WWTP.biocrude_distance)
+    # TODO: run uncertainty (N=10) to see if the values change
+    sludge_transportation_price = WWTP.ww_2_dry_sludge*\
+                                    (4.56/GDPCTPI[2015]*GDPCTPI[2022]/sludge_density*1000/0.2+\
+                                      0.072/GDPCTPI[2015]*GDPCTPI[2022]/_mile_to_km/sludge_density*1000/0.2*WWTP.sludge_distance)\
+                                        /3.79/(10**6)/WWTP.sludge_distance
+    dist = shape.Uniform(sludge_transportation_price*0.9,sludge_transportation_price*1.1)
+    @param(name='sludge transportation price',
+            element='TEA',
+            kind='isolated',
+            units='$/kg',
+            baseline=sludge_transportation_price,
+            distribution=dist)
+    def set_sludge_transportation_price(i):
+        qs.ImpactItem.get_all_items()['Sludge_trucking'].price=i
+    
+    
+    biocrude_transportation_price = (5.67/biocrude_density+0.07/biocrude_density*WWTP.biocrude_distance)/GDPCTPI[2008]*GDPCTPI[2022]/WWTP.biocrude_distance
+    dist = shape.Uniform(biocrude_transportation_price*0.9,biocrude_transportation_price*1.1)
+    @param(name='biocrude transportation price',
+            element='TEA',
+            kind='isolated',
+            units='$/kg',
+            baseline=biocrude_transportation_price,
+            distribution=dist)
+    def set_biocrude_transportation_price(i):
+        qs.ImpactItem.get_all_items()['Biocrude_trucking'].price=i
     
     # =========================================================================
     # LCA (unifrom ± 10%)
@@ -643,45 +721,18 @@ def create_geospatial_model(system=None,
     
     # do not get joint distribution for multiple times, since the baselines for LCA will change
     for item in qs.ImpactItem.get_all_items().keys():
-        if item == 'sludge':
-            abs_small = 0.8*qs.ImpactItem.get_item(item).CFs[CF]
-            abs_large = 1.2*qs.ImpactItem.get_item(item).CFs[CF]
-            dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
-            @param(name=f'{item}_{CF}',
-                   setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
-                   element='LCA',
-                   kind='isolated',
-                   units=qs.ImpactIndicator.get_indicator(CF).unit,
-                   baseline=qs.ImpactItem.get_item(item).CFs[CF],
-                   distribution=dist)
-            def set_LCA(i):
-                qs.ImpactItem.get_item(item).CFs[CF]=i
-        elif item == 'Electricity':
-            abs_small = electricity_GHG[0]
-            abs_large = electricity_GHG[2]
-            dist = shape.Triangle(min(abs_small,abs_large),max(abs_small,abs_large))
-            @param(name=f'{item}_{CF}',
-                   setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
-                   element='LCA',
-                   kind='isolated',
-                   units=qs.ImpactIndicator.get_indicator(CF).unit,
-                   baseline=electricity_GHG[1],
-                   distribution=dist)
-            def set_LCA(i):
-                qs.ImpactItem.get_item(item).CFs[CF]=i
-        else:
-            abs_small = 0.9*qs.ImpactItem.get_item(item).CFs[CF]
-            abs_large = 1.1*qs.ImpactItem.get_item(item).CFs[CF]
-            dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
-            @param(name=f'{item}_{CF}',
-                   setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
-                   element='LCA',
-                   kind='isolated',
-                   units=qs.ImpactIndicator.get_indicator(CF).unit,
-                   baseline=qs.ImpactItem.get_item(item).CFs[CF],
-                   distribution=dist)
-            def set_LCA(i):
-                qs.ImpactItem.get_item(item).CFs[CF]=i
+        abs_small = 0.9*qs.ImpactItem.get_item(item).CFs[CF]
+        abs_large = 1.1*qs.ImpactItem.get_item(item).CFs[CF]
+        dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
+        @param(name=f'{item}_{CF}',
+               setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
+               element='LCA',
+               kind='isolated',
+               units=qs.ImpactIndicator.get_indicator(CF).unit,
+               baseline=qs.ImpactItem.get_item(item).CFs[CF],
+               distribution=dist)
+        def set_LCA(i):
+            qs.ImpactItem.get_item(item).CFs[CF]=i
     
     # =========================================================================
     # metrics
@@ -812,13 +863,9 @@ def create_geospatial_model(system=None,
         def get_CHG_TIC():
             return CHG.installed_cost + F1.installed_cost
         
-        if SP1.F_mass_out != 0:
-            def get_Nitrogen_TIC():
-                return MemDis.installed_cost+H2SO4_Tank.installed_cost*SP1.outs[1].F_mass/SP1.F_mass_out
-        else:
-            def get_Nitrogen_TIC():
-                return 0
-        model.metric(getter=get_Nitrogen_TIC, name='Nitrogen_TIC',units='$',element='TEA')
+        @metric(name='nitrogen_TIC',units='$',element='TEA')
+        def get_nitrogen_TIC():
+            return MemDis.installed_cost+H2SO4_Tank.installed_cost
         
         @metric(name='HXN_TIC',units='$',element='TEA')
         def get_HXN_TIC():
