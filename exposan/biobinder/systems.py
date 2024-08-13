@@ -388,7 +388,7 @@ tea = create_tea(
 
 # Load impact indicators, TRACI
 clear_lca_registries()
-qs.ImpactIndicator.load_from_file(os.path.join(htl_data_path, 'impact_indicators.csv'))
+qs.ImpactIndicator.load_from_file(os.path.join(data_path, 'impact_indicators.csv'))
 qs.ImpactItem.load_from_file(os.path.join(data_path, 'impact_items.xlsx'))
 
 # Add impact for streams
