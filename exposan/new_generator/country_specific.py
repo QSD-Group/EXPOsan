@@ -146,15 +146,18 @@ def create_country_specific_model(ID, country, model=None, country_data=None,
         for u in sys.units:
             if hasattr(u, '_calc_maintenance_labor_cost'):
                 u.wages = i
-
-    # Energy price
-    energy_price_D_ratio = 0.1
-    key = 'energy_price'
-    name, p, b, D = get_param_name_b_D(key, energy_price_D_ratio)
-    @param(name=name, element='TEA', kind='cost', units='USD/kWh',
-           baseline=b, distribution=D)
-    def set_energy_price(i):
-        PowerUtility.price = i
+                
+    try:
+        # Energy price
+        energy_price_D_ratio = 0.1
+        key = 'energy_price'
+        name, p, b, D = get_param_name_b_D(key, energy_price_D_ratio)
+        @param(name=name, element='TEA', kind='cost', units='USD/kWh',
+               baseline=b, distribution=D)
+        def set_energy_price(i):
+            PowerUtility.price = i
+    except AssertionError:
+        warnings.warn("Energy price is zero!!!")
 
     # Energy GWP
     key = 'energy_GWP'
