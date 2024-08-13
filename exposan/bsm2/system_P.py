@@ -143,7 +143,7 @@ def create_system(flowsheet=None, default_init_conds=True):
                           adm1_model=adm, asm2d_model=asm)
     AD = su.AnaerobicCSTR('AD', ins=J1.outs[0], outs=('biogas', 'AD_eff'), isdynamic=True,
                            V_liq=3400, V_gas=300, T=T_ad, model=adm,)
-    AD.algebraic_h2 = False
+    AD.algebraic_h2 = True
     J2 = su.ADM1ptomASM2d('J2', upstream=AD-1, thermo=thermo_asm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
     # Switch back to ASM1 components
@@ -290,7 +290,7 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 30
+    t = 15
     t_step = 1
     # method = 'RK45'
     method = 'RK23'
