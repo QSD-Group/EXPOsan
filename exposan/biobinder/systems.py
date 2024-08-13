@@ -442,8 +442,8 @@ def simulate_and_print(save_report=False):
         print(f'{attr} is {getattr(tea, attr):,.0f} {uom}')
         
     all_impacts = lca.get_allocated_impacts(streams=(biobinder,), operation_only=True, annual=True)
-    GWP = all_impacts['GlobalWarming']/biobinder.F_mass
-    print(f'Global warming potential of the biobinder is {GWP:.2f} kg CO2e/kg.')
+    GWP = all_impacts['GlobalWarming']/(biobinder.F_mass*lca.system.operating_hours)
+    print(f'Global warming potential of the biobinder is {GWP:.4f} kg CO2e/kg.')
     if save_report:
         # Use `results_path` and the `join` func can make sure the path works for all users
         sys.save_report(file=os.path.join(results_path, 'sys.xlsx'))
