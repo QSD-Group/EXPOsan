@@ -1368,8 +1368,7 @@ for i in range(0, len(decarbonization_result)): # !!! run in different consoles 
     model = create_geospatial_model(system=sys,
                                     sludge_ash=sludge_ash_values,
                                     sludge_lipid=sludge_lipid_values,
-                                    sludge_protein=sludge_protein_values,
-                                    raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price)
+                                    sludge_protein=sludge_protein_values)
     
     kwargs = {'N':1000, 'rule':'L', 'seed':3221}
     samples = model.sample(**kwargs)
@@ -1793,8 +1792,7 @@ for i in range(0, 2):
     model = create_geospatial_model(system=sys,
                                     sludge_ash=sludge_ash_values,
                                     sludge_lipid=sludge_lipid_values,
-                                    sludge_protein=sludge_protein_values,
-                                    raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price)
+                                    sludge_protein=sludge_protein_values)
     
     kwargs = {'N':1000, 'rule':'L', 'seed':3221}
     samples = model.sample(**kwargs)
@@ -1899,8 +1897,7 @@ sys, barrel = create_geospatial_system(waste_cost=average_cost,
 model = create_geospatial_model(system=sys,
                                 sludge_ash=sludge_ash_values,
                                 sludge_lipid=sludge_lipid_values,
-                                sludge_protein=sludge_protein_values,
-                                raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price)
+                                sludge_protein=sludge_protein_values)
 
 kwargs = {'N':1000, 'rule':'L', 'seed':3221}
 samples = model.sample(**kwargs)
@@ -2102,8 +2099,7 @@ else:
 model = create_geospatial_model(system=sys,
                                 sludge_ash=sludge_ash_values,
                                 sludge_lipid=sludge_lipid_values,
-                                sludge_protein=sludge_protein_values,
-                                raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price)
+                                sludge_protein=sludge_protein_values)
 
 kwargs = {'N':1000, 'rule':'L', 'seed':3221}
 samples = model.sample(**kwargs)
@@ -2232,8 +2228,7 @@ sys, barrel = create_geospatial_system(waste_cost=average_cost,
 model = create_geospatial_model(system=sys,
                                 sludge_ash=sludge_ash_values,
                                 sludge_lipid=sludge_lipid_values,
-                                sludge_protein=sludge_protein_values,
-                                raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price)
+                                sludge_protein=sludge_protein_values)
 
 kwargs = {'N':1000, 'rule':'L', 'seed':3221}
 samples = model.sample(**kwargs)
@@ -2416,8 +2411,7 @@ for size in np.linspace(2, 20, 10):
         model = create_geospatial_model(system=sys,
                                         sludge_ash=HM_sludge_ash_values,
                                         sludge_lipid=HM_sludge_lipid_values,
-                                        sludge_protein=HM_sludge_protein_values,
-                                        raw_wastewater_price_baseline=sys.flowsheet.stream.raw_wastewater.price)
+                                        sludge_protein=HM_sludge_protein_values)
         
         kwargs = {'N':1000, 'rule':'L', 'seed':3221}
         samples = model.sample(**kwargs)

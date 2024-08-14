@@ -70,6 +70,7 @@ from exposan.htl import (_load_components, create_tea, state_income_tax_rate_202
 from biosteam.units import IsenthalpicValve
 from biosteam import settings
 
+# TODO: consider if the feedstock is biosolids, send CH4 from AD to CHP
 # TODO: for LCA, use ecoinvent 3.8, cutoff, TRACI, update this in the manuscript as well
 # TODO: refactor the code wherever necessary
 
@@ -148,7 +149,7 @@ def _load_process_settings(location='IL'):
     bst.PowerUtility.price = elec[elec['state']==location]['price'].iloc[0]/100
 
 # for parameters, unless otherwise stated, refer to the original HTL system model
-def create_geospatial_system(size=100, # MGD
+def create_geospatial_system(size=10, # MGD
                              sludge_transportation=0, # 0: no; 1: yes
                              sludge_distance=100, # in km, this is the slduge transportation total distance (normalized to total sludge amount)
                              biocrude_distance=100, # km
