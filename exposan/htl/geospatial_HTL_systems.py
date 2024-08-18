@@ -38,8 +38,8 @@ Created on Mon Jun 5 08:46:28 2023
 [10] https://www.macrotrends.net/1369/crude-oil-price-history-chart
     (accessed 2024-08-03).
 [11] https://en.wikipedia.org/wiki/Methane (accessed 2024-08-03).
-[12] https://www.plinovodi.si/en/transmission-system/environment-and-safety/about-natural-gas/
-    (accessed 2024-08-08).
+[12] https://www.plinovodi.si/en/transmission-system/environment-and-safety/
+     about-natural-gas/ (accessed 2024-08-08).
 [13] https://www.eia.gov/dnav/ng/hist/n3035us3A.htm accessed (2024-08-03).
 [14] Marufuzzaman, M.; Ekşioğlu, S. D.; Hernandez, R. Truck versus Pipeline
     Transportation Cost Analysis of Wastewater Sludge. Transportation Research Part A:
@@ -66,7 +66,7 @@ Created on Mon Jun 5 08:46:28 2023
 import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
 from qsdsan.utils import auom, clear_lca_registries
-from exposan.htl import (_load_components, create_tea, state_income_tax_rate_2022, _sanunits as su)
+from exposan.htl import _load_components, create_tea, state_income_tax_rate_2022, _sanunits as su
 from biosteam.units import IsenthalpicValve
 from biosteam import settings
 
@@ -149,22 +149,30 @@ def _load_process_settings(location='IL'):
     bst.PowerUtility.price = elec[elec['state']==location]['price'].iloc[0]/100
 
 # for parameters, unless otherwise stated, refer to the original HTL system model
-def create_geospatial_system(size=10, # MGD
-                             sludge_transportation=0, # 0: no; 1: yes
-                             sludge_distance=100, # in km, this is the slduge transportation total distance (normalized to total sludge amount)
+def create_geospatial_system(# MGD
+                             size=10,
+                             # 0: no; 1: yes
+                             sludge_transportation=0,
+                             # in km, this is the slduge transportation total
+                             # distance (normalized to total sludge amount)
+                             sludge_distance=100,
                              biocrude_distance=100, # km
                              # average values below are for sludge aggregation analyses
                              average_sludge_dw_ash=None,
                              average_sludge_afdw_lipid=None,
                              average_sludge_afdw_protein=None,
-                             anaerobic_digestion=0, # 0: no; 1: yes
-                             aerobic_digestion=0, # 0: no; 1: yes
-                             ww_2_dry_sludge_ratio=1, # dry tonne sludge/day/MGD raw wastewater
+                             # 0: no; 1: yes
+                             anaerobic_digestion=0,
+                             # 0: no; 1: yes
+                             aerobic_digestion=0,
+                             # dry tonne sludge/day/MGD raw wastewater
+                             ww_2_dry_sludge_ratio=1,
                              state='IL',
                              # TODO: update in the manuscript
                              # 2022 electricty CI by balancing area based on the IEDO work
                              # note change 2020 in the IEDO code for balancing area to 2022
-                             elec_GHG=0.44 # kg CO2 eq/kWh
+                             # kg CO2 eq/kWh
+                             elec_GHG=0.44
                              ):
     
     flowsheet_ID = 'htl_geospatial'

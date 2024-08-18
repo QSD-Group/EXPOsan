@@ -34,7 +34,6 @@ y = Guest.yellow.HEX
 a = Guest.gray.HEX
 p = Guest.purple.HEX
 
-# TODO: consider adding these dark colors to qsdsan
 db = Color('dark_blue', (53, 118, 127)).HEX
 dg = Color('dark_green', (77, 126, 83)).HEX
 dr = Color('dark_red', (156, 75, 80)).HEX
