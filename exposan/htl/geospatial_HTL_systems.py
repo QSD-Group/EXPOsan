@@ -211,26 +211,26 @@ def create_geospatial_system(# MGD
     # for anaerobic digestion: X/(X+Y*(1-0.425)) = 0.414
     # we can calculate that for aerobic digestion: X/(X+Y*(1-0.475)) = 0.436
     if sludge_transportation == 0:
-        if anaerobic_digestion == 1:
-            WWTP = su.WWTP(ID='WWTP',
-                           ins=raw_wastewater,
-                           outs=('sludge','treated_water'),
-                           ww_2_dry_sludge=ww_2_dry_sludge_ratio,
-                           sludge_moisture=0.8,
-                           sludge_dw_ash=0.414,
-                           sludge_afdw_lipid=0.193,
-                           sludge_afdw_protein=0.510,
-                           operation_hours=8760,
-                           sludge_distance=sludge_distance,
-                           biocrude_distance=biocrude_distance
-                           )
-        elif aerobic_digestion == 1:
+        if aerobic_digestion == 1:
             WWTP = su.WWTP(ID='WWTP',
                            ins=raw_wastewater,
                            outs=('sludge','treated_water'),
                            ww_2_dry_sludge=ww_2_dry_sludge_ratio,
                            sludge_moisture=0.8,
                            sludge_dw_ash=0.436,
+                           sludge_afdw_lipid=0.193,
+                           sludge_afdw_protein=0.510,
+                           operation_hours=8760,
+                           sludge_distance=sludge_distance,
+                           biocrude_distance=biocrude_distance
+                           )
+        elif anaerobic_digestion == 1:
+            WWTP = su.WWTP(ID='WWTP',
+                           ins=raw_wastewater,
+                           outs=('sludge','treated_water'),
+                           ww_2_dry_sludge=ww_2_dry_sludge_ratio,
+                           sludge_moisture=0.8,
+                           sludge_dw_ash=0.414,
                            sludge_afdw_lipid=0.193,
                            sludge_afdw_protein=0.510,
                            operation_hours=8760,
