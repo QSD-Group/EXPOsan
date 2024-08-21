@@ -11,6 +11,8 @@ Created on Sun Jun 11 08:12:41 2023
 # TODO 2: update electricity CI to match up balancing areas instead of states
 # TODO 3: refactor/reformat all codes
 
+# confirmed: both 'markersize' (in gpd.plot()) and 's' (in plt.scatter()) are proportional to area
+
 #%% initialization
 import geopy.distance, googlemaps, random
 import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.colors as colors, matplotlib.ticker as mtick
@@ -41,8 +43,6 @@ do = Color('dark_orange', (167, 95, 62)).HEX
 dy = Color('dark_yellow', (171, 137, 55)).HEX
 da = Color('dark_gray', (78, 78, 78)).HEX
 dp = Color('dark_purple', (76, 56, 90)).HEX
-
-#%% read data and data pre-processing
 
 # !!! when creating this input file, change year to 2022 in IEDO code for electricity GHG calculation
 WRRF = pd.read_excel(folder + 'HTL_geospatial_input_08202024.xlsx')
@@ -161,8 +161,6 @@ US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
 WRRF = WRRF.sort_values(by='flow_2022_MGD', ascending=False)
 
 WRRF_flow = WRRF['flow_2022_MGD']
-
-# both 'markersize' (in gpd.plot()) and 's' (in plt.scatter()) are proportional to area
 
 more_than_100 = WRRF_flow > 100
 WRRF[more_than_100].plot(ax=ax, color=dg, markersize=WRRF.loc[more_than_100, WRRF_flow.name]*10, edgecolor='k', linewidth=1.5, alpha=1)
@@ -407,12 +405,12 @@ else:
 
 #%% travel distance box plot
 
-# TODO: continue from here (and another TODO in line 102)
-
-# TODO: update the code/figure during execution, if necessary
-
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
-# TODO: removal WRRFs with no real_distance_km, mention just the number of WRRFs included/removed in the main manuscript/SI
+# !!! update the input file if necessary
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2024-08-20.xlsx')
+# TODO: mention just the number of WRRFs included/removed in the main manuscript/SI
+print(f"{WRRF_input['real_distance_km'].notna().sum()} WRRFs included")
+print(f"{WRRF_input['real_distance_km'].isna().sum()} WRRFs excluded")
+# removal WRRFs with no real_distance_km
 WRRF_input = WRRF_input.dropna(subset='real_distance_km')
 
 fig, ax = plt.subplots(figsize = (5, 8))
@@ -429,7 +427,7 @@ plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
 ax = plt.gca()
-ax.set_ylim([-50, 850])
+ax.set_ylim([0, 800])
 ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
 
 ax.set_ylabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=35)
@@ -456,9 +454,9 @@ fig.savefig('/Users/jiananfeng/Desktop/distance.png', transparent=True, bbox_inc
 
 #%% travel distance box plot (per region)
 
-# TODO: update the code/figure during execution, if necessary
-
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
+# !!! update the input file if necessary
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2024-08-20.xlsx')
+# removal WRRFs with no real_distance_km
 WRRF_input = WRRF_input.dropna(subset='real_distance_km')
 
 WRRF_input.loc[WRRF_input['state'].isin(['CT','DC','DE','FL','GA','MA','MD','ME','NC','NH','NJ','NY','PA','RI','SC','VA','VT','WV']), 'WRRF_PADD'] = 1
@@ -471,7 +469,9 @@ fig = plt.figure(figsize=(20, 10))
 
 gs = fig.add_gridspec(1, 5, hspace=0, wspace=0)
 
-def set_cf_plot():
+def add_region(position, region, color):
+    ax = fig.add_subplot(gs[0, position])
+    
     plt.rcParams['axes.linewidth'] = 3
     plt.rcParams['xtick.labelsize'] = 30
     plt.rcParams['ytick.labelsize'] = 30
@@ -482,14 +482,9 @@ def set_cf_plot():
     plt.rcParams.update({'mathtext.fontset': 'custom'})
     plt.rcParams.update({'mathtext.default': 'regular'})
     plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
-
-def add_region(position, region, color):
-    ax = fig.add_subplot(gs[0, position])
-    
-    set_cf_plot()
     
     ax = plt.gca()
-    ax.set_ylim([-100, 1500])
+    ax.set_ylim([0, 1400])
     ax.set_xlabel(region, fontname='Arial', fontsize=30, labelpad=15)
     
     if position == 0:
@@ -497,7 +492,7 @@ def add_region(position, region, color):
         ax.set_ylabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=35)
     
     elif position == 4:
-        ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, labelcolor='none')
+        ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, length=0, labelcolor='none')
         
         ax_right = ax.twinx()
         ax_right.set_ylim(ax.get_ylim())
@@ -523,7 +518,6 @@ def add_region(position, region, color):
     for flier in bp['fliers']:
         flier.set(marker='o', markersize=7, markerfacecolor=color, markeredgewidth=1.5)
 
-# TODO: there are still ticks on the left axis of the leftmost figure, use PS for now
 add_region(0, 'East Coast', b)
 add_region(1, 'Midwest', g)
 add_region(2, 'Gulf Coast', r)
@@ -532,9 +526,9 @@ add_region(4, 'West Coast', y)
 
 #%% WRRFs GHG map
 
-# TODO: update the code/figure during execution, if necessary
-
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
+# !!! update the input file if necessary
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2024-08-20.xlsx')
+# removal WRRFs with no real_distance_km
 WRRF_input = WRRF_input.dropna(subset='real_distance_km')
 
 WRRF_input = WRRF_input.sort_values(by='total_emission', ascending=False)
@@ -546,30 +540,30 @@ WRRF_input = gpd.GeoDataFrame(WRRF_input, crs='EPSG:4269',
 WRRF_input = WRRF_input.to_crs(crs='EPSG:3857')
 
 fig, ax = plt.subplots(figsize=(30, 30))
-ax.tick_params(top=False, bottom=False, left=False, right=False,
-               labelleft=False, labelbottom=False)
-ax.set_frame_on(False)
 
 US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
 
-# use tonne/day
-
+# tonne/day
 WRRF_GHG_tonne_per_day = WRRF_input['total_emission']/1000
 
-less_than_50 = WRRF_GHG_tonne_per_day <= 50
-WRRF_input[less_than_50].plot(ax=ax, color=a, markersize=WRRF_input.loc[less_than_50, WRRF_GHG_tonne_per_day.name]**0.5, alpha=0.5)
+more_than_500 = WRRF_GHG_tonne_per_day > 500
+WRRF_input[more_than_500].plot(ax=ax, color=dp, markersize=WRRF_input.loc[more_than_500, WRRF_GHG_tonne_per_day.name]/350, edgecolor='k', linewidth=2, alpha=1)
 
 between_50_and_500 = (WRRF_GHG_tonne_per_day > 50) & (WRRF_GHG_tonne_per_day <= 500)
-WRRF_input[between_50_and_500].plot(ax=ax, color=r, markersize=WRRF_input.loc[between_50_and_500, WRRF_GHG_tonne_per_day.name]**0.5, edgecolor='k', linewidth=1.5, alpha=0.7)
+WRRF_input[between_50_and_500].plot(ax=ax, color=p, markersize=WRRF_input.loc[between_50_and_500, WRRF_GHG_tonne_per_day.name]/350, edgecolor='k', linewidth=1.5, alpha=0.5)
 
-more_than_500 = WRRF_GHG_tonne_per_day > 500
-WRRF_input[more_than_500].plot(ax=ax, color=g, markersize=WRRF_input.loc[more_than_500, WRRF_GHG_tonne_per_day.name]**0.5, edgecolor='k', linewidth=2, alpha=0.9)
+less_than_50 = WRRF_GHG_tonne_per_day <= 50
+WRRF_input[less_than_50].plot(ax=ax, color=p, markersize=WRRF_input.loc[less_than_50, WRRF_GHG_tonne_per_day.name]/350, alpha=0.1)
+
+ax.set_aspect(1)
+
+ax.set_axis_off()
 
 #%% WRRFs sludge management GHG map
 
-# TODO: update the code/figure during execution, if necessary
-
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
+# !!! update the input file if necessary
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2024-08-20.xlsx')
+# removal WRRFs with no real_distance_km
 WRRF_input = WRRF_input.dropna(subset='real_distance_km')
 
 WRRF_input = WRRF_input.sort_values(by='biosolids_emission', ascending=False)
@@ -585,94 +579,73 @@ ax.tick_params(top=False, bottom=False, left=False, right=False,
                labelleft=False, labelbottom=False)
 ax.set_frame_on(False)
 
-US.plot(ax=ax, color='w', edgecolor='k', linewidth=5)
+US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
 
-# use tonne/day
-
+# tonne/day
 sludge_GHG_tonne_per_day = WRRF_input['biosolids_emission']/1000
 
-less_than_50 = sludge_GHG_tonne_per_day <= 50
-WRRF_input[less_than_50].plot(ax=ax, color=a, markersize=WRRF_input.loc[less_than_50, sludge_GHG_tonne_per_day.name]**0.5, alpha=0.5)
+more_than_20 = sludge_GHG_tonne_per_day > 20
+WRRF_input[more_than_20].plot(ax=ax, color=dr, markersize=WRRF_input.loc[more_than_20, sludge_GHG_tonne_per_day.name]/10, edgecolor='k', linewidth=2, alpha=1)
 
-between_50_and_500 = (sludge_GHG_tonne_per_day > 50) & (sludge_GHG_tonne_per_day <= 500)
-WRRF_input[between_50_and_500].plot(ax=ax, color=r, markersize=WRRF_input.loc[between_50_and_500, sludge_GHG_tonne_per_day.name]**0.5, edgecolor='k', linewidth=1.5, alpha=0.7)
+between_2_and_20 = (sludge_GHG_tonne_per_day > 2) & (sludge_GHG_tonne_per_day <= 20)
+WRRF_input[between_2_and_20].plot(ax=ax, color=r, markersize=WRRF_input.loc[between_2_and_20, sludge_GHG_tonne_per_day.name]/10, edgecolor='k', linewidth=1.5, alpha=0.5)
 
-more_than_500 = sludge_GHG_tonne_per_day > 500
-WRRF_input[more_than_500].plot(ax=ax, color=g, markersize=WRRF_input.loc[more_than_500, sludge_GHG_tonne_per_day.name]**0.5, edgecolor='k', linewidth=2, alpha=0.9)
+less_than_2 = sludge_GHG_tonne_per_day <= 2
+WRRF_input[less_than_2].plot(ax=ax, color=r, markersize=WRRF_input.loc[less_than_2, sludge_GHG_tonne_per_day.name]/10, alpha=0.1)
 
 #%% cumulative WRRFs capacity vs distances (data processing)
 
-# TOOO: update the file
-# remember to use the correct file
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
+# !!! update the input file if necessary
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2024-08-20.xlsx')
+# removal WRRFs with no real_distance_km
 WRRF_input = WRRF_input.dropna(subset='real_distance_km')
 
-result = WRRF_input[['site_id']].drop_duplicates()
+result = WRRF_input[['Site ID']].drop_duplicates()
 
-# TODO: it is better not to use a constant (i.e., 1500); use a formula instead
-# this will cover all WRRFs
 max_distance = 1500
+assert max_distance*1.2 > max_distance > WRRF_input.real_distance_km.max(), 'update max_distance'
+
 for distance in np.linspace(0, max_distance, max_distance+1):
-    WRRF_input_distance = WRRF_input[WRRF_input['linear_distance_km'] <= distance]
-    WRRF_input_distance = WRRF_input_distance.groupby('site_id').sum('flow_2022_MGD')
+    WRRF_input_distance = WRRF_input[WRRF_input['real_distance_km'] <= distance]
+    WRRF_input_distance = WRRF_input_distance.groupby('Site ID').sum('flow_2022_MGD')
     WRRF_input_distance = WRRF_input_distance[['flow_2022_MGD']]
     WRRF_input_distance = WRRF_input_distance.rename(columns={'flow_2022_MGD': int(distance)})
     WRRF_input_distance.reset_index(inplace=True)
     if len(WRRF_input_distance) > 0:
-        result = result.merge(WRRF_input_distance, how='left', on='site_id')
+        result = result.merge(WRRF_input_distance, how='left', on='Site ID')
 
 result = result.fillna(0)
 
 if len(result) < len(refinery):
-    result_index = pd.Index(result.site_id)
-    refinery_index = pd.Index(refinery.site_id)
+    result_index = pd.Index(result['Site ID'])
+    refinery_index = pd.Index(refinery['Site ID'])
     refineries_left_id = refinery_index.difference(result_index).values
 
-result = result.set_index('site_id')
+result = result.set_index('Site ID')
 for item in refineries_left_id:
     result.loc[item] = [0]*len(result.columns)
 
-result = result.merge(refinery, how='left', on='site_id')
+result = result.merge(refinery, how='left', on='Site ID')
 
-result.to_excel(folder + f'results/MGD_vs_distance_{max_distance}_km.xlsx')
+result.to_excel(folder + f'results/MGD_vs_real_distance_{max_distance}_km.xlsx')
 
 #%% make the plot of cumulative WRRFs capacity vs distances (data preparation)
 
-# TOOO: update the file, if necessary
-# import file for the cumulative figure (CF)
-CF_input = pd.read_excel(folder + 'results/MGD_vs_distance_1500_km.xlsx')
+# !!! update the file if necessary
+CF_input = pd.read_excel(folder + 'results/MGD_vs_real_distance_1500_km.xlsx')
 
 CF_input[0] = 0
 
-# TODO: it is better not to use [2:-1]; use a formula instead
-CF_input = CF_input[[0, *CF_input.columns[2:-1]]]
+max_distance_plot = 1500
+assert max_distance*1.2 > max_distance > WRRF_input.real_distance_km.max(), 'update max_distance'
 
-# TODO: change the name of max_distance to max_distance_plot; update this in the rest of the code
-# TODO: it is better not to use a constant (i.e., 1500); use a formula instead
-# TODO: should be equal to or smaller than the max_distance defined before
-max_distance = 1500
-
-# TODO: it is better not to use 0:max_distance+6; use a formula instead
-CF_input = CF_input.iloc[:, 0:max_distance+6]
-
-CF_input.drop(['Company','Corp','Site'], axis=1, inplace=True)
+CF_input = CF_input[['PADD', 'State', *list(range(0, max_distance_plot+1, 1))]]
 
 CF_input.sort_values(by='PADD', inplace=True)
 
-# TODO: it is better not to use [0:-2]; use a formula instead
-CF_input = CF_input[['PADD','State', *CF_input.columns[0:-2]]]
-
 CF_input = CF_input.transpose()
 
-# TODO: why define max_distance and max_distance_on_the_plot? try to merge
-max_distance_on_the_plot = 1500
-
-# TODO: it is better not to use 0:max_distance_on_the_plot+3; use a formula instead
-CF_input = CF_input[0:max_distance_on_the_plot+3]
-
 #%% make the plot of cumulative WRRFs capacity vs distances (separated oil refinery)
-
-# TODO: update the code/figure during execution, if necessary
 
 PADD_1 = (CF_input.loc['PADD',:].isin([1,])).sum()
 PADD_2 = (CF_input.loc['PADD',:].isin([1,2])).sum()
@@ -684,7 +657,9 @@ fig = plt.figure(figsize=(20, 10))
 
 gs = fig.add_gridspec(1, 5, hspace=0, wspace=0)
 
-def set_cf_plot():
+def add_region(position, start_region, end_region, color):
+    ax = fig.add_subplot(gs[0, position])
+    
     plt.rcParams['axes.linewidth'] = 3
     plt.rcParams['xtick.labelsize'] = 30
     plt.rcParams['ytick.labelsize'] = 30
@@ -695,16 +670,11 @@ def set_cf_plot():
     plt.rcParams.update({'mathtext.fontset': 'custom'})
     plt.rcParams.update({'mathtext.default': 'regular'})
     plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
-
-def add_region(position, start_region, end_region, color):
-    ax = fig.add_subplot(gs[0, position])
-    
-    set_cf_plot()
     
     for i in range(start_region, end_region):
         CF_input.iloc[2:, i].plot(ax=ax, color=color, linewidth=3)
         
-    ax.set_xlim([0, max_distance])
+    ax.set_xlim([0, max_distance_plot])
     ax.set_ylim([0, 7000])
     
     if position == 4:
@@ -717,13 +687,13 @@ def add_region(position, start_region, end_region, color):
         
     if position == 0:
         ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False, labelleft=True, labelbottom=True)
-        plt.xticks(np.arange(0, max_distance*1.2, max_distance*0.2))
+        plt.xticks(np.arange(0, max_distance_plot*1.2, max_distance_plot*0.2))
         ax.set_ylabel(r'$\mathbf{Cumulative\ WRRFs\ capacity}$ [MGD]', fontname='Arial', fontsize=35)
     else:
         if position == 2:
-            ax.set_xlabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=35)
+            ax.set_xlabel(r'$\mathbf{Travel\ distance}$ [km]', fontname='Arial', fontsize=35)
         ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
-        plt.xticks(np.arange(max_distance*0.2, max_distance*1.2, max_distance*0.2))
+        plt.xticks(np.arange(max_distance_plot*0.2, max_distance_plot*1.2, max_distance_plot*0.2))
     
     for label in ax.get_xticklabels():
         label.set_rotation(45)
@@ -731,7 +701,7 @@ def add_region(position, start_region, end_region, color):
     
     ax_top = ax.twiny()
     ax_top.set_xlim(ax.get_xlim())
-    plt.xticks(np.arange(max_distance*0.2, max_distance*1.2, max_distance*0.2))
+    plt.xticks(np.arange(max_distance_plot*0.2, max_distance_plot*1.2, max_distance_plot*0.2))
     ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 add_region(0, 0, PADD_1, b)
@@ -741,8 +711,6 @@ add_region(3, PADD_3, PADD_4, o)
 add_region(4, PADD_4, PADD_5, y)
 #%% make the plot of cumulative WRRFs capacity vs distances (regional total)
 
-# TODO: update the code/figure during execution, if necessary
-
 PADD_1 = (CF_input.loc['PADD',:].isin([1,])).sum()
 PADD_2 = (CF_input.loc['PADD',:].isin([1,2])).sum()
 PADD_3 = (CF_input.loc['PADD',:].isin([1,2,3])).sum()
@@ -751,19 +719,16 @@ PADD_5 = (CF_input.loc['PADD',:].isin([1,2,3,4,5])).sum()
 
 fig, ax = plt.subplots(figsize=(12, 10))
 
-def set_cf_plot():
-    plt.rcParams['axes.linewidth'] = 3
-    plt.rcParams['xtick.labelsize'] = 30
-    plt.rcParams['ytick.labelsize'] = 30
-    
-    plt.xticks(fontname='Arial')
-    plt.yticks(fontname='Arial')
-    
-    plt.rcParams.update({'mathtext.fontset': 'custom'})
-    plt.rcParams.update({'mathtext.default': 'regular'})
-    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 30
+plt.rcParams['ytick.labelsize'] = 30
 
-set_cf_plot()
+plt.xticks(fontname='Arial')
+plt.yticks(fontname='Arial')
+
+plt.rcParams.update({'mathtext.fontset': 'custom'})
+plt.rcParams.update({'mathtext.default': 'regular'})
+plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
 CF_input.iloc[2:, 0:PADD_1].sum(axis=1).plot(ax=ax, color=b, linewidth=3)
 CF_input.iloc[2:, PADD_1:PADD_2].sum(axis=1).plot(ax=ax, color=g, linewidth=3)
@@ -772,9 +737,9 @@ CF_input.iloc[2:, PADD_3:PADD_4].sum(axis=1).plot(ax=ax, color=o, linewidth=3)
 CF_input.iloc[2:, PADD_4:PADD_5].sum(axis=1).plot(ax=ax, color=y, linewidth=3)
 
 ax.set_xlim([0, max_distance])
-ax.set_ylim([0, 18000])
+ax.set_ylim([0, 20000])
 
-ax.set_xlabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=35)
+ax.set_xlabel(r'$\mathbf{Travel\ distance}$ [km]', fontname='Arial', fontsize=35)
 ax.set_ylabel(r'$\mathbf{Cumulative\ WRRFs\ capacity}$ [MGD]', fontname='Arial', fontsize=35)
 
 ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False)
@@ -791,11 +756,16 @@ ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, 
 
 #%% CO2 abatement cost analysis
 
+# TODO: continue from here
+
 filterwarnings('ignore')
 
-# TODO: update the dataset here
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
+# !!! update the input file if necessary
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2024-08-20.xlsx')
+# removal WRRFs with no real_distance_km
 WRRF_input = WRRF_input.dropna(subset='real_distance_km')
+
+# TODO: continue from here
 
 # TODO: update the dataset here
 elec = pd.read_excel(folder + 'state_elec_price_GHG.xlsx', 'summary')
@@ -904,7 +874,10 @@ result.to_excel(folder + f'results/decarbonization_{date.today()}_{i}.xlsx')
 #%% merge the results and the input
 
 # TODO: update the input file
-input_data = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
+
+# !!! update the input file if necessary
+input_data = pd.read_excel(folder + 'HTL_geospatial_model_input_2024-08-20.xlsx')
+# removal WRRFs with no real_distance_km
 input_data = input_data.dropna(subset='real_distance_km')
 
 # TODO: update these output results files
@@ -1815,7 +1788,10 @@ national_uncertainty_result.to_excel(folder + f'results/integrated_national_unce
 filterwarnings('ignore')
 
 # TODO: update the dataset here
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
+
+# !!! update the input file if necessary
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2024-08-20.xlsx')
+# removal WRRFs with no real_distance_km
 WRRF_input = WRRF_input.dropna(subset='real_distance_km')
 
 # TODO: update the dataset here
@@ -2025,7 +2001,9 @@ fig = plt.figure(figsize=(10, 10))
 
 gs = fig.add_gridspec(1, 3, hspace=0, wspace=0)
 
-def set_cf_plot():
+def add_region(position, xlabel, color):
+    ax = fig.add_subplot(gs[0, position])
+    
     plt.rcParams['axes.linewidth'] = 3
     plt.rcParams['xtick.labelsize'] = 38
     plt.rcParams['ytick.labelsize'] = 38
@@ -2036,11 +2014,6 @@ def set_cf_plot():
     plt.rcParams.update({'mathtext.fontset': 'custom'})
     plt.rcParams.update({'mathtext.default': 'regular'})
     plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
-
-def add_region(position, xlabel, color):
-    ax = fig.add_subplot(gs[0, position])
-    
-    set_cf_plot()
     
     ax = plt.gca()
     ax.set_ylim([-20, 10])
@@ -2093,7 +2066,10 @@ Minnesota.sort_values(by='total_sludge_amount_kg_per_year', ascending=False, inp
 center_WRRF = Minnesota.iloc[0,:]
 
 # TODO: update this file
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
+
+# !!! update the input file if necessary
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2024-08-20.xlsx')
+# removal WRRFs with no real_distance_km
 WRRF_input = WRRF_input.dropna(subset='real_distance_km')
 
 # TODO: confirm only WRRFs in these three states can be within 200 km (linear distance) from the center WRRF
@@ -2436,7 +2412,10 @@ add_point('all', db)
 filterwarnings('ignore')
 
 # TODO: update the dataset here
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2023-12-26.xlsx')
+
+# !!! update the input file if necessary
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2024-08-20.xlsx')
+# removal WRRFs with no real_distance_km
 WRRF_input = WRRF_input.dropna(subset='real_distance_km')
 
 # TODO: update the dataset here
