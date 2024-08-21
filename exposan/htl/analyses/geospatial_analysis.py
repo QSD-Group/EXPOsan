@@ -20,7 +20,7 @@ from matplotlib.mathtext import _mathtext as mathtext
 from matplotlib.patches import Rectangle
 from colorpalette import Color
 from exposan.htl import create_geospatial_system, create_geospatial_model
-from qsdsan.utils import palettes
+from qsdsan.utils import auom, palettes
 from datetime import date
 from warnings import filterwarnings
 
@@ -43,6 +43,12 @@ do = Color('dark_orange', (167, 95, 62)).HEX
 dy = Color('dark_yellow', (171, 137, 55)).HEX
 da = Color('dark_gray', (78, 78, 78)).HEX
 dp = Color('dark_purple', (76, 56, 90)).HEX
+
+# kg/L
+water_density = 1
+
+_m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
+_MMgal_to_L = auom('gal').conversion_factor('L')*1000000
 
 # !!! when creating this input file, change year to 2022 in IEDO code for electricity GHG calculation
 WRRF = pd.read_excel(folder + 'HTL_geospatial_input_08202024.xlsx')
@@ -94,7 +100,7 @@ WRRF = WRRF.rename({'FACILITY':'facility',
                     'CITY':'city',
                     'STATE':'state',
                     'CWNS_NUM':'CWNS',
-                    'FACILITY_ID':'facility_id',
+                    'FACILITY_ID':'facility_ID',
                     'LATITUDE':'latitude',
                     'LONGITUDE':'longitude',
                     'FLOW_2022_MGD_FINAL':'flow_2022_MGD'}, axis=1)
@@ -150,6 +156,16 @@ elec_GHG = WRRF[['balancing_area','kg_CO2_kWh']].copy()
 elec_GHG.drop_duplicates(inplace=True)
 elec_GHG = elec_GHG.merge(balnc_area, how='left', left_on='balancing_area', right_on='PCA_REG')
 elec_GHG = gpd.GeoDataFrame(elec_GHG)
+
+# sludge disposal cost in $/kg sludge (Peccia and Westerhoff. 2015, https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931)
+sludge_disposal_cost = {'landfill': 0.413,
+                        'land_application': 0.606,
+                        'incineration': 0.441}
+
+# sludge emission factor in kg CO2 eq/kg sludge (values from IEDO)
+sludge_emission_factor = {'landfill': 5.65/1000*29.8,
+                          'land_application': 0.05*0.01*44/28*273,
+                          'incineration': 0}
 
 #%% WRRFs visualization
 
@@ -756,7 +772,7 @@ ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, 
 
 #%% CO2 abatement cost analysis
 
-# TODO: continue from here
+# TODO: continue from here (the current cell needs to be debugged)
 
 filterwarnings('ignore')
 
@@ -765,89 +781,78 @@ WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2024-08-20.xlsx'
 # removal WRRFs with no real_distance_km
 WRRF_input = WRRF_input.dropna(subset='real_distance_km')
 
-# TODO: continue from here
-
-# TODO: update the dataset here
-elec = pd.read_excel(folder + 'state_elec_price_GHG.xlsx', 'summary')
-
 # if just want to see the two plants in Urbana-Champaign:
 # WRRF_input = WRRF_input[WRRF_input['CWNS'].isin([17000112001, 17000112002])]
 
 print(len(WRRF_input))
 
-# TODO: put sludge_disposal_cost and sludge_emission_factor to initializaiton
-# TODO: update sludge_disposal_cost (based on literature mentioned below) and sludge_emission_factor (based on IEDO analysis) for the rest of code
-# sludge disposal cost in $/kg sludge
-# assume the cost for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
-sludge_disposal_cost = {'landfill': 0.413,
-                        'land_application': 0.606,
-                        'incineration': 0.441,
-                        'other_sludge_management': 0.413*0.3 + 0.606*0.55 + 0.441*0.15}
-
-# sludge emission factor in kg CO2 eq/kg sludge
-# assume the GHG for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
-sludge_emission_factor = {'landfill': 1.36,
-                          'land_application': 0.353,
-                          'incineration': 0.519,
-                          'other_sludge_management': 1.36*0.3 + 0.353*0.55 + 0.519*0.15}
-
-# TODO: update here as well
 WRRF_input['waste_cost'] = sum(WRRF_input[i]*sludge_disposal_cost[i] for i in sludge_disposal_cost.keys())/WRRF_input['total_sludge_amount_kg_per_year']*1000
 WRRF_input['waste_GHG'] =  sum(WRRF_input[i]*sludge_emission_factor[i] for i in sludge_emission_factor.keys())/WRRF_input['total_sludge_amount_kg_per_year']*1000
 
 CWNS = []
-facility_code = []
+facility_ID = []
 CO2_reduction = []
 sludge_CO2_reduction_ratio = []
 WRRF_CO2_reduction_ratio = []
-NPV = []
+saves = []
 USD_decarbonization = []
 oil_BPD = []
 
-for i in range(0, len(WRRF_input)): # !!! run in different consoles to speed up: 0, 5000, 10000
+# !!! run in different consoles to speed up: 0, 5000, 10000
+for i in range(0, len(WRRF_input)):
 # for i in range(0, 2):
     
-    # TODO: update parameters
-    sys, barrel = create_geospatial_system(waste_cost=WRRF_input.iloc[i]['waste_cost'],
-                                           waste_GHG=WRRF_input.iloc[i]['waste_GHG'],
-                                           size=WRRF_input.iloc[i]['flow_2022_MGD'],
-                                           distance=WRRF_input.iloc[i]['real_distance_km'],
+    sys, barrel = create_geospatial_system(size=WRRF_input.iloc[i]['flow_2022_MGD'],
+                                           sludge_transportation=0,
+                                           sludge_distance=100,
+                                           biocrude_distance=WRRF_input.iloc[i]['real_distance_km'],
                                            anaerobic_digestion=WRRF_input.iloc[i]['sludge_anaerobic_digestion'],
                                            aerobic_digestion=WRRF_input.iloc[i]['sludge_aerobic_digestion'],
                                            ww_2_dry_sludge_ratio=WRRF_input.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/WRRF_input.iloc[i]['flow_2022_MGD'],
                                            state=WRRF_input.iloc[i]['state'],
-                                           elec_GHG=float(elec[elec['state']==WRRF_input.iloc[i]['state']]['GHG (10-year median)']))
+                                           elec_GHG=WRRF_input.iloc[i]['kg_CO2_kWh'])
     
     flowsheet = sys.flowsheet
     unit = flowsheet.unit
     stream = flowsheet.stream
-    WRRF = unit.WWTP
+    WWTP = unit.WWTP
     raw_wastewater = stream.raw_wastewater
-    
-    # TODO: make sure constructions are removed for LCA
+    tea = sys.TEA
     lca = sys.LCA
     
-    # TODO: check calculations here
-    CO2_reduction_result = -lca.get_total_impacts()['GlobalWarming']
-  
-    sludge_CO2_reduction_ratio_result = CO2_reduction_result/WRRF_input.iloc[i]['biosolids_emission']/365/30
+    # tonne
+    sludge_tonne = raw_wastewater.F_vol*_m3perh_to_MGD*WWTP.ww_2_dry_sludge*(sys.operating_hours/24)*lca.lifetime
+    
+    # $/tonne
+    sludge_cost = -tea.solve_price(raw_wastewater)*water_density*_MMgal_to_L/WWTP.ww_2_dry_sludge
+    # kg CO2 eq/tonne
+    sludge_CI = lca.get_total_impacts(exclude=(raw_wastewater,))['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
+    
+    CO2_reduction_result = sludge_tonne*(WRRF_input.iloc[i]['waste_GHG'] - sludge_CI)
+    
+    try:
+        sludge_CO2_reduction_ratio_result = CO2_reduction_result/WRRF_input.iloc[i]['biosolids_emission']/365/30
+    # some WRRFs have incineration and the biosolids_emission is 0
+    except FloatingPointError:
+        sludge_CO2_reduction_ratio_result = np.nan
     
     WRRF_CO2_reduction_ratio_result = CO2_reduction_result/WRRF_input.iloc[i]['total_emission']/365/30
-
+    
+    cost_reduction_result = sludge_tonne*(WRRF_input.iloc[i]['waste_cost'] - sludge_cost)
+    
     # make sure CO2_reduction_result is positive if you want to calculate USD_per_tonne_CO2_reduction
     if CO2_reduction_result > 0:
-        # TODO: change to 2022$
-        # 2020$/tonne, save money: the results are negative; spend money: the results are positive
-        USD_per_tonne_CO2_reduction = -sys.TEA.NPV/CO2_reduction_result*1000
+        # save money: the results are negative; spend money: the results are positive
+        USD_per_tonne_CO2_reduction = -cost_reduction_result/CO2_reduction_result*1000
     else:
         USD_per_tonne_CO2_reduction = np.nan
     
     CWNS.append(WRRF_input.iloc[i]['CWNS'])
-    facility_code.append(WRRF_input.iloc[i]['facility_code'])
+    facility_ID.append(WRRF_input.iloc[i]['facility_ID'])
     CO2_reduction.append(CO2_reduction_result)
     sludge_CO2_reduction_ratio.append(sludge_CO2_reduction_ratio_result)
     WRRF_CO2_reduction_ratio.append(WRRF_CO2_reduction_ratio_result)
-    NPV.append(sys.TEA.NPV)
+    saves.append(cost_reduction_result)
     USD_decarbonization.append(USD_per_tonne_CO2_reduction)
     oil_BPD.append(barrel)
     
@@ -859,11 +864,11 @@ for i in range(0, len(WRRF_input)): # !!! run in different consoles to speed up:
         print(i)
     
 result = {'CWNS': CWNS,
-          'facility_code': facility_code,
+          'facility_ID': facility_ID,
           'CO2_reduction': CO2_reduction,
           'sludge_CO2_reduction_ratio': sludge_CO2_reduction_ratio,
           'WRRF_CO2_reduction_ratio': WRRF_CO2_reduction_ratio,
-          'NPV': NPV,
+          'saves': saves,
           'USD_decarbonization': USD_decarbonization,
           'oil_BPD': oil_BPD}
         
@@ -1376,21 +1381,6 @@ decarbonization_result = decarbonization_result[decarbonization_result['USD_deca
 
 print(len(decarbonization_result))
 
-# TODO: update those numbers
-# sludge disposal cost in $/kg sludge
-# assume the cost for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
-sludge_disposal_cost = {'landfill': 0.413,
-                        'land_application': 0.606,
-                        'incineration': 0.441,
-                        'other_sludge_management': 0.413*0.3 + 0.606*0.55 + 0.441*0.15}
-
-# sludge emission factor in kg CO2 eq/kg sludge
-# assume the GHG for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
-sludge_emission_factor = {'landfill': 1.36,
-                          'land_application': 0.353,
-                          'incineration': 0.519,
-                          'other_sludge_management': 1.36*0.3 + 0.353*0.55 + 0.519*0.15}
-
 decarbonization_result['waste_cost'] = sum(decarbonization_result[i]*sludge_disposal_cost[i] for i in sludge_disposal_cost.keys())/decarbonization_result['total_sludge_amount_kg_per_year']*1000
 decarbonization_result['waste_GHG'] =  sum(decarbonization_result[i]*sludge_emission_factor[i] for i in sludge_emission_factor.keys())/decarbonization_result['total_sludge_amount_kg_per_year']*1000
 
@@ -1401,10 +1391,10 @@ for i in range(0, len(decarbonization_result)): # !!! run in different consoles 
 # for i in range(0, 2):
     
     # TODO: update parameters
-    sys, barrel = create_geospatial_system(waste_cost=decarbonization_result.iloc[i]['waste_cost'],
-                                           waste_GHG=decarbonization_result.iloc[i]['waste_GHG'],
-                                           size=decarbonization_result.iloc[i]['flow_2022_MGD'],
-                                           distance=decarbonization_result.iloc[i]['real_distance_km'],
+    sys, barrel = create_geospatial_system(size=decarbonization_result.iloc[i]['flow_2022_MGD'],
+                                           sludge_transportation=0,
+                                           sludge_distance=100,
+                                           biocrude_distance=decarbonization_result.iloc[i]['real_distance_km'],
                                            anaerobic_digestion=decarbonization_result.iloc[i]['sludge_anaerobic_digestion'],
                                            aerobic_digestion=decarbonization_result.iloc[i]['sludge_aerobic_digestion'],
                                            ww_2_dry_sludge_ratio=decarbonization_result.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/decarbonization_result.iloc[i]['flow_2022_MGD'],
@@ -1803,21 +1793,6 @@ elec = pd.read_excel(folder + 'state_elec_price_GHG.xlsx', 'summary')
 
 print(len(WRRF_input))
 
-# TODO: update the values
-# sludge disposal cost in $/kg sludge
-# assume the cost for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
-sludge_disposal_cost = {'landfill': 0.413,
-                        'land_application': 0.606,
-                        'incineration': 0.441,
-                        'other_sludge_management': 0.413*0.3 + 0.606*0.55 + 0.441*0.15}
-
-# sludge emission factor in kg CO2 eq/kg sludge
-# assume the GHG for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
-sludge_emission_factor = {'landfill': 1.36,
-                          'land_application': 0.353,
-                          'incineration': 0.519,
-                          'other_sludge_management': 1.36*0.3 + 0.353*0.55 + 0.519*0.15}
-
 WRRF_input['waste_cost'] = sum(WRRF_input[i]*sludge_disposal_cost[i] for i in sludge_disposal_cost.keys())/WRRF_input['total_sludge_amount_kg_per_year']*1000
 WRRF_input['waste_GHG'] =  sum(WRRF_input[i]*sludge_emission_factor[i] for i in sludge_emission_factor.keys())/WRRF_input['total_sludge_amount_kg_per_year']*1000
 
@@ -1831,10 +1806,10 @@ CU_uncertainty_decarbonization_cost = pd.DataFrame()
 
 # TODO: check the calculations here
 for i in range(0, 2):
-    sys, barrel = create_geospatial_system(waste_cost=Urbana_Champaign.iloc[i]['waste_cost'],
-                                           waste_GHG=Urbana_Champaign.iloc[i]['waste_GHG'],
-                                           size=Urbana_Champaign.iloc[i]['flow_2022_MGD'],
-                                           distance=Urbana_Champaign.iloc[i]['real_distance_km'],
+    sys, barrel = create_geospatial_system(size=Urbana_Champaign.iloc[i]['flow_2022_MGD'],
+                                           sludge_transportation=0,
+                                           sludge_distance=100,
+                                           biocrude_distance=Urbana_Champaign.iloc[i]['real_distance_km'],
                                            anaerobic_digestion=Urbana_Champaign.iloc[i]['sludge_anaerobic_digestion'],
                                            aerobic_digestion=Urbana_Champaign.iloc[i]['sludge_aerobic_digestion'],
                                            ww_2_dry_sludge_ratio=Urbana_Champaign.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/Urbana_Champaign.iloc[i]['flow_2022_MGD'],
@@ -1947,12 +1922,10 @@ elec_GHG = float(elec[elec['state']==Urbana_Champaign[Urbana_Champaign['CWNS'] =
 # TODO: check parameters
 # TODO: is sludge_distance manually ontained from Google Maps?
 # sludge_distance from Google Maps
-sys, barrel = create_geospatial_system(waste_cost=average_cost,
-                                       waste_GHG=average_GHG,
-                                       size=total_size,
-                                       distance=distance_to_refinery,
+sys, barrel = create_geospatial_system(size=total_size,
                                        sludge_transportation=1,
                                        sludge_distance=16.2*Urbana_Champaign.iloc[1]['total_sludge_amount_kg_per_year']/(Urbana_Champaign.iloc[0]['total_sludge_amount_kg_per_year']+Urbana_Champaign.iloc[1]['total_sludge_amount_kg_per_year']),
+                                       biocrude_distance=distance_to_refinery,
                                        average_sludge_dw_ash=sludge_ash_values[1],
                                        average_sludge_afdw_lipid=sludge_lipid_values[1],
                                        average_sludge_afdw_protein=sludge_protein_values[1],
@@ -2120,29 +2093,14 @@ Minnesota.sort_values(by='total_sludge_amount_kg_per_year', ascending=False, inp
 
 elec = pd.read_excel(folder + 'state_elec_price_GHG.xlsx', 'summary')
 
-# TODO: the same instructions for these numbers as before
-# sludge disposal cost in $/kg sludge
-# assume the cost for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
-sludge_disposal_cost = {'landfill': 0.413,
-                        'land_application': 0.606,
-                        'incineration': 0.441,
-                        'other_sludge_management': 0.413*0.3 + 0.606*0.55 + 0.441*0.15}
-
-# sludge emission factor in kg CO2 eq/kg sludge
-# assume the GHG for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
-sludge_emission_factor = {'landfill': 1.36,
-                          'land_application': 0.353,
-                          'incineration': 0.519,
-                          'other_sludge_management': 1.36*0.3 + 0.353*0.55 + 0.519*0.15}
-
 Minnesota['waste_cost'] = sum(Minnesota[i]*sludge_disposal_cost[i] for i in sludge_disposal_cost.keys())/Minnesota['total_sludge_amount_kg_per_year']*1000
 Minnesota['waste_GHG'] =  sum(Minnesota[i]*sludge_emission_factor[i] for i in sludge_emission_factor.keys())/Minnesota['total_sludge_amount_kg_per_year']*1000
 
 # TODO: check parameters
-sys, barrel = create_geospatial_system(waste_cost=Minnesota.iloc[0]['waste_cost'],
-                                       waste_GHG=Minnesota.iloc[0]['waste_GHG'],
-                                       size=Minnesota.iloc[0]['flow_2022_MGD'],
-                                       distance=Minnesota.iloc[0]['real_distance_km'],
+sys, barrel = create_geospatial_system(size=Minnesota.iloc[0]['flow_2022_MGD'],
+                                       sludge_transportation=0,
+                                       sludge_distance=100,
+                                       biocrude_distance=Minnesota.iloc[0]['real_distance_km'],
                                        anaerobic_digestion=Minnesota.iloc[0]['sludge_anaerobic_digestion'],
                                        aerobic_digestion=Minnesota.iloc[0]['sludge_aerobic_digestion'],
                                        ww_2_dry_sludge_ratio=Minnesota.iloc[0]['total_sludge_amount_kg_per_year']/1000/365/Minnesota.iloc[0]['flow_2022_MGD'],
@@ -2193,19 +2151,6 @@ MN_WI_IA_transportation = pd.read_excel(folder + 'results/Minnesota/satellite_WR
 filterwarnings('ignore')
 
 print(len(MN_WI_IA_transportation))
-
-# TODO: update these numbers
-sludge_disposal_cost = {'landfill': 0.413,
-                        'land_application': 0.606,
-                        'incineration': 0.441,
-                        'other_sludge_management': 0.413*0.3 + 0.606*0.55 + 0.441*0.15}
-
-# sludge emission factor in kg CO2 eq/kg sludge
-# assume the GHG for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
-sludge_emission_factor = {'landfill': 1.36,
-                          'land_application': 0.353,
-                          'incineration': 0.519,
-                          'other_sludge_management': 1.36*0.3 + 0.353*0.55 + 0.519*0.15}
 
 MN_WI_IA_transportation['waste_cost'] = sum(MN_WI_IA_transportation[i]*sludge_disposal_cost[i] for i in sludge_disposal_cost.keys())/MN_WI_IA_transportation['total_sludge_amount_kg_per_year']*1000
 MN_WI_IA_transportation['waste_GHG'] =  sum(MN_WI_IA_transportation[i]*sludge_emission_factor[i] for i in sludge_emission_factor.keys())/MN_WI_IA_transportation['total_sludge_amount_kg_per_year']*1000
@@ -2279,12 +2224,10 @@ state = 'MN'
 elec_GHG = float(elec[elec['state']==state]['GHG (10-year median)'])
 
 # TODO: check parameters
-sys, barrel = create_geospatial_system(waste_cost=average_cost,
-                                       waste_GHG=average_GHG,
-                                       size=total_size,
-                                       distance=distance_to_refinery,
+sys, barrel = create_geospatial_system(size=total_size,
                                        sludge_transportation=1,
                                        sludge_distance=sludge_transporataion_distance,
+                                       biocrude_distance=distance_to_refinery,
                                        average_sludge_dw_ash=sludge_ash_values[1],
                                        average_sludge_afdw_lipid=sludge_lipid_values[1],
                                        average_sludge_afdw_protein=sludge_protein_values[1],
@@ -2423,24 +2366,6 @@ elec = pd.read_excel(folder + 'state_elec_price_GHG.xlsx', 'summary')
 
 print(len(WRRF_input))
 
-# TODO: update these numbers
-# sludge disposal cost in $/kg sludge
-# assume the cost for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
-sludge_disposal_cost = {'landfill': 0.413,
-                        'land_application': 0.606,
-                        'incineration': 0.441,
-                        'other_sludge_management': 0.413*0.3 + 0.606*0.55 + 0.441*0.15}
-
-# sludge emission factor in kg CO2 eq/kg sludge
-# assume the GHG for other_sludge_management is the weighted average of the other three, ratio based on Peccia and Westerhoff. 2015. https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931
-sludge_emission_factor = {'landfill': 1.36,
-                          'land_application': 0.353,
-                          'incineration': 0.519,
-                          'other_sludge_management': 1.36*0.3 + 0.353*0.55 + 0.519*0.15}
-
-waste_cost = sludge_disposal_cost['other_sludge_management']*1000
-waste_GHG =  sludge_emission_factor['other_sludge_management']*1000
-
 # TODO: check the following notes
 # TODO: is this the average sludge/biosolids compositions? is there a way to also considered lime stabilization?
 # use data for sludge + biosolids (as we did in the HTL model paper)
@@ -2468,12 +2393,10 @@ for size in np.linspace(2, 20, 10):
         # TODO: check parameters
         # TODO: how do we get 207? can we replace this with a formula, if possible?
         # 207 km is the median travel distance from WRRFs to oil refineries
-        sys, barrel = create_geospatial_system(waste_cost=waste_cost,
-                                               waste_GHG=waste_GHG,
-                                               size=size,
-                                               distance=207,
+        sys, barrel = create_geospatial_system(size=size,
                                                sludge_transportation=1,
                                                sludge_distance=sludge_distance,
+                                               biocrude_distance=207,
                                                average_sludge_dw_ash=HM_sludge_ash_values[1],
                                                average_sludge_afdw_lipid=HM_sludge_lipid_values[1],
                                                average_sludge_afdw_protein=HM_sludge_protein_values[1],
