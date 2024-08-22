@@ -205,6 +205,8 @@ def test_adm1_junctions():
     assert np.isclose(fs.biogas.imass['S_h2']*24 * h2.i_mass, 0.0035541, rtol=1e-2)
     assert np.isclose(fs.biogas.imass['S_ch4']*24 * ch4.i_mass, 1065.3523, rtol=1e-2)
     assert np.isclose(fs.biogas.imass['S_IC']*24 * co2.i_mass, 1535.4118, rtol=1e-2)
+    
+    sys.flowsheet.clear()
 
 #%%
 def test_adm1p_junctions():
@@ -485,6 +487,8 @@ def test_adm1p_junctions():
     ac(np.delete(s.eff_asm.conc, idx)[:-1],  # exclude water
        np.delete(s.alt_eff_asm.conc, idx)[:-1], 
        atol=1.0)
+    
+    sys.flowsheet.clear()
 
 #%%
 
