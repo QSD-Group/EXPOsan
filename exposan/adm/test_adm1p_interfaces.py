@@ -116,14 +116,21 @@ out_adm1p = dict(
     X_PP=8.05e-6*P_mw,
     # X_biomass=3.600,
     X_su=3.600,
-    S_K=0.005*39,
-    S_Mg=0.001*24.3,
-    S_Ca=0.001*40,
-    X_ACP=0.002*310.176722,
-    X_struv=0.011*245.406502,
-    S_Na=0.003*23,
-    S_Cl=0.029*35.5,
+    # S_K=0.005*39,
+    # S_Mg=0.001*24.3,
+    # S_Ca=0.001*40,
+    # X_ACP=0.002*310.176722,
+    # X_struv=0.011*245.406502,
+    # S_Na=0.003*23,
+    # S_Cl=0.029*35.5,
     # S_N2=0.0004*14
+    S_K=208.84*1e-3,
+    S_Mg=28.29*1e-3,
+    S_Na=70*1e-3,
+    S_Cl=1035*1e-3,
+    S_Ca=20.45*1e-3,
+    X_ACP=722.17*1e-3,
+    X_struv=1578.52*245.406502/struv_mw*1e-3
     )
 
 _out_adm1p = dict(
@@ -158,32 +165,6 @@ out_asm2d = dict(
     X_ACP=722.17,
     X_struv=1578.52*245.406502/struv_mw
     )
-
-# default_init_conds = {
-#     'S_su': 0.0124*1e3,
-#     'S_aa': 0.0055*1e3,
-#     'S_fa': 0.1074*1e3,
-#     'S_va': 0.0123*1e3,
-#     'S_bu': 0.0140*1e3,
-#     'S_pro': 0.0176*1e3,
-#     'S_ac': 0.0893*1e3,
-#     'S_h2': 2.5055e-7*1e3,
-#     'S_ch4': 0.0555*1e3,
-#     'S_IC': 0.0951*C_mw*1e3,
-#     'S_IN': 0.0945*N_mw*1e3,
-#     'S_I': 0.1309*1e3,
-#     'X_ch': 0.0205*1e3,
-#     'X_pr': 0.0842*1e3,
-#     'X_li': 0.0436*1e3,
-#     'X_su': 0.3122*1e3,
-#     'X_aa': 0.9317*1e3,
-#     'X_fa': 0.3384*1e3,
-#     'X_c4': 0.3258*1e3,
-#     'X_pro': 0.1011*1e3,
-#     'X_ac': 0.6772*1e3,
-#     'X_h2': 0.2848*1e3,
-#     'X_I': 17.2162*1e3
-#     }
 
 default_init_conds = {
     'S_su': 0.014*1e3,
@@ -264,10 +245,10 @@ J1 = su.mASM2dtoADM1p('J1', upstream=inf_asm, downstream='inf_adm',
 J1.xs_to_li = 0.6
 AD = su.AnaerobicCSTR(
     'AD', 
-    ins=alt_inf_adm,
-    # ins=J1-0, 
+    # ins=alt_inf_adm,
+    ins=J1-0, 
     outs=('biogas', 'eff_adm'), isdynamic=True, 
-    V_liq=V_liq, V_gas=V_gas, T=Temp, model=adm
+    V_liq=V_liq, V_gas=V_gas, T=Temp, model=adm,
     )
 # AD.algebraic_h2 = True
 AD.algebraic_h2 = False
@@ -287,4 +268,5 @@ sys.set_dynamic_tracker(AD, fs.biogas, fs.eff_adm, fs.eff_asm)
 
 #%%
 def run():
-    sys.simulate(state_reset_hook='reset_cache', t_span=(0, 400), method='BDF')
+    sys.simulate(state_reset_hook='reset_cache', t_span=(0, 200), method='BDF')
+# run()

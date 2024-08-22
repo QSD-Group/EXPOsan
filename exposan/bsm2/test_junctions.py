@@ -482,8 +482,8 @@ def test_adm1p_junctions():
     ######### ADM1p to mASM2d ###########
     mass2mol = cmps_asm.i_mass / cmps_asm.chem_MW
     idx = cmps_asm.indices(_out_asm2d.keys())
-    _molar = np.round(s.eff_asm.conc[idx] * mass2mol[idx] * 1e-3, 3)
-    ac(_molar, np.array([v for v in _out_asm2d.values()])*1e-3, atol=1e-3)
+    _molar = s.eff_asm.conc[idx] * mass2mol[idx]
+    ac(_molar, np.array([v for v in _out_asm2d.values()]), atol=1.0)
     ac(np.delete(s.eff_asm.conc, idx)[:-1],  # exclude water
        np.delete(s.alt_eff_asm.conc, idx)[:-1], 
        atol=1.0)
