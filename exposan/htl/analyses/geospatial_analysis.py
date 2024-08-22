@@ -87,6 +87,7 @@ WRRF = WRRF[['FACILITY','CITY','STATE','CWNS_NUM','FACILITY_ID','LATITUDE',
 TT_w_AeD = ['B2','C2','D2','E2','E2P','G2','I2','N2','O2','LAGOON_AER','LAGOON_UNCATEGORIZED']
 TT_w_AD = ['B1','B1E','B4','C1','D1','F1','G1','G1E','H1','I1','I1E','N1','O1','O1E','LAGOON_ANAER','LAGOON_FAC']
 
+# TODO: check this, and how this have been used?
 # to be conservative (AeD has higher ash content than AD):
 # if a WRRF has AeD (regardless of AD), assume all sludge composition follows the AeD sludge composition,
 # if no AeD but has AD, then use AD composition
@@ -591,9 +592,6 @@ WRRF_input = gpd.GeoDataFrame(WRRF_input, crs='EPSG:4269',
 WRRF_input = WRRF_input.to_crs(crs='EPSG:3857')
 
 fig, ax = plt.subplots(figsize=(30, 30))
-ax.tick_params(top=False, bottom=False, left=False, right=False,
-               labelleft=False, labelbottom=False)
-ax.set_frame_on(False)
 
 US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
 
@@ -608,6 +606,10 @@ WRRF_input[between_2_and_20].plot(ax=ax, color=r, markersize=WRRF_input.loc[betw
 
 less_than_2 = sludge_GHG_tonne_per_day <= 2
 WRRF_input[less_than_2].plot(ax=ax, color=r, markersize=WRRF_input.loc[less_than_2, sludge_GHG_tonne_per_day.name]/10, alpha=0.1)
+
+ax.set_aspect(1)
+
+ax.set_axis_off()
 
 #%% cumulative WRRFs capacity vs distances (data processing)
 
@@ -772,8 +774,6 @@ ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, 
 
 #%% CO2 abatement cost analysis
 
-# TODO: continue from here (the current cell needs to be debugged)
-
 filterwarnings('ignore')
 
 # !!! update the input file if necessary
@@ -823,8 +823,15 @@ for i in range(0, len(WRRF_input)):
     # tonne
     sludge_tonne = raw_wastewater.F_vol*_m3perh_to_MGD*WWTP.ww_2_dry_sludge*(sys.operating_hours/24)*lca.lifetime
     
-    # $/tonne
-    sludge_cost = -tea.solve_price(raw_wastewater)*water_density*_MMgal_to_L/WWTP.ww_2_dry_sludge
+    try:
+        # $/tonne
+        sludge_cost = -tea.solve_price(raw_wastewater)*water_density*_MMgal_to_L/WWTP.ww_2_dry_sludge
+    except RuntimeError:
+        # TODO: double check this
+        # due to high gross receipts tax (higher than net income, it might be impossible to break even)
+        # TODO: there might be a problem: when solving price, the income tax in fixed, however, the raw_wastewater price could change net income, which can change income tax
+        print('-------RUNTIME ERROR-------')
+        
     # kg CO2 eq/tonne
     sludge_CI = lca.get_total_impacts(exclude=(raw_wastewater,))['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
     
@@ -838,7 +845,10 @@ for i in range(0, len(WRRF_input)):
     
     WRRF_CO2_reduction_ratio_result = CO2_reduction_result/WRRF_input.iloc[i]['total_emission']/365/30
     
-    cost_reduction_result = sludge_tonne*(WRRF_input.iloc[i]['waste_cost'] - sludge_cost)
+    try:
+        cost_reduction_result = sludge_tonne*(WRRF_input.iloc[i]['waste_cost'] - sludge_cost)
+    except NameError:
+        cost_reduction_result = np.nan
     
     # make sure CO2_reduction_result is positive if you want to calculate USD_per_tonne_CO2_reduction
     if CO2_reduction_result > 0:
@@ -860,7 +870,7 @@ for i in range(0, len(WRRF_input)):
         print('HERE WE GO!')
     
     # check progress
-    if i%5 == 0:
+    if i%50 == 0:
         print(i)
     
 result = {'CWNS': CWNS,
@@ -878,35 +888,32 @@ result.to_excel(folder + f'results/decarbonization_{date.today()}_{i}.xlsx')
 
 #%% merge the results and the input
 
-# TODO: update the input file
-
 # !!! update the input file if necessary
 input_data = pd.read_excel(folder + 'HTL_geospatial_model_input_2024-08-20.xlsx')
 # removal WRRFs with no real_distance_km
 input_data = input_data.dropna(subset='real_distance_km')
 
-# TODO: update these output results files
-output_result_1 = pd.read_excel(folder + 'results/decarbonization_biocrude_baseline_data/decarbonization_2023-12-31_4999.xlsx')
-output_result_2 = pd.read_excel(folder + 'results/decarbonization_biocrude_baseline_data/decarbonization_2023-12-31_9999.xlsx')
-output_result_3 = pd.read_excel(folder + 'results/decarbonization_biocrude_baseline_data/decarbonization_2023-12-31_14952.xlsx')
+# !!! update these files if necessary
+output_result_1 = pd.read_excel(folder + 'results/decarbonization_biocrude_baseline_data/decarbonization_2024-08-22_4999.xlsx')
+output_result_2 = pd.read_excel(folder + 'results/decarbonization_biocrude_baseline_data/decarbonization_2024-08-22_9999.xlsx')
+output_result_3 = pd.read_excel(folder + 'results/decarbonization_biocrude_baseline_data/decarbonization_2024-08-22_15858.xlsx')
 
 output_result = pd.concat([output_result_1, output_result_2, output_result_3])
 
-assert input_data[['CWNS','facility_code']].duplicated().sum() == 0
-assert output_result[['CWNS','facility_code']].duplicated().sum() == 0
-
-integrated_result = input_data.merge(output_result, how='left', on=['CWNS','facility_code'])
+integrated_result = input_data.merge(output_result, how='left', on=['CWNS'])
 
 integrated_result.to_excel(folder + f'results/integrated_decarbonization_result_{date.today()}.xlsx')
 
 #%% read decarbonization data
 
-# TODO: update this file
-decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2023-12-31.xlsx')
+# !!! update the file here if necessary
+decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
 decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'].notna()]
 decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'] <= 0]
 
 #%% decarbonization map
+
+# TODO: make 2 or 3 decarbonization maps; each for one type of WRRF (if 2: digestion & no digestion; if 3: AD & AeD & no digestion)
 
 decarbonization_map = decarbonization_result.sort_values(by='total_emission', ascending=False)
 decarbonization_map = gpd.GeoDataFrame(decarbonization_map, crs='EPSG:4269',
@@ -914,33 +921,29 @@ decarbonization_map = gpd.GeoDataFrame(decarbonization_map, crs='EPSG:4269',
                                                                    y=decarbonization_map.latitude))
 decarbonization_map = decarbonization_map.to_crs(crs='EPSG:3857')
 
-# TODO: update the code/figure during execution, if necessary
+fig, ax = plt.subplots(figsize=(30, 30))
 
-fig, ax = plt.subplots(figsize=(15, 10))
-ax.tick_params(top=False, bottom=False, left=False, right=False,
-               labelleft=False, labelbottom=False)
-ax.set_frame_on(False)
+US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
 
-US.plot(ax=ax, color='w', edgecolor='k', linewidth=2)
-
-# use tonne/day
-
+# tonne/day
 decarbonization_map['CO2_reduction_tonne_per_day'] = decarbonization_map['CO2_reduction']/30/365/1000
 
 WRRF_GHG_reduction_tonne_per_day = decarbonization_map['CO2_reduction_tonne_per_day']
 
-less_than_50 = WRRF_GHG_reduction_tonne_per_day <= 5
-decarbonization_map[less_than_50].plot(ax=ax, color=a, markersize=decarbonization_map.loc[less_than_50, WRRF_GHG_reduction_tonne_per_day.name]*10, alpha=0.5)
+more_than_20 = WRRF_GHG_reduction_tonne_per_day > 20
+decarbonization_map[more_than_20].plot(ax=ax, color=dg, markersize=decarbonization_map.loc[more_than_20, WRRF_GHG_reduction_tonne_per_day.name]*100, edgecolor='k', linewidth=1.5, alpha=1)
 
-between_50_and_500 = (WRRF_GHG_reduction_tonne_per_day > 5) & (WRRF_GHG_reduction_tonne_per_day <= 50)
-decarbonization_map[between_50_and_500].plot(ax=ax, color=r, markersize=decarbonization_map.loc[between_50_and_500, WRRF_GHG_reduction_tonne_per_day.name]*10, edgecolor='k', linewidth=1.5, alpha=0.7)
+between_2_and_20 = (WRRF_GHG_reduction_tonne_per_day > 2) & (WRRF_GHG_reduction_tonne_per_day <= 20)
+decarbonization_map[between_2_and_20].plot(ax=ax, color=g, markersize=decarbonization_map.loc[between_2_and_20, WRRF_GHG_reduction_tonne_per_day.name]*100, edgecolor='k', linewidth=1.5, alpha=0.5)
 
-more_than_500 = WRRF_GHG_reduction_tonne_per_day > 50
-decarbonization_map[more_than_500].plot(ax=ax, color=g, markersize=decarbonization_map.loc[more_than_500, WRRF_GHG_reduction_tonne_per_day.name]*10, edgecolor='k', linewidth=1.5, alpha=0.9)
+less_than_2 = WRRF_GHG_reduction_tonne_per_day <= 2
+decarbonization_map[less_than_2].plot(ax=ax, color=g, markersize=decarbonization_map.loc[less_than_2, WRRF_GHG_reduction_tonne_per_day.name]*100, alpha=0.1)
+
+ax.set_aspect(1)
+
+ax.set_axis_off()
 
 #%% facility level decarbonizaiton ratio and biocrude production
-
-# TODO: update the code/figure during execution, if necessary
 
 # import decarbonization_result from #%% read decarbonization data
 
@@ -963,8 +966,8 @@ def facility_plot(position, color):
     plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
     
     ax = plt.gca()
-    ax.set_xlim([-6, 36])
-    ax.set_ylim([0, 700])
+    ax.set_xlim([-6, 26])
+    ax.set_ylim([0, 500])
     ax.xaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
     
     if position == 0:
@@ -972,35 +975,36 @@ def facility_plot(position, color):
         
         ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False)
         
-        plt.xticks(np.arange(0, 40, 10))
+        plt.xticks(np.arange(0, 30, 10))
         
         ax_top = ax.twiny()
         ax_top.set_xlim(ax.get_xlim())
-        plt.xticks(np.arange(0, 40, 10))
+        plt.xticks(np.arange(0, 30, 10))
         ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
         
         ax.set_ylabel(r'$\mathbf{Biocrude\ production}$ [BPD]', fontname='Arial', fontsize=35)
-        
+    
+    # TODO: some WRRFs have both AD and AeD
     if position == 1:
         data = decarbonization_result[decarbonization_result['sludge_aerobic_digestion'] == 1]
 
         ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
         
-        plt.xticks(np.arange(0, 40, 10))
+        plt.xticks(np.arange(0, 30, 10))
         
         ax_top = ax.twiny()
         ax_top.set_xlim(ax.get_xlim())
-        plt.xticks(np.arange(0, 40, 10))
+        plt.xticks(np.arange(0, 30, 10))
         ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
         
         ax.set_xlabel(r'$\mathbf{Decarbonization\ potential}$', fontname='Arial', fontsize=35)
-        
+    
     if position == 2:
         data = decarbonization_result[decarbonization_result['sludge_anaerobic_digestion'] == 1]
         
         ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
         
-        plt.xticks(np.arange(0, 40, 10))
+        plt.xticks(np.arange(0, 30, 10))
         
         ax_right = ax.twinx()
         ax_right.set_ylim(ax.get_ylim())
@@ -1010,7 +1014,7 @@ def facility_plot(position, color):
         
         ax_top = ax.twiny()
         ax_top.set_xlim(ax.get_xlim())
-        plt.xticks(np.arange(0, 40, 10))
+        plt.xticks(np.arange(0, 30, 10))
         ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
     
     ax.scatter(x=data['WRRF_CO2_reduction_ratio']*100,
@@ -1032,8 +1036,6 @@ facility_plot(1, y)
 facility_plot(2, b)
 
 #%% facility level decarbonizaiton amount and biocrude production
-
-# TODO: update the code/figure during execution, if necessary
 
 # import decarbonization_result from #%% read decarbonization data
 
@@ -1057,45 +1059,46 @@ def facility_plot(position, color):
     plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
     
     ax = plt.gca()
-    ax.set_xlim([-15, 165])
-    ax.set_ylim([0, 600])
+    ax.set_xlim([-15, 105])
+    ax.set_ylim([0, 500])
     
     if position == 0:
         data = decarbonization_result[(decarbonization_result['sludge_anaerobic_digestion'] != 1) & (decarbonization_result['sludge_aerobic_digestion'] != 1)]
         
         ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False)
         
-        plt.xticks(np.arange(0, 180, 30))
+        plt.xticks(np.arange(0, 120, 30))
         
         ax_top = ax.twiny()
         ax_top.set_xlim(ax.get_xlim())
-        plt.xticks(np.arange(0, 180, 30))
+        plt.xticks(np.arange(0, 120, 30))
         ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
         
         ax.set_ylabel(r'$\mathbf{Biocrude\ production}$ [BPD]', fontname='Arial', fontsize=35)
-        
+    
+    # TODO: some WRRFs have both AD and AeD
     if position == 1:
         data = decarbonization_result[decarbonization_result['sludge_aerobic_digestion'] == 1]
 
         ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
         
-        plt.xticks(np.arange(0, 180, 30))
+        plt.xticks(np.arange(0, 120, 30))
         
         ax_top = ax.twiny()
         ax_top.set_xlim(ax.get_xlim())
-        plt.xticks(np.arange(0, 180, 30))
+        plt.xticks(np.arange(0, 120, 30))
         ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
         
         ax.set_xlabel(r'$\mathbf{Decarbonization\ amount}$ [tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=35)
 
         mathtext.FontConstantsBase.sup1 = 0.35
-        
+    
     if position == 2:
         data = decarbonization_result[decarbonization_result['sludge_anaerobic_digestion'] == 1]
     
         ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
         
-        plt.xticks(np.arange(0, 180, 30))
+        plt.xticks(np.arange(0, 120, 30))
         
         ax_right = ax.twinx()
         ax_right.set_ylim(ax.get_ylim())
@@ -1105,7 +1108,7 @@ def facility_plot(position, color):
         
         ax_top = ax.twiny()
         ax_top.set_xlim(ax.get_xlim())
-        plt.xticks(np.arange(0, 180, 30))
+        plt.xticks(np.arange(0, 120, 30))
         ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
     
     ax.scatter(x=data['CO2_reduction']/30/365/1000,
@@ -1127,13 +1130,12 @@ facility_plot(1, y)
 facility_plot(2, b)
 #%% find WRRFs with max decarbonization ratio, decarbonization amount, and biocrude production
 
-# TODO: may add lime stabilization
-
 no_digestion_WRRFs = decarbonization_result[(decarbonization_result['sludge_anaerobic_digestion'] != 1) & (decarbonization_result['sludge_aerobic_digestion'] != 1)]
 print(no_digestion_WRRFs.sort_values('CO2_reduction', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
 print(no_digestion_WRRFs.sort_values('WRRF_CO2_reduction_ratio', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
 print(no_digestion_WRRFs.sort_values('oil_BPD', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
 
+# TODO: some WRRFs have both AD and AeD
 aerobic_digestion_WRRFs = decarbonization_result[decarbonization_result['sludge_aerobic_digestion'] == 1]
 print(aerobic_digestion_WRRFs.sort_values('CO2_reduction', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
 print(aerobic_digestion_WRRFs.sort_values('WRRF_CO2_reduction_ratio', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
@@ -1146,11 +1148,9 @@ print(anaerobic_digestion_WRRFs.sort_values('oil_BPD', ascending=False).iloc[0,]
 
 #%% facility level decarbonizaiton amount vs sludge amount
 
-# TODO: update the code/figure during execution, if necessary
-
 decarbonization_vs_sludge = decarbonization_result[['total_sludge_amount_kg_per_year','CO2_reduction']]
 
-fig, ax = plt.subplots(figsize=(12.5, 10))
+fig, ax = plt.subplots(figsize=(10, 10))
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
@@ -1165,33 +1165,33 @@ plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
 ax = plt.gca()
 
-ax.set_xlim((0, 350))
-ax.set_ylim((0, 125))
+ax.set_xlim((0, 300))
+ax.set_ylim((0, 60))
 
-ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
+ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False)
 
 ax.set_xlabel(r'$\mathbf{Sludge}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
 ax.set_ylabel(r'$\mathbf{Decarbonization}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=45)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-plt.xticks(np.arange(0, 400, 50))
-plt.yticks(np.arange(0, 150, 25))
+plt.xticks(np.arange(0, 350, 50))
+plt.yticks(np.arange(0, 70, 10))
 
 ax_right = ax.twinx()
-ax_right.set_ylim((0, 125))
-ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_right.set_ylim((0, 60))
+ax_right.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.xticks(np.arange(0, 400, 50))
-plt.yticks(np.arange(0, 150, 25))
+plt.xticks(np.arange(0, 350, 50))
+plt.yticks(np.arange(0, 70, 10))
 
 ax_top = ax.twiny()
 ax_top.set_xlim((0, 350))
 # TODO: why length was 20/10 but 7.5 here
 ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
-plt.xticks(np.arange(0, 400, 50))
-plt.yticks(np.arange(0, 150, 25))
+plt.xticks(np.arange(0, 350, 50))
+plt.yticks(np.arange(0, 70, 10))
 
 ax.scatter(x=decarbonization_vs_sludge['total_sludge_amount_kg_per_year']/1000/365,
            y=decarbonization_vs_sludge['CO2_reduction']/30/365/1000,
@@ -1202,11 +1202,9 @@ ax.scatter(x=decarbonization_vs_sludge['total_sludge_amount_kg_per_year']/1000/3
 
 #%% facility level decarbonizaiton amount vs distance
 
-# TODO: update the code/figure during execution, if necessary
-
 decarbonization_vs_sludge = decarbonization_result[['real_distance_km','CO2_reduction']]
 
-fig, ax = plt.subplots(figsize=(12.5, 10))
+fig, ax = plt.subplots(figsize=(10, 10))
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
@@ -1222,9 +1220,9 @@ plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 ax = plt.gca()
 
 ax.set_xlim((0, 1200))
-ax.set_ylim((0, 125))
+ax.set_ylim((0, 60))
 
-ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
+ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False)
 
 ax.set_xlabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=45)
 ax.set_ylabel(r'$\mathbf{Decarbonization}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=45)
@@ -1232,22 +1230,21 @@ ax.set_ylabel(r'$\mathbf{Decarbonization}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}
 mathtext.FontConstantsBase.sup1 = 0.35
 
 plt.xticks(np.arange(0, 1400, 200))
-plt.yticks(np.arange(0, 150, 25))
+plt.yticks(np.arange(0, 70, 10))
 
 ax_right = ax.twinx()
-ax_right.set_ylim((0, 125))
-ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_right.set_ylim((0, 60))
+ax_right.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 plt.xticks(np.arange(0, 1400, 200))
-plt.yticks(np.arange(0, 150, 25))
+plt.yticks(np.arange(0, 70, 10))
 
 ax_top = ax.twiny()
 ax_top.set_xlim((0, 1200))
-# TODO: why length was 20/10 but 7.5 here
 ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 plt.xticks(np.arange(0, 1400, 200))
-plt.yticks(np.arange(0, 150, 25))
+plt.yticks(np.arange(0, 70, 10))
 
 ax.scatter(x=decarbonization_vs_sludge['real_distance_km'],
            y=decarbonization_vs_sludge['CO2_reduction']/30/365/1000,
@@ -1258,11 +1255,9 @@ ax.scatter(x=decarbonization_vs_sludge['real_distance_km'],
 
 #%% facility level biocrude production vs sludge amount
 
-# TODO: update the code/figure during execution, if necessary
-
 decarbonization_vs_sludge = decarbonization_result[['total_sludge_amount_kg_per_year','oil_BPD']]
 
-fig, ax = plt.subplots(figsize=(12.5, 10))
+fig, ax = plt.subplots(figsize=(10, 10))
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
@@ -1277,33 +1272,32 @@ plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
 ax = plt.gca()
 
-ax.set_xlim((0, 350))
-ax.set_ylim((0, 600))
+ax.set_xlim((0, 250))
+ax.set_ylim((0, 500))
 
-ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
+ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False)
 
 ax.set_xlabel(r'$\mathbf{Sludge}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
 ax.set_ylabel(r'$\mathbf{Biocrude}$ [BPD]', fontname='Arial', fontsize=45)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-plt.xticks(np.arange(0, 400, 50))
-plt.yticks(np.arange(0, 700, 100))
+plt.xticks(np.arange(0, 300, 50))
+plt.yticks(np.arange(0, 600, 100))
 
 ax_right = ax.twinx()
-ax_right.set_ylim((0, 125))
-ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_right.set_ylim((0, 500))
+ax_right.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.xticks(np.arange(0, 400, 50))
-plt.yticks(np.arange(0, 700, 100))
+plt.xticks(np.arange(0, 300, 50))
+plt.yticks(np.arange(0, 600, 100))
 
 ax_top = ax.twiny()
-ax_top.set_xlim((0, 350))
-# TODO: why length was 20/10 but 7.5 here
+ax_top.set_xlim((0, 250))
 ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
-plt.xticks(np.arange(0, 400, 50))
-plt.yticks(np.arange(0, 700, 100))
+plt.xticks(np.arange(0, 300, 50))
+plt.yticks(np.arange(0, 600, 100))
 
 ax.scatter(x=decarbonization_vs_sludge['total_sludge_amount_kg_per_year']/1000/365,
            y=decarbonization_vs_sludge['oil_BPD'],
@@ -1314,11 +1308,9 @@ ax.scatter(x=decarbonization_vs_sludge['total_sludge_amount_kg_per_year']/1000/3
 
 #%% facility level biocrude production vs distance
 
-# TODO: update the code/figure during execution, if necessary
-
 decarbonization_vs_sludge = decarbonization_result[['real_distance_km','oil_BPD']]
 
-fig, ax = plt.subplots(figsize=(12.5, 10))
+fig, ax = plt.subplots(figsize=(10, 10))
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
@@ -1334,9 +1326,9 @@ plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 ax = plt.gca()
 
 ax.set_xlim((0, 1200))
-ax.set_ylim((0, 600))
+ax.set_ylim((0, 500))
 
-ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
+ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False)
 
 ax.set_xlabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=45)
 ax.set_ylabel(r'$\mathbf{Biocrude}$ [BPD]', fontname='Arial', fontsize=45)
@@ -1344,22 +1336,21 @@ ax.set_ylabel(r'$\mathbf{Biocrude}$ [BPD]', fontname='Arial', fontsize=45)
 mathtext.FontConstantsBase.sup1 = 0.35
 
 plt.xticks(np.arange(0, 1400, 200))
-plt.yticks(np.arange(0, 700, 100))
+plt.yticks(np.arange(0, 600, 100))
 
 ax_right = ax.twinx()
-ax_right.set_ylim((0, 125))
-ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_right.set_ylim((0, 500))
+ax_right.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 plt.xticks(np.arange(0, 1400, 200))
-plt.yticks(np.arange(0, 700, 100))
+plt.yticks(np.arange(0, 600, 100))
 
 ax_top = ax.twiny()
-ax_top.set_xlim((0, 350))
-# TODO: why length was 20/10 but 7.5 here
+ax_top.set_xlim((0, 1200))
 ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 plt.xticks(np.arange(0, 1400, 200))
-plt.yticks(np.arange(0, 700, 100))
+plt.yticks(np.arange(0, 600, 100))
 
 ax.scatter(x=decarbonization_vs_sludge['real_distance_km'],
            y=decarbonization_vs_sludge['oil_BPD'],
@@ -1372,9 +1363,7 @@ ax.scatter(x=decarbonization_vs_sludge['real_distance_km'],
 
 filterwarnings('ignore')
 
-# TODO: update input files
-decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2023-12-31.xlsx')
-elec = pd.read_excel(folder + 'state_elec_price_GHG.xlsx', 'summary')
+decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
 
 decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'].notna()]
 decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'] <= 0]
@@ -1387,10 +1376,10 @@ decarbonization_result['waste_GHG'] =  sum(decarbonization_result[i]*sludge_emis
 geo_uncertainty_decarbonization = pd.DataFrame()
 geo_uncertainty_biocrude = pd.DataFrame()
 
-for i in range(0, len(decarbonization_result)): # !!! run in different consoles to speed up: 0, 70, 140, 210, 280, 350, 420, 490
-# for i in range(0, 2):
+# !!! run in different consoles to speed up: 0, 80, 160, 240, 320, 400, 480
+for i in range(0, len(decarbonization_result)):
+# for i in range(0, 80):
     
-    # TODO: update parameters
     sys, barrel = create_geospatial_system(size=decarbonization_result.iloc[i]['flow_2022_MGD'],
                                            sludge_transportation=0,
                                            sludge_distance=100,
@@ -1399,26 +1388,22 @@ for i in range(0, len(decarbonization_result)): # !!! run in different consoles 
                                            aerobic_digestion=decarbonization_result.iloc[i]['sludge_aerobic_digestion'],
                                            ww_2_dry_sludge_ratio=decarbonization_result.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/decarbonization_result.iloc[i]['flow_2022_MGD'],
                                            state=decarbonization_result.iloc[i]['state'],
-                                           elec_GHG=float(elec[elec['state']==decarbonization_result.iloc[i]['state']]['GHG (10-year median)']))
+                                           elec_GHG=decarbonization_result.iloc[i]['kg_CO2_kWh'])
     
     # TODO: update if necessary; what if AD and AeD both exist or other co-existence scenarios?
     if decarbonization_result.iloc[i]['sludge_aerobic_digestion'] == 1:
-        sludge_ash_values=[0.374, 0.468, 0.562, 'aerobic_digestion']
+        sludge_ash_values=[0.345, 0.436, 0.523, 'aerobic_digestion']
         sludge_lipid_values=[0.154, 0.193, 0.232]
         sludge_protein_values=[0.408, 0.510, 0.612]
-    
     elif decarbonization_result.iloc[i]['sludge_anaerobic_digestion'] == 1:
         sludge_ash_values=[0.331, 0.414, 0.497, 'anaerobic_digestion']
         sludge_lipid_values=[0.154, 0.193, 0.232]
-        sludge_protein_values=[0.408, 0.510, 0.612]
-    
+        sludge_protein_values=[0.408, 0.510, 0.612] 
     else:
         sludge_ash_values=[0.174, 0.231, 0.308, 'no_digestion']
         sludge_lipid_values=[0.080, 0.206, 0.308]
         sludge_protein_values=[0.380, 0.456, 0.485]
     
-    # TODO: check parameters
-    # the distribution of biocrude transportation cost was assumed to be proportional to the distribution of biocrude price (triangular: 0.2384/0.3847/0.6703, or 4.21/6.80/11.9)
     model = create_geospatial_model(system=sys,
                                     sludge_ash=sludge_ash_values,
                                     sludge_lipid=sludge_lipid_values,
@@ -1433,9 +1418,10 @@ for i in range(0, len(decarbonization_result)): # !!! run in different consoles 
     parameters = model.table.iloc[:, :idx]
     results = model.table.iloc[:, idx:]
     
-    # TODO: is 'Geospatial here a new tab?
-    geo_uncertainty_decarbonization[decarbonization_result.iloc[i]['facility']] = results[('Geospatial','Decarbonization amount [tonne_per_day]')]
-    geo_uncertainty_biocrude[decarbonization_result.iloc[i]['facility']] = results[('Geospatial','Biocrude production [BPD]')]
+    # kg CO2 eq/day
+    geo_uncertainty_decarbonization[decarbonization_result.iloc[i]['CWNS']] = (decarbonization_result.iloc[i]['waste_GHG'] - results[('Geospatial','Sludge CI [kg CO2/tonne dry sludge]')])*decarbonization_result.iloc[i]['total_sludge_amount_kg_per_year']/1000/365
+    # BPD
+    geo_uncertainty_biocrude[decarbonization_result.iloc[i]['CWNS']] = results[('Geospatial','Biocrude production [BPD]')]
     
     # check progress
     if i%5 == 0:
@@ -1446,18 +1432,18 @@ geo_uncertainty_biocrude.to_excel(folder + f'results/regional_biocrude_uncertain
 
 #%% regional uncertainty (data preparation)
 
-# TODO: update datasets here
-# decarbonization
-regional_decarbonization_1 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2023-12-31_69.xlsx')
-regional_decarbonization_2 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2023-12-31_139.xlsx')
-regional_decarbonization_3 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2023-12-31_209.xlsx')
-regional_decarbonization_4 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2023-12-31_279.xlsx')
-regional_decarbonization_5 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2023-12-31_349.xlsx')
-regional_decarbonization_6 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2023-12-31_419.xlsx')
-regional_decarbonization_7 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2023-12-31_489.xlsx')
-regional_decarbonization_8 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2023-12-31_559.xlsx')
+# TODO: continue from here
 
-# TODO: can we use a loop or comprehension here?
+# decarbonization
+# !!! update these files if necessary
+regional_decarbonization_1 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2024-08-22_79.xlsx')
+regional_decarbonization_2 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2024-08-22_159.xlsx')
+regional_decarbonization_3 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2024-08-22_239.xlsx')
+regional_decarbonization_4 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2024-08-22_319.xlsx')
+regional_decarbonization_5 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2024-08-22_399.xlsx')
+regional_decarbonization_6 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2024-08-22_479.xlsx')
+regional_decarbonization_7 = pd.read_excel(folder + 'results/decarbonization_uncertainty_data/regional_decarbonization_uncertainty_2024-08-22_580.xlsx')
+
 regional_decarbonization_1.drop('Unnamed: 0', axis=1, inplace=True)
 regional_decarbonization_2.drop('Unnamed: 0', axis=1, inplace=True)
 regional_decarbonization_3.drop('Unnamed: 0', axis=1, inplace=True)
@@ -1465,31 +1451,28 @@ regional_decarbonization_4.drop('Unnamed: 0', axis=1, inplace=True)
 regional_decarbonization_5.drop('Unnamed: 0', axis=1, inplace=True)
 regional_decarbonization_6.drop('Unnamed: 0', axis=1, inplace=True)
 regional_decarbonization_7.drop('Unnamed: 0', axis=1, inplace=True)
-regional_decarbonization_8.drop('Unnamed: 0', axis=1, inplace=True)
 
-# TODO: can we use a loop or comprehension here?
-regional_decarbonization = pd.concat([regional_decarbonization_1, regional_decarbonization_2], axis=1)
-regional_decarbonization = pd.concat([regional_decarbonization, regional_decarbonization_3], axis=1)
-regional_decarbonization = pd.concat([regional_decarbonization, regional_decarbonization_4], axis=1)
-regional_decarbonization = pd.concat([regional_decarbonization, regional_decarbonization_5], axis=1)
-regional_decarbonization = pd.concat([regional_decarbonization, regional_decarbonization_6], axis=1)
-regional_decarbonization = pd.concat([regional_decarbonization, regional_decarbonization_7], axis=1)
-regional_decarbonization = pd.concat([regional_decarbonization, regional_decarbonization_8], axis=1)
+regional_decarbonization = pd.concat([regional_decarbonization_1,
+                                      regional_decarbonization_2,
+                                      regional_decarbonization_3,
+                                      regional_decarbonization_4,
+                                      regional_decarbonization_5,
+                                      regional_decarbonization_6,
+                                      regional_decarbonization_7],
+                                     axis=1)
 
 regional_decarbonization.to_excel(folder + f'results/integrated_regional_decarbonization_uncertainty_{date.today()}.xlsx')
 
-# TODO: update datasets here
 # biocrude
-regional_biocrude_1 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2023-12-31_69.xlsx')
-regional_biocrude_2 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2023-12-31_139.xlsx')
-regional_biocrude_3 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2023-12-31_209.xlsx')
-regional_biocrude_4 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2023-12-31_279.xlsx')
-regional_biocrude_5 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2023-12-31_349.xlsx')
-regional_biocrude_6 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2023-12-31_419.xlsx')
-regional_biocrude_7 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2023-12-31_489.xlsx')
-regional_biocrude_8 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2023-12-31_559.xlsx')
+# !!! update these files if necessary
+regional_biocrude_1 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2024-08-22_79.xlsx')
+regional_biocrude_2 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2024-08-22_159.xlsx')
+regional_biocrude_3 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2024-08-22_239.xlsx')
+regional_biocrude_4 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2024-08-22_319.xlsx')
+regional_biocrude_5 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2024-08-22_399.xlsx')
+regional_biocrude_6 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2024-08-22_479.xlsx')
+regional_biocrude_7 = pd.read_excel(folder + 'results/biocrude_uncertainty_data/regional_biocrude_uncertainty_2024-08-22_580.xlsx')
 
-# TODO: can we use a loop or comprehension here?
 regional_biocrude_1.drop('Unnamed: 0', axis=1, inplace=True)
 regional_biocrude_2.drop('Unnamed: 0', axis=1, inplace=True)
 regional_biocrude_3.drop('Unnamed: 0', axis=1, inplace=True)
@@ -1497,53 +1480,51 @@ regional_biocrude_4.drop('Unnamed: 0', axis=1, inplace=True)
 regional_biocrude_5.drop('Unnamed: 0', axis=1, inplace=True)
 regional_biocrude_6.drop('Unnamed: 0', axis=1, inplace=True)
 regional_biocrude_7.drop('Unnamed: 0', axis=1, inplace=True)
-regional_biocrude_8.drop('Unnamed: 0', axis=1, inplace=True)
 
-# TODO: can we use a loop or comprehension here?
-regional_biocrude = pd.concat([regional_biocrude_1, regional_biocrude_2], axis=1)
-regional_biocrude = pd.concat([regional_biocrude, regional_biocrude_3], axis=1)
-regional_biocrude = pd.concat([regional_biocrude, regional_biocrude_4], axis=1)
-regional_biocrude = pd.concat([regional_biocrude, regional_biocrude_5], axis=1)
-regional_biocrude = pd.concat([regional_biocrude, regional_biocrude_6], axis=1)
-regional_biocrude = pd.concat([regional_biocrude, regional_biocrude_7], axis=1)
-regional_biocrude = pd.concat([regional_biocrude, regional_biocrude_8], axis=1)
+regional_biocrude = pd.concat([regional_biocrude_1,
+                               regional_biocrude_2,
+                               regional_biocrude_3,
+                               regional_biocrude_4,
+                               regional_biocrude_5,
+                               regional_biocrude_6,
+                               regional_biocrude_7],
+                              axis=1)
 
 regional_biocrude.to_excel(folder + f'results/integrated_regional_biocrude_uncertainty_{date.today()}.xlsx')
 
 #%% regional uncertainty (build and run model)
 
-# TODO: update the input file
 # import PADD information
-WRRF_PADD = pd.read_excel(folder + 'results/integrated_decarbonization_result_2023-12-31.xlsx')
+# !!! update the file here if necessary
+WRRF_PADD = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
 
 WRRF_PADD = WRRF_PADD[WRRF_PADD['USD_decarbonization'].notna()]
 WRRF_PADD = WRRF_PADD[WRRF_PADD['USD_decarbonization'] <= 0]
 
-# TODO: add an assertation to make sure every WRRF has WRRF_PAFF not nan
 WRRF_PADD.loc[WRRF_PADD['state'].isin(['CT','DC','DE','FL','GA','MA','MD','ME','NC','NH','NJ','NY','PA','RI','SC','VA','VT','WV']), 'WRRF_PADD'] = 1
 WRRF_PADD.loc[WRRF_PADD['state'].isin(['IA','IL','IN','KS','KY','MI','MN','MO','ND','NE','OH','OK','SD','TN','WI']), 'WRRF_PADD'] = 2
 WRRF_PADD.loc[WRRF_PADD['state'].isin(['AL','AR','LA','MS','NM','TX']), 'WRRF_PADD'] = 3
 WRRF_PADD.loc[WRRF_PADD['state'].isin(['CO','ID','MT','UT','WY']), 'WRRF_PADD'] = 4
 WRRF_PADD.loc[WRRF_PADD['state'].isin(['AZ','CA','NV','OR','WA']), 'WRRF_PADD'] = 5
 
-WRRF_PADD = WRRF_PADD[['facility','WRRF_PADD']]
+assert WRRF_PADD.WRRF_PADD.isna().sum() == 0
 
-# TODO: update the input file
+WRRF_PADD = WRRF_PADD[['CWNS','WRRF_PADD']]
+
 # decarbonization
-regional_decarbonization_uncertainty = pd.read_excel(folder + 'results/integrated_regional_decarbonization_uncertainty_2024-01-01.xlsx')
+# !!! update the file here if necessary
+regional_decarbonization_uncertainty = pd.read_excel(folder + 'results/integrated_regional_decarbonization_uncertainty_2024-08-22.xlsx')
 
 regional_decarbonization_uncertainty.drop('Unnamed: 0', axis=1, inplace=True)
 regional_decarbonization_uncertainty = regional_decarbonization_uncertainty.transpose()
-regional_decarbonization_uncertainty.reset_index(inplace=True, names='facility')
-regional_decarbonization_uncertainty = regional_decarbonization_uncertainty.merge(WRRF_PADD, how='left', on='facility')
+regional_decarbonization_uncertainty.reset_index(inplace=True, names='CWNS')
+regional_decarbonization_uncertainty = regional_decarbonization_uncertainty.merge(WRRF_PADD, how='left', on='CWNS')
 
-# TODO: can we use a loop or comprehension here?
-# TODO: try not to use [:,1:-1]; use a formula instead
-regional_decarbonization_uncertainty_PADD_1 = regional_decarbonization_uncertainty[regional_decarbonization_uncertainty['WRRF_PADD'] == 1].iloc[:,1:-1]
-regional_decarbonization_uncertainty_PADD_2 = regional_decarbonization_uncertainty[regional_decarbonization_uncertainty['WRRF_PADD'] == 2].iloc[:,1:-1]
-regional_decarbonization_uncertainty_PADD_3 = regional_decarbonization_uncertainty[regional_decarbonization_uncertainty['WRRF_PADD'] == 3].iloc[:,1:-1]
-regional_decarbonization_uncertainty_PADD_4 = regional_decarbonization_uncertainty[regional_decarbonization_uncertainty['WRRF_PADD'] == 4].iloc[:,1:-1]
-regional_decarbonization_uncertainty_PADD_5 = regional_decarbonization_uncertainty[regional_decarbonization_uncertainty['WRRF_PADD'] == 5].iloc[:,1:-1]
+regional_decarbonization_uncertainty_PADD_1 = regional_decarbonization_uncertainty[regional_decarbonization_uncertainty['WRRF_PADD'] == 1].loc[:, 0:999]
+regional_decarbonization_uncertainty_PADD_2 = regional_decarbonization_uncertainty[regional_decarbonization_uncertainty['WRRF_PADD'] == 2].loc[:, 0:999]
+regional_decarbonization_uncertainty_PADD_3 = regional_decarbonization_uncertainty[regional_decarbonization_uncertainty['WRRF_PADD'] == 3].loc[:, 0:999]
+regional_decarbonization_uncertainty_PADD_4 = regional_decarbonization_uncertainty[regional_decarbonization_uncertainty['WRRF_PADD'] == 4].loc[:, 0:999]
+regional_decarbonization_uncertainty_PADD_5 = regional_decarbonization_uncertainty[regional_decarbonization_uncertainty['WRRF_PADD'] == 5].loc[:, 0:999]
 
 PADD_1_decarbonization_uncertainty = []
 PADD_2_decarbonization_uncertainty = []
@@ -1551,14 +1532,13 @@ PADD_3_decarbonization_uncertainty = []
 PADD_4_decarbonization_uncertainty = []
 PADD_5_decarbonization_uncertainty = []
 
-# TODO: check the calculations here
 for (region, result) in [(regional_decarbonization_uncertainty_PADD_1, PADD_1_decarbonization_uncertainty),
                          (regional_decarbonization_uncertainty_PADD_2, PADD_2_decarbonization_uncertainty),
                          (regional_decarbonization_uncertainty_PADD_3, PADD_3_decarbonization_uncertainty),
                          (regional_decarbonization_uncertainty_PADD_4, PADD_4_decarbonization_uncertainty),
                          (regional_decarbonization_uncertainty_PADD_5, PADD_5_decarbonization_uncertainty)]:
     # Monte Carlo simulation and Latin hypercube sampling
-    for i in range(0,1000):
+    for i in range(0, 1000):
         # check progress
         if i%100 == 0:
             print(i)
@@ -1575,22 +1555,20 @@ integrated_regional_decarbonization_result = pd.DataFrame({'PADD_1': PADD_1_deca
         
 integrated_regional_decarbonization_result.to_excel(folder + f'results/integrated_regional_total_decarbonization_uncertainty_{date.today()}.xlsx')
 
-# TODO: update this file
 # biocrude
-regional_biocrude_uncertainty = pd.read_excel(folder + 'results/integrated_regional_biocrude_uncertainty_2024-01-01.xlsx')
+# !!! update the file here if necessary
+regional_biocrude_uncertainty = pd.read_excel(folder + 'results/integrated_regional_biocrude_uncertainty_2024-08-22.xlsx')
 
 regional_biocrude_uncertainty.drop('Unnamed: 0', axis=1, inplace=True)
 regional_biocrude_uncertainty = regional_biocrude_uncertainty.transpose()
-regional_biocrude_uncertainty.reset_index(inplace=True, names='facility')
-regional_biocrude_uncertainty = regional_biocrude_uncertainty.merge(WRRF_PADD, how='left', on='facility')
+regional_biocrude_uncertainty.reset_index(inplace=True, names='CWNS')
+regional_biocrude_uncertainty = regional_biocrude_uncertainty.merge(WRRF_PADD, how='left', on='CWNS')
 
-# TODO: can we use a loop or comprehension here?
-# TODO: try not to use [:,1:-1]; use a formula instead
-regional_biocrude_uncertainty_PADD_1 = regional_biocrude_uncertainty[regional_biocrude_uncertainty['WRRF_PADD'] == 1].iloc[:,1:-1]
-regional_biocrude_uncertainty_PADD_2 = regional_biocrude_uncertainty[regional_biocrude_uncertainty['WRRF_PADD'] == 2].iloc[:,1:-1]
-regional_biocrude_uncertainty_PADD_3 = regional_biocrude_uncertainty[regional_biocrude_uncertainty['WRRF_PADD'] == 3].iloc[:,1:-1]
-regional_biocrude_uncertainty_PADD_4 = regional_biocrude_uncertainty[regional_biocrude_uncertainty['WRRF_PADD'] == 4].iloc[:,1:-1]
-regional_biocrude_uncertainty_PADD_5 = regional_biocrude_uncertainty[regional_biocrude_uncertainty['WRRF_PADD'] == 5].iloc[:,1:-1]
+regional_biocrude_uncertainty_PADD_1 = regional_biocrude_uncertainty[regional_biocrude_uncertainty['WRRF_PADD'] == 1].loc[:, 0:999]
+regional_biocrude_uncertainty_PADD_2 = regional_biocrude_uncertainty[regional_biocrude_uncertainty['WRRF_PADD'] == 2].loc[:, 0:999]
+regional_biocrude_uncertainty_PADD_3 = regional_biocrude_uncertainty[regional_biocrude_uncertainty['WRRF_PADD'] == 3].loc[:, 0:999]
+regional_biocrude_uncertainty_PADD_4 = regional_biocrude_uncertainty[regional_biocrude_uncertainty['WRRF_PADD'] == 4].loc[:, 0:999]
+regional_biocrude_uncertainty_PADD_5 = regional_biocrude_uncertainty[regional_biocrude_uncertainty['WRRF_PADD'] == 5].loc[:, 0:999]
 
 PADD_1_biocrude_uncertainty = []
 PADD_2_biocrude_uncertainty = []
@@ -1598,7 +1576,6 @@ PADD_3_biocrude_uncertainty = []
 PADD_4_biocrude_uncertainty = []
 PADD_5_biocrude_uncertainty = []
 
-# TODO: check the calculations here
 for (region, result) in [(regional_biocrude_uncertainty_PADD_1, PADD_1_biocrude_uncertainty),
                          (regional_biocrude_uncertainty_PADD_2, PADD_2_biocrude_uncertainty),
                          (regional_biocrude_uncertainty_PADD_3, PADD_3_biocrude_uncertainty),
@@ -1626,11 +1603,15 @@ integrated_regional_biocrude_result.to_excel(folder + f'results/integrated_regio
 
 # TODO: update the code/figure during execution, if necessary
 
-# TODO: update these files
-decarbonization = pd.read_excel(folder + 'results/integrated_regional_total_decarbonization_uncertainty_2024-01-01.xlsx')
-biocrude = pd.read_excel(folder + 'results/integrated_regional_total_biocrude_uncertainty_2024-01-01.xlsx')
+# !!! update these files if necessary
+decarbonization = pd.read_excel(folder + 'results/integrated_regional_total_decarbonization_uncertainty_2024-08-22.xlsx')
+# tonne CO2 eq/day
+decarbonization = decarbonization/1000
+# BPD
+biocrude = pd.read_excel(folder + 'results/integrated_regional_total_biocrude_uncertainty_2024-08-22.xlsx')
 
-fig, ax = plt.subplots(figsize = (12, 10))
+
+fig, ax = plt.subplots(figsize = (10, 10))
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
@@ -1643,7 +1624,7 @@ plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
-ax.set_xlim([0, 2400])
+ax.set_xlim([0, 1000])
 ax.set_ylim([0, 12000])
 
 ax.tick_params(direction='inout', length=15, width=3, bottom=True, top=False, left=True, right=False)
@@ -1652,14 +1633,14 @@ ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
 ax_right.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.xticks(np.arange(0, 2800, 400))
+plt.xticks(np.arange(0, 1200, 200))
 plt.yticks(np.arange(0, 14000, 2000))
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
 ax_top.tick_params(direction='in', length=7.5, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.xticks(np.arange(0, 2800, 400))
+plt.xticks(np.arange(0, 1200, 200))
 plt.yticks(np.arange(0, 14000, 2000))
 
 ax.set_xlabel(r'$\mathbf{Decarbonization\ amount}$ [tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=35)
@@ -1721,19 +1702,17 @@ add_point('PADD_5', dy)
 
 #%% national uncertainty
 
-# TODO: update this file
 # decarbonization
-national_decarbonization_uncertainty = pd.read_excel(folder + 'results/integrated_regional_decarbonization_uncertainty_2024-01-01.xlsx')
+# !!! update the file here if necessary
+national_decarbonization_uncertainty = pd.read_excel(folder + 'results/integrated_regional_decarbonization_uncertainty_2024-08-22.xlsx')
 
 national_decarbonization_uncertainty.drop('Unnamed: 0', axis=1, inplace=True)
 national_decarbonization_uncertainty = national_decarbonization_uncertainty.transpose()
-national_decarbonization_uncertainty.reset_index(inplace=True, names='facility')
-# TODO: replace 1: with a formula if possible
-national_decarbonization_uncertainty = national_decarbonization_uncertainty.iloc[:,1:]
+national_decarbonization_uncertainty.reset_index(inplace=True, names='CWNS')
+national_decarbonization_uncertainty = national_decarbonization_uncertainty.loc[:, 0:999]
 
 national_decarbonization_uncertainty_result = []
 
-# TODO: check calculations
 # Monte Carlo simulation and Latin hypercube sampling
 for i in range(0,1000):
     # check progress
@@ -1744,19 +1723,17 @@ for i in range(0,1000):
         national_total_decarbonization += random.uniform(national_decarbonization_uncertainty.iloc[j,:].quantile(i/1000), national_decarbonization_uncertainty.iloc[j,:].quantile((i+1)/1000))
     national_decarbonization_uncertainty_result.append(national_total_decarbonization)
 
-# TODO: update this file
 # biocrude
-national_biocrude_uncertainty = pd.read_excel(folder + 'results/integrated_regional_biocrude_uncertainty_2024-01-01.xlsx')
+# !!! update the file here if necessary
+national_biocrude_uncertainty = pd.read_excel(folder + 'results/integrated_regional_biocrude_uncertainty_2024-08-22.xlsx')
 
 national_biocrude_uncertainty.drop('Unnamed: 0', axis=1, inplace=True)
 national_biocrude_uncertainty = national_biocrude_uncertainty.transpose()
-national_biocrude_uncertainty.reset_index(inplace=True, names='facility')
-# TODO: replace 1: with a formula if possible
-national_biocrude_uncertainty = national_biocrude_uncertainty.iloc[:,1:]
+national_biocrude_uncertainty.reset_index(inplace=True, names='CWNS')
+national_biocrude_uncertainty = national_biocrude_uncertainty.loc[:, 0:999]
 
 national_biocrude_uncertainty_result = []
 
-# TODO: check calculations
 # Monte Carlo simulation and Latin hypercube sampling
 for i in range(0,1000):
     # check progress
@@ -1773,6 +1750,8 @@ national_uncertainty_result = pd.DataFrame({'decarbonization':national_decarboni
 national_uncertainty_result.to_excel(folder + f'results/integrated_national_uncertainty_{date.today()}.xlsx')
 
 #%% sludge transportation (Urbana-Champaign)
+
+# TODO: continue from here
 
 # two separated WRRFs
 filterwarnings('ignore')
@@ -1818,15 +1797,13 @@ for i in range(0, 2):
     
     # TODO: update these number if necessary; add lime stabilization if necessary
     if Urbana_Champaign.iloc[i]['sludge_aerobic_digestion'] == 1:
-        sludge_ash_values=[0.374, 0.468, 0.562, 'aerobic_digestion']
+        sludge_ash_values=[0.345, 0.436, 0.523, 'aerobic_digestion']
         sludge_lipid_values=[0.154, 0.193, 0.232]
         sludge_protein_values=[0.408, 0.510, 0.612]
-    
     elif Urbana_Champaign.iloc[i]['sludge_anaerobic_digestion'] == 1:
         sludge_ash_values=[0.331, 0.414, 0.497, 'anaerobic_digestion']
         sludge_lipid_values=[0.154, 0.193, 0.232]
         sludge_protein_values=[0.408, 0.510, 0.612]
-    
     else:
         sludge_ash_values=[0.174, 0.231, 0.308, 'no_digestion']
         sludge_lipid_values=[0.080, 0.206, 0.308]
@@ -1881,15 +1858,13 @@ total_sludge = Urbana_Champaign.iloc[0]['total_sludge_amount_kg_per_year']+Urban
 # TODO: check the numbers here; add lime stabilization if necessary
 for i in range(len(Urbana_Champaign)):
     if Urbana_Champaign.iloc[i]['sludge_aerobic_digestion'] == 1:
-        sludge_ash_value=0.468
+        sludge_ash_value=0.436
         sludge_lipid_value=0.193
         sludge_protein_value=0.510
-    
     elif Urbana_Champaign.iloc[i]['sludge_anaerobic_digestion'] == 1:
         sludge_ash_value=0.414
         sludge_lipid_value=0.193
         sludge_protein_value=0.510
-    
     else:
         sludge_ash_value=0.231
         sludge_lipid_value=0.206
@@ -2109,15 +2084,13 @@ sys, barrel = create_geospatial_system(size=Minnesota.iloc[0]['flow_2022_MGD'],
 
 # TODO: check numbers; add lime stabilization if necessary
 if Minnesota.iloc[0]['sludge_aerobic_digestion'] == 1:
-    sludge_ash_values=[0.374, 0.468, 0.562, 'aerobic_digestion']
+    sludge_ash_values=[0.345, 0.436, 0.523, 'aerobic_digestion']
     sludge_lipid_values=[0.154, 0.193, 0.232]
     sludge_protein_values=[0.408, 0.510, 0.612]
-
 elif Minnesota.iloc[0]['sludge_anaerobic_digestion'] == 1:
     sludge_ash_values=[0.331, 0.414, 0.497, 'anaerobic_digestion']
     sludge_lipid_values=[0.154, 0.193, 0.232]
     sludge_protein_values=[0.408, 0.510, 0.612]
-
 else:
     sludge_ash_values=[0.174, 0.231, 0.308, 'no_digestion']
     sludge_lipid_values=[0.080, 0.206, 0.308]
@@ -2180,15 +2153,13 @@ total_protein_except_center = 0
 for i in range(len(MN_WI_IA_transportation)):
     # TODO: check these numbers; add lime stabilization if possible
     if MN_WI_IA_transportation.iloc[i]['sludge_aerobic_digestion'] == 1:
-        sludge_ash_value=0.468
+        sludge_ash_value=0.436
         sludge_lipid_value=0.193
         sludge_protein_value=0.510
-    
     elif MN_WI_IA_transportation.iloc[i]['sludge_anaerobic_digestion'] == 1:
         sludge_ash_value=0.414
         sludge_lipid_value=0.193
         sludge_protein_value=0.510
-    
     else:
         sludge_ash_value=0.231
         sludge_lipid_value=0.206

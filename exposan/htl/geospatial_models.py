@@ -1127,6 +1127,7 @@ def create_geospatial_model(system=None,
             return HTL.gas_yield
     
     # key metrics
+    # TODO: there might be a problem: when solving price, the income tax in fixed, however, the raw_wastewater price could change net income, which can change income tax
     @metric(name='sludge_management_price',units='$/tonne dry sludge',element='geospatial')
     def get_sludge_treatment_price():
         return -tea.solve_price(raw_wastewater)*water_density*_MMgal_to_L/WWTP.ww_2_dry_sludge

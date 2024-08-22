@@ -533,6 +533,7 @@ def create_geospatial_system(# MGD
     
     income_tax_rate = federal_income_tax_rate_value + state_income_tax_rate_value
     
+    # TODO: there might be a problem: when solving price, the income tax in fixed, however, the raw_wastewater price could change net income, which can change income tax
     create_tea(sys, IRR_value=0.03,
                income_tax_value=income_tax_rate,
                finance_interest_value=0.03,
