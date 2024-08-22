@@ -11,7 +11,7 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 
 '''
-import qsdsan as qs
+import qsdsan as qs, numpy as np
 from qsdsan import (
     processes as pc,
     sanunits as su,
@@ -42,7 +42,7 @@ SOSAT1 = 8
 dfs = load_data(ospath.join(data_path, 'bsm2p_init.xlsx'), sheet=None)
 inf_concs = dfs['asm'].iloc[0].to_dict()
 c1init = dfs['asm'].iloc[1].to_dict()
-asinit = dfs['asm'].iloc[2:]
+asinit = dfs['asm2'].iloc[2:]
 adinit = dfs['adm'].iloc[0].to_dict()
 c2init = dfs['settler'].to_dict('index')
 c2init['s'] = {k:v for k,v in c2init['s'].items() if v>0}
@@ -96,10 +96,11 @@ def create_system(flowsheet=None, default_init_conds=True):
         rh=5.76e-4, rp=2.86e-3, fns=2.28e-3
         )
     
-    A1 = su.CSTR('A1', ins=[C1-0, 'RAS'], **anae_kwargs)       
+    A1 = su.CSTR('A1', ins=[C1-0, 'RAS', carb], **anae_kwargs)       
+    # A1 = su.CSTR('A1', ins=[C1-0, 'RAS'], **anae_kwargs)       
     A2 = su.CSTR('A2', A1-0, **anae_kwargs)        
-    A3 = su.CSTR('A3', [A2-0, 'RWW', carb], **anox_kwargs)        
-    # A3 = su.CSTR('A3', [A2-0, 'RWW'], **anox_kwargs)        
+    # A3 = su.CSTR('A3', [A2-0, 'RWW', carb], **anox_kwargs)        
+    A3 = su.CSTR('A3', [A2-0, 'RWW'], **anox_kwargs)
     A4 = su.CSTR('A4', A3-0, **anox_kwargs)        
     O1 = su.CSTR('O1', A4-0, aeration=aer1, **ae_kwargs)
     O2 = su.CSTR('O2', O1-0, aeration=aer2, **ae_kwargs)
@@ -134,7 +135,7 @@ def create_system(flowsheet=None, default_init_conds=True):
     cmps_adm = pc.create_adm1p_cmps()
     thermo_adm = qs.get_thermo()
     adm = pc.ADM1p(
-        f_bu_su=0.1328, f_pro_su=0.2691, f_ac_su= 0.4076,
+        f_bu_su=0.1328, f_pro_su=0.2691, f_ac_su=0.4076,
         q_ch_hyd=0.3, q_pr_hyd=0.3, q_li_hyd=0.3, 
         )
     
@@ -143,7 +144,7 @@ def create_system(flowsheet=None, default_init_conds=True):
                           adm1_model=adm, asm2d_model=asm)
     AD = su.AnaerobicCSTR('AD', ins=J1.outs[0], outs=('biogas', 'AD_eff'), isdynamic=True,
                            V_liq=3400, V_gas=300, T=T_ad, model=adm,)
-    AD.algebraic_h2 = True
+    AD.algebraic_h2 = False
     J2 = su.ADM1ptomASM2d('J2', upstream=AD-1, thermo=thermo_asm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
     # Switch back to ASM1 components
@@ -166,7 +167,7 @@ def create_system(flowsheet=None, default_init_conds=True):
         C2.set_init_TSS(c2init['tss'])
         AD.set_init_conc(**adinit)
     
-    sys = qs.System('bsm2_sys', 
+    sys = qs.System('bsm2p', 
                     path=(C1, A1, A2, A3, A4, O1, O2, O3, C2, 
                           TC1, M1, J1, AD, J2, C3, M2),
                     recycle=(O3-0, C2-1, M2-0)
@@ -280,7 +281,7 @@ def run(sys, t, t_step, method=None, **kwargs):
         print_t=True,
         # rtol=1e-2,
         # atol=1e-3,
-        # export_state_to=f'results/sol_{t}d_{method}.xlsx',
+        # export_state_to=f'results/sol_{t}d_{sys.ID}.xlsx',
         **kwargs)
 
 #%%
@@ -290,8 +291,8 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 15
-    t_step = 1
+    t = 8
+    t_step = 0.1
     # method = 'RK45'
     method = 'RK23'
     # method = 'DOP853'

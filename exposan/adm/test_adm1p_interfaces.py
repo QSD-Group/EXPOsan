@@ -13,7 +13,7 @@ for license details.
 
 from chemicals.elements import molecular_weight as get_mw
 from qsdsan import sanunits as su, processes as pc, WasteStream, System, get_thermo
-from qsdsan.utils import load_data, ospath, time_printer
+from qsdsan.utils import load_data, ospath
 from exposan.bsm2 import data_path
 
 
@@ -29,6 +29,7 @@ Temp = 273.15+35    # temperature [K]
 C_mw = get_mw({'C':1})
 N_mw = get_mw({'N':1})
 P_mw = get_mw({'P':1})
+struv_mw = get_mw(dict(Mg=1, N=1, H=4, P=1, O=4))
 adm1init = load_data(ospath.join(data_path, 'adm1init.csv'), index_col=0).to_dict('index')
 
 # Table 1.1 [mg/L]
@@ -155,7 +156,7 @@ out_asm2d = dict(
     S_Cl=1035,
     S_Ca=20.45,
     X_ACP=722.17,
-    X_struv=1578.52
+    X_struv=1578.52*245.406502/struv_mw
     )
 
 # default_init_conds = {
@@ -252,7 +253,7 @@ alt_eff_adm.set_flow_by_concentration(
     units=('m3/d', 'kg/m3')
     )
 adm = pc.ADM1p(
-    f_bu_su=0.1328, f_pro_su=0.2691, f_ac_su= 0.4076,
+    f_bu_su=0.1328, f_pro_su=0.2691, f_ac_su=0.4076,
     q_ch_hyd=0.3, q_pr_hyd=0.3, q_li_hyd=0.3, 
     )
 thermo_adm = get_thermo()
@@ -261,28 +262,29 @@ J1 = su.mASM2dtoADM1p('J1', upstream=inf_asm, downstream='inf_adm',
                       thermo=thermo_adm, isdynamic=True, 
                       adm1_model=adm, asm2d_model=asm)
 J1.xs_to_li = 0.6
-# AD = su.AnaerobicCSTR('AD', ins=alt_inf_adm, outs=('biogas', 'eff_adm'), isdynamic=True, 
-AD = su.AnaerobicCSTR('AD', ins=J1-0, outs=('biogas', 'eff_adm'), isdynamic=True, 
-                      V_liq=V_liq, V_gas=V_gas, T=Temp, model=adm)
+AD = su.AnaerobicCSTR(
+    'AD', 
+    ins=alt_inf_adm,
+    # ins=J1-0, 
+    outs=('biogas', 'eff_adm'), isdynamic=True, 
+    V_liq=V_liq, V_gas=V_gas, T=Temp, model=adm
+    )
 # AD.algebraic_h2 = True
 AD.algebraic_h2 = False
 # AD.set_init_conc(**adm1init['AD1'])
 AD.set_init_conc(**default_init_conds)
-J2 = su.ADM1ptomASM2d('J2', upstream=AD-1, downstream='eff_asm', 
-# J2 = su.ADM1ptomASM2d('J2', upstream=alt_eff_adm, downstream='eff_asm', 
-                      thermo=thermo_asm, isdynamic=True, 
-                      adm1_model=adm, asm2d_model=asm)
+J2 = su.ADM1ptomASM2d(
+    'J2', 
+    upstream=alt_eff_adm, 
+    # upstream=AD-1,
+    downstream='eff_asm', thermo=thermo_asm, isdynamic=True, 
+    adm1_model=adm, asm2d_model=asm
+    )
 
 sys = System(path=(J1, AD, J2))
 fs = sys.flowsheet.stream
-sys.set_dynamic_tracker(AD, fs.biogas, fs.eff_adm)
+sys.set_dynamic_tracker(AD, fs.biogas, fs.eff_adm, fs.eff_asm)
 
 #%%
-@time_printer
 def run():
     sys.simulate(state_reset_hook='reset_cache', t_span=(0, 400), method='BDF')
-
-run()
-
-# fs.inf_adm.conc vs. inf_adm1p
-# fs.eff_asm.conc vs. out_asm2d

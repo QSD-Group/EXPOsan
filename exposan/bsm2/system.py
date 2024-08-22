@@ -221,17 +221,17 @@ if __name__ == '__main__':
     # cmps_adm1 = J1.components
     # cmps_asm1 = J2.components
     
-    t = 300
+    t = 30
     t_step = 1
     # method = 'RK45'
-    # method = 'RK23'
+    method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    method = 'BDF'
+    # method = 'BDF'
     # method = 'LSODA'
     
     run(sys, t, t_step, method=method)
     # sys._setup()
     # sys.converge()
-    # sys.diagram()
+    sys.diagram()
     # sys.diagram(file=os.path.join(figures_path, 'bsm2_sys'), format='png')
