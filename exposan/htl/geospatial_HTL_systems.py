@@ -524,7 +524,7 @@ def create_geospatial_system(# MGD
     federal_income_tax_rate_value = 0.21
     
     # TODO: mention this in the main manuscript or the SI and add citation
-    if state == 'average':
+    if state == 'US':
         # use the mode state income tax from [18]
         # from this citation: state income tax: [min, mode, max]: [0%, 6.5%, 12%]
         state_income_tax_rate_value = 0.065

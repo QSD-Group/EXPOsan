@@ -1600,15 +1600,12 @@ integrated_regional_biocrude_result.to_excel(folder + f'results/integrated_regio
 
 #%% regional uncertainty (visualization)
 
-# TODO: update the code/figure during execution, if necessary
-
 # !!! update these files if necessary
 decarbonization = pd.read_excel(folder + 'results/integrated_regional_total_decarbonization_uncertainty_2024-08-22.xlsx')
 # tonne CO2 eq/day
 decarbonization = decarbonization/1000
 # BPD
 biocrude = pd.read_excel(folder + 'results/integrated_regional_total_biocrude_uncertainty_2024-08-22.xlsx')
-
 
 fig, ax = plt.subplots(figsize = (10, 10))
 
@@ -1890,7 +1887,7 @@ average_lipid_afdw = total_lipid/(total_sludge-total_ash)
 average_protein_afdw = total_protein/(total_sludge-total_ash)
 
 # !!! use uniform distribution (0.8x, 1x, 1.2x) for combined WRRFs
-# set sludge_ash_values[-1] = 'digestion', this does not necessarily mean there is digestion, but this will set the uncertainty distribution of ash, lipid, and protein to uniform in the model
+# set sludge_ash_values[-1] = 'digestion', this does not necessarily mean there is digestion, but this will set the uncertainty distribution of ash, lipid, and protein to Uniform in the model
 sludge_ash_values = [average_ash_dw*0.8, average_ash_dw, average_ash_dw*1.2, 'digestion']
 sludge_lipid_values = [average_lipid_afdw*0.8, average_lipid_afdw, average_lipid_afdw*1.2]
 sludge_protein_values = [average_protein_afdw*0.8, average_protein_afdw, average_protein_afdw*1.2]
@@ -1969,12 +1966,12 @@ def add_region(position, xlabel, color):
     plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
     
     ax = plt.gca()
-    ax.set_ylim([-3, 1])
+    ax.set_ylim([-3000, 1000])
     ax.set_xlabel(xlabel, fontname='Arial', fontsize=38, labelpad=15)
     
     if position == 0:
         ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
-        ax.set_ylabel(r'$\mathbf{Saving}$ [k-\$·day${^{-1}}$]', fontname='Arial', fontsize=45)
+        ax.set_ylabel(r'$\mathbf{Saving}$ [\$·day${^{-1}}$]', fontname='Arial', fontsize=45)
         
         mathtext.FontConstantsBase.sup1 = 0.35
     
@@ -1988,7 +1985,7 @@ def add_region(position, xlabel, color):
     else:
         ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, labelcolor='none')
     
-    bp = ax.boxplot(CU_saving_results.iloc[:,position]/1000, showfliers=False, widths=0.7, patch_artist=True)
+    bp = ax.boxplot(CU_saving_results.iloc[:,position], showfliers=False, widths=0.7, patch_artist=True)
     
     for box in bp['boxes']:
         box.set(color='k', facecolor=color, linewidth=3)
@@ -2186,7 +2183,7 @@ average_lipid_afdw = total_lipid/(total_sludge-total_ash)
 average_protein_afdw = total_protein/(total_sludge-total_ash)
 
 # !!! use uniform distribution (0.8x, 1x, 1.2x) for combined WRRFs
-# set sludge_ash_values[-1] = 'digestion', this does not necessarily mean there is digestion, but this will set the uncertainty distribution of ash, lipid, and protein to uniform in the model
+# set sludge_ash_values[-1] = 'digestion', this does not necessarily mean there is digestion, but this will set the uncertainty distribution of ash, lipid, and protein to Uniform in the model
 sludge_ash_values = [average_ash_dw*0.8, average_ash_dw, average_ash_dw*1.2, 'digestion']
 sludge_lipid_values = [average_lipid_afdw*0.8, average_lipid_afdw, average_lipid_afdw*1.2]
 sludge_protein_values = [average_protein_afdw*0.8, average_protein_afdw, average_protein_afdw*1.2]
@@ -2335,25 +2332,28 @@ WRRF_input = WRRF_input.dropna(subset='real_distance_km')
 
 print(len(WRRF_input))
 
-# TODO: continue from here
+WRRF_input['waste_cost'] = sum(WRRF_input[i]*sludge_disposal_cost[i] for i in sludge_disposal_cost.keys())/WRRF_input['total_sludge_amount_kg_per_year']*1000
+WRRF_input['waste_GHG'] =  sum(WRRF_input[i]*sludge_emission_factor[i] for i in sludge_emission_factor.keys())/WRRF_input['total_sludge_amount_kg_per_year']*1000
 
-# TODO: check the following notes
-# TODO: is this the average sludge/biosolids compositions? is there a way to also considered lime stabilization?
-# use data for sludge + biosolids (as we did in the HTL model paper)
-# set sludge_ash_values[-1] = 'digestion', this does not necessarily mean there is digestion, but this will set the uncertainty distribution of ash, lipid, and protein to uniform in the model
-HM_sludge_ash_values = [0.174,0.257,0.414, 'digestion']
-HM_sludge_lipid_values = [0.08,0.204,0.308]
-HM_sludge_protein_values = [0.38,0.463,0.51]
+# the units here do not matter
+total_cost = (WRRF_input['waste_cost']*WRRF_input['total_sludge_amount_kg_per_year']).sum(axis=0)
+total_GHG = (WRRF_input['waste_GHG']*WRRF_input['total_sludge_amount_kg_per_year']).sum(axis=0)
+total_sludge = WRRF_input['total_sludge_amount_kg_per_year'].sum(axis=0)
 
-# TODO: use nation average?
-HM_elec_GHG = elec['GHG (10-year median)'].mean()
+average_cost = total_cost/total_sludge
+average_GHG = total_GHG/total_sludge
 
-# TODO: plot saving and decarbonization amount?
+# TODO: update the values here if necessary
+# use data for sludge + biosolids (as we did in the HTL model paper), but change the upper limit of ash to 0.436 (to include aerobic digestion)
+# set sludge_ash_values[-1] = 'no digestion', this does not necessarily mean there is no digestion, but this will set the uncertainty distribution of ash, lipid, and protein to Triangle in the model
+HM_sludge_ash_values = [0.174, 0.257, 0.436, 'no_digestion']
+HM_sludge_lipid_values = [0.08, 0.204, 0.308]
+HM_sludge_protein_values = [0.38, 0.463, 0.51]
+
 ternary_results_dict = {'sludge_amount':[], 'sludge_transportation_distance':[],
-                        'NPV_5th':[], 'NPV_50th':[], 'NPV_95th':[],
-                        'biocrude_production_5th':[], 'biocrude_production_50th':[], 'biocrude_production_95th':[],
-                        'decarbonization_amount_5th':[], 'decarbonization_amount_50th':[], 'decarbonization_amount_95th':[],
-                        'decarbonization_cost_5th':[], 'decarbonization_cost_50th':[], 'decarbonization_cost_95th':[]}
+                        'saving_5th':[], 'saving_50th':[], 'saving_95th':[],
+                        'decarbonization_5th':[], 'decarbonization_50th':[], 'decarbonization_95th':[],
+                        'biocrude_5th':[], 'biocrude_50th':[], 'biocrude_95th':[]}
 
 ternary_results = pd.DataFrame(ternary_results_dict)
 
@@ -2363,13 +2363,10 @@ for size in np.linspace(2, 20, 10):
     for sludge_distance in np.linspace(20, 200, 10):
         print('\n\n', f'sludge amount: {size} metric tonne/day\n', f'sludge travel distance: {sludge_distance} km\n')
         
-        # TODO: check parameters
-        # TODO: how do we get 207? can we replace this with a formula, if possible?
-        # 207 km is the median travel distance from WRRFs to oil refineries
         sys, barrel = create_geospatial_system(size=size,
                                                sludge_transportation=1,
                                                sludge_distance=sludge_distance,
-                                               biocrude_distance=207,
+                                               biocrude_distance=WRRF_input['real_distance_km'].mean(),
                                                average_sludge_dw_ash=HM_sludge_ash_values[1],
                                                average_sludge_afdw_lipid=HM_sludge_lipid_values[1],
                                                average_sludge_afdw_protein=HM_sludge_protein_values[1],
@@ -2377,10 +2374,8 @@ for size in np.linspace(2, 20, 10):
                                                aerobic_digestion=None,
                                                ww_2_dry_sludge_ratio=1,
                                                state='US',
-                                               elec_GHG=HM_elec_GHG)
+                                               elec_GHG=WRRF_input['kg_CO2_kWh'].mean())
         
-        # TODO: check parameters
-        # the distribution of biocrude transportation cost was assumed to be proportional to the distribution of biocrude price (triangular: 0.2384/0.3847/0.6703, or 4.21/6.80/11.9)
         model = create_geospatial_model(system=sys,
                                         sludge_ash=HM_sludge_ash_values,
                                         sludge_lipid=HM_sludge_lipid_values,
@@ -2391,30 +2386,32 @@ for size in np.linspace(2, 20, 10):
         model.load_samples(samples)
         model.evaluate()
         
-        # TODO: confirm 'Geospatial' is a tab
-        HM_NPV = model.table['Geospatial']['NPV [$]'].dropna()
-        HM_biocrude = model.table['Geospatial']['Biocrude production [BPD]'].dropna()
-        HM_decarbonization = model.table['Geospatial']['Decarbonization amount [tonne_per_day]'].dropna()
-        HM_decarbonization_cost = -model.table['Geospatial']['NPV [$]'].dropna()/model.table['Geospatial']['Decarbonization amount [tonne_per_day]'].dropna()/365/30
+        idx = len(model.parameters)
+        parameters = model.table.iloc[:, :idx]
+        HM_results = model.table.iloc[:, idx:]
         
-        ternary_results.loc[len(ternary_results.index)] = (
-            [size, sludge_distance,] +
-            get_quantiles(HM_NPV) +
-            get_quantiles(HM_biocrude) +
-            get_quantiles(HM_decarbonization) +
-            get_quantiles(HM_decarbonization_cost)
-            )
+        # $/day
+        HM_saving = (average_cost - HM_results[('Geospatial','Sludge management price [$/tonne dry sludge]')])*size
+        # kg CO2 eq/day
+        HM_decarbonization = (average_GHG - HM_results[('Geospatial','Sludge CI [kg CO2/tonne dry sludge]')])*size
+        # BPD
+        HM_biocrude = HM_results[('Geospatial','Biocrude production [BPD]')]
+        
+        ternary_results.loc[len(ternary_results.index)] = ([size, sludge_distance,] +
+                                                            get_quantiles(HM_saving) +
+                                                            get_quantiles(HM_decarbonization) +
+                                                            get_quantiles(HM_biocrude))
         
 ternary_results.to_excel(folder + f'results/heat_map_{size}_tonne_per_day_{sludge_distance}_km_{date.today()}.xlsx')
 
-#%% sludge transportation (heat map, HM) visualization (decarbonization) 
+#%% sludge transportation (heat map, HM) visualization (saving) 
 
-# TODO: update the code/figure during execution, if necessary
+# !!! update the input file if necessary
+HM = pd.read_excel(folder + 'results/heat_map/heat_map_20.0_tonne_per_day_200.0_km_2024-08-24.xlsx')
 
-# TODO: update the file
-HM = pd.read_excel(folder + 'results/heat_map_20.0_tonne_per_day_200.0_km_2024-01-05.xlsx')
+HM_saving = HM[['sludge_amount','sludge_transportation_distance','saving_50th']]
 
-HM_decarbonization = HM[['sludge_amount','sludge_transportation_distance','decarbonization_amount_50th']]
+HM_saving['saving_50th'] = HM_saving['saving_50th']
 
 fig, ax = plt.subplots(figsize=(12.5, 10))
 
@@ -2439,7 +2436,6 @@ ax.set_ylabel(r'$\mathbf{Total\ sludge}$ [tonne·day${^{-1}}$]', fontname='Arial
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-# plt.xticks(np.arange(100, 1150, 150))
 plt.xticks(np.arange(20, 220, 30))
 plt.yticks(np.arange(2, 22, 3))
 
@@ -2447,18 +2443,79 @@ ax_right = ax.twinx()
 ax_right.set_ylim((2, 20))
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-# plt.xticks(np.arange(100, 1150, 150))
 plt.xticks(np.arange(20, 220, 30))
 plt.yticks(np.arange(2, 22, 3))
 
 ax_top = ax.twiny()
-# ax_top.set_xlim((100, 1000))
 ax_top.set_xlim((20, 200))
-# plt.xticks(np.arange(max_distance*0.2, max_distance*1.2, max_distance*0.2))
-# TODO: why length was 20/10 but 7.5 here
-ax_top.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
-# plt.xticks(np.arange(100, 1150, 150))
+plt.xticks(np.arange(20, 220, 30))
+plt.yticks(np.arange(2, 22, 3))
+
+try:
+    color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [r, o, y, g, b])
+except ValueError:
+    pass
+
+x = np.array(HM_saving['sludge_transportation_distance'])
+y = np.array(HM_saving['sludge_amount'])
+z = np.array(HM_saving['saving_50th'])
+
+fills = ax.tricontourf(x, y, z, levels=10000, 
+                       cmap=color_map_Guest)
+fig.colorbar(fills, ax=ax)
+
+fig.delaxes(fig.axes[3])
+
+lines = ax.tricontour(x, y, z, levels=7, linewidths=3, linestyles='solid', colors='k')
+
+ax.clabel(lines, lines.levels, inline=True, fontsize=38)
+
+#%% sludge transportation (heat map, HM) visualization (decarbonization) 
+
+# !!! update the input file if necessary
+HM = pd.read_excel(folder + 'results/heat_map/heat_map_20.0_tonne_per_day_200.0_km_2024-08-24.xlsx')
+
+HM_decarbonization = HM[['sludge_amount','sludge_transportation_distance','decarbonization_50th']]
+
+fig, ax = plt.subplots(figsize=(12.5, 10))
+
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 38
+plt.rcParams['ytick.labelsize'] = 38
+
+plt.xticks(fontname='Arial')
+plt.yticks(fontname='Arial')
+
+plt.rcParams.update({'mathtext.fontset': 'custom'})
+plt.rcParams.update({'mathtext.default': 'regular'})
+plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+ax = plt.gca()
+
+ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False, pad=6)
+
+ax.set_xlabel(r'$\mathbf{Average\ distance}$ [km]', fontname='Arial', fontsize=45)
+ax.set_ylabel(r'$\mathbf{Total\ sludge}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
+
+mathtext.FontConstantsBase.sup1 = 0.35
+
+plt.xticks(np.arange(20, 220, 30))
+plt.yticks(np.arange(2, 22, 3))
+
+ax_right = ax.twinx()
+ax_right.set_ylim((2, 20))
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+plt.xticks(np.arange(20, 220, 30))
+plt.yticks(np.arange(2, 22, 3))
+
+ax_top = ax.twiny()
+ax_top.set_xlim((20, 200))
+ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+
 plt.xticks(np.arange(20, 220, 30))
 plt.yticks(np.arange(2, 22, 3))
 
@@ -2469,85 +2526,10 @@ except ValueError:
 
 x = np.array(HM_decarbonization['sludge_transportation_distance'])
 y = np.array(HM_decarbonization['sludge_amount'])
-z = np.array(HM_decarbonization['decarbonization_amount_50th'])
+z = np.array(HM_decarbonization['decarbonization_50th'])
 
 fills = ax.tricontourf(x, y, z, levels=10000, 
-                      cmap=color_map_Guest)
-fig.colorbar(fills, ax=ax)
-
-fig.delaxes(fig.axes[3])
-
-lines = ax.tricontour(x, y, z, levels=7, linewidths=3, linestyles='solid', colors='k')
-
-ax.clabel(lines, lines.levels, inline=True, fontsize=38)
-
-#%% sludge transportation (heat map, HM) visualization (NPV) 
-
-# TODO: update the code/figure during execution, if necessary
-
-# TODO: update the file
-HM = pd.read_excel(folder + 'results/heat_map_20.0_tonne_per_day_200.0_km_2024-01-05.xlsx')
-
-HM_NPV = HM[['sludge_amount','sludge_transportation_distance','NPV_50th']]
-
-HM_NPV['NPV_50th'] = HM_NPV['NPV_50th']/1000000
-
-fig, ax = plt.subplots(figsize=(12.5, 10))
-
-plt.rcParams['font.sans-serif'] = 'Arial'
-plt.rcParams['axes.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 38
-plt.rcParams['ytick.labelsize'] = 38
-
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
-
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
-
-ax = plt.gca()
-
-ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False, pad=6)
-
-ax.set_xlabel(r'$\mathbf{Average\ distance}$ [km]', fontname='Arial', fontsize=45)
-ax.set_ylabel(r'$\mathbf{Total\ sludge}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
-
-mathtext.FontConstantsBase.sup1 = 0.35
-
-# plt.xticks(np.arange(100, 1150, 150))
-plt.xticks(np.arange(20, 220, 30))
-plt.yticks(np.arange(2, 22, 3))
-
-ax_right = ax.twinx()
-ax_right.set_ylim((2, 20))
-ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
-
-# plt.xticks(np.arange(100, 1150, 150))
-plt.xticks(np.arange(20, 220, 30))
-plt.yticks(np.arange(2, 22, 3))
-
-ax_top = ax.twiny()
-# ax_top.set_xlim((100, 1000))
-ax_top.set_xlim((20, 200))
-# TODO: why length was 20/10 but 7.5 here
-ax_top.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
-
-# plt.xticks(np.arange(100, 1150, 150))
-plt.xticks(np.arange(20, 220, 30))
-plt.yticks(np.arange(2, 22, 3))
-
-try:
-    color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [r, o, y, g, b])
-except ValueError:
-    pass
-
-x = np.array(HM_NPV['sludge_transportation_distance'])
-y = np.array(HM_NPV['sludge_amount'])
-z = np.array(HM_NPV['NPV_50th'])
-
-fills = ax.tricontourf(x, y, z, levels=10000, 
-                      cmap=color_map_Guest)
+                       cmap=color_map_Guest)
 fig.colorbar(fills, ax=ax)
 
 fig.delaxes(fig.axes[3])
