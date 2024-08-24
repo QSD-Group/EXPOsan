@@ -518,7 +518,9 @@ def create_geospatial_system(# MGD
                finance_interest_value=0.03,
                labor_cost_value=wage)
     
-    # TODO: do we want to include tax credit? (from J.S.G.: ask Dalton for his new manuscript, which has tax credit information)
+    # do not include tax credit as tax credit like 45Z is usually for final products (e.g., diesel)
+    # our product is biocrude
+    # though it is possible to allocate some credit to biocrude, it will be too complicate to do
     federal_income_tax_rate_value = 0.21
     
     # TODO: mention this in the main manuscript or the SI and add citation
