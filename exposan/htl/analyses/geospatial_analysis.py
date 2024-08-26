@@ -6,10 +6,7 @@ Created on Sun Jun 11 08:12:41 2023
 @author: jiananfeng
 '''
 
-# TODO 1: consider adding transportation cost and carbon intensity as contextual parameters
-# see if https://www.bls.gov/oes/tables.htm (from Abby) has some information
-# TODO 2: update electricity CI to match up balancing areas instead of states
-# TODO 3: refactor/reformat all codes
+# TODO: refactor/reformat all codes
 
 # confirmed: both 'markersize' (in gpd.plot()) and 's' (in plt.scatter()) are proportional to area
 
@@ -827,9 +824,7 @@ for i in range(0, len(WRRF_input)):
         # $/tonne
         sludge_cost = -tea.solve_price(raw_wastewater)*water_density*_MMgal_to_L/WWTP.ww_2_dry_sludge
     except RuntimeError:
-        # TODO: double check this
         # due to high gross receipts tax (higher than net income, it might be impossible to break even)
-        # TODO: there might be a problem: when solving price, the income tax in fixed, however, the raw_wastewater price could change net income, which can change income tax
         print('-------RUNTIME ERROR-------')
         
     try:
@@ -1180,15 +1175,14 @@ plt.yticks(np.arange(0, 70, 10))
 
 ax_right = ax.twinx()
 ax_right.set_ylim((0, 60))
-ax_right.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 plt.xticks(np.arange(0, 350, 50))
 plt.yticks(np.arange(0, 70, 10))
 
 ax_top = ax.twiny()
 ax_top.set_xlim((0, 350))
-# TODO: why length was 20/10 but 7.5 here
-ax_top.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 plt.xticks(np.arange(0, 350, 50))
 plt.yticks(np.arange(0, 70, 10))
@@ -1431,8 +1425,6 @@ geo_uncertainty_decarbonization.to_excel(folder + f'results/regional_decarboniza
 geo_uncertainty_biocrude.to_excel(folder + f'results/regional_biocrude_uncertainty_{date.today()}_{i}.xlsx')
 
 #%% regional uncertainty (data preparation)
-
-# TODO: continue from here
 
 # decarbonization
 # !!! update these files if necessary
@@ -1843,6 +1835,8 @@ for i in range(0, 2):
 
 #%% sludge transportation (Urbana-Champaign, after sludge transportation)
 
+# TODO: check this cell again
+
 CU_combined_uncertainty_saving = pd.DataFrame()
 CU_combined_uncertainty_decarbonization = pd.DataFrame()
 CU_combined_uncertainty_biocrude = pd.DataFrame()
@@ -2035,29 +2029,45 @@ MN_WI_IA_distance = []
 for i in range(len(MN_WI_IA)):
     MN_WI_IA_distance.append(geopy.distance.geodesic((MN_WI_IA['latitude'].iloc[i], MN_WI_IA['longitude'].iloc[i]), (center_WRRF.latitude, center_WRRF.longitude)).km)
 
-MN_WI_IA['linear_distance_to_center_WRRF_km'] = MN_WI_IA_distance
+MN_WI_IA['linear_distance_to_center_WRRF_km_test'] = MN_WI_IA_distance
 
-MN_WI_IA = MN_WI_IA[MN_WI_IA['linear_distance_to_center_WRRF_km'] <= 200]
+MN_WI_IA = MN_WI_IA[MN_WI_IA['linear_distance_to_center_WRRF_km_test'] <= 200]
 
 # remove WRRFs that are already decarbonized without sludge transportation
 MN_WI_IA_decarbonized = decarbonization_result[decarbonization_result['state'].isin(['MN','WI','IA'])]
 
 MN_WI_IA_transportation = MN_WI_IA[~MN_WI_IA['CWNS'].isin(list(MN_WI_IA_decarbonized['CWNS']))].copy()
 
-# !!! get a google API key !!! do not upload to GitHub
-gmaps = googlemaps.Client(key='XXX')
+distance_satellite_inventory = pd.read_excel(folder + 'satellite_distance_inventory.xlsx')
 
+# match using WRRF ID ('CWNS')
+MN_WI_IA_transportation = MN_WI_IA_transportation.merge(distance_satellite_inventory, how='left', on='CWNS')
+
+missing_satellite_distance = []
 for i in MN_WI_IA_transportation.index:
-    try:
-        print(i)
-        MN_WI_IA_transportation.loc[i, 'real_distance_to_center_WRRF_km'] = gmaps.distance_matrix((MN_WI_IA_transportation.loc[i, 'latitude'], MN_WI_IA_transportation.loc[i, 'longitude']),
-                                                                                                  (center_WRRF.latitude, center_WRRF.longitude),
-                                                                                                  mode='driving')['rows'][0]['elements'][0]['distance']['value']/1000
-    except KeyError:
-        print('--------------------------------')
-        MN_WI_IA_transportation.loc[i, 'real_distance_to_center_WRRF_km'] = np.nan
+    if pd.isna(MN_WI_IA_transportation.loc[i, 'linear_distance_to_center_WRRF_km']):
+        missing_satellite_distance.append(i)
 
-MN_WI_IA_transportation.to_excel(folder + f'results/Minnesota/satellite_WRRFs_{date.today()}.xlsx')
+if len(missing_satellite_distance) == 0:
+    MN_WI_IA_transportation.to_excel(folder + f'results/Minnesota/satellite_WRRFs_{date.today()}.xlsx')
+else:
+    # !!! get a google API key !!! do not upload to GitHub
+    gmaps = googlemaps.Client(key='XXX')
+    
+    for i in missing_satellite_distance:
+        MN_WI_IA_transportation.loc[i, 'linear_distance_to_center_WRRF_km'] = geopy.distance.geodesic((MN_WI_IA_transportation.loc[i, 'latitude'].iloc[i], MN_WI_IA_transportation.loc[i, 'longitude'].iloc[i]),
+                                                                                                      (center_WRRF.latitude, center_WRRF.longitude)).km
+        
+        try:
+            print(i)
+            MN_WI_IA_transportation.loc[i, 'real_distance_to_center_WRRF_km'] = gmaps.distance_matrix((MN_WI_IA_transportation.loc[i, 'latitude'], MN_WI_IA_transportation.loc[i, 'longitude']),
+                                                                                                      (center_WRRF.latitude, center_WRRF.longitude),
+                                                                                                      mode='driving')['rows'][0]['elements'][0]['distance']['value']/1000
+        except KeyError:
+            print('--------------------------------')
+            MN_WI_IA_transportation.loc[i, 'real_distance_to_center_WRRF_km'] = np.nan
+
+    MN_WI_IA_transportation.to_excel(folder + f'results/Minnesota/satellite_WRRFs_{date.today()}.xlsx')
 
 #%% sludge transportation (satellite, SA) (center WRRF uncertainty)
 
@@ -2123,7 +2133,7 @@ biocrude_center = results[('Geospatial','Biocrude production [BPD]')]
 filterwarnings('ignore')
 
 # !!! update the file here if necessary
-MN_WI_IA_transportation = pd.read_excel(folder + 'results/Minnesota/satellite_WRRFs_2024-08-24.xlsx')
+MN_WI_IA_transportation = pd.read_excel(folder + 'results/Minnesota/satellite_WRRFs_2024-08-26.xlsx')
 
 print(len(MN_WI_IA_transportation))
 

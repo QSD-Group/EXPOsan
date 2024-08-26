@@ -70,7 +70,6 @@ from exposan.htl import _load_components, create_tea, state_income_tax_rate_2022
 from biosteam.units import IsenthalpicValve
 from biosteam import settings
 
-# TODO: consider if the feedstock is biosolids, send CH4 from AD to CHP
 # TODO: for LCA, use ecoinvent 3.8, cutoff, TRACI, update this in the manuscript as well
 # TODO: refactor the code wherever necessary
 
@@ -143,7 +142,6 @@ def _load_process_settings(location='IL'):
     
     bst.HeatUtility.heating_agents.append(HTF)
     
-    # TODO: use state-level electricity price; confirm with Jeremy
     elec = pd.read_excel(folder + '/data/state_elec_price_2022.xlsx', 'elec_price_2022')
     # electricity price in 2022$/kWh
     bst.PowerUtility.price = elec[elec['state']==location]['price'].iloc[0]/100
@@ -443,6 +441,7 @@ def create_geospatial_system(# MGD
                     'H2SO4':        [stream.H2SO4, 0.005529872568],
                     'NaOH':         [stream.NaOH, 1.2497984],
                     'RO_membrane':  [stream.Membrane_in, 2.2709135],
+                    # TODO: mention this in the SI (add an 'Activity' columns to the table of uncertaity parameters with the possible values sunch as 'transforming', 'market', and 'market group')
                     # TODO: address this problem (i.e., do not use market or market group for products) for other systems (i.e., CO2 sorbent, HTL-PFAS)
                     # use 'ammonium sulfate production' for 'NH42SO4' instead of market or market group since we don't offset things like transportation
                     'NH42SO4':      [stream.ammonium_sulfate, -1.1139067],
@@ -535,7 +534,6 @@ def create_geospatial_system(# MGD
     
     income_tax_rate = federal_income_tax_rate_value + state_income_tax_rate_value
     
-    # TODO: there might be a problem: when solving price, the income tax in fixed, however, the raw_wastewater price could change net income, which can change income tax
     create_tea(sys, IRR_value=0.03,
                income_tax_value=income_tax_rate,
                finance_interest_value=0.03,
