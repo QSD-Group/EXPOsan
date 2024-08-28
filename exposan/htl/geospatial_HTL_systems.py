@@ -221,8 +221,7 @@ def create_geospatial_system(# MGD
                            sludge_afdw_protein=0.510,
                            operation_hours=8760,
                            sludge_distance=sludge_distance,
-                           biocrude_distance=biocrude_distance
-                           )
+                           biocrude_distance=biocrude_distance)
         elif anaerobic_digestion == 1:
             WWTP = su.WWTP(ID='WWTP',
                            ins=raw_wastewater,

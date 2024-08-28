@@ -84,6 +84,7 @@ WRRF = WRRF[['FACILITY','CITY','STATE','CWNS_NUM','FACILITY_ID','LATITUDE',
 TT_w_AeD = ['B2','C2','D2','E2','E2P','G2','I2','N2','O2','LAGOON_AER','LAGOON_UNCATEGORIZED']
 TT_w_AD = ['B1','B1E','B4','C1','D1','F1','G1','G1E','H1','I1','I1E','N1','O1','O1E','LAGOON_ANAER','LAGOON_FAC']
 
+# TODO: set AD = 0 if AeD = 1? Maybe not, the current way is more accurate
 # TODO: check this, and how this have been used?
 # to be conservative (AeD has higher ash content than AD):
 # if a WRRF has AeD (regardless of AD), assume all sludge composition follows the AeD sludge composition,
@@ -239,16 +240,34 @@ between_10_and_100 = (WRRF_flow > 10) & (WRRF_flow <= 100)
 WRRF[between_10_and_100].plot(ax=ax, color=g, markersize=WRRF.loc[between_10_and_100, WRRF_flow.name]*10, edgecolor='k', linewidth=1.5, alpha=0.5)
 
 less_than_10 = WRRF_flow <= 10
-WRRF[less_than_10].plot(ax=ax, color=g, markersize=WRRF.loc[less_than_10, WRRF_flow.name]*10, edgecolor='none', alpha=0.1)
+WRRF[less_than_10].plot(ax=ax, color=g, markersize=WRRF.loc[less_than_10, WRRF_flow.name]*10, edgecolor='none', alpha=0.2)
+
+# comment out the code above and uncomment the following line to show all WRRFs together with the same symbols
+# WRRF.plot(ax=ax, color=a, markersize=10)
+
+rectangle_edge = Rectangle((-13320000, 2880000), 1280000, 680000,
+                           color='k', lw=3, fc='none', alpha=1)
+ax.add_patch(rectangle_edge)
+
+ax.scatter(x=-13140000, y=3420000, marker='o', s=200*10, c=dg, linewidths=3,
+           alpha=1, edgecolor='k')
+ax.scatter(x=-13140000, y=3220000, marker='o', s=50*10, c=g, linewidths=3,
+           alpha=0.5, edgecolor='k')
+ax.scatter(x=-13140000, y=3020000, marker='o', s=10*10, c=g, linewidths=3,
+           alpha=0.2, edgecolor='none')
+
+plt.figtext(0.261, 0.37, '> 100 MGD', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
+plt.figtext(0.261, 0.3485, '10 to 100 MGD', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
+plt.figtext(0.261, 0.327, '≤ 10 MGD', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
 
 ax.set_aspect(1)
 
 ax.set_axis_off()
 
-# comment out the code above and uncomment the following line to show all WRRFs together with the same symbols
-# WRRF.plot(ax=ax, color=a, markersize=10)
-
 #%% oil refinery visualization
+
+# note oil refinery production numbers reflect the production at some time point, not the refinery's capacity
+# therefore, it is not necessary to plot the capacity
 
 fig, ax = plt.subplots(figsize=(30, 30))
 
@@ -258,30 +277,20 @@ US.plot(ax=ax,
         edgecolor='k',
         linewidth=0)
 
+US.plot(ax=ax, color='none', edgecolor='k', linewidth=3)
 # for TOC
 # US.plot(ax=ax, color='none', edgecolor='k', linewidth=0)
-
-US.plot(ax=ax, color='none', edgecolor='k', linewidth=3)
-
- # for all oil refineries together with the same symbols
+# for all oil refineries together with the same symbols
 # US.plot(ax=ax, color='none', edgecolor='k', linewidth=6)
 
-refinery['total_capacity'] = refinery[['Atmos. Crude Dist','Vacuum Dist','Catalytic Cracking',
-                                       'Hydro Cracking','Thermal Cracking, Visbreaking',
-                                       'Catalytic Recorming','Alkylates, Isomerization',
-                                       'Desulfurization','Fluid and Delayed Coking',
-                                       'Asphalt and Road Oil']].sum(axis=1)
+refinery.plot(ax=ax, color=o, markersize=1000, edgecolor='k', linewidth=1.5, alpha=1)
 
-refinery = refinery.sort_values(by='total_capacity', ascending=False)
-
-refinery.plot(ax=ax, color=o, markersize=refinery['total_capacity']*4.5, edgecolor='k', linewidth=1.5, alpha=1)
+# comment out the code above and uncomment the following line to show all oil refineries together with the same symbols
+# refinery.plot(ax=ax, color=o, markersize=1000, edgecolor='k', linewidth=6)
 
 ax.set_aspect(1)
 
 ax.set_axis_off()
-
-# comment out the code above and uncomment the following line to show all oil refineries together with the same symbols
-# refinery.plot(ax=ax, color=o, markersize=1000, edgecolor='k', linewidth=6)
 
 #%% WRRFs+oil refineries visualization (all)
 
@@ -299,10 +308,10 @@ ax.set_axis_off()
 
 fig, ax = plt.subplots(figsize=(30, 30))
 
-plt.rcParams['axes.linewidth'] = 1.5
-plt.rcParams['hatch.linewidth'] = 1.5
-plt.rcParams['xtick.labelsize'] = 25
-plt.rcParams['ytick.labelsize'] = 25
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 30
+plt.rcParams['ytick.labelsize'] = 30
 plt.rcParams['font.sans-serif'] = 'Arial'
 
 plt.xticks(fontname='Arial')
@@ -319,11 +328,15 @@ assert elec_price.price.min() > 6, 'adjust the colormap range'
 assert elec_price.price.max() < 18, 'adjust the colormap range'
 
 norm = colors.TwoSlopeNorm(vmin=6, vcenter=12, vmax=18)
-elec_price.plot('price', ax=ax, linewidth=1.5, cmap='Oranges', edgecolor='k', legend=True, legend_kwds={'shrink': 0.35}, norm=norm)
+elec_price.plot('price', ax=ax, linewidth=3, cmap='Oranges', edgecolor='k', legend=True, legend_kwds={'shrink': 0.35}, norm=norm)
 
-fig.axes[1].set_ylabel('$\mathbf{Electricity\ price}$ [cent·${kWh^{-1}}$]',
-                        fontname='Arial', fontsize=28)
-fig.axes[1].tick_params(length=15, width=1.5)
+fig.axes[1].set_ylabel('$\mathbf{Electricity\ price}$ [cent·${kWh^{-1}}$]', fontname='Arial', fontsize=35)
+fig.axes[1].tick_params(length=10, width=3)
+
+pos1 = fig.axes[1].get_position()
+pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+fig.axes[1].set_position(pos2)
+
 # comment out the following line if the colorbar is needed
 # fig.delaxes(fig.axes[1])
 
@@ -335,10 +348,10 @@ ax.set_axis_off()
 
 fig, ax = plt.subplots(figsize=(30, 30))
 
-plt.rcParams['axes.linewidth'] = 1.5
-plt.rcParams['hatch.linewidth'] = 1.5
-plt.rcParams['xtick.labelsize'] = 25
-plt.rcParams['ytick.labelsize'] = 25
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 30
+plt.rcParams['ytick.labelsize'] = 30
 plt.rcParams['font.sans-serif'] = 'Arial'
 
 plt.xticks(fontname='Arial')
@@ -354,12 +367,16 @@ mathtext.FontConstantsBase.sup1 = 0.35
 assert elec_GHG.kg_CO2_kWh.min() > 0, 'adjust the colormap range'
 assert elec_GHG.kg_CO2_kWh.max() < 1.2, 'adjust the colormap range'
 
-norm = colors.TwoSlopeNorm(vmin=0, vcenter=0.6, vmax=1.2)
-elec_GHG.plot('kg_CO2_kWh', ax=ax, linewidth=1.5, cmap='Blues', edgecolor='k', legend=True, legend_kwds={'shrink': 0.35}, norm=norm)
+norm = colors.TwoSlopeNorm(vmin=0, vcenter=0.6000000000000001, vmax=1.2000000000000002)
+elec_GHG.plot('kg_CO2_kWh', ax=ax, linewidth=3, cmap='Blues', edgecolor='k', legend=True, legend_kwds={'shrink': 0.35}, norm=norm)
 
-fig.axes[1].set_ylabel('$\mathbf{Electricity\ carbon\ intensity}$ [kg ${CO_2}$ eq·${kWh^{-1}}$]',
-                        fontname='Arial', fontsize=28)
-fig.axes[1].tick_params(length=15, width=1.5)
+fig.axes[1].set_ylabel('$\mathbf{Electricity\ carbon\ intensity}$' + '\n[kg ${CO_2}$ eq·${kWh^{-1}}$]', fontname='Arial', fontsize=35, linespacing=0.8)
+fig.axes[1].tick_params(length=10, width=3)
+
+pos1 = fig.axes[1].get_position()
+pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+fig.axes[1].set_position(pos2)
+
 # comment out the following line if the colorbar is needed
 # fig.delaxes(fig.axes[1])
 
@@ -686,38 +703,39 @@ def add_region(position, start_region, end_region, color):
     plt.rcParams.update({'mathtext.default': 'regular'})
     plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
     
-    for i in range(start_region, end_region):
-        CF_input.iloc[2:, i].plot(ax=ax, color=color, linewidth=3)
-        
     ax.set_xlim([0, max_distance_plot])
     ax.set_ylim([0, 7000])
     
+    plt.xticks(np.arange(0, max_distance_plot*1.2, max_distance_plot*0.2))
+    plt.yticks(np.arange(0, 8000, 1000))
+    
+    for i in range(start_region, end_region):
+        CF_input.iloc[2:, i].plot(ax=ax, color=color, linewidth=3)
+    
     if position == 4:
-        ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
+        ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True, pad=0)
         
         ax_right = ax.twinx()
         ax_right.set_ylim(ax.get_ylim())
-        plt.yticks(np.arange(0, 7000, 1000))
-        ax_right.tick_params(direction='in', length=15, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+        
+        ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
         
     if position == 0:
-        ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False, labelleft=True, labelbottom=True)
-        plt.xticks(np.arange(0, max_distance_plot*1.2, max_distance_plot*0.2))
+        ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False, labelleft=True, labelbottom=True, pad=0)
         ax.set_ylabel(r'$\mathbf{Cumulative\ WRRFs\ capacity}$ [MGD]', fontname='Arial', fontsize=35)
     else:
         if position == 2:
             ax.set_xlabel(r'$\mathbf{Travel\ distance}$ [km]', fontname='Arial', fontsize=35)
-        ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
+        ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True, pad=0)
         plt.xticks(np.arange(max_distance_plot*0.2, max_distance_plot*1.2, max_distance_plot*0.2))
     
     for label in ax.get_xticklabels():
         label.set_rotation(45)
-        # label.set_ha('right')
     
     ax_top = ax.twiny()
     ax_top.set_xlim(ax.get_xlim())
     plt.xticks(np.arange(max_distance_plot*0.2, max_distance_plot*1.2, max_distance_plot*0.2))
-    ax_top.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+    ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 add_region(0, 0, PADD_1, b)
 add_region(1, PADD_1, PADD_2, g)
@@ -732,7 +750,7 @@ PADD_3 = (CF_input.loc['PADD',:].isin([1,2,3])).sum()
 PADD_4 = (CF_input.loc['PADD',:].isin([1,2,3,4])).sum()
 PADD_5 = (CF_input.loc['PADD',:].isin([1,2,3,4,5])).sum()
 
-fig, ax = plt.subplots(figsize=(12, 10))
+fig, ax = plt.subplots(figsize=(11, 10))
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
@@ -745,14 +763,17 @@ plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
+ax.set_xlim([0, max_distance])
+ax.set_ylim([0, 20000])
+
+plt.xticks(np.arange(0, max_distance*1.2, max_distance*0.2))
+plt.yticks(np.arange(0, 24000, 4000))
+
 CF_input.iloc[2:, 0:PADD_1].sum(axis=1).plot(ax=ax, color=b, linewidth=3)
 CF_input.iloc[2:, PADD_1:PADD_2].sum(axis=1).plot(ax=ax, color=g, linewidth=3)
 CF_input.iloc[2:, PADD_2:PADD_3].sum(axis=1).plot(ax=ax, color=r, linewidth=3)
 CF_input.iloc[2:, PADD_3:PADD_4].sum(axis=1).plot(ax=ax, color=o, linewidth=3)
 CF_input.iloc[2:, PADD_4:PADD_5].sum(axis=1).plot(ax=ax, color=y, linewidth=3)
-
-ax.set_xlim([0, max_distance])
-ax.set_ylim([0, 20000])
 
 ax.set_xlabel(r'$\mathbf{Travel\ distance}$ [km]', fontname='Arial', fontsize=35)
 ax.set_ylabel(r'$\mathbf{Cumulative\ WRRFs\ capacity}$ [MGD]', fontname='Arial', fontsize=35)
@@ -761,13 +782,13 @@ ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, le
 
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
-plt.yticks(np.arange(0, 20000, 2000))
-ax_right.tick_params(direction='in', length=15, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+plt.yticks(np.arange(0, 24000, 4000))
+ax_right.tick_params(direction='in', length=10, width=3, bottom=True, top=False, left=False, right=True, labelcolor='none')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
-plt.xticks(np.arange(0, 1750, 250))
-ax_top.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+plt.xticks(np.arange(0, max_distance*1.2, max_distance*0.2))
+ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 #%% CO2 abatement cost analysis
 
@@ -787,11 +808,10 @@ WRRF_input['waste_cost'] = sum(WRRF_input[i]*sludge_disposal_cost[i] for i in sl
 WRRF_input['waste_GHG'] =  sum(WRRF_input[i]*sludge_emission_factor[i] for i in sludge_emission_factor.keys())/WRRF_input['total_sludge_amount_kg_per_year']*1000
 
 CWNS = []
-facility_ID = []
 CO2_reduction = []
 sludge_CO2_reduction_ratio = []
 WRRF_CO2_reduction_ratio = []
-saves = []
+saving = []
 USD_decarbonization = []
 oil_BPD = []
 
@@ -838,12 +858,12 @@ for i in range(0, len(WRRF_input)):
     CO2_reduction_result = sludge_tonne*(WRRF_input.iloc[i]['waste_GHG'] - sludge_CI)
     
     try:
-        sludge_CO2_reduction_ratio_result = CO2_reduction_result/WRRF_input.iloc[i]['biosolids_emission']/365/30
+        sludge_CO2_reduction_ratio_result = CO2_reduction_result/WRRF_input.iloc[i]['biosolids_emission']/(sys.operating_hours/24)/lca.lifetime
     # some WRRFs have incineration and the biosolids_emission is 0
     except FloatingPointError:
         sludge_CO2_reduction_ratio_result = np.nan
     
-    WRRF_CO2_reduction_ratio_result = CO2_reduction_result/WRRF_input.iloc[i]['total_emission']/365/30
+    WRRF_CO2_reduction_ratio_result = CO2_reduction_result/WRRF_input.iloc[i]['total_emission']/(sys.operating_hours/24)/lca.lifetime
     
     # make sure CO2_reduction_result is positive if you want to calculate USD_per_tonne_CO2_reduction
     if CO2_reduction_result > 0:
@@ -853,11 +873,10 @@ for i in range(0, len(WRRF_input)):
         USD_per_tonne_CO2_reduction = np.nan
     
     CWNS.append(WRRF_input.iloc[i]['CWNS'])
-    facility_ID.append(WRRF_input.iloc[i]['facility_ID'])
     CO2_reduction.append(CO2_reduction_result)
     sludge_CO2_reduction_ratio.append(sludge_CO2_reduction_ratio_result)
     WRRF_CO2_reduction_ratio.append(WRRF_CO2_reduction_ratio_result)
-    saves.append(saving_result)
+    saving.append(saving_result)
     USD_decarbonization.append(USD_per_tonne_CO2_reduction)
     oil_BPD.append(barrel)
     
@@ -869,11 +888,10 @@ for i in range(0, len(WRRF_input)):
         print(i)
     
 result = {'CWNS': CWNS,
-          'facility_ID': facility_ID,
           'CO2_reduction': CO2_reduction,
           'sludge_CO2_reduction_ratio': sludge_CO2_reduction_ratio,
           'WRRF_CO2_reduction_ratio': WRRF_CO2_reduction_ratio,
-          'saves': saves,
+          'saving': saving,
           'USD_decarbonization': USD_decarbonization,
           'oil_BPD': oil_BPD}
         
@@ -895,7 +913,7 @@ output_result_3 = pd.read_excel(folder + 'results/decarbonization_biocrude_basel
 
 output_result = pd.concat([output_result_1, output_result_2, output_result_3])
 
-integrated_result = input_data.merge(output_result, how='left', on=['CWNS'])
+integrated_result = input_data.merge(output_result, how='left', on='CWNS')
 
 integrated_result.to_excel(folder + f'results/integrated_decarbonization_result_{date.today()}.xlsx')
 
@@ -906,9 +924,7 @@ decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonizat
 decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'].notna()]
 decarbonization_result = decarbonization_result[decarbonization_result['USD_decarbonization'] <= 0]
 
-#%% decarbonization map
-
-# TODO: make 2 or 3 decarbonization maps; each for one type of WRRF (if 2: digestion & no digestion; if 3: AD & AeD & no digestion)
+#%% decarbonization map (preparation)
 
 decarbonization_map = decarbonization_result.sort_values(by='total_emission', ascending=False).copy()
 decarbonization_map = gpd.GeoDataFrame(decarbonization_map, crs='EPSG:4269',
@@ -916,27 +932,89 @@ decarbonization_map = gpd.GeoDataFrame(decarbonization_map, crs='EPSG:4269',
                                                                    y=decarbonization_map.latitude))
 decarbonization_map = decarbonization_map.to_crs(crs='EPSG:3857')
 
-fig, ax = plt.subplots(figsize=(30, 30))
 
-US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
-
-# tonne/day
 decarbonization_map['CO2_reduction_tonne_per_day'] = decarbonization_map['CO2_reduction']/30/365/1000
 
-WRRF_GHG_reduction_tonne_per_day = decarbonization_map['CO2_reduction_tonne_per_day']
+def plot_map(dataset, color):
+    fig, ax = plt.subplots(figsize=(30, 30))
 
-more_than_20 = WRRF_GHG_reduction_tonne_per_day > 20
-decarbonization_map[more_than_20].plot(ax=ax, color=dg, markersize=decarbonization_map.loc[more_than_20, WRRF_GHG_reduction_tonne_per_day.name]*100, edgecolor='k', linewidth=1.5, alpha=1)
+    US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
 
-between_2_and_20 = (WRRF_GHG_reduction_tonne_per_day > 2) & (WRRF_GHG_reduction_tonne_per_day <= 20)
-decarbonization_map[between_2_and_20].plot(ax=ax, color=g, markersize=decarbonization_map.loc[between_2_and_20, WRRF_GHG_reduction_tonne_per_day.name]*100, edgecolor='k', linewidth=1.5, alpha=0.5)
+    dataset.plot(ax=ax, color=color, markersize=dataset['CO2_reduction_tonne_per_day']*150, edgecolor='k', linewidth=1.5, alpha=1)
+    
+    color_1 = color_2 = color_3 = color_4 = 'none'
+    
+    max_size = (dataset['CO2_reduction_tonne_per_day']*100).max()
+    min_size = (dataset['CO2_reduction_tonne_per_day']*100).min()
+    
+    if max_size > 60*150:
+        raise ValueError('add another layer of legend')
+    elif max_size > 30*150:
+        color_1 = color
+    elif max_size > 10*150:
+        color_2 = color
+    elif max_size > 1*150:
+        color_3 = color
+    else:
+        color_4 = color
+        
+    if min_size > 60*150:
+        color_1 = 'w'
+        raise ValueError('add another layer of legend')
+    elif min_size > 30*150:
+        color_2 = 'w'
+    elif min_size > 10*150:
+        color_3 = 'w'
+    elif min_size > 1*150:
+        color_4 = 'w'
+    
+    rectangle_edge = Rectangle((-13410000, 2840000), 1370000, 730000,
+                               color='k', lw=3, fc='none', alpha=1)
+    ax.add_patch(rectangle_edge)
+    
+    ax.scatter(x=-13130000, y=3120000, marker='o', s=60*150, c=color_1, linewidths=3,
+               alpha=1, edgecolor='k')
+    ax.scatter(x=-13130000, y=3120000, marker='o', s=30*150, c=color_2, linewidths=3,
+               alpha=1, edgecolor='k')
+    ax.scatter(x=-13130000, y=3120000, marker='o', s=10*150, c=color_3, linewidths=3,
+               alpha=1, edgecolor='k')
+    ax.scatter(x=-13130000, y=3120000, marker='o', s=1*150, c=color_4, linewidths=3,
+               alpha=1, edgecolor='k')
+    
+    plt.figtext(0.218, 0.376, '[tonne ${CO_2}$ eq·${day^{-1}}$]', fontname='Arial', fontdict={'fontsize': 30,'color':'k','fontweight':'bold'})
+    plt.figtext(0.274, 0.360, '1st layer: 60', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
+    plt.figtext(0.274, 0.346, '2nd layer: 30', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
+    plt.figtext(0.274, 0.332, '3rd layer: 10', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
+    plt.figtext(0.274, 0.318, '4th layer: 1', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
+    
+    ax.set_aspect(1)
+    
+    ax.set_axis_off()
 
-less_than_2 = WRRF_GHG_reduction_tonne_per_day <= 2
-decarbonization_map[less_than_2].plot(ax=ax, color=g, markersize=decarbonization_map.loc[less_than_2, WRRF_GHG_reduction_tonne_per_day.name]*100, alpha=0.1)
+#%% decarbonization map (AD only)
 
-ax.set_aspect(1)
+AD_map = decarbonization_map[(decarbonization_map['sludge_anaerobic_digestion'] == 1) & (decarbonization_map['sludge_aerobic_digestion'] == 0)].copy()
+plot_map(AD_map, b)
 
-ax.set_axis_off()
+#%% decarbonization map (AeD only)
+
+AeD_map = decarbonization_map[(decarbonization_map['sludge_anaerobic_digestion'] == 0) & (decarbonization_map['sludge_aerobic_digestion'] == 1)].copy()
+plot_map(AeD_map, y)
+
+#%% decarbonization map (both AD and AeD)
+
+AD_AeD_map = decarbonization_map[(decarbonization_map['sludge_anaerobic_digestion'] == 1) & (decarbonization_map['sludge_aerobic_digestion'] == 1)].copy()
+plot_map(AD_AeD_map, g)
+
+#%% decarbonization map (AD or AeD)
+
+AD_AeD_map = decarbonization_map[(decarbonization_map['sludge_anaerobic_digestion'] == 1) | (decarbonization_map['sludge_aerobic_digestion'] == 1)].copy()
+plot_map(AD_AeD_map, b)
+
+#%% decarbonization map (no AD and no AeD)
+
+none_map = decarbonization_map[(decarbonization_map['sludge_anaerobic_digestion'] == 0) & (decarbonization_map['sludge_aerobic_digestion'] == 0)].copy()
+plot_map(none_map, r)
 
 #%% facility level decarbonizaiton ratio and biocrude production
 
@@ -966,7 +1044,7 @@ def facility_plot(position, color):
     ax.xaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
     
     if position == 0:
-        data = decarbonization_result[(decarbonization_result['sludge_anaerobic_digestion'] != 1) & (decarbonization_result['sludge_aerobic_digestion'] != 1)].copy()
+        data = decarbonization_result[(decarbonization_result['sludge_anaerobic_digestion'] == 0) & (decarbonization_result['sludge_aerobic_digestion'] == 0)].copy()
         
         ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
         
@@ -975,7 +1053,7 @@ def facility_plot(position, color):
         ax_top = ax.twiny()
         ax_top.set_xlim(ax.get_xlim())
         plt.xticks(np.arange(0, 30, 10))
-        ax_top.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+        ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
         
         ax.set_ylabel(r'$\mathbf{Biocrude\ production}$ [BPD]', fontname='Arial', fontsize=35)
     
@@ -990,7 +1068,7 @@ def facility_plot(position, color):
         ax_top = ax.twiny()
         ax_top.set_xlim(ax.get_xlim())
         plt.xticks(np.arange(0, 30, 10))
-        ax_top.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+        ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
         
         ax.set_xlabel(r'$\mathbf{Decarbonization\ potential}$', fontname='Arial', fontsize=35)
     
@@ -1003,14 +1081,14 @@ def facility_plot(position, color):
         
         ax_right = ax.twinx()
         ax_right.set_ylim(ax.get_ylim())
-        ax_right.tick_params(direction='in', length=15, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+        ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
         
         ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
         
         ax_top = ax.twiny()
         ax_top.set_xlim(ax.get_xlim())
         plt.xticks(np.arange(0, 30, 10))
-        ax_top.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+        ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
     
     ax.scatter(x=data['WRRF_CO2_reduction_ratio']*100,
                y=data['oil_BPD'],
@@ -1058,7 +1136,7 @@ def facility_plot(position, color):
     ax.set_ylim([0, 500])
     
     if position == 0:
-        data = decarbonization_result[(decarbonization_result['sludge_anaerobic_digestion'] != 1) & (decarbonization_result['sludge_aerobic_digestion'] != 1)].copy()
+        data = decarbonization_result[(decarbonization_result['sludge_anaerobic_digestion'] == 0) & (decarbonization_result['sludge_aerobic_digestion'] == 0)].copy()
         
         ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
         
@@ -1067,7 +1145,7 @@ def facility_plot(position, color):
         ax_top = ax.twiny()
         ax_top.set_xlim(ax.get_xlim())
         plt.xticks(np.arange(0, 120, 30))
-        ax_top.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+        ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
         
         ax.set_ylabel(r'$\mathbf{Biocrude\ production}$ [BPD]', fontname='Arial', fontsize=35)
     
@@ -1082,7 +1160,7 @@ def facility_plot(position, color):
         ax_top = ax.twiny()
         ax_top.set_xlim(ax.get_xlim())
         plt.xticks(np.arange(0, 120, 30))
-        ax_top.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+        ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
         
         ax.set_xlabel(r'$\mathbf{Decarbonization\ amount}$ [tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=35)
 
@@ -1097,14 +1175,14 @@ def facility_plot(position, color):
         
         ax_right = ax.twinx()
         ax_right.set_ylim(ax.get_ylim())
-        ax_right.tick_params(direction='in', length=15, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+        ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
         
         ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
         
         ax_top = ax.twiny()
         ax_top.set_xlim(ax.get_xlim())
         plt.xticks(np.arange(0, 120, 30))
-        ax_top.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+        ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
     
     ax.scatter(x=data['CO2_reduction']/30/365/1000,
                y=data['oil_BPD'],
@@ -1125,7 +1203,7 @@ facility_plot(1, y)
 facility_plot(2, b)
 #%% find WRRFs with max decarbonization ratio, decarbonization amount, and biocrude production
 
-no_digestion_WRRFs = decarbonization_result[(decarbonization_result['sludge_anaerobic_digestion'] != 1) & (decarbonization_result['sludge_aerobic_digestion'] != 1)].copy()
+no_digestion_WRRFs = decarbonization_result[(decarbonization_result['sludge_anaerobic_digestion'] == 0) & (decarbonization_result['sludge_aerobic_digestion'] == 0)].copy()
 print(no_digestion_WRRFs.sort_values('CO2_reduction', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
 print(no_digestion_WRRFs.sort_values('WRRF_CO2_reduction_ratio', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
 print(no_digestion_WRRFs.sort_values('oil_BPD', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
@@ -1165,8 +1243,8 @@ ax.set_ylim((0, 60))
 
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
-ax.set_xlabel(r'$\mathbf{Sludge}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
-ax.set_ylabel(r'$\mathbf{Decarbonization}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=45)
+ax.set_xlabel(r'$\mathbf{Solids}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
+ax.set_ylabel(r'$\mathbf{Decarbonization}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -1189,7 +1267,7 @@ plt.yticks(np.arange(0, 70, 10))
 
 ax.scatter(x=decarbonization_vs_sludge['total_sludge_amount_kg_per_year']/1000/365,
            y=decarbonization_vs_sludge['CO2_reduction']/30/365/1000,
-           s=100,
+           s=300,
            c=a,
            linewidths=2,
            edgecolors='k')
@@ -1219,7 +1297,7 @@ ax.set_ylim((0, 60))
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
 ax.set_xlabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=45)
-ax.set_ylabel(r'$\mathbf{Decarbonization}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=45)
+ax.set_ylabel(r'$\mathbf{Decarbonization}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -1228,21 +1306,21 @@ plt.yticks(np.arange(0, 70, 10))
 
 ax_right = ax.twinx()
 ax_right.set_ylim((0, 60))
-ax_right.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 plt.xticks(np.arange(0, 1400, 200))
 plt.yticks(np.arange(0, 70, 10))
 
 ax_top = ax.twiny()
 ax_top.set_xlim((0, 1200))
-ax_top.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 plt.xticks(np.arange(0, 1400, 200))
 plt.yticks(np.arange(0, 70, 10))
 
 ax.scatter(x=decarbonization_vs_sludge['real_distance_km'],
            y=decarbonization_vs_sludge['CO2_reduction']/30/365/1000,
-           s=100,
+           s=300,
            c=a,
            linewidths=2,
            edgecolors='k')
@@ -1271,7 +1349,7 @@ ax.set_ylim((0, 500))
 
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
-ax.set_xlabel(r'$\mathbf{Sludge}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
+ax.set_xlabel(r'$\mathbf{Solids}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
 ax.set_ylabel(r'$\mathbf{Biocrude}$ [BPD]', fontname='Arial', fontsize=45)
 
 mathtext.FontConstantsBase.sup1 = 0.35
@@ -1281,21 +1359,21 @@ plt.yticks(np.arange(0, 600, 100))
 
 ax_right = ax.twinx()
 ax_right.set_ylim((0, 500))
-ax_right.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 plt.xticks(np.arange(0, 300, 50))
 plt.yticks(np.arange(0, 600, 100))
 
 ax_top = ax.twiny()
 ax_top.set_xlim((0, 250))
-ax_top.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 plt.xticks(np.arange(0, 300, 50))
 plt.yticks(np.arange(0, 600, 100))
 
 ax.scatter(x=decarbonization_vs_sludge['total_sludge_amount_kg_per_year']/1000/365,
            y=decarbonization_vs_sludge['oil_BPD'],
-           s=100,
+           s=300,
            c=a,
            linewidths=2,
            edgecolors='k')
@@ -1334,21 +1412,21 @@ plt.yticks(np.arange(0, 600, 100))
 
 ax_right = ax.twinx()
 ax_right.set_ylim((0, 500))
-ax_right.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 plt.xticks(np.arange(0, 1400, 200))
 plt.yticks(np.arange(0, 600, 100))
 
 ax_top = ax.twiny()
 ax_top.set_xlim((0, 1200))
-ax_top.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 plt.xticks(np.arange(0, 1400, 200))
 plt.yticks(np.arange(0, 600, 100))
 
 ax.scatter(x=decarbonization_vs_sludge['real_distance_km'],
            y=decarbonization_vs_sludge['oil_BPD'],
-           s=100,
+           s=300,
            c=a,
            linewidths=2,
            edgecolors='k')
@@ -1423,6 +1501,38 @@ for i in range(0, len(decarbonization_result)):
     
 geo_uncertainty_decarbonization.to_excel(folder + f'results/regional_decarbonization_uncertainty_{date.today()}_{i}.xlsx')
 geo_uncertainty_biocrude.to_excel(folder + f'results/regional_biocrude_uncertainty_{date.today()}_{i}.xlsx')
+
+#%% state-level chord diagram for biocrude transportation
+
+# import only if needed
+from d3blocks import D3Blocks
+
+biocrude_transportation = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
+biocrude_transportation = biocrude_transportation[biocrude_transportation['USD_decarbonization'].notna()]
+biocrude_transportation = biocrude_transportation[biocrude_transportation['USD_decarbonization'] <= 0]
+biocrude_transportation = biocrude_transportation.merge(elec_price[['state','name']], how='left', on='state')
+biocrude_transportation['source'] = biocrude_transportation['name']
+biocrude_transportation['target'] = biocrude_transportation['State']
+biocrude_transportation['weight'] = biocrude_transportation['oil_BPD']
+biocrude_transportation = biocrude_transportation[['source','target','weight']]
+
+d3 = D3Blocks()
+
+ordering = sorted(state_PADD.items(), key=lambda x: x[1])   
+ordering = [i[0] for i in ordering]
+
+d3.chord(biocrude_transportation,
+         ordering=ordering,
+         color='source',
+         fontsize=17.5,
+         arrowhead=10,
+         filepath=folder+f'results/interstate_biocrude_transportation_{date.today()}.html',
+         save_button=False)
+
+d3.node_properties['color'] = d3.node_properties['label'].apply(lambda x: PADD_color[state_PADD[x]])
+d3.edge_properties['color'] = d3.edge_properties['source'].apply(lambda x: PADD_color[state_PADD[x]])
+
+d3.show()
 
 #%% regional uncertainty (data preparation)
 
@@ -1599,7 +1709,7 @@ decarbonization = decarbonization/1000
 # BPD
 biocrude = pd.read_excel(folder + 'results/integrated_regional_total_biocrude_uncertainty_2024-08-22.xlsx')
 
-fig, ax = plt.subplots(figsize = (10, 10))
+fig, ax = plt.subplots(figsize = (11, 10))
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
@@ -1619,19 +1729,19 @@ ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, le
 
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
-ax_right.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 plt.xticks(np.arange(0, 1200, 200))
 plt.yticks(np.arange(0, 14000, 2000))
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
-ax_top.tick_params(direction='in', length=15, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 plt.xticks(np.arange(0, 1200, 200))
 plt.yticks(np.arange(0, 14000, 2000))
 
-ax.set_xlabel(r'$\mathbf{Decarbonization\ amount}$ [tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=35)
+ax.set_xlabel(r'$\mathbf{Decarbonization\ amount}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=35, linespacing=0.8)
 ax.set_ylabel(r'$\mathbf{Biocrude\ production}$ [BPD]', fontname='Arial', fontsize=35)
 
 mathtext.FontConstantsBase.sup1 = 0.35
@@ -1685,7 +1795,7 @@ add_line('PADD_5', dy)
 add_point('PADD_1', db)
 add_point('PADD_2', dg)
 add_point('PADD_3', dr)
-# TODO: add point for PADD 4 or nor
+# TODO: add point for PADD 4 or not
 add_point('PADD_4', do)
 add_point('PADD_5', dy)
 
@@ -1737,37 +1847,6 @@ national_uncertainty_result = pd.DataFrame({'decarbonization':national_decarboni
                                             'biocrude':national_biocrude_uncertainty_result})
 
 national_uncertainty_result.to_excel(folder + f'results/integrated_national_uncertainty_{date.today()}.xlsx')
-
-#%% national chord diagram (biocrude between states)
-
-# import only if needed
-from d3blocks import D3Blocks
-
-biocrude_transportation = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
-biocrude_transportation = biocrude_transportation[biocrude_transportation['USD_decarbonization'].notna()]
-biocrude_transportation = biocrude_transportation[biocrude_transportation['USD_decarbonization'] <= 0]
-biocrude_transportation = biocrude_transportation.merge(elec_price[['state','name']], how='left', on='state')
-biocrude_transportation['source'] = biocrude_transportation['name']
-biocrude_transportation['target'] = biocrude_transportation['State']
-biocrude_transportation['weight'] = biocrude_transportation['oil_BPD']
-biocrude_transportation = biocrude_transportation[['source','target','weight']]
-
-d3 = D3Blocks()
-
-ordering = sorted(state_PADD.items(), key=lambda x: x[1])   
-ordering = [i[0] for i in ordering]
-
-d3.chord(biocrude_transportation,
-         ordering=ordering,
-         color='source',
-         fontsize=17.5,
-         arrowhead=10,
-         filepath=folder+'results/interstate_biocrude_transportation.html')
-
-d3.node_properties['color'] = d3.node_properties['label'].apply(lambda x: PADD_color[state_PADD[x]])
-d3.edge_properties['color'] = d3.edge_properties['source'].apply(lambda x: PADD_color[state_PADD[x]])
-
-d3.show()
 
 #%% sludge transportation (Urbana-Champaign, two separated WRRFs)
 
@@ -1995,8 +2074,6 @@ def add_region(position, xlabel, color):
         
     for flier in bp['fliers']:
         flier.set(marker='o', markersize=7, markerfacecolor=color, markeredgewidth=1.5)
-        
-    ax.plot([ax.get_xlim()[0], ax.get_xlim()[1]], [0, 0], color='k', linestyle='--', linewidth=3)
 
 add_region(0, 'Northeast', o)
 add_region(1, 'Southwest', o)
@@ -2284,7 +2361,7 @@ ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, l
 plt.xticks(np.arange(-20, 60, 10))
 plt.yticks(np.arange(200, 800, 100))
 
-ax.set_xlabel(r'$\mathbf{Decarbonization\ amount}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=45)
+ax.set_xlabel(r'$\mathbf{Decarbonization\ amount}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 ax.set_ylabel(r'$\mathbf{Biocrude\ production}$ [BPD]', fontname='Arial', fontsize=45)
 
 mathtext.FontConstantsBase.sup1 = 0.35
@@ -2322,14 +2399,11 @@ def add_point(item, edgecolor):
     
 add_rectangle('center', o, do)
 add_line('center', do)
+add_point('center', do)
 
 add_rectangle('all', b, db)
 add_line('all', db)
-
-add_point('center', do)
 add_point('all', db)
-
-ax.plot([0, 0], [200, 700], color='k', linestyle='--', linewidth=3)
 
 #%% sludge transportation (heat map, HM)
 
@@ -2442,7 +2516,7 @@ ax = plt.gca()
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False, pad=6)
 
 ax.set_xlabel(r'$\mathbf{Average\ distance}$ [km]', fontname='Arial', fontsize=45)
-ax.set_ylabel(r'$\mathbf{Total\ sludge}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
+ax.set_ylabel(r'$\mathbf{Total\ solids}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -2468,17 +2542,17 @@ try:
 except ValueError:
     pass
 
-x = np.array(HM_saving['sludge_transportation_distance'])
-y = np.array(HM_saving['sludge_amount'])
-z = np.array(HM_saving['saving_50th'])
+X = np.array(HM_saving['sludge_transportation_distance'])
+Y = np.array(HM_saving['sludge_amount'])
+Z = np.array(HM_saving['saving_50th'])
 
-fills = ax.tricontourf(x, y, z, levels=10000, 
+fills = ax.tricontourf(X, Y, Z, levels=10000, 
                        cmap=color_map_Guest)
 fig.colorbar(fills, ax=ax)
 
 fig.delaxes(fig.axes[3])
 
-lines = ax.tricontour(x, y, z, levels=7, linewidths=3, linestyles='solid', colors='k')
+lines = ax.tricontour(X, Y, Z, levels=7, linewidths=3, linestyles='solid', colors='k')
 
 ax.clabel(lines, lines.levels, inline=True, fontsize=38)
 
@@ -2508,7 +2582,7 @@ ax = plt.gca()
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False, pad=6)
 
 ax.set_xlabel(r'$\mathbf{Average\ distance}$ [km]', fontname='Arial', fontsize=45)
-ax.set_ylabel(r'$\mathbf{Total\ sludge}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
+ax.set_ylabel(r'$\mathbf{Total\ solids}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -2534,16 +2608,16 @@ try:
 except ValueError:
     pass
 
-x = np.array(HM_decarbonization['sludge_transportation_distance'])
-y = np.array(HM_decarbonization['sludge_amount'])
-z = np.array(HM_decarbonization['decarbonization_50th'])
+X = np.array(HM_decarbonization['sludge_transportation_distance'])
+Y = np.array(HM_decarbonization['sludge_amount'])
+Z = np.array(HM_decarbonization['decarbonization_50th']/1000)
 
-fills = ax.tricontourf(x, y, z, levels=10000, 
+fills = ax.tricontourf(X, Y, Z, levels=10000, 
                        cmap=color_map_Guest)
 fig.colorbar(fills, ax=ax)
 
 fig.delaxes(fig.axes[3])
 
-lines = ax.tricontour(x, y, z, levels=7, linewidths=3, linestyles='solid', colors='k')
+lines = ax.tricontour(X, Y, Z, levels=7, linewidths=3, linestyles='solid', colors='k')
 
 ax.clabel(lines, lines.levels, inline=True, fontsize=38)

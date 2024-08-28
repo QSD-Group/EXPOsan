@@ -202,7 +202,7 @@ def create_geospatial_model(system=None,
             def set_sludge_afdw_protein(i):
                 WWTP.sludge_afdw_protein=i
     
-    # TODO: should this also related to digestion?
+    # the uncertainty range here covers both sludge and biosolids
     dist = shape.Triangle(0.1944,0.3927,0.5556)
     @param(name='N_2_P',
            element=WWTP,
