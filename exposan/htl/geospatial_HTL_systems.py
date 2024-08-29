@@ -425,9 +425,8 @@ def create_geospatial_system(# MGD
     Sludge_trucking.add_indicator(GlobalWarming, WWTP.ww_2_dry_sludge*0.13004958/0.2/3.79/(10**6))
     # 4.56 $/m3, 0.072 $/m3/mile ([14], likely 2015$)
     Sludge_trucking.price = WWTP.ww_2_dry_sludge*\
-        (4.56/GDPCTPI[2015]*GDPCTPI[2022]/sludge_density*1000/0.2+\
-          0.072/GDPCTPI[2015]*GDPCTPI[2022]/_mile_to_km/sludge_density*1000/0.2*WWTP.sludge_distance)\
-            /3.79/(10**6)/WWTP.sludge_distance
+        (4.56/sludge_density*1000/0.2+0.072/_mile_to_km/sludge_density*1000/0.2*WWTP.sludge_distance)/\
+            GDPCTPI[2015]*GDPCTPI[2022]/3.79/(10**6)/WWTP.sludge_distance
 
     Biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
     # TODO: we don't use the biocrude transportation CI from the literature (89 g CO2/m3/km: carbon intensity of truck transportation, [15]);

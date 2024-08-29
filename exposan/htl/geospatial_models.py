@@ -722,9 +722,8 @@ def create_geospatial_model(system=None,
         cooling_tower_chemicals.price=i
     
     sludge_transportation_price = WWTP.ww_2_dry_sludge*\
-                                    (4.56/GDPCTPI[2015]*GDPCTPI[2022]/sludge_density*1000/0.2+\
-                                      0.072/GDPCTPI[2015]*GDPCTPI[2022]/_mile_to_km/sludge_density*1000/0.2*WWTP.sludge_distance)\
-                                        /3.79/(10**6)/WWTP.sludge_distance
+                                    (4.56/sludge_density*1000/0.2+0.072/_mile_to_km/sludge_density*1000/0.2*WWTP.sludge_distance)/\
+                                        GDPCTPI[2015]*GDPCTPI[2022]/3.79/(10**6)/WWTP.sludge_distance
     dist = shape.Uniform(sludge_transportation_price*0.9,sludge_transportation_price*1.1)
     @param(name='sludge transportation price',
            element='TEA',
