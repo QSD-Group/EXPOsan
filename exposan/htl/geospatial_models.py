@@ -13,9 +13,6 @@ from exposan.htl import create_geospatial_system
 
 # for parameters/numbers not explained in the model, see notes in the system for references
 
-# TODO: remove electricity price/CI as an uncertainty parameter, since they are contextual parameters; update this in the manuscript and/or in the SI
-# TODO: update uncertainty parameters in the SI
-
 __all__ = ('create_geospatial_model',)
 
 # kg/m3

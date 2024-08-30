@@ -44,20 +44,17 @@ Created on Mon Jun 5 08:46:28 2023
 [14] Marufuzzaman, M.; Ekşioğlu, S. D.; Hernandez, R. Truck versus Pipeline
     Transportation Cost Analysis of Wastewater Sludge. Transportation Research Part A:
     Policy and Practice 2015, 74, 14–30. https://doi.org/10.1016/j.tra.2015.02.001.
-[15] Pootakham, T.; Kumar, A. A Comparison of Pipeline versus Truck Transport of
-     Bio-Oil. Bioresource Technology 2010, 101 (1), 414–421.
-     https://doi.org/10.1016/j.biortech.2009.07.077.
-[16] Pootakham, T.; Kumar, A. Bio-Oil Transport by Pipeline: A Techno-Economic
+[15] Pootakham, T.; Kumar, A. Bio-Oil Transport by Pipeline: A Techno-Economic
     Assessment. Bioresource Technology 2010, 101 (18), 7137–7143.
     https://doi.org/10.1016/j.biortech.2010.03.136.
-[17] Snowden-Swan, L. J.; Zhu, Y.; Bearden, M. D.; Seiple, T. E.; Jones, S. B.;
+[16] Snowden-Swan, L. J.; Zhu, Y.; Bearden, M. D.; Seiple, T. E.; Jones, S. B.;
      Schmidt, A. J.; Billing, J. M.; Hallen, R. T.; Hart, T. R.; Liu, J.;
      Albrecht, K. O.; Fox, S. P.; Maupin, G. D.; Elliott, D. C.
      Conceptual Biorefinery Design and Research Targeted for 2022:
      Hydrothermal Liquefacation Processing of Wet Waste to Fuels; PNNL-27186;
      Pacific Northwest National Lab. (PNNL), Richland, WA (United States), 2017.
      https://doi.org/10.2172/1415710.
-[18] Stewart, D. W.; Cortés-Peña, Y. R.; Li, Y.; Stillwell, A. S.; Khanna, M.;
+[17] Stewart, D. W.; Cortés-Peña, Y. R.; Li, Y.; Stillwell, A. S.; Khanna, M.;
      Guest, J. S. Implications of Biorefinery Policy Incentives and
      Location-SpecificEconomic Parameters for the Financial Viability of Biofuels.
      Environ. Sci. Technol. 2023. https://doi.org/10.1021/acs.est.2c07936.
@@ -70,7 +67,6 @@ from exposan.htl import _load_components, create_tea, state_income_tax_rate_2022
 from biosteam.units import IsenthalpicValve
 from biosteam import settings
 
-# TODO: for LCA, use ecoinvent 3.8, cutoff, TRACI, update this in the manuscript as well
 # TODO: refactor the code wherever necessary
 
 __all__ = ('create_geospatial_system','biocrude_density')
@@ -167,8 +163,7 @@ def create_geospatial_system(# MGD
                              # dry tonne sludge/day/MGD raw wastewater
                              ww_2_dry_sludge_ratio=1,
                              state='IL',
-                             # TODO: update in the manuscript
-                             # 2022 electricty CI by balancing area based on the IEDO work
+                             # 2022 electricty CI by balancing area based on the IEDO work (change year to 2022)
                              # note change 2020 in the IEDO code for balancing area to 2022
                              # kg CO2 eq/kWh
                              elec_GHG=0.44
@@ -196,7 +191,6 @@ def create_geospatial_system(# MGD
     
     # assume the moisture content of sludge is 80% in all cases
     # for lagoon, the sludge will dry at the base of the lagoon (to an assumed 80% moisture content, see [4])
-    # TODO: update the sludge/biosolids biochemical compositions in the manuscript and/or in the SI
     # from [1]:
     # ash (dw%) of undigested sludge: 0.266, 0.192, 0.237, 0.174, 0.206, 0.308 (average: 0.231)
     # protein (afdw%) of undigested sludge: 0.464, 0.454, 0.38, 0.467, 0.485, 0.484 (average: 0.456)
@@ -351,8 +345,6 @@ def create_geospatial_system(# MGD
                                    tau=3*24,
                                    init_with='WasteStream',
                                    vessel_material='Carbon steel')
-    # TODO: in the main manuscript or the SI, specifically say we displace crude oil by biocrude
-    # TODO: (compromise a little bit, like saying this blending may need further research, with citations, but also saying it is not impossible, also with citations)
     # assume the biocrude has the same price as crude oil (for LCA: we assume the crude oil can be displaced by the biocrude)
     # 2022 average closing price for crude oil: 94.53 $/oil barrel, [10]
     BiocrudeTank.outs[0].price = 94.53/_oil_barrel_to_m3/biocrude_density
@@ -403,6 +395,8 @@ def create_geospatial_system(# MGD
     # =========================================================================
     # LCA
     # =========================================================================
+    # LCA data from ecoinvent 3.8 (cutoff model and TRACI method) unless otherwise stated
+    
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='TRACI',
                                        category='environmental impact',
@@ -420,26 +414,23 @@ def create_geospatial_system(# MGD
     # assume the transported sludge has 80% moisture content
     # 1 gal water = 3.79 kg water
     # 'market for transport, freight, lorry, unspecified' (0.13004958 kg CO2 eq/metric ton/km, including empty return trips)
-    # TODO: consider adding the statement in the following line to the main manuscript or to the SI
     # assume the sludge/biosolids decomposition is minimal during transportation since our transportation distance is not long
     Sludge_trucking.add_indicator(GlobalWarming, WWTP.ww_2_dry_sludge*0.13004958/0.2/3.79/(10**6))
     # 4.56 $/m3, 0.072 $/m3/mile ([14], likely 2015$)
     Sludge_trucking.price = WWTP.ww_2_dry_sludge*\
         (4.56/sludge_density*1000/0.2+0.072/_mile_to_km/sludge_density*1000/0.2*WWTP.sludge_distance)/\
             GDPCTPI[2015]*GDPCTPI[2022]/3.79/(10**6)/WWTP.sludge_distance
-
+    
     Biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
-    # TODO: we don't use the biocrude transportation CI from the literature (89 g CO2/m3/km: carbon intensity of truck transportation, [15]);
-    # TODO: instead, we use 'market for transport, freight, lorry, unspecified' (0.13004958 kg CO2 eq/metric ton/km) from ecoinvent; update this in the manuscript 
+    # 0.13004958 kg CO2 eq/metric ton/km ('market for transport, freight, lorry, unspecified'))
     Biocrude_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
-    # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), [16]
+    # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), [15]
     Biocrude_trucking.price = (5.67/biocrude_density+0.07/biocrude_density*WWTP.biocrude_distance)/GDPCTPI[2008]*GDPCTPI[2022]/WWTP.biocrude_distance
     
     impact_items = {'CHG_catalyst': [stream.CHG_catalyst_out, 471.098936962268],
                     'H2SO4':        [stream.H2SO4, 0.005529872568],
                     'NaOH':         [stream.NaOH, 1.2497984],
                     'RO_membrane':  [stream.Membrane_in, 2.2709135],
-                    # TODO: mention this in the SI (add an 'Activity' columns to the table of uncertaity parameters with the possible values sunch as 'transforming', 'market', and 'market group')
                     # TODO: address this problem (i.e., do not use market or market group for products) for other systems (i.e., CO2 sorbent, HTL-PFAS)
                     # use 'ammonium sulfate production' for 'NH42SO4' instead of market or market group since we don't offset things like transportation
                     'NH42SO4':      [stream.ammonium_sulfate, -1.1139067],
@@ -492,7 +483,7 @@ def create_geospatial_system(# MGD
     # TEA
     # =========================================================================
     # TODO: update in other HTL systems as well (the original system, HTL-PFAS)
-    # based on the labor cost for the HTL plant from [17], 2014 level:
+    # based on the labor cost for the HTL plant from [16], 2014 level:
     # 1 plant manager (0.15 MM$/year)
     # 1 plant engineer (0.07 MM$/year)
     # 1 maintenance supervisor (0.06 MM$year)
@@ -520,9 +511,8 @@ def create_geospatial_system(# MGD
     # though it is possible to allocate some credit to biocrude, it will be too complicate to do
     federal_income_tax_rate_value = 0.21
     
-    # TODO: mention this in the main manuscript or the SI and add citation
     if state == 'US':
-        # use the mode state income tax from [18]
+        # use the mode state income tax from [17]
         # from this citation: state income tax: [min, mode, max]: [0%, 6.5%, 12%]
         state_income_tax_rate_value = 0.065
     else:

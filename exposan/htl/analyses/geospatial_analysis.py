@@ -84,8 +84,6 @@ WRRF = WRRF[['FACILITY','CITY','STATE','CWNS_NUM','FACILITY_ID','LATITUDE',
 TT_w_AeD = ['B2','C2','D2','E2','E2P','G2','I2','N2','O2','LAGOON_AER','LAGOON_UNCATEGORIZED']
 TT_w_AD = ['B1','B1E','B4','C1','D1','F1','G1','G1E','H1','I1','I1E','N1','O1','O1E','LAGOON_ANAER','LAGOON_FAC']
 
-# TODO: set AD = 0 if AeD = 1? Maybe not, the current way is more accurate
-# TODO: check this, and how this have been used?
 # to be conservative (AeD has higher ash content than AD):
 # if a WRRF has AeD (regardless of AD), assume all sludge composition follows the AeD sludge composition,
 # if no AeD but has AD, then use AD composition
@@ -438,7 +436,6 @@ else:
 
 # !!! update the input file if necessary
 WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2024-08-20.xlsx')
-# TODO: mention just the number of WRRFs included/removed in the main manuscript/SI
 print(f"{WRRF_input['real_distance_km'].notna().sum()} WRRFs included")
 print(f"{WRRF_input['real_distance_km'].isna().sum()} WRRFs excluded")
 # removal WRRFs with no real_distance_km
@@ -1022,6 +1019,8 @@ plot_map(none_map, r)
 
 #%% facility level decarbonizaiton ratio and biocrude production
 
+# TODO: replace this figure
+
 # import decarbonization_result from #%% read decarbonization data
 
 fig = plt.figure(figsize=(15, 10))
@@ -1113,6 +1112,8 @@ facility_plot(1, y)
 facility_plot(2, b)
 
 #%% facility level decarbonizaiton amount and biocrude production
+
+# TODO: replace this figure
 
 # import decarbonization_result from #%% read decarbonization data
 
@@ -1206,6 +1207,8 @@ facility_plot(0, p)
 facility_plot(1, y)
 facility_plot(2, b)
 #%% find WRRFs with max decarbonization ratio, decarbonization amount, and biocrude production
+
+# TODO: do we still need this?
 
 no_digestion_WRRFs = decarbonization_result[(decarbonization_result['sludge_anaerobic_digestion'] == 0) & (decarbonization_result['sludge_aerobic_digestion'] == 0)].copy()
 print(no_digestion_WRRFs.sort_values('CO2_reduction', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
@@ -1466,7 +1469,7 @@ for i in range(0, len(decarbonization_result)):
                                            state=decarbonization_result.iloc[i]['state'],
                                            elec_GHG=decarbonization_result.iloc[i]['kg_CO2_kWh'])
     
-    # TODO: update if necessary; what if AD and AeD both exist or other co-existence scenarios?
+    # if AD and AeD both exist, assume AeD (due to higher ash content) to be conservative
     if decarbonization_result.iloc[i]['sludge_aerobic_digestion'] == 1:
         sludge_ash_values=[0.345, 0.436, 0.523, 'aerobic_digestion']
         sludge_lipid_values=[0.154, 0.193, 0.232]
@@ -1799,7 +1802,6 @@ add_line('PADD_5', dy)
 add_point('PADD_1', db)
 add_point('PADD_2', dg)
 add_point('PADD_3', dr)
-# TODO: add point for PADD 4 or not
 add_point('PADD_4', do)
 add_point('PADD_5', dy)
 
@@ -1881,7 +1883,7 @@ for i in range(0, 2):
                                            state=Urbana_Champaign.iloc[i]['state'],
                                            elec_GHG=Urbana_Champaign.iloc[i]['kg_CO2_kWh'])
     
-    # TODO: update if necessary; what if AD and AeD both exist or other co-existence scenarios?
+    # if AD and AeD both exist, assume AeD (due to higher ash content) to be conservative
     if Urbana_Champaign.iloc[i]['sludge_aerobic_digestion'] == 1:
         sludge_ash_values=[0.345, 0.436, 0.523, 'aerobic_digestion']
         sludge_lipid_values=[0.154, 0.193, 0.232]
@@ -1918,7 +1920,7 @@ for i in range(0, 2):
 
 #%% sludge transportation (Urbana-Champaign, after sludge transportation)
 
-# TODO: check this cell again
+# note the sludge is transported from 17000112002 to 17000112001
 
 CU_combined_uncertainty_saving = pd.DataFrame()
 CU_combined_uncertainty_decarbonization = pd.DataFrame()
@@ -1976,10 +1978,11 @@ average_ww_2_dry_sludge_ratio = (Urbana_Champaign.iloc[0]['total_sludge_amount_k
 assert Urbana_Champaign.iloc[0]['state'] == Urbana_Champaign.iloc[1]['state']
 assert Urbana_Champaign.iloc[0]['kg_CO2_kWh'] == Urbana_Champaign.iloc[1]['kg_CO2_kWh']
 
-# sludge_distance from Google Maps
+# 16.2 km is the distance between these two WRRFs; the distance was manually obtained from Google Maps
 sys, barrel = create_geospatial_system(size=total_size,
                                        sludge_transportation=1,
-                                       sludge_distance=16.2*Urbana_Champaign.iloc[1]['total_sludge_amount_kg_per_year']/(Urbana_Champaign.iloc[0]['total_sludge_amount_kg_per_year']+Urbana_Champaign.iloc[1]['total_sludge_amount_kg_per_year']),
+                                       sludge_distance=16.2*Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112002]['total_sludge_amount_kg_per_year'].iloc[0]/\
+                                           (Urbana_Champaign.iloc[0]['total_sludge_amount_kg_per_year']+Urbana_Champaign.iloc[1]['total_sludge_amount_kg_per_year']),
                                        biocrude_distance=distance_to_refinery,
                                        average_sludge_dw_ash=sludge_ash_values[1],
                                        average_sludge_afdw_lipid=sludge_lipid_values[1],
@@ -2100,7 +2103,6 @@ WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2024-08-20.xlsx'
 # removal WRRFs with no real_distance_km
 WRRF_input = WRRF_input.dropna(subset='real_distance_km')
 
-# TODO: replace manual check with assertations, if necessary
 # manually confirmed: only WRRFs in MN, WI, and IA can be within 200 km (linear distance) from the center WRRF
 # get all WRRFs in MN, WI, IA
 MN_WI_IA = WRRF_input[WRRF_input['state'].isin(['MN','WI','IA'])].copy()
@@ -2174,7 +2176,7 @@ sys, barrel = create_geospatial_system(size=center_WRRF['flow_2022_MGD'],
                                        state=center_WRRF['state'],
                                        elec_GHG=center_WRRF['kg_CO2_kWh'])
 
-# TODO: update if necessary; what if AD and AeD both exist or other co-existence scenarios?
+# if AD and AeD both exist, assume AeD (due to higher ash content) to be conservative
 if center_WRRF['sludge_aerobic_digestion'] == 1:
     sludge_ash_values=[0.345, 0.436, 0.523, 'aerobic_digestion']
     sludge_lipid_values=[0.154, 0.193, 0.232]
@@ -2244,7 +2246,7 @@ total_lipid_except_center = 0
 total_protein_except_center = 0
 
 for i in range(len(MN_WI_IA_transportation)):
-    # TODO: update if necessary; what if AD and AeD both exist or other co-existence scenarios?
+    # if AD and AeD both exist, assume AeD (due to higher ash content) to be conservative
     if MN_WI_IA_transportation.iloc[i]['sludge_aerobic_digestion'] == 1:
         sludge_ash_value=0.436
         sludge_lipid_value=0.193
@@ -2431,12 +2433,13 @@ total_sludge = WRRF_input['total_sludge_amount_kg_per_year'].sum(axis=0)
 average_cost = total_cost/total_sludge
 average_GHG = total_GHG/total_sludge
 
-# TODO: update the values here if necessary
 # use data for sludge + biosolids (as we did in the HTL model paper), but change the upper limit of ash to 0.436 (to include aerobic digestion)
-# set sludge_ash_values[-1] = 'no digestion', this does not necessarily mean there is no digestion, but this will set the uncertainty distribution of ash, lipid, and protein to Triangle in the model
-HM_sludge_ash_values = [0.174, 0.257, 0.436, 'no_digestion']
-HM_sludge_lipid_values = [0.08, 0.204, 0.308]
-HM_sludge_protein_values = [0.38, 0.463, 0.51]
+# set sludge_ash_values[-1] = 'digestion', this does not necessarily mean there is digestion, but this will set the uncertainty distribution of ash, lipid, and protein to Uniform in the model
+# the second value for each parameter does not matter as we as assuming uniform distribution
+# use the smallest possible values as minimums and the largest possible values as maximums based on the assumptions for sludge with no digestion, aerobic digestion, and anaerobic digestion
+HM_sludge_ash_values = [0.174, 0.257, 0.523, 'digestion']
+HM_sludge_lipid_values = [0.080, 0.204, 0.308]
+HM_sludge_protein_values = [0.380, 0.463, 0.612]
 
 ternary_results_dict = {'sludge_amount':[], 'sludge_transportation_distance':[],
                         'saving_5th':[], 'saving_50th':[], 'saving_95th':[],
@@ -2495,7 +2498,7 @@ ternary_results.to_excel(folder + f'results/heat_map_{size}_tonne_per_day_{sludg
 #%% sludge transportation (heat map, HM) visualization (saving) 
 
 # !!! update the input file if necessary
-HM = pd.read_excel(folder + 'results/heat_map/heat_map_20.0_tonne_per_day_200.0_km_2024-08-24.xlsx')
+HM = pd.read_excel(folder + 'results/heat_map/heat_map_20.0_tonne_per_day_200.0_km_2024-08-30.xlsx')
 
 HM_saving = HM[['sludge_amount','sludge_transportation_distance','saving_50th']]
 
@@ -2563,7 +2566,7 @@ ax.clabel(lines, lines.levels, inline=True, fontsize=38)
 #%% sludge transportation (heat map, HM) visualization (decarbonization) 
 
 # !!! update the input file if necessary
-HM = pd.read_excel(folder + 'results/heat_map/heat_map_20.0_tonne_per_day_200.0_km_2024-08-24.xlsx')
+HM = pd.read_excel(folder + 'results/heat_map/heat_map_20.0_tonne_per_day_200.0_km_2024-08-30.xlsx')
 
 HM_decarbonization = HM[['sludge_amount','sludge_transportation_distance','decarbonization_50th']]
 
