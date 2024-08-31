@@ -444,7 +444,7 @@ print(f"{((WRRF_input.sludge_anaerobic_digestion == 1) & (WRRF_input.sludge_aero
 print(f"{((WRRF_input.sludge_anaerobic_digestion == 0) & (WRRF_input.sludge_aerobic_digestion == 1)).sum()} WRRFs just have AeD")
 print(f"{((WRRF_input.sludge_anaerobic_digestion == 1) & (WRRF_input.sludge_aerobic_digestion == 1)).sum()} WRRFs have both AD and AeD")
 print(f"{((WRRF_input.sludge_anaerobic_digestion == 0) & (WRRF_input.sludge_aerobic_digestion == 0)).sum()} WRRFs have neither AD nor AeD")
-
+#%%
 fig, ax = plt.subplots(figsize = (5, 8))
 
 plt.rcParams['axes.linewidth'] = 3
@@ -482,6 +482,16 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
     
+ax_right.scatter(x=1,
+                 y=WRRF_input['real_distance_km'].mean(),
+                 marker='*',
+                 s=600,
+                 c='w',
+                 linewidths=3,
+                 alpha=1,
+                 edgecolor='k',
+                 zorder=2)
+    
 fig.savefig('/Users/jiananfeng/Desktop/distance.png', transparent=True, bbox_inches='tight')
 
 #%% travel distance box plot (per region)
@@ -516,7 +526,7 @@ def add_region(position, region, color):
     plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
     
     ax = plt.gca()
-    ax.set_ylim([0, 1400])
+    ax.set_ylim([0, 1200])
     ax.set_xlabel(region, fontname='Arial', fontsize=30, labelpad=15)
     
     if position == 0:
@@ -533,7 +543,7 @@ def add_region(position, region, color):
     else:
         ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, labelcolor='none')
     
-    bp = ax.boxplot(WRRF_input[WRRF_input['WRRF_PADD'] == position+1]['real_distance_km'], showfliers=True, widths=0.5, patch_artist=True)
+    bp = ax.boxplot(WRRF_input[WRRF_input['WRRF_PADD'] == position+1]['real_distance_km'], showfliers=False, widths=0.5, patch_artist=True)
     
     for box in bp['boxes']:
         box.set(color='k', facecolor=color, linewidth=3)
@@ -547,8 +557,18 @@ def add_region(position, region, color):
     for cap in bp['caps']:
         cap.set(color='k', linewidth=3)
         
-    for flier in bp['fliers']:
-        flier.set(marker='o', markersize=7, markerfacecolor=color, markeredgewidth=1.5)
+    ax.scatter(x=1,
+               y=WRRF_input['real_distance_km'].mean(),
+               marker='*',
+               s=600,
+               c='w',
+               linewidths=3,
+               alpha=1,
+               edgecolor='k',
+               zorder=3)
+        
+    # for flier in bp['fliers']:
+    #     flier.set(marker='o', markersize=7, markerfacecolor=color, markeredgewidth=1.5)
 
 add_region(0, 'East Coast', b)
 add_region(1, 'Midwest', g)
@@ -743,6 +763,7 @@ add_region(1, PADD_1, PADD_2, g)
 add_region(2, PADD_2, PADD_3, r)
 add_region(3, PADD_3, PADD_4, o)
 add_region(4, PADD_4, PADD_5, y)
+
 #%% make the plot of cumulative WRRFs capacity vs distances (regional total)
 
 PADD_1 = (CF_input.loc['PADD',:].isin([1,])).sum()
@@ -938,6 +959,19 @@ decarbonization_map['CO2_reduction_tonne_per_day'] = decarbonization_map['CO2_re
 
 def plot_map(dataset, color):
     fig, ax = plt.subplots(figsize=(30, 30))
+    
+    plt.rcParams['axes.linewidth'] = 3
+    plt.rcParams['xtick.labelsize'] = 30
+    plt.rcParams['ytick.labelsize'] = 30
+
+    plt.xticks(fontname='Arial')
+    plt.yticks(fontname='Arial')
+
+    plt.rcParams.update({'mathtext.fontset': 'custom'})
+    plt.rcParams.update({'mathtext.default': 'regular'})
+    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+    
+    mathtext.FontConstantsBase.sup1 = 0.35
 
     US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
 
@@ -992,6 +1026,11 @@ def plot_map(dataset, color):
     
     ax.set_axis_off()
 
+#%% decarbonization map (all)
+
+all_map = decarbonization_map.copy()
+plot_map(all_map, g)
+
 #%% decarbonization map (AD only)
 
 AD_map = decarbonization_map[(decarbonization_map['sludge_anaerobic_digestion'] == 1) & (decarbonization_map['sludge_aerobic_digestion'] == 0)].copy()
@@ -1017,214 +1056,217 @@ plot_map(AD_AeD_map, b)
 none_map = decarbonization_map[(decarbonization_map['sludge_anaerobic_digestion'] == 0) & (decarbonization_map['sludge_aerobic_digestion'] == 0)].copy()
 plot_map(none_map, r)
 
-#%% facility level decarbonizaiton ratio and biocrude production
 
-# TODO: replace this figure
+#%% biocrude transportation Chord diagram
 
-# import decarbonization_result from #%% read decarbonization data
+# import only if needed
+from d3blocks import D3Blocks
 
-fig = plt.figure(figsize=(15, 10))
+biocrude_transportation = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
+biocrude_transportation = biocrude_transportation[biocrude_transportation['USD_decarbonization'].notna()]
+biocrude_transportation = biocrude_transportation[biocrude_transportation['USD_decarbonization'] <= 0]
+biocrude_transportation = biocrude_transportation.merge(elec_price[['state','name']], how='left', on='state')
+biocrude_transportation['source'] = biocrude_transportation['name']
+biocrude_transportation['target'] = biocrude_transportation['State']
+biocrude_transportation['weight'] = biocrude_transportation['oil_BPD']
+biocrude_transportation = biocrude_transportation[['source','target','weight']]
 
-gs = fig.add_gridspec(1, 3, hspace=0, wspace=0)
+d3 = D3Blocks()
 
-def facility_plot(position, color):
-    ax = fig.add_subplot(gs[0, position])
-    
-    plt.rcParams['axes.linewidth'] = 3
-    plt.rcParams['xtick.labelsize'] = 30
-    plt.rcParams['ytick.labelsize'] = 30
-    
-    plt.xticks(fontname='Arial')
-    plt.yticks(fontname='Arial')
-    
-    plt.rcParams.update({'mathtext.fontset': 'custom'})
-    plt.rcParams.update({'mathtext.default': 'regular'})
-    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
-    
-    ax = plt.gca()
-    ax.set_xlim([-6, 26])
-    ax.set_ylim([0, 500])
-    ax.xaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
-    
-    if position == 0:
-        data = decarbonization_result[(decarbonization_result['sludge_anaerobic_digestion'] == 0) & (decarbonization_result['sludge_aerobic_digestion'] == 0)].copy()
-        
-        ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
-        
-        plt.xticks(np.arange(0, 30, 10))
-        
-        ax_top = ax.twiny()
-        ax_top.set_xlim(ax.get_xlim())
-        plt.xticks(np.arange(0, 30, 10))
-        ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
-        
-        ax.set_ylabel(r'$\mathbf{Biocrude\ production}$ [BPD]', fontname='Arial', fontsize=35)
-    
-    # TODO: some WRRFs have both AD and AeD
-    if position == 1:
-        data = decarbonization_result[decarbonization_result['sludge_aerobic_digestion'] == 1].copy()
+ordering = sorted(state_PADD.items(), key=lambda x: x[1])   
+ordering = [i[0] for i in ordering]
 
-        ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
-        
-        plt.xticks(np.arange(0, 30, 10))
-        
-        ax_top = ax.twiny()
-        ax_top.set_xlim(ax.get_xlim())
-        plt.xticks(np.arange(0, 30, 10))
-        ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
-        
-        ax.set_xlabel(r'$\mathbf{Decarbonization\ potential}$', fontname='Arial', fontsize=35)
-    
-    if position == 2:
-        data = decarbonization_result[decarbonization_result['sludge_anaerobic_digestion'] == 1].copy()
-        
-        ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
-        
-        plt.xticks(np.arange(0, 30, 10))
-        
-        ax_right = ax.twinx()
-        ax_right.set_ylim(ax.get_ylim())
-        ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
-        
-        ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
-        
-        ax_top = ax.twiny()
-        ax_top.set_xlim(ax.get_xlim())
-        plt.xticks(np.arange(0, 30, 10))
-        ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
-    
-    ax.scatter(x=data['WRRF_CO2_reduction_ratio']*100,
-               y=data['oil_BPD'],
-               s=data['flow_2022_MGD']*2,
-               c=color,
-               linewidths=0,
-               alpha=0.9)
-    
-    ax.scatter(x=data['WRRF_CO2_reduction_ratio']*100,
-               y=data['oil_BPD'],
-               s=data['flow_2022_MGD']*2,
-               c='none',
-               linewidths=2,
-               edgecolors='k')
-    
-facility_plot(0, p)
-facility_plot(1, y)
-facility_plot(2, b)
+d3.chord(biocrude_transportation,
+         ordering=ordering,
+         color='source',
+         fontsize=17.5,
+         arrowhead=10,
+         filepath=folder+f'results/interstate_biocrude_transportation_{date.today()}.html',
+         save_button=False)
 
-#%% facility level decarbonizaiton amount and biocrude production
+d3.node_properties['color'] = d3.node_properties['label'].apply(lambda x: PADD_color[state_PADD[x]])
+d3.edge_properties['color'] = d3.edge_properties['source'].apply(lambda x: PADD_color[state_PADD[x]])
 
-# TODO: replace this figure
+d3.show()
+
+#%% decarbonization potential depending on degestion or not
 
 # import decarbonization_result from #%% read decarbonization data
+digestion_or_not = decarbonization_result.copy()
 
-fig = plt.figure(figsize=(16, 8))
+digestion_or_not['kg_CO2_eq_per_tonne'] = digestion_or_not['CO2_reduction']/digestion_or_not['total_sludge_amount_kg_per_year']/30*1000
+digestion_or_not['barrel_eq_per_tonne'] = digestion_or_not['oil_BPD']/digestion_or_not['total_sludge_amount_kg_per_year']*365*1000
 
-gs = fig.add_gridspec(1, 3, hspace=0, wspace=0)
+digestion = digestion_or_not.loc[(digestion_or_not['sludge_anaerobic_digestion'] == 1) | (digestion_or_not['sludge_aerobic_digestion'] == 1), 'kg_CO2_eq_per_tonne']
+no_digestion = digestion_or_not.loc[(digestion_or_not['sludge_anaerobic_digestion'] == 0) & (digestion_or_not['sludge_aerobic_digestion'] == 0), 'kg_CO2_eq_per_tonne']
 
-def facility_plot(position, color):
-    
-    ax = fig.add_subplot(gs[0, position])
-    
-    plt.rcParams['axes.linewidth'] = 3
-    plt.rcParams['xtick.labelsize'] = 30
-    plt.rcParams['ytick.labelsize'] = 30
-    
-    plt.xticks(fontname='Arial')
-    plt.yticks(fontname='Arial')
-    
-    plt.rcParams.update({'mathtext.fontset': 'custom'})
-    plt.rcParams.update({'mathtext.default': 'regular'})
-    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
-    
-    ax = plt.gca()
-    ax.set_xlim([-15, 105])
-    ax.set_ylim([0, 500])
-    
-    if position == 0:
-        data = decarbonization_result[(decarbonization_result['sludge_anaerobic_digestion'] == 0) & (decarbonization_result['sludge_aerobic_digestion'] == 0)].copy()
-        
-        ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
-        
-        plt.xticks(np.arange(0, 120, 30))
-        
-        ax_top = ax.twiny()
-        ax_top.set_xlim(ax.get_xlim())
-        plt.xticks(np.arange(0, 120, 30))
-        ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
-        
-        ax.set_ylabel(r'$\mathbf{Biocrude\ production}$ [BPD]', fontname='Arial', fontsize=35)
-    
-    # TODO: some WRRFs have both AD and AeD
-    if position == 1:
-        data = decarbonization_result[decarbonization_result['sludge_aerobic_digestion'] == 1].copy()
+digestion_or_not_plot = pd.DataFrame({'digestion': digestion,
+                                      'no_digestion': no_digestion})
 
-        ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
-        
-        plt.xticks(np.arange(0, 120, 30))
-        
-        ax_top = ax.twiny()
-        ax_top.set_xlim(ax.get_xlim())
-        plt.xticks(np.arange(0, 120, 30))
-        ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
-        
-        ax.set_xlabel(r'$\mathbf{Decarbonization\ amount}$ [tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=35)
+fig, ax = plt.subplots(figsize=(10, 10))
 
-        mathtext.FontConstantsBase.sup1 = 0.35
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 38
+plt.rcParams['ytick.labelsize'] = 38
+plt.rcParams['font.sans-serif'] = 'Arial'
+
+plt.xticks(fontname='Arial')
+plt.yticks(fontname='Arial')
+
+plt.rcParams.update({'mathtext.fontset': 'custom'})
+plt.rcParams.update({'mathtext.default': 'regular'})
+plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+ax = plt.gca()
+
+ax.set_ylim([0, 300])
+
+ax.tick_params(direction='inout', length=20, width=3,
+               bottom=False, top=False, left=True, right=False, pad=0)
+
+ax.set_ylabel(r'$\mathbf{Decarbonization\ potential}$' + '\n[kg CO${_2}$ eq·tonne${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
+
+mathtext.FontConstantsBase.sup1 = 0.35
+
+ax.set_xticklabels(['digestion','no digestion'])
+plt.yticks(np.arange(0, 350, 50))
+
+ax_right = ax.twinx()
+ax_right.tick_params(direction='in', length=10, width=3,
+                      bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+bp = ax.boxplot([digestion_or_not_plot['digestion'].dropna(),
+                 digestion_or_not_plot['no_digestion'].dropna()],
+                showfliers=False, widths=0.7, patch_artist=True)
+
+for box in bp['boxes']:
+    box.set(color='k', facecolor='none', linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
     
-    if position == 2:
-        data = decarbonization_result[decarbonization_result['sludge_anaerobic_digestion'] == 1].copy()
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+
+ax.scatter(x=1,
+           y=digestion_or_not_plot['digestion'].mean(),
+           marker='*',
+           s=600,
+           c='k',
+           linewidths=3,
+           alpha=1,
+           edgecolor='k',
+           zorder=3)
+
+ax.scatter(x=2,
+           y=digestion_or_not_plot['no_digestion'].mean(),
+           marker='*',
+           s=600,
+           c='k',
+           linewidths=3,
+           alpha=1,
+           edgecolor='k',
+           zorder=3)
+
+#%% biocrude yield depending on degestion or not
+
+# import decarbonization_result from #%% read decarbonization data
+digestion_or_not = decarbonization_result.copy()
+
+digestion_or_not['kg_CO2_eq_per_tonne'] = digestion_or_not['CO2_reduction']/digestion_or_not['total_sludge_amount_kg_per_year']/30*1000
+digestion_or_not['barrel_eq_per_tonne'] = digestion_or_not['oil_BPD']/digestion_or_not['total_sludge_amount_kg_per_year']*365*1000
+
+digestion = digestion_or_not.loc[(digestion_or_not['sludge_anaerobic_digestion'] == 1) | (digestion_or_not['sludge_aerobic_digestion'] == 1), 'barrel_eq_per_tonne']
+no_digestion = digestion_or_not.loc[(digestion_or_not['sludge_anaerobic_digestion'] == 0) & (digestion_or_not['sludge_aerobic_digestion'] == 0), 'barrel_eq_per_tonne']
+
+digestion_or_not_plot = pd.DataFrame({'digestion': digestion,
+                                      'no_digestion': no_digestion})
+
+
+fig, ax = plt.subplots(figsize=(10, 10))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 38
+plt.rcParams['ytick.labelsize'] = 38
+plt.rcParams['font.sans-serif'] = 'Arial'
+
+plt.xticks(fontname='Arial')
+plt.yticks(fontname='Arial')
+
+plt.rcParams.update({'mathtext.fontset': 'custom'})
+plt.rcParams.update({'mathtext.default': 'regular'})
+plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+ax = plt.gca()
+
+ax.set_ylim([1.5, 2.5])
+
+ax.tick_params(direction='inout', length=20, width=3,
+               bottom=False, top=False, left=True, right=False, pad=0)
+
+ax.set_ylabel(r'$\mathbf{Biocrude\ yield}$' + '\n[barrel·tonne${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
+
+mathtext.FontConstantsBase.sup1 = 0.35
+
+ax.set_xticklabels(['digestion','no digestion'])
+plt.yticks([1.5, 1.7, 1.9, 2.1, 2.3, 2.5])
+
+ax_right = ax.twinx()
+ax_right.tick_params(direction='in', length=10, width=3,
+                      bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+bp = ax.boxplot([digestion_or_not_plot['digestion'].dropna(),
+                 digestion_or_not_plot['no_digestion'].dropna()],
+                showfliers=False, widths=0.7, patch_artist=True)
+
+for box in bp['boxes']:
+    box.set(color='k', facecolor='none', linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
     
-        ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
-        
-        plt.xticks(np.arange(0, 120, 30))
-        
-        ax_right = ax.twinx()
-        ax_right.set_ylim(ax.get_ylim())
-        ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
-        
-        ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True)
-        
-        ax_top = ax.twiny()
-        ax_top.set_xlim(ax.get_xlim())
-        plt.xticks(np.arange(0, 120, 30))
-        ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
-    
-    ax.scatter(x=data['CO2_reduction']/30/365/1000,
-               y=data['oil_BPD'],
-               s=data['flow_2022_MGD']*2,
-               c=color,
-               linewidths=0,
-               alpha=0.9)
-    
-    ax.scatter(x=data['CO2_reduction']/30/365/1000,
-               y=data['oil_BPD'],
-               s=data['flow_2022_MGD']*2,
-               c='none',
-               linewidths=2,
-               edgecolors='k')
-    
-facility_plot(0, p)
-facility_plot(1, y)
-facility_plot(2, b)
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+
+ax.scatter(x=1,
+           y=digestion_or_not_plot['digestion'].mean(),
+           marker='*',
+           s=600,
+           c='k',
+           linewidths=3,
+           alpha=1,
+           edgecolor='k',
+           zorder=3)
+
+ax.scatter(x=2,
+           y=digestion_or_not_plot['no_digestion'].mean(),
+           marker='*',
+           s=600,
+           c='k',
+           linewidths=3,
+           alpha=1,
+           edgecolor='k',
+           zorder=3)
+
 #%% find WRRFs with max decarbonization ratio, decarbonization amount, and biocrude production
 
-# TODO: do we still need this?
+digestion_WRRFs = decarbonization_result[(decarbonization_result['sludge_anaerobic_digestion'] == 1) | (decarbonization_result['sludge_aerobic_digestion'] == 1)].copy()
+print(digestion_WRRFs.sort_values('CO2_reduction', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
+print(digestion_WRRFs.sort_values('WRRF_CO2_reduction_ratio', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
+print(digestion_WRRFs.sort_values('oil_BPD', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
 
 no_digestion_WRRFs = decarbonization_result[(decarbonization_result['sludge_anaerobic_digestion'] == 0) & (decarbonization_result['sludge_aerobic_digestion'] == 0)].copy()
 print(no_digestion_WRRFs.sort_values('CO2_reduction', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
 print(no_digestion_WRRFs.sort_values('WRRF_CO2_reduction_ratio', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
 print(no_digestion_WRRFs.sort_values('oil_BPD', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
-
-# TODO: some WRRFs have both AD and AeD
-aerobic_digestion_WRRFs = decarbonization_result[decarbonization_result['sludge_aerobic_digestion'] == 1].copy()
-print(aerobic_digestion_WRRFs.sort_values('CO2_reduction', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
-print(aerobic_digestion_WRRFs.sort_values('WRRF_CO2_reduction_ratio', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
-print(aerobic_digestion_WRRFs.sort_values('oil_BPD', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
-
-anaerobic_digestion_WRRFs = decarbonization_result[decarbonization_result['sludge_anaerobic_digestion'] == 1].copy()
-print(anaerobic_digestion_WRRFs.sort_values('CO2_reduction', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
-print(anaerobic_digestion_WRRFs.sort_values('WRRF_CO2_reduction_ratio', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
-print(anaerobic_digestion_WRRFs.sort_values('oil_BPD', ascending=False).iloc[0,][['facility','city','flow_2022_MGD']])
 
 #%% facility level decarbonizaiton amount vs sludge amount
 
@@ -1245,7 +1287,7 @@ plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
 ax = plt.gca()
 
-ax.set_xlim((0, 300))
+ax.set_xlim((0, 250))
 ax.set_ylim((0, 60))
 
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
@@ -1255,21 +1297,21 @@ ax.set_ylabel(r'$\mathbf{Decarbonization}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-plt.xticks(np.arange(0, 350, 50))
+plt.xticks(np.arange(0, 300, 50))
 plt.yticks(np.arange(0, 70, 10))
 
 ax_right = ax.twinx()
 ax_right.set_ylim((0, 60))
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.xticks(np.arange(0, 350, 50))
+plt.xticks(np.arange(0, 300, 50))
 plt.yticks(np.arange(0, 70, 10))
 
 ax_top = ax.twiny()
-ax_top.set_xlim((0, 350))
+ax_top.set_xlim((0, 250))
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
-plt.xticks(np.arange(0, 350, 50))
+plt.xticks(np.arange(0, 300, 50))
 plt.yticks(np.arange(0, 70, 10))
 
 ax.scatter(x=decarbonization_vs_sludge['total_sludge_amount_kg_per_year']/1000/365,
@@ -1508,38 +1550,6 @@ for i in range(0, len(decarbonization_result)):
     
 geo_uncertainty_decarbonization.to_excel(folder + f'results/regional_decarbonization_uncertainty_{date.today()}_{i}.xlsx')
 geo_uncertainty_biocrude.to_excel(folder + f'results/regional_biocrude_uncertainty_{date.today()}_{i}.xlsx')
-
-#%% state-level chord diagram for biocrude transportation
-
-# import only if needed
-from d3blocks import D3Blocks
-
-biocrude_transportation = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
-biocrude_transportation = biocrude_transportation[biocrude_transportation['USD_decarbonization'].notna()]
-biocrude_transportation = biocrude_transportation[biocrude_transportation['USD_decarbonization'] <= 0]
-biocrude_transportation = biocrude_transportation.merge(elec_price[['state','name']], how='left', on='state')
-biocrude_transportation['source'] = biocrude_transportation['name']
-biocrude_transportation['target'] = biocrude_transportation['State']
-biocrude_transportation['weight'] = biocrude_transportation['oil_BPD']
-biocrude_transportation = biocrude_transportation[['source','target','weight']]
-
-d3 = D3Blocks()
-
-ordering = sorted(state_PADD.items(), key=lambda x: x[1])   
-ordering = [i[0] for i in ordering]
-
-d3.chord(biocrude_transportation,
-         ordering=ordering,
-         color='source',
-         fontsize=17.5,
-         arrowhead=10,
-         filepath=folder+f'results/interstate_biocrude_transportation_{date.today()}.html',
-         save_button=False)
-
-d3.node_properties['color'] = d3.node_properties['label'].apply(lambda x: PADD_color[state_PADD[x]])
-d3.edge_properties['color'] = d3.edge_properties['source'].apply(lambda x: PADD_color[state_PADD[x]])
-
-d3.show()
 
 #%% regional uncertainty (data preparation)
 
