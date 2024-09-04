@@ -14,18 +14,21 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 from qsdsan import (
-    Flowsheet, main_flowsheet,
+    Flowsheet, 
+    main_flowsheet,
     WasteStream,
-    sanunits as su,
+    sanunits as qsu,
     ImpactItem,
     System, TEA, LCA,
     )
+
 import biosteam as bst
 from qsdsan.utils import clear_lca_registries
 from exposan.utils import (
     add_fugitive_items,
     get_decay_k,
     )
+
 # from exposan.VR_toilet import (
 #     _load_components,
 #     _load_lca_data,
@@ -40,13 +43,15 @@ from exposan.utils import (
 # __all__= ('create_system',)
 
 #%%
-# =========================================================================
-#Universal units and functions
-# =========
+# =============================================================================
+# Universal units and functions
+# =============================================================================
+
+# !!! cmd 4 & cmd 1
 
 def batch_create_streams(prefix= 'A', phases=('liq', 'sol')):
     #link impact item CH4 & N2O to their streams
-    #Q: where do we get impact item from?
+    #!!! where do we get impact item from?
     item = ImpactItem.get_item('CH4_item').copy(f'{prefix}_CH4_item',set_as_source=True)
     WasteStream('CH4', phase= 'g', stream_impact_item= item)
     item = ImpactItem.get_item('N2O_item').copy(f'{prefix}_N2O_item',set_as_source=True)
@@ -102,13 +107,15 @@ app_loss['NH3'] = 0.05
 # =========================================================================
 
 ww1 = WasteStream(ID='ww1',H2O= 1500, units = 'L/d')
-# Q: how about components?
+# TODO: how about components?
 
 #### Human Inputs ####
-A1 = su.Excretion('A1', outs=('urine','feces'))
+A1 = qsu.Excretion('A1', outs=('urine','feces'))
 
-A2 = su.MURT('A2',
-             ins= (A1-0, A1-1, 'toilet_paper', 'flushing_water', 'cleansing_water', 'desiccant'),
+recycle_fw = WasteStream('reverse_osmosis_treated')
+A2 = qsu.MURT('A2',
+             ins= (A1-0, A1-1, 'toilet_paper', 'flushing_water', 'cleansing_water', 
+                   recycle_fw),
              outs = ('mixed_waste','A2_CH4','A2_N2O'),
              N_user = 5, N_tot_user=default_ppl, lifetime = 10, 
              if_include_front_end=True, if_toilet_paper=True, 
@@ -125,23 +132,46 @@ A3 = bst.RotaryVacuumFilter('A3',
                             split = 0.1,
                             moisture_content = 0.99 #[0045]
                             )
-A4 = su.BeltThickener('A4', 
-                      ins = (A3-0,A3-1,A5-1),#Q: A5 can't be here?
+# make a recycle loop
+recycle_uf = WasteStream('ultrafiltration_reject')
+A4 = qsu.BeltThickener('A4', 
+                      ins = (A3-0,A3-1,recycle_uf),
                       outs = ('A4_sludge','A4_liquid'),
-                      max_capacity = 0.1,#m3/h, capacity is too small and falls outside the given range
+                      max_capacity = 0.1,#m3/h, based on 5 users. 
+                      #capacity is too small and falls outside the given range
                       power_demand = 0.2, #kW, assumption, need data support
                       sludge_moisture = 0.96
                       )
-A5 = su.ReclaimerUltrafiltration('A5',
+
+A5 = qsu.ReclaimerUltrafiltration('A5',
                                  ins = A4-1,
-                                 outs = ('A5_treated','A5_retentate'),
+                                 outs = ('A5_treated',recycle_uf),
                                  ppl = 5
                                  )
-A6 = bst.units.ReverseOsmosis('A6', #no attribute ReverseOsmosis?
+# recycle_ro = WasteStream('reverse_osmosis_brine')
+A6 = bst.wastewater.conventional.ReverseOsmosis('A6', 
                         ins = A5-0,
-                        outs = ('A6_treated','A6_brine')
+                        outs = (recycle_fw,'A6_brine')
                         )
 
+A7 = qsu.BinaryDistillation('A7', 
+                           ins = A6-1,
+                           outs = ('A7_distillate','A7_bottoms_product'),
+                           LHK = ('Water','NaCl'),#!!!not sure what the heavy key should be
+                           #NH3 should be the lighter than water?
+                           y_top = 0.99, #mostly water vapor in distillate
+                           x_bot = 0.90, #90% water in brine
+                           k=0 #!!!not sure what this should be.reflux ratio=0?
+                           )
+A8 = qsu.BiogenicRefineryGrinder('A8',
+                                ins = A4-0,
+                                outs = 'A8_grinded'
+                                )
+A9 = qsu.SludgePasteurization('A9', 
+                             ins = A8-0,
+                             outs = 'A9_treated',
+                             )
+A10 = 
 
 
     
