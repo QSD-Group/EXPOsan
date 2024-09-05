@@ -48,6 +48,7 @@ _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
 _MMgal_to_L = auom('gal').conversion_factor('L')*1000000
 
 # !!! when creating this input file, change year to 2022 in IEDO code for electricity GHG calculation
+# (use the same dataset the IEDO work used for consistent, although there are updated dataset)
 WRRF = pd.read_excel(folder + 'HTL_geospatial_input_08202024.xlsx')
 
 assert WRRF.duplicated(subset='CWNS_NUM').sum() == 0
@@ -444,7 +445,7 @@ print(f"{((WRRF_input.sludge_anaerobic_digestion == 1) & (WRRF_input.sludge_aero
 print(f"{((WRRF_input.sludge_anaerobic_digestion == 0) & (WRRF_input.sludge_aerobic_digestion == 1)).sum()} WRRFs just have AeD")
 print(f"{((WRRF_input.sludge_anaerobic_digestion == 1) & (WRRF_input.sludge_aerobic_digestion == 1)).sum()} WRRFs have both AD and AeD")
 print(f"{((WRRF_input.sludge_anaerobic_digestion == 0) & (WRRF_input.sludge_aerobic_digestion == 0)).sum()} WRRFs have neither AD nor AeD")
-#%%
+
 fig, ax = plt.subplots(figsize = (5, 8))
 
 plt.rcParams['axes.linewidth'] = 3

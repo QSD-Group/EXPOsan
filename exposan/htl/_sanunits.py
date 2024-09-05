@@ -119,8 +119,7 @@ class AcidExtraction(Reactor):
                 
                 residual.T = extracted.T = hydrochar.T
                 residual.P = hydrochar.P
-                # H2SO4 reacts with hydrochar to release heat and temperature will be
-                # increased mixture's temperature
+                # H2SO4 reacts with hydrochar to release heat and temperature will increase
             
     @property
     def residual_C(self):
@@ -260,16 +259,26 @@ class HTLmixer(SanUnit):
         
     @property
     def pH(self):
-        # assume HTLaqueous pH = 9 [1] (9.08 ± 0.30)
-        # extracted pH = 0 (0.5 M H2SO4)
-        # since HTLaqueous pH is near to neutral
-        # assume pH is dominant by extracted and will be calculate based on dilution
-        if self.ins[1].F_mass == 0:
-            return 9
+        
+        HTLaqueous, extracted = self.ins
+        mixture = self.outs[0]
+
+        base_mol_per_h = HTLaqueous.imass['NaOH']*1000/40
+        acid_mol_per_h = extracted.imass['H2SO4']*1000/98*2
+        
+        volume_L_per_h = mixture.F_vol*1000
+        
+        base_M = base_mol_per_h/volume_L_per_h
+        acid_M = acid_mol_per_h/volume_L_per_h
+        
+        if base_M > acid_M:
+            hydrogen_ion_M = 10**-14/(base_M-acid_M)
+        elif base_M == acid_M:
+            hydrogen_ion_M = 10**(-7)
         else:
-            dilution_factor = self.F_mass_in/self.ins[1].F_mass if self.ins[1].imass['P'] != 0 else 1
-            hydrogen_ion_conc = 10**0/dilution_factor
-            return -log(hydrogen_ion_conc, 10)
+            hydrogen_ion_M = acid_M - base_M
+
+        return -log(hydrogen_ion_M, 10)
 
 # =============================================================================
 # Humidifier
@@ -394,10 +403,17 @@ class StruvitePrecipitation(Reactor):
             effluent.copy_like(mixture)
         else:
             old_pH = self.HTLmixer.pH
-            neutral_OH_mol = 10**(-old_pH)*self.ins[0].F_mass # ignore solid volume
-            to_target_pH = 10**(self.target_pH - 14)*self.ins[0].F_mass # ignore solid volume
-            total_OH = neutral_OH_mol + to_target_pH # unit: mol/h
-            base.imass['MgO'] = total_OH/2 * 40.3044/1000
+            if old_pH > 9:
+                base.imass['MgO'] = 0
+            elif old_pH >= 7:
+                OH_M = 10**(old_pH-14)
+                OH_M_needed = 10**(self.target_pH-14) - OH_M
+                base.imass['MgO'] = OH_M_needed/2 * 40.3044/1000*self.ins[0].F_vol*1000
+            else:
+                neutral_OH_M = 10**(-old_pH)
+                to_target_OH_M = 10**(self.target_pH - 14)
+                OH_M_needed = neutral_OH_M + to_target_OH_M
+                base.imass['MgO'] = OH_M_needed/2 * 40.3044/1000*self.ins[0].F_vol*1000
             
             supply_MgCl2.imass['MgCl2'] = max((mixture.imass['P']/30.973762*self.Mg_P_ratio -\
                                             base.imass['MgO']/40.3044)*95.211, 0)

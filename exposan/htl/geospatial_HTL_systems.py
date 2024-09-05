@@ -401,7 +401,7 @@ def create_geospatial_system(# MGD
                                        method='TRACI',
                                        category='environmental impact',
                                        unit='kg CO2-eq',
-                                       description='Global Warming Potential.')
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.48748859)
@@ -476,6 +476,7 @@ def create_geospatial_system(# MGD
            # the effect is minimal since (i) this part of LCA is negligible and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
            CT_chemicals=lambda:CT.ins[2].F_mass*sys.flowsheet.WWTP.operation_hours*30)
     
+    # add these assertations to make sure we have provided all system's need heating and cooling (add a ChilledWaterPackage when there is an AssertationError )
     assert sys.get_heating_duty() == 0
     assert sys.get_cooling_duty() == 0
     
@@ -507,8 +508,7 @@ def create_geospatial_system(# MGD
                labor_cost_value=wage)
     
     # do not include tax credit as tax credit like 45Z is usually for final products (e.g., diesel)
-    # our product is biocrude
-    # though it is possible to allocate some credit to biocrude, it will be too complicate to do
+    # and the allocation of the credit needs to be negociate with oil refineries
     federal_income_tax_rate_value = 0.21
     
     if state == 'US':
