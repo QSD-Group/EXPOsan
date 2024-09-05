@@ -259,7 +259,6 @@ class HTLmixer(SanUnit):
         
     @property
     def pH(self):
-        
         HTLaqueous, extracted = self.ins
         mixture = self.outs[0]
 

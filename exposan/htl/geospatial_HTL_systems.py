@@ -84,7 +84,8 @@ _oil_barrel_to_m3 = auom('oil_barrel').conversion_factor('m3')
 _oil_barrel_to_L = auom('oil_barrel').conversion_factor('L')
 
 # GDPCTPI (Gross Domestic Product: Chain-type Price Index), [2]
-GDPCTPI = {2008: 87.977,
+GDPCTPI = {2007: 86.352,
+           2008: 87.977,
            2009: 88.557,
            2010: 89.619,
            2011: 91.466,
