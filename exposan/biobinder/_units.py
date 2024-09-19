@@ -19,7 +19,7 @@ from qsdsan import SanUnit, Stream, sanunits as qsu
 from exposan.biobinder import CEPCI_by_year
 
 __all__ = (
-    'AqueousFiltration',
+    'ElectrochemicalOxidation',
     'BiocrudeDeashing',
     'BiocrudeDewatering',
     'BiocrudeSplitter',
@@ -745,140 +745,84 @@ base_ap_flowrate = 49.65 #kg/hr
 #     def N_unit(self, i):
 #         self.parallel['self'] = self._N_unit = math.ceil(i)
 
-from qsdsan import SanUnit, WasteStream
+import qsdsan as qs
 from qsdsan.equipments import Electrode, Membrane
 import math
 import thermosteam as tmo
 
-tmo.settings.set_thermo('water')
-
-
-__all__ = ('MicrobialFuelCell',)
-
-
-class MicrobialFuelCell(SanUnit):
-    '''
-    Microbial Fuel Cell for nutrient recovery.
-
-    This unit has the following equipment:
-        - :class:`~.equipments.Electrode`
-        - :class:`~.equipments.Membrane`
-
-    Parameters
-    ----------
-    recovery : dict
-        Keys refer to chemical component IDs. Values refer to recovery fractions (with 1 being 100%) for the respective chemicals.
-    removal : dict
-        Keys refer to chemical component IDs. Values refer to removal fractions (with 1 being 100%) for the respective chemicals.
-    equipment : list(obj)
-        List of Equipment objects part of the Microbial Fuel Cell.
-    OPEX_over_CAPEX : float
-        Ratio with which operating costs are calculated as a fraction of capital costs.
-
-    Example
-    -------
-    >>> # Set components and waste streams (similar to previous example)
-    >>> # ...
-
-    >>> # Set the unit
-    >>> MFC = qs.sanunits.MicrobialFuelCell('unit_1', ins=(influent, catalysts), outs=('recovered', 'removed', 'residual'))
-    >>> # Simulate and look at the results
-    >>> MFC.simulate()
-    >>> MFC.results()
-    '''
-
+class ElectrochemicalOxidation(qs.SanUnit):
     _N_ins = 2
     _N_outs = 3
-    _units= {'Aqueous flowrate': 'kg/hr',}
+    _units = {'Aqueous flowrate': 'kg/hr',}
 
     def __init__(self, ID='', ins=(), outs=(),
-                 recovery={'NH3':0.7}, removal={'NH3':0.83, 'K+':0.83, "Na+":0.8}, OPEX_over_CAPEX=0.2, N_unit=1):
+                 recovery={'Carbon':0.7, 'Nitrogen':0.7, 'Phosphorus':0.7},  #consult Davidson group
+                 removal={'Carbon':0.83, 'Nitrogen':0.83, 'Phosphorus':0.83},  #consult Davidson group
+                 OPEX_over_CAPEX=0.2, N_unit=1):
         super().__init__(ID, ins, outs)
         self.recovery = recovery
         self.removal = removal
         self.OPEX_over_CAPEX = OPEX_over_CAPEX
         self.N_unit = N_unit
-        
-        # Monod kinetics parameters
-        self.mu_max = 0.2  # Maximum specific growth rate (1/hr)
-        self.K_s = 1000    # Half-saturation constant (mg/L)
-        self.K_i = 5000    # Inhibition constant (mg/L) - for Haldane kinetics if needed
 
         self.equipment = [
             Electrode('Anode', linked_unit=self, N=1, electrode_type='anode',
-                      material='Boron-doped diamond (BDD) on niobium', surface_area=1, unit_cost=1649.95),  # https://www.msesupplies.com/products/mse-pro-boron-doped-diamond-electrode-on-niobium-bdd-nb-electrode?variant=40061811294266&gad_source=1&gclid=CjwKCAjwreW2BhBhEiwAavLwfCrhsFpmJ6Eq19brx21K4-4g_N3yqFGNQv7X1A40dwGDs4VQv5yEBRoCkg0QAvD_BwE
+                      material='Boron-doped diamond (BDD) on niobium', surface_area=1, unit_cost=1649.95),
             Electrode('Cathode', linked_unit=self, N=1, electrode_type='cathode',
-                      material='Stainless Steel 316', surface_area=1, unit_cost=75.28),  # https://www.grainger.com/product/WESTWARD-Stick-Electrode-Stainless-30XN57?gucid=N:N:PS:Paid:GGL:CSM-2296:9JMEDM:20500731&gad_source=1&gclid=CjwKCAjwreW2BhBhEiwAavLwfItju6EInC2jpvFg24eaSjOHzzpn5YlICdHTdTLfhHFES0xJEnVORRoCwG8QAvD_BwE&gclsrc=aw.ds
+                      material='Stainless Steel 316', surface_area=1, unit_cost=18.00),
             Membrane('Proton_Exchange_Membrane', linked_unit=self, N=1,
-                     material='Nafion proton exchange membrane', unit_cost=50, surface_area=1)  # https://www.amazon.com/Exchange-Membrane-Perfluorosulfonic-Electrochemical-50mm-Quadrate/dp/B0CQ319J6W/ref=asc_df_B0CQ319J6W/?tag=hyprod-20&linkCode=df0&hvadid=693071814604&hvpos=&hvnetw=g&hvrand=3731273450246095445&hvpone=&hvptwo=&hvqmt=&hvdev=c&hvdvcmdl=&hvlocint=&hvlocphy=9192197&hvtargid=pla-2317264161762&mcid=cf8368fe38833a7688337effe3ed6624&th=1
+                     material='Nafion proton exchange membrane', unit_cost=50, surface_area=1)
         ]
 
-    def _run(self):
-        HTL_aqueous, catalysts = self.ins
-        fertilizer, water, solids = self.outs
-        
-    # Instantiate and mix waste streams
-    mixture = WasteStream()
-    mixture.mix_from(self.ins)
-    
-    # Copy the mixture to the residual stream
-    residual.copy_like(mixture)
+    def _run(self): 
+           HTL_aqueous, catalysts = self.ins
+           recovered, removed, residual = self.outs
 
-    # Accessing mass flows directly and safely
-    substrate_concentration = mixture.imass.get('Organic_Matter', 0)
-    
-    growth_rate = self.microbial_growth_rate(substrate_concentration)
+         # Instantiate and mix waste streams
+           mixture = qs.WasteStream()
+           mixture.mix_from(self.ins)
 
-    # Example of substrate consumption and product formation
-    consumption_rate = growth_rate * substrate_concentration
-    recovered.imass['Energy'] = consumption_rate * 0.8  # Example: 80% of consumed substrate is converted to energy
-    residual.imass['Organic_Matter'] -= consumption_rate
+         # Copy the mixture to the residual stream
+           residual.copy_like(mixture)
 
-    # Adjust for recovery and removal based on the updated values
-    for chemical, recovery_ratio in self.recovery.items():
-        if chemical in mixture.imass:
-            recovered.imass[chemical] = mixture.imass[chemical] * recovery_ratio
+           # Check chemicals present in each stream
+           #print("Available chemicals in mixture:", list(mixture.imass.chemicals))
 
-    for chemical, removal_ratio in self.removal.items():
-        if chemical in mixture.imass:
-            recovery_amount = recovered.imass.get(chemical, 0)
-            removed.imass[chemical] = mixture.imass[chemical] * removal_ratio - recovery_amount
-            residual.imass[chemical] -= mixture.imass[chemical] * removal_ratio
+    # Update mass flows based on recovery and removal
+           for chemical in set(self.recovery.keys()).union(set(self.removal.keys())):
+             if chemical in mixture.imass.chemicals:
+                recovery_amount = mixture.imass[chemical] * self.recovery.get(chemical, 0)
+                recovered.imass[chemical] = recovery_amount
+            
+                removal_amount = mixture.imass[chemical] * self.removal.get(chemical, 0)
+                removed.imass[chemical] = removal_amount - recovery_amount
+                residual.imass[chemical] -= removal_amount
+             else:
+                print(f"Chemical '{chemical}' not found in mixture.imass")
 
-    def microbial_growth_rate(self, S):
-        '''Calculate microbial growth rate using Monod kinetics.'''
-        return self.mu_max * S / (self.K_s + S)
+
+
 
     def _design(self):
         self.add_equipment_design()
 
     def _cost(self):
         self.add_equipment_cost()
-        self.baseline_purchase_costs['Exterior'] = 80.0  # Upgraded from 60$
-        '''
-        TOTAL CELL_EXTERIOR_COST = 80 USD
-        Breakdown:
-        Exterior frame and casing                     $40
-        Internal supports and fittings                $20
-        Miscellaneous components                      $20
-        '''
+        self.baseline_purchase_costs['Exterior'] = 80.0
         self.equip_costs = self.baseline_purchase_costs.values()
         add_OPEX = sum(self.equip_costs) * self.OPEX_over_CAPEX
-        
-        # Power calculations and OPEX based on microbial fuel cell specifics
-        self.power_utility.rate = self.outs[0].imass.get('NH3', 0) * 0.5  # Example value
         self._add_OPEX = {'Additional OPEX': add_OPEX}
 
     @property
     def N_unit(self):
-        '''
-        [int] Number of microbial fuel cell units.
-        '''
         return self._N_unit
     
     @N_unit.setter
     def N_unit(self, i):
         self.parallel['self'] = self._N_unit = math.ceil(i)
+
+
+
 # %%
 
 class Transportation(SanUnit):    

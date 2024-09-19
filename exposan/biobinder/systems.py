@@ -176,24 +176,24 @@ HeavyFracStorage = qsu.StorageTank(
 # Aqueous Product Treatment
 # =============================================================================
 
-MicrobialFuelCell = u.MicrobialFuelCell(
+ElectrochemicalOxidation = u.ElectrochemicalOxidation(
     'MicrobialFuelCell',
     ins=(HTL-1,),
     outs=('fertilizer', 'recycled_water', 'filtered_solids'),
     N_unit=N_decentralized_HTL,)
 
 FertilizerScaler = u.Scaler(
-    'FertilizerScaler', ins=MicrobialFuelCell-0, outs='scaled_fertilizer',
+    'FertilizerScaler', ins=ElectrochemicalOxidation-0, outs='scaled_fertilizer',
     scaling_factor=N_decentralized_HTL, reverse=False,
     )
 
 RecycledWaterScaler = u.Scaler(
-    'RecycledWaterScaler', ins=MicrobialFuelCell-1, outs='scaled_recycled_water',
+    'RecycledWaterScaler', ins=ElectrochemicalOxidation-1, outs='scaled_recycled_water',
     scaling_factor=N_decentralized_HTL, reverse=False,
     )
 
 FilteredSolidsScaler = u.Scaler(
-    'FilteredSolidsScaler', ins=MicrobialFuelCell-2, outs='filterd_solids',
+    'FilteredSolidsScaler', ins=ElectrochemicalOxidation-2, outs='filterd_solids',
     scaling_factor=N_decentralized_HTL, reverse=False,
     )
 
