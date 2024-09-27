@@ -268,5 +268,6 @@ sys.set_dynamic_tracker(AD, fs.biogas, fs.eff_adm, fs.eff_asm)
 
 #%%
 def run():
-    sys.simulate(state_reset_hook='reset_cache', t_span=(0, 200), method='BDF')
-# run()
+    sys.simulate(state_reset_hook='reset_cache', t_span=(0, 100), method='BDF')
+
+run()
