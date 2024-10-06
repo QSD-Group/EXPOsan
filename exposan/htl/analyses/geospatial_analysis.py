@@ -559,7 +559,7 @@ def add_region(position, region, color):
         cap.set(color='k', linewidth=3)
         
     ax.scatter(x=1,
-               y=WRRF_input['real_distance_km'].mean(),
+               y=WRRF_input[WRRF_input['WRRF_PADD'] == position+1]['real_distance_km'].mean(),
                marker='*',
                s=600,
                c='w',

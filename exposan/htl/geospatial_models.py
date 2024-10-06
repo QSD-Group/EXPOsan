@@ -32,7 +32,8 @@ _m3_to_ft3 = auom('m3').conversion_factor('ft3')
 _oil_barrel_to_m3 = auom('oil_barrel').conversion_factor('m3')
 
 # GDPCTPI (Gross Domestic Product: Chain-type Price Index), [2]
-GDPCTPI = {2008: 87.977,
+GDPCTPI = {2007: 86.352,
+           2008: 87.977,
            2009: 88.557,
            2010: 89.619,
            2011: 91.466,
@@ -76,6 +77,7 @@ def create_geospatial_model(system=None,
     stream = flowsheet.stream
     model = qs.Model(sys)
     param = model.parameter
+    metric = model.metric
     
     WWTP = unit.WWTP
     H1 = unit.H1
@@ -91,6 +93,9 @@ def create_geospatial_model(system=None,
     raw_wastewater = stream.raw_wastewater
     H2SO4 = stream.H2SO4
     CHG_catalyst_in = stream.virgin_CHG_catalyst
+    # TODO: update this one in the original HTL model, if necessary
+    # the original model has CHG_catalyst_in = CHG.ins[1]
+    # also see the note in geospatial_models.py
     NaOH = stream.NaOH
     Membrane_in = stream.Membrane_in
     ammonium_sulfate = stream.ammonium_sulfate
@@ -766,8 +771,6 @@ def create_geospatial_model(system=None,
     # =========================================================================
     # metrics
     # =========================================================================
-    metric = model.metric
-    
     if include_other_metrics:
         # mass/element flow
         @metric(name='C_afdw', units='%', element='Sankey')
