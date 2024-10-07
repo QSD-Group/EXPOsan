@@ -54,7 +54,7 @@ C_mw = get_mw({'C':1})        # molecular weight of carbon
 N_mw = get_mw({'N':1})        # molecular weight of nitrogen
 
 # Default values
-'''
+
 default_inf_kwargs = {
     'concentrations': {
         'S_su':0.01,                                              
@@ -124,7 +124,8 @@ default_inf_kwargs = {
         'S_an':0.02,                                            # !!! kmole/m3, but in console, no unit.
         },                                                      # 807.59 g COD/L
     'units': ('m3/d', 'kg/m3'),                                 # kg COD/m3 = g COD/L
-    }                                                           # concentration of each state variable in influent
+    }          
+'''                                                 # concentration of each state variable in influent
 inf.set_flow_by_concentration(Q, **default_inf_kwargs)          # set influent concentration
 # inf
 S_su = default_inf_kwargs['concentrations']['S_su']
@@ -133,7 +134,7 @@ S_su = default_inf_kwargs['concentrations']['S_su']
 # SanUnit
 U1 = AnaerobicCSTR('UASB', ins=inf, outs=(gas, eff), model=adm1,        # This model is based on CSTR, need to decide application of recirculated experiments
           V_liq=Q*HRT, V_gas=Q*HRT*0.1,                        # !!! Considering real experiments including either high recirculation rate or not
-          T=Temp, pH_ctrl=None,                               # pH adjustment X
+          T=Temp, pH_ctrl=4,                               # pH adjustment X
           fraction_retain=0.95,                            # needs to set this value properly
           )                                                    
 
@@ -147,7 +148,7 @@ print(f"The liquid volume of the reactor is: {U1.V_liq} m^3")
 
 # Set initial condition of the reactor (Cow manure (Inoculum) in bioreactor, 10% of total volume)
 # Default values
-'''
+
 default_init_conds = {
     'S_su': 0.0124*1e3,                                        
     'S_aa': 0.0055*1e3,
@@ -177,13 +178,14 @@ default_init_conds = {
     'X_h2': 0.2848*1e3,
     'X_I': 17.2162*1e3
     }                   # in mg/L                         
-'''
+
 # 10% Inoculum (Cow manure) + 90% Glucose (10g/L or 20g/L)
 # Total COD (90 % Glucose 20 g/L + 10 % inoculum) = 22.93 g COD/L
 # Soluble COD (S) = 20.32 g COD/L
 # 10 % inoculum = 22.93 - 20.14 = 2.79 g COD/L
 # Non Soluble COD (X) = Total COD - S = 22.93 - 20.32 = 2.61 g COD/L
 # Cow manure -> VS = 2.27 g/L = 3.22 g COD/L (=Biomass), FS = 7.7 g/L = ~7.7 g COD/L
+'''
 default_init_conds = {
     'S_su': 21.89*1e3,                                  # fixed according to R4G20 (Glucose 20.538g/L)
     'S_aa': 0.95*1e3,
@@ -213,7 +215,7 @@ default_init_conds = {
     'X_h2': 0.2*1e3,
     'X_I': 0.77*1e3                                      # FS = 0.77 g/L 
     }                                               # mg COD/L
-
+'''
 U1.set_init_conc(**default_init_conds)                          # set initial condition of AD
 
 #%%
@@ -285,6 +287,7 @@ plt.ylabel("Total VFA [mg/l]")
 
 #%%
 #!!! Plot for varying pH over time
+'''
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -326,9 +329,10 @@ df = pd.DataFrame({
     'pH': pH_values
 })
 df.to_excel('pH_levels_over_time.xlsx', index=False)
+'''
 #%%
 #!!! Plot for varying pH over time
-'''
+
 from scipy.optimize import brenth
 from qsdsan.processes._adm1_vfa import mass2mol_conversion, acid_base_rxn
 unit_conversion = mass2mol_conversion(cmps)
@@ -359,10 +363,11 @@ df = pd.DataFrame({
     'pH': pH_values
 })
 df.to_excel('pH_levels_over_time.xlsx', index=False)
-'''
+
 #%%
 #!!! Partial Pressure of gas over days (S_ch4 vs Partial Pressure of CH4)
 # Simulation settings
+
 t = 40  # total simulation time in days
 t_step = 1  # simulation time step in days
 time_stamps = np.arange(0, t + t_step, t_step)
@@ -415,43 +420,47 @@ for pH in pH_levels:
     # Reset the reactor to its initial conditions
     U1.set_init_conc(**default_init_conds)
 
+    # Set pH control
     U1.pH_ctrl = pH
+
+    # Simulate for the set pH
     sys.simulate(state_reset_hook='reset_cache',
-                  t_span=(0, t),
-                  t_eval=np.arange(0, t + t_step, t_step),
-                  method=method,
-                )
+                 t_span=(0, t),
+                 t_eval=np.arange(0, t + t_step, t_step),
+                 method=method)
 
-    # Calculate VFA values after this simulation
-    vfa = eff.scope.record[:, idx_vfa]
-    total_vfa = np.sum(vfa, axis=1)
+    # Check that eff.scope has updated records for each simulation
+    if eff.scope.record is not None:
+        # Calculate VFA values after this simulation
+        vfa = eff.scope.record[:, idx_vfa]
+        total_vfa = np.sum(vfa, axis=1)
 
-    # Store the VFA values and time stamps in the dictionaries
-    VFA_values_for_each_pH[pH] = total_vfa
-    t_stamps_for_each_pH[pH] = eff.scope.time_series
+        # Store the VFA values and time stamps in the dictionaries
+        VFA_values_for_each_pH[pH] = total_vfa
+        t_stamps_for_each_pH[pH] = eff.scope.time_series
 
-    h2_values_for_each_pH[pH] = gas.scope.record[:, idx_h2]
-    ch4_values_for_each_pH[pH] = gas.scope.record[:, idx_ch4]
-    co2_values_for_each_pH[pH] = gas.scope.record[:, idx_co2]
-
+        # Store gas component values
+        h2_values_for_each_pH[pH] = gas.scope.record[:, idx_h2]
+        ch4_values_for_each_pH[pH] = gas.scope.record[:, idx_ch4]
+        co2_values_for_each_pH[pH] = gas.scope.record[:, idx_co2]
+    else:
+        print(f"Error: No records available for pH {pH}")
 
 # Plot the results for each pH on the same graph
-# vfa
+# VFA
 plt.figure(figsize=(10, 6))
-
 for pH, vfa in VFA_values_for_each_pH.items():
     plt.plot(t_stamps_for_each_pH[pH], vfa, label=f"pH = {pH}")
 
 plt.xlabel("Time [day]")
-plt.ylabel("Total VFA [mg/l]")
+plt.ylabel("Total VFA [mg/L]")
 plt.title("Total VFA production at varying pH levels")
 plt.legend()
 plt.grid(True)
 plt.show()
 
-# h2
+# H2
 plt.figure(figsize=(10, 6))
-
 for pH, h2 in h2_values_for_each_pH.items():
     plt.plot(t_stamps_for_each_pH[pH], h2, label=f"pH = {pH}")
 
@@ -461,9 +470,8 @@ plt.legend()
 plt.grid(True)
 plt.show()
 
-# ch4
+# CH4
 plt.figure(figsize=(10, 6))
-
 for pH, ch4 in ch4_values_for_each_pH.items():
     plt.plot(t_stamps_for_each_pH[pH], ch4, label=f"pH = {pH}")
 
@@ -473,9 +481,8 @@ plt.legend()
 plt.grid(True)
 plt.show()
 
-# co2
+# CO2
 plt.figure(figsize=(10, 6))
-
 for pH, co2 in co2_values_for_each_pH.items():
     plt.plot(t_stamps_for_each_pH[pH], co2, label=f"pH = {pH}")
 
@@ -484,6 +491,7 @@ plt.ylabel("CO2 [mg/L]")
 plt.legend()
 plt.grid(True)
 plt.show()
+
 #%%
 # Extracting indices for each component
 idx_s_aa = cmps.indices(['S_aa'])[0]
