@@ -13,6 +13,7 @@ from qsdsan import processes as pc, WasteStream, System
 # from qsdsan.utils import time_printer
 
 from exposan.metab import UASB
+from qsdsan.sanunits import AnaerobicCSTR
 
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)        # to ignore Pandas future warning
@@ -130,7 +131,7 @@ S_su = default_inf_kwargs['concentrations']['S_su']
 # print(S_su)
 #%%
 # SanUnit
-U1 = UASB('UASB', ins=inf, outs=(gas, eff), model=adm1,        # This model is based on CSTR, need to decide application of recirculated experiments
+U1 = AnaerobicCSTR('UASB', ins=inf, outs=(gas, eff), model=adm1,        # This model is based on CSTR, need to decide application of recirculated experiments
           V_liq=Q*HRT, V_gas=Q*HRT*0.1,                        # !!! Considering real experiments including either high recirculation rate or not
           T=Temp, pH_ctrl=4,                               # pH adjustment X
           fraction_retain=0.95,                            # needs to set this value properly
@@ -284,6 +285,50 @@ plt.ylabel("Total VFA [mg/l]")
 
 #%%
 #!!! Plot for varying pH over time
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.optimize import brenth
+from qsdsan.processes._adm1_vfa import mass2mol_conversion, acid_base_rxn
+
+# Ensure cmps and adm1 are already defined from previous parts of the code.
+unit_conversion = mass2mol_conversion(cmps)  # Convert mass to mol
+Ka = adm1.rate_function._params['Ka']  # Acid-base equilibrium constants
+
+# Function to calculate pH based on the state array
+def calc_pH(state_arr):
+    cmps_in_M = state_arr[:31] * unit_conversion  # Convert components to molar concentration
+    weak_acids = cmps_in_M[[28, 29, 12, 11, 8, 7, 6, 5, 3]]  # Select weak acid components
+    try:
+        # Use brenth to find h (H+ concentration)
+        h = brenth(acid_base_rxn, 1e-14, 1.0, args=(weak_acids, Ka), xtol=1e-12, maxiter=100)
+        pH = -np.log10(h)  # Calculate pH from h
+        return pH
+    except ValueError as e:
+        print(f"Error calculating pH: {e}")
+        return np.nan  # Return NaN if there's an issue
+
+# Ensure eff.scope.record and t_stamp are defined, and that eff.scope.record contains state arrays.
+pH_values = [calc_pH(arr) for arr in eff.scope.record]
+
+# Plot the pH values over time
+plt.figure(figsize=(10, 6))
+plt.plot(t_stamp, pH_values, marker='o', linestyle='-', color='blue')
+plt.title('pH levels Over Time')
+plt.xlabel('Time (days)')
+plt.ylabel('pH')
+plt.grid(True)
+plt.show()
+
+# Export pH values to an Excel file
+df = pd.DataFrame({
+    'Time (days)': t_stamp,
+    'pH': pH_values
+})
+df.to_excel('pH_levels_over_time.xlsx', index=False)
+#%%
+#!!! Plot for varying pH over time
+'''
 from scipy.optimize import brenth
 from qsdsan.processes._adm1_vfa import mass2mol_conversion, acid_base_rxn
 unit_conversion = mass2mol_conversion(cmps)
@@ -314,6 +359,7 @@ df = pd.DataFrame({
     'pH': pH_values
 })
 df.to_excel('pH_levels_over_time.xlsx', index=False)
+'''
 #%%
 #!!! Partial Pressure of gas over days (S_ch4 vs Partial Pressure of CH4)
 # Simulation settings
@@ -439,7 +485,6 @@ plt.legend()
 plt.grid(True)
 plt.show()
 #%%
-
 # Extracting indices for each component
 idx_s_aa = cmps.indices(['S_aa'])[0]
 idx_s_fa = cmps.indices(['S_fa'])[0]
