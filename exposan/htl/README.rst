@@ -198,4 +198,4 @@ Getting Started
 
 References
 ----------
-.. [1] Feng et al., Characterizing the Opportunity Space for Sustainable Hydrothermal Valorization of Wet Organic Wastes. *Environmental Science and Technology*, *In revision*
+.. [1] Feng, J.; Li, Y.; Strathmann, T. J.; Guest, J. S. Characterizing the Opportunity Space for Sustainable Hydrothermal Valorization of Wet Organic Wastes. *Environ. Sci. Technol.* **2024**, *58* (5), 2528–2541. https://doi.org/10.1021/acs.est.3c07394.

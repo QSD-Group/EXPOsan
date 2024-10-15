@@ -130,15 +130,18 @@ def create_components(set_thermo=True):
     H2O = Component('H2O', particle_size='Soluble',
                     degradability='Undegradable', organic=False)
     
-    # Intentionally using the molecular formula and MW of water for C/N/P
+    # intentionally using the molecular formula and MW of water for C/N/P
     C = Component('C', search_ID='water', particle_size='Soluble',
                   degradability='Undegradable', organic=False)
+    C._CAS = 'C'
     
     N = Component('N', search_ID='water', particle_size='Soluble',
                   degradability='Undegradable', organic=False)
+    N._CAS = 'N'
     
     P = Component('P', search_ID='water', particle_size='Soluble',
                   degradability='Undegradable', organic=False)
+    P._CAS = 'P'
     
     O2 = Component('O2', phase='g', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
