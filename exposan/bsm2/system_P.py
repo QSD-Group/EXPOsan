@@ -29,7 +29,8 @@ Q = 20648.4 # influent flowrate [m3/d]
 Q_intr = 3 * Q # activated sludge process internal recycle [m3/d]
 Q_ras = 1 * Q # recycle sludge flowrate
 Q_was = 600 # sludge wastage flowrate
-Temp = 273.15+15 # temperature [K]
+# Temp = 273.15+15 # temperature [K]
+Temp = 273.15+20 # temperature [K]
 T_ad = 273.15+35
 V_anae = 1000
 V_anox = 1500 # anoxic zone tank volume
@@ -61,9 +62,9 @@ def create_system(flowsheet=None, default_init_conds=True):
     cmps_asm = pc.create_masm2d_cmps()
     asm = pc.mASM2d(components=cmps_asm, 
                     electron_acceptor_dependent_decay=True,
-                    k_h=2.46, mu_H=4.23, q_fe=2.11, b_H=0.28, mu_PAO=0.82, 
-                    q_PP=1.23, q_PHA=2.46, b_PAO=0.14, b_PP=0.14, b_PHA=0.14, 
-                    mu_AUT=0.61, b_AUT=0.09
+                    # k_h=2.46, mu_H=4.23, q_fe=2.11, b_H=0.28, mu_PAO=0.82, 
+                    # q_PP=1.23, q_PHA=2.46, b_PAO=0.14, b_PP=0.14, b_PHA=0.14, 
+                    # mu_AUT=0.61, b_AUT=0.09
                     )
     thermo_asm = qs.get_thermo()
     
@@ -306,7 +307,7 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 500
+    t = 100
     t_step = 0.1
     # method = 'RK45'
     # method = 'RK23'
