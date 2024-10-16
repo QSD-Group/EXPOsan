@@ -442,7 +442,7 @@ class UASB(AnaerobicCSTR):
         if self._ODE is None:
             self._compile_ODE()
         return self._ODE
-        
+
     def _compile_ODE(self):
         cmps = self.components
         f_rtn = self._f_retain

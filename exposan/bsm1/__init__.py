@@ -25,26 +25,31 @@ from . import system
 from .system import *
 
 _system_loaded = False
-def load(reload=False, inf_kwargs={}, asm_kwargs={}, init_conds={}, aeration_processes=()):
+def load(reload=False, suspended_growth_model='ASM1', reactor_model='CSTR', 
+         inf_kwargs={}, asm_kwargs={}, settler_kwargs={}, 
+         init_conds={}, aeration_processes=()):
     global _system_loaded
     if not _system_loaded: reload = True
     if reload:
         global cmps, components, asm, sys
         sys = create_system(
+            suspended_growth_model=suspended_growth_model,
+            reactor_model=reactor_model,
             inf_kwargs=inf_kwargs,
             asm_kwargs=asm_kwargs,
+            settler_kwargs=settler_kwargs,
             init_conds=init_conds,
             aeration_processes=aeration_processes,
             )
-        O1 = sys.flowsheet.unit.O1
-        cmps = components = O1.components
-        asm = O1.suspended_growth_model
+        # O1 = sys.flowsheet.unit.O1
+        # cmps = components = O1.components
+        # asm = O1.suspended_growth_model
         # Legacy names
-        global PE, SE, RE
+        global PE, SE#, RE
         stream = sys.flowsheet.stream
         PE = stream.wastewater
         SE = stream.effluent
-        RE = stream.RWW
+        # RE = stream.RWW
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     _system_loaded = True
