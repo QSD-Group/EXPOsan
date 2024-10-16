@@ -7,7 +7,7 @@ Summary
 -------
 This modules contains the Benchmark Simulation Model No. 2 (BSM2) [1]_ configuration (currently open-loop, constant influent) developed by the International Water Association (IWA).
 
-.. figure:: ./readme_figures/bsm2_iwa.svg
+.. figure:: ./readme_figures/bsm2_iwa.png
 
     *BSM2 system layout as developed by IWA.*
 
