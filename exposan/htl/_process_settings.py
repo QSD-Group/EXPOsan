@@ -64,7 +64,7 @@ def _load_process_settings():
 # =============================================================================
 #     set utility prices
 # =============================================================================
-    bst.PowerUtility.price = 0.06879
+    bst.PowerUtility.price = 0.06879 # !!! the electricity price can be adjusted here
     
     # # These utilities are provided by CHP thus cost already considered
     # # setting the regeneration price to 0 or not will not affect the final results

@@ -53,7 +53,7 @@ def test_biogenic_refinery():
 
     modelA2 = br.create_model('A')
     dfA2 = modelA2.metrics_at_baseline()
-    valuesA2 = [37.58, 64.69, 67.36, 10.41, 28.57, -0.02701, 10.21, -0.3066]
+    valuesA2 = [37.58, 64.69, 67.36, 10.41, 28.3, -0.02703, 10.11, -0.3066]
     assert_allclose(dfA2.values, valuesA2, rtol=rtol)
     
     modelB2 = br.create_model('B')

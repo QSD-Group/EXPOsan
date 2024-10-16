@@ -91,7 +91,7 @@ def create_systemB(flowsheet=None,
                     number_of_households=number_of_households)
     
     ############### Simulation, TEA, and LCA ###############
-    sysB = System('sysV', path=(B1, B2))
+    sysB = System('sysB', path=(B1, B2))
     
     TEA(system=sysB, discount_rate=discount_rate, start_year=start_year,
         lifetime=lifetime, uptime_ratio=1, lang_factor=None,

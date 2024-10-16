@@ -1,0 +1,76 @@
+<ns0:svg xmlns:ns0="http://www.w3.org/2000/svg" xmlns:ns1="http://www.w3.org/1999/xlink" width="408pt" height="154pt" viewBox="0.00 0.00 408.00 154.00">
+<ns0:g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 150)">
+
+<ns0:g id="edge1" class="edge">
+<ns0:title>163059891682:c-&gt;163059891694:c</ns0:title>
+<ns0:path fill="none" stroke="#90918e" stroke-width="2.2" d="M82.16,-110.67C103.52,-103.32 130.41,-94.06 155.07,-85.57" />
+<ns0:polygon fill="#90918e" stroke="#90918e" stroke-width="2.2" points="156.44,-88.8 164.76,-82.24 154.17,-82.18 156.44,-88.8" />
+<ns0:g id="a_edge1-label"><ns0:a ns1:title="Temperature: 298.15 K&#10;Pressure: 101325 Pa&#10;Liquid flow: 0.308 kmol/hr">
+<ns0:text text-anchor="middle" x="123.5" y="-111.3" font-family="Arial" font-size="14.00" fill="#90918e"> raw water</ns0:text>
+</ns0:a>
+</ns0:g>
+</ns0:g>
+
+<ns0:g id="edge2" class="edge">
+<ns0:title>163059891694:c-&gt;163037916728:w</ns0:title>
+<ns0:path fill="none" stroke="#90918e" stroke-width="2.2" d="M287.18,-61.5C318.07,-61.5 356.3,-61.5 390.5,-61.5" />
+<ns0:g id="a_edge2-label"><ns0:a ns1:title="Temperature: 298.15 K&#10;Pressure: 101325 Pa&#10;Liquid flow: 0.308 kmol/hr">
+<ns0:text text-anchor="middle" x="338" y="-65.3" font-family="Arial" font-size="14.00" fill="#90918e"> treated water</ns0:text>
+</ns0:a>
+</ns0:g>
+</ns0:g>
+
+<ns0:g id="edge3" class="edge">
+<ns0:title>163037917148:e-&gt;163059891694:c</ns0:title>
+<ns0:path fill="none" stroke="#90918e" stroke-width="1.6" d="M48,-61.5C86.87,-61.5 130.55,-61.5 164.79,-61.5" />
+<ns0:g id="a_edge3-label"><ns0:a ns1:title="Temperature: 298.15 K&#10;Pressure: 101325 Pa&#10;Liquid flow: 1.55e-08 kmol/hr">
+<ns0:text text-anchor="middle" x="123.5" y="-65.3" font-family="Arial" font-size="14.00" fill="#90918e"> A naclo</ns0:text>
+</ns0:a>
+</ns0:g>
+</ns0:g>
+
+<ns0:g id="edge4" class="edge">
+<ns0:title>163037915678:e-&gt;163059891694:c</ns0:title>
+<ns0:path fill="none" stroke="#90918e" d="M48,-5.5C95.54,-5.5 147.06,-24.09 182.19,-39.85" />
+<ns0:g id="a_edge4-label"><ns0:a ns1:title="Temperature: 298.15 K&#10;Pressure: 101325 Pa&#10;Solid flow: 3.95e-09 kmol/hr">
+<ns0:text text-anchor="middle" x="123.5" y="-31.3" font-family="Arial" font-size="14.00" fill="#90918e"> A cl bottle</ns0:text>
+</ns0:a>
+</ns0:g>
+</ns0:g>
+
+<ns0:g id="node1" class="node">
+<ns0:title>163059891682</ns0:title>
+<ns0:g id="a_node1"><ns0:a ns1:title="No capital costs or utilities">
+<ns0:polygon fill="#555f69" stroke="#90918e" points="82,-146 0,-146 0,-103 82,-103 82,-146" />
+<ns0:text text-anchor="middle" x="41" y="-128.3" font-family="Arial" font-size="14.00" fill="white">A1</ns0:text>
+<ns0:text text-anchor="middle" x="41" y="-113.3" font-family="Arial" font-size="14.00" fill="white">Raw water</ns0:text>
+</ns0:a>
+</ns0:g>
+</ns0:g>
+
+<ns0:g id="node2" class="node">
+<ns0:title>163059891694</ns0:title>
+<ns0:g id="a_node2"><ns0:a ns1:title="Purchase cost: 400 USD&#10;Installed equipment cost: 400 USD">
+<ns0:polygon fill="#555f69" stroke="#90918e" points="287,-83 165,-83 165,-40 287,-40 287,-83" />
+<ns0:text text-anchor="middle" x="226" y="-65.3" font-family="Arial" font-size="14.00" fill="white">A2</ns0:text>
+<ns0:text text-anchor="middle" x="226" y="-50.3" font-family="Arial" font-size="14.00" fill="white">POUChlorination</ns0:text>
+</ns0:a>
+</ns0:g>
+</ns0:g>
+
+<ns0:g id="node3" class="node">
+<ns0:title>163037916728</ns0:title>
+<ns0:polygon fill="#f98f60" stroke="#90918e" points="400,-61.5 391.75,-68.5 391.75,-54.5 400,-61.5" />
+</ns0:g>
+
+<ns0:g id="node4" class="node">
+<ns0:title>163037917148</ns0:title>
+<ns0:polygon fill="#f98f60" stroke="#90918e" points="41,-67 35.5,-61.5 41,-56 46.5,-61.5 41,-67" />
+</ns0:g>
+
+<ns0:g id="node5" class="node">
+<ns0:title>163037915678</ns0:title>
+<ns0:polygon fill="#f98f60" stroke="#90918e" points="41,-11 35.5,-5.5 41,0 46.5,-5.5 41,-11" />
+</ns0:g>
+</ns0:g>
+</ns0:svg>

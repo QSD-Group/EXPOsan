@@ -165,6 +165,7 @@ class DegassingMembrane(SanUnit):
         
     def _update_state(self):
         arr = self._state
+        arr[-1] = self._ins_QC[0,-1]
         gas, liquid = self.outs
         s = self.split
         Q_liq = arr[-1]
@@ -200,7 +201,8 @@ class DegassingMembrane(SanUnit):
         tau = self.tau
         def dy_dt(t, QC_ins, QC, dQC_ins):
             _dstate[:] = (QC_ins[0] - QC)/tau
-            _dstate[-1] = dQC_ins[0,-1]
+            # _dstate[-1] = dQC_ins[0,-1]
+            _dstate[-1] = 0.
             _update_dstate()
         self._ODE = dy_dt
     
@@ -434,18 +436,19 @@ class UASB(AnaerobicCSTR):
             self._dstate = self._state * 0.
         else:
             super()._init_state()
-        
+
+    @property
+    def ODE(self):
+        if self._ODE is None:
+            self._compile_ODE()
+        return self._ODE
+
     def _compile_ODE(self):
         cmps = self.components
         f_rtn = self._f_retain
         _dstate = self._dstate
         _update_dstate = self._update_dstate
         T = self.T
-        _params = self.model.rate_function._params
-        _f_rhos = lambda state_arr: self.model.flex_rate_function(
-            state_arr, _params, T_op=T, pH=self.pH_ctrl, gas_transfer=True
-            )
-        M_stoichio = self.model.stoichio_eval()
         n_cmps = len(cmps)
         n_gas = self._n_gas
         V_liq = self.V_liq
@@ -455,6 +458,18 @@ class UASB(AnaerobicCSTR):
             f_qgas = self.f_q_gas_fixed_P_headspace
         else:
             f_qgas = self.f_q_gas_var_P_headspace
+        
+        _params = self.model.rate_function._params
+        _f_rhos = lambda state_arr: self.model.flex_rate_function(
+            state_arr, _params, T_op=T, pH=self.pH_ctrl, gas_transfer=True
+            )
+        if self.model._dyn_params:
+            def M_stoichio(state_arr):
+                self.model.params_eval(state_arr)
+                return self.model.stoichio_eval().T
+        else:
+            _M_stoichio = self.model.stoichio_eval().T
+            M_stoichio = lambda state_arr: _M_stoichio
         def dy_dt(t, QC_ins, QC, dQC_ins):
             #!!! to avoid accumulation of floating error due to limited precision
             QC[np.abs(QC) < 2.22044604925e-16] = 0
@@ -467,11 +482,12 @@ class UASB(AnaerobicCSTR):
             #!!! to avoid accumulation of floating error due to limited precision
             rhos[np.abs(rhos) < 2.22044604925e-16] = 0
             _dstate[:n_cmps] = (Q_ins @ S_ins - Q*S_liq*(1-f_rtn))/V_liq \
-                + np.dot(M_stoichio.T, rhos)
+                + np.dot(M_stoichio(QC), rhos)
             q_gas = f_qgas(rhos[-3:], S_gas, T)
             _dstate[n_cmps: (n_cmps+n_gas)] = - q_gas*S_gas/V_gas \
                 + rhos[-3:] * V_liq/V_gas * gas_mass2mol_conversion
-            _dstate[-1] = dQC_ins[0,-1]
+            # _dstate[-1] = dQC_ins[0,-1]
+            _dstate[-1] = 0.            
             _update_dstate()
         self._ODE = dy_dt
     
@@ -794,7 +810,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             if u_min <= 0: return 0
             A_bed = (pi*self.V_bed**2/4/self.reactor_height_to_diameter**2)**(1/3)
             A_liq = A_bed * 0.4
-            return u_min * A_liq/self._mixed.F_vol - 1
+            return max(0, u_min * A_liq/self._mixed.F_vol - 1)
         return self._rQ
     @recirculation_ratio.setter
     def recirculation_ratio(self, r):
@@ -974,13 +990,6 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         hasfield = hasattr
         setfield = setattr
         if self.fixed_headspace_P and not hasfield(self, 'vacuum_pump'):
-            # gas = self.outs[0]
-            # dP = max(0, (self._P_atm-self._P_gas)*1e5)
-            # pump = self.vacuum_pump = Pump(gas.ID+'_VacPump', ins=Stream(f'{gas.ID}_proxy'),
-            #                                dP_design=dP)
-            # self.construction.append(
-            #     Construction(ID='surrogate', linked_unit=pump, item='air_compressor')
-            #     )
             self.construction.append(
                 Construction(ID='VacPump_surrogate', linked_unit=self, item='air_compressor')
                 )
@@ -1048,6 +1057,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         cmps = self.components
         n_cmps = len(cmps)
         n_gas = self._n_gas
+        self._state[self._state < 2.2e-16] = 0.
         y = self._state[-(n_cmps+n_gas+1):]
         i_mass = cmps.i_mass
         chem_MW = self.components.chem_MW
@@ -1178,7 +1188,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             tot_de = np.sum(np.diag(dV) @ de_en, axis=0) / V_bead  # detachment per unit volume of beads
 
             #!!! Mass transfer (centered differences) -- MOL; solubles only
-            C_lf = Cs_en[-1]
+            C_lf = Cs_en[-1]   #!!! potential to consider partitioning here
             J_lf = k*(Cs_bk - C_lf)
             S_en = Cs_en[:, S_idx]
             M_transfer = np.zeros_like(Cs_en)
@@ -1257,6 +1267,11 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         'Bead volume': 'm3',
         }
     
+    def _static_lift_equivalent(self):
+        dia = (self.V_bed*4/self.reactor_height_to_diameter/pi) ** (1/3)
+        h = dia * self.reactor_height_to_diameter
+        return h
+    
     def _design(self):
         D = self.design_results
         den = self._density
@@ -1322,14 +1337,18 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         HDPE_pipes = []
         rQ = self.recirculation_ratio or 0
         for ws in self.ins:
-            _inch, _kg_per_m = pipe_design(ws.F_vol*(1+rQ), self._l_min_velocity)
+            _inch, _kg_per_m = pipe_design(ws.F_vol, self._l_min_velocity)
             pipe_IDs.append(_inch)
             HDPE_pipes.append(_kg_per_m*L_inlets)
+        if rQ > 0:
+            _inch, _kg_per_m = pipe_design(mixed.F_vol*rQ, self._l_min_velocity)
+            pipe_IDs.append(_inch)
+            HDPE_pipes.append(_kg_per_m*(L_inlets+L_outlets))
         for ws in self.outs:
             if ws.phase == 'g':
                 D['Stainless steel'] += pipe_design(ws.F_vol, self._g_min_velocity, True)[1] * L_gas                
             else:
-                _inch, _kg_per_m = pipe_design(ws.F_vol*(1+rQ), self._l_min_velocity)
+                _inch, _kg_per_m = pipe_design(ws.F_vol, self._l_min_velocity)
                 pipe_IDs.append(_inch)
                 HDPE_pipes.append(_kg_per_m*L_outlets)
         D['HDPE pipes'] = sum(HDPE_pipes)
@@ -1340,10 +1359,6 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         getfield = getattr
         creg = Construction.registry
         if self.fixed_headspace_P:
-            # vac = self.vacuum_pump
-            # vac.ins[0].copy_like(self.outs[0])
-            # vac.dP_design = (self.external_P - self.headspace_P) * 1e5            
-            # vac.simulate()
             gas = self.outs[0]
             self.vacuum_pump = vac = VacuumSystem(
                 self, F_mass=_F_mass(gas), F_vol=_F_vol(gas), 
@@ -1351,17 +1366,41 @@ class METAB_FluidizedBed(AnaerobicCSTR):
                 vessel_volume=self.V_gas
                 )
             qvac = _construct_vacuum_pump(vac)
-            # pvac = getfield(creg, f'{flowsheet_ID}_{vac.ID}_surrogate')
             pvac = getfield(creg, f'{flowsheet_ID}_{self.ID}_VacPump_surrogate')
             pvac.quantity = qvac
+        h_lift = self._static_lift_equivalent()
         for i, ws, in enumerate(self.ins):
             ID = pipe_IDs[i]
-            hf = pipe_friction_head(ws.F_vol*(1+rQ)*_cmph_2_gpm, L_inlets, ID)  # friction head loss
-            TDH = hf + h # in m, assume suction head = 0, discharge head = reactor height
+            hf = pipe_friction_head(ws.F_vol*_cmph_2_gpm, L_inlets, ID)  # friction head loss
+            TDH = hf + h_lift # in m, assume suction head = 0, discharge head = reactor height
             field = f'Pump_ins{i}'
             pump = getfield(self, field)
             pump.ins[0].copy_flow(ws)
-            pump.ins[0].set_total_flow(ws.F_vol*(1+rQ), 'm3/h')
+            # pump.ins[0].set_total_flow(ws.F_vol*(1+rQ), 'm3/h')
+            pump.dP_design = TDH * 9804.14  # in Pa
+            pump.simulate()
+            if self.include_construction:
+                q22, q40 = _construct_water_pump(pump)
+                p22 = getfield(creg, f'{flowsheet_ID}_{pump.ID}_22kW')
+                p40 = getfield(creg, f'{flowsheet_ID}_{pump.ID}_40W')
+                p22.quantity = q22
+                p40.quantity = q40
+        if rQ > 0:
+            field = 'Pump_recirculation'
+            if not hasattr(self, field):
+                pump = Pump(self.ID+'recir_Pump', ins=Stream(f'{self.ID}_recir'))
+                setattr(self, field, pump)
+                self.construction += [
+                    Construction(ID='22kW', linked_unit=pump, item='pump_22kW'),
+                    Construction(ID='40W', linked_unit=pump, item='pump_40W')
+                    ]
+                self.auxiliary_unit_names = tuple({*self.auxiliary_unit_names, field})
+            ID = pipe_IDs[len(self.ins)]
+            hf = pipe_friction_head(mixed.F_vol*rQ*_cmph_2_gpm, L_inlets+L_outlets, ID)  # friction head loss
+            TDH = hf # in m, assume suction head = 0, static lift = 0
+            pump = self.Pump_recirculation
+            pump.ins[0].copy_flow(self.outs[1])
+            pump.ins[0].set_total_flow(mixed.F_vol*rQ, 'm3/h')
             pump.dP_design = TDH * 9804.14  # in Pa
             pump.simulate()
             if self.include_construction:
@@ -1409,8 +1448,9 @@ class METAB_PackedBed(METAB_FluidizedBed):
         if hasattr(self, 'f_void'):
             f_old = self.f_void
             Vg = self.V_gas
-            Vg_subtract = self.V_liq/(1/f - 1/f_old)
-            self.V_gas = max(0.1, Vg-Vg_subtract)
+            if f != f_old: 
+                Vg_subtract = self.V_liq/(1/f - 1/f_old)
+                self.V_gas = max(0.1, Vg-Vg_subtract)
         self.f_void = f
     
     @property
@@ -1623,6 +1663,21 @@ class METAB_PackedBed(METAB_FluidizedBed):
         outs = np.asarray(outs)
         return np.mean(outs, axis=0)
 
+    def _static_lift_equivalent(self):
+        dia = (self.V_bed*4/self.reactor_height_to_diameter/pi) ** (1/3)
+        L = dia * self.reactor_height_to_diameter
+        void = self.voidage
+        mixed = self._mixed
+        rho = mixed.rho
+        mu = mixed.mu
+        d = self.bead_diameter * 1e-3
+        A_bed = (pi*self.V_bed**2/4/self.reactor_height_to_diameter**2)**(1/3)
+        A_liq = A_bed * void
+        u = mixed.F_vol/A_liq/3600     # m/s
+        dP = L * (150 * mu * (1-void)**2 * u / (void**3 * d**2) \
+            + 1.75 * (1-void) * rho * u**2 / (void**3 * d))
+        return dP / (9.81 * rho) + L # Pa to m
+    
 #%% Batch experiment
 
 class METAB_BatchExp(METAB_FluidizedBed):

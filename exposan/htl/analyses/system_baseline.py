@@ -35,7 +35,6 @@ df = model.metrics_at_baseline()
 df.to_csv(os.path.join(results_path, 'baseline.csv'))
 # simulate_and_save(model, samples_kwargs={'N':100})
 
-
 #%%
 # import qsdsan as qs
 # fig, ax = qs.stats.plot_uncertainties(model)

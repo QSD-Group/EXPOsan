@@ -173,4 +173,4 @@ TEA and LCA are performed through :class:`TEA` and :class:`LCA` objects and name
 
 Uncertainty and sensitivity analyses
 ------------------------------------
-Uncertainty and sensitivity analyses are performed through :class:`Model` objects. Previously constructed systems are in the ``/legacy`` directory, but have not been updated.
+Uncertainty and sensitivity analyses are performed through :class:`Model` objects.

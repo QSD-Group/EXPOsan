@@ -1,0 +1,708 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="3924pt" height="332pt" viewBox="0.00 0.00 3924.43 331.74">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 327.74)">
+<title>%3</title>
+<!-- SE
+Dynamic influent&#45;&gt;MIX
+CSTR -->
+<g id="edge1" class="edge"><title>SE
+Dynamic influent:c-&gt;MIX
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M120.056,-34C156.568,-34 202.314,-34 233.82,-34"/>
+<polygon fill="#90918e" stroke="#90918e" points="233.925,-37.5001 243.925,-34 233.925,-30.5001 233.925,-37.5001"/>
+<g id="a_edge1-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="182" y="-37.8" font-family="Arial" font-size="14.00" fill="#90918e"> Dynamic influent</text>
+</a>
+</g>
+</g>
+<!-- MIX
+CSTR&#45;&gt;PBR1
+CSTR -->
+<g id="edge2" class="edge"><title>MIX
+CSTR:c-&gt;PBR1
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M300.123,-43.3304C318.059,-49.5005 341.792,-57.6644 361.395,-64.408"/>
+<polygon fill="#90918e" stroke="#90918e" points="360.335,-67.7445 370.93,-67.6878 362.612,-61.1252 360.335,-67.7445"/>
+<g id="a_edge2-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="335.5" y="-68.8" font-family="Arial" font-size="14.00" fill="#90918e"> To PBR</text>
+</a>
+</g>
+</g>
+<!-- PBR1
+CSTR&#45;&gt;PBR2
+CSTR -->
+<g id="edge3" class="edge"><title>PBR1
+CSTR:c-&gt;PBR2
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M427.061,-77C438.067,-77 450.965,-77 462.83,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="462.917,-80.5001 472.917,-77 462.917,-73.5001 462.917,-80.5001"/>
+<g id="a_edge3-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="450" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws2</text>
+</a>
+</g>
+</g>
+<!-- PBR2
+CSTR&#45;&gt;PBR3
+CSTR -->
+<g id="edge4" class="edge"><title>PBR2
+CSTR:c-&gt;PBR3
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M529.061,-77C540.067,-77 552.965,-77 564.83,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="564.917,-80.5001 574.917,-77 564.917,-73.5001 564.917,-80.5001"/>
+<g id="a_edge4-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="552" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws4</text>
+</a>
+</g>
+</g>
+<!-- PBR3
+CSTR&#45;&gt;PBR4
+CSTR -->
+<g id="edge5" class="edge"><title>PBR3
+CSTR:c-&gt;PBR4
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M631.061,-77C642.067,-77 654.965,-77 666.83,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="666.917,-80.5001 676.917,-77 666.917,-73.5001 666.917,-80.5001"/>
+<g id="a_edge5-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="654" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws6</text>
+</a>
+</g>
+</g>
+<!-- PBR4
+CSTR&#45;&gt;PBR5
+CSTR -->
+<g id="edge6" class="edge"><title>PBR4
+CSTR:c-&gt;PBR5
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M733.061,-77C744.067,-77 756.965,-77 768.83,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="768.917,-80.5001 778.917,-77 768.917,-73.5001 768.917,-80.5001"/>
+<g id="a_edge6-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="756" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws8</text>
+</a>
+</g>
+</g>
+<!-- PBR5
+CSTR&#45;&gt;PBR6
+CSTR -->
+<g id="edge7" class="edge"><title>PBR5
+CSTR:c-&gt;PBR6
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M835.253,-77C848.427,-77 864.443,-77 878.727,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="878.756,-80.5001 888.756,-77 878.756,-73.5001 878.756,-80.5001"/>
+<g id="a_edge7-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="862" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws10</text>
+</a>
+</g>
+</g>
+<!-- PBR6
+CSTR&#45;&gt;PBR7
+CSTR -->
+<g id="edge8" class="edge"><title>PBR6
+CSTR:c-&gt;PBR7
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M945.253,-77C958.427,-77 974.443,-77 988.727,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="988.756,-80.5001 998.756,-77 988.756,-73.5001 988.756,-80.5001"/>
+<g id="a_edge8-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="972" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws12</text>
+</a>
+</g>
+</g>
+<!-- PBR7
+CSTR&#45;&gt;PBR8
+CSTR -->
+<g id="edge9" class="edge"><title>PBR7
+CSTR:c-&gt;PBR8
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M1055.25,-77C1068.43,-77 1084.44,-77 1098.73,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="1098.76,-80.5001 1108.76,-77 1098.76,-73.5001 1098.76,-80.5001"/>
+<g id="a_edge9-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="1082" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws14</text>
+</a>
+</g>
+</g>
+<!-- PBR8
+CSTR&#45;&gt;PBR9
+CSTR -->
+<g id="edge10" class="edge"><title>PBR8
+CSTR:c-&gt;PBR9
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M1165.25,-77C1178.43,-77 1194.44,-77 1208.73,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="1208.76,-80.5001 1218.76,-77 1208.76,-73.5001 1208.76,-80.5001"/>
+<g id="a_edge10-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="1192" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws16</text>
+</a>
+</g>
+</g>
+<!-- PBR9
+CSTR&#45;&gt;PBR10
+CSTR -->
+<g id="edge11" class="edge"><title>PBR9
+CSTR:c-&gt;PBR10
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M1275.28,-77C1288.35,-77 1304.28,-77 1318.75,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="1318.97,-80.5001 1328.97,-77 1318.97,-73.5001 1318.97,-80.5001"/>
+<g id="a_edge11-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="1302" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws18</text>
+</a>
+</g>
+</g>
+<!-- PBR10
+CSTR&#45;&gt;PBR11
+CSTR -->
+<g id="edge12" class="edge"><title>PBR10
+CSTR:c-&gt;PBR11
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M1392.02,-77C1405.4,-77 1421.31,-77 1435.7,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="1435.84,-80.5001 1445.84,-77 1435.84,-73.5001 1435.84,-80.5001"/>
+<g id="a_edge12-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="1419" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws20</text>
+</a>
+</g>
+</g>
+<!-- PBR11
+CSTR&#45;&gt;PBR12
+CSTR -->
+<g id="edge13" class="edge"><title>PBR11
+CSTR:c-&gt;PBR12
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M1509.02,-77C1522.4,-77 1538.31,-77 1552.7,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="1552.84,-80.5001 1562.84,-77 1552.84,-73.5001 1552.84,-80.5001"/>
+<g id="a_edge13-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="1536" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws22</text>
+</a>
+</g>
+</g>
+<!-- PBR12
+CSTR&#45;&gt;PBR13
+CSTR -->
+<g id="edge14" class="edge"><title>PBR12
+CSTR:c-&gt;PBR13
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M1626.13,-77C1656.74,-77 1704,-77 1737.76,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="1737.77,-80.5001 1747.77,-77 1737.77,-73.5001 1737.77,-80.5001"/>
+<g id="a_edge14-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="1687" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws24</text>
+</a>
+</g>
+</g>
+<!-- PBR13
+CSTR&#45;&gt;PBR14
+CSTR -->
+<g id="edge15" class="edge"><title>PBR13
+CSTR:c-&gt;PBR14
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M1811.02,-77C1824.4,-77 1840.31,-77 1854.7,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="1854.84,-80.5001 1864.84,-77 1854.84,-73.5001 1854.84,-80.5001"/>
+<g id="a_edge15-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="1838" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws26</text>
+</a>
+</g>
+</g>
+<!-- PBR14
+CSTR&#45;&gt;PBR15
+CSTR -->
+<g id="edge16" class="edge"><title>PBR14
+CSTR:c-&gt;PBR15
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M1928.02,-77C1941.4,-77 1957.31,-77 1971.7,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="1971.84,-80.5001 1981.84,-77 1971.84,-73.5001 1971.84,-80.5001"/>
+<g id="a_edge16-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="1955" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws28</text>
+</a>
+</g>
+</g>
+<!-- PBR15
+CSTR&#45;&gt;PBR16
+CSTR -->
+<g id="edge17" class="edge"><title>PBR15
+CSTR:c-&gt;PBR16
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M2045.02,-77C2058.4,-77 2074.31,-77 2088.7,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="2088.84,-80.5001 2098.84,-77 2088.84,-73.5001 2088.84,-80.5001"/>
+<g id="a_edge17-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="2072" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws30</text>
+</a>
+</g>
+</g>
+<!-- PBR16
+CSTR&#45;&gt;PBR17
+CSTR -->
+<g id="edge18" class="edge"><title>PBR16
+CSTR:c-&gt;PBR17
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M2162.02,-77C2175.4,-77 2191.31,-77 2205.7,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="2205.84,-80.5001 2215.84,-77 2205.84,-73.5001 2205.84,-80.5001"/>
+<g id="a_edge18-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="2189" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws32</text>
+</a>
+</g>
+</g>
+<!-- PBR17
+CSTR&#45;&gt;PBR18
+CSTR -->
+<g id="edge19" class="edge"><title>PBR17
+CSTR:c-&gt;PBR18
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M2279.02,-77C2292.4,-77 2308.31,-77 2322.7,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="2322.84,-80.5001 2332.84,-77 2322.84,-73.5001 2322.84,-80.5001"/>
+<g id="a_edge19-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="2306" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws34</text>
+</a>
+</g>
+</g>
+<!-- PBR18
+CSTR&#45;&gt;PBR19
+CSTR -->
+<g id="edge20" class="edge"><title>PBR18
+CSTR:c-&gt;PBR19
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M2396.02,-77C2409.4,-77 2425.31,-77 2439.7,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="2439.84,-80.5001 2449.84,-77 2439.84,-73.5001 2439.84,-80.5001"/>
+<g id="a_edge20-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="2423" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws36</text>
+</a>
+</g>
+</g>
+<!-- PBR19
+CSTR&#45;&gt;PBR20
+CSTR -->
+<g id="edge21" class="edge"><title>PBR19
+CSTR:c-&gt;PBR20
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M2513.02,-77C2526.4,-77 2542.31,-77 2556.7,-77"/>
+<polygon fill="#90918e" stroke="#90918e" points="2556.84,-80.5001 2566.84,-77 2556.84,-73.5001 2556.84,-80.5001"/>
+<g id="a_edge21-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="2540" y="-80.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws38</text>
+</a>
+</g>
+</g>
+<!-- PBR20
+CSTR&#45;&gt;MEM
+Splitter -->
+<g id="edge22" class="edge"><title>PBR20
+CSTR:c-&gt;MEM
+Splitter:w</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M2614.18,-98.7065C2635.67,-127.78 2678.71,-176.427 2729.7,-182.394"/>
+<polygon fill="#90918e" stroke="#90918e" points="2729.81,-185.907 2740,-183 2730.22,-178.919 2729.81,-185.907"/>
+<g id="a_edge22-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="2685" y="-186.8" font-family="Arial" font-size="14.00" fill="#90918e"> To membrane</text>
+</a>
+</g>
+</g>
+<!-- PBR20
+CSTR&#45;&gt;RET
+CSTR -->
+<g id="edge28" class="edge"><title>PBR20
+CSTR:c-&gt;RET
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M2630.17,-76.3342C2673.6,-75.4504 2755.49,-74 2825.27,-74 2825.27,-74 2825.27,-74 3632.16,-74 3710.72,-74 3800.85,-94.9282 3850.23,-108.24"/>
+<polygon fill="#90918e" stroke="#90918e" points="3849.56,-111.686 3860.13,-110.955 3851.41,-104.935 3849.56,-111.686"/>
+<g id="a_edge28-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="3108.53" y="-77.8" font-family="Arial" font-size="14.00" fill="#90918e"> Internal recycle</text>
+</a>
+</g>
+</g>
+<!-- MEM
+Splitter&#45;&gt;MEV
+CSTR -->
+<g id="edge29" class="edge"><title>MEM
+Splitter:c-&gt;MEV
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M2869.42,-189.51C2903.66,-194.797 2951.48,-202.182 2984.32,-207.252"/>
+<polygon fill="#90918e" stroke="#90918e" points="2984,-210.745 2994.41,-208.812 2985.06,-203.827 2984,-210.745"/>
+<g id="a_edge29-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="2953.53" y="-211.8" font-family="Arial" font-size="14.00" fill="#90918e"> Retentate</text>
+</a>
+</g>
+</g>
+<!-- MEM
+Splitter&#45;&gt; Effluent -->
+<g id="edge23" class="edge"><title>MEM
+Splitter:c-&gt; Effluent:w</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M2869.4,-170.759C2907.89,-160.666 2966.55,-148 3018.53,-148"/>
+<g id="a_edge23-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="2953.53" y="-162.8" font-family="Arial" font-size="14.00" fill="#90918e"> Effluent</text>
+</a>
+</g>
+</g>
+<!-- MEV
+CSTR&#45;&gt;POST_MEM
+Splitter -->
+<g id="edge24" class="edge"><title>MEV
+CSTR:c-&gt;POST_MEM
+Splitter:w</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M3050.68,-213C3077.09,-213 3118.64,-213 3156.49,-213"/>
+<polygon fill="#90918e" stroke="#90918e" points="3156.53,-216.5 3166.53,-213 3156.53,-209.5 3156.53,-216.5"/>
+<g id="a_edge24-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="3108.53" y="-216.8" font-family="Arial" font-size="14.00" fill="#90918e"> ws41</text>
+</a>
+</g>
+</g>
+<!-- POST_MEM
+Splitter&#45;&gt;CENT
+Splitter -->
+<g id="edge30" class="edge"><title>POST_MEM
+Splitter:c-&gt;CENT
+Splitter:w</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M3372.55,-238.001C3417.41,-252.449 3478.18,-268.114 3534.75,-269.843"/>
+<polygon fill="#90918e" stroke="#90918e" points="3534.84,-273.344 3544.89,-270 3534.95,-266.345 3534.84,-273.344"/>
+<g id="a_edge30-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="3492.89" y="-272.8" font-family="Arial" font-size="14.00" fill="#90918e"> To centrifuge</text>
+</a>
+</g>
+</g>
+<!-- POST_MEM
+Splitter&#45;&gt;RET
+CSTR -->
+<g id="edge25" class="edge"><title>POST_MEM
+Splitter:c-&gt;RET
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M3372.41,-202.079C3495.84,-182.168 3753.62,-140.584 3850,-125.037"/>
+<polygon fill="#90918e" stroke="#90918e" points="3850.83,-128.449 3860.14,-123.401 3849.71,-121.538 3850.83,-128.449"/>
+<g id="a_edge25-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="3631.16" y="-177.8" font-family="Arial" font-size="14.00" fill="#90918e"> To return tank</text>
+</a>
+</g>
+</g>
+<!-- CENT
+Splitter&#45;&gt;RET
+CSTR -->
+<g id="edge27" class="edge"><title>CENT
+Splitter:c-&gt;RET
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M3674.52,-262.886C3722.62,-252.894 3801.07,-230.567 3852.43,-185 3862.99,-175.627 3870.9,-162.286 3876.5,-150.049"/>
+<polygon fill="#90918e" stroke="#90918e" points="3879.84,-151.143 3880.51,-140.569 3873.39,-148.419 3879.84,-151.143"/>
+<g id="a_edge27-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="3788.93" y="-251.8" font-family="Arial" font-size="14.00" fill="#90918e"> Centrate</text>
+</a>
+</g>
+</g>
+<!-- CENT
+Splitter&#45;&gt; Harvested biomass -->
+<g id="edge31" class="edge"><title>CENT
+Splitter:c-&gt; Harvested biomass:w</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M3674.54,-272.977C3724.64,-276.234 3810.56,-281 3884.43,-281"/>
+<g id="a_edge31-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="3788.93" y="-283.8" font-family="Arial" font-size="14.00" fill="#90918e"> Harvested biomass</text>
+</a>
+</g>
+</g>
+<!-- RET
+CSTR&#45;&gt;MIX
+CSTR -->
+<g id="edge26" class="edge"><title>RET
+CSTR:c-&gt;MIX
+CSTR:c</title>
+<path fill="none" stroke="#90918e" stroke-dasharray="5,2" d="M3874.6,-97.4701C3868.74,-89.1593 3861.14,-80.184 3852.43,-74 3768.19,-14.2528 3735.43,-0 3632.16,-0 398,-0 398,-0 398,-0 367.56,-0 334.365,-9.50442 309.838,-18.463"/>
+<polygon fill="#90918e" stroke="#90918e" points="308.334,-15.2903 300.224,-22.1084 310.815,-21.8356 308.334,-15.2903"/>
+<g id="a_edge26-label"><a xlink:title="(empty)">
+<text text-anchor="middle" x="1687" y="-18.8" font-family="Arial" font-size="14.00" fill="#90918e"> Return activated</text>
+<text text-anchor="middle" x="1687" y="-3.8" font-family="Arial" font-size="14.00" fill="#90918e"> algae</text>
+</a>
+</g>
+</g>
+<!-- SE
+Dynamic influent -->
+<g id="node1" class="node"><title>SE
+Dynamic influent</title>
+<g id="a_node1"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="120,-55.5 0,-55.5 0,-12.5 120,-12.5 120,-55.5"/>
+<text text-anchor="middle" x="60" y="-37.8" font-family="Arial" font-size="14.00" fill="white">SE</text>
+<text text-anchor="middle" x="60" y="-22.8" font-family="Arial" font-size="14.00" fill="white">Dynamic influent</text>
+</a>
+</g>
+</g>
+<!-- MIX
+CSTR -->
+<g id="node2" class="node"><title>MIX
+CSTR</title>
+<g id="a_node2"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="300,-55.5 244,-55.5 244,-12.5 300,-12.5 300,-55.5"/>
+<text text-anchor="middle" x="272" y="-37.8" font-family="Arial" font-size="14.00" fill="white">MIX</text>
+<text text-anchor="middle" x="272" y="-22.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR1
+CSTR -->
+<g id="node3" class="node"><title>PBR1
+CSTR</title>
+<g id="a_node3"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="427,-98.5 371,-98.5 371,-55.5 427,-55.5 427,-98.5"/>
+<text text-anchor="middle" x="399" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR1</text>
+<text text-anchor="middle" x="399" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR2
+CSTR -->
+<g id="node4" class="node"><title>PBR2
+CSTR</title>
+<g id="a_node4"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="529,-98.5 473,-98.5 473,-55.5 529,-55.5 529,-98.5"/>
+<text text-anchor="middle" x="501" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR2</text>
+<text text-anchor="middle" x="501" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR3
+CSTR -->
+<g id="node5" class="node"><title>PBR3
+CSTR</title>
+<g id="a_node5"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="631,-98.5 575,-98.5 575,-55.5 631,-55.5 631,-98.5"/>
+<text text-anchor="middle" x="603" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR3</text>
+<text text-anchor="middle" x="603" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR4
+CSTR -->
+<g id="node6" class="node"><title>PBR4
+CSTR</title>
+<g id="a_node6"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="733,-98.5 677,-98.5 677,-55.5 733,-55.5 733,-98.5"/>
+<text text-anchor="middle" x="705" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR4</text>
+<text text-anchor="middle" x="705" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR5
+CSTR -->
+<g id="node7" class="node"><title>PBR5
+CSTR</title>
+<g id="a_node7"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="835,-98.5 779,-98.5 779,-55.5 835,-55.5 835,-98.5"/>
+<text text-anchor="middle" x="807" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR5</text>
+<text text-anchor="middle" x="807" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR6
+CSTR -->
+<g id="node8" class="node"><title>PBR6
+CSTR</title>
+<g id="a_node8"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="945,-98.5 889,-98.5 889,-55.5 945,-55.5 945,-98.5"/>
+<text text-anchor="middle" x="917" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR6</text>
+<text text-anchor="middle" x="917" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR7
+CSTR -->
+<g id="node9" class="node"><title>PBR7
+CSTR</title>
+<g id="a_node9"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="1055,-98.5 999,-98.5 999,-55.5 1055,-55.5 1055,-98.5"/>
+<text text-anchor="middle" x="1027" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR7</text>
+<text text-anchor="middle" x="1027" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR8
+CSTR -->
+<g id="node10" class="node"><title>PBR8
+CSTR</title>
+<g id="a_node10"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="1165,-98.5 1109,-98.5 1109,-55.5 1165,-55.5 1165,-98.5"/>
+<text text-anchor="middle" x="1137" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR8</text>
+<text text-anchor="middle" x="1137" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR9
+CSTR -->
+<g id="node11" class="node"><title>PBR9
+CSTR</title>
+<g id="a_node11"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="1275,-98.5 1219,-98.5 1219,-55.5 1275,-55.5 1275,-98.5"/>
+<text text-anchor="middle" x="1247" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR9</text>
+<text text-anchor="middle" x="1247" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR10
+CSTR -->
+<g id="node12" class="node"><title>PBR10
+CSTR</title>
+<g id="a_node12"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="1392,-98.5 1329,-98.5 1329,-55.5 1392,-55.5 1392,-98.5"/>
+<text text-anchor="middle" x="1360.5" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR10</text>
+<text text-anchor="middle" x="1360.5" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR11
+CSTR -->
+<g id="node13" class="node"><title>PBR11
+CSTR</title>
+<g id="a_node13"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="1509,-98.5 1446,-98.5 1446,-55.5 1509,-55.5 1509,-98.5"/>
+<text text-anchor="middle" x="1477.5" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR11</text>
+<text text-anchor="middle" x="1477.5" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR12
+CSTR -->
+<g id="node14" class="node"><title>PBR12
+CSTR</title>
+<g id="a_node14"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="1626,-98.5 1563,-98.5 1563,-55.5 1626,-55.5 1626,-98.5"/>
+<text text-anchor="middle" x="1594.5" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR12</text>
+<text text-anchor="middle" x="1594.5" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR13
+CSTR -->
+<g id="node15" class="node"><title>PBR13
+CSTR</title>
+<g id="a_node15"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="1811,-98.5 1748,-98.5 1748,-55.5 1811,-55.5 1811,-98.5"/>
+<text text-anchor="middle" x="1779.5" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR13</text>
+<text text-anchor="middle" x="1779.5" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR14
+CSTR -->
+<g id="node16" class="node"><title>PBR14
+CSTR</title>
+<g id="a_node16"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="1928,-98.5 1865,-98.5 1865,-55.5 1928,-55.5 1928,-98.5"/>
+<text text-anchor="middle" x="1896.5" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR14</text>
+<text text-anchor="middle" x="1896.5" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR15
+CSTR -->
+<g id="node17" class="node"><title>PBR15
+CSTR</title>
+<g id="a_node17"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="2045,-98.5 1982,-98.5 1982,-55.5 2045,-55.5 2045,-98.5"/>
+<text text-anchor="middle" x="2013.5" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR15</text>
+<text text-anchor="middle" x="2013.5" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR16
+CSTR -->
+<g id="node18" class="node"><title>PBR16
+CSTR</title>
+<g id="a_node18"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="2162,-98.5 2099,-98.5 2099,-55.5 2162,-55.5 2162,-98.5"/>
+<text text-anchor="middle" x="2130.5" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR16</text>
+<text text-anchor="middle" x="2130.5" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR17
+CSTR -->
+<g id="node19" class="node"><title>PBR17
+CSTR</title>
+<g id="a_node19"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="2279,-98.5 2216,-98.5 2216,-55.5 2279,-55.5 2279,-98.5"/>
+<text text-anchor="middle" x="2247.5" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR17</text>
+<text text-anchor="middle" x="2247.5" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR18
+CSTR -->
+<g id="node20" class="node"><title>PBR18
+CSTR</title>
+<g id="a_node20"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="2396,-98.5 2333,-98.5 2333,-55.5 2396,-55.5 2396,-98.5"/>
+<text text-anchor="middle" x="2364.5" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR18</text>
+<text text-anchor="middle" x="2364.5" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR19
+CSTR -->
+<g id="node21" class="node"><title>PBR19
+CSTR</title>
+<g id="a_node21"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="2513,-98.5 2450,-98.5 2450,-55.5 2513,-55.5 2513,-98.5"/>
+<text text-anchor="middle" x="2481.5" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR19</text>
+<text text-anchor="middle" x="2481.5" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- PBR20
+CSTR -->
+<g id="node22" class="node"><title>PBR20
+CSTR</title>
+<g id="a_node22"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="2630,-98.5 2567,-98.5 2567,-55.5 2630,-55.5 2630,-98.5"/>
+<text text-anchor="middle" x="2598.5" y="-80.8" font-family="Arial" font-size="14.00" fill="white">PBR20</text>
+<text text-anchor="middle" x="2598.5" y="-65.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- MEM
+Splitter -->
+<g id="node23" class="node"><title>MEM
+Splitter</title>
+<g id="a_node23"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="2740.23,-183 2869.28,-129.019 2869.28,-236.981 2740.23,-183"/>
+<text text-anchor="middle" x="2826.27" y="-186.8" font-family="Arial" font-size="14.00" fill="white">MEM</text>
+<text text-anchor="middle" x="2826.27" y="-171.8" font-family="Arial" font-size="14.00" fill="white">Splitter</text>
+</a>
+</g>
+</g>
+<!-- MEV
+CSTR -->
+<g id="node24" class="node"><title>MEV
+CSTR</title>
+<g id="a_node24"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="3050.53,-234.5 2994.53,-234.5 2994.53,-191.5 3050.53,-191.5 3050.53,-234.5"/>
+<text text-anchor="middle" x="3022.53" y="-216.8" font-family="Arial" font-size="14.00" fill="white">MEV</text>
+<text text-anchor="middle" x="3022.53" y="-201.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!-- POST_MEM
+Splitter -->
+<g id="node25" class="node"><title>POST_MEM
+Splitter</title>
+<g id="a_node25"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="3166.36,-213 3372.39,-159.019 3372.39,-266.981 3166.36,-213"/>
+<text text-anchor="middle" x="3303.71" y="-216.8" font-family="Arial" font-size="14.00" fill="white">POST_MEM</text>
+<text text-anchor="middle" x="3303.71" y="-201.8" font-family="Arial" font-size="14.00" fill="white">Splitter</text>
+</a>
+</g>
+</g>
+<!-- CENT
+Splitter -->
+<g id="node26" class="node"><title>CENT
+Splitter</title>
+<g id="a_node26"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="3545.12,-270 3674.18,-216.019 3674.18,-323.981 3545.12,-270"/>
+<text text-anchor="middle" x="3631.16" y="-273.8" font-family="Arial" font-size="14.00" fill="white">CENT</text>
+<text text-anchor="middle" x="3631.16" y="-258.8" font-family="Arial" font-size="14.00" fill="white">Splitter</text>
+</a>
+</g>
+</g>
+<!-- RET
+CSTR -->
+<g id="node27" class="node"><title>RET
+CSTR</title>
+<g id="a_node27"><a xlink:title="No capital costs or utilities">
+<polygon fill="#555f69" stroke="#90918e" points="3916.43,-140.5 3860.43,-140.5 3860.43,-97.5 3916.43,-97.5 3916.43,-140.5"/>
+<text text-anchor="middle" x="3888.43" y="-122.8" font-family="Arial" font-size="14.00" fill="white">RET</text>
+<text text-anchor="middle" x="3888.43" y="-107.8" font-family="Arial" font-size="14.00" fill="white">CSTR</text>
+</a>
+</g>
+</g>
+<!--  Effluent -->
+<g id="node28" class="node"><title> Effluent</title>
+<polygon fill="#f98f60" stroke="#90918e" points="3028.03,-148 3019.78,-155 3019.78,-141 3028.03,-148"/>
+</g>
+<!--  Harvested biomass -->
+<g id="node29" class="node"><title> Harvested biomass</title>
+<polygon fill="#f98f60" stroke="#90918e" points="3893.93,-281 3885.68,-288 3885.68,-274 3893.93,-281"/>
+</g>
+</g>
+</svg>

@@ -93,27 +93,20 @@ def add_shared_parameters(model, ppl=pou.ppl):
     param = model.parameter
 
     ########## Related to multiple units ##########
-    #!!! Needs to be updated using the UN global household size
-    # Household size
+    # Household size, Stetson compiled 10/19/2023
+    # https://www.un.org/development/desa/pd/data/household-size-and-composition
     raw_water = sys.path[0]
     b = pou.household_size
-    # This use of sigma should be correct since we are not multiplying it to get to the 
-    D = shape.Trunc(shape.Normal(mu=b, sigma=1.8), lower=1)
+    # This use of sigma should be correct since we are not using it to 
+    # calculate the number of unit needed in a community
+    # More details: https://github.com/QSD-Group/EXPOsan/issues/39
+    D = shape.Trunc(shape.Normal(mu=b, sigma=1.4), lower=1)
     @param(name='Household size', element=raw_water, kind='coupled', units='cap/household',
             baseline=b, distribution=D)
     def set_household_size(i):
         pou.household_size = max(1, i)
         update_number_of_householdsize(sys, household_size=i, ppl=ppl)
-        
-    #!!! Might need to be updated
-    # # 1.8/((844/4%)^0.5) is for standard error of a mean,
-    # # standard deviation divided by the square root of the population size,
-    # # 844 and 4% from Trimmer et al., changed from the distribution used in Trimmer et al.
-    # D = shape.Trunc(shape.Normal(mu=b, sigma=0.012), lower=1)
-    # @param(name='Household size', element=Toilet, kind='coupled', units='cap/household',
-    #        baseline=b, distribution=D)
-    # def set_household_size(i):
-    #     bw.household_size = i
+
 
     ######## General TEA and LCA settings ########
     # Money discount rate
@@ -140,10 +133,10 @@ def add_shared_parameters(model, ppl=pou.ppl):
 
 
 def import_water_data(water_source):
-    suffix = '1_gw.tsv' if water_source.lower() in ('gw', 'groundwater') \
-        else '2_sw.tsv'
-    water_path = os.path.join(data_path, f'_raw_water{suffix}')
-    return load_data(water_path)
+    water_path = os.path.join(data_path, '_raw_water.xlsx')
+    sheet = 'water1_gw' if water_source.lower() in ('gw', 'groundwater') \
+        else 'water2_sw'
+    return load_data(water_path, sheet=sheet)
 
 
 # %%
@@ -219,7 +212,7 @@ def create_modelB(system_kwargs={}, **model_kwargs):
     batch_setting_unit_params(water_data, modelB, unitB.B1)
     
     # AgNP CWF
-    agnp_cwf_path = os.path.join(data_path, '_AgNP_CWF_2.csv')
+    agnp_cwf_path = os.path.join(data_path, '_agnp_cwf.csv')
     agnp_cwf_data = load_data(agnp_cwf_path)
     batch_setting_unit_params(agnp_cwf_data, modelB, unitB.B2)
 
