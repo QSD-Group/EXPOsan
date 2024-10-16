@@ -18,7 +18,7 @@ from setuptools import setup
 setup(
     name='exposan',
     packages=['exposan'],
-    version='1.3.2',
+    version='1.4.0',
     license='UIUC',
     author='Quantitative Sustainable Design Group',
     author_email='quantitative.sustainable.design@gmail.com',
@@ -30,7 +30,7 @@ setup(
         'Documentation': 'https://qsdsan.readthedocs.io',
         'Repository': 'https://github.com/QSD-Group/EXPOsan',
     },
-    install_requires=['qsdsan>=1.3.1',],
+    install_requires=['qsdsan>=1.4.0',],
     package_data=
         {'exposan': [
             'adm/*',
@@ -42,6 +42,7 @@ setup(
             'bsm1/*',
             'bsm1/data/*',
             'bsm2/*',
+            'bsm2/data/*',
             'bwaise/*',
             'bwaise/data/*',
             'cas/*',
