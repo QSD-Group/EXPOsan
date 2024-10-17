@@ -835,7 +835,7 @@ class Transportation(SanUnit):
         Influent streams to be transported,
         with a surrogate flow to account for the transportation cost.
     outs : obj
-        Mixsture of the influent streams to be transported.        
+        Mixture of the influent streams to be transported.        
     transportation_distance : float
         Transportation distance in km.
     transportation_cost : float
@@ -844,7 +844,7 @@ class Transportation(SanUnit):
         Number of required filtration unit.
     copy_ins_from_outs : bool
         If True, will copy influent from effluent, otherwise,
-        efflent will be copied from influent.
+        effluent will be copied from influent.
     '''
     
     _N_ins = 2
