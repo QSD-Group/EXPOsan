@@ -93,12 +93,13 @@ def create_components(set_thermo=True):
     CO2 = htl_cmps.CO2
     CH4 = htl_cmps.CH4
     C2H6 = htl_cmps.C2H6
+    C3H8 = htl_cmps.C3H8
     O2 = htl_cmps.O2
     N2 = htl_cmps.N2
     CO = htl_cmps.CO
     H2 = htl_cmps.H2
     NH3 = htl_cmps.NH3
-    saf_cmps.extend([CO2, CH4, C2H6, O2, N2, CO, H2, NH3])
+    saf_cmps.extend([CO2, CH4, C2H6, C3H8, O2, N2, CO, H2, NH3])
     
     # Surrogate compounds based on the carbon range
     org_kwargs = {
@@ -109,10 +110,10 @@ def create_components(set_thermo=True):
     # Tb = 391.35 K (118.2°C)
     Gasoline = Component('Gasoline', search_ID='C8H18', phase='l', **org_kwargs)
     # Tb = 526.65 K (253.5°C)
-    SAF = Component('SAF', search_ID='C14H30', phase='l', **org_kwargs)
+    Jet = Component('Jet', search_ID='C14H30', phase='l', **org_kwargs)
     # Tb = 632.15 K (359°C)
     Diesel = Component('Diesel', search_ID='C21H44', phase='l', **org_kwargs)
-    saf_cmps.extend([Gasoline, SAF, Diesel])
+    saf_cmps.extend([Gasoline, Jet, Diesel])
 
     # Consumables only for cost purposes, thermo data for these components are made up
     sol_kwargs = {
@@ -121,22 +122,22 @@ def create_components(set_thermo=True):
         'degradability': 'Undegradable',
         'organic': False,
         }
-    HC_catalyst = Component('HC_catalyst', **sol_kwargs) # Fe-ZSM5
-    add_V_from_rho(HC_catalyst, 1500)
-    HC_catalyst.copy_models_from(Component('CaCO3'),('Cn',))
+    HCcatalyst = Component('HCcatalyst', **sol_kwargs) # Fe-ZSM5
+    add_V_from_rho(HCcatalyst, 1500)
+    HCcatalyst.copy_models_from(Component('CaCO3'),('Cn',))
     
-    HT_catalyst = HC_catalyst.copy('HT_catalyst') # Pd-Al2O3
+    HTcatalyst = HCcatalyst.copy('HTcatalyst') # Pd-Al2O3
     
-    EOmembrane = HC_catalyst.copy('EOmembrane')
-    EOanode = HC_catalyst.copy('EOanode')
-    EOcathode = HC_catalyst.copy('EOcathode')
+    EOmembrane = HCcatalyst.copy('EOmembrane')
+    EOanode = HCcatalyst.copy('EOanode')
+    EOcathode = HCcatalyst.copy('EOcathode')
     
-    ECmembrane = HC_catalyst.copy('ECmembrane')
-    ECanode = HC_catalyst.copy('ECanode')
-    ECcathode = HC_catalyst.copy('ECcathode')
+    ECmembrane = HCcatalyst.copy('ECmembrane')
+    ECanode = HCcatalyst.copy('ECanode')
+    ECcathode = HCcatalyst.copy('ECcathode')
     
     saf_cmps.extend([
-        HC_catalyst, HT_catalyst,
+        HCcatalyst, HTcatalyst,
         EOmembrane, EOanode, EOcathode,
         ECmembrane, ECanode, ECcathode,
         ])
