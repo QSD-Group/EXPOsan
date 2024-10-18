@@ -30,7 +30,10 @@ data_path, results_path = _init_modules(module, include_data_path=True)
 # Load components and systems
 # =============================================================================
 
-from . import utils, _components
+from . import utils
+from .utils import *
+
+from . import _components
 from ._components import *
 _components_loaded = False
 def _load_components(reload=False):
