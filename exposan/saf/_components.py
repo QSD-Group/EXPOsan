@@ -15,13 +15,14 @@ for license details.
 
 from qsdsan import Component, Components, set_thermo as qs_set_thermo
 from exposan.utils import add_V_from_rho
-from exposan import htl
+from exposan import htl, biobinder as bb
 
 __all__ = ('create_components',)
 
 
 def create_components(set_thermo=True):
     htl_cmps = htl.create_components()
+    bb_cmps = bb.create_components()
     
     # Components in the feedstock
     Lipids = htl_cmps.Sludge_lipid.copy('Lipids')
@@ -33,13 +34,35 @@ def create_components(set_thermo=True):
         ])
     
     # Generic components for HTL products
-    Biocrude = htl_cmps.Biocrude
+    HTLbiocrude = htl_cmps.Biocrude
     HTLaqueous = htl_cmps.HTLaqueous
-    Hydrochar = htl_cmps.Hydrochar
-    saf_cmps.extend([Biocrude, HTLaqueous, Hydrochar])
+    HTLchar = htl_cmps.Hydrochar
+    saf_cmps.extend([HTLbiocrude, HTLaqueous, HTLchar])
     
-    # Components in the biocrude/bio-oil
-    biooil_IDs = [
+    # Components in the biocrude
+    biocrude_IDs = {
+        '1E2PYDIN',
+        # 'C5H9NS',
+        'ETHYLBEN',
+        '4M-PHYNO',
+        '4EPHYNOL',
+        'INDOLE',
+        '7MINDOLE',
+        'C14AMIDE',
+        'C16AMIDE',
+        'C18AMIDE',
+        'C16:1FA',
+        'C16:0FA',
+        'C18FACID',
+        'NAPHATH',
+        'CHOLESOL',
+        'AROAMINE',
+        'C30DICAD',
+        }
+    saf_cmps.extend([i for i in bb_cmps if i.ID in biocrude_IDs])
+
+    # Components in the biooil
+    biooil_IDs = {
         'C4H10', 'TWOMBUTAN', 'NPENTAN', 'TWOMPENTA', 'CYCHEX',
         'HEXANE', 'TWOMHEXAN', 'HEPTANE', 'CC6METH', 'PIPERDIN',
         'TOLUENE', 'THREEMHEPTA', 'OCTANE', 'ETHCYC6', 'ETHYLBEN',
@@ -48,7 +71,7 @@ def create_components(set_thermo=True):
         'OTTFNA', 'C6BENZ', 'OTTFSN', 'C7BENZ', 'C8BENZ', 'C10H16O4',
         'C15H32', 'C16H34', 'C17H36', 'C18H38', 'C19H40', 'C20H42', 'C21H44',
         'TRICOSANE', 'C24H38O4', 'C26H42O4', 'C30H62',
-        ]
+        }.difference(biocrude_IDs)
     saf_cmps.extend([i for i in htl_cmps if i.ID in biooil_IDs])
     
     # Components in the aqueous product
@@ -125,19 +148,13 @@ def create_components(set_thermo=True):
 
     saf_cmps.compile()
     saf_cmps.set_alias('H2O', 'Water')
-    saf_cmps.set_alias('H2O', '7732-18-5')
-    
-    # So that HTL units can run   
-    saf_cmps.set_alias('Lipids', 'Sludge_lipid')
-    saf_cmps.set_alias('Proteins', 'Sludge_protein')
-    saf_cmps.set_alias('Carbohydrates', 'Sludge_carbo')
-    saf_cmps.set_alias('Carbohydrates', 'Carbs')
-    saf_cmps.set_alias('Ash', 'Sludge_ash')
-    
+    saf_cmps.set_alias('H2O', '7732-18-5')    
     saf_cmps.set_alias('C', 'Carbon')
     saf_cmps.set_alias('N', 'Nitrogen')
     saf_cmps.set_alias('P', 'Phosphorus')
-    saf_cmps.set_alias('P', 'Potassium')
+    saf_cmps.set_alias('K', 'Potassium')
+    saf_cmps.set_alias('Biocrude', 'HTLbiocrude')
+    saf_cmps.set_alias('Hydrochar', 'HTLchar')
 
     if set_thermo: qs_set_thermo(saf_cmps)
 
