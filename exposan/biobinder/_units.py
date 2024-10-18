@@ -437,7 +437,7 @@ default_biocrude_ratios = {
 class BiocrudeSplitter(SanUnit):
     '''
     Split biocrude into the respective components that meet specific boiling point
-    and light/heavy faction specifics.
+    and faction specifics.
     
     Parameters
     ----------
@@ -446,11 +446,13 @@ class BiocrudeSplitter(SanUnit):
     outs : obj
         HTL biocrude split into specific components.
     biocrude_IDs : seq(str)
-        IDs of the gross components used to represent biocrude in the influent.
-    cutoff_Tb : float
-        Boiling point cutoff of the biocrude split (into light/heavy fractions).
-    light_frac : float
-        Fraction of the biocrude that is the light cut.
+        IDs of the gross components used to represent biocrude in the influent,
+        will be normalized to 100% sum.
+    cutoff_Tbs : Iterable(float)
+        Cutoff boiling points of different fractions.
+    cutoff_fracs : Iterable(float)
+        Mass fractions of the different cuts, will be normalized to 100% sum.
+        If there is N cutoff_Tbs, then there should be N+1 fractions.
     biocrude_ratios : dict(str, float)
         Ratios of all the components in the biocrude.
     '''
@@ -459,80 +461,109 @@ class BiocrudeSplitter(SanUnit):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                   init_with='WasteStream', F_BM_default=1,
                   biocrude_IDs=('Biocrude',),
-                  cutoff_Tb=273.15+343, light_frac=0.5316,
+                  cutoff_Tbs=(273.15+343,), cutoff_fracs=(0.5316, 0.4684),
                   biocrude_ratios=default_biocrude_ratios,
-                  **kwargs,
+                   **kwargs,
                   ):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
-        self.cutoff_Tb = cutoff_Tb
-        self.light_frac = light_frac
+        self.cutoff_Tbs = cutoff_Tbs
+        self.cutoff_fracs = cutoff_fracs
+        self._update_component_ratios()
         self.biocrude_IDs = biocrude_IDs
         self.biocrude_ratios = biocrude_ratios
         for kw, arg in kwargs.items(): setattr(self, kw, arg)
+        
+    def _update_component_ratios(self):
+        '''Update the light and heavy ratios of the biocrude components.'''
+        if not hasattr(self, 'cutoff_Tbs'): return
+        if not hasattr(self, 'biocrude_ratios'): return
+
+        cmps = self.components
+        Tbs = self.cutoff_Tbs
+        fracs = self.cutoff_fracs
+        if not len(fracs)-len(Tbs) == 1:
+            raise ValueError(f'Based on the number of `cutoff_Tbs` ({len(Tbs)})), '
+                             f'there should be {len(Tbs)+1} `cutoff_fracs`,' 
+                             f'currently there is {len(fracs)}.')
+        ratios = self.biocrude_ratios.copy()
+
+        keys = []
+        frac_dcts = dict.fromkeys(fracs)
+        lighter_IDs = []
+        for n, Tb in enumerate(Tbs):
+            frac_dct = {}
+            for ID, ratio in ratios.items():
+                if ID in lighter_IDs: continue
+                if cmps[ID].Tb <= Tb:
+                    frac_dct[ID] = ratio
+                    light_key = ID
+                else: 
+                    keys.append((light_key, ID))
+                    lighter_IDs.extend(list(frac_dct.keys()))
+                    break
+                    
+            frac_tot = sum(frac_dct.values())
+            frac_dcts[fracs[n]] = {k: v/frac_tot for k, v in frac_dct.items()}
+
+        frac_dct_last = {k:v for k,v in ratios.items() if k not in lighter_IDs}
+        frac_last_tot = sum(frac_dct_last.values())
+        frac_dcts[fracs[n+1]] = {k: v/frac_last_tot for k, v in frac_dct_last.items()}
+        
+        self._keys = keys # light and heavy key pairs
+        self._frac_dcts = frac_dcts # fractions for each cut
+        
         
     def _run(self):
         biocrude_in = self.ins[0]
         biocrude_out = self.outs[0]
         
         biocrude_IDs = self.biocrude_IDs
+        biocrude_out.copy_like(biocrude_in) # for the non-biocrude part, biocrude will be updated later
+        
         total_crude = biocrude_in.imass[self.biocrude_IDs].sum()
-        total_light = total_crude * self.light_frac
-        total_heavy = total_crude - total_light
+        frac_dcts = self.frac_dcts
         
-        # Firstly copy the non-biocrude components
-        light_ratios, heavy_ratios = self.light_component_ratios, self.heavy_component_ratios
-        biocrude_out.copy_like(biocrude_in)
-        biocrude_out.imass[[*light_ratios, *heavy_ratios]] = 0
+        for frac, dct in frac_dcts.items():
+            frac_mass = frac * total_crude
+            for ID, ratio in dct.items():
+                biocrude_out.imass[ID] = frac_mass * ratio
         
-        # Set the mass for the biocrude components
-        biocrude_out.imass[light_ratios] = [total_light*i for i in light_ratios.values()]
-        biocrude_out.imass[heavy_ratios] = [total_heavy*i for i in heavy_ratios.values()]
         biocrude_out.imass[biocrude_IDs] = 0 # clear out biocrude
 
-    def _update_component_ratios(self):
-        '''Update the light and heavy ratios of the biocrude components.'''
-        if not hasattr(self, 'cutoff_Tb'): return
-        if not hasattr(self, 'biocrude_ratios'): return
-
-        cmps = self.components
-        Tb = self.cutoff_Tb
-        ratios = self.biocrude_ratios
-        
-        light_ratios = {}
-        for ID, ratio in ratios.items():
-            if cmps[ID].Tb <= Tb:
-                light_ratios[ID] = ratio
-                light_key = ID
-            else:
-                heavy_key = ID
-                break
-        self._light_key = light_key
-        self._heavy_key = heavy_key
-        
-        heavy_cmps = set(ratios).difference(set(light_ratios))
-        heavy_ratios = {ID: ratios[ID] for ratio in heavy_cmps}
-        
-        # Normalize the ratios
-        ratio_light_sum = sum(light_ratios.values())
-        ratio_heavy_sum = sum(heavy_ratios.values())
-        for ID, ratio in light_ratios.items():
-            light_ratios[ID] = ratio/ratio_light_sum
-        for ID, ratio in heavy_ratios.items():
-            heavy_ratios[ID] = ratio/ratio_heavy_sum
-            
-        self._light_component_ratios = light_ratios    
-        self._heavy_component_ratios = heavy_ratios
 
     @property
-    def cutoff_Tb(self):
-        '''[float] Cutoff of the boiling point of light and heavy fractions.'''
-        return self._cutoff_Tb
-    @cutoff_Tb.setter
-    def cutoff_Tb(self, Tb):
-        if hasattr(self, '_cutoff_Tb'):
-            if Tb == self._cutoff_Tb: return # no need to do anything if Tb unchanged
-        self._cutoff_Tb = Tb
-        self._update_component_ratios()
+    def cutoff_Tbs(self):
+        '''[Iterable] Boiling point cutoffs for different fractions.'''
+        return self._cutoff_Tbs
+    @cutoff_Tbs.setter
+    def cutoff_Tbs(self, Tbs):
+        self._cutoff_Tbs = Tbs
+        if hasattr(self, '_cutoff_fracs'):
+            self._update_component_ratios()
+        
+    @property
+    def cutoff_fracs(self):
+        '''
+        [Iterable] Mass fractions of the different cuts, will be normalized to 100% sum.
+        If there is N cutoff_Tbs, then there should be N+1 fractions.
+        '''
+        return self._cutoff_fracs
+    @cutoff_fracs.setter
+    def cutoff_fracs(self, fracs):
+        tot = sum(fracs)
+        self._cutoff_fracs = [i/tot for i in fracs]
+        if hasattr(self, '_cutoff_Tbs'):
+            self._update_component_ratios()
+
+    @property
+    def frac_dcts(self):
+        '''Fractions of the different cuts.'''
+        return self._frac_dcts
+
+    @property
+    def keys(self):
+        '''Light and heavy key pairs.'''
+        return self._keys
 
     @property
     def light_component_ratios(self):
@@ -562,7 +593,8 @@ class BiocrudeSplitter(SanUnit):
     def biocrude_ratios(self, ratios):
         cmps = self.components
         # Sort the biocrude ratios by the boiling point
-        ratios = {ID: ratio for ID, ratio in 
+        tot = sum(ratios.values())
+        ratios = {ID: ratio/tot for ID, ratio in 
                   sorted(ratios.items(), key=lambda item: cmps[item[0]].Tb)}
         self._biocrude_ratios = ratios
         self._update_component_ratios()

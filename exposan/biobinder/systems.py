@@ -20,7 +20,7 @@ References
 import warnings
 warnings.filterwarnings('ignore')
 
-import os, biosteam as bst, qsdsan as qs
+import os, numpy as np, pandas as pd, biosteam as bst, qsdsan as qs
 # from biosteam.units import IsenthalpicValve
 # from biosteam import settings
 from qsdsan import sanunits as qsu
@@ -29,6 +29,7 @@ from exposan.htl import data_path as htl_data_path
 from exposan.biobinder import (
     data_path,
     results_path,
+    find_Lr_Hr,
     _load_components,
     _load_process_settings,
     create_tea,
@@ -141,9 +142,10 @@ BiocrudeScaler = u.Scaler(
     scaling_factor=N_decentralized_HTL, reverse=False,
     )
 
+cutoff_fracs = (0.5316, 0.4684,)
 BiocrudeSplitter = u.BiocrudeSplitter(
     'BiocrudeSplitter', ins=BiocrudeScaler-0, outs='splitted_biocrude',
-    cutoff_Tb=343+273.15, light_frac=0.5316)
+    cutoff_Tbs=(343+273.15,), cutoff_fracs=cutoff_fracs)
 
 # Shortcut column uses the Fenske-Underwood-Gilliland method,
 # better for hydrocarbons according to the tutorial
@@ -151,15 +153,16 @@ BiocrudeSplitter = u.BiocrudeSplitter(
 FracDist = u.ShortcutColumn(
     'FracDist', ins=BiocrudeSplitter-0,
     outs=('biocrude_light','biocrude_heavy'),
-    LHK=('Biofuel', 'Biobinder'), # will be updated later
+    LHK=BiocrudeSplitter.keys[0],
     P=50*6894.76, # outflow P, 50 psig
-    # Lr=0.1, Hr=0.5,
-    y_top=188/253, x_bot=53/162,
+    Lr=0.3, Hr=0.3,
+    # y_top=188/253, x_bot=53/162,
     k=2, is_divided=True)
-@FracDist.add_specification
-def adjust_LHK():
-    FracDist.LHK = (BiocrudeSplitter.light_key, BiocrudeSplitter.heavy_key)
-    FracDist._run()
+
+# results_df, Lr, Hr = find_Lr_Hr(FracDist, 
+#                                 Lr_trial_range=np.linspace(0.1, .9, 20),
+#                                 Hr_trial_range=np.linspace(0.1, .9, 20),
+#                                 target_light_frac=cutoff_fracs[0])
 
 LightFracStorage = qsu.StorageTank(
     'LightFracStorage',
