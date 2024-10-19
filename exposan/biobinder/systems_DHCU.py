@@ -20,7 +20,9 @@ References
 import warnings
 warnings.filterwarnings('ignore')
 
-import os, numpy as np, pandas as pd, biosteam as bst, qsdsan as qs
+import os, biosteam as bst, qsdsan as qs
+import numpy as np
+import matplotlib.pyplot as plt
 # from biosteam.units import IsenthalpicValve
 # from biosteam import settings
 from qsdsan import sanunits as qsu
@@ -29,7 +31,6 @@ from exposan.htl import data_path as htl_data_path
 from exposan.biobinder import (
     data_path,
     results_path,
-    find_Lr_Hr,
     _load_components,
     _load_process_settings,
     create_tea,
@@ -55,10 +56,55 @@ qs.main_flowsheet.set_flowsheet(flowsheet)
 _load_components()
 _load_process_settings()
 
+
 # Desired feedstock flowrate, in dry kg/hr
 decentralized_dry_flowrate = 11.46 # feedstock mass flowrate, dry kg/hr
-N_decentralized_HTL = 1000 # number of parallel HTL reactor, PNNL is about 1900x of UIUC pilot reactor
+N_decentralized_HTL = 1300 # number of parallel HTL reactor, PNNL is about 1900x of UIUC pilot reactor
 target_HTL_solid_loading = 0.2
+# =============================================================================
+# Feedstock & Biocrude Transportation
+# =============================================================================
+
+biocrude_radius = 100 * 1.61  # km, PNNL 29882
+
+def biocrude_distances(N_decentralized_HTL, biocrude_radius):
+    """
+    Generate a list of distances for biocrude transport from decentralized HTL facilities.
+    
+    Parameters:
+    N_decentralized_HTL (int): Number of decentralized HTL facilities.
+    biocrude_radius (float): Maximum distance for transportation.
+    
+    Returns:
+    list: Distances for each facility.
+    """
+    distances = []
+    scale = 45  # scale parameter for the exponential distribution
+
+    for _ in range(N_decentralized_HTL):
+        r = np.random.exponential(scale)
+        r = min(r, biocrude_radius)  # cap distance at biocrude_radius
+        distances.append(r)
+
+    return distances
+
+def total_biocrude_distance(N_decentralized_HTL, biocrude_radius):
+    """
+    Calculate the total biocrude transportation distance.
+    
+    Parameters:
+    N_decentralized_HTL (int): Number of decentralized HTL facilities.
+    biocrude_radius (float): Maximum distance for transportation.
+    
+    Returns:
+    float: Total transportation distance.
+    """
+    distances = biocrude_distances(N_decentralized_HTL, biocrude_radius)
+    total_distance = np.sum(distances)  # Sum of individual distances
+    return total_distance
+
+biocrude_transportation_distance = total_biocrude_distance(N_decentralized_HTL, biocrude_radius)
+print("Total biocrude transportation distance:", biocrude_transportation_distance)
 
 # %%
 
@@ -86,7 +132,7 @@ FeedstockTrans = u.Transportation(
     outs=('transported_feedstock',),
     N_unit=N_decentralized_HTL,
     copy_ins_from_outs=True,
-    transportation_distance=78, # km ref [1]
+    transportation_distance=25, # km ref [1]
     )
 
 FeedstockCond = u.Conditioning(
@@ -134,7 +180,7 @@ BiocrudeTrans = u.Transportation(
     ins=(BiocrudeDewatering-0, 'biocrude_trans_surrogate'),
     outs=('transported_biocrude',),
     N_unit=N_decentralized_HTL,
-    transportation_distance=78, # km ref [1]
+    transportation_distance=biocrude_transportation_distance, # km ref [1]
     )
 
 BiocrudeScaler = u.Scaler(
@@ -142,10 +188,9 @@ BiocrudeScaler = u.Scaler(
     scaling_factor=N_decentralized_HTL, reverse=False,
     )
 
-cutoff_fracs = (0.5316, 0.4684,)
 BiocrudeSplitter = u.BiocrudeSplitter(
     'BiocrudeSplitter', ins=BiocrudeScaler-0, outs='splitted_biocrude',
-    cutoff_Tbs=(343+273.15,), cutoff_fracs=cutoff_fracs)
+    cutoff_Tb=343+273.15, light_frac=0.5316)
 
 # Shortcut column uses the Fenske-Underwood-Gilliland method,
 # better for hydrocarbons according to the tutorial
@@ -153,16 +198,15 @@ BiocrudeSplitter = u.BiocrudeSplitter(
 FracDist = u.ShortcutColumn(
     'FracDist', ins=BiocrudeSplitter-0,
     outs=('biocrude_light','biocrude_heavy'),
-    LHK=BiocrudeSplitter.keys[0],
+    LHK=('Biofuel', 'Biobinder'), # will be updated later
     P=50*6894.76, # outflow P, 50 psig
-    Lr=0.3, Hr=0.3,
-    # y_top=188/253, x_bot=53/162,
+    # Lr=0.1, Hr=0.5,
+    y_top=188/253, x_bot=53/162,
     k=2, is_divided=True)
-
-# results_df, Lr, Hr = find_Lr_Hr(FracDist, 
-#                                 Lr_trial_range=np.linspace(0.1, .9, 20),
-#                                 Hr_trial_range=np.linspace(0.1, .9, 20),
-#                                 target_light_frac=cutoff_fracs[0])
+@FracDist.add_specification
+def adjust_LHK():
+    FracDist.LHK = (BiocrudeSplitter.light_key, BiocrudeSplitter.heavy_key)
+    FracDist._run()
 
 LightFracStorage = qsu.StorageTank(
     'LightFracStorage',
@@ -180,7 +224,7 @@ HeavyFracStorage = qsu.StorageTank(
 # =============================================================================
 
 ElectrochemicalOxidation = u.ElectrochemicalOxidation(
-    'MicrobialFuelCell',
+    'ElectrochemicalCell',
     ins=(HTL-1,),
     outs=('fertilizer', 'recycled_water', 'filtered_solids'),
     N_unit=N_decentralized_HTL,)
@@ -325,8 +369,8 @@ scaled_feedstock.price = -69.14/907.185 # tipping fee 69.14±21.14 for IL, https
 # Use bst.HeatUtility.cooling_agents/heating_agents to see all the heat utilities
 Seider_factor = PCE_indices[cost_year]/PCE_indices[2016]
 
-transport_cost = 50/1e3 * PCE_indices[cost_year]/PCE_indices[2016] # $/kg ref [1]
-FeedstockTrans.transportation_cost = BiocrudeTrans.transportation_cost = transport_cost
+transport_cost = 64.1/1e3 * PCE_indices[cost_year]/PCE_indices[2016] # $/kg/km PNNL 32731
+transport_cost = FeedstockTrans.transportation_cost + BiocrudeTrans.transportation_cost
 
 ProcessWaterCenter.process_water_price = 0.8/1e3/3.785*Seider_factor # process water for moisture adjustment
 
@@ -379,6 +423,7 @@ base_labor = 338256 # for 1000 kg/hr
 tea = create_tea(
     sys,
     labor_cost=lambda: (scaled_feedstock.F_mass-scaled_feedstock.imass['Water'])/1000*base_labor,
+    # finance_fraction=0,
     land=0, #!!! need to be updated
     )
 
@@ -432,7 +477,6 @@ lca = qs.LCA(
     )
 
 
-# %%
 
 def simulate_and_print(save_report=False):
     sys.simulate()
@@ -453,4 +497,96 @@ def simulate_and_print(save_report=False):
 
 if __name__ == '__main__':
     simulate_and_print()
+
+
+# def simulate_biobinder_and_gwp(N_decentralized_HTL):
+#     """
+#     Simulates the biobinder's price and calculates its Global Warming Potential (GWP) 
+#     along with various financial metrics.
+
+#     Parameters:
+#     N_decentralized_HTL (int): The number of decentralized HTL units to simulate.
+
+#         """
+#     FeedstockScaler = u.Scaler(
+#     'FeedstockScaler', ins=scaled_feedstock, outs='feedstock',
+#     scaling_factor=N_decentralized_HTL, reverse=True,
+# )
+
+#     FeedstockScaler.simulate()
+#     sys.simulate()
+  
+#     biobinder.price = biobinder_price = tea.solve_price(biobinder)
+#     print(f"Number of Reactors: {N_decentralized_HTL}, Biobinder Price: {biobinder_price}")
+#     c = qs.currency
+#     metrics = {}
+#     for attr in ('NPV', 'AOC', 'sales', 'net_earnings'):
+#         uom = c if attr in ('NPV', 'CAPEX') else (c + '/yr')
+#         metrics[attr] = getattr(tea, attr)  # Use getattr to access attributes dynamically
+
+#     # Calculate allocated impacts for GWP
+#     all_impacts = lca.get_allocated_impacts(streams=(biobinder,), operation_only=True, annual=True)
+#     GWP = all_impacts['GlobalWarming'] / (biobinder.F_mass * lca.system.operating_hours)
     
+#     return biobinder_price, GWP, metrics
+
+
+# if __name__ == '__main__':
+#     N_range = np.arange(100, 2001, 100)  # Range of HTL reactors
+    
+#     biobinder_prices = []
+#     gwps = []
+#     npv_list = []
+#     aoc_list = []
+#     sales_list = []
+#     net_earnings_list = []
+    
+#     for N in N_range:
+#         price, gwp, metrics = simulate_biobinder_and_gwp(N)
+#         print("Reactor Count and Corresponding Biobinder Prices:")
+#     for N, price in zip(N_range, biobinder_prices):
+#         print(f"Reactors: {N}, Price: {price}")
+        
+#         # Store the results
+#         biobinder_prices.append(price)
+#         gwps.append(gwp)
+#         npv_list.append(metrics['NPV'])
+#         aoc_list.append(metrics['AOC'])
+#         sales_list.append(metrics['sales'])
+#         net_earnings_list.append(metrics['net_earnings'])
+
+#     plt.figure(figsize=(10, 5))
+#     plt.plot(N_range, biobinder_prices, marker='o', color='b')
+#     plt.title('Biobinder Price vs. Number of Decentralized HTL Reactors')
+#     plt.xlabel('Number of HTL Reactors')
+#     plt.ylabel('Biobinder Price ($/kg)')
+#     plt.grid()
+#     plt.tight_layout()
+#     plt.show()
+
+#     plt.figure(figsize=(10, 5))
+#     plt.plot(N_range, gwps, marker='o', color='g')
+#     plt.title('GWP vs. Number of Decentralized HTL Reactors')
+#     plt.xlabel('Number of HTL Reactors')
+#     plt.ylabel('GWP (kg CO2e/kg)')
+#     plt.grid()
+#     plt.tight_layout()
+#     plt.show()
+
+#     bar_width = 0.2  # Width of the bars
+#     index = np.arange(len(N_range))  # X locations for the groups
+
+#     plt.figure(figsize=(10, 5))
+#     plt.bar(index - bar_width * 1.5, np.array(npv_list) / 1_000_000, bar_width, label='NPV (millions)', color='blue')
+#     plt.bar(index - bar_width / 2, np.array(aoc_list) / 1_000_000, bar_width, label='AOC (millions)', color='orange')
+#     plt.bar(index + bar_width / 2, np.array(sales_list) / 1_000_000, bar_width, label='Sales (millions)', color='green')
+#     plt.bar(index + bar_width * 1.5, np.array(net_earnings_list) / 1_000_000, bar_width, label='Net Earnings (millions)', color='red')
+
+#     plt.title('Metrics vs. Number of Decentralized HTL Reactors')
+#     plt.xlabel('Number of HTL Reactors')
+#     plt.ylabel('Value (in millions of dollars)')
+#     plt.xticks(index, N_range)
+#     plt.legend()
+#     plt.grid()
+#     plt.tight_layout()
+#     plt.show()
