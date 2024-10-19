@@ -108,11 +108,11 @@ def create_components(set_thermo=True):
         'organic': True,
         }
     # Tb = 391.35 K (118.2°C)
-    Gasoline = Component('Gasoline', search_ID='C8H18', phase='l', **org_kwargs)
+    Gasoline = Component('Gasoline', search_ID='C8H18', **org_kwargs)
     # Tb = 526.65 K (253.5°C)
-    Jet = Component('Jet', search_ID='C14H30', phase='l', **org_kwargs)
+    Jet = Component('Jet', search_ID='C14H30', **org_kwargs)
     # Tb = 632.15 K (359°C)
-    Diesel = Component('Diesel', search_ID='C21H44', phase='l', **org_kwargs)
+    Diesel = Component('Diesel', search_ID='C21H44', **org_kwargs)
     saf_cmps.extend([Gasoline, Jet, Diesel])
 
     # Consumables only for cost purposes, thermo data for these components are made up

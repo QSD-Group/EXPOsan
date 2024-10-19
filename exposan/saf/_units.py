@@ -26,7 +26,9 @@ __all__ = (
 _lb_to_kg = 0.453592
 _m3_to_gal = 264.172
 _in_to_m = 0.0254
+_psi_to_Pa = 6894.76
 _m3perh_to_mmscfd = 1/1177.17 # H2
+
 
 # %%
 
@@ -62,7 +64,7 @@ class KnockOutDrum(Reactor):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', include_construction=False,
-                 P=3049.7*6894.76, tau=0, V_wf=0,
+                 P=3049.7*_psi_to_Pa, tau=0, V_wf=0,
                  length_to_diameter=2, diameter=None,
                  N=4, V=None,
                  auxiliary=True,
@@ -188,15 +190,10 @@ class HydrothermalLiquefaction(Reactor):
         'Vertical pressure vessel': 2.7, # so the cost matches [6]
         }
 
-    def _normalize_composition(self, dct):
-        total = sum(dct.values())
-        if total <=0: raise ValueError(f'Sum of total yields/composition should be positive, not {total}.')
-        return {k:v/total for k, v in dct.items()}
-
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', include_construction=False,
-                 T=350+273.15,
-                 P=None,
+                 T=280+273.15,
+                 P=101325,
                  dw_yields={
                      'gas': 0,
                      'aqueous': 0,
@@ -234,7 +231,7 @@ class HydrothermalLiquefaction(Reactor):
         self.inf_hx = HXutility(ID=f'.{ID}_inf_hx', ins=inf_hx_in, outs=inf_hx_out, T=T, rigorous=True)
         eff_hx_in = Stream(f'{ID}_eff_hx_in')
         eff_hx_out = Stream(f'{ID}_eff_hx_out')
-        self.eff_at_temp = Stream(f'{ID}_eff_at_temp')
+        self._eff_at_temp = Stream(f'{ID}_eff_at_temp')
         self.eff_hx = HXutility(ID=f'.{ID}_eff_hx', ins=eff_hx_in, outs=eff_hx_out, T=eff_T, rigorous=True)
         self.kodrum = KnockOutDrum(ID=f'.{ID}_KOdrum')
         self.eff_T = eff_T
@@ -274,11 +271,11 @@ class HydrothermalLiquefaction(Reactor):
         char.F_mass = tot_dw * dw_yields['char']
         aq.imass['Water'] = feed.imass['Water'] - sum(i.imass['Water'] for i in (gas, crude, char))
         
+        self._eff_at_temp.mix_from(outs)
+        
         gas.phase = 'g'
         char.phase = 's'
         aq.phase = crude.phase = 'l'
-        
-        self.eff_at_temp.mix_from(outs)
         
         for i in outs:
             i.T = self.eff_T
@@ -289,7 +286,6 @@ class HydrothermalLiquefaction(Reactor):
         Design['Mass flow'] = self.ins[0].F_mass/_lb_to_kg
         
         feed = self.ins[0]
-        self.P = self.P or feed.P
         
         # Influent heating to HTL conditions
         inf_hx = self.inf_hx
@@ -297,16 +293,16 @@ class HydrothermalLiquefaction(Reactor):
         inf_hx_in.copy_like(feed)
         inf_hx_out.copy_flow(inf_hx_in)
         inf_hx_out.T = self.T
-        inf_hx_out.P = self.P
+        inf_hx_out.P = self.P # this may lead to HXN error, when at pressure
         inf_hx.simulate_as_auxiliary_exchanger(ins=inf_hx.ins, outs=inf_hx.outs)
         
         # Effluent cooling to near ambient conditions
         eff_hx = self.eff_hx
         eff_hx_in, eff_hx_out = eff_hx.ins[0], eff_hx.outs[0]
-        eff_hx_in.copy_like(self.eff_at_temp)
+        eff_hx_in.copy_like(self._eff_at_temp)
         eff_hx_out.mix_from(self.outs)
         eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs)
-
+        
         Reactor._design(self)
         Design['Solid filter and separator weight'] = 0.2*Design['Weight']*Design['Number of reactors'] # assume stainless steel
         # based on [6], case D design table, the purchase price of solid filter and separator to
@@ -323,7 +319,7 @@ class HydrothermalLiquefaction(Reactor):
         
     def _cost(self):
         Reactor._cost(self)
-        self._decorated_cost()
+        if hasattr(self, '_decorated_cost'): self._decorated_cost()
         
         purchase_costs = self.baseline_purchase_costs
         for item in purchase_costs.keys():
@@ -336,7 +332,11 @@ class HydrothermalLiquefaction(Reactor):
                 purchase_costs[item] *= self.CAPEX_factor
                 installed_costs[item] *= self.CAPEX_factor
                 
-
+    def _normalize_composition(self, dct):
+        total = sum(dct.values())
+        if total <=0: raise ValueError(f'Sum of total yields/compositions should be positive, not {total}.')
+        return {k:v/total for k, v in dct.items()}
+    
     @property
     def yields(self):
         return self._yields
@@ -383,6 +383,302 @@ class HydrothermalLiquefaction(Reactor):
         """Energy recovery calculated as the HHV of the biocrude over the HHV of the feedstock."""
         feed = self.ins[0]
         return self.biocrude_HHV/(feed.HHV/feed.F_mass/1e3)
+
+
+
+# =============================================================================
+# Hydroprocessing
+# =============================================================================
+
+class Hydroprocessing(Reactor):
+    '''
+    For fuel upgrading processes such as hydrocracking and hydrotreating.
+    Co-product includes fuel gas and aqueous stream.
+    
+    Note that addition units are needed to fractionate the product
+    into the gas, aqueous, and oil streams.
+    
+    Parameters
+    ----------
+    ins : Iterable(stream)
+        Influent crude oil, hydrogen, catalyst_in.
+    outs : Iterable(stream)
+        Mixed products (oil and excess hydrogen, fuel gas, as well as the aqueous stream), catalyst_out.
+    T: float
+        Operating temperature, [K].
+    P : float
+        Operating pressure, [Pa].
+    WHSV: float
+        Weight hourly space velocity, [kg feed/hr/kg catalyst].
+    catalyst_lifetime: float
+        Catalyst lifetime, [hr].
+    catalyst_ID : str
+        ID of the catalyst.
+    hydrogen_rxned_to_inf_oil: float
+        Reacted H2 to influent oil mass ratio.
+    hydrogen_ratio : float
+        Total hydrogen amount = hydrogen_rxned * hydrogen_ratio,
+        excess hydrogen will be included in the fuel gas.
+    gas_yield : float
+        Mass ratio of fuel gas to the sum of influent oil and reacted H2.
+    oil_yield : float
+        Mass ratio of treated oil to the sum of influent oil and reacted H2.
+    gas_composition: dict
+        Composition of the gas products (excluding excess H2), will be normalized to 100% sum.
+    oil_composition: dict
+        Composition of the treated oil, will be normalized to 100% sum.
+    aqueous_composition: dict
+        Composition of the aqueous product, yield will be calculated as 1-gas-oil.
+    CAPEX_factor: float
+        Factor used to adjust the total installed cost,
+        this is on top of all other factors to individual equipment of this unit
+        (e.g., bare module, material factors).
+        
+    References
+    ----------
+    [1] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
+        Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
+        Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
+        Process Design and Economics for the Conversion of Algal Biomass to
+        Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
+        PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
+    '''
+    _N_ins = 3
+    _N_outs = 2
+    
+    auxiliary_unit_names=('compressor','heat_exchanger',)
+    
+    _F_BM_default = {**Reactor._F_BM_default,
+                     'Heat exchanger': 3.17,
+                     'Compressor': 1.1}
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='Stream',
+                 include_construction=False,
+                 T=451+273.15,
+                 P=1039.7*_psi_to_Pa,
+                 WHSV=0.625, # wt./hr per wt. catalyst [1]
+                 catalyst_lifetime=5*7920, # 5 years [1]
+                 catalyst_ID='HC_catalyst',
+                 hydrogen_rxned_to_inf_oil=0.01125,
+                 hydrogen_ratio=5.556,
+                 gas_yield=0.03880-0.00630,
+                 oil_yield=1-0.03880-0.00630,
+                 gas_composition={'CO2':0.03880, 'CH4':0.00630,},
+                 oil_composition={
+                    'CYCHEX':0.03714, 'HEXANE':0.01111,
+                    'HEPTANE':0.11474, 'OCTANE':0.08125,
+                    'C9H20':0.09086, 'C10H22':0.11756,
+                    'C11H24':0.16846, 'C12H26':0.13198,
+                    'C13H28':0.09302, 'C14H30':0.04643,
+                    'C15H32':0.03250, 'C16H34':0.01923,
+                    'C17H36':0.00431, 'C18H38':0.00099,
+                    'C19H40':0.00497, 'C20H42':0.00033, # combine C20H42 and PHYTANE as C20H42
+                    },
+                 aqueous_composition={'Water':1},
+                 tau=15/60, # set to the same as HTL as in [1]
+                 V_wf=0.4, # void_fraciton=0.4, # Towler
+                 length_to_diameter=2, diameter=None,
+                 N=None, V=None, auxiliary=False,
+                 mixing_intensity=None, kW_per_m3=0,
+                 wall_thickness_factor=1.5,
+                 vessel_material='Stainless steel 316',
+                 vessel_type='Vertical',
+                 CAPEX_factor=1.,):
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, include_construction=include_construction)
+        self.T = T
+        self.P = P
+        self.WHSV = WHSV
+        self.catalyst_lifetime = catalyst_lifetime
+        self.catalyst_ID = catalyst_ID
+        self.hydrogen_rxned_to_inf_oil = hydrogen_rxned_to_inf_oil
+        self.hydrogen_ratio = hydrogen_ratio
+        self.gas_yield = gas_yield
+        self.oil_yield = oil_yield
+        self.gas_composition = gas_composition
+        self.oil_composition = oil_composition
+        self.aqueous_composition = aqueous_composition
+        self.CAPEX_factor = CAPEX_factor
+        # For H2 compressing
+        IC_in = Stream(f'{ID}_IC_in')
+        IC_out = Stream(f'{ID}_IC_out')
+        self.compressor = IsothermalCompressor(ID=f'.{ID}_IC', ins=IC_in,
+                                               outs=IC_out, P=P)
+        # For influent heating
+        self._mixed_in = Stream(f'{ID}_mixed_in')
+        hx_in = Stream(f'{ID}_hx_in')
+        hx_out = Stream(f'{ID}_hx_out')
+        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
+        # hx_H2_in = Stream(f'{ID}_hx_H2_in')
+        # hx_H2_out = Stream(f'{ID}_hx_H2_out')
+        # self.heat_exchanger_H2 = HXutility(ID=f'.{ID}_hx_H2', ins=hx_H2_in, outs=hx_H2_out)
+        # hx_oil_in = Stream(f'{ID}_hx_oil_in')
+        # hx_oil_out = Stream(f'{ID}_hx_oil_out')
+        # self.heat_exchanger_oil = HXutility(ID=f'.{ID}_hx_oil', ins=hx_oil_in, outs=hx_oil_out)
+        
+        self.tau = tau
+        self._V_wf = V_wf # will be adjusted later
+        self.length_to_diameter = length_to_diameter
+        self.diameter = diameter
+        self.N = N
+        self.V = V
+        self.auxiliary = auxiliary
+        self.mixing_intensity = mixing_intensity
+        self.kW_per_m3 = kW_per_m3
+        self.wall_thickness_factor = wall_thickness_factor
+        self.vessel_material = vessel_material
+        self.vessel_type = vessel_type
+        
+    def _run(self):
+        inf_oil, hydrogen, catalyst_in = self.ins
+        eff_oil, catalyst_out = self.outs
+        
+        catalyst_in.imass[self.catalyst_ID] = inf_oil.F_mass/self.WHSV/self.catalyst_lifetime
+        catalyst_in.phase = 's'
+        catalyst_out.copy_like(catalyst_in)
+        
+        hydrogen_rxned_to_inf_oil = self.hydrogen_rxned_to_inf_oil
+        hydrogen_ratio = self.hydrogen_ratio
+        H2_rxned =  inf_oil.F_mass*hydrogen_rxned_to_inf_oil
+        hydrogen.imass['H2'] = H2_rxned*hydrogen_ratio
+        hydrogen.phase = 'g'
+
+        eff_oil.copy_like(inf_oil)
+        eff_oil.empty()
+        eff_oil.imass[self.eff_composition.keys()] = self.eff_composition.values()
+        eff_oil.F_mass = inf_oil.F_mass*(1 + hydrogen_rxned_to_inf_oil)
+        eff_oil.imass['H2'] = H2_rxned*(hydrogen_ratio - 1)
+        
+        eff_oil.P = self.P
+        eff_oil.T = self.T
+        eff_oil.vle(T=eff_oil.T, P=eff_oil.P)
+
+
+    def _design(self):
+        IC = self.compressor # for H2 compressing
+        H2 = self.ins[1]
+        IC_ins0, IC_outs0 = IC.ins[0], IC.outs[0]
+        IC_ins0.copy_like(H2)
+        IC_outs0.copy_like(H2)
+        IC_outs0.P = IC.P = self.P
+        IC_ins0.phase = IC_outs0.phase = 'g'
+        IC.simulate()
+        
+        hx = self.heat_exchanger
+        hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
+        hx_ins0.mix_from(self.ins)
+        hx_outs0.copy_like(hx_ins0)
+        hx_outs0.T = self.T
+        hx_ins0.P = hx_outs0.P = IC_outs0.P
+        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
+        
+        V_oil = self.ins[0].F_vol
+        V_H2 = H2.F_vol*(H2.P/self.P)
+        self.V_wf = self._V_wf*V_oil/(V_oil + V_H2) # account for the added H2
+        Reactor._design(self)
+
+    _cost = HydrothermalLiquefaction._cost
+
+    # def _cost(self):
+    #     Reactor._cost(self)
+    #     purchase_costs = self.baseline_purchase_costs
+    #     CAPEX_factor = self.CAPEX_factor        
+    #     for item in purchase_costs.keys():
+    #         purchase_costs[item] *= CAPEX_factor
+
+    #     for aux_unit in self.auxiliary_units:
+    #         purchase_costs = aux_unit.baseline_purchase_costs
+    #         installed_costs = aux_unit.installed_costs
+    #         for item in purchase_costs.keys():
+    #             purchase_costs[item] *= self.CAPEX_factor
+    #             installed_costs[item] *= self.CAPEX_factor
+        
+    def _normalize_yields(self):
+        gas = self._gas_yield
+        oil = self._oil_yield
+        gas_oil = gas + oil
+        aq = 0
+        if gas_oil > 1:
+            gas /=  gas_oil
+            oil /= gas_oil
+        else:
+            aq = 1 - gas_oil
+        self._gas_yield = gas
+        self._oil_yield = oil
+        self._aq_yield = aq
+        
+    _normalize_composition = HydrothermalLiquefaction._normalize_composition
+        
+    # def _normalize_composition(self, dct):
+    #     total = sum(dct.values())
+    #     if total <=0: raise ValueError(f'Sum of total yields/composition should be positive, not {total}.')
+    #     return {k:v/total for k, v in dct.items()}
+    
+    @property
+    def gas_yield(self):
+        return self._gas_yield
+    @gas_yield.setter
+    def gas_yield(self, gas):
+        self._gas_yield = gas
+        if hasattr(self, '_oil_yield'):
+            self._normalize_yields()
+
+    @property
+    def oil_yield(self):
+        return self._oil_yield
+    @oil_yield.setter
+    def oil_yield(self, oil):
+        self._oil_yield = oil
+        if hasattr(self, '_gas_yield'):
+            self._normalize_yields()
+            
+    @property
+    def aq_yield(self):
+        return self._aq_yield
+
+    @property
+    def gas_composition(self):
+        return self._gas_composition
+    @gas_composition.setter
+    def gas_composition(self, comp_dct):
+        self._gas_composition = self._normalize_composition(comp_dct)
+        
+    @property
+    def oil_composition(self):
+        return self._oil_composition
+    @oil_composition.setter
+    def oil_composition(self, comp_dct):
+        self._oil_composition = self._normalize_composition(comp_dct)
+    @property
+    def aqueous_composition(self):
+        return self._aqueous_composition
+    @aqueous_composition.setter
+    def aqueous_composition(self, comp_dct):
+        self._aqueous_composition = self._normalize_composition(comp_dct)
+        
+    @property
+    def eff_composition(self):
+        '''Composition of products, normalized to 100% sum.'''
+        gas_composition = self.gas_composition
+        oil_composition = self.oil_composition
+        aqueous_composition = self.aqueous_composition
+        oil_yield = self.oil_yield
+        gas_yield = self.gas_yield
+        aq_yield = self.aq_yield
+        eff_composition = {k:v*gas_yield for k, v in gas_composition.items()}
+        eff_composition.update({k:v*oil_yield for k, v in oil_composition.items()})
+        eff_composition.update({k:v*aq_yield for k, v in aqueous_composition.items()})
+        return self._normalize_composition(eff_composition)
+
+    # @property
+    # def C_balance(self):
+    #     '''Total carbon in the outs over total in the ins.'''
+    #     cmps = self.components
+    #     C_in = sum(self.ins[0].imass[cmp.ID]*cmp.i_C for cmp in cmps)
+    #     C_out = sum(self.outs[0].imass[cmp.ID]*cmp.i_C for cmp in cmps)
+    #     return C_out/C_in
+
     
 # =============================================================================
 # Hydrocracking
@@ -424,7 +720,7 @@ class Hydrocracking(Reactor):
         Composition of the gas products (excluding excess H2), will be normalized to 100% sum.
     oil_composition: dict
         Composition of the cracked oil, will be normalized to 100% sum.
-    aq_composition: dict
+    aqueous_composition: dict
         Composition of the aqueous product, yield will be calculated as 1-gas-oil.
         
     References
@@ -472,7 +768,7 @@ class Hydrocracking(Reactor):
                     'C17H36':0.00431, 'C18H38':0.00099,
                     'C19H40':0.00497, 'C20H42':0.00033,
                     },
-                 aq_composition={'Water':1},
+                 aqueous_composition={'Water':1},
                  #combine C20H42 and PHYTANE as C20H42
                  # will not be a variable in uncertainty/sensitivity analysis
                  P=None, tau=5, void_fraciton=0.4, # Towler
@@ -496,7 +792,7 @@ class Hydrocracking(Reactor):
         self.HCrxn_T = HCrxn_T
         self.gas_composition = gas_composition
         self.oil_composition = oil_composition
-        self.aq_composition = aq_composition
+        self.aqueous_composition = aqueous_composition
         IC_in = Stream(f'{ID}_IC_in')
         IC_out = Stream(f'{ID}_IC_out')
         self.compressor = IsothermalCompressor(ID=f'.{ID}_IC', ins=IC_in,
@@ -534,10 +830,11 @@ class Hydrocracking(Reactor):
         hydrogen_rxned_to_inf_oil = self.hydrogen_rxned_to_inf_oil
         hydrogen_ratio = self.hydrogen_ratio
         H2_rxned =  inf_oil.F_mass*hydrogen_rxned_to_inf_oil
-        hydrogen.imass['H2'] = inf_oil.F_mass*hydrogen_ratio
+        hydrogen.imass['H2'] = H2_rxned*hydrogen_ratio
         hydrogen.phase = 'g'
 
         cracked_oil.empty()
+        cracked_oil.phase = inf_oil.phase # will be in gas phase after vle, otherwise will trigger errors
         cracked_oil.imass[self.eff_composition.keys()] = self.eff_composition.values()
         cracked_oil.F_mass = inf_oil.F_mass*(1 + hydrogen_rxned_to_inf_oil)
         
@@ -547,6 +844,7 @@ class Hydrocracking(Reactor):
         cracked_oil.T = self.HCrxn_T
         
         cracked_oil.vle(T=cracked_oil.T, P=cracked_oil.P)
+
         
     def _normalize_yields(self):
         gas = self._gas_yield
@@ -564,7 +862,7 @@ class Hydrocracking(Reactor):
         
     def _normalize_composition(self, dct):
         total = sum(dct.values())
-        if total <=0: raise ValueError(f'Sum of total yields/composition should be positive, not {total}.')
+        if total <=0: raise ValueError(f'Sum of total compositions should be positive, not {total}.')
         return {k:v/total for k, v in dct.items()}
     
     @property
@@ -603,11 +901,11 @@ class Hydrocracking(Reactor):
     def oil_composition(self, comp_dct):
         self._oil_composition = self._normalize_composition(comp_dct)
     @property
-    def aq_composition(self):
-        return self._aq_composition
-    @aq_composition.setter
-    def aq_composition(self, comp_dct):
-        self._aq_composition = self._normalize_composition(comp_dct)
+    def aqueous_composition(self):
+        return self._aqueous_composition
+    @aqueous_composition.setter
+    def aqueous_composition(self, comp_dct):
+        self._aqueous_composition = self._normalize_composition(comp_dct)
         
         
     @property
@@ -615,13 +913,13 @@ class Hydrocracking(Reactor):
         '''Composition of products, normalized to 100% sum.'''
         gas_composition = self.gas_composition
         oil_composition = self.oil_composition
-        aq_composition = self.aq_composition
+        aqueous_composition = self.aqueous_composition
         oil_yield = self.oil_yield
         gas_yield = self.gas_yield
         aq_yield = self.aq_yield
         eff_composition = {k:v*gas_yield for k, v in gas_composition.items()}
         eff_composition.update({k:v*oil_yield for k, v in oil_composition.items()})
-        eff_composition.update({k:v*aq_yield for k, v in aq_composition.items()})
+        eff_composition.update({k:v*aq_yield for k, v in aqueous_composition.items()})
         return self._normalize_composition(eff_composition)
 
     # @property
@@ -777,7 +1075,7 @@ class Hydrotreating(Reactor):
                     'TRICOSANE':0.04080, 'C24H38O4':0.00817,
                     'C26H42O4':0.01020, 'C30H62':0.00203, # [1]              
                     },
-                 aq_composition={'Water':1},
+                 aqueous_composition={'Water':1},
                  # spreadsheet HT calculation
                  # will not be a variable in uncertainty/sensitivity analysis
                  P=None, tau=0.5, void_fraciton=0.4, # [2]
@@ -803,7 +1101,7 @@ class Hydrotreating(Reactor):
         self.HTrxn_T = HTrxn_T
         self.gas_composition = gas_composition
         self.oil_composition = oil_composition
-        self.aq_composition = aq_composition
+        self.aqueous_composition = aqueous_composition
         IC_in = Stream(f'{ID}_IC_in')
         IC_out = Stream(f'{ID}_IC_out')
         self.compressor = IsothermalCompressor(ID=f'.{ID}_IC', ins=IC_in,
@@ -846,6 +1144,7 @@ class Hydrotreating(Reactor):
         hydrogen.phase = 'g'
         
         treated_oil.empty()
+        treated_oil.phase = inf_oil.phase
         treated_oil.imass[self.eff_composition.keys()] = self.eff_composition.values()
         treated_oil.F_mass = inf_oil.F_mass*(1 + hydrogen_rxned_to_inf_oil)
             
@@ -864,7 +1163,7 @@ class Hydrotreating(Reactor):
     aq_yield = Hydrocracking.aq_yield
     gas_composition = Hydrocracking.gas_composition
     oil_composition = Hydrocracking.oil_composition
-    aq_composition = Hydrocracking.aq_composition
+    aqueous_composition = Hydrocracking.aqueous_composition
     eff_composition = Hydrocracking.eff_composition
 
 
