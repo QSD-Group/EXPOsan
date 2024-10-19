@@ -705,7 +705,7 @@ base_ap_flowrate = 49.65 #kg/hr
 #     '''
 #     _ins_size_is_fixed = False
 #     _N_outs = 3
-#     _units= {'Aqueous flowrate': 'kg/hr',}
+ #    _units= {'Aqueous flowrate': 'kg/hr',}
     
 #     def __init__(self, ID='', ins=None, outs=(), thermo=None,
 #                   init_with='WasteStream', F_BM_default=1,
@@ -745,11 +745,15 @@ base_ap_flowrate = 49.65 #kg/hr
 #     def N_unit(self, i):
 #         self.parallel['self'] = self._N_unit = math.ceil(i)
 
-import qsdsan as qs
 from qsdsan.equipments import Electrode, Membrane
-import math
 import thermosteam as tmo
 
+@cost(basis='Aqueous flowrate', ID= 'Anode', units='kg/hr',
+       cost=1649.95, S=base_ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
+@cost(basis='Aqueous flowrate', ID= 'Cathode', units='kg/hr',
+       cost=18, S=base_ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
+@cost(basis='Aqueous flowrate', ID= 'Cell Exterior', units='kg/hr',
+      cost=80, S=base_ap_flowrate, CE=CEPCI_by_year[2023],n=0.65, BM=1.5)
 class ElectrochemicalOxidation(qs.SanUnit):
     _N_ins = 2
     _N_outs = 3
@@ -758,37 +762,36 @@ class ElectrochemicalOxidation(qs.SanUnit):
     def __init__(self, ID='', ins=(), outs=(),
                  recovery={'Carbon':0.7, 'Nitrogen':0.7, 'Phosphorus':0.7},  #consult Davidson group
                  removal={'Carbon':0.83, 'Nitrogen':0.83, 'Phosphorus':0.83},  #consult Davidson group
-                 OPEX_over_CAPEX=0.2, N_unit=1):
+                 OPEX_over_CAPEX=0.2, N_unit=1, F_BM_default=1.0):
         super().__init__(ID, ins, outs)
         self.recovery = recovery
         self.removal = removal
         self.OPEX_over_CAPEX = OPEX_over_CAPEX
         self.N_unit = N_unit
+        self.F_BM_default = F_BM_default
 
-        self.equipment = [
-            Electrode('Anode', linked_unit=self, N=1, electrode_type='anode',
-                      material='Boron-doped diamond (BDD) on niobium', surface_area=1, unit_cost=1649.95),
-            Electrode('Cathode', linked_unit=self, N=1, electrode_type='cathode',
-                      material='Stainless Steel 316', surface_area=1, unit_cost=18.00),
-            Membrane('Proton_Exchange_Membrane', linked_unit=self, N=1,
-                     material='Nafion proton exchange membrane', unit_cost=50, surface_area=1)
-        ]
+        # self.equipment = [
+        #     Electrode('Anode', linked_unit=self, N=1, electrode_type='anode',
+        #               material='Boron-doped diamond (BDD) on niobium', surface_area=1, unit_cost=1649.95),
+        #     Electrode('Cathode', linked_unit=self, N=1, electrode_type='cathode',
+        #               material='Stainless Steel 316', surface_area=1, unit_cost=18.00),
+        #     Membrane('Proton_Exchange_Membrane', linked_unit=self, N=1,
+        #              material='Nafion proton exchange membrane', unit_cost=50, surface_area=1)
+        #]
 
     def _run(self): 
            HTL_aqueous, catalysts = self.ins
+           #aqueous_flowrate = HTL_aqueous.imass['Aqueous flowrate']
            recovered, removed, residual = self.outs
 
-         # Instantiate and mix waste streams
            mixture = qs.WasteStream()
            mixture.mix_from(self.ins)
-
-         # Copy the mixture to the residual stream
            residual.copy_like(mixture)
+           #solids.copy_flow(mixture, IDs=('Ash',))
 
            # Check chemicals present in each stream
            #print("Available chemicals in mixture:", list(mixture.imass.chemicals))
 
-    # Update mass flows based on recovery and removal
            for chemical in set(self.recovery.keys()).union(set(self.removal.keys())):
              if chemical in mixture.imass.chemicals:
                 recovery_amount = mixture.imass[chemical] * self.recovery.get(chemical, 0)
@@ -804,15 +807,11 @@ class ElectrochemicalOxidation(qs.SanUnit):
 
 
     def _design(self):
+        self.design_results['Aqueous flowrate'] = self.F_mass_in
+        self.parallel['self'] = self.N_unit
         self.add_equipment_design()
 
-    def _cost(self):
-        self.add_equipment_cost()
-        self.baseline_purchase_costs['Exterior'] = 80.0
-        self.equip_costs = self.baseline_purchase_costs.values()
-        add_OPEX = sum(self.equip_costs) * self.OPEX_over_CAPEX
-        self._add_OPEX = {'Additional OPEX': add_OPEX}
-
+  
     @property
     def N_unit(self):
         return self._N_unit
@@ -820,7 +819,6 @@ class ElectrochemicalOxidation(qs.SanUnit):
     @N_unit.setter
     def N_unit(self, i):
         self.parallel['self'] = self._N_unit = math.ceil(i)
-
 
 
 # %%
@@ -867,6 +865,7 @@ class Transportation(SanUnit):
     def _run(self):
         inf, surrogate = self.ins
         eff = self.outs[0]
+        
         if self.copy_ins_from_outs is False:
             eff.copy_like(inf)
         else:
@@ -874,7 +873,10 @@ class Transportation(SanUnit):
         
         surrogate.copy_like(inf)
         surrogate.F_mass *= self.N_unit
-        surrogate.price = self.transportation_cost
+
+        # Calculate the total transportation cost based on mass and distance
+        transport_cost = surrogate.F_mass * self.transportation_cost * self.transportation_distance
+        #surrogate.transport_cost = transport_cost
 
     
 class Disposal(SanUnit):
