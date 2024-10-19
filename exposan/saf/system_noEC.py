@@ -331,7 +331,8 @@ GasolineDis = qsu.ShortcutColumn(
     k=2, is_divided=True)
 # Lr_range = Hr_range = np.linspace(0.05, 0.95, 19)
 # Lr_range = Hr_range = np.linspace(0.01, 0.2, 20)
-# results_df, Lr, Hr = find_Lr_Hr(GasolineDis, Lr_trial_range=Lr_range, Hr_trial_range=Hr_range, target_light_frac=oil_fracs[0])
+# results = find_Lr_Hr(GasolineDis, Lr_trial_range=Lr_range, Hr_trial_range=Hr_range, target_light_frac=oil_fracs[0])
+# results_df, Lr, Hr = results
 
 GasolineFlash = qsu.Flash('GasolineFlash', ins=GasolineDis-0, outs=('', 'cooled_gasoline',),
                           T=298.15, P=101325)
@@ -346,7 +347,8 @@ JetDis = qsu.ShortcutColumn(
     k=2, is_divided=True)
 # Lr_range = Hr_range = np.linspace(0.05, 0.95, 19)
 # Lr_range = Hr_range = np.linspace(0.01, 0.2, 20)
-# results_df, Lr, Hr = find_Lr_Hr(JetDis, Lr_trial_range=Lr_range, Hr_trial_range=Hr_range, target_light_frac=oil_fracs[1]/(1-oil_fracs[0]))
+# results = find_Lr_Hr(JetDis, Lr_trial_range=Lr_range, Hr_trial_range=Hr_range, target_light_frac=oil_fracs[1]/(1-oil_fracs[0]))
+# results_df, Lr, Hr = results
 
 JetFlash = qsu.Flash('JetFlash', ins=JetDis-0, outs=('', 'cooled_jet',), T=298.15, P=101325)
 

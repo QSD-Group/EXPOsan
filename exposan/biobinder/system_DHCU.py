@@ -34,7 +34,8 @@ from exposan.biobinder import (
     _load_components,
     _load_process_settings,
     create_tea,
-    _units as u
+    _units as u,
+    find_Lr_Hr,
     )
 
 
@@ -168,6 +169,7 @@ BiocrudeAshScaler = u.Scaler(
 
 BiocrudeDewatering = u.BiocrudeDewatering(
     'BiocrudeDewatering', ins=BiocrudeDeashing-0, outs=('dewatered_biocrude', 'biocrude_water'),
+    target_moisture=0.001, #!!! so that FracDist can work
     N_unit=N_decentralized_HTL,)
 
 BiocrudeWaterScaler = u.Scaler(
@@ -205,8 +207,13 @@ FracDist = u.ShortcutColumn(
     k=2, is_divided=True)
 @FracDist.add_specification
 def adjust_LHK():
-    FracDist.LHK = (BiocrudeSplitter.light_key, BiocrudeSplitter.heavy_key)
+    FracDist.LHK = BiocrudeSplitter.keys[0]
     FracDist._run()
+    
+# Lr_range = Hr_range = np.linspace(0.05, 0.95, 19)
+# Lr_range = Hr_range = np.linspace(0.01, 0.2, 20)
+# results = find_Lr_Hr(FracDist, Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
+# results_df, Lr, Hr = results
 
 LightFracStorage = qsu.StorageTank(
     'LightFracStorage',
