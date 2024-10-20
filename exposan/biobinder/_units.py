@@ -857,7 +857,9 @@ class ElectrochemicalOxidation(qs.SanUnit):
 
 class Transportation(SanUnit):    
     '''
-    To account for transportation cost.
+    To account for transportation cost using the price of the surrogate stream.
+    The surrogate stream total mass is set to the total feedstock mass (accounting for `N_unit`),
+    the price is set to `transportation_distance*transportation_distance`.
     
     Parameters
     ----------
