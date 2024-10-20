@@ -376,8 +376,8 @@ scaled_feedstock.price = -69.14/907.185 # tipping fee 69.14±21.14 for IL, https
 # Use bst.HeatUtility.cooling_agents/heating_agents to see all the heat utilities
 Seider_factor = PCE_indices[cost_year]/PCE_indices[2016]
 
-transport_cost = 64.1/1e3 * PCE_indices[cost_year]/PCE_indices[2016] # $/kg/km PNNL 32731
-transport_cost = FeedstockTrans.transportation_cost + BiocrudeTrans.transportation_cost
+trans_unit_cost = 64.1/1e3 * PCE_indices[cost_year]/PCE_indices[2016] # $/kg/km PNNL 32731
+# FeedstockTrans.transportation_unit_cost = BiocrudeTrans.transportation_unit_cost = trans_unit_cost
 
 ProcessWaterCenter.process_water_price = 0.8/1e3/3.785*Seider_factor # process water for moisture adjustment
 

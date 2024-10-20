@@ -48,8 +48,11 @@ from exposan.saf import (
 _psi_to_Pa = 6894.76
 _m3_to_gal = 264.172
 
+cost_year = 2020
+
 # All in 2020 $/kg unless otherwise noted
 price_dct = {
+    'feedstock': -69.14/907.185, # tipping fee 69.14±21.14 for IL, https://erefdn.org/analyzing-municipal-solid-waste-landfill-tipping-fees/
     'H2': 1.61, # Feng et al.
     'HCcatalyst': 3.52, # Fe-ZSM5, CatCost modified from ZSM5
     'HTcatalyst': 75.18, # Pd/Al2O3, CatCost modified from 2% Pt/TiO2
@@ -71,7 +74,7 @@ flowsheet = qs.Flowsheet(flowsheet_ID)
 qs.main_flowsheet.set_flowsheet(flowsheet)
 saf_cmps = create_components(set_thermo=True)
 
-feedstock = qs.Stream('feedstock')
+feedstock = qs.WasteStream('feedstock', price=price_dct['feedstock'])
 feedstock_water = qs.Stream('feedstock_water', Water=1)
 
 FeedstockTrans = bbu.Transportation(
@@ -80,6 +83,7 @@ FeedstockTrans = bbu.Transportation(
     outs=('transported_feedstock',),
     N_unit=1,
     copy_ins_from_outs=True,
+    transportation_unit_cost=50/1e3/78, # $50/tonne, #!!! need to adjust from 2016 to 2020
     transportation_distance=78, # km ref [1]
     )
 
@@ -188,7 +192,7 @@ CrudeHeavyDis = qsu.ShortcutColumn(
 
 # External H2, will be updated after HT and HC
 H2 = qs.WasteStream('H2', H2=1, price=price_dct['H2'])
-H2splitter= qsu.ReversedSplitter('H2splitter', ins='H2', outs=('HC_H2', 'HT_H2'),
+H2splitter= qsu.ReversedSplitter('H2splitter', ins=H2, outs=('HC_H2', 'HT_H2'),
                             init_with='WasteStream')
 
 # 10 wt% Fe-ZSM
@@ -269,7 +273,7 @@ HCliquidSplitter = qsu.Splitter('HCliquidSplitter', ins=HCpump-0,
 # =============================================================================
 
 # Pd/Al2O3
-HTcatalyst_in = qs.WasteStream('HCcatalyst_in', HTcatalyst=1, price=price_dct['HTcatalyst'])
+HTcatalyst_in = qs.WasteStream('HTcatalyst_in', HTcatalyst=1, price=price_dct['HTcatalyst'])
 
 # Light (gasoline, <C8): medium (jet, C8-C14): heavy (diesel, >C14)
 oil_fracs = (0.2143, 0.5638, 0.2066)
@@ -310,7 +314,7 @@ HT_HX = qsu.HXutility('HT_HX',ins=HT-0, outs='cooled_HT_eff', T=60+273.15,
 HT_IV = IsenthalpicValve('HT_IV', ins=HT_HX-0, outs='cooled_depressed_HT_eff',
                          P=717.4*_psi_to_Pa, vle=True)
 
-HTflash = qsu.Flash('HTflash', ins=HT_IV-0, outs=('HT_fuel_gas','HT_oil'),
+HTflash = qsu.Flash('HTflash', ins=HT_IV-0, outs=('HT_fuel_gas','HT_liquid'),
                     T=43+273.15, P=55*_psi_to_Pa)
 
 HTpump = qsu.Pump('HTpump', ins=HTflash-1, init_with='Stream')
@@ -319,7 +323,6 @@ HTpump = qsu.Pump('HTpump', ins=HTflash-1, init_with='Stream')
 HTliquidSplitter = qsu.Splitter('HTliquidSplitter', ins=HTpump-0,
                                 outs=('HT_ww','HT_oil'),
                                 split={'H2O':1}, init_with='Stream')
-
 
 # Separate gasoline from jet and diesel
 GasolineDis = qsu.ShortcutColumn(

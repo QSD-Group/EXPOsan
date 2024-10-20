@@ -868,8 +868,8 @@ class Transportation(SanUnit):
         Mixture of the influent streams to be transported.        
     transportation_distance : float
         Transportation distance in km.
-    transportation_cost : float
-        Transportation cost in $/kg.
+    transportation_unit_cost : float
+        Transportation cost in $/kg/km.
     N_unit : int
         Number of required filtration unit.
     copy_ins_from_outs : bool
@@ -882,14 +882,14 @@ class Transportation(SanUnit):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                   init_with='WasteStream', F_BM_default=1,
                   transportation_distance=0,
-                  transportation_cost=0,
+                  transportation_unit_cost=0,
                   N_unit=1,
                   copy_ins_from_outs=False,
                   **kwargs,
                   ):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
         self.transportation_distance = transportation_distance
-        self.transportation_cost = transportation_cost
+        self.transportation_unit_cost = transportation_unit_cost
         self.N_unit = N_unit
         self.copy_ins_from_outs = copy_ins_from_outs
         for kw, arg in kwargs.items(): setattr(self, kw, arg)
@@ -906,9 +906,10 @@ class Transportation(SanUnit):
         surrogate.copy_like(inf)
         surrogate.F_mass *= self.N_unit
 
-        # Calculate the total transportation cost based on mass and distance
-        transport_cost = surrogate.F_mass * self.transportation_cost * self.transportation_distance
-        #surrogate.transport_cost = transport_cost
+    def _cost(self):
+        # Use the surrogate price to account for transportation cost
+        self.ins[1].price = self.transportation_unit_cost * self.transportation_distance
+        
 
     
 class Disposal(SanUnit):
