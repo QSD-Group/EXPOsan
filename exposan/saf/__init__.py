@@ -43,8 +43,8 @@ def _load_components(reload=False):
 # from . import _process_settings
 # from ._process_settings import *
 
-# from . import _units
-# from ._units import *
+from . import _units
+from ._units import *
 
 # from . import _tea
 # from ._tea import *

@@ -49,19 +49,20 @@ _m3_to_gal = 264.172
 
 cost_year = 2020
 
-# All in 2020 $/kg unless otherwise noted
+# All in 2020 $/kg unless otherwise noted, needs to do a thorough check to update values
+bst_utility_price = bst.stream_utility_prices
 price_dct = {
     'feedstock': -69.14/907.185, # tipping fee 69.14±21.14 for IL, https://erefdn.org/analyzing-municipal-solid-waste-landfill-tipping-fees/
     'H2': 1.61, # Feng et al.
     'HCcatalyst': 3.52, # Fe-ZSM5, CatCost modified from ZSM5
     'HTcatalyst': 75.18, # Pd/Al2O3, CatCost modified from 2% Pt/TiO2
     'natural_gas': 0.1685,
-    'process_water': 0,
+    'process_water': bst_utility_price['Process water'],
     'gasoline': 2.5, # target $/gal
     'jet': 3.53, # 2024$/gal
     'diesel': 3.45, # 2024$/gal
-    'solids': -0,
-    'wastewater': -0, #!!! need to update
+    'solids': bst_utility_price['Ash disposal'],
+    'wastewater': -0.03/1e3, # $0.03/m3
     }
 
 # %%
@@ -155,14 +156,15 @@ CrudeSplitter = bbu.BiocrudeSplitter(
 
 # Separate water from organics
 CrudeLightDis = qsu.ShortcutColumn(
-    'CrudeDis', ins=CrudeSplitter-0,
+    'CrudeLightDis', ins=CrudeSplitter-0,
     outs=('crude_light','crude_medium_heavy'),
     LHK=CrudeSplitter.keys[0],
     P=50*_psi_to_Pa,
     Lr=0.87,
     Hr=0.98,
     k=2, is_divided=True)
-# results_df, Lr, Hr = find_Lr_Hr(CrudeLightDis, target_light_frac=crude_fracs[0])
+# results = find_Lr_Hr(CrudeLightDis, target_light_frac=crude_fracs[0])
+# results_df, Lr, Hr = results
 
 CrudeLightFlash = qsu.Flash('CrudeLightFlash', ins=CrudeLightDis-0,
                             T=298.15, P=101325,)
@@ -170,6 +172,7 @@ CrudeLightFlash = qsu.Flash('CrudeLightFlash', ins=CrudeLightDis-0,
 HTLaqMixer = qsu.Mixer('HTLaqMixer', ins=(HTL-1, CrudeLightFlash-1), outs='HTL_aq')
 
 # Separate biocrude from char
+#!!! Effluent temp is very high, need to do a thorough check of the stream properties
 CrudeHeavyDis = qsu.ShortcutColumn(
     'CrudeHeavyDis', ins=CrudeLightDis-1,
     outs=('crude_medium','char'),
@@ -178,8 +181,8 @@ CrudeHeavyDis = qsu.ShortcutColumn(
     Lr=0.89,
     Hr=0.85,
     k=2, is_divided=True)
-# results_df, Lr, Hr = find_Lr_Hr(CrudeHeavyDis, target_light_frac=crude_fracs[1]/(1-crude_fracs[0]))
-    
+# results = find_Lr_Hr(CrudeHeavyDis, target_light_frac=crude_fracs[1]/(1-crude_fracs[0]))
+# results_df, Lr, Hr = results
 
 # =============================================================================
 # Hydrocracking
@@ -437,8 +440,17 @@ sys = qs.System.from_units(
     )
 for unit in sys.units: unit.include_construction = False
 
-tea = create_tea(sys, IRR_value=0.1, income_tax_value=0.21, finance_interest_value=0.08,
-                  labor_cost_value=1.81*10**6)
+tea = create_tea(
+    sys,
+    IRR=0.1,
+    duration=(2020, 2050),
+    income_tax=0.21,
+    finance_interest=0.08,
+    warehouse=0.04,
+    site_development=0.1,
+    additional_piping=0.045,
+    labor_cost=1.81*10**6,
+    )
 
 # lca = qs.LCA(
 #     system=sys,
@@ -492,7 +504,6 @@ def simulate_and_print(save_report=False):
 '''
 TODOs:
     1. Add internal HX in hydroprocessing.
-    2. Check utilities.
 '''
 
 
