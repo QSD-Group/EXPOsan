@@ -26,8 +26,7 @@ References
 # warnings.filterwarnings('ignore')
 
 import os, numpy as np, biosteam as bst, qsdsan as qs
-from biosteam.units import IsenthalpicValve
-from biosteam import settings
+from biosteam import settings, IsenthalpicValve, BoilerTurbogenerator
 from qsdsan import sanunits as qsu
 from qsdsan.utils import clear_lca_registries
 from exposan.htl import (
@@ -56,7 +55,7 @@ price_dct = {
     'H2': 1.61, # Feng et al.
     'HCcatalyst': 3.52, # Fe-ZSM5, CatCost modified from ZSM5
     'HTcatalyst': 75.18, # Pd/Al2O3, CatCost modified from 2% Pt/TiO2
-    'nature_gas': 0.1685,
+    'natural_gas': 0.1685,
     'process_water': 0,
     'gasoline': 2.5, # target $/gal
     'jet': 3.53, # 2024$/gal
@@ -116,17 +115,13 @@ MixedFeedstockPump = qsu.Pump('MixedFeedstockPump', ins=FeedstockCond-0)
 # =============================================================================
 # Hydrothermal Liquefaction (HTL)
 # =============================================================================
-HTLpreheater = qsu.HXutility(
-    'HTLpreheater',
-    ins=MixedFeedstockPump-0, outs='heated_feedstock', T=200+273.15,
-    U=0.0198739, init_with='Stream', rigorous=True
-    )
 
 HTL = u.HydrothermalLiquefaction(
-    'HTL', ins=HTLpreheater-0,
+    'HTL', ins=MixedFeedstockPump-0,
     outs=('','','HTL_crude','HTL_char'),
     T=280+273.15,
-    # P=12.4e6, # pressure dictated by temperature
+    P=12.4e6, # may lead to HXN error when HXN is included
+    # P=101325, # setting P to ambient pressure not practical, but it has minimum effects on the results (several cents)
     tau=15/60,
     dw_yields={
         'gas': 0.006,
@@ -138,6 +133,9 @@ HTL = u.HydrothermalLiquefaction(
     aqueous_composition={'HTLaqueous': 1},
     biocrude_composition={'Biocrude': 1},
     char_composition={'HTLchar': 1},
+    internal_heat_exchanging=True,
+    # internal_heat_exchanging=False,
+    eff_T=None,
     )
 HTL.register_alias('HydrothermalLiquefaction')
 
@@ -169,7 +167,6 @@ CrudeLightDis = qsu.ShortcutColumn(
 CrudeLightFlash = qsu.Flash('CrudeLightFlash', ins=CrudeLightDis-0,
                             T=298.15, P=101325,)
                             # thermo=settings.thermo.ideal())
-HTLgasMixer = qsu.Mixer('HTLgasMixer', ins=(HTL-0, CrudeLightFlash-0), outs='HTL_gas')
 HTLaqMixer = qsu.Mixer('HTLaqMixer', ins=(HTL-1, CrudeLightFlash-1), outs='HTL_aq')
 
 # Separate biocrude from char
@@ -391,19 +388,17 @@ DieselTank = qsu.StorageTank('DieselTank', ins=DieselPC-0, outs=(diesel,),
 mixed_fuel = qs.WasteStream('mixed_fuel')
 FuelMixer = qsu.Mixer('FuelMixer', ins=(GasolineTank-0, JetTank-0, DieselTank-0), outs=mixed_fuel)
 
-# Gas emissions
-WasteGasMixer = qsu.Mixer('WasteGasMixer', ins=(HTLgasMixer-0,),
-                      outs=('gas_emissions'), init_with='Stream')
-
-# All fuel gases sent to CHP for heat generation
-FuelGasMixer = qsu.Mixer('FuelGasMixer',
-                         ins=(HCflash-0, HTflash-0, GasolineFlash-0, JetFlash-0,),
-                         outs=('fuel_gas'), init_with='Stream')
+GasMixer = qsu.Mixer('GasMixer',
+                     ins=(
+                         HTL-0, CrudeLightFlash-0, # HTL gases
+                         HCflash-0, HTflash-0, GasolineFlash-0, JetFlash-0, # fuel gases
+                         ),
+                      outs=('waste_gases'), init_with='Stream')
 # Run this toward the end to make sure H2 flowrate can be updated
-@FuelGasMixer.add_specification
+@GasMixer.add_specification
 def update_H2_flow():
     H2splitter._run()
-    FuelGasMixer._run()
+    GasMixer._run()
 
 # All wastewater, assumed to be sent to municipal wastewater treatment plant
 wastewater = qs.WasteStream('wastewater', price=price_dct['wastewater'])
@@ -411,24 +406,27 @@ WWmixer = qsu.Mixer('WWmixer',
                     ins=(HTLaqMixer-0, HCliquidSplitter-0, HTliquidSplitter-0),
                     outs=wastewater, init_with='Stream')
 
-# All solids, assumed to be disposed to landfill
-disposed_solids = qs.WasteStream('solids', price=price_dct['solids'])
-SolidsMixer = qsu.Mixer('SolidsMixer', ins=CrudeHeavyDis-1,
-                    outs=disposed_solids, init_with='Stream')
-
 # =============================================================================
 # Facilities
 # =============================================================================
 
-HXN = qsu.HeatExchangerNetwork('HXN', T_min_app=86, force_ideal_thermo=True)
+# Adding HXN only saves cents/GGE with HTL internal HX, eliminate for simpler system
+# HXN = qsu.HeatExchangerNetwork('HXN', T_min_app=86, force_ideal_thermo=True)
 # 86 K: Jones et al. PNNL, 2014
 
-nature_gas = qs.WasteStream('nature_gas', CH4=1, price=price_dct['nature_gas'])
+natural_gas = qs.WasteStream('nature_gas', CH4=1, price=price_dct['natural_gas'])
+disposed_solids = qs.WasteStream('solids', price=price_dct['solids'])
+CHPMixer = qsu.Mixer('CHPMixer', ins=(GasMixer-0, CrudeHeavyDis-1))
 CHP = qsu.CombinedHeatPower('CHP', 
-                            ins=(FuelGasMixer-0, 'natural_gas', 'air'),
-                            outs=('emission','solid_ash'), init_with='WasteStream',
+                            ins=(CHPMixer-0, natural_gas, 'air'),
+                            outs=('gas_emissions', disposed_solids),
+                            init_with='WasteStream',
                             supplement_power_utility=False)
 
+PWC = bbu.ProcessWaterCenter('PWC', process_water_streams=[feedstock_water],)
+PWC.register_alias('ProcessWaterCenter')
+PWC.process_water_price = price_dct['process_water']
+    
 
 # %%
 
@@ -493,9 +491,8 @@ def simulate_and_print(save_report=False):
 
 '''
 TODOs:
-    1. Add an HX between HTL preheater and HTL effluent.
-    2. Check Boiler vs. CHP.
-    3. Check utilities.
+    1. Add internal HX in hydroprocessing.
+    2. Check utilities.
 '''
 
 

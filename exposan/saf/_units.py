@@ -16,7 +16,7 @@ for license details.
 from biosteam.units.decorators import cost
 from biosteam.units.design_tools import CEPCI_by_year
 from qsdsan import SanUnit, Stream
-from qsdsan.sanunits import Reactor, IsothermalCompressor, HXutility
+from qsdsan.sanunits import Reactor, IsothermalCompressor, HXutility, HXprocess
 
 __all__ = (
     'HydrothermalLiquefaction',
@@ -121,9 +121,9 @@ class HydrothermalLiquefaction(Reactor):
     outs : Iterable(stream)
         Gas, aqueous, biocrude, char.
     T : float
-        Temperature of the HTL reaction, K.
+        Temperature of the HTL reaction, [K].
     P : float
-        Pressure of the HTL reaction, Pa.
+        Pressure when the reaction is at temperature, [Pa].
     dw_yields : dict
         Dry weight percentage yields of the four products (gas, aqueous, biocrude, char),
         will be normalized to 100% sum.
@@ -137,10 +137,11 @@ class HydrothermalLiquefaction(Reactor):
         Composition of the biocrude products INCLUDING water, will be normalized to 100% sum.
     char_composition : dict
         Composition of the char products INCLUDING water, will be normalized to 100% sum.
-    eff_T: float
-        HTL effluent temperature, K.
-    eff_P: float
-        HTL effluent pressure, Pa.
+    eff_T: Iterable(float)
+        HTL effluent temperature [K],
+        if provided, will use an additional HX to control effluent temperature.
+    internal_heat_exchanging : bool
+        If to use product to preheat feedstock.
     CAPEX_factor: float
         Factor used to adjust the total installed cost,
         this is on top of all other factors to individual equipment of this unit
@@ -181,7 +182,7 @@ class HydrothermalLiquefaction(Reactor):
     _units= {'Mass flow': 'lb/h',
              'Solid filter and separator weight': 'lb'}
     
-    auxiliary_unit_names=('inf_hx', 'eff_hx','kodrum')
+    auxiliary_unit_names=('hx', 'inf_heating_hx', 'eff_cooling_hx','kodrum')
 
     _F_BM_default = {
         **Reactor._F_BM_default,
@@ -193,7 +194,7 @@ class HydrothermalLiquefaction(Reactor):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', include_construction=False,
                  T=280+273.15,
-                 P=101325,
+                 P=None,
                  dw_yields={
                      'gas': 0,
                      'aqueous': 0,
@@ -204,8 +205,8 @@ class HydrothermalLiquefaction(Reactor):
                  aqueous_composition={'HTLaqueous': 1},
                  biocrude_composition={'HTLbiocrude': 1},
                  char_composition={'HTLchar': 1},
-                 eff_T=60+273.15, # [4]
-                 eff_P=30*6894.76, # [4], all set to 30 psi
+                 internal_heat_exchanging=True,
+                 eff_T=None,
                  tau=15/60, V_wf=0.45,
                  length_to_diameter=None,
                  diameter=6.875*_in_to_m,
@@ -226,16 +227,21 @@ class HydrothermalLiquefaction(Reactor):
         self.aqueous_composition = aqueous_composition
         self.biocrude_composition = biocrude_composition
         self.char_composition = char_composition
-        inf_hx_in = Stream(f'{ID}_inf_hx_in')
+        self.internal_heat_exchanging = internal_heat_exchanging
+        inf_pre_hx = Stream(f'{ID}_inf_pre_hx')
+        eff_pre_hx = Stream(f'{ID}_eff_pre_hx')
+        inf_after_hx = Stream(f'{ID}_inf_after_hx')
+        eff_after_hx = Stream(f'{ID}_eff_after_hx')
+        self.hx = HXprocess(ID=f'.{ID}_hx',
+                            ins=(inf_pre_hx, eff_pre_hx),
+                            outs=(inf_after_hx, eff_after_hx))
         inf_hx_out = Stream(f'{ID}_inf_hx_out')
-        self.inf_hx = HXutility(ID=f'.{ID}_inf_hx', ins=inf_hx_in, outs=inf_hx_out, T=T, rigorous=True)
-        eff_hx_in = Stream(f'{ID}_eff_hx_in')
+        self.inf_heating_hx = HXutility(ID=f'.{ID}_inf_heating_hx', ins=inf_after_hx, outs=inf_hx_out, T=T, rigorous=True)
         eff_hx_out = Stream(f'{ID}_eff_hx_out')
         self._eff_at_temp = Stream(f'{ID}_eff_at_temp')
-        self.eff_hx = HXutility(ID=f'.{ID}_eff_hx', ins=eff_hx_in, outs=eff_hx_out, T=eff_T, rigorous=True)
-        self.kodrum = KnockOutDrum(ID=f'.{ID}_KOdrum')
         self.eff_T = eff_T
-        self.eff_P = eff_P
+        self.eff_cooling_hx = HXutility(ID=f'.{ID}_eff_cooling_hx', ins=eff_after_hx, outs=eff_hx_out, T=eff_T, rigorous=True)
+        self.kodrum = KnockOutDrum(ID=f'.{ID}_KOdrum')
         self.tau = tau
         self.V_wf = V_wf
         self.length_to_diameter = length_to_diameter
@@ -271,37 +277,57 @@ class HydrothermalLiquefaction(Reactor):
         char.F_mass = tot_dw * dw_yields['char']
         aq.imass['Water'] = feed.imass['Water'] - sum(i.imass['Water'] for i in (gas, crude, char))
         
+        for i in outs:
+            i.T = self.T
+            i.P = self.P
+        
         self._eff_at_temp.mix_from(outs)
         
         gas.phase = 'g'
         char.phase = 's'
         aq.phase = crude.phase = 'l'
         
-        for i in outs:
-            i.T = self.eff_T
-            i.P = self.eff_P
+        eff_T = self.eff_T
+        if eff_T:
+            for i in self.outs: i.T = eff_T
+
     
     def _design(self):
         Design = self.design_results
         Design['Mass flow'] = self.ins[0].F_mass/_lb_to_kg
+        hx = self.hx
+        inf_heating_hx = self.inf_heating_hx
+        inf_hx_in, inf_hx_out = inf_heating_hx.ins[0], inf_heating_hx.outs[0]
         
-        feed = self.ins[0]
-        
-        # Influent heating to HTL conditions
-        inf_hx = self.inf_hx
-        inf_hx_in, inf_hx_out = inf_hx.ins[0], inf_hx.outs[0]
-        inf_hx_in.copy_like(feed)
+        if self.internal_heat_exchanging:
+            # Use HTL product to heat up influent
+            inf_pre_hx, eff_pre_hx = hx.ins
+            inf_pre_hx.copy_like(self.ins[0])
+            eff_pre_hx.copy_like(self._eff_at_temp)
+            hx.simulate()
+    
+            # Additional heating, if needed
+            inf_hx_in.copy_like(hx.outs[0])
+            inf_hx_out.copy_flow(inf_hx_in)
+        else:
+            hx.empty()
+            # Influent heating to HTL conditions
+            inf_hx_in.copy_like(self.ins[0])
+
         inf_hx_out.copy_flow(inf_hx_in)
         inf_hx_out.T = self.T
         inf_hx_out.P = self.P # this may lead to HXN error, when at pressure
-        inf_hx.simulate_as_auxiliary_exchanger(ins=inf_hx.ins, outs=inf_hx.outs)
-        
-        # Effluent cooling to near ambient conditions
-        eff_hx = self.eff_hx
-        eff_hx_in, eff_hx_out = eff_hx.ins[0], eff_hx.outs[0]
-        eff_hx_in.copy_like(self._eff_at_temp)
-        eff_hx_out.mix_from(self.outs)
-        eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs)
+        inf_heating_hx.simulate_as_auxiliary_exchanger(ins=inf_heating_hx.ins, outs=inf_heating_hx.outs)
+            
+        # Additional cooling, if needed
+        eff_cooling_hx = self.eff_cooling_hx        
+        if self.eff_T:
+            eff_hx_in, eff_hx_out = eff_cooling_hx.ins[0], eff_cooling_hx.outs[0]
+            eff_hx_in.copy_like(self._eff_at_temp)
+            eff_hx_out.mix_from(self.outs)
+            eff_cooling_hx.simulate_as_auxiliary_exchanger(ins=eff_cooling_hx.ins, outs=eff_cooling_hx.outs)
+        else:
+            eff_cooling_hx.empty()
         
         Reactor._design(self)
         Design['Solid filter and separator weight'] = 0.2*Design['Weight']*Design['Number of reactors'] # assume stainless steel
@@ -538,6 +564,7 @@ class Hydroprocessing(Reactor):
         hydrogen.phase = 'g'
 
         eff_oil.copy_like(inf_oil)
+        eff_oil.phase = inf_oil.phase
         eff_oil.empty()
         eff_oil.imass[self.eff_composition.keys()] = self.eff_composition.values()
         eff_oil.F_mass = inf_oil.F_mass*(1 + hydrogen_rxned_to_inf_oil)
@@ -560,12 +587,12 @@ class Hydroprocessing(Reactor):
         
         hx = self.heat_exchanger
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
+        hx_ins0.phase = 'l' # will be mixed phases from previous run
         hx_ins0.mix_from(self.ins)
         hx_outs0.copy_like(hx_ins0)
         hx_outs0.T = self.T
         hx_ins0.P = hx_outs0.P = IC_outs0.P
-        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
-        
+        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)        
         V_oil = self.ins[0].F_vol
         V_H2 = H2.F_vol*(H2.P/self.P)
         self.V_wf = self._V_wf*V_oil/(V_oil + V_H2) # account for the added H2
@@ -708,7 +735,6 @@ class PressureSwingAdsorption:
     def _run(self):
         H2, others = self.outs       
         others.mix_from(self.ins)
-        
         H2.imass['H2'] = recovered = others.imass['H2'] * self.efficiency
         others.imass['H2'] -= recovered
         
