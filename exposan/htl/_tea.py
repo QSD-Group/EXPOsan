@@ -119,7 +119,7 @@ class HTL_TEA(TEA):
     
     @property
     def ISBL_installed_equipment_cost(self):
-        return self._ISBL_DPI(self.DPI)
+        return self.installed_equipment_cost - self.OSBL_installed_equipment_cost
     
     @property
     def OSBL_installed_equipment_cost(self):
@@ -157,12 +157,12 @@ class HTL_TEA(TEA):
         if self.lang_factor:
             raise NotImplementedError('lang factor cannot yet be used')
         else:
-            self._ISBL_DPI_cached = installed_equipment_cost - self.OSBL_installed_equipment_cost
+            factors = self.warehouse + self.site_development + self.additional_piping
+            self._ISBL_DPI_cached = self.ISBL_installed_equipment_cost * (1+factors)
         return self._ISBL_DPI_cached
         
     def _DPI(self, installed_equipment_cost):
-        factors = self.warehouse + self.site_development + self.additional_piping
-        return installed_equipment_cost + self._ISBL_DPI(installed_equipment_cost) * factors
+        return self.OSBL_installed_equipment_cost + self._ISBL_DPI(installed_equipment_cost)
     
     def _indirect_costs(self, TDC):
         return TDC*(self.proratable_costs + self.field_expenses
@@ -175,7 +175,7 @@ class HTL_TEA(TEA):
     
     def _FOC(self, FCI):
         return (FCI * self.property_insurance
-                + self._ISBL_DPI_cached * self.maintenance
+                + self.ISBL_installed_equipment_cost * self.maintenance
                 + self.labor_cost * (1 + self.labor_burden))
 
 
@@ -259,11 +259,12 @@ def foc_table(teas, names=None):
     tea, *_ = teas
     foc = bst.report.FOCTableBuilder()
     ISBL = np.array([i.ISBL_installed_equipment_cost / 1e6 for i in teas])
+    FCI = np.array([i.FCI / 1e6 for i in teas])
     labor_cost = np.array([i.labor_cost / 1e6 for i in teas])
     foc.entry('Labor salary', labor_cost)
     foc.entry('Labor burden', tea.labor_burden * labor_cost, '90% of labor salary')
     foc.entry('Maintenance', tea.maintenance * ISBL, f'{tea.maintenance:.1%} of ISBL')
-    foc.entry('Property insurance', tea.property_insurance * ISBL, f'{tea.property_insurance:.1%} of ISBL')
+    foc.entry('Property insurance', tea.property_insurance * FCI, f'{tea.property_insurance:.1%} of FCI')
     if names is None: names = [i.system.ID for i in teas]
     names = [i + ' MM$/yr' for i in names]
     return foc.table(names)
