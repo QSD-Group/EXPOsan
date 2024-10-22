@@ -463,17 +463,19 @@ tea = create_tea(
 #     Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
 #     )
 
-_GGE = 46.52 # MJ/kg
+_HHV_per_GGE = 46.52*2.82 # MJ/gal
 # DOE properties
 # https://h2tools.org/hyarc/calculator-tools/lower-and-higher-heating-values-fuels
 # Conventional Gasoline: HHV=46.52 MJ/kg, rho=2.82 kg/gal
 # U.S. Conventional Gasoline: HHV=45.76 MJ/kg, rho=3.17 kg/gal
 
+# Gasoline gallon equivalent
+get_GGE = lambda fuel, annual=True: fuel.HHV/1e3/_HHV_per_GGE*max(1, bool(annual)*sys.operating_hours)
+
 def get_fuel_properties(fuel):
     HHV = fuel.HHV/fuel.F_mass/1e3 # MJ/kg
     rho = fuel.rho/_m3_to_gal # kg/gal
-    GGEeq = fuel.F_mass * HHV/_GGE
-    return HHV, rho, GGEeq
+    return HHV, rho, get_GGE(fuel, annual=False)
 
 def simulate_and_print(save_report=False):
     sys.simulate()
@@ -484,11 +486,12 @@ def simulate_and_print(save_report=False):
     print('Fuel properties')
     print('---------------')
     for fuel, prop in properties.items():
-        print(f'{fuel.ID}: {prop[0]:.2f} MJ/kg, {prop[1]:.2f} kg/gal, {prop[2]:.2f} GGE/hr.')
+        print(f'{fuel.ID}: {prop[0]:.2f} MJ/kg, {prop[1]:.2f} kg/gal, {prop[2]:.2f} gal GGE/hr.')
     
     mixed_fuel.price = tea.solve_price(mixed_fuel)
-    fuel_price = mixed_fuel.price*(mixed_fuel.rho/_m3_to_gal)
-    print(f'Minimum selling price of all fuel is ${fuel_price:.2f}/GGE.')
+    global MFSP
+    MFSP = mixed_fuel.cost/get_GGE(mixed_fuel, False)
+    print(f'Minimum selling price of all fuel is ${MFSP:.2f}/GGE.')
     
     c = qs.currency
     for attr in ('NPV','AOC', 'sales', 'net_earnings'):
@@ -499,6 +502,8 @@ def simulate_and_print(save_report=False):
     # GWP = all_impacts['GlobalWarming']/(biobinder.F_mass*lca.system.operating_hours)
     # print(f'Global warming potential of the biobinder is {GWP:.4f} kg CO2e/kg.')
     
+    global table
+    table = tea.get_cashflow_table()
     if save_report:
         # Use `results_path` and the `join` func can make sure the path works for all users
         sys.save_report(file=os.path.join(results_path, f'sys_{flowsheet_ID}.xlsx'))

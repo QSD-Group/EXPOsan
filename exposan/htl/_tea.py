@@ -108,6 +108,11 @@ class HTL_TEA(TEA):
         self.land = land
         
     @property
+    def working_capital(self) -> float:
+        '''Working capital calculated as the sum of WC_over_FCI*FCI and land.'''
+        return self.WC_over_FCI * self.FCI+self.land
+
+    @property
     def steam_power_depreciation(self):
         """[str] 'MACRS' + number of years (e.g. 'MACRS7')."""
         return self._steam_power_depreciation
