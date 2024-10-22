@@ -153,25 +153,30 @@ class HydrothermalLiquefaction(Reactor):
         Guest, J. S.; Strathmann, T. J. Prediction of Microalgae Hydrothermal
         Liquefaction Products from Feedstock Biochemical Composition.
         Green Chem. 2015, 17 (6), 3584–3599. https://doi.org/10.1039/C5GC00574D.
+    
     [2] Li, Y.; Leow, S.; Fedders, A. C.; Sharma, B. K.; Guest, J. S.;
         Strathmann, T. J. Quantitative Multiphase Model for Hydrothermal
         Liquefaction of Algal Biomass. Green Chem. 2017, 19 (4), 1163–1174.
         https://doi.org/10.1039/C6GC03294J.
+    
     [3] Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J.
         Quantitative Evaluation of an Integrated System for Valorization of
         Wastewater Algae as Bio-Oil, Fuel Gas, and Fertilizer Products.
         Environ. Sci. Technol. 2018, 52 (21), 12717–12727.
         https://doi.org/10.1021/acs.est.8b04035.
+    
     [4] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
         Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
         Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
         Process Design and Economics for the Conversion of Algal Biomass to
         Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
         PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
+    
     [5] Matayeva, A.; Rasmussen, S. R.; Biller, P. Distribution of Nutrients and
         Phosphorus Recovery in Hydrothermal Liquefaction of Waste Streams.
         BiomassBioenergy 2022, 156, 106323.
         https://doi.org/10.1016/j.biombioe.2021.106323.
+    
     [6] Knorr, D.; Lukas, J.; Schoen, P. Production of Advanced Biofuels
         via Liquefaction - Hydrothermal Liquefaction Reactor Design:
         April 5, 2013; NREL/SR-5100-60462, 1111191; 2013; p NREL/SR-5100-60462,
@@ -235,12 +240,12 @@ class HydrothermalLiquefaction(Reactor):
         self.hx = HXprocess(ID=f'.{ID}_hx',
                             ins=(inf_pre_hx, eff_pre_hx),
                             outs=(inf_after_hx, eff_after_hx))
-        inf_hx_out = Stream(f'{ID}_inf_hx_out')
-        self.inf_heating_hx = HXutility(ID=f'.{ID}_inf_heating_hx', ins=inf_after_hx, outs=inf_hx_out, T=T, rigorous=True)
-        eff_hx_out = Stream(f'{ID}_eff_hx_out')
+        inf_heating_hx_out = Stream(f'{ID}_inf_heating_hx_out')
+        self.inf_heating_hx = HXutility(ID=f'.{ID}_inf_heating_hx', ins=inf_after_hx, outs=inf_heating_hx_out, T=T, rigorous=True)
         self._eff_at_temp = Stream(f'{ID}_eff_at_temp')
+        eff_cooling_hx_out = Stream(f'{ID}eff_cooling_hx_out')
         self.eff_T = eff_T
-        self.eff_cooling_hx = HXutility(ID=f'.{ID}_eff_cooling_hx', ins=eff_after_hx, outs=eff_hx_out, T=eff_T, rigorous=True)
+        self.eff_cooling_hx = HXutility(ID=f'.{ID}_eff_cooling_hx', ins=eff_after_hx, outs=eff_cooling_hx_out, T=eff_T, rigorous=True)
         self.kodrum = KnockOutDrum(ID=f'.{ID}_KOdrum')
         self.tau = tau
         self.V_wf = V_wf
@@ -295,6 +300,7 @@ class HydrothermalLiquefaction(Reactor):
     def _design(self):
         Design = self.design_results
         Design['Mass flow'] = self.ins[0].F_mass/_lb_to_kg
+
         hx = self.hx
         inf_heating_hx = self.inf_heating_hx
         inf_hx_in, inf_hx_out = inf_heating_hx.ins[0], inf_heating_hx.outs[0]
@@ -455,6 +461,8 @@ class Hydroprocessing(Reactor):
         Composition of the treated oil, will be normalized to 100% sum.
     aqueous_composition: dict
         Composition of the aqueous product, yield will be calculated as 1-gas-oil.
+    internal_heat_exchanging : bool
+        If to use effluent to preheat influent.
     CAPEX_factor: float
         Factor used to adjust the total installed cost,
         this is on top of all other factors to individual equipment of this unit
@@ -472,7 +480,7 @@ class Hydroprocessing(Reactor):
     _N_ins = 3
     _N_outs = 2
     
-    auxiliary_unit_names=('compressor','heat_exchanger',)
+    auxiliary_unit_names=('compressor','hx', 'hx_inf_heating',)
     
     _F_BM_default = {**Reactor._F_BM_default,
                      'Heat exchanger': 3.17,
@@ -502,6 +510,7 @@ class Hydroprocessing(Reactor):
                     'C19H40':0.00497, 'C20H42':0.00033, # combine C20H42 and PHYTANE as C20H42
                     },
                  aqueous_composition={'Water':1},
+                 internal_heat_exchanging=True,
                  tau=15/60, # set to the same as HTL as in [1]
                  V_wf=0.4, # void_fraciton=0.4, # Towler
                  length_to_diameter=2, diameter=None,
@@ -525,17 +534,23 @@ class Hydroprocessing(Reactor):
         self.gas_composition = gas_composition
         self.oil_composition = oil_composition
         self.aqueous_composition = aqueous_composition
-        self.CAPEX_factor = CAPEX_factor
+        self.internal_heat_exchanging = internal_heat_exchanging
         # For H2 compressing
         IC_in = Stream(f'{ID}_IC_in')
         IC_out = Stream(f'{ID}_IC_out')
         self.compressor = IsothermalCompressor(ID=f'.{ID}_IC', ins=IC_in,
                                                outs=IC_out, P=P)
-        # For influent heating
-        self._mixed_in = Stream(f'{ID}_mixed_in')
-        hx_in = Stream(f'{ID}_hx_in')
-        hx_out = Stream(f'{ID}_hx_out')
-        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
+        # For influent heating      
+        inf_pre_hx = Stream(f'{ID}_inf_pre_hx')
+        eff_pre_hx = Stream(f'{ID}_eff_pre_hx')
+        inf_after_hx = Stream(f'{ID}_inf_after_hx')
+        eff_after_hx = Stream(f'{ID}_eff_after_hx')
+        self.hx = HXprocess(ID=f'.{ID}_hx',
+                            ins=(inf_pre_hx, eff_pre_hx),
+                            outs=(inf_after_hx, eff_after_hx))
+        inf_heating_hx_out = Stream(f'{ID}_inf_heating_hx_out')
+        self.inf_heating_hx = HXutility(ID=f'.{ID}_inf_heating_hx', ins=inf_after_hx, outs=inf_heating_hx_out, T=T, rigorous=True)
+        self.CAPEX_factor = CAPEX_factor
         self.tau = tau
         self._V_wf = V_wf # will be adjusted later
         self.length_to_diameter = length_to_diameter
@@ -585,14 +600,30 @@ class Hydroprocessing(Reactor):
         IC_ins0.phase = IC_outs0.phase = 'g'
         IC.simulate()
         
-        hx = self.heat_exchanger
-        hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
-        hx_ins0.phase = 'l' # will be mixed phases from previous run
-        hx_ins0.mix_from(self.ins)
-        hx_outs0.copy_like(hx_ins0)
-        hx_outs0.T = self.T
-        hx_ins0.P = hx_outs0.P = IC_outs0.P
-        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)        
+        hx = self.hx
+        inf_heating_hx = self.inf_heating_hx
+        inf_hx_in, inf_hx_out = inf_heating_hx.ins[0], inf_heating_hx.outs[0]
+        
+        if self.internal_heat_exchanging:
+            # Use HTL product to heat up influent
+            inf_pre_hx, eff_pre_hx = hx.ins
+            inf_pre_hx.copy_like(self.ins[0])
+            eff_pre_hx.copy_like(self.outs[0])
+            hx.simulate()
+    
+            # Additional heating, if needed
+            inf_hx_in.copy_like(hx.outs[0])
+            inf_hx_out.copy_flow(inf_hx_in)
+        else:
+            hx.empty()
+            # Influent heating to HTL conditions
+            inf_hx_in.copy_like(self.ins[0])
+
+        inf_hx_out.copy_flow(inf_hx_in)
+        inf_hx_out.T = self.T
+        inf_hx_out.P = self.P
+        inf_heating_hx.simulate_as_auxiliary_exchanger(ins=inf_heating_hx.ins, outs=inf_heating_hx.outs)
+        
         V_oil = self.ins[0].F_vol
         V_H2 = H2.F_vol*(H2.P/self.P)
         self.V_wf = self._V_wf*V_oil/(V_oil + V_H2) # account for the added H2

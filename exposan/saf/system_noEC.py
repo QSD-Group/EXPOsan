@@ -135,7 +135,6 @@ HTL = u.HydrothermalLiquefaction(
     biocrude_composition={'Biocrude': 1},
     char_composition={'HTLchar': 1},
     internal_heat_exchanging=True,
-    # internal_heat_exchanging=False,
     eff_T=None,
     )
 HTL.register_alias('HydrothermalLiquefaction')
@@ -207,6 +206,8 @@ HC = u.Hydroprocessing(
     WHSV=0.625,
     catalyst_ID='HCcatalyst',
     catalyst_lifetime=5*7920, # 5 years [1]
+    hydrogen_rxned_to_inf_oil=0.0111,
+    hydrogen_ratio=5.556,
     gas_yield=0.2665,
     oil_yield=0.7335,
     gas_composition={ # [1] after the first hydroprocessing
@@ -236,8 +237,7 @@ HC = u.Hydroprocessing(
        'C26H42O4':0.01020, 'C30H62':0.00203,
        },
     aqueous_composition={'Water':1},
-    hydrogen_rxned_to_inf_oil=0.0111,
-    hydrogen_ratio=5.556,
+    internal_heat_exchanging=True,
     tau=15/60, # set to the same as HTL
     V_wf=0.4, # Towler
     length_to_diameter=2, diameter=None,
@@ -297,6 +297,8 @@ HT = u.Hydroprocessing(
         'Diesel': oil_fracs[2],
         },
     aqueous_composition={'Water':1},
+    # internal_heat_exchanging=True,
+    internal_heat_exchanging=False,
     tau=0.5, V_wf=0.4, # Towler
     length_to_diameter=2, diameter=None,
     N=None, V=None, auxiliary=False,
@@ -500,11 +502,6 @@ def simulate_and_print(save_report=False):
     if save_report:
         # Use `results_path` and the `join` func can make sure the path works for all users
         sys.save_report(file=os.path.join(results_path, f'sys_{flowsheet_ID}.xlsx'))
-
-'''
-TODOs:
-    1. Add internal HX in hydroprocessing.
-'''
 
 
 if __name__ == '__main__':
