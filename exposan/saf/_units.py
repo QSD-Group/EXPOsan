@@ -25,6 +25,7 @@ __all__ = (
 
 _lb_to_kg = 0.453592
 _m3_to_gal = 264.172
+_barrel_to_m3 = 42/_m3_to_gal # 1 barrel is 42 gallon
 _in_to_m = 0.0254
 _psi_to_Pa = 6894.76
 _m3perh_to_mmscfd = 1/1177.17 # H2
@@ -33,12 +34,26 @@ _m3perh_to_mmscfd = 1/1177.17 # H2
 # %%
 
 # =============================================================================
-# KOdrum
+# Knock-out Drum
 # =============================================================================
 
 class KnockOutDrum(Reactor):
     '''
-    Knockout drum is an auxiliary unit for :class:`HydrothermalLiquefaction`.
+    Knockout drum is an auxiliary unit for :class:`HydrothermalLiquefaction`,
+    when the cost is calculated using generic pressure vessel algorithms.
+    
+    Parameters
+    ----------
+    F_M : dict
+        Material factors used to adjust cost (only used `use_decorated_cost` is False).
+    
+    See Also
+    --------
+    :class:`qsdsan.sanunits.HydrothermalLiquefaction`
+    
+    :class:`qsdsan.sanunits.Reactor`
+    
+    :class:`biosteam.units.design_tools.PressureVessel`
     
     References
     ----------
@@ -46,21 +61,11 @@ class KnockOutDrum(Reactor):
         Liquefaction - Hydrothermal Liquefaction Reactor Design: April 5, 2013;
         NREL/SR-5100-60462, 1111191; 2013; p NREL/SR-5100-60462, 1111191.
         https://doi.org/10.2172/1111191.
-        
-    See Also
-    --------
-    :class:`qsdsan.sanunits.HydrothermalLiquefaction`
     '''
     _N_ins = 3
     _N_outs = 2
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
-    
-    _F_BM_default = {
-        **Reactor._F_BM_default,
-        'Horizontal pressure vessel': 1.5,
-        'Vertical pressure vessel': 1.5,
-        }
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream', include_construction=False,
@@ -71,7 +76,12 @@ class KnockOutDrum(Reactor):
                  mixing_intensity=None, kW_per_m3=0,
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
-                 vessel_type='Vertical',):
+                 vessel_type='Vertical',
+                 F_M={
+                     'Horizontal pressure vessel': 1.5,
+                     'Vertical pressure vessel': 1.5,
+                     },
+                 ):
         # drum_steel_cost_factor: so the cost matches [1]
         # when do comparison, if fully consider scaling factor (2000 tons/day to 100 tons/day),
         # drum_steel_cost_factor should be around 3
@@ -92,6 +102,7 @@ class KnockOutDrum(Reactor):
         self.wall_thickness_factor = wall_thickness_factor
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
+        self.F_M = F_M
     
     def _run(self):
         pass
@@ -105,8 +116,11 @@ class KnockOutDrum(Reactor):
 # HTL
 # =============================================================================
 
-# separator
-@cost(basis='Mass flow', ID='Solids filter oil/water separator', units='lb/h',
+# Original [1] is 1339 dry-ash free TPD, but the original ash content is very low.
+@cost(basis='Dry mass flowrate', ID='HTL system', units='lb/h',
+      cost=18743378, S=306198,
+      CE=CEPCI_by_year[2011], n=0.77, BM=2.1)
+@cost(basis='Dry mass flowrate', ID='Solids filter oil/water separator', units='lb/h',
       cost=3945523, S=1219765,
       CE=CEPCI_by_year[2011], n=0.68, BM=1.9)
 class HydrothermalLiquefaction(Reactor):
@@ -137,15 +151,32 @@ class HydrothermalLiquefaction(Reactor):
         Composition of the biocrude products INCLUDING water, will be normalized to 100% sum.
     char_composition : dict
         Composition of the char products INCLUDING water, will be normalized to 100% sum.
-    eff_T: Iterable(float)
-        HTL effluent temperature [K],
-        if provided, will use an additional HX to control effluent temperature.
     internal_heat_exchanging : bool
         If to use product to preheat feedstock.
+    eff_T: float
+        HTL effluent temperature [K],
+        if provided, will use an additional HX to control effluent temperature.
+    eff_P: float
+        HTL effluent pressure [Pa].
+    use_decorated_cost : bool
+        If True, will use cost scaled based on [1], otherwise will use generic
+        algorithms for ``Reactor`` (``PressureVessel``).
     CAPEX_factor: float
         Factor used to adjust the total installed cost,
         this is on top of all other factors to individual equipment of this unit
         (e.g., bare module, material factors).
+    F_M : dict
+        Material factors used to adjust cost (only used `use_decorated_cost` is False).
+        
+
+    See Also
+    --------
+    :class:`qsdsan.sanunits.KnockOutDrum`
+    
+    :class:`qsdsan.sanunits.Reactor`
+    
+    :class:`biosteam.units.design_tools.PressureVessel`
+
         
     References
     ----------
@@ -184,16 +215,16 @@ class HydrothermalLiquefaction(Reactor):
     '''
     _N_ins = 1
     _N_outs = 4
-    _units= {'Mass flow': 'lb/h',
-             'Solid filter and separator weight': 'lb'}
+    _units= {
+        'Dry mass flowrate': 'lb/h',
+        'Solid filter and separator weight': 'lb',
+        }
     
     auxiliary_unit_names=('hx', 'inf_heating_hx', 'eff_cooling_hx','kodrum')
 
     _F_BM_default = {
         **Reactor._F_BM_default,
         'Heat exchanger': 3.17,
-        'Horizontal pressure vessel': 2.7, # so the cost matches [6]
-        'Vertical pressure vessel': 2.7, # so the cost matches [6]
         }
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
@@ -211,7 +242,9 @@ class HydrothermalLiquefaction(Reactor):
                  biocrude_composition={'HTLbiocrude': 1},
                  char_composition={'HTLchar': 1},
                  internal_heat_exchanging=True,
-                 eff_T=None,
+                 eff_T=60+273.15, # 140.7°F
+                 eff_P=30*_psi_to_Pa,
+                 use_decorated_cost=True,
                  tau=15/60, V_wf=0.45,
                  length_to_diameter=None,
                  diameter=6.875*_in_to_m,
@@ -221,6 +254,11 @@ class HydrothermalLiquefaction(Reactor):
                  vessel_material='Stainless steel 316',
                  vessel_type='Horizontal',
                  CAPEX_factor=1,
+                 # Use material factors so that the calculated reactor cost matches [6]
+                 F_M={
+                    'Horizontal pressure vessel': 2.7,
+                    'Vertical pressure vessel': 2.7,
+                    }
                  ):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with,
@@ -242,10 +280,13 @@ class HydrothermalLiquefaction(Reactor):
                             outs=(inf_after_hx, eff_after_hx))
         inf_heating_hx_out = Stream(f'{ID}_inf_heating_hx_out')
         self.inf_heating_hx = HXutility(ID=f'.{ID}_inf_heating_hx', ins=inf_after_hx, outs=inf_heating_hx_out, T=T, rigorous=True)
+        self._inf_at_temp = Stream(f'{ID}_inf_at_temp')
         self._eff_at_temp = Stream(f'{ID}_eff_at_temp')
         eff_cooling_hx_out = Stream(f'{ID}eff_cooling_hx_out')
         self.eff_T = eff_T
+        self.eff_P = eff_P
         self.eff_cooling_hx = HXutility(ID=f'.{ID}_eff_cooling_hx', ins=eff_after_hx, outs=eff_cooling_hx_out, T=eff_T, rigorous=True)
+        self.use_decorated_cost = use_decorated_cost
         self.kodrum = KnockOutDrum(ID=f'.{ID}_KOdrum')
         self.tau = tau
         self.V_wf = V_wf
@@ -260,6 +301,8 @@ class HydrothermalLiquefaction(Reactor):
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
         self.CAPEX_factor = CAPEX_factor
+        self.F_M = F_M
+        
 
     def _run(self):
         feed = self.ins[0]
@@ -292,15 +335,12 @@ class HydrothermalLiquefaction(Reactor):
         char.phase = 's'
         aq.phase = crude.phase = 'l'
         
-        eff_T = self.eff_T
-        if eff_T:
-            for i in self.outs: i.T = eff_T
+        for attr, val in zip(('T', 'P'), (self.eff_T, self.eff_P)):
+            if val:
+                for i in self.outs: setattr(i, attr, val)
 
     
     def _design(self):
-        Design = self.design_results
-        Design['Mass flow'] = self.ins[0].F_mass/_lb_to_kg
-
         hx = self.hx
         inf_heating_hx = self.inf_heating_hx
         inf_hx_in, inf_hx_out = inf_heating_hx.ins[0], inf_heating_hx.outs[0]
@@ -334,8 +374,10 @@ class HydrothermalLiquefaction(Reactor):
             eff_cooling_hx.simulate_as_auxiliary_exchanger(ins=eff_cooling_hx.ins, outs=eff_cooling_hx.outs)
         else:
             eff_cooling_hx.empty()
-        
+
         Reactor._design(self)
+        
+        Design = self.design_results
         Design['Solid filter and separator weight'] = 0.2*Design['Weight']*Design['Number of reactors'] # assume stainless steel
         # based on [6], case D design table, the purchase price of solid filter and separator to
         # the purchase price of HTL reactor is around 0.2, therefore, assume the weight of solid filter
@@ -343,17 +385,36 @@ class HydrothermalLiquefaction(Reactor):
         if self.include_construction:
             self.construction[0].quantity += Design['Solid filter and separator weight']*_lb_to_kg
         
-        self.kodrum.V = self.F_mass_out/_lb_to_kg/1225236*4230/_m3_to_gal
-        # in [6], when knockout drum influent is 1225236 lb/hr, single knockout
-        # drum volume is 4230 gal
-        
-        self.kodrum.simulate()
+        kodrum = self.kodrum
+        if self.use_decorated_cost is True:
+            kodrum.empty()
+        else:
+            kodrum.V = self.F_mass_out/_lb_to_kg/1225236*4230/_m3_to_gal
+            # in [6], when knockout drum influent is 1225236 lb/hr, single knockout
+            # drum volume is 4230 gal
+            
+            kodrum.simulate()
         
     def _cost(self):
-        Reactor._cost(self)
-        if hasattr(self, '_decorated_cost'): self._decorated_cost()
-        
         purchase_costs = self.baseline_purchase_costs
+        purchase_costs.clear()
+
+        use_decorated_cost = self.use_decorated_cost
+        if use_decorated_cost in (True, 'Hydrocracker', 'Hydrotreater'):     
+            ins0 = self.ins[0]
+            Design = self.design_results
+            if use_decorated_cost is True:
+                Design['Dry mass flowrate'] = (ins0.F_mass-ins0.imass['Water'])/_lb_to_kg
+            else:
+                Design['Oil mass flowrate'] = ins0.F_mass/_lb_to_kg
+            
+            self._decorated_cost()
+            if use_decorated_cost == 'Hydrocracker':
+                purchase_costs.pop('Hydrotreater')
+            elif use_decorated_cost == 'Hydrotreater':
+                purchase_costs.pop('Hydrocracker')
+        else: Reactor._cost(self)
+        
         for item in purchase_costs.keys():
             purchase_costs[item] *= self.CAPEX_factor
         
@@ -422,6 +483,14 @@ class HydrothermalLiquefaction(Reactor):
 # Hydroprocessing
 # =============================================================================
 
+@cost(basis='Oil mass flowrate', ID='Hydrocracker', units='lb/h',
+      cost=25e6, # installed cost
+      S=5963, # S338 in [1]
+      CE=CEPCI_by_year[2007], n=0.75, BM=1)
+@cost(basis='Oil mass flowrate', ID='Hydrotreater', units='lb/h',
+      cost=27e6, # installed cost
+      S=69637, # S135 in [1]
+      CE=CEPCI_by_year[2007], n=0.68, BM=1)
 class Hydroprocessing(Reactor):
     '''
     For fuel upgrading processes such as hydrocracking and hydrotreating.
@@ -463,10 +532,20 @@ class Hydroprocessing(Reactor):
         Composition of the aqueous product, yield will be calculated as 1-gas-oil.
     internal_heat_exchanging : bool
         If to use effluent to preheat influent.
+    use_decorated_cost : str
+        Either 'Hydrotreater' or 'Hydrotreater' to use the corresponding
+        decorated cost, otherwise, will use generic
+        algorithms for ``Reactor`` (``PressureVessel``).
     CAPEX_factor: float
         Factor used to adjust the total installed cost,
         this is on top of all other factors to individual equipment of this unit
         (e.g., bare module, material factors).
+        
+    See Also
+    --------    
+    :class:`qsdsan.sanunits.Reactor`
+    
+    :class:`biosteam.units.design_tools.PressureVessel`
         
     References
     ----------
@@ -479,7 +558,8 @@ class Hydroprocessing(Reactor):
     '''
     _N_ins = 3
     _N_outs = 2
-    
+    _units= {'Oil mass flowrate': 'lb/h',}
+        
     auxiliary_unit_names=('compressor','hx', 'hx_inf_heating',)
     
     _F_BM_default = {**Reactor._F_BM_default,
@@ -511,6 +591,7 @@ class Hydroprocessing(Reactor):
                     },
                  aqueous_composition={'Water':1},
                  internal_heat_exchanging=True,
+                 use_decorated_cost=True,
                  tau=15/60, # set to the same as HTL as in [1]
                  V_wf=0.4, # void_fraciton=0.4, # Towler
                  length_to_diameter=2, diameter=None,
@@ -550,9 +631,10 @@ class Hydroprocessing(Reactor):
                             outs=(inf_after_hx, eff_after_hx))
         inf_heating_hx_out = Stream(f'{ID}_inf_heating_hx_out')
         self.inf_heating_hx = HXutility(ID=f'.{ID}_inf_heating_hx', ins=inf_after_hx, outs=inf_heating_hx_out, T=T, rigorous=True)
+        self.use_decorated_cost = use_decorated_cost
         self.CAPEX_factor = CAPEX_factor
         self.tau = tau
-        self._V_wf = V_wf # will be adjusted later
+        self.V_wf = V_wf
         self.length_to_diameter = length_to_diameter
         self.diameter = diameter
         self.N = N
@@ -590,7 +672,7 @@ class Hydroprocessing(Reactor):
         eff_oil.vle(T=eff_oil.T, P=eff_oil.P)
 
 
-    def _design(self):
+    def _design(self):       
         IC = self.compressor # for H2 compressing
         H2 = self.ins[1]
         IC_ins0, IC_outs0 = IC.ins[0], IC.outs[0]
@@ -623,10 +705,7 @@ class Hydroprocessing(Reactor):
         inf_hx_out.T = self.T
         inf_hx_out.P = self.P
         inf_heating_hx.simulate_as_auxiliary_exchanger(ins=inf_heating_hx.ins, outs=inf_heating_hx.outs)
-        
-        V_oil = self.ins[0].F_vol
-        V_H2 = H2.F_vol*(H2.P/self.P)
-        self.V_wf = self._V_wf*V_oil/(V_oil + V_H2) # account for the added H2
+
         Reactor._design(self)
 
     _cost = HydrothermalLiquefaction._cost
@@ -704,6 +783,14 @@ class Hydroprocessing(Reactor):
         eff_composition.update({k:v*oil_yield for k, v in oil_composition.items()})
         eff_composition.update({k:v*aq_yield for k, v in aqueous_composition.items()})
         return self._normalize_composition(eff_composition)
+
+    # @property
+    # def V_wf(self):
+    #     '''Fraction of working volume over total volume.'''
+    #     return self._V_wf
+    # @V_wf.setter
+    # def V_wf(self, i):
+    #     self.V_wf = i
 
     # @property
     # def C_balance(self):

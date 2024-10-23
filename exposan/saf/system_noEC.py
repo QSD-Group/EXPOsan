@@ -46,7 +46,8 @@ from exposan.saf import (
 
 _psi_to_Pa = 6894.76
 _m3_to_gal = 264.172
-
+uptime_ratio = 0.9
+hours = 365*24*uptime_ratio
 cost_year = 2020
 
 # All in 2020 $/kg unless otherwise noted, needs to do a thorough check to update values
@@ -102,7 +103,7 @@ FeedstockCond = bbu.Conditioning(
     'FeedstockCond', ins=(FeedstockTrans-0, FeedstockWaterPump-0),
     outs='conditioned_feedstock',
     feedstock_composition=feedstock_composition,
-    feedstock_dry_flowrate=110*907.185/(24*0.9), # 110 dry sludge tpd ref [1]; 90% upfactor
+    feedstock_dry_flowrate=110*907.185/(24*uptime_ratio), # 110 dry sludge tpd [1]
     N_unit=1,
     )
 @FeedstockCond.add_specification
@@ -136,6 +137,8 @@ HTL = u.HydrothermalLiquefaction(
     char_composition={'HTLchar': 1},
     internal_heat_exchanging=True,
     eff_T=None,
+    eff_P=None,
+    use_decorated_cost=True,
     )
 HTL.register_alias('HydrothermalLiquefaction')
 
@@ -238,6 +241,7 @@ HC = u.Hydroprocessing(
        },
     aqueous_composition={'Water':1},
     internal_heat_exchanging=True,
+    use_decorated_cost='Hydrocracker',
     tau=15/60, # set to the same as HTL
     V_wf=0.4, # Towler
     length_to_diameter=2, diameter=None,
@@ -248,6 +252,10 @@ HC = u.Hydroprocessing(
     vessel_type='Vertical',
     )
 HC.register_alias('Hydrocracking')
+# In [1], HC is costed for a multi-stage, complicated HC, change to a lower range cost here.
+# Using the lower end of $10 MM (originally $25 MM for a 6500 bpd system),
+# since there will be HT afterwards.
+HC.cost_items['Hydrocracker'].cost = 10e6
 
 HC_HX = qsu.HXutility(
     'HC_HX', ins=HC-0, outs='cooled_HC_eff', T=60+273.15,
@@ -297,8 +305,8 @@ HT = u.Hydroprocessing(
         'Diesel': oil_fracs[2],
         },
     aqueous_composition={'Water':1},
-    # internal_heat_exchanging=True,
-    internal_heat_exchanging=False,
+    internal_heat_exchanging=True,
+    use_decorated_cost='Hydrotreater',
     tau=0.5, V_wf=0.4, # Towler
     length_to_diameter=2, diameter=None,
     N=None, V=None, auxiliary=False,
@@ -438,7 +446,7 @@ PWC.process_water_price = price_dct['process_water']
 sys = qs.System.from_units(
     'sys_noEC',
     units=list(flowsheet.unit),
-    operating_hours=7920, # 90% uptime
+    operating_hours=hours, # 90% uptime
     )
 for unit in sys.units: unit.include_construction = False
 
