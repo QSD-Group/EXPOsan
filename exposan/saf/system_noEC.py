@@ -22,11 +22,11 @@ References
 '''
 
 # !!! Temporarily ignoring warnings
-# import warnings
-# warnings.filterwarnings('ignore')
+import warnings
+warnings.filterwarnings('ignore')
 
 import os, numpy as np, biosteam as bst, qsdsan as qs
-from biosteam import settings, IsenthalpicValve, BoilerTurbogenerator
+from biosteam import IsenthalpicValve
 from qsdsan import sanunits as qsu
 from qsdsan.utils import clear_lca_registries
 from exposan.htl import (
@@ -68,408 +68,464 @@ price_dct = {
 
 # %%
 
-# Use the same process settings as Feng et al.
-_load_process_settings()
-flowsheet_ID = 'saf_noEC'
-flowsheet = qs.Flowsheet(flowsheet_ID)
-qs.main_flowsheet.set_flowsheet(flowsheet)
-saf_cmps = create_components(set_thermo=True)
-
-feedstock = qs.WasteStream('feedstock', price=price_dct['feedstock'])
-feedstock_water = qs.Stream('feedstock_water', Water=1)
-
-FeedstockTrans = bbu.Transportation(
-    'FeedstockTrans',
-    ins=(feedstock, 'transportation_surrogate'),
-    outs=('transported_feedstock',),
-    N_unit=1,
-    copy_ins_from_outs=True,
-    transportation_unit_cost=50/1e3/78, # $50/tonne, #!!! need to adjust from 2016 to 2020
-    transportation_distance=78, # km ref [1]
+__all__ = (
+    'create_system',
+    'get_MFSP',
     )
 
-FeedstockWaterPump = qsu.Pump('FeedstockWaterPump', ins=feedstock_water)
-
-#!!! Need to update the composition (moisture/ash)
-moisture = 0.7566
-feedstock_composition = {
-    'Water': moisture,
-    'Lipids': (1-moisture)*0.5315,
-    'Proteins': (1-moisture)*0.0255,
-    'Carbohydrates': (1-moisture)*0.3816,
-    'Ash': (1-moisture)*0.0614,
-    }
-FeedstockCond = bbu.Conditioning(
-    'FeedstockCond', ins=(FeedstockTrans-0, FeedstockWaterPump-0),
-    outs='conditioned_feedstock',
-    feedstock_composition=feedstock_composition,
-    feedstock_dry_flowrate=110*907.185/(24*uptime_ratio), # 110 dry sludge tpd [1]
-    N_unit=1,
-    )
-@FeedstockCond.add_specification
-def adjust_feedstock_composition():
-    FeedstockCond._run()
-    FeedstockTrans._run()
-    FeedstockWaterPump._run()
-
-MixedFeedstockPump = qsu.Pump('MixedFeedstockPump', ins=FeedstockCond-0)
-
-# =============================================================================
-# Hydrothermal Liquefaction (HTL)
-# =============================================================================
-
-HTL = u.HydrothermalLiquefaction(
-    'HTL', ins=MixedFeedstockPump-0,
-    outs=('','','HTL_crude','HTL_char'),
-    T=280+273.15,
-    P=12.4e6, # may lead to HXN error when HXN is included
-    # P=101325, # setting P to ambient pressure not practical, but it has minimum effects on the results (several cents)
-    tau=15/60,
-    dw_yields={
-        'gas': 0.006,
-        'aqueous': 0.192,
-        'biocrude': 0.802,
-        'char': 0,
-        },
-    gas_composition={'CO2': 1},
-    aqueous_composition={'HTLaqueous': 1},
-    biocrude_composition={'Biocrude': 1},
-    char_composition={'HTLchar': 1},
-    internal_heat_exchanging=True,
-    eff_T=None,
-    eff_P=None,
-    use_decorated_cost=True,
-    )
-HTL.register_alias('HydrothermalLiquefaction')
-
-CrudePump = qsu.Pump('CrudePump', ins=HTL-2, outs='crude_to_dist', P=1530.0*_psi_to_Pa,
-          init_with='Stream')
-# Jones 2014: 1530.0 psia
-
-# Light (water): medium (biocrude): heavy (char)
-# Split off the light compounds (bp<150°C)
-crude_fracs = (0.0339, 0.8104, 0.1557)
-CrudeSplitter = bbu.BiocrudeSplitter(
-    'CrudeSplitter', ins=CrudePump-0, outs='splitted_crude',
-    biocrude_IDs=('HTLbiocrude'),
-    cutoff_Tbs=(150+273.15, 300+273.15,),
-    cutoff_fracs=crude_fracs,
-    )
-
-# Separate water from organics
-CrudeLightDis = qsu.ShortcutColumn(
-    'CrudeLightDis', ins=CrudeSplitter-0,
-    outs=('crude_light','crude_medium_heavy'),
-    LHK=CrudeSplitter.keys[0],
-    P=50*_psi_to_Pa,
-    Lr=0.87,
-    Hr=0.98,
-    k=2, is_divided=True)
-# results = find_Lr_Hr(CrudeLightDis, target_light_frac=crude_fracs[0])
-# results_df, Lr, Hr = results
-
-CrudeLightFlash = qsu.Flash('CrudeLightFlash', ins=CrudeLightDis-0,
-                            T=298.15, P=101325,)
-                            # thermo=settings.thermo.ideal())
-HTLaqMixer = qsu.Mixer('HTLaqMixer', ins=(HTL-1, CrudeLightFlash-1), outs='HTL_aq')
-
-# Separate biocrude from char
-#!!! Effluent temp is very high, need to do a thorough check of the stream properties
-CrudeHeavyDis = qsu.ShortcutColumn(
-    'CrudeHeavyDis', ins=CrudeLightDis-1,
-    outs=('crude_medium','char'),
-    LHK=CrudeSplitter.keys[1],
-    P=50*_psi_to_Pa,
-    Lr=0.89,
-    Hr=0.85,
-    k=2, is_divided=True)
-# results = find_Lr_Hr(CrudeHeavyDis, target_light_frac=crude_fracs[1]/(1-crude_fracs[0]))
-# results_df, Lr, Hr = results
-
-# =============================================================================
-# Hydrocracking
-# =============================================================================
-
-# include_PSA = False # want to compare with vs. w/o PSA
-
-# External H2, will be updated after HT and HC
-H2 = qs.WasteStream('H2', H2=1, price=price_dct['H2'])
-H2splitter= qsu.ReversedSplitter('H2splitter', ins=H2, outs=('HC_H2', 'HT_H2'),
-                            init_with='WasteStream')
-
-# 10 wt% Fe-ZSM
-HCcatalyst_in = qs.WasteStream('HCcatalyst_in', HCcatalyst=1, price=price_dct['HCcatalyst'])
-
-HC = u.Hydroprocessing(
-    'HC',
-    ins=(CrudeHeavyDis-0, H2splitter-0, HCcatalyst_in),
-    outs=('HC_out','HCcatalyst_out'),
-    T=400+273.15,
-    P=1500*_psi_to_Pa,
-    WHSV=0.625,
-    catalyst_ID='HCcatalyst',
-    catalyst_lifetime=5*7920, # 5 years [1]
-    hydrogen_rxned_to_inf_oil=0.0111,
-    hydrogen_ratio=5.556,
-    gas_yield=0.2665,
-    oil_yield=0.7335,
-    gas_composition={ # [1] after the first hydroprocessing
-        'CH4':0.02280, 'C2H6':0.02923,
-        'C3H8':0.01650, 'C4H10':0.00870,
-        'TWOMBUTAN':0.00408, 'NPENTAN':0.00678,
-        },
-    oil_composition={
-       'TWOMPENTA':0.00408, 'HEXANE':0.00408,
-       'TWOMHEXAN':0.00408, 'HEPTANE':0.00408,
-       'CC6METH':0.01020, 'PIPERDIN':0.00408,
-       'TOLUENE':0.01020, 'THREEMHEPTA':0.01020,
-       'OCTANE':0.01020, 'ETHCYC6':0.00408,
-       'ETHYLBEN':0.02040, 'OXYLENE':0.01020,
-       'C9H20':0.00408, 'PROCYC6':0.00408,
-       'C3BENZ':0.01020, 'FOURMONAN':0,
-       'C10H22':0.00203, 'C4BENZ':0.01223,
-       'C11H24':0.02040, 'C10H12':0.02040,
-       'C12H26':0.02040, 'OTTFNA':0.01020,
-       'C6BENZ':0.02040, 'OTTFSN':0.02040,
-       'C7BENZ':0.02040, 'C8BENZ':0.02040,
-       'C10H16O4':0.01837, 'C15H32':0.06120,
-       'C16H34':0.18360, 'C17H36':0.08160, 
-       'C18H38':0.04080, 'C19H40':0.04080,
-       'C20H42':0.10200, 'C21H44':0.04080,
-       'TRICOSANE':0.04080, 'C24H38O4':0.00817,
-       'C26H42O4':0.01020, 'C30H62':0.00203,
-       },
-    aqueous_composition={'Water':1},
-    internal_heat_exchanging=True,
-    use_decorated_cost='Hydrocracker',
-    tau=15/60, # set to the same as HTL
-    V_wf=0.4, # Towler
-    length_to_diameter=2, diameter=None,
-    N=None, V=None, auxiliary=False,
-    mixing_intensity=None, kW_per_m3=0,
-    wall_thickness_factor=1.5,
-    vessel_material='Stainless steel 316',
-    vessel_type='Vertical',
-    )
-HC.register_alias('Hydrocracking')
-# In [1], HC is costed for a multi-stage, complicated HC, change to a lower range cost here.
-# Using the lower end of $10 MM (originally $25 MM for a 6500 bpd system),
-# since there will be HT afterwards.
-HC.cost_items['Hydrocracker'].cost = 10e6
-
-HC_HX = qsu.HXutility(
-    'HC_HX', ins=HC-0, outs='cooled_HC_eff', T=60+273.15,
-    init_with='Stream', rigorous=True)
-
-# To depressurize products
-HC_IV = IsenthalpicValve('HC_IV', ins=HC_HX-0, outs='cooled_depressed_HC_eff', P=30*6894.76, vle=True)
-
-# To separate products
-HCflash = qsu.Flash('HC_Flash', ins=HC_IV-0, outs=('HC_fuel_gas','HC_liquid'),
-                    T=60.2+273.15, P=30*_psi_to_Pa,)
-
-HCpump = qsu.Pump('HCpump', ins=HCflash-1, init_with='Stream')
-
-# Separate water from oil
-HCliquidSplitter = qsu.Splitter('HCliquidSplitter', ins=HCpump-0,
-                                outs=('HC_ww','HC_oil'),
-                                split={'H2O':1}, init_with='Stream')
-
-
-# =============================================================================
-# Hydrotreating
-# =============================================================================
-
-# Pd/Al2O3
-HTcatalyst_in = qs.WasteStream('HTcatalyst_in', HTcatalyst=1, price=price_dct['HTcatalyst'])
-
-# Light (gasoline, <C8): medium (jet, C8-C14): heavy (diesel, >C14)
-oil_fracs = (0.2143, 0.5638, 0.2066)
-HT = u.Hydroprocessing(
-    'HT',
-    ins=(HCliquidSplitter-1, H2splitter-1, HTcatalyst_in),
-    outs=('HTout','HTcatalyst_out'),
-    WHSV=0.625,
-    catalyst_lifetime=2*7920, # 2 years [1]
-    catalyst_ID='HTcatalyst',
-    T=300+273.15,
-    P=1500*_psi_to_Pa,
-    hydrogen_rxned_to_inf_oil=0.0207,
-    hydrogen_ratio=3,
-    gas_yield=0.2143,
-    oil_yield=0.8637,
-    gas_composition={'CO2':0.03880, 'CH4':0.00630,}, # [1] after the second hydroprocessing
-    oil_composition={
-        'Gasoline': oil_fracs[0],
-        'Jet': oil_fracs[1],
-        'Diesel': oil_fracs[2],
-        },
-    aqueous_composition={'Water':1},
-    internal_heat_exchanging=True,
-    use_decorated_cost='Hydrotreater',
-    tau=0.5, V_wf=0.4, # Towler
-    length_to_diameter=2, diameter=None,
-    N=None, V=None, auxiliary=False,
-    mixing_intensity=None, kW_per_m3=0,
-    wall_thickness_factor=1,
-    vessel_material='Stainless steel 316',
-    vessel_type='Vertical',
-    )
-HT.register_alias('Hydrotreating')
-
-
-HT_HX = qsu.HXutility('HT_HX',ins=HT-0, outs='cooled_HT_eff', T=60+273.15,
-                      init_with='Stream', rigorous=True)
-
-HT_IV = IsenthalpicValve('HT_IV', ins=HT_HX-0, outs='cooled_depressed_HT_eff',
-                         P=717.4*_psi_to_Pa, vle=True)
-
-HTflash = qsu.Flash('HTflash', ins=HT_IV-0, outs=('HT_fuel_gas','HT_liquid'),
-                    T=43+273.15, P=55*_psi_to_Pa)
-
-HTpump = qsu.Pump('HTpump', ins=HTflash-1, init_with='Stream')
-
-# Separate water from oil
-HTliquidSplitter = qsu.Splitter('HTliquidSplitter', ins=HTpump-0,
-                                outs=('HT_ww','HT_oil'),
-                                split={'H2O':1}, init_with='Stream')
-
-# Separate gasoline from jet and diesel
-GasolineDis = qsu.ShortcutColumn(
-    'OilLightDis', ins=HTliquidSplitter-1,
-    outs=('hot_gasoline','jet_diesel'),
-    LHK=('Gasoline', 'Jet'),
-    Lr=0.99,
-    Hr=0.99,
-    k=2, is_divided=True)
-# Lr_range = Hr_range = np.linspace(0.05, 0.95, 19)
-# Lr_range = Hr_range = np.linspace(0.01, 0.2, 20)
-# results = find_Lr_Hr(GasolineDis, Lr_trial_range=Lr_range, Hr_trial_range=Hr_range, target_light_frac=oil_fracs[0])
-# results_df, Lr, Hr = results
-
-GasolineFlash = qsu.Flash('GasolineFlash', ins=GasolineDis-0, outs=('', 'cooled_gasoline',),
-                          T=298.15, P=101325)
-
-# Separate jet from diesel
-JetDis = qsu.ShortcutColumn(
-    'JetDis', ins=GasolineDis-1,
-    outs=('hot_jet','hot_diesel'),
-    LHK=('Jet', 'Diesel'),
-    Lr=0.99,
-    Hr=0.99,
-    k=2, is_divided=True)
-# Lr_range = Hr_range = np.linspace(0.05, 0.95, 19)
-# Lr_range = Hr_range = np.linspace(0.01, 0.2, 20)
-# results = find_Lr_Hr(JetDis, Lr_trial_range=Lr_range, Hr_trial_range=Hr_range, target_light_frac=oil_fracs[1]/(1-oil_fracs[0]))
-# results_df, Lr, Hr = results
-
-JetFlash = qsu.Flash('JetFlash', ins=JetDis-0, outs=('', 'cooled_jet',), T=298.15, P=101325)
-
-DieselHX = qsu.HXutility('DieselHX',ins=JetDis-1, outs='cooled_diesel', T=298.15,
-                         init_with='Stream', rigorous=True)
-
-
-# =============================================================================
-# Electrochemical Units
-# =============================================================================
-
-
-# =============================================================================
-# Products and Wastes
-# =============================================================================
-
-GasolinePC = qsu.PhaseChanger('GasolinePC', ins=GasolineFlash-1)
-gasoline = qs.WasteStream('gasoline', Gasoline=1)
-# gasoline.price = price_dct['gasoline']/(gasoline.rho/_m3_to_gal)
-# Storage time assumed to be 3 days per [1]
-GasolineTank = qsu.StorageTank('GasolineTank', ins=GasolinePC-0, outs=(gasoline),
-                                tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
-
-JetPC = qsu.PhaseChanger('JetPC', ins=JetFlash-1)
-jet = qs.WasteStream('jet', Jet=1)
-# jet.price = price_dct['jet']/(jet.rho/_m3_to_gal)
-JetTank = qsu.StorageTank('JetTank', ins=JetPC-0, outs=(jet,),
-                          tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
-
-DieselPC = qsu.PhaseChanger('DieselPC', ins=DieselHX-0)
-diesel = qs.WasteStream('diesel', Jet=1)
-# diesel.price = price_dct['diesel']/(diesel.rho/_m3_to_gal)
-DieselTank = qsu.StorageTank('DieselTank', ins=DieselPC-0, outs=(diesel,),
-                             tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
-
-# Combine all fuel to get a one fuel selling price
-mixed_fuel = qs.WasteStream('mixed_fuel')
-FuelMixer = qsu.Mixer('FuelMixer', ins=(GasolineTank-0, JetTank-0, DieselTank-0), outs=mixed_fuel)
-
-GasMixer = qsu.Mixer('GasMixer',
-                     ins=(
-                         HTL-0, CrudeLightFlash-0, # HTL gases
-                         HCflash-0, HTflash-0, GasolineFlash-0, JetFlash-0, # fuel gases
-                         ),
-                      outs=('waste_gases'), init_with='Stream')
-# Run this toward the end to make sure H2 flowrate can be updated
-@GasMixer.add_specification
-def update_H2_flow():
-    H2splitter._run()
-    GasMixer._run()
-
-# All wastewater, assumed to be sent to municipal wastewater treatment plant
-wastewater = qs.WasteStream('wastewater', price=price_dct['wastewater'])
-WWmixer = qsu.Mixer('WWmixer',
-                    ins=(HTLaqMixer-0, HCliquidSplitter-0, HTliquidSplitter-0),
-                    outs=wastewater, init_with='Stream')
-
-# =============================================================================
-# Facilities
-# =============================================================================
-
-# Adding HXN only saves cents/GGE with HTL internal HX, eliminate for simpler system
-# HXN = qsu.HeatExchangerNetwork('HXN', T_min_app=86, force_ideal_thermo=True)
-# 86 K: Jones et al. PNNL, 2014
-
-natural_gas = qs.WasteStream('nature_gas', CH4=1, price=price_dct['natural_gas'])
-disposed_solids = qs.WasteStream('solids', price=price_dct['solids'])
-CHPMixer = qsu.Mixer('CHPMixer', ins=(GasMixer-0, CrudeHeavyDis-1))
-CHP = qsu.CombinedHeatPower('CHP', 
-                            ins=(CHPMixer-0, natural_gas, 'air'),
-                            outs=('gas_emissions', disposed_solids),
-                            init_with='WasteStream',
-                            supplement_power_utility=False)
-
-PWC = bbu.ProcessWaterCenter('PWC', process_water_streams=[feedstock_water],)
-PWC.register_alias('ProcessWaterCenter')
-PWC.process_water_price = price_dct['process_water']
+def create_system():
+    # Use the same process settings as Feng et al.
+    _load_process_settings()
+    flowsheet_ID = 'saf_noEC'
+    flowsheet = qs.Flowsheet(flowsheet_ID)
+    qs.main_flowsheet.set_flowsheet(flowsheet)
+    saf_cmps = create_components(set_thermo=True)
     
+    feedstock = qs.WasteStream('feedstock', price=price_dct['feedstock'])
+    feedstock_water = qs.Stream('feedstock_water', Water=1)
+    
+    FeedstockTrans = bbu.Transportation(
+        'FeedstockTrans',
+        ins=(feedstock, 'transportation_surrogate'),
+        outs=('transported_feedstock',),
+        N_unit=1,
+        copy_ins_from_outs=True,
+        transportation_unit_cost=50/1e3/78, # $50/tonne, #!!! need to adjust from 2016 to 2020
+        transportation_distance=78, # km ref [1]
+        )
+    
+    FeedstockWaterPump = qsu.Pump('FeedstockWaterPump', ins=feedstock_water)
+    
+    #!!! Need to update the composition (moisture/ash)
+    moisture = 0.7566
+    feedstock_composition = {
+        'Water': moisture,
+        'Lipids': (1-moisture)*0.5315,
+        'Proteins': (1-moisture)*0.0255,
+        'Carbohydrates': (1-moisture)*0.3816,
+        'Ash': (1-moisture)*0.0614,
+        }
+    FeedstockCond = bbu.Conditioning(
+        'FeedstockCond', ins=(FeedstockTrans-0, FeedstockWaterPump-0),
+        outs='conditioned_feedstock',
+        feedstock_composition=feedstock_composition,
+        feedstock_dry_flowrate=110*907.185/(24*uptime_ratio), # 110 dry sludge tpd [1]
+        N_unit=1,
+        )
+    @FeedstockCond.add_specification
+    def adjust_feedstock_composition():
+        FeedstockCond._run()
+        FeedstockTrans._run()
+        FeedstockWaterPump._run()
+    
+    MixedFeedstockPump = qsu.Pump('MixedFeedstockPump', ins=FeedstockCond-0)
+    
+    # =============================================================================
+    # Hydrothermal Liquefaction (HTL)
+    # =============================================================================
+    
+    HTL = u.HydrothermalLiquefaction(
+        'HTL', ins=MixedFeedstockPump-0,
+        outs=('','','HTL_crude','HTL_char'),
+        T=280+273.15,
+        P=12.4e6, # may lead to HXN error when HXN is included
+        # P=101325, # setting P to ambient pressure not practical, but it has minimum effects on the results (several cents)
+        tau=15/60,
+        dw_yields={
+            'gas': 0.006,
+            'aqueous': 0.192,
+            'biocrude': 0.802,
+            'char': 0,
+            },
+        gas_composition={'CO2': 1},
+        aqueous_composition={'HTLaqueous': 1},
+        biocrude_composition={'Biocrude': 1},
+        char_composition={'HTLchar': 1},
+        internal_heat_exchanging=True,
+        eff_T=None,
+        eff_P=None,
+        use_decorated_cost=True,
+        )
+    HTL.register_alias('HydrothermalLiquefaction')
+    
+    CrudePump = qsu.Pump('CrudePump', ins=HTL-2, outs='crude_to_dist', P=1530.0*_psi_to_Pa,
+              init_with='Stream')
+    # Jones 2014: 1530.0 psia
+    
+    # Light (water): medium (biocrude): heavy (char)
+    crude_fracs = [0.0339, 0.8104, 0.1557]
+    
+    CrudeSplitter = bbu.BiocrudeSplitter(
+        'CrudeSplitter', ins=CrudePump-0, outs='splitted_crude',
+        biocrude_IDs=('HTLbiocrude'),
+        # cutoff_Tbs=(150+273.15, 720),
+        cutoff_fracs=crude_fracs,
+        cutoff_Tbs=(150+273.15, 300+273.15,),
+        # cutoff_Tbs=(150+273.15,),
+        # cutoff_fracs=[crude_fracs[0], sum(crude_fracs[1:])],
+        )
+    # @CrudeSplitter.add_specification
+    # def add_char():
+    #     r0 = bbu.default_biocrude_ratios
+    #     r0_sum = sum(r0.values())
+    #     r1 = r0.copy()
+    #     for k, v in r0.items():
+    #         r1[k] = v * crude_char_fracs[0]/r0_sum
+    #     r1['HTLchar'] = crude_char_fracs[-1]
+    #     CrudeSplitter._run()
+    #     F_mass = CrudeSplitter.F_mass_in
+    #     outs0 = CrudeSplitter.outs[0]
+    #     outs0.imass[list(r1.keys())] = list(r1.values())
+    #     outs0.F_mass = F_mass
+    
+    # Separate water from organics (bp<150°C)
+    CrudeLightDis = qsu.ShortcutColumn(
+        'CrudeLightDis', ins=CrudeSplitter-0,
+        outs=('crude_light','crude_medium_heavy'),
+        LHK=CrudeSplitter.keys[0],
+        P=50*_psi_to_Pa,
+        Lr=0.87,
+        Hr=0.98,
+        k=2, is_divided=True)
+    
+    CrudeLightFlash = qsu.Flash('CrudeLightFlash', ins=CrudeLightDis-0,
+                                T=298.15, P=101325,)
+                                # thermo=settings.thermo.ideal())
+    HTLaqMixer = qsu.Mixer('HTLaqMixer', ins=(HTL-1, CrudeLightFlash-1), outs='HTL_aq')
+    
+    # Separate biocrude from char
+    crude_char_fracs = [crude_fracs[1]/(1-crude_fracs[0]), crude_fracs[-1]/(1-crude_fracs[0])]
+    CrudeHeavyDis = qsu.ShortcutColumn(
+        'CrudeHeavyDis', ins=CrudeLightDis-1,
+        outs=('crude_medium','char'),
+        LHK=CrudeSplitter.keys[1],
+        P=50*_psi_to_Pa,
+        Lr=0.89,
+        Hr=0.85,
+        k=2, is_divided=True)
+    _run = CrudeHeavyDis._run
+    _design = CrudeHeavyDis._design
+    def screen_results(): # simulation may converge at multiple points, filter out unrealistic ones
+        def run_and_design():
+            _run()
+            _design()
+        try: run_and_design()
+        except: pass
+        crude = CrudeHeavyDis.outs[0]
+        def get_ratio():
+            F_mass_out = CrudeHeavyDis.F_mass_out
+            if F_mass_out > 0: 
+                return crude.F_mass/F_mass_out
+            return 0
+        n = 0
+        ratio = get_ratio()
+        while (ratio<0.8 or ratio>0.85):
+            try: run_and_design()
+            except: n += 1
+            if n > 10: break
+            ratio = get_ratio()
+            print(ratio)
+    CrudeHeavyDis._run = screen_results
+    def do_nothing(): pass
+    CrudeHeavyDis._design = do_nothing
+        
+    # Lr_range = Hr_range = np.arange(0.05, 1, 0.05)
+    # results = find_Lr_Hr(CrudeHeavyDis, target_light_frac=crude_char_fracs[0], Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
+    # results_df, Lr, Hr = results
+    
+    # =============================================================================
+    # Hydrocracking
+    # =============================================================================
+    
+    # include_PSA = False # want to compare with vs. w/o PSA
+    
+    # External H2, will be updated after HT and HC
+    H2 = qs.WasteStream('H2', H2=1, price=price_dct['H2'])
+    H2splitter= qsu.ReversedSplitter('H2splitter', ins=H2, outs=('HC_H2', 'HT_H2'),
+                                init_with='WasteStream')
+    
+    # 10 wt% Fe-ZSM
+    HCcatalyst_in = qs.WasteStream('HCcatalyst_in', HCcatalyst=1, price=price_dct['HCcatalyst'])
+    
+    HC = u.Hydroprocessing(
+        'HC',
+        ins=(CrudeHeavyDis-0, H2splitter-0, HCcatalyst_in),
+        outs=('HC_out','HCcatalyst_out'),
+        T=400+273.15,
+        P=1500*_psi_to_Pa,
+        WHSV=0.625,
+        catalyst_ID='HCcatalyst',
+        catalyst_lifetime=5*7920, # 5 years [1]
+        hydrogen_rxned_to_inf_oil=0.0111,
+        hydrogen_ratio=5.556,
+        gas_yield=0.2665,
+        oil_yield=0.7335,
+        gas_composition={ # [1] after the first hydroprocessing
+            'CH4':0.02280, 'C2H6':0.02923,
+            'C3H8':0.01650, 'C4H10':0.00870,
+            'TWOMBUTAN':0.00408, 'NPENTAN':0.00678,
+            },
+        oil_composition={
+           'TWOMPENTA':0.00408, 'HEXANE':0.00408,
+           'TWOMHEXAN':0.00408, 'HEPTANE':0.00408,
+           'CC6METH':0.01020, 'PIPERDIN':0.00408,
+           'TOLUENE':0.01020, 'THREEMHEPTA':0.01020,
+           'OCTANE':0.01020, 'ETHCYC6':0.00408,
+           'ETHYLBEN':0.02040, 'OXYLENE':0.01020,
+           'C9H20':0.00408, 'PROCYC6':0.00408,
+           'C3BENZ':0.01020, 'FOURMONAN':0,
+           'C10H22':0.00203, 'C4BENZ':0.01223,
+           'C11H24':0.02040, 'C10H12':0.02040,
+           'C12H26':0.02040, 'OTTFNA':0.01020,
+           'C6BENZ':0.02040, 'OTTFSN':0.02040,
+           'C7BENZ':0.02040, 'C8BENZ':0.02040,
+           'C10H16O4':0.01837, 'C15H32':0.06120,
+           'C16H34':0.18360, 'C17H36':0.08160, 
+           'C18H38':0.04080, 'C19H40':0.04080,
+           'C20H42':0.10200, 'C21H44':0.04080,
+           'TRICOSANE':0.04080, 'C24H38O4':0.00817,
+           'C26H42O4':0.01020, 'C30H62':0.00203,
+           },
+        aqueous_composition={'Water':1},
+        internal_heat_exchanging=True,
+        use_decorated_cost='Hydrocracker',
+        tau=15/60, # set to the same as HTL
+        V_wf=0.4, # Towler
+        length_to_diameter=2, diameter=None,
+        N=None, V=None, auxiliary=False,
+        mixing_intensity=None, kW_per_m3=0,
+        wall_thickness_factor=1.5,
+        vessel_material='Stainless steel 316',
+        vessel_type='Vertical',
+        )
+    HC.register_alias('Hydrocracking')
+    # In [1], HC is costed for a multi-stage, complicated HC, change to a lower range cost here.
+    # Using the lower end of $10 MM (originally $25 MM for a 6500 bpd system),
+    # since there will be HT afterwards.
+    HC.cost_items['Hydrocracker'].cost = 10e6
+    
+    HC_HX = qsu.HXutility(
+        'HC_HX', ins=HC-0, outs='cooled_HC_eff', T=60+273.15,
+        init_with='Stream', rigorous=True)
+    
+    # To depressurize products
+    HC_IV = IsenthalpicValve('HC_IV', ins=HC_HX-0, outs='cooled_depressed_HC_eff', P=30*6894.76, vle=True)
+    
+    # To separate products
+    HCflash = qsu.Flash('HC_Flash', ins=HC_IV-0, outs=('HC_fuel_gas','HC_liquid'),
+                        T=60.2+273.15, P=30*_psi_to_Pa,)
+    
+    HCpump = qsu.Pump('HCpump', ins=HCflash-1, init_with='Stream')
+    
+    # Separate water from oil
+    HCliquidSplitter = qsu.Splitter('HCliquidSplitter', ins=HCpump-0,
+                                    outs=('HC_ww','HC_oil'),
+                                    split={'H2O':1}, init_with='Stream')
+    
+    
+    # =============================================================================
+    # Hydrotreating
+    # =============================================================================
+    
+    # Pd/Al2O3
+    HTcatalyst_in = qs.WasteStream('HTcatalyst_in', HTcatalyst=1, price=price_dct['HTcatalyst'])
+    
+    # Light (gasoline, <C8): medium (jet, C8-C14): heavy (diesel, >C14)
+    oil_fracs = (0.2143, 0.5638, 0.2066)
+    HT = u.Hydroprocessing(
+        'HT',
+        ins=(HCliquidSplitter-1, H2splitter-1, HTcatalyst_in),
+        outs=('HTout','HTcatalyst_out'),
+        WHSV=0.625,
+        catalyst_lifetime=2*7920, # 2 years [1]
+        catalyst_ID='HTcatalyst',
+        T=300+273.15,
+        P=1500*_psi_to_Pa,
+        hydrogen_rxned_to_inf_oil=0.0207,
+        hydrogen_ratio=3,
+        gas_yield=0.2143,
+        oil_yield=0.8637,
+        gas_composition={'CO2':0.03880, 'CH4':0.00630,}, # [1] after the second hydroprocessing
+        oil_composition={
+            'Gasoline': oil_fracs[0],
+            'Jet': oil_fracs[1],
+            'Diesel': oil_fracs[2],
+            },
+        aqueous_composition={'Water':1},
+        internal_heat_exchanging=True,
+        use_decorated_cost='Hydrotreater',
+        tau=0.5, V_wf=0.4, # Towler
+        length_to_diameter=2, diameter=None,
+        N=None, V=None, auxiliary=False,
+        mixing_intensity=None, kW_per_m3=0,
+        wall_thickness_factor=1,
+        vessel_material='Stainless steel 316',
+        vessel_type='Vertical',
+        )
+    HT.register_alias('Hydrotreating')
+    
+    
+    HT_HX = qsu.HXutility('HT_HX',ins=HT-0, outs='cooled_HT_eff', T=60+273.15,
+                          init_with='Stream', rigorous=True)
+    
+    HT_IV = IsenthalpicValve('HT_IV', ins=HT_HX-0, outs='cooled_depressed_HT_eff',
+                             P=717.4*_psi_to_Pa, vle=True)
+    
+    HTflash = qsu.Flash('HTflash', ins=HT_IV-0, outs=('HT_fuel_gas','HT_liquid'),
+                        T=43+273.15, P=55*_psi_to_Pa)
+    
+    HTpump = qsu.Pump('HTpump', ins=HTflash-1, init_with='Stream')
+    
+    # Separate water from oil
+    HTliquidSplitter = qsu.Splitter('HTliquidSplitter', ins=HTpump-0,
+                                    outs=('HT_ww','HT_oil'),
+                                    split={'H2O':1}, init_with='Stream')
+    
+    # Separate gasoline from jet and diesel
+    GasolineDis = qsu.ShortcutColumn(
+        'OilLightDis', ins=HTliquidSplitter-1,
+        outs=('hot_gasoline','jet_diesel'),
+        LHK=('Gasoline', 'Jet'),
+        Lr=0.99,
+        Hr=0.99,
+        k=2, is_divided=True)
+    # Lr_range = Hr_range = np.linspace(0.05, 0.95, 19)
+    # Lr_range = Hr_range = np.linspace(0.01, 0.2, 20)
+    # results = find_Lr_Hr(GasolineDis, Lr_trial_range=Lr_range, Hr_trial_range=Hr_range, target_light_frac=oil_fracs[0])
+    # results_df, Lr, Hr = results
+    
+    GasolineFlash = qsu.Flash('GasolineFlash', ins=GasolineDis-0, outs=('', 'cooled_gasoline',),
+                              T=298.15, P=101325)
+    
+    # Separate jet from diesel
+    JetDis = qsu.ShortcutColumn(
+        'JetDis', ins=GasolineDis-1,
+        outs=('hot_jet','hot_diesel'),
+        LHK=('Jet', 'Diesel'),
+        Lr=0.99,
+        Hr=0.99,
+        k=2, is_divided=True)
+    # Lr_range = Hr_range = np.linspace(0.05, 0.95, 19)
+    # Lr_range = Hr_range = np.linspace(0.01, 0.2, 20)
+    # results = find_Lr_Hr(JetDis, Lr_trial_range=Lr_range, Hr_trial_range=Hr_range, target_light_frac=oil_fracs[1]/(1-oil_fracs[0]))
+    # results_df, Lr, Hr = results
+    
+    JetFlash = qsu.Flash('JetFlash', ins=JetDis-0, outs=('', 'cooled_jet',), T=298.15, P=101325)
+    
+    DieselHX = qsu.HXutility('DieselHX',ins=JetDis-1, outs='cooled_diesel', T=298.15,
+                             init_with='Stream', rigorous=True)
+    
+    
+    # =============================================================================
+    # Electrochemical Units
+    # =============================================================================
+    
+    
+    # =============================================================================
+    # Products and Wastes
+    # =============================================================================
+    
+    GasolinePC = qsu.PhaseChanger('GasolinePC', ins=GasolineFlash-1)
+    gasoline = qs.WasteStream('gasoline', Gasoline=1)
+    # gasoline.price = price_dct['gasoline']/(gasoline.rho/_m3_to_gal)
+    # Storage time assumed to be 3 days per [1]
+    GasolineTank = qsu.StorageTank('GasolineTank', ins=GasolinePC-0, outs=(gasoline),
+                                    tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
+    
+    JetPC = qsu.PhaseChanger('JetPC', ins=JetFlash-1)
+    jet = qs.WasteStream('jet', Jet=1)
+    # jet.price = price_dct['jet']/(jet.rho/_m3_to_gal)
+    JetTank = qsu.StorageTank('JetTank', ins=JetPC-0, outs=(jet,),
+                              tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
+    
+    DieselPC = qsu.PhaseChanger('DieselPC', ins=DieselHX-0)
+    diesel = qs.WasteStream('diesel', Jet=1)
+    # diesel.price = price_dct['diesel']/(diesel.rho/_m3_to_gal)
+    DieselTank = qsu.StorageTank('DieselTank', ins=DieselPC-0, outs=(diesel,),
+                                 tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
+    
+    # Combine all fuel to get a one fuel selling price
+    mixed_fuel = qs.WasteStream('mixed_fuel')
+    FuelMixer = qsu.Mixer('FuelMixer', ins=(GasolineTank-0, JetTank-0, DieselTank-0), outs=mixed_fuel)
+    
+    GasMixer = qsu.Mixer('GasMixer',
+                         ins=(
+                             HTL-0, CrudeLightFlash-0, # HTL gases
+                             HCflash-0, HTflash-0, GasolineFlash-0, JetFlash-0, # fuel gases
+                             ),
+                          outs=('waste_gases'), init_with='Stream')
+    # Run this toward the end to make sure H2 flowrate can be updated
+    @GasMixer.add_specification
+    def update_H2_flow():
+        H2splitter._run()
+        GasMixer._run()
+    
+    # All wastewater, assumed to be sent to municipal wastewater treatment plant
+    wastewater = qs.WasteStream('wastewater', price=price_dct['wastewater'])
+    WWmixer = qsu.Mixer('WWmixer',
+                        ins=(HTLaqMixer-0, HCliquidSplitter-0, HTliquidSplitter-0),
+                        outs=wastewater, init_with='Stream')
+    
+    # =============================================================================
+    # Facilities
+    # =============================================================================
+    
+    # Adding HXN only saves cents/GGE with HTL internal HX, eliminate for simpler system
+    # HXN = qsu.HeatExchangerNetwork('HXN', T_min_app=86, force_ideal_thermo=True)
+    # 86 K: Jones et al. PNNL, 2014
+    
+    natural_gas = qs.WasteStream('nature_gas', CH4=1, price=price_dct['natural_gas'])
+    disposed_solids = qs.WasteStream('solids', price=price_dct['solids'])
+    CHPMixer = qsu.Mixer('CHPMixer', ins=(GasMixer-0, CrudeHeavyDis-1))
+    CHP = qsu.CombinedHeatPower('CHP', 
+                                ins=(CHPMixer-0, natural_gas, 'air'),
+                                outs=('gas_emissions', disposed_solids),
+                                init_with='WasteStream',
+                                supplement_power_utility=False)
+    
+    PWC = bbu.ProcessWaterCenter('PWC', process_water_streams=[feedstock_water],)
+    PWC.register_alias('ProcessWaterCenter')
+    PWC.process_water_price = price_dct['process_water']
+        
+    
+    # =============================================================================
+    # System, TEA, LCA
+    # =============================================================================
+    sys = qs.System.from_units(
+        'sys_noEC',
+        units=list(flowsheet.unit),
+        operating_hours=hours, # 90% uptime
+        )
+    for unit in sys.units: unit.include_construction = False
+    
+    tea = create_tea(
+        sys,
+        IRR=0.1,
+        duration=(2020, 2050),
+        income_tax=0.21,
+        finance_interest=0.08,
+        warehouse=0.04,
+        site_development=0.1,
+        additional_piping=0.045,
+        labor_cost=1.81*10**6,
+        )
+    
+    # lca = qs.LCA(
+    #     system=sys,
+    #     lifetime=lifetime,
+    #     uptime_ratio=sys.operating_hours/(365*24),
+    #     Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+    #     # Heating=lambda:sys.get_heating_duty()/1000*lifetime,
+    #     Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
+    #     )
+    
+    return sys
 
 # %%
 
-sys = qs.System.from_units(
-    'sys_noEC',
-    units=list(flowsheet.unit),
-    operating_hours=hours, # 90% uptime
-    )
-for unit in sys.units: unit.include_construction = False
-
-tea = create_tea(
-    sys,
-    IRR=0.1,
-    duration=(2020, 2050),
-    income_tax=0.21,
-    finance_interest=0.08,
-    warehouse=0.04,
-    site_development=0.1,
-    additional_piping=0.045,
-    labor_cost=1.81*10**6,
-    )
-
-# lca = qs.LCA(
-#     system=sys,
-#     lifetime=lifetime,
-#     uptime_ratio=sys.operating_hours/(365*24),
-#     Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
-#     # Heating=lambda:sys.get_heating_duty()/1000*lifetime,
-#     Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
-#     )
+# =============================================================================
+# Result outputting
+# =============================================================================
 
 _HHV_per_GGE = 46.52*2.82 # MJ/gal
 # DOE properties
@@ -478,28 +534,36 @@ _HHV_per_GGE = 46.52*2.82 # MJ/gal
 # U.S. Conventional Gasoline: HHV=45.76 MJ/kg, rho=3.17 kg/gal
 
 # Gasoline gallon equivalent
-get_GGE = lambda fuel, annual=True: fuel.HHV/1e3/_HHV_per_GGE*max(1, bool(annual)*sys.operating_hours)
+get_GGE = lambda sys, fuel, annual=True: fuel.HHV/1e3/_HHV_per_GGE*max(1, bool(annual)*sys.operating_hours)
 
-def get_fuel_properties(fuel):
+# In $/GGE
+def get_MFSP(sys, print_msg=False):
+    mixed_fuel = sys.flowsheet.stream.mixed_fuel
+    mixed_fuel.price = sys.TEA.solve_price(mixed_fuel)
+    MFSP = mixed_fuel.cost/get_GGE(sys, mixed_fuel, False)
+    if print_msg: print(f'Minimum selling price of all fuel is ${MFSP:.2f}/GGE.')
+    return MFSP
+
+def get_fuel_properties(sys, fuel):
     HHV = fuel.HHV/fuel.F_mass/1e3 # MJ/kg
     rho = fuel.rho/_m3_to_gal # kg/gal
-    return HHV, rho, get_GGE(fuel, annual=False)
+    return HHV, rho, get_GGE(sys, fuel, annual=False)
 
-def simulate_and_print(save_report=False):
+def simulate_and_print(system, save_report=False):
+    sys = system
     sys.simulate()
+    stream = sys.flowsheet.stream
+    tea = sys.TEA
     
-    fuels = (gasoline, jet, diesel)
-    properties = {f: get_fuel_properties(f) for f in fuels}
+    fuels = (gasoline, jet, diesel) = (stream.gasoline, stream.jet, stream.diesel)
+    properties = {f: get_fuel_properties(sys, f) for f in fuels}
     
     print('Fuel properties')
     print('---------------')
     for fuel, prop in properties.items():
         print(f'{fuel.ID}: {prop[0]:.2f} MJ/kg, {prop[1]:.2f} kg/gal, {prop[2]:.2f} gal GGE/hr.')
     
-    mixed_fuel.price = tea.solve_price(mixed_fuel)
-    global MFSP
-    MFSP = mixed_fuel.cost/get_GGE(mixed_fuel, False)
-    print(f'Minimum selling price of all fuel is ${MFSP:.2f}/GGE.')
+    MFSP = get_MFSP(sys, print_msg=True)
     
     c = qs.currency
     for attr in ('NPV','AOC', 'sales', 'net_earnings'):
@@ -514,8 +578,11 @@ def simulate_and_print(save_report=False):
     table = tea.get_cashflow_table()
     if save_report:
         # Use `results_path` and the `join` func can make sure the path works for all users
-        sys.save_report(file=os.path.join(results_path, f'sys_{flowsheet_ID}.xlsx'))
+        sys.save_report(file=os.path.join(results_path, f'sys_{sys.flowsheet.ID}.xlsx'))
 
 
 if __name__ == '__main__':
-    simulate_and_print()
+    sys = create_system()
+    dct = globals()
+    dct.update(sys.flowsheet.to_dict())
+    simulate_and_print(sys)
