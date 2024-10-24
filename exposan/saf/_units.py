@@ -315,15 +315,18 @@ class HydrothermalLiquefaction(Reactor):
             self.char_composition,
             )
         for out, comp in zip(outs, comps):
+            out.empty()
             for k, v in comp.items():
                 out.imass[k] = v
-                
+        
         dw_yields = self.dw_yields
         gas.F_mass = tot_dw * dw_yields['gas']
         aq.F_mass = tot_dw * dw_yields['aqueous']
         crude.F_mass = tot_dw * dw_yields['biocrude']
         char.F_mass = tot_dw * dw_yields['char']
+
         aq.imass['Water'] = feed.imass['Water'] - sum(i.imass['Water'] for i in (gas, crude, char))
+        for i in outs: print(i.F_mass)
         
         for i in outs:
             i.T = self.T
@@ -431,11 +434,11 @@ class HydrothermalLiquefaction(Reactor):
         return {k:v/total for k, v in dct.items()}
     
     @property
-    def yields(self):
-        return self._yields
-    @yields.setter
-    def yields(self, comp_dct):
-        self._yields = self._normalize_composition(comp_dct)
+    def dw_yields(self):
+        return self._dw_yields
+    @dw_yields.setter
+    def dw_yields(self, comp_dct):
+        self._dw_yields = self._normalize_composition(comp_dct)
 
     @property
     def gas_composition(self):
