@@ -113,7 +113,7 @@ class KnockOutDrum(Reactor):
 
 
 # =============================================================================
-# HTL
+# Hydrothermal Liquefaction
 # =============================================================================
 
 # Original [1] is 1339 dry-ash free TPD, but the original ash content is very low.
@@ -326,7 +326,6 @@ class HydrothermalLiquefaction(Reactor):
         char.F_mass = tot_dw * dw_yields['char']
 
         aq.imass['Water'] = feed.imass['Water'] - sum(i.imass['Water'] for i in (gas, crude, char))
-        for i in outs: print(i.F_mass)
         
         for i in outs:
             i.T = self.T

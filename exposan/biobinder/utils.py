@@ -20,7 +20,7 @@ __all__ = (
     )
 
 # To find Lr/Hr of a distillation column
-Lr_trial_range = Hr_trial_range = np.linspace(0.8, .99, 20)
+Lr_trial_range = Hr_trial_range = np.linspace(0.05, 0.95, 19)
 def find_Lr_Hr(unit, target_light_frac=None, Lr_trial_range=Lr_trial_range, Hr_trial_range=Hr_trial_range):
     results = {}
     outs0, outs1 = unit.outs
@@ -43,8 +43,10 @@ def find_Lr_Hr(unit, target_light_frac=None, Lr_trial_range=Lr_trial_range, Hr_t
     except: pass
     if not target_light_frac:
         return results_df
-    diff_df = (results_df-target_light_frac).abs()
-    where = np.where(diff_df==diff_df.min(None))
-    Lr = results_df.columns[where[1]].to_list()[0]
-    Hr = results_df.index[where[0]].to_list()[0]
+    try:
+        diff_df = (results_df-target_light_frac).abs()
+        where = np.where(diff_df==diff_df.min(None))
+        Lr = results_df.columns[where[1]].to_list()[0]
+        Hr = results_df.index[where[0]].to_list()[0]
+    except: Lr = Hr = None
     return results_df, Lr, Hr

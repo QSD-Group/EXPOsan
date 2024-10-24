@@ -413,7 +413,6 @@ class PilotHTL(SanUnit):
 # %%
 
 # Jone et al., Table C-1
-#!!! Might want to redo this part by adjusting the components.
 default_biocrude_ratios = {
     '1E2PYDIN':     0.067912,
     # 'C5H9NS':       0.010257,
