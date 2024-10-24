@@ -53,6 +53,9 @@ class Conditioning(qsu.MixTank):
         Raw feedstock, process water for moisture adjustment.
     outs : obj
         Conditioned feedstock with appropriate composition and moisture for conversion.
+    feedstock_composition : dict
+        Target composition of the influent feedstock,
+        note that water in the feedstock will be superseded by `target_HTL_solid_loading`.
     feedstock_dry_flowrate : float
         Feedstock dry mass flowrate for 1 reactor.
     target_HTL_solid_loading : float
@@ -85,29 +88,26 @@ class Conditioning(qsu.MixTank):
     
     def _run(self):
         feedstock, htl_process_water = self.ins
+        water_in_feedstock = feedstock.imass['Water']
         feedstock.empty()
         htl_process_water.empty()
         
         feedstock_composition = self.feedstock_composition
-        for i, j in self.feedstock_composition.items():
+        for i, j in feedstock_composition.items():
             feedstock.imass[i] = j
+        feedstock.imass['Water'] = 0
         
         feedstock_dry_flowrate = self.feedstock_dry_flowrate
-        feedstock.F_mass = feedstock_dry_flowrate/(1-feedstock_composition['Water']) # scale flowrate
+        feedstock.F_mass = feedstock_dry_flowrate # scale flowrate
         htl_wet_mass = feedstock_dry_flowrate/self.target_HTL_solid_loading
-        required_water = htl_wet_mass - feedstock.imass['Water']
+        required_water = htl_wet_mass - feedstock_dry_flowrate - water_in_feedstock
         htl_process_water.imass['Water'] = max(0, required_water)
         
         qsu.MixTank._run(self)
         
     def _cost(self):
         qsu.MixTank._cost(self) # just for one unit
-        self.parallel['self'] = self.parallel.get('self', 1)*self.N_unit
-        # baseline_purchase_costs = self.baseline_purchase_costs
-        # for i, j in baseline_purchase_costs.items():
-        #     baseline_purchase_costs[i] *= N
-        # self.power_utility.consumption *= N
-        # self.power_utility.production *= N        
+        self.parallel['self'] = self.parallel.get('self', 1)*self.N_unit   
 
 
 class Scaler(SanUnit):
