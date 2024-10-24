@@ -31,6 +31,7 @@ df = pd.read_csv(data_path)
 def MFSP_across_biocrude_yields(yields=[]):
     sys = create_system()
     unit = sys.flowsheet.unit
+    # stream
     
     HTL = unit.HTL
     default_yield = HTL.dw_yields.copy()
@@ -45,6 +46,7 @@ def MFSP_across_biocrude_yields(yields=[]):
         try: 
             sys.simulate()
             MFSP = get_MFSP(sys, print_msg=False)
+            gasoline = sys.flowsheet
             print(f'MFSP: ${MFSP:.2f}/GGE\n')
         except:
             MFSP = None
@@ -59,8 +61,10 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(flowsheet.to_dict())
     
-    # GGEs = MFSP_across_biocrude_yields(yields=[80.2])
-    GGEs = MFSP_across_biocrude_yields(yields=df.y_pred[:10])
-    # df['$/GGE'] = GGEs
-    # result_path = os.path.join(results_path, 'biocrude_yields_results.csv')
-    # df.to_csv(result_path)
+    GGEs = MFSP_across_biocrude_yields(yields=[80.2])
+    # GGEs = MFSP_across_biocrude_yields(yields=df.y_pred[:10])
+    
+    GGEs = MFSP_across_biocrude_yields(yields=df.y_pred)
+    df['$/GGE'] = GGEs
+    result_path = os.path.join(results_path, 'biocrude_yields_results.csv')
+    df.to_csv(result_path)

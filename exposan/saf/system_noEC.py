@@ -46,7 +46,9 @@ from exposan.saf import (
 
 _psi_to_Pa = 6894.76
 _m3_to_gal = 264.172
+tpd = 110 # dry mass basis
 uptime_ratio = 0.9
+dry_flowrate = tpd*907.185/(24*uptime_ratio) # 110 dry sludge tpd [1]
 hours = 365*24*uptime_ratio
 cost_year = 2020
 
@@ -81,21 +83,6 @@ def create_system():
     qs.main_flowsheet.set_flowsheet(flowsheet)
     saf_cmps = create_components(set_thermo=True)
     
-    feedstock = qs.WasteStream('feedstock', price=price_dct['feedstock'])
-    feedstock_water = qs.Stream('feedstock_water', Water=1)
-    
-    FeedstockTrans = bbu.Transportation(
-        'FeedstockTrans',
-        ins=(feedstock, 'transportation_surrogate'),
-        outs=('transported_feedstock',),
-        N_unit=1,
-        copy_ins_from_outs=True,
-        transportation_unit_cost=50/1e3/78, # $50/tonne, #!!! need to adjust from 2016 to 2020
-        transportation_distance=78, # km ref [1]
-        )
-    
-    FeedstockWaterPump = qsu.Pump('FeedstockWaterPump', ins=feedstock_water)
-    
     #!!! Need to update the composition (moisture/ash)
     moisture = 0.7566
     feedstock_composition = {
@@ -105,17 +92,34 @@ def create_system():
         'Carbohydrates': (1-moisture)*0.3816,
         'Ash': (1-moisture)*0.0614,
         }
+    feedstock = qs.WasteStream('feedstock', price=price_dct['feedstock'])
+    feedstock.imass[list(feedstock_composition.keys())] = list(feedstock_composition.values())
+    feedstock.F_mass = dry_flowrate
+    
+    feedstock_water = qs.Stream('feedstock_water', Water=1)
+    
+    FeedstockTrans = bbu.Transportation(
+        'FeedstockTrans',
+        ins=(feedstock, 'transportation_surrogate'),
+        outs=('transported_feedstock',),
+        N_unit=1,
+        copy_ins_from_outs=False,
+        transportation_unit_cost=50/1e3/78, # $50/tonne, #!!! need to adjust from 2016 to 2020
+        transportation_distance=78, # km ref [1]
+        )
+    
+    FeedstockWaterPump = qsu.Pump('FeedstockWaterPump', ins=feedstock_water)
+
     FeedstockCond = bbu.Conditioning(
         'FeedstockCond', ins=(FeedstockTrans-0, FeedstockWaterPump-0),
         outs='conditioned_feedstock',
-        feedstock_composition=feedstock_composition,
-        feedstock_dry_flowrate=110*907.185/(24*uptime_ratio), # 110 dry sludge tpd [1]
+        feedstock_composition=None,
+        feedstock_dry_flowrate=dry_flowrate,
         N_unit=1,
         )
     @FeedstockCond.add_specification
     def adjust_feedstock_composition():
         FeedstockCond._run()
-        FeedstockTrans._run()
         FeedstockWaterPump._run()
     
     MixedFeedstockPump = qsu.Pump('MixedFeedstockPump', ins=FeedstockCond-0)
@@ -158,25 +162,9 @@ def create_system():
     CrudeSplitter = bbu.BiocrudeSplitter(
         'CrudeSplitter', ins=CrudePump-0, outs='splitted_crude',
         biocrude_IDs=('HTLbiocrude'),
-        # cutoff_Tbs=(150+273.15, 720),
         cutoff_fracs=crude_fracs,
         cutoff_Tbs=(150+273.15, 300+273.15,),
-        # cutoff_Tbs=(150+273.15,),
-        # cutoff_fracs=[crude_fracs[0], sum(crude_fracs[1:])],
         )
-    # @CrudeSplitter.add_specification
-    # def add_char():
-    #     r0 = bbu.default_biocrude_ratios
-    #     r0_sum = sum(r0.values())
-    #     r1 = r0.copy()
-    #     for k, v in r0.items():
-    #         r1[k] = v * crude_char_fracs[0]/r0_sum
-    #     r1['HTLchar'] = crude_char_fracs[-1]
-    #     CrudeSplitter._run()
-    #     F_mass = CrudeSplitter.F_mass_in
-    #     outs0 = CrudeSplitter.outs[0]
-    #     outs0.imass[list(r1.keys())] = list(r1.values())
-    #     outs0.F_mass = F_mass
     
     # Separate water from organics (bp<150°C)
     CrudeLightDis = qsu.ShortcutColumn(
@@ -193,6 +181,28 @@ def create_system():
                                 # thermo=settings.thermo.ideal())
     HTLaqMixer = qsu.Mixer('HTLaqMixer', ins=(HTL-1, CrudeLightFlash-1), outs='HTL_aq')
     
+    # Simulation may converge at multiple points, filter out unsuitable ones
+    def screen_results(unit, _run, _design, _cost, num, lb, ub): 
+        def run_design_cost():
+            _run()
+            _design()
+            _cost()
+        try: run_design_cost()
+        except: pass
+        def get_ratio():
+            if unit.F_mass_out > 0: 
+                return unit.outs[0].F_mass/unit.F_mass_out
+            return 0
+        n = 0
+        ratio = get_ratio()
+        while (ratio<lb or ratio>ub):
+            try: run_design_cost()
+            except: n += 1
+            if n > num: break
+            ratio = get_ratio()
+    
+    def do_nothing(): pass
+    
     # Separate biocrude from char
     crude_char_fracs = [crude_fracs[1]/(1-crude_fracs[0]), crude_fracs[-1]/(1-crude_fracs[0])]
     CrudeHeavyDis = qsu.ShortcutColumn(
@@ -203,32 +213,15 @@ def create_system():
         Lr=0.89,
         Hr=0.85,
         k=2, is_divided=True)
-    _run = CrudeHeavyDis._run
-    _design = CrudeHeavyDis._design
-    def screen_results(): # simulation may converge at multiple points, filter out unrealistic ones
-        def run_and_design():
-            _run()
-            _design()
-        try: run_and_design()
-        except: pass
-        crude = CrudeHeavyDis.outs[0]
-        def get_ratio():
-            F_mass_out = CrudeHeavyDis.F_mass_out
-            if F_mass_out > 0: 
-                return crude.F_mass/F_mass_out
-            return 0
-        n = 0
-        ratio = get_ratio()
-        while (ratio<0.8 or ratio>0.85):
-            try: run_and_design()
-            except: n += 1
-            if n > 10: break
-            ratio = get_ratio()
-            print(ratio)
-    CrudeHeavyDis._run = screen_results
-    def do_nothing(): pass
-    CrudeHeavyDis._design = do_nothing
-        
+    CrudeHeavyDis_run = CrudeHeavyDis._run
+    CrudeHeavyDis_design = CrudeHeavyDis._design
+    CrudeHeavyDis_cost = CrudeHeavyDis._cost
+    CrudeHeavyDis._run = lambda: screen_results(
+        CrudeHeavyDis,
+        CrudeHeavyDis_run, CrudeHeavyDis_design, CrudeHeavyDis_cost,
+        10, 0.82, 0.84)
+    CrudeHeavyDis._design = CrudeHeavyDis._cost = do_nothing
+    
     # Lr_range = Hr_range = np.arange(0.05, 1, 0.05)
     # results = find_Lr_Hr(CrudeHeavyDis, target_light_frac=crude_char_fracs[0], Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
     # results_df, Lr, Hr = results
@@ -311,8 +304,8 @@ def create_system():
     # To depressurize products
     HC_IV = IsenthalpicValve('HC_IV', ins=HC_HX-0, outs='cooled_depressed_HC_eff', P=30*6894.76, vle=True)
     
-    # To separate products
-    HCflash = qsu.Flash('HC_Flash', ins=HC_IV-0, outs=('HC_fuel_gas','HC_liquid'),
+    # To separate products, can be adjusted to minimize fuel chemicals in the gas phase
+    HCflash = qsu.Flash('HCflash', ins=HC_IV-0, outs=('HC_fuel_gas','HC_liquid'),
                         T=60.2+273.15, P=30*_psi_to_Pa,)
     
     HCpump = qsu.Pump('HCpump', ins=HCflash-1, init_with='Stream')
@@ -364,19 +357,19 @@ def create_system():
         )
     HT.register_alias('Hydrotreating')
     
-    
     HT_HX = qsu.HXutility('HT_HX',ins=HT-0, outs='cooled_HT_eff', T=60+273.15,
                           init_with='Stream', rigorous=True)
     
     HT_IV = IsenthalpicValve('HT_IV', ins=HT_HX-0, outs='cooled_depressed_HT_eff',
                              P=717.4*_psi_to_Pa, vle=True)
     
+    # To separate products, can be adjusted to minimize fuel chemicals in the gas phase
     HTflash = qsu.Flash('HTflash', ins=HT_IV-0, outs=('HT_fuel_gas','HT_liquid'),
                         T=43+273.15, P=55*_psi_to_Pa)
     
     HTpump = qsu.Pump('HTpump', ins=HTflash-1, init_with='Stream')
     
-    # Separate water from oil
+    # Separate water from oil, if any
     HTliquidSplitter = qsu.Splitter('HTliquidSplitter', ins=HTpump-0,
                                     outs=('HT_ww','HT_oil'),
                                     split={'H2O':1}, init_with='Stream')
@@ -585,4 +578,4 @@ if __name__ == '__main__':
     sys = create_system()
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
-    simulate_and_print(sys)
+    # simulate_and_print(sys)

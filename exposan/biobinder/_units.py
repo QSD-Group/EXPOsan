@@ -54,8 +54,8 @@ class Conditioning(qsu.MixTank):
     outs : obj
         Conditioned feedstock with appropriate composition and moisture for conversion.
     feedstock_composition : dict
-        Target composition of the influent feedstock,
-        note that water in the feedstock will be superseded by `target_HTL_solid_loading`.
+        Composition of the influent feedstock,
+        note that water in the feedstock will be adjusted using `target_HTL_solid_loading`.
     feedstock_dry_flowrate : float
         Feedstock dry mass flowrate for 1 reactor.
     target_HTL_solid_loading : float
@@ -87,27 +87,30 @@ class Conditioning(qsu.MixTank):
         self.N_unit = N_unit
     
     def _run(self):
-        feedstock, htl_process_water = self.ins
-        water_in_feedstock = feedstock.imass['Water']
-        feedstock.empty()
-        htl_process_water.empty()
+        feedstock_in, htl_process_water = self.ins
+        feedstock_out = self.outs[0]
         
         feedstock_composition = self.feedstock_composition
-        for i, j in feedstock_composition.items():
-            feedstock.imass[i] = j
-        feedstock.imass['Water'] = 0
+        if feedstock_composition is not None:
+            for i, j in feedstock_composition.items():
+                feedstock_in.imass[i] = j
         
         feedstock_dry_flowrate = self.feedstock_dry_flowrate
-        feedstock.F_mass = feedstock_dry_flowrate # scale flowrate
-        htl_wet_mass = feedstock_dry_flowrate/self.target_HTL_solid_loading
-        required_water = htl_wet_mass - feedstock_dry_flowrate - water_in_feedstock
+        feedstock_dw = 1 - feedstock_in.imass['Water']/feedstock_in.F_mass
+        feedstock_in.imass['Water'] = 0
+        feedstock_in.F_mass = feedstock_dry_flowrate # scale flowrate
+        feedstock_in.imass['Water'] = feedstock_dry_flowrate/feedstock_dw - feedstock_dry_flowrate
+              
+        feedstock_out.copy_like(feedstock_in)
+        total_wet = feedstock_dry_flowrate/self.target_HTL_solid_loading
+        required_water = total_wet - feedstock_dry_flowrate - feedstock_in.imass['Water']
         htl_process_water.imass['Water'] = max(0, required_water)
         
         qsu.MixTank._run(self)
         
     def _cost(self):
         qsu.MixTank._cost(self) # just for one unit
-        self.parallel['self'] = self.parallel.get('self', 1)*self.N_unit   
+        self.parallel['self'] = self.parallel.get('self', 1)*self.N_unit  
 
 
 class Scaler(SanUnit):
