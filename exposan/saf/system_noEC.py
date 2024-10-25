@@ -200,27 +200,46 @@ def create_system():
     CrudeHeavyDis_cost = CrudeHeavyDis._cost
     def run_design_cost():
         CrudeHeavyDis_run()
-        CrudeHeavyDis_design()
-        CrudeHeavyDis_cost()
+        try:
+            CrudeHeavyDis_design()
+            CrudeHeavyDis_cost()
+            if all([v>0 for v in CrudeHeavyDis.baseline_purchase_costs.values()]):
+                # Save for later debugging
+                # print('design')
+                # print(CrudeHeavyDis.design_results)
+                # print('cost')
+                # print(CrudeHeavyDis.baseline_purchase_costs)
+                # print(CrudeHeavyDis.installed_costs) # this will be empty
+                return
+        except: pass
+        raise RuntimeError('`CrudeHeavyDis` simulation failed.')
+
     
     # Simulation may converge at multiple points, filter out unsuitable ones
     def screen_results():
         ratio0 = CrudeSplitter.cutoff_fracs[1]/sum(CrudeSplitter.cutoff_fracs[1:])
         lb, ub = round(ratio0,2)-0.02, round(ratio0,2)+0.02
-        try: run_design_cost()
-        except: pass
+        try: 
+            run_design_cost()
+            status = True
+        except: 
+            status = False
         def get_ratio():
             if CrudeHeavyDis.F_mass_out > 0: 
                 return CrudeHeavyDis.outs[0].F_mass/CrudeHeavyDis.F_mass_out
             return 0
         n = 0
         ratio = get_ratio()
-        while (ratio<lb or ratio>ub):
-            try: run_design_cost()
-            except: pass
+        while (status is False) or (ratio<lb) or (ratio>ub):
+            try: 
+                run_design_cost()
+                status = True
+            except: 
+                status = False
             ratio = get_ratio()
             n += 1
-            if n > 10:
+            if n >= 10:
+                status = False
                 raise RuntimeError(f'No suitable solution for `CrudeHeavyDis` within {n} simulation.')
     CrudeHeavyDis._run = screen_results
 
@@ -581,6 +600,9 @@ def simulate_and_print(system, save_report=False):
 
 if __name__ == '__main__':
     sys = create_system()
+    tea = sys.TEA
+    table = tea.get_cashflow_table()
+    # lca = sys.LCA
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     simulate_and_print(sys)
