@@ -48,7 +48,20 @@ _psi_to_Pa = 6894.76
 _m3_to_gal = 264.172
 tpd = 110 # dry mass basis
 uptime_ratio = 0.9
+
 dry_flowrate = tpd*907.185/(24*uptime_ratio) # 110 dry sludge tpd [1]
+
+#!!! Need to update the composition (moisture/ash)
+moisture = 0.7566
+feedstock_composition = {
+    'Water': moisture,
+    'Lipids': (1-moisture)*0.5315,
+    'Proteins': (1-moisture)*0.0255,
+    'Carbohydrates': (1-moisture)*0.3816,
+    'Ash': (1-moisture)*0.0614,
+    }
+wet_flowrate = dry_flowrate / (1-moisture)
+
 hours = 365*24*uptime_ratio
 cost_year = 2020
 
@@ -83,18 +96,9 @@ def create_system():
     qs.main_flowsheet.set_flowsheet(flowsheet)
     saf_cmps = create_components(set_thermo=True)
     
-    #!!! Need to update the composition (moisture/ash)
-    moisture = 0.7566
-    feedstock_composition = {
-        'Water': moisture,
-        'Lipids': (1-moisture)*0.5315,
-        'Proteins': (1-moisture)*0.0255,
-        'Carbohydrates': (1-moisture)*0.3816,
-        'Ash': (1-moisture)*0.0614,
-        }
     feedstock = qs.WasteStream('feedstock', price=price_dct['feedstock'])
     feedstock.imass[list(feedstock_composition.keys())] = list(feedstock_composition.values())
-    feedstock.F_mass = dry_flowrate
+    feedstock.F_mass = wet_flowrate
     
     feedstock_water = qs.Stream('feedstock_water', Water=1)
     
@@ -181,30 +185,7 @@ def create_system():
                                 # thermo=settings.thermo.ideal())
     HTLaqMixer = qsu.Mixer('HTLaqMixer', ins=(HTL-1, CrudeLightFlash-1), outs='HTL_aq')
     
-    # Simulation may converge at multiple points, filter out unsuitable ones
-    def screen_results(unit, _run, _design, _cost, num, lb, ub): 
-        def run_design_cost():
-            _run()
-            _design()
-            _cost()
-        try: run_design_cost()
-        except: pass
-        def get_ratio():
-            if unit.F_mass_out > 0: 
-                return unit.outs[0].F_mass/unit.F_mass_out
-            return 0
-        n = 0
-        ratio = get_ratio()
-        while (ratio<lb or ratio>ub):
-            try: run_design_cost()
-            except: n += 1
-            if n > num: break
-            ratio = get_ratio()
-    
-    def do_nothing(): pass
-    
     # Separate biocrude from char
-    crude_char_fracs = [crude_fracs[1]/(1-crude_fracs[0]), crude_fracs[-1]/(1-crude_fracs[0])]
     CrudeHeavyDis = qsu.ShortcutColumn(
         'CrudeHeavyDis', ins=CrudeLightDis-1,
         outs=('crude_medium','char'),
@@ -213,13 +194,37 @@ def create_system():
         Lr=0.89,
         Hr=0.85,
         k=2, is_divided=True)
+
     CrudeHeavyDis_run = CrudeHeavyDis._run
     CrudeHeavyDis_design = CrudeHeavyDis._design
     CrudeHeavyDis_cost = CrudeHeavyDis._cost
-    CrudeHeavyDis._run = lambda: screen_results(
-        CrudeHeavyDis,
-        CrudeHeavyDis_run, CrudeHeavyDis_design, CrudeHeavyDis_cost,
-        10, 0.82, 0.84)
+    def run_design_cost():
+        CrudeHeavyDis_run()
+        CrudeHeavyDis_design()
+        CrudeHeavyDis_cost()
+    
+    # Simulation may converge at multiple points, filter out unsuitable ones
+    def screen_results():
+        ratio0 = CrudeSplitter.cutoff_fracs[1]/sum(CrudeSplitter.cutoff_fracs[1:])
+        lb, ub = round(ratio0,2)-0.02, round(ratio0,2)+0.02
+        try: run_design_cost()
+        except: pass
+        def get_ratio():
+            if CrudeHeavyDis.F_mass_out > 0: 
+                return CrudeHeavyDis.outs[0].F_mass/CrudeHeavyDis.F_mass_out
+            return 0
+        n = 0
+        ratio = get_ratio()
+        while (ratio<lb or ratio>ub):
+            try: run_design_cost()
+            except: pass
+            ratio = get_ratio()
+            n += 1
+            if n > 10:
+                raise RuntimeError(f'No suitable solution for `CrudeHeavyDis` within {n} simulation.')
+    CrudeHeavyDis._run = screen_results
+
+    def do_nothing(): pass
     CrudeHeavyDis._design = CrudeHeavyDis._cost = do_nothing
     
     # Lr_range = Hr_range = np.arange(0.05, 1, 0.05)
@@ -578,4 +583,4 @@ if __name__ == '__main__':
     sys = create_system()
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
-    # simulate_and_print(sys)
+    simulate_and_print(sys)
