@@ -22,8 +22,8 @@ References
 '''
 
 # !!! Temporarily ignoring warnings
-import warnings
-warnings.filterwarnings('ignore')
+# import warnings
+# warnings.filterwarnings('ignore')
 
 import os, numpy as np, biosteam as bst, qsdsan as qs
 from biosteam import IsenthalpicValve
@@ -77,6 +77,9 @@ price_dct = {
     'gasoline': 2.5, # target $/gal
     'jet': 3.53, # 2024$/gal
     'diesel': 3.45, # 2024$/gal
+    'N': 0, # recovered N in $/kg N
+    'P': 0, # recovered P in $/kg P
+    'K': 0, # recovered K in $/kg K
     'solids': bst_utility_price['Ash disposal'],
     'wastewater': -0.03/1e3, # $0.03/m3
     }
@@ -91,8 +94,12 @@ __all__ = (
 def create_system(include_PSA=True, include_EC=True,):
     # Use the same process settings as Feng et al.
     _load_process_settings()
-    flowsheet_ID = 'saf_noEC'
-    flowsheet = qs.Flowsheet(flowsheet_ID)
+
+    if include_PSA: sys_ID = 'sys_PSA'
+    elif include_EC: sys_ID = 'sys_EC'
+    else: sys_ID = 'sys'
+
+    flowsheet = qs.Flowsheet(sys_ID)
     qs.main_flowsheet.set_flowsheet(flowsheet)
     saf_cmps = create_components(set_thermo=True)
     
@@ -254,19 +261,12 @@ def create_system(include_PSA=True, include_EC=True,):
     # Hydrocracking
     # =========================================================================
     
-    # include_PSA = False # want to compare with vs. w/o PSA
-    
-    # External H2, will be updated after HT and HC
-    H2 = qs.WasteStream('H2', H2=1, price=price_dct['H2'])
-    H2splitter= qsu.ReversedSplitter('H2splitter', ins=H2, outs=('HC_H2', 'HT_H2'),
-                                init_with='WasteStream')
-    
     # 10 wt% Fe-ZSM
     HCcatalyst_in = qs.WasteStream('HCcatalyst_in', HCcatalyst=1, price=price_dct['HCcatalyst'])
     
     HC = u.Hydroprocessing(
         'HC',
-        ins=(CrudeHeavyDis-0, H2splitter-0, HCcatalyst_in),
+        ins=(CrudeHeavyDis-0, 'H2_HC', HCcatalyst_in),
         outs=('HC_out','HCcatalyst_out'),
         T=400+273.15,
         P=1500*_psi_to_Pa,
@@ -351,7 +351,7 @@ def create_system(include_PSA=True, include_EC=True,):
     oil_fracs = (0.2143, 0.5638, 0.2066)
     HT = u.Hydroprocessing(
         'HT',
-        ins=(HCliquidSplitter-1, H2splitter-1, HTcatalyst_in),
+        ins=(HCliquidSplitter-1, 'H2_HT', HTcatalyst_in),
         outs=('HTout','HTcatalyst_out'),
         WHSV=0.625,
         catalyst_lifetime=2*7920, # 2 years [1]
@@ -433,7 +433,6 @@ def create_system(include_PSA=True, include_EC=True,):
     DieselHX = qsu.HXutility('DieselHX',ins=JetDis-1, outs='cooled_diesel', T=298.15,
                              init_with='Stream', rigorous=True)
     
-    
     # =========================================================================
     # Products and Wastes
     # =========================================================================
@@ -461,25 +460,46 @@ def create_system(include_PSA=True, include_EC=True,):
     mixed_fuel = qs.WasteStream('mixed_fuel')
     FuelMixer = qsu.Mixer('FuelMixer', ins=(GasolineTank-0, JetTank-0, DieselTank-0), outs=mixed_fuel)
     
-    GasMixer = qsu.Mixer('GasMixer',
-                         ins=(
-                             HTL-0, CrudeLightFlash-0, # HTL gases
-                             HCflash-0, HTflash-0, # post-hydroprocessing gases
-                             GasolineFlash-0, JetFlash-0, # final distillation fuel gases
-                             ),
-                          outs=('waste_gases'), init_with='Stream')
-    # Run this toward the end to make sure H2 flowrate can be updated
-    @GasMixer.add_specification
-    def update_H2_flow():
-        H2splitter._run()
-        GasMixer._run()
+    # =========================================================================
+    # Electrochemical Unit
+    # =========================================================================    
+
     
-    # All wastewater, assumed to be sent to municipal wastewater treatment plant
-    wastewater = qs.WasteStream('wastewater', price=price_dct['wastewater'])
-    WWmixer = qsu.Mixer('WWmixer',
-                        ins=(HTLaqMixer-0, HCliquidSplitter-0, HTliquidSplitter-0),
-                        outs=wastewater, init_with='Stream')
+    # All wastewater streams
+    ww_streams = [HTLaqMixer-0, HCliquidSplitter-0, HTliquidSplitter-0]
+    # Wastewater sent to municipal wastewater treatment plant
+    ww_to_disposal = qs.WasteStream('ww_to_disposal', price=price_dct['wastewater'])
+
+    WWmixer = qsu.Mixer('WWmixer', ins=ww_streams)    
     
+    fuel_gases = [
+        HTL-0, CrudeLightFlash-0, # HTL gases
+        HCflash-0, HTflash-0, # post-hydroprocessing gases
+        GasolineFlash-0, JetFlash-0, # final distillation fuel gases
+        ]
+       
+    if include_EC:
+        recovered_N = qs.WasteStream('recovered_N', price=price_dct['N'])
+        recovered_P = qs.WasteStream('recovered_P', price=price_dct['P'])
+        recovered_K = qs.WasteStream('recovered_K', price=price_dct['K'])
+
+        EC = u.Electrochemical(
+            'EC',
+            ins=(WWmixer-0, 'replacement_surrogate'),
+            outs=('EC_gas', 'EC_H2', recovered_N, recovered_P, recovered_K, ww_to_disposal),
+            include_PSA=include_PSA,
+            )
+        EC.register_alias('Electrochemical')
+        ww_to_disposal.price = 0 #!!! assume no disposal cost, better to calculate cost based on COD/organics/dry mass
+        fuel_gases.append(EC-0)
+        recycled_H2_streams = [EC-1]
+    else:
+        WWmixer.outs[0] = WWmixer
+        ww_to_disposal.price = price_dct['wastewater']
+        recycled_H2_streams = []
+
+    GasMixer = qsu.Mixer('GasMixer', ins=fuel_gases, outs=('waste_gases'))
+
     # =========================================================================
     # Facilities
     # =========================================================================
@@ -497,18 +517,20 @@ def create_system(include_PSA=True, include_EC=True,):
                                 init_with='WasteStream',
                                 supplement_power_utility=False)
     
+    H2C = u.HydrogenCenter(
+        'H2C',
+        process_H2_streams=(HC.ins[1], HT.ins[1]),
+        recycled_H2_streams=recycled_H2_streams)
+    H2C.register_alias('HydrogenCenter')
+    H2C.makeup_H2_price = H2C.excess_H2_price = price_dct['H2']
+    
     PWC = bbu.ProcessWaterCenter('PWC', process_water_streams=[feedstock_water],)
     PWC.register_alias('ProcessWaterCenter')
     PWC.process_water_price = price_dct['process_water']
-        
     
     # =========================================================================
     # System, TEA, LCA
-    # =========================================================================
-    if include_PSA: sys_ID = 'sys_PSA'
-    elif include_EC: sys_ID = 'sys_EC'
-    else: sys_ID = 'sys'
-    
+    # =========================================================================   
     sys = qs.System.from_units(
         sys_ID,
         units=list(flowsheet.unit),
@@ -600,11 +622,11 @@ def simulate_and_print(system, save_report=False):
 
 
 if __name__ == '__main__':
-    sys = create_system(include_PSA=True, include_EC=False)
+    sys = create_system(include_PSA=True, include_EC=True)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     tea = sys.TEA
     # lca = sys.LCA
     
-    simulate_and_print(sys)
+    # simulate_and_print(sys)
     # table = tea.get_cashflow_table()
