@@ -128,9 +128,9 @@ def create_system(include_PSA=True, include_EC=True,):
     
     MixedFeedstockPump = qsu.Pump('MixedFeedstockPump', ins=FeedstockCond-0)
     
-    # =============================================================================
+    # =========================================================================
     # Hydrothermal Liquefaction (HTL)
-    # =============================================================================
+    # =========================================================================
     
     HTL = u.HydrothermalLiquefaction(
         'HTL', ins=MixedFeedstockPump-0,
@@ -250,9 +250,9 @@ def create_system(include_PSA=True, include_EC=True,):
     # results = find_Lr_Hr(CrudeHeavyDis, target_light_frac=crude_char_fracs[0], Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
     # results_df, Lr, Hr = results
     
-    # =============================================================================
+    # =========================================================================
     # Hydrocracking
-    # =============================================================================
+    # =========================================================================
     
     # include_PSA = False # want to compare with vs. w/o PSA
     
@@ -275,6 +275,7 @@ def create_system(include_PSA=True, include_EC=True,):
         catalyst_lifetime=5*7920, # 5 years [1]
         hydrogen_rxned_to_inf_oil=0.0111,
         hydrogen_ratio=5.556,
+        include_PSA=include_PSA,
         gas_yield=0.2665,
         oil_yield=0.7335,
         gas_composition={ # [1] after the first hydroprocessing
@@ -316,10 +317,9 @@ def create_system(include_PSA=True, include_EC=True,):
         vessel_type='Vertical',
         )
     HC.register_alias('Hydrocracking')
-    # In [1], HC is costed for a multi-stage, complicated HC, change to a lower range cost here.
-    # Using the lower end of $10 MM (originally $25 MM for a 6500 bpd system),
-    # since there will be HT afterwards.
-    HC.cost_items['Hydrocracker'].cost = 10e6
+    # In [1], HC is costed for a multi-stage HC, but commented that the cost could be
+    # $10-70 MM (originally $25 MM for a 6500 bpd system),
+    # HC.cost_items['Hydrocracker'].cost = 10e6
     
     HC_HX = qsu.HXutility(
         'HC_HX', ins=HC-0, outs='cooled_HC_eff', T=60+273.15,
@@ -340,9 +340,9 @@ def create_system(include_PSA=True, include_EC=True,):
                                     split={'H2O':1}, init_with='Stream')
     
     
-    # =============================================================================
+    # =========================================================================
     # Hydrotreating
-    # =============================================================================
+    # =========================================================================
     
     # Pd/Al2O3
     HTcatalyst_in = qs.WasteStream('HTcatalyst_in', HTcatalyst=1, price=price_dct['HTcatalyst'])
@@ -360,6 +360,7 @@ def create_system(include_PSA=True, include_EC=True,):
         P=1500*_psi_to_Pa,
         hydrogen_rxned_to_inf_oil=0.0207,
         hydrogen_ratio=3,
+        include_PSA=include_PSA,
         gas_yield=0.2143,
         oil_yield=0.8637,
         gas_composition={'CO2':0.03880, 'CH4':0.00630,}, # [1] after the second hydroprocessing
@@ -433,14 +434,9 @@ def create_system(include_PSA=True, include_EC=True,):
                              init_with='Stream', rigorous=True)
     
     
-    # =============================================================================
-    # Electrochemical Units
-    # =============================================================================
-    
-    
-    # =============================================================================
+    # =========================================================================
     # Products and Wastes
-    # =============================================================================
+    # =========================================================================
     
     GasolinePC = qsu.PhaseChanger('GasolinePC', ins=GasolineFlash-1)
     gasoline = qs.WasteStream('gasoline', Gasoline=1)
@@ -468,7 +464,8 @@ def create_system(include_PSA=True, include_EC=True,):
     GasMixer = qsu.Mixer('GasMixer',
                          ins=(
                              HTL-0, CrudeLightFlash-0, # HTL gases
-                             HCflash-0, HTflash-0, GasolineFlash-0, JetFlash-0, # fuel gases
+                             HCflash-0, HTflash-0, # post-hydroprocessing gases
+                             GasolineFlash-0, JetFlash-0, # final distillation fuel gases
                              ),
                           outs=('waste_gases'), init_with='Stream')
     # Run this toward the end to make sure H2 flowrate can be updated
@@ -483,9 +480,9 @@ def create_system(include_PSA=True, include_EC=True,):
                         ins=(HTLaqMixer-0, HCliquidSplitter-0, HTliquidSplitter-0),
                         outs=wastewater, init_with='Stream')
     
-    # =============================================================================
+    # =========================================================================
     # Facilities
-    # =============================================================================
+    # =========================================================================
     
     # Adding HXN only saves cents/GGE with HTL internal HX, eliminate for simpler system
     # HXN = qsu.HeatExchangerNetwork('HXN', T_min_app=86, force_ideal_thermo=True)
@@ -505,11 +502,15 @@ def create_system(include_PSA=True, include_EC=True,):
     PWC.process_water_price = price_dct['process_water']
         
     
-    # =============================================================================
+    # =========================================================================
     # System, TEA, LCA
-    # =============================================================================
+    # =========================================================================
+    if include_PSA: sys_ID = 'sys_PSA'
+    elif include_EC: sys_ID = 'sys_EC'
+    else: sys_ID = 'sys'
+    
     sys = qs.System.from_units(
-        'sys_noEC',
+        sys_ID,
         units=list(flowsheet.unit),
         operating_hours=hours, # 90% uptime
         )
@@ -540,9 +541,9 @@ def create_system(include_PSA=True, include_EC=True,):
 
 # %%
 
-# =============================================================================
+# =========================================================================
 # Result outputting
-# =============================================================================
+# =========================================================================
 
 _HHV_per_GGE = 46.52*2.82 # MJ/gal
 # DOE properties
@@ -599,10 +600,11 @@ def simulate_and_print(system, save_report=False):
 
 
 if __name__ == '__main__':
-    sys = create_system()
-    tea = sys.TEA
-    table = tea.get_cashflow_table()
-    # lca = sys.LCA
+    sys = create_system(include_PSA=True, include_EC=False)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
+    tea = sys.TEA
+    # lca = sys.LCA
+    
     simulate_and_print(sys)
+    # table = tea.get_cashflow_table()

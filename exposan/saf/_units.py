@@ -22,7 +22,6 @@ __all__ = (
     'Electrochemical',
     'HydrothermalLiquefaction',
     'Hydroprocessing',
-    'PressureSwingAdsorption',
     )
 
 _lb_to_kg = 0.453592
@@ -100,7 +99,6 @@ class Electrochemical(SanUnit):
     
     _N_ins = 1
     _N_outs = 3
-
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  gas_yield=0.056546425,
@@ -717,6 +715,9 @@ class HydrothermalLiquefaction(Reactor):
       cost=27e6, # installed cost
       S=69637, # S135 in [1]
       CE=CEPCI_by_year[2007], n=0.68, BM=1)
+@cost(basis='H2 mass flowrate', ID='PSA', units='lb/h', # changed scaling basis
+      cost=1750000, S=5402, # S135 in [1]
+      CE=CEPCI_by_year[2004], n=0.8, BM=2.47)
 class Hydroprocessing(Reactor):
     '''
     For fuel upgrading processes such as hydrocracking and hydrotreating.
@@ -728,7 +729,7 @@ class Hydroprocessing(Reactor):
     Parameters
     ----------
     ins : Iterable(stream)
-        Influent crude oil, hydrogen, catalyst_in.
+        Influent crude oil, makeup H2, catalyst_in.
     outs : Iterable(stream)
         Mixed products (oil and excess hydrogen, fuel gas, as well as the aqueous stream), catalyst_out.
     T: float
@@ -746,6 +747,11 @@ class Hydroprocessing(Reactor):
     hydrogen_ratio : float
         Total hydrogen amount = hydrogen_rxned * hydrogen_ratio,
         excess hydrogen will be included in the fuel gas.
+    include_PSA : bool
+        Whether to include a pressure swing adsorption unit to recover H2.
+    PSA_efficiency : float
+        H2 recovery efficiency of the PSA unit,
+        will be set to 0 if `include_PSA` is False.
     gas_yield : float
         Mass ratio of fuel gas to the sum of influent oil and reacted H2.
     oil_yield : float
@@ -784,13 +790,18 @@ class Hydroprocessing(Reactor):
     '''
     _N_ins = 3
     _N_outs = 2
-    _units= {'Oil mass flowrate': 'lb/h',}
+    _units= {
+        'Oil mass flowrate': 'lb/h',
+        'H2 mass flowrate': 'lb/h',
+        }
         
     auxiliary_unit_names=('compressor','hx', 'hx_inf_heating',)
     
-    _F_BM_default = {**Reactor._F_BM_default,
-                     'Heat exchanger': 3.17,
-                     'Compressor': 1.1}
+    _F_BM_default = {
+        **Reactor._F_BM_default,
+        'Heat exchanger': 3.17,
+        'Compressor': 1.1,
+        }
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
@@ -802,6 +813,8 @@ class Hydroprocessing(Reactor):
                  catalyst_ID='HC_catalyst',
                  hydrogen_rxned_to_inf_oil=0.01125,
                  hydrogen_ratio=5.556,
+                 include_PSA=False,
+                 PSA_efficiency=0.9,
                  gas_yield=0.03880-0.00630,
                  oil_yield=1-0.03880-0.00630,
                  gas_composition={'CO2':0.03880, 'CH4':0.00630,},
@@ -836,6 +849,8 @@ class Hydroprocessing(Reactor):
         self.catalyst_ID = catalyst_ID
         self.hydrogen_rxned_to_inf_oil = hydrogen_rxned_to_inf_oil
         self.hydrogen_ratio = hydrogen_ratio
+        self.include_PSA = include_PSA
+        self.PSA_efficiency = PSA_efficiency
         self.gas_yield = gas_yield
         self.oil_yield = oil_yield
         self.gas_composition = gas_composition
@@ -873,32 +888,35 @@ class Hydroprocessing(Reactor):
         self.vessel_type = vessel_type
         
     def _run(self):
-        inf_oil, hydrogen, catalyst_in = self.ins
+        inf_oil, makeup_hydrogen, catalyst_in = self.ins
         eff_oil, catalyst_out = self.outs
         
         catalyst_in.imass[self.catalyst_ID] = inf_oil.F_mass/self.WHSV/self.catalyst_lifetime
         catalyst_in.phase = 's'
         catalyst_out.copy_like(catalyst_in)
-        
         hydrogen_rxned_to_inf_oil = self.hydrogen_rxned_to_inf_oil
         hydrogen_ratio = self.hydrogen_ratio
-        H2_rxned =  inf_oil.F_mass*hydrogen_rxned_to_inf_oil
-        hydrogen.imass['H2'] = H2_rxned*hydrogen_ratio
-        hydrogen.phase = 'g'
+        H2_rxned =  inf_oil.F_mass * hydrogen_rxned_to_inf_oil
+        H2_tot = H2_rxned * hydrogen_ratio
+        H2_residual = H2_tot - H2_rxned
+        H2_recycled = H2_residual * self.PSA_efficiency
+        H2_wasted = H2_residual - H2_recycled
 
         eff_oil.copy_like(inf_oil)
         eff_oil.phase = inf_oil.phase
         eff_oil.empty()
         eff_oil.imass[self.eff_composition.keys()] = self.eff_composition.values()
         eff_oil.F_mass = inf_oil.F_mass*(1 + hydrogen_rxned_to_inf_oil)
-        eff_oil.imass['H2'] = H2_rxned*(hydrogen_ratio - 1)
-        
+        eff_oil.imass['H2'] = H2_wasted
         eff_oil.P = self.P
         eff_oil.T = self.T
         eff_oil.vle(T=eff_oil.T, P=eff_oil.P)
+        
+        makeup_hydrogen.imass['H2'] = H2_rxned + H2_wasted
+        makeup_hydrogen.phase = 'g'
+        self.design_results['H2 mass flowrate'] = H2_residual/_lb_to_kg
 
-
-    def _design(self):       
+    def _design(self):
         IC = self.compressor # for H2 compressing
         H2 = self.ins[1]
         IC_ins0, IC_outs0 = IC.ins[0], IC.outs[0]
@@ -1010,6 +1028,19 @@ class Hydroprocessing(Reactor):
         eff_composition.update({k:v*aq_yield for k, v in aqueous_composition.items()})
         return self._normalize_composition(eff_composition)
 
+    @property
+    def PSA_efficiency(self):
+        '''
+        [float] H2 recovery efficiency of the PSA unit,
+        will be set to 0 if `include_PSA` is False.
+        '''
+        if self.include_PSA: return self._PSA_efficiency
+        return 0
+    @PSA_efficiency.setter
+    def PSA_efficiency(self, i):
+        if i > 1: raise ValueError('PSA_efficiency cannot be larger than 1.')
+        self._PSA_efficiency  = i
+
     # @property
     # def V_wf(self):
     #     '''Fraction of working volume over total volume.'''
@@ -1025,64 +1056,3 @@ class Hydroprocessing(Reactor):
     #     C_in = sum(self.ins[0].imass[cmp.ID]*cmp.i_C for cmp in cmps)
     #     C_out = sum(self.outs[0].imass[cmp.ID]*cmp.i_C for cmp in cmps)
     #     return C_out/C_in
-
-
-# %%
-
-# =============================================================================
-# Pressure Swing Adsorption
-# =============================================================================
-
-@cost(basis='H2 flowrate', ID='PSA', units='mmscfd',
-      cost=1750000, S=10,
-      CE=CEPCI_by_year[2004], n=0.8, BM=2.47)
-class PressureSwingAdsorption:
-    '''
-    A pressure swing adsorption (PSA) process can be optionally included
-    for H2 recovery.
-    
-    Parameters
-    ----------
-    ins : Iterable(stream)
-        Mixed gas streams for H2 recovery.
-    outs : Iterable(stream)
-        Hydrogen, other gases.
-    efficiency : float
-        H2 recovery efficiency.
-        
-    References
-    ----------
-    [1] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
-        Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
-        Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
-        Process Design and Economics for the Conversion of Algal Biomass to
-        Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
-        PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
-    '''
-    _N_ins = 1
-    _N_outs = 2
-    _ins_size_is_fixed = False
-    _units = {'H2 flowrate': 'mmscfd',}
-    
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                  init_with='WasteStream', efficiency=0.9,):
-        
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.efficiency = efficiency
-    
-    @property
-    def efficiency (self):
-        return self._efficiency 
-    @efficiency.setter
-    def efficiency(self, i):
-        if i > 1: raise Exception('Efficiency cannot be larger than 1.')
-        self._efficiency  = i
-        
-    def _run(self):
-        H2, others = self.outs       
-        others.mix_from(self.ins)
-        H2.imass['H2'] = recovered = others.imass['H2'] * self.efficiency
-        others.imass['H2'] -= recovered
-        
-    def _design(self):
-        self.design_results['Hydrogen_PSA'] = self.F_vol_in*_m3perh_to_mmscfd*(101325/self.outs[0].P)
