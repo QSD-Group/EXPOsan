@@ -88,7 +88,7 @@ __all__ = (
     'get_MFSP',
     )
 
-def create_system():
+def create_system(include_PSA=True, include_EC=True,):
     # Use the same process settings as Feng et al.
     _load_process_settings()
     flowsheet_ID = 'saf_noEC'

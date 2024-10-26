@@ -19,8 +19,10 @@ from qsdsan import SanUnit, Stream
 from qsdsan.sanunits import Reactor, IsothermalCompressor, HXutility, HXprocess
 
 __all__ = (
+    'Electrochemical',
     'HydrothermalLiquefaction',
     'Hydroprocessing',
+    'PressureSwingAdsorption',
     )
 
 _lb_to_kg = 0.453592
@@ -29,6 +31,227 @@ _barrel_to_m3 = 42/_m3_to_gal # 1 barrel is 42 gallon
 _in_to_m = 0.0254
 _psi_to_Pa = 6894.76
 _m3perh_to_mmscfd = 1/1177.17 # H2
+
+# %%
+
+class Electrochemical(SanUnit):
+    '''
+    An electrochemical unit alternatively operated in 
+    electrochemical oxidation (EO) and electrodialysis (ED) modes.
+    
+    The original design was costed for a 50,000 kg H2/d system.
+    
+    The `replacement_surrogate` stream is used to represent the annual replacement cost,
+    its price is set based on `annual_replacement_ratio`.
+    
+    Parameters
+    ----------
+    ins : Iterable(stream)
+        Influent water, eletrolyte, replacement_surrogate.
+    outs : Iterable(stream)
+        Mixed gas, recovered N, recovered P, treated water.
+    gas_yield : float
+        Dry mass yield of the gas products.
+    N_IDs : Iterable(str)
+        IDs of the components for nitrogen recovery.
+    P_IDs : Iterable(str)
+        IDs of the components for phosphorus recovery.
+    K_IDs : Iterable(str)
+        IDs of the components for potassium recovery.
+    N_recovery : float
+        Recovery efficiency for nitrogen components (set by `N_IDs`).
+    P_recovery : float
+        Recovery efficiency for phosphorus components (set by `P_IDs`).
+    K_recovery : float
+        Recovery efficiency for potassium components (set by `K_IDs`).
+    EO_current_density : float
+        Currenty density when operating in the electrochemical oxidation, [A/m2].
+    ED_current_density : float
+        Currenty density when operating in the electrodialysis mode, [A/m2].
+    EO_voltage : float
+        Voltage when operating in the electrochemical oxidation mode, [V].
+    ED_voltage : float
+        Voltage when operating in the electrodialysis mode, [V].
+    EO_online_time_ratio : float
+        Ratio of time operated in the electrochemical oxidation model,
+        ED_online_time_ratio is calculated as 1 - EO_online_time_ratio.
+    chamber_thickness : float
+        Thickness of the unit chamber, [m].
+    electrode_cost : float
+        Unit cost of the electrodes, [$/m2].
+    anion_exchange_membrane_cost : float
+        Unit cost of the anion exchange membrane, [$/m2].
+    cation_exchange_membrane_cost : float
+        Unit cost of the cation exchange membrane, [$/m2].
+    electrolyte_load : float
+        Load of the electrolyte per unit volume of the unit, [kg/m3].
+    electrolyte_price : float
+        Unit price of the electrolyte, [$/kg].
+        Note that the electrolyte is calculated as a capital cost because
+        theoretically it is not consumed during operation
+        (replacement cost calculated through `annual_replacement_ratio`).
+    annual_replacement_ratio : float
+        Annual replacement cost as a ratio of the total purchase cost.
+        
+    References
+    ----------
+    [1] Jiang et al., 2024.
+    '''
+    
+    _N_ins = 1
+    _N_outs = 3
+
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+                 gas_yield=0.056546425,
+                 gas_composition={
+                     'N2': 0.000795785,
+                     'H2': 0.116180614,
+                     'O2': 0.48430472,
+                     'CO2': 0.343804756,
+                     'CO': 0.054914124,
+                     },
+                 N_IDs=('N',),
+                 P_IDs=('P',),
+                 K_IDs=('K',),
+                 N_recovery=0.8,
+                 P_recovery=0.99,
+                 K_recovery=0.8,
+                 EO_current_density=1500, # A/m2
+                 ED_current_density=100, # A/m2
+                 EO_voltage=5, # V
+                 ED_voltage=30, # V
+                 EO_online_time_ratio=8/(8+1.5),
+                 chamber_thickness=0.02, # m
+                 electrode_cost=40000, # $/m2
+                 anion_exchange_membrane_cost=170, # $/m2
+                 cation_exchange_membrane_cost=190, # $/m2
+                 electrolyte_load=3*136, # kg/m3, 3 M of KH2PO4 (MW=136 k/mole)
+                 electrolyte_price=30, # $/kg
+                 annual_replacement_ratio=0.02,
+                 ):
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.gas_composition = gas_composition
+        self.N_recovery = N_recovery
+        self.P_recovery = P_recovery
+        self.K_recovery = K_recovery
+        self.N_IDs = N_IDs
+        self.P_IDs = P_IDs
+        self.K_IDs = K_IDs
+        self.EO_current_density = EO_current_density
+        self.ED_current_density = ED_current_density
+        self.EO_voltage = EO_voltage
+        self.EO_online_time_ratio = EO_online_time_ratio
+        self.chamber_thickness = chamber_thickness
+        self.electrode_cost = electrode_cost
+        self.anion_exchange_membrane_cost = anion_exchange_membrane_cost
+        self.cation_exchange_membrane_cost = cation_exchange_membrane_cost
+        self.electrolyte_price = electrolyte_price # costing like a CAPEX due to minimal replacement requirements
+        self.electrolyte_load = electrolyte_load
+        self.annual_replacement_ratio = annual_replacement_ratio
+        
+    
+    def _run(self):
+        gas, N, P, K, eff = self.outs
+        eff.copy_like(self.ins[0])
+        water_in = eff.imass['Water']
+        eff.imass['Water'] = 0
+        dry_in = eff.F_mass
+               
+        fert_IDs = self.N_ID, self.P_IDs, self.K_IDs
+        recoveries = self.N_recovery, self.P_recovery, self.K_recovery
+        for IDs, out, recovery in zip(fert_IDs, (N, P, K), recoveries):
+            out.imass[IDs] = eff.imass[IDs] * recovery
+            eff.imass[IDs] -= out.imass[IDs]
+        
+        gas.empty()
+        comp = self.gas_composition
+        gas.imass[list(comp.keys())] = list(comp.values())
+        gas.F_mass = dry_in * self.gas_yield
+        gas.phase = 'g'
+        
+        eff.F_mass -= gas.F_mass
+        eff.imass['Water'] = water_in
+        
+        
+    def _design(self):
+        Design = self.design_results
+        
+        # 96485 is the Faraday constant C/mol (A·s/mol e)
+        # MW of H2 is 2 g/mol, 2 electrons per mole of H2
+        factor = 2/(2/1e3) * 96485 # (A·s/kg H2)
+        H2_production = self.gas[0].imass['H2'] / 3600 # kg/s
+        current_eq = factor * H2_production # A
+        area = current_eq / self.average_current_density
+        Design['Area'] = area
+        Design['Volume'] = area * self.chamber_thickness
+        
+        EO_power = self.EO_current_density * self.EO_voltage # W/m2, when online
+        EO_electricity_per_area = EO_power/1e3 * self.EO_online_time_ratio # kWh/h/m2
+        Design['EO electricity'] = EO_electricity = area * EO_electricity_per_area # kWh/h
+        
+        ED_power = self.ED_current_density * self.ED_voltage # W/m2, when online
+        ED_electricity_per_area = ED_power/1e3 * self.ED_online_time_ratio # kWh/h/m2
+        Design['ED electricity'] = ED_electricity = area * ED_electricity_per_area # kWh/h
+        total_power = EO_electricity + ED_electricity
+        self.power_utility.consumption = total_power
+        self._FE = current_eq/(total_power*1e3) #!!! unsure of this calculation
+
+    def _cost(self):
+        Design = self.design_results
+        Cost = self.baseline_purchase_costs
+        stack_cost = self.electrode_cost+self.anion_exchange_membrane_cost+self.cation_exchange_membrane_cost
+        Cost['Stack'] = stack_cost * Design['Area']
+        Cost['Electrolyte'] = self.electrolyte_load*Design['Volume']*self.electrolyte_price
+        
+        replacement = self.ins[1]
+        replacement.imass['Water'] = 1
+        breakpoint()
+        try: hours = self.system.operating_hours
+        except: hours = 365*24
+        replacement.price = sum(Cost.values())/replacement.F_mass/hours
+        
+        
+    def _normalize_composition(self, dct):
+        total = sum(dct.values())
+        if total <=0: raise ValueError(f'Sum of total compositions should be positive, not {total}.')
+        return {k:v/total for k, v in dct.items()}
+    
+    @property
+    def gas_composition(self):
+        return self._gas_composition
+    @gas_composition.setter
+    def gas_composition(self, comp_dct):
+        self._gas_composition = self._normalize_composition(comp_dct)
+        
+    @property
+    def ED_online_time_ratio(self):
+        '''Ratio of electrodialysis in operation.'''
+        return 1 - self.ED_online_time_ratio
+        
+    @property
+    def avgerage_current_density(self):
+        '''Currenty density of EO/ED averaged by online hours, [A/m2].'''
+        return (self.EO_current_density*self.EO_online_time_ratio +
+                self.ED_current_density*self.ED_online_time_ratio)
+    
+    @property
+    def EO_electricity_ratio(self):
+        '''Ratio of electricity used by electrochemical oxidation.'''
+        EO = self.EO_current_density * self.EO_online_time_ratio
+        ED = self.ED_current_density * self.ED_online_time_ratio
+        return EO/(EO+ED)
+    
+    @property
+    def ED_electricity_ratio(self):
+        '''Ratio of electricity used by electrodialysis.'''
+        return 1 - self.EO_electricity_ratio
+    
+    @property
+    def FE(self):
+        '''Faradaic efficiency of the combined EO and ED unit.'''
+        return self._FE
 
 
 # %%
@@ -480,6 +703,7 @@ class HydrothermalLiquefaction(Reactor):
         return self.biocrude_HHV/(feed.HHV/feed.F_mass/1e3)
 
 
+# %%
 
 # =============================================================================
 # Hydroprocessing
@@ -802,6 +1026,8 @@ class Hydroprocessing(Reactor):
     #     C_out = sum(self.outs[0].imass[cmp.ID]*cmp.i_C for cmp in cmps)
     #     return C_out/C_in
 
+
+# %%
 
 # =============================================================================
 # Pressure Swing Adsorption
