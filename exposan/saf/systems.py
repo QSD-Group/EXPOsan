@@ -95,9 +95,9 @@ def create_system(include_PSA=True, include_EC=True,):
     # Use the same process settings as Feng et al.
     _load_process_settings()
 
-    if include_PSA: sys_ID = 'sys_PSA'
-    elif include_EC: sys_ID = 'sys_EC'
-    else: sys_ID = 'sys'
+    sys_ID = 'sys'
+    if include_PSA: sys_ID += '_PSA'
+    if include_EC: sys_ID += '_EC'
 
     flowsheet = qs.Flowsheet(sys_ID)
     qs.main_flowsheet.set_flowsheet(flowsheet)
@@ -488,13 +488,15 @@ def create_system(include_PSA=True, include_EC=True,):
             ins=(WWmixer-0, 'replacement_surrogate'),
             outs=('EC_gas', 'EC_H2', recovered_N, recovered_P, recovered_K, ww_to_disposal),
             include_PSA=include_PSA,
+            # EO_voltage=2, # originally 5, 2 for 50% efficiency
+            # ED_voltage=2, # originally 30, 2 for 50% efficiency
             )
         EC.register_alias('Electrochemical')
         ww_to_disposal.price = 0 #!!! assume no disposal cost, better to calculate cost based on COD/organics/dry mass
         fuel_gases.append(EC-0)
         recycled_H2_streams = [EC-1]
     else:
-        WWmixer.outs[0] = WWmixer
+        WWmixer.outs[0] = ww_to_disposal
         ww_to_disposal.price = price_dct['wastewater']
         recycled_H2_streams = []
 
@@ -520,7 +522,8 @@ def create_system(include_PSA=True, include_EC=True,):
     H2C = u.HydrogenCenter(
         'H2C',
         process_H2_streams=(HC.ins[1], HT.ins[1]),
-        recycled_H2_streams=recycled_H2_streams)
+        recycled_H2_streams=recycled_H2_streams
+        )
     H2C.register_alias('HydrogenCenter')
     H2C.makeup_H2_price = H2C.excess_H2_price = price_dct['H2']
     
@@ -603,7 +606,11 @@ def simulate_and_print(system, save_report=False):
     for fuel, prop in properties.items():
         print(f'{fuel.ID}: {prop[0]:.2f} MJ/kg, {prop[1]:.2f} kg/gal, {prop[2]:.2f} gal GGE/hr.')
     
+    global MFSP
     MFSP = get_MFSP(sys, print_msg=True)
+    
+    global table
+    table = tea.get_cashflow_table()
     
     c = qs.currency
     for attr in ('NPV','AOC', 'sales', 'net_earnings'):
@@ -614,19 +621,18 @@ def simulate_and_print(system, save_report=False):
     # GWP = all_impacts['GlobalWarming']/(biobinder.F_mass*lca.system.operating_hours)
     # print(f'Global warming potential of the biobinder is {GWP:.4f} kg CO2e/kg.')
     
-    global table
-    table = tea.get_cashflow_table()
     if save_report:
         # Use `results_path` and the `join` func can make sure the path works for all users
         sys.save_report(file=os.path.join(results_path, f'sys_{sys.flowsheet.ID}.xlsx'))
 
 
 if __name__ == '__main__':
-    sys = create_system(include_PSA=True, include_EC=True)
+    # sys = create_system(include_PSA=False, include_EC=False)
+    sys = create_system(include_PSA=True, include_EC=False)
+    # sys = create_system(include_PSA=True, include_EC=True)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     tea = sys.TEA
     # lca = sys.LCA
     
-    # simulate_and_print(sys)
-    # table = tea.get_cashflow_table()
+    simulate_and_print(sys)

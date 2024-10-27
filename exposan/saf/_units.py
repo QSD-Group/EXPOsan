@@ -165,10 +165,6 @@ class HydrothermalLiquefaction(Reactor):
     use_decorated_cost : bool
         If True, will use cost scaled based on [1], otherwise will use generic
         algorithms for ``Reactor`` (``PressureVessel``).
-    CAPEX_factor: float
-        Factor used to adjust the total installed cost,
-        this is on top of all other factors to individual equipment of this unit
-        (e.g., bare module, material factors).
     F_M : dict
         Material factors used to adjust cost (only used `use_decorated_cost` is False).
         
@@ -257,7 +253,6 @@ class HydrothermalLiquefaction(Reactor):
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 316',
                  vessel_type='Horizontal',
-                 CAPEX_factor=1,
                  # Use material factors so that the calculated reactor cost matches [6]
                  F_M={
                     'Horizontal pressure vessel': 2.7,
@@ -304,7 +299,6 @@ class HydrothermalLiquefaction(Reactor):
         self.wall_thickness_factor = wall_thickness_factor
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
-        self.CAPEX_factor = CAPEX_factor
         self.F_M = F_M
         
 
@@ -402,34 +396,15 @@ class HydrothermalLiquefaction(Reactor):
             kodrum.simulate()
         
     def _cost(self):
-        purchase_costs = self.baseline_purchase_costs
-        purchase_costs.clear()
-
-        use_decorated_cost = self.use_decorated_cost
-        if use_decorated_cost in (True, 'Hydrocracker', 'Hydrotreater'):     
+        Design = self.design_results
+        Design.clear()
+        self.baseline_purchase_costs.clear()
+        if self.use_decorated_cost:
             ins0 = self.ins[0]
-            Design = self.design_results
-            if use_decorated_cost is True:
-                Design['Dry mass flowrate'] = (ins0.F_mass-ins0.imass['Water'])/_lb_to_kg
-            else:
-                Design['Oil mass flowrate'] = ins0.F_mass/_lb_to_kg
-            
+            Design['Dry mass flowrate'] = (ins0.F_mass-ins0.imass['Water'])/_lb_to_kg            
             self._decorated_cost()
-            if use_decorated_cost == 'Hydrocracker':
-                purchase_costs.pop('Hydrotreater')
-            elif use_decorated_cost == 'Hydrotreater':
-                purchase_costs.pop('Hydrocracker')
         else: Reactor._cost(self)
         
-        for item in purchase_costs.keys():
-            purchase_costs[item] *= self.CAPEX_factor
-        
-        for aux_unit in self.auxiliary_units:
-            purchase_costs = aux_unit.baseline_purchase_costs
-            installed_costs = aux_unit.installed_costs
-            for item in purchase_costs.keys():
-                purchase_costs[item] *= self.CAPEX_factor
-                installed_costs[item] *= self.CAPEX_factor
                 
     def _normalize_composition(self, dct):
         total = sum(dct.values())
@@ -490,15 +465,15 @@ class HydrothermalLiquefaction(Reactor):
 # Hydroprocessing
 # =============================================================================
 
-@cost(basis='Oil mass flowrate', ID='Hydrocracker', units='lb/hr',
+@cost(basis='Oil lb flowrate', ID='Hydrocracker', units='lb/hr',
       cost=25e6, # installed cost
       S=5963, # S338 in [1]
       CE=CEPCI_by_year[2007], n=0.75, BM=1)
-@cost(basis='Oil mass flowrate', ID='Hydrotreater', units='lb/hr',
+@cost(basis='Oil lb flowrate', ID='Hydrotreater', units='lb/hr',
       cost=27e6, # installed cost
       S=69637, # S135 in [1]
       CE=CEPCI_by_year[2007], n=0.68, BM=1)
-@cost(basis='H2 mass flowrate', ID='PSA', units='lb/hr', # changed scaling basis
+@cost(basis='PSA H2 lb flowrate', ID='PSA', units='lb/hr', # changed scaling basis
       cost=1750000, S=5402, # S135 in [1]
       CE=CEPCI_by_year[2004], n=0.8, BM=2.47)
 class Hydroprocessing(Reactor):
@@ -552,10 +527,7 @@ class Hydroprocessing(Reactor):
         Either 'Hydrotreater' or 'Hydrotreater' to use the corresponding
         decorated cost, otherwise, will use generic
         algorithms for ``Reactor`` (``PressureVessel``).
-    CAPEX_factor: float
-        Factor used to adjust the total installed cost,
-        this is on top of all other factors to individual equipment of this unit
-        (e.g., bare module, material factors).
+
         
     See Also
     --------    
@@ -575,17 +547,15 @@ class Hydroprocessing(Reactor):
     _N_ins = 3
     _N_outs = 2
     _units= {
-        'Oil mass flowrate': 'lb/hr',
-        'H2 mass flowrate': 'lb/hr',
-        }
-        
-    auxiliary_unit_names=('compressor','hx', 'hx_inf_heating',)
-    
+        'Oil lb flowrate': 'lb/hr',
+        'PSA H2 lb flowrate': 'lb/hr',
+        }  
     _F_BM_default = {
         **Reactor._F_BM_default,
         'Heat exchanger': 3.17,
         'Compressor': 1.1,
         }
+    auxiliary_unit_names=('compressor','hx', 'hx_inf_heating',)
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
@@ -623,7 +593,7 @@ class Hydroprocessing(Reactor):
                  wall_thickness_factor=1.5,
                  vessel_material='Stainless steel 316',
                  vessel_type='Vertical',
-                 CAPEX_factor=1.,):
+                 ):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, include_construction=include_construction)
         self.T = T
@@ -657,7 +627,6 @@ class Hydroprocessing(Reactor):
         inf_heating_hx_out = Stream(f'{ID}_inf_heating_hx_out')
         self.inf_heating_hx = HXutility(ID=f'.{ID}_inf_heating_hx', ins=inf_after_hx, outs=inf_heating_hx_out, T=T, rigorous=True)
         self.use_decorated_cost = use_decorated_cost
-        self.CAPEX_factor = CAPEX_factor
         self.tau = tau
         self.V_wf = V_wf
         self.length_to_diameter = length_to_diameter
@@ -682,8 +651,8 @@ class Hydroprocessing(Reactor):
         hydrogen_ratio = self.hydrogen_ratio
         H2_rxned =  inf_oil.F_mass * hydrogen_rxned_to_inf_oil
         H2_tot = H2_rxned * hydrogen_ratio
-        H2_residual = H2_tot - H2_rxned
-        H2_recycled = H2_residual * self.PSA_efficiency
+        H2_residual = self._H2_residual = H2_tot - H2_rxned
+        H2_recycled = self._H2_recycled = H2_residual * self.PSA_efficiency
         H2_wasted = H2_residual - H2_recycled
 
         eff_oil.copy_like(inf_oil)
@@ -698,14 +667,20 @@ class Hydroprocessing(Reactor):
         
         makeup_hydrogen.imass['H2'] = H2_rxned + H2_wasted
         makeup_hydrogen.phase = 'g'
-        self.design_results['H2 mass flowrate'] = H2_residual/_lb_to_kg
 
     def _design(self):
+        Design = self.design_results
+        Design.clear()
+        Design['PSA H2 lb flowrate'] = self._H2_residual / _lb_to_kg
+        Design['H2 recycled'] = recycled = self._H2_recycled / _lb_to_kg
+        Design['Oil lb flowrate'] = self.ins[0].F_mass/_lb_to_kg
+        
         IC = self.compressor # for H2 compressing
         H2 = self.ins[1]
         IC_ins0, IC_outs0 = IC.ins[0], IC.outs[0]
         IC_ins0.copy_like(H2)
-        IC_outs0.copy_like(H2)
+        IC_ins0.F_mass += recycled # including the compressing needs for the recycled H2
+        IC_outs0.copy_like(IC_ins0)
         IC_outs0.P = IC.P = self.P
         IC_ins0.phase = IC_outs0.phase = 'g'
         IC.simulate()
@@ -736,7 +711,24 @@ class Hydroprocessing(Reactor):
 
         Reactor._design(self)
 
-    _cost = HydrothermalLiquefaction._cost
+    def _cost(self):
+        Cost = self.baseline_purchase_costs
+        Cost.clear()
+        
+        use_decorated_cost = self.use_decorated_cost
+        include_PSA = self.include_PSA
+        self._decorated_cost()
+        
+        if use_decorated_cost == 'Hydrocracker':
+            Cost.pop('Hydrotreater')
+        elif use_decorated_cost == 'Hydrotreater':
+            Cost.pop('Hydrocracker')
+        else:
+            Cost.pop('Hydrocracker')
+            Cost.pop('Hydrotreater')
+            Reactor._cost(self)
+        
+        if not include_PSA: Cost.pop('PSA')
 
         
     def _normalize_yields(self):
@@ -841,16 +833,17 @@ class Hydroprocessing(Reactor):
     #     C_out = sum(self.outs[0].imass[cmp.ID]*cmp.i_C for cmp in cmps)
     #     return C_out/C_in
 
+
 # %%
 
 # =============================================================================
 # Pressure Swing Adsorption
 # =============================================================================
 
-@cost(basis='H2 mass flowrate', ID='PSA', units='lb/hr', # changed scaling basis
+@cost(basis='PSA H2 lb flowrate', ID='PSA', units='lb/hr', # changed scaling basis
       cost=1750000, S=5402, # S135 in [1]
       CE=CEPCI_by_year[2004], n=0.8, BM=2.47)
-class PressureSwingAdsorption:
+class PressureSwingAdsorption(SanUnit):
     '''
     A pressure swing adsorption (PSA) process can be optionally included
     for H2 recovery.
@@ -863,6 +856,8 @@ class PressureSwingAdsorption:
         Hydrogen, other gases.
     efficiency : float
         H2 recovery efficiency.
+    PSA_compressor_P : float
+        Pressure to compressed the generated H2 to, if desired, [Pa].
         
     References
     ----------
@@ -875,21 +870,22 @@ class PressureSwingAdsorption:
     '''
     _N_ins = 1
     _N_outs = 2  
-    _units= {'H2 mass flowrate': 'lb/hr',}
+    _units= {'PSA H2 lb flowrate': 'lb/hr',}
+    _F_BM_default = {'Compressor': 1.1,}
+    auxiliary_unit_names=('compressor',)
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                  init_with='WasteStream', efficiency=0.9,):
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+                 efficiency=0.9,
+                 PSA_compressor_P=101325,
+                 ):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.efficiency = efficiency
-    
-    @property
-    def efficiency (self):
-        return self._efficiency 
-    @efficiency.setter
-    def efficiency(self, i):
-        if i > 1: raise Exception('Efficiency cannot be larger than 1.')
-        self._efficiency  = i
+        # For H2 compressing
+        P = self.PSA_compressor_P = PSA_compressor_P
+        IC_in = Stream(f'{ID}_IC_in')
+        IC_out = Stream(f'{ID}_IC_out')
+        self.compressor = IsothermalCompressor(ID=f'.{ID}_IC', ins=IC_in, outs=IC_out, P=P)
         
     def _run(self):
         H2, others = self.outs       
@@ -898,12 +894,28 @@ class PressureSwingAdsorption:
         others.imass['H2'] -= recovered
         
     def _design(self):
-        self.design_results['H2 mass flowrate'] = self.F_mass_in/_lb_to_kg
+        self.design_results['PSA H2 lb flowrate'] = self.F_mass_in/_lb_to_kg
+        IC = self.compressor # for H2 compressing
+        H2 = self.ins[0]
+        IC_ins0, IC_outs0 = IC.ins[0], IC.outs[0]
+        IC_ins0.copy_like(H2)
+        IC_outs0.copy_like(IC_ins0)
+        IC_outs0.P = IC.P = self.PSA_compressor_P
+        IC_ins0.phase = IC_outs0.phase = 'g'
+        IC.simulate()
+        
+    @property
+    def efficiency (self):
+        return self._efficiency 
+    @efficiency.setter
+    def efficiency(self, i):
+        if i > 1: raise Exception('Efficiency cannot be larger than 1.')
+        self._efficiency  = i
 
 
 # %%
 
-@cost(basis='H2 mass flowrate', ID='PSA', units='lb/hr', # changed scaling basis
+@cost(basis='PSA H2 lb flowrate', ID='PSA', units='lb/hr', # changed scaling basis
       cost=1750000, S=5402, # S135 in [1]
       CE=CEPCI_by_year[2004], n=0.8, BM=2.47)
 class Electrochemical(SanUnit):
@@ -971,6 +983,8 @@ class Electrochemical(SanUnit):
     PSA_efficiency : float
         H2 recovery efficiency of the PSA unit,
         will be set to 0 if `include_PSA` is False.
+    PSA_compressor_P : float
+        Pressure to compressed the generated H2 to, if desired, [Pa].
         
     References
     ----------
@@ -979,9 +993,12 @@ class Electrochemical(SanUnit):
     
     _N_ins = 2
     _N_outs = 6
-    _units= {'H2 mass flowrate': 'lb/hr',}
+    _units= {'PSA H2 lb flowrate': 'lb/hr',}
+    _F_BM_default = {'Compressor': 1.1,}
+    auxiliary_unit_names=('compressor',)
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='WasteStream', F_BM_default=1,
                  gas_yield=0.056546425,
                  gas_composition={
                      'N2': 0.000795785,
@@ -1010,9 +1027,10 @@ class Electrochemical(SanUnit):
                  annual_replacement_ratio=0.02,
                  include_PSA=False,
                  PSA_efficiency=0.9,
+                 PSA_compressor_P=101325,
                  ):
         
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
         self.gas_yield = gas_yield
         self.gas_composition = gas_composition
         self.N_recovery = N_recovery
@@ -1035,6 +1053,11 @@ class Electrochemical(SanUnit):
         self.annual_replacement_ratio = annual_replacement_ratio
         self.include_PSA = include_PSA
         self.PSA_efficiency = PSA_efficiency
+        # For H2 compressing
+        P = self.PSA_compressor_P = PSA_compressor_P
+        IC_in = Stream(f'{ID}_IC_in')
+        IC_out = Stream(f'{ID}_IC_out')
+        self.compressor = IsothermalCompressor(ID=f'.{ID}_IC', ins=IC_in, outs=IC_out, P=P)
         
     
     def _run(self):
@@ -1053,7 +1076,8 @@ class Electrochemical(SanUnit):
         gas.empty()
         comp = self.gas_composition
         gas.imass[list(comp.keys())] = list(comp.values())
-        self.design_results['H2 mass flowrate'] = gas.F_mass = dry_in * self.gas_yield
+        gas.F_mass = dry_in * self.gas_yield
+        self._PSA_H2_lb_flowrate = gas.F_mass / _lb_to_kg
         gas.phase = 'g'
         
         eff.F_mass -= gas.F_mass
@@ -1087,23 +1111,34 @@ class Electrochemical(SanUnit):
         self.power_utility.consumption = total_power
         self._FE = current_eq/(total_power*1e3) #!!! unsure of this calculation
         
+        Design['PSA H2 lb flowrate'] = self._PSA_H2_lb_flowrate
+        IC = self.compressor # for H2 compressing
+        H2 = self.outs[1]
+        IC_ins0, IC_outs0 = IC.ins[0], IC.outs[0]
+        IC_ins0.copy_like(H2)
+        IC_outs0.copy_like(IC_ins0)
+        IC_outs0.P = IC.P = self.PSA_compressor_P
+        IC_ins0.phase = IC_outs0.phase = 'g'
+        IC.simulate()
+        
 
     def _cost(self):
         Design = self.design_results
         Cost = self.baseline_purchase_costs
         Cost.clear()
-        self._decorated_cost()        
-
+        
         stack_cost = self.electrode_cost+self.anion_exchange_membrane_cost+self.cation_exchange_membrane_cost
         Cost['Stack'] = stack_cost * Design['Area']
         Cost['Electrolyte'] = self.electrolyte_load*Design['Volume']*self.electrolyte_price
+        cell_cost = sum(Cost.values())
+        
+        self._decorated_cost()
         
         replacement = self.ins[1]
         replacement.imass['Water'] = 1
-        breakpoint()
         try: hours = self.system.operating_hours
         except: hours = 365*24
-        replacement.price = sum(Cost.values())/replacement.F_mass/hours
+        replacement.price = cell_cost*self.annual_replacement_ratio/replacement.F_mass/hours
         
         
     def _normalize_composition(self, dct):
@@ -1121,7 +1156,7 @@ class Electrochemical(SanUnit):
     @property
     def ED_online_time_ratio(self):
         '''Ratio of electrodialysis in operation.'''
-        return 1 - self.ED_online_time_ratio
+        return 1 - self.EO_online_time_ratio
         
     @property
     def average_current_density(self):
