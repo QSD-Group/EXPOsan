@@ -95,11 +95,11 @@ def create_system(include_PSA=True, include_EC=True,):
     # Use the same process settings as Feng et al.
     _load_process_settings()
 
-    sys_ID = 'sys'
-    if include_PSA: sys_ID += '_PSA'
-    if include_EC: sys_ID += '_EC'
+    flowsheet_ID = 'sys'
+    if include_PSA: flowsheet_ID += '_PSA'
+    if include_EC: flowsheet_ID += '_EC'
 
-    flowsheet = qs.Flowsheet(sys_ID)
+    flowsheet = qs.Flowsheet(flowsheet_ID)
     qs.main_flowsheet.set_flowsheet(flowsheet)
     saf_cmps = create_components(set_thermo=True)
     
@@ -535,7 +535,7 @@ def create_system(include_PSA=True, include_EC=True,):
     # System, TEA, LCA
     # =========================================================================   
     sys = qs.System.from_units(
-        sys_ID,
+        'sys',
         units=list(flowsheet.unit),
         operating_hours=hours, # 90% uptime
         )

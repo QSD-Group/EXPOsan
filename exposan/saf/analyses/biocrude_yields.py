@@ -17,7 +17,7 @@ for license details.
 import warnings
 warnings.filterwarnings('ignore')
 
-import os, pandas as pd, qsdsan as qs
+import os, numpy as np, pandas as pd, qsdsan as qs
 from exposan.saf import (
     data_path,
     results_path,
@@ -28,8 +28,8 @@ from exposan.saf import (
 data_path = os.path.join(data_path, 'biocrude_yields.csv')
 df = pd.read_csv(data_path)
 
-def MFSP_across_biocrude_yields(yields=[]):
-    sys = create_system()
+def MFSP_across_biocrude_yields(yields=[], **config_kwargs):
+    sys = create_system(**config_kwargs)
     unit = sys.flowsheet.unit
     stream = sys.flowsheet.stream
     
@@ -51,16 +51,11 @@ def MFSP_across_biocrude_yields(yields=[]):
         return [i*non_crude for i in non_crudes]
 
     feedstock = stream.feedstock
-    gasoline = stream.gasoline
-    jet = stream.jet
-    diesel = stream.diesel
+    mixed_fuel = stream.mixed_fuel
     dry_feedstock = feedstock.F_mass - feedstock.imass['Water']
     
-    GGEs = []
-    y_gasolines = []
-    y_jets = []
-    y_diesels = []
-    
+    MFSPs = []
+    fuel_yields = []
     for y in yields:
         print(f'yield: {y}')
         sys.reset_cache()
@@ -82,45 +77,38 @@ def MFSP_across_biocrude_yields(yields=[]):
         try: 
             sys.simulate()
             MFSP = get_MFSP(sys, print_msg=False)
-            y_gasoline = gasoline.F_mass/dry_feedstock
-            y_jet = jet.F_mass/dry_feedstock
-            y_diesel = diesel.F_mass/dry_feedstock
-            print(f'MFSP: ${MFSP:.2f}/GGE\n')
+            fuel_yield = mixed_fuel.F_mass/dry_feedstock
+            print(f'MFSP: ${MFSP:.2f}/GGE; fuel yields {fuel_yield:.2%}.\n')
         except:
-            MFSP = y_gasoline = y_jet = y_diesel = None
-            print('simulation failed.\n')
+            MFSP = fuel_yield = None
+            print('Simulation failed.\n')
 
-        GGEs.append(MFSP)
-        y_gasolines.append(y_gasoline)
-        y_jets.append(y_jet)
-        y_diesels.append(y_diesel)
-    
-    return GGEs, y_gasolines, y_jets, y_diesels
+        MFSPs.append(MFSP)
+        fuel_yields.append(fuel_yield)
+
+    return MFSPs, fuel_yields
 
 
 if __name__ == '__main__':
+    # config = {'include_PSA': False, 'include_EC': False,}
+    config = {'include_PSA': True, 'include_EC': False,}
+    # config = {'include_PSA': True, 'include_EC': True,}
     flowsheet = qs.main_flowsheet
     dct = globals()
     dct.update(flowsheet.to_dict())
     
-    # single=[67.3] # normalized from the 80.2 biocrude+char, $2.67/GGE
-    # single=[22.304035] # $3.91/GGE
-    # results = MFSP_across_biocrude_yields(yields=single)
+    # single = [67.3] # normalized from the 80.2 biocrude+char, $3.10/GGE
+    # single = [20]
+    # results = MFSP_across_biocrude_yields(yields=single, **config)
     
-    tested_results = MFSP_across_biocrude_yields(yields=df.y_test)
-    tested = df.copy()
-    tested['$/GGE'] = tested_results[0]
-    tested['y_gasoline'] = tested_results[1]
-    tested['y_jet'] = tested_results[2]
-    tested['y_diesel'] = tested_results[3]
-    tested_path = os.path.join(results_path, 'tested_results.csv')
-    tested.to_csv(tested_path)
+    yields_results = df.copy()
+    tested = MFSP_across_biocrude_yields(yields=df.y_test, **config)
+    yields_results['y_test_MFSP'] = tested[0]
+    yields_results['y_test_yields'] = tested[1]
+
+    predicted = MFSP_across_biocrude_yields(yields=df.y_pred, **config)
+    yields_results['y_pred_MFSP'] = predicted[0]
+    yields_results['y_pred_yields'] = predicted[1]
     
-    predicted_results = MFSP_across_biocrude_yields(yields=df.y_pred)
-    predicted = df.copy()
-    predicted['$/GGE'] = predicted_results[0]
-    predicted['y_gasoline'] = predicted_results[1]
-    predicted['y_jet'] = predicted_results[2]
-    predicted['y_diesel'] = predicted_results[3]
-    predicted_path = os.path.join(results_path, 'predicted_results.csv')
-    predicted.to_csv(predicted_path)
+    outputs_path = os.path.join(results_path, f'biocrude_yields_{flowsheet}.csv')
+    yields_results.to_csv(outputs_path)
