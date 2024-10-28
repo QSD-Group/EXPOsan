@@ -319,7 +319,7 @@ def create_system(include_PSA=True, include_EC=True,):
     HC.register_alias('Hydrocracking')
     # In [1], HC is costed for a multi-stage HC, but commented that the cost could be
     # $10-70 MM (originally $25 MM for a 6500 bpd system),
-    # HC.cost_items['Hydrocracker'].cost = 10e6
+    HC.cost_items['Hydrocracker'].cost = 10e6
     
     HC_HX = qsu.HXutility(
         'HC_HX', ins=HC-0, outs='cooled_HC_eff', T=60+273.15,

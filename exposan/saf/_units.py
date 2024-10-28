@@ -120,13 +120,18 @@ class KnockOutDrum(Reactor):
 # Hydrothermal Liquefaction
 # =============================================================================
 
-# Original [1] is 1339 dry-ash free TPD, but the original ash content is very low.
-@cost(basis='Dry mass flowrate', ID='HTL system', units='lb/hr',
-      cost=18743378, S=306198,
+# Original [1] is 1339 dry-ash free ton per day (tpd), ash content is 13%,
+# which is 58176 wet lb/hr, scaling basis in the equipment table in [1]
+# (flow for S100) does not seem right.
+@cost(basis='Wet mass flowrate', ID='HTL system', units='lb/hr',
+      cost=37486757, S=574476,
       CE=CEPCI_by_year[2011], n=0.77, BM=2.1)
-@cost(basis='Dry mass flowrate', ID='Solids filter oil/water separator', units='lb/hr',
-      cost=3945523, S=1219765,
+@cost(basis='Wet mass flowrate', ID='Solids filter oil/water separator', units='lb/hr',
+      cost=3945523, S=574476,
       CE=CEPCI_by_year[2011], n=0.68, BM=1.9)
+@cost(basis='Wet mass flowrate', ID='Hot oil system', units='lb/hr',
+      cost=4670532, S=574476,
+      CE=CEPCI_by_year[2011], n=0.6, BM=1.4)
 class HydrothermalLiquefaction(Reactor):
     '''
     HTL converts feedstock to gas, aqueous, biocrude, (hydro)char
@@ -216,7 +221,7 @@ class HydrothermalLiquefaction(Reactor):
     _N_ins = 1
     _N_outs = 4
     _units= {
-        'Dry mass flowrate': 'lb/hr',
+        'Wet mass flowrate': 'lb/hr',
         'Solid filter and separator weight': 'lb',
         }
     
@@ -401,7 +406,7 @@ class HydrothermalLiquefaction(Reactor):
         self.baseline_purchase_costs.clear()
         if self.use_decorated_cost:
             ins0 = self.ins[0]
-            Design['Dry mass flowrate'] = (ins0.F_mass-ins0.imass['Water'])/_lb_to_kg            
+            Design['Wet mass flowrate'] = ins0.F_mass/_lb_to_kg         
             self._decorated_cost()
         else: Reactor._cost(self)
         

@@ -53,9 +53,9 @@ def MFSP_across_sizes(sizes, **config_kwargs):
     return MFSPs
         
 if __name__ == '__main__':
-    config = {'include_PSA': False, 'include_EC': False,}
+    # config = {'include_PSA': False, 'include_EC': False,}
     config = {'include_PSA': True, 'include_EC': False,}
-    config = {'include_PSA': True, 'include_EC': True,}
+    # config = {'include_PSA': True, 'include_EC': True,}
     flowsheet = qs.main_flowsheet
     dct = globals()
     dct.update(flowsheet.to_dict())
