@@ -19,6 +19,13 @@ References
     Environ. Sci. Technol. 2024, 58 (5), 2528–2541.
     https://doi.org/10.1021/acs.est.3c07394.
 
+TODOs:
+    - Adjust all price/labor to 2020 (add to qsdsan.utils).
+    - Confirm/adjust all prices.
+    - Add LCA (streams, utilities, transportation, electrolyte replacement, avoided emissions).
+    - Uncertainty/sensitivity (model).
+    - Single point sens
+    
 '''
 
 # !!! Temporarily ignoring warnings
@@ -31,58 +38,25 @@ from qsdsan import sanunits as qsu
 from qsdsan.utils import clear_lca_registries
 from exposan.htl import (
     create_tea,
-    _load_process_settings
     )
 from exposan.biobinder import _units as bbu, find_Lr_Hr
 from exposan.saf import (
+    feedstock_composition,
+    dry_flowrate, wet_flowrate,
+    HTL_yields,
+    annual_hours, price_dct,
+    _load_process_settings,
     create_components,
     # data_path,
     results_path,
     # _load_components,
-    # _load_process_settings,
     # create_tea,
     _units as u,
     )
 
 _psi_to_Pa = 6894.76
 _m3_to_gal = 264.172
-tpd = 110 # dry mass basis
-uptime_ratio = 0.9
 
-dry_flowrate = tpd*907.185/(24*uptime_ratio) # 110 dry sludge tpd [1]
-
-#!!! Need to update the composition (moisture/ash)
-moisture = 0.7566
-feedstock_composition = {
-    'Water': moisture,
-    'Lipids': (1-moisture)*0.5315,
-    'Proteins': (1-moisture)*0.0255,
-    'Carbohydrates': (1-moisture)*0.3816,
-    'Ash': (1-moisture)*0.0614,
-    }
-wet_flowrate = dry_flowrate / (1-moisture)
-
-hours = 365*24*uptime_ratio
-cost_year = 2020
-
-# All in 2020 $/kg unless otherwise noted, needs to do a thorough check to update values
-bst_utility_price = bst.stream_utility_prices
-price_dct = {
-    'feedstock': -69.14/907.185, # tipping fee 69.14±21.14 for IL, https://erefdn.org/analyzing-municipal-solid-waste-landfill-tipping-fees/
-    'H2': 1.61, # Feng et al.
-    'HCcatalyst': 3.52, # Fe-ZSM5, CatCost modified from ZSM5
-    'HTcatalyst': 75.18, # Pd/Al2O3, CatCost modified from 2% Pt/TiO2
-    'natural_gas': 0.1685,
-    'process_water': bst_utility_price['Process water'],
-    'gasoline': 2.5, # target $/gal
-    'jet': 3.53, # 2024$/gal
-    'diesel': 3.45, # 2024$/gal
-    'N': 0, # recovered N in $/kg N
-    'P': 0, # recovered P in $/kg P
-    'K': 0, # recovered K in $/kg K
-    'solids': bst_utility_price['Ash disposal'],
-    'wastewater': -0.03/1e3, # $0.03/m3
-    }
 
 # %%
 
@@ -92,7 +66,6 @@ __all__ = (
     )
 
 def create_system(include_PSA=True, include_EC=True,):
-    # Use the same process settings as Feng et al.
     _load_process_settings()
 
     flowsheet_ID = 'sys'
@@ -103,7 +76,7 @@ def create_system(include_PSA=True, include_EC=True,):
     qs.main_flowsheet.set_flowsheet(flowsheet)
     saf_cmps = create_components(set_thermo=True)
     
-    feedstock = qs.WasteStream('feedstock', price=price_dct['feedstock'])
+    feedstock = qs.WasteStream('feedstock', price=price_dct['tipping'])
     feedstock.imass[list(feedstock_composition.keys())] = list(feedstock_composition.values())
     feedstock.F_mass = wet_flowrate
     
@@ -115,8 +88,8 @@ def create_system(include_PSA=True, include_EC=True,):
         outs=('transported_feedstock',),
         N_unit=1,
         copy_ins_from_outs=False,
-        transportation_unit_cost=50/1e3/78, # $50/tonne, #!!! need to adjust from 2016 to 2020
-        transportation_distance=78, # km ref [1]
+        transportation_unit_cost=price_dct['transportation']/1e3, # already considered distance
+        transportation_distance=1,
         )
     
     FeedstockWaterPump = qsu.Pump('FeedstockWaterPump', ins=feedstock_water)
@@ -126,6 +99,7 @@ def create_system(include_PSA=True, include_EC=True,):
         outs='conditioned_feedstock',
         feedstock_composition=None,
         feedstock_dry_flowrate=dry_flowrate,
+        target_HTL_solid_loading=1-feedstock_composition['Water'],
         N_unit=1,
         )
     @FeedstockCond.add_specification
@@ -146,14 +120,15 @@ def create_system(include_PSA=True, include_EC=True,):
         P=12.4e6, # may lead to HXN error when HXN is included
         # P=101325, # setting P to ambient pressure not practical, but it has minimum effects on the results (several cents)
         tau=15/60,
-        dw_yields={
-            'gas': 0.006,
-            'aqueous': 0.192,
-            'biocrude': 0.802,
-            'char': 0,
-            },
+        dw_yields=HTL_yields,
         gas_composition={'CO2': 1},
-        aqueous_composition={'HTLaqueous': 1},
+        # aqueous_composition={'HTLaqueous': 1},    
+        aqueous_composition={
+            'HTLaqueous': 1-(0.41+0.47+0.56)/100,
+            'N': 0.41/100,
+            'P': 0.47/100,
+            'K': 0.56/100,
+            },
         biocrude_composition={'Biocrude': 1},
         char_composition={'HTLchar': 1},
         internal_heat_exchanging=True,
@@ -468,9 +443,9 @@ def create_system(include_PSA=True, include_EC=True,):
     # All wastewater streams
     ww_streams = [HTLaqMixer-0, HCliquidSplitter-0, HTliquidSplitter-0]
     # Wastewater sent to municipal wastewater treatment plant
-    ww_to_disposal = qs.WasteStream('ww_to_disposal', price=price_dct['wastewater'])
+    ww_to_disposal = qs.WasteStream('ww_to_disposal')
 
-    WWmixer = qsu.Mixer('WWmixer', ins=ww_streams)    
+    WWmixer = qsu.Mixer('WWmixer', ins=ww_streams)
     
     fuel_gases = [
         HTL-0, CrudeLightFlash-0, # HTL gases
@@ -487,20 +462,27 @@ def create_system(include_PSA=True, include_EC=True,):
             'EC',
             ins=(WWmixer-0, 'replacement_surrogate'),
             outs=('EC_gas', 'EC_H2', recovered_N, recovered_P, recovered_K, ww_to_disposal),
-            include_PSA=include_PSA,
+            removal=0.75,
             # EO_voltage=2, # originally 5, 2 for 50% efficiency
             # ED_voltage=2, # originally 30, 2 for 50% efficiency
+            N_recovery=0.8,
+            P_recovery=0.99,
+            K_recovery=0.8,
+            include_PSA=include_PSA,
             )
         EC.register_alias('Electrochemical')
-        ww_to_disposal.price = 0 #!!! assume no disposal cost, better to calculate cost based on COD/organics/dry mass
         fuel_gases.append(EC-0)
         recycled_H2_streams = [EC-1]
     else:
         WWmixer.outs[0] = ww_to_disposal
-        ww_to_disposal.price = price_dct['wastewater']
         recycled_H2_streams = []
 
     GasMixer = qsu.Mixer('GasMixer', ins=fuel_gases, outs=('waste_gases'))
+    def adjust_ww_disposal_price():
+        COD_mass_content = sum(ww_to_disposal.imass[i.ID]*i.i_COD for i in saf_cmps)
+        factor = COD_mass_content/ww_to_disposal.F_mass if ww_to_disposal.F_mass else 0
+        ww_to_disposal.price = min(price_dct['wastewater'], price_dct['COD']*factor)
+    GasMixer.add_specification(adjust_ww_disposal_price)
 
     # =========================================================================
     # Facilities
@@ -537,7 +519,7 @@ def create_system(include_PSA=True, include_EC=True,):
     sys = qs.System.from_units(
         'sys',
         units=list(flowsheet.unit),
-        operating_hours=hours, # 90% uptime
+        operating_hours=annual_hours, # 90% uptime
         )
     for unit in sys.units: unit.include_construction = False
     
@@ -627,8 +609,8 @@ def simulate_and_print(system, save_report=False):
 
 
 if __name__ == '__main__':
-    # sys = create_system(include_PSA=False, include_EC=False)
-    sys = create_system(include_PSA=True, include_EC=False)
+    sys = create_system(include_PSA=False, include_EC=False)
+    # sys = create_system(include_PSA=True, include_EC=False)
     # sys = create_system(include_PSA=True, include_EC=True)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())

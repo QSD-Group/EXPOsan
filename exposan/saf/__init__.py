@@ -30,6 +30,10 @@ data_path, results_path = _init_modules(module, include_data_path=True)
 # Load components and systems
 # =============================================================================
 
+# Default settings for consistency across the module
+from . import _process_settings
+from ._process_settings import *
+
 from . import _components
 from ._components import *
 _components_loaded = False
@@ -39,9 +43,6 @@ def _load_components(reload=False):
         components = create_components()
         qs.set_thermo(components)
         _components_loaded = True
-
-# from . import _process_settings
-# from ._process_settings import *
 
 from . import _units
 from ._units import *

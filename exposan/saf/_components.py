@@ -16,6 +16,7 @@ for license details.
 from qsdsan import Component, Components, set_thermo as qs_set_thermo
 from exposan.utils import add_V_from_rho
 from exposan import htl, biobinder as bb
+from exposan.saf import feedstock_composition, HTL_yields
 
 __all__ = ('create_components',)
 
@@ -36,6 +37,10 @@ def create_components(set_thermo=True):
     # Generic components for HTL products
     HTLbiocrude = htl_cmps.Biocrude
     HTLaqueous = htl_cmps.HTLaqueous
+    # 43040 mg/L COD
+    moisture = feedstock_composition['Water']
+    HTLaqueous.i_COD = 43040*moisture/1e6/((1-moisture)*HTL_yields['aqueous'])
+    
     HTLchar = htl_cmps.Hydrochar
     saf_cmps.extend([HTLbiocrude, HTLaqueous, HTLchar])
     

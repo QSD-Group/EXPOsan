@@ -941,6 +941,9 @@ class Electrochemical(SanUnit):
         Influent water, replacement_surrogate.
     outs : Iterable(stream)
         Mixed gas, recycled H2, recovered N, recovered P, treated water.
+    removal : float or dict
+        Removal of non-water components either by a universal factor when given as a float,
+        or as indicated by the dict.
     gas_yield : float
         Dry mass yield of the gas products.
     N_IDs : Iterable(str)
@@ -1004,6 +1007,7 @@ class Electrochemical(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', F_BM_default=1,
+                 removal=0.75,
                  gas_yield=0.056546425,
                  gas_composition={
                      'N2': 0.000795785,
@@ -1036,6 +1040,7 @@ class Electrochemical(SanUnit):
                  ):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
+        self.removal = removal
         self.gas_yield = gas_yield
         self.gas_composition = gas_composition
         self.N_recovery = N_recovery
@@ -1085,7 +1090,12 @@ class Electrochemical(SanUnit):
         self._PSA_H2_lb_flowrate = gas.F_mass / _lb_to_kg
         gas.phase = 'g'
         
-        eff.F_mass -= gas.F_mass
+        removal = self.removal
+        if type(removal) is float: eff.F_mass *= (1-removal)
+        else:
+            for k, v in removal.items():
+                eff.imass[k] *= (1-v)
+
         eff.imass['Water'] = water_in
         
         H2_tot = gas.imass['H2']
@@ -1114,7 +1124,8 @@ class Electrochemical(SanUnit):
         Design['ED electricity'] = ED_electricity = area * ED_electricity_per_area # kWh/h
         total_power = EO_electricity + ED_electricity
         self.power_utility.consumption = total_power
-        self._FE = current_eq/(total_power*1e3) #!!! unsure of this calculation
+        #!!! unsure of this calculation
+        self._FE = current_eq/(total_power*1e3) if total_power else 0
         
         Design['PSA H2 lb flowrate'] = self._PSA_H2_lb_flowrate
         IC = self.compressor # for H2 compressing

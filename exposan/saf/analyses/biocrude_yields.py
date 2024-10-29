@@ -97,7 +97,7 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(flowsheet.to_dict())
     
-    # single = [67.3] # normalized from the 80.2 biocrude+char, $3.10/GGE
+    # single = [67.3] # normalized from the 80.2 biocrude+char
     # single = [20]
     # results = MFSP_across_biocrude_yields(yields=single, **config)
     
