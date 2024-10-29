@@ -442,7 +442,7 @@ class UASB(AnaerobicCSTR):
         if self._ODE is None:
             self._compile_ODE()
         return self._ODE
-        
+
     def _compile_ODE(self):
         cmps = self.components
         f_rtn = self._f_retain
@@ -1057,6 +1057,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         cmps = self.components
         n_cmps = len(cmps)
         n_gas = self._n_gas
+        self._state[self._state < 2.2e-16] = 0.
         y = self._state[-(n_cmps+n_gas+1):]
         i_mass = cmps.i_mass
         chem_MW = self.components.chem_MW
