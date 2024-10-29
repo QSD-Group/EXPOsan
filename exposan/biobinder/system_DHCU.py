@@ -28,6 +28,7 @@ import matplotlib.pyplot as plt
 from qsdsan import sanunits as qsu
 from qsdsan.utils import clear_lca_registries
 from exposan.htl import data_path as htl_data_path
+from exposan.saf import _units as safu
 from exposan.biobinder import (
     data_path,
     results_path,
@@ -35,7 +36,6 @@ from exposan.biobinder import (
     _load_process_settings,
     create_tea,
     _units as u,
-    find_Lr_Hr,
     )
 
 
@@ -127,7 +127,7 @@ ProcessWaterScaler = u.Scaler(
     scaling_factor=N_decentralized_HTL, reverse=True,
     )
 
-FeedstockTrans = u.Transportation(
+FeedstockTrans = safu.Transportation(
     'FeedstockTrans',
     ins=(FeedstockScaler-0, 'feedstock_trans_surrogate'),
     outs=('transported_feedstock',),
@@ -136,10 +136,10 @@ FeedstockTrans = u.Transportation(
     transportation_distance=25, # km ref [1]
     )
 
-FeedstockCond = u.Conditioning(
+FeedstockCond = safu.Conditioning(
     'FeedstockCond', ins=(FeedstockTrans-0, ProcessWaterScaler-0),
     outs='conditioned_feedstock',
-    feedstock_composition=u.salad_dressing_waste_composition,
+    feedstock_composition=safu.salad_dressing_waste_composition,
     feedstock_dry_flowrate=decentralized_dry_flowrate,
     N_unit=N_decentralized_HTL,
     )
@@ -177,7 +177,7 @@ BiocrudeWaterScaler = u.Scaler(
     scaling_factor=N_decentralized_HTL, reverse=False,
     )
 
-BiocrudeTrans = u.Transportation(
+BiocrudeTrans = safu.Transportation(
     'BiocrudeTrans',
     ins=(BiocrudeDewatering-0, 'biocrude_trans_surrogate'),
     outs=('transported_biocrude',),
@@ -190,14 +190,14 @@ BiocrudeScaler = u.Scaler(
     scaling_factor=N_decentralized_HTL, reverse=False,
     )
 
-BiocrudeSplitter = u.BiocrudeSplitter(
+BiocrudeSplitter = safu.BiocrudeSplitter(
     'BiocrudeSplitter', ins=BiocrudeScaler-0, outs='splitted_biocrude',
     cutoff_Tb=343+273.15, light_frac=0.5316)
 
 # Shortcut column uses the Fenske-Underwood-Gilliland method,
 # better for hydrocarbons according to the tutorial
 # https://biosteam.readthedocs.io/en/latest/API/units/distillation.html
-FracDist = u.ShortcutColumn(
+FracDist = qsu.ShortcutColumn(
     'FracDist', ins=BiocrudeSplitter-0,
     outs=('biocrude_light','biocrude_heavy'),
     LHK=('Biofuel', 'Biobinder'), # will be updated later
@@ -275,7 +275,7 @@ GasScaler = u.Scaler(
     )
 
 # Potentially recycle the water from aqueous filtration (will be ins[2])
-ProcessWaterCenter = u.ProcessWaterCenter(
+ProcessWaterCenter = safu.ProcessWaterCenter(
     'ProcessWaterCenter',
     process_water_streams=[ProcessWaterScaler.ins[0]],
     )

@@ -30,6 +30,9 @@ data_path, results_path = _init_modules(module, include_data_path=True)
 # Load components and systems
 # =============================================================================
 
+from . import utils
+from .utils import *
+
 # Default settings for consistency across the module
 from . import _process_settings
 from ._process_settings import *
@@ -80,4 +83,5 @@ __all__ = (
     *_units.__all__,
     # *_tea.__all__,
     *systems.__all__,
+    *utils.__all__,
 )

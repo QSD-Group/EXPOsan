@@ -39,12 +39,12 @@ from qsdsan.utils import clear_lca_registries
 from exposan.htl import (
     create_tea,
     )
-from exposan.biobinder import _units as bbu, find_Lr_Hr
 from exposan.saf import (
     feedstock_composition,
     dry_flowrate, wet_flowrate,
     HTL_yields,
     annual_hours, price_dct,
+    find_Lr_Hr,
     _load_process_settings,
     create_components,
     # data_path,
@@ -82,19 +82,19 @@ def create_system(include_PSA=True, include_EC=True,):
     
     feedstock_water = qs.Stream('feedstock_water', Water=1)
     
-    FeedstockTrans = bbu.Transportation(
+    FeedstockTrans = u.Transportation(
         'FeedstockTrans',
         ins=(feedstock, 'transportation_surrogate'),
         outs=('transported_feedstock',),
         N_unit=1,
         copy_ins_from_outs=False,
-        transportation_unit_cost=price_dct['transportation']/1e3, # already considered distance
+        transportation_unit_cost=price_dct['transportation'], # already considered distance
         transportation_distance=1,
         )
     
     FeedstockWaterPump = qsu.Pump('FeedstockWaterPump', ins=feedstock_water)
 
-    FeedstockCond = bbu.Conditioning(
+    FeedstockCond = u.Conditioning(
         'FeedstockCond', ins=(FeedstockTrans-0, FeedstockWaterPump-0),
         outs='conditioned_feedstock',
         feedstock_composition=None,
@@ -145,7 +145,7 @@ def create_system(include_PSA=True, include_EC=True,):
     # Light (water): medium (biocrude): heavy (char)
     crude_fracs = [0.0339, 0.8104, 0.1557]
     
-    CrudeSplitter = bbu.BiocrudeSplitter(
+    CrudeSplitter = u.BiocrudeSplitter(
         'CrudeSplitter', ins=CrudePump-0, outs='splitted_crude',
         biocrude_IDs=('HTLbiocrude'),
         cutoff_fracs=crude_fracs,
@@ -509,7 +509,7 @@ def create_system(include_PSA=True, include_EC=True,):
     H2C.register_alias('HydrogenCenter')
     H2C.makeup_H2_price = H2C.excess_H2_price = price_dct['H2']
     
-    PWC = bbu.ProcessWaterCenter('PWC', process_water_streams=[feedstock_water],)
+    PWC = u.ProcessWaterCenter('PWC', process_water_streams=[feedstock_water],)
     PWC.register_alias('ProcessWaterCenter')
     PWC.process_water_price = price_dct['process_water']
     

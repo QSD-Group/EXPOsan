@@ -13,11 +13,11 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-from biosteam import Facility
+from biosteam import Facility, ProcessWaterCenter as PWC
 from biosteam.units.decorators import cost
 from biosteam.units.design_tools import CEPCI_by_year
 from qsdsan import SanUnit, Stream, WasteStream
-from qsdsan.sanunits import Reactor, IsothermalCompressor, HXutility, HXprocess
+from qsdsan.sanunits import Reactor, IsothermalCompressor, HXutility, HXprocess, MixTank
 
 __all__ = (
     'HydrothermalLiquefaction',
@@ -25,6 +25,10 @@ __all__ = (
     'PressureSwingAdsorption',
     'Electrochemical',
     'HydrogenCenter',
+    'ProcessWaterCenter',
+    'BiocrudeSplitter',
+    'Conditioning',
+    'Transportation',
     )
 
 _lb_to_kg = 0.453592
@@ -1308,3 +1312,337 @@ class HydrogenCenter(Facility):
     @excess_H2_price.setter
     def excess_H2_price(self, i):
         self.outs[1].price = i
+
+
+class ProcessWaterCenter(PWC, SanUnit):
+    '''
+    biosteam.facilities.ProcessWaterCenter with QSDsan properties.
+    
+    See Also
+    --------
+    `biosteam.facilities.ProcessWaterCenter <https://biosteam.readthedocs.io/en/latest/API/facilities/ProcessWaterCenter.html>`_
+    '''
+
+salad_dressing_waste_composition = {
+    'Water': 0.7566,
+    'Lipids': 0.2434*0.6245,
+    'Proteins': 0.2434*0.0238,
+    'Carbohydrates': 0.2434*0.2946,
+    'Ash': 0.2434*0.0571,
+    }
+
+class Conditioning(MixTank):
+    '''
+    Adjust the composition and moisture content of the feedstock.
+    
+    Parameters
+    ----------
+    ins : seq(obj)
+        Raw feedstock, process water for moisture adjustment.
+    outs : obj
+        Conditioned feedstock with appropriate composition and moisture for conversion.
+    feedstock_composition : dict
+        Composition of the influent feedstock,
+        note that water in the feedstock will be adjusted using `target_HTL_solid_loading`.
+    feedstock_dry_flowrate : float
+        Feedstock dry mass flowrate for 1 reactor.
+    target_HTL_solid_loading : float
+        Target solid loading.
+    N_unit : int
+        Number of required preprocessing units.
+        Note that one precessing unit may have multiple tanks.
+    tau : float
+        Retention time for the mix tank.
+    add_mixtank_kwargs : dict
+        Additional keyword arguments for MixTank unit.
+    '''
+    _N_ins = 2
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                  init_with='WasteStream', F_BM_default=1,
+                  feedstock_composition=salad_dressing_waste_composition,
+                  feedstock_dry_flowrate=1,
+                  target_HTL_solid_loading=0.2,
+                  N_unit=1, tau=1, **add_mixtank_kwargs,
+                  ):
+        mixtank_kwargs = add_mixtank_kwargs.copy()
+        mixtank_kwargs['tau'] = tau
+        MixTank.__init__(self, ID, ins, outs, thermo, 
+                         init_with=init_with, F_BM_default=F_BM_default, **mixtank_kwargs)
+        self.feedstock_composition = feedstock_composition
+        self.feedstock_dry_flowrate = feedstock_dry_flowrate
+        self.target_HTL_solid_loading = target_HTL_solid_loading
+        self.N_unit = N_unit
+    
+    def _run(self):
+        feedstock_in, htl_process_water = self.ins
+        feedstock_out = self.outs[0]
+        
+        feedstock_composition = self.feedstock_composition
+        if feedstock_composition is not None:
+            for i, j in feedstock_composition.items():
+                feedstock_in.imass[i] = j
+        
+        feedstock_dry_flowrate = self.feedstock_dry_flowrate
+        feedstock_dw = 1 - feedstock_in.imass['Water']/feedstock_in.F_mass
+        feedstock_in.imass['Water'] = 0
+        feedstock_in.F_mass = feedstock_dry_flowrate # scale flowrate
+        feedstock_in.imass['Water'] = feedstock_dry_flowrate/feedstock_dw - feedstock_dry_flowrate
+              
+        feedstock_out.copy_like(feedstock_in)
+        total_wet = feedstock_dry_flowrate/self.target_HTL_solid_loading
+        required_water = total_wet - feedstock_dry_flowrate - feedstock_in.imass['Water']
+        htl_process_water.imass['Water'] = max(0, required_water)
+        
+        MixTank._run(self)
+        
+    def _cost(self):
+        MixTank._cost(self) # just for one unit
+        self.parallel['self'] = self.parallel.get('self', 1)*self.N_unit  
+
+
+class Transportation(SanUnit):    
+    '''
+    To account for transportation cost using the price of the surrogate stream.
+    The surrogate stream total mass is set to the total feedstock mass (accounting for `N_unit`),
+    the price is set to `transportation_distance*transportation_distance`.
+    
+    Parameters
+    ----------
+    ins : seq(obj)
+        Influent streams to be transported,
+        with a surrogate flow to account for the transportation cost.
+    outs : obj
+        Mixture of the influent streams to be transported.        
+    transportation_distance : float
+        Transportation distance in km.
+    transportation_unit_cost : float
+        Transportation cost in $/kg/km.
+    N_unit : int
+        Number of required filtration unit.
+    copy_ins_from_outs : bool
+        If True, will copy influent from effluent, otherwise,
+        effluent will be copied from influent.
+    '''
+    
+    _N_ins = 2
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                  init_with='WasteStream', F_BM_default=1,
+                  transportation_distance=0,
+                  transportation_unit_cost=0,
+                  N_unit=1,
+                  copy_ins_from_outs=False,
+                  **kwargs,
+                  ):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
+        self.transportation_distance = transportation_distance
+        self.transportation_unit_cost = transportation_unit_cost
+        self.N_unit = N_unit
+        self.copy_ins_from_outs = copy_ins_from_outs
+        for kw, arg in kwargs.items(): setattr(self, kw, arg)
+    
+    def _run(self):
+        inf, surrogate = self.ins
+        eff = self.outs[0]
+        
+        if self.copy_ins_from_outs is False:
+            eff.copy_like(inf)
+        else:
+            inf.copy_like(eff)
+        
+        surrogate.copy_like(inf)
+        surrogate.F_mass *= self.N_unit
+
+    def _cost(self):
+        # Use the surrogate price to account for transportation cost
+        self.ins[1].price = self.transportation_unit_cost * self.transportation_distance
+
+
+# %%
+
+# Jone et al., Table C-1
+default_biocrude_ratios = {
+    '1E2PYDIN':     0.067912,
+    # 'C5H9NS':       0.010257,
+    'ETHYLBEN':     0.025467,
+    '4M-PHYNO':     0.050934,
+    '4EPHYNOL':     0.050934,
+    'INDOLE':       0.050934,
+    '7MINDOLE':     0.033956,
+    'C14AMIDE':     0.033956,
+    'C16AMIDE':     0.152801,
+    'C18AMIDE':     0.067912,
+    'C16:1FA':      0.135823,
+    'C16:0FA':      0.101868,
+    'C18FACID':     0.016978,
+    'NAPHATH':      0.050934,
+    'CHOLESOL':     0.016978,
+    'AROAMINE':     0.081424,
+    'C30DICAD':     0.050934,
+    }
+
+class BiocrudeSplitter(SanUnit):
+    '''
+    Split biocrude into the respective components that meet specific boiling point
+    and faction specifics.
+    
+    Parameters
+    ----------
+    ins : obj
+        HTL biocrude containing the gross components.
+    outs : obj
+        HTL biocrude split into specific components.
+    biocrude_IDs : seq(str)
+        IDs of the gross components used to represent biocrude in the influent,
+        will be normalized to 100% sum.
+    cutoff_Tbs : Iterable(float)
+        Cutoff boiling points of different fractions.
+    cutoff_fracs : Iterable(float)
+        Mass fractions of the different cuts, will be normalized to 100% sum.
+        If there is N cutoff_Tbs, then there should be N+1 fractions.
+    biocrude_ratios : dict(str, float)
+        Ratios of all the components in the biocrude.
+    '''
+    _N_ins = _N_outs = 1
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                  init_with='WasteStream', F_BM_default=1,
+                  biocrude_IDs=('Biocrude',),
+                  cutoff_Tbs=(273.15+343,), cutoff_fracs=(0.5316, 0.4684),
+                  biocrude_ratios=default_biocrude_ratios,
+                   **kwargs,
+                  ):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
+        self.cutoff_Tbs = cutoff_Tbs
+        self.cutoff_fracs = cutoff_fracs
+        self._update_component_ratios()
+        self.biocrude_IDs = biocrude_IDs
+        self.biocrude_ratios = biocrude_ratios
+        for kw, arg in kwargs.items(): setattr(self, kw, arg)
+        
+    def _update_component_ratios(self):
+        '''Update the light and heavy ratios of the biocrude components.'''
+        if not hasattr(self, 'cutoff_Tbs'): return
+        if not hasattr(self, 'biocrude_ratios'): return
+
+        cmps = self.components
+        Tbs = self.cutoff_Tbs
+        fracs = self.cutoff_fracs
+        if not len(fracs)-len(Tbs) == 1:
+            raise ValueError(f'Based on the number of `cutoff_Tbs` ({len(Tbs)})), '
+                             f'there should be {len(Tbs)+1} `cutoff_fracs`,' 
+                             f'currently there is {len(fracs)}.')
+        ratios = self.biocrude_ratios.copy()
+
+        keys = []
+        frac_dcts = dict.fromkeys(fracs)
+        lighter_IDs = []
+        for n, Tb in enumerate(Tbs):
+            frac_dct = {}
+            for ID, ratio in ratios.items():
+                if ID in lighter_IDs: continue
+                if cmps[ID].Tb <= Tb:
+                    frac_dct[ID] = ratio
+                    light_key = ID
+                else: 
+                    keys.append((light_key, ID))
+                    lighter_IDs.extend(list(frac_dct.keys()))
+                    break
+                    
+            frac_tot = sum(frac_dct.values())
+            frac_dcts[fracs[n]] = {k: v/frac_tot for k, v in frac_dct.items()}
+
+        frac_dct_last = {k:v for k,v in ratios.items() if k not in lighter_IDs}
+        frac_last_tot = sum(frac_dct_last.values())
+        frac_dcts[fracs[n+1]] = {k: v/frac_last_tot for k, v in frac_dct_last.items()}
+        
+        self._keys = keys # light and heavy key pairs
+        self._frac_dcts = frac_dcts # fractions for each cut
+        
+        
+    def _run(self):
+        biocrude_in = self.ins[0]
+        biocrude_out = self.outs[0]
+        
+        biocrude_IDs = self.biocrude_IDs
+        biocrude_out.copy_like(biocrude_in) # for the non-biocrude part, biocrude will be updated later
+        
+        total_crude = biocrude_in.imass[self.biocrude_IDs].sum()
+        frac_dcts = self.frac_dcts
+        
+        for frac, dct in frac_dcts.items():
+            frac_mass = frac * total_crude
+            for ID, ratio in dct.items():
+                biocrude_out.imass[ID] = frac_mass * ratio
+        
+        biocrude_out.imass[biocrude_IDs] = 0 # clear out biocrude
+
+
+    @property
+    def cutoff_Tbs(self):
+        '''[Iterable] Boiling point cutoffs for different fractions.'''
+        return self._cutoff_Tbs
+    @cutoff_Tbs.setter
+    def cutoff_Tbs(self, Tbs):
+        self._cutoff_Tbs = Tbs
+        if hasattr(self, '_cutoff_fracs'):
+            self._update_component_ratios()
+        
+    @property
+    def cutoff_fracs(self):
+        '''
+        [Iterable] Mass fractions of the different cuts, will be normalized to 100% sum.
+        If there is N cutoff_Tbs, then there should be N+1 fractions.
+        '''
+        return self._cutoff_fracs
+    @cutoff_fracs.setter
+    def cutoff_fracs(self, fracs):
+        tot = sum(fracs)
+        self._cutoff_fracs = [i/tot for i in fracs]
+        if hasattr(self, '_cutoff_Tbs'):
+            self._update_component_ratios()
+
+    @property
+    def frac_dcts(self):
+        '''Fractions of the different cuts.'''
+        return self._frac_dcts
+
+    @property
+    def keys(self):
+        '''Light and heavy key pairs.'''
+        return self._keys
+
+    @property
+    def light_component_ratios(self):
+        '''Mass ratios of the components in the light fraction of the biocrude.'''
+        return self._light_component_ratios
+
+    @property
+    def heavy_component_ratios(self):
+        '''Mass ratios of the components in the heavy fraction of the biocrude.'''
+        return self._heavy_component_ratios
+    
+    @property
+    def light_key(self):
+        '''ID of the component that has the highest boiling point in the light fraction of the biocrude.'''
+        return self._light_key
+    
+    @property
+    def heavy_key(self):
+        '''ID of the component that has the lowest boiling point in the heavy fraction of the biocrude.'''
+        return self._heavy_key
+    
+    @property
+    def biocrude_ratios(self):
+        '''[dict] Mass ratios of the components used to model the biocrude.'''
+        return self._biocrude_ratios
+    @biocrude_ratios.setter
+    def biocrude_ratios(self, ratios):
+        cmps = self.components
+        # Sort the biocrude ratios by the boiling point
+        tot = sum(ratios.values())
+        ratios = {ID: ratio/tot for ID, ratio in 
+                  sorted(ratios.items(), key=lambda item: cmps[item[0]].Tb)}
+        self._biocrude_ratios = ratios
+        self._update_component_ratios()

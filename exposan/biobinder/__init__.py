@@ -30,9 +30,6 @@ data_path, results_path = _init_modules(module, include_data_path=True)
 # Load components and systems
 # =============================================================================
 
-from . import utils
-from .utils import *
-
 from . import _components
 from ._components import *
 _components_loaded = False
@@ -88,7 +85,6 @@ __all__ = (
     *_process_settings.__all__,
     *_units.__all__,
     *_tea.__all__,
-    *utils.__all__,
     # *system_CHCU.__all__,
     # *system_DHCU.__all__,
 )
