@@ -94,7 +94,7 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
 # =============================================================================
 
 def create_systemA(flowsheet=None, ppl=default_ppl):
-    # Set flowsheet to avoid stream replacement warnings
+    # TODO: Set flowsheet to avoid stream replacement warnings
     flowsheet = flowsheet or main_flowsheet
     streamA = flowsheet.stream
     batch_create_streams('A')

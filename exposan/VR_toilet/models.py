@@ -1,0 +1,558 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+EXPOsan: Exposition of sanitation and resource recovery systems
+
+This module is developed by:
+
+    Zixuan Wang <wyatt4428@gmail.com>
+
+    Jianan Feng <jiananf2@illinois.edu>
+
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
+"""
+
+#%%
+import os, qsdsan as qs
+from chaospy import distributions as shape
+from qsdsan import Model, Metric, PowerUtility, ImpactItem, StreamImpactItem
+from qsdsan.utils import (
+    AttrSetter,
+    data_path,
+    DictAttrSetter,
+    load_data,
+    )
+from exposan.utils import (
+    batch_setting_unit_params, 
+    run_uncertainty as run,
+    get_generic_tanker_truck_fee as get_tanker_truck_fee,
+    get_decay_k,
+    get_generic_scaled_capital,
+    )
+from exposan import VR_toilet as vr
+from exposan.VR_toilet import (
+    create_system,
+    vr_data_path,
+    default_ppl,
+    get_decay_k,
+    get_LCA_metrics,
+    get_TEA_metrics,
+    get_recoveries,
+    results_path,
+    update_resource_recovery_settings,
+    )
+
+__all__ = ('create_model', 'run_uncertainty',)
+
+
+#%%
+
+# =============================================================================
+# Functions for batch-making metrics and setting parameters
+# =============================================================================
+
+def add_metrics(model, ppl=default_ppl):
+    vr._load_lca_data()
+    system = model.system
+
+    # Recoveries
+    funcs = get_recoveries(system, ppl)
+    metrics = [
+        Metric('Total N', funcs[0], '% N', 'N recovery'),
+        Metric('Total P', funcs[1], '% P', 'P recovery'),
+        Metric('Total K', funcs[2], '% K', 'K recovery'),
+        Metric('Total Water', funcs[3], '% Water', 'Water recovery'),
+    ]
+    # Net cost
+    metrics.append(
+        Metric('Annual net cost', get_TEA_metrics(system, ppl)[0], f'{qs.currency}/cap/yr', 'TEA results'),
+        )
+    # Net emissions
+    funcs = get_LCA_metrics(system, ppl)
+    cat = 'LCA results'
+    metrics.extend([
+        Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),
+        Metric('H_Ecosystems', funcs[1], 'points/cap/yr', cat),
+        Metric('H_Health', funcs[2], 'points/cap/yr', cat),
+        Metric('H_Resources', funcs[3], 'points/cap/yr', cat),
+        ])
+    model.metrics = metrics
+
+# %%
+
+# =============================================================================
+# Data sheets
+# =============================================================================
+
+su_data_path = os.path.join(data_path, 'sanunit_data')
+g2rt_su_data_path = os.path.join(su_data_path, 'g2rt')
+
+def load_g2rt_su_data(file_name):
+    if file_name.startswith(('_g2rt_', '_vr_')):
+        return load_data(os.path.join(g2rt_su_data_path, file_name))
+    else: 
+        return load_data(os.path.join(su_data_path, file_name))
+
+excretion_path = load_g2rt_su_data('_excretion.tsv')
+murt_path = load_g2rt_su_data('_murt.tsv')
+vr_pasteurization_path = load_g2rt_su_data('_vr_pasteurization.csv')
+G2RT_homogenizer_path = load_g2rt_su_data('_g2rt_homogenizer.csv')
+vr_filter_press_path = load_g2rt_su_data('_vr_filter_press.csv')
+vr_concentrator_path = load_g2rt_su_data('_vr_concentrator.csv')
+g2rt_liquids_tank_path = load_g2rt_su_data('_g2rt_liquids_tank.csv')
+g2rt_solids_tank_path = load_g2rt_su_data('_g2rt_solids_tank.csv')
+vr_drying_tunnel_path = load_g2rt_su_data('_vr_dryingtunnel.csv')
+g2rt_controls_path = load_g2rt_su_data('_g2rt_controls.csv')
+g2rt_solids_separation_path = load_g2rt_su_data('_g2rt_solids_separation.csv')
+g2rt_belt_separation_path = load_g2rt_su_data('_g2rt_belt_separation.csv')
+ultrafiltration_path = load_g2rt_su_data('_g2rt_ultrafiltration.csv')
+reverse_osmosis_path = load_g2rt_su_data('_g2rt_reverse_osmosis.csv')
+
+# %%
+
+# =============================================================================
+# Shared by all systems
+# =============================================================================
+
+def add_shared_parameters(model, unit_dct, country_specific=False):
+    sys = model.system
+    sys_stream = sys.flowsheet.stream
+    param = model.parameter
+    price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct = update_resource_recovery_settings()
+
+    # Add these parameters if not running context-specific analysis,
+    # in which they would be updated separately
+    
+    excretion_unit = unit_dct['excretion']
+
+    if not country_specific:
+        # Price ratio
+        old_price_dct = price_dct.copy()
+        b = 1
+        D = shape.Uniform(lower=b-(10**(-6)), upper=b+(10**(-6)))
+        stream_ref = {
+            'H2O': 'H2O',
+        }
+        @param(name='Price ratio', element=excretion_unit, kind='cost', units='-', #TODO: why not element = 'TEA'? 
+               baseline=b, distribution=D)
+        
+        def set_price_ratio(i):
+            price_ratio = i
+            for obj_name in stream_ref.keys():
+                old_price = old_price_dct[obj_name]
+                new_price = old_price * i
+                getattr(sys_stream, stream_ref[obj_name]).price = new_price
+            for u in sys.units:
+                if hasattr(u, 'price_ratio'):
+                    u.price_ratio = i
+
+        # Labor wage
+        b = price_dct['wages']
+        D = shape.Triangle(lower=b*0.5, midpoint=b, upper=b*1.5)
+        @param(name='Labor wages', element='TEA', kind='cost', units='USD/h',
+               baseline=b, distribution=D)
+        def set_labor_wages(i):
+            for u in sys.units:
+                if hasattr(u, '_calc_maintenance_labor_cost'):
+                    u.wages = i
+
+        # Electricity price
+        b = price_dct['Electricity']
+        D = shape.Triangle(lower=0.06, midpoint=b, upper=0.20)
+        @param(name='Electricity price', element='TEA', kind='isolated',
+               units='$/kWh', baseline=b, distribution=D)
+        def set_electricity_price(i):
+            PowerUtility.price = i
+
+        # Electricity GWP
+        b = GWP_dct['Electricity']
+        D = shape.Triangle(lower=b*0.9, midpoint=b, upper=b*1.1)
+        @param(name='Electricity CF', element='LCA', kind='isolated',
+               units='kg CO2-eq/kWh', baseline=b, distribution=D)
+        def set_electricity_CF(i):
+            GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
+
+        # Electricity H_Ecosystems
+        b = H_Ecosystems_dct['Electricity']
+        D = shape.Triangle(lower=b*0.9, midpoint=b, upper=b*1.1)
+        @param(name='Electricity Ecosystems CF', element='LCA', kind='isolated',
+                   units='points/kWh', baseline=b, distribution=D)
+        def set_electricity_ecosystems_CF(i):
+            H_Ecosystems_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Ecosystems'] = i
+
+        # Electricity H_Health
+        b = H_Health_dct['Electricity']
+        D = shape.Triangle(lower=b*0.9, midpoint=b, upper=b*1.1)
+        @param(name='Electricity Health CF', element='LCA', kind='isolated',
+                   units='points/kWh', baseline=b, distribution=D)
+        def set_electricity_health_CF(i):
+            H_Health_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Health'] = i
+
+        # Electricity H_Resources
+        b = H_Resources_dct['Electricity']
+        D = shape.Triangle(lower=b*0.9, midpoint=b, upper=b*1.1)
+        @param(name='Electricity Resources CF', element='LCA', kind='isolated',
+                   units='points/kWh', baseline=b, distribution=D)
+        def set_electricity_resources_CF(i):
+            H_Resources_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Resources'] = i
+
+        if vr.INCLUDE_RESOURCE_RECOVERY:
+            # N fertilizer price
+            b = 1.507
+            D = shape.Uniform(lower=b*0.8, upper=b*1.2)
+            @param(name='N fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
+                    baseline=b, distribution=D)
+            def set_N_price(i):
+                price_dct['N'] = sys_stream.liq_N.price = sys_stream.sol_N.price = i * price_factor
+    
+            # P fertilizer price
+            b = 3.983
+            D = shape.Uniform(lower=b*0.8, upper=b*1.2)
+            @param(name='P fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
+                   baseline=b, distribution=D)
+            def set_P_price(i):
+                price_dct['P'] = sys_stream.liq_P.price = sys_stream.sol_P.price = i * price_factor
+    
+            # K fertilizer price
+            b = 1.333
+            D = shape.Uniform(lower=b*0.8, upper=b*1.2)
+            @param(name='K fertilizer price', element='TEA', kind='isolated', units='USD/kg K',
+                   baseline=b, distribution=D)
+            def set_K_price(i):
+                price_dct['K'] = sys_stream.liq_K.price = sys_stream.sol_K.price = i * price_factor
+    
+            # H2O price
+            b = 1.06/1e3
+            D = shape.Uniform(lower= b*0.8, upper= b*1.2)
+            @param(name='H2O price', element='TEA', kind='isolated', units='USD/kg H2O',
+                   baseline= b, distribution=D)
+            def set_H2O_price(i):
+                price_dct['H2O'] = sys_stream.H2O.price = i * price_factor
+    ##### Specific units #####
+    param = model.parameter
+
+    # Diet and Excretion
+    exclude = ('e_cal', 'p_anim', 'p_veg') if country_specific else ()
+    batch_setting_unit_params(excretion_path, model, excretion_unit, exclude)
+    
+    # MURT Toilet
+    toilet_unit = unit_dct['toilet']
+    exclude = ('OPEX_over_CAPEX')
+    batch_setting_unit_params(murt_path, model, toilet_unit, exclude)
+    
+    b = toilet_unit.OPEX_over_CAPEX
+    D = shape.Uniform(lower=0.02, upper=0.08)
+    param(name='MURT operating cost', element=toilet_unit, kind='coupled', units='cost',
+          baseline=b, distribution=D)
+    def set_OPEX_over_CAPEX(i):
+        toilet_unit.OPEX_over_CAPEX = i
+    
+    #Solids separation
+    solids_separation_unit = unit_dct['solids_separation']
+    exclude = ('wages') #exclude because it is a context or country-specific parameter
+    batch_setting_unit_params(g2rt_solids_separation_path, model, solids_separation_unit, exclude)
+    
+    #Belt separation
+    belt_separation_unit = unit_dct['belt_separation']
+    exclude = ('wages') 
+    batch_setting_unit_params(g2rt_belt_separation_path, model, belt_separation_unit, exclude)
+    
+    #Solids tank
+    solids_tank_unit = unit_dct['solids_tank']
+    exclude = ('wages')
+    batch_setting_unit_params(g2rt_solids_tank_path, model, solids_tank_unit, exclude)
+    
+    #Liquids tank
+    liquids_tank_unit = unit_dct['liquids_tank']
+    exclude = ('wages')
+    batch_setting_unit_params(g2rt_liquids_tank_path, model, liquids_tank_unit, exclude)
+    
+    #Ultrafiltration
+    ultrafiltration_unit = unit_dct['ultrafiltration']
+    exclude = ('wages')
+    batch_setting_unit_params(ultrafiltration_path, model, ultrafiltration_unit, exclude)
+    
+    #Reverse osmosis
+    reverse_osmosis_unit = unit_dct['reverse_osmosis']
+    exclude = ('wages')
+    batch_setting_unit_params(reverse_osmosis_path, model, reverse_osmosis_unit, exclude)
+    
+    #Concentrator
+    concentrator_unit = unit_dct['concentrator']
+    exclude = ('wages')
+    batch_setting_unit_params(vr_concentrator_path, model, concentrator_unit, exclude)
+    
+    #Homogenizer
+    homogenizer_unit = unit_dct['homogenizer']
+    exclude = ('wages')
+    batch_setting_unit_params(G2RT_homogenizer_path, model, homogenizer_unit, exclude)
+
+    #Pasteurization
+    pasteurization_unit = unit_dct['pasteurization']
+    exclude = ('wages')
+    batch_setting_unit_params(vr_pasteurization_path, model, pasteurization_unit, exclude)
+    
+    #Filter press
+    filter_press_unit = unit_dct['filter_press']
+    exclude = ('wages')
+    batch_setting_unit_params(vr_filter_press_path, model, filter_press_unit, exclude)
+    
+    #Drying tunnel
+    drying_tunnel_unit = unit_dct['drying_tunnel']
+    exclude = ('wages')
+    batch_setting_unit_params(vr_drying_tunnel_path, model, drying_tunnel_unit, exclude)
+
+    ##### Universal degradation parameters #####
+    # Max methane emission
+    unit = sys.path[1]  # the first unit that involves degradation
+    b = vr.max_CH4_emission
+    D = shape.Triangle(lower=0.175, midpoint=b, upper=0.325)
+    @param(name='Max CH4 emission', element=unit, kind='coupled', units='g CH4/g COD',
+           baseline=b, distribution=D)
+    def set_max_CH4_emission(i):
+        vr.max_CH4_emission = i
+        for unit in sys.units:
+            if hasattr(unit, 'max_CH4_emission'):
+                setattr(unit, 'max_CH4_emission', i)
+
+    # Time to full degradation
+    b = vr.tau_deg
+    D = shape.Uniform(lower=1, upper=3)
+    @param(name='Full degradation time', element=unit, kind='coupled', units='yr',
+           baseline=b, distribution=D)
+    def set_tau_deg(i):
+        vr.tau_deg = i
+        k = get_decay_k(i, vr.log_deg)
+        for unit in sys.units:
+            if hasattr(unit, 'decay_k_COD'):
+                setattr(unit, 'decay_k_COD', k)
+            if hasattr(unit, 'decay_k_N'):
+                setattr(unit, 'decay_k_N', k)
+
+    # Reduction at full degradation
+    b = vr.log_deg
+    D = shape.Uniform(lower=2, upper=4)
+    @param(name='Log degradation', element=unit, kind='coupled', units='-',
+           baseline=b, distribution=D)
+    def set_log_deg(i):
+        vr.log_deg = i
+        k = get_decay_k(vr.tau_deg, i)
+        for unit in sys.units:
+            if hasattr(unit, 'decay_k_COD'):
+                setattr(unit, 'decay_k_COD', k)
+            if hasattr(unit, 'decay_k_N'):
+                setattr(unit, 'decay_k_N', k)
+
+    ##### General TEA settings #####
+
+    # # Keeping discount rate constant
+    # b = systems.discount_rate
+    # D = shape.Uniform(lower=0.03, upper=0.06)
+    # @param(name='Discount rate', element='TEA', kind='isolated', units='fraction',
+    #         baseline=b, distribution=D)
+    # def set_discount_rate(i):
+    #     systems.discount_rate = i
+
+    # Discount factor for the excreta-derived fertilizers
+    b = vr.price_factor
+    D = shape.Uniform(lower=0.1, upper=0.4)
+    @param(name='Price factor', element='TEA', kind='isolated', units='-',
+           baseline=b, distribution=D)
+    def set_price_factor(i):
+        vr.price_factor = i
+
+    b = price_dct['H2O']
+    D = shape.Uniform(lower=1.59/1e3, upper=8.84/1e3) #consider inflation and data from 2018 https://webassets.bv.com/2019-10/50_Largest_Cities_Rate_Survey_2018_2019_Report.pdf
+    @param(name='H2O price', element='TEA', kind='isolated', units='USD/kWh',
+           baseline=b, distribution=D)
+    def set_zeolite_price(i):
+        price_dct['H2O'] = sys_stream.H2O.price = i
+
+    if vr.INCLUDE_RESOURCE_RECOVERY:
+        # Recovered N fertilizer
+        b = -GWP_dct['N']
+        D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+        @param(name='N fertilizer CF', element='LCA', kind='isolated',
+               units='kg CO2-eq/kg N', baseline=b, distribution=D)
+        def set_N_fertilizer_CF(i):
+            GWP_dct['N'] = ImpactItem.get_item('N_item').CFs['GlobalWarming'] = -i
+
+        b = -H_Ecosystems_dct['N']
+        D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+        @param(name='N fertilizer ecosystems CF', element='LCA', kind='isolated',
+               units='points/kg N', baseline=b, distribution=D)
+        def set_N_fertilizer_ecosystems_CF(i):
+            H_Ecosystems_dct['N'] = ImpactItem.get_item('N_item').CFs['H_Ecosystems'] = -i
+
+        b = -H_Health_dct['N']
+        D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+        @param(name='N fertilizer health CF', element='LCA', kind='isolated',
+               units='points/kg N', baseline=b, distribution=D)
+        def set_N_fertilizer_health_CF(i):
+            H_Health_dct['N'] = ImpactItem.get_item('N_item').CFs['H_Health'] = -i
+
+        b = -H_Resources_dct['N']
+        D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+        @param(name='N fertilizer resources CF', element='LCA', kind='isolated',
+               units='points/kg N', baseline=b, distribution=D)
+        def set_N_fertilizer_resources_CF(i):
+            H_Resources_dct['N'] = ImpactItem.get_item('N_item').CFs['H_Resources'] = -i
+
+        # Recovered P fertilizer
+        b = -GWP_dct['P']
+        D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+        @param(name='P fertilizer CF', element='LCA', kind='isolated',
+               units='kg CO2-eq/kg P', baseline=b, distribution=D)
+        def set_P_fertilizer_CF(i):
+            GWP_dct['P'] = ImpactItem.get_item('P_item').CFs['GlobalWarming'] = -i
+
+        b = -H_Ecosystems_dct['P']
+        D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+        @param(name='P fertilizer ecosystems CF', element='LCA', kind='isolated',
+               units='points/kg P', baseline=b, distribution=D)
+        def set_P_fertilizer_ecosystems_CF(i):
+            H_Ecosystems_dct['P'] = ImpactItem.get_item('P_item').CFs['H_Ecosystems'] = -i
+
+        b = -H_Health_dct['P']
+        D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+        @param(name='P fertilizer health CF', element='LCA', kind='isolated',
+               units='points/kg P', baseline=b, distribution=D)
+        def set_P_fertilizer_health_CF(i):
+            H_Health_dct['P'] = ImpactItem.get_item('P_item').CFs['H_Health'] = -i
+
+        b = -H_Resources_dct['P']
+        D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+        @param(name='P fertilizer resources CF', element='LCA', kind='isolated',
+               units='points/kg P', baseline=b, distribution=D)
+        def set_P_fertilizer_resources_CF(i):
+            H_Resources_dct['P'] = ImpactItem.get_item('P_item').CFs['H_Resources'] = -i
+
+        # Recovered K fertilizer
+        b = -GWP_dct['K']
+        D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+        @param(name='K fertilizer CF', element='LCA', kind='isolated',
+               units='kg CO2-eq/kg K', baseline=b, distribution=D)
+        def set_K_fertilizer_CF(i):
+            GWP_dct['K'] = ImpactItem.get_item('K_item').CFs['GlobalWarming'] = -i
+
+        b = -H_Ecosystems_dct['K']
+        D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+        @param(name='K fertilizer ecosystems CF', element='LCA', kind='isolated',
+               units='points/kg K', baseline=b, distribution=D)
+        def set_K_fertilizer_ecosystems_CF(i):
+            H_Ecosystems_dct['K'] = ImpactItem.get_item('K_item').CFs['H_Ecosystems'] = -i
+
+        b = -H_Health_dct['K']
+        D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+        @param(name='K fertilizer health CF', element='LCA', kind='isolated',
+               units='points/kg K', baseline=b, distribution=D)
+        def set_K_fertilizer_health_CF(i):
+            H_Health_dct['K'] = ImpactItem.get_item('K_item').CFs['H_Health'] = -i
+
+        b = -H_Resources_dct['K']
+        D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+        @param(name='K fertilizer resources CF', element='LCA', kind='isolated',
+               units='points/kg K', baseline=b, distribution=D)
+        def set_K_fertilizer_resources_CF(i):
+            H_Resources_dct['K'] = ImpactItem.get_item('K_item').CFs['H_Resources'] = -i
+
+        # Recovered H2O
+        b = -GWP_dct['H2O']
+        D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+        @param(name='H2O CF', element='LCA', kind='isolated',
+                units='kg CO2-eq/kg', baseline=b, distribution=D)
+        def set_H2O_CF(i):
+            GWP_dct['H2O'] = ImpactItem.get_item('H2O_item').CFs['GlobalWarming'] = -i
+
+        b = -H_Ecosystems_dct['H2O']
+        D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+        @param(name='H2O ecosystems CF', element='LCA', kind='isolated',
+                units='points/kg', baseline=b, distribution=D)
+        def set_H2O_ecosystems_CF(i):
+            H_Ecosystems_dct['H2O'] = ImpactItem.get_item('H2O_item').CFs['H_Ecosystems'] = -i
+
+        b = -H_Health_dct['H2O']
+        D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+        @param(name='H2O health CF', element='LCA', kind='isolated',
+                units='points/kg', baseline=b, distribution=D)
+        def set_H2O_health_CF(i):
+            H_Health_dct['H2O'] = ImpactItem.get_item('H2O_item').CFs['H_Health'] = -i
+
+        b = -H_Resources_dct['H2O']
+        D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+        @param(name='H2O resources CF', element='LCA', kind='isolated',
+                units='points/kg', baseline=b, distribution=D)
+        def set_H2O_resources_CF(i):
+            H_Resources_dct['H2O'] = ImpactItem.get_item('H2O_item').CFs['H_Resources'] = -i
+
+    # Other CFs
+    item_path = os.path.join(vr_data_path, 'impact_items.xlsx')
+    for indicator in ('GlobalWarming', 'H_Ecosystems', 'H_Health', 'H_Resources'):
+        sheet_name = indicator if indicator!='GlobalWarming' else 'GWP'
+        data = load_data(item_path, sheet=sheet_name)
+        for p in data.index:
+            item = ImpactItem.get_item(p)
+            b = item.CFs[indicator]
+            lower = float(data.loc[p]['low'])
+            upper = float(data.loc[p]['high'])
+            dist = data.loc[p]['distribution']
+            if dist == 'uniform':
+                D = shape.Uniform(lower=lower, upper=upper)
+            elif dist == 'triangular':
+                D = shape.Triangle(lower=lower, midpoint=b, upper=upper)
+            elif dist == 'constant': continue
+            else:
+                raise ValueError(f'Distribution {dist} not recognized.')
+            model.parameter(name=p+f'-{indicator}',
+                            setter=DictAttrSetter(item, 'CFs', indicator),
+                            element='LCA', kind='isolated',
+                            units=f'kg CO2-eq/{item.functional_unit}',
+                            baseline=b, distribution=D)
+
+
+# %%
+
+# =============================================================================
+# Functions to create models
+# =============================================================================
+
+def create_modelA(country_specific=False, ppl=default_ppl, **model_kwargs):
+    flowsheet = model_kwargs.pop('flowsheet', None)
+    sysA = create_system('A', ppl=ppl, flowsheet=flowsheet)
+    unitA = sysA.flowsheet.unit
+
+    # Shared metrics/parameters
+    modelA = Model(sysA, **model_kwargs)
+    add_metrics(modelA, ppl=ppl)
+    unit_dctA = {
+        'excretion': unitA.A1,
+        'toilet': unitA.A2,
+        'solids_separation': unitA.A3,
+        'belt_separation': unitA.A4,
+        'solids_tank': unitA.A12,
+        'liquids_tank': unitA.A13,
+        'ultrafiltration': unitA.A5,
+        'reverse_osmosis': unitA.A6,
+        'concentrator': unitA.A7,
+        'homogenizer': unitA.A8,
+        'pasteurization': unitA.A9,
+        'filter_press': unitA.A10,
+        'drying_tunnel': unitA.A11,
+        }
+    add_shared_parameters(modelA, unit_dctA, country_specific)
+    return modelA
+
+# Wrapper function so that it'd work for all
+def create_model(model_ID='A', country_specific=False, ppl=default_ppl, **model_kwargs):
+    model_ID = model_ID.lower().rsplit('model')[-1].rsplit('sys')[-1].upper() # works for "modelA"/"sysA"/"A"
+    if model_ID == 'A': model = create_modelA(country_specific, ppl=ppl, **model_kwargs)
+    else: raise ValueError(f'`model_ID` can only be "A" or "B", not "{model_ID}".')
+    return model
+
+
+def run_uncertainty(model, path='', **kwargs):
+    kwargs['path'] = os.path.join(results_path, f'sys{model.system.ID[-1]}_model.xlsx') if path=='' else path
+    run(model=model, **kwargs)
+    return
