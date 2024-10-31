@@ -24,7 +24,7 @@ TODOs:
     - Confirm/adjust all prices.
     - Add LCA (streams, utilities, transportation, electrolyte replacement, avoided emissions).
     - Uncertainty/sensitivity (model).
-    - Single point sens
+    - Some single-point sensitivity for discussion.
     
 '''
 
@@ -40,18 +40,22 @@ from exposan.htl import (
     create_tea,
     )
 from exposan.saf import (
-    feedstock_composition,
-    dry_flowrate, wet_flowrate,
-    HTL_yields,
-    annual_hours, price_dct,
-    find_Lr_Hr,
-    _load_process_settings,
-    create_components,
-    # data_path,
-    results_path,
+    _HHV_per_GGE,
     # _load_components,
-    # create_tea,
+    _load_process_settings,
     _units as u,
+    annual_hours,
+    create_components,
+    # create_tea,
+    # data_path,
+    dry_flowrate,
+    feedstock_composition,
+    find_Lr_Hr,
+    HTL_yields,
+    price_dct,
+    results_path,
+    tea_kwargs,
+    wet_flowrate,
     )
 
 _psi_to_Pa = 6894.76
@@ -65,16 +69,20 @@ __all__ = (
     'get_MFSP',
     )
 
-def create_system(include_PSA=True, include_EC=True,):
+def create_system(flowsheet=None, include_PSA=True, include_EC=True,):
     _load_process_settings()
 
-    flowsheet_ID = 'sys'
-    if include_PSA: flowsheet_ID += '_PSA'
-    if include_EC: flowsheet_ID += '_EC'
-
-    flowsheet = qs.Flowsheet(flowsheet_ID)
-    qs.main_flowsheet.set_flowsheet(flowsheet)
-    saf_cmps = create_components(set_thermo=True)
+    if not flowsheet:
+        flowsheet_ID = 'saf'
+        if include_PSA: flowsheet_ID += '_PSA'
+        if include_EC: flowsheet_ID += '_EC'
+        flowsheet = qs.Flowsheet(flowsheet_ID)
+        qs.main_flowsheet.set_flowsheet(flowsheet)
+        saf_cmps = create_components(set_thermo=True)
+    else:
+        qs.main_flowsheet.set_flowsheet(flowsheet)
+        try: saf_cmps = qs.get_components()
+        except: saf_cmps = create_components(set_thermo=True)
     
     feedstock = qs.WasteStream('feedstock', price=price_dct['tipping'])
     feedstock.imass[list(feedstock_composition.keys())] = list(feedstock_composition.values())
@@ -86,10 +94,10 @@ def create_system(include_PSA=True, include_EC=True,):
         'FeedstockTrans',
         ins=(feedstock, 'transportation_surrogate'),
         outs=('transported_feedstock',),
-        N_unit=1,
         copy_ins_from_outs=False,
-        transportation_unit_cost=price_dct['transportation'], # already considered distance
+        transportation_unit_cost=1, # already considered distance, will be adjusted later
         transportation_distance=1,
+        N_unit=1,
         )
     
     FeedstockWaterPump = qsu.Pump('FeedstockWaterPump', ins=feedstock_water)
@@ -112,17 +120,15 @@ def create_system(include_PSA=True, include_EC=True,):
     # =========================================================================
     # Hydrothermal Liquefaction (HTL)
     # =========================================================================
-    
     HTL = u.HydrothermalLiquefaction(
         'HTL', ins=MixedFeedstockPump-0,
-        outs=('','','HTL_crude','HTL_char'),
+        outs=('', '', 'HTL_crude', 'ash'),
         T=280+273.15,
         P=12.4e6, # may lead to HXN error when HXN is included
         # P=101325, # setting P to ambient pressure not practical, but it has minimum effects on the results (several cents)
         tau=15/60,
         dw_yields=HTL_yields,
-        gas_composition={'CO2': 1},
-        # aqueous_composition={'HTLaqueous': 1},    
+        gas_composition={'CO2': 1}, 
         aqueous_composition={
             'HTLaqueous': 1-(0.41+0.47+0.56)/100,
             'N': 0.41/100,
@@ -294,7 +300,7 @@ def create_system(include_PSA=True, include_EC=True,):
     HC.register_alias('Hydrocracking')
     # In [1], HC is costed for a multi-stage HC, but commented that the cost could be
     # $10-70 MM (originally $25 MM for a 6500 bpd system),
-    HC.cost_items['Hydrocracker'].cost = 10e6
+    # HC.cost_items['Hydrocracker'].cost = 10e6
     
     HC_HX = qsu.HXutility(
         'HC_HX', ins=HC-0, outs='cooled_HC_eff', T=60+273.15,
@@ -477,12 +483,19 @@ def create_system(include_PSA=True, include_EC=True,):
         WWmixer.outs[0] = ww_to_disposal
         recycled_H2_streams = []
 
-    GasMixer = qsu.Mixer('GasMixer', ins=fuel_gases, outs=('waste_gases'))
-    def adjust_ww_disposal_price():
+    def adjust_prices():
+        # Transportation
+        dry_price = price_dct['trans_feedstock']
+        factor = 1 - FeedstockTrans.ins[0].imass['Water']/FeedstockTrans.ins[0].F_mass
+        FeedstockTrans.transportation_unit_cost = dry_price * factor
+        # Wastewater
+        ww_to_disposal.source._run()
         COD_mass_content = sum(ww_to_disposal.imass[i.ID]*i.i_COD for i in saf_cmps)
-        factor = COD_mass_content/ww_to_disposal.F_mass if ww_to_disposal.F_mass else 0
+        factor = COD_mass_content/ww_to_disposal.F_mass
         ww_to_disposal.price = min(price_dct['wastewater'], price_dct['COD']*factor)
-    GasMixer.add_specification(adjust_ww_disposal_price)
+    ww_to_disposal.source.add_specification(adjust_prices)
+
+    GasMixer = qsu.Mixer('GasMixer', ins=fuel_gases, outs=('waste_gases'))
 
     # =========================================================================
     # Facilities
@@ -492,12 +505,12 @@ def create_system(include_PSA=True, include_EC=True,):
     # HXN = qsu.HeatExchangerNetwork('HXN', T_min_app=86, force_ideal_thermo=True)
     # 86 K: Jones et al. PNNL, 2014
     
-    natural_gas = qs.WasteStream('nature_gas', CH4=1, price=price_dct['natural_gas'])
-    disposed_solids = qs.WasteStream('solids', price=price_dct['solids'])
-    CHPMixer = qsu.Mixer('CHPMixer', ins=(GasMixer-0, CrudeHeavyDis-1))
+    natural_gas = qs.WasteStream('natural_gas', CH4=1, price=price_dct['natural_gas'])
+    solids_to_disposal = qs.WasteStream('solids_to_disposal', price=price_dct['solids'])
+    CHPMixer = qsu.Mixer('CHPMixer', ins=(GasMixer-0, CrudeHeavyDis-1, HTL-3))
     CHP = qsu.CombinedHeatPower('CHP', 
                                 ins=(CHPMixer-0, natural_gas, 'air'),
-                                outs=('gas_emissions', disposed_solids),
+                                outs=('gas_emissions', solids_to_disposal),
                                 init_with='WasteStream',
                                 supplement_power_utility=False)
     
@@ -523,17 +536,7 @@ def create_system(include_PSA=True, include_EC=True,):
         )
     for unit in sys.units: unit.include_construction = False
     
-    tea = create_tea(
-        sys,
-        IRR=0.1,
-        duration=(2020, 2050),
-        income_tax=0.21,
-        finance_interest=0.08,
-        warehouse=0.04,
-        site_development=0.1,
-        additional_piping=0.045,
-        labor_cost=1.81*10**6,
-        )
+    tea = create_tea(sys, **tea_kwargs)
     
     # lca = qs.LCA(
     #     system=sys,
@@ -551,12 +554,6 @@ def create_system(include_PSA=True, include_EC=True,):
 # =========================================================================
 # Result outputting
 # =========================================================================
-
-_HHV_per_GGE = 46.52*2.82 # MJ/gal
-# DOE properties
-# https://h2tools.org/hyarc/calculator-tools/lower-and-higher-heating-values-fuels
-# Conventional Gasoline: HHV=46.52 MJ/kg, rho=2.82 kg/gal
-# U.S. Conventional Gasoline: HHV=45.76 MJ/kg, rho=3.17 kg/gal
 
 # Gasoline gallon equivalent
 get_GGE = lambda sys, fuel, annual=True: fuel.HHV/1e3/_HHV_per_GGE*max(1, bool(annual)*sys.operating_hours)
@@ -609,9 +606,10 @@ def simulate_and_print(system, save_report=False):
 
 
 if __name__ == '__main__':
-    sys = create_system(include_PSA=False, include_EC=False)
-    # sys = create_system(include_PSA=True, include_EC=False)
-    # sys = create_system(include_PSA=True, include_EC=True)
+    config_kwargs = {'include_PSA': False, 'include_EC': False,}
+    # config = {'include_PSA': True, 'include_EC': False,}
+    # config = {'include_PSA': True, 'include_EC': True,}
+    sys = create_system(flowsheet=None, **config_kwargs)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     tea = sys.TEA

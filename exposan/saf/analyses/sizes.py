@@ -18,6 +18,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import os, numpy as np, pandas as pd, qsdsan as qs
+from qsdsan.utils import time_printer
 from exposan.saf import (
     results_path,
     create_system,
@@ -28,45 +29,62 @@ from exposan.saf import (
 # %%
 
 # 110 tpd sludge (default) is about 100 MGD
-# _default_size = 100
-# MGDs = np.arange(10, 100, 10).tolist() + np.arange(100, 1300, 100).tolist()
 
+@time_printer
 def MFSP_across_sizes(ratios, **config_kwargs):
-    sys = create_system(**config_kwargs)
-    sys.simulate()
-    
-    feedstock = sys.flowsheet.stream.feedstock
-    FeedstockCond = sys.flowsheet.unit.FeedstockCond
-    _default_dry_mass = feedstock.F_mass
-    
+    # sys = create_system(**config_kwargs)
+    # feedstock = sys.flowsheet.stream.feedstock
+    # _default_mass = feedstock.F_mass
+    _default_mass = 18980.787227243676
+
     MFSPs = []
-    # for MGD in [10, 100, 1000]:
+    fuel_yields = []
     for ratio in ratios:
-        new_dry_mass = ratio * _default_dry_mass
-        feedstock.F_mass = new_dry_mass
-        FeedstockCond.feedstock_dry_flowrate = feedstock.F_mass-feedstock.imass['H2O']
-        print(ratio, new_dry_mass)
+        print(f'ratio: {ratio}')
+        # sys.reset_cache() # too many fails
+        flowsheet_ID = 'saf' # new flowsheet doesn't help... same as old flowsheet but new system
+        if config_kwargs['include_PSA']: flowsheet_ID += '_PSA'
+        if config_kwargs['include_EC']: flowsheet_ID += '_EC'
+        flowsheet_ID += f'_{str(ratio).replace(".", "_")}'
+        flowsheet = qs.Flowsheet(flowsheet_ID)
+        qs.main_flowsheet.set_flowsheet(flowsheet)
+        sys = create_system(flowsheet=flowsheet, **config_kwargs)
+        feedstock = flowsheet.stream.feedstock
+        mixed_fuel = flowsheet.stream.mixed_fuel
+        FeedstockCond = flowsheet.unit.FeedstockCond
+
+        new_mass = ratio * _default_mass
+        feedstock.F_mass = new_mass
+        dry_feedstock = feedstock.F_mass-feedstock.imass['H2O']
+        FeedstockCond.feedstock_dry_flowrate = dry_feedstock
         try:
             sys.simulate()
-            MFSPs.append(get_MFSP(sys, True))
+            MFSP = get_MFSP(sys, print_msg=False)
+            fuel_yield = mixed_fuel.F_mass/dry_feedstock
+            print(f'MFSP: ${MFSP:.2f}/GGE; fuel yields {fuel_yield:.2%}.\n')
         except: 
-            print('Simulation failed.')
-            MFSPs.append(None)
-    return MFSPs
+            print('Simulation failed.\n')
+            MFSP = fuel_yield = None
+        MFSPs.append(MFSP)
+        fuel_yields.append(fuel_yield)
+
+    return MFSPs, fuel_yields
         
 if __name__ == '__main__':
-    # config = {'include_PSA': False, 'include_EC': False,}
-    config = {'include_PSA': True, 'include_EC': False,}
+    config = {'include_PSA': False, 'include_EC': False,}
+    # config = {'include_PSA': True, 'include_EC': False,}
     # config = {'include_PSA': True, 'include_EC': True,}
     flowsheet = qs.main_flowsheet
     dct = globals()
     dct.update(flowsheet.to_dict())
     
-    
-    ratios = np.arange(0.1, 1, 0.1).tolist() + np.arange(1, 10, 1).tolist()
-    sizes_results = MFSP_across_sizes(sizes=ratios, **config)
+    # ratios = [1]
+    # ratios = np.arange(1, 11, 1).tolist()
+    ratios = np.arange(0.1, 1, 0.1).tolist() + np.arange(1, 11, 1).tolist()
+    sizes_results = MFSP_across_sizes(ratios=ratios, **config)
     sizes_df = pd.DataFrame()
     sizes_df['Ratio'] = ratios
-    sizes_df['MFSP'] = sizes_results
+    sizes_df['MFSP'] = sizes_results[0]
+    sizes_df['Fuel yields'] = sizes_results[1]
     outputs_path = os.path.join(results_path, f'sizes_{flowsheet.ID}.csv')
     sizes_df.to_csv(outputs_path)

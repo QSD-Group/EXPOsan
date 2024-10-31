@@ -18,6 +18,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import os, numpy as np, pandas as pd, qsdsan as qs
+from qsdsan.utils import time_printer
 from exposan.saf import (
     data_path,
     results_path,
@@ -28,6 +29,7 @@ from exposan.saf import (
 data_path = os.path.join(data_path, 'biocrude_yields.csv')
 df = pd.read_csv(data_path)
 
+@time_printer
 def MFSP_across_biocrude_yields(yields=[], **config_kwargs):
     sys = create_system(**config_kwargs)
     unit = sys.flowsheet.unit
@@ -90,9 +92,9 @@ def MFSP_across_biocrude_yields(yields=[], **config_kwargs):
 
 
 if __name__ == '__main__':
-    # config = {'include_PSA': False, 'include_EC': False,}
-    config = {'include_PSA': True, 'include_EC': False,}
-    # config = {'include_PSA': True, 'include_EC': True,}
+    config_kwargs = {'include_PSA': False, 'include_EC': False,}
+    # config_kwargs = {'include_PSA': True, 'include_EC': False,}
+    # config_kwargs = {'include_PSA': True, 'include_EC': True,}
     flowsheet = qs.main_flowsheet
     dct = globals()
     dct.update(flowsheet.to_dict())
@@ -102,11 +104,11 @@ if __name__ == '__main__':
     # results = MFSP_across_biocrude_yields(yields=single, **config)
     
     yields_results = df.copy()
-    tested = MFSP_across_biocrude_yields(yields=df.y_test, **config)
+    tested = MFSP_across_biocrude_yields(yields=df.y_test, **config_kwargs)
     yields_results['y_test_MFSP'] = tested[0]
     yields_results['y_test_yields'] = tested[1]
 
-    predicted = MFSP_across_biocrude_yields(yields=df.y_pred, **config)
+    predicted = MFSP_across_biocrude_yields(yields=df.y_pred, **config_kwargs)
     yields_results['y_pred_MFSP'] = predicted[0]
     yields_results['y_pred_yields'] = predicted[1]
     

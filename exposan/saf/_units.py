@@ -164,6 +164,10 @@ class HydrothermalLiquefaction(Reactor):
         Composition of the biocrude products INCLUDING water, will be normalized to 100% sum.
     char_composition : dict
         Composition of the char products INCLUDING water, will be normalized to 100% sum.
+        "Ash" in the feedstock will be simulated based on the setting of `adjust_char_by_ash`.
+    adjust_char_by_ash : bool
+        If True, all ash in 
+        but EXCLUDING ash (all ash will remain as ash),
     internal_heat_exchanging : bool
         If to use product to preheat feedstock.
     eff_T: float
@@ -1414,10 +1418,10 @@ class Transportation(SanUnit):
         with a surrogate flow to account for the transportation cost.
     outs : obj
         Mixture of the influent streams to be transported.        
-    transportation_distance : float
-        Transportation distance in km.
     transportation_unit_cost : float
         Transportation cost in $/kg/km.
+    transportation_distance : float
+        Transportation distance in km.
     N_unit : int
         Number of required filtration unit.
     copy_ins_from_outs : bool
@@ -1429,8 +1433,8 @@ class Transportation(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                   init_with='WasteStream', F_BM_default=1,
-                  transportation_distance=0,
                   transportation_unit_cost=0,
+                  transportation_distance=0,
                   N_unit=1,
                   copy_ins_from_outs=False,
                   **kwargs,
