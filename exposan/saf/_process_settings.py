@@ -18,14 +18,12 @@ import biosteam as bst, qsdsan as qs
 __all__ = (
     '_HHV_per_GGE',
     '_load_process_settings',
-    'annual_hours',
     'dry_flowrate',
     'feedstock_composition',
     'HTL_yields',
     'price_dct',
     'tea_kwargs',
     'uptime_ratio',
-    'wet_flowrate',
     )
 
 _ton_to_kg = 907.185
@@ -52,7 +50,6 @@ feedstock_composition = {
     'Carbohydrates': (1-moisture)*0.3816,
     'Ash': ash,
     }
-wet_flowrate = dry_flowrate / (1-moisture)
 
 HTL_yields = {
     'gas': 0.006,
@@ -60,8 +57,6 @@ HTL_yields = {
     'biocrude': 0.802-ash,
     'char': ash,
     }
-
-annual_hours = 365*24*uptime_ratio
 
 # All in 2020 $/kg unless otherwise noted, needs to do a thorough check to update values
 tea_indices = qs.utils.indices.tea_indices

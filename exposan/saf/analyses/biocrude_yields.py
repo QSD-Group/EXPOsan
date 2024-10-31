@@ -20,10 +20,11 @@ warnings.filterwarnings('ignore')
 import os, numpy as np, pandas as pd, qsdsan as qs
 from qsdsan.utils import time_printer
 from exposan.saf import (
-    data_path,
-    results_path,
     create_system,
+    data_path,
+    HTL_yields,
     get_MFSP,
+    results_path,
     )
 
 data_path = os.path.join(data_path, 'biocrude_yields.csv')
@@ -36,14 +37,12 @@ def MFSP_across_biocrude_yields(yields=[], **config_kwargs):
     stream = sys.flowsheet.stream
     
     HTL = unit.HTL
-    default_yield = HTL.dw_yields.copy()
-    
     CrudeSplitter = unit.CrudeSplitter
     default_fracs = CrudeSplitter.cutoff_fracs.copy()
     crude_and_char0 = sum(default_fracs[1:])
     
-    gas0, aq0 = default_yield['gas'], default_yield['aqueous']
-    char0 = default_yield['biocrude'] * default_fracs[-1]/crude_and_char0
+    gas0, aq0 = HTL_yields['gas'], HTL_yields['aqueous']
+    char0 = HTL_yields['biocrude'] * HTL_yields[-1]/crude_and_char0
     non_crudes = [gas0, aq0, char0]
     non_crude0 = sum(non_crudes)
     non_crudes = [i/non_crude0 for i in non_crudes]
@@ -64,7 +63,7 @@ def MFSP_across_biocrude_yields(yields=[], **config_kwargs):
         crude = y/100
         gas, aq, char = adjust_yield(crude)
 
-        dw_yields = default_yield.copy()
+        dw_yields = HTL_yields.copy()
         dw_yields['gas'] = gas
         dw_yields['aqueous'] = aq
         dw_yields['biocrude'] = crude+char

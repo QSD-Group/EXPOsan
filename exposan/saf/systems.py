@@ -36,15 +36,12 @@ import os, numpy as np, biosteam as bst, qsdsan as qs
 from biosteam import IsenthalpicValve
 from qsdsan import sanunits as qsu
 from qsdsan.utils import clear_lca_registries
-from exposan.htl import (
-    create_tea,
-    )
+from exposan.htl import create_tea
 from exposan.saf import (
     _HHV_per_GGE,
     # _load_components,
     _load_process_settings,
     _units as u,
-    annual_hours,
     create_components,
     # create_tea,
     # data_path,
@@ -55,7 +52,7 @@ from exposan.saf import (
     price_dct,
     results_path,
     tea_kwargs,
-    wet_flowrate,
+    uptime_ratio,
     )
 
 _psi_to_Pa = 6894.76
@@ -69,7 +66,13 @@ __all__ = (
     'get_MFSP',
     )
 
-def create_system(flowsheet=None, include_PSA=True, include_EC=True,):
+def create_system(
+        flowsheet=None,
+        include_PSA=True,
+        include_EC=True,
+        dry_flowrate=dry_flowrate,
+        feedstock_composition=feedstock_composition,
+        ):
     _load_process_settings()
 
     if not flowsheet:
@@ -86,7 +89,7 @@ def create_system(flowsheet=None, include_PSA=True, include_EC=True,):
     
     feedstock = qs.WasteStream('feedstock', price=price_dct['tipping'])
     feedstock.imass[list(feedstock_composition.keys())] = list(feedstock_composition.values())
-    feedstock.F_mass = wet_flowrate
+    feedstock.F_mass = dry_flowrate / (1-feedstock_composition['Water'])
     
     feedstock_water = qs.Stream('feedstock_water', Water=1)
     
@@ -532,7 +535,7 @@ def create_system(flowsheet=None, include_PSA=True, include_EC=True,):
     sys = qs.System.from_units(
         'sys',
         units=list(flowsheet.unit),
-        operating_hours=annual_hours, # 90% uptime
+        operating_hours=365*24*uptime_ratio,
         )
     for unit in sys.units: unit.include_construction = False
     

@@ -20,9 +20,10 @@ warnings.filterwarnings('ignore')
 import os, numpy as np, pandas as pd, qsdsan as qs
 from qsdsan.utils import time_printer
 from exposan.saf import (
-    results_path,
     create_system,
+    dry_flowrate as default_dry_flowrate,
     get_MFSP,
+    results_path,
     )
 
 
@@ -32,35 +33,18 @@ from exposan.saf import (
 
 @time_printer
 def MFSP_across_sizes(ratios, **config_kwargs):
-    # sys = create_system(**config_kwargs)
-    # feedstock = sys.flowsheet.stream.feedstock
-    # _default_mass = feedstock.F_mass
-    _default_mass = 18980.787227243676
-
     MFSPs = []
     fuel_yields = []
     for ratio in ratios:
         print(f'ratio: {ratio}')
         # sys.reset_cache() # too many fails
-        flowsheet_ID = 'saf' # new flowsheet doesn't help... same as old flowsheet but new system
-        if config_kwargs['include_PSA']: flowsheet_ID += '_PSA'
-        if config_kwargs['include_EC']: flowsheet_ID += '_EC'
-        flowsheet_ID += f'_{str(ratio).replace(".", "_")}'
-        flowsheet = qs.Flowsheet(flowsheet_ID)
-        qs.main_flowsheet.set_flowsheet(flowsheet)
-        sys = create_system(flowsheet=flowsheet, **config_kwargs)
-        feedstock = flowsheet.stream.feedstock
+        dry_flowrate = ratio * default_dry_flowrate
+        sys = create_system(dry_flowrate=dry_flowrate, **config_kwargs)
         mixed_fuel = flowsheet.stream.mixed_fuel
-        FeedstockCond = flowsheet.unit.FeedstockCond
-
-        new_mass = ratio * _default_mass
-        feedstock.F_mass = new_mass
-        dry_feedstock = feedstock.F_mass-feedstock.imass['H2O']
-        FeedstockCond.feedstock_dry_flowrate = dry_feedstock
         try:
             sys.simulate()
             MFSP = get_MFSP(sys, print_msg=False)
-            fuel_yield = mixed_fuel.F_mass/dry_feedstock
+            fuel_yield = mixed_fuel.F_mass/dry_flowrate
             print(f'MFSP: ${MFSP:.2f}/GGE; fuel yields {fuel_yield:.2%}.\n')
         except: 
             print('Simulation failed.\n')
