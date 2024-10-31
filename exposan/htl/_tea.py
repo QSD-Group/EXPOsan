@@ -69,7 +69,7 @@ class HTL_TEA(TEA):
     __slots__ = ('OSBL_units', 'warehouse', 'site_development',
                  'additional_piping', 'proratable_costs', 'field_expenses',
                  'construction', 'contingency', 'other_indirect_costs', 
-                 'labor_cost', 'labor_burden', 'property_insurance',
+                 '_labor_cost', 'labor_burden', 'property_insurance',
                  'maintenance', '_ISBL_DPI_cached', '_FCI_cached',
                  '_utility_cost_cached', '_steam_power_depreciation',
                  '_steam_power_depreciation_array',
@@ -111,6 +111,16 @@ class HTL_TEA(TEA):
     def working_capital(self) -> float:
         '''Working capital calculated as the sum of WC_over_FCI*FCI and land.'''
         return self.WC_over_FCI * self.FCI+self.land
+    
+    @property
+    def labor_cost(self):
+        if hasattr(self, '_labor_cost'):
+            if callable(self._labor_cost): return self._labor_cost()
+            return self._labor_cost
+        return 0.
+    @labor_cost.setter
+    def labor_cost(self, i):
+        self._labor_cost = i
 
     @property
     def steam_power_depreciation(self):
