@@ -46,8 +46,6 @@ from ._process_settings import *
 from . import _units
 from ._units import *
 
-from . import _tea
-from ._tea import *
 
 # from . import system_CHCU
 # from .system_CHCU import *
@@ -73,8 +71,6 @@ def __getattr__(name):
             'and the module has not been loaded, '
             f'loading the module with `{__name__}.load()` may solve the issue.')
 
-#!!! The `htl` module has models and simulation functions that might be helpful.
-
 
 
 __all__ = (
@@ -84,7 +80,6 @@ __all__ = (
     *_components.__all__,
     *_process_settings.__all__,
     *_units.__all__,
-    *_tea.__all__,
     # *system_CHCU.__all__,
     # *system_DHCU.__all__,
 )
