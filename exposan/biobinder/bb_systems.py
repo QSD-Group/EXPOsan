@@ -29,9 +29,9 @@ from qsdsan import sanunits as qsu
 from qsdsan.utils import clear_lca_registries
 from exposan.htl import create_tea
 from exposan.saf import (
+    _units as safu,
     price_dct,
     tea_kwargs,
-    _units as safu,
     )
 from exposan.biobinder import (
     data_path,

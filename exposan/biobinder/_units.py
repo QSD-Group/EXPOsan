@@ -15,8 +15,11 @@ for license details.
 
 import math, biosteam as bst, qsdsan as qs
 from biosteam.units.decorators import cost
-from qsdsan import SanUnit, Stream, sanunits as qsu
-from exposan.biobinder import CEPCI_by_year
+from qsdsan import (
+    SanUnit,
+    sanunits as qsu,
+    Stream,
+    )
 
 __all__ = (
     'ElectrochemicalOxidation',
@@ -27,6 +30,7 @@ __all__ = (
     'Scaler',
     )
 
+CEPCI_by_year = qs.utils.tea_indices['CEPCI']
 
 # %%
 

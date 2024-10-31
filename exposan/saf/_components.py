@@ -142,8 +142,7 @@ def create_components(set_thermo=True):
     N = Component('N', search_ID='Nitrogen', **aq_kwargs)
     P = Component('P', search_ID='Phosphorus', **aq_kwargs)
     K = Component('K', search_ID='Potassium', **aq_kwargs)
-    KH2PO4= Component('KH2PO4', **aq_kwargs)
-    saf_cmps.extend([H2O, C, N, P, K, KH2PO4,])
+    saf_cmps.extend([H2O, C, N, P, K,])
     
     # Components in the gas product
     CO2 = htl_cmps.CO2
@@ -156,16 +155,10 @@ def create_components(set_thermo=True):
     H2 = htl_cmps.H2
     NH3 = htl_cmps.NH3
     saf_cmps.extend([CO2, CH4, C2H6, C3H8, O2, N2, CO, H2, NH3])
-    
-    # Surrogate compounds based on the carbon range
-    # Tb = 391.35 K (118.2°C)
-    Gasoline = Component('Gasoline', search_ID='C8H18', **org_kwargs)
-    # Tb = 526.65 K (253.5°C)
-    Jet = Component('Jet', search_ID='C14H30', **org_kwargs)
-    # Tb = 632.15 K (359°C)
-    Diesel = Component('Diesel', search_ID='C21H44', **org_kwargs)
-    saf_cmps.extend([Gasoline, Jet, Diesel])
 
+    C8H18 = Component('C8H18', **org_kwargs)
+    saf_cmps.append(C8H18)
+    
     # Consumables only for cost purposes, thermo data for these components are made up
     sol_kwargs = {
         'phase': 's',
@@ -179,19 +172,7 @@ def create_components(set_thermo=True):
     
     HTcatalyst = HCcatalyst.copy('HTcatalyst') # Pd-Al2O3
     
-    EOmembrane = HCcatalyst.copy('EOmembrane')
-    EOanode = HCcatalyst.copy('EOanode')
-    EOcathode = HCcatalyst.copy('EOcathode')
-    
-    ECmembrane = HCcatalyst.copy('ECmembrane')
-    ECanode = HCcatalyst.copy('ECanode')
-    ECcathode = HCcatalyst.copy('ECcathode')
-    
-    saf_cmps.extend([
-        HCcatalyst, HTcatalyst,
-        EOmembrane, EOanode, EOcathode,
-        ECmembrane, ECanode, ECcathode,
-        ])
+    saf_cmps.extend([HCcatalyst, HTcatalyst,])
     
     for i in saf_cmps:
         for attr in ('HHV', 'LHV', 'Hf'):
@@ -207,7 +188,12 @@ def create_components(set_thermo=True):
     saf_cmps.set_alias('K', 'Potassium')
     saf_cmps.set_alias('Biocrude', 'HTLbiocrude')
     saf_cmps.set_alias('HTLchar', 'Hydrochar')
-
+    
+    # Surrogate compounds based on the carbon range
+    saf_cmps.set_alias('C8H18', 'Gasoline') # Tb = 391.35 K (118.2°C)
+    saf_cmps.set_alias('C14H30', 'Jet') # Tb = 526.65 K (253.5°C)
+    saf_cmps.set_alias('C21H44', 'Diesel') # Tb = 632.15 K (359°C)
+    
     if set_thermo: qs_set_thermo(saf_cmps)
 
     return saf_cmps
