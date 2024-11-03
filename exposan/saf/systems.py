@@ -111,7 +111,6 @@ def create_system(
         feedstock_composition=None,
         feedstock_dry_flowrate=dry_flowrate,
         target_HTL_solid_loading=1-feedstock_composition['Water'],
-        N_unit=1,
         )
     @FeedstockCond.add_specification
     def adjust_feedstock_composition():
@@ -493,7 +492,7 @@ def create_system(
         FeedstockTrans.transportation_unit_cost = dry_price * factor
         # Wastewater
         ww_to_disposal.source._run()
-        COD_mass_content = sum(ww_to_disposal.imass[i.ID]*i.i_COD for i in saf_cmps)
+        COD_mass_content = sum(ww_to_disposal.imass[i.ID]*i.i_COD for i in ww_to_disposal.components)
         factor = COD_mass_content/ww_to_disposal.F_mass
         ww_to_disposal.price = min(price_dct['wastewater'], price_dct['COD']*factor)
     ww_to_disposal.source.add_specification(adjust_prices)
@@ -610,8 +609,8 @@ def simulate_and_print(system, save_report=False):
 
 if __name__ == '__main__':
     config_kwargs = {'include_PSA': False, 'include_EC': False,}
-    # config = {'include_PSA': True, 'include_EC': False,}
-    # config = {'include_PSA': True, 'include_EC': True,}
+    # config_kwargs = {'include_PSA': True, 'include_EC': False,}
+    # config_kwargs = {'include_PSA': True, 'include_EC': True,}
     sys = create_system(flowsheet=None, **config_kwargs)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())

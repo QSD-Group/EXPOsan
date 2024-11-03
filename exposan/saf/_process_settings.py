@@ -51,6 +51,7 @@ feedstock_composition = {
     'Ash': ash,
     }
 
+# Salad dressing waste
 HTL_yields = {
     'gas': 0.006,
     'aqueous': 0.192,

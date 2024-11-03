@@ -13,11 +13,7 @@ for license details.
 '''
 
 import os, qsdsan as qs
-# from qsdsan.utils import auom
 from exposan.utils import _init_modules
-# from exposan.htl import (
-#     _MJ_to_MMBTU,
-#     )
 
 biobinder_path = os.path.dirname(__file__)
 module = os.path.split(biobinder_path)[-1]
@@ -46,13 +42,6 @@ from ._process_settings import *
 from . import _units
 from ._units import *
 
-
-# from . import system_CHCU
-# from .system_CHCU import *
-
-# from . import system_DHCU
-# from .system_DHCU import *
-
 _system_loaded = False
 def load():
     global sys, tea, lca, flowsheet, _system_loaded
@@ -80,6 +69,5 @@ __all__ = (
     *_components.__all__,
     *_process_settings.__all__,
     *_units.__all__,
-    # *system_CHCU.__all__,
-    # *system_DHCU.__all__,
+    # *systems.__all__,
 )

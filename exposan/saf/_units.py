@@ -13,6 +13,7 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
+import math
 from biosteam import Facility, ProcessWaterCenter as PWC
 from biosteam.units.decorators import cost
 from biosteam.units.design_tools import CEPCI_by_year
@@ -20,6 +21,7 @@ from qsdsan import SanUnit, Stream, WasteStream
 from qsdsan.sanunits import Reactor, IsothermalCompressor, HXutility, HXprocess, MixTank
 
 __all__ = (
+    # To be moved to QSDsan
     'HydrothermalLiquefaction',
     'Hydroprocessing',
     'PressureSwingAdsorption',
@@ -179,7 +181,7 @@ class HydrothermalLiquefaction(Reactor):
         If True, will use cost scaled based on [1], otherwise will use generic
         algorithms for ``Reactor`` (``PressureVessel``).
     F_M : dict
-        Material factors used to adjust cost (only used `use_decorated_cost` is False).
+        Material factors used to adjust cost (only used `use_decorated_cost` is False).5      
         
 
     See Also
@@ -470,6 +472,7 @@ class HydrothermalLiquefaction(Reactor):
         '''Energy recovery calculated as the HHV of the biocrude over the HHV of the feedstock.'''
         feed = self.ins[0]
         return self.biocrude_HHV/(feed.HHV/feed.F_mass/1e3)
+    
 
 
 # %%
@@ -830,22 +833,6 @@ class Hydroprocessing(Reactor):
         if i > 1: raise ValueError('PSA_efficiency cannot be larger than 1.')
         self._PSA_efficiency  = i
 
-    # @property
-    # def V_wf(self):
-    #     '''Fraction of working volume over total volume.'''
-    #     return self._V_wf
-    # @V_wf.setter
-    # def V_wf(self, i):
-    #     self.V_wf = i
-
-    # @property
-    # def C_balance(self):
-    #     '''Total carbon in the outs over total in the ins.'''
-    #     cmps = self.components
-    #     C_in = sum(self.ins[0].imass[cmp.ID]*cmp.i_C for cmp in cmps)
-    #     C_out = sum(self.outs[0].imass[cmp.ID]*cmp.i_C for cmp in cmps)
-    #     return C_out/C_in
-
 
 # %%
 
@@ -1001,7 +988,8 @@ class Electrochemical(SanUnit):
         will be set to 0 if `include_PSA` is False.
     PSA_compressor_P : float
         Pressure to compressed the generated H2 to, if desired, [Pa].
-        
+
+
     References
     ----------
     [1] Jiang et al., 2024.
@@ -1352,9 +1340,6 @@ class Conditioning(MixTank):
         Feedstock dry mass flowrate for 1 reactor.
     target_HTL_solid_loading : float
         Target solid loading.
-    N_unit : int
-        Number of required preprocessing units.
-        Note that one precessing unit may have multiple tanks.
     tau : float
         Retention time for the mix tank.
     add_mixtank_kwargs : dict
@@ -1367,7 +1352,7 @@ class Conditioning(MixTank):
                   feedstock_composition=salad_dressing_waste_composition,
                   feedstock_dry_flowrate=1,
                   target_HTL_solid_loading=0.2,
-                  N_unit=1, tau=1, **add_mixtank_kwargs,
+                  tau=1, **add_mixtank_kwargs,
                   ):
         mixtank_kwargs = add_mixtank_kwargs.copy()
         mixtank_kwargs['tau'] = tau
@@ -1376,7 +1361,7 @@ class Conditioning(MixTank):
         self.feedstock_composition = feedstock_composition
         self.feedstock_dry_flowrate = feedstock_dry_flowrate
         self.target_HTL_solid_loading = target_HTL_solid_loading
-        self.N_unit = N_unit
+        
     
     def _run(self):
         feedstock_in, htl_process_water = self.ins
@@ -1399,10 +1384,6 @@ class Conditioning(MixTank):
         htl_process_water.imass['Water'] = max(0, required_water)
         
         MixTank._run(self)
-        
-    def _cost(self):
-        MixTank._cost(self) # just for one unit
-        self.parallel['self'] = self.parallel.get('self', 1)*self.N_unit  
 
 
 class Transportation(SanUnit):    
@@ -1423,7 +1404,7 @@ class Transportation(SanUnit):
     transportation_distance : float
         Transportation distance in km.
     N_unit : int
-        Number of required filtration unit.
+        Number of parallel units.
     copy_ins_from_outs : bool
         If True, will copy influent from effluent, otherwise,
         effluent will be copied from influent.
