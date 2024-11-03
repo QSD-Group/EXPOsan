@@ -251,13 +251,17 @@ class PilotHTL(safu.HydrothermalLiquefaction):
         
     def _cost(self):
         self.parallel['self'] = self.N_unit
-        breakpoint()
+        all_cost_items = self.cost_items.copy()
+        HTL_cost_items = safu.HydrothermalLiquefaction.cost_items
+        pilot_items = {k:v for k, v in all_cost_items.items() if k not in HTL_cost_items}
+        self.cost_items = pilot_items
         self._decorated_cost()
         #!!! Need to compare the externally sourced HX cost and BioSTEAM default
         # also need to make sure the centralized HTL cost is not included
         baseline_purchase_cost = self.baseline_purchase_cost
-        self.baseline_purchase_costs['Piping'] = baseline_purchase_cost*self.piping_cost_ratio
-        self.baseline_purchase_costs['Accessories'] = baseline_purchase_cost*self.accessory_cost_ratio
+        Cost = self.baseline_purchase_costs
+        Cost['Piping'] = baseline_purchase_cost*self.piping_cost_ratio
+        Cost['Accessories'] = baseline_purchase_cost*self.accessory_cost_ratio
 
     
     @property

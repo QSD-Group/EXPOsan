@@ -252,6 +252,7 @@ def create_system(
     WWdisposalMixer = qsu.Mixer('WWdisposalMixer', ins=liquids_to_disposal_lst, outs=ww_to_disposal)
     @WWdisposalMixer.add_specification        
     def adjust_prices():
+        FeedstockTrans._run()        
         # Centralized HTL and upgrading, transport feedstock
         if decentralized_HTL is False:
             dw_price = price_dct['trans_feedstock'] # $/dry mass
@@ -312,6 +313,11 @@ def create_system(
         process_water_price=price_dct['process_water']
         )
     PWC.register_alias('PWC')
+    @PWC.add_specification
+    def run_scalers():
+        FeedstockScaler._run()
+        ProcessWaterScaler._run()
+        PWC._run()
 
     sys = qs.System.from_units(
         'sys',
@@ -342,9 +348,22 @@ def simulate_and_print(sys, save_report=False):
         sys.save_report(file=os.path.join(results_path, f'{sys.ID}.xlsx'))
 
 if __name__ == '__main__':
-    sys = create_system(decentralized_HTL=False, decentralized_upgrading=False)
-    # sys = create_system(decentralized_HTL=True, decentralized_upgrading=False)
-    # sys = create_system(decentralized_HTL=True, decentralized_upgrading=True)
-    sys.diagram()
+    config_kwargs = dict(
+        flowsheet=None, 
+        central_dry_flowrate=None,
+        pilot_dry_flowrate=None,
+        )
+    
+    config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False))
+    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False))
+    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True))
+    
+    sys = create_system(**config_kwargs)
+    dct = globals()
+    dct.update(sys.flowsheet.to_dict())
+    tea = sys.TEA
+    # lca = sys.LCA    
+    
     sys.simulate()
+    # sys.diagram()
     # simulate_and_print(sys)
