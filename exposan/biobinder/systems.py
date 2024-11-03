@@ -74,11 +74,12 @@ def create_system(
             flowsheet_ID = 'bb_DHCU'
             N_HTL = round(central_dry_flowrate/pilot_dry_flowrate)
             N_upgrading = 1
+            pilot_dry_flowrate = central_dry_flowrate/N_HTL
         else:
             flowsheet_ID = 'bb_DHDU'
-            N_HTL = N_upgrading = round(central_dry_flowrate/pilot_dry_flowrate)
+            N_HTL = N_upgrading = 1
+            central_dry_flowrate = pilot_dry_flowrate
         
-        pilot_dry_flowrate = central_dry_flowrate/N_HTL
     
     if flowsheet is None:
         flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -122,6 +123,10 @@ def create_system(
         ID='HTL',
         ins=FeedstockCond.outs[0],
         outs=('gas','HTL_aqueous','biocrude','hydrochar'),
+        T=280+273.15,
+        P=12.4e6, # may lead to HXN error when HXN is included
+        # P=101325, # setting P to ambient pressure not practical, but it has minimum effects on the results (several cents)
+        tau=15/60,
         dw_yields=HTL_yields,
         gas_composition={
             'CH4':0.050,
@@ -192,26 +197,22 @@ def create_system(
         )
     
     BiocrudeSplitter = safu.BiocrudeSplitter(
-        'BiocrudeSplitter', ins=BiocrudeScaler-0, outs='splitted_biocrude',
-        cutoff_Tb=343+273.15, light_frac=0.5316)
+        'BiocrudeSplitter', ins=BiocrudeScaler-0, outs='splitted_crude',
+        biocrude_IDs=('HTLbiocrude'),
+        cutoff_fracs=[0.0339, (1-0.0339)*0.5316, (1-0.0339)*(1-0.5316)], # light (water): medium/heavy (biocrude/char)
+        cutoff_Tbs=(150+273.15, 343+273.15,),
+        )
     
     CrudePump = qsu.Pump('CrudePump', init_with='Stream', 
                          ins=BiocrudeSplitter-0, outs='crude_to_dist',
                          P=1530.0*_psi_to_Pa,)
     # Jones 2014: 1530.0 psia
     
-    CrudeSplitter = safu.BiocrudeSplitter(
-        'CrudeSplitter', ins=CrudePump-0, outs='splitted_crude',
-        biocrude_IDs=('HTLbiocrude'),
-        cutoff_fracs=[0.0339, 0.8104+0.1557], # light (water): medium/heavy (biocrude/char)
-        cutoff_Tbs=(150+273.15, ),
-        )
-    
     # Separate water from organics (bp<150°C)
     CrudeLightDis = qsu.ShortcutColumn(
-        'CrudeLightDis', ins=CrudeSplitter-0,
+        'CrudeLightDis', ins=CrudePump-0,
         outs=('crude_light','crude_medium_heavy'),
-        LHK=CrudeSplitter.keys[0],
+        LHK=BiocrudeSplitter.keys[0],
         P=50*_psi_to_Pa,
         Lr=0.87,
         Hr=0.98,
@@ -220,12 +221,12 @@ def create_system(
     CrudeLightFlash = qsu.Flash('CrudeLightFlash', ins=CrudeLightDis-0, T=298.15, P=101325,)
     streams_to_CHP_lst.append(CrudeLightFlash.outs[0])
     streams_to_upgrading_EC_lst.append(CrudeLightFlash.outs[1])
-    
-    # Separate biocrude from biobinder
+
+    # Separate fuel from biobinder
     CrudeHeavyDis = qsu.ShortcutColumn(
         'CrudeHeavyDis', ins=CrudeLightDis-1,
         outs=('hot_biofuel','hot_biobinder'),
-        LHK=('Biofuel', 'Biobinder'),
+        LHK=BiocrudeSplitter.keys[1],
         P=50*_psi_to_Pa,
         Lr=0.89,
         Hr=0.85,
@@ -341,8 +342,9 @@ def simulate_and_print(sys, save_report=False):
         sys.save_report(file=os.path.join(results_path, f'{sys.ID}.xlsx'))
 
 if __name__ == '__main__':
-    # sys = create_system(decentralized_HTL=False, decentralized_upgrading=False)
-    sys = create_system(decentralized_HTL=True, decentralized_upgrading=False)
+    sys = create_system(decentralized_HTL=False, decentralized_upgrading=False)
+    # sys = create_system(decentralized_HTL=True, decentralized_upgrading=False)
     # sys = create_system(decentralized_HTL=True, decentralized_upgrading=True)
     sys.diagram()
+    sys.simulate()
     # simulate_and_print(sys)

@@ -175,7 +175,7 @@ class HydrothermalLiquefaction(Reactor):
         If True, will use cost scaled based on [1], otherwise will use generic
         algorithms for ``Reactor`` (``PressureVessel``).
     F_M : dict
-        Material factors used to adjust cost (only used `use_decorated_cost` is False).5      
+        Material factors used to adjust cost (only used `use_decorated_cost` is False).
         
 
     See Also
@@ -239,7 +239,7 @@ class HydrothermalLiquefaction(Reactor):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', include_construction=False,
                  T=280+273.15,
-                 P=None,
+                 P=101325,
                  dw_yields={
                      'gas': 0,
                      'aqueous': 0,
@@ -1564,6 +1564,8 @@ class BiocrudeSplitter(SanUnit):
         return self._cutoff_Tbs
     @cutoff_Tbs.setter
     def cutoff_Tbs(self, Tbs):
+        try: iter(Tbs)
+        except: Tbs = [Tbs]
         self._cutoff_Tbs = Tbs
         if hasattr(self, '_cutoff_fracs'):
             self._update_component_ratios()
@@ -1577,6 +1579,8 @@ class BiocrudeSplitter(SanUnit):
         return self._cutoff_fracs
     @cutoff_fracs.setter
     def cutoff_fracs(self, fracs):
+        try: iter(fracs)
+        except: fracs = [fracs]
         tot = sum(fracs)
         self._cutoff_fracs = [i/tot for i in fracs]
         if hasattr(self, '_cutoff_Tbs'):
