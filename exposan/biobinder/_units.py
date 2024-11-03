@@ -32,8 +32,6 @@ __all__ = (
     'Hydroprocessing',
     'PilotHTL',
     'Scaler',
-    
-    'Disposal',
     )
 
 _psi_to_Pa = 6894.76
@@ -253,6 +251,7 @@ class PilotHTL(safu.HydrothermalLiquefaction):
         
     def _cost(self):
         self.parallel['self'] = self.N_unit
+        breakpoint()
         self._decorated_cost()
         #!!! Need to compare the externally sourced HX cost and BioSTEAM default
         # also need to make sure the centralized HTL cost is not included
@@ -271,58 +270,6 @@ class PilotHTL(safu.HydrothermalLiquefaction):
     def N_unit(self, i):
         self.parallel['self'] = self._N_unit = math.ceil(i)
     
-
-
-# %%
-    
-class Disposal(SanUnit):
-    '''
-    Mix any number of influents for waste disposal.
-    Price for the disposal stream is given for dry weights.
-    
-    Parameters
-    ----------
-    ins : seq(obj)
-        Any number of influent streams.
-    outs : seq(obj)
-        Waste, others. The "waste" stream is the disposal stream for price calculation,
-        the "other" stream is a dummy stream for components excluded from disposal cost calculation
-        (e.g., if the cost of a wastewater stream is given based on $/kg of organics,
-         the "other" stream should contain the non-organics).
-    disposal_price : float
-        Price for the disposal stream.
-    exclude_components : seq(str)
-        IDs of the components to be excluded from disposal price calculation.
-    '''
-    
-    _ins_size_is_fixed = False
-    _N_outs = 2
-    
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                  init_with='WasteStream', F_BM_default=1,
-                  disposal_price=0,
-                  exclude_components=('Water',),
-                  **kwargs,
-                  ):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
-        self.disposal_price = disposal_price
-        self.exclude_components = exclude_components
-        self._mixed = self.ins[0].copy(f'{self.ID}_mixed')
-        for kw, arg in kwargs.items(): setattr(self, kw, arg)
-    
-    def _run(self):
-        mixed = self._mixed
-        mixed.mix_from(self.ins)
-        waste, others = self.outs        
-        
-        waste.copy_like(mixed)
-        waste.imass[self.exclude_components] = 0
-        
-        others.copy_like(mixed)
-        others.imass[self.components.IDs] -= waste.imass[self.components.IDs]
-        
-    def _cost(self):
-        self.outs[0].price = self.disposal_price
 
 # %%
 
