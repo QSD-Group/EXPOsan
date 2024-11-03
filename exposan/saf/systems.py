@@ -39,11 +39,9 @@ from qsdsan.utils import clear_lca_registries
 from exposan.htl import create_tea
 from exposan.saf import (
     _HHV_per_GGE,
-    # _load_components,
+    _load_components,
     _load_process_settings,
     _units as u,
-    create_components,
-    # create_tea,
     # data_path,
     dry_flowrate,
     feedstock_composition,
@@ -74,6 +72,7 @@ def create_system(
         feedstock_composition=feedstock_composition,
         ):
     _load_process_settings()
+    _load_components()
 
     if not flowsheet:
         flowsheet_ID = 'saf'
@@ -81,11 +80,8 @@ def create_system(
         if include_EC: flowsheet_ID += '_EC'
         flowsheet = qs.Flowsheet(flowsheet_ID)
         qs.main_flowsheet.set_flowsheet(flowsheet)
-        saf_cmps = create_components(set_thermo=True)
     else:
         qs.main_flowsheet.set_flowsheet(flowsheet)
-        try: saf_cmps = qs.get_components()
-        except: saf_cmps = create_components(set_thermo=True)
     
     feedstock = qs.WasteStream('feedstock', price=price_dct['tipping'])
     feedstock.imass[list(feedstock_composition.keys())] = list(feedstock_composition.values())

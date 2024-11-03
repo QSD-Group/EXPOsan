@@ -42,6 +42,9 @@ from ._process_settings import *
 from . import _units
 from ._units import *
 
+from . import systems
+from .systems import *
+
 _system_loaded = False
 def load():
     global sys, tea, lca, flowsheet, _system_loaded
@@ -69,5 +72,5 @@ __all__ = (
     *_components.__all__,
     *_process_settings.__all__,
     *_units.__all__,
-    # *systems.__all__,
+    *systems.__all__,
 )

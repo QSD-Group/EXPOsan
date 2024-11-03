@@ -50,9 +50,6 @@ def _load_components(reload=False):
 from . import _units
 from ._units import *
 
-# from . import _tea
-# from ._tea import *
-
 from . import systems
 from .systems import *
 
@@ -79,9 +76,8 @@ __all__ = (
     'data_path',
     'results_path',
     *_components.__all__,
-    # *_process_settings.__all__,
+    *_process_settings.__all__,
     *_units.__all__,
-    # *_tea.__all__,
     *systems.__all__,
     *utils.__all__,
 )

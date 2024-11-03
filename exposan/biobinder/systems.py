@@ -21,8 +21,6 @@ References
 # warnings.filterwarnings('ignore')
 
 import os, biosteam as bst, qsdsan as qs
-# from biosteam.units import IsenthalpicValve
-# from biosteam import settings
 from qsdsan import sanunits as qsu
 from qsdsan.utils import clear_lca_registries
 from exposan.htl import create_tea
