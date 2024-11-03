@@ -13,7 +13,6 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-import math
 from biosteam import Facility, ProcessWaterCenter as PWC
 from biosteam.units.decorators import cost
 from biosteam.units.design_tools import CEPCI_by_year
@@ -92,10 +91,6 @@ class KnockOutDrum(Reactor):
                      'Vertical pressure vessel': 1.5,
                      },
                  ):
-        # drum_steel_cost_factor: so the cost matches [1]
-        # when do comparison, if fully consider scaling factor (2000 tons/day to 100 tons/day),
-        # drum_steel_cost_factor should be around 3
-        # but that is too high, we use 1.5 instead.
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with,
                          include_construction=include_construction)
@@ -119,7 +114,6 @@ class KnockOutDrum(Reactor):
     
     def _cost(self):
         Reactor._cost(self)
-
 
 
 # =============================================================================
@@ -301,7 +295,7 @@ class HydrothermalLiquefaction(Reactor):
         self.eff_P = eff_P
         self.eff_cooling_hx = HXutility(ID=f'.{ID}_eff_cooling_hx', ins=eff_after_hx, outs=eff_cooling_hx_out, T=eff_T, rigorous=True)
         self.use_decorated_cost = use_decorated_cost
-        self.kodrum = KnockOutDrum(ID=f'.{ID}_KOdrum')
+        self.kodrum = KnockOutDrum(ID=f'.{ID}_KOdrum', include_construction=include_construction)
         self.tau = tau
         self.V_wf = V_wf
         self.length_to_diameter = length_to_diameter

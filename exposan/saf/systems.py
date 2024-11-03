@@ -509,9 +509,9 @@ def create_system(
     
     natural_gas = qs.WasteStream('natural_gas', CH4=1, price=price_dct['natural_gas'])
     solids_to_disposal = qs.WasteStream('solids_to_disposal', price=price_dct['solids'])
-    CHPMixer = qsu.Mixer('CHPMixer', ins=(GasMixer-0, CrudeHeavyDis-1, HTL-3))
+    CHPmixer = qsu.Mixer('CHPmixer', ins=(GasMixer-0, CrudeHeavyDis-1, HTL-3))
     CHP = qsu.CombinedHeatPower('CHP', 
-                                ins=(CHPMixer-0, natural_gas, 'air'),
+                                ins=(CHPmixer-0, natural_gas, 'air'),
                                 outs=('gas_emissions', solids_to_disposal),
                                 init_with='WasteStream',
                                 supplement_power_utility=False)
