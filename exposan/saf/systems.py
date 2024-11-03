@@ -611,6 +611,7 @@ if __name__ == '__main__':
     config_kwargs = {'include_PSA': False, 'include_EC': False,}
     # config_kwargs = {'include_PSA': True, 'include_EC': False,}
     # config_kwargs = {'include_PSA': True, 'include_EC': True,}
+    
     sys = create_system(flowsheet=None, **config_kwargs)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())

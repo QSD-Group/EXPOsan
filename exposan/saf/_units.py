@@ -1309,13 +1309,6 @@ class ProcessWaterCenter(PWC, SanUnit):
     `biosteam.facilities.ProcessWaterCenter <https://biosteam.readthedocs.io/en/latest/API/facilities/ProcessWaterCenter.html>`_
     '''
 
-salad_dressing_waste_composition = {
-    'Water': 0.7566,
-    'Lipids': 0.2434*0.6245,
-    'Proteins': 0.2434*0.0238,
-    'Carbohydrates': 0.2434*0.2946,
-    'Ash': 0.2434*0.0571,
-    }
 
 class Conditioning(MixTank):
     '''
@@ -1343,7 +1336,13 @@ class Conditioning(MixTank):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                   init_with='WasteStream', F_BM_default=1,
-                  feedstock_composition=salad_dressing_waste_composition,
+                  feedstock_composition={ # salad dressing waste
+                      'Water': 0.7566,
+                      'Lipids': 0.2434*0.6245,
+                      'Proteins': 0.2434*0.0238,
+                      'Carbohydrates': 0.2434*0.2946,
+                      'Ash': 0.2434*0.0571,
+                      },
                   feedstock_dry_flowrate=1,
                   target_HTL_solid_loading=0.2,
                   tau=1, **add_mixtank_kwargs,
