@@ -114,6 +114,7 @@ def create_system(
         outs='conditioned_feedstock',
         feedstock_composition=feedstock_composition,
         feedstock_dry_flowrate=central_dry_flowrate if decentralized_HTL is False else pilot_dry_flowrate,
+        target_HTL_solid_loading=0.2,
         )
     FeedstockCond.N_unit = N_HTL # init doesn't take this property
 

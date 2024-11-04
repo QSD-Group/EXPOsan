@@ -106,7 +106,7 @@ def create_system(
         outs='conditioned_feedstock',
         feedstock_composition=None,
         feedstock_dry_flowrate=dry_flowrate,
-        target_HTL_solid_loading=1-feedstock_composition['Water'],
+        target_HTL_solid_loading=0.2,
         )
     @FeedstockCond.add_specification
     def adjust_feedstock_composition():
@@ -580,7 +580,7 @@ def simulate_and_print(system, save_report=False):
     print('Fuel properties')
     print('---------------')
     for fuel, prop in properties.items():
-        print(f'{fuel.ID}: {prop[0]:.2f} MJ/kg, {prop[1]:.2f} kg/gal, {prop[2]:.2f} gal GGE/hr.')
+        print(f'{fuel.ID}: {prop[0]:.2f} MJ/kg, {prop[1]:.2f} kg/gal, {prop[2]:.2f} GGE/hr.')
     
     global MFSP
     MFSP = get_MFSP(sys, print_msg=True)
