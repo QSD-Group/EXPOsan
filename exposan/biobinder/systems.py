@@ -194,10 +194,12 @@ def create_system(
         scaling_factor=N_HTL, reverse=False,
         )
     
+    crude_fracs = [0.0339, 0.8104+0.1557]
+    oil_fracs = [0.5316, 0.4684]
     BiocrudeSplitter = safu.BiocrudeSplitter(
         'BiocrudeSplitter', ins=BiocrudeScaler-0, outs='splitted_crude',
         biocrude_IDs=('HTLbiocrude'),
-        cutoff_fracs=[0.0339, (1-0.0339)*0.5316, (1-0.0339)*(1-0.5316)], # light (water): medium/heavy (biocrude/char)
+        cutoff_fracs=[crude_fracs[0], crude_fracs[1]*oil_fracs[0], crude_fracs[1]*oil_fracs[1]], # light (water): medium/heavy (biocrude/char)
         cutoff_Tbs=(150+273.15, 343+273.15,),
         )
     
@@ -226,9 +228,65 @@ def create_system(
         outs=('hot_biofuel','hot_biobinder'),
         LHK=BiocrudeSplitter.keys[1],
         P=50*_psi_to_Pa,
-        Lr=0.89,
+        Lr=0.85,
         Hr=0.85,
         k=2, is_divided=True)
+    
+    # import numpy as np
+    # from exposan.saf.utils import find_Lr_Hr
+    # Lr_range = Hr_range = np.arange(0.05, 1, 0.05)
+    # results = find_Lr_Hr(CrudeHeavyDis, target_light_frac=oil_fracs[0], Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
+    # results_df, Lr, Hr = results
+    
+    CrudeHeavyDis_run = CrudeHeavyDis._run
+    CrudeHeavyDis_design = CrudeHeavyDis._design
+    CrudeHeavyDis_cost = CrudeHeavyDis._cost
+    def run_design_cost():
+        CrudeHeavyDis_run()
+        try:
+            CrudeHeavyDis_design()
+            CrudeHeavyDis_cost()
+            if all([v>0 for v in CrudeHeavyDis.baseline_purchase_costs.values()]):
+                # Save for later debugging
+                # print('design')
+                # print(CrudeHeavyDis.design_results)
+                # print('cost')
+                # print(CrudeHeavyDis.baseline_purchase_costs)
+                # print(CrudeHeavyDis.installed_costs) # this will be empty
+                return
+        except: pass
+        raise RuntimeError('`CrudeHeavyDis` simulation failed.')
+
+    # Simulation may converge at multiple points, filter out unsuitable ones
+    def screen_results():
+        ratio0 = oil_fracs[0]
+        lb, ub = round(ratio0,2)-0.05, round(ratio0,2)+0.05 #!!! see if could adjust the Lr/Hr values for closer results
+        try: 
+            run_design_cost()
+            status = True
+        except: 
+            status = False
+        def get_ratio():
+            if CrudeHeavyDis.F_mass_out > 0:
+                return CrudeHeavyDis.outs[0].F_mass/CrudeHeavyDis.F_mass_out
+            return 0
+        n = 0
+        ratio = get_ratio()
+        while (status is False) or (ratio<lb) or (ratio>ub):
+            try: 
+                run_design_cost()
+                status = True
+            except: 
+                status = False
+            ratio = get_ratio()
+            n += 1
+            if n >= 20:
+                status = False
+                raise RuntimeError(f'No suitable solution for `CrudeHeavyDis` within {n} simulation.')
+    CrudeHeavyDis._run = screen_results
+
+    def do_nothing(): pass
+    CrudeHeavyDis._design = CrudeHeavyDis._cost = do_nothing
 
     BiofuelFlash = qsu.Flash('BiofuelFlash', ins=CrudeHeavyDis-0, outs=('', 'cooled_biofuel',),
                               T=298.15, P=101325)
@@ -266,11 +324,13 @@ def create_system(
         # Decentralized HTL and upgrading, no transportation needed
         else:
             FeedstockTrans.transportation_unit_cost = BiocrudeTrans.transportation_unit_cost = 0
+        
         # Wastewater
         WWdisposalMixer._run()
         COD_mass_content = sum(ww_to_disposal.imass[i.ID]*i.i_COD for i in ww_to_disposal.components)
         factor = COD_mass_content/ww_to_disposal.F_mass
         ww_to_disposal.price = min(price_dct['wastewater'], price_dct['COD']*factor)
+
     
     # 3-day storage time as in the SAF module
     biofuel = qs.WasteStream('biofuel', price=price_dct['diesel'])
@@ -280,6 +340,12 @@ def create_system(
         tau=24*3, vessel_material='Stainless steel',
         include_construction=False,
         )
+    def adjust_biofuel_price():
+        BiofuelStorage._run()
+        GGE = biofuel.HHV/1e3/_HHV_per_GGE # MJ/gal
+        GGE_per_kg = GGE/biofuel.F_mass
+        biofuel.price = price_dct['diesel'] * GGE_per_kg
+    BiofuelStorage.add_specification(adjust_biofuel_price)
     
     biobinder = qs.WasteStream('biobinder', price=price_dct['biobinder'])
     BiobinderStorage = qsu.StorageTank(
@@ -338,9 +404,9 @@ def simulate_and_print(sys, save_report=False):
     biobinder.price = MSP = tea.solve_price(biobinder)
     print(f'Minimum selling price of the biobinder is ${MSP:.2f}/kg.')
         
-    all_impacts = lca.get_allocated_impacts(streams=(biobinder,), operation_only=True, annual=True)
-    GWP = all_impacts['GlobalWarming']/(biobinder.F_mass*lca.system.operating_hours)
-    print(f'Global warming potential of the biobinder is {GWP:.4f} kg CO2e/kg.')
+    # all_impacts = lca.get_allocated_impacts(streams=(biobinder,), operation_only=True, annual=True)
+    # GWP = all_impacts['GlobalWarming']/(biobinder.F_mass*lca.system.operating_hours)
+    # print(f'Global warming potential of the biobinder is {GWP:.4f} kg CO2e/kg.')
     if save_report:
         # Use `results_path` and the `join` func can make sure the path works for all users
         sys.save_report(file=os.path.join(results_path, f'{sys.ID}.xlsx'))
@@ -362,6 +428,6 @@ if __name__ == '__main__':
     tea = sys.TEA
     # lca = sys.LCA    
     
-    sys.simulate()
+    # sys.simulate()
     # sys.diagram()
-    # simulate_and_print(sys)
+    simulate_and_print(sys)

@@ -200,7 +200,6 @@ def create_system(
         except: pass
         raise RuntimeError('`CrudeHeavyDis` simulation failed.')
 
-    
     # Simulation may converge at multiple points, filter out unsuitable ones
     def screen_results():
         ratio0 = CrudeSplitter.cutoff_fracs[1]/sum(CrudeSplitter.cutoff_fracs[1:])
@@ -211,7 +210,7 @@ def create_system(
         except: 
             status = False
         def get_ratio():
-            if CrudeHeavyDis.F_mass_out > 0: 
+            if CrudeHeavyDis.F_mass_out > 0:
                 return CrudeHeavyDis.outs[0].F_mass/CrudeHeavyDis.F_mass_out
             return 0
         n = 0
@@ -327,7 +326,7 @@ def create_system(
     HTcatalyst_in = qs.WasteStream('HTcatalyst_in', HTcatalyst=1, price=price_dct['HTcatalyst'])
     
     # Light (gasoline, <C8): medium (jet, C8-C14): heavy (diesel, >C14)
-    oil_fracs = (0.2143, 0.5638, 0.2066)
+    oil_fracs = [0.2143, 0.5638, 0.2066]
     HT = u.Hydroprocessing(
         'HT',
         ins=(HCliquidSplitter-1, 'H2_HT', HTcatalyst_in),
