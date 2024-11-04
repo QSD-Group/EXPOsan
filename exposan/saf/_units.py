@@ -958,8 +958,10 @@ class Electrochemical(SanUnit):
     EO_online_time_ratio : float
         Ratio of time operated in the electrochemical oxidation model,
         ED_online_time_ratio is calculated as 1 - EO_online_time_ratio.
+    N_chamber : int
+        Number of cell chambers.
     chamber_thickness : float
-        Thickness of the unit chamber, [m].
+        Thickness of a single chamber, [m].
     electrode_cost : float
         Unit cost of the electrodes, [$/m2].
     anion_exchange_membrane_cost : float
@@ -1017,11 +1019,12 @@ class Electrochemical(SanUnit):
                  EO_voltage=5, # V
                  ED_voltage=30, # V
                  EO_online_time_ratio=8/(8+1.5),
+                 N_chamber=3,
                  chamber_thickness=0.02, # m
                  electrode_cost=40000, # $/m2
                  anion_exchange_membrane_cost=170, # $/m2
                  cation_exchange_membrane_cost=190, # $/m2
-                 electrolyte_load=3*136, # kg/m3, 3 M of KH2PO4 (MW=136 k/mole)
+                 electrolyte_load=13.6, # kg/m3, 0.1 M of KH2PO4 (MW=136 k/mole)
                  electrolyte_price=30, # $/kg
                  annual_replacement_ratio=0.02,
                  include_PSA=False,
@@ -1044,6 +1047,7 @@ class Electrochemical(SanUnit):
         self.EO_voltage = EO_voltage
         self.ED_voltage = ED_voltage
         self.EO_online_time_ratio = EO_online_time_ratio
+        self.N_chamber = N_chamber
         self.chamber_thickness = chamber_thickness
         self.electrode_cost = electrode_cost
         self.anion_exchange_membrane_cost = anion_exchange_membrane_cost
@@ -1103,7 +1107,7 @@ class Electrochemical(SanUnit):
         current_eq = factor * H2_production # A
         area = current_eq / self.average_current_density
         Design['Area'] = area
-        Design['Volume'] = area * self.chamber_thickness
+        Design['Volume'] = area * self.N_chamber * self.chamber_thickness
         
         EO_power = self.EO_current_density * self.EO_voltage # W/m2, when online
         EO_electricity_per_area = EO_power/1e3 * self.EO_online_time_ratio # kWh/h/m2
