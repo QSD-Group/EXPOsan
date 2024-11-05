@@ -21,6 +21,16 @@ from exposan.saf._process_settings import *
 __all__ = [i for i in _process_settings.__all__ if i is not 'dry_flowrate']
 __all__.extend(['central_dry_flowrate', 'pilot_dry_flowrate'])
 
+moisture = 0.7566
+ash = (1-moisture)*0.0571
+feedstock_composition = {
+    'Water': moisture,
+    'Lipids': (1-moisture)*0.6245,
+    'Proteins': (1-moisture)*0.0238,
+    'Carbohydrates': (1-moisture)*0.2946,
+    'Ash': ash,
+    }
+
 central_dry_flowrate = dry_flowrate # 110 tpd converted to kg/hr
 pilot_dry_flowrate = 11.46 # kg/hr
 

@@ -40,8 +40,7 @@ uptime_ratio = 0.9
 
 dry_flowrate = tpd*907.185/(24*uptime_ratio) # 110 dry sludge tpd [1]
 
-#!!! Need to update the composition (moisture/ash)
-moisture = 0.7566
+moisture = 0.7580
 ash = (1-moisture)*0.0614
 feedstock_composition = {
     'Water': moisture,

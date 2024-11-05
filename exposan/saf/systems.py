@@ -46,6 +46,7 @@ from exposan.saf import (
     dry_flowrate,
     feedstock_composition,
     find_Lr_Hr,
+    get_mass_energy_balance,
     HTL_yields,
     price_dct,
     results_path,
@@ -136,8 +137,8 @@ def create_system(
         biocrude_composition={'Biocrude': 1},
         char_composition={'HTLchar': 1},
         internal_heat_exchanging=True,
-        eff_T=None,
-        eff_P=None,
+        eff_T=60+273.15, # 140.7°F
+        eff_P=30*_psi_to_Pa,
         use_decorated_cost=True,
         )
     HTL.register_alias('HydrothermalLiquefaction')
@@ -257,6 +258,7 @@ def create_system(
         gas_yield=0.2665,
         oil_yield=0.7335,
         gas_composition={ # [1] after the first hydroprocessing
+            'CO2': 1-0.08809, # 0.08809 is the sum of all other gases
             'CH4':0.02280, 'C2H6':0.02923,
             'C3H8':0.01650, 'C4H10':0.00870,
             'TWOMBUTAN':0.00408, 'NPENTAN':0.00678,
@@ -283,7 +285,7 @@ def create_system(
            'C26H42O4':0.01020, 'C30H62':0.00203,
            },
         aqueous_composition={'Water':1},
-        internal_heat_exchanging=True,
+        internal_heat_exchanging=False,
         use_decorated_cost='Hydrocracker',
         tau=15/60, # set to the same as HTL
         V_wf=0.4, # Towler
@@ -326,7 +328,7 @@ def create_system(
     HTcatalyst_in = qs.WasteStream('HTcatalyst_in', HTcatalyst=1, price=price_dct['HTcatalyst'])
     
     # Light (gasoline, <C8): medium (jet, C8-C14): heavy (diesel, >C14)
-    oil_fracs = [0.2143, 0.5638, 0.2066]
+    oil_fracs = [0.3455, 0.4479, 0.2066]
     HT = u.Hydroprocessing(
         'HT',
         ins=(HCliquidSplitter-1, 'H2_HT', HTcatalyst_in),
@@ -348,7 +350,7 @@ def create_system(
             'Diesel': oil_fracs[2],
             },
         aqueous_composition={'Water':1},
-        internal_heat_exchanging=True,
+        internal_heat_exchanging=False,
         use_decorated_cost='Hydrotreater',
         tau=0.5, V_wf=0.4, # Towler
         length_to_diameter=2, diameter=None,
@@ -603,9 +605,9 @@ def simulate_and_print(system, save_report=False):
 
 
 if __name__ == '__main__':
-    config_kwargs = {'include_PSA': False, 'include_EC': False,}
+    # config_kwargs = {'include_PSA': False, 'include_EC': False,}
     # config_kwargs = {'include_PSA': True, 'include_EC': False,}
-    # config_kwargs = {'include_PSA': True, 'include_EC': True,}
+    config_kwargs = {'include_PSA': True, 'include_EC': True,}
     
     sys = create_system(flowsheet=None, **config_kwargs)
     dct = globals()

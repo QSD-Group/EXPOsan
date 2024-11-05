@@ -139,6 +139,8 @@ def create_system(
             },
         char_composition={'HTLchar': 1},
         internal_heat_exchanging=True,
+        eff_T=60+273.15, # 140.7°F
+        eff_P=30*_psi_to_Pa,
         )
     if decentralized_HTL is False:
         HTL_unit = u.CentralizedHTL

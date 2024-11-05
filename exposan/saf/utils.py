@@ -17,6 +17,7 @@ import numpy as np, pandas as pd
 
 __all__ = (
     'find_Lr_Hr',
+    'get_mass_energy_balance',
     )
 
 # To find Lr/Hr of a distillation column
@@ -50,3 +51,37 @@ def find_Lr_Hr(unit, target_light_frac=None, Lr_trial_range=Lr_trial_range, Hr_t
         Hr = results_df.index[where[0]].to_list()[0]
     except: Lr = Hr = None
     return results_df, Lr, Hr
+
+
+def get_mass_energy_balance(sys):
+    IDs = []
+    F_mass_ins = []
+    F_mass_outs = []
+    mass_ratios = []
+    Hnets = []
+    duties = []
+    energy_ratios = []
+    for i in sys.path:
+        IDs.append(i.ID)
+        F_mass_ins.append(i.F_mass_in)
+        F_mass_outs.append(i.F_mass_out)
+        mass_ratios.append(i.F_mass_out/i.F_mass_in)
+        Hnets.append(i.Hnet)
+        duty = sum(hu.duty for hu in i.heat_utilities)
+        duties.append(duty)
+        if duty == 0:
+            energy_ratios.append(0)
+        else:
+            energy_ratios.append(i.Hnet/duty)
+
+    df = pd.DataFrame({
+        'ID': IDs,
+        'F_mass_in': F_mass_ins,
+        'F_mass_out': F_mass_outs,
+        'mass_ratio': mass_ratios,
+        'Hnet': Hnets,
+        'duty': duties,
+        'energy_ratio': energy_ratios,
+        })
+    
+    return df

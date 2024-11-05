@@ -55,10 +55,19 @@ def create_components(set_thermo=True):
     htl_cmps = htl.create_components()
     
     # Components in the feedstock
-    Lipids = htl_cmps.Sludge_lipid.copy('Lipids')
-    Proteins = htl_cmps.Sludge_protein.copy('Proteins')
-    Carbohydrates = htl_cmps.Sludge_carbo.copy('Carbohydrates')
-    Ash = htl_cmps.Sludge_ash.copy('Ash')
+    org_kwargs = {
+        'particle_size': 'Soluble',
+        'degradability': 'Slowly',
+        'organic': True,
+        }
+    
+    # Hf/HHV affects energy balance calculation
+    Lipids = Component('Lipids', search_ID='Palmitate', phase='s', **org_kwargs)
+    # The simplest structure of R-(NH)-COOH (alanine)  
+    Proteins = Component('Proteins', search_ID='C3H7NO2', phase='s', **org_kwargs)
+    Carbohydrates = Component('Carbohydrates', search_ID='Glucose', phase='s', **org_kwargs)
+    
+    Ash = htl_cmps.Hydrochar.copy('Ash')
     saf_cmps = Components([
         Lipids, Proteins, Carbohydrates, Ash,
         ])
@@ -74,11 +83,6 @@ def create_components(set_thermo=True):
     saf_cmps.extend([HTLbiocrude, HTLaqueous, HTLchar])
     
     # Components in the biocrude
-    org_kwargs = {
-        'particle_size': 'Soluble',
-        'degradability': 'Slowly',
-        'organic': True,
-        }
     biocrude_dct = { # ID, search_ID (CAS#)
         '1E2PYDIN':     '2687-91-4',
         # 'C5H9NS':       '10441-57-3',

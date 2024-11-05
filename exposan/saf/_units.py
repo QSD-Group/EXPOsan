@@ -229,7 +229,7 @@ class HydrothermalLiquefaction(Reactor):
         'Solid filter and separator weight': 'lb',
         }
     
-    auxiliary_unit_names=('hx', 'inf_heating_hx', 'eff_cooling_hx','kodrum')
+    auxiliary_unit_names=('hx', 'inf_hx', 'eff_hx','kodrum')
 
     _F_BM_default = {
         **Reactor._F_BM_default,
@@ -286,14 +286,14 @@ class HydrothermalLiquefaction(Reactor):
         self.hx = HXprocess(ID=f'.{ID}_hx',
                             ins=(inf_pre_hx, eff_pre_hx),
                             outs=(inf_after_hx, eff_after_hx))
-        inf_heating_hx_out = Stream(f'{ID}_inf_heating_hx_out')
-        self.inf_heating_hx = HXutility(ID=f'.{ID}_inf_heating_hx', ins=inf_after_hx, outs=inf_heating_hx_out, T=T, rigorous=True)
+        inf_hx_out = Stream(f'{ID}_inf_hx_out')
+        self.inf_hx = HXutility(ID=f'.{ID}_inf_hx', ins=inf_after_hx, outs=inf_hx_out, T=T, rigorous=True)
         self._inf_at_temp = Stream(f'{ID}_inf_at_temp')
         self._eff_at_temp = Stream(f'{ID}_eff_at_temp')
-        eff_cooling_hx_out = Stream(f'{ID}eff_cooling_hx_out')
+        eff_hx_out = Stream(f'{ID}_eff_hx_out')
         self.eff_T = eff_T
         self.eff_P = eff_P
-        self.eff_cooling_hx = HXutility(ID=f'.{ID}_eff_cooling_hx', ins=eff_after_hx, outs=eff_cooling_hx_out, T=eff_T, rigorous=True)
+        self.eff_hx = HXutility(ID=f'.{ID}_eff_hx', ins=eff_after_hx, outs=eff_hx_out, T=eff_T, rigorous=True)
         self.use_decorated_cost = use_decorated_cost
         self.kodrum = KnockOutDrum(ID=f'.{ID}_KOdrum', include_construction=include_construction)
         self.tau = tau
@@ -351,38 +351,42 @@ class HydrothermalLiquefaction(Reactor):
     
     def _design(self):
         hx = self.hx
-        inf_heating_hx = self.inf_heating_hx
-        inf_hx_in, inf_hx_out = inf_heating_hx.ins[0], inf_heating_hx.outs[0]
+        inf_hx = self.inf_hx
+        inf_hx_in, inf_hx_out = inf_hx.ins[0], inf_hx.outs[0]
+        inf_pre_hx, eff_pre_hx = hx.ins
+        inf_after_hx, eff_after_hx = hx.outs
+        inf_pre_hx.copy_like(self.ins[0])
+        eff_pre_hx.copy_like(self._eff_at_temp)
         
-        if self.internal_heat_exchanging:
-            # Use HTL product to heat up influent
-            inf_pre_hx, eff_pre_hx = hx.ins
-            inf_pre_hx.copy_like(self.ins[0])
-            eff_pre_hx.copy_like(self._eff_at_temp)
+        # breakpoint()
+        if self.internal_heat_exchanging: # use product to heat up influent
+            hx.phase0 = hx.phase1 = 'l'
+            hx.T_lim1 = self.eff_T
             hx.simulate()
-    
-            # Additional heating, if needed
-            inf_hx_in.copy_like(hx.outs[0])
-            inf_hx_out.copy_flow(inf_hx_in)
+            for i in self.outs:
+                i.T = eff_after_hx.T
+                i.P = eff_after_hx.P
         else:
             hx.empty()
-            # Influent heating to HTL conditions
-            inf_hx_in.copy_like(self.ins[0])
+            inf_after_hx.copy_like(inf_pre_hx)
+            eff_after_hx.copy_like(eff_pre_hx)
 
+        # Additional inf HX
+        inf_hx_in.copy_like(inf_after_hx)
         inf_hx_out.copy_flow(inf_hx_in)
         inf_hx_out.T = self.T
         inf_hx_out.P = self.P # this may lead to HXN error, when at pressure
-        inf_heating_hx.simulate_as_auxiliary_exchanger(ins=inf_heating_hx.ins, outs=inf_heating_hx.outs)
-            
-        # Additional cooling, if needed
-        eff_cooling_hx = self.eff_cooling_hx        
-        if self.eff_T:
-            eff_hx_in, eff_hx_out = eff_cooling_hx.ins[0], eff_cooling_hx.outs[0]
-            eff_hx_in.copy_like(self._eff_at_temp)
-            eff_hx_out.mix_from(self.outs)
-            eff_cooling_hx.simulate_as_auxiliary_exchanger(ins=eff_cooling_hx.ins, outs=eff_cooling_hx.outs)
-        else:
-            eff_cooling_hx.empty()
+        inf_hx.simulate_as_auxiliary_exchanger(ins=inf_hx.ins, outs=inf_hx.outs)
+
+        # Additional eff HX
+        eff_hx = self.eff_hx
+        eff_hx_in, eff_hx_out = eff_hx.ins[0], eff_hx.outs[0]
+        eff_hx_in.copy_like(eff_after_hx)
+        eff_hx_out.mix_from(self.outs)
+        # Hnet = Unit.H_out-Unit.H_in + Unit.Hf_out-Unit.Hf_in
+        # H is enthalpy; Hf is the enthalpy of formation, all in kJ/hr
+        duty = self.Hnet + eff_hx.Hnet
+        eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs, duty=duty)
 
         Reactor._design(self)
         
@@ -634,8 +638,8 @@ class Hydroprocessing(Reactor):
         self.hx = HXprocess(ID=f'.{ID}_hx',
                             ins=(inf_pre_hx, eff_pre_hx),
                             outs=(inf_after_hx, eff_after_hx))
-        inf_heating_hx_out = Stream(f'{ID}_inf_heating_hx_out')
-        self.inf_heating_hx = HXutility(ID=f'.{ID}_inf_heating_hx', ins=inf_after_hx, outs=inf_heating_hx_out, T=T, rigorous=True)
+        inf_hx_out = Stream(f'{ID}_inf_hx_out')
+        self.inf_hx = HXutility(ID=f'.{ID}_inf_hx', ins=inf_after_hx, outs=inf_hx_out, T=T, rigorous=True)
         self.use_decorated_cost = use_decorated_cost
         self.tau = tau
         self.V_wf = V_wf
@@ -696,28 +700,26 @@ class Hydroprocessing(Reactor):
         IC.simulate()
         
         hx = self.hx
-        inf_heating_hx = self.inf_heating_hx
-        inf_hx_in, inf_hx_out = inf_heating_hx.ins[0], inf_heating_hx.outs[0]
+        inf_hx = self.inf_hx
+        inf_hx_in, inf_hx_out = inf_hx.ins[0], inf_hx.outs[0]
+        inf_pre_hx, eff_pre_hx = hx.ins
+        inf_after_hx, eff_after_hx = hx.outs
+        inf_pre_hx.copy_like(self.ins[0])
+        eff_pre_hx.copy_like(self.outs[0])
         
-        if self.internal_heat_exchanging:
-            # Use HTL product to heat up influent
-            inf_pre_hx, eff_pre_hx = hx.ins
-            inf_pre_hx.copy_like(self.ins[0])
-            eff_pre_hx.copy_like(self.outs[0])
+        if self.internal_heat_exchanging: # use product to heat up influent
             hx.simulate()
-    
-            # Additional heating, if needed
-            inf_hx_in.copy_like(hx.outs[0])
-            inf_hx_out.copy_flow(inf_hx_in)
         else:
             hx.empty()
-            # Influent heating to HTL conditions
-            inf_hx_in.copy_like(self.ins[0])
+            inf_after_hx.copy_like(inf_pre_hx)
+            eff_after_hx.copy_like(eff_pre_hx)
 
+        # Additional inf HX
+        inf_hx_in.copy_like(inf_after_hx)
         inf_hx_out.copy_flow(inf_hx_in)
         inf_hx_out.T = self.T
         inf_hx_out.P = self.P
-        inf_heating_hx.simulate_as_auxiliary_exchanger(ins=inf_heating_hx.ins, outs=inf_heating_hx.outs)
+        inf_hx.simulate_as_auxiliary_exchanger(ins=inf_hx.ins, outs=inf_hx.outs)
 
         Reactor._design(self)
 
