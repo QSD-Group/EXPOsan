@@ -17,8 +17,8 @@ References
 '''
 
 # !!! Temporarily ignoring warnings
-# import warnings
-# warnings.filterwarnings('ignore')
+import warnings
+warnings.filterwarnings('ignore')
 
 import os, biosteam as bst, qsdsan as qs
 from qsdsan import sanunits as qsu
@@ -322,8 +322,9 @@ def create_system(
         elif decentralized_upgrading is False:
             FeedstockTrans.transportation_unit_cost = 0
             GGE_price = price_dct['trans_biocrude'] # $/GGE
-            factor = BiocrudeTrans.ins[0].HHV/_HHV_per_GGE/BiocrudeTrans.ins[0].F_mass
-            BiocrudeTrans.transportation_unit_cost = GGE_price * factor #!!! need to check the calculation
+            # 1e3 to convert from kJ/hr to MJ/hr, 264.172 is m3/hr to gal/hr
+            factor = BiocrudeTrans.ins[0].HHV/1e3/(BiocrudeTrans.ins[0].F_vol*264.172)/_HHV_per_GGE
+            BiocrudeTrans.transportation_unit_cost = GGE_price * factor
         # Decentralized HTL and upgrading, no transportation needed
         else:
             FeedstockTrans.transportation_unit_cost = BiocrudeTrans.transportation_unit_cost = 0
@@ -421,9 +422,9 @@ if __name__ == '__main__':
         pilot_dry_flowrate=None,
         )
     
-    config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False))
-    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False))
-    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True))
+    #config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False))
+    config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False))
+    #config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True))
     
     sys = create_system(**config_kwargs)
     dct = globals()
