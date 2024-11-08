@@ -113,5 +113,5 @@ Getting Started
 
 References
 ----------
-.. [1] Zhang et al., Pathway toward sustainable distributed treatment of high strength food industry wastewater with encapsulated anaerobic technology. 2023, *In preparation*
+.. [1] Zhang et al., Prioritization of Early-Stage Research and Development of a Hydrogel-Encapsulated Anaerobic Technology for Distributed Treatment of High Strength Organic Wastewater. Environ. Sci. Technol. 2024, 58, 44, 19651–19665. `<https://doi.org/10.1021/acs.est.4c05389>`_
 .. [2] IWA Task Group for Mathematical Modelling of Anaerobic Digestion Processes. Anaerobic Digestion Model No.1 (ADM1); IWA Publishing, 2005. `<https://doi.org/10.2166/9781780403052>`_
