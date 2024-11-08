@@ -16,12 +16,11 @@ for license details.
 
 # Run uncertainty analysis and Spearman without country-specific settings
 import os, numpy as np
-from exposan.VR_toilet.models import (INCLUDE_RESOURCE_RECOVERY,
-                                      create_model,
+from exposan.VR_toilet.models import (create_model,
                                       run_uncertainty,
                                       )
+from exposan.VR_toilet import INCLUDE_RESOURCE_RECOVERY
 
-        
 def run(model_IDs, seed=None, N=1000, country_specific=False, **model_kwargs):
     # Make it possible to run with one or more models
     if isinstance(model_IDs, str): model_IDs = (model_IDs, )
@@ -31,6 +30,6 @@ def run(model_IDs, seed=None, N=1000, country_specific=False, **model_kwargs):
 
 if __name__ == '__main__': #checks whether the script is being run directly (rather than imported as a module in another script). 
 #This is often used to separate code that should only execute when the file is run as a standalone program.
-    INCLUDE_RESOURCE_RECOVERY = True
-    run(('A'), seed=5, N=500) # running systems A and B for contextual analysis with DMsan
+    INCLUDE_RESOURCE_RECOVERY = False
+    run(('A'), seed=5, N=50) # running systems A and B for contextual analysis with DMsan
         

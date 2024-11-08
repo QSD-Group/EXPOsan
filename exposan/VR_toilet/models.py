@@ -39,9 +39,16 @@ from exposan.VR_toilet import (
     get_decay_k,
     get_LCA_metrics,
     get_TEA_metrics,
+    get_normalized_CAPEX,
+    get_normalized_electricity_cost,
+    get_normalized_OPEX,
     get_recoveries,
     results_path,
     update_resource_recovery_settings,
+    get_normalized_labor_cost,
+    get_unit_contruction_GW_impact,
+    get_unit_stream_GW_impact,
+    get_unit_electrcitiy_GW_impact
     )
 
 __all__ = ('create_model', 'run_uncertainty',)
@@ -52,6 +59,8 @@ __all__ = ('create_model', 'run_uncertainty',)
 # =============================================================================
 # Functions for batch-making metrics and setting parameters
 # =============================================================================
+
+
 
 def add_metrics(model, ppl=default_ppl):
     vr._load_lca_data()
@@ -69,14 +78,53 @@ def add_metrics(model, ppl=default_ppl):
     metrics.append(
         Metric('Annual net cost', get_TEA_metrics(system, ppl)[0], f'{qs.currency}/cap/yr', 'TEA results'),
         )
+    # List of unit names to exclude
+    excluded_units = {"A1", "Mixer", "A14", "A15", "A16"}
     # Net emissions
     funcs = get_LCA_metrics(system, ppl)
     cat = 'LCA results'
+    for u in system.flowsheet.unit:
+    # Only proceed if the unit is not in the excluded list
+        if u.ID not in excluded_units:
+            class_name = u.__class__.__name__
+            metrics.extend([
+                Metric(f'{class_name} CAPEX', get_normalized_CAPEX(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
+                Metric(f'{class_name} Electricity cost', get_normalized_electricity_cost(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
+                Metric(f'{class_name} OPEX_no_labor_electricity', get_normalized_OPEX(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
+                Metric(f'{class_name} Labor', get_normalized_labor_cost(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
+            ])
+            # Define a function to compute the total cost directly
+            def compute_unit_total_cost(u, ppl):
+                # Ensure each function call returns the value and not the function itself
+                capex = get_normalized_CAPEX(u, ppl)()
+                electricity_cost = get_normalized_electricity_cost(u, ppl)()
+                opex = get_normalized_OPEX(u, ppl)()
+                labor_cost = get_normalized_labor_cost(u, ppl)()
+                # Add up all values
+                return lambda: capex + electricity_cost + opex + labor_cost
+            metrics.append(
+                Metric(f'{class_name} total cost', compute_unit_total_cost(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
+                )
+            #TODO: separate LCA because A14, A15, A16 need to be included...
+            metrics.extend([
+                Metric(f'{class_name} capital GW', get_unit_contruction_GW_impact(u,ppl),'kg CO2-eq/cap/yr', cat),
+                Metric(f'{class_name} stream GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', cat),
+                Metric(f'{class_name} electricity GW', get_unit_electrcitiy_GW_impact(u,ppl),'kg CO2-eq/cap/yr', cat),
+            ])
+            
+            
+    # for u in system.flowsheet.unit:
+    #     metrics.extend([
+    #         Metric(f'{u} CAPEX', get_normalized_CAPEX(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
+    #         Metric(f'{u} Electicity cost', get_noramlized_electricity_cost(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
+    #         Metric(f'{u} OPEX_no_labor_electricty', get_normalized_OPEX(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
+    #         Metric(f'{u} Labor', get_normalized_labor_cost(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
+    #         ])
     metrics.extend([
         Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),
-        Metric('H_Ecosystems', funcs[1], 'points/cap/yr', cat),
-        Metric('H_Health', funcs[2], 'points/cap/yr', cat),
-        Metric('H_Resources', funcs[3], 'points/cap/yr', cat),
+        # Metric('H_Ecosystems', funcs[1], 'points/cap/yr', cat),
+        # Metric('H_Health', funcs[2], 'points/cap/yr', cat),
+        # Metric('H_Resources', funcs[3], 'points/cap/yr', cat),
         ])
     model.metrics = metrics
 
@@ -97,6 +145,7 @@ def load_g2rt_su_data(file_name):
 
 excretion_path = load_g2rt_su_data('_excretion.tsv')
 murt_path = load_g2rt_su_data('_murt.tsv')
+mixer_toilet_path = load_g2rt_su_data('_toilet.tsv')
 vr_pasteurization_path = load_g2rt_su_data('_vr_pasteurization.csv')
 G2RT_homogenizer_path = load_g2rt_su_data('_g2rt_homogenizer.csv')
 vr_filter_press_path = load_g2rt_su_data('_vr_filter_press.csv')
@@ -205,7 +254,7 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
             @param(name='N fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
                     baseline=b, distribution=D)
             def set_N_price(i):
-                price_dct['N'] = sys_stream.liq_N.price = sys_stream.sol_N.price = i * price_factor
+                price_dct['N'] = sys_stream.liq_N.price = sys_stream.sol_N.price = i * vr.price_factor
     
             # P fertilizer price
             b = 3.983
@@ -213,7 +262,7 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
             @param(name='P fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
                    baseline=b, distribution=D)
             def set_P_price(i):
-                price_dct['P'] = sys_stream.liq_P.price = sys_stream.sol_P.price = i * price_factor
+                price_dct['P'] = sys_stream.liq_P.price = sys_stream.sol_P.price = i * vr.price_factor
     
             # K fertilizer price
             b = 1.333
@@ -221,15 +270,15 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
             @param(name='K fertilizer price', element='TEA', kind='isolated', units='USD/kg K',
                    baseline=b, distribution=D)
             def set_K_price(i):
-                price_dct['K'] = sys_stream.liq_K.price = sys_stream.sol_K.price = i * price_factor
-    
+                price_dct['K'] = sys_stream.liq_K.price = sys_stream.sol_K.price = i * vr.price_factor
+                
             # H2O price
-            b = 1.06/1e3
-            D = shape.Uniform(lower= b*0.8, upper= b*1.2)
+            b = 4.01/1e3
+            D = shape.Uniform(lower=1.59/1e3, upper=8.84/1e3) #consider inflation and data from 2018 https://webassets.bv.com/2019-10/50_Largest_Cities_Rate_Survey_2018_2019_Report.pdf
             @param(name='H2O price', element='TEA', kind='isolated', units='USD/kg H2O',
                    baseline= b, distribution=D)
             def set_H2O_price(i):
-                price_dct['H2O'] = sys_stream.H2O.price = i * price_factor
+                price_dct['H2O'] = sys_stream.H2O.price = i * vr.price_factor
     ##### Specific units #####
     param = model.parameter
 
@@ -248,6 +297,10 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
           baseline=b, distribution=D)
     def set_OPEX_over_CAPEX(i):
         toilet_unit.OPEX_over_CAPEX = i
+    
+    #Mixer for flushing
+    mixer_unit = unit_dct['mixer']
+    batch_setting_unit_params(mixer_toilet_path, model, mixer_unit)
     
     #Solids separation
     solids_separation_unit = unit_dct['solids_separation']
@@ -362,13 +415,6 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
            baseline=b, distribution=D)
     def set_price_factor(i):
         vr.price_factor = i
-
-    b = price_dct['H2O']
-    D = shape.Uniform(lower=1.59/1e3, upper=8.84/1e3) #consider inflation and data from 2018 https://webassets.bv.com/2019-10/50_Largest_Cities_Rate_Survey_2018_2019_Report.pdf
-    @param(name='H2O price', element='TEA', kind='isolated', units='USD/kWh',
-           baseline=b, distribution=D)
-    def set_zeolite_price(i):
-        price_dct['H2O'] = sys_stream.H2O.price = i
 
     if vr.INCLUDE_RESOURCE_RECOVERY:
         # Recovered N fertilizer
@@ -520,14 +566,14 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
 
 def create_modelA(country_specific=False, ppl=default_ppl, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
-    sysA = create_system('A', ppl=ppl, flowsheet=flowsheet)
+    sysA = create_system('A', ppl=ppl, flowsheet=None)
     unitA = sysA.flowsheet.unit
-
     # Shared metrics/parameters
     modelA = Model(sysA, **model_kwargs)
     add_metrics(modelA, ppl=ppl)
     unit_dctA = {
         'excretion': unitA.A1,
+        'mixer':unitA.Mixer,
         'toilet': unitA.A2,
         'solids_separation': unitA.A3,
         'belt_separation': unitA.A4,

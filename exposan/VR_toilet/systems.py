@@ -84,7 +84,14 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
         WasteStream(f'{stream_ID}', phase='l',
                     price=price_dct.get(dct_key) or 0., stream_impact_item=item)
 
-    create_stream_with_impact_item(stream_ID='H2O')
+    create_stream_with_impact_item(stream_ID='reverse_osmosis_treated', 
+                                   item_ID = 'H2O_item',
+                                   dct_key = 'H2O')
+    create_stream_with_impact_item('H2O')
+    WasteStream('H2O_vapor', phase='g')
+    WasteStream('H2O_vapor1', phase='g')
+    WasteStream('NH3_gas', phase='g')
+    WasteStream('NH3_gas1', phase='g')
 
 # %%
 
@@ -125,27 +132,48 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
     #### Human Inputs ####
     A1 = su.Excretion('A1', outs=('urine','feces'),)
     
-    recycle_fw = WasteStream('reverse_osmosis_treated')
+    # recycle_fw = WasteStream('reverse_osmosis_treated')
+    # A2 = su.SURT('A2',
+    #              ins= (A1-0, A1-1, 'toilet_paper', 'flushing_water', recycle_fw),
+    #              outs = ('mixed_waste','A2_CH4','A2_N2O'),
+    #              N_user = 6, N_tot_user=default_ppl, lifetime = 10, 
+    #              if_include_front_end=True, if_toilet_paper=True,
+    #              if_flushing=True, if_cleansing=False,
+    #              if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
+    #              CAPEX=500*max(1, default_ppl/100), OPEX_over_CAPEX=0.06,
+    #              decay_k_COD=get_decay_k(),
+    #              decay_k_N=get_decay_k(),
+    #              max_CH4_emission=max_CH4_emission)
+    mixer = su.FWMixer('Mixer',
+                      ins = ('tap_water', streamA['reverse_osmosis_treated']),
+                      outs = ('flushing_water'),
+                      N_tot_user = 6
+                      )
     A2 = su.SURT('A2',
-                 ins= (A1-0, A1-1, 'toilet_paper', 'flushing_water', recycle_fw),
-                 outs = ('mixed_waste','A2_CH4','A2_N2O'),
-                 N_user = 6, N_tot_user=default_ppl, lifetime = 10, 
-                 if_include_front_end=True, if_toilet_paper=True,
-                 if_flushing=True, if_cleansing=False,
-                 if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
-                 CAPEX=500*max(1, default_ppl/100), OPEX_over_CAPEX=0.06,
-                 decay_k_COD=get_decay_k(),
-                 decay_k_N=get_decay_k(),
-                 max_CH4_emission=max_CH4_emission)
+                  ins= (A1-0, A1-1, 'toilet_paper'),
+                  outs = ('mixed_waste','A2_CH4','A2_N2O'),
+                  N_user = 6, N_tot_user=default_ppl, lifetime = 10, 
+                  if_include_front_end=True, if_toilet_paper=True,
+                  if_flushing=True, if_cleansing=False,
+                  if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
+                  CAPEX=500*max(1, default_ppl/100), OPEX_over_CAPEX=0.06,
+                  decay_k_COD=get_decay_k(),
+                  decay_k_N=get_decay_k(),
+                  max_CH4_emission=max_CH4_emission)
     
     A3 = su.G2RTSolidsSeparation('A3',
-                                ins = A2-0,
+                                ins = (A2-0,mixer-0),
                                 outs = ('A3_liquid','A3_solid'),
                                 )
+    
     # make a recycle loop
-    recycle_uf = WasteStream('ultrafiltration_reject')
+    # recycle_uf = WasteStream('ultrafiltration_reject')
+    # A4 = su.G2RTBeltSeparation('A4', 
+    #                       ins = (A3-0,A3-1,recycle_uf),
+    #                       outs = ('A4_liquid','A4_solid'),
+    #                       )
     A4 = su.G2RTBeltSeparation('A4', 
-                          ins = (A3-0,A3-1,recycle_uf),
+                          ins = (A3-0,A3-1,'ultrafiltration_reject'),
                           outs = ('A4_liquid','A4_solid'),
                           )
     A12 = su.G2RTSolidsTank('A12',
@@ -154,24 +182,32 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
                              )
     
     A13 = su.G2RTLiquidsTank('A13',
-                             ins = A4-0,
+                             ins = (A4-0,'filter_press_liquid'),
                              outs = 'A12_liquids'
                              )
-    
+    # A5 = su.G2RTUltrafiltration('A5',
+    #                                   ins = A13-0,
+    #                                   outs = ('A5_treated',recycle_uf)
+    #                                   )
     A5 = su.G2RTUltrafiltration('A5',
-                                     ins = A13-0,
-                                     outs = ('A5_treated',recycle_uf)
-                                     )
-    # recycle_ro = WasteStream('reverse_osmosis_brine')
+                                      ins = A13-0,
+                                      outs = ('A5_treated',2-A4)
+                                      )
+    
+    # A6 = su.G2RTReverseOsmosis('A6', 
+    #                         ins = A5-0,
+    #                         outs = (recycle_fw,'A6_brine')
+    #                         )
     A6 = su.G2RTReverseOsmosis('A6', 
                             ins = A5-0,
-                            outs = (recycle_fw,'A6_brine')
+                            outs = (1-mixer,'A6_brine')
                             )
     
-    A7 = su.VRConcentrator('A7', 
-                             ins = A6-1,
-                             outs = ('A7_consensed_waste','A7_N2O','A7_CH4'),
-                             )
+    A7 = su.VRConcentrator('A7',
+                           ins = A6-1,
+                           outs = ('A7_consensed_waste','A7_N2O','A7_CH4',
+                                   streamA['NH3_gas1'],streamA['H2O_vapor1'])
+                           )
     
     A8 = su.G2RThomogenizer('A8', 
                             ins = A12-0, 
@@ -183,20 +219,54 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
                                  )
     A10 = su.VolumeReductionFilterPress('A10',
                                         ins = A9-0,
-                                        outs = ('A10_liquid','A10_pressed_solid_cake')
+                                        outs = (1-A13,'A10_pressed_solid_cake')
                                         )
     A11 = su.VRdryingtunnel('A11',
                            ins = (A7-0,A10-1),
-                           outs = ('A11_solid_cakes','A11_N2O', 'A11_CH4')
+                           outs = ('A11_solid_cakes','A11_N2O', 'A11_CH4',
+                                   streamA['NH3_gas'],streamA['H2O_vapor'])
                            )
-    sysA = System('sysA', 
-                 path=(A1,A2,A3,A4,A12,A13,A5,A6,A7,A8,A9,A10,A11),)
+    
+    # CH4 emissions from MURT, concentrator, and drying tunnel
+    A14 = qsu.Mixer('A14', ins=(A2-1, A7-2, A11-2), outs=streamA['CH4'])
+    A14.add_specification(lambda: add_fugitive_items(A14, 'CH4_item'))
+    A14.line = 'fugitive CH4 mixer'
+    
+    # N2O emissions from MURT, concentrator, and drying tunnel
+    A15 = su.Mixer('A15', ins=(A2-2, A7-1, A11-1), outs=streamA['N2O'])
+    A15.add_specification(lambda: add_fugitive_items(A15, 'N2O_item'))
+    A15.line = 'fugitive N2O mixer'
+    
+    # N, P, K split for recovery
+    A16 = qsu.ComponentSplitter('A16', ins=A11-0,
+                               outs=(streamA['sol_N'], streamA['sol_P'], streamA['sol_K'],
+                                     'A_sol_non_fertilizers'),
+                               split_keys=('N', 'P', 'K'))
+    
+    
+    
+    sysA_1 = System('sysA_1',
+                    path = (A1,mixer,A2,A3,A4,A12,A13,A5),
+                    recycle = A5-1
+                    )
+    sysA_2 = System('sysA_2',
+                  path = (sysA_1,A6,A7,A8,A9),
+                  recycle = A6-0
+                  )
+    sysA = System('sysA',
+                  path=(sysA_2,A10,A11,A14,A15,A16),
+                  recycle = A10-0
+                  )
+    # sysA = System('sysA', 
+    #               path=(A1,A2,A3,A4,A12,A13,A5,A6,A7,A8,A9,A10,A11),)
     teaA = TEA(system=sysA, discount_rate=discount_rate,
                start_year=2020, lifetime=10, uptime_ratio=1,
                lang_factor=None, annual_maintenance=0,
                annual_labor=0)
     get_powerA = sum([u.power_utility.rate for u in sysA.units]) * (24 * 365 * teaA.lifetime)
+    
     LCA(system=sysA, lifetime=10, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerA)
+    
     return sysA
     
 

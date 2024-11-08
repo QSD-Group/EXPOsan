@@ -99,6 +99,8 @@ def filter_parameters(model, df, threshold):
 modelA.parameters = key_parameters = \
     filter_parameters(modelA, spearman_rho, threshold=0.4)
 
+breakpoint()
+
 fig, ax = s.plot_correlations(spearman_rho, parameters=key_parameters,
 	                          metrics=key_metrics[-2])
 

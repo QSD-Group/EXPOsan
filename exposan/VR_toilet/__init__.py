@@ -16,6 +16,7 @@ for license details.
 
 import os, qsdsan as qs
 from qsdsan import ImpactItem, StreamImpactItem
+from collections.abc import Iterable
 from exposan.utils import (
     get_decay_k,
     get_generic_scaled_capital,
@@ -217,8 +218,9 @@ def get_recoveries(system, ppl=default_ppl, include_breakdown=False):
     dct['K_dct'] = K_dct = {}
     dct['Water_dct'] = Water_dct = {}
     toilet = u_reg.A2
+    mixer = u_reg.Mixer
+    RO = u_reg.A6
     dry_sludge_cake = u_reg.A11
-    Reverse_osmosis = u_reg.A6
 
     # ##### Unique to A or B #####
     # if AB == 'A':
@@ -246,19 +248,16 @@ def get_recoveries(system, ppl=default_ppl, include_breakdown=False):
     
     Water_dct['urine'] = get_Water(toilet.ins[0]) * ppl
     Water_dct['feces'] = get_Water(toilet.ins[1]) * ppl
-    Water_dct['flushing'] = get_Water(toilet.ins[3]) * ppl
+    Water_dct['flushing'] = get_Water(mixer.outs[0])
     # Reverse_osmosis
-    Water_dct['RO_permeate'] = get_Water(toilet.ins[4])
-    Water_dct['input'] = (Water_dct['urine'] + Water_dct['feces'] + 
-                          +Water_dct['RO_permeate']
+    Water_dct['RO_permeate'] = get_Water(RO.outs[0])
+    Water_dct['input'] = (Water_dct['urine'] + Water_dct['feces']
                           +Water_dct['flushing'])
 
     # drying tunnel produces solid cakes
     N_dct['dried_solids'] = get_N(dry_sludge_cake.outs[0])
     P_dct['dried_solids'] = get_P(dry_sludge_cake.outs[0])
     K_dct['dried_solids'] = get_K(dry_sludge_cake.outs[0])
-
-
 
     # % N, P, and K recovered as a usable fertilizer product,
     # for model metrics and also the Resource Recovery criterion in DMsan analysis
@@ -282,8 +281,9 @@ def get_recoveries(system, ppl=default_ppl, include_breakdown=False):
 # Learning curve assumptions
 percent_CAPEX_to_scale = 0.65
 number_of_units = 100000
-percent_limit = 0.015
-learning_curve_percent = 0.925
+percent_limit = 0.03 #pessimistic learning curve
+learning_curve_percent = 0.95 #pessimistic learning curve
+
 def get_scaled_capital(tea):
     return get_generic_scaled_capital(
         tea=tea,
@@ -292,7 +292,6 @@ def get_scaled_capital(tea):
         percent_limit=percent_limit,
         learning_curve_percent=learning_curve_percent
         )
-
 
 def get_TEA_metrics(system, ppl=default_ppl, include_breakdown=False):
     tea = system.TEA
@@ -303,33 +302,79 @@ def get_TEA_metrics(system, ppl=default_ppl, include_breakdown=False):
     return [
         *functions,
         lambda: get_scaled_capital(tea) / ppl, # CAPEX
-        lambda: get_annual_electricity()/ppl, # energy (electricity)
+        lambda: get_annual_electricity(system)/ppl, # energy (electricity)
         lambda: tea.annual_labor/ppl, # labor
-        lambda: (tea.AOC-get_annual_electricity()-tea.annual_labor)/ppl, # OPEX (other than energy and labor)
+        lambda: (tea.AOC-get_annual_electricity(system)-tea.annual_labor)/ppl, # OPEX (other than energy and labor)
         lambda: tea.sales / ppl, # sales
         ]
 
 
-def get_normalized_CAPEX(units, ppl=default_ppl):
-    '''Get the CAPEX of a unit/units normalized to per capita per day.'''
-    system = units[0].system
-    return system.TEA.get_unit_annualized_equipment_cost(units)/365/ppl
+def get_normalized_CAPEX(unit, ppl=default_ppl):
+    '''Get the CAPEX of a unit normalized to per capita per day.'''
+    system = unit.system
+    return lambda: system.TEA.get_unit_annualized_equipment_cost(unit)/365/ppl
 
 
-def get_noramlized_electricity_cost(units, ppl=default_ppl):
-    '''Get the energy (electricity) cost of a unit/units normalized to per capita per day.'''
-    return sum(u.power_utility.cost for u in units)/ppl
+def get_normalized_electricity_cost(unit, ppl=default_ppl):
+    '''Get the energy (electricity) cost of a unit normalized to per capita per day.'''
+    return lambda: unit.power_utility.cost /ppl
 
-
-def get_normalized_OPEX(units, ppl=default_ppl):
+def get_normalized_OPEX(unit, ppl=default_ppl):
     '''
-    Get the OPEX of a unit/units normalized to per capita per day,
-    energy (electricity) cost is not included.
+    Get the OPEX of a unit normalized to per capita per day,
+    energy (electricity) and labor cost is not included.
     '''
-    OPEX = sum(u.add_OPEX.values() for u in units)
-    streams = sum([u.ins for u in units], [])
-    OPEX += sum(s.cost for s in streams)
-    return OPEX * 24 / ppl # convert to per capita per day
+    # # Wrap single unit in a list for consistent processing
+    # if not isinstance(units, Iterable) or isinstance(units, str):
+    #     units = [units]
+    #   # Calculate total OPEX
+    # # Calculate total OPEX by summing up individual values in `add_OPEX`
+    # OPEX = sum(sum(u.add_OPEX.values()) for u in units)
+    # # Sum the costs of all input streams
+    # streams = sum([u.ins for u in units], [])
+    # OPEX += sum(s.cost for s in streams)
+    
+    # # Normalize to per capita per day
+    # return lambda: OPEX * 24 / ppl  # convert to per capita per day
+    
+    OPEX = sum(unit.add_OPEX.values())
+    # Subtract maintenance labor costs if they exist
+    if hasattr(unit, '_calc_maintenance_labor_cost'):
+        OPEX -= unit._calc_maintenance_labor_cost()
+        # Debugging print statement
+    # print(f"Calculated OPEX for {unit.ID}: {OPEX * 24 / ppl}")
+    return lambda: OPEX * 24 / ppl # convert to per capita per day
+
+def get_normalized_labor_cost(unit, ppl=default_ppl):
+    '''
+    Get the labor cost for the maintenance of a unit normalized to per capita per day.
+    '''
+    labor_cost = 0.0
+    if hasattr(unit, '_calc_maintenance_labor_cost'):
+        labor_cost += unit._calc_maintenance_labor_cost()
+    return lambda: labor_cost * 24 / ppl # convert to per capita per day
+
+def get_unit_contruction_GW_impact(unit, ppl=default_ppl, time =None, time_unit ='day'):
+    system = unit.system
+    lca = system.LCA
+    return  lambda: lca.get_construction_impacts(unit, time, time_unit)['GlobalWarming']/(ppl*lca.lifetime)
+# convert to per capita per year
+
+def get_unit_stream_GW_impact(unit, ppl=default_ppl, time =None, time_unit ='day'):
+    system = unit.system
+    lca = system.LCA
+    stream_items = {i for i in unit.ins + unit.outs if i.stream_impact_item}
+    s = lca.get_stream_impacts(stream_items=stream_items, exclude=None,
+                                 time=time, time_unit=time_unit)
+    return lambda: s['GlobalWarming']/(ppl*lca.lifetime)
+# convert to per capita per day
+
+def get_unit_electrcitiy_GW_impact(unit, ppl=default_ppl, time =None, time_unit ='day'):
+    system = unit.system
+    lca = system.LCA
+    return lambda: lca.get_other_impacts(unit, time, time_unit)['GlobalWarming']/(ppl*lca.lifetime)
+
+# ['GlobalWarming']
 
 def get_LCA_metrics(system, ppl=default_ppl, include_breakdown=False):
     lca = system.LCA
@@ -346,7 +391,7 @@ def get_LCA_metrics(system, ppl=default_ppl, include_breakdown=False):
         lambda: lca.total_construction_impacts['GlobalWarming']/lca.lifetime/ppl, # construction
         lambda: lca.total_transportation_impacts['GlobalWarming']/lca.lifetime/ppl, # transportation
         lambda: lca.total_stream_impacts['GlobalWarming']/lca.lifetime/ppl, # stream (including fugitive gases and offsets)
-        lambda: lca.total_other_impacts['GlobalWarming']/lca.lifetime/ppl,
+        lambda: lca.total_other_impacts['GlobalWarming']/lca.lifetime/ppl, #electricity
         ]
 
 def print_summaries(systems):

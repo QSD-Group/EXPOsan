@@ -16,6 +16,7 @@ for license details.
 import biosteam as bst
 from warnings import warn
 from math import ceil
+from qsdsan.sanunits._abstract import Mixer
 from qsdsan.processes import Decay
 from qsdsan import SanUnit,Construction, WasteStream
 from qsdsan.sanunits import SludgeThickening, Copier
@@ -35,12 +36,46 @@ __all__ = ('Excretion',
            'G2RTBeltSeparation',
            'G2RTUltrafiltration',
            'G2RTReverseOsmosis',
-           'SURT'
+           'SURT',
+           'FWMixer',
            )
 
 # %%
 
 toilet_path = ospath.join(data_path, 'sanunit_data/_toilet.tsv')
+
+class FWMixer(Mixer):
+    '''
+    Mixing tap water and recycled water from RO to meet the flushing water demand
+    '''
+    _N_ins = 2
+    _N_outs = 1
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='WasteStream', F_BM_default=None, isdynamic=False,
+                 rigorous=False, conserve_phases=False,N_user=None, N_toilet=None,
+                 N_tot_user = None, if_flushing=True):
+        Mixer.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
+                         F_BM_default=F_BM_default, isdynamic=isdynamic)
+        self.N_user = N_user
+        self.N_toilet = N_toilet
+        self.N_tot_user = N_tot_user
+        self.if_flushing = if_flushing
+        
+        data = load_data(path=toilet_path)    
+
+        for para in data.index:
+            value = float(data.loc[para]['expected'])
+            setattr(self, para, value)
+        del data
+                               
+    def _run(self):
+        tap_water, ro_permeate = self.ins
+        flushing, = self.outs
+        N_tot_user = self.N_tot_user or self.N_toilet*self.N_user
+        tap_water.imass['H2O'] = self.flushing_water*N_tot_user - ro_permeate.imass['H2O']
+        flushing.mix_from((tap_water,ro_permeate))
+        # print(f"The flushing water flow is {flushing.imass['H2O']} kg/h.")
 
 class Toilet(SanUnit, Decay, isabstract=True):
     '''
@@ -99,7 +134,7 @@ class Toilet(SanUnit, Decay, isabstract=True):
     :ref:`qsdsan.processes.Decay <processes_Decay>`
 
     '''
-    _N_ins = 5
+    _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     density_dct = {
         'Sand': 1442,
@@ -116,7 +151,7 @@ class Toilet(SanUnit, Decay, isabstract=True):
                  if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
                  CAPEX=None, OPEX_over_CAPEX=None, price_ratio=1.):
 
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=1)
+        SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=1)
         self.degraded_components = tuple(degraded_components)
         self._N_user = self._N_toilet = self._N_tot_user = None
         self.N_user = N_user
@@ -145,16 +180,19 @@ class Toilet(SanUnit, Decay, isabstract=True):
 
 
     def _run(self):
-        ur, fec, tp, fw, ro_permeate = self.ins
-        if ro_permeate.imass['H2O'] <0.:
-            print("RO permeate recycled water flow is less than zero!!")
-        elif ro_permeate.imass['H2O'] >1e10:
-            print("RO permeate recycled water flow is too Large!!")
-            ro_permeate.show()
-            breakpoint()
+        ur, fec, tp = self.ins
+        # if ro_permeate.imass['H2O'] <0.:
+        #     print("RO permeate recycled water flow is less than zero!!")
+        # elif ro_permeate.imass['H2O'] >1e10:
+        #     print(f"RO permeate recycled water flow is too Large: {ro_permeate.imass['H2O']} kg/h!!")
+
         tp.imass['Tissue'] = int(self.if_toilet_paper)*self.toilet_paper
-        N_tot_user = self.N_tot_user or self.N_toilet*self.N_user
-        fw.imass['H2O'] = int(self.if_flushing)*self.flushing_water*0.5 
+        # if fw.imass['H2O'] <0.:
+        #     print(f"flush water flow is less than zero: {fw.imass['H2O']} kg/h")
+        # print(ro_permeate.imass['H2O'])
+        # ro_permeate.show()
+        # print(f"treated RO influent to reuse as flushing water is {ro_permeate.imass['H2O']}") #TODO:debug
+        # fw.show() #TODO:debug
         # - ro_permeate.imass['H2O']/N_tot_user
         # if fw.imass['H2O'] <0.:
         #     print("flushing water flow is less than zero!!")
@@ -931,7 +969,7 @@ class VRpasteurization(SanUnit):
         temp_diff = self.temp_pasteurization - self.solids_inlet_temp #K
         Q_d = (solids_in.imass['H2O']*self.Cp_w + 
                (solids_in.F_mass-solids_in.imass['H2O'])*self.Cp_dm)*temp_diff #kJ/hr
-        Q_tot = Q_d/(1-self.heat_loss) # kJ/hr, 30% of the total generated is lost
+        Q_tot = Q_d/(1-self.heat_loss/100) # kJ/hr, 30% of the total generated is lost
         heating_electricity = Q_tot/3600 #kWh/hr
         self.power_utility(heating_electricity) #kWh/hr
         total_equipment = 0.
@@ -1208,7 +1246,7 @@ class VRConcentrator(SanUnit):
     :class:`~.sanunits.BiogenicRefineryHHX`
     '''
     _N_ins = 1
-    _N_outs = 3
+    _N_outs = 5
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  **kwargs):
@@ -1228,7 +1266,8 @@ class VRConcentrator(SanUnit):
         self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
     def _run(self):
         waste_in, = self.ins
-        waste_out, N2O, CH4  = self.outs
+        # waste_out, N2O, CH4 = self.outs
+        waste_out, N2O, CH4, NH3_gas, water_vapor  = self.outs
         waste_out.copy_like(self.ins[0])
         solubles, solids = self.solubles, self.solids
         #Calculate water and solids in the condensed effluent
@@ -1244,9 +1283,14 @@ class VRConcentrator(SanUnit):
         CH4.imass['CH4'] = drying_CH4_to_air = \
             self.drying_CH4_emissions * self.carbon_COD_ratio * \
             waste_in.COD * waste_in.F_vol / 1000 # kg CH4 /hr
-        drying_NH3_to_air = self.drying_NH3_emissions * waste_in.TN * waste_in.F_vol / 1000 # kg NH3 /hr
+        drying_NH3_to_air = self.drying_NH3_emissions * waste_in.imass['NH3'] # kg NH3 /hr
         N2O.imass['N2O'] = drying_NH3_to_air * self.NH3_to_N2O # kg N2O /hr
-        
+        waste_out.imass['NH3'] = waste_in.imass['NH3'] - drying_NH3_to_air
+
+        NH3_gas.imass['NH3'] = drying_NH3_to_air # kg NH3 /hr
+        water_vapor.imass['H2O'] = waste_in.imass['H2O'] - waste_out.imass['H2O'] #kg H2O/hr
+        # Store the calculated value of water_vapor.imass['H2O'] for use in the _cost function
+        self.water_vapor_H2O = water_vapor.imass['H2O'] 
         #Calculate COD
         drying_CO2_to_air = (self.drying_CO2_emissions * self.carbon_COD_ratio
                              * waste_in.COD * waste_in.F_vol / 1000) # kg CO2 /hr
@@ -1310,11 +1354,9 @@ class VRConcentrator(SanUnit):
         ratio = self.price_ratio
         for equipment, cost in C.items():
            C[equipment] = cost * ratio
-           
+        
         self.power_utility(self.pump_power_demand * self.pump_daily_operation/24+
-                            self.motor_power_demand * self.motor_daily_operation/24+
-                            self.heating_unit_power_demand * self.heating_unit_daily_operation/24+
-                            self.fan_power_demand * self.fan_daily_operation/24 * self.fan_quantity
+                            self.water_vapor_H2O * self.energy_required_to_dry_sludge
                             ) # kW
         total_equipment = 0.
         for cost in C.values():
@@ -1331,12 +1373,12 @@ class VRConcentrator(SanUnit):
 g2rt_liquids_tank_path = ospath.join(g2rt_su_data_path, '_g2rt_liquids_tank.csv')
 @price_ratio()
 
-class G2RTLiquidsTank(Copier):
+class G2RTLiquidsTank(Mixer):
     '''
     Liquids storage unit for generation II reinveted toilets to accumulate enough
     liquid waste before ultrafiltration
     
-    This is a non-reactive unit (i.e., the effluent is copied from the influent).
+    This is a non-reactive unit, (i.e., the effluent is copied from the mix of influent).
     
     The following impact items should be pre-constructed for life cycle assessment:
     Pump, Polyethylene, Polycarbonate
@@ -1353,9 +1395,11 @@ class G2RTLiquidsTank(Copier):
     --------
     :class:`~.sanunits.Copier`
     '''
-    def __init__(self, ID='', ins=None, outs=(),  thermo=None, init_with='WasteStream',
-                 **kwargs):
-        Copier.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with)
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='WasteStream', F_BM_default=None, isdynamic=False,
+                 rigorous=False, conserve_phases=False):
+        Mixer.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
+                         F_BM_default=F_BM_default, isdynamic=isdynamic)
 
         data = load_data(path=g2rt_liquids_tank_path)
         for para in data.index:
@@ -1363,15 +1407,17 @@ class G2RTLiquidsTank(Copier):
             setattr(self, para, value)
         del data
 
-        for attr, value in kwargs.items():
-            setattr(self, attr, value)
-
     def _init_lca(self):
         self.construction = [
             Construction(item='Polyethylene', linked_unit=self, quantity_unit='kg'),
             Construction(item='Polycarbonate', linked_unit=self, quantity_unit='kg'),
             Construction(item='Pump', linked_unit=self, quantity=1., quantity_unit='ea'),
             ]
+    
+    def _run(self):
+        liquid_belt_separator, liquid_filter_press = self.ins
+        UF_feed, = self.outs
+        UF_feed.mix_from((liquid_belt_separator,liquid_filter_press))
     
     def _design(self):
         design = self.design_results
@@ -1394,7 +1440,6 @@ class G2RTLiquidsTank(Copier):
 
         self.add_OPEX = self._calc_replacement_cost() + self._calc_maintenance_labor_cost()
 
-        
         power_demand = self.pump_energy_per_cycle*self.pump_batch_cycle_per_day
         power_demand = power_demand / 24  # convert from kWh/d to kW
         self.power_utility(power_demand)  # kW
@@ -1521,7 +1566,7 @@ class VRdryingtunnel(SanUnit):
     '''
     
     _N_ins = 2
-    _N_outs = 3
+    _N_outs = 5
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  **kwargs):
@@ -1542,7 +1587,7 @@ class VRdryingtunnel(SanUnit):
 
     def _run(self):
         condensate, press_cakes = self.ins
-        solid_cakes, N2O, CH4  = self.outs
+        solid_cakes, N2O, CH4, NH3_gas, water_vapor  = self.outs
         solid_cakes.mix_from((condensate,press_cakes))
         solubles, solids = self.solubles, self.solids
                 
@@ -1559,8 +1604,14 @@ class VRdryingtunnel(SanUnit):
         CH4.imass['CH4'] = drying_CH4_to_air = \
             self.drying_CH4_emissions * self.carbon_COD_ratio * \
             solid_cakes.COD * solid_cakes.F_vol / 1000 # kg CH4 /hr
-        drying_NH3_to_air = self.drying_NH3_emissions * solid_cakes.TN * solid_cakes.F_vol / 1000 # kg NH3 /hr
+        drying_NH3_to_air = self.drying_NH3_emissions * solid_cakes.imass['NH3'] # kg NH3 /hr
         N2O.imass['N2O'] = drying_NH3_to_air * self.NH3_to_N2O # kg N2O /hr
+        solid_cakes.imass['NH3'] -= drying_NH3_to_air
+        NH3_gas.imass['NH3'] = drying_NH3_to_air # kg NH3 /hr
+        water_vapor.imass['H2O'] = (condensate.imass['H2O']+ press_cakes.imass['H2O'] 
+                                    - solid_cakes.imass['H2O']) #kg H2O/hr
+        # Store the calculated value of water_vapor.imass['H2O'] for use in the _cost function
+        self.water_vapor_H2O = water_vapor.imass['H2O']  #kg H2O/hr
         
         #Calculate COD
         drying_CO2_to_air = (self.drying_CO2_emissions * self.carbon_COD_ratio
@@ -1607,7 +1658,7 @@ class VRdryingtunnel(SanUnit):
         for equipment, cost in C.items():
            C[equipment] = cost * ratio
            
-        self.power_utility(self.ventilator_power_demand * self.ventilator_daily_operation/24+
+        self.power_utility(self.water_vapor_H2O * self.energy_required_to_dry_sludge + 
                             self.conveyor_power_demand * self.conveyor_daily_operation/24
                             ) # kW
         total_equipment = 0.
@@ -1755,7 +1806,7 @@ class G2RTSolidsSeparation(SanUnit):
     ---------
     :class:`~.sanunits.BiogenicRefineryGrinder`
     '''
-    _N_ins = 1
+    _N_ins = 2
     _N_outs = 2
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
@@ -1791,7 +1842,9 @@ class G2RTSolidsSeparation(SanUnit):
                              ]
     
     def _run(self):
-        waste_in, = self.ins
+        waste_in,flushing_water = self.ins
+        waste_in.mix_from(self.ins)
+        # print(waste_in.imass['H2O']) #TODO:debug
         liquid_stream, solid_stream = self.outs
         solubles, solids = self.solubles, self.solids
         
@@ -1802,8 +1855,12 @@ class G2RTSolidsSeparation(SanUnit):
         mc_out = self.moisture_content_out/100 #convert to fraction
 
         if mc_in < mc_out*0.999:
-            raise RuntimeError(f'Moisture content of the influent stream ({mc_in:.4f}) '
-                               f'is smaller than the desired moisture content ({mc_out:.4f}).')
+            print(f"Moisture content of the influent stream ({mc_in:.4f})"
+                  f"is smaller than that of the desired effluent stream ({mc_out:.4f})."
+                  "High solids and low flushing event detected, adding more flushing water!")
+            waste_in.imass['H2O'] = waste_in.F_mass * mc_out
+            # raise RuntimeError(f'Moisture content of the influent stream ({mc_in:.4f}) '
+            #                    f'is smaller than the desired moisture content ({mc_out:.4f}).')
         
         TS_in = waste_in.imass[solids].sum() # kg TS dry/hr
         TS_out = solid_stream.imass[solids].sum()
@@ -1936,6 +1993,7 @@ class G2RTBeltSeparation(SanUnit):
     
     def _run(self):
         liquid_stream_in, solid_stream_in, uf_retentate = self.ins
+        # uf_retentate.show() #TODO:debug
         liquid_stream, solid_stream = self.outs
         solubles, solids = self.solubles, self.solids
         solid_stream.copy_flow(solid_stream_in,solids) #all solids in go to solids out
@@ -2090,6 +2148,7 @@ class G2RTUltrafiltration(SanUnit):
         solid_stream.imass[solubles] = waste_in.imass[solubles]*\
             solid_stream.imass['H2O']/waste_in.imass['H2O']
         liquid_stream.mass = waste_in.mass-solid_stream.mass
+        # print(f"The recycled UF water flow is {solid_stream.imass['H2O']} kg/h.")
 
     def _design(self):
         design = self.design_results
@@ -2099,7 +2158,7 @@ class G2RTUltrafiltration(SanUnit):
         self.add_construction(add_cost=False)
 
     def _cost(self):
-        C = self.baseline_purchase_costs
+        C = self.baseline_purchase_costs 
         C['Pipes'] = self.one_in_pipe_SCH40 + self.onehalf_in_pipe_SCH40 + self.three_in_pipe_SCH80
         C['Fittings'] = (
             self.one_in_elbow_SCH80 +
@@ -2122,7 +2181,7 @@ class G2RTUltrafiltration(SanUnit):
         
         ratio = self.price_ratio
         for equipment, cost in C.items():
-            C[equipment] = cost * ratio
+            C[equipment] = cost * ratio/3 #scaled down from 30 users to 6 users per day
 
         self.add_OPEX = self._calc_replacement_cost()
         # [W][1 kW/1000 W][hr/d][1 d/ 24 h] = [kW]
@@ -2154,10 +2213,14 @@ class G2RTUltrafiltration(SanUnit):
             self.UF_brush / self.UF_brush_lifetime
             )
 
-        uf_replacement_cost = self.UF_unit/ self.UF_unit_lifetime #scaled down from 30 users to 6 users per day
+        uf_replacement_cost = self.UF_unit/ self.UF_unit_lifetime 
 
-        total_replacement_cost = self.price_ratio * (pipe_replacement_cost + fittings_replacement_cost + uf_replacement_cost)  # USD/year
+        total_replacement_cost = self.price_ratio * (pipe_replacement_cost + fittings_replacement_cost + uf_replacement_cost)/3 # USD/year
         return total_replacement_cost / (365 * 24)  # USD/hr
+    
+    def _calc_maintenance_labor_cost(self): #USD/hr
+        maintenance_labor_cost= (self.ultrafiltration_maintenance * self.wages)
+        return maintenance_labor_cost / (365*24)
 
 #%%
 reverse_osmosis_path = ospath.join(g2rt_su_data_path, '_g2rt_reverse_osmosis.csv')
@@ -2207,6 +2270,7 @@ class G2RTReverseOsmosis(SanUnit):
     
     def _run(self):
         waste_in = self.ins[0]
+
         permeate, brine = self.outs
         solubles, solids = self.solubles, self.solids
         
@@ -2216,6 +2280,7 @@ class G2RTReverseOsmosis(SanUnit):
         permeate.imass['H2O'] = waste_in.imass['H2O'] * self.water_recovery
         permeate.imass[solubles] = waste_in.imass[solubles]*(1-self.TDS_removal)
         brine.mass = waste_in.mass - permeate.mass
+        # print(f"The recycled RO water flow is {permeate.imass['H2O']} kg/h.")
 
     def _init_lca(self):
         self.construction = [
