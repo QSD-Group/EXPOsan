@@ -357,7 +357,7 @@ def get_normalized_labor_cost(unit, ppl=default_ppl):
 def get_unit_contruction_GW_impact(unit, ppl=default_ppl, time =None, time_unit ='day'):
     system = unit.system
     lca = system.LCA
-    return  lambda: lca.get_construction_impacts(unit, time, time_unit)['GlobalWarming']/(ppl*lca.lifetime)
+    return  lambda: lca.get_construction_impacts(unit, annual=True)['GlobalWarming']/ppl
 # convert to per capita per year
 
 def get_unit_stream_GW_impact(unit, ppl=default_ppl, time =None, time_unit ='day'):
@@ -372,7 +372,7 @@ def get_unit_stream_GW_impact(unit, ppl=default_ppl, time =None, time_unit ='day
 def get_unit_electrcitiy_GW_impact(unit, ppl=default_ppl, time =None, time_unit ='day'):
     system = unit.system
     lca = system.LCA
-    return lambda: lca.get_other_impacts(unit, time, time_unit)['GlobalWarming']/(ppl*lca.lifetime)
+    return lambda: lca.get_other_unit_impacts(unit, time, time_unit)['GlobalWarming']/(ppl*lca.lifetime)
 
 # ['GlobalWarming']
 

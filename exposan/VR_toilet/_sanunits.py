@@ -1208,6 +1208,10 @@ class VolumeReductionFilterPress(SanUnit):
     def _calc_maintenance_labor_cost(self): #USD/hr
         maintenance_labor_cost= (self.filterpress_maintenance * self.wages)
         return maintenance_labor_cost / (365*24)
+    
+    @property
+    def OPEX(self):
+        return self.add_OPEX['Additional OPEX']
 
 #%%
 vr_concentrator_path = ospath.join(g2rt_su_data_path, '_vr_concentrator.csv')

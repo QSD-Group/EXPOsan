@@ -74,6 +74,11 @@ def add_metrics(model, ppl=default_ppl):
         Metric('Total K', funcs[2], '% K', 'K recovery'),
         Metric('Total Water', funcs[3], '% Water', 'Water recovery'),
     ]
+    
+    metrics.append(
+        Metric('test', lambda: system.flowsheet.unit.A10.OPEX, 'test', 'test'),
+        )
+    
     # Net cost
     metrics.append(
         Metric('Annual net cost', get_TEA_metrics(system, ppl)[0], f'{qs.currency}/cap/yr', 'TEA results'),
