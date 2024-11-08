@@ -11,8 +11,9 @@ Created on Sun Jun 11 08:12:41 2023
 # confirmed: both 'markersize' (in gpd.plot()) and 's' (in plt.scatter()) are proportional to area
 
 #%% initialization
+
 import geopy.distance, googlemaps, random
-import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.colors as colors, matplotlib.ticker as mtick
+import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.colors as colors
 from matplotlib.mathtext import _mathtext as mathtext
 from matplotlib.patches import Rectangle
 from colorpalette import Color
@@ -1656,6 +1657,7 @@ for (region, result) in [(regional_decarbonization_uncertainty_PADD_1, PADD_1_de
                          (regional_decarbonization_uncertainty_PADD_3, PADD_3_decarbonization_uncertainty),
                          (regional_decarbonization_uncertainty_PADD_4, PADD_4_decarbonization_uncertainty),
                          (regional_decarbonization_uncertainty_PADD_5, PADD_5_decarbonization_uncertainty)]:
+    # TODO: make sure the Latin hypercube sampling is correctly used here
     # Monte Carlo simulation and Latin hypercube sampling
     for i in range(0, 1000):
         # check progress
