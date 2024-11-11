@@ -65,11 +65,10 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
     item = ImpactItem.get_item('N2O_item').copy(f'{prefix}_N2O_item', set_as_source=True)
     WasteStream('N2O', phase='g', stream_impact_item=item)
     
-    # item = ImpactItem.get_item('H2O_item').copy(f'{prefix}_H2O_item', set_as_source=True)
-    # WasteStream('H2O', phase='l', stream_impact_item=item)
-    # breakpoint()
-
     price_dct = update_resource_recovery_settings()[0]
+    item = ImpactItem.get_item('H2O_item').copy(f'{prefix}_H2O_item', set_as_source=True)
+    WasteStream('H2O', phase='l', price=price_dct.get('H2O'), stream_impact_item=item)
+
     for nutrient in ('N', 'P', 'K'):
         for phase in phases:
             original = ImpactItem.get_item(f'{nutrient}_item')
@@ -84,10 +83,10 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
         WasteStream(f'{stream_ID}', phase='l',
                     price=price_dct.get(dct_key) or 0., stream_impact_item=item)
 
-    create_stream_with_impact_item(stream_ID='reverse_osmosis_treated', 
-                                   item_ID = 'H2O_item',
-                                   dct_key = 'H2O')
-    create_stream_with_impact_item('H2O')
+
+    # create_stream_with_impact_item(stream_ID='reverse_osmosis_treated',
+    #                                dct_key = 'H2O')
+    # create_stream_with_impact_item('H2O')
     WasteStream('H2O_vapor', phase='g')
     WasteStream('H2O_vapor1', phase='g')
     WasteStream('NH3_gas', phase='g')
@@ -126,8 +125,9 @@ app_loss['NH3'] = 0.05
 def create_systemA(flowsheet=None, ppl=default_ppl):
     # TODO: Set flowsheet to avoid stream replacement warnings
     flowsheet = flowsheet or main_flowsheet
-    streamA = flowsheet.stream
     batch_create_streams('A')
+    streamA = flowsheet.stream
+
 
     #### Human Inputs ####
     A1 = su.Excretion('A1', outs=('urine','feces'),)
@@ -145,7 +145,7 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
     #              decay_k_N=get_decay_k(),
     #              max_CH4_emission=max_CH4_emission)
     mixer = su.FWMixer('Mixer',
-                      ins = ('tap_water', streamA['reverse_osmosis_treated']),
+                      ins = ('tap_water', 'RO_permeate'),
                       outs = ('flushing_water'),
                       N_tot_user = 6
                       )
@@ -200,9 +200,11 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
     #                         )
     A6 = su.G2RTReverseOsmosis('A6', 
                             ins = A5-0,
-                            outs = (1-mixer,'A6_brine')
+                            outs = (streamA['H2O'],'A6_brine') #TODO: sys.flowsheet.unit.A6.outs[0].stream_impact_item
                             )
-    
+    # item = ImpactItem.get_item('H2O_item').copy('A_H2O_item', set_as_source=True)
+    # A6.outs[0].stream_impact_item = item
+
     A7 = su.VRConcentrator('A7',
                            ins = A6-1,
                            outs = ('A7_consensed_waste','A7_N2O','A7_CH4',
@@ -243,30 +245,35 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
                                      'A_sol_non_fertilizers'),
                                split_keys=('N', 'P', 'K'))
     
-    
-    
     sysA_1 = System('sysA_1',
                     path = (A1,mixer,A2,A3,A4,A12,A13,A5),
                     recycle = A5-1
                     )
-    sysA_2 = System('sysA_2',
-                  path = (sysA_1,A6,A7,A8,A9),
-                  recycle = A6-0
-                  )
     sysA = System('sysA',
-                  path=(sysA_2,A10,A11,A14,A15,A16),
+                  path = (sysA_1,A6,A7,A8,A9,A10,A11,A14,A15,A16),
                   recycle = A10-0
                   )
+    
+    # sysA_2 = System('sysA_2',
+    #               path = (sysA_1,A6,A7,A8,A9),
+    #               recycle = A6-0
+    #               )
+
+    # sysA = System('sysA',
+    #               path=(sysA_2,A10,A11,A14,A15,A16),
+    #               recycle = A10-0
+    #               )
     # sysA = System('sysA', 
     #               path=(A1,A2,A3,A4,A12,A13,A5,A6,A7,A8,A9,A10,A11),)
+    
     teaA = TEA(system=sysA, discount_rate=discount_rate,
                start_year=2020, lifetime=10, uptime_ratio=1,
                lang_factor=None, annual_maintenance=0,
                annual_labor=0)
+    # batch_create_streams('A')
     get_powerA = sum([u.power_utility.rate for u in sysA.units]) * (24 * 365 * teaA.lifetime)
     
     LCA(system=sysA, lifetime=10, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerA)
-    
     return sysA
     
 

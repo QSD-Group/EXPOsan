@@ -48,7 +48,9 @@ from exposan.VR_toilet import (
     get_normalized_labor_cost,
     get_unit_contruction_GW_impact,
     get_unit_stream_GW_impact,
-    get_unit_electrcitiy_GW_impact
+    get_unit_electrcitiy_GW_impact,
+    compute_unit_total_cost,
+    get_normalized_recovery_earning
     )
 
 __all__ = ('create_model', 'run_uncertainty',)
@@ -76,57 +78,55 @@ def add_metrics(model, ppl=default_ppl):
     ]
     
     metrics.append(
-        Metric('test', lambda: system.flowsheet.unit.A10.OPEX, 'test', 'test'),
+        Metric('test', compute_unit_total_cost(system.flowsheet.unit.A10,ppl), 'test', 'test'),
         )
     
     # Net cost
     metrics.append(
         Metric('Annual net cost', get_TEA_metrics(system, ppl)[0], f'{qs.currency}/cap/yr', 'TEA results'),
         )
-    # List of unit names to exclude
-    excluded_units = {"A1", "Mixer", "A14", "A15", "A16"}
+    for u in system.TEA.units:
+        class_name = u.__class__.__name__
+        metrics.extend([
+            Metric(f'{class_name} CAPEX', get_normalized_CAPEX(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+            Metric(f'{class_name} Electricity cost', get_normalized_electricity_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+            Metric(f'{class_name} OPEX_no_labor_electricity', 
+                   get_normalized_OPEX(u,ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+            Metric(f'{class_name} Labor', 
+                   get_normalized_labor_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+            Metric(f'{class_name} total cost', 
+                   compute_unit_total_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),])
+
+    for u in system.TEA.units:
+        class_name = u.__class__.__name__
+        metrics.extend([
+            Metric(f'{class_name} {u.ID} capital GW', get_unit_contruction_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+            Metric(f'{class_name} {u.ID} stream GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+            Metric(f'{class_name} {u.ID} electricity GW', get_unit_electrcitiy_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+        ])
+
+    direct_emission_units = {'A14','A15'}
+    for u in system.flowsheet.unit:
+        if u.ID in direct_emission_units:
+            class_name = u.__class__.__name__
+            metrics.append(
+                Metric(f'{class_name} {u.ID} direct emission GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+            )
+    if vr.INCLUDE_RESOURCE_RECOVERY:
+        #TODO: separate LCA because Mixer, A14, A15, A16 need to be included...
+        recovery_units = {'A6','A16'}
+        for u in system.flowsheet.unit:
+            if u.ID in recovery_units:
+                class_name = u.__class__.__name__
+                metrics.extend([
+                    Metric(f'{class_name} {u.ID} recovery earning', get_normalized_recovery_earning(u, ppl), f'{qs.currency}/cap/day', f'Recovery {class_name} TEA'),
+                    Metric(f'{class_name} {u.ID} reduced GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'Recovery {class_name} LCA'),
+                ])
+        
     # Net emissions
     funcs = get_LCA_metrics(system, ppl)
-    cat = 'LCA results'
-    for u in system.flowsheet.unit:
-    # Only proceed if the unit is not in the excluded list
-        if u.ID not in excluded_units:
-            class_name = u.__class__.__name__
-            metrics.extend([
-                Metric(f'{class_name} CAPEX', get_normalized_CAPEX(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
-                Metric(f'{class_name} Electricity cost', get_normalized_electricity_cost(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
-                Metric(f'{class_name} OPEX_no_labor_electricity', get_normalized_OPEX(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
-                Metric(f'{class_name} Labor', get_normalized_labor_cost(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
-            ])
-            # Define a function to compute the total cost directly
-            def compute_unit_total_cost(u, ppl):
-                # Ensure each function call returns the value and not the function itself
-                capex = get_normalized_CAPEX(u, ppl)()
-                electricity_cost = get_normalized_electricity_cost(u, ppl)()
-                opex = get_normalized_OPEX(u, ppl)()
-                labor_cost = get_normalized_labor_cost(u, ppl)()
-                # Add up all values
-                return lambda: capex + electricity_cost + opex + labor_cost
-            metrics.append(
-                Metric(f'{class_name} total cost', compute_unit_total_cost(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
-                )
-            #TODO: separate LCA because A14, A15, A16 need to be included...
-            metrics.extend([
-                Metric(f'{class_name} capital GW', get_unit_contruction_GW_impact(u,ppl),'kg CO2-eq/cap/yr', cat),
-                Metric(f'{class_name} stream GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', cat),
-                Metric(f'{class_name} electricity GW', get_unit_electrcitiy_GW_impact(u,ppl),'kg CO2-eq/cap/yr', cat),
-            ])
-            
-            
-    # for u in system.flowsheet.unit:
-    #     metrics.extend([
-    #         Metric(f'{u} CAPEX', get_normalized_CAPEX(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
-    #         Metric(f'{u} Electicity cost', get_noramlized_electricity_cost(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
-    #         Metric(f'{u} OPEX_no_labor_electricty', get_normalized_OPEX(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
-    #         Metric(f'{u} Labor', get_normalized_labor_cost(u, ppl), f'{qs.currency}/cap/day', 'TEA results'),
-    #         ])
     metrics.extend([
-        Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),
+        Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', 'LCA results'),
         # Metric('H_Ecosystems', funcs[1], 'points/cap/yr', cat),
         # Metric('H_Health', funcs[2], 'points/cap/yr', cat),
         # Metric('H_Resources', funcs[3], 'points/cap/yr', cat),
@@ -194,10 +194,10 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
         
         def set_price_ratio(i):
             price_ratio = i
-            for obj_name in stream_ref.keys():
-                old_price = old_price_dct[obj_name]
+            for obj_name, dic_key in stream_ref.items():
+                old_price = old_price_dct[dic_key]
                 new_price = old_price * i
-                getattr(sys_stream, stream_ref[obj_name]).price = new_price
+                getattr(sys_stream, obj_name).price = new_price
             for u in sys.units:
                 if hasattr(u, 'price_ratio'):
                     u.price_ratio = i

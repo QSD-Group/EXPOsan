@@ -24,7 +24,6 @@ from exposan.utils import (
     )
 
 #%%
-# TO be moved to __init__.py
 # Module-wise setting on whether to allow resource recovery
 INCLUDE_RESOURCE_RECOVERY = False
 
@@ -64,7 +63,8 @@ def update_resource_recovery_settings():
         'N': 1.507*price_factor*RR_factor,
         'P': 3.983*price_factor*RR_factor,
         'K': 1.333*price_factor*RR_factor,
-        'H2O': 4.01/1e3*price_ratio*RR_factor, #per kg of water + wastewater treated https://www.epa.gov/watersense/data-and-information-used-watersense
+        'H2O': 4.01/1e3*price_ratio*RR_factor, #TODO:negative because this is counted as ins in Mixer
+        #per kg of water + wastewater treated https://www.epa.gov/watersense/data-and-information-used-watersense
         'wages': 3.64,
         }
     
@@ -75,7 +75,8 @@ def update_resource_recovery_settings():
         'N': -5.4*RR_factor,
         'P': -4.9*RR_factor,
         'K': -1.5*RR_factor,
-        'H2O': - 3.2756/1e4 * RR_factor # per kg of tap water production, conventional treatment
+        'H2O': -3.2756/1e4 * RR_factor 
+        # per kg of tap water production, conventional treatment
         }
     
     H_Ecosystems_dct = {
@@ -85,7 +86,7 @@ def update_resource_recovery_settings():
         'N': -0.0461961*RR_factor,
         'P': -0.093269908*RR_factor,
         'K': -0.01895794*RR_factor,
-        'H2O': - 6.648597/1e6 * RR_factor # per kg of tap water production, conventional treatment
+        'H2O': -6.648597/1e6 * RR_factor # per kg of tap water production, conventional treatment
         }
     
     H_Health_dct = {
@@ -95,7 +96,7 @@ def update_resource_recovery_settings():
         'N': -0.637826734*RR_factor,
         'P': -1.774294425*RR_factor,
         'K': -0.116067637*RR_factor,
-        'H2O': - 1.6207909/1e5 * RR_factor # per kg of tap water production, conventional treatment
+        'H2O': -1.6207909/1e5 * RR_factor # per kg of tap water production, conventional treatment
         }
     
     H_Resources_dct = {
@@ -105,7 +106,7 @@ def update_resource_recovery_settings():
         'N': -0.259196888*RR_factor,
         'P': -1.084191599*RR_factor,
         'K': -0.054033438*RR_factor,
-        'H2O': - 1.5364666/1e5 * RR_factor # per kg of tap water production, conventional treatment
+        'H2O': -1.5364666/1e5 * RR_factor # per kg of tap water production, conventional treatment
         }
     
     return price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct
@@ -232,50 +233,42 @@ def get_recoveries(system, ppl=default_ppl, include_breakdown=False):
     #     sludge_pasteurization = u_reg.B4
     #     ion_exchange = u_reg.B5
 
-    ##### Applicable for both A and B #####
-    # In
-    N_dct['urine'] = get_N(toilet.ins[0]) * ppl
-    N_dct['feces'] = get_N(toilet.ins[1]) * ppl
-    N_dct['input'] = N_dct['urine'] + N_dct['feces']
+    # ##### Applicable for both A and B #####
+    # # In
+    # N_dct['urine'] = get_N(toilet.ins[0]) * ppl
+    # N_dct['feces'] = get_N(toilet.ins[1]) * ppl
+    # N_dct['input'] = N_dct['urine'] + N_dct['feces']
     
-    P_dct['urine'] = get_P(toilet.ins[0]) * ppl
-    P_dct['feces'] = get_P(toilet.ins[1]) * ppl
-    P_dct['input'] = P_dct['urine'] + P_dct['feces']
+    # P_dct['urine'] = get_P(toilet.ins[0]) * ppl
+    # P_dct['feces'] = get_P(toilet.ins[1]) * ppl
+    # P_dct['input'] = P_dct['urine'] + P_dct['feces']
     
-    K_dct['urine'] = get_K(toilet.ins[0]) * ppl
-    K_dct['feces'] = get_K(toilet.ins[1]) * ppl
-    K_dct['input'] = K_dct['urine'] + K_dct['feces']
+    # K_dct['urine'] = get_K(toilet.ins[0]) * ppl
+    # K_dct['feces'] = get_K(toilet.ins[1]) * ppl
+    # K_dct['input'] = K_dct['urine'] + K_dct['feces']
     
-    Water_dct['urine'] = get_Water(toilet.ins[0]) * ppl
-    Water_dct['feces'] = get_Water(toilet.ins[1]) * ppl
-    Water_dct['flushing'] = get_Water(mixer.outs[0])
-    # Reverse_osmosis
-    Water_dct['RO_permeate'] = get_Water(RO.outs[0])
-    Water_dct['input'] = (Water_dct['urine'] + Water_dct['feces']
-                          +Water_dct['flushing'])
+    # Water_dct['urine'] = get_Water(toilet.ins[0]) * ppl
+    # Water_dct['feces'] = get_Water(toilet.ins[1]) * ppl
+    # Water_dct['flushing'] = get_Water(mixer.outs[0])
+    # # Reverse_osmosis
+    # Water_dct['RO_permeate'] = get_Water(RO.outs[0])
+    # Water_dct['input'] = (Water_dct['urine'] + Water_dct['feces']
+    #                       +Water_dct['flushing'])
 
-    # drying tunnel produces solid cakes
-    N_dct['dried_solids'] = get_N(dry_sludge_cake.outs[0])
-    P_dct['dried_solids'] = get_P(dry_sludge_cake.outs[0])
-    K_dct['dried_solids'] = get_K(dry_sludge_cake.outs[0])
+    # # drying tunnel produces solid cakes
+    # N_dct['dried_solids'] = get_N(dry_sludge_cake.outs[0])
+    # P_dct['dried_solids'] = get_P(dry_sludge_cake.outs[0])
+    # K_dct['dried_solids'] = get_K(dry_sludge_cake.outs[0])
 
     # % N, P, and K recovered as a usable fertilizer product,
     # for model metrics and also the Resource Recovery criterion in DMsan analysis
     functions = [
-            lambda: N_dct['dried_solids'] / N_dct['input'] * 100,  # total_N_recovery
-            lambda: P_dct['dried_solids'] / P_dct['input'] * 100,  # total_P_recovery
-            lambda: K_dct['dried_solids'] / K_dct['input'] * 100,  # total_K_recovery
-            lambda: Water_dct['RO_permeate'] / Water_dct['input'] * 100 #total water recovery
+            lambda: get_N(dry_sludge_cake.outs[0]) / ((get_N(toilet.ins[0])+get_N(toilet.ins[1])) * ppl) * 100,  # total_N_recovery
+            lambda: get_P(dry_sludge_cake.outs[0]) / ((get_P(toilet.ins[0])+get_P(toilet.ins[1])) * ppl) * 100,  # total_P_recovery
+            lambda: get_K(dry_sludge_cake.outs[0]) / ((get_K(toilet.ins[0])+get_K(toilet.ins[1])) * ppl) * 100,  # total_K_recovery
+            lambda: get_Water(RO.outs[0]) / (get_Water(toilet.ins[0])*ppl+get_Water(toilet.ins[1])*ppl+get_Water(mixer.outs[0]))* 100 #total water recovery
             ]
-    if not include_breakdown: return functions
-
-    return [
-        *functions,
-        lambda: N_dct['dried_solids'] / N_dct['input'] * 100,  # N_solid_cake
-        lambda: P_dct['dried_solids'] / P_dct['input'] * 100,  # P_solid_cake
-        lambda: K_dct['dried_solids'] / K_dct['input'] * 100,  # K_solid_cake
-        lambda: Water_dct['RO_permeate'] / Water_dct['input'] * 100,  # Water_reverse_osmosis
-        ]
+    return functions
 
 ##### Costs #####
 # Learning curve assumptions
@@ -336,23 +329,33 @@ def get_normalized_OPEX(unit, ppl=default_ppl):
     
     # # Normalize to per capita per day
     # return lambda: OPEX * 24 / ppl  # convert to per capita per day
-    
-    OPEX = sum(unit.add_OPEX.values())
-    # Subtract maintenance labor costs if they exist
-    if hasattr(unit, '_calc_maintenance_labor_cost'):
-        OPEX -= unit._calc_maintenance_labor_cost()
-        # Debugging print statement
-    # print(f"Calculated OPEX for {unit.ID}: {OPEX * 24 / ppl}")
-    return lambda: OPEX * 24 / ppl # convert to per capita per day
+    return lambda: unit.OPEX/ ppl # convert to per capita per day
 
 def get_normalized_labor_cost(unit, ppl=default_ppl):
     '''
     Get the labor cost for the maintenance of a unit normalized to per capita per day.
     '''
-    labor_cost = 0.0
-    if hasattr(unit, '_calc_maintenance_labor_cost'):
-        labor_cost += unit._calc_maintenance_labor_cost()
-    return lambda: labor_cost * 24 / ppl # convert to per capita per day
+    return lambda: unit.labor_expense / ppl # convert to per capita per day
+
+def get_normalized_recovery_earning(unit, ppl=default_ppl):
+    '''
+    Calculate recovery earnings from water and nutrient (K, N, P) recovery
+    for a specific unit, normalized to per capita per day.
+    '''
+    # # Initialize OPEX to accumulate earnings from all streams
+    # OPEX = 0
+    # Sum up the costs from all input and output streams
+    streams = unit.ins + unit.outs
+    # Return a callable lambda that computes the normalized recovery earning
+    return lambda: sum(s.cost for s in streams) * 24 / ppl # convert to per capita per day
+
+# Define a function to compute the total cost directly
+def compute_unit_total_cost(u, ppl):
+    system = u.system
+    return lambda: (system.TEA.get_unit_annualized_equipment_cost(u)/365/ppl+
+                    u.power_utility.cost/ppl+
+                    u.OPEX/ppl+
+                    u.labor_expense/ppl)
 
 def get_unit_contruction_GW_impact(unit, ppl=default_ppl, time =None, time_unit ='day'):
     system = unit.system
@@ -360,19 +363,20 @@ def get_unit_contruction_GW_impact(unit, ppl=default_ppl, time =None, time_unit 
     return  lambda: lca.get_construction_impacts(unit, annual=True)['GlobalWarming']/ppl
 # convert to per capita per year
 
-def get_unit_stream_GW_impact(unit, ppl=default_ppl, time =None, time_unit ='day'):
+def get_unit_stream_GW_impact(unit, ppl=default_ppl):
     system = unit.system
     lca = system.LCA
     stream_items = {i for i in unit.ins + unit.outs if i.stream_impact_item}
-    s = lca.get_stream_impacts(stream_items=stream_items, exclude=None,
-                                 time=time, time_unit=time_unit)
-    return lambda: s['GlobalWarming']/(ppl*lca.lifetime)
-# convert to per capita per day
+    # s = lca.get_stream_impacts(stream_items=stream_items, exclude=None,
+    #                              kind='all', annual=True)
+    return lambda: lca.get_stream_impacts(stream_items=stream_items, exclude=None,
+                                 kind='all', annual=True)['GlobalWarming']/ppl
+# convert to per capita per year
 
 def get_unit_electrcitiy_GW_impact(unit, ppl=default_ppl, time =None, time_unit ='day'):
     system = unit.system
     lca = system.LCA
-    return lambda: lca.get_other_unit_impacts(unit, time, time_unit)['GlobalWarming']/(ppl*lca.lifetime)
+    return lambda: lca.get_other_unit_impacts(unit, annual=True)['GlobalWarming']/ppl
 
 # ['GlobalWarming']
 

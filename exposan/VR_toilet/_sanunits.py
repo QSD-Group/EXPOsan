@@ -73,7 +73,7 @@ class FWMixer(Mixer):
         tap_water, ro_permeate = self.ins
         flushing, = self.outs
         N_tot_user = self.N_tot_user or self.N_toilet*self.N_user
-        tap_water.imass['H2O'] = self.flushing_water*N_tot_user - ro_permeate.imass['H2O']
+        tap_water.imass['H2O'] = self.flushing_water*N_tot_user #assume 57% water recovery - ro_permeate.imass['H2O']
         flushing.mix_from((tap_water,ro_permeate))
         # print(f"The flushing water flow is {flushing.imass['H2O']} kg/h.")
 
@@ -570,6 +570,19 @@ class SURT(Toilet):
 
     def _calc_maintenance_labor_cost(self):
         return 0
+    
+    @property
+    def power_kW(self):
+        return 0.0 #kW
+    
+        
+    @property
+    def OPEX(self):
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
 
     @property
     def collection_period(self):
@@ -671,6 +684,10 @@ class Excretion(SanUnit):
         tot_COD = e_cal*self.e_exc*4.184/14/1e3 # in kg COD/hr
         ur.imass['sCOD'] = tot_COD*(1-self.e_fec) # in kg/hr
         fec.imass['xCOD'] = tot_COD*self.e_fec # in kg/hr
+        
+    @property
+    def power_kW(self):
+        return 0.0 #kW
 
     @property
     def e_cal(self):
@@ -987,7 +1004,19 @@ class VRpasteurization(SanUnit):
     
     def _calc_maintenance_labor_cost(self): #USD/hr
         maintenance_labor_cost= (self.pasteurizer_maintenance * self.wages) #USD/yr
-        return maintenance_labor_cost / (365*24)   
+        return maintenance_labor_cost / (365*24)
+    
+    @property
+    def OPEX(self):
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
+    
+    @property
+    def power_kW(self):
+        return self.power_utility.rate #kW
 
 
 #%%
@@ -1091,6 +1120,19 @@ class G2RThomogenizer(Copier):
     def _calc_maintenance_labor_cost(self): #USD/hr
         maintenance_labor_cost= (self.homogenizer_maintenance * self.wages) #USD/yr
         return maintenance_labor_cost / (365*24)
+    
+    @property
+    def OPEX(self):
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
+    
+    @property
+    def power_kW(self):
+        return (self.macerator_power_demand * self.macerator_daily_operation/24) #kW
+    
 #%%
 vr_filter_press_path = ospath.join(g2rt_su_data_path, '_vr_filter_press.csv')
 
@@ -1211,7 +1253,15 @@ class VolumeReductionFilterPress(SanUnit):
     
     @property
     def OPEX(self):
-        return self.add_OPEX['Additional OPEX']
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
+    
+    @property
+    def power_kW(self):
+        return (self.filterpress_energy_persolids*self.outs[1].F_mass) #kW
 
 #%%
 vr_concentrator_path = ospath.join(g2rt_su_data_path, '_vr_concentrator.csv')
@@ -1372,6 +1422,20 @@ class VRConcentrator(SanUnit):
     def _calc_maintenance_labor_cost(self): #USD/hr
        maintenance_labor_cost= (self.concentrator_maintenance * self.wages) #USD/yr
        return maintenance_labor_cost / (365*24)
+   
+    @property
+    def OPEX(self):
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
+    
+    @property
+    def power_kW(self):
+        return (self.pump_power_demand * self.pump_daily_operation/24+
+                self.water_vapor_H2O * self.energy_required_to_dry_sludge) #kW
+   
     
 #%%
 g2rt_liquids_tank_path = ospath.join(g2rt_su_data_path, '_g2rt_liquids_tank.csv')
@@ -1458,6 +1522,18 @@ class G2RTLiquidsTank(Mixer):
             self.labor_tank_cleaning
             ) * self.wages
         return liquids_tank_maintenance_labor_cost/(365 * 24) # USD/hr
+    
+    @property
+    def OPEX(self):
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
+    
+    @property
+    def power_kW(self):
+        return self.pump_energy_per_cycle*self.pump_batch_cycle_per_day/24 #kW
 
 #%%
 g2rt_solids_tank_path = ospath.join(g2rt_su_data_path, '_g2rt_solids_tank.csv')
@@ -1529,6 +1605,18 @@ class G2RTSolidsTank(Copier):
         return solids_tank_maintenance_labor_cost/(365 * 24) # USD/hr
         #Macerator in the homogenizer functions as a pump. All the associated cost
         #should refere to sanunits.G2RThomogenizer
+        
+    @property
+    def OPEX(self):
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
+    
+    @property
+    def power_kW(self):
+        return 0.0 #kW
 
 
 #%%
@@ -1675,6 +1763,19 @@ class VRdryingtunnel(SanUnit):
     def _calc_maintenance_labor_cost(self): #USD/hr
         maintenance_labor_cost= (self.drying_tunnel_maintenance * self.wages)
         return maintenance_labor_cost / (365*24)
+    
+    @property
+    def OPEX(self):
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
+    
+    @property
+    def power_kW(self):
+        return (self.water_vapor_H2O * self.energy_required_to_dry_sludge + 
+                self.conveyor_power_demand * self.conveyor_daily_operation/24) #kW
 
 #%%
 g2rt_controls_path = ospath.join(g2rt_su_data_path, '_g2rt_controls.csv')
@@ -1771,6 +1872,19 @@ class G2RTControls(Copier):
     def _calc_maintenance_labor_cost(self):
         control_system_maintenance_labor = self.control_labor_replacement_misc_repairs * self.wages
         return control_system_maintenance_labor / (365 * 24) # USD/hr
+    
+    @property
+    def OPEX(self):
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
+    
+    @property
+    def power_kW(self):
+        return (self.control_system_ORP_energy_percycle * self.control_batch_cycle_perday +
+            self.control_background_runtime_energy_perday)/24 #kW
 
 #%%
 g2rt_solids_separation_path = ospath.join(g2rt_su_data_path, '_g2rt_solids_separation.csv')
@@ -1917,6 +2031,18 @@ class G2RTSolidsSeparation(SanUnit):
     def _calc_maintenance_labor_cost(self): #USD/hr
         maintenance_labor_cost= (self.solids_separator_maintenance * self.wages)
         return maintenance_labor_cost / (365*24)
+    
+    @property
+    def OPEX(self):
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
+    
+    @property
+    def power_kW(self):
+        return (self.vacuum_pump_power_demand * self.vacuum_pump_operation/24) #kW
 
 #%%
 g2rt_belt_separation_path = ospath.join(g2rt_su_data_path, '_g2rt_belt_separation.csv')
@@ -2072,6 +2198,18 @@ class G2RTBeltSeparation(SanUnit):
     def _calc_maintenance_labor_cost(self): #USD/hr
         maintenance_labor_cost= (self.belt_separator_maintenance * self.wages)
         return maintenance_labor_cost / (365*24)
+    
+    @property
+    def OPEX(self):
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
+    
+    @property
+    def power_kW(self):
+        return (self.belt_daily_operation * self.belt_power_demand)/24 #kW
 
 #%%
 
@@ -2190,7 +2328,7 @@ class G2RTUltrafiltration(SanUnit):
         self.add_OPEX = self._calc_replacement_cost()
         # [W][1 kW/1000 W][hr/d][1 d/ 24 h] = [kW]
         power_demand = self.power_demand_4 / 1000* self.ultrafiltration_operation_time/ 24  
-        self.power_utility(power_demand)
+        self.power_utility(power_demand/5) #scaled down from 30 users to 6 users per day
 
     def _calc_replacement_cost(self):
         pipe_replacement_cost = (
@@ -2225,6 +2363,18 @@ class G2RTUltrafiltration(SanUnit):
     def _calc_maintenance_labor_cost(self): #USD/hr
         maintenance_labor_cost= (self.ultrafiltration_maintenance * self.wages)
         return maintenance_labor_cost / (365*24)
+    
+    @property
+    def OPEX(self):
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
+    
+    @property
+    def power_kW(self):
+        return self.power_demand_4 / 1000* self.ultrafiltration_operation_time/ 24 /5 #kW
 
 #%%
 reverse_osmosis_path = ospath.join(g2rt_su_data_path, '_g2rt_reverse_osmosis.csv')
@@ -2327,4 +2477,16 @@ class G2RTReverseOsmosis(SanUnit):
     def _calc_maintenance_labor_cost(self): #USD/hr
         maintenance_labor_cost= (self.reverse_osmosis_maintenance * self.wages)
         return maintenance_labor_cost / (365*24)
+    
+    @property
+    def OPEX(self):
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
+    
+    @property
+    def power_kW(self):
+        return self.RO_system_power_demand * self.reverse_osmosis_operation / 24 #kW
         

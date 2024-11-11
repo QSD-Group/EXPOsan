@@ -19,17 +19,17 @@ import os, numpy as np
 from exposan.VR_toilet.models import (create_model,
                                       run_uncertainty,
                                       )
-from exposan.VR_toilet import INCLUDE_RESOURCE_RECOVERY
+from exposan import VR_toilet as vr
 
 def run(model_IDs, seed=None, N=1000, country_specific=False, **model_kwargs):
     # Make it possible to run with one or more models
     if isinstance(model_IDs, str): model_IDs = (model_IDs, )
     for ID in model_IDs:
         model = create_model(ID, country_specific=country_specific, **model_kwargs)
+        vr.INCLUDE_RESOURCE_RECOVERY = True
         run_uncertainty(model, seed=seed, N=N)
 
 if __name__ == '__main__': #checks whether the script is being run directly (rather than imported as a module in another script). 
 #This is often used to separate code that should only execute when the file is run as a standalone program.
-    INCLUDE_RESOURCE_RECOVERY = False
-    run(('A'), seed=5, N=50) # running systems A and B for contextual analysis with DMsan
+    run(('A'), N=50) # running systems A and B for contextual analysis with DMsan
         
