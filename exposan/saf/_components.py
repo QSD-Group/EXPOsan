@@ -146,7 +146,8 @@ def create_components(set_thermo=True):
     N = Component('N', search_ID='Nitrogen', **aq_kwargs)
     P = Component('P', search_ID='Phosphorus', **aq_kwargs)
     K = Component('K', search_ID='Potassium', **aq_kwargs)
-    saf_cmps.extend([H2O, C, N, P, K,])
+    KH2PO4 = Component('KH2PO4', **aq_kwargs) # EC electrolyte
+    saf_cmps.extend([H2O, C, N, P, K, KH2PO4])
     
     # Components in the gas product
     CO2 = htl_cmps.CO2
@@ -190,6 +191,7 @@ def create_components(set_thermo=True):
     saf_cmps.set_alias('N', 'Nitrogen')
     saf_cmps.set_alias('P', 'Phosphorus')
     saf_cmps.set_alias('K', 'Potassium')
+    saf_cmps.set_alias('KH2PO4', 'Electrolyte')
     saf_cmps.set_alias('Biocrude', 'HTLbiocrude')
     saf_cmps.set_alias('HTLchar', 'Hydrochar')
     

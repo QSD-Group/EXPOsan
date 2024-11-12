@@ -1109,7 +1109,12 @@ class Electrochemical(SanUnit):
         current_eq = factor * H2_production # A
         area = current_eq / self.average_current_density
         Design['Area'] = area
-        Design['Volume'] = area * self.N_chamber * self.chamber_thickness
+        Design['Volume'] = volume = area * self.N_chamber * self.chamber_thickness
+        try: hours = self.system.operating_hours
+        except: hours = 365*24
+        Design['Total Electrolyte'] = tot_ec = self.electrolyte_load * volume
+        Design['Annual Electrolyte'] = annual_ec = tot_ec * self.annual_replacement_ratio
+        self.ins[1].imass['Electrolyte'] = annual_ec / hours
         
         EO_power = self.EO_current_density * self.EO_voltage # W/m2, when online
         EO_electricity_per_area = EO_power/1e3 * self.EO_online_time_ratio # kWh/h/m2
@@ -1120,8 +1125,6 @@ class Electrochemical(SanUnit):
         Design['ED electricity'] = ED_electricity = area * ED_electricity_per_area # kWh/h
         total_power = EO_electricity + ED_electricity
         self.power_utility.consumption = total_power
-        #!!! unsure of this calculation
-        self._FE = current_eq/(total_power*1e3) if total_power else 0
         
         Design['PSA H2 lb flowrate'] = self._PSA_H2_lb_flowrate
         IC = self.compressor # for H2 compressing
@@ -1141,16 +1144,13 @@ class Electrochemical(SanUnit):
         
         stack_cost = self.electrode_cost+self.anion_exchange_membrane_cost+self.cation_exchange_membrane_cost
         Cost['Stack'] = stack_cost * Design['Area']
-        Cost['Electrolyte'] = self.electrolyte_load*Design['Volume']*self.electrolyte_price
+        Cost['Electrolyte'] = Design['Total Electrolyte']*self.electrolyte_price # initial capital cost
         cell_cost = sum(Cost.values())
         
         self._decorated_cost()
         
-        replacement = self.ins[1]
-        replacement.imass['Water'] = 1
-        try: hours = self.system.operating_hours
-        except: hours = 365*24
-        replacement.price = cell_cost*self.annual_replacement_ratio/replacement.F_mass/hours
+        # Cost is based on all replacement costs, mass just considering the electrolyte
+        self.ins[1].price = cell_cost*self.annual_replacement_ratio/Design['Annual Electrolyte']
         
         
     def _normalize_composition(self, dct):
@@ -1187,11 +1187,6 @@ class Electrochemical(SanUnit):
     def ED_electricity_ratio(self):
         '''Ratio of electricity used by electrodialysis.'''
         return 1 - self.EO_electricity_ratio
-    
-    @property
-    def FE(self):
-        '''Faradaic efficiency of the combined EO and ED unit.'''
-        return self._FE
 
     @property
     def PSA_efficiency(self):
@@ -1268,7 +1263,7 @@ class HydrogenCenter(Facility):
             if i.F_mass != i.imass['H2']:
                 raise RuntimeError(f'Streams in `{self.ID}` should only include H2, '
                                    f'the stream {i.ID} contains other components.')
-        
+
         process_streams = self.process_H2_streams
         if process_streams:
             process.mix_from(process_streams)
@@ -1277,7 +1272,7 @@ class HydrogenCenter(Facility):
         
         recycled_streams = self.recycled_H2_streams
         if recycled_streams:
-            recycled.mix_from(process_streams)
+            recycled.mix_from(recycled_streams)
         else:
             recycled.empty()
         

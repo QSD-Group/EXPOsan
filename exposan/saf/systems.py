@@ -18,19 +18,15 @@ References
     Hydrothermal Valorization of Wet Organic Wastes.
     Environ. Sci. Technol. 2024, 58 (5), 2528–2541.
     https://doi.org/10.1021/acs.est.3c07394.
-
-TODOs:
-    - Adjust all price/labor to 2020 (add to qsdsan.utils).
-    - Confirm/adjust all prices.
-    - Add LCA (streams, utilities, transportation, electrolyte replacement, avoided emissions).
-    - Uncertainty/sensitivity (model).
-    - Some single-point sensitivity for discussion.
-    
+[3] Nordahl et al., Life-Cycle Greenhouse Gas Emissions and Human Health Trade-Offs
+    of Organic Waste Management Strategies.
+    Environ. Sci. Technol. 2020, 54 (15), 9200–9209.
+    https://doi.org/10.1021/acs.est.0c00364.
 '''
 
 # !!! Temporarily ignoring warnings
-# import warnings
-# warnings.filterwarnings('ignore')
+import warnings
+warnings.filterwarnings('ignore')
 
 import os, numpy as np, biosteam as bst, qsdsan as qs
 from biosteam import IsenthalpicValve
@@ -42,11 +38,12 @@ from exposan.saf import (
     _load_components,
     _load_process_settings,
     _units as u,
-    # data_path,
+    data_path,
     dry_flowrate,
     feedstock_composition,
     find_Lr_Hr,
     get_mass_energy_balance,
+    gwp_dct,
     HTL_yields,
     price_dct,
     results_path,
@@ -251,8 +248,8 @@ def create_system(
         P=1500*_psi_to_Pa,
         WHSV=0.625,
         catalyst_ID='HCcatalyst',
-        catalyst_lifetime=5*7920, # 5 years [1]
-        hydrogen_rxned_to_inf_oil=0.0111,
+        catalyst_lifetime=5*uptime_ratio*365*24, # 5 years [1]
+        hydrogen_rxned_to_inf_oil=0.0111, #!!! need to confirm/update
         hydrogen_ratio=5.556,
         include_PSA=include_PSA,
         gas_yield=0.2665,
@@ -334,11 +331,11 @@ def create_system(
         ins=(HCliquidSplitter-1, 'H2_HT', HTcatalyst_in),
         outs=('HTout','HTcatalyst_out'),
         WHSV=0.625,
-        catalyst_lifetime=2*7920, # 2 years [1]
+        catalyst_lifetime=2*uptime_ratio*365*24, # 2 years [1]
         catalyst_ID='HTcatalyst',
         T=300+273.15,
         P=1500*_psi_to_Pa,
-        hydrogen_rxned_to_inf_oil=0.0207,
+        hydrogen_rxned_to_inf_oil=0.0207, #!!! need to confirm/update
         hydrogen_ratio=3,
         include_PSA=include_PSA,
         gas_yield=0.2143,
@@ -491,7 +488,10 @@ def create_system(
         ww_to_disposal.source._run()
         COD_mass_content = sum(ww_to_disposal.imass[i.ID]*i.i_COD for i in ww_to_disposal.components)
         factor = COD_mass_content/ww_to_disposal.F_mass
-        ww_to_disposal.price = min(price_dct['wastewater'], price_dct['COD']*factor)
+        ww_to_disposal.price = price_dct['COD']*factor
+        ww_to_disposal_item = qs.ImpactItem.get_item('ww_to_disposal_item')
+        try: ww_to_disposal_item.CFs['GWP'] = gwp_dct['COD']*factor
+        except: pass
     ww_to_disposal.source.add_specification(adjust_prices)
 
     GasMixer = qsu.Mixer('GasMixer', ins=fuel_gases, outs=('waste_gases'))
@@ -537,14 +537,105 @@ def create_system(
     
     tea = create_tea(sys, **tea_kwargs)
     
-    # lca = qs.LCA(
-    #     system=sys,
-    #     lifetime=lifetime,
-    #     uptime_ratio=sys.operating_hours/(365*24),
-    #     Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
-    #     # Heating=lambda:sys.get_heating_duty()/1000*lifetime,
-    #     Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
+    #!!! Add LCA (streams, utilities, transportation, electrolyte replacement, avoided emissions).    
+    
+    # LCIA based on GREET 2023, unless otherwise noted
+    clear_lca_registries()
+    GWP = qs.ImpactIndicator('GWP',
+                             alias='GlobalWarmingPotential',
+                             method='GREET',
+                             category='environmental impact',
+                             unit='kg CO2-eq',)
+    feedstock_item = qs.StreamImpactItem(
+        ID='feedstock_item',
+        linked_stream=feedstock,
+        GWP=gwp_dct['feedstock'],
+        )
+    trans_feedstock_item = qs.StreamImpactItem(
+        ID='trans_feedstock_item',
+        linked_stream=FeedstockTrans.ins[1],
+        GWP=gwp_dct['trans_feedstock'],
+        )
+    makeup_H2_item = qs.StreamImpactItem(
+        ID='makeup_H2_item',
+        linked_stream=H2C.ins[0],
+        GWP=gwp_dct['H2'],
+        )
+    excess_H2_item = qs.StreamImpactItem(
+        ID='excess_H2_item',
+        linked_stream=H2C.outs[1],
+        GWP=-gwp_dct['H2'],
+        )
+    HCcatalyst_item = qs.StreamImpactItem(
+        ID='HCcatalyst_item',
+        linked_stream=HC.ins[-1],
+        GWP=gwp_dct['HCcatalyst'],
+        )
+    HTcatalyst_item = qs.StreamImpactItem(
+        ID='HTcatalyst_item',
+        linked_stream=HT.ins[-1],
+        GWP=gwp_dct['HTcatalyst'],
+        )
+    natural_gas_item = qs.StreamImpactItem(
+        ID='natural_gas_item',
+        linked_stream=natural_gas,
+        GWP=gwp_dct['natural_gas'],
+        )
+    # Assume no impacts from process water
+    # process_water_item = qs.StreamImpactItem(
+    #     ID='process_water_item',
+    #     linked_stream=PWC.ins[-1],
+    #     GWP=gwp_dct['process_water'],
     #     )
+    ww_to_disposal_item = qs.StreamImpactItem(
+        ID='ww_to_disposal_item',
+        linked_stream=ww_to_disposal,
+        GWP=gwp_dct['COD'], # will be updated based on COD content
+        )
+    solids_to_disposal_item = qs.StreamImpactItem(
+        ID='solids_to_disposal_item',
+        linked_stream=CHP.outs[1],
+        GWP=gwp_dct['solids'],
+        )
+    e_item = qs.ImpactItem(
+        ID='e_item',
+        GWP=gwp_dct['electricity'],
+        )
+    steam_item = qs.ImpactItem(
+        ID='steam_item',
+        GWP=gwp_dct['steam'],
+        )
+    cooling_item = qs.ImpactItem(
+        ID='cooling_item',
+        GWP=gwp_dct['cooling'],
+        )
+    if include_EC:
+        recovered_N_item = qs.StreamImpactItem(
+            ID='recovered_N_item',
+            linked_stream=recovered_N,
+            GWP=gwp_dct['N'],
+            )
+        recovered_P_item = qs.StreamImpactItem(
+            ID='recovered_P_item',
+            linked_stream=recovered_P,
+            GWP=gwp_dct['P'],
+            )
+        recovered_K_item = qs.StreamImpactItem(
+            ID='recovered_K_item',
+            linked_stream=recovered_K,
+            GWP=gwp_dct['K'],
+            )
+
+    lifetime = tea.duration[1]-tea.duration[0]
+    lca = qs.LCA(
+        system=sys,
+        lifetime=lifetime,
+        uptime_ratio=uptime_ratio,
+        simulate_system=False,
+        e_item=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+        steam_item=lambda:sys.get_heating_duty()/1000*lifetime, # kJ/yr to MJ/yr, include natural gas, but all offset in CHP
+        cooling_item=lambda:sys.get_cooling_duty()/1000*lifetime, # kJ/yr to MJ/yr
+        )
     
     return sys
 
@@ -575,6 +666,7 @@ def simulate_and_print(system, save_report=False):
     sys.simulate()
     stream = sys.flowsheet.stream
     tea = sys.TEA
+    lca = sys.LCA
     
     fuels = (gasoline, jet, diesel) = (stream.gasoline, stream.jet, stream.diesel)
     properties = {f: get_fuel_properties(sys, f) for f in fuels}
@@ -595,9 +687,10 @@ def simulate_and_print(system, save_report=False):
         uom = c if attr in ('NPV', 'CAPEX') else (c+('/yr'))
         print(f'{attr} is {getattr(tea, attr):,.0f} {uom}')
         
-    # all_impacts = lca.get_allocated_impacts(streams=(biobinder,), operation_only=True, annual=True)
-    # GWP = all_impacts['GlobalWarming']/(biobinder.F_mass*lca.system.operating_hours)
-    # print(f'Global warming potential of the biobinder is {GWP:.4f} kg CO2e/kg.')
+    mixed_fuel = stream.mixed_fuel
+    all_impacts = lca.get_allocated_impacts(streams=(mixed_fuel,), operation_only=True, annual=True)
+    GWP = all_impacts['GWP']/get_GGE(sys, mixed_fuel, True)
+    print(f'Global warming potential of all fuel is {GWP:.2f} kg CO2e/GGE.')
     
     if save_report:
         # Use `results_path` and the `join` func can make sure the path works for all users
@@ -605,14 +698,14 @@ def simulate_and_print(system, save_report=False):
 
 
 if __name__ == '__main__':
-    # config_kwargs = {'include_PSA': False, 'include_EC': False,}
+    config_kwargs = {'include_PSA': False, 'include_EC': False,}
     # config_kwargs = {'include_PSA': True, 'include_EC': False,}
-    config_kwargs = {'include_PSA': True, 'include_EC': True,}
+    # config_kwargs = {'include_PSA': True, 'include_EC': True,}
     
     sys = create_system(flowsheet=None, **config_kwargs)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     tea = sys.TEA
-    # lca = sys.LCA
+    lca = sys.LCA
     
     simulate_and_print(sys)
