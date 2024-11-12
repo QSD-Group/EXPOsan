@@ -21,7 +21,7 @@ from qsdsan import (
 from qsdsan.utils import time_printer, ospath, load_data, get_SRT
 # from exposan.bsm2 import data_path
 
-# __all__ = ('create_system',)
+__all__ = ('create_g1_system',)
 
 #%%
 MGD2cmd = 3785.412
@@ -136,7 +136,7 @@ ad_ss = {
     }
 
 #%%
-def create_system(flowsheet=None, default_init_conds=True):
+def create_g1_system(flowsheet=None, default_init_conds=True):
     flowsheet = flowsheet or qs.Flowsheet('G1')
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
@@ -854,7 +854,7 @@ def run(sys, t, t_step, method=None, **kwargs):
 
 #%%
 if __name__ == '__main__':
-    sys = create_system()
+    sys = create_g1_system()
     # sys = create_subsys(False)
     # sys = create_subsys()
     # sys = create_solidsys()

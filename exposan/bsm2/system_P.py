@@ -43,7 +43,7 @@ SOSAT1 = 8
 dfs = load_data(ospath.join(data_path, 'bsm2p_init.xlsx'), sheet=None)
 inf_concs = dfs['asm'].iloc[0].to_dict()
 c1init = dfs['asm'].iloc[1].to_dict()
-asinit = dfs['asm2'].iloc[2:]
+asinit = dfs['asm'].iloc[2:]
 adinit = dfs['adm'].iloc[0].to_dict()
 c2init = dfs['settler'].to_dict('index')
 c2init['s'] = {k:v for k,v in c2init['s'].items() if v>0}
@@ -307,7 +307,7 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 100
+    t = 300
     t_step = 0.1
     # method = 'RK45'
     # method = 'RK23'
