@@ -333,7 +333,7 @@ def create_system(
         WWdisposalMixer._run()
         COD_mass_content = sum(ww_to_disposal.imass[i.ID]*i.i_COD for i in ww_to_disposal.components)
         factor = COD_mass_content/ww_to_disposal.F_mass
-        ww_to_disposal.price = min(price_dct['wastewater'], price_dct['COD']*factor)
+        ww_to_disposal.price = price_dct['COD']*factor
 
     
     # 3-day storage time as in the SAF module
