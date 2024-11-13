@@ -932,11 +932,10 @@ class Electrochemical(SanUnit):
         Influent water, replacement_surrogate.
     outs : Iterable(stream)
         Mixed gas, recycled H2, recovered N, recovered P, treated water.
-    removal : float or dict
-        Removal of non-water components either by a universal factor when given as a float,
-        or as indicated by the dict.
-    gas_yield : float
-        Dry mass yield of the gas products.
+    COD_removal : float or dict
+        Removal of influent COD.
+    H2_yield : float
+        H2 yield as in g H2/g COD removed.
     N_IDs : Iterable(str)
         IDs of the components for nitrogen recovery.
     P_IDs : Iterable(str)
@@ -1001,8 +1000,8 @@ class Electrochemical(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', F_BM_default=1,
-                 removal=0.75,
-                 gas_yield=0.056546425,
+                 COD_removal=0.764869888,
+                 H2_yield=0.157888654,
                  gas_composition={
                      'N2': 0.000795785,
                      'H2': 0.116180614,
@@ -1028,15 +1027,15 @@ class Electrochemical(SanUnit):
                  cation_exchange_membrane_cost=190, # $/m2
                  electrolyte_load=13.6, # kg/m3, 0.1 M of KH2PO4 (MW=136 k/mole)
                  electrolyte_price=30, # $/kg
-                 annual_replacement_ratio=0.02,
+                 annual_replacement_ratio=0, # Jiang assumed 2%, but 3% of maintenance already considered in TEA
                  include_PSA=False,
                  PSA_efficiency=0.9,
                  PSA_compressor_P=101325,
                  ):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=F_BM_default)
-        self.removal = removal
-        self.gas_yield = gas_yield
+        self.COD_removal = COD_removal
+        self.H2_yield = H2_yield
         self.gas_composition = gas_composition
         self.N_recovery = N_recovery
         self.P_recovery = P_recovery
@@ -1067,11 +1066,11 @@ class Electrochemical(SanUnit):
         
     
     def _run(self):
+        inf = self.ins[0]
         gas, H2, N, P, K, eff = self.outs
-        eff.copy_like(self.ins[0])
+        eff.copy_like(inf)
         water_in = eff.imass['Water']
         eff.imass['Water'] = 0
-        dry_in = eff.F_mass
                
         fert_IDs = self.N_IDs, self.P_IDs, self.K_IDs
         recoveries = self.N_recovery, self.P_recovery, self.K_recovery
@@ -1082,22 +1081,24 @@ class Electrochemical(SanUnit):
         gas.empty()
         comp = self.gas_composition
         gas.imass[list(comp.keys())] = list(comp.values())
-        gas.F_mass = dry_in * self.gas_yield
+        cmps = self.components
+        COD_removal = self.COD_removal
+        COD_in = sum(inf.imass[i.ID]*i.i_COD for i in cmps)       
+        H2_mass = COD_in * COD_removal * self.H2_yield
+        scale_factor = H2_mass/gas.imass['H2']
+        gas.F_mass *= scale_factor
         self._PSA_H2_lb_flowrate = gas.F_mass / _lb_to_kg
         gas.phase = 'g'
         
-        removal = self.removal
-        if type(removal) is float: eff.F_mass *= (1-removal)
-        else:
-            for k, v in removal.items():
-                eff.imass[k] *= (1-v)
-
+        for i in cmps:
+            if i.ID not in ('Water', *fert_IDs):
+                eff.imass[i.ID] *= (1-COD_removal)
         eff.imass['Water'] = water_in
         
         H2_tot = gas.imass['H2']
         H2.imass['H2'] = H2_recycled = H2_tot * self.PSA_efficiency
         gas.imass['H2'] = H2_tot - H2_recycled
-        
+
         
     def _design(self):
         Design = self.design_results
@@ -1145,12 +1146,17 @@ class Electrochemical(SanUnit):
         stack_cost = self.electrode_cost+self.anion_exchange_membrane_cost+self.cation_exchange_membrane_cost
         Cost['Stack'] = stack_cost * Design['Area']
         Cost['Electrolyte'] = Design['Total Electrolyte']*self.electrolyte_price # initial capital cost
-        cell_cost = sum(Cost.values())
+        cell_cost = Cost['Stack'] + Cost['Electrolyte']
         
         self._decorated_cost()
         
         # Cost is based on all replacement costs, mass just considering the electrolyte
-        self.ins[1].price = cell_cost*self.annual_replacement_ratio/Design['Annual Electrolyte']
+        replacement = self.ins[1]
+        annual_replacement_ratio = self.annual_replacement_ratio
+        if annual_replacement_ratio:
+            replacement.price = cell_cost*annual_replacement_ratio/Design['Annual Electrolyte']
+        else:
+            replacement.price = 0
         
         
     def _normalize_composition(self, dct):

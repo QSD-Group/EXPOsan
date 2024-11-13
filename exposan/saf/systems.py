@@ -249,7 +249,7 @@ def create_system(
         WHSV=0.625,
         catalyst_ID='HCcatalyst',
         catalyst_lifetime=5*uptime_ratio*365*24, # 5 years [1]
-        hydrogen_rxned_to_inf_oil=0.0111, #!!! need to confirm/update
+        hydrogen_rxned_to_inf_oil=0.0111, # data from expt
         hydrogen_ratio=5.556,
         include_PSA=include_PSA,
         gas_yield=0.2665,
@@ -335,7 +335,7 @@ def create_system(
         catalyst_ID='HTcatalyst',
         T=300+273.15,
         P=1500*_psi_to_Pa,
-        hydrogen_rxned_to_inf_oil=0.0207, #!!! need to confirm/update
+        hydrogen_rxned_to_inf_oil=0.0207, # data from expt
         hydrogen_ratio=3,
         include_PSA=include_PSA,
         gas_yield=0.2143,
@@ -464,7 +464,6 @@ def create_system(
             'EC',
             ins=(WWmixer-0, 'replacement_surrogate'),
             outs=('EC_gas', 'EC_H2', recovered_N, recovered_P, recovered_K, ww_to_disposal),
-            removal=0.75,
             # EO_voltage=2, # originally 5, 2 for 50% efficiency
             # ED_voltage=2, # originally 30, 2 for 50% efficiency
             N_recovery=0.8,
@@ -698,9 +697,9 @@ def simulate_and_print(system, save_report=False):
 
 
 if __name__ == '__main__':
-    config_kwargs = {'include_PSA': False, 'include_EC': False,}
+    # config_kwargs = {'include_PSA': False, 'include_EC': False,}
     # config_kwargs = {'include_PSA': True, 'include_EC': False,}
-    # config_kwargs = {'include_PSA': True, 'include_EC': True,}
+    config_kwargs = {'include_PSA': True, 'include_EC': True,}
     
     sys = create_system(flowsheet=None, **config_kwargs)
     dct = globals()
