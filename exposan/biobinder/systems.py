@@ -17,14 +17,13 @@ References
 '''
 
 # !!! Temporarily ignoring warnings
-import warnings
-warnings.filterwarnings('ignore')
+# import warnings
+# warnings.filterwarnings('ignore')
 
 import os, biosteam as bst, qsdsan as qs
 from qsdsan import sanunits as qsu
 from qsdsan.utils import clear_lca_registries
 from exposan.htl import create_tea
-from exposan.saf import _units as safu
 from exposan.biobinder import (
     _HHV_per_GGE,
     _load_components,
@@ -92,7 +91,7 @@ def create_system(
         scaling_factor=N_HTL, reverse=True,
         )
     
-    FeedstockTrans = safu.Transportation(
+    FeedstockTrans = u.Transportation(
         'FeedstockTrans',
         ins=(FeedstockScaler-0, 'feedstock_trans_surrogate'),
         outs=('transported_feedstock',),
@@ -109,7 +108,7 @@ def create_system(
         scaling_factor=N_HTL, reverse=True,
         )
 
-    FeedstockCond = safu.Conditioning(
+    FeedstockCond = u.Conditioning(
         'FeedstockCond', ins=(FeedstockTrans-0, ProcessWaterScaler.outs[0]),
         outs='conditioned_feedstock',
         feedstock_composition=feedstock_composition,
@@ -161,12 +160,12 @@ def create_system(
 
     # Only need separate ECs for decentralized HTL, centralized upgrading
     if N_HTL != N_upgrading:
-        HTL_EC = safu.Electrochemical(
+        HTL_EC = u.Electrochemical(
             'HTL_EC',
             ins=(HTL-1, 'HTL_EC_replacement_surrogate'),
             outs=('HTL_EC_gas', 'HTL_EC_H2', 'HTL_EC_N', 'HTL_EC_P', 'HTL_EC_K', 'HTLww_to_disposal'),
             )
-        HTL_EC.N_unit = N_upgrading
+        HTL_EC.N_unit = N_HTL
         
         HTL_ECscaler = u.Scaler(
             'HTL_ECscaler', ins=HTL_EC.outs[-1], outs='scaled_HTLww_to_disposal',
@@ -183,7 +182,7 @@ def create_system(
         liquids_to_disposal_lst = []
         solids_to_disposal_lst = []
 
-    BiocrudeTrans = safu.Transportation(
+    BiocrudeTrans = u.Transportation(
         'BiocrudeTrans',
         ins=(HTL-2, 'biocrude_trans_surrogate'),
         outs=('transported_biocrude',),
@@ -199,7 +198,7 @@ def create_system(
     
     crude_fracs = [0.0339, 0.8104+0.1557]
     oil_fracs = [0.5316, 0.4684]
-    BiocrudeSplitter = safu.BiocrudeSplitter(
+    BiocrudeSplitter = u.BiocrudeSplitter(
         'BiocrudeSplitter', ins=BiocrudeScaler-0, outs='splitted_crude',
         biocrude_IDs=('HTLbiocrude'),
         cutoff_fracs=[crude_fracs[0], crude_fracs[1]*oil_fracs[0], crude_fracs[1]*oil_fracs[1]], # light (water): medium/heavy (biocrude/char)
@@ -207,9 +206,7 @@ def create_system(
         )
     
     CrudePump = qsu.Pump('CrudePump', init_with='Stream', 
-                         ins=BiocrudeSplitter-0, outs='crude_to_dist',
-                         P=1530.0*_psi_to_Pa,)
-    # Jones 2014: 1530.0 psia
+                         ins=BiocrudeSplitter-0, outs='crude_to_dist',)
     
     # Separate water from organics (bp<150°C)
     CrudeLightDis = qsu.ShortcutColumn(
@@ -299,7 +296,7 @@ def create_system(
                                 T=298.15)
     
     UpgradingECmixer = qsu.Mixer('UpgradingECmixer', ins=streams_to_upgrading_EC_lst, outs='ww_to_upgrading_EC',)
-    Upgrading_EC = safu.Electrochemical(
+    Upgrading_EC = u.Electrochemical(
         'Upgrading_EC',
         ins=(UpgradingECmixer-0, 'Upgrading_EC_replacement_surrogate'),
         outs=('Upgrading_EC_gas', 'Upgrading_EC_H2', 'Upgrading_EC_N', 'Upgrading_EC_P', 'Upgrading_EC_K', 'ECww_to_disposal'),
@@ -375,7 +372,7 @@ def create_system(
     
     # Potentially recycle the water from aqueous filtration (will be ins[2])
     # Can ignore this if the feedstock moisture if close to desired range
-    PWC = safu.ProcessWaterCenter(
+    PWC = u.ProcessWaterCenter(
         'ProcessWaterCenter',
         process_water_streams=scaled_process_water,
         process_water_price=price_dct['process_water']
@@ -422,9 +419,9 @@ if __name__ == '__main__':
         pilot_dry_flowrate=None,
         )
     
-    #config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False))
+    # config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False))
     config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False))
-    #config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True))
+    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True))
     
     sys = create_system(**config_kwargs)
     dct = globals()

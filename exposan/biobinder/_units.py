@@ -26,17 +26,24 @@ from exposan.saf import _units as safu
 from exposan.biobinder._process_settings import dry_flowrate
 
 __all__ = (
+    'BiocrudeSplitter',
     'CentralizedHTL',
     'Conditioning',
     'Electrochemical',
     'Hydroprocessing',
     'PilotHTL',
+    'ProcessWaterCenter',
     'Scaler',
+    'Transportation',
     )
 
 _psi_to_Pa = 6894.76
 CEPCI_by_year = qs.utils.tea_indices['CEPCI']
 
+BiocrudeSplitter = safu.BiocrudeSplitter
+CentralizedHTL = safu.HydrothermalLiquefaction
+Transportation = safu.Transportation
+ProcessWaterCenter = safu.ProcessWaterCenter
 
 # %%
 
@@ -104,8 +111,6 @@ class Conditioning(safu.Conditioning):
     def N_unit(self, i):
         self.parallel['self'] = self._N_unit = int(i)
         
-Transportation = safu.Transportation
-CentralizedHTL = safu.HydrothermalLiquefaction        
         
 class Hydroprocessing(safu.Hydroprocessing):
 
