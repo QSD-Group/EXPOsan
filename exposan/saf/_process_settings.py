@@ -73,7 +73,7 @@ price_dct = {
     'tipping': -39.7/1e3*SnowdenSwan_factor, # PNNL 2022, -$39.7/wet tonne is the weighted average
     'trans_feedstock': 50/1e3*SnowdenSwan_factor, # $50 dry tonne for 78 km, PNNL 32731
     'trans_biocrude': 0.092*SnowdenSwan_factor, # $0.092/GGE of biocrude, 100 miles, PNNL 32731
-    'H2': 1.61, # Feng et al., 2024
+    'H2': 1.61, # per kg Feng et al., 2024
     'HCcatalyst': 3.52, # Fe-ZSM5, CatCost modified from ZSM5
     'HTcatalyst': 75.18, # Pd/Al2O3, CatCost modified from 2% Pt/TiO2
     'natural_gas': 0.213/0.76**Seider_factor, # $0.213/SCM, $0.76 kg/SCM per https://www.henergy.com/conversion

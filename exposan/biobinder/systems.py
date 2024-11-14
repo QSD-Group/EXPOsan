@@ -334,8 +334,30 @@ def create_system(
         COD_mass_content = sum(ww_to_disposal.imass[i.ID]*i.i_COD for i in ww_to_disposal.components)
         factor = COD_mass_content/ww_to_disposal.F_mass
         ww_to_disposal.price = min(price_dct['wastewater'], price_dct['COD']*factor)
+        #H2,N,P,K Price
+        if 'HTL_EC' in globals():
+           # Hydrogen price
+           H2_mass = HTL_EC.outs[1].F_mass  
+           H2_price = H2_mass * price_dct['H2']
+        
+           # Nitrogen price
+           N_mass = HTL_EC.outs[2].F_mass  
+           N_price = N_mass * price_dct['N']
+        
+           # Phosphorus price
+           P_mass = HTL_EC.outs[3].F_mass  
+           P_price = P_mass * price_dct['P']
+        
+           # Potassium price
+           K_mass = HTL_EC.outs[4].F_mass  
+           K_price = K_mass * price_dct['K']
+        
+           # Set selling prices for each relevant stream
+           HTL_EC.outs[1].price = H2_price
+           HTL_EC.outs[2].price = N_price
+           HTL_EC.outs[3].price = P_price
+           HTL_EC.outs[4].price = K_price
 
-    
     # 3-day storage time as in the SAF module
     biofuel = qs.WasteStream('biofuel', price=price_dct['diesel'])
     BiofuelStorage = qsu.StorageTank(
@@ -422,8 +444,8 @@ if __name__ == '__main__':
         pilot_dry_flowrate=None,
         )
     
-    #config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False))
-    config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False))
+    config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False))
+    #config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False))
     #config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True))
     
     sys = create_system(**config_kwargs)
