@@ -17,7 +17,6 @@ from qsdsan import processes as pc
 from qsdsan import WasteStream, System
 from qsdsan.utils import ospath, time_printer, load_data, get_SRT, \
     ExogenousDynamicVariable as EDV
-from scipy.interpolate import interp1d
 
 from exposan.pm2_ecorecover import (
     data_path,
@@ -190,7 +189,7 @@ eco = System('EcoRecovery',
                    MEM, MEV, POST_MEM, CENT, RET),
              recycle=(RAA,))
 
-eco.set_dynamic_tracker(*eco.units)
+eco.set_dynamic_tracker(SE, MIX, PBR1, PBR20, RET, TE, CEN, ALG)
 eco.set_tolerance(rmol=1e-6)
 bio_IDs = ('X_ALG',)
 
@@ -203,37 +202,16 @@ __all__ = (
 
 #%%
 
-idx = cmps.indices(['X_PG', 'X_TAG', 'X_ALG', 'X_N_ALG', 'X_P_ALG'])
-imass = cmps.i_mass[idx]
-import pandas as pd
-
-def get_TSS_from_state(state):
-    concs = state[:,idx]
-    return np.sum(concs*imass, axis=1)  # mg/L = g/m3
-
-def TSS_accum(sys, T, t_step):
-    out = 0
-    isa = isinstance
-    for u in sys.units:
-        if isa(u, su.CSTR):
-            state = u.scope.record
-            out += get_TSS_from_state(state)*u.V_max # g/m3 * m3 = g
-    t_eval = np.arange(0, T+t_step, t_step)
-    f = interp1d(sys.scope.time_series, out)
-    vss = f(t_eval)
-    return vss/0.89
-
 @time_printer
 def run(t, t_step, method=None, print_t=False, **kwargs):
-    t_eval = np.arange(0, t+t_step, t_step)
     if method:
         eco.simulate(state_reset_hook='reset_cache',
                       t_span=(0,t),
-                      t_eval=t_eval,
+                      t_eval = np.arange(0, t+t_step, t_step),
                       method=method,
                       # rtol=1e-2,
                       # atol=1e-3,
-                      # export_state_to=f'results/sol_{t}d_{method}_dynamic_influent_uasa.xlsx',
+                      export_state_to=ospath.join(results_path, f'sol_{t}d_{method}_calibration_result_troubleshooting.xlsx'),
                       print_t=print_t,
                       **kwargs)
     else:
@@ -244,16 +222,12 @@ def run(t, t_step, method=None, print_t=False, **kwargs):
                       print_msg=True,
                       print_t=print_t,
                       **kwargs)
-    tss = TSS_accum(eco, t, t_step)
-    df = pd.DataFrame()
-    df.index = t_eval
-    df.index.name = 't'
-    df['total TSS [g]'] = tss
-    df.to_csv(ospath.join(results_path, 'cali_system_tss_test.csv'))
+
+        eco.simulate()
+
     unit_IDs = [u.ID for u in eco.units if isinstance(u, su.CSTR)]
     srt = get_SRT(eco, bio_IDs, active_unit_IDs=unit_IDs)
     print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
-    # return eco
 
 if __name__ == '__main__':
     t = 25

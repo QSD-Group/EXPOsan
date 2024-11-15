@@ -76,7 +76,7 @@ V_ret = 6.21
 pm2 = pc.PM2(arr_e=6663.36141724313, K_P=6.06569854392092, f_CH_max=9.60813888591872, exponent=7.56541058257826, q_CH=1.92792246509906, q_LI=26.1535941900048, V_NH=0.150722549179019, V_P=0.540050768528713,
               a_c=0.049, I_n=1500, arr_a=1.8e10, beta_1=2.90,
               beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
-              K_N=0.1, K_A=6.3, K_F=6.3, rho=1.186, K_STO=1.566,
+              K_N=0.1, K_A=6.3, K_G=6.3, rho=1.186, K_STO=1.566,
               f_LI_max=3.249, m_ATP=10,
               mu_max=1.969, Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163,
               V_NO=0.003, n_dark=0.7,
@@ -145,11 +145,11 @@ POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.97)            
 
 CENT = su.Splitter('CENT', POST_MEM-1, outs=[CEN, ALG], split={'X_CHL':0.33,
                                                                 'X_ALG':0.33,
-                                                                'X_CH':0.33,
-                                                                'X_LI':0.33,
+                                                                'X_PG':0.33,
+                                                                'X_TAG':0.33,
                                                                 'S_CO2':0.975,
                                                                 'S_A':0.975,
-                                                                'S_F':0.975,
+                                                                'S_G':0.975,
                                                                 'S_O2':0.975,
                                                                 'S_NH':0.975,
                                                                 'S_NO':0.975,
@@ -166,11 +166,11 @@ RET = su.CSTR('RET', ins=[PBR20-1, POST_MEM-0, CENT-0], outs=[RAA], V_max=V_ret,
 _init_conds = {
         'X_CHL':2.60,
         'X_ALG':519.80,
-        'X_CH':23.62,
-        'X_LI':96.34,
+        'X_PG':23.62,
+        'X_TAG':96.34,
         'S_CO2':30.0,
         'S_A':5.0,
-        'S_F':5.0,
+        'S_G':5.0,
         'S_O2':5.0,
         'S_NH':33.86,
         'S_NO':3.46,
@@ -203,7 +203,7 @@ __all__ = (
 
 #%%
 
-idx = cmps.indices(['X_CH', 'X_LI', 'X_ALG', 'X_N_ALG', 'X_P_ALG'])
+idx = cmps.indices(['X_PG', 'X_TAG', 'X_ALG', 'X_N_ALG', 'X_P_ALG'])
 imass = cmps.i_mass[idx]
 import pandas as pd
 
@@ -249,7 +249,7 @@ def run(t, t_step, method=None, print_t=False, **kwargs):
     df.index = t_eval
     df.index.name = 't'
     df['total TSS [g]'] = tss
-    df.to_csv(ospath.join(results_path, 'vali_system_tss.csv'))
+    df.to_csv(ospath.join(results_path, 'vali_system_tss_TEST.csv'))
     unit_IDs = [u.ID for u in eco.units if isinstance(u, su.CSTR)]
     srt = get_SRT(eco, bio_IDs, active_unit_IDs=unit_IDs)
     print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
