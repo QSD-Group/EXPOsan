@@ -249,7 +249,7 @@ def run(t, t_step, method=None, print_t=False, **kwargs):
     df.index = t_eval
     df.index.name = 't'
     df['total TSS [g]'] = tss
-    df.to_csv(ospath.join(results_path, 'vali_system_tss_TEST.csv'))
+    df.to_csv(ospath.join(results_path, 'vali_system_tss_111524.csv'))
     unit_IDs = [u.ID for u in eco.units if isinstance(u, su.CSTR)]
     srt = get_SRT(eco, bio_IDs, active_unit_IDs=unit_IDs)
     print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
