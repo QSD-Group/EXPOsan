@@ -134,10 +134,24 @@ class Hydroprocessing(safu.Hydroprocessing):
 class Electrochemical(safu.Electrochemical):
 
     _N_unit = 1
+    skip = False
     
+    def _run(self):
+        if self.skip:
+            self.ins[1].empty() # replacement_surrogate
+            for i in self.outs: i.empty()
+            self.outs[-1].copy_like(self.ins[0])
+        else: safu.Electrochemical._run(self)
+
+    def _design(self):
+        if self.skip: self.design_results.clear()
+        else: safu.Electrochemical._design(self)
+
     def _cost(self):
-        safu.Electrochemical._cost(self)
+        if self.skip: self.baseline_purchase_costs.clear()
+        else: safu.Electrochemical._cost(self)
         self.parallel['self'] = self._N_unit
+
 
     @property
     def N_unit(self):
@@ -205,7 +219,7 @@ class Electrochemical(safu.Electrochemical):
 class PilotHTL(safu.HydrothermalLiquefaction):
     '''
     Pilot-scale reactor for hydrothermal liquefaction (HTL) of wet organics.
-    Biocrude from mulitple pilot-scale reactors will be transported to a central plant
+    Biocrude from multiple pilot-scale reactors will be transported to a central plant
     for biocrude upgrading.
     
     Parameters
@@ -238,7 +252,6 @@ class PilotHTL(safu.HydrothermalLiquefaction):
                  accessory_cost_ratio=0.08,
                  **kwargs,
                  ):
-        
         safu.HydrothermalLiquefaction.__init__(self, ID, ins, outs, thermo, init_with, include_construction, **kwargs)
         self.N_unit = N_unit
         self.piping_cost_ratio = piping_cost_ratio

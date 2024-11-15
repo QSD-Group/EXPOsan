@@ -116,6 +116,12 @@ def create_system(
     # =========================================================================
     # Hydrothermal Liquefaction (HTL)
     # =========================================================================
+    aqueous_composition = {
+        'N': 0.48/100,
+        'P': 0.60/100,
+        'K': 0.72/100,
+        }
+    aqueous_composition['HTLaqueous'] = 1 - sum(aqueous_composition.values())
     HTL = u.HydrothermalLiquefaction(
         'HTL', ins=MixedFeedstockPump-0,
         outs=('', '', 'HTL_crude', 'ash'),
@@ -125,12 +131,7 @@ def create_system(
         tau=15/60,
         dw_yields=HTL_yields,
         gas_composition={'CO2': 1}, 
-        aqueous_composition={
-            'HTLaqueous': 1-(0.41+0.47+0.56)/100,
-            'N': 0.41/100,
-            'P': 0.47/100,
-            'K': 0.56/100,
-            },
+        aqueous_composition=aqueous_composition,
         biocrude_composition={'Biocrude': 1},
         char_composition={'HTLchar': 1},
         internal_heat_exchanging=True,
@@ -140,9 +141,8 @@ def create_system(
         )
     HTL.register_alias('HydrothermalLiquefaction')
     
-    CrudePump = qsu.Pump('CrudePump', ins=HTL-2, outs='crude_to_dist', P=1530.0*_psi_to_Pa,
+    CrudePump = qsu.Pump('CrudePump', ins=HTL-2, outs='crude_to_dist',
               init_with='Stream')
-    # Jones 2014: 1530.0 psia
     
     # Light (water): medium (biocrude): heavy (char)
     crude_fracs = [0.0339, 0.8104, 0.1557]
@@ -439,9 +439,7 @@ def create_system(
     
     # =========================================================================
     # Electrochemical Unit
-    # =========================================================================    
-
-    
+    # =========================================================================
     # All wastewater streams
     ww_streams = [HTLaqMixer-0, HCliquidSplitter-0, HTliquidSplitter-0]
     # Wastewater sent to municipal wastewater treatment plant
@@ -485,7 +483,7 @@ def create_system(
         FeedstockTrans.transportation_unit_cost = dry_price * factor
         # Wastewater
         ww_to_disposal.source._run()
-        COD_mass_content = sum(ww_to_disposal.imass[i.ID]*i.i_COD for i in ww_to_disposal.components)
+        COD_mass_content = ww_to_disposal.COD*ww_to_disposal.F_vol/1e3 # mg/L*m3/hr to kg/hr
         factor = COD_mass_content/ww_to_disposal.F_mass
         ww_to_disposal.price = price_dct['COD']*factor
         ww_to_disposal_item = qs.ImpactItem.get_item('ww_to_disposal_item')
@@ -548,7 +546,9 @@ def create_system(
     feedstock_item = qs.StreamImpactItem(
         ID='feedstock_item',
         linked_stream=feedstock,
-        GWP=gwp_dct['feedstock'],
+        # feedstock, landfill, composting, anaerobic_digestion
+        # may or may not be good to assume landfill offsetting
+        GWP=-gwp_dct['landfill'],
         )
     trans_feedstock_item = qs.StreamImpactItem(
         ID='trans_feedstock_item',
@@ -655,6 +655,15 @@ def get_MFSP(sys, print_msg=False):
     if print_msg: print(f'Minimum selling price of all fuel is ${MFSP:.2f}/GGE.')
     return MFSP
 
+# In kg CO2e/GGE
+def get_GWP(sys, print_msg=False):
+    mixed_fuel = sys.flowsheet.stream.mixed_fuel
+    all_impacts = sys.LCA.get_allocated_impacts(streams=(mixed_fuel,), operation_only=True, annual=True)
+    GWP = all_impacts['GWP']/get_GGE(sys, mixed_fuel, True)
+    if print_msg: print(f'Global warming potential of all fuel is {GWP:.2f} kg CO2e/GGE.')
+    return GWP
+    
+
 def get_fuel_properties(sys, fuel):
     HHV = fuel.HHV/fuel.F_mass/1e3 # MJ/kg
     rho = fuel.rho/_m3_to_gal # kg/gal
@@ -665,7 +674,6 @@ def simulate_and_print(system, save_report=False):
     sys.simulate()
     stream = sys.flowsheet.stream
     tea = sys.TEA
-    lca = sys.LCA
     
     fuels = (gasoline, jet, diesel) = (stream.gasoline, stream.jet, stream.diesel)
     properties = {f: get_fuel_properties(sys, f) for f in fuels}
@@ -686,10 +694,8 @@ def simulate_and_print(system, save_report=False):
         uom = c if attr in ('NPV', 'CAPEX') else (c+('/yr'))
         print(f'{attr} is {getattr(tea, attr):,.0f} {uom}')
         
-    mixed_fuel = stream.mixed_fuel
-    all_impacts = lca.get_allocated_impacts(streams=(mixed_fuel,), operation_only=True, annual=True)
-    GWP = all_impacts['GWP']/get_GGE(sys, mixed_fuel, True)
-    print(f'Global warming potential of all fuel is {GWP:.2f} kg CO2e/GGE.')
+    global GWP
+    GWP = get_GWP(sys, print_msg=True)
     
     if save_report:
         # Use `results_path` and the `join` func can make sure the path works for all users

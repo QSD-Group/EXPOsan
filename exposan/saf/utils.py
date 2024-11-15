@@ -34,9 +34,12 @@ def find_Lr_Hr(unit, target_light_frac=None, Lr_trial_range=Lr_trial_range, Hr_t
             unit.Hr = round(Hr,2)
             try: 
                 unit.simulate()
-                Hr_results[Hr] = outs0.F_mass/F_mass_in
+                result = outs0.F_mass/F_mass_in
+                print(f'Hr: {Hr}, Lr: {Lr}, result: {result}.')
+                Hr_results[Hr] = result
             except:
                 Hr_results[Hr] = None
+                print(f'Hr: {Hr}, Lr: {Lr}, simulation failed.')
         results[Lr] = Hr_results
     results_df = pd.DataFrame.from_dict(results) # columns are Lr, rows are Hr
     unit.Lr, unit.Hr = _Lr, _Hr

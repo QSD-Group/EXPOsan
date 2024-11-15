@@ -126,12 +126,12 @@ gwp_dct = {
     'electricity': 0.4181, # kg CO2e/kWh Non Distributed - U.S. Mix
     'steam': 86.3928/1e3, # 86.3928 g CO2e/MJ, Mix: Natural Gas and Still Gas
     'cooling': 0.066033, # kg CO2e/MJ, Feng et al., 2024
-    'gasoline': 0.8415, # Gasoline Blendstock from Crude oil for Use in US Refineries
-    'jet': 0.5349, # Ultra Low-Sulfur Fuel from Crude Oil
-    'diesel': 0.6535, # Conventional Diesel from Crude Oil for US Refineries
+    'gasoline': 2.3722, # kg CO2e/gal, 0.8415 kg CO2e/kg, no combustion emission, Gasoline Blendstock from Crude oil for Use in US Refineries
+    'jet': 1.4599, # kg CO2e/gal, 0.4809 kg CO2e/kg, no combustion emission, Conventional Jet Fuel from Crude Oil
+    'diesel': 2.0696, # kg CO2e/gal, 0.6535 kg CO2e/kg, no combustion emission, Conventional Diesel from Crude Oil for US Refineries
     'N': -3.46, # 3.46 kg CO2e/kg N, Mix: Nitrogen Average
-    'P': -1.6379/142*31*2, # 1.6379 kg CO2e/kg P2O5, Mix: Phosphate (P2O5) from MAP and DAP
-    'K': -0.4830/94*39*2, # 0.4830 kg CO2e/kg K2O, Potassium Oxide Production
+    'P': -1.6379*142/(31*2), # 1.6379 kg CO2e/kg P2O5, Mix: Phosphate (P2O5) from MAP and DAP
+    'K': -0.4830*94/(39*2), # 0.4830 kg CO2e/kg K2O, Potassium Oxide Production
     'COD': 1.7, # Li et al., 2023
     'wastewater': 0.2851/1e3, # Industrial Wastewater Treatment
     }
@@ -181,9 +181,4 @@ def _load_process_settings():
     for i in (hps, mps, lps, cw):
         i.heat_transfer_price = 0
 
-    bst.PowerUtility.price = 0.076*AEO_factor # EIA AEO 2023, Table 8, End-Use Industrial Sector, 2024 price in 2022$,
-
-    #!!! Should set production vs. consumption price    
-    # Annual Energy Outlook 2023 https://www.eia.gov/outlooks/aeo/data/browser/
-    # Table 8. Electricity Supply, Disposition, Prices, and Emissions
-    # End-Use Prices, Industrial, nominal 2024 value in $/kWh
+    bst.PowerUtility.price = 0.076*AEO_factor # EIA AEO 2023, Table 8, End-Use Industrial Sector, 2024 price in 2022$

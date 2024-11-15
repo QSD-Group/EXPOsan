@@ -357,15 +357,13 @@ class HydrothermalLiquefaction(Reactor):
         inf_after_hx, eff_after_hx = hx.outs
         inf_pre_hx.copy_like(self.ins[0])
         eff_pre_hx.copy_like(self._eff_at_temp)
-        
-        # breakpoint()
+
         if self.internal_heat_exchanging: # use product to heat up influent
             hx.phase0 = hx.phase1 = 'l'
             hx.T_lim1 = self.eff_T
             hx.simulate()
             for i in self.outs:
                 i.T = eff_after_hx.T
-                i.P = eff_after_hx.P
         else:
             hx.empty()
             inf_after_hx.copy_like(inf_pre_hx)
@@ -375,7 +373,6 @@ class HydrothermalLiquefaction(Reactor):
         inf_hx_in.copy_like(inf_after_hx)
         inf_hx_out.copy_flow(inf_hx_in)
         inf_hx_out.T = self.T
-        inf_hx_out.P = self.P # this may lead to HXN error, when at pressure
         inf_hx.simulate_as_auxiliary_exchanger(ins=inf_hx.ins, outs=inf_hx.outs)
 
         # Additional eff HX
@@ -1106,7 +1103,7 @@ class Electrochemical(SanUnit):
         # 96485 is the Faraday constant C/mol (A·s/mol e)
         # MW of H2 is 2 g/mol, 2 electrons per mole of H2
         factor = 2/(2/1e3) * 96485 # (A·s/kg H2)
-        H2_production = self.outs[1].imass['H2'] / 3600 # kg/s
+        H2_production = (self.outs[0].imass['H2']+self.outs[1].imass['H2']) / 3600 # kg/s
         current_eq = factor * H2_production # A
         area = current_eq / self.average_current_density
         Design['Area'] = area

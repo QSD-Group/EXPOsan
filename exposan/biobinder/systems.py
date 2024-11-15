@@ -53,6 +53,8 @@ def create_system(
         pilot_dry_flowrate=None,
         decentralized_HTL=False,
         decentralized_upgrading=False,
+        skip_EC=False,
+        generate_H2=False,
         ):
 
     if central_dry_flowrate is None:
@@ -77,6 +79,8 @@ def create_system(
             N_HTL = N_upgrading = 1
             central_dry_flowrate = pilot_dry_flowrate
         
+    if skip_EC is True and generate_H2 is True:
+        raise ValueError('Cannot generate H2 without EC.')
     
     if flowsheet is None:
         flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -98,7 +102,7 @@ def create_system(
         N_unit=N_HTL,
         copy_ins_from_outs=True,
         transportation_unit_cost=0, # will be adjusted later
-        transportation_distance=1, # 25 km ref [1]; #!!! changed, distance already included in the unit cost
+        transportation_distance=1, # 25 km ref [1]
         )
 
     # Price accounted for in PWC
@@ -117,6 +121,10 @@ def create_system(
         )
     FeedstockCond.N_unit = N_HTL # init doesn't take this property
 
+    aqueous_composition = {
+        'N': 0.48/100,
+        }
+    aqueous_composition['HTLaqueous'] = 1 - sum(aqueous_composition.values())
     HTL_kwargs = dict(
         ID='HTL',
         ins=FeedstockCond.outs[0],
@@ -126,16 +134,9 @@ def create_system(
         # P=101325, # setting P to ambient pressure not practical, but it has minimum effects on the results (several cents)
         tau=15/60,
         dw_yields=HTL_yields,
-        gas_composition={
-            'CH4':0.050,
-            'C2H6':0.032,
-            'CO2':0.918
-            },
-        aqueous_composition={'HTLaqueous': 1},
-        biocrude_composition={
-            'Water': 0.063,
-            'HTLbiocrude': 1-0.063,
-            },
+        gas_composition={'CO2': 1,},
+        aqueous_composition=aqueous_composition,
+        biocrude_composition={'HTLbiocrude': 1,},
         char_composition={'HTLchar': 1},
         internal_heat_exchanging=True,
         eff_T=60+273.15, # 140.7°F
@@ -164,21 +165,56 @@ def create_system(
             'HTL_EC',
             ins=(HTL-1, 'HTL_EC_replacement_surrogate'),
             outs=('HTL_EC_gas', 'HTL_EC_H2', 'HTL_EC_N', 'HTL_EC_P', 'HTL_EC_K', 'HTLww_to_disposal'),
+            include_PSA=generate_H2,
             )
         HTL_EC.N_unit = N_HTL
+        HTL_EC.skip = skip_EC
         
-        HTL_ECscaler = u.Scaler(
-            'HTL_ECscaler', ins=HTL_EC.outs[-1], outs='scaled_HTLww_to_disposal',
+        HTL_ECgasScaler = u.Scaler(
+            'HTL_ECgasScaler', ins=HTL_EC.outs[0], outs='scaled_HTLgas',
+            scaling_factor=N_HTL, reverse=False,
+            )
+        
+        HTL_ECH2Scaler = u.Scaler(
+            'HTL_ECH2Scaler', ins=HTL_EC.outs[1], outs='scaled_HTLH2',
+            scaling_factor=N_HTL, reverse=False,
+            )
+        
+        HTL_ECNScaler = u.Scaler(
+            'HTL_ECNScaler', ins=HTL_EC.outs[2], outs='scaled_HTLN',
+            scaling_factor=N_HTL, reverse=False,
+            )
+        
+        HTL_ECPScaler = u.Scaler(
+            'HTL_ECPScaler', ins=HTL_EC.outs[3], outs='scaled_HTLP',
+            scaling_factor=N_HTL, reverse=False,
+            )
+        
+        HTL_ECKScaler = u.Scaler(
+            'HTL_ECKScaler', ins=HTL_EC.outs[4], outs='scaled_HTLK',
+            scaling_factor=N_HTL, reverse=False,
+            )
+
+        HTL_ECwwScaler = u.Scaler(
+            'HTL_ECscaler', ins=HTL_EC.outs[5], outs='scaled_HTLww_to_disposal',
             scaling_factor=N_HTL, reverse=False,
             )
         
         streams_to_upgrading_EC_lst = []
         streams_to_CHP_lst = []
-        liquids_to_disposal_lst = [HTL_ECscaler-0]
+        H2_streams = [HTL_ECH2Scaler-0]
+        N_streams = [HTL_ECNScaler-0]
+        P_streams = [HTL_ECPScaler-0]
+        K_streams = [HTL_ECKScaler-0]
+        liquids_to_disposal_lst = [HTL_ECwwScaler-0]
         solids_to_disposal_lst = [HTLcharScaler-0]
     else:
         streams_to_upgrading_EC_lst = [HTL-1]
         streams_to_CHP_lst = [HTLgasScaler-0, HTLcharScaler-0]
+        H2_streams = []
+        N_streams = []
+        P_streams = []
+        K_streams = []
         liquids_to_disposal_lst = []
         solids_to_disposal_lst = []
 
@@ -228,14 +264,17 @@ def create_system(
         outs=('hot_biofuel','hot_biobinder'),
         LHK=BiocrudeSplitter.keys[1],
         P=50*_psi_to_Pa,
-        Lr=0.85,
-        Hr=0.85,
+        Lr=0.75,
+        Hr=0.85, # 0.85 and 0.89 are more better
         k=2, is_divided=True)
     
     # import numpy as np
     # from exposan.saf.utils import find_Lr_Hr
-    # Lr_range = Hr_range = np.arange(0.05, 1, 0.05)
-    # results = find_Lr_Hr(CrudeHeavyDis, target_light_frac=oil_fracs[0], Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
+    # oil_fracs = [0.5316, 0.4684]
+    # Lr_range = np.arange(0.5, 1, 0.05)
+    # Hr_range = np.arange(0.75, 1, 0.05)
+    # results = find_Lr_Hr(CrudeHeavyDis, Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
+    # # results = find_Lr_Hr(CrudeHeavyDis, target_light_frac=oil_fracs[0], Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
     # results_df, Lr, Hr = results
     
     CrudeHeavyDis_run = CrudeHeavyDis._run
@@ -260,7 +299,7 @@ def create_system(
     # Simulation may converge at multiple points, filter out unsuitable ones
     def screen_results():
         ratio0 = oil_fracs[0]
-        lb, ub = round(ratio0,2)-0.05, round(ratio0,2)+0.05 #!!! see if could adjust the Lr/Hr values for closer results
+        lb, ub = round(ratio0,2)-0.02, round(ratio0,2)+0.02
         try: 
             run_design_cost()
             status = True
@@ -300,8 +339,15 @@ def create_system(
         'Upgrading_EC',
         ins=(UpgradingECmixer-0, 'Upgrading_EC_replacement_surrogate'),
         outs=('Upgrading_EC_gas', 'Upgrading_EC_H2', 'Upgrading_EC_N', 'Upgrading_EC_P', 'Upgrading_EC_K', 'ECww_to_disposal'),
+        include_PSA=generate_H2,
         )
     Upgrading_EC.N_unit = N_upgrading
+    Upgrading_EC.skip = skip_EC
+    H2_streams.append(Upgrading_EC-1)
+    N_streams.append(Upgrading_EC-2)
+    P_streams.append(Upgrading_EC-3)
+    K_streams.append(Upgrading_EC-4)
+    
     liquids_to_disposal_lst.append(Upgrading_EC.outs[-1])
     
     ww_to_disposal = qs.WasteStream('ww_to_disposal')
@@ -328,7 +374,7 @@ def create_system(
         
         # Wastewater
         WWdisposalMixer._run()
-        COD_mass_content = sum(ww_to_disposal.imass[i.ID]*i.i_COD for i in ww_to_disposal.components)
+        COD_mass_content = ww_to_disposal.COD*ww_to_disposal.F_vol/1e3 # mg/L*m3/hr to kg/hr
         factor = COD_mass_content/ww_to_disposal.F_mass
         ww_to_disposal.price = price_dct['COD']*factor
 
@@ -354,6 +400,19 @@ def create_system(
         tau=24*3, vessel_material='Stainless steel',
         include_construction=False,
         )
+    
+    # Other co-products
+    recovered_H2 = qs.WasteStream('recovered_H2', price=price_dct['H2'])
+    H2mixer = qsu.Mixer('H2mixer', ins=H2_streams, outs=recovered_H2)
+
+    recovered_N = qs.WasteStream('recovered_N', price=price_dct['N'])
+    Nmixer = qsu.Mixer('Nmixer', ins=N_streams, outs=recovered_N)
+
+    recovered_P = qs.WasteStream('recovered_P', price=price_dct['P'])
+    Pmixer = qsu.Mixer('Pmixer', ins=P_streams, outs=recovered_P)
+    
+    recovered_K = qs.WasteStream('recovered_K', price=price_dct['K'])
+    Kmixer = qsu.Mixer('Kmixer', ins=K_streams, outs=recovered_K)
 
     natural_gas = qs.WasteStream('natural_gas', CH4=1, price=price_dct['natural_gas'])
     CHPmixer = qsu.Mixer('CHPmixer', ins=streams_to_CHP_lst,)
@@ -418,9 +477,18 @@ if __name__ == '__main__':
         central_dry_flowrate=None,
         pilot_dry_flowrate=None,
         )
+    # What to do with HTL-AP
+    # config_kwargs.update(dict(skip_EC=False, generate_H2=False,))
+    # config_kwargs.update(dict(skip_EC=False, generate_H2=True,))
+    config_kwargs.update(dict(skip_EC=True, generate_H2=False,))
     
+    # Decentralized vs. centralized configuration
     # config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False))
     config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False))
+    
+    # Distillation column cost calculation doesn't scale down well, so the cost is very high now.
+    # But maybe don't need to do the DHDU scenario, if DHCU isn't too different from CHCU
+    # However, maybe the elimination of transportation completely will make a difference
     # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True))
     
     sys = create_system(**config_kwargs)
@@ -429,6 +497,4 @@ if __name__ == '__main__':
     tea = sys.TEA
     # lca = sys.LCA    
     
-    # sys.simulate()
-    # sys.diagram()
     simulate_and_print(sys)
