@@ -997,7 +997,7 @@ class Electrochemical(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', F_BM_default=1,
-                 COD_removal=0.764869888,
+                 COD_removal=0.95, # assumed
                  H2_yield=0.157888654,
                  gas_composition={
                      'N2': 0.000795785,
@@ -1025,8 +1025,8 @@ class Electrochemical(SanUnit):
                  electrolyte_load=13.6, # kg/m3, 0.1 M of KH2PO4 (MW=136 k/mole)
                  electrolyte_price=30, # $/kg
                  annual_replacement_ratio=0, # Jiang assumed 2%, but 3% of maintenance already considered in TEA
-                 include_PSA=False,
-                 PSA_efficiency=0.9,
+                 include_PSA=True,
+                 PSA_efficiency=0.95,
                  PSA_compressor_P=101325,
                  ):
         

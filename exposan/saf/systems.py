@@ -461,12 +461,12 @@ def create_system(
         'EC',
         ins=(WWmixer-0, 'EC_replacement_surrogate'),
         outs=('EC_gas', 'EC_H2', recovered_N, recovered_P, recovered_K, ww_to_disposal),
-        # EO_voltage=2, # originally 5, 2 for 50% efficiency
-        # ED_voltage=2, # originally 30, 2 for 50% efficiency
+        COD_removal=0.95, # assumed
         N_recovery=0.8,
         P_recovery=0.99,
         K_recovery=0.8,
         include_PSA=include_PSA,
+        PSA_efficiency=0.95,
         )
     EC.register_alias('Electrochemical')
     fuel_gases.append(EC-0)
@@ -706,4 +706,15 @@ if __name__ == '__main__':
     tea = sys.TEA
     lca = sys.LCA
     
-    simulate_and_print(sys)
+    simulate_and_print(sys)    
+    
+    # EC = sys.flowsheet.unit.EC
+    # EC.EO_voltage = 2 # originally 5
+    # EC.ED_voltage = 12 # originally 30
+    # simulate_and_print(sys)
+    
+    # EC = sys.flowsheet.unit.EC
+    # EC.EO_voltage = 2 # originally 5
+    # EC.ED_voltage = 12 # originally 30
+    # EC.electrode_cost = 4000 # originally 40,000
+    # simulate_and_print(sys)

@@ -136,7 +136,7 @@ class Electrochemical(safu.SAFElectrochemical):
     _N_unit = 1
 
     def _cost(self):
-        safu.Electrochemical._cost(self)
+        safu.SAFElectrochemical._cost(self)
         self.parallel['self'] = self._N_unit
 
 
