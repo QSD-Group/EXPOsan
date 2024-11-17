@@ -1205,6 +1205,28 @@ class Electrochemical(SanUnit):
         self._PSA_efficiency  = i
 
 
+class SAFElectrochemical(Electrochemical):
+    '''To allow skipping unit simulation for different configurations.'''
+    
+    skip = False
+    
+    def _run(self):
+        if self.skip:
+            self.ins[1].empty() # replacement_surrogate
+            for i in self.outs: i.empty()
+            self.outs[-1].copy_like(self.ins[0])
+        else: Electrochemical._run(self)
+
+    def _design(self):
+        if self.skip: self.design_results.clear()
+        else: Electrochemical._design(self)
+
+    def _cost(self):
+        if self.skip: self.baseline_purchase_costs.clear()
+        else: Electrochemical._cost(self)
+    
+
+
 # %%
 
 class HydrogenCenter(Facility):

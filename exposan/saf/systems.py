@@ -453,28 +453,24 @@ def create_system(
         GasolineFlash-0, JetFlash-0, # final distillation fuel gases
         ]
        
-    if include_EC:
-        recovered_N = qs.WasteStream('recovered_N', price=price_dct['N'])
-        recovered_P = qs.WasteStream('recovered_P', price=price_dct['P'])
-        recovered_K = qs.WasteStream('recovered_K', price=price_dct['K'])
+    recovered_N = qs.WasteStream('recovered_N', price=price_dct['N'])
+    recovered_P = qs.WasteStream('recovered_P', price=price_dct['P'])
+    recovered_K = qs.WasteStream('recovered_K', price=price_dct['K'])
 
-        EC = u.Electrochemical(
-            'EC',
-            ins=(WWmixer-0, 'replacement_surrogate'),
-            outs=('EC_gas', 'EC_H2', recovered_N, recovered_P, recovered_K, ww_to_disposal),
-            # EO_voltage=2, # originally 5, 2 for 50% efficiency
-            # ED_voltage=2, # originally 30, 2 for 50% efficiency
-            N_recovery=0.8,
-            P_recovery=0.99,
-            K_recovery=0.8,
-            include_PSA=include_PSA,
-            )
-        EC.register_alias('Electrochemical')
-        fuel_gases.append(EC-0)
-        recycled_H2_streams = [EC-1]
-    else:
-        WWmixer.outs[0] = ww_to_disposal
-        recycled_H2_streams = []
+    EC = u.SAFElectrochemical(
+        'EC',
+        ins=(WWmixer-0, 'EC_replacement_surrogate'),
+        outs=('EC_gas', 'EC_H2', recovered_N, recovered_P, recovered_K, ww_to_disposal),
+        # EO_voltage=2, # originally 5, 2 for 50% efficiency
+        # ED_voltage=2, # originally 30, 2 for 50% efficiency
+        N_recovery=0.8,
+        P_recovery=0.99,
+        K_recovery=0.8,
+        include_PSA=include_PSA,
+        )
+    EC.register_alias('Electrochemical')
+    fuel_gases.append(EC-0)
+    EC.skip = False if include_EC else True    
 
     def adjust_prices():
         # Transportation
@@ -513,7 +509,7 @@ def create_system(
     H2C = u.HydrogenCenter(
         'H2C',
         process_H2_streams=(HC.ins[1], HT.ins[1]),
-        recycled_H2_streams=recycled_H2_streams
+        recycled_H2_streams=EC-1,
         )
     H2C.register_alias('HydrogenCenter')
     H2C.makeup_H2_price = H2C.excess_H2_price = price_dct['H2']
@@ -532,11 +528,9 @@ def create_system(
         )
     for unit in sys.units: unit.include_construction = False
     
-    tea = create_tea(sys, **tea_kwargs)
+    tea = create_tea(sys, **tea_kwargs)  
     
-    #!!! Add LCA (streams, utilities, transportation, electrolyte replacement, avoided emissions).    
-    
-    # LCIA based on GREET 2023, unless otherwise noted
+    # Add characterization factors for each impact item
     clear_lca_registries()
     GWP = qs.ImpactIndicator('GWP',
                              alias='GlobalWarmingPotential',
@@ -608,22 +602,21 @@ def create_system(
         ID='cooling_item',
         GWP=gwp_dct['cooling'],
         )
-    if include_EC:
-        recovered_N_item = qs.StreamImpactItem(
-            ID='recovered_N_item',
-            linked_stream=recovered_N,
-            GWP=gwp_dct['N'],
-            )
-        recovered_P_item = qs.StreamImpactItem(
-            ID='recovered_P_item',
-            linked_stream=recovered_P,
-            GWP=gwp_dct['P'],
-            )
-        recovered_K_item = qs.StreamImpactItem(
-            ID='recovered_K_item',
-            linked_stream=recovered_K,
-            GWP=gwp_dct['K'],
-            )
+    recovered_N_item = qs.StreamImpactItem(
+        ID='recovered_N_item',
+        linked_stream=recovered_N,
+        GWP=gwp_dct['N'],
+        )
+    recovered_P_item = qs.StreamImpactItem(
+        ID='recovered_P_item',
+        linked_stream=recovered_P,
+        GWP=gwp_dct['P'],
+        )
+    recovered_K_item = qs.StreamImpactItem(
+        ID='recovered_K_item',
+        linked_stream=recovered_K,
+        GWP=gwp_dct['K'],
+        )
 
     lifetime = tea.duration[1]-tea.duration[0]
     lca = qs.LCA(

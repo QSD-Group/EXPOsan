@@ -131,25 +131,12 @@ class Hydroprocessing(safu.Hydroprocessing):
         self.parallel['self'] = self._N_unit = int(i)
 
 
-class Electrochemical(safu.Electrochemical):
+class Electrochemical(safu.SAFElectrochemical):
 
     _N_unit = 1
-    skip = False
-    
-    def _run(self):
-        if self.skip:
-            self.ins[1].empty() # replacement_surrogate
-            for i in self.outs: i.empty()
-            self.outs[-1].copy_like(self.ins[0])
-        else: safu.Electrochemical._run(self)
-
-    def _design(self):
-        if self.skip: self.design_results.clear()
-        else: safu.Electrochemical._design(self)
 
     def _cost(self):
-        if self.skip: self.baseline_purchase_costs.clear()
-        else: safu.Electrochemical._cost(self)
+        safu.Electrochemical._cost(self)
         self.parallel['self'] = self._N_unit
 
 
