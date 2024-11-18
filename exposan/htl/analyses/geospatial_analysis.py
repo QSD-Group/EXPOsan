@@ -384,6 +384,51 @@ ax.set_aspect(1)
 
 ax.set_axis_off()
 
+#%% tax rate visualization (just for demonstration purpose, not for model)
+
+tax_rate = pd.read_excel(folder + 'state_corporate_income_tax_2022.xlsx', 'tax_2022')
+tax_rate = tax_rate.merge(US, how='right', left_on='name', right_on='NAME')
+tax_rate = gpd.GeoDataFrame(tax_rate)
+tax_rate['tax'] *= 100
+
+fig, ax = plt.subplots(figsize=(30, 30))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 30
+plt.rcParams['ytick.labelsize'] = 30
+plt.rcParams['font.sans-serif'] = 'Arial'
+
+plt.xticks(fontname='Arial')
+plt.yticks(fontname='Arial')
+
+plt.rcParams.update({'mathtext.fontset': 'custom'})
+plt.rcParams.update({'mathtext.default': 'regular'})
+plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'figure.max_open_warning': 100})
+
+mathtext.FontConstantsBase.sup1 = 0.35
+
+assert tax_rate.tax.min() > 20, 'adjust the colormap range'
+assert tax_rate.tax.max() <= 30, 'adjust the colormap range'
+
+norm = colors.TwoSlopeNorm(vmin=20, vcenter=25, vmax=30)
+tax_rate.plot('tax', ax=ax, linewidth=3, cmap='Greens', edgecolor='k', legend=True, legend_kwds={'shrink': 0.35}, norm=norm)
+
+fig.axes[1].set_ylabel('$\mathbf{Corporate\ income\ tax}$ [%]', fontname='Arial', fontsize=35)
+fig.axes[1].tick_params(length=10, width=3)
+
+pos1 = fig.axes[1].get_position()
+pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+fig.axes[1].set_position(pos2)
+
+# comment out the following line if the colorbar is needed
+# fig.delaxes(fig.axes[1])
+
+ax.set_aspect(1)
+
+ax.set_axis_off()
+
 #%% transporation distance calculation
 
 # no need to set a max distance since the transportation of biocrude was not a key/limiting driver

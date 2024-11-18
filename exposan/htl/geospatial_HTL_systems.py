@@ -43,11 +43,11 @@ References:
      about-natural-gas/ (accessed 2024-08-08).
 [13] https://www.eia.gov/dnav/ng/hist/n3035us3A.htm accessed (2024-08-03).
 [14] Marufuzzaman, M.; Ekşioğlu, S. D.; Hernandez, R. Truck versus Pipeline
-    Transportation Cost Analysis of Wastewater Sludge. Transportation Research Part A:
-    Policy and Practice 2015, 74, 14–30. https://doi.org/10.1016/j.tra.2015.02.001.
+     Transportation Cost Analysis of Wastewater Sludge. Transportation Research Part A:
+     Policy and Practice 2015, 74, 14–30. https://doi.org/10.1016/j.tra.2015.02.001.
 [15] Pootakham, T.; Kumar, A. Bio-Oil Transport by Pipeline: A Techno-Economic
-    Assessment. Bioresource Technology 2010, 101 (18), 7137–7143.
-    https://doi.org/10.1016/j.biortech.2010.03.136.
+     Assessment. Bioresource Technology 2010, 101 (18), 7137–7143.
+     https://doi.org/10.1016/j.biortech.2010.03.136.
 [16] Snowden-Swan, L. J.; Zhu, Y.; Bearden, M. D.; Seiple, T. E.; Jones, S. B.;
      Schmidt, A. J.; Billing, J. M.; Hallen, R. T.; Hart, T. R.; Liu, J.;
      Albrecht, K. O.; Fox, S. P.; Maupin, G. D.; Elliott, D. C.
