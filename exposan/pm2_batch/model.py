@@ -33,7 +33,7 @@ __all__ = (
 modified_pm2_kwargs = dict(
     a_c=0.049, I_n=1500, arr_a=1.8e10, arr_e=6842, beta_1=2.90,
     beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
-    K_N=0.1, K_P=1.0, K_A=6.3, K_F=6.3, rho=1.186, K_STO=1.566,
+    K_N=0.1, K_P=1.0, K_A=6.3, K_G=6.3, rho=1.186, K_STO=1.566,
     f_CH_max=0.819, f_LI_max=3.249, m_ATP=10,
     mu_max=1.969, q_CH=1, q_LI=15,
     Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163,
@@ -58,7 +58,7 @@ baseline_values = {
     'K_N': (0.1, 'g N/m^3'),                    # (0.05, 0.15)
     'K_P': (1.0, 'g P/m^3'),                    # (0.5, 1.5)
     'K_A': (6.3, 'g COD/m^3'),                  # (3.15, 9.45)
-    'K_F': (6.3, 'g COD/m^3'),                  # (3.15, 9.45)
+    'K_G': (6.3, 'g COD/m^3'),                  # (3.15, 9.45)
     'rho': (1.186, ''),                         # (0.593, 1.779)
     'K_STO': (1.566, 'g COD/g COD'),            # (0.783, 2.349)
     'f_CH_max': (0.819, 'g COD/g COD'),         # (0.4095, 1.2285)
@@ -160,11 +160,11 @@ def create_model(system=None, kind='', analysis=''):
 
     ##### Add universal evaluation metrics #####
 
-    idx_vss = cmps.indices(['X_ALG', 'X_CH', 'X_LI', 'X_N_ALG', 'X_P_ALG'])
+    idx_vss = cmps.indices(['X_ALG', 'X_PG', 'X_TAG', 'X_N_ALG', 'X_P_ALG'])
     idx_snh = cmps.indices(['S_NH'])
     idx_sp = cmps.indices(['S_P'])
-    idx_ch = cmps.indices(['X_CH'])
-    idx_li = cmps.indices(['X_LI'])
+    idx_ch = cmps.indices(['X_PG'])
+    idx_li = cmps.indices(['X_TAG'])
 
     imass = cmps.i_mass[idx_vss]
 
@@ -188,7 +188,7 @@ def create_model(system=None, kind='', analysis=''):
         result_simul_vss = PBR.scope.record[:,idx_vss]
 
         vss = np.sum(result_simul_vss * imass, axis = 1)
-        # vss = result_simul[:,0] * cmps.X_ALG.i_mass + result_simul[0:,1] * cmps.X_CH.i_mass + result_simul[0:,2] * cmps.X_LI.i_mass + result_simul[0:,3] + result_simul[0:,4]
+        # vss = result_simul[:,0] * cmps.X_ALG.i_mass + result_simul[0:,1] * cmps.X_PG.i_mass + result_simul[0:,2] * cmps.X_TAG.i_mass + result_simul[0:,3] + result_simul[0:,4]
 
         f = interp1d(t_simul, vss)
         vss_simul = f(t_exp_vss)
