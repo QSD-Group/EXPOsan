@@ -72,9 +72,22 @@ V_pbr = 77.49
 V_mem = 7.03
 V_ret = 6.21
 
+# pm2 = pc.PM2(arr_e=6663.36141724313, K_P=6.06569854392092, f_CH_max=9.60813888591872, exponent=7.56541058257826, q_CH=1.92792246509906, q_LI=26.1535941900048, V_NH=0.150722549179019, V_P=0.540050768528713,
+#               a_c=0.049, I_n=1500, arr_a=1.8e10, beta_1=2.90,
+#               beta_2=3.50, b_reactor=0.01, I_opt=2000, k_gamma=1e-5,
+#               K_N=0.1, K_A=6.3, K_G=6.3, rho=1.186, K_STO=1.566,
+#               f_LI_max=3.249, m_ATP=10,
+#               mu_max=1.969, Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163,
+#               V_NO=0.003, n_dark=0.7,
+#               Y_ATP_PHO=55.073, Y_CH_PHO=0.754, Y_LI_PHO=0.901, Y_X_ALG_PHO=0.450,
+#               Y_ATP_HET_ACE=39.623, Y_CH_NR_HET_ACE=0.625, Y_CH_ND_HET_ACE=0.600,
+#               Y_LI_NR_HET_ACE=1.105, Y_LI_ND_HET_ACE=0.713, Y_X_ALG_HET_ACE=0.216,
+#               Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880,
+#               Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317)  # ecorecover_cali (optuna results) seed777, b_reactor=0.01
+
 pm2 = pc.PM2(arr_e=6663.36141724313, K_P=6.06569854392092, f_CH_max=9.60813888591872, exponent=7.56541058257826, q_CH=1.92792246509906, q_LI=26.1535941900048, V_NH=0.150722549179019, V_P=0.540050768528713,
               a_c=0.049, I_n=1500, arr_a=1.8e10, beta_1=2.90,
-              beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
+              beta_2=3.50, b_reactor=0.1, I_opt=2000, k_gamma=1e-5,
               K_N=0.1, K_A=6.3, K_G=6.3, rho=1.186, K_STO=1.566,
               f_LI_max=3.249, m_ATP=10,
               mu_max=1.969, Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163,
@@ -83,7 +96,7 @@ pm2 = pc.PM2(arr_e=6663.36141724313, K_P=6.06569854392092, f_CH_max=9.6081388859
               Y_ATP_HET_ACE=39.623, Y_CH_NR_HET_ACE=0.625, Y_CH_ND_HET_ACE=0.600,
               Y_LI_NR_HET_ACE=1.105, Y_LI_ND_HET_ACE=0.713, Y_X_ALG_HET_ACE=0.216,
               Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880,
-              Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317)  # ecorecover_cali (optuna results) seed777
+              Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317)  # ecorecover_cali (optuna results) seed777, b_reactor=0.1
 
 #%%
 ############# create unit operations #####################
@@ -211,7 +224,9 @@ def run(t, t_step, method=None, print_t=False, **kwargs):
                       method=method,
                       # rtol=1e-2,
                       # atol=1e-3,
-                      export_state_to=ospath.join(results_path, f'sol_{t}d_{method}_calibration_result_111824.xlsx'),
+                      # export_state_to=ospath.join(results_path, f'sol_{t}d_{method}_calibration_result_111524_breactor_0.01.xlsx'),
+                       export_state_to=ospath.join(results_path, f'sol_{t}d_{method}_calibration_result_111524_breactor_0.1.xlsx'),
+
                       print_t=print_t,
                       **kwargs)
     else:
@@ -248,5 +263,3 @@ if __name__ == '__main__':
 
 # ALG.get_mass_concentration('mg/l','X_ALG')
 # RET.scope.plot_time_series(('X_ALG'))
-
-# simulation ends with "Estimated SRT assuming at steady state is 6.98 days"

@@ -248,3 +248,5 @@ if __name__ == '__main__':
 
 # ALG.get_mass_concentration('mg/l','X_ALG')
 # RET.scope.plot_time_series(('X_ALG'))
+
+# simulation ends with "Estimated SRT assuming at steady state is 7.02 days"

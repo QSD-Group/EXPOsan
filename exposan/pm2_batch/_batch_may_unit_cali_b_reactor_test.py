@@ -22,7 +22,7 @@ cmps = pc.create_pm2_cmps()
 
 pm2 = pc.PM2(arr_e=6842, K_P=1.0, f_CH_max=0.819, exponent=4, q_CH=1.92792246509906, q_LI=26.1535941900048, V_NH=0.150722549179019, V_P=0.540050768528713,
               a_c=0.049, I_n=1500, arr_a=1.8e10, beta_1=2.90,
-              beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
+              beta_2=3.50, b_reactor=0.003, I_opt=2000, k_gamma=1e-5,
               K_N=0.1, K_A=6.3, K_G=6.3, rho=1.186, K_STO=1.566,
               f_LI_max=3.249, m_ATP=10,
               mu_max=1.969, Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163,
@@ -31,7 +31,20 @@ pm2 = pc.PM2(arr_e=6842, K_P=1.0, f_CH_max=0.819, exponent=4, q_CH=1.92792246509
               Y_ATP_HET_ACE=39.623, Y_CH_NR_HET_ACE=0.625, Y_CH_ND_HET_ACE=0.600,
               Y_LI_NR_HET_ACE=1.105, Y_LI_ND_HET_ACE=0.713, Y_X_ALG_HET_ACE=0.216,
               Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880,
-              Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317)   # sequential calibration, seed333
+              Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317)   # sequential calibration, seed333, b_reactor=0.003
+
+# pm2 = pc.PM2(arr_e=6842, K_P=1.0, f_CH_max=0.819, exponent=4, q_CH=1.92792246509906, q_LI=26.1535941900048, V_NH=0.150722549179019, V_P=0.540050768528713,
+#               a_c=0.049, I_n=1500, arr_a=1.8e10, beta_1=2.90,
+#               beta_2=3.50, b_reactor=0.3, I_opt=2000, k_gamma=1e-5,
+#               K_N=0.1, K_A=6.3, K_G=6.3, rho=1.186, K_STO=1.566,
+#               f_LI_max=3.249, m_ATP=10,
+#               mu_max=1.969, Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163,
+#               V_NO=0.003, n_dark=0.7,
+#               Y_ATP_PHO=55.073, Y_CH_PHO=0.754, Y_LI_PHO=0.901, Y_X_ALG_PHO=0.450,
+#               Y_ATP_HET_ACE=39.623, Y_CH_NR_HET_ACE=0.625, Y_CH_ND_HET_ACE=0.600,
+#               Y_LI_NR_HET_ACE=1.105, Y_LI_ND_HET_ACE=0.713, Y_X_ALG_HET_ACE=0.216,
+#               Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880,
+#               Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317)   # sequential calibration, seed333, b_reactor=0.3
 
 pm2_path = ospath.dirname(__file__)
 data_path = ospath.join(pm2_path, 'data/exo_vars_batch_may_unit.xlsx')
@@ -70,7 +83,8 @@ def run(t, t_step, method=None, print_t=False, **kwargs):
                       method=method,
                       # rtol=1e-2,
                       # atol=1e-3,
-                      export_state_to=f'results/sol_{t}d_{method}_batch_may_unit_cali_optuna_sequential_cali_111824.xlsx',
+                      export_state_to=f'results/sol_{t}d_{method}_batch_may_unit_cali_optuna_sequential_cali_breactor_0.003.xlsx',
+                      # export_state_to=f'results/sol_{t}d_{method}_batch_may_unit_cali_optuna_sequential_cali_breactor_0.3.xlsx',
                       print_t=print_t,
                       **kwargs)
     else:
