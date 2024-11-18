@@ -537,14 +537,14 @@ def create_system(
     
     tea = create_tea(sys, **tea_kwargs)
     
-    # lca = qs.LCA(
-    #     system=sys,
-    #     lifetime=lifetime,
-    #     uptime_ratio=sys.operating_hours/(365*24),
-    #     Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
-    #     # Heating=lambda:sys.get_heating_duty()/1000*lifetime,
-    #     Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
-    #     )
+    lca = qs.LCA(
+        system=sys,
+        lifetime=lifetime,
+        uptime_ratio=sys.operating_hours/(365*24),
+        Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+        # Heating=lambda:sys.get_heating_duty()/1000*lifetime,
+        Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
+        )
     
     return sys
 
@@ -613,6 +613,6 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     tea = sys.TEA
-    # lca = sys.LCA
+    lca = sys.LCA
     
     simulate_and_print(sys)

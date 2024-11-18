@@ -411,15 +411,63 @@ def create_system(
 
     sys = qs.System.from_units(
         'sys',
-        units=list(flowsheet.unit),
-        operating_hours=365*24*uptime_ratio,
-        )
-    for unit in sys.units: unit.include_construction = False
-    
+    units=list(flowsheet.unit),
+    operating_hours=365 * 24 * uptime_ratio,
+     )
+
+# Set construction inclusion to False for all units
+    for unit in sys.units:
+     unit.include_construction = False
+
+# Load impact indicators and items
+    clear_lca_registries()
+    qs.ImpactIndicator.load_from_file(os.path.join(data_path, 'impact_indicators.csv'))
+    qs.ImpactItem.load_from_file(os.path.join(data_path, 'impact_items.xlsx'))
+
+# Add impact for streams
+    streams_with_impacts = [
+    i for i in sys.feeds + sys.products
+    if i.isempty() is False and i.imass['Water'] != i.F_mass and 'surrogate' not in i.ID
+    ]
+    for i in streams_with_impacts:
+      print(f"Stream with impact: {i.ID}")
+
+# Define feedstock impact item
+    feedstock_item = qs.StreamImpactItem(
+    ID='feedstock_item',
+    linked_stream=scaled_feedstock,
+    Acidification=0,
+    Ecotoxicity=0,
+    Eutrophication=0,
+    GlobalWarming=0,
+    OzoneDepletion=0,
+    PhotochemicalOxidation=0,
+    Carcinogenics=0,
+    NonCarcinogenics=0,
+    RespiratoryEffects=0,
+     )
+
+    qs.ImpactItem.get_item('Diesel').linked_stream = biofuel
+
     tea = create_tea(sys, **tea_kwargs)
     
-    return sys
+    #sys.TEA = tea  
 
+    # Calculate lifetime from duration
+    lifetime = tea_kwargs['duration'][1] - tea_kwargs['duration'][0]
+
+
+    lca = qs.LCA(
+    system=sys,
+    lifetime=lifetime,
+    uptime_ratio=sys.operating_hours / (365 * 24),
+    Electricity=lambda: (sys.get_electricity_consumption() - sys.get_electricity_production()) * lifetime,
+    Heating=lambda: sys.get_heating_duty() / 1000 * lifetime,
+    Cooling=lambda: sys.get_cooling_duty() / 1000 * lifetime,
+      )
+    #sys.LCA = lca  
+
+    return sys
 
 def simulate_and_print(sys, save_report=False):
     sys.simulate()
@@ -430,9 +478,9 @@ def simulate_and_print(sys, save_report=False):
     biobinder.price = MSP = tea.solve_price(biobinder)
     print(f'Minimum selling price of the biobinder is ${MSP:.2f}/kg.')
         
-    # all_impacts = lca.get_allocated_impacts(streams=(biobinder,), operation_only=True, annual=True)
-    # GWP = all_impacts['GlobalWarming']/(biobinder.F_mass*lca.system.operating_hours)
-    # print(f'Global warming potential of the biobinder is {GWP:.4f} kg CO2e/kg.')
+    all_impacts = lca.get_allocated_impacts(streams=(biobinder,), operation_only=True, annual=True)
+    GWP = all_impacts['GlobalWarming']/(biobinder.F_mass*lca.system.operating_hours)
+    print(f'Global warming potential of the biobinder is {GWP:.4f} kg CO2e/kg.')
     if save_report:
         # Use `results_path` and the `join` func can make sure the path works for all users
         sys.save_report(file=os.path.join(results_path, f'{sys.ID}.xlsx'))
@@ -444,15 +492,15 @@ if __name__ == '__main__':
         pilot_dry_flowrate=None,
         )
     
-    config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False))
-    #config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False))
+    #config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False))
+    config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False))
     #config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True))
     
     sys = create_system(**config_kwargs)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     tea = sys.TEA
-    # lca = sys.LCA    
+    lca = sys.LCA    
     
     # sys.simulate()
     # sys.diagram()
