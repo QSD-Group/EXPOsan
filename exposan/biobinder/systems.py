@@ -55,7 +55,9 @@ def create_system(
         decentralized_HTL=False,
         decentralized_upgrading=False,
         ):
-
+    qs.main_flowsheet.clear()
+    print(f"Received flowsheet: {flowsheet}")
+    
     if central_dry_flowrate is None:
         central_dry_flowrate = default_central
     if pilot_dry_flowrate is None:
@@ -80,8 +82,15 @@ def create_system(
         
     
     if flowsheet is None:
+        print(f"Creating new flowsheet with ID: {flowsheet_ID}")
         flowsheet = qs.Flowsheet(flowsheet_ID)
         qs.main_flowsheet.set_flowsheet(flowsheet)
+    else:
+        print(f"Using provided flowsheet with ID: {flowsheet.ID}")
+    print(f"Active flowsheet set to: {qs.main_flowsheet.ID}")
+    
+    if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
+        getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()  
     
     _load_process_settings()
     _load_components()
@@ -231,8 +240,13 @@ def create_system(
         outs=('hot_biofuel','hot_biobinder'),
         LHK=BiocrudeSplitter.keys[1],
         P=50*_psi_to_Pa,
+<<<<<<< Updated upstream
         Lr=0.85,
         Hr=0.85,
+=======
+        Lr=0.75,
+        Hr=0.89, # 0.85 and 0.89 are more better
+>>>>>>> Stashed changes
         k=2, is_divided=True)
     
     # import numpy as np
@@ -283,7 +297,7 @@ def create_system(
                 status = False
             ratio = get_ratio()
             n += 1
-            if n >= 20:
+            if n >= 100:
                 status = False
                 raise RuntimeError(f'No suitable solution for `CrudeHeavyDis` within {n} simulation.')
     CrudeHeavyDis._run = screen_results
@@ -381,6 +395,7 @@ def create_system(
         )
 
     natural_gas = qs.WasteStream('natural_gas', CH4=1, price=price_dct['natural_gas'])
+    
     CHPmixer = qsu.Mixer('CHPmixer', ins=streams_to_CHP_lst,)
     CHP = qsu.CombinedHeatPower('CHP', 
                                 ins=(CHPmixer-0, natural_gas, 'air'),
@@ -450,8 +465,138 @@ def create_system(
     qs.ImpactItem.get_item('Diesel').linked_stream = biofuel
 
     tea = create_tea(sys, **tea_kwargs)
+
+
+# Load impact indicators and items
+    #qs.main_flowsheet.clear()
+    clear_lca_registries()
+    # qs.ImpactIndicator.load_from_file(os.path.join(data_path, 'impact_indicators.csv'))
+    # qs.ImpactItem.load_from_file(os.path.join(data_path, 'impact_items.xlsx'))
+    # print("Loaded Impact Items:")
     
+<<<<<<< Updated upstream
     #sys.TEA = tea  
+=======
+  
+    gwp_dict = {
+        'feedstock': 0,
+        'landfill': 400/1e3, # nearly 400 kg CO2e/tonne, Nordahl et al., 2020
+        'composting': -41/1e3, # -41 kg CO2e/tonne, Nordahl et al., 2020
+        'anaerobic_digestion': (-36-2)/2, # -36 to -2 kg CO2e/tonne, Nordahl et al., 2020
+        'trans_feedstock': 0.011856, # 78 km, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/9393/impact_assessment, Snowden-Swan PNNL 32731
+        'trans_biocrude': 0.024472, # 100 miles,https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/9393/impact_assessment, Snowden-Swan PNNL 32731
+        'H2': -10.71017675, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/24913/impact_assessment
+        'natural_gas': 0.780926344, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/4866/impact_assessment
+        'process_water': 0,
+        'electricity': 0.465474829, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/13670/impact_assessment
+        'steam': 0.126312684, # kg CO2e/MJ, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/7479/impact_assessment
+        'cooling': 0.068359242, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/14408/impact_assessment
+        'diesel': 0.801163967, # kg CO2e/kg, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/13381/impact_assessment
+        'N': -0.441913058, #liquid, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/11489/impact_assessment
+        'P': -1.344*(98/31), # H3PO4, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/8421/impact_assessment
+        'K': -4.669210326*(56/39), # KOH, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/5111/impact_assessment
+        'COD': 1.7, # Li et al., 2023
+        'wastewater': 0.477724554, # kg CO2e/m3, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/26546/impact_assessment
+        }
+
+
+    print("GWP Dictionary Keys:", gwp_dict.keys())
+
+    GWP = qs.ImpactIndicator('GWP',
+                              alias='GlobalWarmingPotential',
+                              method='Ecoinvent',
+                              category='environmental impact',
+                              unit='kg CO2-eq',)
+           
+    feedstock_item = qs.StreamImpactItem(
+        ID='feedstock_item',
+        linked_stream=scaled_feedstock,
+        GWP=gwp_dict['feedstock'],
+        )
+    trans_feedstock_item = qs.StreamImpactItem(
+        ID='feedstock_trans_surrogate_item',
+        linked_stream=FeedstockTrans.ins[1],
+        GWP=gwp_dict['trans_feedstock'],
+        )
+    process_water_item = qs.StreamImpactItem(
+        ID='scaled_process_water_item',
+        linked_stream=ProcessWaterScaler.ins[0],
+        GWP=gwp_dict['process_water'],
+        )
+    trans_biocrude_item=qs.StreamImpactItem(
+        ID='biocrude_trans_surrogate_item',
+        linked_stream=BiocrudeTrans.ins[1],
+        GWP=gwp_dict['trans_biocrude'],
+        )
+    natural_gas_item = qs.StreamImpactItem(
+        ID='natural_gas_item',
+        linked_stream=natural_gas,
+        GWP=gwp_dict['natural_gas'],
+        )
+    ww_to_disposal_item = qs.StreamImpactItem(
+        ID='ww_to_disposal_item',
+        linked_stream=ww_to_disposal,
+        GWP=gwp_dict['wastewater'], 
+        )
+    solids_to_disposal_item = qs.StreamImpactItem(
+        ID='solids_to_disposal_item',
+        linked_stream=solids_to_disposal,
+        GWP=gwp_dict['trans_feedstock'],
+        )
+    recovered_N_item = qs.StreamImpactItem(
+        ID='recovered_N_item',
+        linked_stream=recovered_N,
+        GWP=gwp_dict['N'],
+        )
+    recovered_P_item = qs.StreamImpactItem(
+        ID='recovered_P_item',
+        linked_stream=recovered_P,
+        GWP=gwp_dict['P'],
+        )
+    recovered_K_item = qs.StreamImpactItem(
+        ID='recovered_K_item',
+        linked_stream=recovered_K,
+        GWP=gwp_dict['K'],
+        )
+    recovered_H2_item = qs.StreamImpactItem(
+        ID='recovered_H2_item',
+        linked_stream=recovered_H2,
+        GWP=gwp_dict['H2'],
+        )
+    biofuel_item = qs.StreamImpactItem(
+        ID='biofuel_item',
+        linked_stream=biofuel,
+        GWP=gwp_dict['diesel'],
+        )
+    e_item = qs.ImpactItem(
+        ID='e_item',
+        GWP=gwp_dict['electricity'],
+        )
+    steam_item = qs.ImpactItem(
+        ID='steam_item',
+        GWP=gwp_dict['steam'],
+        )
+    cooling_item = qs.ImpactItem(
+        ID='cooling_item',
+        GWP=gwp_dict['cooling'],
+        )
+    # for item in qs.ImpactItem.registry:
+    #   print(f"- ID: {item.ID}, Functional Unit: {item.functional_unit}")
+
+    lifetime = tea_kwargs['duration'][1] - tea_kwargs['duration'][0]
+            
+    lca = qs.LCA(
+    system=sys,
+    lifetime=lifetime,
+    simulate_system=False,
+    uptime_ratio=sys.operating_hours / (365 * 24),
+    e_item=lambda: (sys.get_electricity_consumption() - sys.get_electricity_production()) * lifetime,
+    steam_item=lambda: sys.get_heating_duty() / 1000 * lifetime,
+    cooling_item=lambda: sys.get_cooling_duty() / 1000 * lifetime,
+        )
+  
+    return sys
+>>>>>>> Stashed changes
 
     # Calculate lifetime from duration
     lifetime = tea_kwargs['duration'][1] - tea_kwargs['duration'][0]
@@ -472,14 +617,18 @@ def create_system(
 def simulate_and_print(sys, save_report=False):
     sys.simulate()
     tea = sys.TEA
-    lca = sys.LCA
+    # lca = sys.LCA
     biobinder = sys.flowsheet.stream.biobinder
 
     biobinder.price = MSP = tea.solve_price(biobinder)
     print(f'Minimum selling price of the biobinder is ${MSP:.2f}/kg.')
         
     all_impacts = lca.get_allocated_impacts(streams=(biobinder,), operation_only=True, annual=True)
+<<<<<<< Updated upstream
     GWP = all_impacts['GlobalWarming']/(biobinder.F_mass*lca.system.operating_hours)
+=======
+    GWP = all_impacts['GWP']/(biobinder.F_mass*lca.system.operating_hours)
+>>>>>>> Stashed changes
     print(f'Global warming potential of the biobinder is {GWP:.4f} kg CO2e/kg.')
     if save_report:
         # Use `results_path` and the `join` func can make sure the path works for all users
@@ -491,10 +640,26 @@ if __name__ == '__main__':
         central_dry_flowrate=None,
         pilot_dry_flowrate=None,
         )
+<<<<<<< Updated upstream
     
     #config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False))
     config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False))
     #config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True))
+=======
+    # What to do with HTL-AP
+    # config_kwargs.update(dict(skip_EC=False, generate_H2=False,))
+    config_kwargs.update(dict(skip_EC=False, generate_H2=True,))
+    # config_kwargs.update(dict(skip_EC=True, generate_H2=False,))
+    
+    # Decentralized vs. centralized configuration
+    # config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False))
+    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False))
+    
+    # Distillation column cost calculation doesn't scale down well, so the cost is very high now.
+    # But maybe don't need to do the DHDU scenario, if DHCU isn't too different from CHCU
+    # However, maybe the elimination of transportation completely will make a difference
+    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True))
+>>>>>>> Stashed changes
     
     sys = create_system(**config_kwargs)
     dct = globals()
