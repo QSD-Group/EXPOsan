@@ -59,6 +59,7 @@ _m3_to_gal = 264.172
 
 __all__ = (
     'create_system',
+    'get_GWP',
     'get_MFSP',
     )
 
@@ -201,7 +202,7 @@ def create_system(
     # Simulation may converge at multiple points, filter out unsuitable ones
     def screen_results():
         ratio0 = CrudeSplitter.cutoff_fracs[1]/sum(CrudeSplitter.cutoff_fracs[1:])
-        lb, ub = round(ratio0,2)-0.02, round(ratio0,2)+0.02
+        lb, ub = round(ratio0,2)-0.05, round(ratio0,2)+0.05
         try: 
             run_design_cost()
             status = True
@@ -221,7 +222,7 @@ def create_system(
                 status = False
             ratio = get_ratio()
             n += 1
-            if n >= 10:
+            if n >= 20:
                 status = False
                 raise RuntimeError(f'No suitable solution for `CrudeHeavyDis` within {n} simulation.')
     CrudeHeavyDis._run = screen_results
@@ -709,12 +710,14 @@ if __name__ == '__main__':
     simulate_and_print(sys)    
     
     # EC = sys.flowsheet.unit.EC
-    # EC.EO_voltage = 2 # originally 5
-    # EC.ED_voltage = 12 # originally 30
+    # EC.EO_voltage = 1 # originally 5
+    # EC.ED_voltage = 6 # originally 30
     # simulate_and_print(sys)
     
     # EC = sys.flowsheet.unit.EC
-    # EC.EO_voltage = 2 # originally 5
-    # EC.ED_voltage = 12 # originally 30
+    # EC.EO_voltage = 1 # originally 5
+    # EC.ED_voltage = 6 # originally 30
     # EC.electrode_cost = 4000 # originally 40,000
+    # EC.anion_exchange_membrane_cost = 17 # originally 170
+    # EC.cation_exchange_membrane_cost = 19 # originally 190
     # simulate_and_print(sys)

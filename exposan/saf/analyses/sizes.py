@@ -13,7 +13,7 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-# !!! Temporarily ignoring warnings
+# Temporarily ignoring warnings
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -22,6 +22,7 @@ from qsdsan.utils import time_printer
 from exposan.saf import (
     create_system,
     dry_flowrate as default_dry_flowrate,
+    get_GWP,
     get_MFSP,
     results_path,
     )
@@ -29,35 +30,37 @@ from exposan.saf import (
 
 # %%
 
-# 110 tpd sludge (default) is about 100 MGD
+# 110 tpd sludge (default) is sludge from a WWTP of about 100 MGD in size
 
 @time_printer
-def MFSP_across_sizes(ratios, **config_kwargs):
-    MFSPs = []
+def evaluation_across_sizes(ratios, **config_kwargs):
     fuel_yields = []
+    MFSPs = []
+    GWPs = []
     for ratio in ratios:
-        print(f'ratio: {ratio}')
-        # sys.reset_cache() # too many fails
         dry_flowrate = ratio * default_dry_flowrate
         sys = create_system(dry_flowrate=dry_flowrate, **config_kwargs)
         mixed_fuel = flowsheet.stream.mixed_fuel
+        print(f'ratio: {ratio}; dry flowrate: {dry_flowrate:.0f} kg/hr.')
         try:
             sys.simulate()
-            MFSP = get_MFSP(sys, print_msg=False)
             fuel_yield = mixed_fuel.F_mass/dry_flowrate
-            print(f'MFSP: ${MFSP:.2f}/GGE; fuel yields {fuel_yield:.2%}.\n')
+            MFSP = get_MFSP(sys, print_msg=False)
+            GWP = get_GWP(sys, print_msg=False)
+            print(f'Fuel yield: {fuel_yield:.2%}; MFSP: ${MFSP:.2f}/GGE; GWP: {GWP:.2f} kg CO2e/GGE.\n')
         except: 
             print('Simulation failed.\n')
-            MFSP = fuel_yield = None
-        MFSPs.append(MFSP)
+            fuel_yield = MFSP = GWP = None
         fuel_yields.append(fuel_yield)
+        MFSPs.append(MFSP)
+        GWPs.append(GWP)
 
-    return MFSPs, fuel_yields
+    return fuel_yields, MFSPs, GWPs
         
 if __name__ == '__main__':
-    config = {'include_PSA': False, 'include_EC': False,}
+    # config = {'include_PSA': False, 'include_EC': False,}
     # config = {'include_PSA': True, 'include_EC': False,}
-    # config = {'include_PSA': True, 'include_EC': True,}
+    config = {'include_PSA': True, 'include_EC': True,}
     flowsheet = qs.main_flowsheet
     dct = globals()
     dct.update(flowsheet.to_dict())
@@ -65,10 +68,11 @@ if __name__ == '__main__':
     # ratios = [1]
     # ratios = np.arange(1, 11, 1).tolist()
     ratios = np.arange(0.1, 1, 0.1).tolist() + np.arange(1, 11, 1).tolist()
-    sizes_results = MFSP_across_sizes(ratios=ratios, **config)
+    sizes_results = evaluation_across_sizes(ratios=ratios, **config)
     sizes_df = pd.DataFrame()
     sizes_df['Ratio'] = ratios
-    sizes_df['MFSP'] = sizes_results[0]
-    sizes_df['Fuel yields'] = sizes_results[1]
+    sizes_df['Fuel yields'] = sizes_results[0]
+    sizes_df['MFSP'] = sizes_results[1]
+    sizes_df['GWP'] = sizes_results[2]
     outputs_path = os.path.join(results_path, f'sizes_{flowsheet.ID}.csv')
     sizes_df.to_csv(outputs_path)

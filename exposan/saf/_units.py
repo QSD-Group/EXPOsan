@@ -1167,7 +1167,20 @@ class Electrochemical(SanUnit):
     @gas_composition.setter
     def gas_composition(self, comp_dct):
         self._gas_composition = self._normalize_composition(comp_dct)
-        
+    
+    @property
+    def PSA_efficiency(self):
+        '''
+        [float] H2 recovery efficiency of the PSA unit,
+        will be set to 0 if `include_PSA` is False.
+        '''
+        if self.include_PSA: return self._PSA_efficiency
+        return 0
+    @PSA_efficiency.setter
+    def PSA_efficiency(self, i):
+        if i > 1: raise ValueError('PSA_efficiency cannot be larger than 1.')
+        self._PSA_efficiency  = i
+    
     @property
     def ED_online_time_ratio(self):
         '''Ratio of electrodialysis in operation.'''
@@ -1192,17 +1205,14 @@ class Electrochemical(SanUnit):
         return 1 - self.EO_electricity_ratio
 
     @property
-    def PSA_efficiency(self):
-        '''
-        [float] H2 recovery efficiency of the PSA unit,
-        will be set to 0 if `include_PSA` is False.
-        '''
-        if self.include_PSA: return self._PSA_efficiency
-        return 0
-    @PSA_efficiency.setter
-    def PSA_efficiency(self, i):
-        if i > 1: raise ValueError('PSA_efficiency cannot be larger than 1.')
-        self._PSA_efficiency  = i
+    def normalized_CAPEX(self):
+        '''Installed equipment cost per kg/hr of H2, [$/(kg H2/hr)].'''
+        return self.installed_cost/(self.outs[0].imass['H2']+self.outs[1].imass['H2'])
+
+    @property
+    def normalized_energy_consumption(self):
+        '''Electricity consumption per kg of H2, [kWh/kg H2].'''
+        return self.power_utility.rate/(self.outs[0].imass['H2']+self.outs[1].imass['H2'])
 
 
 class SAFElectrochemical(Electrochemical):

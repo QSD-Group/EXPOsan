@@ -54,12 +54,12 @@ feedstock_composition = {
     'Ash': ash,
     }
 
-# Salad dressing waste
+# Salad dressing waste, char is separated out through distillation
 HTL_yields = {
     'gas': 0.006,
     'aqueous': 0.192,
-    'biocrude': 0.802-ash,
-    'char': ash,
+    'biocrude': 0.802,
+    'char': 0,
     }
 
 # All in 2020 $/kg unless otherwise noted, needs to do a thorough check to update values
