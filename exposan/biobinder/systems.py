@@ -299,7 +299,7 @@ def create_system(
     # Simulation may converge at multiple points, filter out unsuitable ones
     def screen_results():
         ratio0 = oil_fracs[0]
-        lb, ub = round(ratio0,2)-0.02, round(ratio0,2)+0.02
+        lb, ub = round(ratio0,2)-0.05, round(ratio0,2)+0.05
         try: 
             run_design_cost()
             status = True
