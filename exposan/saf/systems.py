@@ -530,6 +530,7 @@ def create_system(
     
     tea = create_tea(sys, **tea_kwargs)  
     
+
     # Add characterization factors for each impact item
     clear_lca_registries()
     GWP = qs.ImpactIndicator('GWP',
