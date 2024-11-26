@@ -22,6 +22,14 @@ References
     of Organic Waste Management Strategies.
     Environ. Sci. Technol. 2020, 54 (15), 9200–9209.
     https://doi.org/10.1021/acs.est.0c00364.
+[4] Lopez-Ruiz et al., Electrocatalytic Valorization into H2 and Hydrocarbons
+    of an Aqueous Stream Derived from Hydrothermal Liquefaction.
+    J Appl Electrochem 2021, 51 (1), 107–118.
+    https://doi.org/10.1007/s10800-020-01452-x.
+[5] Lopez-Ruiz et al., Low-Temperature Electrochemical Wastewater Oxidation;
+    PNNL-35535; 2023. https://doi.org/10.2172/2332860.
+
+
 '''
 
 # !!! Temporarily ignoring warnings
@@ -74,9 +82,12 @@ def create_system(
     _load_components()
 
     if not flowsheet:
-        flowsheet_ID = 'saf'
-        if include_PSA: flowsheet_ID += '_PSA'
-        if include_EC: flowsheet_ID += '_EC'
+        if not include_PSA:
+            flowsheet_ID = 'no_PSA'
+        elif include_EC is False: flowsheet_ID = 'baseline'
+        elif include_EC is True: flowsheet_ID = 'EC'
+        elif type(include_EC) is dict: flowsheet_ID = 'EC_improved'
+        else: raise ValueError('Invalid system configuration.')
         flowsheet = qs.Flowsheet(flowsheet_ID)
         qs.main_flowsheet.set_flowsheet(flowsheet)
     else:
@@ -470,8 +481,15 @@ def create_system(
         PSA_efficiency=0.95,
         )
     EC.register_alias('Electrochemical')
+    EC.include_PSA_cost = False # HC/HT has PSA
     fuel_gases.append(EC-0)
-    EC.skip = False if include_EC else True    
+    if include_EC is False:
+        EC.skip = True
+    else:
+        EC.skip = False
+        if type(include_EC) is dict:
+            for attr, val in include_EC.items():
+                setattr(EC, attr, val)
 
     def adjust_prices():
         # Transportation
@@ -698,9 +716,18 @@ def simulate_and_print(system, save_report=False):
 
 
 if __name__ == '__main__':
-    # config_kwargs = {'include_PSA': False, 'include_EC': False,}
-    # config_kwargs = {'include_PSA': True, 'include_EC': False,}
-    config_kwargs = {'include_PSA': True, 'include_EC': True,}
+    EC_config = { #!!! now PSA becomes significant, need to look at the breakdown
+        'EO_voltage': 2.5, # originally 5, Ref [5] at 2.5 V
+        'ED_voltage': 2.5, # originally 30
+        'electrode_cost': 225, # originally 40,000, Ref [5] high-end is 1,000, target is $225/m2
+        'EC.anion_exchange_membrane_cost': 0,
+        'EC.anion_exchange_membrane_cost': 0,
+        }
+    
+    # config_kwargs = {'include_PSA': False, 'include_EC': False,} # not included
+    # config_kwargs = {'include_PSA': True, 'include_EC': False,} # baseline
+    # config_kwargs = {'include_PSA': True, 'include_EC': True,} # EC
+    config_kwargs = {'include_PSA': True, 'include_EC': EC_config,} # improved EC
     
     sys = create_system(flowsheet=None, **config_kwargs)
     dct = globals()
@@ -708,17 +735,4 @@ if __name__ == '__main__':
     tea = sys.TEA
     lca = sys.LCA
     
-    simulate_and_print(sys)    
-    
-    # EC = sys.flowsheet.unit.EC
-    # EC.EO_voltage = 1 # originally 5
-    # EC.ED_voltage = 6 # originally 30
-    # simulate_and_print(sys)
-    
-    # EC = sys.flowsheet.unit.EC
-    # EC.EO_voltage = 1 # originally 5
-    # EC.ED_voltage = 6 # originally 30
-    # EC.electrode_cost = 4000 # originally 40,000
-    # EC.anion_exchange_membrane_cost = 17 # originally 170
-    # EC.cation_exchange_membrane_cost = 19 # originally 190
-    # simulate_and_print(sys)
+    simulate_and_print(sys)

@@ -1219,6 +1219,7 @@ class SAFElectrochemical(Electrochemical):
     '''To allow skipping unit simulation for different configurations.'''
     
     skip = False
+    include_PSA_cost = True
     
     def _run(self):
         if self.skip:
@@ -1233,8 +1234,10 @@ class SAFElectrochemical(Electrochemical):
 
     def _cost(self):
         if self.skip: self.baseline_purchase_costs.clear()
-        else: Electrochemical._cost(self)
-    
+        else: 
+            Electrochemical._cost(self)
+            if not self.include_PSA_cost:
+                self.baseline_purchase_costs.pop('PSA')
 
 
 # %%

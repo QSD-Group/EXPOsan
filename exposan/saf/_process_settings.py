@@ -86,7 +86,8 @@ price_dct = {
     # This is too high, ~$50/kg H2, but on par with CLEAN CITIES and COMMUNITIES Alternative Fuel Price Report
     # $33.37/GGE, or $33.37/kg (1 kg H2 is 1 GGE, https://afdc.energy.gov/fuels/properties)
     # 'H2': 6.77/(141.88*_MJ_to_MMBtu),
-    'H2': 1.61, # Feng et al., 2024, in 2020$
+    # 'H2': 1.61, # Feng et al., 2024, in 2020$
+    'H2': 2, # DOE target clean H2 price; Feng et al., 2024, $1.61 in 2020$
     'HCcatalyst': 3.52, # Fe-ZSM5, CatCost modified from ZSM5, in 2020$
     'HTcatalyst': 75.18, # Pd/Al2O3, CatCost modified from 2% Pt/TiO2, in 2020$
     'natural_gas': 0.213/0.76**Seider_factor, # $0.213/SCM, $0.76 kg/SCM per https://www.henergy.com/conversion
