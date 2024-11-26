@@ -458,45 +458,18 @@ def create_system(
     operating_hours=365 * 24 * uptime_ratio,
      )
 
-# Set construction inclusion to False for all units
     for unit in sys.units:
      unit.include_construction = False
 
-# Load impact indicators and items
-    clear_lca_registries()
-    qs.ImpactIndicator.load_from_file(os.path.join(data_path, 'impact_indicators.csv'))
-    qs.ImpactItem.load_from_file(os.path.join(data_path, 'impact_items.xlsx'))
 
-# Add impact for streams
     streams_with_impacts = [
     i for i in sys.feeds + sys.products
     if i.isempty() is False and i.imass['Water'] != i.F_mass and 'surrogate' not in i.ID
     ]
-    for i in streams_with_impacts:
-      print(f"Stream with impact: {i.ID}")
-
-# Define feedstock impact item
-    feedstock_item = qs.StreamImpactItem(
-    ID='feedstock_item',
-    linked_stream=scaled_feedstock,
-    Acidification=0,
-    Ecotoxicity=0,
-    Eutrophication=0,
-    GlobalWarming=0,
-    OzoneDepletion=0,
-    PhotochemicalOxidation=0,
-    Carcinogenics=0,
-    NonCarcinogenics=0,
-    RespiratoryEffects=0,
-     )
-
-    qs.ImpactItem.get_item('Diesel').linked_stream = biofuel
 
     tea = create_tea(sys, **tea_kwargs)
 
 
-# Load impact indicators and items
-    #qs.main_flowsheet.clear()
     clear_lca_registries()
     # qs.ImpactIndicator.load_from_file(os.path.join(data_path, 'impact_indicators.csv'))
     # qs.ImpactItem.load_from_file(os.path.join(data_path, 'impact_items.xlsx'))
@@ -515,15 +488,13 @@ def create_system(
         'electricity': 0.465474829, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/13670/impact_assessment
         'steam': 0.126312684, # kg CO2e/MJ, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/7479/impact_assessment
         'cooling': 0.068359242, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/14408/impact_assessment
-        'diesel': 0.801163967, # kg CO2e/kg, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/13381/impact_assessment
+        'diesel': -0.801163967, # kg CO2e/kg, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/13381/impact_assessment
         'N': -0.441913058, #liquid, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/11489/impact_assessment
         'P': -1.344*(98/31), # H3PO4, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/8421/impact_assessment
         'K': -4.669210326*(56/39), # KOH, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/5111/impact_assessment
         'COD': 1.7, # Li et al., 2023
         'wastewater': 0.477724554/1e3, # kg CO2e/m3, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/26546/impact_assessment
         }
-
-    print("GWP Dictionary Keys:", gwp_dict.keys())
 
     GWP = qs.ImpactIndicator('GWP',
                               alias='GlobalWarmingPotential',
@@ -605,7 +576,28 @@ def create_system(
         )
     # for item in qs.ImpactItem.registry:
     #   print(f"- ID: {item.ID}, Functional Unit: {item.functional_unit}")
+    fake_stream= qs.SanStream('Nothing', price=0)
+    nothing_item = qs.StreamImpactItem(
+        ID='nothing_item',
+        linked_stream=fake_stream,
+        GWP=0,
+        )
+    def adjust_lca_items():
+   
+        if decentralized_HTL is False:
+        # Centralized HTL, Centralized upgrading
+           trans_feedstock_item.linked_stream = FeedstockTrans.ins[1]  # feedstock transportation stream
+           trans_biocrude_item.linked_stream = fake_stream             # No biocrude transportation
+        elif decentralized_upgrading is False:
+        # Decentralized HTL, centralized upgrading
+           trans_feedstock_item.linked_stream = fake_stream            # No feedstock transportation
+           trans_biocrude_item.linked_stream = BiocrudeTrans.ins[1]    #biocrude tranportation stream
+        else:
+        # Fully decentralized (no transportation needed)
+           trans_feedstock_item.linked_stream = fake_stream            # No feedstock transportation
+           trans_biocrude_item.linked_stream = fake_stream             # No biocrude transportation
 
+    adjust_lca_items()
     lifetime = tea_kwargs['duration'][1] - tea_kwargs['duration'][0]
             
     lca = qs.LCA(
@@ -648,11 +640,11 @@ if __name__ == '__main__':
     # What to do with HTL-AP
     config_kwargs.update(dict(skip_EC=False, generate_H2=False,))
     # config_kwargs.update(dict(skip_EC=False, generate_H2=True,))
-    #config_kwargs.update(dict(skip_EC=True, generate_H2=False,))
+    # config_kwargs.update(dict(skip_EC=True, generate_H2=False,))
     
     # Decentralized vs. centralized configuration
-    config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False))
-    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False))
+    # config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False))
+    config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False))
 
     #config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True))
 
