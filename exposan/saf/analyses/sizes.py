@@ -20,6 +20,9 @@ warnings.filterwarnings('ignore')
 import os, numpy as np, pandas as pd, qsdsan as qs
 from qsdsan.utils import time_printer
 from exposan.saf import (
+    config_baseline,
+    config_EC,
+    config_EC_improved,
     create_system,
     dry_flowrate as default_dry_flowrate,
     get_GWP,
@@ -58,9 +61,10 @@ def evaluation_across_sizes(ratios, **config_kwargs):
     return fuel_yields, MFSPs, GWPs
         
 if __name__ == '__main__':
-    # config = {'include_PSA': False, 'include_EC': False,}
-    # config = {'include_PSA': True, 'include_EC': False,}
-    config = {'include_PSA': True, 'include_EC': True,}
+    # config_kwargs = config_baseline
+    # config_kwargs = config_EC
+    config_kwargs = config_EC_improved
+    
     flowsheet = qs.main_flowsheet
     dct = globals()
     dct.update(flowsheet.to_dict())
@@ -68,7 +72,7 @@ if __name__ == '__main__':
     # ratios = [1]
     # ratios = np.arange(1, 11, 1).tolist()
     ratios = np.arange(0.1, 1, 0.1).tolist() + np.arange(1, 11, 1).tolist()
-    sizes_results = evaluation_across_sizes(ratios=ratios, **config)
+    sizes_results = evaluation_across_sizes(ratios=ratios, **config_kwargs)
     sizes_df = pd.DataFrame()
     sizes_df['Ratio'] = ratios
     sizes_df['Fuel yields'] = sizes_results[0]

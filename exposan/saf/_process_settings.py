@@ -45,21 +45,21 @@ uptime_ratio = 0.9
 dry_flowrate = tpd*907.185/(24*uptime_ratio) # 110 dry sludge tpd [1]
 
 moisture = 0.7580
-ash = (1-moisture)*0.0614
+ash = 0.0614
 feedstock_composition = {
     'Water': moisture,
     'Lipids': (1-moisture)*0.5315,
     'Proteins': (1-moisture)*0.0255,
     'Carbohydrates': (1-moisture)*0.3816,
-    'Ash': ash,
+    'Ash': (1-moisture)*ash,
     }
 
-# Salad dressing waste, char is separated out through distillation
+# Salad dressing waste, yield adjusted 
 HTL_yields = {
     'gas': 0.006,
     'aqueous': 0.192,
-    'biocrude': 0.802,
-    'char': 0,
+    'biocrude': 0.802-ash,
+    'char': ash,
     }
 
 # All in 2020 $/kg unless otherwise noted, needs to do a thorough check to update values
@@ -86,11 +86,11 @@ price_dct = {
     # This is too high, ~$50/kg H2, but on par with CLEAN CITIES and COMMUNITIES Alternative Fuel Price Report
     # $33.37/GGE, or $33.37/kg (1 kg H2 is 1 GGE, https://afdc.energy.gov/fuels/properties)
     # 'H2': 6.77/(141.88*_MJ_to_MMBtu),
-    # 'H2': 1.61, # Feng et al., 2024, in 2020$
-    'H2': 2, # DOE target clean H2 price; Feng et al., 2024, $1.61 in 2020$
+    # 'H2': 2, # DOE target clean H2 price
+    'H2': 1.61, # Feng et al., 2024, in 2020$    
     'HCcatalyst': 3.52, # Fe-ZSM5, CatCost modified from ZSM5, in 2020$
     'HTcatalyst': 75.18, # Pd/Al2O3, CatCost modified from 2% Pt/TiO2, in 2020$
-    'natural_gas': 0.213/0.76**Seider_factor, # $0.213/SCM, $0.76 kg/SCM per https://www.henergy.com/conversion
+    'natural_gas': 0.213/0.76*Seider_factor, # $0.213/SCM, $0.76 kg/SCM per https://www.henergy.com/conversion
     'process_water': 0.27/1e3*Seider_factor, # $0.27/m3, higher than $0.80/1,000 gal
     'gasoline': 3.32*AEO_factor, # EIA AEO 2023, Table 12, Transportation Sector, 2024 price in 2022$
     'jet': 2.92*AEO_factor, # EIA AEO 2023, Table 12, Transportation Sector, 2024 price in 2022$
@@ -150,7 +150,7 @@ tea_kwargs = dict(
     site_development=0.1, # Snowden-Swan et al. 2022
     additional_piping=0.045,
     labor_cost=2.36e6*size_ratio*labor_indices[cost_year]/labor_indices[2011], # PNNL 2014
-    land=0., #!!! need to update
+    land=0.,
     )
 
 def _load_process_settings():

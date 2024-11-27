@@ -66,6 +66,9 @@ _m3_to_gal = 264.172
 # %%
 
 __all__ = (
+    'config_baseline',
+    'config_EC',
+    'config_EC_improved',
     'create_system',
     'get_GWP',
     'get_MFSP',
@@ -157,7 +160,10 @@ def create_system(
               init_with='Stream')
     
     # Light (water): medium (biocrude): heavy (char)
-    crude_fracs = [0.0339, 0.8104, 0.1557]
+    original_crude_fracs = [0.0339, 0.8104, 0.1557] # to account for the non-volatile crude fracs (inorganics)
+    ratio = (HTL_yields['biocrude']+HTL_yields['char'])/HTL_yields['biocrude']
+    crude_fracs = [i*ratio for i in original_crude_fracs[:2]]
+    crude_fracs.append(1-sum(crude_fracs))
     
     CrudeSplitter = u.BiocrudeSplitter(
         'CrudeSplitter', ins=CrudePump-0, outs='splitted_crude',
@@ -187,7 +193,7 @@ def create_system(
         outs=('crude_medium','char'),
         LHK=CrudeSplitter.keys[1],
         P=50*_psi_to_Pa,
-        Lr=0.89,
+        Lr=0.85,
         Hr=0.85,
         k=2, is_divided=True)
 
@@ -531,7 +537,8 @@ def create_system(
         recycled_H2_streams=EC-1,
         )
     H2C.register_alias('HydrogenCenter')
-    H2C.makeup_H2_price = H2C.excess_H2_price = price_dct['H2']
+    H2C.makeup_H2_price = H2C.excess_H2_price = price_dct['H2'] # expected H2 price
+    # H2C.makeup_H2_price = H2C.excess_H2_price = 33.4 # current H2 price
     
     PWC = u.ProcessWaterCenter('PWC', process_water_streams=[feedstock_water],)
     PWC.register_alias('ProcessWaterCenter')
@@ -714,22 +721,24 @@ def simulate_and_print(system, save_report=False):
         # Use `results_path` and the `join` func can make sure the path works for all users
         sys.save_report(file=os.path.join(results_path, f'sys_{sys.flowsheet.ID}.xlsx'))
 
+config_no_PSA = {'include_PSA': False, 'include_EC': False,}
+config_baseline = {'include_PSA': True, 'include_EC': False,}
+config_EC = {'include_PSA': True, 'include_EC': True,}
+EC_config = {
+    'EO_voltage': 2.5, # originally 5, Ref [5] at 2.5 V
+    'ED_voltage': 2.5, # originally 30
+    'electrode_cost': 225, # originally 40,000, Ref [5] high-end is 1,000, target is $225/m2
+    'EC.anion_exchange_membrane_cost': 0,
+    'EC.anion_exchange_membrane_cost': 0,
+    }
+config_EC_improved = {'include_PSA': True, 'include_EC': EC_config,}
 
 if __name__ == '__main__':
-    EC_config = { #!!! now PSA becomes significant, need to look at the breakdown
-        'EO_voltage': 2.5, # originally 5, Ref [5] at 2.5 V
-        'ED_voltage': 2.5, # originally 30
-        'electrode_cost': 225, # originally 40,000, Ref [5] high-end is 1,000, target is $225/m2
-        'EC.anion_exchange_membrane_cost': 0,
-        'EC.anion_exchange_membrane_cost': 0,
-        }
+    # sys = create_system(flowsheet=None, **config_no_PSA)
+    sys = create_system(flowsheet=None, **config_baseline)
+    # sys = create_system(flowsheet=None, **config_EC) 
+    # sys = create_system(flowsheet=None, **config_EC_improved)
     
-    # config_kwargs = {'include_PSA': False, 'include_EC': False,} # not included
-    # config_kwargs = {'include_PSA': True, 'include_EC': False,} # baseline
-    # config_kwargs = {'include_PSA': True, 'include_EC': True,} # EC
-    config_kwargs = {'include_PSA': True, 'include_EC': EC_config,} # improved EC
-    
-    sys = create_system(flowsheet=None, **config_kwargs)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     tea = sys.TEA
