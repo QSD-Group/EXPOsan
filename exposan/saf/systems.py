@@ -22,6 +22,14 @@ References
     of Organic Waste Management Strategies.
     Environ. Sci. Technol. 2020, 54 (15), 9200–9209.
     https://doi.org/10.1021/acs.est.0c00364.
+[4] Lopez-Ruiz et al., Electrocatalytic Valorization into H2 and Hydrocarbons
+    of an Aqueous Stream Derived from Hydrothermal Liquefaction.
+    J Appl Electrochem 2021, 51 (1), 107–118.
+    https://doi.org/10.1007/s10800-020-01452-x.
+[5] Lopez-Ruiz et al., Low-Temperature Electrochemical Wastewater Oxidation;
+    PNNL-35535; 2023. https://doi.org/10.2172/2332860.
+
+
 '''
 
 # !!! Temporarily ignoring warnings
@@ -58,6 +66,9 @@ _m3_to_gal = 264.172
 # %%
 
 __all__ = (
+    'config_baseline',
+    'config_EC',
+    'config_EC_improved',
     'create_system',
     'get_GWP',
     'get_MFSP',
@@ -74,9 +85,12 @@ def create_system(
     _load_components()
 
     if not flowsheet:
-        flowsheet_ID = 'saf'
-        if include_PSA: flowsheet_ID += '_PSA'
-        if include_EC: flowsheet_ID += '_EC'
+        if not include_PSA:
+            flowsheet_ID = 'no_PSA'
+        elif include_EC is False: flowsheet_ID = 'baseline'
+        elif include_EC is True: flowsheet_ID = 'EC'
+        elif type(include_EC) is dict: flowsheet_ID = 'EC_improved'
+        else: raise ValueError('Invalid system configuration.')
         flowsheet = qs.Flowsheet(flowsheet_ID)
         qs.main_flowsheet.set_flowsheet(flowsheet)
     else:
@@ -146,7 +160,10 @@ def create_system(
               init_with='Stream')
     
     # Light (water): medium (biocrude): heavy (char)
-    crude_fracs = [0.0339, 0.8104, 0.1557]
+    original_crude_fracs = [0.0339, 0.8104, 0.1557] # to account for the non-volatile crude fracs (inorganics)
+    ratio = (HTL_yields['biocrude']+HTL_yields['char'])/HTL_yields['biocrude']
+    crude_fracs = [i*ratio for i in original_crude_fracs[:2]]
+    crude_fracs.append(1-sum(crude_fracs))
     
     CrudeSplitter = u.BiocrudeSplitter(
         'CrudeSplitter', ins=CrudePump-0, outs='splitted_crude',
@@ -176,7 +193,7 @@ def create_system(
         outs=('crude_medium','char'),
         LHK=CrudeSplitter.keys[1],
         P=50*_psi_to_Pa,
-        Lr=0.89,
+        Lr=0.85,
         Hr=0.85,
         k=2, is_divided=True)
 
@@ -470,8 +487,15 @@ def create_system(
         PSA_efficiency=0.95,
         )
     EC.register_alias('Electrochemical')
+    EC.include_PSA_cost = False # HC/HT has PSA
     fuel_gases.append(EC-0)
-    EC.skip = False if include_EC else True    
+    if include_EC is False:
+        EC.skip = True
+    else:
+        EC.skip = False
+        if type(include_EC) is dict:
+            for attr, val in include_EC.items():
+                setattr(EC, attr, val)
 
     def adjust_prices():
         # Transportation
@@ -513,7 +537,8 @@ def create_system(
         recycled_H2_streams=EC-1,
         )
     H2C.register_alias('HydrogenCenter')
-    H2C.makeup_H2_price = H2C.excess_H2_price = price_dct['H2']
+    H2C.makeup_H2_price = H2C.excess_H2_price = price_dct['H2'] # expected H2 price
+    # H2C.makeup_H2_price = H2C.excess_H2_price = 33.4 # current H2 price
     
     PWC = u.ProcessWaterCenter('PWC', process_water_streams=[feedstock_water],)
     PWC.register_alias('ProcessWaterCenter')
@@ -696,29 +721,27 @@ def simulate_and_print(system, save_report=False):
         # Use `results_path` and the `join` func can make sure the path works for all users
         sys.save_report(file=os.path.join(results_path, f'sys_{sys.flowsheet.ID}.xlsx'))
 
+config_no_PSA = {'include_PSA': False, 'include_EC': False,}
+config_baseline = {'include_PSA': True, 'include_EC': False,}
+config_EC = {'include_PSA': True, 'include_EC': True,}
+EC_config = {
+    'EO_voltage': 2.5, # originally 5, Ref [5] at 2.5 V
+    'ED_voltage': 2.5, # originally 30
+    'electrode_cost': 225, # originally 40,000, Ref [5] high-end is 1,000, target is $225/m2
+    'EC.anion_exchange_membrane_cost': 0,
+    'EC.anion_exchange_membrane_cost': 0,
+    }
+config_EC_improved = {'include_PSA': True, 'include_EC': EC_config,}
 
 if __name__ == '__main__':
-    # config_kwargs = {'include_PSA': False, 'include_EC': False,}
-    # config_kwargs = {'include_PSA': True, 'include_EC': False,}
-    config_kwargs = {'include_PSA': True, 'include_EC': True,}
+    # sys = create_system(flowsheet=None, **config_no_PSA)
+    sys = create_system(flowsheet=None, **config_baseline)
+    # sys = create_system(flowsheet=None, **config_EC) 
+    # sys = create_system(flowsheet=None, **config_EC_improved)
     
-    sys = create_system(flowsheet=None, **config_kwargs)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     tea = sys.TEA
     lca = sys.LCA
     
-    simulate_and_print(sys)    
-    
-    # EC = sys.flowsheet.unit.EC
-    # EC.EO_voltage = 1 # originally 5
-    # EC.ED_voltage = 6 # originally 30
-    # simulate_and_print(sys)
-    
-    # EC = sys.flowsheet.unit.EC
-    # EC.EO_voltage = 1 # originally 5
-    # EC.ED_voltage = 6 # originally 30
-    # EC.electrode_cost = 4000 # originally 40,000
-    # EC.anion_exchange_membrane_cost = 17 # originally 170
-    # EC.cation_exchange_membrane_cost = 19 # originally 190
-    # simulate_and_print(sys)
+    simulate_and_print(sys)
