@@ -24,24 +24,20 @@ __all__ = ('create_b2_system',)
 
 #%%
 folder = ospath.dirname(__file__)
-# dfs = load_data(
-#     ospath.join(folder, 'data/initial_conditions.xlsx'), 
-#     sheet=None,
-#     )
-# asinit = dfs['rBOD']
-# fcinit = asinit.iloc[-1].to_dict()
-# adinit = dfs['adm'].iloc[0].to_dict()
+dfs = load_data(
+    ospath.join(folder, 'data/initial_conditions.xlsx'), 
+    sheet=None,
+    )
+asinit = dfs['B3']
+fcinit = asinit.iloc[-1].to_dict()
 # Default initial conditions
-dfs = load_data(ospath.join(folder, 'data/G1_init.xlsx'), sheet=None)
-inf_concs = dfs['asm'].iloc[0].to_dict()
-# c1init = dfs['asm'].iloc[1].to_dict()
-asinit = dfs['asm'].iloc[1:]
-# asinit = dfs['asm_ss']
-adinit = dfs['adm'].iloc[0].to_dict()
-c2init = dfs['settler'].to_dict('index')
-c2init['s'] = {k:v for k,v in c2init['s'].items() if v>0}
-c2init['x'] = {k:v for k,v in c2init['x'].items() if v>0}
-c2init['tss'] = [v for k,v in c2init['tss'].items() if v>0]
+# dfs = load_data(ospath.join(folder, 'data/G1_init.xlsx'), sheet=None)
+# asinit = dfs['asm'].iloc[1:]
+# adinit = dfs['adm'].iloc[0].to_dict()
+# c2init = dfs['settler'].to_dict('index')
+# c2init['s'] = {k:v for k,v in c2init['s'].items() if v>0}
+# c2init['x'] = {k:v for k,v in c2init['x'].items() if v>0}
+# c2init['tss'] = [v for k,v in c2init['tss'].items() if v>0]
 
 
 MGD2cmd = 3785.412
@@ -135,9 +131,9 @@ def create_b2_system(flowsheet=None, default_init_conds=True):
         sludge_flow_rate=0.0053*MGD2cmd,
         solids_removal_efficiency=0.9
         )
-    MX = su.Mixer('MX', ins=[GT-0, MT-0, DW-0])
+    MX = su.Mixer('MX', ins=[GT-0, MT-0, DW-0], outs=1-PC)
     
-    HD = su.HydraulicDelay('HD', ins=MX-0, outs=1-PC)
+    # HD = su.HydraulicDelay('HD', ins=MX-0, outs=1-PC)
     
     if default_init_conds:
         # ASR.set_init_conc(**default_as_init)
@@ -146,20 +142,20 @@ def create_b2_system(flowsheet=None, default_init_conds=True):
         # FC.set_init_solubles(**default_as_init)
         # FC.set_init_sludge_solids(**default_as_init)
         ASR.set_init_conc(concentrations=asinit)
-        # FC.set_init_solubles(**fcinit)
-        # FC.set_init_sludge_solids(**fcinit)
-        # FC.set_init_TSS(default_fctss_init)
+        FC.set_init_solubles(**fcinit)
+        FC.set_init_sludge_solids(**fcinit)
+        FC.set_init_TSS(default_fctss_init)
         AED.set_init_conc(**default_aed_init)
-        FC.set_init_solubles(**c2init['s'])
-        FC.set_init_sludge_solids(**c2init['x'])
-        FC.set_init_TSS(c2init['tss'])
+        # FC.set_init_solubles(**c2init['s'])
+        # FC.set_init_sludge_solids(**c2init['x'])
+        # FC.set_init_TSS(c2init['tss'])
     
     sys = qs.System(
         'B2', 
-        path=(PC, GT, ASR, FC, MT, AED, DW, MX, HD),
+        path=(PC, GT, ASR, FC, MT, AED, DW, MX),
         # path=(PC, GT, O1, O2, O3, O4, O5, O6, FC, 
         #       MT, AED, DW, M2, HD),
-        recycle=(FC-1, HD-0)
+        recycle=(FC-1, MX-0)
         )
 
     sys.set_dynamic_tracker(FC-0, AED)
@@ -195,10 +191,10 @@ if __name__ == '__main__':
     # t = 1
     t_step = 1
     # method = 'RK45'
-    # method = 'RK23'
+    method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    method = 'BDF'
+    # method = 'BDF'
     # method = 'LSODA'
     
     run(sys, t, t_step, method=method)

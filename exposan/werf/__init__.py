@@ -56,7 +56,7 @@ default_aed_init = dict(
     X_AlOH=1e-2, X_AlPO4=1e-2, X_FeOH=1e-2, X_FePO4=1e-2
     )
 
-default_ad_init = dict(
+default_ad_init = dict(     # in kg/m3
     S_su=0.01, S_aa=0.005, S_fa=0.1, S_va=0.01, S_bu=0.015, S_pro=0.015, S_ac=0.18, 
     S_ch4=0.05, S_IC=0.024, S_IN=3.2, S_IP=0.005, S_I=6.05, 
     X_ch=1.15, X_pr=1.15, X_li=1.73, X_su=0.85, X_aa=0.6, X_fa=0.7, X_c4=0.3, 
@@ -65,11 +65,12 @@ default_ad_init = dict(
     X_CaCO3=1e-8, X_struv=1e-8, X_newb=1e-8, X_ACP=1e-8, X_MgCO3=1e-8, 
     X_AlOH=1e-8, X_AlPO4=1e-8, X_FeOH=1e-8, X_FePO4=1e-8, 
     )
+default_ad_init = {k:v*1e3 for k,v in default_ad_init.items()} # convert to mg/L
 
 # default_fctss_init = [18, 28, 45, 90, 305, 305, 305, 305, 305, 5800]
 # default_fctss_init = [21, 34, 58, 127, 493, 493, 493, 493, 6243, 11329]
-default_fctss_init = [22.394, 36.791, 63.797, 148.53, 652.763, 652.771,
-                      652.778, 652.786, 5585.446, 10085.738]
+default_fctss_init = [  22.02 ,   36.136,   62.289,  142.932,  610.813,  610.813,
+        610.813,  610.813, 3608.754, 9295.076]
 
 
 from . import G1

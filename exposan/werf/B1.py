@@ -28,9 +28,9 @@ dfs = load_data(
     ospath.join(folder, 'data/initial_conditions.xlsx'), 
     sheet=None,
     )
-asinit = dfs['rBOD']
+asinit = dfs['B1']
 fcinit = asinit.iloc[-1].to_dict()
-adinit = dfs['adm'].iloc[0].to_dict()
+adinit = dfs['adm'].iloc[-1].to_dict()
 # Default initial conditions
 # dfs = load_data(ospath.join(folder, 'data/G1_init.xlsx'), sheet=None)
 # asinit = dfs['asm'].iloc[1:]
@@ -82,7 +82,7 @@ adinit = dfs['adm'].iloc[0].to_dict()
 #     'X_FePO4': 1.0453169886394833e-07,
 #     'S_Na': 0.07991961153828457,
 #     'S_Cl': 0.3903889983759098
-#      }
+#       }
 
 
 MGD2cmd = 3785.412
@@ -143,7 +143,7 @@ def create_b1_system(flowsheet=None, default_init_conds=True):
     FC = su.FlatBottomCircularClarifier(
         'FC', ins=ASR-0, outs=['SE', 1-ASR, 'WAS'],
         # 'FC', ins=O6-0, outs=['SE', 1-O1, 'WAS'],
-        underflow=0.67*10*MGD2cmd, wastage=0.1*MGD2cmd,
+        underflow=0.67*10*MGD2cmd, wastage=0.2*MGD2cmd,
         surface_area=1579.352, height=3.6576, N_layer=10, feed_layer=5,
         X_threshold=3000, v_max=410, v_max_practical=274,
         rh=4e-4, rp=2.5e-3, fns=0.001, 
@@ -157,7 +157,7 @@ def create_b1_system(flowsheet=None, default_init_conds=True):
     # M1 = su.Mixer('M1', ins=[GT-1, MT-0])
     MT = su.IdealClarifier(
         'MT', FC-2, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.019*MGD2cmd,
+        sludge_flow_rate=0.023*MGD2cmd,
         solids_removal_efficiency=0.95
         )
     M1 = su.Mixer('M1', ins=[GT-1, MT-1])
@@ -175,7 +175,7 @@ def create_b1_system(flowsheet=None, default_init_conds=True):
         T=T_ad, model=adm,
         pH_ctrl=7.0,
         )
-    AD.algebraic_h2 = False
+    AD.algebraic_h2 = True
     J2 = su.ADM1ptomASM2d('J2', upstream=AD-1, thermo=thermo_asm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
     qs.set_thermo(thermo_asm)
@@ -190,9 +190,9 @@ def create_b1_system(flowsheet=None, default_init_conds=True):
         sludge_flow_rate=0.0053*MGD2cmd,
         solids_removal_efficiency=0.9
         )
-    M2 = su.Mixer('M2', ins=[GT-0, MT-0, DW-0])
+    M2 = su.Mixer('M2', ins=[GT-0, MT-0, DW-0], outs=1-PC)
     
-    HD = su.HydraulicDelay('HD', ins=M2-0, outs=1-PC)
+    # HD = su.HydraulicDelay('HD', ins=M2-0, t_delay=1e-3)
     
     if default_init_conds:
         # ASR.set_init_conc(**default_as_init)
@@ -212,10 +212,12 @@ def create_b1_system(flowsheet=None, default_init_conds=True):
     
     sys = qs.System(
         'B1', 
-        path=(PC, GT, ASR, FC, MT, M1, J1, AD, J2, DW, M2, HD),
+        path=(PC, GT, ASR, FC, MT, M1, J1, AD, J2, DW, M2),
+        # path=(PC, GT, ASR, FC, MT, M1, J1, AD, J2, DW, M2, HD),
         # path=(PC, GT, O1, O2, O3, O4, O5, O6, FC, 
         #       MT, M1, J1, AD, J2, DW, M2, HD),
-        recycle=(FC-1, HD-0)
+        recycle=(FC-1, M2-0)
+        # recycle=(FC-1, HD-0)
         )
 
     sys.set_dynamic_tracker(FC-0, AD)
@@ -247,14 +249,14 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 50
+    t = 100
     # t = 1
     t_step = 1
     # method = 'RK45'
-    # method = 'RK23'
+    method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    method = 'BDF'
+    # method = 'BDF'
     # method = 'LSODA'
     
     run(sys, t, t_step, method=method)

@@ -214,8 +214,8 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     #     )
     
     MT = su.IdealClarifier('MT', FC-2, outs=['', 'thickened_WAS'],
-                             sludge_flow_rate=0.019*MGD2cmd,
-                             solids_removal_efficiency=0.95,)
+                           sludge_flow_rate=0.019*MGD2cmd,
+                           solids_removal_efficiency=0.95,)
     M1 = su.Mixer('M1', ins=(GT-1, MT-1))
         
     # Switch to ADM1 components for the anaerobic digester
