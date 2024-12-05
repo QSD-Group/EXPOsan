@@ -22,7 +22,7 @@ from qsdsan.utils import time_printer
 from exposan.saf import (
     config_baseline,
     config_EC,
-    config_EC_improved,
+    config_EC_future,
     create_system,
     data_path,
     HTL_yields,
@@ -99,7 +99,7 @@ def evaluation_across_biocrude_yields(yields=[], **config_kwargs):
 if __name__ == '__main__':
     # config_kwargs = config_baseline
     # config_kwargs = config_EC
-    config_kwargs = config_EC_improved
+    config_kwargs = config_EC_future
     
     flowsheet = qs.main_flowsheet
     dct = globals()

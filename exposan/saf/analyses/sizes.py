@@ -22,7 +22,7 @@ from qsdsan.utils import time_printer
 from exposan.saf import (
     config_baseline,
     config_EC,
-    config_EC_improved,
+    config_EC_future,
     create_system,
     dry_flowrate as default_dry_flowrate,
     get_GWP,
@@ -63,7 +63,7 @@ def evaluation_across_sizes(ratios, **config_kwargs):
 if __name__ == '__main__':
     # config_kwargs = config_baseline
     # config_kwargs = config_EC
-    config_kwargs = config_EC_improved
+    config_kwargs = config_EC_future
     
     flowsheet = qs.main_flowsheet
     dct = globals()

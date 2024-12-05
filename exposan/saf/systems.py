@@ -68,7 +68,7 @@ _m3_to_gal = 264.172
 __all__ = (
     'config_baseline',
     'config_EC',
-    'config_EC_improved',
+    'config_EC_future',
     'create_system',
     'get_GWP',
     'get_MFSP',
@@ -80,6 +80,8 @@ def create_system(
         include_EC=True,
         dry_flowrate=dry_flowrate,
         feedstock_composition=feedstock_composition,
+        electricitry_price=None,
+        electricitry_GHG=None,
         ):
     _load_process_settings()
     _load_components()
@@ -89,7 +91,7 @@ def create_system(
             flowsheet_ID = 'no_PSA'
         elif include_EC is False: flowsheet_ID = 'baseline'
         elif include_EC is True: flowsheet_ID = 'EC'
-        elif type(include_EC) is dict: flowsheet_ID = 'EC_improved'
+        elif type(include_EC) is dict: flowsheet_ID = 'EC_future'
         else: raise ValueError('Invalid system configuration.')
         flowsheet = qs.Flowsheet(flowsheet_ID)
         qs.main_flowsheet.set_flowsheet(flowsheet)
@@ -617,9 +619,10 @@ def create_system(
         linked_stream=CHP.outs[1],
         GWP=gwp_dct['solids'],
         )
+    qs.PowerUtility.price = electricitry_price if electricitry_price is not None else qs.PowerUtility.price
     e_item = qs.ImpactItem(
         ID='e_item',
-        GWP=gwp_dct['electricity'],
+        GWP=electricitry_GHG if electricitry_GHG is not None else gwp_dct['electricity'],
         )
     steam_item = qs.ImpactItem(
         ID='steam_item',
@@ -728,16 +731,29 @@ EC_config = {
     'EO_voltage': 2.5, # originally 5, Ref [5] at 2.5 V
     'ED_voltage': 2.5, # originally 30
     'electrode_cost': 225, # originally 40,000, Ref [5] high-end is 1,000, target is $225/m2
-    'EC.anion_exchange_membrane_cost': 0,
-    'EC.anion_exchange_membrane_cost': 0,
+    'anion_exchange_membrane_cost': 0,
+    'anion_exchange_membrane_cost': 0,
     }
-config_EC_improved = {'include_PSA': True, 'include_EC': EC_config,}
+config_EC_future = {
+    'include_PSA': True,
+    'include_EC': EC_config,
+    # Solar, commercial & industrial photovoltaics target of 2030
+    # C&IP is for 500 kWdc, EC future uses about 9200 kW
+    # Utility scale price of ¢2/kWh is for 100 MW system
+    # https://www.energy.gov/eere/solar/articles/2030-solar-cost-targets
+    # Land-based wind is ¢3.2/kWh, US average of 2022
+    # https://www.energy.gov/sites/default/files/2023-08/land-based-wind-market-report-2023-edition-executive-summary.pdf
+    # Projected LCOE, around ¢3-4/kWh for wind/solar
+    # https://www.eia.gov/outlooks/aeo/pdf/electricity_generation.pdf
+    'electricitry_price': 0.035,
+    'electricitry_GHG': 0,
+    }
 
 if __name__ == '__main__':
     # sys = create_system(flowsheet=None, **config_no_PSA)
-    sys = create_system(flowsheet=None, **config_baseline)
-    # sys = create_system(flowsheet=None, **config_EC) 
-    # sys = create_system(flowsheet=None, **config_EC_improved)
+    # sys = create_system(flowsheet=None, **config_baseline)
+    # sys = create_system(flowsheet=None, **config_EC)
+    sys = create_system(flowsheet=None, **config_EC_future)
     
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
