@@ -151,9 +151,9 @@ Loading systems
     net_earnings is 12,590,774 USD/yr
     Global warming potential of all fuel is -5.39 kg CO2e/GGE.
 
-More settings can be changed in the `systems.py` script, the /analyses_ directory includes two sensitivity analyses (with regard to plant size and biocrude yield).
+More settings can be changed in the `systems.py` script, the `/analyses </analyses>`_ directory includes two sensitivity analyses (with regard to plant size and biocrude yield).
 
 
 References
 ----------
-.. [1] Si et al., In Prep.
+.. [1] Si et al., In Prep., 2024.
