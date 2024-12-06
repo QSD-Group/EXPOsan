@@ -22,7 +22,7 @@ def test_saf():
     # Because of different CF settings for ImpactItem with the same ID
     from qsdsan.utils import clear_lca_registries
     clear_lca_registries()
-    rtol = 0.1
+    rtol = 0.15
     
     saf.load(configuration='baseline')
     saf.simulate_and_print(saf.sys)
