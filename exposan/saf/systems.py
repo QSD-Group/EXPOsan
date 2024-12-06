@@ -72,12 +72,13 @@ __all__ = (
     'create_system',
     'get_GWP',
     'get_MFSP',
+    'simulate_and_print',
     )
 
 def create_system(
         flowsheet=None,
         include_PSA=True,
-        include_EC=True,
+        include_EC=False,
         dry_flowrate=dry_flowrate,
         feedstock_composition=feedstock_composition,
         electricitry_price=None,

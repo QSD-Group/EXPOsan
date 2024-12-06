@@ -54,9 +54,22 @@ from . import systems
 from .systems import *
 
 _system_loaded = False
-def load():
+def load(configuration='baseline',):
     global sys, tea, lca, flowsheet, _system_loaded
-    sys = create_system()
+    configuration = configuration.lower()   
+    if configuration == 'baseline':
+        kwargs = config_baseline
+    elif configuration == 'ec':
+        kwargs = config_EC
+    elif configuration in ('ec-future', 'ec_future', 'ec future'):
+        kwargs = config_EC_future
+    elif configuration == 'no_psa':
+        kwargs = config_no_PSA
+    else:
+        raise ValueError('Configuration only be "baseline", "EC", "EC-future", or "no PSA", '
+                         f'not {kwargs}.')
+
+    sys = create_system(**kwargs)
     tea = sys.TEA
     lca = sys.LCA
     flowsheet = sys.flowsheet
