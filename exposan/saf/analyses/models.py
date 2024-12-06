@@ -13,6 +13,10 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
+'''
+NOT READY FOR USE
+'''
+
 import numpy as np, pandas as pd, qsdsan as qs
 from chaospy import distributions as shape
 from exposan.saf import (

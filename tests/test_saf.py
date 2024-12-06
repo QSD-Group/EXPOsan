@@ -22,9 +22,10 @@ def test_saf():
     # Because of different CF settings for ImpactItem with the same ID
     from qsdsan.utils import clear_lca_registries
     clear_lca_registries()
-
-    saf.load(configuration='baseline')
     rtol = 0.01
+    
+    saf.load(configuration='baseline')
+    saf.simulate_and_print(saf.sys)
     assert_allclose(saf.get_MFSP(saf.sys), 3.95586679600505, rtol=rtol)
     assert_allclose(saf.get_GWP(saf.sys), -5.394022805849971, rtol=rtol)
     
