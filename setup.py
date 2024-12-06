@@ -64,6 +64,8 @@ setup(
             'pou_disinfection/data/*',
             'reclaimer/*',
             'reclaimer/data/*',
+            'saf/*',
+            'saf/data/*',
         ]},
     classifiers=[
         'License :: OSI Approved :: University of Illinois/NCSA Open Source License',
