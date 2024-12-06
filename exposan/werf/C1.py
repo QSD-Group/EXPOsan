@@ -24,24 +24,24 @@ __all__ = ('create_c1_system',)
 
 #%%
 folder = ospath.dirname(__file__)
-# dfs = load_data(
-#     ospath.join(folder, 'data/initial_conditions.xlsx'), 
-#     sheet=None,
-#     )
-# asinit = dfs['rBOD']
-# fcinit = asinit.iloc[-1].to_dict()
-# adinit = dfs['adm'].iloc[0].to_dict()
-# Default initial conditions
-dfs = load_data(ospath.join(folder, 'data/G1_init.xlsx'), sheet=None)
-inf_concs = dfs['asm'].iloc[0].to_dict()
-# c1init = dfs['asm'].iloc[1].to_dict()
-asinit = dfs['asm'].iloc[1:]
-# asinit = dfs['asm_ss']
+dfs = load_data(
+    ospath.join(folder, 'data/initial_conditions.xlsx'), 
+    sheet=None,
+    )
+asinit = dfs['rBOD']
+fcinit = asinit.iloc[-1].to_dict()
 adinit = dfs['adm'].iloc[0].to_dict()
-c2init = dfs['settler'].to_dict('index')
-c2init['s'] = {k:v for k,v in c2init['s'].items() if v>0}
-c2init['x'] = {k:v for k,v in c2init['x'].items() if v>0}
-c2init['tss'] = [v for k,v in c2init['tss'].items() if v>0]
+# Default initial conditions
+# dfs = load_data(ospath.join(folder, 'data/G1_init.xlsx'), sheet=None)
+# inf_concs = dfs['asm'].iloc[0].to_dict()
+# # c1init = dfs['asm'].iloc[1].to_dict()
+# asinit = dfs['asm'].iloc[1:]
+# # asinit = dfs['asm_ss']
+# adinit = dfs['adm'].iloc[0].to_dict()
+# c2init = dfs['settler'].to_dict('index')
+# c2init['s'] = {k:v for k,v in c2init['s'].items() if v>0}
+# c2init['x'] = {k:v for k,v in c2init['x'].items() if v>0}
+# c2init['tss'] = [v for k,v in c2init['tss'].items() if v>0]
 
 
 MGD2cmd = 3785.412

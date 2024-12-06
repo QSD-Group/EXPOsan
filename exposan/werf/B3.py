@@ -18,7 +18,7 @@ from qsdsan import (
     sanunits as su,
     )
 from qsdsan.utils import ospath, time_printer, load_data, get_SRT
-from exposan.werf import data_path, default_aed_init, default_as_init, default_fctss_init
+from exposan.werf import data_path, default_fctss_init
 
 __all__ = ('create_b3_system',)
 
