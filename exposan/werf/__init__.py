@@ -49,11 +49,11 @@ default_as_init = dict(
     )
 
 default_aed_init = dict(
-    S_O2=1, S_F=0.4, S_A=0.1, S_I=30, S_NH4=0.2, S_N2=20, S_NO3=30, 
-    S_PO4=300, S_IC=84, X_I=8000, X_S=100, X_H=4000, X_PAO=100, X_PP=10,
+    S_O2=1, S_F=0.4, S_A=0.1, S_I=30, S_NH4=0.2, S_N2=20, S_NO3=1200, 
+    S_PO4=550, S_IC=84, X_I=8000, X_S=100, X_H=4000, X_PAO=100, X_PP=10,
     X_PHA=1, X_AUT=200, S_K=28, S_Mg=10, S_Na=86, S_Cl=425, S_Ca=10,
-    X_CaCO3=1e-2, X_struv=10, X_newb=250, X_ACP=5000, X_MgCO3=1e-2, 
-    X_AlOH=1e-2, X_AlPO4=1e-2, X_FeOH=1e-2, X_FePO4=1e-2
+    X_CaCO3=1e-2, X_struv=10, X_newb=250, X_ACP=7000, X_MgCO3=1e-2, 
+    X_AlOH=1e-2, X_AlPO4=1e-2, X_FeOH=1e-2, X_FePO4=1e-2, H2O=9.97e5
     )
 
 default_ad_init = dict(     # in kg/m3
@@ -69,8 +69,8 @@ default_ad_init = {k:v*1e3 for k,v in default_ad_init.items()} # convert to mg/L
 
 # default_fctss_init = [18, 28, 45, 90, 305, 305, 305, 305, 305, 5800]
 # default_fctss_init = [21, 34, 58, 127, 493, 493, 493, 493, 6243, 11329]
-default_fctss_init = [  22.02 ,   36.136,   62.289,  142.932,  610.813,  610.813,
-        610.813,  610.813, 3608.754, 9295.076]
+default_fctss_init = [22.02, 36.136, 62.289, 142.932, 610.813, 610.813,
+                      610.813, 610.813, 3608.754, 9295.076]
 
 
 from . import G1

@@ -24,7 +24,6 @@ __all__ = ('create_b1_system',)
 ID = 'B1'
 
 #%%
-folder = ospath.dirname(__file__)
 dfs = load_data(
     ospath.join(data_path, 'initial_conditions.xlsx'), 
     sheet=None,

@@ -17,17 +17,19 @@ from qsdsan import (
     sanunits as su,
     )
 from qsdsan.utils import ospath, time_printer, load_data, get_SRT
-from exposan.werf import data_path, default_aed_init, default_fctss_init
+from exposan.werf import data_path, default_fctss_init
 
 __all__ = ('create_b2_system',)
 
 ID = 'B2'
 #%%
-asinit = load_data(
+dfs = load_data(
     ospath.join(data_path, 'initial_conditions.xlsx'), 
-    sheet=ID,
+    sheet=None,
     )
+asinit = dfs[ID]
 fcinit = asinit.iloc[-1].to_dict()
+aedinit = dfs['AED'].loc[ID].to_dict()
 
 MGD2cmd = 3785.412
 Temp = 273.15+20 # temperature [K]
@@ -118,7 +120,7 @@ def create_b2_system(flowsheet=None, default_init_conds=True):
         FC.set_init_solubles(**fcinit)
         FC.set_init_sludge_solids(**fcinit)
         FC.set_init_TSS(default_fctss_init)
-        AED.set_init_conc(**default_aed_init)
+        AED.set_init_conc(**aedinit)
 
     
     sys = qs.System(
