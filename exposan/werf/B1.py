@@ -13,84 +13,32 @@ for license details.
 '''
 import qsdsan as qs
 from qsdsan import (
-    # WasteStream,
     processes as pc,
     sanunits as su,
     )
 from qsdsan.utils import ospath, time_printer, load_data, get_SRT
-from exposan.werf import default_ad_init, default_as_init, default_fctss_init
+from exposan.werf import data_path, default_ad_init, default_as_init, default_fctss_init
 
 __all__ = ('create_b1_system',)
+
+ID = 'B1'
 
 #%%
 folder = ospath.dirname(__file__)
 dfs = load_data(
-    ospath.join(folder, 'data/initial_conditions.xlsx'), 
+    ospath.join(data_path, 'initial_conditions.xlsx'), 
     sheet=None,
     )
-asinit = dfs['B1']
+asinit = dfs[ID]
 fcinit = asinit.iloc[-1].to_dict()
-adinit = dfs['adm'].iloc[-1].to_dict()
-# Default initial conditions
-# dfs = load_data(ospath.join(folder, 'data/G1_init.xlsx'), sheet=None)
-# asinit = dfs['asm'].iloc[1:]
-# # asinit = dfs['asm_ss']
-# # adinit = dfs['adm'].iloc[0].to_dict()
-# c2init = dfs['settler'].to_dict('index')
-# c2init['s'] = {k:v for k,v in c2init['s'].items() if v>0}
-# c2init['x'] = {k:v for k,v in c2init['x'].items() if v>0}
-# c2init['tss'] = [v for k,v in c2init['tss'].items() if v>0]
-
-# adinit = {
-#     'S_su': 0.011649409987233706,
-#     'S_aa': 0.005224687709048591,
-#     'S_fa': 0.09143444853388716,
-#     'S_va': 0.010538555495939485,
-#     'S_bu': 0.01381502642962188,
-#     'S_pro': 0.015627785163003477,
-#     'S_ac': 0.055098426143215494,
-#     'S_ch4': 0.2233336530302807,
-#     'S_IC': 1.0427915551564186,
-#     'S_IN': 1.669357973671328,
-#     'S_IP': 0.28964898102287245,
-#     'S_I': 0.016450418739744545,
-#     'X_ch': 0.06047631655400267,
-#     'X_pr': 0.06388757232327166,
-#     'X_li': 0.08593503930110351,
-#     'X_su': 0.9503620480475024,
-#     'X_aa': 0.7484248883486445,
-#     'X_fa': 0.7586744810131059,
-#     'X_c4': 0.31971827836675687,
-#     'X_pro': 0.15224043553443883,
-#     'X_ac': 1.1263471919494425,
-#     'X_h2': 0.4912284536782753,
-#     'X_I': 19.166956666296826,
-#     'X_PHA': 1.2849572506633961e-06,
-#     'X_PP': 5.724052662511763e-15,
-#     'X_PAO': 5.645526871794766e-07,
-#     'S_K': 0.028198583386767055,
-#     'S_Mg': 0.00022947578212156403,
-#     'S_Ca': 0.0015405999465588393,
-#     'X_CaCO3': 7.572335925505587e-10,
-#     'X_struv': 0.5082333428046245,
-#     'X_newb': 9.503417736993726e-10,
-#     'X_ACP': 3.435265972797314,
-#     'X_MgCO3': 7.572335925505587e-10,
-#     'X_AlOH': 9.503440160735277e-10,
-#     'X_AlPO4': 9.503420444805498e-10,
-#     'X_FeOH': 9.503456387448865e-10,
-#     'X_FePO4': 1.0453169886394833e-07,
-#     'S_Na': 0.07991961153828457,
-#     'S_Cl': 0.3903889983759098
-#       }
-
+adinit = dfs['adm'].loc[ID].to_dict()
 
 MGD2cmd = 3785.412
 Temp = 273.15+20 # temperature [K]
 T_ad = 273.15+35
 
 def create_b1_system(flowsheet=None, default_init_conds=True):
-    flowsheet = flowsheet or qs.Flowsheet('B1')
+    flowsheet = flowsheet or qs.Flowsheet(ID)
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
     pc.create_masm2d_cmps()
@@ -150,14 +98,9 @@ def create_b1_system(flowsheet=None, default_init_conds=True):
         maximum_nonsettleable_solids=20.0
         )
     
-    # MT = su.Thickener(
-    #     'MT', ins=FC-2, outs=['thickened_WAS', ''],
-    #     thickener_perc=5, TSS_removal_perc=95,
-    #     )
-    # M1 = su.Mixer('M1', ins=[GT-1, MT-0])
     MT = su.IdealClarifier(
         'MT', FC-2, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.023*MGD2cmd,
+        sludge_flow_rate=0.021*MGD2cmd,
         solids_removal_efficiency=0.95
         )
     M1 = su.Mixer('M1', ins=[GT-1, MT-1])
@@ -180,11 +123,6 @@ def create_b1_system(flowsheet=None, default_init_conds=True):
                           adm1_model=adm, asm2d_model=asm)
     qs.set_thermo(thermo_asm)
     
-    # DW = su.Centrifuge(
-    #     'DW', ins=J2-0, outs=('cake', ''),
-    #     thickener_perc=18, TSS_removal_perc=90,
-    #     )
-    # M2 = su.Mixer('M2', ins=[GT-0, MT-1, DW-1])    
     DW = su.IdealClarifier(
         'DW', J2-0, outs=('', 'cake'),
         sludge_flow_rate=0.0053*MGD2cmd,
@@ -195,23 +133,14 @@ def create_b1_system(flowsheet=None, default_init_conds=True):
     # HD = su.HydraulicDelay('HD', ins=M2-0, t_delay=1e-3)
     
     if default_init_conds:
-        # ASR.set_init_conc(**default_as_init)
-        # # for unit in (O1, O2, O3, O4, O5, O6):
-        # #     unit.set_init_conc(**default_as_init)
-        # FC.set_init_solubles(**default_as_init)
-        # FC.set_init_sludge_solids(**default_as_init)
         ASR.set_init_conc(concentrations=asinit)
         FC.set_init_solubles(**fcinit)
         FC.set_init_sludge_solids(**fcinit)
         FC.set_init_TSS(default_fctss_init)
-        # AD.set_init_conc(**default_ad_init)
         AD.set_init_conc(**adinit)
-        # FC.set_init_solubles(**c2init['s'])
-        # FC.set_init_sludge_solids(**c2init['x'])
-        # FC.set_init_TSS(c2init['tss'])
-    
+
     sys = qs.System(
-        'B1', 
+        ID, 
         path=(PC, GT, ASR, FC, MT, M1, J1, AD, J2, DW, M2),
         # path=(PC, GT, ASR, FC, MT, M1, J1, AD, J2, DW, M2, HD),
         # path=(PC, GT, O1, O2, O3, O4, O5, O6, FC, 
@@ -250,7 +179,6 @@ if __name__ == '__main__':
     dct.update(sys.flowsheet.to_dict())
     
     t = 100
-    # t = 1
     t_step = 1
     # method = 'RK45'
     method = 'RK23'
@@ -265,3 +193,6 @@ if __name__ == '__main__':
     #               wastage=[WAS],
     #               active_unit_IDs=('ASR',))
     # if srt: print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
+    
+    # from exposan.werf import figures_path
+    # sys.diagram(format='png', file=ospath.join(figures_path, f'{ID}'))

@@ -49,10 +49,10 @@ default_as_init = dict(
     )
 
 default_aed_init = dict(
-    S_O2=1, S_F=0.1, S_A=1.2, S_I=30, S_NH4=2.2, S_N2=10, S_NO3=0.4, 
-    S_PO4=5, S_IC=84, X_I=15000, X_S=101, X_H=5000, X_PAO=100, X_PP=10,
-    X_PHA=1, X_AUT=500, S_K=28, S_Mg=50, S_Na=86, S_Cl=425, S_Ca=140,
-    X_CaCO3=1e-2, X_struv=1e-2, X_newb=1e-2, X_ACP=1e-2, X_MgCO3=1e-2, 
+    S_O2=1, S_F=0.4, S_A=0.1, S_I=30, S_NH4=0.2, S_N2=20, S_NO3=30, 
+    S_PO4=300, S_IC=84, X_I=8000, X_S=100, X_H=4000, X_PAO=100, X_PP=10,
+    X_PHA=1, X_AUT=200, S_K=28, S_Mg=10, S_Na=86, S_Cl=425, S_Ca=10,
+    X_CaCO3=1e-2, X_struv=10, X_newb=250, X_ACP=5000, X_MgCO3=1e-2, 
     X_AlOH=1e-2, X_AlPO4=1e-2, X_FeOH=1e-2, X_FePO4=1e-2
     )
 
