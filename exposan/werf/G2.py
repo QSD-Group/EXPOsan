@@ -107,7 +107,7 @@ def create_g2_system(flowsheet=None, default_init_conds=True):
     
     FC = su.FlatBottomCircularClarifier(
         'FC', ins=ASR-0, outs=['SE', 1-ASR, 'WAS'],
-        # 'FC', ins=O6-0, outs=['SE', 1-O6, 'WAS'],
+        # 'FC', ins=O6-1, outs=['SE', 1-A3, 'WAS'],
         underflow=0.4*10*MGD2cmd, wastage=0.1*MGD2cmd,
         surface_area=1579.352, height=3.6576, N_layer=10, feed_layer=5,
         X_threshold=3000, v_max=410, v_max_practical=274,
