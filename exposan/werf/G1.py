@@ -55,23 +55,6 @@ T_ad = 273.15+35
 
 folder = ospath.dirname(__file__)
 
-# Default initial conditions
-# dfs = load_data(ospath.join(folder, 'data/G1_init.xlsx'), sheet=None)
-# inf_concs = dfs['asm'].iloc[0].to_dict()
-# # c1init = dfs['asm'].iloc[1].to_dict()
-# asinit = dfs['asm'].iloc[1:]
-# # asinit = dfs['asm_ss']
-# adinit = dfs['adm'].iloc[0].to_dict()
-# c2init = dfs['settler'].to_dict('index')
-# c2init['s'] = {k:v for k,v in c2init['s'].items() if v>0}
-# c2init['x'] = {k:v for k,v in c2init['x'].items() if v>0}
-# c2init['tss'] = [v for k,v in c2init['tss'].items() if v>0]
-# default_inf_kwargs = {
-#     'flow_tot': Q,
-#     'concentrations': inf_concs,
-#     'units': ('m3/d', 'mg/L'),
-#     }
-
 # based on GPS-X model
 asm_params = dict(
     Y_H=0.666, Y_A=0.18, Y_PAO=0.639, Y_PO4=0.4, Y_PHA=0.2,
@@ -196,7 +179,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     
     A1 = su.CSTR('A1', ins=[carb, 'RAS'], V_max=V_tot*V_fractions[0], **anae_kwargs)
     A2 = su.CSTR('A2', [A1-0, S1-0], V_max=V_tot*V_fractions[1], **anae_kwargs)
-    A3 = su.CSTR('A3', [A2-0, 'RWW', S1-1], V_max=V_tot*V_fractions[2], **anox_kwargs)
+    A3 = su.CSTR('A3', [A2-0, 'intr', S1-1], V_max=V_tot*V_fractions[2], **anox_kwargs)
     A4 = su.CSTR('A4', A3-0, V_max=V_tot*V_fractions[3], **anox_kwargs)
     O1 = su.CSTR('O1', A4-0, V_max=V_tot*V_fractions[4], **ae_kwargs)
     O2 = su.CSTR('O2', O1-0, [1-A3, 'treated'], split=[Q_intr, Q+Q_ras],
@@ -231,7 +214,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
         )
     
     MT = su.IdealClarifier('MT', FC-2, outs=['', 'thickened_WAS'],
-                           sludge_flow_rate=0.02*MGD2cmd,
+                           sludge_flow_rate=0.0335*MGD2cmd,
                            solids_removal_efficiency=0.95,)
     M1 = su.Mixer('M1', ins=(GT-1, MT-1))
         
@@ -246,8 +229,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     J1 = su.mASM2dtoADM1p('J1', upstream=M1-0, thermo=thermo_adm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
     AD = su.AnaerobicCSTR('AD', ins=J1.outs[0], outs=('biogas', 'digestate'), 
-                          # isdynamic=True, V_liq=416.395*9, V_gas=416.395, 
-                          isdynamic=True, V_liq=3596.14, V_gas=416.395, 
+                          isdynamic=True, V_liq=0.95*MGD2cmd, V_gas=0.11*MGD2cmd, 
                           fixed_headspace_P=False, fraction_retain=0,
                           T=T_ad, model=adm,
                           pH_ctrl=7.0,
@@ -260,7 +242,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     
     # Dewatering
     DW = su.PrimaryClarifier('DW', J2-0, outs=['', 'cake'],
-                             sludge_flow_rate=5.93e-3*MGD2cmd,
+                             sludge_flow_rate=0.0095*MGD2cmd,
                              solids_removal_efficiency=0.9,)
 
     M2 = su.Mixer('M2', ins=(GT-0, MT-0, DW-0))
@@ -320,7 +302,7 @@ def run(sys, t, t_step, method=None, **kwargs):
     print(f'Time span 0-{t}d \n')
     
     sys.simulate(
-        state_reset_hook='reset_cache',
+        # state_reset_hook='reset_cache',
         t_span=(0,t),
         # t_eval=np.arange(0, t+t_step, t_step),
         method=method,
