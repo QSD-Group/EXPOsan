@@ -15,7 +15,7 @@ __all__ = ('test_bsm1',)
 
 def test_bsm1():
     from numpy.testing import assert_allclose as ac
-    from numpy import array, vstack
+    from numpy import array, vstack, absolute
     from exposan import bsm1
     bsm1_ss_concs = array([
         [30, 2.81, 1149., 82.1, 2552., 148., 449., 0.0043, 5.37, 7.92, 1.22, 5.28, 4.93*12],
@@ -210,9 +210,19 @@ def test_bsm1():
     u = sys.flowsheet.unit
     cmps = s.effluent.components
     asm2d_ss = array([cmps.kwarray(v) for k,v in asm2d_ss.items()])
-    # ac(u.AS.state.iloc[:,:-2].to_numpy(), asm2d_ss[:,:-1], rtol=rtol)
-    # ac(s.effluent.state[:-2], cmps.kwarray(eff_ss)[:-1], rtol=rtol)
-    # ac(s.WAS.state[:-2], cmps.kwarray(sludge_ss)[:-1], rtol=rtol)
+    
+    val = u.AS.state.iloc[:,:-2]
+    val[val.abs()<1e-6] = 0 # very small values may lead to inf %
+    ac(val, asm2d_ss[:,:-1], rtol=rtol)
+    
+    val = absolute(s.effluent.state[:-2])
+    val[val<1e-6] = 0
+    ac(val, cmps.kwarray(eff_ss)[:-1], rtol=rtol)
+    
+    val = absolute(s.WAS.state[:-2])
+    val[val<1e-6] = 0
+    ac(val, cmps.kwarray(sludge_ss)[:-1], rtol=rtol)
+    
     ac(u.C1._state[-10:], c1tss_ss, rtol=rtol)
 
 if __name__ == '__main__':
