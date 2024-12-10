@@ -124,7 +124,7 @@ def create_f1_system(flowsheet=None, default_init_conds=True):
     
     DW = su.IdealClarifier(
         'DW', J2-0, outs=('', 'cake'),
-        sludge_flow_rate=5.77e-3*MGD2cmd,
+        sludge_flow_rate=5.77e-3*MGD2cmd,   # aim for 18% TS
         solids_removal_efficiency=0.9
         )
     M2 = su.Mixer('M2', ins=[GT-0, MT-0, DW-0])

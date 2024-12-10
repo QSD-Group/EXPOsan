@@ -100,7 +100,6 @@ def create_e2p_system(flowsheet=None, default_init_conds=True):
         sludge_flow_rate=0.019*MGD2cmd,
         solids_removal_efficiency=0.95
         )
-    # M1 = su.Mixer('M1', ins=[GT-1, MT-1])
     
     AED = su.AerobicDigester(
         'AED', ins=[GT-1, MT-1], outs='digestate',
@@ -109,7 +108,7 @@ def create_e2p_system(flowsheet=None, default_init_conds=True):
     
     DW = su.IdealClarifier(
         'DW', AED-0, outs=('', 'cake'),
-        sludge_flow_rate=0.0069*MGD2cmd,
+        sludge_flow_rate=0.0069*MGD2cmd,    # aim for 17% TS
         solids_removal_efficiency=0.9
         )
     MX = su.Mixer('MX', ins=[GT-0, MT-0, DW-0])

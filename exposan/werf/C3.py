@@ -88,7 +88,7 @@ def create_c3_system(flowsheet=None, default_init_conds=True):
     
     DW = su.IdealClarifier(
         'DW', MT-1, outs=('', 'cake'),
-        sludge_flow_rate=0.011*MGD2cmd,
+        sludge_flow_rate=0.011*MGD2cmd,     # aim for 17% TS
         solids_removal_efficiency=0.9
         )
     MX = su.Mixer('MX', ins=[MT-0, DW-0])

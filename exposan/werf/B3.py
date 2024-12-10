@@ -104,7 +104,7 @@ def create_b3_system(flowsheet=None, default_init_conds=True):
     
     DW = su.IdealClarifier(
         'DW', M1-0, outs=('', 'cake'),
-        sludge_flow_rate=0.0107*MGD2cmd,
+        sludge_flow_rate=0.0107*MGD2cmd,    # aim for 20% TS
         solids_removal_efficiency=0.9
         )
     M2 = su.Mixer('M2', ins=[GT-0, MT-0, DW-0])

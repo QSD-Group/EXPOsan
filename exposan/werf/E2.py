@@ -27,7 +27,7 @@ dfs = load_data(
     ospath.join(data_path, 'initial_conditions.xlsx'), 
     sheet=None,
     )
-asinit = dfs['C2']
+asinit = dfs[ID]
 fcinit = asinit.iloc[-1].to_dict()
 aedinit = dfs['AED'].loc[ID].to_dict()
 
@@ -94,7 +94,7 @@ def create_e2_system(flowsheet=None, default_init_conds=True):
       
     DW = su.IdealClarifier(
         'DW', AED-0, outs=('', 'cake'),
-        sludge_flow_rate=0.0033*MGD2cmd,
+        sludge_flow_rate=0.0033*MGD2cmd,    # aim for 17% TS
         solids_removal_efficiency=0.9
         )
     MX = su.Mixer('MX', ins=[MT-0, DW-0])
