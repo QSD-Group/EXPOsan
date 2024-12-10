@@ -39,7 +39,7 @@ Temp = 273.15+20 # temperature [K]
 T_ad = 273.15+35
 
 def create_g1_system(flowsheet=None, default_init_conds=True):
-    flowsheet = flowsheet or qs.Flowsheet('G1')
+    flowsheet = flowsheet or qs.Flowsheet(ID)
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
     pc.create_masm2d_cmps()
@@ -154,13 +154,14 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
         FC.set_init_TSS(default_fctss_init)
         AD.set_init_conc(**adinit)
     
-    sys = qs.System('G1', 
-                    path=(PC, GT, S1, A1, A2, A3, A4, O5, O6, FC, 
-                          MT, M1, J1, AD, J2, DW, M2, HD),
-                    recycle=(O6-0, FC-1, HD-0)
-                    # path=(PC, GT, AS, FC, MT, M1, J1, AD, J2, DW, M2, HD),
-                    # recycle=(FC-1, HD-0)
-                    )
+    sys = qs.System(
+        ID, 
+        path=(PC, GT, S1, A1, A2, A3, A4, O5, O6, FC, 
+              MT, M1, J1, AD, J2, DW, M2, HD),
+        recycle=(O6-0, FC-1, HD-0)
+        # path=(PC, GT, AS, FC, MT, M1, J1, AD, J2, DW, M2, HD),
+        # recycle=(FC-1, HD-0)
+        )
     sys.set_dynamic_tracker(FC-0, AD)
     
     return sys
