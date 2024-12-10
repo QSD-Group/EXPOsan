@@ -99,7 +99,7 @@ def create_f1_system(flowsheet=None, default_init_conds=True):
     
     MT = su.IdealClarifier(
         'MT', FC-2, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.019*MGD2cmd,
+        sludge_flow_rate=0.0196*MGD2cmd,
         solids_removal_efficiency=0.95
         )
     M1 = su.Mixer('M1', ins=[GT-1, MT-1])
@@ -117,19 +117,19 @@ def create_f1_system(flowsheet=None, default_init_conds=True):
         T=T_ad, model=adm,
         pH_ctrl=7.0,
         )
-    AD.algebraic_h2 = True
+    AD.algebraic_h2 = False
     J2 = su.ADM1ptomASM2d('J2', upstream=AD-1, thermo=thermo_asm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
     qs.set_thermo(thermo_asm)
     
     DW = su.IdealClarifier(
         'DW', J2-0, outs=('', 'cake'),
-        sludge_flow_rate=0.0059*MGD2cmd,
+        sludge_flow_rate=5.77e-3*MGD2cmd,
         solids_removal_efficiency=0.9
         )
-    M2 = su.Mixer('M2', ins=[GT-0, MT-0, DW-0], outs=1-PC)
+    M2 = su.Mixer('M2', ins=[GT-0, MT-0, DW-0])
     
-    # HD = su.HydraulicDelay('HD', ins=M2-0)
+    HD = su.HydraulicDelay('HD', ins=M2-0, outs=1-PC)
     
     if default_init_conds:
         ASR.set_init_conc(concentrations=asinit)
@@ -140,10 +140,10 @@ def create_f1_system(flowsheet=None, default_init_conds=True):
     
     sys = qs.System(
         ID, 
-        path=(PC, GT, ASR, FC, MT, M1, J1, AD, J2, DW, M2),
+        path=(PC, GT, ASR, FC, MT, M1, J1, AD, J2, DW, M2, HD),
         # path=(PC, GT, O1, O2, O3, O4, O5, O6, FC, 
         #       MT, M1, J1, AD, J2, DW, M2, HD),
-        recycle=(FC-1, M2-0)
+        recycle=(FC-1, HD-0)
         )
 
     sys.set_dynamic_tracker(FC-0, AD)
@@ -175,13 +175,13 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 100
+    t = 300
     t_step = 1
     # method = 'RK45'
-    method = 'RK23'
+    # method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    # method = 'BDF'
+    method = 'BDF'
     # method = 'LSODA'
     
     run(sys, t, t_step, method=method)
