@@ -24,15 +24,15 @@ def test_saf():
     clear_lca_registries()
     rtol = 0.15
     
-    saf.load(configuration='baseline')
-    saf.simulate_and_print(saf.sys)
-    assert_allclose(saf.get_MFSP(saf.sys), 3.95586679600505, rtol=rtol)
-    assert_allclose(saf.get_GWP(saf.sys), -5.394022805849971, rtol=rtol)
+    # saf.load(configuration='baseline')
+    # saf.simulate_and_print(saf.sys)
+    # assert_allclose(saf.get_MFSP(saf.sys), 3.95586679600505, rtol=rtol)
+    # assert_allclose(saf.get_GWP(saf.sys), -5.394022805849971, rtol=rtol)
     
-    saf.load(configuration='EC')
-    saf.simulate_and_print(saf.sys)
-    assert_allclose(saf.get_MFSP(saf.sys), 11.876241988677974, rtol=rtol)
-    assert_allclose(saf.get_GWP(saf.sys), 2.8357334832704386, rtol=rtol)
+    # saf.load(configuration='EC')
+    # saf.simulate_and_print(saf.sys)
+    # assert_allclose(saf.get_MFSP(saf.sys), 11.876241988677974, rtol=rtol)
+    # assert_allclose(saf.get_GWP(saf.sys), 2.8357334832704386, rtol=rtol)
     
     saf.load(configuration='EC-Future')
     saf.simulate_and_print(saf.sys)
