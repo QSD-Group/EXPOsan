@@ -87,7 +87,7 @@ def create_c1_system(flowsheet=None, default_init_conds=True):
     
     MT = su.IdealClarifier(
         'MT', FC-2, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.038*MGD2cmd,
+        sludge_flow_rate=0.0416*MGD2cmd,
         solids_removal_efficiency=0.95
         )
     
@@ -111,12 +111,12 @@ def create_c1_system(flowsheet=None, default_init_conds=True):
 
     DW = su.IdealClarifier(
         'DW', J2-0, outs=('', 'cake'),
-        sludge_flow_rate=0.006*MGD2cmd,
+        sludge_flow_rate=0.0062*MGD2cmd,
         solids_removal_efficiency=0.9
         )
-    MX = su.Mixer('MX', ins=[MT-0, DW-0], outs=2-ASR)
+    MX = su.Mixer('MX', ins=[MT-0, DW-0])
     
-    # HD = su.HydraulicDelay('HD', ins=MX-0, outs=2-ASR)
+    HD = su.HydraulicDelay('HD', ins=MX-0, outs=2-ASR)
     
     if default_init_conds:
         ASR.set_init_conc(concentrations=asinit)
@@ -127,10 +127,10 @@ def create_c1_system(flowsheet=None, default_init_conds=True):
 
     sys = qs.System(
         ID, 
-        path=(ASR, FC, MT, J1, AD, J2, DW, MX),
+        path=(ASR, FC, MT, J1, AD, J2, DW, MX, HD),
         # path=(O1, O2, O3, O4, O5, O6, FC, 
         #       MT, J1, AD, J2, DW, MX, HD),
-        recycle=(FC-1, MX-0)
+        recycle=(FC-1, HD-0)
         )
 
     sys.set_dynamic_tracker(FC-0, AD)
@@ -162,13 +162,13 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 100
+    t = 300
     t_step = 1
     # method = 'RK45'
-    method = 'RK23'
+    # method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    # method = 'BDF'
+    method = 'BDF'
     # method = 'LSODA'
     
     run(sys, t, t_step, method=method)

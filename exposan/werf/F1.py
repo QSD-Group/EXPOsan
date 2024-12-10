@@ -50,6 +50,7 @@ def create_f1_system(flowsheet=None, default_init_conds=True):
     
     PC = su.PrimaryClarifier(
         'PC', ins=[rww, 'reject'], 
+        isdynamic=True, 
         outs=('PE', 'PS'),
         sludge_flow_rate=0.074*MGD2cmd,
         solids_removal_efficiency=0.6

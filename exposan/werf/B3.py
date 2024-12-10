@@ -49,6 +49,7 @@ def create_b3_system(flowsheet=None, default_init_conds=True):
     PC = su.PrimaryClarifier(
         'PC', ins=[rww, 'reject'], 
         outs=('PE', 'PS'),
+        isdynamic=True, 
         sludge_flow_rate=0.066*MGD2cmd,
         solids_removal_efficiency=0.6
         )
@@ -96,37 +97,32 @@ def create_b3_system(flowsheet=None, default_init_conds=True):
     
     MT = su.IdealClarifier(
         'MT', FC-2, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.021*MGD2cmd,
+        sludge_flow_rate=0.0196*MGD2cmd,
         solids_removal_efficiency=0.95
         )
     M1 = su.Mixer('M1', ins=[GT-1, MT-1])
     
     DW = su.IdealClarifier(
         'DW', M1-0, outs=('', 'cake'),
-        sludge_flow_rate=0.0115*MGD2cmd,
+        sludge_flow_rate=0.0107*MGD2cmd,
         solids_removal_efficiency=0.9
         )
-    M2 = su.Mixer('M2', ins=[GT-0, MT-0, DW-0], 
-                  outs=1-PC
-                  )
+    M2 = su.Mixer('M2', ins=[GT-0, MT-0, DW-0])
     
-    # HD = su.HydraulicDelay('HD', ins=M2-0, outs=1-PC)
+    HD = su.HydraulicDelay('HD', ins=M2-0, outs=1-PC)
     
     if default_init_conds:
         ASR.set_init_conc(concentrations=asinit)
         FC.set_init_solubles(**fcinit)
         FC.set_init_sludge_solids(**fcinit)
         FC.set_init_TSS(default_fctss_init)
-
-    # sub = qs.System('B3_sec', path=(ASR, FC), recycle=(FC-1,))
     
     sys = qs.System(
         ID, 
-        # path=(PC, GT, sub, MT, M1, DW, M2),
-        path=(PC, GT, ASR, FC, MT, M1, DW, M2),
+        path=(PC, GT, ASR, FC, MT, M1, DW, M2, HD),
         # path=(PC, GT, O1, O2, O3, O4, O5, O6, FC, 
         #       MT, M1, DW, M2),
-        recycle=(FC-1, M2-0)
+        recycle=(FC-1, HD-0)
         )
 
     sys.set_dynamic_tracker(FC-0)
@@ -155,17 +151,16 @@ def run(sys, t, t_step, method=None, **kwargs):
 #%%
 if __name__ == '__main__':
     sys = create_b3_system()
-    # sub, = sys.subsystems
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 100
+    t = 300
     t_step = 1
     # method = 'RK45'
-    method = 'RK23'
+    # method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    # method = 'BDF'
+    method = 'BDF'
     # method = 'LSODA'
     
     run(sys, t, t_step, method=method)

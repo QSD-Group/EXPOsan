@@ -49,6 +49,7 @@ def create_e2p_system(flowsheet=None, default_init_conds=True):
     PC = su.PrimaryClarifier(
         'PC', ins=[rww, 'reject'], 
         outs=('PE', 'PS'),
+        isdynamic=True, 
         sludge_flow_rate=0.074*MGD2cmd,
         solids_removal_efficiency=0.6
         )
