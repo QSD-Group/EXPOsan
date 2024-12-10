@@ -148,7 +148,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
         asdct = asinit.to_dict('index')
         for i in (A1, A2, A3, A4, O5, O6):
             i.set_init_conc(**asdct[i.ID])
-        # AS.set_init_conc(concentrations=asinit)
+        # ASR.set_init_conc(concentrations=asinit)
         FC.set_init_solubles(**fcinit)
         FC.set_init_sludge_solids(**fcinit)
         FC.set_init_TSS(default_fctss_init)
