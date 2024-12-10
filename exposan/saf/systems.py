@@ -196,59 +196,38 @@ def create_system(
         outs=('crude_medium','char'),
         LHK=CrudeSplitter.keys[1],
         P=50*_psi_to_Pa,
-        Lr=0.85,
+        Lr=0.8,
         Hr=0.85,
         k=2, is_divided=True)
 
-    CrudeHeavyDis_run = CrudeHeavyDis._run
-    CrudeHeavyDis_design = CrudeHeavyDis._design
-    CrudeHeavyDis_cost = CrudeHeavyDis._cost
-    def run_design_cost():
-        CrudeHeavyDis_run()
-        try:
-            CrudeHeavyDis_design()
-            CrudeHeavyDis_cost()
-            if all([v>0 for v in CrudeHeavyDis.baseline_purchase_costs.values()]):
-                # Save for later debugging
-                # print('design')
-                # print(CrudeHeavyDis.design_results)
-                # print('cost')
-                # print(CrudeHeavyDis.baseline_purchase_costs)
-                # print(CrudeHeavyDis.installed_costs) # this will be empty
-                return
-        except: pass
-        raise RuntimeError('`CrudeHeavyDis` simulation failed.')
+    ratio0 = CrudeSplitter.cutoff_fracs[1]/sum(CrudeSplitter.cutoff_fracs[1:])
+    lb, ub = round(ratio0,2)-0.05, round(ratio0,2)+0.05
+
+    def get_ratio():
+        if CrudeHeavyDis.F_mass_out > 0:
+            return CrudeHeavyDis.outs[0].F_mass/CrudeHeavyDis.F_mass_out
+        return 0
 
     # Simulation may converge at multiple points, filter out unsuitable ones
     def screen_results():
-        ratio0 = CrudeSplitter.cutoff_fracs[1]/sum(CrudeSplitter.cutoff_fracs[1:])
-        lb, ub = round(ratio0,2)-0.05, round(ratio0,2)+0.05
-        try: 
-            run_design_cost()
-            status = True
-        except: 
-            status = False
-        def get_ratio():
-            if CrudeHeavyDis.F_mass_out > 0:
-                return CrudeHeavyDis.outs[0].F_mass/CrudeHeavyDis.F_mass_out
-            return 0
         n = 0
-        ratio = get_ratio()
-        while (status is False) or (ratio<lb) or (ratio>ub):
-            try: 
-                run_design_cost()
+        status = False
+        while (status is False) and (n<20):
+            try:
+                CrudeHeavyDis._run()
+                ratio = get_ratio()
+                assert(lb<=ratio<=ub)
+                CrudeHeavyDis._design()
+                CrudeHeavyDis._cost()
+                assert(all([v>0 for v in CrudeHeavyDis.baseline_purchase_costs.values()]))
                 status = True
-            except: 
+            except:
+                n += 1
                 status = False
-            ratio = get_ratio()
-            n += 1
-            if n >= 20:
-                status = False
-                raise RuntimeError(f'No suitable solution for `CrudeHeavyDis` within {n} simulation.')
-    CrudeHeavyDis._run = screen_results
-
-    def do_nothing(): pass
-    CrudeHeavyDis._design = CrudeHeavyDis._cost = do_nothing
+        if n >= 20:
+            raise RuntimeError(f'No suitable solution for `CrudeHeavyDis` within {n} simulation.')
+    CrudeHeavyDis.add_specification(screen_results)
+    CrudeHeavyDis.run_after_specifications = True
     
     # Lr_range = Hr_range = np.arange(0.05, 1, 0.05)
     # results = find_Lr_Hr(CrudeHeavyDis, target_light_frac=crude_char_fracs[0], Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
