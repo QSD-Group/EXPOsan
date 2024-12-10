@@ -97,9 +97,9 @@ def create_e2_system(flowsheet=None, default_init_conds=True):
         sludge_flow_rate=0.0033*MGD2cmd,
         solids_removal_efficiency=0.9
         )
-    MX = su.Mixer('MX', ins=[MT-0, DW-0], outs=2-ASR)
+    MX = su.Mixer('MX', ins=[MT-0, DW-0])
     
-    # HD = su.HydraulicDelay('HD', ins=MX-0)
+    HD = su.HydraulicDelay('HD', ins=MX-0, outs=2-ASR)
     
     if default_init_conds:
         ASR.set_init_conc(concentrations=asinit)
@@ -110,10 +110,10 @@ def create_e2_system(flowsheet=None, default_init_conds=True):
     
     sys = qs.System(
         ID, 
-        path=(ASR, FC, MT, AED, DW, MX),
+        path=(ASR, FC, MT, AED, DW, MX, HD),
         # path=(O1, O2, O3, O4, O5, O6, FC, 
         #       MT, AED, DW, MX, HD),
-        recycle=(FC-1, MX-0)
+        recycle=(FC-1, HD-0)
         )
 
     sys.set_dynamic_tracker(FC-0, AED)
@@ -145,13 +145,13 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 100
+    t = 300
     t_step = 1
     # method = 'RK45'
-    method = 'RK23'
+    # method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    # method = 'BDF'
+    method = 'BDF'
     # method = 'LSODA'
     
     run(sys, t, t_step, method=method)
