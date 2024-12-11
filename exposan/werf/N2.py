@@ -53,6 +53,8 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
     V_tot = 2.61 * MGD2cmd
     fr_V = [0.12, 0.18, 0.24, 0.24, 0.18, 0.04]
     Vs = [V_tot*f for f in fr_V]
+    Q_was = 0.17 * MGD2cmd      # SRT = 10.71 d
+    Q_intr = 40 * MGD2cmd
     
     ASR = su.PFR(
         'ASR', ins=[rww, carb, 'intr', 'reject'], 
@@ -75,16 +77,17 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
         )
     
     MBR = su.CompletelyMixedMBR(
-        'MBR', ins=ASR-0, outs=('treated', 'WAS'),
-        V_max=Vs[-1], pumped_flow=50, solids_capture_rate=0.9999,
-        aeration=2.0, DO_ID='S_O2', suspended_growth_model=asm
+        'MBR', ins=ASR-0, outs=('SE', ''),
+        V_max=Vs[-1], solids_capture_rate=0.9999, pumped_flow=Q_was+Q_intr,
+        aeration=2.0, DO_ID='S_O2', gas_stripping=True,
+        suspended_growth_model=asm, 
         )
-    
-    S1 = su.Splitter('S1', MBR-0, (2-ASR, 'SE'), split=0.8)
-    
+    S1 = su.Splitter('S1', MBR-1, ('', 'WAS'), split=Q_intr/(Q_intr+Q_was))
+    HD1 = su.HydraulicDelay('HD1', ins=S1-0, outs=2-ASR)
+        
     MT = su.IdealClarifier(
-        'MT', MBR-1, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.019*MGD2cmd,
+        'MT', S1-1, outs=['', 'thickened_WAS'],
+        sludge_flow_rate=0.0359*MGD2cmd,
         solids_removal_efficiency=0.95
         )
         
@@ -92,19 +95,14 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
         'AED', ins=MT-1, outs='digestate',
         V_max=2.4*MGD2cmd, activated_sludge_model=asm,
         aeration=1.0, DO_ID='S_O2', gas_stripping=True)
-    # DW = su.Centrifuge(
-    #     'DW', ins=J2-0, outs=('cake', ''),
-    #     thickener_perc=18, TSS_removal_perc=90,
-    #     )
-    # M2 = su.Mixer('M2', ins=[GT-0, MT-1, DW-1])    
+
     DW = su.IdealClarifier(
         'DW', AED-0, outs=('', 'cake'),
-        sludge_flow_rate=0.0053*MGD2cmd,    # aim for 17% TS
+        sludge_flow_rate=0.00383*MGD2cmd,    # aim for 17% TS
         solids_removal_efficiency=0.9
         )
-    MX = su.Mixer('MX', ins=[MT-0, DW-0], outs=3-ASR)
-    
-    # HD = su.HydraulicDelay('HD', ins=MX-0)
+    MX = su.Mixer('MX', ins=[MT-0, DW-0])
+    HD2 = su.HydraulicDelay('HD2', ins=MX-0, outs=3-ASR)
     
     if default_init_conds:
         ASR.set_init_conc(concentrations=asinit.iloc[:n_zones])
@@ -113,11 +111,11 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
     
     sys = qs.System(
         ID, 
-        path=(ASR, MBR, S1, MT, AED, DW, MX),# HD),
-        recycle=(S1-0, MX-0)
+        path=(ASR, MBR, S1, HD1, MT, AED, DW, MX, HD2),
+        recycle=(HD1-0, HD2-0)
         )
 
-    sys.set_dynamic_tracker(MBR, S1-1, AED)
+    sys.set_dynamic_tracker(MBR, MBR-0, AED)
 
     return sys
 
@@ -146,7 +144,7 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 10
+    t = 300
     t_step = 1
     # method = 'RK45'
     # method = 'RK23'

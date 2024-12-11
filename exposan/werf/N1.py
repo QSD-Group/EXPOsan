@@ -13,7 +13,7 @@ for license details.
 '''
 import qsdsan as qs
 from qsdsan import (
-    # WasteStream,
+    WasteStream,
     processes as pc,
     sanunits as su,
     )
@@ -47,7 +47,7 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
         COD=358, NH4_N=25.91, PO4_P=5,
         fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
         )
-    carb = qs.WasteStream('carbon', T=Temp, units='kg/hr', S_A=60)
+    carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=60)
     thermo_asm = qs.get_thermo()
     
     PC = su.PrimaryClarifier(
@@ -62,6 +62,8 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
     V_tot = 2.61 * MGD2cmd
     fr_V = [0.12, 0.18, 0.24, 0.24, 0.18, 0.04]
     Vs = [V_tot*f for f in fr_V]
+    Q_was = 0.035 * MGD2cmd   # 10.7d SRT insufficient for BNR target
+    Q_intr = 40 * MGD2cmd
     
     ASR = su.PFR(
         'ASR', ins=[PC-0, carb, 'intr'], 
@@ -83,17 +85,18 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
         )
     
     MBR = su.CompletelyMixedMBR(
-        'MBR', ins=ASR-0, outs=('treated', 'WAS'),
-        V_max=Vs[-1], pumped_flow=10, solids_capture_rate=0.9999,
-        aeration=2.0, DO_ID='S_O2', suspended_growth_model=asm,
-        gas_stripping=True
+        'MBR', ins=ASR-0, outs=('SE', ''),
+        V_max=Vs[-1], solids_capture_rate=0.9999, pumped_flow=Q_was+Q_intr,
+        aeration=2.0, DO_ID='S_O2', gas_stripping=True,
+        suspended_growth_model=asm, 
         )
     
-    S1 = su.Splitter('S1', MBR-0, (2-ASR, 'SE'), split=0.8)
+    S1 = su.Splitter('S1', MBR-1, ('', 'WAS'), split=Q_intr/(Q_intr+Q_was))
+    HD1 = su.HydraulicDelay('HD1', ins=S1-0, outs=2-ASR)
     
     GT = su.IdealClarifier(
-        'GT', ins=[PC-1, MBR-1], outs=['', 'thickened_sludge'],
-        sludge_flow_rate=0.058*MGD2cmd,
+        'GT', ins=[PC-1, S1-1], outs=['', 'thickened_sludge'],
+        sludge_flow_rate=0.042*MGD2cmd,     # aim for 5% TS
         solids_removal_efficiency=0.85
         )
 
@@ -114,20 +117,15 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
     J2 = su.ADM1ptomASM2d('J2', upstream=AD-1, thermo=thermo_asm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
     qs.set_thermo(thermo_asm)
-    
-    # DW = su.Centrifuge(
-    #     'DW', ins=J2-0, outs=('cake', ''),
-    #     thickener_perc=18, TSS_removal_perc=90,
-    #     )
-    # M2 = su.Mixer('M2', ins=[GT-0, MT-1, DW-1])    
+
     DW = su.IdealClarifier(
         'DW', J2-0, outs=('', 'cake'),
-        sludge_flow_rate=0.00593*MGD2cmd,   # aim for 18% TS
+        sludge_flow_rate=0.00623*MGD2cmd,   # aim for 18% TS
         solids_removal_efficiency=0.9
         )
     MX = su.Mixer('MX', ins=[GT-0, DW-0])
     
-    HD = su.HydraulicDelay('HD', ins=MX-0, outs=1-PC)
+    HD2 = su.HydraulicDelay('HD2', ins=MX-0, outs=1-PC)
     
     if default_init_conds:
         ASR.set_init_conc(concentrations=asinit.iloc[:n_zones])
@@ -136,11 +134,11 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
     
     sys = qs.System(
         ID, 
-        path=(PC, ASR, MBR, S1, GT, J1, AD, J2, DW, MX, HD),
-        recycle=(S1-0, HD-0)
+        path=(PC, ASR, MBR, S1, HD1, GT, J1, AD, J2, DW, MX, HD2),
+        recycle=(HD1-0, HD2-0)
         )
 
-    sys.set_dynamic_tracker(S1-1, AD)
+    sys.set_dynamic_tracker(MBR, MBR-0, AD)
 
     return sys
 
@@ -169,7 +167,7 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 30
+    t = 300
     t_step = 1
     # method = 'RK45'
     # method = 'RK23'
@@ -182,7 +180,7 @@ if __name__ == '__main__':
     # biomass_IDs = ('X_H', 'X_PAO', 'X_AUT')
     # srt = get_SRT(sys, biomass_IDs,
     #               wastage=[WAS],
-    #               active_unit_IDs=('ASR', 'MBR))
+    #               active_unit_IDs=('ASR', 'MBR'))
     # if srt: print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
     
     # from exposan.werf import figures_path
