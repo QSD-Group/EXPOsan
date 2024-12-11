@@ -5,9 +5,9 @@ name: build-dev
 
 on:
   push:
-    branches: [ bsm2 ]
+    branches: [ bsm2, trial ]
   pull_request:
-    branches: [ bsm2 ]
+    branches: [ bsm2, trial ]
 
 jobs:
   build:
