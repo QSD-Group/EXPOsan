@@ -404,7 +404,7 @@ def create_system(
     
     biobinder = qs.WasteStream('biobinder', price=price_dct['biobinder'])
     BiobinderStorage = qsu.StorageTank(
-        'HeavyFracStorage', BiobinderHX-0, outs=biobinder,
+        'BiobinderStorage', BiobinderHX-0, outs=biobinder,
         tau=24*3, vessel_material='Stainless steel',
         include_construction=False,
         )
