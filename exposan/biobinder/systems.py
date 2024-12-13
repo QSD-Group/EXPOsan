@@ -273,68 +273,48 @@ def create_system(
         outs=('hot_biofuel','hot_biobinder'),
         LHK=BiocrudeSplitter.keys[1],
         P=50*_psi_to_Pa,
-        Lr=0.75,
-        Hr=0.89, # 0.85 and 0.89 are more better
+        Lr=0.84, # 0.75
+        Hr=0.89,
         k=2, is_divided=True)
     
+    ratio0 = oil_fracs[0]
+    lb, ub = round(ratio0,2)-0.05, round(ratio0,2)+0.05
+    
+    def get_ratio():
+        if CrudeHeavyDis.F_mass_out > 0:
+            return CrudeHeavyDis.outs[0].F_mass/CrudeHeavyDis.F_mass_out
+        return 0
+    
+    # Simulation may converge at multiple points, filter out unsuitable ones
+    def screen_results():
+        n = 0
+        status = False
+        while (status is False) and (n<20):
+            try:
+                CrudeHeavyDis._run()
+                ratio = get_ratio()
+                assert(lb<=ratio<=ub)
+                CrudeHeavyDis._design()
+                CrudeHeavyDis._cost()
+                assert(all([v>0 for v in CrudeHeavyDis.baseline_purchase_costs.values()]))
+                status = True
+            except:
+                n += 1
+                status = False
+        if n >= 20:
+            raise RuntimeError(f'No suitable solution for `CrudeHeavyDis` within {n} simulation.')
+    CrudeHeavyDis.add_specification(screen_results)
+    CrudeHeavyDis.run_after_specifications = True
+
     # import numpy as np
     # from exposan.saf.utils import find_Lr_Hr
     # oil_fracs = [0.5316, 0.4684]
-    # Lr_range = np.arange(0.5, 1, 0.05)
-    # Hr_range = np.arange(0.75, 1, 0.05)
+    # Lr_range = np.arange(0.5, 1, 0.01)
+    # Hr_range = [0.89]
+    # # Hr_range = np.arange(0.85, 1, 0.05)
     # results = find_Lr_Hr(CrudeHeavyDis, Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
     # # results = find_Lr_Hr(CrudeHeavyDis, target_light_frac=oil_fracs[0], Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
     # results_df, Lr, Hr = results
-    
-    CrudeHeavyDis_run = CrudeHeavyDis._run
-    CrudeHeavyDis_design = CrudeHeavyDis._design
-    CrudeHeavyDis_cost = CrudeHeavyDis._cost
-    def run_design_cost():
-        CrudeHeavyDis_run()
-        try:
-            CrudeHeavyDis_design()
-            CrudeHeavyDis_cost()
-            if all([v>0 for v in CrudeHeavyDis.baseline_purchase_costs.values()]):
-                # Save for later debugging
-                # print('design')
-                # print(CrudeHeavyDis.design_results)
-                # print('cost')
-                # print(CrudeHeavyDis.baseline_purchase_costs)
-                # print(CrudeHeavyDis.installed_costs) # this will be empty
-                return
-        except: pass
-        raise RuntimeError('`CrudeHeavyDis` simulation failed.')
-
-    # Simulation may converge at multiple points, filter out unsuitable ones
-    def screen_results():
-        ratio0 = oil_fracs[0]
-        lb, ub = round(ratio0,2)-0.05, round(ratio0,2)+0.05
-        try: 
-            run_design_cost()
-            status = True
-        except: 
-            status = False
-        def get_ratio():
-            if CrudeHeavyDis.F_mass_out > 0:
-                return CrudeHeavyDis.outs[0].F_mass/CrudeHeavyDis.F_mass_out
-            return 0
-        n = 0
-        ratio = get_ratio()
-        while (status is False) or (ratio<lb) or (ratio>ub):
-            try: 
-                run_design_cost()
-                status = True
-            except: 
-                status = False
-            ratio = get_ratio()
-            n += 1
-            if n >= 100:
-                status = False
-                raise RuntimeError(f'No suitable solution for `CrudeHeavyDis` within {n} simulation.')
-    CrudeHeavyDis._run = screen_results
-
-    def do_nothing(): pass
-    CrudeHeavyDis._design = CrudeHeavyDis._cost = do_nothing
 
     BiofuelFlash = qsu.Flash('BiofuelFlash', ins=CrudeHeavyDis-0, outs=('', 'cooled_biofuel',),
                               T=298.15, P=101325)
@@ -461,16 +441,15 @@ def create_system(
     for unit in sys.units:
      unit.include_construction = False
 
-
-    streams_with_impacts = [
-    i for i in sys.feeds + sys.products
-    if i.isempty() is False and i.imass['Water'] != i.F_mass and 'surrogate' not in i.ID
-    ]
+    # streams_with_impacts = [
+    # i for i in sys.feeds + sys.products
+    # if i.isempty() is False and i.imass['Water'] != i.F_mass and 'surrogate' not in i.ID
+    # ]
 
     tea = create_tea(sys, **tea_kwargs)
 
-
-    clear_lca_registries()
+# Load impact indicators and items
+    # clear_lca_registries()
     # qs.ImpactIndicator.load_from_file(os.path.join(data_path, 'impact_indicators.csv'))
     # qs.ImpactItem.load_from_file(os.path.join(data_path, 'impact_items.xlsx'))
     # print("Loaded Impact Items:")
@@ -483,7 +462,7 @@ def create_system(
         'trans_feedstock': 0.011856, # 78 km, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/9393/impact_assessment, Snowden-Swan PNNL 32731
         'trans_biocrude': 0.024472, # 100 miles,https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/9393/impact_assessment, Snowden-Swan PNNL 32731
         'H2': -10.71017675, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/24913/impact_assessment
-        'natural_gas': 0.780926344, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/4866/impact_assessment
+        'natural_gas': 0.780926344+44/16, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/4866/impact_assessment, include combustion
         'process_water': 0,
         'electricity': 0.465474829, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/13670/impact_assessment
         'steam': 0.126312684, # kg CO2e/MJ, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/7479/impact_assessment
@@ -608,7 +587,7 @@ def create_system(
     e_item=lambda: (sys.get_electricity_consumption() - sys.get_electricity_production()) * lifetime,
     steam_item=lambda: sys.get_heating_duty() / 1000 * lifetime,
     cooling_item=lambda: sys.get_cooling_duty() / 1000 * lifetime,
-        )
+    )
   
     return sys
 
