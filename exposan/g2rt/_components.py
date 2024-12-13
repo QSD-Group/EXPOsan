@@ -12,8 +12,9 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-from qsdsan import Component, Components, set_thermo as qs_set_thermo
+from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
 from exposan.reclaimer import create_components as create_re_components
+from exposan.utils import add_V_from_rho
 
 __all__ = ('create_components',)
 
@@ -25,10 +26,28 @@ def create_components(set_thermo=True):
                     degradability='Readily', organic=True)
     xCOD = Component('xCOD', phase='s', particle_size='Particulate',measured_as='COD',
                     degradability='Readily', organic=True)
+    NO = Component('NO', phase='g', particle_size='Dissolved gas',
+                    degradability='Undegradable', organic=False)
+    SO2 = Component('SO2', phase='g', particle_size='Dissolved gas',
+                    degradability='Undegradable', organic=False)
+    
+    # Wood pellets
+    # moisture content = 18.5 %, caloric value (HHV) = 19.16 MJ/kg
+    WoodPellet = Component('WoodPellet', phase='s', i_C = 0.474, i_N = 0.0031,
+                           particle_size='Particulate',
+                           degradability='Undegradable', organic=False, description='Wood pellets as biofuel for combustion')
+    # 700 kg/m3 is average from:
+    # https://www.biofuelmachines.com/wood-pellets-quality-standards-study.html (accessed 2024-11-20)
+    # https://doi.org/10.1016/j.biombioe.2023.106951
+    add_V_from_rho(WoodPellet, 700)
+    WoodPellet.HHV = 19.16
+    WoodPellet.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
 
     #remove components that are not used
-    not_used_cmps = ('KCl','GAC','Zeolite')
-    cmps = Components([cmp for cmp in re_cmps if cmp.ID not in not_used_cmps]+ [sCOD, xCOD])
+    not_used_cmps = ('KCl','GAC','Zeolite','LPG','HCl','MgOH2','Struvite')
+    
+    cmps = Components([cmp for cmp in re_cmps if cmp.ID not in not_used_cmps]+ 
+                      [sCOD, xCOD,WoodPellet,NO,SO2]) #new components
     
     #assign value 0 to heat value that does not exist
     for cmp in cmps:

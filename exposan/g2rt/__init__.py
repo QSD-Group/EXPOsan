@@ -27,9 +27,9 @@ from exposan.utils import (
 # Module-wise setting on whether to allow resource recovery
 INCLUDE_RESOURCE_RECOVERY = False
 
-vr_path = os.path.dirname(__file__)
-vr_data_path = os.path.join(vr_path, 'data')
-results_path = os.path.join(vr_path, 'results')
+g2rt_path = os.path.dirname(__file__)
+g2rt_data_path = os.path.join(g2rt_path, 'data')
+results_path = os.path.join(g2rt_path, 'results')
 # To save simulation data
 if not os.path.isdir(results_path): os.mkdir(results_path)
 default_ppl = 6
@@ -63,7 +63,7 @@ def update_resource_recovery_settings():
         'N': 1.507*price_factor*RR_factor,
         'P': 3.983*price_factor*RR_factor,
         'K': 1.333*price_factor*RR_factor,
-        'H2O': 4.01/1e3*price_ratio*RR_factor, #TODO:negative because this is counted as ins in Mixer
+        'H2O': 4.01/1e3*price_ratio*RR_factor,
         #per kg of water + wastewater treated https://www.epa.gov/watersense/data-and-information-used-watersense
         'wages': 3.64,
         }
@@ -75,8 +75,11 @@ def update_resource_recovery_settings():
         'N': -5.4*RR_factor,
         'P': -4.9*RR_factor,
         'K': -1.5*RR_factor,
-        'H2O': -3.2756/1e4 * RR_factor 
+        'H2O': -3.2756/1e4 * RR_factor, 
         # per kg of tap water production, conventional treatment
+        'NO': 0,
+        'SO2':0,
+        'NH3': 0
         }
     
     H_Ecosystems_dct = {
@@ -86,7 +89,10 @@ def update_resource_recovery_settings():
         'N': -0.0461961*RR_factor,
         'P': -0.093269908*RR_factor,
         'K': -0.01895794*RR_factor,
-        'H2O': -6.648597/1e6 * RR_factor # per kg of tap water production, conventional treatment
+        'H2O': -6.648597/1e6 * RR_factor, # per kg of tap water production, conventional treatment
+        'NO': 0.007178,
+        'SO2':0.012817,
+        'NH3': 0.0314
         }
     
     H_Health_dct = {
@@ -96,7 +102,10 @@ def update_resource_recovery_settings():
         'N': -0.637826734*RR_factor,
         'P': -1.774294425*RR_factor,
         'K': -0.116067637*RR_factor,
-        'H2O': -1.6207909/1e5 * RR_factor # per kg of tap water production, conventional treatment
+        'H2O': -1.6207909/1e5 * RR_factor, # per kg of tap water production, conventional treatment
+        'NO': 1.133,
+        'SO2':1.923,
+        'NH3': 1.647
         }
     
     H_Resources_dct = {
@@ -106,7 +115,10 @@ def update_resource_recovery_settings():
         'N': -0.259196888*RR_factor,
         'P': -1.084191599*RR_factor,
         'K': -0.054033438*RR_factor,
-        'H2O': -1.5364666/1e5 * RR_factor # per kg of tap water production, conventional treatment
+        'H2O': -1.5364666/1e5 * RR_factor, # per kg of tap water production, conventional treatment
+        'NO': 0,
+        'SO2':0,
+        'NH3': 0
         }
     
     return price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct
@@ -139,10 +151,10 @@ def _load_lca_data(reload=False):
     '''
     global _impact_item_loaded
     if not _impact_item_loaded or reload:
-        indicator_path = os.path.join(vr_data_path, 'impact_indicators.csv')
+        indicator_path = os.path.join(g2rt_data_path, 'impact_indicators.csv')
         qs.ImpactIndicator.load_from_file(indicator_path)
 
-        item_path = os.path.join(vr_data_path, 'impact_items.xlsx')
+        item_path = os.path.join(g2rt_data_path, 'impact_items.xlsx')
         qs.ImpactItem.load_from_file(item_path)
         
         price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct = update_resource_recovery_settings()
@@ -161,6 +173,9 @@ def _load_lca_data(reload=False):
         create_stream_impact_item(item_ID='P_item')
         create_stream_impact_item(item_ID='K_item')
         create_stream_impact_item(item_ID='H2O_item')
+        create_stream_impact_item(item_ID='NO_item')
+        create_stream_impact_item(item_ID='SO2_item')
+        create_stream_impact_item(item_ID='NH3_item')
         ImpactItem(ID='e_item', functional_unit='kWh',
                    GWP=GWP_dct['Electricity'],
                    H_Ecosystems=H_Ecosystems_dct['Electricity'],
@@ -173,7 +188,7 @@ def _load_lca_data(reload=False):
 
 from . import systems
 from .systems import *
-from exposan.VR_toilet.systems import create_system
+from exposan.g2rt.systems import create_system
 _system_loaded = False
 def _load_system():
     qs.currency = 'USD'
@@ -204,10 +219,10 @@ def __getattr__(name):
 ##### Recoveries #####
 # Calculate recoveries as in kg N/P/K/H2O per yr
 hr_per_yr = 365 * 24
-get_N = lambda stream: stream.TN*stream.F_vol/1e3*hr_per_yr
-get_P = lambda stream: stream.TP*stream.F_vol/1e3*hr_per_yr
-get_K = lambda stream: stream.TK*stream.F_vol/1e3*hr_per_yr
-get_Water = lambda stream: stream.imass['H2O']/1e3*hr_per_yr #TODO: check unit conversion
+get_N = lambda stream: (stream.imass['NH3']+stream.imass['NonNH3'])*hr_per_yr
+get_P = lambda stream: stream.imass['P']*hr_per_yr #TODO: check if mass in and mass out balance in each unit
+get_K = lambda stream: stream.imass['K']*hr_per_yr
+get_Water = lambda stream: stream.imass['H2O']*hr_per_yr 
 
 # Only for `sysA` or `sysB`
 def get_recoveries(system, ppl=default_ppl, include_breakdown=False):
@@ -218,10 +233,11 @@ def get_recoveries(system, ppl=default_ppl, include_breakdown=False):
     dct['P_dct'] = P_dct = {}
     dct['K_dct'] = K_dct = {}
     dct['Water_dct'] = Water_dct = {}
-    toilet = u_reg.A2
-    mixer = u_reg.Mixer
+    fp = u_reg.A10
+    solids_separator = u_reg.A3
     RO = u_reg.A6
-    dry_sludge_cake = u_reg.A11
+    comp_splitter = u_reg.A18
+    mixer = u_reg.Mixer
 
     # ##### Unique to A or B #####
     # if AB == 'A':
@@ -262,11 +278,12 @@ def get_recoveries(system, ppl=default_ppl, include_breakdown=False):
 
     # % N, P, and K recovered as a usable fertilizer product,
     # for model metrics and also the Resource Recovery criterion in DMsan analysis
+    #TODO: check mass flow to make sure it is right after each unit
     functions = [
-            lambda: get_N(dry_sludge_cake.outs[0]) / ((get_N(toilet.ins[0])+get_N(toilet.ins[1])) * ppl) * 100,  # total_N_recovery
-            lambda: get_P(dry_sludge_cake.outs[0]) / ((get_P(toilet.ins[0])+get_P(toilet.ins[1])) * ppl) * 100,  # total_P_recovery
-            lambda: get_K(dry_sludge_cake.outs[0]) / ((get_K(toilet.ins[0])+get_K(toilet.ins[1])) * ppl) * 100,  # total_K_recovery
-            lambda: get_Water(RO.outs[0]) / (get_Water(toilet.ins[0])*ppl+get_Water(toilet.ins[1])*ppl+get_Water(mixer.outs[0]))* 100 #total water recovery
+            lambda: get_N(comp_splitter.outs[0]) / (get_N(fp.outs[1])+get_N(RO.outs[0])+get_N(RO.outs[1])) * 100,  # total_N_recovery
+            lambda: get_P(comp_splitter.outs[1]) / (get_P(fp.outs[1])+get_P(RO.outs[0])+get_P(RO.outs[1])) * 100,  # total_P_recovery
+            lambda: get_K(comp_splitter.outs[2]) / (get_K(fp.outs[1])+get_K(RO.outs[0])+get_K(RO.outs[1])) * 100,  # total_K_recovery
+            lambda: get_Water(RO.outs[0]) / (get_Water(RO.outs[0])+get_Water(RO.outs[1])+get_Water(fp.outs[1]))* 100 #total water recovery
             ]
     return functions
 
@@ -440,8 +457,8 @@ from .models import *
 # from .country_specific import *
 
 __all__ = (
-    'vr_path',
-    'vr_data_path',
+    'g2rt_path',
+    'g2rt_data_path',
     'results_path',
     *_components.__all__,
     *systems.__all__,

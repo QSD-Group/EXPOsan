@@ -21,9 +21,9 @@ from qsdsan import (
     ImpactItem,
     System, TEA, LCA,
     )
-from exposan.VR_toilet import _sanunits as su
-from exposan.VR_toilet._components import create_components
-from exposan.VR_toilet import (
+from exposan.g2rt import _sanunits as su
+from exposan.g2rt._components import create_components
+from exposan.g2rt import (
     create_components,
     _load_lca_data,
     _load_components,
@@ -40,7 +40,7 @@ __all__ = ('create_system',)
 
 #%%
 
-# from exposan.VR_toilet import (
+# from exposan.g2rt import (
 #     _load_components,
 #     _load_lca_data,
 #     discount_rate,
@@ -64,6 +64,15 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
 
     item = ImpactItem.get_item('N2O_item').copy(f'{prefix}_N2O_item', set_as_source=True)
     WasteStream('N2O', phase='g', stream_impact_item=item)
+    
+    item = ImpactItem.get_item('NO_item').copy(f'{prefix}_NO_item', set_as_source=True)
+    WasteStream('NO', phase='g', stream_impact_item=item)
+    
+    item = ImpactItem.get_item('SO2_item').copy(f'{prefix}_SO2_item', set_as_source=True)
+    WasteStream('SO2', phase='g', stream_impact_item=item)
+    
+    item = ImpactItem.get_item('NH3_item').copy(f'{prefix}_NH3_item', set_as_source=True)
+    WasteStream('NH3', phase='g', stream_impact_item=item)
     
     price_dct = update_resource_recovery_settings()[0]
     item = ImpactItem.get_item('H2O_item').copy(f'{prefix}_H2O_item', set_as_source=True)
@@ -89,6 +98,9 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
     # create_stream_with_impact_item('H2O')
     WasteStream('H2O_vapor', phase='g')
     WasteStream('H2O_vapor1', phase='g')
+    
+    # create_stream_with_impact_item(stream_ID='NH3_gas', dct_key='NH3',item_ID = 'NH3_item')
+    
     WasteStream('NH3_gas', phase='g')
     WasteStream('NH3_gas1', phase='g')
 
@@ -145,7 +157,7 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
     #              decay_k_N=get_decay_k(),
     #              max_CH4_emission=max_CH4_emission)
     mixer = su.FWMixer('Mixer',
-                      ins = ('tap_water', 'RO_permeate'),
+                      ins = ('tap_water', streamA['H2O']),
                       outs = ('flushing_water'),
                       N_tot_user = 6
                       )
@@ -172,8 +184,12 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
     #                       ins = (A3-0,A3-1,recycle_uf),
     #                       outs = ('A4_liquid','A4_solid'),
     #                       )
+    UFmixer = su.UFMixer('UFMixer',
+                         ins = (A3-0,'ultrafiltration_reject'),
+                         outs = 'UFmixed_liquid'
+                         )
     A4 = su.G2RTBeltSeparation('A4', 
-                          ins = (A3-0,A3-1,'ultrafiltration_reject'),
+                          ins = (UFmixer-0,A3-1),
                           outs = ('A4_liquid','A4_solid'),
                           )
     A12 = su.G2RTSolidsTank('A12',
@@ -191,7 +207,7 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
     #                                   )
     A5 = su.G2RTUltrafiltration('A5',
                                       ins = A13-0,
-                                      outs = ('A5_treated',2-A4)
+                                      outs = ('A5_treated',1-UFmixer)
                                       )
     
     # A6 = su.G2RTReverseOsmosis('A6', 
@@ -200,17 +216,18 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
     #                         )
     A6 = su.G2RTReverseOsmosis('A6', 
                             ins = A5-0,
-                            outs = (streamA['H2O'],'A6_brine') #TODO: sys.flowsheet.unit.A6.outs[0].stream_impact_item
+                            outs = (1-mixer,'A6_brine') #TODO: sys.flowsheet.unit.A6.outs[0].stream_impact_item
                             )
+    
     # item = ImpactItem.get_item('H2O_item').copy('A_H2O_item', set_as_source=True)
     # A6.outs[0].stream_impact_item = item
 
     A7 = su.VRConcentrator('A7',
                            ins = A6-1,
                            outs = ('A7_consensed_waste','A7_N2O','A7_CH4',
-                                   streamA['NH3_gas1'],streamA['H2O_vapor1'])
+                                   'A17_NH3_gas',streamA['H2O_vapor1'])
                            )
-    
+
     A8 = su.G2RThomogenizer('A8', 
                             ins = A12-0, 
                             outs = 'A8_grinded')
@@ -226,43 +243,53 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
     A11 = su.VRdryingtunnel('A11',
                            ins = (A7-0,A10-1),
                            outs = ('A11_solid_cakes','A11_N2O', 'A11_CH4',
-                                   streamA['NH3_gas'],streamA['H2O_vapor'])
+                                   'A11_NH3_gas',streamA['H2O_vapor'])
                            )
+    A14 = su.VolumeReductionCombustor('A14',
+                                      ins = (A11-0,'Wood_pellets'),
+                                      outs = ("Ash","hot_gas","A14_CH4", "A14_N2O", 
+                                              streamA['NO'],streamA['SO2'],'A14_NH3_gas'),
+                                      if_sludge_service = True
+                                      )
     
-    # CH4 emissions from MURT, concentrator, and drying tunnel
-    A14 = qsu.Mixer('A14', ins=(A2-1, A7-2, A11-2), outs=streamA['CH4'])
-    A14.add_specification(lambda: add_fugitive_items(A14, 'CH4_item'))
-    A14.line = 'fugitive CH4 mixer'
     
-    # N2O emissions from MURT, concentrator, and drying tunnel
-    A15 = su.Mixer('A15', ins=(A2-2, A7-1, A11-1), outs=streamA['N2O'])
-    A15.add_specification(lambda: add_fugitive_items(A15, 'N2O_item'))
-    A15.line = 'fugitive N2O mixer'
+    # CH4 emissions from MURT, concentrator, drying tunnel, and combustor
+    A15 = qsu.Mixer('A15', ins=(A2-1, A7-2, A11-2, A14-2), outs=streamA['CH4'])
+    A15.add_specification(lambda: add_fugitive_items(A15, 'CH4_item'))
+    A15.line = 'fugitive CH4 mixer'
+    # N2O emissions from MURT, concentrator, drying tunnel, and combustor
+    A16 = qsu.Mixer('A16', ins=(A2-2, A7-1, A11-1, A14-3), outs=streamA['N2O'])
+    A16.add_specification(lambda: add_fugitive_items(A16, 'N2O_item'))
+    A16.line = 'fugitive N2O mixer'
+    
+    # NH3 emissions from concentrator, drying tunnel, and combustor
+    A17 = qsu.Mixer('A17', ins=(A7-3, A11-3, A14-6), outs=streamA['NH3'])
+    A17.add_specification(lambda: add_fugitive_items(A17, 'NH3_item'))
+    A17.line = 'fugitive NH3 mixer'
     
     # N, P, K split for recovery
-    A16 = qsu.ComponentSplitter('A16', ins=A11-0,
+    A18 = qsu.ComponentSplitter('A18', ins=A14-0,
                                outs=(streamA['sol_N'], streamA['sol_P'], streamA['sol_K'],
                                      'A_sol_non_fertilizers'),
                                split_keys=('N', 'P', 'K'))
     
     sysA_1 = System('sysA_1',
-                    path = (A1,mixer,A2,A3,A4,A12,A13,A5),
+                    path = (A1,mixer,A2,A3,UFmixer,A4,A12,A13,A5),
                     recycle = A5-1
                     )
-    sysA = System('sysA',
-                  path = (sysA_1,A6,A7,A8,A9,A10,A11,A14,A15,A16),
-                  recycle = A10-0
-                  )
-    
-    # sysA_2 = System('sysA_2',
-    #               path = (sysA_1,A6,A7,A8,A9),
-    #               recycle = A6-0
-    #               )
-
     # sysA = System('sysA',
-    #               path=(sysA_2,A10,A11,A14,A15,A16),
+    #               path = (sysA_1,A6,A7,A8,A9,A10,A11,A14,A15,A16),
     #               recycle = A10-0
     #               )
+    sysA_2 = System('sysA_2',
+                  path = (sysA_1,A6,A7,A8,A9),
+                  recycle = A6-0
+                  )
+
+    sysA = System('sysA',
+                  path=(sysA_2,A10,A11,A14,A15,A16,A17,A18),
+                  recycle = A10-0
+                  )
     # sysA = System('sysA', 
     #               path=(A1,A2,A3,A4,A12,A13,A5,A6,A7,A8,A9,A10,A11),)
     
@@ -270,10 +297,12 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
                start_year=2020, lifetime=10, uptime_ratio=1,
                lang_factor=None, annual_maintenance=0,
                annual_labor=0)
+    
     # batch_create_streams('A')
     get_powerA = sum([u.power_utility.rate for u in sysA.units]) * (24 * 365 * teaA.lifetime)
     
     LCA(system=sysA, lifetime=10, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerA)
+    # sysA.simulate()
     return sysA
     
 

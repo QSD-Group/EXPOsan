@@ -17,11 +17,15 @@ import biosteam as bst
 from warnings import warn
 from math import ceil
 from qsdsan.sanunits._abstract import Mixer
+from qsdsan.sanunits import IsothermalCompressor
 from qsdsan.processes import Decay
 from qsdsan import SanUnit,Construction, WasteStream
 from qsdsan.sanunits import SludgeThickening, Copier
+from biosteam.units.design_tools import flash_vessel_design
 from qsdsan.utils import ospath, data_path, load_data, price_ratio
+import CoolProp.CoolProp as CP
 g2rt_su_data_path = ospath.join(data_path, 'sanunit_data/g2rt')
+
 
 __all__ = ('Excretion',
            'VolumeReductionFilterPress',
@@ -38,7 +42,654 @@ __all__ = ('Excretion',
            'G2RTReverseOsmosis',
            'SURT',
            'FWMixer',
+           'UFMixer',
+           'VolumeReductionCombustor'
            )
+
+#%%
+mscwo_gas_module_path = ospath.join(g2rt_su_data_path, '_mscwo_gas_handling_module.csv')
+@price_ratio()
+class mSCWOGasModule(IsothermalCompressor):
+    '''
+    Gas handling unit that consisted of compressors and an injection pressure vessel
+    
+    The following components should be included in system thermo object for simulation:
+    O2, N2, CO2  #TODO: update
+
+    The following impact items should be pre-constructed for life cycle assessment:
+    Compressor_4kW, Compressor_300kW, StainlessSteel
+
+    Parameters
+    ----------
+    ins : Iterable(stream)
+        Air in
+    outs : Iterable(stream)
+        Compressed air out
+    P : float
+        Outlet pressure [Pa].
+    eta : float
+        Isothermal efficiency.
+    vle : bool
+        Whether to perform phase equilibrium calculations on
+        the outflow. If False, the outlet will be assumed to be the same
+        phase as the inlet.
+    type: str
+        Type of compressor : blower/centrifugal/reciprocating. If None, the type
+        will be determined automatically.
+
+    References
+    ----------
+    [1] YEE et al. Water oxidation non-sewered single unit toilet system. 
+    https://patentimages.storage.googleapis.com/57/6a/81/72a168a92be44c/WO2023288331A1.pdf
+    '''
+    _N_ins = 1
+    _N_outs = 1
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+                 P=None, eta =0.9, **kwargs):
+        IsothermalCompressor.__init__(self, ID, ins, outs, P=P, eta = eta)
+        SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
+                         F_BM_default=1)
+        
+        data = load_data(path=mscwo_gas_module_path)
+        for para in data.index:
+            value = float(data.loc[para]['expected'])
+            setattr(self, para, value)
+        del data
+
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)
+    
+    def _run(self):
+        air_in, = self.ins
+        air_in.P = 101325
+        air_out, = self.outs
+        air_out.copy_like(air_in)
+        air_out.P = self.P
+        air_out.T = air_in.T
+        if self.vle is True: air_out.vle(T=air_out.T, P=air_out.P)
+        self.ideal_power, self.ideal_duty = self._calculate_ideal_power_and_duty()
+    
+    def _init_lca(self):
+        self.construction = [
+            Construction('compressor_4kW', linked_unit=self, item='Compressor_4kW', 
+                         quantity_unit='ea'),
+            Construction('compressor_300kW', linked_unit=self, item='Compressor_300kW', 
+                         quantity_unit='ea'),
+            Construction("stainless_steel", linked_unit=self,
+                                              item = "StainlessSteel", 
+                                              quantity_unit= "kg"),
+            ]
+    
+    def _design(self):
+        IsothermalCompressor()._design()
+        design = self.design_results
+        constr = self.construction
+        design['StainlessSteel'] = constr[2].quantity = self.stainless_steel_weight
+        self.add_construction(add_cost = False)
+        
+    def _cost(self):
+        IsothermalCompressor()._design()
+        C = self.baseline_purchase_costs
+        D = self.design_results
+        C['Valves'] = (self.injection_valve_cost +
+                       self.dosing_valve_cost * self.dosing_valve_quantity
+                       )
+        C['Vessel_cost'] = self.vessel_cost
+        C['Misc.parts'] = self.miscellaneous_cost_ratio*(C['Valves'] +
+                               C['Vessel_cost'])
+        
+        ratio = self.price_ratio
+        for equipment, cost in C.items():
+           C[equipment] = cost * ratio
+
+        total_equipment = 0.
+        for cost in C.values():
+           total_equipment += cost
+        self.add_OPEX = (total_equipment*self.material_replacement_cost/(365*24) + 
+                         #USD/hr, assume replacement cost 5% of CAPEX per year
+                         self._calc_maintenance_labor_cost()) #USD/hr
+        self.power_utility(self.dosing_valve_power_demand * self.dosing_valve_daily_operation/24+
+                           D['Ideal power']/D['Driver efficiency']
+                           ) # kWh/hr
+
+    def _calc_maintenance_labor_cost(self): #USD/hr
+        maintenance_labor_cost= (self.gas_module_maintenance * self.wages)
+        return maintenance_labor_cost / (365*24)
+    
+    @property
+    def OPEX(self):
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
+    
+    @property
+    def power_kW(self):
+        IsothermalCompressor()._design()
+        D = self.design_results
+        return (self.dosing_valve_power_demand * self.dosing_valve_daily_operation/24+
+                           D['Ideal power']/D['Driver efficiency']) #kW
+
+#%%
+mscwo_reactor_module_path = ospath.join(g2rt_su_data_path, '_mscwo_reactor_module.csv')
+@price_ratio()
+class mSCWOReactorModule(SanUnit):
+    '''
+    Reactor unit that performs organic oxidation to CO2 by supercritical water oxidation.
+    
+    The following components should be included in system thermo object for simulation:
+    H2O, OtherSS, N2O, NH3, CO2, O2, sCOD, xCOD, Tissue
+
+    The following impact items should be pre-constructed for life cycle assessment:
+    StainlessSteel
+
+    Parameters
+    ----------
+    ins : Iterable(stream)
+        compressed air (221 bar) , homogenized feces solids
+    outs : Iterable(stream)
+        gas product mixture except N2O, N2O, treated effluent, ash
+
+    References
+    ----------
+    [1] YEE et al. Water oxidation non-sewered single unit toilet system.
+    
+    https://patentimages.storage.googleapis.com/57/6a/81/72a168a92be44c/WO2023288331A1.pdf
+    '''
+    _N_ins = 2
+    _N_outs = 4
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+                 **kwargs):
+        SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=1)
+                
+        data = load_data(path=mscwo_reactor_module_path)
+        
+        for para in data.index:
+            value = float(data.loc[para]['expected'])
+            setattr(self, para, value)
+        del data
+
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)
+        cmps = self.components
+        self.solids = tuple((cmp.ID for cmp in cmps.solids)) + ("OtherSS",)
+        self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
+
+    def _run(self):
+        compressed_air, feces = self.ins
+        compressed_air.P = self.operating_pressure * 1e5
+        compressed_air.F_vol = feces.F_vol * (self.reactor_volume-self.feces_batch_volume)/self.feces_batch_volume
+        initial_enthalpy_flow = compressed_air.H + feces.H #kJ/hr
+        
+        gas_product, N2O, liquid_effluent, ash = self.outs
+        gas_product.P = N2O.P = liquid_effluent.P = ash.P= 101325 #release into atmosphere
+        N2O.phase = liquid_effluent.phase = 'g'
+        ash.phase = 's'
+        N2O.imass['N2O'] = (feces.TN * feces.F_vol /1000/14*44
+                            ) * self.N2O_nitrogen_fraction #kg/hr
+        
+        feces.P = self.operating_pressure * 1e5
+        compressed_air.T = feces.T = self.operating_temperature
+        final_enthalpy_flow = (compressed_air.H + 
+                               CP.PropsSI('H', 'T', feces.T, 'P', feces.P, 'Water')/1000*
+                               feces.imass['H2O']) #kJ/hr
+        #use CoolProp package for more accurate enthalpy for supercritical water
+        
+        mc = feces.imass['H2O']/ feces.F_mass
+        chemical_energy = (feces.F_mass - feces.imass['H2O']) * self.HHV_feces_solids * 1000 #kJ/hr
+        required_energy = final_enthalpy_flow - initial_enthalpy_flow #kJ/hr 
+        recovered_energy = chemical_energy * self.energy_recovery_efficiency * self.carbon_conversion_efficiency #kJ/hr
+        self.power_input = (required_energy/self.heating_energy_efficiency - recovered_energy)/3600 #kW
+        
+        liquid_effluent.copy_like(feces)
+        liquid_effluent.imass['NH3'] = (feces.TN * feces.F_vol /1000/14*17
+                            ) * self.ammonium_nitrogen_fraction #kg/hr
+        gas_product.copy_like(compressed_air)
+        gas_product.imass['CO2'] = (feces.imass['sCOD'] + 
+                                    feces.imass['xCOD'])* self.carbon_conversion_efficiency* self.carbon_COD_ratio #kg/hr
+        gas_product.imol['O2'] -= gas_product.imol['CO2']
+        ash.imass['OtherSS'] = (feces.F_mass * (1-mc) * self.feces_ash_content) # kg ash /hr
+        ash.imass['xCOD'] = liquid_effluent.imass['xCOD'] * (1 - self.carbon_conversion_efficiency)
+        ash.imass['Tissue'] = liquid_effluent.imass['Tissue'] * (1- self.carbon_conversion_efficiency)
+        liquid_effluent.imass['OtherSS'] = 0
+        liquid_effluent.imass['sCOD'] *= (1-self.carbon_conversion_efficiency)
+        liquid_effluent.imass['xCOD'] = 0
+        liquid_effluent.imass['Tissue'] = 0
+        gas_product.T = N2O.T = liquid_effluent.T = ash.T = self.operating_temperature
+
+    def _init_lca(self):
+        self.construction = [
+            Construction('stainless_steel',linked_unit=self, 
+                         item='StainlessSteel', 
+                         quantity_unit='kg'),
+            ]
+        
+    def _design(self):
+        design=self.design_results
+        constr = self.construction
+        design['StainlessSteel'] = constr[0].quantity = self.stainless_steel_weight
+        
+    def _cost(self):
+        C = self.baseline_purchase_costs
+        C['Reactor'] = self.reactor_system_cost
+        C['Injector'] = self.injector_cost 
+        C['Misc.parts'] = self.miscellaneous_cost_ratio*(C['Reactor'] +
+                               C['Injector'])
+        
+        ratio = self.price_ratio
+        for equipment, cost in C.items():
+           C[equipment] = cost * ratio
+        
+        self.power_utility(self.power_input) if self.power_input>=0 else self.power_utility(0)  # kW
+        
+        total_equipment = 0.
+        for cost in C.values():
+           total_equipment += cost
+        self.add_OPEX = (total_equipment*self.material_replacement_cost/(365*24) + 
+                         #USD/hr, assume replacement cost 5% of CAPEX per year
+                         self._calc_maintenance_labor_cost()) #USD/hr
+
+    def _calc_maintenance_labor_cost(self): #USD/hr
+        maintenance_labor_cost= (self.reactor_maintenance * self.wages)
+        return maintenance_labor_cost / (365*24)
+    
+    @property
+    def OPEX(self):
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
+    
+    @property
+    def power_kW(self):
+        return self.power_input if self.power_input>=0 else 0  #kW
+
+#%%
+
+mscwo_concentrator_module_path = ospath.join(g2rt_su_data_path, '_mscwo_concentrator_module.csv')
+@price_ratio()
+class mSCWOConcentratorModule(SanUnit):
+    '''
+    Concentrator unit that evaporizes water by using heat from mSCWO effluent and external heat.
+    
+    The following components should be included in system thermo object for simulation:
+    H2O, OtherSS, N2O, NH3, CO2, O2, sCOD, xCOD, Tissue #TODO: update
+
+    The following impact items should be pre-constructed for life cycle assessment:
+    StainlessSteel #TODO: update
+
+    Parameters #TODO: update
+    ----------
+    ins : Iterable(stream)
+        RO reject liquid, mscwo effluent
+    outs : Iterable(stream)
+        Condensed effluent, fugitive N2O, fugitive CH4, fugitive NH3, water vapor
+
+    References
+    ----------
+    [1] YEE et al. Water oxidation non-sewered single unit toilet system.
+    
+    https://patentimages.storage.googleapis.com/57/6a/81/72a168a92be44c/WO2023288331A1.pdf
+    '''
+    _N_ins = 3
+    _N_outs = 5
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+                 **kwargs):
+        SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=1)
+                
+        data = load_data(path=vr_concentrator_path)
+        
+        for para in data.index:
+            value = float(data.loc[para]['expected'])
+            setattr(self, para, value)
+        del data
+
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)
+        cmps = self.components
+        self.solids = tuple((cmp.ID for cmp in cmps.solids)) + ("OtherSS",)
+        self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
+    
+    def _run(self):
+        ro_waste_in, mscwo_liquid_in, mscwo_ash_in = self.ins
+        # waste_out, N2O, CH4 = self.outs
+        waste_out, N2O, CH4, NH3_gas, water_vapor  = self.outs
+        N2O.phase = CH4.phase = NH3_gas.phase = water_vapor.phase = 'g'
+        recovered_energy_from_mscwo = (CP.PropsSI('H', 'T', mscwo_liquid_in.T, 'P', mscwo_liquid_in.P, 'Water')/1000*\
+        mscwo_liquid_in.imass['H2O']) * self.heat_exchange_efficiency #kJ/hr
+        waste_out.mix_from((self.ins[0],self.ins[1],self.ins[2]))
+        
+        solubles, solids = self.solubles, self.solids
+        #Calculate water and solids in the condensed effluent
+        mc_in = (ro_waste_in.imass['H2O'] + 
+                 mscwo_liquid_in.imass['H2O'] + 
+                 mscwo_ash_in.imass['H2O']) / (ro_waste_in.F_mass + 
+                                                  mscwo_liquid_in. F_mass+
+                                                  mscwo_ash_in.F_mass) # fraction
+        mc_out = self.moisture_content_out/100 #convert to fraction
+        if mc_in < mc_out*0.999:
+            print(f'Moisture content of the influent stream ({mc_in:.2f}) '
+                               f'is smaller than the desired moisture content ({mc_out:.2f}).')
+        TS_in = ro_waste_in.imass[solids].sum() + mscwo_liquid_in.imass[solids].sum() + mscwo_ash_in.imass[solids].sum() # kg TS dry/hr
+        
+        waste_out.imass['H2O'] = TS_in/(1-mc_out)*mc_out #kg water/hr
+        
+        #Calculate N2O and CH4 emissions
+        CH4.imass['CH4'] = drying_CH4_to_air = \
+            self.drying_CH4_emissions * self.carbon_COD_ratio * \
+            (ro_waste_in.COD * ro_waste_in.F_vol + 
+             mscwo_liquid_in.COD * mscwo_liquid_in.F_vol +
+             mscwo_ash_in.COD * mscwo_ash_in.F_vol
+             ) / 1000 # kg CH4 /hr
+        drying_NH3_to_air = self.drying_NH3_emissions * (ro_waste_in.imass['NH3'] +
+                                                         mscwo_liquid_in.imass['NH3']
+                                                         ) # kg NH3 /hr
+        
+        N2O.imass['N2O'] = drying_NH3_to_air * self.NH3_to_N2O # kg N2O /hr
+        waste_out.imass['NH3'] = ro_waste_in.imass['NH3'] + mscwo_liquid_in.imass['NH3'] - drying_NH3_to_air
+
+        NH3_gas.imass['NH3'] = drying_NH3_to_air # kg NH3 /hr
+        water_vapor.imass['H2O'] = ro_waste_in.imass['H2O'] + mscwo_liquid_in.imass['H2O'] - waste_out.imass['H2O'] #kg H2O/hr
+        # Store the calculated value of water_vapor.imass['H2O'] for use in the _cost function
+        
+        
+        self.required_energy_input = water_vapor.imass['H2O'] * self.energy_required_to_evaporize_water - recovered_energy_from_mscwo/3600
+        
+        #Calculate COD
+        drying_CO2_to_air = (self.drying_CO2_emissions * self.carbon_COD_ratio
+                             * (ro_waste_in.COD * ro_waste_in.F_vol + 
+                              mscwo_liquid_in.COD * mscwo_liquid_in.F_vol +
+                              mscwo_ash_in.COD * mscwo_ash_in.F_vol
+                              ) / 1000) # kg CO2 /hr
+        # 44/12/16 are the molecular weights of CO2, C, and CH4, respectively
+        waste_out.imass['sCOD'] =  (waste_out.imass['sCOD'] + mscwo_liquid_in.imass['sCOD']) \
+            -(drying_CO2_to_air/44*12+drying_CH4_to_air/16*12) / self.carbon_COD_ratio
+    
+    def _init_lca(self):
+        self.construction = [
+            Construction('stainless_steel',linked_unit=self, 
+                         item='StainlessSteel', 
+                         quantity_unit='kg'),
+            Construction('heating_unit',linked_unit=self, 
+                         item='HeatingUnit', 
+                         quantity_unit='ea'),
+            Construction('electric_motor',linked_unit=self, 
+                         item='ElectricMotor', 
+                         quantity_unit='kg'),
+            Construction('pump',linked_unit=self, 
+                         item='Pump',
+                         quantity_unit='ea'),
+            Construction('fan',linked_unit=self, 
+                         item='Fan',
+                         quantity_unit='kg'),
+            Construction('polyethylene',linked_unit=self,
+                         item='Polyethylene', 
+                         quantity_unit='kg'),
+            ]
+        
+    def _design(self):
+        design=self.design_results
+        constr = self.construction
+        design['StainlessSteel'] = constr[0].quantity = self.stainless_steel_weight
+        design['HeatingUnit'] = constr[1].quantity = 1
+        design['ElectricMotor'] = constr[2].quantity = self.motor_weight
+        design['Pump'] = constr[3].quantity = 1
+        design['Fan'] = constr[4].quantity = self.fan_quantity*0.2 #one fan is 0.2 kg
+        design['Polyethylene'] = constr[5].quantity = self.polyethylene_weight
+        
+    def _cost(self):
+        C = self.baseline_purchase_costs
+        D = self.design_results
+        #C['Stainless steel'] = self.stainless_steel_cost * D['StainlessSteel']
+        C['HeatingUnit'] = self.heating_unit_purchase_cost * D['HeatingUnit']
+        C['ElectricMotor'] = self.motor_purchase_cost * D['ElectricMotor']
+        C['Pump'] = self.pump_purchase_cost * D['Pump']
+        #C['Polyethylene'] = self.polyethylene_cost * D['Polyethylene']
+        C['Fan'] = self.fan_purchase_cost * self.fan_quantity
+        C['Disc'] = self.disc_purchase_cost
+        C['PhaseSeparator'] = self.phase_separator_cost
+        C['Others'] = (self.enclosure_purchase_cost + 
+                       self.open_concentrator_vessel_purchase_cost+
+                       self.axle_purchase_cost+
+                       self.thermistor_cost                       
+                       )
+        C["Misc.parts"] = self.miscellaneous_cost_ratio*(C['HeatingUnit'] +
+                               C['ElectricMotor']+
+                               C['Pump'] +
+                               C['Fan'] +
+                               C['Disc'] +
+                               C['PhaseSeparator'] +
+                               C['Others']
+                               ) 
+        ratio = self.price_ratio
+        for equipment, cost in C.items():
+           C[equipment] = cost * ratio
+        
+        self.power_utility(self.pump_power_demand * self.pump_daily_operation/24+
+                           self.required_energy_input) # kW
+        
+        total_equipment = 0.
+        for cost in C.values():
+           total_equipment += cost
+        self.add_OPEX = (total_equipment*self.material_replacement_cost/(365*24) + 
+                         #USD/hr, assume replacement cost 5% of CAPEX per year
+                         self._calc_maintenance_labor_cost()) #USD/hr
+   
+    def _calc_maintenance_labor_cost(self): #USD/hr
+       maintenance_labor_cost= (self.concentrator_maintenance * self.wages) #USD/yr
+       return maintenance_labor_cost / (365*24)
+   
+    @property
+    def OPEX(self):
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
+    
+    @property
+    def power_kW(self):
+        return (self.pump_power_demand * self.pump_daily_operation/24 + 
+                self.required_energy_input) #kW
+
+#%%
+vr_combustor_path = ospath.join(g2rt_su_data_path, '_vr_combustor.csv')
+@price_ratio()
+class VolumeReductionCombustor(SanUnit):
+    '''
+    Combustor unit that uses wood pellets biofuels to burn dry feces solid cakes
+    
+    The following components should be included in system thermo object for simulation:
+    H2O, N, K, P OtherSS, N2O, CH4, NO, SO2, NH3
+
+    The following impact items should be pre-constructed for life cycle assessment:
+    Steel, Aluminum
+
+    Parameters
+    ----------
+    ins : Iterable(stream)
+        Dewatered feces solid cakes, wood pellets
+    outs : Iterable(stream)
+        Wood Ash, hot gas, fugitive N2O, fugitive CH4, fugitive NO, fugitive SO2
+    if_sludge_service: bool
+        If share combustor unit among multiple volume reduction toilets
+        (assume 120 users per combustor unit,
+        or 20 volume reduction toilets serving a population of 6 users per toilet).
+
+    References
+    ----------
+    [1] YEE et al. VOLUME REDUCTION SOLIDS TREATMENT SYSTEM. 
+    https://patents.google.com/patent/WO2023288327A1/en?oq=WO2023288327A1
+    '''
+    _N_ins = 2
+    _N_outs = 7
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+                 if_sludge_service = True, 
+                 **kwargs):
+        SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
+                         F_BM_default=1)
+        self.if_sludge_service = if_sludge_service
+
+        data = load_data(path=vr_combustor_path)
+        for para in data.index:
+            value = float(data.loc[para]['expected'])
+            setattr(self, para, value)
+        del data
+
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)
+            
+    def _run(self):
+        solid_cakes, wood_pellets = self.ins
+        ash, gas, CH4, N2O, NO, SO2, NH3 = self.outs
+        cmps = self.components
+        ash.copy_like(self.ins[0])
+        wood_pellets.imass['WoodPellet'] = solid_cakes.F_mass * self.biofuel_to_solids
+        self.wood_pellets_kgphr = wood_pellets.imass['WoodPellet']
+        wood_pellets.imass['H2O'] = wood_pellets.imass['WoodPellet'] * self.wood_moisture_content
+        gas.phase = N2O.phase = CH4.phase = NO.phase = SO2.phase = NH3.phase = 'g'
+        gas.T = self.combustion_temperature
+
+        # Moisture content
+        mc = solid_cakes.imass['H2O']/solid_cakes.F_mass if solid_cakes.F_mass!=0 else 0
+        
+        if mc > 0.351: # allow a small error
+            warn(f'Moisture content of the influent is {mc:.1%}, '
+                'larger than the maximum allowed level of 35%.')
+
+        # ash.empty()
+        
+        ash_prcd = (solid_cakes.F_mass * (1-mc) * self.feces_ash_content + 
+               wood_pellets.imass['WoodPellet']*(1-self.wood_moisture_content)*self.wood_ash_content) # kg ash /hr
+        
+        ash.imass['OtherSS'] = solid_cakes.COD * self.carbon_COD_ratio * solid_cakes.F_vol / 1e3 * (1 - self.combustion_C_loss)
+        NPKCaMg = ('NH3','NonNH3','N', 'P', 'K','Ca','Mg')
+        for cmp in cmps:
+            ash.imass[cmp.ID] = 0 if cmp.ID not in NPKCaMg else ash.imass[cmp.ID]
+        for element in NPKCaMg:
+            if element == 'NH3':
+                ash.imass[element] *= (1 - getattr(self, 'combustion_N_loss'))
+            elif element in ('Ca','Mg','NonNH3'):
+                continue
+            else:
+                ash.imass[element] *= (1 - getattr(self, f'combustion_{element}_loss'))
+        
+
+        ash.imass['OtherSS'] += (ash_prcd - ash.imass[NPKCaMg].sum())
+        
+        ash.imass['H2O'] = 0.025 * ash.F_mass # kg H2O / hr with 2.5% moisture content
+        
+
+        # Daily run time for the influent waste
+        # One unit is capable of treating 550 kg/d (35% moisture based on 20 hr of run time) or 18 kg dry/hr
+        # self.daily_run_time = hpd = waste.F_mass*(1-mc) * 24/self.loading_rate # hr/d
+        # self.uptime_ratio = hpd / 24 # ratio of uptime (all items are per hour)
+
+        # # Energy balance, not really being used
+        # thermal_energy_from_feedstock = waste.F_mass * (1-mc) * self.dry_feces_heat_of_combustion # MJ/hr
+        # # Calculate thermal energy entering and thermal energy required to dry off water
+        # heat_needed_to_dry_0 = waste.F_mass * mc * self.energy_required_to_dry_sludge # MJ/hr
+        # self.net_thermal_energy_in = thermal_energy_from_feedstock  - heat_needed_to_dry_0 # MJ/hr
+        
+        #CH4 emissions
+        CH4.imass['CH4'] = solid_cakes.F_mass * self.CH4_emission_factor
+        # N2O emissions
+        N2O.imass['N2O'] = solid_cakes.imass['N'] * self.N2O_emission_factor/28*44
+        # NO emissions
+        NO.imass['NO'] = solid_cakes.imass['N'] * self.NOx_emission_factor/14*30
+        #SO2 emissions
+        SO2.imass['SO2'] = solid_cakes.F_mass * self.SOx_emission_factor
+        #NH3 emissions
+        NH3.imass['NH3'] = solid_cakes.imass['N'] * self.NH3_emission_factor/14*17
+        #gas
+        gas.imass['CO2'] = (solid_cakes.COD * self.carbon_COD_ratio * solid_cakes.F_vol* self.combustion_C_loss/ 1e3 /12 *44 
+                            + cmps['WoodPellet']._i_C * wood_pellets.imass['WoodPellet']
+                            #assume all carbon in wood pellets convert to CO2
+                            )
+        gas.imass['N2'] = (solid_cakes.imass['N']*self.combustion_N_loss - 
+                           N2O.imass['N2O']/44*28 - NO.imass['NO']/30*14)
+        
+        gas.imass['H2O'] = solid_cakes.imass['H2O'] + wood_pellets.imass['H2O'] - ash.imass['H2O']
+        
+    def _init_lca(self):
+        self.construction = [
+            Construction('Steel', linked_unit=self, item='Steel', quantity_unit='kg'),
+            Construction('Aluminum', linked_unit=self, item='Aluminum', quantity_unit='kg'),
+            ]
+    
+    def _design(self):
+        design = self.design_results
+        constr = self.construction
+        design['Steel'] = constr[0].quantity = self.steel_weight
+        design['Aluminum'] = constr[1].quantity = self.aluminum_weight
+        self.add_construction(add_cost = False)
+        
+    def _cost(self):
+        C = self.baseline_purchase_costs
+        C["Combustor"] = self.combustor_cost * self.price_ratio #USD
+        service_factor = 0.05 if self.if_sludge_service else 1
+        total_equipment = 0.
+        for equipment, cost in C.items():
+            C[equipment] = cost * service_factor
+            total_equipment += cost
+         
+        self.add_OPEX = (total_equipment*self.material_replacement_cost/(365*24) + 
+                         #USD/hr, assume replacement cost 5% of CAPEX per year
+                         self._calc_replacement_cost()+
+                         self._calc_maintenance_labor_cost()) #USD/hr
+        
+    def _calc_replacement_cost(self):
+        wood_pellet_cost = self.wood_pellets_kgphr * self.wood_pellets_cost #USD/hr
+        service_factor = 0.05 if self.if_sludge_service else 1
+        return wood_pellet_cost* self.price_ratio * service_factor # USD/hr
+            
+    def _calc_maintenance_labor_cost(self): #USD/hr
+        maintenance_labor_cost= (self.combustor_operation_maintenance * self.wages)
+        service_factor = 0.05 if self.if_sludge_service else 1
+        return maintenance_labor_cost / (365*24) * service_factor
+    
+    @property
+    def OPEX(self):
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
+    
+    @property
+    def power_kW(self):
+        return 0
+    
+
+
+
+#%%
+
+class UFMixer(Mixer):
+    '''
+    Mixing ultrafiltration reject and liquid from solids separator before delivering to belt separator
+    '''
+    _N_ins = 2
+    _N_outs = 1
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='WasteStream', F_BM_default=None, isdynamic=False,
+                 rigorous=False, conserve_phases=False):
+        Mixer.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
+                         F_BM_default=F_BM_default, isdynamic=isdynamic)
+        
+        
+    # def _run(self):
+    #     separated_liquid, uf_retentate = self.ins
+    #     waste_out, = self.outs
+    #     waste_out.mix_from(self.ins)
+    #     # print(f"The flushing water flow is {flushing.imass['H2O']} kg/h.")
 
 # %%
 
@@ -62,6 +713,10 @@ class FWMixer(Mixer):
         self.N_tot_user = N_tot_user
         self.if_flushing = if_flushing
         
+        cmps = self.components
+        self.solids = tuple((cmp.ID for cmp in cmps.solids)) + ("OtherSS",)
+        self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
+        
         data = load_data(path=toilet_path)    
 
         for para in data.index:
@@ -72,9 +727,15 @@ class FWMixer(Mixer):
     def _run(self):
         tap_water, ro_permeate = self.ins
         flushing, = self.outs
+        solids = self.solids
+        solubles = self.solubles
         N_tot_user = self.N_tot_user or self.N_toilet*self.N_user
-        tap_water.imass['H2O'] = self.flushing_water*N_tot_user #assume 57% water recovery - ro_permeate.imass['H2O']
-        flushing.mix_from((tap_water,ro_permeate))
+        flushing.imass['H2O'] = self.flushing_water*N_tot_user
+        tap_water.imass['H2O'] = flushing.imass['H2O'] - ro_permeate.imass['H2O']
+        for i in solids+solubles:
+            flushing.imass[i] = tap_water.imass[i] + ro_permeate.imass[i]
+
+        # flushing.mix_from((tap_water,ro_permeate))
         # print(f"The flushing water flow is {flushing.imass['H2O']} kg/h.")
 
 class Toilet(SanUnit, Decay, isabstract=True):
@@ -82,7 +743,7 @@ class Toilet(SanUnit, Decay, isabstract=True):
     Abstract class containing common parameters and design algorithms for toilets
     based on `Trimmer et al. <https://doi.org/10.1021/acs.est.0c03296>`_
 
-    Parameters
+    Parameters 
     ----------
     degraded_components : tuple
         IDs of components that will degrade (simulated by first-order decay).
@@ -1210,6 +1871,7 @@ class VolumeReductionFilterPress(SanUnit):
     def _run(self):
         pasteurized_solids, = self.ins
         supernatant, solid_cakes = self.outs
+        solid_cakes.phase = 's'
         solubles, solids = self.solubles, self.solids
         solid_cakes.copy_flow(pasteurized_solids,solids) #all solids go to sludge
         solid_cakes.imass[solids] = pasteurized_solids.imass[solids]*self.TSS_removal/100
@@ -1218,8 +1880,8 @@ class VolumeReductionFilterPress(SanUnit):
         mc_out = self.moisture_content_out/100 #convert to fraction
         
         if mc_in < mc_out*0.999:
-            raise RuntimeError(f'Moisture content of the influent stream ({mc_in:.2f}) '
-                               f'is smaller than the desired moisture content ({mc_out:.2f}).')
+            pasteurized_solids.imass['H2O'] = pasteurized_solids.F_mass * (mc_out +0.01)
+
         TS_in = pasteurized_solids.imass[solids].sum() # kg TS dry/hr
         TS_out = solid_cakes.imass[solids].sum()
         #calculate water and solid COD in the solid cakes
@@ -1283,7 +1945,7 @@ class VRConcentrator(SanUnit):
     ins : Iterable(stream)
         RO reject liquid.
     outs : Iterable(stream)
-        Condensed effluent, fugitive N2O, fugitive CH4.
+        Condensed effluent, fugitive N2O, fugitive CH4, fugitive NH3, water vapor
     
     Warnings
     --------
@@ -1322,6 +1984,7 @@ class VRConcentrator(SanUnit):
         waste_in, = self.ins
         # waste_out, N2O, CH4 = self.outs
         waste_out, N2O, CH4, NH3_gas, water_vapor  = self.outs
+        N2O.phase = CH4.phase = NH3_gas.phase = water_vapor.phase = 'g'
         waste_out.copy_like(self.ins[0])
         solubles, solids = self.solubles, self.solids
         #Calculate water and solids in the condensed effluent
@@ -1482,10 +2145,10 @@ class G2RTLiquidsTank(Mixer):
             Construction(item='Pump', linked_unit=self, quantity=1., quantity_unit='ea'),
             ]
     
-    def _run(self):
-        liquid_belt_separator, liquid_filter_press = self.ins
-        UF_feed, = self.outs
-        UF_feed.mix_from((liquid_belt_separator,liquid_filter_press))
+    # def _run(self):
+    #     liquid_belt_separator, liquid_filter_press = self.ins
+    #     UF_feed, = self.outs
+    #     UF_feed.mix_from((liquid_belt_separator,liquid_filter_press))
     
     def _design(self):
         design = self.design_results
@@ -1682,7 +2345,7 @@ class VRdryingtunnel(SanUnit):
         solid_cakes, N2O, CH4, NH3_gas, water_vapor  = self.outs
         solid_cakes.mix_from((condensate,press_cakes))
         solubles, solids = self.solubles, self.solids
-                
+        N2O.phase = CH4.phase = NH3_gas.phase = water_vapor.phase
         #Calculate water and solids in the solids cake
         mc_in = solid_cakes.imass['H2O'] / solid_cakes.F_mass # fraction
         mc_out = self.moisture_content_out/100
@@ -1749,7 +2412,7 @@ class VRdryingtunnel(SanUnit):
         ratio = self.price_ratio
         for equipment, cost in C.items():
            C[equipment] = cost * ratio
-           
+        
         self.power_utility(self.water_vapor_H2O * self.energy_required_to_dry_sludge + 
                             self.conveyor_power_demand * self.conveyor_daily_operation/24
                             ) # kW
@@ -1961,39 +2624,34 @@ class G2RTSolidsSeparation(SanUnit):
     
     def _run(self):
         waste_in,flushing_water = self.ins
-        waste_in.mix_from(self.ins)
+        # waste_in.mix_from(self.ins)
         # print(waste_in.imass['H2O']) #TODO:debug
         liquid_stream, solid_stream = self.outs
         solubles, solids = self.solubles, self.solids
-        
-        solid_stream.copy_flow(waste_in,solids) #all solids go to sludge, remove from waste_in
-        solid_stream.imass[solids] = waste_in.imass[solids] * self.solids_separator_TSS_removal/100 #add the removed solids back
+        solid_stream.mix_from(self.ins)
+        # solid_stream.copy_flow(waste_in,solids) #all solids go to sludge, remove from waste_in
+        solid_stream.imass[solids] = solid_stream.imass[solids] * self.solids_separator_TSS_removal/100 #add the removed solids back
 
-        mc_in = waste_in.imass['H2O'] / waste_in.F_mass # fraction
+        mc_in = solid_stream.imass['H2O'] / (waste_in.F_mass + flushing_water.F_mass) # fraction
         mc_out = self.moisture_content_out/100 #convert to fraction
 
         if mc_in < mc_out*0.999:
             print(f"Moisture content of the influent stream ({mc_in:.4f})"
                   f"is smaller than that of the desired effluent stream ({mc_out:.4f})."
                   "High solids and low flushing event detected, adding more flushing water!")
-            waste_in.imass['H2O'] = waste_in.F_mass * mc_out
+            solid_stream.imass['H2O'] = (waste_in.F_mass + flushing_water.F_mass) * mc_out
             # raise RuntimeError(f'Moisture content of the influent stream ({mc_in:.4f}) '
             #                    f'is smaller than the desired moisture content ({mc_out:.4f}).')
         
-        TS_in = waste_in.imass[solids].sum() # kg TS dry/hr
+        TS_in = waste_in.imass[solids].sum()+ flushing_water.imass[solids].sum()# kg TS dry/hr
         TS_out = solid_stream.imass[solids].sum()
         
-        #calculate water and solid COD in the solid cakes
+        #calculate water in the solid cakes
         solid_stream.imass['H2O'] = TS_out/(1-mc_out)*mc_out
-        #assume COD in feces is particulate, COD in urine is soluble
-        # solid_stream._COD = (waste_in.imass['xCOD'] * self.solids_separator_TSS_removal/100 
-        #                      * waste_in.F_vol / solid_stream.F_vol) 
-        # liquid_stream._COD = ((waste_in.COD * (1-self.solids_separator_TSS_removal/100) * 
-        #                      self.e_fec  * waste_in.F_vol + 
-        #                      (1- self.e_fec)* waste_in.COD * waste_in.F_vol)/ liquid_stream.F_vol) 
-        solid_stream.imass[solubles] = waste_in.imass[solubles]*\
-            (TS_out/(1-mc_out)-TS_out)/(waste_in.F_mass-TS_in)
-        liquid_stream.mass = waste_in.mass-solid_stream.mass
+
+        solid_stream.imass[solubles] = (waste_in.imass[solubles]+flushing_water.imass[solubles])*\
+            (TS_out/(1-mc_out)-TS_out)/(waste_in.F_mass+ flushing_water.F_mass-TS_in)
+        liquid_stream.mass = flushing_water.mass + waste_in.mass-solid_stream.mass
         
     def _design(self):
         design = self.design_results
@@ -2084,7 +2742,7 @@ class G2RTBeltSeparation(SanUnit):
     ---------
     :class:`~.sanunits.BiogenicRefineryGrinder`
     '''
-    _N_ins = 3
+    _N_ins = 2
     _N_outs = 2
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
@@ -2122,42 +2780,45 @@ class G2RTBeltSeparation(SanUnit):
             ]
     
     def _run(self):
-        liquid_stream_in, solid_stream_in, uf_retentate = self.ins
+        liquid_in, solid_in = self.ins
         # uf_retentate.show() #TODO:debug
-        liquid_stream, solid_stream = self.outs
+        liquid_out, solid_out = self.outs
+        solid_out.phase = 's'
         solubles, solids = self.solubles, self.solids
-        solid_stream.copy_flow(solid_stream_in,solids) #all solids in go to solids out
-
-        solid_stream.imass[solids] = (solid_stream_in.imass[solids] + 
-                                      (liquid_stream_in.imass[solids]+
-                                       uf_retentate.imass[solids])* 
-                                      self.belt_separator_TSS_removal/100) #add the removed solids
+        solid_out.mix_from(self.ins)
+        TS_in = solid_out.imass[solids].sum()
+        #solid_stream.copy_flow(solid_stream_in,solids) #all solids in go to solids out
+        solid_out.imass[solids] = solid_in.imass[solids] + liquid_in.imass[solids] * self.belt_separator_TSS_removal/100 
+        # the removed solids
+        TS_out = solid_out.imass[solids].sum() # kg TS dry/hr
         
-        mc_in = solid_stream_in.imass['H2O'] / solid_stream_in.F_mass # fraction
-        mc_out = self.moisture_content_out/100 #convert to fraction
-        if mc_in < mc_out*0.999:
-            raise RuntimeError(f'Moisture content of the influent stream ({mc_in:.4f}) '
-                               f'is smaller than the desired moisture content ({mc_out:.4f}).')
-        mix_in = WasteStream(ID='mix_in')
-        mix_in.mix_from((liquid_stream_in, uf_retentate,solid_stream_in))
-        TS_in = mix_in.imass[solids].sum()
+        # mc_in = solid_stream.imass['H2O'] / (solid_stream_in.F_mass + 
+        #                                      liquid_stream_in.F_mass +
+        #                                      uf_retentate.F_mass) # fraction
+        mc_out = self.moisture_content_out/100 #convert to fraction; 
+        # if mc_in < mc_out*0.999:
+        #     raise RuntimeError(f'Moisture content of the influent stream ({mc_in:.4f}) '
+        #                        f'is smaller than the desired moisture content ({mc_out:.4f}).')
+        # mix_in = WasteStream(ID='mix_in')
+        # mix_in.mix_from((liquid_stream_in, uf_retentate,solid_stream_in))
+        
         # TS_in = (solid_stream_in.imass[solids].sum()+ 
         #          liquid_stream_in.imass[solids].sum()+
         #          uf_retentate.imass[solids].sum()
         #          ) # kg TS dry/hr
-        TS_out = solid_stream.imass[solids].sum() # kg TS dry/hr
 
         #calculate water and solid COD in the solid cakes
-        solid_stream.imass['H2O'] = TS_out/(1-mc_out)*mc_out
+        solid_out.imass['H2O'] = TS_out/(1-mc_out)*mc_out
 
         # solid_stream._COD = (solid_stream_in.COD * solid_stream_in.F_vol +
         #                      (liquid_stream_in.COD * liquid_stream_in.F_vol 
         #                       + uf_retentate.COD * uf_retentate.F_vol) *
         #                      self.belt_separator_TSS_removal/100)/ solid_stream.F_vol
 
-        solid_stream.imass[solubles] = mix_in.imass[solubles]*\
-            (TS_out/(1-mc_out)-TS_out)/(mix_in.F_mass-TS_in)
-        liquid_stream.mass = mix_in.mass-solid_stream.mass
+        solid_out.imass[solubles] = (liquid_in.imass[solubles] + 
+                                        solid_in.imass[solubles]) *\
+            (TS_out/(1-mc_out)-TS_out)/((solid_in.F_mass + liquid_in.F_mass)-TS_in)
+        liquid_out.mass = solid_in.mass + liquid_in.mass -solid_out.mass
 
     def _design(self):
         design = self.design_results
@@ -2280,7 +2941,6 @@ class G2RTUltrafiltration(SanUnit):
         waste_in = self.ins[0]
         liquid_stream, solid_stream = self.outs
         solubles, solids = self.solubles, self.solids
-        
         solid_stream.copy_flow(waste_in,solids) #all solids go to sludge, remove from waste_in
         liquid_stream.copy_flow(waste_in, solubles) #only copy solubles 
         # TS_in = waste_in.imass[solids].sum() # kg TS dry/hr
@@ -2427,12 +3087,15 @@ class G2RTReverseOsmosis(SanUnit):
 
         permeate, brine = self.outs
         solubles, solids = self.solubles, self.solids
-        
-        permeate.copy_flow(waste_in, solubles) #only copy solubles 
+        for i in solubles:
+            permeate.imass[i] = waste_in.imass[i]
+
+        # permeate.copy_flow(waste_in, solubles) #copy_flow removes stream_impact_item 
         brine.copy_like(waste_in) #copy all the solids and solubles
         
         permeate.imass['H2O'] = waste_in.imass['H2O'] * self.water_recovery
         permeate.imass[solubles] = waste_in.imass[solubles]*(1-self.TDS_removal)
+        # permeate.imass['P'] = waste_in.imass['P'] * 0.01 #higher rejection for P
         brine.mass = waste_in.mass - permeate.mass
         # print(f"The recycled RO water flow is {permeate.imass['H2O']} kg/h.")
 

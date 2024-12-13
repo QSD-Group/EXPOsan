@@ -16,6 +16,7 @@ for license details.
 
 #%%
 import os, qsdsan as qs
+from datetime import datetime
 from chaospy import distributions as shape
 from qsdsan import Model, Metric, PowerUtility, ImpactItem, StreamImpactItem
 from qsdsan.utils import (
@@ -31,10 +32,10 @@ from exposan.utils import (
     get_decay_k,
     get_generic_scaled_capital,
     )
-from exposan import VR_toilet as vr
-from exposan.VR_toilet import (
+from exposan import g2rt
+from exposan.g2rt import (
     create_system,
-    vr_data_path,
+    g2rt_data_path,
     default_ppl,
     get_decay_k,
     get_LCA_metrics,
@@ -65,7 +66,7 @@ __all__ = ('create_model', 'run_uncertainty',)
 
 
 def add_metrics(model, ppl=default_ppl):
-    vr._load_lca_data()
+    g2rt._load_lca_data()
     system = model.system
 
     # Recoveries
@@ -77,51 +78,47 @@ def add_metrics(model, ppl=default_ppl):
         Metric('Total Water', funcs[3], '% Water', 'Water recovery'),
     ]
     
-    metrics.append(
-        Metric('test', compute_unit_total_cost(system.flowsheet.unit.A10,ppl), 'test', 'test'),
-        )
-    
     # Net cost
     metrics.append(
         Metric('Annual net cost', get_TEA_metrics(system, ppl)[0], f'{qs.currency}/cap/yr', 'TEA results'),
         )
-    for u in system.TEA.units:
-        class_name = u.__class__.__name__
-        metrics.extend([
-            Metric(f'{class_name} CAPEX', get_normalized_CAPEX(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
-            Metric(f'{class_name} Electricity cost', get_normalized_electricity_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
-            Metric(f'{class_name} OPEX_no_labor_electricity', 
-                   get_normalized_OPEX(u,ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
-            Metric(f'{class_name} Labor', 
-                   get_normalized_labor_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
-            Metric(f'{class_name} total cost', 
-                   compute_unit_total_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),])
+    # for u in system.TEA.units:
+    #     class_name = u.__class__.__name__
+    #     metrics.extend([
+    #         Metric(f'{class_name} CAPEX', get_normalized_CAPEX(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+    #         Metric(f'{class_name} Electricity cost', get_normalized_electricity_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+    #         Metric(f'{class_name} OPEX_no_labor_electricity', 
+    #                get_normalized_OPEX(u,ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+    #         Metric(f'{class_name} Labor', 
+    #                get_normalized_labor_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+    #         Metric(f'{class_name} total cost', 
+    #                compute_unit_total_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),])
 
-    for u in system.TEA.units:
-        class_name = u.__class__.__name__
-        metrics.extend([
-            Metric(f'{class_name} {u.ID} capital GW', get_unit_contruction_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-            Metric(f'{class_name} {u.ID} stream GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-            Metric(f'{class_name} {u.ID} electricity GW', get_unit_electrcitiy_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-        ])
+    # for u in system.TEA.units:
+    #     class_name = u.__class__.__name__
+    #     metrics.extend([
+    #         Metric(f'{class_name} {u.ID} capital GW', get_unit_contruction_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+    #         Metric(f'{class_name} {u.ID} stream GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+    #         Metric(f'{class_name} {u.ID} electricity GW', get_unit_electrcitiy_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+    #     ])
 
-    direct_emission_units = {'A14','A15'}
-    for u in system.flowsheet.unit:
-        if u.ID in direct_emission_units:
-            class_name = u.__class__.__name__
-            metrics.append(
-                Metric(f'{class_name} {u.ID} direct emission GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-            )
-    if vr.INCLUDE_RESOURCE_RECOVERY:
-        #TODO: separate LCA because Mixer, A14, A15, A16 need to be included...
-        recovery_units = {'A6','A16'}
-        for u in system.flowsheet.unit:
-            if u.ID in recovery_units:
-                class_name = u.__class__.__name__
-                metrics.extend([
-                    Metric(f'{class_name} {u.ID} recovery earning', get_normalized_recovery_earning(u, ppl), f'{qs.currency}/cap/day', f'Recovery {class_name} TEA'),
-                    Metric(f'{class_name} {u.ID} reduced GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'Recovery {class_name} LCA'),
-                ])
+    # direct_emission_units = {'A15','A16','A17'}
+    # for u in system.flowsheet.unit:
+    #     if u.ID in direct_emission_units:
+    #         class_name = u.__class__.__name__
+    #         metrics.append(
+    #             Metric(f'{class_name} {u.ID} direct emission GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+    #         )
+    # if g2rt.INCLUDE_RESOURCE_RECOVERY:
+    #     #TODO: separate LCA because Mixer, A14, A15, A16 need to be included...
+    #     recovery_units = {'A6','A18'}
+    #     for u in system.flowsheet.unit:
+    #         if u.ID in recovery_units:
+    #             class_name = u.__class__.__name__
+    #             metrics.extend([
+    #                 Metric(f'{class_name} {u.ID} recovery earning', get_normalized_recovery_earning(u, ppl), f'{qs.currency}/cap/day', f'Recovery {class_name} TEA'),
+    #                 Metric(f'{class_name} {u.ID} reduced GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'Recovery {class_name} LCA'),
+    #             ])
         
     # Net emissions
     funcs = get_LCA_metrics(system, ppl)
@@ -252,14 +249,14 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
         def set_electricity_resources_CF(i):
             H_Resources_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Resources'] = i
 
-        if vr.INCLUDE_RESOURCE_RECOVERY:
+        if g2rt.INCLUDE_RESOURCE_RECOVERY:
             # N fertilizer price
             b = 1.507
             D = shape.Uniform(lower=b*0.8, upper=b*1.2)
             @param(name='N fertilizer price', element='TEA', kind='isolated', units='USD/kg N',
                     baseline=b, distribution=D)
             def set_N_price(i):
-                price_dct['N'] = sys_stream.liq_N.price = sys_stream.sol_N.price = i * vr.price_factor
+                price_dct['N'] = sys_stream.liq_N.price = sys_stream.sol_N.price = i * g2rt.price_factor
     
             # P fertilizer price
             b = 3.983
@@ -267,7 +264,7 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
             @param(name='P fertilizer price', element='TEA', kind='isolated', units='USD/kg P',
                    baseline=b, distribution=D)
             def set_P_price(i):
-                price_dct['P'] = sys_stream.liq_P.price = sys_stream.sol_P.price = i * vr.price_factor
+                price_dct['P'] = sys_stream.liq_P.price = sys_stream.sol_P.price = i * g2rt.price_factor
     
             # K fertilizer price
             b = 1.333
@@ -275,7 +272,7 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
             @param(name='K fertilizer price', element='TEA', kind='isolated', units='USD/kg K',
                    baseline=b, distribution=D)
             def set_K_price(i):
-                price_dct['K'] = sys_stream.liq_K.price = sys_stream.sol_K.price = i * vr.price_factor
+                price_dct['K'] = sys_stream.liq_K.price = sys_stream.sol_K.price = i * g2rt.price_factor
                 
             # H2O price
             b = 4.01/1e3
@@ -283,7 +280,7 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
             @param(name='H2O price', element='TEA', kind='isolated', units='USD/kg H2O',
                    baseline= b, distribution=D)
             def set_H2O_price(i):
-                price_dct['H2O'] = sys_stream.H2O.price = i * vr.price_factor
+                price_dct['H2O'] = sys_stream.H2O.price = i * g2rt.price_factor
     ##### Specific units #####
     param = model.parameter
 
@@ -365,24 +362,24 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
     ##### Universal degradation parameters #####
     # Max methane emission
     unit = sys.path[1]  # the first unit that involves degradation
-    b = vr.max_CH4_emission
+    b = g2rt.max_CH4_emission
     D = shape.Triangle(lower=0.175, midpoint=b, upper=0.325)
     @param(name='Max CH4 emission', element=unit, kind='coupled', units='g CH4/g COD',
            baseline=b, distribution=D)
     def set_max_CH4_emission(i):
-        vr.max_CH4_emission = i
+        g2rt.max_CH4_emission = i
         for unit in sys.units:
             if hasattr(unit, 'max_CH4_emission'):
                 setattr(unit, 'max_CH4_emission', i)
 
     # Time to full degradation
-    b = vr.tau_deg
+    b = g2rt.tau_deg
     D = shape.Uniform(lower=1, upper=3)
     @param(name='Full degradation time', element=unit, kind='coupled', units='yr',
            baseline=b, distribution=D)
     def set_tau_deg(i):
-        vr.tau_deg = i
-        k = get_decay_k(i, vr.log_deg)
+        g2rt.tau_deg = i
+        k = get_decay_k(i, g2rt.log_deg)
         for unit in sys.units:
             if hasattr(unit, 'decay_k_COD'):
                 setattr(unit, 'decay_k_COD', k)
@@ -390,13 +387,13 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
                 setattr(unit, 'decay_k_N', k)
 
     # Reduction at full degradation
-    b = vr.log_deg
+    b = g2rt.log_deg
     D = shape.Uniform(lower=2, upper=4)
     @param(name='Log degradation', element=unit, kind='coupled', units='-',
            baseline=b, distribution=D)
     def set_log_deg(i):
-        vr.log_deg = i
-        k = get_decay_k(vr.tau_deg, i)
+        g2rt.log_deg = i
+        k = get_decay_k(g2rt.tau_deg, i)
         for unit in sys.units:
             if hasattr(unit, 'decay_k_COD'):
                 setattr(unit, 'decay_k_COD', k)
@@ -414,14 +411,14 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
     #     systems.discount_rate = i
 
     # Discount factor for the excreta-derived fertilizers
-    b = vr.price_factor
+    b = g2rt.price_factor
     D = shape.Uniform(lower=0.1, upper=0.4)
     @param(name='Price factor', element='TEA', kind='isolated', units='-',
            baseline=b, distribution=D)
     def set_price_factor(i):
-        vr.price_factor = i
+        g2rt.price_factor = i
 
-    if vr.INCLUDE_RESOURCE_RECOVERY:
+    if g2rt.INCLUDE_RESOURCE_RECOVERY:
         # Recovered N fertilizer
         b = -GWP_dct['N']
         D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
@@ -539,7 +536,7 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
             H_Resources_dct['H2O'] = ImpactItem.get_item('H2O_item').CFs['H_Resources'] = -i
 
     # Other CFs
-    item_path = os.path.join(vr_data_path, 'impact_items.xlsx')
+    item_path = os.path.join(g2rt_data_path, 'impact_items.xlsx')
     for indicator in ('GlobalWarming', 'H_Ecosystems', 'H_Health', 'H_Resources'):
         sheet_name = indicator if indicator!='GlobalWarming' else 'GWP'
         data = load_data(item_path, sheet=sheet_name)
@@ -603,7 +600,13 @@ def create_model(model_ID='A', country_specific=False, ppl=default_ppl, **model_
     return model
 
 
-def run_uncertainty(model, path='', **kwargs):
-    kwargs['path'] = os.path.join(results_path, f'sys{model.system.ID[-1]}_model.xlsx') if path=='' else path
+def run_uncertainty(model, path='', date = None, note = '', **kwargs):
+    # Use current date if date not provided
+    date = date or datetime.now().strftime('%Y-%m-%d')
+    file_name = f'sys{model.system.ID[-1]}_model_{date}'
+    if note:
+        file_name += f'_{note}'
+    file_name += '.xlsx'
+    kwargs['path'] = os.path.join(results_path,file_name) if path=='' else path
     run(model=model, **kwargs)
     return
