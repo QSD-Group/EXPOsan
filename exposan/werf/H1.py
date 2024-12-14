@@ -18,37 +18,27 @@ from qsdsan import (
     sanunits as su,
     )
 from qsdsan.utils import ospath, time_printer, load_data, get_SRT
-from exposan.werf import default_ad_init, default_as_init, default_fctss_init
+from exposan.werf import data_path#, default_fctss_init
 
 __all__ = ('create_h1_system',)
 
+ID = 'H1'
 #%%
-folder = ospath.dirname(__file__)
-# dfs = load_data(
-#     ospath.join(folder, 'data/initial_conditions.xlsx'), 
-#     sheet=None,
-#     )
-# asinit = dfs['rBOD']
-# fcinit = asinit.iloc[-1].to_dict()
-# adinit = dfs['adm'].iloc[0].to_dict()
-# Default initial conditions
-dfs = load_data(ospath.join(folder, 'data/G1_init.xlsx'), sheet=None)
-inf_concs = dfs['asm'].iloc[0].to_dict()
-# c1init = dfs['asm'].iloc[1].to_dict()
-asinit = dfs['asm'].iloc[1:]
-# asinit = dfs['asm_ss']
-adinit = dfs['adm'].iloc[0].to_dict()
-c2init = dfs['settler'].to_dict('index')
-c2init['s'] = {k:v for k,v in c2init['s'].items() if v>0}
-c2init['x'] = {k:v for k,v in c2init['x'].items() if v>0}
-c2init['tss'] = [v for k,v in c2init['tss'].items() if v>0]
+dfs = load_data(
+    ospath.join(data_path, 'initial_conditions.xlsx'), 
+    sheet=None,
+    )
+asinit = dfs[ID]
+fcinit = asinit.iloc[-1].to_dict()
+default_fctss_init = [10, 12, 20, 40, 100, 500, 500, 500, 550, 1e4]
+adinit = dfs['adm'].loc['I1'].to_dict()
 
 MGD2cmd = 3785.412
 Temp = 273.15+20 # temperature [K]
 T_ad = 273.15+35
 
 def create_h1_system(flowsheet=None, default_init_conds=True):
-    flowsheet = flowsheet or qs.Flowsheet('H1')
+    flowsheet = flowsheet or qs.Flowsheet(ID)
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
     pc.create_masm2d_cmps()
@@ -58,14 +48,22 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
         COD=358, NH4_N=25.91, PO4_P=5,
         fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
         )
-    carb = qs.WasteStream('carbon', T=Temp, units='kg/hr', S_A=24.5)
+    carb = qs.WasteStream(
+        'carbon', T=Temp, units='kg/hr', 
+        # S_A=50,
+        S_A=24.5,        
+        )
     thermo_asm = qs.get_thermo()
     
-    #!!! need to add chem P removal
+    MD = su.MetalDosage.from_mASM2d(
+        'MD', ins=[rww, 'reject'], model=asm,
+        metal_ID='X_AlOH', metal_dosage=10
+        )
     PC = su.PrimaryClarifier(
-        'PC', ins=[rww, 'reject'], 
+        'PC', ins=MD-0, 
         outs=('PE', 'PS'),
-        sludge_flow_rate=0.074*MGD2cmd,
+        isdyanmic=True,
+        sludge_flow_rate=0.093*MGD2cmd,
         solids_removal_efficiency=0.6
         )
     
@@ -107,21 +105,17 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
     
     FC = su.FlatBottomCircularClarifier(
         'FC', ins=ASR-0, outs=['SE', 1-ASR, 'WAS'],
-        # 'FC', ins=O6-0, outs=['SE', 1-O1, 'WAS'],
-        underflow=0.4*10*MGD2cmd, wastage=0.1*MGD2cmd,
+        # 'FC', ins=O6-0, outs=['SE', 1-A1, 'WAS'],
+        underflow=0.4*10*MGD2cmd, wastage=0.1*MGD2cmd,      # SRT = 9.1 d
         surface_area=1579.352, height=3.6576, N_layer=10, feed_layer=5,
         X_threshold=3000, v_max=410, v_max_practical=274,
         rh=4e-4, rp=0.1, fns=0.01, 
         maximum_nonsettleable_solids=8.0
         )
-    
-    # MT = su.Thickener(
-    #     'MT', ins=FC-2, outs=['thickened_WAS', ''],
-    #     thickener_perc=5, TSS_removal_perc=95,
-    #     )
+
     MT = su.IdealClarifier(
         'MT', FC-2, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.019*MGD2cmd,
+        sludge_flow_rate=0.017*MGD2cmd,
         solids_removal_efficiency=0.95
         )
     M1 = su.Mixer('M1', ins=[GT-1, MT-1])
@@ -143,41 +137,30 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
     J2 = su.ADM1ptomASM2d('J2', upstream=AD-1, thermo=thermo_asm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
     qs.set_thermo(thermo_asm)
-    
-    # DW = su.Centrifuge(
-    #     'DW', ins=J2-0, outs=('cake', ''),
-    #     thickener_perc=18, TSS_removal_perc=90,
-    #     )
-    # M2 = su.Mixer('M2', ins=[GT-0, MT-1, DW-1])    
+     
     DW = su.IdealClarifier(
         'DW', J2-0, outs=('', 'cake'),
-        sludge_flow_rate=0.00593*MGD2cmd,
+        sludge_flow_rate=0.00593*MGD2cmd,   # aim for 18% TS
         solids_removal_efficiency=0.9
         )
     M2 = su.Mixer('M2', ins=[GT-0, MT-0, DW-0])
     
-    HD = su.HydraulicDelay('HD', ins=M2-0, outs=1-PC)
+    HD = su.HydraulicDelay('HD', ins=M2-0, outs=1-MD)
     
     if default_init_conds:
-        # ASR.set_init_conc(**default_as_init)
-        # # for unit in (O1, O2, O3, O4, O5, O6):
-        # #     unit.set_init_conc(**default_as_init)
-        # FC.set_init_solubles(**default_as_init)
-        # FC.set_init_sludge_solids(**default_as_init)
+        # asdct = asinit.to_dict('index')
+        # for i in (A1, A2, O3, O4, A5, O6):
+        #     i.set_init_conc(**asdct[i.ID])
         ASR.set_init_conc(concentrations=asinit)
-        # FC.set_init_solubles(**fcinit)
-        # FC.set_init_sludge_solids(**fcinit)
-        # FC.set_init_TSS(default_fctss_init)
-        # AD.set_init_conc(**default_ad_init)
+        FC.set_init_solubles(**fcinit)
+        FC.set_init_sludge_solids(**fcinit)
+        FC.set_init_TSS(default_fctss_init)
         AD.set_init_conc(**adinit)
-        FC.set_init_solubles(**c2init['s'])
-        FC.set_init_sludge_solids(**c2init['x'])
-        FC.set_init_TSS(c2init['tss'])
-    
+
     sys = qs.System(
-        'H1', 
-        path=(PC, GT, ASR, FC, MT, M1, J1, AD, J2, DW, M2, HD),
-        # path=(PC, GT, A1, A2, O3, O4, A5, O6, FC, 
+        ID, 
+        path=(MD, PC, GT, ASR, FC, MT, M1, J1, AD, J2, DW, M2, HD),
+        # path=(MD, PC, GT, A1, A2, O3, O4, A5, O6, FC, 
         #       MT, M1, J1, AD, J2, DW, M2, HD),
         recycle=(FC-1, HD-0)
         )
@@ -211,19 +194,22 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 50
-    # t = 1
+    t = 300
     t_step = 1
     # method = 'RK45'
-    method = 'RK23'
+    # method = 'RK23'
     # method = 'DOP853'
     # method = 'Radau'
-    # method = 'BDF'
+    method = 'BDF'
     # method = 'LSODA'
     
     run(sys, t, t_step, method=method)
     # biomass_IDs = ('X_H', 'X_PAO', 'X_AUT')
     # srt = get_SRT(sys, biomass_IDs,
     #               wastage=[WAS],
-    #               active_unit_IDs=('ASR',))
+    #               active_unit_IDs=('A1', 'A2', 'O3', 'O4', 'A5', 'O6'))
+    #               # active_unit_IDs=('ASR'))
     # if srt: print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
+    
+    # from exposan.werf import figures_path
+    # sys.diagram(format='png', file=ospath.join(figures_path, f'{ID}'))
