@@ -23,7 +23,7 @@ Load the system
 
 .. figure:: ./readme_figures/G1.png
 
-    *Current module diagram.*
+    *G1 flow diagram.*
 
 
 References
