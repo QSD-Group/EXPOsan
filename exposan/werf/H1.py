@@ -28,11 +28,12 @@ dfs = load_data(
     ospath.join(data_path, 'initial_conditions.xlsx'), 
     sheet=None,
     )
-asinit = dfs['H']
+asinit = dfs['H2'] # 'H1' working
 fcinit = asinit.iloc[-1].to_dict()
 # default_fctss_init = [10, 12, 20, 40, 100, 500, 500, 500, 550, 1e4]
-default_fctss_init = [10, 12, 20, 40, 300, 350, 350, 350, 350, 8.5e3]
-adinit = dfs['adm'].loc['H1'].to_dict()
+# default_fctss_init = [10, 12, 20, 40, 300, 350, 350, 350, 350, 8.5e3]
+default_fctss_init = [8, 9, 9, 30, 350, 350, 350, 350, 350, 9000]
+adinit = dfs['adm'].loc['H2'].to_dict() # 'H' working
 
 MGD2cmd = 3785.412
 Temp = 273.15+20 # temperature [K]
@@ -51,7 +52,7 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
         )
     carb = qs.WasteStream(
         'carbon', T=Temp, units='kg/hr', 
-        S_A=50,
+        S_A=80,
         # S_A=24.5,      
         )
     thermo_asm = qs.get_thermo()
@@ -107,7 +108,7 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
     FC = su.FlatBottomCircularClarifier(
         'FC', ins=ASR-0, outs=['SE', 1-ASR, 'WAS'],
         # 'FC', ins=O6-0, outs=['SE', 1-A1, 'WAS'],
-        underflow=0.4*10*MGD2cmd, wastage=0.1*MGD2cmd,      # SRT = 9.1 d
+        underflow=0.4*10*MGD2cmd, wastage=0.1*MGD2cmd,
         surface_area=1579.352, height=3.6576, N_layer=10, feed_layer=5,
         X_threshold=3000, v_max=410, v_max_practical=274,
         rh=4e-4, rp=0.1, fns=0.01, 
@@ -195,7 +196,7 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 300
+    t = 100
     t_step = 1
     # method = 'RK45'
     # method = 'RK23'
