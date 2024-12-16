@@ -28,12 +28,10 @@ dfs = load_data(
     ospath.join(data_path, 'initial_conditions.xlsx'), 
     sheet=None,
     )
-asinit = dfs['H2'] # 'H1' working
+asinit = dfs[ID]
 fcinit = asinit.iloc[-1].to_dict()
-# default_fctss_init = [10, 12, 20, 40, 100, 500, 500, 500, 550, 1e4]
-# default_fctss_init = [10, 12, 20, 40, 300, 350, 350, 350, 350, 8.5e3]
 default_fctss_init = [8, 9, 9, 30, 350, 350, 350, 350, 350, 9000]
-adinit = dfs['adm'].loc['H2'].to_dict() # 'H' working
+adinit = dfs['adm'].loc[ID].to_dict()
 
 MGD2cmd = 3785.412
 Temp = 273.15+20 # temperature [K]
@@ -53,7 +51,7 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
     carb = qs.WasteStream(
         'carbon', T=Temp, units='kg/hr', 
         S_A=80,
-        # S_A=24.5,      
+        # S_A=24.5,      # insufficient for denitrification
         )
     thermo_asm = qs.get_thermo()
     
@@ -196,7 +194,7 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 100
+    t = 300
     t_step = 1
     # method = 'RK45'
     # method = 'RK23'
