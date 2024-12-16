@@ -28,10 +28,11 @@ dfs = load_data(
     ospath.join(data_path, 'initial_conditions.xlsx'), 
     sheet=None,
     )
-asinit = dfs[ID]
+asinit = dfs['H']
 fcinit = asinit.iloc[-1].to_dict()
-default_fctss_init = [10, 12, 20, 40, 100, 500, 500, 500, 550, 1e4]
-adinit = dfs['adm'].loc['I1'].to_dict()
+# default_fctss_init = [10, 12, 20, 40, 100, 500, 500, 500, 550, 1e4]
+default_fctss_init = [10, 12, 20, 40, 300, 350, 350, 350, 350, 8.5e3]
+adinit = dfs['adm'].loc['H1'].to_dict()
 
 MGD2cmd = 3785.412
 Temp = 273.15+20 # temperature [K]
@@ -50,8 +51,8 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
         )
     carb = qs.WasteStream(
         'carbon', T=Temp, units='kg/hr', 
-        # S_A=50,
-        S_A=24.5,        
+        S_A=50,
+        # S_A=24.5,      
         )
     thermo_asm = qs.get_thermo()
     
@@ -63,7 +64,7 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
         'PC', ins=MD-0, 
         outs=('PE', 'PS'),
         isdyanmic=True,
-        sludge_flow_rate=0.093*MGD2cmd,
+        sludge_flow_rate=0.074*MGD2cmd,
         solids_removal_efficiency=0.6
         )
     
@@ -165,7 +166,7 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
         recycle=(FC-1, HD-0)
         )
 
-    sys.set_dynamic_tracker(FC-0, AD)
+    sys.set_dynamic_tracker(ASR-0, FC, AD)
 
     return sys
 
