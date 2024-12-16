@@ -13,7 +13,7 @@ for license details.
 '''
 import qsdsan as qs
 from qsdsan import (
-    # WasteStream,
+    WasteStream,
     processes as pc,
     sanunits as su,
     )
@@ -48,7 +48,7 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
         COD=358, NH4_N=25.91, PO4_P=5,
         fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
         )
-    carb = qs.WasteStream(
+    carb = WasteStream(
         'carbon', T=Temp, units='kg/hr', 
         S_A=80,
         # S_A=24.5,      # insufficient for denitrification

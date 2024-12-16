@@ -13,7 +13,6 @@ for license details.
 '''
 import qsdsan as qs
 from qsdsan import (
-    # WasteStream,
     processes as pc,
     sanunits as su,
     )
