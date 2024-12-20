@@ -55,9 +55,11 @@ def create_system(
         decentralized_upgrading=False,
         skip_EC=False,
         generate_H2=False,
+        EC_config=None,
         ):
     qs.main_flowsheet.clear()
     print(f"Received flowsheet: {flowsheet}")
+        
     
     if central_dry_flowrate is None:
         central_dry_flowrate = default_central
@@ -103,7 +105,7 @@ def create_system(
         'FeedstockScaler', ins=scaled_feedstock, outs='feedstock',
         scaling_factor=N_HTL, reverse=True,
         )
-    
+       
     FeedstockTrans = u.Transportation(
         'FeedstockTrans',
         ins=(FeedstockScaler-0, 'feedstock_trans_surrogate'),
@@ -167,7 +169,13 @@ def create_system(
         'HTLcharScaler', ins=HTL.outs[-1], outs='scaled_HTLchar',
         scaling_factor=N_HTL, reverse=False,
         )
-
+    default_EO_voltage = 5
+    default_ED_voltage = 30
+    default_electrode_cost = 40000
+    default_anion_exchange_membrane_cost = 170
+    default_cation_exchange_membrane_cost = 190
+    
+   
     # Only need separate ECs for decentralized HTL, centralized upgrading
     if N_HTL != N_upgrading:
         HTL_EC = u.Electrochemical(
@@ -175,7 +183,12 @@ def create_system(
             ins=(HTL-1, 'HTL_EC_replacement_surrogate'),
             outs=('HTL_EC_gas', 'HTL_EC_H2', 'HTL_EC_N', 'HTL_EC_P', 'HTL_EC_K', 'HTLww_to_disposal'),
             include_PSA=generate_H2,
-            )
+            EO_voltage=EC_config.get('EO_voltage', default_EO_voltage) if EC_config else default_EO_voltage,
+            ED_voltage=EC_config.get('ED_voltage', default_ED_voltage) if EC_config else default_ED_voltage,
+            electrode_cost=EC_config.get('electrode_cost', default_electrode_cost) if EC_config else default_electrode_cost,
+            anion_exchange_membrane_cost=EC_config.get('anion_exchange_membrane_cost', default_anion_exchange_membrane_cost) if EC_config else default_anion_exchange_membrane_cost,
+            cation_exchange_membrane_cost=EC_config.get('cation_exchange_membrane_cost', default_cation_exchange_membrane_cost) if EC_config else default_cation_exchange_membrane_cost,
+        )
         HTL_EC.N_unit = N_HTL
         HTL_EC.skip = skip_EC
         
@@ -273,13 +286,14 @@ def create_system(
         outs=('hot_biofuel','hot_biobinder'),
         LHK=BiocrudeSplitter.keys[1],
         P=50*_psi_to_Pa,
-        Lr=0.84, # 0.75
+        Lr=0.70, # 0.70,0.62
         Hr=0.89,
         k=2, is_divided=True)
     
     ratio0 = oil_fracs[0]
     lb, ub = round(ratio0,2)-0.05, round(ratio0,2)+0.05
     
+  
     def get_ratio():
         if CrudeHeavyDis.F_mass_out > 0:
             return CrudeHeavyDis.outs[0].F_mass/CrudeHeavyDis.F_mass_out
@@ -329,6 +343,11 @@ def create_system(
         ins=(UpgradingECmixer-0, 'Upgrading_EC_replacement_surrogate'),
         outs=('Upgrading_EC_gas', 'Upgrading_EC_H2', 'Upgrading_EC_N', 'Upgrading_EC_P', 'Upgrading_EC_K', 'ECww_to_disposal'),
         include_PSA=generate_H2,
+        EO_voltage=EC_config.get('EO_voltage', default_EO_voltage) if EC_config else default_EO_voltage,
+        ED_voltage=EC_config.get('ED_voltage', default_ED_voltage) if EC_config else default_ED_voltage,
+        electrode_cost=EC_config.get('electrode_cost', default_electrode_cost) if EC_config else default_electrode_cost,
+        anion_exchange_membrane_cost=EC_config.get('anion_exchange_membrane_cost', default_anion_exchange_membrane_cost) if EC_config else default_anion_exchange_membrane_cost,
+        cation_exchange_membrane_cost=EC_config.get('cation_exchange_membrane_cost', default_cation_exchange_membrane_cost) if EC_config else default_cation_exchange_membrane_cost,
         )
     Upgrading_EC.N_unit = N_upgrading
     Upgrading_EC.skip = skip_EC
@@ -440,11 +459,38 @@ def create_system(
 
     for unit in sys.units:
      unit.include_construction = False
-
-    # streams_with_impacts = [
-    # i for i in sys.feeds + sys.products
-    # if i.isempty() is False and i.imass['Water'] != i.F_mass and 'surrogate' not in i.ID
-    # ]
+    
+    
+    gwp_dict = {
+          'feedstock': 0,
+          'landfill': 400/1e3, # nearly 400 kg CO2e/tonne, Nordahl et al., 2020
+          'composting': -41/1e3, # -41 kg CO2e/tonne, Nordahl et al., 2020
+          'anaerobic_digestion': (-36-2)/2, # -36 to -2 kg CO2e/tonne, Nordahl et al., 2020
+          'trans_feedstock': 0.011856, # 78 km, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/9393/impact_assessment, Snowden-Swan PNNL 32731
+          'trans_biocrude': 0.024472, # 100 miles,https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/9393/impact_assessment, Snowden-Swan PNNL 32731
+          'H2': -10.71017675, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/24913/impact_assessment
+          'natural_gas': 0.780926344+ 1*(44/16), # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/4866/impact_assessment, include combustion
+          'process_water': 0,
+          'electricity': 0.465474829, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/13670/impact_assessment
+          'steam': 0.126312684, # kg CO2e/MJ, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/7479/impact_assessment
+          'cooling_water': 0.068359242, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/14408/impact_assessment
+          'chilled_water': 0.068359242, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/14408/impact_assessment
+          'diesel': -0.801163967, # kg CO2e/kg, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/13381/impact_assessment
+          'N': -0.441913058, #liquid, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/11489/impact_assessment
+          'P': -1.344*(98/31), # H3PO4, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/8421/impact_assessment
+          'K': -4.669210326*(56/39), # KOH, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/5111/impact_assessment
+          'COD': 1.7, # Li et al., 2023
+          'wastewater': 0.477724554/1e3, # kg CO2e/m3, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/26546/impact_assessment
+          'ethylene': 2.9166 #https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/29537/impact_assessment
+          }
+    
+    electricity_price = EC_config.get('electricity_price', price_dct['electricity']) if EC_config else price_dct['electricity']
+    electricity_GHG = EC_config.get('electricity_GHG', gwp_dict['electricity']) if EC_config else gwp_dict['electricity']
+    
+    
+    
+    qs.PowerUtility.price = electricity_price
+ 
 
     tea = create_tea(sys, **tea_kwargs)
 
@@ -453,27 +499,7 @@ def create_system(
     # qs.ImpactIndicator.load_from_file(os.path.join(data_path, 'impact_indicators.csv'))
     # qs.ImpactItem.load_from_file(os.path.join(data_path, 'impact_items.xlsx'))
     # print("Loaded Impact Items:")
-  
-    gwp_dict = {
-        'feedstock': 0,
-        'landfill': 400/1e3, # nearly 400 kg CO2e/tonne, Nordahl et al., 2020
-        'composting': -41/1e3, # -41 kg CO2e/tonne, Nordahl et al., 2020
-        'anaerobic_digestion': (-36-2)/2, # -36 to -2 kg CO2e/tonne, Nordahl et al., 2020
-        'trans_feedstock': 0.011856, # 78 km, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/9393/impact_assessment, Snowden-Swan PNNL 32731
-        'trans_biocrude': 0.024472, # 100 miles,https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/9393/impact_assessment, Snowden-Swan PNNL 32731
-        'H2': -10.71017675, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/24913/impact_assessment
-        'natural_gas': 0.780926344+44/16, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/4866/impact_assessment, include combustion
-        'process_water': 0,
-        'electricity': 0.465474829, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/13670/impact_assessment
-        'steam': 0.126312684, # kg CO2e/MJ, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/7479/impact_assessment
-        'cooling': 0.068359242, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/14408/impact_assessment
-        'diesel': -0.801163967, # kg CO2e/kg, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/13381/impact_assessment
-        'N': -0.441913058, #liquid, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/11489/impact_assessment
-        'P': -1.344*(98/31), # H3PO4, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/8421/impact_assessment
-        'K': -4.669210326*(56/39), # KOH, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/5111/impact_assessment
-        'COD': 1.7, # Li et al., 2023
-        'wastewater': 0.477724554/1e3, # kg CO2e/m3, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/26546/impact_assessment
-        }
+   
 
     GWP = qs.ImpactIndicator('GWP',
                               alias='GlobalWarmingPotential',
@@ -484,7 +510,7 @@ def create_system(
     feedstock_item = qs.StreamImpactItem(
         ID='feedstock_item',
         linked_stream=scaled_feedstock,
-        GWP=gwp_dict['feedstock'],
+        GWP=-gwp_dict['landfill'],
         )
     trans_feedstock_item = qs.StreamImpactItem(
         ID='feedstock_trans_surrogate_item',
@@ -543,24 +569,51 @@ def create_system(
         )
     e_item = qs.ImpactItem(
         ID='e_item',
-        GWP=gwp_dict['electricity'],
+        GWP=electricity_GHG,
         )
     steam_item = qs.ImpactItem(
         ID='steam_item',
         GWP=gwp_dict['steam'],
         )
-    cooling_item = qs.ImpactItem(
-        ID='cooling_item',
-        GWP=gwp_dict['cooling'],
-        )
-    # for item in qs.ImpactItem.registry:
-    #   print(f"- ID: {item.ID}, Functional Unit: {item.functional_unit}")
+    
+    # cooling_item = qs.ImpactItem(
+    #     ID='cooling_item',
+    #     GWP=gwp_dict['cooling'],
+    #     )
+
     fake_stream= qs.SanStream('Nothing', price=0)
     nothing_item = qs.StreamImpactItem(
         ID='nothing_item',
         linked_stream=fake_stream,
         GWP=0,
         )
+    # def weighted_gwp ():
+    #     cooling_duties = {}
+    #     total_cooling_duty = 0
+    #     for unit in sys.units:
+    #         for utility in unit.heat_utilities:
+    #             if utility.agent and utility.agent.ID in gwp_dict:
+    #                 agent_id = utility.agent.ID
+    #                 duty = utility.duty
+    #                 cooling_duties[agent_id] = cooling_duties.get(agent_id, 0) + duty
+    #                 total_cooling_duty += duty
+    
+    #     if total_cooling_duty == 0:
+    #         raise ValueError("Total cooling duty is zero; no cooling agents are contributing.")
+    
+    # # Calculate weighted GWP
+    #     weighted_gwp = sum(
+    #         (cooling_duties[agent] / total_cooling_duty) * gwp_dict[agent]
+    #         for agent in cooling_duties
+    #     )
+    # weighted_gwp()
+    
+    # weighted_cooling_gwp=weighted_gwp()
+    
+    # cooling_item = qs.ImpactItem(
+    #     ID='cooling_item',
+    #     GWP=weighted_cooling_gwp,
+    #     )
     def adjust_lca_items():
    
         if decentralized_HTL is False:
@@ -579,6 +632,51 @@ def create_system(
     adjust_lca_items()
     lifetime = tea_kwargs['duration'][1] - tea_kwargs['duration'][0]
             
+    # lca = qs.LCA(
+    # system=sys,
+    # lifetime=lifetime,
+    # simulate_system=False,
+    # uptime_ratio=sys.operating_hours / (365 * 24),
+    # e_item=lambda: (sys.get_electricity_consumption() - sys.get_electricity_production()) * lifetime,
+    # steam_item=lambda: sys.get_heating_duty() / 1000 * lifetime,
+    # cooling_item=lambda: sys.get_cooling_duty() / 1000 * lifetime,
+    # )
+   
+  
+    return sys, gwp_dict, lifetime
+
+
+def simulate_and_print(sys, gwp_dict, lifetime, save_report=False):
+    sys.simulate()
+    tea = sys.TEA
+    land_factor= 115000/24 #115000 gal/day, PNNL 32731
+    land_cost= (90000 + (((sys.flowsheet.unit.BiocrudeTrans.ins[0].F_vol*264.172)/land_factor)*4.692*1e6)) #6% of 78.2M$, PNNL 32731
+    tea.land = land_cost
+    def weighted_gwp (sys):
+        cooling_duties = {}
+        total_cooling_duty = 0
+        for unit in sys.units:
+            for utility in unit.heat_utilities:
+                if utility.agent and utility.agent.ID in gwp_dict:
+                    agent_id = utility.agent.ID
+                    duty = utility.duty
+                    cooling_duties[agent_id] = cooling_duties.get(agent_id, 0) + duty
+                    total_cooling_duty += duty
+    
+        if total_cooling_duty == 0:
+            raise ValueError("Total cooling duty is zero; no cooling agents are contributing.")
+    
+    # Calculate weighted GWP
+        return sum(
+            (cooling_duties[agent] / total_cooling_duty) * gwp_dict[agent]
+            for agent in cooling_duties
+        )
+    weighted_cooling_gwp=weighted_gwp(sys)
+    
+    cooling_item = qs.ImpactItem(
+        ID='cooling_item',
+        GWP=weighted_cooling_gwp,
+        )
     lca = qs.LCA(
     system=sys,
     lifetime=lifetime,
@@ -588,13 +686,6 @@ def create_system(
     steam_item=lambda: sys.get_heating_duty() / 1000 * lifetime,
     cooling_item=lambda: sys.get_cooling_duty() / 1000 * lifetime,
     )
-  
-    return sys
-
-
-def simulate_and_print(sys, save_report=False):
-    sys.simulate()
-    tea = sys.TEA
     # lca = sys.LCA
     biobinder = sys.flowsheet.stream.biobinder
 
@@ -610,20 +701,34 @@ def simulate_and_print(sys, save_report=False):
         sys.save_report(file=os.path.join(results_path, f'{sys.ID}.xlsx'))
 
 if __name__ == '__main__':
+    
+    EC_futures_config = {
+        'EO_voltage': 2.5, # originally 5, Ref [5] at 2.5 V
+        'ED_voltage': 2.5, # originally 30
+        'electrode_cost': 225, # originally 40,000, Ref [5] high-end is 1,000, target is $225/m2
+        'anion_exchange_membrane_cost': 0,
+        'cation_exchange_membrane_cost': 0,
+        'electricity_price': 0.03,
+        'electricity_GHG': 0
+        }
+        
     config_kwargs = dict(
         flowsheet=None, 
         central_dry_flowrate=None,
         pilot_dry_flowrate=None,
+        EC_config=None
         )
 
+    
     # What to do with HTL-AP
-    config_kwargs.update(dict(skip_EC=False, generate_H2=False,))
-    # config_kwargs.update(dict(skip_EC=False, generate_H2=True,))
-    # config_kwargs.update(dict(skip_EC=True, generate_H2=False,))
+    # config_kwargs.update(dict(skip_EC=False, generate_H2=False,EC_config=None))
+    # config_kwargs.update(dict(skip_EC=False, generate_H2=True,EC_config=None))
+    config_kwargs.update(dict(skip_EC=False, generate_H2=True,EC_config= EC_futures_config))
+    # config_kwargs.update(dict(skip_EC=True, generate_H2=False,EC_config=None))
     
     # Decentralized vs. centralized configuration
-    # config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False))
-    config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False))
+    config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False))
+    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False))
 
     #config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True))
 
@@ -633,10 +738,10 @@ if __name__ == '__main__':
     # However, maybe the elimination of transportation completely will make a difference
     # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True))
     
-    sys = create_system(**config_kwargs)
+    sys, gwp_dict, lifetime = create_system(**config_kwargs)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     tea = sys.TEA
     lca = sys.LCA    
     
-    simulate_and_print(sys)
+    simulate_and_print(sys, gwp_dict, lifetime)
