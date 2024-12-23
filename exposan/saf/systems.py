@@ -712,7 +712,14 @@ EC_config = {
     'ED_voltage': 2.5, # originally 30
     'electrode_cost': 225, # originally 40,000, Ref [5] high-end is 1,000, target is $225/m2
     'anion_exchange_membrane_cost': 0,
+    'cation_exchange_membrane_cost': 0,
+    }
+MEC_config = {
+    'EO_voltage': 1,
+    'ED_voltage': 1,
+    'electrode_cost': 4000,
     'anion_exchange_membrane_cost': 0,
+    'cation_exchange_membrane_cost': 0,
     }
 config_EC_future = {
     'include_PSA': True,
@@ -728,12 +735,27 @@ config_EC_future = {
     'electricitry_price': 0.035,
     'electricitry_GHG': 0,
     }
+config_MEC_future = {
+    'include_PSA': True,
+    'include_EC': MEC_config,
+    # Solar, commercial & industrial photovoltaics target of 2030
+    # C&IP is for 500 kWdc, EC future uses about 9200 kW
+    # Utility scale price of ¢2/kWh is for 100 MW system
+    # https://www.energy.gov/eere/solar/articles/2030-solar-cost-targets
+    # Land-based wind is ¢3.2/kWh, US average of 2022
+    # https://www.energy.gov/sites/default/files/2023-08/land-based-wind-market-report-2023-edition-executive-summary.pdf
+    # Projected LCOE, around ¢3-4/kWh for wind/solar
+    # https://www.eia.gov/outlooks/aeo/pdf/electricity_generation.pdf
+    # 'electricitry_price': 0.035,
+    # 'electricitry_GHG': 0,
+    }
 
 if __name__ == '__main__':
     # sys = create_system(flowsheet=None, **config_no_PSA)
     # sys = create_system(flowsheet=None, **config_baseline)
     # sys = create_system(flowsheet=None, **config_EC)
-    sys = create_system(flowsheet=None, **config_EC_future)
+    # sys = create_system(flowsheet=None, **config_EC_future)
+    sys = create_system(flowsheet=None, **config_MEC_future)
     
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
