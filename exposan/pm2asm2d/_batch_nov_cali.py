@@ -29,7 +29,7 @@ pm2asm2d = pc.PM2ASM2d(a_c=0.0140264685430579, arr_e=6101.68141831652, K_P=4.131
 
                        I_n=1500, arr_a=1.8e10, beta_1=2.90,
                        beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
-                       K_N=0.1, K_F=6.3, rho=1.186, K_STO=1.566,
+                       K_N=0.1, K_G=6.3, rho=1.186, K_STO=1.566,
                        m_ATP=15.835, mu_max=1.969, q_CH=0.594, q_LI=0.910,
                        Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163, exponent=4,
                        Y_ATP_PHO=55.073, Y_CH_PHO=0.754, Y_LI_PHO=0.901, Y_X_ALG_PHO=0.450,
@@ -53,7 +53,7 @@ pm2asm2d = pc.PM2ASM2d(a_c=0.0140264685430579, arr_e=6101.68141831652, K_P=4.131
 
 #                        I_n=1500, arr_a=1.8e10, beta_1=2.90,
 #                        beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
-#                        K_N=0.1, K_F=6.3, rho=1.186, K_STO=1.566,
+#                        K_N=0.1, K_G=6.3, rho=1.186, K_STO=1.566,
 #                        m_ATP=15.835, mu_max=1.969, q_CH=0.594, q_LI=0.910,
 #                        Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163, exponent=4,
 #                        Y_ATP_PHO=55.073, Y_CH_PHO=0.754, Y_LI_PHO=0.901, Y_X_ALG_PHO=0.450,
@@ -79,11 +79,11 @@ PBR = su.BatchExperiment('PBR', model=pm2asm2d, exogenous_vars=(T, I))
 init_conds = {
     'X_CHL':2.61,
     'X_ALG':521.53,
-    'X_CH':12.83,
-    'X_LI':67.37,
+    'X_PG':12.83,
+    'X_TAG':67.37,
     'S_CO2':30.0,
     'S_A':5.0,
-    'S_F':5.0,
+    'S_G':5.0,
     'S_O2':20.36,
     'S_NH':32.10,
     'S_NO':91.17,
