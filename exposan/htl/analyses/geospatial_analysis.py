@@ -82,6 +82,7 @@ WRRF = WRRF[['FACILITY','CITY','STATE','CWNS_NUM','FACILITY_ID','LATITUDE',
              'CO2_emission','electricity_emission','onsite_NG_emission',
              'upstream_NG_emission','biosolids_emission','total_emission']]
 
+# TODO: update these based on the new naming convention
 # assume LAGOON_UNCATEGORIZED has AeD (resulting in higher ash content than AD) to be conservative
 TT_w_AeD = ['B2','C2','D2','E2','E2P','G2','I2','N2','O2','LAGOON_AER','LAGOON_UNCATEGORIZED']
 TT_w_AD = ['B1','B1E','B4','C1','D1','F1','G1','G1E','H1','I1','I1E','N1','O1','O1E','LAGOON_ANAER','LAGOON_FAC']
@@ -111,6 +112,7 @@ WRRF = gpd.GeoDataFrame(WRRF, crs='EPSG:4269',
                         geometry=gpd.points_from_xy(x=WRRF.longitude,
                                                     y=WRRF.latitude))
 
+# TODO: consider removing oil refineries with a 0 MBPD production
 refinery = pd.read_csv(folder + 'refinery/petroleum_refineries_EIA_06062024.csv')
 refinery = gpd.GeoDataFrame(refinery, crs='EPSG:4269',
                             geometry=gpd.points_from_xy(x=refinery.Longitude,
@@ -176,7 +178,6 @@ state_PADD = {'Alabama': 3,
               'Michigan': 2,
               'Maine': 1,
               'Maryland': 1,
-              'Washington': 5,
               'Massachusetts': 1,
               'Minnesota': 2,
               'Mississippi': 3,
@@ -202,6 +203,7 @@ state_PADD = {'Alabama': 3,
               'Utah': 4,
               'Vermont': 1,
               'Virginia': 1,
+              'Washington': 5,
               'West Virginia': 1,
               'Wisconsin': 2,
               'Wyoming': 4}
@@ -249,6 +251,8 @@ rectangle_edge = Rectangle((-13320000, 2880000), 1280000, 680000,
                            color='k', lw=3, fc='none', alpha=1)
 ax.add_patch(rectangle_edge)
 
+
+# TODO: check the maker size here, it should be consistent with the points on the map (or not?)
 ax.scatter(x=-13140000, y=3420000, marker='o', s=200*10, c=dg, linewidths=3,
            alpha=1, edgecolor='k')
 ax.scatter(x=-13140000, y=3220000, marker='o', s=50*10, c=g, linewidths=3,
