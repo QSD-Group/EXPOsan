@@ -47,12 +47,6 @@ HTL_yields = {
     'char': 1-0.1756-0.2925-0.5219,
     }
 
-# https://idot.illinois.gov/doing-business/procurements/construction-services/transportation-bulletin/price-indices.html
-# bitumnous, IL
-price_dct['biobinder'] = 0.67
-price_dct['electricity'] = 0.074 #2020$, https://www.energy.gov/sites/default/files/2024-12/hydrogen-shot-water-electrolysis-technology-assessment.pdf
-# price_dct['H2']= 6.65 # 2020$, https://www.energy.gov/sites/default/files/2024-12/hydrogen-shot-water-electrolysis-technology-assessment.pdf
-
 class BiobinderTEA(HTL_TEA):
     
     @property
