@@ -15,11 +15,16 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
+from exposan.htl import HTL_TEA
 from exposan.saf import _process_settings
 from exposan.saf._process_settings import *
 
 __all__ = [i for i in _process_settings.__all__ if i is not 'dry_flowrate']
-__all__.extend(['central_dry_flowrate', 'pilot_dry_flowrate'])
+__all__.extend([
+    'BiobinderTEA',
+    'central_dry_flowrate',
+    'pilot_dry_flowrate',
+    ])
 
 moisture = 0.7566
 ash = (1-moisture)*0.0571
@@ -42,6 +47,12 @@ HTL_yields = {
     'char': 1-0.1756-0.2925-0.5219,
     }
 
-# https://idot.illinois.gov/doing-business/procurements/construction-services/transportation-bulletin/price-indices.html
-# bitumnous, IL
-price_dct['biobinder'] = 0.67
+class BiobinderTEA(HTL_TEA):
+    
+    @property
+    def land(self):
+        if callable(self._land): return self._land()
+        return self._land
+    @land.setter
+    def land(self, i):
+        self._land = i
