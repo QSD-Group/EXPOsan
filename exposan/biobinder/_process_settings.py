@@ -51,7 +51,7 @@ HTL_yields = {
 # bitumnous, IL
 price_dct['biobinder'] = 0.67
 price_dct['electricity'] = 0.074 #2020$, https://www.energy.gov/sites/default/files/2024-12/hydrogen-shot-water-electrolysis-technology-assessment.pdf
-price_dct['H2']= 6.65 # 2020$, https://www.energy.gov/sites/default/files/2024-12/hydrogen-shot-water-electrolysis-technology-assessment.pdf
+# price_dct['H2']= 6.65 # 2020$, https://www.energy.gov/sites/default/files/2024-12/hydrogen-shot-water-electrolysis-technology-assessment.pdf
 
 class BiobinderTEA(HTL_TEA):
     
