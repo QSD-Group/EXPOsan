@@ -29,6 +29,7 @@ from exposan.biobinder import (
     _load_components,
     _load_process_settings,
     _units as u,
+    BiobinderTEA,
     central_dry_flowrate as default_central,
     data_path,
     feedstock_composition,
@@ -59,7 +60,6 @@ def create_system(
         ):
     qs.main_flowsheet.clear()
     print(f"Received flowsheet: {flowsheet}")
-        
     
     if central_dry_flowrate is None:
         central_dry_flowrate = default_central
@@ -83,8 +83,11 @@ def create_system(
             N_HTL = N_upgrading = 1
             central_dry_flowrate = pilot_dry_flowrate
         
-    if skip_EC is True and generate_H2 is True:
-        raise ValueError('Cannot generate H2 without EC.')
+    if skip_EC is True:
+        if generate_H2 is True:
+            raise ValueError('Cannot generate H2 without EC.')
+        if EC_config is not None:
+            raise ValueError('Cannot set EC configurations while `skil_EC` is True.')
     
     if flowsheet is None:
         print(f"Creating new flowsheet with ID: {flowsheet_ID}")
@@ -286,14 +289,13 @@ def create_system(
         outs=('hot_biofuel','hot_biobinder'),
         LHK=BiocrudeSplitter.keys[1],
         P=50*_psi_to_Pa,
-        Lr=0.70, # 0.70,0.62
+        Lr=0.53, # 0.70, 0.62, 0.53
         Hr=0.89,
         k=2, is_divided=True)
     
     ratio0 = oil_fracs[0]
     lb, ub = round(ratio0,2)-0.05, round(ratio0,2)+0.05
     
-  
     def get_ratio():
         if CrudeHeavyDis.F_mass_out > 0:
             return CrudeHeavyDis.outs[0].F_mass/CrudeHeavyDis.F_mass_out
@@ -457,9 +459,7 @@ def create_system(
     operating_hours=365 * 24 * uptime_ratio,
      )
 
-    for unit in sys.units:
-     unit.include_construction = False
-    
+    for unit in sys.units: unit.include_construction = False
     
     gwp_dict = {
           'feedstock': 0,
@@ -484,15 +484,12 @@ def create_system(
           'ethylene': 2.9166 #https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/29537/impact_assessment
           }
     
-    electricity_price = EC_config.get('electricity_price', price_dct['electricity']) if EC_config else price_dct['electricity']
+    qs.PowerUtility.price = EC_config.get('electricity_price', price_dct['electricity']) if EC_config else price_dct['electricity']
     electricity_GHG = EC_config.get('electricity_GHG', gwp_dict['electricity']) if EC_config else gwp_dict['electricity']
-    
-    
-    
-    qs.PowerUtility.price = electricity_price
- 
 
-    tea = create_tea(sys, **tea_kwargs)
+    tea = create_tea(sys, cls=BiobinderTEA, **tea_kwargs)
+    land_factor = 115000/24 #115000 gal/day, PNNL 32731
+    tea.land = lambda: 90000+(tea.system.flowsheet.unit.BiocrudeTrans.ins[0].F_vol*264.172)/land_factor*4.692*1e6 # 6% of 78.2M$, PNNL 32731
 
 # Load impact indicators and items
     # clear_lca_registries()
@@ -500,7 +497,6 @@ def create_system(
     # qs.ImpactItem.load_from_file(os.path.join(data_path, 'impact_items.xlsx'))
     # print("Loaded Impact Items:")
    
-
     GWP = qs.ImpactIndicator('GWP',
                               alias='GlobalWarmingPotential',
                               method='Ecoinvent',
@@ -649,9 +645,6 @@ def create_system(
 def simulate_and_print(sys, gwp_dict, lifetime, save_report=False):
     sys.simulate()
     tea = sys.TEA
-    land_factor= 115000/24 #115000 gal/day, PNNL 32731
-    land_cost= (90000 + (((sys.flowsheet.unit.BiocrudeTrans.ins[0].F_vol*264.172)/land_factor)*4.692*1e6)) #6% of 78.2M$, PNNL 32731
-    tea.land = land_cost
     def weighted_gwp (sys):
         cooling_duties = {}
         total_cooling_duty = 0
@@ -709,7 +702,7 @@ if __name__ == '__main__':
         'anion_exchange_membrane_cost': 0,
         'cation_exchange_membrane_cost': 0,
         'electricity_price': 0.03,
-        'electricity_GHG': 0
+        'electricity_GHG': 0,
         }
         
     config_kwargs = dict(
@@ -719,24 +712,20 @@ if __name__ == '__main__':
         EC_config=None
         )
 
-    
     # What to do with HTL-AP
-    # config_kwargs.update(dict(skip_EC=False, generate_H2=False,EC_config=None))
-    # config_kwargs.update(dict(skip_EC=False, generate_H2=True,EC_config=None))
-    config_kwargs.update(dict(skip_EC=False, generate_H2=True,EC_config= EC_futures_config))
-    # config_kwargs.update(dict(skip_EC=True, generate_H2=False,EC_config=None))
+    # config_kwargs.update(dict(skip_EC=True, generate_H2=False, EC_config=None)) # no EC
+    # config_kwargs.update(dict(skip_EC=False, generate_H2=False, EC_config=None)) # EC, recover nutrients only
+    config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=None)) # EC, recover nutrients and generate H2
+    # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=EC_futures_config)) # EC, recovery nutrients, generate H2, optimistic assumptions
     
     # Decentralized vs. centralized configuration
-    config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False))
-    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False))
-
-    #config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True))
-
+    config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False)) # CHCU
+    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False)) # DHCU
     
     # Distillation column cost calculation doesn't scale down well, so the cost is very high now.
     # But maybe don't need to do the DHDU scenario, if DHCU isn't too different from CHCU
     # However, maybe the elimination of transportation completely will make a difference
-    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True))
+    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True)) # DHDU
     
     sys, gwp_dict, lifetime = create_system(**config_kwargs)
     dct = globals()
