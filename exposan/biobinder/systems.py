@@ -411,6 +411,8 @@ def create_system(
         )
     
     # Other co-products
+
+    # price_dct['H2'] = 6.65 # 2020$, https://www.energy.gov/sites/default/files/2024-12/hydrogen-shot-water-electrolysis-technology-assessment.pdf    
     recovered_H2 = qs.WasteStream('recovered_H2', price=price_dct['H2'])
     H2mixer = qsu.Mixer('H2mixer', ins=H2_streams, outs=recovered_H2)
 
@@ -475,6 +477,7 @@ def create_system(
           'steam': 0.126312684, # kg CO2e/MJ, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/7479/impact_assessment
           'cooling_water': 0.068359242, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/14408/impact_assessment
           'chilled_water': 0.068359242, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/14408/impact_assessment
+          'cooling': 0.066033, # kg CO2e/MJ, Feng et al., 2024
           'diesel': -0.801163967, # kg CO2e/kg, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/13381/impact_assessment
           'N': -0.441913058, #liquid, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/11489/impact_assessment
           'P': -1.344*(98/31), # H3PO4, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/8421/impact_assessment
@@ -484,6 +487,7 @@ def create_system(
           'ethylene': 2.9166 #https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/29537/impact_assessment
           }
     
+    price_dct['electricity'] = 0.074 #2020$, https://www.energy.gov/sites/default/files/2024-12/hydrogen-shot-water-electrolysis-technology-assessment.pdf
     qs.PowerUtility.price = EC_config.get('electricity_price', price_dct['electricity']) if EC_config else price_dct['electricity']
     electricity_GHG = EC_config.get('electricity_GHG', gwp_dict['electricity']) if EC_config else gwp_dict['electricity']
 
@@ -571,131 +575,90 @@ def create_system(
         ID='steam_item',
         GWP=gwp_dict['steam'],
         )
-    
-    # cooling_item = qs.ImpactItem(
-    #     ID='cooling_item',
-    #     GWP=gwp_dict['cooling'],
-    #     )
-
+    cooling_item = qs.ImpactItem(
+        ID='cooling_item',
+        GWP=gwp_dict['cooling'],
+        )
+    # LCA adjustment based on system configuration
     fake_stream= qs.SanStream('Nothing', price=0)
     nothing_item = qs.StreamImpactItem(
         ID='nothing_item',
         linked_stream=fake_stream,
         GWP=0,
         )
-    # def weighted_gwp ():
-    #     cooling_duties = {}
-    #     total_cooling_duty = 0
-    #     for unit in sys.units:
-    #         for utility in unit.heat_utilities:
-    #             if utility.agent and utility.agent.ID in gwp_dict:
-    #                 agent_id = utility.agent.ID
-    #                 duty = utility.duty
-    #                 cooling_duties[agent_id] = cooling_duties.get(agent_id, 0) + duty
-    #                 total_cooling_duty += duty
+    if decentralized_HTL is False:
+    # Centralized HTL, Centralized upgrading
+       trans_feedstock_item.linked_stream = FeedstockTrans.ins[1]  # feedstock transportation stream
+       trans_biocrude_item.linked_stream = fake_stream             # No biocrude transportation
+    elif decentralized_upgrading is False:
+    # Decentralized HTL, centralized upgrading
+       trans_feedstock_item.linked_stream = fake_stream            # No feedstock transportation
+       trans_biocrude_item.linked_stream = BiocrudeTrans.ins[1]    #biocrude tranportation stream
+    else:
+    # Fully decentralized (no transportation needed)
+       trans_feedstock_item.linked_stream = fake_stream            # No feedstock transportation
+       trans_biocrude_item.linked_stream = fake_stream             # No biocrude transportation
+          
+    def update_cooling_impacts():
+        # cooling_duties = {}
+        # total_cooling_duty = sys.get_cooling_duty()
+        # for unit in sys.units:
+        #     for utility in unit.heat_utilities:
+        #         if utility.agent and utility.agent.ID in gwp_dict:
+        #             agent_id = utility.agent.ID
+        #             duty = utility.duty
+        #             cooling_duties[agent_id] = cooling_duties.get(agent_id, 0) + duty
+        #             total_cooling_duty += duty
     
-    #     if total_cooling_duty == 0:
-    #         raise ValueError("Total cooling duty is zero; no cooling agents are contributing.")
+        # if total_cooling_duty == 0:
+        #     raise ValueError("Total cooling duty is zero; no cooling agents are contributing.")
     
-    # # Calculate weighted GWP
-    #     weighted_gwp = sum(
-    #         (cooling_duties[agent] / total_cooling_duty) * gwp_dict[agent]
-    #         for agent in cooling_duties
-    #     )
-    # weighted_gwp()
-    
-    # weighted_cooling_gwp=weighted_gwp()
-    
-    # cooling_item = qs.ImpactItem(
-    #     ID='cooling_item',
-    #     GWP=weighted_cooling_gwp,
-    #     )
-    def adjust_lca_items():
-   
-        if decentralized_HTL is False:
-        # Centralized HTL, Centralized upgrading
-           trans_feedstock_item.linked_stream = FeedstockTrans.ins[1]  # feedstock transportation stream
-           trans_biocrude_item.linked_stream = fake_stream             # No biocrude transportation
-        elif decentralized_upgrading is False:
-        # Decentralized HTL, centralized upgrading
-           trans_feedstock_item.linked_stream = fake_stream            # No feedstock transportation
-           trans_biocrude_item.linked_stream = BiocrudeTrans.ins[1]    #biocrude tranportation stream
-        else:
-        # Fully decentralized (no transportation needed)
-           trans_feedstock_item.linked_stream = fake_stream            # No feedstock transportation
-           trans_biocrude_item.linked_stream = fake_stream             # No biocrude transportation
+        # # Calculate weighted GWP
+        # weighted_gwp = sum(
+        #     (cooling_duties[agent] / total_cooling_duty) * gwp_dict[agent]
+        #     for agent in cooling_duties
+        # )
 
-    adjust_lca_items()
+        cooling_item.CFs['GWP'] = gwp_dict['cooling'] # weighted_gwp
+        return sys.get_cooling_duty() / 1000 * lifetime
+        
     lifetime = tea_kwargs['duration'][1] - tea_kwargs['duration'][0]
-            
-    # lca = qs.LCA(
-    # system=sys,
-    # lifetime=lifetime,
-    # simulate_system=False,
-    # uptime_ratio=sys.operating_hours / (365 * 24),
-    # e_item=lambda: (sys.get_electricity_consumption() - sys.get_electricity_production()) * lifetime,
-    # steam_item=lambda: sys.get_heating_duty() / 1000 * lifetime,
-    # cooling_item=lambda: sys.get_cooling_duty() / 1000 * lifetime,
-    # )
-   
-  
-    return sys, gwp_dict, lifetime
+    lca = qs.LCA(
+        system=sys,
+        lifetime=lifetime,
+        simulate_system=False,
+        uptime_ratio=sys.operating_hours / (365 * 24),
+        e_item=lambda: (sys.get_electricity_consumption() - sys.get_electricity_production()) * lifetime,
+        steam_item=lambda: sys.get_heating_duty() / 1000 * lifetime,
+        cooling_item=update_cooling_impacts(), # this function will run during LCA
+        )
+
+    return sys
 
 
-def simulate_and_print(sys, gwp_dict, lifetime, save_report=False):
+def simulate_and_print(sys, save_report=False):
     sys.simulate()
     tea = sys.TEA
-    def weighted_gwp (sys):
-        cooling_duties = {}
-        total_cooling_duty = 0
-        for unit in sys.units:
-            for utility in unit.heat_utilities:
-                if utility.agent and utility.agent.ID in gwp_dict:
-                    agent_id = utility.agent.ID
-                    duty = utility.duty
-                    cooling_duties[agent_id] = cooling_duties.get(agent_id, 0) + duty
-                    total_cooling_duty += duty
-    
-        if total_cooling_duty == 0:
-            raise ValueError("Total cooling duty is zero; no cooling agents are contributing.")
-    
-    # Calculate weighted GWP
-        return sum(
-            (cooling_duties[agent] / total_cooling_duty) * gwp_dict[agent]
-            for agent in cooling_duties
-        )
-    weighted_cooling_gwp=weighted_gwp(sys)
-    
-    cooling_item = qs.ImpactItem(
-        ID='cooling_item',
-        GWP=weighted_cooling_gwp,
-        )
-    lca = qs.LCA(
-    system=sys,
-    lifetime=lifetime,
-    simulate_system=False,
-    uptime_ratio=sys.operating_hours / (365 * 24),
-    e_item=lambda: (sys.get_electricity_consumption() - sys.get_electricity_production()) * lifetime,
-    steam_item=lambda: sys.get_heating_duty() / 1000 * lifetime,
-    cooling_item=lambda: sys.get_cooling_duty() / 1000 * lifetime,
-    )
-    # lca = sys.LCA
+    lca = sys.LCA
     biobinder = sys.flowsheet.stream.biobinder
 
+    # https://idot.illinois.gov/doing-business/procurements/construction-services/transportation-bulletin/price-indices.html
+    # bitumnous, IL
+    # price_dct['biobinder'] = 0.67
     biobinder.price = MSP = tea.solve_price(biobinder)
     print(f'Minimum selling price of the biobinder is ${MSP:.2f}/kg.')
         
     all_impacts = lca.get_allocated_impacts(streams=(biobinder,), operation_only=True, annual=True)
     GWP = all_impacts['GWP']/(biobinder.F_mass*lca.system.operating_hours)
-
     print(f'Global warming potential of the biobinder is {GWP:.4f} kg CO2e/kg.')
+    
     if save_report:
         # Use `results_path` and the `join` func can make sure the path works for all users
         sys.save_report(file=os.path.join(results_path, f'{sys.ID}.xlsx'))
 
 if __name__ == '__main__':
     
-    EC_futures_config = {
+    EC_future_config = {
         'EO_voltage': 2.5, # originally 5, Ref [5] at 2.5 V
         'ED_voltage': 2.5, # originally 30
         'electrode_cost': 225, # originally 40,000, Ref [5] high-end is 1,000, target is $225/m2
@@ -713,10 +676,10 @@ if __name__ == '__main__':
         )
 
     # What to do with HTL-AP
-    # config_kwargs.update(dict(skip_EC=True, generate_H2=False, EC_config=None)) # no EC
+    config_kwargs.update(dict(skip_EC=True, generate_H2=False, EC_config=None)) # no EC
     # config_kwargs.update(dict(skip_EC=False, generate_H2=False, EC_config=None)) # EC, recover nutrients only
-    config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=None)) # EC, recover nutrients and generate H2
-    # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=EC_futures_config)) # EC, recovery nutrients, generate H2, optimistic assumptions
+    # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=None)) # EC, recover nutrients and generate H2
+    # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=EC_future_config)) # EC, recovery nutrients, generate H2, optimistic assumptions
     
     # Decentralized vs. centralized configuration
     config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False)) # CHCU
@@ -727,10 +690,10 @@ if __name__ == '__main__':
     # However, maybe the elimination of transportation completely will make a difference
     # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True)) # DHDU
     
-    sys, gwp_dict, lifetime = create_system(**config_kwargs)
+    sys = create_system(**config_kwargs)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     tea = sys.TEA
-    lca = sys.LCA    
+    lca = sys.LCA
     
-    simulate_and_print(sys, gwp_dict, lifetime)
+    simulate_and_print(sys)
