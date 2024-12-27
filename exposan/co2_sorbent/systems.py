@@ -51,9 +51,6 @@ from exposan.co2_sorbent import _sanunits as su
 from qsdsan.utils import auom
 from math import ceil
 
-# TODO: update LCA for natural gas based on the LCA data collected for the HTL geospatial analysis on 07-31-2024
-# TODO: check to make sure LCA items were not double-counted
-
 # HXN (heat exchanger network), CWP (chilled water package)
 # and BT (BoilerTurbogenerator) don't help in these systems
 
@@ -69,8 +66,8 @@ __all__ = (
     'create_system_C' # CO2 capture and utilization
     )
 
+_m3_to_ft3 = auom('m3').conversion_factor('ft3')
 _lb_to_kg = auom('lb').conversion_factor('kg')
-_MMBTU_to_MJ = auom('MMBTU').conversion_factor('MJ')
 
 # GDPCTPI (Gross Domestic Product: Chain-type Price Index)
 # https://fred.stlouisfed.org/series/GDPCTPI (accessed 2024-05-20)
@@ -89,10 +86,9 @@ GDPCTPI = {2010: 89.619,
            2022: 117.995,
            2023: 122.284}
 
-# 5 2016$/MMBTU (Davis et al. 2018)
-# natural gas heating value 39 MJ/m3 (https://ecoquery.ecoinvent.org/3.8/apos/dataset/14395/documentation)
-# natural gas density: 0.678 kg/m3 (https://en.wikipedia.org/wiki/Natural_gas, accessed 2024-06-02)
-bst.stream_prices['Natural gas'] = 5/_MMBTU_to_MJ*39/0.678/GDPCTPI[2016]*GDPCTPI[2022]
+# assume natural gas is CH4 (density is 0.657 kg/m3, https://en.wikipedia.org/wiki/Methane accessed 2024-08-03)
+# 2022 US NG industrial price: 7.66 $/1000 ft3 (https://www.eia.gov/dnav/ng/hist/n3035us3A.htm accessed 2024-08-03)
+bst.stream_prices['Natural gas'] = 7.66/1000*_m3_to_ft3/0.657
 
 # 0.0054 2010$/gal (Jouny et al. 2018)
 # 1 gal water = 3.7854 kg water (https://www.inchcalculator.com/convert/gallon-to-kilogram/, accessed 2024-06-02)
@@ -213,9 +209,9 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
     # assume the RO cake (produced after evaporator) can be potentially reused
     # therefore, no cost and environmental impact are given to it
     RO = su.ReverseOsmosis(ID='Reverse_osmosis',
-                            ins=F1-1,
-                            outs=('RO_water','brine'),
-                            water_recovery=0.987)
+                           ins=F1-1,
+                           outs=('RO_water','brine'),
+                           water_recovery=0.987)
     RO.outs[0].price = bst.stream_prices['Reverse osmosis water']
     RO.register_alias('RO')
     
@@ -249,8 +245,8 @@ def create_system_A(AlH3O3=2416.7, # to produce 100 metric ton of ALF per day
     sys.register_alias('sys')
     
     # use market for heat, district or industrial, natural gas, Europe without Switzerland (0.050399856 kg CO2 eq/MJ)
-    # 48.5 MJ/kg (https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels, accessed 07-31-2024)
-    # natural gas MW: 19 (16.8-22.8 from https://en.wikipedia.org/wiki/Natural_gas, accessed 06-02-2024)
+    # 48.5 MJ/kg (https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels, accessed 2024-07-31)
+    # natural gas MW: 19 (16.8-22.8 from https://en.wikipedia.org/wiki/Natural_gas, accessed 2024-06-02)
     # use produced CO2 amount to calculte the GlobalWarming for natural gas
     qs.StreamImpactItem(ID='natural_gas',
                         linked_stream=stream.natural_gas_LCA,
@@ -499,9 +495,9 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
     # assume the RO cake (produced after evaporator) can be potentially reused
     # therefore, no cost and environmental impact are given to it
     RO = su.ReverseOsmosis(ID='Reverse_osmosis',
-                            ins=F2-1,
-                            outs=('RO_water','brine'),
-                            water_recovery=0.987)
+                           ins=F2-1,
+                           outs=('RO_water','brine'),
+                           water_recovery=0.987)
     RO.outs[0].price = bst.stream_prices['Reverse osmosis water']
     RO.register_alias('RO')
 
@@ -535,8 +531,8 @@ def create_system_B(bauxite=2730.8, # to produce 100 metric ton of ALF per day
     sys.register_alias('sys')
     
     # use market for heat, district or industrial, natural gas, Europe without Switzerland (0.050399856 kg CO2 eq/MJ)
-    # 48.5 MJ/kg (https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels, accessed 07-31-2024)
-    # natural gas MW: 19 (16.8-22.8 from https://en.wikipedia.org/wiki/Natural_gas, accessed 06-02-2024)
+    # 48.5 MJ/kg (https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels, accessed 2024-07-31)
+    # natural gas MW: 19 (16.8-22.8 from https://en.wikipedia.org/wiki/Natural_gas, accessed 2024-06-02)
     # use produced CO2 amount to calculte the GlobalWarming for natural gas
     qs.StreamImpactItem(ID='natural_gas',
                         linked_stream=stream.natural_gas_LCA,
