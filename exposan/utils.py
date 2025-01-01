@@ -190,7 +190,7 @@ def batch_setting_unit_params(df, model, unit, exclude=()):
             D = shape.Triangle(lower=lower, midpoint=b, upper=upper)
         elif dist == 'constant': continue
         else:
-            raise ValueError(f'Distribution {dist} not recognized for unit {unit}.')
+            raise ValueError(f'Distribution {dist} not recognized for unit {unit} with parameter {para}.')
 
         su_type = type(unit).__name__
         if su_type.lower() == 'lagoon':

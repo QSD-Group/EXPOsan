@@ -846,7 +846,6 @@ def create_modelB(country_specific=False, ppl=default_ppl, **model_kwargs):
 
     return modelB
 
-
 # Wrapper function so that it'd work for all
 def create_model(model_ID='A', country_specific=False, ppl=default_ppl, **model_kwargs):
     model_ID = model_ID.lower().rsplit('model')[-1].rsplit('sys')[-1].upper() # works for "modelA"/"sysA"/"A"

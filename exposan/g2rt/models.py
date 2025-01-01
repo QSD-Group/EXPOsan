@@ -63,8 +63,6 @@ __all__ = ('create_model', 'run_uncertainty',)
 # Functions for batch-making metrics and setting parameters
 # =============================================================================
 
-
-
 def add_metrics(model, ppl=default_ppl):
     g2rt._load_lca_data()
     system = model.system
@@ -140,7 +138,7 @@ su_data_path = os.path.join(data_path, 'sanunit_data')
 g2rt_su_data_path = os.path.join(su_data_path, 'g2rt')
 
 def load_g2rt_su_data(file_name):
-    if file_name.startswith(('_g2rt_', '_vr_')):
+    if file_name.startswith(('_g2rt_', '_vr_','_mscwo_')):
         return load_data(os.path.join(g2rt_su_data_path, file_name))
     else: 
         return load_data(os.path.join(su_data_path, file_name))
@@ -160,6 +158,10 @@ g2rt_solids_separation_path = load_g2rt_su_data('_g2rt_solids_separation.csv')
 g2rt_belt_separation_path = load_g2rt_su_data('_g2rt_belt_separation.csv')
 ultrafiltration_path = load_g2rt_su_data('_g2rt_ultrafiltration.csv')
 reverse_osmosis_path = load_g2rt_su_data('_g2rt_reverse_osmosis.csv')
+combustor_path = load_g2rt_su_data('_vr_combustor.csv')
+mscwo_concentrator_path = load_g2rt_su_data('_mscwo_concentrator_module.csv')
+mscwo_gas_handling_module_path = load_g2rt_su_data('_mscwo_gas_handling_module.csv')
+mscwo_reactor_module_path = load_g2rt_su_data('_mscwo_reactor_module.csv')
 
 # %%
 
@@ -334,25 +336,10 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
     exclude = ('wages')
     batch_setting_unit_params(reverse_osmosis_path, model, reverse_osmosis_unit, exclude)
     
-    #Concentrator
-    concentrator_unit = unit_dct['concentrator']
-    exclude = ('wages')
-    batch_setting_unit_params(vr_concentrator_path, model, concentrator_unit, exclude)
-    
     #Homogenizer
     homogenizer_unit = unit_dct['homogenizer']
     exclude = ('wages')
     batch_setting_unit_params(G2RT_homogenizer_path, model, homogenizer_unit, exclude)
-
-    #Pasteurization
-    pasteurization_unit = unit_dct['pasteurization']
-    exclude = ('wages')
-    batch_setting_unit_params(vr_pasteurization_path, model, pasteurization_unit, exclude)
-    
-    #Filter press
-    filter_press_unit = unit_dct['filter_press']
-    exclude = ('wages')
-    batch_setting_unit_params(vr_filter_press_path, model, filter_press_unit, exclude)
     
     #Drying tunnel
     drying_tunnel_unit = unit_dct['drying_tunnel']
@@ -565,7 +552,7 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
 # =============================================================================
 # Functions to create models
 # =============================================================================
-
+# System A: volume reduction toilet
 def create_modelA(country_specific=False, ppl=default_ppl, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
     sysA = create_system('A', ppl=ppl, flowsheet=None)
@@ -583,19 +570,74 @@ def create_modelA(country_specific=False, ppl=default_ppl, **model_kwargs):
         'liquids_tank': unitA.A13,
         'ultrafiltration': unitA.A5,
         'reverse_osmosis': unitA.A6,
-        'concentrator': unitA.A7,
         'homogenizer': unitA.A8,
-        'pasteurization': unitA.A9,
-        'filter_press': unitA.A10,
         'drying_tunnel': unitA.A11,
         }
     add_shared_parameters(modelA, unit_dctA, country_specific)
+    
+    #Add parameters unique to System A: volume reduction toilet
+    #Concentrator
+    exclude = ('wages')
+    batch_setting_unit_params(vr_concentrator_path, modelA, unitA.A7, exclude)
+    
+    #Pasteurization
+    exclude = ('wages')
+    batch_setting_unit_params(vr_pasteurization_path, modelA, unitA.A9, exclude)
+    
+    #Filter press
+    exclude = ('wages')
+    batch_setting_unit_params(vr_filter_press_path, modelA, unitA.A10, exclude)
+
+    #Combustor
+    exclude = ('wages')
+    batch_setting_unit_params(combustor_path, modelA, unitA.A14, exclude)
+    
     return modelA
+
+#System B: micro supercritical water oxidation toilet
+def create_modelB(country_specific=False, ppl=default_ppl, **model_kwargs):
+    flowsheet = model_kwargs.pop('flowsheet', None)
+    sysB = create_system('B', ppl=ppl, flowsheet=flowsheet)
+    unitB = sysB.flowsheet.unit
+
+    # Shared parameters
+    modelB = Model(sysB, **model_kwargs)
+    add_metrics(modelB, ppl=ppl)
+    unit_dctB = {
+        'excretion': unitB.B1,
+        'mixer':unitB.Mixer,
+        'toilet': unitB.B2,
+        'solids_separation': unitB.B3,
+        'belt_separation': unitB.B4,
+        'solids_tank': unitB.B5,
+        'homogenizer': unitB.B6,
+        'liquids_tank': unitB.B7,
+        'ultrafiltration': unitB.B8,
+        'reverse_osmosis': unitB.B9,
+        'drying_tunnel': unitB.B13
+        }
+    add_shared_parameters(modelB, unit_dctB, country_specific)
+    
+    #Add parameters unique to System B: micro supercritical water oxidation toilet
+    #Gas handling module
+    exclude = ('wages')
+    batch_setting_unit_params(mscwo_gas_handling_module_path, modelB, unitB.B10, exclude)
+    
+    #mSCWO reactor module
+    exclude = ('wages')
+    batch_setting_unit_params(mscwo_reactor_module_path, modelB, unitB.B11, exclude)
+
+    #mSCWO concentrator module
+    exclude = ('wages')
+    batch_setting_unit_params(mscwo_concentrator_path, modelB, unitB.B12, exclude)
+
+    return modelB
 
 # Wrapper function so that it'd work for all
 def create_model(model_ID='A', country_specific=False, ppl=default_ppl, **model_kwargs):
     model_ID = model_ID.lower().rsplit('model')[-1].rsplit('sys')[-1].upper() # works for "modelA"/"sysA"/"A"
     if model_ID == 'A': model = create_modelA(country_specific, ppl=ppl, **model_kwargs)
+    elif model_ID == 'B': model = create_modelB(country_specific, ppl=ppl, **model_kwargs)
     else: raise ValueError(f'`model_ID` can only be "A" or "B", not "{model_ID}".')
     return model
 

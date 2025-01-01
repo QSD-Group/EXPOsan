@@ -197,9 +197,9 @@ def _load_system():
     sysA = create_system('A')
     teaA = sysA.TEA
     lcaA = sysA.LCA
-    # sysB = create_system('B')
-    # teaB = sysB.TEA
-    # lcaB = sysB.LCA
+    sysB = create_system('B')
+    teaB = sysB.TEA
+    lcaB = sysB.LCA
     _system_loaded = True
 
 
@@ -207,7 +207,7 @@ def load():
     if not _components_loaded: _load_components()
     if not _system_loaded: _load_system()
     dct = globals()
-    for sys in (sysA, #sysB
+    for sys in (sysA, sysB
                 ): dct.update(sys.flowsheet.to_dict())
 
 
@@ -226,28 +226,41 @@ get_Water = lambda stream: stream.imass['H2O']*hr_per_yr
 
 # Only for `sysA` or `sysB`
 def get_recoveries(system, ppl=default_ppl, include_breakdown=False):
-    # AB = system.ID[-1]
+    AB = system.ID[-1]
     u_reg = system.flowsheet.unit
     dct = globals()
     dct['N_dct'] = N_dct = {}
     dct['P_dct'] = P_dct = {}
     dct['K_dct'] = K_dct = {}
     dct['Water_dct'] = Water_dct = {}
-    fp = u_reg.A10
-    solids_separator = u_reg.A3
-    RO = u_reg.A6
-    comp_splitter = u_reg.A18
-    mixer = u_reg.Mixer
+    
 
-    # ##### Unique to A or B #####
-    # if AB == 'A':
-    #     toilet = u_reg.A2
-    #     sludge_pasteurization = u_reg.A4
-    #     ion_exchange = u_reg.A5
-    # else: # unique to sysB
-    #     toilet = u_reg.B2
-    #     sludge_pasteurization = u_reg.B4
-    #     ion_exchange = u_reg.B5
+
+    ##### Unique to A or B #####
+    if AB == 'A':
+        fp = u_reg.A10
+        solids_separator = u_reg.A3
+        RO = u_reg.A6
+        comp_splitter = u_reg.A18
+        mixer = u_reg.Mixer
+        functions = [
+                lambda: get_N(comp_splitter.outs[0]) / (get_N(fp.outs[1])+get_N(RO.outs[0])+get_N(RO.outs[1])) * 100,  # total_N_recovery
+                lambda: get_P(comp_splitter.outs[1]) / (get_P(fp.outs[1])+get_P(RO.outs[0])+get_P(RO.outs[1])) * 100,  # total_P_recovery
+                lambda: get_K(comp_splitter.outs[2]) / (get_K(fp.outs[1])+get_K(RO.outs[0])+get_K(RO.outs[1])) * 100,  # total_K_recovery
+                lambda: get_Water(RO.outs[0]) / (get_Water(RO.outs[0])+get_Water(RO.outs[1]))* 100 #total water recovery
+                ]
+        return functions
+    else: # unique to sysB
+        mixer = u_reg.Mixer
+        comp_splitter = u_reg.B17
+        RO = u_reg.B9
+        reactor = u_reg.B11
+        functions = [lambda: get_N(comp_splitter.outs[0]) / (get_N(reactor.ins[1])+get_N(RO.outs[0])+get_N(RO.outs[1])) * 100,  # total_N_recovery 
+                     lambda: get_P(comp_splitter.outs[1]) / (get_P(reactor.ins[1])+get_P(RO.outs[0])+get_P(RO.outs[1])) * 100,  # total_P_recovery
+                     lambda: get_K(comp_splitter.outs[2]) / (get_K(reactor.ins[1])+get_K(RO.outs[0])+get_K(RO.outs[1])) * 100,  # total_K_recovery
+                     lambda: get_Water(RO.outs[0]) / (get_Water(RO.outs[0]) + get_Water(RO.outs[1]))* 100 #total water recovery
+                     ]
+        return functions
 
     # ##### Applicable for both A and B #####
     # # In
@@ -279,13 +292,7 @@ def get_recoveries(system, ppl=default_ppl, include_breakdown=False):
     # % N, P, and K recovered as a usable fertilizer product,
     # for model metrics and also the Resource Recovery criterion in DMsan analysis
     #TODO: check mass flow to make sure it is right after each unit
-    functions = [
-            lambda: get_N(comp_splitter.outs[0]) / (get_N(fp.outs[1])+get_N(RO.outs[0])+get_N(RO.outs[1])) * 100,  # total_N_recovery
-            lambda: get_P(comp_splitter.outs[1]) / (get_P(fp.outs[1])+get_P(RO.outs[0])+get_P(RO.outs[1])) * 100,  # total_P_recovery
-            lambda: get_K(comp_splitter.outs[2]) / (get_K(fp.outs[1])+get_K(RO.outs[0])+get_K(RO.outs[1])) * 100,  # total_K_recovery
-            lambda: get_Water(RO.outs[0]) / (get_Water(RO.outs[0])+get_Water(RO.outs[1])+get_Water(fp.outs[1]))* 100 #total water recovery
-            ]
-    return functions
+
 
 ##### Costs #####
 # Learning curve assumptions
@@ -424,7 +431,7 @@ def print_summaries(systems):
 
         print(f'\n---------- Summary for {sys.ID} ----------\n')
         if sys.ID in ('sysA', 
-                      #'sysB'
+                      'sysB'
                       ):
             recovery_functions = get_recoveries(sys)
             print(f'\nTotal N recovery: {recovery_functions[0]():.1f} %.')
