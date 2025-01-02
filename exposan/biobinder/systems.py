@@ -289,7 +289,7 @@ def create_system(
         outs=('hot_biofuel','hot_biobinder'),
         LHK=BiocrudeSplitter.keys[1],
         P=50*_psi_to_Pa,
-        Lr=0.70, # 0.70, 0.62, 0.53
+        Lr=0.70, # 0.70, 0.62, 0.53, 0.84
         Hr=0.89,
         k=2, is_divided=True)
     
@@ -330,7 +330,7 @@ def create_system(
     # # Hr_range = np.arange(0.85, 1, 0.05)
     # results = find_Lr_Hr(CrudeHeavyDis, Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
     # # results = find_Lr_Hr(CrudeHeavyDis, target_light_frac=oil_fracs[0], Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
-    # results_df, Lr, Hr = results
+    # # # results_df, Lr, Hr = results
 
     BiofuelFlash = qsu.Flash('BiofuelFlash', ins=CrudeHeavyDis-0, outs=('', 'cooled_biofuel',),
                               T=298.15, P=101325)
