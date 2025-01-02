@@ -9,10 +9,11 @@ import os
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize_scalar
+from exposan.biobinder import results_path
 from exposan.biobinder.systems import create_system, simulate_and_print
 
 
-output_dir = "simulation_results"
+output_dir = os.path.join(results_path, "simulation_results")
 os.makedirs(output_dir, exist_ok=True)
 
 plant_sizes = np.arange(1, 151, 0.5)  # 1 to 150 tpd
