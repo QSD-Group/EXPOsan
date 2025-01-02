@@ -289,7 +289,7 @@ def create_system(
         outs=('hot_biofuel','hot_biobinder'),
         LHK=BiocrudeSplitter.keys[1],
         P=50*_psi_to_Pa,
-        Lr=0.53, # 0.70, 0.62, 0.53
+        Lr=0.70, # 0.70, 0.62, 0.53, 0.84
         Hr=0.89,
         k=2, is_divided=True)
     
@@ -330,7 +330,7 @@ def create_system(
     # # Hr_range = np.arange(0.85, 1, 0.05)
     # results = find_Lr_Hr(CrudeHeavyDis, Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
     # # results = find_Lr_Hr(CrudeHeavyDis, target_light_frac=oil_fracs[0], Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
-    # results_df, Lr, Hr = results
+    # # # results_df, Lr, Hr = results
 
     BiofuelFlash = qsu.Flash('BiofuelFlash', ins=CrudeHeavyDis-0, outs=('', 'cooled_biofuel',),
                               T=298.15, P=101325)
@@ -402,7 +402,7 @@ def create_system(
         GGE_per_kg = GGE/biofuel.F_mass
         biofuel.price = price_dct['diesel'] * GGE_per_kg
     BiofuelStorage.add_specification(adjust_biofuel_price)
-    
+    price_dct['biobinder'] = 0.67
     biobinder = qs.WasteStream('biobinder', price=price_dct['biobinder'])
     BiobinderStorage = qsu.StorageTank(
         'BiobinderStorage', BiobinderHX-0, outs=biobinder,
@@ -599,28 +599,28 @@ def create_system(
        trans_feedstock_item.linked_stream = fake_stream            # No feedstock transportation
        trans_biocrude_item.linked_stream = fake_stream             # No biocrude transportation
           
-    def update_cooling_impacts():
-        # cooling_duties = {}
-        # total_cooling_duty = sys.get_cooling_duty()
-        # for unit in sys.units:
-        #     for utility in unit.heat_utilities:
-        #         if utility.agent and utility.agent.ID in gwp_dict:
-        #             agent_id = utility.agent.ID
-        #             duty = utility.duty
-        #             cooling_duties[agent_id] = cooling_duties.get(agent_id, 0) + duty
-        #             total_cooling_duty += duty
+    # def update_cooling_impacts():
+    #     # cooling_duties = {}
+    #     # total_cooling_duty = sys.get_cooling_duty()
+    #     # for unit in sys.units:
+    #     #     for utility in unit.heat_utilities:
+    #     #         if utility.agent and utility.agent.ID in gwp_dict:
+    #     #             agent_id = utility.agent.ID
+    #     #             duty = utility.duty
+    #     #             cooling_duties[agent_id] = cooling_duties.get(agent_id, 0) + duty
+    #     #             total_cooling_duty += duty
     
-        # if total_cooling_duty == 0:
-        #     raise ValueError("Total cooling duty is zero; no cooling agents are contributing.")
+    #     # if total_cooling_duty == 0:
+    #     #     raise ValueError("Total cooling duty is zero; no cooling agents are contributing.")
     
-        # # Calculate weighted GWP
-        # weighted_gwp = sum(
-        #     (cooling_duties[agent] / total_cooling_duty) * gwp_dict[agent]
-        #     for agent in cooling_duties
-        # )
+    #     # # Calculate weighted GWP
+    #     # weighted_gwp = sum(
+    #     #     (cooling_duties[agent] / total_cooling_duty) * gwp_dict[agent]
+    #     #     for agent in cooling_duties
+    #     # )
 
-        cooling_item.CFs['GWP'] = gwp_dict['cooling'] # weighted_gwp
-        return sys.get_cooling_duty() / 1000 * lifetime
+    #     cooling_item.CFs['GWP'] = gwp_dict['cooling'] # weighted_gwp
+    #     return sys.get_cooling_duty() / 1000 * lifetime
         
     lifetime = tea_kwargs['duration'][1] - tea_kwargs['duration'][0]
     lca = qs.LCA(
@@ -630,7 +630,7 @@ def create_system(
         uptime_ratio=sys.operating_hours / (365 * 24),
         e_item=lambda: (sys.get_electricity_consumption() - sys.get_electricity_production()) * lifetime,
         steam_item=lambda: sys.get_heating_duty() / 1000 * lifetime,
-        cooling_item=update_cooling_impacts(), # this function will run during LCA
+        cooling_item=lambda: sys.get_cooling_duty() / 1000 * lifetime, # this function will run during LCA
         )
 
     return sys
@@ -676,14 +676,14 @@ if __name__ == '__main__':
         )
 
     # What to do with HTL-AP
-    config_kwargs.update(dict(skip_EC=True, generate_H2=False, EC_config=None)) # no EC
+    # config_kwargs.update(dict(skip_EC=True, generate_H2=False, EC_config=None)) # no EC
     # config_kwargs.update(dict(skip_EC=False, generate_H2=False, EC_config=None)) # EC, recover nutrients only
     # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=None)) # EC, recover nutrients and generate H2
-    # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=EC_future_config)) # EC, recovery nutrients, generate H2, optimistic assumptions
+    config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=EC_future_config)) # EC, recovery nutrients, generate H2, optimistic assumptions
     
     # Decentralized vs. centralized configuration
-    config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False)) # CHCU
-    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False)) # DHCU
+    # config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False)) # CHCU
+    config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False)) # DHCU
     
     # Distillation column cost calculation doesn't scale down well, so the cost is very high now.
     # But maybe don't need to do the DHDU scenario, if DHCU isn't too different from CHCU
