@@ -153,10 +153,15 @@ elec_price = pd.read_excel(folder + 'state_elec_price_2022.xlsx', 'elec_price_20
 elec_price = elec_price.merge(US, how='right', left_on='name', right_on='NAME')
 elec_price = gpd.GeoDataFrame(elec_price)
 
+# TODO: check if this is the 2022 data, if not, use the 2022 data
 elec_GHG = WRRF[['balancing_area','kg_CO2_kWh']].copy()
 elec_GHG.drop_duplicates(inplace=True)
 elec_GHG = elec_GHG.merge(balnc_area, how='left', left_on='balancing_area', right_on='PCA_REG')
 elec_GHG = gpd.GeoDataFrame(elec_GHG)
+
+income_tax = pd.read_excel(folder + 'state_corporate_income_tax_2022.xlsx', 'tax_2022')
+income_tax = income_tax.merge(US, how='right', left_on='name', right_on='NAME')
+income_tax = gpd.GeoDataFrame(income_tax)
 
 state_PADD = {'Alabama': 3,
               'Arizona': 5,
@@ -390,10 +395,7 @@ ax.set_axis_off()
 
 #%% tax rate visualization (just for demonstration purpose, not for model)
 
-tax_rate = pd.read_excel(folder + 'state_corporate_income_tax_2022.xlsx', 'tax_2022')
-tax_rate = tax_rate.merge(US, how='right', left_on='name', right_on='NAME')
-tax_rate = gpd.GeoDataFrame(tax_rate)
-tax_rate['tax'] *= 100
+income_tax['tax'] *= 100
 
 fig, ax = plt.subplots(figsize=(30, 30))
 
@@ -413,11 +415,11 @@ plt.rcParams.update({'figure.max_open_warning': 100})
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-assert tax_rate.tax.min() > 20, 'adjust the colormap range'
-assert tax_rate.tax.max() <= 30, 'adjust the colormap range'
+assert income_tax.tax.min() > 20, 'adjust the colormap range'
+assert income_tax.tax.max() <= 30, 'adjust the colormap range'
 
 norm = colors.TwoSlopeNorm(vmin=20, vcenter=25, vmax=30)
-tax_rate.plot('tax', ax=ax, linewidth=3, cmap='Greens', edgecolor='k', legend=True, legend_kwds={'shrink': 0.35}, norm=norm)
+income_tax.plot('tax', ax=ax, linewidth=3, cmap='Greens', edgecolor='k', legend=True, legend_kwds={'shrink': 0.35}, norm=norm)
 
 fig.axes[1].set_ylabel('$\mathbf{Corporate\ income\ tax}$ [%]', fontname='Arial', fontsize=35)
 fig.axes[1].tick_params(length=10, width=3)
