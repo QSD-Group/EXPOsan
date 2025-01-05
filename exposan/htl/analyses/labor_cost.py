@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Dec  6 08:54:11 2024
+Created on Sun Jan  5 11:45:35 2025
 
 @author: jiananfeng
 """
@@ -11,8 +11,6 @@ Created on Fri Dec  6 08:54:11 2024
 import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.colors as colors
 from colorpalette import Color
 from qsdsan.utils import palettes
-
-gallon_to_liter = 3.78541
 
 # color palette
 Guest = palettes['Guest']
@@ -93,71 +91,38 @@ state_ID = {'01':'AL',
 
 US_county['STATE'] = US_county['STATEFP'].apply(lambda x: state_ID[x])
 
-US_county['STCOFIPS'] = US_county['STATEFP'] + US_county['COUNTYFP']
-US_county['STCOFIPS'] = US_county['STCOFIPS'].astype('int64')
+US_county['Area\nCode'] = US_county['STATEFP'] + US_county['COUNTYFP']
 
 US_county = US_county.to_crs(crs='EPSG:3857')
 
-farm_fertilizer = pd.read_excel('/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/N-P_from_fertilizer_1950-2017-july23-2020.xlsx','farm')
-nonfarm_fertilizer = pd.read_excel('/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/N-P_from_fertilizer_1950-2017-july23-2020.xlsx','nonfarm')
+labor_cost = pd.read_excel('/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/county_labor_cost_2022.xlsx','US_St_Cn_MSA')
 
-N_farm = farm_fertilizer[['STCOFIPS','farmfertN-kg-2017']]
-N_nonfarm = nonfarm_fertilizer[['STCOFIPS','nonffertN-kg-2017']]
+US_average_labor_cost = labor_cost[(labor_cost['St'] == 'US') & (labor_cost['Ownership'] == 'Local Government')]['Annual Average Pay']
 
-N = N_farm.merge(N_nonfarm, on='STCOFIPS', how='inner')
-N['total'] = N['farmfertN-kg-2017'] + N['nonffertN-kg-2017']
+state_labor_cost = labor_cost[(labor_cost['Cnty'] == 0) & (labor_cost['Ownership'] == 'Local Government')][['St','Annual Average Pay']]
+state_labor_cost.rename(columns={'Annual Average Pay': 'State Annual Average Pay'}, inplace=True)
 
-P_farm = farm_fertilizer[['STCOFIPS','farmfertP-kg-2017']]
-P_nonfarm = nonfarm_fertilizer[['STCOFIPS','nonffertP-kg-2017']]
+labor_cost = labor_cost[labor_cost['St'].isin(['01','04','05','06','08','09','10','11',
+                                               '12','13','16','17','18','19','20','21',
+                                               '22','23','24','25','26','27','28','29',
+                                               '30','31','32','33','34','35','36','37',
+                                               '38','39','40','41','42','44','45','46',
+                                               '47','48','49','50','51','53','54','55','56'])]
+labor_cost = labor_cost[labor_cost['Ownership'] == 'Local Government']
 
-P = P_farm.merge(P_nonfarm, on='STCOFIPS', how='inner')
-P['total'] = P['farmfertP-kg-2017'] + P['nonffertP-kg-2017']
+#%% labor wage
 
-#%% N needs
+US_county_labor_cost = US_county.merge(labor_cost, on=['Area\nCode'], how='inner')
 
-US_county_N = US_county.merge(N, on='STCOFIPS', how='left')
-US_county_N = US_county_N[['STCOFIPS','NAME','STATE','total','geometry']]
+US_county_labor_cost = US_county_labor_cost.merge(state_labor_cost, on='St', how='left')
 
-US_county_N['total'] = US_county_N['total'].fillna(0)
+US_county_labor_cost.loc[US_county_labor_cost['Annual Average Pay'] == 0, 'Annual Average Pay'] = US_county_labor_cost['State Annual Average Pay']
 
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', b, db])
+US_county_labor_cost['quotient'] = US_county_labor_cost['Annual Average Pay']/float(US_average_labor_cost.iloc[0])*100
 
-fig, ax = plt.subplots(figsize=(30, 30))
+US_county_labor_cost = US_county_labor_cost[['Area\nCode','NAME','STATE','quotient','geometry']]
 
-plt.rcParams['axes.linewidth'] = 1.5
-plt.rcParams['hatch.linewidth'] = 1.5
-plt.rcParams['xtick.labelsize'] = 35
-plt.rcParams['ytick.labelsize'] = 35
-plt.rcParams['font.sans-serif'] = 'Arial'
-
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
-
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
-plt.rcParams.update({'figure.max_open_warning': 100})
-
-ax = plt.gca()
-
-US_county_N.plot(ax=ax, column='total', legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=0.5)
-
-fig.axes[1].set_yticks(np.arange(0, 70000000, 10000000))
-fig.axes[1].set_ylabel('$\mathbf{Nitrogen}$ [kg]', fontname='Arial', fontsize=41)
-fig.axes[1].tick_params(length=7.5, width=1.5)
-
-ax.set_aspect(1)
-
-ax.set_axis_off()
-
-#%% P needs
-
-US_county_P = US_county.merge(P, on='STCOFIPS', how='left')
-US_county_P = US_county_P[['STCOFIPS','NAME','STATE','total','geometry']]
-
-US_county_P['total'] = US_county_P['total'].fillna(0)
-
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', r, dr])
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', p, dp])
 
 fig, ax = plt.subplots(figsize=(30, 30))
 
@@ -177,10 +142,10 @@ plt.rcParams.update({'figure.max_open_warning': 100})
 
 ax = plt.gca()
 
-US_county_P.plot(ax=ax, column='total', legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=0.5)
+US_county_labor_cost.plot(ax=ax, column='quotient', legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=0.5)
 
-fig.axes[1].set_yticks(np.arange(0, 10000000, 1000000))
-fig.axes[1].set_ylabel('$\mathbf{Phosphorus}$ [kg]', fontname='Arial', fontsize=41)
+fig.axes[1].set_yticks(np.arange(0, 240, 40))
+fig.axes[1].set_ylabel('$\mathbf{Relative\ labor\ wage}$ [%]', fontname='Arial', fontsize=41)
 fig.axes[1].tick_params(length=7.5, width=1.5)
 
 ax.set_aspect(1)
