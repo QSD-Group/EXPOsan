@@ -5,6 +5,8 @@ Created on Mon Jun 5 08:46:28 2023
 
 @author: jiananfeng
 
+Note the word 'sludge' in this file refers to either sludge or biosolids.
+
 References:
 [1] Snowden-Swan, L. J.; Li, S.; Thorson, M. R.; Schmidt, A. J.; Cronin, D. J.;
     Zhu, Y.; Hart, T. R.; Santosa, D. M.; Fox, S. P.; Lemmon, T. L.; Swita, M. S.
@@ -61,14 +63,24 @@ References:
      Environ. Sci. Technol. 2023. https://doi.org/10.1021/acs.est.2c07936.
 '''
 
+# TODO: changs to implement:
+# TODO 0: go through all codes and data, then identify TODOs (geospatial_HTL_systems.py done)
+# TODO 1: add labor cost as a contextural parameter
+# TODO 2: add Gaussian copula when aggregating uncertainty results
+# TODO 3: add capacitated p-median to demonstrate the 100% accommodation of wastewater solids stream in the CONUS
+# TODO 4: add anhydrous ammonia recovery
+# TODO 5: add urea ammonium nitrate (UAN) recovery
+# TODO 6: add diammonium sulfate (DAP)
+# TODO 7: add N & P fertilizers offsets
+# TODO 8: add material costs & CI as contextural parameters whenenever possible
+# TODO 9: add carbon capture and utilization (CCU)
+
 import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
 from qsdsan.utils import auom, clear_lca_registries
 from exposan.htl import _load_components, create_tea, state_income_tax_rate_2022, _sanunits as su
 from biosteam.units import IsenthalpicValve
 from biosteam import settings
-
-# TODO: refactor the code wherever necessary
 
 __all__ = ('create_geospatial_system','biocrude_density')
 
@@ -165,6 +177,7 @@ def create_geospatial_system(# MGD
                              # dry tonne sludge/day/MGD raw wastewater
                              ww_2_dry_sludge_ratio=1,
                              state='IL',
+                             # TODO: this might be predicted 2022 values, if there is a calculated one, use that one
                              # 2022 electricty CI by balancing area based on the IEDO work (change year to 2022)
                              # note change 2020 in the IEDO code for balancing area to 2022
                              # kg CO2 eq/kWh
@@ -202,7 +215,8 @@ def create_geospatial_system(# MGD
     # but with a higher ash content
     # mass reduction assumption (from IEDO work, originally from [5]):
     # 42.5% VSS reduction for anaerobic digestion, 47.5% VSS reduction for aerobic digestion
-    # assume X in sludge-to-be-digested (not necessarily having the same biochemical compositions as sludge) is ash (cannot be digested), Y is VSS (can be digested)
+    # assume X in sludge-to-be-digested (not necessarily having the same biochemical compositions as sludge)
+    # is ash (cannot be digested), Y is VSS (can be digested)
     # for anaerobic digestion: X/(X+Y*(1-0.425)) = 0.414
     # we can calculate that for aerobic digestion: X/(X+Y*(1-0.475)) = 0.436
     if sludge_transportation == 0:
@@ -305,8 +319,8 @@ def create_geospatial_system(# MGD
     # 7.8%_Ru/C and 7.8%_Ru/C_out are not valid names; they are not in sys.flowsheet.stream but the price and LCA are included
     # although this have no impact on the results, still change the names to 'virgin_CHG_catalyst and 'used_CHG_catalyst'
     CHG = qsu.CatalyticHydrothermalGasification(ID='CHG',
-                                                ins=(M1-0, 'virgin_CHG_catalyst'),
-                                                outs=('CHG_out', 'used_CHG_catalyst'))
+                                                ins=(M1-0,'virgin_CHG_catalyst'),
+                                                outs=('CHG_out','used_CHG_catalyst'))
     # CHG price: [7]
     CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2022]
     
@@ -324,9 +338,10 @@ def create_geospatial_system(# MGD
                    thermo=settings.thermo.ideal())
     F1.include_construction = False
     
+    # TODO: whatif the system is not in a WWTP (e.g., standalone hub-and-spoke)?
     # assume no value/cost and no environmental benefit/impact associated with MemDis_ww (the system is in a WWTP) and solution
     MemDis = qsu.MembraneDistillation(ID='MemDis',
-                                      ins=(F1-1, H2SO4_Tank-0, 'NaOH', 'Membrane_in'),
+                                      ins=(F1-1, H2SO4_Tank-0,'NaOH','Membrane_in'),
                                       outs=('ammonium_sulfate','MemDis_ww','Membrane_out','solution'),
                                       init_with='WasteStream')
     # 0.2384 2016$/lb, [6]
@@ -340,6 +355,8 @@ def create_geospatial_system(# MGD
     # =========================================================================
     # Storage, and disposal (Area 300)
     # =========================================================================
+    # TODO: check this citation, why biocrude needs to be stored and is 3-day reasonable
+    # TODO: if deciding not including biocrude storage, update this in the manuscript/SI
     # store for 3 days based on [7]
     BiocrudeTank = qsu.StorageTank(ID='BiocrudeTank',
                                    ins=HTL-2,
@@ -347,6 +364,11 @@ def create_geospatial_system(# MGD
                                    tau=3*24,
                                    init_with='WasteStream',
                                    vessel_material='Carbon steel')
+    # TODO: do we want to consider the rebound effect for all displacements (biocrude, N fertilizers, P fertilizers, CCU-products, and electricity if any)
+    # TODO: see https://doi.org/10.1021/acs.est.4c04006
+    # TODO: but it will be hard to decide a displacement ratio
+    # TODO: do we want to do the displacement based on the weight or the energy content
+    # TODO: based on energy content seems to be more reasonable
     # assume the biocrude has the same price as crude oil (for LCA: we assume the crude oil can be displaced by the biocrude)
     # 2022 average closing price for crude oil: 94.53 $/oil barrel, [10]
     BiocrudeTank.outs[0].price = 94.53/_oil_barrel_to_m3/biocrude_density
@@ -369,7 +391,8 @@ def create_geospatial_system(# MGD
                              force_ideal_thermo=True)
     
     # assume no value/cost and no environmental benefit/impact associated with emission (they are not treated and are biogenic; only CO2 from natural gas is non-biogenic but we have included the environmental impact for it)
-    # use CHP to produce electricity does not provide benefit; therefore, set supplement_power_utility=False
+    # the CHP here can ususally meet the heat requirement but not the electricity
+    # buying additional natural gas to produce electricity does not provide benefit; therefore, set supplement_power_utility=False
     CHP = qsu.CombinedHeatPower(ID='CHP',
                                 include_construction=False,
                                 ins=(GasMixer-0, 'natural_gas', 'air'),
@@ -393,6 +416,9 @@ def create_geospatial_system(# MGD
                                units=list(flowsheet.unit),
                                operating_hours=WWTP.operation_hours)
     sys.simulate()
+    
+    # biocrude production in BPD (barrel per day)
+    biocrude_barrel = BiocrudeTank.outs[0].F_mass/biocrude_density*1000/_oil_barrel_to_L*24
     
     # =========================================================================
     # LCA
@@ -423,12 +449,39 @@ def create_geospatial_system(# MGD
         (4.56/sludge_density*1000/0.2+0.072/_mile_to_km/sludge_density*1000/0.2*WWTP.sludge_distance)/\
             GDPCTPI[2015]*GDPCTPI[2022]/3.79/(10**6)/WWTP.sludge_distance
     
+    Sludge_transportation = qs.Transportation('Sludge_trucking',
+                                              linked_unit=WWTP,
+                                              item=Sludge_trucking,
+                                              load_type='mass',
+                                              load=stream.raw_wastewater.F_mass,
+                                              load_unit='kg',
+                                              distance=sludge_transportation*WWTP.sludge_distance,
+                                              distance_unit='km',
+                                              # set to 1 h since load = kg/h
+                                              interval='1',
+                                              interval_unit='h')
+    WWTP.transportation = Sludge_transportation
+    
     Biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
     # 0.13004958 kg CO2 eq/metric ton/km ('market for transport, freight, lorry, unspecified'))
     Biocrude_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), [15]
     Biocrude_trucking.price = (5.67/biocrude_density+0.07/biocrude_density*WWTP.biocrude_distance)/GDPCTPI[2008]*GDPCTPI[2022]/WWTP.biocrude_distance
+        
+    Biocrude_transportation = qs.Transportation('Biocrude_trucking',
+                                                linked_unit=BiocrudeTank,
+                                                item=Biocrude_trucking,
+                                                load_type='mass',
+                                                load=stream.biocrude.F_mass,
+                                                load_unit='kg',
+                                                distance=WWTP.biocrude_distance,
+                                                distance_unit='km',
+                                                # set to 1 h since load = kg/h
+                                                interval='1',
+                                                interval_unit='h')
+    BiocrudeTank.transportation = Biocrude_transportation
     
+    # TODO: consider adding more granularity to LCA data
     impact_items = {'CHG_catalyst': [stream.CHG_catalyst_out, 471.098936962268],
                     'H2SO4':        [stream.H2SO4, 0.005529872568],
                     'NaOH':         [stream.NaOH, 1.2497984],
@@ -445,30 +498,6 @@ def create_geospatial_system(# MGD
     for item in impact_items.items():
         qs.StreamImpactItem(ID=item[0], linked_stream=item[1][0], GlobalWarming=item[1][1])
     
-    Sludge_transportation = qs.Transportation('Sludge_trucking',
-                                              linked_unit=WWTP,
-                                              item=Sludge_trucking,
-                                              load_type='mass',
-                                              load=stream.raw_wastewater.F_mass,
-                                              load_unit='kg',
-                                              distance=sludge_transportation*WWTP.sludge_distance,
-                                              distance_unit='km',
-                                              interval='1',
-                                              interval_unit='h')
-    WWTP.transportation = Sludge_transportation
-    
-    Biocrude_transportation = qs.Transportation('Biocrude_trucking',
-                                                linked_unit=BiocrudeTank,
-                                                item=Biocrude_trucking,
-                                                load_type='mass',
-                                                load=stream.biocrude.F_mass,
-                                                load_unit='kg',
-                                                distance=WWTP.biocrude_distance,
-                                                distance_unit='km',
-                                                interval='1',
-                                                interval_unit='h')
-    BiocrudeTank.transportation = Biocrude_transportation
-    
     qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
            # 0.48748859 is the GHG level with the Electricity item from ecoinvent,
            # we cannot list electricity GHG one state by one state,
@@ -478,13 +507,14 @@ def create_geospatial_system(# MGD
            # the effect is minimal since (i) this part of LCA is negligible and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
            CT_chemicals=lambda:CT.ins[2].F_mass*sys.flowsheet.WWTP.operation_hours*30)
     
-    # add these assertations to make sure we have provided all system's need heating and cooling (add a ChilledWaterPackage when there is an AssertationError )
+    # add these assertations to make sure we have provided all system's need heating and cooling (add a ChilledWaterPackage when there is an AssertationError)
     assert sys.get_heating_duty() == 0
     assert sys.get_cooling_duty() == 0
     
     # =========================================================================
     # TEA
     # =========================================================================
+    # TODO: adjust labor costs using the county-level quotients assuming this is the baseline
     # TODO: update in other HTL systems as well (the original system, HTL-PFAS)
     # based on the labor cost for the HTL plant from [16], 2014 level:
     # 1 plant manager (0.15 MM$/year)
@@ -524,12 +554,10 @@ def create_geospatial_system(# MGD
     
     income_tax_rate = federal_income_tax_rate_value + state_income_tax_rate_value
     
+    # TODO: make sure the lifetime of TEA is 30 years
     create_tea(sys, IRR_value=0.03,
                income_tax_value=income_tax_rate,
                finance_interest_value=0.03,
                labor_cost_value=wage)
-    
-    # biocrude production in BPD (barrel per day)
-    biocrude_barrel = BiocrudeTank.outs[0].F_mass/biocrude_density*1000/_oil_barrel_to_L*24
     
     return sys, biocrude_barrel

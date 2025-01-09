@@ -4,6 +4,8 @@
 Created on Sat Dec 30 08:01:06 2023
 
 @author: jiananfeng
+
+Note the word 'sludge' in this file refers to either sludge or biosolids.
 '''
 
 import qsdsan as qs

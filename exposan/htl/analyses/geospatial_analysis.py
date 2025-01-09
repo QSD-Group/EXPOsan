@@ -4,6 +4,8 @@
 Created on Sun Jun 11 08:12:41 2023
 
 @author: jiananfeng
+
+Note the word 'sludge' in this file refers to either sludge or biosolids.
 '''
 
 # TODO: refactor/reformat all codes
