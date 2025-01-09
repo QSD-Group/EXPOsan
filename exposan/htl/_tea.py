@@ -68,11 +68,11 @@ class HTL_TEA(TEA):
     __slots__ = ('OSBL_units', 'warehouse', 'site_development',
                  'additional_piping', 'proratable_costs', 'field_expenses',
                  'construction', 'contingency', 'other_indirect_costs', 
-                 'labor_cost', 'labor_burden', 'property_insurance',
+                 '_labor_cost', 'labor_burden', 'property_insurance',
                  'maintenance', '_ISBL_DPI_cached', '_FCI_cached',
                  '_utility_cost_cached', '_steam_power_depreciation',
                  '_steam_power_depreciation_array',
-                 'boiler_turbogenerator')
+                 'boiler_turbogenerator', 'land')
     
     def __init__(self, system, IRR, duration, depreciation, income_tax,
                  operating_days, lang_factor, construction_schedule,
@@ -83,7 +83,7 @@ class HTL_TEA(TEA):
                  field_expenses, construction, contingency,
                  other_indirect_costs, labor_cost, labor_burden,
                  property_insurance, maintenance, steam_power_depreciation,
-                 boiler_turbogenerator):
+                 boiler_turbogenerator, land=0.):
         super().__init__(system, IRR, duration, depreciation, income_tax,
                          operating_days, lang_factor, construction_schedule,
                          startup_months, startup_FOCfrac, startup_VOCfrac,
@@ -104,7 +104,23 @@ class HTL_TEA(TEA):
         self.maintenance = maintenance
         self.steam_power_depreciation = steam_power_depreciation
         self.boiler_turbogenerator = boiler_turbogenerator
+        self.land = land
         
+    @property
+    def working_capital(self) -> float:
+        '''Working capital calculated as the sum of WC_over_FCI*FCI and land.'''
+        return self.WC_over_FCI * self.FCI+self.land
+    
+    @property
+    def labor_cost(self):
+        if hasattr(self, '_labor_cost'):
+            if callable(self._labor_cost): return self._labor_cost()
+            return self._labor_cost
+        return 0.
+    @labor_cost.setter
+    def labor_cost(self, i):
+        self._labor_cost = i
+
     @property
     def steam_power_depreciation(self):
         """[str] 'MACRS' + number of years (e.g. 'MACRS7')."""
@@ -118,7 +134,7 @@ class HTL_TEA(TEA):
     
     @property
     def ISBL_installed_equipment_cost(self):
-        return self._ISBL_DPI(self.DPI)
+        return self.installed_equipment_cost - self.OSBL_installed_equipment_cost
     
     @property
     def OSBL_installed_equipment_cost(self):
@@ -156,12 +172,12 @@ class HTL_TEA(TEA):
         if self.lang_factor:
             raise NotImplementedError('lang factor cannot yet be used')
         else:
-            self._ISBL_DPI_cached = installed_equipment_cost - self.OSBL_installed_equipment_cost
+            factors = self.warehouse + self.site_development + self.additional_piping
+            self._ISBL_DPI_cached = self.ISBL_installed_equipment_cost * (1+factors)
         return self._ISBL_DPI_cached
         
     def _DPI(self, installed_equipment_cost):
-        factors = self.warehouse + self.site_development + self.additional_piping
-        return installed_equipment_cost + self._ISBL_DPI(installed_equipment_cost) * factors
+        return self.OSBL_installed_equipment_cost + self._ISBL_DPI(installed_equipment_cost)
     
     def _indirect_costs(self, TDC):
         return TDC*(self.proratable_costs + self.field_expenses
@@ -174,49 +190,60 @@ class HTL_TEA(TEA):
     
     def _FOC(self, FCI):
         return (FCI * self.property_insurance
-                + self._ISBL_DPI_cached * self.maintenance
+                + self.ISBL_installed_equipment_cost * self.maintenance
                 + self.labor_cost * (1 + self.labor_burden))
 
-def create_tea(sys, OSBL_units=None, cls=None, IRR_value=0.03, income_tax_value=0.275, finance_interest_value=0.03, labor_cost_value=1e6):
-    if OSBL_units is None: OSBL_units = bst.get_OSBL(sys.cost_units)
+def create_tea(sys, OSBL_units=None, cls=None, **kwargs):
+    OSBL_units = bst.get_OSBL(sys.cost_units)
     try:
         BT = tmo.utils.get_instance(OSBL_units, (bst.BoilerTurbogenerator, bst.Boiler))
     except:
         BT = None
+    
     if cls is None: cls = HTL_TEA
-    tea = cls(
-        system=sys, 
-        IRR=IRR_value, # use 0%-3%-5% triangular distribution for waste management, and 5%-10%-15% triangular distribution for biofuel production
-        duration=(2022, 2052), # Jones et al. 2014
-        depreciation='MACRS7', # Jones et al. 2014
-        income_tax=income_tax_value, # Davis et al. 2018
-        operating_days=sys.operating_hours/24, # Jones et al. 2014
-        lang_factor=None, # related to expansion, not needed here
-        construction_schedule=(0.08, 0.60, 0.32), # Jones et al. 2014
-        startup_months=6, # Jones et al. 2014
-        startup_FOCfrac=1, # Davis et al. 2018
-        startup_salesfrac=0.5, # Davis et al. 2018
-        startup_VOCfrac=0.75, # Davis et al. 2018
-        WC_over_FCI=0.05, # Jones et al. 2014
-        finance_interest=finance_interest_value, # use 3% for waste management, use 8% for biofuel
-        finance_years=10, # Jones et al. 2014
-        finance_fraction=0.6, # debt: Jones et al. 2014
-        OSBL_units=OSBL_units,
-        warehouse=0.04, # Knorr et al. 2013
-        site_development=0.09, # Knorr et al. 2013
-        additional_piping=0.045, # Knorr et al. 2013
-        proratable_costs=0.10, # Knorr et al. 2013
-        field_expenses=0.10, # Knorr et al. 2013
-        construction=0.20, # Knorr et al. 2013
-        contingency=0.10, # Knorr et al. 2013
-        other_indirect_costs=0.10, # Knorr et al. 2013
-        labor_cost=labor_cost_value, # use default value
-        labor_burden=0.90, # Jones et al. 2014 & Davis et al. 2018
-        property_insurance=0.007, # Jones et al. 2014 & Knorr et al. 2013
-        maintenance=0.03, # Jones et al. 2014 & Knorr et al. 2013
-        steam_power_depreciation='MACRS20',
-        boiler_turbogenerator=BT)
+    
+    kwargs_keys = list(kwargs.keys())
+    for i in ('IRR_value', 'income_tax_value', 'finance_interest_value', 'labor_cost_value'):
+        if i in kwargs_keys: kwargs[i.rstrip('_value')] = kwargs.pop(i)
+    
+    default_kwargs = {
+        'IRR': 0.03, # use 0%-3%-5% triangular distribution for waste management, and 5%-10%-15% triangular distribution for biofuel production
+        'duration': (2022, 2052),
+        'depreciation': 'MACRS7', # Jones et al. 2014
+        'income_tax': 0.275, # Davis et al. 2018
+        'operating_days': sys.operating_hours/24, # Jones et al. 2014
+        'lang_factor': None, # related to expansion, not needed here
+        'construction_schedule': (0.08, 0.60, 0.32), # Jones et al. 2014
+        'startup_months': 6, # Jones et al. 2014
+        'startup_FOCfrac': 1, # Davis et al. 2018
+        'startup_salesfrac': 0.5, # Davis et al. 2018
+        'startup_VOCfrac': 0.75, # Davis et al. 2018
+        'WC_over_FCI': 0.05, # Jones et al. 2014
+        'finance_interest': 0.03, # use 3% for waste management, use 8% for biofuel
+        'finance_years': 10, # Jones et al. 2014
+        'finance_fraction': 0.6, # debt: Jones et al. 2014
+        'OSBL_units': OSBL_units,
+        'warehouse': 0.04, # Knorr et al. 2013
+        'site_development': 0.09, # Knorr et al. 2013
+        'additional_piping': 0.045, # Knorr et al. 2013
+        'proratable_costs': 0.10, # Knorr et al. 2013
+        'field_expenses': 0.10, # Knorr et al. 2013
+        'construction': 0.20, # Knorr et al. 2013
+        'contingency': 0.10, # Knorr et al. 2013
+        'other_indirect_costs': 0.10, # Knorr et al. 2013
+        'labor_cost': 1e6, # use default value
+        'labor_burden': 0.90, # Jones et al. 2014 & Davis et al. 2018
+        'property_insurance': 0.007, # Jones et al. 2014 & Knorr et al. 2013
+        'maintenance': 0.03, # Jones et al. 2014 & Knorr et al. 2013
+        'steam_power_depreciation':'MACRS20',
+        'boiler_turbogenerator': BT,
+        'land':0
+        }
+    default_kwargs.update(kwargs)
+    
+    tea = cls(system=sys, **default_kwargs)
     return tea
+
 
 def capex_table(teas, names=None):
     if isinstance(teas, bst.TEA): teas = [teas]
@@ -257,11 +284,12 @@ def foc_table(teas, names=None):
     tea, *_ = teas
     foc = bst.report.FOCTableBuilder()
     ISBL = np.array([i.ISBL_installed_equipment_cost / 1e6 for i in teas])
+    FCI = np.array([i.FCI / 1e6 for i in teas])
     labor_cost = np.array([i.labor_cost / 1e6 for i in teas])
     foc.entry('Labor salary', labor_cost)
     foc.entry('Labor burden', tea.labor_burden * labor_cost, '90% of labor salary')
     foc.entry('Maintenance', tea.maintenance * ISBL, f'{tea.maintenance:.1%} of ISBL')
-    foc.entry('Property insurance', tea.property_insurance * ISBL, f'{tea.property_insurance:.1%} of ISBL')
+    foc.entry('Property insurance', tea.property_insurance * FCI, f'{tea.property_insurance:.1%} of FCI')
     if names is None: names = [i.system.ID for i in teas]
     names = [i + ' MM$/yr' for i in names]
     return foc.table(names)
