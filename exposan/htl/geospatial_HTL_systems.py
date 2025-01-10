@@ -277,13 +277,11 @@ def create_geospatial_system(# MGD
                         outs='pressed_sludge',
                         P=3049.7*6894.76,
                         init_with='Stream')
-    P1.include_construction = False
     
     # =========================================================================
     # HTL (Area 100)
     # =========================================================================
     H1 = qsu.HXutility(ID='H1',
-                       include_construction=False,
                        ins=P1-0,
                        outs='heated_sludge',
                        T=351+273.15,
@@ -308,7 +306,7 @@ def create_geospatial_system(# MGD
                                  tau=24,
                                  vessel_material='Stainless steel')
     # 0.5 M H2SO4: ~5%
-    # based on 93% H2SO4 and fresh water (dilute to 5%) prices in [6]
+    # based on 93% H2SO4 and fresh water (dilute onsite to 5%) prices in [6]
     H2SO4_Tank.ins[0].price = (0.043*1+0.0002*(93/5-1))/(93/5)/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
     M1 = su.HTLmixer(ID='M1',
@@ -336,13 +334,12 @@ def create_geospatial_system(# MGD
                    T=60+273.15,
                    P=50*6894.76,
                    thermo=settings.thermo.ideal())
-    F1.include_construction = False
     
     # TODO: whatif the system is not in a WWTP (e.g., standalone hub-and-spoke)?
     # assume no value/cost and no environmental benefit/impact associated with MemDis_ww (the system is in a WWTP) and solution
     MemDis = qsu.MembraneDistillation(ID='MemDis',
-                                      ins=(F1-1, H2SO4_Tank-0,'NaOH','Membrane_in'),
-                                      outs=('ammonium_sulfate','MemDis_ww','Membrane_out','solution'),
+                                      ins=(F1-1, H2SO4_Tank-0,'NaOH','membrane_in'),
+                                      outs=('ammonium_sulfate','MemDis_ww','membrane_out','solution'),
                                       init_with='WasteStream')
     # 0.2384 2016$/lb, [6]
     MemDis.ins[2].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
@@ -350,7 +347,6 @@ def create_geospatial_system(# MGD
     MemDis.ins[3].price = 90/GDPCTPI[2008]*GDPCTPI[2022]
     # ammonium sulfate (2022 average): [9]
     MemDis.outs[0].price = 0.2825
-    MemDis.include_construction = False
     
     # =========================================================================
     # Storage, and disposal (Area 300)
@@ -394,7 +390,6 @@ def create_geospatial_system(# MGD
     # the CHP here can ususally meet the heat requirement but not the electricity
     # buying additional natural gas to produce electricity does not provide benefit; therefore, set supplement_power_utility=False
     CHP = qsu.CombinedHeatPower(ID='CHP',
-                                include_construction=False,
                                 ins=(GasMixer-0, 'natural_gas', 'air'),
                                 outs=('emission','solid_ash'),
                                 init_with='WasteStream',
@@ -485,7 +480,7 @@ def create_geospatial_system(# MGD
     impact_items = {'CHG_catalyst': [stream.CHG_catalyst_out, 471.098936962268],
                     'H2SO4':        [stream.H2SO4, 0.005529872568],
                     'NaOH':         [stream.NaOH, 1.2497984],
-                    'RO_membrane':  [stream.Membrane_in, 2.2709135],
+                    'RO_membrane':  [stream.membrane_in, 2.2709135],
                     # TODO: address this problem (i.e., do not use market or market group for products) for other systems (i.e., CO2 sorbent, HTL-PFAS)
                     # use 'ammonium sulfate production' for 'NH42SO4' instead of market or market group since we don't offset things like transportation
                     'NH42SO4':      [stream.ammonium_sulfate, -1.1139067],

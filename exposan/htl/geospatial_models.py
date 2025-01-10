@@ -27,11 +27,11 @@ water_density = 1
 
 _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
 _MMgal_to_L = auom('gal').conversion_factor('L')*1000000
-_oil_barrel_to_L = auom('oil_barrel').conversion_factor('L')
 _mile_to_km = auom('mile').conversion_factor('km')
 _lb_to_kg = auom('lb').conversion_factor('kg')
 _m3_to_ft3 = auom('m3').conversion_factor('ft3')
 _oil_barrel_to_m3 = auom('oil_barrel').conversion_factor('m3')
+_oil_barrel_to_L = auom('oil_barrel').conversion_factor('L')
 
 # GDPCTPI (Gross Domestic Product: Chain-type Price Index), [2]
 GDPCTPI = {2007: 86.352,
@@ -72,7 +72,7 @@ def create_geospatial_model(system=None,
         or one of the allowed configurations ("baseline", "no_P", "PSA").
     '''
     
-    sys = create_geospatial_system(system) if (not system) or isinstance(system, str) else system
+    sys = create_geospatial_system()[0] if not system else system
     flowsheet = sys.flowsheet
     cmps = qs.get_components()
     unit = flowsheet.unit
@@ -94,12 +94,10 @@ def create_geospatial_model(system=None,
     
     raw_wastewater = stream.raw_wastewater
     H2SO4 = stream.H2SO4
-    CHG_catalyst_in = stream.virgin_CHG_catalyst
-    # TODO: update this one in the original HTL model, if necessary
-    # the original model has CHG_catalyst_in = CHG.ins[1]
-    # also see the note in geospatial_models.py
+    # TODO: update this one in other HTL models, which might have CHG_catalyst_in = CHG.ins[1]
+    virgin_CHG_catalyst = stream.virgin_CHG_catalyst
     NaOH = stream.NaOH
-    Membrane_in = stream.Membrane_in
+    membrane_in = stream.membrane_in
     ammonium_sulfate = stream.ammonium_sulfate
     biocrude = stream.biocrude
     natural_gas = stream.natural_gas
@@ -600,13 +598,13 @@ def create_geospatial_model(system=None,
         CHG.TIC_factor=i
     
     dist = shape.Uniform(980,1470)
-    @param(name='unit_TIC',
+    @param(name='CHP_unit_TIC',
            element='TEA',
            kind='isolated',
            units='-',
            baseline=1225,
            distribution=dist)
-    def set_unit_TIC(i):
+    def set_CHP_unit_TIC(i):
         CHP.unit_TIC=i
     
     dist = shape.Triangle(0,0.03,0.05)
@@ -619,6 +617,7 @@ def create_geospatial_model(system=None,
     def set_IRR(i):
         tea.IRR=i
     
+    # the sources of chemical prices can be found in geospatial_HTL_systems.py
     H2SO4_price = (0.043*1+0.0002*(93/5-1))/(93/5)/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     dist = shape.Uniform(H2SO4_price*0.9,H2SO4_price*1.1)
     @param(name='5% H2SO4 price',
@@ -664,7 +663,7 @@ def create_geospatial_model(system=None,
            distribution=dist)
     def set_membrane_price(i):
         MemDis.membrane_price=i
-        Membrane_in.price=i
+        membrane_in.price=i
     
     CHG_catalyst_price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2022]
     dist = shape.Triangle(CHG_catalyst_price*0.5,CHG_catalyst_price,CHG_catalyst_price*2)
@@ -675,7 +674,7 @@ def create_geospatial_model(system=None,
            baseline=CHG_catalyst_price,
            distribution=dist)
     def set_catalyst_price(i):
-        CHG_catalyst_in.price=i
+        virgin_CHG_catalyst.price=i
     
     biocrude_price_min = 71.59/_oil_barrel_to_m3/biocrude_density
     biocrude_price_max = 123.70/_oil_barrel_to_m3/biocrude_density
@@ -732,7 +731,7 @@ def create_geospatial_model(system=None,
     @param(name='sludge transportation price',
            element='TEA',
            kind='isolated',
-           units='$/kg',
+           units='$/kg/km',
            baseline=sludge_transportation_price,
            distribution=dist)
     def set_sludge_transportation_price(i):
@@ -744,7 +743,7 @@ def create_geospatial_model(system=None,
     @param(name='biocrude transportation price',
            element='TEA',
            kind='isolated',
-           units='$/kg',
+           units='$/kg/km',
            baseline=biocrude_transportation_price,
            distribution=dist)
     def set_biocrude_transportation_price(i):
@@ -761,7 +760,7 @@ def create_geospatial_model(system=None,
             abs_large = 1.1*qs.ImpactItem.get_item(item).CFs[CF]
             dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
             @param(name=f'{item}_{CF}',
-                   setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', CF),
+                   setter=DictAttrSetter(qs.ImpactItem.get_item(item),'CFs',CF),
                    element='LCA',
                    kind='isolated',
                    units=qs.ImpactIndicator.get_indicator(CF).unit,
@@ -773,6 +772,7 @@ def create_geospatial_model(system=None,
     # =========================================================================
     # metrics
     # =========================================================================
+    # !!! metrics here were added in the HTL model project but were not checked again in the HTL geospatial project as these metrics were not used
     if include_other_metrics:
         # mass/element flow
         @metric(name='C_afdw', units='%', element='Sankey')
@@ -931,7 +931,7 @@ def create_geospatial_model(system=None,
         
         @metric(name='CHG_catalyst_VOC', units='$/yr', element='TEA')
         def get_CHG_catalyst_VOC():
-            return CHG_catalyst_in.cost*sys.operating_hours
+            return virgin_CHG_catalyst.cost*sys.operating_hours
         
         @metric(name='NaOH_VOC', units='$/yr', element='TEA')
         def get_NaOH_VOC():
@@ -939,7 +939,7 @@ def create_geospatial_model(system=None,
         
         @metric(name='membrane_VOC', units='$/yr', element='TEA')
         def get_membrane_VOC():
-            return Membrane_in.cost*sys.operating_hours
+            return membrane_in.cost*sys.operating_hours
         
         @metric(name='utility_VOC', units='$/yr', element='TEA')
         def get_utility_VOC():
@@ -978,7 +978,7 @@ def create_geospatial_model(system=None,
         @metric(name='nutrient_stream_GWP', units='kg CO2 eq', element='LCA')
         def get_nutrient_stream_GWP():
             table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
-            return table_stream['H2SO4']+table_stream['Membrane_in']+table_stream['NaOH']+table_stream['ammonium_sulfate']
+            return table_stream['H2SO4']+table_stream['membrane_in']+table_stream['NaOH']+table_stream['ammonium_sulfate']
                    
         @metric(name='CHP_stream_GWP', units='kg CO2 eq', element='LCA')
         def get_CHP_stream_GWP():
@@ -1111,6 +1111,7 @@ def create_geospatial_model(system=None,
         def get_HXN_cool_offset():
             return 1-unit.HXN.actual_cool_util_load/unit.HXN.original_cool_util_load
     
+    # !!! metrics here were added in the HTL model project but were not checked again in the HTL geospatial project as these metrics were not used
     # HTL yield
     if include_HTL_yield_as_metrics:
         @metric(name='HTL_biocrude_yield', units='-', element='HTL')
@@ -1136,7 +1137,9 @@ def create_geospatial_model(system=None,
     
     @metric(name='sludge_CI', units='kg CO2/tonne dry sludge', element='geospatial')
     def get_sludge_CI():
-        return lca.get_total_impacts(exclude=(raw_wastewater,))['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
+        return lca.get_total_impacts(operation_only=True,
+                                     exclude=(raw_wastewater,),
+                                     annual=True)['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)
     
     @metric(name='biocrude_production', units='BPD', element='geospatial')
     def get_biocrude_production():
@@ -1145,6 +1148,6 @@ def create_geospatial_model(system=None,
     if include_check:
         @metric(name='sludge_afdw_carbohydrate', units='-', element='test')
         def get_sludge_afdw_carbohydrate():
-            return unit.WWTP.sludge_afdw_carbo
+            return WWTP.sludge_afdw_carbo
     
     return model
