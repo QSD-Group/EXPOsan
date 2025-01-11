@@ -51,8 +51,8 @@ from ._tea import *
 from . import systems
 from .systems import *
 
-from . import geospatial_HTL_systems
-from .geospatial_HTL_systems import *
+from . import geospatial_systems
+from .geospatial_systems import *
 
 _system_loaded = False
 def load(configuration='baseline'):
@@ -119,7 +119,7 @@ __all__ = (
     *income_tax.__all__,
     *_tea.__all__,
     *systems.__all__,
-    *geospatial_HTL_systems.__all__,
+    *geospatial_systems.__all__,
     *models.__all__,
     *geospatial_models.__all__,
 )

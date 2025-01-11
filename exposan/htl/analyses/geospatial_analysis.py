@@ -22,6 +22,7 @@ from qsdsan.utils import auom, palettes
 from datetime import date
 from warnings import filterwarnings
 
+# TODO: update file paths later
 folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/'
 
 # color palette
@@ -48,6 +49,8 @@ water_density = 1
 _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
 _MMgal_to_L = auom('gal').conversion_factor('L')*1000000
 
+# TODO: consider using the updated dataset
+# TODO: update this input file if necessary
 # !!! when creating this input file, change year to 2022 in IEDO code for electricity GHG calculation
 # (use the same dataset the IEDO work used for consistent, although there are updated dataset)
 WRRF = pd.read_excel(folder + 'HTL_geospatial_input_08202024.xlsx')
@@ -64,6 +67,7 @@ WRRF['total_emission'] = WRRF[['LF_CH4','LA_N2O','electricity_emission',
                                'onsite_NG_emission','upstream_NG_emission',
                                'CH4_emission','N2O_emission','CO2_emission']].sum(axis=1)
 
+# TODO: update if necessary
 treatment_trains = np.array(['LAGOON_AER','LAGOON_ANAER','LAGOON_FAC',
                              'LAGOON_UNCATEGORIZED','C1','C2','C3','C5',
                              'C6','B1','B1E','B2','B3','B4','B5','B6',
@@ -75,6 +79,8 @@ treatment_trains = np.array(['LAGOON_AER','LAGOON_ANAER','LAGOON_FAC',
 TT_indentifier = WRRF[treatment_trains].apply(lambda x: x > 0)
 WRRF['treatment_train'] = TT_indentifier.apply(lambda x: list(treatment_trains[x.values]), axis=1)
 
+# TODO: 'FACILITY_ID' is not used
+# TODO: make sure 'FLOW_2022_MGD_FINAL' represents the flow rate used in the IEDO work
 WRRF = WRRF[['FACILITY','CITY','STATE','CWNS_NUM','FACILITY_ID','LATITUDE',
              'LONGITUDE','FLOW_2022_MGD_FINAL','balancing_area','kg_CO2_kWh',
              'treatment_train','landfill','land_application','incineration',
@@ -82,7 +88,9 @@ WRRF = WRRF[['FACILITY','CITY','STATE','CWNS_NUM','FACILITY_ID','LATITUDE',
              'CO2_emission','electricity_emission','onsite_NG_emission',
              'upstream_NG_emission','biosolids_emission','total_emission']]
 
-# TODO: update these based on the new naming convention
+# TODO: update these based on the new naming convention, if necessary
+# TODO: there might be some newly added treatment trains ('C1E','D1E','F1E','H1E','N1E'), add them here
+# TODO: consider switching 'LAGOON_FAC' to AeD to be conservative
 # assume LAGOON_UNCATEGORIZED has AeD (resulting in higher ash content than AD) to be conservative
 TT_w_AeD = ['B2','C2','D2','E2','E2P','G2','I2','N2','O2','LAGOON_AER','LAGOON_UNCATEGORIZED']
 TT_w_AD = ['B1','B1E','B4','C1','D1','F1','G1','G1E','H1','I1','I1E','N1','O1','O1E','LAGOON_ANAER','LAGOON_FAC']
@@ -93,9 +101,11 @@ TT_w_AD = ['B1','B1E','B4','C1','D1','F1','G1','G1E','H1','I1','I1E','N1','O1','
 # if none, then use sludge composition
 WRRF.loc[WRRF['treatment_train'].apply(lambda x: len([i for i in TT_w_AeD if i in x]) > 0), 'sludge_aerobic_digestion'] = 1
 WRRF.loc[WRRF['treatment_train'].apply(lambda x: len([i for i in TT_w_AD if i in x]) > 0), 'sludge_anaerobic_digestion'] = 1
+# TODO: is it possible to combine the following to lines?
 WRRF.fillna({'sludge_aerobic_digestion': 0}, inplace=True)
 WRRF.fillna({'sludge_anaerobic_digestion': 0}, inplace=True)
 
+# TODO: 'FACILITY_ID' is not used
 WRRF = WRRF.rename({'FACILITY':'facility',
                     'CITY':'city',
                     'STATE':'state',
@@ -105,7 +115,6 @@ WRRF = WRRF.rename({'FACILITY':'facility',
                     'LONGITUDE':'longitude',
                     'FLOW_2022_MGD_FINAL':'flow_2022_MGD'}, axis=1)
 
-# TODO: check all 4269 in this file and IEDO analysis (IEDO_GHG_inventory_visualization_JF.py and balancing_area.py)
 WRRF = WRRF.sort_values(by='flow_2022_MGD', ascending=False)
 
 WRRF = gpd.GeoDataFrame(WRRF, crs='EPSG:4269',
@@ -118,9 +127,9 @@ refinery = gpd.GeoDataFrame(refinery, crs='EPSG:4269',
                             geometry=gpd.points_from_xy(x=refinery.Longitude,
                                                         y=refinery.Latitude))
 
-US = gpd.read_file(folder + 'US/cb_2018_us_state_500k.shp')
 # confirmed from the wesbite (next line): there is no change in US map since June 1, 1995. So, using 2018 US map data is OK.
 # https://en.wikipedia.org/wiki/Territorial_evolution_of_the_United_States#1946%E2%80%93present_(Decolonization)
+US = gpd.read_file(folder + 'US/cb_2018_us_state_500k.shp')
 US = US[['NAME','geometry']]
 
 for excluded in ('Alaska',
@@ -139,16 +148,16 @@ refinery = refinery.to_crs(crs='EPSG:3857')
 US = US.to_crs(crs='EPSG:3857')
 balnc_area = balnc_area.to_crs(crs='EPSG:3857')
 
+# TODO: check if this is still true, if true, leave it as it is
 # a small number of WRRFs fall outside the boundary of the contiguous U.S. a little bit
-# do not use sjoin for WRRFs, as this will remove the those WRRFs
-# WRRF = gpd.sjoin(WRRF, US)
-# WRRF = WRRF.drop(['index_right'], axis=1)
+# do not use sjoin for WRRFs, as this will remove those WRRFs
+# [do not uncomment] WRRF = gpd.sjoin(WRRF, US)
+# [do not uncomment] WRRF = WRRF.drop(['index_right'], axis=1)
 
 # we can use sjoin for refinery, this only removes 6 refineries in Alaska and Hawaii
 refinery = gpd.sjoin(refinery, US)
 refinery = refinery.drop(['index_right'], axis=1)
 
-# this one is the same as the one in exposan/htl/data
 elec_price = pd.read_excel(folder + 'state_elec_price_2022.xlsx', 'elec_price_2022')
 elec_price = elec_price.merge(US, how='right', left_on='name', right_on='NAME')
 elec_price = gpd.GeoDataFrame(elec_price)
@@ -224,6 +233,7 @@ sludge_disposal_cost = {'landfill': 0.413,
                         'land_application': 0.606,
                         'incineration': 0.441}
 
+# TODO: are these just fugutive emissions? is it a fair comparison between these values and the emission from the HTL-based system, which includes chemical, transportation, etc.
 # sludge emission factor in kg CO2 eq/kg sludge (values from IEDO)
 sludge_emission_factor = {'landfill': 5.65/1000*29.8,
                           'land_application': 0.05*0.01*44/28*273,
@@ -234,30 +244,30 @@ sludge_emission_factor = {'landfill': 5.65/1000*29.8,
 fig, ax = plt.subplots(figsize=(30, 30))
 
 US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
-# US.plot(ax=ax, color='w', edgecolor='k', linewidth=6) # for all WRRFs together with the same symbols
+# for all WRRFs together with the same symbols
+# US.plot(ax=ax, color='w', edgecolor='k', linewidth=6)
 
 WRRF = WRRF.sort_values(by='flow_2022_MGD', ascending=False)
 
 WRRF_flow = WRRF['flow_2022_MGD']
 
 more_than_100 = WRRF_flow > 100
-WRRF[more_than_100].plot(ax=ax, color=dg, markersize=WRRF.loc[more_than_100, WRRF_flow.name]*10, edgecolor='k', linewidth=1.5, alpha=1)
+WRRF[more_than_100].plot(ax=ax, color=dg, markersize=WRRF.loc[more_than_100,'flow_2022_MGD']*10, edgecolor='k', linewidth=1.5, alpha=1)
 
 between_10_and_100 = (WRRF_flow > 10) & (WRRF_flow <= 100)
-WRRF[between_10_and_100].plot(ax=ax, color=g, markersize=WRRF.loc[between_10_and_100, WRRF_flow.name]*10, edgecolor='k', linewidth=1.5, alpha=0.5)
+WRRF[between_10_and_100].plot(ax=ax, color=g, markersize=WRRF.loc[between_10_and_100,'flow_2022_MGD']*10, edgecolor='k', linewidth=1.5, alpha=0.5)
 
 less_than_10 = WRRF_flow <= 10
-WRRF[less_than_10].plot(ax=ax, color=g, markersize=WRRF.loc[less_than_10, WRRF_flow.name]*10, edgecolor='none', alpha=0.2)
+WRRF[less_than_10].plot(ax=ax, color=g, markersize=WRRF.loc[less_than_10,'flow_2022_MGD']*10, edgecolor='none', alpha=0.2)
 
-# comment out the code above and uncomment the following line to show all WRRFs together with the same symbols
+# comment out the code above and uncomment the following line to show all WRRFs together with the same symbol
 # WRRF.plot(ax=ax, color=a, markersize=10)
 
 rectangle_edge = Rectangle((-13320000, 2880000), 1280000, 680000,
                            color='k', lw=3, fc='none', alpha=1)
 ax.add_patch(rectangle_edge)
 
-
-# TODO: check the maker size here, it should be consistent with the points on the map (or not?)
+# note the size of legends does not match exactly with the size of WRRFs
 ax.scatter(x=-13140000, y=3420000, marker='o', s=200*10, c=dg, linewidths=3,
            alpha=1, edgecolor='k')
 ax.scatter(x=-13140000, y=3220000, marker='o', s=50*10, c=g, linewidths=3,
@@ -275,8 +285,7 @@ ax.set_axis_off()
 
 #%% oil refinery visualization
 
-# note oil refinery production numbers reflect the production at some time point, not the refinery's capacity
-# therefore, it is not necessary to plot the capacity
+# note oil refinery production numbers reflect the production at some certain time points, not necessarily the capacity of refineries
 
 fig, ax = plt.subplots(figsize=(30, 30))
 
@@ -287,6 +296,7 @@ US.plot(ax=ax,
         linewidth=0)
 
 US.plot(ax=ax, color='none', edgecolor='k', linewidth=3)
+# TODO: consider de-emphasizing PADD, maybe remove PADD colors in the TOC figure? but single color or no color makes the figure less balanced
 # for TOC
 # US.plot(ax=ax, color='none', edgecolor='k', linewidth=0)
 # for all oil refineries together with the same symbols
@@ -393,7 +403,7 @@ ax.set_aspect(1)
 
 ax.set_axis_off()
 
-#%% tax rate visualization (just for demonstration purpose, not for model)
+#%% tax rate visualization (just for demonstration, not for model)
 
 income_tax['tax'] *= 100
 
@@ -464,9 +474,11 @@ for i in WRRF_input.index:
         missing_distance.append(i)
 
 if len(missing_distance) == 0:
+    # !!! remove '_test' from the file path if replacing the input file
     WRRF_input.to_excel(folder + f'HTL_geospatial_model_input_{date.today()}_test.xlsx')
 else:
-    # !!! get a google API key !!! do not upload to GitHub
+    # !!! get a google API key
+    # !!! do not upload to GitHub
     gmaps = googlemaps.Client(key='XXX')
     
     for i in missing_distance:
@@ -484,6 +496,8 @@ else:
     
     # input for following analyses
     WRRF_input.to_excel(folder + f'HTL_geospatial_model_input_{date.today()}.xlsx')
+
+# TODO: add code to print information on WRRFs with no real_distance_km (cannot be reached by driving)
 
 #%% travel distance box plot
 
@@ -544,6 +558,10 @@ ax_right.scatter(x=1,
                  alpha=1,
                  edgecolor='k',
                  zorder=2)
+
+# TODO: the following codes were copied from the next cell, test it
+# for flier in bp['fliers']:
+#     flier.set(marker='o', markersize=7, markerfacecolor=color, markeredgewidth=1.5)
     
 fig.savefig('/Users/jiananfeng/Desktop/distance.png', transparent=True, bbox_inches='tight')
 
@@ -554,6 +572,8 @@ WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2024-08-20.xlsx'
 # removal WRRFs with no real_distance_km
 WRRF_input = WRRF_input.dropna(subset='real_distance_km')
 
+# TODO: add explanation on why group the results by the PADD of WRRFs instead of oil refineries
+# TODO: consider de-emphasizing PADD (mostly in writing, but can also change variable names in the code), just grouping WRRFs by these 5 geographic regions
 WRRF_input.loc[WRRF_input['state'].isin(['CT','DC','DE','FL','GA','MA','MD','ME','NC','NH','NJ','NY','PA','RI','SC','VA','VT','WV']), 'WRRF_PADD'] = 1
 WRRF_input.loc[WRRF_input['state'].isin(['IA','IL','IN','KS','KY','MI','MN','MO','ND','NE','OH','OK','SD','TN','WI']), 'WRRF_PADD'] = 2
 WRRF_input.loc[WRRF_input['state'].isin(['AL','AR','LA','MS','NM','TX']), 'WRRF_PADD'] = 3
@@ -639,8 +659,8 @@ WRRF_input = WRRF_input.dropna(subset='real_distance_km')
 WRRF_input = WRRF_input.sort_values(by='total_emission', ascending=False)
 
 WRRF_input = gpd.GeoDataFrame(WRRF_input, crs='EPSG:4269',
-                               geometry=gpd.points_from_xy(x=WRRF_input.longitude,
-                                                           y=WRRF_input.latitude))
+                              geometry=gpd.points_from_xy(x=WRRF_input.longitude,
+                                                          y=WRRF_input.latitude))
 
 WRRF_input = WRRF_input.to_crs(crs='EPSG:3857')
 
@@ -652,13 +672,13 @@ US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
 WRRF_GHG_tonne_per_day = WRRF_input['total_emission']/1000
 
 more_than_500 = WRRF_GHG_tonne_per_day > 500
-WRRF_input[more_than_500].plot(ax=ax, color=dp, markersize=WRRF_input.loc[more_than_500, WRRF_GHG_tonne_per_day.name]/350, edgecolor='k', linewidth=2, alpha=1)
+WRRF_input[more_than_500].plot(ax=ax, color=dp, markersize=WRRF_input.loc[more_than_500,'total_emission']/350, edgecolor='k', linewidth=2, alpha=1)
 
 between_50_and_500 = (WRRF_GHG_tonne_per_day > 50) & (WRRF_GHG_tonne_per_day <= 500)
-WRRF_input[between_50_and_500].plot(ax=ax, color=p, markersize=WRRF_input.loc[between_50_and_500, WRRF_GHG_tonne_per_day.name]/350, edgecolor='k', linewidth=1.5, alpha=0.5)
+WRRF_input[between_50_and_500].plot(ax=ax, color=p, markersize=WRRF_input.loc[between_50_and_500,'total_emission']/350, edgecolor='k', linewidth=1.5, alpha=0.5)
 
 less_than_50 = WRRF_GHG_tonne_per_day <= 50
-WRRF_input[less_than_50].plot(ax=ax, color=p, markersize=WRRF_input.loc[less_than_50, WRRF_GHG_tonne_per_day.name]/350, alpha=0.1)
+WRRF_input[less_than_50].plot(ax=ax, color=p, markersize=WRRF_input.loc[less_than_50,'total_emission']/350, alpha=0.1)
 
 ax.set_aspect(1)
 
@@ -687,13 +707,13 @@ US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
 sludge_GHG_tonne_per_day = WRRF_input['biosolids_emission']/1000
 
 more_than_20 = sludge_GHG_tonne_per_day > 20
-WRRF_input[more_than_20].plot(ax=ax, color=dr, markersize=WRRF_input.loc[more_than_20, sludge_GHG_tonne_per_day.name]/10, edgecolor='k', linewidth=2, alpha=1)
+WRRF_input[more_than_20].plot(ax=ax, color=dr, markersize=WRRF_input.loc[more_than_20,'biosolids_emission']/10, edgecolor='k', linewidth=2, alpha=1)
 
 between_2_and_20 = (sludge_GHG_tonne_per_day > 2) & (sludge_GHG_tonne_per_day <= 20)
-WRRF_input[between_2_and_20].plot(ax=ax, color=r, markersize=WRRF_input.loc[between_2_and_20, sludge_GHG_tonne_per_day.name]/10, edgecolor='k', linewidth=1.5, alpha=0.5)
+WRRF_input[between_2_and_20].plot(ax=ax, color=r, markersize=WRRF_input.loc[between_2_and_20,'biosolids_emission']/10, edgecolor='k', linewidth=1.5, alpha=0.5)
 
 less_than_2 = sludge_GHG_tonne_per_day <= 2
-WRRF_input[less_than_2].plot(ax=ax, color=r, markersize=WRRF_input.loc[less_than_2, sludge_GHG_tonne_per_day.name]/10, alpha=0.1)
+WRRF_input[less_than_2].plot(ax=ax, color=r, markersize=WRRF_input.loc[less_than_2,'biosolids_emission']/10, alpha=0.1)
 
 ax.set_aspect(1)
 
@@ -709,7 +729,7 @@ WRRF_input = WRRF_input.dropna(subset='real_distance_km')
 result = WRRF_input[['Site ID']].drop_duplicates()
 
 max_distance = 1500
-assert max_distance*1.2 > max_distance > WRRF_input.real_distance_km.max(), 'update max_distance'
+assert max_distance > WRRF_input.real_distance_km.max(), 'update max_distance'
 
 for distance in np.linspace(0, max_distance, max_distance+1):
     WRRF_input_distance = WRRF_input[WRRF_input['real_distance_km'] <= distance]
@@ -743,7 +763,7 @@ CF_input = pd.read_excel(folder + 'results/MGD_vs_real_distance_1500_km.xlsx')
 CF_input[0] = 0
 
 max_distance_plot = 1500
-assert max_distance*1.2 > max_distance > WRRF_input.real_distance_km.max(), 'update max_distance'
+assert max_distance_plot > WRRF_input.real_distance_km.max(), 'update max_distance'
 
 CF_input = CF_input[['PADD', 'State', *list(range(0, max_distance_plot+1, 1))]]
 
@@ -879,21 +899,23 @@ WRRF_input = WRRF_input.dropna(subset='real_distance_km')
 
 print(len(WRRF_input))
 
+# $/tonne
 WRRF_input['waste_cost'] = sum(WRRF_input[i]*sludge_disposal_cost[i] for i in sludge_disposal_cost.keys())/WRRF_input['total_sludge_amount_kg_per_year']*1000
+# kg CO2 eq/tonne
 WRRF_input['waste_GHG'] =  sum(WRRF_input[i]*sludge_emission_factor[i] for i in sludge_emission_factor.keys())/WRRF_input['total_sludge_amount_kg_per_year']*1000
 
 CWNS = []
+saving = []
 CO2_reduction = []
 sludge_CO2_reduction_ratio = []
 WRRF_CO2_reduction_ratio = []
-saving = []
 USD_decarbonization = []
 oil_BPD = []
 
-# !!! run in different consoles to speed up: 0, 5000, 10000
+# !!! run in different consoles to speed up: 0, 5000, 10000, len(WRRF_input)
 for i in range(0, len(WRRF_input)):
 # for i in range(0, 2):
-    
+    # TODO: update if necessary
     sys, barrel = create_geospatial_system(size=WRRF_input.iloc[i]['flow_2022_MGD'],
                                            sludge_transportation=0,
                                            sludge_distance=100,
@@ -928,7 +950,9 @@ for i in range(0, len(WRRF_input)):
         saving_result = np.nan
         
     # kg CO2 eq/tonne
-    sludge_CI = lca.get_total_impacts(exclude=(raw_wastewater,))['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)/lca.lifetime
+    sludge_CI = lca.get_total_impacts(operation_only=True,
+                                      exclude=(raw_wastewater,),
+                                      annual=True)['GlobalWarming']/raw_wastewater.F_vol/_m3perh_to_MGD/WWTP.ww_2_dry_sludge/(sys.operating_hours/24)
     
     CO2_reduction_result = sludge_tonne*(WRRF_input.iloc[i]['waste_GHG'] - sludge_CI)
     
@@ -948,10 +972,10 @@ for i in range(0, len(WRRF_input)):
         USD_per_tonne_CO2_reduction = np.nan
     
     CWNS.append(WRRF_input.iloc[i]['CWNS'])
+    saving.append(saving_result)
     CO2_reduction.append(CO2_reduction_result)
     sludge_CO2_reduction_ratio.append(sludge_CO2_reduction_ratio_result)
     WRRF_CO2_reduction_ratio.append(WRRF_CO2_reduction_ratio_result)
-    saving.append(saving_result)
     USD_decarbonization.append(USD_per_tonne_CO2_reduction)
     oil_BPD.append(barrel)
     
@@ -963,10 +987,10 @@ for i in range(0, len(WRRF_input)):
         print(i)
     
 result = {'CWNS': CWNS,
+          'saving': saving,
           'CO2_reduction': CO2_reduction,
           'sludge_CO2_reduction_ratio': sludge_CO2_reduction_ratio,
           'WRRF_CO2_reduction_ratio': WRRF_CO2_reduction_ratio,
-          'saving': saving,
           'USD_decarbonization': USD_decarbonization,
           'oil_BPD': oil_BPD}
         
@@ -988,11 +1012,26 @@ output_result_3 = pd.read_excel(folder + 'results/decarbonization_biocrude_basel
 
 output_result = pd.concat([output_result_1, output_result_2, output_result_3])
 
+assert len(input_data) == len(output_result)
+
 integrated_result = input_data.merge(output_result, how='left', on='CWNS')
 
 integrated_result.to_excel(folder + f'results/integrated_decarbonization_result_{date.today()}.xlsx')
 
 #%% read decarbonization data
+
+
+
+
+
+
+
+
+
+
+
+
+# TODO: continue from here
 
 # !!! update the file here if necessary
 decarbonization_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')

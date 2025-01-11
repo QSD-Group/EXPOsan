@@ -64,7 +64,7 @@ References:
 '''
 
 # TODO: changs to implement:
-# TODO 0: go through all codes and data, then identify TODOs (geospatial_HTL_systems.py done)
+# TODO 0: go through all codes and data, then identify TODOs (geospatial_systems.py done, geospatial_models.py done)
 # TODO 1: add labor cost as a contextural parameter
 # TODO 2: add Gaussian copula when aggregating uncertainty results
 # TODO 3: add capacitated p-median to demonstrate the 100% accommodation of wastewater solids stream in the CONUS
