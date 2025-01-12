@@ -412,6 +412,7 @@ def create_geospatial_system(# MGD
                                operating_hours=WWTP.operation_hours)
     sys.simulate()
     
+    # TODO: remove this
     # biocrude production in BPD (barrel per day)
     biocrude_barrel = BiocrudeTank.outs[0].F_mass/biocrude_density*1000/_oil_barrel_to_L*24
     
@@ -555,4 +556,5 @@ def create_geospatial_system(# MGD
                finance_interest_value=0.03,
                labor_cost_value=wage)
     
+    # TODO: remove biocrude_barrel 
     return sys, biocrude_barrel

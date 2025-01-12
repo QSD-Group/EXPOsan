@@ -72,6 +72,7 @@ def create_geospatial_model(system=None,
         or one of the allowed configurations ("baseline", "no_P", "PSA").
     '''
     
+    # TODO: remove [0]
     sys = create_geospatial_system()[0] if not system else system
     flowsheet = sys.flowsheet
     cmps = qs.get_components()
@@ -1144,6 +1145,8 @@ def create_geospatial_model(system=None,
     @metric(name='biocrude_production', units='BPD', element='geospatial')
     def get_biocrude_production():
         return biocrude.F_mass/biocrude_density*1000/_oil_barrel_to_L*24
+    
+    # TODO: add N production and P production
     
     if include_check:
         @metric(name='sludge_afdw_carbohydrate', units='-', element='test')
