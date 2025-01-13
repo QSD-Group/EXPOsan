@@ -1132,8 +1132,8 @@ def create_geospatial_model(system=None,
             return HTL.gas_yield
     
     # key metrics
-    @metric(name='sludge_management_price', units='$/tonne dry sludge', element='geospatial')
-    def get_sludge_treatment_price():
+    @metric(name='sludge_management_cost', units='$/tonne dry sludge', element='geospatial')
+    def get_sludge_management_cost():
         return -tea.solve_price(raw_wastewater)*water_density*_MMgal_to_L/WWTP.ww_2_dry_sludge
     
     @metric(name='sludge_CI', units='kg CO2/tonne dry sludge', element='geospatial')
