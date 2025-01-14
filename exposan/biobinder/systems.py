@@ -402,7 +402,7 @@ def create_system(
         GGE_per_kg = GGE/biofuel.F_mass
         biofuel.price = price_dct['diesel'] * GGE_per_kg
     BiofuelStorage.add_specification(adjust_biofuel_price)
-    price_dct['biobinder'] = 0.67
+    price_dct['biobinder'] = 0.10
     biobinder = qs.WasteStream('biobinder', price=price_dct['biobinder'])
     BiobinderStorage = qsu.StorageTank(
         'BiobinderStorage', BiobinderHX-0, outs=biobinder,
@@ -488,6 +488,7 @@ def create_system(
           }
     
     price_dct['electricity'] = 0.074 #2020$, https://www.energy.gov/sites/default/files/2024-12/hydrogen-shot-water-electrolysis-technology-assessment.pdf
+    price_dct['natural_gas'] = 0.14  # $/kg, 2020$, https://www.eia.gov/dnav/ng/hist/n3035us3m.htm 
     qs.PowerUtility.price = EC_config.get('electricity_price', price_dct['electricity']) if EC_config else price_dct['electricity']
     electricity_GHG = EC_config.get('electricity_GHG', gwp_dict['electricity']) if EC_config else gwp_dict['electricity']
 
