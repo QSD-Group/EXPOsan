@@ -269,6 +269,10 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
                                outs=(streamA['sol_N'], streamA['sol_P'], streamA['sol_K'],
                                      'A_sol_non_fertilizers'),
                                split_keys=('N', 'P', 'K'))
+    A19 = su.G2RTControls('A19', ins = A11-4,
+                          outs= 'A19_out')
+    A20 = su.G2RTHousing('A20', ins = A19-0, outs = "hot_gas")
+    qsu.HeatExchangerNetwork('HXN')
     
     sysA_1 = System('sysA_1',
                     path = (A1,mixer,A2,A3,UFmixer,A4,A12,A13,A5),
@@ -287,11 +291,10 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
                     recycle = A7-1
                     )
     sysA = System('sysA',
-                  path=(sysA_3,A10,A11,A14,A15,A16,A17,A18),
+                  path=(sysA_3,A10,A11,A14,A15,A16,A17,A18,A19,A20),
                   recycle = A10-0
                   )
-    # sysA = System('sysA', 
-    #               path=(A1,A2,A3,A4,A12,A13,A5,A6,A7,A8,A9,A10,A11),)
+    
     
     teaA = TEA(system=sysA, discount_rate=discount_rate,
                start_year=2020, lifetime=10, uptime_ratio=1,
@@ -444,6 +447,9 @@ def create_systemB(flowsheet=None, ppl=default_ppl):
                                outs=(streamB['sol_N'], streamB['sol_P'], streamB['sol_K'],
                                      'B_sol_non_fertilizers'),
                                split_keys=('N', 'P', 'K'))
+    B18 = su.G2RTControls('B18', ins = B13-4,
+                          outs= 'B18_out')
+    B19 = su.G2RTHousing('B19', ins = B18-0, outs = "hot_gas")
     
     sysB_1 = System('sysB_1',
                     path = (B1,mixer,B2,B3,UFmixer,B4,B5,B6,B7,B8),
@@ -455,7 +461,7 @@ def create_systemB(flowsheet=None, ppl=default_ppl):
                   )
 
     sysB = System('sysB',
-                  path=(sysB_2,B12,B13,B14,B15,B16,B17),
+                  path=(sysB_2,B12,B13,B14,B15,B16,B17,B18,B19),
                   recycle = B12-1
                   )
     

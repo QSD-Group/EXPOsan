@@ -266,7 +266,7 @@ class mSCWOReactorModule(SanUnit):
         
         mc = feces.imass['H2O']/ feces.F_mass
         chemical_energy = (feces.F_mass - feces.imass['H2O']) * self.HHV_feces_solids * 1000 #kJ/hr
-        required_energy = final_enthalpy_flow - initial_enthalpy_flow #kJ/hr 
+        required_energy = final_enthalpy_flow - initial_enthalpy_flow #kJ/hr
         recovered_energy = chemical_energy * self.energy_recovery_efficiency * self.carbon_conversion_efficiency #kJ/hr
         self.power_input = (required_energy/self.heating_energy_efficiency - recovered_energy)/3600 #kW
         
@@ -535,7 +535,8 @@ vr_combustor_path = ospath.join(g2rt_su_data_path, '_vr_combustor.csv')
 @price_ratio()
 class VolumeReductionCombustor(SanUnit):
     '''
-    Combustor unit that uses wood pellets biofuels to burn dry feces solid cakes
+    Combustor unit that uses wood pellets biofuels to burn dry feces solid cakes.
+    There is no energy or heat recovery in this unit.
     
     The following components should be included in system thermo object for simulation:
     H2O, N, K, P OtherSS, N2O, CH4, NO, SO2, NH3
@@ -545,9 +546,9 @@ class VolumeReductionCombustor(SanUnit):
 
     Parameters
     ----------
-    ins : Iterable(stream)
-        Dewatered feces solid cakes, wood pellets
-    outs : Iterable(stream)
+    ins : Iterable(WasteStream)
+        Dewatered feces solid cakes, wood pellets, air
+    outs : Iterable(WasteStream)
         Wood Ash, hot gas, fugitive N2O, fugitive CH4, fugitive NO, fugitive SO2
     if_sludge_service: bool
         If share combustor unit among multiple volume reduction toilets
@@ -559,7 +560,7 @@ class VolumeReductionCombustor(SanUnit):
     [1] YEE et al. VOLUME REDUCTION SOLIDS TREATMENT SYSTEM. 
     https://patents.google.com/patent/WO2023288327A1/en?oq=WO2023288327A1
     '''
-    _N_ins = 2
+    _N_ins = 3
     _N_outs = 7
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
@@ -583,7 +584,7 @@ class VolumeReductionCombustor(SanUnit):
             setattr(self, attr, value)
             
     def _run(self):
-        solid_cakes, wood_pellets = self.ins
+        solid_cakes, wood_pellets, air = self.ins
         ash, gas, CH4, N2O, NO, SO2, NH3 = self.outs
         cmps = self.components
         ash.copy_like(self.ins[0])
@@ -649,6 +650,8 @@ class VolumeReductionCombustor(SanUnit):
                             + cmps['WoodPellet']._i_C * wood_pellets.imass['WoodPellet']
                             #assume all carbon in wood pellets convert to CO2
                             )
+        air.imass['O2'] = gas.imass['CO2']/44*32
+        air.imass['N2'] = air.imass['O2']/32/0.21*0.79*28 #assume air content 21% O2 and 79% N2 
         gas.imass['N2'] = (solid_cakes.imass['N']*self.combustion_N_loss - 
                            N2O.imass['N2O']/44*28 - NO.imass['NO']/30*14)
         
@@ -1102,7 +1105,6 @@ class Toilet(SanUnit, Decay, isabstract=True):
 
 
 # %%
-
 murt_path = ospath.join(data_path, 'sanunit_data/_murt.tsv')
 
 @price_ratio()
@@ -2115,7 +2117,7 @@ class VRConcentrator(SanUnit):
            C[equipment] = cost * ratio
         
         self.power_utility(self.pump_power_demand * self.pump_daily_operation/24+
-                            self.water_vapor_H2O * self.energy_required_to_dry_sludge
+                            self.water_vapor_H2O * self.energy_required_to_evaporize_water
                             ) # kW
         total_equipment = 0.
         for cost in C.values():
@@ -2490,7 +2492,67 @@ class VRdryingtunnel(SanUnit):
         return (self.water_vapor_H2O * self.energy_required_to_dry_sludge + 
                 self.conveyor_power_demand * self.conveyor_daily_operation/24) #kW
 #%%
+g2rt_housing_path = ospath.join(g2rt_su_data_path, '_g2rt_housing.csv')
 
+@price_ratio()
+class G2RTHousing(Copier):
+    '''
+    Housing of the generation II reinveted toilet.
+    
+    This is a non-reactive unit (i.e., the effluent is copied from the influent).
+    
+    The following impact items should be pre-constructed for life cycle assessment:
+    Aluminum, Steel, ZincCoat, Polyethylene
+    
+    References
+    ----------
+    [1] Watabe et al. Advancing the Economic and Environmental Sustainability 
+    of the NEWgenerator Nonsewered Sanitation System." ACS Environmental Au 
+    3.4 (2023): 209-222.
+    https://pubs.acs.org/doi/10.1021/acsenvironau.3c00001
+    
+    See Also
+    --------
+    :class:`~.sanunits.NEWgeneratorControls`
+    '''
+    def __init__(self, ID='', ins=None, outs=(),  thermo=None, init_with='WasteStream',
+                 **kwargs):
+        data = load_data(path=g2rt_housing_path)
+        for para in data.index:
+            value = float(data.loc[para]['expected'])
+            setattr(self, para, value)
+        del data
+
+        Copier.__init__(self, ID, ins, outs, thermo, init_with)
+        
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)
+    
+    def _init_lca(self):
+        self.construction = [
+            Construction(item='Steel', linked_unit=self, quantity_unit='kg'),
+            Construction(item='Aluminum', linked_unit=self, quantity_unit='kg'),
+            Construction(item='ZincCoat', linked_unit=self, quantity_unit='m2'),
+            Construction(item='Polyethylene', linked_unit=self, quantity_unit='kg'),
+            ]
+    
+    def _design(self):
+        design = self.design_results
+        constr = self.construction
+        design['Steel'] = constr[0].quantity = self.housing_steel_weight
+        design['Aluminum'] = constr[1].quantity = self.housing_zinc_coat
+        design['ZincCoat'] = constr[2].quantity = self.housing_aluminum_weight
+        design['Polyethylene'] = constr[3].quantity = self.housing_PE_weight
+        self.add_construction(add_cost=False)
+        
+    def _cost(self):
+        C = self.baseline_purchase_costs
+        C["Housing_frame"] = self.system_housing
+        C["Misc.parts"] = self.miscellaneous_cost_ratio* C["Housing_frame"]
+        
+        ratio = self.price_ratio
+        for equipment, cost in C.items():
+            C[equipment] = cost * ratio
 
 #%%
 g2rt_controls_path = ospath.join(g2rt_su_data_path, '_g2rt_controls.csv')
@@ -2498,7 +2560,7 @@ g2rt_controls_path = ospath.join(g2rt_su_data_path, '_g2rt_controls.csv')
 @price_ratio()
 class G2RTControls(Copier):
     '''
-    Controllers of the generation II reinveted toilet that interface with sensors,
+    Electronic control of the generation II reinveted toilet that interface with sensors,
     valves, pumps, and motors.
     
     This is a non-reactive unit (i.e., the effluent is copied from the influent).
@@ -2527,7 +2589,6 @@ class G2RTControls(Copier):
 
         Copier.__init__(self, ID, ins, outs, thermo, init_with)
 
-        
         for attr, value in kwargs.items():
             setattr(self, attr, value)
     
@@ -2562,14 +2623,15 @@ class G2RTControls(Copier):
         C["Misc.parts"] = self.miscellaneous_cost_ratio*(C["Controller"]+
                                                          C["IO_relay_modules"]+
                                                          C["Sensors"]+
-                                                         C["Cables"])
+                                                         C["Cables"]
+                                                         )
         
         ratio = self.price_ratio
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
         
         power_demand = (
-            self.control_system_ORP_energy_percycle * self.control_batch_cycle_perday +
+            self.control_system_energy_percycle * self.control_batch_cycle_perday +
             self.control_background_runtime_energy_perday
             )
         power_demand = power_demand / 24  # convert from kWh/d to kW
@@ -2579,8 +2641,7 @@ class G2RTControls(Copier):
         
     def _calc_replacement_cost(self):
         control_system_replacement_cost = (
-            self.programmable_logic_controller_cost / self.control_system_PLC_lifetime * 
-            self.PLC_quantities + self.sensors_cost / self.sensor_lifetime
+            self.PLC_quantities + self.sensors_cost / self.control_sensor_lifetime
             )
         return control_system_replacement_cost / (365 * 24) * self.price_ratio # USD/hr
     
