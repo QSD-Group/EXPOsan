@@ -22,6 +22,7 @@ from qsdsan import (
     System, TEA, LCA,
     )
 from exposan.g2rt import _sanunits as su
+from exposan.surt import _sanunits as ssu
 from exposan.g2rt._components import create_components
 from exposan.g2rt import (
     create_components,
@@ -245,10 +246,10 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
                                    'A11_NH3_gas',streamA['H2O_vapor'])
                            )
     A14 = su.VolumeReductionCombustor('A14',
-                                      ins = (A11-0,'Wood_pellets'),
+                                      ins = (A11-0,'Wood_pellets','Air'),
                                       outs = ("Ash","hot_gas","A14_CH4", "A14_N2O", 
                                               streamA['NO'],streamA['SO2'],'A14_NH3_gas'),
-                                      if_sludge_service = True
+                                      if_sludge_service = True, lifetime = 10
                                       )
     
     # CH4 emissions from MURT, concentrator, drying tunnel, and combustor
@@ -476,6 +477,188 @@ def create_systemB(flowsheet=None, ppl=default_ppl):
     LCA(system=sysB, lifetime=10, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerB)
     # sysA.simulate()
     return sysB
+#%%
+# =============================================================================
+# System C
+# Volume reduction toilet with combustion energy recovery, based on
+# https://patentimages.storage.googleapis.com/73/c1/74/aa1f6a78b89957/WO2023288326A1.pdf
+# =============================================================================
+
+def create_systemC(flowsheet=None, ppl=default_ppl):
+    # TODO: Set flowsheet to avoid stream replacement warnings
+    flowsheet = flowsheet or main_flowsheet
+    batch_create_streams('C')
+    streamA = flowsheet.stream
+
+    #### Human Inputs ####
+    A1 = su.Excretion('A1', outs=('urine','feces'),)
+    
+    # recycle_fw = WasteStream('reverse_osmosis_treated')
+    # A2 = su.SURT('A2',
+    #              ins= (A1-0, A1-1, 'toilet_paper', 'flushing_water', recycle_fw),
+    #              outs = ('mixed_waste','A2_CH4','A2_N2O'),
+    #              N_user = 6, N_tot_user=default_ppl, lifetime = 10, 
+    #              if_include_front_end=True, if_toilet_paper=True,
+    #              if_flushing=True, if_cleansing=False,
+    #              if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
+    #              CAPEX=500*max(1, default_ppl/100), OPEX_over_CAPEX=0.06,
+    #              decay_k_COD=get_decay_k(),
+    #              decay_k_N=get_decay_k(),
+    #              max_CH4_emission=max_CH4_emission)
+    mixer = su.FWMixer('Mixer',
+                      ins = ('tap_water', streamA['H2O']),
+                      outs = ('flushing_water'),
+                      N_tot_user = 6
+                      )
+    A2 = su.SURT('A2',
+                  ins= (A1-0, A1-1, 'toilet_paper'),
+                  outs = ('mixed_waste','A2_CH4','A2_N2O'),
+                  N_user = 6, N_tot_user=default_ppl, lifetime = 10, 
+                  if_include_front_end=True, if_toilet_paper=True,
+                  if_flushing=True, if_cleansing=False,
+                  if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
+                  CAPEX=500*max(1, default_ppl/100), OPEX_over_CAPEX=0.06,
+                  decay_k_COD=get_decay_k(),
+                  decay_k_N=get_decay_k(),
+                  max_CH4_emission=max_CH4_emission)
+    
+    A3 = su.G2RTSolidsSeparation('A3',
+                                ins = (A2-0,mixer-0),
+                                outs = ('A3_liquid','A3_solid'),
+                                )
+    
+    # make a recycle loop
+    # recycle_uf = WasteStream('ultrafiltration_reject')
+    # A4 = su.G2RTBeltSeparation('A4', 
+    #                       ins = (A3-0,A3-1,recycle_uf),
+    #                       outs = ('A4_liquid','A4_solid'),
+    #                       )
+    UFmixer = su.UFMixer('UFMixer',
+                         ins = (A3-0,'ultrafiltration_reject'),
+                         outs = 'UFmixed_liquid'
+                         )
+    A4 = su.G2RTBeltSeparation('A4', 
+                          ins = (UFmixer-0,A3-1),
+                          outs = ('A4_liquid','A4_solid'),
+                          )
+    A12 = su.G2RTSolidsTank('A12',
+                             ins = A4-1,
+                             outs = 'A12_solids'
+                             )
+    
+    A13 = su.G2RTLiquidsTank('A13',
+                             ins = (A4-0,'filter_press_liquid','concentrator_liquid'),
+                             outs = 'A12_liquids'
+                             )
+    # A5 = su.G2RTUltrafiltration('A5',
+    #                                   ins = A13-0,
+    #                                   outs = ('A5_treated',recycle_uf)
+    #                                   )
+    A5 = su.G2RTUltrafiltration('A5',
+                                      ins = A13-0,
+                                      outs = ('A5_treated',1-UFmixer)
+                                      )
+    
+    # A6 = su.G2RTReverseOsmosis('A6', 
+    #                         ins = A5-0,
+    #                         outs = (recycle_fw,'A6_brine')
+    #                         )
+    A6 = su.G2RTReverseOsmosis('A6', 
+                            ins = A5-0,
+                            outs = (1-mixer,'A6_brine')
+                            )
+    
+    # item = ImpactItem.get_item('H2O_item').copy('A_H2O_item', set_as_source=True)
+    # A6.outs[0].stream_impact_item = item
+
+    A7 = su.VRConcentrator('A7',
+                           ins = A6-1,
+                           outs = ('A7_consensed_waste',2-A13,'A7_N2O','A7_CH4',
+                                   'A7_NH3_gas',streamA['H2O_vapor1'])
+                           )
+
+    A8 = su.G2RThomogenizer('A8', 
+                            ins = A12-0, 
+                            outs = 'A8_grinded')
+    
+    A9 = su.VRpasteurization('A9', 
+                                 ins = A8-0,
+                                 outs = 'A9_pasteurized'
+                                 )
+    A10 = su.VolumeReductionFilterPress('A10',
+                                        ins = A9-0,
+                                        outs = (1-A13,'A10_pressed_solid_cake')
+                                        )
+    A11 = su.VRdryingtunnel('A11',
+                           ins = (A7-0,A10-1),
+                           outs = ('A11_solid_cakes','A11_N2O', 'A11_CH4',
+                                   'A11_NH3_gas',streamA['H2O_vapor'])
+                           )
+    A14 = ssu.BiomassCombustion('A14',
+                                      ins = (A11-0,'Wood_pellets','Air'),
+                                      outs = ("Ash","hot_gas","A14_CH4", "A14_N2O", 
+                                              streamA['NO'],streamA['SO2'],'A14_NH3_gas'),
+                                      if_sludge_service = False, lifetime = 10
+                                      )
+    
+    # CH4 emissions from MURT, concentrator, drying tunnel, and combustor
+    A15 = qsu.Mixer('A15', ins=(A2-1, A7-3, A11-2, A14-2), outs=streamA['CH4'])
+    A15.add_specification(lambda: add_fugitive_items(A15, 'CH4_item'))
+    A15.line = 'fugitive CH4 mixer'
+    # N2O emissions from MURT, concentrator, drying tunnel, and combustor
+    A16 = qsu.Mixer('A16', ins=(A2-2, A7-2, A11-1, A14-3), outs=streamA['N2O'])
+    A16.add_specification(lambda: add_fugitive_items(A16, 'N2O_item'))
+    A16.line = 'fugitive N2O mixer'
+    # NH3 emissions from concentrator, drying tunnel, and combustor
+    A17 = qsu.Mixer('A17', ins=(A7-4, A11-3, A14-6), outs=streamA['NH3'])
+    A17.add_specification(lambda: add_fugitive_items(A17, 'NH3_item'))
+    A17.line = 'fugitive NH3 mixer'
+    
+    # N, P, K split for recovery
+    A18 = qsu.ComponentSplitter('A18', ins=A14-0,
+                               outs=(streamA['sol_N'], streamA['sol_P'], streamA['sol_K'],
+                                     'A_sol_non_fertilizers'),
+                               split_keys=('N', 'P', 'K'))
+    A19 = su.G2RTControls('A19', ins = A11-4,
+                          outs= 'A19_out')
+    A20 = su.G2RTHousing('A20', ins = A19-0, outs = "hot_gas")
+    qsu.HeatExchangerNetwork('HXN')
+    
+    sysA_1 = System('sysA_1',
+                    path = (A1,mixer,A2,A3,UFmixer,A4,A12,A13,A5),
+                    recycle = A5-1
+                    )
+    # sysA = System('sysA',
+    #               path = (sysA_1,A6,A7,A8,A9,A10,A11,A14,A15,A16),
+    #               recycle = A10-0
+    #               )
+    sysA_2 = System('sysA_2',
+                  path = (sysA_1,A6),
+                  recycle = A6-0
+                  )
+    sysA_3 = System('sysA_3',
+                    path = (sysA_2,A7,A8,A9),
+                    recycle = A7-1
+                    )
+    sysA = System('sysA',
+                  path=(sysA_3,A10,A11,A14,A15,A16,A17,A18,A19,A20),
+                  recycle = A10-0
+                  )
+    
+    
+    teaA = TEA(system=sysA, discount_rate=discount_rate,
+               start_year=2020, lifetime=10, uptime_ratio=1,
+               lang_factor=None, annual_maintenance=0,
+               annual_labor=0)
+    
+    get_powerA = sum([u.power_utility.rate for u in sysA.units]) * (24 * 365 * teaA.lifetime)
+    
+    LCA(system=sysA, lifetime=10, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerA)
+    # sysA.simulate()
+    return sysA
+    
+
+
 
 #%%
 
@@ -502,7 +685,8 @@ def create_system(system_ID='A', flowsheet=None, ppl=default_ppl):
 
     if system_ID == 'A': f = create_systemA
     elif system_ID == 'B': f = create_systemB
-    else: raise ValueError(f'`system_ID` can only be "A" or "B", not "{ID}".')
+    elif system_ID == 'C': f = create_systemC
+    else: raise ValueError(f'`system_ID` can only be "A" or "B" or "C", not "{ID}".')
 
     try: system = f(flowsheet, ppl=ppl)
     except:

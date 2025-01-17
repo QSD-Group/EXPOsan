@@ -193,13 +193,16 @@ _system_loaded = False
 def _load_system():
     qs.currency = 'USD'
     qs.PowerUtility.price = price_dct['Electricity']
-    global sysA, sysB, teaA, teaB, lcaA, lcaB, _system_loaded
+    global sysA, sysB, sysC, teaA, teaB,teaC, lcaA, lcaB,lcaC, _system_loaded
     sysA = create_system('A')
     teaA = sysA.TEA
     lcaA = sysA.LCA
     sysB = create_system('B')
     teaB = sysB.TEA
     lcaB = sysB.LCA
+    sysC = create_system('C')
+    teaC = sysC.TEA
+    lcaC = sysC.LCA
     _system_loaded = True
 
 

@@ -554,6 +554,8 @@ class VolumeReductionCombustor(SanUnit):
         If share combustor unit among multiple volume reduction toilets
         (assume 120 users per combustor unit,
         or 20 volume reduction toilets serving a population of 6 users per toilet).
+    lifetime : 10 years
+        This is used to estimate the amount of wood pellet used for TEA/LCA. Default to 10 years.
 
     References
     ----------
@@ -564,11 +566,12 @@ class VolumeReductionCombustor(SanUnit):
     _N_outs = 7
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 if_sludge_service = True, 
+                 if_sludge_service = True, lifetime = 10,
                  **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
-                         F_BM_default=1)
+                         F_BM_default=1, lifetime = lifetime)
         self.if_sludge_service = if_sludge_service
+        self.lifetime = lifetime
 
         data = load_data(path=vr_combustor_path)
         for para in data.index:
@@ -593,7 +596,6 @@ class VolumeReductionCombustor(SanUnit):
         wood_pellets.imass['H2O'] = wood_pellets.imass['WoodPellet'] * self.wood_moisture_content
         gas.phase = N2O.phase = CH4.phase = NO.phase = SO2.phase = NH3.phase = 'g'
         gas.T = self.combustion_temperature
-
         # Moisture content
         mc = solid_cakes.imass['H2O']/solid_cakes.F_mass if solid_cakes.F_mass!=0 else 0
         
@@ -622,19 +624,7 @@ class VolumeReductionCombustor(SanUnit):
         ash.imass['OtherSS'] += (ash_prcd - ash.imass[NPKCaMg].sum())
         
         ash.imass['H2O'] = 0.025 * ash.F_mass # kg H2O / hr with 2.5% moisture content
-        
-
-        # Daily run time for the influent waste
-        # One unit is capable of treating 550 kg/d (35% moisture based on 20 hr of run time) or 18 kg dry/hr
-        # self.daily_run_time = hpd = waste.F_mass*(1-mc) * 24/self.loading_rate # hr/d
-        # self.uptime_ratio = hpd / 24 # ratio of uptime (all items are per hour)
-
-        # # Energy balance, not really being used
-        # thermal_energy_from_feedstock = waste.F_mass * (1-mc) * self.dry_feces_heat_of_combustion # MJ/hr
-        # # Calculate thermal energy entering and thermal energy required to dry off water
-        # heat_needed_to_dry_0 = waste.F_mass * mc * self.energy_required_to_dry_sludge # MJ/hr
-        # self.net_thermal_energy_in = thermal_energy_from_feedstock  - heat_needed_to_dry_0 # MJ/hr
-        
+                
         #CH4 emissions
         CH4.imass['CH4'] = solid_cakes.F_mass * self.CH4_emission_factor
         # N2O emissions
@@ -653,7 +643,7 @@ class VolumeReductionCombustor(SanUnit):
         air.imass['O2'] = gas.imass['CO2']/44*32
         air.imass['N2'] = air.imass['O2']/32/0.21*0.79*28 #assume air content 21% O2 and 79% N2 
         gas.imass['N2'] = (solid_cakes.imass['N']*self.combustion_N_loss - 
-                           N2O.imass['N2O']/44*28 - NO.imass['NO']/30*14)
+                           N2O.imass['N2O']/44*28 - NO.imass['NO']/30*14) + air.imass['N2']
         
         gas.imass['H2O'] = solid_cakes.imass['H2O'] + wood_pellets.imass['H2O'] - ash.imass['H2O']
         
@@ -661,6 +651,7 @@ class VolumeReductionCombustor(SanUnit):
         self.construction = [
             Construction('Steel', linked_unit=self, item='Steel', quantity_unit='kg'),
             Construction('Aluminum', linked_unit=self, item='Aluminum', quantity_unit='kg'),
+            Construction('WoodPellet', linked_unit=self, item='WoodPellet', quantity_unit='kg'),
             ]
     
     def _design(self):
@@ -668,6 +659,7 @@ class VolumeReductionCombustor(SanUnit):
         constr = self.construction
         design['Steel'] = constr[0].quantity = self.steel_weight
         design['Aluminum'] = constr[1].quantity = self.aluminum_weight
+        design['WoodPellet'] = constr[2].quantity = self.lifetime*365*24* self.wood_pellets_kgphr
         self.add_construction(add_cost = False)
         
     def _cost(self):

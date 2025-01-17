@@ -25,7 +25,7 @@ def create_components(set_thermo=True):
     re_cmps = create_re_components(set_thermo = True)
     re_cmps = Components(re_cmps)
     re_cmps.Tissue.degradability= 'Slowly' 
-    re_cmps.Tissue.HHV= 25
+    re_cmps.Tissue.HHV= 25*1e3 #kJ/kg
     re_cmps.Tissue.organic= True
     re_cmps.Tissue.f_Vmass_Totmass = 0.9
     
@@ -41,15 +41,16 @@ def create_components(set_thermo=True):
                     degradability='Readily', organic=True, 
                     f_Vmass_Totmass = 1
                     )
-    #https://doi.org/10.1016/j.fuel.2016.07.077
-    #HHV is from the above literature
-    # add_V_from_rho(sCOD, 1560)
-    # sCOD.HHV = 24.7/0.4941*sCOD.i_C #remove ash content and 
-    # sCOD.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
     
-    # add_V_from_rho(xCOD, 1560)
-    # xCOD.HHV = 24.7/0.4941*sCOD.i_C
-    # xCOD.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
+    #https://doi.org/10.1016/j.fuel.2016.07.077
+    # HHV is from the above literature
+    add_V_from_rho(sCOD, 1560)
+    sCOD.HHV = 24.7 * 1e3 *2 #kJ/kg, enlarge 2 times to compensate for OtherSS so that final feces HHV matches 24.7 MJ/kg
+    sCOD.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
+    
+    add_V_from_rho(xCOD, 1560)
+    xCOD.HHV = 24.7 * 1e3 *2
+    xCOD.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
     
     NO = Component('NO', phase='g', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
