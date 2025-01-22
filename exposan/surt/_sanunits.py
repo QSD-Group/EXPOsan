@@ -8,6 +8,8 @@ This module is developed by:
     Zixuan Wang <wyatt4428@gmail.com>
 
     Jianan Feng <jiananf2@illinois.edu>
+    
+    Joy Cheung
 
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
@@ -15,7 +17,7 @@ for license details.
 '''
 import biosteam as bst
 from warnings import warn
-from math import ceil
+from math import ceil, exp
 import numpy as np
 from qsdsan.sanunits._abstract import Mixer
 from qsdsan.sanunits import IsothermalCompressor
@@ -40,6 +42,9 @@ class BiomassCombustion(VolumeReductionCombustor):
     Combust dry biomass (feces and wood pellets) to generate heat (in the form of power) 
     to offset the electrical heating demand for single unit reinvented toilet. This unit
     has automatic feeding system with pollution control.
+    
+    The following impact items should be pre-constructed for life cycle assessment:
+    Steel, Aluminum, WoodPellet, StoneWool, StainlessSteel
     
     Parameters
     ----------
@@ -94,6 +99,7 @@ class BiomassCombustion(VolumeReductionCombustor):
 
         for attr, value in kwargs.items():
             setattr(self, attr, value)
+        
     def _init_lca(self):
         self.construction = [
             Construction('Steel', linked_unit=self, item='Steel', quantity_unit='kg'),
@@ -169,7 +175,183 @@ class BiomassCombustion(VolumeReductionCombustor):
         return maintenance_labor_cost / (365*24) * service_factor
         
         
+#%%
+htc_path = ospath.join(surt_su_data_path, '_surt_htc_reactor.csv')
+@price_ratio()
+class HydrothermalCarbonization(SanUnit):
+    '''
+    Hydrothermal carbonization unit that performs organic oxidation to CO2 by supercritical water oxidation.
+    
+    The following components should be included in system thermo object for simulation:
+    H2O, OtherSS, N2O, NH3, CO2, O2, sCOD, xCOD, Tissue, N2, O2
 
+    The following impact items should be pre-constructed for life cycle assessment:
+    Aluminum, AluminumCasting, StainlessSteel, GlassFiber, Ceramic, Pump, Silicon, StainlessSteelMachining,
+    Switch
+
+    Parameters
+    ----------
+    ins : Iterable(stream)
+        homogenized human excreta, acetic acid catalysis
+    outs : Iterable(stream)
+        gas product mixture, process liquid, hydrochar, CH4
+
+    References
+    ----------
+    The empirical model was developed using experimental data reported by:
+    [1] Spitzer et al. Using hydrothermal carbonization for sustainable treatment 
+    and reuse of human excreta. https://doi.org/10.1016/j.jclepro.2018.09.126
+    
+    [2] HTClean Technology Summary for BMGF in 2019
+
+    '''
+    _N_ins = 2
+    _N_outs = 3
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+                 **kwargs):
+        SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=1)
+                
+        data = load_data(path=htc_path)
+        
+        for para in data.index:
+            value = float(data.loc[para]['expected'])
+            setattr(self, para, value)
+        del data
+
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)
+        cmps = self.components
+        self.solids = tuple((cmp.ID for cmp in cmps.solids))
+        self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
+
+    def _run(self):
+        mixed_waste, catalysis = self.ins
+        gas, hydrochar_mixture, CH4 = self.outs
+        solubles, solids = self.solubles, self.solids
+        mixed_waste.phase = catalysis.phase = 'l'
+        gas.phase = CH4.phase = 'g'
+        mixture = WasteStream()
+        mixture.mix_from(self.ins)
+        hydrochar_mixture.mix_from(self.ins)
+        catalysis.ivol['C2H4O2'] = mixed_waste.F_vol * self.catalyst_dosage /1000 #m3/hour
+        severity_factor = 50*self.HTC_hold_time**0.2*exp(-3500/self.HTC_hold_temperature) #t, reaction time in [s], T, temperature [K]
+        hydrochar_yield = 0.78952-0.74463*severity_factor #dry mass of hydrochar/dry mass of raw excreta based on severity factor.
+        #C mass distribution in multiphase product
+        H_hydrochar = 1.7474-.8712*severity_factor # molar ratio of N:H in hydrochar organic matters
+        N_hydrochar = .0941-.1609*severity_factor # molar ratio of N:C in hydrochar organic matters
+        COD_hydrochar = 1/((2+(H_hydrochar-N_hydrochar*3)*0.5)/2*32/12) # g carbon per g COD
+        s_C = .7816-.3738*severity_factor
+        l_C = -0.0112 + 2.907e-4*self.HTC_hold_temperature + 1.738e-5*self.HTC_hold_time
+        g_C = 1- s_C - l_C - self.HTL_CH4_emission_factor
+        hydrochar_mixture.imass['xCOD'] = (s_C * mixture.COD * mixture.F_vol/1000 * 
+                                           self.carbon_COD_ratio/COD_hydrochar) #kg/hr
+        hydrochar_mixture.imass['sCOD'] = (mixture.COD * mixture.F_vol/1000 * self.carbon_COD_ratio / COD_hydrochar * l_C) #kg/hr
+        gas.imass['CO2'] = mixture.COD * mixture.F_vol/1000 * self.carbon_COD_ratio * g_C /12*44 #kg/hr
+        #N mass distribution in multiphase product
+        hydrochar_mixture.imass['NonNH3'] = N_hydrochar*hydrochar_mixture.imass['xCOD']*COD_hydrochar/12*14
+        N_aq = -1.0992*severity_factor**2 + .5678*severity_factor + .1115 # molar ratio N:C in liquid phase
+        hydrochar_mixture.imass['NH3'] = N_aq * hydrochar_mixture.imass['sCOD']*COD_hydrochar/12*14
+        hydrochar_mixture.imass['Tissue'] = 0
+        mc = mixture.imass['H2O']/mixture.F_mass
+        if hydrochar_yield * mixed_waste.F_mass*(1-mc) > hydrochar_mixture.imass[solids]:
+            hydrochar_mixture.imass['WoodAsh'] = (hydrochar_yield * mixed_waste.F_mass*(1-mc) - 
+                                                  hydrochar_mixture.imass[solids])
+        #CH4 emission factor
+        CH4.imass['CH4']= (mixture.COD * mixture.F_vol/1000 * self.carbon_COD_ratio)/12*16 *self.HTL_CH4_emission_factor
+
+    def _init_lca(self):
+        self.construction = [
+            Construction('stainless_steel',linked_unit=self, 
+                         item='StainlessSteel', 
+                         quantity_unit='kg'),
+            Construction('aluminum',linked_unit=self, 
+                         item='Aluminum', 
+                         quantity_unit='kg'),
+            Construction('aluminum_casting',linked_unit=self, 
+                         item='AluminumCasting', 
+                         quantity_unit='kg'),
+            Construction('glass_fiber',linked_unit=self, 
+                         item='GlassFiber', 
+                         quantity_unit='kg'),
+            Construction('ceramic',linked_unit=self, 
+                         item='Ceramic', 
+                         quantity_unit='kg'),
+            Construction('pump',linked_unit=self, 
+                         item='Pump', 
+                         quantity_unit='ea'),
+            Construction('silicon',linked_unit=self, 
+                         item='Silicon', 
+                         quantity_unit='kg'),
+            Construction('stainless_steel_machining',linked_unit=self, 
+                         item='StainlessSteelMachining', 
+                         quantity_unit='kg'),
+            Construction('switch',linked_unit=self, 
+                         item='Switch', 
+                         quantity_unit='kg'),
+            ]
+        
+    def _design(self):
+        design=self.design_results
+        constr = self.construction
+        design['StainlessSteel'] = constr[0].quantity = self.stainless_steel
+        design['Aluminum'] = constr[1].quantity = self.aluminum
+        design['AluminumCasting'] = constr[2].quantity = self.aluminum_casting
+        design['GlassFiber'] = constr[3].quantity = self.glass_fiber
+        design['Ceramic'] = constr[4].quantity = self.ceramic
+        design['Pump'] = constr[5].quantity = self.pump
+        design['Silicon'] = constr[6].quantity = self.silicon
+        design['StainlessSteelMachining'] = constr[7].quantity = self.stainless_steel_machining
+        design['Switch'] = constr[8].quantity = self.switch
+        
+    def _cost(self):
+        C = self.baseline_purchase_costs
+        C['Reactor'] = self.HTC_reactor_cost
+        C['Preheater'] = self.HTC_preheater_cost 
+        C['Misc.parts'] = self.miscellaneous_cost_ratio*(C['Reactor'] +
+                               C['Preheater'])
+        ratio = self.price_ratio
+        for equipment, cost in C.items():
+           C[equipment] = cost * ratio
+        mixed_waste, catalysis = self.ins
+        gas, hydrochar_mixture, CH4 = self.outs
+        mixed_waste.phase = catalysis.phase = 'l'
+        gas.phase = CH4.phase = 'g'
+        initial_enthalpy_flow = mixed_waste.H + catalysis.H
+        gas.T = hydrochar_mixture.T = CH4.T = self.HTC_hold_temperature
+        final_enthalpy_flow = gas.H + hydrochar_mixture.H + CH4.H
+        
+        self.power_utility(self.power_input) if self.power_input>=0 else self.power_utility(0)  # kW
+        total_equipment = 0.
+        for cost in C.values():
+           total_equipment += cost
+        self.add_OPEX = (total_equipment*self.material_replacement_cost/(365*24) + 
+                         #USD/hr, assume replacement cost 5% of CAPEX per year
+                         self._calc_maintenance_labor_cost()) #USD/hr
+
+    def _calc_replacement_cost(self):
+        solid_cakes, wood_pellets, air = self.ins
+        wood_pellet_cost = wood_pellets.imass['WoodPellet'] * self.wood_pellets_cost #USD/hr
+        service_factor = 0.05 if self.if_sludge_service else 1
+        return wood_pellet_cost* self.price_ratio * service_factor # USD/hr
+            
+    def _calc_maintenance_labor_cost(self): #USD/hr
+        maintenance_labor_cost= (self.combustor_operation_maintenance * self.wages)
+        service_factor = 0.05 if self.if_sludge_service else 1
+        return maintenance_labor_cost / (365*24) * service_factor
+    
+    @property
+    def OPEX(self):
+        return (self.add_OPEX['Additional OPEX']-self._calc_maintenance_labor_cost())*24 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return self._calc_maintenance_labor_cost()*24 #USD/day
+    
+    @property
+    def power_kW(self):
+        return self.power_input if self.power_input>=0 else 0  #kW
+    
         
         
         

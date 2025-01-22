@@ -56,6 +56,8 @@ def create_components(set_thermo=True):
                     degradability='Undegradable', organic=False)
     SO2 = Component('SO2', phase='g', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
+    C2H4O2 = Component('C2H4O2', phase='l', particle_size='Soluble',
+                    degradability='Readily', organic=True)
     
     # Wood pellets
     # moisture content = 18.5 %, caloric value (HHV) = 19.16 MJ/kg
@@ -65,7 +67,7 @@ def create_components(set_thermo=True):
     # 700 kg/m3 is average from:
     # https://www.biofuelmachines.com/wood-pellets-quality-standards-study.html (accessed 2024-11-20)
     # https://doi.org/10.1016/j.biombioe.2023.106951
-    add_V_from_rho(WoodPellet, 700)
+    add_V_from_rho(WoodPellet, 700,rho_unit='kg/m3')
     WoodPellet.HHV = 19.16
     WoodPellet.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
     
@@ -73,7 +75,7 @@ def create_components(set_thermo=True):
     not_used_cmps = ('KCl','GAC','Zeolite','LPG','HCl','MgOH2','Struvite')
     
     cmps = Components([cmp for cmp in re_cmps if cmp.ID not in not_used_cmps]+ 
-                      [sCOD, xCOD,WoodPellet,NO,SO2]) #new components
+                      [sCOD, xCOD,WoodPellet,NO,SO2,C2H4O2]) #new components
     
     #assign value 0 to heat value that does not exist
     for cmp in cmps:

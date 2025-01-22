@@ -240,7 +240,7 @@ class mSCWOReactorModule(SanUnit):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
         cmps = self.components
-        self.solids = tuple((cmp.ID for cmp in cmps.solids)) + ("OtherSS",)
+        self.solids = tuple((cmp.ID for cmp in cmps.solids))
         self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
 
     def _run(self):
@@ -273,15 +273,15 @@ class mSCWOReactorModule(SanUnit):
         liquid_effluent.copy_like(feces)
         liquid_effluent.imass['NH3'] = (feces.TN * feces.F_vol /1000
                                         ) * self.ammonium_nitrogen_fraction #kg/hr
-        liquid_effluent.imass['NonNH3'] = 0
+        liquid_effluent.imass['NonNH3'] = (feces.TN * feces.F_vol /1000
+                                        ) * (1-self.ammonium_nitrogen_fraction-
+                                             self.N2O_nitrogen_fraction) #kg/hr, 
         gas_product.copy_like(compressed_air)
         gas_product.imass['CO2'] = (feces.imass['sCOD'] + 
                                     feces.imass['xCOD'])* self.carbon_conversion_efficiency* self.carbon_COD_ratio #kg/hr
         gas_product.imol['O2'] -= gas_product.imol['CO2']
-        ash.imass['OtherSS'] = (feces.F_mass * (1-mc) * self.feces_ash_content) # kg ash /hr
         ash.imass['xCOD'] = liquid_effluent.imass['xCOD'] * (1 - self.carbon_conversion_efficiency)
-        ash.imass['Tissue'] = liquid_effluent.imass['Tissue'] * (1- self.carbon_conversion_efficiency)
-        liquid_effluent.imass['OtherSS'] = 0
+        ash.imass['WoodAsh'] = (feces.F_mass * (1-mc) * self.feces_ash_content) # kg ash /hr
         liquid_effluent.imass['sCOD'] *= (1-self.carbon_conversion_efficiency)
         liquid_effluent.imass['xCOD'] = 0
         liquid_effluent.imass['Tissue'] = 0
@@ -378,7 +378,7 @@ class mSCWOConcentratorModule(SanUnit):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
         cmps = self.components
-        self.solids = tuple((cmp.ID for cmp in cmps.solids)) + ("OtherSS",)
+        self.solids = tuple((cmp.ID for cmp in cmps.solids))
         self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
     
     def _run(self):
@@ -608,7 +608,6 @@ class VolumeReductionCombustor(SanUnit):
         ash_prcd = (solid_cakes.F_mass * (1-mc) * self.feces_ash_content + 
                wood_pellets.imass['WoodPellet']*(1-self.wood_moisture_content)*self.wood_ash_content) # kg ash /hr
         
-        ash.imass['OtherSS'] = solid_cakes.COD * self.carbon_COD_ratio * solid_cakes.F_vol / 1e3 * (1 - self.combustion_C_loss)
         NPKCaMg = ('NH3','NonNH3','N', 'P', 'K','Ca','Mg')
         for cmp in cmps:
             ash.imass[cmp.ID] = 0 if cmp.ID not in NPKCaMg else ash.imass[cmp.ID]
@@ -619,12 +618,8 @@ class VolumeReductionCombustor(SanUnit):
                 continue
             else:
                 ash.imass[element] *= (1 - getattr(self, f'combustion_{element}_loss'))
-        
-
-        ash.imass['OtherSS'] += (ash_prcd - ash.imass[NPKCaMg].sum())
-        
+        ash.imass['WoodAsh'] = (ash_prcd - ash.imass[NPKCaMg].sum())
         ash.imass['H2O'] = 0.025 * ash.F_mass # kg H2O / hr with 2.5% moisture content
-                
         #CH4 emissions
         CH4.imass['CH4'] = solid_cakes.F_mass * self.CH4_emission_factor
         # N2O emissions
@@ -746,7 +741,7 @@ class FWMixer(Mixer):
         self.if_flushing = if_flushing
         
         cmps = self.components
-        self.solids = tuple((cmp.ID for cmp in cmps.solids)) + ("OtherSS",)
+        self.solids = tuple((cmp.ID for cmp in cmps.solids))
         self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
         
         data = load_data(path=toilet_path)    
@@ -1886,7 +1881,7 @@ class VolumeReductionFilterPress(SanUnit):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
         cmps = self.components
-        self.solids = tuple((cmp.ID for cmp in cmps.solids)) + ("OtherSS",)
+        self.solids = tuple((cmp.ID for cmp in cmps.solids))
         self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
         
     def _init_lca(self):
@@ -2009,7 +2004,7 @@ class VRConcentrator(SanUnit):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
         cmps = self.components
-        self.solids = tuple((cmp.ID for cmp in cmps.solids)) + ("OtherSS",)
+        self.solids = tuple((cmp.ID for cmp in cmps.solids))
         self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
     
     def _run(self):
@@ -2380,7 +2375,7 @@ class VRdryingtunnel(SanUnit):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
         cmps = self.components
-        self.solids = tuple((cmp.ID for cmp in cmps.solids)) + ("OtherSS",)
+        self.solids = tuple((cmp.ID for cmp in cmps.solids))
         self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
 
     def _run(self):
@@ -2667,7 +2662,7 @@ class G2RTSolidsSeparation(SanUnit):
     Non-reactive. Moisture content of the effluent solid is adjusted to be 99% [2].
 
     The following components should be included in system thermo object for simulation:
-    H2O, OtherSS.
+    H2O
 
     The following impact items should be pre-constructed for life cycle assessment:
     StainlessSteel, Polyethylene, ElectricMotor, Pump
@@ -2709,7 +2704,7 @@ class G2RTSolidsSeparation(SanUnit):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
         cmps = self.components
-        self.solids = tuple((cmp.ID for cmp in cmps.solids)) + ("OtherSS",)
+        self.solids = tuple((cmp.ID for cmp in cmps.solids))
         self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
 
     def _init_lca(self):
@@ -2864,7 +2859,7 @@ class G2RTBeltSeparation(SanUnit):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
         cmps = self.components
-        self.solids = tuple((cmp.ID for cmp in cmps.solids)) + ("OtherSS",)
+        self.solids = tuple((cmp.ID for cmp in cmps.solids))
         self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O']) 
         
  
@@ -3033,7 +3028,7 @@ class G2RTUltrafiltration(SanUnit):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
         cmps = self.components
-        self.solids = tuple((cmp.ID for cmp in cmps.solids)) + ("OtherSS",)
+        self.solids = tuple((cmp.ID for cmp in cmps.solids))
         self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
         
     def _init_lca(self):
@@ -3054,6 +3049,7 @@ class G2RTUltrafiltration(SanUnit):
         solid_stream.imass[solids] = waste_in.imass[solids] * self.TSS_removal/100 # the removed solids
         solid_stream.imass[solubles] = waste_in.imass[solubles]*\
             solid_stream.imass['H2O']/waste_in.imass['H2O']
+        solid_stream.imass['sCOD'] += waste_in.imass['sCOD']*self.sCOD_removal/100
         liquid_stream.mass = waste_in.mass-solid_stream.mass
         # print(f"The recycled UF water flow is {solid_stream.imass['H2O']} kg/h.")
 
@@ -3183,7 +3179,7 @@ class G2RTReverseOsmosis(SanUnit):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
         cmps = self.components
-        self.solids = tuple((cmp.ID for cmp in cmps.solids)) + ("OtherSS",)
+        self.solids = tuple((cmp.ID for cmp in cmps.solids))
         self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
 
     
@@ -3239,7 +3235,14 @@ class G2RTReverseOsmosis(SanUnit):
                          self._calc_membrane_replacement_cost() +
                          self._calc_maintenance_labor_cost())) #USD/hr
     def _calc_membrane_replacement_cost(self): #USD/hr
-        membrane_replacement_cost = self.membrane_cost / self.membrane_life_time #USD/yr
+        waste_in = self.ins[0]
+        if waste_in.COD >= 500: #mg/L, high COD
+            membrane_replacement_cost = self.membrane_cost / self.membrane_life_time_short #USD/yr
+        elif 50 < waste_in.COD < 500: #Medium COD
+            membrane_replacement_cost = self.membrane_cost / self.membrane_life_time_medium #USD/yr
+        else: 
+            membrane_replacement_cost = self.membrane_cost / self.membrane_life_time_long #USD/yr
+            
         return membrane_replacement_cost/(365*24) #USD/hr
     
     def _calc_maintenance_labor_cost(self): #USD/hr
