@@ -3236,7 +3236,9 @@ class G2RTReverseOsmosis(SanUnit):
                          self._calc_maintenance_labor_cost())) #USD/hr
     def _calc_membrane_replacement_cost(self): #USD/hr
         waste_in = self.ins[0]
-        if waste_in.COD >= 500: #mg/L, high COD
+        if waste_in.COD >= 3000: #mg/L, high COD
+            membrane_replacement_cost = self.membrane_cost / self.membrane_life_time_severe_fouling #USD/yr
+        elif 500 < waste_in.COD < 3000:
             membrane_replacement_cost = self.membrane_cost / self.membrane_life_time_short #USD/yr
         elif 50 < waste_in.COD < 500: #Medium COD
             membrane_replacement_cost = self.membrane_cost / self.membrane_life_time_medium #USD/yr

@@ -67,7 +67,7 @@ def create_components(set_thermo=True):
     # 700 kg/m3 is average from:
     # https://www.biofuelmachines.com/wood-pellets-quality-standards-study.html (accessed 2024-11-20)
     # https://doi.org/10.1016/j.biombioe.2023.106951
-    add_V_from_rho(WoodPellet, 700,rho_unit='kg/m3')
+    add_V_from_rho(WoodPellet, 700)
     WoodPellet.HHV = 19.16
     WoodPellet.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
     

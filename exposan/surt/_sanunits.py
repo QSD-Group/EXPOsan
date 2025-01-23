@@ -188,6 +188,9 @@ class HydrothermalCarbonization(SanUnit):
     The following impact items should be pre-constructed for life cycle assessment:
     Aluminum, AluminumCasting, StainlessSteel, GlassFiber, Ceramic, Pump, Silicon, StainlessSteelMachining,
     Switch
+    
+    If allowing resource recovery, this unit can produce hydrochar that can be 
+    sold at a market price.
 
     Parameters
     ----------
@@ -243,7 +246,7 @@ class HydrothermalCarbonization(SanUnit):
         COD_hydrochar = 1/((2+(H_hydrochar-N_hydrochar*3)*0.5)/2*32/12) # g carbon per g COD
         s_C = .7816-.3738*severity_factor
         l_C = -0.0112 + 2.907e-4*self.HTC_hold_temperature + 1.738e-5*self.HTC_hold_time
-        g_C = 1- s_C - l_C - self.HTL_CH4_emission_factor
+        g_C = 1- s_C - l_C - self.HTC_CH4_emission_factor
         hydrochar_mixture.imass['xCOD'] = (s_C * mixture.COD * mixture.F_vol/1000 * 
                                            self.carbon_COD_ratio/COD_hydrochar) #kg/hr
         hydrochar_mixture.imass['sCOD'] = (mixture.COD * mixture.F_vol/1000 * self.carbon_COD_ratio / COD_hydrochar * l_C) #kg/hr
@@ -258,7 +261,7 @@ class HydrothermalCarbonization(SanUnit):
             hydrochar_mixture.imass['WoodAsh'] = (hydrochar_yield * mixed_waste.F_mass*(1-mc) - 
                                                   hydrochar_mixture.imass[solids])
         #CH4 emission factor
-        CH4.imass['CH4']= (mixture.COD * mixture.F_vol/1000 * self.carbon_COD_ratio)/12*16 *self.HTL_CH4_emission_factor
+        CH4.imass['CH4']= (mixture.COD * mixture.F_vol/1000 * self.carbon_COD_ratio)/12*16 *self.HTC_CH4_emission_factor
 
     def _init_lca(self):
         self.construction = [
@@ -317,28 +320,32 @@ class HydrothermalCarbonization(SanUnit):
         gas, hydrochar_mixture, CH4 = self.outs
         mixed_waste.phase = catalysis.phase = 'l'
         gas.phase = CH4.phase = 'g'
-        initial_enthalpy_flow = mixed_waste.H + catalysis.H
+        initial_enthalpy_flow = mixed_waste.H + catalysis.H #kJ/hour
         gas.T = hydrochar_mixture.T = CH4.T = self.HTC_hold_temperature
-        final_enthalpy_flow = gas.H + hydrochar_mixture.H + CH4.H
+        final_enthalpy_flow = gas.H + hydrochar_mixture.H + CH4.H #kJ/hour
+        self.power_input = ((final_enthalpy_flow-initial_enthalpy_flow)/3600*
+                       (1+self.HTC_hold_phase_duty_cycle)/self.HTC_heating_efficiency) #kW
+        self.power_recovered = self.power_input*self.HTC_heat_recovery #kW
         
         self.power_utility(self.power_input) if self.power_input>=0 else self.power_utility(0)  # kW
+        self.power_utility.production = self.power_recovered #kW
+        
         total_equipment = 0.
         for cost in C.values():
            total_equipment += cost
         self.add_OPEX = (total_equipment*self.material_replacement_cost/(365*24) + 
                          #USD/hr, assume replacement cost 5% of CAPEX per year
+                         self.__calc_replacement_cost()+
                          self._calc_maintenance_labor_cost()) #USD/hr
 
     def _calc_replacement_cost(self):
-        solid_cakes, wood_pellets, air = self.ins
-        wood_pellet_cost = wood_pellets.imass['WoodPellet'] * self.wood_pellets_cost #USD/hr
-        service_factor = 0.05 if self.if_sludge_service else 1
-        return wood_pellet_cost* self.price_ratio * service_factor # USD/hr
+        mixed_waste, catalysis = self.ins
+        catalysis_cost = catalysis.ivol['C2H4O2'] * self.acetic_acid_cost *1000 #USD/hour
+        return catalysis_cost* self.price_ratio # USD/hr
             
     def _calc_maintenance_labor_cost(self): #USD/hr
-        maintenance_labor_cost= (self.combustor_operation_maintenance * self.wages)
-        service_factor = 0.05 if self.if_sludge_service else 1
-        return maintenance_labor_cost / (365*24) * service_factor
+        maintenance_labor_cost= (self.HTC_operation_maintenance * self.wages)
+        return maintenance_labor_cost / (365*24) #USD/hr 
     
     @property
     def OPEX(self):
@@ -350,9 +357,8 @@ class HydrothermalCarbonization(SanUnit):
     
     @property
     def power_kW(self):
-        return self.power_input if self.power_input>=0 else 0  #kW
+        return self.power_input-self.power_recovered #kW
     
-        
         
         
     
