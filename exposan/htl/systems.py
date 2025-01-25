@@ -639,7 +639,7 @@ def create_system(configuration='baseline', capacity=100,
         create_tea(sys, IRR_value=0.1, income_tax_value=0.21, finance_interest_value=0.08, labor_cost_value=(0.41+1.40*capacity*WWTP.ww_2_dry_sludge/100)*10**6)
     else:
         create_tea(sys, IRR_value=0.03, income_tax_value=0.21, finance_interest_value=0.03, labor_cost_value=(0.41+1.40*capacity*WWTP.ww_2_dry_sludge/100)*10**6)
-
+    
     # for labor cost (2020 salary level)
    
     # 1 plant manager
@@ -662,7 +662,7 @@ def create_system(configuration='baseline', capacity=100,
     # (having separate tables for the HTL plant and the hydroprocessing plant serving 10 HTL plants) and
     # Jones et al. 2014. Process Design and Economics for the Conversion of Algal Biomass to Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading
     # (including hydroprocessing and CHG)
-        
+    
     qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
            Cooling=lambda:sys.get_cooling_duty()/1000*30)

@@ -19,13 +19,17 @@ from math import ceil, log
 from qsdsan import SanUnit
 from qsdsan.sanunits import Reactor
 from qsdsan.utils import auom
+from biosteam.units.decorators import cost
+from biosteam.units.design_tools import CEPCI_by_year
 
+# TODO: add DAP production, ammonia stripping, anhydrous ammonia production, urea production, UAN production
 __all__ = (
     'AcidExtraction',
     'FuelMixer',
     'HTLmixer',
     'Humidifier',
     'StruvitePrecipitation',
+    'UreaSynthesis',
     'WWmixer',
     'WWTP',
     )
@@ -452,6 +456,82 @@ class StruvitePrecipitation(Reactor):
         # 2/788.627455 m3 reactor/m3 wastewater/h (50 MGD ~ 20 m3)
         self.P = self.ins[0].P
         Reactor._design(self)
+
+# =============================================================================
+# UreaSynthesis
+# =============================================================================
+
+# TODO: need test
+
+# assume the cost in the reference paper is 2022 dollar
+# the installed cost is already included, so BM=1
+@cost(basis='Production capacity', ID='Urea synthesizer', units='kg/h',
+      cost=4050000, S=1000*1000/365/24,
+      CE=CEPCI_by_year[2022], n=0.58, BM=1)
+class UreaSynthesis(SanUnit):
+    '''
+    A black box model of urea synthesis based on [1].
+    
+    Parameters
+    ----------
+    ins : Iterable(stream)
+        ammonia, carbon_dioxide.
+    outs : Iterable(stream)
+        urea, water, waste.
+    ratio: float
+        The overall ratio between NH3 and CO2 as reactants (after considering
+        recycling of unconverted reactants).
+    efficiency: float
+        The overall conversion efficiency (after considering recycling of
+        unconverted reactants) of CO2 to urea.
+    loss: float
+        The loss ratio of unconverted reactants before recycling.
+    
+    References
+    ----------
+    [1] Palys, M. J.; Daoutidis, P. Techno-Economic Optimization of Renewable
+     Urea Production for Sustainable Agriculture and CO2 Utilization.
+     J. Phys. Energy 2023, 6 (1), 015013. https://doi.org/10.1088/2515-7655/ad0ee6.
+    '''
+    _N_ins = 2
+    _N_outs = 3
+    _units= {'Production capacity': 'kg/h'}
+
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='WasteStream', ratio=3, efficiency=0.8,
+                 loss=0.05):
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.ratio = ratio
+        self.efficiency = efficiency
+        self.loss = loss
+
+    def _run(self):
+        
+        ammonia, carbon_dioxide = self.ins
+        urea, water, waste = self.outs
+        
+        NH3_CO2_molar_ratio = (self.ratio - (self.ratio - 2*self.efficiency)*(1-self.loss))/\
+                              (1 - (1 - self.efficiency)*(1-self.loss))
+        
+        ammonia.imass['NH3'] = carbon_dioxide.imss['CO2']/44.009*NH3_CO2_molar_ratio*17.031
+        
+        urea.imass['Urea'] = carbon_dioxide.imss['CO2']/44.009*self.efficiency/\
+                             (1 - (1 - self.efficiency)*(1-self.loss))*60.06
+        water.imass['H2O'] = carbon_dioxide.imss['CO2']/44.009*self.efficiency/\
+                             (1 - (1 - self.efficiency)*(1-self.loss))*18.01528
+        waste.imass['NH3'] = carbon_dioxide.imss['CO2']/44.009*(self.ratio - 2*self.efficiency)*\
+                             self.loss/(1 - (1 - self.efficiency)*(1-self.loss))*17.031
+        waste.imass['CO2'] = carbon_dioxide.imss['CO2']/44.009*(1 - self.efficiency)*\
+                             self.loss/(1 - (1 - self.efficiency)*(1-self.loss))*44.009
+        
+        # convert 0.18 MWh/tonne-urea and 0.95 MWh/tonne-urea to kW
+        self.power_utility.consumption = (0.18 + 0.95)*1000/1000*urea.imass['urea']
+    
+    def _design(self):
+        
+        Design = self.design_results
+        Design['Production capacity'] = self.outs[0].F_mass
 
 # =============================================================================
 # WWmixer

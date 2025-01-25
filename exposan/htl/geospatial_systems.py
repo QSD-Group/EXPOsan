@@ -64,16 +64,18 @@ References:
 '''
 
 # TODO: changs to implement:
-# TODO 0: go through all codes and data, then identify TODOs (geospatial_systems.py done, geospatial_models.py done)
 # TODO 1: add labor cost as a contextural parameter
-# TODO 2: add Gaussian copula when aggregating uncertainty results
-# TODO 3: add capacitated p-median to demonstrate the 100% accommodation of wastewater solids stream in the CONUS
-# TODO 4: add anhydrous ammonia recovery
-# TODO 5: add urea ammonium nitrate (UAN) recovery
-# TODO 6: add diammonium sulfate (DAP)
-# TODO 7: add N & P fertilizers offsets
-# TODO 8: add material costs & CI as contextural parameters whenenever possible
-# TODO 9: add carbon capture and utilization (CCU)
+# TODO 2: add anhydrous ammonia recovery: use stripper from BioSTEAM
+    # see https://github.com/BioSTEAMDevelopmentGroup/biosteam/blob/56b318b3beb5ec9e34d8d0a437dccb435fa6d37e/biosteam/units/distillation.py#L2341
+    # also see https://www.sciencedirect.com/science/article/pii/S2666789424000734#fig2
+# TODO 3: add urea recovery: use the cost power function
+    #  see https://iopscience.iop.org/article/10.1088/2515-7655/ad0ee6
+# TODO 4: add urea ammonium nitrate (UAN) recovery: can use the 'reactor' class to produce ammonium nitrate first, then mixing with urea
+# TODO 5: add phosphorus extraction from hydrochar: use the previous model
+# TODO 6: add diammonium sulfate (DAP) recovery: can use the 'reactor' class, similar to StruvitePrecipitation
+# TODO 7: add carbon capture and utilization (CCU)
+# TODO 8: add N & P fertilizers offsets
+# TODO 9: add material costs & CI as contextural parameters whenenever possible
 
 import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu

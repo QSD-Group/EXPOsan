@@ -2962,6 +2962,10 @@ lines = ax.tricontour(X, Y, Z, levels=7, linewidths=3, linestyles='solid', color
 
 ax.clabel(lines, lines.levels, inline=True, fontsize=38)
 
+#%% future 100% coverage
+
+# TODO: add capacitated p-median to demonstrate the 100% accommodation of wastewater solids stream in the CONUS
+
 #%% future resources offsets
 
 # TODO: add biocrude, nitrogen, and phosphorus offsets based on all wastewater solids resources in the CONUS
