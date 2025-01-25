@@ -22,7 +22,7 @@ from qsdsan.utils import auom
 from biosteam.units.decorators import cost
 from biosteam.units.design_tools import CEPCI_by_year
 
-# TODO: add DAP production, ammonia stripping, anhydrous ammonia production, urea production, UAN production
+# TODO: add DAP production, anhydrous ammonia production, UAN production
 __all__ = (
     'AcidExtraction',
     'FuelMixer',
@@ -497,9 +497,11 @@ class UreaSynthesis(SanUnit):
     _N_outs = 3
     _units= {'Production capacity': 'kg/h'}
 
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', ratio=3, efficiency=0.8,
-                 loss=0.05):
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+                 # TODO: add uncertainty to the following parameters with citations
+                 ratio=3.5, # 3-4, Uniform
+                 efficiency=0.8, # 0.7-0.9, Uniform
+                 loss=0.02): # 0.01-0.03, Uniform
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.ratio = ratio
