@@ -236,6 +236,59 @@ PADD_color = {1: b,
               4: o,
               5: y}
 
+# state dominant nitrogen fertilizer form
+state_nitrogen_fertilizer = {'AL':'nitrogen_solution',
+                             'AZ':'nitrogen_solution',
+                             'AR':'nitrogen_solution',
+                             'CA':'nitrogen_solution',
+                             'CO':'nitrogen_solution',
+                             'CT':'nitrogen_solution',
+                             'DE':'nitrogen_solution',
+                             'DC':'nitrogen_solution',
+                             'FL':'nitrogen_solution',
+                             'GA':'nitrogen_solution',
+                             'ID':'urea',
+                             'IL':'anhydrous_ammonia',
+                             'IN':'anhydrous_ammonia',
+                             'IA':'anhydrous_ammonia',
+                             'KS':'nitrogen_solution',
+                             'KY':'nitrogen_solution',
+                             'LA':'nitrogen_solution',
+                             'MI':'anhydrous_ammonia',
+                             'ME':'nitrogen_solution',
+                             'MD':'nitrogen_solution',
+                             'MA':'nitrogen_solution',
+                             'MN':'anhydrous_ammonia',
+                             'MS':'nitrogen_solution',
+                             'MO':'anhydrous_ammonia',
+                             'MT':'urea',
+                             'NE':'urea',
+                             'NV':'nitrogen_solution',
+                             'NH':'nitrogen_solution',
+                             'NJ':'nitrogen_solution',
+                             'NM':'nitrogen_solution',
+                             'NY':'nitrogen_solution',
+                             'NC':'nitrogen_solution',
+                             'ND':'urea',
+                             'OH':'anhydrous_ammonia',
+                             'OK':'nitrogen_solution',
+                             'OR':'urea',
+                             'PA':'nitrogen_solution',
+                             'RI':'nitrogen_solution',
+                             'SC':'nitrogen_solution',
+                             'SD':'urea',
+                             'TN':'nitrogen_solution',
+                             'TX':'nitrogen_solution',
+                             'UT':'nitrogen_solution',
+                             'VT':'nitrogen_solution',
+                             'VA':'nitrogen_solution',
+                             'WA':'urea',
+                             'WV':'nitrogen_solution',
+                             'WI':'anhydrous_ammonia',
+                             'WY':'urea'}
+
+WRRF['nitrogen_fertilizer'] = WRRF['state'].apply(lambda x: state_nitrogen_fertilizer[x])
+
 # sludge disposal cost in $/kg sludge (Peccia and Westerhoff. 2015, https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931)
 sludge_disposal_cost = {'landfill': 0.413,
                         'land_application': 0.606,
@@ -957,8 +1010,8 @@ for i in range(0, len(WRRF_input)):
                                            ww_2_dry_sludge_ratio=WRRF_input.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/WRRF_input.iloc[i]['flow_2022_MGD'],
                                            state=WRRF_input.iloc[i]['state'],
                                            elec_GHG=WRRF_input.iloc[i]['kg_CO2_kWh'],
-                                           # TODO: update wage_adjustment
-                                           wage_adjustment=XXX)
+                                           # TODO: need test wage_adjustment
+                                           wage_adjustment=WRRF_input.iloc[i]['wage_quotient']/100)
     
     flowsheet = sys.flowsheet
     unit = flowsheet.unit
@@ -1698,8 +1751,8 @@ for i in range(0, len(facility_uncertainty)):
                                            ww_2_dry_sludge_ratio=facility_uncertainty.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/facility_uncertainty.iloc[i]['flow_2022_MGD'],
                                            state=facility_uncertainty.iloc[i]['state'],
                                            elec_GHG=facility_uncertainty.iloc[i]['kg_CO2_kWh'],
-                                           # TODO: update wage_adjustment
-                                           wage_adjustment=XXX)
+                                           # TODO: need test wage_adjustment
+                                           wage_adjustment=WRRF_input.iloc[i]['wage_quotient']/100)
     
     # if AD and AeD both exist, assume AeD (due to higher ash content) to be conservative
     if facility_uncertainty.iloc[i]['sludge_aerobic_digestion'] == 1:
@@ -2121,8 +2174,8 @@ for i in range(0, 2):
                                            ww_2_dry_sludge_ratio=Urbana_Champaign.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/Urbana_Champaign.iloc[i]['flow_2022_MGD'],
                                            state=Urbana_Champaign.iloc[i]['state'],
                                            elec_GHG=Urbana_Champaign.iloc[i]['kg_CO2_kWh'],
-                                           # TODO: update wage_adjustment
-                                           wage_adjustment=XXX)
+                                           # TODO: need test wage_adjustment
+                                           wage_adjustment=WRRF_input.iloc[i]['wage_quotient']/100)
     
     # if AD and AeD both exist, assume AeD (due to higher ash content) to be conservative
     if Urbana_Champaign.iloc[i]['sludge_aerobic_digestion'] == 1:
@@ -2239,8 +2292,8 @@ sys, barrel = create_geospatial_system(size=total_size,
                                        ww_2_dry_sludge_ratio=average_ww_2_dry_sludge_ratio,
                                        state=Urbana_Champaign.iloc[0]['state'],
                                        elec_GHG=Urbana_Champaign.iloc[0]['kg_CO2_kWh'],
-                                       # TODO: update wage_adjustment
-                                       wage_adjustment=XXX)
+                                       # TODO: need test wage_adjustment
+                                       wage_adjustment=WRRF_input.iloc[i]['wage_quotient']/100)
 
 model = create_geospatial_model(system=sys,
                                 sludge_ash=sludge_ash_values,
@@ -2467,8 +2520,8 @@ sys, barrel = create_geospatial_system(size=center_WRRF['flow_2022_MGD'],
                                        ww_2_dry_sludge_ratio=center_WRRF['total_sludge_amount_kg_per_year']/1000/365/center_WRRF['flow_2022_MGD'],
                                        state=center_WRRF['state'],
                                        elec_GHG=center_WRRF['kg_CO2_kWh'],
-                                       # TODO: update wage_adjustment
-                                       wage_adjustment=XXX)
+                                       # TODO: need test wage_adjustment
+                                       wage_adjustment=WRRF_input.iloc[i]['wage_quotient']/100)
 
 # if AD and AeD both exist, assume AeD (due to higher ash content) to be conservative
 if center_WRRF['sludge_aerobic_digestion'] == 1:
@@ -2595,8 +2648,8 @@ sys, barrel = create_geospatial_system(size=total_size,
                                        ww_2_dry_sludge_ratio=average_ww_2_dry_sludge_ratio,
                                        state=center_WRRF['state'],
                                        elec_GHG=center_WRRF['kg_CO2_kWh'],
-                                       # TODO: update wage_adjustment
-                                       wage_adjustment=XXX)
+                                       # TODO: need test wage_adjustment
+                                       wage_adjustment=WRRF_input.iloc[i]['wage_quotient']/100)
 
 model = create_geospatial_model(system=sys,
                                 sludge_ash=sludge_ash_values,
@@ -2808,8 +2861,8 @@ for size in np.linspace(2, 20, 10):
                                                ww_2_dry_sludge_ratio=1,
                                                state='US',
                                                elec_GHG=(WRRF_input['kg_CO2_kWh']*WRRF_input['total_sludge_amount_kg_per_year']).sum()/WRRF_input['total_sludge_amount_kg_per_year'].sum(),
-                                               # TODO: update wage_adjustment
-                                               wage_adjustment=XXX)
+                                               # TODO: need test wage_adjustment
+                                               wage_adjustment=WRRF_input.iloc[i]['wage_quotient']/100)
         
         model = create_geospatial_model(system=sys,
                                         sludge_ash=HM_sludge_ash_values,
