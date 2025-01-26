@@ -122,6 +122,12 @@ US_county_labor_cost['quotient'] = US_county_labor_cost['Annual Average Pay']/fl
 
 US_county_labor_cost = US_county_labor_cost[['Area\nCode','NAME','STATE','quotient','geometry']]
 
+US_county_labor_cost.to_file('/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/county_labor_cost_2022_processed.geojson')
+
+#%% visualization
+
+US_county_labor_cost = gpd.read_file('/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/county_labor_cost_2022_processed.geojson')
+
 color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', p, dp])
 
 fig, ax = plt.subplots(figsize=(30, 30))

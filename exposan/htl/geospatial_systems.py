@@ -183,7 +183,8 @@ def create_geospatial_system(# MGD
                              # 2022 electricty CI by balancing area based on the IEDO work (change year to 2022)
                              # note change 2020 in the IEDO code for balancing area to 2022
                              # kg CO2 eq/kWh
-                             elec_GHG=0.44
+                             elec_GHG=0.44,
+                             wage_adjustment=1,
                              ):
     
     flowsheet_ID = 'htl_geospatial'
@@ -530,6 +531,8 @@ def create_geospatial_system(# MGD
     # annual wage [$/year]
     wage = (0.34/labor_index[2014]*labor_index[2022]+\
             0.48/labor_index[2014]*labor_index[2022]*size*ww_2_dry_sludge_ratio/100)*10**6
+    
+    wage *= wage_adjustment
     
     # set income_tax_value = 0 to calculate net income
     create_tea(sys, IRR_value=0.03,

@@ -148,6 +148,14 @@ refinery = refinery.to_crs(crs='EPSG:3857')
 US = US.to_crs(crs='EPSG:3857')
 balnc_area = balnc_area.to_crs(crs='EPSG:3857')
 
+US_county_labor_cost = gpd.read_file('/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/county_labor_cost_2022_processed.geojson')
+
+WRRF = WRRF.sjoin_nearest(US_county_labor_cost)
+
+WRRF = WRRF.rename({'Area\nCode':'county_code',
+                    'NAME':'county',
+                    'quotient':'wage_quotient'}, axis=1)
+
 # TODO: check if this is still true, if true, leave it as it is
 # a small number of WRRFs fall outside the boundary of the contiguous U.S. a little bit
 # do not use sjoin for WRRFs, as this will remove those WRRFs
@@ -948,7 +956,9 @@ for i in range(0, len(WRRF_input)):
                                            aerobic_digestion=WRRF_input.iloc[i]['sludge_aerobic_digestion'],
                                            ww_2_dry_sludge_ratio=WRRF_input.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/WRRF_input.iloc[i]['flow_2022_MGD'],
                                            state=WRRF_input.iloc[i]['state'],
-                                           elec_GHG=WRRF_input.iloc[i]['kg_CO2_kWh'])
+                                           elec_GHG=WRRF_input.iloc[i]['kg_CO2_kWh'],
+                                           # TODO: update wage_adjustment
+                                           wage_adjustment=XXX)
     
     flowsheet = sys.flowsheet
     unit = flowsheet.unit
@@ -1687,7 +1697,9 @@ for i in range(0, len(facility_uncertainty)):
                                            aerobic_digestion=facility_uncertainty.iloc[i]['sludge_aerobic_digestion'],
                                            ww_2_dry_sludge_ratio=facility_uncertainty.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/facility_uncertainty.iloc[i]['flow_2022_MGD'],
                                            state=facility_uncertainty.iloc[i]['state'],
-                                           elec_GHG=facility_uncertainty.iloc[i]['kg_CO2_kWh'])
+                                           elec_GHG=facility_uncertainty.iloc[i]['kg_CO2_kWh'],
+                                           # TODO: update wage_adjustment
+                                           wage_adjustment=XXX)
     
     # if AD and AeD both exist, assume AeD (due to higher ash content) to be conservative
     if facility_uncertainty.iloc[i]['sludge_aerobic_digestion'] == 1:
@@ -2108,7 +2120,9 @@ for i in range(0, 2):
                                            aerobic_digestion=Urbana_Champaign.iloc[i]['sludge_aerobic_digestion'],
                                            ww_2_dry_sludge_ratio=Urbana_Champaign.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/Urbana_Champaign.iloc[i]['flow_2022_MGD'],
                                            state=Urbana_Champaign.iloc[i]['state'],
-                                           elec_GHG=Urbana_Champaign.iloc[i]['kg_CO2_kWh'])
+                                           elec_GHG=Urbana_Champaign.iloc[i]['kg_CO2_kWh'],
+                                           # TODO: update wage_adjustment
+                                           wage_adjustment=XXX)
     
     # if AD and AeD both exist, assume AeD (due to higher ash content) to be conservative
     if Urbana_Champaign.iloc[i]['sludge_aerobic_digestion'] == 1:
@@ -2224,7 +2238,9 @@ sys, barrel = create_geospatial_system(size=total_size,
                                        aerobic_digestion=None,
                                        ww_2_dry_sludge_ratio=average_ww_2_dry_sludge_ratio,
                                        state=Urbana_Champaign.iloc[0]['state'],
-                                       elec_GHG=Urbana_Champaign.iloc[0]['kg_CO2_kWh'])
+                                       elec_GHG=Urbana_Champaign.iloc[0]['kg_CO2_kWh'],
+                                       # TODO: update wage_adjustment
+                                       wage_adjustment=XXX)
 
 model = create_geospatial_model(system=sys,
                                 sludge_ash=sludge_ash_values,
@@ -2450,7 +2466,9 @@ sys, barrel = create_geospatial_system(size=center_WRRF['flow_2022_MGD'],
                                        aerobic_digestion=center_WRRF['sludge_aerobic_digestion'],
                                        ww_2_dry_sludge_ratio=center_WRRF['total_sludge_amount_kg_per_year']/1000/365/center_WRRF['flow_2022_MGD'],
                                        state=center_WRRF['state'],
-                                       elec_GHG=center_WRRF['kg_CO2_kWh'])
+                                       elec_GHG=center_WRRF['kg_CO2_kWh'],
+                                       # TODO: update wage_adjustment
+                                       wage_adjustment=XXX)
 
 # if AD and AeD both exist, assume AeD (due to higher ash content) to be conservative
 if center_WRRF['sludge_aerobic_digestion'] == 1:
@@ -2576,7 +2594,9 @@ sys, barrel = create_geospatial_system(size=total_size,
                                        aerobic_digestion=None,
                                        ww_2_dry_sludge_ratio=average_ww_2_dry_sludge_ratio,
                                        state=center_WRRF['state'],
-                                       elec_GHG=center_WRRF['kg_CO2_kWh'])
+                                       elec_GHG=center_WRRF['kg_CO2_kWh'],
+                                       # TODO: update wage_adjustment
+                                       wage_adjustment=XXX)
 
 model = create_geospatial_model(system=sys,
                                 sludge_ash=sludge_ash_values,
@@ -2787,7 +2807,9 @@ for size in np.linspace(2, 20, 10):
                                                aerobic_digestion=None,
                                                ww_2_dry_sludge_ratio=1,
                                                state='US',
-                                               elec_GHG=(WRRF_input['kg_CO2_kWh']*WRRF_input['total_sludge_amount_kg_per_year']).sum()/WRRF_input['total_sludge_amount_kg_per_year'].sum())
+                                               elec_GHG=(WRRF_input['kg_CO2_kWh']*WRRF_input['total_sludge_amount_kg_per_year']).sum()/WRRF_input['total_sludge_amount_kg_per_year'].sum(),
+                                               # TODO: update wage_adjustment
+                                               wage_adjustment=XXX)
         
         model = create_geospatial_model(system=sys,
                                         sludge_ash=HM_sludge_ash_values,
