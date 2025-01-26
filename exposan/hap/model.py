@@ -295,11 +295,33 @@ def spearman(mdl=None, seed=None):
     return rho, p
 
 #%%
+# import numpy as np
+# def get_purity(mdl=None, seed=None):
+#     if mdl is None:
+#         mdl = create_model()
+#         smp = load_data(ospath.join(results_path, f'table_{seed}.xlsx'),
+#                         header=[0,1], skiprows=[2,])
+#     else:
+#         smp = mdl.table
+#     purity = []
+#     sys = mdl.system
+#     s = sys.flowsheet.stream
+#     for row in smp.iloc[:, :len(mdl.parameters)].to_numpy():
+#         for p,v in zip(mdl.parameters, row):
+#             p.setter(v)
+#         mdl.system.simulate()
+#         purity.append(s.product.imass['HAP']/s.product.F_mass)
+#     return np.array(purity)
+
+# purity = get_purity(seed=939)
+
+
+#%%
 if __name__ == '__main__':
     # N = 2000
     # seed = None
     # mdl = run_model(N=N, seed=seed)
     # rerun_failed_samples(mdl)
     # r, p = spearman(mdl)
-    # rerun_failed_samples(seed=983)
-    r, p = spearman(seed=983)
+    # rerun_failed_samples(seed=939)
+    r, p = spearman(seed=939)

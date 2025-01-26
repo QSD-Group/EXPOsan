@@ -30,27 +30,27 @@ flierprops = dict(marker='.', markersize=2, markerfacecolor='#4e4e4e')
 medianprops = dict(color='black')
 
 # _market_prices={            # USD/kg
-#     'low range': [136,      # puriss https://www.sigmaaldrich.com/US/en/product/sial/04238
-#                   194],     # purum  https://www.sigmaaldrich.com/US/en/product/sial/21223
+#     'low range': [140,      # puriss https://www.sigmaaldrich.com/US/en/product/sial/04238
+#                   200],     # purum  https://www.sigmaaldrich.com/US/en/product/sial/21223
 #     'high range': [4000,    # https://www.sigmaaldrich.com/US/en/product/aldrich/900203
 #                    9600]    # https://www.sigmaaldrich.com/US/en/product/aldrich/677418
 # 'wholesale': [
 #     20,  # +shipping https://zebragoherb.en.made-in-china.com/product/FBYxcZOoykrb/China-Wholesale-Price-20nm-Hydroxyapatite-for-Bone-Substitutes.html
 #     35, # FOB, https://www.echemi.com/produce/pr2304241632-wholesale-price-high-purity-hydroxyapatite-calcium-hydroxyapatite-cas-1306-06-5.html
 #     50,  # not including shipping https://www.alibaba.com/product-detail/Factory-Supply-Favorable-Price-Nano-Hydroxyapatite_1600292911748.html
-#     52.7, # UK or Germany, https://www.glentham.com/en/products/product/GX1336/
-#     22+72, # https://www.alibaba.com/product-detail/Wholesale-Price-Cosmetic-Grade-Nano-Micron_1600874926680.html
+#     55.90, # UK or Germany, https://www.glentham.com/en/products/product/GX1336/
+#     62.02, # https://www.alibaba.com/product-detail/Wholesale-Price-Cosmetic-Grade-Nano-Micron_1600874926680.html
+#     104, # https://www.alibaba.com/product-detail/Newgreen-Wholesale-Price-Nano-Hydroxyapatite-Powder_1600872784942.html
 #     140.65, # not bulk, https://www.fishersci.com/shop/products/hydroxylapatite-analysis-thermo-scientific/AC371260010
 #     150, # +shipping https://www.alibaba.com/product-detail/high-purity-plants-hydroxyapatite-price-CAS_1600320017710.html
-#     84+72, # https://www.alibaba.com/product-detail/Newgreen-Wholesale-Price-Nano-Hydroxyapatite-Powder_1600872784942.html
-#     330, # +shipping https://www.alibaba.com/product-detail/JHD-Best-Price-Cosmetic-Grade-Calcium_1600985151230.html
 #     ] 
 #     }
 
 def plot_mpsp(data=None, seed=None, save=True, 
               # market_ranges=[[136, 194], [4000, 9600]],
-              market_ranges=[[80, 198], [660, 1260]],  # high range from Matexcel quotes
-              # market_ranges=[[80, 156]],              
+              market_ranges=[[20, 188],     # include oversea, wholesale (shipping excluded) & domestic, retail, food grade (> 95% purity)
+                             [830, 13e3]    # medical grade only, > 99% purity
+                             ],  # high range from Matexcel Medical grade https://www.matexcel.com/hydroxyapatite.html?page=1
               single_values=[50, 170]):
     if data is None:
         data = load_data(ospath.join(results_path, f'table_{seed}.xlsx'),
@@ -58,7 +58,7 @@ def plot_mpsp(data=None, seed=None, save=True,
                          # nrows=2002)
     mpsp = data.loc[:,  ('TEA', 'MPSP [USD/kg]')]
     # mpsp = np.random.rand(100) * 100
-    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(2,6), height_ratios=[1,2])
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(2,6), height_ratios=[1,2.5])
     fig.subplots_adjust(left=0.3, hspace=0.05)
     for ll, ul in market_ranges:
         ax1.axhspan(ll, ul, alpha=0.3, fill=True, facecolor='#4e4e4e')
@@ -79,8 +79,8 @@ def plot_mpsp(data=None, seed=None, save=True,
                 )
     # ax1.set_ylim(91, 11000)
     ax1.set_yscale('log')
-    ax1.set_ylim(55, 2000)
-    ax2.set_ylim(0, 55)
+    ax1.set_ylim(65, 20000)
+    ax2.set_ylim(0, 65)
     for ax in (ax1, ax2):
         ax.tick_params(axis='y', which='major', direction='inout', length=10, 
                        labelsize=13)
@@ -277,8 +277,8 @@ def plot_sensitivity(seed=None, save=True):
 
 #%%
 if __name__ == '__main__':
-    seed = 983
-    plot_mpsp(seed=seed)
+    seed = 939
+    # plot_mpsp(seed=seed)
     # plot_npv_breakdown(seed=seed)
     # plot_unified_breakdown(seed=seed)
-    # plot_sensitivity(seed)
+    plot_sensitivity(seed)
