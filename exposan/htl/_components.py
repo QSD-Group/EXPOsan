@@ -389,6 +389,9 @@ def create_components(set_thermo=True):
     Urea = Component('Urea', search_ID='57-13-6', phase='s', particle_size='Soluble',
                      degradability='Slowly', organic=True)
     
+    MEA = Component('MEA', search_ID='141-43-5', phase='l', particle_size='Soluble',
+                    degradability='Slowly', organic=True)
+    
     cmps = Components([Sludge_lipid, Sludge_protein, Sludge_carbo, Sludge_ash,
                        Struvite, Hydrochar, Residual,
                        Biocrude, HTLaqueous, H2O, C, N, P,
@@ -402,7 +405,8 @@ def create_components(set_thermo=True):
                        OTTFSN, C7BENZ, C8BENZ, C10H16O4, C15H32, C16H34,
                        C17H36, C18H38, C19H40, C20H42, C21H44,
                        TRICOSANE, C24H38O4, C26H42O4, C30H62, Gasoline, Diesel,
-                       CHG_catalyst, HT_catalyst, HC_catalyst, Membrane, Urea])
+                       CHG_catalyst, HT_catalyst, HC_catalyst,
+                       Membrane, Urea, MEA])
     
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):

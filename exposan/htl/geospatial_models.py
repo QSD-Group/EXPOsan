@@ -86,7 +86,6 @@ def create_geospatial_model(system=None,
     H1 = unit.H1
     HTL = unit.HTL
     CHG = unit.CHG
-    MemDis = unit.MemDis
     CHP = unit.CHP
     F1 = unit.F1
     P1 = unit.P1
@@ -98,8 +97,6 @@ def create_geospatial_model(system=None,
     # TODO: update this one in other HTL models, which might have CHG_catalyst_in = CHG.ins[1]
     virgin_CHG_catalyst = stream.virgin_CHG_catalyst
     NaOH = stream.NaOH
-    membrane_in = stream.membrane_in
-    ammonium_sulfate = stream.ammonium_sulfate
     biocrude = stream.biocrude
     natural_gas = stream.natural_gas
     solid_ash = stream.solid_ash
@@ -483,99 +480,6 @@ def create_geospatial_model(system=None,
         CHG.gas_C_2_total_C=i
     
     # =========================================================================
-    # MemDis
-    # =========================================================================
-    dist = shape.Uniform(7.91,8.41)
-    @param(name='influent_pH',
-           element=MemDis,
-           kind='coupled',
-           units='-',
-           baseline=8.16,
-           distribution=dist)
-    def set_influent_pH(i):
-        MemDis.influent_pH=i
-    
-    dist = shape.Uniform(10,11.8)
-    @param(name='target_pH',
-           element=MemDis,
-           kind='coupled',
-           units='-',
-           baseline=10,
-           distribution=dist)
-    def set_MemDis_target_pH(i):
-        MemDis.target_pH=i
-    
-    dist = shape.Uniform(0.00075,0.000917)
-    @param(name='m2_2_m3',
-           element=MemDis,
-           kind='coupled',
-           units='-',
-           baseline=1/1200,
-           distribution=dist)
-    def set_m2_2_m3(i):
-        MemDis.m2_2_m3=i
-    
-    dist = shape.Uniform(0.0000205,0.0000251)
-    @param(name='Dm',
-           element=MemDis,
-           kind='coupled',
-           units='m2/s',
-           baseline=0.0000228,
-           distribution=dist)
-    def set_Dm(i):
-        MemDis.Dm=i
-    
-    dist = shape.Uniform(0.81,0.99)
-    @param(name='porosity',
-           element=MemDis,
-           kind='coupled',
-           units='-',
-           baseline=0.9,
-           distribution=dist)
-    def set_porosity(i):
-        MemDis.porosity=i
-    
-    dist = shape.Uniform(0.000063,0.000077)
-    @param(name='thickness',
-           element=MemDis,
-           kind='coupled',
-           units='m',
-           baseline=0.00007,
-           distribution=dist)
-    def set_thickness(i):
-        MemDis.thickness=i
-    
-    dist = shape.Uniform(1.08,1.32)
-    @param(name='tortuosity',
-           element=MemDis,
-           kind='coupled',
-           units='-',
-           baseline=1.2,
-           distribution=dist)
-    def set_tortuosity(i):
-        MemDis.tortuosity=i
-    
-    dist = shape.Uniform(0.0000158,0.0000193)
-    @param(name='Ka',
-           element=MemDis,
-           kind='coupled',
-           units='-',
-           baseline=0.0000175,
-           distribution=dist)
-    def set_Ka(i):
-        MemDis.Ka=i
-    
-    dist = shape.Uniform(5.409,6.611)
-    @param(name='capacity',
-           element=MemDis,
-           kind='coupled',
-           units='-',
-           baseline=6.01,
-           distribution=dist)
-    def set_capacity(i):
-        MemDis.capacity=i
-    
-    # =========================================================================
     # TEA
     # =========================================================================
     dist = shape.Triangle(0.6,1,1.4)
@@ -640,31 +544,6 @@ def create_geospatial_model(system=None,
            distribution=dist)
     def set_NaOH_price(i):
         NaOH.price=i
-    
-    ammonium_sulfate_price_min = 0.22
-    ammonium_sulfate_price_max = 0.32
-    ammonium_sulfate_price_ave = 0.2825
-    dist = shape.Triangle(ammonium_sulfate_price_min,ammonium_sulfate_price_ave,ammonium_sulfate_price_max)
-    @param(name='ammonium sulfate price',
-           element='TEA',
-           kind='isolated',
-           units='$/kg',
-           baseline=ammonium_sulfate_price_ave,
-           distribution=dist)
-    def set_ammonium_sulfate_price(i):
-        ammonium_sulfate.price=i
-    
-    membrane_price = 90/GDPCTPI[2008]*GDPCTPI[2022]
-    dist = shape.Uniform(membrane_price*0.9,membrane_price*1.1)
-    @param(name='membrane price',
-           element='TEA',
-           kind='isolated',
-           units='$/kg',
-           baseline=membrane_price,
-           distribution=dist)
-    def set_membrane_price(i):
-        MemDis.membrane_price=i
-        membrane_in.price=i
     
     CHG_catalyst_price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2022]
     dist = shape.Triangle(CHG_catalyst_price*0.5,CHG_catalyst_price,CHG_catalyst_price*2)
@@ -847,22 +726,6 @@ def create_geospatial_model(system=None,
         @metric(name='CHG_gas_C', units='kg/hr', element='Sankey')
         def get_CHG_gas_C():
             return sum(F1.outs[0].mass*[cmp.i_C for cmp in cmps])
-    
-        @metric(name='ammoniumsulfate_N', units='kg/hr', element='Sankey')
-        def get_ammoniumsulfate_N():
-            return MemDis.outs[0].F_mass*14.0067*2/132.14
-        
-        @metric(name='MemDis_ww_C', units='kg/hr', element='Sankey')
-        def get_MemDis_ww_C():
-            return MemDis.outs[1].imass['C']
-        
-        @metric(name='MemDis_ww_N', units='kg/hr', element='Sankey')
-        def get_MemDis_ww_N():
-            return MemDis.outs[1].imass['N']
-        
-        @metric(name='MemDis_ww_P', units='kg/hr', element='Sankey')
-        def get_MemDis_ww_P():
-            return MemDis.outs[1].imass['P']
         
         # energy flow
         @metric(name='sludge_HHV', units='MJ/kg', element='Sankey')
@@ -900,7 +763,7 @@ def create_geospatial_model(system=None,
         
         @metric(name='nitrogen_TIC', units='$', element='TEA')
         def get_nitrogen_TIC():
-            return MemDis.installed_cost+H2SO4_Tank.installed_cost
+            return H2SO4_Tank.installed_cost
         
         @metric(name='HXN_TIC', units='$', element='TEA')
         def get_HXN_TIC():
@@ -937,10 +800,6 @@ def create_geospatial_model(system=None,
         @metric(name='NaOH_VOC', units='$/yr', element='TEA')
         def get_NaOH_VOC():
             return NaOH.cost*sys.operating_hours
-        
-        @metric(name='membrane_VOC', units='$/yr', element='TEA')
-        def get_membrane_VOC():
-            return membrane_in.cost*sys.operating_hours
         
         @metric(name='utility_VOC', units='$/yr', element='TEA')
         def get_utility_VOC():
