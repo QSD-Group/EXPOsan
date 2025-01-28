@@ -31,7 +31,7 @@ def create_components(set_thermo=True):
         for attr in ('HHV', 'LHV', 'Hf'):
             if getattr(i, attr) is None: setattr(i, attr, 0)
 
-    cmps.compile()
+    cmps.compile(ignore_inaccurate_molar_weight=True)
     
     cmps.set_alias('H2O', 'Water')
     cmps.set_alias('MgOH2', 'MagnesiumHydroxide')
