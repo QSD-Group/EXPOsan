@@ -332,7 +332,7 @@ class Humidifier(SanUnit):
         mixture.mix_from(self.ins)
 
 # =============================================================================
-# Struvite Precipitation
+# StruvitePrecipitation
 # =============================================================================
 
 class StruvitePrecipitation(Reactor):
@@ -503,7 +503,7 @@ class UreaSynthesis(SanUnit):
      J. Phys. Energy 2023, 6 (1), 015013. https://doi.org/10.1088/2515-7655/ad0ee6.
     '''
     _N_ins = 2
-    _N_outs = 3
+    _N_outs = 4
     _units= {'Production capacity': 'kg/h'}
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
@@ -520,21 +520,27 @@ class UreaSynthesis(SanUnit):
     def _run(self):
         
         ammonia, carbon_dioxide = self.ins
-        urea, water, waste = self.outs
+        urea, water, waste, excess_carbon_dioxide = self.outs
         
         NH3_CO2_molar_ratio = (self.ratio - (self.ratio - 2*self.efficiency)*(1-self.loss))/\
                               (1 - (1 - self.efficiency)*(1-self.loss))
         
-        ammonia.imass['NH3'] = carbon_dioxide.imss['CO2']/44.009*NH3_CO2_molar_ratio*17.031
         
-        urea.imass['Urea'] = carbon_dioxide.imss['CO2']/44.009*self.efficiency/\
+        # TODO: update here, if NH3 is excess, sell it as anhydrous ammonia, if CO2 is excess, release it
+        # ammonia.imass['NH3'] = carbon_dioxide.imass['CO2']/44.009*NH3_CO2_molar_ratio*17.031
+        
+        required_CO2 = ammonia.imass['NH3']/17.031/NH3_CO2_molar_ratio*44.009
+        
+        urea.imass['Urea'] = required_CO2/44.009*self.efficiency/\
                              (1 - (1 - self.efficiency)*(1-self.loss))*60.06
-        water.imass['H2O'] = carbon_dioxide.imss['CO2']/44.009*self.efficiency/\
+        water.imass['H2O'] = required_CO2/44.009*self.efficiency/\
                              (1 - (1 - self.efficiency)*(1-self.loss))*18.01528
-        waste.imass['NH3'] = carbon_dioxide.imss['CO2']/44.009*(self.ratio - 2*self.efficiency)*\
+        waste.imass['NH3'] = required_CO2/44.009*(self.ratio - 2*self.efficiency)*\
                              self.loss/(1 - (1 - self.efficiency)*(1-self.loss))*17.031
-        waste.imass['CO2'] = carbon_dioxide.imss['CO2']/44.009*(1 - self.efficiency)*\
+        waste.imass['CO2'] = required_CO2/44.009*(1 - self.efficiency)*\
                              self.loss/(1 - (1 - self.efficiency)*(1-self.loss))*44.009
+        
+        excess_carbon_dioxide.imass['CO2'] = carbon_dioxide.imass['CO2'] - required_CO2
         
         # convert 0.18 MWh/tonne-urea and 0.95 MWh/tonne-urea to kW
         self.power_utility.consumption = (0.18 + 0.95)*1000/1000*urea.imass['urea']
@@ -1005,4 +1011,280 @@ class S2WS(SanUnit):
         try:
             outlet.copy_like(inlet)
         except TypeError:
-            outlet.imass['H2O'] = inlet.F_mass
+            outlet.imass['NH3'] = inlet.F_mass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# =============================================================================
+# UANSynthesis
+# =============================================================================
+
+# TODO: need test
+
+# TODO: add a mixer or storage tank to produce UAN (make this a subclass of Reactor?)
+# assume the cost in the reference paper is 2022 dollar
+# the installed cost is already included, so BM=1
+@cost(basis='Urea Production capacity', ID='Urea synthesizer', units='kg/h',
+      cost=4050000, S=1000*1000/365/24,
+      CE=CEPCI_by_year[2022], n=0.58, BM=1)
+class UANSynthesis(SanUnit):
+    '''
+    A black box model of urea synthesis based on [1].
+    
+    Parameters
+    ----------
+    ins : Iterable(stream)
+        ammonia, carbon_dioxide, nitric_acid.
+    outs : Iterable(stream)
+        UAN, water, waste.
+    ratio: float
+        The overall ratio between NH3 and CO2 as reactants (after considering
+        recycling of unconverted reactants).
+    efficiency: float
+        The overall conversion efficiency (after considering recycling of
+        unconverted reactants) of CO2 to urea.
+    loss: float
+        The loss ratio of unconverted reactants before recycling.
+    
+    References
+    ----------
+    [1] Palys, M. J.; Daoutidis, P. Techno-Economic Optimization of Renewable
+     Urea Production for Sustainable Agriculture and CO2 Utilization.
+     J. Phys. Energy 2023, 6 (1), 015013. https://doi.org/10.1088/2515-7655/ad0ee6.
+    '''
+    _N_ins = 3
+    _N_outs = 4
+    _units= {'Urea Production capacity': 'kg/h'}
+    
+    # TODO: add a mixer as an auxiliary unit
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+                 # TODO: add uncertainty to the following parameters with citations
+                 ratio=3.5, # 3-4, Uniform
+                 efficiency=0.8, # 0.7-0.9, Uniform
+                 loss=0.02): # 0.01-0.03, Uniform
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.ratio = ratio
+        self.efficiency = efficiency
+        self.loss = loss
+
+    def _run(self):
+        
+        ammonia, carbon_dioxide, nitric_acid = self.ins
+        UAN, water, waste, excess_carbon_dioxide = self.outs
+        
+        NH3_CO2_molar_ratio = (self.ratio - (self.ratio - 2*self.efficiency)*(1-self.loss))/\
+                              (1 - (1 - self.efficiency)*(1-self.loss))
+        
+        
+        # TODO: update here, if NH3 is excess, sell it as anhydrous ammonia, if CO2 is excess, release it
+        # ammonia.imass['NH3'] = carbon_dioxide.imass['CO2']/44.009*NH3_CO2_molar_ratio*17.031
+        
+        # TODO: update if needed
+        ammonia_to_urea = ammonia.imass['NH3']*0.5
+        ammonia_to_ammonium_nitrate = ammonia.imass['NH3']*0.5
+        
+        nitric_acid.imass['HNO3'] = ammonia_to_ammonium_nitrate/17.031*63.01
+        
+        required_CO2 = ammonia_to_urea/17.031/NH3_CO2_molar_ratio*44.009
+        
+        urea_amount = required_CO2/44.009*self.efficiency/\
+                      (1 - (1 - self.efficiency)*(1-self.loss))*60.06
+        water.imass['H2O'] = required_CO2/44.009*self.efficiency/\
+                             (1 - (1 - self.efficiency)*(1-self.loss))*18.01528
+        urea_NH3_wasted = required_CO2/44.009*(self.ratio - 2*self.efficiency)*\
+                          self.loss/(1 - (1 - self.efficiency)*(1-self.loss))*17.031
+        waste.imass['CO2'] = required_CO2/44.009*(1 - self.efficiency)*\
+                             self.loss/(1 - (1 - self.efficiency)*(1-self.loss))*44.009
+        
+        excess_carbon_dioxide.imass['CO2'] = carbon_dioxide.imass['CO2'] - required_CO2
+        
+        ammonia_urea_efficiency = (ammonia_to_urea - urea_NH3_wasted)/ammonia_to_urea
+        
+        waste.imass['NH3'] = urea_NH3_wasted*2
+        
+        ammonium_nitrate_amount = ammonia_to_ammonium_nitrate*ammonia_urea_efficiency/17.031*80.043
+        
+        waste.imass['HNO3'] = nitric_acid.imass['HNO3']*(1-ammonia_urea_efficiency)
+        
+        UAN.imass['UAN'] = urea_amount + ammonium_nitrate_amount
+        
+        # convert 0.18 MWh/tonne-urea and 0.95 MWh/tonne-urea to kW
+        self.power_utility.consumption = (0.18 + 0.95)*1000/1000*urea_amount
+    
+    def _design(self):
+        
+        Design = self.design_results
+        Design['Urea Production capacity'] = self.outs[0].F_mass
+
+
+
+
+
+
+
+# =============================================================================
+# DAPSynthesis
+# =============================================================================
+
+class DAPSynthesis(Reactor):
+    '''
+    Synthesize DAP through pH adjustment.
+    
+    Parameters
+    ----------
+    ins : Iterable(stream)
+        P_solution, base, ammonia.
+    outs : Iterable(stream)
+        DAP, excess_ammonia, effluent.
+    target_pH: float
+        Target pH for struvite precipitation.
+    Mg_P_ratio: float
+        mol(Mg) to mol(P) ratio.   
+    P_pre_recovery_ratio: float
+        Ratio of phosphorus that can be precipitated out.
+    '''
+    _N_ins = 3
+    _N_outs = 2
+    _F_BM_default = {**Reactor._F_BM_default}
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                  init_with='WasteStream', 
+                  target_pH = 11.25, # TODO: update if needed, 11.25 is 2 units higher than the pKa of NH3
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+                  P_pre_recovery_ratio=0.828, # TODO: see StruvitePrecipitation, update if needed
+                  
+                  P=None, tau=1, V_wf=0.8, # TODO: see StruvitePrecipitation, update if needed
+                  length_to_diameter=2, N=1, V=20, auxiliary=False,
+                  mixing_intensity=None, kW_per_m3=0, # use MixTank default value # TODO: does this mean even setting 0 here, there is still electricty
+                  wall_thickness_factor=1,
+                  vessel_material='Carbon steel', # basic condition
+                  vessel_type='Vertical'):
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.target_pH = target_pH
+
+        
+        self.P_pre_recovery_ratio = P_pre_recovery_ratio
+
+        
+        self.P = P
+        self.tau = tau
+        self.V_wf = V_wf
+        self.length_to_diameter = length_to_diameter
+        self.N = N
+        self.V = V
+        self.auxiliary = auxiliary
+        self.mixing_intensity = mixing_intensity
+        self.kW_per_m3 = kW_per_m3
+        self.wall_thickness_factor = wall_thickness_factor
+        self.vessel_material = vessel_material
+        self.vessel_type = vessel_type
+    
+        
+    def _run(self):
+        
+        P_solution, base, ammonia = self.ins
+        DAP, excess_ammonia, effluent = self.outs
+        
+        
+        
+        # TODO: step 1: adjust pH
+        # TODO: step 2: crystallization
+        # TODO: step 3: drying
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        self.HTLmixer = self.ins[0]._source
+        
+        if self.HTLmixer.outs[0].imass['P'] == 0:
+            effluent.copy_like(mixture)
+        else:
+            old_pH = self.HTLmixer.pH
+            if old_pH > 9:
+                base.imass['MgO'] = 0
+            elif old_pH >= 7:
+                OH_M = 10**(old_pH-14)
+                OH_M_needed = 10**(self.target_pH-14) - OH_M
+                base.imass['MgO'] = OH_M_needed/2 * 40.3044/1000*self.ins[0].F_vol*1000
+            else:
+                neutral_OH_M = 10**(-old_pH)
+                to_target_OH_M = 10**(self.target_pH - 14)
+                OH_M_needed = neutral_OH_M + to_target_OH_M
+                base.imass['MgO'] = OH_M_needed/2 * 40.3044/1000*self.ins[0].F_vol*1000
+            
+            supply_MgCl2.imass['MgCl2'] = max((mixture.imass['P']/30.973762*self.Mg_P_ratio -\
+                                            base.imass['MgO']/40.3044)*95.211, 0)
+    
+            if mixture.imass['P']/30.973762 > mixture.imass['N']*self.HTLaqueous_NH3_N_2_total_N/14.0067:
+            # if P > N, add NH4Cl to make sure N ≥ P
+                supply_NH4Cl.imass['NH4Cl'] = (mixture.imass['P']/30.973762 - mixture.imass['N']*\
+                                                self.HTLaqueous_NH3_N_2_total_N/14.0067)*53.491
+
+            struvite.imass['Struvite'] = mixture.imass['P']*\
+                                          self.P_pre_recovery_ratio/\
+                                          30.973762*245.41
+            supply_MgCl2.phase = supply_NH4Cl.phase = base.phase = 's'
+            
+            effluent.copy_like(mixture)
+            effluent.imass['P'] -= struvite.imass['Struvite']*30.973762/245.41
+            effluent.imass['N'] += supply_NH4Cl.imass['NH4Cl']*14.0067/53.491 -\
+                                    struvite.imass['Struvite']*14.0067/245.41
+            effluent.imass['H2O'] = self.F_mass_in - struvite.F_mass -\
+                                    effluent.imass['C'] - effluent.imass['N'] -\
+                                    effluent.imass['P']
+            struvite.phase = 's'    
+                
+            struvite.T = mixture.T
+            effluent.T = mixture.T
+        
+    @property
+    def struvite_P(self):
+        return self.outs[0].imass['Struvite']*30.973762/245.41
+
+    @property
+    def struvite_N(self):
+        return self.struvite_P*14.0067/30.973762
+
+    def _design(self):
+        self.N = ceil(self.HTLmixer.ins[0]._source.WWTP.ins[0].F_vol*2/788.627455/self.V)
+        # 2/788.627455 m3 reactor/m3 wastewater/h (50 MGD ~ 20 m3)
+        self.P = self.ins[0].P
+        Reactor._design(self)

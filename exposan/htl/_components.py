@@ -386,11 +386,21 @@ def create_components(set_thermo=True):
     add_V_from_rho(Membrane, 1500)
     Membrane.copy_models_from(Chemical('CaCO3'),('Cn',))
     
+    MEA = Component('MEA', search_ID='141-43-5', phase='l', particle_size='Soluble',
+                    degradability='Slowly', organic=True)
+    
     Urea = Component('Urea', search_ID='57-13-6', phase='s', particle_size='Soluble',
                      degradability='Slowly', organic=True)
     
-    MEA = Component('MEA', search_ID='141-43-5', phase='l', particle_size='Soluble',
-                    degradability='Slowly', organic=True)
+    HNO3 = Component('HNO3', search_ID='7697-37-2', phase='l', particle_size='Soluble',
+                     degradability='Undegradable', organic=False)
+    
+    UAN = Component('UAN', formula='CH6N4O4', phase='s', particle_size='Soluble',
+                     degradability='Slowly', organic=True)
+    # TODO: update if needed
+    UAN.copy_models_from(Chemical('Urea'),('Cn',))
+    # TODO: update if needed
+    add_V_from_rho(UAN, 1300)
     
     cmps = Components([Sludge_lipid, Sludge_protein, Sludge_carbo, Sludge_ash,
                        Struvite, Hydrochar, Residual,
@@ -406,7 +416,7 @@ def create_components(set_thermo=True):
                        C17H36, C18H38, C19H40, C20H42, C21H44,
                        TRICOSANE, C24H38O4, C26H42O4, C30H62, Gasoline, Diesel,
                        CHG_catalyst, HT_catalyst, HC_catalyst,
-                       Membrane, Urea, MEA])
+                       Membrane, MEA, Urea, HNO3, UAN])
     
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):

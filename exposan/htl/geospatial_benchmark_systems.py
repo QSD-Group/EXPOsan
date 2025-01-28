@@ -7,8 +7,6 @@ Created on Mon Jun 5 08:46:28 2023
 
 Note the word 'sludge' in this file refers to either sludge or biosolids.
 
-# TODO: update references
-
 References:
 [1] Snowden-Swan, L. J.; Li, S.; Thorson, M. R.; Schmidt, A. J.; Cronin, D. J.;
     Zhu, Y.; Hart, T. R.; Santosa, D. M.; Fox, S. P.; Lemmon, T. L.; Swita, M. S.
@@ -75,6 +73,7 @@ References:
 # TODO 4: add urea ammonium nitrate (UAN) recovery: can use the 'reactor' class to produce ammonium nitrate first, then mixing with urea
 # TODO 5: add phosphorus extraction from hydrochar: use the previous model
 # TODO 6: add diammonium sulfate (DAP) recovery: can use the 'reactor' class, similar to StruvitePrecipitation
+# TODO 7: add carbon capture and utilization (CCU)
 # TODO 8: add N & P fertilizers offsets
 # TODO 9: add material costs & CI as contextural parameters whenenever possible
 
@@ -82,10 +81,10 @@ import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
 from qsdsan.utils import auom, clear_lca_registries
 from exposan.htl import _load_components, create_tea, state_income_tax_rate_2022, _sanunits as su
-from biosteam.units import IsenthalpicValve, Stripper, Splitter
+from biosteam.units import IsenthalpicValve
 from biosteam import settings
 
-__all__ = ('create_geospatial_system','biocrude_density')
+__all__ = ('create_geospatial_benchmark_system','biocrude_density')
 
 # kg/m3, [1]
 biocrude_density = 980
@@ -160,33 +159,33 @@ def _load_process_settings(location='IL'):
     bst.PowerUtility.price = elec[elec['state']==location]['price'].iloc[0]/100
 
 # for parameters, unless otherwise stated, refer to the original HTL system model
-def create_geospatial_system(# MGD
-                             size=10,
-                             # 0: no; 1: yes
-                             sludge_transportation=0,
-                             # in km, this is the slduge transportation total
-                             # distance (normalized to total sludge amount)
-                             sludge_distance=100,
-                             # km
-                             biocrude_distance=100,
-                             # average values below are for sludge aggregation analyses
-                             average_sludge_dw_ash=None,
-                             average_sludge_afdw_lipid=None,
-                             average_sludge_afdw_protein=None,
-                             # 0: no; 1: yes
-                             anaerobic_digestion=0,
-                             # 0: no; 1: yes
-                             aerobic_digestion=0,
-                             # dry tonne sludge/day/MGD raw wastewater
-                             ww_2_dry_sludge_ratio=1,
-                             state='IL',
-                             # TODO: this might be predicted 2022 values, if there is a calculated one, use that one
-                             # 2022 electricty CI by balancing area based on the IEDO work (change year to 2022)
-                             # note change 2020 in the IEDO code for balancing area to 2022
-                             # kg CO2 eq/kWh
-                             elec_GHG=0.44,
-                             wage_adjustment=1,
-                             ):
+def create_geospatial_benchmark_system(# MGD
+                                       size=10,
+                                       # 0: no; 1: yes
+                                       sludge_transportation=0,
+                                       # in km, this is the slduge transportation total
+                                       # distance (normalized to total sludge amount)
+                                       sludge_distance=100,
+                                       # km
+                                       biocrude_distance=100,
+                                       # average values below are for sludge aggregation analyses
+                                       average_sludge_dw_ash=None,
+                                       average_sludge_afdw_lipid=None,
+                                       average_sludge_afdw_protein=None,
+                                       # 0: no; 1: yes
+                                       anaerobic_digestion=0,
+                                       # 0: no; 1: yes
+                                       aerobic_digestion=0,
+                                       # dry tonne sludge/day/MGD raw wastewater
+                                       ww_2_dry_sludge_ratio=1,
+                                       state='IL',
+                                       # TODO: this might be predicted 2022 values, if there is a calculated one, use that one
+                                       # 2022 electricty CI by balancing area based on the IEDO work (change year to 2022)
+                                       # note change 2020 in the IEDO code for balancing area to 2022
+                                       # kg CO2 eq/kWh
+                                       elec_GHG=0.44,
+                                       wage_adjustment=1,
+                                       ):
     
     flowsheet_ID = 'htl_geospatial'
     
@@ -203,7 +202,7 @@ def create_geospatial_system(# MGD
     _load_process_settings(location=state)
     
     # =========================================================================
-    # pretreatment
+    # pretreatment (Area 000)
     # =========================================================================
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
@@ -283,7 +282,7 @@ def create_geospatial_system(# MGD
                         init_with='Stream')
     
     # =========================================================================
-    # HTL
+    # HTL (Area 100)
     # =========================================================================
     H1 = qsu.HXutility(ID='H1',
                        ins=P1-0,
@@ -301,12 +300,21 @@ def create_geospatial_system(# MGD
                                        mositure_adjustment_exist_in_the_system=False)
     
     # =========================================================================
-    # CHG
+    # CHG (Area 200)
     # =========================================================================
+    H2SO4_Tank = qsu.StorageTank(ID='H2SO4_Tank',
+                                 ins='H2SO4',
+                                 outs=('H2SO4_out'),
+                                 init_with='WasteStream',
+                                 tau=24,
+                                 vessel_material='Stainless steel')
+    # 0.5 M H2SO4: ~5%
+    # based on 93% H2SO4 and fresh water (dilute onsite to 5%) prices in [6]
+    H2SO4_Tank.ins[0].price = (0.043*1+0.0002*(93/5-1))/(93/5)/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
     M1 = su.HTLmixer(ID='M1',
                      ins=(HTL-1, ''),
-                     outs='mixture')
+                     outs=('mixture',))
     
     # TODO: add the following note to other HTL systems
     # 7.8%_Ru/C and 7.8%_Ru/C_out are not valid names; they are not in sys.flowsheet.stream but the price and LCA are included
@@ -330,117 +338,21 @@ def create_geospatial_system(# MGD
                    P=50*6894.76,
                    thermo=settings.thermo.ideal())
     
-    # =========================================================================
-    # nutrient recovery - part 1
-    # =========================================================================
-    
-    H2SO4_Tank = qsu.StorageTank(ID='H2SO4_Tank',
-                                 ins='H2SO4',
-                                 outs='H2SO4_out',
-                                 init_with='WasteStream',
-                                 tau=24,
-                                 vessel_material='Stainless steel')
-    # 0.5 M H2SO4: ~5%
-    # based on 93% H2SO4 and fresh water (dilute onsite to 5%) prices in [6]
-    H2SO4_Tank.ins[0].price = (0.043*1+0.0002*(93/5-1))/(93/5)/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
-    
-    AcidEx = su.AcidExtraction(ID='AcidEx', ins=(HTL-0, H2SO4_Tank-0),
-                               outs=('residual','extracted'))
-    
-    PreStripper = su.PreStripper(ID='PreStripper',
-                                 ins=(F1-1,'NaOH'),
-                                 outs='NH3_solution')
+    # TODO: whatif the system is not in a WWTP (e.g., standalone hub-and-spoke)?
+    # assume no value/cost and no environmental benefit/impact associated with MemDis_ww (the system is in a WWTP) and solution
+    MemDis = qsu.MembraneDistillation(ID='MemDis',
+                                      ins=(F1-1, H2SO4_Tank-0,'NaOH','membrane_in'),
+                                      outs=('ammonium_sulfate','MemDis_ww','membrane_out','solution'),
+                                      init_with='WasteStream')
     # 0.2384 2016$/lb, [6]
-    PreStripper.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
-    
-    # TODO: further valorize 'N_riched_aqueous'
-    
-    # TODO: add cost and CI for steam
-    steam = qs.Stream(ID='steam', H2O=100, phase='g', T=390)
-    
-    # TODO: update if needed
-    NH3Stripper = Stripper(ID='NH3Stripper',
-                           N_stages=2, ins=(PreStripper-0, steam),
-                           outs=('vapor','liquid'),
-                           solute='NH3')
-    
-    # TODO: update if needed
-    # TODO: dry NH3
-    # TODO: consider using a HX to cool, what is a good temperature, but this is quite expensive
-    NH3Cooler = qsu.HXutility(ID='NH3Cooler',
-                                ins=NH3Stripper-0,
-                                outs='cooled_NH3',
-                                T=0+273.15,
-                                init_with='Stream',
-                                rigorous=True)
-    
-    NH3Splitter = Splitter(ID='NH3Splitter', ins=NH3Cooler-0, outs=('anhydrous_ammonia','removed_water'), split={'NH3':1,'H2O':0})
-    
-    # TODO: NPV target (~ -20,000,000), LCA target (< 1e+07)
-    
-    # TODO: update if needed
-    S2WS1 = su.S2WS(ID='S2WS1', ins=NH3Splitter-0, outs='anhydrous_ammonia_LCA')
-    # TODO: update if needed
-    S2WS1.outs[0].price=0.8
-    
-    # TODO: produce DAP
-    
-    
-    
-    
-    # TODO: may need a crystallizer and a dryer to produce DAP (CO2 sorbent has these units), maybe combine these into the new unit (i.e., DAPSynthesizer)
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    MemDis.ins[2].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
+    # RO membrane price: [8] (likely 2008$)
+    MemDis.ins[3].price = 90/GDPCTPI[2008]*GDPCTPI[2022]
+    # ammonium sulfate (2022 average): [9]
+    MemDis.outs[0].price = 0.2825
     
     # =========================================================================
-    # Storage, and disposal
+    # Storage, and disposal (Area 300)
     # =========================================================================
     # TODO: check this citation, why biocrude needs to be stored and is 3-day reasonable
     # TODO: if deciding not including biocrude storage, update this in the manuscript/SI
@@ -474,8 +386,7 @@ def create_geospatial_system(# MGD
     # facilities
     # =========================================================================
     qsu.HeatExchangerNetwork(ID='HXN',
-                             # TODO: consider adjusting this value
-                               T_min_app=86,
+                             T_min_app=86,
                              force_ideal_thermo=True)
     
     # assume no value/cost and no environmental benefit/impact associated with emission (they are not treated and are biogenic; only CO2 from natural gas is non-biogenic but we have included the environmental impact for it)
@@ -492,66 +403,6 @@ def create_geospatial_system(# MGD
     CHP.ins[1].price = 7.66/1000*_m3_to_ft3/0.657
     # 1.41 MM 2016$/year for 4270/4279 kg/hr ash, 7880 annual operating hours, from [6]
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2022]
-    
-    # =========================================================================
-    # nutrient recovery - part 2
-    # =========================================================================
-    
-    
-    
-    
-    
-
-    
-    
-    # TODO: add cost and CI for ins
-    # AmineAbsorption includes a stripper based on the description
-    CC = su.AmineAbsorption(ID='CC',
-                            ins=(CHP-0, 'makeup_MEA', 'makeup_water'),
-                            outs=('vent','CO2'))
-    
-
-    
-    
-
-    # # TODO: add CI for urea
-    # UreaSyn = su.UreaSynthesis(ID='UreaSyn', ins=(S2WS1-0, CC-1), outs=('urea','urea_water','urea_waste','excess_carbon_dioxide'))
-    
-    # UreaSyn.outs[0].price = 0.6
-    # UreaSyn.outs[3].price = 0.3
-    
-    
-    
-    
-    
-    
-
-    
-    # TODO: produce UAN
-    
-    
-    
-
-    UANSyn = su.UANSynthesis(ID='UANSyn', ins=(S2WS1-0, CC-1, 'nitrate_acid'), outs=('UAN','UAN_water','UAN_waste','excess_carbon_dioxide'))
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     
     # TODO: consider adding CT and its TEA (price for cooling_tower_chemicals) and LCA items (CT_chemicals in the 'Other' category) for other systems (HTL, HTL-PFAS)
     # construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
@@ -633,18 +484,15 @@ def create_geospatial_system(# MGD
     impact_items = {'CHG_catalyst': [stream.CHG_catalyst_out, 471.098936962268],
                     'H2SO4':        [stream.H2SO4, 0.005529872568],
                     'NaOH':         [stream.NaOH, 1.2497984],
-                    # TODO: do not use market or market group for products for other systems (i.e., CO2 sorbent, HTL-PFAS)
+                    'RO_membrane':  [stream.membrane_in, 2.2709135],
+                    # TODO: address this problem (i.e., do not use market or market group for products) for other systems (i.e., CO2 sorbent, HTL-PFAS)
+                    # use 'ammonium sulfate production' for 'NH42SO4' instead of market or market group since we don't offset things like transportation
+                    'NH42SO4':      [stream.ammonium_sulfate, -1.1139067],
                     'natural_gas':  [stream.natural_gas, 2.5199928],
                     # use market or market group for biocrude since we want to offset transportation and then add our own transportation part
                     # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
                     'biocrude':     [stream.biocrude, -0.22290007],
-                    'ash_disposal': [stream.solid_ash, 0.0082744841],
-                    # TODO: update if needed   
-                    'anhydrous_ammonia_LCA': [stream.anhydrous_ammonia_LCA, -2.4833472],}
-                    # TODO: update if needed
-                    # 'excess_carbon_dioxide': [stream.excess_carbon_dioxide, -1],
-                    # 'urea':[stream.urea, -1.2510711],
-                    # 'UAN':[stream.UAN, -1.6799471]}
+                    'ash_disposal': [stream.solid_ash, 0.0082744841]}
     
     for item in impact_items.items():
         qs.StreamImpactItem(ID=item[0], linked_stream=item[1][0], GlobalWarming=item[1][1])
@@ -657,6 +505,10 @@ def create_geospatial_system(# MGD
            # note LCA for CT_chemicals was included in the 'Other' category while it should be in the 'Stream' category
            # the effect is minimal since (i) this part of LCA is negligible and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
            CT_chemicals=lambda:CT.ins[2].F_mass*sys.flowsheet.WWTP.operation_hours*30)
+    
+    # add these assertations to make sure we have provided all system's need heating and cooling (add a ChilledWaterPackage when there is an AssertationError)
+    assert sys.get_heating_duty() == 0
+    assert sys.get_cooling_duty() == 0
     
     # =========================================================================
     # TEA
