@@ -52,6 +52,9 @@ GDPCTPI = {2007: 86.352,
            2022: 117.995,
            2023: 122.284}
 
+# TODO: why cannot run more than one time of model = create_geospatial_model(system=sys, test_run=True)
+
+# TODO: add uncertainty for new units (parameters, cost, CI, etc.)
 def create_geospatial_model(system=None,
                             test_run=False,
                             sludge_ash=[],
@@ -73,7 +76,7 @@ def create_geospatial_model(system=None,
     '''
     
     # TODO: remove [0]
-    sys = create_geospatial_system()[0] if not system else system
+    sys = create_geospatial_system() if not system else system
     flowsheet = sys.flowsheet
     cmps = qs.get_components()
     unit = flowsheet.unit

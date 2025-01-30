@@ -82,7 +82,7 @@ import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
 from qsdsan.utils import auom, clear_lca_registries
 from exposan.htl import _load_components, create_tea, state_income_tax_rate_2022, _sanunits as su
-from biosteam.units import IsenthalpicValve, Stripper, Splitter, MolecularSieve
+from biosteam.units import IsenthalpicValve, Stripper, Splitter, MolecularSieve, IsothermalCompressor
 from biosteam import settings
 
 __all__ = ('create_geospatial_system','biocrude_density')
@@ -97,7 +97,6 @@ _mile_to_km = auom('mile').conversion_factor('km')
 _lb_to_kg = auom('lb').conversion_factor('kg')
 _m3_to_ft3 = auom('m3').conversion_factor('ft3')
 _oil_barrel_to_m3 = auom('oil_barrel').conversion_factor('m3')
-_oil_barrel_to_L = auom('oil_barrel').conversion_factor('L')
 
 # GDPCTPI (Gross Domestic Product: Chain-type Price Index), [2]
 GDPCTPI = {2007: 86.352,
@@ -357,46 +356,40 @@ def create_geospatial_system(# MGD
     # 0.2384 2016$/lb, [6]
     PreStripper.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
-    # TODO: further valorize 'N_riched_aqueous'
+    # TODO: the flow rate should be a function, how about size*2, update if needed
+    water_steam = qs.Stream(ID='water_steam', H2O=size*2, phase='g', T=390)
+    water_steam.price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
-    # TODO: add cost and CI for steam
-    steam = qs.Stream(ID='steam', H2O=100, phase='g', T=390)
+    boiler = qsu.HXutility(ID='boiler',
+                           ins=water_steam,
+                           outs='steam',
+                           T=390,
+                           init_with='Stream',
+                           rigorous=True)
     
-    # TODO: update if needed
     NH3Stripper = Stripper(ID='NH3Stripper',
-                           N_stages=2, ins=(PreStripper-0, steam),
+                           N_stages=2, ins=(PreStripper-0, boiler-0),
                            outs=('vapor','liquid'),
                            solute='NH3')
     
-    # TODO: main cost driver
-    # TODO: update if needed
-    # TODO: dry NH3
-    # TODO: consider using a HX to cool, what is a good temperature, but this is quite expensive
-    NH3Cooler = qsu.HXutility(ID='NH3Cooler',
-                                ins=NH3Stripper-0,
-                                outs='cooled_NH3',
-                                T=0+273.15,
-                                init_with='Stream',
-                                rigorous=True)
-    
-    NH3Splitter = Splitter(ID='NH3Splitter', ins=NH3Cooler-0, outs=('anhydrous_ammonia','removed_water'), split={'NH3':1,'H2O':0})
-    
-    # TODO: NPV target (~ -20,000,000), LCA target (< 1e+07)
-    
-    # TODO: update if needed
-    S2WS1 = su.S2WS(ID='S2WS1', ins=NH3Splitter-0, outs='anhydrous_ammonia_LCA')
-    # TODO: update if needed
-    # S2WS1.outs[0].price=0.8
+    NH3MS = MolecularSieve(ID='NH3MS', ins=NH3Stripper-0,
+                           outs=('NH3_rich', 'water_rich'),
+                           split=dict(Water=0, # almost no water can pass, assume 0, water will further loss in a compressor and cooler to produce anhydrous ammonia
+                                     NH3=0.98)) # maybe 1-5% loss
     
     # TODO: change the name of 'excess_NH3' to 'anhydrous_NH3' since this is the product, and change the name before accordingly
     DAPSyn = su.DAPSynthesis(ID='DAPSyn',
-                             ins=(AcidEx-1, S2WS1-0, 'NaOH_pH_adj'),
+                             ins=(AcidEx-1, NH3MS-0),
                              outs=('DAP','excess_NH3','DAPSyn_effluent'))
-    # 0.2384 2016$/lb, [6]
-    DAPSyn.ins[2].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
+    # TODO: update if needed
     DAPSyn.outs[0].price = 0.6
+    
     if nitrogen_fertilizer == 'NH3':
-        DAPSyn.outs[1].price = 0.8
+        NH3Compressor = IsothermalCompressor('NH3Compressor', ins=DAPSyn-1, outs='anhydrous_ammonia', P=2e6, eta=1, vle=True)
+        
+        S2WS = su.StreamTypeConverter(ID='S2WS', ins=NH3Compressor-0, outs='anhydrous_ammonia_LCA', init_with='WasteStream')
+        # TODO: update if needed
+        S2WS.outs[0].price = 0.8
     
     # =========================================================================
     # Storage, and disposal
@@ -410,9 +403,6 @@ def create_geospatial_system(# MGD
                                    tau=3*24,
                                    init_with='WasteStream',
                                    vessel_material='Carbon steel')
-    # TODO: do we want to consider the rebound effect for all displacements (biocrude, N fertilizers, P fertilizers, CCU-products, and electricity if any)
-    # TODO: see https://doi.org/10.1021/acs.est.4c04006
-    # TODO: but it will be hard to decide a displacement ratio
     # TODO: do we want to do the displacement based on the weight or the energy content
     # TODO: based on energy content seems to be more reasonable
     # assume the biocrude has the same price as crude oil (for LCA: we assume the crude oil can be displaced by the biocrude)
@@ -456,6 +446,7 @@ def create_geospatial_system(# MGD
     # nutrient recovery - part 2
     # =========================================================================
     if nitrogen_fertilizer != 'NH3':
+        # TODO: is it practical to just capture the amount of CO2 needed?
         # TODO: add cost and CI for ins
         # AmineAbsorption includes a stripper based on the description
         CC = su.AmineAbsorption(ID='CC',
@@ -463,14 +454,19 @@ def create_geospatial_system(# MGD
                                 outs=('vent','CO2'))
         
         if nitrogen_fertilizer == 'urea':
-            # TODO: add cost and CI if necessary
-            UreaSyn = su.UreaSynthesis(ID='UreaSyn', ins=(DAPSyn-1, CC-1), outs=('urea','urea_water','urea_waste','excess_carbon_dioxide'))
+            # TODO: update cost and CI if necessary
+            UreaSyn = su.UreaSynthesis(ID='UreaSyn', ins=(DAPSyn-1, CC-1, 'additional_carbon_dioxide'), outs=('urea','urea_vapor','urea_waste','excess_carbon_dioxide'))
+            UreaSyn.ins[2].price = 0.3
             UreaSyn.outs[0].price = 0.6
             UreaSyn.outs[3].price = 0.3
         else:
-            # TODO: add cost and CI if necessary
-            UANSyn = su.UANSynthesis(ID='UANSyn', ins=(DAPSyn-1, CC-1, 'nitrate_acid'), outs=('UAN','UAN_water','UAN_waste','excess_carbon_dioxide'))
-            UANSyn.outs[0].price = 0.4
+            # TODO: update cost and CI if necessary
+            # TODO: add cost and CI for nitric acid
+            UANSyn = su.UANSynthesis(ID='UANSyn', ins=(DAPSyn-1, CC-1, 'additional_carbon_dioxide', 'HNO3', 'UAN_water'), outs=('UAN28','UAN_vapor','UAN_waste','UAN_excess_carbon_dioxide'))
+            UANSyn.ins[1].price = 0.3
+            UANSyn.ins[2].price = 0.3
+            UANSyn.ins[4].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
+            UANSyn.outs[0].price = 0.33
             UANSyn.outs[3].price = 0.3
     
     # TODO: consider adding CT and its TEA (price for cooling_tower_chemicals) and LCA items (CT_chemicals in the 'Other' category) for other systems (HTL, HTL-PFAS)
@@ -479,16 +475,10 @@ def create_geospatial_system(# MGD
     # cooling_tower_chemicals: 1.7842 2016$/lb, [6]
     CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
-    
-    
     sys = qs.System.from_units(ID='sys_geospatial',
                                units=list(flowsheet.unit),
                                operating_hours=WWTP.operation_hours)
     sys.simulate()
-    
-    # TODO: remove this
-    # biocrude production in BPD (barrel per day)
-    biocrude_barrel = BiocrudeTank.outs[0].F_mass/biocrude_density*1000/_oil_barrel_to_L*24
     
     # =========================================================================
     # LCA
@@ -508,8 +498,8 @@ def create_geospatial_system(# MGD
     CT_chemicals = qs.ImpactItem('CT_chemicals', functional_unit='kg')
     CT_chemicals.add_indicator(GlobalWarming, 0.00042012744)
     
-    Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Water_steam = qs.ImpactItem('Water_steam', functional_unit='kg')
+    Water_steam.add_indicator(GlobalWarming, 0.00042012744)
     
     Sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
     # assume the transported sludge has 80% moisture content
@@ -558,10 +548,9 @@ def create_geospatial_system(# MGD
     impact_items = {'CHG_catalyst': [stream.CHG_catalyst_out, 471.098936962268],
                     'H2SO4':        [stream.H2SO4, 0.005529872568],
                     'NaOH':         [stream.NaOH, 1.2497984],
-                    'NaOH_pH_adj':  [stream.NaOH_pH_adj, 1.2497984],
                     'DAP':          [stream.DAP, -1.456692],
                     # TODO: do not use market or market group for products for other systems (i.e., CO2 sorbent, HTL-PFAS)
-                    # TODO: use the CI for nature gas from IEDO
+                    # TODO: use the CI for nature gas from IEDO (can be higher)
                     'natural_gas':  [stream.natural_gas, 0.634279217],
                     # use market or market group for biocrude since we want to offset transportation and then add our own transportation part
                     # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
@@ -571,13 +560,15 @@ def create_geospatial_system(# MGD
     # TODO: update if needed   
     # TODO: need to decide how to handle excess amount of CO2
     if nitrogen_fertilizer == 'NH3':
-        impact_items['excess_NH3'] = [stream.anhydrous_ammonia_LCA, -2.4833472]
+        impact_items['anhydrous_ammonia_LCA'] = [stream.anhydrous_ammonia_LCA, -2.4833472]
     elif nitrogen_fertilizer == 'urea':
         # impact_items['excess_carbon_dioxide'] = [stream.excess_carbon_dioxide, -1]
         impact_items['urea'] = [stream.urea, -1.2510711]
     else:
         # impact_items['excess_carbon_dioxide'] = [stream.excess_carbon_dioxide, -1]
-        impact_items['UAN'] = [stream.UAN, -1.6799471]
+        impact_items['HNO3'] = [stream.HNO3, 3.249599258232]
+        impact_items['UAN_water'] = [stream.UAN_water, 0.00042012744]
+        impact_items['UAN28'] = [stream.UAN28, -1.6799471]
     
     for item in impact_items.items():
         qs.StreamImpactItem(ID=item[0], linked_stream=item[1][0], GlobalWarming=item[1][1])
@@ -591,7 +582,7 @@ def create_geospatial_system(# MGD
            # the effect is minimal since (i) this part of LCA is negligible and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
            CT_chemicals=lambda:CT.ins[2].F_mass*sys.flowsheet.WWTP.operation_hours*30,
            
-           Cooling = 4.23e+06/1000*24*365*30)
+           Water_steam=lambda:water_steam.F_mass*sys.flowsheet.WWTP.operation_hours*30)
     
     # =========================================================================
     # TEA
@@ -644,5 +635,4 @@ def create_geospatial_system(# MGD
                finance_interest_value=0.03,
                labor_cost_value=wage)
     
-    # TODO: remove biocrude_barrel 
-    return sys, biocrude_barrel
+    return sys

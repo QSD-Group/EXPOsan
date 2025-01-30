@@ -15,6 +15,7 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
+import qsdsan as qs
 from math import ceil, log
 from qsdsan import SanUnit
 from qsdsan.sanunits import Reactor
@@ -22,24 +23,23 @@ from qsdsan.utils import auom
 from biosteam.units.decorators import cost
 from biosteam.units.design_tools import CEPCI_by_year, size_batch
 
-# TODO: add DAP production, anhydrous ammonia production, UAN production
-
-# TODO: adjust the order as needed
 __all__ = (
+    'AmineAbsorption',
     'AcidExtraction',
+    'DAPSynthesis',
     'FuelMixer',
     'HTLmixer',
     'Humidifier',
+    'PreStripper',
+    'StreamTypeConverter',
     'StruvitePrecipitation',
+    'UANSynthesis',
     'UreaSynthesis',
     'WWmixer',
     'WWTP',
-    'AmineAbsorption',
-    'PreStripper',
-    'S2WS'
     )
 
-yearly_operation_hour = 7920 # Jones
+_hp2kW = 0.7457
 _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
 _Pa_to_psi = auom('Pa').conversion_factor('psi')
 _m_to_ft = auom('m').conversion_factor('ft')
@@ -145,6 +145,221 @@ class AcidExtraction(Reactor):
         # 1/788.627455 m3 reactor/m3 wastewater/h (50 MGD ~ 10 m3)
         self.P = self.ins[1].P
         Reactor._design(self)
+
+# =============================================================================
+# AmineAbsorption 
+# =============================================================================
+                    
+@cost(basis='Total flow', ID='Absorber', units='kmol/hr',
+      cost=4.81e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=4.3)
+@cost(basis='Total flow', ID='Stripper', units='kmol/hr',
+      cost=4e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=4.3)
+@cost(basis='CO2 flow', ID='Pumps', units='kmol/hr',
+      kW=55595.96/(613*(1000/44))*(24123*0.1186),
+      cost=0.42e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.3)
+@cost(basis='Total flow', ID='Condenser', units='kmol/hr',
+      cost=0.27e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=4.17)
+@cost(basis='Total flow', ID='Reboiler', units='kmol/hr',
+      cost=0.53e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.17)
+@cost(basis='Total flow', ID='Cross heat exchanger', units='kmol/hr',
+      cost=2.28e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.17)
+@cost(basis='Total flow', ID='Cooler', units='kmol/hr',
+      cost=0.09e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.17)
+@cost(basis='Total flow', ID='Makeup tank', units='kmol/hr',
+      cost=0.23e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=2.3)
+class AmineAbsorption(SanUnit):
+    '''
+    Similar to biosteam.units.AmineAbsorption, but can init with 'WasteStream'.
+    
+    Parameters
+    ----------
+    ins : 
+        * [0] Flue gas containing CO2
+        * [1] Makeup MEA (neat), updated by the unit
+        * [2] Makeup water, updated by the unit
+    outs : 
+        * [0] CO2-stripped vent
+        * [1] Concentrated CO2
+    CO2_recovery :
+        Percentage of CO2 that can be captured.
+    MEA_to_CO2 :
+        Net usage of MEA (kg pure MEA/metric tonne CO2 captured).
+        The default is 1.5 based on [1]_ and [3]_.
+    heat_ratio :
+        Unit duty in kJ/kg CO2.
+    '''
+    
+    _N_ins = 3
+    _N_outs = 2
+    _units = {'Total flow':'kmol/hr',
+              'CO2 flow':'kmol/hr'}
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='WasteStream', CO2_recovery=0.9, MEA_to_CO2=1.5, heat_ratio=3611):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.CO2_recovery = CO2_recovery
+        self.MEA_to_CO2 = MEA_to_CO2
+        self.heat_ratio = heat_ratio
+    
+    def _run(self):
+        flue_gas, MEA, water = self.ins
+        vent, CO2 = self.outs
+        vent.copy_like(flue_gas)
+        CO2.imol['CO2'] = self.CO2_recovery * flue_gas.imol['CO2']
+        vent.imol['CO2'] = flue_gas.imol['CO2'] - CO2.imol['CO2']
+        MEA.imass['MEA'] = self.MEA_to_CO2 * CO2.imass['CO2']/1000
+        water.imass['Water'] = MEA.imass['MEA'] / 0.3 * (1-0.3)
+        vent.T = CO2.T = 273.15 + 40
+        CO2.phase = 'g'
+        
+    def _design(self):
+        self.design_results['Total flow'] = self.ins[0].F_mol
+        self.design_results['CO2 flow'] = self.outs[1].F_mol
+        duty = self.heat_ratio * self.outs[1].F_mass
+        self.add_heat_utility(duty, T_in=self.ins[0].T)
+
+# =============================================================================
+# DAPSynthesis
+# =============================================================================
+
+@cost('Crystallizer volume', 'Crystallizer',
+      CE=444., S=0.003785411784, # originally 1 gal
+      BM=2.0, N='Number of crystallizers',
+      f=lambda S: 222.4 * S**0.71 + 35150)
+@cost(basis='Retentate flow rate', ID='Flitrate tank agitator',
+      cost=26e3, CE=551, kW=7.5*_hp2kW, S=31815, n=0.5, BM=1.5)
+@cost(basis='Retentate flow rate', ID='Discharge pump',
+      cost=13040, CE=551, S=31815, n=0.8, BM=2.3)
+@cost(basis='Retentate flow rate', ID='Filtrate tank',
+      cost=103e3, S=31815, CE=551, BM=2.0, n=0.7)
+@cost(basis='Retentate flow rate', ID='Feed pump', kW=74.57,
+      cost= 18173, S=31815, CE=551, n=0.8, BM=2.3)
+@cost(basis='Retentate flow rate', ID='Stillage tank 531',
+      cost=174800, CE=551, S=31815, n=0.7, BM=2.0)
+@cost(basis='Retentate flow rate', ID='Mafifold flush pump', kW=74.57,
+      cost=17057, CE=551, S=31815, n=0.8, BM=2.3)
+@cost(basis='Retentate flow rate', ID='Recycled water tank',
+      cost=1520, CE=551, S=31815, n=0.7, BM=3.0)
+@cost(basis='Retentate flow rate', ID='Wet cake screw',  kW=15*_hp2kW,
+      cost=2e4, CE=521.9, S=28630, n=0.8, BM=1.7)
+@cost(basis='Retentate flow rate', ID='Wet cake conveyor', kW=10*_hp2kW,
+      cost=7e4, CE=521.9, S=28630, n=0.8, BM=1.7)
+@cost(basis='Retentate flow rate', ID='Pressure filter',
+      cost=3294700, CE=551, S=31815, n=0.8, BM=1.7)
+@cost(basis='Retentate flow rate', ID='Pressing air compressor receiver tank',
+      cost=8e3, CE=551, S=31815, n=0.7, BM=3.1)
+@cost(basis='Retentate flow rate', ID='Cloth wash pump', kW=150*_hp2kW,
+      cost=29154, CE=551, S=31815, n=0.8, BM=2.3)
+@cost(basis='Retentate flow rate', ID='Dry air compressor receiver tank',
+      cost=17e3, CE=551, S=31815, n=0.7, BM=3.1)
+@cost(basis='Retentate flow rate', ID='Pressing air pressure filter',
+      cost=75200, CE=521.9, S=31815, n=0.6, kW=112, BM=1.6)
+@cost(basis='Retentate flow rate', ID='Dry air pressure filter (2)',
+      cost=405000, CE=521.9, S=31815, n=0.6, kW=1044, BM=1.6)
+class DAPSynthesis(Reactor):
+    '''
+    Synthesize DAP followed by crystallization and filtration.
+    If ammonia is excess, additional ammonia is calculated as excess_ammonia
+    (as if it never enters the reactor).
+    
+    Parameters
+    ----------
+    ins : Iterable(stream)
+        P_solution, ammonia.
+    outs : Iterable(stream)
+        DAP, excess_ammonia, effluent.
+    target_pH: float
+        Target pH for struvite precipitation.  
+    P_pre_recovery_ratio: float
+        Ratio of phosphorus that can be precipitated out.
+    # TODO: the unit should be in kW/m3, not a driver of the cost or CI, keep consistent with BioSTEAM for now
+    crystallizer_electricity: float
+        Electricity usage per volume in kW/gal. Defaults to 0.00746, a 
+        heuristic value for suspension of solids.
+    '''
+    _N_ins = 3
+    _N_outs = 2
+    _F_BM_default = {**Reactor._F_BM_default}
+    
+    _units= {'Crystallizer volume':'m3',
+             'Batch time':'hr',
+             'Loading time':'hr',
+             'Retentate flow rate':'kg/h'}
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                  init_with='WasteStream', 
+                  P_pre_recovery_ratio=0.828, # assume to be the same as StruvitePrecipitation
+                  P=None, tau=1, V_wf=0.8, # assume to be the same as StruvitePrecipitation
+                  length_to_diameter=2, N=1, V=None, auxiliary=False,
+                  mixing_intensity=None, kW_per_m3=0,
+                  wall_thickness_factor=1,
+                  vessel_material='Stainless steel 316',
+                  vessel_type='Vertical',
+                  crystallizer_electricity=0.00746):
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.P_pre_recovery_ratio = P_pre_recovery_ratio
+        self.P = P
+        self.tau = tau
+        self.V_wf = V_wf
+        self.length_to_diameter = length_to_diameter
+        self.N = N
+        self.V = V
+        self.auxiliary = auxiliary
+        self.mixing_intensity = mixing_intensity
+        self.kW_per_m3 = kW_per_m3
+        self.wall_thickness_factor = wall_thickness_factor
+        self.vessel_material = vessel_material
+        self.vessel_type = vessel_type
+    
+    def _run(self):
+        
+        P_solution, ammonia = self.ins
+        DAP, excess_ammonia, effluent = self.outs
+        
+        DAP.imass['DAP'] = P_solution.imass['P']*self.P_pre_recovery_ratio/30.97*132.06
+        DAP.phase = 's'
+        
+        excess_ammonia.imass['NH3'] = ammonia.imass['NH3'] - DAP.imass['DAP']/132.06*2*17.031
+        excess_ammonia.phase = 'g'
+        
+        effluent.imass['H2O'] = P_solution.F_mass + ammonia.F_mass - DAP.F_mass - excess_ammonia.F_mass
+    
+    def _design(self):
+        # reactor
+        self.N = 1
+        self.V = (self.outs[0].F_vol + self.outs[2].F_vol)/self.V_wf
+        self.P = self.ins[0].P
+        Reactor._design(self)
+        
+        Design = self.design_results
+        
+        # crystallizer
+        crystallizer_total_volume = self.outs[0].F_vol + self.outs[2].F_vol
+        # from TAL.units in BioSTEAM: assumed 8 h; uncertainty range is 2-14 h
+        crystallizer_tau = 8
+        # cleaning and unloading time
+        crystallizer_tau_0 = 1
+        # assume the same number of DAP synthesizer and crystallizer
+        crystallizer_N = max(2, self.N)
+        # fraction of filled tank to total tank volume
+        crystallizer_V_wf = 0.9
+        
+        dct = size_batch(crystallizer_total_volume,
+                         crystallizer_tau,
+                         crystallizer_tau_0,
+                         crystallizer_N,
+                         crystallizer_V_wf)
+        
+        Design['Crystallizer volume'] = volume = dct.pop('Reactor volume')
+        Design.update(dct)
+        Design['Number of crystallizers'] = crystallizer_N
+        
+        self.add_heat_utility(self.Hnet, self.outs[2].T)
+        self.add_power_utility(0.00746 * crystallizer_V_wf * volume * crystallizer_N)
+        
+        # pressure filter
+        Design['Retentate flow rate'] = self.outs[0].F_mass
 
 # =============================================================================
 # FuelMixer
@@ -330,6 +545,89 @@ class Humidifier(SanUnit):
         mixture.mix_from(self.ins)
 
 # =============================================================================
+# PreStripper
+# =============================================================================
+
+class PreStripper(SanUnit):
+    '''
+    Calculate the NH3 concentration in the influent to the stripper.
+    
+    Parameters
+    ----------
+    ins : Iterable(stream)
+        influent.
+    outs : Iterable(stream)
+        effluent.
+    
+    References
+    ----------
+    [1] Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J. 
+        Quantitative Evaluation of an Integrated System for Valorization of
+        Wastewater Algae as Bio-Oil, Fuel Gas, and Fertilizer Products. 
+        Environ. Sci. Technol. 2018, 52 (21), 12717–12727. 
+        https://doi.org/10.1021/acs.est.8b04035.
+    '''
+    _N_ins = 2
+    _N_outs = 1
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='WasteStream',
+                 # TODO: add refereence
+                 influent_pH=8.16, # CHG effluent pH: 8.16 ± 0.25 [1]
+                 target_pH=11.25): # 2 unit higher than pKa (9.25)
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.influent_pH = influent_pH
+        self.target_pH = target_pH
+    
+    def _run(self):
+        influent, base = self.ins
+        effluent = self.outs[0]
+        
+        NaOH_conc = 10**(self.target_pH - 14) - 10**(self.influent_pH - 14)
+        NaOH_mol = NaOH_conc*self.ins[0].F_mass
+        base.imass['NaOH'] = NaOH_mol*39.997/1000
+        
+        self.CHG = self.ins[0]._source.ins[0]._source.ins[0]._source
+        
+        effluent.imass['NH3'] = self.CHG.CHGout_N/14.0067*17.031
+        effluent.imass['H2O'] = influent.F_mass + base.F_mass - effluent.imass['NH3']
+
+# =============================================================================
+# StreamTypeConverter
+# =============================================================================
+class StreamTypeConverter(SanUnit):
+    '''
+    A fake unit that converts Stream or MultiStream to WasteStream to enable LCA.
+    
+    Parameters
+    ----------
+    ins : iterable
+        Inlet streams.
+    outs : iterable
+        Outlet streams.
+    '''
+    _N_ins = 1
+    _N_outs = 1
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream'):
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with)
+
+    def _run(self):
+        inlet = self.ins[0]
+        outlet = self.outs[0]
+        
+        try:
+            outlet.copy_like(inlet)
+        except TypeError:     
+            for item in qs.get_components():
+                if inlet.imass[item.ID] != 0:
+                    outlet.imass[item.ID] = inlet.imass[item.ID]
+                    outlet.T = inlet.T
+                    outlet.P = inlet.P
+                    outlet.phase = inlet.phase
+
+# =============================================================================
 # StruvitePrecipitation
 # =============================================================================
 
@@ -459,16 +757,154 @@ class StruvitePrecipitation(Reactor):
         return self.struvite_P*14.0067/30.973762
 
     def _design(self):
-        self.N = ceil(self.HTLmixer.ins[0]._source.WWTP.ins[0].F_vol*2/788.627455/self.V)
         # 2/788.627455 m3 reactor/m3 wastewater/h (50 MGD ~ 20 m3)
+        self.N = ceil(self.HTLmixer.ins[0]._source.WWTP.ins[0].F_vol*2/788.627455/self.V)
         self.P = self.ins[0].P
         Reactor._design(self)
 
 # =============================================================================
-# UreaSynthesis
+# UANSynthesis
 # =============================================================================
 
-# TODO: need test
+# TODO: need check
+
+# assume the cost in the reference paper is 2022 dollar
+# the installed cost is already included, so BM=1
+@cost(basis='Urea production capacity', ID='Urea synthesizer', units='kg/h',
+      cost=4050000, S=1000*1000/365/24,
+      CE=CEPCI_by_year[2022], n=0.58, BM=1)
+class UANSynthesis(Reactor):
+    '''
+    A black box model of urea synthesis based on [1].
+    
+    Parameters
+    ----------
+    ins : Iterable(stream)
+        ammonia, carbon_dioxide, nitric_acid.
+    outs : Iterable(stream)
+        UAN, water, waste.
+    ratio: float
+        The overall ratio between NH3 and CO2 as reactants (after considering
+        recycling of unconverted reactants).
+    efficiency: float
+        The overall conversion efficiency (after considering recycling of
+        unconverted reactants) of CO2 to urea.
+    loss: float
+        The loss ratio of unconverted reactants before recycling.
+    UAN_concentration: float
+        Desired UAN concentration in N-wt/wt%.
+    
+    References
+    ----------
+    [1] Palys, M. J.; Daoutidis, P. Techno-Economic Optimization of Renewable
+     Urea Production for Sustainable Agriculture and CO2 Utilization.
+     J. Phys. Energy 2023, 6 (1), 015013. https://doi.org/10.1088/2515-7655/ad0ee6.
+    '''
+    _N_ins = 5
+    _N_outs = 4
+    _F_BM_default = {**Reactor._F_BM_default}
+    _units= {'Urea production capacity':'kg/h'}
+    
+    # TODO: add a mixer as an auxiliary unit
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+                 # TODO: add uncertainty to the following parameters with citations
+                 ratio=3.5, # 3-4, Uniform
+                 efficiency=0.8, # 0.7-0.9, Uniform
+                 loss=0.02, # 0.01-0.03, Uniform
+                 UAN_concentration=28, # UAN-30, 30 N-wt/wt%
+                 P=None, tau=1, V_wf=0.8, # assume to be the same as StruvitePrecipitation
+                 length_to_diameter=2, N=1, V=20, auxiliary=False,
+                 mixing_intensity=None, kW_per_m3=0,
+                 wall_thickness_factor=1,
+                 vessel_material='Stainless steel 316', # basic condition
+                 vessel_type='Vertical'):
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.ratio = ratio
+        self.efficiency = efficiency
+        self.loss = loss
+        self.UAN_concentration = UAN_concentration
+        self.P = P
+        self.tau = tau
+        self.V_wf = V_wf
+        self.length_to_diameter = length_to_diameter
+        self.N = N
+        self.V = V
+        self.auxiliary = auxiliary
+        self.mixing_intensity = mixing_intensity
+        self.kW_per_m3 = kW_per_m3
+        self.wall_thickness_factor = wall_thickness_factor
+        self.vessel_material = vessel_material
+        self.vessel_type = vessel_type
+    
+    def _run(self):
+        
+        # TODO: adjust water amount to achieve desired UAN concentration, add water to UAN (the price may be for dry matter though, need to update this in the systems.py)
+        # TODO: add price and CI for water as well
+        ammonia, carbon_dioxide, additional_carbon_dioxide, nitric_acid, water = self.ins
+        UAN_solution, vapor, waste, excess_carbon_dioxide = self.outs
+        
+        NH3_CO2_molar_ratio = (self.ratio - (self.ratio - 2*self.efficiency)*(1-self.loss))/\
+                              (1 - (1 - self.efficiency)*(1-self.loss))
+        
+        ammonia_to_urea = ammonia.imass['NH3']*0.5
+        ammonia_to_ammonium_nitrate = ammonia.imass['NH3']*0.5
+        
+        nitric_acid.imass['HNO3'] = ammonia_to_ammonium_nitrate/17.031*63.01
+        
+        # assume using 70 wt/wt% HNO3 solution
+        nitric_acid.imass['H2O'] = nitric_acid.imass['HNO3']/0.7*0.3
+        
+        required_CO2 = ammonia_to_urea/17.031/NH3_CO2_molar_ratio*44.009
+        
+        if required_CO2 > carbon_dioxide.imass['CO2']:
+            additional_carbon_dioxide.imass['CO2'] = required_CO2 - carbon_dioxide.imass['CO2']
+        
+        urea_amount = self.urea_amount = required_CO2/44.009*self.efficiency/\
+                                         (1 - (1 - self.efficiency)*(1-self.loss))*60.06
+        vapor.imass['H2O'] = required_CO2/44.009*self.efficiency/\
+                             (1 - (1 - self.efficiency)*(1-self.loss))*18.01528
+        urea_NH3_wasted = required_CO2/44.009*(self.ratio - 2*self.efficiency)*\
+                          self.loss/(1 - (1 - self.efficiency)*(1-self.loss))*17.031
+        waste.imass['CO2'] = required_CO2/44.009*(1 - self.efficiency)*\
+                             self.loss/(1 - (1 - self.efficiency)*(1-self.loss))*44.009
+        
+        excess_carbon_dioxide.imass['CO2'] = carbon_dioxide.imass['CO2'] - required_CO2
+        
+        waste.imass['NH3'] = urea_NH3_wasted*2
+        
+        ammonium_nitrate_amount = ammonia_to_ammonium_nitrate/17.031*80.043
+        
+        UAN_solution.imass['UAN'] = urea_amount + ammonium_nitrate_amount
+        
+        N_amount = urea_amount/60.06*2*14.0067 + ammonium_nitrate_amount/80.043*2*14.0067
+        
+        UAN_total_amount = N_amount/self.UAN_concentration*100
+        
+        UAN_solution.imass['H2O'] = UAN_total_amount - UAN_solution.imass['UAN']
+        
+        water.imass['H2O'] = UAN_solution.imass['H2O'] - nitric_acid.imass['H2O']
+        
+        if water.imass['H2O'] < 0:
+            raise ValueError(f'Water amount cannot be less than 0. It is impossible to produce UAN-{self.UAN_concentration}.')
+        
+        # convert 0.18 MWh/tonne-urea and 0.95 MWh/tonne-urea to kW
+        self.power_utility.consumption = (0.18 + 0.95)*1000/1000*urea_amount
+    
+    def _design(self):
+        
+        # reactor
+        self.N = 1
+        self.V = self.outs[0].F_vol
+        self.P = self.ins[0].P
+        Reactor._design(self)
+        
+        Design = self.design_results
+        Design['Urea production capacity'] = self.urea_amount
+
+# =============================================================================
+# UreaSynthesis
+# =============================================================================
 
 # assume the cost in the reference paper is 2022 dollar
 # the installed cost is already included, so BM=1
@@ -482,7 +918,7 @@ class UreaSynthesis(SanUnit):
     Parameters
     ----------
     ins : Iterable(stream)
-        ammonia, carbon_dioxide.
+        ammonia, carbon_dioxide, additional_carbon_dioxide.
     outs : Iterable(stream)
         urea, water, waste.
     ratio: float
@@ -500,7 +936,7 @@ class UreaSynthesis(SanUnit):
      Urea Production for Sustainable Agriculture and CO2 Utilization.
      J. Phys. Energy 2023, 6 (1), 015013. https://doi.org/10.1088/2515-7655/ad0ee6.
     '''
-    _N_ins = 2
+    _N_ins = 3
     _N_outs = 4
     _units= {'Production capacity':'kg/h'}
 
@@ -517,28 +953,27 @@ class UreaSynthesis(SanUnit):
 
     def _run(self):
         
-        ammonia, carbon_dioxide = self.ins
-        urea, water, waste, excess_carbon_dioxide = self.outs
+        ammonia, carbon_dioxide, additional_carbon_dioxide = self.ins
+        urea, vapor, waste, excess_carbon_dioxide = self.outs
         
         NH3_CO2_molar_ratio = (self.ratio - (self.ratio - 2*self.efficiency)*(1-self.loss))/\
                               (1 - (1 - self.efficiency)*(1-self.loss))
         
-        
-        # TODO: update here, if NH3 is excess, sell it as anhydrous ammonia, if CO2 is excess, release it
-        # ammonia.imass['NH3'] = carbon_dioxide.imass['CO2']/44.009*NH3_CO2_molar_ratio*17.031
-        
         required_CO2 = ammonia.imass['NH3']/17.031/NH3_CO2_molar_ratio*44.009
+        
+        if required_CO2 > carbon_dioxide.imass['CO2']:
+            additional_carbon_dioxide.imass['CO2'] = required_CO2 - carbon_dioxide.imass['CO2']
         
         urea.imass['Urea'] = required_CO2/44.009*self.efficiency/\
                              (1 - (1 - self.efficiency)*(1-self.loss))*60.06
-        water.imass['H2O'] = required_CO2/44.009*self.efficiency/\
+        vapor.imass['H2O'] = required_CO2/44.009*self.efficiency/\
                              (1 - (1 - self.efficiency)*(1-self.loss))*18.01528
         waste.imass['NH3'] = required_CO2/44.009*(self.ratio - 2*self.efficiency)*\
                              self.loss/(1 - (1 - self.efficiency)*(1-self.loss))*17.031
         waste.imass['CO2'] = required_CO2/44.009*(1 - self.efficiency)*\
                              self.loss/(1 - (1 - self.efficiency)*(1-self.loss))*44.009
         
-        excess_carbon_dioxide.imass['CO2'] = carbon_dioxide.imass['CO2'] - required_CO2
+        excess_carbon_dioxide.imass['CO2'] = max(0, carbon_dioxide.imass['CO2'] - required_CO2)
         
         # convert 0.18 MWh/tonne-urea and 0.95 MWh/tonne-urea to kW
         self.power_utility.consumption = (0.18 + 0.95)*1000/1000*urea.imass['urea']
@@ -657,7 +1092,7 @@ class WWTP(SanUnit):
                  carbo_2_H=0.067, 
                  protein_2_N=0.159,
                  N_2_P=0.3927,
-                 operation_hours=yearly_operation_hour,
+                 operation_hours=None,
                  sludge_distance=100,
                  biocrude_distance=100):
         
@@ -772,526 +1207,3 @@ class WWTP(SanUnit):
     @property
     def H_C_eff(self):
         return (self.sludge_H/1.00784-2*self.sludge_O/15.999)/self.sludge_C*12.011
-
-
-
-
-
-
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-@cost(basis='Total flow', ID='Absorber', units='kmol/hr',
-      cost=4.81e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=4.3)
-@cost(basis='Total flow', ID='Stripper', units='kmol/hr',
-      cost=4e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=4.3)
-@cost(basis='CO2 flow', ID='Pumps', units='kmol/hr',
-      # 55595.96 for 613 metric tonne/hr CO2
-      kW=55595.96/(613*(1000/44))*(24123*0.1186),
-      cost=0.42e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.3)
-@cost(basis='Total flow', ID='Condenser', units='kmol/hr',
-      cost=0.27e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=4.17)
-@cost(basis='Total flow', ID='Reboiler', units='kmol/hr',
-      cost=0.53e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.17)
-@cost(basis='Total flow', ID='Cross heat exchanger', units='kmol/hr',
-      cost=2.28e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.17)
-@cost(basis='Total flow', ID='Cooler', units='kmol/hr',
-      cost=0.09e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.17)
-@cost(basis='Total flow', ID='Makeup tank', units='kmol/hr',
-      cost=0.23e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=2.3)
-class AmineAbsorption(SanUnit):
-    '''
-    Create an AmineAbsorption unit for capture of CO2 in the flue gas using
-    30 wt% aqueous monoethanolamine (MEA). Capital cost and duty basis are
-    from the conventional configuration as detailed in [1]_.
-    Cost is extrapolated via the 6/10th rule [2]_. Pump power usage is
-    based on [2]_. Bare module factors are based on similar units in BioSTEAM.
-    
-    Parameters
-    ----------
-    ins : 
-        * [0] Flue gas containing CO2
-        * [1] Makeup MEA (neat), updated by the unit
-        * [2] Makeup water, updated by the unit
-    outs : 
-        * [0] CO2-stripped vent
-        * [1] Concentrated CO2
-    CO2_recovery :
-        Percentage of CO2 that can be captured.
-    MEA_to_CO2 :
-        Net usage of MEA (kg pure MEA/metric tonne CO2 captured).
-        The default is 1.5 based on [1]_ and [3]_.
-    heat_ratio :
-        Unit duty in kJ/kg CO2.
-    
-    Examples
-    --------
-    
-    >>> import biosteam as bst
-    >>> import thermosteam as tmo
-    >>> MEA = tmo.Chemical('MEA', search_ID='141-43-5', phase='l')
-    >>> chems = tmo.Chemicals(('CO2', 'O2', 'Water', 'N2', MEA))
-    >>> tmo.settings.set_thermo(chems)
-    >>> flue_gas = tmo.Stream('flue_gas',
-    ...                       CO2=2895,
-    ...                       N2=17609,
-    ...                       O2=3618,
-    ...                       units='kmol/hr',
-    ...                       T=48+273.15)
-    >>> U1 = bst.units.AmineAbsorption('U1',
-    ...                                ins=(flue_gas, 'makeup_MEA', 'makeup_water'),
-    ...                                outs=('vent', 'CO2'))
-    >>> U1.simulate()
-    >>> U1.show()
-    AmineAbsorption: U1
-    ins...
-    [0] flue_gas
-        phase: 'l', T: 321.15 K, P: 101325 Pa
-        flow (kmol/hr): CO2  2.9e+03
-                        O2   3.62e+03
-                        N2   1.76e+04
-    [1] makeup_MEA
-        phase: 'l', T: 298.15 K, P: 101325 Pa
-        flow (kmol/hr): MEA  2.82
-    [2] makeup_water
-        phase: 'l', T: 298.15 K, P: 101325 Pa
-        flow (kmol/hr): Water  22.3
-    outs...
-    [0] vent
-        phase: 'l', T: 313.15 K, P: 101325 Pa
-        flow (kmol/hr): CO2  290
-                        O2   3.62e+03
-                        N2   1.76e+04
-    [1] CO2
-        phase: 'l', T: 313.15 K, P: 101325 Pa
-        flow (kmol/hr): CO2  2.61e+03
-    >>> U1.results()
-    Amine absorption                            Units       U1
-    Electricity         Power                      kW 1.23e+03
-                        Cost                   USD/hr     96.4
-    Low pressure steam  Duty                    kJ/hr 4.36e+08
-                        Flow                  kmol/hr 1.12e+04
-                        Cost                   USD/hr 2.67e+03
-    Design              Total flow            kmol/hr 2.41e+04
-                        CO2 flow              kmol/hr 2.61e+03
-    Purchase cost       Makeup tank               USD  2.5e+05
-                        Cooler                    USD 9.78e+04
-                        Cross heat exchanger      USD 2.48e+06
-                        Reboiler                  USD 5.76e+05
-                        Condenser                 USD 2.94e+05
-                        Pumps                     USD  1.2e+05
-                        Stripper                  USD 4.35e+06
-                        Absorber                  USD 5.23e+06
-    Total purchase cost                           USD 1.34e+07
-    Utility cost                               USD/hr 2.77e+03
-    
-    References
-    ----------
-    .. [1] Karimi et al., Capital Costs and Energy Considerations of Different
-        Alternative Stripper Configurations for Post Combustion CO2 Capture.
-        Chemical Engineering Research and Design 2011, 89 (8), 1229–1236.
-        https://doi.org/10.1016/j.cherd.2011.03.005.
-    
-    .. [2] Carminati et al., Bioenergy and Full Carbon Dioxide Sinking in
-        Sugarcane-Biorefinery with Post-Combustion Capture and Storage:
-        Techno-Economic Feasibility. Applied Energy 2019, 254, 113633.
-        https://doi.org/10.1016/j.apenergy.2019.113633.
-        
-    .. [3] Ramezan et al., Carbon Dioxide Capture from Existing Coal-Fired Power
-        Plants; DOE/NETL-401/110907; National Energy Technology Laboratory, 2007.
-    '''
-    
-    _N_ins = 3
-    _N_outs = 2
-    _units = {'Total flow':'kmol/hr',
-              'CO2 flow':'kmol/hr'}
-    
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', CO2_recovery=0.9, MEA_to_CO2=1.5, heat_ratio=3611):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.CO2_recovery = CO2_recovery
-        self.MEA_to_CO2 = MEA_to_CO2
-        self.heat_ratio = heat_ratio
-    
-    def _run(self):
-        flue_gas, MEA, water = self.ins
-        vent, CO2 = self.outs
-        vent.copy_like(flue_gas)
-        CO2.imol['CO2'] = self.CO2_recovery * flue_gas.imol['CO2']
-        vent.imol['CO2'] = flue_gas.imol['CO2'] - CO2.imol['CO2']
-        MEA.imass['MEA'] = self.MEA_to_CO2 * CO2.imass['CO2']/1000
-        water.imass['Water'] = MEA.imass['MEA'] / 0.3 * (1-0.3)
-        vent.T = CO2.T = 273.15 + 40
-        
-    def _design(self):
-        self.design_results['Total flow'] = self.ins[0].F_mol
-        self.design_results['CO2 flow'] = self.outs[1].F_mol
-        duty = self.heat_ratio * self.outs[1].F_mass
-        self.add_heat_utility(duty, T_in=self.ins[0].T)
-
-# =============================================================================
-# PreStripper
-# =============================================================================
-
-class PreStripper(SanUnit):
-    '''
-    Calculate the NH3 concentration in the influent to the stripper.
-    
-    Parameters
-    ----------
-    ins : Iterable(stream)
-        influent.
-    outs : Iterable(stream)
-        effluent.
-    '''
-    _N_ins = 2
-    _N_outs = 1
-    
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream',
-                 influent_pH=8.16, # CHG effluent pH: 8.16 ± 0.25 [1]
-                 target_pH=11.25): # 2 unit higher than pKa (9.25)
-        
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.influent_pH = influent_pH
-        self.target_pH = target_pH
-    
-    def _run(self):
-        
-        influent, base = self.ins
-        effluent = self.outs[0]
-        
-        NaOH_conc = 10**(self.target_pH - 14) - 10**(self.influent_pH - 14)
-        NaOH_mol = NaOH_conc*self.ins[0].F_mass
-        base.imass['NaOH'] = NaOH_mol*39.997/1000
-        
-        self.CHG = self.ins[0]._source.ins[0]._source.ins[0]._source
-        
-        effluent.imass['NH3'] = self.CHG.CHGout_N/14.0067*17.031
-        effluent.imass['H2O'] = influent.F_mass + base.F_mass - effluent.imass['NH3'] 
-        
-# =============================================================================
-# S2WS
-# =============================================================================
-class S2WS(SanUnit):
-    '''
-    S2WS: Stream to WasteStream.
-    A fake unit that enables the calculation of LCA for 'Stream'
-    by converting 'Stream' to 'WasteStream'.
-    
-    Parameters
-    ----------
-    ID : str, optional
-        Unit ID.
-    ins : iterable
-        Inlet streams.
-    outs : iterable
-        Outlet streams.
-    '''
-    _N_ins = 1
-    _N_outs = 1
-    
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream'):
-        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with)
-
-    def _run(self):
-        inlet = self.ins[0]
-        outlet = self.outs[0]
-        # if inlet is a 'MultiStream', for now, just assume the outlet
-        # contains water that has the same weight as the inlet
-        try:
-            outlet.copy_like(inlet)
-        except TypeError:
-            outlet.imass['NH3'] = inlet.F_mass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# =============================================================================
-# UANSynthesis
-# =============================================================================
-
-# TODO: need test
-
-# TODO: add a mixer or storage tank to produce UAN (make this a subclass of Reactor?)
-# assume the cost in the reference paper is 2022 dollar
-# the installed cost is already included, so BM=1
-@cost(basis='Urea Production capacity', ID='Urea synthesizer', units='kg/h',
-      cost=4050000, S=1000*1000/365/24,
-      CE=CEPCI_by_year[2022], n=0.58, BM=1)
-class UANSynthesis(SanUnit):
-    '''
-    A black box model of urea synthesis based on [1].
-    
-    Parameters
-    ----------
-    ins : Iterable(stream)
-        ammonia, carbon_dioxide, nitric_acid.
-    outs : Iterable(stream)
-        UAN, water, waste.
-    ratio: float
-        The overall ratio between NH3 and CO2 as reactants (after considering
-        recycling of unconverted reactants).
-    efficiency: float
-        The overall conversion efficiency (after considering recycling of
-        unconverted reactants) of CO2 to urea.
-    loss: float
-        The loss ratio of unconverted reactants before recycling.
-    
-    References
-    ----------
-    [1] Palys, M. J.; Daoutidis, P. Techno-Economic Optimization of Renewable
-     Urea Production for Sustainable Agriculture and CO2 Utilization.
-     J. Phys. Energy 2023, 6 (1), 015013. https://doi.org/10.1088/2515-7655/ad0ee6.
-    '''
-    _N_ins = 3
-    _N_outs = 4
-    _units= {'Urea Production capacity':'kg/h'}
-    
-    # TODO: add a mixer as an auxiliary unit
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 # TODO: add uncertainty to the following parameters with citations
-                 ratio=3.5, # 3-4, Uniform
-                 efficiency=0.8, # 0.7-0.9, Uniform
-                 loss=0.02): # 0.01-0.03, Uniform
-        
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.ratio = ratio
-        self.efficiency = efficiency
-        self.loss = loss
-
-    def _run(self):
-        
-        ammonia, carbon_dioxide, nitric_acid = self.ins
-        UAN, water, waste, excess_carbon_dioxide = self.outs
-        
-        NH3_CO2_molar_ratio = (self.ratio - (self.ratio - 2*self.efficiency)*(1-self.loss))/\
-                              (1 - (1 - self.efficiency)*(1-self.loss))
-        
-        
-        # TODO: update here, if NH3 is excess, sell it as anhydrous ammonia, if CO2 is excess, release it
-        # ammonia.imass['NH3'] = carbon_dioxide.imass['CO2']/44.009*NH3_CO2_molar_ratio*17.031
-        
-        # TODO: update if needed
-        ammonia_to_urea = ammonia.imass['NH3']*0.5
-        ammonia_to_ammonium_nitrate = ammonia.imass['NH3']*0.5
-        
-        nitric_acid.imass['HNO3'] = ammonia_to_ammonium_nitrate/17.031*63.01
-        
-        required_CO2 = ammonia_to_urea/17.031/NH3_CO2_molar_ratio*44.009
-        
-        urea_amount = required_CO2/44.009*self.efficiency/\
-                      (1 - (1 - self.efficiency)*(1-self.loss))*60.06
-        water.imass['H2O'] = required_CO2/44.009*self.efficiency/\
-                             (1 - (1 - self.efficiency)*(1-self.loss))*18.01528
-        urea_NH3_wasted = required_CO2/44.009*(self.ratio - 2*self.efficiency)*\
-                          self.loss/(1 - (1 - self.efficiency)*(1-self.loss))*17.031
-        waste.imass['CO2'] = required_CO2/44.009*(1 - self.efficiency)*\
-                             self.loss/(1 - (1 - self.efficiency)*(1-self.loss))*44.009
-        
-        excess_carbon_dioxide.imass['CO2'] = carbon_dioxide.imass['CO2'] - required_CO2
-        
-        ammonia_urea_efficiency = (ammonia_to_urea - urea_NH3_wasted)/ammonia_to_urea
-        
-        waste.imass['NH3'] = urea_NH3_wasted*2
-        
-        ammonium_nitrate_amount = ammonia_to_ammonium_nitrate*ammonia_urea_efficiency/17.031*80.043
-        
-        waste.imass['HNO3'] = nitric_acid.imass['HNO3']*(1-ammonia_urea_efficiency)
-        
-        UAN.imass['UAN'] = urea_amount + ammonium_nitrate_amount
-        
-        # convert 0.18 MWh/tonne-urea and 0.95 MWh/tonne-urea to kW
-        self.power_utility.consumption = (0.18 + 0.95)*1000/1000*urea_amount
-    
-    def _design(self):
-        
-        Design = self.design_results
-        Design['Urea Production capacity'] = self.outs[0].F_mass
-
-
-
-
-
-
-
-# =============================================================================
-# DAPSynthesis
-# =============================================================================
-_hp2kW = 0.7457
-# # TODO: update
-@cost('Crystallizer volume', 'Crystallizer',
-      CE=444., S=0.003785411784, # Originally 1 gal
-      BM=2.0, N='Number of crystallizers',
-      f=lambda S: 222.4 * S**0.71 + 35150)
-@cost(basis='Retentate flow rate', ID='Flitrate tank agitator',
-      cost=26e3, CE=551, kW=7.5*_hp2kW, S=31815, n=0.5, BM=1.5)
-@cost(basis='Retentate flow rate', ID='Discharge pump',
-      cost=13040, CE=551, S=31815, n=0.8, BM=2.3)
-@cost(basis='Retentate flow rate', ID='Filtrate tank',
-      cost=103e3, S=31815, CE=551, BM=2.0, n=0.7)
-@cost(basis='Retentate flow rate', ID='Feed pump', kW=74.57,
-      cost= 18173, S=31815, CE=551, n=0.8, BM=2.3)
-@cost(basis='Retentate flow rate', ID='Stillage tank 531',
-      cost=174800, CE=551, S=31815, n=0.7, BM=2.0)
-@cost(basis='Retentate flow rate', ID='Mafifold flush pump', kW=74.57,
-      cost=17057, CE=551, S=31815, n=0.8, BM=2.3)
-@cost(basis='Retentate flow rate', ID='Recycled water tank',
-      cost=1520, CE=551, S=31815, n=0.7, BM=3.0)
-@cost(basis='Retentate flow rate', ID='Wet cake screw',  kW=15*_hp2kW,
-      cost=2e4, CE=521.9, S=28630, n=0.8, BM=1.7)
-@cost(basis='Retentate flow rate', ID='Wet cake conveyor', kW=10*_hp2kW,
-      cost=7e4, CE=521.9, S=28630, n=0.8, BM=1.7)
-@cost(basis='Retentate flow rate', ID='Pressure filter',
-      cost=3294700, CE=551, S=31815, n=0.8, BM=1.7)
-@cost(basis='Retentate flow rate', ID='Pressing air compressor receiver tank',
-      cost=8e3, CE=551, S=31815, n=0.7, BM=3.1)
-@cost(basis='Retentate flow rate', ID='Cloth wash pump', kW=150*_hp2kW,
-      cost=29154, CE=551, S=31815, n=0.8, BM=2.3)
-@cost(basis='Retentate flow rate', ID='Dry air compressor receiver tank',
-      cost=17e3, CE=551, S=31815, n=0.7, BM=3.1)
-@cost(basis='Retentate flow rate', ID='Pressing air pressure filter',
-      cost=75200, CE=521.9, S=31815, n=0.6, kW=112, BM=1.6)
-@cost(basis='Retentate flow rate', ID='Dry air pressure filter (2)',
-      cost=405000, CE=521.9, S=31815, n=0.6, kW=1044, BM=1.6)
-class DAPSynthesis(Reactor):
-    '''
-    Synthesize DAP through pH adjustment.
-    
-    Parameters
-    ----------
-    ins : Iterable(stream)
-        P_solution, ammonia, base.
-    outs : Iterable(stream)
-        DAP, excess_ammonia, effluent.
-    target_pH: float
-        Target pH for struvite precipitation.
-    Mg_P_ratio: float
-        mol(Mg) to mol(P) ratio.   
-    P_pre_recovery_ratio: float
-        Ratio of phosphorus that can be precipitated out.
-    '''
-    _N_ins = 3
-    _N_outs = 2
-    _F_BM_default = {**Reactor._F_BM_default}
-    
-    # TODO: update unit if necessary
-    _units= {'Retentate flow rate':'kg/h',
-             'Crystallizer volume':'m3'}
-    
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                  init_with='WasteStream', 
-                  target_pH = 11.25, # TODO: update if needed, 11.25 is 2 units higher than the pKa of NH3
-                  P_pre_recovery_ratio=0.828, # TODO: see StruvitePrecipitation, update if needed
-                  P=None, tau=1, V_wf=0.8, # TODO: see StruvitePrecipitation, update if needed
-                  length_to_diameter=2, N=1, V=20, auxiliary=False,
-                  # for crystallizer
-                  # kW : float, optional
-                  #     Electricity usage per volume in kW/gal. Defaults to 0.00746, a 
-                  #     heuristic value for suspension of solids.
-                  # kW=0.00746 (~2 kW/m3)
-                  mixing_intensity=None, kW_per_m3=0, # use MixTank default value # TODO: does this mean even setting 0 here, there is still electricty
-                  wall_thickness_factor=1,
-                  vessel_material='Carbon steel', # basic condition
-                  vessel_type='Vertical'):
-        
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.target_pH = target_pH
-        self.P_pre_recovery_ratio = P_pre_recovery_ratio
-        self.P = P
-        self.tau = tau
-        self.V_wf = V_wf
-        self.length_to_diameter = length_to_diameter
-        self.N = N
-        self.V = V
-        self.auxiliary = auxiliary
-        self.mixing_intensity = mixing_intensity
-        self.kW_per_m3 = kW_per_m3
-        self.wall_thickness_factor = wall_thickness_factor
-        self.vessel_material = vessel_material
-        self.vessel_type = vessel_type
-    
-        
-    def _run(self):
-        
-        P_solution, ammonia, base = self.ins
-        DAP, excess_ammonia, effluent = self.outs
-        
-        base.imass['NaOH'] = P_solution.imass['H2SO4']/98.079*2*39.997 + P_solution.F_mass*10**(self.target_pH-14)*39.997/1000
-        
-        DAP.imass['DAP'] = P_solution.imass['P']*self.P_pre_recovery_ratio/30.97*132.06
-        
-        excess_ammonia.imass['NH3'] = ammonia.imass['NH3'] - DAP.imass['DAP']/132.06*2*17.031
-        
-        effluent.imass['H2O'] = P_solution.F_mass + ammonia.F_mass + base.F_mass - DAP.F_mass - excess_ammonia.F_mass
-
-    def _design(self):
-        # TODO: update
-        # self.N = ceil(self.HTLmixer.ins[0]._source.WWTP.ins[0].F_vol*2/788.627455/self.V)
-        # 2/788.627455 m3 reactor/m3 wastewater/h (50 MGD ~ 20 m3)
-        self.P = self.ins[0].P
-        Reactor._design(self)
-        
-                
-        # # TODO: update
-        # Design['crystallizer volume'] = 
-        
-        
-        Design = self.design_results
-        Design['Retentate flow rate'] = self.outs[2].F_mass
-        
-        
-
-        
-        
-        
-        
-
-        
-        
-        effluent = self.outs[2]
-        v_0 = effluent.F_vol
-        tau = 1 # TODO: may need update
-        tau_0 = 1  #: [float] Cleaning and unloading time (hr).
-        V_wf = 0.9 #: [float] Fraction of filled tank to total tank volume.
-        
-
-        N = 2
-        dct = size_batch(v_0, tau, tau_0, N, V_wf)
-        # TODO: m3
-        Design['Crystallizer volume'] = volume = dct.pop('Reactor volume')
-        Design.update(dct)
-        Design['Number of crystallizers'] = N
-        self.add_heat_utility(self.Hnet, effluent.T)
-        self.add_power_utility(0.00746 * V_wf * volume * N)
-        
-        
-        
-        
