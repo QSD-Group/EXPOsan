@@ -15,14 +15,12 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-import pandas as pd, biosteam as bst
-from math import ceil, log, sqrt, pi
+from math import ceil, log
 from qsdsan import SanUnit
 from qsdsan.sanunits import Reactor
 from qsdsan.utils import auom
 from biosteam.units.decorators import cost
-from biosteam.units.design_tools import CEPCI_by_year, PressureVessel
-from biosteam.units.splitting import Splitter
+from biosteam.units.design_tools import CEPCI_by_year, size_batch
 
 # TODO: add DAP production, anhydrous ammonia production, UAN production
 
@@ -504,7 +502,7 @@ class UreaSynthesis(SanUnit):
     '''
     _N_ins = 2
     _N_outs = 4
-    _units= {'Production capacity': 'kg/h'}
+    _units= {'Production capacity':'kg/h'}
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  # TODO: add uncertainty to the following parameters with citations
@@ -912,7 +910,7 @@ class AmineAbsorption(SanUnit):
     
     _N_ins = 3
     _N_outs = 2
-    _units = {'Total flow': 'kmol/hr',
+    _units = {'Total flow':'kmol/hr',
               'CO2 flow':'kmol/hr'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
@@ -1075,7 +1073,7 @@ class UANSynthesis(SanUnit):
     '''
     _N_ins = 3
     _N_outs = 4
-    _units= {'Urea Production capacity': 'kg/h'}
+    _units= {'Urea Production capacity':'kg/h'}
     
     # TODO: add a mixer as an auxiliary unit
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
@@ -1147,7 +1145,42 @@ class UANSynthesis(SanUnit):
 # =============================================================================
 # DAPSynthesis
 # =============================================================================
-
+_hp2kW = 0.7457
+# # TODO: update
+@cost('Crystallizer volume', 'Crystallizer',
+      CE=444., S=0.003785411784, # Originally 1 gal
+      BM=2.0, N='Number of crystallizers',
+      f=lambda S: 222.4 * S**0.71 + 35150)
+@cost(basis='Retentate flow rate', ID='Flitrate tank agitator',
+      cost=26e3, CE=551, kW=7.5*_hp2kW, S=31815, n=0.5, BM=1.5)
+@cost(basis='Retentate flow rate', ID='Discharge pump',
+      cost=13040, CE=551, S=31815, n=0.8, BM=2.3)
+@cost(basis='Retentate flow rate', ID='Filtrate tank',
+      cost=103e3, S=31815, CE=551, BM=2.0, n=0.7)
+@cost(basis='Retentate flow rate', ID='Feed pump', kW=74.57,
+      cost= 18173, S=31815, CE=551, n=0.8, BM=2.3)
+@cost(basis='Retentate flow rate', ID='Stillage tank 531',
+      cost=174800, CE=551, S=31815, n=0.7, BM=2.0)
+@cost(basis='Retentate flow rate', ID='Mafifold flush pump', kW=74.57,
+      cost=17057, CE=551, S=31815, n=0.8, BM=2.3)
+@cost(basis='Retentate flow rate', ID='Recycled water tank',
+      cost=1520, CE=551, S=31815, n=0.7, BM=3.0)
+@cost(basis='Retentate flow rate', ID='Wet cake screw',  kW=15*_hp2kW,
+      cost=2e4, CE=521.9, S=28630, n=0.8, BM=1.7)
+@cost(basis='Retentate flow rate', ID='Wet cake conveyor', kW=10*_hp2kW,
+      cost=7e4, CE=521.9, S=28630, n=0.8, BM=1.7)
+@cost(basis='Retentate flow rate', ID='Pressure filter',
+      cost=3294700, CE=551, S=31815, n=0.8, BM=1.7)
+@cost(basis='Retentate flow rate', ID='Pressing air compressor receiver tank',
+      cost=8e3, CE=551, S=31815, n=0.7, BM=3.1)
+@cost(basis='Retentate flow rate', ID='Cloth wash pump', kW=150*_hp2kW,
+      cost=29154, CE=551, S=31815, n=0.8, BM=2.3)
+@cost(basis='Retentate flow rate', ID='Dry air compressor receiver tank',
+      cost=17e3, CE=551, S=31815, n=0.7, BM=3.1)
+@cost(basis='Retentate flow rate', ID='Pressing air pressure filter',
+      cost=75200, CE=521.9, S=31815, n=0.6, kW=112, BM=1.6)
+@cost(basis='Retentate flow rate', ID='Dry air pressure filter (2)',
+      cost=405000, CE=521.9, S=31815, n=0.6, kW=1044, BM=1.6)
 class DAPSynthesis(Reactor):
     '''
     Synthesize DAP through pH adjustment.
@@ -1155,7 +1188,7 @@ class DAPSynthesis(Reactor):
     Parameters
     ----------
     ins : Iterable(stream)
-        P_solution, base, ammonia.
+        P_solution, ammonia, base.
     outs : Iterable(stream)
         DAP, excess_ammonia, effluent.
     target_pH: float
@@ -1169,20 +1202,21 @@ class DAPSynthesis(Reactor):
     _N_outs = 2
     _F_BM_default = {**Reactor._F_BM_default}
     
+    # TODO: update unit if necessary
+    _units= {'Retentate flow rate':'kg/h',
+             'Crystallizer volume':'m3'}
+    
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                   init_with='WasteStream', 
                   target_pH = 11.25, # TODO: update if needed, 11.25 is 2 units higher than the pKa of NH3
-                  
-                  
-                  
-                  
-                  
-                  
-                  
                   P_pre_recovery_ratio=0.828, # TODO: see StruvitePrecipitation, update if needed
-                  
                   P=None, tau=1, V_wf=0.8, # TODO: see StruvitePrecipitation, update if needed
                   length_to_diameter=2, N=1, V=20, auxiliary=False,
+                  # for crystallizer
+                  # kW : float, optional
+                  #     Electricity usage per volume in kW/gal. Defaults to 0.00746, a 
+                  #     heuristic value for suspension of solids.
+                  # kW=0.00746 (~2 kW/m3)
                   mixing_intensity=None, kW_per_m3=0, # use MixTank default value # TODO: does this mean even setting 0 here, there is still electricty
                   wall_thickness_factor=1,
                   vessel_material='Carbon steel', # basic condition
@@ -1190,11 +1224,7 @@ class DAPSynthesis(Reactor):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.target_pH = target_pH
-
-        
         self.P_pre_recovery_ratio = P_pre_recovery_ratio
-
-        
         self.P = P
         self.tau = tau
         self.V_wf = V_wf
@@ -1211,80 +1241,57 @@ class DAPSynthesis(Reactor):
         
     def _run(self):
         
-        P_solution, base, ammonia = self.ins
+        P_solution, ammonia, base = self.ins
         DAP, excess_ammonia, effluent = self.outs
         
+        base.imass['NaOH'] = P_solution.imass['H2SO4']/98.079*2*39.997 + P_solution.F_mass*10**(self.target_pH-14)*39.997/1000
         
+        DAP.imass['DAP'] = P_solution.imass['P']*self.P_pre_recovery_ratio/30.97*132.06
         
-        # TODO: step 1: adjust pH
-        # TODO: step 2: crystallization
-        # TODO: step 3: drying
+        excess_ammonia.imass['NH3'] = ammonia.imass['NH3'] - DAP.imass['DAP']/132.06*2*17.031
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        self.HTLmixer = self.ins[0]._source
-        
-        if self.HTLmixer.outs[0].imass['P'] == 0:
-            effluent.copy_like(mixture)
-        else:
-            old_pH = self.HTLmixer.pH
-            if old_pH > 9:
-                base.imass['MgO'] = 0
-            elif old_pH >= 7:
-                OH_M = 10**(old_pH-14)
-                OH_M_needed = 10**(self.target_pH-14) - OH_M
-                base.imass['MgO'] = OH_M_needed/2 * 40.3044/1000*self.ins[0].F_vol*1000
-            else:
-                neutral_OH_M = 10**(-old_pH)
-                to_target_OH_M = 10**(self.target_pH - 14)
-                OH_M_needed = neutral_OH_M + to_target_OH_M
-                base.imass['MgO'] = OH_M_needed/2 * 40.3044/1000*self.ins[0].F_vol*1000
-            
-            supply_MgCl2.imass['MgCl2'] = max((mixture.imass['P']/30.973762*self.Mg_P_ratio -\
-                                            base.imass['MgO']/40.3044)*95.211, 0)
-    
-            if mixture.imass['P']/30.973762 > mixture.imass['N']*self.HTLaqueous_NH3_N_2_total_N/14.0067:
-            # if P > N, add NH4Cl to make sure N ≥ P
-                supply_NH4Cl.imass['NH4Cl'] = (mixture.imass['P']/30.973762 - mixture.imass['N']*\
-                                                self.HTLaqueous_NH3_N_2_total_N/14.0067)*53.491
-
-            struvite.imass['Struvite'] = mixture.imass['P']*\
-                                          self.P_pre_recovery_ratio/\
-                                          30.973762*245.41
-            supply_MgCl2.phase = supply_NH4Cl.phase = base.phase = 's'
-            
-            effluent.copy_like(mixture)
-            effluent.imass['P'] -= struvite.imass['Struvite']*30.973762/245.41
-            effluent.imass['N'] += supply_NH4Cl.imass['NH4Cl']*14.0067/53.491 -\
-                                    struvite.imass['Struvite']*14.0067/245.41
-            effluent.imass['H2O'] = self.F_mass_in - struvite.F_mass -\
-                                    effluent.imass['C'] - effluent.imass['N'] -\
-                                    effluent.imass['P']
-            struvite.phase = 's'    
-                
-            struvite.T = mixture.T
-            effluent.T = mixture.T
-        
-    @property
-    def struvite_P(self):
-        return self.outs[0].imass['Struvite']*30.973762/245.41
-
-    @property
-    def struvite_N(self):
-        return self.struvite_P*14.0067/30.973762
+        effluent.imass['H2O'] = P_solution.F_mass + ammonia.F_mass + base.F_mass - DAP.F_mass - excess_ammonia.F_mass
 
     def _design(self):
-        self.N = ceil(self.HTLmixer.ins[0]._source.WWTP.ins[0].F_vol*2/788.627455/self.V)
+        # TODO: update
+        # self.N = ceil(self.HTLmixer.ins[0]._source.WWTP.ins[0].F_vol*2/788.627455/self.V)
         # 2/788.627455 m3 reactor/m3 wastewater/h (50 MGD ~ 20 m3)
         self.P = self.ins[0].P
         Reactor._design(self)
+        
+                
+        # # TODO: update
+        # Design['crystallizer volume'] = 
+        
+        
+        Design = self.design_results
+        Design['Retentate flow rate'] = self.outs[2].F_mass
+        
+        
+
+        
+        
+        
+        
+
+        
+        
+        effluent = self.outs[2]
+        v_0 = effluent.F_vol
+        tau = 1 # TODO: may need update
+        tau_0 = 1  #: [float] Cleaning and unloading time (hr).
+        V_wf = 0.9 #: [float] Fraction of filled tank to total tank volume.
+        
+
+        N = 2
+        dct = size_batch(v_0, tau, tau_0, N, V_wf)
+        # TODO: m3
+        Design['Crystallizer volume'] = volume = dct.pop('Reactor volume')
+        Design.update(dct)
+        Design['Number of crystallizers'] = N
+        self.add_heat_utility(self.Hnet, effluent.T)
+        self.add_power_utility(0.00746 * V_wf * volume * N)
+        
+        
+        
+        
