@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-##
 '''
 Created by Yuyao Huang and Siqi Tang for Enviroloo Clear Toilet system
 '''
@@ -174,7 +173,7 @@ def _load_lca_data(reload = False):
     '''
     global _impact_item_loaded
     if not _impact_item_loaded or reload:
-        indicator_path = os.path.join(data_path, 'impact_indicators.tsv')
+        indicator_path = os.path.join(data_path, 'impact_indicators.csv')
         qs.ImpactIndicator.load_from_file(indicator_path)
                     
         item_path = os.path.join(data_path, 'impact_items.xlsx')
