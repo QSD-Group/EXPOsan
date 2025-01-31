@@ -11,7 +11,7 @@ This python file is used to perform uncertainty and sensitivity analysis for Env
 
 import os, pandas as pd, qsdsan as qs
 from chaospy import distributions as shape
-from qsdsan import Model, Metric, PowerUtility, ImpactItem
+from qsdsan import Model, Metric, PowerUtility, ImpactItem # need to make sense Model imported here(?)
 from qsdsan.utils import (
     AttrSetter,
     data_path,
@@ -676,9 +676,9 @@ for indicator in ('GlobalWarming',
     for p in data.index:
         item = ImpactItem.get_item(p)
         b = item.CFs[indicator]
-        lower = float(data.loc[p]['low'])   # need aligning with that in prepared files
-        upper = float(data.loc[p]['high'])    # need aligning with that in prepared files
-        dist = data.loc[p]['distribution']    # need aligning with that in prepared files
+        lower = float(data.loc[p]['low']) 
+        upper = float(data.loc[p]['high'])   
+        dist = data.loc[p]['distribution']    
         if dist == 'uniform':
             D = shape.Uniform(lower = lower, upper = upper)
         elif dist == 'triangular':
@@ -740,7 +740,7 @@ def create_model(country_specific = False, **model_kwargs):
         'PressureTank': unitEL.PT,
         }
     
-    add_parameters(modelEL, unit_dct, country_specific);
+    add_parameters(modelEL, unit_dct, country_specific)
     
     return modelEL
 

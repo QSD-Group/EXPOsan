@@ -24,7 +24,7 @@ __all__ = (
     'EL_blower', # blower
     'EL_System', # System-level summary
     'EL_Housing', # Housing of EL_System, such as equipment's armor
-    );
+    )
 
 EL_su_data_path = ospath.join(data_path, 'sanunit_data/el')  # need change
 
