@@ -37,6 +37,7 @@ from exposan.g2rt import (
     create_system,
     g2rt_data_path,
     default_ppl,
+    default_lifetime,
     get_decay_k,
     get_LCA_metrics,
     get_TEA_metrics,
@@ -80,33 +81,36 @@ def add_metrics(model, ppl=default_ppl):
     metrics.append(
         Metric('Annual net cost', get_TEA_metrics(system, ppl)[0], f'{qs.currency}/cap/yr', 'TEA results'),
         )
-    # for u in system.TEA.units:
-    #     class_name = u.__class__.__name__
-    #     metrics.extend([
-    #         Metric(f'{class_name} CAPEX', get_normalized_CAPEX(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
-    #         Metric(f'{class_name} Electricity cost', get_normalized_electricity_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
-    #         Metric(f'{class_name} OPEX_no_labor_electricity', 
-    #                get_normalized_OPEX(u,ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
-    #         Metric(f'{class_name} Labor', 
-    #                get_normalized_labor_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
-    #         Metric(f'{class_name} total cost', 
-    #                compute_unit_total_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),])
+    metrics.extend([
+        Metric('Energy consumption', get_TEA_metrics(system, ppl,include_breakdown=True)[2], 'kWh /cap/day', 'TEA results')
+        ])
+    for u in system.TEA.units:
+        class_name = u.__class__.__name__
+        metrics.extend([
+            Metric(f'{class_name} CAPEX', get_normalized_CAPEX(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+            Metric(f'{class_name} Electricity cost', get_normalized_electricity_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+            Metric(f'{class_name} OPEX_no_labor_electricity', 
+                   get_normalized_OPEX(u,ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+            Metric(f'{class_name} Labor', 
+                   get_normalized_labor_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+            Metric(f'{class_name} total cost', 
+                   compute_unit_total_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),])
 
-    # for u in system.TEA.units:
-    #     class_name = u.__class__.__name__
-    #     metrics.extend([
-    #         Metric(f'{class_name} {u.ID} capital GW', get_unit_contruction_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-    #         Metric(f'{class_name} {u.ID} stream GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-    #         Metric(f'{class_name} {u.ID} electricity GW', get_unit_electrcitiy_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-    #     ])
+    for u in system.TEA.units:
+        class_name = u.__class__.__name__
+        metrics.extend([
+            Metric(f'{class_name} capital GW', get_unit_contruction_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+            Metric(f'{class_name} stream GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+            Metric(f'{class_name} electricity GW', get_unit_electrcitiy_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+        ])
 
-    # direct_emission_units = {'A15','A16','A17'}
-    # for u in system.flowsheet.unit:
-    #     if u.ID in direct_emission_units:
-    #         class_name = u.__class__.__name__
-    #         metrics.append(
-    #             Metric(f'{class_name} {u.ID} direct emission GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-    #         )
+    direct_emission_units = {'A15','A16','A17','B14','B15','B16'}
+    for u in system.flowsheet.unit:
+        if u.ID in direct_emission_units:
+            class_name = u.__class__.__name__
+            metrics.append(
+                Metric(f'{class_name} {u.ID} direct emission GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+            )
     # if g2rt.INCLUDE_RESOURCE_RECOVERY:
     #     #TODO: separate LCA because Mixer, A14, A15, A16 need to be included...
     #     recovery_units = {'A6','A18'}
@@ -153,12 +157,13 @@ vr_concentrator_path = load_g2rt_su_data('_vr_concentrator.csv')
 g2rt_liquids_tank_path = load_g2rt_su_data('_g2rt_liquids_tank.csv')
 g2rt_solids_tank_path = load_g2rt_su_data('_g2rt_solids_tank.csv')
 vr_drying_tunnel_path = load_g2rt_su_data('_vr_dryingtunnel.csv')
-g2rt_controls_path = load_g2rt_su_data('_g2rt_controls.csv')
 g2rt_solids_separation_path = load_g2rt_su_data('_g2rt_solids_separation.csv')
 g2rt_belt_separation_path = load_g2rt_su_data('_g2rt_belt_separation.csv')
 ultrafiltration_path = load_g2rt_su_data('_g2rt_ultrafiltration.csv')
 reverse_osmosis_path = load_g2rt_su_data('_g2rt_reverse_osmosis.csv')
 combustor_path = load_g2rt_su_data('_vr_combustor.csv')
+g2rt_housing_path = load_g2rt_su_data('_g2rt_housing.csv')
+g2rt_controls_path = load_g2rt_su_data('_g2rt_controls.csv')
 mscwo_concentrator_path = load_g2rt_su_data('_mscwo_concentrator_module.csv')
 mscwo_gas_handling_module_path = load_g2rt_su_data('_mscwo_gas_handling_module.csv')
 mscwo_reactor_module_path = load_g2rt_su_data('_mscwo_reactor_module.csv')
@@ -221,7 +226,7 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
 
         # Electricity GWP
         b = GWP_dct['Electricity']
-        D = shape.Triangle(lower=b*0.9, midpoint=b, upper=b*1.1)
+        D = shape.Triangle(lower=b*0.7, midpoint=b, upper=b*1.3)
         @param(name='Electricity CF', element='LCA', kind='isolated',
                units='kg CO2-eq/kWh', baseline=b, distribution=D)
         def set_electricity_CF(i):
@@ -345,6 +350,16 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
     drying_tunnel_unit = unit_dct['drying_tunnel']
     exclude = ('wages')
     batch_setting_unit_params(vr_drying_tunnel_path, model, drying_tunnel_unit, exclude)
+    
+    #Controls
+    controls_unit = unit_dct['controls']
+    exclude = ('wages')
+    batch_setting_unit_params(g2rt_controls_path, model, controls_unit, exclude)
+    
+    #Housing
+    housing_unit = unit_dct['housing']
+    exclude = ('wages')
+    batch_setting_unit_params(g2rt_housing_path, model, housing_unit, exclude)
 
     ##### Universal degradation parameters #####
     # Max methane emission
@@ -553,9 +568,9 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
 # Functions to create models
 # =============================================================================
 # System A: volume reduction toilet
-def create_modelA(country_specific=False, ppl=default_ppl, **model_kwargs):
+def create_modelA(country_specific=False, ppl=default_ppl, lifetime=default_lifetime, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
-    sysA = create_system('A', ppl=ppl, flowsheet=None)
+    sysA = create_system('A', ppl=ppl, lifetime=lifetime, flowsheet=flowsheet)
     unitA = sysA.flowsheet.unit
     # Shared metrics/parameters
     modelA = Model(sysA, **model_kwargs)
@@ -572,6 +587,8 @@ def create_modelA(country_specific=False, ppl=default_ppl, **model_kwargs):
         'reverse_osmosis': unitA.A6,
         'homogenizer': unitA.A8,
         'drying_tunnel': unitA.A11,
+        'controls': unitA.A19,
+        'housing': unitA.A20
         }
     add_shared_parameters(modelA, unit_dctA, country_specific)
     
@@ -595,9 +612,9 @@ def create_modelA(country_specific=False, ppl=default_ppl, **model_kwargs):
     return modelA
 
 #System B: micro supercritical water oxidation toilet
-def create_modelB(country_specific=False, ppl=default_ppl, **model_kwargs):
+def create_modelB(country_specific=False, ppl=default_ppl,lifetime=default_lifetime, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
-    sysB = create_system('B', ppl=ppl, flowsheet=flowsheet)
+    sysB = create_system('B', ppl=ppl,lifetime=lifetime, flowsheet=flowsheet)
     unitB = sysB.flowsheet.unit
 
     # Shared parameters
@@ -614,7 +631,9 @@ def create_modelB(country_specific=False, ppl=default_ppl, **model_kwargs):
         'liquids_tank': unitB.B7,
         'ultrafiltration': unitB.B8,
         'reverse_osmosis': unitB.B9,
-        'drying_tunnel': unitB.B13
+        'drying_tunnel': unitB.B13,
+        'controls': unitB.B18,
+        'housing': unitB.B19
         }
     add_shared_parameters(modelB, unit_dctB, country_specific)
     
@@ -634,13 +653,12 @@ def create_modelB(country_specific=False, ppl=default_ppl, **model_kwargs):
     return modelB
 
 # Wrapper function so that it'd work for all
-def create_model(model_ID='A', country_specific=False, ppl=default_ppl, **model_kwargs):
+def create_model(model_ID='A', country_specific=False, ppl=default_ppl,lifetime=default_lifetime, **model_kwargs):
     model_ID = model_ID.lower().rsplit('model')[-1].rsplit('sys')[-1].upper() # works for "modelA"/"sysA"/"A"
-    if model_ID == 'A': model = create_modelA(country_specific, ppl=ppl, **model_kwargs)
-    elif model_ID == 'B': model = create_modelB(country_specific, ppl=ppl, **model_kwargs)
+    if model_ID == 'A': model = create_modelA(country_specific, ppl=ppl,lifetime= lifetime, **model_kwargs)
+    elif model_ID == 'B': model = create_modelB(country_specific, ppl=ppl,lifetime= lifetime, **model_kwargs)
     else: raise ValueError(f'`model_ID` can only be "A" or "B", not "{model_ID}".')
     return model
-
 
 def run_uncertainty(model, path='', date = None, note = '', **kwargs):
     # Use current date if date not provided

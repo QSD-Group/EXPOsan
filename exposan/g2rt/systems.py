@@ -111,6 +111,7 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
 # Unit parameters
 # =========================================================================
 default_ppl = 6
+default_lifetime = 10 #10 years
 discount_rate = 0.05
 
 # Time take for full degradation, [yr]
@@ -135,7 +136,7 @@ app_loss['NH3'] = 0.05
 
 # =============================================================================
 
-def create_systemA(flowsheet=None, ppl=default_ppl):
+def create_systemA(flowsheet=None, ppl=default_ppl, lifetime=default_lifetime):
     # TODO: Set flowsheet to avoid stream replacement warnings
     flowsheet = flowsheet or main_flowsheet
     batch_create_streams('A')
@@ -159,12 +160,12 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
     mixer = su.FWMixer('Mixer',
                       ins = ('tap_water', streamA['H2O']),
                       outs = ('flushing_water'),
-                      N_tot_user = 6
+                      N_tot_user = ppl
                       )
     A2 = su.SURT('A2',
                   ins= (A1-0, A1-1, 'toilet_paper'),
                   outs = ('mixed_waste','A2_CH4','A2_N2O'),
-                  N_user = 6, N_tot_user=default_ppl, lifetime = 10, 
+                  N_user = 6, N_tot_user=ppl, lifetime = lifetime, 
                   if_include_front_end=True, if_toilet_paper=True,
                   if_flushing=True, if_cleansing=False,
                   if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
@@ -249,7 +250,7 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
                                       ins = (A11-0,'Wood_pellets','Air'),
                                       outs = ("Ash","hot_gas","A14_CH4", "A14_N2O", 
                                               streamA['NO'],streamA['SO2'],'A14_NH3_gas'),
-                                      if_sludge_service = True, lifetime = 10
+                                      if_sludge_service = True, lifetime = lifetime
                                       )
     
     # CH4 emissions from MURT, concentrator, drying tunnel, and combustor
@@ -296,16 +297,15 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
                   recycle = A10-0
                   )
     
-    
     teaA = TEA(system=sysA, discount_rate=discount_rate,
-               start_year=2020, lifetime=10, uptime_ratio=1,
+               start_year=2020, lifetime=lifetime, uptime_ratio=1,
                lang_factor=None, annual_maintenance=0,
                annual_labor=0)
     
     # batch_create_streams('A')
     get_powerA = sum([u.power_utility.rate for u in sysA.units]) * (24 * 365 * teaA.lifetime)
     
-    LCA(system=sysA, lifetime=10, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerA)
+    LCA(system=sysA, lifetime=lifetime, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerA)
     # sysA.simulate()
     return sysA
     
@@ -316,7 +316,7 @@ def create_systemA(flowsheet=None, ppl=default_ppl):
 # micro Supercritical Water Oxidation toilet based on
 # https://patentimages.storage.googleapis.com/57/6a/81/72a168a92be44c/WO2023288331A1.pdf
 # =============================================================================
-def create_systemB(flowsheet=None, ppl=default_ppl):
+def create_systemB(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime):
     # TODO: Set flowsheet to avoid stream replacement warnings
     flowsheet = flowsheet or main_flowsheet
     batch_create_streams('B')
@@ -328,16 +328,16 @@ def create_systemB(flowsheet=None, ppl=default_ppl):
     mixer = su.FWMixer('Mixer',
                       ins = ('tap_water', streamB['H2O']),
                       outs = ('flushing_water'),
-                      N_tot_user = 6
+                      N_tot_user = ppl
                       )
     B2 = su.SURT('B2',
                   ins= (B1-0, B1-1, 'toilet_paper'),
                   outs = ('mixed_waste','B2_CH4','B2_N2O'),
-                  N_user = 6, N_tot_user=default_ppl, lifetime = 10, 
+                  N_user = 6, N_tot_user=ppl, lifetime = lifetime, 
                   if_include_front_end=True, if_toilet_paper=True,
                   if_flushing=True, if_cleansing=False,
                   if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
-                  CAPEX=500*max(1, default_ppl/100), OPEX_over_CAPEX=0.06,
+                  CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06,
                   decay_k_COD=get_decay_k(),
                   decay_k_N=get_decay_k(),
                   max_CH4_emission=max_CH4_emission)
@@ -467,14 +467,14 @@ def create_systemB(flowsheet=None, ppl=default_ppl):
                   )
     
     teaB = TEA(system=sysB, discount_rate=discount_rate,
-               start_year=2020, lifetime=10, uptime_ratio=1,
+               start_year=2020, lifetime=lifetime, uptime_ratio=1,
                lang_factor=None, annual_maintenance=0,
                annual_labor=0)
     
     # batch_create_streams('A')
     get_powerB = sum([u.power_utility.rate for u in sysB.units]) * (24 * 365 * teaB.lifetime)
     
-    LCA(system=sysB, lifetime=10, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerB)
+    LCA(system=sysB, lifetime=lifetime, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerB)
     # sysA.simulate()
     return sysB
 #%%
@@ -484,7 +484,7 @@ def create_systemB(flowsheet=None, ppl=default_ppl):
 # https://patentimages.storage.googleapis.com/73/c1/74/aa1f6a78b89957/WO2023288326A1.pdf
 # =============================================================================
 
-def create_systemC(flowsheet=None, ppl=default_ppl):
+def create_systemC(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime):
     # TODO: Set flowsheet to avoid stream replacement warnings
     flowsheet = flowsheet or main_flowsheet
     batch_create_streams('C')
@@ -513,11 +513,11 @@ def create_systemC(flowsheet=None, ppl=default_ppl):
     A2 = su.SURT('A2',
                   ins= (A1-0, A1-1, 'toilet_paper'),
                   outs = ('mixed_waste','A2_CH4','A2_N2O'),
-                  N_user = 6, N_tot_user=default_ppl, lifetime = 10, 
+                  N_user = 6, N_tot_user=ppl, lifetime = lifetime, 
                   if_include_front_end=True, if_toilet_paper=True,
                   if_flushing=True, if_cleansing=False,
                   if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
-                  CAPEX=500*max(1, default_ppl/100), OPEX_over_CAPEX=0.06,
+                  CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06,
                   decay_k_COD=get_decay_k(),
                   decay_k_N=get_decay_k(),
                   max_CH4_emission=max_CH4_emission)
@@ -598,7 +598,7 @@ def create_systemC(flowsheet=None, ppl=default_ppl):
                                       ins = (A11-0,'Wood_pellets','Air'),
                                       outs = ("Ash","hot_gas","A14_CH4", "A14_N2O", 
                                               streamA['NO'],streamA['SO2'],'A14_NH3_gas'),
-                                      if_sludge_service = False, lifetime = 10
+                                      if_sludge_service = False, lifetime = lifetime
                                       )
     
     # CH4 emissions from MURT, concentrator, drying tunnel, and combustor
@@ -647,13 +647,13 @@ def create_systemC(flowsheet=None, ppl=default_ppl):
     
     
     teaA = TEA(system=sysA, discount_rate=discount_rate,
-               start_year=2020, lifetime=10, uptime_ratio=1,
+               start_year=2020, lifetime=lifetime, uptime_ratio=1,
                lang_factor=None, annual_maintenance=0,
                annual_labor=0)
     
     get_powerA = sum([u.power_utility.rate for u in sysA.units]) * (24 * 365 * teaA.lifetime)
     
-    LCA(system=sysA, lifetime=10, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerA)
+    LCA(system=sysA, lifetime=lifetime, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerA)
     # sysA.simulate()
     return sysA
     
@@ -666,7 +666,7 @@ def create_systemC(flowsheet=None, ppl=default_ppl):
 # create system
 # =============================================================================
 
-def create_system(system_ID='A', flowsheet=None, ppl=default_ppl):
+def create_system(system_ID='A', flowsheet=None, ppl=default_ppl, lifetime = default_lifetime):
     ID = system_ID.lower().lstrip('sys').upper()  # so that it'll work for "sysA"/"A"
     reload_lca = False
 
@@ -688,10 +688,10 @@ def create_system(system_ID='A', flowsheet=None, ppl=default_ppl):
     elif system_ID == 'C': f = create_systemC
     else: raise ValueError(f'`system_ID` can only be "A" or "B" or "C", not "{ID}".')
 
-    try: system = f(flowsheet, ppl=ppl)
+    try: system = f(flowsheet, ppl=ppl, lifetime = lifetime)
     except:
         _load_components(reload=True)
-        system = f(flowsheet, ppl=ppl)
+        system = f(flowsheet, ppl=ppl, lifetime = lifetime)
 
     return system
 

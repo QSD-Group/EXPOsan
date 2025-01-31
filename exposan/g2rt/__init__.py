@@ -33,6 +33,7 @@ results_path = os.path.join(g2rt_path, 'results')
 # To save simulation data
 if not os.path.isdir(results_path): os.mkdir(results_path)
 default_ppl = 6
+default_lifetime = 10 #10 years
 
 # Time take for full degradation, [yr]
 tau_deg = 2
@@ -304,6 +305,9 @@ number_of_units = 100000
 percent_limit = 0.03 #pessimistic learning curve
 learning_curve_percent = 0.95 #pessimistic learning curve
 
+# percent_limit = 0.01 #optimistic learning curve
+# learning_curve_percent = 0.9 #optimistic learning curve
+
 def get_scaled_capital(tea):
     return get_generic_scaled_capital(
         tea=tea,
@@ -315,14 +319,17 @@ def get_scaled_capital(tea):
 
 def get_TEA_metrics(system, ppl=default_ppl, include_breakdown=False):
     tea = system.TEA
-    get_annual_electricity = lambda system: system.power_utility.cost*system.operating_hours 
+    get_daily_electricity = lambda system: system.power_utility.power * 24 #kWh/day
+    get_annual_electricity_cost = lambda system: system.power_utility.cost*system.operating_hours #USD/yr
+    
     #TODO: check where to set 'operating_hours'
     functions = [lambda: (get_scaled_capital(tea)-tea.net_earnings) / ppl]
     if not include_breakdown: return functions # net cost
     return [
         *functions,
         lambda: get_scaled_capital(tea) / ppl, # CAPEX
-        lambda: get_annual_electricity(system)/ppl, # energy (electricity)
+        lambda: get_daily_electricity(system)/ppl, #kWh/user/day
+        lambda: get_annual_electricity_cost(system)/ppl, # energy (electricity)
         lambda: tea.annual_labor/ppl, # labor
         lambda: (tea.AOC-get_annual_electricity(system)-tea.annual_labor)/ppl, # OPEX (other than energy and labor)
         lambda: tea.sales / ppl, # sales
@@ -337,7 +344,7 @@ def get_normalized_CAPEX(unit, ppl=default_ppl):
 
 def get_normalized_electricity_cost(unit, ppl=default_ppl):
     '''Get the energy (electricity) cost of a unit normalized to per capita per day.'''
-    return lambda: unit.power_utility.cost /ppl
+    return lambda: unit.power_utility.cost /ppl*24
 
 def get_normalized_OPEX(unit, ppl=default_ppl):
     '''
@@ -461,7 +468,7 @@ def print_summaries(systems):
 
 
 from . import models
-from .models import *
+from . import analysis
 
 # from . import country_specific
 # from .country_specific import *
@@ -473,5 +480,6 @@ __all__ = (
     *_components.__all__,
     *systems.__all__,
     *models.__all__,
+    *analysis.__all__,
     # *country_specific.__all__,
 )

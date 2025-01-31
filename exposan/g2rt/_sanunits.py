@@ -37,6 +37,7 @@ __all__ = ('Excretion',
            'G2RTLiquidsTank',
            'G2RTSolidsTank',
            'G2RTControls',
+           'G2RTHousing',
            'G2RTSolidsSeparation',
            'G2RTBeltSeparation',
            'G2RTUltrafiltration',
@@ -192,7 +193,7 @@ class mSCWOGasModule(IsothermalCompressor):
     
     @property
     def power_kW(self):
-        IsothermalCompressor()._design()
+        super()._design()
         D = self.design_results
         return (self.dosing_valve_power_demand * self.dosing_valve_daily_operation/24+
                            D['Ideal power']/self.compressor_efficiency) #kW
@@ -378,7 +379,7 @@ class mSCWOConcentratorModule(SanUnit):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
         cmps = self.components
-        self.solids = tuple((cmp.ID for cmp in cmps.solids))
+        self.solids = tuple((cmp.ID for cmp in cmps.solids)) + ('OtherSS',) #salts oversaturated and become solids
         self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
     
     def _run(self):
@@ -2004,7 +2005,7 @@ class VRConcentrator(SanUnit):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
         cmps = self.components
-        self.solids = tuple((cmp.ID for cmp in cmps.solids))
+        self.solids = tuple((cmp.ID for cmp in cmps.solids)) + ('OtherSS',) #dissolved salts dry out
         self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
     
     def _run(self):
@@ -2021,7 +2022,6 @@ class VRConcentrator(SanUnit):
                                f'is smaller than the desired moisture content ({mc_out:.2f}).')
         TS_in = waste_in.imass[solids].sum() # kg TS dry/hr
         waste_out.imass['H2O'] = TS_in/(1-mc_out)*mc_out #kg water/hr
-        
         #Calculate N2O and CH4 emissions
         CH4.imass['CH4'] = drying_CH4_to_air = \
             self.drying_CH4_emissions * self.carbon_COD_ratio * \
@@ -2128,7 +2128,7 @@ class VRConcentrator(SanUnit):
     @property
     def power_kW(self):
         return (self.pump_power_demand * self.pump_daily_operation/24+
-                self.water_vapor_H2O * self.energy_required_to_dry_sludge) #kW
+                self.water_vapor_H2O * self.energy_required_to_evaporize_water) #kW
    
     
 #%%
@@ -2375,7 +2375,7 @@ class VRdryingtunnel(SanUnit):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
         cmps = self.components
-        self.solids = tuple((cmp.ID for cmp in cmps.solids))
+        self.solids = tuple((cmp.ID for cmp in cmps.solids)) + ('OtherSS',)
         self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
 
     def _run(self):
@@ -2540,6 +2540,18 @@ class G2RTHousing(Copier):
         ratio = self.price_ratio
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
+    
+    @property
+    def OPEX(self):
+        return 0.0 #USD/day
+    
+    @property
+    def labor_expense(self):
+        return 0.0 #USD/day
+    
+    @property
+    def power_kW(self):
+        return 0.0 #kW
 
 #%%
 g2rt_controls_path = ospath.join(g2rt_su_data_path, '_g2rt_controls.csv')
