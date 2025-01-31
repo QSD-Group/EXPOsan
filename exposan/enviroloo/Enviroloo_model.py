@@ -675,6 +675,9 @@ for indicator in ('GlobalWarming',
     data = load_data(item_path, sheet = sheet_name)   # load data from Excel file
     for p in data.index:
         item = ImpactItem.get_item(p)
+        if item is None:
+            print(f"Missing ImpactItem: {p} (Sheet: {sheet_name})")
+            continue
         b = item.CFs[indicator]
         lower = float(data.loc[p]['low']) 
         upper = float(data.loc[p]['high'])   
@@ -740,7 +743,7 @@ def create_model(country_specific = False, **model_kwargs):
         'PressureTank': unitEL.PT,
         }
     
-    add_parameters(modelEL, unit_dct, country_specific)
+    add_parameters(modelEL, unit_dct, country_specific);
     
     return modelEL
 
