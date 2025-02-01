@@ -28,6 +28,7 @@ __all__ = (
     'AcidExtraction',
     'DAPSynthesis',
     'FuelMixer',
+    'HTLaqueous',
     'HTLmixer',
     'Humidifier',
     'PreStripper',
@@ -43,6 +44,8 @@ _hp2kW = 0.7457
 _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
 _Pa_to_psi = auom('Pa').conversion_factor('psi')
 _m_to_ft = auom('m').conversion_factor('ft')
+
+# TODO: update the format of unit descriptions
 
 # =============================================================================
 # Acid Extraction
@@ -149,7 +152,13 @@ class AcidExtraction(Reactor):
 # =============================================================================
 # AmineAbsorption 
 # =============================================================================
-                    
+
+# TODO: double check the BM value
+# @cost(basis='CO2 flow', ID='Reactor', units='kmol/hr',
+#       cost=3.063e6, S=760*1000000/24/44/1000, CE=CEPCI_by_year[2019], n=0.67, BM=1)
+# @cost(basis='CO2 flow', ID='Pumps electricity', units='kmol/hr',
+#       kW=55595.96/(613*(1000/44))*(24123*0.1186), S=24123, CE=CEPCI_by_year[2009])
+
 @cost(basis='Total flow', ID='Absorber', units='kmol/hr',
       cost=4.81e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=4.3)
 @cost(basis='Total flow', ID='Stripper', units='kmol/hr',
@@ -170,6 +179,8 @@ class AcidExtraction(Reactor):
 class AmineAbsorption(SanUnit):
     '''
     Similar to biosteam.units.AmineAbsorption, but can init with 'WasteStream'.
+    Electricity use is from biosteam.units.AmineAbsorption.
+    Cost function from [1].
     
     Parameters
     ----------
@@ -187,6 +198,14 @@ class AmineAbsorption(SanUnit):
         The default is 1.5 based on [1]_ and [3]_.
     heat_ratio :
         Unit duty in kJ/kg CO2.
+    
+    References
+    ----------
+    .. [1] Devkota, S.; Karmacharya, P.; Maharjan, S.; Khatiwada, D.;
+        Uprety, B. Decarbonizing Urea: Techno-Economic and Environmental
+        Analysis of a Model Hydroelectricity and Carbon Capture Based
+        Green Urea Production. Applied Energy 2024, 372, 123789.
+        https://doi.org/10.1016/j.apenergy.2024.123789.
     '''
     
     _N_ins = 3
@@ -208,7 +227,7 @@ class AmineAbsorption(SanUnit):
         CO2.imol['CO2'] = self.CO2_recovery * flue_gas.imol['CO2']
         vent.imol['CO2'] = flue_gas.imol['CO2'] - CO2.imol['CO2']
         MEA.imass['MEA'] = self.MEA_to_CO2 * CO2.imass['CO2']/1000
-        water.imass['Water'] = MEA.imass['MEA'] / 0.3 * (1-0.3)
+        water.imass['Water'] = MEA.imass['MEA']/0.3*(1-0.3)
         vent.T = CO2.T = 273.15 + 40
         CO2.phase = 'g'
         
@@ -321,6 +340,8 @@ class DAPSynthesis(Reactor):
         DAP.phase = 's'
         
         excess_ammonia.imass['NH3'] = ammonia.imass['NH3'] - DAP.imass['DAP']/132.06*2*17.031
+        excess_ammonia.imass['H2O'] = ammonia.imass['H2O']
+        excess_ammonia.T = ammonia.T
         excess_ammonia.phase = 'g'
         
         effluent.imass['H2O'] = P_solution.F_mass + ammonia.F_mass - DAP.F_mass - excess_ammonia.F_mass
@@ -434,7 +455,60 @@ class FuelMixer(SanUnit):
         self._target = i
 
 # =============================================================================
-# HTL mixer
+# HTLaqueous
+# =============================================================================
+
+class HTLaqueous(SanUnit):
+    '''
+    A fake unit that calculates C, N, P, and H2O amount in the HTL aqueous effluent.
+    
+    Parameters
+    ----------
+    ins : Iterable(stream)
+        HTL_effluent_undefined
+    outs : Iterable(stream)
+        HTL_effluent_defined
+        
+    References
+    ----------
+    .. [1] Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J. 
+        Quantitative Evaluation of an Integrated System for Valorization of
+        Wastewater Algae as Bio-Oil, Fuel Gas, and Fertilizer Products. 
+        Environ. Sci. Technol. 2018, 52 (21), 12717–12727. 
+        https://doi.org/10.1021/acs.est.8b04035.
+    '''
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream'):
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+
+    _N_ins = 1
+    _N_outs = 1
+    _ins_size_is_fixed = False
+        
+    def _run(self):
+        
+        HTL_effluent_undefined = self.ins[0]
+        HTL_effluent_defined = self.outs[0]
+        
+        HTL_effluent_defined.copy_like(HTL_effluent_undefined)
+        HTL_effluent_defined.empty()
+        
+        HTL_effluent_defined.imass['C'] = self.ins[0]._source.HTLaqueous_C
+        HTL_effluent_defined.imass['N'] = self.ins[0]._source.HTLaqueous_N
+        HTL_effluent_defined.imass['P'] = self.ins[0]._source.HTLaqueous_P
+        # other compositions represented by H2O except C, N, P
+        HTL_effluent_defined.imass['H2O'] = HTL_effluent_undefined.F_mass -\
+                                            HTL_effluent_defined.imass['C'] -\
+                                            HTL_effluent_defined.imass['N'] -\
+                                            HTL_effluent_defined.imass['P']
+    
+    @property
+    def pH(self):
+        return 7
+
+# =============================================================================
+# HTLmixer
 # =============================================================================
 
 class HTLmixer(SanUnit):
@@ -478,11 +552,11 @@ class HTLmixer(SanUnit):
         mixture.imass['N'] = self.ins[0]._source.HTLaqueous_N
         mixture.imass['P'] = self.ins[0]._source.HTLaqueous_P +\
                              extracted.imass['P']
+        # other compositions represented by H2O except C, N, P
         mixture.imass['H2O'] = HTLaqueous.F_mass + extracted.F_mass -\
                                mixture.imass['C'] - mixture.imass['N'] -\
                                mixture.imass['P']
-        # represented by H2O except C, N, P
-        
+    
     @property
     def pH(self):
         HTLaqueous, extracted = self.ins
@@ -766,16 +840,14 @@ class StruvitePrecipitation(Reactor):
 # UANSynthesis
 # =============================================================================
 
-# TODO: need check
-
-# assume the cost in the reference paper is 2022 dollar
-# the installed cost is already included, so BM=1
+# TODO: double check the BM value
 @cost(basis='Urea production capacity', ID='Urea synthesizer', units='kg/h',
-      cost=4050000, S=1000*1000/365/24,
-      CE=CEPCI_by_year[2022], n=0.58, BM=1)
+      cost=28*1.04*1000000, S=500*1000/24,
+      CE=CEPCI_by_year[2016], n=0.67, BM=1)
 class UANSynthesis(Reactor):
     '''
-    A black box model of urea synthesis based on [1].
+    Urea ammonium nitrate synthesis.
+    Cost of urea systhesis from [1].
     
     Parameters
     ----------
@@ -796,16 +868,17 @@ class UANSynthesis(Reactor):
     
     References
     ----------
-    [1] Palys, M. J.; Daoutidis, P. Techno-Economic Optimization of Renewable
-     Urea Production for Sustainable Agriculture and CO2 Utilization.
-     J. Phys. Energy 2023, 6 (1), 015013. https://doi.org/10.1088/2515-7655/ad0ee6.
+    .. [1] Devkota, S.; Karmacharya, P.; Maharjan, S.; Khatiwada, D.;
+        Uprety, B. Decarbonizing Urea: Techno-Economic and Environmental
+        Analysis of a Model Hydroelectricity and Carbon Capture Based
+        Green Urea Production. Applied Energy 2024, 372, 123789.
+        https://doi.org/10.1016/j.apenergy.2024.123789.
     '''
     _N_ins = 5
     _N_outs = 4
     _F_BM_default = {**Reactor._F_BM_default}
     _units= {'Urea production capacity':'kg/h'}
     
-    # TODO: add a mixer as an auxiliary unit
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  # TODO: add uncertainty to the following parameters with citations
                  ratio=3.5, # 3-4, Uniform
@@ -859,6 +932,8 @@ class UANSynthesis(Reactor):
         
         if required_CO2 > carbon_dioxide.imass['CO2']:
             additional_carbon_dioxide.imass['CO2'] = required_CO2 - carbon_dioxide.imass['CO2']
+        else:
+            additional_carbon_dioxide.imass['CO2'] = 0
         
         urea_amount = self.urea_amount = required_CO2/44.009*self.efficiency/\
                                          (1 - (1 - self.efficiency)*(1-self.loss))*60.06
@@ -906,14 +981,14 @@ class UANSynthesis(Reactor):
 # UreaSynthesis
 # =============================================================================
 
-# assume the cost in the reference paper is 2022 dollar
-# the installed cost is already included, so BM=1
+# TODO: double check the BM value
 @cost(basis='Production capacity', ID='Urea synthesizer', units='kg/h',
-      cost=4050000, S=1000*1000/365/24,
-      CE=CEPCI_by_year[2022], n=0.58, BM=1)
+      cost=28*1.04*1000000, S=500*1000/24,
+      CE=CEPCI_by_year[2016], n=0.67, BM=1)
 class UreaSynthesis(SanUnit):
     '''
-    A black box model of urea synthesis based on [1].
+    Urea Synthesis.
+    Cost of urea systhesis from [1].
     
     Parameters
     ----------
@@ -932,9 +1007,11 @@ class UreaSynthesis(SanUnit):
     
     References
     ----------
-    [1] Palys, M. J.; Daoutidis, P. Techno-Economic Optimization of Renewable
-     Urea Production for Sustainable Agriculture and CO2 Utilization.
-     J. Phys. Energy 2023, 6 (1), 015013. https://doi.org/10.1088/2515-7655/ad0ee6.
+    .. [1] Devkota, S.; Karmacharya, P.; Maharjan, S.; Khatiwada, D.;
+        Uprety, B. Decarbonizing Urea: Techno-Economic and Environmental
+        Analysis of a Model Hydroelectricity and Carbon Capture Based
+        Green Urea Production. Applied Energy 2024, 372, 123789.
+        https://doi.org/10.1016/j.apenergy.2024.123789.
     '''
     _N_ins = 3
     _N_outs = 4
@@ -963,6 +1040,8 @@ class UreaSynthesis(SanUnit):
         
         if required_CO2 > carbon_dioxide.imass['CO2']:
             additional_carbon_dioxide.imass['CO2'] = required_CO2 - carbon_dioxide.imass['CO2']
+        else:
+            additional_carbon_dioxide.imass['CO2'] = 0
         
         urea.imass['Urea'] = required_CO2/44.009*self.efficiency/\
                              (1 - (1 - self.efficiency)*(1-self.loss))*60.06

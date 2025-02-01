@@ -82,7 +82,7 @@ import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
 from qsdsan.utils import auom, clear_lca_registries
 from exposan.htl import _load_components, create_tea, state_income_tax_rate_2022, _sanunits as su
-from biosteam.units import IsenthalpicValve, Stripper, Splitter, MolecularSieve, IsothermalCompressor
+from biosteam.units import IsenthalpicValve, Stripper, MolecularSieve, IsothermalCompressor, Splitter
 from biosteam import settings
 
 __all__ = ('create_geospatial_system','biocrude_density')
@@ -134,25 +134,6 @@ def _load_process_settings(location='IL'):
     folder = os.path.dirname(__file__)
     
     bst.CE = qs.CEPCI_by_year[2022]
-    
-    DPO_chem = qs.Chemical(ID='DPO_chem', search_ID='101-84-8')
-    DPO = qs.Component.from_chemical(ID='DPO', chemical=DPO_chem,
-                                     particle_size='Soluble',
-                                     degradability='Slowly',
-                                     organic=True)
-
-    BIP_chem = qs.Chemical(ID='BIP_chem', search_ID='92-52-4')
-    BIP = qs.Component.from_chemical(ID='BIP', chemical=BIP_chem,
-                                     particle_size='Soluble',
-                                     degradability='Slowly',
-                                     organic=True)
-    
-    HTF_thermo = bst.Thermo((DPO, BIP,))
-    
-    HTF = bst.UtilityAgent(ID='HTF', DPO=0.735, BIP=0.265, T=673.15, P=951477,
-                           phase='g', thermo=HTF_thermo, regeneration_price=1)
-    
-    bst.HeatUtility.heating_agents.append(HTF)
     
     elec = pd.read_excel(folder + '/data/state_elec_price_2022.xlsx', 'elec_price_2022')
     # electricity price in 2022$/kWh
@@ -299,26 +280,30 @@ def create_geospatial_system(# MGD
     # assume no value/cost and no environmental benefit/impact associated with hydrochar
     HTL = qsu.HydrothermalLiquefaction(ID='HTL',
                                        ins=H1-0,
-                                       outs=('hydrochar','HTL_aqueous',
+                                       outs=('hydrochar','HTL_aqueous_undefined',
                                              'biocrude_to_be_stored','offgas_HTL'),
                                        mositure_adjustment_exist_in_the_system=False)
     
     # =========================================================================
     # CHG
     # =========================================================================
-    
-    M1 = su.HTLmixer(ID='M1',
-                     ins=(HTL-1, ''),
-                     outs='mixture')
+    HTLaqueous = su.HTLaqueous(ID='HTLaqueous',
+                               ins=HTL-1,
+                               outs='HTL_aqueous_defined')
     
     # TODO: add the following note to other HTL systems
     # 7.8%_Ru/C and 7.8%_Ru/C_out are not valid names; they are not in sys.flowsheet.stream but the price and LCA are included
     # although this have no impact on the results, still change the names to 'virgin_CHG_catalyst and 'used_CHG_catalyst'
     CHG = qsu.CatalyticHydrothermalGasification(ID='CHG',
-                                                ins=(M1-0,'virgin_CHG_catalyst'),
+                                                ins=(HTLaqueous-0, 'virgin_CHG_catalyst'),
                                                 outs=('CHG_out','used_CHG_catalyst'))
     # CHG price: [7]
     CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2022]
+    
+    S2WS1 = su.StreamTypeConverter(ID='S2WS1',
+                                   ins=CHG-1,
+                                   outs='CHG_catalyst_out',
+                                   init_with='WasteStream')
     
     V1 = IsenthalpicValve(ID='V1',
                           ins=CHG-0,
@@ -356,8 +341,9 @@ def create_geospatial_system(# MGD
     # 0.2384 2016$/lb, [6]
     PreStripper.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
-    # TODO: the flow rate should be a function, how about size*2, update if needed
-    water_steam = qs.Stream(ID='water_steam', H2O=size*2, phase='g', T=390)
+    # use steam could reduce the required air:liquid volume ratio from 3000:1 to ~300:1
+    # set the flow here as size*2 results in a volume ratio of ~350:1
+    water_steam = qs.Stream(ID='water_steam', H2O=size*2, phase='l', T=25+273.15)
     water_steam.price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
     boiler = qsu.HXutility(ID='boiler',
@@ -372,30 +358,54 @@ def create_geospatial_system(# MGD
                            outs=('vapor','liquid'),
                            solute='NH3')
     
-    NH3MS = MolecularSieve(ID='NH3MS', ins=NH3Stripper-0,
-                           outs=('NH3_rich', 'water_rich'),
-                           split=dict(Water=0, # almost no water can pass, assume 0, water will further loss in a compressor and cooler to produce anhydrous ammonia
-                                     NH3=0.98)) # maybe 1-5% loss
+    # use 3 molecular sieves to ensure the removal of water
+    # assume 2% (1%-5%) of NH3 loss for each pass
+    NH3MS1 = MolecularSieve(ID='NH3MS1', ins=NH3Stripper-0,
+                            outs=('NH3_rich_1','water_rich_1'),
+                            split=dict(Water=0.16,
+                                       NH3=0.98))
     
-    # TODO: change the name of 'excess_NH3' to 'anhydrous_NH3' since this is the product, and change the name before accordingly
+    NH3MS2 = MolecularSieve(ID='NH3MS2', ins=NH3MS1-0,
+                            outs=('NH3_rich_2','water_rich_2'),
+                            split=dict(Water=0.08,
+                                       NH3=0.98))
+    
+    NH3MS3 = MolecularSieve(ID='NH3MS3', ins=NH3MS2-0,
+                            outs=('NH3_rich_3','water_rich_3'),
+                            split=dict(Water=0,
+                                       NH3=0.98))
+    
     DAPSyn = su.DAPSynthesis(ID='DAPSyn',
-                             ins=(AcidEx-1, NH3MS-0),
+                             ins=(AcidEx-1, NH3MS3-0),
                              outs=('DAP','excess_NH3','DAPSyn_effluent'))
     # TODO: update if needed
-    DAPSyn.outs[0].price = 0.6
+    DAPSyn.outs[0].price = 1.085
     
     if nitrogen_fertilizer == 'NH3':
-        NH3Compressor = IsothermalCompressor('NH3Compressor', ins=DAPSyn-1, outs='anhydrous_ammonia', P=2e6, eta=1, vle=True)
+        NH3Compressor = IsothermalCompressor(ID='NH3Compressor',
+                                             ins=DAPSyn-1,
+                                             outs='anhydrous_ammonia_gas',
+                                             P=2e6,
+                                             eta=1,
+                                             vle=True)
         
-        S2WS = su.StreamTypeConverter(ID='S2WS', ins=NH3Compressor-0, outs='anhydrous_ammonia_LCA', init_with='WasteStream')
+        NH3Cooler = qsu.HXutility(ID='NH3Cooler',
+                                  ins=NH3Compressor-0,
+                                  outs='anhydrous_ammonia',
+                                  T=25+273.15,
+                                  init_with='Stream',
+                                  rigorous=True)
+        
+        S2WS2 = su.StreamTypeConverter(ID='S2WS2',
+                                       ins=NH3Cooler-0,
+                                       outs='anhydrous_ammonia_LCA',
+                                       init_with='WasteStream')
         # TODO: update if needed
-        S2WS.outs[0].price = 0.8
+        S2WS2.outs[0].price = 1.552
     
     # =========================================================================
     # Storage, and disposal
     # =========================================================================
-    # TODO: check this citation, why biocrude needs to be stored and is 3-day reasonable
-    # TODO: if deciding not including biocrude storage, update this in the manuscript/SI
     # store for 3 days based on [7]
     BiocrudeTank = qsu.StorageTank(ID='BiocrudeTank',
                                    ins=HTL-2,
@@ -409,25 +419,60 @@ def create_geospatial_system(# MGD
     # 2022 average closing price for crude oil: 94.53 $/oil barrel, [10]
     BiocrudeTank.outs[0].price = 94.53/_oil_barrel_to_m3/biocrude_density
     
-    PC1 = qsu.PhaseChanger(ID='PC1',
-                           ins=CHG-1,
-                           outs='CHG_catalyst_out',
-                           phase='s')
-    
     GasMixer = qsu.Mixer(ID='GasMixer',
                          ins=(HTL-3, F1-0),
                          outs=('fuel_gas'),
                          init_with='Stream')
     
     # =========================================================================
+    # nutrient recovery - part 2
+    # =========================================================================
+    
+    # TODO: is it practical to just capture the amount of CO2 needed?
+    # TODO: maybe simply release excess CO2, remove cost and add CI for the fossil part
+    # TODO: add cost and CI for ins
+    # AmineAbsorption includes a stripper based on the description
+    # CC = su.AmineAbsorption(ID='CC',
+    #                         ins=(CHP-0, 'makeup_MEA', 'makeup_water'),
+    #                         outs=('vent','CO2'),
+    #                         CO2_recovery=0.9)
+    
+    if nitrogen_fertilizer != 'NH3':
+        if nitrogen_fertilizer == 'urea':
+            # TODO: update cost and CI if necessary
+            UreaSyn = su.UreaSynthesis(ID='UreaSyn',
+                                       ins=(DAPSyn-1, 'testets', 'additional_carbon_dioxide'),
+                                       outs=('urea','urea_vapor','urea_waste','excess_carbon_dioxide'))
+            UreaSyn.ins[1].price = 0.05
+            UreaSyn.ins[2].price = 0.05
+            UreaSyn.outs[0].price = 0.942
+            # UreaSyn.outs[3].price = 0.05
+        else:
+            # TODO: update cost and CI if necessary
+            # TODO: add cost and CI for nitric acid
+            # TODO:need different cost and CI for different UAN's
+            UANSyn = su.UANSynthesis(ID='UANSyn',
+                                     ins=(DAPSyn-1, 'testets', 'additional_carbon_dioxide', 'HNO3', 'UAN_water'),
+                                     outs=('UAN28','UAN_vapor','UAN_waste','UAN_excess_carbon_dioxide'),
+                                     UAN_concentration=28)
+            UANSyn.ins[1].price = 0.05
+            UANSyn.ins[2].price = 0.05
+            UANSyn.ins[3].price = 0.3
+            UANSyn.ins[4].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
+            UANSyn.outs[0].price = 0.736
+            # UANSyn.outs[3].price = 0.05
+    
+    # =========================================================================
     # facilities
     # =========================================================================
+    # previously used 86 C with self-defined heat utility
+    # now use natural gas for heating, and use default T_min_app
     qsu.HeatExchangerNetwork(ID='HXN',
-                             # TODO: consider adjusting this value
-                             T_min_app=86,
                              force_ideal_thermo=True)
     
-    # assume no value/cost and no environmental benefit/impact associated with emission (they are not treated and are biogenic; only CO2 from natural gas is non-biogenic but we have included the environmental impact for it)
+    # assume no value/cost and no environmental benefit/impact associated with emission
+    # TODO: double check does the IEDO CI value for natural gas include combustion
+    # emission is not treated and is biogenic, only CO2 from natural gas combustion is non-biogenic but we have included the environmental impact for it
     # the CHP here can ususally meet the heat requirement but not the electricity
     # buying additional natural gas to produce electricity does not provide benefit; therefore, set supplement_power_utility=False
     CHP = qsu.CombinedHeatPower(ID='CHP',
@@ -435,6 +480,7 @@ def create_geospatial_system(# MGD
                                 outs=('emission','solid_ash'),
                                 init_with='WasteStream',
                                 supplement_power_utility=False)
+    # TODO: check the price of natural gas, be consistent with _heat_utility.py
     # assume natural gas is CH4 (density is 0.657 kg/m3, [11])
     # the density of natural gas (0.68 kg/m3, [12]) is larger than that of CH4, therefore, the calculation here is conservative
     # 2022 US NG industrial price: 7.66 $/1000 ft3, [13]
@@ -442,38 +488,15 @@ def create_geospatial_system(# MGD
     # 1.41 MM 2016$/year for 4270/4279 kg/hr ash, 7880 annual operating hours, from [6]
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2022]
     
-    # =========================================================================
-    # nutrient recovery - part 2
-    # =========================================================================
-    if nitrogen_fertilizer != 'NH3':
-        # TODO: is it practical to just capture the amount of CO2 needed?
-        # TODO: add cost and CI for ins
-        # AmineAbsorption includes a stripper based on the description
-        CC = su.AmineAbsorption(ID='CC',
-                                ins=(CHP-0, 'makeup_MEA', 'makeup_water'),
-                                outs=('vent','CO2'))
-        
-        if nitrogen_fertilizer == 'urea':
-            # TODO: update cost and CI if necessary
-            UreaSyn = su.UreaSynthesis(ID='UreaSyn', ins=(DAPSyn-1, CC-1, 'additional_carbon_dioxide'), outs=('urea','urea_vapor','urea_waste','excess_carbon_dioxide'))
-            UreaSyn.ins[2].price = 0.3
-            UreaSyn.outs[0].price = 0.6
-            UreaSyn.outs[3].price = 0.3
-        else:
-            # TODO: update cost and CI if necessary
-            # TODO: add cost and CI for nitric acid
-            UANSyn = su.UANSynthesis(ID='UANSyn', ins=(DAPSyn-1, CC-1, 'additional_carbon_dioxide', 'HNO3', 'UAN_water'), outs=('UAN28','UAN_vapor','UAN_waste','UAN_excess_carbon_dioxide'))
-            UANSyn.ins[1].price = 0.3
-            UANSyn.ins[2].price = 0.3
-            UANSyn.ins[4].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
-            UANSyn.outs[0].price = 0.33
-            UANSyn.outs[3].price = 0.3
-    
     # TODO: consider adding CT and its TEA (price for cooling_tower_chemicals) and LCA items (CT_chemicals in the 'Other' category) for other systems (HTL, HTL-PFAS)
     # construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_chemicals: 1.7842 2016$/lb, [6]
     CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
+    
+    # CWP uses electricity to generate chilled water
+    # the water cost can be ignored since the water can be recirculated
+    CWP = bst.ChilledWaterPackage(ID='CWP')
     
     sys = qs.System.from_units(ID='sys_geospatial',
                                units=list(flowsheet.unit),
@@ -499,7 +522,7 @@ def create_geospatial_system(# MGD
     CT_chemicals.add_indicator(GlobalWarming, 0.00042012744)
     
     Water_steam = qs.ImpactItem('Water_steam', functional_unit='kg')
-    Water_steam.add_indicator(GlobalWarming, 0.00042012744)
+    Water_steam.add_indicator(GlobalWarming, 0.28218035)
     
     Sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
     # assume the transported sludge has 80% moisture content
@@ -550,8 +573,9 @@ def create_geospatial_system(# MGD
                     'NaOH':         [stream.NaOH, 1.2497984],
                     'DAP':          [stream.DAP, -1.456692],
                     # TODO: do not use market or market group for products for other systems (i.e., CO2 sorbent, HTL-PFAS)
-                    # TODO: use the CI for nature gas from IEDO (can be higher)
-                    'natural_gas':  [stream.natural_gas, 0.634279217],
+                    # TODO: use the CI for nature gas from IEDO
+                    # TODO: check this (0.7 excludes combustion since there is CC)
+                    'natural_gas':  [stream.natural_gas, 3.45],
                     # use market or market group for biocrude since we want to offset transportation and then add our own transportation part
                     # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
                     'biocrude':     [stream.biocrude, -0.22290007],
@@ -562,11 +586,13 @@ def create_geospatial_system(# MGD
     if nitrogen_fertilizer == 'NH3':
         impact_items['anhydrous_ammonia_LCA'] = [stream.anhydrous_ammonia_LCA, -2.4833472]
     elif nitrogen_fertilizer == 'urea':
+        # TODO: related to natural gas, how to handle captured CO2?
         # impact_items['excess_carbon_dioxide'] = [stream.excess_carbon_dioxide, -1]
         impact_items['urea'] = [stream.urea, -1.2510711]
     else:
+        # TODO: related to natural gas, how to handle captured CO2?
         # impact_items['excess_carbon_dioxide'] = [stream.excess_carbon_dioxide, -1]
-        impact_items['HNO3'] = [stream.HNO3, 3.249599258232]
+        impact_items['HNO3'] = [stream.HNO3, 1.624862648]
         impact_items['UAN_water'] = [stream.UAN_water, 0.00042012744]
         impact_items['UAN28'] = [stream.UAN28, -1.6799471]
     
@@ -580,14 +606,13 @@ def create_geospatial_system(# MGD
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30/0.48748859*elec_GHG,
            # note LCA for CT_chemicals was included in the 'Other' category while it should be in the 'Stream' category
            # the effect is minimal since (i) this part of LCA is negligible and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-           CT_chemicals=lambda:CT.ins[2].F_mass*sys.flowsheet.WWTP.operation_hours*30,
+           CT_chemicals=lambda:CT.ins[2].F_mass*sys.flowsheet.WWTP.operation_hours*30,)
            
-           Water_steam=lambda:water_steam.F_mass*sys.flowsheet.WWTP.operation_hours*30)
+           # Water_steam=lambda:water_steam.F_mass*sys.flowsheet.WWTP.operation_hours*30)
     
     # =========================================================================
     # TEA
     # =========================================================================
-    # TODO: adjust labor costs using the county-level quotients assuming this is the baseline
     # TODO: update in other HTL systems as well (the original system, HTL-PFAS)
     # based on the labor cost for the HTL plant from [16], 2014 level:
     # 1 plant manager (0.15 MM$/year)
@@ -629,7 +654,6 @@ def create_geospatial_system(# MGD
     
     income_tax_rate = federal_income_tax_rate_value + state_income_tax_rate_value
     
-    # TODO: make sure the lifetime of TEA is 30 years
     create_tea(sys, IRR_value=0.03,
                income_tax_value=income_tax_rate,
                finance_interest_value=0.03,
