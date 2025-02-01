@@ -65,12 +65,10 @@ References:
      Environ. Sci. Technol. 2023. https://doi.org/10.1021/acs.est.2c07936.
 '''
 
-# TODO: changs to implement:
-# TODO 3: add urea recovery: use the cost power function
-    #  see https://iopscience.iop.org/article/10.1088/2515-7655/ad0ee6
-# TODO 4: add urea ammonium nitrate (UAN) recovery: can use the 'reactor' class to produce ammonium nitrate first, then mixing with urea
-# TODO 8: add N & P fertilizers offsets
-# TODO 9: add material costs & CI as contextural parameters whenenever possible
+# TODO: changes to implement:
+# TODO 1: add N & P fertilizers offsets
+# TODO 2: add material costs & CI as contextural parameters whenenever possible
+# TODO 3: add new units and contextualized fertilizers prices (https://mymarketnews.ams.usda.gov/report/list?market_types%5B0%5D=214) in writing
 
 import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
