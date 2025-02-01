@@ -92,7 +92,7 @@ def create_hap_cmps(set_thermo=True, industrial_yeast_production=True):
                        urea, creatinine, Hhip, Hcit, Hglu, Huric, other_COD,
                        chloride, sodium, potassium, IS, IP, ash, other_SS, 
                        *cmps_boulardii])
-    cmps.default_compile()
+    cmps.default_compile(ignore_inaccurate_molar_weight=True)
     if set_thermo: qs.set_thermo(cmps)
     return cmps
 
