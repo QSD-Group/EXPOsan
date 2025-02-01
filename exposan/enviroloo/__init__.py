@@ -3,10 +3,7 @@
 '''
 Created by Yuyao Huang and Siqi Tang for Enviroloo Clear Toilet system
 '''
-# %%
 import os, qsdsan as qs
-
-#%%
 from math import log
 from qsdsan import ImpactItem, StreamImpactItem
 from exposan.utils import (
@@ -173,7 +170,7 @@ def _load_lca_data(reload = False):
     '''
     global _impact_item_loaded
     if not _impact_item_loaded or reload:
-        indicator_path = os.path.join(data_path, 'impact_indicators.csv')
+        indicator_path = os.path.join(data_path, 'impact_indicators.tsv')
         qs.ImpactIndicator.load_from_file(indicator_path)
                     
         item_path = os.path.join(data_path, 'impact_items.xlsx')
@@ -390,8 +387,8 @@ from exposan.enviroloo import Enviroloo_model
 from .Enviroloo_model import *
 
 # This country_specific file will be done after the LCA, TEA, and uncertainty and sensitivity analysis of the EL system are all conducted.
-from exposan.enviroloo import country_specific
-from .country_specific import *
+#from exposan.enviroloo import country_specific
+#from .country_specific import *
 
 __all__ = (
     'EL_path',
