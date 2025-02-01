@@ -66,15 +66,9 @@ References:
 '''
 
 # TODO: changs to implement:
-# TODO 1: add labor cost as a contextural parameter
-# TODO 2: add anhydrous ammonia recovery: use stripper from BioSTEAM
-    # see https://github.com/BioSTEAMDevelopmentGroup/biosteam/blob/56b318b3beb5ec9e34d8d0a437dccb435fa6d37e/biosteam/units/distillation.py#L2341
-    # also see https://www.sciencedirect.com/science/article/pii/S2666789424000734#fig2
 # TODO 3: add urea recovery: use the cost power function
     #  see https://iopscience.iop.org/article/10.1088/2515-7655/ad0ee6
 # TODO 4: add urea ammonium nitrate (UAN) recovery: can use the 'reactor' class to produce ammonium nitrate first, then mixing with urea
-# TODO 5: add phosphorus extraction from hydrochar: use the previous model
-# TODO 6: add diammonium sulfate (DAP) recovery: can use the 'reactor' class, similar to StruvitePrecipitation
 # TODO 8: add N & P fertilizers offsets
 # TODO 9: add material costs & CI as contextural parameters whenenever possible
 
@@ -425,44 +419,6 @@ def create_geospatial_system(# MGD
                          init_with='Stream')
     
     # =========================================================================
-    # nutrient recovery - part 2
-    # =========================================================================
-    
-    # TODO: is it practical to just capture the amount of CO2 needed?
-    # TODO: maybe simply release excess CO2, remove cost and add CI for the fossil part
-    # TODO: add cost and CI for ins
-    # AmineAbsorption includes a stripper based on the description
-    # CC = su.AmineAbsorption(ID='CC',
-    #                         ins=(CHP-0, 'makeup_MEA', 'makeup_water'),
-    #                         outs=('vent','CO2'),
-    #                         CO2_recovery=0.9)
-    
-    if nitrogen_fertilizer != 'NH3':
-        if nitrogen_fertilizer == 'urea':
-            # TODO: update cost and CI if necessary
-            UreaSyn = su.UreaSynthesis(ID='UreaSyn',
-                                       ins=(DAPSyn-1, 'testets', 'additional_carbon_dioxide'),
-                                       outs=('urea','urea_vapor','urea_waste','excess_carbon_dioxide'))
-            UreaSyn.ins[1].price = 0.05
-            UreaSyn.ins[2].price = 0.05
-            UreaSyn.outs[0].price = 0.942
-            # UreaSyn.outs[3].price = 0.05
-        else:
-            # TODO: update cost and CI if necessary
-            # TODO: add cost and CI for nitric acid
-            # TODO:need different cost and CI for different UAN's
-            UANSyn = su.UANSynthesis(ID='UANSyn',
-                                     ins=(DAPSyn-1, 'testets', 'additional_carbon_dioxide', 'HNO3', 'UAN_water'),
-                                     outs=('UAN28','UAN_vapor','UAN_waste','UAN_excess_carbon_dioxide'),
-                                     UAN_concentration=28)
-            UANSyn.ins[1].price = 0.05
-            UANSyn.ins[2].price = 0.05
-            UANSyn.ins[3].price = 0.3
-            UANSyn.ins[4].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
-            UANSyn.outs[0].price = 0.736
-            # UANSyn.outs[3].price = 0.05
-    
-    # =========================================================================
     # facilities
     # =========================================================================
     # previously used 86 C with self-defined heat utility
@@ -497,6 +453,47 @@ def create_geospatial_system(# MGD
     # CWP uses electricity to generate chilled water
     # the water cost can be ignored since the water can be recirculated
     CWP = bst.ChilledWaterPackage(ID='CWP')
+    
+    # =========================================================================
+    # nutrient recovery - part 2
+    # =========================================================================
+    
+    if nitrogen_fertilizer != 'NH3':
+        # TODO: add cost and CI for ins
+        # to be sonservative, only capture CO2 from the combustion of fuel gas (excluding natural gas)
+        # (1) if natural gas is used in other HX, cannot capture here
+        # (2) if natural gas is also used in CHP, do not capture here
+        # the captured CO2 is assumed all biogenic
+        # as the captured CO2 is used to produce urea/UAN, there is negative carbon emission
+        # this should be accounted in the urea/UAN products
+        # also assume any excess CO2 will be directly released and will not have any CI
+        # since it is biogenic
+        # AmineAbsorption includes a stripper based on the description
+        CC = su.AmineAbsorption(ID='CC',
+                                ins=(CHP-0, 'makeup_MEA', 'makeup_water'),
+                                outs=('vent','CO2'),
+                                CO2_recovery=0.9)
+        
+        
+        if nitrogen_fertilizer == 'urea':
+            # TODO: update cost and CI if necessary
+            UreaSyn = su.UreaSynthesis(ID='UreaSyn',
+                                       ins=(DAPSyn-1, CC-1, 'additional_carbon_dioxide'),
+                                       outs=('urea','urea_vapor','urea_waste','excess_carbon_dioxide'))
+            UreaSyn.ins[2].price = 0.05
+            UreaSyn.outs[0].price = 0.942
+        else:
+            # TODO: update cost and CI if necessary
+            # TODO: add cost and CI for nitric acid
+            # TODO: need different cost and CI for different UAN's
+            UANSyn = su.UANSynthesis(ID='UANSyn',
+                                     ins=(DAPSyn-1, CC-1, 'additional_carbon_dioxide', 'HNO3', 'UAN_water'),
+                                     outs=('UAN28','UAN_vapor','UAN_waste','UAN_excess_carbon_dioxide'),
+                                     UAN_concentration=28)
+            UANSyn.ins[2].price = 0.05
+            UANSyn.ins[3].price = 0.3
+            UANSyn.ins[4].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
+            UANSyn.outs[0].price = 0.736
     
     sys = qs.System.from_units(ID='sys_geospatial',
                                units=list(flowsheet.unit),
@@ -588,13 +585,13 @@ def create_geospatial_system(# MGD
     elif nitrogen_fertilizer == 'urea':
         # TODO: related to natural gas, how to handle captured CO2?
         # impact_items['excess_carbon_dioxide'] = [stream.excess_carbon_dioxide, -1]
-        impact_items['urea'] = [stream.urea, -1.2510711]
+        impact_items['urea'] = [stream.urea, -1.2510711 - 44.009/60.06]
     else:
         # TODO: related to natural gas, how to handle captured CO2?
         # impact_items['excess_carbon_dioxide'] = [stream.excess_carbon_dioxide, -1]
         impact_items['HNO3'] = [stream.HNO3, 1.624862648]
         impact_items['UAN_water'] = [stream.UAN_water, 0.00042012744]
-        impact_items['UAN28'] = [stream.UAN28, -1.6799471]
+        impact_items['UAN28'] = [stream.UAN28, -1.6799471 - 44.009/138.08274]
     
     for item in impact_items.items():
         qs.StreamImpactItem(ID=item[0], linked_stream=item[1][0], GlobalWarming=item[1][1])

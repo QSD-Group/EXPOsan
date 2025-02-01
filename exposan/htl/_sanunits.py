@@ -153,34 +153,35 @@ class AcidExtraction(Reactor):
 # AmineAbsorption 
 # =============================================================================
 
-# TODO: double check the BM value
-# @cost(basis='CO2 flow', ID='Reactor', units='kmol/hr',
-#       cost=3.063e6, S=760*1000000/24/44/1000, CE=CEPCI_by_year[2019], n=0.67, BM=1)
-# @cost(basis='CO2 flow', ID='Pumps electricity', units='kmol/hr',
-#       kW=55595.96/(613*(1000/44))*(24123*0.1186), S=24123, CE=CEPCI_by_year[2009])
+# cost from biosteam.units.AmineAbsorption
+# @cost(basis='Total flow', ID='Absorber', units='kmol/hr',
+#       cost=4.81e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=4.3)
+# @cost(basis='Total flow', ID='Stripper', units='kmol/hr',
+#       cost=4e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=4.3)
+# @cost(basis='CO2 flow', ID='Pumps', units='kmol/hr',
+#       kW=55595.96/(613*(1000/44))*(24123*0.1186),
+#       cost=0.42e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.3)
+# @cost(basis='Total flow', ID='Condenser', units='kmol/hr',
+#       cost=0.27e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=4.17)
+# @cost(basis='Total flow', ID='Reboiler', units='kmol/hr',
+#       cost=0.53e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.17)
+# @cost(basis='Total flow', ID='Cross heat exchanger', units='kmol/hr',
+#       cost=2.28e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.17)
+# @cost(basis='Total flow', ID='Cooler', units='kmol/hr',
+#       cost=0.09e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.17)
+# @cost(basis='Total flow', ID='Makeup tank', units='kmol/hr',
+#       cost=0.23e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=2.3)
 
-@cost(basis='Total flow', ID='Absorber', units='kmol/hr',
-      cost=4.81e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=4.3)
-@cost(basis='Total flow', ID='Stripper', units='kmol/hr',
-      cost=4e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=4.3)
-@cost(basis='CO2 flow', ID='Pumps', units='kmol/hr',
-      kW=55595.96/(613*(1000/44))*(24123*0.1186),
-      cost=0.42e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.3)
-@cost(basis='Total flow', ID='Condenser', units='kmol/hr',
-      cost=0.27e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=4.17)
-@cost(basis='Total flow', ID='Reboiler', units='kmol/hr',
-      cost=0.53e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.17)
-@cost(basis='Total flow', ID='Cross heat exchanger', units='kmol/hr',
-      cost=2.28e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.17)
-@cost(basis='Total flow', ID='Cooler', units='kmol/hr',
-      cost=0.09e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.17)
-@cost(basis='Total flow', ID='Makeup tank', units='kmol/hr',
-      cost=0.23e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=2.3)
+# TODO: double check the BM value
+@cost(basis='CO2 flow', ID='Reactor', units='kmol/hr',
+      cost=3.063e6, S=760*1000000/24/44/1000, CE=CEPCI_by_year[2019], n=0.67, BM=1)
+@cost(basis='CO2 flow', ID='Pumps electricity', units='kmol/hr',
+      kW=55595.96/(613*(1000/44))*(24123*0.1186), S=24123, CE=CEPCI_by_year[2009])
 class AmineAbsorption(SanUnit):
     '''
     Similar to biosteam.units.AmineAbsorption, but can init with 'WasteStream'.
     Electricity use is from biosteam.units.AmineAbsorption.
-    Cost function from [1].
+    Cost function from [1], only keep pumps electricity from biosteam.units.AmineAbsorption.
     
     Parameters
     ----------
@@ -840,6 +841,7 @@ class StruvitePrecipitation(Reactor):
 # UANSynthesis
 # =============================================================================
 
+# TODO: check again
 # TODO: double check the BM value
 @cost(basis='Urea production capacity', ID='Urea synthesizer', units='kg/h',
       cost=28*1.04*1000000, S=500*1000/24,
@@ -912,8 +914,6 @@ class UANSynthesis(Reactor):
     
     def _run(self):
         
-        # TODO: adjust water amount to achieve desired UAN concentration, add water to UAN (the price may be for dry matter though, need to update this in the systems.py)
-        # TODO: add price and CI for water as well
         ammonia, carbon_dioxide, additional_carbon_dioxide, nitric_acid, water = self.ins
         UAN_solution, vapor, waste, excess_carbon_dioxide = self.outs
         
@@ -981,6 +981,7 @@ class UANSynthesis(Reactor):
 # UreaSynthesis
 # =============================================================================
 
+# TODO: check again
 # TODO: double check the BM value
 @cost(basis='Production capacity', ID='Urea synthesizer', units='kg/h',
       cost=28*1.04*1000000, S=500*1000/24,
