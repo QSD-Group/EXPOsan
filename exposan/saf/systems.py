@@ -752,10 +752,10 @@ config_MEC_future = {
 
 if __name__ == '__main__':
     # sys = create_system(flowsheet=None, **config_no_PSA)
-    # sys = create_system(flowsheet=None, **config_baseline)
+    sys = create_system(flowsheet=None, **config_baseline)
     # sys = create_system(flowsheet=None, **config_EC)
     # sys = create_system(flowsheet=None, **config_EC_future)
-    sys = create_system(flowsheet=None, **config_MEC_future)
+    # sys = create_system(flowsheet=None, **config_MEC_future)
     
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
