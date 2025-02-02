@@ -24,6 +24,8 @@ biocrude_density = 980
 sludge_density = 1000
 # kg/L
 water_density = 1
+# 42-47 MJ/kg, https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
+crude_oil_HHV = 44.5
 
 _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
 _MMgal_to_L = auom('gal').conversion_factor('L')*1000000
@@ -559,9 +561,9 @@ def create_geospatial_model(system=None,
     def set_catalyst_price(i):
         virgin_CHG_catalyst.price=i
     
-    biocrude_price_min = 71.59/_oil_barrel_to_m3/biocrude_density
-    biocrude_price_max = 123.70/_oil_barrel_to_m3/biocrude_density
-    biocrude_price_ave = 94.53/_oil_barrel_to_m3/biocrude_density
+    biocrude_price_min = 71.59/_oil_barrel_to_m3/biocrude_density/crude_oil_HHV*HTL.biocrude_HHV
+    biocrude_price_max = 123.70/_oil_barrel_to_m3/biocrude_density/crude_oil_HHV*HTL.biocrude_HHV
+    biocrude_price_ave = 94.53/_oil_barrel_to_m3/biocrude_density/crude_oil_HHV*HTL.biocrude_HHV
     dist = shape.Triangle(biocrude_price_min,biocrude_price_ave,biocrude_price_max)
     @param(name='biocrude price',
            element='TEA',
@@ -572,9 +574,11 @@ def create_geospatial_model(system=None,
     def set_biocrude_price(i):
         biocrude.price=i
     
-    natural_gas_price_min = 6.18/1000*_m3_to_ft3/0.657
-    natural_gas_price_max = 9.58/1000*_m3_to_ft3/0.657
-    natural_gas_price_ave = 7.66/1000*_m3_to_ft3/0.657
+    # TODO: update in writing
+    # from _heat_utility.py (biosteam): 3.49672 $/kmol
+    natural_gas_price_min = 0.218545*0.9
+    natural_gas_price_max = 0.218545*1.1
+    natural_gas_price_ave = 0.218545
     dist = shape.Triangle(natural_gas_price_min,natural_gas_price_ave,natural_gas_price_max)
     @param(name='natural gas price',
            element='TEA',
@@ -638,7 +642,7 @@ def create_geospatial_model(system=None,
     CF = 'GlobalWarming'
     # do not get joint distribution for multiple times, since the baselines for LCA will change
     for item in qs.ImpactItem.get_all_items().keys():
-        if qs.ImpactItem.get_item(item).CFs:
+        if qs.ImpactItem.get_item(item).CFs and qs.ImpactItem.get_item(item).CFs[CF] != 0:
             abs_small = 0.9*qs.ImpactItem.get_item(item).CFs[CF]
             abs_large = 1.1*qs.ImpactItem.get_item(item).CFs[CF]
             dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
@@ -1008,7 +1012,7 @@ def create_geospatial_model(system=None,
     def get_biocrude_production():
         return biocrude.F_mass/biocrude_density*1000/_oil_barrel_to_L*24
     
-    # TODO: add N production and P production
+    # TODO: add N production/offset and P production/offset
     
     if include_check:
         @metric(name='sludge_afdw_carbohydrate', units='-', element='test')

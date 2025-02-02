@@ -66,15 +66,14 @@ References:
 '''
 
 # TODO: changes to implement:
-# TODO 1: add N & P fertilizers offsets
-# TODO 2: add material costs & CI as contextural parameters whenenever possible
-# TODO 3: add new units and contextualized fertilizers prices (https://mymarketnews.ams.usda.gov/report/list?market_types%5B0%5D=214) in writing
+# TODO 1: check urea and UAN price and CI (using NH3 results as baselines)
+# TODO 2: add new units and contextualized fertilizers prices (https://mymarketnews.ams.usda.gov/report/list?market_types%5B0%5D=214) in writing
 
 import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
 from qsdsan.utils import auom, clear_lca_registries
 from exposan.htl import _load_components, create_tea, state_income_tax_rate_2022, _sanunits as su
-from biosteam.units import IsenthalpicValve, Stripper, MolecularSieve, IsothermalCompressor, Splitter
+from biosteam.units import IsenthalpicValve, Stripper, MolecularSieve, IsothermalCompressor
 from biosteam import settings
 
 __all__ = ('create_geospatial_system','biocrude_density')
@@ -84,6 +83,10 @@ biocrude_density = 980
 # kg/m3, this is for sludge with a moisture content higher than 80%,
 # google 'Design of wastewater treatment sludge thickeners Iowa State University'
 sludge_density = 1000
+# kg/m3, https://hpoilgas.in/Page/Detail/naturalgasoverview
+natural_gas_density = 0.65
+# 42-47 MJ/kg, https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
+crude_oil_HHV = 44.5
 
 _mile_to_km = auom('mile').conversion_factor('km')
 _lb_to_kg = auom('lb').conversion_factor('kg')
@@ -122,15 +125,6 @@ labor_index = {2014: 21.49,
                2022: 27.36,
                2023: 29.77}
 
-def _load_process_settings(location='IL'):
-    folder = os.path.dirname(__file__)
-    
-    bst.CE = qs.CEPCI_by_year[2022]
-    
-    elec = pd.read_excel(folder + '/data/state_elec_price_2022.xlsx', 'elec_price_2022')
-    # electricity price in 2022$/kWh
-    bst.PowerUtility.price = elec[elec['state']==location]['price'].iloc[0]/100
-
 # for parameters, unless otherwise stated, refer to the original HTL system model
 def create_geospatial_system(# MGD
                              size=10,
@@ -156,8 +150,10 @@ def create_geospatial_system(# MGD
                              # TODO: this might be predicted 2022 values, if there is a calculated one, use that one
                              # 2022 electricty CI by balancing area based on the IEDO work (change year to 2022)
                              # note change 2020 in the IEDO code for balancing area to 2022
+                             # use balancing-area-level in the analysis
                              # kg CO2 eq/kWh
                              elec_GHG=0.44,
+                             # use county-level in the analysis
                              wage_adjustment=1
                              ):
     
@@ -171,12 +167,69 @@ def create_geospatial_system(# MGD
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
         clear_lca_registries()
     
+    bst.CE = qs.CEPCI_by_year[2022]
+    
+    folder = os.path.dirname(__file__)
+    
+    # electricity price in 2022$/kWh
+    elec_price = pd.read_excel(folder + '/data/state_elec_price_2022.xlsx', 'elec_price_2022')
+    bst.PowerUtility.price = elec_price[elec_price['state']==state]['price'].iloc[0]/100
+    
+    # fertilizer price in $/US-ton
+    # UAN30 price includes UAN28/30/30-32
+    if state == 'AL':
+        DAP_price = 972.5
+        NH3_price = 1407.5
+        urea_price = 850
+        UAN30_price = 705
+    
+    elif state == 'IA':
+        DAP_price = 1000
+        NH3_price = 1386.5
+        urea_price = 867
+        UAN30_price = 658.5
+        
+    elif state == 'IL':
+        DAP_price = 962.5
+        NH3_price = 1417.5
+        urea_price = 875
+        UAN30_price = 702.5
+        
+    elif state == 'NC':
+        DAP_price = 995
+        NH3_price = 1407.5
+        urea_price = 855
+        UAN30_price = 605
+        
+    elif state == 'OK':
+        DAP_price = 1022
+        NH3_price = 1312.5
+        urea_price = 882.5
+        UAN30_price = 607.5
+        
+    elif state == 'SC':
+        DAP_price = 1002.2
+        NH3_price = 1407.5
+        urea_price = 895
+        UAN30_price = 587.5
+        
+    else:
+        DAP_price = 984.5
+        NH3_price = 1407.5
+        urea_price = 855
+        UAN30_price = 605
+    
+    # convert price to $/kg
+    DAP_price = DAP_price/0.907185/1000
+    NH3_price = NH3_price/0.907185/1000
+    urea_price = urea_price/0.907185/1000
+    UAN30_price = UAN30_price/0.907185/1000
+    
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
     _load_components()
-    _load_process_settings(location=state) 
     
     # =========================================================================
     # pretreatment
@@ -324,7 +377,8 @@ def create_geospatial_system(# MGD
     # based on 93% H2SO4 and fresh water (dilute onsite to 5%) prices in [6]
     H2SO4_Tank.ins[0].price = (0.043*1+0.0002*(93/5-1))/(93/5)/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
-    AcidEx = su.AcidExtraction(ID='AcidEx', ins=(HTL-0, H2SO4_Tank-0),
+    AcidEx = su.AcidExtraction(ID='AcidEx',
+                               ins=(HTL-0, H2SO4_Tank-0),
                                outs=('residual','extracted'))
     
     PreStripper = su.PreStripper(ID='PreStripper',
@@ -346,23 +400,27 @@ def create_geospatial_system(# MGD
                            rigorous=True)
     
     NH3Stripper = Stripper(ID='NH3Stripper',
-                           N_stages=2, ins=(PreStripper-0, boiler-0),
+                           N_stages=2,
+                           ins=(PreStripper-0, boiler-0),
                            outs=('vapor','liquid'),
                            solute='NH3')
     
     # use 3 molecular sieves to ensure the removal of water
     # assume 2% (1%-5%) of NH3 loss for each pass
-    NH3MS1 = MolecularSieve(ID='NH3MS1', ins=NH3Stripper-0,
+    NH3MS1 = MolecularSieve(ID='NH3MS1',
+                            ins=NH3Stripper-0,
                             outs=('NH3_rich_1','water_rich_1'),
                             split=dict(Water=0.16,
                                        NH3=0.98))
     
-    NH3MS2 = MolecularSieve(ID='NH3MS2', ins=NH3MS1-0,
+    NH3MS2 = MolecularSieve(ID='NH3MS2',
+                            ins=NH3MS1-0,
                             outs=('NH3_rich_2','water_rich_2'),
                             split=dict(Water=0.08,
                                        NH3=0.98))
     
-    NH3MS3 = MolecularSieve(ID='NH3MS3', ins=NH3MS2-0,
+    NH3MS3 = MolecularSieve(ID='NH3MS3',
+                            ins=NH3MS2-0,
                             outs=('NH3_rich_3','water_rich_3'),
                             split=dict(Water=0,
                                        NH3=0.98))
@@ -370,8 +428,7 @@ def create_geospatial_system(# MGD
     DAPSyn = su.DAPSynthesis(ID='DAPSyn',
                              ins=(AcidEx-1, NH3MS3-0),
                              outs=('DAP','excess_NH3','DAPSyn_effluent'))
-    # TODO: update if needed
-    DAPSyn.outs[0].price = 1.085
+    DAPSyn.outs[0].price = DAP_price
     
     if nitrogen_fertilizer == 'NH3':
         NH3Compressor = IsothermalCompressor(ID='NH3Compressor',
@@ -392,8 +449,7 @@ def create_geospatial_system(# MGD
                                        ins=NH3Cooler-0,
                                        outs='anhydrous_ammonia_LCA',
                                        init_with='WasteStream')
-        # TODO: update if needed
-        S2WS2.outs[0].price = 1.552
+        S2WS2.outs[0].price = NH3_price
     
     # =========================================================================
     # Storage, and disposal
@@ -405,11 +461,12 @@ def create_geospatial_system(# MGD
                                    tau=3*24,
                                    init_with='WasteStream',
                                    vessel_material='Carbon steel')
-    # TODO: do we want to do the displacement based on the weight or the energy content
-    # TODO: based on energy content seems to be more reasonable
-    # assume the biocrude has the same price as crude oil (for LCA: we assume the crude oil can be displaced by the biocrude)
+    # TODO: update biocrude cost and CI calculation in writing
+    # assume biocrude replace crude oil of the same amount of energy
     # 2022 average closing price for crude oil: 94.53 $/oil barrel, [10]
-    BiocrudeTank.outs[0].price = 94.53/_oil_barrel_to_m3/biocrude_density
+    # assume biocrude has an HHV of 35 MJ/kg
+    # in the model, biocrude HHV will be calculated as HTL.biocrude_HHV
+    BiocrudeTank.outs[0].price = 94.53/_oil_barrel_to_m3/biocrude_density/crude_oil_HHV*35
     
     GasMixer = qsu.Mixer(ID='GasMixer',
                          ins=(HTL-3, F1-0),
@@ -419,6 +476,7 @@ def create_geospatial_system(# MGD
     # =========================================================================
     # facilities
     # =========================================================================
+    # TODO: update in writing
     # previously used 86 C with self-defined heat utility
     # now use natural gas for heating, and use default T_min_app
     qsu.HeatExchangerNetwork(ID='HXN',
@@ -434,11 +492,8 @@ def create_geospatial_system(# MGD
                                 outs=('emission','solid_ash'),
                                 init_with='WasteStream',
                                 supplement_power_utility=False)
-    # TODO: check the price of natural gas, be consistent with _heat_utility.py
-    # assume natural gas is CH4 (density is 0.657 kg/m3, [11])
-    # the density of natural gas (0.68 kg/m3, [12]) is larger than that of CH4, therefore, the calculation here is conservative
-    # 2022 US NG industrial price: 7.66 $/1000 ft3, [13]
-    CHP.ins[1].price = 7.66/1000*_m3_to_ft3/0.657
+    # from _heat_utility.py (biosteam): 3.49672 $/kmol
+    CHP.ins[1].price = 0.218545
     # 1.41 MM 2016$/year for 4270/4279 kg/hr ash, 7880 annual operating hours, from [6]
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2022]
     
@@ -474,29 +529,35 @@ def create_geospatial_system(# MGD
         
         
         if nitrogen_fertilizer == 'urea':
-            # TODO: update cost and CI if necessary
             UreaSyn = su.UreaSynthesis(ID='UreaSyn',
                                        ins=(DAPSyn-1, CC-1, 'additional_carbon_dioxide'),
                                        outs=('urea','urea_vapor','urea_waste','excess_carbon_dioxide'))
-            UreaSyn.ins[2].price = 0.05
-            UreaSyn.outs[0].price = 0.942
+            UreaSyn.outs[0].price = urea_price
         else:
-            # TODO: update cost and CI if necessary
-            # TODO: add cost and CI for nitric acid
-            # TODO: need different cost and CI for different UAN's
             UANSyn = su.UANSynthesis(ID='UANSyn',
                                      ins=(DAPSyn-1, CC-1, 'additional_carbon_dioxide', 'HNO3', 'UAN_water'),
-                                     outs=('UAN28','UAN_vapor','UAN_waste','UAN_excess_carbon_dioxide'),
-                                     UAN_concentration=28)
-            UANSyn.ins[2].price = 0.05
-            UANSyn.ins[3].price = 0.3
+                                     outs=('UAN30','UAN_vapor','UAN_waste','UAN_excess_carbon_dioxide'),
+                                     UAN_concentration=30)
+            # TODO: use these values in geospatial_models.py
+            # HNO3 price from https://businessanalytiq.com/procurementanalytics/index/nitric-acid-price-index/
+            # min: 0.43, max: 0.53, average: 0.497
+            # calculate the price of 70 wt/wt% HNO3 solution by adding water
+            UANSyn.ins[3].price = 0.497*0.7 + 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3
             UANSyn.ins[4].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
-            UANSyn.outs[0].price = 0.736
+            UANSyn.outs[0].price = UAN30_price
     
     sys = qs.System.from_units(ID='sys_geospatial',
                                units=list(flowsheet.unit),
                                operating_hours=WWTP.operation_hours)
+    # simulate twice to simulate CC after CHP
     sys.simulate()
+    sys.simulate()
+    
+    # add cost and CI for carbon dioxide if there is additional CO2 usage in urea and/or UAN synthesis
+    try:
+        assert sys.flowsheet.additional_carbon_dioxide.F_mass == 0
+    except AttributeError:
+        pass
     
     # =========================================================================
     # LCA
@@ -515,9 +576,6 @@ def create_geospatial_system(# MGD
     # deionized water
     CT_chemicals = qs.ImpactItem('CT_chemicals', functional_unit='kg')
     CT_chemicals.add_indicator(GlobalWarming, 0.00042012744)
-    
-    Water_steam = qs.ImpactItem('Water_steam', functional_unit='kg')
-    Water_steam.add_indicator(GlobalWarming, 0.28218035)
     
     Sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
     # assume the transported sludge has 80% moisture content
@@ -562,34 +620,28 @@ def create_geospatial_system(# MGD
                                                 interval_unit='h')
     BiocrudeTank.transportation = Biocrude_transportation
     
-    # TODO: consider adding more granularity to LCA data
     impact_items = {'CHG_catalyst': [stream.CHG_catalyst_out, 471.098936962268],
                     'H2SO4':        [stream.H2SO4, 0.005529872568],
                     'NaOH':         [stream.NaOH, 1.2497984],
                     'DAP':          [stream.DAP, -1.456692],
                     # TODO: do not use market or market group for products for other systems (i.e., CO2 sorbent, HTL-PFAS)
-                    # TODO: use the CI for nature gas from IEDO
-                    # TODO: check this (0.7 excludes combustion since there is CC)
-                    'natural_gas':  [stream.natural_gas, 3.45],
+                    # include emission
+                    'natural_gas':  [stream.natural_gas, 0.47016123/natural_gas_density+44/16],
                     # use market or market group for biocrude since we want to offset transportation and then add our own transportation part
                     # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
-                    'biocrude':     [stream.biocrude, -0.22290007],
+                    'biocrude':     [stream.biocrude, -0.22290007/crude_oil_HHV*HTL.biocrude_HHV],
                     'ash_disposal': [stream.solid_ash, 0.0082744841]}
     
-    # TODO: update if needed   
-    # TODO: need to decide how to handle excess amount of CO2
     if nitrogen_fertilizer == 'NH3':
         impact_items['anhydrous_ammonia_LCA'] = [stream.anhydrous_ammonia_LCA, -2.4833472]
     elif nitrogen_fertilizer == 'urea':
-        # TODO: related to natural gas, how to handle captured CO2?
-        # impact_items['excess_carbon_dioxide'] = [stream.excess_carbon_dioxide, -1]
+        # for every kg of urea produced, 44.009/60.06 kg of biogenic CO2 is used
         impact_items['urea'] = [stream.urea, -1.2510711 - 44.009/60.06]
     else:
-        # TODO: related to natural gas, how to handle captured CO2?
-        # impact_items['excess_carbon_dioxide'] = [stream.excess_carbon_dioxide, -1]
         impact_items['HNO3'] = [stream.HNO3, 1.624862648]
         impact_items['UAN_water'] = [stream.UAN_water, 0.00042012744]
-        impact_items['UAN28'] = [stream.UAN28, -1.6799471 - 44.009/138.08274]
+        # the formula of UAN is CH6N4O4, for every kg of UAN30 produced, 1*0.3/14.0067/4*44.009 of biogenic CO2 is used
+        impact_items['UAN30'] = [stream.UAN30, -1.6799471 - 1*0.3/14.0067/4*44.009]
     
     for item in impact_items.items():
         qs.StreamImpactItem(ID=item[0], linked_stream=item[1][0], GlobalWarming=item[1][1])
@@ -601,9 +653,7 @@ def create_geospatial_system(# MGD
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30/0.48748859*elec_GHG,
            # note LCA for CT_chemicals was included in the 'Other' category while it should be in the 'Stream' category
            # the effect is minimal since (i) this part of LCA is negligible and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-           CT_chemicals=lambda:CT.ins[2].F_mass*sys.flowsheet.WWTP.operation_hours*30,)
-           
-           # Water_steam=lambda:water_steam.F_mass*sys.flowsheet.WWTP.operation_hours*30)
+           CT_chemicals=lambda:CT.ins[2].F_mass*sys.flowsheet.WWTP.operation_hours*30)
     
     # =========================================================================
     # TEA
@@ -629,7 +679,8 @@ def create_geospatial_system(# MGD
     wage *= wage_adjustment
     
     # set income_tax_value = 0 to calculate net income
-    create_tea(sys, IRR_value=0.03,
+    create_tea(system=sys,
+               IRR_value=0.03,
                income_tax_value=0,
                finance_interest_value=0.03,
                labor_cost_value=wage)
