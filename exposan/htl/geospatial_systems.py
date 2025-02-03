@@ -73,7 +73,7 @@ import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
 from qsdsan.utils import auom, clear_lca_registries
 from exposan.htl import _load_components, create_tea, state_income_tax_rate_2022, _sanunits as su
-from biosteam.units import IsenthalpicValve, Stripper, MolecularSieve, IsothermalCompressor
+from biosteam.units import IsenthalpicValve, Stripper, MolecularSieve, IsothermalCompressor, Splitter
 from biosteam import settings
 
 __all__ = ('create_geospatial_system','biocrude_density')
@@ -511,12 +511,12 @@ def create_geospatial_system(# MGD
     # nutrient recovery - part 2
     # =========================================================================
     
-    if nitrogen_fertilizer != 'NH3':
+    if nitrogen_fertilizer != 'NH3':        
         # TODO: add cost and CI for ins
-        # to be sonservative, only capture CO2 from the combustion of fuel gas (excluding natural gas)
+        # to be conservative, only capture CO2 from the combustion of fuel gas (excluding natural gas)
         # (1) if natural gas is used in other HX, cannot capture here
         # (2) if natural gas is also used in CHP, do not capture here
-        # the captured CO2 is assumed all biogenic
+        # the captured CO2 is all biogenic
         # as the captured CO2 is used to produce urea/UAN, there is negative carbon emission
         # this should be accounted in the urea/UAN products
         # also assume any excess CO2 will be directly released and will not have any CI
@@ -526,7 +526,6 @@ def create_geospatial_system(# MGD
                                 ins=(CHP-0, 'makeup_MEA', 'makeup_water'),
                                 outs=('vent','CO2'),
                                 CO2_recovery=0.9)
-        
         
         if nitrogen_fertilizer == 'urea':
             UreaSyn = su.UreaSynthesis(ID='UreaSyn',

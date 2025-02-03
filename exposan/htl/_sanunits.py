@@ -17,8 +17,8 @@ for license details.
 
 import qsdsan as qs
 from math import ceil, log
-from qsdsan import SanUnit
-from qsdsan.sanunits import Reactor
+from qsdsan import SanUnit, Stream
+from qsdsan.sanunits import Reactor, HXutility
 from qsdsan.utils import auom
 from biosteam.units.decorators import cost
 from biosteam.units.design_tools import CEPCI_by_year, size_batch
@@ -153,25 +153,6 @@ class AcidExtraction(Reactor):
 # AmineAbsorption 
 # =============================================================================
 
-# cost from biosteam.units.AmineAbsorption
-# @cost(basis='Total flow', ID='Absorber', units='kmol/hr',
-#       cost=4.81e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=4.3)
-# @cost(basis='Total flow', ID='Stripper', units='kmol/hr',
-#       cost=4e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=4.3)
-# @cost(basis='CO2 flow', ID='Pumps', units='kmol/hr',
-#       kW=55595.96/(613*(1000/44))*(24123*0.1186),
-#       cost=0.42e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.3)
-# @cost(basis='Total flow', ID='Condenser', units='kmol/hr',
-#       cost=0.27e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=4.17)
-# @cost(basis='Total flow', ID='Reboiler', units='kmol/hr',
-#       cost=0.53e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.17)
-# @cost(basis='Total flow', ID='Cross heat exchanger', units='kmol/hr',
-#       cost=2.28e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.17)
-# @cost(basis='Total flow', ID='Cooler', units='kmol/hr',
-#       cost=0.09e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=3.17)
-# @cost(basis='Total flow', ID='Makeup tank', units='kmol/hr',
-#       cost=0.23e6, S=24123, CE=CEPCI_by_year[2009], n=0.6, BM=2.3)
-
 # TODO: double check the BM value
 @cost(basis='CO2 flow', ID='Reactor', units='kmol/hr',
       cost=3.063e6, S=760*1000000/24/44/1000, CE=CEPCI_by_year[2019], n=0.67, BM=1)
@@ -209,17 +190,24 @@ class AmineAbsorption(SanUnit):
         https://doi.org/10.1016/j.apenergy.2024.123789.
     '''
     
+    auxiliary_unit_names=('heat_ex_heating_1','heat_ex_heating_2')
+    
     _N_ins = 3
     _N_outs = 2
     _units = {'Total flow':'kmol/hr',
               'CO2 flow':'kmol/hr'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', CO2_recovery=0.9, MEA_to_CO2=1.5, heat_ratio=3611):
+                 init_with='WasteStream', CO2_recovery=0.9, MEA_to_CO2=1.5):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.CO2_recovery = CO2_recovery
         self.MEA_to_CO2 = MEA_to_CO2
-        self.heat_ratio = heat_ratio
+        hx_ht_in_1 = Stream(f'{ID}_hx_ht_in_1')
+        hx_ht_out_1 = Stream(f'{ID}_hx_ht_out_1')
+        self.heat_ex_heating_1 = HXutility(ID=f'.{ID}_hx_ht_1', ins=hx_ht_in_1, outs=hx_ht_out_1, T=273.15+40, rigorous=True)
+        hx_ht_in_2 = Stream(f'{ID}_hx_ht_in_2')
+        hx_ht_out_2 = Stream(f'{ID}_hx_ht_out_2')
+        self.heat_ex_heating_2 = HXutility(ID=f'.{ID}_hx_ht_2', ins=hx_ht_in_2, outs=hx_ht_out_2, T=273.15+40, rigorous=True)
     
     def _run(self):
         flue_gas, MEA, water = self.ins
@@ -235,8 +223,33 @@ class AmineAbsorption(SanUnit):
     def _design(self):
         self.design_results['Total flow'] = self.ins[0].F_mol
         self.design_results['CO2 flow'] = self.outs[1].F_mol
-        duty = self.heat_ratio * self.outs[1].F_mass
-        self.add_heat_utility(duty, T_in=self.ins[0].T)
+        
+        hx_ht_1 = self.heat_ex_heating_1
+        hx_ht_1_ins0, hx_ht_1_outs0 = hx_ht_1.ins[0], hx_ht_1.outs[0]
+        hx_ht_1_ins0.copy_like(self.outs[0])
+        hx_ht_1_outs0.copy_like(hx_ht_1_ins0)
+        # the tempeture of CHP exhaust is probably to be higher, assume the temperature to be 298.15 K to be conservative
+        # set hxn_ok=False to be conservative
+        hx_ht_1_ins0.T = 298.15
+        hx_ht_1_outs0.T = hx_ht_1.T
+        
+        hx_ht_1_ins0.vle(T=hx_ht_1_ins0.T, P=hx_ht_1_ins0.P)
+        hx_ht_1_outs0.vle(T=hx_ht_1_outs0.T, P=hx_ht_1_outs0.P)
+        # also set hxn_ok=False to be conservative
+        hx_ht_1.simulate_as_auxiliary_exchanger(ins=hx_ht_1.ins, outs=hx_ht_1.outs, vle=True, hxn_ok=False)
+            
+        hx_ht_2 = self.heat_ex_heating_2
+        hx_ht_2_ins0, hx_ht_2_outs0 = hx_ht_2.ins[0], hx_ht_2.outs[0]
+        hx_ht_2_ins0.copy_like(self.outs[1])
+        hx_ht_2_outs0.copy_like(hx_ht_2_ins0)
+        # the tempeture of CHP exhaust is probably to be higher, assume the temperature to be 298.15 K to be conservative
+        hx_ht_2_ins0.T = 298.15
+        hx_ht_2_outs0.T = hx_ht_2.T
+        
+        hx_ht_2_ins0.vle(T=hx_ht_2_ins0.T, P=hx_ht_2_ins0.P)
+        hx_ht_2_outs0.vle(T=hx_ht_2_outs0.T, P=hx_ht_2_outs0.P)
+        # set hxn_ok=False to be conservative
+        hx_ht_2.simulate_as_auxiliary_exchanger(ins=hx_ht_2.ins, outs=hx_ht_2.outs, vle=True, hxn_ok=False)
 
 # =============================================================================
 # DAPSynthesis
