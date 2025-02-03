@@ -22,6 +22,8 @@ from qsdsan.utils import auom, palettes
 from datetime import date
 from warnings import filterwarnings
 
+# TODO: update balancing area grid CI using WWTP_balancing_area.xlsx and StdScen21_MidCase_annual_balancingArea.csv under exposan/htl/data
+
 # TODO: update file paths later
 folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/'
 

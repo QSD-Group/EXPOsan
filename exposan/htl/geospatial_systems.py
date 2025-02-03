@@ -7,45 +7,42 @@ Created on Mon Jun 5 08:46:28 2023
 
 Note the word 'sludge' in this file refers to either sludge or biosolids.
 
-# TODO: update references
-
 References:
 [1] Snowden-Swan, L. J.; Li, S.; Thorson, M. R.; Schmidt, A. J.; Cronin, D. J.;
     Zhu, Y.; Hart, T. R.; Santosa, D. M.; Fox, S. P.; Lemmon, T. L.; Swita, M. S.
     Wet Waste Hydrothermal Liquefaction and Biocrude Upgrading to Hydrocarbon Fuels:
     2022 State of Technology; PNNL-33622; Pacific Northwest National Lab. (PNNL),
     Richland, WA (United States), 2022. https://doi.org/10.2172/1897670.
-[2] https://fred.stlouisfed.org/series/GDPCTPI (accessed 2024-05-20).
-[3] https://data.bls.gov/cgi-bin/srgate (accessed 2024-08-06).
-[4] https://www.sludgeprocessing.com/sludge-dewatering/sludge-drying-beds-lagoons/
+[2] https://hpoilgas.in/Page/Detail/naturalgasoverview (accessed 2025-02-03).
+[3] https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
+    (accessed 2025-02-03).
+[4] https://fred.stlouisfed.org/series/GDPCTPI (accessed 2024-05-20).
+[5] https://data.bls.gov/cgi-bin/srgate (accessed 2024-08-06).
+[6] https://mymarketnews.ams.usda.gov/report/list?market_types%5B0%5D=214
+    (accessed 2025-02-01).
+[7] https://www.sludgeprocessing.com/sludge-dewatering/sludge-drying-beds-lagoons/
     (accessed 2024-08-03).
-[5] Metcalf & Eddy (2003) Wastewater Engineering: Treatment and Reuse. 4th Edition,
+[8] Metcalf & Eddy (2003) Wastewater Engineering: Treatment and Reuse. 4th Edition,
     McGraw-Hill, New York.
-[6] Davis, R. E.; Grundl, N. J.; Tao, L.; Biddy, M. J.; Tan, E. C.; Beckham, G. T.;
+[9] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.;
+    Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.;
+    Snowden-Swan, L. J.; Davis, R.; Kinchin, C. Process Design and Economics for
+    the Conversion of Algal Biomass to Hydrocarbons: Whole Algae Hydrothermal
+    Liquefaction and Upgrading; PNNL--23227, 1126336; 2014; p PNNL--23227, 1126336.
+    https://doi.org/10.2172/1126336.
+[10] https://www.macrotrends.net/1369/crude-oil-price-history-chart
+    (accessed 2024-08-03).
+[11] Davis, R. E.; Grundl, N. J.; Tao, L.; Biddy, M. J.; Tan, E. C.; Beckham, G. T.;
     Humbird, D.; Thompson, D. N.; Roni, M. S. Process Design and Economics for the
     Conversion of Lignocellulosic Biomass to Hydrocarbon Fuels and Coproducts:
     2018 Biochemical Design Case Update; Biochemical Deconstruction and Conversion
     of Biomass to Fuels and Products via Integrated Biorefinery Pathways;
     NREL/TP--5100-71949, 1483234; 2018; p NREL/TP--5100-71949, 1483234.
     https://doi.org/10.2172/1483234.
-[7] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.;
-    Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.;
-    Snowden-Swan, L. J.; Davis, R.; Kinchin, C. Process Design and Economics for
-    the Conversion of Algal Biomass to Hydrocarbons: Whole Algae Hydrothermal
-    Liquefaction and Upgrading; PNNL--23227, 1126336; 2014; p PNNL--23227, 1126336.
-    https://doi.org/10.2172/1126336.
-[8] Al-Obaidani, S.; Curcio, E.; Macedonio, F.; Di Profio, G.; Al-Hinai, H.;
-    Drioli, E. Potential of Membrane Distillation in Seawater Desalination:
-    Thermal Efficiency, Sensitivity Study and Cost Estimation. Journal of Membrane
-    Science 2008, 323 (1), 85–98. https://doi.org/10.1016/j.memsci.2008.06.006.
-[9] https://businessanalytiq.com/procurementanalytics/index/ammonium-sulfate-index/
-    (accessed 2024-08-03).
-[10] https://www.macrotrends.net/1369/crude-oil-price-history-chart
-    (accessed 2024-08-03).
-[11] https://en.wikipedia.org/wiki/Methane (accessed 2024-08-03).
-[12] https://www.plinovodi.si/en/transmission-system/environment-and-safety/
-     about-natural-gas/ (accessed 2024-08-08).
-[13] https://www.eia.gov/dnav/ng/hist/n3035us3A.htm accessed (2024-08-03).
+[12] https://businessanalytiq.com/procurementanalytics/index/monoethanolamine-price-index/
+    (accessed 2025-02-03)
+[13] https://businessanalytiq.com/procurementanalytics/index/nitric-acid-price-index/
+    (accessed 2025-02-03).
 [14] Marufuzzaman, M.; Ekşioğlu, S. D.; Hernandez, R. Truck versus Pipeline
      Transportation Cost Analysis of Wastewater Sludge. Transportation Research Part A:
      Policy and Practice 2015, 74, 14–30. https://doi.org/10.1016/j.tra.2015.02.001.
@@ -66,8 +63,7 @@ References:
 '''
 
 # TODO: changes to implement:
-# TODO 1: check urea and UAN price and CI (using NH3 results as baselines)
-# TODO 2: add new units and contextualized fertilizers prices (https://mymarketnews.ams.usda.gov/report/list?market_types%5B0%5D=214) in writing
+# TODO 1: add new units and contextualized fertilizers prices (https://mymarketnews.ams.usda.gov/report/list?market_types%5B0%5D=214) in writing
 
 import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
@@ -83,9 +79,9 @@ biocrude_density = 980
 # kg/m3, this is for sludge with a moisture content higher than 80%,
 # google 'Design of wastewater treatment sludge thickeners Iowa State University'
 sludge_density = 1000
-# kg/m3, https://hpoilgas.in/Page/Detail/naturalgasoverview
+# kg/m3, [2]
 natural_gas_density = 0.65
-# 42-47 MJ/kg, https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
+# 42-47 MJ/kg, [3]
 crude_oil_HHV = 44.5
 
 _mile_to_km = auom('mile').conversion_factor('km')
@@ -93,7 +89,7 @@ _lb_to_kg = auom('lb').conversion_factor('kg')
 _m3_to_ft3 = auom('m3').conversion_factor('ft3')
 _oil_barrel_to_m3 = auom('oil_barrel').conversion_factor('m3')
 
-# GDPCTPI (Gross Domestic Product: Chain-type Price Index), [2]
+# GDPCTPI (Gross Domestic Product: Chain-type Price Index), [4]
 GDPCTPI = {2007: 86.352,
            2008: 87.977,
            2009: 88.557,
@@ -112,7 +108,7 @@ GDPCTPI = {2007: 86.352,
            2022: 117.995,
            2023: 122.284}
 
-# the labor index can be found in [3] with the series id CEU3232500008,
+# the labor index can be found in [5] with the series id CEU3232500008,
 # remember to select 'include annual average'
 labor_index = {2014: 21.49,
                2015: 21.76,
@@ -147,12 +143,10 @@ def create_geospatial_system(# MGD
                              ww_2_dry_sludge_ratio=1,
                              state='IL',
                              nitrogen_fertilizer='NH3',
-                             # TODO: this might be predicted 2022 values, if there is a calculated one, use that one
-                             # 2022 electricty CI by balancing area based on the IEDO work (change year to 2022)
-                             # note change 2020 in the IEDO code for balancing area to 2022
+                             # TODO: update the balancing-area-level grid CI in geospatial_analysis.py
                              # use balancing-area-level in the analysis
                              # kg CO2 eq/kWh
-                             elec_GHG=0.44,
+                             elec_GHG=0.40,
                              # use county-level in the analysis
                              wage_adjustment=1
                              ):
@@ -175,7 +169,7 @@ def create_geospatial_system(# MGD
     elec_price = pd.read_excel(folder + '/data/state_elec_price_2022.xlsx', 'elec_price_2022')
     bst.PowerUtility.price = elec_price[elec_price['state']==state]['price'].iloc[0]/100
     
-    # fertilizer price in $/US-ton
+    # fertilizer price in $/US-ton, [6]
     # UAN30 price includes UAN28/30/30-32
     if state == 'AL':
         DAP_price = 972.5
@@ -238,7 +232,7 @@ def create_geospatial_system(# MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
     
     # assume the moisture content of sludge is 80% in all cases
-    # for lagoon, the sludge will dry at the base of the lagoon (to an assumed 80% moisture content, see [4])
+    # for lagoon, the sludge will dry at the base of the lagoon (to an assumed 80% moisture content, see [7])
     # from [1]:
     # ash (dw%) of undigested sludge: 0.266, 0.192, 0.237, 0.174, 0.206, 0.308 (average: 0.231)
     # protein (afdw%) of undigested sludge: 0.464, 0.454, 0.38, 0.467, 0.485, 0.484 (average: 0.456)
@@ -246,7 +240,7 @@ def create_geospatial_system(# MGD
     # ash (dw%), protein (afdw%), and lipid (afdw%) for anaerobically digested sludge are 0.414, 0.510, and 0.193, respectively
     # for aerobically digested sludge, assume the same biological compositions as anaerobically digested sludge,
     # but with a higher ash content
-    # mass reduction assumption (from IEDO work, originally from [5]):
+    # mass reduction assumption (from IEDO work, originally from [8]):
     # 42.5% VSS reduction for anaerobic digestion, 47.5% VSS reduction for aerobic digestion
     # assume X in sludge-to-be-digested (not necessarily having the same biochemical compositions as sludge)
     # is ash (cannot be digested), Y is VSS (can be digested)
@@ -342,7 +336,7 @@ def create_geospatial_system(# MGD
     CHG = qsu.CatalyticHydrothermalGasification(ID='CHG',
                                                 ins=(HTLaqueous-0, 'virgin_CHG_catalyst'),
                                                 outs=('CHG_out','used_CHG_catalyst'))
-    # CHG price: [7]
+    # CHG price: [9]
     CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2022]
     
     S2WS1 = su.StreamTypeConverter(ID='S2WS1',
@@ -364,6 +358,28 @@ def create_geospatial_system(# MGD
                    thermo=settings.thermo.ideal())
     
     # =========================================================================
+    # Storage and disposal
+    # =========================================================================
+    # store for 3 days based on [9]
+    BiocrudeTank = qsu.StorageTank(ID='BiocrudeTank',
+                                   ins=HTL-2,
+                                   outs=('biocrude'),
+                                   tau=3*24,
+                                   init_with='WasteStream',
+                                   vessel_material='Carbon steel')
+    # TODO: update biocrude cost and CI calculation in writing
+    # assume biocrude replace crude oil of the same amount of energy
+    # 2022 average closing price for crude oil: 94.53 $/oil barrel, [10]
+    # assume biocrude has an HHV of 35 MJ/kg
+    # in the model, biocrude HHV will be calculated as HTL.biocrude_HHV
+    BiocrudeTank.outs[0].price = 94.53/_oil_barrel_to_m3/biocrude_density/crude_oil_HHV*35
+    
+    GasMixer = qsu.Mixer(ID='GasMixer',
+                         ins=(HTL-3, F1-0),
+                         outs=('fuel_gas'),
+                         init_with='Stream')
+    
+    # =========================================================================
     # nutrient recovery - part 1
     # =========================================================================
     
@@ -374,7 +390,7 @@ def create_geospatial_system(# MGD
                                  tau=24,
                                  vessel_material='Stainless steel')
     # 0.5 M H2SO4: ~5%
-    # based on 93% H2SO4 and fresh water (dilute onsite to 5%) prices in [6]
+    # based on 93% H2SO4 and fresh water (dilute onsite to 5%) prices in [11]
     H2SO4_Tank.ins[0].price = (0.043*1+0.0002*(93/5-1))/(93/5)/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
     AcidEx = su.AcidExtraction(ID='AcidEx',
@@ -384,7 +400,7 @@ def create_geospatial_system(# MGD
     PreStripper = su.PreStripper(ID='PreStripper',
                                  ins=(F1-1,'NaOH'),
                                  outs='NH3_solution')
-    # 0.2384 2016$/lb, [6]
+    # 0.2384 2016$/lb, [11]
     PreStripper.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
     # use steam could reduce the required air:liquid volume ratio from 3000:1 to ~300:1
@@ -452,28 +468,6 @@ def create_geospatial_system(# MGD
         S2WS2.outs[0].price = NH3_price
     
     # =========================================================================
-    # Storage, and disposal
-    # =========================================================================
-    # store for 3 days based on [7]
-    BiocrudeTank = qsu.StorageTank(ID='BiocrudeTank',
-                                   ins=HTL-2,
-                                   outs=('biocrude'),
-                                   tau=3*24,
-                                   init_with='WasteStream',
-                                   vessel_material='Carbon steel')
-    # TODO: update biocrude cost and CI calculation in writing
-    # assume biocrude replace crude oil of the same amount of energy
-    # 2022 average closing price for crude oil: 94.53 $/oil barrel, [10]
-    # assume biocrude has an HHV of 35 MJ/kg
-    # in the model, biocrude HHV will be calculated as HTL.biocrude_HHV
-    BiocrudeTank.outs[0].price = 94.53/_oil_barrel_to_m3/biocrude_density/crude_oil_HHV*35
-    
-    GasMixer = qsu.Mixer(ID='GasMixer',
-                         ins=(HTL-3, F1-0),
-                         outs=('fuel_gas'),
-                         init_with='Stream')
-    
-    # =========================================================================
     # facilities
     # =========================================================================
     # TODO: update in writing
@@ -482,9 +476,7 @@ def create_geospatial_system(# MGD
     qsu.HeatExchangerNetwork(ID='HXN',
                              force_ideal_thermo=True)
     
-    # assume no value/cost and no environmental benefit/impact associated with emission
-    # TODO: double check does the IEDO CI value for natural gas include combustion
-    # emission is not treated and is biogenic, only CO2 from natural gas combustion is non-biogenic but we have included the environmental impact for it
+    # assume no value/cost and no environmental benefit/impact associated with emission, since they are all captured, utilitzed, or included in the natural_gas item
     # the CHP here can ususally meet the heat requirement but not the electricity
     # buying additional natural gas to produce electricity does not provide benefit; therefore, set supplement_power_utility=False
     CHP = qsu.CombinedHeatPower(ID='CHP',
@@ -494,13 +486,13 @@ def create_geospatial_system(# MGD
                                 supplement_power_utility=False)
     # from _heat_utility.py (biosteam): 3.49672 $/kmol
     CHP.ins[1].price = 0.218545
-    # 1.41 MM 2016$/year for 4270/4279 kg/hr ash, 7880 annual operating hours, from [6]
+    # 1.41 MM 2016$/year for 4270/4279 kg/hr ash, 7880 annual operating hours, from [11]
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2022]
     
     # TODO: consider adding CT and its TEA (price for cooling_tower_chemicals) and LCA items (CT_chemicals in the 'Other' category) for other systems (HTL, HTL-PFAS)
     # construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
-    # cooling_tower_chemicals: 1.7842 2016$/lb, [6]
+    # cooling_tower_chemicals: 1.7842 2016$/lb, [11]
     CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
     # CWP uses electricity to generate chilled water
@@ -511,21 +503,23 @@ def create_geospatial_system(# MGD
     # nutrient recovery - part 2
     # =========================================================================
     
-    if nitrogen_fertilizer != 'NH3':        
+    if nitrogen_fertilizer != 'NH3':
         # TODO: add cost and CI for ins
-        # to be conservative, only capture CO2 from the combustion of fuel gas (excluding natural gas)
-        # (1) if natural gas is used in other HX, cannot capture here
-        # (2) if natural gas is also used in CHP, do not capture here
-        # the captured CO2 is all biogenic
-        # as the captured CO2 is used to produce urea/UAN, there is negative carbon emission
-        # this should be accounted in the urea/UAN products
-        # also assume any excess CO2 will be directly released and will not have any CI
-        # since it is biogenic
+        # to be conservative, capture all CO2 from CHP emission (more than enough for urea synthesis and UAN synthesis)
+        # if no natural gas directly burned in the CHP (rather than as heat utilities for other units):
+        # then carbon in urea and carbon in UAN are biogenic, can reduce their CI
+        # if there is natural gas directly burned in the CHP:
+        # include the emission from natural gas combustion in LCA and reduce the CI of urea synthesis and UAN synthesis
         # AmineAbsorption includes a stripper based on the description
         CC = su.AmineAbsorption(ID='CC',
                                 ins=(CHP-0, 'makeup_MEA', 'makeup_water'),
                                 outs=('vent','CO2'),
                                 CO2_recovery=0.9)
+        
+        # TODO: use these values in geospatial_models.py
+        # min: 1.93, max: 2.31, average: 2.13, [12]
+        CC.ins[1].price = 2.13
+        CC.ins[2].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
         
         if nitrogen_fertilizer == 'urea':
             UreaSyn = su.UreaSynthesis(ID='UreaSyn',
@@ -538,8 +532,7 @@ def create_geospatial_system(# MGD
                                      outs=('UAN30','UAN_vapor','UAN_waste','UAN_excess_carbon_dioxide'),
                                      UAN_concentration=30)
             # TODO: use these values in geospatial_models.py
-            # HNO3 price from https://businessanalytiq.com/procurementanalytics/index/nitric-acid-price-index/
-            # min: 0.43, max: 0.53, average: 0.497
+            # min: 0.43, max: 0.53, average: 0.497, [13]
             # calculate the price of 70 wt/wt% HNO3 solution by adding water
             UANSyn.ins[3].price = 0.497*0.7 + 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3
             UANSyn.ins[4].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
@@ -634,9 +627,13 @@ def create_geospatial_system(# MGD
     if nitrogen_fertilizer == 'NH3':
         impact_items['anhydrous_ammonia_LCA'] = [stream.anhydrous_ammonia_LCA, -2.4833472]
     elif nitrogen_fertilizer == 'urea':
+        impact_items['makeup_MEA'] = [stream.makeup_MEA, 3.0923397]
+        impact_items['makeup_water'] = [stream.makeup_water, 0.00042012744]
         # for every kg of urea produced, 44.009/60.06 kg of biogenic CO2 is used
         impact_items['urea'] = [stream.urea, -1.2510711 - 44.009/60.06]
     else:
+        impact_items['makeup_MEA'] = [stream.makeup_MEA, 3.0923397]
+        impact_items['makeup_water'] = [stream.makeup_water, 0.00042012744]
         impact_items['HNO3'] = [stream.HNO3, 1.624862648]
         impact_items['UAN_water'] = [stream.UAN_water, 0.00042012744]
         # the formula of UAN is CH6N4O4, for every kg of UAN30 produced, 1*0.3/14.0067/4*44.009 of biogenic CO2 is used

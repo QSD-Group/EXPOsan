@@ -660,7 +660,7 @@ class PreStripper(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream',
-                 # TODO: add refereence
+                 # TODO: add reference
                  influent_pH=8.16, # CHG effluent pH: 8.16 ± 0.25 [1]
                  target_pH=11.25): # 2 unit higher than pKa (9.25)
         

@@ -77,7 +77,6 @@ def create_geospatial_model(system=None,
     # TODO: remove [0]
     sys = create_geospatial_system() if not system else system
     flowsheet = sys.flowsheet
-    cmps = qs.get_components()
     unit = flowsheet.unit
     stream = flowsheet.stream
     model = qs.Model(sys)
@@ -89,10 +88,6 @@ def create_geospatial_model(system=None,
     HTL = unit.HTL
     CHG = unit.CHG
     CHP = unit.CHP
-    F1 = unit.F1
-    P1 = unit.P1
-    H2SO4_Tank = unit.H2SO4_Tank
-    HXN = unit.HXN
     
     raw_wastewater = stream.raw_wastewater
     H2SO4 = stream.H2SO4
@@ -632,6 +627,53 @@ def create_geospatial_model(system=None,
            distribution=dist)
     def set_biocrude_transportation_price(i):
         qs.ImpactItem.get_all_items()['Biocrude_trucking'].price=i
+    
+    # =========================================================================
+    # anhydrous NH3
+    # =========================================================================
+    # TODO: add parameters
+        
+    # =========================================================================
+    # urea
+    # =========================================================================
+    # TODO: add parameters  
+    try:
+        makeup_MEA = stream.makeup_MEA
+        MEA_price_min = 1.93
+        MEA_price_max = 2.31
+        MEA_price_ave = 2.13
+        dist = shape.Triangle(MEA_price_min,MEA_price_ave,MEA_price_max)
+        @param(name='MEA price',
+               element='TEA',
+               kind='isolated',
+               units='$/kg',
+               baseline=MEA_price_ave,
+               distribution=dist)
+        def set_MEA_price(i):
+            makeup_MEA.price=i
+    except AttributeError:
+        pass
+        
+    # =========================================================================
+    # UAN
+    # =========================================================================
+    # TODO: add parameters
+    try:
+        HNO3 = stream.HNO3
+        HNO3_price_min = 0.43*0.7 + 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3
+        HNO3_price_max = 0.53*0.7 + 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3
+        HNO3_price_ave = 0.497*0.7 + 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3
+        dist = shape.Triangle(HNO3_price_min,HNO3_price_ave,HNO3_price_max)
+        @param(name='HNO3 price',
+               element='TEA',
+               kind='isolated',
+               units='$/kg',
+               baseline=HNO3_price_ave,
+               distribution=dist)
+        def set_HNO3_price(i):
+            HNO3.price=i
+    except AttributeError:
+        pass
     
     # =========================================================================
     # LCA (unifrom ± 10%)
