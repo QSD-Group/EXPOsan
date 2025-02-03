@@ -26,7 +26,7 @@ from exposan.bwaise import create_components as create_bw_components
 __all__ = ('create_components', )
 
 
-def create_components(set_thermo=True):
+def create_components(set_thermo=True, adjust_MW_to_measured_as=False):
     bw_cmps = create_bw_components(set_thermo=False)
 
     KCl = Component('KCl', phase='s', particle_size='Soluble',
@@ -67,7 +67,8 @@ def create_components(set_thermo=True):
         for attr in ('HHV', 'LHV', 'Hf'):
             if getattr(i, attr) is None: setattr(i, attr, 0)
     
-    cmps.compile(ignore_inaccurate_molar_weight=True)
+    cmps.compile(ignore_inaccurate_molar_weight=True,
+                 adjust_MW_to_measured_as=adjust_MW_to_measured_as)
     
     cmps.set_alias('H2O', 'Water')
     cmps.set_alias('KCl', 'PotassiumChloride')

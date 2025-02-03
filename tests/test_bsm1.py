@@ -211,17 +211,15 @@ def test_bsm1():
     cmps = s.effluent.components
     asm2d_ss = array([cmps.kwarray(v) for k,v in asm2d_ss.items()])
     
+    atol = 1e-6
     val = u.AS.state.iloc[:,:-2]
-    val[val.abs()<1e-6] = 0 # very small values may lead to inf %
-    ac(val, asm2d_ss[:,:-1], rtol=rtol)
+    ac(val, asm2d_ss[:,:-1], rtol=rtol, atol=atol)
     
     val = absolute(s.effluent.state[:-2])
-    val[val<1e-6] = 0
-    ac(val, cmps.kwarray(eff_ss)[:-1], rtol=rtol)
+    ac(val, cmps.kwarray(eff_ss)[:-1], rtol=rtol, atol=atol)
     
     val = absolute(s.WAS.state[:-2])
-    val[val<1e-6] = 0
-    ac(val, cmps.kwarray(sludge_ss)[:-1], rtol=rtol)
+    ac(val, cmps.kwarray(sludge_ss)[:-1], rtol=rtol, atol=atol)
     
     ac(u.C1._state[-10:], c1tss_ss, rtol=rtol)
 
