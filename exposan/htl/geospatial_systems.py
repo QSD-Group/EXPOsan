@@ -31,7 +31,7 @@ References:
     Liquefaction and Upgrading; PNNL--23227, 1126336; 2014; p PNNL--23227, 1126336.
     https://doi.org/10.2172/1126336.
 [10] https://www.macrotrends.net/1369/crude-oil-price-history-chart
-    (accessed 2024-08-03).
+    (accessed 2025-02-04).
 [11] Davis, R. E.; Grundl, N. J.; Tao, L.; Biddy, M. J.; Tan, E. C.; Beckham, G. T.;
     Humbird, D.; Thompson, D. N.; Roni, M. S. Process Design and Economics for the
     Conversion of Lignocellulosic Biomass to Hydrocarbon Fuels and Coproducts:
@@ -369,10 +369,10 @@ def create_geospatial_system(# MGD
                                    vessel_material='Carbon steel')
     # TODO: update biocrude cost and CI calculation in writing
     # assume biocrude replace crude oil of the same amount of energy
-    # 2022 average closing price for crude oil: 94.53 $/oil barrel, [10]
+    # 101.15 $/oil barrel, [10]
     # assume biocrude has an HHV of 35 MJ/kg
     # in the model, biocrude HHV will be calculated as HTL.biocrude_HHV
-    BiocrudeTank.outs[0].price = 94.53/_oil_barrel_to_m3/biocrude_density/crude_oil_HHV*35
+    BiocrudeTank.outs[0].price = 101.15/_oil_barrel_to_m3/biocrude_density/crude_oil_HHV*35
     
     GasMixer = qsu.Mixer(ID='GasMixer',
                          ins=(HTL-3, F1-0),
@@ -393,6 +393,7 @@ def create_geospatial_system(# MGD
     # based on 93% H2SO4 and fresh water (dilute onsite to 5%) prices in [11]
     H2SO4_Tank.ins[0].price = (0.043*1+0.0002*(93/5-1))/(93/5)/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
+    # assume no cost/CI associated with residual since it can be both disposed or used
     AcidEx = su.AcidExtraction(ID='AcidEx',
                                ins=(HTL-0, H2SO4_Tank-0),
                                outs=('residual','extracted'))
@@ -456,14 +457,14 @@ def create_geospatial_system(# MGD
         
         NH3Cooler = qsu.HXutility(ID='NH3Cooler',
                                   ins=NH3Compressor-0,
-                                  outs='anhydrous_ammonia',
+                                  outs='anhydrous_ammonia_cooled',
                                   T=25+273.15,
                                   init_with='Stream',
                                   rigorous=True)
         
         S2WS2 = su.StreamTypeConverter(ID='S2WS2',
                                        ins=NH3Cooler-0,
-                                       outs='anhydrous_ammonia_LCA',
+                                       outs='anhydrous_ammonia',
                                        init_with='WasteStream')
         S2WS2.outs[0].price = NH3_price
     
@@ -492,6 +493,8 @@ def create_geospatial_system(# MGD
     # TODO: consider adding CT and its TEA (price for cooling_tower_chemicals) and LCA items (CT_chemicals in the 'Other' category) for other systems (HTL, HTL-PFAS)
     # construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
+    # cooling_tower_makeup_water
+    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     # cooling_tower_chemicals: 1.7842 2016$/lb, [11]
     CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
@@ -504,7 +507,6 @@ def create_geospatial_system(# MGD
     # =========================================================================
     
     if nitrogen_fertilizer != 'NH3':
-        # TODO: add cost and CI for ins
         # to be conservative, capture all CO2 from CHP emission (more than enough for urea synthesis and UAN synthesis)
         # if no natural gas directly burned in the CHP (rather than as heat utilities for other units):
         # then carbon in urea and carbon in UAN are biogenic, can reduce their CI
@@ -515,8 +517,6 @@ def create_geospatial_system(# MGD
                                 ins=(CHP-0, 'makeup_MEA', 'makeup_water'),
                                 outs=('vent','CO2'),
                                 CO2_recovery=0.9)
-        
-        # TODO: use these values in geospatial_models.py
         # min: 1.93, max: 2.31, average: 2.13, [12]
         CC.ins[1].price = 2.13
         CC.ins[2].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
@@ -531,7 +531,6 @@ def create_geospatial_system(# MGD
                                      ins=(DAPSyn-1, CC-1, 'additional_carbon_dioxide', 'HNO3', 'UAN_water'),
                                      outs=('UAN30','UAN_vapor','UAN_waste','UAN_excess_carbon_dioxide'),
                                      UAN_concentration=30)
-            # TODO: use these values in geospatial_models.py
             # min: 0.43, max: 0.53, average: 0.497, [13]
             # calculate the price of 70 wt/wt% HNO3 solution by adding water
             UANSyn.ins[3].price = 0.497*0.7 + 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3
@@ -566,8 +565,8 @@ def create_geospatial_system(# MGD
     Electricity.add_indicator(GlobalWarming, 0.48748859)
     
     # deionized water
-    CT_chemicals = qs.ImpactItem('CT_chemicals', functional_unit='kg')
-    CT_chemicals.add_indicator(GlobalWarming, 0.00042012744)
+    Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
+    Deionized_water.add_indicator(GlobalWarming, 0.00042012744)
     
     Sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
     # assume the transported sludge has 80% moisture content
@@ -625,7 +624,7 @@ def create_geospatial_system(# MGD
                     'ash_disposal': [stream.solid_ash, 0.0082744841]}
     
     if nitrogen_fertilizer == 'NH3':
-        impact_items['anhydrous_ammonia_LCA'] = [stream.anhydrous_ammonia_LCA, -2.4833472]
+        impact_items['anhydrous_ammonia'] = [stream.anhydrous_ammonia, -2.4833472]
     elif nitrogen_fertilizer == 'urea':
         impact_items['makeup_MEA'] = [stream.makeup_MEA, 3.0923397]
         impact_items['makeup_water'] = [stream.makeup_water, 0.00042012744]
@@ -647,9 +646,10 @@ def create_geospatial_system(# MGD
            # we cannot list electricity GHG one state by one state,
            # but we can adjust the electricity amount to reflect different GHG of electricity at different states
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30/0.48748859*elec_GHG,
-           # note LCA for CT_chemicals was included in the 'Other' category while it should be in the 'Stream' category
-           # the effect is minimal since (i) this part of LCA is negligible and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-           CT_chemicals=lambda:CT.ins[2].F_mass*sys.flowsheet.WWTP.operation_hours*30)
+           # assume cooling_tower_chemicals is water (based on its composition, not important though since the flow is basically 0)
+           # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
+           # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
+           Deionized_water=lambda:(water_steam.F_mass+CT.ins[1].F_mass+CT.ins[2].F_mass)*sys.flowsheet.WWTP.operation_hours*30)
     
     # =========================================================================
     # TEA

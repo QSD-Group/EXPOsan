@@ -321,17 +321,21 @@ class DAPSynthesis(Reactor):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                   init_with='WasteStream', 
-                  P_pre_recovery_ratio=0.828, # assume to be the same as StruvitePrecipitation
-                  P=None, tau=1, V_wf=0.8, # assume to be the same as StruvitePrecipitation
-                  length_to_diameter=2, N=1, V=None, auxiliary=False,
-                  mixing_intensity=None, kW_per_m3=0,
-                  wall_thickness_factor=1,
+                  # due to lack of data, assume P_syn_recovery_ratio to be the same as
+                  # P_pre_recovery_ratio in StruvitePrecipitation
+                  P_syn_recovery_ratio=0.828,
+                  # due to lack of data, assume tau to be the same as
+                  # tau in StruvitePrecipitation
+                  P=None, tau=1,
+                  V_wf=0.8,length_to_diameter=2, N=1, V=None,
+                  auxiliary=False, mixing_intensity=None,
+                  kW_per_m3=0, wall_thickness_factor=1,
                   vessel_material='Stainless steel 316',
                   vessel_type='Vertical',
                   crystallizer_electricity=0.00746):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.P_pre_recovery_ratio = P_pre_recovery_ratio
+        self.P_syn_recovery_ratio = P_syn_recovery_ratio
         self.P = P
         self.tau = tau
         self.V_wf = V_wf
@@ -344,13 +348,14 @@ class DAPSynthesis(Reactor):
         self.wall_thickness_factor = wall_thickness_factor
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
+        self.crystallizer_electricity = crystallizer_electricity
     
     def _run(self):
         
         P_solution, ammonia = self.ins
         DAP, excess_ammonia, effluent = self.outs
         
-        DAP.imass['DAP'] = P_solution.imass['P']*self.P_pre_recovery_ratio/30.97*132.06
+        DAP.imass['DAP'] = P_solution.imass['P']*self.P_syn_recovery_ratio/30.97*132.06
         DAP.phase = 's'
         
         excess_ammonia.imass['NH3'] = ammonia.imass['NH3'] - DAP.imass['DAP']/132.06*2*17.031
@@ -391,7 +396,7 @@ class DAPSynthesis(Reactor):
         Design['Number of crystallizers'] = crystallizer_N
         
         self.add_heat_utility(self.Hnet, self.outs[2].T)
-        self.add_power_utility(0.00746 * crystallizer_V_wf * volume * crystallizer_N)
+        self.add_power_utility(self.crystallizer_electricity * crystallizer_V_wf * volume * crystallizer_N)
         
         # pressure filter
         Design['Retentate flow rate'] = self.outs[0].F_mass
@@ -762,9 +767,10 @@ class StruvitePrecipitation(Reactor):
                   Mg_P_ratio=1,
                   P_pre_recovery_ratio=0.828, # [1]
                   HTLaqueous_NH3_N_2_total_N = 0.853, # [2]
-                  P=None, tau=1, V_wf=0.8, # tau: [1]
-                  length_to_diameter=2, N=1, V=20, auxiliary=False,
-                  mixing_intensity=None, kW_per_m3=0, # use MixTank default value
+                  P=None, tau=1, # [1]
+                  V_wf=0.8, length_to_diameter=2, N=1, V=20,
+                  auxiliary=False, mixing_intensity=None,
+                  kW_per_m3=0, # use MixTank default value
                   wall_thickness_factor=1,
                   vessel_material='Carbon steel', # basic condition
                   vessel_type='Vertical'):
@@ -895,11 +901,10 @@ class UANSynthesis(Reactor):
     _units= {'Urea production capacity':'kg/h'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 # TODO: add uncertainty to the following parameters with citations
-                 ratio=3.5, # 3-4, Uniform
-                 efficiency=0.8, # 0.7-0.9, Uniform
-                 loss=0.02, # 0.01-0.03, Uniform
-                 UAN_concentration=28, # UAN-30, 30 N-wt/wt%
+                 ratio=3.5,
+                 efficiency=0.8,
+                 loss=0.02,
+                 UAN_concentration=30, # UAN-30, 30 N-wt/wt%
                  P=None, tau=1, V_wf=0.8, # assume to be the same as StruvitePrecipitation
                  length_to_diameter=2, N=1, V=20, auxiliary=False,
                  mixing_intensity=None, kW_per_m3=0,
@@ -1032,10 +1037,9 @@ class UreaSynthesis(SanUnit):
     _units= {'Production capacity':'kg/h'}
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 # TODO: add uncertainty to the following parameters with citations
-                 ratio=3.5, # 3-4, Uniform
-                 efficiency=0.8, # 0.7-0.9, Uniform
-                 loss=0.02): # 0.01-0.03, Uniform
+                 ratio=3.5,
+                 efficiency=0.8,
+                 loss=0.02):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.ratio = ratio
@@ -1248,16 +1252,16 @@ class WWTP(SanUnit):
     def sludge_C_ratio(self):
        return self.sludge_dw_protein*self.protein_2_C + self.sludge_dw_lipid*self.lipid_2_C +\
            self.sludge_dw_carbo*self.carbo_2_C
-           
+    
     @property
     def sludge_H_ratio(self):
        return self.sludge_dw_protein*self.protein_2_H + self.sludge_dw_lipid*self.lipid_2_H +\
            self.sludge_dw_carbo*self.carbo_2_H
-   
+    
     @property
     def sludge_N_ratio(self):
        return self.sludge_dw_protein*self.protein_2_N
-   
+    
     @property
     def sludge_P_ratio(self):
        return self.sludge_N_ratio*self.N_2_P
@@ -1266,19 +1270,19 @@ class WWTP(SanUnit):
     def sludge_O_ratio(self):
        return 1 - self.sludge_C_ratio - self.sludge_H_ratio -\
            self.sludge_N_ratio - self.sludge_dw_ash
-
+    
     @property
     def sludge_C(self):
        return self.sludge_C_ratio*self.sludge_dw
-           
+    
     @property
     def sludge_H(self):
        return self.sludge_H_ratio*self.sludge_dw
-   
+    
     @property
     def sludge_N(self):
        return self.sludge_N_ratio*self.sludge_dw
-   
+    
     @property
     def sludge_P(self):
        return self.sludge_P_ratio*self.sludge_dw
@@ -1286,17 +1290,17 @@ class WWTP(SanUnit):
     @property
     def sludge_O(self):
        return self.sludge_O_ratio*self.sludge_dw
-           
+    
     @property
     def AOSc(self):
        return (3*self.sludge_N_ratio/14.0067 + 2*self.sludge_O_ratio/15.999 -\
                self.sludge_H_ratio/1.00784)/(self.sludge_C_ratio/12.011)
-
+    
     @property
     def sludge_HHV(self):
        return 100*(0.338*self.sludge_C_ratio + 1.428*(self.sludge_H_ratio -\
               self.sludge_O_ratio/8)) # [2]
-
+    
     @property
     def H_C_eff(self):
         return (self.sludge_H/1.00784-2*self.sludge_O/15.999)/self.sludge_C*12.011
