@@ -367,6 +367,7 @@ def create_geospatial_system(# MGD
                                    tau=3*24,
                                    init_with='WasteStream',
                                    vessel_material='Carbon steel')
+    # TODO: crude oil price can be a contextual parameter, see https://www.eia.gov/dnav/pet/pet_pri_dfp1_k_a.htm
     # TODO: update biocrude cost and CI calculation in writing
     # assume biocrude replace crude oil of the same amount of energy
     # 101.15 $/oil barrel, [10]

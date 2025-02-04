@@ -56,7 +56,8 @@ GDPCTPI = {2007: 86.352,
 
 # TODO: check if all uncertainty parameters are included in writing, update if necessary
 
-# TODO: why cannot run more than one time of model = create_geospatial_model(system=sys, test_run=True)
+# cannot run more than one time of model = create_geospatial_model(system=sys, test_run=True)
+# due to the code of setting uncertainty for CI data
 
 def create_geospatial_model(system=None,
                             test_run=False,
@@ -511,7 +512,7 @@ def create_geospatial_model(system=None,
     # =========================================================================
     # DAP
     # =========================================================================
-    # TODO: is this a key driver? if it is not, take note here, if it is, update if needed
+    # tested and confirmed: this is not a key driver
     # due to lack of data, assume it to be the same as P_pre_recovery_ratio in StruvitePrecipitation
     dist = shape.Triangle(0.7,0.828,0.95)
     @param(name='P_syn_recovery_ratio',
@@ -1020,7 +1021,7 @@ def create_geospatial_model(system=None,
         def get_UAN30_production():
             return UAN30.F_mass/1000*sys.operating_hours
         
-        # TODO: need to decide whwn to use DAP_UAN30_N_recovery_wo_HNO3
+        # TODO: need to decide when to use DAP_UAN30_N_recovery_wo_HNO3
         @metric(name='DAP_UAN30_N_recovery_wo_HNO3', units='tonne/year', element='geospatial')
         def get_DAP_UAN30_N_recovery_wo_HNO3():
             return (DAP.F_mass/132.06*2*14.0067+UAN30.F_mass*0.3-HNO3.imass['HNO3']/63.01*14.0067)/1000*sys.operating_hours
@@ -1029,7 +1030,7 @@ def create_geospatial_model(system=None,
         def get_DAP_UAN30_N_recovery_wo_HNO3_rate():
             return (DAP.F_mass/132.06*2*14.0067+UAN30.F_mass*0.3-HNO3.imass['HNO3']/63.01*14.0067)/WWTP.sludge_N
         
-        # TODO: need to decide whwn to use DAP_UAN30_N_recovery_w_HNO3
+        # TODO: need to decide when to use DAP_UAN30_N_recovery_w_HNO3
         @metric(name='DAP_UAN30_N_recovery_w_HNO3', units='tonne/year', element='geospatial')
         def get_DAP_UAN30_N_recovery_w_HNO3():
             return (DAP.F_mass/132.06*2*14.0067+UAN30.F_mass*0.3)/1000*sys.operating_hours
