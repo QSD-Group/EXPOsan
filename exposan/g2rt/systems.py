@@ -177,6 +177,7 @@ def create_systemA(flowsheet=None, ppl=default_ppl, lifetime=default_lifetime):
     A3 = su.G2RTSolidsSeparation('A3',
                                 ins = (A2-0,mixer-0),
                                 outs = ('A3_liquid','A3_solid'),
+                                ppl = ppl,
                                 )
     
     # make a recycle loop
@@ -192,6 +193,7 @@ def create_systemA(flowsheet=None, ppl=default_ppl, lifetime=default_lifetime):
     A4 = su.G2RTBeltSeparation('A4', 
                           ins = (UFmixer-0,A3-1),
                           outs = ('A4_liquid','A4_solid'),
+                          ppl = ppl
                           )
     A12 = su.G2RTSolidsTank('A12',
                              ins = A4-1,
@@ -231,7 +233,8 @@ def create_systemA(flowsheet=None, ppl=default_ppl, lifetime=default_lifetime):
 
     A8 = su.G2RThomogenizer('A8', 
                             ins = A12-0, 
-                            outs = 'A8_grinded')
+                            outs = 'A8_grinded',
+                            ppl = ppl)
     
     A9 = su.VRpasteurization('A9', 
                                  ins = A8-0,
@@ -244,13 +247,15 @@ def create_systemA(flowsheet=None, ppl=default_ppl, lifetime=default_lifetime):
     A11 = su.VRdryingtunnel('A11',
                            ins = (A7-0,A10-1),
                            outs = ('A11_solid_cakes','A11_N2O', 'A11_CH4',
-                                   'A11_NH3_gas',streamA['H2O_vapor'])
+                                   'A11_NH3_gas',streamA['H2O_vapor']),
+                           ppl = ppl
                            )
     A14 = su.VolumeReductionCombustor('A14',
                                       ins = (A11-0,'Wood_pellets','Air'),
                                       outs = ("Ash","hot_gas","A14_CH4", "A14_N2O", 
                                               streamA['NO'],streamA['SO2'],'A14_NH3_gas'),
-                                      if_sludge_service = True, lifetime = lifetime
+                                      if_sludge_service = True, lifetime = lifetime,
+                                      ppl=ppl
                                       )
     
     # CH4 emissions from MURT, concentrator, drying tunnel, and combustor
@@ -345,6 +350,7 @@ def create_systemB(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime):
     B3 = su.G2RTSolidsSeparation('B3',
                                 ins = (B2-0,mixer-0),
                                 outs = ('B3_liquid','B3_solid'),
+                                ppl = ppl
                                 )
     
     # make a recycle loop
@@ -360,6 +366,7 @@ def create_systemB(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime):
     B4 = su.G2RTBeltSeparation('B4', 
                           ins = (UFmixer-0,B3-1),
                           outs = ('B4_liquid','B4_solid'),
+                          ppl = ppl
                           )
     B5 = su.G2RTSolidsTank('B5',
                              ins = B4-1,
@@ -368,7 +375,8 @@ def create_systemB(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime):
     
     B6 = su.G2RThomogenizer('B6', 
                             ins = B5-0, 
-                            outs = 'B6_grinded')
+                            outs = 'B6_grinded',
+                            ppl = ppl)
     
     B7 = su.G2RTLiquidsTank('B7',
                              ins = (B4-0,'concentrator_liquid'),
@@ -419,7 +427,8 @@ def create_systemB(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime):
     B13 = su.VRdryingtunnel('B13',
                            ins = B12-0,
                            outs = ('B13_solid_cakes','B13_N2O', 'B13_CH4',
-                                   'B13_NH3_gas',streamB['H2O_vapor'])
+                                   'B13_NH3_gas',streamB['H2O_vapor']),
+                           ppl = ppl
                            )
     
     # B14 = su.VolumeReductionCombustor('B14',
