@@ -7,6 +7,7 @@ Created on Mon Jun 5 08:46:28 2023
 
 Note the word 'sludge' in this file refers to either sludge or biosolids.
 
+# TODO: update citations
 References:
 [1] Snowden-Swan, L. J.; Li, S.; Thorson, M. R.; Schmidt, A. J.; Cronin, D. J.;
     Zhu, Y.; Hart, T. R.; Santosa, D. M.; Fox, S. P.; Lemmon, T. L.; Swita, M. S.
@@ -69,13 +70,17 @@ import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
 from qsdsan.utils import auom, clear_lca_registries
 from exposan.htl import _load_components, create_tea, state_income_tax_rate_2022, _sanunits as su
-from biosteam.units import IsenthalpicValve, Stripper, MolecularSieve, IsothermalCompressor, Splitter
+from biosteam.units import IsenthalpicValve, Stripper, MolecularSieve, IsothermalCompressor
 from biosteam import settings
 
-__all__ = ('create_geospatial_system','biocrude_density')
+__all__ = ('create_geospatial_system',)
 
+# TODO: update citations
+# kg/m3, https://www.transmountain.com/about-petroleum-liquids (accessed 2025-02-05)
+crude_oil_density = 850
 # kg/m3, [1]
 biocrude_density = 980
+# TODO: update citations
 # kg/m3, this is for sludge with a moisture content higher than 80%,
 # google 'Design of wastewater treatment sludge thickeners Iowa State University'
 sludge_density = 1000
@@ -367,13 +372,13 @@ def create_geospatial_system(# MGD
                                    tau=3*24,
                                    init_with='WasteStream',
                                    vessel_material='Carbon steel')
-    # TODO: crude oil price can be a contextual parameter, see https://www.eia.gov/dnav/pet/pet_pri_dfp1_k_a.htm
     # TODO: update biocrude cost and CI calculation in writing
     # assume biocrude replace crude oil of the same amount of energy
-    # 101.15 $/oil barrel, [10]
+    # TODO: update citations
+    # 94.077 $/oil barrel, https://www.eia.gov/dnav/pet/pet_pri_dfp1_k_m.htm
     # assume biocrude has an HHV of 35 MJ/kg
     # in the model, biocrude HHV will be calculated as HTL.biocrude_HHV
-    BiocrudeTank.outs[0].price = 101.15/_oil_barrel_to_m3/biocrude_density/crude_oil_HHV*35
+    BiocrudeTank.outs[0].price = 94.077/_oil_barrel_to_m3/crude_oil_density/crude_oil_HHV*35
     
     GasMixer = qsu.Mixer(ID='GasMixer',
                          ins=(HTL-3, F1-0),

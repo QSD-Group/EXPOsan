@@ -24,6 +24,10 @@ from warnings import filterwarnings
 
 # TODO: update balancing area grid CI using WWTP_balancing_area.xlsx and StdScen21_MidCase_annual_balancingArea.csv under exposan/htl/data
 
+# TODO: specify crude_oil_price ($/oil-barrel), DAP_price ($/kg), anhydrous_ammonia_price ($/kg),
+# urea_price ($/kg), and UAN30_price ($/kg) when creating models in geospatial_analysis.py,
+# also pay attention to units
+
 # TODO: update file paths later
 folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/'
 
@@ -199,10 +203,10 @@ state_PADD = {'Alabama': 3,
               'Kansas': 2,
               'Kentucky': 2,
               'Louisiana': 3,
-              'Michigan': 2,
               'Maine': 1,
               'Maryland': 1,
               'Massachusetts': 1,
+              'Michigan': 2,
               'Minnesota': 2,
               'Mississippi': 3,
               'Missouri': 2,

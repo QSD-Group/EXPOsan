@@ -18,13 +18,14 @@ from exposan.htl import create_geospatial_system
 __all__ = ('create_geospatial_model',)
 
 # kg/m3
+crude_oil_density = 850
+# kg/m3
 biocrude_density = 980
-# kg/m3, this is for sludge with a moisture content higher than 80%,
-# google 'Design of wastewater treatment sludge thickeners Iowa State University'
+# kg/m3
 sludge_density = 1000
 # kg/L
 water_density = 1
-# 42-47 MJ/kg, https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
+# 42-47 MJ/kg
 crude_oil_HHV = 44.5
 
 _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
@@ -59,11 +60,18 @@ GDPCTPI = {2007: 86.352,
 # cannot run more than one time of model = create_geospatial_model(system=sys, test_run=True)
 # due to the code of setting uncertainty for CI data
 
+# TODO: specify crude_oil_price ($/oil-barrel), DAP_price ($/kg), anhydrous_ammonia_price ($/kg),
+# urea_price ($/kg), and UAN30_price ($/kg) when creating models in geospatial_analysis.py,
+# also pay attention to units
+
+# check the name of all this: XXX:= unit.search('XXX') and XXX:= stream.search('XXX')
+
 def create_geospatial_model(system=None,
                             test_run=False,
                             sludge_ash=[],
                             sludge_lipid=[],
                             sludge_protein=[],
+                            crude_oil_price=[],
                             DAP_price=[],
                             anhydrous_ammonia_price=[],
                             urea_price=[],
@@ -680,7 +688,33 @@ def create_geospatial_model(system=None,
     def set_catalyst_price(i):
         virgin_CHG_catalyst.price=i
     
-    # the sources of chemical prices can be found in geospatial_HTL_systems.py
+    if test_run:
+        biocrude_price_min = 76.45/_oil_barrel_to_m3/crude_oil_density/crude_oil_HHV*HTL.biocrude_HHV
+        biocrude_price_ave = 94.077/_oil_barrel_to_m3/crude_oil_density/crude_oil_HHV*HTL.biocrude_HHV
+        biocrude_price_max = 113.77/_oil_barrel_to_m3/crude_oil_density/crude_oil_HHV*HTL.biocrude_HHV
+        dist = shape.Triangle(biocrude_price_min,biocrude_price_ave,biocrude_price_max)
+        @param(name='biocrude_price',
+               element='TEA',
+               kind='isolated',
+               units='$/kg',
+               baseline=biocrude_price_ave,
+               distribution=dist)
+        def set_biocrude_price(i):
+            biocrude.price=i
+    else:
+        biocrude_price_min = crude_oil_price[0]/_oil_barrel_to_m3/crude_oil_density/crude_oil_HHV*HTL.biocrude_HHV
+        biocrude_price_ave = crude_oil_price[1]/_oil_barrel_to_m3/crude_oil_density/crude_oil_HHV*HTL.biocrude_HHV
+        biocrude_price_max = crude_oil_price[2]/_oil_barrel_to_m3/crude_oil_density/crude_oil_HHV*HTL.biocrude_HHV
+        dist = shape.Triangle(biocrude_price_min,biocrude_price_ave,biocrude_price_max)
+        @param(name='biocrude_price',
+               element='TEA',
+               kind='isolated',
+               units='$/kg',
+               baseline=biocrude_price_ave,
+               distribution=dist)
+        def set_biocrude_price(i):
+            biocrude.price=i
+    
     H2SO4_price = (0.043*1+0.0002*(93/5-1))/(93/5)/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     dist = shape.Uniform(H2SO4_price*0.9,H2SO4_price*1.1)
     @param(name='5%_H2SO4_price',
@@ -759,30 +793,14 @@ def create_geospatial_model(system=None,
             def set_anhydrous_ammonia_price(i):
                 anhydrous_ammonia.price=i
     
-    biocrude_price_min = 84.5/_oil_barrel_to_m3/biocrude_density/crude_oil_HHV*HTL.biocrude_HHV
-    biocrude_price_max = 123.84/_oil_barrel_to_m3/biocrude_density/crude_oil_HHV*HTL.biocrude_HHV
-    biocrude_price_ave = 101.15/_oil_barrel_to_m3/biocrude_density/crude_oil_HHV*HTL.biocrude_HHV
-    dist = shape.Triangle(biocrude_price_min,biocrude_price_ave,biocrude_price_max)
-    @param(name='biocrude_price',
-           element='TEA',
-           kind='isolated',
-           units='$/kg',
-           baseline=biocrude_price_ave,
-           distribution=dist)
-    def set_biocrude_price(i):
-        biocrude.price=i
-    
     # TODO: update in writing
     # from _heat_utility.py (biosteam): 3.49672 $/kmol
-    natural_gas_price_min = 0.218545*0.9
-    natural_gas_price_max = 0.218545*1.1
-    natural_gas_price_ave = 0.218545
-    dist = shape.Triangle(natural_gas_price_min,natural_gas_price_ave,natural_gas_price_max)
+    dist = shape.Triangle(0.218545*0.9,0.218545,0.218545*1.1)
     @param(name='natural_gas_price',
            element='TEA',
            kind='isolated',
            units='$/kg',
-           baseline=natural_gas_price_ave,
+           baseline=0.218545,
            distribution=dist)
     def set_CH4_price(i):
         natural_gas.price=i
@@ -821,15 +839,12 @@ def create_geospatial_model(system=None,
         cooling_tower_chemicals.price=i
     
     if makeup_MEA:= stream.search('makeup_MEA'):
-        MEA_price_min = 1.93
-        MEA_price_max = 2.31
-        MEA_price_ave = 2.13
-        dist = shape.Triangle(MEA_price_min,MEA_price_ave,MEA_price_max)
+        dist = shape.Triangle(1.93,2.13,2.31)
         @param(name='MEA_price',
                element='TEA',
                kind='isolated',
                units='$/kg',
-               baseline=MEA_price_ave,
+               baseline=2.13,
                distribution=dist)
         def set_MEA_price(i):
             makeup_MEA.price=i
@@ -848,8 +863,8 @@ def create_geospatial_model(system=None,
     
     if HNO3:= stream.search('HNO3'):
         HNO3_price_min = 0.43*0.7 + 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3*0.9
-        HNO3_price_max = 0.53*0.7 + 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3
         HNO3_price_ave = 0.497*0.7 + 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3*1.1
+        HNO3_price_max = 0.53*0.7 + 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3
         dist = shape.Triangle(HNO3_price_min,HNO3_price_ave,HNO3_price_max)
         @param(name='HNO3_price',
                element='TEA',
