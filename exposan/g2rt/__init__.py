@@ -413,6 +413,14 @@ def get_unit_electrcitiy_GW_impact(unit, ppl=default_ppl, time =None, time_unit 
     return lambda: lca.get_other_unit_impacts(unit, annual=True)['GlobalWarming']/ppl
 
 # ['GlobalWarming']
+def get_unit_total_impact(unit,ppl=default_ppl, annual=True):
+    system = unit.system
+    lca = system.LCA
+    stream_items = {i for i in unit.ins + unit.outs if i.stream_impact_item}
+    return lambda: (lca.get_stream_impacts(stream_items=stream_items, exclude=None,
+                                 kind='all', annual=True)['GlobalWarming']/ppl+
+                    lca.get_construction_impacts(unit, annual=True)['GlobalWarming']/ppl+
+                    lca.get_other_unit_impacts(unit, annual=True)['GlobalWarming']/ppl)
 
 def get_LCA_metrics(system, ppl=default_ppl, include_breakdown=False):
     lca = system.LCA

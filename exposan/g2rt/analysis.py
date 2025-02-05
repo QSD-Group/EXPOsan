@@ -24,15 +24,16 @@ from exposan import g2rt as g2rt
 #                   default_lifetime)
 
 __all__ = ('run_lifetime',
-           'run_ppl',)
+           'run_ppl',
+           'run')
 
-def run(model_IDs, seed=None, N=1000, country_specific=False, **model_kwargs):
+def run(model_IDs, seed=None, N=10000, country_specific=False, note=None, **model_kwargs):
     # Make it possible to run with one or more models
     if isinstance(model_IDs, str): model_IDs = (model_IDs, )
     for ID in model_IDs:
         model = create_model(ID, country_specific=country_specific, **model_kwargs)
-        g2rt.INCLUDE_RESOURCE_RECOVERY = True
-        run_uncertainty(model, seed=seed, N=N)
+        g2rt.INCLUDE_RESOURCE_RECOVERY = False
+        run_uncertainty(model, note=note, seed=seed, N=N)
 
 if __name__ == '__main__': #checks whether the script is being run directly (rather than imported as a module in another script). 
 #This is often used to separate code that should only execute when the file is run as a standalone program.
@@ -111,3 +112,146 @@ def run_ppl(model_IDs, ppls, seed=None, N=10000, country_specific=False, **model
         for ppl in ppls:
             model = create_model(ID, country_specific=country_specific,ppl=ppl, **model_kwargs)
             run_uncertainty(model, note=f"ppl_{ppl}_N_{N}" ,seed=seed, N=N)
+
+#%%
+def run_mSCWO_replacement_cost(costs, model_ID='B', seed=None, N=10000, country_specific=False, **model_kwargs):
+    '''
+    Run uncertainty analysis for mSCWO with different material replacement costs.
+
+    Parameters:
+    ----------
+    model_IDs : str or list of str
+        One or more model identifiers.
+    costs : list of float
+        fraction of CAPEX for annual material replacement cost, 0-1
+    seed : int, optional
+        Random seed for reproducibility.
+    N : int, default=10000
+        Number of uncertainty samples.
+    country_specific : bool, default=False
+        Whether to use country-specific data.
+    model_kwargs : dict
+        Additional arguments to pass to `create_model`.
+    
+    Returns:
+    --------
+    None
+
+    '''
+    # Validate inputs
+    if not costs:
+        raise ValueError("`costs` must be non-empty.")
+    g2rt.INCLUDE_RESOURCE_RECOVERY = False
+    for cost in costs:
+        model = create_model(model_ID, country_specific=country_specific, 
+                             mscwo_replacement_cost=cost, **model_kwargs)
+        run_uncertainty(model, note=f"mscwo_replace_cost{cost}_{N}" ,seed=seed, N=N)
+
+#%%
+def run_e_CF(model_IDs, e_CFs, seed=None, N=10000, country_specific=False, **model_kwargs):
+    '''
+    Run uncertainty analysis for models with different user numbers.
+
+    Parameters:
+    ----------
+    model_IDs : str or list of str
+        One or more model identifiers.
+    e_CFs : list of float
+        The CO2 characterization factors of electricity in unit of kg CO2eq·kWh-1
+        range: 0-2
+    seed : int, optional
+        Random seed for reproducibility.
+    N : int, default=10000
+        Number of uncertainty samples.
+    country_specific : bool, default=False
+        Whether to use country-specific data.
+    model_kwargs : dict
+        Additional arguments to pass to `create_model`.
+    
+    Returns:
+    --------
+    None
+
+    '''
+    # Validate inputs
+    if isinstance(model_IDs, (str, np.str_)):  # Handle both Python and NumPy strings
+        model_IDs = [model_IDs]
+    if not model_IDs or not e_CFs:
+        raise ValueError("Both `model_IDs` and `e_CFs` must be non-empty.")
+        
+    g2rt.INCLUDE_RESOURCE_RECOVERY = False
+    for ID in model_IDs:
+        for e_CF in e_CFs:
+            model = create_model(ID, country_specific=country_specific,e_CF=e_CF, **model_kwargs)
+            run_uncertainty(model, note=f"e_CF_{e_CF}_{N}" ,seed=seed, N=N)
+#%%
+def run_flushwater(model_IDs, flush_waters, seed=None, N=10000, country_specific=False, **model_kwargs):
+    '''
+    Run uncertainty analysis for models with different user numbers.
+
+    Parameters:
+    ----------
+    model_IDs : str or list of str
+        One or more model identifiers.
+    flush_waters : list of float
+        The flushing water in unit of kg/cap/hour
+        range: 0-4.2
+    seed : int, optional
+        Random seed for reproducibility.
+    N : int, default=10000
+        Number of uncertainty samples.
+    country_specific : bool, default=False
+        Whether to use country-specific data.
+    model_kwargs : dict
+        Additional arguments to pass to `create_model`.
+    
+    Returns:
+    --------
+    None
+
+    '''
+    # Validate inputs
+    if isinstance(model_IDs, (str, np.str_)):  # Handle both Python and NumPy strings
+        model_IDs = [model_IDs]
+    if not model_IDs or not flush_waters:
+        raise ValueError("Both `model_IDs` and `flush_waters` must be non-empty.")
+        
+    g2rt.INCLUDE_RESOURCE_RECOVERY = False
+    for ID in model_IDs:
+        for flush_water in flush_waters:
+            model = create_model(ID, country_specific=country_specific,flush_water=flush_water, **model_kwargs)
+            run_uncertainty(model, note=f"flush_water_{flush_water}_{N}" ,seed=seed, N=N)
+            
+#%%
+def run_vr_combustion_methane_EF(EFs, model_ID='A', seed=None, N=10000, country_specific=False, **model_kwargs):
+    '''
+    Run uncertainty analysis for mSCWO with different material replacement costs.
+
+    Parameters:
+    ----------
+    model_ID : str or list of str
+        A for volume reduction unit.
+    EFs : list of float
+        combustion CH4 emission factor, g-CH4/g-feces solids
+    seed : int, optional
+        Random seed for reproducibility.
+    N : int, default=10000
+        Number of uncertainty samples.
+    country_specific : bool, default=False
+        Whether to use country-specific data.
+    model_kwargs : dict
+        Additional arguments to pass to `create_model`.
+    
+    Returns:
+    --------
+    None
+
+    '''
+    # Validate inputs
+    if not EFs:
+        raise ValueError("`EFs` must be non-empty.")
+    g2rt.INCLUDE_RESOURCE_RECOVERY = False
+    for EF in EFs:
+        model = create_model(model_ID, country_specific=country_specific, 
+                             combustion_CH4_EF=EF, **model_kwargs)
+        run_uncertainty(model, note=f"vr_combustion_CH4_EF{EF}_{N}" ,seed=seed, N=N)

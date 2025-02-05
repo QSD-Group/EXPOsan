@@ -22,6 +22,8 @@ from exposan.utils import add_V_from_rho
 __all__ = ('create_components', )
 
 def create_components(set_thermo=True):
+    
+    NH3 = Component('NH3', formula='NH3', measured_as='N',
                     phase='l', particle_size='Soluble',
                     degradability='Undegradable', organic=False)
 

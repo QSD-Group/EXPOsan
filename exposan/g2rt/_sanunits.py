@@ -227,12 +227,13 @@ class mSCWOReactorModule(SanUnit):
     _N_ins = 2
     _N_outs = 4
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', material_replacement_cost = 0.2,
                  **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=1)
-                
+        if material_replacement_cost is None:
+            material_replacement_cost=0.2
+        self.material_replacement_cost = material_replacement_cost
         data = load_data(path=mscwo_reactor_module_path)
-        
         for para in data.index:
             value = float(data.loc[para]['expected'])
             setattr(self, para, value)
@@ -400,8 +401,7 @@ class mSCWOConcentratorModule(SanUnit):
                                                   mscwo_ash_in.F_mass) # fraction
         mc_out = self.moisture_content_out/100 #convert to fraction
         if mc_in < mc_out*0.999:
-            print(f'Moisture content of the influent stream ({mc_in:.2f}) '
-                               f'is smaller than the desired moisture content ({mc_out:.2f}).')
+            mc_out = mc_in
         TS_in = ro_waste_in.imass[solids].sum() + mscwo_liquid_in.imass[solids].sum() + mscwo_ash_in.imass[solids].sum() # kg TS dry/hr
         
         waste_out.imass['H2O'] = TS_in/(1-mc_out)*mc_out #kg water/hr
@@ -567,13 +567,16 @@ class VolumeReductionCombustor(SanUnit):
     _N_outs = 7
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 if_sludge_service = True, lifetime = 10,ppl =6,
+                 if_sludge_service = True, lifetime = 10,ppl =6, CH4_emission_factor=0.0026,
                  **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
                          F_BM_default=1, lifetime = lifetime)
         self.if_sludge_service = if_sludge_service
         self.lifetime = lifetime
         self.ppl = ppl
+        if CH4_emission_factor is None:
+            CH4_emission_factor=0.0026
+        self.CH4_emission_factor = CH4_emission_factor
 
         data = load_data(path=vr_combustor_path)
         for para in data.index:
@@ -623,7 +626,7 @@ class VolumeReductionCombustor(SanUnit):
         ash.imass['WoodAsh'] = (ash_prcd - ash.imass[NPKCaMg].sum())
         ash.imass['H2O'] = 0.025 * ash.F_mass # kg H2O / hr with 2.5% moisture content
         #CH4 emissions
-        CH4.imass['CH4'] = solid_cakes.F_mass * self.CH4_emission_factor
+        CH4.imass['CH4'] = solid_cakes.F_mass*(1-mc) * self.CH4_emission_factor
         # N2O emissions
         N2O.imass['N2O'] = solid_cakes.imass['N'] * self.N2O_emission_factor/28*44
         # NO emissions
@@ -731,20 +734,22 @@ class FWMixer(Mixer):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', F_BM_default=None, isdynamic=False,
                  rigorous=False, conserve_phases=False,N_user=None, N_toilet=None,
-                 N_tot_user = None, if_flushing=True):
+                 N_tot_user = None, if_flushing=True, flushing_water=0.23333):
         Mixer.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
                          F_BM_default=F_BM_default, isdynamic=isdynamic)
         self.N_user = N_user
         self.N_toilet = N_toilet
         self.N_tot_user = N_tot_user
         self.if_flushing = if_flushing
+        if flushing_water is None: #correct the None passed from create_system & create_model
+            flushing_water = 0.233333 #kg/cap/hr
+        self.flushing_water = flushing_water 
         
         cmps = self.components
         self.solids = tuple((cmp.ID for cmp in cmps.solids))
         self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
         
         data = load_data(path=toilet_path)    
-
         for para in data.index:
             value = float(data.loc[para]['expected'])
             setattr(self, para, value)
@@ -2020,8 +2025,7 @@ class VRConcentrator(SanUnit):
         mc_in = waste_in.imass['H2O'] / waste_in.F_mass # fraction
         mc_out = self.moisture_content_out/100 #convert to fraction
         if mc_in < mc_out*0.999:
-            raise RuntimeError(f'Moisture content of the influent stream ({mc_in:.2f}) '
-                               f'is smaller than the desired moisture content ({mc_out:.2f}).')
+            mc_out = mc_in
         TS_in = waste_in.imass[solids].sum() # kg TS dry/hr
         waste_out.imass['H2O'] = TS_in/(1-mc_out)*mc_out #kg water/hr
         #Calculate N2O and CH4 emissions
@@ -3177,22 +3181,25 @@ class G2RTReverseOsmosis(SanUnit):
     outs : 
         * [0] Permeate
         * [1] Brine
-    water_recovery : float, optional
+    water_recovery : float, optional, 0 to 1
         Water recovered to 0th stream. Defaults to 0.6
-    TDS_removal: float, optional
+    TDS_removal: float, optional, 0 to 1
         rejection rate to total dissolved salts. Defaults to 0.95
+    permeate_recycle_ratio: float, optional, 0 to 1
+        fraction of permeate that recirculates to front end as flushing water. Defaults to 1.
         
     The following impact items should be pre-constructed for life cycle assessment:
     GFRPlastic, Steel, ReverseOsmosisModule
     '''
     _N_ins = 1
-    _N_outs = 2
+    _N_outs = 3
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 water_recovery=0.6,TDS_removal = 0.95, **kwargs):
+                 water_recovery=0.6,TDS_removal = 0.95, permeate_recycle_ratio =1,**kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=1)
         self.water_recovery = water_recovery
         self.TDS_removal = TDS_removal
+        self.permeate_recycle_ratio = permeate_recycle_ratio
 
         data = load_data(path=reverse_osmosis_path)
         for para in data.index:
@@ -3210,8 +3217,9 @@ class G2RTReverseOsmosis(SanUnit):
     def _run(self):
         waste_in = self.ins[0]
 
-        permeate, brine = self.outs
+        permeate_recycle, brine, permeate_discharge = self.outs
         solubles, solids = self.solubles, self.solids
+        permeate = WasteStream()
         for i in solubles:
             permeate.imass[i] = waste_in.imass[i]
 
@@ -3220,9 +3228,9 @@ class G2RTReverseOsmosis(SanUnit):
         
         permeate.imass['H2O'] = waste_in.imass['H2O'] * self.water_recovery
         permeate.imass[solubles] = waste_in.imass[solubles]*(1-self.TDS_removal)
+        permeate.split_to(permeate_recycle, permeate_discharge, self.permeate_recycle_ratio)
         # permeate.imass['P'] = waste_in.imass['P'] * 0.01 #higher rejection for P
         brine.mass = waste_in.mass - permeate.mass
-        # print(f"The recycled RO water flow is {permeate.imass['H2O']} kg/h.")
 
     def _init_lca(self):
         self.construction = [

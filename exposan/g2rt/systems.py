@@ -136,7 +136,8 @@ app_loss['NH3'] = 0.05
 
 # =============================================================================
 
-def create_systemA(flowsheet=None, ppl=default_ppl, lifetime=default_lifetime):
+def create_systemA(flowsheet=None, ppl=default_ppl, lifetime=default_lifetime, 
+                   flush_water= None, combustion_CH4_EF= None):
     # TODO: Set flowsheet to avoid stream replacement warnings
     flowsheet = flowsheet or main_flowsheet
     batch_create_streams('A')
@@ -160,7 +161,8 @@ def create_systemA(flowsheet=None, ppl=default_ppl, lifetime=default_lifetime):
     mixer = su.FWMixer('Mixer',
                       ins = ('tap_water', streamA['H2O']),
                       outs = ('flushing_water'),
-                      N_tot_user = ppl
+                      N_tot_user = ppl,
+                      flushing_water=flush_water
                       )
     A2 = su.SURT('A2',
                   ins= (A1-0, A1-1, 'toilet_paper'),
@@ -219,7 +221,8 @@ def create_systemA(flowsheet=None, ppl=default_ppl, lifetime=default_lifetime):
     #                         )
     A6 = su.G2RTReverseOsmosis('A6', 
                             ins = A5-0,
-                            outs = (1-mixer,'A6_brine')
+                            outs = (1-mixer,'A6_brine','A6_effluent'),
+                            permeate_recycle_ratio = 1
                             )
     
     # item = ImpactItem.get_item('H2O_item').copy('A_H2O_item', set_as_source=True)
@@ -255,7 +258,8 @@ def create_systemA(flowsheet=None, ppl=default_ppl, lifetime=default_lifetime):
                                       outs = ("Ash","hot_gas","A14_CH4", "A14_N2O", 
                                               streamA['NO'],streamA['SO2'],'A14_NH3_gas'),
                                       if_sludge_service = True, lifetime = lifetime,
-                                      ppl=ppl
+                                      ppl=ppl,
+                                      CH4_emission_factor=combustion_CH4_EF
                                       )
     
     # CH4 emissions from MURT, concentrator, drying tunnel, and combustor
@@ -321,7 +325,7 @@ def create_systemA(flowsheet=None, ppl=default_ppl, lifetime=default_lifetime):
 # micro Supercritical Water Oxidation toilet based on
 # https://patentimages.storage.googleapis.com/57/6a/81/72a168a92be44c/WO2023288331A1.pdf
 # =============================================================================
-def create_systemB(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime):
+def create_systemB(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime, flush_water= None, mscwo_replacement_cost = None):
     # TODO: Set flowsheet to avoid stream replacement warnings
     flowsheet = flowsheet or main_flowsheet
     batch_create_streams('B')
@@ -333,7 +337,8 @@ def create_systemB(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime):
     mixer = su.FWMixer('Mixer',
                       ins = ('tap_water', streamB['H2O']),
                       outs = ('flushing_water'),
-                      N_tot_user = ppl
+                      N_tot_user = ppl,
+                      flushing_water=flush_water
                       )
     B2 = su.SURT('B2',
                   ins= (B1-0, B1-1, 'toilet_paper'),
@@ -393,7 +398,8 @@ def create_systemB(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime):
     #                         )
     B9 = su.G2RTReverseOsmosis('B9', 
                             ins = B8-0,
-                            outs = (1-mixer,'B9_brine') #TODO: sys.flowsheet.unit.A6.outs[0].stream_impact_item
+                            outs = (1-mixer,'B9_brine','B9_effluent'),
+                            permeate_recycle_ratio = 1
                             )
     
     # item = ImpactItem.get_item('H2O_item').copy('A_H2O_item', set_as_source=True)
@@ -407,6 +413,7 @@ def create_systemB(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime):
     B11 = su.mSCWOReactorModule('B11',
                                 ins = (B10-0,B6-0),
                                 outs = ('B11_gas','B11_N2O','B11_liquid_effluent','B11_ash_waste'),
+                                material_replacement_cost=mscwo_replacement_cost
                                 )
 
     B12 = su.mSCWOConcentratorModule('B12',
@@ -675,7 +682,8 @@ def create_systemC(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime):
 # create system
 # =============================================================================
 
-def create_system(system_ID='A', flowsheet=None, ppl=default_ppl, lifetime = default_lifetime):
+def create_system(system_ID='A', flowsheet=None, ppl=default_ppl, 
+                  lifetime = default_lifetime, **kwargs):
     ID = system_ID.lower().lstrip('sys').upper()  # so that it'll work for "sysA"/"A"
     reload_lca = False
 
@@ -697,10 +705,10 @@ def create_system(system_ID='A', flowsheet=None, ppl=default_ppl, lifetime = def
     elif system_ID == 'C': f = create_systemC
     else: raise ValueError(f'`system_ID` can only be "A" or "B" or "C", not "{ID}".')
 
-    try: system = f(flowsheet, ppl=ppl, lifetime = lifetime)
+    try: system = f(flowsheet, ppl=ppl, lifetime = lifetime, **kwargs)
     except:
         _load_components(reload=True)
-        system = f(flowsheet, ppl=ppl, lifetime = lifetime)
+        system = f(flowsheet, ppl=ppl, lifetime = lifetime, **kwargs)
 
     return system
 
