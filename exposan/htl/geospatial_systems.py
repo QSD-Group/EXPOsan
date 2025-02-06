@@ -63,6 +63,8 @@ References:
      Environ. Sci. Technol. 2023. https://doi.org/10.1021/acs.est.2c07936.
 '''
 
+# TODO: check _sanunits.py
+
 # TODO: changes to implement:
 # TODO 1: add new units and contextualized fertilizers prices (https://mymarketnews.ams.usda.gov/report/list?market_types%5B0%5D=214) in writing
 
@@ -76,18 +78,11 @@ from biosteam import settings
 __all__ = ('create_geospatial_system',)
 
 # TODO: update citations
-# kg/m3, https://www.transmountain.com/about-petroleum-liquids (accessed 2025-02-05)
-crude_oil_density = 850
-# kg/m3, [1]
-biocrude_density = 980
-# TODO: update citations
 # kg/m3, this is for sludge with a moisture content higher than 80%,
 # google 'Design of wastewater treatment sludge thickeners Iowa State University'
 sludge_density = 1000
 # kg/m3, [2]
 natural_gas_density = 0.65
-# 42-47 MJ/kg, [3]
-crude_oil_HHV = 44.5
 
 _mile_to_km = auom('mile').conversion_factor('km')
 _lb_to_kg = auom('lb').conversion_factor('kg')
@@ -328,6 +323,29 @@ def create_geospatial_system(# MGD
                                              'biocrude_to_be_stored','offgas_HTL'),
                                        mositure_adjustment_exist_in_the_system=False)
     
+    # store for 3 days based on [9]
+    # TODO: update citations
+    # crude oil density: 800-900 kg/m3, https://www.transmountain.com/about-petroleum-liquids (accessed 2025-02-05)
+    # crude oil HHV: 42-47 MJ/kg, https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
+    # biocrude_wet_density: 983 kg/m3, [1]
+    BiocrudeTank = su.BiocrudeTank(ID='BiocrudeTank',
+                                   ins=HTL-2,
+                                   outs=('biocrude'),
+                                   tau=3*24,
+                                   init_with='WasteStream',
+                                   crude_oil_density=850,
+                                   crude_oil_HHV=44.5,
+                                   biocrude_wet_density=983,
+                                   vessel_material='Carbon steel')
+    # TODO: update biocrude cost and CI calculation in writing
+    # assume biocrude replace crude oil of the same amount of energy
+    # TODO: update citations
+    # TODO: crude oil price and therefore, biocrude price, are now contextual parameters, update in writing
+    # 94.077 $/oil barrel, https://www.eia.gov/dnav/pet/pet_pri_dfp1_k_m.htm
+    # assume biocrude has an HHV of 35 MJ/kg
+    # in the model, biocrude HHV will be calculated as HTL.biocrude_HHV
+    BiocrudeTank.outs[0].price = 94.077/_oil_barrel_to_m3/BiocrudeTank.crude_oil_density/BiocrudeTank.crude_oil_HHV*35
+    
     # =========================================================================
     # CHG
     # =========================================================================
@@ -361,29 +379,6 @@ def create_geospatial_system(# MGD
                    T=60+273.15,
                    P=50*6894.76,
                    thermo=settings.thermo.ideal())
-    
-    # =========================================================================
-    # Storage and disposal
-    # =========================================================================
-    # store for 3 days based on [9]
-    BiocrudeTank = qsu.StorageTank(ID='BiocrudeTank',
-                                   ins=HTL-2,
-                                   outs=('biocrude'),
-                                   tau=3*24,
-                                   init_with='WasteStream',
-                                   vessel_material='Carbon steel')
-    # TODO: update biocrude cost and CI calculation in writing
-    # assume biocrude replace crude oil of the same amount of energy
-    # TODO: update citations
-    # 94.077 $/oil barrel, https://www.eia.gov/dnav/pet/pet_pri_dfp1_k_m.htm
-    # assume biocrude has an HHV of 35 MJ/kg
-    # in the model, biocrude HHV will be calculated as HTL.biocrude_HHV
-    BiocrudeTank.outs[0].price = 94.077/_oil_barrel_to_m3/crude_oil_density/crude_oil_HHV*35
-    
-    GasMixer = qsu.Mixer(ID='GasMixer',
-                         ins=(HTL-3, F1-0),
-                         outs=('fuel_gas'),
-                         init_with='Stream')
     
     # =========================================================================
     # nutrient recovery - part 1
@@ -482,6 +477,11 @@ def create_geospatial_system(# MGD
     # now use natural gas for heating, and use default T_min_app
     qsu.HeatExchangerNetwork(ID='HXN',
                              force_ideal_thermo=True)
+    
+    GasMixer = qsu.Mixer(ID='GasMixer',
+                         ins=(HTL-3, F1-0),
+                         outs=('fuel_gas'),
+                         init_with='Stream')
     
     # assume no value/cost and no environmental benefit/impact associated with emission, since they are all captured, utilitzed, or included in the natural_gas item
     # the CHP here can ususally meet the heat requirement but not the electricity
@@ -602,7 +602,7 @@ def create_geospatial_system(# MGD
     # 0.13004958 kg CO2 eq/metric ton/km ('market for transport, freight, lorry, unspecified'))
     Biocrude_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), [15]
-    Biocrude_trucking.price = (5.67/biocrude_density+0.07/biocrude_density*WWTP.biocrude_distance)/GDPCTPI[2008]*GDPCTPI[2022]/WWTP.biocrude_distance
+    Biocrude_trucking.price = (5.67/BiocrudeTank.biocrude_wet_density+0.07/BiocrudeTank.biocrude_wet_density*WWTP.biocrude_distance)/GDPCTPI[2008]*GDPCTPI[2022]/WWTP.biocrude_distance
         
     Biocrude_transportation = qs.Transportation('Biocrude_trucking',
                                                 linked_unit=BiocrudeTank,
@@ -626,7 +626,7 @@ def create_geospatial_system(# MGD
                     'natural_gas':  [stream.natural_gas, 0.47016123/natural_gas_density+44/16],
                     # use market or market group for biocrude since we want to offset transportation and then add our own transportation part
                     # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
-                    'biocrude':     [stream.biocrude, -0.22290007/crude_oil_HHV*HTL.biocrude_HHV],
+                    'biocrude':     [stream.biocrude, -0.22290007/BiocrudeTank.crude_oil_HHV*HTL.biocrude_HHV],
                     'ash_disposal': [stream.solid_ash, 0.0082744841]}
     
     if nitrogen_fertilizer == 'NH3':

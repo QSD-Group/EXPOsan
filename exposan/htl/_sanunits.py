@@ -16,16 +16,21 @@ for license details.
 '''
 
 import qsdsan as qs
-from math import ceil, log
-from qsdsan import SanUnit, Stream
-from qsdsan.sanunits import Reactor, HXutility
+from math import ceil, pi, log
+from warnings import warn
+from qsdsan import SanUnit, Stream, Construction
+from qsdsan.sanunits import Reactor, HXutility, Tank
 from qsdsan.utils import auom
+from biosteam.units import StorageTank as BSTStorageTank
 from biosteam.units.decorators import cost
-from biosteam.units.design_tools import CEPCI_by_year, size_batch
+from biosteam.units.design_tools import CEPCI_by_year, size_batch, flash_vessel_design
+from biosteam.units.design_tools.specification_factors import material_densities_lb_per_ft3
+from biosteam.exceptions import bounds_warning, DesignWarning
 
 __all__ = (
     'AmineAbsorption',
     'AcidExtraction',
+    'BiocrudeTank',
     'DAPSynthesis',
     'FuelMixer',
     'HTLaqueous',
@@ -41,6 +46,7 @@ __all__ = (
     )
 
 _hp2kW = 0.7457
+_lb_to_kg = auom('lb').conversion_factor('kg')
 _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
 _Pa_to_psi = auom('Pa').conversion_factor('psi')
 _m_to_ft = auom('m').conversion_factor('ft')
@@ -252,6 +258,128 @@ class AmineAbsorption(SanUnit):
         hx_ht_2.simulate_as_auxiliary_exchanger(ins=hx_ht_2.ins, outs=hx_ht_2.outs, vle=True, hxn_ok=False)
 
 # =============================================================================
+# BiocrudeTank 
+# =============================================================================
+
+class BiocrudeTank(Tank, BSTStorageTank):
+    '''
+    Similar to the :class:`biosteam.units.MixTank`, but can calculate material usage.
+    Also add three parameters (crude_oil_density, crude_oil_HHV, and biocrude_wet_density)
+    to correct biocrude price and CI.
+    
+    See Also
+    --------
+    :class:`biosteam.units.StorageTank`
+    
+    Parameters
+    ----------
+    crude_oil_density :
+        Density of crude oil, kg/m3.
+    crude_oil_HHV :
+        HHV of crude oil, MJ/kg.
+    biocrude_wet_density :
+        Density of biocrude, kg/m3.
+        
+    # TODO: update references
+    References
+    ----------
+    .. [1] https://www.transmountain.com/about-petroleum-liquids (accessed 2025-02-05).
+    .. [2] https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
+    .. [3] Snowden-Swan, L. J.; Li, S.; Thorson, M. R.; Schmidt, A. J.; Cronin, D. J.;
+        Zhu, Y.; Hart, T. R.; Santosa, D. M.; Fox, S. P.; Lemmon, T. L.; Swita, M. S.
+        Wet Waste Hydrothermal Liquefaction and Biocrude Upgrading to Hydrocarbon Fuels:
+        2022 State of Technology; PNNL-33622; Pacific Northwest National Lab. (PNNL),
+        Richland, WA (United States), 2022. https://doi.org/10.2172/1897670.        
+    '''
+    
+    _units = {'Diameter': 'ft',
+              'Length': 'ft',
+              'Wall thickness': 'in',
+              'Weight': 'lb'}
+    _bounds = {'Vertical vessel weight': (4200, 1e6),
+               'Horizontal vessel weight': (1e3, 9.2e5),
+               'Horizontal vessel diameter': (3, 21),
+               'Vertical vessel length': (12, 40)}
+    _vessel_material = 'Stainless steel'
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 # [1]
+                 crude_oil_density=850,
+                 # [2]
+                 crude_oil_HHV=44.5,
+                 # [3]
+                 biocrude_wet_density=983,
+                 vessel_type=None, tau=None, V_wf=None,
+                 vessel_material=None, kW_per_m3=0.,
+                 init_with='WasteStream', F_BM_default=None,
+                 include_construction=True, length_to_diameter=2):
+        Tank.__init__(self, ID=ID, ins=ins, outs=outs, thermo=thermo,
+                      init_with=init_with, F_BM_default=F_BM_default,
+                      include_construction=include_construction,
+                      vessel_type=vessel_type, tau=tau, V_wf=V_wf,
+                      vessel_material=vessel_material, kW_per_m3=kW_per_m3)
+        self.crude_oil_density = crude_oil_density
+        self.crude_oil_HHV = crude_oil_HHV
+        self.biocrude_wet_density = biocrude_wet_density
+        self.length_to_diameter = length_to_diameter
+        
+    def _init_lca(self):
+        item_name = self.vessel_material.replace(' ', '_')
+        self.construction = [
+            Construction(item_name.lower(), linked_unit=self, item=item_name, quantity_unit='kg'),
+            ]
+        
+    
+    def _design(self):
+        BSTStorageTank._design(self)
+        D = self.design_results
+        
+        Diameter = (4*D['Total volume']/pi/self.length_to_diameter)**(1/3)
+        Diameter *= _m_to_ft # convert from m to ft
+        L = Diameter * self.length_to_diameter # ft
+        D.update(self._horizontal_vessel_design(self.ins[0].P*_Pa_to_psi, Diameter, L))
+        D['Material'] = self.vessel_material
+        if self.include_construction: self.construction[0].quantity = D['Weight']*_lb_to_kg
+
+
+    def _horizontal_vessel_design(self, pressure, diameter, length) -> dict:
+        pressure = pressure
+        diameter = diameter
+        length = length
+        # Calculate vessel weight and wall thickness
+        if self.vessel_material == 'Carbon steel':
+            rho_M = material_densities_lb_per_ft3[self.vessel_material]
+        else:
+            rho_M = material_densities_lb_per_ft3['Stainless steel 304']
+        if pressure < 14.68:
+            warn('vacuum pressure vessel ASME codes not implemented yet; '
+                 'wall thickness may be inaccurate and stiffening rings may be '
+                 'required', category=DesignWarning)
+        VW, VWT = flash_vessel_design.compute_vessel_weight_and_wall_thickness(
+            pressure, diameter, length, rho_M)
+        bounds_warning(self, 'Horizontal vessel weight', VW, 'lb',
+                       self._bounds['Horizontal vessel weight'], 'cost')
+        bounds_warning(self, 'Horizontal vessel diameter', diameter, 'ft',
+                       self._bounds['Horizontal vessel diameter'], 'cost')
+        Design = {}
+        Design['Vessel type'] = 'Horizontal'
+        Design['Length'] = length # ft
+        Design['Diameter'] = diameter # ft
+        Design['Weight'] = VW # lb
+        Design['Wall thickness'] = VWT # in
+        return Design
+
+    @property
+    def vessel_material(self):
+        return self._vessel_material
+    @vessel_material.setter
+    def vessel_material(self, i):
+        exist_material = getattr(self, '_vessel_material', None)
+        BSTStorageTank.vessel_material.fset(self, i)
+        if i and exist_material == i: return # type doesn't change, no need to reload construction items
+        self._init_lca()
+
+# =============================================================================
 # DAPSynthesis
 # =============================================================================
 
@@ -324,6 +452,7 @@ class DAPSynthesis(Reactor):
                   # due to lack of data, assume P_syn_recovery_ratio to be the same as
                   # P_pre_recovery_ratio in StruvitePrecipitation
                   P_syn_recovery_ratio=0.828,
+                  crystallizer_electricity=0.00746,
                   # due to lack of data, assume tau to be the same as
                   # tau in StruvitePrecipitation
                   P=None, tau=1,
@@ -331,8 +460,7 @@ class DAPSynthesis(Reactor):
                   auxiliary=False, mixing_intensity=None,
                   kW_per_m3=0, wall_thickness_factor=1,
                   vessel_material='Stainless steel 316',
-                  vessel_type='Vertical',
-                  crystallizer_electricity=0.00746):
+                  vessel_type='Vertical'):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.P_syn_recovery_ratio = P_syn_recovery_ratio
