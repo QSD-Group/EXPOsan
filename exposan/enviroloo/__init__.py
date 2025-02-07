@@ -3,23 +3,24 @@
 '''
 Created by Yuyao Huang and Siqi Tang for Enviroloo Clear Toilet system
 '''
+
 import os, qsdsan as qs
-from math import log
 from qsdsan import ImpactItem, StreamImpactItem
 from exposan.utils import (
-          _init_modules,
-          get_decay_k,
-          get_generic_scaled_capital,
-          get_generic_tanker_truck_fee as get_tanker_truck_fee,
-          )
-
-EL_path = os.path.dirname(__file__)
-module = os.path.split(EL_path)[-1]
-data_path, results_path = _init_modules(module, include_data_path = True)
+    #_init_modules,
+    get_decay_k,
+    get_generic_scaled_capital,
+    get_generic_tanker_truck_fee as get_tanker_truck_fee,
+    )
 
 # Default settings of resource recovery in the EL system
 INCLUDED_RESOURCE_RECOVERY = False
 
+el_path = os.path.dirname(__file__)
+el_data_path = os.path.join(el_path, 'data')
+results_path = os.path.join(el_path, 'results')
+#module = os.path.split(el_path)[-1]
+#data_path, results_path = _init_modules(module, include_data_path = True)
 
 #############################################################################################################################################
 #
@@ -31,32 +32,33 @@ household_size = 4  # refer to EXPOsan/exposan/pou_disinfection/__init__.py wher
 household_per_toilet = 4
 get_toilet_users = lambda: household_size * household_per_toilet
 
-ppl = 1000; # the number of people served by the EL system. 
+ppl = 1000 # the number of people served by the EL system. 
 # Here 100-user household or 1000-user school scale will be considered.
 
-discount_rate = 0.03   # discount rate, [fraction]
+discount_rate = 0.05   # discount rate, [fraction]
 
-max_CH4_emission = 0.5   # max CH4 emission, [g CH4/g COD]
+max_CH4_emission = 0.25   # max CH4 emission, [g CH4/g COD]
 
-tau_deg = 3; # time taking for full degradation, [yr]
-log_deg = 4; # log reduction at full degradation, [log10]
+tau_deg = 3 # time taking for full degradation, [yr]
+log_deg = 4 # log reduction at full degradation, [log10]
 
-emptying_fee = 0.15; # additional emptying fee, fraction of base cost
+emptying_fee = 0.15 # additional emptying fee, fraction of base cost
 
 # recycled nutrients are sold at a lower price than commercial fertilizers
-price_factor = 0.25; # conventional value, if the EL system is considering the nutrients 
+price_factor = 0.25 # conventional value, if the EL system is considering the nutrients 
                      #recovery as fertilizers sold with lower price than commercial fertilizers.
 
 # The following parameters should be changed based on country of interest
 price_ratio = 1.0
 operator_daily_wage = 29  # operator daily wage, [USD/day]
 constant_daily_wage = 17
-const_person_days = 100   # the working days for the constant staff, [day] (???)
+const_person_days = 100
 
 # The following factors refer to  Reclaimer and Biogenic Refinery
 EcosystemQuality_factor = 29320 * (2.8e-09 + 7.65e-14)   # (pt/species.yr) * (species.yr/kgCO2eq)
 HumanHealth_factor = 436000 * 9.28e-07   # (pt/DALY) * (DALY/kgCO2eq)
 
+# Ignore the nutrients loss during application
 
 #############################################################################################################################################
 #
@@ -70,80 +72,87 @@ def update_resource_recovery_settings():
     
     price_dct = {
         'Electricity': 0.13, # $/kWh
-        'Concrete': 194, # $/m3
-        'Steel': 1.8, # $/kg
+        #'Concrete': 194 * price_ratio, # $/m3
+        'Steel': 2.665 * price_ratio, # $/kg
         'N': 1.507 * price_factor * RR_factor, # $/kg, N fertilizer price if resource recovery is considered
-        'P': 0.8 * price_factor * RR_factor, # $/kg, P fertilizer price if resource recovery is considered
-        'K': 0.8 * price_factor * RR_factor, # $/kg, K fertilizer price if resource recovery is considered
-        'Ammonium': 0.8 * price_factor * RR_factor, # $/kg, ammonium fertilizer price if resource recovery is considered
-        'Struvite':3.983 * (31/245) * price_factor * RR_factor, # $/kg, as alternative P fertilizer 
+        'P': 3.983 * price_factor * RR_factor, # $/kg, P fertilizer price if resource recovery is considered
+        'K': 1.333 * price_factor * RR_factor, # $/kg, K fertilizer price if resource recovery is considered
+        'ammonium': 0.8 * (14/18) * price_factor * RR_factor, # $/kg, ammonium fertilizer price if resource recovery is considered
+        'struvite':3.983 * (31/245) * price_factor * RR_factor, # $/kg, as alternative P fertilizer 
                                                           #if resource recovery is considered, cited from biogenic refinery
-        'NaOH': 1.2, # $/kg, used for membrane cleanup
-        'NaClO': 1.8, # $/kg, used for membrane cleanup
-        'O3': 0.9, # $/kg, used for clear water tank disinfection
-        'HDPE': 0.5, # $/kg, used for 200M ozone connection
+        'NaOH': 1.2 * price_ratio, # $/kg, used for membrane cleanup
+        'NaClO': 1.8 * price_ratio, # $/kg, used for membrane cleanup
+        'O3': 0.9 * price_ratio, # $/kg, used for clear water tank disinfection
+        'HDPE': 0.5 * price_ratio, # $/kg, used for 200M ozone connection
+        'PAC': 0.9 * price_ratio, # $/kg, used for aerobic tank deposition
+        'Glucose': 0.95 * price_ratio, # $/kg, used in anoxic tank
         }
     
     GWP_dct = {
         'Electricity': 0.69, # kg CO2-eq/kWh
-        'Concrete': 0.0, # kg CO2-eq/m3
-        'Steel': 0.0, # kg CO2-eq/kg, need to make sense
         'CH4': 34.0, # kg CO2-eq/g CH4
         'N2O': 298.0, # kg CO2-eq/g N2O
         'N': -5.4 * RR_factor, # kg CO2-eq/kg N recovered, if resource recovery is considered
         'P': -4.9 * RR_factor, # kg CO2-eq/kg P recovered, if resource recovery is considered
         'K': -1.5 * RR_factor, # kg CO2-eq/kg K recovered, if resource recovery is considered
-        'Ammonium': -5.4 * RR_factor, # kg CO2-eq/kg ammonium recovered, if resource recovery is considered
-        'Struvite': -0.3 * RR_factor, # kg CO2-eq/kg, need to make sense, if resource recovery is considered
-        'NaOH': 0.0, # kg CO2-eq/kg, need to make sense
-        'NaClO': 0.0, # kg CO2-eq/kg, need to make sense
+        'ammonium': -5.4 * (14/18) * RR_factor, # kg CO2-eq/kg ammonium recovered, if resource recovery is considered
+        'struvite': -4.9 * (31/245) * RR_factor, # kg CO2-eq/kg, need to make sense, if resource recovery is considered
+        'NaOH': 0.050981804, 
+        'NaClO': 0.10287725,
+        'O3': 0.39586718,
+        'PAC': 0.394959,
+        'Glucose': 0.033883,
         }
     
     H_Ecosystems_dct = {
-        'Electricity': 0.0, # kg CO2-eq/kWh
-        'Concrete': 0.0, # kg CO2-eq/m3
-        'Steel': 0.0, # kg CO2-eq/kg, need to make sense
-        'CH4': 34.0, # kg CO2-eq/g CH4
-        'N2O': 298.0, # kg CO2-eq/g N2O
-        'N': -5.4 * RR_factor, # kg CO2-eq/kg N recovered, if resource recovery is considered
-        'P': -4.9 * RR_factor, # kg CO2-eq/kg P recovered, if resource recovery is considered
-        'K': -1.5 * RR_factor, # kg CO2-eq/kg K recovered, if resource recovery is considered
-        'Ammonium': -5.4 * RR_factor, # kg CO2-eq/kg ammonium recovered, if resource recovery is considered
-        'Struvite': -0.3 * RR_factor, # kg CO2-eq/kg, need to make sense, if resource recovery is considered
-        'NaOH': 0.0, # kg CO2-eq/kg, need to make sense
-        'NaClO': 0.0, # kg CO2-eq/kg, need to make sense
+        'Electricity': 0.002456338, 
+        'CH4': 34.0 * EcosystemQuality_factor, 
+        'N2O': 298.0 * EcosystemQuality_factor, 
+        'N': -0.0461961 * RR_factor, #if resource recovery is considered
+        'P': -0.093269908 * RR_factor, #if resource recovery is considered
+        'K': -0.01895794 * RR_factor, #if resource recovery is considered
+        'ammonium': -0.0461961 * (14/18) * RR_factor, #if resource recovery is considered
+        'struvite': -0.093269908 * (31/245) * RR_factor, #if resource recovery is considered
+        'NaOH': 0.025732326,
+        'NaClO': 0.051394080,
+        'O3':0.21786132,
+        'PAC': 0.1938478,
+        'Glucose': 0.035664,
         }
     
     H_Health_dct = {
-        'Electricity': 0.0, # kg CO2-eq/kWh
-        'Concrete': 0.0, # kg CO2-eq/m3
-        'Steel': 0.0, # kg CO2-eq/kg, need to make sense
-        'CH4': 34.0, # kg CO2-eq/g CH4
-        'N2O': 298.0, # kg CO2-eq/g N2O
-        'N': -5.4 * RR_factor, # kg CO2-eq/kg N recovered, if resource recovery is considered
-        'P': -4.9 * RR_factor, # kg CO2-eq/kg P recovered, if resource recovery is considered
-        'K': -1.5 * RR_factor, # kg CO2-eq/kg K recovered, if resource recovery is considered
-        'Ammonium': -5.4 * RR_factor, # kg CO2-eq/kg ammonium recovered, if resource recovery is considered
-        'Struvite': -0.3 * RR_factor, # kg CO2-eq/kg, need to make sense, if resource recovery is considered        
-        'NaOH': 0.0, # kg CO2-eq/kg, need to make sense
-        'NaClO': 0.0, # kg CO2-eq/kg, need to make sense
+        'Electricity': 0.040824307,
+        'CH4': 34.0 * HumanHealth_factor,
+        'N2O': 298.0 * HumanHealth_factor, 
+        'N': -0.637826734 * RR_factor, #if resource recovery is considered
+        'P': -1.774294425 * RR_factor, #if resource recovery is considered
+        'K': -0.116067637 * RR_factor, #if resource recovery is considered
+        'ammonium': -0.637826734 * (14/18) * RR_factor, #if resource recovery is considered
+        'struvite': -1.774294425 * (31/245) * RR_factor, #if resource recovery is considered        
+        'NaOH': 0.061256093,
+        'NaClO': 0.12191047,
+        'O3': 0.51710284,
+        'PAC': 0.0173485,
+        'Glucose': 0.011324,
         }
     
     H_Resources_dct = {
-        'Electricity': 0.0, # kg CO2-eq/kWh
-        'Concrete': 0.0, # kg CO2-eq/m3
-        'Steel': 0.0, # kg CO2-eq/kg, need to make sense
-        'CH4': 34.0, # kg CO2-eq/g CH4
-        'N2O': 298.0, # kg CO2-eq/g N2O
-        'N': -5.4 * RR_factor, # kg CO2-eq/kg N recovered, if resource recovery is considered
-        'P': -4.9 * RR_factor, # kg CO2-eq/kg P recovered, if resource recovery is considered
-        'K': -1.5 * RR_factor, # kg CO2-eq/kg K recovered, if resource recovery is considered
-        'Ammonium': -5.4 * RR_factor, # kg CO2-eq/kg ammonium recovered, if resource recovery is considered
-        'Struvite': -0.3 * RR_factor, # kg CO2-eq/kg, need to make sense, if resource recovery is considered
-        'NaOH': 0.0, # kg CO2-eq/kg, need to make sense 
-        'NaClO': 0.0, # kg CO2-eq/kg, need to make sense
+        'Electricity': 0.027825633,
+        'CH4': 0.0, 
+        'N2O': 0.0,
+        'N': -0.259196888 * RR_factor, #if resource recovery is considered
+        'P': -1.084191599 * RR_factor, #if resource recovery is considered
+        'K': -0.054033438 * RR_factor, #if resource recovery is considered
+        'ammonium': -0.259196888 * (14/18) * RR_factor, #if resource recovery is considered
+        'struvite': -1.084191599 * (31/245) * RR_factor, #if resource recovery is considered
+        'NaOH': 0.050981804,
+        'NaClO': 0.10287725,
+        'O3': 0.39586718,
+        'PAC': 0.28485795,
+        'Glucose': 0.02425,
         }
-    return price_dct, GWP_dct, H_Health_dct, H_Resources_dct
+    
+    return price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct
 
 update_resource_recovery_settings()
 
@@ -156,7 +165,7 @@ update_resource_recovery_settings()
 from . import _components
 from ._components import *  
 _components_loaded = False
-def _load_components(reload = False):
+def _load_components(reload=False):
     global components, _components_loaded
     if not _components_loaded or reload:
         components = create_components()
@@ -164,70 +173,74 @@ def _load_components(reload = False):
         _components_loaded = True
           
 _impact_item_loaded = False
-def _load_lca_data(reload = False):
+def _load_lca_data(reload=False):
     '''
     Load impact indicators and impact item data for LCA
     '''
     global _impact_item_loaded
     if not _impact_item_loaded or reload:
-        indicator_path = os.path.join(data_path, 'impact_indicators.tsv')
+        indicator_path = os.path.join(el_data_path, 'impact_indicators.csv')
         qs.ImpactIndicator.load_from_file(indicator_path)
                     
-        item_path = os.path.join(data_path, 'impact_items.xlsx')
+        item_path = os.path.join(el_data_path, 'impact_items.xlsx')
         qs.ImpactItem.load_from_file(item_path)
-                    
+
+        price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct = update_resource_recovery_settings()
+
         # define impacts associated with streams and electricity in the EL system
         def create_stream_impact_item(item_ID, dct_key = ''):
-            dct_key = dct_key or item_ID.rsplit('_item')[0];# change 'struvite_item' to 'struv'
-            StreamImpactItem(ID = item_ID, GWP = GWP_dct[dct_key],
+            dct_key = dct_key or item_ID.rsplit('_item')[0] # here for example, change 'struvite_item' to 'struv'
+            StreamImpactItem(ID = item_ID, 
+                             GWP = GWP_dct[dct_key],
                              H_Ecosystems = H_Ecosystems_dct[dct_key],
                              H_Health = H_Health_dct[dct_key],
                              H_Resources = H_Resources_dct[dct_key])
                         
-        create_stream_impact_item(item_ID = 'CH4_item')
-        create_stream_impact_item(item_ID = 'N2O_item')
-        create_stream_impact_item(item_ID = 'N_item')
-        create_stream_impact_item(item_ID = 'P_item')
-        create_stream_impact_item(item_ID = 'K_item')
-        create_stream_impact_item(item_ID = 'Concrete_item')
-        create_stream_impact_item(item_ID = 'Struvite_item')
-        create_stream_impact_item(item_ID = 'Salt_item')
-        create_stream_impact_item(item_ID = 'NaOH_item')
-        create_stream_impact_item(item_ID = 'NaClO_item')
+        create_stream_impact_item(item_ID='CH4_item')
+        create_stream_impact_item(item_ID='N2O_item')
+        create_stream_impact_item(item_ID='N_item')
+        create_stream_impact_item(item_ID='P_item')
+        create_stream_impact_item(item_ID='K_item')
+        create_stream_impact_item(item_ID='ammonium_item')
+        create_stream_impact_item(item_ID='struvite_item')
+        create_stream_impact_item(item_ID='NaOH_item')
+        create_stream_impact_item(item_ID='NaClO_item')
+        create_stream_impact_item(item_ID='O3_item')
+        create_stream_impact_item(item_ID='PAC_item')
+        create_stream_impact_item(item_ID='Glucose_item')
         ImpactItem(ID = 'e_item', functional_unit = 'kWh', 
                    GWP = GWP_dct['Electricity'],
                    H_Ecosystems = H_Ecosystems_dct['Electricity'],
                    H_Health = H_Health_dct['Electricity'],
-                   H_Resources = H_Resources_dct['Electricity'])     
-                         
-                    
+                   H_Resources = H_Resources_dct['Electricity'])
+
+        # update prices
+        ImpactItem.get_item('Steel').price = price_dct['Steel']     
+                             
         _impact_item_loaded = True
                     
     return _impact_item_loaded
 
 ######################################################## Load EL system ##############################################################
-from exposan.enviroloo import Enviroloo_system  # the name of imported module will be aligned finally
-from .Enviroloo_system import create_system
+from . import Enviroloo_system
+from .Enviroloo_system import *
 _system_loaded = False
 def _load_system():
     qs.currency = 'USD'
-    qs.PowerUnity.price = price_dct['Electricity']
+    qs.PowerUtility.price = price_dct['Electricity']
     global sysEL, teaEL, lcaEL, _system_loaded
-    sysEL = create_system()
+    sysEL = create_system('EL')
     teaEL = sysEL.TEA
     lcaEL = sysEL.LCA
     _system_loaded = True
 
 def load():
-    if not _components_loaded:
-        _load_components()
-    if not _system_loaded:
-        _load_system()     
+    if not _components_loaded: _load_components()
+    if not _system_loaded: _load_system()     
     dct = globals()
-    for sys in (sysEL):
-        dct.update(sys.flowsheet.to_dct())
+    for sys in (sysEL,): dct.update(sys.flowsheet.to_dct())
                     
-def _getattr_(name):
+def __getattr__(name):
     if not _components_loaded or not _system_loaded:
         raise AttributeError(
             f'Module {__name__} does not have the attribute "{name}" '
@@ -236,10 +249,7 @@ def _getattr_(name):
                                            
 ######################################################## Utilities functions ##############################################################
 ## The amount of nutrients can be recovered per year if recovery setting mode is TRUE.
-hr_per_yr = 24 * 365; # full payload per day
-get_N = lambda stream: stream.TN * stream.F_vol/1e3 * hr_per_yr
-get_P = lambda stream: stream.TP * stream.F_vol/1e3 * hr_per_yr
-get_K = lambda stream: stream.TK * stream.F_vol/1e3 * hr_per_yr
+hr_per_yr = 24 * 365  # full payload per day
 # if considering C recovery in COD
 def get_C(stream):
     sys = stream.source.system
@@ -247,8 +257,11 @@ def get_C(stream):
         if hasattr(unit, 'carbon_COD_ratio'):
             carbon_COD_ratio = unit.carbon_COD_ratio
     return stream.COD * stream.F_vol/1e3 * carbon_COD_ratio * hr_per_yr
-get_C_gas = lambda stream: stream.imol['CH4'] * 12 * hr_per_yr; # break down C flow in gas
-get_N_gas = lambda stream: stream.imol['N2O'] * 44 * hr_per_yr; # break down N flow in gas
+get_C_gas = lambda stream: stream.imol['CH4'] * 12 * hr_per_yr # break down C flow in gas
+get_N_gas = lambda stream: stream.imol['N2O'] * 28 * hr_per_yr # break down N flow in gas
+get_N = lambda stream: stream.TN * stream.F_vol/1e3 * hr_per_yr
+get_P = lambda stream: stream.TP * stream.F_vol/1e3 * hr_per_yr
+get_K = lambda stream: stream.TK * stream.F_vol/1e3 * hr_per_yr
 # here the code domain only serves the EL system, so a reminder is designed
 def get_recoveries(system, include_breakdown = False):
     EL = system.ID[-1]
@@ -265,16 +278,19 @@ def get_recoveries(system, include_breakdown = False):
     dct['C_dct'] = C_dct = {}
     
     if EL == ('E', 'L'):
-        toilet = u.reg.Toilet; # here the name 'Toilet' should be consistent with the name defined in the Enviroloo_system.py
-        CollectionTank = u_reg.CT
-        PrimaryClarifier = u_reg.PC
-        AnoxicTank = u_reg.AnoT
-        AerobicTank = u_reg.AerT
-        MembraneTank = u_reg.MemT
-        ClearWaterTank = u_reg.CWT
-        PressureTank = u_reg.PT
+        toilet = u_reg.Toilet  # here the name 'Toilet' should be consistent with the name defined in the Enviroloo_system.py
+        #CollectionTank = u_reg.CT
+        #PrimaryClarifier = u_reg.PC
+        #AnoxicTank = u_reg.AnoxT
+        AerobicTank = u_reg.AeroT
+        MembraneTank = u_reg.MembT
+        #ClearWaterTank = u_reg.CWT
+        #PressureTank = u_reg.PT
     
     # In the Toilet unit
+    C_dct['urine'] = get_C(toilet.ins[0]) * ppl
+    C_dct['feces'] = get_C(toilet.ins[1]) * ppl
+    C_dct['input'] = C_dct['urine'] + C_dct['feces']
     N_dct['urine'] = get_N(toilet.ins[0]) * ppl
     N_dct['feces'] = get_N(toilet.ins[1]) * ppl
     N_dct['input'] = N_dct['urine'] + N_dct['feces']
@@ -284,57 +300,57 @@ def get_recoveries(system, include_breakdown = False):
     K_dct['urine'] = get_K(toilet.ins[0]) * ppl
     K_dct['feces'] = get_K(toilet.ins[1]) * ppl
     K_dct['input'] = K_dct['urine'] + K_dct['feces']
-    C_dct['urine'] = get_C(toilet.ins[0]) * ppl
-    C_dct['feces'] = get_C(toilet.ins[1]) * ppl
-    C_dct['input'] = C_dct['urine'] + C_dct['feces']
+
+    C_dct['toilet_gas'] = get_C_gas(toilet.outs[-1])  # CH4 in the second order of toilet outs
+    N_dct['toilet_gas'] = get_N_gas(toilet.outs[-2])  # N2O in the third order of toilet outs
     
-    N_dct['toilet_gas'] = get_N_gas(toilet.outs[-1])  # N2O in the second order of toilet outs
-    C_dct['toilet_gas'] = get_C_gas(toilet.outs[-2])  # CH4 in the third order of toilet outs
-    
-    ###########  Add others after completing Enviroloo_system.py - - - - - - - - - - - - - ->
-    
+    # consider sludge in membrane tank and aerobic tank
+    N_dct['treated_sludge'] = get_N(MembraneTank.outs[0]) + get_N(AerobicTank.outs[0])
+    P_dct['treated_sludge'] = get_P(MembraneTank.outs[0]) + get_P(AerobicTank.outs[0])
+    K_dct['treated_sludge'] = get_K(MembraneTank.outs[0]) + get_K(AerobicTank.outs[0])
+
     # the code in the following domain is a sample, which will be updated later
     functions = [
-        lambda: (N_dct['treated_sludge'] + N_dct['Ammonium']) / N_dct['input'] * 100, # total N recovery percentage
-        lambda: (P_dct['treated_sludge'] + P_dct['Ammonium']) / P_dct['input'] * 100, # total P recovery percentage
-        lambda: (K_dct['treated_sludge'] + K_dct['Ammonium']) / K_dct['input'] * 100, # total K recovery percentage
-    ]
-    if not included_breakdown:
-        return functions
+        lambda: N_dct['treated_sludge'] / N_dct['input'] * 100, # total N recovery percentage
+        lambda: P_dct['treated_sludge'] / P_dct['input'] * 100, # total P recovery percentage
+        lambda: K_dct['treated_sludge'] / K_dct['input'] * 100, # total K recovery percentage
+        ]
+    if not include_breakdown: return functions
     
     return [
         *functions,
         lambda: N_dct['treated_sludge'] / N_dct['input'] * 100, # N recovery percentage
         lambda: P_dct['treated_sludge'] / P_dct['input'] * 100, # P recovery percentage
         lambda: K_dct['treated_sludge'] / K_dct['input'] * 100, # K recovery percentage
-    ]
+        ]
         
 ######################################################## Financial and Cost parameters ##############################################################
 ## 
 percent_CAPEX_to_scale = 0.1
-number_of_units = 1000  # make sense the meanings of '1000' (here as an example referring to Reclaimer and Biogenic Refinery)
-percent_limit = 0.012
-learning_curve_percent = 0.930  # assume learning curve
+number_of_units = 1000
+percent_limit = 0.01
+learning_curve_percent = 0.90  # assume learning curve
 def get_scaled_capital(tea):
-    return get_generic_scaled_capital(
+    new_CAPEX_annualized = get_generic_scaled_capital(
         tea = tea,
         percent_CAPEX_to_scale = percent_CAPEX_to_scale,
         number_of_units = number_of_units,
         percent_limit = percent_limit,
         learning_curve_percent = learning_curve_percent
         )
+    return new_CAPEX_annualized
 
 def get_TEA_metrics(system, include_breakdown = False):
     tea = system.TEA
     get_annual_electricity = lambda system: system.power_utility.cost * system.operating_hours
     functions = [lambda: (get_scaled_capital(tea) - tea.net_earnings) / ppl]
     if not include_breakdown:
-        return functions
+        return functions # net cost
     return [
         *functions,
-        lambda: get_annual_electricity(system) / ppl, # means CAPEX
-        lambda: get_annual_electrictity(system) / ppl, # means annual electricity consumption
-        lambda: tea.annual_labor_cost / ppl, # means annual labor cost
+        lambda: get_scaled_capital(system) / ppl, # means CAPEX
+        lambda: get_annual_electricity() / ppl, # means annual electricity consumption
+        lambda: tea.annual_labor / ppl, # means annual labor cost
         lambda: (tea.AOC - get_annual_electricity() - tea.annual_labor) / ppl, # means OPEX excluding energy and labor sectors
         lambda: tea.sales / ppl, # means sales incoming
         ]
@@ -350,40 +366,58 @@ def get_normalized_OPEX(units): # get the OPEX of a unit or units normalized to 
     OPEX = sum(u.add_OPEX.values() for u in units)
     streams = sum([u.ins for u in units], [])
     OPEX += sum(s.cost for s in streams)
-    return OPEX * 24 / ppl; # converted to per capita per day
+    return OPEX * 24 / ppl  # converted to per capita per day
 
 def get_LCA_metrics(system, include_breakdown = False):
     lca = system.LCA
     functions = [
         lambda: lca.total_impacts['GlobalWarming'] / lca.lifetime / ppl, # annual GWP
+        # ReCiPe LCA functions
         lambda: lca.total_impacts['H_Ecosystems'] / lca.lifetime / ppl,
         lambda: lca.total_impacts['H_HumanHealth'] / lca.lifetime / ppl,
-        lambda: lca.total_impacts['H_Resources']/ lca.lifetime / ppl
+        lambda: lca.total_impacts['H_Resources'] / lca.lifetime / ppl,
         ]
-    if not include_breakdown:
-        return functions
+    if not include_breakdown: return functions
     return [
         *functions,
         lambda: lca.total_construction_impacts['GlobalWarming'] / lca.lifetime / ppl, # means construction fee
         lambda: lca.total_transportation_impacts['GlobalWarming'] / lca.lifetime / ppl, # means transportation fee
         lambda: lca.total_stream_impacts['GlobalWarming'] / lca.lifetime / ppl, # means stream impacts including fugitive gases and offsets
-        lambda: lca.total_other-impacts['GlobalWarming'] / lca.lifetime / ppl # means other impacts in GWP
+        lambda: lca.total_other_impacts['GlobalWarming'] / lca.lifetime / ppl, # means other impacts in GWP
         ]
                
-def print_summaries(system):
-    if sys == system:
+def print_summaries(systems):
+    try: iter(systems)
+    except: systems = (systems, )
+
+    for sys in systems:
         sys.simulate()
                    
         print(f'\n-----------------Summary for {sys.ID}-----------------\n')
-        TEA_functions = get_TEA_metrics(sys);
-        unit = f'{qs.currency} / cap / yr';
-        print(f'\nTotal cost: {TEA_functions[0]():.2f} {unit}. ')
+        if sys.ID in ('sysEL', ):
+            recovery_functions = get_recoveries(sys)
+            print(f'\nTotal N recovery: {recovery_functions[0]():.1f} %.')
+            print(f'\nTotal P recovery: {recovery_functions[1]():.1f} %.')
+            print(f'\nTotal K recovery: {recovery_functions[2]():.1f} %.')
+            
+            TEA_functions = get_TEA_metrics(sys)
+            unit = f'{qs.currency}/cap/yr'
+            print(f'\nTotal cost: {TEA_functions[0]():.2f} {unit}.')
                     
-        LCA_functions = get_LCA_metrics(sys);
-        print(f'\nNet emission: {LCA_functions[0]():.2f} kg CO2-eq / cap / yr. ')
+            LCA_functions = get_LCA_metrics(sys)
+            print(f'\nNet emission: {LCA_functions[0]():.2f} kg CO2-eq/cap/yr.')
+
+            unit = 'points/cap/yr'
+            print(f'\nNet ecosystems damage: {LCA_functions[1]():.2f} {unit}.')
+            print(f'\nNet health damage: {LCA_functions[2]():.2f} {unit}.')
+            print(f'\nNet resources damage: {LCA_functions[3]():.2f} {unit}.')
+        else:
+            sys.TEA.show()
+            print('\n')
+            sys.LCA.show()
 
 
-from exposan.enviroloo import Enviroloo_model
+from . import Enviroloo_model
 from .Enviroloo_model import *
 
 # This country_specific file will be done after the LCA, TEA, and uncertainty and sensitivity analysis of the EL system are all conducted.
@@ -391,8 +425,8 @@ from .Enviroloo_model import *
 #from .country_specific import *
 
 __all__ = (
-    'EL_path',
-    'data_path',      
+    'el_path',
+    'el_data_path',      
     'results_path',      
     *_components.__all__,
     *Enviroloo_system.__all__,

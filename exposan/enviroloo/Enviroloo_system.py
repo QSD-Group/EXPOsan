@@ -10,21 +10,18 @@ This python file is used to perform uncertainty and sensitivity analysis for Env
 # %% 
 import qsdsan as qs
 from qsdsan import (
-    Component, Components, get_thermo,
     Flowsheet, main_flowsheet,
-    WasteStream, SanStream,
+    WasteStream,
     sanunits as su,
-    set_thermo as qs_set_thermo,
-    ImpactItem, LCA, TEA,
-    System,
-    Model,
+    ImpactItem, 
+    LCA, TEA, System,
     )
 from qsdsan.sanunits import Trucking
 
 from chaospy import distributions as shape
 
 from qsdsan.utils import clear_lca_registries
-from exposan.utils import add_fugitive_items, get_generic_tanker_truck_fee as get_tanker_truck_fee
+from exposan.utils import add_fugitive_items
 from exposan.enviroloo import (
     _load_components,
     _load_lca_data,
@@ -34,14 +31,12 @@ from exposan.enviroloo import (
     max_CH4_emission,
     operator_daily_wage,
     ppl,
-    price_dct,
+    #get_tanker_truck_fee
     update_resource_recovery_settings,
     )
 from exposan.enviroloo._EL_pumps import (
-    LiftPump, AgitationPump, DosingPump, 
-    ReturnPump, SelfPrimingPump, 
-    AirDissolvedPump, 
-    MicroBubblePump, ClearWaterPump,)
+    LiftPump, AgitationPump, DosingPump, ReturnPump, SelfPrimingPump, 
+    AirDissolvedPump, MicroBubblePump, ClearWaterPump,)
 
 __all__ = ('create_system',)
 
@@ -98,20 +93,32 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
         WasteStream(f'{stream_ID}', phase='s',
                     price=price_dct.get(dct_key) or 0., stream_impact_item=item)
 
-    create_stream_with_impact_item(stream_ID='Glucose')
-    create_stream_with_impact_item(stream_ID='PAC')
+    create_stream_with_impact_item(stream_ID='ammonium')
+    create_stream_with_impact_item(stream_ID='struvite')
+    create_stream_with_impact_item(stream_ID='NaOH')
+    create_stream_with_impact_item(stream_ID='NaClO')
     create_stream_with_impact_item(stream_ID='O3')
+    create_stream_with_impact_item(stream_ID='PAC')
+    create_stream_with_impact_item(stream_ID='Glucose')
 
+def update_toilet_param(unit):
+    # Use the private attribute so that the number of users/toilets will be exactly as assigned
+    # (i.e., can be fractions)
+    unit._N_user = get_toilet_users()
+    unit._N_toilet = ppl / get_toilet_users()
+    unit._run()
 
+def update_carbon_COD_ratio(sys):
+    for first_u in sys.units:
+        if hasattr(first_u, 'carbon_COD_ratio'):
+            carbon_COD_ratio = first_u.carbon_COD_ratio
+            break
+    for u in sys.units:
+        if u is first_u: continue
+        if hasattr(u, 'carbon_COD_ratio'): u.carbon_COD_ratio = carbon_COD_ratio
 
 # %% Create EnviroLoo Clear system
-def create_system(flowsheet = None): # figure out the "components" and "flowsheet" arguments in Biogenic_refinery system (in Exposan repository)
-    
-    reload_lca = False;
-    
-    _load_components()
-    _load_lca_data(reload_lca)
-
+def create_systemEL(flowsheet = None): # figure out the "components" and "flowsheet" arguments in Biogenic_refinery system (in Exposan repository)
     flowsheet = flowsheet or main_flowsheet
     stream = flowsheet.stream
     batch_create_streams('EL')
@@ -123,92 +130,95 @@ def create_system(flowsheet = None): # figure out the "components" and "flowshee
                     decay_k_COD = get_decay_k(),
                     decay_k_N = get_decay_k(),
                     max_CH4_emission = max_CH4_emission,
-                    N_user = 100, # two scenarios, i.e., 100 users served per day at household scale and 1000 users served per day at institutional scale
-                    N_toilet = 3, # will be included for uncertainty analysis
+                    N_user = get_toilet_users(), 
+                    N_toilet = ppl / get_toilet_users(),
                     if_flushing = True, if_desiccant = False, if_toilet_paper = True,
                     CAPEX = 0, # capital cost of a single toilet
                     OPEX_over_CAPEX = 0.07, # fraction of annual operating cost over total capital cost
                     )
     
     CT = su.EL_CT('CT', ins=(Toilet-0, 'ClearWaterTank_spill','PrimaryClar_spill', 'PrimaryClarP_return'), 
-                  outs = ('TreatedWater', 'CT_CH4', 'CT_N20'),
-                  V_wf=0.9, ppl=1000, baseline_ppl=30,
-                  kW_per_m3=0.1,  # The power consumption per unit volume of the tank
-                  )
+                    outs = ('TreatedWater', 'CT_CH4', 'CT_N20'),
+                    V_wf = 0.9, ppl = ppl, baseline_ppl = 30,
+                    kW_per_m3=0.1,  # The power consumption per unit volume of the tank
+                    )
     
-    P_CT_lift = LiftPump('P_CT_lift', ins=CT-0, outs = 'TreatedWater',
-                          working_factor=0.9,  # The ratio of the actual output and the design output
-                          operation_time=12,  # Total run time of system or plant [h/d]
-                          pump_lifetime=5,  # Lifetime of the pump [years]
-                          pump_cost=200,
-                          dP_design=0,
-                          )
+    P_CT_lift = LiftPump('P_CT_lift', ins = CT-0, outs = 'TreatedWater',
+                            working_factor = 0.9,  # The ratio of the actual output and the design output
+                            operation_time = 12,  # Total run time of system or plant [h/d]
+                            life_time = 5,  # Lifetime of the pump [years]
+                            pump_cost = 104.0, # USD from Alibaba https://www.alibaba.com/product-detail/Jinmu-brand-professional-1-1kw-submersible_1600929097854.html?spm=a2700.details.you_may_like.3.44e35ef2MlxhPU
+                            dP_design = 0,
+                            )
     
     PC = su.EL_PC('PC', ins=(LiftPump-0, 'NitrateReturn_MT'), outs=('TreatedWater', 2-CT , 3-CT, 'PC_CH4', 'PC_N2O'),
-                 ppl = 1000,  # The number of people served
-                 baseline_ppl = 30,
-                 solids_removal_efficiency = 0.85,  # The solids removal efficiency
-                 sludge_flow_rate=0.5,  # Sludge flow rate
-                 max_oveflow=0.3,
-                )
+                    ppl = ppl,  # The number of people served
+                    baseline_ppl = 30,
+                    solids_removal_efficiency = 0.85,  # The solids removal efficiency
+                    sludge_flow_rate = 0.5,  # Sludge flow rate
+                    max_oveflow = 0.3,
+                    )
 
     P_PC_return = ReturnPump('P_PC_return', ins=PC-0, outs = 3-CT, 
-                             #dP_design=405300,
-                             working_factor=0.9,  # The ratio of the actual output and the design output
-                             operation_time=12,  # Total run time of system or plant [h/d]
-                             pump_lifetime=5,  # Lifetime of the pump [years]
-                             pump_cost=200,
-                             dP_design=0,
-                             )
+                                working_factor = 0.9,  # The ratio of the actual output and the design output
+                                operation_time = 12,  # Total run time of system or plant [h/d]
+                                life_time = 5,  # Lifetime of the pump [years]
+                                pump_cost = 123.76, # USD from Alibaba https://www.alibaba.com/product-detail/0-4kw-cast-iron-motor-housing_1600934836942.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0L7StzT
+                                dP_design = 0,
+                                )
 
-    P_Glu_agitation = AgitationPump('P_Glu_agitation', ins='Glucose', outs='GlucoseAgitation', 
-                                    #dP_design=405300,
-                                    working_factor=0.9,  # The ratio of the actual output and the design output
-                                    operation_time=12,  # Total run time of system or plant [h/d]
-                                    pump_lifetime=5,  # Lifetime of the pump [years]
-                                    pump_cost=200,
-                                    dP_design=0,
+    P_Glu_agitation = AgitationPump('P_Glu_agitation', ins = 'Glucose', outs = 'GlucoseAgitation', 
+                                    working_factor = 0.9,  # The ratio of the actual output and the design output
+                                    operation_time = 12,  # Total run time of system or plant [h/d]
+                                    life_time = 5,  # Lifetime of the pump [years]
+                                    pump_cost = 696.30, # USD from https://www.grainger.com/product/DAYTON-Open-Drum-Mixer-115-230V-AC-32V133?opr=PLADS&analytics=FM%3APLA&a2c_sku_original=32V138&position=2
+                                    dP_design = 0,
                                     )
     
-    P_Glu_dosing = DosingPump('P_Glu_dosing', ins=P_Glu_agitation-0, outs='GlucoseDosing',
-                              working_factor=0.9,  # The ratio of the actual output and the design output
-                              operation_time=12,  # Total run time of system or plant [h/d]
-                              pump_lifetime=5,  # Lifetime of the pump [years]
-                              pump_cost=200,
-                              dP_design=0,
-                              ) 
+    P_Glu_dosing = DosingPump('P_Glu_dosing', ins = P_Glu_agitation-0, outs = 'GlucoseDosing',
+                                working_factor = 0.9,  # The ratio of the actual output and the design output
+                                operation_time = 12,  # Total run time of system or plant [h/d]
+                                life_time = 5,  # Lifetime of the pump [years]
+                                pump_cost = 59, # USD from https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
+                                dP_design = 0,
+                                ) 
     
     P_AnoxT_agitation = AgitationPump('P_AnoxT_agitation', ins=(PC-0, P_Glu_dosing-0), outs='AgitationWater', 
-                                      #dP_design=405300,
-                                      working_factor=0.9,  # The ratio of the actual output and the design output
-                                      operation_time=12,  # Total run time of system or plant [h/d]
-                                      pump_lifetime=5,  # Lifetime of the pump [years]
-                                      pump_cost=200,
-                                      dP_design=0,                                    
-                                      )
+                                        working_factor = 0.9,  # The ratio of the actual output and the design output
+                                        operation_time = 12,  # Total run time of system or plant [h/d]
+                                        life_time = 5,  # Lifetime of the pump [years]
+                                        pump_cost = 696.30, # USD from https://www.grainger.com/product/DAYTON-Open-Drum-Mixer-115-230V-AC-32V133?opr=PLADS&analytics=FM%3APLA&a2c_sku_original=32V138&position=2
+                                        dP_design = 0,
+                                        )
     
     AnoxT = su.EL_Anoxic('AnoxT', ins=(P_AnoxT_agitation-0, 'NitrateReturn_MT'), 
-                         outs = ('TreatedWater', 'AnoxT_CH4', 'AnoxT_N2O'),
-                         degraded_components=('OtherSS',),  ppl = 1000, baseline_ppl = 30,
-                         )
+                            outs = ('TreatedWater', 'AnoxT_CH4', 'AnoxT_N2O'),
+                            degraded_components=('OtherSS',),  
+                            ppl = ppl, baseline_ppl = 30,
+                            )
 
     P_PAC_agitation = AgitationPump('P_PAC_agitation', ins='PAC', outs='PACAgitation', 
-                                    #dP_design=405300,
-                                    working_factor=0.9,  # The ratio of the actual output and the design output
-                                    operation_time=12,  # Total run time of system or plant [h/d]
-                                    pump_lifetime=5,  # Lifetime of the pump [years]
-                                    pump_cost=200,
+                                    working_factor = 0.9,  # The ratio of the actual output and the design output
+                                    operation_time = 12,  # Total run time of system or plant [h/d]
+                                    life_time = 5,  # Lifetime of the pump [years]
+                                    pump_cost = 696.30, # USD from https://www.grainger.com/product/DAYTON-Open-Drum-Mixer-115-230V-AC-32V133?opr=PLADS&analytics=FM%3APLA&a2c_sku_original=32V138&position=2
                                     dP_design=0,                                      
                                     )
     
-    P_PAC_dosing = DosingPump('P_PAC_dosing', ins=P_PAC_agitation-0, outs ='PACDosing')
+    P_PAC_dosing = DosingPump('P_PAC_dosing', ins=P_PAC_agitation-0, outs ='PACDosing', 
+                                working_factor = 0.9,
+                                operation_time = 12,
+                                life_time = 5,
+                                pump_cost = 59, # USD from https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
+                                dP_design = 0,
+                                )
     B_AeroT = su.EL_blower('B_AeroT', ins='Air', outs ='Air',
                             F_BM={
                                   'Blowers': 2.22,
                                   'Blower piping': 1,
                                   'Blower building': 1.11,
                                  },
-                            lifetime=15, lifetime_unit='yr',
+                            lifetime = 10, lifetime_unit='yr',
                             units={
                                   'Total gas flow': 'CFM',
                                   'Blower capacity': 'CFM',
@@ -218,16 +228,16 @@ def create_system(flowsheet = None): # figure out the "components" and "flowshee
                             N_reactor=2, # the number of the reactors where the gas sparging modules will be installed
                             gas_demand_per_reactor=1, # gas demand per reactor
                             TDH=6, # total dynamic head for rhe blower, in psi
-                            eff_blower=0.7, # efficiency of the blower in fraction
-                            eff_motor=0.7, # efficiency of the motor in fraction
+                            eff_blower=0.85, # efficiency of the blower in fraction
+                            eff_motor=0.95, # efficiency of the motor in fraction
                             AFF=3.33, # air flow fraction
                             building_unit_cost=9, # unit cost of the building, in USD/ft2
-                            ppl = 1000, baseline_ppl = 30,
+                            ppl = ppl, baseline_ppl = 30,
                            )
     AeroT = su.EL_Aerobic('AeroT', ins=(AnoxT-0, P_PAC_dosing-0, B_AeroT-0), 
-                          outs = ('TreatedWater', 'AeroT_CH4', 'AeroT_N2O'), 
-                          ppl = 1000, baseline_ppl = 30,
-                          )
+                            outs = ('TreatedWater', 'AeroT_CH4', 'AeroT_N2O'), 
+                            ppl = ppl, baseline_ppl = 30,
+                            )
 
     B_MembT = su.EL_blower('B_MembT', ins = 'Air', outs = 'Air', 
                             F_BM={
@@ -235,7 +245,7 @@ def create_system(flowsheet = None): # figure out the "components" and "flowshee
                                   'Blower piping': 1,
                                   'Blower building': 1.11,
                                  },
-                            lifetime=15, lifetime_unit='yr',
+                            lifetime=10, lifetime_unit='yr',
                             units={
                                   'Total gas flow': 'CFM',
                                   'Blower capacity': 'CFM',
@@ -245,38 +255,76 @@ def create_system(flowsheet = None): # figure out the "components" and "flowshee
                             N_reactor=2, # the number of the reactors where the gas sparging modules will be installed
                             gas_demand_per_reactor=1, # gas demand per reactor
                             TDH=6, # total dynamic head for rhe blower, in psi
-                            eff_blower=0.7, # efficiency of the blower in fraction
-                            eff_motor=0.7, # efficiency of the motor in fraction
+                            eff_blower=0.85, # efficiency of the blower in fraction
+                            eff_motor=0.95, # efficiency of the motor in fraction
                             AFF=3.33, # air flow fraction
                             building_unit_cost=9, # unit cost of the building, in USD/ft2
-                            ppl = 1000, baseline_ppl = 30,)
-    P_NitrateReturn_PC = ReturnPump('P_NitrateReturn_PC', ins='MembT_return', outs=1-PC, dP_design=0,)
+                            ppl = ppl, baseline_ppl = 30,)
+    P_NitrateReturn_PC = ReturnPump('P_NitrateReturn_PC', ins='MembT_return', outs=1-PC,
+                                    working_factor = 0.9,  # The ratio of the actual output and the design output
+                                    operation_time = 12,  # Total run time of system or plant [h/d]
+                                    life_time = 5,  # Lifetime of the pump [years]
+                                    pump_cost = 123.76, # USD from Alibaba https://www.alibaba.com/product-detail/0-4kw-cast-iron-motor-housing_1600934836942.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0L7StzT
+                                    dP_design = 0, 
+                                    )
 
-    P_NitrateReturn_AnoxT = ReturnPump('P_NitrateReturn_AnoxT', ins='MembT_return', outs=1-AnoxT, dP_design=0,) 
+    P_NitrateReturn_AnoxT = ReturnPump('P_NitrateReturn_AnoxT', ins='MembT_return', outs=1-AnoxT, 
+                                        working_factor = 0.9,  # The ratio of the actual output and the design output
+                                        operation_time = 12,  # Total run time of system or plant [h/d]
+                                        life_time = 5,  # Lifetime of the pump [years]
+                                        pump_cost = 123.76, # USD from Alibaba https://www.alibaba.com/product-detail/0-4kw-cast-iron-motor-housing_1600934836942.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0L7StzT
+                                        dP_design = 0,
+                                        ) 
     MembT = su.EL_MBR('MembT', ins=(AeroT-0, B_MembT-0), 
-                      outs = ('TreatedWater', 1-P_NitrateReturn_PC, 1-P_NitrateReturn_AnoxT, 'MemT_CH4', 'MemT_N2O'),
-                      ppl = 1000,
-                      baseline_ppl = 30,
-                      )
+                        outs = ('TreatedWater', 1-P_NitrateReturn_PC, 1-P_NitrateReturn_AnoxT, 'MemT_CH4', 'MemT_N2O'),
+                        ppl = ppl,
+                        baseline_ppl = 30,
+                        )
 
-    P_MT_selfpriming = SelfPrimingPump('P_MT_selfpriming', ins=MembT-0, outs='SelfPrimingWater', dP_design=405300,)
+    P_MT_selfpriming = SelfPrimingPump('P_MT_selfpriming', ins=MembT-0, outs='SelfPrimingWater', 
+                                        working_factor = 0.9,  # The ratio of the actual output and the design output
+                                        operation_time = 12,  # Total run time of system or plant [h/d]
+                                        life_time = 5,  # Lifetime of the pump [years]
+                                        pump_cost = 155.24, # USD from Alibaba https://www.alibaba.com/product-detail/LEO-QDX-Series-Cast-Iron-Submersible_60671071414.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0BMhyxn
+                                        dP_design = 0,
+                                        )
     
-    # P_O3_gen = O3GenPump('P_O3_gen', ins=None, outs='O3', dP_design=405300); 
-    P_O3_dosing = MicroBubblePump('P_O3_dosing', ins='P_O3_gen', outs='DosingO3', dP_design=0,)
+    # P_O3_gen = O3GenPump('P_O3_gen', ins=None, outs='O3', dP_design=405300)
+    P_O3_dosing = MicroBubblePump('P_O3_dosing', ins='P_O3_gen', outs='DosingO3', 
+                                    working_factor = 0.9,  # The ratio of the actual output and the design output
+                                    operation_time = 12,  # Total run time of system or plant [h/d]
+                                    life_time = 5,  # Lifetime of the pump [years]
+                                    pump_cost = 160, # USD, assumption
+                                    dP_design = 25331, # in Pa
+                                    )
 
-    P_AirDissolved = AirDissolvedPump('P_AirDissolved', ins='CWTWater', outs='Water_With_Oxyen', dP_design=50000,)
+    P_AirDissolved = AirDissolvedPump('P_AirDissolved', ins='CWTWater', outs='Water_With_Oxyen', 
+                                        working_factor = 0.9,  # The ratio of the actual output and the design output
+                                        operation_time = 12,  # Total run time of system or plant [h/d]
+                                        life_time = 5,  # Lifetime of the pump [years]
+                                        pump_cost = 155.24, # USD from https://www.alibaba.com/product-detail/LEO-QDX-Series-Cast-Iron-Submersible_60671071414.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0BMhyxn
+                                        dP_design = 50000, # in Pa
+                                        )
 
     CWT = su.EL_CWT('CWT', ins=(P_MT_selfpriming-0, P_O3_dosing-0, P_AirDissolved-0), 
                     outs= ('ClearWater', 1-CT, 0-P_AirDissolved, 'CWT_CH4', 'CWT_N2O'), 
                     V_wf = 0.9, 
-                    ppl = 1000, baseline_ppl = 30,)
+                    ppl = ppl, baseline_ppl = 30,
+                    )
     
-    P_CWT = ClearWaterPump('P_CWT', ins=CWT-0, outs='ReuseWater', dP_design=405300,)
+    P_CWT = ClearWaterPump('P_CWT', ins=CWT-0, outs='ReuseWater', 
+                            working_factor = 0.9,  # The ratio of the actual output and the design output
+                            operation_time = 12,  # Total run time of system or plant [h/d]
+                            life_time = 5,  # Lifetime of the pump [years]
+                            pump_cost = 118.46, # USD from https://www.alibaba.com/product-detail/SQD-0-75kw-1hp-high-pressure_1601032336743.html?spm=a2700.galleryofferlist.normal_offer.d_title.2b1413a0sqHM0o
+                            dP_design = 202650, # in Pa
+                            )
     
     PT = su.StorageTank('PT', ins=P_CWT-0, outs=2-Toilet, vessel_material = None, V_wf = None, 
                         include_construction = True, length_to_diameter = None, 
                         F_BM_default = 1, kw_per_m3 = None, vessel_type = None, tau = None, 
-                        ppl = 1000, baseline_ppl = 30,)
+                        ppl = ppl, baseline_ppl = 30,
+                        )
 
     Total_CH4 = su.Mixer('Total_CH4', ins=(Toilet-1, CT-1, PC-3, AnoxT-1, AeroT-1, MembT-3, ), outs=stream['CH4'])
     Total_CH4.add_specification(lambda: add_fugitive_items(Total_CH4, 'CH4_item'))
@@ -288,26 +336,30 @@ def create_system(flowsheet = None): # figure out the "components" and "flowshee
     
     # Other impacts and costs
     Other_system = su.EL_System('Other_system', ins=PT-0, outs=('housing',), 
-                                ppl = 1000, baseline_ppl = 30, if_gridtied=True)
-    Other_housing = su.EL_Housing('Other_housing', ins=(Other_system-0), outs='Transport', ppl=1000, baseline_ppl=30)
-    Other_WasteTransport = Trucking('Other_WasteTransport', ins=Other_system-0, outs=('WasteTransport', 'ConveyanceLoss'), 
+                                ppl = ppl, baseline_ppl = 30, if_gridtied=True)
+    Other_housing = su.EL_Housing('Other_housing', ins=(Other_system-0), outs='Transport', ppl = ppl, baseline_ppl = 30)
+    Other_WasteTransport = Trucking('Other_WasteTransport', ins = Other_system-0, outs = ('WasteTransport', 'ConveyanceLoss'), 
                                        load = 20, # transportation load per trip
-                                       load_unit='kg',
-                                       load_type='mass', # mass or volume
-                                       distance=5.0, # transportation distance per trip 
-                                       distance_unit='km', loss_ratio=0.02,
-                                       interval= 365, # timeinterval between trips
-                                       interval_unit='d',
+                                       load_unit = 'kg',
+                                       load_type = 'mass', # mass or volume
+                                       distance = 5.0, # transportation distance per trip 
+                                       distance_unit = 'km', loss_ratio=0.02,
+                                       interval = 30, # timeinterval between trips
+                                       interval_unit = 'd',
                                        ) # here transport fee for waste clearance is considered
-    Other_SetupShipping = Trucking('Other_SetupShipping', ins=(Other_system-0), outs=None,
-                                       load = 20, # transportation load per trip
-                                       load_unit='kg',
-                                       load_type='mass', # mass or volume
-                                       distance=5.0, # transportation distance per trip 
-                                       distance_unit='km', loss_ratio=0.0,
-                                       interval= 365, # timeinterval between trips
-                                       interval_unit='d',
+    Other_SetupShipping = Trucking('Other_SetupShipping', ins = (Other_system-0), outs = None,
+                                       load = 53.472, # transportation load per trip, from BOM of Enviroloo
+                                       load_unit = 'kg',
+                                       load_type = 'mass', # mass or volume
+                                       distance = 5000.0, # transportation distance per trip, assuming the delivery of setup installation
+                                       distance_unit = 'km', loss_ratio=0.0,
+                                       interval = 365, # timeinterval between trips
+                                       interval_unit = 'd',
                                        )
+    
+    # ensure the same carbon_COD_ratio throughout the EL system
+    Other_SetupShipping.add_specification(lambda: update_carbon_COD_ratio(sysEL))
+    Other_SetupShipping.run_after_specification = True
                                                                            
     sysEL = System('sysEL', path=(WasteWaterGenerator,
                                   Toilet,
@@ -341,26 +393,54 @@ def create_system(flowsheet = None): # figure out the "components" and "flowshee
     sysEL.simulate()
     
     teaEL = TEA(system = sysEL,
-                   discount_rate=0.05,  
-                   income_tax=0.05,  
-                   CEPCI=567.5,  
-                   start_year=2024,  
-                   lifetime=10,  
-                   uptime_ratio=1.0,  
-                   CAPEX=0.0,  
-                   lang_factor=None,  
-                   annual_maintenance=0.0,  
-                   annual_labor=0.0,  
-                   system_add_OPEX={},
-                   depreciation='SL',  
-                   construction_schedule=(0, 1),  
-                   accumulate_interest_during_construction=False,  
-                   simulate_system=True,  
-                   simulate_kwargs={},  
-                   #**tea_kwargs, how to define **tea_kwargs here(???),
-                 )
+                   discount_rate = discount_rate,  
+                   income_tax = 0.05,  
+                   CEPCI = 567.5,  
+                   start_year = 2024,  
+                   lifetime = 10,  
+                   uptime_ratio = 1.0,  
+                   #CAPEX = 0.0,  
+                   lang_factor = None,  
+                   annual_maintenance = 0.0,  
+                   annual_labor = (operator_daily_wage * 3 * 365),  
+                   system_add_OPEX = {},
+                   depreciation = 'SL',  
+                   construction_schedule = (0, 1),  
+                   accumulate_interest_during_construction = False,  
+                   simulate_system = True,  
+                   simulate_kwargs = {},
+                   )
     
     get_power = lambda: sum([(u.power_utility.rate * u.uptime_ratio) for u in sysEL.units]) * (365 * teaEL.lifetime) * 12
     LCA(system = sysEL, lifetime = 10, lifetime_unit = 'yr', uptime_ratio = 1.0, e_item = get_power)
 
     return sysEL
+
+def create_system(system_ID='EL', flowsheet=None):
+    ID = system_ID.lower().lstrip('sys').upper()
+    reload_lca = False
+
+    #set flowsheet to avoid stream replacement warnings
+    if flowsheet is None:
+        flowsheet_ID = f'el{ID}'
+        if hasattr(main_flowsheet.flowsheet, flowsheet_ID): # clear flowsheet
+            getattr(main_flowsheet.flowsheet, flowsheet_ID).clear()
+            clear_lca_registries()
+            reload_lca = True
+        flowsheet = Flowsheet(flowsheet_ID)
+        main_flowsheet.set_flowsheet(flowsheet)
+    
+    _load_components()
+    _load_lca_data(reload_lca)
+
+    if system_ID == 'EL': f = create_systemEL
+    elif system_ID == 'E': f = create_systemEL
+    elif system_ID == 'L': f = create_systemEL
+    else: raise ValueError(f'`system_ID` can only be "EL", "E", or "L", not "{ID}".')
+
+    try: system = f(flowsheet)
+    except:
+        _load_components(reload_lca=True)
+        system = f(flowsheet)
+    
+    return system

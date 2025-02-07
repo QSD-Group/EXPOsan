@@ -4,8 +4,9 @@
 Created by Yuyao Huang and Siqi Tang for Enviroloo Clear Toilet system
 '''
 from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
+from exposan.utils import add_V_from_rho
 
-__all__ = ('create_components',)
+__all__ = ('create_components', )
 
 ## Pre-define the involving components in the toilet system of concern such as Enviroloo Clear
 def create_components(set_thermo = True):
@@ -23,11 +24,9 @@ def create_components(set_thermo = True):
           CH4 = Component('CH4', search_ID='CH4', phase='g', particle_size='Dissolved gas',
                      degradability='Readily', organic=True)
           
-          ''' valid CAS but not included in database ????'''
-          #PAC = Component('PAC', search_ID='1327-41-9', phase='s', particle_size='Particulate',
-                    #degradability='Slowly', organic=False); 
+          PAC = Component('PAC', search_ID='10124-27-3', phase='s', particle_size='Particulate',
+                    degradability='Slowly', organic=False)
                     
-          
           Glucose = Component('Glucose', search_ID='50-99-7', phase='l', particle_size='Soluble',
                          degradability='Readily', organic=True)
           
@@ -36,6 +35,12 @@ def create_components(set_thermo = True):
           
           NH3 = Component('NH3', search_ID='7664-41-7', phase='g', particle_size='Dissolved gas',
                          degradability='Readily', organic=False)
+          
+          NaOH = Component('NaOH', search_ID='1310-73-2', phase='s', particle_size='Particulate',
+                           degradability='Readily', organic=False)
+          
+          NaClO = Component('NaClO', search_ID='7681-52-9', phase='s', particle_size='Particulate',
+                            degradability='Readily', organic=False)
           
           #NH3_l = Component('NH3_l', measured_as = 'N', phase='l', particle_size='Soluble',
                          #degradability='Undegradable', organic=False)
@@ -46,15 +51,18 @@ def create_components(set_thermo = True):
                              #degradability='Undegradable', organic=False,
                              #description='Non-NH3');
           
-         # air = Component('air', search_ID='air', phase='g', particle_size='Dissolved gas',
-                         #degradability='Readily', organic=False)
+          air = Component('air', MW=29, phase='g', particle_size='Dissolved gas', 
+                          degradability='Readily', organic=False)
+          # 1.204 kg/m3, cited from https://en.wikipedia.org/wiki/Density_of_air#:~:text=Air%20density%2C%20like%20air%20pressure,International%20Standard%20Atmosphere%20(ISA).
+          add_V_from_rho(air, 1.204)
+
 
           #allowed_values = {
           #'particle_size': ('Dissolved gas', 'Soluble', 'Colloidal', 'Particulate'),
           #'degradability': ('Readily', 'Slowly', 'Undegradable'),
           #'organic': (True, False)}
           
-          cmps = Components((H2O, CO2, CH4,  N2O, Glucose, O3, NH3))
+          cmps = Components((H2O, CO2, CH4, N2O, Glucose, O3, NH3, air, PAC, NaOH, NaClO))
           
           for cmp in cmps:
                     cmp.default()
