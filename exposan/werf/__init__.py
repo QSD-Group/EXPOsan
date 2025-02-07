@@ -72,16 +72,51 @@ default_ad_init = {k:v*1e3 for k,v in default_ad_init.items()} # convert to mg/L
 default_fctss_init = [22.02, 36.136, 62.289, 142.932, 610.813, 610.813,
                       610.813, 610.813, 3608.754, 9295.076]
 
+from . import (
+    B1, B2, B3, 
+    C1, C2, C3, 
+    E2, E2P, 
+    F1, 
+    G1, G2, G3, 
+    H1, 
+    I1, I2, I3, 
+    N1, N2
+    )
 
-from . import G1
+from .B1 import *
+from .B2 import *
+from .B3 import *
+from .C1 import *
+from .C2 import *
+from .C3 import *
+from .E2 import *
+from .E2P import *
+from .F1 import *
 from .G1 import *
+from .G2 import *
+from .G3 import *
+from .H1 import *
+from .I1 import *
+from .I2 import *
+from .I3 import *
+from .N1 import *
+from .N2 import *
+
+def create_system(ID):
+    f = globals()[f'create_{ID.lower()}_system']
+    return f()
+
+from . import models
+from .models import *
 
 __all__ = (
     'folder',
     'data_path',
     'results_path',
     'figures_path',
-    *G1.__all__,
+    # *B1.__all__,
+    # *B2.__all__,
+    *models.__all__,
 	)
 
 
