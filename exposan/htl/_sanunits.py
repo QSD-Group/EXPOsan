@@ -279,8 +279,9 @@ class BiocrudeTank(Tank, BSTStorageTank):
         HHV of crude oil, MJ/kg.
     biocrude_wet_density :
         Density of biocrude, kg/m3.
-        
-    # TODO: update references
+    biocrude_distance: float
+        Distance between WRRFs and oil refineries, [km].
+    
     References
     ----------
     .. [1] https://www.transmountain.com/about-petroleum-liquids (accessed 2025-02-05).
@@ -309,6 +310,7 @@ class BiocrudeTank(Tank, BSTStorageTank):
                  crude_oil_HHV=44.5,
                  # [3]
                  biocrude_wet_density=983,
+                 biocrude_distance=100,
                  vessel_type=None, tau=None, V_wf=None,
                  vessel_material=None, kW_per_m3=0.,
                  init_with='WasteStream', F_BM_default=None,
@@ -321,27 +323,26 @@ class BiocrudeTank(Tank, BSTStorageTank):
         self.crude_oil_density = crude_oil_density
         self.crude_oil_HHV = crude_oil_HHV
         self.biocrude_wet_density = biocrude_wet_density
+        self.biocrude_distance = biocrude_distance
         self.length_to_diameter = length_to_diameter
-        
+    
     def _init_lca(self):
         item_name = self.vessel_material.replace(' ', '_')
         self.construction = [
             Construction(item_name.lower(), linked_unit=self, item=item_name, quantity_unit='kg'),
             ]
-        
     
     def _design(self):
         BSTStorageTank._design(self)
         D = self.design_results
-        
+                
         Diameter = (4*D['Total volume']/pi/self.length_to_diameter)**(1/3)
         Diameter *= _m_to_ft # convert from m to ft
         L = Diameter * self.length_to_diameter # ft
         D.update(self._horizontal_vessel_design(self.ins[0].P*_Pa_to_psi, Diameter, L))
         D['Material'] = self.vessel_material
         if self.include_construction: self.construction[0].quantity = D['Weight']*_lb_to_kg
-
-
+    
     def _horizontal_vessel_design(self, pressure, diameter, length) -> dict:
         pressure = pressure
         diameter = diameter
@@ -368,7 +369,7 @@ class BiocrudeTank(Tank, BSTStorageTank):
         Design['Weight'] = VW # lb
         Design['Wall thickness'] = VWT # in
         return Design
-
+    
     @property
     def vessel_material(self):
         return self._vessel_material
@@ -793,7 +794,6 @@ class PreStripper(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream',
-                 # TODO: add reference
                  influent_pH=8.16, # CHG effluent pH: 8.16 ± 0.25 [1]
                  target_pH=11.25): # 2 unit higher than pKa (9.25)
         
@@ -1287,16 +1287,22 @@ class WWTP(SanUnit):
         Nitrogen to phosphorus factor. 
     operation_hour: float
         Plant yearly operation hour, [hr/yr].
+    # TODO: update citations
+    sludge_wet_density: float
+        The density of sludge of 80% moisture content, [kg/m3].
+        https://www.sciencedirect.com/science/article/pii/S0960852412005561
     sludge_distance: float
         Normalized sludge transportation distance, [km].
-    biocrude_distance: float
-        Distance between WRRFs and oil refineries, [km].
-        
+    
     References
     ----------
     .. [1] Metcalf and Eddy, Incorporated. 1991. Wastewater Engineering:
         Treatment Disposal and Reuse. New York: McGraw-Hill.
-    .. [2] Li, Y.; Leow, S.; Fedders, A. C.; Sharma, B. K.; Guest, J. S.;
+    .. [2] Cai, L.; Gao, D.; Chen, T.-B.; Liu, H.-T.; Zheng, G.-D.; Yang, Q.-W.
+        Moisture Variation Associated with Water Input and Evaporation during
+        Sewage Sludge Bio-Drying. Bioresource Technology 2012, 117, 13–19.
+        https://doi.org/10.1016/j.biortech.2012.03.092.
+    .. [3] Li, Y.; Leow, S.; Fedders, A. C.; Sharma, B. K.; Guest, J. S.;
         Strathmann, T. J. Quantitative Multiphase Model for Hydrothermal
         Liquefaction of Algal Biomass. Green Chem. 2017, 19 (4), 1163–1174.
         https://doi.org/10.1039/C6GC03294J.
@@ -1318,8 +1324,8 @@ class WWTP(SanUnit):
                  protein_2_N=0.159,
                  N_2_P=0.3927,
                  operation_hours=None,
-                 sludge_distance=100,
-                 biocrude_distance=100):
+                 sludge_wet_density=1040, # [2]
+                 sludge_distance=100):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.ww_2_dry_sludge = ww_2_dry_sludge
@@ -1336,8 +1342,8 @@ class WWTP(SanUnit):
         self.protein_2_N = protein_2_N
         self.N_2_P = N_2_P
         self.operation_hours = operation_hours
+        self.sludge_wet_density = sludge_wet_density
         self.sludge_distance = sludge_distance
-        self.biocrude_distance = biocrude_distance
     
     def _run(self):
         
@@ -1427,7 +1433,7 @@ class WWTP(SanUnit):
     @property
     def sludge_HHV(self):
        return 100*(0.338*self.sludge_C_ratio + 1.428*(self.sludge_H_ratio -\
-              self.sludge_O_ratio/8)) # [2]
+              self.sludge_O_ratio/8)) # [3]
     
     @property
     def H_C_eff(self):

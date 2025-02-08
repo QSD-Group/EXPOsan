@@ -78,12 +78,10 @@ from biosteam import settings
 __all__ = ('create_geospatial_system',)
 
 # TODO: update citations
-# kg/m3, this is for sludge with a moisture content higher than 80%,
-# google 'Design of wastewater treatment sludge thickeners Iowa State University'
-sludge_density = 1000
-# kg/m3, [2]
-natural_gas_density = 0.65
+# use methane density, probably consistent with BioSTEAM, kg/m3, https://en.wikipedia.org/wiki/Methane
+natural_gas_density = 0.657
 
+_ton_to_tonne = auom('ton').conversion_factor('tonne')
 _mile_to_km = auom('mile').conversion_factor('km')
 _lb_to_kg = auom('lb').conversion_factor('kg')
 _m3_to_ft3 = auom('m3').conversion_factor('ft3')
@@ -121,8 +119,11 @@ labor_index = {2014: 21.49,
                2022: 27.36,
                2023: 29.77}
 
+# TODO: continue from here
+
 # for parameters, unless otherwise stated, refer to the original HTL system model
-def create_geospatial_system(# MGD
+def create_geospatial_system(test_run=False,
+                             # MGD
                              size=10,
                              # 0: no; 1: yes
                              sludge_transportation=0,
@@ -214,10 +215,10 @@ def create_geospatial_system(# MGD
         UAN30_price = 605
     
     # convert price to $/kg
-    DAP_price = DAP_price/0.907185/1000
-    NH3_price = NH3_price/0.907185/1000
-    urea_price = urea_price/0.907185/1000
-    UAN30_price = UAN30_price/0.907185/1000
+    DAP_price = DAP_price/_ton_to_tonne/1000
+    NH3_price = NH3_price/_ton_to_tonne/1000
+    urea_price = urea_price/_ton_to_tonne/1000
+    UAN30_price = UAN30_price/_ton_to_tonne/1000
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -246,7 +247,7 @@ def create_geospatial_system(# MGD
     # is ash (cannot be digested), Y is VSS (can be digested)
     # for anaerobic digestion: X/(X+Y*(1-0.425)) = 0.414
     # we can calculate that for aerobic digestion: X/(X+Y*(1-0.475)) = 0.436
-    if sludge_transportation == 0:
+    if sludge_transportation == 0 or ((sludge_transportation != 0) and test_run):
         if aerobic_digestion == 1:
             WWTP = su.WWTP(ID='WWTP',
                            ins=raw_wastewater,
@@ -257,8 +258,8 @@ def create_geospatial_system(# MGD
                            sludge_afdw_lipid=0.193,
                            sludge_afdw_protein=0.510,
                            operation_hours=8760,
-                           sludge_distance=sludge_distance,
-                           biocrude_distance=biocrude_distance)
+                           sludge_wet_density=1040,
+                           sludge_distance=sludge_distance)
         elif anaerobic_digestion == 1:
             WWTP = su.WWTP(ID='WWTP',
                            ins=raw_wastewater,
@@ -269,8 +270,8 @@ def create_geospatial_system(# MGD
                            sludge_afdw_lipid=0.193,
                            sludge_afdw_protein=0.510,
                            operation_hours=8760,
-                           sludge_distance=sludge_distance,
-                           biocrude_distance=biocrude_distance)
+                           sludge_wet_density=1040,
+                           sludge_distance=sludge_distance)
         else:
             WWTP = su.WWTP(ID='WWTP',
                            ins=raw_wastewater, outs=('sludge','treated_water'),
@@ -280,8 +281,8 @@ def create_geospatial_system(# MGD
                            sludge_afdw_lipid=0.206,
                            sludge_afdw_protein=0.456,
                            operation_hours=8760,
-                           sludge_distance=sludge_distance,
-                           biocrude_distance=biocrude_distance)
+                           sludge_wet_density=1040,
+                           sludge_distance=sludge_distance)
     else:
         assert average_sludge_dw_ash != None, 'set average_sludge_dw_ash manually'
         assert average_sludge_afdw_lipid != None, 'set average_sludge_afdw_lipid manually'
@@ -296,8 +297,8 @@ def create_geospatial_system(# MGD
                        sludge_afdw_lipid=average_sludge_afdw_lipid,
                        sludge_afdw_protein=average_sludge_afdw_protein,
                        operation_hours=8760,
-                       sludge_distance=sludge_distance,
-                       biocrude_distance=biocrude_distance)
+                       sludge_wet_density=1040,
+                       sludge_distance=sludge_distance)
     
     P1 = qsu.SludgePump(ID='P1',
                         ins=WWTP-0,
@@ -491,8 +492,10 @@ def create_geospatial_system(# MGD
                                 outs=('emission','solid_ash'),
                                 init_with='WasteStream',
                                 supplement_power_utility=False)
-    # from _heat_utility.py (biosteam): 3.49672 $/kmol
-    CHP.ins[1].price = 0.218545
+    # TODO: check the MW of natural gas
+    # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
+    # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
+    CHP.ins[1].price = 0.218
     # 1.41 MM 2016$/year for 4270/4279 kg/hr ash, 7880 annual operating hours, from [11]
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2022]
     
@@ -523,7 +526,7 @@ def create_geospatial_system(# MGD
                                 ins=(CHP-0, 'makeup_MEA', 'makeup_water'),
                                 outs=('vent','CO2'),
                                 CO2_recovery=0.9)
-        # min: 1.93, max: 2.31, average: 2.13, [12]
+        # min: 1.93, average: 2.13, max: 2.31, [12]
         CC.ins[1].price = 2.13
         CC.ins[2].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
         
@@ -537,7 +540,7 @@ def create_geospatial_system(# MGD
                                      ins=(DAPSyn-1, CC-1, 'additional_carbon_dioxide', 'HNO3', 'UAN_water'),
                                      outs=('UAN30','UAN_vapor','UAN_waste','UAN_excess_carbon_dioxide'),
                                      UAN_concentration=30)
-            # min: 0.43, max: 0.53, average: 0.497, [13]
+            # min: 0.43, average: 0.497, max: 0.53, [13]
             # calculate the price of 70 wt/wt% HNO3 solution by adding water
             UANSyn.ins[3].price = 0.497*0.7 + 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3
             UANSyn.ins[4].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
@@ -582,7 +585,7 @@ def create_geospatial_system(# MGD
     Sludge_trucking.add_indicator(GlobalWarming, WWTP.ww_2_dry_sludge*0.13004958/0.2/3.79/(10**6))
     # 4.56 $/m3, 0.072 $/m3/mile ([14], likely 2015$)
     Sludge_trucking.price = WWTP.ww_2_dry_sludge*\
-        (4.56/sludge_density*1000/0.2+0.072/_mile_to_km/sludge_density*1000/0.2*WWTP.sludge_distance)/\
+        (4.56/WWTP.sludge_wet_density*1000/0.2+0.072/_mile_to_km/WWTP.sludge_wet_density*1000/0.2*WWTP.sludge_distance)/\
             GDPCTPI[2015]*GDPCTPI[2022]/3.79/(10**6)/WWTP.sludge_distance
     
     Sludge_transportation = qs.Transportation('Sludge_trucking',
@@ -602,7 +605,7 @@ def create_geospatial_system(# MGD
     # 0.13004958 kg CO2 eq/metric ton/km ('market for transport, freight, lorry, unspecified'))
     Biocrude_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), [15]
-    Biocrude_trucking.price = (5.67/BiocrudeTank.biocrude_wet_density+0.07/BiocrudeTank.biocrude_wet_density*WWTP.biocrude_distance)/GDPCTPI[2008]*GDPCTPI[2022]/WWTP.biocrude_distance
+    Biocrude_trucking.price = (5.67/BiocrudeTank.biocrude_wet_density+0.07/BiocrudeTank.biocrude_wet_density*BiocrudeTank.biocrude_distance)/GDPCTPI[2008]*GDPCTPI[2022]/BiocrudeTank.biocrude_distance
         
     Biocrude_transportation = qs.Transportation('Biocrude_trucking',
                                                 linked_unit=BiocrudeTank,
@@ -610,7 +613,7 @@ def create_geospatial_system(# MGD
                                                 load_type='mass',
                                                 load=stream.biocrude.F_mass,
                                                 load_unit='kg',
-                                                distance=WWTP.biocrude_distance,
+                                                distance=BiocrudeTank.biocrude_distance,
                                                 distance_unit='km',
                                                 # set to 1 h since load = kg/h
                                                 interval='1',

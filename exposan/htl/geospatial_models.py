@@ -6,7 +6,7 @@ Created on Sat Dec 30 08:01:06 2023
 @author: jiananfeng
 
 Note the word 'sludge' in this file refers to either sludge or biosolids.
-For parameters/numbers not explained, see geospatial.systems.py.
+For parameters/numbers not explained, see geospatial_systems.py or _sanunits.py or other relevant files.
 '''
 
 import qsdsan as qs
@@ -16,18 +16,10 @@ from exposan.htl import create_geospatial_system
 
 __all__ = ('create_geospatial_model',)
 
-# TODO: add crude_oil_density as an uncertainty parameter
-# kg/m3
-crude_oil_density = 850
-# kg/m3
-biocrude_density = 980
-# kg/m3
-sludge_density = 1000
 # kg/L
 water_density = 1
-# 42-47 MJ/kg
-crude_oil_HHV = 44.5
 
+_ton_to_tonne = auom('ton').conversion_factor('tonne')
 _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
 _MMgal_to_L = auom('gal').conversion_factor('L')*1000000
 _mile_to_km = auom('mile').conversion_factor('km')
@@ -59,11 +51,9 @@ GDPCTPI = {2007: 86.352,
 # cannot run more than one time of model = create_geospatial_model(system=sys, test_run=True)
 # due to the code of setting uncertainty for CI data
 
-# TODO: specify crude_oil_price ($/oil-barrel), DAP_price ($/kg), anhydrous_ammonia_price ($/kg),
-# urea_price ($/kg), and UAN30_price ($/kg) when creating models in geospatial_analysis.py,
+# TODO: specify crude_oil_price ($/oil-barrel), DAP_price ($/US-ton), anhydrous_ammonia_price ($/US-ton),
+# urea_price ($/US-ton), and UAN30_price ($/US-ton) when creating models in geospatial_analysis.py,
 # also pay attention to units
-
-# TODO: check the name of all this: XXX:= unit.search('XXX') and XXX:= stream.search('XXX')
 
 def create_geospatial_model(system=None,
                             test_run=False,
@@ -298,6 +288,16 @@ def create_geospatial_model(system=None,
     def set_protein_2_N(i):
         WWTP.protein_2_N=i
     
+    dist = shape.Uniform(1000,1080)
+    @param(name='sludge_wet_density',
+           element=WWTP,
+           kind='coupled',
+           units='-',
+           baseline=1040,
+           distribution=dist)
+    def set_sludge_wet_density(i):
+        WWTP.sludge_wet_density=i
+    
     # =========================================================================
     # HTL
     # =========================================================================
@@ -464,32 +464,41 @@ def create_geospatial_model(system=None,
     # =========================================================================
     # BiocrudeTank
     # =========================================================================
-    dist = shape.Uniform(800,900)
+    crude_oil_density_min = 800
+    crude_oil_density_ave = 850
+    crude_oil_density_max = 900
+    dist = shape.Uniform(crude_oil_density_min,crude_oil_density_max)
     @param(name='crude_oil_density',
            element=BiocrudeTank,
            kind='coupled',
            units='-',
-           baseline=850,
+           baseline=crude_oil_density_ave,
            distribution=dist)
     def set_crude_oil_density(i):
         BiocrudeTank.crude_oil_density=i
     
-    dist = shape.Uniform(42,47)
+    crude_oil_HHV_min = 42
+    crude_oil_HHV_ave = 44.5
+    crude_oil_HHV_max = 47
+    dist = shape.Uniform(crude_oil_HHV_min,crude_oil_HHV_max)
     @param(name='crude_oil_HHV',
            element=BiocrudeTank,
            kind='coupled',
            units='-',
-           baseline=44.5,
+           baseline=crude_oil_HHV_ave,
            distribution=dist)
     def set_crude_oil_HHV(i):
         BiocrudeTank.crude_oil_HHV=i
     
-    dist = shape.Uniform(950,1010)
+    biocrude_wet_density_min = 950
+    biocrude_wet_density_ave = 983
+    biocrude_wet_density_max = 1010
+    dist = shape.Triangle(biocrude_wet_density_min,biocrude_wet_density_ave,biocrude_wet_density_max)
     @param(name='biocrude_wet_density',
            element=BiocrudeTank,
            kind='coupled',
            units='-',
-           baseline=983,
+           baseline=biocrude_wet_density_ave,
            distribution=dist)
     def set_biocrude_wet_density(i):
         BiocrudeTank.biocrude_wet_density=i
@@ -530,7 +539,6 @@ def create_geospatial_model(system=None,
     # =========================================================================
     # AcidEx
     # =========================================================================
-    # TODO: check
     dist = shape.Uniform(4,10)
     @param(name='acid_vol',
            element=AcidEx,
@@ -541,7 +549,6 @@ def create_geospatial_model(system=None,
     def set_acid_vol(i):
         AcidEx.acid_vol=i
     
-    # TODO: check
     dist = shape.Uniform(0.7,0.9)
     @param(name='P_acid_recovery_ratio',
            element=AcidEx,
@@ -555,7 +562,6 @@ def create_geospatial_model(system=None,
     # =========================================================================
     # DAP
     # =========================================================================
-    # TODO: check
     # tested and confirmed: this is not a key driver
     # due to lack of data, assume it to be the same as P_pre_recovery_ratio in StruvitePrecipitation
     dist = shape.Triangle(0.7,0.828,0.95)
@@ -571,7 +577,6 @@ def create_geospatial_model(system=None,
     # =========================================================================
     # anhydrous NH3
     # =========================================================================
-    # TODO: check
     dist = shape.Uniform(7.91,8.41)
     @param(name='influent_pH',
            element=PreStripper,
@@ -585,9 +590,7 @@ def create_geospatial_model(system=None,
     # =========================================================================
     # urea
     # =========================================================================
-    # TODO: check the name of the unit/stream
     if CC:= unit.search('CC'):
-        # TODO: check
         dist = shape.Uniform(0.81,0.99)
         @param(name='CO2_recovery',
                element=CC,
@@ -598,7 +601,6 @@ def create_geospatial_model(system=None,
         def set_CO2_recovery(i):
             CC.CO2_recovery=i
         
-        # TODO: check
         dist = shape.Uniform(1.35,1.65)
         @param(name='MEA_to_CO2',
                element=CC,
@@ -609,11 +611,9 @@ def create_geospatial_model(system=None,
         def set_MEA_to_CO2(i):
             CC.MEA_to_CO2=i
     
-    # TODO: check the name of the unit/stream
     if UreaSyn:= unit.search('UreaSyn'):
-        # TODO: check
         dist = shape.Uniform(2.8,4.2)
-        @param(name='NH3_to_CO2_ratio',
+        @param(name='UreaSyn_NH3_to_CO2_ratio',
                element=UreaSyn,
                kind='coupled',
                units='-',
@@ -622,9 +622,8 @@ def create_geospatial_model(system=None,
         def set_UreaSyn_NH3_to_CO2_ratio(i):
             UreaSyn.ratio=i
         
-        # TODO: check
         dist = shape.Uniform(0.64,0.96)
-        @param(name='CO2_to_urea_efficiency',
+        @param(name='UreaSyn_CO2_to_urea_efficiency',
                element=UreaSyn,
                kind='coupled',
                units='-',
@@ -633,9 +632,8 @@ def create_geospatial_model(system=None,
         def set_UreaSyn_CO2_to_urea_efficiency(i):
             UreaSyn.efficiency=i
         
-        # TODO: check
         dist = shape.Uniform(0.016,0.024)
-        @param(name='product_loss_ratio',
+        @param(name='UreaSyn_product_loss_ratio',
                element=UreaSyn,
                kind='coupled',
                units='-',
@@ -647,11 +645,9 @@ def create_geospatial_model(system=None,
     # =========================================================================
     # UAN
     # =========================================================================
-    # TODO: check the name of the unit/stream
     if UANSyn:= unit.search('UANSyn'):
-        # TODO: check
         dist = shape.Uniform(2.8,4.2)
-        @param(name='NH3_to_CO2_ratio',
+        @param(name='UANSyn_NH3_to_CO2_ratio',
                element=UANSyn,
                kind='coupled',
                units='-',
@@ -660,9 +656,8 @@ def create_geospatial_model(system=None,
         def set_UANSyn_NH3_to_CO2_ratio(i):
             UANSyn.ratio=i
         
-        # TODO: check
         dist = shape.Uniform(0.64,0.96)
-        @param(name='CO2_to_urea_efficiency',
+        @param(name='UANSyn_CO2_to_urea_efficiency',
                element=UANSyn,
                kind='coupled',
                units='-',
@@ -671,9 +666,8 @@ def create_geospatial_model(system=None,
         def set_UANSyn_CO2_to_urea_efficiency(i):
             UANSyn.efficiency=i
         
-        # TODO: check
         dist = shape.Uniform(0.016,0.024)
-        @param(name='product_loss_ratio',
+        @param(name='UANSyn_product_loss_ratio',
                element=UANSyn,
                kind='coupled',
                units='-',
@@ -738,10 +732,9 @@ def create_geospatial_model(system=None,
     
     # TODO: crude oil price and therefore, biocrude price, are now contextual parameters, update in writing
     if test_run:
-        # TODO: check
-        biocrude_price_min = 76.45/_oil_barrel_to_m3/crude_oil_density/crude_oil_HHV*HTL.biocrude_HHV
-        biocrude_price_ave = 94.077/_oil_barrel_to_m3/crude_oil_density/crude_oil_HHV*HTL.biocrude_HHV
-        biocrude_price_max = 113.77/_oil_barrel_to_m3/crude_oil_density/crude_oil_HHV*HTL.biocrude_HHV
+        biocrude_price_min = 76.45/_oil_barrel_to_m3
+        biocrude_price_ave = 94.077/_oil_barrel_to_m3
+        biocrude_price_max = 113.77/_oil_barrel_to_m3
         dist = shape.Triangle(biocrude_price_min,biocrude_price_ave,biocrude_price_max)
         @param(name='biocrude_price',
                element='TEA',
@@ -750,12 +743,11 @@ def create_geospatial_model(system=None,
                baseline=biocrude_price_ave,
                distribution=dist)
         def set_biocrude_price(i):
-            biocrude.price=i
+            biocrude.price=i/BiocrudeTank.crude_oil_density/BiocrudeTank.crude_oil_HHV*HTL.biocrude_HHV
     else:
-        # TODO: check
-        biocrude_price_min = crude_oil_price[0]/_oil_barrel_to_m3/crude_oil_density/crude_oil_HHV*HTL.biocrude_HHV
-        biocrude_price_ave = crude_oil_price[1]/_oil_barrel_to_m3/crude_oil_density/crude_oil_HHV*HTL.biocrude_HHV
-        biocrude_price_max = crude_oil_price[2]/_oil_barrel_to_m3/crude_oil_density/crude_oil_HHV*HTL.biocrude_HHV
+        biocrude_price_min = crude_oil_price[0]/_oil_barrel_to_m3
+        biocrude_price_ave = crude_oil_price[1]/_oil_barrel_to_m3
+        biocrude_price_max = crude_oil_price[2]/_oil_barrel_to_m3
         dist = shape.Triangle(biocrude_price_min,biocrude_price_ave,biocrude_price_max)
         @param(name='biocrude_price',
                element='TEA',
@@ -764,7 +756,7 @@ def create_geospatial_model(system=None,
                baseline=biocrude_price_ave,
                distribution=dist)
         def set_biocrude_price(i):
-            biocrude.price=i
+            biocrude.price=i/BiocrudeTank.crude_oil_density/BiocrudeTank.crude_oil_HHV*HTL.biocrude_HHV
     
     H2SO4_price = (0.043*1+0.0002*(93/5-1))/(93/5)/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     dist = shape.Uniform(H2SO4_price*0.9,H2SO4_price*1.1)
@@ -788,7 +780,6 @@ def create_geospatial_model(system=None,
     def set_NaOH_price(i):
         NaOH.price=i
     
-    # TODO: check
     water_steam_price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     dist = shape.Uniform(water_steam_price*0.9,water_steam_price*1.1)
     @param(name='water_steam_price',
@@ -801,67 +792,70 @@ def create_geospatial_model(system=None,
         water_steam.price=i
     
     if test_run:
-        # TODO: check the name of the unit/stream
         if DAP:= stream.search('DAP'):
-            # TODO: check
-            dist = shape.Triangle(0.588,0.9845,1.381)
+            DAP_price_min = 588/_ton_to_tonne/1000
+            DAP_price_ave = 984.5/_ton_to_tonne/1000
+            DAP_price_max = 1381/_ton_to_tonne/1000
+            dist = shape.Triangle(DAP_price_min,DAP_price_ave,DAP_price_max)
             @param(name='DAP_price',
                    element='TEA',
                    kind='coupled',
                    units='-',
-                   baseline=0.9845,
+                   baseline=DAP_price_ave,
                    distribution=dist)
             def set_DAP_price(i):
                 DAP.price=i
         
-        # TODO: check the name of the unit/stream
         if anhydrous_ammonia:= stream.search('anhydrous_ammonia'):
-            # TODO: check
-            dist = shape.Triangle(1.065,1.4075,1.75)
+            anhydrous_ammonia_price_min = 1065/_ton_to_tonne/1000
+            anhydrous_ammonia_price_ave = 1407.5/_ton_to_tonne/1000
+            anhydrous_ammonia_price_max = 1750/_ton_to_tonne/1000
+            dist = shape.Triangle(anhydrous_ammonia_price_min,anhydrous_ammonia_price_ave,anhydrous_ammonia_price_max)
             @param(name='anhydrous_ammonia_price',
                    element='TEA',
                    kind='coupled',
                    units='-',
-                   baseline=1.4075,
+                   baseline=anhydrous_ammonia_price_ave,
                    distribution=dist)
             def set_anhydrous_ammonia_price(i):
                 anhydrous_ammonia.price=i
     else:
-        # TODO: check the name of the unit/stream
         if DAP:= stream.search('DAP'):
-            # TODO: check
-            dist = shape.Triangle(DAP_price[0],DAP_price[1],DAP_price[2])
+            DAP_price_min = DAP_price[0]/_ton_to_tonne/1000
+            DAP_price_ave = DAP_price[1]/_ton_to_tonne/1000
+            DAP_price_max = DAP_price[2]/_ton_to_tonne/1000
+            dist = shape.Triangle(DAP_price_min,DAP_price_ave,DAP_price_max)
             @param(name='DAP_price',
                    element='TEA',
                    kind='coupled',
                    units='-',
-                   baseline=DAP_price[1],
+                   baseline=DAP_price_ave,
                    distribution=dist)
             def set_DAP_price(i):
                 DAP.price=i
         
-        # TODO: check the name of the unit/stream
         if anhydrous_ammonia:= stream.search('anhydrous_ammonia'):
-            # TODO: check
-            dist = shape.Triangle(anhydrous_ammonia_price[0],anhydrous_ammonia_price[1],anhydrous_ammonia_price[2])
+            anhydrous_ammonia_price_min = anhydrous_ammonia[0]/_ton_to_tonne/1000
+            anhydrous_ammonia_price_ave = anhydrous_ammonia[1]/_ton_to_tonne/1000
+            anhydrous_ammonia_price_max = anhydrous_ammonia[2]/_ton_to_tonne/1000
+            dist = shape.Triangle(anhydrous_ammonia_price_min,anhydrous_ammonia_price_ave,anhydrous_ammonia_price_max)
             @param(name='anhydrous_ammonia_price',
                    element='TEA',
                    kind='coupled',
                    units='-',
-                   baseline=anhydrous_ammonia_price[1],
+                   baseline=anhydrous_ammonia_price_ave,
                    distribution=dist)
             def set_anhydrous_ammonia_price(i):
                 anhydrous_ammonia.price=i
     
-    # TODO: check
-    # TODO: update in writing
-    # from _heat_utility.py (biosteam): 3.49672 $/kmol
-    dist = shape.Triangle(0.218545*0.9,0.218545,0.218545*1.1)
+    # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
+    # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
+    dist = shape.Uniform(0.1962,0.2398)
     @param(name='natural_gas_price',
            element='TEA',
            kind='isolated',
            units='$/kg',
-           baseline=0.218545,
+           baseline=0.218,
            distribution=dist)
     def set_CH4_price(i):
         natural_gas.price=i
@@ -877,7 +871,6 @@ def create_geospatial_model(system=None,
     def set_ash_disposal_price(i):
         solid_ash.price=i
     
-    # TODO: check
     cooling_tower_makeup_water_price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     dist = shape.Uniform(cooling_tower_makeup_water_price*0.9,cooling_tower_makeup_water_price*1.1)
     @param(name='cooling_tower_makeup_water_price',
@@ -900,11 +893,9 @@ def create_geospatial_model(system=None,
     def set_cooling_tower_chemicals_price(i):
         cooling_tower_chemicals.price=i
     
-    # TODO: check the name of the unit/stream
     if makeup_MEA:= stream.search('makeup_MEA'):
-        # TODO: check
         dist = shape.Triangle(1.93,2.13,2.31)
-        @param(name='MEA_price',
+        @param(name='makeup_MEA_price',
                element='TEA',
                kind='isolated',
                units='$/kg',
@@ -913,9 +904,7 @@ def create_geospatial_model(system=None,
         def set_MEA_price(i):
             makeup_MEA.price=i
     
-    # TODO: check the name of the unit/stream
     if makeup_water:= stream.search('makeup_water'):
-        # TODO: check
         makeup_water_price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
         dist = shape.Uniform(makeup_water_price*0.9,makeup_water_price*1.1)
         @param(name='makeup_water_price',
@@ -927,12 +916,10 @@ def create_geospatial_model(system=None,
         def set_makeup_water_price(i):
             makeup_water.price=i
     
-    # TODO: check the name of the unit/stream
     if HNO3:= stream.search('HNO3'):
-        # TODO: check
-        HNO3_price_min = 0.43*0.7 + 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3*0.9
-        HNO3_price_ave = 0.497*0.7 + 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3*1.1
-        HNO3_price_max = 0.53*0.7 + 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3
+        HNO3_price_min = 0.43*0.7 + 0.0002*0.9/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3
+        HNO3_price_ave = 0.497*0.7 + 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3
+        HNO3_price_max = 0.53*0.7 + 0.0002*1.1/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3
         dist = shape.Triangle(HNO3_price_min,HNO3_price_ave,HNO3_price_max)
         @param(name='HNO3_price',
                element='TEA',
@@ -943,9 +930,7 @@ def create_geospatial_model(system=None,
         def set_HNO3_price(i):
             HNO3.price=i
     
-    # TODO: check the name of the unit/stream
     if UAN_water:= stream.search('UAN_water'):
-        # TODO: check
         UAN_water_price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
         dist = shape.Uniform(UAN_water_price*0.9,UAN_water_price*1.1)
         @param(name='UAN_water_price',
@@ -958,60 +943,64 @@ def create_geospatial_model(system=None,
             UAN_water.price=i
     
     if test_run:
-        # TODO: check the name of the unit/stream
         if urea:= stream.search('urea'):
-            # TODO: check
-            dist = shape.Triangle(0.447,0.855,1.263)
+            urea_price_min = 447/_ton_to_tonne/1000
+            urea_price_ave = 855/_ton_to_tonne/1000
+            urea_price_max = 1263/_ton_to_tonne/1000
+            dist = shape.Triangle(urea_price_min,urea_price_ave,urea_price_max)
             @param(name='urea_price',
                    element='TEA',
                    kind='coupled',
                    units='-',
-                   baseline=0.855,
+                   baseline=urea_price_ave,
                    distribution=dist)
             def set_urea_price(i):
                 urea.price=i
         
-        # TODO: check the name of the unit/stream
         if UAN30:= stream.search('UAN30'):
-            # TODO: check
-            dist = shape.Triangle(0.35,0.605,0.86)
+            UAN30_price_min = 350/_ton_to_tonne/1000
+            UAN30_price_ave = 605/_ton_to_tonne/1000
+            UAN30_price_max = 860/_ton_to_tonne/1000
+            dist = shape.Triangle(UAN30_price_min,UAN30_price_ave,UAN30_price_max)
             @param(name='UAN30_price',
                    element='TEA',
                    kind='coupled',
                    units='-',
-                   baseline=0.605,
+                   baseline=UAN30_price_ave,
                    distribution=dist)
             def set_UAN30_price(i):
                 UAN30.price=i
     else:
-        # TODO: check the name of the unit/stream
         if urea:= stream.search('urea'):
-            # TODO: check
-            dist = shape.Triangle(urea_price[0],urea_price[1],urea_price[2])
+            urea_price_min = urea_price[0]/_ton_to_tonne/1000
+            urea_price_ave = urea_price[1]/_ton_to_tonne/1000
+            urea_price_max = urea_price[2]/_ton_to_tonne/1000
+            dist = shape.Triangle(urea_price_min,urea_price_ave,urea_price_max)
             @param(name='urea_price',
                    element='TEA',
                    kind='coupled',
                    units='-',
-                   baseline=urea_price[1],
+                   baseline=urea_price_ave,
                    distribution=dist)
             def set_urea_price(i):
                 urea.price=i
         
-        # TODO: check the name of the unit/stream
         if UAN30:= stream.search('UAN30'):
-            # TODO: check
-            dist = shape.Triangle(UAN30_price[0],UAN30_price[1],UAN30_price[2])
+            UAN30_price_min = UAN30_price[0]/_ton_to_tonne/1000
+            UAN30_price_ave = UAN30_price[1]/_ton_to_tonne/1000
+            UAN30_price_max = UAN30_price[2]/_ton_to_tonne/1000
+            dist = shape.Triangle(UAN30_price_min,UAN30_price_ave,UAN30_price_max)
             @param(name='UAN30_price',
                    element='TEA',
                    kind='coupled',
                    units='-',
-                   baseline=UAN30_price[1],
+                   baseline=UAN30_price_ave,
                    distribution=dist)
             def set_UAN30_price(i):
                 UAN30.price=i
     
     sludge_transportation_price = WWTP.ww_2_dry_sludge*\
-                                    (4.56/sludge_density*1000/0.2+0.072/_mile_to_km/sludge_density*1000/0.2*WWTP.sludge_distance)/\
+                                    (4.56*1000/0.2+0.072/_mile_to_km*1000/0.2*WWTP.sludge_distance)/\
                                         GDPCTPI[2015]*GDPCTPI[2022]/3.79/(10**6)/WWTP.sludge_distance
     dist = shape.Uniform(sludge_transportation_price*0.9,sludge_transportation_price*1.1)
     @param(name='sludge_transportation_price',
@@ -1021,9 +1010,9 @@ def create_geospatial_model(system=None,
            baseline=sludge_transportation_price,
            distribution=dist)
     def set_sludge_transportation_price(i):
-        qs.ImpactItem.get_all_items()['Sludge_trucking'].price=i
+        qs.ImpactItem.get_all_items()['Sludge_trucking'].price=i/WWTP.sludge_wet_density
     
-    biocrude_transportation_price = (5.67/biocrude_density+0.07/biocrude_density*WWTP.biocrude_distance)/GDPCTPI[2008]*GDPCTPI[2022]/WWTP.biocrude_distance
+    biocrude_transportation_price = (5.67+0.07*BiocrudeTank.biocrude_distance)/GDPCTPI[2008]*GDPCTPI[2022]/BiocrudeTank.biocrude_distance
     dist = shape.Uniform(biocrude_transportation_price*0.9,biocrude_transportation_price*1.1)
     @param(name='biocrude_transportation_price',
            element='TEA',
@@ -1032,7 +1021,7 @@ def create_geospatial_model(system=None,
            baseline=biocrude_transportation_price,
            distribution=dist)
     def set_biocrude_transportation_price(i):
-        qs.ImpactItem.get_all_items()['Biocrude_trucking'].price=i
+        qs.ImpactItem.get_all_items()['Biocrude_trucking'].price=i/BiocrudeTank.biocrude_wet_density
     
     # =========================================================================
     # LCA (unifrom ± 10%)
@@ -1069,82 +1058,66 @@ def create_geospatial_model(system=None,
     
     @metric(name='biocrude_production', units='BPD', element='geospatial')
     def get_biocrude_production():
-        return biocrude.F_mass/biocrude_density*1000/_oil_barrel_to_L*24
+        return biocrude.F_mass/BiocrudeTank.biocrude_wet_density*1000/_oil_barrel_to_L*24
     
-    # TODO: check
     @metric(name='DAP_production', units='tonne/year', element='geospatial')
     def get_DAP_production():
         return DAP.F_mass/1000*sys.operating_hours
     
-    # TODO: check
     @metric(name='DAP_P_recovery', units='tonne/year', element='geospatial')
     def get_DAP_P_recovery():
         return DAP.F_mass/132.06*30.973762/1000*sys.operating_hours
     
-    # TODO: check
     @metric(name='DAP_P_recovery_rate', units='-', element='geospatial')
     def get_DAP_P_recovery_rate():
         return DAP.F_mass/132.06*30.973762/WWTP.sludge_P
     
-    # TODO: check the name of the unit/stream
     if anhydrous_ammonia:= stream.search('anhydrous_ammonia'):
-        # TODO: check
         @metric(name='anhydrous_ammonia_production', units='tonne/year', element='geospatial')
         def get_anhydrous_ammonia_production():
             return anhydrous_ammonia.F_mass/1000*sys.operating_hours
         
-        # TODO: check
         @metric(name='DAP_NH3_N_recovery', units='tonne/year', element='geospatial')
         def get_DAP_NH3_N_recovery():
             return (DAP.F_mass/132.06*2*14.0067+anhydrous_ammonia.F_mass/17.031*14.0067)/1000*sys.operating_hours
         
-        # TODO: check
         @metric(name='DAP_NH3_N_recovery_rate', units='-', element='geospatial')
         def get_DAP_NH3_N_recovery_rate():
             return (DAP.F_mass/132.06*2*14.0067+anhydrous_ammonia.F_mass/17.031*14.0067)/WWTP.sludge_N
     
-    # TODO: check the name of the unit/stream
     if urea:= stream.search('urea'):
-        # TODO: check
         @metric(name='urea_production', units='tonne/year', element='geospatial')
         def get_urea_production():
             return urea.F_mass/1000*sys.operating_hours
         
-        # TODO: check
         @metric(name='DAP_urea_N_recovery', units='tonne/year', element='geospatial')
         def get_DAP_urea_N_recovery():
             return (DAP.F_mass/132.06*2*14.0067+urea.F_mass/60.06*2*14.0067)/1000*sys.operating_hours
         
-        # TODO: check
         @metric(name='DAP_urea_N_recovery_rate', units='-', element='geospatial')
         def get_DAP_urea_N_recovery_rate():
             return (DAP.F_mass/132.06*2*14.0067+urea.F_mass/60.06*2*14.0067)/WWTP.sludge_N
     
-    # TODO: check the name of the unit/stream
     if UAN30:= stream.search('UAN30'):
-        # TODO: check
         @metric(name='UAN30_production', units='tonne/year', element='geospatial')
         def get_UAN30_production():
             return UAN30.F_mass/1000*sys.operating_hours
         
-        # TODO: check
-        # TODO: need to decide when to use DAP_UAN30_N_recovery_wo_HNO3
+        # TODO: need to decide when to use DAP_UAN30_N_recovery_wo_HNO3 when doing analysis
+        # UAN30.F_mass*0.3 is the right way to calculate N in UAN30 since UAN formula is not accurate
         @metric(name='DAP_UAN30_N_recovery_wo_HNO3', units='tonne/year', element='geospatial')
         def get_DAP_UAN30_N_recovery_wo_HNO3():
             return (DAP.F_mass/132.06*2*14.0067+UAN30.F_mass*0.3-HNO3.imass['HNO3']/63.01*14.0067)/1000*sys.operating_hours
         
-        # TODO: check
         @metric(name='DAP_UAN30_N_recovery_wo_HNO3_rate', units='-', element='geospatial')
         def get_DAP_UAN30_N_recovery_wo_HNO3_rate():
             return (DAP.F_mass/132.06*2*14.0067+UAN30.F_mass*0.3-HNO3.imass['HNO3']/63.01*14.0067)/WWTP.sludge_N
         
-        # TODO: check
-        # TODO: need to decide when to use DAP_UAN30_N_recovery_w_HNO3
+        # TODO: need to decide when to use DAP_UAN30_N_recovery_w_HNO3 when doing analysis
         @metric(name='DAP_UAN30_N_recovery_w_HNO3', units='tonne/year', element='geospatial')
         def get_DAP_UAN30_N_recovery_w_HNO3():
             return (DAP.F_mass/132.06*2*14.0067+UAN30.F_mass*0.3)/1000*sys.operating_hours
         
-        # TODO: check
         @metric(name='DAP_UAN30_N_recovery_w_HNO3_rate', units='-', element='geospatial')
         def get_DAP_UAN30_N_recovery_w_HNO3_rate():
             return (DAP.F_mass/132.06*2*14.0067+UAN30.F_mass*0.3)/(WWTP.sludge_N+HNO3.imass['HNO3']/63.01*14.0067)

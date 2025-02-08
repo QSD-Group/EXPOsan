@@ -24,8 +24,8 @@ from warnings import filterwarnings
 
 # TODO: update balancing area grid CI using WWTP_balancing_area.xlsx and StdScen21_MidCase_annual_balancingArea.csv under exposan/htl/data
 
-# TODO: specify crude_oil_price ($/oil-barrel), DAP_price ($/kg), anhydrous_ammonia_price ($/kg),
-# urea_price ($/kg), and UAN30_price ($/kg) when creating models in geospatial_analysis.py,
+# TODO: specify crude_oil_price ($/oil-barrel), DAP_price ($/US-ton), anhydrous_ammonia_price ($/US-ton),
+# urea_price ($/US-ton), and UAN30_price ($/US-ton) when creating models in geospatial_analysis.py,
 # also pay attention to units
 
 # TODO: update file paths later
