@@ -63,10 +63,7 @@ References:
      Environ. Sci. Technol. 2023. https://doi.org/10.1021/acs.est.2c07936.
 '''
 
-# TODO: check _sanunits.py
-
-# TODO: changes to implement:
-# TODO 1: add new units and contextualized fertilizers prices (https://mymarketnews.ams.usda.gov/report/list?market_types%5B0%5D=214) in writing
+# TODO: add new units and contextualized fertilizers prices and crude oil price in writing
 
 import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
@@ -119,8 +116,6 @@ labor_index = {2014: 21.49,
                2022: 27.36,
                2023: 29.77}
 
-# TODO: continue from here
-
 # for parameters, unless otherwise stated, refer to the original HTL system model
 def create_geospatial_system(test_run=False,
                              # MGD
@@ -143,7 +138,8 @@ def create_geospatial_system(test_run=False,
                              # dry tonne sludge/day/MGD raw wastewater
                              ww_2_dry_sludge_ratio=1,
                              state='IL',
-                             nitrogen_fertilizer='NH3',
+                             # TODO: add this parameter in analysis.py
+                             nitrogen_fertilizer=None,
                              # TODO: update the balancing-area-level grid CI in geospatial_analysis.py
                              # use balancing-area-level in the analysis
                              # kg CO2 eq/kWh
@@ -166,9 +162,14 @@ def create_geospatial_system(test_run=False,
     
     folder = os.path.dirname(__file__)
     
-    # electricity price in 2022$/kWh
+    # industrial electricity price in 2022$/kWh
     elec_price = pd.read_excel(folder + '/data/state_elec_price_2022.xlsx', 'elec_price_2022')
     bst.PowerUtility.price = elec_price[elec_price['state']==state]['price'].iloc[0]/100
+    
+    # TODO: update citations
+    # 2022 crude oil price, https://www.eia.gov/dnav/pet/pet_pri_dfp1_k_m.htm
+    crude_oil_price_data = pd.read_excel(folder + '/data/crude_oil_price_2022.xlsx', 'crude_oil_price_2022')
+    crude_oil_price = crude_oil_price_data[crude_oil_price_data['state']==state]['2022_average'].iloc[0]
     
     # fertilizer price in $/US-ton, [6]
     # UAN30 price includes UAN28/30/30-32
@@ -340,12 +341,9 @@ def create_geospatial_system(test_run=False,
                                    vessel_material='Carbon steel')
     # TODO: update biocrude cost and CI calculation in writing
     # assume biocrude replace crude oil of the same amount of energy
-    # TODO: update citations
-    # TODO: crude oil price and therefore, biocrude price, are now contextual parameters, update in writing
-    # 94.077 $/oil barrel, https://www.eia.gov/dnav/pet/pet_pri_dfp1_k_m.htm
     # assume biocrude has an HHV of 35 MJ/kg
     # in the model, biocrude HHV will be calculated as HTL.biocrude_HHV
-    BiocrudeTank.outs[0].price = 94.077/_oil_barrel_to_m3/BiocrudeTank.crude_oil_density/BiocrudeTank.crude_oil_HHV*35
+    BiocrudeTank.outs[0].price = crude_oil_price/_oil_barrel_to_m3/BiocrudeTank.crude_oil_density/BiocrudeTank.crude_oil_HHV*35
     
     # =========================================================================
     # CHG
@@ -365,7 +363,7 @@ def create_geospatial_system(test_run=False,
     
     S2WS1 = su.StreamTypeConverter(ID='S2WS1',
                                    ins=CHG-1,
-                                   outs='CHG_catalyst_out',
+                                   outs='CHG_catalyst',
                                    init_with='WasteStream')
     
     V1 = IsenthalpicValve(ID='V1',
@@ -473,9 +471,10 @@ def create_geospatial_system(test_run=False,
     # =========================================================================
     # facilities
     # =========================================================================
+    
     # TODO: update in writing
     # previously used 86 C with self-defined heat utility
-    # now use natural gas for heating, and use default T_min_app
+    # now use natural gas for heating, and use the default T_min_app
     qsu.HeatExchangerNetwork(ID='HXN',
                              force_ideal_thermo=True)
     
@@ -492,14 +491,13 @@ def create_geospatial_system(test_run=False,
                                 outs=('emission','solid_ash'),
                                 init_with='WasteStream',
                                 supplement_power_utility=False)
-    # TODO: check the MW of natural gas
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     CHP.ins[1].price = 0.218
     # 1.41 MM 2016$/year for 4270/4279 kg/hr ash, 7880 annual operating hours, from [11]
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2022]
     
-    # TODO: consider adding CT and its TEA (price for cooling_tower_chemicals) and LCA items (CT_chemicals in the 'Other' category) for other systems (HTL, HTL-PFAS)
+    # TODO: consider adding CT and its TEA and LCA items for other systems (HTL, HTL-PFAS)
     # construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
@@ -507,6 +505,7 @@ def create_geospatial_system(test_run=False,
     # cooling_tower_chemicals: 1.7842 2016$/lb, [11]
     CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
+    # TODO: add CWP in writing and figures
     # CWP uses electricity to generate chilled water
     # the water cost can be ignored since the water can be recirculated
     CWP = bst.ChilledWaterPackage(ID='CWP')
@@ -517,7 +516,7 @@ def create_geospatial_system(test_run=False,
     
     if nitrogen_fertilizer != 'NH3':
         # to be conservative, capture all CO2 from CHP emission (more than enough for urea synthesis and UAN synthesis)
-        # if no natural gas directly burned in the CHP (rather than as heat utilities for other units):
+        # if no natural gas directly burned in the CHP (i.e., all as heat utilities for other units):
         # then carbon in urea and carbon in UAN are biogenic, can reduce their CI
         # if there is natural gas directly burned in the CHP:
         # include the emission from natural gas combustion in LCA and reduce the CI of urea synthesis and UAN synthesis
@@ -531,18 +530,23 @@ def create_geospatial_system(test_run=False,
         CC.ins[2].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
         
         if nitrogen_fertilizer == 'urea':
+            # additional_carbon_dioxide is probably empty, assume no cost and CI for it, test included
+            # the CI of CO2 in urea_waste is 0 (biogenic) or is included in the natural_gas
             UreaSyn = su.UreaSynthesis(ID='UreaSyn',
                                        ins=(DAPSyn-1, CC-1, 'additional_carbon_dioxide'),
-                                       outs=('urea','urea_vapor','urea_waste','excess_carbon_dioxide'))
+                                       outs=('urea','urea_vapor','urea_waste'),
+                                       ratio=3.5, efficiency=0.8, loss=0.02)
             UreaSyn.outs[0].price = urea_price
         else:
+            # additional_carbon_dioxide is probably empty, assume no cost and CI for it, test included
+            # the CI of CO2 in UAN_waste is 0 (biogenic) or is included in the natural_gas
             UANSyn = su.UANSynthesis(ID='UANSyn',
                                      ins=(DAPSyn-1, CC-1, 'additional_carbon_dioxide', 'HNO3', 'UAN_water'),
-                                     outs=('UAN30','UAN_vapor','UAN_waste','UAN_excess_carbon_dioxide'),
-                                     UAN_concentration=30)
+                                     outs=('UAN30','UAN_vapor','UAN_waste'),
+                                     ratio=3.5, efficiency=0.8, loss=0.02)
             # min: 0.43, average: 0.497, max: 0.53, [13]
             # calculate the price of 70 wt/wt% HNO3 solution by adding water
-            UANSyn.ins[3].price = 0.497*0.7 + 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3
+            UANSyn.ins[3].price = 0.497
             UANSyn.ins[4].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
             UANSyn.outs[0].price = UAN30_price
     
@@ -620,7 +624,7 @@ def create_geospatial_system(test_run=False,
                                                 interval_unit='h')
     BiocrudeTank.transportation = Biocrude_transportation
     
-    impact_items = {'CHG_catalyst': [stream.CHG_catalyst_out, 471.098936962268],
+    impact_items = {'CHG_catalyst': [stream.CHG_catalyst, 471.098936962268],
                     'H2SO4':        [stream.H2SO4, 0.005529872568],
                     'NaOH':         [stream.NaOH, 1.2497984],
                     'DAP':          [stream.DAP, -1.456692],
@@ -637,14 +641,16 @@ def create_geospatial_system(test_run=False,
     elif nitrogen_fertilizer == 'urea':
         impact_items['makeup_MEA'] = [stream.makeup_MEA, 3.0923397]
         impact_items['makeup_water'] = [stream.makeup_water, 0.00042012744]
-        # for every kg of urea produced, 44.009/60.06 kg of biogenic CO2 is used
+        # TODO: add this (the benefit of capturing CO2) in writing
+        # for every kg of urea produced, 44.009/60.06 kg of captured CO2 is used
         impact_items['urea'] = [stream.urea, -1.2510711 - 44.009/60.06]
     else:
         impact_items['makeup_MEA'] = [stream.makeup_MEA, 3.0923397]
         impact_items['makeup_water'] = [stream.makeup_water, 0.00042012744]
-        impact_items['HNO3'] = [stream.HNO3, 1.624862648]
+        impact_items['HNO3'] = [stream.HNO3, 2.3210523]
         impact_items['UAN_water'] = [stream.UAN_water, 0.00042012744]
-        # the formula of UAN is CH6N4O4, for every kg of UAN30 produced, 1*0.3/14.0067/4*44.009 of biogenic CO2 is used
+        # TODO: add this (the benefit of capturing CO2) in writing
+        # assume N:C = 4:1 in UAN30, for every kg of UAN30 produced, 1*0.3/14.0067/4*44.009 of captured CO2 is used
         impact_items['UAN30'] = [stream.UAN30, -1.6799471 - 1*0.3/14.0067/4*44.009]
     
     for item in impact_items.items():
@@ -652,13 +658,12 @@ def create_geospatial_system(test_run=False,
     
     qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
            # 0.48748859 is the GHG level with the Electricity item from ecoinvent,
-           # we cannot list electricity GHG one state by one state,
-           # but we can adjust the electricity amount to reflect different GHG of electricity at different states
+           # adjust the electricity amount to reflect different GHG of electricity at different states
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30/0.48748859*elec_GHG,
-           # assume cooling_tower_chemicals is water (based on its composition, not important though since the flow is basically 0)
+           # assume the ratio between the CI of the cooling_tower_chemicals and the CI of cooling_tower_makeup_water is the same as the ratio of the prices of these two streams
            # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
            # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-           Deionized_water=lambda:(water_steam.F_mass+CT.ins[1].F_mass+CT.ins[2].F_mass)*sys.flowsheet.WWTP.operation_hours*30)
+           Deionized_water=lambda:(water_steam.F_mass+CT.ins[1].F_mass+CT.ins[2].F_mass*1.7842/0.0002)*WWTP.operation_hours*30)
     
     # =========================================================================
     # TEA
@@ -705,6 +710,7 @@ def create_geospatial_system(test_run=False,
     
     income_tax_rate = federal_income_tax_rate_value + state_income_tax_rate_value
     
+    # TEA results updated if sys.TEA.net_earnings > 0
     create_tea(sys, IRR_value=0.03,
                income_tax_value=income_tax_rate,
                finance_interest_value=0.03,

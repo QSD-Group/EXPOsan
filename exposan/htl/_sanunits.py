@@ -159,9 +159,8 @@ class AcidExtraction(Reactor):
 # AmineAbsorption 
 # =============================================================================
 
-# TODO: double check the BM value
 @cost(basis='CO2 flow', ID='Reactor', units='kmol/hr',
-      cost=3.063e6, S=760*1000000/24/44/1000, CE=CEPCI_by_year[2019], n=0.67, BM=1)
+      cost=3.063e6, S=760*1000000/24/44/1000, CE=CEPCI_by_year[2019], n=0.67, BM=1.47)
 @cost(basis='CO2 flow', ID='Pumps electricity', units='kmol/hr',
       kW=55595.96/(613*(1000/44))*(24123*0.1186), S=24123, CE=CEPCI_by_year[2009])
 class AmineAbsorption(SanUnit):
@@ -988,22 +987,21 @@ class StruvitePrecipitation(Reactor):
 # UANSynthesis
 # =============================================================================
 
-# TODO: check again
-# TODO: double check the BM value
+# EURO to USD: [1]
 @cost(basis='Urea production capacity', ID='Urea synthesizer', units='kg/h',
-      cost=28*1.04*1000000, S=500*1000/24,
-      CE=CEPCI_by_year[2016], n=0.67, BM=1)
+      cost=28/0.951*1000000, S=500*1000/24,
+      CE=CEPCI_by_year[2016], n=0.67, BM=1.47)
 class UANSynthesis(Reactor):
     '''
-    Urea ammonium nitrate synthesis.
-    Cost of urea systhesis from [1].
+    Urea ammonium nitrate 30 (UAN30) synthesis.
+    Cost of urea systhesis from [2].
     
     Parameters
     ----------
     ins : Iterable(stream)
-        ammonia, carbon_dioxide, nitric_acid.
+        ammonia, carbon_dioxide, additional_carbon_dioxide, nitric_acid, water.
     outs : Iterable(stream)
-        UAN, water, waste.
+        UAN_solution, vapor, waste.
     ratio: float
         The overall ratio between NH3 and CO2 as reactants (after considering
         recycling of unconverted reactants).
@@ -1012,27 +1010,30 @@ class UANSynthesis(Reactor):
         unconverted reactants) of CO2 to urea.
     loss: float
         The loss ratio of unconverted reactants before recycling.
-    UAN_concentration: float
-        Desired UAN concentration in N-wt/wt%.
     
     References
     ----------
-    .. [1] Devkota, S.; Karmacharya, P.; Maharjan, S.; Khatiwada, D.;
+    .. [1] https://www.irs.gov/individuals/international-taxpayers/yearly-\
+        average-currency-exchange-rates (accessed 2025-02-09)
+    .. [2] Devkota, S.; Karmacharya, P.; Maharjan, S.; Khatiwada, D.;
         Uprety, B. Decarbonizing Urea: Techno-Economic and Environmental
         Analysis of a Model Hydroelectricity and Carbon Capture Based
         Green Urea Production. Applied Energy 2024, 372, 123789.
         https://doi.org/10.1016/j.apenergy.2024.123789.
+    .. [3] https://www.cropnutrition.com/resource-library/urea-ammonium-nitrate/
+        (accessed 2025-02-09)
+    .. [4] Palys, M. J.; Daoutidis, P. Techno-Economic Optimization of
+        Renewable Urea Production for Sustainable Agriculture and CO2 
+        tilization. J. Phys. Energy 2023, 6 (1), 015013.
+        https://doi.org/10.1088/2515-7655/ad0ee6.
     '''
     _N_ins = 5
-    _N_outs = 4
+    _N_outs = 3
     _F_BM_default = {**Reactor._F_BM_default}
     _units= {'Urea production capacity':'kg/h'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 ratio=3.5,
-                 efficiency=0.8,
-                 loss=0.02,
-                 UAN_concentration=30, # UAN-30, 30 N-wt/wt%
+                 ratio=3.5, efficiency=0.8, loss=0.02,
                  P=None, tau=1, V_wf=0.8, # assume to be the same as StruvitePrecipitation
                  length_to_diameter=2, N=1, V=20, auxiliary=False,
                  mixing_intensity=None, kW_per_m3=0,
@@ -1044,7 +1045,6 @@ class UANSynthesis(Reactor):
         self.ratio = ratio
         self.efficiency = efficiency
         self.loss = loss
-        self.UAN_concentration = UAN_concentration
         self.P = P
         self.tau = tau
         self.V_wf = V_wf
@@ -1061,18 +1061,19 @@ class UANSynthesis(Reactor):
     def _run(self):
         
         ammonia, carbon_dioxide, additional_carbon_dioxide, nitric_acid, water = self.ins
-        UAN_solution, vapor, waste, excess_carbon_dioxide = self.outs
+        UAN_solution, vapor, waste = self.outs
         
         NH3_CO2_molar_ratio = (self.ratio - (self.ratio - 2*self.efficiency)*(1-self.loss))/\
                               (1 - (1 - self.efficiency)*(1-self.loss))
         
-        ammonia_to_urea = ammonia.imass['NH3']*0.5
-        ammonia_to_ammonium_nitrate = ammonia.imass['NH3']*0.5
+        # UAN30: 33 wt% urea, 42 wt% ammonium nitrate, [2]
+        urea_ratio = 33/60.06*2/(33/60.06*2 + 42/80.043)
+        ammonium_nitrate_ratio = 1 - urea_ratio
+        
+        ammonia_to_urea = ammonia.imass['NH3']*urea_ratio
+        ammonia_to_ammonium_nitrate = ammonia.imass['NH3']*ammonium_nitrate_ratio
         
         nitric_acid.imass['HNO3'] = ammonia_to_ammonium_nitrate/17.031*63.01
-        
-        # assume using 70 wt/wt% HNO3 solution
-        nitric_acid.imass['H2O'] = nitric_acid.imass['HNO3']/0.7*0.3
         
         required_CO2 = ammonia_to_urea/17.031/NH3_CO2_molar_ratio*44.009
         
@@ -1085,14 +1086,11 @@ class UANSynthesis(Reactor):
                                          (1 - (1 - self.efficiency)*(1-self.loss))*60.06
         vapor.imass['H2O'] = required_CO2/44.009*self.efficiency/\
                              (1 - (1 - self.efficiency)*(1-self.loss))*18.01528
-        urea_NH3_wasted = required_CO2/44.009*(self.ratio - 2*self.efficiency)*\
-                          self.loss/(1 - (1 - self.efficiency)*(1-self.loss))*17.031
+        waste.imass['NH3'] = required_CO2/44.009*(self.ratio - 2*self.efficiency)*\
+                             self.loss/(1 - (1 - self.efficiency)*(1-self.loss))*17.031
         waste.imass['CO2'] = required_CO2/44.009*(1 - self.efficiency)*\
                              self.loss/(1 - (1 - self.efficiency)*(1-self.loss))*44.009
-        
-        excess_carbon_dioxide.imass['CO2'] = carbon_dioxide.imass['CO2'] - required_CO2
-        
-        waste.imass['NH3'] = urea_NH3_wasted*2
+        waste.imass['CO2'] += max(0, carbon_dioxide.imass['CO2'] - required_CO2)
         
         ammonium_nitrate_amount = ammonia_to_ammonium_nitrate/17.031*80.043
         
@@ -1100,16 +1098,16 @@ class UANSynthesis(Reactor):
         
         N_amount = urea_amount/60.06*2*14.0067 + ammonium_nitrate_amount/80.043*2*14.0067
         
-        UAN_total_amount = N_amount/self.UAN_concentration*100
+        UAN_total_amount = N_amount/0.3
         
         UAN_solution.imass['H2O'] = UAN_total_amount - UAN_solution.imass['UAN']
         
-        water.imass['H2O'] = UAN_solution.imass['H2O'] - nitric_acid.imass['H2O']
+        water.imass['H2O'] = UAN_solution.imass['H2O']
         
-        if water.imass['H2O'] < 0:
-            raise ValueError(f'Water amount cannot be less than 0. It is impossible to produce UAN-{self.UAN_concentration}.')
+        vapor.phase = 'g'
+        waste.phase = 'g'
         
-        # convert 0.18 MWh/tonne-urea and 0.95 MWh/tonne-urea to kW
+        # convert 0.18 MWh/tonne-urea and 0.95 MWh/tonne-urea to kW, [4]
         self.power_utility.consumption = (0.18 + 0.95)*1000/1000*urea_amount
     
     def _design(self):
@@ -1127,22 +1125,21 @@ class UANSynthesis(Reactor):
 # UreaSynthesis
 # =============================================================================
 
-# TODO: check again
-# TODO: double check the BM value
+# EURO to USD: [1]
 @cost(basis='Production capacity', ID='Urea synthesizer', units='kg/h',
-      cost=28*1.04*1000000, S=500*1000/24,
-      CE=CEPCI_by_year[2016], n=0.67, BM=1)
+      cost=28/0.951*1000000, S=500*1000/24,
+      CE=CEPCI_by_year[2016], n=0.67, BM=1.47)
 class UreaSynthesis(SanUnit):
     '''
     Urea Synthesis.
-    Cost of urea systhesis from [1].
+    Cost of urea systhesis from [2].
     
     Parameters
     ----------
     ins : Iterable(stream)
         ammonia, carbon_dioxide, additional_carbon_dioxide.
     outs : Iterable(stream)
-        urea, water, waste.
+        urea, vapor, waste.
     ratio: float
         The overall ratio between NH3 and CO2 as reactants (after considering
         recycling of unconverted reactants).
@@ -1154,20 +1151,24 @@ class UreaSynthesis(SanUnit):
     
     References
     ----------
-    .. [1] Devkota, S.; Karmacharya, P.; Maharjan, S.; Khatiwada, D.;
+    .. [1] https://www.irs.gov/individuals/international-taxpayers/yearly-\
+        average-currency-exchange-rates (accessed 2025-02-09)
+    .. [2] Devkota, S.; Karmacharya, P.; Maharjan, S.; Khatiwada, D.;
         Uprety, B. Decarbonizing Urea: Techno-Economic and Environmental
         Analysis of a Model Hydroelectricity and Carbon Capture Based
         Green Urea Production. Applied Energy 2024, 372, 123789.
         https://doi.org/10.1016/j.apenergy.2024.123789.
+    .. [3] Palys, M. J.; Daoutidis, P. Techno-Economic Optimization of
+        Renewable Urea Production for Sustainable Agriculture and CO2 
+        tilization. J. Phys. Energy 2023, 6 (1), 015013.
+        https://doi.org/10.1088/2515-7655/ad0ee6.
     '''
     _N_ins = 3
-    _N_outs = 4
+    _N_outs = 3
     _units= {'Production capacity':'kg/h'}
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 ratio=3.5,
-                 efficiency=0.8,
-                 loss=0.02):
+                 ratio=3.5, efficiency=0.8, loss=0.02):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.ratio = ratio
@@ -1177,7 +1178,7 @@ class UreaSynthesis(SanUnit):
     def _run(self):
         
         ammonia, carbon_dioxide, additional_carbon_dioxide = self.ins
-        urea, vapor, waste, excess_carbon_dioxide = self.outs
+        urea, vapor, waste = self.outs
         
         NH3_CO2_molar_ratio = (self.ratio - (self.ratio - 2*self.efficiency)*(1-self.loss))/\
                               (1 - (1 - self.efficiency)*(1-self.loss))
@@ -1197,10 +1198,12 @@ class UreaSynthesis(SanUnit):
                              self.loss/(1 - (1 - self.efficiency)*(1-self.loss))*17.031
         waste.imass['CO2'] = required_CO2/44.009*(1 - self.efficiency)*\
                              self.loss/(1 - (1 - self.efficiency)*(1-self.loss))*44.009
+        waste.imass['CO2'] += max(0, carbon_dioxide.imass['CO2'] - required_CO2)
         
-        excess_carbon_dioxide.imass['CO2'] = max(0, carbon_dioxide.imass['CO2'] - required_CO2)
+        vapor.phase = 'g'
+        waste.phase = 'g'
         
-        # convert 0.18 MWh/tonne-urea and 0.95 MWh/tonne-urea to kW
+        # convert 0.18 MWh/tonne-urea and 0.95 MWh/tonne-urea to kW, [3]
         self.power_utility.consumption = (0.18 + 0.95)*1000/1000*urea.imass['urea']
     
     def _design(self):
@@ -1287,10 +1290,8 @@ class WWTP(SanUnit):
         Nitrogen to phosphorus factor. 
     operation_hour: float
         Plant yearly operation hour, [hr/yr].
-    # TODO: update citations
     sludge_wet_density: float
         The density of sludge of 80% moisture content, [kg/m3].
-        https://www.sciencedirect.com/science/article/pii/S0960852412005561
     sludge_distance: float
         Normalized sludge transportation distance, [km].
     

@@ -400,9 +400,10 @@ def create_components(set_thermo=True):
     
     UAN = Component('UAN', formula='CH6N4O4', phase='s', particle_size='Soluble',
                      degradability='Slowly', organic=True)
-    # TODO: update if needed
     UAN.copy_models_from(Chemical('Urea'),('Cn',))
-    # TODO: update if needed
+    # https://www.cfindustries.com/globalassets/cf-industries/media/documents/\
+    # product-specification-sheets/uan---north-america/urea-ammonium-nitrate-solution-\
+    # 28-30-32.pdf (accessed 2025-02-09)
     add_V_from_rho(UAN, 1300)
     
     cmps = Components([Sludge_lipid, Sludge_protein, Sludge_carbo, Sludge_ash,

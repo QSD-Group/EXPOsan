@@ -22,6 +22,8 @@ from qsdsan.utils import auom, palettes
 from datetime import date
 from warnings import filterwarnings
 
+# TODO: continue from here
+
 # TODO: update balancing area grid CI using WWTP_balancing_area.xlsx and StdScen21_MidCase_annual_balancingArea.csv under exposan/htl/data
 
 # TODO: specify crude_oil_price ($/oil-barrel), DAP_price ($/US-ton), anhydrous_ammonia_price ($/US-ton),
@@ -1007,6 +1009,7 @@ for i in range(0, len(WRRF_input)):
 # for i in range(0, 2):
     # TODO: update based on the function in geospatial_systems.py, if necessary
     # TODO: remove barrel
+    # TODO: add nitrogen_fertilizer
     sys, barrel = create_geospatial_system(size=WRRF_input.iloc[i]['flow_2022_MGD'],
                                            sludge_transportation=0,
                                            sludge_distance=100,
@@ -1748,6 +1751,7 @@ for i in range(0, len(facility_uncertainty)):
 # for i in range(0, 80):
     # TODO: update based on the function in geospatial_systems.py, if necessary
     # TODO: remove barrel
+    # TODO: add nitrogen_fertilizer
     sys, barrel = create_geospatial_system(size=facility_uncertainty.iloc[i]['flow_2022_MGD'],
                                            sludge_transportation=0,
                                            sludge_distance=100,
@@ -2171,6 +2175,7 @@ CU_uncertainty_biocrude = pd.DataFrame()
 for i in range(0, 2):
     # TODO: update based on the function in geospatial_systems.py, if necessary
     # TODO: remove barrel
+    # TODO: add nitrogen_fertilizer
     sys, barrel = create_geospatial_system(size=Urbana_Champaign.iloc[i]['flow_2022_MGD'],
                                            sludge_transportation=0,
                                            sludge_distance=100,
@@ -2286,6 +2291,7 @@ assert Urbana_Champaign.iloc[0]['kg_CO2_kWh'] == Urbana_Champaign.iloc[1]['kg_CO
 # TODO: update based on the function in geospatial_systems.py, if necessary
 # TODO: remove barrel
 # 16.2 km is the distance between these two WRRFs; the distance was manually obtained from Google Maps
+# TODO: add nitrogen_fertilizer
 sys, barrel = create_geospatial_system(size=total_size,
                                        sludge_transportation=1,
                                        sludge_distance=16.2*Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112002]['total_sludge_amount_kg_per_year'].iloc[0]/total_sludge,
@@ -2517,6 +2523,7 @@ center_WRRF = Minnesota.iloc[0,:]
 
 # TODO: update based on the function in geospatial_systems.py, if necessary
 # TODO: remove barrel
+# TODO: add nitrogen_fertilizer
 sys, barrel = create_geospatial_system(size=center_WRRF['flow_2022_MGD'],
                                        sludge_transportation=0,
                                        sludge_distance=100,
@@ -2642,6 +2649,7 @@ average_ww_2_dry_sludge_ratio = total_sludge/1000/365/total_size
 
 # TODO: update based on the function in geospatial_systems.py, if necessary
 # TODO: remove barrel
+# TODO: add nitrogen_fertilizer
 sys, barrel = create_geospatial_system(size=total_size,
                                        sludge_transportation=1,
                                        sludge_distance=sludge_transporataion_distance,
@@ -2855,6 +2863,7 @@ for size in np.linspace(2, 20, 10):
         
         # TODO: update based on the function in geospatial_systems.py, if necessary
         # TODO: remove barrel
+        # TODO: add nitrogen_fertilizer
         sys, barrel = create_geospatial_system(size=size,
                                                sludge_transportation=1,
                                                sludge_distance=sludge_distance,

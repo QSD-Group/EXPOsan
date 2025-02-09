@@ -54,9 +54,6 @@ from .systems import *
 from . import geospatial_systems
 from .geospatial_systems import *
 
-from . import geospatial_benchmark_systems
-from .geospatial_benchmark_systems import *
-
 _system_loaded = False
 def load(configuration='baseline'):
     global sys, tea, lca, flowsheet, _system_loaded
@@ -80,9 +77,6 @@ from .models import *
 
 from . import geospatial_models
 from .geospatial_models import *
-
-from . import geospatial_benchmark_models
-from .geospatial_benchmark_models import *
 
 def simulate_and_save(model,
                       resample=True, samples_kwargs={'N':1000, 'rule':'L', 'seed':3221},
@@ -126,8 +120,6 @@ __all__ = (
     *_tea.__all__,
     *systems.__all__,
     *geospatial_systems.__all__,
-    *geospatial_benchmark_systems.__all__,
     *models.__all__,
     *geospatial_models.__all__,
-    *geospatial_benchmark_models.__all__,
 )

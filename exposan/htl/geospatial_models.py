@@ -917,15 +917,12 @@ def create_geospatial_model(system=None,
             makeup_water.price=i
     
     if HNO3:= stream.search('HNO3'):
-        HNO3_price_min = 0.43*0.7 + 0.0002*0.9/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3
-        HNO3_price_ave = 0.497*0.7 + 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3
-        HNO3_price_max = 0.53*0.7 + 0.0002*1.1/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]*0.3
-        dist = shape.Triangle(HNO3_price_min,HNO3_price_ave,HNO3_price_max)
+        dist = shape.Triangle(0.43,0.497,0.53)
         @param(name='HNO3_price',
                element='TEA',
                kind='isolated',
                units='$/kg',
-               baseline=HNO3_price_ave,
+               baseline=0.497,
                distribution=dist)
         def set_HNO3_price(i):
             HNO3.price=i
