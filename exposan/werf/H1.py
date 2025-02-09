@@ -165,7 +165,7 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
         recycle=(FC-1, HD-0)
         )
 
-    sys.set_dynamic_tracker(ASR-0, FC, AD)
+    sys.set_dynamic_tracker(FC-0, AD)
 
     return sys
 
@@ -207,8 +207,8 @@ if __name__ == '__main__':
     # biomass_IDs = ('X_H', 'X_PAO', 'X_AUT')
     # srt = get_SRT(sys, biomass_IDs,
     #               wastage=[WAS],
-    #               active_unit_IDs=('A1', 'A2', 'O3', 'O4', 'A5', 'O6'))
-    #               # active_unit_IDs=('ASR'))
+    #               # active_unit_IDs=('A1', 'A2', 'O3', 'O4', 'A5', 'O6'))
+    #               active_unit_IDs=('ASR'))
     # if srt: print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
     
     # from exposan.werf import figures_path
