@@ -27,6 +27,7 @@ isa = isinstance
 def get_aeration_kLa(unit, DO_sat):
     if isa(unit, CSTR):
         DO = unit._aeration
+        if DO is None: return 0
         if 0 < DO < DO_sat : return unit._cache_OTR/(DO_sat - DO)
         elif DO >= DO_sat: return np.inf
         else: return 0
