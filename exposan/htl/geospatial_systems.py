@@ -17,29 +17,9 @@ References:
 [2] https://hpoilgas.in/Page/Detail/naturalgasoverview (accessed 2025-02-03).
 [3] https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
     (accessed 2025-02-03).
-[4] https://fred.stlouisfed.org/series/GDPCTPI (accessed 2024-05-20).
-[5] https://data.bls.gov/cgi-bin/srgate (accessed 2024-08-06).
-[6] https://mymarketnews.ams.usda.gov/report/list?market_types%5B0%5D=214
-    (accessed 2025-02-01).
-[7] https://www.sludgeprocessing.com/sludge-dewatering/sludge-drying-beds-lagoons/
-    (accessed 2024-08-03).
-[8] Metcalf & Eddy (2003) Wastewater Engineering: Treatment and Reuse. 4th Edition,
-    McGraw-Hill, New York.
-[9] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.;
-    Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.;
-    Snowden-Swan, L. J.; Davis, R.; Kinchin, C. Process Design and Economics for
-    the Conversion of Algal Biomass to Hydrocarbons: Whole Algae Hydrothermal
-    Liquefaction and Upgrading; PNNL--23227, 1126336; 2014; p PNNL--23227, 1126336.
-    https://doi.org/10.2172/1126336.
-[10] https://www.macrotrends.net/1369/crude-oil-price-history-chart
-    (accessed 2025-02-04).
-[11] Davis, R. E.; Grundl, N. J.; Tao, L.; Biddy, M. J.; Tan, E. C.; Beckham, G. T.;
-    Humbird, D.; Thompson, D. N.; Roni, M. S. Process Design and Economics for the
-    Conversion of Lignocellulosic Biomass to Hydrocarbon Fuels and Coproducts:
-    2018 Biochemical Design Case Update; Biochemical Deconstruction and Conversion
-    of Biomass to Fuels and Products via Integrated Biorefinery Pathways;
-    NREL/TP--5100-71949, 1483234; 2018; p NREL/TP--5100-71949, 1483234.
-    https://doi.org/10.2172/1483234.
+
+
+
 [12] https://businessanalytiq.com/procurementanalytics/index/monoethanolamine-price-index/
     (accessed 2025-02-03)
 [13] https://businessanalytiq.com/procurementanalytics/index/nitric-acid-price-index/
@@ -74,8 +54,8 @@ from biosteam import settings
 
 __all__ = ('create_geospatial_system',)
 
-# TODO: update citations
-# use methane density, probably consistent with BioSTEAM, kg/m3, https://en.wikipedia.org/wiki/Methane
+# use methane density, probably consistent with BioSTEAM, kg/m3
+# https://en.wikipedia.org/wiki/Methane (accessed 2025-02-10)
 natural_gas_density = 0.657
 
 _ton_to_tonne = auom('ton').conversion_factor('tonne')
@@ -84,7 +64,8 @@ _lb_to_kg = auom('lb').conversion_factor('kg')
 _m3_to_ft3 = auom('m3').conversion_factor('ft3')
 _oil_barrel_to_m3 = auom('oil_barrel').conversion_factor('m3')
 
-# GDPCTPI (Gross Domestic Product: Chain-type Price Index), [4]
+# GDPCTPI (Gross Domestic Product: Chain-type Price Index)
+# https://fred.stlouisfed.org/series/GDPCTPI (accessed 2024-05-20)
 GDPCTPI = {2007: 86.352,
            2008: 87.977,
            2009: 88.557,
@@ -103,8 +84,8 @@ GDPCTPI = {2007: 86.352,
            2022: 117.995,
            2023: 122.284}
 
-# the labor index can be found in [5] with the series id CEU3232500008,
-# remember to select 'include annual average'
+# labor index (series id CEU3232500008, include annual average)
+# https://data.bls.gov/cgi-bin/srgate (accessed 2024-08-06)
 labor_index = {2014: 21.49,
                2015: 21.76,
                2016: 22.71,
@@ -167,59 +148,61 @@ def create_geospatial_system(test_run=False,
     bst.PowerUtility.price = elec_price[elec_price['state']==state]['price'].iloc[0]/100
     
     # TODO: update citations
-    # 2022 crude oil price, https://www.eia.gov/dnav/pet/pet_pri_dfp1_k_m.htm
+    # 2022 crude oil price
+    # https://www.eia.gov/dnav/pet/pet_pri_dfp1_k_m.htm (accessed 2025-02-10)
     crude_oil_price_data = pd.read_excel(folder + '/data/crude_oil_price_2022.xlsx', 'crude_oil_price_2022')
     crude_oil_price = crude_oil_price_data[crude_oil_price_data['state']==state]['2022_average'].iloc[0]
     
-    # fertilizer price in $/US-ton, [6]
-    # UAN30 price includes UAN28/30/30-32
+    # fertilizer price in $/US-ton
+    # https://mymarketnews.ams.usda.gov/report/list?market_types%5B0%5D=214 (accessed 2025-02-01)
+    # UAN price includes UAN28/30/30-32
     if state == 'AL':
         DAP_price = 972.5
         NH3_price = 1407.5
         urea_price = 850
-        UAN30_price = 705
+        UAN_price = 705
     
     elif state == 'IA':
         DAP_price = 1000
         NH3_price = 1386.5
         urea_price = 867
-        UAN30_price = 658.5
+        UAN_price = 658.5
         
     elif state == 'IL':
         DAP_price = 962.5
         NH3_price = 1417.5
         urea_price = 875
-        UAN30_price = 702.5
+        UAN_price = 702.5
         
     elif state == 'NC':
         DAP_price = 995
         NH3_price = 1407.5
         urea_price = 855
-        UAN30_price = 605
+        UAN_price = 605
         
     elif state == 'OK':
         DAP_price = 1022
         NH3_price = 1312.5
         urea_price = 882.5
-        UAN30_price = 607.5
+        UAN_price = 607.5
         
     elif state == 'SC':
         DAP_price = 1002.2
         NH3_price = 1407.5
         urea_price = 895
-        UAN30_price = 587.5
+        UAN_price = 587.5
         
     else:
         DAP_price = 984.5
         NH3_price = 1407.5
         urea_price = 855
-        UAN30_price = 605
+        UAN_price = 605
     
     # convert price to $/kg
     DAP_price = DAP_price/_ton_to_tonne/1000
     NH3_price = NH3_price/_ton_to_tonne/1000
     urea_price = urea_price/_ton_to_tonne/1000
-    UAN30_price = UAN30_price/_ton_to_tonne/1000
+    UAN_price = UAN_price/_ton_to_tonne/1000
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -234,15 +217,16 @@ def create_geospatial_system(test_run=False,
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
     
     # assume the moisture content of sludge is 80% in all cases
-    # for lagoon, the sludge will dry at the base of the lagoon (to an assumed 80% moisture content, see [7])
-    # from [1]:
+    # for lagoon, the sludge will dry at the base of the lagoon (to an assumed 80% moisture content
+    # see https://www.sludgeprocessing.com/sludge-dewatering/sludge-drying-beds-lagoons/ (accessed 2024-08-03))
+    # from https://doi.org/10.2172/1897670:
     # ash (dw%) of undigested sludge: 0.266, 0.192, 0.237, 0.174, 0.206, 0.308 (average: 0.231)
     # protein (afdw%) of undigested sludge: 0.464, 0.454, 0.38, 0.467, 0.485, 0.484 (average: 0.456)
     # lipid (afdw%) of undigested sludge: 0.308, 0.08, 0.27, 0.176, 0.178, 0.225 (average: 0.206)
     # ash (dw%), protein (afdw%), and lipid (afdw%) for anaerobically digested sludge are 0.414, 0.510, and 0.193, respectively
     # for aerobically digested sludge, assume the same biological compositions as anaerobically digested sludge,
     # but with a higher ash content
-    # mass reduction assumption (from IEDO work, originally from [8]):
+    # mass reduction assumption (from IEDO work, originally from Metcalf & Eddy):
     # 42.5% VSS reduction for anaerobic digestion, 47.5% VSS reduction for aerobic digestion
     # assume X in sludge-to-be-digested (not necessarily having the same biochemical compositions as sludge)
     # is ash (cannot be digested), Y is VSS (can be digested)
@@ -325,11 +309,13 @@ def create_geospatial_system(test_run=False,
                                              'biocrude_to_be_stored','offgas_HTL'),
                                        mositure_adjustment_exist_in_the_system=False)
     
-    # store for 3 days based on [9]
-    # TODO: update citations
-    # crude oil density: 800-900 kg/m3, https://www.transmountain.com/about-petroleum-liquids (accessed 2025-02-05)
-    # crude oil HHV: 42-47 MJ/kg, https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
-    # biocrude_wet_density: 983 kg/m3, [1]
+    # store for 3 days based on https://doi.org/10.2172/1126336
+    # crude oil density: 800-900 kg/m3
+    # https://www.transmountain.com/about-petroleum-liquids (accessed 2025-02-05)
+    # crude oil HHV: 42-47 MJ/kg
+    # https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
+    # (accessed 2025-02-10)
+    # biocrude_wet_density: 983 kg/m3, https://doi.org/10.2172/1897670
     BiocrudeTank = su.BiocrudeTank(ID='BiocrudeTank',
                                    ins=HTL-2,
                                    outs=('biocrude'),
@@ -358,7 +344,7 @@ def create_geospatial_system(test_run=False,
     CHG = qsu.CatalyticHydrothermalGasification(ID='CHG',
                                                 ins=(HTLaqueous-0, 'virgin_CHG_catalyst'),
                                                 outs=('CHG_out','used_CHG_catalyst'))
-    # CHG price: [9]
+    # CHG price, https://doi.org/10.2172/1126336
     CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2022]
     
     S2WS1 = su.StreamTypeConverter(ID='S2WS1',
@@ -390,7 +376,7 @@ def create_geospatial_system(test_run=False,
                                  tau=24,
                                  vessel_material='Stainless steel')
     # 0.5 M H2SO4: ~5%
-    # based on 93% H2SO4 and fresh water (dilute onsite to 5%) prices in [11]
+    # based on 93% H2SO4 and fresh water (dilute onsite to 5%), https://doi.org/10.2172/1483234
     H2SO4_Tank.ins[0].price = (0.043*1+0.0002*(93/5-1))/(93/5)/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
     # assume no cost/CI associated with residual since it can be both disposed or used
@@ -401,12 +387,12 @@ def create_geospatial_system(test_run=False,
     PreStripper = su.PreStripper(ID='PreStripper',
                                  ins=(F1-1,'NaOH'),
                                  outs='NH3_solution')
-    # 0.2384 2016$/lb, [11]
+    # 0.2384 2016$/lb, https://doi.org/10.2172/1483234
     PreStripper.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
     # use steam could reduce the required air:liquid volume ratio from 3000:1 to ~300:1
-    # set the flow here as size*2 results in a volume ratio of ~350:1
-    water_steam = qs.Stream(ID='water_steam', H2O=size*2, phase='l', T=25+273.15)
+    # set the flow here as size*ww_2_dry_sludge_ratio*2 results in a volume ratio of ~350:1
+    water_steam = qs.Stream(ID='water_steam', H2O=size*ww_2_dry_sludge_ratio*2, phase='l', T=25+273.15)
     water_steam.price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
     boiler = qsu.HXutility(ID='boiler',
@@ -494,7 +480,7 @@ def create_geospatial_system(test_run=False,
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     CHP.ins[1].price = 0.218
-    # 1.41 MM 2016$/year for 4270/4279 kg/hr ash, 7880 annual operating hours, from [11]
+    # 1.41 MM 2016$/year for 4270/4279 kg/hr ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2022]
     
     # TODO: consider adding CT and its TEA and LCA items for other systems (HTL, HTL-PFAS)
@@ -502,7 +488,7 @@ def create_geospatial_system(test_run=False,
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
-    # cooling_tower_chemicals: 1.7842 2016$/lb, [11]
+    # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
     CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
     # TODO: add CWP in writing and figures
@@ -542,13 +528,13 @@ def create_geospatial_system(test_run=False,
             # the CI of CO2 in UAN_waste is 0 (biogenic) or is included in the natural_gas
             UANSyn = su.UANSynthesis(ID='UANSyn',
                                      ins=(DAPSyn-1, CC-1, 'additional_carbon_dioxide', 'HNO3', 'UAN_water'),
-                                     outs=('UAN30','UAN_vapor','UAN_waste'),
+                                     outs=('UAN','UAN_vapor','UAN_waste'),
                                      ratio=3.5, efficiency=0.8, loss=0.02)
             # min: 0.43, average: 0.497, max: 0.53, [13]
             # calculate the price of 70 wt/wt% HNO3 solution by adding water
             UANSyn.ins[3].price = 0.497
             UANSyn.ins[4].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
-            UANSyn.outs[0].price = UAN30_price
+            UANSyn.outs[0].price = UAN_price
     
     sys = qs.System.from_units(ID='sys_geospatial',
                                units=list(flowsheet.unit),
@@ -651,7 +637,7 @@ def create_geospatial_system(test_run=False,
         impact_items['UAN_water'] = [stream.UAN_water, 0.00042012744]
         # TODO: add this (the benefit of capturing CO2) in writing
         # assume N:C = 4:1 in UAN30, for every kg of UAN30 produced, 1*0.3/14.0067/4*44.009 of captured CO2 is used
-        impact_items['UAN30'] = [stream.UAN30, -1.6799471 - 1*0.3/14.0067/4*44.009]
+        impact_items['UAN'] = [stream.UAN, -1.6799471 - 1*0.3/14.0067/4*44.009]
     
     for item in impact_items.items():
         qs.StreamImpactItem(ID=item[0], linked_stream=item[1][0], GlobalWarming=item[1][1])

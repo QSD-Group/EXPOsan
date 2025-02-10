@@ -51,8 +51,6 @@ _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
 _Pa_to_psi = auom('Pa').conversion_factor('psi')
 _m_to_ft = auom('m').conversion_factor('ft')
 
-# TODO: update the format of unit descriptions
-
 # =============================================================================
 # Acid Extraction
 # =============================================================================
@@ -63,13 +61,13 @@ class AcidExtraction(Reactor):
     
     Parameters
     ----------
-    ins : Iterable(stream)
+    ins : iterable
         hydrochar, acid.
-    outs : Iterable(stream)
+    outs : iterable
         residual, extracted.
-    acid_vol: float
+    acid_vol : float
         0.5 M H2SO4 to hydrochar ratio: mL/g.
-    P_acid_recovery_ratio: float
+    P_acid_recovery_ratio : float
         The ratio of phosphorus that can be extracted.
         
     References
@@ -171,19 +169,16 @@ class AmineAbsorption(SanUnit):
     
     Parameters
     ----------
-    ins : 
-        * [0] Flue gas containing CO2
-        * [1] Makeup MEA (neat), updated by the unit
-        * [2] Makeup water, updated by the unit
-    outs : 
-        * [0] CO2-stripped vent
-        * [1] Concentrated CO2
-    CO2_recovery :
+    ins : iterable
+        flue_gas, MEA, water.
+    outs : iterable
+        vent, CO2.
+    CO2_recovery : float
         Percentage of CO2 that can be captured.
-    MEA_to_CO2 :
+    MEA_to_CO2 : float
         Net usage of MEA (kg pure MEA/metric tonne CO2 captured).
         The default is 1.5 based on [1]_ and [3]_.
-    heat_ratio :
+    heat_ratio : float
         Unit duty in kJ/kg CO2.
     
     References
@@ -272,13 +267,13 @@ class BiocrudeTank(Tank, BSTStorageTank):
     
     Parameters
     ----------
-    crude_oil_density :
+    crude_oil_density : float
         Density of crude oil, kg/m3.
-    crude_oil_HHV :
+    crude_oil_HHV : float
         HHV of crude oil, MJ/kg.
-    biocrude_wet_density :
+    biocrude_wet_density : float
         Density of biocrude, kg/m3.
-    biocrude_distance: float
+    biocrude_distance : float
         Distance between WRRFs and oil refineries, [km].
     
     References
@@ -425,18 +420,19 @@ class DAPSynthesis(Reactor):
     
     Parameters
     ----------
-    ins : Iterable(stream)
+    ins : iterable
         P_solution, ammonia.
-    outs : Iterable(stream)
+    outs : iterable
         DAP, excess_ammonia, effluent.
-    target_pH: float
+    target_pH : float
         Target pH for struvite precipitation.  
-    P_pre_recovery_ratio: float
+    P_pre_recovery_ratio : float
         Ratio of phosphorus that can be precipitated out.
-    # TODO: the unit should be in kW/m3, not a driver of the cost or CI, keep consistent with BioSTEAM for now
-    crystallizer_electricity: float
+    crystallizer_electricity : float
         Electricity usage per volume in kW/gal. Defaults to 0.00746, a 
-        heuristic value for suspension of solids.
+        heuristic value for suspension of solids. Note the unit should be
+        kW/m3, not a driver of the cost or CI, keep consistent with
+        BioSTEAM for now
     '''
     _N_ins = 3
     _N_outs = 2
@@ -539,15 +535,15 @@ class FuelMixer(SanUnit):
     
     Parameters
     ----------
-    ins: Iterable(stream)
-        gasoline, diesel
-    outs: Iterable(stream)
-        fuel
-    target: str
+    ins: iterable
+        gasoline, diesel.
+    outs: iterable
+        fuel.
+    target : str
         The target can only be 'gasoline' or 'diesel'.
-    gasoline_price: float
+    gasoline_price : float
         Gasoline price, [$/kg].
-    diesel_price: float
+    diesel_price : float
         Diesel price, [$/kg].
     '''
     _N_ins = 2
@@ -611,10 +607,10 @@ class HTLaqueous(SanUnit):
     
     Parameters
     ----------
-    ins : Iterable(stream)
-        HTL_effluent_undefined
-    outs : Iterable(stream)
-        HTL_effluent_defined
+    ins : iterable
+        HTL_effluent_undefined.
+    outs : iterable
+        HTL_effluent_defined.
         
     References
     ----------
@@ -665,10 +661,10 @@ class HTLmixer(SanUnit):
     
     Parameters
     ----------
-    ins : Iterable(stream)
-        HTLaqueous, extracted
-    outs : Iterable(stream)
-        mixture
+    ins : iterable
+        HTLaqueous, extracted.
+    outs : iterable
+        mixture.
         
     References
     ----------
@@ -741,10 +737,10 @@ class Humidifier(SanUnit):
     
     Parameters
     ----------
-    ins : Iterable(stream)
-        feedstock, makeup, recycle
-    outs : Iterable(stream)
-        mixture
+    ins : iterable
+        feedstock, makeup, recycle.
+    outs : iterable
+        mixture.
     '''
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream'):
@@ -775,9 +771,9 @@ class PreStripper(SanUnit):
     
     Parameters
     ----------
-    ins : Iterable(stream)
+    ins : iterable
         influent.
-    outs : Iterable(stream)
+    outs : iterable
         effluent.
     
     References
@@ -823,9 +819,9 @@ class StreamTypeConverter(SanUnit):
     Parameters
     ----------
     ins : iterable
-        Inlet streams.
+        inlet.
     outs : iterable
-        Outlet streams.
+        outlet.
     '''
     _N_ins = 1
     _N_outs = 1
@@ -858,17 +854,17 @@ class StruvitePrecipitation(Reactor):
     
     Parameters
     ----------
-    ins : Iterable(stream)
+    ins : iterable
         mixture, supply_MgCl2, supply_NH4Cl, base.
-    outs : Iterable(stream)
+    outs : iterable
         struvite, effluent.
-    target_pH: float
+    target_pH : float
         Target pH for struvite precipitation.
-    Mg_P_ratio: float
+    Mg_P_ratio : float
         mol(Mg) to mol(P) ratio.   
-    P_pre_recovery_ratio: float
+    P_pre_recovery_ratio : float
         Ratio of phosphorus that can be precipitated out.
-    HTLaqueous_NH3_N_2_total_N: float
+    HTLaqueous_NH3_N_2_total_N : float
         Ratio of NH3-N to TN in HTL aqueous phase.
         
     References
@@ -998,17 +994,17 @@ class UANSynthesis(Reactor):
     
     Parameters
     ----------
-    ins : Iterable(stream)
+    ins : iterable
         ammonia, carbon_dioxide, additional_carbon_dioxide, nitric_acid, water.
-    outs : Iterable(stream)
+    outs : iterable
         UAN_solution, vapor, waste.
-    ratio: float
+    ratio : float
         The overall ratio between NH3 and CO2 as reactants (after considering
         recycling of unconverted reactants).
-    efficiency: float
+    efficiency : float
         The overall conversion efficiency (after considering recycling of
         unconverted reactants) of CO2 to urea.
-    loss: float
+    loss : float
         The loss ratio of unconverted reactants before recycling.
     
     References
@@ -1136,17 +1132,17 @@ class UreaSynthesis(SanUnit):
     
     Parameters
     ----------
-    ins : Iterable(stream)
+    ins : iterable
         ammonia, carbon_dioxide, additional_carbon_dioxide.
-    outs : Iterable(stream)
+    outs : iterable
         urea, vapor, waste.
-    ratio: float
+    ratio : float
         The overall ratio between NH3 and CO2 as reactants (after considering
         recycling of unconverted reactants).
-    efficiency: float
+    efficiency : float
         The overall conversion efficiency (after considering recycling of
         unconverted reactants) of CO2 to urea.
-    loss: float
+    loss : float
         The loss ratio of unconverted reactants before recycling.
     
     References
@@ -1221,10 +1217,10 @@ class WWmixer(SanUnit):
     amount.
     Parameters
     ----------
-    ins : Iterable(stream)
-        supernatant_1, supernatant_2, memdis_ww, ht_ww
-    outs : Iterable(stream)
-        mixture
+    ins : iterable
+        supernatant, memdis_ww, ht_ww.
+    outs : iterable(stream)
+        mixture.
     '''
     _N_ins = 3
     _N_outs = 1
@@ -1262,37 +1258,37 @@ class WWTP(SanUnit):
     
     Parameters
     ----------
-    ins : Iterable(stream)
+    ins : iterable
         ww.
-    outs : Iterable(stream)
+    outs : iterable
         sludge, treated.
-    ww_2_dry_sludge: float
+    ww_2_dry_sludge : float
         Wastewater-to-dry-sludge conversion factor, [metric ton/day/MGD].
-    sludge_moisture: float
+    sludge_moisture : float
         Sludge moisture content.
-    sludge_dw_ash: float
+    sludge_dw_ash : float
         Sludge dry weight ash content.
-    sludge_afdw_lipid: float
+    sludge_afdw_lipid : float
         Sludge ash free dry weight lipid content.
-    sludge_afdw_protein: float
+    sludge_afdw_protein : float
         Sludge ash free dry weight protein content.
-    lipid_2_C: float
+    lipid_2_C : float
         Lipid to carbon factor.     
-    protein_2_C: float
+    protein_2_C : float
         Protein to carbon factor.
-    carbo_2_C: float
+    carbo_2_C : float
         Carbohydrate to carbon factor.
-    C_2_H: float
+    C_2_H : float
         Carbon to hydrogen factor.
-    protein_2_N: float
+    protein_2_N : float
         Protein to nitrogen factor.
-    N_2_P: float
+    N_2_P : float
         Nitrogen to phosphorus factor. 
-    operation_hour: float
+    operation_hour : float
         Plant yearly operation hour, [hr/yr].
-    sludge_wet_density: float
+    sludge_wet_density : float
         The density of sludge of 80% moisture content, [kg/m3].
-    sludge_distance: float
+    sludge_distance : float
         Normalized sludge transportation distance, [km].
     
     References
