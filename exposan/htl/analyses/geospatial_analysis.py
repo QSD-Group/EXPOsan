@@ -248,6 +248,8 @@ PADD_color = {1: b,
               4: o,
               5: y}
 
+crude_oil_price_data = pd.read_excel(folder + 'crude_oil_price_2022.xlsx')
+
 # state dominant nitrogen fertilizer form
 state_nitrogen_fertilizer = {'AL':'UAN',
                              'AZ':'UAN',
@@ -300,6 +302,28 @@ state_nitrogen_fertilizer = {'AL':'UAN',
                              'WY':'urea'}
 
 WRRF['nitrogen_fertilizer'] = WRRF['state'].apply(lambda x: state_nitrogen_fertilizer[x])
+
+fertilizer_price_uncertainty = {'AL': {'DAP':[588, 972.5, 1357],
+                                       'urea':[575, 850, 1125],
+                                       'UAN':[560, 705, 850]},
+                                'IA': {'DAP':[830, 1000, 1170],
+                                       'anhydrous_ammonia':[1065, 1386.5, 1708],
+                                       'urea':[650, 867, 1084],
+                                       'UAN':[532, 658.5, 785]},
+                                'IL': {'DAP':[800, 962.5, 1125],
+                                       'anhydrous_ammonia':[1085, 1417.5, 1750],
+                                       'urea':[700, 875, 1050],
+                                       'UAN':[545, 702.5, 860]},
+                                'NC': {'DAP':[609, 995, 1381],
+                                       'urea':[447, 855, 1263],
+                                       'UAN':[350, 605, 860]},
+                                'OK': {'DAP':[800, 1022, 1244],
+                                       'anhydrous_ammonia':[1100, 1312.5, 1525],
+                                       'urea':[700, 882.5, 1065],
+                                       'UAN':[415, 607.5, 800]},
+                                'SC': {'DAP':[820, 1002.5, 1185],
+                                       'urea':[650, 895, 1140],
+                                       'UAN':[450, 587.5, 725]}}
 
 # sludge disposal cost in $/kg sludge (Peccia and Westerhoff. 2015, https://pubs.acs.org/doi/full/10.1021/acs.est.5b01931)
 sludge_disposal_cost = {'landfill': 0.413,
@@ -1094,29 +1118,9 @@ result = {'CWNS': CWNS,
         
 result = pd.DataFrame(result)
 
-result.to_excel(folder + f'results/baseline_result/baseline_{date.today()}_{i}.xlsx')
+result.to_excel(folder + f'results/baseline/baseline_{date.today()}_{i}.xlsx')
 
 #%% merge the results and the input
-
-
-
-
-
-
-
-
-
-# TODO: continue from here
-
-
-
-
-
-
-
-
-
-
 
 # !!! update the input file if necessary
 input_data = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-02-10.xlsx')
@@ -1124,9 +1128,9 @@ input_data = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-02-10.xlsx'
 input_data = input_data.dropna(subset='real_distance_km')
 
 # !!! update these files if necessary
-output_result_1 = pd.read_excel(folder + 'results/baseline_result/baseline_2025-02-10_4999.xlsx')
-output_result_2 = pd.read_excel(folder + 'results/baseline_result/baseline_2025-02-10_9999.xlsx')
-output_result_3 = pd.read_excel(folder + 'results/baseline_result/baseline_2025-02-10_15858.xlsx')
+output_result_1 = pd.read_excel(folder + 'results/baseline/baseline_2025-02-10_4999.xlsx')
+output_result_2 = pd.read_excel(folder + 'results/baseline/baseline_2025-02-10_9999.xlsx')
+output_result_3 = pd.read_excel(folder + 'results/baseline/baseline_2025-02-10_15858.xlsx')
 
 output_result = pd.concat([output_result_1, output_result_2, output_result_3])
 
@@ -1134,15 +1138,14 @@ assert len(input_data) == len(output_result)
 
 integrated_result = input_data.merge(output_result, how='left', on='CWNS')
 
-# TODO: add a layer of folder if necessary
-integrated_result.to_excel(folder + f'results/integrated_decarbonization_result_{date.today()}.xlsx')
+integrated_result.to_excel(folder + f'results/baseline/integrated_baseline_{date.today()}.xlsx')
 
 #%% decarbonization map (preparation)
 
 # TODO: add uncertainty versions of this
 
 # !!! update the file here if necessary
-decarbonization_map = pd.read_excel(folder + 'results/integrated_decarbonization_result_2025-02-10.xlsx')
+decarbonization_map = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-11.xlsx')
 decarbonization_map = decarbonization_map[decarbonization_map['USD_decarbonization'].notna()]
 decarbonization_map = decarbonization_map[decarbonization_map['USD_decarbonization'] <= 0]
 decarbonization_map = decarbonization_map.sort_values(by='total_emission', ascending=False).copy()
@@ -1171,52 +1174,50 @@ def plot_map(dataset, color):
 
     US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
 
-    dataset.plot(ax=ax, color=color, markersize=dataset['CO2_reduction_tonne_per_day']*150, edgecolor='k', linewidth=1.5, alpha=1)
+    dataset.plot(ax=ax, color=color, markersize=dataset['CO2_reduction_tonne_per_day']*200, edgecolor='k', linewidth=1.5, alpha=1)
     
     color_1 = color_2 = color_3 = color_4 = 'none'
     
-    max_size = (dataset['CO2_reduction_tonne_per_day']*100).max()
-    min_size = (dataset['CO2_reduction_tonne_per_day']*100).min()
+    max_size = (dataset['CO2_reduction_tonne_per_day']*200).max()
+    min_size = (dataset['CO2_reduction_tonne_per_day']*200).min()
     
-    if max_size > 60*150:
+    if max_size > 50*200:
         raise ValueError('add another layer of legend')
-    elif max_size > 30*150:
+    elif max_size > 25*200:
         color_1 = color
-    elif max_size > 10*150:
+    elif max_size > 10*200:
         color_2 = color
-    elif max_size > 1*150:
+    elif max_size > 1*200:
         color_3 = color
     else:
         color_4 = color
         
-    if min_size > 60*150:
+    if min_size > 50*200:
         color_1 = 'w'
         raise ValueError('add another layer of legend')
-    elif min_size > 30*150:
+    elif min_size > 25*200:
         color_2 = 'w'
-    elif min_size > 10*150:
+    elif min_size > 10*200:
         color_3 = 'w'
-    elif min_size > 1*150:
+    elif min_size > 1*200:
         color_4 = 'w'
     
-    rectangle_edge = Rectangle((-13410000, 2840000), 1370000, 730000,
+    rectangle_edge = Rectangle((-13900000, 2830000), 2150000, 750000,
                                color='k', lw=3, fc='none', alpha=1)
     ax.add_patch(rectangle_edge)
     
-    ax.scatter(x=-13130000, y=3120000, marker='o', s=60*150, c=color_1, linewidths=3,
+    ax.scatter(x=-13580000, y=3100000, marker='o', s=50*200, c=color_1, linewidths=3,
                alpha=1, edgecolor='k')
-    ax.scatter(x=-13130000, y=3120000, marker='o', s=30*150, c=color_2, linewidths=3,
+    ax.scatter(x=-13580000, y=3100000, marker='o', s=25*200, c=color_2, linewidths=3,
                alpha=1, edgecolor='k')
-    ax.scatter(x=-13130000, y=3120000, marker='o', s=10*150, c=color_3, linewidths=3,
+    ax.scatter(x=-13580000, y=3100000, marker='o', s=10*200, c=color_3, linewidths=3,
                alpha=1, edgecolor='k')
-    ax.scatter(x=-13130000, y=3120000, marker='o', s=1*150, c=color_4, linewidths=3,
+    ax.scatter(x=-13580000, y=3100000, marker='o', s=1*200, c=color_4, linewidths=3,
                alpha=1, edgecolor='k')
     
-    plt.figtext(0.218, 0.376, '[tonne ${CO_2}$ eq·${day^{-1}}$]', fontname='Arial', fontdict={'fontsize': 30,'color':'k','fontweight':'bold'})
-    plt.figtext(0.274, 0.360, '1st layer: 60', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
-    plt.figtext(0.274, 0.346, '2nd layer: 30', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
-    plt.figtext(0.274, 0.332, '3rd layer: 10', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
-    plt.figtext(0.274, 0.318, '4th layer: 1', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
+    plt.figtext(0.163, 0.372, '[tonne ${CO_2}$ eq·${day^{-1}}$]', fontname='Arial', fontdict={'fontsize': 50,'color':'k','fontweight':'bold'})
+    plt.figtext(0.23, 0.345, '1st: 50  2nd: 25', fontname='Arial', fontdict={'fontsize': 50,'color':'k','style':'italic'})
+    plt.figtext(0.23, 0.319, '3rd:10  4th: 1', fontname='Arial', fontdict={'fontsize': 50,'color':'k','style':'italic'})
     
     ax.set_aspect(1)
     
@@ -1256,18 +1257,290 @@ plot_map(AD_or_AeD_map, b)
 none_map = decarbonization_map[(decarbonization_map['sludge_anaerobic_digestion'] == 0) & (decarbonization_map['sludge_aerobic_digestion'] == 0)].copy()
 plot_map(none_map, r)
 
-#%% decarbonization cumulative figure
+#%% cumulative GHG reduction
 
-# TODO: make this figure
+# !!! update the file here if necessary
+decarbonization_map = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-11.xlsx')
+decarbonization_map = decarbonization_map[decarbonization_map['USD_decarbonization'].notna()]
+decarbonization_map = decarbonization_map[decarbonization_map['USD_decarbonization'] <= 0]
+decarbonization_map = decarbonization_map.sort_values(by='total_emission', ascending=False).copy()
+decarbonization_map = gpd.GeoDataFrame(decarbonization_map, crs='EPSG:4269',
+                                       geometry=gpd.points_from_xy(x=decarbonization_map.longitude,
+                                                                   y=decarbonization_map.latitude))
+decarbonization_map = decarbonization_map.to_crs(crs='EPSG:3857')
+
+decarbonization_map['CO2_reduction_tonne_per_day'] = decarbonization_map['CO2_reduction']/30/365/1000
+
+sorted_data = decarbonization_map.sort_values(by='CO2_reduction_tonne_per_day', ascending=False).reset_index(drop=True)
+sorted_data['cumulative_emissions'] = sorted_data['CO2_reduction_tonne_per_day'].cumsum()
+
+sorted_data['facility_rank'] = sorted_data.index + 1
+
+fig, ax = plt.subplots(figsize=(11, 10))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 38
+plt.rcParams['ytick.labelsize'] = 38
+
+plt.xticks(fontname='Arial')
+plt.yticks(fontname='Arial')
+
+plt.rcParams.update({'mathtext.fontset': 'custom'})
+plt.rcParams.update({'mathtext.default': 'regular'})
+plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+ax = plt.gca()
+ax.set_xlim([0, 600])
+ax.set_ylim([0, 1400])
+
+ax.tick_params(direction='inout', length=20, width=3,
+                bottom=True, top=False, left=True, right=False, pad=0)
+
+plt.xticks(np.arange(0, 700, 100))
+plt.yticks(np.arange(0, 1600, 200))
+
+ax_top = ax.twiny()
+ax_top.set_xlim(ax.get_xlim())
+plt.xticks(np.arange(0, 700, 100))
+
+ax_top.tick_params(direction='in', length=10, width=3,
+                    bottom=False, top=True, left=False, right=False,
+                    labelcolor='none')
+
+ax_bottom = ax.twinx()
+ax_bottom.set_ylim(ax.get_ylim())
+plt.xticks(np.arange(0, 700, 100))
+
+ax_bottom.tick_params(direction='in', length=10, width=3,
+                      bottom=False, top=False, left=False, right=True,
+                      labelcolor='none')
+
+plt.plot(sorted_data['facility_rank'],
+         sorted_data['cumulative_emissions'],
+         linewidth=0,
+         marker='o',
+         color='k',
+         markersize=10)
+
+# 10th percentile of the facility number
+plt.plot(sorted_data['facility_rank'].iloc[55],
+         sorted_data['cumulative_emissions'].iloc[55],
+         linewidth=0,
+         marker='o',
+         color=r,
+         markeredgecolor='k',
+         markeredgewidth=3,
+         markersize=20)
+
+# 50th percentile of the facility number
+plt.plot(sorted_data['facility_rank'].iloc[279],
+         sorted_data['cumulative_emissions'].iloc[279],
+         linewidth=0,
+         marker='o',
+         color=r,
+         markeredgecolor='k',
+         markeredgewidth=3,
+         markersize=20)
+
+# 100th percentile of the facility number
+plt.plot(sorted_data['facility_rank'].iloc[-1],
+         sorted_data['cumulative_emissions'].iloc[-1],
+         linewidth=0,
+         marker='o',
+         color=r,
+         markeredgecolor='k',
+         markeredgewidth=3,
+         markersize=20)
+
+plt.plot([0, sorted_data['facility_rank'].iloc[55]],
+         [sorted_data['cumulative_emissions'].iloc[55], sorted_data['cumulative_emissions'].iloc[55]],
+         lw=3, color='k', linestyle='--', solid_capstyle='round', zorder=0)
+
+plt.plot([0, sorted_data['facility_rank'].iloc[279]],
+         [sorted_data['cumulative_emissions'].iloc[279], sorted_data['cumulative_emissions'].iloc[279]],
+         lw=3, color='k', linestyle='--', solid_capstyle='round', zorder=0)
+
+plt.plot([0, sorted_data['facility_rank'].iloc[-1]],
+         [sorted_data['cumulative_emissions'].iloc[-1], sorted_data['cumulative_emissions'].iloc[-1]],
+         lw=3, color='k', linestyle='--', solid_capstyle='round', zorder=0)
+
+plt.plot([sorted_data['facility_rank'].iloc[55], sorted_data['facility_rank'].iloc[55]],
+         [0, sorted_data['cumulative_emissions'].iloc[55]],
+         lw=3, color='k', linestyle='--', solid_capstyle='round', zorder=0)
+
+plt.plot([sorted_data['facility_rank'].iloc[279], sorted_data['facility_rank'].iloc[279]],
+         [0, sorted_data['cumulative_emissions'].iloc[279]],
+         lw=3, color='k', linestyle='--', solid_capstyle='round', zorder=0)
+
+plt.plot([sorted_data['facility_rank'].iloc[-1], sorted_data['facility_rank'].iloc[-1]],
+         [0, sorted_data['cumulative_emissions'].iloc[-1]],
+         lw=3, color='k', linestyle='--', solid_capstyle='round', zorder=0)
+
+ax.set_xlabel('$\mathbf{Facitity\ number}$',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=0)
+
+ax.set_ylabel(r'$\mathbf{Cumulative\ GHG\ reduction}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=0,
+              linespacing=0.8)
+
+mathtext.FontConstantsBase.sup1 = 0.35
+
+#%% GHG reduction boxplots
+
+fig, ax = plt.subplots(figsize = (7, 10))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 38
+plt.rcParams['ytick.labelsize'] = 38
+
+plt.xticks(fontname='Arial')
+plt.yticks(fontname='Arial')
+
+plt.rcParams.update({'mathtext.fontset': 'custom'})
+plt.rcParams.update({'mathtext.default': 'regular'})
+plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+ax = plt.gca()
+ax.set_ylim([0, 100])
+ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
+
+ax.set_xticklabels(['solids','WRRF'])
+plt.yticks(np.arange(0, 120, 20))
+
+ax.set_ylabel(r'$\mathbf{GHG\ reduction}$ [%]', fontname='Arial', fontsize=45)
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+bp = plt.boxplot([decarbonization_map['sludge_CO2_reduction_ratio'].dropna()*100, decarbonization_map['WRRF_CO2_reduction_ratio'].dropna()*100], showfliers=False, widths=0.6, patch_artist=True)
+
+for box in bp['boxes']:
+    box.set(color='k', facecolor=b, linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+    
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+    
+ax_right.scatter(x=1,
+                 y=decarbonization_map['sludge_CO2_reduction_ratio'].mean()*100,
+                 marker='*',
+                 s=600,
+                 c='w',
+                 linewidths=3,
+                 alpha=1,
+                 edgecolor='k',
+                 zorder=3)
+
+ax_right.scatter(x=2,
+                 y=decarbonization_map['WRRF_CO2_reduction_ratio'].mean()*100,
+                 marker='*',
+                 s=600,
+                 c='w',
+                 linewidths=3,
+                 alpha=1,
+                 edgecolor='k',
+                 zorder=3)
+
+# uncomment for outliers
+# for flier in bp['fliers']:
+#     flier.set(marker='o', markersize=7, markerfacecolor='k', markeredgewidth=1.5)
+    
+# fig.savefig('/Users/jiananfeng/Desktop/distance.png', transparent=True, bbox_inches='tight')
+
+
+#%% GHG reduction zoom-in boxplot
+
+fig, ax = plt.subplots(figsize = (5, 10))
+
+plt.rcParams['axes.linewidth'] = 5
+plt.rcParams['xtick.labelsize'] = 45
+plt.rcParams['ytick.labelsize'] = 45
+
+plt.xticks(fontname='Arial')
+plt.yticks(fontname='Arial')
+
+plt.rcParams.update({'mathtext.fontset': 'custom'})
+plt.rcParams.update({'mathtext.default': 'regular'})
+plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+ax = plt.gca()
+ax.set_ylim([0, 6])
+ax.tick_params(direction='inout', length=20, width=5, labelbottom=False, bottom=False, top=False, left=True, right=False)
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=5, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+bp = plt.boxplot(decarbonization_map['WRRF_CO2_reduction_ratio'].dropna()*100, showfliers=False, widths=0.6, patch_artist=True)
+
+for box in bp['boxes']:
+    box.set(color='k', facecolor=b, linewidth=5)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=5)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=5)
+    
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=5)
+    
+ax_right.scatter(x=1,
+                 y=decarbonization_map['WRRF_CO2_reduction_ratio'].mean()*100,
+                 marker='*',
+                 s=1500,
+                 c='w',
+                 linewidths=5,
+                 alpha=1,
+                 edgecolor='k',
+                 zorder=3)
+
+# uncomment for outliers
+# for flier in bp['fliers']:
+#     flier.set(marker='o', markersize=7, markerfacecolor='k', markeredgewidth=1.5)
+    
+# fig.savefig('/Users/jiananfeng/Desktop/distance.png', transparent=True, bbox_inches='tight')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #%% biocrude transportation Chord diagram
+
+# TODO: start from here, not checked
 
 # TODO: add uncertainty versions of this
 
 # import only if needed
 from d3blocks import D3Blocks
 
-biocrude_transportation = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
+biocrude_transportation = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-11.xlsx')
 biocrude_transportation = biocrude_transportation[biocrude_transportation['USD_decarbonization'].notna()]
 biocrude_transportation = biocrude_transportation[biocrude_transportation['USD_decarbonization'] <= 0]
 biocrude_transportation = biocrude_transportation.merge(elec_price[['state','name']], how='left', on='state')
@@ -1303,7 +1576,7 @@ d3.show()
 # TODO: add uncertainty versions of this
 
 # !!! update the file here if necessary
-digestion_or_not = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
+digestion_or_not = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-11.xlsx')
 digestion_or_not = digestion_or_not[digestion_or_not['USD_decarbonization'].notna()]
 digestion_or_not = digestion_or_not[digestion_or_not['USD_decarbonization'] <= 0]
 
@@ -1393,7 +1666,7 @@ ax.scatter(x=2,
 # TODO: add uncertainty versions of this
 
 # !!! update the file here if necessary
-digestion_or_not = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
+digestion_or_not = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-11.xlsx')
 digestion_or_not = digestion_or_not[digestion_or_not['USD_decarbonization'].notna()]
 digestion_or_not = digestion_or_not[digestion_or_not['USD_decarbonization'] <= 0]
 
@@ -1430,7 +1703,7 @@ ax.tick_params(direction='inout', length=20, width=3,
                bottom=False, top=False, left=True, right=False, pad=0)
 
 # TODO: replace all '[d]ecarbonization's in figures and texts
-ax.set_ylabel(r'$\mathbf{GHG\ emission\ reduction}$' + '\n[kg CO${_2}$ eq·tonne${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
+ax.set_ylabel(r'$\mathbf{GHG\ reduction}$' + '\n[kg CO${_2}$ eq·tonne${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -1483,7 +1756,7 @@ ax.scatter(x=2,
 
 # TODO: update the analysis here based on the texts
 # !!! update the file here if necessary
-WRRF_finder = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
+WRRF_finder = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-11.xlsx')
 WRRF_finder = WRRF_finder[WRRF_finder['USD_decarbonization'].notna()]
 WRRF_finder = WRRF_finder[WRRF_finder['USD_decarbonization'] <= 0]
 
@@ -1502,7 +1775,7 @@ print(no_digestion_WRRFs.sort_values('oil_BPD', ascending=False).iloc[0,][['faci
 # TODO: add uncertainty versions of this
 
 # !!! update the file here if necessary
-saving_vs_sludge = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
+saving_vs_sludge = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-11.xlsx')
 saving_vs_sludge = saving_vs_sludge[saving_vs_sludge['USD_decarbonization'].notna()]
 saving_vs_sludge = saving_vs_sludge[saving_vs_sludge['USD_decarbonization'] <= 0]
 saving_vs_sludge = saving_vs_sludge[['total_sludge_amount_kg_per_year','saving']].copy()
@@ -1564,7 +1837,7 @@ ax.scatter(x=saving_vs_sludge['total_sludge_amount_kg_per_year']/1000/365,
 # TODO: add uncertainty versions of this
 
 # !!! update the file here if necessary
-saving_vs_distance = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
+saving_vs_distance = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-11.xlsx')
 saving_vs_distance = saving_vs_distance[saving_vs_distance['USD_decarbonization'].notna()]
 saving_vs_distance = saving_vs_distance[saving_vs_distance['USD_decarbonization'] <= 0]
 saving_vs_distance = saving_vs_distance[['real_distance_km','saving']].copy()
@@ -1626,7 +1899,7 @@ ax.scatter(x=saving_vs_distance['real_distance_km'],
 # TODO: add uncertainty versions of this
 
 # !!! update the file here if necessary
-decarbonization_vs_sludge = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
+decarbonization_vs_sludge = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-11.xlsx')
 decarbonization_vs_sludge = decarbonization_vs_sludge[decarbonization_vs_sludge['USD_decarbonization'].notna()]
 decarbonization_vs_sludge = decarbonization_vs_sludge[decarbonization_vs_sludge['USD_decarbonization'] <= 0]
 decarbonization_vs_sludge = decarbonization_vs_sludge[['total_sludge_amount_kg_per_year','CO2_reduction']].copy()
@@ -1656,7 +1929,7 @@ ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, le
 
 ax.set_xlabel(r'$\mathbf{Solids}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
 # TODO: replace all '[d]ecarbonization's in figures and texts
-ax.set_ylabel(r'$\mathbf{GHG\ emission\ reduction}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
+ax.set_ylabel(r'$\mathbf{GHG\ reduction}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -1689,7 +1962,7 @@ ax.scatter(x=decarbonization_vs_sludge['total_sludge_amount_kg_per_year']/1000/3
 # TODO: add uncertainty versions of this
 
 # !!! update the file here if necessary
-decarbonization_vs_distance = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
+decarbonization_vs_distance = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-11.xlsx')
 decarbonization_vs_distance = decarbonization_vs_distance[decarbonization_vs_distance['USD_decarbonization'].notna()]
 decarbonization_vs_distance = decarbonization_vs_distance[decarbonization_vs_distance['USD_decarbonization'] <= 0]
 decarbonization_vs_distance = decarbonization_vs_distance[['real_distance_km','CO2_reduction']].copy()
@@ -1719,7 +1992,7 @@ ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, le
 
 ax.set_xlabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=45)
 # TODO: replace all '[d]ecarbonization's in figures and texts
-ax.set_ylabel(r'$\mathbf{GHG\ emission\ reduction}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
+ax.set_ylabel(r'$\mathbf{GHG\ reduction}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -1747,12 +2020,32 @@ ax.scatter(x=decarbonization_vs_distance['real_distance_km'],
            linewidths=2,
            edgecolors='k')
 
+# TODO: up to here, not checked
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #%% facility level uncertainty analysis
 
 filterwarnings('ignore')
 
 # !!! update the file here if necessary
-facility_uncertainty = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
+facility_uncertainty = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-11.xlsx')
 facility_uncertainty = facility_uncertainty[facility_uncertainty['USD_decarbonization'].notna()]
 facility_uncertainty = facility_uncertainty[facility_uncertainty['USD_decarbonization'] <= 0]
 
@@ -1765,26 +2058,29 @@ facility_uncertainty['waste_GHG'] =  sum(facility_uncertainty[i]*sludge_emission
 
 geo_uncertainty_decarbonization = pd.DataFrame()
 geo_uncertainty_saving = pd.DataFrame()
+geo_uncertainty_sludge_N = pd.DataFrame()
+geo_uncertainty_sludge_P = pd.DataFrame()
+geo_uncertainty_HNO3_N = pd.DataFrame()
 geo_uncertainty_biocrude = pd.DataFrame()
-geo_uncertainty_N = pd.DataFrame()
-geo_uncertainty_P = pd.DataFrame()
+geo_uncertainty_DAP = pd.DataFrame()
+geo_uncertainty_anhydrous_ammonia = pd.DataFrame()
+geo_uncertainty_urea = pd.DataFrame()
+geo_uncertainty_UAN = pd.DataFrame()
 
 # !!! run in different consoles to speed up: 0, 80, 160, 240, 320, 400, 480
-for i in range(0, len(facility_uncertainty)):
+for i in range(480, len(facility_uncertainty)):
 # for i in range(0, 80):
-    # TODO: update based on the function in geospatial_systems.py, if necessary
-    # TODO: remove barrel
-    # TODO: add nitrogen_fertilizer
-    sys, barrel = create_geospatial_system(size=facility_uncertainty.iloc[i]['flow_2022_MGD_final'],
-                                           sludge_transportation=0,
-                                           sludge_distance=100,
-                                           biocrude_distance=facility_uncertainty.iloc[i]['real_distance_km'],
-                                           anaerobic_digestion=facility_uncertainty.iloc[i]['sludge_anaerobic_digestion'],
-                                           aerobic_digestion=facility_uncertainty.iloc[i]['sludge_aerobic_digestion'],
-                                           ww_2_dry_sludge_ratio=facility_uncertainty.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/facility_uncertainty.iloc[i]['flow_2022_MGD_final'],
-                                           state=facility_uncertainty.iloc[i]['state'],
-                                           elec_GHG=facility_uncertainty.iloc[i]['kg_CO2e_kWh'],
-                                           wage_adjustment=WRRF_input.iloc[i]['wage_quotient']/100)
+    sys = create_geospatial_system(size=facility_uncertainty.iloc[i]['flow_2022_MGD_final'],
+                                   sludge_transportation=0,
+                                   sludge_distance=100,
+                                   biocrude_distance=facility_uncertainty.iloc[i]['real_distance_km'],
+                                   anaerobic_digestion=facility_uncertainty.iloc[i]['sludge_anaerobic_digestion'],
+                                   aerobic_digestion=facility_uncertainty.iloc[i]['sludge_aerobic_digestion'],
+                                   ww_2_dry_sludge_ratio=facility_uncertainty.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/facility_uncertainty.iloc[i]['flow_2022_MGD_final'],
+                                   state=facility_uncertainty.iloc[i]['state'],
+                                   nitrogen_fertilizer=facility_uncertainty.iloc[i]['nitrogen_fertilizer'],
+                                   elec_GHG=facility_uncertainty.iloc[i]['kg_CO2e_kWh'],
+                                   wage_adjustment=facility_uncertainty.iloc[i]['wage_quotient']/100)
     
     # if AD and AeD both exist, assume AeD (due to higher ash content) to be conservative
     if facility_uncertainty.iloc[i]['sludge_aerobic_digestion'] == 1:
@@ -1800,10 +2096,39 @@ for i in range(0, len(facility_uncertainty)):
         sludge_lipid_values=[0.080, 0.206, 0.308]
         sludge_protein_values=[0.380, 0.456, 0.485]
     
+    crude_oil_price_values = [crude_oil_price_data[crude_oil_price_data['state']==facility_uncertainty.iloc[i]['state']]['2022_min'].iloc[0],
+                              crude_oil_price_data[crude_oil_price_data['state']==facility_uncertainty.iloc[i]['state']]['2022_average'].iloc[0],
+                              crude_oil_price_data[crude_oil_price_data['state']==facility_uncertainty.iloc[i]['state']]['2022_max'].iloc[0]]
+    
+    try:
+        DAP_price_values = fertilizer_price_uncertainty[facility_uncertainty.iloc[i]['state']]['DAP']
+    except KeyError:
+        DAP_price_values = [588, 984.5, 1381]
+    
+    try:
+        anhydrous_ammonia_price_values = fertilizer_price_uncertainty[facility_uncertainty.iloc[i]['state']]['anhydrous_ammonia']
+    except KeyError:
+        anhydrous_ammonia_price_values = [1065, 1407.5, 1750]
+    
+    try:
+        urea_price_values = fertilizer_price_uncertainty[facility_uncertainty.iloc[i]['state']]['urea']
+    except KeyError:
+        urea_price_values = [447, 855, 1263]
+    
+    try:
+        UAN_price_values = fertilizer_price_uncertainty[facility_uncertainty.iloc[i]['state']]['UAN']
+    except KeyError:
+        UAN_price_values = [350, 605, 860]
+    
     model = create_geospatial_model(system=sys,
                                     sludge_ash=sludge_ash_values,
                                     sludge_lipid=sludge_lipid_values,
-                                    sludge_protein=sludge_protein_values)
+                                    sludge_protein=sludge_protein_values,
+                                    crude_oil_price=crude_oil_price_values,
+                                    DAP_price=DAP_price_values,
+                                    anhydrous_ammonia_price=anhydrous_ammonia_price_values,
+                                    urea_price=urea_price_values,
+                                    UAN_price=UAN_price_values)
     
     kwargs = {'N':1000,'rule':'L','seed':3221}
     samples = model.sample(**kwargs)
@@ -1818,24 +2143,64 @@ for i in range(0, len(facility_uncertainty)):
     geo_uncertainty_saving[facility_uncertainty.iloc[i]['CWNS']] = (facility_uncertainty.iloc[i]['waste_cost'] - results[('Geospatial','Sludge management cost [$/tonne dry sludge]')])*facility_uncertainty.iloc[i]['total_sludge_amount_kg_per_year']/1000/365
     # kg CO2 eq/day
     geo_uncertainty_decarbonization[facility_uncertainty.iloc[i]['CWNS']] = (facility_uncertainty.iloc[i]['waste_GHG'] - results[('Geospatial','Sludge CI [kg CO2/tonne dry sludge]')])*facility_uncertainty.iloc[i]['total_sludge_amount_kg_per_year']/1000/365
+    # tonne/year
+    geo_uncertainty_sludge_N[facility_uncertainty.iloc[i]['CWNS']] = results[('Geospatial','Sludge N [tonne/year]')]
+    # tonne/year
+    geo_uncertainty_HNO3_N[facility_uncertainty.iloc[i]['CWNS']] = results[('Geospatial','HNO3 N [tonne/year]')]
+    # tonne/year
+    geo_uncertainty_sludge_P[facility_uncertainty.iloc[i]['CWNS']] = results[('Geospatial','Sludge P [tonne/year]')]
     # BPD
     geo_uncertainty_biocrude[facility_uncertainty.iloc[i]['CWNS']] = results[('Geospatial','Biocrude production [BPD]')]
-    # TODO: add N production & offset
-    # TODO: add P production & offset
+    # tonne/year
+    geo_uncertainty_DAP[facility_uncertainty.iloc[i]['CWNS']] = results[('Geospatial','DAP production [tonne/year]')]
+    # tonne/year
+    geo_uncertainty_anhydrous_ammonia[facility_uncertainty.iloc[i]['CWNS']] = results[('Geospatial','Anhydrous ammonia production [tonne/year]')]
+    # tonne/year
+    geo_uncertainty_urea[facility_uncertainty.iloc[i]['CWNS']] = results[('Geospatial','Urea production [tonne/year]')]
+    # tonne/year
+    geo_uncertainty_UAN[facility_uncertainty.iloc[i]['CWNS']] = results[('Geospatial','UAN production [tonne/year]')]
     
     # check progress
     if i%5 == 0:
         print(i)
 
-# TODO: add saving
-# TODO: add a layer of folder if necessary
-geo_uncertainty_decarbonization.to_excel(folder + f'results/regional_decarbonization_uncertainty_{date.today()}_{i}.xlsx')
-# TODO: add a layer of folder if necessary
-geo_uncertainty_biocrude.to_excel(folder + f'results/regional_biocrude_uncertainty_{date.today()}_{i}.xlsx')
-# TODO: add N production & offset
-# TODO: add P production & offset
+geo_uncertainty_saving.to_excel(folder + f'results/facility_uncertainty/saving_dollar_per_day_{date.today()}_{i}.xlsx')
+geo_uncertainty_decarbonization.to_excel(folder + f'results/facility_uncertainty/decarbonization_kg_CO2_per_day_{date.today()}_{i}.xlsx')
+geo_uncertainty_sludge_N.to_excel(folder + f'results/facility_uncertainty/sludge_N_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_HNO3_N.to_excel(folder + f'results/facility_uncertainty/HNO3_N_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_sludge_P.to_excel(folder + f'results/facility_uncertainty/sludge_P_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_biocrude.to_excel(folder + f'results/facility_uncertainty/biocrude_BPD_{date.today()}_{i}.xlsx')
+geo_uncertainty_DAP.to_excel(folder + f'results/facility_uncertainty/DAP_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_anhydrous_ammonia.to_excel(folder + f'results/facility_uncertainty/anhydrous_ammonia_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_urea.to_excel(folder + f'results/facility_uncertainty/urea_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_UAN.to_excel(folder + f'results/facility_uncertainty/UAN_tonne_per_year_{date.today()}_{i}.xlsx')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #%% regional uncertainty (data preparation)
+
+# TODO: start from here to the end, not checked
 
 # TODO: write repetitive code as functions
 
@@ -1909,7 +2274,7 @@ regional_biocrude.to_excel(folder + f'results/integrated_regional_biocrude_uncer
 
 # import PADD information
 # !!! update the file here if necessary
-WRRF_PADD = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
+WRRF_PADD = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-11.xlsx')
 WRRF_PADD = WRRF_PADD[WRRF_PADD['USD_decarbonization'].notna()]
 WRRF_PADD = WRRF_PADD[WRRF_PADD['USD_decarbonization'] <= 0]
 
@@ -2214,7 +2579,7 @@ for i in range(0, 2):
                                            ww_2_dry_sludge_ratio=Urbana_Champaign.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/Urbana_Champaign.iloc[i]['flow_2022_MGD_final'],
                                            state=Urbana_Champaign.iloc[i]['state'],
                                            elec_GHG=Urbana_Champaign.iloc[i]['kg_CO2e_kWh'],
-                                           wage_adjustment=WRRF_input.iloc[i]['wage_quotient']/100)
+                                           wage_adjustment=Urbana_Champaign.iloc[i]['wage_quotient']/100)
     
     # if AD and AeD both exist, assume AeD (due to higher ash content) to be conservative
     if Urbana_Champaign.iloc[i]['sludge_aerobic_digestion'] == 1:
@@ -2332,7 +2697,7 @@ sys, barrel = create_geospatial_system(size=total_size,
                                        ww_2_dry_sludge_ratio=average_ww_2_dry_sludge_ratio,
                                        state=Urbana_Champaign.iloc[0]['state'],
                                        elec_GHG=Urbana_Champaign.iloc[0]['kg_CO2e_kWh'],
-                                       wage_adjustment=WRRF_input.iloc[i]['wage_quotient']/100)
+                                       wage_adjustment=Urbana_Champaign.iloc[i]['wage_quotient']/100)
 
 model = create_geospatial_model(system=sys,
                                 sludge_ash=sludge_ash_values,
@@ -2443,7 +2808,7 @@ add_region(2, 'Combined', b)
 #%% sludge transportation (satellite, SA) (data preparation)
 
 # !!! update the file here if necessary
-satellite_data_preparation = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
+satellite_data_preparation = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-11.xlsx')
 satellite_data_preparation = satellite_data_preparation[satellite_data_preparation['USD_decarbonization'].notna()]
 satellite_data_preparation = satellite_data_preparation[satellite_data_preparation['USD_decarbonization'] <= 0]
 
@@ -2544,7 +2909,7 @@ else:
 filterwarnings('ignore')
 
 # !!! update the file here if necessary
-satellite_result = pd.read_excel(folder + 'results/integrated_decarbonization_result_2024-08-22.xlsx')
+satellite_result = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-11.xlsx')
 satellite_result = satellite_result[satellite_result['USD_decarbonization'].notna()]
 satellite_result = satellite_result[satellite_result['USD_decarbonization'] <= 0]
 
@@ -2565,7 +2930,7 @@ sys, barrel = create_geospatial_system(size=center_WRRF['flow_2022_MGD_final'],
                                        ww_2_dry_sludge_ratio=center_WRRF['total_sludge_amount_kg_per_year']/1000/365/center_WRRF['flow_2022_MGD_final'],
                                        state=center_WRRF['state'],
                                        elec_GHG=center_WRRF['kg_CO2e_kWh'],
-                                       wage_adjustment=WRRF_input.iloc[i]['wage_quotient']/100)
+                                       wage_adjustment=center_WRRF.iloc[i]['wage_quotient']/100)
 
 # if AD and AeD both exist, assume AeD (due to higher ash content) to be conservative
 if center_WRRF['sludge_aerobic_digestion'] == 1:
@@ -2693,7 +3058,7 @@ sys, barrel = create_geospatial_system(size=total_size,
                                        ww_2_dry_sludge_ratio=average_ww_2_dry_sludge_ratio,
                                        state=center_WRRF['state'],
                                        elec_GHG=center_WRRF['kg_CO2e_kWh'],
-                                       wage_adjustment=WRRF_input.iloc[i]['wage_quotient']/100)
+                                       wage_adjustment=center_WRRF.iloc[i]['wage_quotient']/100)
 
 model = create_geospatial_model(system=sys,
                                 sludge_ash=sludge_ash_values,
@@ -2907,7 +3272,7 @@ for size in np.linspace(2, 20, 10):
                                                ww_2_dry_sludge_ratio=1,
                                                state='US',
                                                elec_GHG=(WRRF_input['kg_CO2e_kWh']*WRRF_input['total_sludge_amount_kg_per_year']).sum()/WRRF_input['total_sludge_amount_kg_per_year'].sum(),
-                                               wage_adjustment=WRRF_input.iloc[i]['wage_quotient']/100)
+                                               wage_adjustment=(WRRF_input.iloc[i]['wage_quotient']/100*WRRF_input['total_sludge_amount_kg_per_year']).sum()/WRRF_input['total_sludge_amount_kg_per_year'].sum())
         
         model = create_geospatial_model(system=sys,
                                         sludge_ash=HM_sludge_ash_values,

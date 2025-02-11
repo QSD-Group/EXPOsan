@@ -6,41 +6,6 @@ Created on Mon Jun 5 08:46:28 2023
 @author: jiananfeng
 
 Note the word 'sludge' in this file refers to either sludge or biosolids.
-
-# TODO: update citations
-References:
-[1] Snowden-Swan, L. J.; Li, S.; Thorson, M. R.; Schmidt, A. J.; Cronin, D. J.;
-    Zhu, Y.; Hart, T. R.; Santosa, D. M.; Fox, S. P.; Lemmon, T. L.; Swita, M. S.
-    Wet Waste Hydrothermal Liquefaction and Biocrude Upgrading to Hydrocarbon Fuels:
-    2022 State of Technology; PNNL-33622; Pacific Northwest National Lab. (PNNL),
-    Richland, WA (United States), 2022. https://doi.org/10.2172/1897670.
-[2] https://hpoilgas.in/Page/Detail/naturalgasoverview (accessed 2025-02-03).
-[3] https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
-    (accessed 2025-02-03).
-
-
-
-[12] https://businessanalytiq.com/procurementanalytics/index/monoethanolamine-price-index/
-    (accessed 2025-02-03)
-[13] https://businessanalytiq.com/procurementanalytics/index/nitric-acid-price-index/
-    (accessed 2025-02-03).
-[14] Marufuzzaman, M.; Ekşioğlu, S. D.; Hernandez, R. Truck versus Pipeline
-     Transportation Cost Analysis of Wastewater Sludge. Transportation Research Part A:
-     Policy and Practice 2015, 74, 14–30. https://doi.org/10.1016/j.tra.2015.02.001.
-[15] Pootakham, T.; Kumar, A. Bio-Oil Transport by Pipeline: A Techno-Economic
-     Assessment. Bioresource Technology 2010, 101 (18), 7137–7143.
-     https://doi.org/10.1016/j.biortech.2010.03.136.
-[16] Snowden-Swan, L. J.; Zhu, Y.; Bearden, M. D.; Seiple, T. E.; Jones, S. B.;
-     Schmidt, A. J.; Billing, J. M.; Hallen, R. T.; Hart, T. R.; Liu, J.;
-     Albrecht, K. O.; Fox, S. P.; Maupin, G. D.; Elliott, D. C.
-     Conceptual Biorefinery Design and Research Targeted for 2022:
-     Hydrothermal Liquefacation Processing of Wet Waste to Fuels; PNNL-27186;
-     Pacific Northwest National Lab. (PNNL), Richland, WA (United States), 2017.
-     https://doi.org/10.2172/1415710.
-[17] Stewart, D. W.; Cortés-Peña, Y. R.; Li, Y.; Stillwell, A. S.; Khanna, M.;
-     Guest, J. S. Implications of Biorefinery Policy Incentives and
-     Location-SpecificEconomic Parameters for the Financial Viability of Biofuels.
-     Environ. Sci. Technol. 2023. https://doi.org/10.1021/acs.est.2c07936.
 '''
 
 # TODO: add new units and contextualized fertilizers prices and crude oil price in writing
@@ -121,7 +86,6 @@ def create_geospatial_system(test_run=False,
                              state='IL',
                              # TODO: add this parameter in analysis.py
                              nitrogen_fertilizer=None,
-                             # TODO: update the balancing-area-level grid CI in geospatial_analysis.py
                              # use balancing-area-level in the analysis
                              # kg CO2 eq/kWh
                              elec_GHG=0.40,
@@ -511,7 +475,8 @@ def create_geospatial_system(test_run=False,
                                 ins=(CHP-0, 'makeup_MEA', 'makeup_water'),
                                 outs=('vent','CO2'),
                                 CO2_recovery=0.9)
-        # min: 1.93, average: 2.13, max: 2.31, [12]
+        # min: 1.93, average: 2.13, max: 2.31
+        # https://businessanalytiq.com/procurementanalytics/index/monoethanolamine-price-index/ (accessed 2025-02-03)
         CC.ins[1].price = 2.13
         CC.ins[2].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
         
@@ -530,7 +495,8 @@ def create_geospatial_system(test_run=False,
                                      ins=(DAPSyn-1, CC-1, 'additional_carbon_dioxide', 'HNO3', 'UAN_water'),
                                      outs=('UAN','UAN_vapor','UAN_waste'),
                                      ratio=3.5, efficiency=0.8, loss=0.02)
-            # min: 0.43, average: 0.497, max: 0.53, [13]
+            # min: 0.43, average: 0.497, max: 0.53
+            # https://businessanalytiq.com/procurementanalytics/index/nitric-acid-price-index/ (accessed 2025-02-03)
             # calculate the price of 70 wt/wt% HNO3 solution by adding water
             UANSyn.ins[3].price = 0.497
             UANSyn.ins[4].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
@@ -573,7 +539,7 @@ def create_geospatial_system(test_run=False,
     # 'market for transport, freight, lorry, unspecified' (0.13004958 kg CO2 eq/metric ton/km, including empty return trips)
     # assume the sludge/biosolids decomposition is minimal during transportation since our transportation distance is not long
     Sludge_trucking.add_indicator(GlobalWarming, WWTP.ww_2_dry_sludge*0.13004958/0.2/3.79/(10**6))
-    # 4.56 $/m3, 0.072 $/m3/mile ([14], likely 2015$)
+    # 4.56 $/m3, 0.072 $/m3/mile (likely 2015$, https://doi.org/10.1016/j.tra.2015.02.001)
     Sludge_trucking.price = WWTP.ww_2_dry_sludge*\
         (4.56/WWTP.sludge_wet_density*1000/0.2+0.072/_mile_to_km/WWTP.sludge_wet_density*1000/0.2*WWTP.sludge_distance)/\
             GDPCTPI[2015]*GDPCTPI[2022]/3.79/(10**6)/WWTP.sludge_distance
@@ -594,7 +560,7 @@ def create_geospatial_system(test_run=False,
     Biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
     # 0.13004958 kg CO2 eq/metric ton/km ('market for transport, freight, lorry, unspecified'))
     Biocrude_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
-    # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), [15]
+    # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
     Biocrude_trucking.price = (5.67/BiocrudeTank.biocrude_wet_density+0.07/BiocrudeTank.biocrude_wet_density*BiocrudeTank.biocrude_distance)/GDPCTPI[2008]*GDPCTPI[2022]/BiocrudeTank.biocrude_distance
         
     Biocrude_transportation = qs.Transportation('Biocrude_trucking',
@@ -655,7 +621,7 @@ def create_geospatial_system(test_run=False,
     # TEA
     # =========================================================================
     # TODO: update in other HTL systems as well (the original system, HTL-PFAS)
-    # based on the labor cost for the HTL plant from [16], 2014 level:
+    # based on the 2024 level labor cost for the HTL plant, https://doi.org/10.2172/1415710
     # 1 plant manager (0.15 MM$/year)
     # 1 plant engineer (0.07 MM$/year)
     # 1 maintenance supervisor (0.06 MM$year)
@@ -686,7 +652,7 @@ def create_geospatial_system(test_run=False,
     federal_income_tax_rate_value = 0.21
     
     if state == 'US':
-        # use the mode state income tax from [17]
+        # use the mode state income tax from https://doi.org/10.1021/acs.est.2c07936
         # from this citation: state income tax: [min, mode, max]: [0%, 6.5%, 12%]
         state_income_tax_rate_value = 0.065
     else:

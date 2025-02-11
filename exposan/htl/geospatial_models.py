@@ -764,9 +764,9 @@ def create_geospatial_model(system=None,
             DAP.price=i
         
         if anhydrous_ammonia:= stream.search('anhydrous_ammonia'):
-            anhydrous_ammonia_price_min = anhydrous_ammonia[0]/_ton_to_tonne/1000
-            anhydrous_ammonia_price_ave = anhydrous_ammonia[1]/_ton_to_tonne/1000
-            anhydrous_ammonia_price_max = anhydrous_ammonia[2]/_ton_to_tonne/1000
+            anhydrous_ammonia_price_min = anhydrous_ammonia_price[0]/_ton_to_tonne/1000
+            anhydrous_ammonia_price_ave = anhydrous_ammonia_price[1]/_ton_to_tonne/1000
+            anhydrous_ammonia_price_max = anhydrous_ammonia_price[2]/_ton_to_tonne/1000
             dist = shape.Triangle(anhydrous_ammonia_price_min,anhydrous_ammonia_price_ave,anhydrous_ammonia_price_max)
             @param(name='anhydrous_ammonia_price',
                    element='TEA',
@@ -966,45 +966,45 @@ def create_geospatial_model(system=None,
     def get_sludge_N():
         return WWTP.sludge_N/1000*sys.operating_hours
     
-    if HNO3:= stream.search('HNO3'):
-        HNO3_amount = HNO3.imass['HNO3']
+    if HNO3:= stream.search('HNO3'):    
+        @metric(name='HNO3_N', units='tonne/year', element='geospatial')
+        def get_HNO3_N():
+            return HNO3.imass['HNO3']/63.01*14.0067/1000*sys.operating_hours
     else:
-        HNO3_amount = 0
-    
-    @metric(name='HNO3_N', units='tonne/year', element='geospatial')
-    def get_HNO3_N():
-        return HNO3_amount/63.01*14.0067/1000*sys.operating_hours
+        @metric(name='HNO3_N', units='tonne/year', element='geospatial')
+        def get_HNO3_N():
+            return 0
     
     @metric(name='DAP_production', units='tonne/year', element='geospatial')
     def get_DAP_production():
         return DAP.F_mass/1000*sys.operating_hours
     
     if anhydrous_ammonia:= stream.search('anhydrous_ammonia'):
-        anhydrous_ammonia_production = anhydrous_ammonia.F_mass
+        @metric(name='anhydrous_ammonia_production', units='tonne/year', element='geospatial')
+        def get_anhydrous_ammonia_production():
+            return anhydrous_ammonia.F_mass/1000*sys.operating_hours
     else:
-        anhydrous_ammonia_production = 0
-    
-    @metric(name='anhydrous_ammonia_production', units='tonne/year', element='geospatial')
-    def get_anhydrous_ammonia_production():
-        return anhydrous_ammonia_production/1000*sys.operating_hours
+        @metric(name='anhydrous_ammonia_production', units='tonne/year', element='geospatial')
+        def get_anhydrous_ammonia_production():
+            return 0
     
     if urea:= stream.search('urea'):
-        urea_production = urea.F_mass
+        @metric(name='urea_production', units='tonne/year', element='geospatial')
+        def get_urea_production():
+            return urea.F_mass/1000*sys.operating_hours
     else:
-        urea_production = 0
-    
-    @metric(name='urea_production', units='tonne/year', element='geospatial')
-    def get_urea_production():
-        return urea_production/1000*sys.operating_hours
+        @metric(name='urea_production', units='tonne/year', element='geospatial')
+        def get_urea_production():
+            return 0
     
     if UAN:= stream.search('UAN'):
-        UAN_production = UAN.F_mass
+        @metric(name='UAN_production', units='tonne/year', element='geospatial')
+        def get_UAN_production():
+            return UAN.F_mass/1000*sys.operating_hours
     else:
-        UAN_production = 0
-    
-    @metric(name='UAN_production', units='tonne/year', element='geospatial')
-    def get_UAN_production():
-        return UAN_production/1000*sys.operating_hours
+        @metric(name='UAN_production', units='tonne/year', element='geospatial')
+        def get_UAN_production():
+            return 0
     
     if include_check:
         @metric(name='sludge_afdw_carbohydrate', units='-', element='test')
