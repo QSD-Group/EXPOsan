@@ -125,19 +125,40 @@ def create_systemEL(flowsheet = None): # figure out the "components" and "flowsh
     batch_create_streams('EL')
     
     WasteWaterGenerator = su.Excretion('WasteWaterGenerator', outs=('urine', 'feces'))
+   
+    # Toilet = su.MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'FlushingWater', 'ToiletPaper'), 
+    #                 outs =('MixedWasteWater', 'Toilet_CH4', 'Toilet_N2O'),
+    #                 decay_k_COD = get_decay_k(),
+    #                 decay_k_N = get_decay_k(),
+    #                 max_CH4_emission = max_CH4_emission,
+    #                 N_user = get_toilet_users(), 
+    #                 N_toilet = ppl / get_toilet_users(),
+    #                 if_flushing = True, if_desiccant = False, if_toilet_paper = True,
+    #                 CAPEX = 0, # capital cost of a single toilet
+    #                 OPEX_over_CAPEX = 0.07, # fraction of annual operating cost over total capital cost
+    #                 )
     
-    Toilet = su.MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'FlushingWater', 'ToiletPaper'), 
-                    outs =('MixedWasteWater', 'Toilet_CH4', 'Toilet_N2O'),
-                    decay_k_COD = get_decay_k(),
-                    decay_k_N = get_decay_k(),
-                    max_CH4_emission = max_CH4_emission,
-                    N_user = get_toilet_users(), 
-                    N_toilet = ppl / get_toilet_users(),
-                    if_flushing = True, if_desiccant = False, if_toilet_paper = True,
-                    CAPEX = 0, # capital cost of a single toilet
-                    OPEX_over_CAPEX = 0.07, # fraction of annual operating cost over total capital cost
-                    )
-    
+    # Toilet = su.MURT('Toilet',
+    #                 ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'toilet_paper', 'flushing_water', 'cleansing_water', 'desiccant'),
+    #                 outs=('mixed_waste', 'Toilet_CH4', 'Toilet_N2O'),
+    #                 N_user=25, N_tot_user=ppl,
+    #                 lifetime=10, if_include_front_end=True,
+    #                 if_toilet_paper=True, if_flushing=True, if_cleansing=False,
+    #                 if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
+    #                 CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06,
+    #                 decay_k_COD=get_decay_k(),
+    #                 decay_k_N=get_decay_k(),
+    #                 max_CH4_emission=max_CH4_emission
+    #                 )
+    Toilet = su.MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'toilet_paper', 'flushing_water', 'cleansing_water', 'desiccant'),
+                outs=('mixed_waste', 'Toilet_CH4', 'Toilet_N2O'),
+                decay_k_COD=get_decay_k(),
+                decay_k_N=get_decay_k(),
+                max_CH4_emission=max_CH4_emission,
+                N_user=25, N_tot_user=ppl, lifetime=10,
+                if_flushing=True, if_desiccant=False, if_toilet_paper=True,
+                CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06)    
+
     CT = EL_CT('CT', ins=(Toilet-0, 'ClearWaterTank_spill','PrimaryClar_spill', 'PrimaryClarP_return'), 
                     outs = ('TreatedWater', 'CT_CH4', 'CT_N20'),
                     V_wf = 0.9, ppl = ppl, baseline_ppl = 30,
