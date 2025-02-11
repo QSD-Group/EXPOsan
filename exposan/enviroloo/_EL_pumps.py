@@ -53,7 +53,7 @@ class LiftPump(Pump):
                  operation_time=None, ppl=1000, baseline_ppl=30):
                  
         # Initialize the LiftPump with parent class logic
-        Pump().__init__(self, ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
                         isdynamic=isdynamic, ignore_NPSH=ignore_NPSH, P=P, dP_design=dP_design, pump_type=pump_type,
                         material=material)
 
@@ -70,12 +70,12 @@ class LiftPump(Pump):
         return self._pump_power / self.working_factor
 
     def _init_lca(self):
-        self.construction = [Construction(item='Cast iron', linked_unit=self, quantity_unit='kg'),]
+        self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
 
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['Cast iron'] = constr[0].quantity = self._CastIron_weight_per_pump
+        design['Cast_iron'] = constr[0].quantity = self._CastIron_weight_per_pump
         self.add_construction(add_cost=False)
     
     def _run(self):
@@ -126,7 +126,7 @@ class AgitationPump(Pump):
                  operation_time=None, ppl=1000, baseline_ppl=30):
                  
         # Initialize the LiftPump with parent class logic
-        Pump().__init__(self, ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
                         isdynamic=isdynamic, ignore_NPSH=ignore_NPSH, P=P, dP_design=dP_design, pump_type=pump_type,
                         material=material)
         
@@ -143,12 +143,12 @@ class AgitationPump(Pump):
         return self._pump_power / self.working_factor  
     
     def _init_lca(self):
-        self.construction = [Construction(item='Cast iron', linked_unit=self, quantity_unit='kg'),]
+        self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
 
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['Cast iron'] = constr[0].quantity = self._CastIron_weight_per_pump
+        design['Cast_iron'] = constr[0].quantity = self._CastIron_weight_per_pump
         self.add_construction(add_cost=False)
     
     def _cost(self):
@@ -172,7 +172,7 @@ class AgitationPump(Pump):
 
 # %%
 
-@price_ratio
+#@price_ratio
 class DosingPump(Pump):
     """
     DosingPump: Specialized pump for input chemicals in water.
@@ -182,19 +182,20 @@ class DosingPump(Pump):
     _N_outs = 1;  # Number of output streams
     _ins_size_is_fixed = True;  # Let the input interface be fixed
     _outs_size_is_fixed = True;  # Let the output interface be fixed
-    _PVC_weight_per_pump = 2.5 # The weight of cast iron [kg]
+    _CastIron_weight_per_pump = 2.5 # The weight of cast iron [kg]
     _pump_power = 0.5 # Assumption: The power of each pump [kW]
     exponent_scale = 0.4
 
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream', material='PVC',
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream', material='Cast iron',
                  F_BM_default=3.3, pump_type='Default', isdynamic=False, ignore_NPSH=True,
                  dP_design=None,  # The extra pressure of the pump [Pa]
                  P=101325,  # The pressure of the pump [Pa]
                  life_time=None, pump_cost=None, working_factor=None,
+                 price_ratio=0.9,
                  operation_time=None, ppl=1000, baseline_ppl=30):
                  
         # Initialize the LiftPump with parent class logic
-        Pump().__init__(self, ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
                         isdynamic=isdynamic, ignore_NPSH=ignore_NPSH, P=P, dP_design=dP_design, pump_type=pump_type,
                         material=material)
         
@@ -204,6 +205,7 @@ class DosingPump(Pump):
         self.operation_time = operation_time  # The operation time of the pump [h/d]
         self.ppl = ppl  # The number of all people used all toilets
         self.baseline_ppl = baseline_ppl  # The number of people per toilet
+        self.price_ratio = price_ratio
 
     @property
     def actual_power(self):
@@ -211,12 +213,12 @@ class DosingPump(Pump):
         return self._pump_power / self.working_factor  
     
     def _init_lca(self):
-        self.construction = [Construction(item='PVC', linked_unit=self, quantity_unit='kg'),]
+        self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
 
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['PVC'] = constr[0].quantity = self._PVC_weight_per_pump
+        design['Cast_iron'] = constr[0].quantity = self._CastIron_weight_per_pump
         self.add_construction(add_cost=False)
     
     def _cost(self):
@@ -240,7 +242,7 @@ class DosingPump(Pump):
 
 # %%
 
-@price_ratio
+#@price_ratio
 class ReturnPump(Pump):
     """
     ReturnPump: Specialized pump for returning sludge from membrane tank to primary clarifier 
@@ -260,11 +262,11 @@ class ReturnPump(Pump):
                  F_BM_default=3.3, pump_type='Default', isdynamic=False, ignore_NPSH=True,
                  dP_design=None,  # The extra pressure of the pump [Pa]
                  P=101325,  # The pressure of the pump [Pa]
-                 life_time=None, pump_cost=None, working_factor=None,
-                 operation_time=None, ppl=1000, baseline_ppl=30):
+                 life_time=None, pump_cost=None, working_factor=None, 
+                 price_ratio = 0.9, operation_time=None, ppl=1000, baseline_ppl=30):
                  
         # Initialize the LiftPump with parent class logic
-        Pump().__init__(self, ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
                         isdynamic=isdynamic, ignore_NPSH=ignore_NPSH, P=P, dP_design=dP_design, pump_type=pump_type,
                         material=material)
         
@@ -274,6 +276,7 @@ class ReturnPump(Pump):
         self.operation_time = operation_time  # The operation time of the pump [h/d] 
         self.ppl = ppl  # The number of all people used all toilets
         self.baseline_ppl = baseline_ppl  # The number of people per toilet
+        self.price_ratio = price_ratio
 
     @property
     def actual_power(self):
@@ -281,12 +284,12 @@ class ReturnPump(Pump):
         return self._pump_power / self.working_factor  
     
     def _init_lca(self):
-        self.construction = [Construction(item='Cast iron', linked_unit=self, quantity_unit='kg'),]
+        self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
 
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['Cast iron'] = constr[0].quantity = self._CastIron_weight_per_pump
+        design['Cast_iron'] = constr[0].quantity = self._CastIron_weight_per_pump
         self.add_construction(add_cost=False)
     
     def _run(self):
@@ -314,7 +317,7 @@ class ReturnPump(Pump):
             
 # %%
 
-@price_ratio
+#@price_ratio
 class SelfPrimingPump(Pump):
     """
     SelfPrimingPump: Specialized pump for inputing water into the clear water tank
@@ -333,11 +336,12 @@ class SelfPrimingPump(Pump):
                  F_BM_default=3.3, pump_type='Default', isdynamic=False, ignore_NPSH=True,
                  dP_design=None,  # The extra pressure of the pump [Pa]
                  P=101325,  # The pressure of the pump [Pa]
+                 price_ratio=0.9,
                  life_time=None, pump_cost=None, working_factor=None,
                  operation_time=None, ppl=1000, baseline_ppl=30):
                  
         # Initialize the LiftPump with parent class logic
-        Pump().__init__(self, ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
                         isdynamic=isdynamic, ignore_NPSH=ignore_NPSH, P=P, dP_design=dP_design, pump_type=pump_type,
                         material=material)
         
@@ -347,6 +351,7 @@ class SelfPrimingPump(Pump):
         self.operation_time = operation_time  # The operation time of the pump [h/d] 
         self.ppl = ppl  # The number of all people used all toilets
         self.baseline_ppl = baseline_ppl  # The number of people per toilet
+        self.price_ratio = price_ratio
 
     @property
     def actual_power(self):
@@ -354,12 +359,12 @@ class SelfPrimingPump(Pump):
         return self._pump_power / self.working_factor  
     
     def _init_lca(self):
-        self.construction = [Construction(item='Cast iron', linked_unit=self, quantity_unit='kg'),]
+        self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
 
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['Cast iron'] = constr[0].quantity = self._CastIron_weight_per_pump
+        design['Cast_iron'] = constr[0].quantity = self._CastIron_weight_per_pump
         self.add_construction(add_cost=False)
 
     def _run(self):
@@ -387,7 +392,7 @@ class SelfPrimingPump(Pump):
 
 # %%
 
-@price_ratio
+#@price_ratio
 class AirDissolvedPump(Pump):
     """
     In EnviroLoo system, Air-dissolved pump for extracting water from the clear water tank, injecting air into the water,
@@ -407,11 +412,12 @@ class AirDissolvedPump(Pump):
                  F_BM_default=3.3, pump_type='Default', isdynamic=False, ignore_NPSH=True,
                  dP_design=50000,  # The extra pressure of the pump [Pa]
                  P=101325,  # The pressure of the pump [Pa]
+                 price_ratio=0.9,
                  life_time=None, pump_cost=None, working_factor=None,
                  operation_time=None, ppl=1000, baseline_ppl=30):
                  
         # Initialize the LiftPump with parent class logic
-        Pump().__init__(self, ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
                         isdynamic=isdynamic, ignore_NPSH=ignore_NPSH, P=P, dP_design=dP_design, pump_type=pump_type,
                         material=material)
         
@@ -421,6 +427,7 @@ class AirDissolvedPump(Pump):
         self.operation_time = operation_time  # The operation time of the pump [h/d] 
         self.ppl = ppl  # The number of all people used all toilets
         self.baseline_ppl = baseline_ppl  # The number of people per toilet
+        self.price_ratio = price_ratio
 
     @property
     def actual_power(self):
@@ -428,12 +435,12 @@ class AirDissolvedPump(Pump):
         return self._pump_power / self.working_factor  
     
     def _init_lca(self):
-        self.construction = [Construction(item='Cast iron', linked_unit=self, quantity_unit='kg'),]
+        self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
 
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['Cast iron'] = constr[0].quantity = self._CastIron_weight_per_pump
+        design['Cast_iron'] = constr[0].quantity = self._CastIron_weight_per_pump
         self.add_construction(add_cost=False)
 
     def _run(self):
@@ -462,7 +469,7 @@ class AirDissolvedPump(Pump):
 
 # %%
 
-@price_ratio
+#@price_ratio
 class MicroBubblePump(Pump):
     """
     Microbubble pump for injecting ozone (O₃) into clear water for disinfection.
@@ -481,11 +488,12 @@ class MicroBubblePump(Pump):
                  F_BM_default=3.3, pump_type='Default', isdynamic=False, ignore_NPSH=True,
                  dP_design=25331,  # The extra pressure of the pump [Pa]
                  P=101325,  # The pressure of the pump [Pa]
+                 price_ratio=0.9,
                  run_time=None, life_time=None, pump_cost=None, working_factor=None,
                  operation_time=None, ppl=1000, baseline_ppl=30):
                  
         # Initialize the LiftPump with parent class logic
-        Pump().__init__(self, ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
                         isdynamic=isdynamic, ignore_NPSH=ignore_NPSH, P=P, dP_design=dP_design, pump_type=pump_type,
                         material=material)
         
@@ -496,6 +504,7 @@ class MicroBubblePump(Pump):
         self.operation_time = operation_time  # The operation time of the pump [h/d] 
         self.ppl = ppl  # The number of all people used all toilets
         self.baseline_ppl = baseline_ppl  # The number of people per toilet
+        self.price_ratio = price_ratio
 
     @property
     def actual_power(self):
@@ -503,12 +512,12 @@ class MicroBubblePump(Pump):
         return self._pump_power / self.working_factor  
     
     def _init_lca(self):
-        self.construction = [Construction(item='Cast iron', linked_unit=self, quantity_unit='kg'),]
+        self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
 
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['Cast iron'] = constr[0].quantity = self._CastIron_weight_per_pump
+        design['Cast_iron'] = constr[0].quantity = self._CastIron_weight_per_pump
         self.add_construction(add_cost=False)
 
     def _run(self):
@@ -537,7 +546,7 @@ class MicroBubblePump(Pump):
 
 # %%
 
-@price_ratio
+#@price_ratio
 class ClearWaterPump(Pump):
     """
     Clear Water Pump for reusing treated water in toilet flushing.
@@ -556,11 +565,12 @@ class ClearWaterPump(Pump):
                  F_BM_default=3.3, pump_type='Default', isdynamic=False, ignore_NPSH=True,
                  dP_design=202650,  # The extra pressure of the pump [Pa]
                  P=101325,  # The pressure of the pump [Pa]
+                 price_ratio=0.9,
                  run_time=None, life_time=None, pump_cost=None, working_factor=None,
                  operation_time=None, ppl=1000, baseline_ppl=30):
                  
         # Initialize the LiftPump with parent class logic
-        Pump().__init__(self, ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
                         isdynamic=isdynamic, ignore_NPSH=ignore_NPSH, P=P, dP_design=dP_design, pump_type=pump_type,
                         material=material)
         
@@ -571,6 +581,7 @@ class ClearWaterPump(Pump):
         self.operation_time = operation_time  # The operation time of the pump [h/d] 
         self.ppl = ppl  # The number of all people used all toilets
         self.baseline_ppl = baseline_ppl  # The number of people per toilet
+        self.price_ratio = price_ratio
 
     @property
     def actual_power(self):
@@ -578,12 +589,12 @@ class ClearWaterPump(Pump):
         return self._pump_power / self.working_factor  
     
     def _init_lca(self):
-        self.construction = [Construction(item='Cast iron', linked_unit=self, quantity_unit='kg'),]
+        self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
 
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['Cast iron'] = constr[0].quantity = self._CastIron_weight_per_pump
+        design['Cast_iron'] = constr[0].quantity = self._CastIron_weight_per_pump
         self.add_construction(add_cost=False)
 
     def _run(self):

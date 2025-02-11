@@ -17,6 +17,7 @@ from qsdsan import (
     LCA, TEA, System,
     )
 from qsdsan.sanunits import Trucking
+from qsdsan.sanunits._enviroloo_clear import *
 
 from chaospy import distributions as shape
 
@@ -137,7 +138,7 @@ def create_systemEL(flowsheet = None): # figure out the "components" and "flowsh
                     OPEX_over_CAPEX = 0.07, # fraction of annual operating cost over total capital cost
                     )
     
-    CT = su.EL_CT('CT', ins=(Toilet-0, 'ClearWaterTank_spill','PrimaryClar_spill', 'PrimaryClarP_return'), 
+    CT = EL_CT('CT', ins=(Toilet-0, 'ClearWaterTank_spill','PrimaryClar_spill', 'PrimaryClarP_return'), 
                     outs = ('TreatedWater', 'CT_CH4', 'CT_N20'),
                     V_wf = 0.9, ppl = ppl, baseline_ppl = 30,
                     kW_per_m3=0.1,  # The power consumption per unit volume of the tank
@@ -151,7 +152,7 @@ def create_systemEL(flowsheet = None): # figure out the "components" and "flowsh
                             dP_design = 0,
                             )
     
-    PC = su.EL_PC('PC', ins=(LiftPump-0, 'NitrateReturn_MT'), outs=('TreatedWater', 2-CT , 3-CT, 'PC_CH4', 'PC_N2O'),
+    PC = EL_PC('PC', ins=(P_CT_lift-0, 'NitrateReturn_MT'), outs=('TreatedWater', 2-CT , 3-CT, 'PC_CH4', 'PC_N2O'),
                     ppl = ppl,  # The number of people served
                     baseline_ppl = 30,
                     solids_removal_efficiency = 0.85,  # The solids removal efficiency
@@ -183,7 +184,7 @@ def create_systemEL(flowsheet = None): # figure out the "components" and "flowsh
                                 dP_design = 0,
                                 ) 
     
-    P_AnoxT_agitation = AgitationPump('P_AnoxT_agitation', ins=(PC-0, P_Glu_dosing-0), outs='AgitationWater', 
+    P_AnoxT_agitation = AgitationPump('P_AnoxT_agitation', ins= P_Glu_dosing-0, outs='AgitationWater', 
                                         working_factor = 0.9,  # The ratio of the actual output and the design output
                                         operation_time = 12,  # Total run time of system or plant [h/d]
                                         life_time = 5,  # Lifetime of the pump [years]
@@ -191,7 +192,7 @@ def create_systemEL(flowsheet = None): # figure out the "components" and "flowsh
                                         dP_design = 0,
                                         )
     
-    AnoxT = su.EL_Anoxic('AnoxT', ins=(P_AnoxT_agitation-0, 'NitrateReturn_MT'), 
+    AnoxT = EL_Anoxic('AnoxT', ins=(P_AnoxT_agitation-0, 'NitrateReturn_MT'), 
                             outs = ('TreatedWater', 'AnoxT_CH4', 'AnoxT_N2O'),
                             degraded_components=('OtherSS',),  
                             ppl = ppl, baseline_ppl = 30,
@@ -212,7 +213,7 @@ def create_systemEL(flowsheet = None): # figure out the "components" and "flowsh
                                 pump_cost = 59, # USD from https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
                                 dP_design = 0,
                                 )
-    B_AeroT = su.EL_blower('B_AeroT', ins='Air', outs ='Air',
+    B_AeroT = EL_blower('B_AeroT', ins='Air', outs ='Air',
                             F_BM={
                                   'Blowers': 2.22,
                                   'Blower piping': 1,
@@ -234,12 +235,12 @@ def create_systemEL(flowsheet = None): # figure out the "components" and "flowsh
                             building_unit_cost=9, # unit cost of the building, in USD/ft2
                             ppl = ppl, baseline_ppl = 30,
                            )
-    AeroT = su.EL_Aerobic('AeroT', ins=(AnoxT-0, P_PAC_dosing-0, B_AeroT-0), 
+    AeroT = EL_Aerobic('AeroT', ins=(AnoxT-0, P_PAC_dosing-0, B_AeroT.outs[0]), 
                             outs = ('TreatedWater', 'AeroT_CH4', 'AeroT_N2O'), 
                             ppl = ppl, baseline_ppl = 30,
                             )
 
-    B_MembT = su.EL_blower('B_MembT', ins = 'Air', outs = 'Air', 
+    B_MembT = EL_blower('B_MembT', ins = 'Air', outs = 'Air', 
                             F_BM={
                                   'Blowers': 2.22,
                                   'Blower piping': 1,
@@ -275,8 +276,8 @@ def create_systemEL(flowsheet = None): # figure out the "components" and "flowsh
                                         pump_cost = 123.76, # USD from Alibaba https://www.alibaba.com/product-detail/0-4kw-cast-iron-motor-housing_1600934836942.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0L7StzT
                                         dP_design = 0,
                                         ) 
-    MembT = su.EL_MBR('MembT', ins=(AeroT-0, B_MembT-0), 
-                        outs = ('TreatedWater', 1-P_NitrateReturn_PC, 1-P_NitrateReturn_AnoxT, 'MemT_CH4', 'MemT_N2O'),
+    MembT = EL_MBR('MembT', ins=(AeroT-0, B_MembT.outs[0]), 
+                        outs = ('TreatedWater', 0-P_NitrateReturn_PC, 0-P_NitrateReturn_AnoxT, 'MemT_CH4', 'MemT_N2O'),
                         ppl = ppl,
                         baseline_ppl = 30,
                         )
@@ -306,7 +307,7 @@ def create_systemEL(flowsheet = None): # figure out the "components" and "flowsh
                                         dP_design = 50000, # in Pa
                                         )
 
-    CWT = su.EL_CWT('CWT', ins=(P_MT_selfpriming-0, P_O3_dosing-0, P_AirDissolved-0), 
+    CWT = EL_CWT('CWT', ins=(P_MT_selfpriming-0, P_O3_dosing-0, P_AirDissolved-0), 
                     outs= ('ClearWater', 1-CT, 0-P_AirDissolved, 'CWT_CH4', 'CWT_N2O'), 
                     V_wf = 0.9, 
                     ppl = ppl, baseline_ppl = 30,
@@ -320,7 +321,7 @@ def create_systemEL(flowsheet = None): # figure out the "components" and "flowsh
                             dP_design = 202650, # in Pa
                             )
     
-    PT = su.StorageTank('PT', ins=P_CWT-0, outs=2-Toilet, vessel_material = None, V_wf = None, 
+    PT = EL_PT('PT', ins=P_CWT-0, outs=2-Toilet, vessel_material = None, V_wf = None, 
                         include_construction = True, length_to_diameter = None, 
                         F_BM_default = 1, kw_per_m3 = None, vessel_type = None, tau = None, 
                         ppl = ppl, baseline_ppl = 30,
@@ -335,9 +336,9 @@ def create_systemEL(flowsheet = None): # figure out the "components" and "flowsh
     Total_N2O.line = 'fugitive N2O mixer'
     
     # Other impacts and costs
-    Other_system = su.EL_System('Other_system', ins=PT-0, outs=('housing',), 
+    Other_system = EL_System('Other_system', ins=PT-0, outs=('housing',), 
                                 ppl = ppl, baseline_ppl = 30, if_gridtied=True)
-    Other_housing = su.EL_Housing('Other_housing', ins=(Other_system-0), outs='Transport', ppl = ppl, baseline_ppl = 30)
+    #Other_housing = EL_Housing('Other_housing', ins=Other_system-0, outs='Transport', ppl = ppl, baseline_ppl = 30)
     Other_WasteTransport = Trucking('Other_WasteTransport', ins = Other_system-0, outs = ('WasteTransport', 'ConveyanceLoss'), 
                                        load = 20, # transportation load per trip
                                        load_unit = 'kg',
@@ -387,10 +388,10 @@ def create_systemEL(flowsheet = None): # figure out the "components" and "flowsh
                                   Total_CH4,
                                   Total_N2O,
                                   Other_system,
-                                  Other_housing,
+                                  #Other_housing,
                                   Other_WasteTransport,
                                   ))
-    sysEL.simulate()
+    #sysEL.simulate()
     
     teaEL = TEA(system = sysEL,
                    discount_rate = discount_rate,  
@@ -440,7 +441,7 @@ def create_system(system_ID='EL', flowsheet=None):
 
     try: system = f(flowsheet)
     except:
-        _load_components(reload_lca=True)
+        _load_components(reload=True)
         system = f(flowsheet)
     
     return system
