@@ -14,10 +14,14 @@ for license details.
 from . import N_flows
 from .N_flows import *
 
+from . import P_flows
+from .P_flows import *
+
 from . import aeration_demand
 from .aeration_demand import *
 
 __all__ = (
     *N_flows.__all__,
+    *P_flows.__all__,
     *aeration_demand.__all__,
 	)

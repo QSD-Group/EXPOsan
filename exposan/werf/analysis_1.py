@@ -6,7 +6,7 @@ Created on Fri Feb  7 08:41:06 2025
 """
 import time as tm
 from exposan.werf import create_system, add_performance_metrics, results_path
-from exposan.werf.utils import plantwide_N_mass_flows
+from exposan.werf.utils import plantwide_N_mass_flows, plantwide_P_mass_flows
 from qsdsan import Model, sanunits as su, processes as pc
 from biosteam.evaluation._utils import var_columns
 
@@ -14,6 +14,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 N_mass_dfs = {}
+P_mass_dfs = {}
 metrics = {}
 pe = 108918     # person equivalent for 10 MGD WRRF
 
@@ -47,18 +48,21 @@ for ID in (
         end = tm.time()
         print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end-start)), '\n')
         N_mass_dfs[ID] = plantwide_N_mass_flows(sys)
+        P_mass_dfs[ID] = plantwide_P_mass_flows(sys)
         metrics[ID] = [m() for m in mdl.metrics]
     except Exception as exc:
         print(exc)        
         
     try:
         fs.RWW.separate_out(urine)
+        if ID=='H1': sys.flowsheet.unit.MD.metal_dosage = 2
         start = tm.time()
         print("With UD start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
         sys.simulate(state_reset_hook='reset_cache', t_span=(0,400), method='BDF')
         end = tm.time()
         print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end-start)), '\n')
         N_mass_dfs[ID+'_UD'] = plantwide_N_mass_flows(sys)
+        P_mass_dfs[ID+'_UD'] = plantwide_P_mass_flows(sys)
         metrics[ID+'_UD'] = [m() for m in mdl.metrics]
     except Exception as exc:
         print(exc)
@@ -72,5 +76,9 @@ with pd.ExcelWriter(os.path.join(results_path, 'N_mass.xlsx')) as writer:
     for k, v in N_mass_dfs.items():
         v.to_excel(writer, sheet_name=k)
 
+with pd.ExcelWriter(os.path.join(results_path, 'P_mass.xlsx')) as writer:
+    for k, v in P_mass_dfs.items():
+        v.to_excel(writer, sheet_name=k)
+        
 metrics = pd.DataFrame.from_dict(metrics, orient='index', columns=var_columns(mdl.metrics))
 metrics.to_excel(os.path.join(results_path, 'ana1_performance.xlsx'))
