@@ -399,10 +399,10 @@ class AirDissolvedPump(Pump):
     and returning the water with dissolved air back to the clear water tank.
     """
     
-    _N_ins = 1;  # Number of input streams
-    _N_outs = 1;  # Number of output streams
-    _ins_size_is_fixed = True;  # Let the input interface be fixed
-    _outs_size_is_fixed = True;  # Let the output interface be fixed
+    _N_ins = 2  # Number of input streams
+    _N_outs = 1  # Number of output streams
+    _ins_size_is_fixed = True  # Let the input interface be fixed
+    _outs_size_is_fixed = True  # Let the output interface be fixed
     _CastIron_weight_per_pump = 6.8 # The weight of cast iron [kg]
     _pump_power = 0.55  # The power of each pump [kW]
     _pump_flow_rate = 30 * 60 / 1000  # The flow rate of each pump [m3/h]

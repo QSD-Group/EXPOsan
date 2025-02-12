@@ -86,6 +86,7 @@ def update_resource_recovery_settings():
         'HDPE': 0.5 * price_ratio, # $/kg, used for 200M ozone connection
         'PAC': 0.9 * price_ratio, # $/kg, used for aerobic tank deposition
         'Glucose': 0.95 * price_ratio, # $/kg, used in anoxic tank
+        'air': 0,
         }
     
     GWP_dct = {
@@ -102,6 +103,7 @@ def update_resource_recovery_settings():
         'O3': 0.39586718,
         'PAC': 0.394959,
         'Glucose': 0.033883,
+        'air': 0,
         }
     
     H_Ecosystems_dct = {
@@ -118,6 +120,7 @@ def update_resource_recovery_settings():
         'O3':0.21786132,
         'PAC': 0.1938478,
         'Glucose': 0.035664,
+        'air': 0,
         }
     
     H_Health_dct = {
@@ -134,6 +137,7 @@ def update_resource_recovery_settings():
         'O3': 0.51710284,
         'PAC': 0.0173485,
         'Glucose': 0.011324,
+        'air': 0,
         }
     
     H_Resources_dct = {
@@ -150,6 +154,7 @@ def update_resource_recovery_settings():
         'O3': 0.39586718,
         'PAC': 0.28485795,
         'Glucose': 0.02425,
+        'air': 0,
         }
     
     return price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct
@@ -212,6 +217,7 @@ def _load_lca_data(reload=False):
         create_stream_impact_item(item_ID='O3_item')
         create_stream_impact_item(item_ID='PAC_item')
         create_stream_impact_item(item_ID='Glucose_item')
+        create_stream_impact_item(item_ID='air_item')
         ImpactItem(ID = 'e_item', functional_unit = 'kWh', 
                    GWP = GWP_dct['Electricity'],
                    H_Ecosystems = H_Ecosystems_dct['Electricity'],

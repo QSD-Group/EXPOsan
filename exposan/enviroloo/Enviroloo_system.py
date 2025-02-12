@@ -348,7 +348,9 @@ def create_systemEL(flowsheet = None):
                         F_BM_default = 1, kw_per_m3 = None, vessel_type = None, tau = None, 
                         ppl = ppl, baseline_ppl = 30,
                         )
-
+    PT.add_specification(lambda: update_carbon_COD_ratio(sysEL))
+    PT.run_after_specification = True
+    
     Total_CH4 = su.Mixer('Total_CH4', ins=(Toilet-1, AnoxT-1, AeroT-1, MembT-3), outs=stream['CH4'])
     Total_CH4.add_specification(lambda: add_fugitive_items(Total_CH4, 'CH4_item'))
     Total_CH4.line = 'fugitive CH4 mixer'
@@ -358,31 +360,31 @@ def create_systemEL(flowsheet = None):
     Total_N2O.line = 'fugitive N2O mixer'
     
     # Other impacts and costs
-    Other_system = EL_System('Other_system', ins=PT-0, outs=('housing',), 
-                                ppl = ppl, baseline_ppl = 30, if_gridtied=True)
-    #Other_housing = EL_Housing('Other_housing', ins=Other_system-0, outs='Transport', ppl = ppl, baseline_ppl = 30)
-    Other_WasteTransport = Trucking('Other_WasteTransport', ins = Other_system-0, outs = ('WasteTransport', 'ConveyanceLoss'), 
-                                       load = 20, # transportation load per trip
-                                       load_unit = 'kg',
-                                       load_type = 'mass', # mass or volume
-                                       distance = 5.0, # transportation distance per trip 
-                                       distance_unit = 'km', loss_ratio=0.02,
-                                       interval = 30, # timeinterval between trips
-                                       interval_unit = 'd',
-                                       ) # here transport fee for waste clearance is considered
-    Other_SetupShipping = Trucking('Other_SetupShipping', ins = (Other_system-0), outs = None,
-                                       load = 53.472, # transportation load per trip, from BOM of Enviroloo
-                                       load_unit = 'kg',
-                                       load_type = 'mass', # mass or volume
-                                       distance = 5000.0, # transportation distance per trip, assuming the delivery of setup installation
-                                       distance_unit = 'km', loss_ratio=0.0,
-                                       interval = 365, # timeinterval between trips
-                                       interval_unit = 'd',
-                                       )
+    # Other_system = EL_System('Other_system', ins=PT-0, outs=('housing',), 
+    #                             ppl = ppl, baseline_ppl = 30, if_gridtied=True)
+    # #Other_housing = EL_Housing('Other_housing', ins=Other_system-0, outs='Transport', ppl = ppl, baseline_ppl = 30)
+    # Other_WasteTransport = Trucking('Other_WasteTransport', ins = Other_system-0, outs = ('WasteTransport', 'ConveyanceLoss'), 
+    #                                    load = 20, # transportation load per trip
+    #                                    load_unit = 'kg',
+    #                                    load_type = 'mass', # mass or volume
+    #                                    distance = 5.0, # transportation distance per trip 
+    #                                    distance_unit = 'km', loss_ratio=0.02,
+    #                                    interval = 30, # timeinterval between trips
+    #                                    interval_unit = 'd',
+    #                                    ) # here transport fee for waste clearance is considered
+    # Other_SetupShipping = Trucking('Other_SetupShipping', ins = (Other_system-0), outs = None,
+    #                                    load = 53.472, # transportation load per trip, from BOM of Enviroloo
+    #                                    load_unit = 'kg',
+    #                                    load_type = 'mass', # mass or volume
+    #                                    distance = 5000.0, # transportation distance per trip, assuming the delivery of setup installation
+    #                                    distance_unit = 'km', loss_ratio=0.0,
+    #                                    interval = 365, # timeinterval between trips
+    #                                    interval_unit = 'd',
+    #                                    )
     
     # ensure the same carbon_COD_ratio throughout the EL system
-    Other_SetupShipping.add_specification(lambda: update_carbon_COD_ratio(sysEL))
-    Other_SetupShipping.run_after_specification = True
+    # Other_SetupShipping.add_specification(lambda: update_carbon_COD_ratio(sysEL))
+    # Other_SetupShipping.run_after_specification = True
                                                                            
     sysEL = System('sysEL', path=(WasteWaterGenerator,
                                   Toilet,
@@ -409,9 +411,9 @@ def create_systemEL(flowsheet = None):
                                   PT,
                                   Total_CH4,
                                   Total_N2O,
-                                  Other_system,
-                                  #Other_housing,
-                                  Other_WasteTransport,
+                                  # Other_system,
+                                  # Other_housing,
+                                  # Other_WasteTransport,
                                   ))
     #sysEL.simulate()
     
