@@ -119,13 +119,13 @@ def update_carbon_COD_ratio(sys):
         if hasattr(u, 'carbon_COD_ratio'): u.carbon_COD_ratio = carbon_COD_ratio
 
 # %% Create EnviroLoo Clear system
-def create_systemEL(flowsheet = None): # figure out the "components" and "flowsheet" arguments in Biogenic_refinery system (in Exposan repository)
+def create_systemEL(flowsheet = None):
     flowsheet = flowsheet or main_flowsheet
     stream = flowsheet.stream
     batch_create_streams('EL')
     
-    WasteWaterGenerator = su.Excretion('WasteWaterGenerator', outs=('urine', 'feces'))
-   
+    WasteWaterGenerator = EL_Excretion('WasteWaterGenerator', outs=('urine', 'feces'))
+    # breakpoint()
     # Toilet = su.MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'FlushingWater', 'ToiletPaper'), 
     #                 outs =('MixedWasteWater', 'Toilet_CH4', 'Toilet_N2O'),
     #                 decay_k_COD = get_decay_k(),
@@ -150,7 +150,7 @@ def create_systemEL(flowsheet = None): # figure out the "components" and "flowsh
     #                 decay_k_N=get_decay_k(),
     #                 max_CH4_emission=max_CH4_emission
     #                 )
-    Toilet = su.MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'toilet_paper', 'flushing_water', 'cleansing_water', 'desiccant'),
+    Toilet = EL_MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'toilet_paper', 'flushing_water', 'cleansing_water', 'desiccant'),
                 outs=('mixed_waste', 'Toilet_CH4', 'Toilet_N2O'),
                 decay_k_COD=get_decay_k(),
                 decay_k_N=get_decay_k(),
@@ -438,7 +438,9 @@ def create_systemEL(flowsheet = None): # figure out the "components" and "flowsh
 
     return sysEL
 
-def create_system(system_ID='EL', flowsheet=None):
+def create_system(system_ID='EL', flowsheet=None, 
+                  #adjust_MW_to_measured_as=False
+                  ):
     ID = system_ID.lower().lstrip('sys').upper()
     reload_lca = False
 
@@ -452,7 +454,9 @@ def create_system(system_ID='EL', flowsheet=None):
         flowsheet = Flowsheet(flowsheet_ID)
         main_flowsheet.set_flowsheet(flowsheet)
     
-    _load_components()
+    _load_components(
+        #adjust_MW_to_measured_as=adjust_MW_to_measured_as
+        )
     _load_lca_data(reload_lca)
 
     if system_ID == 'EL': f = create_systemEL
@@ -462,7 +466,9 @@ def create_system(system_ID='EL', flowsheet=None):
 
     try: system = f(flowsheet)
     except:
-        _load_components(reload=True)
+        _load_components(reload=True, 
+                         #adjust_MW_to_measured_as=adjust_MW_to_measured_as
+                         )
         system = f(flowsheet)
     
     return system

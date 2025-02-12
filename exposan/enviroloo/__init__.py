@@ -7,7 +7,7 @@ Created by Yuyao Huang and Siqi Tang for Enviroloo Clear Toilet system
 import os, qsdsan as qs
 from qsdsan import ImpactItem, StreamImpactItem
 from exposan.utils import (
-    #_init_modules,
+    _init_modules,
     get_decay_k,
     get_generic_scaled_capital,
     get_generic_tanker_truck_fee as get_tanker_truck_fee,
@@ -17,10 +17,10 @@ from exposan.utils import (
 INCLUDED_RESOURCE_RECOVERY = False
 
 el_path = os.path.dirname(__file__)
-el_data_path = os.path.join(el_path, 'data')
-results_path = os.path.join(el_path, 'results')
-#module = os.path.split(el_path)[-1]
-#data_path, results_path = _init_modules(module, include_data_path = True)
+#el_data_path = os.path.join(el_path, 'data')
+#results_path = os.path.join(el_path, 'results')
+module = os.path.split(el_path)[-1]
+data_path, results_path = _init_modules(module, include_data_path = True)
 
 #############################################################################################################################################
 #
@@ -165,10 +165,14 @@ update_resource_recovery_settings()
 from . import _components
 from ._components import *  
 _components_loaded = False
-def _load_components(reload=False):
+def _load_components(reload=False, 
+                     #adjust_MW_to_measured_as=False
+                     ):
     global components, _components_loaded
     if not _components_loaded or reload:
-        components = create_components()
+        components = create_components(
+            #adjust_MW_to_measured_as=adjust_MW_to_measured_as
+            )
         qs.set_thermo(components)
         _components_loaded = True
           
@@ -179,10 +183,10 @@ def _load_lca_data(reload=False):
     '''
     global _impact_item_loaded
     if not _impact_item_loaded or reload:
-        indicator_path = os.path.join(el_data_path, 'impact_indicators.csv')
+        indicator_path = os.path.join(data_path, 'impact_indicators.csv')
         qs.ImpactIndicator.load_from_file(indicator_path)
                     
-        item_path = os.path.join(el_data_path, 'impact_items.xlsx')
+        item_path = os.path.join(data_path, 'impact_items.xlsx')
         qs.ImpactItem.load_from_file(item_path)
 
         price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct = update_resource_recovery_settings()

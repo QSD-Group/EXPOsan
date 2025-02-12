@@ -194,10 +194,14 @@ update_resource_recovery_settings()
 from . import _components
 from ._components import *
 _components_loaded = False
-def _load_components(reload=False):
+def _load_components(reload=False, 
+                     #adjust_MW_to_measured_as=False
+                     ):
     global components, _components_loaded
     if not _components_loaded or reload:
-        components = create_components()
+        components = create_components(
+            #adjust_MW_to_measured_as=adjust_MW_to_measured_as
+            )
         qs.set_thermo(components)
         _components_loaded = True
 
@@ -309,11 +313,14 @@ hr_per_yr = 365 * 24
 def get_C(stream):
     sys = stream.source.system
     for unit in sys.units:
-        if hasattr(unit, 'carbon_COD_ratio'): carbon_COD_ratio = unit.carbon_COD_ratio
-    return stream.COD*stream.F_vol/1e3*carbon_COD_ratio*hr_per_yr
-get_C_gas = lambda stream: stream.imol['CH4']*12*hr_per_yr
+        if hasattr(unit, 'carbon_COD_ratio'): 
+            carbon_COD_ratio = unit.carbon_COD_ratio
+            return stream.COD*stream.F_vol/1e3*carbon_COD_ratio*hr_per_yr
+# get_C_gas = lambda stream: stream.imol['CH4']*12*hr_per_yr
+get_C_gas = lambda stream: sum(stream.mass*stream.components.i_C)*hr_per_yr
 get_N = lambda stream: stream.TN*stream.F_vol/1e3*hr_per_yr
-get_N_gas = lambda stream: stream.imol['N2O']*28*hr_per_yr
+# get_N_gas = lambda stream: stream.imol['N2O']*28*hr_per_yr
+get_N_gas = lambda stream: sum(stream.mass*stream.components.i_N)*hr_per_yr
 get_P = lambda stream: stream.TP*stream.F_vol/1e3*hr_per_yr
 get_K = lambda stream: stream.TK*stream.F_vol/1e3*hr_per_yr
 
@@ -375,9 +382,13 @@ def get_recoveries(system, include_breakdown=False):
         K_dct['trans_liq'] = get_K(trans_liq.outs[0])
         K_dct['trans_liq_loss'] = get_K(trans_liq.outs[1])
         # Struvite and ion exchange
-        N_dct['struvite'] = struvite.outs[1].imol['Struvite'] * 14 * hr_per_yr # 14 is the MW of N
-        N_dct['NH3'] = ix.outs[2].imol['NH3'] * 14 * hr_per_yr
-        P_dct['struvite'] = struvite.outs[1].imol['Struvite'] * 31 * hr_per_yr # 31 is the MW of P
+        # N_dct['struvite'] = struvite.outs[1].imol['Struvite'] * 14 * hr_per_yr # 14 is the MW of N
+        # N_dct['NH3'] = ix.outs[2].imol['NH3'] * 14 * hr_per_yr  # NH3 component (measured_as N) if not adjusted has MW=17, so imol is underestimated. 
+        # P_dct['struvite'] = struvite.outs[1].imol['Struvite'] * 31 * hr_per_yr # 31 is the MW of P
+        cmps = ix.outs[1].components  # always correct regardless of MW
+        N_dct['struvite'] = struvite.outs[1].imass['Struvite'] * cmps.Struvite.i_N * hr_per_yr
+        N_dct['NH3'] = ix.outs[2].imass['NH3'] * cmps.NH3.i_N * hr_per_yr 
+        P_dct['struvite'] = struvite.outs[1].imass['Struvite'] * cmps.Struvite.i_P * hr_per_yr
 
     ##### Applicable for both A and B #####
     # In

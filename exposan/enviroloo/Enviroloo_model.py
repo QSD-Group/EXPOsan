@@ -20,7 +20,8 @@ from exposan.utils import batch_setting_unit_params, run_uncertainty as run
 from exposan import enviroloo as el
 from exposan.enviroloo import (
     create_system,
-    el_data_path,
+    #el_data_path,
+    data_path as el_data_path,
     get_decay_k,
     get_LCA_metrics,
     get_TEA_metrics,
