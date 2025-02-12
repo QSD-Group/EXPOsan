@@ -165,7 +165,7 @@ def create_systemEL(flowsheet = None):
                     V_wf = 0.9, ppl = ppl, baseline_ppl = 30,
                     kW_per_m3=0.1,  # The power consumption per unit volume of the tank
                     )
-    
+
     P_CT_lift = LiftPump('P_CT_lift', ins = CT-0, outs = 'TreatedWater',
                             working_factor = 0.9,  # The ratio of the actual output and the design output
                             operation_time = 12,  # Total run time of system or plant [h/d]
@@ -181,7 +181,7 @@ def create_systemEL(flowsheet = None):
                     sludge_flow_rate = 0.5,  # Sludge flow rate
                     max_oveflow = 0.3,
                     )
-
+    
     P_PC_return = ReturnPump('P_PC_return', ins=PC-0, outs = 3-CT, 
                                 working_factor = 0.9,  # The ratio of the actual output and the design output
                                 operation_time = 12,  # Total run time of system or plant [h/d]
@@ -189,7 +189,7 @@ def create_systemEL(flowsheet = None):
                                 pump_cost = 123.76, # USD from Alibaba https://www.alibaba.com/product-detail/0-4kw-cast-iron-motor-housing_1600934836942.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0L7StzT
                                 dP_design = 0,
                                 )
-
+    
     P_Glu_agitation = AgitationPump('P_Glu_agitation', ins = stream['Glucose'], outs = 'GlucoseAgitation', 
                                     working_factor = 0.9,  # The ratio of the actual output and the design output
                                     operation_time = 12,  # Total run time of system or plant [h/d]
@@ -219,7 +219,7 @@ def create_systemEL(flowsheet = None):
                             degraded_components=('OtherSS',),  
                             ppl = ppl, baseline_ppl = 30,
                             )
-
+    
     P_PAC_agitation = AgitationPump('P_PAC_agitation', ins=stream['PAC'], outs='PACAgitation', 
                                     working_factor = 0.9,  # The ratio of the actual output and the design output
                                     operation_time = 12,  # Total run time of system or plant [h/d]
@@ -261,7 +261,7 @@ def create_systemEL(flowsheet = None):
                             outs = ('TreatedWater', 'AeroT_CH4', 'AeroT_N2O'), 
                             ppl = ppl, baseline_ppl = 30,
                             )
-
+    
     B_MembT = EL_blower('B_MembT', ins = stream['air'], outs = 'air', 
                             F_BM={
                                   'Blowers': 2.22,
@@ -303,7 +303,7 @@ def create_systemEL(flowsheet = None):
                         ppl = ppl,
                         baseline_ppl = 30,
                         )
-
+    
     P_MT_selfpriming = SelfPrimingPump('P_MT_selfpriming', ins=MembT-0, outs='SelfPrimingWater', 
                                         working_factor = 0.9,  # The ratio of the actual output and the design output
                                         operation_time = 12,  # Total run time of system or plant [h/d]
@@ -334,7 +334,7 @@ def create_systemEL(flowsheet = None):
                     V_wf = 0.9, 
                     ppl = ppl, baseline_ppl = 30,
                     )
-    
+   
     P_CWT = ClearWaterPump('P_CWT', ins=CWT-0, outs='ReuseWater', 
                             working_factor = 0.9,  # The ratio of the actual output and the design output
                             operation_time = 12,  # Total run time of system or plant [h/d]
@@ -348,6 +348,7 @@ def create_systemEL(flowsheet = None):
                         F_BM_default = 1, kw_per_m3 = None, vessel_type = None, tau = None, 
                         ppl = ppl, baseline_ppl = 30,
                         )
+    
     PT.add_specification(lambda: update_carbon_COD_ratio(sysEL))
     PT.run_after_specification = True
     
