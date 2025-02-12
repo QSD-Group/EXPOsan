@@ -214,7 +214,7 @@ def create_systemEL(flowsheet = None):
                                         dP_design = 0,
                                         )
     
-    AnoxT = EL_Anoxic('AnoxT', ins=(P_AnoxT_agitation-0, 'NitrateReturn_MT', P_Glu_dosing-0, PC-0), 
+    AnoxT = EL_Anoxic('AnoxT', ins=(PC-0, 'NitrateReturn_MT', P_Glu_dosing-0, P_AnoxT_agitation-0), 
                             outs = ('TreatedWater', 'AnoxT_CH4', 'AnoxT_N2O'),
                             degraded_components=('OtherSS',),  
                             ppl = ppl, baseline_ppl = 30,
