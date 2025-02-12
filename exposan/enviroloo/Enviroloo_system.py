@@ -160,7 +160,7 @@ def create_systemEL(flowsheet = None):
                 if_flushing=True, if_desiccant=False, if_toilet_paper=True,
                 CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06)    
 
-    CT = EL_CT('CT', ins=(Toilet-0, 'ClearWaterTank_spill','PrimaryClar_spill', 'PrimaryClarP_return'), 
+    CT = EL_CT('CT', ins=(Toilet-0, 'PrimaryClarP_return','PrimaryClar_spill', 'ClearWaterTank_spill'), 
                     outs = ('TreatedWater'),
                     V_wf = 0.9, ppl = ppl, baseline_ppl = 30,
                     kW_per_m3=0.1,  # The power consumption per unit volume of the tank
@@ -174,7 +174,7 @@ def create_systemEL(flowsheet = None):
                             dP_design = 0,
                             )
     
-    PC = EL_PC('PC', ins=(P_CT_lift-0, 'NitrateReturn_MT'), outs=('TreatedWater', 2-CT , 3-CT),
+    PC = EL_PC('PC', ins=(P_CT_lift-0, 'NitrateReturn_MT'), outs=('TreatedWater', 2-CT , 1-CT),
                     ppl = ppl,  # The number of people served
                     baseline_ppl = 30,
                     solids_removal_efficiency = 0.85,  # The solids removal efficiency
