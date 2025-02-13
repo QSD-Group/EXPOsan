@@ -64,7 +64,6 @@ class LiftPump(Pump):
         self.ppl = ppl  # The number of all people used all toilets
         self.baseline_ppl = baseline_ppl  # The number of people per toilet
         
-        self._mixed = WasteStream()
     
     @property
     def dp_factor(self):
@@ -86,21 +85,9 @@ class LiftPump(Pump):
         self.add_construction(add_cost=False)
     
     def _run(self):
-
-        # Input streams
-        WasteWater = self.ins
-
-        # Output stream
-        TreatedWater = self.outs
-        
-        # Define input streams
-        input_streams = [WasteWater]
-        
-        # Mix all inputs into a single stream
-        self._mixed.empty()
-        self._mixed.mix_from(input_streams)
-            
-        TreatedWater.mix_from([WasteWater])
+        s_in, = self.ins
+        s_out, = self.outs
+        s_out.copy_like(s_in)
 
     def _cost(self):
 
@@ -245,21 +232,9 @@ class DosingPump(Pump):
         self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
 
     def _run(self):
-
-        # Input streams
-        S_in = self.ins
-
-        # Output stream
-        S_out = self.outs
-        
-        # Define input streams
-        input_streams = [S_in]
-        
-        # Mix all inputs into a single stream
-        self._mixed.empty()
-        self._mixed.mix_from(input_streams)
-            
-        S_out.mix_from([S_in])
+        s_in, = self.ins
+        s_out, = self.outs
+        s_out.copy_like(s_in)
 
     def _design(self):
         design = self.design_results
@@ -505,9 +480,10 @@ class AirDissolvedPump(Pump):
         self.add_construction(add_cost=False)
 
     def _run(self):
-        s_in, = self.ins
-        s_out, = self.outs
-        s_out.copy_like(s_in)
+        CWTwater, air= self.ins
+        Water_with_O2 = self.outs[0]
+        Water_with_O2.empty()
+        Water_with_O2.mix_from([CWTwater, air])
     
     def _cost(self):
 
