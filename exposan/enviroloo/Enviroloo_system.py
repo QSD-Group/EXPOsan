@@ -174,7 +174,7 @@ def create_systemEL(flowsheet = None):
                             dP_design = 0,
                             )
     
-    PC = EL_PC('PC', ins=(P_CT_lift-0, 'NitrateReturn_MT'), outs=('TreatedWater', 2-CT , 1-CT),
+    PC = EL_PC('PC', ins=(P_CT_lift-0, 'NitrateReturn_MT'), outs=('TreatedWater', 'PC_return' , 2-CT),
                     ppl = ppl,  # The number of people served
                     baseline_ppl = 30,
                     solids_removal_efficiency = 0.85,  # The solids removal efficiency
@@ -182,7 +182,7 @@ def create_systemEL(flowsheet = None):
                     max_oveflow = 0.3,
                     )
     
-    P_PC_return = ReturnPump('P_PC_return', ins=PC-0, outs = 1-CT, 
+    P_PC_return = ReturnPump('P_PC_return', ins=PC-1, outs = 1-CT, 
                                 working_factor = 0.9,  # The ratio of the actual output and the design output
                                 operation_time = 12,  # Total run time of system or plant [h/d]
                                 life_time = 5,  # Lifetime of the pump [years]
