@@ -345,7 +345,7 @@ def create_systemEL(flowsheet = None):
     
     PT = EL_PT('PT', ins=P_CWT-0, outs=3-Toilet, vessel_material = None, V_wf = None, 
                         include_construction = True, length_to_diameter = None, 
-                        F_BM_default = 1, kw_per_m3 = None, vessel_type = None, tau = None, 
+                        F_BM_default = 1, kW_per_m3 = 0.1, vessel_type = None, tau = None, 
                         ppl = ppl, baseline_ppl = 30,
                         )
     
