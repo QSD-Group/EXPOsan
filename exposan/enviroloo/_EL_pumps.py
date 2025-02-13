@@ -65,9 +65,14 @@ class LiftPump(Pump):
         self.baseline_ppl = baseline_ppl  # The number of people per toilet
     
     @property
+    def dp_factor(self):
+        dP_factor = (self.P + self.dP_design) / self.P
+        return dP_factor
+
+    @property
     def actual_power(self):
         # Calculate the actual total power [kW]
-        return self._pump_power / self.working_factor
+        return self._pump_power / self.working_factor * self.dP_factor
 
     def _init_lca(self):
         self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
@@ -79,9 +84,17 @@ class LiftPump(Pump):
         self.add_construction(add_cost=False)
     
     def _run(self):
-        s_in, = self.ins
-        s_out, = self.outs
-        s_out.copy_like(s_in)
+
+        # Input streams
+        WasteWater = self.ins
+
+        # Output stream
+        TreatedWater = self.outs
+        
+        for out_stream in self.outs:
+            out_stream.empty()
+            
+        TreatedWater.mix_from([WasteWater])
 
     def _cost(self):
 
@@ -138,9 +151,14 @@ class AgitationPump(Pump):
         self.baseline_ppl = baseline_ppl  # The number of people per toilet
 
     @property
+    def dp_factor(self):
+        dP_factor = (self.P + self.dP_design) / self.P
+        return dP_factor
+
+    @property
     def actual_power(self):
         # Calculate the actual total power [kW]
-        return self._pump_power / self.working_factor  
+        return self._pump_power / self.working_factor * self.dP_factor 
     
     def _init_lca(self):
         self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
@@ -208,12 +226,30 @@ class DosingPump(Pump):
         self.price_ratio = price_ratio
 
     @property
+    def dp_factor(self):
+        dP_factor = (self.P + self.dP_design) / self.P
+        return dP_factor
+
+    @property
     def actual_power(self):
         # Calculate the actual total power [kW]
-        return self._pump_power / self.working_factor  
+        return self._pump_power / self.working_factor * self.dP_factor
     
     def _init_lca(self):
         self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
+
+    def _run(self):
+
+        # Input streams
+        Glucose_in = self.ins
+
+        # Output stream
+        Glucose_out = self.outs
+        
+        for out_stream in self.outs:
+            out_stream.empty()
+            
+        Glucose_out.mix_from([Glucose_in])
 
     def _design(self):
         design = self.design_results
@@ -279,9 +315,14 @@ class ReturnPump(Pump):
         self.price_ratio = price_ratio
 
     @property
+    def dp_factor(self):
+        dP_factor = (self.P + self.dP_design) / self.P
+        return dP_factor
+
+    @property
     def actual_power(self):
         # Calculate the actual total power [kW]
-        return self._pump_power / self.working_factor  
+        return self._pump_power / self.working_factor * self.dP_factor
     
     def _init_lca(self):
         self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
@@ -354,9 +395,14 @@ class SelfPrimingPump(Pump):
         self.price_ratio = price_ratio
 
     @property
+    def dp_factor(self):
+        dP_factor = (self.P + self.dP_design) / self.P
+        return dP_factor
+
+    @property
     def actual_power(self):
         # Calculate the actual total power [kW]
-        return self._pump_power / self.working_factor  
+        return self._pump_power / self.working_factor * self.dP_factor 
     
     def _init_lca(self):
         self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
@@ -430,9 +476,14 @@ class AirDissolvedPump(Pump):
         self.price_ratio = price_ratio
 
     @property
+    def dp_factor(self):
+        dP_factor = (self.P + self.dP_design) / self.P
+        return dP_factor
+
+    @property
     def actual_power(self):
         # Calculate the actual total power [kW]
-        return self._pump_power / self.working_factor  
+        return self._pump_power / self.working_factor * self.dP_factor
     
     def _init_lca(self):
         self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
@@ -507,9 +558,14 @@ class MicroBubblePump(Pump):
         self.price_ratio = price_ratio
 
     @property
+    def dp_factor(self):
+        dP_factor = (self.P + self.dP_design) / self.P
+        return dP_factor
+
+    @property
     def actual_power(self):
         # Calculate the actual total power [kW]
-        return self._pump_power / self.working_factor  
+        return self._pump_power / self.working_factor * self.dP_factor
     
     def _init_lca(self):
         self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
@@ -584,9 +640,14 @@ class ClearWaterPump(Pump):
         self.price_ratio = price_ratio
 
     @property
+    def dp_factor(self):
+        dP_factor = (self.P + self.dP_design) / self.P
+        return dP_factor
+
+    @property
     def actual_power(self):
         # Calculate the actual total power [kW]
-        return self._pump_power / self.working_factor  
+        return self._pump_power / self.working_factor * self.dP_factor
     
     def _init_lca(self):
         self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
