@@ -36,13 +36,13 @@ class LiftPump(Pump):
     LiftPump: Specialized pump for lifting waste water from collection tank to primary clarifiers
     """
 
-    _N_ins = 1;  # Number of input streams
-    _N_outs = 1;  # Number of output streams
-    _ins_size_is_fixed = True;  # Let the input interface be fixed
-    _outs_size_is_fixed = True;  # Let the output interface be fixed
+    _N_ins = 1  # Number of input streams
+    _N_outs = 1  # Number of output streams
+    _ins_size_is_fixed = True  # Let the input interface be fixed
+    _outs_size_is_fixed = True  # Let the output interface be fixed
     _pump_flow_rate = 250 * 60 / 1000  # The flow rate of each pump [m³/h]
-    _CastIron_weight_per_pump = 12 # The weight of cast iron [kg]
-    _pump_power = 0.45 # The power of each pump [kW]
+    _CastIron_weight_per_pump = 12  # The weight of cast iron [kg]
+    _pump_power = 0.45  # The power of each pump [kW]
     exponent_scale = 0.4
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', material='Cast iron',
