@@ -129,10 +129,10 @@ class AgitationPump(Pump):
     AgitationPump: Specialized pump for mixing chemicals with solutions or wastewater.
     """
     
-    _N_ins = 1;  # Number of input streams
-    _N_outs = 1;  # Number of output streams
-    _ins_size_is_fixed = True;  # Let the input interface be fixed
-    _outs_size_is_fixed = True;  # Let the output interface be fixed
+    _N_ins = 1  # Number of input streams
+    _N_outs = 1  # Number of output streams
+    _ins_size_is_fixed = True  # Let the input interface be fixed
+    _outs_size_is_fixed = True  # Let the output interface be fixed
     _CastIron_weight_per_pump = 9 # The weight of cast iron [kg]
     _pump_power = 0.18 # The power of each pump [kW]
     exponent_scale = 0.4
