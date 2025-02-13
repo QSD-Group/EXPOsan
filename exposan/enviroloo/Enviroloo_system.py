@@ -330,7 +330,7 @@ def create_systemEL(flowsheet = None):
                                         )
 
     CWT = EL_CWT('CWT', ins=(P_MT_selfpriming-0, P_O3_dosing-0, P_AirDissolved-0), 
-                    outs= ('ClearWater', 1-CT, 0-P_AirDissolved), 
+                    outs= ('ClearWater', 2-CT, 0-P_AirDissolved), 
                     V_wf = 0.9, 
                     ppl = ppl, baseline_ppl = 30,
                     )
@@ -343,7 +343,7 @@ def create_systemEL(flowsheet = None):
                             dP_design = 202650, # in Pa
                             )
     
-    PT = EL_PT('PT', ins=P_CWT-0, outs=2-Toilet, vessel_material = None, V_wf = None, 
+    PT = EL_PT('PT', ins=P_CWT-0, outs=3-Toilet, vessel_material = None, V_wf = None, 
                         include_construction = True, length_to_diameter = None, 
                         F_BM_default = 1, kw_per_m3 = None, vessel_type = None, tau = None, 
                         ppl = ppl, baseline_ppl = 30,
