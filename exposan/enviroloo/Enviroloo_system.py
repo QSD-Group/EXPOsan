@@ -257,6 +257,8 @@ def create_systemEL(flowsheet = None):
                             building_unit_cost=9, # unit cost of the building, in USD/ft2
                             ppl = ppl, baseline_ppl = 30,
                            )
+    #B_MembT.line = 'Blower_Aerob'
+    
     AeroT = EL_Aerobic('AeroT', ins=(AnoxT-0, P_PAC_dosing-0, B_AeroT.outs[0]), 
                             outs = ('TreatedWater', 'AeroT_CH4', 'AeroT_N2O'), 
                             ppl = ppl, baseline_ppl = 30,
@@ -283,6 +285,8 @@ def create_systemEL(flowsheet = None):
                             AFF=3.33, # air flow fraction
                             building_unit_cost=9, # unit cost of the building, in USD/ft2
                             ppl = ppl, baseline_ppl = 30,)
+    #B_MembT.line = 'Blower_Memb'
+    
     P_NitrateReturn_PC = ReturnPump('P_NitrateReturn_PC', ins='MembT_return', outs=1-PC,
                                     working_factor = 0.9,  # The ratio of the actual output and the design output
                                     operation_time = 12,  # Total run time of system or plant [h/d]
@@ -330,7 +334,7 @@ def create_systemEL(flowsheet = None):
                                         )
 
     CWT = EL_CWT('CWT', ins=(P_MT_selfpriming-0, P_O3_dosing-0, P_AirDissolved-0), 
-                    outs= ('ClearWater', 2-CT, 0-P_AirDissolved), 
+                    outs= ('ClearWater', 3-CT, 0-P_AirDissolved), 
                     V_wf = 0.9, 
                     ppl = ppl, baseline_ppl = 30,
                     )
