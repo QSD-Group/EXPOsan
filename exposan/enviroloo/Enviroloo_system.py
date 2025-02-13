@@ -182,7 +182,7 @@ def create_systemEL(flowsheet = None):
                     max_oveflow = 0.3,
                     )
     
-    P_PC_return = ReturnPump('P_PC_return', ins=PC-0, outs = 3-CT, 
+    P_PC_return = ReturnPump('P_PC_return', ins=PC-0, outs = 1-CT, 
                                 working_factor = 0.9,  # The ratio of the actual output and the design output
                                 operation_time = 12,  # Total run time of system or plant [h/d]
                                 life_time = 5,  # Lifetime of the pump [years]
