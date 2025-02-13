@@ -91,8 +91,6 @@ class LiftPump(Pump):
         # Output stream
         TreatedWater = self.outs
         
-        for out_stream in self.outs:
-            out_stream.empty()
             
         TreatedWater.mix_from([WasteWater])
 
