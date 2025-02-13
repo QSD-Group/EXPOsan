@@ -342,15 +342,15 @@ def create_systemEL(flowsheet = None):
                             pump_cost = 118.46, # USD from https://www.alibaba.com/product-detail/SQD-0-75kw-1hp-high-pressure_1601032336743.html?spm=a2700.galleryofferlist.normal_offer.d_title.2b1413a0sqHM0o
                             dP_design = 202650, # in Pa
                             )
-    
+   
     PT = EL_PT('PT', ins=P_CWT-0, outs=3-Toilet, vessel_material = None, V_wf = None, 
                         include_construction = True, length_to_diameter = None, 
                         F_BM_default = 1, kW_per_m3 = 0.1, vessel_type = None, tau = None, 
                         ppl = ppl, baseline_ppl = 30,
                         )
     
-    PT.add_specification(lambda: update_carbon_COD_ratio(sysEL))
-    PT.run_after_specification = True
+    # CWT.add_specification(lambda: update_carbon_COD_ratio(sysEL))
+    # CWT.run_after_specification = True
     
     Total_CH4 = su.Mixer('Total_CH4', ins=(Toilet-1, AnoxT-1, AeroT-1, MembT-3), outs=stream['CH4'])
     Total_CH4.add_specification(lambda: add_fugitive_items(Total_CH4, 'CH4_item'))
@@ -418,27 +418,27 @@ def create_systemEL(flowsheet = None):
                                   ))
     #sysEL.simulate()
     
-    teaEL = TEA(system = sysEL,
-                   discount_rate = discount_rate,  
-                   income_tax = 0.05,  
-                   CEPCI = 567.5,  
-                   start_year = 2024,  
-                   lifetime = 10,  
-                   uptime_ratio = 1.0,  
-                   #CAPEX = 0.0,  
-                   lang_factor = None,  
-                   annual_maintenance = 0.0,  
-                   annual_labor = (operator_daily_wage * 3 * 365),  
-                   system_add_OPEX = {},
-                   depreciation = 'SL',  
-                   construction_schedule = (0, 1),  
-                   accumulate_interest_during_construction = False,  
-                   simulate_system = True,  
-                   simulate_kwargs = {},
-                   )
+    # teaEL = TEA(system = sysEL,
+    #                discount_rate = discount_rate,  
+    #                income_tax = 0.05,  
+    #                CEPCI = 567.5,  
+    #                start_year = 2024,  
+    #                lifetime = 10,  
+    #                uptime_ratio = 1.0,  
+    #                #CAPEX = 0.0,  
+    #                lang_factor = None,  
+    #                annual_maintenance = 0.0,  
+    #                annual_labor = (operator_daily_wage * 3 * 365),  
+    #                system_add_OPEX = {},
+    #                depreciation = 'SL',  
+    #                construction_schedule = (0, 1),  
+    #                accumulate_interest_during_construction = False,  
+    #                simulate_system = True,  
+    #                simulate_kwargs = {},
+    #                )
     
-    get_power = lambda: sum([(u.power_utility.rate * u.uptime_ratio) for u in sysEL.units]) * (365 * teaEL.lifetime) * 12
-    LCA(system = sysEL, lifetime = 10, lifetime_unit = 'yr', uptime_ratio = 1.0, e_item = get_power)
+    # get_power = lambda: sum([(u.power_utility.rate * u.uptime_ratio) for u in sysEL.units]) * (365 * teaEL.lifetime) * 12
+    # LCA(system = sysEL, lifetime = 10, lifetime_unit = 'yr', uptime_ratio = 1.0, e_item = get_power)
 
     return sysEL
 
