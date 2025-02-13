@@ -247,15 +247,19 @@ class DosingPump(Pump):
     def _run(self):
 
         # Input streams
-        Glucose_in = self.ins
+        S_in = self.ins
 
         # Output stream
-        Glucose_out = self.outs
+        S_out = self.outs
         
-        for out_stream in self.outs:
-            out_stream.empty()
+        # Define input streams
+        input_streams = [S_in]
+        
+        # Mix all inputs into a single stream
+        self._mixed.empty()
+        self._mixed.mix_from(input_streams)
             
-        Glucose_out.mix_from([Glucose_in])
+        S_out.mix_from([S_in])
 
     def _design(self):
         design = self.design_results
