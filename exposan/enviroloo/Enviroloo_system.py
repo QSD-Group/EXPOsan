@@ -206,7 +206,7 @@ def create_systemEL(flowsheet = None):
                                 dP_design = 0,
                                 ) 
     
-    P_AnoxT_agitation = AgitationPump('P_AnoxT_agitation', ins= P_Glu_dosing-0, outs='AgitationWater', 
+    P_AnoxT_agitation = AgitationPump('P_AnoxT_agitation', ins= None, outs='AgitationWater', 
                                         working_factor = 0.9,  # The ratio of the actual output and the design output
                                         operation_time = 12,  # Total run time of system or plant [h/d]
                                         life_time = 5,  # Lifetime of the pump [years]
