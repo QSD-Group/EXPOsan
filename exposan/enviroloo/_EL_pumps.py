@@ -63,6 +63,8 @@ class LiftPump(Pump):
         self.operation_time = operation_time  # The operation time of the pump [h/d]
         self.ppl = ppl  # The number of all people used all toilets
         self.baseline_ppl = baseline_ppl  # The number of people per toilet
+        
+        self._mixed = WasteStream()
     
     @property
     def dp_factor(self):
@@ -91,6 +93,12 @@ class LiftPump(Pump):
         # Output stream
         TreatedWater = self.outs
         
+        # Define input streams
+        input_streams = [WasteWater]
+        
+        # Mix all inputs into a single stream
+        self._mixed.empty()
+        self._mixed.mix_from(input_streams)
             
         TreatedWater.mix_from([WasteWater])
 
