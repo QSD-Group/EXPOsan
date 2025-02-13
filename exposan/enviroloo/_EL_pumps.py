@@ -66,7 +66,7 @@ class LiftPump(Pump):
         
     
     @property
-    def dp_factor(self):
+    def dP_factor(self):
         dP_factor = (self.P + self.dP_design) / self.P
         return dP_factor
 
@@ -144,7 +144,7 @@ class AgitationPump(Pump):
         self.baseline_ppl = baseline_ppl  # The number of people per toilet
 
     @property
-    def dp_factor(self):
+    def dP_factor(self):
         dP_factor = (self.P + self.dP_design) / self.P
         return dP_factor
 
@@ -219,7 +219,7 @@ class DosingPump(Pump):
         self.price_ratio = price_ratio
 
     @property
-    def dp_factor(self):
+    def dP_factor(self):
         dP_factor = (self.P + self.dP_design) / self.P
         return dP_factor
 
@@ -300,7 +300,7 @@ class ReturnPump(Pump):
         self.price_ratio = price_ratio
 
     @property
-    def dp_factor(self):
+    def dP_factor(self):
         dP_factor = (self.P + self.dP_design) / self.P
         return dP_factor
 
@@ -380,7 +380,7 @@ class SelfPrimingPump(Pump):
         self.price_ratio = price_ratio
 
     @property
-    def dp_factor(self):
+    def dP_factor(self):
         dP_factor = (self.P + self.dP_design) / self.P
         return dP_factor
 
@@ -461,7 +461,7 @@ class AirDissolvedPump(Pump):
         self.price_ratio = price_ratio
 
     @property
-    def dp_factor(self):
+    def dP_factor(self):
         dP_factor = (self.P + self.dP_design) / self.P
         return dP_factor
 
@@ -544,7 +544,7 @@ class MicroBubblePump(Pump):
         self.price_ratio = price_ratio
 
     @property
-    def dp_factor(self):
+    def dP_factor(self):
         dP_factor = (self.P + self.dP_design) / self.P
         return dP_factor
 
@@ -626,7 +626,7 @@ class ClearWaterPump(Pump):
         self.price_ratio = price_ratio
 
     @property
-    def dp_factor(self):
+    def dP_factor(self):
         dP_factor = (self.P + self.dP_design) / self.P
         return dP_factor
 
