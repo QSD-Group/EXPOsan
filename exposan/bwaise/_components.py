@@ -27,7 +27,7 @@ def create_components(set_thermo=True):
                     phase='l', particle_size='Soluble',
                     degradability='Undegradable', organic=False)
 
-    NonNH3 = Component('NonNH3', formula='N', measured_as='N',
+    NonNH3 = Component('NonNH3', formula='N', measured_as='N',MW=14,
                        phase='l', particle_size='Soluble',
                        degradability='Undegradable', organic=False,
                        description='Non-NH3 nitrogen')
@@ -48,6 +48,7 @@ def create_components(set_thermo=True):
                     degradability='Undegradable', organic=False)
 
     OtherSS = Component('OtherSS', phase='l', particle_size='Soluble',
+                        MW=18,
                         degradability='Undegradable', organic=False,
                         description='Unspecified soluble solids')
 
@@ -75,14 +76,14 @@ def create_components(set_thermo=True):
     # P4O10 = Component('P4O10', phase='s', particle_size='Particulate',
     #                   degradability='Undegradable', organic=False)
 
-    Tissue = Component('Tissue', MW=1, phase='s', particle_size='Particulate',
+    Tissue = Component('Tissue', MW=180, phase='s', particle_size='Particulate',
                         degradability='Undegradable', organic=False,
                         description='Tissue for toilet paper')
     # 375 kg/m3 is the average of 250-500 for tissue from
     # https://paperonweb.com/density.htm (accessed 2020-11-12)
     add_V_from_rho(Tissue, 375)
 
-    WoodAsh = Component('WoodAsh', MW=1, phase='s', i_Mg=0.0224, i_Ca=0.3034,
+    WoodAsh = Component('WoodAsh', MW=180, phase='s', i_Mg=0.0224, i_Ca=0.3034,
                         particle_size='Particulate', degradability='Undegradable',
                         organic=False, description='Wood ash for desiccant')
     add_V_from_rho(WoodAsh, 760)

@@ -73,9 +73,9 @@ def add_metrics(model, ppl=default_ppl):
     # Recoveries
     funcs = get_recoveries(system, ppl)
     metrics = [
-        Metric('Total N', funcs[0], '% N', 'N recovery'),
-        Metric('Total P', funcs[1], '% P', 'P recovery'),
-        Metric('Total K', funcs[2], '% K', 'K recovery'),
+        # Metric('Total N', funcs[0], '% N', 'N recovery'),
+        # Metric('Total P', funcs[1], '% P', 'P recovery'),
+        # Metric('Total K', funcs[2], '% K', 'K recovery'),
         Metric('Total Water', funcs[3], '% Water', 'Water recovery'),
     ]
     
@@ -83,47 +83,47 @@ def add_metrics(model, ppl=default_ppl):
     metrics.append(
         Metric('Annual net cost', get_TEA_metrics(system, ppl)[0], f'{qs.currency}/cap/yr', 'TEA results'),
         )
-    metrics.extend([
-        Metric('Energy consumption', get_TEA_metrics(system, ppl,include_breakdown=True)[2], 'kWh /cap/day', 'TEA results')
-        ])
-    for u in system.TEA.units:
-        class_name = u.__class__.__name__
-        metrics.extend([
-            Metric(f'{class_name} CAPEX', get_normalized_CAPEX(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
-            Metric(f'{class_name} Electricity cost', get_normalized_electricity_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
-            Metric(f'{class_name} OPEX_no_labor_electricity', 
-                   get_normalized_OPEX(u,ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
-            Metric(f'{class_name} Labor', 
-                   get_normalized_labor_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
-            Metric(f'{class_name} total cost', 
-                   compute_unit_total_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),])
+    # metrics.extend([
+    #     Metric('Energy consumption', get_TEA_metrics(system, ppl,include_breakdown=True)[2], 'kWh /cap/day', 'TEA results')
+    #     ])
+    # for u in system.TEA.units:
+    #     class_name = u.__class__.__name__
+    #     metrics.extend([
+    #         Metric(f'{class_name} CAPEX', get_normalized_CAPEX(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+    #         Metric(f'{class_name} Electricity cost', get_normalized_electricity_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+    #         Metric(f'{class_name} OPEX_no_labor_electricity', 
+    #                get_normalized_OPEX(u,ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+    #         Metric(f'{class_name} Labor', 
+    #                get_normalized_labor_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+    #         Metric(f'{class_name} total cost', 
+    #                compute_unit_total_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),])
 
-    for u in system.TEA.units:
-        class_name = u.__class__.__name__
-        metrics.extend([
-            Metric(f'{class_name} capital GW', get_unit_contruction_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-            Metric(f'{class_name} stream GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-            Metric(f'{class_name} electricity GW', get_unit_electrcitiy_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-            Metric(f'{class_name} total GW', get_unit_total_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-        ])
+    # for u in system.TEA.units:
+    #     class_name = u.__class__.__name__
+    #     metrics.extend([
+    #         Metric(f'{class_name} capital GW', get_unit_contruction_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+    #         Metric(f'{class_name} stream GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+    #         Metric(f'{class_name} electricity GW', get_unit_electrcitiy_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+    #         Metric(f'{class_name} total GW', get_unit_total_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+    #     ])
 
-    direct_emission_units = {'A15','A16','A17','B14','B15','B16'}
-    for u in system.flowsheet.unit:
-        if u.ID in direct_emission_units:
-            class_name = u.__class__.__name__
-            metrics.append(
-                Metric(f'{class_name} {u.ID} direct emission GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-            )
-    if g2rt.INCLUDE_RESOURCE_RECOVERY:
-        #TODO: separate LCA because Mixer, A14, A15, A16 need to be included...
-        recovery_units = {'A6','A18'}
-        for u in system.flowsheet.unit:
-            if u.ID in recovery_units:
-                class_name = u.__class__.__name__
-                metrics.extend([
-                    Metric(f'{class_name} {u.ID} recovery earning', get_normalized_recovery_earning(u, ppl), f'{qs.currency}/cap/day', f'Recovery {class_name} TEA'),
-                    Metric(f'{class_name} {u.ID} reduced GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'Recovery {class_name} LCA'),
-                ])
+    # direct_emission_units = {'A15','A16','A17','B14','B15','B16'}
+    # for u in system.flowsheet.unit:
+    #     if u.ID in direct_emission_units:
+    #         class_name = u.__class__.__name__
+    #         metrics.append(
+    #             Metric(f'{class_name} {u.ID} direct emission GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+    #         )
+    # if g2rt.INCLUDE_RESOURCE_RECOVERY:
+    #     #TODO: separate LCA because Mixer, A14, A15, A16 need to be included...
+    #     recovery_units = {'A6','A18'}
+    #     for u in system.flowsheet.unit:
+    #         if u.ID in recovery_units:
+    #             class_name = u.__class__.__name__
+    #             metrics.extend([
+    #                 Metric(f'{class_name} {u.ID} recovery earning', get_normalized_recovery_earning(u, ppl), f'{qs.currency}/cap/day', f'Recovery {class_name} TEA'),
+    #                 Metric(f'{class_name} {u.ID} reduced GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'Recovery {class_name} LCA'),
+    #             ])
         
     # Net emissions
     funcs = get_LCA_metrics(system, ppl)
@@ -177,7 +177,7 @@ mscwo_reactor_module_path = load_g2rt_su_data('_mscwo_reactor_module.csv')
 # Shared by all systems
 # =============================================================================
 
-def add_shared_parameters(model, unit_dct, e_CF=None, country_specific=False):
+def add_shared_parameters(model, unit_dct, e_CF=None, flush_water=None, country_specific=False):
     sys = model.system
     sys_stream = sys.flowsheet.stream
     param = model.parameter
@@ -228,15 +228,15 @@ def add_shared_parameters(model, unit_dct, e_CF=None, country_specific=False):
             PowerUtility.price = i
 
         # Electricity GWP
-        # if e_CF is not None:
-        #     GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = e_CF
-        # else:
-        b = GWP_dct['Electricity']
-        D = shape.Triangle(lower=b*0.7, midpoint=b, upper=b*1.3)
-        @param(name='Electricity CF', element='LCA', kind='isolated',
-               units='kg CO2-eq/kWh', baseline=b, distribution=D)
-        def set_electricity_CF(i):
-            GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
+        if e_CF is not None:
+            GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = e_CF
+        else:
+            b = GWP_dct['Electricity']
+            D = shape.Triangle(lower=b*0.7, midpoint=b, upper=b*1.3)
+            @param(name='Electricity CF', element='LCA', kind='isolated',
+                   units='kg CO2-eq/kWh', baseline=b, distribution=D)
+            def set_electricity_CF(i):
+                GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
 
         # Electricity H_Ecosystems
         b = H_Ecosystems_dct['Electricity']
@@ -313,9 +313,13 @@ def add_shared_parameters(model, unit_dct, e_CF=None, country_specific=False):
     def set_OPEX_over_CAPEX(i):
         toilet_unit.OPEX_over_CAPEX = i
     
-    #Mixer for flushing
+    #Mixer for flushing   
     mixer_unit = unit_dct['mixer']
-    batch_setting_unit_params(mixer_toilet_path, model, mixer_unit)
+    if flush_water is not None:
+        exclude = ('flushing_water')
+        batch_setting_unit_params(mixer_toilet_path, model, mixer_unit,exclude)
+    else: 
+        batch_setting_unit_params(mixer_toilet_path, model, mixer_unit)
     
     #Solids separation
     solids_separation_unit = unit_dct['solids_separation']
@@ -582,7 +586,7 @@ def create_modelA(country_specific=False, ppl=default_ppl, lifetime=default_life
                          flush_water =flush_water, combustion_CH4_EF=combustion_CH4_EF)
     unitA = sysA.flowsheet.unit
     if flush_water is not None:
-        if not (isinstance(flush_water, float) or flush_water < 0 or flush_water > 4.2):
+        if not (isinstance(flush_water, float) or 0 <= flush_water <= 4.2):
             warnings.warn(
                 "Warning: flush_water should be a float between 0 and 4.2 kg/cap/hr "
                 "will be ignored. Please provide another proper value if intended.",
@@ -590,7 +594,7 @@ def create_modelA(country_specific=False, ppl=default_ppl, lifetime=default_life
             )
             flush_water = None
     if combustion_CH4_EF is not None:
-        if not (isinstance(combustion_CH4_EF, float) or combustion_CH4_EF < 0 or combustion_CH4_EF > 0.1):
+        if not (isinstance(combustion_CH4_EF, float) or 0 <= combustion_CH4_EF <= 0.1):
             warnings.warn(
                 "Warning: combustion_CH4_EF should be a float between 0 and 0.1 g-CH4/g-feces solids"
                 "will be ignored. Please provide another proper value if intended.",
@@ -598,7 +602,7 @@ def create_modelA(country_specific=False, ppl=default_ppl, lifetime=default_life
             )
             combustion_CH4_EF = None
     if e_CF is not None:
-        if not (isinstance(e_CF, float) or e_CF < 0 or e_CF >2):
+        if not (isinstance(e_CF, float) or 0 <= e_CF <= 2):
             warnings.warn(
                 "Warning: e_CF should be a float (between 0 and 2) "
                 "will be ignored. Please provide another proper value if intended.",
@@ -623,7 +627,8 @@ def create_modelA(country_specific=False, ppl=default_ppl, lifetime=default_life
         'controls': unitA.A19,
         'housing': unitA.A20
         }
-    add_shared_parameters(modelA, unit_dctA, country_specific, e_CF)
+    add_shared_parameters(model=modelA, unit_dct=unit_dctA, e_CF=e_CF, 
+                          flush_water=flush_water, country_specific=country_specific)
     
     #Add parameters unique to System A: volume reduction toilet
     #Concentrator
@@ -655,7 +660,7 @@ def create_modelB(country_specific=False, ppl=default_ppl,lifetime=default_lifet
                          mscwo_replacement_cost=mscwo_replacement_cost, flush_water =flush_water)
     unitB = sysB.flowsheet.unit
     if mscwo_replacement_cost is not None:
-        if not (isinstance(mscwo_replacement_cost, float) or mscwo_replacement_cost < 0 or mscwo_replacement_cost > 1):
+        if not (isinstance(mscwo_replacement_cost, float) or 0 <= mscwo_replacement_cost <= 1):
             warnings.warn(
                 "Warning: mscwo_replacement_cost should be a fraction (between 0 and 1) "
                 "will be ignored. Please provide another proper value if intended.",
@@ -663,7 +668,7 @@ def create_modelB(country_specific=False, ppl=default_ppl,lifetime=default_lifet
             )
             mscwo_replacement_cost = None
     if e_CF is not None:
-        if not (isinstance(e_CF, float) or e_CF < 0 or e_CF >2):
+        if not (isinstance(e_CF, float) or  0 <= e_CF <= 2):
             warnings.warn(
                 "Warning: e_CF should be a float (between 0 and 2) "
                 "will be ignored. Please provide another proper value if intended.",
@@ -671,7 +676,7 @@ def create_modelB(country_specific=False, ppl=default_ppl,lifetime=default_lifet
             )
             e_CF = None
     if flush_water is not None:
-        if not (isinstance(flush_water, float) or flush_water < 0 or flush_water > 4.2):
+        if not (isinstance(flush_water, float) or  0 <= flush_water <= 4.2):
             warnings.warn(
                 "Warning: flush_water should be a float between 0 and 4.2 kg/cap/hr "
                 "will be ignored. Please provide another proper value if intended.",
@@ -696,8 +701,8 @@ def create_modelB(country_specific=False, ppl=default_ppl,lifetime=default_lifet
         'controls': unitB.B18,
         'housing': unitB.B19
         }
-    add_shared_parameters(modelB, unit_dctB, country_specific, e_CF)
-    
+    add_shared_parameters(model=modelB, unit_dct=unit_dctB, e_CF=e_CF, 
+                          flush_water=flush_water, country_specific=country_specific)
     #Add parameters unique to System B: micro supercritical water oxidation toilet
     #Gas handling module
     exclude = ('wages')

@@ -215,10 +215,6 @@ def create_systemA(flowsheet=None, ppl=default_ppl, lifetime=default_lifetime,
                                       outs = ('A5_treated',1-UFmixer)
                                       )
     
-    # A6 = su.G2RTReverseOsmosis('A6', 
-    #                         ins = A5-0,
-    #                         outs = (recycle_fw,'A6_brine')
-    #                         )
     A6 = su.G2RTReverseOsmosis('A6', 
                             ins = A5-0,
                             outs = (1-mixer,'A6_brine','A6_effluent'),
@@ -704,7 +700,6 @@ def create_system(system_ID='A', flowsheet=None, ppl=default_ppl,
     elif system_ID == 'B': f = create_systemB
     elif system_ID == 'C': f = create_systemC
     else: raise ValueError(f'`system_ID` can only be "A" or "B" or "C", not "{ID}".')
-
     try: system = f(flowsheet, ppl=ppl, lifetime = lifetime, **kwargs)
     except:
         _load_components(reload=True)

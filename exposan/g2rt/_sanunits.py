@@ -26,7 +26,7 @@ from biosteam.units.design_tools import flash_vessel_design
 from qsdsan.utils import ospath, data_path, load_data, price_ratio
 import CoolProp.CoolProp as CP
 g2rt_su_data_path = ospath.join(data_path, 'sanunit_data/g2rt')
-
+surt_su_data_path = ospath.join(data_path, 'sanunit_data/surt')
 
 __all__ = ('Excretion',
            'VolumeReductionFilterPress',
@@ -227,14 +227,16 @@ class mSCWOReactorModule(SanUnit):
     _N_ins = 2
     _N_outs = 4
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', material_replacement_cost = 0.2,
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', material_replacement_cost = None,
                  **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=1)
-        if material_replacement_cost is None:
-            material_replacement_cost=0.2
-        self.material_replacement_cost = material_replacement_cost
+        
+
         data = load_data(path=mscwo_reactor_module_path)
         for para in data.index:
+            if material_replacement_cost is not None and para == "material_replacement_cost":
+                self.material_replacement_cost = material_replacement_cost
+                continue  # Skip the material_replacement_cost index if it's provided
             value = float(data.loc[para]['expected'])
             setattr(self, para, value)
         del data
@@ -265,12 +267,14 @@ class mSCWOReactorModule(SanUnit):
                                CP.PropsSI('H', 'T', feces.T, 'P', self.operating_pressure * 1e5, 'Water')/1000*
                                feces.imass['H2O']) #kJ/hr
         #use CoolProp package for more accurate enthalpy for supercritical water
-        
         mc = feces.imass['H2O']/ feces.F_mass
         chemical_energy = (feces.F_mass - feces.imass['H2O']) * self.HHV_feces_solids * 1000 #kJ/hr
         required_energy = final_enthalpy_flow - initial_enthalpy_flow #kJ/hr
         recovered_energy = chemical_energy * self.energy_recovery_efficiency * self.carbon_conversion_efficiency #kJ/hr
         self.power_input = (required_energy/self.heating_energy_efficiency - recovered_energy)/3600 #kW
+
+        # self.power_input = required_energy/self.heating_energy_efficiency/3600 #kW
+        # self.heat_output = recovered_energy #kJ/hr
         
         liquid_effluent.copy_like(feces)
         liquid_effluent.imass['NH3'] = (feces.TN * feces.F_vol /1000
@@ -314,6 +318,9 @@ class mSCWOReactorModule(SanUnit):
            C[equipment] = cost * ratio
         
         self.power_utility(self.power_input) if self.power_input>=0 else self.power_utility(0)  # kW
+        # self.power_utility(self.power_input)    
+        # self.heat_utilities(-self.heat_output)
+        
         total_equipment = 0.
         for cost in C.values():
            total_equipment += cost
@@ -433,7 +440,6 @@ class mSCWOConcentratorModule(SanUnit):
         
         
         self.required_energy_input = water_vapor.imass['H2O'] * self.energy_required_to_evaporize_water - recovered_energy_from_mscwo/3600
-        
         #Calculate COD
         drying_CO2_to_air = (self.drying_CO2_emissions * self.carbon_COD_ratio
                              * (ro_waste_in.COD * ro_waste_in.F_vol + 
@@ -567,24 +573,19 @@ class VolumeReductionCombustor(SanUnit):
     _N_outs = 7
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 if_sludge_service = True, lifetime = 10,ppl =6, CH4_emission_factor=0.0026,
+                 if_sludge_service = True, lifetime = 10,ppl =6, CH4_emission_factor=None,
                  **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
                          F_BM_default=1, lifetime = lifetime)
         self.if_sludge_service = if_sludge_service
         self.lifetime = lifetime
         self.ppl = ppl
-        if CH4_emission_factor is None:
-            CH4_emission_factor=0.0026
-        self.CH4_emission_factor = CH4_emission_factor
-
         data = load_data(path=vr_combustor_path)
         for para in data.index:
-            try:
-                value = float(data.loc[para]['expected'])
-            except:
-                print(f"Error occurred at para={para}")
-                breakpoint() 
+            if CH4_emission_factor is not None and para == "CH4_emission_factor":
+                self.CH4_emission_factor = CH4_emission_factor
+                continue  # Skip the material_replacement_cost index if it's provided
+            value = float(data.loc[para]['expected'])
             setattr(self, para, value)
         del data
 
@@ -626,7 +627,7 @@ class VolumeReductionCombustor(SanUnit):
         ash.imass['WoodAsh'] = (ash_prcd - ash.imass[NPKCaMg].sum())
         ash.imass['H2O'] = 0.025 * ash.F_mass # kg H2O / hr with 2.5% moisture content
         #CH4 emissions
-        CH4.imass['CH4'] = solid_cakes.F_mass*(1-mc) * self.CH4_emission_factor
+        CH4.imass['CH4'] = solid_cakes.COD * self.carbon_COD_ratio * solid_cakes.F_vol/1e3* self.fugitive_CH4_emission_factor #kg/hr
         # N2O emissions
         N2O.imass['N2O'] = solid_cakes.imass['N'] * self.N2O_emission_factor/28*44
         # NO emissions
@@ -646,6 +647,7 @@ class VolumeReductionCombustor(SanUnit):
                            N2O.imass['N2O']/44*28 - NO.imass['NO']/30*14) + air.imass['N2']
         
         gas.imass['H2O'] = solid_cakes.imass['H2O'] + wood_pellets.imass['H2O'] - ash.imass['H2O']
+        
         
     def _init_lca(self):
         self.construction = [
@@ -721,7 +723,6 @@ class UFMixer(Mixer):
     #     # print(f"The flushing water flow is {flushing.imass['H2O']} kg/h.")
 
 # %%
-
 toilet_path = ospath.join(g2rt_su_data_path, '_g2rt_toilet.csv')
 
 class FWMixer(Mixer):
@@ -734,23 +735,22 @@ class FWMixer(Mixer):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', F_BM_default=None, isdynamic=False,
                  rigorous=False, conserve_phases=False,N_user=None, N_toilet=None,
-                 N_tot_user = None, if_flushing=True, flushing_water=0.23333):
+                 N_tot_user = None, if_flushing=True, flushing_water=None):
         Mixer.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
                          F_BM_default=F_BM_default, isdynamic=isdynamic)
         self.N_user = N_user
         self.N_toilet = N_toilet
         self.N_tot_user = N_tot_user
         self.if_flushing = if_flushing
-        if flushing_water is None: #correct the None passed from create_system & create_model
-            flushing_water = 0.233333 #kg/cap/hr
-        self.flushing_water = flushing_water 
-        
         cmps = self.components
         self.solids = tuple((cmp.ID for cmp in cmps.solids))
         self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
         
         data = load_data(path=toilet_path)    
         for para in data.index:
+            if flushing_water is not None and para == "flushing_water":
+                self.flushing_water = flushing_water
+                continue  # Skip the material_replacement_cost index if it's provided
             value = float(data.loc[para]['expected'])
             setattr(self, para, value)
         del data
@@ -1096,7 +1096,7 @@ class Toilet(SanUnit, Decay, isabstract=True):
 
 
 # %%
-murt_path = ospath.join(data_path, 'sanunit_data/_murt.tsv')
+surt_path = ospath.join(surt_su_data_path, '_surt.csv')
 
 @price_ratio()
 class SURT(Toilet):
@@ -1155,7 +1155,7 @@ class SURT(Toilet):
         self.if_include_front_end = if_include_front_end
         self._mixed_in = WasteStream(f'{self.ID}_mixed_in')
 
-        data = load_data(path=murt_path)
+        data = load_data(path=surt_path)
         for para in data.index:
             value = float(data.loc[para]['expected'])
             setattr(self, para, value)
@@ -1673,12 +1673,18 @@ class VRpasteurization(SanUnit):
                                C["Valves"]+
                                C["Tubing"])
         solids_in, = self.ins
+        solids_in.T = self.solids_inlet_temp + 273.15
+        solids_out, = self.outs
+        solids_out.T = self.temp_pasteurization + 273.15
         # Overall heat required for pasteurization
         temp_diff = self.temp_pasteurization - self.solids_inlet_temp #K
         Q_d = (solids_in.imass['H2O']*self.Cp_w + 
                (solids_in.F_mass-solids_in.imass['H2O'])*self.Cp_dm)*temp_diff #kJ/hr
         Q_tot = Q_d/(1-self.heat_loss/100) # kJ/hr, 30% of the total generated is lost
         heating_electricity = Q_tot/3600 #kWh/hr
+        # self.add_heat_utility(unit_duty=self.Hnet, T_in=solids_in.T, 
+        #                       T_out = solids_out.T, heat_transfer_efficiency=(1-self.heat_loss/100),
+        #                       hxn_ok= True)
         self.power_utility(heating_electricity) #kWh/hr
         total_equipment = 0.
         for cost in C.values():
@@ -1912,8 +1918,7 @@ class VolumeReductionFilterPress(SanUnit):
         mc_out = self.moisture_content_out/100 #convert to fraction
         
         if mc_in < mc_out*0.999:
-            pasteurized_solids.imass['H2O'] = pasteurized_solids.F_mass * (mc_out +0.01)
-
+            mc_out = mc_in
         TS_in = pasteurized_solids.imass[solids].sum() # kg TS dry/hr
         TS_out = solid_cakes.imass[solids].sum()
         #calculate water and solid COD in the solid cakes
@@ -2925,6 +2930,9 @@ class G2RTBeltSeparation(SanUnit):
         #                                      liquid_stream_in.F_mass +
         #                                      uf_retentate.F_mass) # fraction
         mc_out = self.moisture_content_out/100 #convert to fraction; 
+        mc_in = solid_out.imass['H2O'] / (liquid_in.F_mass + solid_in.F_mass)
+        if mc_in < mc_out*0.999:
+            mc_out = mc_in
         # if mc_in < mc_out*0.999:
         #     raise RuntimeError(f'Moisture content of the influent stream ({mc_in:.4f}) '
         #                        f'is smaller than the desired moisture content ({mc_out:.4f}).')
@@ -3013,7 +3021,7 @@ class G2RTUltrafiltration(SanUnit):
     Modified from ultrafiltration unit in Duke Reclaimer system.
 
     The following impact items should be pre-constructed for life cycle assessment:
-    GFRPlastic, Steel.
+    GFRPlastic, Steel, NylonGlassFilled, CastingBrass
 
     Parameters
     ----------
@@ -3063,6 +3071,8 @@ class G2RTUltrafiltration(SanUnit):
         self.construction = [
             Construction(item='GFRPlastic', linked_unit=self, quantity_unit='kg'),
             Construction(item='Steel', linked_unit=self, quantity_unit='kg'),
+            Construction(item='NylonGlassFilled', linked_unit=self, quantity_unit='kg'),
+            Construction(item='CastingBrass', linked_unit=self, quantity_unit='kg'),
             ]
 
     def _run(self):
@@ -3086,6 +3096,8 @@ class G2RTUltrafiltration(SanUnit):
         constr = self.construction
         design['GFRPlastic'] = constr[0].quantity = self.Plastic_weight
         design['Steel'] = constr[1].quantity = self.Steel_weight
+        design['NylonGlassFilled'] = constr[2].quantity = self.Nylon_weight
+        design['CastingBrass'] = constr[3].quantity = self.Brass_weight
         self.add_construction(add_cost=False)
 
     def _cost(self):
@@ -3109,6 +3121,7 @@ class G2RTUltrafiltration(SanUnit):
             self.UF_brush
             )
         C['UF_unit'] = self.UF_unit
+        C['Backwash_parts'] = self.air_scrubbing_blower_cost + self.back_flush_pump_cost
         
         ratio = self.price_ratio
         for equipment, cost in C.items():
@@ -3116,7 +3129,10 @@ class G2RTUltrafiltration(SanUnit):
 
         self.add_OPEX = self._calc_replacement_cost()
         # [W][1 kW/1000 W][hr/d][1 d/ 24 h] = [kW]
-        power_demand = self.ultrafiltration_energy_consumption * self.outs[0].F_mass  #kW
+        self.back_wash_cycles = ceil(self.ins[0].get_TSS()*self.ins[0].F_vol/1000*24/self.accumulated_TSS_triggering_cleaning)
+        power_demand = (self.ultrafiltration_energy_consumption * self.outs[0].F_mass+
+                        (self.backwash_pump_energy_percycle+
+                         self.air_scrubbing_energy_percycle)*self.back_wash_cycles/24)  #kW
         self.power_utility(power_demand) #scaled down from 30 users to 6 users per day
 
     def _calc_replacement_cost(self):
@@ -3163,7 +3179,9 @@ class G2RTUltrafiltration(SanUnit):
     
     @property
     def power_kW(self):
-        return self.ultrafiltration_energy_consumption * self.outs[0].F_mass #kW
+        return (self.ultrafiltration_energy_consumption * self.outs[0].F_mass+
+                        (self.backwash_pump_energy_percycle+
+                         self.air_scrubbing_energy_percycle)*self.back_wash_cycles/24) #kW
 
 #%%
 reverse_osmosis_path = ospath.join(g2rt_su_data_path, '_g2rt_reverse_osmosis.csv')
@@ -3216,7 +3234,6 @@ class G2RTReverseOsmosis(SanUnit):
     
     def _run(self):
         waste_in = self.ins[0]
-
         permeate_recycle, brine, permeate_discharge = self.outs
         solubles, solids = self.solubles, self.solids
         permeate = WasteStream()
@@ -3228,6 +3245,7 @@ class G2RTReverseOsmosis(SanUnit):
         
         permeate.imass['H2O'] = waste_in.imass['H2O'] * self.water_recovery
         permeate.imass[solubles] = waste_in.imass[solubles]*(1-self.TDS_removal)
+        permeate.imass['NH3'] = waste_in.imass['NH3']*(1-self.NH3_removal)
         permeate.split_to(permeate_recycle, permeate_discharge, self.permeate_recycle_ratio)
         # permeate.imass['P'] = waste_in.imass['P'] * 0.01 #higher rejection for P
         brine.mass = waste_in.mass - permeate.mass
@@ -3251,11 +3269,17 @@ class G2RTReverseOsmosis(SanUnit):
         C = self.baseline_purchase_costs
         C['Pipes'] = self.piping_cost
         C['RO_system'] = self.reverse_osmosis_system_cost
+        C['Backwash_parts'] = self.air_scrubbing_blower_cost + self.back_flush_pump_cost
         ratio = self.price_ratio
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
+        self.back_wash_cycles = ceil(self.ins[0].COD*self.ins[0].F_vol/1000*24/
+                                     self.accumulated_COD_triggering_cleaning/self.membrane_area)
         
-        power_demand = self.RO_energy_consumption * self.outs[0].F_mass 
+        power_demand = (self.RO_energy_consumption * self.outs[0].F_mass+
+                        (self.backwash_pump_energy_percycle+
+                         self.air_scrubbing_energy_percycle)*self.back_wash_cycles/24)
+        
         self.power_utility(power_demand) #kW
         
         total_equipment = 0.
@@ -3267,16 +3291,8 @@ class G2RTReverseOsmosis(SanUnit):
                          self._calc_membrane_replacement_cost() +
                          self._calc_maintenance_labor_cost())) #USD/hr
     def _calc_membrane_replacement_cost(self): #USD/hr
-        waste_in = self.ins[0]
-        if waste_in.COD >= 3000: #mg/L, high COD
-            membrane_replacement_cost = self.membrane_cost / self.membrane_life_time_severe_fouling #USD/yr
-        elif 500 < waste_in.COD < 3000:
-            membrane_replacement_cost = self.membrane_cost / self.membrane_life_time_short #USD/yr
-        elif 50 < waste_in.COD < 500: #Medium COD
-            membrane_replacement_cost = self.membrane_cost / self.membrane_life_time_medium #USD/yr
-        else: 
-            membrane_replacement_cost = self.membrane_cost / self.membrane_life_time_long #USD/yr
-            
+ 
+        membrane_replacement_cost = self.membrane_cost / self.membrane_life_time #USD/yr
         return membrane_replacement_cost/(365*24) #USD/hr
     
     def _calc_maintenance_labor_cost(self): #USD/hr
@@ -3293,5 +3309,7 @@ class G2RTReverseOsmosis(SanUnit):
     
     @property
     def power_kW(self):
-        return self.RO_energy_consumption * self.outs[0].F_mass #kW
+        return (self.RO_energy_consumption * self.outs[0].F_mass+
+                        (self.backwash_pump_energy_percycle+
+                         self.air_scrubbing_energy_percycle)*self.back_wash_cycles/24) #kW
         

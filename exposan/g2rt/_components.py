@@ -31,12 +31,12 @@ def create_components(set_thermo=True):
     
     #create components for sCOD(soluble COD) and xCOD (particulate COD)
     sCOD = Component('sCOD', phase='l', particle_size='Soluble',measured_as='COD',
-                     i_C=0.35,
+                     i_C=0.35, MW= 18,
                     degradability='Readily', organic=True, 
                     f_Vmass_Totmass = 1
                     )
     
-    xCOD = Component('xCOD', phase='s', particle_size='Particulate',measured_as='COD',
+    xCOD = Component('xCOD', phase='s', particle_size='Particulate',measured_as='COD', MW= 180,
                      i_C=0.35,
                     degradability='Readily', organic=True, 
                     f_Vmass_Totmass = 1
@@ -44,12 +44,16 @@ def create_components(set_thermo=True):
     
     #https://doi.org/10.1016/j.fuel.2016.07.077
     # HHV is from the above literature
-    add_V_from_rho(sCOD, 1560)
-    sCOD.HHV = 24.7 * 1e3 *2 #kJ/kg, enlarge 2 times to compensate for OtherSS so that final feces HHV matches 24.7 MJ/kg
-    sCOD.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
-    
+    add_V_from_rho(sCOD, 1e3)
+    sCOD.HHV = 17.4*1e3 #kJ/kg, 24.7 MJ/kg /0.497 = 49.7 kJ/kg carbon 
+    #49.7 kJ/kg carbon *0.35 g C/g COD = 17.4 kJ/kg COD
+    #Use the following code to check dry feces' HHV
+    #A2 = sysA.flowsheet.unit.A2
+    #A2.ins[1].HHV/(A2.ins[1].imass['xCOD']*0.35/0.45) 0.35 g C/g COD & 45% carbon content
+    sCOD.copy_models_from(re_cmps.H2O, ('sigma', 'epsilon', 'kappa', 'Cn', 'mu'))
+
     add_V_from_rho(xCOD, 1560)
-    xCOD.HHV = 24.7 * 1e3 *2
+    xCOD.HHV = 17.4 * 1e3
     xCOD.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
     
     NO = Component('NO', phase='g', particle_size='Dissolved gas',
