@@ -9,7 +9,7 @@ Note the word 'sludge' in this file refers to either sludge or biosolids.
 For parameters/numbers not explained, see geospatial_systems.py or _sanunits.py or other relevant files.
 '''
 
-import qsdsan as qs
+import qsdsan as qs, biosteam as bst
 from chaospy import distributions as shape
 from qsdsan.utils import auom, DictAttrSetter
 from exposan.htl import create_geospatial_system
@@ -650,6 +650,28 @@ def create_geospatial_model(system=None,
     # =========================================================================
     # TEA
     # =========================================================================
+    electricity_price = bst.PowerUtility.price
+    dist = shape.Uniform(electricity_price*0.9,electricity_price*1.1)
+    @param(name='electricity_price',
+           element='TEA',
+           kind='isolated',
+           units='$/kWh',
+           baseline=electricity_price,
+           distribution=dist)
+    def set_electricity_price(i):
+        bst.PowerUtility.price=i
+    
+    wage_adjustment = WWTP.wage_adjustment
+    dist = shape.Uniform(wage_adjustment*0.9,wage_adjustment*1.1)
+    @param(name='wage_adjustment',
+           element='TEA',
+           kind='isolated',
+           units='-',
+           baseline=wage_adjustment,
+           distribution=dist)
+    def set_wage_adjustment(i):
+        WWTP.wage_adjustment=i
+    
     dist = shape.Triangle(0.6,1,1.4)
     @param(name='HTL_TIC_factor',
            element='TEA',
@@ -757,7 +779,7 @@ def create_geospatial_model(system=None,
         @param(name='DAP_price',
                element='TEA',
                kind='coupled',
-               units='-',
+               units='$/kg',
                baseline=DAP_price_ave,
                distribution=dist)
         def set_DAP_price(i):
@@ -771,7 +793,7 @@ def create_geospatial_model(system=None,
             @param(name='anhydrous_ammonia_price',
                    element='TEA',
                    kind='coupled',
-                   units='-',
+                   units='$/kg',
                    baseline=anhydrous_ammonia_price_ave,
                    distribution=dist)
             def set_anhydrous_ammonia_price(i):
@@ -877,7 +899,7 @@ def create_geospatial_model(system=None,
             @param(name='urea_price',
                    element='TEA',
                    kind='coupled',
-                   units='-',
+                   units='$/kg',
                    baseline=urea_price_ave,
                    distribution=dist)
             def set_urea_price(i):
@@ -891,7 +913,7 @@ def create_geospatial_model(system=None,
             @param(name='UAN_price',
                    element='TEA',
                    kind='coupled',
-                   units='-',
+                   units='$/kg',
                    baseline=UAN_price_ave,
                    distribution=dist)
             def set_UAN_price(i):
@@ -948,7 +970,7 @@ def create_geospatial_model(system=None,
     def get_sludge_management_cost():
         return -tea.solve_price(raw_wastewater)*water_density*_MMgal_to_L/WWTP.ww_2_dry_sludge
     
-    @metric(name='sludge_CI', units='kg CO2/tonne dry sludge', element='geospatial')
+    @metric(name='sludge_CI', units='kg CO2 eq/tonne dry sludge', element='geospatial')
     def get_sludge_CI():
         return lca.get_total_impacts(operation_only=True,
                                      exclude=(raw_wastewater,),

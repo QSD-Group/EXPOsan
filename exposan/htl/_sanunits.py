@@ -1290,6 +1290,8 @@ class WWTP(SanUnit):
         The density of sludge of 80% moisture content, [kg/m3].
     sludge_distance : float
         Normalized sludge transportation distance, [km].
+    wage_adjustment : float
+        A coefficient to adjust labor cost.
     
     References
     ----------
@@ -1322,7 +1324,8 @@ class WWTP(SanUnit):
                  N_2_P=0.3927,
                  operation_hours=None,
                  sludge_wet_density=1040, # [2]
-                 sludge_distance=100):
+                 sludge_distance=100,
+                 wage_adjustment=1):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.ww_2_dry_sludge = ww_2_dry_sludge
@@ -1341,6 +1344,7 @@ class WWTP(SanUnit):
         self.operation_hours = operation_hours
         self.sludge_wet_density = sludge_wet_density
         self.sludge_distance = sludge_distance
+        self.wage_adjustment = wage_adjustment
     
     def _run(self):
         

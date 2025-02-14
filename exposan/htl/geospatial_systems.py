@@ -208,7 +208,8 @@ def create_geospatial_system(test_run=False,
                            sludge_afdw_protein=0.510,
                            operation_hours=8760,
                            sludge_wet_density=1040,
-                           sludge_distance=sludge_distance)
+                           sludge_distance=sludge_distance,
+                           wage_adjustment=wage_adjustment)
         elif anaerobic_digestion == 1:
             WWTP = su.WWTP(ID='WWTP',
                            ins=raw_wastewater,
@@ -220,7 +221,8 @@ def create_geospatial_system(test_run=False,
                            sludge_afdw_protein=0.510,
                            operation_hours=8760,
                            sludge_wet_density=1040,
-                           sludge_distance=sludge_distance)
+                           sludge_distance=sludge_distance,
+                           wage_adjustment=wage_adjustment)
         else:
             WWTP = su.WWTP(ID='WWTP',
                            ins=raw_wastewater, outs=('sludge','treated_water'),
@@ -231,7 +233,8 @@ def create_geospatial_system(test_run=False,
                            sludge_afdw_protein=0.456,
                            operation_hours=8760,
                            sludge_wet_density=1040,
-                           sludge_distance=sludge_distance)
+                           sludge_distance=sludge_distance,
+                           wage_adjustment=wage_adjustment)
     else:
         assert average_sludge_dw_ash != None, 'set average_sludge_dw_ash manually'
         assert average_sludge_afdw_lipid != None, 'set average_sludge_afdw_lipid manually'
@@ -247,7 +250,8 @@ def create_geospatial_system(test_run=False,
                        sludge_afdw_protein=average_sludge_afdw_protein,
                        operation_hours=8760,
                        sludge_wet_density=1040,
-                       sludge_distance=sludge_distance)
+                       sludge_distance=sludge_distance,
+                       wage_adjustment=wage_adjustment)
     
     P1 = qsu.SludgePump(ID='P1',
                         ins=WWTP-0,
@@ -638,7 +642,7 @@ def create_geospatial_system(test_run=False,
     wage = (0.34/labor_index[2014]*labor_index[2022]+\
             0.48/labor_index[2014]*labor_index[2022]*size*ww_2_dry_sludge_ratio/100)*10**6
     
-    wage *= wage_adjustment
+    wage *= WWTP.wage_adjustment
     
     # set income_tax_value = 0 to calculate net income
     create_tea(system=sys,
