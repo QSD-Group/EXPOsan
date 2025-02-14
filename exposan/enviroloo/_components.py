@@ -61,14 +61,12 @@ def create_components(set_thermo = True,
     cmps = Components((*bw_cmps, C, 
                        #H2O, CO2, CH4, N2O, NH3
                        Glucose, O3, air, PAC, NaOH, NaClO))
-          
-    #for cmp in cmps:
-        #cmp.default()
+    
+    for i in cmps:
+        for attr in ('HHV', 'LHV', 'Hf'):
+            if getattr(i, attr) is None: setattr(i, attr, 0)
 
-    #cmps.compile()
-    cmps.compile(#ignore_inaccurate_molar_weight=True,
-                 #adjust_MW_to_measured_as=adjust_MW_to_measured_as
-                 )
+    cmps.compile()
 
     cmps.set_alias('H2O', 'Water')
     #cmps.set_alias('CO2', 'Carbon Dioxide')
