@@ -18,6 +18,9 @@ def create_components(set_thermo = True,
 
     C = Component('C', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
     
+    # solubleCH4 needs define?
+    SolubleCH4 = Component('SolubleCH4', search_ID='CH4', phase='l', particle_size='Soluble', degradability='Slowly', organic=True)
+
     #H2O = Component('H2O', search_ID='H2O', particle_size='Soluble', degradability='Undegradable', organic=False)
 
     #CO2 = Component('CO2', search_ID='CO2', phase='g', particle_size='Dissolved gas', degradability='Undegradable', organic=False)
@@ -58,7 +61,7 @@ def create_components(set_thermo = True,
           #'degradability': ('Readily', 'Slowly', 'Undegradable'),
           #'organic': (True, False)}
           
-    cmps = Components((*bw_cmps, C, 
+    cmps = Components((*bw_cmps, C, SolubleCH4,
                        #H2O, CO2, CH4, N2O, NH3
                        Glucose, O3, air, PAC, NaOH, NaClO))
     
