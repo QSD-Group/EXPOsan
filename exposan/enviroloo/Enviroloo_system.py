@@ -263,7 +263,7 @@ def create_systemEL(flowsheet = None):
                             outs = ('TreatedWater', 'AeroT_CH4', 'AeroT_N2O'), 
                             ppl = ppl, baseline_ppl = 30,
                             )
-    
+    breakpoint()
     B_MembT = EL_blower('B_MembT', ins = stream['air'], outs = 'air', 
                             F_BM={
                                   'Blowers': 2.22,
