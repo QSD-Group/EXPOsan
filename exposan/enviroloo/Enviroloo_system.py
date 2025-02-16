@@ -259,7 +259,7 @@ def create_systemEL(flowsheet = None):
                            )
     #B_MembT.line = 'Blower_Aerob'
     
-    AeroT = EL_Aerobic('AeroT', ins=(AnoxT-0, P_PAC_dosing-0, B_AeroT.outs[0]), 
+    AeroT = EL_Aerobic('AeroT', ins=(AnoxT-0, P_PAC_dosing-0, B_AeroT-0), 
                             outs = ('TreatedWater', 'AeroT_CH4', 'AeroT_N2O'), 
                             ppl = ppl, baseline_ppl = 30,
                             )
@@ -302,7 +302,7 @@ def create_systemEL(flowsheet = None):
                                         pump_cost = 123.76, # USD from Alibaba https://www.alibaba.com/product-detail/0-4kw-cast-iron-motor-housing_1600934836942.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0L7StzT
                                         dP_design = 0,
                                         ) 
-    MembT = EL_MBR('MembT', ins=(AeroT-0, B_MembT.outs[0]), 
+    MembT = EL_MBR('MembT', ins=(AeroT-0, B_MembT-0), 
                         outs = ('TreatedWater', 0-P_NitrateReturn_PC, 0-P_NitrateReturn_AnoxT, 'MemT_CH4', 'MemT_N2O'),
                         ppl = ppl,
                         baseline_ppl = 30,
@@ -402,9 +402,9 @@ def create_systemEL(flowsheet = None):
                                   AnoxT,
                                   P_PAC_agitation,
                                   P_PAC_dosing,
-                                  # B_AeroT,
+                                  B_AeroT,
                                   AeroT,
-                                  # B_MembT,
+                                  B_MembT,
                                   P_NitrateReturn_PC,
                                   P_NitrateReturn_AnoxT,
                                   MembT,
