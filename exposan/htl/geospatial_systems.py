@@ -62,6 +62,7 @@ labor_index = {2014: 21.49,
                2022: 27.36,
                2023: 29.77}
 
+# keep ww_2_dry_sludge_ratio=1 to get more accurate results
 # for parameters, unless otherwise stated, refer to the original HTL system model
 def create_geospatial_system(test_run=False,
                              # MGD
@@ -86,6 +87,7 @@ def create_geospatial_system(test_run=False,
                              state='IL',
                              # TODO: add this parameter in analysis.py
                              nitrogen_fertilizer=None,
+                             elec_price=None,
                              # use balancing-area-level in the analysis
                              # kg CO2 eq/kWh
                              elec_GHG=0.40,
@@ -106,10 +108,14 @@ def create_geospatial_system(test_run=False,
     bst.CE = qs.CEPCI_by_year[2022]
     
     folder = os.path.dirname(__file__)
+        
+    if elec_price:
+        bst.PowerUtility.price = elec_price
+    else:
+        # industrial electricity price in 2022$/kWh
+        elec_price_data = pd.read_excel(folder + '/data/state_elec_price_2022.xlsx', 'elec_price_2022')
+        bst.PowerUtility.price = elec_price_data[elec_price_data['state']==state]['price'].iloc[0]/100
     
-    # industrial electricity price in 2022$/kWh
-    elec_price = pd.read_excel(folder + '/data/state_elec_price_2022.xlsx', 'elec_price_2022')
-    bst.PowerUtility.price = elec_price[elec_price['state']==state]['price'].iloc[0]/100
     
     # TODO: update citations
     # 2022 crude oil price
@@ -290,6 +296,7 @@ def create_geospatial_system(test_run=False,
                                    tau=3*24,
                                    init_with='WasteStream',
                                    crude_oil_density=850,
+                                   biocrude_distance=biocrude_distance,
                                    crude_oil_HHV=44.5,
                                    biocrude_wet_density=983,
                                    vessel_material='Carbon steel')

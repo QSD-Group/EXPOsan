@@ -269,6 +269,17 @@ def create_geospatial_model(system=None,
     def set_sludge_wet_density(i):
         WWTP.sludge_wet_density=i
     
+    sludge_distance = WWTP.sludge_distance
+    dist = shape.Uniform(sludge_distance,sludge_distance*1.1)
+    @param(name='sludge_distance',
+           element=WWTP,
+           kind='coupled',
+           units='-',
+           baseline=sludge_distance,
+           distribution=dist)
+    def set_sludge_distance(i):
+        WWTP.sludge_distance=i
+    
     # =========================================================================
     # HTL
     # =========================================================================
@@ -473,6 +484,17 @@ def create_geospatial_model(system=None,
            distribution=dist)
     def set_biocrude_wet_density(i):
         BiocrudeTank.biocrude_wet_density=i
+    
+    biocrude_distance = BiocrudeTank.biocrude_distance
+    dist = shape.Uniform(biocrude_distance,biocrude_distance*1.1)
+    @param(name='biocrude_distance',
+           element=BiocrudeTank,
+           kind='coupled',
+           units='-',
+           baseline=biocrude_distance,
+           distribution=dist)
+    def set_biocrude_distance(i):
+        BiocrudeTank.biocrude_distance=i
     
     # =========================================================================
     # CHG

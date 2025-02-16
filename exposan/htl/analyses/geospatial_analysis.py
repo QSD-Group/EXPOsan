@@ -14,6 +14,7 @@ Note the word 'sludge' in this file refers to either sludge or biosolids.
 
 import geopy.distance, googlemaps, random
 import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.colors as colors, scipy.stats as stats, qsdsan as qs
+from math import floor
 from matplotlib.mathtext import _mathtext as mathtext
 from matplotlib.patches import Rectangle
 from colorpalette import Color
@@ -1026,6 +1027,8 @@ WRRF_input['waste_cost'] = sum(WRRF_input[i]*sludge_disposal_cost[i] for i in sl
 WRRF_input['waste_GHG'] =  sum(WRRF_input[i]*sludge_emission_factor[i] for i in sludge_emission_factor.keys())/WRRF_input['total_sludge_amount_kg_per_year']*1000
 
 CWNS = []
+cost = []
+CI = []
 saving = []
 CO2_reduction = []
 sludge_CO2_reduction_ratio = []
@@ -1037,14 +1040,13 @@ income_tax = []
 # (since the baseline values in the model are the same as parameters in the system)
 # !!! run in different consoles to speed up: 0, 5000, 10000, len(WRRF_input)
 for i in range(0, len(WRRF_input)):
-# for i in range(0, 2):
-    sys = create_geospatial_system(size=WRRF_input.iloc[i]['flow_2022_MGD_final'],
+    sys = create_geospatial_system(size=WRRF_input.iloc[i]['total_sludge_amount_kg_per_year']/1000/365,
                                    sludge_transportation=0,
                                    sludge_distance=100,
                                    biocrude_distance=WRRF_input.iloc[i]['real_distance_km'],
                                    anaerobic_digestion=WRRF_input.iloc[i]['sludge_anaerobic_digestion'],
                                    aerobic_digestion=WRRF_input.iloc[i]['sludge_aerobic_digestion'],
-                                   ww_2_dry_sludge_ratio=WRRF_input.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/WRRF_input.iloc[i]['flow_2022_MGD_final'],
+                                   ww_2_dry_sludge_ratio=1,
                                    state=WRRF_input.iloc[i]['state'],
                                    nitrogen_fertilizer=WRRF_input.iloc[i]['nitrogen_fertilizer'],
                                    elec_GHG=WRRF_input.iloc[i]['kg_CO2e_kWh'],
@@ -1099,6 +1101,11 @@ for i in range(0, len(WRRF_input)):
         USD_per_tonne_CO2_reduction = np.nan
     
     CWNS.append(WRRF_input.iloc[i]['CWNS'])
+    try:
+        cost.append(sludge_cost)
+    except NameError:
+        cost.append(np.nan)
+    CI.append(sludge_CI)
     saving.append(saving_result)
     CO2_reduction.append(CO2_reduction_result)
     sludge_CO2_reduction_ratio.append(sludge_CO2_reduction_ratio_result)
@@ -1114,6 +1121,8 @@ for i in range(0, len(WRRF_input)):
         print(i)
 
 result = {'CWNS': CWNS,
+          'cost': cost,
+          'CI': CI,
           'saving': saving,
           'CO2_reduction': CO2_reduction,
           'sludge_CO2_reduction_ratio': sludge_CO2_reduction_ratio,
@@ -1133,9 +1142,9 @@ input_data = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-02-10.xlsx'
 input_data = input_data.dropna(subset='real_distance_km')
 
 # !!! update these files if necessary
-output_result_1 = pd.read_excel(folder + 'results/baseline/baseline_2025-02-12_4999.xlsx')
-output_result_2 = pd.read_excel(folder + 'results/baseline/baseline_2025-02-12_9999.xlsx')
-output_result_3 = pd.read_excel(folder + 'results/baseline/baseline_2025-02-12_15858.xlsx')
+output_result_1 = pd.read_excel(folder + 'results/baseline/baseline_2025-02-16_4999.xlsx')
+output_result_2 = pd.read_excel(folder + 'results/baseline/baseline_2025-02-16_9999.xlsx')
+output_result_3 = pd.read_excel(folder + 'results/baseline/baseline_2025-02-16_15858.xlsx')
 
 output_result = pd.concat([output_result_1, output_result_2, output_result_3])
 
@@ -1150,7 +1159,7 @@ integrated_result.to_excel(folder + f'results/baseline/integrated_baseline_{date
 # TODO: add uncertainty versions of this
 
 # !!! update the file here if necessary
-decarbonization_map = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-12.xlsx')
+decarbonization_map = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-16.xlsx')
 decarbonization_map = decarbonization_map[decarbonization_map['USD_decarbonization'].notna()]
 decarbonization_map = decarbonization_map[decarbonization_map['USD_decarbonization'] <= 0]
 decarbonization_map = decarbonization_map.sort_values(by='total_emission', ascending=False).copy()
@@ -1265,7 +1274,7 @@ plot_map(none_map, r)
 #%% cumulative GHG reduction
 
 # !!! update the file here if necessary
-decarbonization_map = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-12.xlsx')
+decarbonization_map = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-16.xlsx')
 decarbonization_map = decarbonization_map[decarbonization_map['USD_decarbonization'].notna()]
 decarbonization_map = decarbonization_map[decarbonization_map['USD_decarbonization'] <= 0]
 decarbonization_map = decarbonization_map.sort_values(by='total_emission', ascending=False).copy()
@@ -1327,9 +1336,12 @@ plt.plot(sorted_data['facility_rank'],
          color='k',
          markersize=10)
 
+percentile_10 = floor(len(sorted_data)/10) - 1
+percentile_50 = floor(len(sorted_data)/2) - 1
+
 # 10th percentile of the facility number
-plt.plot(sorted_data['facility_rank'].iloc[55],
-         sorted_data['cumulative_emissions'].iloc[55],
+plt.plot(sorted_data['facility_rank'].iloc[percentile_10],
+         sorted_data['cumulative_emissions'].iloc[percentile_10],
          linewidth=0,
          marker='o',
          color=r,
@@ -1338,8 +1350,8 @@ plt.plot(sorted_data['facility_rank'].iloc[55],
          markersize=20)
 
 # 50th percentile of the facility number
-plt.plot(sorted_data['facility_rank'].iloc[279],
-         sorted_data['cumulative_emissions'].iloc[279],
+plt.plot(sorted_data['facility_rank'].iloc[percentile_50],
+         sorted_data['cumulative_emissions'].iloc[percentile_50],
          linewidth=0,
          marker='o',
          color=r,
@@ -1347,12 +1359,12 @@ plt.plot(sorted_data['facility_rank'].iloc[279],
          markeredgewidth=3,
          markersize=20)
 
-plt.plot([0, sorted_data['facility_rank'].iloc[55]],
-         [sorted_data['cumulative_emissions'].iloc[55], sorted_data['cumulative_emissions'].iloc[55]],
+plt.plot([0, sorted_data['facility_rank'].iloc[percentile_10]],
+         [sorted_data['cumulative_emissions'].iloc[percentile_10], sorted_data['cumulative_emissions'].iloc[percentile_10]],
          lw=3, color='k', linestyle='--', solid_capstyle='round', zorder=0)
 
-plt.plot([0, sorted_data['facility_rank'].iloc[279]],
-         [sorted_data['cumulative_emissions'].iloc[279], sorted_data['cumulative_emissions'].iloc[279]],
+plt.plot([0, sorted_data['facility_rank'].iloc[percentile_50]],
+         [sorted_data['cumulative_emissions'].iloc[percentile_50], sorted_data['cumulative_emissions'].iloc[percentile_50]],
          lw=3, color='k', linestyle='--', solid_capstyle='round', zorder=0)
 
 ax.set_xlabel('$\mathbf{Facitity\ number}$',
@@ -1368,8 +1380,8 @@ ax.set_ylabel(r'$\mathbf{Cumulative\ GHG\ reduction}$' + '\n[tonne CO${_2}$ eq·
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-print(sorted_data['cumulative_emissions'].iloc[55]/sorted_data['cumulative_emissions'].iloc[-1])
-print(sorted_data['cumulative_emissions'].iloc[279]/sorted_data['cumulative_emissions'].iloc[-1])
+print(sorted_data['cumulative_emissions'].iloc[percentile_10]/sorted_data['cumulative_emissions'].iloc[-1])
+print(sorted_data['cumulative_emissions'].iloc[percentile_50]/sorted_data['cumulative_emissions'].iloc[-1])
 
 #%% GHG reduction boxplots
 
@@ -1577,7 +1589,7 @@ ax_right.scatter(x=1,
 
 #%% test required Spearman sample number
 
-# TODO: add in writing
+# TODO: add in writing (make sure the rho used is 0.2 not 0.1, mention power is 0.8)
 
 def spearman_sample_size(rho, alpha, power):
     fisher_z = 0.5 * np.log((1 + rho) / (1 - rho))
@@ -1587,21 +1599,21 @@ def spearman_sample_size(rho, alpha, power):
     n = ((z_alpha + z_beta) / fisher_z) ** 2 + 3
     return int(np.ceil(n))
 
-# TODO: update to a function, if possible
+# demonstrate 1000 samples are enough when power = 0.8 and rho = 0.2 (weak correlation)
 # adjusted alpha for all tests using Bonferroni correction
-alpha_adjusted = 0.05/68/11
-
-print(spearman_sample_size(0.1, alpha_adjusted, 0.8))
-print(spearman_sample_size(0.2, alpha_adjusted, 0.8))
-
-assert spearman_sample_size(0.1, alpha_adjusted, 0.8) > 1000 > spearman_sample_size(0.2, alpha_adjusted, 0.8)
+# may have 50-100 parameters (based on geospatial_models.py)
+# may have 1-15 metrics (based on geospatial_models.py)
+for parameter_number in range(50, 101):
+    for metric_number in range(1, 16):
+        alpha_adjusted = 0.05/parameter_number/metric_number
+        assert spearman_sample_size(0.2, alpha_adjusted, 0.8) < 1000
 
 #%% qualified facility level uncertainty and sensitivity analyses
 
 filterwarnings('ignore')
 
 # !!! update the file here if necessary
-qualified_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-12.xlsx')
+qualified_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-16.xlsx')
 qualified_facility = qualified_facility[qualified_facility['USD_decarbonization'].notna()]
 qualified_facility = qualified_facility[qualified_facility['USD_decarbonization'] <= 0]
 
@@ -1629,17 +1641,15 @@ cost_spearman_p = pd.DataFrame()
 CI_spearman_r = pd.DataFrame()
 CI_spearman_p = pd.DataFrame()
 
-# TODO: need to decide how to handle size and ww_2_dry_sludge_ratio, e.g., 100*1 and 200*0.5 have different results (especially for TEA)
 # !!! run in different consoles to speed up: 0, 80, 160, 240, 320, 400, 480, len(qualified_facility)
 for i in range(0, len(qualified_facility)):
-# for i in range(0, 80):
-    sys = create_geospatial_system(size=qualified_facility.iloc[i]['flow_2022_MGD_final'],
+    sys = create_geospatial_system(size=qualified_facility.iloc[i]['total_sludge_amount_kg_per_year']/1000/365,
                                    sludge_transportation=0,
                                    sludge_distance=100,
                                    biocrude_distance=qualified_facility.iloc[i]['real_distance_km'],
                                    anaerobic_digestion=qualified_facility.iloc[i]['sludge_anaerobic_digestion'],
                                    aerobic_digestion=qualified_facility.iloc[i]['sludge_aerobic_digestion'],
-                                   ww_2_dry_sludge_ratio=qualified_facility.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/qualified_facility.iloc[i]['flow_2022_MGD_final'],
+                                   ww_2_dry_sludge_ratio=1,
                                    state=qualified_facility.iloc[i]['state'],
                                    nitrogen_fertilizer=qualified_facility.iloc[i]['nitrogen_fertilizer'],
                                    elec_GHG=qualified_facility.iloc[i]['kg_CO2e_kWh'],
@@ -1702,12 +1712,17 @@ for i in range(0, len(qualified_facility)):
     parameters = model.table.iloc[:, :idx]
     results = model.table.iloc[:, idx:]
     
-    # TODO: three N fertilizers have different length
+    # note three N fertilizers have different numbers of parameters, need to separate
     r_df, p_df = qs.stats.get_correlations(model, kind='Spearman', nan_policy='omit')
-    cost_r_df_list = [i for i in r_df['Geospatial','Sludge management cost [$/tonne dry sludge]'].iloc[0:-1]]
-    cost_p_df_list = [i for i in p_df['Geospatial','Sludge management cost [$/tonne dry sludge]'].iloc[0:-1]]
-    CI_r_df_list = [i for i in r_df['Geospatial','Sludge CI [kg CO2 eq/tonne dry sludge]'].iloc[0:-1]]
-    CI_p_df_list = [i for i in p_df['Geospatial','Sludge CI [kg CO2 eq/tonne dry sludge]'].iloc[0:-1]]
+    cost_r_list = [i for i in r_df['Geospatial','Sludge management cost [$/tonne dry sludge]']]
+    cost_p_list = [i for i in p_df['Geospatial','Sludge management cost [$/tonne dry sludge]']]
+    CI_r_list = [i for i in r_df['Geospatial','Sludge CI [kg CO2 eq/tonne dry sludge]']]
+    CI_p_list = [i for i in p_df['Geospatial','Sludge CI [kg CO2 eq/tonne dry sludge]']]
+    
+    for data in [cost_r_list, cost_p_list, CI_r_list, CI_p_list]:
+        assert len(data) <= 100
+        nan_to_add = 100 - len(data)
+        data.extend([np.nan]*nan_to_add)
     
     # $/tonne
     geo_uncertainty_cost[qualified_facility.iloc[i]['CWNS']] = results[('Geospatial','Sludge management cost [$/tonne dry sludge]')]
@@ -1738,22 +1753,14 @@ for i in range(0, len(qualified_facility)):
     # tonne/year
     geo_uncertainty_UAN[qualified_facility.iloc[i]['CWNS']] = results[('Geospatial','UAN production [tonne/year]')]
     
-    cost_spearman_r[qualified_facility.iloc[i]['CWNS']] = cost_r_df_list
-    cost_spearman_p[qualified_facility.iloc[i]['CWNS']] = cost_p_df_list
-    CI_spearman_r[qualified_facility.iloc[i]['CWNS']] = CI_r_df_list
-    CI_spearman_p[qualified_facility.iloc[i]['CWNS']] = CI_p_df_list
+    cost_spearman_r[qualified_facility.iloc[i]['CWNS']] = cost_r_list
+    cost_spearman_p[qualified_facility.iloc[i]['CWNS']] = cost_p_list
+    CI_spearman_r[qualified_facility.iloc[i]['CWNS']] = CI_r_list
+    CI_spearman_p[qualified_facility.iloc[i]['CWNS']] = CI_p_list
     
     # check progress
     if i%5 == 0:
         print(i)
-
-for data in [cost_spearman_r, cost_spearman_p, CI_spearman_r, CI_spearman_p]:
-    data = data.transpose()
-
-    # TODO: need update
-    data.columns = ['TEA_ash','TEA_lipid','TEA_protein','TEA_elec_price','TEA_wage_adjustment',
-                    'TEA_IRR','TEA_biocrude_price','TEA_DAP_price','TEA_N_fertilizer_price','LCA_ash','LCA_lipid',
-                    'LCA_protein','LCA_elec_CI']
 
 geo_uncertainty_cost.to_excel(folder + f'results/qualified_facility/before_integration/cost_dollar_per_tonne_{date.today()}_{i}.xlsx')
 geo_uncertainty_CI.to_excel(folder + f'results/qualified_facility/before_integration/CI_kg_CO2_eq_per_day_{date.today()}_{i}.xlsx')
@@ -1773,22 +1780,16 @@ cost_spearman_p.to_excel(folder + f'results/qualified_facility/before_integratio
 CI_spearman_r.to_excel(folder + f'results/qualified_facility/before_integration/CI_spearman_r_{date.today()}_{i}.xlsx')
 CI_spearman_p.to_excel(folder + f'results/qualified_facility/before_integration/CI_spearman_p_{date.today()}_{i}.xlsx')
 
-
-#%% sampled facility level uncertainty and sensitivity analyses
+#%% sampled facility level uncertainty and sensitivity analyses (data preparation)
 
 # TODO: add AgglomerativeClustering (an unsupervised machine learning) into writing
 
-# TODO: if we run this, do we still need baseline?
-# TODO: if we still need baseline, consider adding management cost and CI (besides saving and GHG reduction)
-
-filterwarnings('ignore')
-
 # !!! update the file here if necessary
-sampled_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-12.xlsx')
+sampled_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-16.xlsx')
 
 print(len(sampled_facility))
 
-sampled_facility['dollar_per_kWh'] = sampled_facility['state'].apply(lambda x: elec_price[elec_price['state'] == x]['price'].iloc[0])
+sampled_facility['dollar_per_kWh'] = sampled_facility['state'].apply(lambda x: elec_price[elec_price['state'] == x]['price'].iloc[0]/100)
 sampled_facility['crude_oil_dollar_per_barrel'] = sampled_facility['state'].apply(lambda x: crude_oil_price_data[crude_oil_price_data['state'] == x]['2022_average'].iloc[0])
 
 sampled_facility['DAP_price'] = sampled_facility['state'].apply(lambda x: fertilizer_price_uncertainty[x]['DAP'][1] if x in ['AL','IA','IL','NC','OK','SC'] else 984.5)
@@ -1800,19 +1801,22 @@ sampled_facility.loc[sampled_facility['nitrogen_fertilizer']=='NH3', 'nitrogen_f
 sampled_facility.loc[sampled_facility['nitrogen_fertilizer']=='urea', 'nitrogen_fertilizer'] = 2
 sampled_facility.loc[sampled_facility['nitrogen_fertilizer']=='UAN', 'nitrogen_fertilizer'] = 3
 
+# TODO: add in writing
+# exclude income_tax since it is decided by the included parameters (except the location...which is only kind of correlated to dollar_per_kWh)
+# however, since during the simulation, the income_tax is not a parameter, so exclude it here
 sampled_facility = sampled_facility[['total_sludge_amount_kg_per_year',
-                                             'sludge_aerobic_digestion',
-                                             'sludge_anaerobic_digestion',
-                                             'dollar_per_kWh',
-                                             'kg_CO2e_kWh',
-                                             'crude_oil_dollar_per_barrel',
-                                             'DAP_price',
-                                             'anhydrous_ammonia_price',
-                                             'urea_price',
-                                             'UAN_price',
-                                             'wage_quotient',
-                                             'nitrogen_fertilizer',
-                                             'real_distance_km']]
+                                     'sludge_aerobic_digestion',
+                                     'sludge_anaerobic_digestion',
+                                     'dollar_per_kWh',
+                                     'kg_CO2e_kWh',
+                                     'crude_oil_dollar_per_barrel',
+                                     'DAP_price',
+                                     'anhydrous_ammonia_price',
+                                     'urea_price',
+                                     'UAN_price',
+                                     'wage_quotient',
+                                     'nitrogen_fertilizer',
+                                     'real_distance_km']]
 
 # scale the data
 scaler = StandardScaler()
@@ -1832,11 +1836,24 @@ sampled_facility['label'] = labels
 
 sampled_facility = sampled_facility.groupby('label').median()
 
+sampled_facility.reset_index(inplace=True)
+
 sampled_facility['nitrogen_fertilizer'] = sampled_facility['nitrogen_fertilizer'].apply(lambda x: round(x))
 
 sampled_facility.loc[sampled_facility['nitrogen_fertilizer']==1, 'nitrogen_fertilizer'] = 'NH3'
 sampled_facility.loc[sampled_facility['nitrogen_fertilizer']==2, 'nitrogen_fertilizer'] = 'urea'
 sampled_facility.loc[sampled_facility['nitrogen_fertilizer']==3, 'nitrogen_fertilizer'] = 'UAN'
+
+sampled_facility.to_excel(folder + f'results/sampled_facility/sampled_facility_{date.today()}.xlsx')
+
+#%% sampled facility level uncertainty and sensitivity analyses
+
+filterwarnings('ignore')
+
+# !!! update the file here if necessary
+sampled_facility = pd.read_excel(folder + 'results/sampled_facility/sampled_facility_2025-02-16.xlsx')
+
+print(len(sampled_facility))
 
 geo_uncertainty_cost = pd.DataFrame()
 geo_uncertainty_CI = pd.DataFrame()
@@ -1855,20 +1872,18 @@ cost_spearman_p = pd.DataFrame()
 CI_spearman_r = pd.DataFrame()
 CI_spearman_p = pd.DataFrame()
 
-# TODO: need to decide how to handle size and ww_2_dry_sludge_ratio, e.g., 100*1 and 200*0.5 have different results (especially for TEA)
-# TODO: need to decide how to handle state and electricity price
 # !!! run in different consoles to speed up: 0, 100, 200, 300, 400, 500, 600, 700, 800, 900, len(sampled_facility)
 for i in range(0, len(sampled_facility)):
-# for i in range(0, 100):
-    sys = create_geospatial_system(size=sampled_facility.iloc[i]['flow_2022_MGD_final'],
+    sys = create_geospatial_system(size=sampled_facility.iloc[i]['total_sludge_amount_kg_per_year']/1000/365,
                                    sludge_transportation=0,
                                    sludge_distance=100,
                                    biocrude_distance=sampled_facility.iloc[i]['real_distance_km'],
                                    anaerobic_digestion=sampled_facility.iloc[i]['sludge_anaerobic_digestion'],
                                    aerobic_digestion=sampled_facility.iloc[i]['sludge_aerobic_digestion'],
-                                   ww_2_dry_sludge_ratio=sampled_facility.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/sampled_facility.iloc[i]['flow_2022_MGD_final'],
-                                   state=sampled_facility.iloc[i]['state'],
+                                   ww_2_dry_sludge_ratio=1,
+                                   state='US',
                                    nitrogen_fertilizer=sampled_facility.iloc[i]['nitrogen_fertilizer'],
+                                   elec_price=sampled_facility.iloc[i]['dollar_per_kWh'],
                                    elec_GHG=sampled_facility.iloc[i]['kg_CO2e_kWh'],
                                    wage_adjustment=sampled_facility.iloc[i]['wage_quotient']/100)
     
@@ -1886,29 +1901,26 @@ for i in range(0, len(sampled_facility)):
         sludge_lipid_values=[0.080, 0.206, 0.308]
         sludge_protein_values=[0.380, 0.456, 0.485]
     
-    crude_oil_price_values = [crude_oil_price_data[crude_oil_price_data['state']==sampled_facility.iloc[i]['state']]['2022_min'].iloc[0],
-                              crude_oil_price_data[crude_oil_price_data['state']==sampled_facility.iloc[i]['state']]['2022_average'].iloc[0],
-                              crude_oil_price_data[crude_oil_price_data['state']==sampled_facility.iloc[i]['state']]['2022_max'].iloc[0]]
+    # TODO: add in writing
+    crude_oil_price_values = [sampled_facility.iloc[i]['crude_oil_dollar_per_barrel']*0.8,
+                              sampled_facility.iloc[i]['crude_oil_dollar_per_barrel'],
+                              sampled_facility.iloc[i]['crude_oil_dollar_per_barrel']*1.2]
     
-    try:
-        DAP_price_values = fertilizer_price_uncertainty[sampled_facility.iloc[i]['state']]['DAP']
-    except KeyError:
-        DAP_price_values = [588, 984.5, 1381]
+    DAP_price_values = [sampled_facility.iloc[i]['DAP_price']*0.8,
+                        sampled_facility.iloc[i]['DAP_price'],
+                        sampled_facility.iloc[i]['DAP_price']*1.2]
     
-    try:
-        anhydrous_ammonia_price_values = fertilizer_price_uncertainty[sampled_facility.iloc[i]['state']]['anhydrous_ammonia']
-    except KeyError:
-        anhydrous_ammonia_price_values = [1065, 1407.5, 1750]
-    
-    try:
-        urea_price_values = fertilizer_price_uncertainty[sampled_facility.iloc[i]['state']]['urea']
-    except KeyError:
-        urea_price_values = [447, 855, 1263]
-    
-    try:
-        UAN_price_values = fertilizer_price_uncertainty[sampled_facility.iloc[i]['state']]['UAN']
-    except KeyError:
-        UAN_price_values = [350, 605, 860]
+    anhydrous_ammonia_price_values = [sampled_facility.iloc[i]['anhydrous_ammonia_price']*0.8,
+                                      sampled_facility.iloc[i]['anhydrous_ammonia_price'],
+                                      sampled_facility.iloc[i]['anhydrous_ammonia_price']*1.2]
+
+    urea_price_values = [sampled_facility.iloc[i]['urea_price']*0.8,
+                         sampled_facility.iloc[i]['urea_price'],
+                         sampled_facility.iloc[i]['urea_price']*1.2]
+
+    UAN_price_values = [sampled_facility.iloc[i]['UAN_price']*0.8,
+                        sampled_facility.iloc[i]['UAN_price'],
+                        sampled_facility.iloc[i]['UAN_price']*1.2]
     
     model = create_geospatial_model(system=sys,
                                     sludge_ash=sludge_ash_values,
@@ -1929,58 +1941,47 @@ for i in range(0, len(sampled_facility)):
     parameters = model.table.iloc[:, :idx]
     results = model.table.iloc[:, idx:]
     
-    # TODO: three N fertilizers have different length
+    # note three N fertilizers have different numbers of parameters, need to separate
     r_df, p_df = qs.stats.get_correlations(model, kind='Spearman', nan_policy='omit')
-    cost_r_df_list = [i for i in r_df['Geospatial','Sludge management cost [$/tonne dry sludge]'].iloc[0:-1]]
-    cost_p_df_list = [i for i in p_df['Geospatial','Sludge management cost [$/tonne dry sludge]'].iloc[0:-1]]
-    CI_r_df_list = [i for i in r_df['Geospatial','Sludge CI [kg CO2 eq/tonne dry sludge]'].iloc[0:-1]]
-    CI_p_df_list = [i for i in p_df['Geospatial','Sludge CI [kg CO2 eq/tonne dry sludge]'].iloc[0:-1]]
+    cost_r_list = [i for i in r_df['Geospatial','Sludge management cost [$/tonne dry sludge]']]
+    cost_p_list = [i for i in p_df['Geospatial','Sludge management cost [$/tonne dry sludge]']]
+    CI_r_list = [i for i in r_df['Geospatial','Sludge CI [kg CO2 eq/tonne dry sludge]']]
+    CI_p_list = [i for i in p_df['Geospatial','Sludge CI [kg CO2 eq/tonne dry sludge]']]
+    
+    for data in [cost_r_list, cost_p_list, CI_r_list, CI_p_list]:
+        assert len(data) <= 100
+        nan_to_add = 100 - len(data)
+        data.extend([np.nan]*nan_to_add)
     
     # $/tonne
-    geo_uncertainty_cost[sampled_facility.iloc[i]['CWNS']] = results[('Geospatial','Sludge management cost [$/tonne dry sludge]')]
+    geo_uncertainty_cost[sampled_facility.iloc[i]['label']] = results[('Geospatial','Sludge management cost [$/tonne dry sludge]')]
     # kg CO2 eq/tonne
-    geo_uncertainty_CI[sampled_facility.iloc[i]['CWNS']] = results[('Geospatial','Sludge CI [kg CO2 eq/tonne dry sludge]')]
-    # $/day
-    geo_uncertainty_saving[sampled_facility.iloc[i]['CWNS']] = (sampled_facility.iloc[i]['waste_cost'] -\
-                                                                    results[('Geospatial','Sludge management cost [$/tonne dry sludge]')])*\
-                                                                   sampled_facility.iloc[i]['total_sludge_amount_kg_per_year']/1000/365
-    # kg CO2 eq/day
-    geo_uncertainty_decarbonization[sampled_facility.iloc[i]['CWNS']] = (sampled_facility.iloc[i]['waste_GHG'] -\
-                                                                             results[('Geospatial','Sludge CI [kg CO2 eq/tonne dry sludge]')])*\
-                                                                             sampled_facility.iloc[i]['total_sludge_amount_kg_per_year']/1000/365
+    geo_uncertainty_CI[sampled_facility.iloc[i]['label']] = results[('Geospatial','Sludge CI [kg CO2 eq/tonne dry sludge]')]
     # tonne/year
-    geo_uncertainty_sludge_N[sampled_facility.iloc[i]['CWNS']] = results[('Geospatial','Sludge N [tonne/year]')]
+    geo_uncertainty_sludge_N[sampled_facility.iloc[i]['label']] = results[('Geospatial','Sludge N [tonne/year]')]
     # tonne/year
-    geo_uncertainty_HNO3_N[sampled_facility.iloc[i]['CWNS']] = results[('Geospatial','HNO3 N [tonne/year]')]
+    geo_uncertainty_HNO3_N[sampled_facility.iloc[i]['label']] = results[('Geospatial','HNO3 N [tonne/year]')]
     # tonne/year
-    geo_uncertainty_sludge_P[sampled_facility.iloc[i]['CWNS']] = results[('Geospatial','Sludge P [tonne/year]')]
+    geo_uncertainty_sludge_P[sampled_facility.iloc[i]['label']] = results[('Geospatial','Sludge P [tonne/year]')]
     # BPD
-    geo_uncertainty_biocrude[sampled_facility.iloc[i]['CWNS']] = results[('Geospatial','Biocrude production [BPD]')]
+    geo_uncertainty_biocrude[sampled_facility.iloc[i]['label']] = results[('Geospatial','Biocrude production [BPD]')]
     # tonne/year
-    geo_uncertainty_DAP[sampled_facility.iloc[i]['CWNS']] = results[('Geospatial','DAP production [tonne/year]')]
+    geo_uncertainty_DAP[sampled_facility.iloc[i]['label']] = results[('Geospatial','DAP production [tonne/year]')]
     # tonne/year
-    geo_uncertainty_anhydrous_ammonia[sampled_facility.iloc[i]['CWNS']] = results[('Geospatial','Anhydrous ammonia production [tonne/year]')]
+    geo_uncertainty_anhydrous_ammonia[sampled_facility.iloc[i]['label']] = results[('Geospatial','Anhydrous ammonia production [tonne/year]')]
     # tonne/year
-    geo_uncertainty_urea[sampled_facility.iloc[i]['CWNS']] = results[('Geospatial','Urea production [tonne/year]')]
+    geo_uncertainty_urea[sampled_facility.iloc[i]['label']] = results[('Geospatial','Urea production [tonne/year]')]
     # tonne/year
-    geo_uncertainty_UAN[sampled_facility.iloc[i]['CWNS']] = results[('Geospatial','UAN production [tonne/year]')]
+    geo_uncertainty_UAN[sampled_facility.iloc[i]['label']] = results[('Geospatial','UAN production [tonne/year]')]
     
-    cost_spearman_r[sampled_facility.iloc[i]['CWNS']] = cost_r_df_list
-    cost_spearman_p[sampled_facility.iloc[i]['CWNS']] = cost_p_df_list
-    CI_spearman_r[sampled_facility.iloc[i]['CWNS']] = CI_r_df_list
-    CI_spearman_p[sampled_facility.iloc[i]['CWNS']] = CI_p_df_list
+    cost_spearman_r[sampled_facility.iloc[i]['label']] = cost_r_list
+    cost_spearman_p[sampled_facility.iloc[i]['label']] = cost_p_list
+    CI_spearman_r[sampled_facility.iloc[i]['label']] = CI_r_list
+    CI_spearman_p[sampled_facility.iloc[i]['label']] = CI_p_list
     
     # check progress
     if i%5 == 0:
         print(i)
-
-for data in [cost_spearman_r, cost_spearman_p, CI_spearman_r, CI_spearman_p]:
-    data = data.transpose()
-
-    # TODO: need update
-    data.columns = ['TEA_ash','TEA_lipid','TEA_protein','TEA_elec_price','TEA_wage_adjustment',
-                    'TEA_IRR','TEA_biocrude_price','TEA_DAP_price','TEA_N_fertilizer_price','LCA_ash','LCA_lipid',
-                    'LCA_protein','LCA_elec_CI']
 
 geo_uncertainty_cost.to_excel(folder + f'results/sampled_facility/before_integration/cost_dollar_per_tonne_{date.today()}_{i}.xlsx')
 geo_uncertainty_CI.to_excel(folder + f'results/sampled_facility/before_integration/CI_kg_CO2_eq_per_day_{date.today()}_{i}.xlsx')
@@ -2031,13 +2032,13 @@ CI_spearman_p.to_excel(folder + f'results/sampled_facility/before_integration/CI
 
 # !!! update these files if necessary
 def combine_file(name):
-    file_1 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-02-12_79.xlsx')
-    file_2 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-02-12_159.xlsx')
-    file_3 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-02-12_239.xlsx')
-    file_4 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-02-12_319.xlsx')
-    file_5 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-02-12_399.xlsx')
-    file_6 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-02-12_479.xlsx')
-    file_7 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-02-12_558.xlsx')
+    file_1 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-02-16_79.xlsx')
+    file_2 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-02-16_159.xlsx')
+    file_3 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-02-16_239.xlsx')
+    file_4 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-02-16_319.xlsx')
+    file_5 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-02-16_399.xlsx')
+    file_6 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-02-16_479.xlsx')
+    file_7 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-02-16_558.xlsx')
 
     for file in [file_1, file_2, file_3, file_4, file_5, file_6, file_7]:
         file.drop('Unnamed: 0', axis=1, inplace=True)
@@ -2351,13 +2352,13 @@ for i in range(0, 2):
     # TODO: update based on the function in geospatial_systems.py, if necessary
     # TODO: remove barrel
     # TODO: add nitrogen_fertilizer
-    sys, barrel = create_geospatial_system(size=Urbana_Champaign.iloc[i]['flow_2022_MGD_final'],
+    sys, barrel = create_geospatial_system(size=Urbana_Champaign.iloc[i]['total_sludge_amount_kg_per_year']/1000/365,
                                            sludge_transportation=0,
                                            sludge_distance=100,
                                            biocrude_distance=Urbana_Champaign.iloc[i]['real_distance_km'],
                                            anaerobic_digestion=Urbana_Champaign.iloc[i]['sludge_anaerobic_digestion'],
                                            aerobic_digestion=Urbana_Champaign.iloc[i]['sludge_aerobic_digestion'],
-                                           ww_2_dry_sludge_ratio=Urbana_Champaign.iloc[i]['total_sludge_amount_kg_per_year']/1000/365/Urbana_Champaign.iloc[i]['flow_2022_MGD_final'],
+                                           ww_2_dry_sludge_ratio=1,
                                            state=Urbana_Champaign.iloc[i]['state'],
                                            elec_GHG=Urbana_Champaign.iloc[i]['kg_CO2e_kWh'],
                                            wage_adjustment=Urbana_Champaign.iloc[i]['wage_quotient']/100)
@@ -2417,8 +2418,6 @@ average_cost = (Urbana_Champaign.iloc[0]['waste_cost']*Urbana_Champaign.iloc[0][
 average_GHG = (Urbana_Champaign.iloc[0]['waste_GHG']*Urbana_Champaign.iloc[0]['total_sludge_amount_kg_per_year'] +\
                Urbana_Champaign.iloc[1]['waste_GHG']*Urbana_Champaign.iloc[1]['total_sludge_amount_kg_per_year']) /\
               (Urbana_Champaign.iloc[0]['total_sludge_amount_kg_per_year'] + Urbana_Champaign.iloc[1]['total_sludge_amount_kg_per_year'])
-               
-total_size = Urbana_Champaign.iloc[0]['flow_2022_MGD_final']+Urbana_Champaign.iloc[1]['flow_2022_MGD_final']
 
 distance_to_refinery = Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112001]['real_distance_km'].iloc[0]
 
@@ -2426,6 +2425,7 @@ total_ash = 0
 total_lipid = 0
 total_protein = 0
 total_sludge = Urbana_Champaign.iloc[0]['total_sludge_amount_kg_per_year']+Urbana_Champaign.iloc[1]['total_sludge_amount_kg_per_year']
+total_size = total_sludge/1000/365
 
 for i in range(len(Urbana_Champaign)):
     if Urbana_Champaign.iloc[i]['sludge_aerobic_digestion'] == 1:
@@ -2455,10 +2455,6 @@ sludge_ash_values = [average_ash_dw*0.8, average_ash_dw, average_ash_dw*1.2, 'di
 sludge_lipid_values = [average_lipid_afdw*0.8, average_lipid_afdw, average_lipid_afdw*1.2]
 sludge_protein_values = [average_protein_afdw*0.8, average_protein_afdw, average_protein_afdw*1.2]
 
-average_ww_2_dry_sludge_ratio = (Urbana_Champaign.iloc[0]['total_sludge_amount_kg_per_year'] +\
-                                 Urbana_Champaign.iloc[1]['total_sludge_amount_kg_per_year']) /\
-                                 1000/365/(Urbana_Champaign.iloc[0]['flow_2022_MGD_final']+Urbana_Champaign.iloc[1]['flow_2022_MGD_final'])
-
 assert Urbana_Champaign.iloc[0]['state'] == Urbana_Champaign.iloc[1]['state']
 assert Urbana_Champaign.iloc[0]['kg_CO2e_kWh'] == Urbana_Champaign.iloc[1]['kg_CO2e_kWh']
 
@@ -2475,7 +2471,7 @@ sys, barrel = create_geospatial_system(size=total_size,
                                        average_sludge_afdw_protein=sludge_protein_values[1],
                                        anaerobic_digestion=None,
                                        aerobic_digestion=None,
-                                       ww_2_dry_sludge_ratio=average_ww_2_dry_sludge_ratio,
+                                       ww_2_dry_sludge_ratio=1,
                                        state=Urbana_Champaign.iloc[0]['state'],
                                        elec_GHG=Urbana_Champaign.iloc[0]['kg_CO2e_kWh'],
                                        wage_adjustment=Urbana_Champaign.iloc[i]['wage_quotient']/100)
@@ -2702,13 +2698,13 @@ center_WRRF = Minnesota.iloc[0,:]
 # TODO: update based on the function in geospatial_systems.py, if necessary
 # TODO: remove barrel
 # TODO: add nitrogen_fertilizer
-sys, barrel = create_geospatial_system(size=center_WRRF['flow_2022_MGD_final'],
+sys, barrel = create_geospatial_system(size=center_WRRF['total_sludge_amount_kg_per_year']/1000/365,
                                        sludge_transportation=0,
                                        sludge_distance=100,
                                        biocrude_distance=center_WRRF['real_distance_km'],
                                        anaerobic_digestion=center_WRRF['sludge_anaerobic_digestion'],
                                        aerobic_digestion=center_WRRF['sludge_aerobic_digestion'],
-                                       ww_2_dry_sludge_ratio=center_WRRF['total_sludge_amount_kg_per_year']/1000/365/center_WRRF['flow_2022_MGD_final'],
+                                       ww_2_dry_sludge_ratio=1,
                                        state=center_WRRF['state'],
                                        elec_GHG=center_WRRF['kg_CO2e_kWh'],
                                        wage_adjustment=center_WRRF.iloc[i]['wage_quotient']/100)
@@ -2772,11 +2768,10 @@ total_sludge_except_center = MN_WI_IA_satellite['total_sludge_amount_kg_per_year
 total_cost = total_cost_except_center + center_WRRF['waste_cost']*center_WRRF['total_sludge_amount_kg_per_year']
 total_GHG = total_GHG_except_center + center_WRRF['waste_GHG']*center_WRRF['total_sludge_amount_kg_per_year']
 total_sludge = total_sludge_except_center + center_WRRF['total_sludge_amount_kg_per_year']
+total_size = total_sludge/1000/365
 
 average_cost = total_cost/total_sludge
 average_GHG = total_GHG/total_sludge
-
-total_size = MN_WI_IA_satellite['flow_2022_MGD_final'].sum(axis=0) + center_WRRF['flow_2022_MGD_final']
 
 distance_to_refinery = center_WRRF['real_distance_km']
 
@@ -2822,8 +2817,6 @@ sludge_ash_values = [average_ash_dw*0.8, average_ash_dw, average_ash_dw*1.2, 'di
 sludge_lipid_values = [average_lipid_afdw*0.8, average_lipid_afdw, average_lipid_afdw*1.2]
 sludge_protein_values = [average_protein_afdw*0.8, average_protein_afdw, average_protein_afdw*1.2]
 
-average_ww_2_dry_sludge_ratio = total_sludge/1000/365/total_size
-
 # TODO: update based on the function in geospatial_systems.py, if necessary
 # TODO: remove barrel
 # TODO: add nitrogen_fertilizer
@@ -2836,7 +2829,7 @@ sys, barrel = create_geospatial_system(size=total_size,
                                        average_sludge_afdw_protein=sludge_protein_values[1],
                                        anaerobic_digestion=None,
                                        aerobic_digestion=None,
-                                       ww_2_dry_sludge_ratio=average_ww_2_dry_sludge_ratio,
+                                       ww_2_dry_sludge_ratio=1,
                                        state=center_WRRF['state'],
                                        elec_GHG=center_WRRF['kg_CO2e_kWh'],
                                        wage_adjustment=center_WRRF.iloc[i]['wage_quotient']/100)
@@ -3679,13 +3672,13 @@ ax.clabel(lines, lines.levels, inline=True, fontsize=38)
 #%% line plot of all WRRFs (superseded)
 
 # # !!! update the file here if necessary
-# line_plot = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-12.xlsx')
+# line_plot = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-16.xlsx')
 # # line_plot = line_plot[line_plot['USD_decarbonization'].notna()]
 # # line_plot = line_plot[line_plot['USD_decarbonization'] <= 0]
 
 # line_plot = line_plot.copy()
 
-# line_plot['dollar_per_kWh'] = line_plot['state'].apply(lambda x: elec_price[elec_price['state'] == x]['price'].iloc[0])
+# line_plot['dollar_per_kWh'] = line_plot['state'].apply(lambda x: elec_price[elec_price['state'] == x]['price'].iloc[0]/100)
 # line_plot['crude_oil_dollar_per_barrel'] = line_plot['state'].apply(lambda x: crude_oil_price_data[crude_oil_price_data['state'] == x]['2022_average'].iloc[0])
 
 # line_plot['DAP_price'] = line_plot['state'].apply(lambda x: fertilizer_price_uncertainty[x]['DAP'][1] if x in ['AL','IA','IL','NC','OK','SC'] else 984.5)
