@@ -85,9 +85,15 @@ class LiftPump(Pump):
         self.add_construction(add_cost=False)
     
     def _run(self):
-        s_in, = self.ins
-        s_out, = self.outs
-        s_out.copy_like(s_in)
+        
+        # Input stream
+        Water_in = self.ins[0]
+        
+        # Output stream
+        Water_out = self.outs[0]
+        
+        # Inherite input stream
+        Water_out.copy_like(Water_in)
 
     def _cost(self):
 
@@ -232,9 +238,15 @@ class DosingPump(Pump):
         self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
 
     def _run(self):
-        s_in, = self.ins
-        s_out, = self.outs
-        s_out.copy_like(s_in)
+        
+        # Input stream
+        mass_in = self.ins[0]
+        
+        # Output stream
+        mass_out = self.outs[0]
+        
+        # Inherite input stream
+        mass_out.copy_like(mass_in)
 
     def _design(self):
         design = self.design_results
@@ -319,9 +331,15 @@ class ReturnPump(Pump):
         self.add_construction(add_cost=False)
     
     def _run(self):
-        s_in, = self.ins
-        s_out, = self.outs
-        s_out.copy_like(s_in)
+        
+        # Input stream
+        mass_in = self.ins[0]
+        
+        # Output stream
+        mass_out = self.outs[0]
+        
+        # Inherite input stream
+        mass_out.copy_like(mass_in)
 
     def _cost(self):
 
@@ -399,9 +417,15 @@ class SelfPrimingPump(Pump):
         self.add_construction(add_cost=False)
 
     def _run(self):
-        s_in, = self.ins
-        s_out, = self.outs
-        s_out.copy_like(s_in)
+        
+        # Input stream
+        mass_in, = self.ins[0]
+        
+        # Output stream
+        mass_out = self.outs[0]
+        
+        # Inherite input stream
+        mass_out.copy_like(mass_in)
     
     def _cost(self):
 
@@ -480,10 +504,16 @@ class AirDissolvedPump(Pump):
         self.add_construction(add_cost=False)
 
     def _run(self):
-        CWTwater, air= self.ins
+        
+        # Input stream
+        CWTwater = self.ins[0]
+        air= self.ins[1]
+        
+        # Output stream
         Water_with_O2 = self.outs[0]
-        Water_with_O2.empty()
-        Water_with_O2.mix_from([CWTwater, air])
+        
+        # Inherite input stream
+        Water_with_O2.copy_like(CWTwater)
     
     def _cost(self):
 
@@ -563,9 +593,15 @@ class MicroBubblePump(Pump):
         self.add_construction(add_cost=False)
 
     def _run(self):
-        s_in, = self.ins
-        s_out, = self.outs
-        s_out.copy_like(s_in)
+        
+        # Input stream
+        gas_in = self.ins[0]
+        
+        # Output stream
+        gas_out = self.outs[0]
+        
+        # Inherite input stream
+        gas_out.copy_like(gas_in)
     
     def _cost(self):
 
@@ -645,9 +681,15 @@ class ClearWaterPump(Pump):
         self.add_construction(add_cost=False)
 
     def _run(self):
-        s_in, = self.ins
-        s_out, = self.outs
-        s_out.copy_like(s_in)
+        
+        # Input stream
+        mass_in = self.ins[0]
+        
+        # Output stream
+        mass_out = self.outs[0]
+         
+        # Inherite input stream
+        mass_out.copy_like(mass_in)
     
     def _cost(self):
 
