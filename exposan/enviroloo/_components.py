@@ -36,7 +36,7 @@ def create_components(set_thermo = True,
     add_V_from_rho(NaClO, rho=1250)
     
     NO3 = Component('NO3', measured_as = 'N', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
-    add_V_from_rho(NO3, rho=1.523) # need check
+    add_V_from_rho(NO3, rho=1.15) # need check
           
     #NH3_l = Component('NH3_l', measured_as = 'N', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
           
