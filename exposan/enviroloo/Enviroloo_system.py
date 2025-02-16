@@ -235,57 +235,58 @@ def create_systemEL(flowsheet = None):
                                 pump_cost = 59, # USD from https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
                                 dP_design = 0,
                                 )
-    B_AeroT = EL_blower('B_AeroT', ins=stream['air'], outs ='Air',
+    B_AeroT = EL_blower('B_AeroT', ins=stream['air'], outs ='Air_aerobic',
                             F_BM={
                                   'Blowers': 2.22,
                                   'Blower piping': 1,
                                   'Blower building': 1.11,
                                  },
                             lifetime = 10, lifetime_unit='yr',
-                            units={
-                                  'Total gas flow': 'CFM',
-                                  'Blower capacity': 'CFM',
-                                  'Number of blowers': '',
-                                  'Total blower power': 'kW',
-                                 },
-                            N_reactor=2, # the number of the reactors where the gas sparging modules will be installed
-                            gas_demand_per_reactor=1, # gas demand per reactor
-                            TDH=6, # total dynamic head for rhe blower, in psi
-                            eff_blower=0.85, # efficiency of the blower in fraction
-                            eff_motor=0.95, # efficiency of the motor in fraction
-                            AFF=3.33, # air flow fraction
-                            building_unit_cost=9, # unit cost of the building, in USD/ft2
+                            # units={
+                            #       'Total gas flow': 'CFM',
+                            #       'Blower capacity': 'CFM',
+                            #       'Number of blowers': '',
+                            #       'Total blower power': 'kW',
+                            #      },
+                            # N_reactor=2, # the number of the reactors where the gas sparging modules will be installed
+                            # gas_demand_per_reactor=1, # gas demand per reactor
+                            # TDH=6, # total dynamic head for rhe blower, in psi
+                            # eff_blower=0.85, # efficiency of the blower in fraction
+                            # eff_motor=0.95, # efficiency of the motor in fraction
+                            # AFF=3.33, # air flow fraction
+                            # building_unit_cost=9, # unit cost of the building, in USD/ft2
                             ppl = ppl, baseline_ppl = 30,
                            )
-    #B_MembT.line = 'Blower_Aerob'
+    B_AeroT.line = 'Air to aerobic tank'
     
     AeroT = EL_Aerobic('AeroT', ins=(AnoxT-0, P_PAC_dosing-0, B_AeroT-0), 
                             outs = ('TreatedWater', 'AeroT_CH4', 'AeroT_N2O'), 
                             ppl = ppl, baseline_ppl = 30,
                             )
     
-    B_MembT = EL_blower('B_MembT', ins = stream['air'], outs = 'air', 
+    B_MembT = EL_blower('B_MembT', ins = stream['air'], outs = 'Air_membrane', 
                             F_BM={
                                   'Blowers': 2.22,
                                   'Blower piping': 1,
                                   'Blower building': 1.11,
                                  },
                             lifetime=10, lifetime_unit='yr',
-                            units={
-                                  'Total gas flow': 'CFM',
-                                  'Blower capacity': 'CFM',
-                                  'Number of blowers': '',
-                                  'Total blower power': 'kW',
-                                 },
-                            N_reactor=2, # the number of the reactors where the gas sparging modules will be installed
-                            gas_demand_per_reactor=1, # gas demand per reactor
-                            TDH=6, # total dynamic head for rhe blower, in psi
-                            eff_blower=0.85, # efficiency of the blower in fraction
-                            eff_motor=0.95, # efficiency of the motor in fraction
-                            AFF=3.33, # air flow fraction
-                            building_unit_cost=9, # unit cost of the building, in USD/ft2
-                            ppl = ppl, baseline_ppl = 30,)
-    #B_MembT.line = 'Blower_Memb'
+                            # units={
+                            #       'Total gas flow': 'CFM',
+                            #       'Blower capacity': 'CFM',
+                            #       'Number of blowers': '',
+                            #       'Total blower power': 'kW',
+                            #      },
+                            # N_reactor=2, # the number of the reactors where the gas sparging modules will be installed
+                            # gas_demand_per_reactor=1, # gas demand per reactor
+                            # TDH=6, # total dynamic head for rhe blower, in psi
+                            # eff_blower=0.85, # efficiency of the blower in fraction
+                            # eff_motor=0.95, # efficiency of the motor in fraction
+                            # AFF=3.33, # air flow fraction
+                            # building_unit_cost=9, # unit cost of the building, in USD/ft2
+                            ppl = ppl, baseline_ppl = 30,
+                            )
+    B_MembT.line = 'Air to membrane tank'
     
     P_NitrateReturn_PC = ReturnPump('P_NitrateReturn_PC', ins='MembT_return', outs=1-PC,
                                     working_factor = 0.9,  # The ratio of the actual output and the design output
@@ -422,27 +423,27 @@ def create_systemEL(flowsheet = None):
                                   ))
     #sysEL.simulate()
     
-    # teaEL = TEA(system = sysEL,
-    #                discount_rate = discount_rate,  
-    #                income_tax = 0.05,  
-    #                CEPCI = 567.5,  
-    #                start_year = 2024,  
-    #                lifetime = 10,  
-    #                uptime_ratio = 1.0,  
-    #                #CAPEX = 0.0,  
-    #                lang_factor = None,  
-    #                annual_maintenance = 0.0,  
-    #                annual_labor = (operator_daily_wage * 3 * 365),  
-    #                system_add_OPEX = {},
-    #                depreciation = 'SL',  
-    #                construction_schedule = (0, 1),  
-    #                accumulate_interest_during_construction = False,  
-    #                simulate_system = True,  
-    #                simulate_kwargs = {},
-    #                )
+    teaEL = TEA(system = sysEL,
+                   discount_rate = discount_rate,  
+                   income_tax = 0.05,  
+                   CEPCI = 567.5,  
+                   start_year = 2024,  
+                   lifetime = 10,  
+                   uptime_ratio = 1.0,  
+                   #CAPEX = 0.0,  
+                   lang_factor = None,  
+                   annual_maintenance = 0.0,  
+                   annual_labor = (operator_daily_wage * 3 * 365),  
+                   system_add_OPEX = {},
+                   depreciation = 'SL',  
+                   construction_schedule = (0, 1),  
+                   accumulate_interest_during_construction = False,  
+                   simulate_system = True,  
+                   simulate_kwargs = {},
+                   )
     
-    # get_power = lambda: sum([(u.power_utility.rate * u.uptime_ratio) for u in sysEL.units]) * (365 * teaEL.lifetime) * 12
-    # LCA(system = sysEL, lifetime = 10, lifetime_unit = 'yr', uptime_ratio = 1.0, e_item = get_power)
+    get_power = lambda: sum([(u.power_utility.rate * u.uptime_ratio) for u in sysEL.units]) * (365 * teaEL.lifetime) * 12
+    LCA(system = sysEL, lifetime = 10, lifetime_unit = 'yr', uptime_ratio = 1.0, e_item = get_power)
 
     return sysEL
 

@@ -18,17 +18,8 @@ def create_components(set_thermo = True,
 
     C = Component('C', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
     
-    # solubleCH4 needs define?
     SolubleCH4 = Component('SolubleCH4', search_ID='CH4', phase='l', particle_size='Soluble', degradability='Slowly', organic=True)
 
-    #H2O = Component('H2O', search_ID='H2O', particle_size='Soluble', degradability='Undegradable', organic=False)
-
-    #CO2 = Component('CO2', search_ID='CO2', phase='g', particle_size='Dissolved gas', degradability='Undegradable', organic=False)
-
-    #N2O = Component('N2O', search_ID='N2O', phase='g', particle_size='Dissolved gas', degradability='Undegradable', organic=False)
-
-    #CH4 = Component('CH4', search_ID='CH4', phase='g', particle_size='Dissolved gas', degradability='Readily', organic=True)
-          
     PAC = Component('PAC', search_ID='10124-27-3', phase='s', particle_size='Particulate', degradability='Slowly', organic=False)
     add_V_from_rho(PAC, rho=2800)
                     
@@ -37,13 +28,15 @@ def create_components(set_thermo = True,
           
     O3 = Component('O3', search_ID='10028-15-6', phase='g', particle_size='Dissolved gas', degradability='Readily', organic=False)
           
-    #NH3 = Component('NH3', search_ID='7664-41-7', phase='g', particle_size='Dissolved gas', degradability='Readily', organic=False)
           
     NaOH = Component('NaOH', search_ID='1310-73-2', phase='s', particle_size='Particulate', degradability='Readily', organic=False)
     add_V_from_rho(NaOH, rho=2130)
           
     NaClO = Component('NaClO', search_ID='7681-52-9', phase='s', particle_size='Particulate', degradability='Readily', organic=False)
     add_V_from_rho(NaClO, rho=1250)
+    
+    NO3 = Component('NO3', measured_as = 'N', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
+    add_V_from_rho(NO3, rho=1.523) # need check
           
     #NH3_l = Component('NH3_l', measured_as = 'N', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
           
@@ -61,7 +54,7 @@ def create_components(set_thermo = True,
           #'degradability': ('Readily', 'Slowly', 'Undegradable'),
           #'organic': (True, False)}
           
-    cmps = Components((*bw_cmps, C, SolubleCH4,
+    cmps = Components((*bw_cmps, C, SolubleCH4, NO3,
                        #H2O, CO2, CH4, N2O, NH3
                        Glucose, O3, air, PAC, NaOH, NaClO))
     
