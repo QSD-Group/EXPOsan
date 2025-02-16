@@ -236,11 +236,12 @@ def create_systemEL(flowsheet = None):
                                 dP_design = 0,
                                 )
     B_AeroT = EL_blower('B_AeroT', ins=stream['air'], outs ='Air_aerobic',
-                            F_BM={
-                                  'Blowers': 2.22,
-                                  'Blower piping': 1,
-                                  'Blower building': 1.11,
-                                 },
+                            # F_BM={
+                            #       'Blowers': 2.22,
+                            #       'Blower piping': 1,
+                            #       'Blower building': 1.11,
+                            #      },
+                            F_BM = 2.2,
                             lifetime = 10, lifetime_unit='yr',
                             # units={
                             #       'Total gas flow': 'CFM',
@@ -265,11 +266,12 @@ def create_systemEL(flowsheet = None):
                             )
     
     B_MembT = EL_blower('B_MembT', ins = stream['air'], outs = 'Air_membrane', 
-                            F_BM={
-                                  'Blowers': 2.22,
-                                  'Blower piping': 1,
-                                  'Blower building': 1.11,
-                                 },
+                            # F_BM={
+                            #       'Blowers': 2.22,
+                            #       'Blower piping': 1,
+                            #       'Blower building': 1.11,
+                            #      },
+                            F_BM = 2.2,
                             lifetime=10, lifetime_unit='yr',
                             # units={
                             #       'Total gas flow': 'CFM',
