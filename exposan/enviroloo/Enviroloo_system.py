@@ -126,7 +126,7 @@ def create_systemEL(flowsheet = None):
     batch_create_streams('EL')
     
     WasteWaterGenerator = EL_Excretion('WasteWaterGenerator', outs=('urine', 'feces'))
-    # breakpoint()
+
     # Toilet = su.MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'FlushingWater', 'ToiletPaper'), 
     #                 outs =('MixedWasteWater', 'Toilet_CH4', 'Toilet_N2O'),
     #                 decay_k_COD = get_decay_k(),
@@ -425,24 +425,29 @@ def create_systemEL(flowsheet = None):
                                   ))
     #sysEL.simulate()
     
-    teaEL = TEA(system = sysEL,
-                   discount_rate = discount_rate,  
-                   income_tax = 0.05,  
-                   CEPCI = 567.5,  
-                   start_year = 2024,  
-                   lifetime = 10,  
-                   uptime_ratio = 1.0,  
-                   #CAPEX = 0.0,  
-                   lang_factor = None,  
-                   annual_maintenance = 0.0,  
-                   annual_labor = (operator_daily_wage * 3 * 365),  
-                   system_add_OPEX = {},
-                   depreciation = 'SL',  
-                   construction_schedule = (0, 1),  
-                   accumulate_interest_during_construction = False,  
-                   simulate_system = True,  
-                   simulate_kwargs = {},
-                   )
+    # teaEL = TEA(system = sysEL,
+    #                discount_rate = discount_rate,  
+    #                income_tax = 0.05,  
+    #                CEPCI = 567.5,  
+    #                start_year = 2024,  
+    #                lifetime = 10,  
+    #                uptime_ratio = 1.0,  
+    #                #CAPEX = 0.0,  
+    #                lang_factor = None,  
+    #                annual_maintenance = 0.0,  
+    #                annual_labor = (operator_daily_wage * 3 * 365),  
+    #                system_add_OPEX = {},
+    #                depreciation = 'SL',  
+    #                construction_schedule = (0, 1),  
+    #                accumulate_interest_during_construction = False,  
+    #                simulate_system = True,  
+    #                simulate_kwargs = {},
+    #                )
+    
+    teaEL = TEA(system=sysEL, discount_rate=discount_rate,
+           start_year=2024, lifetime=10, uptime_ratio=1,
+           lang_factor=None, annual_maintenance=0,
+           annual_labor=(operator_daily_wage*3*365))
     
     get_power = lambda: sum([(u.power_utility.rate * u.uptime_ratio) for u in sysEL.units]) * (365 * teaEL.lifetime) * 12
     LCA(system = sysEL, lifetime = 10, lifetime_unit = 'yr', uptime_ratio = 1.0, e_item = get_power)
