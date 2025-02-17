@@ -569,7 +569,7 @@ WRRF_input['refinery_location'] = list(zip(WRRF_input.Latitude, WRRF_input.Longi
 #     try:
 #         print(i)
 #         real_distance.append(gmaps.distance_matrix(WRRF_input['WRRF_location'].iloc[i], WRRF_input['refinery_location'].iloc[i],
-#                                                     mode='driving')['rows'][0]['elements'][0]['distance']['value']/1000)
+#                                                    mode='driving')['rows'][0]['elements'][0]['distance']['value']/1000)
 #     except KeyError:
 #         print('--------------------------------')
 #         real_distance.append(np.nan)
@@ -1572,7 +1572,7 @@ ax_right.scatter(x=1,
 
 # # TODO: add N offset and P offset
 
-
+# # TODO: up to here, not checked
 
 
 
@@ -1846,7 +1846,7 @@ sampled_facility.loc[sampled_facility['nitrogen_fertilizer']==3, 'nitrogen_ferti
 
 sampled_facility.to_excel(folder + f'results/sampled_facility/sampled_facility_{date.today()}.xlsx')
 
-#%% sampled facility level uncertainty and sensitivity analyses
+#%% sampled facility level uncertainty and sensitivity analyses - part 1
 
 filterwarnings('ignore')
 
@@ -2001,12 +2001,215 @@ cost_spearman_p.to_excel(folder + f'results/sampled_facility/before_integration/
 CI_spearman_r.to_excel(folder + f'results/sampled_facility/before_integration/CI_spearman_r_{date.today()}_{i}.xlsx')
 CI_spearman_p.to_excel(folder + f'results/sampled_facility/before_integration/CI_spearman_p_{date.today()}_{i}.xlsx')
 
+#%% sampled facility level uncertainty and sensitivity analyses - part 2
 
+# !!! update these files if necessary
+def combine_file(name):
+    file_1 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-02-16_99.xlsx')
+    file_2 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-02-16_199.xlsx')
+    file_3 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-02-16_299.xlsx')
+    file_4 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-02-16_399.xlsx')
+    file_5 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-02-16_499.xlsx')
+    file_6 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-02-16_599.xlsx')
+    file_7 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-02-16_699.xlsx')
+    file_8 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-02-16_799.xlsx')
+    file_9 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-02-16_899.xlsx')
+    file_10 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-02-16_999.xlsx')
 
+    for file in [file_1, file_2, file_3, file_4, file_5, file_6, file_7, file_8, file_9, file_10]:
+        file.drop('Unnamed: 0', axis=1, inplace=True)
 
+    integrated_file = pd.concat([file_1, file_2, file_3, file_4, file_5, file_6, file_7, file_8, file_9, file_10], axis=1)
+    
+    integrated_file.to_excel(folder + f'results/sampled_facility/integrated_{name}_{date.today()}.xlsx')
 
+for name in ['cost_spearman_r','cost_spearman_p','CI_spearman_r','CI_spearman_p']:
+    combine_file(name)
 
+#%% sampled facility level uncertainty and sensitivity analyses - part 3
 
+def plot_sensitivity(data_type):
+    data = pd.read_excel(folder + f'results/sampled_facility/integrated_{data_type}_2025-02-17.xlsx')
+    data.drop('Unnamed: 0', axis=1, inplace=True)
+    
+    len_1, len_2, len_3 = sorted(set([len(data[i].dropna()) for i in range(0, data.shape[1])]))
+    
+    anhydrous_ammonia_data = data[[i for i in range(0, data.shape[1]) if len(data[i].dropna()) == len_1]].dropna().transpose()
+    urea_data = data[[i for i in range(0, data.shape[1]) if len(data[i].dropna()) == len_2]].dropna().transpose()
+    UAN_data = data[[i for i in range(0, data.shape[1]) if len(data[i].dropna()) == len_3]].dropna().transpose()
+    
+    def get_parameters(nitrogen_fertilizer):
+        sys = create_geospatial_system(size=1, ww_2_dry_sludge_ratio=1, nitrogen_fertilizer=nitrogen_fertilizer)
+        model = create_geospatial_model(system=sys,
+                                        sludge_ash=[0.1, 0.2, 0.3, 'aerobic_digestion'],
+                                        sludge_lipid=[0.1, 0.2, 0.3],
+                                        sludge_protein=[0.1, 0.2, 0.3],
+                                        crude_oil_price=[1, 2, 3],
+                                        DAP_price=[1, 2, 3],
+                                        anhydrous_ammonia_price=[1, 2, 3],
+                                        urea_price=[1, 2, 3],
+                                        UAN_price=[1, 2, 3])
+        return model.parameters
+    
+    anhydrous_ammonia_columns = get_parameters('NH3')
+    urea_columns = get_parameters('urea')
+    UAN_columns = get_parameters('UAN')
+    
+    anhydrous_ammonia_data.columns=[anhydrous_ammonia_columns[i].name for i in range(0, len(anhydrous_ammonia_columns))]
+    urea_data.columns=[urea_columns[i].name for i in range(0, len(urea_columns))]
+    UAN_data.columns=[UAN_columns[i].name for i in range(0, len(UAN_columns))]
+    
+    anhydrous_ammonia_data.reset_index(inplace=True, names='label')
+    urea_data.reset_index(inplace=True, names='label')
+    UAN_data.reset_index(inplace=True, names='label')
+    
+    sampled_facility = pd.read_excel(folder + 'results/sampled_facility/sampled_facility_2025-02-16.xlsx')
+    sampled_facility = sampled_facility[['label','total_sludge_amount_kg_per_year']]
+    
+    anhydrous_ammonia_data = anhydrous_ammonia_data.merge(sampled_facility, how='left', on='label')
+    urea_data = urea_data.merge(sampled_facility, how='left', on='label')
+    UAN_data = UAN_data.merge(sampled_facility, how='left', on='label')
+    
+    integrated_data = pd.concat([anhydrous_ammonia_data, urea_data, UAN_data])
+    
+    for i in integrated_data.columns.drop(['label','total_sludge_amount_kg_per_year']):
+        
+        fig, ax = plt.subplots(figsize = (5, 2.5))
+    
+        plt.rcParams['axes.linewidth'] = 2
+        plt.rcParams['xtick.labelsize'] = 24
+        plt.rcParams['ytick.labelsize'] = 24
+    
+        plt.xticks(fontname='Arial')
+        plt.yticks(fontname='Arial')
+    
+        plt.rcParams.update({'mathtext.fontset': 'custom'})
+        plt.rcParams.update({'mathtext.default': 'regular'})
+        plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+        
+        ax = plt.gca()
+        ax.set_xlim(0, 250)
+        if data_type[-1] == 'r':
+            ax.set_ylim([-1, 1])
+        else:
+            ax.set_ylim([0, 1])
+        
+        ax.tick_params(direction='inout', length=15, width=2, bottom=True, top=False, left=True, right=False)
+        
+        ax_top = ax.twiny()
+        ax_top.set_xlim(ax.get_xlim())
+        ax_top.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+        plt.xticks(np.arange(0, 300, 50))
+        if data_type[-1] == 'r':
+            plt.yticks(np.arange(-1, 1.5, 0.5))
+        else:
+            plt.yticks(np.arange(0, 1.2, 0.2))
+
+        ax_right = ax.twinx()
+        ax_right.set_ylim(ax.get_ylim())
+        ax_right.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+        plt.xticks(np.arange(0, 300, 50))
+        if data_type[-1] == 'r':
+            plt.yticks(np.arange(-1, 1.5, 0.5))
+        else:
+            plt.yticks(np.arange(0, 1.2, 0.2))
+        
+        ax.set_xlabel(r'$\mathbf{Wastewater\ solids\ amount}$' + '\n[tonne·day${^{-1}}$]', fontname='Arial', fontsize=24, linespacing=0.8)
+        if (data_type[0:4] == 'cost') & (data_type[-1] == 'r'):
+            ax.set_ylabel(r"$\mathbf{Spearman's\ \rho}$", fontname='Arial', fontsize=24)
+        elif (data_type[0:4] == 'cost') & (data_type[-1] == 'p'):
+                ax.set_ylabel(r"$\mathbf{Spearman's\ p}$", fontname='Arial', fontsize=24)
+        elif (data_type[0:2] == 'CI') & (data_type[-1] == 'r'):
+                ax.set_ylabel(r"$\mathbf{Spearman's\ \rho}$", fontname='Arial', fontsize=24)
+        elif (data_type[0:2] == 'CI') & (data_type[-1] == 'p'):
+                ax.set_ylabel(r"$\mathbf{Spearman's\ p}$", fontname='Arial', fontsize=24)
+        else:
+            raise ValueError(f'Check name: {data_type}.')
+
+        mathtext.FontConstantsBase.sup1 = 0.35
+    
+        if data_type[-1] == 'r':
+            color = b
+            edgecolor=db
+        else:
+            color=r
+            edgecolor=dr
+        
+        plt.scatter(integrated_data['total_sludge_amount_kg_per_year']/1000/365, integrated_data[i], color=color, s=50, edgecolors=edgecolor, linewidths=1.5)
+        
+        if data_type[-1] == 'r':
+            plt.plot([0, 250],[-0.2, -0.2], lw=2, color='k', linestyle='--')
+            plt.plot([0, 250],[0.2, 0.2], lw=2, color='k', linestyle='--')
+        else:
+            plt.plot([0, 250],[0.05, 0.05], lw=2, color='k', linestyle='--')
+        
+        # add _ only
+        add_underscore = ['N 2 P','HTLaqueous C slope','TOC TC','P acid recovery ratio','P syn recovery ratio',
+                          'HTL TIC factor','CHG TIC factor','CHP unit TIC','IRR','CHG catalyst price',
+                          'DAP price','CHG catalyst global warming','H2SO4 global warming','DAP global warming',
+                          'CO2 recovery','MEA to CO2','UANSyn product loss ratio','HNO3 price','UAN water price',
+                          'UAN price','HNO3 global warming','UAN water global warming','UAN global warming']
+        
+        # lowercase and add _
+        lowercase_add_underscore = ['Sludge dw ash','Sludge afdw lipid','Sludge afdw protein','Lipid 2 C',
+                                    'Protein 2 C','Carbo 2 C','Lipid 2 H','Protein 2 H','Carbo 2 H',
+                                    'Protein 2 N','Sludge wet density','Sludge distance',
+                                    'Enforced heating transfer coefficient','Lipid 2 biocrude',
+                                    'Protein 2 biocrude','Carbo 2 biocrude','Protein 2 gas','Carbo 2 gas',
+                                    'Biocrude C slope','Biocrude C intercept','Biocrude N slope',
+                                    'Biocrude H slope','Biocrude H intercept','Hydrochar C slope',
+                                    'Biocrude moisture content','Hydrochar P recovery ratio',
+                                    'Crude oil density','Crude oil HHV','Biocrude wet density',
+                                    'Biocrude distance','Catalyst lifetime','Gas C 2 total C','Acid vol',
+                                    'Electricity price','Wage adjustment','Biocrude price',
+                                    'Water steam price','Anhydrous ammonia price','Natural gas price',
+                                    'Ash disposal price','Cooling tower makeup water price',
+                                    'Cooling tower chemicals price','Sludge transportation price',
+                                    'Biocrude transportation price','Electricity global warming',
+                                    'Deionized water global warming','Sludge trucking global warming',
+                                    'Biocrude trucking global warming','Natural gas global warming',
+                                    'Biocrude global warming','Ash disposal global warming',
+                                    'Anhydrous ammonia global warming','Makeup MEA price',
+                                    'Makeup water price','Urea price','Makeup MEA global warming',
+                                    'Makeup water global warming','Urea global warming']
+        
+        # manually update
+        manually_update = {'WHSV':'WHSV',
+                           'Influent p H':'influent_pH',
+                           '5% h2so4 price':'5%_H2SO4_price',
+                           'Na OH price':'NaOH_price',
+                           'Na OH global warming':'NaOH_global_warming',
+                           'Urea syn nh3 to co2 ratio':'UreaSyn_NH3_to_CO2_ratio',
+                           'Urea syn co2 to urea efficiency':'UreaSyn_CO2_to_urea_efficiency',
+                           'Urea syn product loss ratio':'UreaSyn_product_loss_ratio',
+                           'UANSyn nh3 to co2 ratio':'UANSyn_NH3_to_CO2_ratio',
+                           'UANSyn co2 to urea efficiency':'UANSyn_CO2_to_urea_efficiency'}
+
+        if i in add_underscore:
+            title = i.replace(' ', '_')
+        elif i in lowercase_add_underscore:
+            title = i.replace(' ', '_')
+            title = title[0].lower() + title[1:]
+        elif i in manually_update.keys():
+            title = manually_update[i]
+        else:
+            raise ValueError(f'Check parameters name of {i}.')
+        
+        plt.title(title, fontdict={'font':'Arial','size':24,'fontweight':'bold'}, pad=15, y=1)
+
+#%% cost_spearman_p visualization
+plot_sensitivity('cost_spearman_p')
+
+#%% cost_spearman_r visualization
+plot_sensitivity('cost_spearman_r')
+
+#%% CI_spearman_p visualization
+plot_sensitivity('CI_spearman_p')
+
+#%% CI_spearman_r visualization
+plot_sensitivity('CI_spearman_r')
 
 
 
@@ -2028,7 +2231,7 @@ CI_spearman_p.to_excel(folder + f'results/sampled_facility/before_integration/CI
 
 #%% regional uncertainty (data preparation)
 
-# TODO: start from here to the end, not checked
+# TODO: start from here, not checked
 
 # !!! update these files if necessary
 def combine_file(name):
@@ -2326,6 +2529,36 @@ national_uncertainty_result = pd.DataFrame({'decarbonization':national_decarboni
 # TODO: add a layer of folder if necessary
 national_uncertainty_result.to_excel(folder + f'results/integrated_national_uncertainty_{date.today()}.xlsx')
 
+# TODO: up to here, not checked
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #%% sludge transportation (Urbana-Champaign, two separated WRRFs)
 
 filterwarnings('ignore')
@@ -2344,24 +2577,19 @@ Urbana_Champaign = WRRF_input[WRRF_input['CWNS'].isin([17000112001, 17000112002]
 
 CU_uncertainty_saving = pd.DataFrame()
 CU_uncertainty_decarbonization = pd.DataFrame()
-CU_uncertainty_biocrude = pd.DataFrame()
-# TODO: add N production & offset, if necessary
-# TODO: add P production & offset, if necessary
 
 for i in range(0, 2):
-    # TODO: update based on the function in geospatial_systems.py, if necessary
-    # TODO: remove barrel
-    # TODO: add nitrogen_fertilizer
-    sys, barrel = create_geospatial_system(size=Urbana_Champaign.iloc[i]['total_sludge_amount_kg_per_year']/1000/365,
-                                           sludge_transportation=0,
-                                           sludge_distance=100,
-                                           biocrude_distance=Urbana_Champaign.iloc[i]['real_distance_km'],
-                                           anaerobic_digestion=Urbana_Champaign.iloc[i]['sludge_anaerobic_digestion'],
-                                           aerobic_digestion=Urbana_Champaign.iloc[i]['sludge_aerobic_digestion'],
-                                           ww_2_dry_sludge_ratio=1,
-                                           state=Urbana_Champaign.iloc[i]['state'],
-                                           elec_GHG=Urbana_Champaign.iloc[i]['kg_CO2e_kWh'],
-                                           wage_adjustment=Urbana_Champaign.iloc[i]['wage_quotient']/100)
+    sys = create_geospatial_system(size=Urbana_Champaign.iloc[i]['total_sludge_amount_kg_per_year']/1000/365,
+                                   sludge_transportation=0,
+                                   sludge_distance=100,
+                                   biocrude_distance=Urbana_Champaign.iloc[i]['real_distance_km'],
+                                   anaerobic_digestion=Urbana_Champaign.iloc[i]['sludge_anaerobic_digestion'],
+                                   aerobic_digestion=Urbana_Champaign.iloc[i]['sludge_aerobic_digestion'],
+                                   ww_2_dry_sludge_ratio=1,
+                                   state=Urbana_Champaign.iloc[i]['state'],
+                                   nitrogen_fertilizer=Urbana_Champaign.iloc[i]['nitrogen_fertilizer'],
+                                   elec_GHG=Urbana_Champaign.iloc[i]['kg_CO2e_kWh'],
+                                   wage_adjustment=Urbana_Champaign.iloc[i]['wage_quotient']/100)
     
     # if AD and AeD both exist, assume AeD (due to higher ash content) to be conservative
     if Urbana_Champaign.iloc[i]['sludge_aerobic_digestion'] == 1:
@@ -2376,11 +2604,40 @@ for i in range(0, 2):
         sludge_ash_values=[0.174, 0.231, 0.308, 'no_digestion']
         sludge_lipid_values=[0.080, 0.206, 0.308]
         sludge_protein_values=[0.380, 0.456, 0.485]
+
+    crude_oil_price_values = [crude_oil_price_data[crude_oil_price_data['state']==Urbana_Champaign.iloc[i]['state']]['2022_min'].iloc[0],
+                              crude_oil_price_data[crude_oil_price_data['state']==Urbana_Champaign.iloc[i]['state']]['2022_average'].iloc[0],
+                              crude_oil_price_data[crude_oil_price_data['state']==Urbana_Champaign.iloc[i]['state']]['2022_max'].iloc[0]]
+
+    try:
+        DAP_price_values = fertilizer_price_uncertainty[Urbana_Champaign.iloc[i]['state']]['DAP']
+    except KeyError:
+        DAP_price_values = [588, 984.5, 1381]
     
+    try:
+        anhydrous_ammonia_price_values = fertilizer_price_uncertainty[Urbana_Champaign.iloc[i]['state']]['anhydrous_ammonia']
+    except KeyError:
+        anhydrous_ammonia_price_values = [1065, 1407.5, 1750]
+    
+    try:
+        urea_price_values = fertilizer_price_uncertainty[Urbana_Champaign.iloc[i]['state']]['urea']
+    except KeyError:
+        urea_price_values = [447, 855, 1263]
+    
+    try:
+        UAN_price_values = fertilizer_price_uncertainty[Urbana_Champaign.iloc[i]['state']]['UAN']
+    except KeyError:
+        UAN_price_values = [350, 605, 860]
+
     model = create_geospatial_model(system=sys,
                                     sludge_ash=sludge_ash_values,
                                     sludge_lipid=sludge_lipid_values,
-                                    sludge_protein=sludge_protein_values)
+                                    sludge_protein=sludge_protein_values,
+                                    crude_oil_price=crude_oil_price_values,
+                                    DAP_price=DAP_price_values,
+                                    anhydrous_ammonia_price=anhydrous_ammonia_price_values,
+                                    urea_price=urea_price_values,
+                                    UAN_price=UAN_price_values)
     
     kwargs = {'N':1000,'rule':'L','seed':3221}
     samples = model.sample(**kwargs)
@@ -2395,10 +2652,6 @@ for i in range(0, 2):
     CU_uncertainty_saving[Urbana_Champaign.iloc[i]['CWNS']] = (Urbana_Champaign.iloc[i]['waste_cost'] - results[('Geospatial','Sludge management cost [$/tonne dry sludge]')])*Urbana_Champaign.iloc[i]['total_sludge_amount_kg_per_year']/1000/365
     # kg CO2 eq/day
     CU_uncertainty_decarbonization[Urbana_Champaign.iloc[i]['CWNS']] = (Urbana_Champaign.iloc[i]['waste_GHG'] - results[('Geospatial','Sludge CI [kg CO2 eq/tonne dry sludge]')])*Urbana_Champaign.iloc[i]['total_sludge_amount_kg_per_year']/1000/365
-    # BPD
-    CU_uncertainty_biocrude[Urbana_Champaign.iloc[i]['CWNS']] = results[('Geospatial','Biocrude production [BPD]')]
-    # TODO: add N production & offset, if necessary
-    # TODO: add P production & offset, if necessary
 
 #%% sludge transportation (Urbana-Champaign, after sludge transportation)
 
@@ -2406,9 +2659,6 @@ for i in range(0, 2):
 
 CU_combined_uncertainty_saving = pd.DataFrame()
 CU_combined_uncertainty_decarbonization = pd.DataFrame()
-CU_combined_uncertainty_biocrude = pd.DataFrame()
-# TODO: add N production & offset, if necessary
-# TODO: add P production & offset, if necessary
 
 # $/tonne
 average_cost = (Urbana_Champaign.iloc[0]['waste_cost']*Urbana_Champaign.iloc[0]['total_sludge_amount_kg_per_year'] +\
@@ -2449,6 +2699,7 @@ average_ash_dw = total_ash/total_sludge
 average_lipid_afdw = total_lipid/(total_sludge-total_ash)
 average_protein_afdw = total_protein/(total_sludge-total_ash)
 
+# TODO: add in writing if have not
 # !!! use uniform distribution (0.8x, 1x, 1.2x) for combined WRRFs
 # set sludge_ash_values[-1] = 'digestion', this does not necessarily mean there is digestion, but this will set the uncertainty distribution of ash, lipid, and protein to uniform in the model
 sludge_ash_values = [average_ash_dw*0.8, average_ash_dw, average_ash_dw*1.2, 'digestion']
@@ -2457,29 +2708,57 @@ sludge_protein_values = [average_protein_afdw*0.8, average_protein_afdw, average
 
 assert Urbana_Champaign.iloc[0]['state'] == Urbana_Champaign.iloc[1]['state']
 assert Urbana_Champaign.iloc[0]['kg_CO2e_kWh'] == Urbana_Champaign.iloc[1]['kg_CO2e_kWh']
+assert Urbana_Champaign.iloc[0]['nitrogen_fertilizer'] == Urbana_Champaign.iloc[1]['nitrogen_fertilizer']
 
-# TODO: update based on the function in geospatial_systems.py, if necessary
-# TODO: remove barrel
 # 16.2 km is the distance between these two WRRFs; the distance was manually obtained from Google Maps
-# TODO: add nitrogen_fertilizer
-sys, barrel = create_geospatial_system(size=total_size,
-                                       sludge_transportation=1,
-                                       sludge_distance=16.2*Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112002]['total_sludge_amount_kg_per_year'].iloc[0]/total_sludge,
-                                       biocrude_distance=distance_to_refinery,
-                                       average_sludge_dw_ash=sludge_ash_values[1],
-                                       average_sludge_afdw_lipid=sludge_lipid_values[1],
-                                       average_sludge_afdw_protein=sludge_protein_values[1],
-                                       anaerobic_digestion=None,
-                                       aerobic_digestion=None,
-                                       ww_2_dry_sludge_ratio=1,
-                                       state=Urbana_Champaign.iloc[0]['state'],
-                                       elec_GHG=Urbana_Champaign.iloc[0]['kg_CO2e_kWh'],
-                                       wage_adjustment=Urbana_Champaign.iloc[i]['wage_quotient']/100)
+sys = create_geospatial_system(size=total_size,
+                               sludge_transportation=1,
+                               sludge_distance=16.2*Urbana_Champaign[Urbana_Champaign['CWNS'] == 17000112002]['total_sludge_amount_kg_per_year'].iloc[0]/total_sludge,
+                               biocrude_distance=distance_to_refinery,
+                               average_sludge_dw_ash=sludge_ash_values[1],
+                               average_sludge_afdw_lipid=sludge_lipid_values[1],
+                               average_sludge_afdw_protein=sludge_protein_values[1],
+                               anaerobic_digestion=None,
+                               aerobic_digestion=None,
+                               ww_2_dry_sludge_ratio=1,
+                               state=Urbana_Champaign.iloc[0]['state'],
+                               nitrogen_fertilizer=Urbana_Champaign.iloc[0]['nitrogen_fertilizer'],
+                               elec_GHG=Urbana_Champaign.iloc[0]['kg_CO2e_kWh'],
+                               wage_adjustment=Urbana_Champaign.iloc[i]['wage_quotient']/100)
+
+crude_oil_price_values = [crude_oil_price_data[crude_oil_price_data['state']==Urbana_Champaign.iloc[0]['state']]['2022_min'].iloc[0],
+                          crude_oil_price_data[crude_oil_price_data['state']==Urbana_Champaign.iloc[0]['state']]['2022_average'].iloc[0],
+                          crude_oil_price_data[crude_oil_price_data['state']==Urbana_Champaign.iloc[0]['state']]['2022_max'].iloc[0]]
+
+try:
+    DAP_price_values = fertilizer_price_uncertainty[Urbana_Champaign.iloc[0]['state']]['DAP']
+except KeyError:
+    DAP_price_values = [588, 984.5, 1381]
+
+try:
+    anhydrous_ammonia_price_values = fertilizer_price_uncertainty[Urbana_Champaign.iloc[0]['state']]['anhydrous_ammonia']
+except KeyError:
+    anhydrous_ammonia_price_values = [1065, 1407.5, 1750]
+
+try:
+    urea_price_values = fertilizer_price_uncertainty[Urbana_Champaign.iloc[0]['state']]['urea']
+except KeyError:
+    urea_price_values = [447, 855, 1263]
+
+try:
+    UAN_price_values = fertilizer_price_uncertainty[Urbana_Champaign.iloc[0]['state']]['UAN']
+except KeyError:
+    UAN_price_values = [350, 605, 860]
 
 model = create_geospatial_model(system=sys,
                                 sludge_ash=sludge_ash_values,
                                 sludge_lipid=sludge_lipid_values,
-                                sludge_protein=sludge_protein_values)
+                                sludge_protein=sludge_protein_values,
+                                crude_oil_price=crude_oil_price_values,
+                                DAP_price=DAP_price_values,
+                                anhydrous_ammonia_price=anhydrous_ammonia_price_values,
+                                urea_price=urea_price_values,
+                                UAN_price=UAN_price_values)
 
 kwargs = {'N':1000,'rule':'L','seed':3221}
 samples = model.sample(**kwargs)
@@ -2494,31 +2773,18 @@ results = model.table.iloc[:, idx:]
 CU_combined_uncertainty_saving['combined'] = (average_cost - results[('Geospatial','Sludge management cost [$/tonne dry sludge]')])*total_sludge/1000/365
 # kg CO2 eq/day
 CU_combined_uncertainty_decarbonization['combined'] = (average_GHG - results[('Geospatial','Sludge CI [kg CO2 eq/tonne dry sludge]')])*total_sludge/1000/365
-# BPD
-CU_combined_uncertainty_biocrude['combined'] = results[('Geospatial','Biocrude production [BPD]')]
-# TODO: add N production & offset, if necessary
-# TODO: add P production & offset, if necessary
 
 CU_saving_results = pd.concat([CU_uncertainty_saving, CU_combined_uncertainty_saving], axis=1)
 CU_decarbonization_result = pd.concat([CU_uncertainty_decarbonization, CU_combined_uncertainty_decarbonization], axis=1)
-CU_biocrude_results = pd.concat([CU_uncertainty_biocrude, CU_combined_uncertainty_biocrude], axis=1)
-# TODO: add N production & offset, if necessary
-# TODO: add P production & offset, if necessary
 
-# TODO: add a layer of folder if necessary
 CU_saving_results.to_excel(folder + f'results/Urbana-Champaign/saving_{date.today()}.xlsx')
-# TODO: add a layer of folder if necessary
 CU_decarbonization_result.to_excel(folder + f'results/Urbana-Champaign/decarbonization_{date.today()}.xlsx')
-# TODO: add a layer of folder if necessary
-CU_biocrude_results.to_excel(folder + f'results/Urbana-Champaign/biocrude_{date.today()}.xlsx')
-# TODO: add N production & offset, if necessary
-# TODO: add P production & offset, if necessary
 
 #%% Urbana-Champaign visualization
 
 # TODO: add the CI visualization figure in the SI
 
-CU_saving_results = pd.read_excel(folder + 'results/Urbana-Champaign/saving_2024-08-23.xlsx')
+CU_saving_results = pd.read_excel(folder + 'results/Urbana-Champaign/saving_2025-02-17.xlsx')
 CU_saving_results.drop('Unnamed: 0', axis=1, inplace=True)
 
 fig = plt.figure(figsize=(10, 10))
@@ -2584,8 +2850,19 @@ add_region(2, 'Combined', b)
 
 #%% sludge transportation (satellite, SA) (data preparation)
 
+
+
+
+
+
+
+
+
+
+# TODO: continue checkng from here, note Metropolitan WWTP alone can no longer be decarbonized
+
 # !!! update the file here if necessary
-satellite_data_preparation = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-11.xlsx')
+satellite_data_preparation = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-16.xlsx')
 satellite_data_preparation = satellite_data_preparation[satellite_data_preparation['USD_decarbonization'].notna()]
 satellite_data_preparation = satellite_data_preparation[satellite_data_preparation['USD_decarbonization'] <= 0]
 
@@ -2617,6 +2894,13 @@ MN_WI_IA_decarbonized = satellite_data_preparation[satellite_data_preparation['s
 
 MN_WI_IA_transportation = MN_WI_IA[~MN_WI_IA['CWNS'].isin(list(MN_WI_IA_decarbonized['CWNS']))].copy()
 
+MN_WI_IA_transportation.sort_values(by='total_sludge_amount_kg_per_year', ascending=False, inplace=True)
+# remove center WRRF
+MN_WI_IA_transportation = MN_WI_IA_transportation.iloc[1:,:]
+
+MN_WI_IA_transportation['WRRF_location'] = list(zip(MN_WI_IA_transportation.latitude, MN_WI_IA_transportation.longitude))
+center_WRRF_location = (center_WRRF_data_preparation.latitude, center_WRRF_data_preparation.longitude)
+
 # =============================================================================
 # # code to generate the inventory
 # 
@@ -2629,7 +2913,7 @@ MN_WI_IA_transportation = MN_WI_IA[~MN_WI_IA['CWNS'].isin(list(MN_WI_IA_decarbon
 # for i in range(len(MN_WI_IA_transportation)):
 #     try:
 #         print(i)
-#         MN_WI_IA_real_distance.append(gmaps.distance_matrix(MN_WI_IA_transportation['WRRF_location'].iloc[i], center_WRRF_data_preparation['WRRF_location'],
+#         MN_WI_IA_real_distance.append(gmaps.distance_matrix(MN_WI_IA_transportation['WRRF_location'].iloc[i], center_WRRF_location,
 #                                                             mode='driving')['rows'][0]['elements'][0]['distance']['value']/1000)
 #     except KeyError:
 #         print('--------------------------------')
@@ -2639,21 +2923,20 @@ MN_WI_IA_transportation = MN_WI_IA[~MN_WI_IA['CWNS'].isin(list(MN_WI_IA_decarbon
 # 
 # distance_inventory_satellite = MN_WI_IA_transportation[['CWNS','linear_distance_to_center_WRRF_km_test','real_distance_to_center_WRRF_km']]
 # 
-# distance_inventory_satellite.to_excel(folder + 'satellite_distance_inventory.xlsx')
+# distance_inventory_satellite.to_excel(folder + 'satellite_distance_inventory_t.xlsx')
 # =============================================================================
 
 distance_inventory_satellite = pd.read_excel(folder + 'satellite_distance_inventory.xlsx')
 
 # match using WRRF ID ('CWNS')
-MN_WI_IA_transportation = MN_WI_IA_transportation.merge(distance_inventory_satellite, how='left', on='CWNS')
+MN_WI_IA_transportation = MN_WI_IA_transportation.merge(distance_inventory_satellite, how='left', on=['CWNS','linear_distance_to_center_WRRF_km_test'])
 
 missing_satellite_distance = []
 for i in MN_WI_IA_transportation.index:
-    if pd.isna(MN_WI_IA_transportation.loc[i,'linear_distance_to_center_WRRF_km']):
+    if pd.isna(MN_WI_IA_transportation.loc[i,'linear_distance_to_center_WRRF_km_test']):
         missing_satellite_distance.append(i)
 
 if len(missing_satellite_distance) == 0:
-    # TODO: add a layer of folder if necessary
     MN_WI_IA_transportation.to_excel(folder + f'results/Minnesota/satellite_WRRFs_{date.today()}.xlsx')
 else:
     # !!! get a google API key
@@ -2661,14 +2944,14 @@ else:
     gmaps = googlemaps.Client(key='XXX')
     
     for i in missing_satellite_distance:
-        MN_WI_IA_transportation.loc[i,'linear_distance_to_center_WRRF_km'] = geopy.distance.geodesic(MN_WI_IA_transportation.loc[i,'WRRF_location'],
-                                                                                                            center_WRRF_data_preparation.loc[i,'WRRF_location']).km
+        MN_WI_IA_transportation.loc[i,'linear_distance_to_center_WRRF_km_test'] = geopy.distance.geodesic(MN_WI_IA_transportation.loc[i,'WRRF_location'],
+                                                                                                     center_WRRF_data_preparation.loc[i,'WRRF_location']).km
         
         try:
             print(i)
             MN_WI_IA_transportation.loc[i,'real_distance_to_center_WRRF_km'] = gmaps.distance_matrix(MN_WI_IA_transportation.loc[i,'WRRF_location'],
-                                                                                                            center_WRRF_data_preparation.loc[i,'WRRF_location'],
-                                                                                                            mode='driving')['rows'][0]['elements'][0]['distance']['value']/1000
+                                                                                                     center_WRRF_data_preparation.loc[i,'WRRF_location'],
+                                                                                                     mode='driving')['rows'][0]['elements'][0]['distance']['value']/1000
         except KeyError:
             print('--------------------------------')
             MN_WI_IA_transportation.loc[i,'real_distance_to_center_WRRF_km'] = np.nan
@@ -2677,7 +2960,6 @@ else:
     
     distance_inventory_satellite.to_excel(folder + 'satellite_distance_inventory.xlsx')
     
-    # TODO: add a layer of folder if necessary
     # input for following analyses
     MN_WI_IA_transportation.to_excel(folder + f'results/Minnesota/satellite_WRRFs_{date.today()}.xlsx')
 
