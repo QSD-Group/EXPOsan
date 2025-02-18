@@ -449,7 +449,9 @@ def create_systemEL(flowsheet = None):
            lang_factor=None, annual_maintenance=0,
            annual_labor=(operator_daily_wage*3*365))
     
-    get_powerEL = lambda: sum([(u.power_utility.rate * u.uptime_ratio) for u in sysEL.units]) * (365 * teaEL.lifetime) * 12
+    #get_powerEL = lambda: sum([u.power_utility.rate for u in sysEL.units]) * (365 * teaEL.lifetime) * 12
+    get_powerEL = lambda: sum([(getattr(u.power_utility, 'rate', 0) * u.uptime_ratio) for u in sysEL.units]) * (365 * teaEL.lifetime) * 12
+
     LCA(system=sysEL, lifetime=10, lifetime_unit='yr', uptime_ratio=1.0, e_item=get_powerEL)
 
     return sysEL
