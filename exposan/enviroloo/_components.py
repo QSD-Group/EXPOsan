@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 '''
-Created by Yuyao Huang and Siqi Tang for Enviroloo Clear Toilet system
+
+This module is developed by:
+    Siqi Tang <siqit@outlook.com>
+    Yuyao Huang <yuyaoh2@illinois.edu>
+               for Enviroloo Clear Toilet system
+               
 '''
 from qsdsan import Component, Components, set_thermo as qs_set_thermo
 from exposan.utils import add_V_from_rho
@@ -49,12 +54,10 @@ def create_components(set_thermo = True,
                     # 1.204 kg/m3, cited from https://en.wikipedia.org/wiki/Density_of_air#:~:text=Air%20density%2C%20like%20air%20pressure,International%20Standard%20Atmosphere%20(ISA).
     add_V_from_rho(air, rho=1.204)
 
-
-
-          #allowed_values = {
-          #'particle_size': ('Dissolved gas', 'Soluble', 'Colloidal', 'Particulate'),
-          #'degradability': ('Readily', 'Slowly', 'Undegradable'),
-          #'organic': (True, False)}
+    #allowed_values = {
+    #'particle_size': ('Dissolved gas', 'Soluble', 'Colloidal', 'Particulate'),
+    #'degradability': ('Readily', 'Slowly', 'Undegradable'),
+    #'organic': (True, False)}
           
     cmps = Components((*bw_cmps, C, SolubleCH4, 
                        NO3,

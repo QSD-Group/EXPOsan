@@ -5,8 +5,9 @@
 QSDsan: Quantitative Sustainable Design for sanitation and resource recovery systems
 
 This module is developed by:
-    Siqi Tang <siqit@outlook.com>
+    
     Yuyao Huang <yuyaoh2@illinois.edu>
+    Siqi Tang <siqit@outlook.com>
 
 Part of this module is based on the qsdsan package:
 https://github.com/QSD-Group/QSDsan/blob/main/qsdsan/sanunits/_pumping.py#L18
