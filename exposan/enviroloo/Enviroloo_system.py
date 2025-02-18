@@ -190,7 +190,10 @@ def create_systemEL(flowsheet = None):
                                 dP_design = 0,
                                 )
     
-    P_Glu_agitation = AgitationPump('P_Glu_agitation', ins = streamEL['Glucose'], outs = 'GlucoseAgitation', 
+    P_Glu_agitation = AgitationPump('P_Glu_agitation', 
+                                    ins = streamEL['Glucose'], 
+                                    #ins=Glucose_in-0,
+                                    outs = 'GlucoseAgitation', 
                                     working_factor = 0.9,  # The ratio of the actual output and the design output
                                     operation_time = 12,  # Total run time of system or plant [h/d]
                                     life_time = 5,  # Lifetime of the pump [years]
@@ -219,6 +222,9 @@ def create_systemEL(flowsheet = None):
                             degraded_components=('OtherSS',),  
                             ppl = ppl, baseline_ppl = 30,
                             )
+    
+
+    
     
     P_PAC_agitation = AgitationPump('P_PAC_agitation', ins=streamEL['PAC'], outs='PACAgitation', 
                                     working_factor = 0.9,  # The ratio of the actual output and the design output
@@ -445,7 +451,7 @@ def create_systemEL(flowsheet = None):
     #                )
     
     teaEL = TEA(system=sysEL, discount_rate=discount_rate,
-           start_year=2024, lifetime=10, uptime_ratio=1,
+           start_year=2024, lifetime=20, uptime_ratio=1,
            CEPCI = 567.5,
            CAPEX = 0.01,  
            #lang_factor=None,
@@ -458,7 +464,7 @@ def create_systemEL(flowsheet = None):
     get_powerEL = lambda: sum([u.power_utility.rate for u in sysEL.units]) * (24 * 365 * teaEL.lifetime)
     #get_powerEL = lambda: sum([(getattr(u.power_utility, 'rate', 0) * u.uptime_ratio) for u in sysEL.units]) * (365 * teaEL.lifetime) * 12
     
-    LCA(system=sysEL, lifetime=10, lifetime_unit='yr', uptime_ratio=1.0, e_item=get_powerEL)
+    LCA(system=sysEL, lifetime=20, lifetime_unit='yr', uptime_ratio=1.0, e_item=get_powerEL)
 
     return sysEL
 

@@ -22,7 +22,10 @@ def create_components(set_thermo = True,
     PAC = Component('PAC', search_ID='10124-27-3', phase='s', particle_size='Particulate', degradability='Slowly', organic=False)
     add_V_from_rho(PAC, rho=2800)
                     
-    Glucose = Component('Glucose', search_ID='50-99-7', phase='s', particle_size='Particulate', degradability='Readily', organic=False)
+    # Glucose = Component('Glucose', search_ID='50-99-7', phase='s', particle_size='Particulate', degradability='Readily', organic=False)
+    # add_V_from_rho(Glucose, rho=1560)
+
+    Glucose = Component('Glucose', search_ID='50-99-7', phase='l', particle_size='Soluble', degradability='Readily', organic=True)
     add_V_from_rho(Glucose, rho=1560)
           
     O3 = Component('O3', search_ID='10028-15-6', phase='g', particle_size='Dissolved gas', degradability='Readily', organic=False)

@@ -244,7 +244,12 @@ def load():
     if not _components_loaded: _load_components()
     if not _system_loaded: _load_system()     
     dct = globals()
-    for sys in (sysEL,): dct.update(sys.flowsheet.to_dct())
+    for sys in (sysEL,): #dct.update(sys.flowsheet.to_dct())
+        flowsheet = sys.flowsheet
+        units = {unit.ID: unit for unit in flowsheet.unit}
+        streams = {stream.ID: stream for stream in flowsheet.stream}
+        dct.update(units)
+        dct.update(streams)
                     
 def __getattr__(name):
     if not _components_loaded or not _system_loaded:

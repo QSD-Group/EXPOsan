@@ -162,6 +162,18 @@ class AgitationPump(Pump):
     
     def _init_lca(self):
         self.construction = [Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
+    
+    def _run(self):
+    
+        # Input stream
+        mass_in = self.ins[0]
+        mass_in.phase = 'l'
+        
+        # Output stream
+        mass_out = self.outs[0]
+        
+        # Inherite input stream
+        mass_out.copy_like(mass_in)
 
     def _design(self):
         design = self.design_results
@@ -197,10 +209,10 @@ class DosingPump(Pump):
     DosingPump: Specialized pump for input chemicals in water.
     """
     
-    _N_ins = 1;  # Number of input streams
-    _N_outs = 1;  # Number of output streams
-    _ins_size_is_fixed = True;  # Let the input interface be fixed
-    _outs_size_is_fixed = True;  # Let the output interface be fixed
+    _N_ins = 1  # Number of input streams
+    _N_outs = 1  # Number of output streams
+    _ins_size_is_fixed = True  # Let the input interface be fixed
+    _outs_size_is_fixed = True  # Let the output interface be fixed
     _CastIron_weight_per_pump = 2.5 # The weight of cast iron [kg]
     _pump_power = 0.5 # Assumption: The power of each pump [kW]
     exponent_scale = 0.4
@@ -243,6 +255,7 @@ class DosingPump(Pump):
         
         # Input stream
         mass_in = self.ins[0]
+        #chemical_in = self.ins[1]
         
         # Output stream
         mass_out = self.outs[0]
