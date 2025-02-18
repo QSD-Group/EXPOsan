@@ -6,7 +6,7 @@ QSDsan: Quantitative Sustainable Design for sanitation and resource recovery sys
 
 This module is developed by:
     
-    Yuyao Huang <yuyaoh2@illinois.edu>
+    Yuyao Huang <yuyaoh20@gmail.com>
     Siqi Tang <siqit@outlook.com>
 
 Part of this module is based on the qsdsan package:
