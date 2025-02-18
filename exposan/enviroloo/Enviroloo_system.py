@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 
 '''
-Created by Yuyao Huang and Siqi Tang
+This module is developed by:
+    Siqi Tang <siqit@outlook.com>
+    Yuyao Huang <yuyaoh2@illinois.edu>
 
 This python file is used to perform uncertainty and sensitivity analysis for Enviroloo Clear Reinvented Toilet system.
 '''

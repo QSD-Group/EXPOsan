@@ -2,6 +2,10 @@
 # -*- coding: utf-8 -*-
 '''
 Created by Yuyao Huang and Siqi Tang for Enviroloo Clear Toilet system
+
+    Siqi Tang <siqit@outlook.com>
+    Yuyao Huang <yuyaoh2@illinois.edu>
+
 '''
 
 import os, qsdsan as qs
