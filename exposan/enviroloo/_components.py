@@ -3,10 +3,9 @@
 '''
 Created by Yuyao Huang and Siqi Tang for Enviroloo Clear Toilet system
 '''
-from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
+from qsdsan import Component, Components, set_thermo as qs_set_thermo
 from exposan.utils import add_V_from_rho
 from exposan.bwaise import create_components as create_bw_components
-import thermosteam as tmo
 
 __all__ = ('create_components', )
 
@@ -54,7 +53,8 @@ def create_components(set_thermo = True,
           #'degradability': ('Readily', 'Slowly', 'Undegradable'),
           #'organic': (True, False)}
           
-    cmps = Components((*bw_cmps, C, SolubleCH4, NO3,
+    cmps = Components((*bw_cmps, C, SolubleCH4, 
+                       NO3,
                        #H2O, CO2, CH4, N2O, NH3
                        Glucose, O3, air, PAC, NaOH, NaClO))
     

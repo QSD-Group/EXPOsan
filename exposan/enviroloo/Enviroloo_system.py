@@ -103,12 +103,12 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
     create_stream_with_impact_item(stream_ID='Glucose')
     create_stream_with_impact_item(stream_ID='air')
 
-def update_toilet_param(unit):
+#def update_toilet_param(unit):
     # Use the private attribute so that the number of users/toilets will be exactly as assigned
     # (i.e., can be fractions)
-    unit._N_user = get_toilet_users()
-    unit._N_toilet = ppl / get_toilet_users()
-    unit._run()
+    #unit._N_user = get_toilet_users()
+    #unit._N_toilet = ppl / get_toilet_users()
+    #unit._run()
 
 def update_carbon_COD_ratio(sys):
     for first_u in sys.units:
@@ -122,7 +122,7 @@ def update_carbon_COD_ratio(sys):
 # %% Create EnviroLoo Clear system
 def create_systemEL(flowsheet = None):
     flowsheet = flowsheet or main_flowsheet
-    stream = flowsheet.stream
+    streamEL = flowsheet.stream
     batch_create_streams('EL')
     
     WasteWaterGenerator = EL_Excretion('WasteWaterGenerator', outs=('urine', 'feces'))
@@ -165,7 +165,7 @@ def create_systemEL(flowsheet = None):
                     V_wf = 0.9, ppl = ppl, baseline_ppl = 30,
                     kW_per_m3=0.1,  # The power consumption per unit volume of the tank
                     )
-
+    
     P_CT_lift = LiftPump('P_CT_lift', ins = CT-0, outs = 'TreatedWater',
                             working_factor = 0.9,  # The ratio of the actual output and the design output
                             operation_time = 12,  # Total run time of system or plant [h/d]
@@ -190,7 +190,7 @@ def create_systemEL(flowsheet = None):
                                 dP_design = 0,
                                 )
     
-    P_Glu_agitation = AgitationPump('P_Glu_agitation', ins = stream['Glucose'], outs = 'GlucoseAgitation', 
+    P_Glu_agitation = AgitationPump('P_Glu_agitation', ins = streamEL['Glucose'], outs = 'GlucoseAgitation', 
                                     working_factor = 0.9,  # The ratio of the actual output and the design output
                                     operation_time = 12,  # Total run time of system or plant [h/d]
                                     life_time = 5,  # Lifetime of the pump [years]
@@ -220,7 +220,7 @@ def create_systemEL(flowsheet = None):
                             ppl = ppl, baseline_ppl = 30,
                             )
     
-    P_PAC_agitation = AgitationPump('P_PAC_agitation', ins=stream['PAC'], outs='PACAgitation', 
+    P_PAC_agitation = AgitationPump('P_PAC_agitation', ins=streamEL['PAC'], outs='PACAgitation', 
                                     working_factor = 0.9,  # The ratio of the actual output and the design output
                                     operation_time = 12,  # Total run time of system or plant [h/d]
                                     life_time = 5,  # Lifetime of the pump [years]
@@ -235,7 +235,7 @@ def create_systemEL(flowsheet = None):
                                 pump_cost = 59, # USD from https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
                                 dP_design = 0,
                                 )
-    B_AeroT = EL_blower('B_AeroT', ins=stream['air'], outs ='Air_aerobic',
+    B_AeroT = EL_blower('B_AeroT', ins=streamEL['air'], outs ='Air_aerobic',
                             # F_BM={
                             #       'Blowers': 2.22,
                             #       'Blower piping': 1,
@@ -265,7 +265,7 @@ def create_systemEL(flowsheet = None):
                             ppl = ppl, baseline_ppl = 30,
                             )
     
-    B_MembT = EL_blower('B_MembT', ins = stream['air'], outs = 'Air_membrane', 
+    B_MembT = EL_blower('B_MembT', ins = streamEL['air'], outs = 'Air_membrane', 
                             # F_BM={
                             #       'Blowers': 2.22,
                             #       'Blower piping': 1,
@@ -320,7 +320,7 @@ def create_systemEL(flowsheet = None):
                                         )
     
     # P_O3_gen = O3GenPump('P_O3_gen', ins=None, outs='O3', dP_design=405300)
-    P_O3_dosing = MicroBubblePump('P_O3_dosing', ins=stream['O3'], outs='DosingO3', 
+    P_O3_dosing = MicroBubblePump('P_O3_dosing', ins=streamEL['O3'], outs='DosingO3', 
                                     working_factor = 0.9,  # The ratio of the actual output and the design output
                                     operation_time = 12,  # Total run time of system or plant [h/d]
                                     life_time = 5,  # Lifetime of the pump [years]
@@ -328,7 +328,7 @@ def create_systemEL(flowsheet = None):
                                     dP_design = 25331, # in Pa
                                     )
 
-    P_AirDissolved = AirDissolvedPump('P_AirDissolved', ins=('CWTWater', stream['air']), outs='Water_With_Oxyen', 
+    P_AirDissolved = AirDissolvedPump('P_AirDissolved', ins=('CWTWater', streamEL['air']), outs='Water_With_Oxyen', 
                                         working_factor = 0.9,  # The ratio of the actual output and the design output
                                         operation_time = 12,  # Total run time of system or plant [h/d]
                                         life_time = 5,  # Lifetime of the pump [years]
@@ -359,11 +359,11 @@ def create_systemEL(flowsheet = None):
     # CWT.add_specification(lambda: update_carbon_COD_ratio(sysEL))
     # CWT.run_after_specification = True
     
-    Total_CH4 = su.Mixer('Total_CH4', ins=(Toilet-1, AnoxT-1, AeroT-1, MembT-3), outs=stream['CH4'])
+    Total_CH4 = su.Mixer('Total_CH4', ins=(Toilet-1, AnoxT-1, AeroT-1, MembT-3), outs=streamEL['CH4'])
     Total_CH4.add_specification(lambda: add_fugitive_items(Total_CH4, 'CH4_item'))
     Total_CH4.line = 'fugitive CH4 mixer'
 
-    Total_N2O = su.Mixer('Total_N2O', ins=(Toilet-2, AnoxT-2, AeroT-2, MembT-4,), outs=stream['N2O'])
+    Total_N2O = su.Mixer('Total_N2O', ins=(Toilet-2, AnoxT-2, AeroT-2, MembT-4,), outs=streamEL['N2O'])
     Total_N2O.add_specification(lambda: add_fugitive_items(Total_N2O, 'N2O_item'))
     Total_N2O.line = 'fugitive N2O mixer'
     
@@ -449,8 +449,8 @@ def create_systemEL(flowsheet = None):
            lang_factor=None, annual_maintenance=0,
            annual_labor=(operator_daily_wage*3*365))
     
-    get_power = lambda: sum([(u.power_utility.rate * u.uptime_ratio) for u in sysEL.units]) * (365 * teaEL.lifetime) * 12
-    LCA(system = sysEL, lifetime = 10, lifetime_unit = 'yr', uptime_ratio = 1.0, e_item = get_power)
+    get_powerEL = lambda: sum([(u.power_utility.rate * u.uptime_ratio) for u in sysEL.units]) * (365 * teaEL.lifetime) * 12
+    LCA(system=sysEL, lifetime=10, lifetime_unit='yr', uptime_ratio=1.0, e_item=get_powerEL)
 
     return sysEL
 

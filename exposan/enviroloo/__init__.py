@@ -170,14 +170,10 @@ update_resource_recovery_settings()
 from . import _components
 from ._components import *  
 _components_loaded = False
-def _load_components(reload=False, 
-                     #adjust_MW_to_measured_as=False
-                     ):
+def _load_components(reload=False,):
     global components, _components_loaded
     if not _components_loaded or reload:
-        components = create_components(
-            #adjust_MW_to_measured_as=adjust_MW_to_measured_as
-            )
+        components = create_components()
         qs.set_thermo(components)
         _components_loaded = True
           
@@ -261,19 +257,19 @@ def __getattr__(name):
 ## The amount of nutrients can be recovered per year if recovery setting mode is TRUE.
 hr_per_yr = 24 * 365  # full payload per day
 # if considering C recovery in COD
-def get_C(stream):
-    sys = stream.source.system
-    for unit in sys.units:
-        if hasattr(unit, 'carbon_COD_ratio'):
-            carbon_COD_ratio = unit.carbon_COD_ratio
-    return stream.COD * stream.F_vol/1e3 * carbon_COD_ratio * hr_per_yr
-get_C_gas = lambda stream: stream.imol['CH4'] * 12 * hr_per_yr # break down C flow in gas
-get_N_gas = lambda stream: stream.imol['N2O'] * 28 * hr_per_yr # break down N flow in gas
+#def get_C(stream):
+#    sys = stream.source.system
+#    for unit in sys.units:
+#        if hasattr(unit, 'carbon_COD_ratio'):
+#            carbon_COD_ratio = unit.carbon_COD_ratio
+#    return stream.COD * stream.F_vol/1e3 * carbon_COD_ratio * hr_per_yr
+#get_C_gas = lambda stream: stream.imol['CH4'] * 12 * hr_per_yr # break down C flow in gas
+#get_N_gas = lambda stream: stream.imol['N2O'] * 28 * hr_per_yr # break down N flow in gas
 get_N = lambda stream: stream.TN * stream.F_vol/1e3 * hr_per_yr
 get_P = lambda stream: stream.TP * stream.F_vol/1e3 * hr_per_yr
 get_K = lambda stream: stream.TK * stream.F_vol/1e3 * hr_per_yr
-# here the code domain only serves the EL system, so a reminder is designed
-def get_recoveries(system, include_breakdown = False):
+
+def get_recoveries(system, include_breakdown=False):
     EL = system.ID[-1]
     if EL not in ('E', 'L'):
         raise ValueError('This function is only available for the Enviroloo Clear system `sysEL`,'
@@ -285,22 +281,22 @@ def get_recoveries(system, include_breakdown = False):
     dct['N_dct'] = N_dct = {}
     dct['P_dct'] = P_dct = {}
     dct['K_dct'] = K_dct = {}
-    dct['C_dct'] = C_dct = {}
+    #dct['C_dct'] = C_dct = {}
     
     if EL == ('E', 'L'):
         toilet = u_reg.Toilet  # here the name 'Toilet' should be consistent with the name defined in the Enviroloo_system.py
         #CollectionTank = u_reg.CT
         #PrimaryClarifier = u_reg.PC
-        #AnoxicTank = u_reg.AnoxT
+        AnoxicTank = u_reg.AnoxT
         AerobicTank = u_reg.AeroT
         MembraneTank = u_reg.MembT
         #ClearWaterTank = u_reg.CWT
         #PressureTank = u_reg.PT
     
     # In the Toilet unit
-    C_dct['urine'] = get_C(toilet.ins[0]) * ppl
-    C_dct['feces'] = get_C(toilet.ins[1]) * ppl
-    C_dct['input'] = C_dct['urine'] + C_dct['feces']
+    #C_dct['urine'] = get_C(toilet.ins[0]) * ppl
+    #C_dct['feces'] = get_C(toilet.ins[1]) * ppl
+    #C_dct['input'] = C_dct['urine'] + C_dct['feces']
     N_dct['urine'] = get_N(toilet.ins[0]) * ppl
     N_dct['feces'] = get_N(toilet.ins[1]) * ppl
     N_dct['input'] = N_dct['urine'] + N_dct['feces']
@@ -311,13 +307,13 @@ def get_recoveries(system, include_breakdown = False):
     K_dct['feces'] = get_K(toilet.ins[1]) * ppl
     K_dct['input'] = K_dct['urine'] + K_dct['feces']
 
-    C_dct['toilet_gas'] = get_C_gas(toilet.outs[-1])  # CH4 in the second order of toilet outs
-    N_dct['toilet_gas'] = get_N_gas(toilet.outs[-2])  # N2O in the third order of toilet outs
+    #C_dct['toilet_gas'] = get_C_gas(toilet.outs[-1])  # CH4 in the second order of toilet outs
+    #N_dct['toilet_gas'] = get_N_gas(toilet.outs[-2])  # N2O in the third order of toilet outs
     
     # consider sludge in membrane tank and aerobic tank
-    N_dct['treated_sludge'] = get_N(MembraneTank.outs[0]) + get_N(AerobicTank.outs[0])
-    P_dct['treated_sludge'] = get_P(MembraneTank.outs[0]) + get_P(AerobicTank.outs[0])
-    K_dct['treated_sludge'] = get_K(MembraneTank.outs[0]) + get_K(AerobicTank.outs[0])
+    N_dct['treated_sludge'] = get_N(MembraneTank.outs[0].imass['sludge_prcd']) + get_N(AerobicTank.outs[0].imass['sludge_prcd']) + get_N(AnoxicTank.outs[0].imass['sludge_prcd'])
+    P_dct['treated_sludge'] = get_P(MembraneTank.outs[0].imass['sludge_prcd']) + get_P(AerobicTank.outs[0].imass['sludge_prcd']) + get_P(AnoxicTank.outs[0].imass['sludge_prcd'])
+    K_dct['treated_sludge'] = get_K(MembraneTank.outs[0].imass['sludge_prcd']) + get_K(AerobicTank.outs[0].imass['sludge_prcd']) + get_K(AnoxicTank.outs[0].imass['sludge_prcd'])
 
     # the code in the following domain is a sample, which will be updated later
     functions = [
@@ -338,7 +334,7 @@ def get_recoveries(system, include_breakdown = False):
 ## 
 percent_CAPEX_to_scale = 0.1
 number_of_units = 1000
-percent_limit = 0.01
+percent_limit = 0.015
 learning_curve_percent = 0.90  # assume learning curve
 def get_scaled_capital(tea):
     new_CAPEX_annualized = get_generic_scaled_capital(
@@ -350,15 +346,14 @@ def get_scaled_capital(tea):
         )
     return new_CAPEX_annualized
 
-def get_TEA_metrics(system, include_breakdown = False):
+def get_TEA_metrics(system, include_breakdown=False):
     tea = system.TEA
     get_annual_electricity = lambda system: system.power_utility.cost * system.operating_hours
     functions = [lambda: (get_scaled_capital(tea) - tea.net_earnings) / ppl]
-    if not include_breakdown:
-        return functions # net cost
+    if not include_breakdown: return functions # net cost
     return [
         *functions,
-        lambda: get_scaled_capital(system) / ppl, # means CAPEX
+        lambda: get_scaled_capital(tea) / ppl, # means CAPEX
         lambda: get_annual_electricity() / ppl, # means annual electricity consumption
         lambda: tea.annual_labor / ppl, # means annual labor cost
         lambda: (tea.AOC - get_annual_electricity() - tea.annual_labor) / ppl, # means OPEX excluding energy and labor sectors
@@ -378,13 +373,13 @@ def get_normalized_OPEX(units): # get the OPEX of a unit or units normalized to 
     OPEX += sum(s.cost for s in streams)
     return OPEX * 24 / ppl  # converted to per capita per day
 
-def get_LCA_metrics(system, include_breakdown = False):
+def get_LCA_metrics(system, include_breakdown=False):
     lca = system.LCA
     functions = [
         lambda: lca.total_impacts['GlobalWarming'] / lca.lifetime / ppl, # annual GWP
         # ReCiPe LCA functions
         lambda: lca.total_impacts['H_Ecosystems'] / lca.lifetime / ppl,
-        lambda: lca.total_impacts['H_HumanHealth'] / lca.lifetime / ppl,
+        lambda: lca.total_impacts['H_Health'] / lca.lifetime / ppl,
         lambda: lca.total_impacts['H_Resources'] / lca.lifetime / ppl,
         ]
     if not include_breakdown: return functions

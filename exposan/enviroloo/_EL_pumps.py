@@ -106,7 +106,8 @@ class LiftPump(Pump):
         
         self.add_OPEX = self._calc_replacement_cost()
 
-        self.power_utility(self.actual_power * self.operation_time)
+        power_demand = self.actual_power * self.operation_time
+        self.power_utility(power_demand)
         
     def _calc_replacement_cost(self):
         scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
@@ -178,8 +179,9 @@ class AgitationPump(Pump):
             C[equipment] = cost * ratio
         
         self.add_OPEX = self._calc_replacement_cost()
-
-        self.power_utility(self.actual_power * self.operation_time)
+        
+        power_demand = self.actual_power * self.operation_time
+        self.power_utility(power_demand)
 
     def _calc_replacement_cost(self):
         scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
@@ -264,8 +266,9 @@ class DosingPump(Pump):
             C[equipment] = cost * ratio
         
         self.add_OPEX = self._calc_replacement_cost()
-
-        self.power_utility(self.actual_power * self.operation_time)
+        
+        power_demand = self.actual_power * self.operation_time
+        self.power_utility(power_demand)
 
     def _calc_replacement_cost(self):
         scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
@@ -349,9 +352,11 @@ class ReturnPump(Pump):
         ratio = self.price_ratio
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
+        
         self.add_OPEX = self._calc_replacement_cost()
-
-        self.power_utility(self.actual_power * self.operation_time)
+        
+        power_demand = self.actual_power * self.operation_time
+        self.power_utility(power_demand)
 
     def _calc_replacement_cost(self):
         scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
@@ -435,9 +440,11 @@ class SelfPrimingPump(Pump):
         ratio = self.price_ratio
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
+        
         self.add_OPEX = self._calc_replacement_cost()
-
-        self.power_utility(self.actual_power * self.operation_time)
+        
+        power_demand = self.actual_power * self.operation_time
+        self.power_utility(power_demand)
 
     def _calc_replacement_cost(self):
         scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
@@ -513,7 +520,7 @@ class AirDissolvedPump(Pump):
         Water_with_O2 = self.outs[0]
         
         # Inherite input stream
-        Water_with_O2.copy_like(CWTwater)
+        Water_with_O2.mix_from([CWTwater, air])
     
     def _cost(self):
 
@@ -525,8 +532,9 @@ class AirDissolvedPump(Pump):
             C[equipment] = cost * ratio
         
         self.add_OPEX = self._calc_replacement_cost()
-
-        self.power_utility(self.actual_power * self.operation_time)
+        
+        power_demand = self.actual_power * self.operation_time
+        self.power_utility(power_demand)
 
     def _calc_replacement_cost(self):
         scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
@@ -556,7 +564,7 @@ class MicroBubblePump(Pump):
                  dP_design=25331,  # The extra pressure of the pump [Pa]
                  P=101325,  # The pressure of the pump [Pa]
                  price_ratio=0.9,
-                 run_time=None, life_time=None, pump_cost=None, working_factor=None,
+                 life_time=None, pump_cost=None, working_factor=None,
                  operation_time=None, ppl=1000, baseline_ppl=30):
                  
         # Initialize the LiftPump with parent class logic
@@ -564,7 +572,6 @@ class MicroBubblePump(Pump):
                         isdynamic=isdynamic, ignore_NPSH=ignore_NPSH, P=P, dP_design=dP_design, pump_type=pump_type,
                         material=material)
         
-        self.run_time = run_time  # The run time of the system [yrs]
         self.life_time = life_time  # The life time of the pump [yrs]
         self.pump_cost = pump_cost  # The price of each pump [$/pump]
         self.working_factor = working_factor  # The working factor of the pump considering the head.
@@ -613,8 +620,9 @@ class MicroBubblePump(Pump):
             C[equipment] = cost * ratio
         
         self.add_OPEX = self._calc_replacement_cost()
-
-        self.power_utility(self.actual_power * self.operation_time)
+        
+        power_demand = self.actual_power * self.operation_time
+        self.power_utility(power_demand)
 
     def _calc_replacement_cost(self):
         scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
@@ -644,7 +652,7 @@ class ClearWaterPump(Pump):
                  dP_design=202650,  # The extra pressure of the pump [Pa]
                  P=101325,  # The pressure of the pump [Pa]
                  price_ratio=0.9,
-                 run_time=None, life_time=None, pump_cost=None, working_factor=None,
+                 life_time=None, pump_cost=None, working_factor=None,
                  operation_time=None, ppl=1000, baseline_ppl=30):
                  
         # Initialize the LiftPump with parent class logic
@@ -652,7 +660,6 @@ class ClearWaterPump(Pump):
                         isdynamic=isdynamic, ignore_NPSH=ignore_NPSH, P=P, dP_design=dP_design, pump_type=pump_type,
                         material=material)
         
-        self.run_time = run_time  # The run time of the system [yrs]
         self.life_time = life_time  # The life time of the pump [yrs]
         self.pump_cost = pump_cost  # The price of each pump [$/pump]
         self.working_factor = working_factor  # The working factor of the pump considering the head.
@@ -702,7 +709,8 @@ class ClearWaterPump(Pump):
         
         self.add_OPEX = self._calc_replacement_cost()
 
-        self.power_utility(self.actual_power * self.operation_time)
+        power_demand = self.actual_power * self.operation_time
+        self.power_utility(power_demand)
 
     def _calc_replacement_cost(self):
         scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
