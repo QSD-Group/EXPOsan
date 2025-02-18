@@ -423,7 +423,7 @@ def create_systemEL(flowsheet = None):
                                   # Other_housing,
                                   # Other_WasteTransport,
                                   ))
-    #sysEL.simulate()
+    sysEL.simulate()
     
     # teaEL = TEA(system = sysEL,
     #                discount_rate = discount_rate,  
@@ -446,12 +446,18 @@ def create_systemEL(flowsheet = None):
     
     teaEL = TEA(system=sysEL, discount_rate=discount_rate,
            start_year=2024, lifetime=10, uptime_ratio=1,
-           lang_factor=None, annual_maintenance=0,
-           annual_labor=(operator_daily_wage*3*365))
+           CEPCI = 567.5,
+           CAPEX = 0.01,  
+           #lang_factor=None,
+           lang_factor=2.02,
+           annual_maintenance=0,
+           #annual_labor=(operator_daily_wage*3*365),
+           annual_labor=0
+           )
+   
+    get_powerEL = lambda: sum([u.power_utility.rate for u in sysEL.units]) * (24 * 365 * teaEL.lifetime)
+    #get_powerEL = lambda: sum([(getattr(u.power_utility, 'rate', 0) * u.uptime_ratio) for u in sysEL.units]) * (365 * teaEL.lifetime) * 12
     
-    #get_powerEL = lambda: sum([u.power_utility.rate for u in sysEL.units]) * (365 * teaEL.lifetime) * 12
-    get_powerEL = lambda: sum([(getattr(u.power_utility, 'rate', 0) * u.uptime_ratio) for u in sysEL.units]) * (365 * teaEL.lifetime) * 12
-
     LCA(system=sysEL, lifetime=10, lifetime_unit='yr', uptime_ratio=1.0, e_item=get_powerEL)
 
     return sysEL
@@ -472,21 +478,17 @@ def create_system(system_ID='EL', flowsheet=None,
         flowsheet = Flowsheet(flowsheet_ID)
         main_flowsheet.set_flowsheet(flowsheet)
     
-    _load_components(
-        #adjust_MW_to_measured_as=adjust_MW_to_measured_as
-        )
+    _load_components()
     _load_lca_data(reload_lca)
 
     if system_ID == 'EL': f = create_systemEL
     elif system_ID == 'E': f = create_systemEL
     elif system_ID == 'L': f = create_systemEL
     else: raise ValueError(f'`system_ID` can only be "EL", "E", or "L", not "{ID}".')
-
+    
     try: system = f(flowsheet)
     except:
-        _load_components(reload=True, 
-                         #adjust_MW_to_measured_as=adjust_MW_to_measured_as
-                         )
+        _load_components(reload=True)
         system = f(flowsheet)
     
     return system
