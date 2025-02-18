@@ -94,10 +94,10 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
         WasteStream(f'{stream_ID}', phase='s',
                     price=price_dct.get(dct_key) or 0., stream_impact_item=item)
 
-    create_stream_with_impact_item(stream_ID='ammonium')
-    create_stream_with_impact_item(stream_ID='struvite')
-    create_stream_with_impact_item(stream_ID='NaOH')
-    create_stream_with_impact_item(stream_ID='NaClO')
+    #create_stream_with_impact_item(stream_ID='ammonium')
+    #create_stream_with_impact_item(stream_ID='struvite')
+    #create_stream_with_impact_item(stream_ID='NaOH')
+    #create_stream_with_impact_item(stream_ID='NaClO')
     create_stream_with_impact_item(stream_ID='O3')
     create_stream_with_impact_item(stream_ID='PAC')
     create_stream_with_impact_item(stream_ID='Glucose')
