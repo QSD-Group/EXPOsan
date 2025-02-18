@@ -358,7 +358,7 @@ def create_systemEL(flowsheet = None):
                             dP_design = 202650, # in Pa
                             )
    
-    PT = EL_PT('PT', ins=P_CWT-0, outs=3-Toilet, vessel_material = None, V_wf = None, 
+    PT = EL_PT('PT', ins=P_CWT-0, outs=(3-Toilet, 'pipeline_system'), vessel_material = None, V_wf = None, 
                         include_construction = True, length_to_diameter = None, 
                         F_BM_default = 1, kW_per_m3 = 0.1, vessel_type = None, tau = None, 
                         ppl = ppl, baseline_ppl = 30,
@@ -376,8 +376,8 @@ def create_systemEL(flowsheet = None):
     Total_N2O.line = 'fugitive N2O mixer'
     
     # Other impacts and costs
-    # Other_system = EL_System('Other_system', ins=PT-0, outs=('housing',), 
-    #                             ppl = ppl, baseline_ppl = 30, if_gridtied=True)
+    Pipeline_system = EL_System('Pipeline_system', ins=PT-1, outs='PipelineConnection',
+                                ppl = ppl, baseline_ppl = 30, if_gridtied=True)
     # #Other_housing = EL_Housing('Other_housing', ins=Other_system-0, outs='Transport', ppl = ppl, baseline_ppl = 30)
     # Other_WasteTransport = Trucking('Other_WasteTransport', ins = Other_system-0, outs = ('WasteTransport', 'ConveyanceLoss'), 
     #                                    load = 20, # transportation load per trip
@@ -427,7 +427,7 @@ def create_systemEL(flowsheet = None):
                                   PT,
                                   Total_CH4,
                                   Total_N2O,
-                                  # Other_system,
+                                  Pipeline_system,
                                   # Other_housing,
                                   # Other_WasteTransport,
                                   ))
