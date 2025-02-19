@@ -365,9 +365,9 @@ def get_TEA_metrics(system, include_breakdown=False):
     return [
         *functions,
         lambda: get_scaled_capital(tea) / ppl, # means CAPEX
-        lambda: get_annual_electricity() / ppl, # means annual electricity consumption
+        lambda: get_annual_electricity(system) / ppl, # means annual electricity consumption
         lambda: tea.annual_labor / ppl, # means annual labor cost
-        lambda: (tea.AOC - get_annual_electricity() - tea.annual_labor) / ppl, # means OPEX excluding energy and labor sectors
+        lambda: (tea.AOC - get_annual_electricity(system) - tea.annual_labor) / ppl, # means OPEX excluding energy and labor sectors
         lambda: tea.sales / ppl, # means sales incoming
         ]
 
@@ -416,18 +416,28 @@ def print_summaries(systems):
             print(f'\nTotal P recovery: {recovery_functions[1]():.1f} %.')
             print(f'\nTotal K recovery: {recovery_functions[2]():.1f} %.')
             
-            TEA_functions = get_TEA_metrics(sys)
+            TEA_functions = get_TEA_metrics(sys, include_breakdown=True)
             unit = f'{qs.currency}/cap/yr'
             print(f'\nTotal cost: {TEA_functions[0]():.2f} {unit}.')
-            # print(f'\nTotal cost: {TEA_functions[1]():.2f} {unit}.')
+            print(f'\nCAPEX: {TEA_functions[1]():.2f} {unit}.')
+            print(f'\nAnnual electricity consumption: {TEA_functions[2]():.2f} {unit}.')
+            print(f'\nAnnual labor cost: {TEA_functions[3]():.2f} {unit}.')
+            print(f'\nSales incoming: {TEA_functions[4]():.2f} {unit}.')
                     
-            LCA_functions = get_LCA_metrics(sys)
+            LCA_functions = get_LCA_metrics(sys, include_breakdown=True)
             print(f'\nNet emission: {LCA_functions[0]():.2f} kg CO2-eq/cap/yr.')
 
-            unit = 'points/cap/yr'
-            print(f'\nNet ecosystems damage: {LCA_functions[1]():.2f} {unit}.')
-            print(f'\nNet health damage: {LCA_functions[2]():.2f} {unit}.')
-            print(f'\nNet resources damage: {LCA_functions[3]():.2f} {unit}.')
+            unit1 = 'points/cap/yr' # breakdown of Impact Indicators
+            print(f'\nNet ecosystems damage: {LCA_functions[1]():.2f} {unit1}.')
+            print(f'\nNet health damage: {LCA_functions[2]():.2f} {unit1}.')
+            print(f'\nNet resources damage: {LCA_functions[3]():.2f} {unit1}.')
+            
+            unit2 = 'kg CO2-eq/cap/yr' # breakdown of GWP Impact Item
+            print(f'\nConstruction impacts contributed to GWP: {LCA_functions[1]():.2f} {unit2}.')
+            print(f'\nTransportation impacts contributed to GWP: {LCA_functions[2]():.2f} {unit2}.')
+            print(f'\nStream impacts contributed to GWP: {LCA_functions[3]():.2f} {unit2}.')
+            print(f'\nOther impacts contributed to GWP: {LCA_functions[4]():.2f} {unit2}.')
+            
         else:
             sys.TEA.show()
             print('\n')
