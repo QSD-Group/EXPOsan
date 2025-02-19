@@ -39,7 +39,8 @@ get_toilet_users = lambda: household_size * household_per_toilet
 ppl = 1000 # the number of people served by the EL system. 
 # Here 100-user household or 1000-user school scale will be considered.
 
-discount_rate = 0.05   # discount rate, [fraction]
+# discount_rate = 0.05   # discount rate, [fraction]
+discount_rate = 0.08
 
 max_CH4_emission = 0.25   # max CH4 emission, [g CH4/g COD]
 
@@ -327,17 +328,17 @@ def get_recoveries(system, include_breakdown=False):
 
     # the code in the following domain is a sample, which will be updated later
     functions = [
-        lambda: N_dct['treated_sludge'] / N_dct['input'] * 100, # total N recovery percentage
-        lambda: P_dct['treated_sludge'] / P_dct['input'] * 100, # total P recovery percentage
-        lambda: K_dct['treated_sludge'] / K_dct['input'] * 100, # total K recovery percentage
+        lambda: N_dct['treated_sludge'] / N_dct['input'] * 100 / 1000000, # total N recovery percentage
+        lambda: P_dct['treated_sludge'] / P_dct['input'] * 100 / 1000000, # total P recovery percentage
+        lambda: K_dct['treated_sludge'] / K_dct['input'] * 100 / 1000000, # total K recovery percentage
         ]
     if not include_breakdown: return functions
     
     return [
         *functions,
-        lambda: N_dct['treated_sludge'] / N_dct['input'] * 100, # N recovery percentage
-        lambda: P_dct['treated_sludge'] / P_dct['input'] * 100, # P recovery percentage
-        lambda: K_dct['treated_sludge'] / K_dct['input'] * 100, # K recovery percentage
+        lambda: N_dct['treated_sludge'] / N_dct['input'] * 100 / 1000000, # N recovery percentage
+        lambda: P_dct['treated_sludge'] / P_dct['input'] * 100 / 1000000, # P recovery percentage
+        lambda: K_dct['treated_sludge'] / K_dct['input'] * 100 / 1000000, # K recovery percentage
         ]
         
 ######################################################## Financial and Cost parameters ##############################################################
@@ -418,6 +419,7 @@ def print_summaries(systems):
             TEA_functions = get_TEA_metrics(sys)
             unit = f'{qs.currency}/cap/yr'
             print(f'\nTotal cost: {TEA_functions[0]():.2f} {unit}.')
+            # print(f'\nTotal cost: {TEA_functions[1]():.2f} {unit}.')
                     
             LCA_functions = get_LCA_metrics(sys)
             print(f'\nNet emission: {LCA_functions[0]():.2f} kg CO2-eq/cap/yr.')
