@@ -244,7 +244,7 @@ def create_systemEL(flowsheet = None):
                                 pump_cost = 59, # USD from https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
                                 dP_design = 0,
                                 )
-    B_AeroT = EL_blower('B_AeroT', ins=streamEL['air'], outs ='Air_aerobic',
+    B_AeroT = EL_blower('B_AeroT', ins=streamEL['air'], outs ='Air_to_aerobic',
                             # F_BM={
                             #       'Blowers': 2.22,
                             #       'Blower piping': 1,
@@ -274,7 +274,7 @@ def create_systemEL(flowsheet = None):
                             ppl = ppl, baseline_ppl = 30,
                             )
     
-    B_MembT = EL_blower('B_MembT', ins = streamEL['air'], outs = 'Air_membrane', 
+    B_MembT = EL_blower('B_MembT', ins = streamEL['air'], outs = 'Air_to_membrane', 
                             # F_BM={
                             #       'Blowers': 2.22,
                             #       'Blower piping': 1,
