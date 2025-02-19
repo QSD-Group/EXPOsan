@@ -95,6 +95,19 @@ PressureTank_data = load_el_su_data('_EL_PT.tsv')
 housing_data = load_el_su_data('_EL_housing.tsv')
 system_data = load_el_su_data('_EL_system.tsv')
 
+# excretion_data = load_el_su_data('_EL_excretion.csv')
+# murt_data = load_el_su_data('_EL_murt.csv')
+# CT_data = load_el_su_data('_EL_CT.csv')
+# PC_data = load_el_su_data('_EL_PC.csv')
+# AnoxicTank_data = load_el_su_data('_EL_Anoxic.csv')
+# AerobicTank_data = load_el_su_data('_EL_Aerobic.csv')
+# MembTank_data = load_el_su_data('_EL_MBR.csv')
+# Blower = load_el_su_data('_EL_blower.csv')
+# ClearWaterTank_data = load_el_su_data('_EL_CWT.csv')
+# PressureTank_data = load_el_su_data('_EL_PT.csv')
+# housing_data = load_el_su_data('_EL_housing.csv')
+# system_data = load_el_su_data('_EL_system.csv')
+
 ############################################## define parameters of interest for EL system ################################################################
 def add_parameters(model, unit_dct, country_specific=False):
     sys = model.system
@@ -177,7 +190,7 @@ def add_parameters(model, unit_dct, country_specific=False):
                 if isinstance(u, qs.sanunits.EL_Housing): break
                 u.const_daily_wage = i
         
-        if el.INCLUDE_RESOURCE_RECOVERY:
+        if el.INCLUDED_RESOURCE_RECOVERY:
             # N fertilizer price
             b = 1.507
             D = shape.Uniform(lower = b * 0.8, upper = b * 1.2)
@@ -266,7 +279,7 @@ def add_parameters(model, unit_dct, country_specific=False):
     batch_setting_unit_params(excretion_data, model, excretion_unit, exclude)
     
     # In toilet section 
-    murt_unit = unit_dct.ge('Toilet')
+    murt_unit = unit_dct.get('Toilet')
     if murt_unit:
         exclude = ('MCF_decay', 'N2O_EF_decay', 'OPEX_over_CAPEX')
         batch_setting_unit_params(murt_data, model, murt_unit, exclude)
@@ -324,49 +337,59 @@ def add_parameters(model, unit_dct, country_specific=False):
     # def set_toilet_density(i):
     #     el.household_per_toilet = i
 
-    # In Collection Tank
-    CT_unit = unit_dct['Collection_Tank']
-    batch_setting_unit_params(CT_data, model, CT_unit)
+    # # In Collection Tank
+    # CT_unit = unit_dct['Collection_Tank']
+    # if CT_unit: 
+    #     batch_setting_unit_params(CT_data, model, CT_unit)
     
-    # In Primary Clarifier Tank
-    PC_unit = unit_dct['PrimaryClarifierTank']
-    batch_setting_unit_params(PC_data, model, PC_unit)
+    # # In Primary Clarifier Tank
+    # PC_unit = unit_dct['PrimaryClarifierTank']
+    # if PC_unit: 
+    #     batch_setting_unit_params(PC_data, model, PC_unit)
     
-    # In Anoxic Tank
-    AnoxT_unit = unit_dct['AnoxicTank']
-    batch_setting_unit_params(AnoxicTank_data, model, AnoxT_unit)
+    # # In Anoxic Tank
+    # AnoxT_unit = unit_dct['AnoxicTank']
+    # if AnoxT_unit: 
+    #     batch_setting_unit_params(AnoxicTank_data, model, AnoxT_unit)
     
-    # In Aerobic Tank
-    AeroT_unit = unit_dct['AerobicTank']
-    batch_setting_unit_params(AerobicTank_data, model, AeroT_unit)
+    # # In Aerobic Tank
+    # AeroT_unit = unit_dct['AerobicTank']
+    # if AeroT_unit: 
+    #     batch_setting_unit_params(AerobicTank_data, model, AeroT_unit)
 
-    # In Blower for Aerobic Tank
-    Blower_AeroT_unit = unit_dct['AerobicTankBlower']
-    batch_setting_unit_params(Blower, model, Blower_AeroT_unit)
+    # # In Blower for Aerobic Tank
+    # Blower_AeroT_unit = unit_dct['AerobicTankBlower']
+    # if Blower_AeroT_unit: 
+    #     batch_setting_unit_params(Blower, model, Blower_AeroT_unit)
     
-    # In Membrane Tank
-    MembT_unit = unit_dct['MembraneTank']
-    batch_setting_unit_params(MembTank_data, model, MembT_unit)
+    # # In Membrane Tank
+    # MembT_unit = unit_dct['MembraneTank']
+    # if MembT_unit: 
+    #     batch_setting_unit_params(MembTank_data, model, MembT_unit)
     
-    # In Membrane Tank Blower
-    Blower_MembT_unit = unit_dct['MembraneTankBlower']
-    batch_setting_unit_params(Blower, model, Blower_MembT_unit)
+    # # In Membrane Tank Blower
+    # Blower_MembT_unit = unit_dct['MembraneTankBlower']
+    # if Blower_MembT_unit: 
+    #     batch_setting_unit_params(Blower, model, Blower_MembT_unit)
     
-    # In Clear Water Tank
-    ClearWaterT_unit = unit_dct['ClearWaterTank']
-    batch_setting_unit_params(ClearWaterTank_data, model, ClearWaterT_unit)
+    # # In Clear Water Tank
+    # ClearWaterT_unit = unit_dct['ClearWaterTank']
+    # if ClearWaterT_unit: 
+    #     batch_setting_unit_params(ClearWaterTank_data, model, ClearWaterT_unit)
     
-    # In Pressure Tank
-    PressureT_unit = unit_dct['PressureTank']
-    batch_setting_unit_params(PressureTank_data, model, PressureT_unit)
+    # # In Pressure Tank
+    # PressureT_unit = unit_dct['PressureTank']
+    # if PressureT_unit: 
+    #     batch_setting_unit_params(PressureTank_data, model, PressureT_unit)
 
-    # EL housing
-    #housing_unit = unit_dct['Housing']
-    #batch_setting_unit_params(housing_data, model, housing_unit)
+    # # EL housing
+    # #housing_unit = unit_dct['Housing']
+    # #batch_setting_unit_params(housing_data, model, housing_unit)
 
-    # EL system for connection
-    #connection_unit = unit_dct['Connection']
-    #batch_setting_unit_params(system_data, model, connection_unit)
+    # # EL system for connection
+    # connection_unit = unit_dct['Connection']
+    # if connection_unit:
+    #     batch_setting_unit_params(system_data, model, connection_unit)
 
     ################################################ Universal degradation parameters ##########################################################
     # Max methane emission
@@ -632,7 +655,7 @@ def add_parameters(model, unit_dct, country_specific=False):
     # def set_PAC_Resources_CF(i):
     #     H_Resources_dct['PAC'] = ImpactItem.get_item('PAC_item').CFs['H_Resources'] = i
 
-    if el.INCLUDE_RESOURCE_RECOVERY:
+    if el.INCLUDED_RESOURCE_RECOVERY:
         # Recovered N as alternative fertilizer, in GWP, H_Ecosystems, H_Health, H_Resources
         b = -GWP_dct['N']
         D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
@@ -787,20 +810,31 @@ def add_parameters(model, unit_dct, country_specific=False):
         for p in data.index:
             item = ImpactItem.get_item(p)
             b = item.CFs[indicator]
-            lower = float(data.loc[p]['low']) 
-            upper = float(data.loc[p]['high'])   
-            dist = data.loc[p]['distribution']    
+            
+            lower = float(data.loc[p]['low'])
+            upper = float(data.loc[p]['high'])
+            dist = data.loc[p]['distribution']
+            
+            # lower = float(data.loc[p, 'low'])
+            # upper = float(data.loc[p, 'high'])
+            # dist = data.loc[p, 'distribution']
+            
+            # lower = float(data.at[p, 'low'])
+            # upper = float(data.at[p, 'high'])
+            # dist = data.at[p, 'distribution']
+            
             if dist == 'uniform':
                 D = shape.Uniform(lower = lower, upper = upper)
             elif dist == 'triangular':
                 D = shape.Triangle(lower = lower, midpoint = b, upper = upper)
-            elif dist == 'constant': continue
+            elif dist == 'constant': 
+                continue
             else:
                 raise ValueError(f'Distribution {dist} not recognized.')
-            model.parameter(name = p + f'-{indicator}',
-                            setter = DictAttrSetter(item, 'CFs', indicator),
-                            element = 'LCA',
-                            kind = 'isolated',
+            model.parameter(name=p + f'-{indicator}',
+                            setter=DictAttrSetter(item, 'CFs', indicator),
+                            element='LCA',
+                            kind='isolated',
                             units = f'kg CO2-eq/{item.functional_unit}',
                             baseline = b, distribution = D)
 
@@ -808,48 +842,50 @@ def add_parameters(model, unit_dct, country_specific=False):
 #Create Model for EL system
 def create_modelEL(country_specific=False, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
-    sysEL = create_system('sysEL', flowsheet = flowsheet)
+    sysEL = create_system('EL', flowsheet = flowsheet)
     unitEL = sysEL.flowsheet.unit
 
     modelEL = Model(sysEL, **model_kwargs)
     add_metrics(modelEL)
-    unit_dct = { # name here needs to be aligned with those in Enviroloo_system.py (!!!)
+    unit_dctEL = { # name here needs to be aligned with those in Enviroloo_system.py (!!!)
         'Excretion': unitEL.WasteWaterGenerator,
         'Toilet': unitEL.Toilet,
-        'Collection_Tank': unitEL.CT,
-        # 'Lifting_Pump': unitEL.P_CT_lift,
+        # 'Collection_Tank': unitEL.CT,
+        # # 'Lifting_Pump': unitEL.P_CT_lift,
         # 'PrimaryClarifierTank': unitEL.PC,
         # 'PrimaryClarifierReturnPump': unitEL.P_PC_return,
         # 'AnoxicTank': unitEL.AnoxT,
-        # 'GlucoseAgitationPump': unitEL.P_Glu_agitation,
-        # 'GlucoseDosingPump': unitEL.P_Glu_dosing,
-        # 'AnoxicTankAgitationPump': unitEL.P_AnoxT_agitation,
-        # 'AerobicTank': unitEL.AerT,
-        # 'PACAgitationPump': unitEL.P_PAC_agitation,
-        # 'PACDosingPump': unitEL.P_PAC_dosing,
-        # 'AerobicTankBlower': unitEL.Aerobic_blower,
+        # # 'GlucoseAgitationPump': unitEL.P_Glu_agitation,
+        # # 'GlucoseDosingPump': unitEL.P_Glu_dosing,
+        # # 'AnoxicTankAgitationPump': unitEL.P_AnoxT_agitation,
+        # 'AerobicTank': unitEL.AeroT,
+        # # 'PACAgitationPump': unitEL.P_PAC_agitation,
+        # # 'PACDosingPump': unitEL.P_PAC_dosing,
+        # 'AerobicTankBlower': unitEL.B_AeroT,
         # 'MembraneTank': unitEL.MembT,
-        # 'NitrateReturnPumpToPC': unitEL.P_NitrateReturn_PC,
-        # 'NitrateReturnPumpToAnoxicTank': unitEL.P_NitrateReturn_AnoxT,
-        # 'MembraneTankBlower': unitEL.MembT_blower,
-        # 'SelfPrimingPump': unitEL.P_MT_selfpriming,
+        # # 'NitrateReturnPumpToPC': unitEL.P_NitrateReturn_PC,
+        # # 'NitrateReturnPumpToAnoxicTank': unitEL.P_NitrateReturn_AnoxT,
+        # 'MembraneTankBlower': unitEL.B_MembT,
+        # # 'SelfPrimingPump': unitEL.P_MT_selfpriming,
         # 'ClearWaterTank': unitEL.CWT,
-        # 'O3Generator': unitEL.O3_gen,
-        # 'O3DosingPump': unitEL.P_O3_dosing,
-        # 'AirDissolvedPump': unitEL.P_AirDissolvedP,
-        # 'PressurePumptoClearWater': unitEL.P_CWT,
+        # # 'O3Generator': unitEL.O3_gen,
+        # # 'O3DosingPump': unitEL.P_O3_dosing,
+        # # 'AirDissolvedPump': unitEL.P_AirDissolvedP,
+        # # 'PressurePumptoClearWater': unitEL.P_CWT,
         # 'PressureTank': unitEL.PT,
+        # 'Connection': unitEL.Pipeline_system,
         }
-    add_parameters(modelEL, unit_dct, country_specific)
+    add_parameters(modelEL, unit_dctEL, country_specific)
     
     return modelEL
 
 def create_model(model_ID='EL', country_specific=False, **model_kwargs):
     model_ID = model_ID.lower().rsplit('model')[-1].rsplit('sys')[-1].upper() # works for "modelEL"/"sysEL"/"E"
-    if model_ID == 'EL': model = create_modelEL(country_specific, **model_kwargs)
-    elif model_ID == 'E': model = create_modelEL(country_specific, **model_kwargs)
-    elif model_ID == 'L': model = create_modelEL(country_specific, **model_kwargs)
+    if model_ID == 'EL': f = create_modelEL
+    elif model_ID == 'E': f = create_modelEL
+    elif model_ID == 'L': f = create_modelEL
     else: raise ValueError(f'`model_ID` can only be "EL", "E", or "L", not "{model_ID}".')
+    model = f(country_specific, **model_kwargs)
     return model
 
 # define runing function intializing uncertainty and sensitivity analysis

@@ -55,7 +55,7 @@ price_factor = 0.25 # conventional value, if the EL system is considering the nu
 # The following parameters should be changed based on country of interest
 price_ratio = 1.0
 operator_daily_wage = 29  # operator daily wage, [USD/day]
-constant_daily_wage = 17
+const_daily_wage = 17
 const_person_days = 100
 
 # The following factors refer to  Reclaimer and Biogenic Refinery
@@ -279,10 +279,11 @@ get_P = lambda stream: stream.TP * stream.F_vol/1e3 * hr_per_yr
 get_K = lambda stream: stream.TK * stream.F_vol/1e3 * hr_per_yr
 
 def get_recoveries(system, include_breakdown=False):
-    EL = system.ID[-1]
-    if EL not in ('E', 'L'):
-        raise ValueError('This function is only available for the Enviroloo Clear system `sysEL`,'
-                         f'not `{system.ID}`.')
+    # # EL = system.ID[-1]
+    # EL = system.ID
+    # if EL not in ('E', 'L', 'EL'):
+    #     raise ValueError('This function is only available for the Enviroloo Clear system `sysEL`,'
+    #                      f'not `{system.ID}`.')
     
     
     u_reg = system.flowsheet.unit
@@ -292,15 +293,15 @@ def get_recoveries(system, include_breakdown=False):
     dct['K_dct'] = K_dct = {}
     #dct['C_dct'] = C_dct = {}
     
-    if EL == ('E', 'L'):
-        toilet = u_reg.Toilet  # here the name 'Toilet' should be consistent with the name defined in the Enviroloo_system.py
-        #CollectionTank = u_reg.CT
-        #PrimaryClarifier = u_reg.PC
-        AnoxicTank = u_reg.AnoxT
-        AerobicTank = u_reg.AeroT
-        MembraneTank = u_reg.MembT
-        #ClearWaterTank = u_reg.CWT
-        #PressureTank = u_reg.PT
+    # if EL == ('E', 'L'):
+    toilet = u_reg.Toilet  # here the name 'Toilet' should be consistent with the name defined in the Enviroloo_system.py
+    #CollectionTank = u_reg.CT
+    #PrimaryClarifier = u_reg.PC
+    AnoxicTank = u_reg.AnoxT
+    AerobicTank = u_reg.AeroT
+    MembraneTank = u_reg.MembT
+    #ClearWaterTank = u_reg.CWT
+    #PressureTank = u_reg.PT
     
     # In the Toilet unit
     #C_dct['urine'] = get_C(toilet.ins[0]) * ppl
@@ -320,9 +321,9 @@ def get_recoveries(system, include_breakdown=False):
     #N_dct['toilet_gas'] = get_N_gas(toilet.outs[-2])  # N2O in the third order of toilet outs
     
     # consider sludge in membrane tank and aerobic tank
-    N_dct['treated_sludge'] = get_N(MembraneTank.outs[0].imass['sludge_prcd']) + get_N(AerobicTank.outs[0].imass['sludge_prcd']) + get_N(AnoxicTank.outs[0].imass['sludge_prcd'])
-    P_dct['treated_sludge'] = get_P(MembraneTank.outs[0].imass['sludge_prcd']) + get_P(AerobicTank.outs[0].imass['sludge_prcd']) + get_P(AnoxicTank.outs[0].imass['sludge_prcd'])
-    K_dct['treated_sludge'] = get_K(MembraneTank.outs[0].imass['sludge_prcd']) + get_K(AerobicTank.outs[0].imass['sludge_prcd']) + get_K(AnoxicTank.outs[0].imass['sludge_prcd'])
+    N_dct['treated_sludge'] = get_N(MembraneTank.outs[0]) + get_N(AerobicTank.outs[0]) + get_N(AnoxicTank.outs[0])
+    P_dct['treated_sludge'] = get_P(MembraneTank.outs[0]) + get_P(AerobicTank.outs[0]) + get_P(AnoxicTank.outs[0])
+    K_dct['treated_sludge'] = get_K(MembraneTank.outs[0]) + get_K(AerobicTank.outs[0]) + get_K(AnoxicTank.outs[0])
 
     # the code in the following domain is a sample, which will be updated later
     functions = [
