@@ -461,8 +461,8 @@ def create_systemEL(flowsheet = None):
            #lang_factor=None,
            lang_factor=None,
            annual_maintenance=0,
-           #annual_labor=(operator_daily_wage*3*365),
-           annual_labor=0
+           annual_labor=(operator_daily_wage*3*365),
+           # annual_labor=0
            )
    
     get_powerEL = lambda: sum([u.power_utility.rate for u in sysEL.units]) * (24 * 365 * teaEL.lifetime)
