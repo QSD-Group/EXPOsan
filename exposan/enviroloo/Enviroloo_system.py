@@ -377,7 +377,8 @@ def create_systemEL(flowsheet = None):
     Total_N2O.line = 'fugitive N2O mixer'
     
     # Other impacts and costs
-    Pipeline_system = EL_System('Pipeline_system', ins=PT-1, outs='PipelineConnection',
+    Pipeline_system = EL_System('Pipeline_system', ins=PT-1, 
+                                # outs='PipelineConnection',
                                 ppl = ppl, baseline_ppl = 30, if_gridtied=True)
     # #Other_housing = EL_Housing('Other_housing', ins=Other_system-0, outs='Transport', ppl = ppl, baseline_ppl = 30)
     # Other_WasteTransport = Trucking('Other_WasteTransport', ins = Other_system-0, outs = ('WasteTransport', 'ConveyanceLoss'), 
