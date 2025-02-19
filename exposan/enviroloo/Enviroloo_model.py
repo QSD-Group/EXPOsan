@@ -810,18 +810,12 @@ def add_parameters(model, unit_dct, country_specific=False):
         for p in data.index:
             item = ImpactItem.get_item(p)
             b = item.CFs[indicator]
-            
             lower = float(data.loc[p]['low'])
+            
             upper = float(data.loc[p]['high'])
+            
             dist = data.loc[p]['distribution']
             
-            # lower = float(data.loc[p, 'low'])
-            # upper = float(data.loc[p, 'high'])
-            # dist = data.loc[p, 'distribution']
-            
-            # lower = float(data.at[p, 'low'])
-            # upper = float(data.at[p, 'high'])
-            # dist = data.at[p, 'distribution']
             
             if dist == 'uniform':
                 D = shape.Uniform(lower = lower, upper = upper)
@@ -837,7 +831,6 @@ def add_parameters(model, unit_dct, country_specific=False):
                             kind='isolated',
                             units = f'kg CO2-eq/{item.functional_unit}',
                             baseline = b, distribution = D)
-
 
 #Create Model for EL system
 def create_modelEL(country_specific=False, **model_kwargs):
