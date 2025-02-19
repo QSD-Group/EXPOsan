@@ -807,15 +807,12 @@ def add_parameters(model, unit_dct, country_specific=False):
     for indicator in ('GlobalWarming', 'H_Ecosystems', 'H_Health', 'H_Resources'):
         sheet_name = indicator if indicator != 'GlobalWarming' else 'GWP'   # GWP is the default sheet name
         data = load_data(item_path, sheet = sheet_name)   # load data from Excel file
-        for p in data.index:
-            item = ImpactItem.get_item(p)
+        for para in data.index:
+            item = ImpactItem.get_item(para)
             b = item.CFs[indicator]
-            lower = float(data.loc[p]['low'])
-            
-            upper = float(data.loc[p]['high'])
-            
-            dist = data.loc[p]['distribution']
-            
+            lower = float(data.loc[para]['low'])
+            upper = float(data.loc[para]['high'])
+            dist = data.loc[para]['distribution']
             
             if dist == 'uniform':
                 D = shape.Uniform(lower = lower, upper = upper)
@@ -825,7 +822,7 @@ def add_parameters(model, unit_dct, country_specific=False):
                 continue
             else:
                 raise ValueError(f'Distribution {dist} not recognized.')
-            model.parameter(name=p + f'-{indicator}',
+            model.parameter(name=para + f'-{indicator}',
                             setter=DictAttrSetter(item, 'CFs', indicator),
                             element='LCA',
                             kind='isolated',
