@@ -74,8 +74,6 @@ def add_metrics(model):
 su_data_path = os.path.join(data_path, 'sanunit_data')
 el_su_data_path = os.path.join(su_data_path, 'el')
 
-# locate path of the EL system data used in _EnvirolooUnits.py
-
 ######################## load parameters related to separate units of the EL system for uncertainty and sensitivity analysis ############################
 def load_el_su_data(file_name):
     if file_name.startswith('_EL'):
@@ -83,6 +81,7 @@ def load_el_su_data(file_name):
     return load_data(os.path.join(su_data_path, file_name))
 
 excretion_data = load_el_su_data('_EL_excretion.tsv')
+toilet_data = load_el_su_data('_EL_toilet.tsv')
 murt_data = load_el_su_data('_EL_murt.tsv')
 CT_data = load_el_su_data('_EL_CT.tsv')
 PC_data = load_el_su_data('_EL_PC.tsv')
@@ -94,19 +93,6 @@ ClearWaterTank_data = load_el_su_data('_EL_CWT.tsv')
 PressureTank_data = load_el_su_data('_EL_PT.tsv')
 housing_data = load_el_su_data('_EL_housing.tsv')
 system_data = load_el_su_data('_EL_system.tsv')
-
-# excretion_data = load_el_su_data('_EL_excretion.csv')
-# murt_data = load_el_su_data('_EL_murt.csv')
-# CT_data = load_el_su_data('_EL_CT.csv')
-# PC_data = load_el_su_data('_EL_PC.csv')
-# AnoxicTank_data = load_el_su_data('_EL_Anoxic.csv')
-# AerobicTank_data = load_el_su_data('_EL_Aerobic.csv')
-# MembTank_data = load_el_su_data('_EL_MBR.csv')
-# Blower = load_el_su_data('_EL_blower.csv')
-# ClearWaterTank_data = load_el_su_data('_EL_CWT.csv')
-# PressureTank_data = load_el_su_data('_EL_PT.csv')
-# housing_data = load_el_su_data('_EL_housing.csv')
-# system_data = load_el_su_data('_EL_system.csv')
 
 ############################################## define parameters of interest for EL system ################################################################
 def add_parameters(model, unit_dct, country_specific=False):
@@ -273,7 +259,6 @@ def add_parameters(model, unit_dct, country_specific=False):
     
     ############################# Specific Units having parameters engaged with uncertainty and sensitivity analysis ###############################
     # In diet and excretion section
-    #excretion_unit = unit_dct['Excretion']
     exclude = ('e_cal', 'p_anim', 'p_veg') if country_specific else () # e_cal: caloric_intake, p_anim: protein_animal_intake, 
                                                                         # p_veg: protein_vegetal_intake, all defined in _Excretion.tsv.
     batch_setting_unit_params(excretion_data, model, excretion_unit, exclude)
@@ -306,90 +291,92 @@ def add_parameters(model, unit_dct, country_specific=False):
                baseline=b, distribution=D)
         def set_N2O_EF_decay(i):
             murt_unit.N2O_EF_decay = i
+    # trace back to parent class Toilet
+    # toilet_unit = unit_dct('Toilet')
+    # batch_setting_unit_params(murt_data, model, toilet_unit, exclude=('MCF_decay', 'N2O_EF_decay',))
+    
 
-    # batch_setting_unit_params(toilet_data, model, toilet_unit, exclude=('MCF_aq', 'N2O_EF_aq',))
+    # MCF_lower_dct = dct_from_str(murt_data.loc['MCF_decay']['low'])
+    # MCF_upper_dct = dct_from_str(murt_data.loc['MCF_decay']['high'])
+    # N2O_EF_lower_dct = dct_from_str(murt_data.loc['N2O_EF_decay']['low'])
+    # N2O_EF_upper_dct = dct_from_str(murt_data.loc['N2O_EF_decay']['high'])
 
-    # MCF_lower_dct = dct_from_str(toilet_data.loc['MCF_aq']['low'])
-    # MCF_upper_dct = dct_from_str(toilet_data.loc['MCF_aq']['high'])
-    # N2O_EF_lower_dct = dct_from_str(toilet_data.loc['N2O_EF_aq']['low'])
-    # N2O_EF_upper_dct = dct_from_str(toilet_data.loc['N2O_EF_aq']['high'])
+    # kind = murt_unit._return_MCF_EF()
 
-    # kind = toilet_unit._return_MCF_EF() # need to figure out ???
-
-    # b = toilet_unit.MCF_aq
+    # b = murt_unit.MCF_decay
     # D = shape.Triangle(lower=MCF_lower_dct[kind], midpoint=b, upper=MCF_upper_dct[kind])
-    # param(setter = DictAttrSetter(toilet_unit, '_MCF_aq', kind),
-    #       name = 'MCF_aq', element=toilet_unit, kind='coupled',
+    # param(setter = DictAttrSetter(murt_unit, '_MCF_decay', kind),
+    #       name = 'MCF_decay', element=murt_unit, kind='coupled',
     #       units = 'fraction of anaerobic conversion of degraded COD',
     #       baseline = b, distribution = D)
 
-    # b = toilet_unit.N2O_EF_aq
+    # b = murt_unit.N2O_EF_decay
     # D = shape.Triangle(lower=N2O_EF_lower_dct[kind], midpoint=b, upper=N2O_EF_upper_dct[kind])
-    # param(setter = DictAttrSetter(toilet_unit, '_N2O_EF_aq', kind),
-    #       name='N2O_EF_aq', element = toilet_data, kind = 'coupled',
+    # param(setter = DictAttrSetter(murt_unit, '_N2O_EF_decay', kind),
+    #       name='N2O_EF_decay', element = murt_unit, kind = 'coupled',
     #       units = 'fraction of N emitted as N2O',
     #       baseline = b, distribution = D)    
     
-    # b = el.household_per_toilet
-    # D = shape.Uniform(lower = 3, upper = 5)
-    # @param(name = 'Toilet density', element = toilet_unit, kind = 'coupled', units = 'household/toilet',
-    #        baseline = b, distribution = D)
-    # def set_toilet_density(i):
-    #     el.household_per_toilet = i
+    b = el.household_per_toilet
+    D = shape.Uniform(lower = 3, upper = 5)
+    @param(name = 'Toilet density', element = murt_unit, kind = 'coupled', units = 'household/toilet',
+           baseline = b, distribution = D)
+    def set_toilet_density(i):
+        el.household_per_toilet = i
 
-    # # In Collection Tank
-    # CT_unit = unit_dct['Collection_Tank']
-    # if CT_unit: 
-    #     batch_setting_unit_params(CT_data, model, CT_unit)
+    # In Collection Tank
+    CT_unit = unit_dct['Collection_Tank']
+    if CT_unit: 
+        batch_setting_unit_params(CT_data, model, CT_unit)
     
-    # # In Primary Clarifier Tank
-    # PC_unit = unit_dct['PrimaryClarifierTank']
-    # if PC_unit: 
-    #     batch_setting_unit_params(PC_data, model, PC_unit)
+    # In Primary Clarifier Tank
+    PC_unit = unit_dct['PrimaryClarifierTank']
+    if PC_unit: 
+        batch_setting_unit_params(PC_data, model, PC_unit)
     
-    # # In Anoxic Tank
-    # AnoxT_unit = unit_dct['AnoxicTank']
-    # if AnoxT_unit: 
-    #     batch_setting_unit_params(AnoxicTank_data, model, AnoxT_unit)
+    # In Anoxic Tank
+    AnoxT_unit = unit_dct['AnoxicTank']
+    if AnoxT_unit: 
+        batch_setting_unit_params(AnoxicTank_data, model, AnoxT_unit)
     
-    # # In Aerobic Tank
-    # AeroT_unit = unit_dct['AerobicTank']
-    # if AeroT_unit: 
-    #     batch_setting_unit_params(AerobicTank_data, model, AeroT_unit)
+    # In Aerobic Tank
+    AeroT_unit = unit_dct['AerobicTank']
+    if AeroT_unit: 
+        batch_setting_unit_params(AerobicTank_data, model, AeroT_unit)
 
-    # # In Blower for Aerobic Tank
-    # Blower_AeroT_unit = unit_dct['AerobicTankBlower']
-    # if Blower_AeroT_unit: 
-    #     batch_setting_unit_params(Blower, model, Blower_AeroT_unit)
+    # In Blower for Aerobic Tank
+    Blower_AeroT_unit = unit_dct['AerobicTankBlower']
+    if Blower_AeroT_unit: 
+        batch_setting_unit_params(Blower, model, Blower_AeroT_unit)
     
-    # # In Membrane Tank
-    # MembT_unit = unit_dct['MembraneTank']
-    # if MembT_unit: 
-    #     batch_setting_unit_params(MembTank_data, model, MembT_unit)
+    # In Membrane Tank
+    MembT_unit = unit_dct['MembraneTank']
+    if MembT_unit: 
+        batch_setting_unit_params(MembTank_data, model, MembT_unit)
     
-    # # In Membrane Tank Blower
-    # Blower_MembT_unit = unit_dct['MembraneTankBlower']
-    # if Blower_MembT_unit: 
-    #     batch_setting_unit_params(Blower, model, Blower_MembT_unit)
+    # In Membrane Tank Blower
+    Blower_MembT_unit = unit_dct['MembraneTankBlower']
+    if Blower_MembT_unit: 
+        batch_setting_unit_params(Blower, model, Blower_MembT_unit)
     
-    # # In Clear Water Tank
-    # ClearWaterT_unit = unit_dct['ClearWaterTank']
-    # if ClearWaterT_unit: 
-    #     batch_setting_unit_params(ClearWaterTank_data, model, ClearWaterT_unit)
+    # In Clear Water Tank
+    ClearWaterT_unit = unit_dct['ClearWaterTank']
+    if ClearWaterT_unit: 
+        batch_setting_unit_params(ClearWaterTank_data, model, ClearWaterT_unit)
     
-    # # In Pressure Tank
-    # PressureT_unit = unit_dct['PressureTank']
-    # if PressureT_unit: 
-    #     batch_setting_unit_params(PressureTank_data, model, PressureT_unit)
+    # In Pressure Tank
+    PressureT_unit = unit_dct['PressureTank']
+    if PressureT_unit: 
+        batch_setting_unit_params(PressureTank_data, model, PressureT_unit)
 
-    # # EL housing
-    # #housing_unit = unit_dct['Housing']
-    # #batch_setting_unit_params(housing_data, model, housing_unit)
+    # EL housing
+    #housing_unit = unit_dct['Housing']
+    #batch_setting_unit_params(housing_data, model, housing_unit)
 
-    # # EL system for connection
-    # connection_unit = unit_dct['Connection']
-    # if connection_unit:
-    #     batch_setting_unit_params(system_data, model, connection_unit)
+    # EL system for connection
+    connection_unit = unit_dct['Connection']
+    if connection_unit:
+        batch_setting_unit_params(system_data, model, connection_unit)
 
     ################################################ Universal degradation parameters ##########################################################
     # Max methane emission
@@ -433,52 +420,52 @@ def add_parameters(model, unit_dct, country_specific=False):
                 setattr(unit, 'decay_k_N', k)
     
     # toilet material properties
-    # density = toilet_unit.density_dct
-    # #########################################################################################################################
-    # b = density['Plastic']
-    # D = shape.Uniform(lower = 0.31, upper = 1.24)
-    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Plastic'),
-    #       name = 'Density of plastic', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-    #       baseline = b, distribution = D)
-    # ########################################################################################################################
-    # b = density['Brick']
-    # D = shape.Uniform(lower = 1500, upper = 2000)
-    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Brick'),
-    #       name = 'Density of brick', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-    #       baseline = b, distribution = D)
-    # ########################################################################################################################
-    # b = density['StainlessSteelSheet']
-    # D = shape.Uniform(lower = 2.26, upper = 3.58)
-    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'StainlessSteelSheet'),
-    #       name = 'Density of stainless steel sheet', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-    #       baseline = b, distribution = D)
-    # ########################################################################################################################
-    # b = density['Gravel']
-    # D = shape.Uniform(lower = 1520, upper = 1680)
-    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Gravel'),
-    #       name = 'Density of gravel', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-    #       baseline = b, distribution = D)
-    # ########################################################################################################################      
-    # b = density['Sand']
-    # D = shape.Uniform(lower = 1281, upper = 1602)
-    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Sand'),
-    #       name = 'Density of sand', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-    #       baseline = b, distribution = D)
-    # #########################################################################################################################
-    # b = density['Steel']
-    # D = shape.Uniform(lower = 7750, upper = 8050)
-    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Steel'),
-    #       name = 'Density of steel', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-    #       baseline = b, distribution = D)
+    density = toilet_unit.density_dct
+    #########################################################################################################################
+    b = density['Plastic']
+    D = shape.Uniform(lower = 0.31, upper = 1.24)
+    param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Plastic'),
+          name = 'Density of plastic', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
+          baseline = b, distribution = D)
+    ########################################################################################################################
+    b = density['Brick']
+    D = shape.Uniform(lower = 1500, upper = 2000)
+    param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Brick'),
+          name = 'Density of brick', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
+          baseline = b, distribution = D)
+    ########################################################################################################################
+    b = density['StainlessSteelSheet']
+    D = shape.Uniform(lower = 2.26, upper = 3.58)
+    param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'StainlessSteelSheet'),
+          name = 'Density of stainless steel sheet', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
+          baseline = b, distribution = D)
+    ########################################################################################################################
+    b = density['Gravel']
+    D = shape.Uniform(lower = 1520, upper = 1680)
+    param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Gravel'),
+          name = 'Density of gravel', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
+          baseline = b, distribution = D)
+    ########################################################################################################################      
+    b = density['Sand']
+    D = shape.Uniform(lower = 1281, upper = 1602)
+    param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Sand'),
+          name = 'Density of sand', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
+          baseline = b, distribution = D)
+    #########################################################################################################################
+    b = density['Steel']
+    D = shape.Uniform(lower = 7750, upper = 8050)
+    param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Steel'),
+          name = 'Density of steel', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
+          baseline = b, distribution = D)
     
     ################################################# General TEA Settings ##################################################
     # Discount rate if changing in TEA
-    # b = el.discount_rate
-    # D = shape.Uniform(lower = 0.02, upper = 0.06)
-    # @param(name = 'Discount rate', element = 'TEA', kind = 'isolated', units = 'fraction',
-    #       baseline = b, distribution = D)
-    # def set_discount_rate(i):
-    #     el.discount_rate = i
+    b = el.discount_rate
+    D = shape.Uniform(lower = 0.02, upper = 0.06)
+    @param(name = 'Discount rate', element = 'TEA', kind = 'isolated', units = 'fraction',
+          baseline = b, distribution = D)
+    def set_discount_rate(i):
+        el.discount_rate = i
     
     # if resource recovery settings are updated, change price_factor for uncertainty analysis
     b = el.price_factor
@@ -489,12 +476,12 @@ def add_parameters(model, unit_dct, country_specific=False):
         el.price_factor = i
 
     # if emptying operation is scheduled
-    #b = el.emptying_fee
-    #D = shape.Uniform(lower=0, upper=0.3)
-    #@param(name = 'Emptying fee', element = 'TEA', kind = 'isolated', units = 'USD',
-            #baseline = b, distribution = D)
-    #def set_emptying_fee(i):
-        #el.emptying_fee = i    
+    b = el.emptying_fee
+    D = shape.Uniform(lower=0, upper=0.3)
+    @param(name = 'Emptying fee', element = 'TEA', kind = 'isolated', units = 'USD',
+            baseline = b, distribution = D)
+    def set_emptying_fee(i):
+        el.emptying_fee = i    
     
     # Some chemicals defined in price_dct of _init_.py need update, the below format can be used to add it for uncertainty analysis
     # NaOH
@@ -840,30 +827,30 @@ def create_modelEL(country_specific=False, **model_kwargs):
     unit_dctEL = { # name here needs to be aligned with those in Enviroloo_system.py (!!!)
         'Excretion': unitEL.WasteWaterGenerator,
         'Toilet': unitEL.Toilet,
-        # 'Collection_Tank': unitEL.CT,
+        'Collection_Tank': unitEL.CT,
         # # 'Lifting_Pump': unitEL.P_CT_lift,
-        # 'PrimaryClarifierTank': unitEL.PC,
+        'PrimaryClarifierTank': unitEL.PC,
         # 'PrimaryClarifierReturnPump': unitEL.P_PC_return,
-        # 'AnoxicTank': unitEL.AnoxT,
+        'AnoxicTank': unitEL.AnoxT,
         # # 'GlucoseAgitationPump': unitEL.P_Glu_agitation,
         # # 'GlucoseDosingPump': unitEL.P_Glu_dosing,
         # # 'AnoxicTankAgitationPump': unitEL.P_AnoxT_agitation,
-        # 'AerobicTank': unitEL.AeroT,
+        'AerobicTank': unitEL.AeroT,
         # # 'PACAgitationPump': unitEL.P_PAC_agitation,
         # # 'PACDosingPump': unitEL.P_PAC_dosing,
-        # 'AerobicTankBlower': unitEL.B_AeroT,
-        # 'MembraneTank': unitEL.MembT,
+        'AerobicTankBlower': unitEL.B_AeroT,
+        'MembraneTank': unitEL.MembT,
         # # 'NitrateReturnPumpToPC': unitEL.P_NitrateReturn_PC,
         # # 'NitrateReturnPumpToAnoxicTank': unitEL.P_NitrateReturn_AnoxT,
-        # 'MembraneTankBlower': unitEL.B_MembT,
+        'MembraneTankBlower': unitEL.B_MembT,
         # # 'SelfPrimingPump': unitEL.P_MT_selfpriming,
-        # 'ClearWaterTank': unitEL.CWT,
+        'ClearWaterTank': unitEL.CWT,
         # # 'O3Generator': unitEL.O3_gen,
         # # 'O3DosingPump': unitEL.P_O3_dosing,
         # # 'AirDissolvedPump': unitEL.P_AirDissolvedP,
         # # 'PressurePumptoClearWater': unitEL.P_CWT,
-        # 'PressureTank': unitEL.PT,
-        # 'Connection': unitEL.Pipeline_system,
+        'PressureTank': unitEL.PT,
+        'Connection': unitEL.Pipeline_system,
         }
     add_parameters(modelEL, unit_dctEL, country_specific)
     
