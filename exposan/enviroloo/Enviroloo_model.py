@@ -88,10 +88,10 @@ PC_data = load_el_su_data('_EL_PC.tsv')
 AnoxicTank_data = load_el_su_data('_EL_Anoxic.tsv')
 AerobicTank_data = load_el_su_data('_EL_Aerobic.tsv')
 MembTank_data = load_el_su_data('_EL_MBR.tsv')
-Blower = load_el_su_data('_EL_blower.tsv')
+# Blower = load_el_su_data('_EL_blower.tsv')
 ClearWaterTank_data = load_el_su_data('_EL_CWT.tsv')
 PressureTank_data = load_el_su_data('_EL_PT.tsv')
-housing_data = load_el_su_data('_EL_housing.tsv')
+# housing_data = load_el_su_data('_EL_housing.tsv')
 system_data = load_el_su_data('_EL_system.tsv')
 
 ############################################## define parameters of interest for EL system ################################################################
@@ -167,14 +167,14 @@ def add_parameters(model, unit_dct, country_specific=False):
             sys._TEA.annual_labor = i * 3 * 365 # need change
 
         # Construction labor wage
-        b = el.const_daily_wage   # const_daily_wage is constant, needing initialization in _init_.py
-        D = shape.Triangle(lower = (b * 0.5), midpoint = b, upper = (b * 1.5))
-        @param(name = 'Construction daily wage', element = 'TEA', kind = 'cost', units = 'USD/d',
-            baseline = b, distribution = D)
-        def set_const_daily_wage(i):
-            for u in sys.units:
-                if isinstance(u, qs.sanunits.EL_Housing): break
-                u.const_daily_wage = i
+        # b = el.const_daily_wage   # const_daily_wage is constant, needing initialization in _init_.py
+        # D = shape.Triangle(lower = (b * 0.5), midpoint = b, upper = (b * 1.5))
+        # @param(name = 'Construction daily wage', element = 'TEA', kind = 'cost', units = 'USD/d',
+        #     baseline = b, distribution = D)
+        # def set_const_daily_wage(i):
+        #     for u in sys.units:
+        #         if isinstance(u, qs.sanunits.EL_Housing): break
+        #         u.const_daily_wage = i
         
         if el.INCLUDED_RESOURCE_RECOVERY:
             # N fertilizer price
@@ -345,9 +345,9 @@ def add_parameters(model, unit_dct, country_specific=False):
         batch_setting_unit_params(AerobicTank_data, model, AeroT_unit)
 
     # In Blower for Aerobic Tank
-    Blower_AeroT_unit = unit_dct['AerobicTankBlower']
-    if Blower_AeroT_unit: 
-        batch_setting_unit_params(Blower, model, Blower_AeroT_unit)
+    # Blower_AeroT_unit = unit_dct['AerobicTankBlower']
+    # if Blower_AeroT_unit: 
+    #     batch_setting_unit_params(Blower, model, Blower_AeroT_unit)
     
     # In Membrane Tank
     MembT_unit = unit_dct['MembraneTank']
@@ -355,9 +355,9 @@ def add_parameters(model, unit_dct, country_specific=False):
         batch_setting_unit_params(MembTank_data, model, MembT_unit)
     
     # In Membrane Tank Blower
-    Blower_MembT_unit = unit_dct['MembraneTankBlower']
-    if Blower_MembT_unit: 
-        batch_setting_unit_params(Blower, model, Blower_MembT_unit)
+    # Blower_MembT_unit = unit_dct['MembraneTankBlower']
+    # if Blower_MembT_unit: 
+    #     batch_setting_unit_params(Blower, model, Blower_MembT_unit)
     
     # In Clear Water Tank
     ClearWaterT_unit = unit_dct['ClearWaterTank']
@@ -838,11 +838,11 @@ def create_modelEL(country_specific=False, **model_kwargs):
         'AerobicTank': unitEL.AeroT,
         # # 'PACAgitationPump': unitEL.P_PAC_agitation,
         # # 'PACDosingPump': unitEL.P_PAC_dosing,
-        'AerobicTankBlower': unitEL.B_AeroT,
+        # 'AerobicTankBlower': unitEL.B_AeroT,
         'MembraneTank': unitEL.MembT,
         # # 'NitrateReturnPumpToPC': unitEL.P_NitrateReturn_PC,
         # # 'NitrateReturnPumpToAnoxicTank': unitEL.P_NitrateReturn_AnoxT,
-        'MembraneTankBlower': unitEL.B_MembT,
+        # 'MembraneTankBlower': unitEL.B_MembT,
         # # 'SelfPrimingPump': unitEL.P_MT_selfpriming,
         'ClearWaterTank': unitEL.CWT,
         # # 'O3Generator': unitEL.O3_gen,

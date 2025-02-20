@@ -12,6 +12,6 @@ def run(model_ID, seed = None, N = 1000, country_specific =False, **model_kwargs
           model = create_model(model_ID, country_specific = country_specific, **model_kwargs);
           run_uncertainty(model, seed = seed, N = N);
 
-if _name_ == '_main_':
-          el.INCLUDED_RESOURCE_RECOVERY = False;# does not include resource recovery at the current stage
-          run('sysEL', seed = 5, N = 50);
+if __name__ == '__main__':
+    el.INCLUDED_RESOURCE_RECOVERY = False  # does not include resource recovery at the current stage
+    run('sysEL', seed = 5, N = 10)
