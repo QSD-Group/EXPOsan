@@ -2,7 +2,11 @@
 # -*- coding: utf-8 -*-
 
 '''
-Created by Yuyao Huang, Siqi Tang, and Aaron Marszewski for uncertainty and sensitivity analysis of the EL system
+Created by 
+            Siqi Tang, <siqit@outlook.com>
+            Yuyao Huang, <yuyaoh20@gmail.com>
+            Aaron Marszewski, <aaronpm3@illinois.edu>
+                            for uncertainty and sensitivity analysis of the EL system
 '''
 
 from exposan import enviroloo as el
