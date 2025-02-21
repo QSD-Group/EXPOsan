@@ -589,12 +589,12 @@ def add_parameters(model, unit_dct, country_specific=False):
     #     H_Resources_dct['NaClO'] = ImpactItem.get_item('NaClO_item').CFs['H_Resources'] = i
     
     # # PAC in GWP, H_Ecosystems, H_Health, H_Resources
-    b = H_GWP_dct['PAC']
+    b = GWP_dct['PAC']
     D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
     @param(name = 'PAC CF', element = 'LCA', kind = 'isolated', units = 'kg CO2-eq/kg PAC',
           baseline = b, distribution = D)
     def set_PAC_CF(i):
-        H_GWP_dct['PAC'] = ImpactItem.get_item('PAC_item').CFs['GlobalWarming'] = i
+        GWP_dct['PAC'] = ImpactItem.get_item('PAC_item').CFs['GlobalWarming'] = i
     
     b = H_Ecosystems_dct['PAC']
     D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
