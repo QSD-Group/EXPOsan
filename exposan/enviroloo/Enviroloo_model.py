@@ -88,7 +88,7 @@ PC_data = load_el_su_data('_EL_PC.tsv')
 AnoxicTank_data = load_el_su_data('_EL_Anoxic.tsv')
 AerobicTank_data = load_el_su_data('_EL_Aerobic.tsv')
 MembTank_data = load_el_su_data('_EL_MBR.tsv')
-# Blower = load_el_su_data('_EL_blower.tsv')
+Blower = load_el_su_data('_EL_blower.tsv')
 ClearWaterTank_data = load_el_su_data('_EL_CWT.tsv')
 PressureTank_data = load_el_su_data('_EL_PT.tsv')
 # housing_data = load_el_su_data('_EL_housing.tsv')
@@ -291,31 +291,6 @@ def add_parameters(model, unit_dct, country_specific=False):
                baseline=b, distribution=D)
         def set_N2O_EF_decay(i):
             murt_unit.N2O_EF_decay = i
-    # trace back to parent class Toilet
-    # toilet_unit = unit_dct('Toilet')
-    # batch_setting_unit_params(murt_data, model, toilet_unit, exclude=('MCF_decay', 'N2O_EF_decay',))
-    
-
-    # MCF_lower_dct = dct_from_str(murt_data.loc['MCF_decay']['low'])
-    # MCF_upper_dct = dct_from_str(murt_data.loc['MCF_decay']['high'])
-    # N2O_EF_lower_dct = dct_from_str(murt_data.loc['N2O_EF_decay']['low'])
-    # N2O_EF_upper_dct = dct_from_str(murt_data.loc['N2O_EF_decay']['high'])
-
-    # kind = murt_unit._return_MCF_EF()
-
-    # b = murt_unit.MCF_decay
-    # D = shape.Triangle(lower=MCF_lower_dct[kind], midpoint=b, upper=MCF_upper_dct[kind])
-    # param(setter = DictAttrSetter(murt_unit, '_MCF_decay', kind),
-    #       name = 'MCF_decay', element=murt_unit, kind='coupled',
-    #       units = 'fraction of anaerobic conversion of degraded COD',
-    #       baseline = b, distribution = D)
-
-    # b = murt_unit.N2O_EF_decay
-    # D = shape.Triangle(lower=N2O_EF_lower_dct[kind], midpoint=b, upper=N2O_EF_upper_dct[kind])
-    # param(setter = DictAttrSetter(murt_unit, '_N2O_EF_decay', kind),
-    #       name='N2O_EF_decay', element = murt_unit, kind = 'coupled',
-    #       units = 'fraction of N emitted as N2O',
-    #       baseline = b, distribution = D)    
     
     b = el.household_per_toilet
     D = shape.Uniform(lower = 3, upper = 5)
@@ -345,9 +320,9 @@ def add_parameters(model, unit_dct, country_specific=False):
         batch_setting_unit_params(AerobicTank_data, model, AeroT_unit)
 
     # In Blower for Aerobic Tank
-    # Blower_AeroT_unit = unit_dct['AerobicTankBlower']
-    # if Blower_AeroT_unit: 
-    #     batch_setting_unit_params(Blower, model, Blower_AeroT_unit)
+    Blower_AeroT_unit = unit_dct['AerobicTankBlower']
+    if Blower_AeroT_unit: 
+        batch_setting_unit_params(Blower, model, Blower_AeroT_unit)
     
     # In Membrane Tank
     MembT_unit = unit_dct['MembraneTank']
@@ -355,9 +330,9 @@ def add_parameters(model, unit_dct, country_specific=False):
         batch_setting_unit_params(MembTank_data, model, MembT_unit)
     
     # In Membrane Tank Blower
-    # Blower_MembT_unit = unit_dct['MembraneTankBlower']
-    # if Blower_MembT_unit: 
-    #     batch_setting_unit_params(Blower, model, Blower_MembT_unit)
+    Blower_MembT_unit = unit_dct['MembraneTankBlower']
+    if Blower_MembT_unit: 
+        batch_setting_unit_params(Blower, model, Blower_MembT_unit)
     
     # In Clear Water Tank
     ClearWaterT_unit = unit_dct['ClearWaterTank']
@@ -614,33 +589,33 @@ def add_parameters(model, unit_dct, country_specific=False):
     #     H_Resources_dct['NaClO'] = ImpactItem.get_item('NaClO_item').CFs['H_Resources'] = i
     
     # # PAC in GWP, H_Ecosystems, H_Health, H_Resources
-    # b = H_GWP_dct['PAC']
-    # D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
-    # @param(name = 'PAC CF', element = 'LCA', kind = 'isolated', units = 'kg CO2-eq/kg PAC',
-    #       baseline = b, distribution = D)
-    # def set_PAC_CF(i):
-    #     H_GWP_dct['PAC'] = ImpactItem.get_item('PAC_item').CFs['GlobalWarming'] = i
+    b = H_GWP_dct['PAC']
+    D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
+    @param(name = 'PAC CF', element = 'LCA', kind = 'isolated', units = 'kg CO2-eq/kg PAC',
+          baseline = b, distribution = D)
+    def set_PAC_CF(i):
+        H_GWP_dct['PAC'] = ImpactItem.get_item('PAC_item').CFs['GlobalWarming'] = i
     
-    # b = H_Ecosystems_dct['PAC']
-    # D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
-    # @param(name = 'PAC Ecosystems CF', element = 'LCA', kind = 'isolated', units = 'points/kg PAC',
-    #       baseline = b, distribution = D)
-    # def set_PAC_Ecosystems_CF(i):
-    #     H_Ecosystems_dct['PAC'] = ImpactItem.get_item('PAC_item').CFs['H_Ecosystems'] = i
+    b = H_Ecosystems_dct['PAC']
+    D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
+    @param(name = 'PAC Ecosystems CF', element = 'LCA', kind = 'isolated', units = 'points/kg PAC',
+          baseline = b, distribution = D)
+    def set_PAC_Ecosystems_CF(i):
+        H_Ecosystems_dct['PAC'] = ImpactItem.get_item('PAC_item').CFs['H_Ecosystems'] = i
     
-    # b = H_Health_dct['PAC']
-    # D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
-    # @param(name = 'PAC Health CF', element = 'LCA', kind = 'isolated', units = 'points/kg PAC',
-    #       baseline = b, distribution = D)
-    # def set_PAC_Health_CF(i):
-    #     H_Health_dct['PAC'] = ImpactItem.get_item('PAC_item').CFs['H_Health'] = i
+    b = H_Health_dct['PAC']
+    D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
+    @param(name = 'PAC Health CF', element = 'LCA', kind = 'isolated', units = 'points/kg PAC',
+          baseline = b, distribution = D)
+    def set_PAC_Health_CF(i):
+        H_Health_dct['PAC'] = ImpactItem.get_item('PAC_item').CFs['H_Health'] = i
     
-    # b = H_Resources_dct['PAC']
-    # D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
-    # @param(name = 'PAC Resources CF', element = 'LCA', kind = 'isolated', units = 'points/kg PAC',
-    #       baseline = b, distribution = D)
-    # def set_PAC_Resources_CF(i):
-    #     H_Resources_dct['PAC'] = ImpactItem.get_item('PAC_item').CFs['H_Resources'] = i
+    b = H_Resources_dct['PAC']
+    D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
+    @param(name = 'PAC Resources CF', element = 'LCA', kind = 'isolated', units = 'points/kg PAC',
+          baseline = b, distribution = D)
+    def set_PAC_Resources_CF(i):
+        H_Resources_dct['PAC'] = ImpactItem.get_item('PAC_item').CFs['H_Resources'] = i
 
     if el.INCLUDED_RESOURCE_RECOVERY:
         # Recovered N as alternative fertilizer, in GWP, H_Ecosystems, H_Health, H_Resources
@@ -672,121 +647,121 @@ def add_parameters(model, unit_dct, country_specific=False):
         def set_N_fertilizer_Resources_CF(i):
             H_Resources_dct['N'] = ImpactItem.get_item('N_item').CFs['H_Resources'] = -i
         
-        # # Recovered P as alternative fertilizer, in GWP, H_Ecosystems, H_Health, H_Resources
-        # b = -GWP_dct['P']
-        # D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
-        # @param(name = 'P fertilizer CF', element = 'LCA', kind = 'isolated',
-        #        units = 'kg CO2-eq/kg P', baseline = b, distribution = D)
-        # def set_P_fertilizer_CF(i):
-        #     GWP_dct['P'] = ImpactItem.get_item('P_item').CFs['GlobalWarming'] = -i
+        # Recovered P as alternative fertilizer, in GWP, H_Ecosystems, H_Health, H_Resources
+        b = -GWP_dct['P']
+        D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
+        @param(name = 'P fertilizer CF', element = 'LCA', kind = 'isolated',
+               units = 'kg CO2-eq/kg P', baseline = b, distribution = D)
+        def set_P_fertilizer_CF(i):
+            GWP_dct['P'] = ImpactItem.get_item('P_item').CFs['GlobalWarming'] = -i
         
-        # b = -H_Ecosystems_dct['P']
-        # D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
-        # @param(name = 'P fertilizer Ecosystems CF', element = 'LCA', kind = 'isolated',
-        #        units = 'points/kg P', baseline = b, distribution = D)
-        # def set_P_fertilizer_Ecosystems_CF(i):
-        #     H_Ecosystems_dct['P'] = ImpactItem.get_item('P_item').CFs['H_Ecosystems'] = -i
+        b = -H_Ecosystems_dct['P']
+        D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
+        @param(name = 'P fertilizer Ecosystems CF', element = 'LCA', kind = 'isolated',
+               units = 'points/kg P', baseline = b, distribution = D)
+        def set_P_fertilizer_Ecosystems_CF(i):
+            H_Ecosystems_dct['P'] = ImpactItem.get_item('P_item').CFs['H_Ecosystems'] = -i
         
-        # b = -H_Health_dct['P']
-        # D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
-        # @param(name = 'P fertilizer Health CF', element = 'LCA', kind = 'isolated',
-        #        units = 'points/kg P', baseline = b, distribution = D)
-        # def set_P_fertilizer_Health_CF(i):
-        #     H_Health_dct['P'] = ImpactItem.get_item('P_item').CFs['H_Health'] = -i
+        b = -H_Health_dct['P']
+        D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
+        @param(name = 'P fertilizer Health CF', element = 'LCA', kind = 'isolated',
+               units = 'points/kg P', baseline = b, distribution = D)
+        def set_P_fertilizer_Health_CF(i):
+            H_Health_dct['P'] = ImpactItem.get_item('P_item').CFs['H_Health'] = -i
         
-        # b = -H_Resources_dct['P']
-        # D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
-        # @param(name = 'P fertilizer Resources CF', element = 'LCA', kind = 'isolated',
-        #        units = 'points/kg P', baseline = b, distribution = D)
-        # def set_P_fertilizer_Resources_CF(i):
-        #     H_Resources_dct['P'] = ImpactItem.get_item('P_item').CFs['H_Resources'] = -i
+        b = -H_Resources_dct['P']
+        D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
+        @param(name = 'P fertilizer Resources CF', element = 'LCA', kind = 'isolated',
+               units = 'points/kg P', baseline = b, distribution = D)
+        def set_P_fertilizer_Resources_CF(i):
+            H_Resources_dct['P'] = ImpactItem.get_item('P_item').CFs['H_Resources'] = -i
         
-        # # Recovered K as alternative fertilizer, in GWP, H_Ecosystems, H_Health, H_Resources
-        # b = -GWP_dct['K']
-        # D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
-        # @param(name = 'K fertilizer CF', element = 'LCA', kind = 'isolated',
-        #        units = 'kg CO2-eq/kg K', baseline = b, distribution = D)
-        # def set_K_fertilizer_CF(i):
-        #     GWP_dct['K'] = ImpactItem.get_item('K_item').CFs['GlobalWarming'] = -i
+        # Recovered K as alternative fertilizer, in GWP, H_Ecosystems, H_Health, H_Resources
+        b = -GWP_dct['K']
+        D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
+        @param(name = 'K fertilizer CF', element = 'LCA', kind = 'isolated',
+               units = 'kg CO2-eq/kg K', baseline = b, distribution = D)
+        def set_K_fertilizer_CF(i):
+            GWP_dct['K'] = ImpactItem.get_item('K_item').CFs['GlobalWarming'] = -i
         
-        # b = -H_Ecosystems_dct['K']
-        # D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
-        # @param(name = 'K fertilizer Ecosystems CF', element = 'LCA', kind = 'isolated',
-        #        units = 'points/kg K', baseline = b, distribution = D)
-        # def set_K_fertilizer_Ecosystems_CF(i):
-        #     H_Ecosystems_dct['K'] = ImpactItem.get_item('K_item').CFs['H_Ecosystems'] = -i
+        b = -H_Ecosystems_dct['K']
+        D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
+        @param(name = 'K fertilizer Ecosystems CF', element = 'LCA', kind = 'isolated',
+               units = 'points/kg K', baseline = b, distribution = D)
+        def set_K_fertilizer_Ecosystems_CF(i):
+            H_Ecosystems_dct['K'] = ImpactItem.get_item('K_item').CFs['H_Ecosystems'] = -i
 
-        # b = -H_Health_dct['K']
-        # D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
-        # @param(name = 'K fertilizer Health CF', element = 'LCA', kind = 'isolated',
-        #        units = 'points/kg K', baseline = b, distribution = D)
-        # def set_K_fertilizer_Health_CF(i):
-        #     H_Health_dct['K'] = ImpactItem.get_item('K_item').CFs['H_Health'] = -i
+        b = -H_Health_dct['K']
+        D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
+        @param(name = 'K fertilizer Health CF', element = 'LCA', kind = 'isolated',
+               units = 'points/kg K', baseline = b, distribution = D)
+        def set_K_fertilizer_Health_CF(i):
+            H_Health_dct['K'] = ImpactItem.get_item('K_item').CFs['H_Health'] = -i
         
-        # b = -H_Resources_dct['K']
-        # D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
-        # @param(name = 'K fertilizer Resources CF', element = 'LCA', kind = 'isolated',
-        #        units = 'points/kg K', baseline = b, distribution = D)
-        # def set_K_fertilizer_Resources_CF(i):
-        #     H_Resources_dct['K'] = ImpactItem.get_item('K_item').CFs['H_Resources'] = -i
+        b = -H_Resources_dct['K']
+        D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
+        @param(name = 'K fertilizer Resources CF', element = 'LCA', kind = 'isolated',
+               units = 'points/kg K', baseline = b, distribution = D)
+        def set_K_fertilizer_Resources_CF(i):
+            H_Resources_dct['K'] = ImpactItem.get_item('K_item').CFs['H_Resources'] = -i
         
-        # # Recovered Ammonium as alternative N fertilizer, in GWP, H_Ecosystems, H_Health, H_Resources
-        # b = 5.4 * (14 / 18) # refer to Reclaimer and Biogenic Refinery, as below
-        # D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
-        # @param(name = 'Ammonium fertilizer CF', element = 'LCA', kind = 'isolated',
-        #        units = 'kg CO2-eq/kg Ammonium', baseline = b, distribution = D)
-        # def set_Ammonium_fertilizer_CF(i):
-        #     GWP_dct['ammonium'] = ImpactItem.get_item('ammonium_item').CFs['GlobalWarming'] = -i
+        # Recovered Ammonium as alternative N fertilizer, in GWP, H_Ecosystems, H_Health, H_Resources
+        b = 5.4 * (14 / 18) # refer to Reclaimer and Biogenic Refinery, as below
+        D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
+        @param(name = 'Ammonium fertilizer CF', element = 'LCA', kind = 'isolated',
+               units = 'kg CO2-eq/kg Ammonium', baseline = b, distribution = D)
+        def set_Ammonium_fertilizer_CF(i):
+            GWP_dct['ammonium'] = ImpactItem.get_item('ammonium_item').CFs['GlobalWarming'] = -i
         
-        # b = 0.0461961 * (14 / 18)
-        # D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
-        # @param(name = 'Ammonium fertilizer Ecosystems CF', element = 'LCA', kind = 'isolated',
-        #        units = 'points/kg Ammonium', baseline = b, distribution = D)
-        # def set_Ammonium_fertilizer_Ecosystems_CF(i):
-        #     H_Ecosystems_dct['ammonium'] = ImpactItem.get_item('ammonium_item').CFs['H_Ecosystems'] = -i
+        b = 0.0461961 * (14 / 18)
+        D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
+        @param(name = 'Ammonium fertilizer Ecosystems CF', element = 'LCA', kind = 'isolated',
+               units = 'points/kg Ammonium', baseline = b, distribution = D)
+        def set_Ammonium_fertilizer_Ecosystems_CF(i):
+            H_Ecosystems_dct['ammonium'] = ImpactItem.get_item('ammonium_item').CFs['H_Ecosystems'] = -i
 
-        # b = 0.637826734 * (14 / 18)
-        # D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
-        # @param(name = 'Ammonium fertilizer Health CF', element = 'LCA', kind = 'isolated',
-        #        units = 'points/kg Ammonium', baseline = b, distribution = D)
-        # def set_Ammonium_fertilizer_Health_CF(i):
-        #     H_Health_dct['ammonium'] = ImpactItem.get_item('ammonium_item').CFs['H_Health'] = -i
+        b = 0.637826734 * (14 / 18)
+        D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
+        @param(name = 'Ammonium fertilizer Health CF', element = 'LCA', kind = 'isolated',
+               units = 'points/kg Ammonium', baseline = b, distribution = D)
+        def set_Ammonium_fertilizer_Health_CF(i):
+            H_Health_dct['ammonium'] = ImpactItem.get_item('ammonium_item').CFs['H_Health'] = -i
         
-        # b = 0.259196888 * (14 / 18)
-        # D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
-        # @param(name = 'Ammonium fertilizer Resources CF', element = 'LCA', kind = 'isolated',
-        #        units = 'points/kg Ammonium', baseline = b, distribution = D)
-        # def set_Ammonium_fertilizer_Resources_CF(i):
-        #     H_Resources_dct['ammonium'] = ImpactItem.get_item('ammonium_item').CFs['H_Resources'] = -i
+        b = 0.259196888 * (14 / 18)
+        D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
+        @param(name = 'Ammonium fertilizer Resources CF', element = 'LCA', kind = 'isolated',
+               units = 'points/kg Ammonium', baseline = b, distribution = D)
+        def set_Ammonium_fertilizer_Resources_CF(i):
+            H_Resources_dct['ammonium'] = ImpactItem.get_item('ammonium_item').CFs['H_Resources'] = -i
         
-        # # Recovered Struvite as alternative fertilizer, in GWP, H_Ecosystems, H_Health, H_Resources
-        # b = 4.9 * (30.97 / 245.41)
-        # D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
-        # @param(name = 'Struvite fertilizer CF', element = 'LCA', kind = 'isolated',
-        #        units = 'kg CO2-eq/kg Struvite', baseline = b, distribution = D)
-        # def set_Struvite_fertilizer_CF(i):
-        #     GWP_dct['struvite'] = ImpactItem.get_item('struvite_item').CFs['GlobalWarming'] = -i
+        # Recovered Struvite as alternative fertilizer, in GWP, H_Ecosystems, H_Health, H_Resources
+        b = 4.9 * (30.97 / 245.41)
+        D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
+        @param(name = 'Struvite fertilizer CF', element = 'LCA', kind = 'isolated',
+               units = 'kg CO2-eq/kg Struvite', baseline = b, distribution = D)
+        def set_Struvite_fertilizer_CF(i):
+            GWP_dct['struvite'] = ImpactItem.get_item('struvite_item').CFs['GlobalWarming'] = -i
         
-        # b = 0.093269908 * (30.97 / 245.41)
-        # D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
-        # @param(name = 'Struvite fertilizer Ecosystems CF', element = 'LCA', kind = 'isolated',
-        #        units = 'points/kg Struvite', baseline = b, distribution = D)
-        # def set_Struvite_fertilizer_Ecosystems_CF(i):
-        #     H_Ecosystems_dct['struvite'] = ImpactItem.get_item('struvite_item').CFs['H_Ecosystems'] = -i
+        b = 0.093269908 * (30.97 / 245.41)
+        D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
+        @param(name = 'Struvite fertilizer Ecosystems CF', element = 'LCA', kind = 'isolated',
+               units = 'points/kg Struvite', baseline = b, distribution = D)
+        def set_Struvite_fertilizer_Ecosystems_CF(i):
+            H_Ecosystems_dct['struvite'] = ImpactItem.get_item('struvite_item').CFs['H_Ecosystems'] = -i
         
-        # b = 1.774294425 * (30.97 / 245.41)
-        # D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
-        # @param(name = 'Struvite fertilizer Health CF', element = 'LCA', kind = 'isolated',
-        #        units = 'points/kg Struvite', baseline = b, distribution = D)
-        # def set_Struvite_fertilizer_Health_CF(i):
-        #     H_Health_dct['struvite'] = ImpactItem.get_item('struvite_item').CFs['H_Health'] = -i
+        b = 1.774294425 * (30.97 / 245.41)
+        D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
+        @param(name = 'Struvite fertilizer Health CF', element = 'LCA', kind = 'isolated',
+               units = 'points/kg Struvite', baseline = b, distribution = D)
+        def set_Struvite_fertilizer_Health_CF(i):
+            H_Health_dct['struvite'] = ImpactItem.get_item('struvite_item').CFs['H_Health'] = -i
         
-        # b = 1.084191599 * (30.97 / 245.41)
-        # D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
-        # @param(name = 'Struvite fertilizer Resources CF', element = 'LCA', kind = 'isolated',
-        #        units = 'points/kg Struvite', baseline = b, distribution = D)
-        # def set_Struvite_fertilizer_Resources_CF(i):
-        #     H_Resources_dct['struvite'] = ImpactItem.get_item('struvite_item').CFs['H_Resources'] = -i
+        b = 1.084191599 * (30.97 / 245.41)
+        D = shape.Triangle(lower = b * 0.90, midpoint = b, upper = b * 1.1)
+        @param(name = 'Struvite fertilizer Resources CF', element = 'LCA', kind = 'isolated',
+               units = 'points/kg Struvite', baseline = b, distribution = D)
+        def set_Struvite_fertilizer_Resources_CF(i):
+            H_Resources_dct['struvite'] = ImpactItem.get_item('struvite_item').CFs['H_Resources'] = -i
     
     ########################################################### Add other CFs ###############################################################
     item_path = os.path.join(el_data_path, 'impact_items.xlsx')
@@ -838,11 +813,11 @@ def create_modelEL(country_specific=False, **model_kwargs):
         'AerobicTank': unitEL.AeroT,
         # # 'PACAgitationPump': unitEL.P_PAC_agitation,
         # # 'PACDosingPump': unitEL.P_PAC_dosing,
-        # 'AerobicTankBlower': unitEL.B_AeroT,
+        'AerobicTankBlower': unitEL.B_AeroT,
         'MembraneTank': unitEL.MembT,
         # # 'NitrateReturnPumpToPC': unitEL.P_NitrateReturn_PC,
         # # 'NitrateReturnPumpToAnoxicTank': unitEL.P_NitrateReturn_AnoxT,
-        # 'MembraneTankBlower': unitEL.B_MembT,
+        'MembraneTankBlower': unitEL.B_MembT,
         # # 'SelfPrimingPump': unitEL.P_MT_selfpriming,
         'ClearWaterTank': unitEL.CWT,
         # # 'O3Generator': unitEL.O3_gen,

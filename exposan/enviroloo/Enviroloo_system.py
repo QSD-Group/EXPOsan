@@ -455,7 +455,7 @@ def create_systemEL(flowsheet = None):
     #                )
     
     teaEL = TEA(system=sysEL, discount_rate=discount_rate,
-           start_year=2024, lifetime=20, uptime_ratio=1,
+           start_year=2024, lifetime=30, uptime_ratio=1,
            CEPCI = 567.5,
            CAPEX = 0.01,  
            #lang_factor=None,
@@ -468,7 +468,7 @@ def create_systemEL(flowsheet = None):
     get_powerEL = lambda: sum([u.power_utility.rate for u in sysEL.units]) * (24 * 365 * teaEL.lifetime)
     #get_powerEL = lambda: sum([(getattr(u.power_utility, 'rate', 0) * u.uptime_ratio) for u in sysEL.units]) * (365 * teaEL.lifetime) * 12
     
-    LCA(system=sysEL, lifetime=20, lifetime_unit='yr', uptime_ratio=1.0, e_item=get_powerEL)
+    LCA(system=sysEL, lifetime=30, lifetime_unit='yr', uptime_ratio=1.0, e_item=get_powerEL)
 
     return sysEL
 
