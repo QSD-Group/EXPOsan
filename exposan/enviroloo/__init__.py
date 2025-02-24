@@ -344,7 +344,7 @@ def get_recoveries(system, include_breakdown=False):
 ######################################################## Financial and Cost parameters ##############################################################
 ## 
 percent_CAPEX_to_scale = 0.1
-number_of_units = 1000
+number_of_units = 1
 percent_limit = 0.015
 learning_curve_percent = 0.90  # assume learning curve
 def get_scaled_capital(tea):
