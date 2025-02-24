@@ -130,17 +130,17 @@ def create_systemEL(flowsheet = None):
     
     WasteWaterGenerator = EL_Excretion('WasteWaterGenerator', outs=('urine', 'feces'))
 
-    # Toilet = su.MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'FlushingWater', 'ToiletPaper'), 
-    #                 outs =('MixedWasteWater', 'Toilet_CH4', 'Toilet_N2O'),
-    #                 decay_k_COD = get_decay_k(),
-    #                 decay_k_N = get_decay_k(),
-    #                 max_CH4_emission = max_CH4_emission,
-    #                 N_user = get_toilet_users(), 
-    #                 N_toilet = ppl / get_toilet_users(),
-    #                 if_flushing = True, if_desiccant = False, if_toilet_paper = True,
-    #                 CAPEX = 0, # capital cost of a single toilet
-    #                 OPEX_over_CAPEX = 0.07, # fraction of annual operating cost over total capital cost
-    #                 )
+    Toilet = su.MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'FlushingWater', 'ToiletPaper'), 
+                    outs =('MixedWasteWater', 'Toilet_CH4', 'Toilet_N2O'),
+                    decay_k_COD = get_decay_k(),
+                    decay_k_N = get_decay_k(),
+                    max_CH4_emission = max_CH4_emission,
+                    N_user = get_toilet_users(), 
+                    N_toilet = ppl / get_toilet_users(),
+                    if_flushing = True, if_desiccant = False, if_toilet_paper = True,
+                    CAPEX = 0, # capital cost of a single toilet
+                    OPEX_over_CAPEX = 0.06, # fraction of annual operating cost over total capital cost
+                    )
     
     # Toilet = su.MURT('Toilet',
     #                 ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'toilet_paper', 'flushing_water', 'cleansing_water', 'desiccant'),
@@ -154,18 +154,18 @@ def create_systemEL(flowsheet = None):
     #                 decay_k_N=get_decay_k(),
     #                 max_CH4_emission=max_CH4_emission
     #                 )
-    Toilet = EL_MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'toilet_paper', 'flushing_water', 'cleansing_water', 'desiccant'),
-                outs=('mixed_waste', 'Toilet_CH4', 'Toilet_N2O'),
-                decay_k_COD=get_decay_k(),
-                decay_k_N=get_decay_k(),
-                max_CH4_emission=max_CH4_emission,
-                N_user=25, N_tot_user=ppl, lifetime=10,
-                if_flushing=True, if_desiccant=False, if_toilet_paper=True,
-                CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06)    
+    # Toilet = EL_MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'toilet_paper', 'flushing_water', 'cleansing_water', 'desiccant'),
+    #             outs=('mixed_waste', 'Toilet_CH4', 'Toilet_N2O'),
+    #             decay_k_COD=get_decay_k(),
+    #             decay_k_N=get_decay_k(),
+    #             max_CH4_emission=max_CH4_emission,
+    #             N_user=25, N_tot_user=ppl, lifetime=10,
+    #             if_flushing=True, if_desiccant=False, if_toilet_paper=True,
+    #             CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06)    
 
     CT = EL_CT('CT', ins=(Toilet-0, 'PrimaryClarP_return','PrimaryClar_spill', 'ClearWaterTank_spill'), 
                     outs = ('TreatedWater'),
-                    V_wf = 0.9, ppl = ppl, baseline_ppl = 30,
+                    V_wf = 0.9, ppl = ppl, baseline_ppl = 100,
                     kW_per_m3=0.1,  # The power consumption per unit volume of the tank
                     )
     
@@ -179,7 +179,7 @@ def create_systemEL(flowsheet = None):
     
     PC = EL_PC('PC', ins=(P_CT_lift-0, 'NitrateReturn_MT'), outs=('TreatedWater', 'PC_return' , 2-CT),
                     ppl = ppl,  # The number of people served
-                    baseline_ppl = 30,
+                    baseline_ppl = 100,
                     solids_removal_efficiency = 0.85,  # The solids removal efficiency
                     sludge_flow_rate = 0.5,  # Sludge flow rate
                     max_oveflow = 0.3,
@@ -223,7 +223,7 @@ def create_systemEL(flowsheet = None):
     AnoxT = EL_Anoxic('AnoxT', ins=(PC-0, 'NitrateReturn_MT', P_Glu_dosing-0, P_AnoxT_agitation-0), 
                             outs = ('TreatedWater', 'AnoxT_CH4', 'AnoxT_N2O'),
                             degraded_components=('OtherSS',),  
-                            ppl = ppl, baseline_ppl = 30,
+                            ppl = ppl, baseline_ppl = 100,
                             )
     
 
@@ -265,13 +265,13 @@ def create_systemEL(flowsheet = None):
                             # eff_motor=0.95, # efficiency of the motor in fraction
                             # AFF=3.33, # air flow fraction
                             # building_unit_cost=9, # unit cost of the building, in USD/ft2
-                            ppl = ppl, baseline_ppl = 30,
+                            ppl = ppl, baseline_ppl = 100,
                            )
     B_AeroT.line = 'Air to aerobic tank'
     
     AeroT = EL_Aerobic('AeroT', ins=(AnoxT-0, P_PAC_dosing-0, B_AeroT-0), 
                             outs = ('TreatedWater', 'AeroT_CH4', 'AeroT_N2O'), 
-                            ppl = ppl, baseline_ppl = 30,
+                            ppl = ppl, baseline_ppl = 100,
                             )
     
     B_MembT = EL_blower('B_MembT', ins = streamEL['air'], outs = 'Air_to_membrane', 
@@ -295,7 +295,7 @@ def create_systemEL(flowsheet = None):
                             # eff_motor=0.95, # efficiency of the motor in fraction
                             # AFF=3.33, # air flow fraction
                             # building_unit_cost=9, # unit cost of the building, in USD/ft2
-                            ppl = ppl, baseline_ppl = 30,
+                            ppl = ppl, baseline_ppl = 100,
                             )
     B_MembT.line = 'Air to membrane tank'
     
@@ -317,7 +317,7 @@ def create_systemEL(flowsheet = None):
     MembT = EL_MBR('MembT', ins=(AeroT-0, B_MembT-0), 
                         outs = ('TreatedWater', 0-P_NitrateReturn_PC, 0-P_NitrateReturn_AnoxT, 'MemT_CH4', 'MemT_N2O'),
                         ppl = ppl,
-                        baseline_ppl = 30,
+                        baseline_ppl = 100,
                         )
     
     P_MT_selfpriming = SelfPrimingPump('P_MT_selfpriming', ins=MembT-0, outs='SelfPrimingWater', 
@@ -348,7 +348,7 @@ def create_systemEL(flowsheet = None):
     CWT = EL_CWT('CWT', ins=(P_MT_selfpriming-0, P_O3_dosing-0, P_AirDissolved-0), 
                     outs= ('ClearWater', 3-CT, 0-P_AirDissolved), 
                     V_wf = 0.9, 
-                    ppl = ppl, baseline_ppl = 30,
+                    ppl = ppl, baseline_ppl = 100,
                     )
    
     P_CWT = ClearWaterPump('P_CWT', ins=CWT-0, outs='ReuseWater', 
@@ -362,7 +362,7 @@ def create_systemEL(flowsheet = None):
     PT = EL_PT('PT', ins=P_CWT-0, outs=(3-Toilet, 'pipeline_system'), vessel_material = None, V_wf = None, 
                         include_construction = True, length_to_diameter = None, 
                         F_BM_default = 1, kW_per_m3 = 0.1, vessel_type = None, tau = None, 
-                        ppl = ppl, baseline_ppl = 30,
+                        ppl = ppl, baseline_ppl = 100,
                         )
     
     # CWT.add_specification(lambda: update_carbon_COD_ratio(sysEL))
@@ -379,7 +379,7 @@ def create_systemEL(flowsheet = None):
     # Other impacts and costs
     Pipeline_system = EL_System('Pipeline_system', ins=PT-1, 
                                 # outs='PipelineConnection',
-                                ppl = ppl, baseline_ppl = 30, if_gridtied=True)
+                                ppl = ppl, baseline_ppl = 100, if_gridtied=True)
     # #Other_housing = EL_Housing('Other_housing', ins=Other_system-0, outs='Transport', ppl = ppl, baseline_ppl = 30)
     # Other_WasteTransport = Trucking('Other_WasteTransport', ins = Other_system-0, outs = ('WasteTransport', 'ConveyanceLoss'), 
     #                                    load = 20, # transportation load per trip

@@ -51,7 +51,7 @@ class LiftPump(Pump):
                  dP_design=None,  # The extra pressure of the pump [Pa]
                  P=101325,  # The pressure of the pump [Pa]
                  life_time=None, pump_cost=None, working_factor=None,
-                 operation_time=None, ppl=1000, baseline_ppl=30):
+                 operation_time=None, ppl=100, baseline_ppl=100):
                  
         # Initialize the LiftPump with parent class logic
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
@@ -137,7 +137,7 @@ class AgitationPump(Pump):
                  dP_design=None,  # The extra pressure of the pump [Pa]
                  P=101325,  # The pressure of the pump [Pa]
                  life_time=None, pump_cost=None, working_factor=None,
-                 operation_time=None, ppl=1000, baseline_ppl=30):
+                 operation_time=None, ppl=100, baseline_ppl=100):
                  
         # Initialize the LiftPump with parent class logic
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
@@ -224,7 +224,7 @@ class DosingPump(Pump):
                  P=101325,  # The pressure of the pump [Pa]
                  life_time=None, pump_cost=None, working_factor=None,
                  price_ratio=0.9,
-                 operation_time=None, ppl=1000, baseline_ppl=30):
+                 operation_time=None, ppl=100, baseline_ppl=100):
                  
         # Initialize the LiftPump with parent class logic
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
@@ -313,7 +313,7 @@ class ReturnPump(Pump):
                  dP_design=None,  # The extra pressure of the pump [Pa]
                  P=101325,  # The pressure of the pump [Pa]
                  life_time=None, pump_cost=None, working_factor=None, 
-                 price_ratio = 0.9, operation_time=None, ppl=1000, baseline_ppl=30):
+                 price_ratio = 0.9, operation_time=None, ppl=100, baseline_ppl=100):
                  
         # Initialize the LiftPump with parent class logic
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
@@ -401,7 +401,7 @@ class SelfPrimingPump(Pump):
                  P=101325,  # The pressure of the pump [Pa]
                  price_ratio=0.9,
                  life_time=None, pump_cost=None, working_factor=None,
-                 operation_time=None, ppl=1000, baseline_ppl=30):
+                 operation_time=None, ppl=100, baseline_ppl=100):
                  
         # Initialize the LiftPump with parent class logic
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
@@ -490,7 +490,7 @@ class AirDissolvedPump(Pump):
                  P=101325,  # The pressure of the pump [Pa]
                  price_ratio=0.9,
                  life_time=None, pump_cost=None, working_factor=None,
-                 operation_time=None, ppl=1000, baseline_ppl=30):
+                 operation_time=None, ppl=100, baseline_ppl=100):
                  
         # Initialize the LiftPump with parent class logic
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
@@ -579,7 +579,7 @@ class MicroBubblePump(Pump):
                  P=101325,  # The pressure of the pump [Pa]
                  price_ratio=0.9,
                  life_time=None, pump_cost=None, working_factor=None,
-                 operation_time=None, ppl=1000, baseline_ppl=30):
+                 operation_time=None, ppl=100, baseline_ppl=100):
                  
         # Initialize the LiftPump with parent class logic
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,
@@ -667,7 +667,7 @@ class ClearWaterPump(Pump):
                  P=101325,  # The pressure of the pump [Pa]
                  price_ratio=0.9,
                  life_time=None, pump_cost=None, working_factor=None,
-                 operation_time=None, ppl=1000, baseline_ppl=30):
+                 operation_time=None, ppl=100, baseline_ppl=100):
                  
         # Initialize the LiftPump with parent class logic
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM_default,

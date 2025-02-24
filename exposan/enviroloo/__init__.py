@@ -31,12 +31,12 @@ data_path, results_path = _init_modules(module, include_data_path = True)
 #                          Assign the default values of the parameters in the Enviroloo Clear (EL) system
 #
 ############################################################################################################################################
-household_size = 6  # refer to EXPOsan/exposan/pou_disinfection/__init__.py where household size meets normal distribution with mu =4,
+household_size = 5  # refer to EXPOsan/exposan/pou_disinfection/__init__.py where household size meets normal distribution with mu =4,
                     # and sigma = 1.4 at global scale
-household_per_toilet = 5
+household_per_toilet = 20
 get_toilet_users = lambda: household_size * household_per_toilet
 
-ppl = 1000 # the number of people served by the EL system. 
+ppl = 100 # the number of people served by the EL system. 
 # Here 100-user household or 1000-user school scale will be considered.
 
 discount_rate = 0.05   # discount rate, [fraction]
