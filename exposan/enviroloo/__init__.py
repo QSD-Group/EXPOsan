@@ -36,7 +36,7 @@ household_size = 5  # refer to EXPOsan/exposan/pou_disinfection/__init__.py wher
 household_per_toilet = 20
 get_toilet_users = lambda: household_size * household_per_toilet
 
-ppl = 100 # the number of people served by the EL system. 
+ppl = 1000 # the number of people served by the EL system. 
 # Here 100-user household or 1000-user school scale will be considered.
 
 discount_rate = 0.05   # discount rate, [fraction]
@@ -344,7 +344,7 @@ def get_recoveries(system, include_breakdown=False):
 ######################################################## Financial and Cost parameters ##############################################################
 ## 
 percent_CAPEX_to_scale = 0.1
-number_of_units = 1
+number_of_units = 10
 percent_limit = 0.015
 learning_curve_percent = 0.90  # assume learning curve
 def get_scaled_capital(tea):
