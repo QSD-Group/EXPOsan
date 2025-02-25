@@ -106,12 +106,12 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
     create_stream_with_impact_item(stream_ID='Glucose')
     create_stream_with_impact_item(stream_ID='air')
 
-#def update_toilet_param(unit):
+def update_toilet_param(unit):
     # Use the private attribute so that the number of users/toilets will be exactly as assigned
     # (i.e., can be fractions)
-    #unit._N_user = get_toilet_users()
-    #unit._N_toilet = ppl / get_toilet_users()
-    #unit._run()
+    unit._N_user = get_toilet_users()
+    unit._N_toilet = ppl / get_toilet_users()
+    unit._run()
 
 def update_carbon_COD_ratio(sys):
     for first_u in sys.units:
@@ -130,31 +130,34 @@ def create_systemEL(flowsheet = None):
     
     WasteWaterGenerator = EL_Excretion('WasteWaterGenerator', outs=('urine', 'feces'))
 
-    Toilet = EL_MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'FlushingWater', 'ToiletPaper'), 
-                    outs =('MixedWasteWater', 'Toilet_CH4', 'Toilet_N2O'),
-                    decay_k_COD = get_decay_k(),
-                    decay_k_N = get_decay_k(),
-                    max_CH4_emission = max_CH4_emission,
-                    N_user = get_toilet_users(), 
-                    N_toilet = ppl / get_toilet_users(),
-                    if_flushing = True, if_desiccant = False, if_toilet_paper = True,
-                    # CAPEX = 0, # capital cost of a single toilet
-                    CAPEX=500*max(1, ppl/100),
-                    OPEX_over_CAPEX = 0.06, # fraction of annual operating cost over total capital cost
-                    )
-    
-    # Toilet = su.MURT('Toilet',
-    #                 ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'toilet_paper', 'flushing_water', 'cleansing_water', 'desiccant'),
-    #                 outs=('mixed_waste', 'Toilet_CH4', 'Toilet_N2O'),
-    #                 N_user=25, N_tot_user=ppl,
-    #                 lifetime=10, if_include_front_end=True,
-    #                 if_toilet_paper=True, if_flushing=True, if_cleansing=False,
-    #                 if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
-    #                 CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06,
-    #                 decay_k_COD=get_decay_k(),
-    #                 decay_k_N=get_decay_k(),
-    #                 max_CH4_emission=max_CH4_emission
+    # Toilet = EL_MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'FlushingWater', 'ToiletPaper'), 
+    #                 outs =('MixedWasteWater', 'Toilet_CH4', 'Toilet_N2O'),
+    #                 decay_k_COD = get_decay_k(),
+    #                 decay_k_N = get_decay_k(),
+    #                 max_CH4_emission = max_CH4_emission,
+    #                 N_user = get_toilet_users(), 
+    #                 N_toilet = ppl / get_toilet_users(),
+    #                 if_flushing = True, if_desiccant = False, if_toilet_paper = True,
+    #                 # CAPEX = 0, # capital cost of a single toilet
+    #                 CAPEX=500*max(1, ppl/100),
+    #                 OPEX_over_CAPEX = 0.06, # fraction of annual operating cost over total capital cost
     #                 )
+    # Toilet.add_specification(lambda: update_toilet_param(Toilet))
+    
+    Toilet = EL_MURT('Toilet',
+                    ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'toilet_paper', 'flushing_water', 'cleansing_water', 'desiccant'),
+                    outs=('mixed_waste', 'Toilet_CH4', 'Toilet_N2O'),
+                    # N_user=get_toilet_users(), N_tot_user=ppl,
+                    N_user=get_toilet_users(), N_tot_user=ppl,
+                    lifetime=10, if_include_front_end=True,
+                    if_toilet_paper=True, if_flushing=True, if_cleansing=False,
+                    if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
+                    CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06,
+                    decay_k_COD=get_decay_k(),
+                    decay_k_N=get_decay_k(),
+                    max_CH4_emission=max_CH4_emission
+                    )
+    Toilet.add_specification(lambda: update_toilet_param(Toilet))
     # Toilet = EL_MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'toilet_paper', 'flushing_water', 'cleansing_water', 'desiccant'),
     #             outs=('mixed_waste', 'Toilet_CH4', 'Toilet_N2O'),
     #             decay_k_COD=get_decay_k(),
