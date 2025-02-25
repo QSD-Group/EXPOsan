@@ -415,28 +415,17 @@ def print_summaries(systems):
             print(f'\nTotal P recovery: {recovery_functions[1]():.1f} %.')
             print(f'\nTotal K recovery: {recovery_functions[2]():.1f} %.')
             
-            TEA_functions = get_TEA_metrics(sys, include_breakdown=True)
+            TEA_functions = get_TEA_metrics(sys, include_breakdown=False)
             unit = f'{qs.currency}/cap/yr'
             print(f'\nTotal cost: {TEA_functions[0]():.2f} {unit}.')
-            print(f'\nCAPEX: {TEA_functions[1]():.2f} {unit}.')
-            print(f'\nAnnual electricity consumption: {TEA_functions[2]():.2f} {unit}.')
-            print(f'\nAnnual labor cost: {TEA_functions[3]():.2f} {unit}.')
-            print(f'\nSales incoming: {TEA_functions[4]():.2f} {unit}.')
                     
-            LCA_functions = get_LCA_metrics(sys, include_breakdown=True)
+            LCA_functions = get_LCA_metrics(sys, include_breakdown=False)
             print(f'\nNet emission: {LCA_functions[0]():.2f} kg CO2-eq/cap/yr.')
 
-            unit1 = 'points/cap/yr' # breakdown of Impact Indicators
-            print(f'\nNet ecosystems damage: {LCA_functions[1]():.2f} {unit1}.')
-            print(f'\nNet health damage: {LCA_functions[2]():.2f} {unit1}.')
-            print(f'\nNet resources damage: {LCA_functions[3]():.2f} {unit1}.')
-            
-            unit2 = 'kg CO2-eq/cap/yr' # breakdown of GWP Impact Item
-            print(f'\nConstruction impacts contributed to GWP: {LCA_functions[1]():.2f} {unit2}.')
-            print(f'\nTransportation impacts contributed to GWP: {LCA_functions[2]():.2f} {unit2}.')
-            print(f'\nStream impacts contributed to GWP: {LCA_functions[3]():.2f} {unit2}.')
-            print(f'\nOther impacts contributed to GWP: {LCA_functions[4]():.2f} {unit2}.')
-            
+            unit = 'points/cap/yr' # breakdown of Impact Indicators
+            print(f'\nNet ecosystems damage: {LCA_functions[1]():.2f} {unit}.')
+            print(f'\nNet health damage: {LCA_functions[2]():.2f} {unit}.')
+            print(f'\nNet resources damage: {LCA_functions[3]():.2f} {unit}.')
         else:
             sys.TEA.show()
             print('\n')
