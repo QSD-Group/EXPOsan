@@ -130,7 +130,7 @@ def create_systemEL(flowsheet = None):
     
     WasteWaterGenerator = EL_Excretion('WasteWaterGenerator', outs=('urine', 'feces'))
 
-    Toilet = su.MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'FlushingWater', 'ToiletPaper'), 
+    Toilet = EL_MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'FlushingWater', 'ToiletPaper'), 
                     outs =('MixedWasteWater', 'Toilet_CH4', 'Toilet_N2O'),
                     decay_k_COD = get_decay_k(),
                     decay_k_N = get_decay_k(),
@@ -138,7 +138,8 @@ def create_systemEL(flowsheet = None):
                     N_user = get_toilet_users(), 
                     N_toilet = ppl / get_toilet_users(),
                     if_flushing = True, if_desiccant = False, if_toilet_paper = True,
-                    CAPEX = 0, # capital cost of a single toilet
+                    # CAPEX = 0, # capital cost of a single toilet
+                    CAPEX=500*max(1, ppl/100),
                     OPEX_over_CAPEX = 0.06, # fraction of annual operating cost over total capital cost
                     )
     
@@ -457,7 +458,7 @@ def create_systemEL(flowsheet = None):
     teaEL = TEA(system=sysEL, discount_rate=discount_rate,
            start_year=2024, lifetime=20, uptime_ratio=1,
            CEPCI = 567.5,
-           CAPEX = 0.01,  
+           CAPEX = 2.00,  
            #lang_factor=None,
            lang_factor=None,
            annual_maintenance=0,

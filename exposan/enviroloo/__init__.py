@@ -36,7 +36,7 @@ household_size = 5  # refer to EXPOsan/exposan/pou_disinfection/__init__.py wher
 household_per_toilet = 20
 get_toilet_users = lambda: household_size * household_per_toilet
 
-ppl = 1000 # the number of people served by the EL system. 
+ppl = 100 # the number of people served by the EL system. 
 # Here 100-user household or 1000-user school scale will be considered.
 
 discount_rate = 0.05   # discount rate, [fraction]
@@ -328,17 +328,17 @@ def get_recoveries(system, include_breakdown=False):
 
     # the code in the following domain is a sample, which will be updated later
     functions = [
-        lambda: N_dct['treated_sludge'] / N_dct['input'] * 100 / 1000000, # total N recovery percentage
-        lambda: P_dct['treated_sludge'] / P_dct['input'] * 100 / 1000000, # total P recovery percentage
-        lambda: K_dct['treated_sludge'] / K_dct['input'] * 100 / 1000000, # total K recovery percentage
+        lambda: N_dct['treated_sludge'] / N_dct['input'] * 100, # total N recovery percentage
+        lambda: P_dct['treated_sludge'] / P_dct['input'] * 100, # total P recovery percentage
+        lambda: K_dct['treated_sludge'] / K_dct['input'] * 100, # total K recovery percentage
         ]
     if not include_breakdown: return functions
     
     return [
         *functions,
-        lambda: N_dct['treated_sludge'] / N_dct['input'] * 100 / 1000000, # N recovery percentage
-        lambda: P_dct['treated_sludge'] / P_dct['input'] * 100 / 1000000, # P recovery percentage
-        lambda: K_dct['treated_sludge'] / K_dct['input'] * 100 / 1000000, # K recovery percentage
+        lambda: N_dct['treated_sludge'] / N_dct['input'] * 100, # N recovery percentage
+        lambda: P_dct['treated_sludge'] / P_dct['input'] * 100, # P recovery percentage
+        lambda: K_dct['treated_sludge'] / K_dct['input'] * 100, # K recovery percentage
         ]
         
 ######################################################## Financial and Cost parameters ##############################################################
