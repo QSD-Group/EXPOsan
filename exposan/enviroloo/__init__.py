@@ -36,7 +36,7 @@ household_size = 5  # refer to EXPOsan/exposan/pou_disinfection/__init__.py wher
 household_per_toilet = 20
 get_toilet_users = lambda: household_size * household_per_toilet
 
-ppl = 1000 # the number of people served by the EL system.
+ppl = 100 # the number of people served by the EL system.
 
 discount_rate = 0.05   # discount rate, [fraction]
 #discount_rate = 0.08
