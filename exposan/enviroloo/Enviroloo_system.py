@@ -408,10 +408,16 @@ def create_systemEL(flowsheet = None):
     # Other_SetupShipping.add_specification(lambda: update_carbon_COD_ratio(sysEL))
     # Other_SetupShipping.run_after_specification = True
                                                                            
-    sys0 = System('sys0', path = (WasteWaterGenerator, Toilet, CT, P_CT_lift))
-    sys1 = System('sys1', path = (sys0, PC), recycle=PC-2)
-    sys1.simulate()
-    teaEL = TEA(system=sys1, discount_rate=discount_rate,
+    sysEL_PCspill = System('sysEL_PCspill',
+                     path = (WasteWaterGenerator, Toilet, CT, P_CT_lift, PC),
+                     recycle = PC-2
+                     )
+    sysEL_PCreturn = System('sysEL_PCreturn',
+                      path = (sysEL_PCspill, P_PC_return),
+                      recycle = P_PC_return-0
+                      )
+    sysEL_PCreturn.simulate()
+    teaEL = TEA(system=sysEL_PCreturn, discount_rate=discount_rate,
            start_year=2024, lifetime=20, uptime_ratio=1,
            CEPCI = 567.5,
            CAPEX = 2.00,  
@@ -421,9 +427,9 @@ def create_systemEL(flowsheet = None):
            # annual_labor=(operator_daily_wage*3*365),
            annual_labor=0
            )
-    get_powerEL = lambda: sum([u.power_utility.rate for u in sys1.units]) * (24 * 365 * teaEL.lifetime)
-    LCA(system=sys1, lifetime=20, lifetime_unit='yr', uptime_ratio=1.0, e_item=get_powerEL)
-    return sys1
+    get_powerEL = lambda: sum([u.power_utility.rate for u in sysEL_PCreturn.units]) * (24 * 365 * teaEL.lifetime)
+    LCA(system=sysEL_PCreturn, lifetime=20, lifetime_unit='yr', uptime_ratio=1.0, e_item=get_powerEL)
+    return sysEL_PCreturn
     
     # sysEL_PCspill = System('sysEL_PCspill',
     #                  path = (sys1, P_CT_lift, PC),
