@@ -319,10 +319,16 @@ def create_systemEL(flowsheet = None):
                                         dP_design = 0,
                                         ) 
     MembT = EL_MBR('MembT', ins=(AeroT-0, B_MembT-0), 
-                        outs = ('TreatedWater', 0-P_NitrateReturn_PC, 0-P_NitrateReturn_AnoxT, 'MemT_CH4', 'MemT_N2O'),
+                        outs = ('TreatedWater', 0-P_NitrateReturn_PC, 0-P_NitrateReturn_AnoxT, 'MemT_CH4', 'MemT_N2O', 'Sludge'),
                         ppl = ppl,
                         baseline_ppl = 100,
                         )
+    
+    Solids_separation = su.ComponentSplitter('Solids_separation', ins=MembT-5,
+                                             outs=(streamA['sol_N'], streamA['sol_P'], streamA['sol_K'],
+                                             A_sol_non_fertilizers'),
+                                             split_keys=('N', 'P', 'K')
+                                             )
     
     P_MT_selfpriming = SelfPrimingPump('P_MT_selfpriming', ins=MembT-0, outs='SelfPrimingWater', 
                                         working_factor = 0.9,  # The ratio of the actual output and the design output
