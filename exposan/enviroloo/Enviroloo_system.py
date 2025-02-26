@@ -408,10 +408,10 @@ def create_systemEL(flowsheet = None):
     # Other_SetupShipping.add_specification(lambda: update_carbon_COD_ratio(sysEL))
     # Other_SetupShipping.run_after_specification = True
                                                                            
-    sys1 = System('sys1', path = (WasteWaterGenerator, Toilet))
+    sys1 = System('sys1', path = (WasteWaterGenerator, Toilet, CT))
     
     sysEL_PCspill = System('sysEL_PCspill',
-                     path = (sys1, CT, P_CT_lift, PC),
+                     path = (sys1, P_CT_lift, PC),
                      recycle = PC-2
                      )
     sysEL_PCspill.simulate()
