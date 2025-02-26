@@ -186,7 +186,7 @@ def create_systemEL(flowsheet = None):
                     baseline_ppl = 100,
                     solids_removal_efficiency = 0.85,  # The solids removal efficiency
                     sludge_flow_rate = 0.5,  # Sludge flow rate
-                    max_oveflow = 0.3,
+                    max_oveflow = 15,
                     )
     
     P_PC_return = ReturnPump('P_PC_return', ins=PC-1, outs = 1-CT, 
@@ -437,8 +437,14 @@ def create_systemEL(flowsheet = None):
                      path = (WasteWaterGenerator, Toilet, CT, P_CT_lift, PC, P_PC_return),
                      recycle = PC-2
                      )
-    sysEL_PCrecycle.simulate()
-    teaEL = TEA(system=sysEL_PCrecycle, discount_rate=discount_rate,
+    sysEL_CWTrecycle = System('sysEL_CWTrecycle',
+                       path = (sysEL_PCrecycle, P_Glu_dosing, AnoxT, P_PAC_dosing, AeroT, MembT, 
+                               P_NitrateReturn_PC, P_NitrateReturn_AnoxT, P_MT_selfpriming, CWT), 
+                       recycle = CWT-1
+                       )
+    
+    sysEL_CWTrecycle.simulate()
+    teaEL = TEA(system=sysEL_CWTrecycle, discount_rate=discount_rate,
            start_year=2024, lifetime=20, uptime_ratio=1,
            CEPCI = 567.5,
            CAPEX = 2.00,  
@@ -448,9 +454,9 @@ def create_systemEL(flowsheet = None):
            # annual_labor=(operator_daily_wage*3*365),
            annual_labor=0
            )
-    get_powerEL = lambda: sum([u.power_utility.rate for u in sysEL_PCrecycle.units]) * (24 * 365 * teaEL.lifetime)
-    LCA(system=sysEL_PCrecycle, lifetime=20, lifetime_unit='yr', uptime_ratio=1.0, e_item=get_powerEL)
-    return sysEL_PCrecycle
+    get_powerEL = lambda: sum([u.power_utility.rate for u in sysEL_CWTrecycle.units]) * (24 * 365 * teaEL.lifetime)
+    LCA(system=sysEL_CWTrecycle, lifetime=20, lifetime_unit='yr', uptime_ratio=1.0, e_item=get_powerEL)
+    return sysEL_CWTrecycle
     
     # sysEL_PCspill = System('sysEL_PCspill',
     #                  path = (sys1, P_CT_lift, PC),
