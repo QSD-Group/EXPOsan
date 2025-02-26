@@ -412,34 +412,44 @@ def create_systemEL(flowsheet = None):
                      path = (WasteWaterGenerator, Toilet, CT, P_CT_lift, PC),
                      recycle = PC-2
                      )
+    sysEL_PCspill.simulate()
+    teaEL = TEA(system=sysEL_PCspill, discount_rate=discount_rate,
+           start_year=2024, lifetime=20, uptime_ratio=1,
+           CEPCI = 567.5,
+           CAPEX = 2.00,  
+           #lang_factor=None,
+           lang_factor=None,
+           annual_maintenance=0,
+           # annual_labor=(operator_daily_wage*3*365),
+           annual_labor=0
+           )
+    # sysEL_PCreturn = System('sysEL_PCreturn',
+    #                   path = (sysEL_PCspill, P_PC_return),
+    #                   recycle = P_PC_return-0
+    #                   )
     
-    sysEL_PCreturn = System('sysEL_PCreturn',
-                      path = (sysEL_PCspill, P_PC_return),
-                      recycle = P_PC_return-0
-                      )
+    # sysEL_MBR_PC = System('sysEL_MBR_PC',
+    #                 path = (sysEL_PCreturn, P_AnoxT_agitation, P_Glu_agitation, P_Glu_dosing, AnoxT, 
+    #                         P_PAC_agitation,P_PAC_dosing, AeroT, MembT, P_NitrateReturn_PC),
+    #                 recycle = P_NitrateReturn_PC-0
+    #                 )
     
-    sysEL_MBR_PC = System('sysEL_MBR_PC',
-                    path = (sysEL_PCreturn, P_AnoxT_agitation, P_Glu_agitation, P_Glu_dosing, AnoxT, 
-                            P_PAC_agitation,P_PAC_dosing, AeroT, MembT, P_NitrateReturn_PC),
-                    recycle = P_NitrateReturn_PC-0
-                    )
+    # sysEL_MBR_AnoxT = System('sysEL_MBR_AnoxT',
+    #                    path = (sysEL_MBR_PC, P_NitrateReturn_AnoxT),
+    #                    recycle = P_NitrateReturn_AnoxT-0
+    #                    )
     
-    sysEL_MBR_AnoxT = System('sysEL_MBR_AnoxT',
-                       path = (sysEL_MBR_PC, P_NitrateReturn_AnoxT),
-                       recycle = P_NitrateReturn_AnoxT-0
-                       )
+    # sysEL_CWT = System('sysEL_PT',
+    #              path = (sysEL_MBR_AnoxT, P_MT_selfpriming, P_O3_dosing, CWT),
+    #              recycle = CWT-1
+    #              )
     
-    sysEL_CWT = System('sysEL_PT',
-                 path = (sysEL_MBR_AnoxT, P_MT_selfpriming, P_O3_dosing, CWT),
-                 recycle = CWT-1
-                 )
+    # sysEL = System('sysEL',
+    #             path = (sysEL_CWT, P_CWT, PT),
+    #             recycle = PT-0
+    #             )
     
-    sysEL = System('sysEL',
-                path = (sysEL_CWT, P_CWT, PT),
-                recycle = PT-0
-                )
-    
-    sysEL.simulate()
+    # sysEL.simulate()
     
     # sysEL = System('sysEL', path=(WasteWaterGenerator,
     #                               Toilet,
@@ -502,16 +512,16 @@ def create_systemEL(flowsheet = None):
     #        annual_labor=0
     #        )
    
-    teaEL = TEA(system=sysEL_PT, discount_rate=discount_rate,
-           start_year=2024, lifetime=20, uptime_ratio=1,
-           CEPCI = 567.5,
-           CAPEX = 2.00,  
-           #lang_factor=None,
-           lang_factor=None,
-           annual_maintenance=0,
-           # annual_labor=(operator_daily_wage*3*365),
-           annual_labor=0
-           )
+    # teaEL = TEA(system=sysEL_PT, discount_rate=discount_rate,
+    #        start_year=2024, lifetime=20, uptime_ratio=1,
+    #        CEPCI = 567.5,
+    #        CAPEX = 2.00,  
+    #        #lang_factor=None,
+    #        lang_factor=None,
+    #        annual_maintenance=0,
+    #        # annual_labor=(operator_daily_wage*3*365),
+    #        annual_labor=0
+    #        )
    
     get_powerEL = lambda: sum([u.power_utility.rate for u in sysEL.units]) * (24 * 365 * teaEL.lifetime)
     #get_powerEL = lambda: sum([(getattr(u.power_utility, 'rate', 0) * u.uptime_ratio) for u in sysEL.units]) * (365 * teaEL.lifetime) * 12
