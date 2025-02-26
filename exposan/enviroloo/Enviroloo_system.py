@@ -411,7 +411,7 @@ def create_systemEL(flowsheet = None):
     sys1 = System('sys1', path = (WasteWaterGenerator, Toilet))
     
     sysEL_PCspill = System('sysEL_PCspill',
-                     path = (sys1 CT, P_CT_lift, PC),
+                     path = (sys1, CT, P_CT_lift, PC),
                      recycle = PC-2
                      )
     sysEL_PCspill.simulate()
