@@ -327,7 +327,7 @@ def create_systemEL(flowsheet = None):
     Solids_separation = su.ComponentSplitter('Solids_separation', ins=MembT-5,
                                              outs=(streamEL['sol_N'], streamEL['sol_P'], streamEL['sol_K'],
                                              'A_sol_non_fertilizers'),
-                                             split_keys=('N', 'P', 'K')
+                                             split_keys=(('NH3','NonNH3'), 'P', 'K')
                                              )
     
     P_MT_selfpriming = SelfPrimingPump('P_MT_selfpriming', ins=MembT-0, outs='SelfPrimingWater', 
