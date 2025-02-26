@@ -437,14 +437,21 @@ def create_systemEL(flowsheet = None):
                      path = (WasteWaterGenerator, Toilet, CT, P_CT_lift, PC, P_PC_return),
                      recycle = PC-2
                      )
+    
     sysEL_CWTrecycle = System('sysEL_CWTrecycle',
-                       path = (sysEL_PCrecycle, P_Glu_dosing, AnoxT, P_PAC_dosing, AeroT, MembT, 
+                       path = (sysEL_PCrecycle, P_AnoxT_agitation, P_Glu_agitation, P_Glu_dosing, AnoxT, 
+                               P_PAC_agitation, P_PAC_dosing, B_AeroT, AeroT, B_MembT, MembT, 
                                P_NitrateReturn_PC, P_NitrateReturn_AnoxT, P_MT_selfpriming, CWT), 
                        recycle = CWT-1
                        )
     
-    sysEL_CWTrecycle.simulate()
-    teaEL = TEA(system=sysEL_CWTrecycle, discount_rate=discount_rate,
+    sysEL_PTrecycle = System('sysEL_PTrecycle',
+                             path = sysEL_CWTrecycle, PT, Total_N2O, Total_CH4, Pipeline_system),
+                             recycle = PT-0
+                             )
+    
+    sysEL_PTrecycle.simulate()
+    teaEL = TEA(system=sysEL_PTrecycle, discount_rate=discount_rate,
            start_year=2024, lifetime=20, uptime_ratio=1,
            CEPCI = 567.5,
            CAPEX = 2.00,  
@@ -454,9 +461,9 @@ def create_systemEL(flowsheet = None):
            # annual_labor=(operator_daily_wage*3*365),
            annual_labor=0
            )
-    get_powerEL = lambda: sum([u.power_utility.rate for u in sysEL_CWTrecycle.units]) * (24 * 365 * teaEL.lifetime)
-    LCA(system=sysEL_CWTrecycle, lifetime=20, lifetime_unit='yr', uptime_ratio=1.0, e_item=get_powerEL)
-    return sysEL_CWTrecycle
+    get_powerEL = lambda: sum([u.power_utility.rate for u in sysEL_PTrecycle.units]) * (24 * 365 * teaEL.lifetime)
+    LCA(system=sysEL_PTrecycle, lifetime=20, lifetime_unit='yr', uptime_ratio=1.0, e_item=get_powerEL)
+    return sysEL_PTrecycle
     
     # sysEL_PCspill = System('sysEL_PCspill',
     #                  path = (sys1, P_CT_lift, PC),
