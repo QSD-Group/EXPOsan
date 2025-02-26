@@ -350,7 +350,7 @@ def create_systemEL(flowsheet = None):
                                         )
 
     CWT = EL_CWT('CWT', ins=(P_MT_selfpriming-0, P_O3_dosing-0, P_AirDissolved-0), 
-                    outs= ('ClearWater', 3-CT, 0-P_AirDissolved), 
+                    outs= ('ClearWater', 3-CT), 
                     V_wf = 0.9, 
                     ppl = ppl, baseline_ppl = 100,
                     )
@@ -446,7 +446,7 @@ def create_systemEL(flowsheet = None):
                        )
     
     sysEL_PTrecycle = System('sysEL_PTrecycle',
-                             path = sysEL_CWTrecycle, PT, Total_N2O, Total_CH4, Pipeline_system),
+                             path = (sysEL_CWTrecycle, P_CWT, PT, Total_N2O, Total_CH4, Pipeline_system),
                              recycle = PT-0
                              )
     
