@@ -446,7 +446,7 @@ def create_systemEL(flowsheet = None):
     
     sysEL_CWTrecycle = System('sysEL_CWTrecycle',
                        path = (sysEL_PCrecycle, P_AnoxT_agitation, P_Glu_agitation, P_Glu_dosing, AnoxT, 
-                               P_PAC_agitation, P_PAC_dosing, B_AeroT, AeroT, B_MembT, MembT, 
+                               P_PAC_agitation, P_PAC_dosing, B_AeroT, AeroT, B_MembT, MembT, Solids_separation,
                                P_NitrateReturn_PC, P_NitrateReturn_AnoxT, P_MT_selfpriming, CWT), 
                        recycle = CWT-1
                        )
