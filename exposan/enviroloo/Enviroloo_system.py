@@ -326,7 +326,7 @@ def create_systemEL(flowsheet = None):
     
     Solids_separation = su.ComponentSplitter('Solids_separation', ins=MembT-5,
                                              outs=(streamA['sol_N'], streamA['sol_P'], streamA['sol_K'],
-                                             A_sol_non_fertilizers'),
+                                             'A_sol_non_fertilizers'),
                                              split_keys=('N', 'P', 'K')
                                              )
     
