@@ -357,7 +357,7 @@ def create_systemEL(flowsheet = None):
 
     CWT = EL_CWT('CWT', ins=(P_MT_selfpriming-0, P_O3_dosing-0, P_AirDissolved-0), 
                     outs= ('ClearWater', 3-CT), 
-                    V_wf = 0.9, 
+                    V_wf = 0.9, max_oveflow=15, 
                     ppl = ppl, baseline_ppl = 100,
                     )
    
