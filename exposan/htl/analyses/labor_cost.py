@@ -123,37 +123,3 @@ US_county_labor_cost['quotient'] = US_county_labor_cost['Annual Average Pay']/fl
 US_county_labor_cost = US_county_labor_cost[['Area\nCode','NAME','STATE','quotient','geometry']]
 
 US_county_labor_cost.to_file('/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/county_labor_cost_2022_processed.geojson')
-
-#%% visualization
-
-US_county_labor_cost = gpd.read_file('/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/county_labor_cost_2022_processed.geojson')
-
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', p, dp])
-
-fig, ax = plt.subplots(figsize=(30, 30))
-
-plt.rcParams['axes.linewidth'] = 1.5
-plt.rcParams['hatch.linewidth'] = 1.5
-plt.rcParams['xtick.labelsize'] = 35
-plt.rcParams['ytick.labelsize'] = 35
-plt.rcParams['font.sans-serif'] = 'Arial'
-
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
-
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
-plt.rcParams.update({'figure.max_open_warning': 100})
-
-ax = plt.gca()
-
-US_county_labor_cost.plot(ax=ax, column='quotient', legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=0.5)
-
-fig.axes[1].set_yticks(np.arange(0, 240, 40))
-fig.axes[1].set_ylabel('$\mathbf{Relative\ labor\ wage}$ [%]', fontname='Arial', fontsize=41)
-fig.axes[1].tick_params(length=7.5, width=1.5)
-
-ax.set_aspect(1)
-
-ax.set_axis_off()

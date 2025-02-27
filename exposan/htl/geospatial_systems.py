@@ -85,7 +85,6 @@ def create_geospatial_system(test_run=False,
                              # dry tonne sludge/day/MGD raw wastewater
                              ww_2_dry_sludge_ratio=1,
                              state='IL',
-                             # TODO: add this parameter in analysis.py
                              nitrogen_fertilizer=None,
                              elec_price=None,
                              # use balancing-area-level in the analysis
@@ -116,8 +115,6 @@ def create_geospatial_system(test_run=False,
         elec_price_data = pd.read_excel(folder + '/data/state_elec_price_2022.xlsx', 'elec_price_2022')
         bst.PowerUtility.price = elec_price_data[elec_price_data['state']==state]['price'].iloc[0]/100
     
-    
-    # TODO: update citations
     # 2022 crude oil price
     # https://www.eia.gov/dnav/pet/pet_pri_dfp1_k_m.htm (accessed 2025-02-10)
     crude_oil_price_data = pd.read_excel(folder + '/data/crude_oil_price_2022.xlsx', 'crude_oil_price_2022')

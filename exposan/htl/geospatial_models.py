@@ -51,10 +51,6 @@ GDPCTPI = {2007: 86.352,
 # cannot run more than one time of model = create_geospatial_model(system=sys, test_run=True)
 # due to the code of setting uncertainty for CI data
 
-# TODO: specify crude_oil_price ($/oil-barrel), DAP_price ($/US-ton), anhydrous_ammonia_price ($/US-ton),
-# urea_price ($/US-ton), and UAN_price ($/US-ton) when creating models in geospatial_analysis.py,
-# also pay attention to units
-
 def create_geospatial_model(system=None,
                             test_run=False,
                             sludge_ash=[],
@@ -65,6 +61,7 @@ def create_geospatial_model(system=None,
                             anhydrous_ammonia_price=[],
                             urea_price=[],
                             UAN_price=[],
+                            exclude_IRR=False,
                             include_check=True):
     '''
     Create a model based on the given system
@@ -724,15 +721,16 @@ def create_geospatial_model(system=None,
     def set_CHP_unit_TIC(i):
         CHP.unit_TIC=i
     
-    dist = shape.Triangle(0,0.03,0.05)
-    @param(name='IRR',
-           element='TEA',
-           kind='isolated',
-           units='-',
-           baseline=0.03,
-           distribution=dist)
-    def set_IRR(i):
-        tea.IRR=i
+    if not exclude_IRR:
+        dist = shape.Triangle(0,0.03,0.05)
+        @param(name='IRR',
+               element='TEA',
+               kind='isolated',
+               units='-',
+               baseline=0.03,
+               distribution=dist)
+        def set_IRR(i):
+            tea.IRR=i
     
     CHG_catalyst_price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2022]
     dist = shape.Triangle(CHG_catalyst_price*0.5,CHG_catalyst_price,CHG_catalyst_price*2)
