@@ -356,20 +356,56 @@ def get_scaled_capital(tea):
         )
     return new_CAPEX_annualized
 
-def get_TEA_metrics(system, include_breakdown=False):
+# def get_TEA_metrics(system, include_breakdown=False):
+#     tea = system.TEA
+#     get_annual_electricity = lambda system: system.power_utility.cost * system.operating_hours
+#     functions = [lambda: (get_scaled_capital(tea) - tea.net_earnings) / ppl]
+#     if not include_breakdown: return functions # net cost
+#     return [
+#         *functions,
+#         lambda: get_scaled_capital(tea) / ppl, # means CAPEX
+#         lambda: get_annual_electricity(system) / ppl, # means annual electricity consumption
+#         lambda: tea.annual_labor / ppl, # means annual labor cost
+#         lambda: (tea.AOC - get_annual_electricity(system) - tea.annual_labor) / ppl, # means OPEX excluding energy and labor sectors
+#         lambda: tea.sales / ppl, # means sales incoming
+#         ]
+
+def get_TEA_metrics(system, include_breakdown=True):
     tea = system.TEA
     get_annual_electricity = lambda system: system.power_utility.cost * system.operating_hours
-    functions = [lambda: (get_scaled_capital(tea) - tea.net_earnings) / ppl]
-    if not include_breakdown: return functions # net cost
-    return [
-        *functions,
-        lambda: get_scaled_capital(tea) / ppl, # means CAPEX
-        lambda: get_annual_electricity(system) / ppl, # means annual electricity consumption
-        lambda: tea.annual_labor / ppl, # means annual labor cost
-        lambda: (tea.AOC - get_annual_electricity(system) - tea.annual_labor) / ppl, # means OPEX excluding energy and labor sectors
-        lambda: tea.sales / ppl, # means sales incoming
-        ]
-
+    metrics = {
+        'CAPEX': get_scaled_capital(tea) / ppl,
+        'Annual electricity': get_annual_electricity(system) / ppl,
+        'Annual labor': tea.annual_labor / ppl,
+        'OPEX (excl. energy & labor)': (tea.AOC - get_annual_electricity(system) - tea.annual_labor) / ppl,
+        'Sales Income': tea.sales / ppl
+    }
+    
+    net_cost = (get_scaled_capital(tea) - tea.net_earnings) / ppl
+    
+    if not include_breakdown:
+        return net_cost
+    
+    total_cost = metrics['CAPEX'] + metrics['Annual electricity'] + \
+                 metrics['Annual labor'] + metrics['OPEX (excl. energy & labor)']
+    
+    print("\nTEA Metrics Breakdown:")
+    print("-" * 75)
+    print(f"{'Metric':<35} {'Value':>10} {'% of Total':>14} {'Unit':>15}")
+    print("-" * 75)
+    
+    # print cost breakdown
+    for metric_name in ['CAPEX', 'Annual electricity', 'Annual labor', 'OPEX (excl. energy & labor)']:
+        value = metrics[metric_name]
+        percentage = (value / total_cost * 100) if total_cost != 0 else 0
+        print(f"{metric_name:<35} {value:>10.2f} {percentage:>13.1f}% {'USD/cap/yr':>15}")
+    
+    print("-" * 75)
+    print(f"{'Total Cost':<35} {total_cost:>10.2f} {100:>13.1f}% {'USD/cap/yr':>15}")
+    print(f"{'Sales Income':<35} {metrics['Sales Income']:>10.2f} {' ':>13} {'USD/cap/yr':>15}")
+    print(f"{'Net Cost':<35} {net_cost:>10.2f} {' ':>13} {'USD/cap/yr':>15}")
+    print("-" * 75)
+    
 def get_normalized_CAPEX(units): # get the CAPEX of a unit or units normalized to per capita per day
     system = units[0].system
     return system.TEA.get_unit_annualized_equipment_cost(units) / 365 / ppl
@@ -383,23 +419,58 @@ def get_normalized_OPEX(units): # get the OPEX of a unit or units normalized to 
     OPEX += sum(s.cost for s in streams)
     return OPEX * 24 / ppl  # converted to per capita per day
 
-def get_LCA_metrics(system, include_breakdown=False):
+def get_LCA_metrics(system, include_breakdown=True):
     lca = system.LCA
-    functions = [
-        lambda: lca.total_impacts['GlobalWarming'] / lca.lifetime / ppl, # annual GWP
-        # ReCiPe LCA functions
-        lambda: lca.total_impacts['H_Ecosystems'] / lca.lifetime / ppl,
-        lambda: lca.total_impacts['H_Health'] / lca.lifetime / ppl,
-        lambda: lca.total_impacts['H_Resources'] / lca.lifetime / ppl,
-        ]
-    if not include_breakdown: return functions
-    return [
-        *functions,
-        lambda: lca.total_construction_impacts['GlobalWarming'] / lca.lifetime / ppl, # means construction fee
-        lambda: lca.total_transportation_impacts['GlobalWarming'] / lca.lifetime / ppl, # means transportation fee
-        lambda: lca.total_stream_impacts['GlobalWarming'] / lca.lifetime / ppl, # means stream impacts including fugitive gases and offsets
-        lambda: lca.total_other_impacts['GlobalWarming'] / lca.lifetime / ppl, # means other impacts in GWP
-        ]
+    metrics = {
+        'Annual GWP': {
+            'value': lca.total_impacts['GlobalWarming'] / lca.lifetime / ppl,
+            'unit': 'kg CO2-eq/cap/yr'
+        },
+        'H_Ecosystems': {
+            'value': lca.total_impacts['H_Ecosystems'] / lca.lifetime / ppl,
+            'unit': 'points/cap/yr'
+        },
+        'H_Health': {
+            'value': lca.total_impacts['H_Health'] / lca.lifetime / ppl,
+            'unit': 'points/cap/yr'
+        },
+        'H_Resources': {
+            'value': lca.total_impacts['H_Resources'] / lca.lifetime / ppl,
+            'unit': 'points/cap/yr'
+        }
+    }
+
+    if not include_breakdown:
+        return metrics['Annual GWP']['value']
+
+    # GWP breakdown
+    gwp_breakdown = {
+        'Construction': lca.total_construction_impacts['GlobalWarming'] / lca.lifetime / ppl,
+        'Transportation': lca.total_transportation_impacts['GlobalWarming'] / lca.lifetime / ppl,
+        'Stream impacts': lca.total_stream_impacts['GlobalWarming'] / lca.lifetime / ppl,
+        'Other impacts': lca.total_other_impacts['GlobalWarming'] / lca.lifetime / ppl
+    }
+    total_gwp = sum(gwp_breakdown.values())
+
+    print("\nLCA Metrics Breakdown:")
+    print("-" * 75)
+    print(f"{'Metric':<35} {'Value':>10} {'% of Total':>14} {'Unit':>15}")
+    print("-" * 75)
+
+    # print GWP breakdown
+    for metric_name, value in gwp_breakdown.items():
+        percentage = (value / total_gwp * 100) if total_gwp != 0 else 0
+        print(f"{metric_name:<35} {value:>10.2f} {percentage:>13.1f}% {'kg CO2-eq/cap/yr':>15}")
+
+    print("-" * 75)
+    print(f"{'Total GWP':<35} {total_gwp:>10.2f} {100:>13.1f}% {'kg CO2-eq/cap/yr':>15}")
+    print("-" * 75)
+    print("Other Impact Categories:")
+    for metric_name in ['H_Ecosystems', 'H_Health', 'H_Resources']:
+        value = metrics[metric_name]['value']
+        unit = metrics[metric_name]['unit']
+        print(f"{metric_name:<35} {value:>10.2f} {' ':>13} {unit:>15}")
+    print("-" * 75)
                
 def print_summaries(systems):
     try: iter(systems)
