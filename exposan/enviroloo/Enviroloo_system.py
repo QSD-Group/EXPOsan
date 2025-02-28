@@ -389,7 +389,7 @@ def create_systemEL(flowsheet = None):
     # Other impacts and costs
     Pipeline_system = EL_System('Pipeline_system', ins=PT-1, 
                                 # outs='PipelineConnection',
-                                ppl = ppl, baseline_ppl = 100, if_gridtied=True)
+                                ppl = ppl, baseline_ppl = 100, if_gridtied=False)
     # #Other_housing = EL_Housing('Other_housing', ins=Other_system-0, outs='Transport', ppl = ppl, baseline_ppl = 30)
     # Other_WasteTransport = Trucking('Other_WasteTransport', ins = Other_system-0, outs = ('WasteTransport', 'ConveyanceLoss'), 
     #                                    load = 20, # transportation load per trip
