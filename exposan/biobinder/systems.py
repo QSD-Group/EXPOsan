@@ -251,14 +251,67 @@ def create_system(
         transportation_unit_cost=0, # will be adjusted later
         transportation_distance=1,
         )
-    
     BiocrudeScaler = u.Scaler(
         'BiocrudeScaler', ins=BiocrudeTrans-0, outs='scaled_biocrude',
         scaling_factor=N_HTL, reverse=False,
         )
+    #Biocrude Price $/kg 
+#     price_dct['biocrude'] = 1
+#     biocrude = qs.WasteStream('biocrude', price=price_dct['biocrude'])
+    
+#     BiocrudeScaler = u.Scaler(
+#         'BiocrudeScaler', ins=BiocrudeTrans-0, outs=biocrude,
+#         scaling_factor=N_HTL, reverse=False,
+#         )
+#     sys = qs.System.from_units(
+#            'sys',
+#        units=list(flowsheet.unit),
+#        operating_hours=365 * 24 * uptime_ratio,
+#         )
+#     tea = create_tea(sys, cls=BiobinderTEA, **tea_kwargs)
+#     return sys
+# def simulate_and_print(sys, save_report=False):
+#     sys.simulate()
+#     tea = sys.TEA
+#     biocrude = sys.flowsheet.stream.biocrude
+
+#     # Solve for the minimum selling price (MSP) of biocrude
+#     biocrude.price = MSP = tea.solve_price(biocrude)
+#     print(f'Minimum selling price of the biocrude is ${MSP:.2f}/kg.')
+# if __name__ == '__main__':    
+  
+#     config_kwargs = dict(
+#       flowsheet=None, 
+#       central_dry_flowrate=None,
+#       pilot_dry_flowrate=None,
+#       EC_config=None
+#       )
+#     # What to do with HTL-AP
+#     config_kwargs.update(dict(skip_EC=True, generate_H2=False, EC_config=None)) # no EC
+#     # config_kwargs.update(dict(skip_EC=False, generate_H2=False, EC_config=None)) # EC, recover nutrients only
+#     # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=None)) # EC, recover nutrients and generate H2
+#     # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=EC_future_config)) # EC, recovery nutrients, generate H2, optimistic assumptions
+    
+#     # Decentralized vs. centralized configuration
+#     config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False)) # CHCU
+#     # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False)) # DHCU
+    
+#     # Distillation column cost calculation doesn't scale down well, so the cost is very high now.
+#     # But maybe don't need to do the DHDU scenario, if DHCU isn't too different from CHCU
+#     # However, maybe the elimination of transportation completely will make a difference
+#     # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=True)) # DHDU
+    
+#     sys = create_system(**config_kwargs)
+#     dct = globals()
+#     dct.update(sys.flowsheet.to_dict())
+#     tea = sys.TEA
+#     # lca = sys.LCA
+    
+#     simulate_and_print(sys)
     
     crude_fracs = [0.0339, 0.8104+0.1557]
     oil_fracs = [0.5316, 0.4684]
+    
     BiocrudeSplitter = u.BiocrudeSplitter(
         'BiocrudeSplitter', ins=BiocrudeScaler-0, outs='splitted_crude',
         biocrude_IDs=('HTLbiocrude'),
@@ -267,7 +320,7 @@ def create_system(
         )
     
     CrudePump = qsu.Pump('CrudePump', init_with='Stream', 
-                         ins=BiocrudeSplitter-0, outs='crude_to_dist',)
+                          ins=BiocrudeSplitter-0, outs='crude_to_dist',)
     
     # Separate water from organics (bp<150°C)
     CrudeLightDis = qsu.ShortcutColumn(
@@ -459,7 +512,7 @@ def create_system(
         'sys',
     units=list(flowsheet.unit),
     operating_hours=365 * 24 * uptime_ratio,
-     )
+      )
 
     for unit in sys.units: unit.include_construction = False
     
@@ -470,21 +523,21 @@ def create_system(
           'anaerobic_digestion': (-36-2)/2, # -36 to -2 kg CO2e/tonne, Nordahl et al., 2020
           'trans_feedstock': 0.011856, # 78 km, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/9393/impact_assessment, Snowden-Swan PNNL 32731
           'trans_biocrude': 0.024472, # 100 miles,https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/9393/impact_assessment, Snowden-Swan PNNL 32731
-          'H2': -10.71017675, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/24913/impact_assessment
-          'natural_gas': 0.780926344+ 1*(44/16), # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/4866/impact_assessment, include combustion
+          'H2': -9.3368, # Compressed gaseous H2 produced from NA NG for SAF Prodcution, GREET 2024
+          'natural_gas': 0.3674+(44/16), # NA NG from Shale and Conventional Recovery, include combustion, GREET 2024
           'process_water': 0,
-          'electricity': 0.465474829, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/13670/impact_assessment
-          'steam': 0.126312684, # kg CO2e/MJ, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/7479/impact_assessment
+          'electricity': 0.3855 , # kg CO2e/kWh, Non-distributed U.S. Mix, GREET 2024
+          'steam': 85.4330/1e3, # g CO2e/MJ, Mix: Natural Gas and Still Gas, GREET 2024
           'cooling_water': 0.068359242, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/14408/impact_assessment
           'chilled_water': 0.068359242, # https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/14408/impact_assessment
           'cooling': 0.066033, # kg CO2e/MJ, Feng et al., 2024
-          'diesel': -0.801163967, # kg CO2e/kg, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/13381/impact_assessment
-          'N': -0.441913058, #liquid, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/11489/impact_assessment
-          'P': -1.344*(98/31), # H3PO4, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/8421/impact_assessment
-          'K': -4.669210326*(56/39), # KOH, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/5111/impact_assessment
+          'diesel': -0.6456 , # kg CO2e/kg, Conventional Diesel from Crude Oil for US Refineries, GREET 2024
+          'N': -3.5022, # kg CO2e/kg N, Mix: Nitrogen Average, GREET 2024
+          'P': -1.1506*(98/31), # H3PO4, Production of Phosphoric Acid, GREET 2024
+          'K': -1.6145*(56/39), # KOH, Production, GREET 2024
           'COD': 1.7, # Li et al., 2023
-          'wastewater': 0.477724554/1e3, # kg CO2e/m3, https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/26546/impact_assessment
-          'ethylene': 2.9166 #https://ecoquery.ecoinvent.org/3.10/cutoff/dataset/29537/impact_assessment
+          'wastewater': 0.2629/1e3, # kg CO2e/m3, Industrial Wastewater Treatment, GREET 2024
+          'ethylene': 1.0159 #US Average Production, GREET 2024
           }
     
     price_dct['electricity'] = 0.074 #2020$, https://www.energy.gov/sites/default/files/2024-12/hydrogen-shot-water-electrolysis-technology-assessment.pdf
@@ -589,16 +642,16 @@ def create_system(
         )
     if decentralized_HTL is False:
     # Centralized HTL, Centralized upgrading
-       trans_feedstock_item.linked_stream = FeedstockTrans.ins[1]  # feedstock transportation stream
-       trans_biocrude_item.linked_stream = fake_stream             # No biocrude transportation
+        trans_feedstock_item.linked_stream = FeedstockTrans.ins[1]  # feedstock transportation stream
+        trans_biocrude_item.linked_stream = fake_stream             # No biocrude transportation
     elif decentralized_upgrading is False:
     # Decentralized HTL, centralized upgrading
-       trans_feedstock_item.linked_stream = fake_stream            # No feedstock transportation
-       trans_biocrude_item.linked_stream = BiocrudeTrans.ins[1]    #biocrude tranportation stream
+        trans_feedstock_item.linked_stream = fake_stream            # No feedstock transportation
+        trans_biocrude_item.linked_stream = BiocrudeTrans.ins[1]    #biocrude tranportation stream
     else:
     # Fully decentralized (no transportation needed)
-       trans_feedstock_item.linked_stream = fake_stream            # No feedstock transportation
-       trans_biocrude_item.linked_stream = fake_stream             # No biocrude transportation
+        trans_feedstock_item.linked_stream = fake_stream            # No feedstock transportation
+        trans_biocrude_item.linked_stream = fake_stream             # No biocrude transportation
           
     # def update_cooling_impacts():
     #     # cooling_duties = {}
@@ -678,13 +731,13 @@ if __name__ == '__main__':
 
     # What to do with HTL-AP
     # config_kwargs.update(dict(skip_EC=True, generate_H2=False, EC_config=None)) # no EC
-    # config_kwargs.update(dict(skip_EC=False, generate_H2=False, EC_config=None)) # EC, recover nutrients only
+    config_kwargs.update(dict(skip_EC=False, generate_H2=False, EC_config=None)) # EC, recover nutrients only
     # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=None)) # EC, recover nutrients and generate H2
-    config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=EC_future_config)) # EC, recovery nutrients, generate H2, optimistic assumptions
+    # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=EC_future_config)) # EC, recovery nutrients, generate H2, optimistic assumptions
     
     # Decentralized vs. centralized configuration
-    # config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False)) # CHCU
-    config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False)) # DHCU
+    config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False)) # CHCU
+    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False)) # DHCU
     
     # Distillation column cost calculation doesn't scale down well, so the cost is very high now.
     # But maybe don't need to do the DHDU scenario, if DHCU isn't too different from CHCU
@@ -698,3 +751,83 @@ if __name__ == '__main__':
     lca = sys.LCA
     
     simulate_and_print(sys)
+
+
+#%%
+# import numpy as np
+# electricity_prices = np.arange(0.00, 0.11, 0.01)  # 0.00 to 0.10 for EC configs
+# electrode_costs = np.arange(0, 50001, 1000)  # 0 to 50,000 for EC configs
+# voltages = np.arrange
+# biobinder = sys.flowsheet.stream.biobinder
+# HTL_EC = sys.flowsheet.unit.HTL_EC
+# Upgrading_EC = sys.flowsheet.unit.Upgrading_EC
+# MSPs = []
+# for voltage in (2.5, 10, 25):
+#     HTL_EC.EO_voltage = HTL_EC.ED_voltage = Upgrading_EC.EO_voltage = Upgrading_EC.ED_voltage = voltage
+#     HTL_EC.simulate()
+#     Upgrading_EC.simulate()
+#     MSPs.append(tea.solve_price(biobinder))
+
+
+#%%
+# import qsdsan as qs
+# from qsdsan import sanunits as qsu
+# import numpy as np
+
+
+# # Create a dilution water stream from the existing PWC
+# # HTL_EC = sys.flowsheet.unit.HTL_EC
+# Upgrading_EC = sys.flowsheet.unit.Upgrading_EC
+# dilution_water = qs.WasteStream('dilution_water', phase='l', T=298.15, P=101325)
+
+# # HTL_EC_water= HTL_EC.ins[0]
+# Upgrading_EC_water= Upgrading_EC.ins[0]
+
+# # Define dilution factor
+# dilution_ratio = 20  # 1:20 ratio
+
+# DilutionTank = qsu.MixTank(
+#     'DilutionTank',
+#     ins=[Upgrading_EC_water, dilution_water],
+#     tau=24,  #hours
+#     outs='hydroponic_water'
+# )
+
+# def adjust_water_flow():
+#     total_ap = DilutionTank.ins[0].F_vol
+#     required_water = total_ap * dilution_ratio
+#     print(f"Total aqueous phase flow: {total_ap} m³/hr")
+#     print(f"Required dilution water: {required_water} m³/hr")
+#     dilution_water.empty()
+#     dilution_water.imol['H2O'] = required_water * 55.46
+
+
+# adjust_water_flow()
+
+# DilutionTank.simulate()
+
+# dilution_water_cost = dilution_water.F_mass * price_dct['process_water']* sys.operating_hours 
+
+# # # sys.simulate()
+# # # tea=sys.TEA
+# # DilutionTank.show()
+# dilution_water_cost
+
+# dilution_ratios = range(2, 51, 5)  # Step of 5
+
+# tau_values = range(1, 25)  # Tau from 1 to 24
+
+# for dilution_ratio in dilution_ratios:
+#     for tau in tau_values:
+#         DilutionTank.tau = tau
+#         total_ap = DilutionTank.ins[0].F_vol
+#         required_water = total_ap * dilution_ratio
+
+#         dilution_water.empty()
+#         dilution_water.imol['H2O'] = required_water * 55.46
+
+#         DilutionTank.simulate()
+
+#         cost = DilutionTank.installed_cost/1e6
+#         print(f'{dilution_ratio}, {tau}, {cost}')
+
