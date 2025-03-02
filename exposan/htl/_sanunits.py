@@ -424,8 +424,6 @@ class DAPSynthesis(Reactor):
         P_solution, ammonia.
     outs : iterable
         DAP, excess_ammonia, effluent.
-    target_pH : float
-        Target pH for struvite precipitation.  
     P_pre_recovery_ratio : float
         Ratio of phosphorus that can be precipitated out.
     crystallizer_electricity : float
@@ -775,6 +773,10 @@ class PreStripper(SanUnit):
         influent.
     outs : iterable
         effluent.
+    influent_pH : float
+        CHG effluent pH: 8.16 ± 0.25 [1]
+    target_pH : float
+        2 unit higher than pKa (9.25 + 2 = 11.25)
     
     References
     ----------

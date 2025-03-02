@@ -46,8 +46,6 @@ GDPCTPI = {2007: 86.352,
            2022: 117.995,
            2023: 122.284}
 
-# TODO: check if all uncertainty parameters are included in writing, update if necessary
-
 # cannot run more than one time of model = create_geospatial_model(system=sys, test_run=True)
 # due to the code of setting uncertainty for CI data
 
@@ -743,7 +741,6 @@ def create_geospatial_model(system=None,
     def set_catalyst_price(i):
         virgin_CHG_catalyst.price=i
     
-    # TODO: crude oil price and therefore, biocrude price, are now contextual parameters, update in writing
     if not test_run:
         biocrude_price_min = crude_oil_price[0]/_oil_barrel_to_m3
         biocrude_price_ave = crude_oil_price[1]/_oil_barrel_to_m3

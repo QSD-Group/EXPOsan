@@ -8,6 +8,8 @@ Created on Mon Jun 5 08:46:28 2023
 Note the word 'sludge' in this file refers to either sludge or biosolids.
 '''
 
+# TODO: update/delete TODO's in each file
+
 # TODO: add new units and contextualized fertilizers prices and crude oil price in writing
 
 import os, qsdsan as qs, biosteam as bst, pandas as pd
@@ -297,7 +299,6 @@ def create_geospatial_system(test_run=False,
                                    crude_oil_HHV=44.5,
                                    biocrude_wet_density=983,
                                    vessel_material='Carbon steel')
-    # TODO: update biocrude cost and CI calculation in writing
     # assume biocrude replace crude oil of the same amount of energy
     # assume biocrude has an HHV of 35 MJ/kg
     # in the model, biocrude HHV will be calculated as HTL.biocrude_HHV
@@ -430,7 +431,6 @@ def create_geospatial_system(test_run=False,
     # facilities
     # =========================================================================
     
-    # TODO: update in writing
     # previously used 86 C with self-defined heat utility
     # now use natural gas for heating, and use the default T_min_app
     qsu.HeatExchangerNetwork(ID='HXN',
@@ -463,7 +463,6 @@ def create_geospatial_system(test_run=False,
     # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
     CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
-    # TODO: add CWP in writing and figures
     # CWP uses electricity to generate chilled water
     # the water cost can be ignored since the water can be recirculated
     CWP = bst.ChilledWaterPackage(ID='CWP')
@@ -505,7 +504,6 @@ def create_geospatial_system(test_run=False,
                                      ratio=3.5, efficiency=0.8, loss=0.02)
             # min: 0.43, average: 0.497, max: 0.53
             # https://businessanalytiq.com/procurementanalytics/index/nitric-acid-price-index/ (accessed 2025-02-03)
-            # calculate the price of 70 wt/wt% HNO3 solution by adding water
             UANSyn.ins[3].price = 0.497
             UANSyn.ins[4].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
             UANSyn.outs[0].price = UAN_price
@@ -601,7 +599,6 @@ def create_geospatial_system(test_run=False,
     elif nitrogen_fertilizer == 'urea':
         impact_items['makeup_MEA'] = [stream.makeup_MEA, 3.0923397]
         impact_items['makeup_water'] = [stream.makeup_water, 0.00042012744]
-        # TODO: add this (the benefit of capturing CO2) in writing
         # for every kg of urea produced, 44.009/60.06 kg of captured CO2 is used
         impact_items['urea'] = [stream.urea, -1.2510711 - 44.009/60.06]
     else:
@@ -609,7 +606,6 @@ def create_geospatial_system(test_run=False,
         impact_items['makeup_water'] = [stream.makeup_water, 0.00042012744]
         impact_items['HNO3'] = [stream.HNO3, 2.3210523]
         impact_items['UAN_water'] = [stream.UAN_water, 0.00042012744]
-        # TODO: add this (the benefit of capturing CO2) in writing
         # assume N:C = 4:1 in UAN30, for every kg of UAN30 produced, 1*0.3/14.0067/4*44.009 of captured CO2 is used
         impact_items['UAN'] = [stream.UAN, -1.6799471 - 1*0.3/14.0067/4*44.009]
     

@@ -26,14 +26,9 @@ from scipy.linalg import cholesky
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.preprocessing import StandardScaler
 
-# TODO: add in writing: the purchase of crude oil is assumed at WRRFs, therefore, use the first purchase price of the location of WRRFs
-# at the same time, assume WRRFs will be responsible for the transportation of the crude oil
+# TODO: consider updating code for making figures so it does not need to run two times to get the correct settings
 
 # TODO: add tables of contextual parameters that cannot be included in a figure, or add in the Excel file
-
-# TODO: specify crude_oil_price ($/oil-barrel), DAP_price ($/US-ton), anhydrous_ammonia_price ($/US-ton),
-# urea_price ($/US-ton), and UAN_price ($/US-ton) when creating models in geospatial_analysis.py,
-# also pay attention to units
 
 # TODO: update file paths later
 folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/'
@@ -63,7 +58,7 @@ _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
 _MMgal_to_L = auom('gal').conversion_factor('L')*1000000
 _oil_barrel_to_L = auom('oil_barrel').conversion_factor('L')
 
-# TODO: grid CI data was different from the IEDO work, update in writing
+# TODO: grid CI data was different from the IEDO work, check in writing
 WRRF = pd.read_excel(folder + 'HTL_geospatial_input_2025-02-10.xlsx')
 
 assert WRRF.duplicated(subset='CWNS_NUM').sum() == 0
@@ -132,7 +127,6 @@ refinery['capacity'] = refinery[['Atmos. Crude Dist','Vacuum Dist','Catalytic Cr
                                  'Catalytic Recorming','Alkylates, Isomerization',
                                  'Desulfurization','Fluid and Delayed Coking',
                                  'Asphalt and Road Oil']].sum(axis=1)
-# TODO: add in writing
 # remove oil refineries with a 0 MBPD production
 refinery = refinery[refinery['capacity'] > 0]
 refinery = gpd.GeoDataFrame(refinery, crs='EPSG:4269',
@@ -388,6 +382,8 @@ PADD_color = {1: b,
               4: o,
               5: y}
 
+# the purchase of crude oil is assumed at WRRFs, therefore, use the first purchase price of the location of WRRFs
+# at the same time, assume WRRFs will be responsible for the transportation of the crude oil
 crude_oil_price_data = pd.read_excel(folder + 'crude_oil_price_2022.xlsx')
 
 # state dominant nitrogen fertilizer form
@@ -488,13 +484,13 @@ WRRF = WRRF.sort_values(by='flow_2022_MGD_final', ascending=False)
 
 WRRF_flow = WRRF['flow_2022_MGD_final']
 
-more_than_100 = WRRF_flow > 100
+more_than_100 = WRRF_flow >= 100
 WRRF[more_than_100].plot(ax=ax, color=dg, markersize=WRRF.loc[more_than_100,'flow_2022_MGD_final']*10, edgecolor='k', linewidth=1.5, alpha=1)
 
-between_10_and_100 = (WRRF_flow > 10) & (WRRF_flow <= 100)
+between_10_and_100 = (WRRF_flow >= 10) & (WRRF_flow < 100)
 WRRF[between_10_and_100].plot(ax=ax, color=g, markersize=WRRF.loc[between_10_and_100,'flow_2022_MGD_final']*10, edgecolor='k', linewidth=1.5, alpha=0.5)
 
-less_than_10 = WRRF_flow <= 10
+less_than_10 = WRRF_flow < 10
 WRRF[less_than_10].plot(ax=ax, color=g, markersize=WRRF.loc[less_than_10,'flow_2022_MGD_final']*10, edgecolor='none', alpha=0.2)
 
 # comment out the code above and uncomment the following line to show all WRRFs together with the same symbol
@@ -512,9 +508,9 @@ ax.scatter(x=-13140000, y=3220000, marker='o', s=50*10, c=g, linewidths=3,
 ax.scatter(x=-13140000, y=3020000, marker='o', s=10*10, c=g, linewidths=3,
            alpha=0.2, edgecolor='none')
 
-plt.figtext(0.261, 0.37, '> 100 MGD', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
+plt.figtext(0.261, 0.37, '≥ 100 MGD', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
 plt.figtext(0.261, 0.3485, '10 to 100 MGD', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
-plt.figtext(0.261, 0.327, '≤ 10 MGD', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
+plt.figtext(0.261, 0.327, '< 10 MGD', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
 
 ax.set_aspect(1)
 
@@ -704,7 +700,7 @@ plt.rcParams.update({'figure.max_open_warning': 100})
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', a, da])
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', b, db])
 
 elec_GHG.plot(column='kg_CO2e_kWh', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=3)
 
@@ -2299,7 +2295,6 @@ for i in range(0, len(sampled_facility)):
         sludge_lipid_values=[0.080, 0.206, 0.308]
         sludge_protein_values=[0.380, 0.456, 0.485]
     
-    # TODO: add in writing
     crude_oil_price_values = [sampled_facility.iloc[i]['crude_oil_dollar_per_barrel']*0.8,
                               sampled_facility.iloc[i]['crude_oil_dollar_per_barrel'],
                               sampled_facility.iloc[i]['crude_oil_dollar_per_barrel']*1.2]
@@ -2662,7 +2657,6 @@ average_ash_dw = total_ash/total_sludge
 average_lipid_afdw = total_lipid/(total_sludge-total_ash)
 average_protein_afdw = total_protein/(total_sludge-total_ash)
 
-# TODO: add in writing if have not
 # !!! use uniform distribution (0.8x, 1x, 1.2x) for combined WRRFs
 # set sludge_ash_values[-1] = 'digestion', this does not necessarily mean there is digestion, but this will set the uncertainty distribution of ash, lipid, and protein to uniform in the model
 sludge_ash_values = [average_ash_dw*0.8, average_ash_dw, average_ash_dw*1.2, 'digestion']
@@ -2961,7 +2955,6 @@ average_ash_dw = total_ash/total_sludge
 average_lipid_afdw = total_lipid/(total_sludge-total_ash)
 average_protein_afdw = total_protein/(total_sludge-total_ash)
 
-# TODO: add in writing if have not
 # !!! use uniform distribution (0.8x, 1x, 1.2x) for combined WRRFs
 # set HM_sludge_ash_values[-1] = 'digestion', this does not necessarily mean there is digestion, but this will set the uncertainty distribution of ash, lipid, and protein to uniform in the model
 HM_sludge_ash_values = [average_ash_dw*0.8, average_ash_dw, average_ash_dw*1.2, 'digestion']
