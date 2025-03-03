@@ -22,7 +22,8 @@ pc.create_masm2d_cmps()
 EX = su.ExcretionmASM2d('EX')
 EX.simulate()
 urine, feces = EX.outs
-urine.scale(pe)
+# urine.scale(pe)
+urine.scale(pe*0.25)
         
 for ID in (
         'B1', 'B2', 'B3', 
@@ -43,27 +44,31 @@ for ID in (
 
     try:
         start = tm.time()
-        print("Baseline start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
+        fs.RWW.separate_out(urine)
+        print("25% UD start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
+        # print("Baseline start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
         sys.simulate(t_span=(0,300), method='BDF')
         end = tm.time()
         print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end-start)), '\n')
-        N_mass_dfs[ID] = plantwide_N_mass_flows(sys)
-        P_mass_dfs[ID] = plantwide_P_mass_flows(sys)
-        metrics[ID] = [m() for m in mdl.metrics]
+        # N_mass_dfs[ID] = plantwide_N_mass_flows(sys)
+        # P_mass_dfs[ID] = plantwide_P_mass_flows(sys)
+        metrics[ID+'_25'] = [m() for m in mdl.metrics]
     except Exception as exc:
         print(exc)        
         
     try:
+        
         fs.RWW.separate_out(urine)
-        if ID=='H1': sys.flowsheet.unit.MD.metal_dosage = 2
+        # if ID=='H1': sys.flowsheet.unit.MD.metal_dosage = 2
         start = tm.time()
-        print("With UD start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
+        print("50% UD start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
+        # print("With UD start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
         sys.simulate(state_reset_hook='reset_cache', t_span=(0,400), method='BDF')
         end = tm.time()
         print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end-start)), '\n')
-        N_mass_dfs[ID+'_UD'] = plantwide_N_mass_flows(sys)
-        P_mass_dfs[ID+'_UD'] = plantwide_P_mass_flows(sys)
-        metrics[ID+'_UD'] = [m() for m in mdl.metrics]
+        # N_mass_dfs[ID+'_UD'] = plantwide_N_mass_flows(sys)
+        # P_mass_dfs[ID+'_UD'] = plantwide_P_mass_flows(sys)
+        metrics[ID+'_50'] = [m() for m in mdl.metrics]
     except Exception as exc:
         print(exc)
     
@@ -72,13 +77,13 @@ for ID in (
 #%%
 import pandas as pd, os
 
-with pd.ExcelWriter(os.path.join(results_path, 'N_mass.xlsx')) as writer:
-    for k, v in N_mass_dfs.items():
-        v.to_excel(writer, sheet_name=k)
+# with pd.ExcelWriter(os.path.join(results_path, 'N_mass.xlsx')) as writer:
+#     for k, v in N_mass_dfs.items():
+#         v.to_excel(writer, sheet_name=k)
 
-with pd.ExcelWriter(os.path.join(results_path, 'P_mass.xlsx')) as writer:
-    for k, v in P_mass_dfs.items():
-        v.to_excel(writer, sheet_name=k)
+# with pd.ExcelWriter(os.path.join(results_path, 'P_mass.xlsx')) as writer:
+#     for k, v in P_mass_dfs.items():
+#         v.to_excel(writer, sheet_name=k)
         
 metrics = pd.DataFrame.from_dict(metrics, orient='index', columns=var_columns(mdl.metrics))
-metrics.to_excel(os.path.join(results_path, 'ana1_performance.xlsx'))
+metrics.to_excel(os.path.join(results_path, 'ana2_performance.xlsx'))

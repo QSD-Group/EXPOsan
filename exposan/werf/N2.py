@@ -57,13 +57,13 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
     Q_intr = 40 * MGD2cmd
     
     ASR = su.PFR(
-        'ASR', ins=[rww, carb, 'intr', 'reject'], 
+        'ASR', ins=[rww, carb, 'RAS', 'reject'], 
         N_tanks_in_series=n_zones,
         V_tanks=Vs[:n_zones],
         influent_fractions=[
             [1,0,0,0,0],          # RWW
             [1,0,0,0,0],          # carb
-            [0,0,1,0,0],          # intr from MBR
+            [0,0,1,0,0],          # RAS from MBR
             [1,0,0,0,0],          # reject
             ],
         internal_recycles=[
@@ -157,7 +157,7 @@ if __name__ == '__main__':
     # biomass_IDs = ('X_H', 'X_PAO', 'X_AUT')
     # srt = get_SRT(sys, biomass_IDs,
     #               wastage=[WAS],
-    #               active_unit_IDs=('ASR', 'MBR))
+    #               active_unit_IDs=('ASR', 'MBR'))
     # if srt: print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
     
     # from exposan.werf import figures_path

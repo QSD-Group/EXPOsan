@@ -39,6 +39,10 @@ V_ae = 3000 # aerated zone tank volume
 # O2 saturation concentration at 15 degC
 SOSAT1 = 8
 
+# mmp kinetics
+mmp = 'Musvoto'
+# mmp = 'Mbamba'
+
 # Default initial conditions
 dfs = load_data(ospath.join(data_path, 'bsm2p_init.xlsx'), sheet=None)
 inf_concs = dfs['asm'].iloc[0].to_dict()
@@ -62,6 +66,7 @@ def create_system(flowsheet=None, default_init_conds=True):
     cmps_asm = pc.create_masm2d_cmps()
     asm = pc.mASM2d(components=cmps_asm, 
                     electron_acceptor_dependent_decay=True,
+                    mmp_kinetics=mmp,
                     # k_h=2.46, mu_H=4.23, q_fe=2.11, b_H=0.28, mu_PAO=0.82, 
                     # q_PP=1.23, q_PHA=2.46, b_PAO=0.14, b_PP=0.14, b_PHA=0.14, 
                     # mu_AUT=0.61, b_AUT=0.09
@@ -120,7 +125,6 @@ def create_system(flowsheet=None, default_init_conds=True):
                 N_tanks_in_series=7,
                 V_tanks=[V_anae]*2+[V_anox]*2+[V_ae]*3,
                 influent_fractions=[[1]+[0]*6]*2 + [[0,0,1,0,0,0,0]],
-                # influent_fractions=[[1]+[0]*6]*2,
                 internal_recycles=[(6,2,Q_intr*1.1)],
                 # kLa=[0]*4+[120,120,60], 
                 # DO_setpoints=[0,0,0,0,2.0,2.0,2.0], 
@@ -147,6 +151,7 @@ def create_system(flowsheet=None, default_init_conds=True):
     adm = pc.ADM1p(
         f_bu_su=0.1328, f_pro_su=0.2691, f_ac_su=0.4076,
         q_ch_hyd=0.3, q_pr_hyd=0.3, q_li_hyd=0.3, 
+        mmp_kinetics=mmp,
         )
     
     # breakpoint()
@@ -156,6 +161,7 @@ def create_system(flowsheet=None, default_init_conds=True):
                            V_liq=3400, V_gas=300, T=T_ad, model=adm,
                            pH_ctrl=7.0,)
     AD.algebraic_h2 = False
+    # AD.algebraic_h2 = True
     J2 = su.ADM1ptomASM2d('J2', upstream=AD-1, thermo=thermo_asm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
     # Switch back to ASM1 components
