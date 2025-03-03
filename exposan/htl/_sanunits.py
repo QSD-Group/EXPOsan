@@ -178,8 +178,6 @@ class AmineAbsorption(SanUnit):
     MEA_to_CO2 : float
         Net usage of MEA (kg pure MEA/metric tonne CO2 captured).
         The default is 1.5 based on [1]_ and [3]_.
-    heat_ratio : float
-        Unit duty in kJ/kg CO2.
     
     References
     ----------
