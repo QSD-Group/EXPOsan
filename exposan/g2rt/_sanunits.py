@@ -2220,8 +2220,7 @@ class G2RTLiquidsTank(Mixer):
 
         self.add_OPEX = self._calc_replacement_cost() + self._calc_maintenance_labor_cost()
 
-        power_demand = self.pump_energy_per_cycle*self.pump_batch_cycle_per_day
-        power_demand = power_demand / 24  # convert from kWh/d to kW
+        power_demand = self.pump_energy*self.outs[0].F_mass/1000
         self.power_utility(power_demand)  # kW
         
     def _calc_replacement_cost(self):

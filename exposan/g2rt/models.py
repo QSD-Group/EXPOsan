@@ -177,7 +177,7 @@ mscwo_reactor_module_path = load_g2rt_su_data('_mscwo_reactor_module.csv')
 # Shared by all systems
 # =============================================================================
 
-def add_shared_parameters(model, unit_dct, e_CF=None, flush_water=None, country_specific=False):
+def add_shared_parameters(model, unit_dct, e_CF=None, flush_water=None, city_specific=False):
     sys = model.system
     sys_stream = sys.flowsheet.stream
     param = model.parameter
@@ -188,7 +188,7 @@ def add_shared_parameters(model, unit_dct, e_CF=None, flush_water=None, country_
     
     excretion_unit = unit_dct['excretion']
 
-    if not country_specific:
+    if not city_specific:
         # Price ratio
         old_price_dct = price_dct.copy()
         b = 1
@@ -298,7 +298,7 @@ def add_shared_parameters(model, unit_dct, e_CF=None, flush_water=None, country_
     param = model.parameter
 
     # Diet and Excretion
-    exclude = ('e_cal', 'p_anim', 'p_veg') if country_specific else ()
+    exclude = ('e_cal', 'p_anim', 'p_veg') if city_specific else ()
     batch_setting_unit_params(excretion_path, model, excretion_unit, exclude)
     
     # MURT Toilet
@@ -323,7 +323,7 @@ def add_shared_parameters(model, unit_dct, e_CF=None, flush_water=None, country_
     
     #Solids separation
     solids_separation_unit = unit_dct['solids_separation']
-    exclude = ('wages') #exclude because it is a context or country-specific parameter
+    exclude = ('wages') #exclude because it is a context or city-specific parameter
     batch_setting_unit_params(g2rt_solids_separation_path, model, solids_separation_unit, exclude)
     
     #Belt separation
@@ -578,7 +578,7 @@ def add_shared_parameters(model, unit_dct, e_CF=None, flush_water=None, country_
 # Functions to create models
 # =============================================================================
 # System A: volume reduction toilet
-def create_modelA(country_specific=False, ppl=default_ppl, lifetime=default_lifetime,
+def create_modelA(city_specific=False, ppl=default_ppl, lifetime=default_lifetime,
                   flush_water= None, combustion_CH4_EF= None,e_CF=None,
                   **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
@@ -628,7 +628,7 @@ def create_modelA(country_specific=False, ppl=default_ppl, lifetime=default_life
         'housing': unitA.A20
         }
     add_shared_parameters(model=modelA, unit_dct=unit_dctA, e_CF=e_CF, 
-                          flush_water=flush_water, country_specific=country_specific)
+                          flush_water=flush_water, city_specific=city_specific)
     
     #Add parameters unique to System A: volume reduction toilet
     #Concentrator
@@ -653,7 +653,7 @@ def create_modelA(country_specific=False, ppl=default_ppl, lifetime=default_life
     return modelA
 
 #System B: micro supercritical water oxidation toilet
-def create_modelB(country_specific=False, ppl=default_ppl,lifetime=default_lifetime, 
+def create_modelB(city_specific=False, ppl=default_ppl,lifetime=default_lifetime, 
                   mscwo_replacement_cost =None, e_CF=None, flush_water= None, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
     sysB = create_system('B', ppl=ppl,lifetime=lifetime, flowsheet=flowsheet, 
@@ -702,7 +702,7 @@ def create_modelB(country_specific=False, ppl=default_ppl,lifetime=default_lifet
         'housing': unitB.B19
         }
     add_shared_parameters(model=modelB, unit_dct=unit_dctB, e_CF=e_CF, 
-                          flush_water=flush_water, country_specific=country_specific)
+                          flush_water=flush_water, city_specific=city_specific)
     #Add parameters unique to System B: micro supercritical water oxidation toilet
     #Gas handling module
     exclude = ('wages')
@@ -722,10 +722,10 @@ def create_modelB(country_specific=False, ppl=default_ppl,lifetime=default_lifet
     return modelB
 
 # Wrapper function so that it'd work for all
-def create_model(model_ID='A', country_specific=False, ppl=default_ppl,lifetime=default_lifetime, **model_kwargs):
+def create_model(model_ID='A', city_specific=False, ppl=default_ppl,lifetime=default_lifetime, **model_kwargs):
     model_ID = model_ID.lower().rsplit('model')[-1].rsplit('sys')[-1].upper() # works for "modelA"/"sysA"/"A"
-    if model_ID == 'A': model = create_modelA(country_specific, ppl=ppl,lifetime= lifetime, **model_kwargs)
-    elif model_ID == 'B': model = create_modelB(country_specific, ppl=ppl,lifetime= lifetime, **model_kwargs)
+    if model_ID == 'A': model = create_modelA(city_specific, ppl=ppl,lifetime= lifetime, **model_kwargs)
+    elif model_ID == 'B': model = create_modelB(city_specific, ppl=ppl,lifetime= lifetime, **model_kwargs)
     else: raise ValueError(f'`model_ID` can only be "A" or "B", not "{model_ID}".')
     return model
 

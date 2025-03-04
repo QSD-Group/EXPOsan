@@ -17,6 +17,7 @@ for license details.
 
 import os, numpy as np, pandas as pd
 from math import log
+from datetime import datetime
 from sklearn.linear_model import LinearRegression as LR
 from chaospy import distributions as shape
 from thermosteam.functional import rho_to_V
@@ -624,6 +625,62 @@ general_country_specific_inputs = {
         },
     }
 
+general_city_specific_inputs = { #TODO: need to update the values, for now they are just place holders
+    'Beijing': {
+        'energy_GWP': 0.745,
+        'energy_H_Ecosystems': 0.002336342,
+        'energy_H_Health': 0.037590269,
+        'energy_H_Resources': 0.02714852,
+        'energy_price': 0.084,
+        'wages': 6.5736875,  # MURT labor wage USD/hour
+        'operator_daily_wage': 52.5895,  # USD/day
+        'const_wage': 32.66,  # USD/day
+        'certified_electrician_wages': 6.251324074,  # USD/hour
+        'service_team_wages': 6.5736875,  # USD/hour
+        'facility_manager_wages': 6.018625,  # USD/hour
+        'biomass_controls_wages': 6.018625,  # USD/hour
+        'e_cal': 3191,
+        'p_anim': 40,
+        'p_veg': 60.63,
+        'food_waste_ratio': 0.15,
+        'price_ratio': 0.610,
+        'household_size': 3,
+        'N_fertilizer_price': 0.939,
+        'P_fertilizer_price': 1.744,
+        'K_fertilizer_price': 1.119,
+        'NH3_fertilizer_price': 0.939*(14/17),
+        'struvite_fertilizer_price': 1.744*(31/245),
+        'NaCl_price': 0.35,  # for NEWgen
+        'LPG_price': 0.954  # for NEWgen
+        },
+    'Chennai': {
+        'energy_GWP': 0.852,
+        'energy_H_Ecosystems': 0.002616438,
+        'energy_H_Health': 0.043194571,
+        'energy_H_Resources': 0.030496415,
+        'energy_price': 0.081,
+        'wages': 1.315625,  # MURT labor wage USD/hour
+        'operator_daily_wage': 10.525,  # USD/day
+        'const_wage': 10.3285,  # USD/day
+        'certified_electrician_wages': 2.1189375,  # USD/hour
+        'service_team_wages': 1.315625,  # USD/hour
+        'facility_manager_wages': 2.1026875,  # USD/hour
+        'biomass_controls_wages': 2.1026875,  # USD/hour
+        'e_cal': 2533,
+        'p_anim': 15,
+        'p_veg': 48.35,
+        'food_waste_ratio': 0.03,
+        'price_ratio': 0.300,
+        'household_size': 5,
+        'N_fertilizer_price': 0.158,
+        'P_fertilizer_price': 0.567,
+        'K_fertilizer_price': 0.445,
+        'NH3_fertilizer_price': 0.158 * (14 / 17),
+        'struvite_fertilizer_price': 0.567 * (31 / 245),
+        'NaCl_price': 0.47,  # for NEWgen
+        'LPG_price': 1.488  # for NEWgen
+        },
+    }
 
 def run_module_country_specific(
         create_country_specific_model_func,
@@ -653,5 +710,42 @@ def run_module_country_specific(
             path = os.path.join(folder_path, f'{sys_ID}_{country}.xlsx')
             run_uncertainty_func(model=model, path=path, seed=seed, N=N)
             sys_dct[country] = model
+        models[sys_ID] = sys_dct
+    return models
+
+def run_module_city_specific(
+        create_city_specific_model_func,
+        run_uncertainty_func,
+        folder_path,
+        system_IDs,
+        note = '',
+        city_specific_inputs=None,
+        seed=None,
+        N=1000
+        ):
+    city_specific_inputs = city_specific_inputs or general_city_specific_inputs
+    models = dict.fromkeys(system_IDs)
+    for sys_ID in system_IDs:
+        sys_dct = {}
+        for n, city in enumerate(city_specific_inputs.keys()):
+            kwargs = {
+                'ID': sys_ID,
+                'city': city,
+                'city_data': city_specific_inputs[city],
+                }
+            if n == 0: # create the model
+                model = create_city_specific_model_func(**kwargs)
+            else: # reuse the model, just update parameters
+                kwargs['model'] = model
+                model = create_city_specific_model_func(**kwargs)
+            # Run analysis and save results
+            path = os.path.join(folder_path, f'sys{sys_ID}_model_{city}_')
+            date = datetime.now().strftime('%Y-%m-%d')
+            path += date 
+            if note:
+                path += f'_{note}'
+            path += '.xlsx'
+            run_uncertainty_func(model=model, path=path, seed=seed, N=N)
+            sys_dct[city] = model
         models[sys_ID] = sys_dct
     return models

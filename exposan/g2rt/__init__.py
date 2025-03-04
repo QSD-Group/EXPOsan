@@ -478,8 +478,8 @@ def print_summaries(systems):
 from . import models
 from . import analysis
 
-# from . import country_specific
-# from .country_specific import *
+from . import city_specific
+from .city_specific import *
 
 __all__ = (
     'g2rt_path',
@@ -489,5 +489,5 @@ __all__ = (
     *systems.__all__,
     *models.__all__,
     *analysis.__all__,
-    # *country_specific.__all__,
+    *city_specific.__all__,
 )
