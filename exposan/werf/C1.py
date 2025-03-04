@@ -29,7 +29,7 @@ dfs = load_data(
     ospath.join(data_path, 'initial_conditions.xlsx'), 
     sheet=None,
     )
-asinit = dfs['B1']
+asinit = dfs[ID]
 fcinit = asinit.iloc[-1].to_dict()
 adinit = dfs['adm'].loc[ID].to_dict()
 

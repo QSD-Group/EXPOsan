@@ -4,7 +4,7 @@ Created on Fri Feb  7 08:41:06 2025
 
 @author: joy_c
 """
-import time as tm
+import time as tm, pandas as pd, os
 from exposan.werf import create_system, add_performance_metrics, results_path
 from exposan.werf.utils import plantwide_N_mass_flows, plantwide_P_mass_flows
 from qsdsan import Model, sanunits as su, processes as pc
@@ -13,8 +13,8 @@ from biosteam.evaluation._utils import var_columns
 import warnings
 warnings.filterwarnings("ignore")
 
-N_mass_dfs = {}
-P_mass_dfs = {}
+# N_mass_dfs = {}
+# P_mass_dfs = {}
 metrics = {}
 pe = 108918     # person equivalent for 10 MGD WRRF
 
@@ -22,7 +22,6 @@ pc.create_masm2d_cmps()
 EX = su.ExcretionmASM2d('EX')
 EX.simulate()
 urine, feces = EX.outs
-# urine.scale(pe)
 urine.scale(pe*0.25)
         
 for ID in (
@@ -42,40 +41,33 @@ for ID in (
     mdl = Model(sys)
     add_performance_metrics(mdl)
 
-    try:
-        start = tm.time()
+    pud = 0
+    while pud <= 100:
+        try:
+            start = tm.time()
+            fs.RWW.separate_out(urine)
+            print(f"{pud}% UD start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
+            sys.simulate(state_reset_hook='reset_cache', t_span=(0,300), method='BDF')
+            end = tm.time()
+            print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end-start)), '\n')
+            # N_mass_dfs[ID] = plantwide_N_mass_flows(sys)
+            # P_mass_dfs[ID] = plantwide_P_mass_flows(sys)
+            ndf = plantwide_N_mass_flows(sys)
+            with pd.ExcelWriter(os.path.join(results_path, 'N_mass.xlsx')) as writer:
+                ndf.to_excel(writer, sheet_name=f"{ID}_{pud}UD")
+            pdf = plantwide_P_mass_flows(sys)
+            with pd.ExcelWriter(os.path.join(results_path, 'P_mass.xlsx')) as writer:
+                pdf.to_excel(writer, sheet_name=f"{ID}_{pud}UD")
+            metrics[f"{ID}_{pud}UD"] = [m() for m in mdl.metrics]
+
+        except Exception as exc:
+            print(exc)
         fs.RWW.separate_out(urine)
-        print("25% UD start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
-        # print("Baseline start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
-        sys.simulate(t_span=(0,300), method='BDF')
-        end = tm.time()
-        print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end-start)), '\n')
-        # N_mass_dfs[ID] = plantwide_N_mass_flows(sys)
-        # P_mass_dfs[ID] = plantwide_P_mass_flows(sys)
-        metrics[ID+'_25'] = [m() for m in mdl.metrics]
-    except Exception as exc:
-        print(exc)        
-        
-    try:
-        
-        fs.RWW.separate_out(urine)
-        # if ID=='H1': sys.flowsheet.unit.MD.metal_dosage = 2
-        start = tm.time()
-        print("50% UD start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
-        # print("With UD start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
-        sys.simulate(state_reset_hook='reset_cache', t_span=(0,400), method='BDF')
-        end = tm.time()
-        print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end-start)), '\n')
-        # N_mass_dfs[ID+'_UD'] = plantwide_N_mass_flows(sys)
-        # P_mass_dfs[ID+'_UD'] = plantwide_P_mass_flows(sys)
-        metrics[ID+'_50'] = [m() for m in mdl.metrics]
-    except Exception as exc:
-        print(exc)
+        pud += 25
     
     del sys, fs
 
 #%%
-import pandas as pd, os
 
 # with pd.ExcelWriter(os.path.join(results_path, 'N_mass.xlsx')) as writer:
 #     for k, v in N_mass_dfs.items():
@@ -86,4 +78,4 @@ import pandas as pd, os
 #         v.to_excel(writer, sheet_name=k)
         
 metrics = pd.DataFrame.from_dict(metrics, orient='index', columns=var_columns(mdl.metrics))
-metrics.to_excel(os.path.join(results_path, 'ana2_performance.xlsx'))
+metrics.to_excel(os.path.join(results_path, 'ana1_performance.xlsx'))

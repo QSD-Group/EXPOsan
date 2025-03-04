@@ -29,7 +29,7 @@ dfs = load_data(
     )
 asinit = dfs['E2P']
 fcinit = asinit.iloc[-1].to_dict()
-adinit = dfs['adm'].loc['B1'].to_dict()
+adinit = dfs['adm'].loc[ID].to_dict()
 
 MGD2cmd = 3785.412
 Temp = 273.15+20 # temperature [K]
