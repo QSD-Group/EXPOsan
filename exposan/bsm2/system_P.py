@@ -40,8 +40,8 @@ V_ae = 3000 # aerated zone tank volume
 SOSAT1 = 8
 
 # mmp kinetics
-mmp = 'Musvoto'
-# mmp = 'Mbamba'
+# mmp = 'Musvoto'
+mmp = 'KM'
 
 # Default initial conditions
 dfs = load_data(ospath.join(data_path, 'bsm2p_init.xlsx'), sheet=None)
@@ -66,7 +66,6 @@ def create_system(flowsheet=None, default_init_conds=True):
     cmps_asm = pc.create_masm2d_cmps()
     asm = pc.mASM2d(components=cmps_asm, 
                     electron_acceptor_dependent_decay=True,
-                    mmp_kinetics=mmp,
                     # k_h=2.46, mu_H=4.23, q_fe=2.11, b_H=0.28, mu_PAO=0.82, 
                     # q_PP=1.23, q_PHA=2.46, b_PAO=0.14, b_PP=0.14, b_PHA=0.14, 
                     # mu_AUT=0.61, b_AUT=0.09
