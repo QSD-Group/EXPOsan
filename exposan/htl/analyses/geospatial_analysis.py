@@ -22,9 +22,13 @@ from exposan.htl import create_geospatial_system, create_geospatial_model
 from qsdsan.utils import auom, palettes
 from datetime import date
 from warnings import filterwarnings
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
 from scipy.linalg import cholesky
 from sklearn.cluster import AgglomerativeClustering
-from sklearn.preprocessing import StandardScaler
 
 # TODO: consider updating code for making figures so it does not need to run two times to get the correct settings
 
@@ -2329,6 +2333,88 @@ ax.scatter(x, y,
            c=a,
            linewidths=2,
            edgecolors='k')
+
+#%% relative importance of inter-WRRF contextual parameters to cost
+
+# !!! update the file here if necessary
+relative_importance = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-16.xlsx')
+relative_importance = relative_importance[relative_importance['USD_decarbonization'].notna()]
+relative_importance = relative_importance[relative_importance['USD_decarbonization'] <= 0]
+relative_importance['digestion'] = relative_importance[['sludge_aerobic_digestion','sludge_anaerobic_digestion']].values.max(axis=1)
+relative_importance.loc[relative_importance['digestion'] == 1, 'digestion'] = 'Y'
+relative_importance.loc[relative_importance['digestion'] == 0, 'digestion'] = 'N'
+
+X = relative_importance[['total_sludge_amount_kg_per_year','real_distance_km','digestion','nitrogen_fertilizer']]
+y = relative_importance['cost']
+
+num_features = ['total_sludge_amount_kg_per_year','real_distance_km']
+cat_features = ['digestion','nitrogen_fertilizer']
+
+preprocessor = ColumnTransformer([('num', StandardScaler(), num_features),
+                                  ('cat', OneHotEncoder(), cat_features)])
+
+# create a RandomForest pipeline
+pipeline = Pipeline(steps=[('preprocessor', preprocessor),
+                           ('regressor', RandomForestRegressor(n_estimators=100))])
+
+# split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# fit the model
+pipeline.fit(X_train, y_train)
+
+# get feature importances
+importances = pipeline.named_steps['regressor'].feature_importances_
+
+numerical_columns = num_features
+one_hot_columns = pipeline.named_steps['preprocessor'].transformers_[1][1].get_feature_names_out(cat_features)
+feature_names =  numerical_columns + list(one_hot_columns)
+
+feature_importance = pd.DataFrame({'Feature': feature_names,
+                                   'Importance': importances})
+
+print(feature_importance)
+
+#%% relative importance of inter-WRRF contextual parameters to CI
+
+# !!! update the file here if necessary
+relative_importance = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-16.xlsx')
+relative_importance = relative_importance[relative_importance['USD_decarbonization'].notna()]
+relative_importance = relative_importance[relative_importance['USD_decarbonization'] <= 0]
+relative_importance['digestion'] = relative_importance[['sludge_aerobic_digestion','sludge_anaerobic_digestion']].values.max(axis=1)
+relative_importance.loc[relative_importance['digestion'] == 1, 'digestion'] = 'Y'
+relative_importance.loc[relative_importance['digestion'] == 0, 'digestion'] = 'N'
+
+X = relative_importance[['total_sludge_amount_kg_per_year','real_distance_km','digestion','nitrogen_fertilizer']]
+y = relative_importance['CI']
+
+num_features = ['total_sludge_amount_kg_per_year','real_distance_km']
+cat_features = ['digestion','nitrogen_fertilizer']
+
+preprocessor = ColumnTransformer([('num', StandardScaler(), num_features),
+                                  ('cat', OneHotEncoder(), cat_features)])
+
+# create a RandomForest pipeline
+pipeline = Pipeline(steps=[('preprocessor', preprocessor),
+                           ('regressor', RandomForestRegressor(n_estimators=100))])
+
+# split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# fit the model
+pipeline.fit(X_train, y_train)
+
+# get feature importances
+importances = pipeline.named_steps['regressor'].feature_importances_
+
+numerical_columns = num_features
+one_hot_columns = pipeline.named_steps['preprocessor'].transformers_[1][1].get_feature_names_out(cat_features)
+feature_names =  numerical_columns + list(one_hot_columns)
+
+feature_importance = pd.DataFrame({'Feature': feature_names,
+                                   'Importance': importances})
+
+print(feature_importance)
 
 #%% test required Spearman sample number
 
