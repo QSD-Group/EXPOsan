@@ -51,7 +51,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
         COD=358, NH4_N=25.91, PO4_P=5,
         fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
         )
-    carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=60)
+    carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=85)
 
     PC = su.PrimaryClarifier(
         'PC', ins=[rww, 'reject'], 
@@ -103,7 +103,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     FC = su.FlatBottomCircularClarifier(
         'FC', O6-1, ['SE', 1-A1, 'WAS'], 
         # 'FC', ASR-0, ['SE', 1-AS, 'WAS'],
-        underflow=0.4*10*MGD2cmd, wastage=0.136*MGD2cmd,
+        underflow=0.4*10*MGD2cmd, wastage=0.135*MGD2cmd,
         surface_area=1579.352, height=3.6576, N_layer=10, feed_layer=5,
         X_threshold=3000, v_max=410, v_max_practical=274,
         rh=4e-4, rp=0.1, fns=0.01, 
@@ -112,7 +112,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     
     MT = su.IdealClarifier(
         'MT', FC-2, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.0335*MGD2cmd,
+        sludge_flow_rate=0.0233*MGD2cmd,
         solids_removal_efficiency=0.95,
         )
     M1 = su.Mixer('M1', ins=(GT-1, MT-1))
@@ -125,7 +125,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
                           adm1_model=adm, asm2d_model=asm)
     AD = su.AnaerobicCSTR(
         'AD', ins=J1-0, outs=('biogas', 'digestate'), 
-        V_liq=0.95*MGD2cmd, V_gas=0.11*MGD2cmd, 
+        V_liq=0.95*MGD2cmd, V_gas=0.117*MGD2cmd, 
         fixed_headspace_P=False, fraction_retain=0,
         T=T_ad, model=adm,
         pH_ctrl=7.0,
@@ -137,7 +137,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     
     DW = su.PrimaryClarifier(
         'DW', J2-0, outs=['', 'cake'],
-        sludge_flow_rate=0.0095*MGD2cmd,
+        sludge_flow_rate=0.007*MGD2cmd,
         solids_removal_efficiency=0.9,
         )
 
