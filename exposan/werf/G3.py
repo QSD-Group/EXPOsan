@@ -46,7 +46,7 @@ def create_g3_system(flowsheet=None, default_init_conds=True):
         COD=358, NH4_N=25.91, PO4_P=5,
         fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
         )
-    carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=60)
+    carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=25)
     PC = su.PrimaryClarifier(
         'PC', ins=[rww, 'reject'], 
         outs=('PE', 'PS'),
@@ -97,7 +97,7 @@ def create_g3_system(flowsheet=None, default_init_conds=True):
     FC = su.FlatBottomCircularClarifier(
         # 'FC', ins=ASR-0, outs=['SE', 1-ASR, 'WAS'],
         'FC', ins=O6-1, outs=['SE', 1-A1, 'WAS'],
-        underflow=0.4*10*MGD2cmd, wastage=0.1355*MGD2cmd,
+        underflow=0.4*10*MGD2cmd, wastage=0.14*MGD2cmd,
         surface_area=1579.352, height=3.6576, N_layer=10, feed_layer=5,
         X_threshold=3000, v_max=410, v_max_practical=274,
         rh=4e-4, rp=0.1, fns=0.01, 
@@ -106,14 +106,14 @@ def create_g3_system(flowsheet=None, default_init_conds=True):
     
     MT = su.IdealClarifier(
         'MT', FC-2, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.0327*MGD2cmd,
+        sludge_flow_rate=0.018*MGD2cmd,
         solids_removal_efficiency=0.95
         )
     M1 = su.Mixer('M1', ins=[GT-1, MT-1])
     
     DW = su.IdealClarifier(
         'DW', M1-0, outs=('', 'cake'),
-        sludge_flow_rate=0.0139*MGD2cmd,
+        sludge_flow_rate=0.0103*MGD2cmd,    # aim for 20% TS (raw PS & WAS)
         solids_removal_efficiency=0.9
         )
     M2 = su.Mixer('M2', ins=[GT-0, MT-0, DW-0])
