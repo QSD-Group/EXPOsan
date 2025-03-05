@@ -18,4 +18,4 @@ def run(model_ID, seed = None, N = 1000, country_specific =False, **model_kwargs
 
 if __name__ == '__main__':
     el.INCLUDED_RESOURCE_RECOVERY = False  # does not include resource recovery at the current stage
-    run('sysEL', seed = 500, N = 10000)
+    run('sysEL', seed = 5, N = 100)

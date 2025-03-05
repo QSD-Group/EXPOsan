@@ -356,6 +356,7 @@ def add_parameters(model, unit_dct, country_specific=False):
     ################################################ Universal degradation parameters ##########################################################
     # Max methane emission
     toilet_unit = sys.path[1] # the first unit involving degradation
+    # toilet_unit = toilet_unit  # the first unit involving degradation
     b = el.max_CH4_emission
     D = shape.Triangle(lower = 0.175, midpoint = b, upper = 0.325)
     @param(name = 'Max CH4 emission', element = toilet_unit, kind = 'coupled', units = 'g CH4/g COD',
@@ -394,44 +395,44 @@ def add_parameters(model, unit_dct, country_specific=False):
             if hasattr(unit, 'decay_k_N'):
                 setattr(unit, 'decay_k_N', k)
     
-    # toilet material properties
-    density = toilet_unit.density_dct
-    #########################################################################################################################
-    b = density['Plastic']
-    D = shape.Uniform(lower = 0.31, upper = 1.24)
-    param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Plastic'),
-          name = 'Density of plastic', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-          baseline = b, distribution = D)
-    ########################################################################################################################
-    b = density['Brick']
-    D = shape.Uniform(lower = 1500, upper = 2000)
-    param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Brick'),
-          name = 'Density of brick', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-          baseline = b, distribution = D)
-    ########################################################################################################################
-    b = density['StainlessSteelSheet']
-    D = shape.Uniform(lower = 2.26, upper = 3.58)
-    param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'StainlessSteelSheet'),
-          name = 'Density of stainless steel sheet', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-          baseline = b, distribution = D)
-    ########################################################################################################################
-    b = density['Gravel']
-    D = shape.Uniform(lower = 1520, upper = 1680)
-    param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Gravel'),
-          name = 'Density of gravel', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-          baseline = b, distribution = D)
-    ########################################################################################################################      
-    b = density['Sand']
-    D = shape.Uniform(lower = 1281, upper = 1602)
-    param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Sand'),
-          name = 'Density of sand', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-          baseline = b, distribution = D)
-    #########################################################################################################################
-    b = density['Steel']
-    D = shape.Uniform(lower = 7750, upper = 8050)
-    param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Steel'),
-          name = 'Density of steel', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-          baseline = b, distribution = D)
+    # # toilet material properties
+    # density = toilet_unit.density_dct
+    # #########################################################################################################################
+    # b = density['Plastic']
+    # D = shape.Uniform(lower = 0.31, upper = 1.24)
+    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Plastic'),
+    #       name = 'Density of plastic', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
+    #       baseline = b, distribution = D)
+    # ########################################################################################################################
+    # b = density['Brick']
+    # D = shape.Uniform(lower = 1500, upper = 2000)
+    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Brick'),
+    #       name = 'Density of brick', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
+    #       baseline = b, distribution = D)
+    # ########################################################################################################################
+    # b = density['StainlessSteelSheet']
+    # D = shape.Uniform(lower = 2.26, upper = 3.58)
+    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'StainlessSteelSheet'),
+    #       name = 'Density of stainless steel sheet', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
+    #       baseline = b, distribution = D)
+    # ########################################################################################################################
+    # b = density['Gravel']
+    # D = shape.Uniform(lower = 1520, upper = 1680)
+    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Gravel'),
+    #       name = 'Density of gravel', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
+    #       baseline = b, distribution = D)
+    # ########################################################################################################################      
+    # b = density['Sand']
+    # D = shape.Uniform(lower = 1281, upper = 1602)
+    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Sand'),
+    #       name = 'Density of sand', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
+    #       baseline = b, distribution = D)
+    # #########################################################################################################################
+    # b = density['Steel']
+    # D = shape.Uniform(lower = 7750, upper = 8050)
+    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Steel'),
+    #       name = 'Density of steel', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
+    #       baseline = b, distribution = D)
     
     ################################################# General TEA Settings ##################################################
     # Discount rate if changing in TEA

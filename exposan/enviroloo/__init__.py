@@ -356,21 +356,21 @@ def get_scaled_capital(tea):
         )
     return new_CAPEX_annualized
 
-# def get_TEA_metrics(system, include_breakdown=False):
-#     tea = system.TEA
-#     get_annual_electricity = lambda system: system.power_utility.cost * system.operating_hours
-#     functions = [lambda: (get_scaled_capital(tea) - tea.net_earnings) / ppl]
-#     if not include_breakdown: return functions # net cost
-#     return [
-#         *functions,
-#         lambda: get_scaled_capital(tea) / ppl, # means CAPEX
-#         lambda: get_annual_electricity(system) / ppl, # means annual electricity consumption
-#         lambda: tea.annual_labor / ppl, # means annual labor cost
-#         lambda: (tea.AOC - get_annual_electricity(system) - tea.annual_labor) / ppl, # means OPEX excluding energy and labor sectors
-#         lambda: tea.sales / ppl, # means sales incoming
-#         ]
+def get_TEA_metrics(system, include_breakdown=False):
+    tea = system.TEA
+    get_annual_electricity = lambda system: system.power_utility.cost * system.operating_hours
+    functions = [lambda: (get_scaled_capital(tea) - tea.net_earnings) / ppl]
+    if not include_breakdown: return functions # net cost
+    return [
+        *functions,
+        lambda: get_scaled_capital(tea) / ppl, # means CAPEX
+        lambda: get_annual_electricity(system) / ppl, # means annual electricity consumption
+        lambda: tea.annual_labor / ppl, # means annual labor cost
+        lambda: (tea.AOC - get_annual_electricity(system) - tea.annual_labor) / ppl, # means OPEX excluding energy and labor sectors
+        lambda: tea.sales / ppl, # means sales incoming
+        ]
 
-def get_TEA_metrics(system, include_breakdown=True):
+def get_TEA_metrics_breakdown(system, include_breakdown=True):
     tea = system.TEA
     get_annual_electricity = lambda system: system.power_utility.cost * system.operating_hours
     metrics = {
@@ -419,7 +419,25 @@ def get_normalized_OPEX(units): # get the OPEX of a unit or units normalized to 
     OPEX += sum(s.cost for s in streams)
     return OPEX * 24 / ppl  # converted to per capita per day
 
-def get_LCA_metrics(system, include_breakdown=True):
+def get_LCA_metrics(system, include_breakdown=False):
+    lca = system.LCA
+    functions = [
+        lambda: lca.total_impacts['GlobalWarming'] / lca.lifetime / ppl, # annual GWP
+        # ReCiPe LCA functions
+        lambda: lca.total_impacts['H_Ecosystems'] / lca.lifetime / ppl,
+        lambda: lca.total_impacts['H_Health'] / lca.lifetime / ppl,
+        lambda: lca.total_impacts['H_Resources'] / lca.lifetime / ppl,
+        ]
+    if not include_breakdown: return functions
+    return [
+        *functions,
+        lambda: lca.total_construction_impacts['GlobalWarming'] / lca.lifetime / ppl, # means construction fee
+        lambda: lca.total_transportation_impacts['GlobalWarming'] / lca.lifetime / ppl, # means transportation fee
+        lambda: lca.total_stream_impacts['GlobalWarming'] / lca.lifetime / ppl, # means stream impacts including fugitive gases and offsets
+        lambda: lca.total_other_impacts['GlobalWarming'] / lca.lifetime / ppl, # means other impacts in GWP
+        ]
+
+def get_LCA_metrics_breakdown(system, include_breakdown=True):
     lca = system.LCA
     metrics = {
         'Annual GWP': {
