@@ -74,7 +74,7 @@ def create_i3_system(flowsheet=None, default_init_conds=True):
     FC = su.FlatBottomCircularClarifier(
         'FC', ins=ASR-0, outs=['SE', 1-ASR, 'WAS'],
         # 'FC', ins=O6-0, outs=['SE', 1-O1, 'WAS'],
-        underflow=0.67*10*MGD2cmd, wastage=0.167*MGD2cmd, # 12.3d SRT isn't sufficient for nitrification
+        underflow=0.67*10*MGD2cmd, wastage=0.233*MGD2cmd, # 12.3d SRT isn't sufficient for nitrification
         surface_area=1579.352, height=3.6576, N_layer=10, feed_layer=6,
         X_threshold=3000, v_max=410, v_max_practical=274,
         rh=3e-4, rp=5.2e-3, fns=0.001, 
