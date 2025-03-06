@@ -10,8 +10,6 @@ Note the word 'sludge' in this file refers to either sludge or biosolids.
 
 # TODO: update/delete TODO's in each file
 
-# TODO: add new units and contextualized fertilizers prices and crude oil price in writing
-
 import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
 from qsdsan.utils import auom, clear_lca_registries

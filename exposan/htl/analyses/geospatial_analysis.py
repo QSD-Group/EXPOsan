@@ -32,8 +32,6 @@ from sklearn.cluster import AgglomerativeClustering
 
 # TODO: consider updating code for making figures so it does not need to run two times to get the correct settings
 
-# TODO: add tables of contextual parameters that cannot be included in a figure, or add in the Excel file
-
 # TODO: update file paths later
 folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/'
 
@@ -62,7 +60,6 @@ _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
 _MMgal_to_L = auom('gal').conversion_factor('L')*1000000
 _oil_barrel_to_L = auom('oil_barrel').conversion_factor('L')
 
-# TODO: grid CI data was different from the IEDO work, check in writing
 WRRF = pd.read_excel(folder + 'HTL_geospatial_input_2025-02-10.xlsx')
 
 assert WRRF.duplicated(subset='CWNS_NUM').sum() == 0
@@ -89,6 +86,7 @@ treatment_trains = np.array(['LAGOON_AER','LAGOON_ANAER','LAGOON_FAC',
 TT_indentifier = WRRF[treatment_trains].apply(lambda x: x > 0)
 WRRF['treatment_train'] = TT_indentifier.apply(lambda x: list(treatment_trains[x.values]), axis=1)
 
+# !!! 'total_emission' here is based on the IEDO grid CI (2020 standard scenario), but for HTL-based systems, use 2021 standard scenario, which may have minimal impact on WRRF life cycle GHG reduction calculation
 WRRF = WRRF[['FACILITY','CITY','STATE','CWNS_NUM','LATITUDE','LONGITUDE',
              'FLOW_2022_MGD_FINAL','balancing_area','treatment_train',
              'landfill','land_application','incineration',
@@ -533,7 +531,6 @@ US.plot(ax=ax,
         linewidth=0)
 
 US.plot(ax=ax, color='none', edgecolor='k', linewidth=3)
-# TODO: consider de-emphasizing PADD, maybe remove PADD colors in the TOC figure? but single color or no color makes the figure less balanced
 # for TOC
 # US.plot(ax=ax, color='none', edgecolor='k', linewidth=0)
 # for all oil refineries together with the same symbols
@@ -949,8 +946,7 @@ WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-02-10.xlsx'
 # removal WRRFs with no real_distance_km
 WRRF_input = WRRF_input.dropna(subset='real_distance_km')
 
-# TODO: add explanation on why group the results by the PADD of WRRFs instead of oil refineries
-# TODO: consider de-emphasizing PADD (mostly in writing, but can also change variable names in the code), just grouping WRRFs by these 5 geographic regions
+# results grouped by different regions (not by PADD regions, just they are the same as PADD regions)
 WRRF_input.loc[WRRF_input['state'].isin(['CT','DC','DE','FL','GA','MA','MD','ME','NC','NH','NJ','NY','PA','RI','SC','VA','VT','WV']),'WRRF_PADD'] = 1
 WRRF_input.loc[WRRF_input['state'].isin(['IA','IL','IN','KS','KY','MI','MN','MO','ND','NE','OH','OK','SD','TN','WI']),'WRRF_PADD'] = 2
 WRRF_input.loc[WRRF_input['state'].isin(['AL','AR','LA','MS','NM','TX']),'WRRF_PADD'] = 3
@@ -1411,8 +1407,6 @@ integrated_result.to_excel(folder + f'results/baseline/integrated_baseline_{date
 
 #%% decarbonization map (preparation)
 
-# TODO: consider adding uncertainty versions of this
-
 # !!! update the file here if necessary
 decarbonization_map = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-16.xlsx')
 decarbonization_map = decarbonization_map[decarbonization_map['USD_decarbonization'].notna()]
@@ -1499,19 +1493,16 @@ plot_map(all_map, g)
 
 #%% decarbonization map (AD only)
 
-# TODO: add this figure to the SI
 AD_map = decarbonization_map[(decarbonization_map['sludge_anaerobic_digestion'] == 1) & (decarbonization_map['sludge_aerobic_digestion'] == 0)].copy()
 plot_map(AD_map, b)
 
 #%% decarbonization map (AeD only)
 
-# TODO: add this figure to the SI
 AeD_map = decarbonization_map[(decarbonization_map['sludge_anaerobic_digestion'] == 0) & (decarbonization_map['sludge_aerobic_digestion'] == 1)].copy()
 plot_map(AeD_map, y)
 
 #%% decarbonization map (both AD and AeD)
 
-# TODO: add this figure to the SI
 AD_and_AeD_map = decarbonization_map[(decarbonization_map['sludge_anaerobic_digestion'] == 1) & (decarbonization_map['sludge_aerobic_digestion'] == 1)].copy()
 plot_map(AD_and_AeD_map, g)
 
@@ -1522,7 +1513,6 @@ plot_map(AD_or_AeD_map, b)
 
 #%% decarbonization map (no AD and no AeD)
 
-# TODO: add this figure to the SI
 none_map = decarbonization_map[(decarbonization_map['sludge_anaerobic_digestion'] == 0) & (decarbonization_map['sludge_aerobic_digestion'] == 0)].copy()
 plot_map(none_map, r)
 
@@ -2418,8 +2408,6 @@ print(feature_importance)
 
 #%% test required Spearman sample number
 
-# TODO: add in writing (make sure the rho used is 0.2 not 0.1, mention power is 0.8)
-
 def spearman_sample_size(rho, alpha, power):
     fisher_z = 0.5 * np.log((1 + rho) / (1 - rho))
     # two-tailed test
@@ -2636,8 +2624,6 @@ for name in ['cost_dollar_per_tonne','CI_kg_CO2_eq_per_day','saving_dollar_per_d
 
 #%% biocrude transportation Chord diagram
 
-# TODO: consider adding uncertainty versions of this, if needed
-
 # import only if needed
 from d3blocks import D3Blocks
 
@@ -2730,12 +2716,14 @@ all_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025
 selected_facility = all_facility[all_facility['USD_decarbonization'].notna()]
 selected_facility = selected_facility[selected_facility['USD_decarbonization'] <= 0]
 
-P_ratio = selected_facility['total_sludge_amount_kg_per_year'].sum()/all_facility['total_sludge_amount_kg_per_year'].sum()
+# estimate 83% coverage
+P_ratio = selected_facility['total_sludge_amount_kg_per_year'].sum()/all_facility['total_sludge_amount_kg_per_year'].sum()/0.83
 
+# estimate 83% coverage
 def N_ratio(fertilizer):
     selected_N = selected_facility[selected_facility['nitrogen_fertilizer'] == fertilizer]['total_sludge_amount_kg_per_year'].sum()
     all_N = all_facility[all_facility['nitrogen_fertilizer'] == fertilizer]['total_sludge_amount_kg_per_year'].sum()
-    return selected_N/all_N
+    return selected_N/all_N/0.83
 
 P_offset_future = P_offset/P_ratio
 # !!! update the file here if necessary
@@ -2770,7 +2758,7 @@ def add_region(position, color):
     plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
     
     ax = plt.gca()
-    ax.set_ylim([0, 8])
+    ax.set_ylim([0, 6])
     
     if position == 0:
         ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
@@ -2837,8 +2825,6 @@ add_region(3, r)
 
 #%% sampled facility level uncertainty and sensitivity analyses (data preparation)
 
-# TODO: add AgglomerativeClustering (an unsupervised machine learning) into writing
-
 # !!! update the file here if necessary
 sampled_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-16.xlsx')
 
@@ -2856,9 +2842,7 @@ sampled_facility.loc[sampled_facility['nitrogen_fertilizer']=='NH3', 'nitrogen_f
 sampled_facility.loc[sampled_facility['nitrogen_fertilizer']=='urea', 'nitrogen_fertilizer'] = 2
 sampled_facility.loc[sampled_facility['nitrogen_fertilizer']=='UAN', 'nitrogen_fertilizer'] = 3
 
-# TODO: add in writing
-# exclude income_tax since it is decided by the included parameters (except the location...which is only kind of correlated to dollar_per_kWh)
-# however, since during the simulation, the income_tax is not a parameter, so exclude it here
+# exclude income_tax since it is decided by the included parameters (even the location can be represented by dollar_per_kWh)
 sampled_facility = sampled_facility[['total_sludge_amount_kg_per_year',
                                      'sludge_aerobic_digestion',
                                      'sludge_anaerobic_digestion',
@@ -3664,7 +3648,7 @@ for size in np.linspace(20, 200, 10):
     for sludge_distance in np.linspace(20, 200, 10):
         print('\n\n', f'sludge amount: {size} metric tonne/day\n', f'sludge travel distance: {sludge_distance} km\n')
         
-        # TODO: add results for the other 2 nitrogen fertilizers in the SI
+        # !!! replace nitrogen_fertilizer the other 2 nitrogen fertilizers
         sys = create_geospatial_system(size=size,
                                        sludge_transportation=1,
                                        sludge_distance=sludge_distance,
@@ -3851,33 +3835,209 @@ lines = ax.tricontour(X, Y, Z, levels=7, linewidths=3, linestyles='solid', color
 
 ax.clabel(lines, lines.levels, inline=True, fontsize=38)
 
-#%% future 100% coverage
+#%% future coverage (data preparation)
 
-# TODO: add capacitated p-median to demonstrate the 100% accommodation of wastewater solids stream in the CONUS, if necessary
+import networkx as nx
+from scipy.spatial import KDTree
+from numba import njit
 
+distance_x = []
+coverage_y = []
 
+for distance_threshold in np.linspace(0, 30, 151):
+    print(distance_threshold)
+    
+    # max distance to consider WWTPs as neighbors
+    distance_threshold_km = distance_threshold
+    solids_threshold = 8
+    # /1.3 to convert the real distance to linear distance, 1.3 is the average ratio from WRRF-oil refinery transportation
+    distance_constant = 80/1.3
+    
+    WRRF_coverage = []
+    for i in range(len(WRRF)):
+        x = WRRF.iloc[i].latitude
+        y = WRRF.iloc[i].longitude
+        solids = WRRF.iloc[i].total_sludge_amount_kg_per_year/1000/365
+        WRRF_coverage.append({'id': i, 'pos': (x, y), 'solids': solids})
+    
+    G = nx.Graph()
+    for facility in WRRF_coverage:
+        G.add_node(facility['id'], pos=facility['pos'], solids=facility['solids'])
+    
+    # convert the distance threshold from km to degrees.
+    # roughly, 1 degree latitude ≈ 111 km.
+    degree_threshold = distance_threshold_km / 111.0
+    
+    points = np.array([facility['pos'] for facility in WRRF_coverage])
+    tree = KDTree(points)
+    # query candidate pairs using the approximate threshold in degrees
+    candidate_pairs = tree.query_pairs(r=degree_threshold)
+    print(f"Candidate pairs from KDTree: {len(candidate_pairs)}")
+    
+    @njit
+    def haversine(lat1, lon1, lat2, lon2):
+        """
+        calculate the great-circle distance between two points on Earth (in km)
+        using the haversine formula
+        """
+        # Earth radius in km
+        R = 6371.0
+        # convert decimal degrees to radians
+        lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        a = np.sin(dlat/2.0)**2 + np.cos(lat1)*np.cos(lat2)*np.sin(dlon/2.0)**2
+        c = 2*np.arcsin(np.sqrt(a))
+        return R*c
+    
+    times = 0   
+    
+    for i, j in candidate_pairs:
+        if times%500000 == 0:
+            print(times)
+        times += 1
+        
+        pos_i = points[i]
+        pos_j = points[j]
+        geo_distance = haversine(pos_i[0], pos_i[1], pos_j[0], pos_j[1])
+        if geo_distance < distance_threshold_km:
+            G.add_edge(i, j, weight=geo_distance)
+    
+    # print(f"Total edges added: {G.number_of_edges()}")
+    
+    # cluster identification
+    clusters = list(nx.connected_components(G))
+    # print(f"Found {len(clusters)} clusters.")
+    
+    # hub identification
+    hubs = []
+    for cluster in clusters:
+        cluster_nodes = list(cluster)
+        
+        total_solids = sum(G.nodes[node]['solids'] for node in cluster_nodes)
+        
+        # compute the centroid as the candidate hub position
+        xs = [G.nodes[node]['pos'][0] for node in cluster_nodes]
+        ys = [G.nodes[node]['pos'][1] for node in cluster_nodes]
+        centroid = (np.mean(xs), np.mean(ys))
+        
+        total_distance = sum(haversine(G.nodes[node]['pos'][0],
+                                       G.nodes[node]['pos'][1],
+                                       centroid[0],
+                                       centroid[1])
+                             for node in cluster_nodes)
+        
+        if total_solids > solids_threshold and total_distance < total_solids * distance_constant:
+            hubs.append({'hub_pos': centroid, 
+                         'cluster': cluster_nodes, 
+                         'total_solids': total_solids, 
+                         'total_distance': total_distance})
+        #     print(f"Cluster {cluster_nodes}: total_solids = {total_solids:.2f}, "
+        #           f"total_distance = {total_distance:.2f} -> HUB accepted at {centroid}")
+        # else:
+        #     print(f"Cluster {cluster_nodes}: Does not meet hub criteria (solids = {total_solids:.2f}, "
+        #           f"distance = {total_distance:.2f}).")
+    
+    # calculate coverage
+    total_solids_all = sum(facility['solids'] for facility in WRRF_coverage)
+    covered_solids = sum(hub['total_solids'] for hub in hubs)
+    percentage_covered = covered_solids / total_solids_all * 100
+    
+    distance_x.append(distance_threshold)
+    coverage_y.append(percentage_covered)
+    
+#%% future coverage (visualization)
 
+fig, ax = plt.subplots(figsize=(10, 10))
 
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 38
+plt.rcParams['ytick.labelsize'] = 38
 
+plt.xticks(fontname='Arial')
+plt.yticks(fontname='Arial')
 
-#%% writing results - part 1
+plt.rcParams.update({'mathtext.fontset': 'custom'})
+plt.rcParams.update({'mathtext.default': 'regular'})
+plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
-# TODO: update the analysis here based on the texts
+ax = plt.gca()
 
-# !!! update the file here if necessary
-WRRF_finder = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-16.xlsx')
-WRRF_finder = WRRF_finder[WRRF_finder['USD_decarbonization'].notna()]
-WRRF_finder = WRRF_finder[WRRF_finder['USD_decarbonization'] <= 0]
+ax.set_xlim((0, 30))
+ax.set_ylim((0, 100))
 
-digestion_WRRFs = WRRF_finder[(WRRF_finder['sludge_anaerobic_digestion'] == 1) | (WRRF_finder['sludge_aerobic_digestion'] == 1)].copy()
-print(digestion_WRRFs.sort_values('CO2_reduction', ascending=False).iloc[0,][['facility','city','flow_2022_MGD_final']])
-print(digestion_WRRFs.sort_values('WRRF_CO2_reduction_ratio', ascending=False).iloc[0,][['facility','city','flow_2022_MGD_final']])
+ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
-no_digestion_WRRFs = WRRF_finder[(WRRF_finder['sludge_anaerobic_digestion'] == 0) & (WRRF_finder['sludge_aerobic_digestion'] == 0)].copy()
-print(no_digestion_WRRFs.sort_values('CO2_reduction', ascending=False).iloc[0,][['facility','city','flow_2022_MGD_final']])
-print(no_digestion_WRRFs.sort_values('WRRF_CO2_reduction_ratio', ascending=False).iloc[0,][['facility','city','flow_2022_MGD_final']])
+ax.set_xlabel(r'$\mathbf{Max.\ clustering\ distance}$ [km]', fontname='Arial', fontsize=45)
+ax.set_ylabel(r'$\mathbf{Coverage}$ [%]', fontname='Arial', fontsize=45, linespacing=0.8)
 
-#%% writing results - part 2
+mathtext.FontConstantsBase.sup1 = 0.35
+
+plt.xticks(np.arange(0, 35, 5))
+plt.yticks(np.arange(0, 120, 20))
+
+ax_top = ax.twiny()
+ax_top.set_xlim((0, 30))
+ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+
+plt.xticks(np.arange(0, 35, 5))
+plt.yticks(np.arange(0, 120, 20))
+
+ax_right = ax.twinx()
+ax_right.set_ylim((0, 100))
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+plt.xticks(np.arange(0, 35, 5))
+plt.yticks(np.arange(0, 120, 20))
+
+ax.plot(distance_x,
+        coverage_y,
+        c='k',
+        linewidth=3)
+
+ax.plot([0, distance_x[coverage_y.index(max(coverage_y))], distance_x[coverage_y.index(max(coverage_y))]],
+        [max(coverage_y), max(coverage_y), 0],
+        c='k',
+        linestyle='--',
+        linewidth=3)
+
+ax.scatter(distance_x[coverage_y.index(max(coverage_y))],
+        max(coverage_y),
+        c=r,
+        s=500,
+        linewidths=3,
+        edgecolors='k',
+        zorder=2)
+
+# =============================================================================
+# # clustering visualization
+# pos_dict = nx.get_node_attributes(G, 'pos')
+# plt.figure(figsize=(30, 15))
+# 
+# # generate a color for each cluster
+# colors = plt.cm.rainbow(np.linspace(0, 1, len(clusters)))
+# for i, cluster in enumerate(clusters):
+#     cluster_list = list(cluster)
+#     nx.draw_networkx_nodes(G, {i: (j[1], j[0]) for (i, j) in pos_dict.items()},
+#                            nodelist=cluster_list,
+#                            node_color=[colors[i]],
+#                            label=f"Cluster {i}")
+#     
+# # draw edges for context
+# nx.draw_networkx_edges(G, {i: (j[1], j[0]) for (i, j) in pos_dict.items()}, alpha=0.5)
+# 
+# # mark the hub positions
+# for hub in hubs:
+#     plt.plot(hub['hub_pos'][1], hub['hub_pos'][0], 'k*', markersize=15)
+# 
+# plt.title("WWTP Clusters and Candidate Hub Positions")
+# plt.xlabel("X coordinate")
+# plt.ylabel("Y coordinate")
+# plt.legend()
+# plt.show()
+# =============================================================================
+
+#%% writing results
 
 qualified_facility_biocrude = pd.read_excel(folder + 'results/qualified_facility/integrated_biocrude_BPD_2025-02-18.xlsx')
 qualified_facility_biocrude.drop('Unnamed: 0', axis=1, inplace=True)
@@ -4867,3 +5027,18 @@ print(f'The highest blending ratio in the near-term scenario is {BPD_capacity["r
 # add_rectangle('all', b, db)
 # add_line('all', db)
 # add_point('all', db)
+
+#%% writing results - part 1 (superseded)
+
+# # !!! update the file here if necessary
+# WRRF_finder = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-16.xlsx')
+# WRRF_finder = WRRF_finder[WRRF_finder['USD_decarbonization'].notna()]
+# WRRF_finder = WRRF_finder[WRRF_finder['USD_decarbonization'] <= 0]
+
+# digestion_WRRFs = WRRF_finder[(WRRF_finder['sludge_anaerobic_digestion'] == 1) | (WRRF_finder['sludge_aerobic_digestion'] == 1)].copy()
+# print(digestion_WRRFs.sort_values('CO2_reduction', ascending=False).iloc[0,][['facility','city','flow_2022_MGD_final']])
+# print(digestion_WRRFs.sort_values('WRRF_CO2_reduction_ratio', ascending=False).iloc[0,][['facility','city','flow_2022_MGD_final']])
+
+# no_digestion_WRRFs = WRRF_finder[(WRRF_finder['sludge_anaerobic_digestion'] == 0) & (WRRF_finder['sludge_aerobic_digestion'] == 0)].copy()
+# print(no_digestion_WRRFs.sort_values('CO2_reduction', ascending=False).iloc[0,][['facility','city','flow_2022_MGD_final']])
+# print(no_digestion_WRRFs.sort_values('WRRF_CO2_reduction_ratio', ascending=False).iloc[0,][['facility','city','flow_2022_MGD_final']])
