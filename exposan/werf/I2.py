@@ -88,10 +88,13 @@ def create_i2_system(flowsheet=None, default_init_conds=True):
         solids_removal_efficiency=0.95
         )
     
+    # asm2 = pc.mASM2d(electron_acceptor_dependent_decay=True,
+    #                  mmp_kinetics='KM', pH_ctrl=7.0, eta_NO3=0.28)
     AED = su.AerobicDigester(
         'AED', ins=MT-1, outs='digestate',
         V_max=2.4*MGD2cmd, activated_sludge_model=asm,
         aeration=1.0, DO_ID='S_O2', gas_stripping=True)
+    # AED.organic_particulate_inert_degradation_process.set_parameters(k_dig=0.03)
        
     DW = su.IdealClarifier(
         'DW', AED-0, outs=('', 'cake'),

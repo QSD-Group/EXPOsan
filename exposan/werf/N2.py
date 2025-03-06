@@ -47,7 +47,7 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
         COD=358, NH4_N=25.91, PO4_P=5,
         fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
         )
-    carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=50)
+    carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=100)
     
     n_zones = 5
     V_tot = 2.61 * MGD2cmd
@@ -62,7 +62,8 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
         V_tanks=Vs[:n_zones],
         influent_fractions=[
             [1,0,0,0,0],          # RWW
-            [1,0,0,0,0],          # carb
+            # [1,0,0,0,0],          # carb
+            [0.5,0,0,0,0.5],          # carb
             [0,0,1,0,0],          # RAS from MBR
             [1,0,0,0,0],          # reject
             ],

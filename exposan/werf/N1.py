@@ -47,7 +47,7 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
         COD=358, NH4_N=25.91, PO4_P=5,
         fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
         )
-    carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=60)
+    carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=100)
     thermo_asm = qs.get_thermo()
     
     PC = su.PrimaryClarifier(
@@ -66,13 +66,13 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
     Q_intr = 40 * MGD2cmd
     
     ASR = su.PFR(
-        'ASR', ins=[PC-0, carb, 'intr'], 
+        'ASR', ins=[PC-0, carb, 'RAS'], 
         N_tanks_in_series=n_zones,
         V_tanks=Vs[:n_zones],
         influent_fractions=[
             [1,0,0,0,0],          # PE
             [1,0,0,0,0],          # carb
-            [0,0,1,0,0],          # intr from MBR
+            [0,0,1,0,0],          # RAS from MBR
             ],
         internal_recycles=[
             (1,0,10*MGD2cmd), 

@@ -47,7 +47,7 @@ def create_g2_system(flowsheet=None, default_init_conds=True):
         COD=358, NH4_N=25.91, PO4_P=5,
         fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
         )
-    carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=60)
+    carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=85)
     PC = su.PrimaryClarifier(
         'PC', ins=[rww, 'reject'], 
         outs=('PE', 'PS'),
@@ -66,39 +66,39 @@ def create_g2_system(flowsheet=None, default_init_conds=True):
     V_tot = 4.7 * MGD2cmd
     fr_V = [0.014, 0.13, 0.148, 0.148, 0.28, 0.28]
     
-    gstrip = True
-    an_kwargs = dict(aeration=None, DO_ID='S_O2', suspended_growth_model=asm, gas_stripping=gstrip)
-    ae_kwargs = dict(aeration=2.0, DO_ID='S_O2', suspended_growth_model=asm, gas_stripping=gstrip)
+    # gstrip = True
+    # an_kwargs = dict(aeration=None, DO_ID='S_O2', suspended_growth_model=asm, gas_stripping=gstrip)
+    # ae_kwargs = dict(aeration=2.0, DO_ID='S_O2', suspended_growth_model=asm, gas_stripping=gstrip)
     
-    S1 = su.Splitter('S1', PC-0, split=0.8)
+    # S1 = su.Splitter('S1', PC-0, split=0.8)
     
-    A1 = su.CSTR('A1', ins=[carb, 'RAS'], V_max=V_tot*fr_V[0], **an_kwargs)
-    A2 = su.CSTR('A2', [A1-0, S1-0], V_max=V_tot*fr_V[1], **an_kwargs)
-    A3 = su.CSTR('A3', [A2-0, 'intr', S1-1], V_max=V_tot*fr_V[2], **an_kwargs)
-    A4 = su.CSTR('A4', A3-0, V_max=V_tot*fr_V[3], **an_kwargs)
-    O5 = su.CSTR('O5', A4-0, V_max=V_tot*fr_V[4], **ae_kwargs)
-    O6 = su.CSTR('O6', O5-0, [1-A3, 'treated'], split=[40, 14],
-                  V_max=V_tot*fr_V[5], **ae_kwargs)
+    # A1 = su.CSTR('A1', ins=[carb, 'RAS'], V_max=V_tot*fr_V[0], **an_kwargs)
+    # A2 = su.CSTR('A2', [A1-0, S1-0], V_max=V_tot*fr_V[1], **an_kwargs)
+    # A3 = su.CSTR('A3', [A2-0, 'intr', S1-1], V_max=V_tot*fr_V[2], **an_kwargs)
+    # A4 = su.CSTR('A4', A3-0, V_max=V_tot*fr_V[3], **an_kwargs)
+    # O5 = su.CSTR('O5', A4-0, V_max=V_tot*fr_V[4], **ae_kwargs)
+    # O6 = su.CSTR('O6', O5-0, [1-A3, 'treated'], split=[40, 14],
+    #               V_max=V_tot*fr_V[5], **ae_kwargs)
     
-    # ASR = su.PFR(
-    #     'ASR', ins=[PC-0, 'RAS', carb], outs='treated',
-    #     N_tanks_in_series=n_zones,
-    #     V_tanks=[f*V_tot for f in fr_V],
-    #     influent_fractions=[
-    #         [0, 0.8, 0.2, 0,0,0],   # PE
-    #         [1,0,0,0,0,0],          # RAS
-    #         [1,0,0,0,0,0],          # carb
-    #         ],
-    #     internal_recycles=[(5,2,40*MGD2cmd)], DO_ID='S_O2',
-    #     kLa=[0, 0, 0, 0, 180, 70], 
-    #     DO_setpoints=[0, 0, 0, 0, 2.0, 2.0],
-    #     suspended_growth_model=asm,
-    #     gas_stripping=True
-    #     )
+    ASR = su.PFR(
+        'ASR', ins=[PC-0, 'RAS', carb], outs='treated',
+        N_tanks_in_series=n_zones,
+        V_tanks=[f*V_tot for f in fr_V],
+        influent_fractions=[
+            [0, 0.8, 0.2, 0,0,0],   # PE
+            [1,0,0,0,0,0],          # RAS
+            [1,0,0,0,0,0],          # carb
+            ],
+        internal_recycles=[(5,2,40*MGD2cmd)], DO_ID='S_O2',
+        kLa=[0, 0, 0, 0, 180, 70], 
+        DO_setpoints=[0, 0, 0, 0, 2.0, 2.0],
+        suspended_growth_model=asm,
+        gas_stripping=True
+        )
     
     FC = su.FlatBottomCircularClarifier(
-        # 'FC', ins=ASR-0, outs=['SE', 1-ASR, 'WAS'],
-        'FC', ins=O6-1, outs=['SE', 1-A1, 'WAS'],
+        'FC', ins=ASR-0, outs=['SE', 1-ASR, 'WAS'],
+        # 'FC', ins=O6-1, outs=['SE', 1-A1, 'WAS'],
         underflow=0.4*10*MGD2cmd, wastage=0.136*MGD2cmd,
         surface_area=1579.352, height=3.6576, N_layer=10, feed_layer=5,
         X_threshold=3000, v_max=410, v_max_practical=274,
@@ -108,7 +108,7 @@ def create_g2_system(flowsheet=None, default_init_conds=True):
     
     MT = su.IdealClarifier(
         'MT', FC-2, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.031*MGD2cmd,
+        sludge_flow_rate=0.023*MGD2cmd,
         solids_removal_efficiency=0.95
         )
     M1 = su.Mixer('M1', ins=[GT-1, MT-1])
@@ -120,7 +120,7 @@ def create_g2_system(flowsheet=None, default_init_conds=True):
 
     DW = su.IdealClarifier(
         'DW', AED-0, outs=('', 'cake'),
-        sludge_flow_rate=7.38e-3*MGD2cmd,
+        sludge_flow_rate=3e-3*MGD2cmd,
         solids_removal_efficiency=0.9
         )
     M2 = su.Mixer('M2', ins=[MT-0, DW-0])
@@ -128,9 +128,10 @@ def create_g2_system(flowsheet=None, default_init_conds=True):
     HD = su.HydraulicDelay('HD', ins=M2-0, outs=1-PC)
     
     if default_init_conds:
-        asdct = asinit.to_dict('index')
-        for i in (A1, A2, A3, A4, O5, O6):
-            i.set_init_conc(**asdct[i.ID])
+        # asdct = asinit.to_dict('index')
+        # for i in (A1, A2, A3, A4, O5, O6):
+        #     i.set_init_conc(**asdct[i.ID])
+        ASR.set_init_conc(concentrations=asinit)
         FC.set_init_solubles(**fcinit)
         FC.set_init_sludge_solids(**fcinit)
         FC.set_init_TSS(default_fctss_init)
@@ -138,11 +139,11 @@ def create_g2_system(flowsheet=None, default_init_conds=True):
     
     sys = qs.System(
         ID, 
-        path=(PC, GT, S1, A1, A2, A3, A4, O5, O6, FC, 
-              MT, M1, AED, DW, M2, HD),
-        recycle=(O6-0, FC-1, HD-0)
-        # path=(PC, GT, ASR, FC, MT, M1, AED, DW, M2, HD),
-        # recycle=(FC-1, HD-0)
+        # path=(PC, GT, S1, A1, A2, A3, A4, O5, O6, FC, 
+        #       MT, M1, AED, DW, M2, HD),
+        # recycle=(O6-0, FC-1, HD-0)
+        path=(PC, GT, ASR, FC, MT, M1, AED, DW, M2, HD),
+        recycle=(FC-1, HD-0)
         )
     sys.set_dynamic_tracker(FC-0, AED)
 
