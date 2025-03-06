@@ -28,10 +28,10 @@ dfs = load_data(
     ospath.join(data_path, 'initial_conditions.xlsx'), 
     sheet=None,
     )
-asinit = dfs[ID]
+asinit = dfs['H']
 fcinit = asinit.iloc[-1].to_dict()
 default_fctss_init = [8, 9, 9, 30, 350, 350, 350, 350, 350, 9000]
-adinit = dfs['adm'].loc[ID].to_dict()
+adinit = dfs['adm'].loc['H'].to_dict()
 
 MGD2cmd = 3785.412
 Temp = 273.15+20 # temperature [K]
@@ -81,7 +81,7 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
     # an_kwargs = dict(aeration=None, DO_ID='S_O2', suspended_growth_model=asm, gas_stripping=True)
         
     # A1 = su.CSTR('A1', [rww, 'RAS', carb, 'intr'], V_max=fr_V[0]*V_tot, **an_kwargs)
-    # A2 = su.CSTR('A2', A1-0, , V_max=fr_V[1]*V_tot, **an_kwargs)
+    # A2 = su.CSTR('A2', A1-0, V_max=fr_V[1]*V_tot, **an_kwargs)
     # O3 = su.CSTR('O3', A2-0, V_max=fr_V[2]*V_tot, **ae_kwargs)
     # O4 = su.CSTR('O4', O3-0, ('', 3-A1), split=[30, 14], V_max=fr_V[3]*V_tot, **ae_kwargs)
     # A5 = su.CSTR('A5', O4-0, V_max=fr_V[4]*V_tot, **an_kwargs)
@@ -129,6 +129,7 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
     AD = su.AnaerobicCSTR(
         'AD', ins=J1-0, outs=('biogas', 'digestate'), 
         V_liq=1.1*MGD2cmd, V_gas=0.11*MGD2cmd, 
+        # V_liq=0.85*MGD2cmd, V_gas=0.085*MGD2cmd, 
         fixed_headspace_P=False, fraction_retain=0,
         T=T_ad, model=adm,
         pH_ctrl=7.0,
