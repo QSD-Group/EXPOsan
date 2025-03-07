@@ -5,7 +5,6 @@
 Created by 
             Siqi Tang, <siqit@outlook.com>
             Yuyao Huang, <yuyaoh20@gmail.com>
-            Aaron Marszewski, <aaronpm3@illinois.edu>
                             for uncertainty and sensitivity analysis of the EL system
 '''
 
