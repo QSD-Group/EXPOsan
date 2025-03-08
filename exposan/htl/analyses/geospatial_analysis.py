@@ -13,7 +13,7 @@ Note the word 'sludge' in this file refers to either sludge or biosolids.
 #%% initialization
 
 import geopy.distance, googlemaps
-import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.colors as colors, scipy.stats as stats, qsdsan as qs
+import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.colors as colors, scipy.stats as stats, qsdsan as qs, networkx as nx
 from math import floor
 from matplotlib.mathtext import _mathtext as mathtext
 from matplotlib.patches import Rectangle
@@ -27,8 +27,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from scipy.linalg import cholesky
 from sklearn.cluster import AgglomerativeClustering
+from scipy.linalg import cholesky
+from scipy.spatial import KDTree
+from numba import njit
 
 # TODO: consider updating code for making figures so it does not need to run two times to get the correct settings
 
@@ -3835,7 +3837,7 @@ lines = ax.tricontour(X, Y, Z, levels=7, linewidths=3, linestyles='solid', color
 
 ax.clabel(lines, lines.levels, inline=True, fontsize=38)
 
-#%% future coverage (data preparation)
+#%% future coverage (data preparation for coverage visualization)
 
 import networkx as nx
 from scipy.spatial import KDTree
@@ -3946,7 +3948,7 @@ for distance_threshold in np.linspace(0, 30, 151):
     distance_x.append(distance_threshold)
     coverage_y.append(percentage_covered)
     
-#%% future coverage (visualization)
+#%% future coverage (coverage visualization)
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -4009,33 +4011,179 @@ ax.scatter(distance_x[coverage_y.index(max(coverage_y))],
         edgecolors='k',
         zorder=2)
 
-# =============================================================================
-# # clustering visualization
-# pos_dict = nx.get_node_attributes(G, 'pos')
-# plt.figure(figsize=(30, 15))
-# 
-# # generate a color for each cluster
-# colors = plt.cm.rainbow(np.linspace(0, 1, len(clusters)))
-# for i, cluster in enumerate(clusters):
-#     cluster_list = list(cluster)
-#     nx.draw_networkx_nodes(G, {i: (j[1], j[0]) for (i, j) in pos_dict.items()},
-#                            nodelist=cluster_list,
-#                            node_color=[colors[i]],
-#                            label=f"Cluster {i}")
-#     
-# # draw edges for context
-# nx.draw_networkx_edges(G, {i: (j[1], j[0]) for (i, j) in pos_dict.items()}, alpha=0.5)
-# 
-# # mark the hub positions
-# for hub in hubs:
-#     plt.plot(hub['hub_pos'][1], hub['hub_pos'][0], 'k*', markersize=15)
-# 
-# plt.title("WWTP Clusters and Candidate Hub Positions")
-# plt.xlabel("X coordinate")
-# plt.ylabel("Y coordinate")
-# plt.legend()
-# plt.show()
-# =============================================================================
+#%% future coverage (data preparation for map visualization)
+
+# max distance to consider WWTPs as neighbors
+distance_threshold_km = 16.2
+solids_threshold = 8
+# /1.3 to convert the real distance to linear distance, 1.3 is the average ratio from WRRF-oil refinery transportation
+distance_constant = 80/1.3
+
+WRRF_coverage = []
+for i in range(len(WRRF)):
+    WRRF_coverage.append({'id': i,
+                          'pos': (WRRF.iloc[i].latitude,
+                                           WRRF.iloc[i].longitude),
+                          'solids': WRRF.iloc[i].total_sludge_amount_kg_per_year/1000/365})
+
+G = nx.Graph()
+for facility in WRRF_coverage:
+    G.add_node(facility['id'], pos=facility['pos'], solids=facility['solids'])
+
+# convert the distance threshold from km to degrees.
+# roughly, 1 degree latitude ≈ 111 km.
+degree_threshold = distance_threshold_km / 111.0
+
+points = np.array([facility['pos'] for facility in WRRF_coverage])
+tree = KDTree(points)
+# query candidate pairs using the approximate threshold in degrees
+candidate_pairs = tree.query_pairs(r=degree_threshold)
+print(f"Candidate pairs from KDTree: {len(candidate_pairs)}")
+
+@njit
+def haversine(lat1, lon1, lat2, lon2):
+    """
+    calculate the great-circle distance between two points on Earth (in km)
+    using the haversine formula
+    """
+    # Earth radius in km
+    R = 6371.0
+    # convert decimal degrees to radians
+    lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = np.sin(dlat/2.0)**2 + np.cos(lat1)*np.cos(lat2)*np.sin(dlon/2.0)**2
+    c = 2*np.arcsin(np.sqrt(a))
+    return R*c
+
+times = 0   
+
+for i, j in candidate_pairs:
+    if times%500000 == 0:
+        print(times)
+    times += 1
+    
+    pos_i = points[i]
+    pos_j = points[j]
+    geo_distance = haversine(pos_i[0], pos_i[1], pos_j[0], pos_j[1])
+    if geo_distance < distance_threshold_km:
+        G.add_edge(i, j, weight=geo_distance)
+
+# print(f"Total edges added: {G.number_of_edges()}")
+
+# cluster identification
+clusters = list(nx.connected_components(G))
+# print(f"Found {len(clusters)} clusters.")
+
+# hub identification
+hubs = []
+for cluster in clusters:
+    cluster_nodes = list(cluster)
+    
+    total_solids = sum(G.nodes[node]['solids'] for node in cluster_nodes)
+    
+    # compute the centroid as the candidate hub position
+    xs = [G.nodes[node]['pos'][0] for node in cluster_nodes]
+    ys = [G.nodes[node]['pos'][1] for node in cluster_nodes]
+    centroid = (np.mean(xs), np.mean(ys))
+    
+    total_distance = sum(haversine(G.nodes[node]['pos'][0],
+                                   G.nodes[node]['pos'][1],
+                                   centroid[0],
+                                   centroid[1])
+                         for node in cluster_nodes)
+    
+    if total_solids > solids_threshold and total_distance < total_solids * distance_constant:
+        hubs.append({'hub_pos': centroid, 
+                     'cluster': cluster_nodes, 
+                     'total_solids': total_solids, 
+                     'total_distance': total_distance})
+    #     print(f"Cluster {cluster_nodes}: total_solids = {total_solids:.2f}, "
+    #           f"total_distance = {total_distance:.2f} -> HUB accepted at {centroid}")
+    # else:
+    #     print(f"Cluster {cluster_nodes}: Does not meet hub criteria (solids = {total_solids:.2f}, "
+    #           f"distance = {total_distance:.2f}).")
+
+#%% future coverage (map visualization)
+
+pos_dict = nx.get_node_attributes(G, 'pos')
+
+WRRF_cluster = pd.DataFrame()
+
+WRRF_cluster['index'] = pos_dict.keys()
+WRRF_cluster['latitide'] = [i[0] for i in pos_dict.values()]
+WRRF_cluster['longitude'] = [i[1] for i in pos_dict.values()]
+
+covered_WRRF_index = [k for j in [i['cluster'] for i in hubs] for k in j]
+
+WRRF_cluster.loc[WRRF_cluster['index'].isin(covered_WRRF_index), 'color'] = b
+WRRF_cluster.loc[~WRRF_cluster['index'].isin(covered_WRRF_index), 'color'] = a
+
+WRRF_cluster = gpd.GeoDataFrame(WRRF_cluster, crs='EPSG:4269',
+                                geometry=gpd.points_from_xy(x=WRRF_cluster.longitude,
+                                                            y=WRRF_cluster.latitide))
+WRRF_cluster = WRRF_cluster.to_crs(crs='EPSG:3857')
+
+new_hub_position = pd.DataFrame()
+
+new_hub_position['latitide'] = [j[0] for j in [i['hub_pos'] for i in hubs if len(i['cluster']) != 1]]
+new_hub_position['longitude'] = [j[1] for j in [i['hub_pos'] for i in hubs if len(i['cluster']) != 1]]
+
+new_hub_position = gpd.GeoDataFrame(new_hub_position, crs='EPSG:4269',
+                                    geometry=gpd.points_from_xy(x=new_hub_position.longitude,
+                                                                y=new_hub_position.latitide))
+new_hub_position = new_hub_position.to_crs(crs='EPSG:3857')
+
+
+old_hub_position = pd.DataFrame()
+
+old_hub_position['latitide'] = [j[0] for j in [i['hub_pos'] for i in hubs if len(i['cluster']) == 1]]
+old_hub_position['longitude'] = [j[1] for j in [i['hub_pos'] for i in hubs if len(i['cluster']) == 1]]
+
+old_hub_position = gpd.GeoDataFrame(old_hub_position, crs='EPSG:4269',
+                                    geometry=gpd.points_from_xy(x=old_hub_position.longitude,
+                                                                y=old_hub_position.latitide))
+old_hub_position = old_hub_position.to_crs(crs='EPSG:3857')
+
+fig, ax = plt.subplots(figsize=(30, 30))
+
+US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
+
+
+WRRF_cluster_N = WRRF_cluster[WRRF_cluster['color'] == a]
+
+WRRF_cluster_Y = WRRF_cluster[WRRF_cluster['color'] == b]
+
+WRRF_cluster_N.plot(ax=ax, color=WRRF_cluster_N['color'], markersize=30, edgecolor='k', linewidth=0.5, alpha=0.3)
+
+WRRF_cluster_Y.plot(ax=ax, color=WRRF_cluster_Y['color'], markersize=30, edgecolor='k', linewidth=0.5, alpha=1)
+
+new_hub_position.plot(ax=ax, color=y, marker='*', markersize=600, edgecolor='k', linewidth=1.5, alpha=1)
+
+old_hub_position.plot(ax=ax, color=r, marker='*', markersize=600, edgecolor='k', linewidth=1.5, alpha=1)
+
+rectangle_edge = Rectangle((-13730000, 2930000), 1980000, 630000,
+                           color='k', lw=3, fc='none', alpha=1)
+ax.add_patch(rectangle_edge)
+
+# note the size of legends does not match exactly with the size of WRRFs
+ax.scatter(x=-13640000, y=3450000, marker='o', s=50, c=b, linewidths=0.5,
+           alpha=1, edgecolor='k')
+ax.scatter(x=-13640000, y=3310000, marker='o', s=50, c=a, linewidths=0.5,
+           alpha=0.5, edgecolor='k')
+ax.scatter(x=-13640000, y=3170000, marker='*', s=600, c=y, linewidths=1.5,
+           alpha=1, edgecolor='k')
+ax.scatter(x=-13640000, y=3030000, marker='*', s=600, c=r, linewidths=1.5,
+           alpha=1, edgecolor='k')
+
+plt.figtext(0.2, 0.3751, 'covered WRRFs', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
+plt.figtext(0.2, 0.3596, 'uncovered WRRFs', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
+plt.figtext(0.2, 0.3441, 'hubs covering multiple WRRFs', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
+plt.figtext(0.2, 0.3286, 'hubs covering one WRRF', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
+
+ax.set_aspect(1)
+
+ax.set_axis_off()
 
 #%% writing results
 

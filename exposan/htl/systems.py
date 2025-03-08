@@ -217,6 +217,7 @@ def create_system(configuration='baseline', capacity=100,
     MemDis.ins[3].price = 90/GDPCTPI[2008]*GDPCTPI[2020]
     MemDis.outs[0].price = 0.3236
     MemDis.register_alias('MemDis')
+    MemDis.include_construction = True
     
     # =========================================================================
     # HT (Area 300)
@@ -311,6 +312,7 @@ def create_system(configuration='baseline', capacity=100,
                        outs=('HC_out','CoMo_alumina_HC_out'))
     HC.ins[2].price = 38.79
     HC.register_alias('HC')
+    HC.include_construction = True
     
     H4 = qsu.HXutility('A420', include_construction=True,
                        ins=HC-0, outs='cooled_HC', T=60+273.15,

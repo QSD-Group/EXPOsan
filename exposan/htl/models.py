@@ -1669,8 +1669,8 @@ def create_model(system=None,
                 for i in range (len(HTL.heat_utilities)):
                     if HTL.heat_utilities[i].duty < 0:
                         a += HTL.heat_utilities[i].duty
-                return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
-                       table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
+                return table_other['Cooling']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
+                       table_other['Electricity']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
                        (SluC.power_utility.consumption+P1.power_utility.consumption)*sys.operating_hours
         
         except AttributeError:
@@ -1681,8 +1681,8 @@ def create_model(system=None,
                 for i in range (len(HTL.heat_utilities)):
                     if HTL.heat_utilities[i].duty < 0:
                         a += HTL.heat_utilities[i].duty
-                return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
-                       table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
+                return table_other['Cooling']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
+                       table_other['Electricity']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
                        (P1.power_utility.consumption)*sys.operating_hours    
     
         @metric(name='CHG_utility_GWP',units='kg CO2 eq',element='LCA')
@@ -1693,8 +1693,8 @@ def create_model(system=None,
                 for i in range (len(unit.heat_utilities)):
                     if unit.heat_utilities[i].duty < 0:
                         a += unit.heat_utilities[i].duty
-            return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
-                   table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
+            return table_other['Cooling']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
+                   table_other['Electricity']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
                    CHG.power_utility.consumption*sys.operating_hours
         
         P2, P3 = unit.P2, unit.P3
@@ -1707,8 +1707,8 @@ def create_model(system=None,
                 for i in range (len(unit.heat_utilities)):
                     if unit.heat_utilities[i].duty < 0:
                         a += unit.heat_utilities[i].duty
-            return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
-                   table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
+            return table_other['Cooling']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
+                   table_other['Electricity']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
                    (P2.power_utility.consumption+P3.power_utility.consumption)*sys.operating_hours
         
         @metric(name='HXN_utility_GWP',units='kg CO2 eq',element='LCA')
@@ -1718,23 +1718,23 @@ def create_model(system=None,
             for i in range (len(HXN.heat_utilities)):
                 if HXN.heat_utilities[i].duty > 0:
                     a += HXN.heat_utilities[i].duty
-            return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)
+            return table_other['Cooling']/sys.get_cooling_duty()*(-a*sys.operating_hours)
         
         @metric(name='CHP_utility_GWP',units='kg CO2 eq',element='LCA')
         def get_CHP_utility_GWP():
             table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
-            return table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
+            return table_other['Electricity']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
                    (-CHP.power_utility.production)*sys.operating_hours
         
         @metric(name='electricity_GWP',units='kg CO2 eq',element='LCA')
         def get_electricity_GWP():
             table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
-            return table_other['Electricity [kWh]']
+            return table_other['Electricity']
         
         @metric(name='cooling_GWP',units='kg CO2 eq',element='LCA')
         def get_cooling_GWP():
             table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
-            return table_other['Cooling [MJ]']
+            return table_other['Cooling']
         
         @metric(name='HTL_cooling_percentage',units='-',element='utilities')
         def get_HTL_cooling_percentage():
