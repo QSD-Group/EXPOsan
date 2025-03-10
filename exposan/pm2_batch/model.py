@@ -149,6 +149,20 @@ def create_model(system=None, kind='', analysis=''):
             D = get_uniform_w_frac(b, 0.50)
             param(setter=DictAttrSetter(pm2.rate_function, '_params', k),
                   name=k, element=PBR, kind='coupled', units=units, distribution=D)
+        
+# =============================================================================
+#         D = shape.Uniform(4, 12)
+#         @param(name='Algae_NtoP_ratio', element=PBR, kind='coupled', units='-', 
+#                baseline=0.2/0.018, distribution=D)
+#         # given baseline formula 'CH1.8O0.5N0.2P0.018'
+#         def set_ALG_N2P_ratio(n2p):
+#             ch, np = cmps.X_ALG.formula.split('N')
+#             n, p = np.split('P')
+#             p = round(float(n) / n2p, 4)
+#             cmps.X_ALG.formula = ch+f'N{n}P{p}'
+#             cmps.refresh_constants()
+#             pm2.refresh_stoichiometry()
+# =============================================================================
 
     # Add sensitive parameters for calibration
     else:
