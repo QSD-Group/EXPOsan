@@ -128,8 +128,8 @@ def create_b1_system(flowsheet=None, default_init_conds=True):
         sludge_flow_rate=0.00538*MGD2cmd, # aim for 18% TS
         solids_removal_efficiency=0.9
         )
-    M2 = su.Mixer('M2', ins=[GT-0, MT-0, DW-0])
-    
+    # M2 = su.Mixer('M2', ins=[GT-0, MT-0, DW-0], outs=1-PC)
+    M2 = su.Mixer('M2', ins=[GT-0, MT-0, DW-0])    
     HD = su.HydraulicDelay('HD', ins=M2-0, outs=1-PC)  # works better with BDF
     
     if default_init_conds:

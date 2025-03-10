@@ -24,7 +24,8 @@ __all__ = ('create_i3_system',)
 ID = 'I3'
 #%%
 dfs = load_data(
-    ospath.join(data_path, 'initial_conditions.xlsx'), 
+    # ospath.join(data_path, 'initial_conditions.xlsx'), 
+    ospath.join(data_path, 'ic.xlsx'), 
     sheet=None,
     )
 asinit = dfs[ID]
