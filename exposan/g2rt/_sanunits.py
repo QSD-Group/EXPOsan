@@ -25,6 +25,7 @@ from qsdsan.sanunits import SludgeThickening, Copier
 from biosteam.units.design_tools import flash_vessel_design
 from qsdsan.utils import ospath, data_path, load_data, price_ratio
 import CoolProp.CoolProp as CP
+from exposan import g2rt
 g2rt_su_data_path = ospath.join(data_path, 'sanunit_data/g2rt')
 surt_su_data_path = ospath.join(data_path, 'sanunit_data/surt')
 
@@ -172,7 +173,7 @@ class mSCWOGasModule(IsothermalCompressor):
         total_equipment = 0.
         for cost in C.values():
            total_equipment += cost
-        self.add_OPEX = (total_equipment*self.material_replacement_cost/(365*24) + 
+        self.add_OPEX = (g2rt.get_unit_scaled_capital(total_equipment)*self.material_replacement_cost/(365*24) + 
                          #USD/hr, assume replacement cost 5% of CAPEX per year
                          self._calc_maintenance_labor_cost()) #USD/hr
         self.power_utility(self.dosing_valve_power_demand * self.dosing_valve_daily_operation/24+
@@ -324,7 +325,7 @@ class mSCWOReactorModule(SanUnit):
         total_equipment = 0.
         for cost in C.values():
            total_equipment += cost
-        self.add_OPEX = (total_equipment*self.material_replacement_cost/(365*24) + 
+        self.add_OPEX = (g2rt.get_unit_scaled_capital(total_equipment)*self.material_replacement_cost/(365*24) + 
                          #USD/hr, assume replacement cost 5% of CAPEX per year
                          self._calc_maintenance_labor_cost()) #USD/hr
 
@@ -516,7 +517,7 @@ class mSCWOConcentratorModule(SanUnit):
         total_equipment = 0.
         for cost in C.values():
            total_equipment += cost
-        self.add_OPEX = (total_equipment*self.material_replacement_cost/(365*24) + 
+        self.add_OPEX = (g2rt.get_unit_scaled_capital(total_equipment)*self.material_replacement_cost/(365*24) + 
                          #USD/hr, assume replacement cost 5% of CAPEX per year
                          self._calc_maintenance_labor_cost()) #USD/hr
    
@@ -673,7 +674,7 @@ class VolumeReductionCombustor(SanUnit):
             C[equipment] = cost * service_factor
             total_equipment += cost
          
-        self.add_OPEX = (total_equipment*self.material_replacement_cost/(365*24) + 
+        self.add_OPEX = (g2rt.get_unit_scaled_capital(total_equipment)*self.material_replacement_cost/(365*24) + 
                          #USD/hr, assume replacement cost 5% of CAPEX per year
                          self._calc_replacement_cost()+
                          self._calc_maintenance_labor_cost()) #USD/hr
@@ -1689,7 +1690,7 @@ class VRpasteurization(SanUnit):
         total_equipment = 0.
         for cost in C.values():
            total_equipment += cost
-        self.add_OPEX = (total_equipment*self.material_replacement_cost/(365*24) + #USD/hr, assume 
+        self.add_OPEX = (g2rt.get_unit_scaled_capital(total_equipment)*self.material_replacement_cost/(365*24) + #USD/hr, assume 
                          #replacement cost a fraction of CAPEX per year
                          self._calc_maintenance_labor_cost()) #USD/hr
         
@@ -1811,7 +1812,7 @@ class G2RThomogenizer(Copier):
         total_equipment = 0.
         for cost in C.values():
            total_equipment += cost
-        self.add_OPEX = (total_equipment*self.material_replacement_cost/(365*24) + 
+        self.add_OPEX = (g2rt.get_unit_scaled_capital(total_equipment)*self.material_replacement_cost/(365*24) + 
                          #USD/hr, assume replacement cost a fraction of CAPEX per year
                          self._calc_maintenance_labor_cost()) #USD/hr
     
@@ -1944,7 +1945,7 @@ class VolumeReductionFilterPress(SanUnit):
         total_equipment = 0.
         for cost in C.values():
            total_equipment += cost
-        self.add_OPEX = (total_equipment*self.material_replacement_cost/(365*24) + 
+        self.add_OPEX = (g2rt.get_unit_scaled_capital(total_equipment)*self.material_replacement_cost/(365*24) + 
                          #USD/hr, assume replacement cost 5% of CAPEX per year
                          self._calc_maintenance_labor_cost()) #USD/hr
             
@@ -2120,7 +2121,7 @@ class VRConcentrator(SanUnit):
         total_equipment = 0.
         for cost in C.values():
            total_equipment += cost
-        self.add_OPEX = (total_equipment*self.material_replacement_cost/(365*24) + 
+        self.add_OPEX = (g2rt.get_unit_scaled_capital(total_equipment)*self.material_replacement_cost/(365*24) + 
                          #USD/hr, assume replacement cost 5% of CAPEX per year
                          self._calc_maintenance_labor_cost()) #USD/hr
    
@@ -2469,7 +2470,7 @@ class VRdryingtunnel(SanUnit):
         total_equipment = 0.
         for cost in C.values():
            total_equipment += cost
-        self.add_OPEX = (total_equipment*self.material_replacement_cost/(365*24) + 
+        self.add_OPEX = (g2rt.get_unit_scaled_capital(total_equipment)*self.material_replacement_cost/(365*24) + 
                          #USD/hr, assume replacement cost 5% of CAPEX per year
                          self._calc_maintenance_labor_cost()) #USD/hr
 
@@ -2812,7 +2813,7 @@ class G2RTSolidsSeparation(SanUnit):
         total_equipment = 0.
         for cost in C.values():
            total_equipment += cost
-        self.add_OPEX = (total_equipment*self.material_replacement_cost/(365*24) + 
+        self.add_OPEX = (g2rt.get_unit_scaled_capital(total_equipment)*self.material_replacement_cost/(365*24) + 
                          #USD/hr, assume replacement cost 5% of CAPEX per year
                          self._calc_maintenance_labor_cost()) #USD/hr
     
@@ -2987,7 +2988,7 @@ class G2RTBeltSeparation(SanUnit):
         total_equipment = 0.
         for cost in C.values():
            total_equipment += cost
-        self.add_OPEX = (total_equipment*self.material_replacement_cost/(365*24) + 
+        self.add_OPEX = (g2rt.get_unit_scaled_capital(total_equipment)*self.material_replacement_cost/(365*24) + 
                          #USD/hr, assume replacement cost 5% of CAPEX per year
                          self._calc_maintenance_labor_cost()) #USD/hr
 
@@ -3285,7 +3286,7 @@ class G2RTReverseOsmosis(SanUnit):
         for cost in C.values():
            total_equipment += cost
                   
-        self.add_OPEX = ((total_equipment*self.material_replacement_cost/(365*24) + 
+        self.add_OPEX = ((g2rt.get_unit_scaled_capital(total_equipment)*self.material_replacement_cost/(365*24) + 
                          #USD/hr, assume replacement cost 4% of CAPEX per year
                          self._calc_membrane_replacement_cost() +
                          self._calc_maintenance_labor_cost())) #USD/hr

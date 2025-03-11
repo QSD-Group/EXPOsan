@@ -625,62 +625,87 @@ general_country_specific_inputs = {
         },
     }
 
-general_city_specific_inputs = { #TODO: need to update the values, for now they are just place holders
-    'Beijing': {
-        'energy_GWP': 0.745,
-        'energy_H_Ecosystems': 0.002336342,
-        'energy_H_Health': 0.037590269,
-        'energy_H_Resources': 0.02714852,
-        'energy_price': 0.084,
-        'wages': 6.5736875,  # MURT labor wage USD/hour
-        'operator_daily_wage': 52.5895,  # USD/day
-        'const_wage': 32.66,  # USD/day
-        'certified_electrician_wages': 6.251324074,  # USD/hour
-        'service_team_wages': 6.5736875,  # USD/hour
-        'facility_manager_wages': 6.018625,  # USD/hour
-        'biomass_controls_wages': 6.018625,  # USD/hour
-        'e_cal': 3191,
-        'p_anim': 40,
-        'p_veg': 60.63,
+general_city_specific_inputs = {
+    'Hongkong': {
+        'price_ratio': 0.7,
+        'p_anim': 83.79,
+        'p_veg': 42.99,
+        'e_cal': 2996,
         'food_waste_ratio': 0.15,
-        'price_ratio': 0.610,
-        'household_size': 3,
-        'N_fertilizer_price': 0.939,
-        'P_fertilizer_price': 1.744,
-        'K_fertilizer_price': 1.119,
-        'NH3_fertilizer_price': 0.939*(14/17),
-        'struvite_fertilizer_price': 1.744*(31/245),
-        'NaCl_price': 0.35,  # for NEWgen
-        'LPG_price': 0.954  # for NEWgen
-        },
-    'Chennai': {
-        'energy_GWP': 0.852,
-        'energy_H_Ecosystems': 0.002616438,
-        'energy_H_Health': 0.043194571,
-        'energy_H_Resources': 0.030496415,
-        'energy_price': 0.081,
-        'wages': 1.315625,  # MURT labor wage USD/hour
-        'operator_daily_wage': 10.525,  # USD/day
-        'const_wage': 10.3285,  # USD/day
-        'certified_electrician_wages': 2.1189375,  # USD/hour
-        'service_team_wages': 1.315625,  # USD/hour
-        'facility_manager_wages': 2.1026875,  # USD/hour
-        'biomass_controls_wages': 2.1026875,  # USD/hour
-        'e_cal': 2533,
-        'p_anim': 15,
-        'p_veg': 48.35,
-        'food_waste_ratio': 0.03,
-        'price_ratio': 0.300,
-        'household_size': 5,
-        'N_fertilizer_price': 0.158,
-        'P_fertilizer_price': 0.567,
-        'K_fertilizer_price': 0.445,
-        'NH3_fertilizer_price': 0.158 * (14 / 17),
-        'struvite_fertilizer_price': 0.567 * (31 / 245),
-        'NaCl_price': 0.47,  # for NEWgen
-        'LPG_price': 1.488  # for NEWgen
-        },
-    }
+        'wages': 10,  # average labor wages USD/hour
+        'energy_price': 0.1857,  # USD/kWh
+        'energy_GWP': 0.753928903,  # kg CO2-eq/kWh
+        'N_fertilizer_price': 3.08695652,  # USD/kg N
+        'P_fertilizer_price': 4.98866213,  # USD/kg P
+        'K_fertilizer_price': 1.666666667,  # USD/kg K
+        'household_size': 2.9,  # cap/household
+        'energy_H_Ecosystems': 0.013938093,  # points/kWh
+        'energy_H_Health': 0.027525855,  # points/kWh
+        'energy_H_Resources': 0.029968687,  # points/kWh
+        'certified_electrician_wages': 16.17,  # USD/hour
+        'service_team_wages': 10,  # USD/hour
+        'facility_manager_wages': 12.21  # USD/hour
+    },
+    'Addis Ababa': {
+        'price_ratio': 0.4,
+        'p_anim': 6,
+        'p_veg': 59,
+        'e_cal': 2111,
+        'food_waste_ratio': 0.02,
+        'wages': 0.9,  # average labor wages USD/hour
+        'energy_price': 0.01413,  # USD/kWh
+        'energy_GWP': 0.006710502,  # kg CO2-eq/kWh
+        'N_fertilizer_price': 0.529,  # USD/kg N
+        'P_fertilizer_price': 0.695,  # USD/kg P
+        'K_fertilizer_price': 0,  # USD/kg K
+        'household_size': 4.68,  # cap/household
+        'energy_H_Ecosystems': 0.000652665,  # points/kWh
+        'energy_H_Health': 0.000511132,  # points/kWh
+        'energy_H_Resources': 0.000819693  # points/kWh
+    },
+    
+    'Paris': {
+    'price_ratio': 0.8,
+    'p_anim': 40.2,
+    'p_veg': 40.2,
+    'e_cal': 1986,
+    'food_waste_ratio': 0.17,
+    'wages': 17.948,  # average labor wages USD/hour
+    'energy_price': 0.2016,  # USD/kWh
+    'energy_GWP': 0.054,  # kg CO2-eq/kWh
+    'N_fertilizer_price': 9.11,  # USD/kg N
+    'P_fertilizer_price': 33.8,  # USD/kg P
+    'K_fertilizer_price': 18.42,  # USD/kg K
+    'household_size': 1.86,  # cap/household
+    'energy_H_Ecosystems': 0.001046026,  # points/kWh
+    'energy_H_Health': 0.002296732,  # points/kWh
+    'energy_H_Resources': 0.003274977,  # points/kWh
+    'certified_electrician_wages': 25.10998263,  # USD/hour
+    'service_team_wages': 17.948,  # USD/hour
+    'facility_manager_wages': 17.948  # USD/hour
+    },
+    
+    'New York City': {
+    'price_ratio': 1.77,
+    'p_anim': 51.96721357,
+    'p_veg': 26.31278643,
+    'e_cal': 2093.14,
+    'food_waste_ratio': 0.3,
+    'wages': 30.84,  # average labor wages USD/hour
+    'energy_price': 0.2469,  # USD/kWh
+    'energy_GWP': 0.596453139,  # kg CO2-eq/kWh
+    'N_fertilizer_price': 4.485913197,  # USD/kg N
+    'P_fertilizer_price': 29.28801254,  # USD/kg P
+    'K_fertilizer_price': 9.487666034,  # USD/kg K
+    'household_size': 2.67,  # cap/household
+    'energy_H_Ecosystems': 0.010927451,  # points/kWh
+    'energy_H_Health': 0.017937517,  # points/kWh
+    'energy_H_Resources': 0.031353155,  # points/kWh
+    'certified_electrician_wages': 48.83,  # USD/hour
+    'service_team_wages': 30.84,  # USD/hour
+    'facility_manager_wages': 87.15  # USD/hour
+    },
+}
 
 def run_module_country_specific(
         create_country_specific_model_func,
@@ -719,11 +744,17 @@ def run_module_city_specific(
         folder_path,
         system_IDs,
         note = '',
+        city = None,
         city_specific_inputs=None,
         seed=None,
         N=1000
         ):
     city_specific_inputs = city_specific_inputs or general_city_specific_inputs
+    if city is not None:
+        for c in city:
+            if c not in city_specific_inputs:
+                print(f"Warning: {c} is not in the database.")
+        city_specific_inputs = {k: v for k, v in city_specific_inputs.items() if k in city}
     models = dict.fromkeys(system_IDs)
     for sys_ID in system_IDs:
         sys_dct = {}

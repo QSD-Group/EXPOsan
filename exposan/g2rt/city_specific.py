@@ -163,7 +163,7 @@ def create_city_specific_model(ID, city, model=None, city_data=None,
 
     # Energy GWP
     key = 'energy_GWP'
-    GWP_D_ratio = 0.1
+    GWP_D_ratio = 0.3
     name, p, b, D = get_param_name_b_D(key, GWP_D_ratio)
     @param(name=name, element='LCA', kind='isolated',
            units='kg CO2-eq/kWh', baseline=b, distribution=D)
@@ -243,14 +243,15 @@ def create_city_specific_model(ID, city, model=None, city_data=None,
     return model
 
 #%%
-def run_city(system_IDs, seed=None, N=1000, note=''):
+def run_city(system_IDs, seed=None, N=1000, city=None, note=''):
     return run_module_city_specific(
         create_city_specific_model_func=create_city_specific_model,
         run_uncertainty_func=run_uncertainty,
         folder_path=results_path,
-        system_IDs=system_IDs,
+        system_IDs=system_IDs, #e.g., ['A','B']
         seed=seed,
         N=N,
+        city=city, 
         note=note
     )
 

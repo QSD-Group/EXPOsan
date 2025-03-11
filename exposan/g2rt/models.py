@@ -83,6 +83,13 @@ def add_metrics(model, ppl=default_ppl):
     metrics.append(
         Metric('Annual net cost', get_TEA_metrics(system, ppl)[0], f'{qs.currency}/cap/yr', 'TEA results'),
         )
+    metrics.extend([
+        Metric('Total CAPEX', get_TEA_metrics(system, ppl,include_breakdown=True)[1], f'{qs.currency}', 'TEA results'),
+        Metric('Annual OPEX', get_TEA_metrics(system, ppl,include_breakdown=True)[7], f'{qs.currency}/yr','TEA results'),
+        Metric('Construction emissions', get_LCA_metrics(system, ppl,include_breakdown=True)[4], 'kg CO2-eq', 'LCA results'),
+        Metric('Annual operating emissions', get_LCA_metrics(system, ppl,include_breakdown=True)[8], 'kg CO2-eq/yr', 'LCA results')
+        ])
+    
     # metrics.extend([
     #     Metric('Energy consumption', get_TEA_metrics(system, ppl,include_breakdown=True)[2], 'kWh /cap/day', 'TEA results')
     #     ])
@@ -124,7 +131,7 @@ def add_metrics(model, ppl=default_ppl):
     #                 Metric(f'{class_name} {u.ID} recovery earning', get_normalized_recovery_earning(u, ppl), f'{qs.currency}/cap/day', f'Recovery {class_name} TEA'),
     #                 Metric(f'{class_name} {u.ID} reduced GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'Recovery {class_name} LCA'),
     #             ])
-        
+    
     # Net emissions
     funcs = get_LCA_metrics(system, ppl)
     metrics.extend([

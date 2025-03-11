@@ -27,11 +27,11 @@ __all__ = ('run_lifetime',
            'run_ppl',
            'run')
 
-def run(model_IDs, seed=None, N=10000, country_specific=False, note=None, **model_kwargs):
+def run(model_IDs, seed=None, N=10000, city_specific=False, note=None, **model_kwargs):
     # Make it possible to run with one or more models
     if isinstance(model_IDs, str): model_IDs = (model_IDs, )
     for ID in model_IDs:
-        model = create_model(ID, country_specific=country_specific, **model_kwargs)
+        model = create_model(ID, city_specific=city_specific, **model_kwargs)
         g2rt.INCLUDE_RESOURCE_RECOVERY = False
         run_uncertainty(model, note=note, seed=seed, N=N)
 
@@ -40,7 +40,7 @@ if __name__ == '__main__': #checks whether the script is being run directly (rat
     run(('A'), N=50) # running systems A and B for contextual analysis with DMsan
 
 #%%
-def run_lifetime(model_IDs, lifetimes, seed=None, N=10000, country_specific=False, **model_kwargs):
+def run_lifetime(model_IDs, lifetimes, seed=None, N=10000, city_specific=False, **model_kwargs):
     '''
     Run uncertainty analysis for models with different lifetimes.
 
@@ -54,8 +54,8 @@ def run_lifetime(model_IDs, lifetimes, seed=None, N=10000, country_specific=Fals
         Random seed for reproducibility.
     N : int, default=10000
         Number of uncertainty samples.
-    country_specific : bool, default=False
-        Whether to use country-specific data.
+    city_specific : bool, default=False
+        Whether to use city-specific data.
     model_kwargs : dict
         Additional arguments to pass to `create_model`.
     
@@ -73,11 +73,11 @@ def run_lifetime(model_IDs, lifetimes, seed=None, N=10000, country_specific=Fals
     g2rt.INCLUDE_RESOURCE_RECOVERY = False
     for ID in model_IDs:
         for lifetime in lifetimes:
-            model = create_model(ID, country_specific=country_specific,lifetime= lifetime, **model_kwargs)
+            model = create_model(ID, city_specific=city_specific,lifetime= lifetime, **model_kwargs)
             run_uncertainty(model, note=f"lifetime_{lifetime}_N_{N}" ,seed=seed, N=N)
 
 #%%
-def run_ppl(model_IDs, ppls, seed=None, N=10000, country_specific=False, **model_kwargs):
+def run_ppl(model_IDs, ppls, seed=None, N=10000, city_specific=False, **model_kwargs):
     '''
     Run uncertainty analysis for models with different user numbers.
 
@@ -91,8 +91,8 @@ def run_ppl(model_IDs, ppls, seed=None, N=10000, country_specific=False, **model
         Random seed for reproducibility.
     N : int, default=10000
         Number of uncertainty samples.
-    country_specific : bool, default=False
-        Whether to use country-specific data.
+    city_specific : bool, default=False
+        Whether to use city-specific data.
     model_kwargs : dict
         Additional arguments to pass to `create_model`.
     
@@ -110,8 +110,55 @@ def run_ppl(model_IDs, ppls, seed=None, N=10000, country_specific=False, **model
     g2rt.INCLUDE_RESOURCE_RECOVERY = False
     for ID in model_IDs:
         for ppl in ppls:
-            model = create_model(ID, country_specific=country_specific,ppl=ppl, **model_kwargs)
+            model = create_model(ID, city_specific=city_specific,ppl=ppl, **model_kwargs)
             run_uncertainty(model, note=f"ppl_{ppl}_N_{N}" ,seed=seed, N=N)
+#%% 
+def run_learning_curve (model_IDs, seed=None, N=10000, city_specific=False, **model_kwargs):
+    '''
+    Run uncertainty analysis for costs with pessimistic and optimistic learning curve assumptions.
+    # Learning curve assumptions
+    percent_CAPEX_to_scale = 0.65
+    number_of_units = 100000
+
+    if OPTIMISTIC_LEARNING_CURVE:
+        percent_limit = 0.01  # Optimistic learning curve
+        learning_curve_percent = 0.9  # Optimistic learning curve
+    else:
+        percent_limit = 0.03  # Pessimistic learning curve
+        learning_curve_percent = 0.95  # Pessimistic learning curve
+    Parameters:
+    ----------
+    model_IDs : str or list of str
+        One or more model identifiers.
+    seed : int, optional
+        Random seed for reproducibility.
+    N : int, default=10000
+        Number of uncertainty samples.
+    city_specific : bool, default=False
+        Whether to use city-specific data.
+    model_kwargs : dict
+        Additional arguments to pass to `create_model`.
+    
+    Returns:
+    --------
+    None
+
+    '''
+    if isinstance(model_IDs, (str, np.str_)):  # Handle both Python and NumPy strings
+        model_IDs = [model_IDs]
+
+    g2rt.OPTIMISTIC_LEARNING_CURVE = False
+    for ID in model_IDs:
+        model = create_model(ID, city_specific=city_specific,**model_kwargs)
+        if g2rt.OPTIMISTIC_LEARNING_CURVE == False:
+            run_uncertainty(model, note=f"pessimistic_default_{N}" ,seed=seed, N=N)
+        else:run_uncertainty(model, note=f"optimistic_default_{N}" ,seed=seed, N=N)
+    g2rt.OPTIMISTIC_LEARNING_CURVE = True
+    for ID in model_IDs:
+        model = create_model(ID, city_specific=city_specific,**model_kwargs)
+        if g2rt.OPTIMISTIC_LEARNING_CURVE == False:
+            run_uncertainty(model, note=f"pessimistic_default_{N}" ,seed=seed, N=N)
+        else:run_uncertainty(model, note=f"optimistic_default_{N}" ,seed=seed, N=N)
 
 #%%
 def run_mSCWO_replacement_cost(costs, model_ID='B', seed=None, N=10000, country_specific=False, **model_kwargs):
@@ -185,7 +232,7 @@ def run_e_CF(model_IDs, e_CFs, seed=None, N=10000, country_specific=False, **mod
             model = create_model(ID, country_specific=country_specific,e_CF=e_CF, **model_kwargs)
             run_uncertainty(model, note=f"e_CF_{e_CF}_{N}" ,seed=seed, N=N)
 #%%
-def run_flushwater(model_IDs, flush_waters, seed=None, N=10000, country_specific=False, **model_kwargs):
+def run_flushwater(model_IDs, flush_waters, seed=None, N=10000, city_specific=False, **model_kwargs):
     '''
     Run uncertainty analysis for models with different user numbers.
 
@@ -219,7 +266,7 @@ def run_flushwater(model_IDs, flush_waters, seed=None, N=10000, country_specific
     g2rt.INCLUDE_RESOURCE_RECOVERY = False
     for ID in model_IDs:
         for flush_water in flush_waters:
-            model = create_model(ID, country_specific=country_specific,flush_water=flush_water, **model_kwargs)
+            model = create_model(ID, city_specific=city_specific,flush_water=flush_water, **model_kwargs)
             run_uncertainty(model, note=f"flush_water_{flush_water}_{N}" ,seed=seed, N=N)
             
 #%%

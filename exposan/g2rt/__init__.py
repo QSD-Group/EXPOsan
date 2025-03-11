@@ -22,10 +22,14 @@ from exposan.utils import (
     get_generic_scaled_capital,
     get_generic_tanker_truck_fee as get_tanker_truck_fee,
     )
+from math import log
 
 #%%
 # Module-wise setting on whether to allow resource recovery
 INCLUDE_RESOURCE_RECOVERY = False
+
+#Module-wise setting on choosing manufacturing learning curve assumption
+OPTIMISTIC_LEARNING_CURVE = False
 
 g2rt_path = os.path.dirname(__file__)
 g2rt_data_path = os.path.join(g2rt_path, 'data')
@@ -302,13 +306,16 @@ def get_recoveries(system, ppl=default_ppl, include_breakdown=False):
 # Learning curve assumptions
 percent_CAPEX_to_scale = 0.65
 number_of_units = 100000
-percent_limit = 0.03 #pessimistic learning curve
-learning_curve_percent = 0.95 #pessimistic learning curve
 
-# percent_limit = 0.01 #optimistic learning curve
-# learning_curve_percent = 0.9 #optimistic learning curve
+def get_learning_curve_params():
+    """Return learning curve parameters dynamically based on OPTIMISTIC_LEARNING_CURVE."""
+    if OPTIMISTIC_LEARNING_CURVE:
+        return 0.01, 0.9  # Optimistic learning curve
+    else:
+        return 0.03, 0.95  # Pessimistic learning curve
 
 def get_scaled_capital(tea):
+    percent_limit, learning_curve_percent = get_learning_curve_params()
     return get_generic_scaled_capital(
         tea=tea,
         percent_CAPEX_to_scale=percent_CAPEX_to_scale,
@@ -317,22 +324,50 @@ def get_scaled_capital(tea):
         learning_curve_percent=learning_curve_percent
         )
 
+def get_unit_scaled_capital(CAPEX: float, scale=True) -> float:
+    """
+    Compute the scaled total capital cost based on learning curve effects.
+    
+    Parameters
+    ----------
+    CAPEX : float
+        The total capital expenditure for a single system.
+    scale: bool
+        If true, learning curve equation will be applied to calucalte new cost.
+    Returns
+    -------
+    float
+        The scaled total capital cost for multiple units based on the chosen assumptions.
+    """    
+    if scale: 
+        percent_limit, learning_curve_percent = get_learning_curve_params()
+        CAPEX_to_scale = CAPEX * percent_CAPEX_to_scale
+        CAPEX_not_scaled = CAPEX - CAPEX_to_scale
+        scaled_limited = CAPEX_to_scale * percent_limit
+        b = log(learning_curve_percent) / log(2)
+        scaled_CAPEX_total = (CAPEX_to_scale - scaled_limited) * number_of_units**b + scaled_limited
+        new_CAPEX_total = scaled_CAPEX_total + CAPEX_not_scaled
+    else:
+        new_CAPEX_total = CAPEX
+    return new_CAPEX_total
+
 def get_TEA_metrics(system, ppl=default_ppl, include_breakdown=False):
     tea = system.TEA
     get_daily_electricity = lambda system: system.power_utility.power * 24 #kWh/day
     get_annual_electricity_cost = lambda system: system.power_utility.cost*system.operating_hours #USD/yr
     
     #TODO: check where to set 'operating_hours'
-    functions = [lambda: (get_scaled_capital(tea)-tea.net_earnings) / ppl]
+    functions = [lambda: (get_scaled_capital(tea)-tea.net_earnings) / ppl] #net_earnings is bascially (sales-OPEX)
     if not include_breakdown: return functions # net cost
     return [
         *functions,
-        lambda: get_scaled_capital(tea) / ppl, # CAPEX
+        lambda: get_scaled_capital(tea)*tea.lifetime, # total CAPEX, $
         lambda: get_daily_electricity(system)/ppl, #kWh/user/day
         lambda: get_annual_electricity_cost(system)/ppl, # energy (electricity)
         lambda: tea.annual_labor/ppl, # labor
-        lambda: (tea.AOC-get_annual_electricity(system)-tea.annual_labor)/ppl, # OPEX (other than energy and labor)
+        lambda: (tea.AOC-get_annual_electricity(system)-tea.annual_labor)/ppl, # OPEX other than energy and labor
         lambda: tea.sales / ppl, # sales
+        lambda: tea.AOC #total annual OPEX, $/cap/yr
         ]
 
 
@@ -434,10 +469,12 @@ def get_LCA_metrics(system, ppl=default_ppl, include_breakdown=False):
     if not include_breakdown: return functions
     return [
         *functions,
-        lambda: lca.total_construction_impacts['GlobalWarming']/lca.lifetime/ppl, # construction
+        lambda: lca.total_construction_impacts['GlobalWarming'], # construction
         lambda: lca.total_transportation_impacts['GlobalWarming']/lca.lifetime/ppl, # transportation
         lambda: lca.total_stream_impacts['GlobalWarming']/lca.lifetime/ppl, # stream (including fugitive gases and offsets)
         lambda: lca.total_other_impacts['GlobalWarming']/lca.lifetime/ppl, #electricity
+        lambda: (lca.total_other_impacts['GlobalWarming']+
+                 lca.total_stream_impacts['GlobalWarming'])/lca.lifetime, #Operating emissions 
         ]
 
 def print_summaries(systems):
