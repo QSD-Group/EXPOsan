@@ -32,7 +32,7 @@ from scipy.linalg import cholesky
 from scipy.spatial import KDTree
 from numba import njit
 
-# TODO: consider updating code for making figures so it does not need to run two times to get the correct settings
+mathtext.FontConstantsBase.sup1 = 0.35
 
 # TODO: update file paths later
 folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/'
@@ -566,23 +566,18 @@ US_county_N = US_county_N[['NAME','STATE','total','geometry']]
 
 US_county_N['total'] = US_county_N['total'].fillna(0)
 
-fig, ax = plt.subplots(figsize=(30, 30))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
-
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 plt.rcParams.update({'figure.max_open_warning': 100})
 
-mathtext.FontConstantsBase.sup1 = 0.35
+fig, ax = plt.subplots(figsize=(30, 30))
 
 color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', b, db])
 
@@ -609,23 +604,18 @@ US_county_P = US_county_P[['NAME','STATE','total','geometry']]
 
 US_county_P['total'] = US_county_P['total'].fillna(0)
 
-fig, ax = plt.subplots(figsize=(30, 30))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
-
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 plt.rcParams.update({'figure.max_open_warning': 100})
 
-mathtext.FontConstantsBase.sup1 = 0.35
+fig, ax = plt.subplots(figsize=(30, 30))
 
 color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', r, dr])
 
@@ -647,23 +637,18 @@ ax.set_axis_off()
 
 #%% electricity price visualization
 
-fig, ax = plt.subplots(figsize=(30, 30))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
-
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 plt.rcParams.update({'figure.max_open_warning': 100})
 
-mathtext.FontConstantsBase.sup1 = 0.35
+fig, ax = plt.subplots(figsize=(30, 30))
 
 color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', o, do])
 
@@ -685,23 +670,18 @@ ax.set_axis_off()
 
 #%% electricity carbon intensity visualization
 
-fig, ax = plt.subplots(figsize=(30, 30))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
-
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 plt.rcParams.update({'figure.max_open_warning': 100})
 
-mathtext.FontConstantsBase.sup1 = 0.35
+fig, ax = plt.subplots(figsize=(30, 30))
 
 color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', b, db])
 
@@ -723,23 +703,18 @@ ax.set_axis_off()
 
 #%% labor wage visualization
 
-fig, ax = plt.subplots(figsize=(30, 30))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
-
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 plt.rcParams.update({'figure.max_open_warning': 100})
 
-mathtext.FontConstantsBase.sup1 = 0.35
+fig, ax = plt.subplots(figsize=(30, 30))
 
 color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', p, dp])
 
@@ -763,23 +738,18 @@ ax.set_axis_off()
 
 income_tax['tax_percentage'] = income_tax['tax']*100
 
-fig, ax = plt.subplots(figsize=(30, 30))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
-
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 plt.rcParams.update({'figure.max_open_warning': 100})
 
-mathtext.FontConstantsBase.sup1 = 0.35
+fig, ax = plt.subplots(figsize=(30, 30))
 
 color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', g, dg])
 
@@ -888,21 +858,18 @@ print(f"{((WRRF_input.sludge_anaerobic_digestion == 0) & (WRRF_input.sludge_aero
 print(f"{((WRRF_input.sludge_anaerobic_digestion == 1) & (WRRF_input.sludge_aerobic_digestion == 1)).sum()} WRRFs have both AD and AeD")
 print(f"{((WRRF_input.sludge_anaerobic_digestion == 0) & (WRRF_input.sludge_aerobic_digestion == 0)).sum()} WRRFs have neither AD nor AeD")
 
-fig, ax = plt.subplots(figsize = (5, 8))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
-
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
 
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
+fig, ax = plt.subplots(figsize = (5, 8))
+
 ax = plt.gca()
-ax.set_ylim([0, 800])
+ax.set_ylim(0, 800)
 ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
 
 ax.set_ylabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=35)
@@ -966,15 +933,12 @@ def add_region(position, region, color):
     plt.rcParams['xtick.labelsize'] = 30
     plt.rcParams['ytick.labelsize'] = 30
     
-    plt.xticks(fontname='Arial')
-    plt.yticks(fontname='Arial')
-    
     plt.rcParams.update({'mathtext.fontset': 'custom'})
     plt.rcParams.update({'mathtext.default': 'regular'})
     plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
     
     ax = plt.gca()
-    ax.set_ylim([0, 1200])
+    ax.set_ylim(0, 1200)
     ax.set_xlabel(region, fontname='Arial', fontsize=30, labelpad=15)
     
     if position == 0:
@@ -1165,15 +1129,12 @@ def add_region(position, start_region, end_region, color):
     plt.rcParams['xtick.labelsize'] = 30
     plt.rcParams['ytick.labelsize'] = 30
     
-    plt.xticks(fontname='Arial')
-    plt.yticks(fontname='Arial')
-    
     plt.rcParams.update({'mathtext.fontset': 'custom'})
     plt.rcParams.update({'mathtext.default': 'regular'})
     plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
     
-    ax.set_xlim([0, max_distance_plot])
-    ax.set_ylim([0, 7000])
+    ax.set_xlim(0, max_distance_plot)
+    ax.set_ylim(0, 7000)
     
     plt.xticks(np.arange(0, max_distance_plot*1.2, max_distance_plot*0.2))
     plt.yticks(np.arange(0, 8000, 1000))
@@ -1220,21 +1181,18 @@ PADD_3 = (CF_input.loc['PADD',:].isin([1,2,3])).sum()
 PADD_4 = (CF_input.loc['PADD',:].isin([1,2,3,4])).sum()
 PADD_5 = (CF_input.loc['PADD',:].isin([1,2,3,4,5])).sum()
 
-fig, ax = plt.subplots(figsize=(11, 10))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
-
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
 
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
-ax.set_xlim([0, max_distance_plot])
-ax.set_ylim([0, 20000])
+fig, ax = plt.subplots(figsize=(11, 10))
+
+ax.set_xlim(0, max_distance_plot)
+ax.set_ylim(0, 20000)
 
 plt.xticks(np.arange(0, max_distance_plot*1.2, max_distance_plot*0.2))
 plt.yticks(np.arange(0, 24000, 4000))
@@ -1421,21 +1379,16 @@ decarbonization_map = decarbonization_map.to_crs(crs='EPSG:3857')
 
 decarbonization_map['CO2_reduction_tonne_per_day'] = decarbonization_map['CO2_reduction']/30/365/1000
 
-def plot_map(dataset, color):
-    fig, ax = plt.subplots(figsize=(30, 30))
-    
+def plot_map(dataset, color):    
     plt.rcParams['axes.linewidth'] = 3
     plt.rcParams['xtick.labelsize'] = 30
     plt.rcParams['ytick.labelsize'] = 30
-
-    plt.xticks(fontname='Arial')
-    plt.yticks(fontname='Arial')
 
     plt.rcParams.update({'mathtext.fontset': 'custom'})
     plt.rcParams.update({'mathtext.default': 'regular'})
     plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
     
-    mathtext.FontConstantsBase.sup1 = 0.35
+    fig, ax = plt.subplots(figsize=(30, 30))
 
     US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
 
@@ -1537,22 +1490,19 @@ sorted_data['cumulative_emissions'] = sorted_data['CO2_reduction_tonne_per_day']
 
 sorted_data['facility_rank'] = sorted_data.index + 1
 
-fig, ax = plt.subplots(figsize=(11, 10))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
-
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
 
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
+fig, ax = plt.subplots(figsize=(11, 10))
+
 ax = plt.gca()
-ax.set_xlim([0, 600])
-ax.set_ylim([0, 1400])
+ax.set_xlim(0, 600)
+ax.set_ylim(0, 1400)
 
 ax.tick_params(direction='inout', length=20, width=3,
                 bottom=True, top=False, left=True, right=False, pad=0)
@@ -1632,21 +1582,18 @@ print(sorted_data['cumulative_emissions'].iloc[percentile_50]/sorted_data['cumul
 
 #%% GHG reduction boxplots
 
-fig, ax = plt.subplots(figsize = (7, 10))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
-
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
 
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
+fig, ax = plt.subplots(figsize = (7, 10))
+
 ax = plt.gca()
-ax.set_ylim([0, 100])
+ax.set_ylim(0, 100)
 ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
 
 ax.set_xticklabels(['solids','WRRF'])
@@ -1700,21 +1647,18 @@ ax_right.scatter(x=2,
 
 #%% GHG reduction zoom-in boxplot
 
-fig, ax = plt.subplots(figsize = (5, 10))
-
 plt.rcParams['axes.linewidth'] = 6
 plt.rcParams['xtick.labelsize'] = 75
 plt.rcParams['ytick.labelsize'] = 75
-
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
 
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
+fig, ax = plt.subplots(figsize = (5, 10))
+
 ax = plt.gca()
-ax.set_ylim([0, 6])
+ax.set_ylim(0, 6)
 ax.tick_params(direction='inout', length=40, width=6, labelbottom=False, bottom=False, top=False, left=True, right=False)
 
 ax_right = ax.twinx()
@@ -1758,23 +1702,20 @@ saving_vs_sludge = pd.read_excel(folder + 'results/baseline/integrated_baseline_
 saving_vs_sludge = saving_vs_sludge[saving_vs_sludge['USD_decarbonization'].notna()]
 saving_vs_sludge = saving_vs_sludge[saving_vs_sludge['USD_decarbonization'] <= 0]
 
-fig, ax = plt.subplots(figsize=(10, 10))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
-
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
 
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
+fig, ax = plt.subplots(figsize=(10, 10))
+
 ax = plt.gca()
 
-ax.set_xlim((0, 250))
-ax.set_ylim((-200, 700))
+ax.set_xlim(0, 250)
+ax.set_ylim(-200, 700)
 
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
@@ -1787,14 +1728,14 @@ plt.xticks(np.arange(0, 300, 50))
 plt.yticks(np.arange(-200, 800, 100))
 
 ax_top = ax.twiny()
-ax_top.set_xlim((0, 250))
+ax_top.set_xlim(0, 250)
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 plt.xticks(np.arange(0, 300, 50))
 plt.yticks(np.arange(-200, 800, 100))
 
 ax_right = ax.twinx()
-ax_right.set_ylim((-200, 700))
+ax_right.set_ylim(-200, 700)
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 plt.xticks(np.arange(0, 300, 50))
@@ -1814,26 +1755,23 @@ decarbonization_vs_sludge = pd.read_excel(folder + 'results/baseline/integrated_
 decarbonization_vs_sludge = decarbonization_vs_sludge[decarbonization_vs_sludge['USD_decarbonization'].notna()]
 decarbonization_vs_sludge = decarbonization_vs_sludge[decarbonization_vs_sludge['USD_decarbonization'] <= 0]
 
-fig, ax = plt.subplots(figsize=(10, 10))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
-
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+fig, ax = plt.subplots(figsize=(10, 10))
 
 ax = plt.gca()
 
 assert (decarbonization_vs_sludge['total_sludge_amount_kg_per_year']/1000/365).max() <= 250
 assert (decarbonization_vs_sludge['CO2_reduction']/30/365/1000).max() <= 50
 
-ax.set_xlim((0, 250))
-ax.set_ylim((-100, 200))
+ax.set_xlim(0, 250)
+ax.set_ylim(-100, 200)
 
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
@@ -1846,14 +1784,14 @@ plt.xticks(np.arange(0, 300, 50))
 plt.yticks(np.arange(-100, 250, 50))
 
 ax_top = ax.twiny()
-ax_top.set_xlim((0, 250))
+ax_top.set_xlim(0, 250)
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 plt.xticks(np.arange(0, 300, 50))
 plt.yticks(np.arange(-100, 250, 50))
 
 ax_right = ax.twinx()
-ax_right.set_ylim((-100, 200))
+ax_right.set_ylim(-100, 200)
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 plt.xticks(np.arange(0, 300, 50))
@@ -1873,26 +1811,23 @@ saving_vs_distance = pd.read_excel(folder + 'results/baseline/integrated_baselin
 saving_vs_distance = saving_vs_distance[saving_vs_distance['USD_decarbonization'].notna()]
 saving_vs_distance = saving_vs_distance[saving_vs_distance['USD_decarbonization'] <= 0]
 
-fig, ax = plt.subplots(figsize=(10, 10))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
-
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+fig, ax = plt.subplots(figsize=(10, 10))
 
 ax = plt.gca()
 
 assert (saving_vs_distance['real_distance_km']).max() <= 1400
 assert (saving_vs_sludge['saving']/30/365/1000).max() <= 180
 
-ax.set_xlim((0, 1400))
-ax.set_ylim((-200, 700))
+ax.set_xlim(0, 1400)
+ax.set_ylim(-200, 700)
 
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
@@ -1905,14 +1840,14 @@ plt.xticks(np.arange(0, 1600, 200))
 plt.yticks(np.arange(-200, 800, 100))
 
 ax_top = ax.twiny()
-ax_top.set_xlim((0, 1400))
+ax_top.set_xlim(0, 1400)
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 plt.xticks(np.arange(0, 1600, 200))
 plt.yticks(np.arange(-200, 800, 100))
 
 ax_right = ax.twinx()
-ax_right.set_ylim((-200, 700))
+ax_right.set_ylim(-200, 700)
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 plt.xticks(np.arange(0, 1600, 200))
@@ -1932,26 +1867,23 @@ decarbonization_vs_distance = pd.read_excel(folder + 'results/baseline/integrate
 decarbonization_vs_distance = decarbonization_vs_distance[decarbonization_vs_distance['USD_decarbonization'].notna()]
 decarbonization_vs_distance = decarbonization_vs_distance[decarbonization_vs_distance['USD_decarbonization'] <= 0]
 
-fig, ax = plt.subplots(figsize=(10, 10))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
-
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+fig, ax = plt.subplots(figsize=(10, 10))
 
 ax = plt.gca()
 
 assert (decarbonization_vs_distance['real_distance_km']).max() <= 1400
 assert (decarbonization_vs_sludge['CO2_reduction']/30/365/1000).max() <= 50
 
-ax.set_xlim((0, 1400))
-ax.set_ylim((-100, 200))
+ax.set_xlim(0, 1400)
+ax.set_ylim(-100, 200)
 
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
@@ -1964,14 +1896,14 @@ plt.xticks(np.arange(0, 1600, 200))
 plt.yticks(np.arange(-100, 250, 50))
 
 ax_top = ax.twiny()
-ax_top.set_xlim((0, 1400))
+ax_top.set_xlim(0, 1400)
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 plt.xticks(np.arange(0, 1600, 200))
 plt.yticks(np.arange(-100, 250, 50))
 
 ax_right = ax.twinx()
-ax_right.set_ylim((-100, 200))
+ax_right.set_ylim(-100, 200)
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 plt.xticks(np.arange(0, 1600, 200))
@@ -1997,24 +1929,21 @@ no_digestion = digestion_or_not.loc[(digestion_or_not['sludge_anaerobic_digestio
 digestion_or_not_plot = pd.DataFrame({'digestion': digestion,
                                       'no_digestion': no_digestion})
 
-fig, ax = plt.subplots(figsize=(10, 10))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
-
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
+fig, ax = plt.subplots(figsize=(10, 10))
+
 ax = plt.gca()
 
-ax.set_ylim([-200, 700])
+ax.set_ylim(-200, 700)
 
 ax.tick_params(direction='inout', length=20, width=3,
                bottom=False, top=False, left=True, right=False, pad=0)
@@ -2048,17 +1977,17 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='none', linewidth=3)
 
-y = digestion_or_not_plot['digestion'].dropna()
-x = np.random.normal(1, 0.12, size=len(y))
-ax.scatter(x, y,
+scatter_y = digestion_or_not_plot['digestion'].dropna()
+scatter_x = np.random.normal(1, 0.12, size=len(scatter_y))
+ax.scatter(scatter_x, scatter_y,
            s=300,
            c=a,
            linewidths=2,
            edgecolors='k')
 
-y = digestion_or_not_plot['no_digestion'].dropna()
-x = np.random.normal(2, 0.12, size=len(y))
-ax.scatter(x, y,
+scatter_y = digestion_or_not_plot['no_digestion'].dropna()
+scatter_x = np.random.normal(2, 0.12, size=len(scatter_y))
+ax.scatter(scatter_x, scatter_y,
            s=300,
            c=a,
            linewidths=2,
@@ -2077,24 +2006,21 @@ no_digestion = digestion_or_not.loc[(digestion_or_not['sludge_anaerobic_digestio
 digestion_or_not_plot = pd.DataFrame({'digestion': digestion,
                                       'no_digestion': no_digestion})
 
-fig, ax = plt.subplots(figsize=(10, 10))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
-
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
+fig, ax = plt.subplots(figsize=(10, 10))
+
 ax = plt.gca()
 
-ax.set_ylim([-100, 200])
+ax.set_ylim(-100, 200)
 
 ax.tick_params(direction='inout', length=20, width=3,
                bottom=False, top=False, left=True, right=False, pad=0)
@@ -2128,17 +2054,17 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='none', linewidth=3)
 
-y = digestion_or_not_plot['digestion'].dropna()
-x = np.random.normal(1, 0.12, size=len(y))
-ax.scatter(x, y,
+scatter_y = digestion_or_not_plot['digestion'].dropna()
+scatter_x = np.random.normal(1, 0.12, size=len(scatter_y))
+ax.scatter(scatter_x, scatter_y,
            s=300,
            c=a,
            linewidths=2,
            edgecolors='k')
 
-y = digestion_or_not_plot['no_digestion'].dropna()
-x = np.random.normal(2, 0.12, size=len(y))
-ax.scatter(x, y,
+scatter_y = digestion_or_not_plot['no_digestion'].dropna()
+scatter_x = np.random.normal(2, 0.12, size=len(scatter_y))
+ax.scatter(scatter_x, scatter_y,
            s=300,
            c=a,
            linewidths=2,
@@ -2159,24 +2085,21 @@ nitrogen_fertilizer_type_plot = pd.DataFrame({'anhydrous_ammonia': anhydrous_amm
                                               'urea': urea,
                                               'UAN': UAN})
 
-fig, ax = plt.subplots(figsize=(10, 10))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
-
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
+fig, ax = plt.subplots(figsize=(10, 10))
+
 ax = plt.gca()
 
-ax.set_ylim([-200, 700])
+ax.set_ylim(-200, 700)
 
 ax.tick_params(direction='inout', length=20, width=3,
                bottom=False, top=False, left=True, right=False, pad=0)
@@ -2211,25 +2134,25 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='none', linewidth=3)
 
-y = nitrogen_fertilizer_type_plot['anhydrous_ammonia'].dropna()
-x = np.random.normal(1, 0.12, size=len(y))
-ax.scatter(x, y,
+scatter_y = nitrogen_fertilizer_type_plot['anhydrous_ammonia'].dropna()
+scatter_x = np.random.normal(1, 0.12, size=len(scatter_y))
+ax.scatter(scatter_x, scatter_y,
            s=300,
            c=a,
            linewidths=2,
            edgecolors='k')
 
-y = nitrogen_fertilizer_type_plot['urea'].dropna()
-x = np.random.normal(2, 0.12, size=len(y))
-ax.scatter(x, y,
+scatter_y = nitrogen_fertilizer_type_plot['urea'].dropna()
+scatter_x = np.random.normal(2, 0.12, size=len(scatter_y))
+ax.scatter(scatter_x, scatter_y,
            s=300,
            c=a,
            linewidths=2,
            edgecolors='k')
 
-y = nitrogen_fertilizer_type_plot['UAN'].dropna()
-x = np.random.normal(3, 0.12, size=len(y))
-ax.scatter(x, y,
+scatter_y = nitrogen_fertilizer_type_plot['UAN'].dropna()
+scatter_x = np.random.normal(3, 0.12, size=len(scatter_y))
+ax.scatter(scatter_x, scatter_y,
            s=300,
            c=a,
            linewidths=2,
@@ -2250,24 +2173,21 @@ nitrogen_fertilizer_type_plot = pd.DataFrame({'anhydrous_ammonia': anhydrous_amm
                                               'urea': urea,
                                               'UAN': UAN})
 
-fig, ax = plt.subplots(figsize=(10, 10))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
-
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
+fig, ax = plt.subplots(figsize=(10, 10))
+
 ax = plt.gca()
 
-ax.set_ylim([-100, 200])
+ax.set_ylim(-100, 200)
 
 ax.tick_params(direction='inout', length=20, width=3,
                bottom=False, top=False, left=True, right=False, pad=0)
@@ -2302,25 +2222,25 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='none', linewidth=3)
 
-y = nitrogen_fertilizer_type_plot['anhydrous_ammonia'].dropna()
-x = np.random.normal(1, 0.12, size=len(y))
-ax.scatter(x, y,
+scatter_y = nitrogen_fertilizer_type_plot['anhydrous_ammonia'].dropna()
+scatter_x = np.random.normal(1, 0.12, size=len(scatter_y))
+ax.scatter(scatter_x, scatter_y,
            s=300,
            c=a,
            linewidths=2,
            edgecolors='k')
 
-y = nitrogen_fertilizer_type_plot['urea'].dropna()
-x = np.random.normal(2, 0.12, size=len(y))
-ax.scatter(x, y,
+scatter_y = nitrogen_fertilizer_type_plot['urea'].dropna()
+scatter_x = np.random.normal(2, 0.12, size=len(scatter_y))
+ax.scatter(scatter_x, scatter_y,
            s=300,
            c=a,
            linewidths=2,
            edgecolors='k')
 
-y = nitrogen_fertilizer_type_plot['UAN'].dropna()
-x = np.random.normal(3, 0.12, size=len(y))
-ax.scatter(x, y,
+scatter_y = nitrogen_fertilizer_type_plot['UAN'].dropna()
+scatter_x = np.random.normal(3, 0.12, size=len(scatter_y))
+ax.scatter(scatter_x, scatter_y,
            s=300,
            c=a,
            linewidths=2,
@@ -2336,8 +2256,8 @@ relative_importance['digestion'] = relative_importance[['sludge_aerobic_digestio
 relative_importance.loc[relative_importance['digestion'] == 1, 'digestion'] = 'Y'
 relative_importance.loc[relative_importance['digestion'] == 0, 'digestion'] = 'N'
 
-X = relative_importance[['total_sludge_amount_kg_per_year','real_distance_km','digestion','nitrogen_fertilizer']]
-y = relative_importance['cost']
+X_ML = relative_importance[['total_sludge_amount_kg_per_year','real_distance_km','digestion','nitrogen_fertilizer']]
+y_ML = relative_importance['cost']
 
 num_features = ['total_sludge_amount_kg_per_year','real_distance_km']
 cat_features = ['digestion','nitrogen_fertilizer']
@@ -2350,7 +2270,7 @@ pipeline = Pipeline(steps=[('preprocessor', preprocessor),
                            ('regressor', RandomForestRegressor(n_estimators=100))])
 
 # split data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X_ML, y_ML, test_size=0.2, random_state=42)
 
 # fit the model
 pipeline.fit(X_train, y_train)
@@ -2377,8 +2297,8 @@ relative_importance['digestion'] = relative_importance[['sludge_aerobic_digestio
 relative_importance.loc[relative_importance['digestion'] == 1, 'digestion'] = 'Y'
 relative_importance.loc[relative_importance['digestion'] == 0, 'digestion'] = 'N'
 
-X = relative_importance[['total_sludge_amount_kg_per_year','real_distance_km','digestion','nitrogen_fertilizer']]
-y = relative_importance['CI']
+X_ML = relative_importance[['total_sludge_amount_kg_per_year','real_distance_km','digestion','nitrogen_fertilizer']]
+y_ML = relative_importance['CI']
 
 num_features = ['total_sludge_amount_kg_per_year','real_distance_km']
 cat_features = ['digestion','nitrogen_fertilizer']
@@ -2391,7 +2311,7 @@ pipeline = Pipeline(steps=[('preprocessor', preprocessor),
                            ('regressor', RandomForestRegressor(n_estimators=100))])
 
 # split data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X_ML, y_ML, test_size=0.2, random_state=42)
 
 # fit the model
 pipeline.fit(X_train, y_train)
@@ -2411,11 +2331,11 @@ print(feature_importance)
 #%% test required Spearman sample number
 
 def spearman_sample_size(rho, alpha, power):
-    fisher_z = 0.5 * np.log((1 + rho) / (1 - rho))
+    fisher_z = 0.5*np.log((1+rho)/(1-rho))
     # two-tailed test
-    z_alpha = stats.norm.ppf(1 - alpha / 2)
+    z_alpha = stats.norm.ppf(1-alpha/2)
     z_beta = stats.norm.ppf(power)
-    n = ((z_alpha + z_beta) / fisher_z) ** 2 + 3
+    n = ((z_alpha+z_beta)/fisher_z)**2+3
     return int(np.ceil(n))
 
 # demonstrate 1000 samples are enough when power = 0.8 and rho = 0.2 (weak correlation)
@@ -2744,23 +2664,20 @@ fig = plt.figure(figsize=(12.5, 10))
 
 gs = fig.add_gridspec(1, 5, hspace=0, wspace=0)
 
-def add_region(position, color):
-    ax = fig.add_subplot(gs[0, position])
-    
+def add_region(position, color):  
     plt.rcParams['axes.linewidth'] = 3
     plt.rcParams['hatch.linewidth'] = 3
     plt.rcParams['xtick.labelsize'] = 30
     plt.rcParams['ytick.labelsize'] = 30
     
-    plt.xticks(fontname='Arial')
-    plt.yticks(fontname='Arial')
-    
     plt.rcParams.update({'mathtext.fontset': 'custom'})
     plt.rcParams.update({'mathtext.default': 'regular'})
     plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
     
+    ax = fig.add_subplot(gs[0, position])
+    
     ax = plt.gca()
-    ax.set_ylim([0, 6])
+    ax.set_ylim(0, 6)
     
     if position == 0:
         ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
@@ -3112,20 +3029,16 @@ def plot_sensitivity(data_type):
     
     integrated_data = pd.concat([anhydrous_ammonia_data, urea_data, UAN_data])
     
-    for i in integrated_data.columns.drop(['label','total_sludge_amount_kg_per_year']):
-        
-        fig, ax = plt.subplots(figsize = (5, 2.5))
-    
+    for i in integrated_data.columns.drop(['label','total_sludge_amount_kg_per_year']):    
         plt.rcParams['axes.linewidth'] = 2
         plt.rcParams['xtick.labelsize'] = 24
         plt.rcParams['ytick.labelsize'] = 24
     
-        plt.xticks(fontname='Arial')
-        plt.yticks(fontname='Arial')
-    
         plt.rcParams.update({'mathtext.fontset': 'custom'})
         plt.rcParams.update({'mathtext.default': 'regular'})
         plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+        
+        fig, ax = plt.subplots(figsize = (5, 2.5))
         
         ax = plt.gca()
         
@@ -3134,9 +3047,9 @@ def plot_sensitivity(data_type):
         
         ax.set_xlim(low_limit, high_limit)
         if data_type[-1] == 'r':
-            ax.set_ylim([-1, 1])
+            ax.set_ylim(-1, 1)
         else:
-            ax.set_ylim([0, 1])
+            ax.set_ylim(0, 1)
         
         plt.xscale('log')
         plt.xticks([0.01, 0.1, 1, 10, 100])
@@ -3255,9 +3168,11 @@ def plot_sensitivity(data_type):
     return integrated_data
 
 #%% cost_spearman_p visualization
+
 cost_spearman_p = plot_sensitivity('cost_spearman_p')
 
 #%% cost_spearman_r visualization
+
 cost_spearman_r = plot_sensitivity('cost_spearman_r')
 
 #%% select key cost drivers
@@ -3275,9 +3190,11 @@ key_cost_drivers_only = key_cost_drivers[cost_mask]
 print(key_cost_drivers_only)
 
 #%% CI_spearman_p visualization
+
 CI_spearman_p = plot_sensitivity('CI_spearman_p')
 
 #%% CI_spearman_r visualization
+
 CI_spearman_r = plot_sensitivity('CI_spearman_r')
 
 #%% select key CI drivers
@@ -3480,21 +3397,18 @@ decarbonization = pd.read_excel(folder + 'results/regional/decarbonization_2025-
 # tonne CO2 eq/day
 decarbonization = decarbonization/1000
 
-fig, ax = plt.subplots(figsize = (11, 10))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
-
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
 
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
-ax.set_xlim([0, 700])
-ax.set_ylim([0, 1.8])
+fig, ax = plt.subplots(figsize = (11, 10))
+
+ax.set_xlim(0, 700)
+ax.set_ylim(0, 1.8)
 
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
@@ -3581,7 +3495,7 @@ get_copula_sum('integrated_saving_dollar_per_day_2025-02-18')
 # !!! update the file here if necessary
 get_copula_sum('integrated_decarbonization_kg_CO2_eq_per_day_2025-02-18')
 
-#%% sludge transportation (heat map, HM)
+#%% sludge transportation (heat map, HM) data preparation - part 1
 
 filterwarnings('ignore')
 
@@ -3705,143 +3619,120 @@ for size in np.linspace(20, 200, 10):
 
 HM_results.to_excel(folder + f'results/heat_map/anhydrous_ammonia/heat_map_{size}_tonne_per_day_{sludge_distance}_km_{date.today()}.xlsx')
 
-#%% sludge transportation (heat map, HM) visualization (saving) 
+#%% sludge transportation (heat map, HM) data preparation - part 2
 
-# !!! update the input file if necessary
-HM = pd.read_excel(folder + 'results/heat_map/UAN/heat_map_200.0_tonne_per_day_200.0_km_2025-02-19.xlsx')
+def plot_heat_map(nitrogen_fertilizer, solids_quantity, item):
+    # !!! update the input file if necessary
+    HM = pd.read_excel(folder + f'results/heat_map/{nitrogen_fertilizer}/heat_map_{solids_quantity}_tonne_per_day_200.0_km_2025-02-19.xlsx')
+    
+    HM_saving = HM[['sludge_amount','sludge_transportation_distance',item]]
+    
+    plt.rcParams['font.sans-serif'] = 'Arial'
+    plt.rcParams['axes.linewidth'] = 3
+    plt.rcParams['xtick.labelsize'] = 38
+    plt.rcParams['ytick.labelsize'] = 38
+    
+    plt.rcParams.update({'mathtext.fontset': 'custom'})
+    plt.rcParams.update({'mathtext.default': 'regular'})
+    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+    
+    fig, ax = plt.subplots(figsize=(12.5, 10))
+    
+    ax = plt.gca()
+    
+    ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False, pad=6)
+    
+    ax.set_xlabel(r'$\mathbf{Average\ distance}$ [km]', fontname='Arial', fontsize=45)
+    ax.set_ylabel(r'$\mathbf{Total\ solids}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
+    
+    mathtext.FontConstantsBase.sup1 = 0.35
+    
+    plt.xticks(np.arange(20, 220, 30))
+    plt.yticks(np.arange((solids_quantity)*0.1, (solids_quantity)*1.1, (solids_quantity)*0.9/6))
+    
+    ax_top = ax.twiny()
+    ax_top.set_xlim(20, 200)
+    ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+    
+    plt.xticks(np.arange(20, 220, 30))
+    plt.yticks(np.arange((solids_quantity)*0.1, (solids_quantity)*1.1, (solids_quantity)*0.9/6))
+    
+    ax_right = ax.twinx()
+    ax_right.set_ylim((solids_quantity)*0.1, (solids_quantity)*1.1)
+    ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+    
+    plt.xticks(np.arange(20, 220, 30))
+    plt.yticks(np.arange((solids_quantity)*0.1, (solids_quantity)*1.1, (solids_quantity)*0.9/6))
+    
+    try:
+        color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [r, o, y, g, b][::-1])
+    except ValueError:
+        pass
+    
+    X = np.array(HM_saving['sludge_transportation_distance'])
+    Y = np.array(HM_saving['sludge_amount'])
+    Z = np.array(HM_saving[item]/1000)
+    
+    fills = ax.tricontourf(X, Y, Z, levels=10000, cmap=color_map_Guest)
+    
+    fig.colorbar(fills, ax=ax)
+    
+    fig.delaxes(fig.axes[3])
+    
+    lines = ax.tricontour(X, Y, Z, levels=7, linewidths=3, linestyles='solid', colors='k')
+    
+    ax.clabel(lines, lines.levels, inline=True, fontsize=38)
 
-HM_saving = HM[['sludge_amount','sludge_transportation_distance','saving_50th']]
 
-fig, ax = plt.subplots(figsize=(12.5, 10))
+#%% sludge transportation (heat map, HM) visualization - anhydrous_ammonia, 200.0 tonne per day, saving_50th
 
-plt.rcParams['font.sans-serif'] = 'Arial'
-plt.rcParams['axes.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 38
-plt.rcParams['ytick.labelsize'] = 38
+plot_heat_map('anhydrous_ammonia', 200.0, 'saving_50th')
 
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
+#%% sludge transportation (heat map, HM) visualization - anhydrous_ammonia, 200.0 tonne per day, decarbonization_50th
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plot_heat_map('anhydrous_ammonia', 200.0, 'decarbonization_50th')
 
-ax = plt.gca()
+#%% sludge transportation (heat map, HM) visualization - urea, 200.0 tonne per day, saving_50th
 
-ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False, pad=6)
+plot_heat_map('urea', 200.0, 'saving_50th')
 
-ax.set_xlabel(r'$\mathbf{Average\ distance}$ [km]', fontname='Arial', fontsize=45)
-ax.set_ylabel(r'$\mathbf{Total\ solids}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
+#%% sludge transportation (heat map, HM) visualization - urea, 200.0 tonne per day, saving_50th
 
-mathtext.FontConstantsBase.sup1 = 0.35
+plot_heat_map('urea', 200.0, 'decarbonization_50th')
 
-plt.xticks(np.arange(20, 220, 30))
-plt.yticks(np.arange(20, 220, 30))
+#%% sludge transportation (heat map, HM) visualization - UAN, 200.0 tonne per day, saving_50th
 
-ax_top = ax.twiny()
-ax_top.set_xlim((20, 200))
-ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+plot_heat_map('UAN', 200.0, 'saving_50th')
 
-plt.xticks(np.arange(20, 220, 30))
-plt.yticks(np.arange(20, 220, 30))
+#%% sludge transportation (heat map, HM) visualization - UAN, 200.0 tonne per day, saving_50th
 
-ax_right = ax.twinx()
-ax_right.set_ylim((20, 200))
-ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+plot_heat_map('UAN', 200.0, 'decarbonization_50th')
 
-plt.xticks(np.arange(20, 220, 30))
-plt.yticks(np.arange(20, 220, 30))
+#%% sludge transportation (heat map, HM) visualization - anhydrous_ammonia, 20.0 tonne per day, saving_50th
 
-try:
-    color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [r, o, y, g, b][::-1])
-except ValueError:
-    pass
+plot_heat_map('anhydrous_ammonia', 20.0, 'saving_50th')
 
-X = np.array(HM_saving['sludge_transportation_distance'])
-Y = np.array(HM_saving['sludge_amount'])
-Z = np.array(HM_saving['saving_50th']/1000)
+#%% sludge transportation (heat map, HM) visualization - anhydrous_ammonia, 20.0 tonne per day, decarbonization_50th
 
-fills = ax.tricontourf(X, Y, Z, levels=10000, cmap=color_map_Guest)
+plot_heat_map('anhydrous_ammonia', 20.0, 'decarbonization_50th')
 
-fig.colorbar(fills, ax=ax)
+#%% sludge transportation (heat map, HM) visualization - urea, 20.0 tonne per day, saving_50th
 
-fig.delaxes(fig.axes[3])
+plot_heat_map('urea', 20.0, 'saving_50th')
 
-lines = ax.tricontour(X, Y, Z, levels=7, linewidths=3, linestyles='solid', colors='k')
+#%% sludge transportation (heat map, HM) visualization - urea, 20.0 tonne per day, saving_50th
 
-ax.clabel(lines, lines.levels, inline=True, fontsize=38)
+plot_heat_map('urea', 20.0, 'decarbonization_50th')
 
-#%% sludge transportation (heat map, HM) visualization (decarbonization) 
+#%% sludge transportation (heat map, HM) visualization - UAN, 20.0 tonne per day, saving_50th
 
-# !!! update the input file if necessary
-HM = pd.read_excel(folder + 'results/heat_map/UAN/heat_map_200.0_tonne_per_day_200.0_km_2025-02-19.xlsx')
+plot_heat_map('UAN', 20.0, 'saving_50th')
 
-HM_decarbonization = HM[['sludge_amount','sludge_transportation_distance','decarbonization_50th']]
+#%% sludge transportation (heat map, HM) visualization - UAN, 20.0 tonne per day, saving_50th
 
-fig, ax = plt.subplots(figsize=(12.5, 10))
-
-plt.rcParams['font.sans-serif'] = 'Arial'
-plt.rcParams['axes.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 38
-plt.rcParams['ytick.labelsize'] = 38
-
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
-
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
-
-ax = plt.gca()
-
-ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False, pad=6)
-
-ax.set_xlabel(r'$\mathbf{Average\ distance}$ [km]', fontname='Arial', fontsize=45)
-ax.set_ylabel(r'$\mathbf{Total\ solids}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
-
-mathtext.FontConstantsBase.sup1 = 0.35
-
-plt.xticks(np.arange(20, 220, 30))
-plt.yticks(np.arange(20, 220, 30))
-
-ax_top = ax.twiny()
-ax_top.set_xlim((20, 200))
-ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
-
-plt.xticks(np.arange(20, 220, 30))
-plt.yticks(np.arange(20, 220, 30))
-
-ax_right = ax.twinx()
-ax_right.set_ylim((20, 200))
-ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
-
-plt.xticks(np.arange(20, 220, 30))
-plt.yticks(np.arange(20, 220, 30))
-
-try:
-    color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [r, o, y, g, b][::-1])
-except ValueError:
-    pass
-
-X = np.array(HM_decarbonization['sludge_transportation_distance'])
-Y = np.array(HM_decarbonization['sludge_amount'])
-Z = np.array(HM_decarbonization['decarbonization_50th']/1000)
-
-fills = ax.tricontourf(X, Y, Z, levels=10000, 
-                       cmap=color_map_Guest)
-fig.colorbar(fills, ax=ax)
-
-fig.delaxes(fig.axes[3])
-
-lines = ax.tricontour(X, Y, Z, levels=7, linewidths=3, linestyles='solid', colors='k')
-
-ax.clabel(lines, lines.levels, inline=True, fontsize=38)
+plot_heat_map('UAN', 20.0, 'decarbonization_50th')
 
 #%% future coverage (data preparation for coverage visualization)
-
-import networkx as nx
-from scipy.spatial import KDTree
-from numba import njit
 
 distance_x = []
 coverage_y = []
@@ -3857,10 +3748,10 @@ for distance_threshold in np.linspace(0, 30, 151):
     
     WRRF_coverage = []
     for i in range(len(WRRF)):
-        x = WRRF.iloc[i].latitude
-        y = WRRF.iloc[i].longitude
+        WRRF_x = WRRF.iloc[i].latitude
+        WRRF_y = WRRF.iloc[i].longitude
         solids = WRRF.iloc[i].total_sludge_amount_kg_per_year/1000/365
-        WRRF_coverage.append({'id': i, 'pos': (x, y), 'solids': solids})
+        WRRF_coverage.append({'id': i, 'pos': (WRRF_x, WRRF_y), 'solids': solids})
     
     G = nx.Graph()
     for facility in WRRF_coverage:
@@ -3950,23 +3841,20 @@ for distance_threshold in np.linspace(0, 30, 151):
     
 #%% future coverage (coverage visualization)
 
-fig, ax = plt.subplots(figsize=(10, 10))
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
-
-plt.xticks(fontname='Arial')
-plt.yticks(fontname='Arial')
 
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
 plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
+fig, ax = plt.subplots(figsize=(10, 10))
+
 ax = plt.gca()
 
-ax.set_xlim((0, 30))
-ax.set_ylim((0, 100))
+ax.set_xlim(0, 30)
+ax.set_ylim(0, 100)
 
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
@@ -3979,14 +3867,14 @@ plt.xticks(np.arange(0, 35, 5))
 plt.yticks(np.arange(0, 120, 20))
 
 ax_top = ax.twiny()
-ax_top.set_xlim((0, 30))
+ax_top.set_xlim(0, 30)
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 plt.xticks(np.arange(0, 35, 5))
 plt.yticks(np.arange(0, 120, 20))
 
 ax_right = ax.twinx()
-ax_right.set_ylim((0, 100))
+ax_right.set_ylim(0, 100)
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
 plt.xticks(np.arange(0, 35, 5))
@@ -4149,7 +4037,6 @@ fig, ax = plt.subplots(figsize=(30, 30))
 
 US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
 
-
 WRRF_cluster_N = WRRF_cluster[WRRF_cluster['color'] == a]
 
 WRRF_cluster_Y = WRRF_cluster[WRRF_cluster['color'] == b]
@@ -4239,18 +4126,15 @@ print(f'The highest blending ratio in the near-term scenario is {BPD_capacity["r
 
 # line_plot['unit_saving'] = line_plot['saving']/line_plot['total_sludge_amount_kg_per_year']
 
-# fig, ax = plt.subplots(figsize=(20, 10))
-
 # plt.rcParams['axes.linewidth'] = 3
 # plt.rcParams['xtick.labelsize'] = 38
 # plt.rcParams['ytick.labelsize'] = 38
 
-# plt.xticks(fontname='Arial')
-# plt.yticks(fontname='Arial')
-
 # plt.rcParams.update({'mathtext.fontset': 'custom'})
 # plt.rcParams.update({'mathtext.default': 'regular'})
 # plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+# fig, ax = plt.subplots(figsize=(20, 10))
 
 # ax = plt.gca()
 
@@ -4284,18 +4168,15 @@ print(f'The highest blending ratio in the near-term scenario is {BPD_capacity["r
 # test_1 = test[test['USD_decarbonization'] <= 0]
 # test_2 = test[test['USD_decarbonization'] > 0]
 
-# fig, ax = plt.subplots(figsize=(20, 10))
-
 # plt.rcParams['axes.linewidth'] = 3
 # plt.rcParams['xtick.labelsize'] = 38
 # plt.rcParams['ytick.labelsize'] = 38
 
-# plt.xticks(fontname='Arial')
-# plt.yticks(fontname='Arial')
-
 # plt.rcParams.update({'mathtext.fontset': 'custom'})
 # plt.rcParams.update({'mathtext.default': 'regular'})
 # plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+# fig, ax = plt.subplots(figsize=(20, 10))
 
 # sns.distplot(np.log(test['total_sludge_amount_kg_per_year']), hist = False, kde = True,
 #              kde_kws = {'shade': True, 'linewidth': 3})
@@ -4724,7 +4605,7 @@ print(f'The highest blending ratio in the near-term scenario is {BPD_capacity["r
 #     plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
     
 #     ax = plt.gca()
-#     ax.set_ylim([-3000, 1000])
+#     ax.set_ylim(-3000, 1000)
 #     ax.set_xlabel(xlabel, fontname='Arial', fontsize=38, labelpad=15)
     
 #     if position == 0:
@@ -5100,21 +4981,18 @@ print(f'The highest blending ratio in the near-term scenario is {BPD_capacity["r
 # SA_results['center_saving'] /= 1000
 # SA_results['all_saving'] /= 1000
 
-# fig, ax = plt.subplots(figsize = (10, 10))
-
 # plt.rcParams['axes.linewidth'] = 3
 # plt.rcParams['xtick.labelsize'] = 38
 # plt.rcParams['ytick.labelsize'] = 38
-
-# plt.xticks(fontname='Arial')
-# plt.yticks(fontname='Arial')
 
 # plt.rcParams.update({'mathtext.fontset': 'custom'})
 # plt.rcParams.update({'mathtext.default': 'regular'})
 # plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
-# ax.set_xlim([-50, 70])
-# ax.set_ylim([0, 600])
+# fig, ax = plt.subplots(figsize = (10, 10))
+
+# ax.set_xlim(-50, 70)
+# ax.set_ylim(0, 600)
 
 # ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False, pad=6)
 
