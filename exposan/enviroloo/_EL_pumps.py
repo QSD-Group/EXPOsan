@@ -569,7 +569,7 @@ class MicroBubblePump(Pump):
     _ins_size_is_fixed = True;  # Let the input interface be fixed
     _outs_size_is_fixed = True;  # Let the output interface be fixed
     _CastIron_weight_per_pump = 9 # The weight of cast iron [kg]
-    _pump_power = 11.45  # The power of each pump [kW]
+    _pump_power = 11.45  # The power of each pump [kW] #TODO: check pump power assumption
     _pump_flow_rate = 10  # Assumption: at 298K, 1.25atm=126656, 10g/L, rho=2.45kg/m3
     exponent_scale = 0.4
    

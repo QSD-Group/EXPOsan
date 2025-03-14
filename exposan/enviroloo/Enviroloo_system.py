@@ -459,9 +459,9 @@ def create_systemEL(flowsheet = None):
     
     sysEL.simulate()
     teaEL = TEA(system=sysEL, discount_rate=discount_rate,
-           start_year=2024, lifetime=20, uptime_ratio=1,
-           CEPCI = 567.5,
-           CAPEX = 2.00,  
+           start_year=2020, lifetime=20, uptime_ratio=1,
+           # CEPCI = 567.5,
+           # CAPEX = 2.00,  
            #lang_factor=None,
            lang_factor=None,
            annual_maintenance=0,
