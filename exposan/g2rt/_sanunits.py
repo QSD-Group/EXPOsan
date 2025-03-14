@@ -228,7 +228,8 @@ class mSCWOReactorModule(SanUnit):
     _N_ins = 2
     _N_outs = 4
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', material_replacement_cost = None,
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', 
+                 material_replacement_cost = None, reactor_system_cost = None,
                  **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=1)
         
@@ -238,6 +239,9 @@ class mSCWOReactorModule(SanUnit):
             if material_replacement_cost is not None and para == "material_replacement_cost":
                 self.material_replacement_cost = material_replacement_cost
                 continue  # Skip the material_replacement_cost index if it's provided
+            if reactor_system_cost is not None and para == "reactor_system_cost":
+                self.reactor_system_cost = reactor_system_cost
+                continue  # Skip the reactor_system_cost index if it's provided
             value = float(data.loc[para]['expected'])
             setattr(self, para, value)
         del data

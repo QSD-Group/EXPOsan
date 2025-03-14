@@ -661,7 +661,8 @@ def create_modelA(city_specific=False, ppl=default_ppl, lifetime=default_lifetim
 
 #System B: micro supercritical water oxidation toilet
 def create_modelB(city_specific=False, ppl=default_ppl,lifetime=default_lifetime, 
-                  mscwo_replacement_cost =None, e_CF=None, flush_water= None, **model_kwargs):
+                  mscwo_replacement_cost =None, mscwo_equipment_cost = None, 
+                  e_CF=None, flush_water= None, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
     sysB = create_system('B', ppl=ppl,lifetime=lifetime, flowsheet=flowsheet, 
                          mscwo_replacement_cost=mscwo_replacement_cost, flush_water =flush_water)
@@ -674,6 +675,14 @@ def create_modelB(city_specific=False, ppl=default_ppl,lifetime=default_lifetime
                 UserWarning
             )
             mscwo_replacement_cost = None
+    if mscwo_equipment_cost is not None:
+        if not (isinstance(mscwo_equipment_cost, float) or 100 <= mscwo_equipment_cost <= 10000):
+            warnings.warn(
+                "Warning: mscwo_equipment_cost should be a float (between 100 and 10000) "
+                "will be ignored. Please provide another proper value if intended.",
+                UserWarning
+            )
+            mscwo_equipment_cost = None
     if e_CF is not None:
         if not (isinstance(e_CF, float) or  0 <= e_CF <= 2):
             warnings.warn(
@@ -712,14 +721,16 @@ def create_modelB(city_specific=False, ppl=default_ppl,lifetime=default_lifetime
                           flush_water=flush_water, city_specific=city_specific)
     #Add parameters unique to System B: micro supercritical water oxidation toilet
     #Gas handling module
-    exclude = ('wages')
+    exclude = ('wages',)
     batch_setting_unit_params(mscwo_gas_handling_module_path, modelB, unitB.B10, exclude)
     
     #mSCWO reactor module
-    if mscwo_replacement_cost is not None:
-        exclude = ('wages','material_replacement_cost') #remove material_replacement_cost and to compute with a range of fixed values
-    else:
-        exclude = ('wages')
+    if mscwo_replacement_cost is not None and mscwo_equipment_cost is not None:
+        exclude = ('wages', 'material_replacement_cost', 'reactor_system_cost')
+    elif mscwo_replacement_cost is not None:
+        exclude = ('wages', 'material_replacement_cost')
+    elif mscwo_equipment_cost is not None:
+        exclude = ('wages', 'reactor_system_cost')
     batch_setting_unit_params(mscwo_reactor_module_path, modelB, unitB.B11, exclude)
 
     #mSCWO concentrator module

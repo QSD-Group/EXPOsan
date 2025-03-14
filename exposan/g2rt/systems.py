@@ -321,7 +321,8 @@ def create_systemA(flowsheet=None, ppl=default_ppl, lifetime=default_lifetime,
 # micro Supercritical Water Oxidation toilet based on
 # https://patentimages.storage.googleapis.com/57/6a/81/72a168a92be44c/WO2023288331A1.pdf
 # =============================================================================
-def create_systemB(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime, flush_water= None, mscwo_replacement_cost = None):
+def create_systemB(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime, flush_water= None, 
+                   mscwo_replacement_cost = None, mscwo_equipment_cost = None):
     # TODO: Set flowsheet to avoid stream replacement warnings
     flowsheet = flowsheet or main_flowsheet
     batch_create_streams('B')
@@ -409,7 +410,8 @@ def create_systemB(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime, 
     B11 = su.mSCWOReactorModule('B11',
                                 ins = (B10-0,B6-0),
                                 outs = ('B11_gas','B11_N2O','B11_liquid_effluent','B11_ash_waste'),
-                                material_replacement_cost=mscwo_replacement_cost
+                                material_replacement_cost=mscwo_replacement_cost,
+                                reactor_system_cost = mscwo_equipment_cost
                                 )
 
     B12 = su.mSCWOConcentratorModule('B12',
