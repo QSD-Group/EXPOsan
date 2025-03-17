@@ -47,13 +47,16 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
         COD=358, NH4_N=25.91, PO4_P=5,
         fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
         )
-    carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=100)
+    carb = WasteStream('carbon', T=Temp, units='kg/hr', 
+                       # S_A=50)
+                       S_A=300) # how much it takes to lower effluent TP to <= 2mg/L
     
     n_zones = 5
     V_tot = 2.61 * MGD2cmd
     fr_V = [0.12, 0.18, 0.24, 0.24, 0.18, 0.04]
     Vs = [V_tot*f for f in fr_V]
-    Q_was = 0.17 * MGD2cmd      # SRT = 10.71 d
+    # Q_was = 0.17 * MGD2cmd      # SRT = 10.71 d
+    Q_was = 0.25 * MGD2cmd   # shorter SRT seems better for EBPR
     Q_intr = 40 * MGD2cmd
     
     ASR = su.PFR(
@@ -62,8 +65,7 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
         V_tanks=Vs[:n_zones],
         influent_fractions=[
             [1,0,0,0,0],          # RWW
-            # [1,0,0,0,0],          # carb
-            [0.5,0,0,0,0.5],          # carb
+            [1,0,0,0,0],          # carb
             [0,0,1,0,0],          # RAS from MBR
             [1,0,0,0,0],          # reject
             ],
@@ -72,7 +74,8 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
             (3,1,20*MGD2cmd)], 
         DO_ID='S_O2',
         kLa=[0, 0, 50, 50, 0], 
-        DO_setpoints=[0, 0, 3.0, 3.0, 0],
+        # DO_setpoints=[0, 0, 3.0, 3.0, 0],
+        DO_setpoints=[0, 0, 2.0, 1.0, 0],   # lower DO setpoints seems better for P removal
         suspended_growth_model=asm,
         gas_stripping=True
         )
@@ -88,10 +91,12 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
         
     MT = su.IdealClarifier(
         'MT', S1-1, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.0359*MGD2cmd,
+        sludge_flow_rate=0.0563*MGD2cmd,    # aim for 5% TS
         solids_removal_efficiency=0.95
         )
-        
+    
+    #!!! AED seems to significantly increase the NO3- concentrations in reject 
+    # -- mixed RWW and reject water has a 4-5 mg/L S_NO3, could be why EBPR is failing?
     AED = su.AerobicDigester(
         'AED', ins=MT-1, outs='digestate',
         V_max=2.4*MGD2cmd, activated_sludge_model=asm,
@@ -99,7 +104,7 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
 
     DW = su.IdealClarifier(
         'DW', AED-0, outs=('', 'cake'),
-        sludge_flow_rate=0.00383*MGD2cmd,    # aim for 17% TS
+        sludge_flow_rate=0.00422*MGD2cmd,    # aim for 17% TS
         solids_removal_efficiency=0.9
         )
     MX = su.Mixer('MX', ins=[MT-0, DW-0])
@@ -145,7 +150,7 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 300
+    t = 500
     t_step = 1
     # method = 'RK45'
     # method = 'RK23'
