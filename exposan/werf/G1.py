@@ -31,7 +31,7 @@ dfs = load_data(
     )
 asinit = dfs[ID]
 fcinit = asinit.iloc[-1].to_dict()
-default_fctss_init = [10, 12, 12, 40, 500, 500, 500, 5e3, 1e4, 1.3e4]
+default_fctss_init = [8, 8, 9, 270, 310, 310, 310, 310, 310, 9000]
 adinit = dfs['adm'].loc[ID].to_dict()
 
 MGD2cmd = 3785.412
@@ -69,7 +69,8 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     
     n_zones = 6
     V_tot = 4.7 * MGD2cmd
-    fr_V = [0.014, 0.13, 0.148, 0.148, 0.28, 0.28]
+    # fr_V = [0.014, 0.13, 0.148, 0.148, 0.28, 0.28]
+    fr_V = [0.044, 0.10, 0.148, 0.148, 0.28, 0.28]  # larger anoxic zone improves BNR
     
     gstrip = True
     an_kwargs = dict(aeration=None, DO_ID='S_O2', suspended_growth_model=asm, gas_stripping=gstrip)
@@ -102,7 +103,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     
     FC = su.FlatBottomCircularClarifier(
         'FC', O6-1, ['SE', 1-A1, 'WAS'], 
-        # 'FC', ASR-0, ['SE', 1-AS, 'WAS'],
+        # 'FC', ASR-0, ['SE', 1-ASR, 'WAS'],
         underflow=0.4*10*MGD2cmd, wastage=0.135*MGD2cmd,
         surface_area=1579.352, height=3.6576, N_layer=10, feed_layer=5,
         X_threshold=3000, v_max=410, v_max_practical=274,
@@ -159,7 +160,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
         path=(PC, GT, S1, A1, A2, A3, A4, O5, O6, FC, 
               MT, M1, J1, AD, J2, DW, M2, HD),
         recycle=(O6-0, FC-1, HD-0)
-        # path=(PC, GT, AS, FC, MT, M1, J1, AD, J2, DW, M2, HD),
+        # path=(PC, GT, ASR, FC, MT, M1, J1, AD, J2, DW, M2, HD),
         # recycle=(FC-1, HD-0)
         )
     sys.set_dynamic_tracker(FC-0, AD)
