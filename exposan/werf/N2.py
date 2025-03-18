@@ -30,7 +30,7 @@ dfs = load_data(
     )
 asinit = dfs['N1']
 fcinit = asinit.iloc[-1].to_dict()
-aedinit = dfs['AED'].loc['I2'].to_dict()
+aedinit = dfs['AED'].loc['N2'].to_dict()
 
 MGD2cmd = 3785.412
 Temp = 273.15+20 # temperature [K]
@@ -150,7 +150,7 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 500
+    t = 300
     t_step = 1
     # method = 'RK45'
     # method = 'RK23'

@@ -47,7 +47,8 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
         COD=358, NH4_N=25.91, PO4_P=5,
         fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
         )
-    carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=100)
+    carb = WasteStream('carbon', T=Temp, units='kg/hr', 
+                       S_A=185) # how much it takes to reduce eff TP to <= 2 mg/L
     thermo_asm = qs.get_thermo()
     
     PC = su.PrimaryClarifier(
@@ -60,9 +61,10 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
     
     n_zones = 5
     V_tot = 2.61 * MGD2cmd
-    fr_V = [0.12, 0.18, 0.24, 0.24, 0.18, 0.04]
+    # fr_V = [0.12, 0.18, 0.24, 0.24, 0.18, 0.04]
+    fr_V = [0.14, 0.16, 0.24, 0.24, 0.18, 0.04]     # larger anaerobic zone seems better for EBPR
     Vs = [V_tot*f for f in fr_V]
-    Q_was = 0.035 * MGD2cmd   # 10.7d SRT insufficient for BNR target
+    Q_was = 0.17 * MGD2cmd
     Q_intr = 40 * MGD2cmd
     
     ASR = su.PFR(
@@ -76,10 +78,12 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
             ],
         internal_recycles=[
             (1,0,10*MGD2cmd), 
-            (3,1,40*MGD2cmd)], 
+            # (3,1,40*MGD2cmd)],
+            (3,1,30*MGD2cmd)],    # lower NOx recirculation seems better for EBPR
         DO_ID='S_O2',
         kLa=[0, 0, 50, 50, 0], 
-        DO_setpoints=[0, 0, 3.0, 3.0, 0],
+        # DO_setpoints=[0, 0, 3.0, 3.0, 0],
+        DO_setpoints=[0, 0, 2.0, 1.0, 0],
         suspended_growth_model=asm,
         gas_stripping=True
         )
@@ -96,7 +100,7 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
     
     GT = su.IdealClarifier(
         'GT', ins=[PC-1, S1-1], outs=['', 'thickened_sludge'],
-        sludge_flow_rate=0.042*MGD2cmd,     # aim for 5% TS
+        sludge_flow_rate=0.0523*MGD2cmd,     # aim for 5% TS
         solids_removal_efficiency=0.85
         )
 
@@ -108,7 +112,8 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
                           adm1_model=adm, asm2d_model=asm)
     AD = su.AnaerobicCSTR(
         'AD', ins=J1-0, outs=('biogas', 'digestate'), 
-        V_liq=1.2*MGD2cmd, V_gas=0.12*MGD2cmd, 
+        # V_liq=1.2*MGD2cmd, V_gas=0.12*MGD2cmd, 
+        V_liq=1.05*MGD2cmd, V_gas=0.105*MGD2cmd,    # 20 d HRT
         fixed_headspace_P=False, fraction_retain=0,
         T=T_ad, model=adm,
         pH_ctrl=7.0,
@@ -120,7 +125,7 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
 
     DW = su.IdealClarifier(
         'DW', J2-0, outs=('', 'cake'),
-        sludge_flow_rate=0.00623*MGD2cmd,   # aim for 18% TS
+        sludge_flow_rate=0.00738*MGD2cmd,   # aim for 18% TS
         solids_removal_efficiency=0.9
         )
     MX = su.Mixer('MX', ins=[GT-0, DW-0])
