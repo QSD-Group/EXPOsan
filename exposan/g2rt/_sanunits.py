@@ -578,13 +578,17 @@ class VolumeReductionCombustor(SanUnit):
     _N_outs = 7
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 if_sludge_service = True, lifetime = 10,ppl =6, CH4_emission_factor=None,
+                 if_sludge_service = True, lifetime = 10,ppl = None, CH4_emission_factor=None,
                  **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
                          F_BM_default=1, lifetime = lifetime)
         self.if_sludge_service = if_sludge_service
         self.lifetime = lifetime
-        self.ppl = ppl
+        if ppl is None:
+            self.ppl = g2rt.get_default_ppl()
+        else:
+            self.ppl = ppl
+
         data = load_data(path=vr_combustor_path)
         for para in data.index:
             if CH4_emission_factor is not None and para == "CH4_emission_factor":
@@ -1763,11 +1767,15 @@ class G2RThomogenizer(Copier):
     _N_ins = 1
     _N_outs = 1
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',ppl=6,
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',ppl=None,
                  **kwargs):
         Copier.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
                          F_BM_default=1) 
-        self.ppl = ppl
+        if ppl is None:
+            self.ppl = g2rt.get_default_ppl()
+        else:
+            self.ppl = ppl
+            
         data = load_data(path=G2RT_homogenizer_path)
         for para in data.index:
             value = float(data.loc[para]['expected'])
@@ -2376,12 +2384,15 @@ class VRdryingtunnel(SanUnit):
     _ins_size_is_fixed = False
     _N_outs = 5
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',ppl=6,
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',ppl=None,
                  **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=1)
                 
         data = load_data(path=vr_drying_tunnel_path)
-        self.ppl = ppl
+        if ppl is None:
+            self.ppl = g2rt.get_default_ppl()
+        else:
+            self.ppl = ppl
         
         for para in data.index:
             value = float(data.loc[para]['expected'])
@@ -2718,11 +2729,14 @@ class G2RTSolidsSeparation(SanUnit):
     _N_ins = 2
     _N_outs = 2
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', ppl=6,
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', ppl=None,
                  **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
                          F_BM_default=1)
-        self.ppl = ppl
+        if ppl is None:
+            self.ppl = g2rt.get_default_ppl()
+        else:
+            self.ppl = ppl
 
         data = load_data(path=g2rt_solids_separation_path)
         for para in data.index:
@@ -2882,11 +2896,14 @@ class G2RTBeltSeparation(SanUnit):
     _N_ins = 2
     _N_outs = 2
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', ppl=6,
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', ppl=None,
                  **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
                          F_BM_default=1) 
-        self.ppl = ppl
+        if ppl is None:
+            self.ppl = g2rt.get_default_ppl()
+        else:
+            self.ppl = ppl
 
         data = load_data(path=g2rt_belt_separation_path)
         for para in data.index:

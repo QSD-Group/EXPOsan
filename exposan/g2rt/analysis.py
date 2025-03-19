@@ -207,7 +207,7 @@ def run_mSCWO_replacement_cost(costs, model_ID='B', seed=None, N=10000, country_
         run_uncertainty(model, note=f"mscwo_replace_cost{cost}_{N}" ,seed=seed, N=N)
 
 #%%
-def run_mSCWO_replacement_capital_cost(replacement_costs,system_costs, model_ID='B', seed=None, N=10000, country_specific=False, **model_kwargs):
+def run_mSCWO_replacement_capital_cost(replacement_costs,system_costs, model_ID='B', seed=None, N=10000, city_specific=False, **model_kwargs):
     '''
     Run uncertainty analysis for mSCWO with different material replacement costs and system costs.
 
@@ -232,12 +232,12 @@ def run_mSCWO_replacement_capital_cost(replacement_costs,system_costs, model_ID=
 
     '''
     # Validate inputs
-    if not replacement_costs or system_costs:
+    if not replacement_costs or not system_costs:
         raise ValueError("`replacement_costs` and `system_costs` must be non-empty.")
     g2rt.INCLUDE_RESOURCE_RECOVERY = False
     for replacement_cost in replacement_costs:
         for system_cost in system_costs:
-            model = create_model(model_ID, country_specific=country_specific, 
+            model = create_model(model_ID, city_specific=city_specific, 
                                  mscwo_replacement_cost=replacement_cost, 
                                  mscwo_equipment_cost=system_cost,
                                  **model_kwargs)

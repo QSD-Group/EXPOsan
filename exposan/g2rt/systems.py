@@ -21,6 +21,7 @@ from qsdsan import (
     ImpactItem,
     System, TEA, LCA,
     )
+from exposan import g2rt
 from exposan.g2rt import _sanunits as su
 from exposan.surt import _sanunits as ssu
 from exposan.g2rt._components import create_components
@@ -30,6 +31,7 @@ from exposan.g2rt import (
     _load_components,
     update_resource_recovery_settings,
     )
+
 import biosteam as bst
 from qsdsan.utils import clear_lca_registries
 from exposan.utils import (
@@ -110,7 +112,6 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
 # =========================================================================
 # Unit parameters
 # =========================================================================
-default_ppl = 6
 default_lifetime = 10 #10 years
 discount_rate = 0.05
 
@@ -136,13 +137,14 @@ app_loss['NH3'] = 0.05
 
 # =============================================================================
 
-def create_systemA(flowsheet=None, ppl=default_ppl, lifetime=default_lifetime, 
+def create_systemA(flowsheet=None, ppl=None, lifetime=default_lifetime, 
                    flush_water= None, combustion_CH4_EF= None):
     # TODO: Set flowsheet to avoid stream replacement warnings
     flowsheet = flowsheet or main_flowsheet
     batch_create_streams('A')
     streamA = flowsheet.stream
-
+    if ppl is None:
+        ppl = g2rt.get_default_ppl()
     #### Human Inputs ####
     A1 = su.Excretion('A1', outs=('urine','feces'),)
     
@@ -171,7 +173,7 @@ def create_systemA(flowsheet=None, ppl=default_ppl, lifetime=default_lifetime,
                   if_include_front_end=True, if_toilet_paper=True,
                   if_flushing=True, if_cleansing=False,
                   if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
-                  CAPEX=500*max(1, default_ppl/100), OPEX_over_CAPEX=0.06,
+                  CAPEX=500*max(1, g2rt.get_default_ppl()/100), OPEX_over_CAPEX=0.06,
                   decay_k_COD=get_decay_k(),
                   decay_k_N=get_decay_k(),
                   max_CH4_emission=max_CH4_emission)
@@ -321,13 +323,14 @@ def create_systemA(flowsheet=None, ppl=default_ppl, lifetime=default_lifetime,
 # micro Supercritical Water Oxidation toilet based on
 # https://patentimages.storage.googleapis.com/57/6a/81/72a168a92be44c/WO2023288331A1.pdf
 # =============================================================================
-def create_systemB(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime, flush_water= None, 
+def create_systemB(flowsheet=None, ppl=None, lifetime= default_lifetime, flush_water= None, 
                    mscwo_replacement_cost = None, mscwo_equipment_cost = None):
     # TODO: Set flowsheet to avoid stream replacement warnings
     flowsheet = flowsheet or main_flowsheet
     batch_create_streams('B')
     streamB = flowsheet.stream
-
+    if ppl is None:
+        ppl = g2rt.get_default_ppl()
     #### Human Inputs ####
     B1 = su.Excretion('B1', outs=('urine','feces'),)
 
@@ -498,12 +501,13 @@ def create_systemB(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime, 
 # https://patentimages.storage.googleapis.com/73/c1/74/aa1f6a78b89957/WO2023288326A1.pdf
 # =============================================================================
 
-def create_systemC(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime):
+def create_systemC(flowsheet=None, ppl=None, lifetime= default_lifetime):
     # TODO: Set flowsheet to avoid stream replacement warnings
     flowsheet = flowsheet or main_flowsheet
     batch_create_streams('C')
     streamA = flowsheet.stream
-
+    if ppl is None:
+        ppl = g2rt.get_default_ppl()
     #### Human Inputs ####
     A1 = su.Excretion('A1', outs=('urine','feces'),)
     
@@ -680,7 +684,7 @@ def create_systemC(flowsheet=None, ppl=default_ppl, lifetime= default_lifetime):
 # create system
 # =============================================================================
 
-def create_system(system_ID='A', flowsheet=None, ppl=default_ppl, 
+def create_system(system_ID='A', flowsheet=None, ppl=None, 
                   lifetime = default_lifetime, **kwargs):
     ID = system_ID.lower().lstrip('sys').upper()  # so that it'll work for "sysA"/"A"
     reload_lca = False

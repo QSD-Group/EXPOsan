@@ -36,7 +36,6 @@ from exposan import g2rt
 from exposan.g2rt import (
     create_system,
     g2rt_data_path,
-    default_ppl,
     default_lifetime,
     get_decay_k,
     get_LCA_metrics,
@@ -66,9 +65,11 @@ __all__ = ('create_model', 'run_uncertainty',)
 # Functions for batch-making metrics and setting parameters
 # =============================================================================
 
-def add_metrics(model, ppl=default_ppl):
+def add_metrics(model, ppl= None):
     g2rt._load_lca_data()
     system = model.system
+    if ppl is None:
+        ppl = g2rt.get_default_ppl()
 
     # Recoveries
     funcs = get_recoveries(system, ppl)
@@ -585,10 +586,12 @@ def add_shared_parameters(model, unit_dct, e_CF=None, flush_water=None, city_spe
 # Functions to create models
 # =============================================================================
 # System A: volume reduction toilet
-def create_modelA(city_specific=False, ppl=default_ppl, lifetime=default_lifetime,
+def create_modelA(city_specific=False, ppl=None, lifetime=default_lifetime,
                   flush_water= None, combustion_CH4_EF= None,e_CF=None,
                   **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
+    # if ppl is None:
+    #     ppl = g2rt.get_default_ppl()
     sysA = create_system('A', ppl=ppl, lifetime=lifetime, flowsheet=flowsheet, 
                          flush_water =flush_water, combustion_CH4_EF=combustion_CH4_EF)
     unitA = sysA.flowsheet.unit
@@ -660,12 +663,13 @@ def create_modelA(city_specific=False, ppl=default_ppl, lifetime=default_lifetim
     return modelA
 
 #System B: micro supercritical water oxidation toilet
-def create_modelB(city_specific=False, ppl=default_ppl,lifetime=default_lifetime, 
+def create_modelB(city_specific=False, ppl=None,lifetime=default_lifetime, 
                   mscwo_replacement_cost =None, mscwo_equipment_cost = None, 
                   e_CF=None, flush_water= None, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
     sysB = create_system('B', ppl=ppl,lifetime=lifetime, flowsheet=flowsheet, 
-                         mscwo_replacement_cost=mscwo_replacement_cost, flush_water =flush_water)
+                         mscwo_replacement_cost=mscwo_replacement_cost, 
+                         mscwo_equipment_cost=mscwo_equipment_cost, flush_water =flush_water)
     unitB = sysB.flowsheet.unit
     if mscwo_replacement_cost is not None:
         if not (isinstance(mscwo_replacement_cost, float) or 0 <= mscwo_replacement_cost <= 1):
@@ -676,9 +680,9 @@ def create_modelB(city_specific=False, ppl=default_ppl,lifetime=default_lifetime
             )
             mscwo_replacement_cost = None
     if mscwo_equipment_cost is not None:
-        if not (isinstance(mscwo_equipment_cost, float) or 100 <= mscwo_equipment_cost <= 10000):
+        if not (isinstance(mscwo_equipment_cost, float) or 100 <= mscwo_equipment_cost <= 15000):
             warnings.warn(
-                "Warning: mscwo_equipment_cost should be a float (between 100 and 10000) "
+                "Warning: mscwo_equipment_cost should be a float (between 100 and 15000) "
                 "will be ignored. Please provide another proper value if intended.",
                 UserWarning
             )
@@ -723,15 +727,19 @@ def create_modelB(city_specific=False, ppl=default_ppl,lifetime=default_lifetime
     #Gas handling module
     exclude = ('wages',)
     batch_setting_unit_params(mscwo_gas_handling_module_path, modelB, unitB.B10, exclude)
-    
+    exclude = ['wages']
     #mSCWO reactor module
-    if mscwo_replacement_cost is not None and mscwo_equipment_cost is not None:
-        exclude = ('wages', 'material_replacement_cost', 'reactor_system_cost')
-    elif mscwo_replacement_cost is not None:
-        exclude = ('wages', 'material_replacement_cost')
-    elif mscwo_equipment_cost is not None:
-        exclude = ('wages', 'reactor_system_cost')
-    batch_setting_unit_params(mscwo_reactor_module_path, modelB, unitB.B11, exclude)
+    if mscwo_replacement_cost is not None:
+        exclude.append('material_replacement_cost')
+    if mscwo_equipment_cost is not None:
+        exclude.append('reactor_system_cost')
+    # if mscwo_replacement_cost is not None and mscwo_equipment_cost is not None:
+    #     exclude = ('wages', 'material_replacement_cost', 'reactor_system_cost')
+    # elif mscwo_replacement_cost is not None:
+    #     exclude = ('wages', 'material_replacement_cost')
+    # elif mscwo_equipment_cost is not None:
+    #     exclude = ('wages', 'reactor_system_cost')
+    batch_setting_unit_params(mscwo_reactor_module_path, modelB, unitB.B11, tuple(exclude))
 
     #mSCWO concentrator module
     exclude = ('wages')
@@ -740,7 +748,7 @@ def create_modelB(city_specific=False, ppl=default_ppl,lifetime=default_lifetime
     return modelB
 
 # Wrapper function so that it'd work for all
-def create_model(model_ID='A', city_specific=False, ppl=default_ppl,lifetime=default_lifetime, **model_kwargs):
+def create_model(model_ID='A', city_specific=False, ppl=None,lifetime=default_lifetime, **model_kwargs):
     model_ID = model_ID.lower().rsplit('model')[-1].rsplit('sys')[-1].upper() # works for "modelA"/"sysA"/"A"
     if model_ID == 'A': model = create_modelA(city_specific, ppl=ppl,lifetime= lifetime, **model_kwargs)
     elif model_ID == 'B': model = create_modelB(city_specific, ppl=ppl,lifetime= lifetime, **model_kwargs)

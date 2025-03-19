@@ -764,11 +764,11 @@ def run_module_city_specific(
                 'city': city,
                 'city_data': city_specific_inputs[city],
                 }
-            if n == 0: # create the model
-                model = create_city_specific_model_func(**kwargs)
-            else: # reuse the model, just update parameters
-                kwargs['model'] = model
-                model = create_city_specific_model_func(**kwargs)
+            # if n == 0: # create the model
+            #     model = create_city_specific_model_func(**kwargs)
+            # else: # reuse the model, just update parameters
+            #     kwargs['model'] = model
+            model = create_city_specific_model_func(**kwargs)
             # Run analysis and save results
             path = os.path.join(folder_path, f'sys{sys_ID}_model_{city}_')
             date = datetime.now().strftime('%Y-%m-%d')

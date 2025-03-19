@@ -53,11 +53,13 @@ format_key = lambda key: (' '.join(key.split('_'))).capitalize()
 
 def create_city_specific_model(ID, city, model=None, city_data=None,
                                   include_non_contextual_params=True):
-    model = model.copy() if model is not None else create_model(model_ID=ID, city_specific=True)
+    city_data = city_data or general_city_specific_inputs[city]
+    g2rt.set_default_ppl(city_data['household_size'])
+    model = create_model(model_ID=ID, city_specific=True)
     param = model.parameter
     sys = model.system
     sys_stream = sys.flowsheet.stream
-    city_data = city_data or general_city_specific_inputs[city]
+    # print(f'current default number is {g2rt.get_default_ppl()},mixed waste flow rate is {sys.flowsheet.unit.A2.outs[0].F_mass} kg/hr')
     price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct = update_resource_recovery_settings()
 
     if include_non_contextual_params:
@@ -123,7 +125,7 @@ def create_city_specific_model(ID, city, model=None, city_data=None,
     stream_ref = {
         'H2O': 'H2O',
     }
-    
+
     @param(name=name, element=excretion_unit, kind='cost', units='-',
            baseline=b, distribution=D)
     def set_price_ratio(i):
@@ -148,7 +150,24 @@ def create_city_specific_model(ID, city, model=None, city_data=None,
         for u in sys.units:
             if hasattr(u, '_calc_maintenance_labor_cost'):
                 u.wages = i
-                
+        # print(f'current wage  is {i} $/hr, annual OPEX is {sys.TEA.AOC} $/yr')
+    
+        
+    # # User number
+    # household_size_D_ratio = 0.1
+    # key = 'household_size'
+    # name, p, b, D = get_param_name_b_D(key, household_size_D_ratio)
+    # @param(name=name, 
+    #        element=excretion_unit, 
+    #        kind='coupled', 
+    #        units='-',
+    #        baseline=b, distribution=D)
+    # def set_household_size(i):
+    #     g2rt.set_default_ppl(i)
+    #     # global model
+    #     # model = create_model(model_ID=ID, city_specific=True)
+    #     print(f'current default number is {g2rt.get_default_ppl()},mixed waste flow rate is {sys.flowsheet.unit.A2.outs[0].F_mass} kg/hr')
+
     try:
         # Energy price
         energy_price_D_ratio = 0.1
@@ -160,6 +179,7 @@ def create_city_specific_model(ID, city, model=None, city_data=None,
             PowerUtility.price = i
     except AssertionError:
         warnings.warn("Energy price is zero!!!")
+
 
     # Energy GWP
     key = 'energy_GWP'
