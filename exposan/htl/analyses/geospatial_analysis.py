@@ -476,6 +476,128 @@ sludge_emission_factor = {'landfill': 5.65/1000*29.8,
                           'land_application': 0.05*0.01*44/28*273,
                           'incineration': 0}
 
+#%% hauling contribution to GHG emissions from landfill and land application
+
+# kg CO2 eq/tonne/km
+hauling_CI = 0.13004958
+
+sludge_dw = 0.2
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 38
+plt.rcParams['ytick.labelsize'] = 38
+plt.rcParams['font.sans-serif'] = 'Arial'
+
+plt.rcParams.update({'mathtext.fontset': 'custom'})
+plt.rcParams.update({'mathtext.default': 'regular'})
+plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+fig, ax = plt.subplots(figsize=(10, 10))
+
+ax = plt.gca()
+
+ax.set_xlim(0, 80)
+ax.set_ylim(0, 100)
+
+ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
+
+ax.set_xlabel(r'$\mathbf{Hauling\ distance}$ [km]', fontname='Arial', fontsize=45)
+ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
+
+mathtext.FontConstantsBase.sup1 = 0.35
+
+plt.xticks(np.arange(0, 90, 10))
+plt.yticks(np.arange(0, 280, 40))
+
+ax_top = ax.twiny()
+ax_top.set_xlim(0, 80)
+ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+
+plt.xticks(np.arange(0, 90, 10))
+plt.yticks(np.arange(0, 280, 40))
+
+ax_right = ax.twinx()
+ax_right.set_ylim(0, 240)
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
+
+plt.xticks(np.arange(0, 90, 10))
+plt.yticks(np.arange(0, 280, 40))
+
+ax.plot([0, 80],
+        [sludge_emission_factor['landfill']*1000, sludge_emission_factor['landfill']*1000],
+        c='k',
+        linewidth=3)
+
+ax.plot([0, 80],
+        [sludge_emission_factor['land_application']*1000, sludge_emission_factor['land_application']*1000],
+        c='k',
+        linewidth=3)
+
+ax.plot([0, 80],
+        [0*hauling_CI/sludge_dw, 80*hauling_CI/sludge_dw],
+        c='k',
+        linewidth=3)
+
+ax.plot([8, 8],
+        [0, 240],
+        c=db,
+        linestyle='--',
+        linewidth=3)
+
+ax.plot([13, 13],
+        [0, 240],
+        c=dr,
+        linestyle='--',
+        linewidth=3)
+
+ax.scatter(8,
+           8*hauling_CI/sludge_dw,
+           c=b,
+           s=500,
+           linewidths=3,
+           edgecolors='k',
+           zorder=2)
+
+ax.scatter(8,
+           sludge_emission_factor['landfill']*1000,
+           c=b,
+           s=500,
+           linewidths=3,
+           edgecolors='k',
+           zorder=2)
+
+ax.scatter(8,
+           sludge_emission_factor['land_application']*1000,
+           c=b,
+           s=500,
+           linewidths=3,
+           edgecolors='k',
+           zorder=2)
+
+ax.scatter(13,
+           13*hauling_CI/sludge_dw,
+           c=r,
+           s=500,
+           linewidths=3,
+           edgecolors='k',
+           zorder=2)
+
+ax.scatter(13,
+           sludge_emission_factor['landfill']*1000,
+           c=r,
+           s=500,
+           linewidths=3,
+           edgecolors='k',
+           zorder=2)
+
+ax.scatter(13,
+           sludge_emission_factor['land_application']*1000,
+           c=r,
+           s=500,
+           linewidths=3,
+           edgecolors='k',
+           zorder=2)
+
 #%% WRRFs visualization
 
 fig, ax = plt.subplots(figsize=(30, 30))
@@ -3844,6 +3966,7 @@ for distance_threshold in np.linspace(0, 30, 151):
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
+plt.rcParams['font.sans-serif'] = 'Arial'
 
 plt.rcParams.update({'mathtext.fontset': 'custom'})
 plt.rcParams.update({'mathtext.default': 'regular'})
@@ -3892,12 +4015,12 @@ ax.plot([0, distance_x[coverage_y.index(max(coverage_y))], distance_x[coverage_y
         linewidth=3)
 
 ax.scatter(distance_x[coverage_y.index(max(coverage_y))],
-        max(coverage_y),
-        c=r,
-        s=500,
-        linewidths=3,
-        edgecolors='k',
-        zorder=2)
+           max(coverage_y),
+           c=r,
+           s=500,
+           linewidths=3,
+           edgecolors='k',
+           zorder=2)
 
 #%% future coverage (data preparation for map visualization)
 
