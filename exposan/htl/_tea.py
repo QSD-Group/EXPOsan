@@ -63,6 +63,7 @@ class CAPEXTableBuilder:
                             columns=('Notes', *[i + ' [MM$]' for i in names])
         )
 
+# note add_OPEX and other similar funcions do not work since TEA is from BioSTEAM, but not QSDsan
 class HTL_TEA(TEA):
     
     __slots__ = ('OSBL_units', 'warehouse', 'site_development',
@@ -193,6 +194,7 @@ class HTL_TEA(TEA):
                 + self.ISBL_installed_equipment_cost * self.maintenance
                 + self.labor_cost * (1 + self.labor_burden))
 
+# note add_OPEX and other similar funcions do not work since TEA is from BioSTEAM, but not QSDsan
 def create_tea(system, OSBL_units=None, cls=None, **kwargs):
     OSBL_units = bst.get_OSBL(system.cost_units)
     try:

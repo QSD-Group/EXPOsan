@@ -664,6 +664,7 @@ def create_geospatial_system(test_run=False,
     
     income_tax_rate = federal_income_tax_rate_value + state_income_tax_rate_value
     
+    # note add_OPEX and other similar funcions do not work since TEA is from BioSTEAM, but not QSDsan
     # TEA results updated if sys.TEA.net_earnings > 0
     create_tea(sys, IRR_value=0.03,
                income_tax_value=income_tax_rate,

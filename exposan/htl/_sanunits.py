@@ -428,7 +428,7 @@ class DAPSynthesis(Reactor):
         Electricity usage per volume in kW/gal. Defaults to 0.00746, a 
         heuristic value for suspension of solids. Note the unit should be
         kW/m3, not a driver of the cost or CI, keep consistent with
-        BioSTEAM for now
+        BioSTEAM for now.
     '''
     _N_ins = 3
     _N_outs = 2
@@ -440,19 +440,19 @@ class DAPSynthesis(Reactor):
              'Retentate flow rate':'kg/h'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                  init_with='WasteStream', 
-                  # due to lack of data, assume P_syn_recovery_ratio to be the same as
-                  # P_pre_recovery_ratio in StruvitePrecipitation
-                  P_syn_recovery_ratio=0.828,
-                  crystallizer_electricity=0.00746,
-                  # due to lack of data, assume tau to be the same as
-                  # tau in StruvitePrecipitation
-                  P=None, tau=1,
-                  V_wf=0.8,length_to_diameter=2, N=1, V=None,
-                  auxiliary=False, mixing_intensity=None,
-                  kW_per_m3=0, wall_thickness_factor=1,
-                  vessel_material='Stainless steel 316',
-                  vessel_type='Vertical'):
+                 init_with='WasteStream', 
+                 # due to lack of data, assume P_syn_recovery_ratio to be the same as
+                 # P_pre_recovery_ratio in StruvitePrecipitation
+                 P_syn_recovery_ratio=0.828,
+                 crystallizer_electricity=0.00746,
+                 # due to lack of data, assume tau to be the same as
+                 # tau in StruvitePrecipitation
+                 P=None, tau=1,
+                 V_wf=0.8,length_to_diameter=2, N=1, V=None,
+                 auxiliary=False, mixing_intensity=None,
+                 kW_per_m3=0, wall_thickness_factor=1,
+                 vessel_material='Stainless steel 316',
+                 vessel_type='Vertical'):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.P_syn_recovery_ratio = P_syn_recovery_ratio

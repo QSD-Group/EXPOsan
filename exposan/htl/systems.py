@@ -123,14 +123,17 @@ def create_system(configuration='baseline', capacity=100,
         P1.include_construction = True
     
     elif WWTP.sludge_moisture > 0.8:
-
+        
+        # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
         SluC = qsu.SludgeCentrifuge('A000', ins=WWTP-0,
-                                outs=('supernatant','compressed_sludge'),
-                                init_with='Stream',
-                                solids=('Sludge_lipid','Sludge_protein',
-                                        'Sludge_carbo','Sludge_ash'),
-                                sludge_moisture=0.8)
+                                    outs=('supernatant','compressed_sludge'),
+                                    init_with='Stream',
+                                    solids=('Sludge_lipid','Sludge_protein',
+                                            'Sludge_carbo','Sludge_ash'),
+                                    sludge_moisture=0.8,
+                                    disposal_cost=0)
         SluC.register_alias('SluC')
+        SluC.include_construction = True
         
         P1 = qsu.SludgePump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76,
                   init_with='Stream')
@@ -142,8 +145,7 @@ def create_system(configuration='baseline', capacity=100,
     # HTL (Area 100)
     # =========================================================================
     
-    H1 = qsu.HXutility('A110', include_construction=True,
-                       ins=P1-0, outs='heated_sludge', T=351+273.15,
+    H1 = qsu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=351+273.15,
                        U=0.0198739, init_with='Stream', rigorous=True)
     # feed T is low, thus high viscosity and low U (case B in Knorr 2013)
     # U: 3, 3.5, 4 BTU/hr/ft2/F as minimum, baseline, and maximum
@@ -151,6 +153,7 @@ def create_system(configuration='baseline', capacity=100,
     # but not in other heat exchangers (low viscosity, don't need U to enforce total heat transfer efficiency)
     # unit conversion: https://www.unitsconverters.com/en/Btu(It)/Hmft2mdegf-To-W/M2mk/Utu-4404-4398
     H1.register_alias('H1')
+    H1.include_construction = True
     
     HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'),
                                        mositure_adjustment_exist_in_the_system=True)
@@ -250,10 +253,10 @@ def create_system(configuration='baseline', capacity=100,
     V2 = IsenthalpicValve('A320', ins=HT-0, outs='depressed_HT', P=717.4*6894.76, vle=True)
     V2.register_alias('V2')
     
-    H2 = qsu.HXutility('A330', include_construction=True,
-                       ins=V2-0, outs='cooled_HT', T=60+273.15,
+    H2 = qsu.HXutility('A330', ins=V2-0, outs='cooled_HT', T=60+273.15,
                        init_with='Stream', rigorous=True)
     H2.register_alias('H2')
+    H2.include_construction = True,
 
     F2 = qsu.Flash('A340', ins=H2-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
                P=717.4*6894.76, thermo=settings.thermo.ideal()) # outflow P
@@ -268,10 +271,11 @@ def create_system(configuration='baseline', capacity=100,
     # separate water and oil based on gravity
     SP2.register_alias('SP2')
     
-    H3 = qsu.HXutility('A360', include_construction=True,
-                       ins=SP2-1, outs='heated_oil', T=104+273.15, rigorous=True)
+    H3 = qsu.HXutility('A360', ins=SP2-1, outs='heated_oil', T=104+273.15,
+                       init_with='Stream', rigorous=True)
     # temperature: Jones stream #334 (we remove the first distillation column)
     H3.register_alias('H3')
+    H3.include_construction = True
     
     D1 = qsu.BinaryDistillation('A370', ins=H3-0,
                             outs=('HT_light','HT_heavy'),
@@ -314,10 +318,10 @@ def create_system(configuration='baseline', capacity=100,
     HC.register_alias('HC')
     HC.include_construction = True
     
-    H4 = qsu.HXutility('A420', include_construction=True,
-                       ins=HC-0, outs='cooled_HC', T=60+273.15,
+    H4 = qsu.HXutility('A420', ins=HC-0, outs='cooled_HC', T=60+273.15,
                        init_with='Stream', rigorous=True)
     H4.register_alias('H4')
+    H4.include_construction = True
     
     V4 = IsenthalpicValve('A430', ins=H4-0, outs='cooled_depressed_HC', P=30*6894.76, vle=True)
     V4.register_alias('V4')
@@ -345,15 +349,15 @@ def create_system(configuration='baseline', capacity=100,
                             init_with='Stream', rigorous=True)
     DieselMixer.register_alias('DieselMixer')
     
-    H5 = qsu.HXutility('A500', include_construction=True,
-                       ins=GasolineMixer-0, outs='cooled_gasoline',
+    H5 = qsu.HXutility('A500', ins=GasolineMixer-0, outs='cooled_gasoline',
                        T=60+273.15, init_with='Stream', rigorous=True)
     H5.register_alias('H5')
+    H5.include_construction = True
     
-    H6 = qsu.HXutility('A510', include_construction=True,
-                       ins=DieselMixer-0, outs='cooled_diesel',
+    H6 = qsu.HXutility('A510', ins=DieselMixer-0, outs='cooled_diesel',
                        T=60+273.15, init_with='Stream', rigorous=True)
     H6.register_alias('H6')
+    H6.include_construction = True
     
     PC1 = qsu.PhaseChanger('S520', ins=H5-0, outs='cooled_gasoline_liquid')
     PC1.register_alias('PC1')
@@ -432,18 +436,21 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=0,
                         RespiratoryEffects=0)
     
-    # add impact for makeup water
-    qs.StreamImpactItem(ID='makeup_water_item',
-                        linked_stream=stream.makeup_water,
-                        Acidification=0.00011676,
-                        Ecotoxicity=0.0050151,
-                        Eutrophication=0.000000073096,
-                        GlobalWarming=0.00030228,
-                        OzoneDepletion=0.00000000016107,
-                        PhotochemicalOxidation=0.00000074642,
-                        Carcinogenics=0.0000061925,
-                        NonCarcinogenics=0.009977,
-                        RespiratoryEffects=0.00000068933)
+    try:
+        # add impact for makeup water
+        qs.StreamImpactItem(ID='makeup_water_item',
+                            linked_stream=stream.makeup_water,
+                            Acidification=0.00011676,
+                            Ecotoxicity=0.0050151,
+                            Eutrophication=0.000000073096,
+                            GlobalWarming=0.00030228,
+                            OzoneDepletion=0.00000000016107,
+                            PhotochemicalOxidation=0.00000074642,
+                            Carcinogenics=0.0000061925,
+                            NonCarcinogenics=0.009977,
+                            RespiratoryEffects=0.00000068933)
+    except AttributeError:
+        pass
     
     # biocrude upgrading
     qs.StreamImpactItem(ID='H2_item',
@@ -638,8 +645,10 @@ def create_system(configuration='baseline', capacity=100,
     # in the future, use 0.21 (new federal income tax rate) as the income tax rate
     # if it is necessary to add a state income tax, see exposan.htl.income_tax
     if high_IRR:
+        # note add_OPEX and other similar funcions do not work since TEA is from BioSTEAM, but not QSDsan
         create_tea(sys, IRR_value=0.1, income_tax_value=0.21, finance_interest_value=0.08, labor_cost_value=(0.41+1.40*capacity*WWTP.ww_2_dry_sludge/100)*10**6)
     else:
+        # note add_OPEX and other similar funcions do not work since TEA is from BioSTEAM, but not QSDsan
         create_tea(sys, IRR_value=0.03, income_tax_value=0.21, finance_interest_value=0.03, labor_cost_value=(0.41+1.40*capacity*WWTP.ww_2_dry_sludge/100)*10**6)
     
     # for labor cost (2020 salary level)
