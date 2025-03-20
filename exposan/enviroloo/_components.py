@@ -8,9 +8,12 @@ This module is developed by:
                for Enviroloo Clear Toilet system
                
 '''
+import qsdsan as qs
+import os
 from qsdsan import Component, Components, set_thermo as qs_set_thermo
 from exposan.utils import add_V_from_rho
 from exposan.bwaise import create_components as create_bw_components
+from qsdsan import processes as pc, sanunits as su
 
 __all__ = ('create_components', )
 
@@ -18,7 +21,8 @@ __all__ = ('create_components', )
 def create_components(set_thermo = True, 
                       #adjust_MW_to_measured_as=False
                       ):
-    bw_cmps = create_bw_components(set_thermo=False)
+    # bw_cmps = create_bw_components(set_thermo=False)
+    masm2d_cmps = pc.create_masm2d_cmps(set_thermo=False)
 
     C = Component('C', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
     
@@ -42,8 +46,8 @@ def create_components(set_thermo = True,
     NaClO = Component('NaClO', search_ID='7681-52-9', phase='s', particle_size='Particulate', degradability='Readily', organic=False)
     add_V_from_rho(NaClO, rho=1250)
     
-    NO3 = Component('NO3', measured_as = 'N', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
-    add_V_from_rho(NO3, rho=1.15) # need check
+    # NO3 = Component('NO3', measured_as = 'N', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
+    # add_V_from_rho(NO3, rho=1.15) # need check
           
     #NH3_l = Component('NH3_l', measured_as = 'N', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
           
@@ -59,8 +63,7 @@ def create_components(set_thermo = True,
     #'degradability': ('Readily', 'Slowly', 'Undegradable'),
     #'organic': (True, False)}
           
-    cmps = Components((*bw_cmps, C, SolubleCH4, 
-                       NO3,
+    cmps = Components((*masm2d_cmps, C, SolubleCH4, 
                        #H2O, CO2, CH4, N2O, NH3
                        Glucose, O3, air, PAC, NaOH, NaClO))
     
