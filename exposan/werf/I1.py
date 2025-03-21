@@ -29,7 +29,7 @@ dfs = load_data(
     )
 asinit = dfs[ID]
 fcinit = asinit.iloc[-1].to_dict()
-default_fctss_init = [10, 12, 20, 40, 100, 500, 500, 500, 550, 1e4]
+default_fctss_init = [8, 12, 20, 30, 80, 400, 400, 400, 400, 7700]
 adinit = dfs['adm'].loc[ID].to_dict()
 
 MGD2cmd = 3785.412
@@ -86,7 +86,7 @@ def create_i1_system(flowsheet=None, default_init_conds=True):
     
     MT = su.IdealClarifier(
         'MT', FC-2, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.03*MGD2cmd,
+        sludge_flow_rate=0.0263*MGD2cmd,    # aim for 5% TS
         solids_removal_efficiency=0.95
         )
     
@@ -98,7 +98,8 @@ def create_i1_system(flowsheet=None, default_init_conds=True):
                           adm1_model=adm, asm2d_model=asm)
     AD = su.AnaerobicCSTR(
         'AD', ins=J1-0, outs=('biogas', 'digestate'), 
-        V_liq=0.85*MGD2cmd, V_gas=0.085*MGD2cmd, 
+        # V_liq=0.85*MGD2cmd, V_gas=0.085*MGD2cmd,
+        V_liq=0.66*MGD2cmd, V_gas=0.066*MGD2cmd,    # aim for solids loading rate of 1.6-4.8 kg VSS/m3/d
         fixed_headspace_P=False, fraction_retain=0,
         T=T_ad, model=adm,
         pH_ctrl=7.0,
@@ -110,7 +111,7 @@ def create_i1_system(flowsheet=None, default_init_conds=True):
      
     DW = su.IdealClarifier(
         'DW', J2-0, outs=('', 'cake'),
-        sludge_flow_rate=0.00616*MGD2cmd,    # aim for 17% TS
+        sludge_flow_rate=0.00518*MGD2cmd,    # aim for 17% TS
         solids_removal_efficiency=0.9
         )
     MX = su.Mixer('MX', ins=[MT-0, DW-0])
