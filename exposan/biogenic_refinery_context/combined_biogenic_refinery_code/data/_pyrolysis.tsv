@@ -1,0 +1,4 @@
+parameter	name (if diff)	unit	expected	low	high	distribution	references
+pyrolysis_temp_600		C	21.935	18.37	25.5	uniform	
+pyrolysis_temp_500		C	15.55	11.08	20.02	uniform	
+pyrolysis_temp_700		C	11.61	9.32	13.9	uniform	
