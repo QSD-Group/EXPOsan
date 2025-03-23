@@ -44,7 +44,7 @@ br_su_data_path = ospath.join(data_path, 'sanunit_data/br')
 
 biosolids_path = ospath.join(br_su_data_path, '_biosolids.tsv')
 
-class biosolids(SanUnit):
+class Biosolids(SanUnit):
     '''
     Set properties of biosolids to be treated via pyrolysis.
 
@@ -116,7 +116,7 @@ class biosolids(SanUnit):
 # 2. (Done Stetson, Aaron to review) layer assumptions/calcs about pyrolysis onto carbonizer base
 # 3. sizing of the system, i.e., multiple systems needed for more than solids loading to 1 BR
 
-## Stetson paused here
+
 # %%
 
 br_carbonizer_path = ospath.join(br_su_data_path, '_br_carbonizer_base.tsv')
