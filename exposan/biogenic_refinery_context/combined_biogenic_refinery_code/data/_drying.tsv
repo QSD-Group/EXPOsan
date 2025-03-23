@@ -1,7 +1,0 @@
-parameter	name (if diff)	unit	expected	low	high	distribution	references
-drying_temp		C	105			constant	
-ambient_temp		C	25			constant	
-MC_final		kg H2O / kg biosolids	0.05			constant	
-Cp_H2O		kJ/(kg K)	4.18			constant	
-Cp_dried_sludge		kJ/(kg K)	1.15			constant	
-deltaH_vap_H2O		kJ/kg H2O	0.0026			constant	

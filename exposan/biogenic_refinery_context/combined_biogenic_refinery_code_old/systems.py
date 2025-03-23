@@ -60,55 +60,16 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
     item = ImpactItem.get_item('N2O_item').copy(f'{prefix}_N2O_item', set_as_source=True)
     WasteStream('N2O', phase='g', stream_impact_item=item)
 
-    price_dct = update_resource_recovery_settings()[0]
-    for nutrient in ('N', 'P', 'K'):
-        for phase in phases:
-            original = ImpactItem.get_item(f'{nutrient}_item')
-            new = original.copy(f'{phase}_{nutrient}_item', set_as_source=True)
-            WasteStream(f'{phase}_{nutrient}', phase='l',
-                        price=price_dct[nutrient], stream_impact_item=new)
-
-    def create_stream_with_impact_item(stream_ID='', item_ID='', dct_key=''):
-        item_ID = item_ID or stream_ID+'_item'
-        dct_key = dct_key or stream_ID
-        item = ImpactItem.get_item(item_ID).copy(f'{prefix}_{item_ID}', set_as_source=True)
-        WasteStream(f'{stream_ID}', phase='s',
-                    price=price_dct.get(dct_key) or 0., stream_impact_item=item)
-
-    create_stream_with_impact_item(stream_ID='polymer', dct_key='Polymer')
-    create_stream_with_impact_item(stream_ID='resin', dct_key='Resin')
-    create_stream_with_impact_item(stream_ID='filter_bag', dct_key='FilterBag')
-    create_stream_with_impact_item(stream_ID='MgOH2')
-    create_stream_with_impact_item(stream_ID='MgCO3')
-    create_stream_with_impact_item(stream_ID='H2SO4')
-    create_stream_with_impact_item(stream_ID='biochar')
-    create_stream_with_impact_item(stream_ID='struvite')
-    create_stream_with_impact_item(stream_ID='conc_NH3')
-
-
-def update_toilet_param(unit):
-    # Use the private attribute so that the number of users/toilets will be exactly as assigned
-    # (i.e., can be fractions)
-    unit._N_user = get_toilet_user()
-    unit._N_toilet = get_ppl(unit.ID[0])/get_toilet_user()
-    unit._run()
-
-
-def update_carbon_COD_ratio(sys):
-    for first_u in sys.units:
-        if hasattr(first_u, 'carbon_COD_ratio'):
-            carbon_COD_ratio = first_u.carbon_COD_ratio
-            break
-    for u in sys.units:
-        if u is first_u: continue
-        if hasattr(u, 'carbon_COD_ratio'): u.carbon_COD_ratio = carbon_COD_ratio
-
-
 # %%
 
 # =============================================================================
 # Scenario A (sysA): pit latrine with 12,000 users
 # =============================================================================
+
+##TODO biosolids - BiogenicRefineryControls - BiogenicRefineryHousing 
+#- BiogenicRefineryCarbonizerBase - BiogenicRefineryPollutionControl 
+#- BiogenicRefineryOHX - BiogenicRefineryHHX - BiogenicRefineryHHXdryer
+# Mixer for N2O - Mixer for CH4 - Trucking of biochar (set distance to 0 for now)
 
 def create_systemA(flowsheet=None):
     # Set flowsheet to avoid stream replacement warnings

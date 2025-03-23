@@ -106,174 +106,17 @@ class biosolids(SanUnit):
         
         biosolids.imass['H20'] = biosolids.F_vol * 1000 * self.MC  # kg/hr
         biosolids.TN = flow_rate_db * self.N # kg / hr
-    
+        #TODO need some estimates of COD for CH4 in drying
+        #TODO might need to use .imass['N'] instead of .TN too?
         
-# %%
-
-drying_path = ospath.join(br_su_data_path, '_drying.tsv')
-
-class drying(SanUnit):
-    _N_ins= 1
-    _N_outs = 1
-    
-
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 moisture_content_out=0.05, **kwargs):
-        SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=1)
-        self.moisture_content_out = moisture_content_out
-
-        data = load_data(path=drying_path)
-        for para in data.index:
-            value = float(data.loc[para]['expected'])
-            setattr(self, para, value)
-        del data
-
-        for attr, value in kwargs.items():
-            setattr(self, attr, value)
 
 
-    def _run(self):
-        waste_in = self.ins
-        waste_out = self.outs
-        waste_out.copy_like(self.ins[0])
+##TODO 
+# 1. (Done Stetson, Aaron to review) layer assumptions/calcs about drying onto HHX drying
+# 2. (Done Stetson, Aaron to review) layer assumptions/calcs about pyrolysis onto carbonizer base
+# 3. sizing of the system, i.e., multiple systems needed for more than solids loading to 1 BR
 
-        # Calculate total dry mass flow rate of input
-        m_dried_sludge = waste_in._AC + waste_in._FC + waste_in._VM  # kg/hr
-
-        # Calculate current moisture content (MC)
-        MC_initial = waste_in.imass['H2O'] / (waste_in.imass['H2O'] + m_dried_sludge) # fraction
-
-        # Calculate temperature difference
-        delta_T = self.drying_temp - self.ambient_temp  # °C
-
-        # Calculate water to evaporate
-        m_H2O_wet_sludge = waste_in.imass['H2O']  # kg/hr
-        m_H2O_evap = (MC_initial - self.MC_final) * m_dried_sludge * MC_initial / (1 - MC_initial)  # kg/hr
-
-        # Calculate energy required for drying
-        Q_sensible = (m_dried_sludge * self.Cp_dried_sludge + m_H2O_wet_sludge * self.Cp_H2O) * delta_T  # kJ/hr
-        Q_latent = m_H2O_evap * self.deltaH_vap_H2O  # kJ/hr
-        Q_drying = Q_sensible + Q_latent  # kJ/hr
-        #TODO Q_drying as an output
-        
-        # Calculate remaining water after drying
-        waste_out.imass['H2O'] = waste_in.imass['H2O'] - m_H2O_evap  # kg/hr
-
-        # # Solid components stay the same in mass
-        # waste_out._AC = waste_in._AC  # kg/hr
-        # waste_out._FC = waste_in._FC  # kg/hr
-        # waste_out._VM = waste_in._VM  # kg/hr
-
-        # Calculate new volumetric flow rate based on reduced water content
-        total_mass_out = waste_out._AC + waste_out._FC + waste_out._VM + waste_out.imass['H2O']  # kg/hr
-        density = 1000  # kg/m3 (assuming same density)
-        waste_out.F_vol = total_mass_out / density  # m³/hr
-# %%
-
-pyrolysis_path = ospath.join(br_su_data_path, '_pyrolysis.tsv')
-
-class pyrolsis(SanUnit):
-    _N_ins= 1
-    _N_outs = 3
-    
-
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', pyrolysis_temp = 750,
-                 **kwargs):
-        SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
-                         F_BM_default=1)
-
-        data = load_data(path=pyrolysis_path)
-        for para in data.index:
-            value = float(data.loc[para]['expected'])
-            setattr(self, para, value)
-        del data
-
-        for attr, value in kwargs.items():
-            setattr(self, attr, value)
-
-
-    def _run(self):
-        waste = self.ins[0]
-        biochar, gas, N2O = self.outs
-        biochar.copy_like(self.ins[0])
-        gas.phase  = 'g'
-        gas.T = self.pyrolysis_temp
-         
-
-        # Calculate total dry basis mass flow
-        dry_mass_flow = waste.F_vol * 1000 * (1 - waste.MC)  # kg-db / hr
-
-        # Calculate ash content fraction (dry basis)
-        ACf = waste._AC / dry_mass_flow  # decimal fraction
-        
-        # Calculate char yield on dry ash-free basis
-        daf_yield = (0 + 0.144 * (ACf**0.0304) + 2.7023 * math.exp(-0.0066 * self.pyrolysis_temp))
-        #TODO double check first value should be zero
-        
-        # Calculate char yield on dry basis
-        char_yield_factor = daf_yield * (1 - ACf) + ACf
-        char_yield_db_percent = char_yield_factor * 100  # %
-
-        # Calculate total char mass flow rate
-        biochar_mass_flow = dry_mass_flow * (char_yield_db_percent / 100)  # kg/hr
-
-        # Calculate biochar ash content
-        AC_biochar_percent = (char_yield_db_percent - daf_yield * 100) / char_yield_db_percent * 100
-
-        # Set biochar volatile matter set based on temp
-        if 500 <= self.pyrolysis_temp <= 599:
-            VM_biochar_percent = self.VM_biochar_percent_500
-        elif 600 <= self.pyrolysis_temp <= 699:
-            VM_biochar_percent = self.VM_biochar_percent_600
-        elif 700 <= self.pyrolysis_temp <= 799:
-            VM_biochar_percent = self.VM_biochar_percent_700
-        else:
-            print("temp not in range of 500-799")
-            
-        # Calculate biochar fixed carbon content using AC and VM
-        FC_biochar_percent = 100 - VM_biochar_percent - AC_biochar_percent
-        
-        # Convert percentages to mass flow rates
-        biochar._AC = biochar_mass_flow * (AC_biochar_percent / 100)  # kg/hr
-        biochar._FC = biochar_mass_flow * (FC_biochar_percent / 100)  # kg/hr 
-        biochar._VM = biochar_mass_flow * (VM_biochar_percent / 100)  # kg/hr
-
-        # Water in biochar (assuming mostly dry after pyrolysis)
-        biochar.imass['H2O'] = biochar_mass_flow * 0.02  # kg/hr (assuming 2% moisture)
-
-        # Calculate biochar volume (assuming density of 300 kg/m3 for biochar)
-        biochar_density = 300  # kg/m3
-        biochar.F_vol = biochar_mass_flow / biochar_density  # m³/hr
-
-        # Carbon sequestration calculations
-        # Calculate carbon content of biochar (% mass C/mass biochar)
-        C_biochar = (0.474 * VM_biochar_percent + 0.963 * FC_biochar_percent + 0.067 * AC_biochar_percent) / 100  # Klasson 2017
-
-        # Calculate ash-free carbon content
-        Cafb = (0.474 * VM_biochar_percent + 0.963 * FC_biochar_percent + 0.067 * AC_biochar_percent) / (100 - AC_biochar_percent)  # Klasson 2017
-
-        # Calculate feedstock carbon content
-        C_feedstock = -0.50 * (ACf * 100) + 54.51  # Krueger et al. 2021
-
-        # Calculate recalcitrance index
-        R50 = 0.17 * Cafb + 0.00479  # Klasson 2017
-
-        # Calculate carbon sequestration potential
-        CS = char_yield_db_percent * (C_biochar * 100) * R50 / C_feedstock  # Zhao et al. 2013
-
-        # Set additional biochar properties
-        biochar._carbon_content = C_biochar  # frac
-        biochar._carbon_sequestration = CS  # %
-        biochar.F_mass = biochar_mass_flow  # kg/hr
-        
-        # N2O emissions
-        N_to_gas = waste.imass['N'] * self.pyrolysis_N_loss # kg N / hr
-        N2O_from_HCNO = N_to_gas * self.N_to_HCNO * self.HCNO_to_NH3 * self.NH3_to_N2O
-        N20_from_NH3 = N_to_gas * self.N_to_NH3 * self.NH3_to_N2O
-        N2O_emissions = N2O_from_HCNO + N20_from_NH3 # kg N2O / hr
-        N2O.imass['N2O'] = N2O_emissions
-
-###TODO Stetson paused here
+## Stetson paused here
 # %%
 
 br_carbonizer_path = ospath.join(br_su_data_path, '_br_carbonizer_base.tsv')
@@ -358,12 +201,72 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
                 'larger than the maximum allowed level of 35%.')
 
         biochar.empty()
-        biochar_prcd = waste.F_mass * (1-mc) * self.biochar_production_rate # kg biochar /hr
-        biochar.imass['C'] = waste.COD * self.carbon_COD_ratio * waste.F_vol / 1e3 * (1 - self.pyrolysis_C_loss)
-        NPK = ('N', 'P', 'K')
-        for element in NPK:
-            biochar.imass[element] *= 1 - getattr(self, f'pyrolysis_{element}_loss')
-        biochar.imass['OtherSS'] = biochar_prcd - biochar.imass[('C', *NPK)].sum()
+        
+        # Calculate total dry basis mass flow
+        dry_mass_flow = waste.F_vol * 1000 * (1 - waste.MC)  # kg-db / hr
+
+        # Calculate ash content fraction (dry basis)
+        ACf = waste._AC / dry_mass_flow  # decimal fraction
+        
+        # Calculate char yield on dry ash-free basis
+        daf_yield = (0 + 0.144 * (ACf**0.0304) + 2.7023 * math.exp(-0.0066 * self.pyrolysis_temp))
+        #TODO double check first value should be zero
+        
+        # Calculate char yield on dry basis
+        char_yield_factor = daf_yield * (1 - ACf) + ACf
+        char_yield_db_percent = char_yield_factor * 100  # %
+
+        # Calculate total char mass flow rate
+        biochar_mass_flow = dry_mass_flow * (char_yield_db_percent / 100)  # kg/hr
+
+        # Calculate biochar ash content
+        AC_biochar_percent = (char_yield_db_percent - daf_yield * 100) / char_yield_db_percent * 100
+
+        # Set biochar volatile matter set based on temp
+        if 500 <= self.pyrolysis_temp <= 599:
+            VM_biochar_percent = self.VM_biochar_percent_500
+        elif 600 <= self.pyrolysis_temp <= 699:
+            VM_biochar_percent = self.VM_biochar_percent_600
+        elif 700 <= self.pyrolysis_temp <= 799:
+            VM_biochar_percent = self.VM_biochar_percent_700
+        else:
+            print("temp not in range of 500-799")
+            
+        # Calculate biochar fixed carbon content using AC and VM
+        FC_biochar_percent = 100 - VM_biochar_percent - AC_biochar_percent
+        
+        # Convert percentages to mass flow rates
+        biochar._AC = biochar_mass_flow * (AC_biochar_percent / 100)  # kg/hr
+        biochar._FC = biochar_mass_flow * (FC_biochar_percent / 100)  # kg/hr 
+        biochar._VM = biochar_mass_flow * (VM_biochar_percent / 100)  # kg/hr
+
+        # Water in biochar (assuming mostly dry after pyrolysis)
+        biochar.imass['H2O'] = biochar_mass_flow * 0.02  # kg/hr (assuming 2% moisture)
+
+        # Calculate biochar volume (assuming density of 300 kg/m3 for biochar)
+        biochar_density = 300  # kg/m3
+        biochar.F_vol = biochar_mass_flow / biochar_density  # m³/hr
+
+        # Carbon sequestration calculations
+        # Calculate carbon content of biochar (% mass C/mass biochar)
+        C_biochar = (0.474 * VM_biochar_percent + 0.963 * FC_biochar_percent + 0.067 * AC_biochar_percent) / 100  # Klasson 2017
+
+        # Calculate ash-free carbon content
+        Cafb = (0.474 * VM_biochar_percent + 0.963 * FC_biochar_percent + 0.067 * AC_biochar_percent) / (100 - AC_biochar_percent)  # Klasson 2017
+
+        # Calculate feedstock carbon content
+        C_feedstock = -0.50 * (ACf * 100) + 54.51  # Krueger et al. 2021
+
+        # Calculate recalcitrance index
+        R50 = 0.17 * Cafb + 0.00479  # Klasson 2017
+
+        # Calculate carbon sequestration potential
+        CS = char_yield_db_percent * (C_biochar * 100) * R50 / C_feedstock  # Zhao et al. 2013
+
+        # Set additional biochar properties
+        biochar._carbon_content = C_biochar  # frac
+        biochar._carbon_sequestration = CS  # %
+        biochar.F_mass = biochar_mass_flow  # kg/hr
         biochar.imass['H2O'] = 0.025 * biochar.F_mass # kg H2O / hr with 2.5% moisture content
         
         #TODO layer other assumptions on biochar here, 
@@ -881,16 +784,37 @@ class BiogenicRefineryHHXdryer(SanUnit):
         waste_out, N2O, CH4  = self.outs
         waste_out.copy_like(self.ins[0])
         heat_in.phase = N2O.phase = CH4.phase = 'g'
+        
+        
+        # Calculate total dry mass flow rate of input
+        m_dried_sludge = waste_in._AC + waste_in._FC + waste_in._VM  # kg/hr
 
-        # Calculate heat needed to dry to the desired moisture content
-        mc_in = waste_in.imass['H2O'] / waste_in.F_mass # fraction
-        mc_out = self.moisture_content_out
-        if mc_in < mc_out*0.999: # allow a small error
-            warn(f'Moisture content of the influent stream ({mc_in:.1%}) '
-                f'is smaller than the desired moisture content ({mc_out:.1%}).')
-        TS_in = waste_in.F_mass - waste_in.imass['H2O'] # kg TS dry/hr
-        waste_out.imass['H2O'] = TS_in/(1-mc_out)*mc_out
+        # Calculate current moisture content (MC)
+        MC_initial = waste_in.imass['H2O'] / (waste_in.imass['H2O'] + m_dried_sludge) # fraction
 
+        # Calculate temperature difference
+        delta_T = self.drying_temp - self.ambient_temp  # °C
+
+        # Calculate water to evaporate
+        m_H2O_wet_sludge = waste_in.imass['H2O']  # kg/hr
+        m_H2O_evap = (MC_initial - self.MC_final) * m_dried_sludge * MC_initial / (1 - MC_initial)  # kg/hr
+
+        # Calculate energy required for drying
+        Q_sensible = (m_dried_sludge * self.Cp_dried_sludge + m_H2O_wet_sludge * self.Cp_H2O) * delta_T  # kJ/hr
+        Q_latent = m_H2O_evap * self.deltaH_vap_H2O  # kJ/hr
+        Q_drying = Q_sensible + Q_latent  # kJ/hr
+        #TODO Q_drying as an output
+        
+        # Calculate remaining water after drying
+        waste_out.imass['H2O'] = waste_in.imass['H2O'] - m_H2O_evap  # kg/hr
+        
+        # Calculate new volumetric flow rate based on reduced water content
+        #TODO is this part needed? does vol matter here?
+        total_mass_out = waste_out._AC + waste_out._FC + waste_out._VM + waste_out.imass['H2O']  # kg/hr
+        density = 1000  # kg/m3 (assuming same density)
+        waste_out.F_vol = total_mass_out / density  # m3/hr
+        
+        
         # # The following codes can be used to compare if the supplied heat is
         # # sufficient to provide the needed heat for drying
         # water_to_dry = waste_in.imass['H2O'] - waste_out.imass['H2O'] # kg water/hr

@@ -15,3 +15,10 @@ area_surface		m2	1.5			constant	*assumed
 water_out_temp		C	81.7	76.3	87.1	uniform	Meyers et al 2019
 feedstock_temp		C	35			constant	Pilot Study
 carbon_COD_ratio		g C*g COD-1	0.35	0.25	0.4	triangular	Metcalf and Eddy 
+							
+drying_temp		C	105			constant	Aaron to add
+ambient_temp		C	25			constant	Aaron to add
+MC_final		kg H2O / kg biosolids	0.05			constant	Aaron to add
+Cp_H2O		kJ/(kg K)	4.18			constant	Aaron to add
+Cp_dried_sludge		kJ/(kg K)	1.15			constant	Aaron to add
+deltaH_vap_H2O		kJ/kg H2O	0.0026			constant	Aaron to add
