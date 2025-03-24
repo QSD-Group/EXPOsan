@@ -16,7 +16,6 @@ from chaospy import distributions as shape
 from qsdsan import Model, Metric, PowerUtility, ImpactItem
 from qsdsan.utils import (
     AttrSetter,
-    data_path,
     DictAttrSetter,
     dct_from_str,
     load_data,
@@ -26,7 +25,7 @@ from exposan import enviroloo as el
 from exposan.enviroloo import (
     create_system,
     #el_data_path,
-    data_path as el_data_path,
+    data_path,
     get_decay_k,
     get_LCA_metrics,
     get_TEA_metrics,
@@ -72,7 +71,7 @@ def add_metrics(model):
 # %%
 # load data for the EL model
 su_data_path = os.path.join(data_path, 'sanunit_data')
-el_su_data_path = os.path.join(su_data_path, 'el')
+el_su_data_path = os.path.join(data_path, 'units_data')
 
 ######################## load parameters related to separate units of the EL system for uncertainty and sensitivity analysis ############################
 def load_el_su_data(file_name):
@@ -765,7 +764,7 @@ def add_parameters(model, unit_dct, country_specific=False):
             H_Resources_dct['struvite'] = ImpactItem.get_item('struvite_item').CFs['H_Resources'] = -i
     
     ########################################################### Add other CFs ###############################################################
-    item_path = os.path.join(el_data_path, 'impact_items.xlsx')
+    item_path = os.path.join(data_path, 'impact_items.xlsx')
 
     for indicator in ('GlobalWarming', 'H_Ecosystems', 'H_Health', 'H_Resources'):
         sheet_name = indicator if indicator != 'GlobalWarming' else 'GWP'   # GWP is the default sheet name
