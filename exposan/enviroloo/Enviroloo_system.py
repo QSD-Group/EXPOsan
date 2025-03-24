@@ -20,12 +20,12 @@ from qsdsan import (
     LCA, TEA, System,
     )
 from qsdsan.sanunits import Trucking
-from qsdsan.sanunits._enviroloo_clear import *
 
 from chaospy import distributions as shape
 
 from qsdsan.utils import clear_lca_registries
 from exposan.utils import add_fugitive_items
+from exposan.enviroloo import _units as elu
 from exposan.enviroloo import (
     _load_components,
     _load_lca_data,
@@ -128,7 +128,7 @@ def create_systemEL(flowsheet = None):
     streamEL = flowsheet.stream
     batch_create_streams('EL')
     
-    WasteWaterGenerator = EL_Excretion('WasteWaterGenerator', outs=('urine', 'feces'))
+    WasteWaterGenerator = elu.EL_Excretion('WasteWaterGenerator', outs=('urine', 'feces'))
 
     # Toilet = EL_MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'FlushingWater', 'ToiletPaper'), 
     #                 outs =('MixedWasteWater', 'Toilet_CH4', 'Toilet_N2O'),
@@ -144,7 +144,7 @@ def create_systemEL(flowsheet = None):
     #                 )
     # Toilet.add_specification(lambda: update_toilet_param(Toilet))
     
-    Toilet = EL_MURT('Toilet',
+    Toilet = elu.EL_MURT('Toilet',
                     ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'toilet_paper', 'flushing_water', 'cleansing_water', 'desiccant'),
                     outs=('mixed_waste', 'Toilet_CH4', 'Toilet_N2O'),
                     # N_user=get_toilet_users(), N_tot_user=ppl,
@@ -167,7 +167,7 @@ def create_systemEL(flowsheet = None):
     #             if_flushing=True, if_desiccant=False, if_toilet_paper=True,
     #             CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06)    
 
-    CT = EL_CT('CT', ins=(Toilet-0, 'PrimaryClarP_return','PrimaryClar_spill', 'ClearWaterTank_spill'), 
+    CT = elu.EL_CT('CT', ins=(Toilet-0, 'PrimaryClarP_return','PrimaryClar_spill', 'ClearWaterTank_spill'), 
                     outs = ('TreatedWater'),
                     V_wf = 0.9, ppl = ppl, baseline_ppl = 100,
                     kW_per_m3=0.1,  # The power consumption per unit volume of the tank
@@ -181,7 +181,7 @@ def create_systemEL(flowsheet = None):
                             dP_design = 0,
                             )
     
-    PC = EL_PC('PC', ins=(P_CT_lift-0, 'NitrateReturn_MT'), outs=('TreatedWater', 'PC_return' , 2-CT),
+    PC = elu.EL_PC('PC', ins=(P_CT_lift-0, 'NitrateReturn_MT'), outs=('TreatedWater', 'PC_return' , 2-CT),
                     ppl = ppl,  # The number of people served
                     baseline_ppl = 100,
                     solids_removal_efficiency = 0.85,  # The solids removal efficiency
@@ -224,7 +224,7 @@ def create_systemEL(flowsheet = None):
                                         dP_design = 0,
                                         )
     
-    AnoxT = EL_Anoxic('AnoxT', ins=(PC-0, 'NitrateReturn_MT', P_Glu_dosing-0, P_AnoxT_agitation-0), 
+    AnoxT = elu.EL_Anoxic('AnoxT', ins=(PC-0, 'NitrateReturn_MT', P_Glu_dosing-0, P_AnoxT_agitation-0), 
                             outs = ('TreatedWater', 'AnoxT_CH4', 'AnoxT_N2O'),
                             degraded_components=('OtherSS',),  
                             ppl = ppl, baseline_ppl = 100,
@@ -248,7 +248,7 @@ def create_systemEL(flowsheet = None):
                                 pump_cost = 59, # USD from https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
                                 dP_design = 0,
                                 )
-    B_AeroT = EL_blower('B_AeroT', ins=streamEL['air'], outs ='Air_to_aerobic',
+    B_AeroT = elu.EL_blower('B_AeroT', ins=streamEL['air'], outs ='Air_to_aerobic',
                             # F_BM={
                             #       'Blowers': 2.22,
                             #       'Blower piping': 1,
@@ -273,12 +273,12 @@ def create_systemEL(flowsheet = None):
                            )
     B_AeroT.line = 'Air to aerobic tank'
     
-    AeroT = EL_Aerobic('AeroT', ins=(AnoxT-0, P_PAC_dosing-0, B_AeroT-0), 
+    AeroT = elu.EL_Aerobic('AeroT', ins=(AnoxT-0, P_PAC_dosing-0, B_AeroT-0), 
                             outs = ('TreatedWater', 'AeroT_CH4', 'AeroT_N2O'), 
                             ppl = ppl, baseline_ppl = 100,
                             )
     
-    B_MembT = EL_blower('B_MembT', ins = streamEL['air'], outs = 'Air_to_membrane', 
+    B_MembT = elu.EL_blower('B_MembT', ins = streamEL['air'], outs = 'Air_to_membrane', 
                             # F_BM={
                             #       'Blowers': 2.22,
                             #       'Blower piping': 1,
@@ -318,7 +318,7 @@ def create_systemEL(flowsheet = None):
                                         pump_cost = 123.76, # USD from Alibaba https://www.alibaba.com/product-detail/0-4kw-cast-iron-motor-housing_1600934836942.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0L7StzT
                                         dP_design = 0,
                                         ) 
-    MembT = EL_MBR('MembT', ins=(AeroT-0, B_MembT-0), 
+    MembT = elu.EL_MBR('MembT', ins=(AeroT-0, B_MembT-0), 
                         outs = ('TreatedWater', 0-P_NitrateReturn_PC, 0-P_NitrateReturn_AnoxT, 'MemT_CH4', 'MemT_N2O', 'Sludge'),
                         ppl = ppl,
                         baseline_ppl = 100,
@@ -355,7 +355,7 @@ def create_systemEL(flowsheet = None):
                                         dP_design = 50000, # in Pa
                                         )
 
-    CWT = EL_CWT('CWT', ins=(P_MT_selfpriming-0, P_O3_dosing-0, P_AirDissolved-0), 
+    CWT = elu.EL_CWT('CWT', ins=(P_MT_selfpriming-0, P_O3_dosing-0, P_AirDissolved-0), 
                     outs= ('ClearWater', 3-CT), 
                     V_wf = 0.9, max_oveflow=15, 
                     ppl = ppl, baseline_ppl = 100,
@@ -369,7 +369,7 @@ def create_systemEL(flowsheet = None):
                             dP_design = 202650, # in Pa
                             )
    
-    PT = EL_PT('PT', ins=P_CWT-0, outs=(3-Toilet, 'pipeline_system'), vessel_material = None, V_wf = None, 
+    PT = elu.EL_PT('PT', ins=P_CWT-0, outs=(3-Toilet, 'pipeline_system'), vessel_material = None, V_wf = None, 
                         include_construction = True, length_to_diameter = None, 
                         F_BM_default = 1, kW_per_m3 = 0.1, vessel_type = None, tau = None, 
                         ppl = ppl, baseline_ppl = 100,
@@ -387,7 +387,7 @@ def create_systemEL(flowsheet = None):
     Total_N2O.line = 'fugitive N2O mixer'
     
     # Other impacts and costs
-    Pipeline_system = EL_System('Pipeline_system', ins=PT-1, 
+    Pipeline_system = elu.EL_System('Pipeline_system', ins=PT-1, 
                                 # outs='PipelineConnection',
                                 ppl = ppl, baseline_ppl = 100, if_gridtied=False)
     # #Other_housing = EL_Housing('Other_housing', ins=Other_system-0, outs='Transport', ppl = ppl, baseline_ppl = 30)
