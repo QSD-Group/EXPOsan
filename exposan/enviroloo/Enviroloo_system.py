@@ -60,7 +60,7 @@ Pressure tank: PT
 Primary clarifier return pump: P_PC_return
 Glucose agitation pump: P_AnoT_agitation
 Glucose dosing pump: P_AnoT_dosing
-Anoxic mixing pump: P_AnoT_mixing
+Anoxic mixing pump: P_AnoT_mixing.
 PAC agitation pump: P_AerT_agitation
 PAC dosing pump: P_AerT_dosing
 Self-priming pump: P_MT_selfpriming

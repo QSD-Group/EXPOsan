@@ -18,7 +18,8 @@ from qsdsan import SanUnit, Construction
 from qsdsan.sanunits import IdealClarifier
 from qsdsan.sanunits._tank import StorageTank
 from qsdsan.processes._decay import Decay
-from qsdsan.utils import ospath, load_data, data_path, price_ratio
+from qsdsan.utils import ospath, load_data, price_ratio
+from exposan.enviroloo import data_path
 # %% This callable file will be reposited to qsdsan.SanUnit subbranch with the name of _enviroloo
 __all__ = (
     'EL_Excretion', # excretion
@@ -36,7 +37,7 @@ __all__ = (
     'EL_Housing', # Housing of EL_System, such as equipment's armor
     )
 
-EL_su_data_path = ospath.join(data_path, 'sanunit_data/el')
+EL_su_data_path = ospath.join(data_path, 'units_data')
 
 # %%
 excretion_path = ospath.join(EL_su_data_path, '_EL_excretion.tsv')
