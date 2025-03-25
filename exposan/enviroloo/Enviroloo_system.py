@@ -169,8 +169,8 @@ def create_systemEL(flowsheet = None):
 
     CT = elu.EL_CT('CT', ins=(Toilet-0, 'PrimaryClarP_return','PrimaryClar_spill', 'ClearWaterTank_spill'), 
                     outs = ('TreatedWater'),
-                    V_wf = 0.9, ppl = ppl, baseline_ppl = 100,
-                    kW_per_m3=0.1,  # The power consumption per unit volume of the tank
+                    # V_wf = 0.9, ppl = ppl, baseline_ppl = 100,
+                    # kW_per_m3=0.1,  # The power consumption per unit volume of the tank
                     )
     
     P_CT_lift = LiftPump('P_CT_lift', ins = CT-0, outs = 'TreatedWater',
@@ -248,60 +248,61 @@ def create_systemEL(flowsheet = None):
                                 pump_cost = 59, # USD from https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
                                 dP_design = 0,
                                 )
-    B_AeroT = elu.EL_blower('B_AeroT', ins=streamEL['air'], outs ='Air_to_aerobic',
-                            # F_BM={
-                            #       'Blowers': 2.22,
-                            #       'Blower piping': 1,
-                            #       'Blower building': 1.11,
-                            #      },
-                            F_BM = 2.2,
-                            lifetime = 10, lifetime_unit='yr',
-                            # units={
-                            #       'Total gas flow': 'CFM',
-                            #       'Blower capacity': 'CFM',
-                            #       'Number of blowers': '',
-                            #       'Total blower power': 'kW',
-                            #      },
-                            # N_reactor=2, # the number of the reactors where the gas sparging modules will be installed
-                            # gas_demand_per_reactor=1, # gas demand per reactor
-                            # TDH=6, # total dynamic head for rhe blower, in psi
-                            # eff_blower=0.85, # efficiency of the blower in fraction
-                            # eff_motor=0.95, # efficiency of the motor in fraction
-                            # AFF=3.33, # air flow fraction
-                            # building_unit_cost=9, # unit cost of the building, in USD/ft2
-                            ppl = ppl, baseline_ppl = 100,
-                           )
-    B_AeroT.line = 'Air to aerobic tank'
+    # B_AeroT = elu.EL_blower('B_AeroT', ins=streamEL['air'], outs ='Air_to_aerobic',
+    #                         # F_BM={
+    #                         #       'Blowers': 2.22,
+    #                         #       'Blower piping': 1,
+    #                         #       'Blower building': 1.11,
+    #                         #      },
+    #                         F_BM = 2.2,
+    #                         lifetime = 10, lifetime_unit='yr',
+    #                         # units={
+    #                         #       'Total gas flow': 'CFM',
+    #                         #       'Blower capacity': 'CFM',
+    #                         #       'Number of blowers': '',
+    #                         #       'Total blower power': 'kW',
+    #                         #      },
+    #                         # N_reactor=2, # the number of the reactors where the gas sparging modules will be installed
+    #                         # gas_demand_per_reactor=1, # gas demand per reactor
+    #                         # TDH=6, # total dynamic head for rhe blower, in psi
+    #                         # eff_blower=0.85, # efficiency of the blower in fraction
+    #                         # eff_motor=0.95, # efficiency of the motor in fraction
+    #                         # AFF=3.33, # air flow fraction
+    #                         # building_unit_cost=9, # unit cost of the building, in USD/ft2
+    #                         ppl = ppl, baseline_ppl = 100,
+    #                        )
+    # B_AeroT.line = 'Air to aerobic tank'
     
-    AeroT = elu.EL_Aerobic('AeroT', ins=(AnoxT-0, P_PAC_dosing-0, B_AeroT-0), 
+    AeroT = elu.EL_Aerobic('AeroT', ins=(AnoxT-0, P_PAC_dosing-0), 
+                                         # B_AeroT-0), 
                             outs = ('TreatedWater', 'AeroT_CH4', 'AeroT_N2O'), 
                             ppl = ppl, baseline_ppl = 100,
                             )
     
-    B_MembT = elu.EL_blower('B_MembT', ins = streamEL['air'], outs = 'Air_to_membrane', 
-                            # F_BM={
-                            #       'Blowers': 2.22,
-                            #       'Blower piping': 1,
-                            #       'Blower building': 1.11,
-                            #      },
-                            F_BM = 2.2,
-                            lifetime=10, lifetime_unit='yr',
-                            # units={
-                            #       'Total gas flow': 'CFM',
-                            #       'Blower capacity': 'CFM',
-                            #       'Number of blowers': '',
-                            #       'Total blower power': 'kW',
-                            #      },
-                            # N_reactor=2, # the number of the reactors where the gas sparging modules will be installed
-                            # gas_demand_per_reactor=1, # gas demand per reactor
-                            # TDH=6, # total dynamic head for rhe blower, in psi
-                            # eff_blower=0.85, # efficiency of the blower in fraction
-                            # eff_motor=0.95, # efficiency of the motor in fraction
-                            # AFF=3.33, # air flow fraction
-                            # building_unit_cost=9, # unit cost of the building, in USD/ft2
-                            ppl = ppl, baseline_ppl = 100,
-                            )
-    B_MembT.line = 'Air to membrane tank'
+    # B_MembT = elu.EL_blower('B_MembT', ins = streamEL['air'], outs = 'Air_to_membrane', 
+    #                         # F_BM={
+    #                         #       'Blowers': 2.22,
+    #                         #       'Blower piping': 1,
+    #                         #       'Blower building': 1.11,
+    #                         #      },
+    #                         F_BM = 2.2,
+    #                         lifetime=10, lifetime_unit='yr',
+    #                         # units={
+    #                         #       'Total gas flow': 'CFM',
+    #                         #       'Blower capacity': 'CFM',
+    #                         #       'Number of blowers': '',
+    #                         #       'Total blower power': 'kW',
+    #                         #      },
+    #                         # N_reactor=2, # the number of the reactors where the gas sparging modules will be installed
+    #                         # gas_demand_per_reactor=1, # gas demand per reactor
+    #                         # TDH=6, # total dynamic head for rhe blower, in psi
+    #                         # eff_blower=0.85, # efficiency of the blower in fraction
+    #                         # eff_motor=0.95, # efficiency of the motor in fraction
+    #                         # AFF=3.33, # air flow fraction
+    #                         # building_unit_cost=9, # unit cost of the building, in USD/ft2
+    #                         ppl = ppl, baseline_ppl = 100,
+    #                         )
+    # B_MembT.line = 'Air to membrane tank'
     
     P_NitrateReturn_PC = ReturnPump('P_NitrateReturn_PC', ins='MembT_return', outs=1-PC,
                                     working_factor = 0.9,  # The ratio of the actual output and the design output
@@ -318,7 +319,8 @@ def create_systemEL(flowsheet = None):
                                         pump_cost = 123.76, # USD from Alibaba https://www.alibaba.com/product-detail/0-4kw-cast-iron-motor-housing_1600934836942.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0L7StzT
                                         dP_design = 0,
                                         ) 
-    MembT = elu.EL_MBR('MembT', ins=(AeroT-0, B_MembT-0), 
+    MembT = elu.EL_MBR('MembT', ins=(AeroT-0), 
+                                     # B_MembT-0), 
                         outs = ('TreatedWater', 0-P_NitrateReturn_PC, 0-P_NitrateReturn_AnoxT, 'MemT_CH4', 'MemT_N2O', 'Sludge'),
                         ppl = ppl,
                         baseline_ppl = 100,
@@ -446,7 +448,11 @@ def create_systemEL(flowsheet = None):
     
     sysEL_CWTrecycle = System('sysEL_CWTrecycle',
                        path = (sysEL_PCrecycle, P_AnoxT_agitation, P_Glu_agitation, P_Glu_dosing, AnoxT, 
-                               P_PAC_agitation, P_PAC_dosing, B_AeroT, AeroT, B_MembT, MembT, Solids_separation,
+                               P_PAC_agitation, P_PAC_dosing, 
+                               # B_AeroT, 
+                               AeroT, 
+                               # B_MembT, 
+                               MembT, Solids_separation,
                                P_NitrateReturn_PC, P_NitrateReturn_AnoxT, P_MT_selfpriming, 
                                P_O3_dosing, P_AirDissolved, CWT), 
                        recycle = CWT-1

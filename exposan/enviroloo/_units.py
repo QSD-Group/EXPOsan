@@ -1369,7 +1369,7 @@ class EL_CT(Mixer):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', F_BM_default=None, isdynamic=False,
                  rigorous=False, conserve_phases=False):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with,
+        Mixer.__init__(self, ID, ins, outs, thermo, init_with,
                          F_BM_default=F_BM_default, isdynamic=isdynamic)
         self.rigorous = rigorous
         self.conserve_phases = conserve_phases
