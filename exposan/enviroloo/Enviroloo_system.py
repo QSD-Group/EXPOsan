@@ -313,9 +313,7 @@ def create_systemEL(flowsheet = None):
                             degraded_components=('OtherSS',),  
                             ppl = ppl, baseline_ppl = 100,
                             )
-    
 
-    
     
     P_PAC_agitation = AgitationPump('P_PAC_agitation', ins=streamEL['PAC'], outs='PACAgitation', 
                                     working_factor = 0.9,  # The ratio of the actual output and the design output
