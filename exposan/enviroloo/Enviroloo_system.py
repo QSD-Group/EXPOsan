@@ -24,6 +24,7 @@ from qsdsan.sanunits import Trucking
 from chaospy import distributions as shape
 
 from qsdsan.utils import clear_lca_registries
+from qsdsan.utils import load_components, set_thermo
 from exposan.utils import add_fugitive_items
 from exposan.enviroloo import _units as elu
 from exposan.enviroloo import (
