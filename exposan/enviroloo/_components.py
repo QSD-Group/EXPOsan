@@ -80,8 +80,8 @@ def create_components(set_thermo = True,
 
     return cmps
 
-cmps = create_components()
-print("List of Components:")
-for cmp in cmps:
-    print(cmp.ID)
-    print(f"Description: {cmp.description}")
+# cmps = create_components()
+# print("List of Components:")
+# for cmp in cmps:
+#     print(cmp.ID)
+#     print(f"Description: {cmp.description}")
