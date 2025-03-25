@@ -403,7 +403,7 @@ def create_systemEL(flowsheet = None):
                                         pump_cost = 123.76, # USD from Alibaba https://www.alibaba.com/product-detail/0-4kw-cast-iron-motor-housing_1600934836942.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0L7StzT
                                         dP_design = 0,
                                         ) 
-    MembT = elu.EL_MBR('MembT', ins=(AeroT-0), 
+    MembT = elu.EL_CMMBR('MembT', ins=(AeroT-0), 
                                      # B_MembT-0), 
                         outs = ('TreatedWater', 0-P_NitrateReturn_PC, 0-P_NitrateReturn_AnoxT, 'MemT_CH4', 'MemT_N2O', 'Sludge'),
                         ppl = ppl,
@@ -443,8 +443,8 @@ def create_systemEL(flowsheet = None):
 
     CWT = elu.EL_CWT('CWT', ins=(P_MT_selfpriming-0, P_O3_dosing-0, P_AirDissolved-0), 
                     outs= ('ClearWater', 3-CT), 
-                    V_wf = 0.9, max_oveflow=15, 
-                    ppl = ppl, baseline_ppl = 100,
+                    # V_wf = 0.9, max_oveflow=15, 
+                    # ppl = ppl, baseline_ppl = 100,
                     )
    
     P_CWT = ClearWaterPump('P_CWT', ins=CWT-0, outs='ReuseWater', 

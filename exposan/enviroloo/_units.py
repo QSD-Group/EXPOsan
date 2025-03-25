@@ -14,8 +14,8 @@ import numpy as np
 from math import ceil
 from warnings import warn
 from qsdsan import WasteStream
-from qsdsan import SanUnit, Construction
-from qsdsan.sanunits import IdealClarifier, Mixer
+from qsdsan import SanUnit, Construction, Process
+from qsdsan.sanunits import IdealClarifier, Mixer, dydt_cstr
 from biosteam.units import Mixer as BSTMixer
 from qsdsan.sanunits._tank import StorageTank
 from qsdsan.processes._decay import Decay
@@ -26,8 +26,16 @@ from exposan.utils import _init_modules
 from qsdsan.sanunits._toilet import Toilet, MURT
 from qsdsan.sanunits._excretion import ExcretionmASM2d
 from qsdsan.sanunits._suspended_growth_bioreactor import CSTR
-from qsdsan.sanunits._membrane_bioreactor import CompletelyMixedMBR
+from qsdsan.sanunits._membrane_bioreactor import CompletelyMixedMBR, dydt_mbr
 from qsdsan import Processes, CompiledProcesses
+from qsdsan.utils import auom
+
+from warnings import warn
+from math import pi
+from biosteam.units import StorageTank as BSTStorageTank
+from biosteam.exceptions import bounds_warning, DesignWarning
+from biosteam.units.design_tools import flash_vessel_design
+from biosteam.units.design_tools.specification_factors import material_densities_lb_per_ft3
 # %% This callable file will be reposited to qsdsan.SanUnit subbranch with the name of _enviroloo
 __all__ = (
     'EL_Excretion', # excretion
@@ -2763,8 +2771,8 @@ class EL_Aerobic(CSTR):
                  gas_stripping=False, gas_IDs=None, stripping_kLa_min=None, 
                  K_Henry=None, D_gas=None, p_gas_atm=None,
                  isdynamic=True, exogenous_vars=(), **kwargs):
-        CSTR.__init__(self, ID, ins, outs, thermo, init_with, isdynamic=isdynamic,
-                         exogenous_vars=exogenous_vars, **kwargs)
+        CSTR.__init__(self, ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, isdynamic=isdynamic,
+                      exogenous_vars=exogenous_vars, **kwargs)
         self._V_max = V_max
         self._aeration = aeration
         self._DO_ID = DO_ID
@@ -3427,6 +3435,7 @@ class EL_CMMBR(CompletelyMixedMBR):
         Qp = self._Q_pump
         f_rtn = self._f_rtn
         xsplit = Qp / ((1-f_rtn)*(Q-Qp) + Qp) # mass split of solids to pumped flow
+        # breakpoint()
         qsplit = Qp / Q
         flt, rtn = self.outs
         mixed.split_to(rtn, flt, xsplit*cmps.x + qsplit*(1-cmps.x))
@@ -3961,6 +3970,10 @@ class EL_PT(StorageTank):
     def _design(self):
         BSTStorageTank._design(self)
         D = self.design_results
+        
+        _lb_to_kg = auom('lb').conversion_factor('kg')
+        _m_to_ft = auom('m').conversion_factor('ft')
+        _Pa_to_psi = auom('Pa').conversion_factor('psi')
         
         Diameter = (4*D['Total volume']/pi/self.length_to_diameter)**(1/3)
         Diameter *= _m_to_ft # convert from m to ft
