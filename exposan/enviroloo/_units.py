@@ -19,7 +19,10 @@ from qsdsan.sanunits import IdealClarifier, Mixer
 from biosteam.units import Mixer as BSTMixer
 from qsdsan.sanunits._tank import StorageTank
 from qsdsan.processes._decay import Decay
-from qsdsan.utils import ospath, load_data, data_path, price_ratio
+#from qsdsan.utils import ospath, load_data, data_path, price_ratio
+from qsdsan.utils import load_data, price_ratio
+import os
+from exposan.utils import _init_modules
 from qsdsan.sanunits._toilet import Toilet, MURT
 from qsdsan.sanunits._excretion import ExcretionmASM2d
 from qsdsan.sanunits._suspended_growth_bioreactor import CSTR
@@ -41,8 +44,10 @@ __all__ = (
     'EL_System', # System-level summary
     # 'EL_Housing', # Housing of EL_System, such as equipment's armor
     )
-
-EL_su_data_path = ospath.join(data_path, 'units_data')
+el_path = os.path.dirname(__file__)
+module = os.path.split(el_path)[-1]
+data_path, results_path = _init_modules(module, include_data_path = True)
+EL_su_data_path = os.path.join(data_path, 'units_data')
 
 # %%
 # excretion_path = ospath.join(EL_su_data_path, '_EL_excretion.tsv')
@@ -344,7 +349,7 @@ EL_su_data_path = ospath.join(data_path, 'units_data')
 #     def waste_ratio(self, i):
 #         self._waste_ratio = i
 
-excretion_path = ospath.join(EL_su_data_path, '_EL_excretion.tsv')
+excretion_path = os.path.join(EL_su_data_path, '_EL_excretion.tsv')
 
 class EL_Excretion(ExcretionmASM2d):
     '''
@@ -988,7 +993,7 @@ class EL_Excretion(ExcretionmASM2d):
 #     def tau(self, i):
 #         self.collection_period = i
 
-murt_path = ospath.join(EL_su_data_path, '_EL_murt.tsv')
+murt_path = os.path.join(EL_su_data_path, '_EL_murt.tsv')
 
 @price_ratio()
 class EL_MURT(SanUnit):
@@ -1308,7 +1313,7 @@ class EL_MURT(SanUnit):
 #         CT_replacement_cost = CT_replacement_cost / (365 * 24)  # convert to USD/hr
 #         return CT_replacement_cost
 
-CollectionTank_path = ospath.join(EL_su_data_path, '_EL_CT.tsv')
+CollectionTank_path = os.path.join(EL_su_data_path, '_EL_CT.tsv')
 
 @price_ratio()
 class EL_CT(Mixer):
@@ -1647,7 +1652,7 @@ class EL_CT(Mixer):
 #         ) * scale
 #         return replacement_cost / (365 * 24)  # Convert to USD/hr
 
-PrimaryClarifier_path = ospath.join(EL_su_data_path, '_EL_PC.tsv')
+PrimaryClarifier_path = os.path.join(EL_su_data_path, '_EL_PC.tsv')
 
 @price_ratio()
 class EL_PC(IdealClarifier):
@@ -2124,7 +2129,7 @@ def calc_f_i(fx, f_corr, HRT):
     #     # Restore the original N2O emission factor
     #     self.N2O_EF_decay = original_N2O_EF
 
-Anoxic_path = ospath.join(EL_su_data_path, '_EL_Anoxic.tsv')
+Anoxic_path = os.path.join(EL_su_data_path, '_EL_Anoxic.tsv')
 
 class EL_Anoxic(CSTR):
     '''
@@ -2691,7 +2696,7 @@ class EL_Anoxic(CSTR):
 #         Aerobic_tank_replacement_cost = Aerobic_tank_replacement_cost / (365 * 24)  # convert to USD/hr
 #         return Aerobic_tank_replacement_cost
 
-Aerobic_path = ospath.join(EL_su_data_path, '_EL_Aerobic.tsv')
+Aerobic_path = os.path.join(EL_su_data_path, '_EL_Aerobic.tsv')
 
 class EL_Aerobic(CSTR):
     '''
@@ -3343,7 +3348,7 @@ class EL_Aerobic(CSTR):
 #         MBR_replacement_cost = MBR_replacement_cost / (365 * 24) * self.price_ratio # USD/hr
 #         return MBR_replacement_cost
 
-MBR_path = ospath.join(EL_su_data_path, '_EL_MBR.tsv')
+MBR_path = os.path.join(EL_su_data_path, '_EL_MBR.tsv')
 
 class EL_CMMBR(CompletelyMixedMBR):
     '''
@@ -3740,7 +3745,7 @@ class EL_CMMBR(CompletelyMixedMBR):
 #         CWR_replacement_cost = CWR_replacement_cost / (365 * 24) # convert to USD/hr
 #         return CWR_replacement_cost
 
-ClearWaterTank_path = ospath.join(EL_su_data_path, '_EL_CWT.tsv')
+ClearWaterTank_path = os.path.join(EL_su_data_path, '_EL_CWT.tsv')
 
 @price_ratio()
 class EL_CWT(Mixer):
@@ -3887,7 +3892,7 @@ class EL_CWT(Mixer):
         return CWR_replacement_cost
 
 # %%
-PressureTank_path = ospath.join(EL_su_data_path, '_EL_PT.tsv')
+PressureTank_path = os.path.join(EL_su_data_path, '_EL_PT.tsv')
 
 @price_ratio()
 class EL_PT(StorageTank):
@@ -4208,7 +4213,7 @@ class EL_PT(StorageTank):
 #         return ceil(self.ppl / self.ppl_per_MURT)
 
 # %%
-system_path = ospath.join(EL_su_data_path, '_EL_system.tsv')
+system_path = os.path.join(EL_su_data_path, '_EL_system.tsv')
 
 @price_ratio()
 class EL_System(SanUnit, isabstract=True):
