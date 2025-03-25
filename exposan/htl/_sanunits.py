@@ -107,7 +107,6 @@ class AcidExtraction(Reactor):
         self.vessel_type = vessel_type
         
     def _run(self):
-        
         hydrochar, acid = self.ins
         residual, extracted = self.outs
         
@@ -471,7 +470,6 @@ class DAPSynthesis(Reactor):
         self.crystallizer_electricity = crystallizer_electricity
     
     def _run(self):
-        
         P_solution, ammonia = self.ins
         DAP, excess_ammonia, effluent = self.outs
         
@@ -560,7 +558,6 @@ class FuelMixer(SanUnit):
         self.diesel_price = diesel_price
 
     def _run(self):
-        
         gasoline, diesel = self.ins
         fuel = self.outs[0]
         target = self.target
@@ -626,7 +623,6 @@ class HTLaqueous(SanUnit):
     _ins_size_is_fixed = False
         
     def _run(self):
-        
         HTL_effluent_undefined = self.ins[0]
         HTL_effluent_defined = self.outs[0]
         
@@ -680,7 +676,6 @@ class HTLmixer(SanUnit):
     _ins_size_is_fixed = False
         
     def _run(self):
-        
         HTLaqueous, extracted = self.ins
         mixture = self.outs[0]
         
@@ -747,7 +742,6 @@ class Humidifier(SanUnit):
     _N_outs = 1
         
     def _run(self):
-        
         feedstock, makeup, recycle = self.ins
         mixture = self.outs[0]
         
@@ -915,10 +909,8 @@ class StruvitePrecipitation(Reactor):
         self.wall_thickness_factor = wall_thickness_factor
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
-    
         
     def _run(self):
-        
         mixture, supply_MgCl2, supply_NH4Cl, base = self.ins
         struvite, effluent = self.outs
         
@@ -1055,7 +1047,6 @@ class UANSynthesis(Reactor):
         self.vessel_type = vessel_type
     
     def _run(self):
-        
         ammonia, carbon_dioxide, additional_carbon_dioxide, nitric_acid, water = self.ins
         UAN_solution, vapor, waste = self.outs
         
@@ -1172,7 +1163,6 @@ class UreaSynthesis(SanUnit):
         self.loss = loss
 
     def _run(self):
-        
         ammonia, carbon_dioxide, additional_carbon_dioxide = self.ins
         urea, vapor, waste = self.outs
         
@@ -1230,7 +1220,6 @@ class WWmixer(SanUnit):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         
     def _run(self):
-        
         supernatant, memdis_ww, ht_ww = self.ins
         mixture = self.outs[0]
         
@@ -1284,7 +1273,7 @@ class WWTP(SanUnit):
         Protein to nitrogen factor.
     N_2_P : float
         Nitrogen to phosphorus factor. 
-    operation_hour : float
+    operation_hours : float
         Plant yearly operation hour, [hr/yr].
     sludge_wet_density : float
         The density of sludge of 80% moisture content, [kg/m3].
@@ -1347,7 +1336,6 @@ class WWTP(SanUnit):
         self.wage_adjustment = wage_adjustment
     
     def _run(self):
-        
         ww = self.ins[0]
         sludge, treated = self.outs
 

@@ -497,7 +497,7 @@ fig, ax = plt.subplots(figsize=(10, 10))
 ax = plt.gca()
 
 ax.set_xlim(0, 80)
-ax.set_ylim(0, 100)
+ax.set_ylim(0, 240)
 
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
