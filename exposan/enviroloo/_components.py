@@ -79,3 +79,9 @@ def create_components(set_thermo = True,
     if set_thermo: qs_set_thermo(cmps)
 
     return cmps
+
+cmps = create_components()
+print("List of Components:")
+for cmp in cmps:
+    print(cmp.ID)
+    print(f"Description: {cmp.description}")
