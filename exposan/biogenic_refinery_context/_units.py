@@ -114,7 +114,10 @@ class Biosolids(SanUnit):
 ##TODO 
 # 1. (Done Stetson, Aaron to review) layer assumptions/calcs about drying onto HHX drying
 # 2. (Done Stetson, Aaron to review) layer assumptions/calcs about pyrolysis onto carbonizer base
-# 3. sizing of the system, i.e., multiple systems needed for more than solids loading to 1 BR
+# 3. sizing of the system, i.e., multiple systems needed for more than solids loading to 1 BR, \
+    # Number of units needed = flow_rate_db/ (550 / 20 * .65) # assuming one unit is capable of treating 550 kg/day (35% moisture based on 20 hr of run time)
+# units: (flow_rate_db kg-db/hr) / (550 kg biosolids/d * 1d/20h * .65 kg dry solids/kg solids@35% MC)
+
 
 
 # %%
@@ -210,7 +213,7 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         
         # Calculate char yield on dry ash-free basis
         daf_yield = (0 + 0.144 * (ACf**0.0304) + 2.7023 * math.exp(-0.0066 * self.pyrolysis_temp))
-        #TODO double check first value should be zero
+        #TODO double check first value should be zero, ANS: Yes, 0 is the correct value
         
         # Calculate char yield on dry basis
         char_yield_factor = daf_yield * (1 - ACf) + ACf
@@ -240,8 +243,12 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         biochar._FC = biochar_mass_flow * (FC_biochar_percent / 100)  # kg/hr 
         biochar._VM = biochar_mass_flow * (VM_biochar_percent / 100)  # kg/hr
 
-        # Water in biochar (assuming mostly dry after pyrolysis)
+        # Water in biochar (assuming mostly dry after pyrolysis) #TODO: MC is set to 2.5% below. Also, this will
+        # break mass balance because biochar mass is calculated on a dry-basis from the model, so we would either need
+        # moisture content to be 0% or recalculate the total biochar mass for a 2% MC basis
+        
         biochar.imass['H2O'] = biochar_mass_flow * 0.02  # kg/hr (assuming 2% moisture)
+        
 
         # Calculate biochar volume (assuming density of 300 kg/m3 for biochar)
         biochar_density = 300  # kg/m3
@@ -797,7 +804,7 @@ class BiogenicRefineryHHXdryer(SanUnit):
 
         # Calculate water to evaporate
         m_H2O_wet_sludge = waste_in.imass['H2O']  # kg/hr
-        m_H2O_evap = (MC_initial - self.MC_final) * m_dried_sludge * MC_initial / (1 - MC_initial)  # kg/hr
+        m_H2O_evap = (MC_initial - self.MC_final) * m_dried_sludge * MC_initial / (1 - MC_initial)  # kg/hr #TODO: check MC_final is 35%
 
         # Calculate energy required for drying
         Q_sensible = (m_dried_sludge * self.Cp_dried_sludge + m_H2O_wet_sludge * self.Cp_H2O) * delta_T  # kJ/hr
@@ -809,7 +816,10 @@ class BiogenicRefineryHHXdryer(SanUnit):
         waste_out.imass['H2O'] = waste_in.imass['H2O'] - m_H2O_evap  # kg/hr
         
         # Calculate new volumetric flow rate based on reduced water content
-        #TODO is this part needed? does vol matter here?
+        #TODO is this part needed? does vol matter here? ANS: I think this is needed to ensure the 
+        #proper mass flows to the pyrolysis unit. Only moisture content should be reduced, but if those are automatically
+        #streamlined to the next unit then this would be redundant
+        
         total_mass_out = waste_out._AC + waste_out._FC + waste_out._VM + waste_out.imass['H2O']  # kg/hr
         density = 1000  # kg/m3 (assuming same density)
         waste_out.F_vol = total_mass_out / density  # m3/hr
