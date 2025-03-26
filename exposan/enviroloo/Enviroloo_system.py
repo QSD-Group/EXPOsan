@@ -27,7 +27,7 @@ from qsdsan.utils import clear_lca_registries
 
 import qsdsan as qs
 import os
-from qsdsan import Component, Components, set_thermo as qs_set_thermo
+from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
 from exposan.utils import add_V_from_rho
 from exposan.bwaise import create_components as create_bw_components
 import numpy as np
@@ -140,6 +140,23 @@ def create_components(set_thermo = True
                       ):
     # bw_cmps = create_bw_components(set_thermo=False)
     masm2d_cmps = pc.create_masm2d_cmps(set_thermo=True)
+    Tissue = Component('Tissue', MW=1, phase='s', particle_size='Particulate',
+                        degradability='Undegradable', organic=False,
+                        description='Tissue for toilet paper')
+    # 375 kg/m3 is the average of 250-500 for tissue from
+    # https://paperonweb.com/density.htm (accessed 2020-11-12)
+    add_V_from_rho(Tissue, 375)
+
+    WoodAsh = Component('WoodAsh', MW=1, phase='s', i_Mg=0.0224, i_Ca=0.3034,
+                        particle_size='Particulate', degradability='Undegradable',
+                        organic=False, description='Wood ash for desiccant')
+    add_V_from_rho(WoodAsh, 760)
+
+    for i in (Tissue, WoodAsh):
+        i.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
+    
+    H2O = Component('H2O', phase='l', particle_size='Soluble',
+                    degradability='Undegradable', organic=False)
 
     # C = Component('C', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
     
@@ -180,7 +197,7 @@ def create_components(set_thermo = True
     #'degradability': ('Readily', 'Slowly', 'Undegradable'),
     #'organic': (True, False)}
           
-    cmps = Components((masm2d_cmps 
+    cmps = Components((*masm2d_cmps, Tissue, WoodAsh, H2O
                        # C, SolubleCH4, 
                        # #H2O, CO2, CH4, N2O, NH3
                        # Glucose, O3, air, PAC, NaOH, NaClO
@@ -190,12 +207,13 @@ def create_components(set_thermo = True
     #     for attr in ('HHV', 'LHV', 'Hf'):
     #         if getattr(i, attr) is None: setattr(i, attr, 0)
 
-    cmps.compile(ignore_inaccurate_molar_weight=True)   #override for runtime error where N2_S molecular weight was not found
+    cmps.compile()    
+  # cmps.compile(ignore_inaccurate_molar_weight=False) #override for runtime error where N2_S molecular weight was not found
 
     # cmps.set_alias('H2O', 'Water')
     # #cmps.set_alias('CO2', 'Carbon Dioxide')
     # cmps.set_alias('CH4', 'Methane')
-    # if set_thermo: qs_set_thermo(cmps)
+    if set_thermo: qs_set_thermo(cmps)
 
     return cmps
 
@@ -213,6 +231,8 @@ def create_systemEL(flowsheet = None):
     batch_create_streams('EL')
     
     WasteWaterGenerator = elu.EL_Excretion('WasteWaterGenerator', outs=('urine', 'feces'))
+    # WasteWaterGenerator.run()
+
 
     # Toilet = EL_MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'FlushingWater', 'ToiletPaper'), 
     #                 outs =('MixedWasteWater', 'Toilet_CH4', 'Toilet_N2O'),
@@ -228,18 +248,18 @@ def create_systemEL(flowsheet = None):
     #                 )
     # Toilet.add_specification(lambda: update_toilet_param(Toilet))
     
-    Toilet = elu.EL_MURT('Toilet',
+    Toilet = elu.EL_Toilet('Toilet',
                     ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'toilet_paper', 'flushing_water', 'cleansing_water', 'desiccant'),
                     outs=('mixed_waste', 'Toilet_CH4', 'Toilet_N2O'),
                     # N_user=get_toilet_users(), N_tot_user=ppl,
                     N_user=get_toilet_users(), N_tot_user=ppl,
-                    lifetime=10, if_include_front_end=True,
+                    # lifetime=10, if_include_front_end=True,
                     if_toilet_paper=True, if_flushing=True, if_cleansing=False,
                     if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
-                    CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06,
-                    decay_k_COD=get_decay_k(),
-                    decay_k_N=get_decay_k(),
-                    max_CH4_emission=max_CH4_emission
+                    CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06
+                    # decay_k_COD=get_decay_k(),
+                    # decay_k_N=get_decay_k(),
+                    # max_CH4_emission=max_CH4_emission
                     )
     Toilet.add_specification(lambda: update_toilet_param(Toilet))
     # Toilet = EL_MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'toilet_paper', 'flushing_water', 'cleansing_water', 'desiccant'),
@@ -265,7 +285,7 @@ def create_systemEL(flowsheet = None):
                             dP_design = 0,
                             )
     
-    PC = elu.EL_PC('PC', ins=(P_CT_lift-0, 'NitrateReturn_MT'), outs=('TreatedWater', 'PC_return' , 2-CT),
+    PC = elu.EL_PC('PC', ins=(P_CT_lift-0, 'NitrateReturn_MT'), outs=('TreatedWater_PC', 'PC_return' , 2-CT),
                     ppl = ppl,  # The number of people served
                     baseline_ppl = 100,
                     solids_removal_efficiency = 0.85,  # The solids removal efficiency
@@ -309,7 +329,7 @@ def create_systemEL(flowsheet = None):
                                         )
     
     AnoxT = elu.EL_Anoxic('AnoxT', ins=(PC-0, 'NitrateReturn_MT', P_Glu_dosing-0, P_AnoxT_agitation-0), 
-                            outs = ('TreatedWater', 'AnoxT_CH4', 'AnoxT_N2O'),
+                            outs = ('TreatedWater_AnoxT', 'AnoxT_CH4', 'AnoxT_N2O'),
                             degraded_components=('OtherSS',),  
                             ppl = ppl, baseline_ppl = 100,
                             )
@@ -357,7 +377,7 @@ def create_systemEL(flowsheet = None):
     
     AeroT = elu.EL_Aerobic('AeroT', ins=(AnoxT-0, P_PAC_dosing-0), 
                                          # B_AeroT-0), 
-                            outs = ('TreatedWater', 'AeroT_CH4', 'AeroT_N2O'), 
+                            outs = ('TreatedWater_AeroT', 'AeroT_CH4', 'AeroT_N2O'), 
                             ppl = ppl, baseline_ppl = 100,
                             )
     
@@ -403,7 +423,7 @@ def create_systemEL(flowsheet = None):
                                         ) 
     MembT = elu.EL_CMMBR('MembT', ins=(AeroT-0), 
                                      # B_MembT-0), 
-                        outs = ('TreatedWater', 0-P_NitrateReturn_PC, 0-P_NitrateReturn_AnoxT, 'MemT_CH4', 'MemT_N2O', 'Sludge'),
+                        outs = ('TreatedWater_MembT', 0-P_NitrateReturn_PC, 0-P_NitrateReturn_AnoxT, 'MemT_CH4', 'MemT_N2O', 'Sludge'),
                         ppl = ppl,
                         baseline_ppl = 100,
                         )

@@ -39,8 +39,8 @@ from biosteam.units.design_tools.specification_factors import material_densities
 # %% This callable file will be reposited to qsdsan.SanUnit subbranch with the name of _enviroloo
 __all__ = (
     'EL_Excretion', # excretion
-    # 'EL_Toilet', # toilet
-    'EL_MURT', # toilet
+    'EL_Toilet', # toilet
+    # 'EL_MURT', # toilet
     'EL_CT', # Collection tank
     'EL_PC', # Primary clarifier
     'EL_Anoxic', # Anoxic tank
@@ -400,6 +400,8 @@ class EL_Excretion(ExcretionmASM2d):
         i_mass = cmps.i_mass
         i_P = cmps.i_P
         hco3_imass = cmps.S_IC.i_mass
+        
+        # breakpoint()
 
         not_wasted = 1 - self.waste_ratio
         factor = 24 * 1e3 # from g/cap/d to kg/hr(/cap)
@@ -820,10 +822,265 @@ class EL_Excretion(ExcretionmASM2d):
 #                          'please set `if_air_emission` instead.')
 
 # %%
-# murt_path = ospath.join(EL_su_data_path, '_EL_murt.tsv')
+
+toilet_path = os.path.join(EL_su_data_path, '_EL_Toilet.tsv')
+
+@price_ratio()
+class EL_Toilet(Toilet):
+    _N_ins = 6
+    _outs_size_is_fixed = False
+    density_dct = {
+        'Sand': 1442,
+        'Gravel': 1600,
+        'Brick': 1750,
+        'Plastic': 0.63,
+        'Steel': 7900,
+        'StainlessSteelSheet': 2.64
+        }
+
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+                 degraded_components=('OtherSS',), N_user=1, N_toilet=1, N_tot_user=None,
+                 if_toilet_paper=True, if_flushing=True, if_cleansing=False,
+                 if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
+                 CAPEX=None, OPEX_over_CAPEX=None, price_ratio=1., F_BM_default=1):
+
+        Toilet.__init__(self, ID, ins, outs, thermo, init_with)
+        self.degraded_components = tuple(degraded_components)
+        self._N_user = self._N_toilet = self._N_tot_user = None
+        self.N_user = N_user
+        self.N_toilet = N_toilet
+        self.N_tot_user = N_tot_user
+        self.if_toilet_paper = if_toilet_paper
+        self.if_flushing = if_flushing
+        self.if_cleansing = if_cleansing
+        self.if_desiccant = if_desiccant
+        self.if_air_emission = if_air_emission
+        self.if_ideal_emptying = if_ideal_emptying
+        self.CAPEX = CAPEX
+        self.OPEX_over_CAPEX = OPEX_over_CAPEX
+        self.price_ratio = price_ratio
+
+        data = load_data(path=toilet_path)
+        for para in data.index:
+            value = float(data.loc[para]['expected'])
+            if para in ('desiccant_V', 'desiccant_rho'):
+                setattr(self, para, value)
+            else:
+                setattr(self, '_'+para, value)
+        del data
+
+        self._empty_ratio = 0.59
+
+
+    def _run(self):
+        ur, fec, tp, fw, cw, des = self.ins
+        tp.imass['Tissue'] = int(self.if_toilet_paper)*self.toilet_paper
+        fw.imass['H2O'] = int(self.if_flushing)*self.flushing_water
+        cw.imass['H2O'] = int(self.if_cleansing)*self.cleansing_water
+        des.imass['WoodAsh'] = int(self.if_desiccant)*self.desiccant
+
+    def _scale_up_outs(self):
+        '''
+        Scale up the effluent based on the number of user per toilet and
+        toilet number.
+        '''
+        N_tot_user = self.N_tot_user or self.N_toilet*self.N_user
+        for i in self.outs:
+            if not i.F_mass == 0:
+                i.F_mass *= N_tot_user
+
+
+    def _cost(self):
+        self.baseline_purchase_costs['Total toilets'] = self.CAPEX * self.N_toilet * self.price_ratio
+        add_OPEX = self.baseline_purchase_costs['Total toilets']*self.OPEX_over_CAPEX/365/24
+        self._add_OPEX = {'Additional OPEX': add_OPEX}
+
+
+    @staticmethod
+    def get_emptying_emission(waste, CH4, N2O, empty_ratio, CH4_factor, N2O_factor):
+        '''
+        Calculate emissions due to non-ideal emptying based on
+        `Trimmer et al. <https://doi.org/10.1021/acs.est.0c03296>`_,
+
+        Parameters
+        ----------
+        stream : WasteStream
+            Excreta stream that is not appropriately emptied (before emptying).
+        CH4 : WasteStream
+            Fugitive CH4 gas (before emptying).
+        N2O : WasteStream
+            Fugitive N2O gas (before emptying).
+        empty_ratio : float
+            Fraction of excreta that is appropriately emptied..
+        CH4_factor : float
+            Factor to convert COD removal to CH4 emission.
+        N2O_factor : float
+            Factor to convert COD removal to N2O emission.
+
+        Returns
+        -------
+        stream : WasteStream
+            Excreta stream that is not appropriately emptied (after emptying).
+        CH4 : WasteStream
+            Fugitive CH4 gas (after emptying).
+        N2O : WasteStream
+            Fugitive N2O gas (after emptying).
+        '''
+        COD_rmvd = waste.COD*(1-empty_ratio)/1e3*waste.F_vol
+        CH4.imass['CH4'] += COD_rmvd * CH4_factor
+        N2O.imass['N2O'] += COD_rmvd * N2O_factor
+        waste.mass *= empty_ratio
+
+    @property
+    def N_user(self):
+        '''[int, float] Number of people per toilet.'''
+        return self._N_user or self.N_tot_user/self.N_toilet
+    @N_user.setter
+    def N_user(self, i):
+        if i is not None:
+            N_user = self._N_user = int(i)
+            old_toilet = self._N_toilet
+            if old_toilet and self.N_tot_user:
+                new_toilet = ceil(self.N_tot_user/N_user)
+                warn(f'With the provided `N_user`, the previous `N_toilet` of {old_toilet} '
+                     f'is recalculated from `N_tot_user` and `N_user` as {new_toilet}.')
+                self._N_toilet = None
+        else:
+            self._N_user = i
+
+    @property
+    def N_toilet(self):
+        '''[int] Number of parallel toilets.'''
+        return self._N_toilet or ceil(self.N_tot_user/self.N_user)
+    @N_toilet.setter
+    def N_toilet(self, i):
+        if i is not None:
+            N_toilet = self._N_toilet = ceil(i)
+            old_user = self._N_user
+            if old_user and self.N_tot_user:
+                new_user = self.N_tot_user/N_toilet
+                warn(f'With the provided `N_toilet`, the previous `N_user` of {old_user} '
+                     f'is recalculated from `N_tot_user` and `N_toilet` as {new_user}.')
+                self._N_user = None
+        else:
+            self._N_toilet = i
+
+    @property
+    def N_tot_user(self):
+        '''[int] Number of total users.'''
+        return self._N_tot_user
+    @N_tot_user.setter
+    def N_tot_user(self, i):
+        if i is not None:
+            self._N_tot_user = int(i)
+        else:
+            self._N_tot_user = None
+
+    @property
+    def toilet_paper(self):
+        '''
+        [float] Amount of toilet paper used
+        (if ``if_toilet_paper`` is True), [kg/cap/hr].
+        '''
+        return self._toilet_paper
+    @toilet_paper.setter
+    def toilet_paper(self, i):
+        self._toilet_paper = i
+
+    @property
+    def flushing_water(self):
+        '''
+        [float] Amount of water used for flushing
+        (if ``if_flushing_water`` is True), [kg/cap/hr].
+        '''
+        return self._flushing_water
+    @flushing_water.setter
+    def flushing_water(self, i):
+        self._flushing_water = i
+
+    @property
+    def cleansing_water(self):
+        '''
+        [float] Amount of water used for cleansing
+        (if ``if_cleansing_water`` is True), [kg/cap/hr].
+        '''
+        return self._cleansing_water
+    @cleansing_water.setter
+    def cleansing_water(self, i):
+        self._cleansing_water = i
+
+    @property
+    def desiccant(self):
+        '''
+        [float] Amount of desiccant used (if ``if_desiccant`` is True), [kg/cap/hr].
+
+        .. note::
+
+            Value set by ``desiccant_V`` and ``desiccant_rho``.
+
+        '''
+        return self.desiccant_V*self.desiccant_rho
+
+    @property
+    def N_volatilization(self):
+        '''
+        [float] Fraction of input N that volatilizes to the air
+        (if ``if_air_emission`` is True).
+        '''
+        return self._N_volatilization
+    @N_volatilization.setter
+    def N_volatilization(self, i):
+        self._N_volatilization = i
+
+    @property
+    def empty_ratio(self):
+        '''
+        [float] Fraction of excreta that is appropriately emptied.
+
+        .. note::
+
+            Will be 1 (i.e., 100%) if ``if_ideal_emptying`` is True.
+
+        '''
+        if self.if_ideal_emptying:
+            return 1.
+        return self._empty_ratio
+    @empty_ratio.setter
+    def empty_ratio(self, i):
+        if self.if_ideal_emptying:
+            warn(f'`if_ideal_emptying` is True, the set value {i} is ignored.')
+        self._empty_ratio = i
+
+    @property
+    def MCF_aq(self):
+        '''[float] Methane correction factor for COD lost due to inappropriate emptying.'''
+        return self._MCF_aq
+    @MCF_aq.setter
+    def MCF_aq(self, i):
+        self._MCF_aq = i
+
+    @property
+    def N2O_EF_aq(self):
+        '''[float] Fraction of N emitted as N2O due to inappropriate emptying.'''
+        return self._N2O_EF_aq
+    @N2O_EF_aq.setter
+    def N2O_EF_aq(self, i):
+        self._N2O_EF_aq = i
+
+    @property
+    def if_N2O_emission(self):
+        '''[bool] Whether to consider N degradation and fugitive N2O emission.'''
+        return self.if_air_emission
+    @if_N2O_emission.setter
+    def if_N2O_emission(self, i):
+        raise ValueError('Setting `if_N2O_emission` for `PitLatrine` is not supported, '
+                         'please set `if_air_emission` instead.')
+
+
+
 
 # @price_ratio()
-# class EL_MURT(EL_Toilet):
+# class EL_MURT(MURT):
 #     '''
 #     Multi-unit reinvented toilet.
 
@@ -852,6 +1109,7 @@ class EL_Excretion(ExcretionmASM2d):
 #     --------
 #     :ref:`qsdsan.sanunits.Toilet <sanunits_toilet>`
 #     '''
+#     _N_ins = 6
 #     _N_outs = 3
 #     _units = {
 #         'Collection period': 'd',
@@ -859,17 +1117,20 @@ class EL_Excretion(ExcretionmASM2d):
 
 #     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
 #                  degraded_components=('OtherSS',), N_user=1, N_tot_user=1,
-#                  N_toilet=None, if_toilet_paper=True, if_flushing=True, if_cleansing=False,
-#                  if_desiccant=True, if_air_emission=True, if_ideal_emptying=True,
+#                  N_toilet=None, 
+#                  if_toilet_paper=True,
+#                  if_flushing=True, if_cleansing=False,
+#                  if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
 #                  CAPEX=0, OPEX_over_CAPEX=0, lifetime=10,
 #                  N_squatting_pan_per_toilet=1, N_urinal_per_toilet=1,
 #                  if_include_front_end=True, **kwargs):
 
-#         EL_Toilet.__init__(
+#         Toilet.__init__(
 #             self, ID, ins, outs, thermo=thermo, init_with=init_with,
 #             degraded_components=degraded_components,
 #             N_user=N_user, N_tot_user=N_tot_user, N_toilet=N_toilet,
-#             if_toilet_paper=if_toilet_paper, if_flushing=if_flushing,
+#             if_toilet_paper=if_toilet_paper, 
+#             if_flushing=if_flushing,
 #             if_cleansing=if_cleansing, if_desiccant=if_desiccant,
 #             if_air_emission=if_air_emission, if_ideal_emptying=if_ideal_emptying,
 #             CAPEX=CAPEX, OPEX_over_CAPEX=OPEX_over_CAPEX
@@ -895,31 +1156,32 @@ class EL_Excretion(ExcretionmASM2d):
 #         ]
 
 #     def _run(self):
-#         EL_Toilet._run(self)
+#         Toilet._run(self)
 #         mixed_out, CH4, N2O = self.outs
 #         CH4.phase = N2O.phase = 'g'
 
 #         mixed_in = self._mixed_in
 #         mixed_in.mix_from(self.ins)
+#         # breakpoint()
 #         #tot_COD_kg = sum(float(getattr(i, 'COD', 0)) * i.F_vol for i in self.ins) / 1e3
 #         tot_COD_kg = sum(float(getattr(i, 'COD')) * i.F_vol for i in self.ins) / 1e3
         
-#         # Air emission
-#         if self.if_air_emission:
-#             # N loss due to ammonia volatilization
-#             NH3_rmd, NonNH3_rmd = \
-#                 self.allocate_N_removal(mixed_in.TN/1e3*mixed_in.F_vol*self.N_volatilization,
-#                                         mixed_in.imass['NH3'])
-#             mixed_in.imass ['NH3'] -= NH3_rmd
-#             mixed_in.imass['NonNH3'] -= NonNH3_rmd
+#         # # Air emission
+#         # if self.if_air_emission:
+#         #     # N loss due to ammonia volatilization
+#         #     NH3_rmd, NonNH3_rmd = \
+#         #         self.allocate_N_removal(mixed_in.TN/1e3*mixed_in.F_vol*self.N_volatilization,
+#         #                                 mixed_in.imass['NH3'])
+#         #     mixed_in.imass ['NH3'] -= NH3_rmd
+#         #     mixed_in.imass['NonNH3'] -= NonNH3_rmd
             
-#             # Energy/N loss due to degradation
-#             mixed_in._COD = tot_COD_kg * 1e3 / mixed_in.F_vol # accounting for COD loss in leachate
-#             Decay._first_order_run(self, waste=mixed_in, treated=mixed_out, CH4=CH4, N2O=N2O)
-#         else:
-#             mixed_out.copy_like(mixed_in)
-#             CH4.empty()
-#             N2O.empty()
+#         #     # Energy/N loss due to degradation
+#         #     mixed_in._COD = tot_COD_kg * 1e3 / mixed_in.F_vol # accounting for COD loss in leachate
+#         #     Decay._first_order_run(self, waste=mixed_in, treated=mixed_out, CH4=CH4, N2O=N2O)
+#         # else:
+#         #     mixed_out.copy_like(mixed_in)
+#         #     CH4.empty()
+#         #     N2O.empty()
             
 #         # Aquatic emission when not ideally emptied
 #         if not self.if_ideal_emptying:
@@ -929,7 +1191,7 @@ class EL_Excretion(ExcretionmASM2d):
 #                 CH4_factor=self.COD_max_decay*self.MCF_aq*self.max_CH4_emission,
 #                 N2O_factor=self.N2O_EF_decay*44/28)
         
-#         self._scale_up_outs()
+#         # self._scale_up_outs()
 
 #     def _design(self):
 #         design = self.design_results
@@ -1000,191 +1262,6 @@ class EL_Excretion(ExcretionmASM2d):
 #     @tau.setter
 #     def tau(self, i):
 #         self.collection_period = i
-
-murt_path = os.path.join(EL_su_data_path, '_EL_murt.tsv')
-
-@price_ratio()
-class EL_MURT(SanUnit):
-    '''
-    Multi-unit reinvented toilet.
-
-    The following components should be included in system thermo object for simulation:
-    Tissue, WoodAsh, H2O, NH3, NonNH3, P, K, Mg, CH4, N2O.
-
-    The following impact items should be pre-constructed for life cycle assessment:
-    Ceramic, Fan.
-
-    Parameters
-    ----------
-    ins : Iterable(stream)
-        waste_in: mixed excreta.
-    Outs : Iterable(stream)
-        waste_out: degraded mixed excreta.
-        CH4: fugitive CH4.
-        N2O: fugitive N2O.
-    N_squatting_pan_per_toilet : int
-        The number of squatting pan per toilet.
-    N_urinal_per_toilet : int
-        The number of urinals per toilet.
-    if_include_front_end : bool
-        If False, will not consider the capital and operating costs of this unit.
-
-    See Also
-    --------
-    :ref:`qsdsan.sanunits.Toilet <sanunits_toilet>`
-    '''
-    _N_ins = 6
-    _N_outs = 3
-    _units = {
-        'Collection period': 'd',
-        }
-
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 degraded_components=('OtherSS',), N_user=1, N_tot_user=1,
-                 N_toilet=None, 
-                 # if_toilet_paper=False,
-                 if_flushing=True, if_cleansing=False,
-                 if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
-                 CAPEX=0, OPEX_over_CAPEX=0, lifetime=10,
-                 N_squatting_pan_per_toilet=1, N_urinal_per_toilet=1,
-                 if_include_front_end=True, **kwargs):
-
-        SanUnit.__init__(
-            self, ID, ins, outs, thermo=thermo, init_with=init_with,
-            degraded_components=degraded_components,
-            N_user=N_user, N_tot_user=N_tot_user, N_toilet=N_toilet,
-            # if_toilet_paper=if_toilet_paper, 
-            if_flushing=if_flushing,
-            if_cleansing=if_cleansing, if_desiccant=if_desiccant,
-            if_air_emission=if_air_emission, if_ideal_emptying=if_ideal_emptying,
-            CAPEX=CAPEX, OPEX_over_CAPEX=OPEX_over_CAPEX
-            )
-        self.N_squatting_pan_per_toilet = N_squatting_pan_per_toilet
-        self.N_urinal_per_toilet = N_urinal_per_toilet
-        self.if_include_front_end = if_include_front_end
-        self._mixed_in = WasteStream(f'{self.ID}_mixed_in')
-
-        data = load_data(path=murt_path)
-        for para in data.index:
-            value = float(data.loc[para]['expected'])
-            setattr(self, para, value)
-        del data
-
-        for attr, value in kwargs.items():
-            setattr(self, attr, value)
-
-    def _init_lca(self):
-        self.construction = [
-            Construction(item='Ceramic', linked_unit=self, quantity_unit='kg'),
-            Construction(item='Fan', linked_unit=self, quantity_unit='ea'),
-        ]
-
-    def _run(self):
-        # Toilet._run(self)
-        mixed_out, CH4, N2O = self.outs
-        CH4.phase = N2O.phase = 'g'
-
-        mixed_in = self._mixed_in
-        mixed_in.mix_from(self.ins)
-        #tot_COD_kg = sum(float(getattr(i, 'COD', 0)) * i.F_vol for i in self.ins) / 1e3
-        tot_COD_kg = sum(float(getattr(i, 'COD')) * i.F_vol for i in self.ins) / 1e3
-        
-        # # Air emission
-        # if self.if_air_emission:
-        #     # N loss due to ammonia volatilization
-        #     NH3_rmd, NonNH3_rmd = \
-        #         self.allocate_N_removal(mixed_in.TN/1e3*mixed_in.F_vol*self.N_volatilization,
-        #                                 mixed_in.imass['NH3'])
-        #     mixed_in.imass ['NH3'] -= NH3_rmd
-        #     mixed_in.imass['NonNH3'] -= NonNH3_rmd
-            
-        #     # Energy/N loss due to degradation
-        #     mixed_in._COD = tot_COD_kg * 1e3 / mixed_in.F_vol # accounting for COD loss in leachate
-        #     Decay._first_order_run(self, waste=mixed_in, treated=mixed_out, CH4=CH4, N2O=N2O)
-        # else:
-        #     mixed_out.copy_like(mixed_in)
-        #     CH4.empty()
-        #     N2O.empty()
-            
-        # Aquatic emission when not ideally emptied
-        if not self.if_ideal_emptying:
-           self.get_emptying_emission(
-                waste=mixed_out, CH4=CH4, N2O=N2O,
-                empty_ratio=self.empty_ratio,
-                CH4_factor=self.COD_max_decay*self.MCF_aq*self.max_CH4_emission,
-                N2O_factor=self.N2O_EF_decay*44/28)
-        
-        # self._scale_up_outs()
-
-    def _design(self):
-        design = self.design_results
-        constr = self.construction
-        if self.if_include_front_end:
-            design['Number of users per toilet'] = self.N_user
-            design['Parallel toilets'] = N = self.N_toilet
-            design['Collection period'] = self.collection_period
-            design['Ceramic'] = Ceramic_quant = (
-                self.squatting_pan_weight * self.N_squatting_pan_per_toilet+
-                self.urinal_weight * self.N_urinal_per_toilet
-                )
-            design['Fan'] = Fan_quant = 1  # assume fan quantity is 1
-            constr[0].quantity = Ceramic_quant * N
-            constr[1].quantity = Fan_quant * N
-            self.add_construction(add_cost=False)
-        else:
-            design.clear()
-            for i in constr: i.quantity = 0
-
-    def _cost(self):
-        C = self.baseline_purchase_costs
-        if self.if_include_front_end:
-            N_toilet = self.N_toilet
-            C['Ceramic Toilets'] = (
-                self.squatting_pan_cost * self.N_squatting_pan_per_toilet +
-                self.urinal_cost * self.N_urinal_per_toilet
-                ) * N_toilet
-            C['Fan'] = self.fan_cost * N_toilet
-            C['Misc. parts'] = (
-                self.led_cost +
-                self.anticor_floor_cost +
-                self.circuit_change_cost +
-                self.pipe_cost
-                ) * N_toilet
-
-            ratio = self.price_ratio
-            for equipment, cost in C.items():
-                C[equipment] = cost * ratio
-        else:
-            self.baseline_purchase_costs.clear()
-
-        sum_purchase_costs = sum(v for v in C.values())
-        self.add_OPEX = (
-            self._calc_replacement_cost() +
-            self._calc_maintenance_labor_cost() +
-            sum_purchase_costs * self.OPEX_over_CAPEX / (365 * 24)
-            )
-
-    def _calc_replacement_cost(self):
-        return 0
-
-    def _calc_maintenance_labor_cost(self):
-        return 0
-
-    @property
-    def collection_period(self):
-        '''[float] Time interval between storage tank collection, [d].'''
-        return self._collection_period
-    @collection_period.setter
-    def collection_period(self, i):
-        self._collection_period = float(i)
-        
-    @property
-    def tau(self):
-        '''[float] Retention time of the unit, same as `collection_period`.'''
-        return self.collection_period
-    @tau.setter
-    def tau(self, i):
-        self.collection_period = i
 
 # %%
 # CollectionTank_path = ospath.join(EL_su_data_path, '_EL_CT.tsv')
@@ -1746,6 +1823,7 @@ class EL_PC(IdealClarifier):
         inf = self._mixed
         inf.mix_from(self.ins)
         of, uf, spill_PC = self.outs
+        # breakpoint()
         TSS_in = inf.get_TSS()
         if TSS_in <= 0:
             uf.empty()
@@ -2415,6 +2493,7 @@ class EL_Anoxic(CSTR):
     def _run(self):
         '''Only to converge volumetric flows.'''
         mixed = self._mixed # avoid creating multiple new streams
+        # breakpoint()
         mixed.mix_from(self.ins)
         Q = mixed.F_vol # m3/hr
         if self.split is None: self.outs[0].copy_like(mixed)
@@ -2983,6 +3062,7 @@ class EL_Aerobic(CSTR):
     def _run(self):
         '''Only to converge volumetric flows.'''
         mixed = self._mixed # avoid creating multiple new streams
+        # breakpoint()
         mixed.mix_from(self.ins)
         Q = mixed.F_vol # m3/hr
         if self.split is None: self.outs[0].copy_like(mixed)
