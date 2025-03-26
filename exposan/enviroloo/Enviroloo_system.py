@@ -230,6 +230,9 @@ def create_systemEL(flowsheet = None):
     streamEL = flowsheet.stream
     batch_create_streams('EL')
     
+    # asm_kwargs = asm_kwargs or default_asm2d_kwargs
+    masm2d = pc.mASM2d()
+    
     WasteWaterGenerator = elu.EL_Excretion('WasteWaterGenerator', outs=('urine', 'feces'))
     # WasteWaterGenerator.run()
 
@@ -330,8 +333,8 @@ def create_systemEL(flowsheet = None):
     
     AnoxT = elu.EL_Anoxic('AnoxT', ins=(PC-0, 'NitrateReturn_MT', P_Glu_dosing-0, P_AnoxT_agitation-0), 
                             outs = ('TreatedWater_AnoxT', 'AnoxT_CH4', 'AnoxT_N2O'),
-                            degraded_components=('OtherSS',),  
-                            ppl = ppl, baseline_ppl = 100,
+                            # ppl = ppl, baseline_ppl = 100,
+                            aeration=None, DO_ID='S_O2', suspended_growth_model=masm2d, 
                             )
 
     
@@ -378,7 +381,8 @@ def create_systemEL(flowsheet = None):
     AeroT = elu.EL_Aerobic('AeroT', ins=(AnoxT-0, P_PAC_dosing-0), 
                                          # B_AeroT-0), 
                             outs = ('TreatedWater_AeroT', 'AeroT_CH4', 'AeroT_N2O'), 
-                            ppl = ppl, baseline_ppl = 100,
+                            aeration = 2, suspended_growth_model=masm2d
+                            # ppl = ppl, baseline_ppl = 100,
                             )
     
     # B_MembT = elu.EL_blower('B_MembT', ins = streamEL['air'], outs = 'Air_to_membrane', 
@@ -428,11 +432,11 @@ def create_systemEL(flowsheet = None):
                         baseline_ppl = 100,
                         )
     
-    Solids_separation = su.ComponentSplitter('Solids_separation', ins=MembT-5,
-                                             outs=(streamEL['sol_N'], streamEL['sol_P'], streamEL['sol_K'],
-                                             'A_sol_non_fertilizers'),
-                                             split_keys=(('NH3','NonNH3'), 'P', 'K')
-                                             )
+    # Solids_separation = su.ComponentSplitter('Solids_separation', ins=MembT-5,
+    #                                          outs=(streamEL['sol_N'], streamEL['sol_P'], streamEL['sol_K'],
+    #                                          'A_sol_non_fertilizers'),
+    #                                          split_keys=(('NH3','NonNH3'), 'P', 'K')
+                                             # )
     
     P_MT_selfpriming = SelfPrimingPump('P_MT_selfpriming', ins=MembT-0, outs='SelfPrimingWater', 
                                         working_factor = 0.9,  # The ratio of the actual output and the design output
@@ -554,7 +558,8 @@ def create_systemEL(flowsheet = None):
                                # B_AeroT, 
                                AeroT, 
                                # B_MembT, 
-                               MembT, Solids_separation,
+                               MembT, 
+                               # Solids_separation,
                                P_NitrateReturn_PC, P_NitrateReturn_AnoxT, P_MT_selfpriming, 
                                P_O3_dosing, P_AirDissolved, CWT), 
                        recycle = CWT-1
