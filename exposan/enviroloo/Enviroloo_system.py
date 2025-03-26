@@ -222,9 +222,9 @@ def update_carbon_COD_ratio(sys):
 def create_systemEL(flowsheet = None):
     
     # Components and stream
-    cmps = create_components()
-    qs.set_thermo(cmps)
-    thermo_masm2d = qs.get_thermo()
+    # cmps = create_components()
+    # qs.set_thermo(cmps)
+    # thermo_masm2d = qs.get_thermo()
     
     flowsheet = flowsheet or main_flowsheet
     streamEL = flowsheet.stream
@@ -233,7 +233,7 @@ def create_systemEL(flowsheet = None):
     # asm_kwargs = asm_kwargs or default_asm2d_kwargs
     masm2d = pc.mASM2d()
     
-    WasteWaterGenerator = elu.EL_Excretion('WasteWaterGenerator', outs=('urine', 'feces'))
+    WasteWaterGenerator = elu.ExcretionmASM2d('WasteWaterGenerator', outs=('urine', 'feces'))
     # WasteWaterGenerator.run()
 
 
