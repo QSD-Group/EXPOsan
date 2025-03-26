@@ -144,9 +144,12 @@ def create_components(set_thermo=True):
     P._CAS = 'P'
     
     O2 = Component('O2', phase='g', particle_size='Dissolved gas',
-                    degradability='Undegradable', organic=False)
+                   degradability='Undegradable', organic=False)
     
     N2 = Component('N2', phase='g', particle_size='Dissolved gas',
+                   degradability='Undegradable', organic=False)
+    
+    N2O = Component('N2O', phase='g', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
     
     CH4 = Component('CH4', phase='g', particle_size='Dissolved gas',
@@ -409,7 +412,7 @@ def create_components(set_thermo=True):
     cmps = Components([Sludge_lipid, Sludge_protein, Sludge_carbo, Sludge_ash,
                        Struvite, Hydrochar, Residual,
                        Biocrude, HTLaqueous, H2O, C, N, P,
-                       O2, N2, CH4, C2H6, C3H8, CO2, CO, H2, NH3,
+                       O2, N2, N2O, CH4, C2H6, C3H8, CO2, CO, H2, NH3,
                        H2SO4, H3PO4, MgCl2, MgO, NaOH, NH42SO4, NH4Cl,
                        C4H10, TWOMBUTAN, NPENTAN, TWOMPENTA, CYCHEX, HEXANE,
                        TWOMHEXAN, HEPTANE, CC6METH, PIPERDIN, TOLUENE,
