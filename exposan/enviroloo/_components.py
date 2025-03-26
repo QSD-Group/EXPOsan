@@ -23,7 +23,7 @@ __all__ = ('create_components', )
 def create_components(set_thermo = True
                       #adjust_MW_to_measured_as=False
                       ):
-    # bw_cmps = create_bw_components(set_thermo=False)
+    #bw_cmps = create_bw_components(set_thermo=False)
     masm2d_cmps = pc.create_masm2d_cmps(set_thermo=True)
     Tissue = Component('Tissue', MW=1, phase='s', particle_size='Particulate',
                         degradability='Undegradable', organic=False,
@@ -82,10 +82,11 @@ def create_components(set_thermo = True
     #'degradability': ('Readily', 'Slowly', 'Undegradable'),
     #'organic': (True, False)}
           
-    cmps = Components((*masm2d_cmps, Tissue, WoodAsh, H2O
+    cmps = Components((*masm2d_cmps, Tissue, WoodAsh, H2O,
                        # C, SolubleCH4, 
                        # #H2O, CO2, CH4, N2O, NH3
-                       # Glucose, O3, air, PAC, NaOH, NaClO
+                       # Glucose, 
+                       # O3, air, PAC, NaOH, NaClO
                        ))
     
     # for i in cmps:

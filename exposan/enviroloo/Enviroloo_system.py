@@ -53,7 +53,7 @@ from exposan.enviroloo._EL_pumps import (
     LiftPump, AgitationPump, DosingPump, ReturnPump, SelfPrimingPump, 
     AirDissolvedPump, MicroBubblePump, ClearWaterPump,)
 
-__all__ = ('create_system',)
+__all__ = ('create_system','create_systemEL')
 
 '''
 Name notes:
@@ -135,106 +135,117 @@ def update_carbon_COD_ratio(sys):
 
 # %% Create EnviroLoo Clear system
 
-# def create_components(set_thermo = True
-#                       #adjust_MW_to_measured_as=False
-#                       ):
-#     # bw_cmps = create_bw_components(set_thermo=False)
-#     masm2d_cmps = pc.create_masm2d_cmps(set_thermo=True)
-#     Tissue = Component('Tissue', MW=1, phase='s', particle_size='Particulate',
-#                         degradability='Undegradable', organic=False,
-#                         description='Tissue for toilet paper')
-#     # 375 kg/m3 is the average of 250-500 for tissue from
-#     # https://paperonweb.com/density.htm (accessed 2020-11-12)
-#     add_V_from_rho(Tissue, 375)
+def create_components(set_thermo = True
+                      #adjust_MW_to_measured_as=False
+                      ):
+    # bw_cmps = create_bw_components(set_thermo=False)
+    masm2d_cmps = pc.create_masm2d_cmps(set_thermo=True)
+    Tissue = Component('Tissue', MW=1, phase='s', particle_size='Particulate',
+                        degradability='Undegradable', organic=False,
+                        description='Tissue for toilet paper')
+    # 375 kg/m3 is the average of 250-500 for tissue from
+    # https://paperonweb.com/density.htm (accessed 2020-11-12)
+    add_V_from_rho(Tissue, 375)
 
-#     WoodAsh = Component('WoodAsh', MW=1, phase='s', i_Mg=0.0224, i_Ca=0.3034,
-#                         particle_size='Particulate', degradability='Undegradable',
-#                         organic=False, description='Wood ash for desiccant')
-#     add_V_from_rho(WoodAsh, 760)
+    WoodAsh = Component('WoodAsh', MW=1, phase='s', i_Mg=0.0224, i_Ca=0.3034,
+                        particle_size='Particulate', degradability='Undegradable',
+                        organic=False, description='Wood ash for desiccant')
+    add_V_from_rho(WoodAsh, 760)
 
-#     for i in (Tissue, WoodAsh):
-#         i.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
+    for i in (Tissue, WoodAsh):
+        i.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
     
-#     H2O = Component('H2O', phase='l', particle_size='Soluble',
-#                     degradability='Undegradable', organic=False)
+    H2O = Component('H2O', phase='l', particle_size='Soluble',
+                    degradability='Undegradable', organic=False)
 
-#     # C = Component('C', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
+    # C = Component('C', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
     
-#     # SolubleCH4 = Component('SolubleCH4', search_ID='CH4', phase='l', particle_size='Soluble', degradability='Slowly', organic=True)
+    # SolubleCH4 = Component('SolubleCH4', search_ID='CH4', phase='l', particle_size='Soluble', degradability='Slowly', organic=True)
 
-#     # PAC = Component('PAC', search_ID='10124-27-3', phase='s', particle_size='Particulate', degradability='Slowly', organic=False)
-#     # add_V_from_rho(PAC, rho=2800)
+    # PAC = Component('PAC', search_ID='10124-27-3', phase='s', particle_size='Particulate', degradability='Slowly', organic=False)
+    # add_V_from_rho(PAC, rho=2800)
                     
-#     # # Glucose = Component('Glucose', search_ID='50-99-7', phase='s', particle_size='Particulate', degradability='Readily', organic=False)
-#     # # add_V_from_rho(Glucose, rho=1560)
+    # # Glucose = Component('Glucose', search_ID='50-99-7', phase='s', particle_size='Particulate', degradability='Readily', organic=False)
+    # # add_V_from_rho(Glucose, rho=1560)
 
-#     # Glucose = Component('Glucose', search_ID='50-99-7', phase='l', particle_size='Soluble', degradability='Readily', organic=True)
-#     # add_V_from_rho(Glucose, rho=1560)
+    # Glucose = Component('Glucose', search_ID='50-99-7', phase='l', particle_size='Soluble', degradability='Readily', organic=True)
+    # add_V_from_rho(Glucose, rho=1560)
           
-#     # O3 = Component('O3', search_ID='10028-15-6', phase='g', particle_size='Dissolved gas', degradability='Readily', organic=False)
+    # O3 = Component('O3', search_ID='10028-15-6', phase='g', particle_size='Dissolved gas', degradability='Readily', organic=False)
           
           
-#     # NaOH = Component('NaOH', search_ID='1310-73-2', phase='s', particle_size='Particulate', degradability='Readily', organic=False)
-#     # add_V_from_rho(NaOH, rho=2130)
+    # NaOH = Component('NaOH', search_ID='1310-73-2', phase='s', particle_size='Particulate', degradability='Readily', organic=False)
+    # add_V_from_rho(NaOH, rho=2130)
           
-#     # NaClO = Component('NaClO', search_ID='7681-52-9', phase='s', particle_size='Particulate', degradability='Readily', organic=False)
-#     # add_V_from_rho(NaClO, rho=1250)
+    # NaClO = Component('NaClO', search_ID='7681-52-9', phase='s', particle_size='Particulate', degradability='Readily', organic=False)
+    # add_V_from_rho(NaClO, rho=1250)
     
-#     # # NO3 = Component('NO3', measured_as = 'N', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
-#     # # add_V_from_rho(NO3, rho=1.15) # need check
+    # # NO3 = Component('NO3', measured_as = 'N', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
+    # # add_V_from_rho(NO3, rho=1.15) # need check
           
-#     # #NH3_l = Component('NH3_l', measured_as = 'N', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
+    # #NH3_l = Component('NH3_l', measured_as = 'N', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
           
-#     # #NonNH3 = Component('NonNH3', formula = 'N', measured_as = 'N', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False, description='Non-NH3');
+    # #NonNH3 = Component('NonNH3', formula = 'N', measured_as = 'N', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False, description='Non-NH3');
           
-#     # air = Component('air', search_ID='17778-88-0', phase='g', particle_size='Dissolved gas',
-#     #                 degradability='Readily', organic=False)
-#     #                 # 1.204 kg/m3, cited from https://en.wikipedia.org/wiki/Density_of_air#:~:text=Air%20density%2C%20like%20air%20pressure,International%20Standard%20Atmosphere%20(ISA).
-#     # add_V_from_rho(air, rho=1.204)
+    # air = Component('air', search_ID='17778-88-0', phase='g', particle_size='Dissolved gas',
+    #                 degradability='Readily', organic=False)
+    #                 # 1.204 kg/m3, cited from https://en.wikipedia.org/wiki/Density_of_air#:~:text=Air%20density%2C%20like%20air%20pressure,International%20Standard%20Atmosphere%20(ISA).
+    # add_V_from_rho(air, rho=1.204)
 
-#     #allowed_values = {
-#     #'particle_size': ('Dissolved gas', 'Soluble', 'Colloidal', 'Particulate'),
-#     #'degradability': ('Readily', 'Slowly', 'Undegradable'),
-#     #'organic': (True, False)}
+    #allowed_values = {
+    #'particle_size': ('Dissolved gas', 'Soluble', 'Colloidal', 'Particulate'),
+    #'degradability': ('Readily', 'Slowly', 'Undegradable'),
+    #'organic': (True, False)}
           
-#     cmps = Components((*masm2d_cmps, Tissue, WoodAsh, H2O
-#                        # C, SolubleCH4, 
-#                        # #H2O, CO2, CH4, N2O, NH3
-#                        # Glucose, O3, air, PAC, NaOH, NaClO
-#                        ))
+    cmps = Components((*masm2d_cmps, Tissue, WoodAsh, H2O,
+                       # C, SolubleCH4, 
+                       # #H2O, CO2, CH4, N2O, NH3
+                       # Glucose, 
+                       # O3, air, PAC, NaOH, NaClO
+                       ))
     
-#     # for i in cmps:
-#     #     for attr in ('HHV', 'LHV', 'Hf'):
-#     #         if getattr(i, attr) is None: setattr(i, attr, 0)
+    # for i in cmps:
+    #     for attr in ('HHV', 'LHV', 'Hf'):
+    #         if getattr(i, attr) is None: setattr(i, attr, 0)
 
-#     cmps.compile()    
-#   # cmps.compile(ignore_inaccurate_molar_weight=False) #override for runtime error where N2_S molecular weight was not found
+    cmps.compile()    
+  # cmps.compile(ignore_inaccurate_molar_weight=False) #override for runtime error where N2_S molecular weight was not found
 
-#     # cmps.set_alias('H2O', 'Water')
-#     # #cmps.set_alias('CO2', 'Carbon Dioxide')
-#     # cmps.set_alias('CH4', 'Methane')
-#     if set_thermo: qs_set_thermo(cmps)
+    # cmps.set_alias('H2O', 'Water')
+    # #cmps.set_alias('CO2', 'Carbon Dioxide')
+    # cmps.set_alias('CH4', 'Methane')
+    # if set_thermo: 
+    #     qs_set_thermo(cmps)
 
-#     return cmps
+    return cmps
 
 
 
 def create_systemEL(flowsheet = None):
     
     # Components and stream
-    # cmps = create_components()
-    # qs.set_thermo(cmps)
-    # thermo_masm2d = qs.get_thermo()
+    cmps = create_components()
+    qs.set_thermo(cmps)
+    thermo_masm2d = qs.get_thermo()
     
-    flowsheet = flowsheet or main_flowsheet
+    fs = Flowsheet('el')
+    main_flowsheet.set_flowsheet(fs)
+    flowsheet = fs
+
     streamEL = flowsheet.stream
-    batch_create_streams('EL')
+
+
+    
+    # flowsheet = flowsheet or main_flowsheet
+    # streamEL = flowsheet.stream
+    # batch_create_streams('EL')
     
     # asm_kwargs = asm_kwargs or default_asm2d_kwargs
     masm2d = pc.mASM2d()
     
-    WasteWaterGenerator = elu.ExcretionmASM2d('WasteWaterGenerator', outs=('urine', 'feces'))
+    WasteWaterGenerator = elu.EL_Excretion('WasteWaterGenerator', outs=('urine', 'feces'))
     # WasteWaterGenerator.run()
+    breakpoint()
 
 
     # Toilet = EL_MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'FlushingWater', 'ToiletPaper'), 
@@ -272,7 +283,8 @@ def create_systemEL(flowsheet = None):
     #             max_CH4_emission=max_CH4_emission,
     #             N_user=25, N_tot_user=ppl, lifetime=10,
     #             if_flushing=True, if_desiccant=False, if_toilet_paper=True,
-    #             CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06)    
+    #             CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06)   
+    
 
     CT = elu.EL_CT('CT', ins=(Toilet-0, 'PrimaryClarP_return','PrimaryClar_spill', 'ClearWaterTank_spill'), 
                     outs = ('TreatedWater'),
@@ -304,24 +316,24 @@ def create_systemEL(flowsheet = None):
                                 dP_design = 0,
                                 )
     
-    P_Glu_agitation = AgitationPump('P_Glu_agitation', 
-                                    ins = streamEL['Glucose'], 
-                                    #ins=Glucose_in-0,
-                                    outs = 'GlucoseAgitation', 
-                                    working_factor = 0.9,  # The ratio of the actual output and the design output
-                                    operation_time = 12,  # Total run time of system or plant [h/d]
-                                    life_time = 5,  # Lifetime of the pump [years]
-                                    pump_cost = 696.30, # USD from https://www.grainger.com/product/DAYTON-Open-Drum-Mixer-115-230V-AC-32V133?opr=PLADS&analytics=FM%3APLA&a2c_sku_original=32V138&position=2
-                                    dP_design = 0,
-                                    )
+    # P_Glu_agitation = AgitationPump('P_Glu_agitation', 
+    #                                 ins = streamEL['Glucose'], 
+    #                                 #ins=Glucose_in-0,
+    #                                 outs = 'GlucoseAgitation', 
+    #                                 working_factor = 0.9,  # The ratio of the actual output and the design output
+    #                                 operation_time = 12,  # Total run time of system or plant [h/d]
+    #                                 life_time = 5,  # Lifetime of the pump [years]
+    #                                 pump_cost = 696.30, # USD from https://www.grainger.com/product/DAYTON-Open-Drum-Mixer-115-230V-AC-32V133?opr=PLADS&analytics=FM%3APLA&a2c_sku_original=32V138&position=2
+    #                                 dP_design = 0,
+    #                                 )
     
-    P_Glu_dosing = DosingPump('P_Glu_dosing', ins = P_Glu_agitation-0, outs = 'GlucoseDosing',
-                                working_factor = 0.9,  # The ratio of the actual output and the design output
-                                operation_time = 12,  # Total run time of system or plant [h/d]
-                                life_time = 5,  # Lifetime of the pump [years]
-                                pump_cost = 59, # USD from https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
-                                dP_design = 0,
-                                ) 
+    # P_Glu_dosing = DosingPump('P_Glu_dosing', ins = P_Glu_agitation-0, outs = 'GlucoseDosing',
+    #                             working_factor = 0.9,  # The ratio of the actual output and the design output
+    #                             operation_time = 12,  # Total run time of system or plant [h/d]
+    #                             life_time = 5,  # Lifetime of the pump [years]
+    #                             pump_cost = 59, # USD from https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
+    #                             dP_design = 0,
+                                #) 
     
     P_AnoxT_agitation = AgitationPump('P_AnoxT_agitation', ins= None, outs='AgitationWater', 
                                         working_factor = 0.9,  # The ratio of the actual output and the design output
@@ -331,28 +343,30 @@ def create_systemEL(flowsheet = None):
                                         dP_design = 0,
                                         )
     
-    AnoxT = elu.EL_Anoxic('AnoxT', ins=(PC-0, 'NitrateReturn_MT', P_Glu_dosing-0, P_AnoxT_agitation-0), 
+    AnoxT = elu.EL_Anoxic('AnoxT', ins=(PC-0, 'NitrateReturn_MT', 
+                                        # P_Glu_dosing-0, 
+                                        P_AnoxT_agitation-0), 
                             outs = ('TreatedWater_AnoxT', 'AnoxT_CH4', 'AnoxT_N2O'),
                             # ppl = ppl, baseline_ppl = 100,
                             aeration=None, DO_ID='S_O2', suspended_growth_model=masm2d, 
                             )
 
     
-    P_PAC_agitation = AgitationPump('P_PAC_agitation', ins=streamEL['PAC'], outs='PACAgitation', 
-                                    working_factor = 0.9,  # The ratio of the actual output and the design output
-                                    operation_time = 12,  # Total run time of system or plant [h/d]
-                                    life_time = 5,  # Lifetime of the pump [years]
-                                    pump_cost = 696.30, # USD from https://www.grainger.com/product/DAYTON-Open-Drum-Mixer-115-230V-AC-32V133?opr=PLADS&analytics=FM%3APLA&a2c_sku_original=32V138&position=2
-                                    dP_design=0,                                      
-                                    )
+    # P_PAC_agitation = AgitationPump('P_PAC_agitation', ins=streamEL['PAC'], outs='PACAgitation', 
+    #                                 working_factor = 0.9,  # The ratio of the actual output and the design output
+    #                                 operation_time = 12,  # Total run time of system or plant [h/d]
+    #                                 life_time = 5,  # Lifetime of the pump [years]
+    #                                 pump_cost = 696.30, # USD from https://www.grainger.com/product/DAYTON-Open-Drum-Mixer-115-230V-AC-32V133?opr=PLADS&analytics=FM%3APLA&a2c_sku_original=32V138&position=2
+    #                                 dP_design=0,                                      
+    #                                 )
     
-    P_PAC_dosing = DosingPump('P_PAC_dosing', ins=P_PAC_agitation-0, outs ='PACDosing', 
-                                working_factor = 0.9,
-                                operation_time = 12,
-                                life_time = 5,
-                                pump_cost = 59, # USD from https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
-                                dP_design = 0,
-                                )
+    # P_PAC_dosing = DosingPump('P_PAC_dosing', ins=P_PAC_agitation-0, outs ='PACDosing', 
+    #                             working_factor = 0.9,
+    #                             operation_time = 12,
+    #                             life_time = 5,
+    #                             pump_cost = 59, # USD from https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
+    #                             dP_design = 0,
+                                #)
     # B_AeroT = elu.EL_blower('B_AeroT', ins=streamEL['air'], outs ='Air_to_aerobic',
     #                         # F_BM={
     #                         #       'Blowers': 2.22,
@@ -378,7 +392,9 @@ def create_systemEL(flowsheet = None):
     #                        )
     # B_AeroT.line = 'Air to aerobic tank'
     
-    AeroT = elu.EL_Aerobic('AeroT', ins=(AnoxT-0, P_PAC_dosing-0), 
+    AeroT = elu.EL_Aerobic('AeroT', ins=(AnoxT-0, 
+                                         # P_PAC_dosing-0
+                                         ), 
                                          # B_AeroT-0), 
                             outs = ('TreatedWater_AeroT', 'AeroT_CH4', 'AeroT_N2O'), 
                             aeration = 2, suspended_growth_model=masm2d
@@ -446,24 +462,27 @@ def create_systemEL(flowsheet = None):
                                         dP_design = 0,
                                         )
     
-    # P_O3_gen = O3GenPump('P_O3_gen', ins=None, outs='O3', dP_design=405300)
-    P_O3_dosing = MicroBubblePump('P_O3_dosing', ins=streamEL['O3'], outs='DosingO3', 
-                                    working_factor = 0.9,  # The ratio of the actual output and the design output
-                                    operation_time = 12,  # Total run time of system or plant [h/d]
-                                    life_time = 5,  # Lifetime of the pump [years]
-                                    pump_cost = 160, # USD, assumption
-                                    dP_design = 25331, # in Pa
-                                    )
+    # # P_O3_gen = O3GenPump('P_O3_gen', ins=None, outs='O3', dP_design=405300)
+    # P_O3_dosing = MicroBubblePump('P_O3_dosing', ins=streamEL['O3'], outs='DosingO3', 
+    #                                 working_factor = 0.9,  # The ratio of the actual output and the design output
+    #                                 operation_time = 12,  # Total run time of system or plant [h/d]
+    #                                 life_time = 5,  # Lifetime of the pump [years]
+    #                                 pump_cost = 160, # USD, assumption
+    #                                 dP_design = 25331, # in Pa
+    #                                 )
 
-    P_AirDissolved = AirDissolvedPump('P_AirDissolved', ins=('CWTWater', streamEL['air']), outs='Water_With_Oxyen', 
-                                        working_factor = 0.9,  # The ratio of the actual output and the design output
-                                        operation_time = 12,  # Total run time of system or plant [h/d]
-                                        life_time = 5,  # Lifetime of the pump [years]
-                                        pump_cost = 155.24, # USD from https://www.alibaba.com/product-detail/LEO-QDX-Series-Cast-Iron-Submersible_60671071414.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0BMhyxn
-                                        dP_design = 50000, # in Pa
-                                        )
+    # P_AirDissolved = AirDissolvedPump('P_AirDissolved', ins=('CWTWater', streamEL['air']), outs='Water_With_Oxyen', 
+    #                                     working_factor = 0.9,  # The ratio of the actual output and the design output
+    #                                     operation_time = 12,  # Total run time of system or plant [h/d]
+    #                                     life_time = 5,  # Lifetime of the pump [years]
+    #                                     pump_cost = 155.24, # USD from https://www.alibaba.com/product-detail/LEO-QDX-Series-Cast-Iron-Submersible_60671071414.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0BMhyxn
+    #                                     dP_design = 50000, # in Pa
+    #                                     )
 
-    CWT = elu.EL_CWT('CWT', ins=(P_MT_selfpriming-0, P_O3_dosing-0, P_AirDissolved-0), 
+    CWT = elu.EL_CWT('CWT', ins=(P_MT_selfpriming-0, 
+                                 # P_O3_dosing-0, 
+                                 # P_AirDissolved-0
+                                 ), 
                     outs= ('ClearWater', 3-CT), 
                     # V_wf = 0.9, max_oveflow=15, 
                     # ppl = ppl, baseline_ppl = 100,
@@ -486,13 +505,13 @@ def create_systemEL(flowsheet = None):
     # CWT.add_specification(lambda: update_carbon_COD_ratio(sysEL))
     # CWT.run_after_specification = True
     
-    Total_CH4 = su.Mixer('Total_CH4', ins=(Toilet-1, AnoxT-1, AeroT-1, MembT-3), outs=streamEL['CH4'])
-    Total_CH4.add_specification(lambda: add_fugitive_items(Total_CH4, 'CH4_item'))
-    Total_CH4.line = 'fugitive CH4 mixer'
+    # Total_CH4 = su.Mixer('Total_CH4', ins=(Toilet-1, AnoxT-1, AeroT-1, MembT-3), outs=streamEL['CH4'])
+    # Total_CH4.add_specification(lambda: add_fugitive_items(Total_CH4, 'CH4_item'))
+    # Total_CH4.line = 'fugitive CH4 mixer'
 
-    Total_N2O = su.Mixer('Total_N2O', ins=(Toilet-2, AnoxT-2, AeroT-2, MembT-4,), outs=streamEL['N2O'])
-    Total_N2O.add_specification(lambda: add_fugitive_items(Total_N2O, 'N2O_item'))
-    Total_N2O.line = 'fugitive N2O mixer'
+    # Total_N2O = su.Mixer('Total_N2O', ins=(Toilet-2, AnoxT-2, AeroT-2, MembT-4,), outs=streamEL['N2O'])
+    # Total_N2O.add_specification(lambda: add_fugitive_items(Total_N2O, 'N2O_item'))
+    # Total_N2O.line = 'fugitive N2O mixer'
     
     # Other impacts and costs
     Pipeline_system = elu.EL_System('Pipeline_system', ins=PT-1, 
@@ -553,20 +572,27 @@ def create_systemEL(flowsheet = None):
                      )
     
     sysEL_CWTrecycle = System('sysEL_CWTrecycle',
-                       path = (sysEL_PCrecycle, P_AnoxT_agitation, P_Glu_agitation, P_Glu_dosing, AnoxT, 
-                               P_PAC_agitation, P_PAC_dosing, 
+                       path = (sysEL_PCrecycle, P_AnoxT_agitation, 
+                               # P_Glu_agitation, P_Glu_dosing, 
+                               AnoxT, 
+                               # P_PAC_agitation, P_PAC_dosing, 
                                # B_AeroT, 
                                AeroT, 
                                # B_MembT, 
                                MembT, 
                                # Solids_separation,
                                P_NitrateReturn_PC, P_NitrateReturn_AnoxT, P_MT_selfpriming, 
-                               P_O3_dosing, P_AirDissolved, CWT), 
+                               # P_O3_dosing, 
+                               # P_AirDissolved, 
+                               CWT), 
                        recycle = CWT-1
                        )
     
     sysEL = System('sysEL',
-                             path = (sysEL_CWTrecycle, P_CWT, PT, Total_N2O, Total_CH4, Pipeline_system),
+                             path = (sysEL_CWTrecycle, P_CWT, PT, 
+                                     # Total_N2O, 
+                                     # Total_CH4, 
+                                     Pipeline_system),
                              recycle = PT-0
                              )
     
