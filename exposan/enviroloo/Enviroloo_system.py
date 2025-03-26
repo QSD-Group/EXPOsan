@@ -138,25 +138,25 @@ def update_carbon_COD_ratio(sys):
 def create_components(set_thermo = True
                       #adjust_MW_to_measured_as=False
                       ):
-    # bw_cmps = create_bw_components(set_thermo=False)
+    bw_cmps = create_bw_components(set_thermo=False)
     masm2d_cmps = pc.create_masm2d_cmps(set_thermo=True)
-    Tissue = Component('Tissue', MW=1, phase='s', particle_size='Particulate',
-                        degradability='Undegradable', organic=False,
-                        description='Tissue for toilet paper')
-    # 375 kg/m3 is the average of 250-500 for tissue from
-    # https://paperonweb.com/density.htm (accessed 2020-11-12)
-    add_V_from_rho(Tissue, 375)
+    # Tissue = Component('Tissue', MW=1, phase='s', particle_size='Particulate',
+    #                     degradability='Undegradable', organic=False,
+    #                     description='Tissue for toilet paper')
+    # # 375 kg/m3 is the average of 250-500 for tissue from
+    # # https://paperonweb.com/density.htm (accessed 2020-11-12)
+    # add_V_from_rho(Tissue, 375)
 
-    WoodAsh = Component('WoodAsh', MW=1, phase='s', i_Mg=0.0224, i_Ca=0.3034,
-                        particle_size='Particulate', degradability='Undegradable',
-                        organic=False, description='Wood ash for desiccant')
-    add_V_from_rho(WoodAsh, 760)
+    # WoodAsh = Component('WoodAsh', MW=1, phase='s', i_Mg=0.0224, i_Ca=0.3034,
+    #                     particle_size='Particulate', degradability='Undegradable',
+    #                     organic=False, description='Wood ash for desiccant')
+    # add_V_from_rho(WoodAsh, 760)
 
-    for i in (Tissue, WoodAsh):
-        i.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
+    # for i in (Tissue, WoodAsh):
+    #     i.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
     
-    H2O = Component('H2O', phase='l', particle_size='Soluble',
-                    degradability='Undegradable', organic=False)
+    # H2O = Component('H2O', phase='l', particle_size='Soluble',
+    #                 degradability='Undegradable', organic=False)
 
     # C = Component('C', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
     
@@ -197,7 +197,8 @@ def create_components(set_thermo = True
     #'degradability': ('Readily', 'Slowly', 'Undegradable'),
     #'organic': (True, False)}
           
-    cmps = Components((*masm2d_cmps, Tissue, WoodAsh, H2O,
+    cmps = Components((*bw_cmps, *masm2d_cmps
+                       # Tissue, WoodAsh, H2O,
                        # C, SolubleCH4, 
                        # #H2O, CO2, CH4, N2O, NH3
                        # Glucose, 
@@ -245,7 +246,7 @@ def create_systemEL(flowsheet = None):
     
     WasteWaterGenerator = elu.EL_Excretion('WasteWaterGenerator', outs=('urine', 'feces'))
     # WasteWaterGenerator.run()
-    breakpoint()
+    # breakpoint()
 
 
     # Toilet = EL_MURT('Toilet', ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'FlushingWater', 'ToiletPaper'), 
@@ -284,7 +285,7 @@ def create_systemEL(flowsheet = None):
     #             N_user=25, N_tot_user=ppl, lifetime=10,
     #             if_flushing=True, if_desiccant=False, if_toilet_paper=True,
     #             CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06)   
-    
+    breakpoint()
 
     CT = elu.EL_CT('CT', ins=(Toilet-0, 'PrimaryClarP_return','PrimaryClar_spill', 'ClearWaterTank_spill'), 
                     outs = ('TreatedWater'),
