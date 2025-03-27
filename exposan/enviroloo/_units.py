@@ -39,6 +39,8 @@ from biosteam.units.design_tools.specification_factors import material_densities
 # %% This callable file will be reposited to qsdsan.SanUnit subbranch with the name of _enviroloo
 __all__ = (
     'EL_Excretion', # excretion
+    # 'Excretion',
+    # 'ExcretionmASM2d',
     'EL_Toilet', # toilet
     # 'EL_MURT', # toilet
     'EL_CT', # Collection tank
@@ -381,6 +383,9 @@ class EL_Excretion(ExcretionmASM2d):
     Environ. Sci. Technol. 2020, 54 (19), 12641–12653.
     https://doi.org/10.1021/acs.est.0c03296
     '''
+    
+    _N_ins = 0
+    _N_outs = 2
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  waste_ratio=0, **kwargs):
@@ -808,7 +813,6 @@ class EL_Excretion(ExcretionmASM2d):
 #     @waste_ratio.setter
 #     def waste_ratio(self, i):
 #         self._waste_ratio = i
-        
         
 # class ExcretionmASM2d(Excretion):
     
@@ -3947,7 +3951,7 @@ class EL_CMMBR(CompletelyMixedMBR):
         Qp = self._Q_pump
         f_rtn = self._f_rtn
         xsplit = Qp / ((1-f_rtn)*(Q-Qp) + Qp) # mass split of solids to pumped flow
-        breakpoint()
+        # breakpoint()
         qsplit = Qp / Q
         flt, rtn = self.outs
         mixed.split_to(rtn, flt, xsplit*cmps.x + qsplit*(1-cmps.x))
