@@ -310,6 +310,7 @@ def create_systemEL(flowsheet = None):
                     # kW_per_m3=0.1,  # The power consumption per unit volume of the tank
                     )
     
+    CT.run()
     
     P_CT_lift = LiftPump('P_CT_lift', ins = CT-0, outs = 'TreatedWater',
                             working_factor = 0.9,  # The ratio of the actual output and the design output
@@ -319,14 +320,15 @@ def create_systemEL(flowsheet = None):
                             dP_design = 0,
                             )
     
-    CT.run()
-    breakpoint()
+    
+    P_CT_lift._run()
+    
     
     PC = elu.EL_PC('PC', ins=(P_CT_lift-0, 'NitrateReturn_MT'), outs=('TreatedWater_PC', 'PC_return' , 2-CT),
                     ppl = ppl,  # The number of people served
                     baseline_ppl = 100,
                     solids_removal_efficiency = 0.85,  # The solids removal efficiency
-                    sludge_flow_rate = 0.5,  # Sludge flow rate
+                    sludge_flow_rate = 500,  # Sludge flow rate
                     max_oveflow = 15,
                     )
     
@@ -356,6 +358,8 @@ def create_systemEL(flowsheet = None):
     #                             pump_cost = 59, # USD from https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
     #                             dP_design = 0,
                                 #) 
+    PC.run()
+    # breakpoint()
     
     P_AnoxT_agitation = AgitationPump('P_AnoxT_agitation', ins= None, outs='AgitationWater', 
                                         working_factor = 0.9,  # The ratio of the actual output and the design output
@@ -364,6 +368,7 @@ def create_systemEL(flowsheet = None):
                                         pump_cost = 696.30, # USD from https://www.grainger.com/product/DAYTON-Open-Drum-Mixer-115-230V-AC-32V133?opr=PLADS&analytics=FM%3APLA&a2c_sku_original=32V138&position=2
                                         dP_design = 0,
                                         )
+    P_AnoxT_agitation.run()
     
     AnoxT = elu.EL_Anoxic('AnoxT', ins=(PC-0, 'NitrateReturn_MT', 
                                         # P_Glu_dosing-0, 
@@ -413,6 +418,7 @@ def create_systemEL(flowsheet = None):
     #                         ppl = ppl, baseline_ppl = 100,
     #                        )
     # B_AeroT.line = 'Air to aerobic tank'
+    AnoxT.run()
     
     AeroT = elu.EL_Aerobic('AeroT', ins=(AnoxT-0, 
                                          # P_PAC_dosing-0
@@ -465,6 +471,8 @@ def create_systemEL(flowsheet = None):
                                         pump_cost = 123.76, # USD from Alibaba https://www.alibaba.com/product-detail/0-4kw-cast-iron-motor-housing_1600934836942.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0L7StzT
                                         dP_design = 0,
                                         ) 
+    AeroT.run()
+    breakpoint()
     MembT = elu.EL_CMMBR('MembT', ins=(AeroT-0), 
                                      # B_MembT-0), 
                         outs = ('TreatedWater_MembT', 0-P_NitrateReturn_PC, 0-P_NitrateReturn_AnoxT, 'MemT_CH4', 'MemT_N2O', 'Sludge'),

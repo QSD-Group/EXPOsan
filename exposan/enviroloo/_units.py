@@ -1306,12 +1306,33 @@ class EL_Toilet(Toilet):
         self._empty_ratio = 0.59
 
 
+    # def _run(self):
+    #     ur, fec, tp, fw, cw, des = self.ins
+    #     tp.imass['Tissue'] = int(self.if_toilet_paper)*self.toilet_paper
+    #     fw.imass['H2O'] = int(self.if_flushing)*self.flushing_water
+    #     cw.imass['H2O'] = int(self.if_cleansing)*self.cleansing_water
+    #     des.imass['WoodAsh'] = int(self.if_desiccant)*self.desiccant
+        
+        
     def _run(self):
         ur, fec, tp, fw, cw, des = self.ins
         tp.imass['Tissue'] = int(self.if_toilet_paper)*self.toilet_paper
         fw.imass['H2O'] = int(self.if_flushing)*self.flushing_water
         cw.imass['H2O'] = int(self.if_cleansing)*self.cleansing_water
         des.imass['WoodAsh'] = int(self.if_desiccant)*self.desiccant
+
+        mw = self.outs[0]
+
+        # Mix all relevant inputs into the mixed_waste output
+        mw.mix_from([ur, fec, tp, fw, cw, des])
+
+        # if self.if_air_emission:
+        #   self.get_emptying_emission(
+        #       mw,
+        #       self.empty_ratio,
+        #       self.MCF_aq,
+        #       self.N2O_EF_aq
+        # )
 
     def _scale_up_outs(self):
         '''
@@ -2257,27 +2278,35 @@ class EL_PC(IdealClarifier):
         inf = self._mixed
         inf.mix_from(self.ins)
         of, uf, spill_PC = self.outs
-        # breakpoint()
+
         TSS_in = inf.get_TSS()
-        if TSS_in <= 0:
+        print(f"[PC._run] TSS_in = {TSS_in:.2f} mg/L")
+        if TSS_in <= 1e-6:
+            print("[PC._run] TSS is too low, copying all to overflow")
             uf.empty()
             of.copy_like(inf)
         else:
-            Q_in = inf.F_vol * 24 # m3/d
-            x = inf.components.x
-            Qs, e_rmv, mlss = self._Qs, self._e_rmv, self._MLSS
-            if Qs and e_rmv:
-                f_Qu = Qs/Q_in
-                f_Xu = e_rmv + (1-e_rmv) * f_Qu
-            elif Qs and mlss:
-                f_Qu = Qs/Q_in
-                f_Xu = f_Qu*mlss/TSS_in
-            elif e_rmv and mlss:
-                f_Qu = e_rmv / (mlss/TSS_in - (1-e_rmv))
-                f_Xu = e_rmv + (1-e_rmv) * f_Qu
-            split_to_uf = (1-x)*f_Qu + x*f_Xu
-            if any(split_to_uf > 1): split_to_uf = 1
-            inf.split_to(uf, of, split_to_uf)
+           Q_in = inf.F_vol * 24  # m3/day
+           x = inf.components.x
+           Qs, e_rmv, mlss = self._Qs, self._e_rmv, self._MLSS
+           print(f"[PC._run] Q_in = {Q_in:.3f} m3/d, Qs = {Qs}, e_rmv = {e_rmv}, MLSS = {mlss}")
+           if Qs and e_rmv:
+              f_Qu = Qs / Q_in
+              f_Xu = e_rmv + (1 - e_rmv) * f_Qu
+           elif Qs and mlss:
+                f_Qu = Qs / Q_in
+                f_Xu = f_Qu * mlss / TSS_in
+           elif e_rmv and mlss:
+                f_Qu = e_rmv / (mlss / TSS_in - (1 - e_rmv))
+                f_Xu = e_rmv + (1 - e_rmv) * f_Qu
+           else:
+                raise RuntimeError("[PC._run] Missing required parameters: provide at least two among Qs, e_rmv, MLSS")
+           split_to_uf = (1 - x) * f_Qu + x * f_Xu
+           split_to_uf = np.clip(split_to_uf, 0, 1)
+           print(f"[PC._run] split_to_uf max = {split_to_uf.max():.3f}, min = {split_to_uf.min():.3f}")
+           if any(split_to_uf > 1): split_to_uf = 1
+           print(f"[PC._run] UF flow = {uf.F_mass:.3f} g/hr, OF flow = {of.F_mass:.3f} g/hr")
+           inf.split_to(of, uf, 1 - split_to_uf)
 
     def _init_state(self):
         inf = self._mixed
