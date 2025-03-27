@@ -65,6 +65,12 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
 #- BiogenicRefineryOHX - BiogenicRefineryHHX - BiogenicRefineryHHXdryer
 # Mixer for N2O - Mixer for CH4 - Trucking of biochar (set distance to 0 for now)
 
+
+# TODO: Scale CAPex by a factor according to the number of biogenic refineries a POTW would need. Equations for factor below.
+    #3. sizing of the system, i.e., multiple systems needed for more than solids loading to 1 BR, \
+    # Number of units needed = flow_rate_db/ (550 / 20 * .65) # assuming one unit is capable of treating 550 kg/day (35% moisture based on 20 hr of run time)
+    # units: (flow_rate_db kg-db/hr) / (550 kg biosolids/d * 1d/20h * .65 kg dry solids/kg solids@35% MC)
+
 def create_systemA(flowsheet=None):
     # Set flowsheet to avoid stream replacement warnings
     flowsheet = flowsheet or main_flowsheet

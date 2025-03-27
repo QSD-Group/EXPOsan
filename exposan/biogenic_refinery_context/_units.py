@@ -112,8 +112,8 @@ class Biosolids(SanUnit):
 
 
 ##TODO 
-# 1. (Done Stetson, Aaron to review) layer assumptions/calcs about drying onto HHX drying
-# 2. (Done Stetson, Aaron to review) layer assumptions/calcs about pyrolysis onto carbonizer base
+# 1. (Done Stetson, Aaron to review) layer assumptions/calcs about drying onto HHX drying, Reviewed
+# 2. (Done Stetson, Aaron to review) layer assumptions/calcs about pyrolysis onto carbonizer base, Reviewed
 # 3. sizing of the system, i.e., multiple systems needed for more than solids loading to 1 BR, \
     # Number of units needed = flow_rate_db/ (550 / 20 * .65) # assuming one unit is capable of treating 550 kg/day (35% moisture based on 20 hr of run time)
 # units: (flow_rate_db kg-db/hr) / (550 kg biosolids/d * 1d/20h * .65 kg dry solids/kg solids@35% MC)
@@ -213,14 +213,14 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         
         # Calculate char yield on dry ash-free basis
         daf_yield = (0 + 0.144 * (ACf**0.0304) + 2.7023 * math.exp(-0.0066 * self.pyrolysis_temp))
-        #TODO double check first value should be zero, ANS: Yes, 0 is the correct value
         
         # Calculate char yield on dry basis
         char_yield_factor = daf_yield * (1 - ACf) + ACf
         char_yield_db_percent = char_yield_factor * 100  # %
 
         # Calculate total char mass flow rate
-        biochar_mass_flow = dry_mass_flow * (char_yield_db_percent / 100)  # kg/hr
+        biochar_dry_mass_flow = dry_mass_flow * (char_yield_db_percent / 100)  # kg/hr +2% MC
+        biochar_mass_flow = dry_mass_flow / .98  # kg/hr adjusts the mass to add 2% MC
 
         # Calculate biochar ash content
         AC_biochar_percent = (char_yield_db_percent - daf_yield * 100) / char_yield_db_percent * 100
@@ -239,18 +239,13 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         FC_biochar_percent = 100 - VM_biochar_percent - AC_biochar_percent
         
         # Convert percentages to mass flow rates
-        biochar._AC = biochar_mass_flow * (AC_biochar_percent / 100)  # kg/hr
-        biochar._FC = biochar_mass_flow * (FC_biochar_percent / 100)  # kg/hr 
-        biochar._VM = biochar_mass_flow * (VM_biochar_percent / 100)  # kg/hr
-
-        # Water in biochar (assuming mostly dry after pyrolysis) #TODO: MC is set to 2.5% below. Also, this will
-        # break mass balance because biochar mass is calculated on a dry-basis from the model, so we would either need
-        # moisture content to be 0% or recalculate the total biochar mass for a 2% MC basis
-        
+        biochar._AC = biochar_dry_mass_flow * (AC_biochar_percent / 100)  # kg/hr
+        biochar._FC = biochar_dry_mass_flow * (FC_biochar_percent / 100)  # kg/hr 
+        biochar._VM = biochar_dry_mass_flow * (VM_biochar_percent / 100)  # kg/hr
         biochar.imass['H2O'] = biochar_mass_flow * 0.02  # kg/hr (assuming 2% moisture)
         
 
-        # Calculate biochar volume (assuming density of 300 kg/m3 for biochar)
+        # Calculate biochar volume (assuming density of 300 kg/m3 for biochar with 2% MC)
         biochar_density = 300  # kg/m3
         biochar.F_vol = biochar_mass_flow / biochar_density  # m³/hr
 
@@ -274,7 +269,6 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         biochar._carbon_content = C_biochar  # frac
         biochar._carbon_sequestration = CS  # %
         biochar.F_mass = biochar_mass_flow  # kg/hr
-        biochar.imass['H2O'] = 0.025 * biochar.F_mass # kg H2O / hr with 2.5% moisture content
         
         #TODO layer other assumptions on biochar here, 
         # need to add estimate for ash content here
