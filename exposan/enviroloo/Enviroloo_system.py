@@ -368,7 +368,7 @@ def create_systemEL(flowsheet = None):
                                         pump_cost = 696.30, # USD from https://www.grainger.com/product/DAYTON-Open-Drum-Mixer-115-230V-AC-32V133?opr=PLADS&analytics=FM%3APLA&a2c_sku_original=32V138&position=2
                                         dP_design = 0,
                                         )
-    P_AnoxT_agitation.run()
+    # P_AnoxT_agitation.run()
     
     AnoxT = elu.EL_Anoxic('AnoxT', ins=(PC-0, 'NitrateReturn_MT', 
                                         # P_Glu_dosing-0, 

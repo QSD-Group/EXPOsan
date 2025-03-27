@@ -2274,39 +2274,97 @@ class EL_PC(IdealClarifier):
                  f'one of them is unspecified.')
         self._MLSS = MLSS
 
+           
+    # def _run(self):
+    #     inf = self._mixed
+    #     inf.mix_from(self.ins)
+    #     of, uf, _ = self.outs  # Overflow (to anoxic), underflow (sludge), optional extra out
+    
+    #     TSS_in = inf.get_TSS()  # Total Suspended Solids (mg/L)
+    
+    #     if TSS_in <= 0:
+    #         uf.empty()
+    #         of.copy_like(inf)
+    #         return
+    
+    #     Q_in = inf.F_vol * 24  # Influent flow rate (m3/d)
+    #     x = inf.components.x
+    
+    #     Qs = self._Qs  # Sludge flow rate (m3/d)
+    #     e_rmv = self._e_rmv  # Solids removal efficiency (0-1)
+    #     mlss = self._MLSS  # Optional MLSS
+    
+    #     if Qs and e_rmv:
+    #         f_uf = Qs / Q_in
+    #         f_Xuf = e_rmv + (1 - e_rmv) * f_uf
+    #     elif Qs and mlss:
+    #         f_uf = Qs / Q_in
+    #         f_Xuf = f_uf * mlss / TSS_in
+    #     elif e_rmv and mlss:
+    #         f_uf = e_rmv / (mlss / TSS_in - (1 - e_rmv))
+    #         f_Xuf = e_rmv + (1 - e_rmv) * f_uf
+    #     else:
+    #         # Default assumptions if nothing is specified
+    #         f_uf = 0.1
+    #         f_Xuf = 0.5
+    
+    #     split_to_uf = (1 - x) * f_uf + x * f_Xuf
+    #     if any(split_to_uf > 1):
+    #         split_to_uf = 1
+    
+    #     # Split to sludge underflow (uf) and overflow (of)
+    #     inf.split_to(uf, of, split_to_uf)
+    
+    #     # Store for inspection/logging if needed
+    #     self._f_uf = f_uf
+    #     self._f_of = 1 - f_uf
+
     def _run(self):
         inf = self._mixed
-        inf.mix_from(self.ins)
-        of, uf, spill_PC = self.outs
-
-        TSS_in = inf.get_TSS()
-        print(f"[PC._run] TSS_in = {TSS_in:.2f} mg/L")
-        if TSS_in <= 1e-6:
-            print("[PC._run] TSS is too low, copying all to overflow")
+        inf.mix_from(self.ins)  # Combine all inputs (TreatedWater + NitrateReturn_MT)
+        of, uf, spill = self.outs  # [0] Anoxic, [1] Sludge (return), [2] Spill (unused for now)
+    
+        TSS_in = inf.get_TSS()  # mg/L
+    
+        if TSS_in <= 0:
             uf.empty()
             of.copy_like(inf)
+            return
+    
+        Q_in = inf.F_vol * 24  # Convert hourly flow (m3/hr) to m3/day
+        x = inf.components.x
+    
+        Qs = self._Qs  # sludge flow rate (m3/d)
+        e_rmv = self._e_rmv
+        mlss = self._MLSS
+    
+        if Qs and e_rmv:
+            f_uf = Qs / Q_in
+            f_Xuf = e_rmv + (1 - e_rmv) * f_uf
+        elif Qs and mlss:
+            f_uf = Qs / Q_in
+            f_Xuf = f_uf * mlss / TSS_in
+        elif e_rmv and mlss:
+            f_uf = e_rmv / (mlss / TSS_in - (1 - e_rmv))
+            f_Xuf = e_rmv + (1 - e_rmv) * f_uf
         else:
-           Q_in = inf.F_vol * 24  # m3/day
-           x = inf.components.x
-           Qs, e_rmv, mlss = self._Qs, self._e_rmv, self._MLSS
-           print(f"[PC._run] Q_in = {Q_in:.3f} m3/d, Qs = {Qs}, e_rmv = {e_rmv}, MLSS = {mlss}")
-           if Qs and e_rmv:
-              f_Qu = Qs / Q_in
-              f_Xu = e_rmv + (1 - e_rmv) * f_Qu
-           elif Qs and mlss:
-                f_Qu = Qs / Q_in
-                f_Xu = f_Qu * mlss / TSS_in
-           elif e_rmv and mlss:
-                f_Qu = e_rmv / (mlss / TSS_in - (1 - e_rmv))
-                f_Xu = e_rmv + (1 - e_rmv) * f_Qu
-           else:
-                raise RuntimeError("[PC._run] Missing required parameters: provide at least two among Qs, e_rmv, MLSS")
-           split_to_uf = (1 - x) * f_Qu + x * f_Xu
-           split_to_uf = np.clip(split_to_uf, 0, 1)
-           print(f"[PC._run] split_to_uf max = {split_to_uf.max():.3f}, min = {split_to_uf.min():.3f}")
-           if any(split_to_uf > 1): split_to_uf = 1
-           print(f"[PC._run] UF flow = {uf.F_mass:.3f} g/hr, OF flow = {of.F_mass:.3f} g/hr")
-           inf.split_to(of, uf, 1 - split_to_uf)
+            # Fallback values if none provided
+            f_uf = 0.1
+            f_Xuf = 0.5
+    
+        split_to_uf = (1 - x) * f_uf + x * f_Xuf
+        # split_to_uf = min(split_to_uf, 1)  # Ensure not over-split
+    
+        # Now split input between underflow (sludge) and overflow (clarified)
+        inf.split_to(uf, of, split_to_uf)
+    
+        # Optional: leave spill stream empty for now
+        spill.empty()
+    
+        # Store values for logging/debugging
+        self._f_uf = f_uf
+        self._f_of = 1 - f_uf
+ 
 
     def _init_state(self):
         inf = self._mixed
@@ -2953,17 +3011,31 @@ class EL_Anoxic(CSTR):
                 y[-1] *= spl
                 ws.dstate = y
 
+    # def _run(self):
+    #     '''Only to converge volumetric flows.'''
+    #     mixed = self._mixed # avoid creating multiple new streams
+    #     # breakpoint()
+    #     mixed.mix_from(self.ins)
+    #     Q = mixed.F_vol # m3/hr
+    #     if self.split is None: self.outs[0].copy_like(mixed)
+    #     else:
+    #         for ws, spl in zip(self._outs, self.split):
+    #             ws.copy_like(mixed)
+    #             ws.set_total_flow(Q*spl, 'm3/hr')
+    
     def _run(self):
-        '''Only to converge volumetric flows.'''
-        mixed = self._mixed # avoid creating multiple new streams
-        # breakpoint()
-        mixed.mix_from(self.ins)
-        Q = mixed.F_vol # m3/hr
-        if self.split is None: self.outs[0].copy_like(mixed)
+        '''Mixes all influent streams as a CSTR and sends the output.'''
+        mixed = self._mixed
+        mixed.mix_from(self.ins)  # Mix all input streams (e.g., from PC and nitrate return)
+        
+        if self.split is None:
+            self.outs[0].copy_like(mixed)  # Single output: all contents go forward
         else:
+            Q = mixed.F_vol  # Total flow in m3/hr
             for ws, spl in zip(self._outs, self.split):
-                ws.copy_like(mixed)
-                ws.set_total_flow(Q*spl, 'm3/hr')
+                ws.copy_like(mixed)         # Copy composition
+                ws.set_total_flow(Q * spl, 'm3/hr')  # Apply split ratio
+
 
     def get_retained_mass(self, biomass_IDs):
         cmps = self.components
