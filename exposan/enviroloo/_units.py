@@ -39,8 +39,6 @@ from biosteam.units.design_tools.specification_factors import material_densities
 # %% This callable file will be reposited to qsdsan.SanUnit subbranch with the name of _enviroloo
 __all__ = (
     'EL_Excretion', # excretion
-    # 'Excretion',
-    # 'ExcretionmASM2d',
     'EL_Toilet', # toilet
     # 'EL_MURT', # toilet
     'EL_CT', # Collection tank
