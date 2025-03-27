@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Mar 25 08:49:12 2025
 
-@author: jiananfeng
-"""
+'''
+EXPOsan: Exposition of sanitation and resource recovery systems
+
+This module is developed by:
+
+    Jianan Feng <jiananf2@illinois.edu>
+    
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
+'''
 
 import qsdsan as qs, biosteam as bst
-from qsdsan.utils import clear_lca_registries
+from qsdsan.utils import auom, clear_lca_registries
 from exposan.htl import _load_components, create_tea, _sanunits as su, test_sanunits as tsu
-
-from qsdsan.utils import auom
 
 _mile_to_km = auom('mile').conversion_factor('km')
 

@@ -375,7 +375,7 @@ class BiocrudeTank(Tank, BSTStorageTank):
 # DAPSynthesis
 # =============================================================================
 
-@cost('Crystallizer volume', 'Crystallizer',
+@cost(basis='Crystallizer volume', ID='Crystallizer',
       CE=444., S=0.003785411784, # originally 1 gal
       BM=2.0, N='Number of crystallizers',
       f=lambda S: 222.4 * S**0.71 + 35150)
