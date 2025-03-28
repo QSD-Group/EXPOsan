@@ -28,6 +28,14 @@ from qsdsan.sanunits._excretion import ExcretionmASM2d
 
 import qsdsan as qs
 import os
+
+from qsdsan.utils import (
+    ospath, 
+    time_printer, 
+    load_data, 
+    get_SRT,
+    )
+
 from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
 from exposan.utils import add_V_from_rho
 from exposan.bwaise import create_components as create_bw_components
@@ -53,6 +61,8 @@ from exposan.enviroloo import (
 from exposan.enviroloo._EL_pumps import (
     LiftPump, AgitationPump, DosingPump, ReturnPump, SelfPrimingPump, 
     AirDissolvedPump, MicroBubblePump, ClearWaterPump,)
+
+folder = ospath.dirname(__file__)
 
 __all__ = ('create_system','create_systemEL')
 
@@ -86,7 +96,7 @@ Air dissolving pump: P_AirDissolved
 
 '''
 
-# %% Create Universal Units and Functions
+#%% Create Universal Units and Functions
 def batch_create_streams(prefix, phases=('liq', 'sol')):
     # item = ImpactItem.get_item('CH4_item').copy(f'{prefix}_CH4_item', set_as_source=True)
     # WasteStream('CH4', phase='g', stream_impact_item=item)
@@ -117,6 +127,24 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
     # create_stream_with_impact_item(stream_ID='PAC')
     # create_stream_with_impact_item(stream_ID='Glucose')
     # create_stream_with_impact_item(stream_ID='air')
+    
+# def batch_create_streams(sys, path, sheet):
+#     df = load_data(path, sheet)
+#     dct = df.to_dict('index')
+#     u = sys.flowsheet.unit # unit registry
+#     u.DG.set_init_conc(**steady_state_ad_init_conds)
+#     for k in sys.units:
+#         if sheet.startswith('B1'):
+#             if k.ID.startswith('O'): 
+#                 k.set_init_conc(**dct[k.ID])
+#     c1s = {k:v for k,v in dct['C1_s'].items() if v>0}
+#     c1x = {k:v for k,v in dct['C1_x'].items() if v>0}
+#     tss = [v for v in dct['C1_tss'].values() if v>0]
+#     u.C1.set_init_solubles(**c1s)
+#     u.C1.set_init_sludge_solids(**c1x)
+#     u.C1.set_init_TSS(tss)
+    
+    
 
 def update_toilet_param(unit):
     # Use the private attribute so that the number of users/toilets will be exactly as assigned
@@ -258,6 +286,8 @@ def create_systemEL(flowsheet = None):
     
     # asm_kwargs = asm_kwargs or default_asm2d_kwargs
     # masm2d = pc.mASM2d()
+    Recycle = qs.WasteStream('Recycle')
+    # RAS = qs.WasteStream('RAS', T=Temp)
     
     WasteWaterGenerator = elu.EL_Excretion('WasteWaterGenerator', outs=('urine','feces'))
     WasteWaterGenerator._run()
@@ -304,7 +334,7 @@ def create_systemEL(flowsheet = None):
     Toilet._run()
     
 
-    CT = elu.EL_CT('CT', ins=(Toilet-0, 'PrimaryClarP_return','PrimaryClar_spill', 'ClearWaterTank_spill'), 
+    CT = elu.EL_CT('CT', ins=(Toilet-0, 'PrimaryClarP_return','PrimaryClar_spill', Recycle), 
                     outs = ('TreatedWater'),
                     # V_wf = 0.9, ppl = ppl, baseline_ppl = 100,
                     # kW_per_m3=0.1,  # The power consumption per unit volume of the tank
@@ -328,9 +358,10 @@ def create_systemEL(flowsheet = None):
                     ppl = ppl,  # The number of people served
                     baseline_ppl = 100,
                     solids_removal_efficiency = 0.85,  # The solids removal efficiency
-                    sludge_flow_rate = 500,  # Sludge flow rate
-                    max_oveflow = 15,
+                    sludge_flow_rate = .00116,  # Sludge flow rate
+                    # max_oveflow = 15,
                     )
+    
     
     P_PC_return = ReturnPump('P_PC_return', ins=PC-1, outs = 1-CT, 
                                 working_factor = 0.9,  # The ratio of the actual output and the design output
@@ -358,7 +389,9 @@ def create_systemEL(flowsheet = None):
     #                             pump_cost = 59, # USD from https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
     #                             dP_design = 0,
                                 #) 
+    P_PC_return.run() 
     PC.run()
+    
     # breakpoint()
     
     P_AnoxT_agitation = AgitationPump('P_AnoxT_agitation', ins= None, outs='AgitationWater', 
@@ -418,6 +451,7 @@ def create_systemEL(flowsheet = None):
     #                         ppl = ppl, baseline_ppl = 100,
     #                        )
     # B_AeroT.line = 'Air to aerobic tank'
+    # P_AnoxT_agitation.run()
     AnoxT.run()
     
     AeroT = elu.EL_Aerobic('AeroT', ins=(AnoxT-0, 
@@ -472,10 +506,12 @@ def create_systemEL(flowsheet = None):
                                         dP_design = 0,
                                         ) 
     AeroT.run()
-    breakpoint()
+    # breakpoint()
     MembT = elu.EL_CMMBR('MembT', ins=(AeroT-0), 
                                      # B_MembT-0), 
-                        outs = ('TreatedWater_MembT', 0-P_NitrateReturn_PC, 0-P_NitrateReturn_AnoxT, 'MemT_CH4', 'MemT_N2O', 'Sludge'),
+                        outs = ('TreatedWater_MembT', 0-P_NitrateReturn_PC, 0-P_NitrateReturn_AnoxT, 
+                                # 'MemT_CH4', 'MemT_N2O', 'Sludge'
+                                ),
                         ppl = ppl,
                         baseline_ppl = 100,
                         )
@@ -510,15 +546,18 @@ def create_systemEL(flowsheet = None):
     #                                     pump_cost = 155.24, # USD from https://www.alibaba.com/product-detail/LEO-QDX-Series-Cast-Iron-Submersible_60671071414.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0BMhyxn
     #                                     dP_design = 50000, # in Pa
     #                                     )
+    # breakpoint()
 
     CWT = elu.EL_CWT('CWT', ins=(P_MT_selfpriming-0, 
                                  # P_O3_dosing-0, 
                                  # P_AirDissolved-0
                                  ), 
-                    outs= ('ClearWater', 3-CT), 
+                    outs= ('ClearWater'), 
                     # V_wf = 0.9, max_oveflow=15, 
                     # ppl = ppl, baseline_ppl = 100,
                     )
+    
+    S1 = su.Splitter('S1', ins = CWT-0, outs = ['effluent', 3-CT], split= 0.8)
    
     P_CWT = ClearWaterPump('P_CWT', ins=CWT-0, outs='ReuseWater', 
                             working_factor = 0.9,  # The ratio of the actual output and the design output
@@ -795,3 +834,50 @@ def create_system(system_ID='EL', flowsheet=None,
         system = f(flowsheet)
     
     return system
+
+# %%
+
+@time_printer
+def run(sys, t, t_step, method=None, **kwargs):
+    msg = f'Method {method}'
+    print(f'\n{msg}\n{"-"*len(msg)}')
+    print(f'Time span 0-{t}d \n')
+    
+    sys.simulate(
+        # state_reset_hook='reset_cache',
+        t_span=(0,t),
+        # t_eval=np.arange(0, t+t_step, t_step),
+        method=method,
+        print_t=True,
+        # rtol=1e-2,
+        # atol=1e-3,
+        # export_state_to=f'results/sol_{t}d_{sys.ID}.xlsx',
+        **kwargs)
+
+#%%
+if __name__ == '__main__':
+    sys = create_system()
+    # sys = create_subsys()
+    dct = globals()
+    dct.update(sys.flowsheet.to_dict())
+    
+    t = 100
+    t_step = 0.1
+    # method = 'RK45'
+    # method = 'RK23'
+    # method = 'DOP853'
+    # method = 'Radau'
+    method = 'BDF'
+    # method = 'LSODA'
+    
+    run(sys, t, t_step, method=method)
+    # sys._setup()
+    # sys.converge()
+    # sys.diagram()
+    # sys.diagram(file=os.path.join(figures_path, 'bsm2_sys'), format='png')
+
+
+
+
+
+

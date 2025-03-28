@@ -23,7 +23,7 @@ __all__ = ('create_components', )
 def create_components(set_thermo = True
                       #adjust_MW_to_measured_as=False
                       ):
-    bw_cmps = create_bw_components(set_thermo=False)
+    # bw_cmps = create_bw_components(set_thermo=False)
     masm2d_cmps = pc.create_masm2d_cmps(set_thermo=True)
     Tissue = Component('Tissue', MW=1, phase='s', particle_size='Particulate',
                         degradability='Undegradable', organic=False,

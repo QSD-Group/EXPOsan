@@ -1273,7 +1273,7 @@ class EL_Toilet(Toilet):
         }
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 degraded_components=('OtherSS',), N_user=1, N_toilet=1, N_tot_user=None,
+                 degraded_components=('OtherSS',), N_user=100, N_toilet=1, N_tot_user=None,
                  if_toilet_paper=True, if_flushing=True, if_cleansing=False,
                  if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
                  CAPEX=None, OPEX_over_CAPEX=None, price_ratio=1., F_BM_default=1):
@@ -2230,7 +2230,7 @@ class EL_PC(IdealClarifier):
     _outs_size_is_fixed = True
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 sludge_flow_rate=2000, solids_removal_efficiency=0.995,
+                 sludge_flow_rate=500, solids_removal_efficiency=0.85,
                  sludge_MLSS=None, isdynamic=False, init_with='WasteStream',
                  F_BM_default=None, **kwargs):
 
@@ -2360,7 +2360,6 @@ class EL_PC(IdealClarifier):
     
         # Optional: leave spill stream empty for now
         spill.empty()
-    
         # Store values for logging/debugging
         self._f_uf = f_uf
         self._f_of = 1 - f_uf
@@ -3986,15 +3985,15 @@ class EL_CMMBR(CompletelyMixedMBR):
     
     '''
     _N_ins = 1
-    _N_outs = 6 # [0] filtrate, [1] pumped flow
-    _outs_size_is_fixed = True
+    _N_outs = 3 # [0] filtrate, [1] pumped flow
+    _outs_size_is_fixed = False
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', isdynamic=True, 
                  pumped_flow=50, solids_capture_rate=0.999, 
                  V_max=1000, crossflow_air=None,
                  **kwargs):
-        super().__init__(ID, ins, outs, 
+        super().__init__(ID, ins=ins, outs=outs, 
                          # split=None, 
                          thermo=thermo,
                          init_with=init_with, V_max=V_max, isdynamic=isdynamic, 
@@ -4041,21 +4040,55 @@ class EL_CMMBR(CompletelyMixedMBR):
 
     split = None
         
-    def _run(self):
-        '''Only to converge volumetric flows.'''
-        mixed = self._mixed
-        mixed.mix_from(self.ins)
+    # def _run(self):
+    #     '''Only to converge volumetric flows.'''
+    #     mixed = self._mixed
+    #     mixed.mix_from(self.ins)
         
 
-        cmps = mixed.components
-        Q = mixed.F_vol*24 # m3/d
-        Qp = self._Q_pump
-        f_rtn = self._f_rtn
-        xsplit = Qp / ((1-f_rtn)*(Q-Qp) + Qp) # mass split of solids to pumped flow
-        # breakpoint()
-        qsplit = Qp / Q
-        flt, rtn = self.outs
-        mixed.split_to(rtn, flt, xsplit*cmps.x + qsplit*(1-cmps.x))
+    #     cmps = mixed.components
+    #     Q = mixed.F_vol*24 # m3/d
+    #     Qp = self._Q_pump
+    #     f_rtn = self._f_rtn
+    #     xsplit = Qp / ((1-f_rtn)*(Q-Qp) + Qp) # mass split of solids to pumped flow
+    #     # breakpoint()
+    #     qsplit = Qp / Q
+    #     flt, rtn = self.outs
+    #     mixed.split_to(rtn, flt, xsplit*cmps.x + qsplit*(1-cmps.x))
+    
+    def _run(self):
+        mixed = self._mixed
+        mixed.mix_from(self.ins)
+    
+        Q = mixed.F_vol * 24  # Convert m3/hr to m3/day
+        Qp = self._Q_pump     # Pumped flow (filtrate) in m3/day
+        f_rtn = self._f_rtn   # Solids capture efficiency (e.g., 0.999)
+    
+        if Q <= 0 or Qp <= 0:
+            for out in self.outs:
+                out.empty()
+            return
+    
+        x = mixed.components.x
+    
+        # Solids mostly retained, liquids mostly filtered
+        # This is how filtrate (clear water) is calculated
+        xsplit = x * (1 - f_rtn) + (1 - x) * (Qp / Q)
+        
+        xsplit = np.clip(xsplit, 0, 1)
+    
+        # Outputs
+        flt = self.outs[0]   # Filtrate → Clear Water Tank
+        rtn = self.outs[1]   # Retentate → Nitrate return to Anoxic
+        sludge = self.outs[2]  # Sludge return → Primary Clarifier
+    
+        # Step 1: Split into filtrate and internal loop (retentate + sludge)
+        internal = WasteStream()
+        mixed.split_to(flt, internal, xsplit)
+    
+        # Step 2: Divide internal into nitrate return and sludge return
+        # For now, split equally unless you have logic for that
+        internal.split_to(rtn, sludge, 0.5)
     
     def _compile_ODE(self):
         aer = self._aeration
@@ -4411,7 +4444,7 @@ class EL_CWT(Mixer):
     --------
     `biosteam.units.Mixer <https://biosteam.readthedocs.io/en/latest/units/mixing.html>`_
     '''
-    _N_ins = 3
+    _N_ins = 1
     _N_outs = 2
     _graphics = BSTMixer._graphics
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
