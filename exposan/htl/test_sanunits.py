@@ -307,22 +307,36 @@ class Landfilling(SanUnit):
 # =============================================================================
 # LimeStabilization
 # =============================================================================
-@cost(ID='All_parts', basis='Dry solids flow', units='tonne/day',
-      cost=25093, S=1, CE=CEPCI_by_year[2004], n=0.5623, BM=1)
+@cost(ID='Buildings/equipment/piping/mixing/storage', basis='Dry solids flow',
+      units='tonne/day', cost=296558, S=1, CE=CEPCI_by_year[2004], n=0.5623, BM=1)
 class LimeStabilization(SanUnit):
     '''
     Lime stabilization of wastewater solids.
-    Capital cost in 2004$ from [1]:
+    # TODO: is the capital cost the same as installed cost?
+    Annualized capital cost in 2004$ (30 years, 7% discount rate [r]) from [1-2]:
         1  MGD (~1 tonne dry solids per day)  $  22,600
         4  MGD (~4 tonne dry solids per day)  $  64,700
         40 MGD (~40 tonne dry solids per day) $ 187,500
-    Assume power function: capital cost = 25093*X^0.5623
-    Electricity requirement is based on [2-3].
+    
+    By assuming working capital as 5% of fixed capital (which equals to installed
+    cost), the total installed costs can be calculated using equations below:
+        annualized capital cost = capital cost*r/(1 - (1 + r)^(-lifetime))
+        capital cost = (1 + working capital over fixed capital) * fixed capital
+    
+    The estimated total installed costs are:
+        1  MGD (~1 tonne dry solids per day)  $   267,090
+        4  MGD (~4 tonne dry solids per day)  $   764,633
+        40 MGD (~40 tonne dry solids per day) $ 2,215,900
+    
+    The total installed cost follows a power function:
+        capital cost = 296558*X^0.5623
+    
+    Electricity requirement is based on [3-4].
     
     Parameters
     ----------
     ins : iterable
-        wastewater_solids, hydrated_lime.
+        wastewater_solids, lime.
     # TODO: may consider two types of lime: quick lime, which release heat and can cause water evaporation; hydrated lime, which does not release heat to evaporate water
     outs : iterable
         stabilized_solids, vapor.
@@ -340,11 +354,13 @@ class LimeStabilization(SanUnit):
         Stabilization. In Biosolids Treatment Processes; Wang, L. K.,
         Shammas, N. K., Hung, Y.-T., Eds.; Humana Press: Totowa, NJ,
         2007; pp 207–241. https://doi.org/10.1007/978-1-59259-996-7_7.
-    .. [2] Murray, A.; Horvath, A.; Nelson, K. L. Hybrid Life-Cycle Environmental
+    .. [2] Process Design Manual for Sludge Treatment and Disposal;
+        United States Environmental Protection Agency, 1979.
+    .. [3] Murray, A.; Horvath, A.; Nelson, K. L. Hybrid Life-Cycle Environmental
         and Cost Inventory of Sewage Sludge Treatment and End-Use Scenarios: A
         Case Study from China. Environ. Sci. Technol. 2008, 42 (9), 3163–3169.
         https://doi.org/10.1021/es702256w.
-    .. [3] Liu, H. Novel Approach on Reduction in GHG Emissions from Sludge Lime
+    .. [4] Liu, H. Novel Approach on Reduction in GHG Emissions from Sludge Lime
         Stabilization as an Emergent and Regional Treatment in China. Sci Rep
         2018, 8 (1), 16564. https://doi.org/10.1038/s41598-018-35052-9.
     '''
@@ -363,14 +379,21 @@ class LimeStabilization(SanUnit):
         self.unit_electricity = unit_electricity
     
     def _run(self):
-        wastewater_solids, hydrated_lime = self.ins
+        wastewater_solids, lime = self.ins
         stabilized_solids, vapor = self.outs
         
         vapor.phase = 'g'
         
         if self.lime_type not in ['quick_lime','hydrated_lime']:
             raise ValueError('lime_type must be one of the following: "quick_lime", "hydrated_lime".')
-    
+        
+        # TODO: update the mass balance
+        lime.imass[''] = (wastewater_solids.F_mass - wastewater_solids.imass['H2O'])*self.lime_ratio
+        
+        stabilized_solids.imass
+        
+        vapor
+        
     def _design(self):
         self.design_results['Dry solids flow'] = (self.ins[0].F_mass - self.ins[0].imass['H2O'])/1000*24
         self.add_power_utility(self.unit_electricity*(self.ins[0].F_mass - self.ins[0].imass['H2O'])/1000)
