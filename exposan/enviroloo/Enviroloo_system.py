@@ -165,7 +165,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
     effluent = qs.WasteStream('effluent', T=Temp)
     Recycle = qs.WasteStream('Recycle', T=Temp)
     sludge_PC = qs.WasteStream('sludge_PC', T=Temp)
-    return_PC = qs.WasteStream('return_PC', T=Temp)
+    influent_PC = qs.WasteStream('influent_PC', T=Temp)
     sludge_MT = qs.WasteStream('sludge_MT', T=Temp)
     # RAS = qs.WasteStream('RAS', T=Temp)
     
@@ -176,6 +176,53 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
     WasteWaterGenerator = elu.EL_Excretion('WasteWaterGenerator', outs=('urine','feces'))
     WasteWaterGenerator._run()
     # breakpoint()
+    
+    '''
+    [0] urine
+    flow (g/hr): S_NH4  0.241
+                    S_PO4  0.0243
+                    S_F    0.302
+                    S_IC   0.148
+                    S_K    0.0694
+                    S_Mg   0.00833
+                    S_Ca   0.0117
+                    S_Na   0.775
+                    S_Cl   0.687
+                    H2O    55.4
+        WasteStream-specific properties:
+         pH         : 7.0
+         COD        : 5198.4 mg/L
+         BOD        : 3727.2 mg/L
+         TC         : 4203.8 mg/L
+         TOC        : 1655.3 mg/L
+         TN         : 4317.1 mg/L
+         TP         : 446.9 mg/L
+         TK         : 1192.3 mg/L
+    [1] feces
+    phase: 'l', T: 298.15 K, P: 101325 Pa
+    flow (g/hr): S_NH4  0.00685
+                    S_PO4  0.0121
+                    S_A    0.472
+                    S_IC   0.0237
+                    S_K    0.0244
+                    S_Mg   0.0104
+                    X_S    0.817
+                    S_Ca   0.0792
+                    S_Na   0.124
+                    S_Cl   0.11
+                    H2O    8.85
+        WasteStream-specific properties:
+         pH         : 7.0
+         COD        : 123414.2 mg/L
+         BOD        : 77768.8 mg/L
+         TC         : 44139.3 mg/L
+         TOC        : 41869.9 mg/L
+         TN         : 3278.4 mg/L
+         TP         : 1591.1 mg/L
+         TK         : 2332.9 mg/L
+         TSS        : 58681.8 mg/L
+    
+    '''
 
     Toilet = elu.EL_Toilet('Toilet',
                     ins=(WasteWaterGenerator-0, WasteWaterGenerator-1, 'toilet_paper', 'flushing_water', 'cleansing_water', 'desiccant'),
@@ -186,17 +233,19 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
                     if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,                 
                     # CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06
                     )
-    Toilet._run()
+    # Toilet._run()
     
 
-    CT = elu.EL_CT('CT', ins=(Toilet-0, sludge_PC,return_PC, Recycle), 
+    CT = elu.EL_CT('CT', ins=(Toilet-0, sludge_PC, Recycle), 
                     outs = ('effluent_CT'),
                     )
     
     # CT.run()
     
+    M2 = su.Mixer('M2', ins=[CT-0, sludge_MT], outs=influent_PC) # mixer
+
     
-    PC = elu.EL_PC('PC', ins=(CT-0, sludge_MT), outs=('effluent_PC', 1-CT , 2-CT),
+    PC = elu.EL_PC('PC', ins=(M2-0), outs=('effluent_PC', 1-CT),  # ins = 1, outs=2
                     ppl = ppl,  # The number of people served
                     baseline_ppl = 100,
                     solids_removal_efficiency = 0.85,  # The solids removal efficiency
@@ -207,7 +256,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
     # PC.run()
 
     
-    A1 = elu.EL_Anoxic('A1', ins=(PC-0, 'sludge_MT'), 
+    A1 = elu.EL_Anoxic('A1', ins=(PC-0, sludge_MT), 
                             outs = ('effluent_AnoxT'),
                             # ppl = ppl, baseline_ppl = 100,
                             aeration=None, DO_ID='S_O2', suspended_growth_model=masm2d, 
@@ -224,29 +273,32 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
     # AeroT.run()
     # breakpoint()
     M1 = elu.EL_CMMBR('M1', ins=(O1-0), 
-                        outs = ('effluent_MembT', 1-PC, 1-A1),
+                        outs = ('effluent_MembT', sludge_MT ),
                         ppl = ppl,
                         baseline_ppl = 100,
                         )
+    
+    S1 = su.Splitter('S1', ins = M1-1, outs = [1-PC, 1-A1], split= 0.5)
+    
     # M1.run()
 
-    # CWT = elu.EL_CWT('CWT', ins=(M1-0), 
-    #                 outs= ('ClearWater'), 
-    #                 # V_wf = 0.9, max_oveflow=15, 
-    #                 # ppl = ppl, baseline_ppl = 100,
-    #                 )
+    CWT = elu.EL_CWT('CWT', ins=(M1-0), 
+                    outs= ('ClearWater'), 
+                    # V_wf = 0.9, max_oveflow=15, 
+                    # ppl = ppl, baseline_ppl = 100,
+                    )
     
-    S1 = su.Splitter('S1', ins = M1-0, outs = ['effluent', 3-CT], split= 0.5)
+    S2 = su.Splitter('S2', ins = CWT-0, outs = ['effluent', 3-CT], split= 0.5)
    
    
-    PT = elu.EL_PT('PT', ins=S1-0, outs=(3-Toilet), vessel_material = None, V_wf = None, 
+    PT = elu.EL_PT('PT', ins=S2-0, outs=(3-Toilet), vessel_material = None, V_wf = None, 
                         include_construction = True, length_to_diameter = None, 
                         F_BM_default = 1, kW_per_m3 = 0.1, vessel_type = None, tau = None, 
                         ppl = ppl, baseline_ppl = 100,
                         )
     
-    sys = qs.System('EL', path=(WasteWaterGenerator, Toilet, CT, PC, A1, O1, M1, S1, PT), 
-                recycle = [Recycle, sludge_PC, return_PC, sludge_MT])
+    sys = qs.System('EL', path=(WasteWaterGenerator, Toilet, CT, M2, PC, A1, O1, M1, S1, CWT, S2, PT), 
+                recycle = [Recycle, sludge_PC, sludge_MT])
 
     # sys = qs.System('G1_WERF', path=(PC, S1, A1, A2, A3, A4, O1, O2, C1, GT, MT, M1, J1, DG, J2, DU, M2), 
     #                 recycle = [M2-0, 1-A3, RAS])
