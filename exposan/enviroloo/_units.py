@@ -39,10 +39,7 @@ from biosteam.units.design_tools.specification_factors import material_densities
 # %% This callable file will be reposited to qsdsan.SanUnit subbranch with the name of _enviroloo
 __all__ = (
     'EL_Excretion', # excretion
-    # 'Excretion',
-    # 'ExcretionmASM2d',
     'EL_Toilet', # toilet
-    # 'EL_MURT', # toilet
     'EL_CT', # Collection tank
     'EL_PC', # Primary clarifier
     'EL_Anoxic', # Anoxic tank
@@ -50,7 +47,6 @@ __all__ = (
     'EL_CMMBR', # Membrane filter
     'EL_CWT', # Clear water tank
     'EL_PT', # Pressure tank
-    # 'EL_blower', # blower
     'EL_System', # System-level summary
     # 'EL_Housing', # Housing of EL_System, such as equipment's armor
     )
@@ -498,324 +494,8 @@ class EL_Toilet(Toilet):
 
 
 
-# @price_ratio()
-# class EL_MURT(MURT):
-#     '''
-#     Multi-unit reinvented toilet.
-
-#     The following components should be included in system thermo object for simulation:
-#     Tissue, WoodAsh, H2O, NH3, NonNH3, P, K, Mg, CH4, N2O.
-
-#     The following impact items should be pre-constructed for life cycle assessment:
-#     Ceramic, Fan.
-
-#     Parameters
-#     ----------
-#     ins : Iterable(stream)
-#         waste_in: mixed excreta.
-#     Outs : Iterable(stream)
-#         waste_out: degraded mixed excreta.
-#         CH4: fugitive CH4.
-#         N2O: fugitive N2O.
-#     N_squatting_pan_per_toilet : int
-#         The number of squatting pan per toilet.
-#     N_urinal_per_toilet : int
-#         The number of urinals per toilet.
-#     if_include_front_end : bool
-#         If False, will not consider the capital and operating costs of this unit.
-
-#     See Also
-#     --------
-#     :ref:`qsdsan.sanunits.Toilet <sanunits_toilet>`
-#     '''
-#     _N_ins = 6
-#     _N_outs = 3
-#     _units = {
-#         'Collection period': 'd',
-#         }
-
-#     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-#                  degraded_components=('OtherSS',), N_user=1, N_tot_user=1,
-#                  N_toilet=None, 
-#                  if_toilet_paper=True,
-#                  if_flushing=True, if_cleansing=False,
-#                  if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
-#                  CAPEX=0, OPEX_over_CAPEX=0, lifetime=10,
-#                  N_squatting_pan_per_toilet=1, N_urinal_per_toilet=1,
-#                  if_include_front_end=True, **kwargs):
-
-#         Toilet.__init__(
-#             self, ID, ins, outs, thermo=thermo, init_with=init_with,
-#             degraded_components=degraded_components,
-#             N_user=N_user, N_tot_user=N_tot_user, N_toilet=N_toilet,
-#             if_toilet_paper=if_toilet_paper, 
-#             if_flushing=if_flushing,
-#             if_cleansing=if_cleansing, if_desiccant=if_desiccant,
-#             if_air_emission=if_air_emission, if_ideal_emptying=if_ideal_emptying,
-#             CAPEX=CAPEX, OPEX_over_CAPEX=OPEX_over_CAPEX
-#             )
-#         self.N_squatting_pan_per_toilet = N_squatting_pan_per_toilet
-#         self.N_urinal_per_toilet = N_urinal_per_toilet
-#         self.if_include_front_end = if_include_front_end
-#         self._mixed_in = WasteStream(f'{self.ID}_mixed_in')
-
-#         data = load_data(path=murt_path)
-#         for para in data.index:
-#             value = float(data.loc[para]['expected'])
-#             setattr(self, para, value)
-#         del data
-
-#         for attr, value in kwargs.items():
-#             setattr(self, attr, value)
-
-#     def _init_lca(self):
-#         self.construction = [
-#             Construction(item='Ceramic', linked_unit=self, quantity_unit='kg'),
-#             Construction(item='Fan', linked_unit=self, quantity_unit='ea'),
-#         ]
-
-#     def _run(self):
-#         Toilet._run(self)
-#         mixed_out, CH4, N2O = self.outs
-#         CH4.phase = N2O.phase = 'g'
-
-#         mixed_in = self._mixed_in
-#         mixed_in.mix_from(self.ins)
-#         # breakpoint()
-#         #tot_COD_kg = sum(float(getattr(i, 'COD', 0)) * i.F_vol for i in self.ins) / 1e3
-#         tot_COD_kg = sum(float(getattr(i, 'COD')) * i.F_vol for i in self.ins) / 1e3
-        
-#         # # Air emission
-#         # if self.if_air_emission:
-#         #     # N loss due to ammonia volatilization
-#         #     NH3_rmd, NonNH3_rmd = \
-#         #         self.allocate_N_removal(mixed_in.TN/1e3*mixed_in.F_vol*self.N_volatilization,
-#         #                                 mixed_in.imass['NH3'])
-#         #     mixed_in.imass ['NH3'] -= NH3_rmd
-#         #     mixed_in.imass['NonNH3'] -= NonNH3_rmd
-            
-#         #     # Energy/N loss due to degradation
-#         #     mixed_in._COD = tot_COD_kg * 1e3 / mixed_in.F_vol # accounting for COD loss in leachate
-#         #     Decay._first_order_run(self, waste=mixed_in, treated=mixed_out, CH4=CH4, N2O=N2O)
-#         # else:
-#         #     mixed_out.copy_like(mixed_in)
-#         #     CH4.empty()
-#         #     N2O.empty()
-            
-#         # Aquatic emission when not ideally emptied
-#         if not self.if_ideal_emptying:
-#            self.get_emptying_emission(
-#                 waste=mixed_out, CH4=CH4, N2O=N2O,
-#                 empty_ratio=self.empty_ratio,
-#                 CH4_factor=self.COD_max_decay*self.MCF_aq*self.max_CH4_emission,
-#                 N2O_factor=self.N2O_EF_decay*44/28)
-        
-#         # self._scale_up_outs()
-
-#     def _design(self):
-#         design = self.design_results
-#         constr = self.construction
-#         if self.if_include_front_end:
-#             design['Number of users per toilet'] = self.N_user
-#             design['Parallel toilets'] = N = self.N_toilet
-#             design['Collection period'] = self.collection_period
-#             design['Ceramic'] = Ceramic_quant = (
-#                 self.squatting_pan_weight * self.N_squatting_pan_per_toilet+
-#                 self.urinal_weight * self.N_urinal_per_toilet
-#                 )
-#             design['Fan'] = Fan_quant = 1  # assume fan quantity is 1
-#             constr[0].quantity = Ceramic_quant * N
-#             constr[1].quantity = Fan_quant * N
-#             self.add_construction(add_cost=False)
-#         else:
-#             design.clear()
-#             for i in constr: i.quantity = 0
-
-#     def _cost(self):
-#         C = self.baseline_purchase_costs
-#         if self.if_include_front_end:
-#             N_toilet = self.N_toilet
-#             C['Ceramic Toilets'] = (
-#                 self.squatting_pan_cost * self.N_squatting_pan_per_toilet +
-#                 self.urinal_cost * self.N_urinal_per_toilet
-#                 ) * N_toilet
-#             C['Fan'] = self.fan_cost * N_toilet
-#             C['Misc. parts'] = (
-#                 self.led_cost +
-#                 self.anticor_floor_cost +
-#                 self.circuit_change_cost +
-#                 self.pipe_cost
-#                 ) * N_toilet
-
-#             ratio = self.price_ratio
-#             for equipment, cost in C.items():
-#                 C[equipment] = cost * ratio
-#         else:
-#             self.baseline_purchase_costs.clear()
-
-#         sum_purchase_costs = sum(v for v in C.values())
-#         self.add_OPEX = (
-#             self._calc_replacement_cost() +
-#             self._calc_maintenance_labor_cost() +
-#             sum_purchase_costs * self.OPEX_over_CAPEX / (365 * 24)
-#             )
-
-#     def _calc_replacement_cost(self):
-#         return 0
-
-#     def _calc_maintenance_labor_cost(self):
-#         return 0
-
-#     @property
-#     def collection_period(self):
-#         '''[float] Time interval between storage tank collection, [d].'''
-#         return self._collection_period
-#     @collection_period.setter
-#     def collection_period(self, i):
-#         self._collection_period = float(i)
-        
-#     @property
-#     def tau(self):
-#         '''[float] Retention time of the unit, same as `collection_period`.'''
-#         return self.collection_period
-#     @tau.setter
-#     def tau(self, i):
-#         self.collection_period = i
 
 # %%
-# CollectionTank_path = ospath.join(EL_su_data_path, '_EL_CT.tsv')
-
-# @price_ratio()
-# class EL_CT(StorageTank):
-    
-#     '''
-#     Name
-#     ----
-#     Collection tank in the Enviroloo (EL) Clear Toilet system.
-    
-#     Parameters
-#     ----------
-#     Ins: 
-#     (1) Mixed wastewater
-#     (2) Primary clarifier effluent spill
-#     (3) Clear water tank effluent spill 
-#     (4) Primary clarifier sludge return
-
-#     Outs:
-#     (1) Treated water
-#     (2) Methane (CH4)
-#     (3) Nitrous oxide (N2O)
-
-#     Attributes
-#     ----------
-#     length_to_diameter : float
-#         Ratio of the tank length to diameter.
-#     vessel_material : str
-#         Material used for constructing the vessel.
-#     sludge_moisture_content : float
-#         Moisture content of the sludge (mass of water/total mass).
-#     COD_removal : float
-#         Fraction of COD removed in the collection tank.
-
-#     References
-#     ----------
-#     Similar to the :class:`biosteam.units.MixTank`, but can calculate material usage.
-
-#     See Also
-#     ----------
-#     class:`biosteam.units.StorageTank`
-#     '''
-    
-#     _N_ins = 4 
-#     _N_outs = 1
-#     _ins_size_is_fixed = True
-#     _outs_size_is_fixed = True
-#     exponent_scale = 0.1
-    
-#     def __init__(self, ID='', ins=None, outs=(), thermo=None, ppl=None, baseline_ppl=None,
-#                  vessel_type= 'Field erected', tau=24, V_wf=None, vessel_material='Stainless steel', kW_per_m3=0.1,
-#                  init_with='WasteStream', F_BM_default=1,
-#                  include_construction=True, **kwargs):
-#         StorageTank.__init__(self, 
-#                       # Basic parameters
-#                       ID=ID, # The unique identifier of the tank
-#                       ins=ins, # The input stream to the tank
-#                       outs=outs, # The output streams from the tank
-#                       thermo=thermo, # The thermodynamic property package for simulating physical or chemical processes
-#                       # Other control parameters
-#                       init_with=init_with, # The method to initialize the tank contents.
-#                       F_BM_default=F_BM_default, # The default bare module factor for the tank cost estimation
-#                       include_construction=include_construction, # A Boolean value indicating whether the tank's construction material is considered in the cost analysis or life cycle assessment.
-#                       # Design parameters
-#                       vessel_type=vessel_type, # The type of the tank
-#                       tau=tau, # The retention time of the tank contents, the important parameters involved in mixing, reaction or separation processes.
-#                       V_wf=V_wf, # The volume working fraction of the tank, the ratio of the volume of the tank contents to the total volume of the tank.
-#                       vessel_material=vessel_material, # The material of the tank
-#                       kW_per_m3=kW_per_m3, # The power consumption per unit volume of the tank
-#                       )
-#         self.ppl = ppl
-#         self.baseline_ppl = baseline_ppl
-#         self._mixed_in = WasteStream(f'{self.ID}_mixed_in')
-
-#         data = load_data(path=CollectionTank_path)
-#         for para in data.index:
-#             value = float(data.loc[para]['expected'])
-#             setattr(self, para, value)
-#         del data
-
-#         for attr, value in kwargs.items():
-#             setattr(self, attr, value)
-
-#     def _init_lca(self):
-#         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),]
-
-#     def _run(self):
-#         # Input stream
-#         WasteWater = self.ins[0]
-#         sludge_return = self.ins[1]
-#         PC_spill_return = self.ins[2]
-#         CWT_spill_return = self.ins[3]
-
-#         mixed_in = self._mixed_in
-#         # Define input streams
-#         input_streams = [WasteWater, sludge_return, PC_spill_return, CWT_spill_return]
-#         mixed_in.mix_from(input_streams)
-
-#         # Output stream
-#         TreatedWater = self.outs[0]
-        
-#         # Copy the mixed result to the outflow
-#         TreatedWater.copy_like(mixed_in)
-
-#     def _design(self):
-#         design = self.design_results
-#         constr = self.construction
-#         design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)
-#         self.add_construction(add_cost=False)
-    
-#     def _cost(self):
-#         C = self.baseline_purchase_costs
-#         C['Tank'] = self.collection_tank_cost
-#         C['Pipes'] = self.pipeline_connectors
-#         C['Fittings'] = self.weld_female_adapter_fittings
-    
-#         ratio = self.price_ratio
-#         for equipment, cost in C.items():
-#             C[equipment] = cost * ratio
-        
-#         self.add_OPEX = self._calc_replacement_cost()
-        
-#         power_demand = self.power_demand_CT
-#         self.power_utility(power_demand)
-    
-#     def _calc_replacement_cost(self):
-#         scale  = (self.ppl / self.baseline_ppl) ** self.exponent_scale
-#         CT_replacement_cost = (
-#             self.collection_tank_cost / self.collection_tank_lifetime +               
-#             self.pipeline_connectors / self.pipeline_connectors_lifetime +
-#             self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime) * scale
-#         CT_replacement_cost = CT_replacement_cost / (365 * 24)  # convert to USD/hr
-#         return CT_replacement_cost
 
 CollectionTank_path = os.path.join(EL_su_data_path, '_EL_CT.tsv')
 
@@ -970,191 +650,7 @@ class EL_CT(Mixer):
         return CT_replacement_cost
 
 # %%
-# PrimaryClarifier_path = ospath.join(EL_su_data_path, '_EL_PC.tsv')
 
-# @price_ratio()
-# class EL_PC(SanUnit):
-#     """
-#     Primary clarifier in the Enviroloo (EL) Clear Toilet system for COD and suspended solids removal.
-
-#     Parameters
-#     ----------
-#     ID : str
-#         Unique identifier for the unit.
-#     ins : tuple
-#         Input streams: (0) Wastewater from lift pump, (1) Nitrate return from membrane tank.
-#     outs : tuple
-#         Output streams: (0) Treated water, (1) Spill return, (2) Sludge return.
-#     sludge_flow_rate : float
-#         Sludge flow rate (m³/d). Required for sludge return calculation.
-#     solids_removal_efficiency : float
-#         Fraction of suspended solids removed (0 to 1). Default is 0.5.
-#     max_overflow : float
-#         Maximum allowable overflow rate (m³/h). Default is 15.
-#     ppl : float
-#         Current population served.
-#     baseline_ppl : float
-#         Baseline population for scaling design and cost.
-
-#     Notes
-#     -----
-#     - COD and suspended solids are tracked via the `components` object.
-#     - Spill return occurs if treated water flow exceeds `max_overflow`.
-#     - Inherits from `SanUnit`, not `IdealClarifier`, for flexibility.
-#     """
-
-#     _N_ins = 2
-#     _N_outs = 3
-#     _ins_size_is_fixed = True
-#     _outs_size_is_fixed = True
-#     exponent_scale = 0.1
-
-#     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-#                  sludge_flow_rate=None, solids_removal_efficiency=0.5, max_overflow=15,
-#                  F_BM=1, transportation=[],
-#                  ppl=None, baseline_ppl=None, **kwargs):
-#         SanUnit.__init__(self, ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, 
-#                          F_BM_default=F_BM, transportation=transportation)
-#         self.sludge_flow_rate = sludge_flow_rate  # m³/d
-#         self.solids_removal_efficiency = solids_removal_efficiency  # 0 to 1
-#         self.max_overflow = max_overflow  # m³/h
-#         self.ppl = ppl
-#         self.baseline_ppl = baseline_ppl
-
-#         # Load default parameters from data file
-#         data = load_data(path=PrimaryClarifier_path)
-#         for para in data.index:
-#             value = float(data.loc[para]['expected'])
-#             setattr(self, para, value)
-#         del data
-
-#         for attr, value in kwargs.items(): 
-#             setattr(self, attr, value)
-
-#     def _init_lca(self):
-#         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),]
-
-#     def _run(self):
-#         """Simulate the primary clarifier operation."""
-#         # Inputs
-#         wastewater, nitrate_return = self.ins
-#         # Outputs
-#         treated_water, sludge_return, spill_return = self.outs
-
-#         # Mix input streams
-#         mixed = wastewater.copy()  # Temporary stream for mixing
-#         mixed.mix_from([wastewater, nitrate_return])
-
-#         # Get total inflow (m³/d) and TSS (mg/L)
-#         Q_in = mixed.F_vol * 24  # Convert m³/h to m³/d
-#         TSS_in = sludge_return.F_mass # assume all return flow only including 
-#                                       # sewage sludge that was treated as TSS
-#         TSS_in = mixed.get_TSS()  # Total suspended solids in mg/L
-
-#         # Handle case with no solids
-#         if TSS_in <= 0:
-#             treated_water.copy_like(mixed)
-#             sludge_return.empty()
-#             spill_return.empty()
-#             return
-
-#         # Validate parameters
-#         if not self.sludge_flow_rate or not self.solids_removal_efficiency:
-#             raise ValueError("Must specify 'sludge_flow_rate' and 'solids_removal_efficiency'.")
-
-#         # Calculate sludge split
-#         Qs = self.sludge_flow_rate  # m³/d
-#         e_rmv = self.solids_removal_efficiency
-#         f_Qu = Qs / Q_in  # Fraction of flow to sludge
-#         f_Xu = e_rmv + (1 - e_rmv) * f_Qu  # Fraction of solids to sludge
-
-#         # Component-wise split (simplified for COD and SS)
-#         cmps = self.components
-#         split_to_sludge = np.zeros(len(cmps))
-#         for i, cmp in enumerate(cmps):
-#             if cmp.ID == 'OtherSS':  # Suspended solids
-#                 split_to_sludge[i] = f_Xu
-#             elif cmp.ID == 'S_COD':  # Soluble COD, assume some removal with solids
-#                 split_to_sludge[i] = f_Qu * 0.1  # Arbitrary small fraction
-#             else:
-#                 split_to_sludge[i] = f_Qu  # Other components follow flow split
-#         split_to_sludge = np.clip(split_to_sludge, 0, 1)
-
-#         # Split mixed stream
-#         mixed.split_to(sludge_return, treated_water, split_to_sludge)
-
-#         # Handle spill return
-#         # if self.max_overflow is not None:
-#         #     if treated_water.F_vol > self.max_overflow:
-#         #         # Spill return exists
-#         #         spill_vol = treated_water.F_vol - self.max_overflow  
-#         #         if not hasattr(self, '_f_spill'):
-#         #             self._f_spill = None
-#         #         if not hasattr(self, '_f_overflow'):
-#         #             self._f_overflow = None
-#         #             self._f_spill = spill_vol / treated_water.F_vol  
-#         #             self._f_overflow = 1 - self._f_spill  
-
-#         #             spill_return.copy_like(treated_water)  
-#         #             spill_return.F_mass *= self._f_spill  
-
-#         #             TreatedWater.F_mass *= self._f_overflow  
-#         #     else:
-#         #         # max_overflow is not none, but TreatedWater < max_overflow
-#         #         spill_return.empty()
-#         #         if hasattr(self, '_f_spill'):
-#         #             del self._f_spill  
-#         #         if hasattr(self, '_f_overflow'):
-#         #             del self._f_overflow  
-#         # else:
-#         #     # max_overflow is none, no spill return
-#         #     spill_return.empty()
-        
-#         max_overflow_m3d = self.max_overflow * 24  # Convert m³/h to m³/d
-#         Q_treated = treated_water.F_vol * 24  # m³/d
-#         if Q_treated > max_overflow_m3d:
-#             spill_vol = Q_treated - max_overflow_m3d
-#             f_spill = spill_vol / Q_treated
-#             spill_return.copy_like(treated_water)
-#             spill_return.F_mass *= f_spill
-#             treated_water.F_mass *= (1 - f_spill)
-#         else:
-#             spill_return.empty()
-
-#     def _design(self):
-#         """Calculate design parameters."""
-#         self.design_results['StainlessSteel'] = (
-#             self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)
-#         )
-#         self.construction = [
-#             Construction(item='StainlessSteel', quantity=self.design_results['StainlessSteel'], quantity_unit='kg')
-#         ]
-#         self.add_construction(add_cost=False)
-
-#     def _cost(self):
-#         """Calculate capital and operating costs."""
-#         C = self.baseline_purchase_costs
-#         C['Tank'] = self.PC_tank_cost
-#         C['Pipes'] = self.pipeline_connectors
-#         C['Fittings'] = self.weld_female_adapter_fittings
-
-#         ratio = self.price_ratio  # Assume price_ratio decorator sets this
-#         for equipment, cost in C.items():
-#             C[equipment] = cost * ratio
-
-#         self.add_OPEX = self._calc_replacement_cost()
-#         power_demand = self.power_demand_PC  # Default to 0 if not set
-#         self.power_utility(power_demand)
-
-#     def _calc_replacement_cost(self):
-#         """Calculate replacement cost in USD/hr."""
-#         scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
-#         replacement_cost = (
-#             self.PC_tank_cost / self.PC_tank_lifetime +
-#             self.pipeline_connectors / self.pipeline_connectors_lifetime +
-#             self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime
-#         ) * scale
-#         return replacement_cost / (365 * 24)  # Convert to USD/hr
 
 PrimaryClarifier_path = os.path.join(EL_su_data_path, '_EL_PC.tsv')
 
@@ -1189,12 +685,12 @@ class EL_PC(IdealClarifier):
     - Inherits from `SanUnit`, not `IdealClarifier`, for flexibility.
     """
 
-    _N_ins = 2
-    _N_outs = 3  # [0] effluent overflow, [1] sludge underflow
+    _N_ins = 1
+    _N_outs = 2  # [0] effluent overflow, [1] sludge underflow
     _outs_size_is_fixed = True
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 sludge_flow_rate=500, solids_removal_efficiency=0.85,
+                 sludge_flow_rate=2000, solids_removal_efficiency=0.995,
                  sludge_MLSS=None, isdynamic=False, init_with='WasteStream',
                  F_BM_default=None, **kwargs):
 
@@ -1238,96 +734,30 @@ class EL_PC(IdealClarifier):
                  f'one of them is unspecified.')
         self._MLSS = MLSS
 
-           
-    # def _run(self):
-    #     inf = self._mixed
-    #     inf.mix_from(self.ins)
-    #     of, uf, _ = self.outs  # Overflow (to anoxic), underflow (sludge), optional extra out
-    
-    #     TSS_in = inf.get_TSS()  # Total Suspended Solids (mg/L)
-    
-    #     if TSS_in <= 0:
-    #         uf.empty()
-    #         of.copy_like(inf)
-    #         return
-    
-    #     Q_in = inf.F_vol * 24  # Influent flow rate (m3/d)
-    #     x = inf.components.x
-    
-    #     Qs = self._Qs  # Sludge flow rate (m3/d)
-    #     e_rmv = self._e_rmv  # Solids removal efficiency (0-1)
-    #     mlss = self._MLSS  # Optional MLSS
-    
-    #     if Qs and e_rmv:
-    #         f_uf = Qs / Q_in
-    #         f_Xuf = e_rmv + (1 - e_rmv) * f_uf
-    #     elif Qs and mlss:
-    #         f_uf = Qs / Q_in
-    #         f_Xuf = f_uf * mlss / TSS_in
-    #     elif e_rmv and mlss:
-    #         f_uf = e_rmv / (mlss / TSS_in - (1 - e_rmv))
-    #         f_Xuf = e_rmv + (1 - e_rmv) * f_uf
-    #     else:
-    #         # Default assumptions if nothing is specified
-    #         f_uf = 0.1
-    #         f_Xuf = 0.5
-    
-    #     split_to_uf = (1 - x) * f_uf + x * f_Xuf
-    #     if any(split_to_uf > 1):
-    #         split_to_uf = 1
-    
-    #     # Split to sludge underflow (uf) and overflow (of)
-    #     inf.split_to(uf, of, split_to_uf)
-    
-    #     # Store for inspection/logging if needed
-    #     self._f_uf = f_uf
-    #     self._f_of = 1 - f_uf
-
     def _run(self):
         inf = self._mixed
-        inf.mix_from(self.ins)  # Combine all inputs (TreatedWater + NitrateReturn_MT)
-        of, uf, spill = self.outs  # [0] Anoxic, [1] Sludge (return), [2] Spill (unused for now)
-    
-        TSS_in = inf.get_TSS()  # mg/L
-    
+        inf.mix_from(self.ins)
+        of, uf = self.outs
+        TSS_in = inf.get_TSS()
         if TSS_in <= 0:
             uf.empty()
             of.copy_like(inf)
-            return
-    
-        Q_in = inf.F_vol * 24  # Convert hourly flow (m3/hr) to m3/day
-        x = inf.components.x
-    
-        Qs = self._Qs  # sludge flow rate (m3/d)
-        e_rmv = self._e_rmv
-        mlss = self._MLSS
-    
-        if Qs and e_rmv:
-            f_uf = Qs / Q_in
-            f_Xuf = e_rmv + (1 - e_rmv) * f_uf
-        elif Qs and mlss:
-            f_uf = Qs / Q_in
-            f_Xuf = f_uf * mlss / TSS_in
-        elif e_rmv and mlss:
-            f_uf = e_rmv / (mlss / TSS_in - (1 - e_rmv))
-            f_Xuf = e_rmv + (1 - e_rmv) * f_uf
         else:
-            # Fallback values if none provided
-            f_uf = 0.1
-            f_Xuf = 0.5
-    
-        split_to_uf = (1 - x) * f_uf + x * f_Xuf
-        # split_to_uf = min(split_to_uf, 1)  # Ensure not over-split
-    
-        # Now split input between underflow (sludge) and overflow (clarified)
-        inf.split_to(uf, of, split_to_uf)
-    
-        # Optional: leave spill stream empty for now
-        spill.empty()
-        # Store values for logging/debugging
-        self._f_uf = f_uf
-        self._f_of = 1 - f_uf
- 
+            Q_in = inf.F_vol * 24 # m3/d
+            x = inf.components.x
+            Qs, e_rmv, mlss = self._Qs, self._e_rmv, self._MLSS
+            if Qs and e_rmv:
+                f_Qu = Qs/Q_in
+                f_Xu = e_rmv + (1-e_rmv) * f_Qu
+            elif Qs and mlss:
+                f_Qu = Qs/Q_in
+                f_Xu = f_Qu*mlss/TSS_in
+            elif e_rmv and mlss:
+                f_Qu = e_rmv / (mlss/TSS_in - (1-e_rmv))
+                f_Xu = e_rmv + (1-e_rmv) * f_Qu
+            split_to_uf = (1-x)*f_Qu + x*f_Xu
+            if any(split_to_uf > 1): split_to_uf = 1
+            inf.split_to(uf, of, split_to_uf)
 
     def _init_state(self):
         inf = self._mixed
@@ -1412,6 +842,8 @@ class EL_PC(IdealClarifier):
             # _update_dstate()
         self._AE = yt
    
+    
+# %%
 # Total COD removal efficiency
 nCOD = lambda f_corr, fx, HRT: f_corr*(2.88*fx - 0.118)*(1.45 + 6.15*np.log(HRT*24*60))
 
@@ -1421,6 +853,52 @@ def calc_f_i(fx, f_corr, HRT):
     if nX > 100: nX = 100
     if nX < 0: nX = 0
     return 1-(nX/100)
+
+    # def _run(self):
+    #     inf = self._mixed
+    #     inf.mix_from(self.ins)  # Combine all inputs (TreatedWater + NitrateReturn_MT)
+    #     of, uf, spill = self.outs  # [0] Anoxic, [1] Sludge (return), [2] Spill (unused for now)
+    
+    #     TSS_in = inf.get_TSS()  # mg/L
+    
+    #     if TSS_in <= 0:
+    #         uf.empty()
+    #         of.copy_like(inf)
+    #         return
+    
+    #     Q_in = inf.F_vol * 24  # Convert hourly flow (m3/hr) to m3/day
+    #     x = inf.components.x
+    
+    #     Qs = self._Qs  # sludge flow rate (m3/d)
+    #     e_rmv = self._e_rmv
+    #     mlss = self._MLSS
+    
+    #     if Qs and e_rmv:
+    #         f_uf = Qs / Q_in
+    #         f_Xuf = e_rmv + (1 - e_rmv) * f_uf
+    #     elif Qs and mlss:
+    #         f_uf = Qs / Q_in
+    #         f_Xuf = f_uf * mlss / TSS_in
+    #     elif e_rmv and mlss:
+    #         f_uf = e_rmv / (mlss / TSS_in - (1 - e_rmv))
+    #         f_Xuf = e_rmv + (1 - e_rmv) * f_uf
+    #     else:
+    #         # Fallback values if none provided
+    #         f_uf = 0.1
+    #         f_Xuf = 0.5
+    
+    #     split_to_uf = (1 - x) * f_uf + x * f_Xuf
+    #     # split_to_uf = min(split_to_uf, 1)  # Ensure not over-split
+    
+    #     # Now split input between underflow (sludge) and overflow (clarified)
+    #     inf.split_to(uf, of, split_to_uf)
+    
+    #     # Optional: leave spill stream empty for now
+    #     spill.empty()
+    #     # Store values for logging/debugging
+    #     self._f_uf = f_uf
+    #     self._f_of = 1 - f_uf
+ 
 
     def _design(self):
         """Calculate design parameters."""
@@ -1458,246 +936,7 @@ def calc_f_i(fx, f_corr, HRT):
         return replacement_cost / (365 * 24)  # Convert to USD/hr
 
 # %%
-# Anoxic_path = ospath.join(EL_su_data_path, '_EL_Anoxic.tsv')
 
-# @price_ratio()
-# class EL_Anoxic(SanUnit, Decay):
-#     '''
-#     Anoxic treatment unit in the EL system.
-
-#     Parameters
-#     ----------
-#     Ins:
-#     (1) influent of treated wastetwater from primary clarifier
-#     (2) nitrate return flow from membrane tank
-#     (3) glucose addition
-#     (4) agitation pump
-
-#     Outs:
-#     (1) effluent of treated wastewater
-#     (2) fugitive CH4 emission
-#     (3) fugtivie N2O emission
-
-#     Attributes
-#     ----------
-
-    
-#     References
-#     ----------
-#      refer to the qsdsan.sanunits.PrimaryClarifier module
-    
-    
-#     '''
-#     _N_ins = 4
-#     _N_outs = 3
-#     _ins_size_is_fixed = True
-#     _outs_size_is_fixed = True
-#     baseline_ppl = 30
-#     exponent_scale = 0.1
-
-#     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', methane_density=0.657,
-#                  degraded_components=('OtherSS',),  F_BM_default=1, ppl = None, baseline_ppl = None,
-#                  glucose_density=1560, if_capture_biogas=False, if_N2O_emission=True, **kwargs):
-#         Decay.__init__(self, ID, ins, outs, thermo=thermo,
-#                        init_with=init_with, F_BM_default=F_BM_default,
-#                        degraded_components=degraded_components,
-#                        if_capture_biogas=if_capture_biogas,
-#                        if_N2O_emission=if_N2O_emission,)
-        
-#         self.ppl = ppl
-#         self.baseline_ppl = baseline_ppl
-#         self.methane_density = methane_density  # kg/m^3
-#         self.glucose_density = glucose_density  # kg/m^3
-#         self._mixed_in = WasteStream(f'{self.ID}_mixed_in')
-
-#         data = load_data(path=Anoxic_path)
-#         for para in data.index:
-#             value = float(data.loc[para]['expected'])
-#             setattr(self, para, value)
-#         del data
-
-#         for attr, value in kwargs.items():
-#             setattr(self, attr, value)
-#     def _init_lca(self):
-#         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),]      
-        
-#     def _run(self):
-
-#           # Input stream
-#           WasteWater = self.ins[0]
-#           nitrate_return = self.ins[1]  # Nitrate from membrane tank over return pump
-          
-#           glucose = self.ins[2]  # Extra carbon source
-#           glucose_consumed = WasteWater.F_mass * self.chemical_glucose_dosage 
-#           #TODO: this dosage is the same as PAC. Check data source
-#           glucose.imass['Glucose'] = glucose_consumed #kg/h
-#           # glucose.mass = glucose_consumed
-          
-#           agitation = self.ins[3]  # Agitation pump works here, but it does not attend mass flow balance calculation
-#           agitation.empty()
-          
-#           mixed_in = self._mixed_in
-#           # Define input streams
-#           input_streams = [WasteWater, nitrate_return, glucose, agitation]
-#           mixed_in.mix_from(input_streams)
-          
-#           # Output stream
-#           TreatedWater = self.outs[0]
-#           CH4_emission = self.outs[1]
-#           N2O_emission = self.outs[2]
-
-#           # Output stream
-#           # TreatedWater = self.outs[0]
-#           # Copy the mixed result to the outflow
-#           TreatedWater.copy_like(mixed_in)
-#           # Inherited input stream
-#           # TreatedWater.copy_like(WasteWater)
-          
-#           # Manually add return nitrate (NO3)
-#           TreatedWater.imass['NO3'] += nitrate_return.imass['NO3']
-          
-#           # Glucose consumption
-#           # glucose_consumed = WasteWater.F_vol * self.chemical_glucose_dosage * self.glucose_density
-#           # glucose.imass['Glucose'] = glucose_consumed
-#           TreatedWater.imass['Glucose'] += glucose.imass['Glucose']
-          
-#           # glucose.mass = glucose_consumed
-
-#           # COD removal
-#           COD_removal = self.EL_anoT_COD_removal
-#           removed_COD = (WasteWater.COD + glucose.COD) / 1e3 * WasteWater.F_vol * COD_removal  # kg/hr
-          
-#           # Now we explicitly remove Glucose from TreatedWater
-#           TreatedWater.imass['Glucose'] = 0  # All glucose is consumed in reaction
-#           glucose.empty()
-          
-#           # Sludge produced
-#           sludge_prcd = self.EL_anoT_sludge_yield * removed_COD  # produced biomass
-          
-#           for component in ('Mg', 'Ca', 'OtherSS', 'Tissue', 'WoodAsh'):
-#               TreatedWater.imass[component] += sludge_prcd  # New sludge produced
-          
-#           # CH4 produced
-#           CH4_prcd = removed_COD * self.EL_anoT_methane_yield * self.methane_density  # kg CH4 produced/hr
-#           CH4_soluble = self.EL_anoT_soluble_methane_fraction * CH4_prcd
-#           CH4_emitted = CH4_prcd - CH4_soluble
-#           CH4_emission.imass['SolubleCH4'] = CH4_emitted
-#           TreatedWater.imass['SolubleCH4'] = CH4_soluble
-          
-#           # N2O produced
-#           N_removal = self.EL_anoT_TN_removal
-#           if self.if_N2O_emission:
-#           # Assume the removal part covers both degradation loss
-#           # and other unspecified removal as well
-#               N_loss = self.first_order_decay(k = self.decay_k_N,
-#                                     t = self.EL_anoT_tau / 365,
-#                                     max_decay = self.N_max_decay)
-#               if N_loss > N_removal:
-#                   warn(f'Nitrogen degradation loss ({N_loss:.2f}) larger than the given removal ({N_removal:.2f})), '
-#                         'the degradation loss is assumed to be the same as the removal.')
-#                   N_loss = N_removal
-            
-#               # N2O only from the degraded part
-#               N_loss_tot = N_loss * WasteWater.TN / 1e3 * WasteWater.F_vol
-#               N2O_emission.imass['N2O'] = N_loss_tot * self.N2O_EF_decay * 44 / 28
-#           else:
-#               N2O_emission.empty()
-#               N2O_emission.imass['N2O'] = 0  # All N2O is emitted
-              
-#           # Assume all NO3 is consumed and does not appear in TreatedWater
-#           TreatedWater.imass['NO3']  = 0  
-          
-#           # NH3 & NonNH3, P, K calculation
-#           total_solubles = np.array([
-#               CH4_soluble,
-#               WasteWater.imass['NH3'] * (1 - N_loss),  # In water or sludge
-#               WasteWater.imass['NonNH3'] * (1 - N_loss),  # In water or sludge
-#               0,  # NO3 tolly consumed
-#               WasteWater.imass['P'],  # In water or sludge
-#               WasteWater.imass['K'],  # In water or sludge
-#               ])
-          
-#           # Removed solubles in the sludge, assume minimal used for growth
-#           sludge_solubles = total_solubles * np.array([
-#                             0,  # CH₄ will not go into sludge
-#                             N_removal,  # Part of it in water and in sludge
-#                             N_removal,  # Part of it in water and in sludge
-#                             0,  # NO3 tolly consumed
-#                             self.EL_anoT_TP_removal,  # Part of it in water and in sludge
-#                             0,  # K will not go into sludge
-#                             ])
-          
-#           # Calculate solutes entering TreatedWater
-#           liquid_solubles = total_solubles - sludge_solubles
-          
-#           # Assign to outputs (TreatedWater now includes sludge)
-#           TreatedWater.imass['SolubleCH4', 'NH3', 'NonNH3', 'NO3', 'P', 'K'] = liquid_solubles
-#           TreatedWater.imass['SolubleCH4', 'NH3', 'NonNH3', 'NO3', 'P', 'K'] += sludge_solubles  # Here is only one output stream (TreatedWater + sludge)
-          
-#           # Final COD
-#           TreatedWater._COD = WasteWater.COD * (1 - self.EL_anoT_COD_removal)
-          
-    # def _run(self):
-        
-    #     # Input stream
-    #     WasteWater = self.ins[0]
-    #     sludge_return = self.ins[1]
-    #     glucose = self.ins[2]
-    #     agiation = self.ins[3]
-        
-    #     # Output stream
-    #     TreatedWater = self.outs[0]
-    #     CH4_emission = self.outs[1]
-    #     N2O_emission = self.outs[2]
-        
-    #     input_streams = [WasteWater, sludge_return, glucose]
-            
-    #     # Mix all inputs into a single stream
-    #     self._mixed.empty()
-    #     self._mixed.mix_from(input_streams)
-
-    #     # Copy the mixed result to the outflow
-    #     TreatedWater.copy_like(self._mixed)
-    
-   
-    # def _run(self):
-        
-    #     # Input stream
-    #     WasteWater = self.ins[0]
-    #     sludge_return = self.ins[1]
-    #     glucose = self.ins[2]
-
-    #     # Output stream
-    #     TreatedWater = self.outs[0]
-    #     CH4_emission = self.outs[1]
-    #     N2O_emission = self.outs[2]
-
-    #     # Combined sludge return and influent
-    #     WasteWater.F_mass += sludge_return.F_mass
-    #     WasteWater.imass += sludge_return.imass
-
-    #     # Glucose in
-    #     WasteWater.imass['Glucose'] += glucose.imass['Glucose']
-    #     WasteWater.F_mass += glucose.F_mass
-
-    #     # Simulate complete glucose consumption
-    #     consumed_glucose = WasteWater.imass['Glucose']
-    #     WasteWater.imass['Glucose'] -= consumed_glucose
-    #     WasteWater.F_mass -= consumed_glucose
-
-    #     # Adjust N2O emission factor based on reduction ratio
-    #     original_N2O_EF = self.N2O_EF_decay
-    #     self.N2O_EF_decay *= 0.25
-
-    #     # Call Decay._first_order_run with the updated N2O_EF_decay
-    #     super()._first_order_run(waste=WasteWater,
-    #                              treated=TreatedWater,
-    #                              CH4=CH4_emission,
-    #                              N2O=N2O_emission
-    #                              )
-
-    #     # Restore the original N2O emission factor
-    #     self.N2O_EF_decay = original_N2O_EF
 
 Anoxic_path = os.path.join(EL_su_data_path, '_EL_Anoxic.tsv')
 
@@ -1751,7 +990,7 @@ class EL_Anoxic(CSTR):
          https://doi.org/10.1039/C5EE03715H.
     
     '''
-    _N_ins = 3
+    _N_ins = 2
     _N_outs = 1
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
@@ -1974,30 +1213,17 @@ class EL_Anoxic(CSTR):
                 y[-1] *= spl
                 ws.dstate = y
 
-    # def _run(self):
-    #     '''Only to converge volumetric flows.'''
-    #     mixed = self._mixed # avoid creating multiple new streams
-    #     # breakpoint()
-    #     mixed.mix_from(self.ins)
-    #     Q = mixed.F_vol # m3/hr
-    #     if self.split is None: self.outs[0].copy_like(mixed)
-    #     else:
-    #         for ws, spl in zip(self._outs, self.split):
-    #             ws.copy_like(mixed)
-    #             ws.set_total_flow(Q*spl, 'm3/hr')
     
     def _run(self):
-        '''Mixes all influent streams as a CSTR and sends the output.'''
-        mixed = self._mixed
-        mixed.mix_from(self.ins)  # Mix all input streams (e.g., from PC and nitrate return)
-        
-        if self.split is None:
-            self.outs[0].copy_like(mixed)  # Single output: all contents go forward
+        '''Only to converge volumetric flows.'''
+        mixed = self._mixed # avoid creating multiple new streams
+        mixed.mix_from(self.ins)
+        Q = mixed.F_vol # m3/hr
+        if self.split is None: self.outs[0].copy_like(mixed)
         else:
-            Q = mixed.F_vol  # Total flow in m3/hr
             for ws, spl in zip(self._outs, self.split):
-                ws.copy_like(mixed)         # Copy composition
-                ws.set_total_flow(Q * spl, 'm3/hr')  # Apply split ratio
+                ws.copy_like(mixed)
+                ws.set_total_flow(Q*spl, 'm3/hr')
 
 
     def get_retained_mass(self, biomass_IDs):
@@ -2105,181 +1331,7 @@ class EL_Anoxic(CSTR):
         return Anoxic_tank_replacement_cost
 
 # %%
-# Aerobic_path = ospath.join(EL_su_data_path, '_EL_Aerobic.tsv')
 
-# @price_ratio()
-# class EL_Aerobic(SanUnit, Decay):
-
-#     '''
-#     Aerobic treatment unit in the EL system.
-
-#     Parameters
-#     ----------
-#     Ins:
-#     (1) influent of treated wastetwater from anoxic tank
-#     (2) PAC addition
-#     (3) blower
-
-#     Outs:
-#     (1) effluent of treated wastewater
-#     (2) fugitive CH4 emission
-#     (3) fugtivie N2O emission
-
-#     Attributes
-#     ----------
-
-    
-#     References
-#     ----------
-#      refer to the qsdsan.sanunits.PrimaryClarifier module
-#     '''
-
-#     _N_ins = 3  # treated water, PAC, blower
-#     _N_outs = 3  # treated water, CH4, N2O
-#     _ins_size_is_fixed = True
-#     _outs_size_is_fixed = True
-#     exponent_scale = 0.1
-    
-#     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-#                  degraded_components=('OtherSS',), ppl = None, baseline_ppl = None, F_BM_default=1,
-#                  if_capture_biogas=False, if_N2O_emission=True,**kwargs):
-#         Decay.__init__(self, ID, ins=ins, outs=outs, thermo=thermo,
-#                        init_with=init_with, F_BM_default=F_BM_default,
-#                        degraded_components=degraded_components,
-#                        if_capture_biogas=if_capture_biogas,
-#                        if_N2O_emission=if_N2O_emission,)
-
-#         self.ppl = ppl
-#         self.baseline_ppl = baseline_ppl
-
-#         data = load_data(path=Aerobic_path)
-#         for para in data.index:
-#             value = float(data.loc[para]['expected'])
-#             setattr(self, para, value)
-#         del data
-
-#         for attr, value in kwargs.items():
-#             setattr(self, attr, value)
-
-#     def _init_lca(self):
-#         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),]  
-    
-#     def _run(self):
-
-#         # Input streams
-#         WasteWater = self.ins[0]
-#         PAC = self.ins[1]
-#         air = self.ins[2]
-        
-#         # Output streams
-#         TreatedWater = self.outs[0]
-#         CH4_emission = self.outs[1] 
-#         N2O_emission = self.outs[2]
-        
-#         # Inherited input stream
-#         TreatedWater.copy_like(WasteWater)
-        
-#         # Manually add return nitrate (NO3)
-#         # TreatedWater.imass['PAC'] += PAC.imass['PAC']
-#         PAC.imass['PAC'] = WasteWater.imass['H2O'] * self.chemical_PAC_dosage/100
-        
-#         # COD removal
-#         COD_removal = self.EL_aeroT_COD_removal
-#         removed_COD = WasteWater.COD / 1e3 * WasteWater.F_vol * COD_removal  # kg/hr
-        
-#         # Sludge produced
-#         sludge_prcd = self.EL_aeroT_sludge_yield * removed_COD  # produced biomass
-          
-#         for component in ('Mg', 'Ca', 'OtherSS', 'Tissue', 'WoodAsh'):
-#             TreatedWater.imass[component] += sludge_prcd  # New sludge produced
-            
-#         # CH4 emission
-#         CH4_emission.imass['CH4'] += TreatedWater.imass['SolubleCH4']  # Let all soluble CH4 transfer from solution phase to gas phase
-#         TreatedWater.imass['SolubleCH4'] = 0  # Ensure that treated water will not include soluble CH4
-        
-#         # N2O produced
-#         N_removal = self.EL_aeroT_TN_removal
-#         if self.if_N2O_emission:
-#           # Assume the removal part covers both degradation loss
-#           # and other unspecified removal as well
-#               N_loss = self.first_order_decay(k = self.decay_k_N,
-#                                     t = self.EL_aeroT_tau / 365,
-#                                     max_decay = self.N_max_decay)
-#               if N_loss > N_removal:
-#                   warn(f'Nitrogen degradation loss ({N_loss:.2f}) larger than the given removal ({N_removal:.2f})), '
-#                         'the degradation loss is assumed to be the same as the removal.')
-#                   N_loss = N_removal
-            
-#               # N2O only from the degraded part
-#               N_loss_tot = N_loss * WasteWater.TN / 1e3 * WasteWater.F_vol
-#               N2O_emission.imass['N2O'] = N_loss_tot * self.N2O_EF_decay * 44 / 28
-#         else:
-#               N2O_emission.empty()
-#               N2O_emission.imass['N2O'] = 0  # All N2O is emitted
-        
-#         # NO3 conversion
-#         NH3_mass = TreatedWater.imass['NH3']  # Inherite NH4 property from anoxic tank
-#         NO3_mass_generated = NH3_mass * self.NO3_produced_ratio
-#         TreatedWater.imass['NO3'] += NO3_mass_generated
-#         TreatedWater.imass['NH3'] = 0
-        
-#         # N2O emission
-#         N2O_mass_generated = NH3_mass * (1 - self.NO3_produced_ratio)
-#         N2O_emission.imass['N2O'] += N2O_mass_generated
-    
-#     # def _run(self):
-
-#     #     # Input streams
-#     #     WasteWater = self.ins[0]
-#     #     PAC = self.ins[1]
-#     #     air = self.ins[2]
-
-#     #     # Output stream
-#     #     TreatedWater = self.outs[0] 
-#     #     CH4_emission = self.outs[1] 
-#     #     N2O_emission = self.outs[2]
-        
-#     #     input_streams = [WasteWater, PAC, air]
-            
-#     #     # Mix all inputs into a single stream
-#     #     self._mixed.empty()
-#     #     self._mixed.mix_from(input_streams)
-
-#     #     # Copy the mixed result to the outflow
-#     #     TreatedWater.copy_like(self._mixed)
-
-
-#     def _design(self):
-#         design = self.design_results
-#         constr = self.construction
-#         design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)
-#         self.add_construction(add_cost=False)
-    
-#     def _cost(self):
-#         C = self.baseline_purchase_costs
-#         # massflow_aerobic = self.ins[0].mass #kg/h
-#         C['Tank'] = self.aerobic_tank_cost
-#         C['Pipes'] = self.pipeline_connectors
-#         C['Fittings'] = self.weld_female_adapter_fittings
-#         # C['Chemical_PAC'] = self.chemical_PAC_dosage * massflow_aerobic * self.chemical_PAC_price
-#         #PAC cost is already accounted in WasteStream
-
-#         ratio = self.price_ratio
-#         for equipment, cost in C.items():
-#             C[equipment] = cost * ratio
-        
-#         self.add_OPEX = self._calc_replacement_cost()
-        
-#         power_demand = self.power_demand_AerobicTank
-#         self.power_utility(power_demand) # kWh
-    
-#     def _calc_replacement_cost(self):
-#         scale = (self.ppl / self.baseline_ppl) * self.exponent_scale
-#         Aerobic_tank_replacement_cost = (self.aerobic_tank_cost / self.aerobic_tank_lifetime +
-#                                         self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
-#                                         self.pipeline_connectors / self.pipeline_connectors_lifetime) * scale
-#         Aerobic_tank_replacement_cost = Aerobic_tank_replacement_cost / (365 * 24)  # convert to USD/hr
-#         return Aerobic_tank_replacement_cost
 
 Aerobic_path = os.path.join(EL_su_data_path, '_EL_Aerobic.tsv')
 
@@ -2333,10 +1385,10 @@ class EL_Aerobic(CSTR):
          https://doi.org/10.1039/C5EE03715H.
     
     '''
-    _N_ins = 2 # treated water, PAC, blower
-    _N_outs = 3  # treated water, CH4, N2O
-    _ins_size_is_fixed = True
-    _outs_size_is_fixed = True
+    _N_ins = 1 # treated water, PAC, blower
+    _N_outs = 1  # treated water, CH4, N2O
+    _ins_size_is_fixed = False
+    _outs_size_is_fixed = False
     # exponent_scale = 0.1
     
     _D_O2 = 2.10e-9   # m2/s
@@ -2560,7 +1612,6 @@ class EL_Aerobic(CSTR):
     def _run(self):
         '''Only to converge volumetric flows.'''
         mixed = self._mixed # avoid creating multiple new streams
-        # breakpoint()
         mixed.mix_from(self.ins)
         Q = mixed.F_vol # m3/hr
         if self.split is None: self.outs[0].copy_like(mixed)
@@ -2684,255 +1735,7 @@ class EL_Aerobic(CSTR):
         return Aerobic_tank_replacement_cost
 
 # %%
-# MBR_path = ospath.join(EL_su_data_path, '_EL_MBR.tsv')
 
-# @price_ratio()
-# class EL_MBR(SanUnit, Decay):
-
-#     '''
-#     Aerobic treatment unit in the EL system.
-
-#     Parameters
-#     ----------
-#     Ins:
-#     (1) influent of treated wastetwater from aerobic tank
-#     (2) blower
-
-#     Outs:
-#     (1) effluent of treated wastewater
-#     (2) nitrate return flow to anoxic tank
-#     (3) nitrate return flow to primary clarifier
-#     (4) fugitive CH4 emission
-#     (5) fugtivie N2O emission
-
-#     Attributes
-#     ----------
-
-    
-#     References
-#     ----------
-#      refer to the exposan.eco-san.MBR module
-#     '''
-#     _N_ins = 2  # treated water, Blower
-#     _N_outs = 6  # treated water, CH4, N2O, Nitrate return to Primary Clarifier, Nitrate return to Anoxic Tank
-#     _ins_size_is_fixed = True
-#     _outs_size_is_fixed = True
-#     exponent_scale = 0.1
-
-#     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-#                  degraded_components=('OtherSS',), ppl = None, baseline_ppl = None, F_BM_default=1,
-#                  if_capture_biogas=False, if_N2O_emission=True, **kwargs):
-#         Decay.__init__(self, ID, ins=ins, outs=outs, thermo=thermo,
-#                        init_with=init_with, F_BM_default=F_BM_default,
-#                        degraded_components=degraded_components,
-#                        if_capture_biogas=if_capture_biogas,
-#                        if_N2O_emission=if_N2O_emission,)
-
-#         self.ppl = ppl
-#         self.baseline_ppl = baseline_ppl
-
-#         data = load_data(path=MBR_path)
-#         for para in data.index:
-#             value = float(data.loc[para]['expected'])
-#             setattr(self, para, value)
-#         del data
-
-#         for attr, value in kwargs.items():
-#             setattr(self, attr, value)
-
-#     def _init_lca(self):
-#         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
-#                              Construction(item ='PVDF_membrane', linked_unit=self, quantity_unit='kg'),]
-    
-#     def _run(self):
-        
-#         # Input stream
-#         WasteWater = self.ins[0]
-#         air = self.ins[1]
-        
-#         # Output stream
-#         TreatedWater = self.outs[0]
-#         PC_nitrate_return = self.outs[1]
-#         AnoT_nitrate_return = self.outs[2]
-#         CH4_emission = self.outs[3]
-#         N2O_emission = self.outs[4]
-#         sludge = self.outs[5]
-        
-#         # Inherited input stream
-#         TreatedWater.copy_like(WasteWater)
-#         # TreatedWater.empty()
-    
-#         # # Transfer 99% of components to sludge
-#         sludge.empty()
-#         for component in ('P','K','NH3','NonNH3','Mg', 'Ca', 'OtherSS', 'Tissue', 'WoodAsh'):
-#             mass_in_treated = TreatedWater.imass[component]  # Obtain every components' property
-#             mass_to_sludge = 0.99 * mass_in_treated          # Transfer 99% components content to sludge
-#             sludge.imass[component] = mass_to_sludge
-#             TreatedWater.imass[component] -= mass_to_sludge  # The last components content to treated water
-        
-#         # COD removal
-#         COD_removal = self.EL_mbrT_COD_removal
-#         removed_COD = WasteWater.COD / 1e3 * WasteWater.F_vol * COD_removal  # kg/hr
-        
-#         # Sludge produced
-#         sludge_prcd = removed_COD * self.EL_mbrT_sludge_yield  # Typical yield: 0.5 kg VSS/kg COD
-            
-#         # Sludge handling
-#         sludge.copy_flow(TreatedWater, ('P', 'K', 'NH3','NonNH3', 'Mg', 'Ca', 'OtherSS', 'Tissue', 'WoodAsh'), remove=True)
-#         sludge.imass['OtherSS'] += sludge_prcd
-#         sludge.imass['H2O'] = sludge.imass['OtherSS']/(1-self.sludge_moisture_content) - sludge.imass['OtherSS']
-        
-#         # Water balance
-#         TreatedWater.imass['H2O'] -= sludge.imass['H2O']
-#         if TreatedWater.imass['H2O'] <= 0:
-#             sludge.imass['H2O'] = WasteWater.imass['H2O']
-#             TreatedWater.imass['H2O'] = 0
-        
-#         # CH4 emission
-#         CH4_emission.imass['CH4'] = WasteWater.imass['SolubleCH4']  # Let all soluble CH4 transfer from solution phase to gas phase
-#         TreatedWater.imass['SolubleCH4'] = 0  # Ensure that treated water will not include soluble CH4
-        
-#         # N2O produced
-#         N_removal = self.EL_mbrT_TN_removal
-#         if self.if_N2O_emission:
-#           # Assume the removal part covers both degradation loss
-#           # and other unspecified removal as well
-#               N_loss = self.first_order_decay(k = self.decay_k_N,
-#                                     t = self.EL_mbrT_tau / 365,
-#                                     max_decay = self.N_max_decay)
-#               if N_loss > N_removal:
-#                   warn(f'Nitrogen degradation loss ({N_loss:.2f}) larger than the given removal ({N_removal:.2f})), '
-#                         'the degradation loss is assumed to be the same as the removal.')
-#                   N_loss = N_removal
-            
-#               # N2O only from the degraded part
-#               N_loss_tot = N_loss * WasteWater.TN / 1e3 * WasteWater.F_vol
-#               N2O_emission.imass['N2O'] = N_loss_tot * self.N2O_EF_decay * 44 / 28
-#         else:
-#               N2O_emission.empty()
-        
-#         # NO3 conversion
-#         NH3_mass = TreatedWater.imass['NH3']  # Inherite NH4 property from anoxic tank
-#         NO3_mass_generated = NH3_mass * self.NO3_produced_ratio
-#         TreatedWater.imass['NO3'] += NO3_mass_generated
-#         TreatedWater.imass['NH3'] = 0
-        
-#         # N2O emission
-#         N2O_mass_generated = NH3_mass * (1 - self.NO3_produced_ratio)
-#         N2O_emission.imass['N2O'] += N2O_mass_generated
-        
-#         # Split NO3 into PC_nitrate_return and AnoT_nitrate_return
-#         NO3_return_ratio = self.NO3_split_ratio  # Ratio of NO3 going to PC vs. AnoT
-#         PC_nitrate_return.imass['NO3'] = TreatedWater.imass['NO3'] * NO3_return_ratio
-#         AnoT_nitrate_return.imass['NO3'] = TreatedWater.imass['NO3'] * (1 - NO3_return_ratio)
-
-#         # Remove NO3 from TreatedWater since it is returned to the previous tanks
-#         TreatedWater.imass['NO3'] -= (PC_nitrate_return.imass['NO3'] + AnoT_nitrate_return.imass['NO3'])
-        
-#         # Update COD
-#         TreatedWater._COD = WasteWater.COD * (1 - self.EL_mbrT_COD_removal)
-#         sludge._COD = WasteWater.COD * self.EL_mbrT_COD_removal
-    
-#     # def _run(self):
-
-#     #     # Input streams
-#     #     WasteWater = self.ins[0]
-#     #     air = self.ins[1]
-
-#     #     # Output stream
-#     #     TreatedWater = self.outs[0] 
-#     #     PC_sludge_return = self.outs[1]
-#     #     AnoT_sludge_return = self.outs[2]
-#     #     CH4_emission = self.outs[3] 
-#     #     N2O_emission = self.outs[4]
-        
-#     #     input_streams = [WasteWater, air]
-            
-#     #     # Mix all inputs into a single stream
-#     #     self._mixed.empty()
-#     #     self._mixed.mix_from(input_streams)
-
-#     #     # Copy the mixed result to the outflow
-#     #     TreatedWater.copy_like(self._mixed)
-    
-#     # def _run(self):
-        
-#     #     # Input streams
-#     #     WasteWater = self.ins[0]
-#     #     air = self.ins[1]
-
-#     #     # Output streams
-#     #     TreatedWater = self.outs[0]
-#     #     PC_sludge_return = self.outs[1]
-#     #     AnoT_sludge_return = self.outs[2]
-#     #     CH4_emission = self.outs[3]
-#     #     N2O_emission = self.outs[4]
-
-#     #     # Air does not affect mass balance
-#     #     # Air is used for aeration, so we do not modify WasteWater mass
-
-#     #     # Step 1: Copy WasteWater to TreatedWater
-#     #     TreatedWater.copy_like(WasteWater)
-
-#     #     # Step 2: Split sludge for returns (1% to PC, 99% to AnoT)
-#     #     total_f_sludge = 0.05  # Total sludge accounts for 5% of the wastewater mass
-#     #     f_PC_sludge = 0.01     # Primary clarifier accounts for 1% of the total sludge
-#     #     f_AnoT_sludge = 0.99   # Anoxic tank accounts for 99% of the total sludge
-
-#     #     # Sludge mass
-#     #     total_sludge_mass = WasteWater.F_mass * total_f_sludge
-#     #     PC_sludge_return.mass = total_sludge_mass * f_PC_sludge
-#     #     AnoT_sludge_return.mass = total_sludge_mass * f_AnoT_sludge
-
-#     #     # Update TreatedWater after sludge removal
-#     #     TreatedWater.F_mass -= total_sludge_mass
-#     #     for component in TreatedWater.components:
-#     #         TreatedWater.imass[component] -= (
-#     #             PC_sludge_return.imass[component] + AnoT_sludge_return.imass[component]
-#     #         )
-
-#     #     # Step 3: Calculate emissions using Decay._first_order_run
-#     #     super()._first_order_run(waste=WasteWater,
-#     #                              treated=TreatedWater,
-#     #                              biogas=None,  # Assume no biogas is captured
-#     #                              CH4=CH4_emission,
-#     #                              N2O=N2O_emission
-#     #                              )
-
-#     def _design(self):
-#         design = self.design_results
-#         constr = self.construction
-#         design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)  # assume linear scaling
-#         design['PVDF_membrane'] = constr[1].quantity = self.membrane_material_weight
-#         self.add_construction(add_cost=False)
-
-#     def _cost(self):
-#         C = self.baseline_purchase_costs # the below items need to be defined in .tsv file
-#         C['MBR_tank'] = self.MBR_tank_cost
-#         C['pipeline'] = self.pipeline_connectors
-#         C['fittings'] = self.weld_female_adapter_fittings
-#         C['Membrane_material'] = self.membrane_material_price * self.membrane_material_weight
-#         C['Membrane_cleaning'] = self.membrane_cleaning_fee
-
-#         ratio = self.price_ratio
-#         for equipment, cost in C.items():
-#             C[equipment] = cost * ratio 
-        
-#         self.add_OPEX = self._calc_replacement_cost()
-        
-#         power_demand = self.power_demand_MBR #TODO: power_demand unit should be kW, but the tsv file is in kWh/day
-#         self.power_utility(power_demand)
-
-#     def _calc_replacement_cost(self):
-#         scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
-#         MBR_replacement_cost = (
-#             self.MBR_tank_cost / self.MBR_tank_lifetime +
-#             self.pipeline_connectors / self.pipeline_connectors_lifetime +
-#             self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
-#             self.membrane_material_price * self.membrane_material_weight / self.membrane_material_lifetime
-#             ) * scale
-#         MBR_replacement_cost = MBR_replacement_cost / (365 * 24) * self.price_ratio # USD/hr
-#         return MBR_replacement_cost
 
 MBR_path = os.path.join(EL_su_data_path, '_EL_MBR.tsv')
 
@@ -2949,17 +1752,15 @@ class EL_CMMBR(CompletelyMixedMBR):
     
     '''
     _N_ins = 1
-    _N_outs = 3 # [0] filtrate, [1] pumped flow
-    _outs_size_is_fixed = False
+    _N_outs = 2  # [0] filtrate, [1] pumped flow
+    _outs_size_is_fixed = True
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', isdynamic=True, 
                  pumped_flow=50, solids_capture_rate=0.999, 
                  V_max=1000, crossflow_air=None,
                  **kwargs):
-        super().__init__(ID, ins=ins, outs=outs, 
-                         # split=None, 
-                         thermo=thermo,
+        super().__init__(ID, ins, outs, thermo=thermo,
                          init_with=init_with, V_max=V_max, isdynamic=isdynamic, 
                          **kwargs)
         self.pumped_flow = pumped_flow
@@ -3004,55 +1805,18 @@ class EL_CMMBR(CompletelyMixedMBR):
 
     split = None
         
-    # def _run(self):
-    #     '''Only to converge volumetric flows.'''
-    #     mixed = self._mixed
-    #     mixed.mix_from(self.ins)
-        
-
-    #     cmps = mixed.components
-    #     Q = mixed.F_vol*24 # m3/d
-    #     Qp = self._Q_pump
-    #     f_rtn = self._f_rtn
-    #     xsplit = Qp / ((1-f_rtn)*(Q-Qp) + Qp) # mass split of solids to pumped flow
-    #     # breakpoint()
-    #     qsplit = Qp / Q
-    #     flt, rtn = self.outs
-    #     mixed.split_to(rtn, flt, xsplit*cmps.x + qsplit*(1-cmps.x))
-    
     def _run(self):
+        '''Only to converge volumetric flows.'''
         mixed = self._mixed
         mixed.mix_from(self.ins)
-    
-        Q = mixed.F_vol * 24  # Convert m3/hr to m3/day
-        Qp = self._Q_pump     # Pumped flow (filtrate) in m3/day
-        f_rtn = self._f_rtn   # Solids capture efficiency (e.g., 0.999)
-    
-        if Q <= 0 or Qp <= 0:
-            for out in self.outs:
-                out.empty()
-            return
-    
-        x = mixed.components.x
-    
-        # Solids mostly retained, liquids mostly filtered
-        # This is how filtrate (clear water) is calculated
-        xsplit = x * (1 - f_rtn) + (1 - x) * (Qp / Q)
-        
-        xsplit = np.clip(xsplit, 0, 1)
-    
-        # Outputs
-        flt = self.outs[0]   # Filtrate → Clear Water Tank
-        rtn = self.outs[1]   # Retentate → Nitrate return to Anoxic
-        sludge = self.outs[2]  # Sludge return → Primary Clarifier
-    
-        # Step 1: Split into filtrate and internal loop (retentate + sludge)
-        internal = WasteStream()
-        mixed.split_to(flt, internal, xsplit)
-    
-        # Step 2: Divide internal into nitrate return and sludge return
-        # For now, split equally unless you have logic for that
-        internal.split_to(rtn, sludge, 0.5)
+        cmps = mixed.components
+        Q = mixed.F_vol*24 # m3/d
+        Qp = self._Q_pump
+        f_rtn = self._f_rtn
+        xsplit = Qp / ((1-f_rtn)*(Q-Qp) + Qp) # mass split of solids to pumped flow
+        qsplit = Qp / Q
+        flt, rtn = self.outs
+        mixed.split_to(rtn, flt, xsplit*cmps.x + qsplit*(1-cmps.x))
     
     def _compile_ODE(self):
         aer = self._aeration
@@ -3181,197 +1945,10 @@ class EL_CMMBR(CompletelyMixedMBR):
         return MBR_replacement_cost
 
 # %%
-# ClearWaterTank_path = ospath.join(EL_su_data_path, '_EL_CWT.tsv')
-
-# @price_ratio()
-# class EL_CWT(StorageTank):
-
-#     '''
-#     Introduction
-#     ------------
-#     To only collect the treated water
-
-#     Parameters
-#     ----------
-#     Ins:
-#     (1) influent of treated wastetwater from self-priming pump
-#     (2) O3 dosing
-#     (3) air-dissolve influent
-
-#     Outs:
-#     (1) effluent of treated wastewater (clear water)
-#     (2) spill flow to collection tank
-
-
-#     Attributes
-#     ----------
-
-    
-#     References
-#     ----------
-#      refer to the qsdsan.sanunits.storagetank module
-
-#     '''
-#     _N_ins = 3  # number of ins
-#     _N_outs = 2  # number of outs
-#     _ins_size_is_fixed = True
-#     _outs_size_is_fixed = True
-#     exponent_scale = 0.1
-
-#     def __init__(self, ID = '', ins = None, outs = (), thermo = None, ppl = None, baseline_ppl = None,
-#                  vessel_type='Field erected',tau = 24, V_wf = None, vessel_material='Stainless steel', kW_per_m3 = 0.1,
-#                  init_with = 'WasteStream', F_BM_default = 1, max_overflow=15, include_construction = True, **kwargs):
-#         StorageTank.__init__(self, ID=ID, ins=ins, outs=outs, thermo = thermo, init_with = init_with, 
-#                              F_BM_default = F_BM_default, include_construction = include_construction,
-#                              kW_per_m3= kW_per_m3, vessel_type= vessel_type, tau= tau,
-#                              vessel_material= vessel_material, V_wf= V_wf)
-
-#         self.ppl = ppl
-#         self.baseline_ppl = baseline_ppl
-#         self.max_overflow = max_overflow
-
-#         data = load_data(path = ClearWaterTank_path)
-#         for para in data.index:
-#             value = float(data.loc[para]['expected'])
-#             setattr(self, para, value)
-#         del data
-
-#         for attr, value in kwargs.items():
-#             setattr(self, attr, value)
-
-#     def _init_lca(self):
-#         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),]
-    
-#     def _run(self):
-        
-#         # Input streams
-#         WasteWater = self.ins[0]
-#         ozone = self.ins[1]
-#         air = self.ins[2]
-        
-#         # Output streams
-#         TreatedWater = self.outs[0]
-#         spill_return = self.outs[1]
-#         # CWT_cycle = self.outs[2]
-        
-#         # Inherited input stream
-#         TreatedWater.copy_like(WasteWater)
-        
-#         # Spill water return
-#         max_overflow_m3d = self.max_overflow * 24  # Convert m³/h to m³/d
-#         Q_treated = TreatedWater.F_vol * 24  # m³/d
-#         if Q_treated > max_overflow_m3d:
-#             spill_vol = Q_treated - max_overflow_m3d
-#             f_spill = spill_vol / Q_treated
-#             spill_return.copy_like(TreatedWater)
-#             spill_return.F_mass *= f_spill
-#             TreatedWater.F_mass *= (1 - f_spill)
-#         else:
-#             # max_overflow is none, no spill return
-#             spill_return.empty()
-        
-
-#         # # Input streams
-#         # WasteWater = self.ins[0]
-#         # ozone = self.ins[1]
-#         # air = self.ins[2]
-
-#         # # Output streams
-#         # TreatedWater = self.outs[0]
-#         # spill_return = self.outs[1]
-#         # CWT_cycle = self.outs[2]
-        
-#         # input_streams = [WasteWater, ozone, air]
-            
-#         # # Mix all inputs into a single stream
-#         # self._mixed.empty()
-#         # self._mixed.mix_from(input_streams)
-        
-
-#         # # Copy the mixed result to the outflow
-#         # TreatedWater.copy_like(self._mixed)
-        
-    
-    
-#     # def _run(self):
-        
-#     #     # Input streams
-#     #     WasteWater = self.ins[0]
-#     #     ozone = self.ins[1]
-#     #     air = self.ins[2]
-
-#     #     # Output streams
-#     #     TreatedWater = self.outs[0]
-#     #     CT_spill_return = self.outs[1]
-#     #     PC_spill_return = self.outs[2]
- 
-#     #     # Constants for overflow conditions
-#     #     CT_spill_fraction = 0.6
-#     #     PC_spill_fraction = 0.4
-
-#     #     # Step 1: Process inputs
-#     #     # Air and ozone are balanced, not affecting mass balance
-#     #     TreatedWater.copy_like(WasteWater)
-
-#     #     # Step 2: Handle overflow if necessary
-#     #     if TreatedWater.F_vol > self.max_overflow:
-#     #         # Calculate excess volume
-#     #         spill_vol = TreatedWater.F_vol - self.max_overflow
-
-#     #         # Calculate spill fractions
-#     #         self._f_spill = spill_vol / TreatedWater.F_vol
-#     #         self._f_treated = 1 - self._f_spill
-
-#     #         # Assign spill fractions to CT_spill_return and PC_spill_return
-#     #         CT_spill_return.F_mass[:] = TreatedWater.F_mass[:] * self._f_spill * CT_spill_fraction
-#     #         PC_spill_return.F_mass[:] = TreatedWater.F_mass[:] * self._f_spill * PC_spill_fraction
-
-#     #         # Adjust the normal treated water to within max capacity
-#     #         TreatedWater.F_mass[:] *= self._f_treated
-#     #     else:
-#     #         # No spill return if overflow is within capacity
-#     #         CT_spill_return.empty()
-#     #         PC_spill_return.empty()
-#     #         self._f_spill = 0.0
-#     #         self._f_treated = 1.0
-
-#     def _design(self):
-#         design = self.design_results
-#         constr = self.construction
-#         design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)  # to be defined in .tsv file
-#         self.add_construction(add_cost=False)
-
-#     def _cost(self):
-#         C = self.baseline_purchase_costs # the below items need to be defined in .tsv file
-#         C['Clear water tank'] = self.clear_water_tank_cost
-#         C['pipeline'] = self.pipeline_connectors
-#         C['fittings'] = self.weld_female_adapter_fittings
-#         C['O3 generator'] = self.O3_generation_machine_cost
-
-#         ratio = self.price_ratio
-#         for equipment, cost in C.items():
-#             C[equipment] = cost * ratio
-
-#         self.add_OPEX = self._calc_replacement_cost()
-        
-#         power_demand = self.power_demand_CWT
-#         self.power_utility(power_demand)
-
-#     def _calc_replacement_cost(self):
-#         scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
-#         CWR_replacement_cost = (
-#             self.clear_water_tank_cost / self.clear_water_tank_lifetime +
-#             self.pipeline_connectors / self.pipeline_connectors_lifetime +
-#             self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
-#             self.O3_generation_machine_cost / self.O3_generation_machine_lifetime
-#             ) * scale
-#         CWR_replacement_cost = CWR_replacement_cost / (365 * 24) # convert to USD/hr
-#         return CWR_replacement_cost
-
 ClearWaterTank_path = os.path.join(EL_su_data_path, '_EL_CWT.tsv')
 
 @price_ratio()
-class EL_CWT(Mixer):
+class EL_CWT(StorageTank):
 
     '''
     Introduction
@@ -3399,88 +1976,91 @@ class EL_CWT(Mixer):
      refer to the qsdsan.sanunits.storagetank module
 
     '''
-    '''
-    Similar to :class:`biosteam.units.Mixer`,
-    but can be initialized with :class:`qsdsan.SanStream` and :class:`qsdsan.WasteStream`,
-    and allows dynamic simulation.
-
-    See Also
-    --------
-    `biosteam.units.Mixer <https://biosteam.readthedocs.io/en/latest/units/mixing.html>`_
-    '''
     _N_ins = 1
-    _N_outs = 2
-    _graphics = BSTMixer._graphics
+    _N_outs = 1
+    _units = {'Diameter': 'ft',
+              'Length': 'ft',
+              'Wall thickness': 'in',
+              'Weight': 'lb'}
+    _bounds = {'Vertical vessel weight': (4200, 1e6),
+               'Horizontal vessel weight': (1e3, 9.2e5),
+               'Horizontal vessel diameter': (3, 21),
+               'Vertical vessel length': (12, 40)}
+    _vessel_material = 'Stainless steel'
+    
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', F_BM_default=None, isdynamic=False,
-                 rigorous=False, conserve_phases=False):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with,
-                         F_BM_default=F_BM_default, isdynamic=isdynamic)
-        self.rigorous = rigorous
-        self.conserve_phases = conserve_phases
+                 vessel_type=None, tau=None, V_wf=None,
+                 vessel_material=None, kW_per_m3=0.,ppl=100, baseline_ppl = 100,
+                 init_with='WasteStream', F_BM_default=None,
+                 include_construction=True, length_to_diameter=2):
+        StorageTank.__init__(self, ID=ID, ins=ins, outs=outs, thermo=thermo,
+                      init_with=init_with, F_BM_default=F_BM_default,
+                      include_construction=include_construction,
+                      vessel_type=vessel_type, tau=tau, V_wf=V_wf,
+                      vessel_material=vessel_material, kW_per_m3=kW_per_m3,)
+        self.length_to_diameter = length_to_diameter
+        
+    def _init_lca(self):
+        item_name = self.vessel_material.replace(' ', '_')
+        self.construction = [
+            Construction(item_name.lower(), linked_unit=self, item=item_name, quantity_unit='kg'),
+            ]
+        
+    
+    def _design(self):
+        BSTStorageTank._design(self)
+        D = self.design_results
+        
+        _lb_to_kg = auom('lb').conversion_factor('kg')
+        _m_to_ft = auom('m').conversion_factor('ft')
+        _Pa_to_psi = auom('Pa').conversion_factor('psi')
+        
+        Diameter = (4*D['Total volume']/pi/self.length_to_diameter)**(1/3)
+        Diameter *= _m_to_ft # convert from m to ft
+        L = Diameter * self.length_to_diameter # ft
+        D.update(self._horizontal_vessel_design(self.ins[0].P*_Pa_to_psi, Diameter, L))
+        D['Material'] = self.vessel_material
+        if self.include_construction: self.construction[0].quantity = D['Weight']*_lb_to_kg
 
+
+    def _horizontal_vessel_design(self, pressure, diameter, length) -> dict:
+        pressure = pressure
+        diameter = diameter
+        length = length
+        # Calculate vessel weight and wall thickness
+        if self.vessel_material == 'Carbon steel':
+            rho_M = material_densities_lb_per_ft3[self.vessel_material]
+        else:
+            rho_M = material_densities_lb_per_ft3['Stainless steel 304']
+        if pressure < 14.68:
+            warn('vacuum pressure vessel ASME codes not implemented yet; '
+                 'wall thickness may be inaccurate and stiffening rings may be '
+                 'required', category=DesignWarning)
+        VW, VWT = flash_vessel_design.compute_vessel_weight_and_wall_thickness(
+            pressure, diameter, length, rho_M)
+        bounds_warning(self, 'Horizontal vessel weight', VW, 'lb',
+                       self._bounds['Horizontal vessel weight'], 'cost')
+        bounds_warning(self, 'Horizontal vessel diameter', diameter, 'ft',
+                       self._bounds['Horizontal vessel diameter'], 'cost')
+        Design = {}
+        Design['Vessel type'] = 'Horizontal'
+        Design['Length'] = length # ft
+        Design['Diameter'] = diameter # ft
+        Design['Weight'] = VW # lb
+        Design['Wall thickness'] = VWT # in
+        return Design
 
     @property
-    def state(self):
-        '''The state of the Mixer, including component concentrations [mg/L] and flow rate [m^3/d].'''
-        if self._state is None: return None
-        else:
-            return dict(zip(list(self.components.IDs) + ['Q'], self._state))
-
-    def _init_state(self):
-        '''initialize state by specifying or calculating component concentrations
-        based on influents. Total flow rate is always initialized as the sum of
-        influent wastestream flows.'''
-        QCs = self._ins_QC
-        if QCs.shape[0] <= 1: self._state = QCs[0]
-        else:
-            Qs = QCs[:,-1]
-            Cs = QCs[:,:-1]
-            self._state = np.append(Qs @ Cs / Qs.sum(), Qs.sum())
-        self._dstate = self._state * 0.
-
-    def _update_state(self):
-        '''updates conditions of output stream based on conditions of the Mixer'''
-        self._outs[0].state = self._state
-
-    def _update_dstate(self):
-        '''updates rates of change of output stream from rates of change of the Mixer'''
-        self._outs[0].dstate = self._dstate
-
-    @property
-    def AE(self):
-        if self._AE is None:
-            self._compile_AE()
-        return self._AE
-
-    def _compile_AE(self):
-        _n_ins = len(self.ins)
-        _state = self._state
-        _dstate = self._dstate
-        _update_state = self._update_state
-        _update_dstate = self._update_dstate
-        def yt(t, QC_ins, dQC_ins):
-            if _n_ins > 1:
-                Q_ins = QC_ins[:, -1]
-                C_ins = QC_ins[:, :-1]
-                dQ_ins = dQC_ins[:, -1]
-                dC_ins = dQC_ins[:, :-1]
-                Q = Q_ins.sum()
-                C = Q_ins @ C_ins / Q
-                _state[-1] = Q
-                _state[:-1] = C
-                Q_dot = dQ_ins.sum()
-                C_dot = (dQ_ins @ C_ins + Q_ins @ dC_ins - Q_dot * C)/Q
-                _dstate[-1] = Q_dot
-                _dstate[:-1] = C_dot
-            else:
-                _state[:] = QC_ins[0]
-                _dstate[:] = dQC_ins[0]
-            _update_state()
-            _update_dstate()
-        self._AE = yt
-
-
+    def vessel_material(self):
+        return self._vessel_material
+    @vessel_material.setter
+    def vessel_material(self, i):
+        exist_material = getattr(self, '_vessel_material', None)
+        StorageTank.vessel_material.fset(self, i)
+        if i and exist_material == i: return # type doesn't change, no need to reload construction items
+        self._init_lca()
+        
+        
     def _design(self):
         design = self.design_results
         constr = self.construction
@@ -3489,30 +2069,27 @@ class EL_CWT(Mixer):
 
     def _cost(self):
         C = self.baseline_purchase_costs # the below items need to be defined in .tsv file
-        C['Clear water tank'] = self.clear_water_tank_cost
+        C['Pressure water tank'] = self.pressure_water_tank_cost
         C['pipeline'] = self.pipeline_connectors
         C['fittings'] = self.weld_female_adapter_fittings
-        C['O3 generator'] = self.O3_generation_machine_cost
 
         ratio = self.price_ratio
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
 
         self.add_OPEX = self._calc_replacement_cost()
-        
-        power_demand = self.power_demand_CWT
+
+        power_demand = self.power_demand_PT
         self.power_utility(power_demand)
 
     def _calc_replacement_cost(self):
         scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
-        CWR_replacement_cost = (
-            self.clear_water_tank_cost / self.clear_water_tank_lifetime +
+        PW_replacement_cost = (
+            self.pressure_water_tank_cost / self.pressure_water_tank_lifetime +
             self.pipeline_connectors / self.pipeline_connectors_lifetime +
-            self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
-            self.O3_generation_machine_cost / self.O3_generation_machine_lifetime
-            ) * scale
-        CWR_replacement_cost = CWR_replacement_cost / (365 * 24) # convert to USD/hr
-        return CWR_replacement_cost
+            self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime) * scale
+        PW_replacement_cost = PW_replacement_cost / (365 * 24) # convert to USD/hr
+        return PW_replacement_cost
 
 # %%
 PressureTank_path = os.path.join(EL_su_data_path, '_EL_PT.tsv')
