@@ -23,7 +23,7 @@ from qsdsan.utils import (
 from exposan.utils import batch_setting_unit_params, run_uncertainty as run
 from exposan import enviroloo as el
 from exposan.enviroloo import (
-    create_system,
+    create_systemEL,
     #el_data_path,
     data_path,
     get_decay_k,

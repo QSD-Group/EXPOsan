@@ -65,7 +65,7 @@ from exposan.enviroloo._EL_pumps import (
 
 folder = ospath.dirname(__file__)
 
-__all__ = ('create_systemEL')
+__all__ = ('create_systemEL',)
 
 '''
 Name notes:
@@ -146,7 +146,7 @@ def create_components(set_thermo = True
     # # add_V_from_rho(Glucose, rho=1560)
 
 
-    cmps = Components((masm2d_cmps, Tissue, WoodAsh, H2O,
+    cmps = Components((*masm2d_cmps, Tissue, WoodAsh, H2O,
                        ))
     cmps.compile()    
     return cmps
@@ -247,7 +247,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
     # sys = qs.System('G1_WERF', path=(PC, S1, A1, A2, A3, A4, O1, O2, C1, GT, MT, M1, J1, DG, J2, DU, M2), 
     #                 recycle = [M2-0, 1-A3, RAS])
                     # recycle = [eff_GT, eff_MT, eff_DU, RAS])
-    sys.set_tolerance(rmol=1e-6)
+    # sys.set_tolerance(rmol=1e-6)
     sys.maxiter = 500
     return sys
 
