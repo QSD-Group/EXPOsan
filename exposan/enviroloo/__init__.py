@@ -239,7 +239,7 @@ def _load_system():
     qs.currency = 'USD'
     qs.PowerUtility.price = price_dct['Electricity']
     global sysEL, teaEL, lcaEL, _system_loaded
-    sysEL = create_system('EL')
+    sysEL = create_systemEL('EL')
     teaEL = sysEL.TEA
     lcaEL = sysEL.LCA
     _system_loaded = True
