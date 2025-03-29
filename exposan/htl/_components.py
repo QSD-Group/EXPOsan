@@ -182,10 +182,20 @@ def create_components(set_thermo=True):
     H3PO4 = Component('H3PO4', phase='l', particle_size='Soluble',
                       degradability='Undegradable', organic=False)
     
+    CaO = Component('CaO', phase='s', particle_size='Particulate',
+                    degradability='Undegradable', organic=False)
+    
+    CaOH2 = Component('CaOH2', search_ID='1305-62-0',
+                      phase='s', particle_size='Particulate',
+                      degradability='Undegradable', organic=False)
+    
+    CaCO3 = Component('CaCO3', phase='s', particle_size='Particulate',
+                      degradability='Undegradable', organic=False)
+    
     MgCl2 = Component('MgCl2', phase='l', particle_size='Soluble',
                       degradability='Undegradable', organic=False)
     
-    MgO = Component('MgO', phase='l', particle_size='Soluble',
+    MgO = Component('MgO', phase='l', particle_size='Particulate',
                       degradability='Undegradable', organic=False)
     
     NaOH = Component('NaOH', phase='l', particle_size='Soluble',
@@ -413,7 +423,7 @@ def create_components(set_thermo=True):
                        Struvite, Hydrochar, Residual,
                        Biocrude, HTLaqueous, H2O, C, N, P,
                        O2, N2, N2O, CH4, C2H6, C3H8, CO2, CO, H2, NH3,
-                       H2SO4, H3PO4, MgCl2, MgO, NaOH, NH42SO4, NH4Cl,
+                       H2SO4, H3PO4, CaO, CaOH2, CaCO3, MgCl2, MgO, NaOH, NH42SO4, NH4Cl,
                        C4H10, TWOMBUTAN, NPENTAN, TWOMPENTA, CYCHEX, HEXANE,
                        TWOMHEXAN, HEPTANE, CC6METH, PIPERDIN, TOLUENE,
                        THREEMHEPTA, OCTANE, ETHCYC6, ETHYLBEN, OXYLENE, C9H20,

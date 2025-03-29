@@ -106,7 +106,7 @@ class LandApplication(SanUnit):
             self.N_content*self.N_emission_ratio/28.0134*44.013
         
         for pollutant in self.other_pollutants:
-            emission.imass[pollutant[0]] = emission.imass['N2O']/1000000*pollutant[1]
+            emission.imass[pollutant[0]] = emission.imass['N2O']/1e6*pollutant[1]
         
         for component in qs.get_components():
             if component.ID in ['water','H2O']:
@@ -259,7 +259,7 @@ class Landfilling(SanUnit):
         
         for pollutant in self.other_pollutants:
             emission.imass[pollutant[0]] = (methane_m3_per_h + carbon_dioxide_m3_per_h)/\
-                1000000*pollutant[1]*self.methane_density/16.04*pollutant[2]
+                1e6*pollutant[1]*self.methane_density/16.04*pollutant[2]
         
         for component in qs.get_components():
             if component.ID in ['water','H2O']:
@@ -307,46 +307,55 @@ class Landfilling(SanUnit):
 # =============================================================================
 # LimeStabilization
 # =============================================================================
-@cost(ID='Buildings/equipment/piping/mixing/storage', basis='Dry solids flow',
-      units='tonne/day', cost=296558, S=1, CE=CEPCI_by_year[2004], n=0.5623, BM=1)
+@cost(ID='Quick lime all parts', basis='Quick lime dry solids flow',
+      units='tonne/day', cost=311386, S=1, CE=CEPCI_by_year[2004], n=0.5623, BM=1)
+@cost(ID='Hydrated lime all parts', basis='Hydrated lime dry solids flow',
+      units='tonne/day', cost=311386*0.8, S=1, CE=CEPCI_by_year[2004], n=0.5623, BM=1)
 class LimeStabilization(SanUnit):
     '''
-    Lime stabilization of wastewater solids.
-    # TODO: is the capital cost the same as installed cost?
-    Annualized capital cost in 2004$ (30 years, 7% discount rate [r]) from [1-2]:
+    Lime stabilization of wastewater solids. Assume impurities in lime are and
+    all lime become CaCO3.
+    
+    Annualized capital cost (which likely means installed cost) in 2004$
+    (30 years, 7% discount rate [r]) from [1-2]:
         1  MGD (~1 tonne dry solids per day)  $  22,600
         4  MGD (~4 tonne dry solids per day)  $  64,700
         40 MGD (~40 tonne dry solids per day) $ 187,500
     
-    By assuming working capital as 5% of fixed capital (which equals to installed
-    cost), the total installed costs can be calculated using equations below:
-        annualized capital cost = capital cost*r/(1 - (1 + r)^(-lifetime))
-        capital cost = (1 + working capital over fixed capital) * fixed capital
+   The total installed costs can be calculated using equations below:
+        annualized installed cost = installed cost*r/(1 - (1 + r)^(-lifetime))
     
     The estimated total installed costs are:
-        1  MGD (~1 tonne dry solids per day)  $   267,090
-        4  MGD (~4 tonne dry solids per day)  $   764,633
-        40 MGD (~40 tonne dry solids per day) $ 2,215,900
+        1  MGD (~1 tonne dry solids per day)  $   280,444
+        4  MGD (~4 tonne dry solids per day)  $   802,865
+        40 MGD (~40 tonne dry solids per day) $ 2,326,695
     
     The total installed cost follows a power function:
-        capital cost = 296558*X^0.5623
+        capital cost = 311386*X^0.5623
+    
+    Assume all costs above are for cases when quick lime is used. For hydrated
+    lime, the installed cost reduces 20% since slaking is not needed.
     
     Electricity requirement is based on [3-4].
     
     Parameters
     ----------
     ins : iterable
-        wastewater_solids, lime.
+        wastewater_solids, lime, water, carbon_dioxide.
     # TODO: may consider two types of lime: quick lime, which release heat and can cause water evaporation; hydrated lime, which does not release heat to evaporate water
     outs : iterable
         stabilized_solids, vapor.
     lime_type : str
         Type of lime used, can only be 'quick_lime' or 'hydrated_lime'.
-    lime_ratio : float
+    lime_purity : float
+        The purity of lime (either CaO or Ca(OH)2), [-].
+    water_ratio : float
+        Ratio between the weight of added water and the weight of lime, [-].
+    CaOH2_ratio : float
         Lime amount as a ratio of dry wastewater solids, [-].
     unit_electricity : float
         Electricity for wastewater solids and lime mixing,
-        [kWh·dry tonne-1 wastewater solids]
+        [kWh·dry tonne-1 wastewater solids].
     
     References
     ----------
@@ -364,22 +373,28 @@ class LimeStabilization(SanUnit):
         Stabilization as an Emergent and Regional Treatment in China. Sci Rep
         2018, 8 (1), 16564. https://doi.org/10.1038/s41598-018-35052-9.
     '''
-    _N_ins = 2
+    _N_ins = 4
     _N_outs = 2
-    _units = {'Dry solids flow':'tonne/day'}
+    _units = {'Quick lime dry solids flow':'tonne/day',
+              'Hydrated lime dry solids flow':'tonne/day'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream',
-                 lime_type='hydrated_lime', lime_ratio=0.15,
+                 lime_type='hydrated_lime', lime_purity=None,
+                 water_ratio=None, CaOH2_ratio=0.2,
                  unit_electricity=5):
         
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.lime_type = lime_type
-        self.lime_ratio = lime_ratio
+        self.lime_purity = lime_purity
+        self.water_ratio = water_ratio
+        self.CaOH2_ratio = CaOH2_ratio
         self.unit_electricity = unit_electricity
     
     def _run(self):
-        wastewater_solids, lime = self.ins
+        # TODO: from [1-2]: 2-3 parts of water to 1 part of quicklime, may also need to add water for hydrated lime to from a slurry
+        wastewater_solids, lime, water, carbon_dioxide = self.ins
+        # TODO: vapor is only for quick lime
         stabilized_solids, vapor = self.outs
         
         vapor.phase = 'g'
@@ -387,13 +402,77 @@ class LimeStabilization(SanUnit):
         if self.lime_type not in ['quick_lime','hydrated_lime']:
             raise ValueError('lime_type must be one of the following: "quick_lime", "hydrated_lime".')
         
-        # TODO: update the mass balance
-        lime.imass[''] = (wastewater_solids.F_mass - wastewater_solids.imass['H2O'])*self.lime_ratio
-        
-        stabilized_solids.imass
-        
-        vapor
+        if self.lime_type == 'quick_lime':
+            # TODO: update the mass balance
+            required_CaOH2 = (wastewater_solids.F_mass - wastewater_solids.imass['H2O'])*self.CaOH2_ratio
+            
+            # TODO: consider the purity of commercial lime, from [2]: hydrated lime contains 47% CaO, quicklime contains 85% of CaO, consider adding impurities
+                     
+            lime.imass['CaO'] = required_CaOH2/74.093*56.0774
+            
+            # TODO: see [1-2] for a value, there is a value on the page 6-213 in [2]
+            if self.lime_purity is None: self.lime_purity =    
+            
+            # TODO: is it reasonable to use CaCO3 to represent impurities?
+            lime.imass['CaCO3'] = lime.imass['CaO']/self.lime_purity*(1 - self.lime_purity)
+            
+            # TODO: decide a value 
+            # from [1]: 'Bagged quicklime can be slaked in batches by simply
+            # mixing one part quicklime with two to three parts water in a steel
+            # trough while blending with a hoe.'
+            # also from [1]: 'Hydrated lime is fed as a 6–18% Ca(OH)2 slurry by weight[,]'
+            if self.water_ratio is None: self.water_ratio = 
+            
+            water.imass['H2O'] = lime.F_mass*self.water_ratio
+            
+            carbon_dioxide.imass['CO2'] = lime.imass['CaO']/56.0774*44.009
+            
+            stabilized_solids.copy_like(wastewater_solids)
+            stabilized_solids.imass['CaCO3'] += lime.imass['CaO']/56.0774*100.0869 + lime.imass['CaCO3']
+            
+            # TODO: need to decide how much water is evaporized
+            stabilized_solids.imass['H2O']
+            vapor
+            
+            # TODO: how to decide temperature change? [1] mention that
+            # '[h]eat generated by slaking of quicklime does not raise temperature
+            # significantly unless the biosolids are dewatered and the lime dose is
+            # high on the order of 400–800 lb/t dry solids (200–400 kg/T).
+            # Here t = 2000 lb, and T = 1000 kg.'
+            
+        else:
+            # TODO: update the mass balance
+            lime.imass['CaOH2'] = (wastewater_solids.F_mass - wastewater_solids.imass['H2O'])*self.CaOH2_ratio
+            
+            # TODO: consider the purity of commercial lime, from [2]: hydrated lime contains 47% CaO, quicklime contains 85% of CaO, consider adding inpurities
+            
+            # TODO: see [1-2] for a value, there is a value on the page 6-213 in [2]
+            if self.lime_purity is None: self.lime_purity = 
+            
+            # TODO: is it reasonable to use CaCO3 to represent impurities?
+            lime.imass['CaCO3'] = lime.imass['CaOH2']/self.lime_purity*(1 - self.lime_purity)
+            
+            # TODO: decide a value 
+            # from [1]: 'Bagged quicklime can be slaked in batches by simply
+            # mixing one part quicklime with two to three parts water in a steel
+            # trough while blending with a hoe.'
+            # also from [1]: 'Hydrated lime is fed as a 6–18% Ca(OH)2 slurry by weight[,]'
+            if self.water_ratio is None: self.water_ratio = 
+            
+            water.imass['H2O'] = lime.F_mass*self.water_ratio
+            
+            carbon_dioxide.imass['CO2'] = lime.imass['CaOH2']/74.093*44.009
+            
+            stabilized_solids.copy_like(wastewater_solids)
+            stabilized_solids.imass['CaCO3'] += lime.imass['CaOH2']/74.093*100.0869 + lime.imass['CaCO3']
+            stabilized_solids.imass['H2O'] += lime.imass['CaOH2']/74.093*18.01528 + water.F_mass
         
     def _design(self):
-        self.design_results['Dry solids flow'] = (self.ins[0].F_mass - self.ins[0].imass['H2O'])/1000*24
+        if self.lime_type == 'quick_lime':
+            self.design_results['Quick lime dry solids flow'] = (self.ins[0].F_mass - self.ins[0].imass['H2O'])/1000*24
+            self.design_results['Hydrated lime dry solids flow'] = 0
+        else:
+            self.design_results['Quick lime dry solids flow'] = 0
+            self.design_results['Hydrated lime dry solids flow'] = (self.ins[0].F_mass - self.ins[0].imass['H2O'])/1000*24
+        
         self.add_power_utility(self.unit_electricity*(self.ins[0].F_mass - self.ins[0].imass['H2O'])/1000)
