@@ -18,10 +18,13 @@ from qsdsan.utils import auom, clear_lca_registries
 from exposan.htl import _load_components, create_tea, _sanunits as su, test_sanunits as tsu
 
 _mile_to_km = auom('mile').conversion_factor('km')
+_ton_to_tonne = auom('ton').conversion_factor('tonne')
+_lb_to_kg = auom('lb').conversion_factor('kg')
 
 # GDPCTPI (Gross Domestic Product: Chain-type Price Index)
 # https://fred.stlouisfed.org/series/GDPCTPI (accessed 2024-05-20)
-GDPCTPI = {2007: 86.352,
+GDPCTPI = {1978: 33.339,
+           2007: 86.352,
            2008: 87.977,
            2009: 88.557,
            2010: 89.619,
@@ -39,7 +42,9 @@ GDPCTPI = {2007: 86.352,
            2022: 117.995,
            2023: 122.284}
 
-__all__ = ('create_landfilling_system','create_land_application_system',)
+__all__ = ('create_landfilling_system',
+           'create_land_application_system',
+           'create_lime_stabilization_system')
 
 def create_landfilling_system(size=10,
                               sludge_distance=13,
@@ -209,6 +214,91 @@ def create_land_application_system(size=10,
     qs.StreamImpactItem(ID='land_application_nitrous_oxide',
                         linked_stream=stream.land_application_emission,
                         GlobalWarming=273*stream.land_application_emission.imass['N2O']/stream.land_application_emission.F_mass)
+    
+    qs.LCA(system=sys, lifetime=30, lifetime_unit='yr')
+    
+    create_tea(sys, IRR_value=0.03,
+               income_tax_value=0.21,
+               finance_interest_value=0.03,
+               labor_cost_value=0)
+    
+    return sys
+
+def create_lime_stabilization_system(size=10,
+                                     ww_2_dry_sludge_ratio=1,
+                                     lime_type='hydrated_lime',
+                                     operation_hours=8760
+                                     ):
+        
+    flowsheet_ID = 'test_system'
+    
+    # clear flowsheet and registry for reloading
+    if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
+        getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
+        clear_lca_registries()
+    
+    bst.CE = qs.CEPCI_by_year[2022]
+    
+    flowsheet = qs.Flowsheet(flowsheet_ID)
+    stream = flowsheet.stream
+    qs.main_flowsheet.set_flowsheet(flowsheet)
+    
+    _load_components()
+    
+    # raw wastewater into a WRRF, in MGD
+    raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
+    
+
+    WWTP = su.WWTP(ID='WWTP',
+                   ins=raw_wastewater,
+                   outs=('sludge','treated_water'),
+                   ww_2_dry_sludge=ww_2_dry_sludge_ratio,
+                   sludge_moisture=0.8,
+                   sludge_dw_ash=0.436,
+                   sludge_afdw_lipid=0.193,
+                   sludge_afdw_protein=0.510,
+                   sludge_wet_density=1040)
+    
+    LimeStabilization = tsu.LimeStabilization(ID='LimeStabilization',
+                                              ins=(WWTP-0,'lime','water','carbon_dioxide'),
+                                              outs=('stablized_solids','vapor'),
+                                              lime_type=lime_type, lime_purity=None,
+                                              water_ratio=None, vapor_ratio=0.2,
+                                              CaOH2_ratio=0.2, unit_electricity=5)
+    # TODO: update here if needed
+    # from Process Design Manual for Sludge Treatment and Disposal; United States
+    # Environmental Protection Agency, 1979:
+    # quick lime with a purity of 85% CaO is 40 1978$/ton
+    # hydrated lime with a purity of 47% CaO is 44.5 1978$/ton
+    if lime_type == 'quick_lime':
+        LimeStabilization.ins[1].price = 40/_ton_to_tonne/1000/GDPCTPI[1978]*GDPCTPI[2022]
+    else:
+        LimeStabilization.ins[1].price = 44.5/_ton_to_tonne/1000/GDPCTPI[1978]*GDPCTPI[2022]
+    
+    LimeStabilization.ins[2].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
+    
+    sys = qs.System.from_units(ID='sys_test',
+                               units=list(flowsheet.unit),
+                               operating_hours=operation_hours)
+    
+    sys.simulate()
+        
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
+    
+    # TODO: add LCA data, pay attention to purity, should be consistent with price
+    # ecoinvent lacks purity data (market for lime, market for lime, hydrated, packed, both using RER)
+    # if lime_type == 'quick_lime':
+        # qs.StreamImpactItem(ID='quick_lime',
+        #                     linked_stream=stream.lime,
+        #                     GlobalWarming=)
+    # else:
+        # qs.StreamImpactItem(ID='hydrated_lime',
+        #                     linked_stream=stream.lime,
+        #                     GlobalWarming=)
     
     qs.LCA(system=sys, lifetime=30, lifetime_unit='yr')
     
