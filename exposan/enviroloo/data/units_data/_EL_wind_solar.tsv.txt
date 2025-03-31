@@ -1,0 +1,34 @@
+parameter	name (if diff)	unit	expected	low	high	distribution	references
+panels_cost	24	 USD 	" $3,268.45 "	" $2,778.18 "	" $3,758.71 "	Uniform	EnviroLoo Invoice
+carport_cost	1	 USD 	" $3,630.24 "	" $3,085.71 "	" $4,174.78 "	Uniform	EnviroLoo Invoice
+installation_cost	1	 USD 	 $589.95 	 $501.46 	 $678.44 	Uniform	EnviroLoo Invoice
+solar_cables_cost	300	 USD 	 $466.68 	 $396.68 	 $536.68 	Uniform	EnviroLoo Invoice
+green_cables_cost	150	 USD 	 $226.35 	 $192.40 	 $260.31 	Uniform	EnviroLoo Invoice
+conduit_cost	60	 USD 	 $184.44 	 $156.77 	 $212.10 	Uniform	EnviroLoo Invoice
+installation_cost_panels	24	 USD 	" $1,102.90 "	 $937.46 	" $1,268.33 "	Uniform	EnviroLoo Invoice
+inverter_cost	1	 USD 	" $2,501.08 "	" $2,125.92 "	" $2,876.24 "	Uniform	EnviroLoo Invoice
+charger_cost	1	 USD 	" $1,992.04 "	" $1,693.24 "	" $2,290.85 "	Uniform	EnviroLoo Invoice
+backplate_cost	1	 USD 	 $516.36 	 $438.91 	 $593.82 	Uniform	EnviroLoo Invoice
+controller _cost	1	 USD 	 $531.39 	 $451.68 	 $611.10 	Uniform	EnviroLoo Invoice
+controller_cables_cost	1	 USD 	 $31.24 	 $26.55 	 $35.92 	Uniform	EnviroLoo Invoice
+battery_cost	3	 USD 	" $8,113.37 "	" $6,896.36 "	" $9,330.37 "	Uniform	EnviroLoo Invoice
+battery_cables_cost	12	 USD 	 $354.72 	 $301.51 	 $407.92 	Uniform	EnviroLoo Invoice
+meter_cost	1	 USD 	 $75.39 	 $64.08 	 $86.70 	Uniform	EnviroLoo Invoice
+meter_cables_cost	8	 USD 	 $151.52 	 $128.80 	 $174.25 	Uniform	EnviroLoo Invoice
+trunking_cost	8	 USD 	 $28.91 	 $24.58 	 $33.25 	Uniform	EnviroLoo Invoice
+earth_spikes_cost	2	 USD 	 $267.36 	 $227.25 	 $307.46 	Uniform	EnviroLoo Invoice
+wind_turbine_cost	1	 USD 	" $3,802.76 "	" $3,232.34 "	" $4,373.17 "	Uniform	EnviroLoo Invoice
+voltage_limiter_cost	1	 USD 	" $1,078.99 "	 $917.14 	" $1,240.84 "	Uniform	EnviroLoo Invoice
+wind_charger_cost	1	 USD 	 $293.42 	 $249.41 	 $337.44 	Uniform	EnviroLoo Invoice
+turbine_monopole_cost	1	 USD 	" $3,069.79 "	" $2,609.32 "	" $3,530.26 "	Uniform	EnviroLoo Invoice
+template_cost	1	 USD 	 $563.40 	 $478.89 	 $647.91 	Uniform	EnviroLoo Invoice
+DC_blackplate_cost	1	 USD 	 $589.95 	 $501.46 	 $678.44 	Uniform	EnviroLoo Invoice
+installation_test_cost	1	 USD 	 $425.39 	 $361.58 	 $489.19 	Uniform	EnviroLoo Invoice
+certificate_cost	1	 USD 	 $77.63 	 $65.98 	 $89.27 	Uniform	EnviroLoo Invoice
+consulting_cost	1	 USD 	 $307.40 	 $261.29 	 $353.50 	Uniform	EnviroLoo Invoice
+installation_battery_cost	1	 USD 	 $298.70 	 $253.90 	 $343.51 	Uniform	EnviroLoo Invoice
+							
+							
+							
+							
+							
