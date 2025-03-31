@@ -342,19 +342,19 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
    
     # S2.run()
     
-    PT = su.Mixer('PT', ins=S2-0, outs=(flushing_water))
+    PT = su.Mixer('PT', ins=S2-0,)
    
     # PT = elu.EL_PT('PT', ins=S2-0, outs=(flushing_water), vessel_material = None, V_wf = None, # add flushing water
     #                     include_construction = True, length_to_diameter = None, 
     #                     F_BM_default = 1, kW_per_m3 = 0.1, vessel_type = None, tau = None, 
     #                     ppl = ppl, baseline_ppl = 100,
     #               )
-    # PT.run()
+    # PT.run(
     
     # breakpoint()
     
-    sys = qs.System('EL', path=(WasteWater, Toilet, CT, PC, A1, O1, B1, S1, CWT, S2, PT), 
-                recycle = [Recycle, sludge_PC, sludge_MT_PC, sludge_MT_A1, flushing_water]) # add flushing water
+    sys = qs.System('EL', path=(PC, A1, O1, B1, S1, CWT, S2, PT, WasteWater, Toilet, CT),)
+                #recycle = [Recycle, sludge_PC, sludge_MT_PC, sludge_MT_A1, flushing_water]) # add flushing water
 
     # sys = qs.System('G1_WERF', path=(PC, S1, A1, A2, A3, A4, O1, O2, C1, GT, MT, M1, J1, DG, J2, DU, M2), 
     #                 recycle = [M2-0, 1-A3, RAS])
@@ -417,43 +417,45 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
 
 # %%
 
-# @time_printer
-# def run(t, method=None, **kwargs):
-#     sys = create_systemEL()    
+@time_printer
+def run(t, method=None, **kwargs):
+    sys = create_systemEL()    
     
-#     batch_init(sys, "/Users/rishabhpuri/Desktop/bsm2p_init.xlsx", sheet='el')
+    batch_init(sys, "/Users/rishabhpuri/Desktop/bsm2p_init.xlsx", sheet='el')
     
     
-#     # path = ospath.join(folder, "data/initial_conditions_ASM2d.xlsx")    
-#     # batch_init(sys, path, 
-#     #            sheet='el')
-#     # sys.set_dynamic_tracker(*sys.products)
+    # path = ospath.join(folder, "data/initial_conditions_ASM2d.xlsx")    
+    # batch_init(sys, path, 
+    #            sheet='el')
+    # sys.set_dynamic_tracker(*sys.products)
     
-#     sys.simulate(
-#         state_reset_hook='reset_cache',
-#         t_span=(0,t),
-#         method=method,
-#         # print_t=True,
-#         **kwargs)
     
-#     return sys
     
-# if __name__ == '__main__':
-#     t = 100
-#     # method = 'RK45'
-#    # method = 'RK23' 
-#     # method = 'DOP853'
-#     # method = 'Radau'
-#     method = 'BDF'
-#     # method = 'LSODA'
-#     msg = f'Method {method}'
-#     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
-#     print(f'Time span 0-{t}d \n')
-#     sys = run(t, method=method)
-#     sys.diagram()
-#     fs = sys.flowsheet.stream
-#     fu = sys.flowsheet.unit
+    return sys
+
     
+if __name__ == '__main__':
+    t = 100
+    # method = 'RK45'
+   # method = 'RK23' 
+    # method = 'DOP853'
+    # method = 'Radau'
+    method = 'BDF'
+    # method = 'LSODA'
+    msg = f'Method {method}'
+    print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
+    print(f'Time span 0-{t}d \n')
+    sys = run(t, method=method)
+    sys.diagram()
+    fs = sys.flowsheet.stream
+    fu = sys.flowsheet.unit
+    
+    sys.simulate(
+        state_reset_hook='reset_cache',
+        t_span=(0,t),
+        method=method,
+        # print_t=True,
+        )
 
     
     # act_units = [u.ID for u in sys.units if isinstance(u, su.FlatBottomCircularClarifier) or u.ID.startswith('O')]
