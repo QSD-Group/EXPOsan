@@ -586,6 +586,7 @@ class EL_CT(Mixer):
             Qs = QCs[:,-1]
             # breakpoint()
             Cs = QCs[:,:-1]
+            
             self._state = np.append(Qs @ Cs / Qs.sum(), Qs.sum())
         self._dstate = self._state * 0.
 
@@ -696,7 +697,7 @@ class EL_PC(IdealClarifier):
     - Inherits from `SanUnit`, not `IdealClarifier`, for flexibility.
     """
 
-    _N_ins = 1
+    _N_ins = 2
     _N_outs = 2  # [0] effluent overflow, [1] sludge underflow
     _outs_size_is_fixed = True
 
