@@ -293,6 +293,15 @@ class EL_Toilet(Toilet):
         #       self.MCF_aq,
         #       self.N2O_EF_aq
         # )
+        
+    def _init_state(self):
+        pass
+
+    def _update_state(self):
+        pass
+
+    def _update_dstate(self):
+        pass
 
     def _scale_up_outs(self):
         '''
@@ -571,9 +580,11 @@ class EL_CT(Mixer):
         based on influents. Total flow rate is always initialized as the sum of
         influent wastestream flows.'''
         QCs = self._ins_QC
+        
         if QCs.shape[0] <= 1: self._state = QCs[0]
         else:
             Qs = QCs[:,-1]
+            # breakpoint()
             Cs = QCs[:,:-1]
             self._state = np.append(Qs @ Cs / Qs.sum(), Qs.sum())
         self._dstate = self._state * 0.
@@ -1757,13 +1768,17 @@ class EL_CMMBR(CompletelyMixedMBR):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', isdynamic=True, 
-                 pumped_flow=50, solids_capture_rate=0.999, 
-                 V_max=1000, crossflow_air=None,
+                 pumped_flow=50, 
+                 solids_capture_rate=0.999, 
+                 V_max=1000, 
+                 crossflow_air=None,
                  **kwargs):
         super().__init__(ID, ins, outs, thermo=thermo,
-                         init_with=init_with, V_max=V_max, isdynamic=isdynamic, 
+                         init_with=init_with, 
+                         V_max=V_max, 
+                         isdynamic=isdynamic, 
                          **kwargs)
-        self.pumped_flow = pumped_flow
+        # self.pumped_flow = pumped_flow
         self.solids_capture_rate = solids_capture_rate
         self.crossflow_air = crossflow_air
     
@@ -2000,6 +2015,15 @@ class EL_CWT(StorageTank):
                       vessel_material=vessel_material, kW_per_m3=kW_per_m3,)
         self.length_to_diameter = length_to_diameter
         
+    def _init_state(self):
+        pass
+
+    def _update_state(self):
+        pass
+
+    def _update_dstate(self):
+        pass
+        
     def _init_lca(self):
         item_name = self.vessel_material.replace(' ', '_')
         self.construction = [
@@ -2061,35 +2085,35 @@ class EL_CWT(StorageTank):
         self._init_lca()
         
         
-    def _design(self):
-        design = self.design_results
-        constr = self.construction
-        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)  # to be defined in .tsv file
-        self.add_construction(add_cost=False)
+    # def _design(self):
+    #     design = self.design_results
+    #     constr = self.construction
+    #     design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)  # to be defined in .tsv file
+    #     self.add_construction(add_cost=False)
 
-    def _cost(self):
-        C = self.baseline_purchase_costs # the below items need to be defined in .tsv file
-        C['Pressure water tank'] = self.pressure_water_tank_cost
-        C['pipeline'] = self.pipeline_connectors
-        C['fittings'] = self.weld_female_adapter_fittings
+    # def _cost(self):
+    #     C = self.baseline_purchase_costs # the below items need to be defined in .tsv file
+    #     C['Pressure water tank'] = self.pressure_water_tank_cost
+    #     C['pipeline'] = self.pipeline_connectors
+    #     C['fittings'] = self.weld_female_adapter_fittings
 
-        ratio = self.price_ratio
-        for equipment, cost in C.items():
-            C[equipment] = cost * ratio
+    #     ratio = self.price_ratio
+    #     for equipment, cost in C.items():
+    #         C[equipment] = cost * ratio
 
-        self.add_OPEX = self._calc_replacement_cost()
+    #     self.add_OPEX = self._calc_replacement_cost()
 
-        power_demand = self.power_demand_PT
-        self.power_utility(power_demand)
+    #     power_demand = self.power_demand_PT
+    #     self.power_utility(power_demand)
 
-    def _calc_replacement_cost(self):
-        scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
-        PW_replacement_cost = (
-            self.pressure_water_tank_cost / self.pressure_water_tank_lifetime +
-            self.pipeline_connectors / self.pipeline_connectors_lifetime +
-            self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime) * scale
-        PW_replacement_cost = PW_replacement_cost / (365 * 24) # convert to USD/hr
-        return PW_replacement_cost
+    # def _calc_replacement_cost(self):
+    #     scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
+    #     PW_replacement_cost = (
+    #         self.pressure_water_tank_cost / self.pressure_water_tank_lifetime +
+    #         self.pipeline_connectors / self.pipeline_connectors_lifetime +
+    #         self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime) * scale
+    #     PW_replacement_cost = PW_replacement_cost / (365 * 24) # convert to USD/hr
+    #     return PW_replacement_cost
 
 # %%
 PressureTank_path = os.path.join(EL_su_data_path, '_EL_PT.tsv')
@@ -2150,6 +2174,16 @@ class EL_PT(StorageTank):
                       vessel_type=vessel_type, tau=tau, V_wf=V_wf,
                       vessel_material=vessel_material, kW_per_m3=kW_per_m3,)
         self.length_to_diameter = length_to_diameter
+        
+        
+    def _init_state(self):
+        pass
+
+    def _update_state(self):
+        pass
+
+    def _update_dstate(self):
+        pass
         
     def _init_lca(self):
         item_name = self.vessel_material.replace(' ', '_')
