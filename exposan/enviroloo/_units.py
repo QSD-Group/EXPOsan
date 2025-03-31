@@ -1928,7 +1928,7 @@ class EL_CMMBR(CompletelyMixedMBR):
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)  # assume linear scaling
+        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)  # assume linear scaling TODO: scale to mass not volume
         design['PVDF_membrane'] = constr[1].quantity = self.membrane_material_weight
         self.add_construction(add_cost=False)
 
@@ -2250,7 +2250,7 @@ class EL_PT(StorageTank):
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)  # to be defined in .tsv file
+        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)  # to be defined in .tsv file TODO: scale to mass not volume
         self.add_construction(add_cost=False)
 
     def _cost(self):
