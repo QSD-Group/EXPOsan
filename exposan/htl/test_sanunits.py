@@ -15,6 +15,7 @@ for license details.
 
 import os, math, pandas as pd, qsdsan as qs
 from qsdsan import SanUnit
+from qsdsan.sanunits import HXutility
 from qsdsan.utils import auom
 from biosteam.units.decorators import cost
 from biosteam.units.design_tools import CEPCI_by_year
@@ -25,11 +26,104 @@ folder = os.path.dirname(__file__)
 
 __all__ = (
     # 'AerobicDigester',
-    # 'HeatDrying',
+    'Demoisturizer',
+    'HeatDrying',
     'LandApplication',
     'Landfilling',
     'LimeStabilization',
     )
+
+# =============================================================================
+# Demoisturizer
+# =============================================================================
+# TODO: check
+class Demoisturizer(SanUnit, isabstract=True):
+    '''
+    Abstract class for removing vaporized moisture after heat drying.
+    
+    Parameters
+    ----------
+    ins : iterable
+        wastewater_solids.
+    outs : iterable
+        dried_wastewater_solids.
+    '''
+    _N_ins = 1
+    _N_outs = 2
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='Stream'):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+
+    def _run(self):
+        solids_moisture = self.ins[0]
+        solids, moisture = self.outs
+        
+        solids.copy_like(solids_moisture)
+        
+        solids.imass['g','H2O'] = 0
+        solids.phase = 'l'
+        
+        moisture.imass['H2O'] = solids_moisture.imass['g','H2O']
+        moisture.T = solids_moisture.T
+        moisture.phase = 'g'
+
+# =============================================================================
+# HeatDrying
+# =============================================================================
+# TODO: check
+class HeatDrying(HXutility):
+    '''
+    Wastewater solids heat drying to achieve desired mositure content using a
+    heat exchanger.
+    
+    Parameters
+    ----------
+    ins : iterable
+        wastewater_solids.
+    outs : iterable
+        dried_wastewater_solids.
+    target_moisture : float
+        Target moisture content, [-].
+    rigorous : bool
+        If True, conside vle, [-].
+    
+    References
+    ----------
+    .. [1] 
+    '''
+    _N_ins = 1
+    _N_outs = 1
+    
+    line = HXutility.line
+    _graphics = HXutility._graphics
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='Stream',
+                 target_moisture=0.2, rigorous=True):
+        HXutility.__init__(self, ID, ins, outs, thermo, init_with)
+        self.target_moisture = target_moisture
+        self.rigorous = rigorous
+
+    def _run(self):
+        wastewater_solids = self.ins[0]
+        
+        self.wastewater_solids_moisture = wastewater_solids.imass['H2O']/wastewater_solids.F_mass
+        
+        if self.target_moisture < self.wastewater_solids_moisture:
+            self.V = (self.wastewater_solids_moisture - self.target_moisture)/self.wastewater_solids_moisture/(1 - self.target_moisture)
+        else:
+            self.T = wastewater_solids.T
+        
+        HXutility._run(self)
+    
+    @property
+    def moisture_before(self):
+        return self.wastewater_solids_moisture
+    
+    @property
+    def moisture_after(self):
+        return self.target_moisture
 
 # =============================================================================
 # LandApplication
@@ -88,7 +182,6 @@ class LandApplication(SanUnit):
                  N_content=0.05, N_emission_ratio=0.01,
                  other_pollutants=[], biosolids_grade=None,
                  biosolids_price=None):
-        
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.N_content = N_content
         self.N_emission_ratio = N_emission_ratio
@@ -102,19 +195,21 @@ class LandApplication(SanUnit):
         
         emission.phase = 'g'
         
-        emission.imass['N2O'] = (biosolids.F_mass - biosolids.imass['H2O'])*\
-            self.N_content*self.N_emission_ratio/28.0134*44.013
+        biosolids_organics = sum(biosolids.imass[component.ID] for component in
+                                 qs.get_components() if component.organic == True)
+        emission.imass['N2O'] = biosolids_organics*self.N_content*\
+            self.N_emission_ratio/28.0134*44.013
         
         for pollutant in self.other_pollutants:
             emission.imass[pollutant[0]] = emission.imass['N2O']/1e6*pollutant[1]
         
+        # assume organics degrade at the same ratio
         for component in qs.get_components():
-            if component.ID in ['water','H2O']:
+            if component.organic==False:
                 applied_biosolids.imass[component.ID] = biosolids.imass[component.ID]
             else:
                 applied_biosolids.imass[component.ID] = biosolids.imass[component.ID]/\
-                    (biosolids.F_mass - biosolids.imass['H2O'])*\
-                        (biosolids.F_mass - biosolids.imass['H2O'] - emission.F_mass)
+                    biosolids_organics*(biosolids_organics - emission.F_mass)
         
         if self.biosolids_grade not in ['A-EQ','AA','A','B']:
             raise ValueError('biosolids_grade must be one of the following: "A-EQ", "AA", "A", or "B".')
@@ -228,13 +323,13 @@ class Landfilling(SanUnit):
                  other_pollutants=[],
                  US_state=None, tipping_fee=None,
                  operation_hours=8760):
-        
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.k_methane = k_methane
         self.L_methane = L_methane
         self.methane_ratio = methane_ratio
         self.methane_density = methane_density
         self.lifetime = lifetime
+        self.stop_time = stop_time
         self.emission_time = emission_time
         self.other_pollutants = other_pollutants
         self.US_state = US_state
@@ -247,7 +342,9 @@ class Landfilling(SanUnit):
         
         emission.phase = 'g'
         
-        methane_m3_per_h = self.L_methane*(wastewater_solids.F_mass - wastewater_solids.imass['H2O'])/1000*\
+        self.wastewater_solids_organics = sum(wastewater_solids.imass[component.ID] for component in
+                                              qs.get_components() if component.organic == True)
+        methane_m3_per_h = self.L_methane*self.wastewater_solids_organics/1000*\
             (1 - (math.e)**(-self.k_methane*self.emission_time))
         
         emission.imass['CH4'] = methane_m3_per_h*self.methane_density
@@ -261,13 +358,13 @@ class Landfilling(SanUnit):
             emission.imass[pollutant[0]] = (methane_m3_per_h + carbon_dioxide_m3_per_h)/\
                 1e6*pollutant[1]*self.methane_density/16.04*pollutant[2]
         
+        # assume organics degrade at the same ratio
         for component in qs.get_components():
-            if component.ID in ['water','H2O']:
+            if component.organic==False:
                 landfilled_solids.imass[component.ID] = wastewater_solids.imass[component.ID]
             else:
                 landfilled_solids.imass[component.ID] = wastewater_solids.imass[component.ID]/\
-                    (wastewater_solids.F_mass - wastewater_solids.imass['H2O'])*\
-                        (wastewater_solids.F_mass - wastewater_solids.imass['H2O'] - emission.F_mass)
+                    self.wastewater_solids_organics*(self.wastewater_solids_organics - emission.F_mass)
         
         if self.tipping_fee:
             if self.US_state:
@@ -289,7 +386,7 @@ class Landfilling(SanUnit):
     def cumulative_emission_m3(self):
         if self.lifetime > self.stop_time:
             self.lifetime = self.stop_time
-        return self.L_methane*(self.ins[0].F_mass - self.ins[0].imass['H2O'])/1000*self.operation_hours*\
+        return self.L_methane*self.wastewater_solids_organics/1000*self.operation_hours*\
             (self.lifetime -\
              1/self.k_methane*(math.e)**(-self.k_methane*(self.stop_time - self.lifetime)) +\
              1/self.k_methane*(math.e)**(-self.k_methane*self.stop_time))
@@ -298,7 +395,7 @@ class Landfilling(SanUnit):
     def cumulative_emission_tonne(self):
         if self.lifetime > self.stop_time:
             self.lifetime = self.stop_time
-        cumulative_emission_m3 = self.L_methane*(self.ins[0].F_mass - self.ins[0].imass['H2O'])/1000*\
+        cumulative_emission_m3 = self.L_methane*self.wastewater_solids_organics/1000*\
             self.operation_hours*(self.lifetime -\
              1/self.k_methane*(math.e)**(-self.k_methane*(self.stop_time - self.lifetime)) +\
              1/self.k_methane*(math.e)**(-self.k_methane*self.stop_time))
@@ -307,7 +404,6 @@ class Landfilling(SanUnit):
 # =============================================================================
 # LimeStabilization
 # =============================================================================
-# TODO: check
 @cost(ID='Quick lime all parts', basis='Quick lime dry solids flow',
       units='tonne/day', cost=311386, S=1, CE=CEPCI_by_year[2004], n=0.5623, BM=1)
 @cost(ID='Hydrated lime all parts', basis='Hydrated lime dry solids flow',
@@ -323,7 +419,7 @@ class LimeStabilization(SanUnit):
         4  MGD (~4 tonne dry solids per day)  $  64,700
         40 MGD (~40 tonne dry solids per day) $ 187,500
     
-   The total installed costs can be calculated using equations below:
+   The total installed cost can be calculated using the equation below:
         annualized installed cost = installed cost*r/(1 - (1 + r)^(-lifetime))
     
     The estimated total installed costs are:
@@ -332,7 +428,7 @@ class LimeStabilization(SanUnit):
         40 MGD (~40 tonne dry solids per day) $ 2,326,695
     
     The total installed cost follows a power function:
-        capital cost = 311386*X^0.5623
+        total installed cost = 311386*X^0.5623
     
     Assume all costs above are for cases when quick lime is used. For hydrated
     lime, the installed cost reduces 20% since slaking is not needed.
@@ -347,15 +443,8 @@ class LimeStabilization(SanUnit):
         stabilized_solids, vapor.
     lime_type : str
         Type of lime used, can only be 'quick_lime' or 'hydrated_lime'.
-    lime_purity : float
-        The purity of lime (i.e., CaO content in quick lime or Ca(OH)2 content
-        in hydrated lime), [-].
-    water_ratio : float
-        Ratio between the weight of added water and the weight of lime, [-].
-    vapor_ratio : float
-        Ratio of water loss as vapor during quick lime slaking.
     CaOH2_ratio : float
-        Lime amount as a ratio of dry wastewater solids, [-].
+        Ratio between Ca(OH)2 amount and dry wastewater solids, [-].
         From [1]:
             Primary sludge                  -> 0.10-0.15
             Activated sludge                -> 0.30-0.50
@@ -365,6 +454,15 @@ class LimeStabilization(SanUnit):
             Iron-sludge                     -> 0.35-0.60
         From [2]:
             Wastewater treatment plants     -> 0.20
+    lime_purity : float
+        The purity of lime (i.e., CaO content in quick lime or Ca(OH)2 content
+        in hydrated lime), [-].
+    water_ratio : float
+        Ratio between the weight of added water and the weight of lime, [-].
+    solids_ratio : float
+        Solids content in lime slurry.
+    vapor_ratio : float
+        Ratio of water loss as vapor during quick lime slaking.
     unit_electricity : float
         Electricity for wastewater solids and lime mixing,
         [kWh·dry tonne-1 wastewater solids].
@@ -392,16 +490,17 @@ class LimeStabilization(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream',
-                 lime_type='hydrated_lime', lime_purity=None,
-                 water_ratio=None, vapor_ratio=0.2,
-                 CaOH2_ratio=0.2, unit_electricity=5):
-        
+                 lime_type='quick_lime', CaOH2_ratio=0.2,
+                 lime_purity=None, water_ratio=None,
+                 solids_ratio=None, vapor_ratio=0.2,
+                 unit_electricity=5):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.lime_type = lime_type
+        self.CaOH2_ratio = CaOH2_ratio
         self.lime_purity = lime_purity
         self.water_ratio = water_ratio
+        self.solids_ratio = solids_ratio
         self.vapor_ratio = vapor_ratio
-        self.CaOH2_ratio = CaOH2_ratio
         self.unit_electricity = unit_electricity
     
     def _run(self):
@@ -424,7 +523,11 @@ class LimeStabilization(SanUnit):
             lime.imass['CaCO3'] = lime.imass['CaO']/self.lime_purity*(1 - self.lime_purity)
             
             # quicklime can be slaked by mixing one part quicklime with two to three parts water, [1]
-            if self.water_ratio is None: self.water_ratio = 3
+            if self.water_ratio is None:
+                if self.solids_ratio is None:
+                    self.water_ratio = 3
+                else:
+                    self.water_ratio = (1 - self.solids_ratio)/self.solids_ratio
             
             water.imass['H2O'] = lime.F_mass*self.water_ratio
             
@@ -441,7 +544,6 @@ class LimeStabilization(SanUnit):
             # unless the biosolids are dewatered and the lime dose is
             # high on the order of 0.2-0.4, [1]
             stabilized_solids.imass['H2O'] += water.F_mass - vapor.F_mass
-        
         else:
             lime.imass['CaOH2'] = (wastewater_solids.F_mass - wastewater_solids.imass['H2O'])*self.CaOH2_ratio
             
@@ -451,7 +553,11 @@ class LimeStabilization(SanUnit):
             lime.imass['CaCO3'] = lime.imass['CaOH2']/self.lime_purity*(1 - self.lime_purity)
             
             # hydrated lime is fed as a 6–18% Ca(OH)2 slurry by weight, [1]
-            if self.water_ratio is None: self.water_ratio = self.lime_purity/0.18 - 1
+            if self.water_ratio is None:
+                if self.solids_ratio is None:
+                    self.water_ratio = (1 - 0.18/self.lime_purity)/(0.18/self.lime_purity)
+                else:
+                    self.water_ratio = (1 - self.solids_ratio)/self.solids_ratio
             
             water.imass['H2O'] = lime.F_mass*self.water_ratio
             

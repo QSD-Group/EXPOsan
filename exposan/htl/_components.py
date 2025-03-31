@@ -52,7 +52,7 @@ def create_components(set_thermo=True):
                               particle_size='Particulate',
                               formula='C56H95O24N9P',
                               degradability='Undegradable',
-                              organic=False)
+                              organic=True)
     add_V_from_rho(Sludge_lipid, 1400)
     # https://www.climate-policy-watcher.org/wastewater-sludge/physical-
     # and-biological-properties.html (accessed 2022-10-23)
@@ -68,7 +68,7 @@ def create_components(set_thermo=True):
                                 particle_size='Particulate',
                                 formula='C56H95O24N9P',
                                 degradability='Undegradable',
-                                organic=False)
+                                organic=True)
     add_V_from_rho(Sludge_protein, 1400)
     Sludge_protein.HHV = 22.0*10**6*Sludge_protein.MW/1000
     Sludge_protein.Cn.add_model(1.25*10**3*Sludge_protein.MW/1000)
@@ -80,7 +80,7 @@ def create_components(set_thermo=True):
                               particle_size='Particulate',
                               formula='C56H95O24N9P',
                               degradability='Undegradable',
-                              organic=False)
+                              organic=True)
     add_V_from_rho(Sludge_carbo, 1400)
     Sludge_carbo.HHV = 22.0*10**6*Sludge_carbo.MW/1000
     Sludge_carbo.Cn.add_model(1.25*10**3*Sludge_carbo.MW/1000)
@@ -88,11 +88,12 @@ def create_components(set_thermo=True):
     # made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
     # (NREL 2013 appendix B)
     
+    # ash in sludge (not separated), therefore set organic to True
     Sludge_ash = Component('Sludge_ash', phase='s',
                             particle_size='Particulate',
                             formula='C56H95O24N9P',
                             degradability='Undegradable',
-                            organic=False)
+                            organic=True)
     add_V_from_rho(Sludge_ash, 1400)
     Sludge_ash.HHV = 22.0*10**6*Sludge_ash.MW/1000
     Sludge_ash.Cn.add_model(1.25*10**3*Sludge_ash.MW/1000)
