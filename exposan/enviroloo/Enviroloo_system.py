@@ -269,11 +269,12 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
                     ins=(WasteWater-0, WasteWater-1, 'toilet_paper', flushing_water,'cleansing_water', 'desiccant'), # add flushing water
                     outs=('mixed_waste'),
                     N_user=100, N_tot_user=1,
+                    F_BM_default=1
                     # lifetime=10, if_include_front_end=True,
-                    if_toilet_paper=True, 
-                    if_flushing=True, 
-                    if_cleansing=False,
-                    if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,                 
+                    # if_toilet_paper=True, 
+                    # if_flushing=True, 
+                    # if_cleansing=False,
+                    # if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,                 
                     # CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06
                     )
     # M1 = su.Mixer('M1', ins=[WasteWater-0, WasteWater-1], outs='mixed_waste') # mixer
@@ -301,6 +302,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
                             outs = ('effluent_AnoxT'),
                             # ppl = ppl, baseline_ppl = 100,
                             aeration=None, DO_ID='S_O2', suspended_growth_model=masm2d, 
+                            V_max= 7.33
                             )
 
     # A1.run()
@@ -308,17 +310,19 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
     
     O1 = elu.EL_Aerobic('O1', ins=(A1-0), 
                            outs = ('effluent_AeroT'), 
-                            aeration = 2, suspended_growth_model=masm2d
+                           aeration = 2, suspended_growth_model=masm2d,
                             # ppl = ppl, baseline_ppl = 100,
+                            V_max=7.33
                             )
 
     # O1.run()
     # breakpoint()
     B1 = elu.EL_CMMBR('B1', ins=(O1-0), 
-                        outs = (sludge_MT, 'effluent_MembT'),
+                        outs = (sludge_MT, 'effluent_MembT'),aeration=2, suspended_growth_model=masm2d,
                         pumped_flow=0.0001, 
                         solids_capture_rate=0.999, 
-                        V_max=1000, 
+                        V_max=3.34, 
+                        
                         # ppl = ppl,
                         # baseline_ppl = 100,
                         )

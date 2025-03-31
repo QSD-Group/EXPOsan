@@ -87,132 +87,132 @@ class EL_Excretion(ExcretionmASM2d):
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  waste_ratio=0, **kwargs):
-        super().__init__(ID, ins, outs, thermo, init_with, waste_ratio, **kwargs)
-        isdyn = kwargs.pop('isdynamic', False)
-        if isdyn: self._init_dynamic()
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with,
+                     waste_ratio=waste_ratio, **kwargs)
+         # if isdyn: self._init_dynamic()
     
-    def _run(self):
-        ur, fec = self.outs
-        ur.empty()
-        fec.empty()
-        cmps = ur.components
-        sf_iN = cmps.S_F.i_N
-        xs_iN = cmps.X_S.i_N
-        xb_iN = cmps.X_H.i_N
-        sxi_iN = cmps.S_I.i_N
-        i_mass = cmps.i_mass
-        i_P = cmps.i_P
-        hco3_imass = cmps.S_IC.i_mass
+    # def _run(self):
+    #     ur, fec = self.outs
+    #     ur.empty()
+    #     fec.empty()
+    #     cmps = ur.components
+    #     sf_iN = cmps.S_F.i_N
+    #     xs_iN = cmps.X_S.i_N
+    #     xb_iN = cmps.X_H.i_N
+    #     sxi_iN = cmps.S_I.i_N
+    #     i_mass = cmps.i_mass
+    #     i_P = cmps.i_P
+    #     hco3_imass = cmps.S_IC.i_mass
         
-        # breakpoint()
+    #     # breakpoint()
 
-        not_wasted = 1 - self.waste_ratio
-        factor = 24 * 1e3 # from g/cap/d to kg/hr(/cap)
-        e_cal = self.e_cal / 24 * not_wasted # kcal/cap/d --> kcal/cap/hr
-        ur_exc = self.ur_exc / factor
-        fec_exc = self.fec_exc / factor
+    #     not_wasted = 1 - self.waste_ratio
+    #     factor = 24 * 1e3 # from g/cap/d to kg/hr(/cap)
+    #     e_cal = self.e_cal / 24 * not_wasted # kcal/cap/d --> kcal/cap/hr
+    #     ur_exc = self.ur_exc / factor
+    #     fec_exc = self.fec_exc / factor
 
-        # 14 kJ/g COD, the average lower heating value of excreta
-        tot_COD = e_cal*self.e_exc*4.184/14/1e3 # in kg COD/hr
-        fec_COD = tot_COD*self.e_fec
-        ur_COD = tot_COD - fec_COD
+    #     # 14 kJ/g COD, the average lower heating value of excreta
+    #     tot_COD = e_cal*self.e_exc*4.184/14/1e3 # in kg COD/hr
+    #     fec_COD = tot_COD*self.e_fec
+    #     ur_COD = tot_COD - fec_COD
         
-        tot_N = (self.p_veg+self.p_anim)*self.N_prot/factor \
-            * self.N_exc*not_wasted
-        ur_N = tot_N*self.N_ur
-        fec_N = tot_N - ur_N
+    #     tot_N = (self.p_veg+self.p_anim)*self.N_prot/factor \
+    #         * self.N_exc*not_wasted
+    #     ur_N = tot_N*self.N_ur
+    #     fec_N = tot_N - ur_N
         
-        tot_P = (self.p_veg*self.P_prot_v+self.p_anim*self.P_prot_a)/factor \
-            * self.P_exc*not_wasted
-        ur_P = tot_P*self.P_ur
-        fec_P = tot_P - ur_P
+    #     tot_P = (self.p_veg*self.P_prot_v+self.p_anim*self.P_prot_a)/factor \
+    #         * self.P_exc*not_wasted
+    #     ur_P = tot_P*self.P_ur
+    #     fec_P = tot_P - ur_P
         
-        # breakpoint()
-        ur.imass['S_NH4'] = ur_nh4 = ur_N * self.N_ur_NH3
-        req_sf_cod = (ur_N - ur_nh4) / sf_iN
-        if req_sf_cod <= ur_COD:
-            ur.imass['S_F'] = sf = req_sf_cod
-            ur.imass['S_A'] = ur_COD - sf  # contains no N or P
-        else:
-            req_si_cod = (ur_N - ur_nh4) / sxi_iN
-            if req_si_cod <= ur_COD:
-                ur.imass['S_F'] = sf = (sxi_iN * ur_COD - (ur_N - ur_nh4))/(sxi_iN - sf_iN)
-                ur.imass['S_I'] = ur_COD - sf
-            else:
-                ur.imass['S_F'] = sf = ur_COD
-                ur_other_n = ur_N - ur_nh4 - sf * sf_iN
-                warn(f"Excess non-NH3 nitrogen cannot be accounted for by organics "
-                     f"in urine: {ur_other_n} kg/hr. Added to NH3-N.")
-                ur.imass['S_NH4'] += ur_other_n # debatable, has negative COD # raise warning/error
+    #     # breakpoint()
+    #     ur.imass['S_NH4'] = ur_nh4 = ur_N * self.N_ur_NH3
+    #     req_sf_cod = (ur_N - ur_nh4) / sf_iN
+    #     if req_sf_cod <= ur_COD:
+    #         ur.imass['S_F'] = sf = req_sf_cod
+    #         ur.imass['S_A'] = ur_COD - sf  # contains no N or P
+    #     else:
+    #         req_si_cod = (ur_N - ur_nh4) / sxi_iN
+    #         if req_si_cod <= ur_COD:
+    #             ur.imass['S_F'] = sf = (sxi_iN * ur_COD - (ur_N - ur_nh4))/(sxi_iN - sf_iN)
+    #             ur.imass['S_I'] = ur_COD - sf
+    #         else:
+    #             ur.imass['S_F'] = sf = ur_COD
+    #             ur_other_n = ur_N - ur_nh4 - sf * sf_iN
+    #             warn(f"Excess non-NH3 nitrogen cannot be accounted for by organics "
+    #                  f"in urine: {ur_other_n} kg/hr. Added to NH3-N.")
+    #             ur.imass['S_NH4'] += ur_other_n # debatable, has negative COD # raise warning/error
         
-        ur.imass['S_PO4'] = ur_P - sum(ur.mass * i_P)
-        ur.imass['S_K'] = e_cal/1e3 * self.K_cal/1e3 * self.K_exc*self.K_ur
-        ur.imass['S_Mg'] = self.Mg_ur / factor
-        ur.imass['S_Ca'] = self.Ca_ur / factor
+    #     ur.imass['S_PO4'] = ur_P - sum(ur.mass * i_P)
+    #     ur.imass['S_K'] = e_cal/1e3 * self.K_cal/1e3 * self.K_exc*self.K_ur
+    #     ur.imass['S_Mg'] = self.Mg_ur / factor
+    #     ur.imass['S_Ca'] = self.Ca_ur / factor
 
-        ur.imass['H2O'] = self.ur_moi * ur_exc
-        ur_others = ur_exc - sum(ur.mass * i_mass)
-        ur.imass['S_IC'] = ur_others * 0.34 / hco3_imass
-        ur.imass['S_Na'] = ur_others * 0.35
-        ur.imass['S_Cl'] = ur_others * 0.31
+    #     ur.imass['H2O'] = self.ur_moi * ur_exc
+    #     ur_others = ur_exc - sum(ur.mass * i_mass)
+    #     ur.imass['S_IC'] = ur_others * 0.34 / hco3_imass
+    #     ur.imass['S_Na'] = ur_others * 0.35
+    #     ur.imass['S_Cl'] = ur_others * 0.31
 
-        fec.imass['S_NH4'] = fec_nh4 = fec_N * self.N_fec_NH3
-        req_xs_cod = (fec_N - fec_nh4) / xs_iN
-        if req_xs_cod <= fec_COD:
-            fec.imass['X_S'] = xs = req_xs_cod
-            fec.imass['S_A'] = fec_COD - xs
-        else:
-            req_xi_cod = (fec_N - fec_nh4) / sxi_iN
-            if req_xi_cod <= fec_COD:
-                fec.imass['X_S'] = xs = (sxi_iN * fec_COD - (fec_N - fec_nh4))/(sxi_iN - xs_iN)
-                fec.imass['X_I'] = fec_COD - xs
-            else:
-                req_xb_cod = (fec_N - fec_nh4) / xb_iN
-                if req_xb_cod <= fec_COD:
-                    fec.imass['X_S'] = xs = (xb_iN * fec_COD - (fec_N - fec_nh4))/(xb_iN - xs_iN)
-                    fec.imass['X_H'] = fec_COD - xs
-                else:
-                    fec.imass['X_S'] = xs = fec_COD
-                    fec_other_n = fec_N - fec_nh4 - xs * xs_iN
-                    warn(f"Excess non-NH3 nitrogen cannot be accounted for by organics "
-                         f"in feces: {fec_other_n} kg/hr. Added to NH3-N.")
-                    fec.imass['S_NH4'] += fec_other_n # debatable, has negative COD
+    #     fec.imass['S_NH4'] = fec_nh4 = fec_N * self.N_fec_NH3
+    #     req_xs_cod = (fec_N - fec_nh4) / xs_iN
+    #     if req_xs_cod <= fec_COD:
+    #         fec.imass['X_S'] = xs = req_xs_cod
+    #         fec.imass['S_A'] = fec_COD - xs
+    #     else:
+    #         req_xi_cod = (fec_N - fec_nh4) / sxi_iN
+    #         if req_xi_cod <= fec_COD:
+    #             fec.imass['X_S'] = xs = (sxi_iN * fec_COD - (fec_N - fec_nh4))/(sxi_iN - xs_iN)
+    #             fec.imass['X_I'] = fec_COD - xs
+    #         else:
+    #             req_xb_cod = (fec_N - fec_nh4) / xb_iN
+    #             if req_xb_cod <= fec_COD:
+    #                 fec.imass['X_S'] = xs = (xb_iN * fec_COD - (fec_N - fec_nh4))/(xb_iN - xs_iN)
+    #                 fec.imass['X_H'] = fec_COD - xs
+    #             else:
+    #                 fec.imass['X_S'] = xs = fec_COD
+    #                 fec_other_n = fec_N - fec_nh4 - xs * xs_iN
+    #                 warn(f"Excess non-NH3 nitrogen cannot be accounted for by organics "
+    #                      f"in feces: {fec_other_n} kg/hr. Added to NH3-N.")
+    #                 fec.imass['S_NH4'] += fec_other_n # debatable, has negative COD
         
-        fec.imass['S_PO4'] = fec_P - sum(fec.mass * i_P)
-        fec.imass['S_K'] = (1-self.K_ur)/self.K_ur * ur.imass['S_K']
-        fec.imass['S_Mg'] = self.Mg_fec / factor
-        fec.imass['S_Ca'] = self.Ca_fec / factor
-        fec.imass['H2O'] = self.fec_moi * fec_exc
+    #     fec.imass['S_PO4'] = fec_P - sum(fec.mass * i_P)
+    #     fec.imass['S_K'] = (1-self.K_ur)/self.K_ur * ur.imass['S_K']
+    #     fec.imass['S_Mg'] = self.Mg_fec / factor
+    #     fec.imass['S_Ca'] = self.Ca_fec / factor
+    #     fec.imass['H2O'] = self.fec_moi * fec_exc
         
-        fec_others = fec_exc - sum(fec.mass * i_mass)
-        fec.imass['S_IC'] = fec_others * 0.34 / hco3_imass
-        fec.imass['S_Na'] = fec_others * 0.35
-        fec.imass['S_Cl'] = fec_others * 0.31
+    #     fec_others = fec_exc - sum(fec.mass * i_mass)
+    #     fec.imass['S_IC'] = fec_others * 0.34 / hco3_imass
+    #     fec.imass['S_Na'] = fec_others * 0.35
+    #     fec.imass['S_Cl'] = fec_others * 0.31
         
     
-    @property
-    def AE(self):
-        if self._AE is None:
-            self._compile_AE()
-        return self._AE
+    # @property
+    # def AE(self):
+    #     if self._AE is None:
+    #         self._compile_AE()
+    #     return self._AE
     
-    def _compile_AE(self):
-        def yt(t, QC_ins, dQC_ins):
-            pass
-        self._AE = yt
+    # def _compile_AE(self):
+    #     def yt(t, QC_ins, dQC_ins):
+    #         pass
+    #     self._AE = yt
         
-    def _init_state(self):
-        ur, fec = self.outs
-        self._state = np.append(ur.mass, fec.mass)
-        for ws in self.outs:
-            ws.state = np.append(ws.conc, ws.F_vol * 24)
-            ws.dstate = np.zeros_like(ws.state)
+    # def _init_state(self):
+    #     ur, fec = self.outs
+    #     self._state = np.append(ur.mass, fec.mass)
+    #     for ws in self.outs:
+    #         ws.state = np.append(ws.conc, ws.F_vol * 24)
+    #         ws.dstate = np.zeros_like(ws.state)
 
-    def _update_state(self):
-        pass
+    # def _update_state(self):
+    #     pass
 
-    def _update_dstate(self):
-        pass
+    # def _update_dstate(self):
+    #     pass
 
 
 # %%
@@ -237,268 +237,273 @@ class EL_Toilet(Toilet):
                  if_toilet_paper=True, if_flushing=True, if_cleansing=False,
                  if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
                  CAPEX=None, OPEX_over_CAPEX=None, price_ratio=1., F_BM_default=1):
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with,
+                     degraded_components=degraded_components, N_user=N_user, N_toilet=N_toilet, N_tot_user=N_tot_user,
+                     if_toilet_paper=if_toilet_paper, if_flushing=if_flushing, if_cleansing=if_cleansing,
+                     if_desiccant=if_desiccant, if_air_emission=if_air_emission, if_ideal_emptying=if_ideal_emptying,
+                     CAPEX=CAPEX, OPEX_over_CAPEX=OPEX_over_CAPEX, price_ratio=price_ratio, F_BM_default=F_BM_default)
 
-        Toilet.__init__(self, ID, ins, outs, thermo, init_with)
-        self.degraded_components = tuple(degraded_components)
-        self._N_user = self._N_toilet = self._N_tot_user = None
-        self.N_user = N_user
-        self.N_toilet = N_toilet
-        self.N_tot_user = N_tot_user
-        self.if_toilet_paper = if_toilet_paper
-        self.if_flushing = if_flushing
-        self.if_cleansing = if_cleansing
-        self.if_desiccant = if_desiccant
-        self.if_air_emission = if_air_emission
-        self.if_ideal_emptying = if_ideal_emptying
-        self.CAPEX = CAPEX
-        self.OPEX_over_CAPEX = OPEX_over_CAPEX
-        self.price_ratio = price_ratio
+    #     Toilet.__init__(self, ID, ins, outs, thermo, init_with)
+    #     self.degraded_components = tuple(degraded_components)
+    #     self._N_user = self._N_toilet = self._N_tot_user = None
+    #     self.N_user = N_user
+    #     self.N_toilet = N_toilet
+    #     self.N_tot_user = N_tot_user
+    #     self.if_toilet_paper = if_toilet_paper
+    #     self.if_flushing = if_flushing
+    #     self.if_cleansing = if_cleansing
+    #     self.if_desiccant = if_desiccant
+    #     self.if_air_emission = if_air_emission
+    #     self.if_ideal_emptying = if_ideal_emptying
+    #     self.CAPEX = CAPEX
+    #     self.OPEX_over_CAPEX = OPEX_over_CAPEX
+    #     self.price_ratio = price_ratio
 
-        data = load_data(path=toilet_path)
-        for para in data.index:
-            value = float(data.loc[para]['expected'])
-            if para in ('desiccant_V', 'desiccant_rho'):
-                setattr(self, para, value)
-            else:
-                setattr(self, '_'+para, value)
-        del data
+    #     data = load_data(path=toilet_path)
+    #     for para in data.index:
+    #         value = float(data.loc[para]['expected'])
+    #         if para in ('desiccant_V', 'desiccant_rho'):
+    #             setattr(self, para, value)
+    #         else:
+    #             setattr(self, '_'+para, value)
+    #     del data
 
-        self._empty_ratio = 0.59
+    #     self._empty_ratio = 0.59
 
 
+    # # def _run(self):
+    # #     ur, fec, tp, fw, cw, des = self.ins
+    # #     tp.imass['Tissue'] = int(self.if_toilet_paper)*self.toilet_paper
+    # #     fw.imass['H2O'] = int(self.if_flushing)*self.flushing_water
+    # #     cw.imass['H2O'] = int(self.if_cleansing)*self.cleansing_water
+    # #     des.imass['WoodAsh'] = int(self.if_desiccant)*self.desiccant
+        
+        
     # def _run(self):
     #     ur, fec, tp, fw, cw, des = self.ins
     #     tp.imass['Tissue'] = int(self.if_toilet_paper)*self.toilet_paper
     #     fw.imass['H2O'] = int(self.if_flushing)*self.flushing_water
     #     cw.imass['H2O'] = int(self.if_cleansing)*self.cleansing_water
     #     des.imass['WoodAsh'] = int(self.if_desiccant)*self.desiccant
+
+    #     mw = self.outs[0]
+
+    #     # Mix all relevant inputs into the mixed_waste output
+    #     mw.mix_from([ur, fec, tp, fw, cw, des])
+
+    #     # if self.if_air_emission:
+    #     #   self.get_emptying_emission(
+    #     #       mw,
+    #     #       self.empty_ratio,
+    #     #       self.MCF_aq,
+    #     #       self.N2O_EF_aq
+    #     # )
         
-        
-    def _run(self):
-        ur, fec, tp, fw, cw, des = self.ins
-        tp.imass['Tissue'] = int(self.if_toilet_paper)*self.toilet_paper
-        fw.imass['H2O'] = int(self.if_flushing)*self.flushing_water
-        cw.imass['H2O'] = int(self.if_cleansing)*self.cleansing_water
-        des.imass['WoodAsh'] = int(self.if_desiccant)*self.desiccant
+    # def _init_state(self):
+    #     pass
 
-        mw = self.outs[0]
+    # def _update_state(self):
+    #     pass
 
-        # Mix all relevant inputs into the mixed_waste output
-        mw.mix_from([ur, fec, tp, fw, cw, des])
+    # def _update_dstate(self):
+    #     pass
 
-        # if self.if_air_emission:
-        #   self.get_emptying_emission(
-        #       mw,
-        #       self.empty_ratio,
-        #       self.MCF_aq,
-        #       self.N2O_EF_aq
-        # )
-        
-    def _init_state(self):
-        pass
-
-    def _update_state(self):
-        pass
-
-    def _update_dstate(self):
-        pass
-
-    def _scale_up_outs(self):
-        '''
-        Scale up the effluent based on the number of user per toilet and
-        toilet number.
-        '''
-        N_tot_user = self.N_tot_user or self.N_toilet*self.N_user
-        for i in self.outs:
-            if not i.F_mass == 0:
-                i.F_mass *= N_tot_user
+    # def _scale_up_outs(self):
+    #     '''
+    #     Scale up the effluent based on the number of user per toilet and
+    #     toilet number.
+    #     '''
+    #     N_tot_user = self.N_tot_user or self.N_toilet*self.N_user
+    #     for i in self.outs:
+    #         if not i.F_mass == 0:
+    #             i.F_mass *= N_tot_user
 
 
-    def _cost(self):
-        self.baseline_purchase_costs['Total toilets'] = self.CAPEX * self.N_toilet * self.price_ratio
-        add_OPEX = self.baseline_purchase_costs['Total toilets']*self.OPEX_over_CAPEX/365/24
-        self._add_OPEX = {'Additional OPEX': add_OPEX}
+    # def _cost(self):
+    #     self.baseline_purchase_costs['Total toilets'] = self.CAPEX * self.N_toilet * self.price_ratio
+    #     add_OPEX = self.baseline_purchase_costs['Total toilets']*self.OPEX_over_CAPEX/365/24
+    #     self._add_OPEX = {'Additional OPEX': add_OPEX}
 
 
-    @staticmethod
-    def get_emptying_emission(waste, CH4, N2O, empty_ratio, CH4_factor, N2O_factor):
-        '''
-        Calculate emissions due to non-ideal emptying based on
-        `Trimmer et al. <https://doi.org/10.1021/acs.est.0c03296>`_,
+    # @staticmethod
+    # def get_emptying_emission(waste, CH4, N2O, empty_ratio, CH4_factor, N2O_factor):
+    #     '''
+    #     Calculate emissions due to non-ideal emptying based on
+    #     `Trimmer et al. <https://doi.org/10.1021/acs.est.0c03296>`_,
 
-        Parameters
-        ----------
-        stream : WasteStream
-            Excreta stream that is not appropriately emptied (before emptying).
-        CH4 : WasteStream
-            Fugitive CH4 gas (before emptying).
-        N2O : WasteStream
-            Fugitive N2O gas (before emptying).
-        empty_ratio : float
-            Fraction of excreta that is appropriately emptied..
-        CH4_factor : float
-            Factor to convert COD removal to CH4 emission.
-        N2O_factor : float
-            Factor to convert COD removal to N2O emission.
+    #     Parameters
+    #     ----------
+    #     stream : WasteStream
+    #         Excreta stream that is not appropriately emptied (before emptying).
+    #     CH4 : WasteStream
+    #         Fugitive CH4 gas (before emptying).
+    #     N2O : WasteStream
+    #         Fugitive N2O gas (before emptying).
+    #     empty_ratio : float
+    #         Fraction of excreta that is appropriately emptied..
+    #     CH4_factor : float
+    #         Factor to convert COD removal to CH4 emission.
+    #     N2O_factor : float
+    #         Factor to convert COD removal to N2O emission.
 
-        Returns
-        -------
-        stream : WasteStream
-            Excreta stream that is not appropriately emptied (after emptying).
-        CH4 : WasteStream
-            Fugitive CH4 gas (after emptying).
-        N2O : WasteStream
-            Fugitive N2O gas (after emptying).
-        '''
-        COD_rmvd = waste.COD*(1-empty_ratio)/1e3*waste.F_vol
-        CH4.imass['CH4'] += COD_rmvd * CH4_factor
-        N2O.imass['N2O'] += COD_rmvd * N2O_factor
-        waste.mass *= empty_ratio
+    #     Returns
+    #     -------
+    #     stream : WasteStream
+    #         Excreta stream that is not appropriately emptied (after emptying).
+    #     CH4 : WasteStream
+    #         Fugitive CH4 gas (after emptying).
+    #     N2O : WasteStream
+    #         Fugitive N2O gas (after emptying).
+    #     '''
+    #     COD_rmvd = waste.COD*(1-empty_ratio)/1e3*waste.F_vol
+    #     CH4.imass['CH4'] += COD_rmvd * CH4_factor
+    #     N2O.imass['N2O'] += COD_rmvd * N2O_factor
+    #     waste.mass *= empty_ratio
 
-    @property
-    def N_user(self):
-        '''[int, float] Number of people per toilet.'''
-        return self._N_user or self.N_tot_user/self.N_toilet
-    @N_user.setter
-    def N_user(self, i):
-        if i is not None:
-            N_user = self._N_user = int(i)
-            old_toilet = self._N_toilet
-            if old_toilet and self.N_tot_user:
-                new_toilet = ceil(self.N_tot_user/N_user)
-                warn(f'With the provided `N_user`, the previous `N_toilet` of {old_toilet} '
-                     f'is recalculated from `N_tot_user` and `N_user` as {new_toilet}.')
-                self._N_toilet = None
-        else:
-            self._N_user = i
+    # @property
+    # def N_user(self):
+    #     '''[int, float] Number of people per toilet.'''
+    #     return self._N_user or self.N_tot_user/self.N_toilet
+    # @N_user.setter
+    # def N_user(self, i):
+    #     if i is not None:
+    #         N_user = self._N_user = int(i)
+    #         old_toilet = self._N_toilet
+    #         if old_toilet and self.N_tot_user:
+    #             new_toilet = ceil(self.N_tot_user/N_user)
+    #             warn(f'With the provided `N_user`, the previous `N_toilet` of {old_toilet} '
+    #                  f'is recalculated from `N_tot_user` and `N_user` as {new_toilet}.')
+    #             self._N_toilet = None
+    #     else:
+    #         self._N_user = i
 
-    @property
-    def N_toilet(self):
-        '''[int] Number of parallel toilets.'''
-        return self._N_toilet or ceil(self.N_tot_user/self.N_user)
-    @N_toilet.setter
-    def N_toilet(self, i):
-        if i is not None:
-            N_toilet = self._N_toilet = ceil(i)
-            old_user = self._N_user
-            if old_user and self.N_tot_user:
-                new_user = self.N_tot_user/N_toilet
-                warn(f'With the provided `N_toilet`, the previous `N_user` of {old_user} '
-                     f'is recalculated from `N_tot_user` and `N_toilet` as {new_user}.')
-                self._N_user = None
-        else:
-            self._N_toilet = i
+    # @property
+    # def N_toilet(self):
+    #     '''[int] Number of parallel toilets.'''
+    #     return self._N_toilet or ceil(self.N_tot_user/self.N_user)
+    # @N_toilet.setter
+    # def N_toilet(self, i):
+    #     if i is not None:
+    #         N_toilet = self._N_toilet = ceil(i)
+    #         old_user = self._N_user
+    #         if old_user and self.N_tot_user:
+    #             new_user = self.N_tot_user/N_toilet
+    #             warn(f'With the provided `N_toilet`, the previous `N_user` of {old_user} '
+    #                  f'is recalculated from `N_tot_user` and `N_toilet` as {new_user}.')
+    #             self._N_user = None
+    #     else:
+    #         self._N_toilet = i
 
-    @property
-    def N_tot_user(self):
-        '''[int] Number of total users.'''
-        return self._N_tot_user
-    @N_tot_user.setter
-    def N_tot_user(self, i):
-        if i is not None:
-            self._N_tot_user = int(i)
-        else:
-            self._N_tot_user = None
+    # @property
+    # def N_tot_user(self):
+    #     '''[int] Number of total users.'''
+    #     return self._N_tot_user
+    # @N_tot_user.setter
+    # def N_tot_user(self, i):
+    #     if i is not None:
+    #         self._N_tot_user = int(i)
+    #     else:
+    #         self._N_tot_user = None
 
-    @property
-    def toilet_paper(self):
-        '''
-        [float] Amount of toilet paper used
-        (if ``if_toilet_paper`` is True), [kg/cap/hr].
-        '''
-        return self._toilet_paper
-    @toilet_paper.setter
-    def toilet_paper(self, i):
-        self._toilet_paper = i
+    # @property
+    # def toilet_paper(self):
+    #     '''
+    #     [float] Amount of toilet paper used
+    #     (if ``if_toilet_paper`` is True), [kg/cap/hr].
+    #     '''
+    #     return self._toilet_paper
+    # @toilet_paper.setter
+    # def toilet_paper(self, i):
+    #     self._toilet_paper = i
 
-    @property
-    def flushing_water(self):
-        '''
-        [float] Amount of water used for flushing
-        (if ``if_flushing_water`` is True), [kg/cap/hr].
-        '''
-        return self._flushing_water
-    @flushing_water.setter
-    def flushing_water(self, i):
-        self._flushing_water = i
+    # @property
+    # def flushing_water(self):
+    #     '''
+    #     [float] Amount of water used for flushing
+    #     (if ``if_flushing_water`` is True), [kg/cap/hr].
+    #     '''
+    #     return self._flushing_water
+    # @flushing_water.setter
+    # def flushing_water(self, i):
+    #     self._flushing_water = i
 
-    @property
-    def cleansing_water(self):
-        '''
-        [float] Amount of water used for cleansing
-        (if ``if_cleansing_water`` is True), [kg/cap/hr].
-        '''
-        return self._cleansing_water
-    @cleansing_water.setter
-    def cleansing_water(self, i):
-        self._cleansing_water = i
+    # @property
+    # def cleansing_water(self):
+    #     '''
+    #     [float] Amount of water used for cleansing
+    #     (if ``if_cleansing_water`` is True), [kg/cap/hr].
+    #     '''
+    #     return self._cleansing_water
+    # @cleansing_water.setter
+    # def cleansing_water(self, i):
+    #     self._cleansing_water = i
 
-    @property
-    def desiccant(self):
-        '''
-        [float] Amount of desiccant used (if ``if_desiccant`` is True), [kg/cap/hr].
+    # @property
+    # def desiccant(self):
+    #     '''
+    #     [float] Amount of desiccant used (if ``if_desiccant`` is True), [kg/cap/hr].
 
-        .. note::
+    #     .. note::
 
-            Value set by ``desiccant_V`` and ``desiccant_rho``.
+    #         Value set by ``desiccant_V`` and ``desiccant_rho``.
 
-        '''
-        return self.desiccant_V*self.desiccant_rho
+    #     '''
+    #     return self.desiccant_V*self.desiccant_rho
 
-    @property
-    def N_volatilization(self):
-        '''
-        [float] Fraction of input N that volatilizes to the air
-        (if ``if_air_emission`` is True).
-        '''
-        return self._N_volatilization
-    @N_volatilization.setter
-    def N_volatilization(self, i):
-        self._N_volatilization = i
+    # @property
+    # def N_volatilization(self):
+    #     '''
+    #     [float] Fraction of input N that volatilizes to the air
+    #     (if ``if_air_emission`` is True).
+    #     '''
+    #     return self._N_volatilization
+    # @N_volatilization.setter
+    # def N_volatilization(self, i):
+    #     self._N_volatilization = i
 
-    @property
-    def empty_ratio(self):
-        '''
-        [float] Fraction of excreta that is appropriately emptied.
+    # @property
+    # def empty_ratio(self):
+    #     '''
+    #     [float] Fraction of excreta that is appropriately emptied.
 
-        .. note::
+    #     .. note::
 
-            Will be 1 (i.e., 100%) if ``if_ideal_emptying`` is True.
+    #         Will be 1 (i.e., 100%) if ``if_ideal_emptying`` is True.
 
-        '''
-        if self.if_ideal_emptying:
-            return 1.
-        return self._empty_ratio
-    @empty_ratio.setter
-    def empty_ratio(self, i):
-        if self.if_ideal_emptying:
-            warn(f'`if_ideal_emptying` is True, the set value {i} is ignored.')
-        self._empty_ratio = i
+    #     '''
+    #     if self.if_ideal_emptying:
+    #         return 1.
+    #     return self._empty_ratio
+    # @empty_ratio.setter
+    # def empty_ratio(self, i):
+    #     if self.if_ideal_emptying:
+    #         warn(f'`if_ideal_emptying` is True, the set value {i} is ignored.')
+    #     self._empty_ratio = i
 
-    @property
-    def MCF_aq(self):
-        '''[float] Methane correction factor for COD lost due to inappropriate emptying.'''
-        return self._MCF_aq
-    @MCF_aq.setter
-    def MCF_aq(self, i):
-        self._MCF_aq = i
+    # @property
+    # def MCF_aq(self):
+    #     '''[float] Methane correction factor for COD lost due to inappropriate emptying.'''
+    #     return self._MCF_aq
+    # @MCF_aq.setter
+    # def MCF_aq(self, i):
+    #     self._MCF_aq = i
 
-    @property
-    def N2O_EF_aq(self):
-        '''[float] Fraction of N emitted as N2O due to inappropriate emptying.'''
-        return self._N2O_EF_aq
-    @N2O_EF_aq.setter
-    def N2O_EF_aq(self, i):
-        self._N2O_EF_aq = i
+    # @property
+    # def N2O_EF_aq(self):
+    #     '''[float] Fraction of N emitted as N2O due to inappropriate emptying.'''
+    #     return self._N2O_EF_aq
+    # @N2O_EF_aq.setter
+    # def N2O_EF_aq(self, i):
+    #     self._N2O_EF_aq = i
 
-    @property
-    def if_N2O_emission(self):
-        '''[bool] Whether to consider N degradation and fugitive N2O emission.'''
-        return self.if_air_emission
-    @if_N2O_emission.setter
-    def if_N2O_emission(self, i):
-        raise ValueError('Setting `if_N2O_emission` for `PitLatrine` is not supported, '
-                         'please set `if_air_emission` instead.')
+    # @property
+    # def if_N2O_emission(self):
+    #     '''[bool] Whether to consider N degradation and fugitive N2O emission.'''
+    #     return self.if_air_emission
+    # @if_N2O_emission.setter
+    # def if_N2O_emission(self, i):
+    #     raise ValueError('Setting `if_N2O_emission` for `PitLatrine` is not supported, '
+    #                      'please set `if_air_emission` instead.')
 
 
 
@@ -562,74 +567,75 @@ class EL_CT(Mixer):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', F_BM_default=None, isdynamic=False,
                  rigorous=False, conserve_phases=False):
-        Mixer.__init__(self, ID, ins, outs, thermo, init_with,
-                         F_BM_default=F_BM_default, isdynamic=isdynamic)
-        self.rigorous = rigorous
-        self.conserve_phases = conserve_phases
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
+                     init_with=init_with, F_BM_default=F_BM_default, isdynamic=isdynamic,
+                     rigorous=rigorous, conserve_phases=conserve_phases)
+         # self.rigorous = rigorous
+         # self.conserve_phases = conserve_phases
 
 
-    @property
-    def state(self):
-        '''The state of the Mixer, including component concentrations [mg/L] and flow rate [m^3/d].'''
-        if self._state is None: return None
-        else:
-            return dict(zip(list(self.components.IDs) + ['Q'], self._state))
+    # @property
+    # def state(self):
+    #     '''The state of the Mixer, including component concentrations [mg/L] and flow rate [m^3/d].'''
+    #     if self._state is None: return None
+    #     else:
+    #         return dict(zip(list(self.components.IDs) + ['Q'], self._state))
 
-    def _init_state(self):
-        '''initialize state by specifying or calculating component concentrations
-        based on influents. Total flow rate is always initialized as the sum of
-        influent wastestream flows.'''
-        QCs = self._ins_QC
+    # def _init_state(self):
+    #     '''initialize state by specifying or calculating component concentrations
+    #     based on influents. Total flow rate is always initialized as the sum of
+    #     influent wastestream flows.'''
+    #     QCs = self._ins_QC
         
-        if QCs.shape[0] <= 1: self._state = QCs[0]
-        else:
-            Qs = QCs[:,-1]
-            # breakpoint()
-            Cs = QCs[:,:-1]
+    #     if QCs.shape[0] <= 1: self._state = QCs[0]
+    #     else:
+    #         Qs = QCs[:,-1]
+    #         # breakpoint()
+    #         Cs = QCs[:,:-1]
             
-            self._state = np.append(Qs @ Cs / Qs.sum(), Qs.sum())
-        self._dstate = self._state * 0.
+    #         self._state = np.append(Qs @ Cs / Qs.sum(), Qs.sum())
+    #     self._dstate = self._state * 0.
 
-    def _update_state(self):
-        '''updates conditions of output stream based on conditions of the Mixer'''
-        self._outs[0].state = self._state
+    # def _update_state(self):
+    #     '''updates conditions of output stream based on conditions of the Mixer'''
+    #     self._outs[0].state = self._state
 
-    def _update_dstate(self):
-        '''updates rates of change of output stream from rates of change of the Mixer'''
-        self._outs[0].dstate = self._dstate
+    # def _update_dstate(self):
+    #     '''updates rates of change of output stream from rates of change of the Mixer'''
+    #     self._outs[0].dstate = self._dstate
 
-    @property
-    def AE(self):
-        if self._AE is None:
-            self._compile_AE()
-        return self._AE
+    # @property
+    # def AE(self):
+    #     if self._AE is None:
+    #         self._compile_AE()
+    #     return self._AE
 
-    def _compile_AE(self):
-        _n_ins = len(self.ins)
-        _state = self._state
-        _dstate = self._dstate
-        _update_state = self._update_state
-        _update_dstate = self._update_dstate
-        def yt(t, QC_ins, dQC_ins):
-            if _n_ins > 1:
-                Q_ins = QC_ins[:, -1]
-                C_ins = QC_ins[:, :-1]
-                dQ_ins = dQC_ins[:, -1]
-                dC_ins = dQC_ins[:, :-1]
-                Q = Q_ins.sum()
-                C = Q_ins @ C_ins / Q
-                _state[-1] = Q
-                _state[:-1] = C
-                Q_dot = dQ_ins.sum()
-                C_dot = (dQ_ins @ C_ins + Q_ins @ dC_ins - Q_dot * C)/Q
-                _dstate[-1] = Q_dot
-                _dstate[:-1] = C_dot
-            else:
-                _state[:] = QC_ins[0]
-                _dstate[:] = dQC_ins[0]
-            _update_state()
-            _update_dstate()
-        self._AE = yt
+    # def _compile_AE(self):
+    #     _n_ins = len(self.ins)
+    #     _state = self._state
+    #     _dstate = self._dstate
+    #     _update_state = self._update_state
+    #     _update_dstate = self._update_dstate
+    #     def yt(t, QC_ins, dQC_ins):
+    #         if _n_ins > 1:
+    #             Q_ins = QC_ins[:, -1]
+    #             C_ins = QC_ins[:, :-1]
+    #             dQ_ins = dQC_ins[:, -1]
+    #             dC_ins = dQC_ins[:, :-1]
+    #             Q = Q_ins.sum()
+    #             C = Q_ins @ C_ins / Q
+    #             _state[-1] = Q
+    #             _state[:-1] = C
+    #             Q_dot = dQ_ins.sum()
+    #             C_dot = (dQ_ins @ C_ins + Q_ins @ dC_ins - Q_dot * C)/Q
+    #             _dstate[-1] = Q_dot
+    #             _dstate[:-1] = C_dot
+    #         else:
+    #             _state[:] = QC_ins[0]
+    #             _dstate[:] = dQC_ins[0]
+    #         _update_state()
+    #         _update_dstate()
+    #     self._AE = yt
 
     def _design(self):
         design = self.design_results
@@ -706,153 +712,155 @@ class EL_PC(IdealClarifier):
                  sludge_MLSS=None, isdynamic=False, init_with='WasteStream',
                  F_BM_default=None, **kwargs):
 
-        SanUnit.__init__(self, ID, ins, outs, thermo, isdynamic=isdynamic,
-                         init_with=init_with, F_BM_default=F_BM_default)
-        self.sludge_flow_rate = sludge_flow_rate
-        self.solids_removal_efficiency = solids_removal_efficiency
-        self.sludge_MLSS = sludge_MLSS
-        self._mixed = WasteStream()
-        self._f_uf = None
-        self._f_of = None
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
+                     sludge_flow_rate=sludge_flow_rate, solids_removal_efficiency=solids_removal_efficiency,
+                     sludge_MLSS=sludge_MLSS, isdynamic=isdynamic, init_with=init_with,
+                     F_BM_default=F_BM_default, **kwargs)
+        # self.sludge_flow_rate = sludge_flow_rate
+        # self.solids_removal_efficiency = solids_removal_efficiency
+        # self.sludge_MLSS = sludge_MLSS
+        # self._mixed = WasteStream()
+        # self._f_uf = None
+        # self._f_of = None
 
-    @property
-    def sludge_flow_rate(self):
-        '''[float] The designed sludge flow rate (wasted + recycled) in m3/d.'''
-        return self._Qs
+    # @property
+    # def sludge_flow_rate(self):
+    #     '''[float] The designed sludge flow rate (wasted + recycled) in m3/d.'''
+    #     return self._Qs
 
-    @sludge_flow_rate.setter
-    def sludge_flow_rate(self, Qs):
-        self._Qs = Qs
+    # @sludge_flow_rate.setter
+    # def sludge_flow_rate(self, Qs):
+    #     self._Qs = Qs
 
-    @property
-    def solids_removal_efficiency(self):
-        return self._e_rmv
+    # @property
+    # def solids_removal_efficiency(self):
+    #     return self._e_rmv
 
-    @solids_removal_efficiency.setter
-    def solids_removal_efficiency(self, f):
-        if f is not None and (f > 1 or f < 0):
-            raise ValueError(f'solids removal efficiency must be within [0, 1], not {f}')
-        self._e_rmv = f
+    # @solids_removal_efficiency.setter
+    # def solids_removal_efficiency(self, f):
+    #     if f is not None and (f > 1 or f < 0):
+    #         raise ValueError(f'solids removal efficiency must be within [0, 1], not {f}')
+    #     self._e_rmv = f
 
-    @property
-    def sludge_MLSS(self):
-        return self._MLSS
+    # @property
+    # def sludge_MLSS(self):
+    #     return self._MLSS
 
-    @sludge_MLSS.setter
-    def sludge_MLSS(self, MLSS):
-        if MLSS is not None:
-            warn(f'sludge MLSS {MLSS} mg/L is only used to estimate '
-                 f'sludge flowrate or solids removal efficiency, when either '
-                 f'one of them is unspecified.')
-        self._MLSS = MLSS
+    # @sludge_MLSS.setter
+    # def sludge_MLSS(self, MLSS):
+    #     if MLSS is not None:
+    #         warn(f'sludge MLSS {MLSS} mg/L is only used to estimate '
+    #              f'sludge flowrate or solids removal efficiency, when either '
+    #              f'one of them is unspecified.')
+    #     self._MLSS = MLSS
 
-    def _run(self):
-        inf = self._mixed
-        inf.mix_from(self.ins)
-        of, uf = self.outs
-        TSS_in = inf.get_TSS()
-        if TSS_in <= 0:
-            uf.empty()
-            of.copy_like(inf)
-        else:
-            Q_in = inf.F_vol * 24 # m3/d
-            x = inf.components.x
-            Qs, e_rmv, mlss = self._Qs, self._e_rmv, self._MLSS
-            if Qs and e_rmv:
-                f_Qu = Qs/Q_in
-                f_Xu = e_rmv + (1-e_rmv) * f_Qu
-            elif Qs and mlss:
-                f_Qu = Qs/Q_in
-                f_Xu = f_Qu*mlss/TSS_in
-            elif e_rmv and mlss:
-                f_Qu = e_rmv / (mlss/TSS_in - (1-e_rmv))
-                f_Xu = e_rmv + (1-e_rmv) * f_Qu
-            split_to_uf = (1-x)*f_Qu + x*f_Xu
-            if any(split_to_uf > 1): split_to_uf = 1
-            inf.split_to(uf, of, split_to_uf)
+    # def _run(self):
+    #     inf = self._mixed
+    #     inf.mix_from(self.ins)
+    #     of, uf = self.outs
+    #     TSS_in = inf.get_TSS()
+    #     if TSS_in <= 0:
+    #         uf.empty()
+    #         of.copy_like(inf)
+    #     else:
+    #         Q_in = inf.F_vol * 24 # m3/d
+    #         x = inf.components.x
+    #         Qs, e_rmv, mlss = self._Qs, self._e_rmv, self._MLSS
+    #         if Qs and e_rmv:
+    #             f_Qu = Qs/Q_in
+    #             f_Xu = e_rmv + (1-e_rmv) * f_Qu
+    #         elif Qs and mlss:
+    #             f_Qu = Qs/Q_in
+    #             f_Xu = f_Qu*mlss/TSS_in
+    #         elif e_rmv and mlss:
+    #             f_Qu = e_rmv / (mlss/TSS_in - (1-e_rmv))
+    #             f_Xu = e_rmv + (1-e_rmv) * f_Qu
+    #         split_to_uf = (1-x)*f_Qu + x*f_Xu
+    #         if any(split_to_uf > 1): split_to_uf = 1
+    #         inf.split_to(uf, of, split_to_uf)
 
-    def _init_state(self):
-        inf = self._mixed
-        C_in = inf.conc
-        Q_in = inf.F_vol * 24
-        self._state = np.append(C_in, Q_in)
-        self._dstate = self._state * 0.
+    # def _init_state(self):
+    #     inf = self._mixed
+    #     C_in = inf.conc
+    #     Q_in = inf.F_vol * 24
+    #     self._state = np.append(C_in, Q_in)
+    #     self._dstate = self._state * 0.
         
-    def _update_state(self):
-        arr = self._state
-        Cs = arr[:-1]
-        Qi = arr[-1]
-        Qs, e_rmv, mlss = self._Qs, self._e_rmv, self._MLSS
-        x = self.components.x
-        i_tss = x * self.components.i_mass
+    # def _update_state(self):
+    #     arr = self._state
+    #     Cs = arr[:-1]
+    #     Qi = arr[-1]
+    #     Qs, e_rmv, mlss = self._Qs, self._e_rmv, self._MLSS
+    #     x = self.components.x
+    #     i_tss = x * self.components.i_mass
 
-        of, uf = self.outs
-        if uf.state is None: uf.state = np.zeros(len(x)+1)
-        if of.state is None: of.state = np.zeros(len(x)+1)
+    #     of, uf = self.outs
+    #     if uf.state is None: uf.state = np.zeros(len(x)+1)
+    #     if of.state is None: of.state = np.zeros(len(x)+1)
 
-        if Qs:
-            Qe = Qi - Qs
-            if e_rmv:
-                fuf = e_rmv * Qi/Qs + (1-e_rmv)
-                fof = 1-e_rmv
-            elif mlss:
-                tss_in = sum(Cs * i_tss)
-                tss_e = (Qi * tss_in - Qs * mlss)/Qe
-                fuf = mlss/tss_in
-                fof = tss_e/tss_in
-        elif e_rmv and mlss:
-            tss_in = sum(Cs * i_tss)
-            Qs = Qi * e_rmv / (mlss/tss_in - (1-e_rmv))
-            Qe = Qi - Qs
-            fuf = mlss/tss_in
-            fof = 1-e_rmv
-        else:
-            raise RuntimeError('missing parameter')
+    #     if Qs:
+    #         Qe = Qi - Qs
+    #         if e_rmv:
+    #             fuf = e_rmv * Qi/Qs + (1-e_rmv)
+    #             fof = 1-e_rmv
+    #         elif mlss:
+    #             tss_in = sum(Cs * i_tss)
+    #             tss_e = (Qi * tss_in - Qs * mlss)/Qe
+    #             fuf = mlss/tss_in
+    #             fof = tss_e/tss_in
+    #     elif e_rmv and mlss:
+    #         tss_in = sum(Cs * i_tss)
+    #         Qs = Qi * e_rmv / (mlss/tss_in - (1-e_rmv))
+    #         Qe = Qi - Qs
+    #         fuf = mlss/tss_in
+    #         fof = 1-e_rmv
+    #     else:
+    #         raise RuntimeError('missing parameter')
             
-        if Qs >= Qi: 
-            uf.state[:] = arr
-            of.state[:] = 0.
-        else:
-            self._f_uf = fuf
-            self._f_of = fof
-            uf.state[:-1] = Cs * ((1-x) + x*fuf)
-            uf.state[-1] = Qs
-            of.state[:-1] = Cs * ((1-x) + x*fof)
-            of.state[-1] = Qe
+    #     if Qs >= Qi: 
+    #         uf.state[:] = arr
+    #         of.state[:] = 0.
+    #     else:
+    #         self._f_uf = fuf
+    #         self._f_of = fof
+    #         uf.state[:-1] = Cs * ((1-x) + x*fuf)
+    #         uf.state[-1] = Qs
+    #         of.state[:-1] = Cs * ((1-x) + x*fof)
+    #         of.state[-1] = Qe
 
-    def _update_dstate(self):
-        of, uf = self.outs
-        x = self.components.x
-        if uf.dstate is None: uf.dstate = np.zeros(len(x)+1)
-        if of.dstate is None: of.dstate = np.zeros(len(x)+1)
+    # def _update_dstate(self):
+    #     of, uf = self.outs
+    #     x = self.components.x
+    #     if uf.dstate is None: uf.dstate = np.zeros(len(x)+1)
+    #     if of.dstate is None: of.dstate = np.zeros(len(x)+1)
     
-    @property
-    def AE(self):
-        if self._AE is None:
-            self._compile_AE()
-        return self._AE
+    # @property
+    # def AE(self):
+    #     if self._AE is None:
+    #         self._compile_AE()
+    #     return self._AE
 
-    def _compile_AE(self):        
-        _state = self._state
-        # _dstate = self._dstate
-        _update_state = self._update_state
-        # _update_dstate = self._update_dstate
-        def yt(t, QC_ins, dQC_ins):
-            Q_ins = QC_ins[:, -1]
-            C_ins = QC_ins[:, :-1]
-            # dQ_ins = dQC_ins[:, -1]
-            # dC_ins = dQC_ins[:, :-1]
-            Q = Q_ins.sum()
-            C = Q_ins @ C_ins / Q
-            _state[-1] = Q
-            _state[:-1] = C
-            # Q_dot = dQ_ins.sum()
-            # C_dot = (dQ_ins @ C_ins + Q_ins @ dC_ins - Q_dot * C)/Q
-            # _dstate[-1] = Q_dot
-            # _dstate[:-1] = C_dot
-            _update_state()
-            # _update_dstate()
-        self._AE = yt
+    # def _compile_AE(self):        
+    #     _state = self._state
+    #     # _dstate = self._dstate
+    #     _update_state = self._update_state
+    #     # _update_dstate = self._update_dstate
+    #     def yt(t, QC_ins, dQC_ins):
+    #         Q_ins = QC_ins[:, -1]
+    #         C_ins = QC_ins[:, :-1]
+    #         # dQ_ins = dQC_ins[:, -1]
+    #         # dC_ins = dQC_ins[:, :-1]
+    #         Q = Q_ins.sum()
+    #         C = Q_ins @ C_ins / Q
+    #         _state[-1] = Q
+    #         _state[:-1] = C
+    #         # Q_dot = dQ_ins.sum()
+    #         # C_dot = (dQ_ins @ C_ins + Q_ins @ dC_ins - Q_dot * C)/Q
+    #         # _dstate[-1] = Q_dot
+    #         # _dstate[:-1] = C_dot
+    #         _update_state()
+    #         # _update_dstate()
+    #     self._AE = yt
    
     
 # %%
@@ -1012,25 +1020,18 @@ class EL_Anoxic(CSTR):
     def __init__(self, ID='', ins=None, outs=(), split=None, thermo=None,
                  init_with='WasteStream', V_max=1000, W_tank = 6.4, D_tank = 3.65,
                  freeboard = 0.61, t_wall = None, t_slab = None, aeration=None, 
-                 DO_ID='S_O2', suspended_growth_model=None, 
+                 DO_ID=None, suspended_growth_model=None, 
                  gas_stripping=False, gas_IDs=None, stripping_kLa_min=None, 
                  K_Henry=None, D_gas=None, p_gas_atm=None,
                  isdynamic=True, exogenous_vars=(), **kwargs):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, isdynamic=isdynamic,
-                         exogenous_vars=exogenous_vars, **kwargs)
-        self._V_max = V_max
-        self._aeration = aeration
-        self._DO_ID = DO_ID
-        self._model = suspended_growth_model
-        self.gas_IDs = gas_IDs
-        self.stripping_kLa_min = stripping_kLa_min
-        self.K_Henry = K_Henry
-        self.D_gas = D_gas
-        self.p_gas_atm = p_gas_atm
-        self.gas_stripping = gas_stripping
-        self._concs = None
-        self._mixed = WasteStream()
-        self.split = split
+        super().__init__(ID=ID, ins=ins, outs=outs, split=split, thermo=thermo,
+        init_with=init_with, V_max=V_max, W_tank = W_tank, D_tank = D_tank,
+        freeboard = freeboard, t_wall = t_wall, t_slab = t_slab, aeration=aeration, 
+        DO_ID=DO_ID, suspended_growth_model=suspended_growth_model, 
+        gas_stripping=gas_stripping, gas_IDs=gas_IDs, stripping_kLa_min=stripping_kLa_min, 
+        K_Henry=K_Henry, D_gas=D_gas, p_gas_atm=p_gas_atm,
+        isdynamic=isdynamic, exogenous_vars=(), **kwargs)
+        
 
         # # Design parameters 
         # self._W_tank = W_tank
@@ -1042,270 +1043,7 @@ class EL_Anoxic(CSTR):
         # for attr, value in kwargs.items():
         #     setattr(self, attr, value)
     
-    @property
-    def V_max(self):
-        '''[float] The designed maximum liquid volume, not accounting for increased volume due to aeration, in m^3.'''
-        return self._V_max
-
-    @V_max.setter
-    def V_max(self, Vm):
-        self._V_max = Vm
-        
-    # @property
-    # def W_tank(self):
-    #     '''[float] The design width of the tank, in m.'''
-    #     return self._W_tank
-
-    # @W_tank.setter
-    # def W_tank(self, W_tank):
-    #     self._W_tank = W_tank
-        
-    # @property
-    # def D_tank(self):
-    #     '''[float] The design depth of the tank, in m.'''
-    #     return self._D_tank
-
-    # @D_tank.setter
-    # def D_tank(self, D_tank):
-    #     self._D_tank = D_tank
-        
-    # @property
-    # def freeboard(self):
-    #     '''[float] Freeboard added to the depth of the reactor tank, [m].'''
-    #     return self._freeboard
     
-    # @freeboard.setter
-    # def freeboard(self, i):
-    #     self._freeboard = i
-        
-    # @property
-    # def t_wall(self):
-    #     '''
-    #     [float] Thickness of the wall concrete, [m].
-    #     default to be minimum of 1 ft with 1 in added for every ft of depth over 12 ft.
-    #     '''
-    #     D_tank = self.D_tank*39.37 # m to inches 
-    #     return self._t_wall or (1 + max(D_tank - 12, 0)/12)*0.3048 # from feet to m
-    
-    # @t_wall.setter
-    # def t_wall(self, i):
-    #     self._t_wall = i
-
-    # @property
-    # def t_slab(self):
-    #     '''
-    #     [float] Concrete slab thickness, [m],
-    #     default to be 2 in thicker than the wall thickness.
-    #     '''
-    #     return self._t_slab or (self.t_wall + 2/12)*0.3048 # from feet to m
-    
-    # @t_slab.setter
-    # def t_slab(self, i):
-    #     self._t_slab = i
-     
-    @property
-    def aeration(self):
-        '''[:class:`Process` or float or NoneType] Aeration model.'''
-        return self._aeration
-
-    @aeration.setter
-    def aeration(self, ae):
-        if ae is None or isinstance(ae, Process): self._aeration = ae
-        elif isinstance(ae, (float, int)):
-            if ae < 0:
-                raise ValueError('targeted dissolved oxygen concentration for aeration must be non-negative.')
-            else:
-                if ae > 14:
-                    warn(f'targeted dissolved oxygen concentration for {self.ID} might exceed the saturated level.')
-                self._aeration = ae
-        else:
-            raise TypeError(f'aeration must be one of the following types: float, '
-                            f'int, Process, NoneType. Not {type(ae)}')
-
-    @property
-    def suspended_growth_model(self):
-        '''[:class:`CompiledProcesses` or NoneType] Suspended growth model.'''
-        return self._model
-
-    @suspended_growth_model.setter
-    def suspended_growth_model(self, model):
-        if isinstance(model, CompiledProcesses) or model is None: self._model = model
-        else: raise TypeError(f'suspended_growth_model must be one of the following '
-                              f'types: CompiledProesses, NoneType. Not {type(model)}')
-
-    @property
-    def DO_ID(self):
-        '''[str] The `Component` ID for dissolved oxygen used in the suspended growth model and the aeration model.'''
-        return self._DO_ID
-
-    @DO_ID.setter
-    def DO_ID(self, doid):
-        if doid not in self.components.IDs:
-            raise ValueError(f'DO_ID must be in the set of `CompiledComponents` used to set thermo, '
-                             f'i.e., one of {self.components.IDs}.')
-        self._DO_ID = doid
-
-    @property
-    def gas_stripping(self):
-        return self._gstrip
-    @gas_stripping.setter
-    def gas_stripping(self, strip):
-        self._gstrip = strip = bool(strip)
-        if strip:
-            if self.gas_IDs:
-                cmps = self.components.IDs
-                for i in self.gas_IDs:
-                    if i not in cmps:
-                        raise RuntimeError((f'gas ID {i} not in component set: {cmps}.'))
-            else:
-                mdl = self._model
-                self.gas_IDs = mdl.gas_IDs
-                self.stripping_kLa_min = np.array(mdl.kLa_min)
-                self.D_gas = np.array(mdl.D_gas)
-                self.K_Henry = np.array(mdl.K_Henry)
-                self.p_gas_atm = np.array(mdl.p_gas_atm)
-                
-    @property
-    def split(self):
-        '''[numpy.1darray or NoneType] The volumetric split of outs.'''
-        return self._split
-
-    @split.setter
-    def split(self, split):
-        if split is None: self._split = split
-        else:
-            if len(split) != len(self._outs):
-                raise ValueError('split and outs must have the same size')
-            self._split = np.array(split)/sum(split)
-
-    @property
-    def state(self):
-        '''The state of the CSTR, including component concentrations [mg/L] and flow rate [m^3/d].'''
-        if self._state is None: return None
-        else:
-            return dict(zip(list(self.components.IDs) + ['Q'], self._state))
-
-    @state.setter
-    def state(self, QCs):
-        QCs = np.asarray(QCs)
-        if QCs.shape != (len(self.components)+1, ):
-            raise ValueError(f'state must be a 1D array of length {len(self.components) + 1},'
-                              'indicating component concentrations [mg/L] and total flow rate [m^3/d]')
-        self._state = QCs
-
-    def set_init_conc(self, **kwargs):
-        '''set the initial concentrations [mg/L] of the CSTR.'''
-        self._concs = self.components.kwarray(kwargs)
-
-    def _init_state(self):
-        mixed = self._mixed
-        Q = mixed.get_total_flow('m3/d')
-        if self._concs is not None: Cs = self._concs
-        else: Cs = mixed.conc
-        self._state = np.append(Cs, Q).astype('float64')
-        self._dstate = self._state * 0.
-
-    def _update_state(self):
-        arr = self._state
-        arr[arr < 1e-16] = 0.
-        arr[-1] = sum(ws.state[-1] for ws in self.ins)
-        if self.split is None: self._outs[0].state = arr
-        else:
-            for ws, spl in zip(self._outs, self.split):
-                y = arr.copy()
-                y[-1] *= spl
-                ws.state = y
-
-    def _update_dstate(self):
-        arr = self._dstate
-        if self.split is None: self._outs[0].dstate = arr
-        else:
-            for ws, spl in zip(self._outs, self.split):
-                y = arr.copy()
-                y[-1] *= spl
-                ws.dstate = y
-
-    
-    def _run(self):
-        '''Only to converge volumetric flows.'''
-        mixed = self._mixed # avoid creating multiple new streams
-        mixed.mix_from(self.ins)
-        Q = mixed.F_vol # m3/hr
-        if self.split is None: self.outs[0].copy_like(mixed)
-        else:
-            for ws, spl in zip(self._outs, self.split):
-                ws.copy_like(mixed)
-                ws.set_total_flow(Q*spl, 'm3/hr')
-
-
-    def get_retained_mass(self, biomass_IDs):
-        cmps = self.components
-        mass = cmps.i_mass * self._state[:len(cmps)]
-        return self._V_max * mass[cmps.indices(biomass_IDs)].sum()
-
-    @property
-    def ODE(self):
-        if self._ODE is None:
-            self._compile_ODE()
-        return self._ODE
-
-    def _init_model(self):
-        if self._model is None:
-            warn(f'{self.ID} was initialized without a suspended growth model, '
-                 f'and thus run as a non-reactive unit')
-            r = lambda state_arr: np.zeros(self.components.size)
-        else:
-            # processes = _add_aeration_to_growth_model(aer, self._model)
-            r = self._model.production_rates_eval
-        return r
-
-    def _compile_ODE(self):
-        isa = isinstance
-        aer = self._aeration
-        r = self._init_model()
-
-        _dstate = self._dstate
-        _update_dstate = self._update_dstate
-        V = self._V_max
-        gstrip = self.gas_stripping
-        if gstrip:
-            gas_idx = self.components.indices(self.gas_IDs)
-            if isa(aer, Process): kLa = aer.kLa
-            else: kLa = 0.
-            S_gas_air = np.asarray(self.K_Henry)*np.asarray(self.p_gas_atm)
-            kLa_stripping = np.maximum(kLa*self.D_gas/self._D_O2, self.stripping_kLa_min)
-        hasexo = bool(len(self._exovars))
-        f_exovars = self.eval_exo_dynamic_vars
-        
-        if isa(aer, (float, int)):
-            i = self.components.index(self._DO_ID)
-            fixed_DO = self._aeration
-            def dy_dt(t, QC_ins, QC, dQC_ins):
-                QC[i] = fixed_DO
-                dydt_cstr(QC_ins, QC, V, _dstate)
-                if hasexo: QC = np.append(QC, f_exovars(t))
-                _dstate[:-1] += r(QC)
-                if gstrip: _dstate[gas_idx] -= kLa_stripping * (QC[gas_idx] - S_gas_air)
-                _dstate[i] = 0
-                _update_dstate()
-        elif isa(aer, Process):
-            aer_stoi = aer._stoichiometry
-            aer_frho = aer.rate_function
-            def dy_dt(t, QC_ins, QC, dQC_ins):
-                dydt_cstr(QC_ins, QC, V, _dstate)
-                if hasexo: QC = np.append(QC, f_exovars(t))
-                _dstate[:-1] += r(QC) + aer_stoi * aer_frho(QC)
-                if gstrip: _dstate[gas_idx] -= kLa_stripping * (QC[gas_idx] - S_gas_air)
-                _update_dstate()
-        else:
-            def dy_dt(t, QC_ins, QC, dQC_ins):
-                dydt_cstr(QC_ins, QC, V, _dstate)
-                if hasexo: QC = np.append(QC, f_exovars(t))
-                _dstate[:-1] += r(QC)
-                if gstrip: _dstate[gas_idx] -= kLa_stripping * (QC[gas_idx] - S_gas_air)
-                _update_dstate()
-
-        self._ODE = dy_dt
          
     def _init_lca(self):
         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),]      
@@ -1405,28 +1143,22 @@ class EL_Aerobic(CSTR):
     
     _D_O2 = 2.10e-9   # m2/s
 
-    def __init__(self, ID='', ins=None, outs=(), split=None, thermo=None,
+    def __init__(self, 
+                 ID='', ins=None, outs=(), split=None, thermo=None,
                  init_with='WasteStream', V_max=1000, W_tank = 6.4, D_tank = 3.65,
                  freeboard = 0.61, t_wall = None, t_slab = None, aeration=2.0, 
                  DO_ID='S_O2', suspended_growth_model=None, 
                  gas_stripping=False, gas_IDs=None, stripping_kLa_min=None, 
                  K_Henry=None, D_gas=None, p_gas_atm=None,
                  isdynamic=True, exogenous_vars=(), **kwargs):
-        CSTR.__init__(self, ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with, isdynamic=isdynamic,
-                      exogenous_vars=exogenous_vars, **kwargs)
-        self._V_max = V_max
-        self._aeration = aeration
-        self._DO_ID = DO_ID
-        self._model = suspended_growth_model
-        self.gas_IDs = gas_IDs
-        self.stripping_kLa_min = stripping_kLa_min
-        self.K_Henry = K_Henry
-        self.D_gas = D_gas
-        self.p_gas_atm = p_gas_atm
-        self.gas_stripping = gas_stripping
-        self._concs = None
-        self._mixed = WasteStream()
-        self.split = split
+        super().__init__(ID=ID, ins=ins, outs=outs, split=split, thermo=thermo,
+        init_with=init_with, V_max=V_max, W_tank = W_tank, D_tank = D_tank,
+        freeboard = freeboard, t_wall = t_wall, t_slab = t_slab, aeration=aeration, 
+        DO_ID=DO_ID, suspended_growth_model=suspended_growth_model, 
+        gas_stripping=gas_stripping, gas_IDs=gas_IDs, stripping_kLa_min=stripping_kLa_min, 
+        K_Henry=K_Henry, D_gas=D_gas, p_gas_atm=p_gas_atm,
+        isdynamic=isdynamic, exogenous_vars=exogenous_vars, **kwargs)
+       
 
         # # Design parameters 
         # self._W_tank = W_tank
@@ -1438,277 +1170,7 @@ class EL_Aerobic(CSTR):
         # for attr, value in kwargs.items():
         #     setattr(self, attr, value)
     
-    @property
-    def V_max(self):
-        '''[float] The designed maximum liquid volume, not accounting for increased volume due to aeration, in m^3.'''
-        return self._V_max
-
-    @V_max.setter
-    def V_max(self, Vm):
-        self._V_max = Vm
-        
-    # @property
-    # def W_tank(self):
-    #     '''[float] The design width of the tank, in m.'''
-    #     return self._W_tank
-
-    # @W_tank.setter
-    # def W_tank(self, W_tank):
-    #     self._W_tank = W_tank
-        
-    # @property
-    # def D_tank(self):
-    #     '''[float] The design depth of the tank, in m.'''
-    #     return self._D_tank
-
-    # @D_tank.setter
-    # def D_tank(self, D_tank):
-    #     self._D_tank = D_tank
-        
-    # @property
-    # def freeboard(self):
-    #     '''[float] Freeboard added to the depth of the reactor tank, [m].'''
-    #     return self._freeboard
     
-    # @freeboard.setter
-    # def freeboard(self, i):
-    #     self._freeboard = i
-        
-    # @property
-    # def t_wall(self):
-    #     '''
-    #     [float] Thickness of the wall concrete, [m].
-    #     default to be minimum of 1 ft with 1 in added for every ft of depth over 12 ft.
-    #     '''
-    #     D_tank = self.D_tank*39.37 # m to inches 
-    #     return self._t_wall or (1 + max(D_tank - 12, 0)/12)*0.3048 # from feet to m
-    
-    # @t_wall.setter
-    # def t_wall(self, i):
-    #     self._t_wall = i
-
-    # @property
-    # def t_slab(self):
-    #     '''
-    #     [float] Concrete slab thickness, [m],
-    #     default to be 2 in thicker than the wall thickness.
-    #     '''
-    #     return self._t_slab or (self.t_wall + 2/12)*0.3048 # from feet to m
-    
-    # @t_slab.setter
-    # def t_slab(self, i):
-    #     self._t_slab = i
-     
-    @property
-    def aeration(self):
-        '''[:class:`Process` or float or NoneType] Aeration model.'''
-        return self._aeration
-
-    @aeration.setter
-    def aeration(self, ae):
-        if ae is None or isinstance(ae, Process): self._aeration = ae
-        elif isinstance(ae, (float, int)):
-            if ae < 0:
-                raise ValueError('targeted dissolved oxygen concentration for aeration must be non-negative.')
-            else:
-                if ae > 14:
-                    warn(f'targeted dissolved oxygen concentration for {self.ID} might exceed the saturated level.')
-                self._aeration = ae
-        else:
-            raise TypeError(f'aeration must be one of the following types: float, '
-                            f'int, Process, NoneType. Not {type(ae)}')
-
-    @property
-    def suspended_growth_model(self):
-        '''[:class:`CompiledProcesses` or NoneType] Suspended growth model.'''
-        return self._model
-
-    @suspended_growth_model.setter
-    def suspended_growth_model(self, model):
-        if isinstance(model, CompiledProcesses) or model is None: self._model = model
-        else: raise TypeError(f'suspended_growth_model must be one of the following '
-                              f'types: CompiledProesses, NoneType. Not {type(model)}')
-
-    @property
-    def DO_ID(self):
-        '''[str] The `Component` ID for dissolved oxygen used in the suspended growth model and the aeration model.'''
-        return self._DO_ID
-
-    @DO_ID.setter
-    def DO_ID(self, doid):
-        if doid not in self.components.IDs:
-            raise ValueError(f'DO_ID must be in the set of `CompiledComponents` used to set thermo, '
-                             f'i.e., one of {self.components.IDs}.')
-        self._DO_ID = doid
-
-    @property
-    def gas_stripping(self):
-        return self._gstrip
-    @gas_stripping.setter
-    def gas_stripping(self, strip):
-        self._gstrip = strip = bool(strip)
-        if strip:
-            if self.gas_IDs:
-                cmps = self.components.IDs
-                for i in self.gas_IDs:
-                    if i not in cmps:
-                        raise RuntimeError((f'gas ID {i} not in component set: {cmps}.'))
-            else:
-                mdl = self._model
-                self.gas_IDs = mdl.gas_IDs
-                self.stripping_kLa_min = np.array(mdl.kLa_min)
-                self.D_gas = np.array(mdl.D_gas)
-                self.K_Henry = np.array(mdl.K_Henry)
-                self.p_gas_atm = np.array(mdl.p_gas_atm)
-                
-    @property
-    def split(self):
-        '''[numpy.1darray or NoneType] The volumetric split of outs.'''
-        return self._split
-
-    @split.setter
-    def split(self, split):
-        if split is None: self._split = split
-        else:
-            if len(split) != len(self._outs):
-                raise ValueError('split and outs must have the same size')
-            self._split = np.array(split)/sum(split)
-
-    @property
-    def state(self):
-        '''The state of the CSTR, including component concentrations [mg/L] and flow rate [m^3/d].'''
-        if self._state is None: return None
-        else:
-            return dict(zip(list(self.components.IDs) + ['Q'], self._state))
-
-    @state.setter
-    def state(self, QCs):
-        QCs = np.asarray(QCs)
-        if QCs.shape != (len(self.components)+1, ):
-            raise ValueError(f'state must be a 1D array of length {len(self.components) + 1},'
-                              'indicating component concentrations [mg/L] and total flow rate [m^3/d]')
-        self._state = QCs
-
-    def set_init_conc(self, **kwargs):
-        '''set the initial concentrations [mg/L] of the CSTR.'''
-        self._concs = self.components.kwarray(kwargs)
-
-    def _init_state(self):
-        mixed = self._mixed
-        Q = mixed.get_total_flow('m3/d')
-        if self._concs is not None: Cs = self._concs
-        else: Cs = mixed.conc
-        self._state = np.append(Cs, Q).astype('float64')
-        self._dstate = self._state * 0.
-
-    def _update_state(self):
-        arr = self._state
-        arr[arr < 1e-16] = 0.
-        arr[-1] = sum(ws.state[-1] for ws in self.ins)
-        if self.split is None: self._outs[0].state = arr
-        else:
-            for ws, spl in zip(self._outs, self.split):
-                y = arr.copy()
-                y[-1] *= spl
-                ws.state = y
-
-    def _update_dstate(self):
-        arr = self._dstate
-        if self.split is None: self._outs[0].dstate = arr
-        else:
-            for ws, spl in zip(self._outs, self.split):
-                y = arr.copy()
-                y[-1] *= spl
-                ws.dstate = y
-
-    def _run(self):
-        '''Only to converge volumetric flows.'''
-        mixed = self._mixed # avoid creating multiple new streams
-        mixed.mix_from(self.ins)
-        Q = mixed.F_vol # m3/hr
-        if self.split is None: self.outs[0].copy_like(mixed)
-        else:
-            for ws, spl in zip(self._outs, self.split):
-                ws.copy_like(mixed)
-                ws.set_total_flow(Q*spl, 'm3/hr')
-
-    def get_retained_mass(self, biomass_IDs):
-        cmps = self.components
-        mass = cmps.i_mass * self._state[:len(cmps)]
-        return self._V_max * mass[cmps.indices(biomass_IDs)].sum()
-
-    @property
-    def ODE(self):
-        if self._ODE is None:
-            self._compile_ODE()
-        return self._ODE
-
-    def _init_model(self):
-        if self._model is None:
-            warn(f'{self.ID} was initialized without a suspended growth model, '
-                 f'and thus run as a non-reactive unit')
-            r = lambda state_arr: np.zeros(self.components.size)
-        else:
-            # processes = _add_aeration_to_growth_model(aer, self._model)
-            r = self._model.production_rates_eval
-        return r
-
-    def _compile_ODE(self):
-        isa = isinstance
-        aer = self._aeration
-        r = self._init_model()
-
-        _dstate = self._dstate
-        _update_dstate = self._update_dstate
-        V = self._V_max
-        gstrip = self.gas_stripping
-        if gstrip:
-            gas_idx = self.components.indices(self.gas_IDs)
-            if isa(aer, Process): kLa = aer.kLa
-            else: kLa = 0.
-            S_gas_air = np.asarray(self.K_Henry)*np.asarray(self.p_gas_atm)
-            kLa_stripping = np.maximum(kLa*self.D_gas/self._D_O2, self.stripping_kLa_min)
-        hasexo = bool(len(self._exovars))
-        f_exovars = self.eval_exo_dynamic_vars
-        
-        if isa(aer, (float, int)):
-            i = self.components.index(self._DO_ID)
-            fixed_DO = self._aeration
-            def dy_dt(t, QC_ins, QC, dQC_ins):
-                QC[i] = fixed_DO
-                dydt_cstr(QC_ins, QC, V, _dstate)
-                if hasexo: QC = np.append(QC, f_exovars(t))
-                _dstate[:-1] += r(QC)
-                if gstrip: _dstate[gas_idx] -= kLa_stripping * (QC[gas_idx] - S_gas_air)
-                _dstate[i] = 0
-                _update_dstate()
-        elif isa(aer, Process):
-            aer_stoi = aer._stoichiometry
-            aer_frho = aer.rate_function
-            def dy_dt(t, QC_ins, QC, dQC_ins):
-                dydt_cstr(QC_ins, QC, V, _dstate)
-                if hasexo: QC = np.append(QC, f_exovars(t))
-                _dstate[:-1] += r(QC) + aer_stoi * aer_frho(QC)
-                if gstrip: _dstate[gas_idx] -= kLa_stripping * (QC[gas_idx] - S_gas_air)
-                _update_dstate()
-        else:
-            def dy_dt(t, QC_ins, QC, dQC_ins):
-                dydt_cstr(QC_ins, QC, V, _dstate)
-                if hasexo: QC = np.append(QC, f_exovars(t))
-                _dstate[:-1] += r(QC)
-                if gstrip: _dstate[gas_idx] -= kLa_stripping * (QC[gas_idx] - S_gas_air)
-                _update_dstate()
-
-        self._ODE = dy_dt
-        
-    # _units = {
-    #     'Tank volume': 'm3',
-    #     'Tank width': 'm',
-    #     'Tank depth': 'm',
-    #     'Tank length': 'm',
-    #     'Volume of concrete wall': 'm3',
-    #     'Volume of concrete slab': 'm3' 
-    #     }
         
 
     def _init_lca(self):
@@ -1774,151 +1236,154 @@ class EL_CMMBR(CompletelyMixedMBR):
                  V_max=1000, 
                  crossflow_air=None,
                  **kwargs):
-        super().__init__(ID, ins, outs, thermo=thermo,
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
                          init_with=init_with, 
                          V_max=V_max, 
                          isdynamic=isdynamic, 
+                         pumped_flow=pumped_flow, 
+                         solids_capture_rate=solids_capture_rate,  
+                         crossflow_air=crossflow_air
                          **kwargs)
-        self.pumped_flow = pumped_flow
-        self.solids_capture_rate = solids_capture_rate
-        self.crossflow_air = crossflow_air
+    #     self.pumped_flow = pumped_flow
+    #     self.solids_capture_rate = solids_capture_rate
+    #     self.crossflow_air = crossflow_air
     
-    @property
-    def pumped_flow(self):
-        '''[float] Pumped flow rate, in m3/d'''
-        return self._Q_pump
-    @pumped_flow.setter
-    def pumped_flow(self, Q):
-        self._Q_pump = Q
+    # @property
+    # def pumped_flow(self):
+    #     '''[float] Pumped flow rate, in m3/d'''
+    #     return self._Q_pump
+    # @pumped_flow.setter
+    # def pumped_flow(self, Q):
+    #     self._Q_pump = Q
     
-    @property
-    def solids_capture_rate(self):
-        '''[float] Membrane solid capture rate, i.e., 
-        filtrate-to-internal solids concentration ratio, unitless.'''
-        return self._f_rtn
-    @solids_capture_rate.setter
-    def solids_capture_rate(self, f):
-        if f < 0 or f > 1:
-            raise ValueError(f'membrane solids capture rate must be within [0,1], not {f}')
-        self._f_rtn = f
-        cmps = self._mixed.components
-        self._flt2in_conc_ratio = (1-cmps.x) + cmps.x * (1-f)
+    # @property
+    # def solids_capture_rate(self):
+    #     '''[float] Membrane solid capture rate, i.e., 
+    #     filtrate-to-internal solids concentration ratio, unitless.'''
+    #     return self._f_rtn
+    # @solids_capture_rate.setter
+    # def solids_capture_rate(self, f):
+    #     if f < 0 or f > 1:
+    #         raise ValueError(f'membrane solids capture rate must be within [0,1], not {f}')
+    #     self._f_rtn = f
+    #     cmps = self._mixed.components
+    #     self._flt2in_conc_ratio = (1-cmps.x) + cmps.x * (1-f)
     
-    @property
-    def crossflow_air(self):
-        '''[:class:`qsdsan.Process` or NoneType]
-        Membrane cross flow air specified for process modeling, such as `qsdsan.processes.DiffusedAeration`. 
-        Ignored if DO setpoint is specified by the `aeration` attribute.
-        '''
-        return self._cfa
-    @crossflow_air.setter
-    def crossflow_air(self, cfa):
-        if cfa is None or isinstance(cfa, Process):
-            self._cfa = cfa
-        else:
-            raise TypeError('crossflow_air must be a `Process` object or None, '
-                            f'not {type(cfa)}')
+    # @property
+    # def crossflow_air(self):
+    #     '''[:class:`qsdsan.Process` or NoneType]
+    #     Membrane cross flow air specified for process modeling, such as `qsdsan.processes.DiffusedAeration`. 
+    #     Ignored if DO setpoint is specified by the `aeration` attribute.
+    #     '''
+    #     return self._cfa
+    # @crossflow_air.setter
+    # def crossflow_air(self, cfa):
+    #     if cfa is None or isinstance(cfa, Process):
+    #         self._cfa = cfa
+    #     else:
+    #         raise TypeError('crossflow_air must be a `Process` object or None, '
+    #                         f'not {type(cfa)}')
 
-    split = None
+    # split = None
         
-    def _run(self):
-        '''Only to converge volumetric flows.'''
-        mixed = self._mixed
-        mixed.mix_from(self.ins)
-        cmps = mixed.components
-        Q = mixed.F_vol*24 # m3/d
-        Qp = self._Q_pump
-        f_rtn = self._f_rtn
-        xsplit = Qp / ((1-f_rtn)*(Q-Qp) + Qp) # mass split of solids to pumped flow
-        qsplit = Qp / Q
-        flt, rtn = self.outs
-        mixed.split_to(rtn, flt, xsplit*cmps.x + qsplit*(1-cmps.x))
+    # def _run(self):
+    #     '''Only to converge volumetric flows.'''
+    #     mixed = self._mixed
+    #     mixed.mix_from(self.ins)
+    #     cmps = mixed.components
+    #     Q = mixed.F_vol*24 # m3/d
+    #     Qp = self._Q_pump
+    #     f_rtn = self._f_rtn
+    #     xsplit = Qp / ((1-f_rtn)*(Q-Qp) + Qp) # mass split of solids to pumped flow
+    #     qsplit = Qp / Q
+    #     flt, rtn = self.outs
+    #     mixed.split_to(rtn, flt, xsplit*cmps.x + qsplit*(1-cmps.x))
     
-    def _compile_ODE(self):
-        aer = self._aeration
-        cfa = self._cfa
-        isa = isinstance
-        cmps = self.components
-        if self._model is None:
-            warn(f'{self.ID} was initialized without a suspended growth model, '
-                 f'and thus run as a non-reactive unit')
-            r = lambda state_arr: np.zeros(cmps.size)
-        else:
-            r = self._model.production_rates_eval
+    # def _compile_ODE(self):
+    #     aer = self._aeration
+    #     cfa = self._cfa
+    #     isa = isinstance
+    #     cmps = self.components
+    #     if self._model is None:
+    #         warn(f'{self.ID} was initialized without a suspended growth model, '
+    #              f'and thus run as a non-reactive unit')
+    #         r = lambda state_arr: np.zeros(cmps.size)
+    #     else:
+    #         r = self._model.production_rates_eval
 
-        _dstate = self._dstate
-        _update_dstate = self._update_dstate
-        V = self._V_max
-        Qp = self.pumped_flow
-        f_rtn = self.solids_capture_rate
-        xarr = cmps.x
-        gstrip = self.gas_stripping
-        if gstrip:
-            gas_idx = self.components.indices(self.gas_IDs)
-            if isa(aer, Process): kLa = aer.kLa
-            else: kLa = 0.
-            if cfa: kLa += cfa.kLa
-            S_gas_air = np.asarray(self.K_Henry)*np.asarray(self.p_gas_atm)
-            kLa_stripping = np.maximum(kLa*self.D_gas/self._D_O2, self.stripping_kLa_min)
-        hasexo = bool(len(self._exovars))
-        f_exovars = self.eval_exo_dynamic_vars
+    #     _dstate = self._dstate
+    #     _update_dstate = self._update_dstate
+    #     V = self._V_max
+    #     Qp = self.pumped_flow
+    #     f_rtn = self.solids_capture_rate
+    #     xarr = cmps.x
+    #     gstrip = self.gas_stripping
+    #     if gstrip:
+    #         gas_idx = self.components.indices(self.gas_IDs)
+    #         if isa(aer, Process): kLa = aer.kLa
+    #         else: kLa = 0.
+    #         if cfa: kLa += cfa.kLa
+    #         S_gas_air = np.asarray(self.K_Henry)*np.asarray(self.p_gas_atm)
+    #         kLa_stripping = np.maximum(kLa*self.D_gas/self._D_O2, self.stripping_kLa_min)
+    #     hasexo = bool(len(self._exovars))
+    #     f_exovars = self.eval_exo_dynamic_vars
          
-        if isa(aer, (float, int)):
-            i = cmps.index(self._DO_ID)
-            def dy_dt(t, QC_ins, QC, dQC_ins):
-                QC[i] = aer
-                dydt_mbr(QC_ins, QC, V, Qp, f_rtn, xarr, _dstate)
-                if hasexo: QC = np.append(QC, f_exovars(t))
-                _dstate[:-1] += r(QC)
-                if gstrip: _dstate[gas_idx] -= kLa_stripping * (QC[gas_idx] - S_gas_air)
-                _dstate[i] = 0
-                _update_dstate()
-        else:        
-            if cfa:
-                cfa_stoi = cfa._stoichiometry
-                cfa_frho = cfa.rate_function
-                dy_cfa = lambda QC: cfa_stoi * cfa_frho(QC)
-            else:
-                dy_cfa = lambda QC: 0.
+    #     if isa(aer, (float, int)):
+    #         i = cmps.index(self._DO_ID)
+    #         def dy_dt(t, QC_ins, QC, dQC_ins):
+    #             QC[i] = aer
+    #             dydt_mbr(QC_ins, QC, V, Qp, f_rtn, xarr, _dstate)
+    #             if hasexo: QC = np.append(QC, f_exovars(t))
+    #             _dstate[:-1] += r(QC)
+    #             if gstrip: _dstate[gas_idx] -= kLa_stripping * (QC[gas_idx] - S_gas_air)
+    #             _dstate[i] = 0
+    #             _update_dstate()
+    #     else:        
+    #         if cfa:
+    #             cfa_stoi = cfa._stoichiometry
+    #             cfa_frho = cfa.rate_function
+    #             dy_cfa = lambda QC: cfa_stoi * cfa_frho(QC)
+    #         else:
+    #             dy_cfa = lambda QC: 0.
             
-            if isa(aer, Process):
-                aer_stoi = aer._stoichiometry
-                aer_frho = aer.rate_function
-                dy_aer = lambda QC: aer_stoi * aer_frho(QC)
-            else:
-                dy_aer = lambda QC: 0.
+    #         if isa(aer, Process):
+    #             aer_stoi = aer._stoichiometry
+    #             aer_frho = aer.rate_function
+    #             dy_aer = lambda QC: aer_stoi * aer_frho(QC)
+    #         else:
+    #             dy_aer = lambda QC: 0.
                 
-            def dy_dt(t, QC_ins, QC, dQC_ins):
-                dydt_mbr(QC_ins, QC, V, Qp, f_rtn, xarr, _dstate)
-                if hasexo: QC = np.append(QC, f_exovars(t))
-                _dstate[:-1] += r(QC) + dy_aer(QC) + dy_cfa(QC)
-                if gstrip: _dstate[gas_idx] -= kLa_stripping * (QC[gas_idx] - S_gas_air)
-                _update_dstate()
-        self._ODE = dy_dt
+    #         def dy_dt(t, QC_ins, QC, dQC_ins):
+    #             dydt_mbr(QC_ins, QC, V, Qp, f_rtn, xarr, _dstate)
+    #             if hasexo: QC = np.append(QC, f_exovars(t))
+    #             _dstate[:-1] += r(QC) + dy_aer(QC) + dy_cfa(QC)
+    #             if gstrip: _dstate[gas_idx] -= kLa_stripping * (QC[gas_idx] - S_gas_air)
+    #             _update_dstate()
+    #     self._ODE = dy_dt
     
-    def _update_state(self):
-        arr = self._state
-        arr[arr < 1e-16] = 0.
-        arr[-1] = sum(ws.state[-1] for ws in self.ins)
-        for ws in self.outs:
-            if ws.state is None: 
-                ws.state = np.zeros_like(arr)
-                ws.dstate = np.zeros_like(arr)
-        flt, rtn = self.outs
-        Qp = self.pumped_flow
-        flt.state[:-1] = arr[:-1] * self._flt2in_conc_ratio
-        flt.state[-1] = arr[-1] - Qp
-        rtn.state[:-1] = arr[:-1]
-        rtn.state[-1] = Qp
+    # def _update_state(self):
+    #     arr = self._state
+    #     arr[arr < 1e-16] = 0.
+    #     arr[-1] = sum(ws.state[-1] for ws in self.ins)
+    #     for ws in self.outs:
+    #         if ws.state is None: 
+    #             ws.state = np.zeros_like(arr)
+    #             ws.dstate = np.zeros_like(arr)
+    #     flt, rtn = self.outs
+    #     Qp = self.pumped_flow
+    #     flt.state[:-1] = arr[:-1] * self._flt2in_conc_ratio
+    #     flt.state[-1] = arr[-1] - Qp
+    #     rtn.state[:-1] = arr[:-1]
+    #     rtn.state[-1] = Qp
         
-    def _update_dstate(self):
-        arr = self._dstate
-        arr[-1] = sum(ws.dstate[-1] for ws in self.ins)
-        flt, rtn = self.outs
-        flt.dstate[:-1] = arr[:-1] * self._flt2in_conc_ratio
-        flt.dstate[-1] = arr[-1]
-        rtn.dstate[:-1] = arr[:-1]
-        rtn.dstate[-1] = 0
+    # def _update_dstate(self):
+    #     arr = self._dstate
+    #     arr[-1] = sum(ws.dstate[-1] for ws in self.ins)
+    #     flt, rtn = self.outs
+    #     flt.dstate[:-1] = arr[:-1] * self._flt2in_conc_ratio
+    #     flt.dstate[-1] = arr[-1]
+    #     rtn.dstate[:-1] = arr[:-1]
+    #     rtn.dstate[-1] = 0
 
     def _init_lca(self):
         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
@@ -2009,21 +1474,21 @@ class EL_CWT(StorageTank):
                  vessel_material=None, kW_per_m3=0.,ppl=100, baseline_ppl = 100,
                  init_with='WasteStream', F_BM_default=None,
                  include_construction=True, length_to_diameter=2):
-        StorageTank.__init__(self, ID=ID, ins=ins, outs=outs, thermo=thermo,
-                      init_with=init_with, F_BM_default=F_BM_default,
-                      include_construction=include_construction,
-                      vessel_type=vessel_type, tau=tau, V_wf=V_wf,
-                      vessel_material=vessel_material, kW_per_m3=kW_per_m3,)
-        self.length_to_diameter = length_to_diameter
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
+                     vessel_type=vessel_type, tau=tau, V_wf=V_wf,
+                     vessel_material=vessel_material, kW_per_m3=kW_per_m3,ppl=ppl, baseline_ppl = baseline_ppl,
+                     init_with=init_with, F_BM_default=F_BM_default,
+                     include_construction=include_construction, length_to_diameter=length_to_diameter)
+    #     self.length_to_diameter = length_to_diameter
         
-    def _init_state(self):
-        pass
+    # def _init_state(self):
+    #     pass
 
-    def _update_state(self):
-        pass
+    # def _update_state(self):
+    #     pass
 
-    def _update_dstate(self):
-        pass
+    # def _update_dstate(self):
+    #     pass
         
     def _init_lca(self):
         item_name = self.vessel_material.replace(' ', '_')
@@ -2169,7 +1634,7 @@ class EL_PT(StorageTank):
                  vessel_material=None, kW_per_m3=0.,ppl=100, baseline_ppl = 100,
                  init_with='WasteStream', F_BM_default=None,
                  include_construction=True, length_to_diameter=2):
-        StorageTank.__init__(self, ID=ID, ins=ins, outs=outs, thermo=thermo,
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
                       init_with=init_with, F_BM_default=F_BM_default,
                       include_construction=include_construction,
                       vessel_type=vessel_type, tau=tau, V_wf=V_wf,
@@ -2177,14 +1642,14 @@ class EL_PT(StorageTank):
         self.length_to_diameter = length_to_diameter
         
         
-    def _init_state(self):
-        pass
+    # def _init_state(self):
+    #     pass
 
-    def _update_state(self):
-        pass
+    # def _update_state(self):
+    #     pass
 
-    def _update_dstate(self):
-        pass
+    # def _update_dstate(self):
+    #     pass
         
     def _init_lca(self):
         item_name = self.vessel_material.replace(' ', '_')
