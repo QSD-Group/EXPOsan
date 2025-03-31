@@ -1779,7 +1779,7 @@ class EL_CMMBR(CompletelyMixedMBR):
                          V_max=V_max, 
                          isdynamic=isdynamic, 
                          **kwargs)
-        # self.pumped_flow = pumped_flow
+        self.pumped_flow = pumped_flow
         self.solids_capture_rate = solids_capture_rate
         self.crossflow_air = crossflow_air
     

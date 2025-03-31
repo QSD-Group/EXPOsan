@@ -215,7 +215,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
     
     WasteWater = elu.EL_Excretion('WasteWater', outs=('urine','feces'))
     
-    WasteWater._run()
+    # WasteWater._run()
     
     
     '''
@@ -266,16 +266,18 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
     '''
 
     Toilet = elu.EL_Toilet('Toilet',
-                    ins=(WasteWater-0, WasteWater-1, 'toilet_paper', flushing_water, 'cleansing_water', 'desiccant'),
+                    ins=(WasteWater-0, WasteWater-1, 'toilet_paper', flushing_water,'cleansing_water', 'desiccant'), # add flushing water
                     outs=('mixed_waste'),
                     N_user=100, N_tot_user=1,
                     # lifetime=10, if_include_front_end=True,
-                    if_toilet_paper=True, if_flushing=True, if_cleansing=False,
+                    if_toilet_paper=True, 
+                    if_flushing=True, 
+                    if_cleansing=False,
                     if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,                 
                     # CAPEX=500*max(1, ppl/100), OPEX_over_CAPEX=0.06
                     )
     # M1 = su.Mixer('M1', ins=[WasteWater-0, WasteWater-1], outs='mixed_waste') # mixer
-    Toilet._run()
+    # Toilet._run()
     
     
     # breakpoint()
@@ -284,14 +286,14 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
                     outs = ('effluent_CT'),
                     )
     
-    CT.run()
+    # CT.run()
     
     PC = elu.EL_PC('PC', ins=(CT-0, sludge_MT_PC), outs=('effluent_PC', sludge_PC),
                ppl=ppl, baseline_ppl=100,
                solids_removal_efficiency=0.85,
                sludge_flow_rate=0.00116)
     
-    PC.run()
+    # PC.run()
     # breakpoint()
 
     
@@ -301,7 +303,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
                             aeration=None, DO_ID='S_O2', suspended_growth_model=masm2d, 
                             )
 
-    A1.run()
+    # A1.run()
     # breakpoint()
     
     O1 = elu.EL_Aerobic('O1', ins=(A1-0), 
@@ -310,45 +312,49 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
                             # ppl = ppl, baseline_ppl = 100,
                             )
 
-    O1.run()
+    # O1.run()
     # breakpoint()
     B1 = elu.EL_CMMBR('B1', ins=(O1-0), 
-                        outs = ('effluent_MembT', sludge_MT ),
+                        outs = (sludge_MT, 'effluent_MembT'),
+                        pumped_flow=0.0001, 
+                        solids_capture_rate=0.999, 
+                        V_max=1000, 
                         # ppl = ppl,
                         # baseline_ppl = 100,
                         )
-    B1.run()
+    # B1.run()
     # breakpoint()
     
-    S1 = su.Splitter('S1', ins = B1-1, outs = [sludge_MT_PC, sludge_MT_A1], split= 0.5)
+    S1 = su.Splitter('S1', ins = B1-0, outs = [sludge_MT_PC, sludge_MT_A1], split= 0.5)
     
-    S1.run()
+    # S1.run()
 
 
-    CWT = elu.EL_CWT('CWT', ins=(B1-0), 
+    CWT = elu.EL_CWT('CWT', ins=(B1-1), 
                     outs= ('ClearWater'), 
                     # V_wf = 0.9, max_oveflow=15, 
                     # ppl = ppl, baseline_ppl = 100,
                     )
     
-    CWT.run()
-    # breakpoint()
+    # CWT.run()
     
     S2 = su.Splitter('S2', ins = CWT-0, outs = ['effluent', Recycle], split= 0.5)
    
-    S2.run()
+    # S2.run()
+    
+    PT = su.Mixer('PT', ins=S2-0, outs=(flushing_water))
    
-    PT = elu.EL_PT('PT', ins=S2-0, outs=flushing_water, vessel_material = None, V_wf = None, 
-                        include_construction = True, length_to_diameter = None, 
-                        F_BM_default = 1, kW_per_m3 = 0.1, vessel_type = None, tau = None, 
-                        ppl = ppl, baseline_ppl = 100,
-                        )
-    PT.run()
+    # PT = elu.EL_PT('PT', ins=S2-0, outs=(flushing_water), vessel_material = None, V_wf = None, # add flushing water
+    #                     include_construction = True, length_to_diameter = None, 
+    #                     F_BM_default = 1, kW_per_m3 = 0.1, vessel_type = None, tau = None, 
+    #                     ppl = ppl, baseline_ppl = 100,
+    #               )
+    # PT.run()
     
     # breakpoint()
     
     sys = qs.System('EL', path=(WasteWater, Toilet, CT, PC, A1, O1, B1, S1, CWT, S2, PT), 
-                recycle = [Recycle, sludge_PC, sludge_MT_PC, sludge_MT_A1, flushing_water])
+                recycle = [Recycle, sludge_PC, sludge_MT_PC, sludge_MT_A1, flushing_water]) # add flushing water
 
     # sys = qs.System('G1_WERF', path=(PC, S1, A1, A2, A3, A4, O1, O2, C1, GT, MT, M1, J1, DG, J2, DU, M2), 
     #                 recycle = [M2-0, 1-A3, RAS])
@@ -411,47 +417,47 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
 
 # %%
 
-@time_printer
-def run(t, method=None, **kwargs):
-    sys = create_systemEL()    
+# @time_printer
+# def run(t, method=None, **kwargs):
+#     sys = create_systemEL()    
     
-    batch_init(sys, "/Users/rishabhpuri/Desktop/bsm2p_init.xlsx", sheet='el')
+#     batch_init(sys, "/Users/rishabhpuri/Desktop/bsm2p_init.xlsx", sheet='el')
     
     
-    # path = ospath.join(folder, "data/initial_conditions_ASM2d.xlsx")    
-    # batch_init(sys, path, 
-    #            sheet='el')
-    # sys.set_dynamic_tracker(*sys.products)
+#     # path = ospath.join(folder, "data/initial_conditions_ASM2d.xlsx")    
+#     # batch_init(sys, path, 
+#     #            sheet='el')
+#     # sys.set_dynamic_tracker(*sys.products)
     
-    # sys.simulate(
-    #     state_reset_hook='reset_cache',
-    #     t_span=(0,t),
-    #     method=method,
-    #     # print_t=True,
-    #     **kwargs)
+#     sys.simulate(
+#         state_reset_hook='reset_cache',
+#         t_span=(0,t),
+#         method=method,
+#         # print_t=True,
+#         **kwargs)
     
-    return sys
+#     return sys
     
-if __name__ == '__main__':
-    t = 100
-    # method = 'RK45'
-   # method = 'RK23' 
-    # method = 'DOP853'
-    # method = 'Radau'
-    method = 'BDF'
-    # method = 'LSODA'
-    msg = f'Method {method}'
-    print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
-    print(f'Time span 0-{t}d \n')
-    sys = run(t, method=method)
-    sys.diagram()
-    fs = sys.flowsheet.stream
-    fu = sys.flowsheet.unit
+# if __name__ == '__main__':
+#     t = 100
+#     # method = 'RK45'
+#    # method = 'RK23' 
+#     # method = 'DOP853'
+#     # method = 'Radau'
+#     method = 'BDF'
+#     # method = 'LSODA'
+#     msg = f'Method {method}'
+#     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
+#     print(f'Time span 0-{t}d \n')
+#     sys = run(t, method=method)
+#     sys.diagram()
+#     fs = sys.flowsheet.stream
+#     fu = sys.flowsheet.unit
     
 
     
     # act_units = [u.ID for u in sys.units if isinstance(u, su.FlatBottomCircularClarifier) or u.ID.startswith('O')]
-    act_units = [u.ID for u in sys.units if u.ID.startswith('O')]
+    # act_units = [u.ID for u in sys.units if u.ID.startswith('O')]
     
     # srt = get_SRT(sys, biomass_IDs, wastage= [fs.WAS, fs.effluent], active_unit_IDs=act_units)
     # print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days\n')
