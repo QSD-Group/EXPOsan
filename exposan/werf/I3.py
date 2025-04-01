@@ -75,7 +75,7 @@ def create_i3_system(flowsheet=None, default_init_conds=True):
     FC = su.FlatBottomCircularClarifier(
         'FC', ins=ASR-0, outs=['SE', 1-ASR, 'WAS'],
         # 'FC', ins=O6-0, outs=['SE', 1-O1, 'WAS'],
-        underflow=0.67*10*MGD2cmd, wastage=0.233*MGD2cmd, # 12.3d SRT isn't sufficient for nitrification
+        underflow=0.67*10*MGD2cmd, wastage=0.2815*MGD2cmd, # 12.3d SRT isn't sufficient for nitrification
         surface_area=1579.352, height=3.6576, N_layer=10, feed_layer=6,
         X_threshold=3000, v_max=410, v_max_practical=274,
         rh=3e-4, rp=5.2e-3, fns=0.001, 
@@ -84,13 +84,13 @@ def create_i3_system(flowsheet=None, default_init_conds=True):
     
     MT = su.IdealClarifier(
         'MT', FC-2, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.03*MGD2cmd,
+        sludge_flow_rate=0.0307*MGD2cmd,
         solids_removal_efficiency=0.95
         )
     
     DW = su.IdealClarifier(
         'DW', MT-1, outs=('', 'cake'),
-        sludge_flow_rate=0.008*MGD2cmd,    # aim for 17% TS
+        sludge_flow_rate=0.00836*MGD2cmd,    # aim for 17% TS
         solids_removal_efficiency=0.9
         )
     MX = su.Mixer('MX', ins=[MT-0, DW-0])

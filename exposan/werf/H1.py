@@ -28,10 +28,10 @@ dfs = load_data(
     ospath.join(data_path, 'initial_conditions.xlsx'), 
     sheet=None,
     )
-asinit = dfs['H']
+asinit = dfs[ID]
 fcinit = asinit.iloc[-1].to_dict()
 default_fctss_init = [8, 9, 9, 30, 350, 350, 350, 350, 350, 9000]
-adinit = dfs['adm'].loc['H'].to_dict()
+adinit = dfs['adm'].loc[ID].to_dict()
 
 MGD2cmd = 3785.412
 Temp = 273.15+20 # temperature [K]
@@ -56,11 +56,11 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
     thermo_asm = qs.get_thermo()
     
     MD = su.MetalDosage.from_mASM2d(
-        'MD', ins=[rww, 'reject'], model=asm,
+        'MD', ins=rww, model=asm,
         metal_ID='X_AlOH', metal_dosage=10
         )
     PC = su.PrimaryClarifier(
-        'PC', ins=MD-0, 
+        'PC', ins=[MD-0, 'reject'],     # metal coagulants only dosed to rww not reject water to prevent numerical oscillation 
         outs=('PE', 'PS'),
         isdyanmic=True,
         sludge_flow_rate=0.074*MGD2cmd,
@@ -115,7 +115,7 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
 
     MT = su.IdealClarifier(
         'MT', FC-2, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.017*MGD2cmd,
+        sludge_flow_rate=0.01747*MGD2cmd,
         solids_removal_efficiency=0.95
         )
     M1 = su.Mixer('M1', ins=[GT-1, MT-1])
@@ -129,7 +129,6 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
     AD = su.AnaerobicCSTR(
         'AD', ins=J1-0, outs=('biogas', 'digestate'), 
         V_liq=1.1*MGD2cmd, V_gas=0.11*MGD2cmd, 
-        # V_liq=0.85*MGD2cmd, V_gas=0.085*MGD2cmd, 
         fixed_headspace_P=False, fraction_retain=0,
         T=T_ad, model=adm,
         pH_ctrl=7.0,
@@ -141,12 +140,12 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
      
     DW = su.IdealClarifier(
         'DW', J2-0, outs=('', 'cake'),
-        sludge_flow_rate=0.00593*MGD2cmd,   # aim for 18% TS
+        sludge_flow_rate=0.00625*MGD2cmd,   # aim for 18% TS
         solids_removal_efficiency=0.9
         )
     M2 = su.Mixer('M2', ins=[GT-0, MT-0, DW-0])
     
-    HD = su.HydraulicDelay('HD', ins=M2-0, outs=1-MD)
+    HD = su.HydraulicDelay('HD', ins=M2-0, outs=1-PC)
     
     if default_init_conds:
         # asdct = asinit.to_dict('index')
