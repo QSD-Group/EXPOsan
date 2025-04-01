@@ -266,7 +266,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
     '''
 
     Toilet = elu.EL_Toilet('Toilet',
-                    ins=(WasteWater-0, WasteWater-1, 'toilet_paper', flushing_water,'cleansing_water', 'desiccant'), # add flushing water
+                    ins=(WasteWater-0, WasteWater-1, 'toilet_paper', 'flushing_water','cleansing_water', 'desiccant'), # add flushing water
                     outs=('mixed_waste'),
                     N_user=100, N_tot_user=1,
                     # F_BM_default=1
