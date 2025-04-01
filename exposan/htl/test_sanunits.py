@@ -25,7 +25,6 @@ _ton_to_tonne = auom('ton').conversion_factor('tonne')
 folder = os.path.dirname(__file__)
 
 __all__ = (
-    # 'AerobicDigester',
     'Demoisturizer',
     'HeatDrying',
     'LandApplication',
@@ -36,7 +35,7 @@ __all__ = (
 # =============================================================================
 # Demoisturizer
 # =============================================================================
-# TODO: check
+
 class Demoisturizer(SanUnit, isabstract=True):
     '''
     Abstract class for removing vaporized moisture after heat drying.
@@ -71,11 +70,23 @@ class Demoisturizer(SanUnit, isabstract=True):
 # =============================================================================
 # HeatDrying
 # =============================================================================
-# TODO: check
+
 class HeatDrying(HXutility):
     '''
     Wastewater solids heat drying to achieve desired mositure content using a
-    heat exchanger.
+    heat exchanger by considering vapor-liquid equilibrium.
+    
+    V is the vapor fraction of water in the outlet stream, which can be calculated
+    based on the following equation:
+        moisture in: X
+        moisture out: Y
+        weight in: M
+        ->
+        water in: M*X
+        solids in = solids out: M*(1 - X)
+        water out: M*(1 - X)/(1 - Y)*Y
+        vapor out: M*X - M*(1 - X)/(1 - Y)*Y
+        V = (M*X - M*(1 - X)/(1 - Y)*Y)/(M*X) = (X - Y)/X/(1 - Y)
     
     Parameters
     ----------
@@ -100,10 +111,9 @@ class HeatDrying(HXutility):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
-                 target_moisture=0.2, rigorous=True):
-        HXutility.__init__(self, ID, ins, outs, thermo, init_with)
+                 target_moisture=0.2):
+        HXutility.__init__(self, ID, ins, outs, thermo, init_with, rigorous=True)
         self.target_moisture = target_moisture
-        self.rigorous = rigorous
 
     def _run(self):
         wastewater_solids = self.ins[0]
@@ -111,9 +121,12 @@ class HeatDrying(HXutility):
         self.wastewater_solids_moisture = wastewater_solids.imass['H2O']/wastewater_solids.F_mass
         
         if self.target_moisture < self.wastewater_solids_moisture:
-            self.V = (self.wastewater_solids_moisture - self.target_moisture)/self.wastewater_solids_moisture/(1 - self.target_moisture)
+            self.V = (self.wastewater_solids_moisture - self.target_moisture)/\
+                self.wastewater_solids_moisture/(1 - self.target_moisture)
         else:
-            self.T = wastewater_solids.T
+            raise ValueError(f"target_moisture ({self.target_moisture}) must be " +
+                             "less than the moisture content of input wastewater" +
+                             f"solids ({self.wastewater_solids_moisture:.2f}).")
         
         HXutility._run(self)
     
@@ -253,8 +266,9 @@ class Landfilling(SanUnit):
     landfills start to accept wastewater solids to the time stopping accounting
     for emissions (tau). If tau is less than the lifetime of wastewater treatment
     plants or landfills, depending on which is the studied object (both denoted
-    as t), then t=tau. The cumulative_emission is calculated based on the
-    following equations:
+    as t), then t=tau. The solids input rate is M, which could be a function of
+    the solids adding time (y). The cumulative_emission is calculated based on
+    the following equation:
         ∫0->t∫y->tau k_methane*L_methane*M*e^(-k_methane*(x - y))*dxdy = 
         L_methane*M*(t - 1/k_methane*e^(-k_methane*(tau - t)) +
         1/k_methane*e^(-k_methane*tau))

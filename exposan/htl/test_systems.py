@@ -14,6 +14,7 @@ for license details.
 '''
 
 import qsdsan as qs, biosteam as bst
+from qsdsan import sanunits as qsu
 from qsdsan.utils import auom, clear_lca_registries
 from exposan.htl import _load_components, create_tea, _sanunits as su, test_sanunits as tsu
 
@@ -73,36 +74,59 @@ def create_test_system(size=10,
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
-                   sludge_moisture=0.8,
+                   sludge_moisture=0.99,
                    sludge_dw_ash=0.436,
                    sludge_afdw_lipid=0.193,
                    sludge_afdw_protein=0.510,
                    sludge_wet_density=1040)
     
-    LimeStabilization = tsu.LimeStabilization(ID='LimeStabilization',
-                                              ins=(WWTP-0,'lime','water','carbon_dioxide'),
-                                              outs=('stablized_solids','vapor'),
-                                              lime_type=lime_type, lime_purity=None,
-                                              water_ratio=None, vapor_ratio=0.2,
-                                              CaOH2_ratio=0.2, unit_electricity=5)
-    # TODO: update here if needed
-    # from Process Design Manual for Sludge Treatment and Disposal; United States
-    # Environmental Protection Agency, 1979:
-    # quick lime with a purity of 85% CaO is 40 1978$/ton
-    # hydrated lime with a purity of 47% CaO is 44.5 1978$/ton
-    if lime_type == 'quick_lime':
-        LimeStabilization.ins[1].price = 40/_ton_to_tonne/1000/GDPCTPI[1978]*GDPCTPI[2022]
-    else:
-        LimeStabilization.ins[1].price = 44.5/_ton_to_tonne/1000/GDPCTPI[1978]*GDPCTPI[2022]
+    # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
+    BeltThickener = qsu.BeltThickener(ID='BeltThickener', ins=WWTP-0, outs=('supernatant_0','thickened_sludge'), thermo=None, init_with='WasteStream',
+                  sludge_moisture=0.96, solids=('Sludge_lipid','Sludge_protein',
+                          'Sludge_carbo','Sludge_ash'),
+                  disposal_cost=0)
     
-    LimeStabilization.ins[2].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
+    # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
+    SluC = qsu.SludgeCentrifuge('A000', ins=BeltThickener-1,
+                                outs=('supernatant_1','dewatered_sludge'),
+                                init_with='WasteStream',
+                                solids=('Sludge_lipid','Sludge_protein',
+                                        'Sludge_carbo','Sludge_ash'),
+                                sludge_moisture=0.8,
+                                disposal_cost=0)
+    SluC.register_alias('SluC')
+    SluC.include_construction = True
     
-    HeatDrying = tsu.HeatDrying(ID='HeatDrying',
-                                ins=LimeStabilization-0,
-                                outs='heated_sludge',
-                                target_moisture=0.2,
-                                rigorous=True)
+    if disposal == 'land_application':
+        LimeStabilization = tsu.LimeStabilization(ID='LimeStabilization',
+                                                  ins=(SluC-1,'lime','water','carbon_dioxide'),
+                                                  outs=('stablized_solids','vapor'),
+                                                  lime_type=lime_type, lime_purity=None,
+                                                  water_ratio=None, vapor_ratio=0.2,
+                                                  CaOH2_ratio=0.2, unit_electricity=5)
+        # TODO: update here if needed
+        # from Process Design Manual for Sludge Treatment and Disposal; United States
+        # Environmental Protection Agency, 1979:
+        # quick lime with a purity of 85% CaO is 40 1978$/ton
+        # hydrated lime with a purity of 47% CaO is 44.5 1978$/ton
+        if lime_type == 'quick_lime':
+            LimeStabilization.ins[1].price = 40/_ton_to_tonne/1000/GDPCTPI[1978]*GDPCTPI[2022]
+        else:
+            LimeStabilization.ins[1].price = 44.5/_ton_to_tonne/1000/GDPCTPI[1978]*GDPCTPI[2022]
         
+        LimeStabilization.ins[2].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
+    
+    try:
+        HeatDrying = tsu.HeatDrying(ID='HeatDrying',
+                                    ins=LimeStabilization-0,
+                                    outs='heated_sludge',
+                                    target_moisture=0.2)
+    except UnboundLocalError:
+        HeatDrying = tsu.HeatDrying(ID='HeatDrying',
+                                    ins=SluC-1,
+                                    outs='heated_sludge',
+                                    target_moisture=0.2)
+    
     Demoisturizer = tsu.Demoisturizer(ID='Demoisturizer',
                                       ins=HeatDrying-0,
                                       outs=('dried_sludge','vapor'))
@@ -142,18 +166,18 @@ def create_test_system(size=10,
     # 4.56 $/m3, 0.072 $/m3/mile (likely 2015$, [2])
     hauling.price = (4.56/1040 + 0.072/_mile_to_km/1040*solids_distance)/\
         GDPCTPI[2015]*GDPCTPI[2022]/solids_distance*1000
-    
+        
     solids_hauling = qs.Transportation('solids_hauling',
-                                       linked_unit=disposal_process,
-                                       item=hauling,
-                                       load_type='mass',
-                                       load=stream.dried_sludge.F_mass/1000,
-                                       load_unit='tonne',
-                                       distance=solids_distance,
-                                       distance_unit='km',
-                                       # set to 1 h since load = tonne/h
-                                       interval='1',
-                                       interval_unit='h')
+                                        linked_unit=disposal_process,
+                                        item=hauling,
+                                        load_type='mass',
+                                        load=stream.dried_sludge.F_mass/1000,
+                                        load_unit='tonne',
+                                        distance=solids_distance,
+                                        distance_unit='km',
+                                        # set to 1 h since load = tonne/h
+                                        interval='1',
+                                        interval_unit='h')
     disposal_process.transportation = solids_hauling
     
     # TODO: add LCA data, pay attention to purity, should be consistent with price
@@ -182,6 +206,7 @@ def create_test_system(size=10,
     create_tea(sys, IRR_value=0.03,
                income_tax_value=0.21,
                finance_interest_value=0.03,
+               # TODO: need update
                labor_cost_value=0)
     
     return sys
