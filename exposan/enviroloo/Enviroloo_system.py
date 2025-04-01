@@ -317,21 +317,22 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
 
     # O1.run()
     # breakpoint()
-    # B1 = elu.EL_CMMBR('B1', ins=(O1-0), 
-    #                     outs = (sludge_MT, 'effluent_MembT'),aeration=2, suspended_growth_model=masm2d,
-    #                     pumped_flow=0.0001, 
-    #                     solids_capture_rate=0.999, 
-    #                     V_max=3.34, 
-                        
-    B1 = su.CompletelyMixedMBR('B1', ins=(O1-0), 
-                        outs = (sludge_MT, 'effluent_MembT'),DO_ID='S_O2', aeration=2, suspended_growth_model=masm2d,
+    B1 = elu.EL_CMMBR('B1', ins=(O1-0), 
+                        outs = (sludge_MT, 'effluent_MembT'),aeration=2, suspended_growth_model=masm2d,
                         pumped_flow=0.0001, 
                         solids_capture_rate=0.999, 
-                        V_max=3.34,
-                        
-                        # ppl = ppl,
-                        # baseline_ppl = 100,
+                        V_max=3.34, 
                         )
+                        
+    # B1 = su.CompletelyMixedMBR('B1', ins=(O1-0), 
+    #                     outs = (sludge_MT, 'effluent_MembT'),DO_ID='S_O2', aeration=2, suspended_growth_model=masm2d,
+    #                     pumped_flow=0.0001, 
+    #                     solids_capture_rate=0.999, 
+    #                     V_max=3.34,
+                        
+    #                     # ppl = ppl,
+    #                     # baseline_ppl = 100,
+    #                     )
     # B1.run()
     # breakpoint()
     
