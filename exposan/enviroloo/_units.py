@@ -1233,7 +1233,7 @@ class EL_CMMBR(CompletelyMixedMBR):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', isdynamic=True, 
-                 pumped_flow=50, 
+                 pumped_flow=0.0001, 
                  solids_capture_rate=0.999, 
                  V_max=1000, 
                  crossflow_air=None,
