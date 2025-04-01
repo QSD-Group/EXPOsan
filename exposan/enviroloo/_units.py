@@ -236,12 +236,14 @@ class EL_Toilet(Toilet):
                  degraded_components=('OtherSS',), N_user=100, N_toilet=1, N_tot_user=None,
                  if_toilet_paper=True, if_flushing=True, if_cleansing=False,
                  if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
-                 CAPEX=None, OPEX_over_CAPEX=None, price_ratio=1., F_BM_default=1):
+                 CAPEX=None, OPEX_over_CAPEX=None, price_ratio=1.):
+                 # F_BM_default=1):
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with,
                      degraded_components=degraded_components, N_user=N_user, N_toilet=N_toilet, N_tot_user=N_tot_user,
                      if_toilet_paper=if_toilet_paper, if_flushing=if_flushing, if_cleansing=if_cleansing,
                      if_desiccant=if_desiccant, if_air_emission=if_air_emission, if_ideal_emptying=if_ideal_emptying,
-                     CAPEX=CAPEX, OPEX_over_CAPEX=OPEX_over_CAPEX, price_ratio=price_ratio, F_BM_default=F_BM_default)
+                     CAPEX=CAPEX, OPEX_over_CAPEX=OPEX_over_CAPEX, price_ratio=price_ratio, )
+                     # F_BM_default=F_BM_default,)
 
     #     Toilet.__init__(self, ID, ins, outs, thermo, init_with)
     #     self.degraded_components = tuple(degraded_components)
@@ -1242,7 +1244,7 @@ class EL_CMMBR(CompletelyMixedMBR):
                          isdynamic=isdynamic, 
                          pumped_flow=pumped_flow, 
                          solids_capture_rate=solids_capture_rate,  
-                         crossflow_air=crossflow_air
+                         crossflow_air=crossflow_air,
                          **kwargs)
     #     self.pumped_flow = pumped_flow
     #     self.solids_capture_rate = solids_capture_rate
@@ -1471,15 +1473,15 @@ class EL_CWT(StorageTank):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  vessel_type=None, tau=None, V_wf=None,
-                 vessel_material=None, kW_per_m3=0.,ppl=100, baseline_ppl = 100,
+                 vessel_material=None, kW_per_m3=0.,
                  init_with='WasteStream', F_BM_default=None,
                  include_construction=True, length_to_diameter=2):
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
-                     vessel_type=vessel_type, tau=tau, V_wf=V_wf,
-                     vessel_material=vessel_material, kW_per_m3=kW_per_m3,ppl=ppl, baseline_ppl = baseline_ppl,
-                     init_with=init_with, F_BM_default=F_BM_default,
-                     include_construction=include_construction, length_to_diameter=length_to_diameter)
-    #     self.length_to_diameter = length_to_diameter
+                      init_with=init_with, F_BM_default=F_BM_default,
+                      include_construction=include_construction,
+                      vessel_type=vessel_type, tau=tau, V_wf=V_wf,
+                      vessel_material=vessel_material, kW_per_m3=kW_per_m3)
+        self.length_to_diameter = length_to_diameter
         
     # def _init_state(self):
     #     pass

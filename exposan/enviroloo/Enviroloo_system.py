@@ -269,7 +269,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
                     ins=(WasteWater-0, WasteWater-1, 'toilet_paper', flushing_water,'cleansing_water', 'desiccant'), # add flushing water
                     outs=('mixed_waste'),
                     N_user=100, N_tot_user=1,
-                    F_BM_default=1
+                    # F_BM_default=1
                     # lifetime=10, if_include_front_end=True,
                     # if_toilet_paper=True, 
                     # if_flushing=True, 
@@ -357,7 +357,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
     
     # breakpoint()
     
-    sys = qs.System('EL', path=(PC, A1, O1, B1, S1, CWT, S2, PT, WasteWater, Toilet, CT),)
+    sys = qs.System('EL', path=(PC, A1, O1, B1, S1, CWT, S2, PT, WasteWater, Toilet, CT))
                 #recycle = [Recycle, sludge_PC, sludge_MT_PC, sludge_MT_A1, flushing_water]) # add flushing water
 
     # sys = qs.System('G1_WERF', path=(PC, S1, A1, A2, A3, A4, O1, O2, C1, GT, MT, M1, J1, DG, J2, DU, M2), 
