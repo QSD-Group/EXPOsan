@@ -17,7 +17,7 @@ from exposan.utils import (
     get_generic_tanker_truck_fee as get_tanker_truck_fee,
     )
 
-# Default settings of resource recovery in the EL system
+## Default settings of resource recovery in the EL system
 INCLUDED_RESOURCE_RECOVERY = False
 
 el_path = os.path.dirname(__file__)
