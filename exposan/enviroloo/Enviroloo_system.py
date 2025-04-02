@@ -432,7 +432,9 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
 def run(t, method=None, **kwargs):
     sys = create_systemEL()    
     
-    batch_init(sys, "/Users/rishabhpuri/Desktop/bsm2p_init.xlsx", sheet='el')
+    # batch_init(sys, "/Users/rishabhpuri/Desktop/bsm2p_init.xlsx", sheet='el')
+    batch_init(sys, ospath.join(folder, "data/units_data/bsm2p_init.xlsx"), sheet='el')
+    
     
     
     # path = ospath.join(folder, "data/initial_conditions_ASM2d.xlsx")    

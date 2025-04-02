@@ -794,7 +794,7 @@ def add_parameters(model, unit_dct, country_specific=False):
 #Create Model for EL system
 def create_modelEL(country_specific=False, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
-    sysEL = create_system('EL', flowsheet = flowsheet)
+    sysEL = create_systemEL(flowsheet = flowsheet)
     unitEL = sysEL.flowsheet.unit
 
     modelEL = Model(sysEL, **model_kwargs)
