@@ -44,29 +44,31 @@ for ID in (
     mdl = Model(sys)
     add_performance_metrics(mdl)
 
-    # for pud, multiple in zip((0, 10, 30, 100), (0,1,2,3.5)):
-    for pud, multiple in zip((0, 100), (0, 10)):
+    for pud, multiple in zip((0, 10, 30, 100), (0,1,2,3.5)):
+    # for pud, multiple in zip((0, 100), (0, 10)):
         try:
             if pud > 0:
                 _urine.scale(multiple)
                 fs.RWW.separate_out(_urine)
             start = tm.time()
             print(f"{pud}% UD start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
-            sys.simulate(state_reset_hook='reset_cache', t_span=(0,300), method='BDF')
+            try: sys.simulate(t_span=(0,300), method='BDF')
+            except: sys.simulate(state_reset_hook='reset_cache', t_span=(0,300), method='BDF')
             end = tm.time()
             print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end-start)), '\n')
             # N_mass_dfs[ID] = plantwide_N_mass_flows(sys)
             # P_mass_dfs[ID] = plantwide_P_mass_flows(sys)
             ndf = plantwide_N_mass_flows(sys)
-            with pd.ExcelWriter(os.path.join(results_path, 'N_mass.xlsx'), mode=mode) as writer:
-                ndf.to_excel(writer, sheet_name=f"{ID}_{pud}UD")
+            with pd.ExcelWriter(os.path.join(results_path, f'N_mass_{pud}UD.xlsx'), mode=mode) as writer:
+                ndf.to_excel(writer, sheet_name=ID)
             pdf = plantwide_P_mass_flows(sys)
-            with pd.ExcelWriter(os.path.join(results_path, 'P_mass.xlsx'), mode=mode) as writer:
-                pdf.to_excel(writer, sheet_name=f"{ID}_{pud}UD")
+            with pd.ExcelWriter(os.path.join(results_path, f'P_mass_{pud}UD.xlsx'), mode=mode) as writer:
+                pdf.to_excel(writer, sheet_name=ID)
             metrics[f'{pud}'][ID] = [m() for m in mdl.metrics]
-            mode = 'a'
         except Exception as exc:
             print(exc, '\n')
+    
+    mode = 'a'
     
     del sys, fs
 
@@ -80,7 +82,7 @@ for ID in (
 #     for k, v in P_mass_dfs.items():
 #         v.to_excel(writer, sheet_name=k)
 
-with pd.ExcelWriter(os.path.join(results_path, '_performance.xlsx')) as writer:
+with pd.ExcelWriter(os.path.join(results_path, 'performance.xlsx')) as writer:
     for k, v in metrics.items():
         df = pd.DataFrame.from_dict(v, orient='index', columns=var_columns(mdl.metrics))
         df.to_excel(writer, sheet_name=k)
