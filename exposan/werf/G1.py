@@ -43,7 +43,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
     pc.create_masm2d_cmps()
-    asm = pc.mASM2d(electron_acceptor_dependent_decay=True)
+    asm = pc.mASM2d(electron_acceptor_dependent_decay=True, b_PP=0.05, q_PHA=6.0)
     thermo_asm = qs.get_thermo()
     
     rww = pc.create_masm2d_inf(
@@ -69,8 +69,8 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     
     n_zones = 6
     V_tot = 4.7 * MGD2cmd
-    # fr_V = [0.014, 0.13, 0.148, 0.148, 0.28, 0.28]
-    fr_V = [0.044, 0.10, 0.148, 0.148, 0.28, 0.28]  # larger anoxic zone improves BNR
+    fr_V = [0.014, 0.13, 0.148, 0.148, 0.28, 0.28]
+    # fr_V = [0.044, 0.10, 0.148, 0.148, 0.28, 0.28]  # larger anoxic zone improves BNR
     
     gstrip = True
     an_kwargs = dict(aeration=None, DO_ID='S_O2', suspended_growth_model=asm, gas_stripping=gstrip)
@@ -113,14 +113,14 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     
     MT = su.IdealClarifier(
         'MT', FC-2, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.0233*MGD2cmd,
+        sludge_flow_rate=0.0241*MGD2cmd,
         solids_removal_efficiency=0.95,
         )
     M1 = su.Mixer('M1', ins=(GT-1, MT-1))
         
     pc.create_adm1p_cmps()
     thermo_adm = qs.get_thermo()
-    adm = pc.ADM1p(kLa=10.0)
+    adm = pc.ADM1p(kLa=10.0, b_PP=0.05, q_PHA=6.0)
     
     J1 = su.mASM2dtoADM1p('J1', upstream=M1-0, thermo=thermo_adm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
@@ -138,7 +138,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     
     DW = su.PrimaryClarifier(
         'DW', J2-0, outs=['', 'cake'],
-        sludge_flow_rate=0.007*MGD2cmd,
+        sludge_flow_rate=0.00715*MGD2cmd,    # aim for 18% TS
         solids_removal_efficiency=0.9,
         )
 

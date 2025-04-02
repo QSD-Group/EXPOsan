@@ -98,8 +98,8 @@ def create_i1_system(flowsheet=None, default_init_conds=True):
                           adm1_model=adm, asm2d_model=asm)
     AD = su.AnaerobicCSTR(
         'AD', ins=J1-0, outs=('biogas', 'digestate'), 
-        # V_liq=0.85*MGD2cmd, V_gas=0.085*MGD2cmd,
-        V_liq=0.66*MGD2cmd, V_gas=0.066*MGD2cmd,    # aim for solids loading rate of 1.6-4.8 kg VSS/m3/d
+        V_liq=0.85*MGD2cmd, V_gas=0.085*MGD2cmd,
+        # V_liq=0.66*MGD2cmd, V_gas=0.066*MGD2cmd,    # aim for solids loading rate of 1.6-4.8 kg VSS/m3/d
         fixed_headspace_P=False, fraction_retain=0,
         T=T_ad, model=adm,
         pH_ctrl=7.0,

@@ -41,14 +41,14 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
     pc.create_masm2d_cmps()
-    asm = pc.mASM2d(electron_acceptor_dependent_decay=True)
+    asm = pc.mASM2d(electron_acceptor_dependent_decay=True, b_PP=0.05, q_PHA=6.0)
     rww = pc.create_masm2d_inf(
         'RWW', 10, 'MGD', T=Temp, 
         COD=358, NH4_N=25.91, PO4_P=5,
         fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
         )
     carb = WasteStream('carbon', T=Temp, units='kg/hr', 
-                       S_A=185) # how much it takes to reduce eff TP to <= 2 mg/L
+                       S_A=125) # how much it takes to reduce eff TP to <= 2 mg/L
     thermo_asm = qs.get_thermo()
     
     PC = su.PrimaryClarifier(
@@ -100,20 +100,20 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
     
     GT = su.IdealClarifier(
         'GT', ins=[PC-1, S1-1], outs=['', 'thickened_sludge'],
-        sludge_flow_rate=0.0523*MGD2cmd,     # aim for 5% TS
+        sludge_flow_rate=0.0506*MGD2cmd,     # aim for 5% TS
         solids_removal_efficiency=0.85
         )
 
     pc.create_adm1p_cmps()
     thermo_adm = qs.get_thermo()
-    adm = pc.ADM1p(kLa=10.0)
+    adm = pc.ADM1p(kLa=10.0, b_PP=0.05, q_PHA=6.0)
     
     J1 = su.mASM2dtoADM1p('J1', upstream=GT-1, thermo=thermo_adm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
     AD = su.AnaerobicCSTR(
         'AD', ins=J1-0, outs=('biogas', 'digestate'), 
-        # V_liq=1.2*MGD2cmd, V_gas=0.12*MGD2cmd, 
-        V_liq=1.05*MGD2cmd, V_gas=0.105*MGD2cmd,    # 20 d HRT
+        V_liq=1.2*MGD2cmd, V_gas=0.12*MGD2cmd, 
+        # V_liq=1.05*MGD2cmd, V_gas=0.105*MGD2cmd,    # 20 d HRT
         fixed_headspace_P=False, fraction_retain=0,
         T=T_ad, model=adm,
         pH_ctrl=7.0,
@@ -125,7 +125,7 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
 
     DW = su.IdealClarifier(
         'DW', J2-0, outs=('', 'cake'),
-        sludge_flow_rate=0.00738*MGD2cmd,   # aim for 18% TS
+        sludge_flow_rate=0.00703*MGD2cmd,   # aim for 18% TS
         solids_removal_efficiency=0.9
         )
     MX = su.Mixer('MX', ins=[GT-0, DW-0])

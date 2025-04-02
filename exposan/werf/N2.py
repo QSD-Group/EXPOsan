@@ -41,7 +41,7 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
     pc.create_masm2d_cmps()
-    asm = pc.mASM2d(electron_acceptor_dependent_decay=True)
+    asm = pc.mASM2d(electron_acceptor_dependent_decay=True, b_PP=0.05, q_PHA=6.0)
     rww = pc.create_masm2d_inf(
         'RWW', 10, 'MGD', T=Temp, 
         COD=358, NH4_N=25.91, PO4_P=5,
@@ -49,7 +49,7 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
         )
     carb = WasteStream('carbon', T=Temp, units='kg/hr', 
                        # S_A=50)
-                       S_A=300) # how much it takes to lower effluent TP to <= 2mg/L
+                       S_A=90) # how much it takes to lower effluent TP to <= 2mg/L
     
     n_zones = 5
     V_tot = 2.61 * MGD2cmd
@@ -91,20 +91,22 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
         
     MT = su.IdealClarifier(
         'MT', S1-1, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.0563*MGD2cmd,    # aim for 5% TS
+        sludge_flow_rate=0.0413*MGD2cmd,    # aim for 5% TS
         solids_removal_efficiency=0.95
         )
     
     #!!! AED seems to significantly increase the NO3- concentrations in reject 
     # -- mixed RWW and reject water has a 4-5 mg/L S_NO3, could be why EBPR is failing?
+    asm2 = pc.mASM2d(electron_acceptor_dependent_decay=True, b_PP=0.05, q_PHA=6.0,
+                     mmp_kinetics='KM', pH_ctrl=5.6)
     AED = su.AerobicDigester(
         'AED', ins=MT-1, outs='digestate',
-        V_max=2.4*MGD2cmd, activated_sludge_model=asm,
+        V_max=2.4*MGD2cmd, activated_sludge_model=asm2,
         aeration=1.0, DO_ID='S_O2', gas_stripping=True)
 
     DW = su.IdealClarifier(
         'DW', AED-0, outs=('', 'cake'),
-        sludge_flow_rate=0.00422*MGD2cmd,    # aim for 17% TS
+        sludge_flow_rate=0.00363*MGD2cmd,    # aim for 17% TS
         solids_removal_efficiency=0.9
         )
     MX = su.Mixer('MX', ins=[MT-0, DW-0])

@@ -40,13 +40,13 @@ def create_g3_system(flowsheet=None, default_init_conds=True):
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
     pc.create_masm2d_cmps()
-    asm = pc.mASM2d(electron_acceptor_dependent_decay=True)
+    asm = pc.mASM2d(electron_acceptor_dependent_decay=True, b_PP=0.05, q_PHA=6.0)
     rww = pc.create_masm2d_inf(
         'RWW', 10, 'MGD', T=Temp, 
         COD=358, NH4_N=25.91, PO4_P=5,
         fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
         )
-    carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=25)
+    carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=30)
     PC = su.PrimaryClarifier(
         'PC', ins=[rww, 'reject'], 
         outs=('PE', 'PS'),
