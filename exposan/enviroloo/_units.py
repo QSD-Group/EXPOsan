@@ -234,8 +234,8 @@ class EL_Toilet(Toilet):
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  degraded_components=('OtherSS',), N_user=100, N_toilet=1, N_tot_user=None,
-                 if_toilet_paper=True, if_flushing=True, if_cleansing=False,
-                 if_desiccant=False, if_air_emission=True, if_ideal_emptying=True,
+                 if_toilet_paper=True, if_flushing=True, if_cleansing=True,
+                 if_desiccant=True, if_air_emission=True, if_ideal_emptying=True,
                  CAPEX=None, OPEX_over_CAPEX=None, price_ratio=1.):
                  # F_BM_default=1):
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with,
@@ -710,7 +710,8 @@ class EL_PC(IdealClarifier):
     _outs_size_is_fixed = True
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 sludge_flow_rate=2000, solids_removal_efficiency=0.995,
+                 sludge_flow_rate=10, 
+                 solids_removal_efficiency=.85,
                  sludge_MLSS=None, isdynamic=False, init_with='WasteStream',
                  F_BM_default=None, **kwargs):
 
@@ -1020,15 +1021,19 @@ class EL_Anoxic(CSTR):
     _D_O2 = 2.10e-9   # m2/s
 
     def __init__(self, ID='', ins=None, outs=(), split=None, thermo=None,
-                 init_with='WasteStream', V_max=1000, W_tank = 6.4, D_tank = 3.65,
-                 freeboard = 0.61, t_wall = None, t_slab = None, aeration=None, 
+                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, 
+                 # D_tank = 3.65,
+                 # freeboard = 0.61, 
+                 t_wall = None, t_slab = None, aeration=None, 
                  DO_ID=None, suspended_growth_model=None, 
                  gas_stripping=False, gas_IDs=None, stripping_kLa_min=None, 
                  K_Henry=None, D_gas=None, p_gas_atm=None,
                  isdynamic=True, exogenous_vars=(), **kwargs):
         super().__init__(ID=ID, ins=ins, outs=outs, split=split, thermo=thermo,
-        init_with=init_with, V_max=V_max, W_tank = W_tank, D_tank = D_tank,
-        freeboard = freeboard, t_wall = t_wall, t_slab = t_slab, aeration=aeration, 
+        init_with=init_with, V_max=V_max, W_tank = W_tank, 
+        # D_tank = D_tank,
+        # freeboard = freeboard, 
+        t_wall = t_wall, t_slab = t_slab, aeration=aeration, 
         DO_ID=DO_ID, suspended_growth_model=suspended_growth_model, 
         gas_stripping=gas_stripping, gas_IDs=gas_IDs, stripping_kLa_min=stripping_kLa_min, 
         K_Henry=K_Henry, D_gas=D_gas, p_gas_atm=p_gas_atm,
@@ -1036,7 +1041,7 @@ class EL_Anoxic(CSTR):
         
 
         # # Design parameters 
-        # self._W_tank = W_tank
+        self._W_tank = W_tank
         # self._D_tank = D_tank
         # self._freeboard = freeboard
         # self._t_wall = t_wall
@@ -1147,15 +1152,19 @@ class EL_Aerobic(CSTR):
 
     def __init__(self, 
                  ID='', ins=None, outs=(), split=None, thermo=None,
-                 init_with='WasteStream', V_max=1000, W_tank = 6.4, D_tank = 3.65,
-                 freeboard = 0.61, t_wall = None, t_slab = None, aeration=2.0, 
+                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, 
+                 # D_tank = 3.65,
+                 # freeboard = 0.61, 
+                 t_wall = None, t_slab = None, aeration=2.0, 
                  DO_ID='S_O2', suspended_growth_model=None, 
                  gas_stripping=False, gas_IDs=None, stripping_kLa_min=None, 
                  K_Henry=None, D_gas=None, p_gas_atm=None,
                  isdynamic=True, exogenous_vars=(), **kwargs):
         super().__init__(ID=ID, ins=ins, outs=outs, split=split, thermo=thermo,
-        init_with=init_with, V_max=V_max, W_tank = W_tank, D_tank = D_tank,
-        freeboard = freeboard, t_wall = t_wall, t_slab = t_slab, aeration=aeration, 
+        init_with=init_with, V_max=V_max, W_tank = W_tank, 
+        # D_tank = D_tank,
+        # freeboard = freeboard, 
+        t_wall = t_wall, t_slab = t_slab, aeration=aeration, 
         DO_ID=DO_ID, suspended_growth_model=suspended_growth_model, 
         gas_stripping=gas_stripping, gas_IDs=gas_IDs, stripping_kLa_min=stripping_kLa_min, 
         K_Henry=K_Henry, D_gas=D_gas, p_gas_atm=p_gas_atm,
@@ -1163,11 +1172,13 @@ class EL_Aerobic(CSTR):
        
 
         # # Design parameters 
-        # self._W_tank = W_tank
+        self._W_tank = W_tank
         # self._D_tank = D_tank
         # self._freeboard = freeboard
         # self._t_wall = t_wall
         # self._t_slab = t_slab
+
+ 
     
         # for attr, value in kwargs.items():
         #     setattr(self, attr, value)
@@ -1231,20 +1242,24 @@ class EL_CMMBR(CompletelyMixedMBR):
     _outs_size_is_fixed = True
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', isdynamic=True, 
-                 pumped_flow=0.0001, 
-                 solids_capture_rate=0.999, 
-                 V_max=1000, 
+                 init_with='WasteStream', isdynamic=True, aeration=2, DO_ID='S_O2', suspended_growth_model=None,
+                 # pumped_flow=0.103, 
+                 # solids_capture_rate=0.999, 
+                 V_max=3.3, 
                  crossflow_air=None,
                  **kwargs):
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
                          init_with=init_with, 
                          V_max=V_max, 
                          isdynamic=isdynamic, 
-                         pumped_flow=pumped_flow, 
-                         solids_capture_rate=solids_capture_rate,  
-                         crossflow_air=crossflow_air,
+                         
+                         # pumped_flow=pumped_flow, 
+                         # solids_capture_rate=solids_capture_rate,  
+                         # crossflow_air=crossflow_air,
                          **kwargs)
+        self.aeration = aeration
+        self.DO_ID=DO_ID
+        self.suspended_growth_model=suspended_growth_model  
     #     self.pumped_flow = pumped_flow
     #     self.solids_capture_rate = solids_capture_rate
     #     self.crossflow_air = crossflow_air
@@ -1474,13 +1489,13 @@ class EL_CWT(StorageTank):
                  vessel_type=None, tau=None, V_wf=None,
                  vessel_material=None, kW_per_m3=0.,
                  init_with='WasteStream', F_BM_default=None,
-                 include_construction=True, length_to_diameter=2):
+                 include_construction=True, length_to_width=1.827):
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
                       init_with=init_with, F_BM_default=F_BM_default,
                       include_construction=include_construction,
                       vessel_type=vessel_type, tau=tau, V_wf=V_wf,
                       vessel_material=vessel_material, kW_per_m3=kW_per_m3)
-        self.length_to_diameter = length_to_diameter
+        self.length_to_width = length_to_width
         
     # def _init_state(self):
     #     pass
