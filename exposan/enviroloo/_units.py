@@ -712,6 +712,7 @@ class EL_PC(IdealClarifier):
     _N_ins = 2
     _N_outs = 2  # [0] effluent overflow, [1] sludge underflow
     _outs_size_is_fixed = True
+    exponent_scale = 0.1
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  sludge_flow_rate=10, 
@@ -726,6 +727,7 @@ class EL_PC(IdealClarifier):
             sludge_MLSS=sludge_MLSS, isdynamic=isdynamic, init_with=init_with,
             F_BM_default=F_BM_default, **kwargs
             )
+        
         # self.sludge_flow_rate = sludge_flow_rate
         # self.solids_removal_efficiency = solids_removal_efficiency
         # self.sludge_MLSS = sludge_MLSS
@@ -873,14 +875,30 @@ class EL_PC(IdealClarifier):
     #     self._AE = yt
  
 
+    # def _design(self):
+    #     """Calculate design parameters."""
+    #     self.design_results['StainlessSteel'] = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)
+    #     self.construction = [
+    #         Construction(item='StainlessSteel', quantity=self.design_results['StainlessSteel'], quantity_unit='kg'),
+    #     ]
+    #     self.add_construction(add_cost=False)
+        ####### These below codes are essential to perform LCA and TEA #########
+        data = load_data(path = PrimaryClarifier_path)
+        for para in data.index:
+            value = float(data.loc[para]['expected'])
+            setattr(self, para, value)
+        del data
+
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)    
+        ###############################################
+    def _init_lca(self):
+        self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),]  
+    
     def _design(self):
-        """Calculate design parameters."""
-        self.design_results['StainlessSteel'] = (
-            self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)
-        )
-        self.construction = [
-            Construction(item='StainlessSteel', quantity=self.design_results['StainlessSteel'], quantity_unit='kg')
-        ]
+        design = self.design_results
+        constr = self.construction
+        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)
         self.add_construction(add_cost=False)
 
     def _cost(self):
