@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Feb  7 08:41:06 2025
+EXPOsan: Exposition of sanitation and resource recovery systems
 
-@author: joy_c
+This module is developed by:
+        
+    Joy Zhang <joycheung1994@gmail.com>
+
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
 """
 import time as tm, pandas as pd, os
 from exposan.werf import create_system, add_performance_metrics, results_path
