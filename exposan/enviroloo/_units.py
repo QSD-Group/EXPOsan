@@ -238,11 +238,13 @@ class EL_Toilet(Toilet):
                  if_desiccant=True, if_air_emission=True, if_ideal_emptying=True,
                  CAPEX=None, OPEX_over_CAPEX=None, price_ratio=1.):
                  # F_BM_default=1):
-        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with,
-                     degraded_components=degraded_components, N_user=N_user, N_toilet=N_toilet, N_tot_user=N_tot_user,
-                     if_toilet_paper=if_toilet_paper, if_flushing=if_flushing, if_cleansing=if_cleansing,
-                     if_desiccant=if_desiccant, if_air_emission=if_air_emission, if_ideal_emptying=if_ideal_emptying,
-                     CAPEX=CAPEX, OPEX_over_CAPEX=OPEX_over_CAPEX, price_ratio=price_ratio, )
+        super().__init__(
+            ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with,
+            degraded_components=degraded_components, N_user=N_user, N_toilet=N_toilet, N_tot_user=N_tot_user,
+            if_toilet_paper=if_toilet_paper, if_flushing=if_flushing, if_cleansing=if_cleansing,
+            if_desiccant=if_desiccant, if_air_emission=if_air_emission, if_ideal_emptying=if_ideal_emptying,
+            CAPEX=CAPEX, OPEX_over_CAPEX=OPEX_over_CAPEX, price_ratio=price_ratio, 
+            )
                      # F_BM_default=F_BM_default,)
 
     #     Toilet.__init__(self, ID, ins, outs, thermo, init_with)
@@ -569,9 +571,11 @@ class EL_CT(Mixer):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', F_BM_default=None, isdynamic=False,
                  rigorous=False, conserve_phases=False):
-        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
-                     init_with=init_with, F_BM_default=F_BM_default, isdynamic=isdynamic,
-                     rigorous=rigorous, conserve_phases=conserve_phases)
+        super().__init__(
+            ID=ID, ins=ins, outs=outs, thermo=thermo,
+            init_with=init_with, F_BM_default=F_BM_default, isdynamic=isdynamic,
+            rigorous=rigorous, conserve_phases=conserve_phases
+            )
          # self.rigorous = rigorous
          # self.conserve_phases = conserve_phases
 
@@ -715,10 +719,13 @@ class EL_PC(IdealClarifier):
                  sludge_MLSS=None, isdynamic=False, init_with='WasteStream',
                  F_BM_default=None, **kwargs):
 
-        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
-                     sludge_flow_rate=sludge_flow_rate, solids_removal_efficiency=solids_removal_efficiency,
-                     sludge_MLSS=sludge_MLSS, isdynamic=isdynamic, init_with=init_with,
-                     F_BM_default=F_BM_default, **kwargs)
+        super().__init__(
+            ID=ID, ins=ins, outs=outs, thermo=thermo,
+            sludge_flow_rate=sludge_flow_rate, 
+            solids_removal_efficiency=solids_removal_efficiency,
+            sludge_MLSS=sludge_MLSS, isdynamic=isdynamic, init_with=init_with,
+            F_BM_default=F_BM_default, **kwargs
+            )
         # self.sludge_flow_rate = sludge_flow_rate
         # self.solids_removal_efficiency = solids_removal_efficiency
         # self.sludge_MLSS = sludge_MLSS
@@ -864,63 +871,6 @@ class EL_PC(IdealClarifier):
     #         _update_state()
     #         # _update_dstate()
     #     self._AE = yt
-   
-    
-# %%
-# Total COD removal efficiency
-nCOD = lambda f_corr, fx, HRT: f_corr*(2.88*fx - 0.118)*(1.45 + 6.15*np.log(HRT*24*60))
-
-def calc_f_i(fx, f_corr, HRT):
-    '''calculates the effluent-to-influent ratio of solid concentrations'''
-    nX = nCOD(f_corr, fx, HRT)/fx
-    if nX > 100: nX = 100
-    if nX < 0: nX = 0
-    return 1-(nX/100)
-
-    # def _run(self):
-    #     inf = self._mixed
-    #     inf.mix_from(self.ins)  # Combine all inputs (TreatedWater + NitrateReturn_MT)
-    #     of, uf, spill = self.outs  # [0] Anoxic, [1] Sludge (return), [2] Spill (unused for now)
-    
-    #     TSS_in = inf.get_TSS()  # mg/L
-    
-    #     if TSS_in <= 0:
-    #         uf.empty()
-    #         of.copy_like(inf)
-    #         return
-    
-    #     Q_in = inf.F_vol * 24  # Convert hourly flow (m3/hr) to m3/day
-    #     x = inf.components.x
-    
-    #     Qs = self._Qs  # sludge flow rate (m3/d)
-    #     e_rmv = self._e_rmv
-    #     mlss = self._MLSS
-    
-    #     if Qs and e_rmv:
-    #         f_uf = Qs / Q_in
-    #         f_Xuf = e_rmv + (1 - e_rmv) * f_uf
-    #     elif Qs and mlss:
-    #         f_uf = Qs / Q_in
-    #         f_Xuf = f_uf * mlss / TSS_in
-    #     elif e_rmv and mlss:
-    #         f_uf = e_rmv / (mlss / TSS_in - (1 - e_rmv))
-    #         f_Xuf = e_rmv + (1 - e_rmv) * f_uf
-    #     else:
-    #         # Fallback values if none provided
-    #         f_uf = 0.1
-    #         f_Xuf = 0.5
-    
-    #     split_to_uf = (1 - x) * f_uf + x * f_Xuf
-    #     # split_to_uf = min(split_to_uf, 1)  # Ensure not over-split
-    
-    #     # Now split input between underflow (sludge) and overflow (clarified)
-    #     inf.split_to(uf, of, split_to_uf)
-    
-    #     # Optional: leave spill stream empty for now
-    #     spill.empty()
-    #     # Store values for logging/debugging
-    #     self._f_uf = f_uf
-    #     self._f_of = 1 - f_uf
  
 
     def _design(self):
@@ -1018,7 +968,7 @@ class EL_Anoxic(CSTR):
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     
-    _D_O2 = 2.10e-9   # m2/s
+    # _D_O2 = 2.10e-9   # m2/s
 
     def __init__(self, ID='', ins=None, outs=(), split=None, thermo=None,
                  init_with='WasteStream', V_max=7.3, W_tank = 2.09, 
@@ -1029,15 +979,18 @@ class EL_Anoxic(CSTR):
                  gas_stripping=False, gas_IDs=None, stripping_kLa_min=None, 
                  K_Henry=None, D_gas=None, p_gas_atm=None,
                  isdynamic=True, exogenous_vars=(), **kwargs):
-        super().__init__(ID=ID, ins=ins, outs=outs, split=split, thermo=thermo,
-        init_with=init_with, V_max=V_max, W_tank = W_tank, 
-        # D_tank = D_tank,
-        # freeboard = freeboard, 
-        t_wall = t_wall, t_slab = t_slab, aeration=aeration, 
-        DO_ID=DO_ID, suspended_growth_model=suspended_growth_model, 
-        gas_stripping=gas_stripping, gas_IDs=gas_IDs, stripping_kLa_min=stripping_kLa_min, 
-        K_Henry=K_Henry, D_gas=D_gas, p_gas_atm=p_gas_atm,
-        isdynamic=isdynamic, exogenous_vars=(), **kwargs)
+        super().__init__(
+            ID=ID, ins=ins, outs=outs, split=split, thermo=thermo,
+            init_with=init_with, V_max=V_max, W_tank = W_tank, 
+            # D_tank = D_tank,
+            # freeboard = freeboard, 
+            t_wall = t_wall, t_slab = t_slab, aeration=aeration, 
+            DO_ID=DO_ID, suspended_growth_model=suspended_growth_model, 
+            gas_stripping=gas_stripping, gas_IDs=gas_IDs, 
+            stripping_kLa_min=stripping_kLa_min, 
+            K_Henry=K_Henry, D_gas=D_gas, p_gas_atm=p_gas_atm,
+            isdynamic=isdynamic, exogenous_vars=exogenous_vars, **kwargs
+            )
         
 
         # # Design parameters 
@@ -1160,15 +1113,18 @@ class EL_Aerobic(CSTR):
                  gas_stripping=False, gas_IDs=None, stripping_kLa_min=None, 
                  K_Henry=None, D_gas=None, p_gas_atm=None,
                  isdynamic=True, exogenous_vars=(), **kwargs):
-        super().__init__(ID=ID, ins=ins, outs=outs, split=split, thermo=thermo,
-        init_with=init_with, V_max=V_max, W_tank = W_tank, 
-        # D_tank = D_tank,
-        # freeboard = freeboard, 
-        t_wall = t_wall, t_slab = t_slab, aeration=aeration, 
-        DO_ID=DO_ID, suspended_growth_model=suspended_growth_model, 
-        gas_stripping=gas_stripping, gas_IDs=gas_IDs, stripping_kLa_min=stripping_kLa_min, 
-        K_Henry=K_Henry, D_gas=D_gas, p_gas_atm=p_gas_atm,
-        isdynamic=isdynamic, exogenous_vars=exogenous_vars, **kwargs)
+        super().__init__(
+            ID=ID, ins=ins, outs=outs, split=split, thermo=thermo,
+            init_with=init_with, V_max=V_max, W_tank = W_tank, 
+            # D_tank = D_tank,
+            # freeboard = freeboard, 
+            t_wall = t_wall, t_slab = t_slab, aeration=aeration, 
+            DO_ID=DO_ID, suspended_growth_model=suspended_growth_model, 
+            gas_stripping=gas_stripping, gas_IDs=gas_IDs, 
+            stripping_kLa_min=stripping_kLa_min, 
+            K_Henry=K_Henry, D_gas=D_gas, p_gas_atm=p_gas_atm,
+            isdynamic=isdynamic, exogenous_vars=exogenous_vars, **kwargs
+            )
        
 
         # # Design parameters 
@@ -1242,27 +1198,22 @@ class EL_CMMBR(CompletelyMixedMBR):
     _outs_size_is_fixed = True
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', isdynamic=True, aeration=2, DO_ID='S_O2', suspended_growth_model=None,
-                 # pumped_flow=0.103, 
-                 # solids_capture_rate=0.999, 
+                 init_with='WasteStream', isdynamic=True, 
+                 aeration=2, DO_ID='S_O2', suspended_growth_model=None,
+                 pumped_flow=0.103, 
+                 solids_capture_rate=0.999, 
                  V_max=3.3, 
                  crossflow_air=None,
                  **kwargs):
-        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
-                         init_with=init_with, 
-                         V_max=V_max, 
-                         isdynamic=isdynamic, 
-                         
-                         # pumped_flow=pumped_flow, 
-                         # solids_capture_rate=solids_capture_rate,  
-                         # crossflow_air=crossflow_air,
-                         **kwargs)
-        self.aeration = aeration
-        self.DO_ID=DO_ID
-        self.suspended_growth_model=suspended_growth_model  
-    #     self.pumped_flow = pumped_flow
-    #     self.solids_capture_rate = solids_capture_rate
-    #     self.crossflow_air = crossflow_air
+        super().__init__(
+            ID=ID, ins=ins, outs=outs, thermo=thermo,
+            init_with=init_with, V_max=V_max, aeration=aeration, DO_ID=DO_ID,
+            suspended_growth_model=suspended_growth_model, isdynamic=isdynamic, 
+            pumped_flow=pumped_flow, 
+            solids_capture_rate=solids_capture_rate,  
+            crossflow_air=crossflow_air,
+            **kwargs
+            )
     
     # @property
     # def pumped_flow(self):
@@ -1476,9 +1427,10 @@ class EL_CWT(Mixer):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', F_BM_default=None, isdynamic=False,
                  rigorous=False, conserve_phases=False):
-        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
-                     init_with=init_with, F_BM_default=F_BM_default, isdynamic=isdynamic,
-                     rigorous=rigorous, conserve_phases=conserve_phases)
+        super().__init__(
+            ID=ID, ins=ins, outs=outs, thermo=thermo,
+            init_with=init_with, F_BM_default=F_BM_default, isdynamic=isdynamic,
+            rigorous=rigorous, conserve_phases=conserve_phases)
          # self.rigorous = rigorous
          # self.conserve_phases = conserve_phases
 
