@@ -1143,7 +1143,7 @@ class EL_Aerobic(CSTR):
     
     '''
     _N_ins = 1 # treated water, PAC, blower
-    _N_outs = 1  # treated water, CH4, N2O
+    _N_outs = 3  # treated water, CH4, N2O
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     # exponent_scale = 0.1
@@ -1445,7 +1445,7 @@ class EL_CMMBR(CompletelyMixedMBR):
 ClearWaterTank_path = os.path.join(EL_su_data_path, '_EL_CWT.tsv')
 
 @price_ratio()
-class EL_CWT(StorageTank):
+class EL_CWT(Mixer):
 
     '''
     Introduction
@@ -1473,129 +1473,108 @@ class EL_CWT(StorageTank):
      refer to the qsdsan.sanunits.storagetank module
 
     '''
-    _N_ins = 1
-    _N_outs = 1
-    _units = {'Diameter': 'ft',
-              'Length': 'ft',
-              'Wall thickness': 'in',
-              'Weight': 'lb'}
-    _bounds = {'Vertical vessel weight': (4200, 1e6),
-               'Horizontal vessel weight': (1e3, 9.2e5),
-               'Horizontal vessel diameter': (3, 21),
-               'Vertical vessel length': (12, 40)}
-    _vessel_material = 'Stainless steel'
-    
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 vessel_type=None, tau=None, V_wf=None,
-                 vessel_material=None, kW_per_m3=0.,
-                 init_with='WasteStream', F_BM_default=None,
-                 include_construction=True, length_to_width=1.827):
+                 init_with='WasteStream', F_BM_default=None, isdynamic=False,
+                 rigorous=False, conserve_phases=False):
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
-                      init_with=init_with, F_BM_default=F_BM_default,
-                      include_construction=include_construction,
-                      vessel_type=vessel_type, tau=tau, V_wf=V_wf,
-                      vessel_material=vessel_material, kW_per_m3=kW_per_m3)
-        self.length_to_width = length_to_width
-        
+                     init_with=init_with, F_BM_default=F_BM_default, isdynamic=isdynamic,
+                     rigorous=rigorous, conserve_phases=conserve_phases)
+         # self.rigorous = rigorous
+         # self.conserve_phases = conserve_phases
+
+
+    # @property
+    # def state(self):
+    #     '''The state of the Mixer, including component concentrations [mg/L] and flow rate [m^3/d].'''
+    #     if self._state is None: return None
+    #     else:
+    #         return dict(zip(list(self.components.IDs) + ['Q'], self._state))
+
     # def _init_state(self):
-    #     pass
+    #     '''initialize state by specifying or calculating component concentrations
+    #     based on influents. Total flow rate is always initialized as the sum of
+    #     influent wastestream flows.'''
+    #     QCs = self._ins_QC
+        
+    #     if QCs.shape[0] <= 1: self._state = QCs[0]
+    #     else:
+    #         Qs = QCs[:,-1]
+    #         # breakpoint()
+    #         Cs = QCs[:,:-1]
+            
+    #         self._state = np.append(Qs @ Cs / Qs.sum(), Qs.sum())
+    #     self._dstate = self._state * 0.
 
     # def _update_state(self):
-    #     pass
+    #     '''updates conditions of output stream based on conditions of the Mixer'''
+    #     self._outs[0].state = self._state
 
     # def _update_dstate(self):
-    #     pass
-        
-    def _init_lca(self):
-        item_name = self.vessel_material.replace(' ', '_')
-        self.construction = [
-            Construction(item_name.lower(), linked_unit=self, item=item_name, quantity_unit='kg'),
-            ]
-        
-    
+    #     '''updates rates of change of output stream from rates of change of the Mixer'''
+    #     self._outs[0].dstate = self._dstate
+
+    # @property
+    # def AE(self):
+    #     if self._AE is None:
+    #         self._compile_AE()
+    #     return self._AE
+
+    # def _compile_AE(self):
+    #     _n_ins = len(self.ins)
+    #     _state = self._state
+    #     _dstate = self._dstate
+    #     _update_state = self._update_state
+    #     _update_dstate = self._update_dstate
+    #     def yt(t, QC_ins, dQC_ins):
+    #         if _n_ins > 1:
+    #             Q_ins = QC_ins[:, -1]
+    #             C_ins = QC_ins[:, :-1]
+    #             dQ_ins = dQC_ins[:, -1]
+    #             dC_ins = dQC_ins[:, :-1]
+    #             Q = Q_ins.sum()
+    #             C = Q_ins @ C_ins / Q
+    #             _state[-1] = Q
+    #             _state[:-1] = C
+    #             Q_dot = dQ_ins.sum()
+    #             C_dot = (dQ_ins @ C_ins + Q_ins @ dC_ins - Q_dot * C)/Q
+    #             _dstate[-1] = Q_dot
+    #             _dstate[:-1] = C_dot
+    #         else:
+    #             _state[:] = QC_ins[0]
+    #             _dstate[:] = dQC_ins[0]
+    #         _update_state()
+    #         _update_dstate()
+    #     self._AE = yt
+
     def _design(self):
-        BSTStorageTank._design(self)
-        D = self.design_results
+        design = self.design_results
+        constr = self.construction
+        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)
+        self.add_construction(add_cost=False)
+    
+    def _cost(self):
+        C = self.baseline_purchase_costs
+        C['Tank'] = self.collection_tank_cost
+        C['Pipes'] = self.pipeline_connectors
+        C['Fittings'] = self.weld_female_adapter_fittings
+    
+        ratio = self.price_ratio
+        for equipment, cost in C.items():
+            C[equipment] = cost * ratio
         
-        _lb_to_kg = auom('lb').conversion_factor('kg')
-        _m_to_ft = auom('m').conversion_factor('ft')
-        _Pa_to_psi = auom('Pa').conversion_factor('psi')
+        self.add_OPEX = self._calc_replacement_cost()
         
-        Diameter = (4*D['Total volume']/pi/self.length_to_diameter)**(1/3)
-        Diameter *= _m_to_ft # convert from m to ft
-        L = Diameter * self.length_to_diameter # ft
-        D.update(self._horizontal_vessel_design(self.ins[0].P*_Pa_to_psi, Diameter, L))
-        D['Material'] = self.vessel_material
-        if self.include_construction: self.construction[0].quantity = D['Weight']*_lb_to_kg
-
-
-    def _horizontal_vessel_design(self, pressure, diameter, length) -> dict:
-        pressure = pressure
-        diameter = diameter
-        length = length
-        # Calculate vessel weight and wall thickness
-        if self.vessel_material == 'Carbon steel':
-            rho_M = material_densities_lb_per_ft3[self.vessel_material]
-        else:
-            rho_M = material_densities_lb_per_ft3['Stainless steel 304']
-        if pressure < 14.68:
-            warn('vacuum pressure vessel ASME codes not implemented yet; '
-                 'wall thickness may be inaccurate and stiffening rings may be '
-                 'required', category=DesignWarning)
-        VW, VWT = flash_vessel_design.compute_vessel_weight_and_wall_thickness(
-            pressure, diameter, length, rho_M)
-        bounds_warning(self, 'Horizontal vessel weight', VW, 'lb',
-                       self._bounds['Horizontal vessel weight'], 'cost')
-        bounds_warning(self, 'Horizontal vessel diameter', diameter, 'ft',
-                       self._bounds['Horizontal vessel diameter'], 'cost')
-        Design = {}
-        Design['Vessel type'] = 'Horizontal'
-        Design['Length'] = length # ft
-        Design['Diameter'] = diameter # ft
-        Design['Weight'] = VW # lb
-        Design['Wall thickness'] = VWT # in
-        return Design
-
-    @property
-    def vessel_material(self):
-        return self._vessel_material
-    @vessel_material.setter
-    def vessel_material(self, i):
-        exist_material = getattr(self, '_vessel_material', None)
-        StorageTank.vessel_material.fset(self, i)
-        if i and exist_material == i: return # type doesn't change, no need to reload construction items
-        self._init_lca()
-        
-        
-    # def _design(self):
-    #     design = self.design_results
-    #     constr = self.construction
-    #     design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)  # to be defined in .tsv file
-    #     self.add_construction(add_cost=False)
-
-    # def _cost(self):
-    #     C = self.baseline_purchase_costs # the below items need to be defined in .tsv file
-    #     C['Pressure water tank'] = self.pressure_water_tank_cost
-    #     C['pipeline'] = self.pipeline_connectors
-    #     C['fittings'] = self.weld_female_adapter_fittings
-
-    #     ratio = self.price_ratio
-    #     for equipment, cost in C.items():
-    #         C[equipment] = cost * ratio
-
-    #     self.add_OPEX = self._calc_replacement_cost()
-
-    #     power_demand = self.power_demand_PT
-    #     self.power_utility(power_demand)
-
-    # def _calc_replacement_cost(self):
-    #     scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
-    #     PW_replacement_cost = (
-    #         self.pressure_water_tank_cost / self.pressure_water_tank_lifetime +
-    #         self.pipeline_connectors / self.pipeline_connectors_lifetime +
-    #         self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime) * scale
-    #     PW_replacement_cost = PW_replacement_cost / (365 * 24) # convert to USD/hr
-    #     return PW_replacement_cost
+        power_demand = self.power_demand_CT
+        self.power_utility(power_demand)
+    
+    def _calc_replacement_cost(self):
+        scale  = (self.ppl / self.baseline_ppl) ** self.exponent_scale
+        CT_replacement_cost = (
+            self.collection_tank_cost / self.collection_tank_lifetime +               
+            self.pipeline_connectors / self.pipeline_connectors_lifetime +
+            self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime) * scale
+        CT_replacement_cost = CT_replacement_cost / (365 * 24)  # convert to USD/hr
+        return CT_replacement_cost
 
 # %%
 PressureTank_path = os.path.join(EL_su_data_path, '_EL_PT.tsv')
