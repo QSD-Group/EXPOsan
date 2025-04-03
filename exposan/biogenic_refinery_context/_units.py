@@ -107,8 +107,12 @@ class Biosolids(SanUnit):
         biosolids.imass['H20'] = biosolids.F_vol * 1000 * self.MC  # kg/hr
         biosolids.TN = flow_rate_db * self.N # kg / hr
         #TODO need some estimates of COD for CH4 in drying
+        biosolids.COD = biosolids._VM * 1.74 #TODO: if an. digestion or aer. dgiestion: CODt / VS = 1.60, else if: CODt / VS = 1.74 Ahnert et. al., (2021).
         #TODO might need to use .imass['N'] instead of .TN too?
         
+        biosolids._AC_percent = 100 * biosolids._AC / flow_rate_db # %
+        biosolids._FC_percent = 100 * biosolids._FC / flow_rate_db # %
+        biosolids_hhv = (259.83 * (biosolids._AC_percent + biosolids._FC_percent) - 2454.76) / 1000  # MJ/kg db from Thipkhunthod et. al., (2005).
 
 
 ##TODO 
@@ -244,7 +248,18 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         biochar._VM = biochar_dry_mass_flow * (VM_biochar_percent / 100)  # kg/hr
         biochar.imass['H2O'] = biochar_mass_flow * 0.02  # kg/hr (assuming 2% moisture)
         
-
+        # TODO Calculate biochar energy, calculate feedstock sludge energy, calculate drying energy requirement
+        
+        Q_biochar = biochar_dry_mass_flow * self.biochar_hhv           # MJ/hr
+        Q_biosolids = biosolids.flow_rate_db * biosolids.biosolids_hhv # MJ/hr TODO: link biosolids flowrate and biosolids hhv from Biosolids unit to here
+        
+        #converts kJ/hr to MJ/hr
+        Q_drying = BiogenicRefineryHHXdryer.Q_drying / 1000            # MJ/hr TODO: link Q_drying from BiogenicRefineryHHXdryer unit to here.
+        
+        # TODO Calculate combined Energy Conversion Efficiency (%) needed to self-sustain drying requirement.
+        
+        ECE = 100 * Q_drying / (Q_biosolids - Q_biochar)    # %
+        
         # Calculate biochar volume (assuming density of 300 kg/m3 for biochar with 2% MC)
         biochar_density = 300  # kg/m3
         biochar.F_vol = biochar_mass_flow / biochar_density  # m³/hr
