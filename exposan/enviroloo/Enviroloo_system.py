@@ -246,6 +246,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     
     
     '''
+    Excretion mASM2d Values
     [0] urine
     flow (g/hr): S_NH4  0.241
                     S_PO4  0.0243
