@@ -266,7 +266,7 @@ def create_components(set_thermo = True
     cmps = Components([*masm2d_cmps, 
                        # Tissue, WoodAsh, H2O,
                        ])
-    # cmps.compile()
+    cmps.compile()
     # cmps.compile(ignore_inaccurate_molar_weight=True)
     if set_thermo: qs.set_thermo(cmps)
     return cmps
@@ -296,7 +296,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #               ins=(toilet_ins, 'sludge_PC',), 
     #               outs=('effluent_CT'),
     #               )
-    CT = su.CSTR(
+    CT = elu.EL_CT(
         'CT', ins=(toilet_ins, 'sludge_PC','flushing_water_CT'), outs=('effluent_CT'),
         isdynamic=True, V_max=10, aeration=None, suspended_growth_model=None
         )
@@ -370,9 +370,9 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     S1 = su.Splitter('S1', ins=S2-0, outs=[1-PC, 1-A1], split=0.5)
     # S1 = su.Splitter('S1', ins=B1-1, outs=[1-PC, 1-A1], split=Q_was/(Q_ras+Q_was))
     
-    CWT = su.CSTR(
+    CWT = elu.EL_CWT(
         'CWT', ins=(B1-0), outs=('effluent_CWT'),
-        isdynamic=True, V_max=10, aeration=None, suspended_growth_model=None
+        isdynamic=True, V_max=12, aeration=None, suspended_growth_model=None
         )
     
     # # S1.run()
@@ -430,16 +430,13 @@ if __name__ == '__main__':
     sys.diagram()
     fs = sys.flowsheet.stream
     fu = sys.flowsheet.unit
-    sys.diagram()
+    
     sys.simulate(
         # state_reset_hook='reset_cache',
         t_span=(0,t),
         method=method,
         print_t=True,
         )
-    
-    sys.diagram()
-    
     
     
 
