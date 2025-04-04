@@ -266,7 +266,8 @@ def create_components(set_thermo = True
     cmps = Components([*masm2d_cmps, 
                        # Tissue, WoodAsh, H2O,
                        ])
-    cmps.compile(ignore_inaccurate_molar_weight=True)
+    cmps.compile()
+    # cmps.compile(ignore_inaccurate_molar_weight=True)
     if set_thermo: qs.set_thermo(cmps)
     return cmps
 #%%
@@ -279,6 +280,9 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     toilet_ins.set_flow_by_concentration(Q_w*0.9, 
                                          concentrations=toilet_waste, 
                                          units=('m3/hr', 'mg/L'))
+    
+    Glucose = qs.WasteStream('organic_carbon', S_F= 0.0805, units='kg/hr', T=Temp)
+    PAC = qs.WasteStream('Precipitant', X_AlOH= 0.1207, units='kg/hr', T=Temp)
     
     masm2d = pc.mASM2d(**masm_kwargs)
     
@@ -293,7 +297,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #               outs=('effluent_CT'),
     #               )
     CT = su.CSTR(
-        'CT', ins=(toilet_ins, 'sludge_PC',), outs=('effluent_CT'),
+        'CT', ins=(toilet_ins, 'sludge_PC','flushing_water_CT'), outs=('effluent_CT'),
         isdynamic=True, V_max=10, aeration=None, suspended_growth_model=None
         )
     
@@ -324,7 +328,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #                         # V_max= 7.33, 
     #                         )
     
-    A1 = elu.EL_Anoxic('A1', ins=(PC-0, 'RAS_A1'), outs=('effluent_AnoxT',),
+    A1 = elu.EL_Anoxic('A1', ins=(PC-0, 'RAS_A1', Glucose), outs=('effluent_AnoxT',),
                        isdynamic=True, **kwargs_1
                        # W_tank= 2.09,
                         # # ppl = ppl, baseline_ppl = 100,
@@ -341,7 +345,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #                        #  V_max=7.33,**kwargs_0, 
     #                         )
     
-    O1 = elu.EL_Aerobic('O1', ins=A1-0, outs=('effluent_AeroT',),
+    O1 = elu.EL_Aerobic('O1', ins=(A1-0, PAC), outs=('effluent_AeroT',),
                         isdynamic=True, **kwargs_O
                         # aeration = 2, suspended_growth_model=asm2d,
                         #  # ppl = ppl, baseline_ppl = 100,
@@ -366,6 +370,10 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     S1 = su.Splitter('S1', ins=S2-0, outs=[1-PC, 1-A1], split=0.5)
     # S1 = su.Splitter('S1', ins=B1-1, outs=[1-PC, 1-A1], split=Q_was/(Q_ras+Q_was))
     
+    CWT = su.CSTR(
+        'CWT', ins=(B1-0), outs=('effluent_CWT'),
+        isdynamic=True, V_max=10, aeration=None, suspended_growth_model=None
+        )
     
     # # S1.run()
     
@@ -375,9 +383,9 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #                 # thermo=thermo_masm2d
     #                 )
     
-    # S4 = su.Splitter('S4', ins = CWT-0, outs = [flushing_water_CT, 'Reflushing'], split= 0.5)
+    S4 = su.Splitter('S4', ins = CWT-0, outs = [2-CT, 'Reflushing'], split= 0.5)
 
-    sys = qs.System('EL', path=(CT, PC, A1, O1, B1, S2, S1,))
+    sys = qs.System('EL', path=(CT, PC, A1, O1, B1, S2, S1, CWT, S4))
     sys.set_dynamic_tracker(A1, O1, B1, B1-0, B1-1)
     
     # sys = qs.System('EL', path=(CT, PC, S3, A1, O1, B1, S2, S1, CWT, S4),
@@ -408,7 +416,7 @@ def run(t, method=None, **kwargs):
 
     
 if __name__ == '__main__':
-    t = 1
+    t = 20
     # method = 'RK45'
     method = 'RK23' 
     # method = 'DOP853'
