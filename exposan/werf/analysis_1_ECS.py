@@ -35,8 +35,8 @@ for ID in (
         'B1', 'C1', 'F1', 
         'G1', 'H1', 'I1', 'N1', 
         ):
-    print(f"System {ID} w Hydrogel Absorbent")
-    print("="*30)
+    print(f"System {ID} w Eletrochemical Stripping")
+    print("="*40)
     sys = create_system(ID)
     u = sys.flowsheet.unit
     s = sys.flowsheet.stream
@@ -53,27 +53,27 @@ for ID in (
         split={'S_NH4': f_rmv}, init_with='WasteStream'
         )
     ECS-1-i_inlet-downstream_unit
-    sys_ha = System(ID+'ecs', 
+    sys_ecs = System(ID+'ecs', 
                     path=(*sys.path[:i_path], ECS, *sys.path[i_path:]),
                     recycle=sys.recycle)
-    sys_ha.set_dynamic_tracker(*sys.scope.subjects)
-    mdl = Model(sys_ha)
+    sys_ecs.set_dynamic_tracker(*sys.scope.subjects)
+    mdl = Model(sys_ecs)
     add_performance_metrics(mdl)
     add_NH4_recovery_metric(mdl)
     
     try:
         start = tm.time()
         print("Start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
-        try: sys_ha.simulate(state_reset_hook='reset_cache', t_span=(0,300), method='BDF')
-        except: sys_ha.simulate(t_span=(0,300), method='BDF')
+        try: sys_ecs.simulate(state_reset_hook='reset_cache', t_span=(0,300), method='BDF')
+        except: sys_ecs.simulate(t_span=(0,300), method='BDF')
         end = tm.time()
         print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end-start)), '\n')
         
-        sys_ha.diagram()
-        ndf = plantwide_N_mass_flows(sys_ha)
+        sys_ecs.diagram()
+        ndf = plantwide_N_mass_flows(sys_ecs)
         with pd.ExcelWriter(os.path.join(results_path, 'N_mass_ECS.xlsx'), mode=mode) as writer:
             ndf.to_excel(writer, sheet_name=ID)
-        pdf = plantwide_P_mass_flows(sys_ha)
+        pdf = plantwide_P_mass_flows(sys_ecs)
         with pd.ExcelWriter(os.path.join(results_path, 'P_mass_ECS.xlsx'), mode=mode) as writer:
             pdf.to_excel(writer, sheet_name=ID)
         metrics[ID] = [m() for m in mdl.metrics]
@@ -82,8 +82,8 @@ for ID in (
     
     mode = 'a'
     sys.flowsheet.clear()
-    sys_ha.flowsheet.clear()
-    del sys, sys_ha
+    sys_ecs.flowsheet.clear()
+    del sys, sys_ecs
 
 metrics = pd.DataFrame.from_dict(metrics, orient='index', columns=var_columns(mdl.metrics))
 metrics.to_excel(os.path.join(results_path, 'ECS_performance.xlsx'))
