@@ -73,6 +73,7 @@ default_fctss_init = [22.02, 36.136, 62.289, 142.932, 610.813, 610.813,
                       610.813, 610.813, 3608.754, 9295.076]
 
 from . import (
+    _units,
     B1, B2, B3, 
     C1, C2, C3, 
     E2, E2P, 
@@ -83,6 +84,7 @@ from . import (
     N1, N2
     )
 
+from ._units import *
 from .B1 import *
 from .B2 import *
 from .B3 import *
@@ -114,8 +116,7 @@ __all__ = (
     'data_path',
     'results_path',
     'figures_path',
-    # *B1.__all__,
-    # *B2.__all__,
+    *_units.__all__,
     *models.__all__,
 	)
 

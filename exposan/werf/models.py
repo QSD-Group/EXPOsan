@@ -13,13 +13,16 @@ for license details.
 
 import numpy as np
 from qsdsan.utils import AttrGetter
+from ._units import SelectiveRecovery
 from exposan.werf.utils import plantwide_aeration_demand
 
 
 __all__ = (
     'add_performance_metrics',
+    'add_NH4_recovery_metric',
     )
 
+#%%
 def add_performance_metrics(model):
     
     metric = model.metric
@@ -78,7 +81,28 @@ def add_performance_metrics(model):
         qair = _cached_aer.pop('AED', np.nan)
         _cached_aer.clear()
         return qair
+
+#%%    
+def add_NH4_recovery_metric(model):
     
+    metric = model.metric
+    sys = model.system
+    s = sys.flowsheet.stream
+    u = sys.flowsheet.unit
+    cmps = s.RWW.components
+    nh4_idx = cmps.index('S_NH4')
+    for unit in u:
+        if isinstance(unit, SelectiveRecovery): 
+            SR = unit
+            break
+    
+    @metric(name='NH4_recovery', units='kg-N/d', element='System')
+    def get_NH4_recovery():
+        recovery = s.Recovered_NH4.imass['S_NH4']
+        if "PC" not in u:
+            r = SR.split[nh4_idx]
+            recovery += s.RWW.imass['S_NH4']/(1-r)*r
+        return recovery * 24        
     
 
     
