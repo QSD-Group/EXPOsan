@@ -985,6 +985,8 @@ class EL_Anoxic(CSTR):
     _N_outs = 1
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
+    ppl = 100
+    baseline_ppl =30
     
     # _D_O2 = 2.10e-9   # m2/s
 
@@ -1020,6 +1022,15 @@ class EL_Anoxic(CSTR):
     
         # for attr, value in kwargs.items():
         #     setattr(self, attr, value)
+        data = load_data(path = Anoxic_path)
+        for para in data.index:
+            value = float(data.loc[para]['expected'])
+            setattr(self, para, value)
+        del data
+
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)    
+        ###############################################
     
     
          
@@ -1033,30 +1044,30 @@ class EL_Anoxic(CSTR):
         design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)  # assume linear scale
         self.add_construction(add_cost=False)
     
-    def _cost(self):
-        C = self.baseline_purchase_costs
-        massflow_anoxic = self.ins[0].mass
-        C['Tank'] = self.anoxic_tank_cost
-        C['Pipes'] = self.pipeline_connectors
-        C['Fittings'] = self.weld_female_adapter_fittings
-        C['Chemcial_glucose'] = self.chemical_glucose_dosage * massflow_anoxic * self.chemical_glucose_price  # make sense the unit of treated water flow
+    # def _cost(self):
+    #     C = self.baseline_purchase_costs
+    #     massflow_anoxic = self.ins[0].mass
+    #     C['Tank'] = self.anoxic_tank_cost
+    #     C['Pipes'] = self.pipeline_connectors
+    #     C['Fittings'] = self.weld_female_adapter_fittings
+    #     C['Chemcial_glucose'] = self.chemical_glucose_dosage * massflow_anoxic * self.chemical_glucose_price  # make sense the unit of treated water flow
 
-        ratio = self.price_ratio
-        for equipment, cost in C.items():
-            C[equipment] = cost * ratio
+    #     ratio = self.price_ratio
+    #     for equipment, cost in C.items():
+    #         C[equipment] = cost * ratio
         
-        self.add_OPEX = self._calc_replacement_cost()
+    #     self.add_OPEX = self._calc_replacement_cost()
         
-        power_demand = self.power_demand_AnoxicTank
-        self.power_utility(power_demand)
+    #     power_demand = self.power_demand_AnoxicTank
+    #     self.power_utility(power_demand)
     
-    def _calc_replacement_cost(self):
-        scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
-        Anoxic_tank_replacement_cost = (self.anoxic_tank_cost /self.anoxic_tank_lifetime +
-                                        self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
-                                        self.pipeline_connectors / self.pipeline_connectors_lifetime) * scale
-        Anoxic_tank_replacement_cost = Anoxic_tank_replacement_cost / (365 * 24)  # convert to USD/hr
-        return Anoxic_tank_replacement_cost
+    # def _calc_replacement_cost(self):
+    #     scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
+    #     Anoxic_tank_replacement_cost = (self.anoxic_tank_cost /self.anoxic_tank_lifetime +
+    #                                     self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
+    #                                     self.pipeline_connectors / self.pipeline_connectors_lifetime) * scale
+    #     Anoxic_tank_replacement_cost = Anoxic_tank_replacement_cost / (365 * 24)  # convert to USD/hr
+    #     return Anoxic_tank_replacement_cost
 
 # %%
 
@@ -1118,6 +1129,8 @@ class EL_Aerobic(CSTR):
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     # exponent_scale = 0.1
+    ppl = 100
+    baseline_ppl =30
     
     _D_O2 = 2.10e-9   # m2/s
 
@@ -1154,8 +1167,15 @@ class EL_Aerobic(CSTR):
 
  
     
-        # for attr, value in kwargs.items():
-        #     setattr(self, attr, value)
+        data = load_data(path = Aerobic_path)
+        for para in data.index:
+            value = float(data.loc[para]['expected'])
+            setattr(self, para, value)
+        del data
+
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)    
+        ###############################################
     
     
         
@@ -1170,30 +1190,30 @@ class EL_Aerobic(CSTR):
         design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)
         self.add_construction(add_cost=False)
     
-    def _cost(self):
-        C = self.baseline_purchase_costs
-        massflow_aerobic = self.ins[0].mass
-        C['Tank'] = self.aerobic_tank_cost
-        C['Pipes'] = self.pipeline_connectors
-        C['Fittings'] = self.weld_female_adapter_fittings
-        C['Chemical_PAC'] = self.chemical_PAC_dosage * massflow_aerobic * self.chemical_PAC_price
+    # def _cost(self):
+    #     C = self.baseline_purchase_costs
+    #     massflow_aerobic = self.ins[0].mass
+    #     C['Tank'] = self.aerobic_tank_cost
+    #     C['Pipes'] = self.pipeline_connectors
+    #     C['Fittings'] = self.weld_female_adapter_fittings
+    #     C['Chemical_PAC'] = self.chemical_PAC_dosage * massflow_aerobic * self.chemical_PAC_price
 
-        ratio = self.price_ratio
-        for equipment, cost in C.items():
-            C[equipment] = cost * ratio
+    #     ratio = self.price_ratio
+    #     for equipment, cost in C.items():
+    #         C[equipment] = cost * ratio
         
-        self.add_OPEX = self._calc_replacement_cost()
+    #     self.add_OPEX = self._calc_replacement_cost()
         
-        power_demand = self.power_demand_AerobicTank
-        self.power_utility(power_demand) # kWh
+    #     power_demand = self.power_demand_AerobicTank
+    #     self.power_utility(power_demand) # kWh
     
-    def _calc_replacement_cost(self):
-        scale = (self.ppl / self.baseline_ppl) * self.exponent_scale
-        Aerobic_tank_replacement_cost = (self.aerobic_tank_cost / self.aerobic_tank_lifetime +
-                                        self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
-                                        self.pipeline_connectors / self.pipeline_connectors_lifetime) * scale
-        Aerobic_tank_replacement_cost = Aerobic_tank_replacement_cost / (365 * 24)  # convert to USD/hr
-        return Aerobic_tank_replacement_cost
+    # def _calc_replacement_cost(self):
+    #     scale = (self.ppl / self.baseline_ppl) * self.exponent_scale
+    #     Aerobic_tank_replacement_cost = (self.aerobic_tank_cost / self.aerobic_tank_lifetime +
+    #                                     self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
+    #                                     self.pipeline_connectors / self.pipeline_connectors_lifetime) * scale
+    #     Aerobic_tank_replacement_cost = Aerobic_tank_replacement_cost / (365 * 24)  # convert to USD/hr
+    #     return Aerobic_tank_replacement_cost
 
 # %%
 
@@ -1214,6 +1234,8 @@ class EL_CMMBR(CompletelyMixedMBR):
     _N_ins = 1
     _N_outs = 2  # [0] filtrate, [1] pumped flow
     _outs_size_is_fixed = True
+    ppl = 100
+    baseline_ppl =30
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', isdynamic=True, 
@@ -1369,6 +1391,15 @@ class EL_CMMBR(CompletelyMixedMBR):
     #     flt.dstate[-1] = arr[-1]
     #     rtn.dstate[:-1] = arr[:-1]
     #     rtn.dstate[-1] = 0
+        data = load_data(path = MBR_path)
+        for para in data.index:
+            value = float(data.loc[para]['expected'])
+            setattr(self, para, value)
+        del data
+
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)    
+        ###############################################
 
     def _init_lca(self):
         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
@@ -1382,33 +1413,33 @@ class EL_CMMBR(CompletelyMixedMBR):
         design['PVDF_membrane'] = constr[1].quantity = self.membrane_material_weight
         self.add_construction(add_cost=False)
 
-    def _cost(self):
-        C = self.baseline_purchase_costs # the below items need to be defined in .tsv file
-        C['MBR_tank'] = self.MBR_tank_cost
-        C['pipeline'] = self.pipeline_connectors
-        C['fittings'] = self.weld_female_adapter_fittings
-        C['Membrane_material'] = self.membrane_material_price * self.membrane_material_weight
-        C['Membrane_cleaning'] = self.membrane_cleaning_fee
+    # def _cost(self):
+    #     C = self.baseline_purchase_costs # the below items need to be defined in .tsv file
+    #     C['MBR_tank'] = self.MBR_tank_cost
+    #     C['pipeline'] = self.pipeline_connectors
+    #     C['fittings'] = self.weld_female_adapter_fittings
+    #     C['Membrane_material'] = self.membrane_material_price * self.membrane_material_weight
+    #     C['Membrane_cleaning'] = self.membrane_cleaning_fee
 
-        ratio = self.price_ratio
-        for equipment, cost in C.items():
-            C[equipment] = cost * ratio 
+    #     ratio = self.price_ratio
+    #     for equipment, cost in C.items():
+    #         C[equipment] = cost * ratio 
         
-        self.add_OPEX = self._calc_replacement_cost()
+    #     self.add_OPEX = self._calc_replacement_cost()
         
-        power_demand = self.power_demand_MBR
-        self.power_utility(power_demand)
+    #     power_demand = self.power_demand_MBR
+    #     self.power_utility(power_demand)
 
-    def _calc_replacement_cost(self):
-        scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
-        MBR_replacement_cost = (
-            self.MBR_tank_cost / self.MBR_tank_lifetime +
-            self.pipeline_connectors / self.pipeline_connectors_lifetime +
-            self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
-            self.membrane_material_price * self.membrane_material_weight / self.membrane_material_lifetime
-            ) * scale
-        MBR_replacement_cost = MBR_replacement_cost / (365 * 24) * self.price_ratio # USD/hr
-        return MBR_replacement_cost
+    # def _calc_replacement_cost(self):
+    #     scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
+    #     MBR_replacement_cost = (
+    #         self.MBR_tank_cost / self.MBR_tank_lifetime +
+    #         self.pipeline_connectors / self.pipeline_connectors_lifetime +
+    #         self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
+    #         self.membrane_material_price * self.membrane_material_weight / self.membrane_material_lifetime
+    #         ) * scale
+    #     MBR_replacement_cost = MBR_replacement_cost / (365 * 24) * self.price_ratio # USD/hr
+    #     return MBR_replacement_cost
 
 # %%
 ClearWaterTank_path = os.path.join(EL_su_data_path, '_EL_CWT.tsv')
