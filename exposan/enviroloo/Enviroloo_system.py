@@ -266,7 +266,7 @@ def create_components(set_thermo = True
     cmps = Components([*masm2d_cmps, 
                        # Tissue, WoodAsh, H2O,
                        ])
-    cmps.compile()
+    # cmps.compile()
     # cmps.compile(ignore_inaccurate_molar_weight=True)
     if set_thermo: qs.set_thermo(cmps)
     return cmps
@@ -430,13 +430,16 @@ if __name__ == '__main__':
     sys.diagram()
     fs = sys.flowsheet.stream
     fu = sys.flowsheet.unit
-    
+    sys.diagram()
     sys.simulate(
         # state_reset_hook='reset_cache',
         t_span=(0,t),
         method=method,
         print_t=True,
         )
+    
+    sys.diagram()
+    
     
     
 

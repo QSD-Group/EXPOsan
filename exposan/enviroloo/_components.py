@@ -24,7 +24,7 @@ def create_components(set_thermo = True
                       #adjust_MW_to_measured_as=False
                       ):
     # bw_cmps = create_bw_components(set_thermo=False)
-    asm2d_cmps = pc.create_asm2d_cmps(set_thermo=True)
+    masm2d_cmps = pc.create_masm2d_cmps(set_thermo=True)
     # Tissue = Component('Tissue', MW=1, phase='s', particle_size='Particulate',
     #                     degradability='Undegradable', organic=False,
     #                     description='Tissue for toilet paper')
@@ -82,7 +82,7 @@ def create_components(set_thermo = True
     #'degradability': ('Readily', 'Slowly', 'Undegradable'),
     #'organic': (True, False)}
           
-    cmps = Components((*asm2d_cmps, 
+    cmps = Components((*masm2d_cmps, 
                        # Tissue, WoodAsh, H2O,
                        # C, SolubleCH4, 
                        # #H2O, CO2, 
@@ -96,8 +96,8 @@ def create_components(set_thermo = True
     #     for attr in ('HHV', 'LHV', 'Hf'):
     #         if getattr(i, attr) is None: setattr(i, attr, 0)
 
-    cmps.compile()    
-    # cmps.compile(ignore_inaccurate_molar_weight=False) #override for runtime error where N2_S molecular weight was not found
+    # cmps.compile()    
+    # cmps.compile(ignore_inaccurate_molar_weight=True) #override for runtime error where N2_S molecular weight was not found
 
     # cmps.set_alias('H2O', 'Water')
     # #cmps.set_alias('CO2', 'Carbon Dioxide')
