@@ -17,7 +17,7 @@ References:
 
 (1) Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
     Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
-    Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
+    Snowden-Swan, L. J.; Davis, R.; Kinchin, C.
     Process Design and Economics for the Conversion of Algal Biomass to
     Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
     PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.

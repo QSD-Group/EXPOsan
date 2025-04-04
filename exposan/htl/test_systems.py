@@ -51,7 +51,10 @@ def create_test_system(size=10,
                        lime_type='quick_lime',
                        disposal='landfilling',
                        operation_hours=8760):
-        
+    
+    if disposal not in ['landfilling','land_application']:
+        raise ValueError('disposal must be one of the following: "landfilling", "land_application".')    
+    
     flowsheet_ID = 'test_system'
     
     # clear flowsheet and registry for reloading
@@ -82,19 +85,18 @@ def create_test_system(size=10,
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     BeltThickener = qsu.BeltThickener(ID='BeltThickener', ins=WWTP-0, outs=('supernatant_0','thickened_sludge'), thermo=None, init_with='WasteStream',
-                  sludge_moisture=0.96, solids=('Sludge_lipid','Sludge_protein',
-                          'Sludge_carbo','Sludge_ash'),
-                  disposal_cost=0)
+                                      sludge_moisture=0.96, solids=('Sludge_lipid','Sludge_protein',
+                                                                    'Sludge_carbo','Sludge_ash'),
+                                      disposal_cost=0)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    SluC = qsu.SludgeCentrifuge('A000', ins=BeltThickener-1,
+    SluC = qsu.SludgeCentrifuge('SluC', ins=BeltThickener-1,
                                 outs=('supernatant_1','dewatered_sludge'),
                                 init_with='WasteStream',
                                 solids=('Sludge_lipid','Sludge_protein',
                                         'Sludge_carbo','Sludge_ash'),
                                 sludge_moisture=0.8,
                                 disposal_cost=0)
-    SluC.register_alias('SluC')
     SluC.include_construction = True
     
     if disposal == 'land_application':
@@ -160,6 +162,14 @@ def create_test_system(size=10,
                                        unit='kg CO2-eq',
                                        description='Global Warming Potential')
     
+    Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
+    Electricity.add_indicator(GlobalWarming, 0.48748859)
+    
+    # TODO: may need update
+    # current value from 'heat production, at heat pump 30kW, allocation exergy'
+    Heating = qs.ImpactItem('Heating', functional_unit='MJ')
+    Heating.add_indicator(GlobalWarming, 0.024736236)
+    
     hauling = qs.ImpactItem('hauling', functional_unit='tonne*km')
     hauling.add_indicator(GlobalWarming, 0.13004958)
     # price for per functional unit
@@ -182,26 +192,39 @@ def create_test_system(size=10,
     
     # TODO: add LCA data, pay attention to purity, should be consistent with price
     # ecoinvent lacks purity data (market for lime, market for lime, hydrated, packed, both using RER)
-    # if lime_type == 'quick_lime':
-        # qs.StreamImpactItem(ID='quick_lime',
-        #                     linked_stream=stream.lime,
-        #                     GlobalWarming=)
-    # else:
-        # qs.StreamImpactItem(ID='hydrated_lime',
-        #                     linked_stream=stream.lime,
-        #                     GlobalWarming=)
+    try:
+        if lime_type == 'quick_lime':
+            qs.StreamImpactItem(ID='quick_lime',
+                                linked_stream=stream.lime,
+                                GlobalWarming=0.024419506)
+        # else:
+        #     qs.StreamImpactItem(ID='hydrated_lime',
+        #                         linked_stream=stream.lime,
+        #                         GlobalWarming=)
+        
+        qs.StreamImpactItem(ID='water',
+                            linked_stream=stream.water,
+                            GlobalWarming=0.00042012744)
+    
+    except:
+        pass
     
     if disposal == 'landfilling':
         qs.StreamImpactItem(ID='landfill_methane',
                             linked_stream=stream.landfilling_emission,
                             GlobalWarming=29.8*stream.landfilling_emission.imass['CH4']/stream.landfilling_emission.F_mass)
-        
+    
     elif disposal == 'land_application':
         qs.StreamImpactItem(ID='land_application_nitrous_oxide',
                             linked_stream=stream.land_application_emission,
                             GlobalWarming=273*stream.land_application_emission.imass['N2O']/stream.land_application_emission.F_mass)
     
-    qs.LCA(system=sys, lifetime=30, lifetime_unit='yr')
+    # TODO: need to add heating
+    qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
+           # adjust the electricity amount to reflect different GHG of electricity at different states
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
+           # TODO: steam too high
+           Heating=lambda:sys.heat_utilities[0].duty/1000*24*365*30)
     
     create_tea(sys, IRR_value=0.03,
                income_tax_value=0.21,

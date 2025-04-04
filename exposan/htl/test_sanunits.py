@@ -418,6 +418,7 @@ class Landfilling(SanUnit):
 # =============================================================================
 # LimeStabilization
 # =============================================================================
+
 @cost(ID='Quick lime all parts', basis='Quick lime dry solids flow',
       units='tonne/day', cost=311386, S=1, CE=CEPCI_by_year[2004], n=0.5623, BM=1)
 @cost(ID='Hydrated lime all parts', basis='Hydrated lime dry solids flow',
