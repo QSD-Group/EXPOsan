@@ -981,7 +981,7 @@ class EL_Anoxic(CSTR):
          https://doi.org/10.1039/C5EE03715H.
     
     '''
-    _N_ins = 2
+    _N_ins = 3
     _N_outs = 1
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
@@ -1124,7 +1124,7 @@ class EL_Aerobic(CSTR):
          https://doi.org/10.1039/C5EE03715H.
     
     '''
-    _N_ins = 1 # treated water, PAC, blower
+    _N_ins = 2 # treated water, PAC, blower
     _N_outs = 3  # treated water, CH4, N2O
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
