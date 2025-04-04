@@ -2012,3 +2012,147 @@ class EL_System(SanUnit, isabstract=True):
     @property
     def N_EL(self): # determine the number of EL system needed
        return ceil(self.ppl / self.baseline_ppl)
+# %%
+'''
+system_path = os.path.join(EL_su_data_path, '_EL_wind_solar.tsv')
+
+@price_ratio()
+class EnviroLooWindSolar(Copier):
+    
+    The photovoltaic configuration of the EnviroLoo System,
+    which is composed of solar panels, batteries, DC distribution box,
+    and other parts.
+
+    This is a non-reactive unit (i.e., the effluent is copied from the influent).
+
+    Parameters
+    ----------
+    if_lithium_battery : bool
+        If alternative lithium battery is used.
+    user_scale_up : float
+        Scaling up of consumables, electricity demand, capital parts,
+        and replacement parts based on number of input users compared to the
+        baseline design number of users
+
+    References
+    ----------
+   
+
+    def __init__(self, ID='', ins=None, outs=(),  thermo=None, init_with='WasteStream',
+                 if_lithium_battery=False, user_scale_up=1, **kwargs):
+        Copier.__init__(self, ID, ins, outs, thermo, init_with)
+        self.if_lithium_battery = if_lithium_battery
+        self.user_scale_up = user_scale_up
+
+        data = load_data(path=pv_path)
+        for para in data.index:
+            value = float(data.loc[para]['expected'])
+            setattr(self, para, value)
+        del data
+
+        self._refres_lca()
+
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)
+
+
+    def _refres_lca(self):
+        if self.if_lithium_battery:
+            battery_construction = Construction(
+                item='LithiumBattery', linked_unit=self, quantity_unit='kg',
+                lifetime=self.pv_lithium_photovoltaic_battery_lifetime)
+        else:
+            battery_construction = Construction(
+                item='Battery', linked_unit=self, quantity_unit='kg',
+                lifetime=self.pv_battery_lifetime)
+        
+        self.construction = [
+            Construction(item='PhotovoltaicPanel', linked_unit=self, quantity_unit='m2'),
+            battery_construction,
+            Construction(item='ElectricConnectors', linked_unit=self, quantity_unit='kg'),
+            Construction(item='Switches', linked_unit=self, quantity_unit='kg'),
+            Construction(item='Polycarbonate', linked_unit=self, quantity_unit='kg'),
+            Construction(item='ElectronicsPassive', linked_unit=self, quantity_unit='kg'),
+            Construction(item='ElectricCables', linked_unit=self, quantity_unit='m'),
+            Construction(item='ControlUnits', linked_unit=self, quantity_unit='kg'),
+            Construction(item='Aluminum', linked_unit=self, quantity_unit='kg'),
+            ]
+
+    def _design(self):
+        design = self.design_results
+        constr = self.construction
+        user_scale_up = self.user_scale_up
+        design['PhotovoltaicPanel'] = constr[0].quantity = self.pv_photovoltaic_panel_area * (user_scale_up**0.6)
+        design['Battery'] = constr[1].quantity = self.pv_battery_quant * (user_scale_up**0.6)
+        design['ElectricConnectors'] = constr[2].quantity = self.pv_connectors_weight
+        design['Switches'] = constr[3].quantity = self.pv_switch_weight
+        design['Polycarbonate'] = constr[4].quantity = self.pv_polycarbonate_weight
+        design['ElectronicsPassive'] = constr[5].quantity = self.pv_electronics_passive_weight
+        design['ElectricCables'] = constr[6].quantity = self.pv_cable_length
+        design['ControlUnits'] = constr[7].quantity = self.pv_control_units_weight
+        design['Aluminum'] = constr[8].quantity = self.pv_aluminum_weight
+        self.add_construction(add_cost=False)
+
+    def _cost(self):
+        C = self.baseline_purchase_costs
+        C['Battery'] = (
+            self.pv_battery_connectors +
+            self.pv_battery_switch +
+            self.pv_battery_terminal
+            )
+        if self.if_lithium_battery: C['Battery'] += self.pv_lithium_battery * (self.user_scale_up**0.6)
+        else: C['Battery'] += self.pv_battery * (self.user_scale_up**0.6)
+
+        C['PhotovoltaicPanel'] = (
+            self.pv_panel * (self.user_scale_up**0.6) +
+            self.pv_racking_system +
+            self.pv_charge_controllers +
+            self.pv_connectors +
+            self.pv_combiner_box +
+            self.pv_circuit_breaker
+            )
+        C['DCdistribution'] = (
+            self.pv_dc_enclosure_panel +
+            self.pv_dc_din_rail +
+            self.pv_dc_din_circuit_breaker +
+            self.pv_dc_distribution_block +
+            self.pv_dc_voltage_converter
+            )
+        C['Misc'] = self.pv_misc
+        ratio = self.price_ratio
+        for equipment, cost in C.items():
+            C[equipment] = cost * ratio
+
+        self.add_OPEX = self._calc_replacement_cost() + self._calc_maintenance_labor_cost()
+
+    def _calc_replacement_cost(self):
+        if self.if_lithium_battery:
+            battery_replacememt_parts_annual_cost = self.pv_lithium_battery * (self.user_scale_up**0.6) / self.pv_lithium_photovoltaic_battery_lifetime
+        else:
+            battery_replacememt_parts_annual_cost = self.pv_battery * (self.user_scale_up**0.6) / self.pv_battery_lifetime
+
+        photovoltaic_replacement_cost = (
+            battery_replacememt_parts_annual_cost +
+            self.pv_dc_voltage_converter / self.pv_voltage_converter_lifetime
+            )
+        return photovoltaic_replacement_cost/ (365 * 24) * self.price_ratio # USD/hr
+
+    def _calc_maintenance_labor_cost(self):
+        photovoltaic_maintenance_labor = (
+            self.pv_labor_replacement_batteries * self.user_scale_up +
+            self.pv_labor_replacement_misc_repairs
+            ) * self.wages
+        return photovoltaic_maintenance_labor/ (365 * 24) # USD/hr
+
+
+    @property
+    def if_lithium_battery(self):
+        return self._if_lithium_battery
+    @if_lithium_battery.setter
+    def if_lithium_battery(self, i):
+        self._if_lithium_battery = i
+        constr = self.construction
+        if constr:
+            for i in constr: i.registry.discard(i)
+            self._init_lca()
+   '''         

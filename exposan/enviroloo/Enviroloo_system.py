@@ -266,8 +266,8 @@ def create_components(set_thermo = True
     cmps = Components([*masm2d_cmps, 
                        # Tissue, WoodAsh, H2O,
                        ])
-    cmps.compile()
-    # cmps.compile(ignore_inaccurate_molar_weight=True)
+    #cmps.compile()
+    cmps.compile(ignore_inaccurate_molar_weight=True)
     if set_thermo: qs.set_thermo(cmps)
     return cmps
 #%%
