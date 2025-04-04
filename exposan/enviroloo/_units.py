@@ -518,7 +518,7 @@ class EL_Toilet(Toilet):
 CollectionTank_path = os.path.join(EL_su_data_path, '_EL_CT.tsv')
 
 @price_ratio()
-class EL_CT(Mixer):
+class EL_CT(CSTR):
     
     '''
     Name
@@ -567,111 +567,90 @@ class EL_CT(Mixer):
     --------
     `biosteam.units.Mixer <https://biosteam.readthedocs.io/en/latest/units/mixing.html>`_
     '''
-    # _graphics = BSTMixer._graphics
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', F_BM_default=None, isdynamic=False,
-                 rigorous=False, conserve_phases=False):
+    _N_ins = 3 # treated water, PAC, blower
+    _N_outs = 1  # treated water, CH4, N2O
+    _ins_size_is_fixed = False
+    _outs_size_is_fixed = False
+    # exponent_scale = 0.1
+    ppl = 100
+    baseline_ppl =30
+    
+    _D_O2 = 2.10e-9   # m2/s
+
+    def __init__(self, 
+                 ID='', ins=None, outs=(), split=None, thermo=None,
+                 init_with='WasteStream', V_max=10, W_tank = None, 
+                 # D_tank = 3.65,
+                 # freeboard = 0.61, 
+                 t_wall = None, t_slab = None, aeration=None, 
+                 DO_ID='S_O2', suspended_growth_model=None, 
+                 gas_stripping=False, gas_IDs=None, stripping_kLa_min=None, 
+                 K_Henry=None, D_gas=None, p_gas_atm=None,
+                 isdynamic=True, exogenous_vars=(), **kwargs):
         super().__init__(
-            ID=ID, ins=ins, outs=outs, thermo=thermo,
-            init_with=init_with, F_BM_default=F_BM_default, isdynamic=isdynamic,
-            rigorous=rigorous, conserve_phases=conserve_phases
+            ID=ID, ins=ins, outs=outs, split=split, thermo=thermo,
+            init_with=init_with, V_max=V_max, W_tank = W_tank, 
+            # D_tank = D_tank,
+            # freeboard = freeboard, 
+            t_wall = t_wall, t_slab = t_slab, aeration=aeration, 
+            DO_ID=DO_ID, suspended_growth_model=suspended_growth_model, 
+            gas_stripping=gas_stripping, gas_IDs=gas_IDs, 
+            stripping_kLa_min=stripping_kLa_min, 
+            K_Henry=K_Henry, D_gas=D_gas, p_gas_atm=p_gas_atm,
+            isdynamic=isdynamic, exogenous_vars=exogenous_vars, **kwargs
             )
-         # self.rigorous = rigorous
-         # self.conserve_phases = conserve_phases
+       
 
+        # # Design parameters 
+        # self._W_tank = W_tank
+        # self._D_tank = D_tank
+        # self._freeboard = freeboard
+        # self._t_wall = t_wall
+        # self._t_slab = t_slab
 
-    # @property
-    # def state(self):
-    #     '''The state of the Mixer, including component concentrations [mg/L] and flow rate [m^3/d].'''
-    #     if self._state is None: return None
-    #     else:
-    #         return dict(zip(list(self.components.IDs) + ['Q'], self._state))
-
-    # def _init_state(self):
-    #     '''initialize state by specifying or calculating component concentrations
-    #     based on influents. Total flow rate is always initialized as the sum of
-    #     influent wastestream flows.'''
-    #     QCs = self._ins_QC
-        
-    #     if QCs.shape[0] <= 1: self._state = QCs[0]
-    #     else:
-    #         Qs = QCs[:,-1]
-    #         # breakpoint()
-    #         Cs = QCs[:,:-1]
-            
-    #         self._state = np.append(Qs @ Cs / Qs.sum(), Qs.sum())
-    #     self._dstate = self._state * 0.
-
-    # def _update_state(self):
-    #     '''updates conditions of output stream based on conditions of the Mixer'''
-    #     self._outs[0].state = self._state
-
-    # def _update_dstate(self):
-    #     '''updates rates of change of output stream from rates of change of the Mixer'''
-    #     self._outs[0].dstate = self._dstate
-
-    # @property
-    # def AE(self):
-    #     if self._AE is None:
-    #         self._compile_AE()
-    #     return self._AE
-
-    # def _compile_AE(self):
-    #     _n_ins = len(self.ins)
-    #     _state = self._state
-    #     _dstate = self._dstate
-    #     _update_state = self._update_state
-    #     _update_dstate = self._update_dstate
-    #     def yt(t, QC_ins, dQC_ins):
-    #         if _n_ins > 1:
-    #             Q_ins = QC_ins[:, -1]
-    #             C_ins = QC_ins[:, :-1]
-    #             dQ_ins = dQC_ins[:, -1]
-    #             dC_ins = dQC_ins[:, :-1]
-    #             Q = Q_ins.sum()
-    #             C = Q_ins @ C_ins / Q
-    #             _state[-1] = Q
-    #             _state[:-1] = C
-    #             Q_dot = dQ_ins.sum()
-    #             C_dot = (dQ_ins @ C_ins + Q_ins @ dC_ins - Q_dot * C)/Q
-    #             _dstate[-1] = Q_dot
-    #             _dstate[:-1] = C_dot
-    #         else:
-    #             _state[:] = QC_ins[0]
-    #             _dstate[:] = dQC_ins[0]
-    #         _update_state()
-    #         _update_dstate()
-    #     self._AE = yt
-
-    def _design(self):
-        design = self.design_results
-        constr = self.construction
-        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)
-        self.add_construction(add_cost=False)
+ 
     
-    def _cost(self):
-        C = self.baseline_purchase_costs
-        C['Tank'] = self.collection_tank_cost
-        C['Pipes'] = self.pipeline_connectors
-        C['Fittings'] = self.weld_female_adapter_fittings
+        data = load_data(path = CollectionTank_path)
+        for para in data.index:
+            value = float(data.loc[para]['expected'])
+            setattr(self, para, value)
+        del data
+
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)    
+        ###############################################
     
-        ratio = self.price_ratio
-        for equipment, cost in C.items():
-            C[equipment] = cost * ratio
-        
-        self.add_OPEX = self._calc_replacement_cost()
-        
-        power_demand = self.power_demand_CT
-        self.power_utility(power_demand)
+
+
+    # def _design(self):
+    #     design = self.design_results
+    #     constr = self.construction
+    #     design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)
+    #     self.add_construction(add_cost=False)
     
-    def _calc_replacement_cost(self):
-        scale  = (self.ppl / self.baseline_ppl) ** self.exponent_scale
-        CT_replacement_cost = (
-            self.collection_tank_cost / self.collection_tank_lifetime +               
-            self.pipeline_connectors / self.pipeline_connectors_lifetime +
-            self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime) * scale
-        CT_replacement_cost = CT_replacement_cost / (365 * 24)  # convert to USD/hr
-        return CT_replacement_cost
+    # def _cost(self):
+    #     C = self.baseline_purchase_costs
+    #     C['Tank'] = self.collection_tank_cost
+    #     C['Pipes'] = self.pipeline_connectors
+    #     C['Fittings'] = self.weld_female_adapter_fittings
+    
+    #     ratio = self.price_ratio
+    #     for equipment, cost in C.items():
+    #         C[equipment] = cost * ratio
+        
+    #     self.add_OPEX = self._calc_replacement_cost()
+        
+    #     power_demand = self.power_demand_CT
+    #     self.power_utility(power_demand)
+    
+    # def _calc_replacement_cost(self):
+    #     scale  = (self.ppl / self.baseline_ppl) ** self.exponent_scale
+    #     CT_replacement_cost = (
+    #         self.collection_tank_cost / self.collection_tank_lifetime +               
+    #         self.pipeline_connectors / self.pipeline_connectors_lifetime +
+    #         self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime) * scale
+    #     CT_replacement_cost = CT_replacement_cost / (365 * 24)  # convert to USD/hr
+    #     return CT_replacement_cost
 
 # %%
 
@@ -1445,7 +1424,7 @@ class EL_CMMBR(CompletelyMixedMBR):
 ClearWaterTank_path = os.path.join(EL_su_data_path, '_EL_CWT.tsv')
 
 @price_ratio()
-class EL_CWT(Mixer):
+class EL_CWT(CSTR):
 
     '''
     Introduction
@@ -1473,109 +1452,88 @@ class EL_CWT(Mixer):
      refer to the qsdsan.sanunits.storagetank module
 
     '''
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', F_BM_default=None, isdynamic=False,
-                 rigorous=False, conserve_phases=False):
+    _N_ins = 1 # treated water, PAC, blower
+    _N_outs = 1  # treated water, CH4, N2O
+    _ins_size_is_fixed = False
+    _outs_size_is_fixed = False
+    # exponent_scale = 0.1
+    ppl = 100
+    baseline_ppl =30
+    
+    _D_O2 = 2.10e-9   # m2/s
+
+    def __init__(self, 
+                 ID='', ins=None, outs=(), split=None, thermo=None,
+                 init_with='WasteStream', V_max=12, W_tank = None, 
+                 # D_tank = 3.65,
+                 # freeboard = 0.61, 
+                 t_wall = None, t_slab = None, aeration=None, 
+                 DO_ID='S_O2', suspended_growth_model=None, 
+                 gas_stripping=False, gas_IDs=None, stripping_kLa_min=None, 
+                 K_Henry=None, D_gas=None, p_gas_atm=None,
+                 isdynamic=True, exogenous_vars=(), **kwargs):
         super().__init__(
-            ID=ID, ins=ins, outs=outs, thermo=thermo,
-            init_with=init_with, F_BM_default=F_BM_default, isdynamic=isdynamic,
-            rigorous=rigorous, conserve_phases=conserve_phases)
-         # self.rigorous = rigorous
-         # self.conserve_phases = conserve_phases
+            ID=ID, ins=ins, outs=outs, split=split, thermo=thermo,
+            init_with=init_with, V_max=V_max, W_tank = W_tank, 
+            # D_tank = D_tank,
+            # freeboard = freeboard, 
+            t_wall = t_wall, t_slab = t_slab, aeration=aeration, 
+            DO_ID=DO_ID, suspended_growth_model=suspended_growth_model, 
+            gas_stripping=gas_stripping, gas_IDs=gas_IDs, 
+            stripping_kLa_min=stripping_kLa_min, 
+            K_Henry=K_Henry, D_gas=D_gas, p_gas_atm=p_gas_atm,
+            isdynamic=isdynamic, exogenous_vars=exogenous_vars, **kwargs
+            )
+       
 
+        # # Design parameters 
+        # self._W_tank = W_tank
+        # self._D_tank = D_tank
+        # self._freeboard = freeboard
+        # self._t_wall = t_wall
+        # self._t_slab = t_slab
 
-    # @property
-    # def state(self):
-    #     '''The state of the Mixer, including component concentrations [mg/L] and flow rate [m^3/d].'''
-    #     if self._state is None: return None
-    #     else:
-    #         return dict(zip(list(self.components.IDs) + ['Q'], self._state))
-
-    # def _init_state(self):
-    #     '''initialize state by specifying or calculating component concentrations
-    #     based on influents. Total flow rate is always initialized as the sum of
-    #     influent wastestream flows.'''
-    #     QCs = self._ins_QC
-        
-    #     if QCs.shape[0] <= 1: self._state = QCs[0]
-    #     else:
-    #         Qs = QCs[:,-1]
-    #         # breakpoint()
-    #         Cs = QCs[:,:-1]
-            
-    #         self._state = np.append(Qs @ Cs / Qs.sum(), Qs.sum())
-    #     self._dstate = self._state * 0.
-
-    # def _update_state(self):
-    #     '''updates conditions of output stream based on conditions of the Mixer'''
-    #     self._outs[0].state = self._state
-
-    # def _update_dstate(self):
-    #     '''updates rates of change of output stream from rates of change of the Mixer'''
-    #     self._outs[0].dstate = self._dstate
-
-    # @property
-    # def AE(self):
-    #     if self._AE is None:
-    #         self._compile_AE()
-    #     return self._AE
-
-    # def _compile_AE(self):
-    #     _n_ins = len(self.ins)
-    #     _state = self._state
-    #     _dstate = self._dstate
-    #     _update_state = self._update_state
-    #     _update_dstate = self._update_dstate
-    #     def yt(t, QC_ins, dQC_ins):
-    #         if _n_ins > 1:
-    #             Q_ins = QC_ins[:, -1]
-    #             C_ins = QC_ins[:, :-1]
-    #             dQ_ins = dQC_ins[:, -1]
-    #             dC_ins = dQC_ins[:, :-1]
-    #             Q = Q_ins.sum()
-    #             C = Q_ins @ C_ins / Q
-    #             _state[-1] = Q
-    #             _state[:-1] = C
-    #             Q_dot = dQ_ins.sum()
-    #             C_dot = (dQ_ins @ C_ins + Q_ins @ dC_ins - Q_dot * C)/Q
-    #             _dstate[-1] = Q_dot
-    #             _dstate[:-1] = C_dot
-    #         else:
-    #             _state[:] = QC_ins[0]
-    #             _dstate[:] = dQC_ins[0]
-    #         _update_state()
-    #         _update_dstate()
-    #     self._AE = yt
-
-    def _design(self):
-        design = self.design_results
-        constr = self.construction
-        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)
-        self.add_construction(add_cost=False)
+ 
     
-    def _cost(self):
-        C = self.baseline_purchase_costs
-        C['Tank'] = self.collection_tank_cost
-        C['Pipes'] = self.pipeline_connectors
-        C['Fittings'] = self.weld_female_adapter_fittings
+        data = load_data(path = ClearWaterTank_path)
+        for para in data.index:
+            value = float(data.loc[para]['expected'])
+            setattr(self, para, value)
+        del data
+
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)    
+        ###############################################
+
+    # def _design(self):
+    #     design = self.design_results
+    #     constr = self.construction
+    #     design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)
+    #     self.add_construction(add_cost=False)
     
-        ratio = self.price_ratio
-        for equipment, cost in C.items():
-            C[equipment] = cost * ratio
-        
-        self.add_OPEX = self._calc_replacement_cost()
-        
-        power_demand = self.power_demand_CT
-        self.power_utility(power_demand)
+    # def _cost(self):
+    #     C = self.baseline_purchase_costs
+    #     C['Tank'] = self.collection_tank_cost
+    #     C['Pipes'] = self.pipeline_connectors
+    #     C['Fittings'] = self.weld_female_adapter_fittings
     
-    def _calc_replacement_cost(self):
-        scale  = (self.ppl / self.baseline_ppl) ** self.exponent_scale
-        CT_replacement_cost = (
-            self.collection_tank_cost / self.collection_tank_lifetime +               
-            self.pipeline_connectors / self.pipeline_connectors_lifetime +
-            self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime) * scale
-        CT_replacement_cost = CT_replacement_cost / (365 * 24)  # convert to USD/hr
-        return CT_replacement_cost
+    #     ratio = self.price_ratio
+    #     for equipment, cost in C.items():
+    #         C[equipment] = cost * ratio
+        
+    #     self.add_OPEX = self._calc_replacement_cost()
+        
+    #     power_demand = self.power_demand_CT
+    #     self.power_utility(power_demand)
+    
+    # def _calc_replacement_cost(self):
+    #     scale  = (self.ppl / self.baseline_ppl) ** self.exponent_scale
+    #     CT_replacement_cost = (
+    #         self.collection_tank_cost / self.collection_tank_lifetime +               
+    #         self.pipeline_connectors / self.pipeline_connectors_lifetime +
+    #         self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime) * scale
+    #     CT_replacement_cost = CT_replacement_cost / (365 * 24)  # convert to USD/hr
+    #     return CT_replacement_cost
 
 # %%
 PressureTank_path = os.path.join(EL_su_data_path, '_EL_PT.tsv')
