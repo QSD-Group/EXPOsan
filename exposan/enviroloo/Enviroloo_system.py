@@ -281,8 +281,8 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
                                          concentrations=toilet_waste, 
                                          units=('m3/hr', 'mg/L'))
     
-    Glucose = qs.WasteStream('organic_carbon', S_F= 0.0805, units='kg/hr', T=Temp)
-    PAC = qs.WasteStream('Precipitant', X_AlOH= 0.1207, units='kg/hr', T=Temp)
+    Glucose = qs.WasteStream('Glucose Dose', S_F= 0.5, units='kg/hr', T=Temp) # 0.0805
+    PAC = qs.WasteStream('PAC Dose', X_AlOH= 0.05, units='kg/hr', T=Temp) # 0.1207
     
     masm2d = pc.mASM2d(**masm_kwargs)
     
