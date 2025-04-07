@@ -88,9 +88,11 @@ def create_c2_system(flowsheet=None, default_init_conds=True):
         solids_removal_efficiency=0.95
         )
     
+    asm2 = pc.mASM2d(electron_acceptor_dependent_decay=True,
+                     mmp_kinetics='KM', pH_ctrl=5.6)
     AED = su.AerobicDigester(
         'AED', ins=MT-1, outs='digestate',
-        V_max=3.0*MGD2cmd, activated_sludge_model=asm,
+        V_max=3.0*MGD2cmd, activated_sludge_model=asm2,
         aeration=1.0, DO_ID='S_O2', gas_stripping=True)
     
     DW = su.IdealClarifier(

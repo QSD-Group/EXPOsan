@@ -100,10 +100,12 @@ def create_e2p_system(flowsheet=None, default_init_conds=True):
         sludge_flow_rate=0.019*MGD2cmd,
         solids_removal_efficiency=0.95
         )
-    
+
+    asm2 = pc.mASM2d(electron_acceptor_dependent_decay=True,
+                     mmp_kinetics='KM', pH_ctrl=5.6)    
     AED = su.AerobicDigester(
         'AED', ins=[GT-1, MT-1], outs='digestate',
-        V_max=0.5*MGD2cmd, activated_sludge_model=asm,
+        V_max=0.5*MGD2cmd, activated_sludge_model=asm2,
         aeration=1.0, DO_ID='S_O2', gas_stripping=True)
     
     DW = su.IdealClarifier(
