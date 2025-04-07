@@ -99,7 +99,7 @@ def add_NH4_recovery_metric(model):
     @metric(name='NH4_recovery', units='kg-N/d', element='System')
     def get_NH4_recovery():
         recovery = s.Recovered_NH4.imass['S_NH4']
-        if "PC" not in u:
+        if "HA_eff" in s and "PC" not in u:
             r = SR.split[nh4_idx]
             recovery += s.RWW.imass['S_NH4']/(1-r)*r
         return recovery * 24        
