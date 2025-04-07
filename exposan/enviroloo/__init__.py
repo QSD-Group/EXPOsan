@@ -75,7 +75,7 @@ def update_resource_recovery_settings():
     RR_factor = int(bool(INCLUDED_RESOURCE_RECOVERY))
     
     price_dct = {
-        'Electricity': 0.13, # $/kWh
+        'Electricity': 0.0, # $/kWh Assumption because the system is not grid-tied.
         #'Concrete': 194 * price_ratio, # $/m3
         'Steel': 2.665 * price_ratio, # $/kg
         'N': 1.507 * price_factor * RR_factor, # $/kg, N fertilizer price if resource recovery is considered
