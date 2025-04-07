@@ -30,6 +30,14 @@ from qsdsan.utils import clear_lca_registries
 import qsdsan as qs
 import os
 
+from qsdsan import (
+    Flowsheet, main_flowsheet,
+    WasteStream,
+    sanunits as su,
+    ImpactItem, 
+    LCA, TEA, System,
+    )
+
 from qsdsan.utils import (
     ospath, 
     time_printer, 
@@ -391,6 +399,8 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     # sys = qs.System('EL', path=(CT, PC, S3, A1, O1, B1, S2, S1, CWT, S4),
     #                 recycle = [sludge_PC, sludge_MT_PC, sludge_MT_A1, flushing_water_CT],
     #                 ) # add flushing water
+    
+    
 
     return sys
 
@@ -411,12 +421,13 @@ def run(t, method=None, **kwargs):
     # batch_init(sys, path, 
     #            sheet='el')
     # sys.set_dynamic_tracker(*sys.products)
+    
 
     return sys
 
     
 if __name__ == '__main__':
-    t = 100
+    t = 2
     # method = 'RK45'
     method = 'RK23' 
     # method = 'DOP853'
@@ -427,6 +438,7 @@ if __name__ == '__main__':
     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
     print(f'Time span 0-{t}d \n')
     sys = run(t, method=method)
+    
     sys.diagram()
     fs = sys.flowsheet.stream
     fu = sys.flowsheet.unit
@@ -438,8 +450,21 @@ if __name__ == '__main__':
         print_t=True,
         )
     
+    sys.diagram()
     
-
+    teaEL = TEA(system=sys, discount_rate=discount_rate,
+           start_year=2020, lifetime=20, uptime_ratio=1,
+           # CEPCI = 567.5,
+           # CAPEX = 2.00,  
+           #lang_factor=None,
+           lang_factor=None,
+           annual_maintenance=0,
+           # annual_labor=(operator_daily_wage*3*365),
+           annual_labor=0
+           )
+    get_powerEL = lambda: sum([u.power_utility.rate for u in fu]) * (24 * 365 * teaEL.lifetime)
+    LCA(system=sys, lifetime=20, lifetime_unit='yr', uptime_ratio=1.0, e_item=get_powerEL)
+    
     
     # act_units = [u.ID for u in sys.units if isinstance(u, su.FlatBottomCircularClarifier) or u.ID.startswith('O')]
     # act_units = [u.ID for u in sys.units if u.ID.startswith('O')]
