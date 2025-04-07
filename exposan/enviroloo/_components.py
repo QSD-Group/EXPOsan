@@ -24,7 +24,7 @@ def create_components(set_thermo = True
                       #adjust_MW_to_measured_as=False
                       ):
     # bw_cmps = create_bw_components(set_thermo=False)
-    masm2d_cmps = pc.create_masm2d_cmps(set_thermo=True)
+    masm2d_cmps = pc.create_masm2d_cmps(set_thermo=False)
     # Tissue = Component('Tissue', MW=1, phase='s', particle_size='Particulate',
     #                     degradability='Undegradable', organic=False,
     #                     description='Tissue for toilet paper')
@@ -97,12 +97,12 @@ def create_components(set_thermo = True
     #         if getattr(i, attr) is None: setattr(i, attr, 0)
 
     # cmps.compile()    
-    # cmps.compile(ignore_inaccurate_molar_weight=True) #override for runtime error where N2_S molecular weight was not found
+    cmps.compile(ignore_inaccurate_molar_weight=True) #override for runtime error where N2_S molecular weight was not found
 
     # cmps.set_alias('H2O', 'Water')
     # #cmps.set_alias('CO2', 'Carbon Dioxide')
     # cmps.set_alias('CH4', 'Methane')
-    # if set_thermo: qs_set_thermo(cmps)
+    if set_thermo: qs_set_thermo(cmps)
 
     return cmps
 
