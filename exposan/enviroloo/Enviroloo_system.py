@@ -274,8 +274,8 @@ def create_components(set_thermo = True
     cmps = Components([*masm2d_cmps, 
                        # Tissue, WoodAsh, H2O,
                        ])
-    cmps.compile()
-    # cmps.compile(ignore_inaccurate_molar_weight=True)
+    # cmps.compile()
+    cmps.compile(ignore_inaccurate_molar_weight=True)
     if set_thermo: qs.set_thermo(cmps)
     return cmps
 #%%
@@ -289,8 +289,8 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
                                          concentrations=toilet_waste, 
                                          units=('m3/hr', 'mg/L'))
     
-    Glucose = qs.WasteStream('Glucose Dose', S_F= 0.9, units='kg/hr', T=Temp) # 0.0805
-    PAC = qs.WasteStream('PAC Dose', X_AlOH= 0.12, units='kg/hr', T=Temp) # 0.1207
+    Glucose = qs.WasteStream('Glucose_Dose', S_F= 0.9, units='kg/hr', T=Temp) # 0.0805
+    PAC = qs.WasteStream('PAC_Dose', X_AlOH= 0.12, units='kg/hr', T=Temp) # 0.1207
     
     masm2d = pc.mASM2d(**masm_kwargs)
     
@@ -452,7 +452,7 @@ if __name__ == '__main__':
     
     sys.diagram()
     
-    teaEL = TEA(system=sys, discount_rate=discount_rate,
+    '''teaEL = TEA(system=sys, discount_rate=discount_rate,
            start_year=2020, lifetime=20, uptime_ratio=1,
            # CEPCI = 567.5,
            # CAPEX = 2.00,  
@@ -471,7 +471,7 @@ if __name__ == '__main__':
     
     # srt = get_SRT(sys, biomass_IDs, wastage= [fs.WAS, fs.effluent], active_unit_IDs=act_units)
     # print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days\n')
-
+'''
 
 
 
