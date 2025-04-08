@@ -24,24 +24,24 @@ def create_components(set_thermo = True
                       #adjust_MW_to_measured_as=False
                       ):
     # bw_cmps = create_bw_components(set_thermo=False)
-    masm2d_cmps = pc.create_masm2d_cmps(set_thermo=True)
-    Tissue = Component('Tissue', MW=1, phase='s', particle_size='Particulate',
-                        degradability='Undegradable', organic=False,
-                        description='Tissue for toilet paper')
-    # 375 kg/m3 is the average of 250-500 for tissue from
-    # https://paperonweb.com/density.htm (accessed 2020-11-12)
-    add_V_from_rho(Tissue, 375)
+    masm2d_cmps = pc.create_masm2d_cmps(set_thermo=False)
+    # Tissue = Component('Tissue', MW=1, phase='s', particle_size='Particulate',
+    #                     degradability='Undegradable', organic=False,
+    #                     description='Tissue for toilet paper')
+    # # 375 kg/m3 is the average of 250-500 for tissue from
+    # # https://paperonweb.com/density.htm (accessed 2020-11-12)
+    # add_V_from_rho(Tissue, 375)
 
-    WoodAsh = Component('WoodAsh', MW=1, phase='s', i_Mg=0.0224, i_Ca=0.3034,
-                        particle_size='Particulate', degradability='Undegradable',
-                        organic=False, description='Wood ash for desiccant')
-    add_V_from_rho(WoodAsh, 760)
+    # WoodAsh = Component('WoodAsh', MW=1, phase='s', i_Mg=0.0224, i_Ca=0.3034,
+    #                     particle_size='Particulate', degradability='Undegradable',
+    #                     organic=False, description='Wood ash for desiccant')
+    # add_V_from_rho(WoodAsh, 760)
 
-    for i in (Tissue, WoodAsh):
-        i.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
+    # for i in (Tissue, WoodAsh):
+    #     i.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
     
-    H2O = Component('H2O', phase='l', particle_size='Soluble',
-                    degradability='Undegradable', organic=False)
+    # H2O = Component('H2O', phase='l', particle_size='Soluble',
+    #                 degradability='Undegradable', organic=False)
 
     # C = Component('C', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
     
@@ -83,7 +83,7 @@ def create_components(set_thermo = True
     #'organic': (True, False)}
           
     cmps = Components((*masm2d_cmps, 
-                       Tissue, WoodAsh, H2O,
+                       # Tissue, WoodAsh, H2O,
                        # C, SolubleCH4, 
                        # #H2O, CO2, 
                        # CH4, 
@@ -96,13 +96,13 @@ def create_components(set_thermo = True
     #     for attr in ('HHV', 'LHV', 'Hf'):
     #         if getattr(i, attr) is None: setattr(i, attr, 0)
 
-    cmps.compile(ignore_inaccurate_molar_weight=True)    
-  # cmps.compile(ignore_inaccurate_molar_weight=False) #override for runtime error where N2_S molecular weight was not found
+    # cmps.compile()    
+    cmps.compile(ignore_inaccurate_molar_weight=True) #override for runtime error where N2_S molecular weight was not found
 
     # cmps.set_alias('H2O', 'Water')
     # #cmps.set_alias('CO2', 'Carbon Dioxide')
     # cmps.set_alias('CH4', 'Methane')
-    # if set_thermo: qs_set_thermo(cmps)
+    if set_thermo: qs_set_thermo(cmps)
 
     return cmps
 

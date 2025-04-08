@@ -17,7 +17,7 @@ from exposan.utils import (
     get_generic_tanker_truck_fee as get_tanker_truck_fee,
     )
 
-# Default settings of resource recovery in the EL system
+## Default settings of resource recovery in the EL system
 INCLUDED_RESOURCE_RECOVERY = False
 
 el_path = os.path.dirname(__file__)
@@ -75,7 +75,7 @@ def update_resource_recovery_settings():
     RR_factor = int(bool(INCLUDED_RESOURCE_RECOVERY))
     
     price_dct = {
-        'Electricity': 0.13, # $/kWh
+        'Electricity': 0.0, # $/kWh Assumption because the system is not grid-tied.
         #'Concrete': 194 * price_ratio, # $/m3
         'Steel': 2.665 * price_ratio, # $/kg
         'N': 1.507 * price_factor * RR_factor, # $/kg, N fertilizer price if resource recovery is considered
@@ -239,7 +239,7 @@ def _load_system():
     qs.currency = 'USD'
     qs.PowerUtility.price = price_dct['Electricity']
     global sysEL, teaEL, lcaEL, _system_loaded
-    sysEL = create_systemEL('EL')
+    sysEL = create_system('EL')
     teaEL = sysEL.TEA
     lcaEL = sysEL.LCA
     _system_loaded = True
