@@ -91,6 +91,7 @@ Aerobic tank: AerT
 Membrane tank: MemT
 Clear water tank: CWT
 Pressure tank: PT
+Photovoltaic and Wind system: photovoltaic_wind
 Primary clarifier return pump: P_PC_return
 Glucose agitation pump: P_AnoT_agitation
 Glucose dosing pump: P_AnoT_dosing

@@ -92,6 +92,7 @@ ClearWaterTank_data = load_el_su_data('_EL_CWT.tsv.txt')
 PressureTank_data = load_el_su_data('_EL_PT.tsv.txt')
 # housing_data = load_el_su_data('_EL_housing.tsv')
 system_data = load_el_su_data('_EL_system.tsv')
+photovoltaic_wind_data = load_el_su_data('_photovoltaic_wind.tsv.txt')
 
 ############################################## define parameters of interest for EL system ################################################################
 def add_parameters(model, unit_dct, country_specific=False):
@@ -826,6 +827,7 @@ def create_modelEL(country_specific=False, **model_kwargs):
         # # 'PressurePumptoClearWater': unitEL.P_CWT,
         'PressureTank': unitEL.PT,
         'Connection': unitEL.Pipeline_system,
+        'PhotovoltaicWind': unitEL.photovoltaic_wind
         }
     add_parameters(modelEL, unit_dctEL, country_specific)
     

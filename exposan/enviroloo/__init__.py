@@ -75,7 +75,8 @@ def update_resource_recovery_settings():
     RR_factor = int(bool(INCLUDED_RESOURCE_RECOVERY))
     
     price_dct = {
-        'Electricity': 0.0, # $/kWh Assumption because the system is not grid-tied.
+        'Electricity': 0.0, # $/kWh Assumption because the system is not grid-tied. 
+        #'Electricity': 0.13, # $/kWh If grif-tied 
         #'Concrete': 194 * price_ratio, # $/m3
         'Steel': 2.665 * price_ratio, # $/kg
         'N': 1.507 * price_factor * RR_factor, # $/kg, N fertilizer price if resource recovery is considered
@@ -94,7 +95,8 @@ def update_resource_recovery_settings():
         }
     
     GWP_dct = {
-        'Electricity': 0.69, # kg CO2-eq/kWh
+        'Electricity': 0.00, # kg CO2-eq/kWh Assumption because system only contains renewables and is not grid-tied
+        #'Electricity': 0.69, # kg CO2-eq/kWh If system is grid-tied
         'CH4': 34.0, # kg CO2-eq/g CH4
         'N2O': 298.0, # kg CO2-eq/g N2O
         'N': -5.4 * RR_factor, # kg CO2-eq/kg N recovered, if resource recovery is considered
@@ -111,7 +113,8 @@ def update_resource_recovery_settings():
         }
     
     H_Ecosystems_dct = {
-        'Electricity': 0.002456338, 
+        'Electricity': 0.00, #Assumption because system only contains renewables and is not grid-tied
+        #'Electricity': 0.002456338, #If system is grid-tied
         'CH4': 34.0 * EcosystemQuality_factor, 
         'N2O': 298.0 * EcosystemQuality_factor, 
         'N': -0.0461961 * RR_factor, #if resource recovery is considered
@@ -128,7 +131,8 @@ def update_resource_recovery_settings():
         }
     
     H_Health_dct = {
-        'Electricity': 0.040824307,
+        'Electricity': 0.00, #Assumption because system only contains renewables and is not grid-tied
+        #'Electricity': 0.040824307, If system is grid-tied
         'CH4': 34.0 * HumanHealth_factor,
         'N2O': 298.0 * HumanHealth_factor, 
         'N': -0.637826734 * RR_factor, #if resource recovery is considered
@@ -145,7 +149,8 @@ def update_resource_recovery_settings():
         }
     
     H_Resources_dct = {
-        'Electricity': 0.027825633,
+        'Electricity': 0.00, #Assumption because system only contains renewables and is not grid-tied
+        #'Electricity': 0.027825633, #If system is grid-tied
         'CH4': 0.0, 
         'N2O': 0.0,
         'N': -0.259196888 * RR_factor, #if resource recovery is considered
