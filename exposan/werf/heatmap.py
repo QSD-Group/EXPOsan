@@ -160,7 +160,7 @@ def plot_diff(data, suffix=''):
     
     def valfmtpc(val):
         if str(val) == 'nan': return ''
-        if abs(val) >= 0.1: return f"{val:.0%}"
+        if abs(val) >= 0.095: return f"{val:.0%}"
         return f"{val:.1%}"
 
     def txtcolors(var, config, val, fill):
