@@ -102,7 +102,7 @@ def create_systemA(flowsheet=None):
 
     A6 = su.BiogenicRefineryOHX('A6', ins=A5-0, outs='A6_hot_gas')
     A7 = su.BiogenicRefineryHHX('A7', ins=A6-0, outs='A7_hot_gas')
-    A8 = su.BiogenicRefineryHHXdryer('A8', ins=(A1-0, A7-0), outs=('waste_out', 'A8_N2O', 'A8_CH4'))
+    A8 = su.BiogenicRefineryHHXdryer('A8', ins=(A1-0, A7-0), outs=('waste_out', 'A8_N2O', 'A8_CH4')) 
     A8-0-A4
 
     A9 = su.Mixer('A9', ins=(A8-2), outs=streamA.CH4)

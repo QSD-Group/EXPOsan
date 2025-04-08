@@ -199,7 +199,12 @@ def get_sustainability_indicators(system, include_breakdown=False):
     u_reg = system.flowsheet.unit
     dct = globals()
 ## TODO write functions for sustainability indicators here
-
+ #A4.outs[0]._carbon_sequestration # % feedstock carbon sequestered in biochar -
+ #A4.outs[0]._sequesterable_carbon #ton seq. C/yr) 
+ #A4.outs[0].F_mass * 24 * 365 / 1000 #ton biochar / yr)
+ #A4.outs[0].ECE # % energy conversion efficiency needed for zero extrenal energy req.
+ #A8.outs[0].Q_drying # MJ/ton-biosolids-db
+ #annualized_CAPEX / A4.outs[0]._sequesterable_carbon # cost/ton-sequesterable C)
 
 ##### Costs #####
 # Learning curve assumptions
