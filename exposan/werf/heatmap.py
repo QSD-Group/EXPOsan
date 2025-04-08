@@ -143,123 +143,47 @@ def plot_absolute(data=None, suffix='baseline'):
     eff_vars = ['COD', 'BOD', 'TN', 'NH4 N', 'TP']
     heatmap(fill.loc[eff_vars,:], annotate=vals.loc[eff_vars,:], valfmt=valfmtwnan, 
             txtcolors=txtcolors, save_as=f'eff_{suffix}.png')
-    heatmap(fill.iloc[8:,:], show_ticklabels=False, colorbar=False,
+    heatmap(fill.iloc[8:,:], 
+            show_ticklabels=False, colorbar=False,
             annotate=vals.iloc[8:,:], valfmt=valfmtwnan, 
             txtcolors=txtcolors, save_as=f'op_{suffix}.png')
 
-plot_absolute()
+# plot_absolute()
 
 #%%
-# diff = diff.T
-diff_color = diff.copy()
-diff_color[diff_color > 1] = 1
-diff_color[diff_color < -1] = -1
+def plot_diff(data, suffix=''):
+    fill = data.T.copy()
+    fill[fill > 1] = 1
+    fill[fill < -1] = -1
+    
+    vals = data.T    
+    
+    def valfmtpc(val):
+        if str(val) == 'nan': return ''
+        if abs(val) >= 0.1: return f"{val:.0%}"
+        return f"{val:.1%}"
 
-#%%
-data = diff_color.loc[['COD', 'BOD', 'TN', 'NH4', 'TP']]
-fig, ax = plt.subplots(figsize=(12,6))
-im = ax.imshow(data, cmap='bwr', vmin=-1, vmax=1)
-cbar = ax.figure.colorbar(im, ax=ax, orientation='horizontal', pad=0.05, fraction=0.05)
-cbar.ax.set_xticks(ticks=[-1,0,1], labels=['-100%', '0%', '+100%'], fontsize=12)
+    def txtcolors(var, config, val, fill):
+        if abs(fill) > 0.6: return 'white'
+        return 'black'
+    
+    eff_vars = ['COD', 'BOD', 'TN', 'NH4 N', 'TP']
+    heatmap(fill.loc[eff_vars,:], cmap='bwr', vmin=-1, vmax=1,
+            annotate=vals.loc[eff_vars,:], valfmt=valfmtpc, 
+            txtcolors=txtcolors, annotate_kw=dict(size=10), 
+            save_as=f'deff_{suffix}.png')
+    op_vars = ['CH4 production', 'CH4 content', 'Sludge production', 
+               'Liquid aeration flowrate', 'Sludge aeration flowrate']
+    heatmap(fill.loc[op_vars,:], cmap='bwr', vmin=-1, vmax=1,
+            show_ticklabels=False, colorbar=False,
+            annotate=vals.loc[op_vars,:], valfmt=valfmtpc, 
+            txtcolors=txtcolors, annotate_kw=dict(size=10), 
+            save_as=f'dop_{suffix}.png')
 
-# Show all ticks and label them with the respective list entries.
-ax.set_xticks(range(data.shape[1]), labels=data.columns, fontsize=12,
-              # rotation=0, ha="right", rotation_mode="anchor"
-              )
-ax.set_yticks(range(data.shape[0]), labels=data.index, fontsize=12,)
+# diff = load_data(
+#     ospath.join(results_path, 'UD_performance.xlsx'), sheet='diff',
+#     header=[0,1], skiprows=[2,]
+#     )
+# diff.columns = [i[1].split(' [')[0] for i in diff.columns]
 
-# Let the horizontal axes labeling appear on top.
-ax.tick_params(top=True, bottom=False,
-               labeltop=True, labelbottom=False)
-
-# Turn spines off and create white grid.
-ax.spines[:].set_visible(False)
-
-ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
-ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
-ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
-ax.tick_params(which="minor", bottom=False, left=False)
-
-
-kw = dict(horizontalalignment="center",
-          verticalalignment="center",
-          size=10)
-
-# Get the formatter in case a string is supplied
-# valfmt = matplotlib.ticker.StrMethodFormatter("{x:.1%}")
-
-# Loop over the data and create a `Text` for each "pixel".
-# Change the text's color depending on the data.
-texts = []
-for i in range(data.shape[0]):
-    var = data.index[i]
-    row = data.loc[var]
-    for j in range(data.shape[1]):
-        config = data.columns[j]
-        txt = diff.at[var, config]
-        if abs(txt) >= 0.1: txt = f"{txt:.0%}"
-        else: txt = f"{txt:.1%}"
-        color = None if str(txt) == 'nan' else 'black'
-        text = im.axes.text(j, i, txt, color=color, **kw)
-        texts.append(text)
-
-fig.savefig(ospath.join(figures_path, 'eff_diff'), 
-            dpi=300, 
-            transparent=True
-            )
-
-del fig, ax, data
-#%%
-data = diff_color.loc[['biogas', 'CH4', 'sludge', 'asp_air', 'aed_air', 'total_air']]
-fig, ax = plt.subplots(figsize=(12,6))
-im = ax.imshow(data, cmap='bwr', vmin=-1, vmax=1)
-# cbar = ax.figure.colorbar(im, ax=ax, orientation='horizontal', pad=0.05, fraction=0.05)
-# cbar.ax.set_xticks(ticks=[-1,0,1], labels=['-100%', '0%', '+100%'], fontsize=12)
-
-# Show all ticks and label them with the respective list entries.
-ax.set_xticks(range(data.shape[1]), labels=data.columns, fontsize=12,
-              # rotation=0, ha="right", rotation_mode="anchor"
-              )
-ax.set_yticks(range(data.shape[0]), labels=data.index, fontsize=12,)
-
-# Let the horizontal axes labeling appear on top.
-ax.tick_params(top=True, bottom=False,
-               labeltop=True, labelbottom=False)
-
-# Turn spines off and create white grid.
-ax.spines[:].set_visible(False)
-
-ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
-ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
-ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
-ax.tick_params(which="minor", bottom=False, left=False)
-
-
-kw = dict(horizontalalignment="center",
-          verticalalignment="center",
-          size=10)
-
-# Get the formatter in case a string is supplied
-# valfmt = matplotlib.ticker.StrMethodFormatter("{x:.1%}")
-
-# Loop over the data and create a `Text` for each "pixel".
-# Change the text's color depending on the data.
-texts = []
-for i in range(data.shape[0]):
-    var = data.index[i]
-    row = data.loc[var]
-    for j in range(data.shape[1]):
-        config = data.columns[j]
-        txt = diff.at[var, config]
-        if str(txt) == 'nan': txt = ''
-        else:
-            if abs(txt) >= 0.1: txt = f"{txt:.0%}"
-            else: txt = f"{txt:.1%}"
-            color = 'black'
-        text = im.axes.text(j, i, txt, color=color, **kw)
-        texts.append(text)
-
-fig.savefig(ospath.join(figures_path, 'op_diff'), 
-            dpi=300, 
-            transparent=True
-            )
+# plot_diff(diff, suffix='10UD')
