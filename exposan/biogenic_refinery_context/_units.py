@@ -6,7 +6,9 @@ QSDsan: Quantitative Sustainable Design for sanitation and resource recovery sys
 
 This module is developed by:
 
-
+    Aaron Marszewski <aaronpm3@illinois.edu>
+    
+    Lewis Rowles <stetsonsc@gmail.com>
 
 
 
@@ -121,6 +123,7 @@ class Biosolids(SanUnit):
 # 3. sizing of the system, i.e., multiple systems needed for more than solids loading to 1 BR, \
     # Number of units needed = flow_rate_db/ (550 / 20 * .65) # assuming one unit is capable of treating 550 kg/day (35% moisture based on 20 hr of run time)
 # units: (flow_rate_db kg-db/hr) / (550 kg biosolids/d * 1d/20h * .65 kg dry solids/kg solids@35% MC)
+# 4. add conversion of VS to COD in biosoilds then pass COD throughout. 
 
 
 
