@@ -54,7 +54,7 @@ EL_su_data_path = os.path.join(data_path, 'units_data')
 
 # %%
 
-CollectionTank_path = os.path.join(EL_su_data_path, '_EL_CT.tsv')
+CollectionTank_path = os.path.join(EL_su_data_path, '_EL_CT.tsv.txt')
 
 @price_ratio()
 class EL_CT(CSTR):
@@ -173,7 +173,7 @@ class EL_CT(CSTR):
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)
+        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_weight # * (self.ppl / self.baseline_ppl)
         self.add_construction(add_cost=False)
     
     def _cost(self):
@@ -203,7 +203,7 @@ class EL_CT(CSTR):
 # %%
 
 
-PrimaryClarifier_path = os.path.join(EL_su_data_path, '_EL_PC.tsv')
+PrimaryClarifier_path = os.path.join(EL_su_data_path, '_EL_PC.tsv.txt')
 
 @price_ratio()
 class EL_PC(IdealClarifier):
@@ -288,7 +288,7 @@ class EL_PC(IdealClarifier):
     def _design(self):
         """Calculate design parameters."""
         self.design_results['StainlessSteel'] = (
-            self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)
+            self.tank_steel_weight # (self.ppl / self.baseline_ppl)
         )
         self.construction = [
             Construction(item='StainlessSteel', quantity=self.design_results['StainlessSteel'], quantity_unit='kg')
@@ -325,7 +325,7 @@ class EL_PC(IdealClarifier):
 # %%
 
 
-Anoxic_path = os.path.join(EL_su_data_path, '_EL_Anoxic.tsv')
+Anoxic_path = os.path.join(EL_su_data_path, '_EL_Anoxic.tsv.txt')
 @price_ratio()
 
 class EL_Anoxic(CSTR):
@@ -436,7 +436,7 @@ class EL_Anoxic(CSTR):
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)  # assume linear scale
+        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_weight # * (self.ppl / self.baseline_ppl)  # assume linear scale
         self.add_construction(add_cost=False)
     
     def _cost(self):
@@ -466,7 +466,7 @@ class EL_Anoxic(CSTR):
 
 # %%
 
-Aerobic_path = os.path.join(EL_su_data_path, '_EL_Aerobic.tsv')
+Aerobic_path = os.path.join(EL_su_data_path, '_EL_Aerobic.tsv.txt')
 @price_ratio()
 
 class EL_Aerobic(CSTR):
@@ -578,7 +578,7 @@ class EL_Aerobic(CSTR):
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)
+        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_weight # (self.ppl / self.baseline_ppl)
         self.add_construction(add_cost=False)
     
     def _cost(self):
@@ -609,7 +609,7 @@ class EL_Aerobic(CSTR):
 
 # %%
 
-MBR_path = os.path.join(EL_su_data_path, '_EL_MBR.tsv')
+MBR_path = os.path.join(EL_su_data_path, '_EL_MBR.tsv.txt')
 @price_ratio()
 
 class EL_CMMBR(CompletelyMixedMBR):
@@ -674,7 +674,7 @@ class EL_CMMBR(CompletelyMixedMBR):
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)  # assume linear scaling
+        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_weight # * (self.ppl / self.baseline_ppl)  # assume linear scaling
         design['PVDF_membrane'] = constr[1].quantity = self.membrane_material_weight
         self.add_construction(add_cost=False)
 
@@ -707,7 +707,7 @@ class EL_CMMBR(CompletelyMixedMBR):
         return MBR_replacement_cost
 
 # %%
-ClearWaterTank_path = os.path.join(EL_su_data_path, '_EL_CWT.tsv')
+ClearWaterTank_path = os.path.join(EL_su_data_path, '_EL_CWT.tsv.txt')
 
 @price_ratio()
 class EL_CWT(CSTR):
@@ -797,7 +797,7 @@ class EL_CWT(CSTR):
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_volume * self.steel_density * (self.ppl / self.baseline_ppl)  # to be defined in .tsv file
+        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_weight # * (self.ppl / self.baseline_ppl)  # to be defined in .tsv file
         self.add_construction(add_cost=False)
 
     def _cost(self):
@@ -1103,7 +1103,7 @@ class EL_System(SanUnit, isabstract=True):
        return ceil(self.ppl / self.baseline_ppl)
 # %%
 '''
-system_path = os.path.join(EL_su_data_path, '_EL_wind_solar.tsv')
+system_path = os.path.join(EL_su_data_path, '_EL_wind_solar.tsv.txt')
 
 @price_ratio()
 class EnviroLooWindSolar(Copier):
