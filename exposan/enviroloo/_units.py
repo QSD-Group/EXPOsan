@@ -1110,7 +1110,7 @@ class EL_System(SanUnit, isabstract=True):
 system_path = os.path.join(EL_su_data_path, '_EL_photovoltaic_wind.tsv')
 
 @price_ratio()
-class EnviroLooWindSolar(Copier):
+class EL_WindSolar(Copier):
     
     '''
     
@@ -1151,7 +1151,7 @@ class EnviroLooWindSolar(Copier):
         self.construction = [
             Construction(item='PhotovoltaicPanel', linked_unit=self, quantity_unit='m2'),
             Construction(item='Battery', linked_unit=self, quantity_unit='kg',
-                         lifetime=self.pv_battery_lifetime),
+                         lifetime=self.el_battery_lifetime),
             Construction(item='ElectricCables', linked_unit=self, quantity_unit='m'),
             Construction(item='Aluminum', linked_unit=self, quantity_unit='kg'),
             Construction(item='Steel', linked_unit=self, quantity_unit='kg')            
@@ -1205,7 +1205,7 @@ class EnviroLooWindSolar(Copier):
     def _calc_replacement_cost(self):
         battery_replacememt_parts_annual_cost = self.el_battery / self.el_battery_lifetime
         wind_replacement_cost = self.el_wind_turbine / self.wind_turbine_lifetime
-        photovolataic_replacement_cost = self.el_panels / self.el_panel_lifetime
+        photovoltaic_replacement_cost = self.el_panels / self.el_panel_lifetime
         misc_replacement_cost = self.el_inverter / self.el_inverter_lifetime
         
         total_replacement_cost = (
