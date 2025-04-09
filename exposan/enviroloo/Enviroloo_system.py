@@ -275,8 +275,8 @@ def create_components(set_thermo = True
     cmps = Components([*masm2d_cmps, 
                        # Tissue, WoodAsh, H2O,
                        ])
-    # cmps.compile()
-    cmps.compile(ignore_inaccurate_molar_weight=True)
+    cmps.compile()
+    # cmps.compile(ignore_inaccurate_molar_weight=True)
     if set_thermo: qs.set_thermo(cmps)
     return cmps
 # %%
@@ -432,6 +432,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     
     S4 = su.Splitter('S4', ins = CWT-0, outs = [2-CT, 'Reflushing'], split= 0.5)
     
+    PV = elu.EnviroLooWindSolar()
     
 
     sysEL = qs.System('EL', path=(CT, PC, A1, O1, B1, S2, S1, CWT, S4))

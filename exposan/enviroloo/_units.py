@@ -15,7 +15,7 @@ from math import ceil
 from warnings import warn
 from qsdsan import WasteStream
 from qsdsan import SanUnit, Construction, Process
-from qsdsan.sanunits import IdealClarifier, Mixer, dydt_cstr
+from qsdsan.sanunits import IdealClarifier, Mixer, dydt_cstr, _non_reactive, Copier
 from biosteam.units import Mixer as BSTMixer
 from qsdsan.sanunits._tank import StorageTank
 from qsdsan.processes._decay import Decay
@@ -36,6 +36,10 @@ from biosteam.units import StorageTank as BSTStorageTank
 from biosteam.exceptions import bounds_warning, DesignWarning
 from biosteam.units.design_tools import flash_vessel_design
 from biosteam.units.design_tools.specification_factors import material_densities_lb_per_ft3
+from collections.abc import Iterable
+from biosteam._graphics import UnitGraphics
+
+
 # %% This callable file will be reposited to qsdsan.SanUnit subbranch with the name of _enviroloo
 __all__ = (
     'EL_CT', # Collection tank
@@ -1102,11 +1106,13 @@ class EL_System(SanUnit, isabstract=True):
     def N_EL(self): # determine the number of EL system needed
        return ceil(self.ppl / self.baseline_ppl)
 # %%
-'''
-system_path = os.path.join(EL_su_data_path, '_EL_wind_solar.tsv.txt')
+
+system_path = os.path.join(EL_su_data_path, '_EL_photovoltaic_wind.txt')
 
 @price_ratio()
 class EnviroLooWindSolar(Copier):
+    
+    '''
     
     The photovoltaicb and wind power configuration of the EnviroLoo System,
     which is composed of solar panels, batteries, inverters, cables, carport,
@@ -1124,20 +1130,20 @@ class EnviroLooWindSolar(Copier):
 
     References
     ----------
-   
+   '''
 
     def __init__(self, ID='', ins=None, outs=(),  thermo=None, init_with='WasteStream',
                  if_lithium_battery=False, user_scale_up=1, **kwargs):
-        Copier.__init__(self, ID, ins, outs, thermo, init_with)
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with)
         #self.user_scale_up = user_scale_up
 
-        data = load_data(path=pv_path)
+        data = load_data(path=system_path)
         for para in data.index:
             value = float(data.loc[para]['expected'])
             setattr(self, para, value)
         del data
 
-        self._refres_lca()
+        # self._refres_lca()
 
         for attr, value in kwargs.items():
             setattr(self, attr, value)
@@ -1161,10 +1167,7 @@ class EnviroLooWindSolar(Copier):
         design['ElectricCables'] = constr[2].quantity = self.pv_cable_length
         # design['Aluminum'] = constr[3].quantity = self.pv_aluminum_weight
         design['Aluminum'] = constr[4].quantity = self.pv_aluminum_weight
-        design['Steel'] = constr[4].quantity = self.el_wind_galvanized_steel_weight +
-        self.pv_carport_weight_galvanized_metal + self.pv_inverter_weight_steel + 
-        self.pv_charger_weight_steel
-        self.add_construction(add_cost=False)
+        design['Steel'] = constr[4].quantity = self.el_wind_galvanized_steel_weight + self.pv_carport_weight_galvanized_metal + self.pv_inverter_weight_steel + self.pv_charger_weight_steel + self.add_construction(add_cost=False)
 
     def _cost(self):
         C = self.baseline_purchase_costs
@@ -1218,5 +1221,4 @@ class EnviroLooWindSolar(Copier):
             self.pv_labor_replacement_misc_repairs
             ) * self.wages
         return photovoltaic_maintenance_labor/ (365 * 24) # USD/hr
-
-   '''         
+        
