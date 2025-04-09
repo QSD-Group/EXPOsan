@@ -12,9 +12,10 @@ for license details.
 '''
 
 import numpy as np
-from qsdsan.utils import AttrGetter
+from qsdsan import WasteStream, sanunits as su
+from qsdsan.utils import AttrGetter, auom
 from ._units import SelectiveRecovery
-from exposan.werf.utils import plantwide_aeration_demand
+from exposan.werf.utils import plantwide_aeration_demand, plantwide_aeration_energy
 
 
 __all__ = (
@@ -65,6 +66,15 @@ def add_performance_metrics(model):
     @metric(name='sludge production', units='tonne/d', element='Sludge')
     def get_sludge_production():
         return sum(s.cake.mass * cmps.i_mass) * 24e-3
+
+    add_aeration_metrics(model, False)
+
+#%%
+
+def add_aeration_metrics(model, energy=True):
+    
+    metric = model.metric
+    sys = model.system
     
     _cached_aer = {}
     @metric(name='liquid aeration flowrate', units='m3/d', element='Aeration')
@@ -78,9 +88,23 @@ def add_performance_metrics(model):
     
     @metric(name='sludge aeration flowrate', units='m3/d', element='Aeration')
     def get_aed_qair():
-        qair = _cached_aer.pop('AED', np.nan)
-        _cached_aer.clear()
+        if 'AED' in _cached_aer: qair = _cached_aer
+        else: qair = np.nan
+        if not energy: _cached_aer.clear()
         return qair
+
+    if energy:
+        blower_energy = {}
+        @metric(name='aeration energy', units='kW', element='Aeration')
+        def get_aer_energy():
+            blower_energy.clear()
+            blower_energy.update(plantwide_aeration_energy(sys, _cached_aer))
+            _cached_aer.clear()
+            return sum(blower_energy.values())
+
+        @metric(name='aeration energy cost', units='USD/d', element='OPEX')
+        def get_aer_cost():
+            return sum(blower_energy.values()) * 24 * sys.power_utility.price 
 
 #%%    
 def add_NH4_recovery_metric(model):
@@ -104,5 +128,45 @@ def add_NH4_recovery_metric(model):
             recovery += s.RWW.imass['S_NH4']/(1-r)*r
         return recovery * 24        
     
-
+def add_OPEX_metrics(model):
     
+    metric = model.metric
+    sys = model.system
+    s = sys.flowsheet.stream
+    u = sys.flowsheet.unit
+    
+    pumpin = WasteStream('pumpin', T=s.RWW.T, P=s.RWW.P)
+    pump = su.Pump('pump', ins=pumpin, ignore_NPSH=False, 
+                   init_with='WasteStream', isdynamic=False)
+    pump_energy = {}
+    
+    def get_dP(hydraulic_head, headloss, unit='ft'):
+        H = (hydraulic_head + headloss) * auom(unit).conversion_factor('m')
+        return 1000 * 9.81 * H      # in Pa
+    
+    
+    @metric(name='influent pumping energy', units='kW', element='Pumping')
+    def get_inf_pump_power():
+        pump.dP_design = get_dP(50, 1.0)    #!!! update input
+        pumpin.copy_like(s.RWW)
+        pump.simulate()
+        pump_energy['inf'] = power = pump.power_utility.consumption
+        return power
+        
+    @metric(name='RAS pumping energy', units='kW', element='Pumping')
+    def get_ras_pump_power():
+        pump.dP_design = get_dP(50, 1.0)    #!!! update input
+        pumpin.copy_like(s.RAS)
+        pump.simulate()
+        pump_energy['RAS'] = power = pump.power_utility.consumption
+        return power
+    
+    # internal recirculations
+    # reject waters 
+    @metric(name='pumping energy cost', units='USD/d', element='OPEX')
+    def get_pump_cost():
+        return sum(pump_energy.values()) * 24 * sys.power_utility.price
+    
+    @metric(name='sludge disposal cost', units='USD/d', element='OPEX')
+    def get_sludge_disposal_cost():
+        return 

@@ -11,7 +11,6 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 """
 
-
 import time as tm, pandas as pd, os
 from exposan.werf import (
     create_system, 
@@ -35,7 +34,7 @@ for ID in (
         'B1', 'C1', 'F1', 
         'G1', 'H1', 'I1', 'N1', 
         ):
-    print(f"System {ID} w Eletrochemical Stripping")
+    print(f"System {ID} w Electrochemical Stripping")
     print("="*40)
     sys = create_system(ID)
     u = sys.flowsheet.unit
@@ -60,6 +59,15 @@ for ID in (
     mdl = Model(sys_ecs)
     add_performance_metrics(mdl)
     add_NH4_recovery_metric(mdl)
+    if "PC" in u: cake_tss = 18e4
+    else: cake_tss = 17e4
+    
+    if "thickened_WAS" in s: 
+        thickened = s.thickened_WAS
+        thickener = u.MT
+    else: 
+        thickened = s.thickened_sludge
+        thickener = u.GT
     
     try:
         start = tm.time()
@@ -67,9 +75,21 @@ for ID in (
         try: sys_ecs.simulate(state_reset_hook='reset_cache', t_span=(0,300), method='BDF')
         except: sys_ecs.simulate(t_span=(0,300), method='BDF')
         end = tm.time()
-        print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end-start)), '\n')
-        
-        sys_ecs.diagram()
+        print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end-start)))
+        print('Adjusting TS% ...')
+        r_thick = thickened.get_TSS()/5e4
+        r_cake = s.cake.get_TSS()/cake_tss
+        while abs(r_thick - 1) > 0.01 or abs(r_cake - 1) > 0.01:
+            print(f"{r_thick:.3f}  {r_cake:.3f}")
+            thickener.sludge_flow_rate *= r_thick
+            u.DW.sludge_flow_rate *= r_cake
+            sys_ecs.simulate(t_span=(0,300), method='BDF')
+            r_thick = thickened.get_TSS()/5e4
+            r_cake = s.cake.get_TSS()/cake_tss
+        end2 = tm.time()
+        print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end2-end)), '\n')
+
+        # sys_ecs.diagram()
         ndf = plantwide_N_mass_flows(sys_ecs)
         with pd.ExcelWriter(os.path.join(results_path, 'N_mass_ECS.xlsx'), mode=mode) as writer:
             ndf.to_excel(writer, sheet_name=ID)

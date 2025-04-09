@@ -21,6 +21,7 @@ __all__ = ('get_aeration_kLa',
            'get_aeration_demand',
            'aer_kwargs',
            'plantwide_aeration_demand',
+           'plantwide_aeration_energy',
            )
 
 isa = isinstance
@@ -95,7 +96,27 @@ def get_crossflow_kLa(unit, Q_air, DOsat_s20=8.0, T_air=13,):
                            **aer_kwargs['cross_flow'])
     return cfa.kLa
     
-    
+
+def _setup_diffused_aeration(unit, kLa, DOsat_s20, T_air,
+                             tank_depth, diffuser_height, 
+                             aeration_type, **kwargs):
+    # breakpoint()
+    if kLa is None: 
+        kLa = get_aeration_kLa(unit, DOsat_s20)
+        if isa(unit, CompletelyMixedMBR):
+            Q_cfa = kwargs.pop('Q_cfa', 20000)
+            k_cfa = get_crossflow_kLa(unit, Q_cfa, DOsat_s20, T_air)
+            if k_cfa > kLa: kLa = 0.
+            else: kLa -= k_cfa
+            
+    d_submergence = (tank_depth - diffuser_height) * ft2m
+    if aeration_type in aer_kwargs:
+        kwargs.update(aer_kwargs[aeration_type])
+    aer = DiffusedAeration('aer', DO_ID=unit.DO_ID, V=1000, KLa=120, DOsat_s20=DOsat_s20,
+                           T_water=unit.outs[0].T, T_air=T_air+273.15,
+                           d_submergence=d_submergence, **kwargs)
+    return kLa, aer
+
 def get_aeration_demand(unit, kLa=None, DOsat_s20=8.0, alpha=0.5, 
                         tank_depth=15, diffuser_height=1.0, T_air=13,
                         aeration_type='fine_bubble', **kwargs):
@@ -106,8 +127,6 @@ def get_aeration_demand(unit, kLa=None, DOsat_s20=8.0, alpha=0.5,
     ----------
     unit : :class:`SanUnit`
         A sanunit with aeration demand.
-    kLa : float, optional
-        If not given, will be estimated from current state of the unit. The default is None.
     alpha : float, optional
         Alpha factor. Must have the same shape as kLa.
     tank_depth : float, optional
@@ -128,19 +147,9 @@ def get_aeration_demand(unit, kLa=None, DOsat_s20=8.0, alpha=0.5,
     :class:`qsdsan.processes.DiffusedAeration`
 
     '''
-    if kLa is None: 
-        kLa = get_aeration_kLa(unit, DOsat_s20)
-        if isa(unit, CompletelyMixedMBR):
-            Q_cfa = kwargs.pop('Q_cfa', 20000)
-            k_cfa = get_crossflow_kLa(unit, Q_cfa, DOsat_s20, T_air)
-            if k_cfa > kLa: return 0.
-            kLa -= k_cfa
-    d_submergence = (tank_depth - diffuser_height) * ft2m
-    if aeration_type in aer_kwargs:
-        kwargs.update(aer_kwargs[aeration_type])
-    aer = DiffusedAeration('aer', DO_ID=unit.DO_ID, V=1000, KLa=120, DOsat_s20=DOsat_s20,
-                           T_water=unit.outs[0].T, T_air=T_air+273.15,
-                           d_submergence=d_submergence, **kwargs)
+    
+    kLa, aer = _setup_diffused_aeration(unit, kLa, DOsat_s20, T_air, tank_depth, 
+                                        diffuser_height, aeration_type, **kwargs)
     
     if isa(unit, CSTR):
         aer.alpha = alpha
@@ -158,7 +167,38 @@ def get_aeration_demand(unit, kLa=None, DOsat_s20=8.0, alpha=0.5,
         return Q_air
     else:
         raise TypeError(f'unrecognized reactor type {type(unit)}')
-        
+
+def get_aeration_energy(Q_air, tank_depth=15, diffuser_height=1.0, T_air=13,
+                        blowermotor_efficiency=0.7, P_inlet_loss=1.0,
+                        P_outlet_loss=7.0, P_atm=101.325,
+                        **kwargs):
+    '''
+    Estimate energy required for aeration [kW].
+
+    Parameters
+    ----------
+    Q_air : float, optional
+        Air flow rate [m3/d].
+    blowermotor_efficiency : float, optional
+        Combined blower and motor efficiency. The default is 0.7.
+    P_inlet_loss : float, optional
+        Pressure drop at the inlet [kPa]. The default is 1.0.
+    P_outlet_loss : float, optional
+        Head loss in piping and diffuser [kPa]. The default is 7.0.
+    P_atm : float, optional
+        Atmospheric pressure [kPa]. The default is 101.325.
+
+    See Also
+    --------
+    `get_aeration_demand`
+
+    '''
+    d_submergence = (tank_depth - diffuser_height) * ft2m
+    P_in = P_atm - P_inlet_loss
+    P_out = P_atm + 9.81 * d_submergence + P_outlet_loss
+    P_blower = 1.4161e-5 * (T_air+273.15) * Q_air * ((P_out/P_in)**0.283 - 1) / blowermotor_efficiency
+    return P_blower
+    
 default_alpha = {
     'rBOD': [0.3, 0.3, 0.4, 0.4, 0.5, 0.5],
     'others': [0.6, 0.6, 0.7, 0.7, 0.8, 0.8],
@@ -186,5 +226,21 @@ def plantwide_aeration_demand(system):
         else:
             continue
         Q_air[u.ID] = get_aeration_demand(u, **kwargs)
+
     return Q_air
 
+def plantwide_aeration_energy(system, Q_air_dct=None):
+    if Q_air_dct is None:
+        Q_air_dct = plantwide_aeration_demand(system)
+    Pb = {}
+    for uid, Q_air in Q_air_dct.item():
+        kwargs = dict(P_inlet_loss=1.724, P_outlet_loss=17.24, blowermotor_efficiency=0.7)
+        if uid == 'AED':
+            kwargs.update(dict(
+                tank_depth=20, diffuser_height=1.0, 
+                blowermotor_efficiency=0.65
+                ))
+            if system.ID in ('E2P', 'N2'):
+                kwargs['P_outlet_loss'] = 10.34
+        Pb[uid] = get_aeration_energy(Q_air, **kwargs)
+    return Pb
