@@ -22,7 +22,7 @@ from qsdsan.processes._decay import Decay
 #from qsdsan.utils import ospath, load_data, data_path, price_ratio
 from qsdsan.utils import load_data, price_ratio
 import os
-from exposan.utils import _init_modules as modules
+from exposan.utils import _init_modules
 from qsdsan.sanunits._toilet import Toilet, MURT
 from qsdsan.sanunits._excretion import ExcretionmASM2d
 from qsdsan.sanunits._suspended_growth_bioreactor import CSTR
@@ -52,7 +52,7 @@ __all__ = (
     )
 el_path = os.path.dirname(__file__)
 module = os.path.split(el_path)[-1]
-data_path, results_path = modules(module, include_data_path = True)
+data_path, results_path = _init_modules(module, include_data_path = True)
 EL_su_data_path = os.path.join(data_path, 'units_data')
 
 
@@ -1151,7 +1151,7 @@ class EnviroLooWindSolar(Copier):
         self.construction = [
             Construction(item='PhotovoltaicPanel', linked_unit=self, quantity_unit='m2'),
             Construction(item='Battery', linked_unit=self, quantity_unit='kg',
-                         lifetime=self.el_battery_lifetime),
+                         lifetime=self.pv_battery_lifetime),
             Construction(item='ElectricCables', linked_unit=self, quantity_unit='m'),
             Construction(item='Aluminum', linked_unit=self, quantity_unit='kg'),
             Construction(item='Steel', linked_unit=self, quantity_unit='kg')            
@@ -1205,7 +1205,7 @@ class EnviroLooWindSolar(Copier):
     def _calc_replacement_cost(self):
         battery_replacememt_parts_annual_cost = self.el_battery / self.el_battery_lifetime
         wind_replacement_cost = self.el_wind_turbine / self.wind_turbine_lifetime
-        photovoltaic_replacement_cost = self.el_panels / self.el_panel_lifetime
+        photovolataic_replacement_cost = self.el_panels / self.el_panel_lifetime
         misc_replacement_cost = self.el_inverter / self.el_inverter_lifetime
         
         total_replacement_cost = (
