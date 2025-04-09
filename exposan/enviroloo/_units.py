@@ -58,7 +58,7 @@ EL_su_data_path = os.path.join(data_path, 'units_data')
 
 # %%
 
-CollectionTank_path = os.path.join(EL_su_data_path, '_EL_CT.tsv.txt')
+CollectionTank_path = os.path.join(EL_su_data_path, '_EL_CT.tsv')
 
 @price_ratio()
 class EL_CT(CSTR):
@@ -207,7 +207,7 @@ class EL_CT(CSTR):
 # %%
 
 
-PrimaryClarifier_path = os.path.join(EL_su_data_path, '_EL_PC.tsv.txt')
+PrimaryClarifier_path = os.path.join(EL_su_data_path, '_EL_PC.tsv')
 
 @price_ratio()
 class EL_PC(IdealClarifier):
@@ -329,7 +329,7 @@ class EL_PC(IdealClarifier):
 # %%
 
 
-Anoxic_path = os.path.join(EL_su_data_path, '_EL_Anoxic.tsv.txt')
+Anoxic_path = os.path.join(EL_su_data_path, '_EL_Anoxic.tsv')
 @price_ratio()
 
 class EL_Anoxic(CSTR):
@@ -470,7 +470,7 @@ class EL_Anoxic(CSTR):
 
 # %%
 
-Aerobic_path = os.path.join(EL_su_data_path, '_EL_Aerobic.tsv.txt')
+Aerobic_path = os.path.join(EL_su_data_path, '_EL_Aerobic.tsv')
 @price_ratio()
 
 class EL_Aerobic(CSTR):
@@ -613,7 +613,7 @@ class EL_Aerobic(CSTR):
 
 # %%
 
-MBR_path = os.path.join(EL_su_data_path, '_EL_MBR.tsv.txt')
+MBR_path = os.path.join(EL_su_data_path, '_EL_MBR.tsv')
 @price_ratio()
 
 class EL_CMMBR(CompletelyMixedMBR):
@@ -711,7 +711,7 @@ class EL_CMMBR(CompletelyMixedMBR):
         return MBR_replacement_cost
 
 # %%
-ClearWaterTank_path = os.path.join(EL_su_data_path, '_EL_CWT.tsv.txt')
+ClearWaterTank_path = os.path.join(EL_su_data_path, '_EL_CWT.tsv')
 
 @price_ratio()
 class EL_CWT(CSTR):
@@ -1107,7 +1107,7 @@ class EL_System(SanUnit, isabstract=True):
        return ceil(self.ppl / self.baseline_ppl)
 # %%
 
-system_path = os.path.join(EL_su_data_path, '_EL_photovoltaic_wind.txt')
+system_path = os.path.join(EL_su_data_path, '_EL_photovoltaic_wind.tsv')
 
 @price_ratio()
 class EnviroLooWindSolar(Copier):
