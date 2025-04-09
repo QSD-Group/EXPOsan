@@ -1114,7 +1114,7 @@ class EL_WindSolar(Copier):
     
     '''
     
-    The photovoltaicb and wind power configuration of the EnviroLoo System,
+    The photovoltaic and wind power configuration of the EnviroLoo System,
     which is composed of solar panels, batteries, inverters, cables, carport,
     charger, turbine, backplates, and other parts. Costs include sales tax, licensing, 
     consulting, and installation fees.
@@ -1143,11 +1143,12 @@ class EL_WindSolar(Copier):
             setattr(self, para, value)
         del data
 
-        # self._refres_lca()
+        self._refres_lca()
 
         for attr, value in kwargs.items():
             setattr(self, attr, value)
-        
+            
+    def _refres_lca(self):
         self.construction = [
             Construction(item='PhotovoltaicPanel', linked_unit=self, quantity_unit='m2'),
             Construction(item='Battery', linked_unit=self, quantity_unit='kg',

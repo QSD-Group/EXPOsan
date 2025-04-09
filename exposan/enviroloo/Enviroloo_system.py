@@ -429,13 +429,14 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #                 isdynamic=False,
     #                 # thermo=thermo_masm2d
     #                 )
+    PV = elu.EL_WindSolar()
     
     S4 = su.Splitter('S4', ins = CWT-0, outs = [2-CT, 'Reflushing'], split= 0.5)
     
-    PV = elu.EL_WindSolar()
+    
     
 
-    sysEL = qs.System('EL', path=(CT, PC, A1, O1, B1, S2, S1, CWT, S4))
+    sysEL = qs.System('EL', path=(CT, PC, A1, O1, B1, S2, S1, CWT, S4,))
     sysEL.set_dynamic_tracker(A1, O1, B1, B1-0, B1-1)
     # sysEL.simulate()
     sysEL.simulate(
