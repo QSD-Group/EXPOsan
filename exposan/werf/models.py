@@ -79,6 +79,7 @@ def add_aeration_metrics(model, energy=True):
     _cached_aer = {}
     @metric(name='liquid aeration flowrate', units='m3/d', element='Aeration')
     def get_liquid_qair():
+        _cached_aer.clear()
         _cached_aer.update(plantwide_aeration_demand(sys))
         qair = 0.
         for k,v in _cached_aer.items():
@@ -88,9 +89,8 @@ def add_aeration_metrics(model, energy=True):
     
     @metric(name='sludge aeration flowrate', units='m3/d', element='Aeration')
     def get_aed_qair():
-        if 'AED' in _cached_aer: qair = _cached_aer
+        if 'AED' in _cached_aer: qair = _cached_aer['AED']
         else: qair = np.nan
-        if not energy: _cached_aer.clear()
         return qair
 
     if energy:
@@ -99,7 +99,6 @@ def add_aeration_metrics(model, energy=True):
         def get_aer_energy():
             blower_energy.clear()
             blower_energy.update(plantwide_aeration_energy(sys, _cached_aer))
-            _cached_aer.clear()
             return sum(blower_energy.values())
 
         @metric(name='aeration energy cost', units='USD/d', element='OPEX')

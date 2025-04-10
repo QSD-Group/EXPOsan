@@ -29,7 +29,10 @@ urine, feces = EX.outs
 urine.scale(pe*0.1)
 _urine = WasteStream()
 
-mode = 'w'
+kwargs = dict(
+    mode = 'w',
+    if_sheet_exists=None
+    )
 for ID in (
         'B1', 'B2', 'B3', 
         'C1', 'C2', 'C3', 
@@ -43,36 +46,66 @@ for ID in (
     print(f"System {ID}")
     print("="*30)
     sys = create_system(ID)
-    fs = sys.flowsheet.stream
+    s = sys.flowsheet.stream
+    u = sys.flowsheet.unit
     _urine.copy_like(urine)
     mdl = Model(sys)
     add_performance_metrics(mdl)
 
+    if "PS" in s: 
+        if 'AD' in u: cake_tss = 18e4
+        elif 'AED' in u: cake_tss = 17e4
+        else: cake_tss = 20e4
+    else: 
+        cake_tss = 17e4
+    
+    if "thickened_WAS" in s: 
+        thickened = s.thickened_WAS
+        thickener = u.MT
+    else: 
+        thickened = s.thickened_sludge
+        thickener = u.GT
+        
     for pud, multiple in zip((0, 10, 30, 100), (0,1,2,3.5)):
         try:
             if pud > 0:
                 _urine.scale(multiple)
-                fs.RWW.separate_out(_urine)
+                s.RWW.separate_out(_urine)
             start = tm.time()
             print(f"{pud}% UD start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
             sys.simulate(state_reset_hook='reset_cache', t_span=(0,300), method='BDF')
             end = tm.time()
-            print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end-start)), '\n')
-
+            print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end-start)))
+            print('Adjusting TS% ...')
+            r_thick = thickened.get_TSS()/5e4
+            r_cake = s.cake.get_TSS()/cake_tss
+            while abs(r_thick - 1) > 0.01 or abs(r_cake - 1) > 0.01:
+                print(f"{r_thick:.3f}  {r_cake:.3f}")
+                thickener.sludge_flow_rate *= r_thick
+                u.DW.sludge_flow_rate *= r_cake
+                try: sys.simulate(t_span=(0,300), method='BDF')
+                except: sys.simulate(state_reset_hook='reset_cache', t_span=(0,300), method='BDF')
+                r_thick = thickened.get_TSS()/5e4
+                r_cake = s.cake.get_TSS()/cake_tss
+            end2 = tm.time()
+            print("Final underflows: ", f"{thickener.sludge_flow_rate:.2f}  {u.DW.sludge_flow_rate:.2f}")
+            print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end2-end)), '\n')
+            
             ndf = plantwide_N_mass_flows(sys)
-            with pd.ExcelWriter(os.path.join(results_path, f'N_mass_{pud}UD.xlsx'), mode=mode) as writer:
+            with pd.ExcelWriter(os.path.join(results_path, f'N_mass_{pud}UD.xlsx'), **kwargs) as writer:
                 ndf.to_excel(writer, sheet_name=ID)
             pdf = plantwide_P_mass_flows(sys)
-            with pd.ExcelWriter(os.path.join(results_path, f'P_mass_{pud}UD.xlsx'), mode=mode) as writer:
+            with pd.ExcelWriter(os.path.join(results_path, f'P_mass_{pud}UD.xlsx'), **kwargs) as writer:
                 pdf.to_excel(writer, sheet_name=ID)
             metrics[f'{pud}'][ID] = [m() for m in mdl.metrics]
         except Exception as exc:
             print(exc, '\n')
     
-    mode = 'a'
+    kwargs['mode'] = 'a'
+    kwargs['if_sheet_exists'] = 'replace'
+    sys.flowsheet.clear()
+    del sys
     
-    del sys, fs
-
 #%%
 
 

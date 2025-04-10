@@ -28,7 +28,10 @@ warnings.filterwarnings("ignore")
 
 f_rmv = 0.9
 
-mode = 'w'
+kwargs = dict(
+    mode = 'w',
+    if_sheet_exists=None
+    )
 metrics = {}
 for ID in (
         'B1', 'C1', 'F1', 
@@ -87,20 +90,22 @@ for ID in (
             r_thick = thickened.get_TSS()/5e4
             r_cake = s.cake.get_TSS()/cake_tss
         end2 = tm.time()
+        print("Final underflows: ", f"{thickener.sludge_flow_rate:.2f}  {u.DW.sludge_flow_rate:.2f}")
         print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end2-end)), '\n')
 
         # sys_ecs.diagram()
         ndf = plantwide_N_mass_flows(sys_ecs)
-        with pd.ExcelWriter(os.path.join(results_path, 'N_mass_ECS.xlsx'), mode=mode) as writer:
+        with pd.ExcelWriter(os.path.join(results_path, 'N_mass_ECS.xlsx'), **kwargs) as writer:
             ndf.to_excel(writer, sheet_name=ID)
         pdf = plantwide_P_mass_flows(sys_ecs)
-        with pd.ExcelWriter(os.path.join(results_path, 'P_mass_ECS.xlsx'), mode=mode) as writer:
+        with pd.ExcelWriter(os.path.join(results_path, 'P_mass_ECS.xlsx'), **kwargs) as writer:
             pdf.to_excel(writer, sheet_name=ID)
         metrics[ID] = [m() for m in mdl.metrics]
     except Exception as exc:
         print(exc, '\n')
     
-    mode = 'a'
+    kwargs['mode'] = 'a'
+    kwargs['if_sheet_exists'] = 'replace'
     sys.flowsheet.clear()
     sys_ecs.flowsheet.clear()
     del sys, sys_ecs

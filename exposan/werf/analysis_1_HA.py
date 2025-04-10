@@ -29,7 +29,10 @@ warnings.filterwarnings("ignore")
 
 f_rmv = 0.7
 
-mode = 'w'
+kwargs = dict(
+    mode = 'w',
+    if_sheet_exists=None
+    )
 metrics = {}
 for ID in (
         'B1', 'B2', 'B3', 
@@ -74,26 +77,55 @@ for ID in (
     add_performance_metrics(mdl)
     add_NH4_recovery_metric(mdl)
     
+    if "PS" in s: 
+        if 'AD' in u: cake_tss = 18e4
+        elif 'AED' in u: cake_tss = 17e4
+        else: cake_tss = 20e4
+    else: 
+        cake_tss = 17e4
+    
+    if "thickened_WAS" in s: 
+        thickened = s.thickened_WAS
+        thickener = u.MT
+    else: 
+        thickened = s.thickened_sludge
+        thickener = u.GT
+
     try:
         start = tm.time()
         print("Start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
         try: sys_ha.simulate(state_reset_hook='reset_cache', t_span=(0,300), method='BDF')
         except: sys_ha.simulate(t_span=(0,300), method='BDF')
         end = tm.time()
-        print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end-start)), '\n')
-        
+        print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end-start)))
+        print('Adjusting TS% ...')
+        r_thick = thickened.get_TSS()/5e4
+        r_cake = s.cake.get_TSS()/cake_tss
+        while abs(r_thick - 1) > 0.01 or abs(r_cake - 1) > 0.01:
+            print(f"{r_thick:.3f}  {r_cake:.3f}")
+            thickener.sludge_flow_rate *= r_thick
+            u.DW.sludge_flow_rate *= r_cake
+            try: sys_ha.simulate(t_span=(0,300), method='BDF')
+            except: sys_ha.simulate(state_reset_hook='reset_cache', t_span=(0,300), method='BDF')
+            r_thick = thickened.get_TSS()/5e4
+            r_cake = s.cake.get_TSS()/cake_tss
+        end2 = tm.time()
+        print("Final underflows: ", f"{thickener.sludge_flow_rate:.2f}  {u.DW.sludge_flow_rate:.2f}")
+        print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end2-end)), '\n')
+
         sys_ha.diagram()
         ndf = plantwide_N_mass_flows(sys_ha)
-        with pd.ExcelWriter(os.path.join(results_path, 'N_mass_HA.xlsx'), mode=mode) as writer:
+        with pd.ExcelWriter(os.path.join(results_path, 'N_mass_HA.xlsx'), **kwargs) as writer:
             ndf.to_excel(writer, sheet_name=ID)
         pdf = plantwide_P_mass_flows(sys_ha)
-        with pd.ExcelWriter(os.path.join(results_path, 'P_mass_HA.xlsx'), mode=mode) as writer:
+        with pd.ExcelWriter(os.path.join(results_path, 'P_mass_HA.xlsx'), **kwargs) as writer:
             pdf.to_excel(writer, sheet_name=ID)
         metrics[ID] = [m() for m in mdl.metrics]
     except Exception as exc:
         print(exc, '\n')
     
-    mode = 'a'
+    kwargs['mode'] = 'a'
+    kwargs['if_sheet_exists'] = 'replace'
     sys.flowsheet.clear()
     sys_ha.flowsheet.clear()
     del sys, sys_ha
