@@ -1,5 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Created on Wed Apr  9 09:41:24 2025
+
+@author: rishabhpuri
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Apr  9 09:39:30 2025
+
+@author: rishabhpuri
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 '''
 This module is developed by:
@@ -29,14 +45,6 @@ from qsdsan.utils import clear_lca_registries
 
 import qsdsan as qs
 import os
-
-from qsdsan import (
-    Flowsheet, main_flowsheet,
-    WasteStream,
-    sanunits as su,
-    ImpactItem, 
-    LCA, TEA, System,
-    )
 
 from qsdsan.utils import (
     ospath, 
@@ -75,7 +83,7 @@ from exposan.enviroloo._EL_pumps import (
 
 folder = ospath.dirname(__file__)
 
-__all__ = ('create_systemEL', 'create_system',)
+__all__ = ('create_systemEL',)
 #%%
 
 '''
@@ -91,7 +99,6 @@ Aerobic tank: AerT
 Membrane tank: MemT
 Clear water tank: CWT
 Pressure tank: PT
-Photovoltaic and Wind system: photovoltaic_wind
 Primary clarifier return pump: P_PC_return
 Glucose agitation pump: P_AnoT_agitation
 Glucose dosing pump: P_AnoT_dosing
@@ -113,7 +120,7 @@ Q_w = 15 # m3/hr  # 250 l/min flow for lift pump
 Q_ras = 280 # m3/day # 200 l/min for nitrate pump
 Q_was = 0.15*24
 # Q_was = 280 # m3/day # 200 l/min for sludge return pump
-
+biomass_IDs = ('X_H', 'X_AUT', 'X_PAO')
 toilet_waste={
     'S_NH4':  13.7,
     # 'S_NO3': 0.2,     # Nitrate
@@ -275,63 +282,26 @@ def create_components(set_thermo = True
     cmps = Components([*masm2d_cmps, 
                        # Tissue, WoodAsh, H2O,
                        ])
-    #cmps.compile()
-    cmps.compile(ignore_inaccurate_molar_weight=True)
+    cmps.compile()
+    # cmps.compile(ignore_inaccurate_molar_weight=True)
     if set_thermo: qs.set_thermo(cmps)
     return cmps
-# %%
-def batch_create_streams(prefix, phases=('liq', 'sol')):
-    item = ImpactItem.get_item('CH4_item').copy(f'{prefix}_CH4_item', set_as_source=True)
-    WasteStream('CH4', phase='g', stream_impact_item=item)
-
-    item = ImpactItem.get_item('N2O_item').copy(f'{prefix}_N2O_item', set_as_source=True)
-    WasteStream('N2O', phase='g', stream_impact_item=item)
-
-    price_dct = update_resource_recovery_settings()[0]
-    for nutrient in ('N', 'P', 'K'):
-        for phase in phases:
-            original = ImpactItem.get_item(f'{nutrient}_item')
-            new = original.copy(f'{phase}_{nutrient}_item', set_as_source=True)
-            WasteStream(f'{phase}_{nutrient}', phase='l',
-                        price=price_dct[nutrient], stream_impact_item=new)
-
-    def create_stream_with_impact_item(stream_ID='', item_ID='', dct_key=''):
-        item_ID = item_ID or stream_ID+'_item'
-        dct_key = dct_key or stream_ID
-        item = ImpactItem.get_item(item_ID).copy(f'{prefix}_{item_ID}', set_as_source=True)
-        WasteStream(f'{stream_ID}', phase='s',
-                    price=price_dct.get(dct_key) or 0., stream_impact_item=item)
-
-    # create_stream_with_impact_item(stream_ID='ammonium')
-    # create_stream_with_impact_item(stream_ID='struvite')
-    # create_stream_with_impact_item(stream_ID='NaOH')
-    # create_stream_with_impact_item(stream_ID='NaClO')
-    # create_stream_with_impact_item(stream_ID='O3')
-    # create_stream_with_impact_item(stream_ID='PAC')
-    # create_stream_with_impact_item(stream_ID='Glucose')
-    # create_stream_with_impact_item(stream_ID='air')
-    WasteStream('Glucose_Dose', S_F= 0.9, units='kg/hr', T=Temp) # 0.0805
-    WasteStream('PAC_Dose', X_AlOH= 0.12, units='kg/hr', T=Temp) # 0.1207
-
 #%%
     
 def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={},
                   aeration_processes=()):
     # Components and stream
-    flowsheet = flowsheet or main_flowsheet
-    streamEL = flowsheet.stream
-    batch_create_streams('EL')
-    
     cmps = create_components()
     toilet_ins = qs.WasteStream('toilet_waste', T=Temp)
     toilet_ins.set_flow_by_concentration(Q_w*0.9, 
                                          concentrations=toilet_waste, 
                                          units=('m3/hr', 'mg/L'))
     
-    # Glucose = qs.WasteStream('Glucose_Dose', S_F= 0.9, units='kg/hr', T=Temp) # 0.0805
-    # PAC = qs.WasteStream('PAC_Dose', X_AlOH= 0.12, units='kg/hr', T=Temp) # 0.1207
+    Glucose = qs.WasteStream('Glucose Dose', S_F= 1, units='kg/hr', T=Temp) # 0.0805
+    PAC = qs.WasteStream('PAC Dose', X_AlOH= 0.12, units='kg/hr', T=Temp) # 0.1207
     
     masm2d = pc.mASM2d(**masm_kwargs)
+    # masm2d_A1 = pc.mASM2d(mu_H=6.0, eta_NO3_H=0.8, K_F=0.05, K_NO3_H=0.05, K_O2_H=0.01, K_O2=0.01, K_O2_PAO=0.01, K_O2_AUT=0.01)
     
     kwargs_O = dict(V_max=6.35, aeration=2, DO_ID='S_O2', suspended_growth_model=masm2d)
     kwargs_1 = dict(V_max=6.35, aeration=None, DO_ID=None, suspended_growth_model=masm2d)
@@ -375,13 +345,19 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #                         # V_max= 7.33, 
     #                         )
     
-    A1 = elu.EL_Anoxic('A1', ins=(PC-0, 'RAS_A1', streamEL['Glucose_Dose']), outs=('effluent_AnoxT',),
-                       isdynamic=True, **kwargs_1
+    A1 = elu.EL_Anoxic('A1', ins=(PC-0, 'RAS_A1', Glucose), outs=('effluent_AnoxT',),
+                       isdynamic=True, **kwargs_1 
+                       # aeration=None, 
+                       # DO_ID='S_O2', suspended_growth_model=masm2d,  **kwargs_1
                        # W_tank= 2.09,
-                        # # ppl = ppl, baseline_ppl = 100,
-                        # aeration=None, DO_ID='S_O2', suspended_growth_model=asm2d, 
+                        # # ppl = ppl, baseline_ppl = 100,                   
                         # V_max= 7.33, 
                         )
+    # @A1.add_specification(run=True)
+    # def zero_O2_A1():
+    #     for stream in A1.ins:
+    #         stream.imass['S_O2'] = 0.
+
 
     
     # O1 = su.CSTR('O1', ins=(A1-0), 
@@ -392,7 +368,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #                        #  V_max=7.33,**kwargs_0, 
     #                         )
     
-    O1 = elu.EL_Aerobic('O1', ins=(A1-0, streamEL['PAC_Dose']), outs=('effluent_AeroT',),
+    O1 = elu.EL_Aerobic('O1', ins=(A1-0, PAC), outs=('effluent_AeroT',),
                         isdynamic=True, **kwargs_O
                         # aeration = 2, suspended_growth_model=asm2d,
                         #  # ppl = ppl, baseline_ppl = 100,
@@ -405,22 +381,25 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
                       isdynamic=True, V_max=2.9, 
                       DO_ID='S_O2', aeration=2, suspended_growth_model=masm2d,
                       # pumped_flow=5, # after calculation # initial = 0.0001 # m3/hr
-                      pumped_flow=(Q_ras*2+Q_was),
+                      pumped_flow=(Q_ras*2+Q_was), # 0.026
                       # pumped_flow=Q_ras+Q_was,
                       # solids_capture_rate=0.999, 
                       )
     # breakpoint()
+    # S2 = su.Splitter('S2', ins=B1-1, outs=['RAS', 'WAS'], split=0.95)
     S2 = su.Splitter('S2', ins=B1-1, outs=['RAS', 'WAS'], split=Q_ras*2/(Q_ras*2+Q_was))
     
     # # S2.run()
     
-    S1 = su.Splitter('S1', ins=S2-0, outs=[1-PC, 1-A1], split=0.5)
+    S1 = su.Splitter('S1', ins=S2-0, outs=[1-PC, 1-A1], split=0.2)
     # S1 = su.Splitter('S1', ins=B1-1, outs=[1-PC, 1-A1], split=Q_was/(Q_ras+Q_was))
     
     CWT = elu.EL_CWT(
         'CWT', ins=(B1-0), outs=('effluent_CWT'),
         isdynamic=True, V_max=12, aeration=None, suspended_growth_model=None
         )
+    
+    PV = elu.EL_WindSolar('PV', ins=CWT-0, outs='effluent',  isdynamic=True)
     
     # # S1.run()
     
@@ -429,142 +408,85 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #                 isdynamic=False,
     #                 # thermo=thermo_masm2d
     #                 )
-    PV = elu.EL_WindSolar()
     
-    S4 = su.Splitter('S4', ins = CWT-0, outs = [2-CT, 'Reflushing'], split= 0.5)
-    
-    
-    
+    S4 = su.Splitter('S4', ins = PV-0, outs = [2-CT, 'Reflushing'], split= 0.5)
 
-    sysEL = qs.System('EL', path=(CT, PC, A1, O1, B1, S2, S1, CWT, S4,))
-    sysEL.set_dynamic_tracker(A1, O1, B1, B1-0, B1-1)
-    # sysEL.simulate()
-    sysEL.simulate(
-        # state_reset_hook='reset_cache',
-        t_span=(0,2),
-        method='RK23',
-        print_t=True,
-        )
-    
-    teaEL = TEA(system=sysEL, discount_rate=discount_rate,
-       start_year=2020, lifetime=20, uptime_ratio=1,
-       # CEPCI = 567.5,
-       # CAPEX = 2.00,  
-       #lang_factor=None,
-       lang_factor=None,
-       annual_maintenance=0,
-       # annual_labor=(operator_daily_wage*3*365),
-       annual_labor=0
-       )
-    get_powerEL = lambda: sum([u.power_utility.rate for u in sysEL.units]) * (24 * 365 * teaEL.lifetime)
-    LCA(system=sysEL, lifetime=20, lifetime_unit='yr', uptime_ratio=1.0, e_item=get_powerEL)
+    sys = qs.System('EL', path=(CT, PC, A1, O1, B1, S2, S1, CWT, PV, S4))
+    sys.set_dynamic_tracker(A1, O1, B1, B1-0, B1-1)
     
     # sys = qs.System('EL', path=(CT, PC, S3, A1, O1, B1, S2, S1, CWT, S4),
     #                 recycle = [sludge_PC, sludge_MT_PC, sludge_MT_A1, flushing_water_CT],
     #                 ) # add flushing water
-    
-    
 
-    return sysEL
+    return sys
 
-def create_system(system_ID='EL', flowsheet=None, 
-                  #adjust_MW_to_measured_as=False
-                  ):
-    ID = system_ID.lower().lstrip('sys').upper()
-    reload_lca = False
-
-    #set flowsheet to avoid stream replacement warnings
-    if flowsheet is None:
-        flowsheet_ID = f'el{ID}'
-        if hasattr(main_flowsheet.flowsheet, flowsheet_ID): # clear flowsheet
-            getattr(main_flowsheet.flowsheet, flowsheet_ID).clear()
-            clear_lca_registries()
-            reload_lca = True
-        flowsheet = Flowsheet(flowsheet_ID)
-        main_flowsheet.set_flowsheet(flowsheet)
-    
-    _load_components()
-    _load_lca_data(reload_lca)
-
-    if system_ID == 'EL': f = create_systemEL
-    elif system_ID == 'E': f = create_systemEL
-    elif system_ID == 'L': f = create_systemEL
-    else: raise ValueError(f'`system_ID` can only be "EL", "E", or "L", not "{ID}".')
-    
-    try: system = f(flowsheet)
-    except:
-        _load_components(reload=True)
-        system = f(flowsheet)
-    
-    return system
 
 # %%
 
-# @time_printer
-# def run(t, method=None, **kwargs):
-#     sys = create_systemEL()    
+@time_printer
+def run(t, method=None, **kwargs):
+    sys = create_systemEL()    
     
-#     # batch_init(sys, "/Users/rishabhpuri/Desktop/bsm2p_init.xlsx", sheet='el')
-#     batch_init(sys, 
-#                ospath.join(data_path, "units_data/bsm2p_init.xlsx"), 
-#                sheet='el')
+    # batch_init(sys, "/Users/rishabhpuri/Desktop/bsm2p_init.xlsx", sheet='el')
+    batch_init(sys, 
+               ospath.join(data_path, "units_data/bsm2p_init.xlsx"), 
+               sheet='el')
     
     
-#     # path = ospath.join(folder, "data/initial_conditions_ASM2d.xlsx")    
-#     # batch_init(sys, path, 
-#     #            sheet='el')
-#     # sys.set_dynamic_tracker(*sys.products)
-    
+    # path = ospath.join(folder, "data/initial_conditions_ASM2d.xlsx")    
+    # batch_init(sys, path, 
+    #            sheet='el')
+    # sys.set_dynamic_tracker(*sys.products)
 
-#     return sys
+    return sys
 
     
-# if __name__ == '__main__':
-#     t = 2
-#     # method = 'RK45'
-#     method = 'RK23' 
-#     # method = 'DOP853'
-#     # method = 'Radau'
-#     # method = 'BDF'
-#     # method = 'LSODA'
-#     msg = f'Method {method}'
-#     print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
-#     print(f'Time span 0-{t}d \n')
-#     sys = run(t, method=method)
+if __name__ == '__main__':
+    t = 15
+    # method = 'RK45'
+    method = 'RK23' 
+    # method = 'DOP853'
+    # method = 'Radau'
+    # method = 'BDF'
+    # method = 'LSODA'
+    msg = f'Method {method}'
+    print(f'\n{msg}\n{"-"*len(msg)}') # long live OCD!
+    print(f'Time span 0-{t}d \n')
+    sysEL = run(t, method=method)
     
-#     sys.diagram()
-#     fs = sys.flowsheet.stream
-#     fu = sys.flowsheet.unit
+    fs = sysEL.flowsheet.stream
+    fu = sysEL.flowsheet.unit
     
-#     sys.simulate(
-#         # state_reset_hook='reset_cache',
-#         t_span=(0,t),
-#         method=method,
-#         print_t=True,
-#         )
+    fs.effluent_PC_total.imass['S_O2'] = 0.01  # or even 0.001
+
     
-#     sys.diagram()
+    sysEL.simulate(
+        # state_reset_hook='reset_cache',
+        t_span=(0,t),
+        method=method,
+        # print_t=True,
+        )
+    sysEL.diagram()
+    act_units = [u.ID for u in sysEL.units if isinstance(u, elu.EL_Aerobic) or isinstance(u, elu.EL_Anoxic) or isinstance(u, elu.EL_CMMBR)]
+    print(f'act_units = {act_units}')
+    # act_units = [u.ID for u in sysEL.units if (u.ID.startswith('A1') or u.ID.startswith('O1'))]
     
-    '''teaEL = TEA(system=sys, discount_rate=discount_rate,
-           start_year=2020, lifetime=20, uptime_ratio=1,
-           # CEPCI = 567.5,
-           # CAPEX = 2.00,  
-           #lang_factor=None,
-           lang_factor=None,
-           annual_maintenance=0,
-           # annual_labor=(operator_daily_wage*3*365),
-           annual_labor=0
-           )
-    get_powerEL = lambda: sum([u.power_utility.rate for u in fu]) * (24 * 365 * teaEL.lifetime)
-    LCA(system=sys, lifetime=20, lifetime_unit='yr', uptime_ratio=1.0, e_item=get_powerEL)
+    srt = get_SRT(sysEL, biomass_IDs, wastage= [fs.sludge_MembT, fs.effluent_MembT], active_unit_IDs=act_units)
+    print(f'Estimated SRT assuming at steady state is {srt} days\n')
     
+    # fig, axis = fs.effluent_AnoxT.scope.plot_time_series(('S_F', 'S_NO3', 'S_O2'))
+    
+    fig, axis = fs.effluent_MembT.scope.plot_time_series(('S_F', 'S_A', 'X_H','S_NH4', 'S_NO3', 'S_PO4', 'X_I', 'S_I', 'S_N2')) 
+
     
     # act_units = [u.ID for u in sys.units if isinstance(u, su.FlatBottomCircularClarifier) or u.ID.startswith('O')]
     # act_units = [u.ID for u in sys.units if u.ID.startswith('O')]
     
     # srt = get_SRT(sys, biomass_IDs, wastage= [fs.WAS, fs.effluent], active_unit_IDs=act_units)
     # print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days\n')
-'''
+
+# tea1 = qs.TEA(system=sysEL, discount_rate=0.05, lifetime=10)
+
 
 
 

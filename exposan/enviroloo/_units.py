@@ -1190,11 +1190,11 @@ class EL_WindSolar(CSTR):
         design = self.design_results
         constr = self.construction
         # user_scale_up = self.user_scale_up
-        # design['PhotovoltaicPanel'] = constr[0].quantity = self.pv_photovoltaic_panel_area # * (user_scale_up**0.6)
+        design['PhotovoltaicPanel'] = constr[0].quantity = self.pv_photovoltaic_panel_area # * (user_scale_up**0.6)
         design['Battery'] = constr[1].quantity = self.el_battery_weight        #* (user_scale_up**0.6)
         design['ElectricCables'] = constr[2].quantity = self.pv_cable_length
         # design['Aluminum'] = constr[3].quantity = self.pv_aluminum_weight
-        design['Aluminum'] = constr[4].quantity = self.pv_aluminum_weight
+        # design['Aluminum'] = constr[4].quantity = self.pv_aluminum_weight
         design['Steel'] = constr[4].quantity = self.el_wind_galvanized_steel_weight + self.pv_carport_weight_galvanized_metal + self.pv_inverter_weight_steel + self.pv_charger_weight_steel + self.add_construction(add_cost=False)
 
     def _cost(self):
