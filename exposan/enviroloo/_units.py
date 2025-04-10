@@ -1175,27 +1175,28 @@ class EL_WindSolar(CSTR):
             setattr(self, attr, value)    
         ############################################### 
         
-    def _refres_lca(self):
+    def _init_lca(self):
         self.construction = [
             Construction(item='PhotovoltaicPanel', linked_unit=self, quantity_unit='m2'),
-            Construction(item='Battery', linked_unit=self, quantity_unit='kg',
-                         lifetime=self.el_battery_lifetime),
+            Construction(item='Battery', linked_unit=self, quantity_unit='kg',),
+#                         lifetime=self.el_battery_lifetime),
             Construction(item='ElectricCables', linked_unit=self, quantity_unit='m'),
             Construction(item='Aluminum', linked_unit=self, quantity_unit='kg'),
             Construction(item='Steel', linked_unit=self, quantity_unit='kg')            
-                
             ]
 
     def _design(self):
         design = self.design_results
         constr = self.construction
         # user_scale_up = self.user_scale_up
-        design['PhotovoltaicPanel'] = constr[0].quantity = self.pv_photovoltaic_panel_area # * (user_scale_up**0.6)
+        design['PhotovoltaicPanel'] = self.construction[0].quantity = self.pv_photovoltaic_panel_area # * (user_scale_up**0.6)
         design['Battery'] = constr[1].quantity = self.el_battery_weight        #* (user_scale_up**0.6)
         design['ElectricCables'] = constr[2].quantity = self.pv_cable_length
         # design['Aluminum'] = constr[3].quantity = self.pv_aluminum_weight
         # design['Aluminum'] = constr[4].quantity = self.pv_aluminum_weight
-        design['Steel'] = constr[4].quantity = self.el_wind_galvanized_steel_weight + self.pv_carport_weight_galvanized_metal + self.pv_inverter_weight_steel + self.pv_charger_weight_steel + self.add_construction(add_cost=False)
+        design['Steel'] = constr[4].quantity = self.el_wind_galvanized_steel_weight 
+        + self.pv_carport_weight_galvanized_metal + self.pv_inverter_weight_steel 
+        + self.pv_charger_weight_steel
 
     def _cost(self):
         C = self.baseline_purchase_costs
