@@ -79,7 +79,7 @@ from exposan.enviroloo import (
 from exposan.enviroloo._EL_pumps import (
     LiftPump, AgitationPump, DosingPump, ReturnPump, SelfPrimingPump, 
     AirDissolvedPump, MicroBubblePump, ClearWaterPump,)
-
+from exposan import enviroloo as el
 
 folder = ospath.dirname(__file__)
 
@@ -486,7 +486,12 @@ if __name__ == '__main__':
     # print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days\n')
 
     tea1 = qs.TEA(system=sysEL, discount_rate=0.05, lifetime=10)
-    tea1.show()
+    #tea1.show()
+    el.get_TEA_metrics_breakdown(sysEL, include_breakdown=True)
+    
+    lca1 = qs.LCA(system=sysEL, lifetime=10, lifetime_unit='yr')
+    lca1.show()
+    #el.get_LCA_metrics_breakdown(sysEL, include_breakdown=True)
 
 
 
