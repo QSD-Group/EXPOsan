@@ -1110,7 +1110,7 @@ class EL_System(SanUnit, isabstract=True):
 system_path = os.path.join(EL_su_data_path, '_EL_photovoltaic_wind.tsv')
 
 @price_ratio()
-class EL_WindSolar(Copier):
+class EL_WindSolar(CSTR):
     
     '''
     
@@ -1132,22 +1132,49 @@ class EL_WindSolar(Copier):
     ----------
    '''
 
-    def __init__(self, ID='', ins=None, outs=(),  thermo=None, init_with='WasteStream',
-                 if_lithium_battery=False, user_scale_up=1, **kwargs):
-        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo, init_with=init_with)
-        #self.user_scale_up = user_scale_up
+    _N_ins = 1 # treated water, PAC, blower
+    _N_outs = 1  # treated water, CH4, N2O
+    _ins_size_is_fixed = False
+    _outs_size_is_fixed = False
+    exponent_scale = 0.1
+    ppl = 100
+    baseline_ppl =30
+    
+    _D_O2 = 2.10e-9   # m2/s
 
-        data = load_data(path=system_path)
+    def __init__(self, 
+                 ID='', ins=None, outs=(), split=None, thermo=None,
+                 init_with='WasteStream', V_max=12, W_tank = None, 
+                 # D_tank = 3.65,
+                 # freeboard = 0.61, 
+                 t_wall = None, t_slab = None, aeration=None, 
+                 DO_ID='S_O2', suspended_growth_model=None, 
+                 gas_stripping=False, gas_IDs=None, stripping_kLa_min=None, 
+                 K_Henry=None, D_gas=None, p_gas_atm=None,
+                 isdynamic=True, exogenous_vars=(), **kwargs):
+        super().__init__(
+            ID=ID, ins=ins, outs=outs, split=split, thermo=thermo,
+            init_with=init_with, V_max=V_max, W_tank = W_tank, 
+            # D_tank = D_tank,
+            # freeboard = freeboard, 
+            t_wall = t_wall, t_slab = t_slab, aeration=aeration, 
+            DO_ID=DO_ID, suspended_growth_model=suspended_growth_model, 
+            gas_stripping=gas_stripping, gas_IDs=gas_IDs, 
+            stripping_kLa_min=stripping_kLa_min, 
+            K_Henry=K_Henry, D_gas=D_gas, p_gas_atm=p_gas_atm,
+            isdynamic=isdynamic, exogenous_vars=exogenous_vars, **kwargs
+            )
+       
+        data = load_data(path = system_path)
         for para in data.index:
             value = float(data.loc[para]['expected'])
             setattr(self, para, value)
         del data
-
-        self._refres_lca()
-
+    
         for attr, value in kwargs.items():
-            setattr(self, attr, value)
-            
+            setattr(self, attr, value)    
+        ############################################### 
+        
     def _refres_lca(self):
         self.construction = [
             Construction(item='PhotovoltaicPanel', linked_unit=self, quantity_unit='m2'),
@@ -1163,7 +1190,7 @@ class EL_WindSolar(Copier):
         design = self.design_results
         constr = self.construction
         # user_scale_up = self.user_scale_up
-        design['PhotovoltaicPanel'] = constr[0].quantity = self.pv_photovoltaic_panel_area # * (user_scale_up**0.6)
+        # design['PhotovoltaicPanel'] = constr[0].quantity = self.pv_photovoltaic_panel_area # * (user_scale_up**0.6)
         design['Battery'] = constr[1].quantity = self.el_battery_weight        #* (user_scale_up**0.6)
         design['ElectricCables'] = constr[2].quantity = self.pv_cable_length
         # design['Aluminum'] = constr[3].quantity = self.pv_aluminum_weight
