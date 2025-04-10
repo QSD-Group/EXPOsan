@@ -255,7 +255,7 @@ def create_system(
         'BiocrudeScaler', ins=BiocrudeTrans-0, outs='scaled_biocrude',
         scaling_factor=N_HTL, reverse=False,
         )
-    #Biocrude Price $/kg 
+#     # Biocrude Price $/kg 
 #     price_dct['biocrude'] = 1
 #     biocrude = qs.WasteStream('biocrude', price=price_dct['biocrude'])
     
@@ -264,9 +264,9 @@ def create_system(
 #         scaling_factor=N_HTL, reverse=False,
 #         )
 #     sys = qs.System.from_units(
-#            'sys',
-#        units=list(flowsheet.unit),
-#        operating_hours=365 * 24 * uptime_ratio,
+#             'sys',
+#         units=list(flowsheet.unit),
+#         operating_hours=365 * 24 * uptime_ratio,
 #         )
 #     tea = create_tea(sys, cls=BiobinderTEA, **tea_kwargs)
 #     return sys
@@ -276,8 +276,12 @@ def create_system(
 #     biocrude = sys.flowsheet.stream.biocrude
 
 #     # Solve for the minimum selling price (MSP) of biocrude
-#     biocrude.price = MSP = tea.solve_price(biocrude)
-#     print(f'Minimum selling price of the biocrude is ${MSP:.2f}/kg.')
+#     # biocrude.price = MSP = tea.solve_price(biocrude)
+#     # print(f'Minimum selling price of the biocrude is ${MSP:.2f}/kg.')
+#     biocrude.price = 0.50   #$/kg
+#     IRR= tea.solve_IRR()
+#     print(f'Internal rate of return of the process is {IRR * 100:.2f}%')
+      
 # if __name__ == '__main__':    
   
 #     config_kwargs = dict(
@@ -293,8 +297,8 @@ def create_system(
 #     # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=EC_future_config)) # EC, recovery nutrients, generate H2, optimistic assumptions
     
 #     # Decentralized vs. centralized configuration
-#     config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False)) # CHCU
-#     # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False)) # DHCU
+#     # config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False)) # CHCU
+#     config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False)) # DHCU
     
 #     # Distillation column cost calculation doesn't scale down well, so the cost is very high now.
 #     # But maybe don't need to do the DHDU scenario, if DHCU isn't too different from CHCU
@@ -696,11 +700,14 @@ def simulate_and_print(sys, save_report=False):
     lca = sys.LCA
     biobinder = sys.flowsheet.stream.biobinder
 
-    # https://idot.illinois.gov/doing-business/procurements/construction-services/transportation-bulletin/price-indices.html
-    # bitumnous, IL
+    #https://idot.illinois.gov/doing-business/procurements/construction-services/transportation-bulletin/price-indices.html
+    #bitumnous, IL
     # price_dct['biobinder'] = 0.67
     biobinder.price = MSP = tea.solve_price(biobinder)
+    # biobinder.price = 0.06
+    # IRR= tea.solve_IRR()
     print(f'Minimum selling price of the biobinder is ${MSP:.2f}/kg.')
+    # print(f'Internal rate of return of the process is {IRR * 100:.2f}%')
         
     all_impacts = lca.get_allocated_impacts(streams=(biobinder,), operation_only=True, annual=True)
     GWP = all_impacts['GWP']/(biobinder.F_mass*lca.system.operating_hours)
@@ -730,14 +737,14 @@ if __name__ == '__main__':
         )
 
     # What to do with HTL-AP
-    # config_kwargs.update(dict(skip_EC=True, generate_H2=False, EC_config=None)) # no EC
-    config_kwargs.update(dict(skip_EC=False, generate_H2=False, EC_config=None)) # EC, recover nutrients only
+    config_kwargs.update(dict(skip_EC=True, generate_H2=False, EC_config=None)) # no EC
+    # config_kwargs.update(dict(skip_EC=False, generate_H2=False, EC_config=None)) # EC, recover nutrients only
     # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=None)) # EC, recover nutrients and generate H2
     # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=EC_future_config)) # EC, recovery nutrients, generate H2, optimistic assumptions
     
     # Decentralized vs. centralized configuration
-    config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False)) # CHCU
-    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False)) # DHCU
+    # config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False)) # CHCU
+    config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False)) # DHCU
     
     # Distillation column cost calculation doesn't scale down well, so the cost is very high now.
     # But maybe don't need to do the DHDU scenario, if DHCU isn't too different from CHCU
@@ -755,18 +762,36 @@ if __name__ == '__main__':
 
 #%%
 # import numpy as np
-# electricity_prices = np.arange(0.00, 0.11, 0.01)  # 0.00 to 0.10 for EC configs
+# import pandas as pd
+# import os
+
+# output_dir = "results"
+# os.makedirs(output_dir, exist_ok=True)
+# output_file = os.path.join(output_dir, "MSP_electrode_costs_DHCU.xlsx")
+# # electricity_prices = np.arange(0.00, 0.11, 0.01)  # 0.00 to 0.10 for EC configs
 # electrode_costs = np.arange(0, 50001, 1000)  # 0 to 50,000 for EC configs
-# voltages = np.arrange
+# # voltages = np.arrange (2.5, 50, 1) # 2.5 to 50 for EC configs
 # biobinder = sys.flowsheet.stream.biobinder
 # HTL_EC = sys.flowsheet.unit.HTL_EC
 # Upgrading_EC = sys.flowsheet.unit.Upgrading_EC
 # MSPs = []
-# for voltage in (2.5, 10, 25):
-#     HTL_EC.EO_voltage = HTL_EC.ED_voltage = Upgrading_EC.EO_voltage = Upgrading_EC.ED_voltage = voltage
-#     HTL_EC.simulate()
-#     Upgrading_EC.simulate()
-#     MSPs.append(tea.solve_price(biobinder))
+# # for voltage in voltages:
+# #     HTL_EC.EO_voltage = HTL_EC.ED_voltage = Upgrading_EC.EO_voltage = Upgrading_EC.ED_voltage = voltage
+# #     HTL_EC.simulate()
+# #     Upgrading_EC.simulate()
+# #     MSPs.append(tea.solve_price(biobinder))
+# for electrode_cost in electrode_costs:
+#         HTL_EC.electrode_cost = Upgrading_EC.electrode_cost = electrode_cost
+#         HTL_EC.simulate()
+#         Upgrading_EC.simulate()
+#         MSPs.append(tea.solve_price(biobinder))
+# df = pd.DataFrame({
+#     "Electrode Cost ($)": electrode_costs,
+#     "MSP ($/kg)": MSPs  # Ensure this list is populated before saving
+# })
+
+# # Save to Excel
+# df.to_excel(output_file, index=False)
 
 
 #%%
