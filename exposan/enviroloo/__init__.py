@@ -244,7 +244,7 @@ def _load_system():
     qs.currency = 'USD'
     qs.PowerUtility.price = price_dct['Electricity']
     global sysEL, teaEL, lcaEL, _system_loaded
-    sysEL = create_system('EL')
+    sysEL = create_systemEL('EL')
     teaEL = sysEL.TEA
     lcaEL = sysEL.LCA
     _system_loaded = True
@@ -299,7 +299,7 @@ def get_recoveries(system, include_breakdown=False):
     #dct['C_dct'] = C_dct = {}
     
     # if EL == ('E', 'L'):
-    toilet = u_reg.Toilet  # here the name 'Toilet' should be consistent with the name defined in the Enviroloo_system.py
+#    toilet = u_reg.Toilet  # here the name 'Toilet' should be consistent with the name defined in the Enviroloo_system.py
     #CollectionTank = u_reg.CT
     #PrimaryClarifier = u_reg.PC
     AnoxicTank = u_reg.AnoxT

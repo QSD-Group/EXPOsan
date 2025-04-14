@@ -33,7 +33,7 @@ from exposan.enviroloo import (
     results_path,
     update_resource_recovery_settings,
     )
-
+import numpy as np
 __all__ = ('create_model', 'run_uncertainty',)
 
 
@@ -261,43 +261,43 @@ def add_parameters(model, unit_dct, country_specific=False):
     # In diet and excretion section
     exclude = ('e_cal', 'p_anim', 'p_veg') if country_specific else () # e_cal: caloric_intake, p_anim: protein_animal_intake, 
                                                                         # p_veg: protein_vegetal_intake, all defined in _Excretion.tsv.
-    batch_setting_unit_params(excretion_data, model, excretion_unit, exclude)
+    #batch_setting_unit_params(excretion_data, model, excretion_unit, exclude)
     
-    # In toilet section 
-    murt_unit = unit_dct.get('Toilet')
-    if murt_unit:
-        exclude = ('MCF_decay', 'N2O_EF_decay', 'OPEX_over_CAPEX')
-        batch_setting_unit_params(murt_data, model, murt_unit, exclude)
+    # In toilet section TODO: murt toilet removed, is anything added in place?
+    # murt_unit = unit_dct.get('Toilet')
+    # if murt_unit:
+    #     exclude = ('MCF_decay', 'N2O_EF_decay', 'OPEX_over_CAPEX')
+    #     batch_setting_unit_params(murt_data, model, murt_unit, exclude)
 
-        b = murt_unit.OPEX_over_CAPEX
-        D = shape.Uniform(lower=0.02, upper=0.08)
-        @param(name='MURT operating cost', element=murt_unit, kind='coupled', units='cost',
-               baseline=b, distribution=D)
-        def set_OPEX_over_CAPEX(i):
-            murt_unit.OPEX_over_CAPEX = i
+    #     b = murt_unit.OPEX_over_CAPEX
+    #     D = shape.Uniform(lower=0.02, upper=0.08)
+    #     @param(name='MURT operating cost', element=murt_unit, kind='coupled', units='cost',
+    #            baseline=b, distribution=D)
+    #     def set_OPEX_over_CAPEX(i):
+    #         murt_unit.OPEX_over_CAPEX = i
 
-        b = murt_unit.MCF_decay
-        D = shape.Triangle(lower=0.05, midpoint=b, upper=0.15)
-        @param(name='MCF_decay', element=murt_unit, kind='coupled',
-               units='fraction of anaerobic conversion of degraded COD',
-               baseline=b, distribution=D)
-        def set_MCF_decay(i):
-            murt_unit.MCF_decay = i
+    #     b = murt_unit.MCF_decay
+    #     D = shape.Triangle(lower=0.05, midpoint=b, upper=0.15)
+    #     @param(name='MCF_decay', element=murt_unit, kind='coupled',
+    #            units='fraction of anaerobic conversion of degraded COD',
+    #            baseline=b, distribution=D)
+    #     def set_MCF_decay(i):
+    #         murt_unit.MCF_decay = i
 
-        b = murt_unit.N2O_EF_decay
-        D = shape.Triangle(lower=0, midpoint=b, upper=0.001)
-        @param(name='N2O_EF_decay', element=murt_unit, kind='coupled',
-               units='fraction of N emitted as N2O',
-               baseline=b, distribution=D)
-        def set_N2O_EF_decay(i):
-            murt_unit.N2O_EF_decay = i
+    #     b = murt_unit.N2O_EF_decay
+    #     D = shape.Triangle(lower=0, midpoint=b, upper=0.001)
+    #     @param(name='N2O_EF_decay', element=murt_unit, kind='coupled',
+    #            units='fraction of N emitted as N2O',
+    #            baseline=b, distribution=D)
+    #     def set_N2O_EF_decay(i):
+    #         murt_unit.N2O_EF_decay = i
     
-    b = el.household_per_toilet
-    D = shape.Uniform(lower = 3, upper = 5)
-    @param(name = 'Toilet density', element = murt_unit, kind = 'coupled', units = 'household/toilet',
-           baseline = b, distribution = D)
-    def set_toilet_density(i):
-        el.household_per_toilet = i
+    # b = el.household_per_toilet
+    # D = shape.Uniform(lower = 3, upper = 5)
+    # @param(name = 'Toilet density', element = murt_unit, kind = 'coupled', units = 'household/toilet',
+    #        baseline = b, distribution = D)
+    # def set_toilet_density(i):
+    #     el.household_per_toilet = i
 
     # In Collection Tank
     CT_unit = unit_dct['Collection_Tank']
@@ -842,8 +842,34 @@ def create_model(model_ID='EL', country_specific=False, **model_kwargs):
     model = f(country_specific, **model_kwargs)
     return model
 
-# define runing function intializing uncertainty and sensitivity analysis
-def run_uncertainty(model, path='', **kwargs):
+# define runing function intializing uncertainty and sensitivity analysis, TODO: make kwargs changeable
+def run_uncertainty(model, path='', N = 10, rule = 'L', T = 2, t_step = .01, **kwargs):
     kwargs['path'] = os.path.join(results_path, f'sys{model.system.ID[-1]}_model.xlsx') if path=='' else path
-    run(model=model, **kwargs)
+    
+    #generate sample
+    sample = model.sample(N = 10, rule = 'L')
+    
+    run_model(model=model, sample=sample, T=T, t_step=t_step, method='BDF', mpath='', tpath='', seed=None)
+
     return
+
+def run_model(model, sample, T=2, t_step=.1, method='BDF', 
+              mpath='', tpath='', seed=None):
+    name = model.system.ID.rstrip('_edg')
+    model.load_samples(sample)
+    t_span = (0, T)
+    t_eval = np.arange(0, T+t_step, t_step)
+    suffix = f'_{seed}' if seed else ''
+    mpath = mpath or os.path.join(results_path, f'{name}{suffix}.xlsx')
+    if not tpath:
+        folder = os.path.join(results_path, f'ty_data_{name}{suffix}')
+        os.mkdir(folder)
+        tpath = os.path.join(folder, 'state.npy')    
+    model.evaluate(
+        state_reset_hook='reset_cache',
+        t_span=t_span,
+        t_eval=t_eval,
+        method=method,
+        export_state_to=tpath
+        )
+    model.table.to_excel(mpath)

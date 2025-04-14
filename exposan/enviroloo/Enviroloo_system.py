@@ -417,6 +417,14 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     # sys = qs.System('EL', path=(CT, PC, S3, A1, O1, B1, S2, S1, CWT, S4),
     #                 recycle = [sludge_PC, sludge_MT_PC, sludge_MT_A1, flushing_water_CT],
     #                 ) # add flushing water
+    
+    GWP = qs.ImpactIndicator('GlobalWarming', alias='GWP', unit='kg CO2-eq')
+    Ecosystems = qs.ImpactIndicator('H_Ecosystems', alias='Ecosystems', unit='points')
+    Health = qs.ImpactIndicator('H_Health', alias='Health', unit='points')
+    Resources = qs.ImpactIndicator('H_Resources', alias='Resources', unit='points')
+    
+    tea1 = qs.TEA(system=sys, discount_rate=0.05, lifetime=10, simulate_system=False)
+    lca1 = qs.LCA(system=sys, lifetime=10, lifetime_unit='yr',indicators=(GWP, Ecosystems, Health, Resources), simulate_system=False)
 
     return sys
 
@@ -484,6 +492,8 @@ if __name__ == '__main__':
     
     # srt = get_SRT(sys, biomass_IDs, wastage= [fs.WAS, fs.effluent], active_unit_IDs=act_units)
     # print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days\n')
+
+    qs.PowerUtility.price = 0     #    
 
     tea1 = qs.TEA(system=sysEL, discount_rate=0.05, lifetime=10)
     #tea1.show()
