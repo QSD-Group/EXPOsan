@@ -319,30 +319,30 @@ def add_parameters(model, unit_dct, country_specific=False):
     if AeroT_unit: 
         batch_setting_unit_params(AerobicTank_data, model, AeroT_unit)
 
-    # In Blower for Aerobic Tank
-    Blower_AeroT_unit = unit_dct['AerobicTankBlower']
-    if Blower_AeroT_unit: 
-        batch_setting_unit_params(Blower, model, Blower_AeroT_unit)
+#    # In Blower for Aerobic Tank
+ #   Blower_AeroT_unit = unit_dct['AerobicTankBlower']
+  #  if Blower_AeroT_unit: 
+   #     batch_setting_unit_params(Blower, model, Blower_AeroT_unit)
     
     # In Membrane Tank
     MembT_unit = unit_dct['MembraneTank']
     if MembT_unit: 
         batch_setting_unit_params(MembTank_data, model, MembT_unit)
     
-    # In Membrane Tank Blower
-    Blower_MembT_unit = unit_dct['MembraneTankBlower']
-    if Blower_MembT_unit: 
-        batch_setting_unit_params(Blower, model, Blower_MembT_unit)
+#    # In Membrane Tank Blower
+ #   Blower_MembT_unit = unit_dct['MembraneTankBlower']
+  #  if Blower_MembT_unit: 
+   #     batch_setting_unit_params(Blower, model, Blower_MembT_unit)
     
     # In Clear Water Tank
     ClearWaterT_unit = unit_dct['ClearWaterTank']
     if ClearWaterT_unit: 
         batch_setting_unit_params(ClearWaterTank_data, model, ClearWaterT_unit)
     
-    # In Pressure Tank
-    PressureT_unit = unit_dct['PressureTank']
-    if PressureT_unit: 
-        batch_setting_unit_params(PressureTank_data, model, PressureT_unit)
+  #  # In Pressure Tank
+  #  PressureT_unit = unit_dct['PressureTank']
+  #  if PressureT_unit: 
+  #      batch_setting_unit_params(PressureTank_data, model, PressureT_unit)
 
     # EL housing
     #housing_unit = unit_dct['Housing']
