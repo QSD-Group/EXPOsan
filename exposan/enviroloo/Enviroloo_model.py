@@ -217,15 +217,15 @@ def add_parameters(model, unit_dct, country_specific=False):
             def set_struvite_fert_price(i):
                 price_dct['struvite'] = sys_stream.liq_struvite.price = sys_stream.sol_struvite.price = i * el.price_factor
         
-        # Electricity price
+        # Electricity price, set to zero as renewable assumption.
         b = price_dct['Electricity']
-        D = shape.Triangle(lower = 0.08, midpoint = b, upper = 0.14)
+        D = shape.Triangle(lower = 0.00, midpoint = 0, upper = 0.00)
         @param(name = 'Electricity price', element = 'TEA', kind = 'isolated', units = 'USD/kWh',
                baseline = b, distribution = D)
         def set_electricity_price(i):
             PowerUtility.price = i
 
-        # Electricity GWP
+        # Electricity GWP, set to zero as renewable assumption
         b = GWP_dct['Electricity']
         D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
         @param(name = 'Electricity CF', element = 'LCA', kind = 'isolated', units = 'kg CO2-eq/kWh',

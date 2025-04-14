@@ -488,8 +488,16 @@ if __name__ == '__main__':
     tea1 = qs.TEA(system=sysEL, discount_rate=0.05, lifetime=10)
     #tea1.show()
     el.get_TEA_metrics_breakdown(sysEL, include_breakdown=True)
+  
+    GWP = qs.ImpactIndicator('GlobalWarming', alias='GWP', unit='kg CO2-eq')
+    Ecosystems = qs.ImpactIndicator('H_Ecosystems', alias='Ecosystems', unit='points/cap/yr')
+    Health = qs.ImpactIndicator('H_Health', alias='Health', unit='points/cap/yr')
+    Resources = qs.ImpactIndicator('H_Resources', alias='Resources', unit='points/cap/yr')
     
-    lca1 = qs.LCA(system=sysEL, lifetime=10, lifetime_unit='yr')
+    lca1 = qs.LCA(system=sysEL, lifetime=10, lifetime_unit='yr',indicators=(GWP, Ecosystems, Health, Resources))
+    #lca1 = qs.LCA(system=sysEL, lifetime=10, lifetime_unit='yr',)
+    #lca1.get_total_impacts()
+    #lca1.get_impact_table('Construction')
     lca1.show()
     #el.get_LCA_metrics_breakdown(sysEL, include_breakdown=True)
 

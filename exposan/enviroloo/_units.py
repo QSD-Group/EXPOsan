@@ -171,7 +171,8 @@ class EL_CT(CSTR):
         ###############################################
 
     def _init_lca(self):
-        self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),]
+        self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
+                             Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
 
 
     def _design(self):
@@ -240,7 +241,7 @@ class EL_PC(IdealClarifier):
     - Inherits from `SanUnit`, not `IdealClarifier`, for flexibility.
     """
 
-    _N_ins = 1
+    _N_ins = 2
     _N_outs = 2  # [0] effluent overflow, [1] sludge underflow
     _outs_size_is_fixed = True
     exponent_scale = 0.1
@@ -295,8 +296,8 @@ class EL_PC(IdealClarifier):
             self.tank_steel_weight # (self.ppl / self.baseline_ppl)
         )
         self.construction = [
-            Construction(item='StainlessSteel', quantity=self.design_results['StainlessSteel'], quantity_unit='kg')
-        ]
+            Construction(item='StainlessSteel', quantity=self.design_results['StainlessSteel'], quantity_unit='kg'),
+            Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
         self.add_construction(add_cost=False)
 
     def _cost(self):
@@ -434,7 +435,8 @@ class EL_Anoxic(CSTR):
     
             
     def _init_lca(self):
-        self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),]      
+        self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
+                             Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
         
 
     def _design(self):
@@ -577,7 +579,8 @@ class EL_Aerobic(CSTR):
         ###############################################     
 
     def _init_lca(self):
-        self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),]
+        self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
+                             Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
     
     def _design(self):
         design = self.design_results
@@ -673,8 +676,8 @@ class EL_CMMBR(CompletelyMixedMBR):
         
     def _init_lca(self):
         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
-                             Construction(item ='PVDF_membrane', linked_unit=self, quantity_unit='kg'),]
-    
+                             Construction(item ='PVDF_membrane', linked_unit=self, quantity_unit='kg'),
+                             Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
     def _design(self):
         design = self.design_results
         constr = self.construction
@@ -796,12 +799,14 @@ class EL_CWT(CSTR):
         ###############################################
         
     def _init_lca(self):
-        self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),]
-
+        self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
+                             Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
+       
     def _design(self):
         design = self.design_results
         constr = self.construction
         design['StainlessSteel'] = constr[0].quantity = self.tank_steel_weight # * (self.ppl / self.baseline_ppl)  # to be defined in .tsv file
+        
         self.add_construction(add_cost=False)
 
     def _cost(self):
@@ -822,14 +827,14 @@ class EL_CWT(CSTR):
 
     def _calc_replacement_cost(self):
         scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
-        CWR_replacement_cost = (
+        CWT_replacement_cost = (
             self.clear_water_tank_cost / self.clear_water_tank_lifetime +
             self.pipeline_connectors / self.pipeline_connectors_lifetime +
             self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
             self.O3_generation_machine_cost / self.O3_generation_machine_lifetime
             ) * scale
-        CWR_replacement_cost = CWR_replacement_cost / (365 * 24) # convert to USD/hr
-        return CWR_replacement_cost
+        CWT_replacement_cost = CWT_replacement_cost / (365 * 24) # convert to USD/hr
+        return CWT_replacement_cost
 
 # %%
 # blower_path = ospath.join(EL_su_data_path, '_EL_blower.tsv')
@@ -1040,7 +1045,7 @@ class EL_System(SanUnit, isabstract=True):
         self.construction = [
             Construction(item = 'PVC_generic', linked_unit= self, quantity_unit= 'kg'),
             Construction(item = 'HDPE', linked_unit= self, quantity_unit= 'kg'),
-            ]
+            Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
 
     def _design(self):
         design = self.design_results
@@ -1179,7 +1184,6 @@ class EL_WindSolar(CSTR):
         self.construction = [
             Construction(item='PhotovoltaicPanel', linked_unit=self, quantity_unit='m2'),
             Construction(item='Battery', linked_unit=self, quantity_unit='kg',),
-#                         lifetime=self.el_battery_lifetime),
             Construction(item='ElectricCables', linked_unit=self, quantity_unit='m'),
             Construction(item='Aluminum', linked_unit=self, quantity_unit='kg'),
             Construction(item='Steel', linked_unit=self, quantity_unit='kg')            
