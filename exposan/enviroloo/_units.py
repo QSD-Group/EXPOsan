@@ -269,6 +269,9 @@ class EL_PC(IdealClarifier):
         self.ppl=ppl
         self.baseline_ppl=baseline_ppl
         
+        
+    
+        
         data = load_data(path = PrimaryClarifier_path)
         for para in data.index:
             value = float(data.loc[para]['expected'])
@@ -285,6 +288,90 @@ class EL_PC(IdealClarifier):
         # self._mixed = WasteStream()
         # self._f_uf = None
         # self._f_of = None
+        
+    def _init_state(self):
+        inf = self._mixed
+        C_in = inf.conc
+        Q_in = inf.F_vol * 24
+        self._state = np.append(C_in, Q_in)
+        self._dstate = self._state * 0.
+        
+    def _update_state(self):
+        arr = self._state
+        Cs = arr[:-1]
+        Qi = arr[-1]
+        Qs, e_rmv, mlss = self._Qs, self._e_rmv, self._MLSS
+        x = self.components.x
+        i_tss = x * self.components.i_mass
+
+        of, uf = self.outs
+        if uf.state is None: uf.state = np.zeros(len(x)+1)
+        if of.state is None: of.state = np.zeros(len(x)+1)
+
+        if Qs:
+            Qe = Qi - Qs
+            if e_rmv:
+                fuf = e_rmv * Qi/Qs + (1-e_rmv)
+                fof = 1-e_rmv
+            elif mlss:
+                tss_in = sum(Cs * i_tss)
+                tss_e = (Qi * tss_in - Qs * mlss)/Qe
+                fuf = mlss/tss_in
+                fof = tss_e/tss_in
+        elif e_rmv and mlss:
+            tss_in = sum(Cs * i_tss)
+            Qs = Qi * e_rmv / (mlss/tss_in - (1-e_rmv))
+            Qe = Qi - Qs
+            fuf = mlss/tss_in
+            fof = 1-e_rmv
+        else:
+            raise RuntimeError('missing parameter')
+            
+        if Qs >= Qi: 
+            uf.state[:] = arr
+            of.state[:] = 0.
+        else:
+            self._f_uf = fuf
+            self._f_of = fof
+            uf.state[:-1] = Cs * ((1-x) + x*fuf)
+            uf.state[-1] = Qs
+            of.state[:-1] = Cs * ((1-x) + x*fof)
+            of.state[-1] = Qe
+
+    def _update_dstate(self):
+        of, uf = self.outs
+        x = self.components.x
+        if uf.dstate is None: uf.dstate = np.zeros(len(x)+1)
+        if of.dstate is None: of.dstate = np.zeros(len(x)+1)
+    
+    @property
+    def AE(self):
+        if self._AE is None:
+            self._compile_AE()
+        return self._AE
+
+    def _compile_AE(self):        
+        _state = self._state
+        # _dstate = self._dstate
+        _update_state = self._update_state
+        # _update_dstate = self._update_dstate
+        def yt(t, QC_ins, dQC_ins):
+            Q_ins = QC_ins[:, -1]
+            C_ins = QC_ins[:, :-1]
+            # dQ_ins = dQC_ins[:, -1]
+            # dC_ins = dQC_ins[:, :-1]
+            Q = Q_ins.sum()
+            C = Q_ins @ C_ins / Q
+            _state[-1] = Q
+            _state[:-1] = C
+            # Q_dot = dQ_ins.sum()
+            # C_dot = (dQ_ins @ C_ins + Q_ins @ dC_ins - Q_dot * C)/Q
+            # _dstate[-1] = Q_dot
+            # _dstate[:-1] = C_dot
+            _update_state()
+            # _update_dstate()
+        self._AE = yt
+   
     
     def _init_lca(self):
         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),]
