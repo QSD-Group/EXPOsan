@@ -21,10 +21,11 @@ from exposan.werf.utils import plantwide_aeration_demand, plantwide_aeration_ene
 __all__ = (
     'add_performance_metrics',
     'add_NH4_recovery_metric',
+    'add_OPEX_metrics'
     )
 
 #%%
-def add_performance_metrics(model):
+def add_performance_metrics(model, aeration_energy=False):
     
     metric = model.metric
     sys = model.system
@@ -67,7 +68,7 @@ def add_performance_metrics(model):
     def get_sludge_production():
         return sum(s.cake.mass * cmps.i_mass) * 24e-3
 
-    add_aeration_metrics(model, False)
+    add_aeration_metrics(model, aeration_energy)
 
 #%%
 
@@ -114,18 +115,22 @@ def add_NH4_recovery_metric(model):
     u = sys.flowsheet.unit
     cmps = s.RWW.components
     nh4_idx = cmps.index('S_NH4')
+    has_sr = False
     for unit in u:
         if isinstance(unit, SelectiveRecovery): 
             SR = unit
+            has_sr = True
             break
     
     @metric(name='NH4_recovery', units='kg-N/d', element='System')
     def get_NH4_recovery():
-        recovery = s.Recovered_NH4.imass['S_NH4']
-        if "HA_eff" in s and "PC" not in u:
-            r = SR.split[nh4_idx]
-            recovery += s.RWW.imass['S_NH4']/(1-r)*r
-        return recovery * 24        
+        if has_sr:
+            recovery = s.Recovered_NH4.imass['S_NH4']
+            if "HA_eff" in s and "PC" not in u:
+                r = SR.split[nh4_idx]
+                recovery += s.RWW.imass['S_NH4']/(1-r)*r
+            return recovery * 24
+        return np.nan
     
 def add_OPEX_metrics(model):
     
@@ -139,33 +144,159 @@ def add_OPEX_metrics(model):
                    init_with='WasteStream', isdynamic=False)
     pump_energy = {}
     
+    ft2m = auom('ft').conversion_factor('m')
     def get_dP(hydraulic_head, headloss, unit='ft'):
-        H = (hydraulic_head + headloss) * auom(unit).conversion_factor('m')
+        H = (hydraulic_head + headloss) * ft2m
+        if unit != 'ft': H *= auom(unit).conversion_factor('m')
         return 1000 * 9.81 * H      # in Pa
-    
     
     @metric(name='influent pumping energy', units='kW', element='Pumping')
     def get_inf_pump_power():
-        pump.dP_design = get_dP(50, 1.0)    #!!! update input
+        pump.dP_design = get_dP(40, 0)
         pumpin.copy_like(s.RWW)
         pump.simulate()
         pump_energy['inf'] = power = pump.power_utility.consumption
         return power
-        
+    
     @metric(name='RAS pumping energy', units='kW', element='Pumping')
     def get_ras_pump_power():
-        pump.dP_design = get_dP(50, 1.0)    #!!! update input
-        pumpin.copy_like(s.RAS)
-        pump.simulate()
-        pump_energy['RAS'] = power = pump.power_utility.consumption
+        if 'RAS' in s:
+            pump.dP_design = get_dP(25, 0)
+            pumpin.copy_like(s.RAS)
+            pump.simulate()
+            power = pump.power_utility.consumption
+        else: power = 0
+        pump_energy['RAS'] = power
         return power
     
-    # internal recirculations
-    # reject waters 
+    @metric(name='WAS pumping energy', units='kW', element='Pumping')
+    def get_was_pump_power():
+        if 'WAS' in s:
+            pump.dP_design = get_dP(45, 0)
+            pumpin.copy_like(s.WAS)
+            pump.simulate()
+            power = pump.power_utility.consumption
+        else: power = 0
+        pump_energy['WAS'] = power
+        return power
+    
+    @metric(name='internal recycle pumping energy', units='kW', element='Pumping')
+    def get_intr_pump_power():
+        power = 0
+        if 'ASR' in u:
+            for i, j, q in u.ASR.internal_recycles:
+                y =  u.ASR.state.iloc[i,:].to_numpy()
+                pumpin.mass = y[:-1] * q / 24e3
+                pumpin.F_vol = q / 24
+                pump.dP_design = get_dP(10, 0)
+                pump.simulate()
+                power += pump.power_utility.consumption
+        if 'intr' in s:
+            pumpin.copy_like(s.intr)
+            pump.dP_design = get_dP(10, 0)
+            pump.simulate()
+            power += pump.power_utility.consumption
+        pump_energy['intr'] = power
+        return power
+    
+    @metric(name='permeate pumping energy', units='kW', element='Pumping')
+    def get_permeate_pump_power():
+        if 'MBR' in u:
+            pumpin.copy_like(u.MBR.outs[0])
+            pump.dP_design = get_dP(10, 0)
+            pump.simulate()
+            power = pump.power_utility.consumption
+        else: power = 0
+        pump_energy['Permeate'] = power
+        return power
+    
+    @metric(name='GT underflow pumping energy', units='kW', element='Pumping')
+    def get_gtuf_pump_power():
+        if 'GT' in u:
+            pumpin.copy_like(u.GT.outs[1])
+            pump.dP_design = get_dP(40, 0)
+            pump.simulate()
+            power = pump.power_utility.consumption
+        else: power = 0
+        pump_energy['GT_uf'] = power
+        return power
+
+    @metric(name='MT underflow pumping energy', units='kW', element='Pumping')
+    def get_mtuf_pump_power():
+        if 'MT' in u:
+            pumpin.copy_like(u.MT.outs[1])
+            pump.dP_design = get_dP(50, 0)
+            pump.simulate()
+            power = pump.power_utility.consumption
+        else: power = 0
+        pump_energy['MT_uf'] = power
+        return power
+        
+    @metric(name='AD pumping energy', units='kW', element='Pumping')
+    def get_ad_pump_power():
+        if 'AD' in u:
+            pumpin.copy_like(u.J1.ins[0])
+            pump.dP_design = get_dP(30, 0)
+            pump.simulate()
+            power = pump.power_utility.consumption
+        else: power = 0
+        pump_energy['AD'] = power
+        return power
+    
     @metric(name='pumping energy cost', units='USD/d', element='OPEX')
     def get_pump_cost():
         return sum(pump_energy.values()) * 24 * sys.power_utility.price
     
+    mixing_energy = {}
+    @metric(name='ASR mixing energy', units='kW', element='Mixing')
+    def get_asr_mixing_power():
+        power = 0
+        for unit in u:
+            if unit.ID[0] == 'A' and unit.ID[1].isdigit():
+                if unit.aeration is None:
+                    power += unit.V_max * 3e-3
+        if 'ASR' in u:
+            V = sum(u.ASR.V_tanks[i] for i in range(u.ASR.N_tanks_in_series) if u.ASR.DO_setpoints[i] == 0)
+            power += V * 3e-3 # 3W/m3 mixing power requirement
+        mixing_energy['ASR'] = power
+        return power
+    
+    @metric(name='AD mixing energy', units='kW', element='Mixing')
+    def get_ad_mixing_power():
+        if 'AD' in u: power = u.AD.V_liq * 3e-3
+        else: power = 0
+        mixing_energy['AD'] = power
+        return power
+    
+    @metric(name='mixing energy cost', units='USD/d', element='OPEX')
+    def get_mixing_cost():
+        return sum(mixing_energy.values()) * 24 * sys.power_utility.price
+    
+    @metric(name='chemical cost', units='USD/d', element='OPEX')
+    def get_chemical_cost():
+        cost = 0
+        if 'carbon' in s:
+            s.carbon.price = 1.8 * s.carbon.components.S_A.i_mass   # 1.8 $/kg 100% acetic acid, GPS-X default
+            cost += s.carbon.cost * 24
+        if 'MD' in u:
+            cost += u.MD.add_OPEX['Coagulant'] * 24
+        if ('AD' not in u) and ('AED' not in u):    # class B lime stabilization in solid trains 3
+            cmps = s.cake.components
+            tss = s.cake.get_TSS() * 1e-4 # in TS%
+            dose = 50 + 4.0*(tss-10)    # in lb CaO per wet ton, linearly correlated w TS%, MOP8 Fig 23.79
+            dose *= 0.5 # convert from lb/ton to kg/tonne
+            cost += sum(s.cake.mass * cmps.i_mass) * 24e-3 * dose / 0.9 * 0.124 # assume 90% purity, 124 USD/tonne https://www.imarcgroup.com/quicklime-pricing-report 
+        return cost
+    
+    @metric(name='lime stablization energy cost', units='USD/d', element='Misc')
+    def get_stabilization_power():
+        if ('AD' not in u) and ('AED' not in u):    # class B lime stabilization in solid trains 3
+            cmps = s.cake.components
+            return sum(s.cake.mass * cmps.i_mass) * 24e-3 * 4.85 * sys.power_utility.price  # 4.4 kW/wet ton, Tarallo et al. 2015 --> makes more sense to be kW/(tonne/d)
+        else:
+            return 0
+    
     @metric(name='sludge disposal cost', units='USD/d', element='OPEX')
     def get_sludge_disposal_cost():
-        return 
+        cmps = s.cake.components
+        return sum(s.cake.mass * cmps.i_mass) * 24e-3 * 80 # 80 USD/tonne, GPS-X default

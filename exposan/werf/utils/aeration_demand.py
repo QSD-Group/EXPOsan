@@ -233,7 +233,7 @@ def plantwide_aeration_energy(system, Q_air_dct=None):
     if Q_air_dct is None:
         Q_air_dct = plantwide_aeration_demand(system)
     Pb = {}
-    for uid, Q_air in Q_air_dct.item():
+    for uid, Q_air in Q_air_dct.items():
         kwargs = dict(P_inlet_loss=1.724, P_outlet_loss=17.24, blowermotor_efficiency=0.7)
         if uid == 'AED':
             kwargs.update(dict(
