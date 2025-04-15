@@ -38,7 +38,6 @@ from qsdsan import (
 from qsdsan.sanunits import Trucking
 from chaospy import distributions as shape
 from qsdsan.utils import clear_lca_registries
-
 # from qsdsan.sanunits._excretion import ExcretionmASM2d
 
 # from qsdsan.utils import load_components, set_thermo
@@ -258,8 +257,8 @@ def create_components(set_thermo = True
     cmps = Components([*masm2d_cmps, 
                        # Tissue, WoodAsh, H2O,
                        ])
-    cmps.compile()
-    # cmps.compile(ignore_inaccurate_molar_weight=True)
+    #cmps.compile()
+    cmps.compile(ignore_inaccurate_molar_weight=True)
     if set_thermo: qs.set_thermo(cmps)
     return cmps
 #%%
@@ -281,7 +280,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     
     kwargs_O = dict(V_max=6.35, aeration=2, DO_ID='S_O2', suspended_growth_model=masm2d)
     kwargs_1 = dict(V_max=6.35, aeration=None, DO_ID=None, suspended_growth_model=masm2d)
-    kwargs_2 = dict(V_max=2.9, aeration=2, DO_ID='S_O2', suspended_growth_model=masm2d)
+    # kwargs_2 = dict(V_max=2.89, aeration=2, DO_ID='S_O2', suspended_growth_model=masm2d)
     
     
     # CT = su.Mixer('CT', 
@@ -300,7 +299,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #                          sludge_flow_rate=280, 
     #                          solids_removal_efficiency=0.6)
     
-    PC = elu.EL_PC('PC', ins=(CT-0, 'RAS_PC'), outs=('effluent_PC_total', 2-CT),
+    PC = elu.EL_PC('PC', ins=(CT-0, 'RAS_PC'), outs=('effluent_PC_total', 1-CT),
                    ppl=ppl, baseline_ppl=100,
                    solids_removal_efficiency=0.85,
                    isdynamic=True,
@@ -330,14 +329,12 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
 
 
     B1 = elu.EL_CMMBR('B1', ins=O1-0, outs=('effluent_MembT', 'sludge_MembT'),
-                      isdynamic=True, 
-                      # V_max=2.9, 
-                      # DO_ID='S_O2', aeration=2, suspended_growth_model=masm2d,
+                      isdynamic=True, V_max=2.9, 
+                      DO_ID='S_O2', aeration=2, suspended_growth_model=masm2d,
                       # pumped_flow=5, # after calculation # initial = 0.0001 # m3/hr
                       pumped_flow=(Q_ras*2+Q_was), # 0.026
                       # pumped_flow=Q_ras+Q_was,
                       # solids_capture_rate=0.999, 
-                      **kwargs_2
                       )
     # breakpoint()
     # S2 = su.Splitter('S2', ins=B1-1, outs=['RAS', 'WAS'], split=0.95)
@@ -364,7 +361,6 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #                 )
     
     S4 = su.Splitter('S4', ins = PV-0, outs = [1-CT, 'Reflushing'], split= 0.5)
-    
 
     sys = qs.System('EL', path=(CT, PC, A1, O1, B1, S2, S1, CWT, PV, S4))
     sys.set_dynamic_tracker(A1, O1, B1, B1-0, B1-1)
@@ -372,10 +368,6 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     # sys = qs.System('EL', path=(CT, PC, S3, A1, O1, B1, S2, S1, CWT, S4),
     #                 recycle = [sludge_PC, sludge_MT_PC, sludge_MT_A1, flushing_water_CT],
     #                 ) # add flushing water
-    
-    batch_init(sys, 
-               ospath.join(data_path, "units_data/bsm2p_init.xlsx"), 
-               sheet='el')
     
     GWP = qs.ImpactIndicator('GlobalWarming', alias='GWP', unit='kg CO2-eq')
     Ecosystems = qs.ImpactIndicator('H_Ecosystems', alias='Ecosystems', unit='points')
@@ -411,7 +403,7 @@ def run(t, method=None, **kwargs):
 
     
 if __name__ == '__main__':
-    t = 15
+    t = 2
     # method = 'RK45'
     method = 'RK23' 
     # method = 'DOP853'
