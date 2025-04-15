@@ -11,3 +11,10 @@ weld_female_adapter_fittings_lifetime		yr	5	4.5	5.5	uniform	assumption
 pipeline_connectors_lifetime		yr	5	4.5	5.5	uniform	assumption
 O3_generation_machine_lifetime		yr	10	8	12	uniform	assumption
 power_demand_CWT	energy consumption for clear water tank	KWh/day	0.8	0.72	0.88	uniform	assumption
+clear_water_pump_cast_iron		kg	9	7.65	10.35	uniform	data sheet
+clear_water_pump_power		kW	0.75	0.6375	0.8625	uniform	data sheet
+clear_water_pump_cost		USD	118.46	100.691	136.229	uniform	https://www.alibaba.com/product-detail/SQD-0-75kw-1hp-high-pressure_1601032336743.html?spm=a2700.galleryofferlist.normal_offer.d_title.2b1413a0sqHM0o
+pump_lifetime		yr	5	4.25	5.75	uniform	assumption
+clear_water_air_dissolved_pump_cast_iron		kg	6.8	5.78	7.82	uniform	data sheet
+clear_water_air_dissolved_pump_power		kW	0.55	0.4675	0.6325	uniform	data sheet
+clear_water_air_dissolved_pump_cost		USD	155.24	131.954	178.526	uniform	https://www.alibaba.com/product-detail/LEO-QDX-Series-Cast-Iron-Submersible_60671071414.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0BMhyxn

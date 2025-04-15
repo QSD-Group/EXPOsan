@@ -280,7 +280,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     
     kwargs_O = dict(V_max=6.35, aeration=2, DO_ID='S_O2', suspended_growth_model=masm2d)
     kwargs_1 = dict(V_max=6.35, aeration=None, DO_ID=None, suspended_growth_model=masm2d)
-    # kwargs_2 = dict(V_max=2.89, aeration=2, DO_ID='S_O2', suspended_growth_model=masm2d)
+    kwargs_2 = dict(V_max=2.89, aeration=2, DO_ID='S_O2', suspended_growth_model=masm2d)
     
     
     # CT = su.Mixer('CT', 
@@ -299,7 +299,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #                          sludge_flow_rate=280, 
     #                          solids_removal_efficiency=0.6)
     
-    PC = elu.EL_PC('PC', ins=(CT-0, 'RAS_PC'), outs=('effluent_PC_total', 1-CT),
+    PC = elu.EL_PC('PC', ins=(CT-0, 'RAS_PC'), outs=('effluent_PC_total', 2-CT),
                    ppl=ppl, baseline_ppl=100,
                    solids_removal_efficiency=0.85,
                    isdynamic=True,
@@ -329,10 +329,12 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
 
 
     B1 = elu.EL_CMMBR('B1', ins=O1-0, outs=('effluent_MembT', 'sludge_MembT'),
-                      isdynamic=True, V_max=2.9, 
-                      DO_ID='S_O2', aeration=2, suspended_growth_model=masm2d,
+                      isdynamic=True, 
+                      #V_max=2.9, 
+                      #DO_ID='S_O2', aeration=2, suspended_growth_model=masm2d,
                       # pumped_flow=5, # after calculation # initial = 0.0001 # m3/hr
                       pumped_flow=(Q_ras*2+Q_was), # 0.026
+                      **kwargs_2
                       # pumped_flow=Q_ras+Q_was,
                       # solids_capture_rate=0.999, 
                       )
@@ -364,6 +366,11 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
 
     sys = qs.System('EL', path=(CT, PC, A1, O1, B1, S2, S1, CWT, PV, S4))
     sys.set_dynamic_tracker(A1, O1, B1, B1-0, B1-1)
+    
+    
+    batch_init(sys, 
+               ospath.join(data_path, "units_data/bsm2p_init.xlsx"), 
+               sheet='el')
     
     # sys = qs.System('EL', path=(CT, PC, S3, A1, O1, B1, S2, S1, CWT, S4),
     #                 recycle = [sludge_PC, sludge_MT_PC, sludge_MT_A1, flushing_water_CT],

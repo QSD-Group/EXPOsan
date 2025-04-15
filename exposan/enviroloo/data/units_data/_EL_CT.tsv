@@ -13,3 +13,7 @@ weld_female_adapter_fittings_lifetime		yr	5	4.5	5.5	uniform	assumption
 pipeline_connectors_lifetime		yr	5	4.5	5.5	uniform	assumption
 power_demand_CT	energy consumption for primary clarifier tank	KWh/day	1	0.9	1.1	uniform	assumption
 carbon_COD_ratio		g C*g COD-1	0.35	0.25	0.4	triangular	Tchobanoglous et al.
+lift_pump_cast_iron		kg	12	10.2	13.8	uniform	data sheet
+lift_pump_power		kW	1.1	0.935	1.265	uniform	data sheet
+lift_pump_cost		USD	104	88.4	119.6	uniform	https://www.alibaba.com/product-detail/Jinmu-brand-professional-1-1kw-submersible_1600929097854.html?spm=a2700.details.you_may_like.3.44e35ef2MlxhPU
+pump_lifetime		yr	5	4.25	5.75	uniform	assumption

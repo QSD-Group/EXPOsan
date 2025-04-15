@@ -14,3 +14,8 @@ weld_female_adapter_fittings_lifetime		yr	5	4.5	5.5	uniform	"assu,ption"
 pipeline_connectors_lifetime		yr	5	4.5	5.5	uniform	assumption
 power_demand_PC	energy consumption for primary clarifier tank	KWh/day	0.3	0.27	0.33	uniform	assumption
 solids_moisture_content		%	0.95	0.93	0.97	uniform	assumption
+pump_lifetime		yr	5	4.25	5.75	uniform	assumption
+primary_return_pump_stainless_steel		kg	9.1	7.735	10.465	uniform	data sheet
+primary_return_pump_cast_iron		kg	9.1	7.735	10.465	uniform	data sheet
+primary_return_pump_power		kW	0.45	0.3825	0.5175	uniform	data sheet
+primary_return_pump_cost		USD	123.76	105.196	142.324	uniform	https://www.alibaba.com/product-detail/0-4kw-cast-iron-motor-housing_1600934836942.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0L7StzT

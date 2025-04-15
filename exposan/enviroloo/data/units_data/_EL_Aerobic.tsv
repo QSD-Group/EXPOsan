@@ -19,3 +19,13 @@ EL_aeroT_sludge_yield		kg-VSS/kg-BOD removed	0.035	0.03	0.04	uniform	Metcalf and
 EL_aeroT_TN_removal	anoix_tank_totalN_original_removal	ratio	0.2	0.02	0.37	uniform	"<br class=""Apple-interchange-newline"">UIUC Request Data - Gary Shyu"
 NO3_produced_ratio		ratio	0.01	0.009	0.011	uniform	assumption
 decay_k_N		ratio	0.01	0.005	0.015	uniform	assumption
+blower_steel_weight		kg	24	21.6	26.4	uniform	BOM
+blower_cost		USD	40	36	44	uniform	BOM
+blower_lifetime		yr	8	7.2	8.8	uniform	assumption
+power_demand_blower	energy consumption for blower	KWh/day	2	1.8	2.2	uniform	assumption
+PAC_mixer_cast_iron		kg	9	8.1	9.9	uniform	data sheet by EnviroLoo
+PAC_mixer_cost		USD	696.3	626.67	765.93	uniform	https://www.grainger.com/product/DAYTON-Open-Drum-Mixer-115-230V-AC-32V133?opr=PLADS&analytics=FM%3APLA&a2c_sku_original=32V138&position=2
+dosing_pump_PVC		kg	2.5	2.125	2.875	uniform	data sheet
+dosing_pump_cost		USD	59	50.15	67.85	uniform	https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
+pump_lifetime		yr	5	4.25	5.75	uniform	assumption
+PAC_mixer_lifetime		yr	10	8.5	11.5	uniform	assumption

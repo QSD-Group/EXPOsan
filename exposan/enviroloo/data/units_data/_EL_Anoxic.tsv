@@ -21,3 +21,14 @@ EL_anoT_TN_removal	anoxic tank for total N original removal	ratio	0.2	0.02	0.37	
 EL_anoT_methane_yield	methane yield based on COD degraded at 25 degrees C	m3-CH4/kg COD removed	0.28	0.23	0.33	uniform	Salahaldin M.A. Abuabdou et al. 2020 Journal of Cleaner Production Volume 225 https://www.sciencedirect.com/science/article/pii/S0959652620302626#tbl1
 decay_k_N		ratio	0.01	0.005	0.015	uniform	assumption
 EL_anoT_TP_removal	anoxic tank for total P original removal	ratio	0.19	0.01	0.39	uniform	UIUC Request Data - Gary Shyu
+anoxic_mixer_power		kW	0.18	0.153	0.207	uniform	data sheet by EnviroLoo
+anoxic_mixer_cast_iron		kg	9	7.65	10.35	uniform	data sheet by EnviroLoo
+anoxic_mixer_cost		USD	696.3	591.855	800.745	uniform	https://www.grainger.com/product/DAYTON-Open-Drum-Mixer-115-230V-AC-32V133?opr=PLADS&analytics=FM%3APLA&a2c_sku_original=32V138&position=2
+glucose_mixer_power		kW	0.18	0.153	0.207	uniform	data sheet by EnviroLoo
+glucose_mixer_cast_iron		kg	9	7.65	10.35	uniform	data sheet by EnviroLoo
+glucose_mixer_cost		USD	696.3	591.855	800.745	uniform	https://www.grainger.com/product/DAYTON-Open-Drum-Mixer-115-230V-AC-32V133?opr=PLADS&analytics=FM%3APLA&a2c_sku_original=32V138&position=2
+anoxic_mixer_lifetime		yr	10	8.5	11.5	uniform	assumption
+glucose_mixer_lifetime		yr	10	8.5	11.5	uniform	assumption
+dosing_pump_PVC		kg	2.5	2.125	2.875	uniform	data sheet
+dosing_pump_cost		USD	59	50.15	67.85	uniform	https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
+pump_lifetime		yr	5	4.25	5.75	uniform	assumption

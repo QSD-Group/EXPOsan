@@ -116,7 +116,7 @@ class EL_CT(CSTR):
     _outs_size_is_fixed = False
     exponent_scale = 0.1
     ppl = 100
-    baseline_ppl =30
+    baseline_ppl = 100
     
     _D_O2 = 2.10e-9   # m2/s
 
@@ -179,6 +179,7 @@ class EL_CT(CSTR):
         design = self.design_results
         constr = self.construction
         design['StainlessSteel'] = constr[0].quantity = self.tank_steel_weight # * (self.ppl / self.baseline_ppl)
+        design['Cast_iron'] = constr[1].quantity = self.lift_pump_cast_iron
         self.add_construction(add_cost=False)
     
     def _cost(self):
@@ -186,6 +187,7 @@ class EL_CT(CSTR):
         C['Tank'] = self.collection_tank_cost
         C['Pipes'] = self.pipeline_connectors
         C['Fittings'] = self.weld_female_adapter_fittings
+        C['Pumps'] = self.lift_pump_cost
     
         ratio = self.price_ratio
         for equipment, cost in C.items():
@@ -201,7 +203,8 @@ class EL_CT(CSTR):
         CT_replacement_cost = (
             self.collection_tank_cost / self.collection_tank_lifetime +               
             self.pipeline_connectors / self.pipeline_connectors_lifetime +
-            self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime) * scale
+            self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
+            self.lift_pump_cost / self.pump_lifetime) * scale
         CT_replacement_cost = CT_replacement_cost / (365 * 24)  # convert to USD/hr
         return CT_replacement_cost
 
@@ -246,7 +249,7 @@ class EL_PC(IdealClarifier):
     _outs_size_is_fixed = True
     exponent_scale = 0.1
     ppl=100,
-    baseline_ppl=30
+    baseline_ppl= 100
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  sludge_flow_rate=10, 
@@ -269,9 +272,6 @@ class EL_PC(IdealClarifier):
         self.ppl=ppl
         self.baseline_ppl=baseline_ppl
         
-        
-    
-        
         data = load_data(path = PrimaryClarifier_path)
         for para in data.index:
             value = float(data.loc[para]['expected'])
@@ -280,15 +280,7 @@ class EL_PC(IdealClarifier):
 
         for attr, value in kwargs.items():
             setattr(self, attr, value)    
-        ###############################################
-        
-        # self.sludge_flow_rate = sludge_flow_rate
-        # self.solids_removal_efficiency = solids_removal_efficiency
-        # self.sludge_MLSS = sludge_MLSS
-        # self._mixed = WasteStream()
-        # self._f_uf = None
-        # self._f_of = None
-        
+            
     def _init_state(self):
         inf = self._mixed
         C_in = inf.conc
@@ -371,20 +363,27 @@ class EL_PC(IdealClarifier):
             _update_state()
             # _update_dstate()
         self._AE = yt
-   
+        ###############################################
+        
+        # self.sludge_flow_rate = sludge_flow_rate
+        # self.solids_removal_efficiency = solids_removal_efficiency
+        # self.sludge_MLSS = sludge_MLSS
+        # self._mixed = WasteStream()
+        # self._f_uf = None
+        # self._f_of = None
     
     def _init_lca(self):
-        self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),]
+        self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
+                             Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
 
 
     def _design(self):
         """Calculate design parameters."""
-        self.design_results['StainlessSteel'] = (
-            self.tank_steel_weight # (self.ppl / self.baseline_ppl)
-        )
-        self.construction = [
-            Construction(item='StainlessSteel', quantity=self.design_results['StainlessSteel'], quantity_unit='kg'),
-            Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
+        
+        design = self.design_results
+        constr = self.construction
+        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_weight  + self.primary_return_pump_stainless_steel # * (self.ppl / self.baseline_ppl)  # assume linear scale
+        design['Cast_iron'] = constr[1].quantity = self.primary_return_pump_cast_iron
         self.add_construction(add_cost=False)
 
     def _cost(self):
@@ -393,6 +392,7 @@ class EL_PC(IdealClarifier):
         C['Tank'] = self.PC_tank_cost
         C['Pipes'] = self.pipeline_connectors
         C['Fittings'] = self.weld_female_adapter_fittings
+        C['Pumps'] = self.primary_return_pump_cost
 
         ratio = self.price_ratio  # Assume price_ratio decorator sets this
         for equipment, cost in C.items():
@@ -408,8 +408,8 @@ class EL_PC(IdealClarifier):
         replacement_cost = (
             self.PC_tank_cost / self.PC_tank_lifetime +
             self.pipeline_connectors / self.pipeline_connectors_lifetime +
-            self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime
-        ) * scale
+            self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
+            self.primary_return_pump_cost / self.pump_lifetime) * scale
         return replacement_cost / (365 * 24)  # Convert to USD/hr
 
 
@@ -475,7 +475,7 @@ class EL_Anoxic(CSTR):
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     ppl = 100
-    baseline_ppl =30
+    baseline_ppl = 100
     exponent_scale=0.1
     
     # _D_O2 = 2.10e-9   # m2/s
@@ -523,13 +523,16 @@ class EL_Anoxic(CSTR):
             
     def _init_lca(self):
         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
-                             Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
+                             Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),
+                             Construction(item='PVC_generic', linked_unit=self, quantity_unit='kg'),]
         
 
     def _design(self):
         design = self.design_results
         constr = self.construction
         design['StainlessSteel'] = constr[0].quantity = self.tank_steel_weight # * (self.ppl / self.baseline_ppl)  # assume linear scale
+        design['Cast_iron'] = constr[1].quantity = self.anoxic_mixer_cast_iron + self.glucose_mixer_cast_iron
+        design['PVC_generic'] = constr[2].quantity = self.dosing_pump_PVC
         self.add_construction(add_cost=False)
     
     def _cost(self):
@@ -540,6 +543,8 @@ class EL_Anoxic(CSTR):
         C['Fittings'] = self.weld_female_adapter_fittings
         # C['Chemcial_glucose'] = self.chemical_glucose_dosage * massflow_anoxic * self.chemical_glucose_price  # make sense the unit of treated water flow
         # Glucose cost is already accounted for in the WasteStream
+        C['Mixers'] = self.anoxic_mixer_cost + self.glucose_mixer_cost
+        C['Pumps'] = self.dosing_pump_cost
         ratio = self.price_ratio
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
@@ -553,7 +558,10 @@ class EL_Anoxic(CSTR):
         scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
         Anoxic_tank_replacement_cost = (self.anoxic_tank_cost /self.anoxic_tank_lifetime +
                                         self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
-                                        self.pipeline_connectors / self.pipeline_connectors_lifetime) * scale
+                                        self.pipeline_connectors / self.pipeline_connectors_lifetime +
+                                        self.anoxic_mixer_cost / self.anoxic_mixer_lifetime + 
+                                        self.glucose_mixer_cost / self.glucose_mixer_lifetime + 
+                                        self.dosing_pump_cost / self.pump_lifetime) * scale
         Anoxic_tank_replacement_cost = Anoxic_tank_replacement_cost / (365 * 24)  # convert to USD/hr
         return Anoxic_tank_replacement_cost
 
@@ -618,7 +626,7 @@ class EL_Aerobic(CSTR):
     _outs_size_is_fixed = False
     exponent_scale = 0.1
     ppl = 100
-    baseline_ppl =30
+    baseline_ppl = 100
     
     _D_O2 = 2.10e-9   # m2/s
 
@@ -667,12 +675,15 @@ class EL_Aerobic(CSTR):
 
     def _init_lca(self):
         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
-                             Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
+                             Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),
+                             Construction(item='PVC_generic', linked_unit=self, quantity_unit='kg'),]
     
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_weight # (self.ppl / self.baseline_ppl)
+        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_weight + self.blower_steel_weight # (self.ppl / self.baseline_ppl)
+        design['Cast_iron'] = constr[1].quantity = self.PAC_mixer_cast_iron 
+        design['PVC_generic'] = constr[2].quantity = self.dosing_pump_PVC
         self.add_construction(add_cost=False)
     
     def _cost(self):
@@ -681,6 +692,10 @@ class EL_Aerobic(CSTR):
         C['Tank'] = self.aerobic_tank_cost
         C['Pipes'] = self.pipeline_connectors
         C['Fittings'] = self.weld_female_adapter_fittings
+        C['Mixers'] = self.PAC_mixer_cost
+        C['Pumps'] = self.dosing_pump_cost
+        C['Blower'] = self.blower_cost
+        
         # C['Chemical_PAC'] = self.chemical_PAC_dosage * massflow_aerobic * self.chemical_PAC_price
         #PAC cost is already accounted in WasteStream
 
@@ -697,7 +712,11 @@ class EL_Aerobic(CSTR):
         scale = (self.ppl / self.baseline_ppl) * self.exponent_scale
         Aerobic_tank_replacement_cost = (self.aerobic_tank_cost / self.aerobic_tank_lifetime +
                                         self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
-                                        self.pipeline_connectors / self.pipeline_connectors_lifetime) * scale
+                                        self.pipeline_connectors / self.pipeline_connectors_lifetime + 
+                                        self.PAC_mixer_cost / self.PAC_mixer_lifetime + 
+                                        self.blower_cost / self.blower_lifetime + 
+                                        self.dosing_pump_cost / self.pump_lifetime) * scale
+                                        
         Aerobic_tank_replacement_cost = Aerobic_tank_replacement_cost / (365 * 24)  # convert to USD/hr
         return Aerobic_tank_replacement_cost
 
@@ -722,7 +741,7 @@ class EL_CMMBR(CompletelyMixedMBR):
     _N_outs = 2  # [0] filtrate, [1] pumped flow
     _outs_size_is_fixed = True
     ppl = 100
-    baseline_ppl =30
+    baseline_ppl = 100
     exponent_scale=0.1
     
     
@@ -750,7 +769,6 @@ class EL_CMMBR(CompletelyMixedMBR):
         self.tank_steel_volume=tank_steel_volume
         self.steel_density=steel_density
         
-        
         data = load_data(path = MBR_path)
         for para in data.index:
             value = float(data.loc[para]['expected'])
@@ -764,12 +782,13 @@ class EL_CMMBR(CompletelyMixedMBR):
     def _init_lca(self):
         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
                              Construction(item ='PVDF_membrane', linked_unit=self, quantity_unit='kg'),
-                             Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
+                             Construction(item ='Cast_iron', linked_unit=self, quantity_unit='kg'),]
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_weight # * (self.ppl / self.baseline_ppl)  # assume linear scaling
+        design['StainlessSteel'] = constr[0].quantity = self.tank_steel_weight + self.nitrate_return_pump_stainless_steel # * (self.ppl / self.baseline_ppl)  # assume linear scaling
         design['PVDF_membrane'] = constr[1].quantity = self.membrane_material_weight
+        design['Cast_iron'] = constr[2].quantity = self.nitrate_return_pump_cast_iron + self.self_priming_pump_cast_iron
         self.add_construction(add_cost=False)
 
     def _cost(self):
@@ -779,6 +798,7 @@ class EL_CMMBR(CompletelyMixedMBR):
         C['fittings'] = self.weld_female_adapter_fittings
         C['Membrane_material'] = self.membrane_material_price * self.membrane_material_weight
         C['Membrane_cleaning'] = self.membrane_cleaning_fee
+        C['Pumps'] = self.nitrate_return_pump_cost + self.self_priming_pump_cost
 
         ratio = self.price_ratio
         for equipment, cost in C.items():
@@ -795,7 +815,9 @@ class EL_CMMBR(CompletelyMixedMBR):
             self.MBR_tank_cost / self.MBR_tank_lifetime +
             self.pipeline_connectors / self.pipeline_connectors_lifetime +
             self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
-            self.membrane_material_price * self.membrane_material_weight / self.membrane_material_lifetime
+            self.membrane_material_price * self.membrane_material_weight / self.membrane_material_lifetime +
+            self.nitrate_return_pump_cost / self.pump_lifetime + 
+            self.self_priming_pump_cost / self.pump_lifetime
             ) * scale
         MBR_replacement_cost = MBR_replacement_cost / (365 * 24) * self.price_ratio # USD/hr
         return MBR_replacement_cost
@@ -838,7 +860,7 @@ class EL_CWT(CSTR):
     _outs_size_is_fixed = False
     exponent_scale = 0.1
     ppl = 100
-    baseline_ppl =30
+    baseline_ppl = 100
     
     _D_O2 = 2.10e-9   # m2/s
 
@@ -893,7 +915,7 @@ class EL_CWT(CSTR):
         design = self.design_results
         constr = self.construction
         design['StainlessSteel'] = constr[0].quantity = self.tank_steel_weight # * (self.ppl / self.baseline_ppl)  # to be defined in .tsv file
-        
+        design['Cast_iron'] = constr[1].quantity = self.clear_water_air_dissolved_pump_cast_iron + self.clear_water_pump_cast_iron
         self.add_construction(add_cost=False)
 
     def _cost(self):
@@ -902,7 +924,8 @@ class EL_CWT(CSTR):
         C['pipeline'] = self.pipeline_connectors
         C['fittings'] = self.weld_female_adapter_fittings
         C['O3 generator'] = self.O3_generation_machine_cost
-
+        C['Pumps'] = self.clear_water_air_dissolved_pump_cost + self.clear_water_pump_cost
+        
         ratio = self.price_ratio
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
@@ -918,7 +941,9 @@ class EL_CWT(CSTR):
             self.clear_water_tank_cost / self.clear_water_tank_lifetime +
             self.pipeline_connectors / self.pipeline_connectors_lifetime +
             self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
-            self.O3_generation_machine_cost / self.O3_generation_machine_lifetime
+            self.O3_generation_machine_cost / self.O3_generation_machine_lifetime + 
+            self.clear_water_air_dissolved_pump_cast_iron / self.pump_lifetime + 
+            self.clear_water_pump_cast_iron / self.pump_lifetime
             ) * scale
         CWT_replacement_cost = CWT_replacement_cost / (365 * 24) # convert to USD/hr
         return CWT_replacement_cost
@@ -1033,100 +1058,137 @@ class EL_CWT(CSTR):
 #         return Blower_replacement_cost
 
 # %%
-# housing_path = ospath.join(EL_su_data_path, '_EL_housing.tsv')
+housing_path = os.path.join(EL_su_data_path, '_EL_housing.tsv')
 
-# #@price_ratio()
-# class EL_Housing(SanUnit):
-#     '''
-#      non_reactive unit for the Enviroloo Clear system
-#     '''
-#     _N_ins = 1  # number of ins
-#     _N_outs = 1  # number of outs
-#     _ins_size_is_fixed = True
-#     _outs_size_is_fixed = True
-#     ppl_per_MURT = 30  # number of people per MURT
+#@price_ratio()
+class EL_Housing(CSTR):
+    '''
+     non_reactive unit for the Enviroloo Clear system
+    '''
+    _N_ins = 1 # treated water, PAC, blower
+    _N_outs = 1  # treated water, CH4, N2O
+    _ins_size_is_fixed = False
+    _outs_size_is_fixed = False
+    exponent_scale = 0.1
+    ppl = 100
+    baseline_ppl = 100
+    
+    _D_O2 = 2.10e-9   # m2/s
 
-#     def __init__(self, ID = '', ins = None, outs = (), thermo = None, init_with = None,
-#                  price_ratio=0.9,
-#                  ppl = 1000, baseline_ppl = 30, F_BM_default= 1, **kwargs):
-#         init_with = init_with or {}
-#         super().__init__(ID=ID, ins=ins, outs=outs, thermo = thermo, 
-#                          init_with = init_with, F_BM_default=F_BM_default)
+    def __init__(self, 
+                 ID='', ins=None, outs=(), split=None, thermo=None,
+                 init_with='WasteStream', V_max=12, W_tank = None, 
+                 # D_tank = 3.65,
+                 # freeboard = 0.61, 
+                 t_wall = None, t_slab = None, aeration=None, 
+                 DO_ID='S_O2', suspended_growth_model=None, 
+                 gas_stripping=False, gas_IDs=None, stripping_kLa_min=None, 
+                 K_Henry=None, D_gas=None, p_gas_atm=None,
+                 isdynamic=True, exogenous_vars=(), **kwargs):
+        super().__init__(
+            ID=ID, ins=ins, outs=outs, split=split, thermo=thermo,
+            init_with=init_with, V_max=V_max, W_tank = W_tank, 
+            # D_tank = D_tank,
+            # freeboard = freeboard, 
+            t_wall = t_wall, t_slab = t_slab, aeration=aeration, 
+            DO_ID=DO_ID, suspended_growth_model=suspended_growth_model, 
+            gas_stripping=gas_stripping, gas_IDs=gas_IDs, 
+            stripping_kLa_min=stripping_kLa_min, 
+            K_Henry=K_Henry, D_gas=D_gas, p_gas_atm=p_gas_atm,
+            isdynamic=isdynamic, exogenous_vars=exogenous_vars, **kwargs
+            )
+       
+        data = load_data(path = windSolar_path)
+        for para in data.index:
+            value = float(data.loc[para]['expected'])
+            setattr(self, para, value)
+        del data
+    
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)    
+        ############################################### 
+
+    def _init_lca(self): # replace the actual materials used in the EL
+        self.construction = [
+            Construction(item = 'StainlessSteel', linked_unit= self, quantity_unit= 'kg'),
+            Construction(item = 'Plastic', linked_unit= self, quantity_unit= 'kg'),]
+
+    def _design(self): # replace the actual materials used in the EL
+        design = self.design_results
+        constr = self.construction
+        design['StainlessSteel'] = constr[0].quantity = (self.steel_weight + self.steel_framework_weight + self.steel_fittings_weight) * (self.ppl / self.baseline_ppl)  # assume linear scaling
+        design['Plastic'] = constr[1].quantity = (self.LLDPE_weight) * (self.ppl / self.baseline_ppl)   # assume linear scaling
+        self.add_construction(add_cost= False)
+    
+    def _cost(self):
+        C = self.baseline_purchase_costs
+        C['Housing'] = (self.frame + self.extrusion + 
+                        self.angle_frame + self.angle +
+                        self.door_sheet + self.plate +
+                        self.powder_coating) * (1 + 0.1 * (self.N_EL -1))
         
-#         self.ppl = ppl
-#         self.baseline_ppl = baseline_ppl
-#         self.price_ratio = price_ratio
-
-#         data = load_data(path = housing_path)
-#         for para in data.index:
-#             value = float(data.loc[para]['expected'])
-#             setattr(self, para, value)
-#         del data
-
-#         for attr, value in kwargs.items():
-#             setattr(self, attr, value)
-
-#     def _init_lca(self): # replace the actual materials used in the EL
-#         self.construction = [
-#             Construction(item = 'StainlessSteel', linked_unit= self, quantity_unit= 'kg'),
-#             Construction(item = 'Plastic', linked_unit= self, quantity_unit= 'kg'),]
-
-#     def _design(self): # replace the actual materials used in the EL
-#         design = self.design_results
-#         constr = self.construction
-#         design['StainlessSteel'] = constr[0].quantity = (self.steel_weight + self.steel_framework_weight + self.steel_fittings_weight) * (self.ppl / self.baseline_ppl)  # assume linear scaling
-#         design['Plastic'] = constr[1].quantity = (self.LLDPE_weight) * (self.ppl / self.baseline_ppl)   # assume linear scaling
-#         self.add_construction(add_cost= False)
+        ratio = self.price_ratio
+        for equipment, cost in C.items():
+            C[equipment] = cost * ratio
     
-#     def _cost(self):
-#         C = self.baseline_purchase_costs
-#         C['Housing'] = (self.frame + self.extrusion + 
-#                         self.angle_frame + self.angle +
-#                         self.door_sheet + self.plate +
-#                         self.powder_coating) * (1 + 0.1 * (self.N_EL -1))
-        
-#         ratio = self.price_ratio
-#         for equipment, cost in C.items():
-#             C[equipment] = cost * ratio
+    @property
+    def N_EL(self): # determine the number of EL system needed
+        return ceil(self.ppl / self.baseline_ppl)
     
-#     @property
-#     def N_EL(self): # determine the number of EL system needed
-#         return ceil(self.ppl / self.baseline_ppl)
-    
-#     @property
-#     def N_toilets(self): # determine the number of toilets needed
-#         return ceil(self.ppl / self.ppl_per_MURT)
+    @property
+    def N_toilets(self): # determine the number of toilets needed
+        return ceil(self.ppl / self.ppl_per_MURT)
 
 # %%
 system_path = os.path.join(EL_su_data_path, '_EL_system.tsv')
 
 @price_ratio()
-class EL_System(SanUnit, isabstract=True):
+class EL_System(CSTR):
     '''
     Relate to connection components in the EL system
     '''
-    _N_ins = 1
-    _N_outs = 0
+    _N_ins = 1 # treated water, PAC, blower
+    _N_outs = 1  # treated water, CH4, N2O
+    _ins_size_is_fixed = False
+    _outs_size_is_fixed = False
     exponent_scale = 0.1
+    ppl = 100
+    baseline_ppl = 100
+    
+    _D_O2 = 2.10e-9   # m2/s
 
-    def __init__(self, ID='', ins=(), outs=None, thermo = None, 
-                 init_with = 'WasteStream',
-                 # init_with=None,
-                 if_gridtied = True, ppl = None, baseline_ppl = None, F_BM_default = 1, **kwargs):
-        SanUnit.__init__(self, ID=ID, ins=ins, outs=outs, thermo = thermo, init_with = init_with,  F_BM_default = F_BM_default)
-        
-        self.ppl = ppl
-        self.baseline_ppl = baseline_ppl
-        self.if_gridtied = if_gridtied
-
-        data = load_data(path = system_path)
+    def __init__(self, 
+                     ID='', ins=None, outs=(), split=None, thermo=None,
+                     init_with='WasteStream', V_max=12, W_tank = None, 
+                     # D_tank = 3.65,
+                     # freeboard = 0.61, 
+                     t_wall = None, t_slab = None, aeration=None, 
+                     DO_ID='S_O2', suspended_growth_model=None, 
+                     gas_stripping=False, gas_IDs=None, stripping_kLa_min=None, 
+                     K_Henry=None, D_gas=None, p_gas_atm=None,
+                     isdynamic=True, exogenous_vars=(), **kwargs):
+        super().__init__(
+                ID=ID, ins=ins, outs=outs, split=split, thermo=thermo,
+                init_with=init_with, V_max=V_max, W_tank = W_tank, 
+                # D_tank = D_tank,
+                # freeboard = freeboard, 
+                t_wall = t_wall, t_slab = t_slab, aeration=aeration, 
+                DO_ID=DO_ID, suspended_growth_model=suspended_growth_model, 
+                gas_stripping=gas_stripping, gas_IDs=gas_IDs, 
+                stripping_kLa_min=stripping_kLa_min, 
+                K_Henry=K_Henry, D_gas=D_gas, p_gas_atm=p_gas_atm,
+                isdynamic=isdynamic, exogenous_vars=exogenous_vars, **kwargs
+                )
+           
+        data = load_data(path = windSolar_path)
         for para in data.index:
-            value = float(data.loc[para]['expected'])
-            setattr(self, para, value)
+                value = float(data.loc[para]['expected'])
+                setattr(self, para, value)
         del data
-
+        
         for attr, value in kwargs.items():
-            setattr(self, attr, value)
+                setattr(self, attr, value)    
+            ###############################################
 
     def _init_lca(self):
         self.construction = [
@@ -1199,7 +1261,7 @@ class EL_System(SanUnit, isabstract=True):
        return ceil(self.ppl / self.baseline_ppl)
 # %%
 
-system_path = os.path.join(EL_su_data_path, '_EL_photovoltaic_wind.tsv')
+windSolar_path = os.path.join(EL_su_data_path, '_EL_photovoltaic_wind.tsv')
 
 @price_ratio()
 class EL_WindSolar(CSTR):
@@ -1230,7 +1292,7 @@ class EL_WindSolar(CSTR):
     _outs_size_is_fixed = False
     exponent_scale = 0.1
     ppl = 100
-    baseline_ppl =30
+    baseline_ppl = 100
     
     _D_O2 = 2.10e-9   # m2/s
 
@@ -1257,7 +1319,7 @@ class EL_WindSolar(CSTR):
             isdynamic=isdynamic, exogenous_vars=exogenous_vars, **kwargs
             )
        
-        data = load_data(path = system_path)
+        data = load_data(path = windSolar_path)
         for para in data.index:
             value = float(data.loc[para]['expected'])
             setattr(self, para, value)

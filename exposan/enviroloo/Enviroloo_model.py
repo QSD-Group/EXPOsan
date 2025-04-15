@@ -46,13 +46,13 @@ __all__ = ('create_model', 'run_uncertainty',)
 def add_metrics(model):
     el._load_lca_data() # load LCA data for EL system
     system = model.system
-    # Recoveries
-    funcs = get_recoveries(system)
-    metrics = [
-        Metric('Total N', funcs[0], '% N', 'N recovery'), #here the order of funcs in line with the function get_recoveries in _init_.py
-        Metric('Total P', funcs[1], '% P', 'P recovery'),
-        Metric('Total K', funcs[2], '% K', 'K recovery'),
-    ]
+    # Recoveries TODO: add recoveries to system?
+    # funcs = get_recoveries(system)
+    metrics = []
+    #     Metric('Total N', funcs[0], '% N', 'N recovery'), #here the order of funcs in line with the function get_recoveries in _init_.py
+    #     Metric('Total P', funcs[1], '% P', 'P recovery'),
+    #     Metric('Total K', funcs[2], '% K', 'K recovery'),
+    # ]
     # Net cost of the EL system in TEA
     metrics.append(
         Metric('Annual net cost', get_TEA_metrics(system)[0], f'{qs.currency}/cap/yr', 'TEA results'),
@@ -79,18 +79,13 @@ def load_el_su_data(file_name):
         return load_data(os.path.join(el_su_data_path, file_name))
     return load_data(os.path.join(su_data_path, file_name))
 
-# excretion_data = load_el_su_data('_EL_excretion.tsv')
-# toilet_data = load_el_su_data('_EL_toilet.tsv')
-# murt_data = load_el_su_data('_EL_murt.tsv')
+#TODO: standardize naming conventions
 CT_data = load_el_su_data('_EL_CT.tsv')
 PC_data = load_el_su_data('_EL_PC.tsv')
 AnoxicTank_data = load_el_su_data('_EL_Anoxic.tsv')
 AerobicTank_data = load_el_su_data('_EL_Aerobic.tsv')
 MembTank_data = load_el_su_data('_EL_MBR.tsv')
-# Blower = load_el_su_data('_EL_blower.tsv')
 ClearWaterTank_data = load_el_su_data('_EL_CWT.tsv')
-# PressureTank_data = load_el_su_data('_EL_PT.tsv.txt')
-# housing_data = load_el_su_data('_EL_housing.tsv')
 system_data = load_el_su_data('_EL_system.tsv')
 photovoltaic_wind_data = load_el_su_data('_EL_photovoltaic_wind.tsv')
 
@@ -101,22 +96,21 @@ def add_parameters(model, unit_dct, country_specific=False):
     param = model.parameter
     price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct  = update_resource_recovery_settings()
     
-    excretion_unit = unit_dct['Excretion']
 
     # if specific country is not selected, add these parameters below
     if not country_specific:
         # Price ratio
         # Just want to have this parameter so that can be used in other analyses,
         # set the distribution to be a really tight one
-        b = 1
-        D = shape.Uniform(lower=b-(10**(-6)), upper=b+(10**(-6)))
-        @param(name='Price ratio', element=excretion_unit, kind='cost', units='-',
-               baseline=b, distribution=D)
-        def set_price_ratio(i):
-            el.price_ratio = i
-            for u in sys.units:
-                if hasattr(u, 'price_ratio'):
-                    u.price_ratio = i
+        # b = 1
+        # D = shape.Uniform(lower=b-(10**(-6)), upper=b+(10**(-6)))
+        # @param(name='Price ratio', element=excretion_unit, kind='cost', units='-',
+        #        baseline=b, distribution=D)
+        # def set_price_ratio(i):
+        #     el.price_ratio = i
+        #     for u in sys.units:
+        #         if hasattr(u, 'price_ratio'):
+        #             u.price_ratio = i
 
         # price ratio
         #old_price_dct = price_dct.copy()
@@ -150,13 +144,7 @@ def add_parameters(model, unit_dct, country_specific=False):
                 #if hasattr(u, 'price_ratio'):
                     #u.price_ratio = i
         
-        # Household size
-        b = el.household_size
-        D = shape.Normal(mu = b, sigma = 0.012)
-        @param(name = 'Household size', element = excretion_unit, kind = 'coupled', units = 'cap/household',
-               baseline = b, distribution = D)
-        def set_household_size(i):
-            el.household_size = max(1, i)
+
         
         # Operator labor wage
         b = el.operator_daily_wage # operator_daily_wage is constant, needing initialization in _init_.py
@@ -217,89 +205,48 @@ def add_parameters(model, unit_dct, country_specific=False):
             def set_struvite_fert_price(i):
                 price_dct['struvite'] = sys_stream.liq_struvite.price = sys_stream.sol_struvite.price = i * el.price_factor
         
-        # Electricity price, set to zero as renewable assumption.
-        b = price_dct['Electricity']
-        D = shape.Triangle(lower = 0.00, midpoint = 0, upper = 0.00)
-        @param(name = 'Electricity price', element = 'TEA', kind = 'isolated', units = 'USD/kWh',
-               baseline = b, distribution = D)
-        def set_electricity_price(i):
-            PowerUtility.price = i
+        # # Electricity price, set to zero as renewable assumption.
+        # b = price_dct['Electricity']
+        # D = shape.Uniform(lower = 0.00, upper = 0.00)
+        # @param(name = 'Electricity price', element = 'TEA', kind = 'isolated', units = 'USD/kWh',
+        #        baseline = b, distribution = D)
+        # def set_electricity_price(i):
+        #     PowerUtility.price = i
 
-        # Electricity GWP, set to zero as renewable assumption
-        b = GWP_dct['Electricity']
-        D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
-        @param(name = 'Electricity CF', element = 'LCA', kind = 'isolated', units = 'kg CO2-eq/kWh',
-               baseline = b, distribution = D)
-        def set_electricity_CF(i):
-            GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
+        # # Electricity GWP, set to zero as renewable assumption
+        # b = GWP_dct['Electricity']
+        # D = shape.Uniform(lower = b * 0.9, upper = b * 1.1)
+        # @param(name = 'Electricity CF', element = 'LCA', kind = 'isolated', units = 'kg CO2-eq/kWh',
+        #        baseline = b, distribution = D)
+        # def set_electricity_CF(i):
+        #     GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
         
-        # Electricity H_Ecosystems, if applicable
-        b = H_Ecosystems_dct['Electricity']
-        D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
-        @param(name = 'Electricity Ecosystems CF', element = 'LCA', kind = 'isolated', units = 'points/kWh',
-               baseline = b, distribution = D)
-        def set_electricity_ecosystems_CF(i):
-            H_Ecosystems_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Ecosystems'] = i
+        # # Electricity H_Ecosystems, if applicable
+        # b = H_Ecosystems_dct['Electricity']
+        # D = shape.Uniform(lower = b * 0.9, upper = b * 1.1)
+        # @param(name = 'Electricity Ecosystems CF', element = 'LCA', kind = 'isolated', units = 'points/kWh',
+        #        baseline = b, distribution = D)
+        # def set_electricity_ecosystems_CF(i):
+        #     H_Ecosystems_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Ecosystems'] = i
         
-        # Electricity H_Health, if applicable
-        b = H_Health_dct['Electricity']
-        D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
-        @param(name = 'Electricity Health CF', element = 'LCA', kind = 'isolated', units = 'points/kWh',
-               baseline = b, distribution = D)
-        def set_electricity_health_CF(i):
-            H_Health_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Health'] = i
+        # # Electricity H_Health, if applicable
+        # b = H_Health_dct['Electricity']
+        # D = shape.Uniform(lower = b * 0.9, upper = b * 1.1)
+        # @param(name = 'Electricity Health CF', element = 'LCA', kind = 'isolated', units = 'points/kWh',
+        #        baseline = b, distribution = D)
+        # def set_electricity_health_CF(i):
+        #     H_Health_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Health'] = i
         
-        # Electricity H_Resources, if applicable
-        b = H_Resources_dct['Electricity']
-        D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
-        @param(name = 'Electricity Resources CF', element = 'LCA', kind = 'isolated', units = 'points/kWh',
-               baseline = b, distribution = D)
-        def set_electricity_resources_CF(i):
-            H_Resources_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Resources'] = i
+        # # Electricity H_Resources, if applicable
+        # b = H_Resources_dct['Electricity']
+        # D = shape.Uniform(lower = b * 0.9, upper = b * 1.1)
+        # @param(name = 'Electricity Resources CF', element = 'LCA', kind = 'isolated', units = 'points/kWh',
+        #        baseline = b, distribution = D)
+        # def set_electricity_resources_CF(i):
+        #     H_Resources_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Resources'] = i
     
     ############################# Specific Units having parameters engaged with uncertainty and sensitivity analysis ###############################
-    # In diet and excretion section
-    exclude = ('e_cal', 'p_anim', 'p_veg') if country_specific else () # e_cal: caloric_intake, p_anim: protein_animal_intake, 
-                                                                        # p_veg: protein_vegetal_intake, all defined in _Excretion.tsv.
-    #batch_setting_unit_params(excretion_data, model, excretion_unit, exclude)
-    
-    # In toilet section TODO: murt toilet removed, is anything added in place?
-    # murt_unit = unit_dct.get('Toilet')
-    # if murt_unit:
-    #     exclude = ('MCF_decay', 'N2O_EF_decay', 'OPEX_over_CAPEX')
-    #     batch_setting_unit_params(murt_data, model, murt_unit, exclude)
 
-    #     b = murt_unit.OPEX_over_CAPEX
-    #     D = shape.Uniform(lower=0.02, upper=0.08)
-    #     @param(name='MURT operating cost', element=murt_unit, kind='coupled', units='cost',
-    #            baseline=b, distribution=D)
-    #     def set_OPEX_over_CAPEX(i):
-    #         murt_unit.OPEX_over_CAPEX = i
-
-    #     b = murt_unit.MCF_decay
-    #     D = shape.Triangle(lower=0.05, midpoint=b, upper=0.15)
-    #     @param(name='MCF_decay', element=murt_unit, kind='coupled',
-    #            units='fraction of anaerobic conversion of degraded COD',
-    #            baseline=b, distribution=D)
-    #     def set_MCF_decay(i):
-    #         murt_unit.MCF_decay = i
-
-    #     b = murt_unit.N2O_EF_decay
-    #     D = shape.Triangle(lower=0, midpoint=b, upper=0.001)
-    #     @param(name='N2O_EF_decay', element=murt_unit, kind='coupled',
-    #            units='fraction of N emitted as N2O',
-    #            baseline=b, distribution=D)
-    #     def set_N2O_EF_decay(i):
-    #         murt_unit.N2O_EF_decay = i
-    
-    # b = el.household_per_toilet
-    # D = shape.Uniform(lower = 3, upper = 5)
-    # @param(name = 'Toilet density', element = murt_unit, kind = 'coupled', units = 'household/toilet',
-    #        baseline = b, distribution = D)
-    # def set_toilet_density(i):
-    #     el.household_per_toilet = i
-
-    # In Collection Tank
     CT_unit = unit_dct['Collection_Tank']
     if CT_unit: 
         batch_setting_unit_params(CT_data, model, CT_unit)
@@ -318,121 +265,65 @@ def add_parameters(model, unit_dct, country_specific=False):
     AeroT_unit = unit_dct['AerobicTank']
     if AeroT_unit: 
         batch_setting_unit_params(AerobicTank_data, model, AeroT_unit)
-
-#    # In Blower for Aerobic Tank
- #   Blower_AeroT_unit = unit_dct['AerobicTankBlower']
-  #  if Blower_AeroT_unit: 
-   #     batch_setting_unit_params(Blower, model, Blower_AeroT_unit)
     
     # In Membrane Tank
     MembT_unit = unit_dct['MembraneTank']
     if MembT_unit: 
         batch_setting_unit_params(MembTank_data, model, MembT_unit)
     
-#    # In Membrane Tank Blower
- #   Blower_MembT_unit = unit_dct['MembraneTankBlower']
-  #  if Blower_MembT_unit: 
-   #     batch_setting_unit_params(Blower, model, Blower_MembT_unit)
-    
     # In Clear Water Tank
     ClearWaterT_unit = unit_dct['ClearWaterTank']
     if ClearWaterT_unit: 
         batch_setting_unit_params(ClearWaterTank_data, model, ClearWaterT_unit)
     
-  #  # In Pressure Tank
-  #  PressureT_unit = unit_dct['PressureTank']
-  #  if PressureT_unit: 
-  #      batch_setting_unit_params(PressureTank_data, model, PressureT_unit)
 
     # EL housing
     #housing_unit = unit_dct['Housing']
     #batch_setting_unit_params(housing_data, model, housing_unit)
 
-    # EL system for connection
-    connection_unit = unit_dct['Connection']
-    if connection_unit:
-        batch_setting_unit_params(system_data, model, connection_unit)
 
     ################################################ Universal degradation parameters ##########################################################
-    # Max methane emission
-    toilet_unit = sys.path[1] # the first unit involving degradation
-    # toilet_unit = toilet_unit  # the first unit involving degradation
-    b = el.max_CH4_emission
-    D = shape.Triangle(lower = 0.175, midpoint = b, upper = 0.325)
-    @param(name = 'Max CH4 emission', element = toilet_unit, kind = 'coupled', units = 'g CH4/g COD',
-           baseline = b, distribution = D)
-    def set_max_CH4_emission(i):
-        el.max_CH4_emission = i
-        for unit in sys.units:
-            if hasattr(unit, 'max_CH4_emission'):
-                setattr(unit, 'max_CH4_emission', i)
+    #TODO: system does not have emissions from run processes
+    # # Max methane emission
+    # toilet_unit = sys.path[1] # the first unit involving degradation
+    # # toilet_unit = toilet_unit  # the first unit involving degradation
+    # b = el.max_CH4_emission
+    # D = shape.Triangle(lower = 0.175, midpoint = b, upper = 0.325)
+    # @param(name = 'Max CH4 emission', element = toilet_unit, kind = 'coupled', units = 'g CH4/g COD',
+    #        baseline = b, distribution = D)
+    # def set_max_CH4_emission(i):
+    #     el.max_CH4_emission = i
+    #     for unit in sys.units:
+    #         if hasattr(unit, 'max_CH4_emission'):
+    #             setattr(unit, 'max_CH4_emission', i)
     
-    # time to full degradation
-    b =el.tau_deg
-    D = shape.Uniform(lower = 1, upper = 3)
-    @param(name = 'Time to full degradation', element = toilet_unit, kind = 'coupled', units = 'yr',
-           baseline = b, distribution = D)
-    def set_tau_deg(i):
-        el.tau_deg = i
-        k = get_decay_k(i, el.log_deg)
-        for unit in sys.units:
-            if hasattr(unit, 'decay_k_COD'):
-                setattr(unit, 'decay_k_COD', k)
-            if hasattr(unit, 'decay_k_N'):
-                setattr(unit, 'decay_k_N', k)
+    # # time to full degradation
+    # b =el.tau_deg
+    # D = shape.Uniform(lower = 1, upper = 3)
+    # @param(name = 'Time to full degradation', element = toilet_unit, kind = 'coupled', units = 'yr',
+    #        baseline = b, distribution = D)
+    # def set_tau_deg(i):
+    #     el.tau_deg = i
+    #     k = get_decay_k(i, el.log_deg)
+    #     for unit in sys.units:
+    #         if hasattr(unit, 'decay_k_COD'):
+    #             setattr(unit, 'decay_k_COD', k)
+    #         if hasattr(unit, 'decay_k_N'):
+    #             setattr(unit, 'decay_k_N', k)
 
-    # reduction at full degradation
-    b = el.log_deg
-    D = shape.Uniform(lower = 2, upper = 4)
-    @param(name = 'Log of degradation rate', element = toilet_unit, kind = 'coupled', units = '-',
-           baseline = b, distribution = D)
-    def set_log_deg(i):
-        el.log_deg = i
-        k = get_decay_k(el.tau_deg, i)
-        for unit in sys.units:
-            if hasattr(unit, 'decay_k_COD'):
-                setattr(unit, 'decay_k_COD', k)
-            if hasattr(unit, 'decay_k_N'):
-                setattr(unit, 'decay_k_N', k)
-    
-    # # toilet material properties
-    # density = toilet_unit.density_dct
-    # #########################################################################################################################
-    # b = density['Plastic']
-    # D = shape.Uniform(lower = 0.31, upper = 1.24)
-    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Plastic'),
-    #       name = 'Density of plastic', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-    #       baseline = b, distribution = D)
-    # ########################################################################################################################
-    # b = density['Brick']
-    # D = shape.Uniform(lower = 1500, upper = 2000)
-    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Brick'),
-    #       name = 'Density of brick', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-    #       baseline = b, distribution = D)
-    # ########################################################################################################################
-    # b = density['StainlessSteelSheet']
-    # D = shape.Uniform(lower = 2.26, upper = 3.58)
-    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'StainlessSteelSheet'),
-    #       name = 'Density of stainless steel sheet', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-    #       baseline = b, distribution = D)
-    # ########################################################################################################################
-    # b = density['Gravel']
-    # D = shape.Uniform(lower = 1520, upper = 1680)
-    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Gravel'),
-    #       name = 'Density of gravel', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-    #       baseline = b, distribution = D)
-    # ########################################################################################################################      
-    # b = density['Sand']
-    # D = shape.Uniform(lower = 1281, upper = 1602)
-    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Sand'),
-    #       name = 'Density of sand', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-    #       baseline = b, distribution = D)
-    # #########################################################################################################################
-    # b = density['Steel']
-    # D = shape.Uniform(lower = 7750, upper = 8050)
-    # param(setter = DictAttrSetter(toilet_unit, 'density_dct', 'Steel'),
-    #       name = 'Density of steel', element = toilet_unit, kind = 'isolated', units = 'kg/m3',
-    #       baseline = b, distribution = D)
+    # # reduction at full degradation
+    # b = el.log_deg
+    # D = shape.Uniform(lower = 2, upper = 4)
+    # @param(name = 'Log of degradation rate', element = toilet_unit, kind = 'coupled', units = '-',
+    #        baseline = b, distribution = D)
+    # def set_log_deg(i):
+    #     el.log_deg = i
+    #     k = get_decay_k(el.tau_deg, i)
+    #     for unit in sys.units:
+    #         if hasattr(unit, 'decay_k_COD'):
+    #             setattr(unit, 'decay_k_COD', k)
+    #         if hasattr(unit, 'decay_k_N'):
+    #             setattr(unit, 'decay_k_N', k)
     
     ################################################# General TEA Settings ##################################################
     # Discount rate if changing in TEA
@@ -458,25 +349,6 @@ def add_parameters(model, unit_dct, country_specific=False):
             baseline = b, distribution = D)
     def set_emptying_fee(i):
         el.emptying_fee = i    
-    
-    # Some chemicals defined in price_dct of _init_.py need update, the below format can be used to add it for uncertainty analysis
-    # NaOH
-    # b = price_dct['NaOH']
-    # D = shape.Uniform(lower = (b * 0.9), upper = (b * 1.1)) # here (b * 0.9), for example, 
-    #                                                          #can enable b firstly to be calculated if b was present in terms of complicate,
-    #                                                          # explicit formulas.
-    # @param(name = 'Price of NaOH', element = 'TEA', kind = 'isolated', units = 'USD/kg NaOH',
-    #       baseline = (b), distribution = D)
-    # def set_NaOH_price(i):
-    #     price_dct['NaOH'] = sys_stream.NaOH.price = i
-    
-    # # NaClO   
-    # b = price_dct['NaClO']
-    # D = shape.Uniform(lower = (b * 0.9), upper = (b * 1.1))
-    # @param(name = 'Price of NaClO', element = 'TEA', kind = 'isolated', units = 'USD/kg NaClO',
-    #       baseline = (b), distribution = D)
-    # def set_NaClO_price(i):
-    #     price_dct['NaClO'] = sys_stream.NaClO.price = i
     
     # #PAC
     # b = price_dct['PAC']
@@ -530,64 +402,6 @@ def add_parameters(model, unit_dct, country_specific=False):
           baseline = b, distribution = D)
     def set_N2O_Health_CF(i):
         H_Health_dct['N2O'] = ImpactItem.get_item('N2O_item').CFs['H_Health'] = i
-    
-    # # NaOH in GWP, H_Ecosystems, H_Health, H_Resources
-    # b = GWP_dct['NaOH']
-    # D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
-    # @param(name = 'NaOH CF', element = 'LCA', kind = 'isolated', units = 'kg CO2-eq/kg NaOH',
-    #       baseline = b, distribution = D)
-    # def set_NaOH_CF(i):
-    #     GWP_dct['NaOH'] = ImpactItem.get_item('NaOH_item').CFs['GlobalWarming'] = i
-    
-    # b = H_Ecosystems_dct['NaOH']
-    # D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
-    # @param(name = 'NaOH Ecosystems CF', element = 'LCA', kind = 'isolated', units = 'points/kg NaOH',
-    #       baseline = b, distribution = D)
-    # def set_NaOH_Ecosystems_CF(i):
-    #     H_Ecosystems_dct['NaOH'] = ImpactItem.get_item('NaOH_item').CFs['H_Ecosystems'] = i
-
-    # b = H_Health_dct['NaOH']
-    # D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
-    # @param(name = 'NaOH Health CF', element = 'LCA', kind = 'isolated', units = 'points/kg NaOH',
-    #       baseline = b, distribution = D)
-    # def set_NaOH_Health_CF(i):
-    #     H_Health_dct['NaOH'] = ImpactItem.get_item('NaOH_item').CFs['H_Health'] = i
-    
-    # b = H_Resources_dct['NaOH']
-    # D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
-    # @param(name = 'NaOH Resources CF', element = 'LCA', kind = 'isolated', units = 'points/kg NaOH',
-    #       baseline = b, distribution = D)
-    # def set_NaOH_Resources_CF(i):
-    #     H_Resources_dct['NaOH'] = ImpactItem.get_item('NaOH_item').CFs['H_Resources'] = i
-    
-    # # NaClO in GWP, H_Ecosystems, H_Health, H_Resources
-    # b = H_GWP_dct['NaClO']
-    # D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
-    # @param(name = 'NaClO CF', element = 'LCA', kind = 'isolated', units = 'kg CO2-eq/kg NaClO',
-    #       baseline = b, distribution = D)
-    # def set_NaClO_CF(i):
-    #     H_GWP_dct['NaClO'] = ImpactItem.get_item('NaClO_item').CFs['GlobalWarming'] = i
-    
-    # b = H_Ecosystems_dct['NaClO']
-    # D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
-    # @param(name = 'NaClO Ecosystems CF', element = 'LCA', kind = 'isolated', units = 'points/kg NaClO',
-    #       baseline = b, distribution = D)
-    # def set_NaClO_Ecosystems_CF(i):
-    #     H_Ecosystems_dct['NaClO'] = ImpactItem.get_item('NaClO_item').CFs['H_Ecosystems'] = i
-    
-    # b = H_Health_dct['NaClO']
-    # D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
-    # @param(name = 'NaClO Health CF', element = 'LCA', kind = 'isolated', units = 'points/kg NaClO',
-    #       baseline = b, distribution = D)
-    # def set_NaClO_Health_CF(i):
-    #     H_Health_dct['NaClO'] = ImpactItem.get_item('NaClO_item').CFs['H_Health'] = i
-    
-    # b = H_Resources_dct['NaClO']
-    # D = shape.Triangle(lower = b * 0.9, midpoint = b, upper = b * 1.1)
-    # @param(name = 'NaClO Resources CF', element = 'LCA', kind = 'isolated', units = 'points/kg NaClO',
-    #       baseline = b, distribution = D)
-    # def set_NaClO_Resources_CF(i):
-    #     H_Resources_dct['NaClO'] = ImpactItem.get_item('NaClO_item').CFs['H_Resources'] = i
     
     # # PAC in GWP, H_Ecosystems, H_Health, H_Resources
     b = GWP_dct['PAC']
@@ -800,34 +614,16 @@ def create_modelEL(country_specific=False, **model_kwargs):
 
     modelEL = Model(sysEL, **model_kwargs)
     add_metrics(modelEL)
+    
+    #TODO: change names to match the proper unit names in system
     unit_dctEL = { # name here needs to be aligned with those in Enviroloo_system.py (!!!)
-        'Excretion': unitEL.WasteWaterGenerator,
-        'Toilet': unitEL.Toilet,
         'Collection_Tank': unitEL.CT,
-        # # 'Lifting_Pump': unitEL.P_CT_lift,
         'PrimaryClarifierTank': unitEL.PC,
-        # 'PrimaryClarifierReturnPump': unitEL.P_PC_return,
-        'AnoxicTank': unitEL.AnoxT,
-        # # 'GlucoseAgitationPump': unitEL.P_Glu_agitation,
-        # # 'GlucoseDosingPump': unitEL.P_Glu_dosing,
-        # # 'AnoxicTankAgitationPump': unitEL.P_AnoxT_agitation,
-        'AerobicTank': unitEL.AeroT,
-        # # 'PACAgitationPump': unitEL.P_PAC_agitation,
-        # # 'PACDosingPump': unitEL.P_PAC_dosing,
-        'AerobicTankBlower': unitEL.B_AeroT,
-        'MembraneTank': unitEL.MembT,
-        # # 'NitrateReturnPumpToPC': unitEL.P_NitrateReturn_PC,
-        # # 'NitrateReturnPumpToAnoxicTank': unitEL.P_NitrateReturn_AnoxT,
-        'MembraneTankBlower': unitEL.B_MembT,
-        # # 'SelfPrimingPump': unitEL.P_MT_selfpriming,
+        'AnoxicTank': unitEL.A1,
+        'AerobicTank': unitEL.O1,
+        'MembraneTank': unitEL.B1,
         'ClearWaterTank': unitEL.CWT,
-        # # 'O3Generator': unitEL.O3_gen,
-        # # 'O3DosingPump': unitEL.P_O3_dosing,
-        # # 'AirDissolvedPump': unitEL.P_AirDissolvedP,
-        # # 'PressurePumptoClearWater': unitEL.P_CWT,
-        'PressureTank': unitEL.PT,
-        'Connection': unitEL.Pipeline_system,
-        'PhotovoltaicWind': unitEL.photovoltaic_wind
+        'PhotovoltaicWind': unitEL.PV
         }
     add_parameters(modelEL, unit_dctEL, country_specific)
     
@@ -847,7 +643,7 @@ def run_uncertainty(model, path='', N = 10, rule = 'L', T = 2, t_step = .01, **k
     kwargs['path'] = os.path.join(results_path, f'sys{model.system.ID[-1]}_model.xlsx') if path=='' else path
     
     #generate sample
-    sample = model.sample(N = 10, rule = 'L')
+    sample = model.sample(N = N, rule = rule)
     
     run_model(model=model, sample=sample, T=T, t_step=t_step, method='BDF', mpath='', tpath='', seed=None)
 
