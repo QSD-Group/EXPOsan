@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Apr  3 14:43:51 2025
+'''
+EXPOsan: Exposition of sanitation and resource recovery systems
 
-@author: joy_c
-"""
+This module is developed by:
+    
+    Joy Zhang <joycheung1994@gmail.com>
+
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
+'''
 
 import qsdsan as qs
 from qsdsan.sanunits import Splitter
