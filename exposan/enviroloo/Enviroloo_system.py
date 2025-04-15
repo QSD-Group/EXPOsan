@@ -257,8 +257,8 @@ def create_components(set_thermo = True
     cmps = Components([*masm2d_cmps, 
                        # Tissue, WoodAsh, H2O,
                        ])
-    cmps.compile()
-    # cmps.compile(ignore_inaccurate_molar_weight=True)
+    #cmps.compile()
+    cmps.compile(ignore_inaccurate_molar_weight=True)
     if set_thermo: qs.set_thermo(cmps)
     return cmps
 #%%
@@ -282,7 +282,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     kwargs_1 = dict(V_max=6.35, aeration=None, DO_ID=None, suspended_growth_model=masm2d)
     # kwargs_2 = dict(V_max=2.89, aeration=2, DO_ID='S_O2', suspended_growth_model=masm2d)
     
-
+    
     # CT = su.Mixer('CT', 
     #               # ins=(toilet_ins, 'sludge_PC', 'flushing_water_CT', 'spill_PC'), 
     #               ins=(toilet_ins, 'sludge_PC',), 
@@ -376,7 +376,9 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     
     tea1 = qs.TEA(system=sys, discount_rate=0.05, lifetime=10, simulate_system=False)
     lca1 = qs.LCA(system=sys, lifetime=10, lifetime_unit='yr',indicators=(GWP, Ecosystems, Health, Resources), simulate_system=False)
-
+    
+    
+    
     return sys
 
 
@@ -401,7 +403,7 @@ def run(t, method=None, **kwargs):
 
     
 if __name__ == '__main__':
-    t = 15
+    t = 2
     # method = 'RK45'
     method = 'RK23' 
     # method = 'DOP853'
