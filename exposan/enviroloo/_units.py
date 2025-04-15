@@ -240,7 +240,7 @@ class EL_PC(IdealClarifier):
     - Inherits from `SanUnit`, not `IdealClarifier`, for flexibility.
     """
 
-    _N_ins = 1
+    _N_ins = 2
     _N_outs = 2  # [0] effluent overflow, [1] sludge underflow
     _outs_size_is_fixed = True
     exponent_scale = 0.1
