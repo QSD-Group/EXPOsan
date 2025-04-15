@@ -25,63 +25,6 @@ def create_components(set_thermo = True
                       ):
     # bw_cmps = create_bw_components(set_thermo=False)
     masm2d_cmps = pc.create_masm2d_cmps(set_thermo=False)
-    # Tissue = Component('Tissue', MW=1, phase='s', particle_size='Particulate',
-    #                     degradability='Undegradable', organic=False,
-    #                     description='Tissue for toilet paper')
-    # # 375 kg/m3 is the average of 250-500 for tissue from
-    # # https://paperonweb.com/density.htm (accessed 2020-11-12)
-    # add_V_from_rho(Tissue, 375)
-
-    # WoodAsh = Component('WoodAsh', MW=1, phase='s', i_Mg=0.0224, i_Ca=0.3034,
-    #                     particle_size='Particulate', degradability='Undegradable',
-    #                     organic=False, description='Wood ash for desiccant')
-    # add_V_from_rho(WoodAsh, 760)
-
-    # for i in (Tissue, WoodAsh):
-    #     i.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
-    
-    # H2O = Component('H2O', phase='l', particle_size='Soluble',
-    #                 degradability='Undegradable', organic=False)
-
-    # C = Component('C', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
-    
-    # SolubleCH4 = Component('SolubleCH4', search_ID='CH4', phase='l', particle_size='Soluble', degradability='Slowly', organic=True)
-
-    # PAC = Component('PAC', search_ID='10124-27-3', phase='s', particle_size='Particulate', degradability='Slowly', organic=False)
-    # add_V_from_rho(PAC, rho=2800)
-                    
-    # # Glucose = Component('Glucose', search_ID='50-99-7', phase='s', particle_size='Particulate', degradability='Readily', organic=False)
-    # # add_V_from_rho(Glucose, rho=1560)
-
-    # Glucose = Component('Glucose', search_ID='50-99-7', phase='l', particle_size='Soluble', degradability='Readily', organic=True)
-    # add_V_from_rho(Glucose, rho=1560)
-          
-    # O3 = Component('O3', search_ID='10028-15-6', phase='g', particle_size='Dissolved gas', degradability='Readily', organic=False)
-          
-          
-    # NaOH = Component('NaOH', search_ID='1310-73-2', phase='s', particle_size='Particulate', degradability='Readily', organic=False)
-    # add_V_from_rho(NaOH, rho=2130)
-          
-    # NaClO = Component('NaClO', search_ID='7681-52-9', phase='s', particle_size='Particulate', degradability='Readily', organic=False)
-    # add_V_from_rho(NaClO, rho=1250)
-    
-    # # NO3 = Component('NO3', measured_as = 'N', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
-    # # add_V_from_rho(NO3, rho=1.15) # need check
-          
-    # #NH3_l = Component('NH3_l', measured_as = 'N', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False)
-          
-    # #NonNH3 = Component('NonNH3', formula = 'N', measured_as = 'N', phase='l', particle_size='Soluble', degradability='Undegradable', organic=False, description='Non-NH3');
-          
-    # air = Component('air', search_ID='17778-88-0', phase='g', particle_size='Dissolved gas',
-    #                 degradability='Readily', organic=False)
-    #                 # 1.204 kg/m3, cited from https://en.wikipedia.org/wiki/Density_of_air#:~:text=Air%20density%2C%20like%20air%20pressure,International%20Standard%20Atmosphere%20(ISA).
-    # add_V_from_rho(air, rho=1.204)
-
-    #allowed_values = {
-    #'particle_size': ('Dissolved gas', 'Soluble', 'Colloidal', 'Particulate'),
-    #'degradability': ('Readily', 'Slowly', 'Undegradable'),
-    #'organic': (True, False)}
-          
     cmps = Components((*masm2d_cmps, 
                        # Tissue, WoodAsh, H2O,
                        # C, SolubleCH4, 
@@ -96,8 +39,8 @@ def create_components(set_thermo = True
     #     for attr in ('HHV', 'LHV', 'Hf'):
     #         if getattr(i, attr) is None: setattr(i, attr, 0)
 
-    #cmps.compile()    
-    cmps.compile(ignore_inaccurate_molar_weight=True) #override for runtime error where N2_S molecular weight was not found
+    cmps.compile()    
+    # cmps.compile(ignore_inaccurate_molar_weight=True) #override for runtime error where N2_S molecular weight was not found
 
     # cmps.set_alias('H2O', 'Water')
     # #cmps.set_alias('CO2', 'Carbon Dioxide')
