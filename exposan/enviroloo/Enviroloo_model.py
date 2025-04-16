@@ -58,7 +58,7 @@ def add_metrics(model):
     # ]
     # Net cost of the EL system in TEA
     metrics.append(
-        Metric('Annual net cost', get_TEA_metrics(system), f'{qs.currency}/cap/yr', 'TEA results'),
+        Metric('Annual net cost', get_TEA_metrics(system)[0], f'{qs.currency}/cap/yr', 'TEA results'),
         #Metric('Annual net cost', get_TEA_metrics_breakdown(system), f'{qs.currency}/cap/yr', 'TEA results'),
         )
     # Net emissions of the EL system in LCA
@@ -643,33 +643,29 @@ def create_model(model_ID='EL', country_specific=False, **model_kwargs):
     return model
 
 # define runing function intializing uncertainty and sensitivity analysis, TODO: make kwargs changeable
-def run_uncertainty(model, path='', mpath='', N = 10, rule = 'L', T = 2, t_step = .01, **kwargs):
-    kwargs['path'] = os.path.join(results_path, f'sys{model.system.ID[-1]}_model.xlsx') if path=='' else path
-    
+def run_uncertainty(model, N=10, rule='L', T=2, t_step=.01, mpath='', **kwargs):
     #generate sample
     sample = model.sample(N = N, rule = rule)
     
-    run_model(model=model, sample=sample, T=T, t_step=t_step, method='RK23', mpath=mpath, tpath='', seed=None)
+    run_model(model, sample, T=T, t_step=t_step, method='RK23', mpath=mpath)
 
     return
 
 def run_model(model, sample, T=2, t_step=.1, method='BDF', 
               mpath='', tpath='', seed=None):
-    name = model.system.ID.rstrip('_edg')
     model.load_samples(sample)
     t_span = (0, T)
     t_eval = np.arange(0, T+t_step, t_step)
-    suffix = f'_{seed}' if seed else ''
     
     #mpath for metrics data
     mpath = mpath or os.path.join(results_path, 'enviroloo_results.xlsx')
     
     #tpath for time-series data
-    
     if not tpath:
         folder = os.path.join(results_path, 'enviroloo_time_series')
-        os.mkdir(folder)
-        tpath = os.path.join(folder, 'state.npy')    
+        if not os.path.isdir(folder): os.mkdir(folder)
+        tpath = os.path.join(folder, 'state.npy')
+    
     model.evaluate(
         state_reset_hook='reset_cache',
         t_span=t_span,

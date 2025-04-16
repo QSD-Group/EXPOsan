@@ -251,7 +251,9 @@ def _load_system():
 
 def load():
     if not _components_loaded: _load_components()
-    if not _system_loaded: _load_system()     
+    if not _system_loaded: _load_system()
+    _load_lca_data()
+    
     dct = globals()
     for sys in (sysEL,): #dct.update(sys.flowsheet.to_dct())
         flowsheet = sys.flowsheet

@@ -28,23 +28,19 @@ This python file is used to perform uncertainty and sensitivity analysis for Env
 
 # %% 
 import qsdsan as qs
-from qsdsan import (
-    Flowsheet, main_flowsheet,
-    WasteStream,
-    sanunits as su,
-    ImpactItem, 
-    LCA, TEA, System,
-    )
-from qsdsan.sanunits import Trucking
-from chaospy import distributions as shape
-from qsdsan.utils import clear_lca_registries
+# from qsdsan import (
+#     Flowsheet, main_flowsheet,
+#     WasteStream,
+#     sanunits as su,
+#     ImpactItem, 
+#     LCA, TEA, System,
+#     )
+# from qsdsan.sanunits import Trucking
+# from chaospy import distributions as shape
+# from qsdsan.utils import clear_lca_registries
 # from qsdsan.sanunits._excretion import ExcretionmASM2d
 
 # from qsdsan.utils import load_components, set_thermo
-
-
-import qsdsan as qs
-import os
 
 from qsdsan.utils import (
     ospath, 
@@ -53,32 +49,32 @@ from qsdsan.utils import (
     get_SRT,
     )
 
-from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
-from exposan.utils import add_V_from_rho
-from exposan.bwaise import create_components as create_bw_components
-import numpy as np
-from qsdsan import processes as pc, sanunits as su, Model as mod
-from chaospy import distributions as shape
+# from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
+# from exposan.utils import add_V_from_rho
+# from exposan.bwaise import create_components as create_bw_components
+# import numpy as np
+from qsdsan import Components, processes as pc, sanunits as su#, Model as mod
+# from chaospy import distributions as shape
 
 
-from exposan.utils import add_fugitive_items
+# from exposan.utils import add_fugitive_items
 from exposan.enviroloo import _units as elu
 from exposan.enviroloo import (
     data_path,
-    _load_components,
-    _load_lca_data,
-    discount_rate,
-    get_decay_k,
-    get_toilet_users,
-    max_CH4_emission,
-    operator_daily_wage,
+    # _load_components,
+    # _load_lca_data,
+    # discount_rate,
+    # get_decay_k,
+    # get_toilet_users,
+    # max_CH4_emission,
+    # operator_daily_wage,
     ppl,
-    #get_tanker_truck_fee
-    update_resource_recovery_settings,
+    # get_tanker_truck_fee
+    # update_resource_recovery_settings,
     )
-from exposan.enviroloo._EL_pumps import (
-    LiftPump, AgitationPump, DosingPump, ReturnPump, SelfPrimingPump, 
-    AirDissolvedPump, MicroBubblePump, ClearWaterPump,)
+# from exposan.enviroloo._EL_pumps import (
+#     LiftPump, AgitationPump, DosingPump, ReturnPump, SelfPrimingPump, 
+#     AirDissolvedPump, MicroBubblePump, ClearWaterPump,)
 from exposan import enviroloo as el
 
 folder = ospath.dirname(__file__)
@@ -381,10 +377,9 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     Health = qs.ImpactIndicator('H_Health', alias='Health', unit='points')
     Resources = qs.ImpactIndicator('H_Resources', alias='Resources', unit='points')
     
-    tea1 = qs.TEA(system=sys, discount_rate=0.05, lifetime=10, simulate_system=False)
-    lca1 = qs.LCA(system=sys, lifetime=10, lifetime_unit='yr',indicators=(GWP, Ecosystems, Health, Resources), simulate_system=False)
-    
-    
+    tea = qs.TEA(system=sys, discount_rate=0.05, lifetime=10, simulate_system=False)
+    lca = qs.LCA(system=sys, lifetime=10, lifetime_unit='yr',
+                 indicators=(GWP, Ecosystems, Health, Resources), simulate_system=False)  
     
     return sys
 
