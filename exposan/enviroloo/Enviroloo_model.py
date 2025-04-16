@@ -27,8 +27,9 @@ from exposan.enviroloo import (
     #el_data_path,
     data_path,
     get_decay_k,
-    get_LCA_metrics,
-    get_TEA_metrics,
+    get_LCA_metrics_breakdown,
+    get_TEA_metrics_breakdown,
+    get_normalized_CAPEX,
     get_recoveries,
     results_path,
     update_resource_recovery_settings,
@@ -55,10 +56,10 @@ def add_metrics(model):
     # ]
     # Net cost of the EL system in TEA
     metrics.append(
-        Metric('Annual net cost', get_TEA_metrics(system)[0], f'{qs.currency}/cap/yr', 'TEA results'),
+        Metric('Annual net cost', get_TEA_metrics_breakdown(system), f'{qs.currency}/cap/yr', 'TEA results'),
         )
     # Net emissions of the EL system in LCA
-    funcs = get_LCA_metrics(system)  # extract LCA metrics from the EL system's LCA results
+    funcs = get_LCA_metrics_breakdown(system)  # extract LCA metrics from the EL system's LCA results
     cat = 'LCA results'  # assign the same index to all LCA metrics
     metrics.extend([
         Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),

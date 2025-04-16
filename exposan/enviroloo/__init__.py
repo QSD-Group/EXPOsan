@@ -371,7 +371,7 @@ def get_TEA_metrics(system, include_breakdown=False):
         lambda: get_annual_electricity(system) / ppl, # means annual electricity consumption
         lambda: tea.annual_labor / ppl, # means annual labor cost
         lambda: (tea.AOC - get_annual_electricity(system) - tea.annual_labor) / ppl, # means OPEX excluding energy and labor sectors
-        lambda: tea.sales / ppl, # means sales incoming
+        lambda: 0 #tea.sales / ppl, # means sales incoming
         ]
 
 def get_TEA_metrics_breakdown(system, include_breakdown=True):
@@ -382,7 +382,7 @@ def get_TEA_metrics_breakdown(system, include_breakdown=True):
         'Annual electricity': get_annual_electricity(system) / ppl,
         'Annual labor': tea.annual_labor / ppl,
         'OPEX (excl. energy & labor)': (tea.AOC - get_annual_electricity(system) - tea.annual_labor) / ppl,
-        'Sales Income': tea.sales / ppl
+        'Sales Income': 0 # tea.sales / ppl
     }
     
     net_cost = (get_scaled_capital(tea) - tea.net_earnings) / ppl
@@ -406,7 +406,7 @@ def get_TEA_metrics_breakdown(system, include_breakdown=True):
     
     print("-" * 75)
     print(f"{'Total Cost':<35} {total_cost:>10.2f} {100:>13.1f}% {'USD/cap/yr':>15}")
-    print(f"{'Sales Income':<35} {metrics['Sales Income']:>10.2f} {' ':>13} {'USD/cap/yr':>15}")
+#    print(f"{'Sales Income':<35} {metrics['Sales Income']:>10.2f} {' ':>13} {'USD/cap/yr':>15}")
     print(f"{'Net Cost':<35} {net_cost:>10.2f} {' ':>13} {'USD/cap/yr':>15}")
     print("-" * 75)
     
