@@ -649,7 +649,7 @@ def run_uncertainty(model, path='', mpath='', N = 10, rule = 'L', T = 2, t_step 
     #generate sample
     sample = model.sample(N = N, rule = rule)
     
-    run_model(model=model, sample=sample, T=T, t_step=t_step, method='RK23', mpath=mpath, tpath='enviroloo_results.xlsx', seed=None)
+    run_model(model=model, sample=sample, T=T, t_step=t_step, method='RK23', mpath=mpath, tpath='', seed=None)
 
     return
 
@@ -667,7 +667,7 @@ def run_model(model, sample, T=2, t_step=.1, method='BDF',
     #tpath for time-series data
     
     if not tpath:
-        folder = os.path.join(results_path, f'ty_data_{name}{suffix}')
+        folder = os.path.join(results_path, 'enviroloo_time_series')
         os.mkdir(folder)
         tpath = os.path.join(folder, 'state.npy')    
     model.evaluate(
