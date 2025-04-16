@@ -639,13 +639,13 @@ def create_model(model_ID='EL', country_specific=False, **model_kwargs):
     return model
 
 # define runing function intializing uncertainty and sensitivity analysis, TODO: make kwargs changeable
-def run_uncertainty(model, path='', N = 10, rule = 'L', T = 2, t_step = .01, **kwargs):
+def run_uncertainty(model, path='', mpath='', N = 10, rule = 'L', T = 2, t_step = .01, **kwargs):
     kwargs['path'] = os.path.join(results_path, f'sys{model.system.ID[-1]}_model.xlsx') if path=='' else path
     
     #generate sample
     sample = model.sample(N = N, rule = rule)
     
-    run_model(model=model, sample=sample, T=T, t_step=t_step, method='BDF', mpath='', tpath='', seed=None)
+    run_model(model=model, sample=sample, T=T, t_step=t_step, method='RK23', mpath=mpath, tpath='enviroloo_results.xlsx', seed=None)
 
     return
 
@@ -656,7 +656,8 @@ def run_model(model, sample, T=2, t_step=.1, method='BDF',
     t_span = (0, T)
     t_eval = np.arange(0, T+t_step, t_step)
     suffix = f'_{seed}' if seed else ''
-    mpath = mpath or os.path.join(results_path, f'{name}{suffix}.xlsx')
+    mpath = mpath or os.path.join(results_path, 'enviroloo_results.xlsx')
+    
     if not tpath:
         folder = os.path.join(results_path, f'ty_data_{name}{suffix}')
         os.mkdir(folder)
