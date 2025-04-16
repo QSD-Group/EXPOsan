@@ -29,6 +29,8 @@ from exposan.enviroloo import (
     get_decay_k,
     get_LCA_metrics_breakdown,
     get_TEA_metrics_breakdown,
+    get_LCA_metrics,
+    get_TEA_metrics,
     get_normalized_CAPEX,
     get_recoveries,
     results_path,
@@ -56,10 +58,11 @@ def add_metrics(model):
     # ]
     # Net cost of the EL system in TEA
     metrics.append(
-        Metric('Annual net cost', get_TEA_metrics_breakdown(system), f'{qs.currency}/cap/yr', 'TEA results'),
+        Metric('Annual net cost', get_TEA_metrics(system), f'{qs.currency}/cap/yr', 'TEA results'),
+        #Metric('Annual net cost', get_TEA_metrics_breakdown(system), f'{qs.currency}/cap/yr', 'TEA results'),
         )
     # Net emissions of the EL system in LCA
-    funcs = get_LCA_metrics_breakdown(system)  # extract LCA metrics from the EL system's LCA results
+    funcs = get_LCA_metrics(system)  # extract LCA metrics from the EL system's LCA results
     cat = 'LCA results'  # assign the same index to all LCA metrics
     metrics.extend([
         Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),
@@ -657,7 +660,11 @@ def run_model(model, sample, T=2, t_step=.1, method='BDF',
     t_span = (0, T)
     t_eval = np.arange(0, T+t_step, t_step)
     suffix = f'_{seed}' if seed else ''
+    
+    #mpath for metrics data
     mpath = mpath or os.path.join(results_path, 'enviroloo_results.xlsx')
+    
+    #tpath for time-series data
     
     if not tpath:
         folder = os.path.join(results_path, f'ty_data_{name}{suffix}')
