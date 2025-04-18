@@ -57,10 +57,15 @@ def add_metrics(model):
     #     Metric('Total K', funcs[2], '% K', 'K recovery'),
     # ]
     # Net cost of the EL system in TEA
-    metrics.append(
-        Metric('Annual net cost', get_TEA_metrics(system)[0], f'{qs.currency}/cap/yr', 'TEA results'),
+    metrics.extend([
+        Metric('Annualized CAPEX', get_TEA_metrics(system)[0], f'{qs.currency}/cap/yr', 'TEA results'),
+        Metric('Annual electricity consumption', get_TEA_metrics(system)[1], 'kWh/cap/yr', 'TEA results'),
+        Metric('Annual labor cost', get_TEA_metrics(system)[2], f'{qs.currency}/cap/yr', 'TEA results'),
+        Metric('OPEX excluding labor/energy', get_TEA_metrics(system)[3], f'{qs.currency}/cap/yr', 'TEA results'),
+        Metric('Revenue', get_TEA_metrics(system)[4], f'{qs.currency}/cap/yr', 'TEA results')
+        
         #Metric('Annual net cost', get_TEA_metrics_breakdown(system), f'{qs.currency}/cap/yr', 'TEA results'),
-        )
+        ])
     # Net emissions of the EL system in LCA
     funcs = get_LCA_metrics(system)  # extract LCA metrics from the EL system's LCA results
     cat = 'LCA results'  # assign the same index to all LCA metrics
@@ -150,13 +155,12 @@ def add_parameters(model, unit_dct, country_specific=False):
         
 
         
-        # Operator labor wage
         b = el.operator_daily_wage # operator_daily_wage is constant, needing initialization in _init_.py
         D = shape.Triangle(lower = (14.55), midpoint = b, upper = (43.68))
         @param(name = 'Operator daily wage', element = 'TEA', kind = 'cost', units = 'USD/d',
             baseline = b, distribution = D)
         def set_operator_daily_wage(i):
-            sys._TEA.annual_labor = i * 3 * 365 # need change
+            sys._TEA.annual_labor = i * 3 * 365 # need change TODO
 
         # Construction labor wage
         # b = el.const_daily_wage   # const_daily_wage is constant, needing initialization in _init_.py
@@ -619,7 +623,7 @@ def create_modelEL(country_specific=False, **model_kwargs):
     modelEL = Model(sysEL, **model_kwargs)
     add_metrics(modelEL)
     
-    #TODO: change names to match the proper unit names in system
+   
     unit_dctEL = { # name here needs to be aligned with those in Enviroloo_system.py (!!!)
         'Collection_Tank': unitEL.CT,
         'PrimaryClarifierTank': unitEL.PC,

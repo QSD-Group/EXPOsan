@@ -78,7 +78,7 @@ def update_resource_recovery_settings():
         'Electricity': 0.0, # $/kWh Assumption because the system is not grid-tied. 
         #'Electricity': 0.13, # $/kWh If grif-tied 
         #'Concrete': 194 * price_ratio, # $/m3
-        'Steel': 2.665 * price_ratio, # $/kg
+        #'Steel': 2.665 * price_ratio, # $/kg
         'N': 1.507 * price_factor * RR_factor, # $/kg, N fertilizer price if resource recovery is considered
         'P': 3.983 * price_factor * RR_factor, # $/kg, P fertilizer price if resource recovery is considered
         'K': 1.333 * price_factor * RR_factor, # $/kg, K fertilizer price if resource recovery is considered
@@ -216,7 +216,6 @@ def _load_lca_data(reload=False):
         create_stream_impact_item(item_ID='P_item')
         create_stream_impact_item(item_ID='K_item')
         create_stream_impact_item(item_ID='ammonium_item')
-        create_stream_impact_item(item_ID='struvite_item')
         create_stream_impact_item(item_ID='NaOH_item')
         create_stream_impact_item(item_ID='NaClO_item')
         create_stream_impact_item(item_ID='O3_item')
@@ -230,7 +229,7 @@ def _load_lca_data(reload=False):
                    H_Resources = H_Resources_dct['Electricity'])
 
         # update prices
-        ImpactItem.get_item('Steel').price = price_dct['Steel']     
+       # ImpactItem.get_item('Steel').price = price_dct['Steel']     
                              
         _impact_item_loaded = True
                     
@@ -362,7 +361,7 @@ def get_scaled_capital(tea):
         )
     return new_CAPEX_annualized
 
-def get_TEA_metrics(system, include_breakdown=False):
+def get_TEA_metrics(system, include_breakdown=True):
     tea = system.TEA
     get_annual_electricity = lambda system: system.power_utility.cost * system.operating_hours
     functions = [lambda: (get_scaled_capital(tea) - tea.net_earnings) / ppl]
@@ -373,7 +372,7 @@ def get_TEA_metrics(system, include_breakdown=False):
         lambda: get_annual_electricity(system) / ppl, # means annual electricity consumption
         lambda: tea.annual_labor / ppl, # means annual labor cost
         lambda: (tea.AOC - get_annual_electricity(system) - tea.annual_labor) / ppl, # means OPEX excluding energy and labor sectors
-        lambda: tea.sales / ppl, # means sales incoming
+        lambda: tea.net_earnings / ppl, # means net earning income
         ]
 
 def get_TEA_metrics_breakdown(system, include_breakdown=True):
@@ -384,7 +383,7 @@ def get_TEA_metrics_breakdown(system, include_breakdown=True):
         'Annual electricity': get_annual_electricity(system) / ppl,
         'Annual labor': tea.annual_labor / ppl,
         'OPEX (excl. energy & labor)': (tea.AOC - get_annual_electricity(system) - tea.annual_labor) / ppl,
-        'Sales Income':  tea.sales / ppl
+        'Sales Income':  tea.net_earnings / ppl
     }
     
     net_cost = (get_scaled_capital(tea) - tea.net_earnings) / ppl
@@ -401,7 +400,7 @@ def get_TEA_metrics_breakdown(system, include_breakdown=True):
     print("-" * 75)
     
     # print cost breakdown
-    for metric_name in ['CAPEX', 'Annual electricity', 'Annual labor', 'OPEX (excl. energy & labor)']:
+    for metric_name in ['CAPEX', 'Annual electricity', 'Annual labor', 'OPEX (excl. energy & labor)', 'Sales Income']:
         value = metrics[metric_name]
         percentage = (value / total_cost * 100) if total_cost != 0 else 0
         print(f"{metric_name:<35} {value:>10.2f} {percentage:>13.1f}% {'USD/cap/yr':>15}")
