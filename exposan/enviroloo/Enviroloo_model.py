@@ -51,25 +51,30 @@ def add_metrics(model):
     system = model.system
     # Recoveries TODO: add recoveries to system?
     # funcs = get_recoveries(system)
-    metrics = []
+    # metrics = []
     #     Metric('Total N', funcs[0], '% N', 'N recovery'), #here the order of funcs in line with the function get_recoveries in _init_.py
     #     Metric('Total P', funcs[1], '% P', 'P recovery'),
     #     Metric('Total K', funcs[2], '% K', 'K recovery'),
     # ]
     # Net cost of the EL system in TEA
-    metrics.extend([
-        Metric('Annualized CAPEX', get_TEA_metrics(system)[0], f'{qs.currency}/cap/yr', 'TEA results'),
-        Metric('Annual electricity consumption', get_TEA_metrics(system)[1], 'kWh/cap/yr', 'TEA results'),
-        Metric('Annual labor cost', get_TEA_metrics(system)[2], f'{qs.currency}/cap/yr', 'TEA results'),
-        Metric('OPEX excluding labor/energy', get_TEA_metrics(system)[3], f'{qs.currency}/cap/yr', 'TEA results'),
-        Metric('Revenue', get_TEA_metrics(system)[4], f'{qs.currency}/cap/yr', 'TEA results')
+    # metrics = ([
+    #     Metric('Annualized CAPEX', get_TEA_metrics(system)[1], f'{qs.currency}/cap/yr', 'TEA results'),
+    #     Metric('Annual electricity consumption', get_TEA_metrics(system)[2], 'kWh/cap/yr', 'TEA results'),
+    #     Metric('Annual labor cost', get_TEA_metrics(system)[3], f'{qs.currency}/cap/yr', 'TEA results'),
+    #     Metric('OPEX excluding labor/energy', get_TEA_metrics(system)[4], f'{qs.currency}/cap/yr', 'TEA results'),
+    #     Metric('Revenue', get_TEA_metrics(system)[5], f'{qs.currency}/cap/yr', 'TEA results')
         
-        #Metric('Annual net cost', get_TEA_metrics_breakdown(system), f'{qs.currency}/cap/yr', 'TEA results'),
-        ])
+    #     #Metric('Annual net cost', get_TEA_metrics_breakdown(system), f'{qs.currency}/cap/yr', 'TEA results'),
+    #     ])
     # Net emissions of the EL system in LCA
     funcs = get_LCA_metrics(system)  # extract LCA metrics from the EL system's LCA results
     cat = 'LCA results'  # assign the same index to all LCA metrics
-    metrics.extend([
+    metrics = ([
+        Metric('Annualized CAPEX', get_TEA_metrics(system)[1], f'{qs.currency}/cap/yr', 'TEA results'),
+        Metric('Annual electricity consumption', get_TEA_metrics(system)[2], 'kWh/cap/yr', 'TEA results'),
+        Metric('Annual labor cost', get_TEA_metrics(system)[3], f'{qs.currency}/cap/yr', 'TEA results'),
+        Metric('OPEX excluding labor/energy', get_TEA_metrics(system)[4], f'{qs.currency}/cap/yr', 'TEA results'),
+        Metric('Revenue', get_TEA_metrics(system)[5], f'{qs.currency}/cap/yr', 'TEA results'),
         Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),
         Metric('H_Ecosystems', funcs[1], 'points/cap/yr', cat), 
         Metric('H_Health', funcs[2], 'points/cap/yr', cat),
@@ -97,6 +102,7 @@ MembTank_data = load_el_su_data('_EL_MBR.tsv')
 ClearWaterTank_data = load_el_su_data('_EL_CWT.tsv')
 system_data = load_el_su_data('_EL_system.tsv')
 photovoltaic_wind_data = load_el_su_data('_EL_photovoltaic_wind.tsv')
+housing_data = load_el_su_data('_EL_housing.tsv')
 
 ############################################## define parameters of interest for EL system ################################################################
 def add_parameters(model, unit_dct, country_specific=False):
@@ -284,10 +290,15 @@ def add_parameters(model, unit_dct, country_specific=False):
     if ClearWaterT_unit: 
         batch_setting_unit_params(ClearWaterTank_data, model, ClearWaterT_unit)
     
-
+    # EL PV system
+    PV_unit = unit_dct['PhotovoltaicWind']
+    if PV_unit: 
+        batch_setting_unit_params(photovoltaic_wind_data, model, PV_unit)
+   
     # EL housing
-    #housing_unit = unit_dct['Housing']
-    #batch_setting_unit_params(housing_data, model, housing_unit)
+    ELH_unit = unit_dct['Housing']
+    if ELH_unit:
+        batch_setting_unit_params(housing_data, model, ELH_unit)
 
 
     ################################################ Universal degradation parameters ##########################################################
@@ -631,7 +642,8 @@ def create_modelEL(country_specific=False, **model_kwargs):
         'AerobicTank': unitEL.O1,
         'MembraneTank': unitEL.B1,
         'ClearWaterTank': unitEL.CWT,
-        'PhotovoltaicWind': unitEL.PV
+        'PhotovoltaicWind': unitEL.PV,
+        'Housing': unitEL.ELH
         }
     add_parameters(modelEL, unit_dctEL, country_specific)
     
@@ -647,7 +659,7 @@ def create_model(model_ID='EL', country_specific=False, **model_kwargs):
     return model
 
 # define runing function intializing uncertainty and sensitivity analysis, TODO: make kwargs changeable
-def run_uncertainty(model, N=10, rule='L', T=2, t_step=.01, mpath='', **kwargs):
+def run_uncertainty(model, N=10, rule='L', T=2, t_step=2, mpath='', **kwargs):
     #generate sample
     sample = model.sample(N = N, rule = rule)
     

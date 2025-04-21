@@ -87,7 +87,7 @@ Name notes:
 
 To make programming more convenient, we use the following names for the units in the system:
 
-Toilet: Toilet
+Control Room Housing: ELH 
 Collection tank: CT
 Primary clarifier: PC
 Anoxic tank: AnoT
@@ -350,6 +350,8 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     
     PV = elu.EL_WindSolar('PV', ins=CWT-0, outs='effluent',  isdynamic=True)
     
+    ELH = elu.EL_Housing('ELH', ins=PV-0, outs='effluent',  isdynamic=True)
+    
     # # S1.run()
     
     # CWT = elu.EL_CWT('CWT', ins=(B1-0), 
@@ -358,9 +360,9 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #                 # thermo=thermo_masm2d
     #                 )
     
-    S4 = su.Splitter('S4', ins = PV-0, outs = [1-CT, 'Reflushing'], split= 0.5)
+    S4 = su.Splitter('S4', ins = ELH-0, outs = [1-CT, 'Reflushing'], split= 0.5)
 
-    sys = qs.System('EL', path=(CT, PC, A1, O1, B1, S2, S1, CWT, PV, S4))
+    sys = qs.System('EL', path=(CT, PC, A1, O1, B1, S2, S1, CWT, PV, ELH, S4))
     sys.set_dynamic_tracker(A1, O1, B1, B1-0, B1-1)
     
     

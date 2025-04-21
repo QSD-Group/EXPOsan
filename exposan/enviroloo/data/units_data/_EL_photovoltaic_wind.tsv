@@ -1,22 +1,22 @@
 parameter	name (if diff)	unit	expected	low	high	distribution	references		# of units (smaller components inc. with main costs)
-el_panels		 USD 	4442.19	3775.86	5108.52	Uniform	EnviroLoo Invoice		24
-el_carport		 USD 	3630.24	3085.71	4174.78	Uniform	EnviroLoo Invoice		1
-el_installation		 USD 	2416.93	2054.39	2779.47	Uniform	EnviroLoo Invoice		1
-el_inverter		 USD 	2501.08	2125.92	2876.24	Uniform	EnviroLoo Invoice		1
-el_charger		 USD 	1992.04	1693.24	2290.85	Uniform	EnviroLoo Invoice		1
-el_backplate		 USD 	1106.31	940.36	1272.26	Uniform	EnviroLoo Invoice		1
-el_controller		 USD 	562.63	478.23	647.02	Uniform	EnviroLoo Invoice		1
-el_battery		 USD 	8468.08	7197.87	9738.29	Uniform	EnviroLoo Invoice		3
-el_meter		 USD 	226.91	192.88	260.95	Uniform	EnviroLoo Invoice		1
-el_wind_turbine		 USD 	8244.95	7008.21	9481.70	Uniform	EnviroLoo Invoice		1
-el_template		 USD 	563.40	478.89	647.91	Uniform	EnviroLoo Invoice		1
-el_certificate		 USD 	77.63	65.98	89.27	Uniform	EnviroLoo Invoice		1
-el_consulting		 USD 	307.40	261.29	353.50	Uniform	EnviroLoo Invoice		1
-el_battery_weight		kg	98				https://www.chlithiumbattery.com/products/power-saver-51-2v200ah-10kwh-lifepo4.html		
-el_wind_galvanized_steel_weight		kg	267				scaled linearly plus top turbine weight assumption from https://www.metalutilitypole.com/sale-39102336-octagonal-galvanized-silver-steel-pole-with-160kg-weight-3-0mm-thickness.html		
-pv_carport_weight_galvanized_metal		kg	800				https://www.tmgindustrial.com/products/20-x-30-metal-shed-carport-with-10-enclosed-sidewalls-tmg-msc2030f?srsltid=AfmBOoqqo7eGTeZbyZSNC8lNmGgmIz6ag7AEbkKVHOBEipyZQsJXHxGF		
-pv_inverter_weight_steel		kg	19				https://www.invertersupply.com/index.php?main_page=product_info&products_id=202097&srsltid=AfmBOoraAtEPxP7PKMFSq89oj5vnV7FMJgpjqUDtgHULc6TkJqYZ0gUi		
-pv_charger_weight_steel		kg	8				https://www.victronenergy.com/solar-charge-controllers/smartsolar-mppt-rs-450-tr#downloads		
+el_panels		 USD 	4442.19	3775.86	5108.52	uniform	EnviroLoo Invoice		24
+el_carport		 USD 	3630.24	3085.71	4174.78	uniform	EnviroLoo Invoice		1
+el_installation		 USD 	2416.93	2054.39	2779.47	uniform	EnviroLoo Invoice		1
+el_inverter		 USD 	2501.08	2125.92	2876.24	uniform	EnviroLoo Invoice		1
+el_charger		 USD 	1992.04	1693.24	2290.85	uniform	EnviroLoo Invoice		1
+el_backplate		 USD 	1106.31	940.36	1272.26	uniform	EnviroLoo Invoice		1
+el_controller		 USD 	562.63	478.23	647.02	uniform	EnviroLoo Invoice		1
+el_battery		 USD 	8468.08	7197.87	9738.29	uniform	EnviroLoo Invoice		3
+el_meter		 USD 	226.91	192.88	260.95	uniform	EnviroLoo Invoice		1
+el_wind_turbine		 USD 	8244.95	7008.21	9481.7	uniform	EnviroLoo Invoice		1
+el_template		 USD 	563.4	478.89	647.91	uniform	EnviroLoo Invoice		1
+el_certificate		 USD 	77.63	65.98	89.27	uniform	EnviroLoo Invoice		1
+el_consulting		 USD 	307.4	261.29	353.5	uniform	EnviroLoo Invoice		1
+el_battery_weight		kg	98			constant	https://www.chlithiumbattery.com/products/power-saver-51-2v200ah-10kwh-lifepo4.html		
+el_wind_galvanized_steel_weight		kg	267			constant	scaled linearly plus top turbine weight assumption from https://www.metalutilitypole.com/sale-39102336-octagonal-galvanized-silver-steel-pole-with-160kg-weight-3-0mm-thickness.html		
+pv_carport_weight_galvanized_metal		kg	800			constant	https://www.tmgindustrial.com/products/20-x-30-metal-shed-carport-with-10-enclosed-sidewalls-tmg-msc2030f?srsltid=AfmBOoqqo7eGTeZbyZSNC8lNmGgmIz6ag7AEbkKVHOBEipyZQsJXHxGF		
+pv_inverter_weight_steel		kg	19			constant	https://www.invertersupply.com/index.php?main_page=product_info&products_id=202097&srsltid=AfmBOoraAtEPxP7PKMFSq89oj5vnV7FMJgpjqUDtgHULc6TkJqYZ0gUi		
+pv_charger_weight_steel		kg	8			constant	https://www.victronenergy.com/solar-charge-controllers/smartsolar-mppt-rs-450-tr#downloads		
 el_battery_lifetime		y	11			constant	Orig 11. Key component replacement (v.4)		
 el_inverter_lifetime		y	10			constant	assumption		
 pv_lithium_photovoltaic_battery_lifetime		y	20			constant	assumption		

@@ -501,7 +501,6 @@ def print_summaries(systems):
 
     for sys in systems:
         sys.simulate()
-                   
         print(f'\n-----------------Summary for {sys.ID}-----------------\n')
         if sys.ID in ('sysEL', ):
             recovery_functions = get_recoveries(sys)

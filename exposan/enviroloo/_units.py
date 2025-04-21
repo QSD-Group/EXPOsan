@@ -948,119 +948,12 @@ class EL_CWT(CSTR):
         CWT_replacement_cost = CWT_replacement_cost / (365 * 24) # convert to USD/hr
         return CWT_replacement_cost
 
-# %%
-# blower_path = ospath.join(EL_su_data_path, '_EL_blower.tsv')
 
-# @price_ratio()
-# class EL_blower(SanUnit):
-#     '''
-#     Introduction
-#     ------------
-#     To areate air for aerobic tank and membrane tank
-
-#     Parameters
-#     ----------
-#     Ins:
-#     (1) air
-
-#     Outs:
-#     (1) air
-
-
-#     Attributes
-#     ----------
-
-    
-#     References
-#     ----------
-#      refer to the qsdsan.equipments.Blower module
-
-#     '''
-#     _N_ins = 1  # number of ins
-#     _N_outs = 1  # number of outs
-#     _ins_size_is_fixed = True
-#     _outs_size_is_fixed = True
-#     exponent_scale = 0.1
-
-#     def __init__(self, ID = '', ins = None, outs = (), init_with = 'WasteStream',
-#                  # F_BM={
-#                  #     'Blowers': 2.22,
-#                  #     'Blower piping': 1,
-#                  #     'Blower building': 1.11,
-#                  #     },
-#                  F_BM = 2.22,
-#                  lifetime=15, lifetime_unit='yr',
-#                  # units={
-#                  #     'Total gas flow': 'CFM',
-#                  #     'Blower capacity': 'CFM',
-#                  #     'Number of blowers': '',
-#                  #     'Total blower power': 'kW',
-#                  #     },
-#                  # N_reactor=2, # the number of the reactors where the gas sparging modules will be installed
-#                  # gas_demand_per_reactor=1, # gas demand per reactor
-#                  # TDH=6, # total dynamic head for rhe blower, in psi
-#                  # eff_blower=0.7, # efficiency of the blower in fraction
-#                  # eff_motor=0.7, # efficiency of the motor in fraction
-#                  # AFF=3.33, # air flow fraction
-#                  # building_unit_cost=9, # unit cost of the building, in USD/ft2
-#                  thermo = None, ppl = None, baseline_ppl = None, **kwargs):
-#         # super().__init__(ID=ID, lifetime = lifetime, lifetime_unit = lifetime_unit, F_BM=F_BM,
-#         #                 units=units, N_reactor=N_reactor, gas_demand_per_reactor=gas_demand_per_reactor,
-#         #                 TDH=TDH, eff_blower=eff_blower, eff_motor=eff_motor, AFF=AFF, building_unit_cost=building_unit_cost,)
-#         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=F_BM)
-
-#         self.ppl = ppl
-#         self.baseline_ppl = baseline_ppl
-#         self.lifetime = lifetime
-#         self.lifetime_unit = lifetime_unit
-
-#         data = load_data(path = blower_path)
-#         for para in data.index:
-#             value = float(data.loc[para]['expected'])
-#             setattr(self, para, value)
-#         del data
-
-#         for attr, value in kwargs.items():
-#             setattr(self, attr, value)
-
-#     def _init_lca(self):
-#         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),]
-    
-#     def _design(self):
-#         design = self.design_results
-#         constr = self.construction
-#         design['StainlessSteel'] = constr[0].quantity = self.blower_steel_weight  # to be defined in .tsv file
-#         self.add_construction(add_cost=False)
-    
-
-#     def _cost(self):
-#         C = self.baseline_purchase_costs # the below items need to be defined in .tsv file
-#         C['Blower'] = self.blower_cost
-#         C['pipeline'] = self.pipeline_connectors
-#         C['fittings'] = self.weld_female_adapter_fittings
-
-#         ratio = self.price_ratio
-#         for equipment, cost in C.items():
-#             C[equipment] = cost * ratio
-
-#         self.add_OPEX = self._calc_replacement_cost()
-        
-#         power_demand = self.power_demand_blower
-#         self.power_utility(power_demand)
-    
-#     def _calc_replacement_cost(self):
-#         scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
-#         Blower_replacement_cost = (
-#             self.blower_cost * self.blower_lifetime +
-#             self.pipeline_connectors / self.pipeline_connectors_lifetime +
-#             self.weld_female_adapter_fittings / self.fittings_lifetime) * scale
-#         Blower_replacement_cost = Blower_replacement_cost / (365 * 24) # convert to USD/hr
-#         return Blower_replacement_cost
 
 # %%
 housing_path = os.path.join(EL_su_data_path, '_EL_housing.tsv')
 
-#@price_ratio()
+@price_ratio()
 class EL_Housing(CSTR):
     '''
      non_reactive unit for the Enviroloo Clear system
@@ -1098,7 +991,7 @@ class EL_Housing(CSTR):
             isdynamic=isdynamic, exogenous_vars=exogenous_vars, **kwargs
             )
        
-        data = load_data(path = windSolar_path)
+        data = load_data(path = housing_path)
         for para in data.index:
             value = float(data.loc[para]['expected'])
             setattr(self, para, value)
