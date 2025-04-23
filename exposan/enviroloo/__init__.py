@@ -90,8 +90,8 @@ def update_resource_recovery_settings():
         'NaClO': 1.8 * price_ratio, # $/kg, used for membrane cleanup
         'O3': 0.9 * price_ratio, # $/kg, used for clear water tank disinfection
         'HDPE': 0.5 * price_ratio, # $/kg, used for 200M ozone connection
-        'PAC': 0.9 * price_ratio, # $/kg, used for aerobic tank deposition
-        'Glucose': 0.95 * price_ratio, # $/kg, used in anoxic tank
+        #'PAC': 0.9 * price_ratio, # $/kg, used for aerobic tank deposition
+        #'Glucose': 0.95 *price_ratio, # $/kg, used in anoxic tank
         'air': 0,
         }
     
@@ -210,7 +210,8 @@ def _load_lca_data(reload=False):
                              H_Ecosystems = H_Ecosystems_dct[dct_key],
                              H_Health = H_Health_dct[dct_key],
                              H_Resources = H_Resources_dct[dct_key])
-                        
+        #TODO: stream impact items not properly initiated because 
+        # lca.total_stream_impacts['GlobalWarming'] outputs 0.                
         create_stream_impact_item(item_ID='CH4_item')
         create_stream_impact_item(item_ID='N2O_item')
         create_stream_impact_item(item_ID='N_item')
@@ -252,9 +253,10 @@ def _load_system():
 def load():
     if not _components_loaded: _load_components()
     if not _system_loaded: _load_system()
-    _load_lca_data()
     
+    _load_lca_data()
     dct = globals()
+    
     for sys in (sysEL,): #dct.update(sys.flowsheet.to_dct())
         flowsheet = sys.flowsheet
         units = {unit.ID: unit for unit in flowsheet.unit}

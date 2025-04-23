@@ -549,7 +549,8 @@ class EL_Anoxic(CSTR):
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
         
-        self.add_OPEX = self._calc_replacement_cost()
+        self.add_OPEX = (self._calc_replacement_cost() + self.chemical_glucose_dosage * self.ins[0].F_vol * 
+            self.chemical_glucose_price / 24)
         
         power_demand = self.power_demand_AnoxicTank
         self.power_utility(power_demand)
@@ -688,7 +689,7 @@ class EL_Aerobic(CSTR):
     
     def _cost(self):
         C = self.baseline_purchase_costs
-        # massflow_aerobic = self.ins[0].mass #kg/h
+        massflow_aerobic = self.ins[0].mass #kg/h
         C['Tank'] = self.aerobic_tank_cost
         C['Pipes'] = self.pipeline_connectors
         C['Fittings'] = self.weld_female_adapter_fittings
@@ -696,14 +697,16 @@ class EL_Aerobic(CSTR):
         C['Pumps'] = self.dosing_pump_cost
         C['Blower'] = self.blower_cost
         
-        # C['Chemical_PAC'] = self.chemical_PAC_dosage * massflow_aerobic * self.chemical_PAC_price
+       # C['Chemical_PAC'] = 
         #PAC cost is already accounted in WasteStream
 
         ratio = self.price_ratio
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
         
-        self.add_OPEX = self._calc_replacement_cost()
+        self.add_OPEX = (self._calc_replacement_cost() + 
+                         self.chemical_PAC_dosage * self.ins[0].F_vol * 
+                         self.chemical_PAC_price / 24) #USD/hr
         
         power_demand = self.power_demand_AerobicTank
         self.power_utility(power_demand) # kWh
