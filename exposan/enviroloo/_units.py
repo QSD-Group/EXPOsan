@@ -129,7 +129,7 @@ class EL_CT(CSTR):
                  DO_ID='S_O2', suspended_growth_model=None, 
                  gas_stripping=False, gas_IDs=None, stripping_kLa_min=None, 
                  K_Henry=None, D_gas=None, p_gas_atm=None, 
-                 tank_steel_volume=19.5, steel_density= 7850, ppl=100, baseline_ppl = 30,
+                 tank_steel_volume=19.5, steel_density= 7850, ppl=100, baseline_ppl = 100,
                  isdynamic=True, exogenous_vars=(), **kwargs):
         super().__init__(
             ID=ID, ins=ins, outs=outs, split=split, thermo=thermo,
@@ -255,7 +255,7 @@ class EL_PC(IdealClarifier):
                  sludge_flow_rate=10, 
                  solids_removal_efficiency=.85,
                  sludge_MLSS=None, isdynamic=False, init_with='WasteStream', tank_steel_volume=3.34, steel_density=7850,
-                 ppl=100, baseline_ppl=30,
+                 ppl=100, baseline_ppl=100,
                  F_BM_default=None, **kwargs):
 
         super().__init__(

@@ -112,9 +112,9 @@ Air dissolving pump: P_AirDissolved
 
 '''
 Temp = 273.15+20 # temperature [K]
-Q_w = 380 # m3/hr  # 250 l/min flow for lift pump
-Q_ras = 280 # m3/day # 200 l/min for nitrate pump
-Q_was = 0.03*24
+Q_w = 6 # m3/day  #Assuming Toilet flows to be 60lpcd and Initial population to be 100
+Q_ras = 3 # m3/day # 200 l/min for nitrate pump
+Q_was = 0.05*24
 # Q_was = 280 # m3/day # 200 l/min for sludge return pump
 biomass_IDs = ('X_H', 'X_AUT', 'X_PAO')
 toilet_waste={
@@ -253,8 +253,8 @@ def create_components(set_thermo = True
     cmps = Components([*masm2d_cmps, 
                        # Tissue, WoodAsh, H2O,
                        ])
-    #cmps.compile()
-    cmps.compile(ignore_inaccurate_molar_weight=True)
+    cmps.compile()
+    # cmps.compile(ignore_inaccurate_molar_weight=True)
     if set_thermo: qs.set_thermo(cmps)
     return cmps
 #%%
@@ -268,7 +268,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
                                          concentrations=toilet_waste, 
                                          units=('m3/d', 'mg/L'))
     
-    Glucose = qs.WasteStream('Glucose_Dose', S_F= 1, units='kg/hr', T=Temp) # 0.0805
+    Glucose = qs.WasteStream('Glucose_Dose', S_F= 0.05, units='kg/hr', T=Temp) # 0.0805
     PAC = qs.WasteStream('PAC_Dose', X_AlOH= 0.24, units='kg/hr', T=Temp) # 0.1207
     
     masm2d = pc.mASM2d(**masm_kwargs)
