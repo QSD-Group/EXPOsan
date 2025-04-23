@@ -68,7 +68,7 @@ from exposan.enviroloo import (
     # get_toilet_users,
     # max_CH4_emission,
     # operator_daily_wage,
-    ppl,
+    ppl, baseline_ppl
     # get_tanker_truck_fee
     # update_resource_recovery_settings,
     )
@@ -112,9 +112,10 @@ Air dissolving pump: P_AirDissolved
 
 '''
 Temp = 273.15+20 # temperature [K]
-Q_w = 6 # m3/day  #Assuming Toilet flows to be 60lpcd and Initial population to be 100
-Q_ras = 3 # m3/day # 200 l/min for nitrate pump
-Q_was = 0.05*24
+scale_factor = 10 #scale factor for flow, baseline is 100 ppl
+Q_w = 6 * scale_factor # m3/day  #Assuming Toilet flows to be 60lpcd and Initial population to be 100 6m^3/day for 100 ppl, 60 for 1000 ppl
+Q_ras = 3 * scale_factor # m3/day # 200 l/min for nitrate pump 3m^3/day for 100 ppl, 30 for 1000 ppl
+Q_was = 0.5*Q_w
 # Q_was = 280 # m3/day # 200 l/min for sludge return pump
 biomass_IDs = ('X_H', 'X_AUT', 'X_PAO')
 toilet_waste={
@@ -253,8 +254,8 @@ def create_components(set_thermo = True
     cmps = Components([*masm2d_cmps, 
                        # Tissue, WoodAsh, H2O,
                        ])
-    cmps.compile()
-    # cmps.compile(ignore_inaccurate_molar_weight=True)
+    #cmps.compile()
+    cmps.compile(ignore_inaccurate_molar_weight=True)
     if set_thermo: qs.set_thermo(cmps)
     return cmps
 #%%
@@ -286,7 +287,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #               )
     CT = elu.EL_CT(
         'CT', ins=(toilet_ins, 'flushing_water_CT', 'sludge_PC'), outs=('effluent_CT'),
-        isdynamic=True, V_max=10, aeration=None, suspended_growth_model=None
+        isdynamic=True, V_max=10, aeration=None, suspended_growth_model=None, ppl=ppl, baseline_ppl=baseline_ppl
         )
     
     # PC = su.PrimaryClarifier('PC', ins=[CT-0, 'sludge_AeroT'],
@@ -296,7 +297,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #                          solids_removal_efficiency=0.6)
     
     PC = elu.EL_PC('PC', ins=(CT-0, 'RAS_PC'), outs=('effluent_PC_total', 2-CT),
-                   ppl=ppl, baseline_ppl=100,
+                   ppl=ppl, baseline_ppl=baseline_ppl,
                    solids_removal_efficiency=0.85,
                    isdynamic=True,
                    # thermo=thermo_masm2d,
@@ -307,16 +308,16 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     
     
     A1 = elu.EL_Anoxic('A1', ins=(PC-0, 'RAS_A1', Glucose), outs=('effluent_AnoxT',),
-                       isdynamic=True, **kwargs_1 
+                       isdynamic=True,  ppl = ppl, baseline_ppl = baseline_ppl,  **kwargs_1 
                        # aeration=None, 
                        # DO_ID='S_O2', suspended_growth_model=masm2d,  **kwargs_1
                        # W_tank= 2.09,
-                        # # ppl = ppl, baseline_ppl = 100,                   
+                                       
                         # V_max= 7.33, 
                         )
     
     O1 = elu.EL_Aerobic('O1', ins=(A1-0, PAC), outs=('effluent_AeroT',),
-                        isdynamic=True, **kwargs_O
+                        isdynamic=True,  ppl = ppl, baseline_ppl = baseline_ppl,  **kwargs_O
                         # aeration = 2, suspended_growth_model=asm2d,
                         #  # ppl = ppl, baseline_ppl = 100,
                         #  W_tank= 2.09,
@@ -325,7 +326,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
 
 
     B1 = elu.EL_CMMBR('B1', ins=O1-0, outs=('effluent_MembT', 'sludge_MembT'),
-                      isdynamic=True, 
+                      isdynamic=True, ppl = ppl, baseline_ppl = baseline_ppl,
                       #V_max=2.9, 
                       #DO_ID='S_O2', aeration=2, suspended_growth_model=masm2d,
                       # pumped_flow=5, # after calculation # initial = 0.0001 # m3/hr
@@ -345,12 +346,15 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     
     CWT = elu.EL_CWT(
         'CWT', ins=(B1-0), outs=('effluent_CWT'),
-        isdynamic=True, V_max=12, aeration=None, suspended_growth_model=None
+        isdynamic=True, V_max=12, aeration=None, suspended_growth_model=None,
+        ppl = ppl, baseline_ppl = baseline_ppl,
         )
     
-    PV = elu.EL_WindSolar('PV', ins=CWT-0, outs='effluent',  isdynamic=True)
+    PV = elu.EL_WindSolar('PV', ins=CWT-0, outs='effluent',  isdynamic=True,
+                          ppl = ppl, baseline_ppl = baseline_ppl,)
     
-    ELH = elu.EL_Housing('ELH', ins=PV-0, outs='effluent',  isdynamic=True)
+    ELH = elu.EL_Housing('ELH', ins=PV-0, outs='effluent',  isdynamic=True,
+                         ppl = ppl, baseline_ppl = baseline_ppl,)
     
     # # S1.run()
     

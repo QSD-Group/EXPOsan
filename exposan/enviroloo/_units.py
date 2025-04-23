@@ -115,8 +115,8 @@ class EL_CT(CSTR):
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     exponent_scale = 0.1
-    ppl = 100
-    baseline_ppl = 100
+    ppl = 1000
+    baseline_ppl = 1000
     
     _D_O2 = 2.10e-9   # m2/s
 
@@ -129,7 +129,7 @@ class EL_CT(CSTR):
                  DO_ID='S_O2', suspended_growth_model=None, 
                  gas_stripping=False, gas_IDs=None, stripping_kLa_min=None, 
                  K_Henry=None, D_gas=None, p_gas_atm=None, 
-                 tank_steel_volume=19.5, steel_density= 7850, ppl=100, baseline_ppl = 100,
+                 tank_steel_volume=19.5, steel_density= 7850, ppl=ppl, baseline_ppl = baseline_ppl,
                  isdynamic=True, exogenous_vars=(), **kwargs):
         super().__init__(
             ID=ID, ins=ins, outs=outs, split=split, thermo=thermo,
@@ -248,14 +248,14 @@ class EL_PC(IdealClarifier):
     _N_outs = 2  # [0] effluent overflow, [1] sludge underflow
     _outs_size_is_fixed = True
     exponent_scale = 0.1
-    ppl=100,
-    baseline_ppl= 100
+    ppl=1000,
+    baseline_ppl= 1000
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  sludge_flow_rate=10, 
                  solids_removal_efficiency=.85,
                  sludge_MLSS=None, isdynamic=False, init_with='WasteStream', tank_steel_volume=3.34, steel_density=7850,
-                 ppl=100, baseline_ppl=100,
+                 ppl=ppl, baseline_ppl=baseline_ppl,
                  F_BM_default=None, **kwargs):
 
         super().__init__(
@@ -474,8 +474,8 @@ class EL_Anoxic(CSTR):
     _N_outs = 1
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
-    ppl = 100
-    baseline_ppl = 100
+    ppl = 1000
+    baseline_ppl = 1000
     exponent_scale=0.1
     
     # _D_O2 = 2.10e-9   # m2/s
@@ -625,8 +625,8 @@ class EL_Aerobic(CSTR):
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     exponent_scale = 0.1
-    ppl = 100
-    baseline_ppl = 100
+    ppl = 1000
+    baseline_ppl = 1000
     
     _D_O2 = 2.10e-9   # m2/s
 
@@ -740,8 +740,8 @@ class EL_CMMBR(CompletelyMixedMBR):
     _N_ins = 1
     _N_outs = 2  # [0] filtrate, [1] pumped flow
     _outs_size_is_fixed = True
-    ppl = 100
-    baseline_ppl = 100
+    ppl = 1000
+    baseline_ppl = 1000
     exponent_scale=0.1
     
     
@@ -859,8 +859,8 @@ class EL_CWT(CSTR):
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     exponent_scale = 0.1
-    ppl = 100
-    baseline_ppl = 100
+    ppl = 1000
+    baseline_ppl = 1000
     
     _D_O2 = 2.10e-9   # m2/s
 
@@ -963,8 +963,8 @@ class EL_Housing(CSTR):
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     exponent_scale = 0.1
-    ppl = 100
-    baseline_ppl = 100
+    ppl = 1000
+    baseline_ppl = 1000
     
     _D_O2 = 2.10e-9   # m2/s
 
@@ -1045,8 +1045,8 @@ class EL_System(CSTR):
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     exponent_scale = 0.1
-    ppl = 100
-    baseline_ppl = 100
+    ppl = 1000
+    baseline_ppl = 1000
     
     _D_O2 = 2.10e-9   # m2/s
 
@@ -1184,8 +1184,8 @@ class EL_WindSolar(CSTR):
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     exponent_scale = 0.1
-    ppl = 100
-    baseline_ppl = 100
+    ppl = 1000
+    baseline_ppl = 1000
     
     _D_O2 = 2.10e-9   # m2/s
 
