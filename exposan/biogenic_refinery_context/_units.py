@@ -405,7 +405,7 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
             1/self.inducer_fan_lifetime_cb * self.inducer_fan_cost_cb
             ) * self.scale_factor
 
-        # In min/yr
+        # In min/yr, scaled linearly to scale_factor
         annual_maintenance = (
             (self.service_team_greasebearing_cb+self.service_team_tighten_cb+self.service_team_adjustdoor_cb) * 12 +
             (
@@ -421,8 +421,8 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
             1/self.inducer_fan_lifetime_cb * self.service_team_replacefan_cb +
             1/self.frequency_corrective_maintenance * self.service_team_replacepaddleswitch_cb +
             1/self.airlock_motor_lifetime_cb * self.service_team_replaceairlock_cb
-            ) * self.scale_factor
-        annual_maintenance *= self.service_team_wages / 60
+            )
+        annual_maintenance *= self.service_team_wages / 60 * self.scale_factor
 
         self.add_OPEX = (replacement_parts_annual_cost + annual_maintenance) / (365 * 24)  # USD/hour
 

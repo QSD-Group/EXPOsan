@@ -119,7 +119,7 @@ def create_systemA(flowsheet=None):
                       interval=A2.emptying_period, interval_unit='yr',
                       loss_ratio=0.02)
 
-    ##### Simulation, TEA, and LCA #####
+    ##### Simulation, TEA, and LCA ##### TODO: scale annual_labor to scale_factor?
     sysA = System('sysA', path=(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11))
     teaA = TEA(system=sysA, discount_rate=discount_rate,
                start_year=2020, lifetime=20, uptime_ratio=1,
