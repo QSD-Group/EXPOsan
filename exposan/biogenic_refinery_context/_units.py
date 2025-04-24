@@ -173,6 +173,9 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
     
     _N_ins = 1
     _N_outs = 3
+    biosolids_annual = 10000 # dry tons/yr, default value for scaling
+    biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
+    scale_factor = biosolids_annual / biogenic_refinery_capacity
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  **kwargs):
@@ -351,24 +354,24 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['StainlessSteel'] = constr[0].quantity = \
+        design['StainlessSteel'] = constr[0].quantity = (\
             self.carbonizer_base_assembly_stainless + \
             self.carbonizer_base_squarebox_stainless + \
-            self.carbonizer_base_charbox_stainless
-        design['Steel'] = constr[1].quantity = \
+            self.carbonizer_base_charbox_stainless) * self.scale_factor
+        design['Steel'] = constr[1].quantity = (\
             self.carbonizer_base_assembly_steel + \
             self.carbonizer_base_squarebox_steel + \
-            self.carbonizer_base_charbox_steel
-        design['ElectricMotor'] =  constr[2].quantity = 2.7/5.8 + 6/5.8
-        design['Electronics'] = constr[3].quantity = 1
+            self.carbonizer_base_charbox_steel) * self.scale_factor
+        design['ElectricMotor'] =  constr[2].quantity = (2.7/5.8 + 6/5.8) * self.scale_factor
+        design['Electronics'] = constr[3].quantity = 1 * self.scale_factor
         self.add_construction(add_cost=False)
 
     def _cost(self):
         D = self.design_results
         C = self.baseline_purchase_costs
-        C['Stainless steel'] = self.stainless_steel_cost * D['StainlessSteel']
-        C['Steel'] = self.steel_cost * D['Steel']
-        C['Electric motors'] = self.char_auger_motor_cost_cb + self.fuel_auger_motor_cost_cb
+        C['Stainless steel'] = self.stainless_steel_cost * D['StainlessSteel'] * self.scale_factor
+        C['Steel'] = self.steel_cost * D['Steel'] * self.scale_factor
+        C['Electric motors'] = (self.char_auger_motor_cost_cb + self.fuel_auger_motor_cost_cb) * self.scale_factor
         C['Misc. parts'] = (
             self.pyrolysis_pot_cost_cb +
             self.primary_air_blower_cost_cb +
@@ -385,7 +388,7 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
             self.combusion_chamber_cost_cb +
             self.sprayer_cost_cb +
             self.vent_cost_cb
-            )
+            ) * self.scale_factor
 
         # O&M cost converted to annual basis, labor included,
         # USD/yr only accounts for time running
@@ -400,7 +403,7 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
             1/self.forced_air_fan_lifetime_cb * self.forced_air_fan_cost_cb +
             1/self.airlock_motor_lifetime_cb * self.airlock_motor_cost_cb +
             1/self.inducer_fan_lifetime_cb * self.inducer_fan_cost_cb
-            )
+            ) * self.scale_factor
 
         # In min/yr
         annual_maintenance = (
@@ -418,7 +421,7 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
             1/self.inducer_fan_lifetime_cb * self.service_team_replacefan_cb +
             1/self.frequency_corrective_maintenance * self.service_team_replacepaddleswitch_cb +
             1/self.airlock_motor_lifetime_cb * self.service_team_replaceairlock_cb
-            )
+            ) * self.scale_factor
         annual_maintenance *= self.service_team_wages / 60
 
         self.add_OPEX = (replacement_parts_annual_cost + annual_maintenance) / (365 * 24)  # USD/hour
@@ -427,7 +430,7 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
             self.carbonizer_biochar_auger_power + \
             self.carbonizer_fuel_auger_power + \
             self.carbonizer_primary_air_blower_power
-        self.power_utility(power_demand)  # kW
+        self.power_utility(power_demand) * self.scale_factor  # kW
 
 
 # %%
