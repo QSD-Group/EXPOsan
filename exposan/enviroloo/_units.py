@@ -110,7 +110,7 @@ class EL_CT(CSTR):
     --------
     `biosteam.units.Mixer <https://biosteam.readthedocs.io/en/latest/units/mixing.html>`_
     '''
-    _N_ins = 3 # treated water, PAC, blower
+    _N_ins = 2 # treated water, PAC, blower
     _N_outs = 1  # treated water, CH4, N2O
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
@@ -149,8 +149,7 @@ class EL_CT(CSTR):
         self.steel_density=steel_density
         self.ppl=ppl
         self.baseline_ppl=baseline_ppl
-       
-
+        
         # # Design parameters 
         # self._W_tank = W_tank
         # self._D_tank = D_tank
