@@ -90,8 +90,8 @@ def update_resource_recovery_settings():
         'NaClO': 1.8 * price_ratio, # $/kg, used for membrane cleanup
         'O3': 0.9 * price_ratio, # $/kg, used for clear water tank disinfection
         'HDPE': 0.5 * price_ratio, # $/kg, used for 200M ozone connection
-        #'PAC': 0.9 * price_ratio, # $/kg, used for aerobic tank deposition
-        #'Glucose': 0.95 *price_ratio, # $/kg, used in anoxic tank
+        'PAC': 0 * price_ratio, # $/kg, used for aerobic tank deposition TODO: add dosage prices
+        'Glucose': 0 *price_ratio, # $/kg, used in anoxic tank
         'air': 0,
         }
     
@@ -109,7 +109,7 @@ def update_resource_recovery_settings():
         'NaClO': 0.10287725,
         'O3': 0.39586718,
         'PAC': 0.394959,
-        'Glucose': 0.033883,
+        'Glucose': 0.033883, #TODO: add conversion, check units ecoinvent
         'air': 0,
         }
     
@@ -126,8 +126,8 @@ def update_resource_recovery_settings():
         'NaOH': 0.025732326,
         'NaClO': 0.051394080,
         'O3':0.21786132,
-        'PAC': 0.1938478,
-        'Glucose': 0.035664,
+        'PAC': 0.1938478, #TODO: add conversion
+        'Glucose': 0.035664, #TODO: add conversion
         'air': 0,
         }
     
@@ -144,8 +144,8 @@ def update_resource_recovery_settings():
         'NaOH': 0.061256093,
         'NaClO': 0.12191047,
         'O3': 0.51710284,
-        'PAC': 0.0173485,
-        'Glucose': 0.011324,
+        'PAC': 0.0173485,#TODO: add conversion
+        'Glucose': 0.011324, #TODO: add conversion
         'air': 0,
         }
     
@@ -203,16 +203,17 @@ def _load_lca_data(reload=False):
         price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct = update_resource_recovery_settings()
 
         # define impacts associated with streams and electricity in the EL system
-        def create_stream_impact_item(item_ID, dct_key = ''):
+        def create_stream_impact_item(item_ID, dct_key = '',):
             dct_key = dct_key or item_ID.rsplit('_item')[0] # here for example, change 'struvite_item' to 'struv'
             StreamImpactItem(ID = item_ID, 
                              GWP = GWP_dct[dct_key],
                              H_Ecosystems = H_Ecosystems_dct[dct_key],
                              H_Health = H_Health_dct[dct_key],
-                             H_Resources = H_Resources_dct[dct_key])
+                             H_Resources = H_Resources_dct[dct_key],
+                             )
         #TODO: stream impact items not properly initiated because 
         # lca.total_stream_impacts['GlobalWarming'] outputs 0.                
-        create_stream_impact_item(item_ID='CH4_item')
+        create_stream_impact_item(item_ID='CH4_item') # link when generated in each unit
         create_stream_impact_item(item_ID='N2O_item')
         create_stream_impact_item(item_ID='N_item')
         create_stream_impact_item(item_ID='P_item')
@@ -251,10 +252,12 @@ def _load_system():
     _system_loaded = True
 
 def load():
+    
+    _load_lca_data()
     if not _components_loaded: _load_components()
     if not _system_loaded: _load_system()
     
-    _load_lca_data()
+    
     dct = globals()
     
     for sys in (sysEL,): #dct.update(sys.flowsheet.to_dct())

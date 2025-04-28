@@ -27,14 +27,14 @@ This python file is used to perform uncertainty and sensitivity analysis for Env
 '''
 
 # %% 
-import qsdsan as qs
-# from qsdsan import (
+import qsdsan as qs 
+from qsdsan import (
 #     Flowsheet, main_flowsheet,
 #     WasteStream,
 #     sanunits as su,
-#     ImpactItem, 
+      ImpactItem, 
 #     LCA, TEA, System,
-#     )
+     )
 # from qsdsan.sanunits import Trucking
 # from chaospy import distributions as shape
 # from qsdsan.utils import clear_lca_registries
@@ -269,8 +269,12 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
                                          concentrations=toilet_waste, 
                                          units=('m3/d', 'mg/L'))
     
-    Glucose = qs.WasteStream('Glucose_Dose', S_F= 0.05, units='kg/hr', T=Temp) # 0.0805
+   
+    
     PAC = qs.WasteStream('PAC_Dose', X_AlOH= 0.24, units='kg/hr', T=Temp) # 0.1207
+    
+   # WasteStream('CH4', phase='g', stream_impact_item=item)
+
     
     masm2d = pc.mASM2d(**masm_kwargs)
     # masm2d_A1 = pc.mASM2d(mu_H=6.0, eta_NO3_H=0.8, K_F=0.05, K_NO3_H=0.05, K_O2_H=0.01, K_O2=0.01, K_O2_PAO=0.01, K_O2_AUT=0.01)
@@ -306,6 +310,11 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
 
     # S3 = su.Splitter('S3', ins = PC-0, outs = ['effluent_PC', 3-CT], split= 0.8)
     
+    mixing_ratio = 0.35 #kg/L for glucose and PAC
+    
+    #Glucose = qs.WasteStream('Glucose_Dose', S_F= 0.05, units='kg/hr', T=Temp) # 0.0805 0.05 kg COD/hr as S_F fermentable solute 
+    Glucose = qs.WasteStream('Glucose_Dose', T=Temp) # 0.0805 0.05 kg COD/hr as S_F fermentable solute 
+    
     
     A1 = elu.EL_Anoxic('A1', ins=(PC-0, 'RAS_A1', Glucose), outs=('effluent_AnoxT',),
                        isdynamic=True,  ppl = ppl, baseline_ppl = baseline_ppl,  **kwargs_1 
@@ -315,6 +324,8 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
                                        
                         # V_max= 7.33, 
                         )
+    item = ImpactItem.get_item('Glucose_item').copy(f'A1_glucose_item', set_as_source=True)
+    A1.ins[2].stream_impact_item = item      #effluent was
     
     O1 = elu.EL_Aerobic('O1', ins=(A1-0, PAC), outs=('effluent_AeroT',),
                         isdynamic=True,  ppl = ppl, baseline_ppl = baseline_ppl,  **kwargs_O

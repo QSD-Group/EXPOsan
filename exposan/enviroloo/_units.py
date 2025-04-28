@@ -478,9 +478,10 @@ class EL_Anoxic(CSTR):
     exponent_scale=0.1
     
     # _D_O2 = 2.10e-9   # m2/s
-
+    #TODO: check mixing value 
+    
     def __init__(self, ID='', ins=None, outs=(), split=None, thermo=None,
-                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, 
+                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, mixing_ratio = .035,
                  # D_tank = 3.65,
                  # freeboard = 0.61, 
                  t_wall = None, t_slab = None, aeration=None, 
@@ -501,9 +502,10 @@ class EL_Anoxic(CSTR):
             isdynamic=isdynamic, exogenous_vars=exogenous_vars, **kwargs
             )
         
-
+    
         # # Design parameters 
         self._W_tank = W_tank
+        self.mixing_ratio = mixing_ratio
         # self._D_tank = D_tank
         # self._freeboard = freeboard
         # self._t_wall = t_wall
@@ -519,6 +521,12 @@ class EL_Anoxic(CSTR):
             setattr(self, attr, value)    
         ###############################################
     
+    def _run(self):
+        inf = self.ins[0]
+        glucose = self.ins[2]
+        glucose.imass['S_F'] = self.mixing_ratio * inf.F_vol * 1000 # kg/L and m3/h    to kg/h TODO: add conversion of kg glucose to kg COD
+        
+        super()._run()
             
     def _init_lca(self):
         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
