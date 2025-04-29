@@ -243,10 +243,6 @@ def add_OPEX_metrics(model):
         pump_energy['AD'] = power
         return power
     
-    @metric(name='pumping energy cost', units='USD/d', element='OPEX')
-    def get_pump_cost():
-        return sum(pump_energy.values()) * 24 * sys.power_utility.price
-    
     mixing_energy = {}
     @metric(name='ASR mixing energy', units='kW', element='Mixing')
     def get_asr_mixing_power():
@@ -268,35 +264,47 @@ def add_OPEX_metrics(model):
         mixing_energy['AD'] = power
         return power
     
-    @metric(name='mixing energy cost', units='USD/d', element='OPEX')
-    def get_mixing_cost():
-        return sum(mixing_energy.values()) * 24 * sys.power_utility.price
-    
-    @metric(name='chemical cost', units='USD/d', element='OPEX')
-    def get_chemical_cost():
-        cost = 0
-        if 'carbon' in s:
-            s.carbon.price = 1.8 * s.carbon.components.S_A.i_mass   # 1.8 $/kg 100% acetic acid, GPS-X default
-            cost += s.carbon.cost * 24
-        if 'MD' in u:
-            cost += u.MD.add_OPEX['Coagulant'] * 24
-        if ('AD' not in u) and ('AED' not in u):    # class B lime stabilization in solid trains 3
-            cmps = s.cake.components
-            tss = s.cake.get_TSS() * 1e-4 # in TS%
-            dose = 50 + 4.0*(tss-10)    # in lb CaO per wet ton, linearly correlated w TS%, MOP8 Fig 23.79
-            dose *= 0.5 # convert from lb/ton to kg/tonne
-            cost += sum(s.cake.mass * cmps.i_mass) * 24e-3 * dose / 0.9 * 0.124 # assume 90% purity, 124 USD/tonne https://www.imarcgroup.com/quicklime-pricing-report 
-        return cost
     
     @metric(name='lime stablization energy cost', units='USD/d', element='Misc')
     def get_stabilization_power():
         if ('AD' not in u) and ('AED' not in u):    # class B lime stabilization in solid trains 3
             cmps = s.cake.components
-            return sum(s.cake.mass * cmps.i_mass) * 24e-3 * 4.85 * sys.power_utility.price  # 4.4 kW/wet ton, Tarallo et al. 2015 --> makes more sense to be kW/(tonne/d)
-        else:
-            return 0
+            return sum(s.cake.mass * cmps.i_mass) * 24e-3 * 4.85 * sys.power_utility.price  # 4.4 kW/wet ton, Tarallo et al. 2015 --> makes more sense to be kWh/wet ton
+        return 0
     
+    @metric(name='pumping energy cost', units='USD/d', element='OPEX')
+    def get_pump_cost():
+        return sum(pump_energy.values()) * 24 * sys.power_utility.price
+    
+    @metric(name='mixing energy cost', units='USD/d', element='OPEX')
+    def get_mixing_cost():
+        return sum(mixing_energy.values()) * 24 * sys.power_utility.price
+    
+    @metric(name='external carbon cost', units='USD/d', element='OPEX')
+    def get_carbon_cost():
+        if 'carbon' in s:
+            s.carbon.price = 1.8 * s.carbon.components.S_A.i_mass   # 1.8 $/kg 100% acetic acid, GPS-X default
+            return s.carbon.cost * 24
+        return 0
+    
+    @metric(name='coagulant cost', units='USD/d', element='OPEX')
+    def get_coagulant_cost():
+        if 'MD' in u:
+            return u.MD.add_OPEX['Coagulant'] * 24
+        return 0
+    
+    @metric(name='lime cost', units='USD/d', element='OPEX')
+    def get_lime_cost():
+        if ('AD' not in u) and ('AED' not in u):    # class B lime stabilization in solid trains 3
+            cmps = s.cake.components
+            tss = s.cake.get_TSS() * 1e-4 # in TS%
+            dose = 50 + 4.0*(tss-10)    # in lb CaO per wet ton, linearly correlated w TS%, MOP8 Fig 23.79
+            dose *= 0.5 # convert from lb/ton to kg/tonne
+            return sum(s.cake.mass * cmps.i_mass) * 24e-3 * dose / 0.9 * 0.124 # assume 90% purity, 124 USD/tonne https://www.imarcgroup.com/quicklime-pricing-report 
+        return 0
+
     @metric(name='sludge disposal cost', units='USD/d', element='OPEX')
     def get_sludge_disposal_cost():
         cmps = s.cake.components
-        return sum(s.cake.mass * cmps.i_mass) * 24e-3 * 80 # 80 USD/tonne, GPS-X default
+        # return sum(s.cake.mass * cmps.i_mass) * 24e-3 * 80 # 80 USD/tonne, GPS-X default
+        return sum(s.cake.mass * cmps.i_mass) * 24e-3 * 68.5 # land application price per wet ton at WRRF gate, based on National Biosolids Data Project report
