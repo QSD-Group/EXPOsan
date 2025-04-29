@@ -62,7 +62,8 @@ for ID in (
     try:
         start = tm.time()
         print("Start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
-        sys.simulate(state_reset_hook='reset_cache', t_span=(0,300), method='BDF')
+        try: sys.simulate(t_span=(0,300), method='BDF')
+        except: sys.simulate(state_reset_hook='reset_cache', t_span=(0,300), method='BDF')
         end = tm.time()
         print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end-start)))
         print('Adjusting TS% ...')

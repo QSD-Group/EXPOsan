@@ -265,13 +265,7 @@ def add_OPEX_metrics(model):
         return power
     
     
-    @metric(name='lime stablization energy cost', units='USD/d', element='Misc')
-    def get_stabilization_power():
-        if ('AD' not in u) and ('AED' not in u):    # class B lime stabilization in solid trains 3
-            cmps = s.cake.components
-            return sum(s.cake.mass * cmps.i_mass) * 24e-3 * 4.85 * sys.power_utility.price  # 4.4 kW/wet ton, Tarallo et al. 2015 --> makes more sense to be kWh/wet ton
-        return 0
-    
+   
     @metric(name='pumping energy cost', units='USD/d', element='OPEX')
     def get_pump_cost():
         return sum(pump_energy.values()) * 24 * sys.power_utility.price
@@ -301,6 +295,13 @@ def add_OPEX_metrics(model):
             dose = 50 + 4.0*(tss-10)    # in lb CaO per wet ton, linearly correlated w TS%, MOP8 Fig 23.79
             dose *= 0.5 # convert from lb/ton to kg/tonne
             return sum(s.cake.mass * cmps.i_mass) * 24e-3 * dose / 0.9 * 0.124 # assume 90% purity, 124 USD/tonne https://www.imarcgroup.com/quicklime-pricing-report 
+        return 0
+
+    @metric(name='lime stablization energy cost', units='USD/d', element='OPEX')
+    def get_stabilization_power():
+        if ('AD' not in u) and ('AED' not in u):    # class B lime stabilization in solid trains 3
+            cmps = s.cake.components
+            return sum(s.cake.mass * cmps.i_mass) * 24e-3 * 4.85 * sys.power_utility.price  # 4.4 kW/wet ton, Tarallo et al. 2015 --> makes more sense to be kWh/wet ton
         return 0
 
     @metric(name='sludge disposal cost', units='USD/d', element='OPEX')
