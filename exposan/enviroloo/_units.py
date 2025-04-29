@@ -555,7 +555,7 @@ class EL_Anoxic(CSTR):
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
         
-        self.add_OPEX = (self._calc_replacement_cost() + self.chemical_mixing_ratio * self.glucose_pump_flow * 
+        self.add_OPEX = (self._calc_replacement_cost() + self.chemical_glucose_mixing_ratio * self.glucose_pump_flow * 
             self.chemical_glucose_price)
         
         power_demand = self.power_demand_AnoxicTank
@@ -680,9 +680,9 @@ class EL_Aerobic(CSTR):
             setattr(self, attr, value)    
         ############################################### 
         
-    def _run(self):
-        PAC = self.ins[1]
-        PAC.imass['X_AlOH'] = self.chemical_PAC_mixing_ratio * self.PAC_pump_flow * 0.2886 # kg/L and L/h    to kg/h TODO: add source for 0.2886 kg AlOH/kg PAC
+    # def _run(self):
+    #     PAC = self.ins[1]
+    #     PAC.imass['X_AlOH'] = self.chemical_PAC_mixing_ratio * self.PAC_pump_flow * 0.2886 # kg/L and L/h    to kg/h TODO: add source for 0.2886 kg AlOH/kg PAC
         
     def _init_lca(self):
         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
@@ -713,10 +713,14 @@ class EL_Aerobic(CSTR):
         ratio = self.price_ratio
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
-        
+            
         self.add_OPEX = (self._calc_replacement_cost() + 
-                         self.chemical_PAC_mixing_ratio * self.PAC_pump_flow * 
-                         self.chemical_PAC_price) #USD/hr
+                         self.chemical_PAC_mixing_ratio * self.ins[0].F_vol * 
+                         self.chemical_PAC_price / 24)
+        
+        # self.add_OPEX = (self._calc_replacement_cost() + 
+        #                  self.chemical_PAC_mixing_ratio * self.PAC_pump_flow * 
+        #                  self.chemical_PAC_price) #USD/hr
         
         power_demand = self.power_demand_AerobicTank
         self.power_utility(power_demand) # kWh
