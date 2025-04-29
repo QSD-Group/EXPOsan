@@ -9,4 +9,13 @@ powder_coating	Powder coating	USD	33.33	29.997	36.663	triangular	Duke Center for
 steel_weight		kg	1.125	1.0125	1.2375	uniform	"Trotochaud et al., 2020 Supporting Information <https://doi.org/10.1021/acs.est.0c02755>"
 LLDPE_weight		kg	1.91	1.4427	1.7633	uniform	"Trotochaud et al., 2020 Supporting Information <https://doi.org/10.1021/acs.est.0c02755>"
 steel_framework_weight	Housing framework steel weight	kg	1.5	1.35	1.65	uniform	assumption
-steel_fittings_weight	Housing fittings steel weight	kg	1.0	0.8	1.2	uniform	assumption
+steel_fittings_weight	Housing fittings steel weight	kg	1	0.8	1.2	uniform	assumption
+frontend_1000_ppl_cost		USD	10000	8500	11500	uniform	assumption for cost of stone structure + toilets (or 20 toilets at $500/toilet)
+frame_lifetime		yr	30			constant	assumption
+extrusion_lifetime		yr	30			constant	assumption
+angle_frame_lifetime		yr	30			constant	assumption
+angle_lifetime		yr	30			constant	assumption
+door_sheet_lifetime		yr	30			constant	assumption
+plate_lifetime		yr	30			constant	assumption
+powder_coating_lifetime		yr	30			constant	assumption
+frontend_lifetime		yr	20			constant	assumption

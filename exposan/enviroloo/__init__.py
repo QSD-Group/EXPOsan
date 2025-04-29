@@ -90,8 +90,8 @@ def update_resource_recovery_settings():
         'NaClO': 1.8 * price_ratio, # $/kg, used for membrane cleanup
         'O3': 0.9 * price_ratio, # $/kg, used for clear water tank disinfection
         'HDPE': 0.5 * price_ratio, # $/kg, used for 200M ozone connection
-        'PAC': 0 * price_ratio, # $/kg, used for aerobic tank deposition TODO: add dosage prices
-        'Glucose': 0 *price_ratio, # $/kg, used in anoxic tank
+        'PAC': 0 / 0.2886 * price_ratio, #$/kg, kg AlOH/kg PAC conversion
+        'Glucose': 0 / 1.067 * price_ratio, # $/kg, used in anoxic tank, kg COD/kg glucose conversion
         'air': 0,
         }
     
@@ -108,8 +108,8 @@ def update_resource_recovery_settings():
         'NaOH': 0.050981804, 
         'NaClO': 0.10287725,
         'O3': 0.39586718,
-        'PAC': 0.394959,
-        'Glucose': 0.033883, #TODO: add conversion, check units ecoinvent
+        'PAC': 0.394959 / 0.2886, #kg AlOH/kg PAC
+        'Glucose': 0.033883 / 1.067, #kg COD/kg glucose conversion
         'air': 0,
         }
     
@@ -126,8 +126,8 @@ def update_resource_recovery_settings():
         'NaOH': 0.025732326,
         'NaClO': 0.051394080,
         'O3':0.21786132,
-        'PAC': 0.1938478, #TODO: add conversion
-        'Glucose': 0.035664, #TODO: add conversion
+        'PAC': 0.1938478 / 0.2886, #kg AlOH/kg PAC
+        'Glucose': 0.035664 / 1.067, #kg COD/kg glucose conversion
         'air': 0,
         }
     
@@ -144,8 +144,8 @@ def update_resource_recovery_settings():
         'NaOH': 0.061256093,
         'NaClO': 0.12191047,
         'O3': 0.51710284,
-        'PAC': 0.0173485,#TODO: add conversion
-        'Glucose': 0.011324, #TODO: add conversion
+        'PAC': 0.0173485 / 0.2886, #kg AlOH/kg PAC
+        'Glucose': 0.011324 / 1.067, #kg COD/kg glucose conversion
         'air': 0,
         }
     
@@ -162,8 +162,8 @@ def update_resource_recovery_settings():
         'NaOH': 0.050981804,
         'NaClO': 0.10287725,
         'O3': 0.39586718,
-        'PAC': 0.28485795,
-        'Glucose': 0.02425,
+        'PAC': 0.28485795 / 0.2886, #kg AlOH/kg PAC
+        'Glucose': 0.02425 / 1.067, #kg COD/kg glucose conversion
         'air': 0,
         }
     

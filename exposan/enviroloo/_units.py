@@ -522,9 +522,8 @@ class EL_Anoxic(CSTR):
         ###############################################
     
     def _run(self):
-        inf = self.ins[0]
         glucose = self.ins[2]
-        glucose.imass['S_F'] = self.mixing_ratio * inf.F_vol * 1000 # kg/L and m3/h    to kg/h TODO: add conversion of kg glucose to kg COD
+        glucose.imass['S_F'] = self.chemical_glucose_mixing_ratio * self.glucose_pump_flow * 1.067 # kg/L and L/h    to kg/h TODO: add source for 1.067 kg COD/kg glucose
         
         super()._run()
             
@@ -556,8 +555,8 @@ class EL_Anoxic(CSTR):
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
         
-        self.add_OPEX = (self._calc_replacement_cost() + self.chemical_glucose_dosage * self.ins[0].F_vol * 
-            self.chemical_glucose_price / 24)
+        self.add_OPEX = (self._calc_replacement_cost() + self.chemical_mixing_ratio * self.glucose_pump_flow * 
+            self.chemical_glucose_price)
         
         power_demand = self.power_demand_AnoxicTank
         self.power_utility(power_demand)
@@ -640,7 +639,7 @@ class EL_Aerobic(CSTR):
 
     def __init__(self, 
                  ID='', ins=None, outs=(), split=None, thermo=None,
-                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, 
+                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, mixing_ratio = .035,
                  # D_tank = 3.65,
                  # freeboard = 0.61, 
                  t_wall = None, t_slab = None, aeration=2.0, 
@@ -679,8 +678,12 @@ class EL_Aerobic(CSTR):
 
         for attr, value in kwargs.items():
             setattr(self, attr, value)    
-        ###############################################     
-
+        ############################################### 
+        
+    def _run(self):
+        PAC = self.ins[1]
+        PAC.imass['X_AlOH'] = self.chemical_PAC_mixing_ratio * self.PAC_pump_flow * 0.2886 # kg/L and L/h    to kg/h TODO: add source for 0.2886 kg AlOH/kg PAC
+        
     def _init_lca(self):
         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
                              Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),
@@ -712,8 +715,8 @@ class EL_Aerobic(CSTR):
             C[equipment] = cost * ratio
         
         self.add_OPEX = (self._calc_replacement_cost() + 
-                         self.chemical_PAC_dosage * self.ins[0].F_vol * 
-                         self.chemical_PAC_price / 24) #USD/hr
+                         self.chemical_PAC_mixing_ratio * self.PAC_pump_flow * 
+                         self.chemical_PAC_price) #USD/hr
         
         power_demand = self.power_demand_AerobicTank
         self.power_utility(power_demand) # kWh
@@ -1019,8 +1022,8 @@ class EL_Housing(CSTR):
     def _design(self): # replace the actual materials used in the EL
         design = self.design_results
         constr = self.construction
-        design['StainlessSteel'] = constr[0].quantity = (self.steel_weight + self.steel_framework_weight + self.steel_fittings_weight) * (self.ppl / self.baseline_ppl)  # assume linear scaling
-        design['Plastic'] = constr[1].quantity = (self.LLDPE_weight) * (self.ppl / self.baseline_ppl)   # assume linear scaling
+        design['StainlessSteel'] = constr[0].quantity = (self.steel_weight + self.steel_framework_weight + self.steel_fittings_weight) #* (self.ppl / self.baseline_ppl)  # assume linear scaling
+        design['Plastic'] = constr[1].quantity = (self.LLDPE_weight) #* (self.ppl / self.baseline_ppl)   # assume linear scaling
         self.add_construction(add_cost= False)
     
     def _cost(self):
@@ -1029,10 +1032,24 @@ class EL_Housing(CSTR):
                         self.angle_frame + self.angle +
                         self.door_sheet + self.plate +
                         self.powder_coating) * (1 + 0.1 * (self.N_EL -1))
+        C['Frontend'] = self.frontend_1000_ppl_cost
         
         ratio = self.price_ratio
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
+        self.add_OPEX = self._calc_replacement_cost()
+
+    def _calc_replacement_cost(self):
+        scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
+        housing_replacement_cost = (
+            self.frame / self.frame_lifetime +
+            self.angle_frame / self.angle_frame_lifetime +
+            self.door_sheet / self.door_sheet_lifetime +
+            self.powder_coating / self.powder_coating_lifetime + 
+            self.frontend_1000_ppl_cost / self.frontend_lifetime
+            ) * scale
+        housing_replacement_cost = housing_replacement_cost / (365 * 24) # convert to USD/hr
+        return housing_replacement_cost
     
     @property
     def N_EL(self): # determine the number of EL system needed

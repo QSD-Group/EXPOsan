@@ -333,6 +333,8 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     item = ImpactItem.get_item('Glucose_item').copy(f'A1_glucose_item', set_as_source=True)
     A1.ins[2].stream_impact_item = item      #effluent was
     
+    PAC = qs.WasteStream('PAC_Dose', T=Temp) #  as Al_OH
+    
     O1 = elu.EL_Aerobic('O1', ins=(A1-0, PAC), outs=('effluent_AeroT',),
                         isdynamic=True,  ppl = ppl, baseline_ppl = baseline_ppl,  **kwargs_O
                         # aeration = 2, suspended_growth_model=asm2d,
@@ -340,7 +342,8 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
                         #  W_tank= 2.09,
                         #  V_max=7.33,**kwargs_0, 
                          )
-
+    item = ImpactItem.get_item('PAC_item').copy(f'O1_PAC_item', set_as_source=True)
+    O1.ins[1].stream_impact_item = item      #effluent was
 
     B1 = elu.EL_CMMBR('B1', ins=O1-0, outs=('effluent_MembT', 'sludge_MembT'),
                       isdynamic=True, ppl = ppl, baseline_ppl = baseline_ppl,
