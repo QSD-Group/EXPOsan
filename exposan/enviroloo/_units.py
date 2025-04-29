@@ -681,6 +681,8 @@ class EL_Aerobic(CSTR):
         ############################################### 
         
     # def _run(self):
+    #     print(self.PAC_pump_flow)
+    #     print(self.chemical_PAC_mixing_ratio)
     #     PAC = self.ins[1]
     #     PAC.imass['X_AlOH'] = self.chemical_PAC_mixing_ratio * self.PAC_pump_flow * 0.2886 # kg/L and L/h    to kg/h TODO: add source for 0.2886 kg AlOH/kg PAC
         
@@ -715,7 +717,7 @@ class EL_Aerobic(CSTR):
             C[equipment] = cost * ratio
             
         self.add_OPEX = (self._calc_replacement_cost() + 
-                         self.chemical_PAC_mixing_ratio * self.ins[0].F_vol * 
+                         self.chemical_PAC_mixing_ratio * self.PAC_pump_flow * 
                          self.chemical_PAC_price / 24)
         
         # self.add_OPEX = (self._calc_replacement_cost() + 
