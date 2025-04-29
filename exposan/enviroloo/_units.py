@@ -110,7 +110,7 @@ class EL_CT(CSTR):
     --------
     `biosteam.units.Mixer <https://biosteam.readthedocs.io/en/latest/units/mixing.html>`_
     '''
-    _N_ins = 2 # treated water, PAC, blower
+    _N_ins = 1 # treated water, PAC, blower
     _N_outs = 1  # treated water, CH4, N2O
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
