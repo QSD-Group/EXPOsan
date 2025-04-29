@@ -113,9 +113,9 @@ Air dissolving pump: P_AirDissolved
 '''
 Temp = 273.15+20 # temperature [K]
 scale_factor = 10 #scale factor for flow, baseline is 100 ppl
-Q_w = 6 * scale_factor # m3/day  #Assuming Toilet flows to be 60lpcd and Initial population to be 100 6m^3/day for 100 ppl, 60 for 1000 ppl
-Q_ras = 3 * scale_factor # m3/day # 200 l/min for nitrate pump 3m^3/day for 100 ppl, 30 for 1000 ppl
-Q_was = 0.05*24
+Q_w = 3 * scale_factor # m3/day  #Assuming Toilet flows to be 60lpcd and Initial population to be 100 6m^3/day for 100 ppl, 60 for 1000 ppl
+Q_ras = 1.5 * scale_factor # m3/day # 200 l/min for nitrate pump 3m^3/day for 100 ppl, 30 for 1000 ppl
+Q_was = 0.05*12
 # Q_was = 280 # m3/day # 200 l/min for sludge return pump
 biomass_IDs = ('X_H', 'X_AUT', 'X_PAO')
 toilet_waste={
@@ -273,6 +273,12 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     
     PAC = qs.WasteStream('PAC_Dose', X_AlOH= 0.24, units='kg/hr', T=Temp) # 0.1207
     
+    # Create effluent_CT WasteStream to match toilet_ins concentration
+    effluent_CT = qs.WasteStream('effluent_CT', T=Temp)
+    effluent_CT.set_flow_by_concentration(Q_w*0.9, 
+                                          concentrations=toilet_waste, 
+                                          units=('m3/d', 'mg/L'))
+    
    # WasteStream('CH4', phase='g', stream_impact_item=item)
 
     
@@ -290,7 +296,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #               outs=('effluent_CT'),
     #               )
     CT = elu.EL_CT(
-        'CT', ins=(toilet_ins, 'flushing_water_CT', 'sludge_PC'), outs=('effluent_CT'),
+        'CT', ins=(toilet_ins), outs=(effluent_CT),
         isdynamic=True, V_max=10, aeration=None, suspended_growth_model=None, ppl=ppl, baseline_ppl=baseline_ppl
         )
     
@@ -300,7 +306,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #                          sludge_flow_rate=280, 
     #                          solids_removal_efficiency=0.6)
     
-    PC = elu.EL_PC('PC', ins=(CT-0, 'RAS_PC'), outs=('effluent_PC_total', 2-CT),
+    PC = elu.EL_PC('PC', ins=(CT-0, 'RAS_PC'), outs=('effluent_PC_total'),
                    ppl=ppl, baseline_ppl=baseline_ppl,
                    solids_removal_efficiency=0.85,
                    isdynamic=True,
@@ -375,9 +381,9 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #                 # thermo=thermo_masm2d
     #                 )
     
-    S4 = su.Splitter('S4', ins = ELH-0, outs = [1-CT, 'Reflushing'], split= 0.5)
+    # S4 = su.Splitter('S4', ins = ELH-0, outs = [1-CT, 'Reflushing'], split= 0.5)
 
-    sys = qs.System('EL', path=(CT, PC, A1, O1, B1, S2, S1, CWT, PV, ELH, S4))
+    sys = qs.System('EL', path=(CT, PC, A1, O1, B1, S2, S1, CWT, PV, ELH))
     sys.set_dynamic_tracker(A1, O1, B1, B1-0, B1-1)
     
     
