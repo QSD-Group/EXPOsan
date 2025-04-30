@@ -52,14 +52,14 @@ GWP_N2O = 273.0  # update these if different in your setup #N2O_CO2_eq
  
 
 def calc_CH4_emissions_from_unit(unit, CH4_EF):
-    COD_in = unit.ins[0].COD * unit.ins[0].F_vol / 1e3  # kg/day
+    COD_in = unit.ins[0].COD * unit.ins[0].F_vol / 1e3 + unit.ins[1].COD * unit.ins[1].F_vol / 1e3 # kg/day
     COD_out = unit.outs[0].COD * unit.outs[0].F_vol / 1e3
     COD_removed = COD_in - COD_out
-    #COD_removed = max(COD_in - COD_out, 0)
+    COD_removed = max(COD_in - COD_out, 0)
     return COD_removed * CH4_EF * GWP_CH4  # kg CO2-eq/day
 
 def calc_N2O_emissions_from_unit(unit, N2O_EF):
-    N_in = unit.ins[0].TN * unit.ins[0].F_vol / 1e3  # kg/day
+    N_in = unit.ins[0].TN * unit.ins[0].F_vol / 1e3 + unit.ins[1].TN * unit.ins[0].F_vol / 1e3 # kg/day
     N_out = unit.outs[0].TN * unit.outs[0].F_vol / 1e3
     N_removed = max(N_in - N_out, 0)
     return N_removed * N2O_EF * GWP_N2O  # kg CO2-eq/day
