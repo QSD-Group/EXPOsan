@@ -47,8 +47,8 @@ __all__ = ('create_model', 'run_uncertainty',)
 # #####################################################################################################################################################
 ######################################### define function enabling the addition of metrics to the model ###############################################
 # --- GWP emission conversion functions ---
-GWP_CH4 = 27.2  # or your model's default
-GWP_N2O = 273.0  # update these if different in your setup
+GWP_CH4 = 27.2  # or your model's default #CH4_CO2_EQ
+GWP_N2O = 273.0  # update these if different in your setup #N2O_CO2_eq
  
 
 def calc_CH4_emissions_from_unit(unit, CH4_EF):
@@ -687,9 +687,9 @@ def add_parameters(model, unit_dct, country_specific=False):
                             baseline=b, distribution=D)
 
     # === Uncertainty for CH4/N2O emission factors ===
-    b = CT_data.loc['MCF_decay', 'expected']
-    low = CT_data.loc['MCF_decay', 'low']
-    high = CT_data.loc['MCF_decay', 'high']
+    b = CT_data.loc['EL_anoT_methane_yield', 'expected']
+    low = CT_data.loc['EL_anoT_methane_yield', 'low']
+    high = CT_data.loc['EL_anoT_methane_yield', 'high']
     if high > low:
         D = shape.Uniform(lower=low, upper=high)
         @param(name='CH4 EF - CT', element='Collection_Tank', kind='isolated',
@@ -701,9 +701,9 @@ def add_parameters(model, unit_dct, country_specific=False):
         CH4_EF_CT = b  # just assign the value if no variation
 
     
-    b = AnoxicTank_data.loc['MCF_decay', 'expected']
-    low = AnoxicTank_data.loc['MCF_decay', 'low']
-    high = AnoxicTank_data.loc['MCF_decay', 'high']
+    b = AnoxicTank_data.loc['EL_anoT_methane_yield', 'expected']
+    low = AnoxicTank_data.loc['EL_anoT_methane_yield', 'low']
+    high = AnoxicTank_data.loc['EL_anoT_methane_yield', 'high']
     # D = shape.Constant(lower=low, upper=high)
     # @param(name='CH4 EF - A1', element='AnoxicTank', kind='isolated',
     #        units='m3 CH4/kg COD removed', baseline=b, distribution=D)
