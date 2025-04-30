@@ -142,10 +142,10 @@ def add_metrics(model):
 
 
     metrics.extend([
-        Metric('CH4 from CT', lambda: calc_CH4_emissions_from_unit(system.flowsheet.unit.CT, CH4_EF=CH4_EF_CT), 'kg CO2-eq/day', 'CH4 emissions'),
-        Metric('CH4 from A1', lambda: calc_CH4_emissions_from_unit(system.flowsheet.unit.A1, CH4_EF=CH4_EF_A1), 'kg CO2-eq/day', 'CH4 emissions'),
-        Metric('N2O from O1', lambda: calc_N2O_emissions_from_unit(system.flowsheet.unit.O1, N2O_EF=N2O_EF_O1), 'kg CO2-eq/day', 'N2O emissions'),
-        Metric('N2O from B1', lambda: calc_N2O_emissions_from_unit(system.flowsheet.unit.B1, N2O_EF=N2O_EF_B1), 'kg CO2-eq/day', 'N2O emissions'),
+        Metric('CH4 from CT', lambda: calc_CH4_emissions_from_unit(system.flowsheet.unit.CT, CH4_EF=CH4_EF_CT)*365/el.ppl, 'kg CO2-eq/cap/yr', 'CH4 emissions'),
+        Metric('CH4 from A1', lambda: calc_CH4_emissions_from_unit(system.flowsheet.unit.A1, CH4_EF=CH4_EF_A1)*365/el.ppl, 'kg CO2-eq/cap/yr', 'CH4 emissions'),
+        Metric('N2O from O1', lambda: calc_N2O_emissions_from_unit(system.flowsheet.unit.O1, N2O_EF=N2O_EF_O1)*365/el.ppl, 'kg CO2-eq/cap/yr', 'N2O emissions'),
+        Metric('N2O from B1', lambda: calc_N2O_emissions_from_unit(system.flowsheet.unit.B1, N2O_EF=N2O_EF_B1)*365/el.ppl, 'kg CO2-eq/cap/yr', 'N2O emissions'),
         
     ])
 
