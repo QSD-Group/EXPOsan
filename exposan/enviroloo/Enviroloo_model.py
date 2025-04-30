@@ -46,6 +46,25 @@ __all__ = ('create_model', 'run_uncertainty',)
 #
 # #####################################################################################################################################################
 ######################################### define function enabling the addition of metrics to the model ###############################################
+# --- GWP emission conversion functions ---
+GWP_CH4 = 27.2  # or your model's default
+GWP_N2O = 273.0  # update these if different in your setup
+ 
+
+def calc_CH4_emissions_from_unit(unit, CH4_EF):
+    COD_in = unit.ins[0].COD * unit.ins[0].F_vol / 1e3  # kg/day
+    COD_out = unit.outs[0].COD * unit.outs[0].F_vol / 1e3
+    COD_removed = max(COD_in - COD_out, 0)
+    return COD_removed * CH4_EF * GWP_CH4  # kg CO2-eq/day
+
+def calc_N2O_emissions_from_unit(unit, N2O_EF):
+    N_in = unit.ins[0].TN * unit.ins[0].F_vol / 1e3  # kg/day
+    N_out = unit.outs[0].TN * unit.outs[0].F_vol / 1e3
+    N_removed = max(N_in - N_out, 0)
+    return N_removed * N2O_EF * GWP_N2O  # kg CO2-eq/day
+
+
+
 def add_metrics(model):
     el._load_lca_data() # load LCA data for EL system
     system = model.system
@@ -69,18 +88,58 @@ def add_metrics(model):
     # Net emissions of the EL system in LCA
     funcs = get_LCA_metrics(system)  # extract LCA metrics from the EL system's LCA results
     cat = 'LCA results'  # assign the same index to all LCA metrics
-    metrics = ([
+    metrics = [
         Metric('Annualized CAPEX', get_TEA_metrics(system)[1], f'{qs.currency}/cap/yr', 'TEA results'),
         Metric('Annual electricity consumption', get_TEA_metrics(system)[2], 'kWh/cap/yr', 'TEA results'),
         Metric('Annual labor cost', get_TEA_metrics(system)[3], f'{qs.currency}/cap/yr', 'TEA results'),
         Metric('OPEX excluding labor/energy', get_TEA_metrics(system)[4], f'{qs.currency}/cap/yr', 'TEA results'),
         Metric('Revenue', get_TEA_metrics(system)[5], f'{qs.currency}/cap/yr', 'TEA results'),
-        Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),
-        Metric('H_Ecosystems', funcs[1], 'points/cap/yr', cat), 
-        Metric('H_Health', funcs[2], 'points/cap/yr', cat),
-        Metric('H_Resources', funcs[3], 'points/cap/yr', cat),
-        ])
+        Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', 'LCA results'),
+        Metric('H_Ecosystems', funcs[1], 'points/cap/yr', 'LCA results'),
+        Metric('H_Health', funcs[2], 'points/cap/yr', 'LCA results'),
+        Metric('H_Resources', funcs[3], 'points/cap/yr', 'LCA results'),
+    ]
+
+        # Load CH4 and N2O emission factors from unit TSVs
+        # Strip all index whitespace first
+    CT_data.index = CT_data.index.str.strip()
+    AnoxicTank_data.index = AnoxicTank_data.index.str.strip()
+    AerobicTank_data.index = AerobicTank_data.index.str.strip()
+    MembTank_data.index = MembTank_data.index.str.strip()
+
+    
+    # Now try fetching values robustly
+    try:
+        CH4_EF_CT = CT_data.loc['EL_anoT_methane_yield', 'expected']
+    except KeyError:
+        print('[ERROR] Could not find CH4 EF for CT.')
+        CH4_EF_CT = 0  # or raise / default fallback
+    
+    try:
+        CH4_EF_A1 = AnoxicTank_data.loc['EL_anoT_methane_yield', 'expected']
+    except KeyError:
+        print('[ERROR] Could not find CH4 EF for A1.')
+        CH4_EF_A1 = 0
+    
+    try:
+        N2O_EF_O1 = AerobicTank_data.loc['N2O_EF_decay', 'expected']
+        N2O_EF_B1 = MembTank_data.loc['N2O_EF_decay', 'expected']
+    except KeyError as e:
+        print(f'[ERROR] Could not find N2O EF:', e)
+        N2O_EF_O1 = N2O_EF_B1 = N2O_EF_CWT = 0
+
+
+    metrics.extend([
+        Metric('CH4 from CT', lambda: calc_CH4_emissions_from_unit(system.flowsheet.unit.CT, CH4_EF=CH4_EF_CT), 'kg CO2-eq/day', 'CH4 emissions'),
+        Metric('CH4 from A1', lambda: calc_CH4_emissions_from_unit(system.flowsheet.unit.A1, CH4_EF=CH4_EF_A1), 'kg CO2-eq/day', 'CH4 emissions'),
+        Metric('N2O from O1', lambda: calc_N2O_emissions_from_unit(system.flowsheet.unit.O1, N2O_EF=N2O_EF_O1), 'kg CO2-eq/day', 'N2O emissions'),
+        Metric('N2O from B1', lambda: calc_N2O_emissions_from_unit(system.flowsheet.unit.B1, N2O_EF=N2O_EF_B1), 'kg CO2-eq/day', 'N2O emissions'),
+        
+    ])
+
+
     model.metrics = metrics
+
     
 # %%
 # load data for the EL model
@@ -385,6 +444,7 @@ def add_parameters(model, unit_dct, country_specific=False):
           baseline = b, distribution = D)
     def set_CH4_CF(i):
         GWP_dct['CH4'] = ImpactItem.get_item('CH4_item').CFs['GlobalWarming'] = i
+        
 
     b = H_Ecosystems_dct['CH4']
     D = shape.Uniform(lower = b * 0.9, upper = b * 1.1)
@@ -407,6 +467,7 @@ def add_parameters(model, unit_dct, country_specific=False):
           baseline = b, distribution = D)
     def set_N2O_CF(i):
         GWP_dct['N2O'] = ImpactItem.get_item('N2O_item').CFs['GlobalWarming'] = i
+        
     
     b = H_Ecosystems_dct['N2O']
     D = shape.Uniform(lower = b * 0.9, upper = b * 1.1)
@@ -602,7 +663,7 @@ def add_parameters(model, unit_dct, country_specific=False):
 
     for indicator in ('GlobalWarming', 'H_Ecosystems', 'H_Health', 'H_Resources'):
         sheet_name = indicator if indicator != 'GlobalWarming' else 'GWP'   # GWP is the default sheet name
-        data = load_data(item_path, sheet = sheet_name)   # load data from Excel file
+        data = load_data(item_path, sheet=sheet_name)   # load data from Excel file
         for para in data.index:
             item = ImpactItem.get_item(para)
             b = item.CFs[indicator]
@@ -611,9 +672,9 @@ def add_parameters(model, unit_dct, country_specific=False):
             dist = data.loc[para]['distribution']
             
             if dist == 'uniform':
-                D = shape.Uniform(lower = lower, upper = upper)
+                D = shape.Uniform(lower=lower, upper=upper)
             elif dist == 'triangular':
-                D = shape.Triangle(lower = lower, midpoint = b, upper = upper)
+                D = shape.Triangle(lower=lower, midpoint=b, upper=upper)
             elif dist == 'constant': 
                 continue
             else:
@@ -622,8 +683,64 @@ def add_parameters(model, unit_dct, country_specific=False):
                             setter=DictAttrSetter(item, 'CFs', indicator),
                             element='LCA',
                             kind='isolated',
-                            units = f'kg CO2-eq/{item.functional_unit}',
-                            baseline = b, distribution = D)
+                            units=f'kg CO2-eq/{item.functional_unit}',
+                            baseline=b, distribution=D)
+
+    # === Uncertainty for CH4/N2O emission factors ===
+    b = CT_data.loc['MCF_decay', 'expected']
+    low = CT_data.loc['MCF_decay', 'low']
+    high = CT_data.loc['MCF_decay', 'high']
+    if high > low:
+        D = shape.Uniform(lower=low, upper=high)
+        @param(name='CH4 EF - CT', element='Collection_Tank', kind='isolated',
+               units='m3 CH4/kg COD removed', baseline=b, distribution=D)
+        def set_CH4_EF_CT(i):
+            global CH4_EF_CT
+            CH4_EF_CT = i
+    else:
+        CH4_EF_CT = b  # just assign the value if no variation
+
+    
+    b = AnoxicTank_data.loc['MCF_decay', 'expected']
+    low = AnoxicTank_data.loc['MCF_decay', 'low']
+    high = AnoxicTank_data.loc['MCF_decay', 'high']
+    # D = shape.Constant(lower=low, upper=high)
+    # @param(name='CH4 EF - A1', element='AnoxicTank', kind='isolated',
+    #        units='m3 CH4/kg COD removed', baseline=b, distribution=D)
+    # def set_CH4_EF_A1(i):
+    #     global CH4_EF_A1
+    #     CH4_EF_A1 = i
+    if high > low:
+        D = shape.Uniform(lower=low, upper=high)
+        @param(name='CH4 EF - A1', element='AnoxicTank', kind='isolated',
+               units='m3 CH4/kg COD removed', baseline=b, distribution=D)
+        def set_CH4_EF_CT(i):
+            global CH4_EF_CT
+            CH4_EF_CT = i
+    else:
+        CH4_EF_CT = b  # just assign the value if no variation
+    
+    b = AerobicTank_data.loc['N2O_EF_decay', 'expected']
+    low = AerobicTank_data.loc['N2O_EF_decay', 'low']
+    high = AerobicTank_data.loc['N2O_EF_decay', 'high']
+    D = shape.Uniform(lower=low, upper=high)
+    @param(name='N2O EF - O1', element='AerobicTank', kind='isolated',
+           units='kg N2O/kg N removed', baseline=b, distribution=D)
+    def set_N2O_EF_O1(i):
+        global N2O_EF_O1
+        N2O_EF_O1 = i
+    
+    b = MembTank_data.loc['N2O_EF_decay', 'expected']
+    low = MembTank_data.loc['N2O_EF_decay', 'low']
+    high = MembTank_data.loc['N2O_EF_decay', 'high']
+    D = shape.Uniform(lower=low, upper=high)
+    @param(name='N2O EF - B1', element='MembraneTank', kind='isolated',
+           units='kg N2O/kg N removed', baseline=b, distribution=D)
+    def set_N2O_EF_B1(i):
+        global N2O_EF_B1
+        N2O_EF_B1 = i
+
+            
 
 #Create Model for EL system
 def create_modelEL(country_specific=False, **model_kwargs):
