@@ -481,7 +481,7 @@ class EL_Anoxic(CSTR):
     #TODO: check mixing value 
     
     def __init__(self, ID='', ins=None, outs=(), split=None, thermo=None,
-                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, mixing_ratio = .035,
+                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, mixing_ratio = .035, scale_factor = 1,
                  # D_tank = 3.65,
                  # freeboard = 0.61, 
                  t_wall = None, t_slab = None, aeration=None, 
@@ -639,7 +639,7 @@ class EL_Aerobic(CSTR):
 
     def __init__(self, 
                  ID='', ins=None, outs=(), split=None, thermo=None,
-                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, mixing_ratio = .035,
+                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, mixing_ratio = .035, scale_factor = 1,
                  # D_tank = 3.65,
                  # freeboard = 0.61, 
                  t_wall = None, t_slab = None, aeration=2.0, 

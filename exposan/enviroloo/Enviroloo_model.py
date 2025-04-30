@@ -54,7 +54,8 @@ GWP_N2O = 273.0  # update these if different in your setup #N2O_CO2_eq
 def calc_CH4_emissions_from_unit(unit, CH4_EF):
     COD_in = unit.ins[0].COD * unit.ins[0].F_vol / 1e3  # kg/day
     COD_out = unit.outs[0].COD * unit.outs[0].F_vol / 1e3
-    COD_removed = max(COD_in - COD_out, 0)
+    COD_removed = COD_in - COD_out
+    #COD_removed = max(COD_in - COD_out, 0)
     return COD_removed * CH4_EF * GWP_CH4  # kg CO2-eq/day
 
 def calc_N2O_emissions_from_unit(unit, N2O_EF):
@@ -110,7 +111,7 @@ def add_metrics(model):
     
     # Now try fetching values robustly
     try:
-        CH4_EF_CT = CT_data.loc['EL_anoT_methane_yield', 'expected']
+        CH4_EF_CT = CT_data.loc['EL_CT_methane_yield', 'expected']
     except KeyError:
         print('[ERROR] Could not find CH4 EF for CT.')
         CH4_EF_CT = 0  # or raise / default fallback
@@ -687,9 +688,9 @@ def add_parameters(model, unit_dct, country_specific=False):
                             baseline=b, distribution=D)
 
     # === Uncertainty for CH4/N2O emission factors ===
-    b = CT_data.loc['EL_anoT_methane_yield', 'expected']
-    low = CT_data.loc['EL_anoT_methane_yield', 'low']
-    high = CT_data.loc['EL_anoT_methane_yield', 'high']
+    b = CT_data.loc['EL_CT_methane_yield', 'expected']
+    low = CT_data.loc['EL_CT_methane_yield', 'low']
+    high = CT_data.loc['EL_CT_methane_yield', 'high']
     if high > low:
         D = shape.Uniform(lower=low, upper=high)
         @param(name='CH4 EF - CT', element='Collection_Tank', kind='isolated',
@@ -714,11 +715,11 @@ def add_parameters(model, unit_dct, country_specific=False):
         D = shape.Uniform(lower=low, upper=high)
         @param(name='CH4 EF - A1', element='AnoxicTank', kind='isolated',
                units='m3 CH4/kg COD removed', baseline=b, distribution=D)
-        def set_CH4_EF_CT(i):
-            global CH4_EF_CT
-            CH4_EF_CT = i
+        def set_CH4_EF_A1(i):
+            global CH4_EF_A1
+            CH4_EF_A1 = i
     else:
-        CH4_EF_CT = b  # just assign the value if no variation
+        CH4_EF_A1 = b  # just assign the value if no variation
     
     b = AerobicTank_data.loc['N2O_EF_decay', 'expected']
     low = AerobicTank_data.loc['N2O_EF_decay', 'low']
