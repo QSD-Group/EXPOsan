@@ -680,11 +680,12 @@ class EL_Aerobic(CSTR):
             setattr(self, attr, value)    
         ############################################### 
         
-    # def _run(self):
-    #     print(self.PAC_pump_flow)
-    #     print(self.chemical_PAC_mixing_ratio)
-    #     PAC = self.ins[1]
-    #     PAC.imass['X_AlOH'] = self.chemical_PAC_mixing_ratio * self.PAC_pump_flow * 0.2886 # kg/L and L/h    to kg/h TODO: add source for 0.2886 kg AlOH/kg PAC
+    def _run(self):
+        print(self.PAC_pump_flow)
+        print(self.chemical_PAC_mixing_ratio)
+        PAC = self.ins[1]
+        PAC.imass['X_AlOH'] = self.chemical_PAC_mixing_ratio * self.PAC_pump_flow * 0.2886 # kg/L and L/h    to kg/h TODO: add source for 0.2886 kg AlOH/kg PAC
+        super()._run()
         
     def _init_lca(self):
         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
