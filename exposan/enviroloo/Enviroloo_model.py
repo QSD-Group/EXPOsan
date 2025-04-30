@@ -64,17 +64,6 @@ GWP_N2O = 273.0  # update these if different in your setup #N2O_CO2_eq
 #     N_removed = max(N_in - N_out, 0)
 #     return N_removed * N2O_EF * GWP_N2O  # kg CO2-eq/day
 
-def calc_CH4_emissions_from_unit(unit, CH4_EF):
-    COD_in = sum([s.COD * s.F_vol for s in unit.ins if s and hasattr(s, 'COD')]) / 1e3  # kg/day
-    COD_out = unit.outs[0].COD * unit.outs[0].F_vol / 1e3
-    COD_removed = max(COD_in - COD_out, 0)
-    return COD_removed * CH4_EF * GWP_CH4  # kg CO2-eq/day
-
-def calc_N2O_emissions_from_unit(unit, N2O_EF):
-    N_in = sum([s.TN * s.F_vol for s in unit.ins if s and hasattr(s, 'TN')]) / 1e3  # kg/day
-    N_out = unit.outs[0].TN * unit.outs[0].F_vol / 1e3
-    N_removed = max(N_in - N_out, 0)
-    return N_removed * N2O_EF * GWP_N2O  # kg CO2-eq/day
 
 
 def add_metrics(model):
