@@ -111,7 +111,7 @@ class EL_CT(CSTR):
     `biosteam.units.Mixer <https://biosteam.readthedocs.io/en/latest/units/mixing.html>`_
     '''
     _N_ins = 1 # treated water, PAC, blower
-    _N_outs = 1  # treated water, CH4, N2O
+    _N_outs = 2  # treated water, CH4, N2O
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     exponent_scale = 0.1
@@ -169,6 +169,23 @@ class EL_CT(CSTR):
             setattr(self, attr, value)    
         ###############################################
 
+    
+    def _run(self):
+        CH4_EF_CT = self.outs[1]
+        CH4_EF_CT.empty()
+        COD_in = self.ins[0].COD * self.ins[0].F_vol / 1e3
+        COD_out = self.outs[0].COD * self.outs[0].F_vol / 1e3
+        COD_removed = max(COD_in - COD_out, 0)
+        CH4_EF_CT.imass['CH4'] = COD_removed * self.EL_CT_methane_yield
+    
+        # Initialize state AFTER assigning imass
+        if CH4_EF_CT.state is None:
+            CH4_EF_CT._init_state()
+    
+        super()._run()
+        
+
+
     def _init_lca(self):
         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
                              Construction(item='Cast_iron', linked_unit=self, quantity_unit='kg'),]
@@ -180,6 +197,8 @@ class EL_CT(CSTR):
         design['StainlessSteel'] = constr[0].quantity = self.tank_steel_weight # * (self.ppl / self.baseline_ppl)
         design['Cast_iron'] = constr[1].quantity = self.lift_pump_cast_iron
         self.add_construction(add_cost=False)
+        
+        
     
     def _cost(self):
         C = self.baseline_purchase_costs
@@ -470,7 +489,7 @@ class EL_Anoxic(CSTR):
     
     '''
     _N_ins = 3
-    _N_outs = 1
+    _N_outs = 2
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     ppl = 1000
@@ -523,9 +542,20 @@ class EL_Anoxic(CSTR):
     
     def _run(self):
         glucose = self.ins[2]
-        glucose.imass['S_F'] = self.chemical_glucose_mixing_ratio * self.glucose_pump_flow * 1.067 # kg/L and L/h    to kg/h TODO: add source for 1.067 kg COD/kg glucose
-        
+        glucose.imass['S_F'] = self.chemical_glucose_mixing_ratio * self.glucose_pump_flow * 1.067
+    
+        CH4_EF_A1 = self.outs[1]
+        CH4_EF_A1.empty()
+        COD_in = self.ins[0].COD * self.ins[0].F_vol / 1e3 + self.ins[1].COD * self.ins[1].F_vol / 1e3
+        COD_out = self.outs[0].COD * self.outs[0].F_vol / 1e3
+        COD_removed = max(COD_in - COD_out, 0)
+        CH4_EF_A1.imass['CH4'] = COD_removed * self.EL_anoT_methane_yield
+    
+        if CH4_EF_A1.state is None:
+            CH4_EF_A1._init_state()
+    
         super()._run()
+
             
     def _init_lca(self):
         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
@@ -628,7 +658,7 @@ class EL_Aerobic(CSTR):
     
     '''
     _N_ins = 2 # treated water, PAC, blower
-    _N_outs = 3  # treated water, CH4, N2O
+    _N_outs = 2  # treated water, CH4, N2O
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     exponent_scale = 0.1
@@ -681,11 +711,21 @@ class EL_Aerobic(CSTR):
         ############################################### 
         
     def _run(self):
-        print(self.PAC_pump_flow)
-        print(self.chemical_PAC_mixing_ratio)
         PAC = self.ins[1]
-        PAC.imass['X_AlOH'] = self.chemical_PAC_mixing_ratio * self.PAC_pump_flow * 0.2886 # kg/L and L/h    to kg/h TODO: add source for 0.2886 kg AlOH/kg PAC
+        PAC.imass['X_AlOH'] = self.chemical_PAC_mixing_ratio * self.PAC_pump_flow * 0.2886
+    
+        N2O_EF_O1 = self.outs[1]
+        N2O_EF_O1.empty()
+        N_in = self.ins[0].TN * self.ins[0].F_vol / 1e3
+        N_out = self.outs[0].TN * self.outs[0].F_vol / 1e3
+        N_removed = max(N_in - N_out, 0)
+        N2O_EF_O1.imass['N2O'] = N_removed * self.N2O_EF_decay
+    
+        if N2O_EF_O1.state is None:
+            N2O_EF_O1._init_state()
+    
         super()._run()
+
         
     def _init_lca(self):
         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),
@@ -774,7 +814,8 @@ class EL_CMMBR(CompletelyMixedMBR):
                  V_max=3.3, 
                  crossflow_air=None,
                  tank_steel_volume=3.34,
-                 steel_density=7850,                
+                 steel_density=7850, 
+                 # N2O_EF_B1=None,               
                  **kwargs):
         super().__init__(
             ID=ID, ins=ins, outs=outs, thermo=thermo,
@@ -782,12 +823,15 @@ class EL_CMMBR(CompletelyMixedMBR):
             suspended_growth_model=suspended_growth_model, isdynamic=isdynamic, 
             pumped_flow=pumped_flow, 
             solids_capture_rate=solids_capture_rate,  
-            crossflow_air=crossflow_air, tank_steel_volume=tank_steel_volume, steel_density=steel_density,
+            crossflow_air=crossflow_air, tank_steel_volume=tank_steel_volume, steel_density=steel_density, 
+            # N2O_EF_B1=N2O_EF_B1,
             **kwargs
             )
         
         self.tank_steel_volume=tank_steel_volume
         self.steel_density=steel_density
+        # Store external N2O stream reference
+        # self.N2O_EF_B1 = N2O_EF_B1
         
         data = load_data(path = MBR_path)
         for para in data.index:
@@ -798,6 +842,40 @@ class EL_CMMBR(CompletelyMixedMBR):
         for attr, value in kwargs.items():
             setattr(self, attr, value)    
         ############################################### 
+        
+    # def _run(self):
+    #     N2O_EF_B1 = self.outs[1]
+    #     N_in = self.ins[0].TN * self.ins[0].F_vol / 1e3 
+    #     N_out = self.outs[0].TN * self.outs[0].F_vol / 1e3
+    #     N_removed = max(N_in - N_out, 0)
+    #     N2O_EF_B1.imass['N2O'] = N_removed*self.N2O_EF_decay
+    
+    # def _run(self):
+    #     flt, rtn = self.outs
+    #     mixed = self.ins[0]
+    #     cmps = mixed.components
+    #     Q = mixed.F_vol
+    #     Qp = self.pumped_flow
+
+    #     if Q <= 0:
+    #         flt.empty()
+    #         rtn.empty()
+    #         if self.N2O_EF_B1: self.N2O_EF_B1.empty()
+    #         return
+
+    #     xsplit = Qp / Q
+    #     qsplit = Qp / Q
+
+    #     mixed.split_to(rtn, flt, xsplit * cmps.x + qsplit * (1 - cmps.x))
+
+    #     if self.N2O_EF_B1:
+    #         N_in = mixed.TN * Q / 1e3
+    #         N_out = flt.TN * flt.F_vol / 1e3
+    #         N_removed = max(N_in - N_out, 0)
+    #         self.N2O_EF_B1.imass['N2O'] = N_removed * self.N2O_EF_decay
+
+
+    #     super()._run()
         
     def _init_lca(self):
         self.construction = [Construction(item='StainlessSteel', linked_unit=self, quantity_unit='kg'),

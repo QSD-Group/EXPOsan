@@ -52,19 +52,6 @@ GWP_CH4 = 27.2  # or your model's default #CH4_CO2_EQ
 GWP_N2O = 273.0  # update these if different in your setup #N2O_CO2_eq
  
 
-# def calc_CH4_emissions_from_unit(unit, CH4_EF):
-#     COD_in = unit.ins[0].COD * unit.ins[0].F_vol / 1e3 + unit.ins[1].COD * unit.ins[1].F_vol / 1e3 # kg/day
-#     COD_out = unit.outs[0].COD * unit.outs[0].F_vol / 1e3
-#     COD_removed = COD_in - COD_out
-#     COD_removed = max(COD_in - COD_out, 0)
-#     return COD_removed * CH4_EF * GWP_CH4  # kg CO2-eq/day
-
-# def calc_N2O_emissions_from_unit(unit, N2O_EF):
-#     N_in = unit.ins[0].TN * unit.ins[0].F_vol / 1e3 + unit.ins[1].TN * unit.ins[0].F_vol / 1e3 # kg/day
-#     N_out = unit.outs[0].TN * unit.outs[0].F_vol / 1e3
-#     N_removed = max(N_in - N_out, 0)
-#     return N_removed * N2O_EF * GWP_N2O  # kg CO2-eq/day
-
 def calc_CH4_emissions_from_unit(unit, CH4_EF):
     COD_in = sum([s.COD * s.F_vol for s in unit.ins if s and hasattr(s, 'COD')]) / 1e3  # kg/day
     COD_out = unit.outs[0].COD * unit.outs[0].F_vol / 1e3
@@ -827,13 +814,18 @@ def create_model(model_ID='EL', country_specific=False, **model_kwargs):
     return model
 
 # define runing function intializing uncertainty and sensitivity analysis, TODO: make kwargs changeable
+from exposan.enviroloo.Enviroloo_model import cache_state  # Make sure this import is present
+
 def run_uncertainty(model, N=10, rule='L', T=2, t_step=2, mpath='', method='BDF', **kwargs):
-    #generate sample
-    sample = model.sample(N = N, rule = rule)
-    
+    # Simulate and cache the steady state before uncertainty analysis
+    sys = model.system
+    sys.simulate(state_reset_hook='reset_cache', t_span=(0, T), method=method)  # Simulate full T-span for safety
+    cache_state(sys)  # Saves to results/steady_state/EL.npy
+
+    # Generate samples
+    sample = model.sample(N=N, rule=rule)
     run_model(model, sample, T=T, t_step=t_step, method=method, mpath=mpath)
 
-    return
 
 def run_model(model, sample, T=2, t_step=.1, method='BDF', 
               mpath='', tpath='', seed=None):
@@ -853,7 +845,7 @@ def run_model(model, sample, T=2, t_step=.1, method='BDF',
     sys = model.system
     load_state(sys, folder='steady_state')    #TODO: loads the cached steady state conditions
     model.evaluate(
-       # state_reset_hook='reset_cache', # TODO: commented out to state_reset to load cached steady state instead
+       state_reset_hook='reset_cache', # TODO: commented out to state_reset to load cached steady state instead
         t_span=t_span,
         t_eval=t_eval,
         method=method,
