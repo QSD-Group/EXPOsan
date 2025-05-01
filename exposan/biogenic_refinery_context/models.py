@@ -60,7 +60,7 @@ def add_metrics(model):
     br._load_lca_data()
     system = model.system
     # Sustainability indicators
-    ##TODO need to define this function in _init_
+    ##TODO need to define this function in _init_ and add other indicators of interest here. 
     funcs = get_sustainability_indicators(system)
     metrics = [
         Metric('Annual sequestered C', funcs[0], 'sequesterable carbon/ton of biosolids/yr', 'C recovery'),
