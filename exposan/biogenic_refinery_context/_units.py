@@ -107,15 +107,14 @@ class Biosolids(SanUnit):
         biosolids._VM = flow_rate_db * VM_db # kg / hr
         
         biosolids.imass['H20'] = biosolids.F_vol * 1000 * self.MC  # kg/hr
-        biosolids.TN = flow_rate_db * self.N # kg / hr
+        biosolids._TN = flow_rate_db * self.N # kg / hr
         #TODO need some estimates of COD for CH4 in drying
-        biosolids.COD = biosolids._VM * 1.74 #TODO: if an. digestion or aer. dgiestion: CODt / VS = 1.60, else if: CODt / VS = 1.74 Ahnert et. al., (2021).
+        biosolids._COD = biosolids._VM * 1.74 #TODO: if an. digestion or aer. dgiestion: CODt / VS = 1.60, else if: CODt / VS = 1.74 Ahnert et. al., (2021).
         #TODO might need to use .imass['N'] instead of .TN too?
         
-        biosolids._AC_percent = 100 * biosolids._AC / flow_rate_db # %
-        biosolids._FC_percent = 100 * biosolids._FC / flow_rate_db # %
-        biosolids_hhv = (259.83 * (biosolids._AC_percent + biosolids._FC_percent) - 2454.76) / 1000  # MJ/kg db from Thipkhunthod et. al., (2005).
-
+        biosolids_AC_percent = 100 * biosolids._AC / flow_rate_db # %
+        biosolids_FC_percent = 100 * biosolids._FC / flow_rate_db # %
+        biosolids._hhv = (259.83 * (biosolids_AC_percent + biosolids_FC_percent) - 2454.76) / 1000  # MJ/kg db from Thipkhunthod et. al., (2005).
 
 ##TODO 
 # 1. (Done Stetson, Aaron to review) layer assumptions/calcs about drying onto HHX drying, Reviewed
@@ -174,6 +173,9 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
     
     _N_ins = 1
     _N_outs = 3
+    biosolids_annual = 10000 # dry tons/yr, default value for scaling
+    biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
+    scale_factor = biosolids_annual / biogenic_refinery_capacity
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  **kwargs):
@@ -254,14 +256,14 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         # TODO Calculate biochar energy, calculate feedstock sludge energy, calculate drying energy requirement
         
         Q_biochar = biochar_dry_mass_flow * self.biochar_hhv           # MJ/hr
-        Q_biosolids = biosolids.flow_rate_db * biosolids.biosolids_hhv # MJ/hr TODO: link biosolids flowrate and biosolids hhv from Biosolids unit to here
+        Q_biosolids = dry_mass_flow * waste._hhv # MJ/hr TODO: link biosolids flowrate and biosolids hhv from Biosolids unit to here
         
         #converts kJ/hr to MJ/hr
-        Q_drying = BiogenicRefineryHHXdryer.Q_drying / 1000            # MJ/hr TODO: link Q_drying from BiogenicRefineryHHXdryer unit to here.
+        Q_drying = waste.Q_drying / 1000            # MJ/hr TODO: link Q_drying from BiogenicRefineryHHXdryer unit to here.
         
         # TODO Calculate combined Energy Conversion Efficiency (%) needed to self-sustain drying requirement.
         
-        ECE = 100 * Q_drying / (Q_biosolids - Q_biochar)    # %
+        biochar._ECE = 100 * Q_drying / (Q_biosolids - Q_biochar)    # %
         
         # Calculate biochar volume (assuming density of 300 kg/m3 for biochar with 2% MC)
         biochar_density = 300  # kg/m3
@@ -275,17 +277,18 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         Cafb = (0.474 * VM_biochar_percent + 0.963 * FC_biochar_percent + 0.067 * AC_biochar_percent) / (100 - AC_biochar_percent)  # Klasson 2017
 
         # Calculate feedstock carbon content
-        C_feedstock = -0.50 * (ACf * 100) + 54.51  # Krueger et al. 2021
+        C_feedstock = -0.50 * (ACf * 100) + 54.51  # % Krueger et al. 2021
 
         # Calculate recalcitrance index
         R50 = 0.17 * Cafb + 0.00479  # Klasson 2017
 
         # Calculate carbon sequestration potential
-        CS = char_yield_db_percent * (C_biochar * 100) * R50 / C_feedstock  # Zhao et al. 2013
+        CS = char_yield_db_percent * (C_biochar * 100) * R50 / C_feedstock  # % Zhao et al. 2013
 
         # Set additional biochar properties
         biochar._carbon_content = C_biochar  # frac
         biochar._carbon_sequestration = CS  # %
+        biochar._sequesterable_carbon = CS/100 * C_feedstock/100 * dry_mass_flow * 24 * 365 / 1000 # ton seq. C/year
         biochar.F_mass = biochar_mass_flow  # kg/hr
         
         #TODO layer other assumptions on biochar here, 
@@ -351,24 +354,24 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['StainlessSteel'] = constr[0].quantity = \
+        design['StainlessSteel'] = constr[0].quantity = (\
             self.carbonizer_base_assembly_stainless + \
             self.carbonizer_base_squarebox_stainless + \
-            self.carbonizer_base_charbox_stainless
-        design['Steel'] = constr[1].quantity = \
+            self.carbonizer_base_charbox_stainless) * self.scale_factor
+        design['Steel'] = constr[1].quantity = (\
             self.carbonizer_base_assembly_steel + \
             self.carbonizer_base_squarebox_steel + \
-            self.carbonizer_base_charbox_steel
-        design['ElectricMotor'] =  constr[2].quantity = 2.7/5.8 + 6/5.8
-        design['Electronics'] = constr[3].quantity = 1
+            self.carbonizer_base_charbox_steel) * self.scale_factor
+        design['ElectricMotor'] =  constr[2].quantity = (2.7/5.8 + 6/5.8) * self.scale_factor
+        design['Electronics'] = constr[3].quantity = 1 * self.scale_factor
         self.add_construction(add_cost=False)
 
     def _cost(self):
         D = self.design_results
         C = self.baseline_purchase_costs
-        C['Stainless steel'] = self.stainless_steel_cost * D['StainlessSteel']
-        C['Steel'] = self.steel_cost * D['Steel']
-        C['Electric motors'] = self.char_auger_motor_cost_cb + self.fuel_auger_motor_cost_cb
+        C['Stainless steel'] = self.stainless_steel_cost * D['StainlessSteel'] * self.scale_factor
+        C['Steel'] = self.steel_cost * D['Steel'] * self.scale_factor
+        C['Electric motors'] = (self.char_auger_motor_cost_cb + self.fuel_auger_motor_cost_cb) * self.scale_factor
         C['Misc. parts'] = (
             self.pyrolysis_pot_cost_cb +
             self.primary_air_blower_cost_cb +
@@ -385,7 +388,7 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
             self.combusion_chamber_cost_cb +
             self.sprayer_cost_cb +
             self.vent_cost_cb
-            )
+            ) * self.scale_factor
 
         # O&M cost converted to annual basis, labor included,
         # USD/yr only accounts for time running
@@ -400,9 +403,9 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
             1/self.forced_air_fan_lifetime_cb * self.forced_air_fan_cost_cb +
             1/self.airlock_motor_lifetime_cb * self.airlock_motor_cost_cb +
             1/self.inducer_fan_lifetime_cb * self.inducer_fan_cost_cb
-            )
+            ) * self.scale_factor
 
-        # In min/yr
+        # In min/yr, scaled linearly to scale_factor
         annual_maintenance = (
             (self.service_team_greasebearing_cb+self.service_team_tighten_cb+self.service_team_adjustdoor_cb) * 12 +
             (
@@ -419,7 +422,7 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
             1/self.frequency_corrective_maintenance * self.service_team_replacepaddleswitch_cb +
             1/self.airlock_motor_lifetime_cb * self.service_team_replaceairlock_cb
             )
-        annual_maintenance *= self.service_team_wages / 60
+        annual_maintenance *= self.service_team_wages / 60 * self.scale_factor
 
         self.add_OPEX = (replacement_parts_annual_cost + annual_maintenance) / (365 * 24)  # USD/hour
 
@@ -427,7 +430,7 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
             self.carbonizer_biochar_auger_power + \
             self.carbonizer_fuel_auger_power + \
             self.carbonizer_primary_air_blower_power
-        self.power_utility(power_demand)  # kW
+        self.power_utility(power_demand) * self.scale_factor  # kW
 
 
 # %%
@@ -823,7 +826,9 @@ class BiogenicRefineryHHXdryer(SanUnit):
         Q_latent = m_H2O_evap * self.deltaH_vap_H2O  # kJ/hr
         Q_drying = Q_sensible + Q_latent  # kJ/hr
         #TODO Q_drying as an output
-        
+        waste_out._Q_drying = Q_drying
+        #normalized Q_drying
+        waste_out._Q_drying = Q_drying / (m_dried_sludge) #kJ/kg-biosolids-db or MJ/ton
         # Calculate remaining water after drying
         waste_out.imass['H2O'] = waste_in.imass['H2O'] - m_H2O_evap  # kg/hr
         

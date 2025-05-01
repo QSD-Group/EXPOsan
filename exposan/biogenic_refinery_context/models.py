@@ -150,7 +150,7 @@ def add_shared_parameters(model, unit_dct, location_specific=False):
                     u.price_ratio = i
 
 
-        # Operator labor wage
+        # Operator labor wage TODO: Scale to scale_factor?
         b = br.operator_daily_wage
         D = shape.Triangle(lower=(14.55), midpoint=b, upper=(43.68))
         @param(name='Operator daily wages', element='TEA', kind='cost', units='USD/d',
@@ -176,7 +176,7 @@ def add_shared_parameters(model, unit_dct, location_specific=False):
         #     # def set_biochar_price(i):
         #     #     price_dct['biochar'] = sys_stream.biochar.price = i * br.price_factor
 
-        # Electricity price
+        # Electricity price TODO: update contextual parameters to U.S. values
         b = price_dct['Electricity']
         D = shape.Triangle(lower=0.08, midpoint=b, upper=0.14)
         @param(name='Electricity price', element='TEA', kind='isolated',

@@ -104,7 +104,7 @@ def create_systemA(flowsheet=None):
 
     A6 = su.BiogenicRefineryOHX('A6', ins=A5-0, outs='A6_hot_gas')
     A7 = su.BiogenicRefineryHHX('A7', ins=A6-0, outs='A7_hot_gas')
-    A8 = su.BiogenicRefineryHHXdryer('A8', ins=(A1-0, A7-0), outs=('waste_out', 'A8_N2O', 'A8_CH4'))
+    A8 = su.BiogenicRefineryHHXdryer('A8', ins=(A1-0, A7-0), outs=('waste_out', 'A8_N2O', 'A8_CH4')) 
     A8-0-A4
 
     A9 = su.Mixer('A9', ins=(A8-2), outs=streamA.CH4)
@@ -121,7 +121,7 @@ def create_systemA(flowsheet=None):
                       interval=A2.emptying_period, interval_unit='yr',
                       loss_ratio=0.02)
 
-    ##### Simulation, TEA, and LCA #####
+    ##### Simulation, TEA, and LCA ##### TODO: scale annual_labor to scale_factor?
     sysA = System('sysA', path=(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11))
     teaA = TEA(system=sysA, discount_rate=discount_rate,
                start_year=2020, lifetime=20, uptime_ratio=1,
