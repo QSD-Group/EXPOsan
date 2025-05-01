@@ -35,11 +35,13 @@ from qsdsan.utils import (
     load_data,
     )
 from exposan.utils import batch_setting_unit_params, run_uncertainty as run
-from exposan import biogenic_refinery as br
-from exposan.biogenic_refinery import (
+from exposan import biogenic_refinery_context as br
+from exposan.biogenic_refinery_context import (
     create_system,
-    data_path as br_data_path,
-    get_decay_k,
+    data_path, #as br_data_path,
+    br_path,
+    results_path,
+    #get_decay_k, not found in _init, commented for now #TODO
     get_LCA_metrics,
     get_TEA_metrics,
     get_sustainability_indicators,
@@ -97,7 +99,7 @@ def add_metrics(model):
 # Data sheets
 # =============================================================================
 
-su_data_path = os.path.join(data_path, 'sanunit_data')
+su_data_path = os.path.join(data_path)
 br_su_data_path = os.path.join(su_data_path, 'br')
 
 def load_br_su_data(file_name):
@@ -105,7 +107,7 @@ def load_br_su_data(file_name):
         return load_data(os.path.join(br_su_data_path, file_name))
     return load_data(os.path.join(su_data_path, file_name))
 
-biosolids_data = load_br_su_data('_biosolids.tsv')
+biosolids_data = load_br_su_data('_br_biosolids.tsv')
 controls_data = load_br_su_data('_br_controls.tsv')
 housing_data = load_br_su_data('_br_housing.tsv')
 carbonizer_data = load_br_su_data('_br_carbonizer_base.tsv')
@@ -298,7 +300,8 @@ def add_shared_parameters(model, unit_dct, location_specific=False):
     
 
     # Other CFs
-    item_path = os.path.join(br_data_path, 'impact_items.xlsx')
+    #item_path = os.path.join(br_data_path, 'impact_items.xlsx')
+    item_path = os.path.join(data_path, 'impact_items.xlsx')
 
     for indicator in ('GlobalWarming'):
         sheet_name = indicator if indicator!='GlobalWarming' else 'GWP'

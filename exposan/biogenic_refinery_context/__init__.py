@@ -99,15 +99,18 @@ truck_fee = 6.21 # USD/m3
 # Prices and GWP CFs
 # =============================================================================
 # Should be changed based on location
+discount_rate = .05
 price_ratio = 1
 operator_daily_wage = 29
 const_daily_wage = 17
 const_person_days = 100
+INCLUDED_RESOURCE_RECOVERY = True # including resource recovery
 
 def update_resource_recovery_settings():
     global INCLUDE_RESOURCE_RECOVERY
     global price_dct, GWP_dct
-
+    RR_factor = int(bool(INCLUDED_RESOURCE_RECOVERY)) # RR_factor = 1 if resource recovery is included
+    
     price_dct = {
         'Electricity': 0.13,
         'Concrete': 194*price_ratio,
@@ -165,16 +168,14 @@ def _load_lca_data(reload=False):
         item_path = os.path.join(data_path, 'impact_items.xlsx')
         qs.ImpactItem.load_from_file(item_path)
         
-        price_dct, GWP_dct, H_Ecosystems_dct, H_Health_dct, H_Resources_dct = update_resource_recovery_settings()
+        price_dct, GWP_dct = update_resource_recovery_settings()
 
         # Impacts associated with streams and electricity
         def create_stream_impact_item(item_ID, dct_key=''):
             dct_key = dct_key or item_ID.rsplit('_item')[0] # `rstrip` will change "struvite_item" to "struv"
             StreamImpactItem(ID=item_ID,
                              GWP=GWP_dct[dct_key],
-                             H_Ecosystems=H_Ecosystems_dct[dct_key],
-                             H_Health=H_Health_dct[dct_key],
-                             H_Resources=H_Resources_dct[dct_key])
+                            )
 
         create_stream_impact_item(item_ID='CH4_item')
         create_stream_impact_item(item_ID='N2O_item')
@@ -363,8 +364,6 @@ def print_summaries(systems):
 from . import models
 from .models import *
 
-from . import country_specific
-from .country_specific import *
 
 __all__ = (
 	'br_path',
@@ -373,5 +372,4 @@ __all__ = (
 	*_components.__all__,
 	*systems.__all__,
     *models.__all__,
-    *country_specific.__all__,
  	)
