@@ -37,10 +37,9 @@ results = []
 
 # ===== Loop through facilities =====
 for index, row in biosolids_data.iterrows():
-    facility = row['NPDES ID2]
+    facility = row['NPDES ID2']
     biosolids_tpy = row['Amount of Biosolids Generated']
 
-    print(f'\n--- Running model for {NPDES ID2} ({Amount of Biosolids Generated} tons biosolids/year) ---')
 
     # Update biosolids stream
     biosolids_stream = model.system.get_stream('biosolids')
