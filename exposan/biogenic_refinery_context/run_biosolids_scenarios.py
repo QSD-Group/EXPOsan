@@ -30,18 +30,17 @@ model = models.model
 
 df = pd.read_excel('Flow + Biosolids Combined Data (Major-Facilities) (1).xlsx')
 
-# Assuming Excel has 'Facility' and 'Biosolids_tpy' columns
-biosolids_data = df[['Facility', 'Biosolids_tpy']]
+biosolids_data = df[['NPDES ID2', 'Amount of Biosolids Generated']]
 
 # Prepare a list to collect results
 results = []
 
 # ===== Loop through facilities =====
 for index, row in biosolids_data.iterrows():
-    facility = row['Facility']
-    biosolids_tpy = row['Biosolids_tpy']
+    facility = row['NPDES ID2]
+    biosolids_tpy = row['Amount of Biosolids Generated']
 
-    print(f'\n--- Running model for {facility} ({biosolids_tpy} tons biosolids/year) ---')
+    print(f'\n--- Running model for {NPDES ID2} ({Amount of Biosolids Generated} tons biosolids/year) ---')
 
     # Update biosolids stream
     biosolids_stream = model.system.get_stream('biosolids')
