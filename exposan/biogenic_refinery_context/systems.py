@@ -55,6 +55,9 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
 
     item = ImpactItem.get_item('N2O_item').copy(f'{prefix}_N2O_item', set_as_source=True)
     WasteStream('N2O', phase='g', stream_impact_item=item)
+    
+    item = ImpactItem.get_item('biochar_item').copy(f'{prefix}_biochar_item', set_as_source=True)
+    WasteStream('biochar', phase='s', stream_impact_item=item)
 
 # %%
 
@@ -89,7 +92,8 @@ def create_systemA(flowsheet=None):
     A3 = u.BiogenicRefineryHousing('A3', ins=A2-0, outs='A3_out',
                                     const_wage=const_daily_wage,
                                     const_person_days=const_person_days)
-
+    
+    
     A4 = u.BiogenicRefineryCarbonizerBase('A4', outs=(streamA.biochar, 'A4_hot_gas', 'A4_N2O'))
 
     A5 = su.BiogenicRefineryPollutionControl('A5', ins=(A4-1, A4-2), outs=('A5_hot_gas_pcd', 'A5_N2O'))
@@ -115,10 +119,10 @@ def create_systemA(flowsheet=None):
     A10.add_specification(lambda: add_fugitive_items(A10, 'N2O_item'))
     A10.line = 'fugitive N2O mixer'
     
-    ##### Conveyance of Biochar #####
+    ##### Conveyance of Biochar ##### TODO: update interval period
     A11 = su.Trucking('A11', ins=A4-0, outs=('transported', 'conveyance_loss'),
                       load_type='mass', distance=5, distance_unit='km',
-                      interval=A2.emptying_period, interval_unit='yr',
+                      interval=5, interval_unit='yr',
                       loss_ratio=0.02)
 
     ##### Simulation, TEA, and LCA ##### TODO: scale annual_labor to scale_factor?

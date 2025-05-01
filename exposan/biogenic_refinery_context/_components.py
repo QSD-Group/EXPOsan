@@ -40,10 +40,12 @@ def create_components(set_thermo=True):
     
     FixedCarbon = Component('FixedCarbon', phase='s', particle_size='Particulate', 
                     degradability='Undegradable', organic=False)
+    Biochar = Component('biochar', phase='s', particle_size='Particulate', 
+                    degradability='Undegradable', organic=False)
 
     #following lines are to fix errors due to missing thermodynamic properties
     VolatileMatter.copy_models_from(Chemical('Acetic Acid'))
-    for i in (AshContent, FixedCarbon):
+    for i in (AshContent, FixedCarbon, Biochar):
         i.default()
 
     FilterBag = Component('FilterBag', search_ID='Poly(hexamethylene adipamide)',
@@ -132,7 +134,7 @@ def create_components(set_thermo=True):
         i.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
 
     # Reuse components in the bwaise module for consistency
-    cmps = Components((*bw_cmps, C, FilterBag, Polymer, Resin, H2SO4, MgOH2, MgCO3,
+    cmps = Components((*bw_cmps, AshContent, Biochar, VolatileMatter, FixedCarbon, C, FilterBag, Polymer, Resin, H2SO4, MgOH2, MgCO3,
                         BambooWood, CoconutShell, CoconutHusk, RiceHusk, CornStover))
 
     for i in cmps:

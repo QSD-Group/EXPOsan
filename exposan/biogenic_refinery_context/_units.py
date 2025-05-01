@@ -99,10 +99,11 @@ class Biosolids(SanUnit):
     def _run(self):
         biosolids = self.outs[0]
         biosolids.empty() 
-
+        
         biosolids.F_vol = self.biosolids_generated*1000/(365*24*1000*(1-self.MC)) # F_vol in m3/hr
         #update density to be based on MC
         VM_db = 1 - self.AC - self.FC # fraction dry-basis
+
         flow_rate_db = biosolids.F_vol * 1000 * (1 - self.MC) # kg-db / hr
         biosolids._AC = flow_rate_db * self.AC # kg / hr
         biosolids._FC = flow_rate_db * self.FC # kg / hr
