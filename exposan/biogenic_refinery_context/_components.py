@@ -139,7 +139,7 @@ def create_components(set_thermo=True):
         for attr in ('HHV', 'LHV', 'Hf'):
             if getattr(i, attr) is None: setattr(i, attr, 0)
 
-    cmps.compile()
+    cmps.compile(ignore_inaccurate_molar_weight=True) #manual override to fix innacurate sensible molar weight error
     cmps.set_alias('H2O', 'Water')
     if set_thermo: qs_set_thermo(cmps)
 

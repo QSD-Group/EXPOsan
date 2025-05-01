@@ -19,9 +19,11 @@ for license details.
 
 from warnings import warn
 from math import ceil
-from .. import SanUnit, Construction
-from ._sludge_thickening import SludgeSeparator
-from ..utils import ospath, load_data, data_path, price_ratio
+from qsdsan import SanUnit, Construction
+from qsdsan.sanunits._sludge_thickening import SludgeSeparator
+from qsdsan.utils import ospath, load_data, price_ratio
+from exposan.biogenic_refinery_context import data_path
+  
 import math
 
 ###TODO need to finalize these at the end
@@ -39,12 +41,12 @@ __all__ = (
     'BiogenicRefineryStruvitePrecipitation',
     )
 
-br_su_data_path = ospath.join(data_path, 'sanunit_data/br')
+su_data_path = ospath.join(data_path, 'br')
 
 
 #%%
 
-biosolids_path = ospath.join(br_su_data_path, '_biosolids.tsv')
+biosolids_path = ospath.join(su_data_path, '_br_biosolids.tsv')
 
 class Biosolids(SanUnit):
     '''
@@ -128,7 +130,7 @@ class Biosolids(SanUnit):
 
 # %%
 
-br_carbonizer_path = ospath.join(br_su_data_path, '_br_carbonizer_base.tsv')
+br_carbonizer_path = ospath.join(su_data_path, '_br_carbonizer_base.tsv')
 
 class BiogenicRefineryCarbonizerBase(SanUnit):
     '''
@@ -435,7 +437,7 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
 
 # %%
 
-br_control_path = ospath.join(br_su_data_path,'_br_controls.tsv')
+br_control_path = ospath.join(su_data_path,'_br_controls.tsv')
 
 class BiogenicRefineryControls(SanUnit):
     '''
@@ -521,7 +523,7 @@ class BiogenicRefineryControls(SanUnit):
 
 # %%
 
-br_grinder_path = ospath.join(br_su_data_path, '_br_grinder.tsv')
+br_grinder_path = ospath.join(su_data_path, '_br_grinder.tsv')
 
 @price_ratio()
 class BiogenicRefineryGrinder(SanUnit):
@@ -604,7 +606,7 @@ class BiogenicRefineryGrinder(SanUnit):
 
 # %%
 
-br_hhx_path = ospath.join(br_su_data_path, '_br_hhx.tsv')
+br_hhx_path = ospath.join(su_data_path, '_br_hhx.tsv')
 
 @price_ratio()
 class BiogenicRefineryHHX(SanUnit):
@@ -749,7 +751,7 @@ class BiogenicRefineryHHX(SanUnit):
 
 # %%
 
-br_hhx_dryer_path = ospath.join(br_su_data_path, '_br_hhx_dryer.tsv')
+br_hhx_dryer_path = ospath.join(su_data_path, '_br_hhx_dryer.tsv')
 
 @price_ratio()
 class BiogenicRefineryHHXdryer(SanUnit):
@@ -878,7 +880,7 @@ class BiogenicRefineryHHXdryer(SanUnit):
 
 # %%
 
-br_housing_path = ospath.join(br_su_data_path, '_br_housing.tsv')
+br_housing_path = ospath.join(su_data_path, '_br_housing.tsv')
 
 @price_ratio()
 class BiogenicRefineryHousing(SanUnit):
@@ -951,7 +953,7 @@ class BiogenicRefineryHousing(SanUnit):
 
 # %%
 
-br_ix_path = ospath.join(br_su_data_path, '_br_ion_exchange.tsv')
+br_ix_path = ospath.join(su_data_path, '_br_ion_exchange.tsv')
 
 @price_ratio()
 class BiogenicRefineryIonExchange(SanUnit):
@@ -1070,7 +1072,7 @@ class BiogenicRefineryIonExchange(SanUnit):
 
 # %%
 
-br_ohx_path = ospath.join(br_su_data_path,'_br_ohx.tsv')
+br_ohx_path = ospath.join(su_data_path,'_br_ohx.tsv')
 
 @price_ratio()
 class BiogenicRefineryOHX(SanUnit):
@@ -1174,7 +1176,7 @@ class BiogenicRefineryOHX(SanUnit):
 
 # %%
 
-br_pollution_control_path = ospath.join(br_su_data_path, '_br_pollution_control.tsv')
+br_pollution_control_path = ospath.join(su_data_path, '_br_pollution_control.tsv')
 
 class BiogenicRefineryPollutionControl(SanUnit):
     '''
@@ -1306,7 +1308,7 @@ class BiogenicRefineryPollutionControl(SanUnit):
 
 # %%
 
-br_screw_path = ospath.join(br_su_data_path,'_br_screw_press.tsv')
+br_screw_path = ospath.join(su_data_path,'_br_screw_press.tsv')
 
 @price_ratio()
 class BiogenicRefineryScrewPress(SludgeSeparator):
@@ -1395,7 +1397,7 @@ class BiogenicRefineryScrewPress(SludgeSeparator):
 
 # %%
 
-br_struvite_path = ospath.join(br_su_data_path, '_br_struvite_precipitation.tsv')
+br_struvite_path = ospath.join(su_data_path, '_br_struvite_precipitation.tsv')
 
 @price_ratio()
 class BiogenicRefineryStruvitePrecipitation(SanUnit):
