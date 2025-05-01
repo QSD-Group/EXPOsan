@@ -47,6 +47,14 @@ from exposan.biogenic_refinery import (
     update_resource_recovery_settings,
     )
 
+from . import (
+    cost_per_ton_biochar,
+    gwp_per_ton_biochar,
+    biochar_generated,
+    sequesterable_carbon,
+    drying_requirement,
+)
+
 __all__ = ('create_model', 'run_uncertainty',)
 
 
@@ -63,10 +71,13 @@ def add_metrics(model):
     ##TODO need to define this function in _init_ and add other indicators of interest here. 
     funcs = get_sustainability_indicators(system)
     metrics = [
-        Metric('Annual sequestered C', funcs[0], 'sequesterable carbon/ton of biosolids/yr', 'C recovery'),
-        Metric('Drying requirement', funcs[1], 'kWh drying/ton of biosolids/yr', 'Energy needed'),
-
+        Metric('Cost per ton biochar', cost_per_ton_biochar, 'USD/ton biochar'),
+        Metric('GWP per ton biochar', gwp_per_ton_biochar, 'kg CO2-eq/ton biochar'),
+        Metric('Biochar generated', biochar_generated, 'ton biochar/yr'),
+        Metric('Sequesterable carbon', sequesterable_carbon, 'ton C/yr'),
+        Metric('Drying requirement', drying_requirement, 'kWh/ton biosolids/yr'),
     ]
+
     # Net cost
     metrics.append(
         Metric('Annual net cost', get_TEA_metrics(system)[0], f'{qs.currency}/cap/yr', 'TEA results'),

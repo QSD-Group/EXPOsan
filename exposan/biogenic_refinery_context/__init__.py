@@ -26,9 +26,57 @@ from exposan.utils import (
 
 
 
+
+
+
+
 br_path = os.path.dirname(__file__)
 module = os.path.split(br_path)[-1]
 data_path, results_path = _init_modules(module, include_data_path=True)
+
+
+
+# %%
+# =============================================================================
+# Metrics for model output 
+# =============================================================================
+
+
+def cost_per_ton_biochar(model):
+    biochar = model.system.get_stream('biochar')
+    biochar_mass = biochar.F_mass / 1000  # tons/year
+    if biochar_mass == 0:
+        return np.nan
+    total_cost = model.TEA.AOC  # USD/year
+    return total_cost / biochar_mass
+
+def gwp_per_ton_biochar(model):
+    biochar = model.system.get_stream('biochar')
+    biochar_mass = biochar.F_mass / 1000  # tons/year
+    if biochar_mass == 0:
+        return np.nan
+    total_GWP = model.LCA.total_impacts['GWP']  # kg CO2-eq/year
+    return total_GWP / biochar_mass
+
+def biochar_generated(model):
+    biochar = model.system.get_stream('biochar')
+    return biochar.F_mass / 1000  # tons/year
+
+def sequesterable_carbon(model):
+    biochar = model.system.get_stream('biochar')
+    if biochar.F_mass == 0:
+        return 0
+    carbon_fraction = biochar.imass['C'] / biochar.F_mass
+    return (biochar.F_mass / 1000) * carbon_fraction  # tons/year
+
+def drying_requirement(model):
+    biosolids = model.system.get_stream('biosolids')
+    dryer = model.system.get_unit('dryer')
+    drying_energy = dryer.power_utility.rate * 24 * 365  # kWh/year
+    biosolids_mass = biosolids.F_mass / 1000  # tons/year
+    if biosolids_mass == 0:
+        return np.nan
+    return drying_energy / biosolids_mass  # kWh/ton biosolids/year
 
 
 # %%
@@ -64,7 +112,7 @@ def update_resource_recovery_settings():
         'Electricity': 0.13,
         'Concrete': 194*price_ratio,
         'Steel': 2.665*price_ratio,
-        'biochar': 0*RR_factor,  # 0.014*price_ratio,  # assuming value of biochar is 0 for TEA - HACL
+        'biochar': 0,  # 0.014*price_ratio,  # assuming value of biochar is 0 for TEA - HACL
         }
 
     GWP_dct = {
@@ -72,7 +120,7 @@ def update_resource_recovery_settings():
         'CH4': 34,
         'N2O': 298,
         # Assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
-        'biochar': -0.2*0.9*(44/12)*RR_factor,
+        'biochar': -0.2*0.9*(44/12),
         }
 
         
