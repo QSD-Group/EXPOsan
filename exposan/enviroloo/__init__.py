@@ -192,8 +192,6 @@ def _load_lca_data(reload=False):
     '''
     Load impact indicators and impact item data for LCA
     '''
-   
-        
     global _impact_item_loaded
     if not _impact_item_loaded or reload:
         indicator_path = os.path.join(data_path, 'impact_indicators.csv')

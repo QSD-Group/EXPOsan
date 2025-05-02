@@ -25,16 +25,15 @@ def create_components(set_thermo = True
                       ):
     # bw_cmps = create_bw_components(set_thermo=False)
     masm2d_cmps = pc.create_masm2d_cmps(set_thermo=False)
-    CH4 = Component('CH4', phase='g',
-                    particle_size='Soluble',
-                    degradability='Slow',
-                    organic=True)
-    
-    N2O = Component('N2O', phase='g',
-                    particle_size='Soluble',
-                    degradability='Undegradable',
-                    organic=False)
-    cmps = Components([*masm2d_cmps, CH4, N2O])
+    cmps = Components((*masm2d_cmps, 
+                       # Tissue, WoodAsh, H2O,
+                       # C, SolubleCH4, 
+                       # #H2O, CO2, 
+                       # CH4, 
+                       # N2O, NH3
+                       # Glucose, 
+                       # O3, air, PAC, NaOH, NaClO
+                       ))
     
     # for i in cmps:
     #     for attr in ('HHV', 'LHV', 'Hf'):

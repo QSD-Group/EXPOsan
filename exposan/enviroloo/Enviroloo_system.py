@@ -1,6 +1,26 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Apr  9 09:41:24 2025
+
+@author: rishabhpuri
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Apr  9 09:39:30 2025
+
+@author: rishabhpuri
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 '''
 This module is developed by:
-    Rishabh Puri <rp34@illinois.edu>
+    Siqi Tang <siqit@outlook.com>
+    Yuyao Huang <yuyaoh2@illinois.edu>
     Aaron Marszewski <aaronpm3@illinois.edu>
 
 This python file is used to perform uncertainty and sensitivity analysis for Enviroloo Clear Reinvented Toilet system.
@@ -29,7 +49,7 @@ from qsdsan.utils import (
     get_SRT,
     )
 
-from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
+# from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
 # from exposan.utils import add_V_from_rho
 # from exposan.bwaise import create_components as create_bw_components
 # import numpy as np
@@ -166,6 +186,29 @@ flow (g/hr): S_NH4  0.00685
      TSS        : 58681.8 mg/L
 
 '''
+# default_masm2d_kwargs = dict(pH_ctrl=7.0, 
+#                 f_SI=0.0, Y_H=0.625, Y_PAO=0.625, Y_PO4=0.4, Y_PHA=0.2, Y_A=0.24, 
+#                 f_XI_H=0.1, f_XI_PAO=0.1, f_XI_AUT=0.1,
+#                 k_h=3.0, mu_H=6.0, mu_PAO=1.0, mu_AUT=1.0, 
+#                 q_fe=3.0, q_PHA=3.0, q_PP=1.5, 
+#                 b_H=0.4, b_PAO=0.2, b_PP=0.2, b_PHA=0.2, b_AUT=0.15, 
+#                 eta_NO3=0.6, eta_fe=0.4, eta_NO3_H=0.8, eta_NO3_PAO=0.6, 
+#                 eta_NO3_Hl=0.5, eta_NO3_PAOl=0.33, eta_NO3_PPl=0.33, eta_NO3_PHAl=0.33, eta_NO3_AUTl=0.33,
+#                 K_O2=0.2, K_O2_H=0.2, K_O2_PAO=0.2, K_O2_AUT=0.5, 
+#                 K_NO3=0.5, K_NO3_H=0.5, K_NO3_PAO=0.5, K_NO3_AUT=0.5, 
+#                 K_X=0.1, K_F=4.0, K_fe=4.0, K_A_H=4.0, K_A_PAO=4.0, 
+#                 K_NH4_H=0.05, K_NH4_PAO=0.05, K_NH4_AUT=1.0, 
+#                 K_P_H=0.01, K_P_PAO=0.01, K_P_AUT=0.01, K_P_S=0.2, 
+#                 K_PP=0.01, K_MAX=0.34, K_IPP=0.02, K_PHA=0.01,
+#                 # k_mmp=(5.0, 300, 0.05, 150, 50, 1.0, 1.0),
+#                 # pKsp=(6.45, 13.16, 5.8, 23, 7, 21, 26),
+#                 # k_mmp=(0.024, 120, 0.024, 72, 0.024, 0.024, 0.024),  # Flores-Alsina 2016
+#                 # pKsp=(8.3, 13.6, 18.175, 28.92, 7.46, 18.2, 37.76),  # Flores-Alsina 2016
+#                 k_mmp=(8.4, 240, 1.0, 72, 1.0, 1.0e-5, 1.0e-5),              # MATLAB
+#                 pKsp=(8.45, 13.5, 5.7, 29.1, 7.4, 18.2, 26.4),               # MINTEQ (except newberyite), 20 C    
+#                 K_dis=(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+#                 K_AlOH=0.001, K_FeOH=0.001, 
+#                 pKa=(14, 9.25, 6.37, 10.32, 2.12, 7.21, 12.32, 4.76),
 #                 )
 # toilet_waste={'S_NH4':  0.241,
 #                 'S_PO4': 0.0243,
@@ -208,16 +251,7 @@ def create_components(set_thermo = True
                       ):
     # bw_cmps = create_bw_components(set_thermo=False)
     masm2d_cmps = pc.create_masm2d_cmps(set_thermo=False)
-    CH4 = Component('CH4', phase='g',
-                    particle_size='Soluble',
-                    degradability='Slow',
-                    organic=True)
-    
-    N2O = Component('N2O', phase='g',
-                    particle_size='Soluble',
-                    degradability='Undegradable',
-                    organic=False)
-    cmps = Components([*masm2d_cmps, CH4, N2O,
+    cmps = Components([*masm2d_cmps, 
                        # Tissue, WoodAsh, H2O,
                        ])
     #cmps.compile()
@@ -255,20 +289,17 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     kwargs_1 = dict(V_max=6.35, aeration=None, DO_ID=None, suspended_growth_model=masm2d)
     kwargs_2 = dict(V_max=2.89, aeration=2, DO_ID='S_O2', suspended_growth_model=masm2d)
     
-    CH4_EFF_CT = qs.WasteStream('CH4 from CT', phase='g')
-    CH4_EFF_CT.imass['CH4'] = 1e-6
-    item = ImpactItem.get_item('CH4_item').copy('CT_CH4_item', set_as_source=True)
-    CH4_EFF_CT.stream_impact_item = item  # ADD THIS LINE
-
-
-
+    
+    # CT = su.Mixer('CT', 
+    #               # ins=(toilet_ins, 'sludge_PC', 'flushing_water_CT', 'spill_PC'), 
+    #               ins=(toilet_ins, 'sludge_PC',), 
+    #               outs=('effluent_CT'),
+    #               )
     CT = elu.EL_CT(
-        'CT', ins=(toilet_ins), outs=(effluent_CT, CH4_EFF_CT),
+        'CT', ins=(toilet_ins), outs=(effluent_CT),
         isdynamic=True, V_max=10, aeration=None, suspended_growth_model=None, ppl=ppl, baseline_ppl=baseline_ppl
         )
     
-    # item = ImpactItem.get_item('CH4_item').copy(f'CT_CH4_item', set_as_source=True)
-    # CT.outs[1].stream_impact_item = item   
     # PC = su.PrimaryClarifier('PC', ins=[CT-0, 'sludge_AeroT'],
     #                          outs=('effluent_PC_total', sludge_PC), isdynamic=True,
     #                          init_with='WasteStream', thermo=thermo_masm2d,
@@ -290,13 +321,8 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #Glucose = qs.WasteStream('Glucose_Dose', S_F= 0.05, units='kg/hr', T=Temp) # 0.0805 0.05 kg COD/hr as S_F fermentable solute 
     Glucose = qs.WasteStream('Glucose_Dose', T=Temp) # 0.0805 0.05 kg COD/hr as S_F fermentable solute 
     
-    CH4_EFF_A1 = qs.WasteStream('CH4 from A1', phase='g')
-    CH4_EFF_A1.imass['CH4'] = 1e-6
-    item = ImpactItem.get_item('CH4_item').copy('A1_CH4_item', set_as_source=True)
-    CH4_EFF_A1.stream_impact_item = item  # ADD THIS LINE
-
     
-    A1 = elu.EL_Anoxic('A1', ins=(PC-0, 'RAS_A1', Glucose), outs=('effluent_AnoxT', CH4_EFF_A1),
+    A1 = elu.EL_Anoxic('A1', ins=(PC-0, 'RAS_A1', Glucose), outs=('effluent_AnoxT',),
                        isdynamic=True,  ppl = ppl, baseline_ppl = baseline_ppl, scale_factor = scale_factor, **kwargs_1 
                        # aeration=None, 
                        # DO_ID='S_O2', suspended_growth_model=masm2d,  **kwargs_1
@@ -307,18 +333,9 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     item = ImpactItem.get_item('Glucose_item').copy(f'A1_glucose_item', set_as_source=True)
     A1.ins[2].stream_impact_item = item      #effluent was
     
-    # item = ImpactItem.get_item('CH4_item').copy(f'A1_CH4_item', set_as_source=True)
-    # A1.outs[1].stream_impact_item = item 
-    
     PAC = qs.WasteStream('PAC_Dose', T=Temp) #  as Al_OH
     
-    N2O_EFF_O1 = qs.WasteStream('N2O from O1', phase='g')
-    N2O_EFF_O1.imass['N2O'] = 1e-6
-    item = ImpactItem.get_item('N2O_item').copy('O1_N2O_item', set_as_source=True)
-    N2O_EFF_O1.stream_impact_item = item  # ADD THIS LINE
-
-    
-    O1 = elu.EL_Aerobic('O1', ins=(A1-0, PAC), outs=('effluent_AeroT', N2O_EFF_O1),
+    O1 = elu.EL_Aerobic('O1', ins=(A1-0, PAC), outs=('effluent_AeroT',),
                         isdynamic=True,  ppl = ppl, baseline_ppl = baseline_ppl, scale_factor = scale_factor,  **kwargs_O
                         # aeration = 2, suspended_growth_model=asm2d,
                         #  # ppl = ppl, baseline_ppl = 100,
@@ -327,11 +344,6 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
                          )
     item = ImpactItem.get_item('PAC_item').copy(f'O1_PAC_item', set_as_source=True)
     O1.ins[1].stream_impact_item = item      #effluent was
-    
-    # item = ImpactItem.get_item('N2O_item').copy(f'O1_N20_item', set_as_source=True)
-    # O1.outs[1].stream_impact_item = item
-    
-    # N2O_EFF_B1 = qs.WasteStream('N2O from B1', phase='g')
 
     B1 = elu.EL_CMMBR('B1', ins=O1-0, outs=('effluent_MembT', 'sludge_MembT'),
                       isdynamic=True, ppl = ppl, baseline_ppl = baseline_ppl,
@@ -343,8 +355,6 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
                       # pumped_flow=Q_ras+Q_was,
                       # solids_capture_rate=0.999, 
                       )
-    # item = ImpactItem.get_item('N2O_item').copy(f'B1_N2O_item', set_as_source=True)
-    # B1.outs[2].stream_impact_item = item 
     # breakpoint()
     # S2 = su.Splitter('S2', ins=B1-1, outs=['RAS', 'WAS'], split=0.95)
     S2 = su.Splitter('S2', ins=B1-1, outs=['RAS', 'WAS'], split=Q_ras*2/(Q_ras*2+Q_was))
