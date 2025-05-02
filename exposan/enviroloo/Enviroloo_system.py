@@ -258,7 +258,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     kwargs_1 = dict(V_max=6.35, aeration=None, DO_ID=None, suspended_growth_model=masm2d)
     kwargs_2 = dict(V_max=2.89, aeration=2, DO_ID='S_O2', suspended_growth_model=masm2d)
     
-    CH4_EFF_CT = qs.WasteStream('CH4 from CT', phase='g')
+    CH4_EFF_CT = qs.WasteStream('CH4_from_CT', phase='g')
     # CH4_EFF_CT.imass['CH4'] = 1e-6
     item = ImpactItem.get_item('CH4_item').copy('CT_CH4_item', set_as_source=True)
     CH4_EFF_CT.stream_impact_item = item  # ADD THIS LINE
@@ -293,7 +293,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #Glucose = qs.WasteStream('Glucose_Dose', S_F= 0.05, units='kg/hr', T=Temp) # 0.0805 0.05 kg COD/hr as S_F fermentable solute 
     Glucose = qs.WasteStream('Glucose_Dose', T=Temp) # 0.0805 0.05 kg COD/hr as S_F fermentable solute 
     
-    CH4_EFF_A1 = qs.WasteStream('CH4 from A1', phase='g')
+    CH4_EFF_A1 = qs.WasteStream('CH4_from_A1', phase='g')
     # CH4_EFF_A1.imass['CH4'] = 1e-6
     item = ImpactItem.get_item('CH4_item').copy('A1_CH4_item', set_as_source=True)
     CH4_EFF_A1.stream_impact_item = item  # ADD THIS LINE
@@ -315,7 +315,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     
     PAC = qs.WasteStream('PAC_Dose', T=Temp) #  as Al_OH
     
-    N2O_EFF_O1 = qs.WasteStream('N2O from O1', phase='g')
+    N2O_EFF_O1 = qs.WasteStream('N2O_from_O1', phase='g')
     # N2O_EFF_O1.imass['N2O'] = 1e-6
     item = ImpactItem.get_item('N2O_item').copy('O1_N2O_item', set_as_source=True)
     N2O_EFF_O1.stream_impact_item = item  # ADD THIS LINE
