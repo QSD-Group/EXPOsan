@@ -208,7 +208,6 @@ def create_components(set_thermo = True
                       ):
     # bw_cmps = create_bw_components(set_thermo=False)
     masm2d_cmps = pc.create_masm2d_cmps(set_thermo=False)
-
     CH4 = Component('CH4', phase='g',
                     particle_size='Soluble',
                     degradability='Slow',
@@ -218,8 +217,6 @@ def create_components(set_thermo = True
                     particle_size='Soluble',
                     degradability='Undegradable',
                     organic=False)
-
-
     cmps = Components([*masm2d_cmps, CH4, N2O,
                        # Tissue, WoodAsh, H2O,
                        ])
@@ -259,7 +256,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     kwargs_2 = dict(V_max=2.89, aeration=2, DO_ID='S_O2', suspended_growth_model=masm2d)
     
     CH4_EFF_CT = qs.WasteStream('CH4 from CT', phase='g')
-    # CH4_EFF_CT.imass['CH4'] = 1e-6
+    CH4_EFF_CT.imass['CH4'] = 1e-6
     item = ImpactItem.get_item('CH4_item').copy('CT_CH4_item', set_as_source=True)
     CH4_EFF_CT.stream_impact_item = item  # ADD THIS LINE
 
@@ -294,7 +291,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     Glucose = qs.WasteStream('Glucose_Dose', T=Temp) # 0.0805 0.05 kg COD/hr as S_F fermentable solute 
     
     CH4_EFF_A1 = qs.WasteStream('CH4 from A1', phase='g')
-    # CH4_EFF_A1.imass['CH4'] = 1e-6
+    CH4_EFF_A1.imass['CH4'] = 1e-6
     item = ImpactItem.get_item('CH4_item').copy('A1_CH4_item', set_as_source=True)
     CH4_EFF_A1.stream_impact_item = item  # ADD THIS LINE
 
@@ -316,7 +313,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     PAC = qs.WasteStream('PAC_Dose', T=Temp) #  as Al_OH
     
     N2O_EFF_O1 = qs.WasteStream('N2O from O1', phase='g')
-    # N2O_EFF_O1.imass['N2O'] = 1e-6
+    N2O_EFF_O1.imass['N2O'] = 1e-6
     item = ImpactItem.get_item('N2O_item').copy('O1_N2O_item', set_as_source=True)
     N2O_EFF_O1.stream_impact_item = item  # ADD THIS LINE
 

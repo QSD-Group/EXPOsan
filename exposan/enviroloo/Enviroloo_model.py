@@ -740,45 +740,45 @@ def add_parameters(model, unit_dct, country_specific=False):
         global N2O_EF_B1
         N2O_EF_B1 = i
         
-# #TODO: used to cache steady state parameters for faster model evalutaion
-# def cache_state(sys, folder='steady_state'):
-#     #path = os.path.join(results_path, ''f'{folder}/{sys.ID}'.npy)
-#     path = os.path.join(results_path, 'steady_state.npy')
-#     np.save(path, sys._state) 
+#TODO: used to cache steady state parameters for faster model evalutaion
+def cache_state(sys, folder='steady_state'):
+    #path = os.path.join(results_path, ''f'{folder}/{sys.ID}'.npy)
+    path = os.path.join(results_path, 'steady_state.npy')
+    np.save(path, sys._state) 
     
-# #TODO used to load steady state parameters for faster model evalutaion    
-# def load_state(sys, state_arr=None, folder='steady_state'):
-#     """Load a previously saved state to a system object for faster model evaluation."""
-#     if state_arr is None:
-#         path = os.path.join(results_path, f'{folder}/{sys.ID}.npy')
-#         state_arr = np.load(path)
-#     nr = sys._n_rotate
-#     units = sys.units[nr:] + sys.units[:nr]
-#     sys.converge()
-#     for unit in sys.units: 
-#         unit._init_dynamic()
-#     for ws in sys.feeds:
-#         if not ws.state.all(): ws._init_state()
-#     if sys.recycle:
-#         for ws in sys.recycle:
-#             if not ws.state.all(): ws._init_state()
-#     for inf in units[0].ins:
-#         if not inf.state.all(): inf._init_state()
-#         y = np.array([])
-#         idx = {}
-#         for unit in units: 
-#             unit._init_state()
-#             if unit.hasode:
-#                 start = len(y)
-#                 y = np.append(y, unit._state)
-#                 stop = len(y)
-#                 idx[unit._ID] = (start, stop)
-#                 unit._state = state_arr[start: stop]
-#             unit._update_state()
-#             unit._update_dstate()
-#         assert len(y) == len(state_arr)
-#         sys._state = state_arr
-#         sys._state_idx = idx
+#TODO used to load steady state parameters for faster model evalutaion    
+def load_state(sys, state_arr=None, folder='steady_state'):
+    """Load a previously saved state to a system object for faster model evaluation."""
+    if state_arr is None:
+        path = os.path.join(results_path, f'{folder}/{sys.ID}.npy')
+        state_arr = np.load(path)
+    nr = sys._n_rotate
+    units = sys.units[nr:] + sys.units[:nr]
+    sys.converge()
+    for unit in sys.units: 
+        unit._init_dynamic()
+    for ws in sys.feeds:
+        if not ws.state.all(): ws._init_state()
+    if sys.recycle:
+        for ws in sys.recycle:
+            if not ws.state.all(): ws._init_state()
+    for inf in units[0].ins:
+        if not inf.state.all(): inf._init_state()
+        y = np.array([])
+        idx = {}
+        for unit in units: 
+            unit._init_state()
+            if unit.hasode:
+                start = len(y)
+                y = np.append(y, unit._state)
+                stop = len(y)
+                idx[unit._ID] = (start, stop)
+                unit._state = state_arr[start: stop]
+            unit._update_state()
+            unit._update_dstate()
+        assert len(y) == len(state_arr)
+        sys._state = state_arr
+        sys._state_idx = idx
         
 #Create Model for EL system
 def create_modelEL(country_specific=False, **model_kwargs):
@@ -814,15 +814,13 @@ def create_model(model_ID='EL', country_specific=False, **model_kwargs):
     return model
 
 # define runing function intializing uncertainty and sensitivity analysis, TODO: make kwargs changeable
-# from exposan.enviroloo.Enviroloo_model import cache_state  # Make sure this import is present
+from exposan.enviroloo.Enviroloo_model import cache_state  # Make sure this import is present
 
 def run_uncertainty(model, N=10, rule='L', T=2, t_step=2, mpath='', method='BDF', **kwargs):
     # Simulate and cache the steady state before uncertainty analysis
     sys = model.system
-    sys.simulate(
-        # state_reset_hook='reset_cache',
-        t_span=(0, T), method=method)  # Simulate full T-span for safety
-    # cache_state(sys)  # Saves to results/steady_state/EL.npy
+    sys.simulate(state_reset_hook='reset_cache', t_span=(0, T), method=method)  # Simulate full T-span for safety
+    cache_state(sys)  # Saves to results/steady_state/EL.npy
 
     # Generate samples
     sample = model.sample(N=N, rule=rule)
@@ -844,10 +842,10 @@ def run_model(model, sample, T=2, t_step=.1, method='BDF',
         if not os.path.isdir(folder): os.mkdir(folder)
         tpath = os.path.join(folder, 'state.npy')
         
-    # sys = model.system
-    # load_state(sys, folder='steady_state')    #TODO: loads the cached steady state conditions
+    sys = model.system
+    load_state(sys, folder='steady_state')    #TODO: loads the cached steady state conditions
     model.evaluate(
-       # state_reset_hook='reset_cache', # TODO: commented out to state_reset to load cached steady state instead
+       state_reset_hook='reset_cache', # TODO: commented out to state_reset to load cached steady state instead
         t_span=t_span,
         t_eval=t_eval,
         method=method,

@@ -34,7 +34,6 @@ def create_components(set_thermo = True
                     particle_size='Soluble',
                     degradability='Undegradable',
                     organic=False)
-
     cmps = Components([*masm2d_cmps, CH4, N2O])
     
     # for i in cmps:
