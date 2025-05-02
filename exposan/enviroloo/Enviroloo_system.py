@@ -271,7 +271,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     
    
     
-    PAC = qs.WasteStream('PAC_Dose', X_AlOH= 0.24, units='kg/hr', T=Temp) # 0.1207
+    # PAC = qs.WasteStream('PAC_Dose', X_AlOH= 0.24, units='kg/hr', T=Temp) # 0.1207
     
     # Create effluent_CT WasteStream to match toilet_ins concentration
     effluent_CT = qs.WasteStream('effluent_CT', T=Temp)
