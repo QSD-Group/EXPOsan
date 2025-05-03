@@ -64,17 +64,29 @@ GWP_N2O = 273.0  # update these if different in your setup #N2O_CO2_eq
 #     N_removed = max(N_in - N_out, 0)
 #     return N_removed * N2O_EF * GWP_N2O  # kg CO2-eq/day
 
-def calc_CH4_emissions_from_unit(unit, CH4_EF):
-    COD_in = sum([s.COD * s.F_vol for s in unit.ins if s and hasattr(s, 'COD')]) / 1e3  # kg/day
-    COD_out = unit.outs[0].COD * unit.outs[0].F_vol / 1e3
-    COD_removed = max(COD_in - COD_out, 0)
-    return COD_removed * CH4_EF * GWP_CH4  # kg CO2-eq/day
+# def calc_CH4_emissions_from_unit(unit, CH4_EF):
+#     COD_in = sum([s.COD * s.F_vol for s in unit.ins if s and hasattr(s, 'COD')]) / 1e3  # kg/day
+#     COD_out = unit.outs[0].COD * unit.outs[0].F_vol / 1e3
+#     COD_removed = max(COD_in - COD_out, 0)
+#     return COD_removed * CH4_EF * GWP_CH4  # kg CO2-eq/day
 
-def calc_N2O_emissions_from_unit(unit, N2O_EF):
-    N_in = sum([s.TN * s.F_vol for s in unit.ins if s and hasattr(s, 'TN')]) / 1e3  # kg/day
-    N_out = unit.outs[0].TN * unit.outs[0].F_vol / 1e3
-    N_removed = max(N_in - N_out, 0)
-    return N_removed * N2O_EF * GWP_N2O  # kg CO2-eq/day
+# def calc_N2O_emissions_from_unit(unit, N2O_EF):
+#     N_in = sum([s.TN * s.F_vol for s in unit.ins if s and hasattr(s, 'TN')]) / 1e3  # kg/day
+#     # N_out = unit.outs[0].TN * unit.outs[0].F_vol / 1e3
+#     N_removed = max(N_in, 0)
+#     return N_removed * N2O_EF * GWP_N2O  # kg CO2-eq/day
+
+def calc_CH4_emissions_from_unit(unit, CH4_EF, GWP_CH4):
+    F_influent = unit.ins[0].F_vol * 24  # m³/day
+    F_sludge = unit.ins[1].F_vol * 24    # m³/day
+    total_F = F_influent + F_sludge
+    return total_F * CH4_EF * GWP_CH4  # kg CO2-eq/day
+
+
+def calc_N2O_emissions_from_unit(unit, N2O_EF, GWP_N2O):
+    N_in = unit.ins[0].TN * unit.ins[0].F_vol * 24 * 1e-6  # kg/day from influent only
+    return N_in * N2O_EF * 1e-3 * GWP_N2O  # kg CO2-eq/day
+
 
 
 def add_metrics(model):
@@ -703,16 +715,15 @@ def add_parameters(model, unit_dct, country_specific=False):
     low = CT_data.loc['EL_CT_methane_yield', 'low']
     high = CT_data.loc['EL_CT_methane_yield', 'high']
     if high > low:
-        D = shape.Uniform(lower=low, upper=high)
+        D = shape.Triangle(lower=low, midpoint=b, upper=high)
         @param(name='CH4 EF - CT', element='Collection_Tank', kind='isolated',
-               units='m3 CH4/kg COD removed', baseline=b, distribution=D)
+               units='g CH4/m3 of treated wastewater', baseline=b, distribution=D)
         def set_CH4_EF_CT(i):
             global CH4_EF_CT
             CH4_EF_CT = i
     else:
         CH4_EF_CT = b  # just assign the value if no variation
 
-    
     b = AnoxicTank_data.loc['EL_anoT_methane_yield', 'expected']
     low = AnoxicTank_data.loc['EL_anoT_methane_yield', 'low']
     high = AnoxicTank_data.loc['EL_anoT_methane_yield', 'high']
@@ -723,9 +734,9 @@ def add_parameters(model, unit_dct, country_specific=False):
     #     global CH4_EF_A1
     #     CH4_EF_A1 = i
     if high > low:
-        D = shape.Uniform(lower=low, upper=high)
+        D = shape.Triangle(lower=low, midpoint=b, upper=high)
         @param(name='CH4 EF - A1', element='AnoxicTank', kind='isolated',
-               units='m3 CH4/kg COD removed', baseline=b, distribution=D)
+               units='g CH4/m3 of treated wastewater', baseline=b, distribution=D)
         def set_CH4_EF_A1(i):
             global CH4_EF_A1
             CH4_EF_A1 = i
@@ -735,9 +746,9 @@ def add_parameters(model, unit_dct, country_specific=False):
     b = AerobicTank_data.loc['N2O_EF_decay', 'expected']
     low = AerobicTank_data.loc['N2O_EF_decay', 'low']
     high = AerobicTank_data.loc['N2O_EF_decay', 'high']
-    D = shape.Uniform(lower=low, upper=high)
+    D = shape.Triangle(lower=low, midpoint=b, upper=high)
     @param(name='N2O EF - O1', element='AerobicTank', kind='isolated',
-           units='kg N2O/kg N removed', baseline=b, distribution=D)
+           units='gN2O-N/g TN load', baseline=b, distribution=D)
     def set_N2O_EF_O1(i):
         global N2O_EF_O1
         N2O_EF_O1 = i
@@ -745,9 +756,9 @@ def add_parameters(model, unit_dct, country_specific=False):
     b = MembTank_data.loc['N2O_EF_decay', 'expected']
     low = MembTank_data.loc['N2O_EF_decay', 'low']
     high = MembTank_data.loc['N2O_EF_decay', 'high']
-    D = shape.Uniform(lower=low, upper=high)
+    D = shape.Triangle(lower=low, midpoint=b, upper=high)
     @param(name='N2O EF - B1', element='MembraneTank', kind='isolated',
-           units='kg N2O/kg N removed', baseline=b, distribution=D)
+           units='gN2O-N/g TN load', baseline=b, distribution=D)
     def set_N2O_EF_B1(i):
         global N2O_EF_B1
         N2O_EF_B1 = i

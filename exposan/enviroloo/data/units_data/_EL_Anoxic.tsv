@@ -19,7 +19,7 @@ power_demand_AnoxicTank	energy consumption for anoxic tank	KWh/day	1.1	0.99	1.21
 EL_anoT_sludge_yield		kg-VSS/kg-BOD removed	0.035	0.03	0.04	uniform	Metcalf and Eddy page 1086 (Example 10-2)
 EL_anoT_soluble_methane_fraction			0.3	0.24	0.36	uniform	"Kim et al. Anaerobic Fluidized Bed Membrane Bioreactor for Wastewater Treatment. Environ. Sci. Technol. 2011, 45, 2, 576–581"
 EL_anoT_TN_removal	anoxic tank for total N original removal	ratio	0.2	0.02	0.37	uniform	"<br class=""Apple-interchange-newline"">UIUC Request Data - Gary Shyu"
-EL_anoT_methane_yield	methane yield based on COD degraded at 25 degrees C	g CH4/m3 of treated wastewater	0.9	0.1	1.7	Triangular	https://doi.org/10.1021/acs.est.2c04388
+EL_anoT_methane_yield	methane yield based on COD degraded at 25 degrees C	g CH4/m3 of treated wastewater	0.9	0.1	1.7	triangular	https://doi.org/10.1021/acs.est.2c04388
 decay_k_N		ratio	0.01	0.005	0.015	uniform	assumption
 EL_anoT_TP_removal	anoxic tank for total P original removal	ratio	0.19	0.01	0.39	uniform	UIUC Request Data - Gary Shyu
 anoxic_mixer_power		kW	0.18	0.153	0.207	uniform	data sheet by EnviroLoo

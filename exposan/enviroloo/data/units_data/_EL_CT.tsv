@@ -18,4 +18,4 @@ lift_pump_power		kW	1.1	0.935	1.265	uniform	data sheet
 lift_pump_cost		USD	104	88.4	119.6	uniform	https://www.alibaba.com/product-detail/Jinmu-brand-professional-1-1kw-submersible_1600929097854.html?spm=a2700.details.you_may_like.3.44e35ef2MlxhPU
 pump_lifetime		yr	5	4.25	5.75	uniform	assumption
 EL_CT_soluble_methane_fraction			0.3	0.24	0.36	uniform	"Kim et al. Anaerobic Fluidized Bed Membrane Bioreactor for Wastewater Treatment. Environ. Sci. Technol. 2011, 45, 2, 576–581"
-EL_anoT_methane_yield	methane yield based on COD degraded at 25 degrees C	g CH4/m3 of treated wastewater	0.8	0.2	1.7	Triangular	https://doi.org/10.1021/acs.est.2c04388
+EL_CT_methane_yield	methane yield based on COD degraded at 25 degrees C	g CH4/m3 of treated wastewater	0.8	0.2	1.7	triangular	https://doi.org/10.1021/acs.est.2c04388
