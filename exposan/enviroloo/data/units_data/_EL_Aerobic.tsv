@@ -2,7 +2,7 @@ parameter	name (if diff)	unit	expected	low	high	distribution	references
 EL_aeroT_tau		d	1	0.5	1.5	triangular	CIDI
 EL_aeroT_COD_removal		fraction of COD removal	0.44	0.33	0.55	uniform	"Tchobanoglous et al,. 2014 (EAWAG: 80-85fraction of BOD removal)"
 N_max_decay		fraction of N removal	0.13	0.0975	0.1625	triangular	"Orner and Mihelcic, 2017"
-N2O_EF_decay		fraction of of degraded N emitted as N2O	0.005	0.0005	0.006	triangular	"IPCC, 2006; Leeds"
+N2O_EF_decay		gN2O-N/g TN load	0.002958061	0.000891375	0.008612755	triangular	https://www.nature.com/articles/s41893-024-01420-9
 MCF_decay			0.03			constant	"IPCC, 2006; Leeds"
 tank_steel_weight	estimated total weight of primary clarifier tank	kg	135			constant	"BOM, assuming 8000L tank weights 135kg"
 steel_density	density of steel	kg/m3	7850			constant	BOM

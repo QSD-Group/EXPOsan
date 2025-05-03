@@ -3,7 +3,7 @@ EL_mbrT_tau		days	1	0.75	1.25	uniform	assumption based on original design
 COD_removal		fraction of total COD	0.37	0.2775	0.4625	uniform	Eco-san data slides
 N_max_decay		fraction of N removed	0.09	0.0675	0.1125	uniform	"EAWAG, 2014"
 P_removal		fraction of P removed	0.15	0.1125	0.1875	uniform	"IPCC, 2006"
-N2O_EF_decay		fraction of of degraded N emitted as N2O	0.005	0.0005	0.006	triangular	"IPCC, 2006; Leeds"
+N2O_EF_decay		gN2O-N/g TN load	0.002958061	0.000891375	0.008612755	triangular	https://www.nature.com/articles/s41893-024-01420-9
 tank_steel_weight	estimated total weight of primary clarifier tank	kg	85			constant	"BOM, assuming 4000L tank weights 85kg"
 steel_density	density of steel	kg/m3	7850			constant	BOM
 membrane_material_weight		kg	300	270	330	uniform	BOM
