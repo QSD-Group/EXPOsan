@@ -84,14 +84,14 @@ def calc_CH4_emissions_from_unit(unit, CH4_EF):
         total_F = F_influent + F_sludge
     else: total_F = F_influent
     
-    CH4_emissions = total_F * CH4_EF * GWP_CH4 *365/el.ppl # kg CO2-eq/cap/yr
+    CH4_emissions = total_F * CH4_EF * 1e-3 * GWP_CH4 * 365/el.ppl # kg CO2-eq/cap/yr
     return CH4_emissions # kg CO2-eq/day
 
 
 def calc_N2O_emissions_from_unit(unit, N2O_EF):
     N_in = unit.ins[0].TN * unit.ins[0].F_vol * 24 * 1e-6  # kg/day from influent only
     
-    N2O_emissions = N_in * N2O_EF * 1e-3 * GWP_N2O *365/el.ppl  # kg CO2-eq/cap/yr
+    N2O_emissions = N_in * N2O_EF * GWP_N2O *365/el.ppl   # kg CO2-eq/cap/yr
     
     return N2O_emissions
 
