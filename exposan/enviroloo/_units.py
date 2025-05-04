@@ -248,7 +248,7 @@ class EL_PC(IdealClarifier):
     _outs_size_is_fixed = True
     exponent_scale = 0.1
     ppl=1000,
-    baseline_ppl= 1000
+    baseline_ppl= 1000 
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  sludge_flow_rate=10, 
@@ -476,6 +476,8 @@ class EL_Anoxic(CSTR):
     ppl = 1000
     baseline_ppl = 1000
     exponent_scale=0.1
+    dosing_flow = 1
+    scale_factor = 1    
     
     # _D_O2 = 2.10e-9   # m2/s
     #TODO: check mixing value 
@@ -523,7 +525,7 @@ class EL_Anoxic(CSTR):
     
     def _run(self):
         glucose = self.ins[2]
-        glucose.imass['S_F'] = self.chemical_glucose_mixing_ratio * self.dosing_flow * * self.scale_factor * 1.067 # kg/L and L/h    to kg/h TODO: add source for 1.067 kg COD/kg glucose
+        glucose.imass['S_F'] = self.chemical_glucose_mixing_ratio * self.dosing_flow * self.scale_factor * 1.067 # kg/L and L/h    to kg/h TODO: add source for 1.067 kg COD/kg glucose
         
         super()._run()
             
@@ -555,7 +557,7 @@ class EL_Anoxic(CSTR):
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
         
-        self.add_OPEX = (self._calc_replacement_cost() + self.chemical_glucose_mixing_ratio * self.glucose_pump_flow * 
+        self.add_OPEX = (self._calc_replacement_cost() + self.chemical_glucose_mixing_ratio * self.dosing_flow * 
             self.chemical_glucose_price)
         
         power_demand = self.power_demand_AnoxicTank
@@ -634,6 +636,8 @@ class EL_Aerobic(CSTR):
     exponent_scale = 0.1
     ppl = 1000
     baseline_ppl = 1000
+    dosing_flow = 1
+    scale_factor = 1   
     
     _D_O2 = 2.10e-9   # m2/s
 
@@ -681,8 +685,7 @@ class EL_Aerobic(CSTR):
         ############################################### 
         
     def _run(self):
-        print(self.PAC_pump_flow)
-        print(self.chemical_PAC_mixing_ratio)
+     
         PAC = self.ins[1]
         PAC.imass['X_AlOH'] = self.chemical_PAC_mixing_ratio * self.dosing_flow * self.scale_factor * 0.2886 # kg/L and L/h    to kg/h TODO: add source for 0.2886 kg AlOH/kg PAC
         super()._run()
@@ -718,7 +721,7 @@ class EL_Aerobic(CSTR):
             C[equipment] = cost * ratio
             
         self.add_OPEX = (self._calc_replacement_cost() + 
-                         self.chemical_PAC_mixing_ratio * self.PAC_pump_flow * 
+                         self.chemical_PAC_mixing_ratio * self.dosing_flow * 
                          self.chemical_PAC_price / 24)
         
         # self.add_OPEX = (self._calc_replacement_cost() + 
