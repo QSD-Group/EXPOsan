@@ -1,9 +1,5 @@
 parameter	name (if diff)	unit	expected	low	high	distribution	references
-EL_aeroT_tau		d	1	0.5	1.5	triangular	CIDI
-EL_aeroT_COD_removal		fraction of COD removal	0.44	0.33	0.55	uniform	"Tchobanoglous et al,. 2014 (EAWAG: 80-85fraction of BOD removal)"
-N_max_decay		fraction of N removal	0.13	0.0975	0.1625	triangular	"Orner and Mihelcic, 2017"
 N2O_EF_decay		gN2O-N/g TN load	0.002958061	0.000891375	0.008612755	triangular	https://www.nature.com/articles/s41893-024-01420-9
-MCF_decay			0.03			constant	"IPCC, 2006; Leeds"
 tank_steel_weight	estimated total weight of primary clarifier tank	kg	135			constant	"BOM, assuming 8000L tank weights 135kg"
 steel_density	density of steel	kg/m3	7850			constant	BOM
 aerobic_tank_cost		USD	9388	8449.2	10326.8	uniform	https://www.gwkent.com/stainless-steel-slope-bottom-storage-tank-3900-liters-1030-gallons.html?utm_source=google_shopping&srsltid=AfmBOoqk0fYAXHC4ofjtaIxQssJd9_-YUTmn4i2fw6-mDJ8_kT3P0N1ANpc&gQT=1
@@ -18,8 +14,6 @@ pipeline_connectors_lifetime		yr	5	4.5	5.5	uniform	assumption
 power_demand_AerobicTank	energy consumption for anoxic tank	KWh/day	0.8	0.72	0.88	uniform	assumption
 EL_aeroT_sludge_yield		kg-VSS/kg-BOD removed	0.035	0.03	0.04	uniform	Metcalf and Eddy page 1086 (Example 10-2)
 EL_aeroT_TN_removal	anoix_tank_totalN_original_removal	ratio	0.2	0.02	0.37	uniform	"<br class=""Apple-interchange-newline"">UIUC Request Data - Gary Shyu"
-NO3_produced_ratio		ratio	0.01	0.009	0.011	uniform	assumption
-decay_k_N		ratio	0.01	0.005	0.015	uniform	assumption
 blower_steel_weight		kg	24	21.6	26.4	uniform	BOM
 blower_cost		USD	40	36	44	uniform	BOM
 blower_lifetime		yr	8	7.2	8.8	uniform	assumption

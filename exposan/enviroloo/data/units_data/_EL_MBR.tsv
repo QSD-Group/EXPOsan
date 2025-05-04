@@ -1,8 +1,4 @@
 parameter	name (if diff)	unit	expected	low	high	distribution	references
-EL_mbrT_tau		days	1	0.75	1.25	uniform	assumption based on original design
-COD_removal		fraction of total COD	0.37	0.2775	0.4625	uniform	Eco-san data slides
-N_max_decay		fraction of N removed	0.09	0.0675	0.1125	uniform	"EAWAG, 2014"
-P_removal		fraction of P removed	0.15	0.1125	0.1875	uniform	"IPCC, 2006"
 N2O_EF_decay		gN2O-N/g TN load	0.002958061	0.000891375	0.008612755	triangular	https://www.nature.com/articles/s41893-024-01420-9
 tank_steel_weight	estimated total weight of primary clarifier tank	kg	85			constant	"BOM, assuming 4000L tank weights 85kg"
 steel_density	density of steel	kg/m3	7850			constant	BOM
@@ -17,13 +13,6 @@ weld_female_adapter_fittings_lifetime		yr	5	4.5	5.5	uniform	assumption
 pipeline_connectors_lifetime		yr	5	4.5	5.5	uniform	assumption
 membrane_material_lifetime		yr	2	1.8	2.2	uniform	assumption
 power_demand_MBR	energy consumption for membrane tank	KWh/day	1.2	1.08	1.32	uniform	assumption
-EL_mbrT_sludge_yield		kg-VSS/kg-BOD removed	0.035	0.03	0.04	uniform	Metcalf and Eddy page 1086 (Example 10-2)
-EL_mbrT_TN_removal	anoix_tank_totalN_original_removal	ratio	0.2	0.02	0.37	uniform	"<br class=""Apple-interchange-newline"">UIUC Request Data - Gary Shyu"
-NO3_produced_ratio		ratio	0.01	0.009	0.011	uniform	
-NO3_split_ratio		ratio	0.5	0.45	0.55	uniform	
-EL_mbrT_COD_removal	COD removal in membrane tank	ratio	0.85	0.6	0.9	uniform	assumption
-decay_k_N		ratio	0.01			constant	assumption
-sludge_moisture_content		ratio	0.95	0.855	0.99	uniform	
 self_priming_pump_cast_iron		kg	9	7.65	10.35	uniform	data sheet
 self_priming_pump_power		kW	0.6	0.51	0.69	uniform	data sheet
 self_priming_pump_cost		USD	155.24	131.954	178.526	uniform	https://www.alibaba.com/product-detail/LEO-QDX-Series-Cast-Iron-Submersible_60671071414.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0BMhyxn
