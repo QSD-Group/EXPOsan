@@ -481,7 +481,7 @@ class EL_Anoxic(CSTR):
     #TODO: check mixing value 
     
     def __init__(self, ID='', ins=None, outs=(), split=None, thermo=None,
-                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, mixing_ratio = .035, scale_factor = 1,
+                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, mixing_ratio = .035, scale_factor = 1, dosing_flow = 1,
                  # D_tank = 3.65,
                  # freeboard = 0.61, 
                  t_wall = None, t_slab = None, aeration=None, 
@@ -523,7 +523,7 @@ class EL_Anoxic(CSTR):
     
     def _run(self):
         glucose = self.ins[2]
-        glucose.imass['S_F'] = self.chemical_glucose_mixing_ratio * self.glucose_pump_flow * 1.067 # kg/L and L/h    to kg/h TODO: add source for 1.067 kg COD/kg glucose
+        glucose.imass['S_F'] = self.chemical_glucose_mixing_ratio * self.dosing_flow * * self.scale_factor * 1.067 # kg/L and L/h    to kg/h TODO: add source for 1.067 kg COD/kg glucose
         
         super()._run()
             
@@ -639,7 +639,7 @@ class EL_Aerobic(CSTR):
 
     def __init__(self, 
                  ID='', ins=None, outs=(), split=None, thermo=None,
-                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, mixing_ratio = .035, scale_factor = 1,
+                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, mixing_ratio = .035, scale_factor = 1, dosing_flow = 1,
                  # D_tank = 3.65,
                  # freeboard = 0.61, 
                  t_wall = None, t_slab = None, aeration=2.0, 
@@ -684,7 +684,7 @@ class EL_Aerobic(CSTR):
         print(self.PAC_pump_flow)
         print(self.chemical_PAC_mixing_ratio)
         PAC = self.ins[1]
-        PAC.imass['X_AlOH'] = self.chemical_PAC_mixing_ratio * self.PAC_pump_flow * 0.2886 # kg/L and L/h    to kg/h TODO: add source for 0.2886 kg AlOH/kg PAC
+        PAC.imass['X_AlOH'] = self.chemical_PAC_mixing_ratio * self.dosing_flow * self.scale_factor * 0.2886 # kg/L and L/h    to kg/h TODO: add source for 0.2886 kg AlOH/kg PAC
         super()._run()
         
     def _init_lca(self):
