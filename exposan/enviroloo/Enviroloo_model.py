@@ -807,11 +807,11 @@ def create_model(model_ID='EL', country_specific=False, **model_kwargs):
     return model
 
 # define runing function intializing uncertainty and sensitivity analysis, TODO: make kwargs changeable
-def run_uncertainty(model, N=10, rule='L', T=2, t_step=2, mpath='', **kwargs):
+def run_uncertainty(model, N=10, rule='L', T=2, t_step=2, mpath='', method = 'RK23', **kwargs):
     #generate sample
     sample = model.sample(N = N, rule = rule)
     
-    run_model(model, sample, T=T, t_step=t_step, method='RK23', mpath=mpath)
+    run_model(model, sample, T=T, t_step=t_step, method=method, mpath=mpath)
 
     return
 
