@@ -38,7 +38,7 @@ from biosteam.units.design_tools import flash_vessel_design
 from biosteam.units.design_tools.specification_factors import material_densities_lb_per_ft3
 from collections.abc import Iterable
 from biosteam._graphics import UnitGraphics
-
+from exposan import enviroloo as el
 
 # %% This callable file will be reposited to qsdsan.SanUnit subbranch with the name of _enviroloo
 __all__ = (
@@ -115,8 +115,9 @@ class EL_CT(CSTR):
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     exponent_scale = 0.1
-    ppl = 1000
-    baseline_ppl = 1000
+    ppl = el.ppl
+    baseline_ppl = el.baseline_ppl
+    
     
     _D_O2 = 2.10e-9   # m2/s
 
@@ -473,17 +474,17 @@ class EL_Anoxic(CSTR):
     _N_outs = 1
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
-    ppl = 1000
-    baseline_ppl = 1000
     exponent_scale=0.1
-    dosing_flow = 1
-    scale_factor = 1    
+    ppl = el.ppl
+    baseline_ppl = el.baseline_ppl
+    dosing_flow = el.dosing_flow
+    scale_factor = el.scale_factor  
     
     # _D_O2 = 2.10e-9   # m2/s
     #TODO: check mixing value 
     
     def __init__(self, ID='', ins=None, outs=(), split=None, thermo=None,
-                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, mixing_ratio = .035, scale_factor = 1, dosing_flow = 1,
+                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, mixing_ratio = .035,#scale_factor = 1, dosing_flow = 1,
                  # D_tank = 3.65,
                  # freeboard = 0.61, 
                  t_wall = None, t_slab = None, aeration=None, 
@@ -557,7 +558,7 @@ class EL_Anoxic(CSTR):
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
         
-        self.add_OPEX = (self._calc_replacement_cost() + self.chemical_glucose_mixing_ratio * self.dosing_flow * 
+        self.add_OPEX = (self._calc_replacement_cost() + self.chemical_glucose_mixing_ratio * self.dosing_flow * self.scale_factor *
             self.chemical_glucose_price)
         
         power_demand = self.power_demand_AnoxicTank
@@ -634,16 +635,16 @@ class EL_Aerobic(CSTR):
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     exponent_scale = 0.1
-    ppl = 1000
-    baseline_ppl = 1000
-    dosing_flow = 1
-    scale_factor = 1   
+    ppl = el.ppl
+    baseline_ppl = el.baseline_ppl
+    dosing_flow = el.dosing_flow
+    scale_factor = el.scale_factor  
     
     _D_O2 = 2.10e-9   # m2/s
 
     def __init__(self, 
                  ID='', ins=None, outs=(), split=None, thermo=None,
-                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, mixing_ratio = .035, scale_factor = 1, dosing_flow = 1,
+                 init_with='WasteStream', V_max=7.3, W_tank = 2.09, mixing_ratio = .035, #scale_factor = 1, dosing_flow = 1,
                  # D_tank = 3.65,
                  # freeboard = 0.61, 
                  t_wall = None, t_slab = None, aeration=2.0, 
@@ -721,7 +722,7 @@ class EL_Aerobic(CSTR):
             C[equipment] = cost * ratio
             
         self.add_OPEX = (self._calc_replacement_cost() + 
-                         self.chemical_PAC_mixing_ratio * self.dosing_flow * 
+                         self.chemical_PAC_mixing_ratio * self.dosing_flow * self.scale_factor *
                          self.chemical_PAC_price / 24)
         
         # self.add_OPEX = (self._calc_replacement_cost() + 
@@ -763,8 +764,8 @@ class EL_CMMBR(CompletelyMixedMBR):
     _N_ins = 1
     _N_outs = 2  # [0] filtrate, [1] pumped flow
     _outs_size_is_fixed = True
-    ppl = 1000
-    baseline_ppl = 1000
+    ppl = el.ppl
+    baseline_ppl = el.baseline_ppl
     exponent_scale=0.1
     
     
@@ -882,8 +883,9 @@ class EL_CWT(CSTR):
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     exponent_scale = 0.1
-    ppl = 1000
-    baseline_ppl = 1000
+    ppl = el.ppl
+    baseline_ppl = el.baseline_ppl
+
     
     _D_O2 = 2.10e-9   # m2/s
 
@@ -986,8 +988,9 @@ class EL_Housing(CSTR):
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     exponent_scale = 0.1
-    ppl = 1000
-    baseline_ppl = 1000
+    ppl = el.ppl
+    baseline_ppl = el.baseline_ppl
+ 
     
     _D_O2 = 2.10e-9   # m2/s
 
@@ -1082,9 +1085,9 @@ class EL_System(CSTR):
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     exponent_scale = 0.1
-    ppl = 1000
-    baseline_ppl = 1000
-    
+    ppl = el.ppl
+    baseline_ppl = el.baseline_ppl
+ 
     _D_O2 = 2.10e-9   # m2/s
 
     def __init__(self, 
@@ -1221,8 +1224,8 @@ class EL_WindSolar(CSTR):
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     exponent_scale = 0.1
-    ppl = 1000
-    baseline_ppl = 1000
+    pl = el.ppl
+    baseline_ppl = el.baseline_ppl
     
     _D_O2 = 2.10e-9   # m2/s
 

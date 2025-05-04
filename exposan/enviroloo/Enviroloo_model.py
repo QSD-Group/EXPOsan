@@ -815,7 +815,7 @@ def run_uncertainty(model, N=10, rule='L', T=2, t_step=2, mpath='', **kwargs):
 
     return
 
-def run_model(model, sample, T=2, t_step=.1, method='BDF', 
+def run_model(model, sample, T=2, t_step=.1, method='RK23', 
               mpath='', tpath='', seed=None):
     model.load_samples(sample)
     t_span = (0, T)
@@ -825,16 +825,16 @@ def run_model(model, sample, T=2, t_step=.1, method='BDF',
     mpath = mpath or os.path.join(results_path, 'enviroloo_results.xlsx')
     
     #tpath for time-series data
-    if not tpath:
-        folder = os.path.join(results_path, 'enviroloo_time_series')
-        if not os.path.isdir(folder): os.mkdir(folder)
-        tpath = os.path.join(folder, 'state.npy')
+    # if not tpath:
+    #     folder = os.path.join(results_path, 'enviroloo_time_series')
+    #     if not os.path.isdir(folder): os.mkdir(folder)
+    #     tpath = os.path.join(folder, 'state.npy')
     
     model.evaluate(
-        state_reset_hook='reset_cache',
+       # state_reset_hook='reset_cache',
         t_span=t_span,
-        t_eval=t_eval,
+        #t_eval=t_eval,
         method=method,
-        export_state_to=tpath
+       # export_state_to=tpath
         )
     model.table.to_excel(mpath)

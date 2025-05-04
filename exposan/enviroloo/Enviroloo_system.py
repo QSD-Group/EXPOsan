@@ -68,7 +68,7 @@ from exposan.enviroloo import (
     # get_toilet_users,
     # max_CH4_emission,
     # operator_daily_wage,
-    ppl, baseline_ppl
+    ppl, baseline_ppl, scale_factor
     # get_tanker_truck_fee
     # update_resource_recovery_settings,
     )
@@ -112,7 +112,7 @@ Air dissolving pump: P_AirDissolved
 
 '''
 Temp = 273.15+20 # temperature [K]
-scale_factor = 10 #scale factor for flow, baseline is 100 ppl
+# scale_factor = 10 #scale factor for flow, baseline is 100 ppl, imported from _init
 Q_w = 3 * scale_factor # m3/day  #Assuming Toilet flows to be 60lpcd and Initial population to be 100 6m^3/day for 100 ppl, 60 for 1000 ppl
 Q_ras = 1.5 * scale_factor # m3/day # 200 l/min for nitrate pump 3m^3/day for 100 ppl, 30 for 1000 ppl
 Q_was = 0.05*12
@@ -323,7 +323,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     
     
     A1 = elu.EL_Anoxic('A1', ins=(PC-0, 'RAS_A1', Glucose), outs=('effluent_AnoxT',),
-                       isdynamic=True,  ppl = ppl, baseline_ppl = baseline_ppl, scale_factor = scale_factor, dosing_flow = 5, **kwargs_1 
+                       isdynamic=True,  ppl = ppl, baseline_ppl = baseline_ppl, **kwargs_1 
                        # aeration=None, 
                        # DO_ID='S_O2', suspended_growth_model=masm2d,  **kwargs_1
                        # W_tank= 2.09,
@@ -336,7 +336,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     PAC = qs.WasteStream('PAC_Dose', T=Temp) #  as Al_OH
     
     O1 = elu.EL_Aerobic('O1', ins=(A1-0, PAC), outs=('effluent_AeroT',),
-                        isdynamic=True,  ppl = ppl, baseline_ppl = baseline_ppl, scale_factor = scale_factor, dosing_flow = 5, **kwargs_O
+                        isdynamic=True,  ppl = ppl, baseline_ppl = baseline_ppl, **kwargs_O
                         # aeration = 2, suspended_growth_model=asm2d,
                         #  # ppl = ppl, baseline_ppl = 100,
                         #  W_tank= 2.09,
