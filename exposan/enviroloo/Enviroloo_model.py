@@ -832,6 +832,7 @@ def run_model(model, sample, T=2, t_step=.1, method='RK23',
     
     model.evaluate(
        # state_reset_hook='reset_cache',
+        notify = 1,
         t_span=t_span,
         #t_eval=t_eval,
         method=method,
