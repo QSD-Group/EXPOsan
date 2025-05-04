@@ -49,6 +49,15 @@ __all__ = ('create_model', 'run_uncertainty',)
 # --- GWP emission conversion functions ---
 GWP_CH4 = 27.2  # or your model's default #CH4_CO2_EQ
 GWP_N2O = 273.0  # update these if different in your setup #N2O_CO2_eq
+
+# Shared dictionary for emission factors (used across parameter and metric functions)
+EFs = {
+    'CH4_EF_CT': None,
+    'CH4_EF_A1': None,
+    'N2O_EF_O1': None,
+    'N2O_EF_B1': None,
+}
+
  
 
 # def calc_CH4_emissions_from_unit(unit, CH4_EF):
@@ -161,14 +170,20 @@ def add_metrics(model):
         N2O_EF_O1 = N2O_EF_B1 = N2O_EF_CWT = 0
 
 
+    
     metrics.extend([
-        Metric('CH4 from CT',  lambda: calc_CH4_emissions_from_unit(system.flowsheet.unit.CT, CH4_EF=CH4_EF_CT), 'kg CO2-eq/cap/yr', 'CH4 emissions'),
-        Metric('CH4 from A1',  lambda: calc_CH4_emissions_from_unit(system.flowsheet.unit.A1, CH4_EF=CH4_EF_A1), 'kg CO2-eq/cap/yr', 'CH4 emissions'),
-        Metric('N2O from O1',  lambda: calc_N2O_emissions_from_unit(system.flowsheet.unit.O1, N2O_EF=N2O_EF_O1), 'kg CO2-eq/cap/yr', 'N2O emissions'),
-        Metric('N2O from B1',  lambda: calc_N2O_emissions_from_unit(system.flowsheet.unit.B1, N2O_EF=N2O_EF_B1), 'kg CO2-eq/cap/yr', 'N2O emissions'),
-        
+    Metric('CH4 from CT', lambda: calc_CH4_emissions_from_unit(system.flowsheet.unit.CT, CH4_EF=EFs['CH4_EF_CT']),
+           'kg CO2-eq/cap/yr', 'CH4 emissions'),
+    
+    Metric('CH4 from A1', lambda: calc_CH4_emissions_from_unit(system.flowsheet.unit.A1, CH4_EF=EFs['CH4_EF_A1']),
+           'kg CO2-eq/cap/yr', 'CH4 emissions'),
+    
+    Metric('N2O from O1', lambda: calc_N2O_emissions_from_unit(system.flowsheet.unit.O1, N2O_EF=EFs['N2O_EF_O1']),
+           'kg CO2-eq/cap/yr', 'N2O emissions'),
+    
+    Metric('N2O from B1', lambda: calc_N2O_emissions_from_unit(system.flowsheet.unit.B1, N2O_EF=EFs['N2O_EF_B1']),
+           'kg CO2-eq/cap/yr', 'N2O emissions'),
     ])
-
 
     model.metrics = metrics
 
@@ -724,52 +739,46 @@ def add_parameters(model, unit_dct, country_specific=False):
     high = CT_data.loc['EL_CT_methane_yield', 'high']
     if high > low:
         D = shape.Triangle(lower=low, midpoint=b, upper=high)
-        @param(name='CH4 EF - CT', element='Collection_Tank', kind='isolated',
+        @model.parameter(name='CH4 EF - CT', element='Collection_Tank', kind='isolated',
                units='g CH4/m3 of treated wastewater', baseline=b, distribution=D)
         def set_CH4_EF_CT(i):
-            global CH4_EF_CT
-            CH4_EF_CT = i
+            EFs['CH4_EF_CT'] = i
     else:
-        CH4_EF_CT = b  # just assign the value if no variation
+        EFs['CH4_EF_CT'] = b
+
 
     b = AnoxicTank_data.loc['EL_anoT_methane_yield', 'expected']
     low = AnoxicTank_data.loc['EL_anoT_methane_yield', 'low']
     high = AnoxicTank_data.loc['EL_anoT_methane_yield', 'high']
-    # D = shape.Constant(lower=low, upper=high)
-    # @param(name='CH4 EF - A1', element='AnoxicTank', kind='isolated',
-    #        units='m3 CH4/kg COD removed', baseline=b, distribution=D)
-    # def set_CH4_EF_A1(i):
-    #     global CH4_EF_A1
-    #     CH4_EF_A1 = i
     if high > low:
         D = shape.Triangle(lower=low, midpoint=b, upper=high)
-        @param(name='CH4 EF - A1', element='AnoxicTank', kind='isolated',
+        @model.parameter(name='CH4 EF - A1', element='AnoxicTank', kind='isolated',
                units='g CH4/m3 of treated wastewater', baseline=b, distribution=D)
         def set_CH4_EF_A1(i):
-            global CH4_EF_A1
-            CH4_EF_A1 = i
+            EFs['CH4_EF_A1'] = i
     else:
-        CH4_EF_A1 = b  # just assign the value if no variation
+        EFs['CH4_EF_A1'] = b
+    
     
     b = AerobicTank_data.loc['N2O_EF_decay', 'expected']
     low = AerobicTank_data.loc['N2O_EF_decay', 'low']
     high = AerobicTank_data.loc['N2O_EF_decay', 'high']
     D = shape.Triangle(lower=low, midpoint=b, upper=high)
-    @param(name='N2O EF - O1', element='AerobicTank', kind='isolated',
+    @model.parameter(name='N2O EF - O1', element='AerobicTank', kind='isolated',
            units='gN2O-N/g TN load', baseline=b, distribution=D)
     def set_N2O_EF_O1(i):
-        global N2O_EF_O1
-        N2O_EF_O1 = i
+        EFs['N2O_EF_O1'] = i
+    
     
     b = MembTank_data.loc['N2O_EF_decay', 'expected']
     low = MembTank_data.loc['N2O_EF_decay', 'low']
     high = MembTank_data.loc['N2O_EF_decay', 'high']
     D = shape.Triangle(lower=low, midpoint=b, upper=high)
-    @param(name='N2O EF - B1', element='MembraneTank', kind='isolated',
+    @model.parameter(name='N2O EF - B1', element='MembraneTank', kind='isolated',
            units='gN2O-N/g TN load', baseline=b, distribution=D)
     def set_N2O_EF_B1(i):
-        global N2O_EF_B1
-        N2O_EF_B1 = i
+        EFs['N2O_EF_B1'] = i
+
 
             
 
