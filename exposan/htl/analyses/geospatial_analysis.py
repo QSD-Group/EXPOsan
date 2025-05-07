@@ -506,22 +506,22 @@ ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{-1}}$]
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-plt.xticks(np.arange(0, 90, 10))
-plt.yticks(np.arange(0, 280, 40))
+plt.xticks(np.arange(0, 90, 10), fontname='Arial')
+plt.yticks(np.arange(0, 280, 40), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(0, 80)
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
-plt.xticks(np.arange(0, 90, 10))
-plt.yticks(np.arange(0, 280, 40))
+plt.xticks(np.arange(0, 90, 10), fontname='Arial')
+plt.yticks(np.arange(0, 280, 40), fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.set_ylim(0, 240)
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.xticks(np.arange(0, 90, 10))
-plt.yticks(np.arange(0, 280, 40))
+plt.xticks(np.arange(0, 90, 10), fontname='Arial')
+plt.yticks(np.arange(0, 280, 40), fontname='Arial')
 
 ax.plot([0, 80],
         [sludge_emission_factor['landfill']*1000, sludge_emission_factor['landfill']*1000],
@@ -1258,8 +1258,8 @@ def add_region(position, start_region, end_region, color):
     ax.set_xlim(0, max_distance_plot)
     ax.set_ylim(0, 7000)
     
-    plt.xticks(np.arange(0, max_distance_plot*1.2, max_distance_plot*0.2))
-    plt.yticks(np.arange(0, 8000, 1000))
+    plt.xticks(np.arange(0, max_distance_plot*1.2, max_distance_plot*0.2), fontname='Arial')
+    plt.yticks(np.arange(0, 8000, 1000), fontname='Arial')
     
     for i in range(start_region, end_region):
         CF_input.iloc[2:, i].plot(ax=ax, color=color, linewidth=3)
@@ -1279,14 +1279,14 @@ def add_region(position, start_region, end_region, color):
         if position == 2:
             ax.set_xlabel(r'$\mathbf{Travel\ distance}$ [km]', fontname='Arial', fontsize=35)
         ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True, pad=0)
-        plt.xticks(np.arange(max_distance_plot*0.2, max_distance_plot*1.2, max_distance_plot*0.2))
+        plt.xticks(np.arange(max_distance_plot*0.2, max_distance_plot*1.2, max_distance_plot*0.2), fontname='Arial')
     
     for label in ax.get_xticklabels():
         label.set_rotation(45)
     
     ax_top = ax.twiny()
     ax_top.set_xlim(ax.get_xlim())
-    plt.xticks(np.arange(max_distance_plot*0.2, max_distance_plot*1.2, max_distance_plot*0.2))
+    plt.xticks(np.arange(max_distance_plot*0.2, max_distance_plot*1.2, max_distance_plot*0.2), fontname='Arial')
     ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 add_region(0, 0, PADD_1, b)
@@ -1316,8 +1316,8 @@ fig, ax = plt.subplots(figsize=(11, 10))
 ax.set_xlim(0, max_distance_plot)
 ax.set_ylim(0, 20000)
 
-plt.xticks(np.arange(0, max_distance_plot*1.2, max_distance_plot*0.2))
-plt.yticks(np.arange(0, 24000, 4000))
+plt.xticks(np.arange(0, max_distance_plot*1.2, max_distance_plot*0.2), fontname='Arial')
+plt.yticks(np.arange(0, 24000, 4000), fontname='Arial')
 
 CF_input.iloc[2:, 0:PADD_1].sum(axis=1).plot(ax=ax, color=b, linewidth=3)
 CF_input.iloc[2:, PADD_1:PADD_2].sum(axis=1).plot(ax=ax, color=g, linewidth=3)
@@ -1332,12 +1332,12 @@ ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, le
 
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
-plt.yticks(np.arange(0, 24000, 4000))
+plt.yticks(np.arange(0, 24000, 4000), fontname='Arial')
 ax_right.tick_params(direction='in', length=10, width=3, bottom=True, top=False, left=False, right=True, labelcolor='none')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
-plt.xticks(np.arange(0, max_distance_plot*1.2, max_distance_plot*0.2))
+plt.xticks(np.arange(0, max_distance_plot*1.2, max_distance_plot*0.2), fontname='Arial')
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
 #%% CO2 abatement cost analysis
@@ -1629,12 +1629,12 @@ ax.set_ylim(0, 1400)
 ax.tick_params(direction='inout', length=20, width=3,
                 bottom=True, top=False, left=True, right=False, pad=0)
 
-plt.xticks(np.arange(0, 700, 100))
-plt.yticks(np.arange(0, 1600, 200))
+plt.xticks(np.arange(0, 700, 100), fontname='Arial')
+plt.yticks(np.arange(0, 1600, 200), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
-plt.xticks(np.arange(0, 700, 100))
+plt.xticks(np.arange(0, 700, 100), fontname='Arial')
 
 ax_top.tick_params(direction='in', length=10, width=3,
                     bottom=False, top=True, left=False, right=False,
@@ -1642,7 +1642,7 @@ ax_top.tick_params(direction='in', length=10, width=3,
 
 ax_bottom = ax.twinx()
 ax_bottom.set_ylim(ax.get_ylim())
-plt.xticks(np.arange(0, 700, 100))
+plt.xticks(np.arange(0, 700, 100), fontname='Arial')
 
 ax_bottom.tick_params(direction='in', length=10, width=3,
                       bottom=False, top=False, left=False, right=True,
@@ -1719,7 +1719,7 @@ ax.set_ylim(0, 100)
 ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
 
 ax.set_xticklabels(['solids','WRRF'])
-plt.yticks(np.arange(0, 120, 20))
+plt.yticks(np.arange(0, 120, 20), fontname='Arial')
 
 ax.set_ylabel(r'$\mathbf{GHG\ reduction}$ [%]', fontname='Arial', fontsize=45)
 
@@ -1846,22 +1846,22 @@ ax.set_ylabel(r'$\mathbf{Management\ cost}$' + '\n[\$·tonne${^{-1}}$]', fontnam
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-plt.xticks(np.arange(0, 300, 50))
-plt.yticks(np.arange(-200, 800, 100))
+plt.xticks(np.arange(0, 300, 50), fontname='Arial')
+plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(0, 250)
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
-plt.xticks(np.arange(0, 300, 50))
-plt.yticks(np.arange(-200, 800, 100))
+plt.xticks(np.arange(0, 300, 50), fontname='Arial')
+plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.set_ylim(-200, 700)
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.xticks(np.arange(0, 300, 50))
-plt.yticks(np.arange(-200, 800, 100))
+plt.xticks(np.arange(0, 300, 50), fontname='Arial')
+plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
 ax.scatter(x=saving_vs_sludge['total_sludge_amount_kg_per_year']/1000/365,
            y=saving_vs_sludge['cost'],
@@ -1902,22 +1902,22 @@ ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{-1}}$]
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-plt.xticks(np.arange(0, 300, 50))
-plt.yticks(np.arange(-100, 250, 50))
+plt.xticks(np.arange(0, 300, 50), fontname='Arial')
+plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(0, 250)
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
-plt.xticks(np.arange(0, 300, 50))
-plt.yticks(np.arange(-100, 250, 50))
+plt.xticks(np.arange(0, 300, 50), fontname='Arial')
+plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.set_ylim(-100, 200)
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.xticks(np.arange(0, 300, 50))
-plt.yticks(np.arange(-100, 250, 50))
+plt.xticks(np.arange(0, 300, 50), fontname='Arial')
+plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
 
 ax.scatter(x=decarbonization_vs_sludge['total_sludge_amount_kg_per_year']/1000/365,
            y=decarbonization_vs_sludge['CI'],
@@ -1958,22 +1958,22 @@ ax.set_ylabel(r'$\mathbf{Management\ cost}$' + '\n[\$·tonne${^{-1}}$]', fontnam
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-plt.xticks(np.arange(0, 1600, 200))
-plt.yticks(np.arange(-200, 800, 100))
+plt.xticks(np.arange(0, 1600, 200), fontname='Arial')
+plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(0, 1400)
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
-plt.xticks(np.arange(0, 1600, 200))
-plt.yticks(np.arange(-200, 800, 100))
+plt.xticks(np.arange(0, 1600, 200), fontname='Arial')
+plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.set_ylim(-200, 700)
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.xticks(np.arange(0, 1600, 200))
-plt.yticks(np.arange(-200, 800, 100))
+plt.xticks(np.arange(0, 1600, 200), fontname='Arial')
+plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
 ax.scatter(x=saving_vs_distance['real_distance_km'],
            y=saving_vs_distance['cost'],
@@ -2014,22 +2014,22 @@ ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{-1}}$]
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-plt.xticks(np.arange(0, 1600, 200))
-plt.yticks(np.arange(-100, 250, 50))
+plt.xticks(np.arange(0, 1600, 200), fontname='Arial')
+plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(0, 1400)
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
-plt.xticks(np.arange(0, 1600, 200))
-plt.yticks(np.arange(-100, 250, 50))
+plt.xticks(np.arange(0, 1600, 200), fontname='Arial')
+plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.set_ylim(-100, 200)
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.xticks(np.arange(0, 1600, 200))
-plt.yticks(np.arange(-100, 250, 50))
+plt.xticks(np.arange(0, 1600, 200), fontname='Arial')
+plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
 
 ax.scatter(x=decarbonization_vs_distance['real_distance_km'],
            y=decarbonization_vs_distance['CI'],
@@ -2075,13 +2075,13 @@ ax.set_ylabel(r'$\mathbf{Management\ cost}$' + '\n[\$·tonne${^{-1}}$]', fontnam
 mathtext.FontConstantsBase.sup1 = 0.35
 
 ax.set_xticklabels(['digestion','no digestion'])
-plt.yticks(np.arange(-200, 800, 100))
+plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.tick_params(direction='in', length=10, width=3,
                      bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.yticks(np.arange(-200, 800, 100))
+plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
 bp = ax.boxplot([digestion_or_not_plot['digestion'].dropna(),
                  digestion_or_not_plot['no_digestion'].dropna()],
@@ -2152,13 +2152,13 @@ ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{-1}}$]
 mathtext.FontConstantsBase.sup1 = 0.35
 
 ax.set_xticklabels(['digestion','no digestion'])
-plt.yticks(np.arange(-100, 250, 50))
+plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.tick_params(direction='in', length=10, width=3,
                      bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.yticks(np.arange(-100, 250, 50))
+plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
 
 bp = ax.boxplot([digestion_or_not_plot['digestion'].dropna(),
                  digestion_or_not_plot['no_digestion'].dropna()],
@@ -2231,13 +2231,13 @@ ax.set_ylabel(r'$\mathbf{Management\ cost}$' + '\n[\$·tonne${^{-1}}$]', fontnam
 mathtext.FontConstantsBase.sup1 = 0.35
 
 ax.set_xticklabels(['anhydrous\nammonia','urea','UAN'], linespacing=0.8)
-plt.yticks(np.arange(-200, 800, 100))
+plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.tick_params(direction='in', length=10, width=3,
                      bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.yticks(np.arange(-200, 800, 100))
+plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
 bp = ax.boxplot([nitrogen_fertilizer_type_plot['anhydrous_ammonia'].dropna(),
                  nitrogen_fertilizer_type_plot['urea'].dropna(),
@@ -2319,13 +2319,13 @@ ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{-1}}$]
 mathtext.FontConstantsBase.sup1 = 0.35
 
 ax.set_xticklabels(['anhydrous\nammonia','urea','UAN'], linespacing=0.8)
-plt.yticks(np.arange(-100, 250, 50))
+plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.tick_params(direction='in', length=10, width=3,
                      bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.yticks(np.arange(-100, 250, 50))
+plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
 
 bp = ax.boxplot([nitrogen_fertilizer_type_plot['anhydrous_ammonia'].dropna(),
                  nitrogen_fertilizer_type_plot['urea'].dropna(),
@@ -2805,6 +2805,8 @@ def add_region(position, color):
         ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
         ax.set_ylabel(r'$\mathbf{Offset}$ [%]', fontname='Arial', fontsize=35)
         ax.spines[['right']].set_visible(False)
+        
+        plt.yticks(np.arange(0, 7, 1), fontname='Arial')
     
     elif position == 3:
         ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, length=0, labelcolor='none')
@@ -2814,10 +2816,14 @@ def add_region(position, color):
         ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
         ax.spines[['left']].set_visible(False)
         ax_right.spines[['left']].set_visible(False)
+        
+        plt.yticks(np.arange(0, 7, 1), fontname='Arial')
     
     else:
         ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, labelcolor='none')
         ax.spines[['left','right']].set_visible(False)
+        
+        plt.yticks(np.arange(0, 7, 1), fontname='Arial')
     
     bp = ax.boxplot(offset.iloc[:,position].dropna(), showfliers=False, widths=0.75, patch_artist=True)
     
@@ -3174,11 +3180,11 @@ def plot_sensitivity(data_type):
             ax.set_ylim(0, 1)
         
         plt.xscale('log')
-        plt.xticks([0.01, 0.1, 1, 10, 100])
+        plt.xticks([0.01, 0.1, 1, 10, 100], fontname='Arial')
         if data_type[-1] == 'r':
-            plt.yticks(np.arange(-1, 1.5, 0.5))
+            plt.yticks(np.arange(-1, 1.5, 0.5), fontname='Arial')
         else:
-            plt.yticks(np.arange(0, 1.2, 0.2))
+            plt.yticks(np.arange(0, 1.2, 0.2), fontname='Arial')
         
         ax.tick_params(direction='inout', length=15, width=2, bottom=True, top=False, left=True, right=False)
         
@@ -3187,22 +3193,22 @@ def plot_sensitivity(data_type):
         ax_top.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
         
         plt.xscale('log')
-        plt.xticks([0.01, 0.1, 1, 10, 100])
+        plt.xticks([0.01, 0.1, 1, 10, 100], fontname='Arial')
         if data_type[-1] == 'r':
-            plt.yticks(np.arange(-1, 1.5, 0.5))
+            plt.yticks(np.arange(-1, 1.5, 0.5), fontname='Arial')
         else:
-            plt.yticks(np.arange(0, 1.2, 0.2))
+            plt.yticks(np.arange(0, 1.2, 0.2), fontname='Arial')
 
         ax_right = ax.twinx()
         ax_right.set_ylim(ax.get_ylim())
         ax_right.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
         
         plt.xscale('log')
-        plt.xticks([0.01, 0.1, 1, 10, 100])
+        plt.xticks([0.01, 0.1, 1, 10, 100], fontname='Arial')
         if data_type[-1] == 'r':
-            plt.yticks(np.arange(-1, 1.5, 0.5))
+            plt.yticks(np.arange(-1, 1.5, 0.5), fontname='Arial')
         else:
-            plt.yticks(np.arange(0, 1.2, 0.2))
+            plt.yticks(np.arange(0, 1.2, 0.2), fontname='Arial')
         
         ax.set_xlabel(r'$\mathbf{Wastewater\ solids\ quantity}$' + '\n[tonne·day${^{-1}}$]', fontname='Arial', fontsize=24, linespacing=0.8)
         if (data_type[0:4] == 'cost') & (data_type[-1] == 'r'):
@@ -3538,15 +3544,15 @@ ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.xticks(np.arange(0, 800, 100))
-plt.yticks(np.arange(0, 2, 0.2))
+plt.xticks(np.arange(0, 800, 100), fontname='Arial')
+plt.yticks(np.arange(0, 2, 0.2), fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.xticks(np.arange(0, 800, 100))
-plt.yticks(np.arange(0, 2, 0.2))
+plt.xticks(np.arange(0, 800, 100), fontname='Arial')
+plt.yticks(np.arange(0, 2, 0.2), fontname='Arial')
 
 ax_top.set_zorder(ax.get_zorder()+1)
 
@@ -3769,22 +3775,22 @@ def plot_heat_map(nitrogen_fertilizer, solids_quantity, item):
     
     mathtext.FontConstantsBase.sup1 = 0.35
     
-    plt.xticks(np.arange(20, 220, 30))
-    plt.yticks(np.arange((solids_quantity)*0.1, (solids_quantity)*1.1, (solids_quantity)*0.9/6))
+    plt.xticks(np.arange(20, 220, 30), fontname='Arial')
+    plt.yticks(np.arange((solids_quantity)*0.1, (solids_quantity)*1.1, (solids_quantity)*0.9/6), fontname='Arial')
     
     ax_top = ax.twiny()
     ax_top.set_xlim(20, 200)
     ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
     
-    plt.xticks(np.arange(20, 220, 30))
-    plt.yticks(np.arange((solids_quantity)*0.1, (solids_quantity)*1.1, (solids_quantity)*0.9/6))
+    plt.xticks(np.arange(20, 220, 30), fontname='Arial')
+    plt.yticks(np.arange((solids_quantity)*0.1, (solids_quantity)*1.1, (solids_quantity)*0.9/6), fontname='Arial')
     
     ax_right = ax.twinx()
     ax_right.set_ylim((solids_quantity)*0.1, (solids_quantity)*1.1)
     ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
     
-    plt.xticks(np.arange(20, 220, 30))
-    plt.yticks(np.arange((solids_quantity)*0.1, (solids_quantity)*1.1, (solids_quantity)*0.9/6))
+    plt.xticks(np.arange(20, 220, 30), fontname='Arial')
+    plt.yticks(np.arange((solids_quantity)*0.1, (solids_quantity)*1.1, (solids_quantity)*0.9/6), fontname='Arial')
     
     try:
         color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [r, o, y, g, b][::-1])
@@ -3986,22 +3992,22 @@ ax.set_ylabel(r'$\mathbf{Coverage}$ [%]', fontname='Arial', fontsize=45, linespa
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-plt.xticks(np.arange(0, 35, 5))
-plt.yticks(np.arange(0, 120, 20))
+plt.xticks(np.arange(0, 35, 5), fontname='Arial')
+plt.yticks(np.arange(0, 120, 20), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(0, 30)
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
-plt.xticks(np.arange(0, 35, 5))
-plt.yticks(np.arange(0, 120, 20))
+plt.xticks(np.arange(0, 35, 5), fontname='Arial')
+plt.yticks(np.arange(0, 120, 20), fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.set_ylim(0, 100)
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-plt.xticks(np.arange(0, 35, 5))
-plt.yticks(np.arange(0, 120, 20))
+plt.xticks(np.arange(0, 35, 5), fontname='Arial')
+plt.yticks(np.arange(0, 120, 20), fontname='Arial')
 
 ax.plot(distance_x,
         coverage_y,
@@ -4434,7 +4440,7 @@ print(f'The highest blending ratio in the near-term scenario is {BPD_capacity["r
 # # plot feature contributions to PC1
 # plt.figure(figsize=(10, 5))
 # sns.barplot(x=loadings.columns, y=loadings.loc['PC1'], palette='viridis')
-# plt.xticks(rotation=45, ha='right')
+# plt.xticks(fontname='Arial', rotation=45, ha='right')
 # plt.ylabel('Feature Contribution')
 # plt.title('Feature Contributions to PC1')
 # plt.grid(True)
@@ -4719,9 +4725,6 @@ print(f'The highest blending ratio in the near-term scenario is {BPD_capacity["r
 #     plt.rcParams['axes.linewidth'] = 3
 #     plt.rcParams['xtick.labelsize'] = 38
 #     plt.rcParams['ytick.labelsize'] = 38
-    
-#     plt.xticks(fontname='Arial')
-#     plt.yticks(fontname='Arial')
     
 #     plt.rcParams.update({'mathtext.fontset': 'custom'})
 #     plt.rcParams.update({'mathtext.default': 'regular'})
@@ -5123,15 +5126,15 @@ print(f'The highest blending ratio in the near-term scenario is {BPD_capacity["r
 # ax_top.set_xlim(ax.get_xlim())
 # ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-# plt.xticks(np.arange(-50, 90, 20))
-# plt.yticks(np.arange(0, 700, 100))
+# plt.xticks(np.arange(-50, 90, 20), fontname='Arial')
+# plt.yticks(np.arange(0, 700, 100), fontname='Arial')
 
 # ax_right = ax.twinx()
 # ax_right.set_ylim(ax.get_ylim())
 # ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-# plt.xticks(np.arange(-50, 90, 20))
-# plt.yticks(np.arange(0, 700, 100))
+# plt.xticks(np.arange(-50, 90, 20), fontname='Arial')
+# plt.yticks(np.arange(0, 700, 100), fontname='Arial')
 
 # ax.set_xlabel(r'$\mathbf{Decarbonization\ amount}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 # ax.set_ylabel(r'$\mathbf{Saving}$ [k-\$·day${^{-1}}$]', fontname='Arial', fontsize=45)
