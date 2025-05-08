@@ -103,7 +103,7 @@ class Biosolids(SanUnit):
         
         biosolids.imass['H2O'] = 1.  # or any relevant component
         
-        biosolids.F_mass = self.biosolids_generated*1000/(365*24*1000*(1-self.MC))*1000 # F_vol in kg/hr
+        biosolids.F_mass = self.biosolids_generated*1000/(365*24*1000*(1-self.MC))*1000 # F_mass in kg/hr
         
         #update density to be based on MC
         VM_db = 1 - self.AC - self.FC # fraction dry-basis
@@ -127,7 +127,8 @@ class Biosolids(SanUnit):
         
         biosolids_AC_percent = 100 * biosolids.imass['AshContent'] / flow_rate_db # %
         biosolids_FC_percent = 100 * biosolids.imass['FixedCarbon'] / flow_rate_db # %
-        biosolids._hhv = (259.83 * (biosolids_AC_percent + biosolids_FC_percent) - 2454.76) / 1000  # MJ/kg db from Thipkhunthod et. al., (2005).
+        
+        self._hhv = (259.83 * (biosolids_AC_percent + biosolids_FC_percent) - 2454.76) / 1000 # MJ/kg db from Thipkhunthod et. al., (2005)
 
 ##TODO 
 # 1. (Done Stetson, Aaron to review) layer assumptions/calcs about drying onto HHX drying, Reviewed
