@@ -98,25 +98,35 @@ class Biosolids(SanUnit):
            
     def _run(self):
         biosolids = self.outs[0]
+        
         biosolids.empty() 
         
-        biosolids.F_vol = self.biosolids_generated*1000/(365*24*1000*(1-self.MC)) # F_vol in m3/hr
+        biosolids.imass['H2O'] = 1.  # or any relevant component
+        
+        biosolids.F_mass = self.biosolids_generated*1000/(365*24*1000*(1-self.MC))*1000 # F_vol in kg/hr
+        
         #update density to be based on MC
         VM_db = 1 - self.AC - self.FC # fraction dry-basis
 
-        flow_rate_db = biosolids.F_vol * 1000 * (1 - self.MC) # kg-db / hr
-        biosolids._AC = flow_rate_db * self.AC # kg / hr
-        biosolids._FC = flow_rate_db * self.FC # kg / hr
-        biosolids._VM = flow_rate_db * VM_db # kg / hr
         
-        biosolids.imass['H20'] = biosolids.F_vol * 1000 * self.MC  # kg/hr
+        flow_rate_db = biosolids.F_mass * (1 - self.MC) # kg-db / hr
+        
+        biosolids.imass['AshContent'] = flow_rate_db * self.AC # kg / hr
+        biosolids.imass['VolatileMatter'] = flow_rate_db * self.FC # kg / hr
+        biosolids.imass['FixedCarbon'] = flow_rate_db * VM_db # kg / hr
+        
+        # biosolids._AC = flow_rate_db * self.AC # kg / hr
+        # biosolids._FC = flow_rate_db * self.FC # kg / hr
+        # biosolids._VM = flow_rate_db * VM_db # kg / hr
+        
+        biosolids.imass['H2O'] = biosolids.F_mass * self.MC  # kg/hr
         biosolids._TN = flow_rate_db * self.N # kg / hr
         #TODO need some estimates of COD for CH4 in drying
-        biosolids._COD = biosolids._VM * 1.74 #TODO: if an. digestion or aer. dgiestion: CODt / VS = 1.60, else if: CODt / VS = 1.74 Ahnert et. al., (2021).
+        biosolids._COD = biosolids.imass['VolatileMatter'] * 1.74 #TODO: if an. digestion or aer. dgiestion: CODt / VS = 1.60, else if: CODt / VS = 1.74 Ahnert et. al., (2021).
         #TODO might need to use .imass['N'] instead of .TN too?
         
-        biosolids_AC_percent = 100 * biosolids._AC / flow_rate_db # %
-        biosolids_FC_percent = 100 * biosolids._FC / flow_rate_db # %
+        biosolids_AC_percent = 100 * biosolids.imass['AshContent'] / flow_rate_db # %
+        biosolids_FC_percent = 100 * biosolids.imass['FixedCarbon'] / flow_rate_db # %
         biosolids._hhv = (259.83 * (biosolids_AC_percent + biosolids_FC_percent) - 2454.76) / 1000  # MJ/kg db from Thipkhunthod et. al., (2005).
 
 ##TODO 

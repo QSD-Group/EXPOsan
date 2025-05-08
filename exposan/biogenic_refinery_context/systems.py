@@ -28,10 +28,12 @@ from qsdsan import (
     ImpactItem,
     System, TEA, LCA,
     )
+from thermosteam import Thermo
 from qsdsan.utils import clear_lca_registries
 from exposan.utils import add_fugitive_items
 from exposan.biogenic_refinery_context import (
     _load_components,
+    _components as components,
     _load_lca_data,
     _units as u,
     const_daily_wage,
@@ -50,6 +52,9 @@ __all__ = ('create_system',)
 # =============================================================================
 
 def batch_create_streams(prefix, phases=('liq', 'sol')):
+
+    WasteStream('biosolids', phase = 's', )
+    
     item = ImpactItem.get_item('CH4_item').copy(f'{prefix}_CH4_item', set_as_source=True)
     WasteStream('CH4', phase='g', stream_impact_item=item)
 

@@ -19,12 +19,14 @@ import sys
 import os
 import pandas as pd
 import numpy as np
+import qsdsan as qs
+from exposan import biogenic_refinery_context as brc
 
 
 sys.path.insert(0, '/Users/stetsonrowles/Dropbox/Mac (3)/Documents/GitHub/EXPOsan/exposan/')
 
-from biogenic_refinery_context import models
-model = models.model
+from exposan.biogenic_refinery_context import models
+model = models.create_modelA()
 
 
 

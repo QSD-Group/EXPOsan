@@ -21,14 +21,54 @@ for license details.
 from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
 from exposan.utils import add_V_from_rho
 from exposan.bwaise import create_components as create_bw_components
+import thermosteam as tmo
 
 __all__ = ('create_components', )
+
+
+def create_biosolids_components(set_thermo=True):
+    # Create individual components
+    Water = Component('H2O', phase='l', default=True)
+    Ash = Component('Ash', phase='s', particle_size='Soluble', degradability='Undegradable')
+    Lipid = Component('Lipid', phase='s', particle_size='Colloidal', degradability='Biodegradable')
+    Protein = Component('Protein', phase='s', particle_size='Colloidal', degradability='Biodegradable')
+    Carbohydrate = Component('Carbohydrate', phase='s', particle_size='Colloidal', degradability='Biodegradable')
+    Cellulose = Component('Cellulose', phase='s', particle_size='Particulate', degradability='Slowly biodegradable')
+
+    # Add them to a Components object
+    cmps = Components([Water, Ash, Lipid, Protein, Carbohydrate, Cellulose])
+
+    if set_thermo:
+        tmo.settings.set_thermo(cmps)
+
+    return cmps
 
 def create_components(set_thermo=True):
     bw_cmps = create_bw_components(set_thermo=False)
 
     C = Component('C', phase='l', particle_size='Soluble',
                   degradability='Undegradable', organic=False)
+    
+#     biosolids = Component(
+#     'biosolids',
+#     phase='s',  # Explicitly solid phase
+#     phase_ref = 's',
+#     particle_size='Soluble',
+#     degradability='Undegradable',
+#     organic=True,
+#     i_COD=1,
+#     MW=100,  # assumed molar weight
+#     Hf=0,
+#     HHV=0,
+#     LHV=0,
+#     Tb=373.15,  # Example boiling point (not necessarily needed)
+#     default = True
+#     # Cp = {'l': 1, 's': 1, 'g': 1},
+#     # Psat = 1,
+#     # Hvap = 1
+
+# )
+    # # Hvap = 1 
     
     # AshContent, VolatileMatter, and FixedCarbon are components exclusive to the biochar stream in the biogenic refinery carbonizer base
     # Ash content is from: https://doi.org/10.1111/gcbb.12183
@@ -59,7 +99,7 @@ def create_components(set_thermo=True):
     Polymer = Component('Polyacrylamide', formula='C3H5NO',
                         phase='s', particle_size='Particulate',
                         degradability='Slowly', organic=False)
-
+   
     Resin = Component('Polystyrene', search_ID='Polystyrene',
                       formula='C8H8', phase='s', particle_size='Particulate',
                       degradability='Undegradable', organic=False)
