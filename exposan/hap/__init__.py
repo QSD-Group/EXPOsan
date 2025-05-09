@@ -22,7 +22,6 @@ if not os.path.isdir(figures_path): os.mkdir(figures_path)
 
 #%%
 import qsdsan as qs, thermosteam as tmo
-from thermosteam.functional import rho_to_V
 from qsdsan import Component, Components
 # from biorefineries.cane import create_sugarcane_chemicals
 
@@ -42,7 +41,10 @@ def _yeast_cmp():
         formula='CH1.61O0.56',
         particle_size='Particulate', organic=True,
         degradability='Slowly', f_Vmass_Totmass=0.872)
-    Yeast.V.add_model(rho_to_V(1540, Yeast.MW))
+    qs.utils.add_V_from_rho(Yeast, 1.540, rho_unit='g/mL')
+    # Equivalent to the following
+    # from thermosteam.functional import rho_to_V
+    # Yeast.V.add_model(rho_to_V(1540, Yeast.MW))
     Yeast.Cn.add_model(glucose.Cn(298.15)/glucose.MW*Yeast.MW, name='Constant')
     Yeast.Hf = glucose.Hf / glucose.MW * Yeast.MW
     V = tmo.functional.rho_to_V(rho=1540, MW=Yeast.MW)
