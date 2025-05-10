@@ -18,7 +18,7 @@ from setuptools import setup
 setup(
     name='exposan',
     packages=['exposan'],
-    version='1.4.1',
+    version='1.4.2',
     license='UIUC',
     author='Quantitative Sustainable Design Group',
     author_email='quantitative.sustainable.design@gmail.com',
@@ -48,6 +48,7 @@ setup(
             'cas/*',
             'eco_san/*',
             'eco_san/data/*',
+            'hap/*',
             'htl/*',
             'htl/data/*',
             'metab/*',
@@ -80,8 +81,7 @@ setup(
         'Intended Audience :: Science/Research',
         'Natural Language :: English',
         'Operating System :: OS Independent',
-        'Programming Language :: Python :: 3.9',
-        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.12',
         ],
     keywords=[
         'quantitative sustainable design',

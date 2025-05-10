@@ -26,14 +26,26 @@ from qsdsan import Component, Components
 # from biorefineries.cane import create_sugarcane_chemicals
 
 def _yeast_cmp():
-    glucose = Component.from_chemical('glucose', phase='l')
+    # glucose = Component.from_chemical('glucose', phase='l')
+    # glucose.N_solutes = 1
+    # yeast = tmo.Chemical('Yeast', phase='s', phase_ref='s', search_db=False, 
+    #                      formula='CH1.61O0.56', rho=1540, Cp=glucose.Cp(298.15),
+    #                      default=True)
+    # Yeast = Component.from_chemical('Yeast', chemical=yeast,
+    #                                 particle_size='Particulate', organic=True,
+    #                                 degradability='Slowly', f_Vmass_Totmass=0.872)
+    glucose = tmo.Chemical('glucose', phase='l')
     glucose.N_solutes = 1
-    yeast = tmo.Chemical('Yeast', phase='s', phase_ref='s', search_db=False, 
-                         formula='CH1.61O0.56', rho=1540, Cp=glucose.Cp(298.15),
-                         default=True)
-    Yeast = Component.from_chemical('Yeast', chemical=yeast,
-                                    particle_size='Particulate', organic=True,
-                                    degradability='Slowly', f_Vmass_Totmass=0.872)
+    Yeast = Component(
+        'Yeast', phase='s', phase_ref='s', search_db=False, 
+        formula='CH1.61O0.56',
+        particle_size='Particulate', organic=True,
+        degradability='Slowly', f_Vmass_Totmass=0.872)
+    qs.utils.add_V_from_rho(Yeast, 1.540, rho_unit='g/mL')
+    # Equivalent to the following
+    # from thermosteam.functional import rho_to_V
+    # Yeast.V.add_model(rho_to_V(1540, Yeast.MW))
+    Yeast.Cn.add_model(glucose.Cn(298.15)/glucose.MW*Yeast.MW, name='Constant')
     Yeast.Hf = glucose.Hf / glucose.MW * Yeast.MW
     V = tmo.functional.rho_to_V(rho=1540, MW=Yeast.MW)
     Yeast.V.add_model(V, top_priority=True)
@@ -75,7 +87,7 @@ def create_hap_cmps(set_thermo=True, industrial_yeast_production=True):
     IS = Component('IS', search_ID='SO4-2', measured_as='S', **ig_kwargs)
     IP = Component('IP', search_ID='PO4-3', measured_as='P', **ig_kwargs)
     
-    ash = Component('Ash', phase='s', MW=1., **ig_kwargs)
+    ash = Component('Ashcmp', phase='s', MW=1., **ig_kwargs)
     ash.Cn.add_model(0.09 * 4.184 * ash.MW)
     V = tmo.functional.rho_to_V(rho=1540, MW=ash.MW)
     ash.V.add_model(V, top_priority=True)
@@ -93,6 +105,7 @@ def create_hap_cmps(set_thermo=True, industrial_yeast_production=True):
                        chloride, sodium, potassium, IS, IP, ash, other_SS, 
                        *cmps_boulardii])
     cmps.default_compile(ignore_inaccurate_molar_weight=True)
+    cmps.set_alias('Ashcmp', 'Ash')
     if set_thermo: qs.set_thermo(cmps)
     return cmps
 
