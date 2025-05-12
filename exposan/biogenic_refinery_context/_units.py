@@ -229,10 +229,10 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         biochar.empty()
         
         # Calculate total dry basis mass flow
-        dry_mass_flow = waste.F_vol * 1000 * (1 - waste.MC)  # kg-db / hr
+        dry_mass_flow = waste.F_mass * (1 - mc)  # kg-db / hr
 
         # Calculate ash content fraction (dry basis)
-        ACf = waste._AC / dry_mass_flow  # decimal fraction
+        ACf = waste.imass['AshContent'] / dry_mass_flow  # decimal fraction
         
         # Calculate char yield on dry ash-free basis
         daf_yield = (0 + 0.144 * (ACf**0.0304) + 2.7023 * math.exp(-0.0066 * self.pyrolysis_temp))
@@ -262,9 +262,10 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         FC_biochar_percent = 100 - VM_biochar_percent - AC_biochar_percent
         
         # Convert percentages to mass flow rates
-        biochar._AC = biochar_dry_mass_flow * (AC_biochar_percent / 100)  # kg/hr
-        biochar._FC = biochar_dry_mass_flow * (FC_biochar_percent / 100)  # kg/hr 
-        biochar._VM = biochar_dry_mass_flow * (VM_biochar_percent / 100)  # kg/hr
+
+        biochar.imass['AshContent'] = biochar_dry_mass_flow * (AC_biochar_percent / 100)  # kg/hr
+        biochar.imass['FixedCarbon'] = biochar_dry_mass_flow * (FC_biochar_percent / 100)  # kg/hr 
+        biochar.imass['VolatileMatter'] = biochar_dry_mass_flow * (VM_biochar_percent / 100)  # kg/hr
         biochar.imass['H2O'] = biochar_mass_flow * 0.02  # kg/hr (assuming 2% moisture)
         
         # TODO Calculate biochar energy, calculate feedstock sludge energy, calculate drying energy requirement
@@ -300,9 +301,10 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         CS = char_yield_db_percent * (C_biochar * 100) * R50 / C_feedstock  # % Zhao et al. 2013
 
         # Set additional biochar properties
-        biochar._carbon_content = C_biochar  # frac
-        biochar._carbon_sequestration = CS  # %
-        biochar._sequesterable_carbon = CS/100 * C_feedstock/100 * dry_mass_flow * 24 * 365 / 1000 # ton seq. C/year
+     
+        biochar.imass['CarbonContent'] = C_biochar  # frac
+        biochar.imass['CarbonSequestration'] = CS  # %
+        biochar.imass['SequesterableCarbon'] = CS/100 * C_feedstock/100 * dry_mass_flow * 24 * 365 / 1000 # ton seq. C/year
         biochar.F_mass = biochar_mass_flow  # kg/hr
         
         #TODO layer other assumptions on biochar here, 
