@@ -230,7 +230,7 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         
         # Calculate total dry basis mass flow
         dry_mass_flow = waste.F_mass * (1 - mc)  # kg-db / hr
-
+        print(f"F_mass = {waste.F_mass}, mc = {mc}, dry_mass_flow = {dry_mass_flow}, AshContent = {waste.imass['AshContent']}")
         # Calculate ash content fraction (dry basis)
         ACf = waste.imass['AshContent'] / dry_mass_flow  # decimal fraction
         
@@ -825,8 +825,8 @@ class BiogenicRefineryHHXdryer(SanUnit):
         
         
         # Calculate total dry mass flow rate of input
-        m_dried_sludge = waste_in._AC + waste_in._FC + waste_in._VM  # kg/hr
-
+        m_dried_sludge = waste_in.imass['AshContent'] + waste_in.imass['FixedCarbon'] + waste_in.imass['VolatileMatter']  # kg/hr
+      
         # Calculate current moisture content (MC)
         MC_initial = waste_in.imass['H2O'] / (waste_in.imass['H2O'] + m_dried_sludge) # fraction
 
@@ -853,10 +853,10 @@ class BiogenicRefineryHHXdryer(SanUnit):
         #proper mass flows to the pyrolysis unit. Only moisture content should be reduced, but if those are automatically
         #streamlined to the next unit then this would be redundant
         
-        total_mass_out = waste_out._AC + waste_out._FC + waste_out._VM + waste_out.imass['H2O']  # kg/hr
+        total_mass_out = waste_out.imass['AshContent'] + waste_out.imass['FixedCarbon']+ waste_out.imass['VolatileMatter'] + waste_out.imass['H2O']  # kg/hr
         density = 1000  # kg/m3 (assuming same density)
         waste_out.F_vol = total_mass_out / density  # m3/hr
-        
+        waste_out.F_mass = total_mass_out
         
         # # The following codes can be used to compare if the supplied heat is
         # # sufficient to provide the needed heat for drying

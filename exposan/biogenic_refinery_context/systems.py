@@ -99,7 +99,7 @@ def create_systemA(flowsheet=None):
                                     const_person_days=const_person_days)
     
     
-    A4 = u.BiogenicRefineryCarbonizerBase('A4', outs=(streamA.biochar, 'A4_hot_gas', 'A4_N2O'))
+    A4 = u.BiogenicRefineryCarbonizerBase('A4', ins = A3-0, outs=(streamA.biochar, 'A4_hot_gas', 'A4_N2O'))
 
     A5 = su.BiogenicRefineryPollutionControl('A5', ins=(A4-1, A4-2), outs=('A5_hot_gas_pcd', 'A5_N2O'))
 
