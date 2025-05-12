@@ -62,7 +62,7 @@ from exposan.enviroloo import _units as elu
 from exposan.enviroloo import (
     data_path,
     # _load_components,
-    # _load_lca_data,
+    _load_lca_data,
     # discount_rate,
     # get_decay_k,
     # get_toilet_users,
@@ -263,6 +263,7 @@ def create_components(set_thermo = True
 def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={},
                   aeration_processes=()):
     # Components and stream
+    _load_lca_data()
     cmps = create_components()
     toilet_ins = qs.WasteStream('toilet_waste', T=Temp)
     toilet_ins.set_flow_by_concentration(Q_w*0.9, 

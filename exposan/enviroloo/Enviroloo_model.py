@@ -818,17 +818,16 @@ def create_model(model_ID='EL', country_specific=False, **model_kwargs):
 # define runing function intializing uncertainty and sensitivity analysis, TODO: make kwargs changeable
 def run_uncertainty(model, N=10, rule='L', T=2, t_step=2, mpath='', method = 'RK23', **kwargs):
     #generate sample
-    sample = model.sample(N = N, rule = rule)
+    sample = model.sample(N=N, rule=rule)
     
     run_model(model, sample, T=T, t_step=t_step, method=method, mpath=mpath)
-
     return
 
 def run_model(model, sample, T=2, t_step=.1, method='RK23', 
               mpath='', tpath='', seed=None):
     model.load_samples(sample)
     t_span = (0, T)
-    t_eval = np.arange(0, T+t_step, t_step)
+    # t_eval = np.arange(0, T+t_step, t_step)
     
     #mpath for metrics data
     mpath = mpath or os.path.join(results_path, 'enviroloo_results.xlsx')
@@ -839,12 +838,18 @@ def run_model(model, sample, T=2, t_step=.1, method='RK23',
     #     if not os.path.isdir(folder): os.mkdir(folder)
     #     tpath = os.path.join(folder, 'state.npy')
     
-    model.evaluate(
-       # state_reset_hook='reset_cache',
-        notify = 1,
+    sys = model._system
+    def simulate():
+        '''Skips `converge` or `dynamic_run`, only performs design and costing'''
+        sys._setup(update_configuration=False, units=None)
+        sys._summary()  # design and cost
+    
+    model.specification = simulate
+    sys.simulate(
         t_span=t_span,
         #t_eval=t_eval,
         method=method,
-       # export_state_to=tpath
         )
+    
+    model.evaluate()
     model.table.to_excel(mpath)
