@@ -290,6 +290,9 @@ def get_TEA_metrics(system, include_breakdown=False):
         lambda: tea.sales / ppl, # sales
         ]
 
+def get_ppl(kind):
+    if kind.lower()=='10k' or kind.upper()[-1]=='C': return 10000
+    return 12000
 
 def get_normalized_CAPEX(units):
     '''Get the CAPEX of a unit/units normalized to per capita per day.'''

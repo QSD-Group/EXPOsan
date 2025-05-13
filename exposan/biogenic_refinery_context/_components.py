@@ -82,6 +82,7 @@ def create_components(set_thermo=True):
                     degradability='Undegradable', organic=False)
     Biochar = Component('biochar', phase='s', particle_size='Particulate', 
                     degradability='Undegradable', organic=False)
+   
 
     #following lines are to fix errors due to missing thermodynamic properties
     VolatileMatter.copy_models_from(Chemical('Acetic Acid'))

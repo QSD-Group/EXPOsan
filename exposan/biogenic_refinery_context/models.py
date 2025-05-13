@@ -137,7 +137,7 @@ def add_shared_parameters(model, unit_dct, location_specific=False):
         # Just want to have this parameter so that can be used in other analyses,
         # set the distribution to be a really tight one
         old_price_dct = price_dct.copy()
-        excretion_unit = unit_dct['Excretion']
+
         b = 1
         D = shape.Uniform(lower=b-(10**(-6)), upper=b+(10**(-6)))
         item_ref = {
@@ -147,8 +147,7 @@ def add_shared_parameters(model, unit_dct, location_specific=False):
         stream_ref = {
             'biochar': 'biochar',
         }
-        @param(name='Price ratio', element=excretion_unit, kind='cost', units='-',
-               baseline=b, distribution=D)
+
         def set_price_ratio(i):
             br.price_ratio = i
             for obj_name in (*item_ref.keys(), *stream_ref.keys()):
