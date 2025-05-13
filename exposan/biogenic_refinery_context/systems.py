@@ -99,7 +99,7 @@ def create_systemA(flowsheet=None):
                                     const_person_days=const_person_days)
     
     
-    A4 = u.BiogenicRefineryCarbonizerBase('A4', ins = A3-0, outs=(streamA.biochar, 'A4_hot_gas', 'A4_N2O'))
+    A4 = u.BiogenicRefineryCarbonizerBase('A4', outs=(streamA.biochar, 'A4_hot_gas', 'A4_N2O'))
 
     A5 = su.BiogenicRefineryPollutionControl('A5', ins=(A4-1, A4-2), outs=('A5_hot_gas_pcd', 'A5_N2O'))
 
@@ -113,14 +113,14 @@ def create_systemA(flowsheet=None):
 
     A6 = su.BiogenicRefineryOHX('A6', ins=A5-0, outs='A6_hot_gas')
     A7 = su.BiogenicRefineryHHX('A7', ins=A6-0, outs='A7_hot_gas')
-    A8 = su.BiogenicRefineryHHXdryer('A8', ins=(A1-0, A7-0), outs=('waste_out', 'A8_N2O', 'A8_CH4')) 
+    A8 = su.BiogenicRefineryHHXdryer('A8', ins=(A3-0, A7-0), outs=('waste_out', 'A8_N2O', 'A8_CH4')) 
     A8-0-A4
 
     A9 = su.Mixer('A9', ins=(A8-2), outs=streamA.CH4)
     A9.add_specification(lambda: add_fugitive_items(A9, 'CH4_item'))
     A9.line = 'fugitive CH4 mixer'
 
-    A10 = su.Mixer('A10', ins=(A4-2, A5-1, A8-1), outs=streamA.N2O)
+    A10 = su.Mixer('A10', ins=(A5-1, A8-1), outs=streamA.N2O)
     A10.add_specification(lambda: add_fugitive_items(A10, 'N2O_item'))
     A10.line = 'fugitive N2O mixer'
     
