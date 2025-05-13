@@ -10,6 +10,13 @@ Note the word 'sludge' in this file refers to either sludge or biosolids.
 
 # confirmed: both 'markersize' (in gpd.plot()) and 's' (in plt.scatter()) are proportional to area
 
+# TODO: consider replacing Gaussian copula with np.random.choice
+
+# TODO: change all box plots to have whiskers representing 5% and 95% percentiles
+# plt.boxplot(data, whis=[5, 95])
+
+# note '-' has been replaced with '−' in axes labels
+
 #%% initialization
 
 import geopy.distance, googlemaps
@@ -470,6 +477,7 @@ sludge_disposal_cost = {'landfill': 0.413,
                         'land_application': 0.606,
                         'incineration': 0.441}
 
+# TODO: update values based on the ITO revision
 # TODO: are these just fugutive emissions? is it a fair comparison between these values and the emission from the HTL-based system, which includes chemical, transportation, etc.
 # sludge emission factor in kg CO2 eq/kg sludge (values from IEDO)
 sludge_emission_factor = {'landfill': 5.65/1000*29.8,
@@ -502,7 +510,7 @@ ax.set_ylim(0, 240)
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
 ax.set_xlabel(r'$\mathbf{Hauling\ distance}$ [km]', fontname='Arial', fontsize=45)
-ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
+ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -776,7 +784,7 @@ color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['
 
 elec_price.plot(column='price', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=3)
 
-fig.axes[1].set_ylabel('$\mathbf{Electricity\ price}$ [cent·${kWh^{-1}}$]', fontname='Arial', fontsize=35)
+fig.axes[1].set_ylabel('$\mathbf{Electricity\ price}$ [cent·${kWh^{−1}}$]', fontname='Arial', fontsize=35)
 fig.axes[1].tick_params(length=10, width=3)
 
 pos1 = fig.axes[1].get_position()
@@ -809,7 +817,7 @@ color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['
 
 elec_GHG.plot(column='kg_CO2e_kWh', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=3)
 
-fig.axes[1].set_ylabel('$\mathbf{Electricity\ carbon\ intensity}$' + '\n[kg ${CO_2}$ eq·${kWh^{-1}}$]', fontname='Arial', fontsize=35, linespacing=0.8)
+fig.axes[1].set_ylabel('$\mathbf{Electricity\ carbon\ intensity}$' + '\n[kg ${CO_2}$ eq·${kWh^{−1}}$]', fontname='Arial', fontsize=35, linespacing=0.8)
 fig.axes[1].tick_params(length=10, width=3)
 
 pos1 = fig.axes[1].get_position()
@@ -1555,7 +1563,7 @@ def plot_map(dataset, color):
     ax.scatter(x=-13580000, y=3100000, marker='o', s=1*200, c=color_4, linewidths=3,
                alpha=1, edgecolor='k')
     
-    plt.figtext(0.163, 0.372, '[tonne ${CO_2}$ eq·${day^{-1}}$]', fontname='Arial', fontdict={'fontsize': 50,'color':'k','fontweight':'bold'})
+    plt.figtext(0.163, 0.372, '[tonne ${CO_2}$ eq·${day^{−1}}$]', fontname='Arial', fontdict={'fontsize': 50,'color':'k','fontweight':'bold'})
     plt.figtext(0.23, 0.345, '1st: 50  2nd: 25', fontname='Arial', fontdict={'fontsize': 50,'color':'k','style':'italic'})
     plt.figtext(0.23, 0.319, '3rd:10  4th: 1', fontname='Arial', fontdict={'fontsize': 50,'color':'k','style':'italic'})
     
@@ -1691,7 +1699,7 @@ ax.set_xlabel('$\mathbf{Facitity\ number}$',
               fontsize=45,
               labelpad=0)
 
-ax.set_ylabel(r'$\mathbf{Cumulative\ GHG\ reduction}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]',
+ax.set_ylabel(r'$\mathbf{Cumulative\ GHG\ reduction}$' + '\n[tonne CO${_2}$ eq·day${^{−1}}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=0,
@@ -1841,8 +1849,8 @@ ax.set_ylim(-200, 700)
 
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
-ax.set_xlabel(r'$\mathbf{Solids}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
-ax.set_ylabel(r'$\mathbf{Management\ cost}$' + '\n[\$·tonne${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
+ax.set_xlabel(r'$\mathbf{Solids}$ [tonne·day${^{−1}}$]', fontname='Arial', fontsize=45)
+ax.set_ylabel(r'$\mathbf{Management\ cost}$' + '\n[\$·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -1897,8 +1905,8 @@ ax.set_ylim(-100, 200)
 
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
-ax.set_xlabel(r'$\mathbf{Solids}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
-ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
+ax.set_xlabel(r'$\mathbf{Solids}$ [tonne·day${^{−1}}$]', fontname='Arial', fontsize=45)
+ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -1954,7 +1962,7 @@ ax.set_ylim(-200, 700)
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
 ax.set_xlabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=45)
-ax.set_ylabel(r'$\mathbf{Management\ cost}$' + '\n[\$·tonne${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
+ax.set_ylabel(r'$\mathbf{Management\ cost}$' + '\n[\$·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -2010,7 +2018,7 @@ ax.set_ylim(-100, 200)
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
 ax.set_xlabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=45)
-ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
+ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -2070,7 +2078,7 @@ ax.set_ylim(-200, 700)
 ax.tick_params(direction='inout', length=20, width=3,
                bottom=False, top=False, left=True, right=False, pad=0)
 
-ax.set_ylabel(r'$\mathbf{Management\ cost}$' + '\n[\$·tonne${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
+ax.set_ylabel(r'$\mathbf{Management\ cost}$' + '\n[\$·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -2147,7 +2155,7 @@ ax.set_ylim(-100, 200)
 ax.tick_params(direction='inout', length=20, width=3,
                bottom=False, top=False, left=True, right=False, pad=0)
 
-ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
+ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -2226,7 +2234,7 @@ ax.set_ylim(-200, 700)
 ax.tick_params(direction='inout', length=20, width=3,
                bottom=False, top=False, left=True, right=False, pad=0)
 
-ax.set_ylabel(r'$\mathbf{Management\ cost}$' + '\n[\$·tonne${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
+ax.set_ylabel(r'$\mathbf{Management\ cost}$' + '\n[\$·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -2314,7 +2322,7 @@ ax.set_ylim(-100, 200)
 ax.tick_params(direction='inout', length=20, width=3,
                bottom=False, top=False, left=True, right=False, pad=0)
 
-ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
+ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -3210,7 +3218,7 @@ def plot_sensitivity(data_type):
         else:
             plt.yticks(np.arange(0, 1.2, 0.2), fontname='Arial')
         
-        ax.set_xlabel(r'$\mathbf{Wastewater\ solids\ quantity}$' + '\n[tonne·day${^{-1}}$]', fontname='Arial', fontsize=24, linespacing=0.8)
+        ax.set_xlabel(r'$\mathbf{Wastewater\ solids\ quantity}$' + '\n[tonne·day${^{−1}}$]', fontname='Arial', fontsize=24, linespacing=0.8)
         if (data_type[0:4] == 'cost') & (data_type[-1] == 'r'):
             ax.set_ylabel(r"$\mathbf{Spearman's\ \rho}$", fontname='Arial', fontsize=24)
         elif (data_type[0:4] == 'cost') & (data_type[-1] == 'p'):
@@ -3556,8 +3564,8 @@ plt.yticks(np.arange(0, 2, 0.2), fontname='Arial')
 
 ax_top.set_zorder(ax.get_zorder()+1)
 
-ax.set_xlabel(r'$\mathbf{GHG\ reduction}$ [tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=35)
-ax.set_ylabel(r'$\mathbf{Saving}$ [MM\$·day${^{-1}}$]', fontname='Arial', fontsize=35)
+ax.set_xlabel(r'$\mathbf{GHG\ reduction}$ [tonne CO${_2}$ eq·day${^{−1}}$]', fontname='Arial', fontsize=35)
+ax.set_ylabel(r'$\mathbf{Saving}$ [MM\$·day${^{−1}}$]', fontname='Arial', fontsize=35)
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -3771,7 +3779,7 @@ def plot_heat_map(nitrogen_fertilizer, solids_quantity, item):
     ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False, pad=6)
     
     ax.set_xlabel(r'$\mathbf{Average\ distance}$ [km]', fontname='Arial', fontsize=45)
-    ax.set_ylabel(r'$\mathbf{Total\ solids}$ [tonne·day${^{-1}}$]', fontname='Arial', fontsize=45)
+    ax.set_ylabel(r'$\mathbf{Total\ solids}$ [tonne·day${^{−1}}$]', fontname='Arial', fontsize=45)
     
     mathtext.FontConstantsBase.sup1 = 0.35
     
@@ -4736,7 +4744,7 @@ print(f'The highest blending ratio in the near-term scenario is {BPD_capacity["r
     
 #     if position == 0:
 #         ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
-#         ax.set_ylabel(r'$\mathbf{Saving}$ [\$·day${^{-1}}$]', fontname='Arial', fontsize=45)
+#         ax.set_ylabel(r'$\mathbf{Saving}$ [\$·day${^{−1}}$]', fontname='Arial', fontsize=45)
         
 #         mathtext.FontConstantsBase.sup1 = 0.35
     
@@ -5136,8 +5144,8 @@ print(f'The highest blending ratio in the near-term scenario is {BPD_capacity["r
 # plt.xticks(np.arange(-50, 90, 20), fontname='Arial')
 # plt.yticks(np.arange(0, 700, 100), fontname='Arial')
 
-# ax.set_xlabel(r'$\mathbf{Decarbonization\ amount}$' + '\n[tonne CO${_2}$ eq·day${^{-1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
-# ax.set_ylabel(r'$\mathbf{Saving}$ [k-\$·day${^{-1}}$]', fontname='Arial', fontsize=45)
+# ax.set_xlabel(r'$\mathbf{Decarbonization\ amount}$' + '\n[tonne CO${_2}$ eq·day${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
+# ax.set_ylabel(r'$\mathbf{Saving}$ [k-\$·day${^{−1}}$]', fontname='Arial', fontsize=45)
 
 # mathtext.FontConstantsBase.sup1 = 0.35
 
