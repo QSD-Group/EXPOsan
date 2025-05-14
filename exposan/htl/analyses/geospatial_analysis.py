@@ -12,8 +12,7 @@ Note the word 'sludge' in this file refers to either sludge or biosolids.
 
 # TODO: consider replacing Gaussian copula with np.random.choice
 
-# TODO: change all box plots to have whiskers representing 5% and 95% percentiles
-# plt.boxplot(data, whis=[5, 95])
+# whiskers in all box plots have been updated to represent 5% and 95% percentiles
 
 # note '-' has been replaced with '−' in axes labels
 
@@ -26,7 +25,7 @@ from matplotlib.mathtext import _mathtext as mathtext
 from matplotlib.patches import Rectangle
 from colorpalette import Color
 from exposan.htl import create_geospatial_system, create_geospatial_model
-from qsdsan.utils import auom, palettes
+from qsdsan.utils import auom
 from datetime import date
 from warnings import filterwarnings
 from sklearn.ensemble import RandomForestRegressor
@@ -45,14 +44,13 @@ mathtext.FontConstantsBase.sup1 = 0.35
 folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/'
 
 # color palette
-Guest = palettes['Guest']
-b = Guest.blue.HEX
-g = Guest.green.HEX
-r = Guest.red.HEX
-o = Guest.orange.HEX
-y = Guest.yellow.HEX
-a = Guest.gray.HEX
-p = Guest.purple.HEX
+b = Color('blue', (96, 193, 207)).HEX
+g = Color('green', (121, 191, 130)).HEX
+r = Color('red', (237, 88, 111)).HEX
+o = Color('orange', (249, 143, 96)).HEX
+y = Color('yellow', (243, 195, 84)).HEX
+a = Color('gray', (144, 145, 142)).HEX
+p = Color('purple', (162, 128, 185)).HEX
 
 db = Color('dark_blue', (53, 118, 127)).HEX
 dg = Color('dark_green', (77, 126, 83)).HEX
@@ -630,21 +628,16 @@ WRRF[less_than_10].plot(ax=ax, color=g, markersize=WRRF.loc[less_than_10,'flow_2
 # comment out the code above and uncomment the following line to show all WRRFs together with the same symbol
 # WRRF.plot(ax=ax, color=a, markersize=10)
 
-rectangle_edge = Rectangle((-13320000, 2880000), 1280000, 680000,
-                           color='k', lw=3, fc='none', alpha=1)
-ax.add_patch(rectangle_edge)
-
-# note the size of legends does not match exactly with the size of WRRFs
-ax.scatter(x=-13140000, y=3420000, marker='o', s=200*10, c=dg, linewidths=3,
+ax.scatter(x=-13500000, y=3100000, marker='o', s=1000*10, c=dg, linewidths=3,
            alpha=1, edgecolor='k')
-ax.scatter(x=-13140000, y=3220000, marker='o', s=50*10, c=g, linewidths=3,
+ax.scatter(x=-13000000, y=3100000, marker='o', s=200*10, c=dg, linewidths=3,
+           alpha=1, edgecolor='k')
+ax.scatter(x=-12500000, y=3100000, marker='o', s=50*10, c=g, linewidths=3,
            alpha=0.5, edgecolor='k')
-ax.scatter(x=-13140000, y=3020000, marker='o', s=10*10, c=g, linewidths=3,
+ax.scatter(x=-12000000, y=3100000, marker='o', s=10*10, c=g, linewidths=3,
            alpha=0.2, edgecolor='none')
 
-plt.figtext(0.261, 0.37, '≥ 100 MGD', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
-plt.figtext(0.261, 0.3485, '10 to 100 MGD', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
-plt.figtext(0.261, 0.327, '< 10 MGD', fontname='Arial', fontdict={'fontsize': 30,'color':'k','style':'italic'})
+plt.figtext(0.18, 0.37, '1000 200 50 10 [MGD]', fontname='Arial', fontdict={'fontsize': 20,'color':'k','style':'italic'})
 
 ax.set_aspect(1)
 
@@ -709,7 +702,7 @@ plt.rcParams.update({'figure.max_open_warning': 100})
 
 fig, ax = plt.subplots(figsize=(30, 30))
 
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', b, db])
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', a, da])
 
 US_county_N.plot(column='total', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=0.5)
 
@@ -747,7 +740,7 @@ plt.rcParams.update({'figure.max_open_warning': 100})
 
 fig, ax = plt.subplots(figsize=(30, 30))
 
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', r, dr])
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', p, dp])
 
 US_county_P.plot(column='total', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=0.5)
 
@@ -846,7 +839,7 @@ plt.rcParams.update({'figure.max_open_warning': 100})
 
 fig, ax = plt.subplots(figsize=(30, 30))
 
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', p, dp])
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', r, dr])
 
 US_county_labor_cost.plot(column='quotient', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=0.5)
 
@@ -998,6 +991,9 @@ plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
 fig, ax = plt.subplots(figsize = (5, 8))
 
+plt.xticks(fontname='Arial')
+plt.yticks(fontname='Arial')
+
 ax = plt.gca()
 ax.set_ylim(0, 800)
 ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
@@ -1008,7 +1004,7 @@ ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-bp = plt.boxplot(WRRF_input['real_distance_km'], showfliers=False, widths=0.5, patch_artist=True)
+bp = plt.boxplot(WRRF_input['real_distance_km'], whis=[5, 95], showfliers=False, widths=0.5, patch_artist=True)
 
 for box in bp['boxes']:
     box.set(color='k', facecolor=b, linewidth=3)
@@ -1024,8 +1020,8 @@ for cap in bp['caps']:
     
 ax_right.scatter(x=1,
                  y=WRRF_input['real_distance_km'].mean(),
-                 marker='*',
-                 s=600,
+                 marker='D',
+                 s=300,
                  c='w',
                  linewidths=3,
                  alpha=1,
@@ -1067,8 +1063,11 @@ def add_region(position, region, color):
     plt.rcParams.update({'mathtext.default': 'regular'})
     plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
     
+    plt.xticks(fontname='Arial')
+    plt.yticks(fontname='Arial')
+    
     ax = plt.gca()
-    ax.set_ylim(0, 1200)
+    ax.set_ylim(0, 1000)
     ax.set_xlabel(region, fontname='Arial', fontsize=30, labelpad=15)
     
     if position == 0:
@@ -1085,7 +1084,8 @@ def add_region(position, region, color):
     else:
         ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, labelcolor='none')
     
-    bp = ax.boxplot(WRRF_input[WRRF_input['WRRF_PADD'] == position+1]['real_distance_km'], showfliers=False, widths=0.5, patch_artist=True)
+    bp = ax.boxplot(WRRF_input[WRRF_input['WRRF_PADD'] == position+1]['real_distance_km'],
+                    whis=[5, 95], showfliers=False, widths=0.5, patch_artist=True)
     
     for box in bp['boxes']:
         box.set(color='k', facecolor=color, linewidth=3)
@@ -1101,8 +1101,8 @@ def add_region(position, region, color):
         
     ax.scatter(x=1,
                y=WRRF_input[WRRF_input['WRRF_PADD'] == position+1]['real_distance_km'].mean(),
-               marker='*',
-               s=600,
+               marker='D',
+               s=300,
                c='w',
                linewidths=3,
                alpha=1,
@@ -1524,48 +1524,16 @@ def plot_map(dataset, color):
 
     dataset.plot(ax=ax, color=color, markersize=dataset['CO2_reduction_tonne_per_day']*200, edgecolor='k', linewidth=1.5, alpha=1)
     
-    color_1 = color_2 = color_3 = color_4 = 'none'
-    
-    max_size = (dataset['CO2_reduction_tonne_per_day']*200).max()
-    min_size = (dataset['CO2_reduction_tonne_per_day']*200).min()
-    
-    if max_size > 50*200:
-        raise ValueError('add another layer of legend')
-    elif max_size > 25*200:
-        color_1 = color
-    elif max_size > 10*200:
-        color_2 = color
-    elif max_size > 1*200:
-        color_3 = color
-    else:
-        color_4 = color
-        
-    if min_size > 50*200:
-        color_1 = 'w'
-        raise ValueError('add another layer of legend')
-    elif min_size > 25*200:
-        color_2 = 'w'
-    elif min_size > 10*200:
-        color_3 = 'w'
-    elif min_size > 1*200:
-        color_4 = 'w'
-    
-    rectangle_edge = Rectangle((-13900000, 2848000), 2150000, 750000,
-                               color='k', lw=3, fc='none', alpha=1)
-    ax.add_patch(rectangle_edge)
-    
-    ax.scatter(x=-13580000, y=3100000, marker='o', s=50*200, c=color_1, linewidths=3,
+    ax.scatter(x=-13500000, y=3100000, marker='o', s=50*200, c=g, linewidths=3,
                alpha=1, edgecolor='k')
-    ax.scatter(x=-13580000, y=3100000, marker='o', s=25*200, c=color_2, linewidths=3,
+    ax.scatter(x=-13000000, y=3100000, marker='o', s=25*200, c=g, linewidths=3,
                alpha=1, edgecolor='k')
-    ax.scatter(x=-13580000, y=3100000, marker='o', s=10*200, c=color_3, linewidths=3,
+    ax.scatter(x=-12500000, y=3100000, marker='o', s=10*200, c=g, linewidths=3,
                alpha=1, edgecolor='k')
-    ax.scatter(x=-13580000, y=3100000, marker='o', s=1*200, c=color_4, linewidths=3,
+    ax.scatter(x=-12000000, y=3100000, marker='o', s=1*200, c=g, linewidths=3,
                alpha=1, edgecolor='k')
     
-    plt.figtext(0.163, 0.372, '[tonne ${CO_2}$ eq·${day^{−1}}$]', fontname='Arial', fontdict={'fontsize': 50,'color':'k','fontweight':'bold'})
-    plt.figtext(0.23, 0.345, '1st: 50  2nd: 25', fontname='Arial', fontdict={'fontsize': 50,'color':'k','style':'italic'})
-    plt.figtext(0.23, 0.319, '3rd:10  4th: 1', fontname='Arial', fontdict={'fontsize': 50,'color':'k','style':'italic'})
+    plt.figtext(0.20, 0.37, '50 25 10 1 [tonne ${CO_2}$ eq·${day^{−1}}$]', fontname='Arial', fontdict={'fontsize': 20,'color':'k','style':'italic'})
     
     ax.set_aspect(1)
     
@@ -1722,6 +1690,9 @@ plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
 
 fig, ax = plt.subplots(figsize = (7, 10))
 
+plt.xticks(fontname='Arial')
+plt.yticks(fontname='Arial')
+
 ax = plt.gca()
 ax.set_ylim(0, 100)
 ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
@@ -1735,7 +1706,8 @@ ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-bp = plt.boxplot([decarbonization_map['sludge_CO2_reduction_ratio'].dropna()*100, decarbonization_map['WRRF_CO2_reduction_ratio'].dropna()*100], showfliers=False, widths=0.6, patch_artist=True)
+bp = plt.boxplot([decarbonization_map['sludge_CO2_reduction_ratio'].dropna()*100, decarbonization_map['WRRF_CO2_reduction_ratio'].dropna()*100],
+                 whis=[5, 95], showfliers=False, widths=0.6, patch_artist=True)
 
 for box in bp['boxes']:
     box.set(color='k', facecolor=b, linewidth=3)
@@ -1751,8 +1723,8 @@ for cap in bp['caps']:
     
 ax_right.scatter(x=1,
                  y=decarbonization_map['sludge_CO2_reduction_ratio'].mean()*100,
-                 marker='*',
-                 s=600,
+                 marker='D',
+                 s=300,
                  c='w',
                  linewidths=3,
                  alpha=1,
@@ -1761,8 +1733,8 @@ ax_right.scatter(x=1,
 
 ax_right.scatter(x=2,
                  y=decarbonization_map['WRRF_CO2_reduction_ratio'].mean()*100,
-                 marker='*',
-                 s=600,
+                 marker='D',
+                 s=300,
                  c='w',
                  linewidths=3,
                  alpha=1,
@@ -1795,7 +1767,8 @@ ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
 ax_right.tick_params(direction='in', length=20, width=6, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-bp = plt.boxplot(decarbonization_map['WRRF_CO2_reduction_ratio'].dropna()*100, showfliers=False, widths=0.6, patch_artist=True)
+bp = plt.boxplot(decarbonization_map['WRRF_CO2_reduction_ratio'].dropna()*100,
+                 whis=[5, 95], showfliers=False, widths=0.6, patch_artist=True)
 
 for box in bp['boxes']:
     box.set(color='k', facecolor=b, linewidth=6)
@@ -1811,8 +1784,8 @@ for cap in bp['caps']:
     
 ax_right.scatter(x=1,
                  y=decarbonization_map['WRRF_CO2_reduction_ratio'].mean()*100,
-                 marker='*',
-                 s=2200,
+                 marker='D',
+                 s=1100,
                  c='w',
                  linewidths=6,
                  alpha=1,
@@ -2091,9 +2064,8 @@ ax_right.tick_params(direction='in', length=10, width=3,
 
 plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
-bp = ax.boxplot([digestion_or_not_plot['digestion'].dropna(),
-                 digestion_or_not_plot['no_digestion'].dropna()],
-                showfliers=False, widths=0.7, patch_artist=True)
+bp = ax.boxplot([digestion_or_not_plot['digestion'].dropna(), digestion_or_not_plot['no_digestion'].dropna()],
+                whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
 
 for box in bp['boxes']:
     box.set(color='none', facecolor='none', linewidth=3)
@@ -2168,9 +2140,8 @@ ax_right.tick_params(direction='in', length=10, width=3,
 
 plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
 
-bp = ax.boxplot([digestion_or_not_plot['digestion'].dropna(),
-                 digestion_or_not_plot['no_digestion'].dropna()],
-                showfliers=False, widths=0.7, patch_artist=True)
+bp = ax.boxplot([digestion_or_not_plot['digestion'].dropna(), digestion_or_not_plot['no_digestion'].dropna()],
+                whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
 
 for box in bp['boxes']:
     box.set(color='none', facecolor='none', linewidth=3)
@@ -2250,7 +2221,7 @@ plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 bp = ax.boxplot([nitrogen_fertilizer_type_plot['anhydrous_ammonia'].dropna(),
                  nitrogen_fertilizer_type_plot['urea'].dropna(),
                  nitrogen_fertilizer_type_plot['UAN'].dropna()],
-                showfliers=False, widths=0.7, patch_artist=True)
+                whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
 
 for box in bp['boxes']:
     box.set(color='none', facecolor='none', linewidth=3)
@@ -2338,7 +2309,7 @@ plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
 bp = ax.boxplot([nitrogen_fertilizer_type_plot['anhydrous_ammonia'].dropna(),
                  nitrogen_fertilizer_type_plot['urea'].dropna(),
                  nitrogen_fertilizer_type_plot['UAN'].dropna()],
-                showfliers=False, widths=0.7, patch_artist=True)
+                whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
 
 for box in bp['boxes']:
     box.set(color='none', facecolor='none', linewidth=3)
@@ -2807,14 +2778,14 @@ def add_region(position, color):
     ax = fig.add_subplot(gs[0, position])
     
     ax = plt.gca()
-    ax.set_ylim(0, 6)
+    ax.set_ylim(0, 5)
     
     if position == 0:
         ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
         ax.set_ylabel(r'$\mathbf{Offset}$ [%]', fontname='Arial', fontsize=35)
         ax.spines[['right']].set_visible(False)
         
-        plt.yticks(np.arange(0, 7, 1), fontname='Arial')
+        plt.yticks(np.arange(0, 6, 1), fontname='Arial')
     
     elif position == 3:
         ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, length=0, labelcolor='none')
@@ -2825,15 +2796,15 @@ def add_region(position, color):
         ax.spines[['left']].set_visible(False)
         ax_right.spines[['left']].set_visible(False)
         
-        plt.yticks(np.arange(0, 7, 1), fontname='Arial')
+        plt.yticks(np.arange(0, 6, 1), fontname='Arial')
     
     else:
         ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, labelcolor='none')
         ax.spines[['left','right']].set_visible(False)
         
-        plt.yticks(np.arange(0, 7, 1), fontname='Arial')
+        plt.yticks(np.arange(0, 6, 1), fontname='Arial')
     
-    bp = ax.boxplot(offset.iloc[:,position].dropna(), showfliers=False, widths=0.75, patch_artist=True)
+    bp = ax.boxplot(offset.iloc[:,position].dropna(), whis=[5, 95], showfliers=False, widths=0.75, patch_artist=True)
     
     if position == 0 or position == 2:
         for box in bp['boxes']:
@@ -2853,7 +2824,8 @@ def add_region(position, color):
         cap.set(color='k', linewidth=3)
         
     if position == 1 or position == 3:  
-        bp_2 = ax.boxplot(offset.iloc[:,position].dropna(), showfliers=False, widths=0.75, patch_artist=True)    
+        bp_2 = ax.boxplot(offset.iloc[:,position].dropna(), whis=[5, 95], showfliers=False, widths=0.75, patch_artist=True)   
+        
         for box in bp_2['boxes']:
             box.set(color='k', facecolor='none', linewidth=3)
 
@@ -2862,8 +2834,8 @@ def add_region(position, color):
         
     ax.scatter(x=1,
                y=offset.iloc[:,position].dropna().mean(),
-               marker='*',
-               s=600,
+               marker='D',
+               s=300,
                c='w',
                linewidths=3,
                alpha=1,
@@ -2873,10 +2845,10 @@ def add_region(position, color):
     # for flier in bp['fliers']:
     #     flier.set(marker='o', markersize=7, markerfacecolor=color, markeredgewidth=1.5)
 
-add_region(0, b)
-add_region(1, b)
-add_region(2, r)
-add_region(3, r)
+add_region(0, a)
+add_region(1, a)
+add_region(2, p)
+add_region(3, p)
 
 #%% sampled facility level uncertainty and sensitivity analyses (data preparation)
 
@@ -3148,7 +3120,7 @@ def plot_sensitivity(data_type):
     urea_columns = get_parameters('urea')
     UAN_columns = get_parameters('UAN')
     
-    anhydrous_ammonia_data.columns=[anhydrous_ammonia_columns[i].name for i in range(0, len(anhydrous_ammonia_columns))]
+    anhydrous_ammonia_data.columns = [anhydrous_ammonia_columns[i].name for i in range(0, len(anhydrous_ammonia_columns))]
     urea_data.columns=[urea_columns[i].name for i in range(0, len(urea_columns))]
     UAN_data.columns=[UAN_columns[i].name for i in range(0, len(UAN_columns))]
     
@@ -3174,7 +3146,7 @@ def plot_sensitivity(data_type):
         plt.rcParams.update({'mathtext.default': 'regular'})
         plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
         
-        fig, ax = plt.subplots(figsize = (5, 2.5))
+        fig, ax = plt.subplots(figsize = (8.5, 2.5))
         
         ax = plt.gca()
         
@@ -3194,6 +3166,8 @@ def plot_sensitivity(data_type):
         else:
             plt.yticks(np.arange(0, 1.2, 0.2), fontname='Arial')
         
+        plt.minorticks_off()
+        
         ax.tick_params(direction='inout', length=15, width=2, bottom=True, top=False, left=True, right=False)
         
         ax_top = ax.twiny()
@@ -3206,7 +3180,9 @@ def plot_sensitivity(data_type):
             plt.yticks(np.arange(-1, 1.5, 0.5), fontname='Arial')
         else:
             plt.yticks(np.arange(0, 1.2, 0.2), fontname='Arial')
-
+        
+        plt.minorticks_off()
+        
         ax_right = ax.twinx()
         ax_right.set_ylim(ax.get_ylim())
         ax_right.tick_params(direction='in', length=7.5, width=2, bottom=False, top=True, left=False, right=True, labelcolor='none')
@@ -3217,6 +3193,8 @@ def plot_sensitivity(data_type):
             plt.yticks(np.arange(-1, 1.5, 0.5), fontname='Arial')
         else:
             plt.yticks(np.arange(0, 1.2, 0.2), fontname='Arial')
+        
+        plt.minorticks_off()
         
         ax.set_xlabel(r'$\mathbf{Wastewater\ solids\ quantity}$' + '\n[tonne·day${^{−1}}$]', fontname='Arial', fontsize=24, linespacing=0.8)
         if (data_type[0:4] == 'cost') & (data_type[-1] == 'r'):
@@ -3301,6 +3279,16 @@ def plot_sensitivity(data_type):
         
         plt.title(title, fontdict={'font':'Arial','size':24,'fontweight':'bold'}, pad=15, y=1)
         
+        # TODO: this may need change if rerunning analysis
+        if data_type == 'cost_spearman_r':
+            if title in ['sludge_dw_ash','sludge_afdw_lipid','sludge_afdw_protein','biocrude_price','IRR']:
+                fig.savefig(f'/Users/jiananfeng/Desktop/{data_type}_{i}.png', transparent=True, bbox_inches='tight')
+        
+        # TODO: this may need change if rerunning analysis
+        if data_type == 'CI_spearman_r':
+            if title in ['sludge_dw_ash','sludge_afdw_protein','protein_2_N','catalyst_lifetime','gas_C_2_total_C','natural_gas_global_warming','UAN_global_warming']:
+                fig.savefig(f'/Users/jiananfeng/Desktop/{data_type}_{i}.png', transparent=True, bbox_inches='tight')
+    
     return integrated_data
 
 #%% cost_spearman_p visualization
@@ -3593,8 +3581,8 @@ def add_line(region, color):
 def add_point(region, edgecolor):
     ax_top.scatter(x=decarbonization[region].mean(),
                y=saving[region].mean(),
-               marker='*',
-               s=500,
+               marker='D',
+               s=250,
                c='w',
                linewidths=3,
                alpha=1,
@@ -4758,7 +4746,7 @@ print(f'The highest blending ratio in the near-term scenario is {BPD_capacity["r
 #     else:
 #         ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, labelcolor='none')
     
-#     bp = ax.boxplot(CU_saving_results.iloc[:,position], showfliers=False, widths=0.7, patch_artist=True)
+#     bp = ax.boxplot(CU_saving_results.iloc[:,position], whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
     
 #     for box in bp['boxes']:
 #         box.set(color='k', facecolor=color, linewidth=3)
