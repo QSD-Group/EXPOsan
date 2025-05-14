@@ -22,6 +22,7 @@ from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
 from exposan.utils import add_V_from_rho
 from exposan.bwaise import create_components as create_bw_components
 import thermosteam as tmo
+from thermosteam._chemical import _model_and_phase_properties
 
 __all__ = ('create_components', )
 
@@ -85,7 +86,7 @@ def create_components(set_thermo=True):
    
 
     #following lines are to fix errors due to missing thermodynamic properties
-    VolatileMatter.copy_models_from(Chemical('Acetic Acid'))
+    VolatileMatter.copy_models_from(Chemical('Acetic Acid'), names=_model_and_phase_properties)
     for i in (AshContent, FixedCarbon, Biochar):
         i.default()
 

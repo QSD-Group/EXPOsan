@@ -53,7 +53,7 @@ __all__ = ('create_system',)
 
 def batch_create_streams(prefix, phases=('liq', 'sol')):
 
-    WasteStream('biosolids', phase = 's', )
+    # WasteStream('biosolids', phase = 's', )
     
     item = ImpactItem.get_item('CH4_item').copy(f'{prefix}_CH4_item', set_as_source=True)
     WasteStream('CH4', phase='g', stream_impact_item=item)
@@ -131,7 +131,7 @@ def create_systemA(flowsheet=None):
                       loss_ratio=0.02)
 
     ##### Simulation, TEA, and LCA ##### TODO: scale annual_labor to scale_factor?
-    sysA = System('sysA', path=(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11))
+    sysA = System('sysA', path=(A1, A2, A3, A8, A4, A5, A6, A7, A9, A10, A11))
     teaA = TEA(system=sysA, discount_rate=discount_rate,
                start_year=2020, lifetime=20, uptime_ratio=1,
                lang_factor=None, annual_maintenance=0,

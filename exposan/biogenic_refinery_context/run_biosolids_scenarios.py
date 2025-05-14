@@ -22,15 +22,14 @@ import numpy as np
 import qsdsan as qs
 from exposan import biogenic_refinery_context as brc
 
-
-sys.path.insert(0, '/Users/stetsonrowles/Dropbox/Mac (3)/Documents/GitHub/EXPOsan/exposan/')
+folder = os.path.dirname(__file__)
+# sys.path.insert(0, '/Users/stetsonrowles/Dropbox/Mac (3)/Documents/GitHub/EXPOsan/exposan/')
 
 from exposan.biogenic_refinery_context import models
 model = models.create_modelA()
 
-
-
-df = pd.read_excel('Flow + Biosolids Combined Data (Major-Facilities) (1).xlsx')
+path = os.path.join(folder, 'Flow + Biosolids Combined Data (Major-Facilities) (1).xlsx')
+df = pd.read_excel(path)
 
 biosolids_data = df[['NPDES ID2', 'Amount of Biosolids Generated']]
 

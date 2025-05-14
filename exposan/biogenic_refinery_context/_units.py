@@ -253,7 +253,8 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         elif 700 <= self.pyrolysis_temp <= 799:
             VM_biochar_percent = self.VM_biochar_percent_700
         else:
-            print("temp not in range of 500-799")
+            # print("temp not in range of 500-799")
+            raise ValueError("temp not in range of 500-799")
             
         # Calculate biochar fixed carbon content using AC and VM
         FC_biochar_percent = 100 - VM_biochar_percent - AC_biochar_percent
