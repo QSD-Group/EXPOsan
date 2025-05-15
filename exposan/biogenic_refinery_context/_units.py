@@ -307,9 +307,14 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
 
         # Set additional biochar properties
      
-        biochar.imass['CarbonContent'] = C_biochar  # frac
-        biochar.imass['CarbonSequestration'] = CS  # %
-        biochar.imass['SequesterableCarbon'] = CS/100 * C_feedstock/100 * dry_mass_flow * 24 * 365 / 1000 # ton seq. C/year
+        # biochar.imass['CarbonContent'] = C_biochar  # frac
+        # biochar.imass['CarbonSequestration'] = CS  # %
+        # biochar.imass['SequesterableCarbon'] = CS/100 * C_feedstock/100 * dry_mass_flow * 24 * 365 / 1000 # ton seq. C/year
+        # biochar.F_mass = biochar_mass_flow  # kg/hr
+        
+        biochar_carbon_content = C_biochar  # frac
+        biochar_carbon_sequestration_ratio = CS  # %
+        biochar_sequesterable_carbon = CS/100 * C_feedstock/100 * dry_mass_flow * 24 * 365 / 1000 # ton seq. C/year
         biochar.F_mass = biochar_mass_flow  # kg/hr
         
         #TODO layer other assumptions on biochar here, 
@@ -447,11 +452,11 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
 
         self.add_OPEX = (replacement_parts_annual_cost + annual_maintenance) / (365 * 24)  # USD/hour
 
-        power_demand = \
+        power_demand = (\
             self.carbonizer_biochar_auger_power + \
             self.carbonizer_fuel_auger_power + \
-            self.carbonizer_primary_air_blower_power
-        self.power_utility(power_demand) * self.scale_factor  # kW
+            self.carbonizer_primary_air_blower_power) * self.scale_factor
+        self.power_utility(power_demand)   # kW
 
 
 # %%
@@ -761,14 +766,11 @@ class BiogenicRefineryHHXdryer(SanUnit):
         # Calculate energy required for drying
         Q_sensible = (m_dried_sludge * self.Cp_dried_sludge + m_H2O_wet_sludge * self.Cp_H2O) * delta_T  # kJ/hr
         Q_latent = m_H2O_evap * self.deltaH_vap_H2O  # kJ/hr
+        
         self.Q_drying = Q_sensible + Q_latent  # kJ/hr
        
-        breakpoint()
-       
-       #TODO Q_drying as an output
-        waste_out._Q_drying = self.Q_drying
-        #normalized Q_drying
-        waste_out._Q_drying = self.Q_drying / (m_dried_sludge) #kJ/kg-biosolids-db or MJ/ton
+        self.Q_drying_norm = self.Q_drying / (m_dried_sludge) #kJ/kg-biosolids-db or MJ/ton
+      
         # Calculate remaining water after drying
         waste_out.imass['H2O'] = waste_in.imass['H2O'] - m_H2O_evap  # kg/hr
         

@@ -302,7 +302,7 @@ def add_shared_parameters(model, unit_dct, location_specific=False):
     #item_path = os.path.join(br_data_path, 'impact_items.xlsx')
     item_path = os.path.join(data_path, 'impact_items.xlsx')
 
-    for indicator in ('GlobalWarming'):
+    for indicator in ('GlobalWarming', 'H_Ecosystems', 'H_Health', 'H_Resources'):
         sheet_name = indicator if indicator!='GlobalWarming' else 'GWP'
         data = load_data(item_path, sheet=sheet_name)
         for p in data.index:
@@ -332,6 +332,7 @@ def add_shared_parameters(model, unit_dct, location_specific=False):
 # =============================================================================
 
 def create_modelA(location_specific=False, **model_kwargs):
+    br.load()
     flowsheet = model_kwargs.pop('flowsheet', None)
     sysA = create_system('A', flowsheet=flowsheet)
     unitA = sysA.flowsheet.unit

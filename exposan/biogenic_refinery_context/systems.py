@@ -101,7 +101,7 @@ def create_systemA(flowsheet=None):
     
     A4 = u.BiogenicRefineryCarbonizerBase('A4', outs=(streamA.biochar, 'A4_hot_gas', 'A4_N2O'))
 
-    A5 = su.BiogenicRefineryPollutionControl('A5', ins=(A4-1, A4-2), outs=('A5_hot_gas_pcd', 'A5_N2O'))
+    A5 = u.BiogenicRefineryPollutionControl('A5', ins=(A4-1, A4-2), outs=('A5_hot_gas_pcd', 'A5_N2O'))
 
     # Update uptime_ratio in all units to follow carbonizer base
     A5_old_cost = A5._cost
@@ -111,9 +111,9 @@ def create_systemA(flowsheet=None):
         A5_old_cost()
     A5._cost = update_A5_uptime_ratio
 
-    A6 = su.BiogenicRefineryOHX('A6', ins=A5-0, outs='A6_hot_gas')
-    A7 = su.BiogenicRefineryHHX('A7', ins=A6-0, outs='A7_hot_gas')
-    A8 = su.BiogenicRefineryHHXdryer('A8', ins=(A3-0, A7-0), outs=('waste_out', 'A8_N2O', 'A8_CH4')) 
+    A6 = u.BiogenicRefineryOHX('A6', ins=A5-0, outs='A6_hot_gas')
+    A7 = u.BiogenicRefineryHHX('A7', ins=A6-0, outs='A7_hot_gas')
+    A8 = u.BiogenicRefineryHHXdryer('A8', ins=(A3-0, A7-0), outs=('waste_out', 'A8_N2O', 'A8_CH4')) 
     
     A8-0-A4
     #A4.ins[0] = A8.outs[0]

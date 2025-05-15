@@ -209,7 +209,8 @@ def load():
     if not _components_loaded: _load_components()
     if not _system_loaded: _load_system()
     dct = globals()
-    for sys in (sysA): dct.update(sys.flowsheet.to_dict())
+    dct.update(sysA.flowsheet.to_dict())
+    # for sys in (sysA): dct.update(sys.flowsheet.to_dict())
 
 
 def __getattr__(name):
