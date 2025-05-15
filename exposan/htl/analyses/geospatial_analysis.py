@@ -3220,8 +3220,9 @@ def plot_sensitivity(data_type):
         plt.scatter(integrated_data['total_sludge_amount_kg_per_year']/1000/365, integrated_data[i], color=color, s=50, edgecolors=edgecolor, linewidths=1.5)
         
         if data_type[-1] == 'r':
-            plt.plot([0, 250],[-0.2, -0.2], lw=2, color='k', linestyle='--')
-            plt.plot([0, 250],[0.2, 0.2], lw=2, color='k', linestyle='--')
+            rectangle_fill = Rectangle((0, -0.2), 250, 0.4,
+                                       fc=a, alpha=0.5, zorder=0)
+            ax.add_patch(rectangle_fill)
         else:
             plt.plot([0, 250],[0.05, 0.05], lw=2, color='k', linestyle='--')
         
