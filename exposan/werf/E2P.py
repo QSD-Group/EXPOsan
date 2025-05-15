@@ -105,7 +105,7 @@ def create_e2p_system(flowsheet=None, default_init_conds=True):
                      mmp_kinetics='KM', pH_ctrl=5.6)    
     AED = su.AerobicDigester(
         'AED', ins=[GT-1, MT-1], outs='digestate',
-        V_max=0.5*MGD2cmd, activated_sludge_model=asm2,
+        V_max=0.5*MGD2cmd, activated_sludge_model=asm2,     # retention time too short, < 20 d, doesn't meet PSRP of 40 CFR Part 503 regulations
         aeration=1.0, DO_ID='S_O2', gas_stripping=True)
     
     DW = su.IdealClarifier(

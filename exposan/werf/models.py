@@ -25,50 +25,54 @@ __all__ = (
     )
 
 #%%
-def add_performance_metrics(model, aeration_energy=False):
+def add_performance_metrics(model, effluent_quality=True, biogas=True,
+                            sludge=True, aeration=False, aeration_energy=False):
     
     metric = model.metric
     sys = model.system
     s = sys.flowsheet.stream
     cmps = s.RWW.components
     
-    kwargs = dict(units='mg/L', element='Effluent')
-    metric(getter=AttrGetter(s.SE, 'COD'), name='COD', **kwargs)
-    metric(getter=AttrGetter(s.SE, 'BOD'), name='BOD', **kwargs)
+    if effluent_quality:
+        kwargs = dict(units='mg/L', element='Effluent')
+        metric(getter=AttrGetter(s.SE, 'COD'), name='COD', **kwargs)
+        metric(getter=AttrGetter(s.SE, 'BOD'), name='BOD', **kwargs)
+        
+        @metric(name='TSS', **kwargs)
+        def get_TSS():
+            return s.SE.get_TSS()
+        
+        metric(getter=AttrGetter(s.SE, 'TN'), name='TN', **kwargs)
+       
+        @metric(name='NH4_N', **kwargs)
+        def get_NH4_N():
+            return s.SE.iconc['S_NH4']
+        
+        metric(getter=AttrGetter(s.SE, 'TP'), name='TP', **kwargs)
+        
+        @metric(name='ortho_P', **kwargs)
+        def get_orthoP():
+            return s.SE.iconc['S_PO4']
+        
+        metric(getter=AttrGetter(s.SE, 'TOC'), name='TOC', **kwargs)
     
-    @metric(name='TSS', **kwargs)
-    def get_TSS():
-        return s.SE.get_TSS()
+    if biogas:
+        @metric(name='CH4 production', units='kg/hr', element='Biogas')
+        def get_CH4_production():
+            if 'biogas' in s: return s.biogas.imass['S_ch4'] * s.biogas.components.S_ch4.i_mass
+            else: return np.nan
+        
+        @metric(name='CH4 content', units='%', element='Biogas')
+        def get_CH4_content():
+            if 'biogas' in s: return s.biogas.imol['S_ch4']/sum(s.biogas.mol) * 100
+            else: return np.nan
     
-    metric(getter=AttrGetter(s.SE, 'TN'), name='TN', **kwargs)
-   
-    @metric(name='NH4_N', **kwargs)
-    def get_NH4_N():
-        return s.SE.iconc['S_NH4']
-    
-    metric(getter=AttrGetter(s.SE, 'TP'), name='TP', **kwargs)
-    
-    @metric(name='ortho_P', **kwargs)
-    def get_orthoP():
-        return s.SE.iconc['S_PO4']
-    
-    metric(getter=AttrGetter(s.SE, 'TOC'), name='TOC', **kwargs)
-    
-    @metric(name='CH4 production', units='kg/hr', element='Biogas')
-    def get_CH4_production():
-        if 'biogas' in s: return s.biogas.imass['S_ch4'] * s.biogas.components.S_ch4.i_mass
-        else: return np.nan
-    
-    @metric(name='CH4 content', units='%', element='Biogas')
-    def get_CH4_content():
-        if 'biogas' in s: return s.biogas.imol['S_ch4']/sum(s.biogas.mol) * 100
-        else: return np.nan
-    
-    @metric(name='sludge production', units='tonne/d', element='Sludge')
-    def get_sludge_production():
-        return sum(s.cake.mass * cmps.i_mass) * 24e-3
+    if sludge:
+        @metric(name='sludge production', units='tonne/d', element='Sludge')
+        def get_sludge_production():
+            return sum(s.cake.mass * cmps.i_mass) * 24e-3
 
-    add_aeration_metrics(model, aeration_energy)
+    if aeration: add_aeration_metrics(model, aeration_energy)
 
 #%%
 
@@ -138,6 +142,30 @@ def add_OPEX_metrics(model):
     sys = model.system
     s = sys.flowsheet.stream
     u = sys.flowsheet.unit
+    
+    _cached_aer = {}
+    @metric(name='liquid aeration flowrate', units='m3/d', element='Aeration')
+    def get_liquid_qair():
+        _cached_aer.clear()
+        _cached_aer.update(plantwide_aeration_demand(sys))
+        qair = 0.
+        for k,v in _cached_aer.items():
+            if k == 'AED': continue
+            else: qair += v
+        return qair
+    
+    @metric(name='sludge aeration flowrate', units='m3/d', element='Aeration')
+    def get_aed_qair():
+        if 'AED' in _cached_aer: qair = _cached_aer['AED']
+        else: qair = np.nan
+        return qair
+
+    blower_energy = {}
+    @metric(name='aeration energy', units='kW', element='Aeration')
+    def get_aer_energy():
+        blower_energy.clear()
+        blower_energy.update(plantwide_aeration_energy(sys, _cached_aer))
+        return sum(blower_energy.values())
     
     pumpin = WasteStream('pumpin', T=s.RWW.T, P=s.RWW.P)
     pump = su.Pump('pump', ins=pumpin, ignore_NPSH=False, 
@@ -264,29 +292,38 @@ def add_OPEX_metrics(model):
         mixing_energy['AD'] = power
         return power
     
-    
+    opex = {}
+
+    @metric(name='aeration energy cost', units='USD/d', element='OPEX')
+    def get_aer_cost():
+        opex['aeration'] = c = sum(blower_energy.values()) * 24 * sys.power_utility.price
+        return c
    
     @metric(name='pumping energy cost', units='USD/d', element='OPEX')
     def get_pump_cost():
-        return sum(pump_energy.values()) * 24 * sys.power_utility.price
+        opex['pumping'] = c =  sum(pump_energy.values()) * 24 * sys.power_utility.price
+        return c
     
     @metric(name='mixing energy cost', units='USD/d', element='OPEX')
     def get_mixing_cost():
-        return sum(mixing_energy.values()) * 24 * sys.power_utility.price
+        opex['mixing'] = c =  sum(mixing_energy.values()) * 24 * sys.power_utility.price
+        return c
     
     @metric(name='external carbon cost', units='USD/d', element='OPEX')
     def get_carbon_cost():
         if 'carbon' in s:
             s.carbon.price = 1.8 * s.carbon.components.S_A.i_mass   # 1.8 $/kg 100% acetic acid, GPS-X default
-            return s.carbon.cost * 24
-        return 0
+            opex['carbon'] = c = s.carbon.cost * 24
+        else: opex['carbon'] = c = 0
+        return c
     
     @metric(name='coagulant cost', units='USD/d', element='OPEX')
     def get_coagulant_cost():
         if 'MD' in u:
-            return u.MD.add_OPEX['Coagulant'] * 24
-        return 0
-    
+            opex['coagulant'] = c = u.MD.add_OPEX['Coagulant'] * 24
+        else: opex['coagulant'] = c = 0
+        return c    
+
     @metric(name='lime cost', units='USD/d', element='OPEX')
     def get_lime_cost():
         if ('AD' not in u) and ('AED' not in u):    # class B lime stabilization in solid trains 3
@@ -294,18 +331,25 @@ def add_OPEX_metrics(model):
             tss = s.cake.get_TSS() * 1e-4 # in TS%
             dose = 50 + 4.0*(tss-10)    # in lb CaO per wet ton, linearly correlated w TS%, MOP8 Fig 23.79
             dose *= 0.5 # convert from lb/ton to kg/tonne
-            return sum(s.cake.mass * cmps.i_mass) * 24e-3 * dose / 0.9 * 0.124 # assume 90% purity, 124 USD/tonne https://www.imarcgroup.com/quicklime-pricing-report 
-        return 0
+            opex['lime'] = c =  sum(s.cake.mass * cmps.i_mass) * 24e-3 * dose / 0.9 * 0.124 # assume 90% purity, 124 USD/tonne https://www.imarcgroup.com/quicklime-pricing-report 
+        else: opex['coagulant'] = c = 0
+        return c
 
     @metric(name='lime stablization energy cost', units='USD/d', element='OPEX')
-    def get_stabilization_power():
+    def get_stabilization_power_cost():
         if ('AD' not in u) and ('AED' not in u):    # class B lime stabilization in solid trains 3
             cmps = s.cake.components
-            return sum(s.cake.mass * cmps.i_mass) * 24e-3 * 4.85 * sys.power_utility.price  # 4.4 kW/wet ton, Tarallo et al. 2015 --> makes more sense to be kWh/wet ton
-        return 0
+            opex['stablization_energy'] = c = sum(s.cake.mass * cmps.i_mass) * 24e-3 * 4.85 * sys.power_utility.price  # 4.4 kW/wet ton, Tarallo et al. 2015 --> makes more sense to be kWh/wet ton
+        else: opex['stablization_energy'] = c = 0
+        return c
 
     @metric(name='sludge disposal cost', units='USD/d', element='OPEX')
     def get_sludge_disposal_cost():
         cmps = s.cake.components
         # return sum(s.cake.mass * cmps.i_mass) * 24e-3 * 80 # 80 USD/tonne, GPS-X default
-        return sum(s.cake.mass * cmps.i_mass) * 24e-3 * 68.5 # land application price per wet ton at WRRF gate, based on National Biosolids Data Project report
+        opex['sludge disposal'] = c = sum(s.cake.mass * cmps.i_mass) * 24e-3 * 68.5 # land application price per wet ton at WRRF gate, based on National Biosolids Data Project report
+        return c
+    
+    @metric(name='total OPEX', units='USD/d', element='OPEX')
+    def get_opex():
+        return sum(opex.values())
