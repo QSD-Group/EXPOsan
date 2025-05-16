@@ -1495,6 +1495,23 @@ integrated_result = input_data.merge(output_result, how='left', on='CWNS')
 
 integrated_result.to_excel(folder + f'results/baseline/integrated_baseline_{date.today()}.xlsx')
 
+#%% qualified percentage
+
+# !!! update the file here if necessary
+qualified_percentage = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-16.xlsx')
+
+len(qualified_percentage[(qualified_percentage['total_sludge_amount_kg_per_year']>5*1000*365)&\
+                         (qualified_percentage['total_sludge_amount_kg_per_year']<10*1000*365)&\
+                         (qualified_percentage['USD_decarbonization']<0)])/\
+len(qualified_percentage[(qualified_percentage['total_sludge_amount_kg_per_year']>5*1000*365)&\
+                         (qualified_percentage['total_sludge_amount_kg_per_year']<10*1000*365)])
+
+len(qualified_percentage[(qualified_percentage['total_sludge_amount_kg_per_year']>50*1000*365)&\
+                         (qualified_percentage['total_sludge_amount_kg_per_year']<100*1000*365)&\
+                         (qualified_percentage['USD_decarbonization']<0)])/\
+len(qualified_percentage[(qualified_percentage['total_sludge_amount_kg_per_year']>50*1000*365)&\
+                         (qualified_percentage['total_sludge_amount_kg_per_year']<100*1000*365)])
+
 #%% decarbonization map (preparation)
 
 # !!! update the file here if necessary
@@ -4148,7 +4165,6 @@ new_hub_position = gpd.GeoDataFrame(new_hub_position, crs='EPSG:4269',
                                                                 y=new_hub_position.latitide))
 new_hub_position = new_hub_position.to_crs(crs='EPSG:3857')
 
-
 old_hub_position = pd.DataFrame()
 
 old_hub_position['latitide'] = [j[0] for j in [i['hub_pos'] for i in hubs if len(i['cluster']) == 1]]
@@ -4175,6 +4191,7 @@ new_hub_position.plot(ax=ax, color=y, marker='*', markersize=600, edgecolor='k',
 
 old_hub_position.plot(ax=ax, color=r, marker='*', markersize=600, edgecolor='k', linewidth=1.5, alpha=1)
 
+# TODO: adjus the location, maybe for other places as well
 rectangle_edge = Rectangle((-13730000, 2930000), 1980000, 630000,
                            color='k', lw=3, fc='none', alpha=1)
 ax.add_patch(rectangle_edge)
