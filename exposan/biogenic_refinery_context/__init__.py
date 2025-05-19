@@ -41,6 +41,7 @@ data_path, results_path = _init_modules(module, include_data_path=True)
 # Metrics for model output 
 # =============================================================================
 
+#TODO: Update to retrieve values from units
 
 def cost_per_ton_biochar(model):
     biochar = model.system.get_stream('biochar')

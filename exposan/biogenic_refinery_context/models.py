@@ -73,11 +73,11 @@ def add_metrics(model):
     ##TODO need to define this function in _init_ and add other indicators of interest here. 
     funcs = get_sustainability_indicators(system)
     metrics = [
-        Metric('Cost per ton biochar', cost_per_ton_biochar, 'USD/ton biochar'),
-        Metric('GWP per ton biochar', gwp_per_ton_biochar, 'kg CO2-eq/ton biochar'),
-        Metric('Biochar generated', biochar_generated, 'ton biochar/yr'),
-        Metric('Sequesterable carbon', sequesterable_carbon, 'ton C/yr'),
-        Metric('Drying requirement', drying_requirement, 'kWh/ton biosolids/yr'),
+        Metric('Cost per ton biochar', cost_per_ton_biochar(system), 'USD/ton biochar'),
+        Metric('GWP per ton biochar', gwp_per_ton_biochar(system), 'kg CO2-eq/ton biochar'),
+        Metric('Biochar generated', biochar_generated(system), 'ton biochar/yr'),
+        Metric('Sequesterable carbon', sequesterable_carbon(system), 'ton C/yr'),
+        Metric('Drying requirement', drying_requirement(system), 'kWh/ton biosolids/yr'),
     ]
 
     # Net cost
