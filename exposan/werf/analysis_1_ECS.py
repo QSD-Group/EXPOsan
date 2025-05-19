@@ -16,8 +16,10 @@ from exposan.werf import (
     create_system, 
     SelectiveRecovery,
     add_performance_metrics, 
+    add_OPEX_metrics,
     add_NH4_recovery_metric, 
-    results_path
+    results_path,
+    baseline_underflows
     )
 from exposan.werf.utils import plantwide_N_mass_flows, plantwide_P_mass_flows
 from qsdsan import System, Model
@@ -61,6 +63,7 @@ for ID in (
     sys_ecs.set_dynamic_tracker(*sys.scope.subjects)
     mdl = Model(sys_ecs)
     add_performance_metrics(mdl)
+    add_OPEX_metrics(mdl)
     add_NH4_recovery_metric(mdl)
     if "PC" in u: cake_tss = 18e4
     else: cake_tss = 17e4
@@ -72,6 +75,8 @@ for ID in (
         thickened = s.thickened_sludge
         thickener = u.GT
     
+    thickener.sludge_flow_rate, u.DW.sludge_flow_rate = baseline_underflows[ID]
+
     try:
         start = tm.time()
         print("Start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
@@ -86,7 +91,8 @@ for ID in (
             print(f"{r_thick:.3f}  {r_cake:.3f}")
             thickener.sludge_flow_rate *= r_thick
             u.DW.sludge_flow_rate *= r_cake
-            sys_ecs.simulate(t_span=(0,300), method='BDF')
+            try: sys_ecs.simulate(t_span=(0,300), method='BDF')
+            except: sys_ecs.simulate(state_reset_hook='reset_cache', t_span=(0,300), method='BDF')
             r_thick = thickened.get_TSS()/5e4
             r_cake = s.cake.get_TSS()/cake_tss
         end2 = tm.time()

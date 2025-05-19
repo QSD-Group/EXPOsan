@@ -17,8 +17,10 @@ from exposan.werf import (
     create_system, 
     SelectiveRecovery,
     add_performance_metrics, 
+    add_OPEX_metrics,
     add_NH4_recovery_metric, 
-    results_path
+    results_path,
+    baseline_underflows
     )
 from exposan.werf.utils import plantwide_N_mass_flows, plantwide_P_mass_flows
 from qsdsan import System, Model, sanunits as su
@@ -75,6 +77,7 @@ for ID in (
     sys_ha.set_dynamic_tracker(*sys.scope.subjects)
     mdl = Model(sys_ha)
     add_performance_metrics(mdl)
+    add_OPEX_metrics(mdl)
     add_NH4_recovery_metric(mdl)
     
     if "PS" in s: 
@@ -90,6 +93,8 @@ for ID in (
     else: 
         thickened = s.thickened_sludge
         thickener = u.GT
+
+    thickener.sludge_flow_rate, u.DW.sludge_flow_rate = baseline_underflows[ID]
 
     try:
         start = tm.time()
