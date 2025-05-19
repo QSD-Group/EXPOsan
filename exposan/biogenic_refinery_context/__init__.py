@@ -19,6 +19,7 @@ for license details.
 
 import os, qsdsan as qs
 from qsdsan import ImpactItem, StreamImpactItem
+import numpy as np
 from exposan.utils import (
     _init_modules,
     get_generic_scaled_capital,
@@ -44,7 +45,7 @@ data_path, results_path = _init_modules(module, include_data_path=True)
 #TODO: Update to retrieve values from units
 
 def cost_per_ton_biochar(model):
-    biochar = model.system.get_stream('biochar')
+    biochar = model.system.flowsheet.stream.biochar
     biochar_mass = biochar.F_mass / 1000  # tons/year
     if biochar_mass == 0:
         return np.nan
@@ -52,7 +53,7 @@ def cost_per_ton_biochar(model):
     return total_cost / biochar_mass
 
 def gwp_per_ton_biochar(model):
-    biochar = model.system.get_stream('biochar')
+    biochar = model.system.flowsheet.stream.biochar
     biochar_mass = biochar.F_mass / 1000  # tons/year
     if biochar_mass == 0:
         return np.nan
@@ -60,18 +61,18 @@ def gwp_per_ton_biochar(model):
     return total_GWP / biochar_mass
 
 def biochar_generated(model):
-    biochar = model.system.get_stream('biochar')
+    biochar = model.system.flowsheet.stream.biochar
     return biochar.F_mass / 1000  # tons/year
 
 def sequesterable_carbon(model):
-    biochar = model.system.get_stream('biochar')
+    biochar = model.system.flowsheet.stream.biochar
     if biochar.F_mass == 0:
         return 0
     carbon_fraction = biochar.imass['C'] / biochar.F_mass
     return (biochar.F_mass / 1000) * carbon_fraction  # tons/year
 
 def drying_requirement(model):
-    biosolids = model.system.get_stream('biosolids')
+    biosolids = model.system.flowsheet.stream.biosolids
     dryer = model.system.get_unit('dryer')
     drying_energy = dryer.power_utility.rate * 24 * 365  # kWh/year
     biosolids_mass = biosolids.F_mass / 1000  # tons/year

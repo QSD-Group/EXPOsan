@@ -26,7 +26,7 @@ for license details.
 
 import os, pandas as pd, qsdsan as qs
 from chaospy import distributions as shape
-from qsdsan import Model, Metric, PowerUtility, ImpactItem
+from qsdsan import Model, Metric, PowerUtility, ImpactItem, TEA
 from qsdsan.utils import (
     AttrSetter,
     data_path,
@@ -72,12 +72,19 @@ def add_metrics(model):
     # Sustainability indicators
     ##TODO need to define this function in _init_ and add other indicators of interest here. 
     funcs = get_sustainability_indicators(system)
+    
+    model.TEA = TEA(
+    system=model.system,
+    discount_rate = 0.05,
+    lifetime = 20,
+)
+    
     metrics = [
-        Metric('Cost per ton biochar', cost_per_ton_biochar(system), 'USD/ton biochar'),
-        Metric('GWP per ton biochar', gwp_per_ton_biochar(system), 'kg CO2-eq/ton biochar'),
-        Metric('Biochar generated', biochar_generated(system), 'ton biochar/yr'),
-        Metric('Sequesterable carbon', sequesterable_carbon(system), 'ton C/yr'),
-        Metric('Drying requirement', drying_requirement(system), 'kWh/ton biosolids/yr'),
+        Metric('Cost per ton biochar', lambda: cost_per_ton_biochar(model), 'USD/ton biochar'),
+        Metric('GWP per ton biochar', lambda: gwp_per_ton_biochar(model), 'kg CO2-eq/ton biochar'),
+        Metric('Biochar generated', lambda: biochar_generated(model), 'ton biochar/yr'),
+        Metric('Sequesterable carbon', lambda: sequesterable_carbon(model), 'ton C/yr'),
+        Metric('Drying requirement', lambda: drying_requirement(model), 'kWh/ton biosolids/yr'),
     ]
 
     # Net cost
@@ -336,6 +343,7 @@ def create_modelA(location_specific=False, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
     sysA = create_system('A', flowsheet=flowsheet)
     unitA = sysA.flowsheet.unit
+   
 
     # Shared metrics/parameters
     modelA = Model(sysA, **model_kwargs)
