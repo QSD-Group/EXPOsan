@@ -12,7 +12,7 @@ for license details.
 """
 
 import time as tm, pandas as pd
-from exposan.werf import create_system, add_performance_metrics, add_OPEX_metrics, results_path
+from exposan.werf import create_system, add_performance_metrics, add_OPEX_metrics, results_path, baseline_underflows
 from exposan.werf.utils import load_state
 from qsdsan import Model
 from biosteam.evaluation._utils import var_columns
@@ -23,19 +23,18 @@ def display_metrics(model):
     print(f'{vals[-1]:.2f}')
     idx = var_columns(model.metrics)
     df = pd.DataFrame(vals, index=idx, columns=[model._system.ID])
-    # df = pd.DataFrame(vals, columns=idx, index=[model._system.ID])
     return df
 
-underflows = {
-    'C1': (136.64, 19.67),
-    'C2': (131.76, 6.69),
-    'C3': (138.19, 37.70),
-    'E2': (107.95, 5.26),
-    'E2P': (53.92, 19.93),
-    'F1': (54.64, 19.42),
-    'G2': (89.71, 15.37),
-    'I3': (116.21, 31.65)
-    }
+# underflows = {
+#     'C1': (136.64, 19.67),
+#     'C2': (131.76, 6.69),
+#     'C3': (138.19, 37.70),
+#     'E2': (107.95, 5.26),
+#     'E2P': (53.92, 19.93),
+#     'F1': (54.64, 19.42),
+#     'G2': (89.71, 15.37),
+#     'I3': (116.21, 31.65)
+#     }
 
 MGD2cmd = 3785.412
 #%%
@@ -77,7 +76,7 @@ try:
     start = tm.time()
     print("Start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
     load_state(sys, folder='steady_states/baseline_unopt')
-    thickener.sludge_flow_rate, u.DW.sludge_flow_rate = underflows[ID]
+    thickener.sludge_flow_rate, u.DW.sludge_flow_rate = baseline_underflows[ID]
     try: sys.simulate(t_span=(0,300), method='BDF')
     except: sys.simulate(state_reset_hook='reset_cache', t_span=(0,300), method='BDF')
     end = tm.time()

@@ -11,15 +11,15 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 """
 import time as tm, pandas as pd, os
-from exposan.werf import create_system, add_performance_metrics, results_path
-from exposan.werf.utils import plantwide_N_mass_flows, plantwide_P_mass_flows
+from exposan.werf import create_system, add_performance_metrics, add_OPEX_metrics, results_path, baseline_underflows
+from exposan.werf.utils import plantwide_N_mass_flows, plantwide_P_mass_flows, load_state
 from qsdsan import Model, WasteStream, sanunits as su, processes as pc
 from biosteam.evaluation._utils import var_columns
 
 import warnings
 warnings.filterwarnings("ignore")
 
-metrics = {'0':{}, '10':{}, '30':{}, '100':{}}
+metrics = {'10':{}, '30':{}, '100':{}}
 pe = 108918     # person equivalent for 10 MGD WRRF
 
 pc.create_masm2d_cmps()
@@ -46,11 +46,14 @@ for ID in (
     print(f"System {ID}")
     print("="*30)
     sys = create_system(ID)
+    load_state(sys, folder='steady_states/baseline_unopt')
     s = sys.flowsheet.stream
     u = sys.flowsheet.unit
     _urine.copy_like(urine)
     mdl = Model(sys)
     add_performance_metrics(mdl)
+    add_OPEX_metrics(mdl)
+    
 
     if "PS" in s: 
         if 'AD' in u: cake_tss = 18e4
@@ -65,15 +68,18 @@ for ID in (
     else: 
         thickened = s.thickened_sludge
         thickener = u.GT
-        
-    for pud, multiple in zip((0, 10, 30, 100), (0,1,2,3.5)):
+    
+    thickener.sludge_flow_rate, u.DW.sludge_flow_rate = baseline_underflows[ID]
+
+    for pud, multiple in zip((10, 30, 100), (1,2,3.5)):
         try:
-            if pud > 0:
-                _urine.scale(multiple)
-                s.RWW.separate_out(_urine)
+            _urine.scale(multiple)
+            s.RWW.separate_out(_urine)
+            s.RWW._init_state()
             start = tm.time()
             print(f"{pud}% UD start time: ", tm.strftime('%H:%M:%S', tm.localtime()))
-            sys.simulate(state_reset_hook='reset_cache', t_span=(0,300), method='BDF')
+            try: sys.simulate(t_span=(0,300), method='BDF')
+            except: sys.simulate(state_reset_hook='reset_cache', t_span=(0,300), method='BDF')
             end = tm.time()
             print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end-start)))
             print('Adjusting TS% ...')
