@@ -140,7 +140,7 @@ MEM = su.Splitter('MEM', PBR20-0, outs=[TE, RETEN], split=0.39*(1-cmps.x))
 
 MEV = su.CSTR('MEV', ins=MEM-1, V_max=V_mem, aeration=None, suspended_growth_model=None)
 
-POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.97)                    # changed compared to previous ver.
+POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.97)                    # changed compared to previous year.
 
 CENT = su.Splitter('CENT', POST_MEM-1, outs=[CEN, ALG], split={'X_CHL':0.33,
                                                                 'X_ALG':0.33,
