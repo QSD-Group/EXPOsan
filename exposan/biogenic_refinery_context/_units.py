@@ -292,7 +292,8 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         # Carbon sequestration calculations
         # Calculate carbon content of biochar (% mass C/mass biochar)
         C_biochar = (0.474 * VM_biochar_percent + 0.963 * FC_biochar_percent + 0.067 * AC_biochar_percent) / 100  # Klasson 2017
-
+        biochar.imass['C'] = C_biochar
+        
         # Calculate ash-free carbon content
         Cafb = (0.474 * VM_biochar_percent + 0.963 * FC_biochar_percent + 0.067 * AC_biochar_percent) / (100 - AC_biochar_percent)  # Klasson 2017
 
@@ -306,11 +307,6 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         CS = char_yield_db_percent * (C_biochar * 100) * R50 / C_feedstock  # % Zhao et al. 2013
 
         # Set additional biochar properties
-     
-        # biochar.imass['CarbonContent'] = C_biochar  # frac
-        # biochar.imass['CarbonSequestration'] = CS  # %
-        # biochar.imass['SequesterableCarbon'] = CS/100 * C_feedstock/100 * dry_mass_flow * 24 * 365 / 1000 # ton seq. C/year
-        # biochar.F_mass = biochar_mass_flow  # kg/hr
         
         biochar_carbon_content = C_biochar  # frac
         biochar_carbon_sequestration_ratio = CS  # %

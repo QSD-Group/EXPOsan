@@ -25,7 +25,7 @@ from exposan import biogenic_refinery_context as brc
 folder = os.path.dirname(__file__)
 # sys.path.insert(0, '/Users/stetsonrowles/Dropbox/Mac (3)/Documents/GitHub/EXPOsan/exposan/')
 
-from exposan.biogenic_refinery_context import models
+from exposan.biogenic_refinery_context import models, results_path
 model = models.create_modelA()
 
 path = os.path.join(folder, 'Flow + Biosolids Combined Data (Major-Facilities) (1).xlsx')
@@ -43,21 +43,30 @@ for index, row in biosolids_data.iterrows():
 
 
     # Update biosolids stream
-    biosolids_stream = model.system.get_stream('biosolids')
+    biosolids_stream = model.system.flowsheet.stream.biosolids
     biosolids_stream.F_mass = biosolids_tpy * 1000  # Convert tons to kg
 
     # Simulate system with updated input
     model.system.simulate()
 
     # ===== Monte Carlo sampling =====
+    mpath = os.path.join (results_path,'biosolids_base_scenario_results.xlsx')
     N = 1000  # Number of Latin Hypercube samples
-    model.sample(N, rule='LHS')
+    samples = model.sample(N, rule='L')
+    model.load_samples(samples)
     model.evaluate()
+    model.table.to_excel(mpath)
 
     # ===== Collect metrics =====
     metric_values = {}
     for metric in model.metrics:
-        values = model.table[metric.name]
+        for col in model.table.columns:
+            if metric.name in col[-1]:  # Match just the name part
+                values = model.table[col]
+                break
+        else:
+            raise KeyError(f"Metric '{metric.name}' not found in model.table.")
+        
         mean = np.mean(values)
         lower = np.percentile(values, 5)
         upper = np.percentile(values, 95)
@@ -73,7 +82,8 @@ for index, row in biosolids_data.iterrows():
     results.append(result)
 
 # ===== Save results =====
+mpath = os.path.join (results_path,'biosolids_scenario_results.csv')
 results_df = pd.DataFrame(results)
-results_df.to_csv('biosolids_scenario_results.csv', index=False)
+results_df.to_csv(mpath, index=False)
 
 print('\nAll scenarios completed. Results saved to biosolids_scenario_results.csv.')

@@ -73,11 +73,11 @@ def add_metrics(model):
     ##TODO need to define this function in _init_ and add other indicators of interest here. 
     funcs = get_sustainability_indicators(system)
     
-    model.TEA = TEA(
-    system=model.system,
-    discount_rate = 0.05,
-    lifetime = 20,
-)
+    # model.TEA = TEA(
+    # system=model.system,
+    # discount_rate = 0.05,
+    # lifetime = 20,
+# )
     
     metrics = [
         Metric('Cost per ton biochar', lambda: cost_per_ton_biochar(model), 'USD/ton biochar'),

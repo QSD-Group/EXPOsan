@@ -47,38 +47,36 @@ data_path, results_path = _init_modules(module, include_data_path=True)
 def cost_per_ton_biochar(model):
     biochar = model.system.flowsheet.stream.biochar
     biochar_mass = biochar.F_mass / 1000  # tons/year
+    print('DEBUG sample: biochar_mass =', biochar_mass)
     if biochar_mass == 0:
+        print('WARNING: Biochar flow is zero in a sample.')
         return np.nan
-    total_cost = model.TEA.AOC  # USD/year
+    total_cost = model.system.TEA.AOC + get_scaled_capital(model.system) + model.system.TEA.annual_labor - model.system.TEA.sales
     return total_cost / biochar_mass
 
 def gwp_per_ton_biochar(model):
-    biochar = model.system.flowsheet.stream.biochar
-    biochar_mass = biochar.F_mass / 1000  # tons/year
-    if biochar_mass == 0:
-        return np.nan
-    total_GWP = model.LCA.total_impacts['GWP']  # kg CO2-eq/year
-    return total_GWP / biochar_mass
-
+    system = model.system
+    return (
+        np.nan if system.flowsheet.stream.biochar.F_mass == 0 else
+        system.LCA.total_impacts['GlobalWarming'] /
+        (system.flowsheet.stream.biochar.F_mass / 1000) # kg CO2-eq/year
+    )
+    
 def biochar_generated(model):
-    biochar = model.system.flowsheet.stream.biochar
-    return biochar.F_mass / 1000  # tons/year
+    system = model.system
+    return system.flowsheet.stream.biochar.F_mass / 1000  # tons/year
 
 def sequesterable_carbon(model):
-    biochar = model.system.flowsheet.stream.biochar
-    if biochar.F_mass == 0:
-        return 0
-    carbon_fraction = biochar.imass['C'] / biochar.F_mass
-    return (biochar.F_mass / 1000) * carbon_fraction  # tons/year
+    system = model.system
+    return (
+        0 if system.flowsheet.stream.biochar.F_mass == 0 else
+        (system.flowsheet.stream.biochar.F_mass / 1000) *
+        (system.flowsheet.stream.biochar.imass['C'] / system.flowsheet.stream.biochar.F_mass)
+    )
 
 def drying_requirement(model):
-    biosolids = model.system.flowsheet.stream.biosolids
-    dryer = model.system.get_unit('dryer')
-    drying_energy = dryer.power_utility.rate * 24 * 365  # kWh/year
-    biosolids_mass = biosolids.F_mass / 1000  # tons/year
-    if biosolids_mass == 0:
-        return np.nan
-    return drying_energy / biosolids_mass  # kWh/ton biosolids/year
+    system = model.system
+    return system.flowsheet.unit.A8.Q_drying_norm  # MJ/ton
 
 
 # %%
@@ -236,7 +234,7 @@ def get_C(stream):
     sys = stream.source.system
     for unit in sys.units:
         if hasattr(unit, 'carbon_COD_ratio'): carbon_COD_ratio = unit.carbon_COD_ratio
-    return stream.COD*stream.F_vol/1e3*carbon_COD_ratio*hr_per_yr
+    return lambda: stream.COD*stream.F_vol/1e3*carbon_COD_ratio*hr_per_yr
 get_C_gas = lambda stream: stream.imol['CH4']*12*hr_per_yr
 get_N_gas = lambda stream: stream.imol['N2O']*28*hr_per_yr
 
