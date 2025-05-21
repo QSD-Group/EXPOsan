@@ -14,7 +14,7 @@ for license details.
 import os, numpy as np, qsdsan as qs
 from qsdsan import processes as pc, sanunits as su, WasteStream, System
 from qsdsan.utils import time_printer, load_data, get_SRT, ExogenousDynamicVariable as EDV
-from exposan.pm2_ecorecover import data_path
+from exposan.pm2_ecorecover_rev import data_path
 
 __all__ = (
     'biomass_IDs',

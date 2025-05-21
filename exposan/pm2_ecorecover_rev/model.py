@@ -16,7 +16,7 @@ from scipy.interpolate import interp1d
 from chaospy import distributions as shape
 from qsdsan.utils import DictAttrSetter, ospath, load_data
 
-from exposan.pm2_ecorecover import (
+from exposan.pm2_ecorecover_rev import (
     create_system,
     data_path,
     )
