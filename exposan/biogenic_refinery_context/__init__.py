@@ -51,7 +51,7 @@ def cost_per_ton_biochar(model):
     if biochar_mass == 0:
         print('WARNING: Biochar flow is zero in a sample.')
         return np.nan
-    total_cost = model.system.TEA.AOC + get_scaled_capital(model.system) + model.system.TEA.annual_labor - model.system.TEA.sales
+    total_cost = model.system.TEA.AOC + get_scaled_capital(model.system.TEA) + model.system.TEA.annual_labor - model.system.TEA.sales
     return total_cost / biochar_mass
 
 def gwp_per_ton_biochar(model):
