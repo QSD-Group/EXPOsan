@@ -2867,6 +2867,19 @@ add_region(1, a)
 add_region(2, p)
 add_region(3, p)
 
+#%% biocrude production
+
+biocrude_production = get_copula_sum('integrated_biocrude_BPD_2025-02-18')
+
+all_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_2025-02-16.xlsx')
+selected_facility = all_facility[all_facility['USD_decarbonization'].notna()]
+selected_facility = selected_facility[selected_facility['USD_decarbonization'] <= 0]
+
+# estimate 83% coverage
+biocrude_ratio = selected_facility['total_sludge_amount_kg_per_year'].sum()/all_facility['total_sludge_amount_kg_per_year'].sum()/0.83
+
+biocrude_production_future = np.quantile(biocrude_production, 0.5)/biocrude_ratio
+
 #%% sampled facility level uncertainty and sensitivity analyses (data preparation)
 
 # !!! update the file here if necessary
