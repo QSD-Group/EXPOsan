@@ -3164,6 +3164,8 @@ def plot_sensitivity(data_type):
         plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
         
         fig, ax = plt.subplots(figsize = (8.5, 2.5))
+        # only for labels
+        # fig, ax = plt.subplots(figsize = (8.5, 10))
         
         ax = plt.gca()
         
@@ -3213,15 +3215,19 @@ def plot_sensitivity(data_type):
         
         plt.minorticks_off()
         
-        ax.set_xlabel(r'$\mathbf{Wastewater\ solids\ quantity}$' + '\n[tonne·day${^{−1}}$]', fontname='Arial', fontsize=24, linespacing=0.8)
+        ax.set_xlabel(r'$\mathbf{Wastewater\ solids\ mass\ flow\ rate}$' + '\n[tonne·day${^{−1}}$]', fontname='Arial', fontsize=24, linespacing=0.8)
         if (data_type[0:4] == 'cost') & (data_type[-1] == 'r'):
             ax.set_ylabel(r"$\mathbf{Spearman's\ \rho}$", fontname='Arial', fontsize=24)
+            # only for labels
+            # ax.set_ylabel(r"$\mathbf{Spearman's\ \rho\ for\ wastewater\ solids\ management\ cost}$", fontname='Arial', fontsize=24)
         elif (data_type[0:4] == 'cost') & (data_type[-1] == 'p'):
-                ax.set_ylabel(r"$\mathbf{Spearman's\ p}$", fontname='Arial', fontsize=24)
+            ax.set_ylabel(r"$\mathbf{Spearman's\ p}$", fontname='Arial', fontsize=24)
         elif (data_type[0:2] == 'CI') & (data_type[-1] == 'r'):
-                ax.set_ylabel(r"$\mathbf{Spearman's\ \rho}$", fontname='Arial', fontsize=24)
+            ax.set_ylabel(r"$\mathbf{Spearman's\ \rho}$", fontname='Arial', fontsize=24)
+            # only for labels
+            # ax.set_ylabel(r"$\mathbf{Spearman's\ \rho\ for\ wastewater\ solids\ management\ CI}$", fontname='Arial', fontsize=24)
         elif (data_type[0:2] == 'CI') & (data_type[-1] == 'p'):
-                ax.set_ylabel(r"$\mathbf{Spearman's\ p}$", fontname='Arial', fontsize=24)
+            ax.set_ylabel(r"$\mathbf{Spearman's\ p}$", fontname='Arial', fontsize=24)
         else:
             raise ValueError(f'Check name: {data_type}.')
 
@@ -3631,11 +3637,17 @@ add_point('PADD_4', do)
 
 # saving
 # !!! update the file here if necessary
-get_copula_sum('integrated_saving_dollar_per_day_2025-02-18')
+national_saving = get_copula_sum('integrated_saving_dollar_per_day_2025-02-18')
+np.quantile(national_saving, 0.05)/1000000
+np.quantile(national_saving, 0.5)/1000000
+np.quantile(national_saving, 0.95)/1000000
 
 # decarbonization
 # !!! update the file here if necessary
-get_copula_sum('integrated_decarbonization_kg_CO2_eq_per_day_2025-02-18')
+national_GHG_reduction = get_copula_sum('integrated_decarbonization_kg_CO2_eq_per_day_2025-02-18')
+np.quantile(national_GHG_reduction, 0.05)/1000
+np.quantile(national_GHG_reduction, 0.5)/1000
+np.quantile(national_GHG_reduction, 0.95)/1000
 
 #%% sludge transportation (heat map, HM) data preparation - part 1
 
@@ -3785,7 +3797,7 @@ def plot_heat_map(nitrogen_fertilizer, solids_quantity, item):
     ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False, pad=6)
     
     ax.set_xlabel(r'$\mathbf{Average\ distance}$ [km]', fontname='Arial', fontsize=45)
-    ax.set_ylabel(r'$\mathbf{Total\ solids}$ [tonne·day${^{−1}}$]', fontname='Arial', fontsize=45)
+    ax.set_ylabel(r'$\mathbf{Total\ solids\ mass\ flow\ rate}$' + '\n[tonne·day${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
     
     mathtext.FontConstantsBase.sup1 = 0.35
     
@@ -3813,7 +3825,10 @@ def plot_heat_map(nitrogen_fertilizer, solids_quantity, item):
     
     X = np.array(HM_saving['sludge_transportation_distance'])
     Y = np.array(HM_saving['sludge_amount'])
-    Z = np.array(HM_saving[item]/1000)
+    if item == 'saving_50th':
+        Z = np.array(HM_saving[item])
+    else:
+        Z = np.array(HM_saving[item]/1000)
     
     fills = ax.tricontourf(X, Y, Z, levels=10000, cmap=color_map_Guest)
     
