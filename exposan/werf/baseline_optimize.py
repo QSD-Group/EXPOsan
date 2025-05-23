@@ -46,7 +46,18 @@ MGD2cmd = 3785.412
 # ID = 'E2P'
 # ID = 'F1'
 # ID = 'G2'
-ID = 'I3'
+# ID = 'I3'
+
+# ID = 'B1'
+# ID = 'B2'
+# ID = 'B3'
+# ID = 'G1'
+# ID = 'G3'
+# ID = 'H1'
+# ID = 'I1'
+# ID = 'I2'
+# ID = 'N1'
+ID = 'N2'
 
 sys = create_system(ID)
 s = sys.flowsheet.stream
@@ -89,24 +100,43 @@ except Exception as exc:
 #%%
 # u.ASR.DO_setpoints *= 0
 # u.ASR.DO_setpoints += 1
-# u.ASR.DO_setpoints *= 2
-u.ASR.DO_setpoints[:] = [0,0,1,1,0,1]
+# u.ASR.DO_setpoints[:] = [0,0,1,1,0,1]
+u.ASR.DO_setpoints[:] = [0,0,1,1,0]
 # Vs = [0.63, 1.5, 2.0, 2.0, 2.3, 0.21] # MG
-Vs = [0.3, 1.5, 2.03, 2.1, 2.3, 0.41]
-u.ASR.V_tanks[:] = [v * MGD2cmd for v in Vs]
+# Vs = [0.84, 1.5, 2.0, 2.0, 2.1, 0.2]
+# Vs = [0.99, 1.35, 2.0, 2.0, 2.1, 0.2]
+# Vs = [0.3, 1.5, 2.03, 2.1, 2.3, 0.41]
+# u.ASR.V_tanks[:] = [v * MGD2cmd for v in Vs]
+V_tot = 2.61 * MGD2cmd
+# fr_V = [0.12, 0.18, 0.24, 0.24, 0.18, 0.04]
+fr_V = [0.16, 0.16, 0.24, 0.24, 0.17, 0.03]     # larger anaerobic zone seems better for EBPR
+u.ASR.V_tanks[:] = [v * V_tot for v in fr_V[:-1]]
+# u.ASR.internal_recycles[0] = (3,1,20*MGD2cmd)
 u.ASR._ODE = None
 
-# s.carbon.imass['S_A'] = 65
-# s.carbon._init_state()
-# u.FC.underflow = 0.67 * 10 * MGD2cmd
-u.FC.wastage = 0.1* MGD2cmd
-u.FC._ODE = None
+u.MBR.V_max = fr_V[-1] * V_tot
+u.MBR.aeration = 1.0
+u.MBR._ODE = None
+
+
+# for unit in (u.O5, u.O6):
+#     unit.aeration = 1.0
+#     unit._ODE = None
+
+s.carbon.imass['S_A'] = 70
+s.carbon._init_state()
+# u.MD.metal_dosage = 12
+# u.MD._AE = None
+# u.FC.underflow = 0.5 * 10 * MGD2cmd
+# u.FC.wastage = 0.3 * MGD2cmd
+# u.FC._ODE = None
 
 # u.AED.V_max = 0.5 * MGD2cmd
 # u.AED._ODE = None
 
 sys._DAE = None
 
+#%%
 print(f"System {ID} Operation Adjusted")
 print("="*30)
 start = tm.time()

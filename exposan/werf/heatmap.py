@@ -34,6 +34,9 @@ thresholds = pd.DataFrame.from_dict(
             'E2', 'E2P', 'F1', 
             'G1', 'G2', 'G3', 'H1', 'I1', 'I2', 'I3', 'N1', 'N2'))
 
+eff_vars = ['COD', 'BOD', 'TN', 'NH4 N', 'TP']
+op_vars = ['CH4 production', 'CH4 content', 'Sludge production', 
+           'Liquid aeration flowrate', 'Sludge aeration flowrate']
 
 #%%
 def heatmap(data, colorbar=True, cmap='viridis', 
@@ -106,10 +109,10 @@ def heatmap(data, colorbar=True, cmap='viridis',
         return fig, ax
 
 #%%
-def plot_absolute(data=None, suffix='baseline'):
+def plot_absolute(data=None, suffix='baseline_unopt'):
     if data is None:
         data = load_data(
-            ospath.join(results_path, 'UD_performance.xlsx'), sheet='0',
+            ospath.join(results_path, 'baseline_unopt_performance.xlsx'), sheet=0,
             header=[0,1], skiprows=[2,]
             )
         data.columns = [i[1].split(' [')[0] for i in data.columns]
@@ -140,15 +143,20 @@ def plot_absolute(data=None, suffix='baseline'):
         if fill <= 0.6: return 'white'
         return 'black'
 
-    eff_vars = ['COD', 'BOD', 'TN', 'NH4 N', 'TP']
     heatmap(fill.loc[eff_vars,:], annotate=vals.loc[eff_vars,:], valfmt=valfmtwnan, 
             txtcolors=txtcolors, save_as=f'eff_{suffix}.png')
-    heatmap(fill.iloc[8:,:], 
+    heatmap(fill.loc[op_vars,:], 
             show_ticklabels=False, colorbar=False,
-            annotate=vals.iloc[8:,:], valfmt=valfmtwnan, 
+            annotate=vals.loc[op_vars,:], valfmt=valfmtwnan, 
             txtcolors=txtcolors, save_as=f'op_{suffix}.png')
 
-# plot_absolute()
+
+#%%
+from math import nan
+def cal_perc_diff(baseline, alternative):
+    baseline.replace(0, nan, inplace=True)
+    out = alternative.sub(baseline).div(baseline)
+    return out
 
 #%%
 def plot_diff(data, suffix=''):
@@ -167,23 +175,41 @@ def plot_diff(data, suffix=''):
         if abs(fill) > 0.6: return 'white'
         return 'black'
     
-    eff_vars = ['COD', 'BOD', 'TN', 'NH4 N', 'TP']
     heatmap(fill.loc[eff_vars,:], cmap='bwr', vmin=-1, vmax=1,
             annotate=vals.loc[eff_vars,:], valfmt=valfmtpc, 
             txtcolors=txtcolors, annotate_kw=dict(size=10), 
             save_as=f'deff_{suffix}.png')
-    op_vars = ['CH4 production', 'CH4 content', 'Sludge production', 
-               'Liquid aeration flowrate', 'Sludge aeration flowrate']
     heatmap(fill.loc[op_vars,:], cmap='bwr', vmin=-1, vmax=1,
             show_ticklabels=False, colorbar=False,
             annotate=vals.loc[op_vars,:], valfmt=valfmtpc, 
             txtcolors=txtcolors, annotate_kw=dict(size=10), 
             save_as=f'dop_{suffix}.png')
 
-# diff = load_data(
-#     ospath.join(results_path, 'UD_performance.xlsx'), sheet='diff',
-#     header=[0,1], skiprows=[2,]
-#     )
-# diff.columns = [i[1].split(' [')[0] for i in diff.columns]
+#%%
+if __name__ == '__main__':
+    df_baseline_opt = load_data(
+        ospath.join(results_path, 'baseline_opt_performance.xlsx'), sheet='combined',
+        header=[0,1], skiprows=[2,]
+        )
+    df_baseline_opt.columns = [i[1].split(' [')[0] for i in df_baseline_opt.columns]
+    plot_absolute(df_baseline_opt, 'baseline_opt')
+    plot_absolute()
+    
+    df_unopt = load_data(
+        ospath.join(results_path, 'baseline_unopt_performance.xlsx'), sheet=0,
+        header=[0,1], skiprows=[2,]
+        )
+    df_unopt.columns = [i[1].split(' [')[0] for i in df_unopt.columns]
 
-# plot_diff(diff, suffix='10UD')
+    for tech in ('UD', 'HA', 'ECS'):
+        alt = load_data(
+            ospath.join(results_path, tech+'_performance.xlsx'), sheet=None,
+            header=[0,1], skiprows=[2,]
+            )
+        for name, df in alt.items():
+            if name == 'Sheet1': name = ''
+            suffix = f'{name}{tech}'
+            df.columns = [i[1].split(' [')[0] for i in df.columns]
+            if 'NH4 recovery' in df.columns: df.drop(columns='NH4 recovery', inplace=True)
+            diff = cal_perc_diff(df_unopt, df)
+            plot_diff(diff, suffix)

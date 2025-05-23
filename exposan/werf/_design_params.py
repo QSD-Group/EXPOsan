@@ -21,3 +21,17 @@ mBardenpho = dict(
     RAS = (50, 100),        # % of influent
     IR = (200, 400),        # internal recycle, % of influent
     )
+
+mBardenpho_MBR = dict(
+    SRT = (10, 20),
+    MLSS = (3000, 4000), 
+    tau = {
+        'anae': (0.5, 1.5),
+        'anox_1': (1, 3),
+        'aero_1': (4, 12),
+        'anox_2': (2, 4),
+        'aero_2': (0.5, 1),
+        },
+    MLSS_recycle = (100, 200),        # from preanoxic to anaerobic, % of influent
+    IR = (300, 400),        # NOx recycle, % of influent
+    )
