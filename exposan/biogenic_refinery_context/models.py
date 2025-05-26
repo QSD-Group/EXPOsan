@@ -344,7 +344,6 @@ def create_modelA(location_specific=False, **model_kwargs):
     sysA = create_system('A', flowsheet=flowsheet)
     unitA = sysA.flowsheet.unit
    
-
     # Shared metrics/parameters
     modelA = Model(sysA, **model_kwargs)
     add_metrics(modelA)

@@ -24,6 +24,7 @@ for license details.
 from qsdsan import (
     Flowsheet, main_flowsheet,
     WasteStream,
+    Stream,
     sanunits as su,
     ImpactItem,
     System, TEA, LCA,
@@ -158,7 +159,7 @@ def create_systemA(flowsheet=None):
 def create_system(system_ID='A', flowsheet=None):
     ID = system_ID.lower().lstrip('sys').upper() # so that it'll work for "sysA"/"A"
     reload_lca = False
-
+        
     # Set flowsheet to avoid stream replacement warnings
     if flowsheet is None:
         flowsheet_ID = f'br{ID}'
