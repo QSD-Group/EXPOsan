@@ -70,12 +70,12 @@ def run_contextual_analysis():
             biochar_ton = biochar_kg_d / 1000 
 
             sys_id = sys.ID
-            all_results[f'{sys_id}_cost'][community] = sys.TEA.EAC / biochar_ton
-            all_results[f'{sys_id}_gwp'][community] = sys.LCA.total_impacts.get('GWP', 0) / biochar_ton
-            all_results[f'{sys_id}_fec'][community] = sys.LCA.total_impacts.get('FEC', 0) / biochar_ton
-            all_results[f'{sys_id}_mec'][community] = sys.LCA.total_impacts.get('MEC', 0) / biochar_ton
-            all_results[f'{sys_id}_energy'][community] = sys.flowsheet.unit.A8.Q_drying_norm / biochar_ton
-            all_results[f'{sys_id}_biochar_ton_per_day'][community] = biochar_ton
+            all_results[f'{sys_id}_cost'][community] = sys.cost_per_ton_biochar
+            all_results[f'{sys_id}_gwp'][community] = sys.gwp_per_ton_biochar
+            all_results[f'{sys_id}_biochar'][community] = sys.biochar_generated
+            all_results[f'{sys_id}_seq_C'][community] = sys.sequesterable_carbon
+            all_results[f'{sys_id}_drying'][community] = sys.drying_requirement
+
 
     # Save to Excel
     results = pd.DataFrame.from_dict(all_results)
