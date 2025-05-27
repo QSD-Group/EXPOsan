@@ -101,7 +101,8 @@ class Biosolids(SanUnit):
         
         biosolids.imass['H2O'] = 1.  # or any relevant component
         
-        biosolids_tpy = 5000 # tons per year
+        # biosolids_tpy = 5000 # tons per year
+        biosolids_tpy = self.biosolids_generated
         biosolids.F_mass = biosolids_tpy * 1000/(365*24*1000*(1-self.MC))*1000 # F_mass in kg/hr
         
         #update density to be based on MC
@@ -111,8 +112,8 @@ class Biosolids(SanUnit):
         flow_rate_db = biosolids.F_mass * (1 - self.MC) # kg-db / hr
         
         biosolids.imass['AshContent'] = flow_rate_db * self.AC # kg / hr
-        biosolids.imass['VolatileMatter'] = flow_rate_db * self.FC # kg / hr
-        biosolids.imass['FixedCarbon'] = flow_rate_db * VM_db # kg / hr
+        biosolids.imass['FixedCarbon'] = flow_rate_db * self.FC # kg / hr
+        biosolids.imass['VolatileMatter'] = flow_rate_db * VM_db  # kg / hr
         
         # biosolids._AC = flow_rate_db * self.AC # kg / hr
         # biosolids._FC = flow_rate_db * self.FC # kg / hr
@@ -124,8 +125,8 @@ class Biosolids(SanUnit):
         biosolids._COD = biosolids.imass['VolatileMatter'] * 1.74 #TODO: if an. digestion or aer. dgiestion: CODt / VS = 1.60, else if: CODt / VS = 1.74 Ahnert et. al., (2021).
         #TODO might need to use .imass['N'] instead of .TN too?
         
-        biosolids_AC_percent = 100 * biosolids.imass['AshContent'] / flow_rate_db # %
-        biosolids_FC_percent = 100 * biosolids.imass['FixedCarbon'] / flow_rate_db # %
+        # biosolids_AC_percent = 100 * biosolids.imass['AshContent'] / flow_rate_db # %
+        # biosolids_FC_percent = 100 * biosolids.imass['FixedCarbon'] / flow_rate_db # %
      
     
         

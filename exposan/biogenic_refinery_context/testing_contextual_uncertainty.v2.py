@@ -28,36 +28,45 @@ mpath = os.path.join (results_path,'biosolids_contextual_scenario_results.xlsx')
 
 writer = pd.ExcelWriter(os.path.join(results_path, 'monte_carlo_results.xlsx'))
 
+# Create and configure model
+model = create_model(model_ID='A')
+system = model.system
+u = system.flowsheet.unit
+# biosolids = system.flowsheet.stream.biosolids
+u.A1.AC = ASH_FRAC
+u.A1.FC = FC_FRAC
+u.A1.MC = MOISTURE_FRAC
+
+N = 100  # Number of Latin Hypercube samples
+samples = model.sample(N, rule='L')
+model.load_samples(samples)
+
+    
 for _, row in df.iterrows():
     facility = row['NPDES ID2']
-    dry_tons_per_year = row[TONS_COL]
+    # dry_tons_per_year = row[TONS_COL]
+    u.A1.biosolids_generated = tpy = row[TONS_COL]
 
-    # Convert to dry mass per day
-    dry_mass_kg_d = dry_tons_per_year * TONS_TO_KG / 365
-    wet_mass_kg_d = dry_mass_kg_d / (1 - MOISTURE_FRAC)
-
-    # Create and configure model
-    model = create_model(model_ID='A')
-    system = model.system
-    biosolids = system.flowsheet.stream.biosolids
-
-    # Update model with mass flow from facility sheet, update VM and MC based on biosolids treatment methods.
-    biosolids.F_mass = wet_mass_kg_d
-    biosolids.imass['AshContent'] = ASH_FRAC * dry_mass_kg_d # TODO: add IF statement to reduce based on treatment methods
-    biosolids.imass['VolatileMatter'] = VM_FRAC * dry_mass_kg_d
-    biosolids.imass['FixedCarbon'] = FC_FRAC * dry_mass_kg_d
-    biosolids.imass['H2O'] = MOISTURE_FRAC * wet_mass_kg_d # TODO: add IF statement to reduce based on treatment methods
+# =============================================================================
+#     # Convert to dry mass per day
+#     dry_mass_kg_d = dry_tons_per_year * TONS_TO_KG / 365
+#     wet_mass_kg_d = dry_mass_kg_d / (1 - MOISTURE_FRAC)
+# 
+#     # Update model with mass flow from facility sheet, update VM and MC based on biosolids treatment methods.
+#     biosolids.F_mass = wet_mass_kg_d
+#     biosolids.imass['AshContent'] = ASH_FRAC * dry_mass_kg_d # TODO: add IF statement to reduce based on treatment methods
+#     biosolids.imass['VolatileMatter'] = VM_FRAC * dry_mass_kg_d
+#     biosolids.imass['FixedCarbon'] = FC_FRAC * dry_mass_kg_d
+#     biosolids.imass['H2O'] = MOISTURE_FRAC * wet_mass_kg_d # TODO: add IF statement to reduce based on treatment methods
+# =============================================================================
+    
     
     #TODO: also update scale_factor of each unit to use the TON_COL data
 
     # Simulate system with updated input
-    model.system.simulate()
-
+    system.simulate()
 
     # ===== Monte Carlo sampling =====    
-    N = 100  # Number of Latin Hypercube samples
-    samples = model.sample(N, rule='L')
-    model.load_samples(samples)
     model.evaluate()
     
     # ===== Collect detailed metrics for each facility =====   
@@ -76,7 +85,7 @@ for _, row in df.iterrows():
         metric_values[metric.name] = (mean, lower, upper)
 
     # Store only summarized results for each facility
-    result = {'NPDES ID2': facility, 'Biosolids_tpy': TONS_COL}
+    result = {'NPDES ID2': facility, 'Biosolids_tpy': tpy}
     for name, (mean, lower, upper) in metric_values.items():
         result[f'{name} (mean)'] = mean
         result[f'{name} (5th pct)'] = lower
@@ -84,10 +93,7 @@ for _, row in df.iterrows():
 
     results.append(result)
 
-    # Save summarized results to excel
-    export_data_df = pd.DataFrame(results)
-    export_data_df.to_excel(mpath)
-    
+
     # Save detailed metrics to Excel
     df_metrics = model.table
     sheetname = facility[:31]  # Max Excel sheet name length = 31
@@ -95,5 +101,8 @@ for _, row in df.iterrows():
 
 writer.close()
 
-
+# Save summarized results to excel
+export_data_df = pd.DataFrame(results)
+export_data_df.to_excel(mpath)
+    
 
