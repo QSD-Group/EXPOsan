@@ -46,6 +46,7 @@ def run_monte_carlo(N=100):
         biosolids.imass['H2O'] = MOISTURE_FRAC * wet_mass_kg_d
 
         # Run sampling and evaluation
+        breakpoint()
         model.load_default_parameters()
         model.sample(N, rule='L')
         model.evaluate()
