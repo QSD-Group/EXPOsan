@@ -192,24 +192,32 @@ if __name__ == '__main__':
         header=[0,1], skiprows=[2,]
         )
     df_baseline_opt.columns = [i[1].split(' [')[0] for i in df_baseline_opt.columns]
-    plot_absolute(df_baseline_opt, 'baseline_opt')
-    plot_absolute()
+    # plot_absolute(df_baseline_opt, 'baseline_opt')
+    # plot_absolute()
     
-    df_unopt = load_data(
-        ospath.join(results_path, 'baseline_unopt_performance.xlsx'), sheet=0,
+    # df_unopt = load_data(
+    #     ospath.join(results_path, 'baseline_unopt_performance.xlsx'), sheet=0,
+    #     header=[0,1], skiprows=[2,]
+    #     )
+    # df_unopt.columns = [i[1].split(' [')[0] for i in df_unopt.columns]
+
+    # for tech in ('UD', 'HA', 'ECS'):
+    #     alt = load_data(
+    #         ospath.join(results_path, tech+'_performance.xlsx'), sheet=None,
+    #         header=[0,1], skiprows=[2,]
+    #         )
+    #     for name, df in alt.items():
+    #         if name == 'Sheet1': name = ''
+    #         suffix = f'{name}{tech}'
+    #         df.columns = [i[1].split(' [')[0] for i in df.columns]
+    #         if 'NH4 recovery' in df.columns: df.drop(columns='NH4 recovery', inplace=True)
+    #         diff = cal_perc_diff(df_unopt, df)
+    #         plot_diff(diff, suffix)
+        
+    df = load_data(
+        ospath.join(results_path, 'UD_opt_performance.xlsx'), sheet='100',
         header=[0,1], skiprows=[2,]
         )
-    df_unopt.columns = [i[1].split(' [')[0] for i in df_unopt.columns]
-
-    for tech in ('UD', 'HA', 'ECS'):
-        alt = load_data(
-            ospath.join(results_path, tech+'_performance.xlsx'), sheet=None,
-            header=[0,1], skiprows=[2,]
-            )
-        for name, df in alt.items():
-            if name == 'Sheet1': name = ''
-            suffix = f'{name}{tech}'
-            df.columns = [i[1].split(' [')[0] for i in df.columns]
-            if 'NH4 recovery' in df.columns: df.drop(columns='NH4 recovery', inplace=True)
-            diff = cal_perc_diff(df_unopt, df)
-            plot_diff(diff, suffix)
+    df.columns = [i[1].split(' [')[0] for i in df.columns]
+    diff = cal_perc_diff(df_baseline_opt, df)
+    plot_diff(diff, '100UD_opt')
