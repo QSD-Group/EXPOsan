@@ -68,7 +68,7 @@ def run_UA_SA(seed=None, N=N, T=T, t_step=t_step, thresholds=[], kind=kind, anal
     seed = seed or seed_RGT()
     mdl = create_model(kind=kind, analysis=analysis)
     mdl = run_uncertainty(mdl, N, T, t_step, seed=seed)
-    thresholds = update_thresholds(mdl, thresholds)
+    thresholds = update_thresholds(mdl, thresholds)    
     D, p = get_correlations(mdl, kind='KS', thresholds=thresholds,
                             file=ospath.join(results_path, f'KS_test_{seed}.xlsx')
                             )

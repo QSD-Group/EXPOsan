@@ -151,14 +151,13 @@ def create_model(system=None, kind='', analysis=''):
         #           name=k, element=PBR, kind='coupled', units=units, distribution=D)
         
 # =============================================================================
-        D = shape.Uniform(8.849, 22.121)
-        @param(name='Algae_NtoP_ratio', element=PBR, kind='coupled', units='-', 
-                baseline=0.2/0.018, distribution=D)
-
         # given baseline formula 'CH1.8O0.5N0.2P0.018' (N:P mass ratio of 5)
         # N:P mass ratio min-max: 4-10 (Gardner-Dale et al., 2017) 
         #    -> N:P molar ratio min-max: 8.849 (CH1.8O0.5N0.2P0.023)-22.121 (CH1.8O0.5N0.2P0.009)
 
+        D = shape.Uniform(8.849, 22.121)
+        @param(name='Algae_NtoP_ratio', element=PBR, kind='coupled', units='-', 
+                baseline=0.2/0.018, distribution=D)
         def set_ALG_N2P_ratio(n2p):
             ch, np = cmps.X_ALG.formula.split('N')
             n, p = np.split('P')
