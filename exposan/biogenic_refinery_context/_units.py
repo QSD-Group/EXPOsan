@@ -77,7 +77,9 @@ class Biosolids(SanUnit):
     
     _N_ins = 0
     _N_outs = 1
-    
+    biosolids_annual = 10000 # dry tons/yr, default value for scaling TODO: change with facility
+    biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
+    scale_factor = biosolids_annual / biogenic_refinery_capacity
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  biosolids_source='biosolids', **kwargs):
@@ -99,7 +101,8 @@ class Biosolids(SanUnit):
         
         biosolids.imass['H2O'] = 1.  # or any relevant component
         
-        biosolids.F_mass = self.biosolids_generated*1000/(365*24*1000*(1-self.MC))*1000 # F_mass in kg/hr
+        biosolids_tpy = 5000 # tons per year
+        biosolids.F_mass = biosolids_tpy * 1000/(365*24*1000*(1-self.MC))*1000 # F_mass in kg/hr
         
         #update density to be based on MC
         VM_db = 1 - self.AC - self.FC # fraction dry-basis
@@ -246,11 +249,11 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         AC_biochar_percent = (char_yield_db_percent - daf_yield * 100) / char_yield_db_percent * 100
 
         # Set biochar volatile matter set based on temp
-        if 500 <= self.pyrolysis_temp <= 599:
+        if 500 <= self.pyrolysis_temp <= 600:
             VM_biochar_percent = self.VM_biochar_percent_500
-        elif 600 <= self.pyrolysis_temp <= 699:
+        elif 600 < self.pyrolysis_temp <= 700:
             VM_biochar_percent = self.VM_biochar_percent_600
-        elif 700 <= self.pyrolysis_temp <= 799:
+        elif 700 < self.pyrolysis_temp <= 799:
             VM_biochar_percent = self.VM_biochar_percent_700
         else:
             # print("temp not in range of 500-799")
@@ -482,7 +485,10 @@ class BiogenicRefineryControls(SanUnit):
     fecal sludge treatment with Omni Processors, ACS Environ. Au, 2022,
     https://doi.org/10.1021/acsenvironau.2c00022
     '''
-
+    biosolids_annual = 10000 # dry tons/yr, default value for scaling
+    biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
+    scale_factor = biosolids_annual / biogenic_refinery_capacity
+    
     _N_ins = _N_outs = 1
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
@@ -507,9 +513,9 @@ class BiogenicRefineryControls(SanUnit):
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['Electronics'] = constr[0].quantity = 2
-        design['ElectricConnectors'] = constr[1].quantity = 0.5
-        design['ElectricCables'] = constr[2].quantity = 3
+        design['Electronics'] = constr[0].quantity = 2 * self.scale_factor
+        design['ElectricConnectors'] = constr[1].quantity = 0.5 * self.scale_factor
+        design['ElectricCables'] = constr[2].quantity = 3 * self.scale_factor
         self.add_construction(add_cost=False)
 
 
@@ -524,7 +530,7 @@ class BiogenicRefineryControls(SanUnit):
             self.icp_AC_to_DC +
             self.icp_DC_to_AC +
             self.icp_touch_screen
-            )
+            ) * self.scale_factor
 
         # O&M cost converted to annual basis, labor included,
         # USD/yr only accounts for time running
@@ -533,12 +539,12 @@ class BiogenicRefineryControls(SanUnit):
             self.service_team_replacetouchscreen_icp*self.service_team_wages +
             self.facility_manager_configurevariable_icp*self.facility_manager_wages +
             (self.biomass_controls_replaceboard_icp+self.biomass_controls_codemalfunctioning_icp)*self.biomass_controls_wages
-            )
+            ) * self.scale_factor
 
-        self.add_OPEX =  annual_maintenance/60/self.frequency_corrective_maintenance/(365*24) # USD/hr
+        self.add_OPEX =  annual_maintenance/60/self.frequency_corrective_maintenance/(365*24) * self.scale_factor  # USD/hr
 
         # kWh/hr
-        self.power_utility(self.icp_controller_board_power+self.icp_variable_frequence_drives_power)
+        self.power_utility(self.icp_controller_board_power * self.scale_factor + self.icp_variable_frequence_drives_power * self.scale_factor)
 
 # %%
 
@@ -590,7 +596,10 @@ class BiogenicRefineryHHX(SanUnit):
     --------
     :class:`~.sanunits.BiogenicRefineryHHXdryer`
     '''
-
+    biosolids_annual = 10000 # dry tons/yr, default value for scaling
+    biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
+    scale_factor = biosolids_annual / biogenic_refinery_capacity
+    
     _N_ins = 1
     _N_outs = 1
 
@@ -638,18 +647,18 @@ class BiogenicRefineryHHX(SanUnit):
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['StainlessSteel'] = constr[0].quantity = self.heat_exchanger_hydronic_stainless
-        design['Steel'] = constr[1].quantity  = self.heat_exchanger_hydronic_steel
-        design['HydronicHeatExchanger'] = constr[2].quantity = 1
-        design['Pump'] = constr[3].quantity = 17.2/2.72
+        design['StainlessSteel'] = constr[0].quantity = self.heat_exchanger_hydronic_stainless * self.scale_factor
+        design['Steel'] = constr[1].quantity  = self.heat_exchanger_hydronic_steel * self.scale_factor
+        design['HydronicHeatExchanger'] = constr[2].quantity = 1 * self.scale_factor
+        design['Pump'] = constr[3].quantity = 17.2/2.72 * self.scale_factor
         self.add_construction(add_cost=False)
 
 
     def _cost(self):
         C = self.baseline_purchase_costs
         D = self.design_results
-        C['Stainless steel'] = self.stainless_steel_cost * D['StainlessSteel']
-        C['Steel'] = self.steel_cost * D['Steel']
+        C['Stainless steel'] = self.stainless_steel_cost * D['StainlessSteel'] * self.scale_factor
+        C['Steel'] = self.steel_cost * D['Steel'] * self.scale_factor
         C['Misc. parts'] = (
             self.hhx_stack +
             self.hhx_stack_thermocouple +
@@ -666,7 +675,7 @@ class BiogenicRefineryHHX(SanUnit):
             self.hhx_thermal_well +
             self.hhx_hot_water_tank +
             self.hhx_overflow_tank
-            )
+            ) * self.scale_factor
 
         ratio = self.price_ratio
         for equipment, cost in C.items():
@@ -678,11 +687,11 @@ class BiogenicRefineryHHX(SanUnit):
         annual_maintenance = (
             self.service_team_adjustdoor_hhx*12 +
             num * (self.service_team_replacewaterpump_hhx+self.service_team_purgewaterloop_hhx)
-            )
+            ) * self.scale_factor
 
-        self.add_OPEX =  annual_maintenance * self.service_team_wages / 60 / (365 * 24) # USD/hr (all items are per hour)
+        self.add_OPEX =  annual_maintenance * self.service_team_wages / 60 / (365 * 24) * self.scale_factor # USD/hr (all items are per hour)
 
-        self.power_utility(self.water_pump_power+self.hhx_inducer_fan_power) # kWh/hr
+        self.power_utility(self.water_pump_power * self.scale_factor + self.hhx_inducer_fan_power  * self.scale_factor) # kWh/hr
 
 
 # %%
@@ -841,7 +850,10 @@ class BiogenicRefineryHousing(SanUnit):
     fecal sludge treatment with Omni Processors, ACS Environ. Au, 2022,
     https://doi.org/10.1021/acsenvironau.2c00022
     '''
-
+    biosolids_annual = 10000 # dry tons/yr, default value for scaling
+    biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
+    scale_factor = biosolids_annual / biogenic_refinery_capacity
+    
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  const_wage=15, const_person_days=100, **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, F_BM_default=1)
@@ -867,18 +879,18 @@ class BiogenicRefineryHousing(SanUnit):
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['Steel'] = constr[0].quantity = 2000 + 4000
-        design['StainlessSteelSheet'] = constr[1].quantity = 4.88 * 2 * 3 * 4.5
-        design['Concrete'] = constr[2].quantity = self.concrete_thickness * self.footprint
+        design['Steel'] = constr[0].quantity = (2000 + 4000) * self.scale_factor
+        design['StainlessSteelSheet'] = constr[1].quantity = (4.88 * 2 * 3 * 4.5) * self.scale_factor
+        design['Concrete'] = constr[2].quantity = self.concrete_thickness * self.footprint * self.scale_factor
         self.add_construction(add_cost=False)
 
 
     def _cost(self):
         D = self.design_results
         C = self.baseline_purchase_costs
-        C['Containers'] = self.container20ft_cost + self.container40ft_cost
-        C['Equip Housing'] = D['StainlessSteelSheet'] / 4.88 * self.stainless_steel_housing
-        C['Concrete'] = D['Concrete'] * self.concrete_cost
+        C['Containers'] = self.container20ft_cost + self.container40ft_cost * self.scale_factor
+        C['Equip Housing'] = D['StainlessSteelSheet'] / 4.88 * self.stainless_steel_housing * self.scale_factor
+        C['Concrete'] = D['Concrete'] * self.concrete_cost * self.scale_factor
         ratio = self.price_ratio
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
@@ -935,6 +947,10 @@ class BiogenicRefineryOHX(SanUnit):
     fecal sludge treatment with Omni Processors, ACS Environ. Au, 2022,
     https://doi.org/10.1021/acsenvironau.2c00022
     '''
+    biosolids_annual = 10000 # dry tons/yr, default value for scaling
+    biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
+    scale_factor = biosolids_annual / biogenic_refinery_capacity
+    
     _N_ins = 1
     _N_outs = 1
     
@@ -981,14 +997,14 @@ class BiogenicRefineryOHX(SanUnit):
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['OilHeatExchanger'] = constr[0].quantity = 4/200
-        design['Pump'] = constr[1].quantity = 2.834/2.27
+        design['OilHeatExchanger'] = constr[0].quantity = 4/200 * self.scale_factor
+        design['Pump'] = constr[1].quantity = 2.834/2.27 * self.scale_factor
         self.add_construction(add_cost=False)
 
 
     def _cost(self):
-        self.baseline_purchase_costs['Oil Heat Exchanger'] = self.orc_cost * self.price_ratio
-        self.power_utility(self.oil_pump_power-self.oil_electrical_energy_generated) # kWh/hr
+        self.baseline_purchase_costs['Oil Heat Exchanger'] = self.orc_cost * self.price_ratio * self.scale_factor
+        self.power_utility(self.oil_pump_power  * self.scale_factor - self.oil_electrical_energy_generated  * self.scale_factor) # kWh/hr
 
 
 # %%
@@ -1030,6 +1046,10 @@ class BiogenicRefineryPollutionControl(SanUnit):
     fecal sludge treatment with Omni Processors, ACS Environ. Au, 2022,
     https://doi.org/10.1021/acsenvironau.2c00022
     '''
+    biosolids_annual = 10000 # dry tons/yr, default value for scaling
+    biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
+    scale_factor = biosolids_annual / biogenic_refinery_capacity
+    
     _N_ins = 2
     _N_outs = 2
 
@@ -1072,19 +1092,19 @@ class BiogenicRefineryPollutionControl(SanUnit):
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['StainlessSteel'] = constr[0].quantity = self.pcd_cat_sandwich_stainless
-        design['Steel'] = constr[1].quantity = self.pcd_cat_sandwich_steel
-        design['ElectricMotor'] =  constr[2].quantity = 5/5.8
-        design['CatalyticConverter'] = constr[3].quantity = 1
+        design['StainlessSteel'] = constr[0].quantity = self.pcd_cat_sandwich_stainless * self.scale_factor
+        design['Steel'] = constr[1].quantity = self.pcd_cat_sandwich_steel * self.scale_factor
+        design['ElectricMotor'] =  constr[2].quantity = 5/5.8 * self.scale_factor
+        design['CatalyticConverter'] = constr[3].quantity = 1 * self.scale_factor
         self.add_construction(add_cost=False)
 
 
     def _cost(self):
         D = self.design_results
         C = self.baseline_purchase_costs
-        C['Stainless steel'] = self.stainless_steel_cost * D['StainlessSteel']
-        C['Steel'] = self.steel_cost * D['Steel']
-        C['Electric motor'] = self.input_auger_motor_pcd
+        C['Stainless steel'] = self.stainless_steel_cost * D['StainlessSteel'] * self.scale_factor
+        C['Steel'] = self.steel_cost * D['Steel'] * self.scale_factor
+        C['Electric motor'] = self.input_auger_motor_pcd * self.scale_factor
         C['Misc. parts'] = (
             self.o2_sensor_cost_pcd +
             self.thermocouple_cost_cb_pcd +
@@ -1098,7 +1118,7 @@ class BiogenicRefineryPollutionControl(SanUnit):
             self.feedstock_staging_assembly_pcd +
             self.temperature_limit_switch_pcd +
             self.airlock_pcd
-            )
+            ) * self.scale_factor
 
         # O&M cost converted to annual basis, labor included,
         # USD/yr only accounts for time running
@@ -1107,19 +1127,19 @@ class BiogenicRefineryPollutionControl(SanUnit):
             hpd*365/self.o2_sensor_lifetime_pcd * self.o2_sensor_cost_pcd +
             1/self.thermocouple_lifetime_cb_2pcd * 2 * self.thermocouple_cost_cb_pcd +
             1/self.thermistor_lifetime_cb_2pcd * 2 * self.thermistor_cost_cb_pcd
-            )
+            ) * self.scale_factor
 
         annual_maintenance = (
             self.service_team_adjustdoor_pcd * 12 +
             1/self.frequency_corrective_maintenance * self.service_team_replacecatalyst_pcd +
             1/self.frequency_corrective_maintenance * self.service_team_replacebrick_pcd +
             hpd*365/self.o2_sensor_lifetime_pcd * self.service_team_replaceo2sensor_pcd
-            )
+            ) * self.scale_factor
         annual_maintenance *= self.service_team_wages / 60
 
-        self.add_OPEX =  (replacement_parts_annual_cost+annual_maintenance) / (365 * 24) # USD/hr
+        self.add_OPEX =  (replacement_parts_annual_cost+annual_maintenance) / (365 * 24) * self.scale_factor # USD/hr
 
-        power_demand = (self.pcd_auger_power+self.pcd_airlock_power) * hpd / 24
+        power_demand = (self.pcd_auger_power+self.pcd_airlock_power) * hpd / 24 * self.scale_factor
         self.power_utility(power_demand) # kWh/hr, or kW
 
 

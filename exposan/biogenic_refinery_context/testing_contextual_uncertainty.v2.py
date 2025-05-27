@@ -40,29 +40,27 @@ for _, row in df.iterrows():
     model = create_model(model_ID='A')
     system = model.system
     biosolids = system.flowsheet.stream.biosolids
-    biosolids.empty()
-    biosolids.imass['AshContent'] = ASH_FRAC * dry_mass_kg_d
+
+    # Update model with mass flow from facility sheet, update VM and MC based on biosolids treatment methods.
+    biosolids.F_mass = wet_mass_kg_d
+    biosolids.imass['AshContent'] = ASH_FRAC * dry_mass_kg_d # TODO: add IF statement to reduce based on treatment methods
     biosolids.imass['VolatileMatter'] = VM_FRAC * dry_mass_kg_d
     biosolids.imass['FixedCarbon'] = FC_FRAC * dry_mass_kg_d
-    biosolids.imass['H2O'] = MOISTURE_FRAC * wet_mass_kg_d
-
-    # Run sampling and evaluation
+    biosolids.imass['H2O'] = MOISTURE_FRAC * wet_mass_kg_d # TODO: add IF statement to reduce based on treatment methods
+    
+    #TODO: also update scale_factor of each unit to use the TON_COL data
 
     # Simulate system with updated input
     model.system.simulate()
 
 
-        # ===== Monte Carlo sampling =====
-
+    # ===== Monte Carlo sampling =====    
     N = 100  # Number of Latin Hypercube samples
     samples = model.sample(N, rule='L')
     model.load_samples(samples)
     model.evaluate()
-
     
-
-
-        # ===== Collect metrics =====
+    # ===== Collect detailed metrics for each facility =====   
     metric_values = {}
     for metric in model.metrics:
         for col in model.table.columns:
@@ -77,7 +75,7 @@ for _, row in df.iterrows():
         upper = np.percentile(values, 95)
         metric_values[metric.name] = (mean, lower, upper)
 
-        # Store results for this facility
+    # Store only summarized results for each facility
     result = {'NPDES ID2': facility, 'Biosolids_tpy': TONS_COL}
     for name, (mean, lower, upper) in metric_values.items():
         result[f'{name} (mean)'] = mean
@@ -86,11 +84,11 @@ for _, row in df.iterrows():
 
     results.append(result)
 
-
+    # Save summarized results to excel
     export_data_df = pd.DataFrame(results)
     export_data_df.to_excel(mpath)
     
-    # Save metrics to Excel
+    # Save detailed metrics to Excel
     df_metrics = model.table
     sheetname = facility[:31]  # Max Excel sheet name length = 31
     df_metrics.to_excel(writer, sheet_name=sheetname)

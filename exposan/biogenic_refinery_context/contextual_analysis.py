@@ -12,9 +12,21 @@ import pandas as pd
 from qsdsan.utils import load_data
 from exposan.biogenic_refinery_context import (
     create_system,
-    data_path,
+    data_path, #as br_data_path,
+    br_path,
     results_path,
-)
+    #get_decay_k, not found in _init, commented for now #TODO
+    get_LCA_metrics,
+    get_TEA_metrics,
+    get_sustainability_indicators,
+    results_path,
+    update_resource_recovery_settings,
+    cost_per_ton_biochar,
+    gwp_per_ton_biochar,
+    biochar_generated,
+    sequesterable_carbon,
+    drying_requirement,
+    )
 
 # Configuration
 INPUT_EXCEL = 'Flow + Biosolids Combined Data (Major-Facilities)_subset.xlsx'
@@ -42,6 +54,7 @@ def run_contextual_analysis():
     all_results = {}
 
     # Initialize result dictionary
+    
     for metric in ('cost', 'gwp', 'fec', 'mec', 'energy', 'biochar_ton_per_day'):
         for ID in (sys.ID for sys in all_syses):
             all_results[f'{ID}_{metric}'] = {}
