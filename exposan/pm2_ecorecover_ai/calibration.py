@@ -12,7 +12,7 @@ for license details.
 '''
 
 from qsdsan.utils import ospath, time_printer
-from exposan.pm2_ecorecover import (
+from exposan.pm2_ecorecover_ai import (
     results_path,
     create_model,
     )
@@ -45,11 +45,22 @@ time_track.terminal = True
 def objective(trial):
 
     params = {
+        'q_CH': trial.suggest_uniform('q_CH', 0.1, 10),
+        'q_LI': trial.suggest_uniform('q_LI', 1.5, 50),
+        'V_NH': trial.suggest_uniform('V_NH', 0.01, 1),
+        'V_P': trial.suggest_uniform('V_P', 0.01, 1),
         'arr_e': trial.suggest_uniform('arr_e', 1000, 10000),
         'K_P': trial.suggest_uniform('K_P', 0.01, 100),
         'f_CH_max': trial.suggest_uniform('f_CH_max', 0.1, 10),
         'exponent': trial.suggest_uniform('exponent', 1, 10)
         }
+    
+    # params = {
+    #     'arr_e': trial.suggest_uniform('arr_e', 1000, 10000),
+    #     'K_P': trial.suggest_uniform('K_P', 0.01, 100),
+    #     'f_CH_max': trial.suggest_uniform('f_CH_max', 0.1, 10),
+    #     'exponent': trial.suggest_uniform('exponent', 1, 10)
+    #     }
 
     current_params = np.array([])
 
@@ -62,7 +73,7 @@ def objective(trial):
     print('Renewed start time:', start_time)
 
     try:
-        mdl._update_state(current_params, t_span=(0, 25), t_eval = np.arange(0, 26, 1), method='RK23', state_reset_hook='reset_cache', print_t=False, events=time_track)
+        mdl._update_state(current_params, t_span=(0, 30), t_eval = np.arange(0, 30, 1), method='RK23', state_reset_hook='reset_cache', print_t=False, events=time_track)
 
     except:
         print('Fail & return 15')

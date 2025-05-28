@@ -14,7 +14,7 @@ for license details.
 import os, numpy as np, qsdsan as qs
 from qsdsan import processes as pc, sanunits as su, WasteStream, System
 from qsdsan.utils import time_printer, load_data, get_SRT, ExogenousDynamicVariable as EDV
-from exposan.pm2_ecorecover import data_path
+from exposan.pm2_ecorecover_ai import data_path
 
 __all__ = (
     'biomass_IDs',
@@ -32,12 +32,12 @@ __all__ = (
 # =============================================================================
 
 # Q = 449.06        # influent flowrate [m3/d]
-Temp = 286.08        # temperature [K]
+Temp = 296.02        # temperature [K]
 
-V_mix = 66.23
+V_mix = 65.09
 V_pbr = 77.49
-V_mem = 7.03
-V_ret = 6.21
+V_mem = 7.08
+V_ret = 5.61
 
 biomass_IDs = ('X_ALG',)
 
@@ -63,19 +63,19 @@ default_pm2_kwargs = dict(
     )
 
 default_init_conds = {
-        'X_CHL':2.53,
-        'X_ALG':505.97,
-        'X_PG':22.99,
-        'X_TAG':93.78,
+        'X_CHL':1.91,
+        'X_ALG':381.02,
+        'X_PG':17.31,
+        'X_TAG':70.62,
         'S_CO2':30.0,
         'S_A':5.0,
         'S_G':5.0,
         'S_O2':5.0,
-        'S_NH':35.80,
-        'S_NO':0.7,
-        'S_P':0.36,
-        'X_N_ALG':3.23,
-        'X_P_ALG':0.19,
+        'S_NH':13.62,
+        'S_NO':13.75,
+        'S_P':0.35,
+        'X_N_ALG':0.57,
+        'X_P_ALG':0.14,
     }
 
 def batch_init(sys, path, sheet):
@@ -98,7 +98,7 @@ def batch_init(sys, path, sheet):
 
 def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
 
-    flowsheet = flowsheet or qs.Flowsheet('pm2_ecorecover')
+    flowsheet = flowsheet or qs.Flowsheet('pm2_ecorecover_ai')
     qs.main_flowsheet.set_flowsheet(flowsheet)
 
     # Components
@@ -173,14 +173,14 @@ def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
                   aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
     PBR19 = su.CSTR('PBR19', ins=PBR18-0, V_max=V_pbr/20,
                   aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
-    PBR20 = su.CSTR('PBR20', ins=PBR19-0, outs=[ME, INT], split=[0.52, 0.48], V_max=V_pbr/20,
+    PBR20 = su.CSTR('PBR20', ins=PBR19-0, outs=[ME, INT], split=[0.73, 0.27], V_max=V_pbr/20,
                   aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_pbr, I_pbr))
 
-    MEM = su.Splitter('MEM', PBR20-0, outs=[TE, RETEN], split=0.39*(1-cmps.x))
+    MEM = su.Splitter('MEM', PBR20-0, outs=[TE, RETEN], split=0.43*(1-cmps.x))
 
     MEV = su.CSTR('MEV', ins=MEM-1, V_max=V_mem, aeration=None, suspended_growth_model=None)
 
-    POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.97)
+    POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.95)
 
     CENT = su.Splitter('CENT', POST_MEM-1, outs=[CEN, ALG], split={'X_CHL':0.33,
                                                                     'X_ALG':0.33,
@@ -237,7 +237,7 @@ def run(t, t_step, method=None, **kwargs):
     print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
 
 if __name__ == '__main__':
-    t = 25
+    t = 30
     t_step = 1
     # method = 'RK45'
     method = 'RK23'

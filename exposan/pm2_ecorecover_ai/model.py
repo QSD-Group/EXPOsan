@@ -16,7 +16,7 @@ from scipy.interpolate import interp1d
 from chaospy import distributions as shape
 from qsdsan.utils import DictAttrSetter, ospath, load_data
 
-from exposan.pm2_ecorecover import (
+from exposan.pm2_ecorecover_ai import (
     create_system,
     data_path,
     )
@@ -32,23 +32,53 @@ modified_pm2_kwargs = dict(
     beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
     K_N=0.1, K_P=1.0, K_A=6.3, K_G=6.3, rho=1.186, K_STO=1.566,
     f_CH_max=0.819, f_LI_max=3.249, m_ATP=10,
-    mu_max=1.969, q_CH=1.928, q_LI=26.154,
+    mu_max=1.969,
+    #q_CH=1.928, q_LI=26.154,
+    q_CH=1, q_LI=15,
     Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163,
-    V_NH=0.151, V_NO=0.003, V_P=0.540, exponent=4,
+#    V_NH=0.151, V_NO=0.003, V_P=0.540, exponent=4,
+    V_NH=0.1, V_NO=0.003, V_P=0.2, exponent=4,
     Y_ATP_PHO=55.073, Y_CH_PHO=0.754, Y_LI_PHO=0.901, Y_X_ALG_PHO=0.450,
     Y_ATP_HET_ACE=39.623, Y_CH_NR_HET_ACE=0.625, Y_CH_ND_HET_ACE=0.600,
     Y_LI_NR_HET_ACE=1.105, Y_LI_ND_HET_ACE=0.713, Y_X_ALG_HET_ACE=0.216,
     Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880,
     Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317, n_dark=0.7,
     path=None,
-    )    # sequential calibration
+    )
 
 sensitive_params = {
+    'q_CH': (1, 'g COD/g COD/d', (0.1, 10)),
+    'q_LI': (15, 'g COD/g COD/d', (1.5, 50)),
+    'V_NH': (0.1, 'g N/g COD/d', (0.01, 1)),
+    'V_P': (0.2, 'g P/g COD/d', (0.01, 1)),
     'arr_e': (6842, 'K', (1000, 10000)),
     'K_P': (1.0, 'g P/m^3', (0.01, 100)),
     'f_CH_max': (0.819, 'g COD/g COD', (0.1, 10)),
     'exponent': (4, '', (1, 10)),
-    }   # sequential calibration
+    }   # Not sequential calibration
+
+# modified_pm2_kwargs = dict(
+#     a_c=0.049, I_n=1500, arr_a=1.8e10, arr_e=6842, beta_1=2.90,
+#     beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
+#     K_N=0.1, K_P=1.0, K_A=6.3, K_G=6.3, rho=1.186, K_STO=1.566,
+#     f_CH_max=0.819, f_LI_max=3.249, m_ATP=10,
+#     mu_max=1.969, q_CH=1.928, q_LI=26.154,
+#     Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163,
+#     V_NH=0.151, V_NO=0.003, V_P=0.540, exponent=4,
+#     Y_ATP_PHO=55.073, Y_CH_PHO=0.754, Y_LI_PHO=0.901, Y_X_ALG_PHO=0.450,
+#     Y_ATP_HET_ACE=39.623, Y_CH_NR_HET_ACE=0.625, Y_CH_ND_HET_ACE=0.600,
+#     Y_LI_NR_HET_ACE=1.105, Y_LI_ND_HET_ACE=0.713, Y_X_ALG_HET_ACE=0.216,
+#     Y_ATP_HET_GLU=58.114, Y_CH_NR_HET_GLU=0.917, Y_CH_ND_HET_GLU=0.880,
+#     Y_LI_NR_HET_GLU=1.620, Y_LI_ND_HET_GLU=1.046, Y_X_ALG_HET_GLU=0.317, n_dark=0.7,
+#     path=None,
+#     )    # sequential calibration
+
+# sensitive_params = {
+#     'arr_e': (6842, 'K', (1000, 10000)),
+#     'K_P': (1.0, 'g P/m^3', (0.01, 100)),
+#     'f_CH_max': (0.819, 'g COD/g COD', (0.1, 10)),
+#     'exponent': (4, '', (1, 10)),
+#     }   # sequential calibration
 
 #%%
 def import_scada_data():
