@@ -46,39 +46,45 @@ data_path, results_path = _init_modules(module, include_data_path=True)
 
 def cost_per_ton_biochar(model):
     biochar = model.system.flowsheet.stream.biochar
-    biochar_mass = biochar.F_mass / 1000  # tons/year
-    print('DEBUG sample: biochar_mass =', biochar_mass)
+    biochar_mass = biochar.F_mass * 24 * 365 / 1000  # tons/year
+   
     if biochar_mass == 0:
-        print('WARNING: Biochar flow is zero in a sample.')
         return np.nan
     total_cost = model.system.TEA.AOC + get_scaled_capital(model.system.TEA) + model.system.TEA.annual_labor - model.system.TEA.sales
+    # print("AOC:", model.system.TEA.AOC)
+    # print("scaled capital:", get_scaled_capital(model.system.TEA))
+    # print("labor:", model.system.TEA.annual_labor)    
+    # print("sales:", model.system.TEA.sales)
     return total_cost / biochar_mass
 
 def gwp_per_ton_biochar(model):
     system = model.system
+    print("LCA impacts:", system.LCA.total_impacts)
     return (
         np.nan if system.flowsheet.stream.biochar.F_mass == 0 else
         system.LCA.total_impacts['GlobalWarming'] /
-        (system.flowsheet.stream.biochar.F_mass / 1000) # kg CO2-eq/year
+        (system.flowsheet.stream.biochar.F_mass * 24 * 365 / 1000) # kg CO2-eq/ton-biochar
     )
     
 def biochar_generated(model):
     system = model.system
-    return system.flowsheet.stream.biochar.F_mass / 1000  # tons/year
+    return system.flowsheet.stream.biochar.F_mass * 24 * 365 / 1000  # tons biochar/year
 
 def sequesterable_carbon(model):
     system = model.system
+
     return (
         0 if system.flowsheet.stream.biochar.F_mass == 0 else
-        (system.flowsheet.stream.biochar.F_mass / 1000) *
-        (system.flowsheet.stream.biochar.imass['C'] / system.flowsheet.stream.biochar.F_mass)
+        (system.flowsheet.unit.A4.biochar_sequesterable_carbon)                       #tons sequesterable C / year
     )
 
 def drying_requirement(model):
     system = model.system
-    return system.flowsheet.unit.A8.Q_drying_norm  # MJ/ton
+    return system.flowsheet.unit.A8.Q_drying_norm  # MJ/ton-biosolids
 
-
+def energy_conversion_efficiency(model):
+    system = model.system
+    return system.flowsheet.unit.A4.ECE             #ECE %
 # %%
 
 # =============================================================================

@@ -103,7 +103,7 @@ class Biosolids(SanUnit):
         
         # biosolids_tpy = 5000 # tons per year
         biosolids_tpy = self.biosolids_generated
-        biosolids.F_mass = biosolids_tpy * 1000/(365*24*1000*(1-self.MC))*1000 # F_mass in kg/hr
+        biosolids.F_mass = biosolids_tpy * 1000/(365*24*(1-self.MC)) # F_mass in kg/hr
         
         #update density to be based on MC
         VM_db = 1 - self.AC - self.FC # fraction dry-basis
@@ -243,8 +243,8 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         char_yield_db_percent = char_yield_factor * 100  # %
 
         # Calculate total char mass flow rate
-        biochar_dry_mass_flow = dry_mass_flow * (char_yield_db_percent / 100)  # kg/hr +2% MC
-        biochar_mass_flow = dry_mass_flow / .98  # kg/hr adjusts the mass to add 2% MC
+        biochar_dry_mass_flow = dry_mass_flow * (char_yield_db_percent / 100)  # kg/hr 
+        biochar_mass_flow = biochar_dry_mass_flow / .98  # kg/hr adjusts the mass to add 2% MC
 
         # Calculate biochar ash content
         AC_biochar_percent = (char_yield_db_percent - daf_yield * 100) / char_yield_db_percent * 100
@@ -296,13 +296,14 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         # Carbon sequestration calculations
         # Calculate carbon content of biochar (% mass C/mass biochar)
         C_biochar = (0.474 * VM_biochar_percent + 0.963 * FC_biochar_percent + 0.067 * AC_biochar_percent) / 100  # Klasson 2017
+   
         biochar.imass['C'] = C_biochar
         
         # Calculate ash-free carbon content
         Cafb = (0.474 * VM_biochar_percent + 0.963 * FC_biochar_percent + 0.067 * AC_biochar_percent) / (100 - AC_biochar_percent)  # Klasson 2017
 
         # Calculate feedstock carbon content
-        C_feedstock = -0.50 * (ACf * 100) + 54.51  # % Krueger et al. 2021
+        C_feedstock = -0.50 * (ACf * 100) + 54.51  # % Krueger et al. 2021)
 
         # Calculate recalcitrance index
         R50 = 0.17 * Cafb + 0.00479  # Klasson 2017
@@ -314,53 +315,15 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         
         biochar_carbon_content = C_biochar  # frac
         biochar_carbon_sequestration_ratio = CS  # %
-        biochar_sequesterable_carbon = CS/100 * C_feedstock/100 * dry_mass_flow * 24 * 365 / 1000 # ton seq. C/year
+        self.biochar_sequesterable_carbon = CS/100 * C_feedstock/100 * dry_mass_flow * 24 * 365 / 1000 # ton seq. C/year
         biochar.F_mass = biochar_mass_flow  # kg/hr
         
         #TODO layer other assumptions on biochar here, 
         # need to add estimate for ash content here
-        
-        #Lane's code for dry biochar yield from CS_heatmap file
-        # def get_yield(temp, AC): 
-        #     f_AC_dec = AC/100 #converts % ash content of feedstock to decimal
-            
-        #     # predictive equation for % biochar dry basis (db) yield - derived via Excel solver
-        #     db_yield = 100 * (1.18 * f_AC_dec ** 0.843 + (1 - f_AC_dec) * 2.106 * np.exp(-0.0066 * temp))
-        #     return db_yield
-           
-        # # Calculate carbon sequestration potential of biochar produced (% mass)
-        # def get_CS(temp, AC): 
-        #     db_yield = get_yield(temp, AC)  
-            
-        #     # predictive equation for % biochar dry ash-free (daf) yield - Neves et al. 2011
-        #     daf_yield = 100 * (0.106 + 2.43 * np.exp(-0.0066 * temp))
-            
-        #     # predictive equation for % biochar fixed carbon - derived via Excel solver
-        #     FC_biochar = 87.786 * daf_yield ** -0.483
-
-        #     # calculate biochar volatile matter and ash content using calculated values from above eqns
-        #     AC_biochar = (db_yield - daf_yield) * 100 / db_yield
-        #     VM_biochar = 100 - AC_biochar - FC_biochar
-            
-        #     # calculations for carbon sequestration (CS) potential [% mass C/mass biochar] 
-        #     C_biochar = (0.474 * VM_biochar + 0.963 * FC_biochar + 0.067 * AC_biochar) / 100 # Klasson 2017
-        #     Cafb = (0.474 * VM_biochar + 0.963 * FC_biochar + 0.067 * AC_biochar) / (100 - AC_biochar) # Klasson 2017
-        #     C_feedstock = -0.50 * AC + 54.51 # Krueger et al. 2021
-        #     R50 = 0.17 * Cafb + 0.00479 # Klasson 2017
-        #     CS = db_yield * (C_biochar*100) * R50 / C_feedstock # Zhao et al. 2013
-        #     return CS  
-
-        # def get_mass_C(temp, AC):
-        #     db_yield = get_yield(temp, AC)
-        #     CS = get_CS(temp, AC)
-        #     # Biogenic Refinery loading rate of 18 kg feedstock/h (dry basis) 
-        #     daily_in = 18*24
-        #     mass_C = daily_in * (db_yield/100) * (CS/100)
-        #     return mass_C
 
         # Daily run time for the influent waste
         # One unit is capable of treating 550 kg/d (35% moisture based on 20 hr of run time) or 18 kg dry/hr
-        self.daily_run_time = hpd = waste.F_mass*(1-mc) * 24/self.loading_rate # hr/d
+        self.daily_run_time = hpd = 20 # hr/d
         self.uptime_ratio = hpd / 24 # ratio of uptime (all items are per hour)
 
         # # Energy balance, not really being used

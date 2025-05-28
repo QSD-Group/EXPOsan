@@ -54,7 +54,8 @@ model.load_samples(samples)
 model.evaluate()
 for metric in model.metrics:
     print(f"{metric.name}: {metric()}")  # Will call the lambda
-print(model.system.flowsheet.stream.biochar)
+print("biosolids", model.system.flowsheet.stream.biosolids)
+print("biochar", model.system.flowsheet.stream.biochar)
 model.table.to_excel(mpath)
 
     # ===== Collect metrics =====

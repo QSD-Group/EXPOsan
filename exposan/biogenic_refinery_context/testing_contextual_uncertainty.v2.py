@@ -32,10 +32,11 @@ writer = pd.ExcelWriter(os.path.join(results_path, 'monte_carlo_results.xlsx'))
 model = create_model(model_ID='A')
 system = model.system
 u = system.flowsheet.unit
-# biosolids = system.flowsheet.stream.biosolids
+
 u.A1.AC = ASH_FRAC
 u.A1.FC = FC_FRAC
 u.A1.MC = MOISTURE_FRAC
+
 
 N = 100  # Number of Latin Hypercube samples
 samples = model.sample(N, rule='L')
@@ -45,8 +46,10 @@ model.load_samples(samples)
 for _, row in df.iterrows():
     facility = row['NPDES ID2']
     # dry_tons_per_year = row[TONS_COL]
+    
     u.A1.biosolids_generated = tpy = row[TONS_COL]
-
+    u.A1.biosolids_annual = u.A2.biosolids_annual = u.A3.biosolids_annual = u.A4.biosolids_annual = \
+        u.A5.biosolids_annual = u.A6.biosolids_annual = u.A7.biosolids_annual = u.A8.biosolids_annual = tpy
 # =============================================================================
 #     # Convert to dry mass per day
 #     dry_mass_kg_d = dry_tons_per_year * TONS_TO_KG / 365
@@ -68,6 +71,9 @@ for _, row in df.iterrows():
 
     # ===== Monte Carlo sampling =====    
     model.evaluate()
+    
+    print("biosolids", model.system.flowsheet.stream.biosolids)
+    print("biochar", model.system.flowsheet.stream.biochar)
     
     # ===== Collect detailed metrics for each facility =====   
     metric_values = {}

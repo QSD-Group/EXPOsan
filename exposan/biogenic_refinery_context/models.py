@@ -55,6 +55,7 @@ from . import (
     biochar_generated,
     sequesterable_carbon,
     drying_requirement,
+    energy_conversion_efficiency
 )
 
 __all__ = ('create_model', 'run_uncertainty',)
@@ -85,6 +86,7 @@ def add_metrics(model):
         Metric('Biochar generated', lambda: biochar_generated(model), 'ton biochar/yr'),
         Metric('Sequesterable carbon', lambda: sequesterable_carbon(model), 'ton C/yr'),
         Metric('Drying requirement', lambda: drying_requirement(model), 'kWh/ton biosolids/yr'),
+        Metric('Energy Conversion Efficiency', lambda: energy_conversion_efficiency(model), '%'),
     ]
 
     # Net cost
