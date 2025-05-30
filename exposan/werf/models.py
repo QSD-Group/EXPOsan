@@ -189,7 +189,9 @@ def add_OPEX_metrics(model):
     @metric(name='RAS pumping energy', units='kW', element='Pumping')
     def get_ras_pump_power():
         if 'RAS' in s:
-            pump.dP_design = get_dP(25, 0)
+            if 'MBR' in u: h = 10
+            else: h = 25
+            pump.dP_design = get_dP(h, 0)
             pumpin.copy_like(s.RAS)
             pump.simulate()
             power = pump.power_utility.consumption
