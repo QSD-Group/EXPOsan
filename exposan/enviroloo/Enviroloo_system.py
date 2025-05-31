@@ -432,7 +432,7 @@ def run(t, method=None, **kwargs):
 
     
 if __name__ == '__main__':
-    t = 2
+    t = 80
     # method = 'RK45'
     method = 'RK23' 
     # method = 'DOP853'
