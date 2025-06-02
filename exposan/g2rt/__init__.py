@@ -84,10 +84,10 @@ def update_resource_recovery_settings():
         'Electricity': 0.69,
         'CH4': 34,
         'N2O': 298,
-        'N': -5.4*RR_factor,
-        'P': -4.9*RR_factor,
-        'K': -1.5*RR_factor,
-        'H2O': -3.2756/1e4 * RR_factor, 
+        'N': -3.50*RR_factor,
+        'P': -3.61*RR_factor, 
+        'K': -0.88*RR_factor,
+        'H2O': -0.00043213964 * RR_factor, 
         # per kg of tap water production, conventional treatment
         'NO': 0,
         'SO2':0,
@@ -237,7 +237,11 @@ hr_per_yr = 365 * 24
 get_N = lambda stream: (stream.imass['NH3']+stream.imass['NonNH3'])*hr_per_yr
 get_P = lambda stream: stream.imass['P']*hr_per_yr #TODO: check if mass in and mass out balance in each unit
 get_K = lambda stream: stream.imass['K']*hr_per_yr
-get_Water = lambda stream: stream.imass['H2O']*hr_per_yr 
+get_Water = lambda stream: stream.imass['H2O']*hr_per_yr
+get_COD_conc = lambda stream: stream.COD #mg/L
+get_COD_mass = lambda stream: (stream.imass['sCOD']+stream.imass['xCOD'])*hr_per_yr
+get_TSS_conc = lambda stream: stream.get_TSS()
+get_TSS_mass = lambda stream: stream.get_TSS()* stream.F_vol * hr_per_yr/1000 # kg/year
 
 # Only for `sysA` or `sysB`
 def get_recoveries(system, ppl=None, include_breakdown=False):
@@ -254,26 +258,57 @@ def get_recoveries(system, ppl=None, include_breakdown=False):
     ##### Unique to A or B #####
     if AB == 'A':
         fp = u_reg.A10
-        solids_separator = u_reg.A3
+        solid_separation = u_reg.A3
+        belt_separation = u_reg.A4
+        uf= u_reg.A5
         RO = u_reg.A6
         comp_splitter = u_reg.A18
         mixer = u_reg.Mixer
         functions = [
-                lambda: get_N(comp_splitter.outs[0]) / (get_N(fp.outs[1])+get_N(RO.outs[0])+get_N(RO.outs[1])) * 100,  # total_N_recovery
-                lambda: get_P(comp_splitter.outs[1]) / (get_P(fp.outs[1])+get_P(RO.outs[0])+get_P(RO.outs[1])) * 100,  # total_P_recovery
-                lambda: get_K(comp_splitter.outs[2]) / (get_K(fp.outs[1])+get_K(RO.outs[0])+get_K(RO.outs[1])) * 100,  # total_K_recovery
-                lambda: get_Water(RO.outs[0]) / (get_Water(RO.outs[0])+get_Water(RO.outs[1]))* 100 #total water recovery
+                lambda: get_N(comp_splitter.outs[0]) / (get_N(solid_separation.ins[0])+get_N(solid_separation.ins[1])) * 100,  # total_N_recovery
+                lambda: get_P(comp_splitter.outs[1]) / (get_P(solid_separation.ins[0])+get_P(solid_separation.ins[1])) * 100,  # total_P_recovery
+                lambda: get_K(comp_splitter.outs[2]) / (get_K(solid_separation.ins[0])+get_K(solid_separation.ins[1])) * 100,  # total_K_recovery
+                lambda: get_Water(RO.outs[2]) / (get_Water(RO.outs[0])+get_Water(RO.outs[1])+get_Water(RO.outs[2]))* 100, #total water recovery
+                lambda: (1 - get_N(RO.outs[2]) / (get_N(solid_separation.ins[0])+get_N(solid_separation.ins[1]))) * 100,# N removal efficiency
+                lambda: (1 - get_P(RO.outs[2]) / (get_P(solid_separation.ins[0])+get_P(solid_separation.ins[1]))) * 100,# P removal efficiency
+                lambda: get_COD_conc(RO.outs[2]),  # effluent COD concentration mg/L
+                lambda: get_TSS_conc(RO.outs[2]), #effluent TSS concentration mg/L
+                lambda: (get_Water(solid_separation.ins[0])+ get_Water(solid_separation.ins[1]))/365, #kg/day water to be treated
+                lambda: (get_COD_mass(solid_separation.ins[0])+get_COD_mass(solid_separation.ins[1]))/365, #kg/day COD to be treated
+                lambda: (get_N(solid_separation.ins[0])+ get_N(solid_separation.ins[1]))/365, #kg/day N to be treated
+                lambda: (get_P(solid_separation.ins[0])+ get_P(solid_separation.ins[1]))/365, #kg/day P to be treated
+                lambda: (get_K(solid_separation.ins[0])+ get_K(solid_separation.ins[1]))/365, #kg/day K to be treated
+                lambda: (get_TSS_mass(solid_separation.ins[0])+ get_TSS_mass(solid_separation.ins[1]))/365, #kg/day TSS to be treated
+                lambda: get_COD_mass(belt_separation.outs[1]) / (get_COD_mass(solid_separation.ins[0])+get_COD_mass(solid_separation.ins[1])) *100, #solids carbon diversion %
+                lambda: get_Water(belt_separation.outs[1])/ (get_Water(solid_separation.ins[0])+get_Water(solid_separation.ins[1])) * 100, #solids water diversion %
+                lambda: get_COD_mass(uf.outs[0])/(get_COD_mass(solid_separation.ins[0])+get_COD_mass(solid_separation.ins[1])) *100, #UF to RO carbon carbon diversion %
                 ]
         return functions
     else: # unique to sysB
         mixer = u_reg.Mixer
+        solid_separation = u_reg.B3
+        belt_separation = u_reg.B4
         comp_splitter = u_reg.B17
+        uf = u_reg.B8
         RO = u_reg.B9
         reactor = u_reg.B11
-        functions = [lambda: get_N(comp_splitter.outs[0]) / (get_N(reactor.ins[1])+get_N(RO.outs[0])+get_N(RO.outs[1])) * 100,  # total_N_recovery 
-                     lambda: get_P(comp_splitter.outs[1]) / (get_P(reactor.ins[1])+get_P(RO.outs[0])+get_P(RO.outs[1])) * 100,  # total_P_recovery
-                     lambda: get_K(comp_splitter.outs[2]) / (get_K(reactor.ins[1])+get_K(RO.outs[0])+get_K(RO.outs[1])) * 100,  # total_K_recovery
-                     lambda: get_Water(RO.outs[0]) / (get_Water(RO.outs[0]) + get_Water(RO.outs[1]))* 100 #total water recovery
+        functions = [lambda: get_N(comp_splitter.outs[0]) / (get_N(solid_separation.ins[0])+get_N(solid_separation.ins[1])) * 100,  # total_N_recovery 
+                     lambda: get_P(comp_splitter.outs[1]) / (get_P(solid_separation.ins[0])+get_P(solid_separation.ins[1])) * 100,  # total_P_recovery
+                     lambda: get_K(comp_splitter.outs[2]) / (get_K(solid_separation.ins[0])+get_K(solid_separation.ins[1])) * 100,  # total_K_recovery
+                     lambda: get_Water(RO.outs[2]) / (get_Water(RO.outs[0]) + get_Water(RO.outs[1])+get_Water(RO.outs[2]))* 100, #total water recovery
+                     lambda: (1 - get_N(RO.outs[2]) / (get_N(solid_separation.ins[0])+get_N(solid_separation.ins[1]))) * 100,# N removal efficiency
+                     lambda: (1 - get_P(RO.outs[2]) / (get_P(solid_separation.ins[0])+get_P(solid_separation.ins[1]))) * 100,# P removal efficiency
+                     lambda: get_COD_conc(RO.outs[2]),  # effluent COD concentration mg/L
+                     lambda: get_TSS_conc(RO.outs[2]), #effluent TSS concentration mg/L
+                     lambda: (get_Water(solid_separation.ins[0])+ get_Water(solid_separation.ins[1]))/365, #kg/day water to be treated
+                     lambda: (get_COD_mass(solid_separation.ins[0])+get_COD_mass(solid_separation.ins[1]))/365, #kg/day COD to be treated
+                     lambda: (get_N(solid_separation.ins[0])+ get_N(solid_separation.ins[1]))/365, #kg/day N to be treated
+                     lambda: (get_P(solid_separation.ins[0])+ get_P(solid_separation.ins[1]))/365, #kg/day P to be treated
+                     lambda: (get_K(solid_separation.ins[0])+ get_K(solid_separation.ins[1]))/365, #kg/day K to be treated
+                     lambda: (get_TSS_mass(solid_separation.ins[0])+ get_TSS_mass(solid_separation.ins[1]))/365, #kg/day TSS to be treated
+                     lambda: get_COD_mass(belt_separation.outs[1]) / (get_COD_mass(solid_separation.ins[0])+get_COD_mass(solid_separation.ins[1])) *100, #solids carbon diversion %
+                     lambda: get_Water(belt_separation.outs[1])/ (get_Water(solid_separation.ins[0])+get_Water(solid_separation.ins[1])) * 100, #solids water diversion %
+                     lambda: get_COD_mass(uf.outs[0])/(get_COD_mass(solid_separation.ins[0])+get_COD_mass(solid_separation.ins[1])) *100, #UF to RO carbon diversion %
                      ]
         return functions
 

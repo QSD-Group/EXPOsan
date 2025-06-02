@@ -62,7 +62,7 @@ def create_components(set_thermo=True):
                     degradability='Undegradable', organic=False)
     C2H4O2 = Component('C2H4O2', phase='l', particle_size='Soluble',
                     degradability='Readily', organic=True)
-    
+    # CO = Component
     # Wood pellets
     # moisture content = 18.5 %, caloric value (HHV) = 19.16 MJ/kg
     WoodPellet = Component('WoodPellet', phase='s', i_C = 0.474, i_N = 0.0031,

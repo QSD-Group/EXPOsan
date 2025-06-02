@@ -94,7 +94,7 @@ class mSCWOGasModule(IsothermalCompressor):
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  P=1.55E7, eta =0.7,vle=False, compressor_type='Reciprocating', 
                  driver=None, material=None, driver_efficiency=None,include_construction= True,
-                 **kwargs):
+                 user_scale_up=1,**kwargs):
         IsothermalCompressor.__init__(self, ID=ID, ins=ins, outs=outs, 
                                       P = P, eta = eta, vle = vle, 
                                       compressor_type = compressor_type, driver= driver, 
@@ -103,6 +103,7 @@ class mSCWOGasModule(IsothermalCompressor):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
                          F_BM_default=1)
         self.include_construction = include_construction
+        self.user_scale_up = user_scale_up
         data = load_data(path=mscwo_gas_module_path)
         for para in data.index:
             value = float(data.loc[para]['expected'])
@@ -158,7 +159,7 @@ class mSCWOGasModule(IsothermalCompressor):
         super()._design()
         D = self.design_results
         C = self.baseline_purchase_costs
-        C['Compressor'] = self.compressor_cost
+        C['Compressor'] = self.compressor_cost *(self.user_scale_up ** 0.6)
         C['Valves'] = (self.injection_valve_cost +
                        self.dosing_valve_cost * self.dosing_valve_quantity
                        )
@@ -176,12 +177,12 @@ class mSCWOGasModule(IsothermalCompressor):
         self.add_OPEX = (g2rt.get_unit_scaled_capital(total_equipment)*self.material_replacement_cost/(365*24) + 
                          #USD/hr, assume replacement cost 5% of CAPEX per year
                          self._calc_maintenance_labor_cost()) #USD/hr
-        self.power_utility(self.dosing_valve_power_demand * self.dosing_valve_daily_operation/24+
+        self.power_utility(self.dosing_valve_power_demand * self.dosing_valve_daily_operation/24*self.user_scale_up+
                            D['Ideal power']/self.eta/self.compressor_efficiency
                            ) # kWh/hr
 
     def _calc_maintenance_labor_cost(self): #USD/hr
-        maintenance_labor_cost= (self.gas_module_maintenance * self.wages)
+        maintenance_labor_cost= (self.gas_module_maintenance * self.wages * self.user_scale_up)
         return maintenance_labor_cost / (365*24)
     
     @property
@@ -230,10 +231,9 @@ class mSCWOReactorModule(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', 
                  material_replacement_cost = None, reactor_system_cost = None,
-                 **kwargs):
+                 user_scale_up=1,**kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=1)
-        
-
+        self.user_scale_up = user_scale_up
         data = load_data(path=mscwo_reactor_module_path)
         for para in data.index:
             if material_replacement_cost is not None and para == "material_replacement_cost":
@@ -264,7 +264,7 @@ class mSCWOReactorModule(SanUnit):
         gas_product.P = N2O.P = liquid_effluent.P = ash.P= 101325 #release into atmosphere
         N2O.phase = 'g'
         ash.phase = 's'
-        N2O.imass['N2O'] = (feces.TN * feces.F_vol /1000/14*44
+        N2O.imass['N2O'] = (feces.imass['NH3'] + feces.imass['NonNH3']/14*44/2
                             ) * self.N2O_nitrogen_fraction #kg/hr
         
         compressed_air.T = feces.T = self.operating_temperature
@@ -282,16 +282,20 @@ class mSCWOReactorModule(SanUnit):
         # self.heat_output = recovered_energy #kJ/hr
         
         liquid_effluent.copy_like(feces)
-        liquid_effluent.imass['NH3'] = (feces.TN * feces.F_vol /1000
+        liquid_effluent.imass['NH3'] = (feces.imass['NH3'] + feces.imass['NonNH3']
                                         ) * self.ammonium_nitrogen_fraction #kg/hr
-        liquid_effluent.imass['NonNH3'] = (feces.TN * feces.F_vol /1000
+        liquid_effluent.imass['NonNH3'] = (feces.imass['NH3'] + feces.imass['NonNH3']
                                         ) * (1-self.ammonium_nitrogen_fraction-
                                              self.N2O_nitrogen_fraction) #kg/hr, 
         gas_product.copy_like(compressed_air)
         gas_product.imass['CO2'] = (feces.imass['sCOD'] + 
-                                    feces.imass['xCOD'])* self.carbon_conversion_efficiency* self.carbon_COD_ratio #kg/hr
+                                    feces.imass['xCOD'])* self.carbon_conversion_efficiency* self.carbon_COD_ratio/12*44 #kg/hr
         gas_product.imol['O2'] -= gas_product.imol['CO2']
         ash.imass['xCOD'] = liquid_effluent.imass['xCOD'] * (1 - self.carbon_conversion_efficiency)
+        ash.imass['P'] = feces.imass['P'] * (1-self.P_loss) #assume P all go to solid phase
+        gas_product.imass['P'] = feces.imass['P'] * self.P_loss
+        liquid_effluent.imass['K'] = feces.imass['P'] * (1-self.K_loss)
+        gas_product.imass['K'] = feces.imass['K'] * self.K_loss
         ash.imass['WoodAsh'] = (feces.F_mass * (1-mc) * self.feces_ash_content) # kg ash /hr
         liquid_effluent.imass['sCOD'] *= (1-self.carbon_conversion_efficiency)
         liquid_effluent.imass['xCOD'] = 0
@@ -334,7 +338,7 @@ class mSCWOReactorModule(SanUnit):
                          self._calc_maintenance_labor_cost()) #USD/hr
 
     def _calc_maintenance_labor_cost(self): #USD/hr
-        maintenance_labor_cost= (self.reactor_maintenance * self.wages)
+        maintenance_labor_cost= (self.reactor_maintenance * self.wages *self.user_scale_up)
         return maintenance_labor_cost / (365*24)
     
     @property
@@ -368,7 +372,8 @@ class mSCWOConcentratorModule(SanUnit):
         RO reject liquid, mscwo effluent liquid, mscwo effluent ash
     outs : Iterable(stream)
         Condensed effluent, recirculation water, fugitive N2O, fugitive CH4, fugitive NH3, water vapor
-
+    excess_water_recirculate_ratio: float, optional, 0 to 1
+        fraction of excess water that recirculates to ultrafiltration. Defaults to 1.
     References
     ----------
     [1] YEE et al. Water oxidation non-sewered single unit toilet system.
@@ -379,9 +384,10 @@ class mSCWOConcentratorModule(SanUnit):
     _N_outs = 6
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 **kwargs):
+                 excess_water_recirculate_ratio = 1,user_scale_up=1, **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=1)
-                
+        self.excess_water_recirculate_ratio = excess_water_recirculate_ratio
+        self.user_scale_up = user_scale_up
         data = load_data(path=mscwo_concentrator_module_path)
         
         for para in data.index:
@@ -428,15 +434,15 @@ class mSCWOConcentratorModule(SanUnit):
                                                          mscwo_liquid_in.imass['NH3']
                                                          ) # kg NH3 /hr
         
-        N2O.imass['N2O'] = drying_NH3_to_air * self.NH3_to_N2O # kg N2O /hr
+        N2O.imass['N2O'] = drying_NH3_to_air * self.NH3_to_N2O /14/2 * 44 # kg N2O /hr
         waste_out.imass['NH3'] = ro_waste_in.imass['NH3'] + mscwo_liquid_in.imass['NH3'] - drying_NH3_to_air
 
-        NH3_gas.imass['NH3'] = drying_NH3_to_air # kg NH3 /hr
+        NH3_gas.imass['NH3'] = drying_NH3_to_air * (1-self.NH3_to_N2O) # kg NH3 /hr
         excess_water.imass['H2O'] = self.excess_water_recirculation * (ro_waste_in.imass['H2O'] + 
                                                                        mscwo_liquid_in.imass['H2O'] - 
-                                                                       waste_out.imass['H2O'])
+                                                                       waste_out.imass['H2O']) * self.excess_water_recirculate_ratio
         excess_water.imass[solubles] = self.excess_water_recirculation * (ro_waste_in.imass[solubles]+
-                                                                          mscwo_liquid_in.imass[solubles])
+                                                                          mscwo_liquid_in.imass[solubles])* self.excess_water_recirculate_ratio
         water_vapor.imass['H2O'] = (ro_waste_in.imass['H2O'] + 
                                     mscwo_liquid_in.imass['H2O'] - 
                                     waste_out.imass['H2O'] - 
@@ -446,14 +452,19 @@ class mSCWOConcentratorModule(SanUnit):
         
         self.required_energy_input = water_vapor.imass['H2O'] * self.energy_required_to_evaporize_water - recovered_energy_from_mscwo/3600
         #Calculate COD
-        drying_CO2_to_air = (self.drying_CO2_emissions * self.carbon_COD_ratio
+        self.drying_CO2_to_air = (self.drying_CO2_emissions * self.carbon_COD_ratio
                              * (ro_waste_in.COD * ro_waste_in.F_vol + 
                               mscwo_liquid_in.COD * mscwo_liquid_in.F_vol
                               ) / 1000) # kg CO2 /hr
         # 44/12/16 are the molecular weights of CO2, C, and CH4, respectively
         waste_out.imass['sCOD'] =  (waste_out.imass['sCOD'] + mscwo_liquid_in.imass['sCOD']) \
-            -((drying_CO2_to_air/44*12+drying_CH4_to_air/16*12) / self.carbon_COD_ratio + 
+            -((self.drying_CO2_to_air/44*12+drying_CH4_to_air/16*12) / self.carbon_COD_ratio + 
               excess_water.imass['sCOD'])
+        water_vapor.imass['P'] = self.P_loss * waste_out.imass['P']
+        water_vapor.imass['K'] = self.K_loss * waste_out.imass['K']
+        waste_out.imass['P'] *= (1-self.P_loss)
+        waste_out.imass['K'] *= (1-self.K_loss)
+        
     
     def _init_lca(self):
         self.construction = [
@@ -483,7 +494,7 @@ class mSCWOConcentratorModule(SanUnit):
         design['StainlessSteel'] = constr[0].quantity = self.stainless_steel_weight
         design['HeatingUnit'] = constr[1].quantity = 1
         design['ElectricMotor'] = constr[2].quantity = self.motor_weight
-        design['Pump'] = constr[3].quantity = 1
+        design['Pump'] = constr[3].quantity = 1 *(self.user_scale_up ** 0.6)
         design['Fan'] = constr[4].quantity = self.fan_quantity*0.2 #one fan is 0.2 kg
         design['Polyethylene'] = constr[5].quantity = self.polyethylene_weight
         
@@ -493,7 +504,7 @@ class mSCWOConcentratorModule(SanUnit):
         #C['Stainless steel'] = self.stainless_steel_cost * D['StainlessSteel']
         C['HeatingUnit'] = self.heating_unit_purchase_cost * D['HeatingUnit']
         C['ElectricMotor'] = self.motor_purchase_cost * D['ElectricMotor']
-        C['Pump'] = self.pump_purchase_cost * D['Pump']
+        C['Pump'] = self.pump_purchase_cost * D['Pump'] *(self.user_scale_up ** 0.6)
         #C['Polyethylene'] = self.polyethylene_cost * D['Polyethylene']
         C['Fan'] = self.fan_purchase_cost * self.fan_quantity
         C['Disc'] = self.disc_purchase_cost
@@ -526,7 +537,7 @@ class mSCWOConcentratorModule(SanUnit):
                          self._calc_maintenance_labor_cost()) #USD/hr
    
     def _calc_maintenance_labor_cost(self): #USD/hr
-       maintenance_labor_cost= (self.concentrator_maintenance * self.wages) #USD/yr
+       maintenance_labor_cost= (self.concentrator_maintenance * self.wages *self.user_scale_up) #USD/yr
        return maintenance_labor_cost / (365*24)
    
     @property
@@ -579,11 +590,12 @@ class VolumeReductionCombustor(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  if_sludge_service = True, lifetime = 10,ppl = None, CH4_emission_factor=None,
-                 **kwargs):
+                 user_scale_up=1,**kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
                          F_BM_default=1, lifetime = lifetime)
         self.if_sludge_service = if_sludge_service
         self.lifetime = lifetime
+        self.user_scale_up = user_scale_up
         if ppl is None:
             self.ppl = g2rt.get_default_ppl()
         else:
@@ -623,37 +635,41 @@ class VolumeReductionCombustor(SanUnit):
         ash_prcd = (solid_cakes.F_mass * (1-mc) * self.feces_ash_content + 
                wood_pellets.imass['WoodPellet']*(1-self.wood_moisture_content)*self.wood_ash_content) # kg ash /hr
         
-        NPKCaMg = ('NH3','NonNH3','N', 'P', 'K','Ca','Mg')
+        NPKCaMg = ('NH3','NonNH3','N', 'P', 'K','Ca','Mg','OtherSS')
         for cmp in cmps:
             ash.imass[cmp.ID] = 0 if cmp.ID not in NPKCaMg else ash.imass[cmp.ID]
         for element in NPKCaMg:
-            if element == 'NH3':
+            if element in ('NH3', 'NonNH3'):
                 ash.imass[element] *= (1 - getattr(self, 'combustion_N_loss'))
-            elif element in ('Ca','Mg','NonNH3'):
+            elif element in ('Ca','Mg','N'):
                 continue
             else:
+                gas.imass[element] = getattr(self, f'combustion_{element}_loss')*ash.imass[element]
                 ash.imass[element] *= (1 - getattr(self, f'combustion_{element}_loss'))
-        ash.imass['WoodAsh'] = (ash_prcd - ash.imass[NPKCaMg].sum())
+        if ash_prcd - ash.imass[NPKCaMg].sum() > 0:
+            ash.imass['WoodAsh'] = (ash_prcd - ash.imass[NPKCaMg].sum())
+        else: ash.imass['WoodAsh'] = 0
         ash.imass['H2O'] = 0.025 * ash.F_mass # kg H2O / hr with 2.5% moisture content
         #CH4 emissions
         CH4.imass['CH4'] = solid_cakes.COD * self.carbon_COD_ratio * solid_cakes.F_vol/1e3* self.fugitive_CH4_emission_factor #kg/hr
         # N2O emissions
-        N2O.imass['N2O'] = solid_cakes.imass['N'] * self.N2O_emission_factor/28*44
+        N2O.imass['N2O'] = (solid_cakes.imass['NH3']+solid_cakes.imass['NonNH3']) * self.N2O_emission_factor/28*44
         # NO emissions
-        NO.imass['NO'] = solid_cakes.imass['N'] * self.NOx_emission_factor/14*30
+        NO.imass['NO'] = (solid_cakes.imass['NH3']+solid_cakes.imass['NonNH3']) * self.NOx_emission_factor/14*30
         #SO2 emissions
         SO2.imass['SO2'] = solid_cakes.F_mass * self.SOx_emission_factor
         #NH3 emissions
-        NH3.imass['NH3'] = solid_cakes.imass['N'] * self.NH3_emission_factor/14*17
+        NH3.imass['NH3'] = (solid_cakes.imass['NH3']+solid_cakes.imass['NonNH3']) * self.NH3_emission_factor/14*17
         #gas
-        gas.imass['CO2'] = (solid_cakes.COD * self.carbon_COD_ratio * solid_cakes.F_vol* self.combustion_C_loss/ 1e3 /12 *44 
+        gas.imass['CO2'] = ((solid_cakes.imass['sCOD']+solid_cakes.imass['xCOD']) * self.carbon_COD_ratio * self.combustion_C_loss /12 *44 
                             + cmps['WoodPellet']._i_C * wood_pellets.imass['WoodPellet']
                             #assume all carbon in wood pellets convert to CO2
                             )
+        self.CO2_from_solids = (solid_cakes.imass['sCOD']+solid_cakes.imass['xCOD']) * self.carbon_COD_ratio * self.combustion_C_loss /12 *44 #kg/hr
         air.imass['O2'] = gas.imass['CO2']/44*32
         air.imass['N2'] = air.imass['O2']/32/0.21*0.79*28 #assume air content 21% O2 and 79% N2 
-        gas.imass['N2'] = (solid_cakes.imass['N']*self.combustion_N_loss - 
-                           N2O.imass['N2O']/44*28 - NO.imass['NO']/30*14) + air.imass['N2']
+        gas.imass['N2'] = ((solid_cakes.imass['NH3']+solid_cakes.imass['NonNH3'])*self.combustion_N_loss - 
+                           N2O.imass['N2O']/44*28 - NO.imass['NO']/30*14-NH3.imass['NH3']/17*14) + air.imass['N2']
         
         gas.imass['H2O'] = solid_cakes.imass['H2O'] + wood_pellets.imass['H2O'] - ash.imass['H2O']
         
@@ -693,7 +709,7 @@ class VolumeReductionCombustor(SanUnit):
         return wood_pellet_cost* self.price_ratio * service_factor # USD/hr
             
     def _calc_maintenance_labor_cost(self): #USD/hr
-        maintenance_labor_cost= (self.combustor_operation_maintenance * self.wages)
+        maintenance_labor_cost= (self.combustor_operation_maintenance * self.wages *self.user_scale_up)
         service_factor = self.ppl/120 if self.if_sludge_service else 1
         return maintenance_labor_cost / (365*24) * service_factor
     
@@ -1641,12 +1657,13 @@ class VRpasteurization(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  heat_loss=0.3, solids_inlet_temp=273.15+25.6,
-                 temp_pasteurization= 273.15+90, **kwargs):
+                 temp_pasteurization= 273.15+90,user_scale_up=1, **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
                           F_BM_default=1)
         self.heat_loss = heat_loss
         self.solids_inlet_temp = solids_inlet_temp
         self.temp_pasteurization = temp_pasteurization
+        self.user_scale_up = user_scale_up
         
         data = load_data(path=vr_pasteurization_path)
         for para in data.index:
@@ -1709,7 +1726,7 @@ class VRpasteurization(SanUnit):
         #     return replacement_cost / (365*24)
     
     def _calc_maintenance_labor_cost(self): #USD/hr
-        maintenance_labor_cost= (self.pasteurizer_maintenance * self.wages) #USD/yr
+        maintenance_labor_cost= (self.pasteurizer_maintenance * self.wages ) #USD/yr
         return maintenance_labor_cost / (365*24)
     
     @property
@@ -1768,9 +1785,10 @@ class G2RThomogenizer(Copier):
     _N_outs = 1
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',ppl=None,
-                 **kwargs):
+                 user_scale_up=1,**kwargs):
         Copier.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
                          F_BM_default=1) 
+        self.user_scale_up = user_scale_up
         if ppl is None:
             self.ppl = g2rt.get_default_ppl()
         else:
@@ -1891,12 +1909,12 @@ class VolumeReductionFilterPress(SanUnit):
     def __init__(self, ID='', 
                  ins=None, outs=(), thermo=None, 
                  init_with='WasteStream',
-                 solids = (),
+                 solids = (),user_scale_up=1,
                  **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
                                 solids=solids,
                                 **kwargs)
-                        
+        self.user_scale_up = user_scale_up
         data = load_data(path=vr_filter_press_path)
         for para in data.index:
             value = float(data.loc[para]['expected'])
@@ -1944,7 +1962,7 @@ class VolumeReductionFilterPress(SanUnit):
         design = self.design_results
         constr = self.construction
         design['StainlessSteel'] = constr[0].quantity = self.filterpress_ss_weight
-        design['Pump'] = constr[1].quantity = 1
+        design['Pump'] = constr[1].quantity = 1 *(self.user_scale_up ** 0.6)
         self.add_construction(add_cost = False)
         
     def _cost(self):
@@ -1962,7 +1980,7 @@ class VolumeReductionFilterPress(SanUnit):
                          self._calc_maintenance_labor_cost()) #USD/hr
             
     def _calc_maintenance_labor_cost(self): #USD/hr
-        maintenance_labor_cost= (self.filterpress_maintenance * self.wages)
+        maintenance_labor_cost= (self.filterpress_maintenance * self.wages * self.user_scale_up)
         return maintenance_labor_cost / (365*24)
     
     @property
@@ -1998,7 +2016,8 @@ class VRConcentrator(SanUnit):
         RO reject liquid.
     outs : Iterable(stream)
         Condensed effluent, recirculation water, fugitive N2O, fugitive CH4, fugitive NH3, water vapor
-    
+    excess_water_recirculate_ratio: float, optional, 0 to 1
+        fraction of excess water that recirculates to ultrafiltration. Defaults to 1.
     Warnings
     --------
     Energy balance is not performed for this unit.
@@ -2017,9 +2036,10 @@ class VRConcentrator(SanUnit):
     _N_outs = 6
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 **kwargs):
+                 excess_water_recirculate_ratio =1 ,user_scale_up=1, **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=1)
-                
+        self.user_scale_up = user_scale_up
+        self.excess_water_recirculate_ratio = excess_water_recirculate_ratio        
         data = load_data(path=vr_concentrator_path)
         
         for para in data.index:
@@ -2051,23 +2071,27 @@ class VRConcentrator(SanUnit):
             self.drying_CH4_emissions * self.carbon_COD_ratio * \
             waste_in.COD * waste_in.F_vol / 1000 # kg CH4 /hr
         drying_NH3_to_air = self.drying_NH3_emissions * waste_in.imass['NH3'] # kg NH3 /hr
-        N2O.imass['N2O'] = drying_NH3_to_air * self.NH3_to_N2O # kg N2O /hr
+        N2O.imass['N2O'] = drying_NH3_to_air * self.NH3_to_N2O /14/2*44 # kg N2O /hr
         waste_out.imass['NH3'] = waste_in.imass['NH3'] - drying_NH3_to_air
 
-        NH3_gas.imass['NH3'] = drying_NH3_to_air # kg NH3 /hr
-        excess_water.imass['H2O'] = self.excess_water_recirculation * (waste_in.imass['H2O'] - waste_out.imass['H2O'])
-        excess_water.imass[solubles] = self.excess_water_recirculation * waste_in.imass[solubles]
+        NH3_gas.imass['NH3'] = drying_NH3_to_air * (1-self.NH3_to_N2O) # kg NH3 /hr
+        excess_water.imass['H2O'] = self.excess_water_recirculation * (waste_in.imass['H2O'] - waste_out.imass['H2O']) * self.excess_water_recirculate_ratio
+        excess_water.imass[solubles] = self.excess_water_recirculation * waste_in.imass[solubles] * self.excess_water_recirculate_ratio
         water_vapor.imass['H2O'] = waste_in.imass['H2O'] - waste_out.imass['H2O'] -excess_water.imass['H2O']  #kg H2O/hr
         # Store the calculated value of water_vapor.imass['H2O'] for use in the _cost function
         self.water_vapor_H2O = water_vapor.imass['H2O'] 
         #Calculate COD
-        drying_CO2_to_air = (self.drying_CO2_emissions * self.carbon_COD_ratio
+        self.drying_CO2_to_air = (self.drying_CO2_emissions * self.carbon_COD_ratio
                              * (waste_in.COD * waste_in.F_vol-
                                 excess_water.COD * excess_water.F_vol
                                 ) / 1000) # kg CO2 /hr
         # 44/12/16 are the molecular weights of CO2, C, and CH4, respectively
-        waste_out.imass['sCOD'] -=  ((drying_CO2_to_air/44*12+drying_CH4_to_air/16*12)/ self.carbon_COD_ratio + 
+        waste_out.imass['sCOD'] -=  ((self.drying_CO2_to_air/44*12+drying_CH4_to_air/16*12)/ self.carbon_COD_ratio + 
                                      excess_water.imass['sCOD'])
+        water_vapor.imass['P'] = self.P_loss * waste_out.imass['P']
+        water_vapor.imass['K'] = self.K_loss * waste_out.imass['K']
+        waste_out.imass['P'] *= (1-self.P_loss)
+        waste_out.imass['K'] *= (1-self.K_loss)
     
     def _init_lca(self):
         self.construction = [
@@ -2097,7 +2121,7 @@ class VRConcentrator(SanUnit):
         design['StainlessSteel'] = constr[0].quantity = self.stainless_steel_weight
         design['HeatingUnit'] = constr[1].quantity = 1
         design['ElectricMotor'] = constr[2].quantity = self.motor_weight
-        design['Pump'] = constr[3].quantity = 1
+        design['Pump'] = constr[3].quantity = 1 *(self.user_scale_up ** 0.6)
         design['Fan'] = constr[4].quantity = self.fan_quantity*0.2 #one fan is 0.2 kg
         design['Polyethylene'] = constr[5].quantity = self.polyethylene_weight
         
@@ -2107,7 +2131,7 @@ class VRConcentrator(SanUnit):
         #C['Stainless steel'] = self.stainless_steel_cost * D['StainlessSteel']
         C['HeatingUnit'] = self.heating_unit_purchase_cost * D['HeatingUnit']
         C['ElectricMotor'] = self.motor_purchase_cost * D['ElectricMotor']
-        C['Pump'] = self.pump_purchase_cost * D['Pump']
+        C['Pump'] = self.pump_purchase_cost * D['Pump'] *(self.user_scale_up ** 0.6)
         #C['Polyethylene'] = self.polyethylene_cost * D['Polyethylene']
         C['Fan'] = self.fan_purchase_cost * self.fan_quantity
         C['Disc'] = self.disc_purchase_cost
@@ -2138,7 +2162,7 @@ class VRConcentrator(SanUnit):
                          self._calc_maintenance_labor_cost()) #USD/hr
    
     def _calc_maintenance_labor_cost(self): #USD/hr
-       maintenance_labor_cost= (self.concentrator_maintenance * self.wages) #USD/yr
+       maintenance_labor_cost= (self.concentrator_maintenance * self.wages*self.user_scale_up) #USD/yr
        return maintenance_labor_cost / (365*24)
    
     @property
@@ -2182,11 +2206,11 @@ class G2RTLiquidsTank(Mixer):
     :class:`~.sanunits.Copier`
     '''
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', F_BM_default=None, isdynamic=False,
+                 init_with='WasteStream', user_scale_up = 1, F_BM_default=None, isdynamic=False,
                  rigorous=False, conserve_phases=False):
         Mixer.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
                          F_BM_default=F_BM_default, isdynamic=isdynamic)
-
+        self.user_scale_up = user_scale_up
         data = load_data(path=g2rt_liquids_tank_path)
         for para in data.index:
             value = float(data.loc[para]['expected'])
@@ -2215,15 +2239,16 @@ class G2RTLiquidsTank(Mixer):
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['Polyethylene'] = constr[0].quantity = self.liquids_tank_polyethylene_weight
-        design['Polycarbonate'] = constr[1].quantity = self.liquids_tank_polycarbonate_weight
+        design['Polyethylene'] = constr[0].quantity = self.liquids_tank_polyethylene_weight *(self.user_scale_up ** 0.6)
+        design['Polycarbonate'] = constr[1].quantity = self.liquids_tank_polycarbonate_weight *(self.user_scale_up ** 0.6)
+        design['Pump'] = constr[2].quantity = 1 *(self.user_scale_up ** 0.6)
         self.add_construction(add_cost=False)
     
     def _cost(self):
         C = self.baseline_purchase_costs
-        C['Tank'] = self.liquids_tank_cost
+        C['Tank'] = self.liquids_tank_cost*(self.user_scale_up ** 0.6)
         C['Tubing'] = self.liquids_tank_tubing
-        C['Pump'] = self.liquids_tank_feed_pump_cost
+        C['Pump'] = self.liquids_tank_feed_pump_cost *(self.user_scale_up ** 0.6)
         C['Misc.parts'] = self.miscellaneous_cost_ratio*(C['Tank']+
                                                          C['Tubing']+
                                                          C['Pump'])
@@ -2237,12 +2262,12 @@ class G2RTLiquidsTank(Mixer):
         self.power_utility(power_demand)  # kW
         
     def _calc_replacement_cost(self):
-        pump_replacement_cost = self.liquids_tank_feed_pump_cost/ self.pump_lifetime
+        pump_replacement_cost = self.liquids_tank_feed_pump_cost/ self.pump_lifetime *(self.user_scale_up ** 0.6)
         return pump_replacement_cost/(365 * 24)* self.price_ratio # USD/hr
 
     def _calc_maintenance_labor_cost(self):
         liquids_tank_maintenance_labor_cost = (
-            self.labor_pump_replacement +
+            self.labor_pump_replacement *self.user_scale_up +
             self.labor_tank_cleaning
             ) * self.wages
         return liquids_tank_maintenance_labor_cost/(365 * 24) # USD/hr
@@ -2286,8 +2311,9 @@ class G2RTSolidsTank(Copier):
     :class:`~.sanunits.Copier`
     '''
     def __init__(self, ID='', ins=None, outs=(),  thermo=None, init_with='WasteStream',
-                 **kwargs):
+                 user_scale_up=1, **kwargs):
         Copier.__init__(self, ID, ins, outs, thermo, init_with)
+        self.user_scale_up = user_scale_up
 
         data = load_data(path=g2rt_solids_tank_path)
         for para in data.index:
@@ -2307,13 +2333,13 @@ class G2RTSolidsTank(Copier):
     def _design(self):
         design = self.design_results
         constr = self.construction
-        design['Polyethylene'] = constr[0].quantity = self.solids_tank_polyethylene_weight
-        design['Polycarbonate'] = constr[1].quantity = self.solids_tank_polycarbonate_weight
+        design['Polyethylene'] = constr[0].quantity = self.solids_tank_polyethylene_weight *(self.user_scale_up ** 0.6)
+        design['Polycarbonate'] = constr[1].quantity = self.solids_tank_polycarbonate_weight *(self.user_scale_up ** 0.6)
         self.add_construction(add_cost=False)
     
     def _cost(self):
         C = self.baseline_purchase_costs
-        C['Tank'] = self.solids_tank_cost
+        C['Tank'] = self.solids_tank_cost *(self.user_scale_up ** 0.6)
         C['Piping'] = self.solids_tank_piping
         C['Misc.parts'] = self.miscellaneous_cost_ratio*(C['Tank']+
                                                          C['Piping'])
@@ -2324,7 +2350,7 @@ class G2RTSolidsTank(Copier):
 
     def _calc_maintenance_labor_cost(self):
         solids_tank_maintenance_labor_cost = (
-            self.labor_tank_cleaning
+            self.labor_tank_cleaning * self.user_scale_up
             ) * self.wages
         return solids_tank_maintenance_labor_cost/(365 * 24) # USD/hr
         #Macerator in the homogenizer functions as a pump. All the associated cost
@@ -2385,9 +2411,9 @@ class VRdryingtunnel(SanUnit):
     _N_outs = 5
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',ppl=None,
-                 **kwargs):
+                 user_scale_up=1,**kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=1)
-                
+        self.user_scale_up = user_scale_up
         data = load_data(path=vr_drying_tunnel_path)
         if ppl is None:
             self.ppl = g2rt.get_default_ppl()
@@ -2427,18 +2453,18 @@ class VRdryingtunnel(SanUnit):
             self.drying_CH4_emissions * self.carbon_COD_ratio * \
             solid_cakes.COD * solid_cakes.F_vol / 1000 # kg CH4 /hr
         drying_NH3_to_air = self.drying_NH3_emissions * solid_cakes.imass['NH3'] # kg NH3 /hr
-        N2O.imass['N2O'] = drying_NH3_to_air * self.NH3_to_N2O # kg N2O /hr
+        N2O.imass['N2O'] = drying_NH3_to_air * self.NH3_to_N2O/14/2*44 # kg N2O /hr
         solid_cakes.imass['NH3'] -= drying_NH3_to_air
-        NH3_gas.imass['NH3'] = drying_NH3_to_air # kg NH3 /hr
+        NH3_gas.imass['NH3'] = drying_NH3_to_air * (1-self.NH3_to_N2O) # kg NH3 /hr
         water_vapor.imass['H2O'] = (mixture.imass['H2O'] - solid_cakes.imass['H2O']) #kg H2O/hr
         # Store the calculated value of water_vapor.imass['H2O'] for use in the _cost function
         self.water_vapor_H2O = water_vapor.imass['H2O']  #kg H2O/hr
         
         #Calculate COD
-        drying_CO2_to_air = (self.drying_CO2_emissions * self.carbon_COD_ratio
+        self.drying_CO2_to_air = (self.drying_CO2_emissions * self.carbon_COD_ratio
                              * solid_cakes.COD * solid_cakes.F_vol / 1000) # kg CO2 /hr
         # 44/12/16 are the molecular weights of CO2, C, and CH4, respectively
-        solid_cakes.imass['sCOD'] -=  (drying_CO2_to_air/44*12+drying_CH4_to_air/16*12) / self.carbon_COD_ratio
+        solid_cakes.imass['sCOD'] -=  (self.drying_CO2_to_air/44*12+drying_CH4_to_air/16*12) / self.carbon_COD_ratio
     
     def _init_lca(self):
         self.construction = [
@@ -2490,7 +2516,7 @@ class VRdryingtunnel(SanUnit):
                          self._calc_maintenance_labor_cost()) #USD/hr
 
     def _calc_maintenance_labor_cost(self): #USD/hr
-        maintenance_labor_cost= (self.drying_tunnel_maintenance * self.wages)
+        maintenance_labor_cost= (self.drying_tunnel_maintenance * self.wages * self.user_scale_up)
         return maintenance_labor_cost / (365*24)
     
     @property
@@ -2730,9 +2756,10 @@ class G2RTSolidsSeparation(SanUnit):
     _N_outs = 2
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', ppl=None,
-                 **kwargs):
+                 user_scale_up=1, **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
                          F_BM_default=1)
+        self.user_scale_up = user_scale_up
         if ppl is None:
             self.ppl = g2rt.get_default_ppl()
         else:
@@ -2805,8 +2832,8 @@ class G2RTSolidsSeparation(SanUnit):
         constr = self.construction
         design['StainlessSteel'] = constr[0].quantity = self.stainless_steel_weight
         design['Polyethylene'] = constr[1].quantity = self.polyethylene_weight
-        design['ElectricMotor'] = constr[2].quantity = self.actuator_weight
-        design['Pump'] = constr[1].quantity = 1.
+        design['ElectricMotor'] = constr[2].quantity = self.actuator_weight *(self.user_scale_up ** 0.6)
+        design['Pump'] = constr[1].quantity = 1.*(self.user_scale_up ** 0.6)
         self.add_construction(add_cost = False)
     
     def _cost(self):
@@ -2816,9 +2843,9 @@ class G2RTSolidsSeparation(SanUnit):
                             self.solid_outlet_cost + 
                             self.liquid_outlet_cost+
                             self.inlet_chamber_cost)
-        C["Vacuum pump"] = self.vacuum_pump_cost
+        C["Vacuum pump"] = self.vacuum_pump_cost *(self.user_scale_up ** 0.6)
         C["Valves"] = self.valve_cost * self.valve_quantity
-        C["Actuator"] = self.actuator_cost * self.actuator_quantity
+        C["Actuator"] = self.actuator_cost * self.actuator_quantity *(self.user_scale_up ** 0.6)
         
         ratio = self.price_ratio
         for equipment, cost in C.items():
@@ -2836,7 +2863,7 @@ class G2RTSolidsSeparation(SanUnit):
                          self._calc_maintenance_labor_cost()) #USD/hr
     
     def _calc_maintenance_labor_cost(self): #USD/hr
-        maintenance_labor_cost= (self.solids_separator_maintenance * self.wages)
+        maintenance_labor_cost= (self.solids_separator_maintenance * self.wages * self.user_scale_up)
         return maintenance_labor_cost / (365*24)
     
     @property
@@ -2897,9 +2924,10 @@ class G2RTBeltSeparation(SanUnit):
     _N_outs = 2
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', ppl=None,
-                 **kwargs):
+                 user_scale_up = 1, **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
-                         F_BM_default=1) 
+                         F_BM_default=1)
+        self.user_scale_up = user_scale_up
         if ppl is None:
             self.ppl = g2rt.get_default_ppl()
         else:
@@ -2988,7 +3016,7 @@ class G2RTBeltSeparation(SanUnit):
         
     def _cost(self):
         C = self.baseline_purchase_costs
-        C["Belt_separator"] = (self.belt_conveyor_cost+
+        C["Belt_separator"] = (self.belt_conveyor_cost *(self.user_scale_up ** 0.6)+
                                self.solid_inlet_chamber_cost+
                                self.liquid_inlet_chamber_cost+
                                self.housing_cost+
@@ -3014,7 +3042,7 @@ class G2RTBeltSeparation(SanUnit):
                          self._calc_maintenance_labor_cost()) #USD/hr
 
     def _calc_maintenance_labor_cost(self): #USD/hr
-        maintenance_labor_cost= (self.belt_separator_maintenance * self.wages)
+        maintenance_labor_cost= (self.belt_separator_maintenance * self.wages *self.user_scale_up)
         return maintenance_labor_cost / (365*24)
     
     @property
@@ -3051,6 +3079,8 @@ class G2RTUltrafiltration(SanUnit):
     outs : Iterable(stream)
         treated: treated liquid leaving ultrafiltration unit.
         retentate: concentrated retentate leaving ultrafiltration unit.
+    reject_recycle_ratio: float, optional, 0 to 1
+        fraction of rejected solid streams that recirculates to belt separation. Defaults to 1.
     ppl: int
         Total number of users for scaling of costs.
 
@@ -3069,13 +3099,17 @@ class G2RTUltrafiltration(SanUnit):
     
     '''
     _N_ins = 1
-    _N_outs = 2
+    _N_outs = 3
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+                 reject_recycle_ratio = 1,user_scale_up=1,
                  **kwargs):
 
-        SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=1)
-
+        SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
+                         F_BM_default=1)
+        self.reject_recycle_ratio = reject_recycle_ratio
+        self.user_scale_up = user_scale_up
+        
         data = load_data(path=ultrafiltration_path)
         for para in data.index:
             value = float(data.loc[para]['expected'])
@@ -3085,6 +3119,7 @@ class G2RTUltrafiltration(SanUnit):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
         cmps = self.components
+
         self.solids = tuple((cmp.ID for cmp in cmps.solids))
         self.solubles = tuple([i.ID for i in cmps if i.ID not in self.solids and i.ID != 'H2O'])
         
@@ -3098,7 +3133,8 @@ class G2RTUltrafiltration(SanUnit):
 
     def _run(self):
         waste_in = self.ins[0]
-        liquid_stream, solid_stream = self.outs
+        liquid_stream, recycled_solid_stream, discharged_solid_stream = self.outs
+        solid_stream = WasteStream()
         solubles, solids = self.solubles, self.solids
         solid_stream.copy_flow(waste_in,solids) #all solids go to sludge, remove from waste_in
         liquid_stream.copy_flow(waste_in, solubles) #only copy solubles 
@@ -3110,6 +3146,7 @@ class G2RTUltrafiltration(SanUnit):
             solid_stream.imass['H2O']/waste_in.imass['H2O']
         solid_stream.imass['sCOD'] += waste_in.imass['sCOD']*self.sCOD_removal/100
         liquid_stream.mass = waste_in.mass-solid_stream.mass
+        solid_stream.split_to(recycled_solid_stream, discharged_solid_stream, self.reject_recycle_ratio)
         # print(f"The recycled UF water flow is {solid_stream.imass['H2O']} kg/h.")
 
     def _design(self):
@@ -3142,7 +3179,7 @@ class G2RTUltrafiltration(SanUnit):
             self.UF_brush
             )
         C['UF_unit'] = self.UF_unit
-        C['Backwash_parts'] = self.air_scrubbing_blower_cost + self.back_flush_pump_cost
+        C['Backwash_parts'] = (self.air_scrubbing_blower_cost + self.back_flush_pump_cost)*(self.user_scale_up ** 0.6)
         
         ratio = self.price_ratio
         for equipment, cost in C.items():
@@ -3181,13 +3218,16 @@ class G2RTUltrafiltration(SanUnit):
             self.UF_brush / self.UF_brush_lifetime
             )
 
-        uf_replacement_cost = self.UF_unit/ self.UF_unit_lifetime 
+        uf_replacement_cost = self.UF_unit/ self.UF_unit_lifetime
+        other_replacement = (self.air_scrubbing_blower_cost + self.back_flush_pump_cost)/self.UF_unit_lifetime*(self.user_scale_up ** 0.6)
 
-        total_replacement_cost = self.price_ratio * (pipe_replacement_cost + fittings_replacement_cost + uf_replacement_cost)/3 # USD/year
+        total_replacement_cost = self.price_ratio * (pipe_replacement_cost + 
+                                                     fittings_replacement_cost + 
+                                                     uf_replacement_cost+ other_replacement)/3 # USD/year, linear scaled to 6 users
         return total_replacement_cost / (365 * 24)  # USD/hr
     
     def _calc_maintenance_labor_cost(self): #USD/hr
-        maintenance_labor_cost= (self.ultrafiltration_maintenance * self.wages)
+        maintenance_labor_cost= (self.ultrafiltration_maintenance * self.wages *self.user_scale_up)
         return maintenance_labor_cost / (365*24)
     
     @property
@@ -3234,11 +3274,13 @@ class G2RTReverseOsmosis(SanUnit):
     _N_outs = 3
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 water_recovery=0.6,TDS_removal = 0.95, permeate_recycle_ratio =1,**kwargs):
+                 water_recovery=0.6,TDS_removal = 0.95, permeate_recycle_ratio =1,
+                 user_scale_up=1,**kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=1)
         self.water_recovery = water_recovery
         self.TDS_removal = TDS_removal
         self.permeate_recycle_ratio = permeate_recycle_ratio
+        self.user_scale_up = user_scale_up
 
         data = load_data(path=reverse_osmosis_path)
         for para in data.index:
@@ -3266,6 +3308,7 @@ class G2RTReverseOsmosis(SanUnit):
         
         permeate.imass['H2O'] = waste_in.imass['H2O'] * self.water_recovery
         permeate.imass[solubles] = waste_in.imass[solubles]*(1-self.TDS_removal)
+        permeate.imass[solids] = waste_in.imass[solids]*(1-self.TSS_removal)
         permeate.imass['NH3'] = waste_in.imass['NH3']*(1-self.NH3_removal)
         permeate.split_to(permeate_recycle, permeate_discharge, self.permeate_recycle_ratio)
         # permeate.imass['P'] = waste_in.imass['P'] * 0.01 #higher rejection for P
@@ -3283,24 +3326,24 @@ class G2RTReverseOsmosis(SanUnit):
         constr = self.construction
         design['GFRPlastic'] = constr[0].quantity = self.GFRPlastic_weight
         design['Steel'] = constr[1].quantity = self.Steel_weight
-        design['ReverseOsmosisModule'] = constr[2].quantity = self.membrane_area
+        design['ReverseOsmosisModule'] = constr[2].quantity = self.membrane_area *(self.user_scale_up ** 0.6)
         self.add_construction(add_cost=False)
         
     def _cost(self):
         C = self.baseline_purchase_costs
         C['Pipes'] = self.piping_cost
         C['RO_system'] = self.reverse_osmosis_system_cost
-        C['Backwash_parts'] = self.air_scrubbing_blower_cost + self.back_flush_pump_cost
+        C['Backwash_parts'] = (self.air_scrubbing_blower_cost + self.back_flush_pump_cost)*(self.user_scale_up ** 0.6)
         ratio = self.price_ratio
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
         self.back_wash_cycles = ceil(self.ins[0].COD*self.ins[0].F_vol/1000*24/
                                      self.accumulated_COD_triggering_cleaning/self.membrane_area)
         
-        power_demand = (self.RO_energy_consumption * self.outs[0].F_mass+
+        power_demand = (self.RO_energy_consumption * (self.outs[0].F_mass+self.outs[2].F_mass)+
                         (self.backwash_pump_energy_percycle+
                          self.air_scrubbing_energy_percycle)*self.back_wash_cycles/24)
-        
+
         self.power_utility(power_demand) #kW
         
         total_equipment = 0.
@@ -3313,11 +3356,11 @@ class G2RTReverseOsmosis(SanUnit):
                          self._calc_maintenance_labor_cost())) #USD/hr
     def _calc_membrane_replacement_cost(self): #USD/hr
  
-        membrane_replacement_cost = self.membrane_cost / self.membrane_life_time #USD/yr
+        membrane_replacement_cost = self.membrane_cost / self.membrane_life_time *(self.user_scale_up ** 0.6)  #USD/yr
         return membrane_replacement_cost/(365*24) #USD/hr
     
     def _calc_maintenance_labor_cost(self): #USD/hr
-        maintenance_labor_cost= (self.reverse_osmosis_maintenance * self.wages)
+        maintenance_labor_cost= (self.reverse_osmosis_maintenance * self.wages *self.user_scale_up)
         return maintenance_labor_cost / (365*24)
     
     @property

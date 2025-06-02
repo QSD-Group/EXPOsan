@@ -75,45 +75,60 @@ def add_metrics(model, ppl= None):
     funcs = get_recoveries(system, ppl)
     metrics = [
         # Metric('Total N', funcs[0], '% N', 'N recovery'),
+        # Metric('Total N', funcs[4], '% N', 'N removal'),
         # Metric('Total P', funcs[1], '% P', 'P recovery'),
+        # Metric('Total P', funcs[5], '% P', 'P removal'),
         # Metric('Total K', funcs[2], '% K', 'K recovery'),
         Metric('Total Water', funcs[3], '% Water', 'Water recovery'),
+        # Metric('Chemical oxygen demand', funcs[6], 'mg/L', 'COD effluent concentration'),
+        # Metric('Total suspended solids', funcs[7], 'mg/L', 'TSS effluent concentration'),
+        # Metric('Total Water', funcs[8], 'kg/day', 'Water generation'),
+        # Metric('Total COD', funcs[9], 'kg/day', 'COD generation'),
+        # Metric('Total N', funcs[10], 'kg/day', 'N generation'),
+        # Metric('Total P', funcs[11], 'kg/day', 'P generation'),
+        # Metric('Total K', funcs[12], 'kg/day', 'K generation'),
+        # Metric('Total suspended solids', funcs[13], 'kg/day', 'TSS generation'),
+        # Metric('Total COD', funcs[14], '% COD', 'Solids pre. to solids'),
+        # Metric('Total Water', funcs[15], '% Water', 'Solids pre. to solids'),
+        # Metric('Total COD', funcs[16], '% COD', 'UF to RO'),
+        
     ]
     
     # Net cost
     metrics.append(
         Metric('Annual net cost', get_TEA_metrics(system, ppl)[0], f'{qs.currency}/cap/yr', 'TEA results'),
         )
-    metrics.extend([
-        Metric('Total CAPEX', get_TEA_metrics(system, ppl,include_breakdown=True)[1], f'{qs.currency}', 'TEA results'),
-        Metric('Annual OPEX', get_TEA_metrics(system, ppl,include_breakdown=True)[7], f'{qs.currency}/yr','TEA results'),
-        Metric('Construction emissions', get_LCA_metrics(system, ppl,include_breakdown=True)[4], 'kg CO2-eq', 'LCA results'),
-        Metric('Annual operating emissions', get_LCA_metrics(system, ppl,include_breakdown=True)[8], 'kg CO2-eq/yr', 'LCA results')
-        ])
+    # metrics.extend([
+    #     Metric('Total CAPEX', get_TEA_metrics(system, ppl,include_breakdown=True)[1], f'{qs.currency}', 'TEA results'),
+    #     Metric('Annual OPEX', get_TEA_metrics(system, ppl,include_breakdown=True)[7], f'{qs.currency}/yr','TEA results'),
+    #     Metric('Construction emissions', get_LCA_metrics(system, ppl,include_breakdown=True)[4], 'kg CO2-eq', 'LCA results'),
+    #     Metric('Annual operating emissions', get_LCA_metrics(system, ppl,include_breakdown=True)[8], 'kg CO2-eq/yr', 'LCA results')
+    #     ])
     
     # metrics.extend([
     #     Metric('Energy consumption', get_TEA_metrics(system, ppl,include_breakdown=True)[2], 'kWh /cap/day', 'TEA results')
     #     ])
-    # for u in system.TEA.units:
-    #     class_name = u.__class__.__name__
-    #     metrics.extend([
-    #         Metric(f'{class_name} CAPEX', get_normalized_CAPEX(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
-    #         Metric(f'{class_name} Electricity cost', get_normalized_electricity_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
-    #         Metric(f'{class_name} OPEX_no_labor_electricity', 
-    #                get_normalized_OPEX(u,ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
-    #         Metric(f'{class_name} Labor', 
-    #                get_normalized_labor_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
-    #         Metric(f'{class_name} total cost', 
-    #                compute_unit_total_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),])
+    #To run unit breakdown of costs and GHG emissions, uncomment line 112-131
+    for u in system.TEA.units:
+        class_name = u.__class__.__name__
+        metrics.extend([
+            Metric(f'{class_name} CAPEX', get_normalized_CAPEX(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+            Metric(f'{class_name} Electricity cost', get_normalized_electricity_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+            Metric(f'{class_name} OPEX_no_labor_electricity', 
+                   get_normalized_OPEX(u,ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+            Metric(f'{class_name} Labor', 
+                   get_normalized_labor_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),
+            Metric(f'{class_name} total cost', 
+                   compute_unit_total_cost(u, ppl), f'{qs.currency}/cap/day', f'{class_name} TEA'),])
 
-    # for u in system.TEA.units:
-    #     class_name = u.__class__.__name__
-    #     metrics.extend([
-    #         Metric(f'{class_name} capital GW', get_unit_contruction_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-    #         Metric(f'{class_name} stream GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-    #         Metric(f'{class_name} electricity GW', get_unit_electrcitiy_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-    #         Metric(f'{class_name} total GW', get_unit_total_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-    #     ])
+    for u in system.TEA.units:
+        class_name = u.__class__.__name__
+        metrics.extend([
+            Metric(f'{class_name} capital GW', get_unit_contruction_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+            Metric(f'{class_name} stream GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+            Metric(f'{class_name} electricity GW', get_unit_electrcitiy_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+            Metric(f'{class_name} total GW', get_unit_total_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+        ])
 
     # direct_emission_units = {'A15','A16','A17','B14','B15','B16'}
     # for u in system.flowsheet.unit:
