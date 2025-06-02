@@ -6,7 +6,7 @@ Summary
 -------
 This modules contains benchmark models of typical WRRF configurations in the US [1]_, [2]_. Configuration IDs are indicative of the combination of liquid and solids treatment trains, according to the WERF codes. 18 of the possible configurations are available, including their plant-wide dynamic simulations, operational energy demand estimation, and OPEX accounting. More configurations to follow.
 
-.. figure:: ./readme_figures/wrrf_codes.png
+.. figure:: ./readme_figures/wrrf_codes_wide.png
 
     *Benchmark liquid and solids treatment trains.*
     
