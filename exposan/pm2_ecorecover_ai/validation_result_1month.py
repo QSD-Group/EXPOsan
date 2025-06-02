@@ -41,7 +41,7 @@ cmps = pc.create_pm2_cmps()
 
 ############# create WasteStream objects #################
 # Q = 449.06           # influent flowrate [m3/d]
-Temp = 288.16          # temperature [K]
+Temp = 292.08          # temperature [K]
 # Temp = 286.08          # temperature [K]
 
 T, I = EDV.batch_init(os.path.join(data_path, 'exo_vars_dynamic_influent_vali.xlsx'), 'linear')
@@ -68,10 +68,10 @@ RAA = WasteStream('Return_activated_algae', T=Temp)
 
 #%%
 ############# load and tailor process models #############
-V_mix = 64.77
+V_mix = 62.66
 V_pbr = 77.49
-V_mem = 7.11
-V_ret = 5.35
+V_mem = 7.12
+V_ret = 5.26
 
 # V_mix = 66.23
 # V_pbr = 77.49
@@ -96,7 +96,7 @@ pm2 = pc.PM2(arr_e=6663.36141724313, K_P=6.06569854392092, f_CH_max=9.6081388859
 
 # Dynamic influent
 SE = su.DynamicInfluent('SE', outs=[DYINF],
-                        data_file=ospath.join(data_path, 'dynamic_influent_vali.tsv'))
+                        data_file=ospath.join(data_path, 'dynamic_influent_vali_1month.tsv'))
 
 MIX = su.CSTR('MIX', ins=[DYINF, RAA], outs=[PHO], V_max=V_mix,
               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_mix, I_mix))
@@ -139,10 +139,10 @@ PBR18 = su.CSTR('PBR18', ins=PBR17-0, V_max=V_pbr/20,
               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T, I))
 PBR19 = su.CSTR('PBR19', ins=PBR18-0, V_max=V_pbr/20,
               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T, I))
-PBR20 = su.CSTR('PBR20', ins=PBR19-0, outs=[ME, INT], split=[0.93, 0.07], V_max=V_pbr/20,
+PBR20 = su.CSTR('PBR20', ins=PBR19-0, outs=[ME, INT], split=[0.94, 0.06], V_max=V_pbr/20,
               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T, I))
 
-MEM = su.Splitter('MEM', PBR20-0, outs=[TE, RETEN], split=0.43*(1-cmps.x))
+MEM = su.Splitter('MEM', PBR20-0, outs=[TE, RETEN], split=0.45*(1-cmps.x))
 
 MEV = su.CSTR('MEV', ins=MEM-1, V_max=V_mem, aeration=None, suspended_growth_model=None)
 
@@ -217,7 +217,7 @@ def run(t, t_step, method=None, print_t=False, **kwargs):
                       method=method,
                       # rtol=1e-2,
                       # atol=1e-3,
-                      export_state_to=ospath.join(results_path, f'sol_{t}d_{method}_validation_result.xlsx'),
+                      export_state_to=ospath.join(results_path, f'sol_{t}d_{method}_validation_result_1month_.xlsx'),
                       print_t=print_t,
                       **kwargs)
     else:
@@ -236,7 +236,7 @@ def run(t, t_step, method=None, print_t=False, **kwargs):
     print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
 
 if __name__ == '__main__':
-    t = 151
+    t = 30
     t_step = 0.1
     # method = 'RK45'
     method = 'RK23'
