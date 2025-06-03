@@ -46,7 +46,8 @@ patch_dct = {
 configs=('B1', 'B2', 'B3', 'C1', 'C2', 'C3', 'E2', 'E2P', 'F1', 
         'G1', 'G2', 'G3', 'H1', 'I1', 'I2', 'I3', 'N1', 'N2')
 data_handles = {
-    'Baseline': ('baseline_opt_performance', 'combined'),   # file name, sheet name
+    'Baseline': ('baseline_unopt_performance', 0),   # file name, sheet name
+    'Adjusted': ('baseline_opt_performance', 'combined'),
     'UD10': ('UD_opt_performance', '10'),
     # 'UD30': ('UD_opt_performance', '30'),
     'UD100': ('UD_opt_performance', '100'),
@@ -78,7 +79,7 @@ def compile_opex():
 def stacked_bar(opex=None, save_as=''):
     if opex is None:
         opex = compile_opex()
-    fig, axes = plt.subplots(ncols=len(configs), sharey=True, figsize=(18, 6))
+    fig, axes = plt.subplots(ncols=len(configs), sharey=True, figsize=(18, 5))
     handles = []
     for ID, ax in zip(configs, axes):
         df = opex.loc[(slice(None), ID),:]

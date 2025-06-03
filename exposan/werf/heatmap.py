@@ -144,7 +144,8 @@ def plot_absolute(data=None, suffix='baseline_unopt'):
         return 'black'
 
     heatmap(fill.loc[eff_vars,:], annotate=vals.loc[eff_vars,:], valfmt=valfmtwnan, 
-            txtcolors=txtcolors, save_as=f'eff_{suffix}.png')
+            txtcolors=txtcolors, save_as=f'eff_{suffix}.png',
+            row_labels=['COD', 'BOD', 'TN', 'NH$_4$-N', 'TP'])
     heatmap(fill.loc[op_vars,:], 
             show_ticklabels=False, colorbar=False,
             annotate=vals.loc[op_vars,:], valfmt=valfmtwnan, 
@@ -178,6 +179,7 @@ def plot_diff(data, suffix=''):
     heatmap(fill.loc[eff_vars,:], cmap='bwr', vmin=-1, vmax=1,
             annotate=vals.loc[eff_vars,:], valfmt=valfmtpc, 
             txtcolors=txtcolors, annotate_kw=dict(size=10), 
+            row_labels=['COD', 'BOD', 'TN', 'NH$_4$-N', 'TP'],
             save_as=f'deff_{suffix}.png')
     heatmap(fill.loc[op_vars,:], cmap='bwr', vmin=-1, vmax=1,
             show_ticklabels=False, colorbar=False,
@@ -192,8 +194,8 @@ if __name__ == '__main__':
         header=[0,1], skiprows=[2,]
         )
     df_baseline_opt.columns = [i[1].split(' [')[0] for i in df_baseline_opt.columns]
-    # plot_absolute(df_baseline_opt, 'baseline_opt')
-    # plot_absolute()
+    plot_absolute(df_baseline_opt, 'baseline_opt')
+    plot_absolute()
     
     # df_unopt = load_data(
     #     ospath.join(results_path, 'baseline_unopt_performance.xlsx'), sheet=0,
@@ -214,10 +216,10 @@ if __name__ == '__main__':
     #         diff = cal_perc_diff(df_unopt, df)
     #         plot_diff(diff, suffix)
         
-    df = load_data(
-        ospath.join(results_path, 'UD_opt_performance.xlsx'), sheet='100',
-        header=[0,1], skiprows=[2,]
-        )
-    df.columns = [i[1].split(' [')[0] for i in df.columns]
-    diff = cal_perc_diff(df_baseline_opt, df)
-    plot_diff(diff, '100UD_opt')
+    # df = load_data(
+    #     ospath.join(results_path, 'UD_opt_performance.xlsx'), sheet='100',
+    #     header=[0,1], skiprows=[2,]
+    #     )
+    # df.columns = [i[1].split(' [')[0] for i in df.columns]
+    # diff = cal_perc_diff(df_baseline_opt, df)
+    # plot_diff(diff, '100UD_opt')
