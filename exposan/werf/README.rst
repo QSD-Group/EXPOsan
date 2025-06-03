@@ -1,10 +1,12 @@
 =================================================================================
-werf: 18 Benchmark Models for Water Resource Recovery Facilities (WRRF) in the US
+werf: Benchmark Models for Water Resource Recovery Facilities (WRRF) in the US
 =================================================================================
 
 Summary
 -------
-This modules contains benchmark models of typical WRRF configurations in the US [1]_, [2]_. Configuration IDs are indicative of the combination of liquid and solids treatment trains, according to the WERF codes. 18 of the possible configurations are available, including their plant-wide dynamic simulations, operational energy demand estimation, and OPEX accounting. More configurations to follow.
+This module contains benchmark models of typical WRRF configurations in the US [1]_, [2]_. Configuration IDs are indicative of the combination of liquid and solids treatment trains, according to the WERF codes below. 
+
+**18 of the possible configurations are available**, including their plant-wide dynamic simulations, operational energy demand estimation, and OPEX accounting. More configurations to follow.
 
 .. figure:: ./readme_figures/wrrf_codes_wide.png
 
