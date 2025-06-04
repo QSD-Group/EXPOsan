@@ -95,10 +95,6 @@ class Biosolids(SanUnit):
     def _run(self):
         biosolids = self.outs[0]
         
-        biosolids_annual = self.biosolids_generated # dry tons/yr, default value for scaling
-        biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
-        self.scale_factor = biosolids_annual / biogenic_refinery_capacity
-        
         biosolids.empty() 
         
         biosolids.imass['H2O'] = 1.  # or any relevant component
@@ -135,7 +131,6 @@ class Biosolids(SanUnit):
         # biosolids_FC_percent = 100 * biosolids.imass['FixedCarbon'] / flow_rate_db # %
         biosolids.F_mass =  (biosolids.imass['AshContent'] + biosolids.imass['FixedCarbon'] + 
             biosolids.imass['VolatileMatter'] + biosolids.imass['H2O'])  # kg/hr
-    
         
 ##TODO 
 # 1. (Done Stetson, Aaron to review) layer assumptions/calcs about drying onto HHX drying, Reviewed
@@ -240,7 +235,7 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         
         # Calculate total dry basis mass flow
         dry_mass_flow = waste.F_mass * (1 - mc)  # kg-db / hr
-        print(f"F_mass = {waste.F_mass}, mc = {mc}, dry_mass_flow = {dry_mass_flow}, AshContent = {waste.imass['AshContent']}")
+      
         # Calculate ash content fraction (dry basis)
         self.ACf = waste.imass['AshContent'] / dry_mass_flow  # decimal fraction
         ACf = self.ACf
@@ -479,6 +474,10 @@ class BiogenicRefineryControls(SanUnit):
             Construction('electric_cables', linked_unit=self, item='ElectricCables', quantity_unit='m'),
             ]
     def _run(self):
+        waste_in = self.ins[0]
+        waste_out = self.outs[0]
+        waste_out.copy_like(self.ins[0])
+        
         biosolids_annual = self.biosolids_generated # dry tons/yr, default value for scaling
         biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
         self.scale_factor = biosolids_annual / biogenic_refinery_capacity  
@@ -569,9 +568,6 @@ class BiogenicRefineryHHX(SanUnit):
     --------
     :class:`~.sanunits.BiogenicRefineryHHXdryer`
     '''
-    biosolids_annual = 10000 # dry tons/yr, default value for scaling
-    biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
-    scale_factor = biosolids_annual / biogenic_refinery_capacity
     
     _N_ins = 1
     _N_outs = 1
@@ -738,7 +734,7 @@ class BiogenicRefineryHHXdryer(SanUnit):
         
         # Calculate total dry mass flow rate of input
         m_dried_sludge = waste_in.imass['AshContent'] + waste_in.imass['FixedCarbon'] + waste_in.imass['VolatileMatter']  # kg/hr
-      
+
         # Calculate current moisture content (MC)
         MC_initial = waste_in.imass['H2O'] / (waste_in.imass['H2O'] + m_dried_sludge) # fraction
         
@@ -841,9 +837,8 @@ class BiogenicRefineryHousing(SanUnit):
     fecal sludge treatment with Omni Processors, ACS Environ. Au, 2022,
     https://doi.org/10.1021/acsenvironau.2c00022
     '''
-    biosolids_annual = 10000 # dry tons/yr, default value for scaling
-    biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
-    scale_factor = biosolids_annual / biogenic_refinery_capacity
+    _N_ins = 1
+    _N_outs = 1
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  const_wage=15, const_person_days=100, **kwargs):
@@ -867,6 +862,10 @@ class BiogenicRefineryHousing(SanUnit):
             Construction('concrete', item='Concrete', linked_unit=self, quantity_unit='m3'),
             ]
     def _run(self):
+        waste_in = self.ins[0]
+        waste_out = self.outs[0]
+        waste_out.copy_like(self.ins[0])
+        
         biosolids_annual = self.biosolids_generated # dry tons/yr, default value for scaling
         biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
         self.scale_factor = biosolids_annual / biogenic_refinery_capacity  
@@ -942,9 +941,6 @@ class BiogenicRefineryOHX(SanUnit):
     fecal sludge treatment with Omni Processors, ACS Environ. Au, 2022,
     https://doi.org/10.1021/acsenvironau.2c00022
     '''
-    biosolids_annual = 10000 # dry tons/yr, default value for scaling
-    biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
-    scale_factor = biosolids_annual / biogenic_refinery_capacity
     
     _N_ins = 1
     _N_outs = 1
@@ -1045,9 +1041,6 @@ class BiogenicRefineryPollutionControl(SanUnit):
     fecal sludge treatment with Omni Processors, ACS Environ. Au, 2022,
     https://doi.org/10.1021/acsenvironau.2c00022
     '''
-    biosolids_annual = 10000 # dry tons/yr, default value for scaling
-    biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
-    scale_factor = biosolids_annual / biogenic_refinery_capacity
     
     _N_ins = 2
     _N_outs = 2

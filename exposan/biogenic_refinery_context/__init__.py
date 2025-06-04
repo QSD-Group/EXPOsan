@@ -56,17 +56,16 @@ def cost_per_ton_biochar(model):
     return total_cost / biochar_mass
 
 def gwp_per_ton_biochar(model):
-    system = model.system
-    print("LCA impacts:", system.LCA.total_impacts)
-    annual_LCA = (system.LCA.total_construction_impacts + system.LCA.total_transportation_impacts + 
-           system.LCA.total_stream_impacts) / system.LCA.lifetime #kgCO2eq/yr
-    annual_C_seq = system.flowsheet.unit.A4.biochar_sequesterable_carbon * 1000 * 44/12 #kgCO2eq seq C/yr
-    return (
-        np.nan if system.flowsheet.stream.biochar.F_mass == 0 else
-        (annual_LCA - annual_C_seq) /
-        (system.flowsheet.stream.biochar.F_mass * 24 * 365 / 1000) # kg CO2-eq/ton-biochar
-    )
-    
+    LCA = model.system.LCA
+    annual_LCA = (
+    LCA.total_construction_impacts['GlobalWarming'] +
+    LCA.total_transportation_impacts['GlobalWarming'] +
+    LCA.total_stream_impacts['GlobalWarming']
+) / LCA.lifetime #kgCO2eq/yr
+    annual_C_seq = model.system.flowsheet.unit.A4.biochar_sequesterable_carbon * 1000 * 44/12 #kgCO2eq seq C/yr
+
+    return (annual_LCA - annual_C_seq) / (model.system.flowsheet.stream.biochar.F_mass * 24 * 365 / 1000) # kg CO2-eq/ton-biochar
+
 def biochar_generated(model):
     system = model.system
     return system.flowsheet.stream.biochar.F_mass * 24 * 365 / 1000  # tons biochar/year
@@ -83,6 +82,7 @@ def drying_requirement(model):
     system = model.system
     return system.flowsheet.unit.A8.Q_drying_norm  # MJ/ton-biosolids
 def drying_cost(model):
+    system = model.system
     MJ_per_year = system.flowsheet.unit.A8.Q_drying_norm/1000*24*365
     price_per_MJ = .045 #USD/MJ
     return MJ_per_year * price_per_MJ #cost/year

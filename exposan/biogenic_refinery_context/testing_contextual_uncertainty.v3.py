@@ -49,7 +49,7 @@ u = system.flowsheet.unit
 u.A1.AC = ASH_FRAC
 u.A1.FC = FC_FRAC
 u.A1.MC = MOISTURE_FRAC
-
+count = 0
 
 N = 100  # Number of Latin Hypercube samples
 samples = model.sample(N, rule='L')
@@ -141,8 +141,8 @@ for _, row in df.iterrows():
     # ===== Monte Carlo sampling =====    
     model.evaluate()
     
-    print("biosolids", model.system.flowsheet.stream.biosolids)
-    print("biochar", model.system.flowsheet.stream.biochar)
+    count += 1
+    print(count)
     
     # ===== Collect detailed metrics for each facility =====   
     metric_values = {}
