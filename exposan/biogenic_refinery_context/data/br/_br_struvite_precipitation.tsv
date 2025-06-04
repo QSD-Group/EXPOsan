@@ -11,3 +11,4 @@ cost_P_pipe		USD/m	0.15	0.1	0.2	uniform	Lohman et al. 2020
 filter_reuse		# times reused	10	5	20	uniform	Lohman et al. 2020
 reactor_weight		kg	50	25	75	uniform	general search in Alibaba; https://www.alibaba.com/product-detail/Yuzhen-Stainless-Steel-Jacketed-Heating-Storage_1600377306729.html
 pvc_mass		kg PVC/m	0.472	0.354	0.59	uniform	http://www.midcoonline.com/web/Pages/Products/Pipe/Info/PVC_CPVC/
+biosolids_generated		dry-tonnes/yr	500			constant	

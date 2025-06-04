@@ -55,7 +55,11 @@ from . import (
     biochar_generated,
     sequesterable_carbon,
     drying_requirement,
-    energy_conversion_efficiency
+    drying_cost,
+    energy_conversion_efficiency,
+    char_yield,
+    ash_content_feedstock,
+    moisture_content_feedstock
 )
 
 __all__ = ('create_model', 'run_uncertainty',)
@@ -86,19 +90,23 @@ def add_metrics(model):
         Metric('Biochar generated', lambda: biochar_generated(model), 'ton biochar/yr'),
         Metric('Sequesterable carbon', lambda: sequesterable_carbon(model), 'ton C/yr'),
         Metric('Drying requirement', lambda: drying_requirement(model), 'kWh/ton biosolids/yr'),
+        Metric('Drying cost per year', lambda: drying_cost(model), 'USD/year'),
         Metric('Energy Conversion Efficiency', lambda: energy_conversion_efficiency(model), '%'),
+        Metric('Char Yield (db %)', lambda: char_yield(model), '%'),
+        Metric('Ash Content Feedstock (db %)', lambda: ash_content_feedstock(model), '%'),
+        Metric('Moisture Content Feedstock', lambda: moisture_content_feedstock(model), '%'),
     ]
 
     # Net cost
-    metrics.append(
-        Metric('Annual net cost', get_TEA_metrics(system)[0], f'{qs.currency}/cap/yr', 'TEA results'),
-        )
-    # Net emissions
-    funcs = get_LCA_metrics(system)
-    cat = 'LCA results'
-    metrics.extend([
-        Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),
-        ])
+    # metrics.append(
+    #     Metric('Annual net cost', get_TEA_metrics(system)[0], f'{qs.currency}/cap/yr', 'TEA results'),
+    #     )
+    # # Net emissions
+    # funcs = get_LCA_metrics(system)
+    # cat = 'LCA results'
+    # metrics.extend([
+    #     Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', cat),
+    #     ])
     model.metrics = metrics
 
 

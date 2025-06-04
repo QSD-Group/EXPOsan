@@ -86,14 +86,16 @@ for _, row in df.iterrows():
             raise KeyError(f"Metric '{metric.name}' not found in model.table.")
         
         mean = np.mean(values)
+        median = np.median(values)
         lower = np.percentile(values, 5)
         upper = np.percentile(values, 95)
-        metric_values[metric.name] = (mean, lower, upper)
+        metric_values[metric.name] = (mean, median, lower, upper)
 
     # Store only summarized results for each facility
     result = {'NPDES ID2': facility, 'Biosolids_tpy': tpy}
-    for name, (mean, lower, upper) in metric_values.items():
+    for name, (mean, median, lower, upper) in metric_values.items():
         result[f'{name} (mean)'] = mean
+        result[f'{name} (median)'] = median
         result[f'{name} (5th pct)'] = lower
         result[f'{name} (95th pct)'] = upper
 

@@ -21,3 +21,4 @@ service_team_wages		usd per cap per hr	6.05	3.37	10.35	triangular	https://www.sa
 certified_electrician_wages		usd per cap per hr	6.75	2.02	9.91	triangular	https://www.salaryexpert.com/salary http://www.salaryexplorer.com/salary-survey.php?loc=225&loctype=1&job=176&jobtype=3	"China 9.91, South Africa 8.32, Uganda 2.02"
 facility_manager_wages		usd per cap per hr	17.39	7.8	23.2	triangular	https://www.salaryexpert.com/salary/job/export-manager/china	"China 23.2, South Africa 21.18, India 7.8"
 biomass_controls_wages		usd per cap per hr	17.88	8.8	19.95	triangular	https://www.salaryexpert.com/	"China 19.95, South Africa 17.88, India 8.8"
+biosolids_generated		dry-tonnes/yr	500			constant		

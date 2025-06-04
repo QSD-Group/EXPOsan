@@ -34,3 +34,4 @@ water_heat_capacity_k_j_kg_k		KJ/(kg K)	3.85			constant
 ambient_temp		C	25.6	25.14	26.06	uniform	Meyers et al 2019	
 water_r_pipe_k_k_w		K/kW	0.04			constant	Meyers et al 2019	
 water_r_insulation_k_k_w		K/kW	24.1			constant	Meyers et al 2019	
+biosolids_generated		dry-tonnes/yr	500			constant		

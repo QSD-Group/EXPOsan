@@ -42,8 +42,6 @@ data_path, results_path = _init_modules(module, include_data_path=True)
 # Metrics for model output 
 # =============================================================================
 
-#TODO: Update to retrieve values from units
-
 def cost_per_ton_biochar(model):
     biochar = model.system.flowsheet.stream.biochar
     biochar_mass = biochar.F_mass * 24 * 365 / 1000  # tons/year
@@ -60,9 +58,12 @@ def cost_per_ton_biochar(model):
 def gwp_per_ton_biochar(model):
     system = model.system
     print("LCA impacts:", system.LCA.total_impacts)
+    annual_LCA = (system.LCA.total_construction_impacts + system.LCA.total_transportation_impacts + 
+           system.LCA.total_stream_impacts) / system.LCA.lifetime #kgCO2eq/yr
+    annual_C_seq = system.flowsheet.unit.A4.biochar_sequesterable_carbon * 1000 * 44/12 #kgCO2eq seq C/yr
     return (
         np.nan if system.flowsheet.stream.biochar.F_mass == 0 else
-        system.LCA.total_impacts['GlobalWarming'] /
+        (annual_LCA - annual_C_seq) /
         (system.flowsheet.stream.biochar.F_mass * 24 * 365 / 1000) # kg CO2-eq/ton-biochar
     )
     
@@ -81,10 +82,22 @@ def sequesterable_carbon(model):
 def drying_requirement(model):
     system = model.system
     return system.flowsheet.unit.A8.Q_drying_norm  # MJ/ton-biosolids
-
+def drying_cost(model):
+    MJ_per_year = system.flowsheet.unit.A8.Q_drying_norm/1000*24*365
+    price_per_MJ = .045 #USD/MJ
+    return MJ_per_year * price_per_MJ #cost/year
 def energy_conversion_efficiency(model):
     system = model.system
     return system.flowsheet.unit.A4.ECE             #ECE %
+def char_yield(model):
+    system = model.system
+    return system.flowsheet.unit.A4.char_yield_db_percent
+def ash_content_feedstock(model):
+    system = model.system
+    return system.flowsheet.unit.A4.ACf
+def moisture_content_feedstock(model):
+    system = model.system
+    return system.flowsheet.unit.A8.MC_feedstock
 # %%
 
 # =============================================================================
@@ -129,7 +142,7 @@ def update_resource_recovery_settings():
         'CH4': 34,
         'N2O': 298,
         # Assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
-        'biochar': -0.2*0.9*(44/12),
+        'biochar': 0 #-0.2*0.9*(44/12), included manually, so overridden to zero for stream
         }
 
         
@@ -254,13 +267,7 @@ def get_sustainability_indicators(system, include_breakdown=False):
 
     u_reg = system.flowsheet.unit
     dct = globals()
-## TODO write functions for sustainability indicators here
- #A4.outs[0]._carbon_sequestration # % feedstock carbon sequestered in biochar -
- #A4.outs[0]._sequesterable_carbon #ton seq. C/yr) 
- #A4.outs[0].F_mass * 24 * 365 / 1000 #ton biochar / yr)
- #A4.outs[0].ECE # % energy conversion efficiency needed for zero extrenal energy req.
- #A8.outs[0].Q_drying # MJ/ton-biosolids-db
- #annualized_CAPEX / A4.outs[0]._sequesterable_carbon # cost/ton-sequesterable C)
+
 
 ##### Costs #####
 # Learning curve assumptions
@@ -352,8 +359,6 @@ def print_summaries(systems):
 
         print(f'\n---------- Summary for {sys.ID} ----------\n')
         if sys.ID in ('sysA'):
-            recovery_functions = get_recoveries(sys)
-            print(f'\nTAnnual sequestered C: {get_sustainability_indicators[0]():.1f} %.')
 
             TEA_functions = get_TEA_metrics(sys)
             unit = f'{qs.currency}/cap/yr'

@@ -19,4 +19,5 @@ drying_temp		C	105			constant	Aaron to add
 MC_final		kg H2O / kg biosolids	0.35			constant	Aaron to add
 Cp_H2O		kJ/(kg K)	4.18			constant	Aaron to add
 Cp_dried_sludge		kJ/(kg K)	1.15			constant	Aaron to add
-deltaH_vap_H2O		kJ/kg H2O	0.0026			constant	Aaron to add
+deltaH_vap_H2O		kJ/kg H2O	2260			constant	Aaron to add
+biosolids_generated		dry-tonnes/yr	500			constant	

@@ -77,9 +77,7 @@ class Biosolids(SanUnit):
     
     _N_ins = 0
     _N_outs = 1
-    biosolids_annual = 10000 # dry tons/yr, default value for scaling TODO: change with facility
-    biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
-    scale_factor = biosolids_annual / biogenic_refinery_capacity
+    
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  biosolids_source='biosolids', **kwargs):
@@ -97,37 +95,46 @@ class Biosolids(SanUnit):
     def _run(self):
         biosolids = self.outs[0]
         
+        biosolids_annual = self.biosolids_generated # dry tons/yr, default value for scaling
+        biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
+        self.scale_factor = biosolids_annual / biogenic_refinery_capacity
+        
         biosolids.empty() 
         
         biosolids.imass['H2O'] = 1.  # or any relevant component
         
+        biosolids_VM = self.VM_db 
+        biosolids_MC = self.MC
+        biosolids_FC = self.FC
+        biosolids_AC = self.AC
+        
         # biosolids_tpy = 5000 # tons per year
         biosolids_tpy = self.biosolids_generated
-        biosolids.F_mass = biosolids_tpy * 1000/(365*24*(1-self.MC)) # F_mass in kg/hr
+        biosolids.F_mass = biosolids_tpy * 1000/(365*24*(1-biosolids_MC)) # F_mass in kg/hr
         
-        #update density to be based on MC
-        VM_db = 1 - self.AC - self.FC # fraction dry-basis
+        # #update density to be based on MC
+        # self.VM_db = 1 - self.AC - self.FC # fraction dry-basis
 
+        flow_rate_db = biosolids.F_mass * (1 - biosolids_MC) # kg-db / hr
         
-        flow_rate_db = biosolids.F_mass * (1 - self.MC) # kg-db / hr
-        
-        biosolids.imass['AshContent'] = flow_rate_db * self.AC # kg / hr
-        biosolids.imass['FixedCarbon'] = flow_rate_db * self.FC # kg / hr
-        biosolids.imass['VolatileMatter'] = flow_rate_db * VM_db  # kg / hr
+        biosolids.imass['AshContent'] = flow_rate_db * biosolids_AC # kg / hr
+        biosolids.imass['FixedCarbon'] = flow_rate_db * biosolids_FC # kg / hr
+        biosolids.imass['VolatileMatter'] = flow_rate_db * biosolids_VM  # kg / hr
         
         # biosolids._AC = flow_rate_db * self.AC # kg / hr
         # biosolids._FC = flow_rate_db * self.FC # kg / hr
         # biosolids._VM = flow_rate_db * VM_db # kg / hr
         
-        biosolids.imass['H2O'] = biosolids.F_mass * self.MC  # kg/hr
+        biosolids.imass['H2O'] = biosolids.F_mass * biosolids_MC  # kg/hr
         biosolids._TN = flow_rate_db * self.N # kg / hr
         #TODO need some estimates of COD for CH4 in drying
-        biosolids._COD = biosolids.imass['VolatileMatter'] * 1.74 #TODO: if an. digestion or aer. dgiestion: CODt / VS = 1.60, else if: CODt / VS = 1.74 Ahnert et. al., (2021).
+        biosolids._COD = biosolids.imass['VolatileMatter'] * 1.74 # CODt / VS = 1.74 Ahnert et. al., (2021).
         #TODO might need to use .imass['N'] instead of .TN too?
         
         # biosolids_AC_percent = 100 * biosolids.imass['AshContent'] / flow_rate_db # %
         # biosolids_FC_percent = 100 * biosolids.imass['FixedCarbon'] / flow_rate_db # %
-     
+        biosolids.F_mass =  (biosolids.imass['AshContent'] + biosolids.imass['FixedCarbon'] + 
+            biosolids.imass['VolatileMatter'] + biosolids.imass['H2O'])  # kg/hr
     
         
 ##TODO 
@@ -187,9 +194,7 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
     
     _N_ins = 1
     _N_outs = 3
-    biosolids_annual = 10000 # dry tons/yr, default value for scaling
-    biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
-    scale_factor = biosolids_annual / biogenic_refinery_capacity
+    
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  **kwargs):
@@ -220,6 +225,10 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         gas.phase = N2O.phase = 'g'
         gas.T = self.pyrolysis_temp
 
+        biosolids_annual = self.biosolids_generated # dry tons/yr, default value for scaling
+        biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
+        self.scale_factor = biosolids_annual / biogenic_refinery_capacity
+
         # Moisture content
    
         mc = waste.imass['H2O']/waste.F_mass #if waste.F_mass!=0 else 0
@@ -233,22 +242,20 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         dry_mass_flow = waste.F_mass * (1 - mc)  # kg-db / hr
         print(f"F_mass = {waste.F_mass}, mc = {mc}, dry_mass_flow = {dry_mass_flow}, AshContent = {waste.imass['AshContent']}")
         # Calculate ash content fraction (dry basis)
-        ACf = waste.imass['AshContent'] / dry_mass_flow  # decimal fraction
-        
+        self.ACf = waste.imass['AshContent'] / dry_mass_flow  # decimal fraction
+        ACf = self.ACf
         # Calculate char yield on dry ash-free basis
         daf_yield = (0 + 0.144 * (ACf**0.0304) + 2.7023 * math.exp(-0.0066 * self.pyrolysis_temp))
-        
         # Calculate char yield on dry basis
         char_yield_factor = daf_yield * (1 - ACf) + ACf
-        char_yield_db_percent = char_yield_factor * 100  # %
-
+        self.char_yield_db_percent = char_yield_factor * 100  # %
         # Calculate total char mass flow rate
-        biochar_dry_mass_flow = dry_mass_flow * (char_yield_db_percent / 100)  # kg/hr 
+        biochar_dry_mass_flow = dry_mass_flow * (self.char_yield_db_percent / 100)  # kg/hr 
         biochar_mass_flow = biochar_dry_mass_flow / .98  # kg/hr adjusts the mass to add 2% MC
 
         # Calculate biochar ash content
-        AC_biochar_percent = (char_yield_db_percent - daf_yield * 100) / char_yield_db_percent * 100
-
+        AC_biochar_percent = (self.char_yield_db_percent - daf_yield * 100) / self.char_yield_db_percent * 100
+        
         # Set biochar volatile matter set based on temp
         if 500 <= self.pyrolysis_temp <= 600:
             VM_biochar_percent = self.VM_biochar_percent_500
@@ -280,15 +287,15 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         # TODO Calculate biochar energy, calculate feedstock sludge energy, calculate drying energy requirement
         
         Q_biochar = biochar_dry_mass_flow * self.biochar_hhv           # MJ/hr
-        Q_biosolids = dry_mass_flow * self.HHV # MJ/hr TODO: link biosolids flowrate and biosolids hhv from Biosolids unit to here
+        Q_biosolids = dry_mass_flow * self.HHV # MJ/hr 
         
         #converts kJ/hr to MJ/hr
-        Q_drying = waste.source.Q_drying / 1000            # MJ/hr TODO: link Q_drying from BiogenicRefineryHHXdryer unit to here.
+        Q_drying = waste.source.Q_drying / 1000            # MJ/hr
         
         # TODO Calculate combined Energy Conversion Efficiency (%) needed to self-sustain drying requirement.
         
-        self.ECE = 100 * Q_drying / (Q_biosolids - Q_biochar)    # %
-        
+        self.ECE = 100 * Q_drying / (Q_biosolids - Q_biochar)    # Q_drying
+
         # Calculate biochar volume (assuming density of 300 kg/m3 for biochar with 2% MC)
         biochar_density = 300  # kg/m3
         biochar.F_vol = biochar_mass_flow / biochar_density  # m³/hr
@@ -309,7 +316,7 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
         R50 = 0.17 * Cafb + 0.00479  # Klasson 2017
 
         # Calculate carbon sequestration potential
-        CS = char_yield_db_percent * (C_biochar * 100) * R50 / C_feedstock  # % Zhao et al. 2013
+        CS = self.char_yield_db_percent * (C_biochar * 100) * R50 / C_feedstock  # % Zhao et al. 2013
 
         # Set additional biochar properties
         
@@ -341,7 +348,7 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
 
 
     def _design(self):
-        design = self.design_results
+        design = self.design_results 
         constr = self.construction
         design['StainlessSteel'] = constr[0].quantity = (\
             self.carbonizer_base_assembly_stainless + \
@@ -449,12 +456,10 @@ class BiogenicRefineryControls(SanUnit):
     fecal sludge treatment with Omni Processors, ACS Environ. Au, 2022,
     https://doi.org/10.1021/acsenvironau.2c00022
     '''
-    biosolids_annual = 10000 # dry tons/yr, default value for scaling
-    biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
-    scale_factor = biosolids_annual / biogenic_refinery_capacity
     
     _N_ins = _N_outs = 1
 
+  
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with, F_BM_default=1)
@@ -473,7 +478,11 @@ class BiogenicRefineryControls(SanUnit):
             Construction('electric_connectors', linked_unit=self, item='ElectricConnectors', quantity_unit='kg'),
             Construction('electric_cables', linked_unit=self, item='ElectricCables', quantity_unit='m'),
             ]
-
+    def _run(self):
+        biosolids_annual = self.biosolids_generated # dry tons/yr, default value for scaling
+        biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
+        self.scale_factor = biosolids_annual / biogenic_refinery_capacity  
+        
     def _design(self):
         design = self.design_results
         constr = self.construction
@@ -594,7 +603,12 @@ class BiogenicRefineryHHX(SanUnit):
         hot_gas_out.copy_like(hot_gas_in)
         hot_gas_out.phase = hot_gas_in.phase = 'g'
         hot_gas_out.T = self.hhx_temp
-
+        
+       
+        biosolids_annual = self.biosolids_generated # dry tons/yr, default value for scaling
+        biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
+        self.scale_factor = biosolids_annual / biogenic_refinery_capacity
+        
         # # The following codes can be used to calculate the heat that was delivered to the HHX
         # # Yalin Li updated L. Stetson Rowles' codes on 2022-09-10
         # self.heat_output_water = \
@@ -718,30 +732,43 @@ class BiogenicRefineryHHXdryer(SanUnit):
         waste_out.copy_like(self.ins[0])
         heat_in.phase = N2O.phase = CH4.phase = 'g'
         
+        biosolids_annual = self.biosolids_generated # dry tons/yr, default value for scaling
+        biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
+        self.scale_factor = biosolids_annual / biogenic_refinery_capacity
         
         # Calculate total dry mass flow rate of input
         m_dried_sludge = waste_in.imass['AshContent'] + waste_in.imass['FixedCarbon'] + waste_in.imass['VolatileMatter']  # kg/hr
       
         # Calculate current moisture content (MC)
         MC_initial = waste_in.imass['H2O'] / (waste_in.imass['H2O'] + m_dried_sludge) # fraction
-
+        
+        target_H2O = .35 * m_dried_sludge / .65 #to result in a moisture content of 35%
+        self.MC_feedstock = MC_initial
+        
         # Calculate temperature difference
         delta_T = self.drying_temp - self.ambient_temp  # °C
 
-        # Calculate water to evaporate
+        # Calculate water to heat
         m_H2O_wet_sludge = waste_in.imass['H2O']  # kg/hr
-        m_H2O_evap = (MC_initial - self.MC_final) * m_dried_sludge * MC_initial / (1 - MC_initial)  # kg/hr #TODO: check MC_final is 35%
-
+        
+        #calculate water to evaporate
+        if MC_initial > 0.35:
+            m_H2O_evap = waste_in.imass['H2O'] - target_H2O
+            waste_out.imass['H2O'] = target_H2O
+        else:
+            m_H2O_evap = 0
+            waste_out.imass['H2O'] = waste_in.imass['H2O']
         # Calculate energy required for drying
-        Q_sensible = (m_dried_sludge * self.Cp_dried_sludge + m_H2O_wet_sludge * self.Cp_H2O) * delta_T  # kJ/hr
+        if MC_initial > 0.35:
+            Q_sensible = (m_dried_sludge * self.Cp_dried_sludge + m_H2O_wet_sludge * self.Cp_H2O) * delta_T  # kJ/hr
+        else:
+            Q_sensible = 0
+            
         Q_latent = m_H2O_evap * self.deltaH_vap_H2O  # kJ/hr
         
         self.Q_drying = Q_sensible + Q_latent  # kJ/hr
        
         self.Q_drying_norm = self.Q_drying / (m_dried_sludge) #kJ/kg-biosolids-db or MJ/ton
-      
-        # Calculate remaining water after drying
-        waste_out.imass['H2O'] = waste_in.imass['H2O'] - m_H2O_evap  # kg/hr
         
         # Calculate new volumetric flow rate based on reduced water content
         #TODO is this part needed? does vol matter here? ANS: I think this is needed to ensure the 
@@ -754,7 +781,7 @@ class BiogenicRefineryHHXdryer(SanUnit):
         waste_out.F_mass = total_mass_out
         
         # # The following codes can be used to compare if the supplied heat is
-        # # sufficient to provide the needed heat for drying
+        # # sufficient to provide the needed heat for drgyin
         # water_to_dry = waste_in.imass['H2O'] - waste_out.imass['H2O'] # kg water/hr
         # heat_needed_to_dry_35 = water_to_dry * self.energy_required_to_dry_sludge # MJ/hr
         # heat_supplied = self.dryer_heat_transfer_coeff * self.area_surface * (self.water_out_temp-self.feedstock_temp)
@@ -785,7 +812,7 @@ class BiogenicRefineryHHXdryer(SanUnit):
         # self.jacket_heat_loss_conv = self.heat_transfer_coeff * (self.water_air_hx_temp - self.ambient_temp) * self.water_air_hx_area / 1000 / 0.2778 # MJ/hr
         # self.jacket_heat_loss_radiation = self.radiative_emissivity * 5.67e-8 * ((self.water_air_hx_temp1 + 273)**4 - (self.ambient_temp + 273)**4) / 1000 / 0.2778 # MJ/hr
         # self.jacket_heat_loss_sum = self.jacket_heat_loss_conv + self.jacket_heat_loss_radiation # MJ/hr
-
+        
 
 # %%
 
@@ -839,7 +866,11 @@ class BiogenicRefineryHousing(SanUnit):
             Construction('stainless_steel_sheet', item='StainlessSteelSheet', linked_unit=self, quantity_unit='kg'),
             Construction('concrete', item='Concrete', linked_unit=self, quantity_unit='m3'),
             ]
-
+    def _run(self):
+        biosolids_annual = self.biosolids_generated # dry tons/yr, default value for scaling
+        biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
+        self.scale_factor = biosolids_annual / biogenic_refinery_capacity  
+        
     def _design(self):
         design = self.design_results
         constr = self.construction
@@ -945,6 +976,10 @@ class BiogenicRefineryOHX(SanUnit):
         hot_gas_out.copy_like(hot_gas_in)
         hot_gas_out.phase = hot_gas_in.phase = 'g'
         hot_gas_out.T = self.ohx_temp
+        
+        biosolids_annual = self.biosolids_generated # dry tons/yr, default value for scaling
+        biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
+        self.scale_factor = biosolids_annual / biogenic_refinery_capacity
 
         # # The following codes can be used to calculate the power that was delivered to the ORC
         # self.power_delivery_orc = \
@@ -1044,7 +1079,11 @@ class BiogenicRefineryPollutionControl(SanUnit):
         gas_in, N2O_in = self.ins
         gas_out, N2O_out = self.outs
         gas_in.phase = N2O_in.phase = gas_out.phase = N2O_out.phase = 'g'
-
+        
+        biosolids_annual = self.biosolids_generated # dry tons/yr, default value for scaling
+        biogenic_refinery_capacity = 17.875 / 1000 * 24 * 365 # dry tons biosolids/year based on 20h/day of operation
+        self.scale_factor = biosolids_annual / biogenic_refinery_capacity
+        
         self.daily_run_time = self.uptime_ratio * 24 # hr/d
 
         # Set temperature

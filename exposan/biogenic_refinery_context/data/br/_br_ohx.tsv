@@ -11,3 +11,4 @@ oil_specific_heat		kJ/kg K	2.38			constant	Myers et al 2019
 amb_temp		C	25.6	25.14	26.06	uniform	Myers et al 2019
 oil_r_pipe_k_k_w		K/kW	0.09			constant	Myers et al 2019
 oil_r_insulation_k_k_w		K/kW	57.3			constant	Myers et al 2019
+biosolids_generated		dry-tonnes/yr	500			constant	

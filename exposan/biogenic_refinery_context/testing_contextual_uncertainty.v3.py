@@ -6,23 +6,36 @@ from exposan.biogenic_refinery_context.models import create_model
 from exposan.biogenic_refinery_context import results_path
 
 # Define constants here since they are not exposed in __init__.py
-TONS_TO_KG = 907.18474  # 1 ton = 907.18474 kg
-ASH_FRAC = 0.194
-VM_FRAC = 0.569
-FC_FRAC = 0.237
-MOISTURE_FRAC = 0.863
+TONS_TO_KG = 1000  # 1 ton = 1000 kg
+ASH_FRAC = 0.34         #TODO: change to uniform distr.     np.random.uniform(0.34, 0.42)  
+FC_FRAC = 0.0625         #TODO: change to uniform distr.     np.random.uniform(0.025, 0.1)
+MOISTURE_FRAC = 0.863   # np.random.uniform(.9, 0.97)
+VM_FRAC = 1 - ASH_FRAC - FC_FRAC
 
 # File configuration
-INPUT_EXCEL = 'Flow + Biosolids Combined Data (Major-Facilities)_subset.xlsx'
-SHEET_NAME = 'Combined Sheet (Major-Only) (2)'
+INPUT_EXCEL = 'Flow + Biosolids Combined Data (Major-Facilities).xlsx'
+SHEET_NAME = 'Combined Sheet (Major-Only)'
 TONS_COL = 'Amount of Biosolids Generated'
+
+# Define all the columns we need
+columns_to_keep = [
+    'NPDES ID2',
+    TONS_COL,
+    'All PSRP',
+    'All Other',
+    'All PFRP',
+    'All PTO'
+]
 
 # Load input Excel
 this_dir = os.path.dirname(__file__)
 input_path = os.path.join(this_dir, INPUT_EXCEL)
 df = pd.read_excel(input_path, sheet_name=SHEET_NAME)
-df = df[['NPDES ID2', TONS_COL]].dropna()
+
+# Keep only the necessary columns
+df = df[columns_to_keep].dropna(subset=[TONS_COL])
 df = df[df[TONS_COL] > 0]
+
 results = []
 mpath = os.path.join (results_path,'biosolids_contextual_scenario_results.xlsx')
 
@@ -48,8 +61,8 @@ for _, row in df.iterrows():
     # dry_tons_per_year = row[TONS_COL]
     
     u.A1.biosolids_generated = tpy = row[TONS_COL]
-    u.A1.biosolids_annual = u.A2.biosolids_annual = u.A3.biosolids_annual = u.A4.biosolids_annual = \
-        u.A5.biosolids_annual = u.A6.biosolids_annual = u.A7.biosolids_annual = u.A8.biosolids_annual = tpy
+    u.A2.biosolids_generated = u.A3.biosolids_generated = u.A4.biosolids_generated = \
+        u.A5.biosolids_generated = u.A6.biosolids_generated = u.A7.biosolids_generated = u.A8.biosolids_generated = tpy
 # =============================================================================
 #     # Convert to dry mass per day
 #     dry_mass_kg_d = dry_tons_per_year * TONS_TO_KG / 365
@@ -62,35 +75,63 @@ for _, row in df.iterrows():
 #     biosolids.imass['FixedCarbon'] = FC_FRAC * dry_mass_kg_d
 #     biosolids.imass['H2O'] = MOISTURE_FRAC * wet_mass_kg_d # TODO: add IF statement to reduce based on treatment methods
 # =============================================================================
-    
-    management_cols = ['AB', 'AC', 'AD', 'AE']
+    management_cols = ['All PSRP', 'All Other', 'All PFRP', 'All PTO']
     management_processes = []
     for col in management_cols:
-        val = str(row.get(col, '')).lower()
-        if val and val != 'nan':
-            management_processes.extend([proc.strip() for proc in val.split(',')])
-    management_processes = set(management_processes)
+        val = row.get(col, '')
+        if pd.notna(val) and val.strip() != '':
+        # If the value is a string, split it
+            val_str = str(val).lower()
+            processes = [proc.strip() for proc in val_str.split(',') if proc.strip()]
+            management_processes.extend(processes)
+            # Remove duplicates
+    management_processes = list({proc for proc in management_processes})
     
-    MC = u.A1.MC
-    if not management_processes or all(proc == 'null' for proc in management_processes):
-        MC = np.random.uniform(0.90, 0.97)
+    MC = MOISTURE_FRAC
+    
     if 'thickening' in management_processes:
         MC = np.random.uniform(0.94, 0.99)
-    if 'heatdry' in management_processes:
-        MC = np.random.uniform(0.09, 0.11)
     if 'airdry' in management_processes:
         MC = 0.6 * MC
-        
-    VM = u.A1.VM
+    if 'heatdry' in management_processes:
+        MC = np.random.uniform(0.09, 0.11) 
+      
+    VM = VM_FRAC
+    AC = ASH_FRAC
+    FC = FC_FRAC
+    
     if 'anaerobic' in management_processes and 'aerobic' not in management_processes:
-        VM = np.random.uniform(0.38, 0.5) * VM
+        VSR = np.random.uniform(0.38, 0.5)
+        #Adjust ratios based on volatile matter having been removed from the raw biosolids
+        VMr = tpy*VM/(1 - VM + VSR * VM) #tons/yr, initial mass of volatile matter saw before digestion 
+        ACi = AC
+        FCi = FC
+        AC = (ACi * (tpy+VMr-VSR*VMr)) / (ACi * (tpy+VMr-VSR*VMr) + FCi * (tpy+VMr-VSR*VMr) + VSR*VMr)
+        FC = (FCi * (tpy+VMr-VSR*VMr)) / (ACi * (tpy+VMr-VSR*VMr) + FCi * (tpy+VMr-VSR*VMr) + VSR*VMr)
+        VM = (VSR*VMr) / (ACi * (tpy+VMr-VSR*VMr) + FCi * (tpy+VMr-VSR*VMr) + VSR*VMr)
     elif 'aerobic' in management_processes and 'anaerobic' not in management_processes:
-        VM = np.random.uniform(0.45, 0.5) * VM
+        VSR = np.random.uniform(0.45, 0.5)
+        #Adjust ratios based on volatile matter having been removed from the raw biosolids
+        VMr = tpy*VM/(1 - VM + VSR * VM) #tons/yr, initial mass of volatile matter saw before digestion 
+        ACi = AC
+        FCi = FC
+        AC = (ACi * (tpy+VMr-VSR*VMr)) / (ACi * (tpy+VMr-VSR*VMr) + FCi * (tpy+VMr-VSR*VMr) + VSR*VMr)
+        FC = (FCi * (tpy+VMr-VSR*VMr)) / (ACi * (tpy+VMr-VSR*VMr) + FCi * (tpy+VMr-VSR*VMr) + VSR*VMr)
+        VM = (VSR*VMr) / (ACi * (tpy+VMr-VSR*VMr) + FCi * (tpy+VMr-VSR*VMr) + VSR*VMr)
     elif 'anaerobic' in management_processes and 'aerobic' in management_processes:
-        VM = np.random.uniform(0.50, 0.60) * VM
-
+        VSR = np.random.uniform(0.50, 0.60)
+        #Adjust ratios based on volatile matter having been removed from the raw biosolids
+        VMr = tpy*VM/(1 - VM + VSR * VM) #tons/yr, initial mass of volatile matter saw before digestion 
+        ACi = AC
+        FCi = FC
+        AC = (ACi * (tpy+VMr-VSR*VMr)) / (ACi * (tpy+VMr-VSR*VMr) + FCi * (tpy+VMr-VSR*VMr) + VSR*VMr)
+        FC = (FCi * (tpy+VMr-VSR*VMr)) / (ACi * (tpy+VMr-VSR*VMr) + FCi * (tpy+VMr-VSR*VMr) + VSR*VMr)
+        VM = (VSR*VMr) / (ACi * (tpy+VMr-VSR*VMr) + FCi * (tpy+VMr-VSR*VMr) + VSR*VMr)
+    
     u.A1.MC = MC
-    u.A1.VM = VM
+    u.A1.VM_db = VM
+    u.A1.AC = AC
+    u.A1.FC = FC
     
     #TODO: also update scale_factor of each unit to use the TON_COL data
 
@@ -114,14 +155,16 @@ for _, row in df.iterrows():
             raise KeyError(f"Metric '{metric.name}' not found in model.table.")
         
         mean = np.mean(values)
+        median = np.median(values)
         lower = np.percentile(values, 5)
         upper = np.percentile(values, 95)
-        metric_values[metric.name] = (mean, lower, upper)
+        metric_values[metric.name] = (mean, median, lower, upper)
 
     # Store only summarized results for each facility
     result = {'NPDES ID2': facility, 'Biosolids_tpy': tpy}
-    for name, (mean, lower, upper) in metric_values.items():
+    for name, (mean, median, lower, upper) in metric_values.items():
         result[f'{name} (mean)'] = mean
+        result[f'{name} (median)'] = median
         result[f'{name} (5th pct)'] = lower
         result[f'{name} (95th pct)'] = upper
 
