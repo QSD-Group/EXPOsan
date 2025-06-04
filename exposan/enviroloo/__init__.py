@@ -36,8 +36,8 @@ household_size = 5  # refer to EXPOsan/exposan/pou_disinfection/__init__.py wher
 household_per_toilet = 20
 get_toilet_users = lambda: household_size * household_per_toilet
 
-ppl = 1000 # the number of people served by the EL system. #TOCHANGE
-baseline_ppl = 1000 # the number of people served by the EL system. #TOCHANGE
+ppl = 12000 # the number of people served by the EL system. #TOCHANGE
+baseline_ppl = 12000 # the number of people served by the EL system. #TOCHANGE
 scale_factor = ppl / 363 #scale_factor for flow and dosing rates
 dosing_flow = 1 #L/h base scenario
 
