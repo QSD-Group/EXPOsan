@@ -15,6 +15,9 @@ import pandas as pd, numpy as np, matplotlib.pyplot as plt
 from qsdsan.utils import load_data, ospath, palettes
 from exposan.werf import results_path, figures_path
 
+import warnings
+warnings.filterwarnings("ignore")
+
 Guest = palettes['Guest']
 
 b = Guest.blue.HEX
@@ -37,8 +40,8 @@ patch_dct = {
     'Aeration energy': (b, ''),
     'Pumping energy': (p, '-----'),
     'Mixing energy': (y, r'\\\\\\'),
-    'Coagulant': (o, '/////'),
     'External carbon': (r, ''),
+    'Coagulant': (o, '/////'),
     'Lime stabilization': (g, '|||||'),
     'Sludge disposal': (db, ''),
     }
@@ -46,7 +49,7 @@ patch_dct = {
 configs=('B1', 'B2', 'B3', 'C1', 'C2', 'C3', 'E2', 'E2P', 'F1', 
         'G1', 'G2', 'G3', 'H1', 'I1', 'I2', 'I3', 'N1', 'N2')
 data_handles = {
-    'Baseline': ('baseline_unopt_performance', 0),   # file name, sheet name
+    'Baseline': ('baseline_unopt_performance', 0),   # file name, sheet
     'Adjusted': ('baseline_opt_performance', 'combined'),
     'UD10': ('UD_opt_performance', '10'),
     # 'UD30': ('UD_opt_performance', '30'),
