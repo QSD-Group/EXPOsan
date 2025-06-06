@@ -13,12 +13,12 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-# Test if the module works
+# Test if the ecorecovery module works
 # from exposan import pm2_ecorecover
 # pm2_ecorecover.load()
 # sys = pm2_ecorecover.sys
 # sys.simulate(t_span=(0,3), method='RK23')
-# PBR = pm2_ecorecover.PBR20
+# PBR = default_init_conds.PBR20
 # fig, axis = PBR.scope.plot_time_series(('S_P'))
 # fig
 
@@ -35,30 +35,7 @@ from exposan.phosphorus import (
 Temp = 286.08          # temperature [K]
 f_dct = None
 
-def create_flowsheets(f_dct=f_dct):
-    f_dct = f_dct or dict.fromkeys(f'f{n}' for n in range(3, 16)) # inf=3-15 mg/L
-    for k, v in f_dct.items():
-        mgL = k[1:]
-        path = os.path.join(data_path, f'biowin_effluent_ph{mgL}.tsv')
-        # Create the EcoRecover system
-        f = qs.Flowsheet(f'f{mgL}')
-        pm2.create_system(flowsheet=f)
-        SE = f.unit.SE
-        SE._init_from_file(path)
-        f_dct[k] = f
-    return f_dct
-
-# Test if the inputs work
-f_dct = create_flowsheets()
-f3 = f_dct['f3']
-sys = f3.system.sys
-sys.simulate(t_span=(0,10), method='RK23')
-PBR20 = f3.unit.PBR20
-fig, axis = PBR20.scope.plot_time_series(('S_P'))
-
-# TODO: find appropriate initial states for different inf P
-#!!! Should look for effluent rather than PBR20, tho results seem to be the same.
-S_P_dct = { # mg/L
+S_P_dct = { # steady state effluent P in mg/L, when Q=1000 m3/d
     '3': 0.103786314929568,
     '4': 0.757374963832081,
     '5': 1.38383912772804,
@@ -73,35 +50,53 @@ S_P_dct = { # mg/L
     '14': 7.28,
     '15': 7.93,
     }
-#%%
-# Individual trial
-mgL = '3'
-t = 25 # 3 for trials, 25 for full-length
-t_step = 1
-f = f_dct[f'f{mgL}']
-sys = f.system.sys
-sys.reset_cache()
-sys.simulate(t_span=(0,t), method='RK23')
-PBR20 = f.unit.PBR20
-fig, axis = PBR20.scope.plot_time_series(('S_P'))
-fig.savefig(os.path.join(figures_path, f'ecorecover_results_{mgL}mgL_{t}d.jpg'))
-sys.scope.export(os.path.join(results_path, f'ecorecover_results_{mgL}mgL_{t}d.xlsx'), t_eval=np.arange(0, t+t_step, t_step))
+
+
+def create_flowsheets(f_dct=f_dct, inf_range=range(3, 16), Q=50): # inf=3-15 mg/L
+    f_dct = f_dct or dict.fromkeys(f'f{n}' for n in inf_range) 
+    for k, v in f_dct.items():
+        mgL = k[1:]
+        path = os.path.join(data_path, f'biowin_effluent_ph{mgL}.tsv')        
+        df = qs.utils.load_data(path)
+        df.Q = Q # update flow
+        new_path = os.path.join(data_path, f'biowin_effluent_ph{mgL}_{Q}m3d.tsv')
+        df.to_csv(new_path, sep='\t')
+        # Create the EcoRecover system
+        f = qs.Flowsheet(f'f{mgL}')
+        pm2.create_system(flowsheet=f)
+        SE = f.unit.SE
+        SE._init_from_file(new_path)
+        os.remove(new_path)
+        f_dct[k] = f
+    return f_dct
+
+# f_dct = create_flowsheets() # this create all the flowsheets so takes some time
 
 
 # %%
 
-def simulate_system(f_dct=None, t_step=1, t=25):
-    f_dct = create_flowsheets(f_dct)
+# Function to run all concentrations
+def simulate_system(f_dct=None, inf_range=range(3, 16), Q=50, t_step=1, t=25, export=True):
+    f_dct = create_flowsheets(f_dct, inf_range=inf_range, Q=Q)
     for k, v in f_dct.items():
         mgL = k[1:]
         f = f_dct[f'f{mgL}']
         sys = f.system.sys
+        sys.reset_cache()
         sys.simulate(t_span=(0, t), method='RK23')
-        path = os.path.join(results_path, f'ecorecover_results_{mgL}mgL_{t}d.xlsx')
-        sys.scope.export(path, t_eval=np.arange(0, t+t_step, t_step))
-        print(f'finished {k}')
-        
+        inf = f.stream.Dynamic_influent
+        Q = round(inf.get_total_flow('m3/d'))
+        eff = f.stream.Effluent
+        fig, axis = eff.scope.plot_time_series(('S_P'))
+        if export:
+            fig.savefig(os.path.join(figures_path, f'ecorecover_results_{mgL}mgL_{t}d_{Q}m3d.jpg'))
+            sys.scope.export(os.path.join(results_path, f'ecorecover_results_{mgL}mgL_{t}d_{Q}m3d.xlsx'), t_eval=np.arange(0, t+t_step, t_step))
+        print(f'\n\nfinished {k}\n\n')
     return f_dct
 
-# f_dct = simulate_system(f_dct=None, t_step=1, t=3)
 
+# Individual trial
+f_dct = simulate_system(f_dct=None, inf_range=range(15, 16), Q=50, t_step=1, t=25, export=True)
+
+# Run all results
+# f_dct = simulate_system(f_dct=None, inf_range=range(3, 16), t_step=1, t=25, export=True)
