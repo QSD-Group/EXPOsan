@@ -59,7 +59,8 @@ from . import (
     energy_conversion_efficiency,
     char_yield,
     ash_content_feedstock,
-    moisture_content_feedstock
+    moisture_content_feedstock,
+    biosolids_HHV
 )
 
 __all__ = ('create_model', 'run_uncertainty',)
@@ -89,12 +90,13 @@ def add_metrics(model):
         Metric('GWP per ton biochar', lambda: gwp_per_ton_biochar(model), 'kg CO2-eq/ton biochar'),
         Metric('Biochar generated', lambda: biochar_generated(model), 'ton biochar/yr'),
         Metric('Sequesterable carbon', lambda: sequesterable_carbon(model), 'ton C/yr'),
-        Metric('Drying requirement', lambda: drying_requirement(model), 'kWh/ton biosolids/yr'),
-        Metric('Drying cost per year', lambda: drying_cost(model), 'USD/year'),
+        Metric('Drying requirement', lambda: drying_requirement(model), 'MJ/ton biosolids'),
+        Metric('Drying cost normalized', lambda: drying_cost(model), 'USD/ton biochar'),
         Metric('Energy Conversion Efficiency', lambda: energy_conversion_efficiency(model), '%'),
         Metric('Char Yield (db %)', lambda: char_yield(model), '%'),
         Metric('Ash Content Feedstock (db %)', lambda: ash_content_feedstock(model), '%'),
         Metric('Moisture Content Feedstock', lambda: moisture_content_feedstock(model), '%'),
+        Metric('Biosolids HHV', lambda: biosolids_HHV(model), 'MJ/kg'),
     ]
 
     # Net cost
@@ -224,7 +226,9 @@ def add_shared_parameters(model, unit_dct, location_specific=False):
 
 
     ##### Specific units #####
-
+    # biosolids_unit = unit_dct['Biosolids']          #overriding simulation values when used
+    # batch_setting_unit_params(biosolids_data, model, biosolids_unit)
+    
     # Control box (industrial control panel)
     control_unit = unit_dct['ControlBox']
     exclude = ('certified_electrician_wages', 'service_team_wages', 'facility_manager_wages', 'biomass_controls_wages',) if location_specific else ()

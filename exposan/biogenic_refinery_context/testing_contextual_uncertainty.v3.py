@@ -7,9 +7,9 @@ from exposan.biogenic_refinery_context import results_path
 
 # Define constants here since they are not exposed in __init__.py
 TONS_TO_KG = 1000  # 1 ton = 1000 kg
-ASH_FRAC = 0.34         #TODO: change to uniform distr.     np.random.uniform(0.34, 0.42)  
-FC_FRAC = 0.0625         #TODO: change to uniform distr.     np.random.uniform(0.025, 0.1)
-MOISTURE_FRAC = 0.863   # np.random.uniform(.9, 0.97)
+ASH_FRAC = np.random.uniform(0.34, 0.42)  
+FC_FRAC = np.random.uniform(0.025, 0.1)
+MOISTURE_FRAC = np.random.uniform(98.5, 99.5)
 VM_FRAC = 1 - ASH_FRAC - FC_FRAC
 
 # File configuration
@@ -46,9 +46,6 @@ model = create_model(model_ID='A')
 system = model.system
 u = system.flowsheet.unit
 
-u.A1.AC = ASH_FRAC
-u.A1.FC = FC_FRAC
-u.A1.MC = MOISTURE_FRAC
 count = 0
 
 N = 100  # Number of Latin Hypercube samples
@@ -87,18 +84,22 @@ for _, row in df.iterrows():
             # Remove duplicates
     management_processes = list({proc for proc in management_processes})
     
-    MC = MOISTURE_FRAC
+    AC = np.random.uniform(0.34, 0.42)  
+    FC = np.random.uniform(0.025, 0.1)
+    MC = np.random.uniform(.985, .995)
+    VM = 1 - AC - FC
     
     if 'thickening' in management_processes:
-        MC = np.random.uniform(0.94, 0.99)
+        MC = np.random.uniform(0.94, 0.98)           #metcalf & Eddy, 2013
     if 'airdry' in management_processes:
-        MC = 0.6 * MC
+        MC = 0.6 * MC                                 #40% reduction, Elbaz et al., 2020, Metcalf & Eddy, 2013
     if 'heatdry' in management_processes:
-        MC = np.random.uniform(0.09, 0.11) 
+        MC = np.random.uniform(0.09, 0.11)           # Per 503.40 EPA, Pathogens and Vector Attraction, 2023
       
-    VM = VM_FRAC
-    AC = ASH_FRAC
-    FC = FC_FRAC
+    
+    # AC = np.random.uniform(0.34, 0.42)  
+    # FC = np.random.uniform(0.025, 0.1)
+    # VM = 1 - AC - FC
     
     if 'anaerobic' in management_processes and 'aerobic' not in management_processes:
         VSR = np.random.uniform(0.38, 0.5)

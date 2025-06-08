@@ -1,5 +1,5 @@
 parameter	name (if diff)	unit	expected	low	high	distribution	references
-MC		frac as-received	0.935	0.9	0.97	uniform	
+MC		frac as-received	0.99	0.985	0.99	uniform	
 AC		frac db	0.34	0.26	0.42	uniform	
 FC		frac db	0.0625	0.025	0.1	uniform	
 biosolids_generated		dry-tonnes/yr	500			constant	

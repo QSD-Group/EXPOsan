@@ -83,9 +83,11 @@ def drying_requirement(model):
     return system.flowsheet.unit.A8.Q_drying_norm  # MJ/ton-biosolids
 def drying_cost(model):
     system = model.system
-    MJ_per_year = system.flowsheet.unit.A8.Q_drying_norm/1000*24*365
+    biochar = model.system.flowsheet.stream.biochar
+    biochar_mass = biochar.F_mass * 24 * 365 / 1000  # tons/year
+    MJ_per_year = system.flowsheet.unit.A8.Q_drying/1000*24*365  #MJ/yr
     price_per_MJ = .045 #USD/MJ
-    return MJ_per_year * price_per_MJ #cost/year
+    return MJ_per_year * price_per_MJ / biochar_mass #USD/ton biochar
 def energy_conversion_efficiency(model):
     system = model.system
     return system.flowsheet.unit.A4.ECE             #ECE %
@@ -98,6 +100,9 @@ def ash_content_feedstock(model):
 def moisture_content_feedstock(model):
     system = model.system
     return system.flowsheet.unit.A8.MC_feedstock
+def biosolids_HHV(model):
+    system = model.system
+    return system.flowsheet.unit.A4.HHV           #MJ/kg
 # %%
 
 # =============================================================================
