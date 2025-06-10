@@ -188,14 +188,70 @@ def plot_diff(data, suffix=''):
             save_as=f'dop_{suffix}.png')
 
 #%%
+data_handles = {
+    'Baseline': ('baseline_unopt_performance', 0),   # file name, sheet
+    'Adjusted': ('baseline_opt_performance', 'combined'),
+    'UD10': ('UD_opt_performance', '10'),
+    # 'UD30': ('UD_opt_performance', '30'),
+    'UD100': ('UD_opt_performance', '100'),
+    'HA': ('HA_opt_performance', 0),
+    'ECS': ('ECS_opt_performance', 0)
+    }
+
+def diff_opex():
+    dfs = {}
+    for k,v in data_handles.items():
+        file, sheet = v
+        df = load_data(
+            ospath.join(results_path, f'{file}.xlsx'), sheet=sheet,
+            header=[0,1], skiprows=[2,]
+            )
+        df = df.loc[:,[('OPEX', 'Total OPEX [USD/d]')]]
+        dfs[k] = df
+    bl = dfs['Adjusted']
+    data = pd.DataFrame()
+    for k in ['UD10', 'UD100', 'HA', 'ECS']:
+        alt = dfs[k]
+        data[k] = cal_perc_diff(bl, alt).iloc[:,[0]]
+    return data
+
+def plot_opex_diff(data=None):
+    if data is None: data = diff_opex()
+    fill = pd.DataFrame()
+    for var, col in data.items():
+        fill[var] = (col-col.min())/(col.max()-col.min())
+    fill.index = data.index
+    fill = fill.T
+    
+    vals = data.T    
+    def valfmtpc(val):
+        if str(val) == 'nan': return ''
+        if abs(val) >= 0.095: return f"{val:.0%}"
+        return f"{val:.1%}"
+
+    # def txtcolors(var, config, val, fill):
+    #     if abs(fill) > 0.6: return 'white'
+    #     return 'black'
+    
+    def txtcolors(var, config, val, fill):
+        if val > 0: return 'red'
+        if fill <= 0.6: return 'white'
+        return 'black'
+    
+    heatmap(fill, annotate=vals, valfmt=valfmtpc, 
+            txtcolors=txtcolors, annotate_kw=dict(size=10), 
+            # row_labels=data.columns,
+            save_as='dopex.png')
+
+#%%
 if __name__ == '__main__':
-    df_baseline_opt = load_data(
-        ospath.join(results_path, 'baseline_opt_performance.xlsx'), sheet='combined',
-        header=[0,1], skiprows=[2,]
-        )
-    df_baseline_opt.columns = [i[1].split(' [')[0] for i in df_baseline_opt.columns]
-    plot_absolute(df_baseline_opt, 'baseline_opt')
-    plot_absolute()
+    # df_baseline_opt = load_data(
+    #     ospath.join(results_path, 'baseline_opt_performance.xlsx'), sheet='combined',
+    #     header=[0,1], skiprows=[2,]
+    #     )
+    # df_baseline_opt.columns = [i[1].split(' [')[0] for i in df_baseline_opt.columns]
+    # plot_absolute(df_baseline_opt, 'baseline_opt')
+    # plot_absolute()
     
     # df_unopt = load_data(
     #     ospath.join(results_path, 'baseline_unopt_performance.xlsx'), sheet=0,
@@ -223,3 +279,6 @@ if __name__ == '__main__':
     # df.columns = [i[1].split(' [')[0] for i in df.columns]
     # diff = cal_perc_diff(df_baseline_opt, df)
     # plot_diff(diff, '100UD_opt')
+    
+    diff = diff_opex()
+    plot_opex_diff(diff)
