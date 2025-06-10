@@ -292,7 +292,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #                          sludge_flow_rate=280, 
     #                          solids_removal_efficiency=0.6)
     
-    PC = elu.EL_PC('PC', ins=(CT-0, 'RAS_PC'), outs=('effluent_PC_total'),
+    PC = elu.EL_PC('PC', ins=(CT-0, 'RAS_PC'), outs=('effluent_PC_total', 'sludge_PC'),
                    ppl=ppl, baseline_ppl=baseline_ppl,
                    solids_removal_efficiency=0.85,
                    isdynamic=True,
