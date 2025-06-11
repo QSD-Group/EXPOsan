@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 '''
 EXPOsan: Exposition of sanitation and resource recovery systems
 
@@ -16,7 +15,7 @@ for license details.
 import qsdsan as qs, biosteam as bst
 from qsdsan import sanunits as qsu
 from qsdsan.utils import auom, clear_lca_registries
-from exposan.htl import _load_components, create_tea, _sanunits as su, test_sanunits as tsu
+from exposan.htl import _load_components, _sanunits as su, test_sanunits as tsu, create_tea
 
 _mile_to_km = auom('mile').conversion_factor('km')
 _ton_to_tonne = auom('ton').conversion_factor('tonne')

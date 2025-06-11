@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 '''
-Created on Mon Jun 5 08:46:28 2023
+EXPOsan: Exposition of sanitation and resource recovery systems
 
-@author: jiananfeng
+This module is developed by:
+
+    Jianan Feng <jiananf2@illinois.edu>
+    
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
 
 Note the word 'sludge' in this file refers to either sludge or biosolids.
+For parameters/numbers not explained, see geospatial_systems.py or _sanunits.py or other relevant files.
 '''
-
-# TODO: update/delete TODO's in each file
 
 import os, qsdsan as qs, biosteam as bst, pandas as pd
 from qsdsan import sanunits as qsu
