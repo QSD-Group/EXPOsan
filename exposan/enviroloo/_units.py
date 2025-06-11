@@ -820,7 +820,7 @@ class EL_CMMBR(CompletelyMixedMBR):
         C['MBR_tank'] = self.MBR_tank_cost
         C['pipeline'] = self.pipeline_connectors
         C['fittings'] = self.weld_female_adapter_fittings
-        C['Membrane_material'] = self.membrane_material_price * self.membrane_material_weight
+        C['Membrane_material'] = self.membrane_material_price
         C['Membrane_cleaning'] = self.membrane_cleaning_fee
         C['Pumps'] = self.nitrate_return_pump_cost + self.self_priming_pump_cost
 
@@ -839,7 +839,7 @@ class EL_CMMBR(CompletelyMixedMBR):
             self.MBR_tank_cost / self.MBR_tank_lifetime +
             self.pipeline_connectors / self.pipeline_connectors_lifetime +
             self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
-            self.membrane_material_price * self.membrane_material_weight / self.membrane_material_lifetime +
+            self.membrane_material_price / self.membrane_material_lifetime +
             self.nitrate_return_pump_cost / self.pump_lifetime + 
             self.self_priming_pump_cost / self.pump_lifetime
             ) * scale
@@ -1041,10 +1041,10 @@ class EL_Housing(CSTR):
     
     def _cost(self):
         C = self.baseline_purchase_costs
-        C['Housing'] = (self.frame + self.extrusion + 
-                        self.angle_frame + self.angle +
+        C['Housing'] = (self.catwalk + self.control_room_frame + 
+                        self.control_room_board + self.misc_electronics +
                         self.door_sheet + self.plate +
-                        self.powder_coating) * (1 + 0.1 * (self.N_EL -1))
+                        self.powder_coating)
         C['Frontend'] = self.frontend_1000_ppl_cost
         
         ratio = self.price_ratio
@@ -1055,10 +1055,10 @@ class EL_Housing(CSTR):
     def _calc_replacement_cost(self):
         scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
         housing_replacement_cost = (
-            self.frame / self.frame_lifetime +
-            self.angle_frame / self.angle_frame_lifetime +
-            self.door_sheet / self.door_sheet_lifetime +
-            self.powder_coating / self.powder_coating_lifetime + 
+            self.catwalk / self.catwalk_lifetime +
+            self.control_room_board / self.control_room_board_lifetime +
+            self.control_room_frame / self.control_room_frame_lifetime +
+            self.misc_electronics / self.misc_electronics_lifetime + 
             self.frontend_1000_ppl_cost / self.frontend_lifetime
             ) * scale
         housing_replacement_cost = housing_replacement_cost / (365 * 24) # convert to USD/hr

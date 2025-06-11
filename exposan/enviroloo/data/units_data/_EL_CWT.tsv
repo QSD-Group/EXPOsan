@@ -2,10 +2,10 @@ parameter	name (if diff)	unit	expected	low	high	distribution	references
 tau		days	1			constant	CIDI
 tank_steel_weight	estimated total weight of primary clarifier tank	kg	250			constant	"BOM, assuming 8000L tank weights 135 kg"
 steel_density	density of steel	kg/m3	7850			constant	BOM
-clear_water_tank_cost		USD	18788.88	16909.992	20667.768	uniform	https://www.gwkent.com/stainless-steel-slope-bottom-storage-tank-3900-liters-1030-gallons.html?utm_source=google_shopping&srsltid=AfmBOoqk0fYAXHC4ofjtaIxQssJd9_-YUTmn4i2fw6-mDJ8_kT3P0N1ANpc&gQT=1
+clear_water_tank_cost		USD	1364	1227.6	1500.4	uniform	BOM
 weld_female_adapter_fittings		USD	6.87	6.183	7.557	uniform	https://thedrainagesource.com/4-pvc-sdr35-solvent-weld-female-adapter-s-x-fpt/?srsltid=AfmBOorc5xzjQmxhmGZ2dstlABtaDC0az8KOrbJaDaI1zrV2U6IJzc1r
 pipeline_connectors		USD	13.16	11.844	14.476	uniform	https://www.eco-filtration.co.uk/product/110mm-4-pond-threaded-tank-connector/?srsltid=AfmBOoqFzwEcDdzmztkcvuSYA_anY1hoj5U5rOQz0Q8s1FUBhTeQpdX2
-O3_generation_machine_cost		USD	231	207.9	254.1	uniform	https://ruihuaele.en.made-in-china.com/product/KFkxpBQHXaWX/China-220VAC-Portable-10g-Hr-Ozone-Generator-for-Air-Purifier.html?pv_id=1ieeglmde4f&faw_id=1ieegmpq8ca6
+O3_generation_machine_cost		USD	527	474.3	579.7	uniform	BOM
 clear_water_tank_lifetime		yr	8	7.2	8.8	uniform	assumption
 weld_female_adapter_fittings_lifetime		yr	5	4.5	5.5	uniform	assumption
 pipeline_connectors_lifetime		yr	5	4.5	5.5	uniform	assumption
@@ -13,8 +13,8 @@ O3_generation_machine_lifetime		yr	10	8	12	uniform	assumption
 power_demand_CWT	energy consumption for clear water tank	KWh/day	0.8	0.72	0.88	uniform	assumption
 clear_water_pump_cast_iron		kg	9	7.65	10.35	uniform	data sheet
 clear_water_pump_power		kW	0.75	0.6375	0.8625	uniform	data sheet
-clear_water_pump_cost		USD	118.46	100.691	136.229	uniform	https://www.alibaba.com/product-detail/SQD-0-75kw-1hp-high-pressure_1601032336743.html?spm=a2700.galleryofferlist.normal_offer.d_title.2b1413a0sqHM0o
+clear_water_pump_cost		USD	127	114.3	139.7	uniform	BOM
 pump_lifetime		yr	5	4.25	5.75	uniform	assumption
 clear_water_air_dissolved_pump_cast_iron		kg	6.8	5.78	7.82	uniform	data sheet
 clear_water_air_dissolved_pump_power		kW	0.55	0.4675	0.6325	uniform	data sheet
-clear_water_air_dissolved_pump_cost		USD	155.24	131.954	178.526	uniform	https://www.alibaba.com/product-detail/LEO-QDX-Series-Cast-Iron-Submersible_60671071414.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0BMhyxn
+clear_water_air_dissolved_pump_cost		USD	1098.72	988.848	1208.592	uniform	BOM

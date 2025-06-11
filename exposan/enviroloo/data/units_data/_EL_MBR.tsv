@@ -3,10 +3,10 @@ N2O_EF_decay		gN2O-N/g TN load	0.002958061	0.000891375	0.008612755	triangular	ht
 tank_steel_weight	estimated total weight of primary clarifier tank	kg	85			constant	"BOM, assuming 4000L tank weights 85kg"
 steel_density	density of steel	kg/m3	7850			constant	BOM
 membrane_material_weight		kg	300	270	330	uniform	BOM
-MBR_tank_cost		USD	4277.77	3849.993	4705.547	uniform	https://www.gwkent.com/stainless-steel-slope-bottom-storage-tank-3900-liters-1030-gallons.html?utm_source=google_shopping&srsltid=AfmBOoqk0fYAXHC4ofjtaIxQssJd9_-YUTmn4i2fw6-mDJ8_kT3P0N1ANpc&gQT=1
+MBR_tank_cost		USD	169.35	152.415	186.285	uniform	BOM
 weld_female_adapter_fittings		USD	6.87	6.183	7.557	uniform	https://thedrainagesource.com/4-pvc-sdr35-solvent-weld-female-adapter-s-x-fpt/?srsltid=AfmBOorc5xzjQmxhmGZ2dstlABtaDC0az8KOrbJaDaI1zrV2U6IJzc1r
 pipeline_connectors		USD	13.16	11.844	14.476	uniform	https://www.eco-filtration.co.uk/product/110mm-4-pond-threaded-tank-connector/?srsltid=AfmBOoqFzwEcDdzmztkcvuSYA_anY1hoj5U5rOQz0Q8s1FUBhTeQpdX2
-membrane_material_price		USD/kg	20	18	22	uniform	assumption
+membrane_material_price		USD	210	189	231	uniform	assumption
 membrane_cleaning_fee		USD	100	90	110	uniform	assumption
 MBR_tank_lifetime		yr	8	7.2	8.8	uniform	assumption
 weld_female_adapter_fittings_lifetime		yr	5	4.5	5.5	uniform	assumption
@@ -15,9 +15,9 @@ membrane_material_lifetime		yr	2	1.8	2.2	uniform	assumption
 power_demand_MBR	energy consumption for membrane tank	KWh/day	1.2	1.08	1.32	uniform	assumption
 self_priming_pump_cast_iron		kg	9	7.65	10.35	uniform	data sheet
 self_priming_pump_power		kW	0.6	0.51	0.69	uniform	data sheet
-self_priming_pump_cost		USD	155.24	131.954	178.526	uniform	https://www.alibaba.com/product-detail/LEO-QDX-Series-Cast-Iron-Submersible_60671071414.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0BMhyxn
+self_priming_pump_cost		USD	85.02	76.518	93.522	uniform	https://www.alibaba.com/product-detail/LEO-QDX-Series-Cast-Iron-Submersible_60671071414.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0BMhyxn
 pump_lifetime		yr	5	4.25	5.75	uniform	assumption
 nitrate_return_pump_stainless_steel		kg	9.1	7.735	10.465	uniform	data sheet
 nitrate_return_pump_cast_iron		kg	9.1	7.735	10.465	uniform	data sheet
 nitrate_return_pump_power		kW	0.45	0.3825	0.5175	uniform	data sheet
-nitrate_return_pump_cost		USD	123.76	105.196	142.324	uniform	https://www.alibaba.com/product-detail/0-4kw-cast-iron-motor-housing_1600934836942.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0L7StzT
+nitrate_return_pump_cost		USD	209.22	188.298	230.142	uniform	https://www.alibaba.com/product-detail/0-4kw-cast-iron-motor-housing_1600934836942.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0L7StzT
