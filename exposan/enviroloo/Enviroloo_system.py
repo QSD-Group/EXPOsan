@@ -98,9 +98,9 @@ Air dissolving pump: P_AirDissolved
 '''
 Temp = 273.15+20 # temperature [K]
 # scale_factor = 10 #scale factor for flow, baseline is 100 ppl, imported from _init
-Q_w = 6 * scale_factor # m3/day  #Assuming Toilet flows to be 60lpcd and Initial population to be 100 6m^3/day for 100 ppl, 60 for 1000 ppl
-Q_ras = 3 * scale_factor # m3/day # 200 l/min for nitrate pump 3m^3/day for 100 ppl, 30 for 1000 ppl
-Q_was = 0.01 * Q_w # 0.05*12
+Q_w = 3.63 * scale_factor # m3/day  #Assuming Toilet flows to be 60lpcd and Initial population to be 100 6m^3/day for 100 ppl, 60 for 1000 ppl
+Q_ras = 1.815 * scale_factor # m3/day # 200 l/min for nitrate pump 3m^3/day for 100 ppl, 30 for 1000 ppl
+Q_was = 0.05 * 24 # 0.05*12
 # Q_was = 280 # m3/day # 200 l/min for sludge return pump
 biomass_IDs = ('X_H', 'X_AUT', 'X_PAO')
 toilet_waste={

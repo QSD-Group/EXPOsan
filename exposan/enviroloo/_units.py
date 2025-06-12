@@ -1042,9 +1042,7 @@ class EL_Housing(CSTR):
     def _cost(self):
         C = self.baseline_purchase_costs
         C['Housing'] = (self.catwalk + self.control_room_frame + 
-                        self.control_room_board + self.misc_electronics +
-                        self.door_sheet + self.plate +
-                        self.powder_coating)
+                        self.control_room_board + self.misc_electronics)
         C['Frontend'] = self.frontend_1000_ppl_cost
         
         ratio = self.price_ratio
