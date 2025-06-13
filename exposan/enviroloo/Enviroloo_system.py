@@ -1,27 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Apr  9 09:41:24 2025
-
-@author: rishabhpuri
-"""
-
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Apr  9 09:39:30 2025
-
-@author: rishabhpuri
-"""
-
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 '''
 This module is developed by:
     Siqi Tang <siqit@outlook.com>
     Yuyao Huang <yuyaoh2@illinois.edu>
     Aaron Marszewski <aaronpm3@illinois.edu>
+    Rishabh Puri <rp34@illinois.edu>
 
 This python file is used to perform uncertainty and sensitivity analysis for Enviroloo Clear Reinvented Toilet system.
 '''
@@ -113,21 +98,21 @@ Air dissolving pump: P_AirDissolved
 '''
 Temp = 273.15+20 # temperature [K]
 # scale_factor = 10 #scale factor for flow, baseline is 100 ppl, imported from _init
-Q_w = 3 * scale_factor # m3/day  #Assuming Toilet flows to be 60lpcd and Initial population to be 100 6m^3/day for 100 ppl, 60 for 1000 ppl
-Q_ras = 1.5 * scale_factor # m3/day # 200 l/min for nitrate pump 3m^3/day for 100 ppl, 30 for 1000 ppl
-Q_was = 0.05*12
+Q_w = 3.63 * scale_factor # m3/day  #Assuming Toilet flows to be 60lpcd and Initial population to be 100 6m^3/day for 100 ppl, 60 for 1000 ppl
+Q_ras = 1.815 * scale_factor # m3/day # 200 l/min for nitrate pump 3m^3/day for 100 ppl, 30 for 1000 ppl
+Q_was = 0.05 * 24 # 0.05*12
 # Q_was = 280 # m3/day # 200 l/min for sludge return pump
 biomass_IDs = ('X_H', 'X_AUT', 'X_PAO')
 toilet_waste={
-    'S_NH4':  13.7,
+    'S_NH4':  19, # 13.7
     # 'S_NO3': 0.2,     # Nitrate
     'S_NO3': 1.6,
     # 'S_PO4': 2.3,
-    'S_PO4': 3.5,
+    'S_PO4': 16.7, # 3.5
     'S_O2': 3.0,      # Dissolved oxygen
-    'S_F': 19.1,      # Fermentable COD
-    'S_I': 12.8,      # Inert soluble COD
-    'X_S': 29.3,        # Slowly biodegradable particulates = TSS
+    'S_F': 65,  # 19.1    # Fermentable COD
+    'S_I': 25,  # 12.8    # Inert soluble COD
+    'X_S': 40,  #29.3      # Slowly biodegradable particulates = TSS
     'S_IC': 0.148,
     'S_K': 0.0694,
     'S_Mg': 0.00833,
@@ -307,7 +292,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     #                          sludge_flow_rate=280, 
     #                          solids_removal_efficiency=0.6)
     
-    PC = elu.EL_PC('PC', ins=(CT-0, 'RAS_PC'), outs=('effluent_PC_total'),
+    PC = elu.EL_PC('PC', ins=(CT-0, 'RAS_PC'), outs=('effluent_PC_total', 'sludge_PC'),
                    ppl=ppl, baseline_ppl=baseline_ppl,
                    solids_removal_efficiency=0.85,
                    isdynamic=True,
@@ -362,7 +347,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     
     # # S2.run()
     
-    S1 = su.Splitter('S1', ins=S2-0, outs=[1-PC, 1-A1], split=0.05)
+    S1 = su.Splitter('S1', ins=S2-0, outs=[1-PC, 1-A1], split=0.01) #0.05
     # S1 = su.Splitter('S1', ins=B1-1, outs=[1-PC, 1-A1], split=Q_was/(Q_ras+Q_was))
     
     CWT = elu.EL_CWT(
@@ -432,7 +417,7 @@ def run(t, method=None, **kwargs):
 
     
 if __name__ == '__main__':
-    t = 2
+    t = 40
     # method = 'RK45'
     method = 'RK23' 
     # method = 'DOP853'
