@@ -106,7 +106,7 @@ def heatmap(data, colorbar=True, cmap='viridis',
         fig.savefig(ospath.join(figures_path, save_as), 
                     dpi=300, transparent=True)
     else:
-        return fig, ax
+        return fig, ax, im
 
 #%%
 def plot_absolute(data=None, suffix='baseline_unopt'):
@@ -228,20 +228,28 @@ def plot_opex_diff(data=None):
         if str(val) == 'nan': return ''
         if abs(val) >= 0.095: return f"{val:.0%}"
         return f"{val:.1%}"
-
-    # def txtcolors(var, config, val, fill):
-    #     if abs(fill) > 0.6: return 'white'
-    #     return 'black'
     
     def txtcolors(var, config, val, fill):
         if val > 0: return 'red'
-        if fill <= 0.6: return 'white'
+        if fill <= 0.25: return 'white'
         return 'black'
     
-    heatmap(fill, annotate=vals, valfmt=valfmtpc, 
-            txtcolors=txtcolors, annotate_kw=dict(size=10), 
-            # row_labels=data.columns,
-            save_as='dopex.png')
+    fig, ax, im = heatmap(
+        fill, colorbar=False, cmap='GnBu_r',
+        annotate=vals, valfmt=valfmtpc, 
+        txtcolors=txtcolors, annotate_kw=dict(size=10), 
+        )
+    
+    cbar = ax.figure.colorbar(
+        im, ax=ax, orientation='horizontal', pad=0.05, fraction=0.035,
+        aspect=25, anchor=(0.6, 1.0)
+        )
+    cbar.ax.set_xticks(ticks=[0,1], labels=['max', 'min'], fontsize=12)
+    cbar.ax.invert_xaxis()
+    ax.text(x=2.4, y=4.25, s='OPEX Reduction', fontweight='bold', fontsize=13, )
+    
+    fig.savefig(ospath.join(figures_path, 'dopex.png'), 
+                dpi=300, transparent=True)
 
 #%%
 if __name__ == '__main__':
