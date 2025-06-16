@@ -413,7 +413,7 @@ class BiogenicRefineryCarbonizerBase(SanUnit):
             1/self.frequency_corrective_maintenance * self.service_team_replacepaddleswitch_cb +
             1/self.airlock_motor_lifetime_cb * self.service_team_replaceairlock_cb
             )
-        annual_maintenance *= self.service_team_wages / 60 * self.scale_factor
+        annual_maintenance *= self.service_team_wages / 60 
 
         self.add_OPEX = (replacement_parts_annual_cost + annual_maintenance) / (365 * 24)  # USD/hour
 
@@ -511,9 +511,9 @@ class BiogenicRefineryControls(SanUnit):
             self.service_team_replacetouchscreen_icp*self.service_team_wages +
             self.facility_manager_configurevariable_icp*self.facility_manager_wages +
             (self.biomass_controls_replaceboard_icp+self.biomass_controls_codemalfunctioning_icp)*self.biomass_controls_wages
-            ) * self.scale_factor
+            ) 
 
-        self.add_OPEX =  annual_maintenance/60/self.frequency_corrective_maintenance/(365*24) * self.scale_factor  # USD/hr
+        self.add_OPEX =  annual_maintenance/60/self.frequency_corrective_maintenance/(365*24)   # USD/hr
 
         # kWh/hr
         self.power_utility(self.icp_controller_board_power * self.scale_factor + self.icp_variable_frequence_drives_power * self.scale_factor)
@@ -661,9 +661,9 @@ class BiogenicRefineryHHX(SanUnit):
         annual_maintenance = (
             self.service_team_adjustdoor_hhx*12 +
             num * (self.service_team_replacewaterpump_hhx+self.service_team_purgewaterloop_hhx)
-            ) * self.scale_factor
+            ) 
 
-        self.add_OPEX =  annual_maintenance * self.service_team_wages / 60 / (365 * 24) * self.scale_factor # USD/hr (all items are per hour)
+        self.add_OPEX =  annual_maintenance * self.service_team_wages / 60 / (365 * 24)  # USD/hr (all items are per hour)
 
         self.power_utility(self.water_pump_power * self.scale_factor + self.hhx_inducer_fan_power  * self.scale_factor) # kWh/hr
 
@@ -883,8 +883,8 @@ class BiogenicRefineryHousing(SanUnit):
         D = self.design_results
         C = self.baseline_purchase_costs
         C['Containers'] = self.container20ft_cost + self.container40ft_cost * self.scale_factor
-        C['Equip Housing'] = D['StainlessSteelSheet'] / 4.88 * self.stainless_steel_housing * self.scale_factor
-        C['Concrete'] = D['Concrete'] * self.concrete_cost * self.scale_factor
+        C['Equip Housing'] = D['StainlessSteelSheet'] / 4.88 * self.stainless_steel_housing
+        C['Concrete'] = D['Concrete'] * self.concrete_cost
         ratio = self.price_ratio
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
@@ -1098,8 +1098,8 @@ class BiogenicRefineryPollutionControl(SanUnit):
     def _cost(self):
         D = self.design_results
         C = self.baseline_purchase_costs
-        C['Stainless steel'] = self.stainless_steel_cost * D['StainlessSteel'] * self.scale_factor
-        C['Steel'] = self.steel_cost * D['Steel'] * self.scale_factor
+        C['Stainless steel'] = self.stainless_steel_cost * D['StainlessSteel']
+        C['Steel'] = self.steel_cost * D['Steel']
         C['Electric motor'] = self.input_auger_motor_pcd * self.scale_factor
         C['Misc. parts'] = (
             self.o2_sensor_cost_pcd +
@@ -1130,10 +1130,10 @@ class BiogenicRefineryPollutionControl(SanUnit):
             1/self.frequency_corrective_maintenance * self.service_team_replacecatalyst_pcd +
             1/self.frequency_corrective_maintenance * self.service_team_replacebrick_pcd +
             hpd*365/self.o2_sensor_lifetime_pcd * self.service_team_replaceo2sensor_pcd
-            ) * self.scale_factor
+            )
         annual_maintenance *= self.service_team_wages / 60
 
-        self.add_OPEX =  (replacement_parts_annual_cost+annual_maintenance) / (365 * 24) * self.scale_factor # USD/hr
+        self.add_OPEX =  (replacement_parts_annual_cost+annual_maintenance) / (365 * 24)  # USD/hr
 
         power_demand = (self.pcd_auger_power+self.pcd_airlock_power) * hpd / 24 * self.scale_factor
         self.power_utility(power_demand) # kWh/hr, or kW
