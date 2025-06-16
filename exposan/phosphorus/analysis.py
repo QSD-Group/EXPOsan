@@ -74,6 +74,29 @@ Simulation Findings:
     
     - Tried to adjust initial condition setting, but does not appear to be working, gave up.
     
+    - When using the calibrated PM2 parameters, simulation time shortened by >2/3.
+    
+    From 1-2 min to 23 sec for 15 mg/L, 5 day, 1000 m3/d.
+    (ecorecover_results_15mgL_5d_1000m3d_2025-6-16-11-19-54
+     ecorecover_results_15mgL_5d_1000m3d_2025-6-12-14-51-6)
+    
+    From 90 min to 26-27 min for 15 mg/L, 100 day, 1000 m3/d.
+    (ecorecover_results_15mgL_100d_1000m3d_2025-6-16-11-46-34
+     ecorecover_results_15mgL_100d_1000m3d_2025-6-12-16-56-23)
+    
+    Biomass seems to increase monotonically, getting to a plateau toward the end,
+    effluent P decreases to 0 at Day 12.
+    
+    - Even with calibrated parameter, still observed the same cycling (and ~non treatment)
+    without adjusting for the volume.
+    
+    (ecorecover_results_15mgL_5d_1000m3d_2025-6-16-11-56-17
+     ecorecover_results_15mgL_100d_1000m3d_2025-6-16-11-46-34)
+    
+    - Simulate time doesn't make much difference in SRT (5 vs. 100 d for 15 mg/L, 1000 m3/d),
+    but influent P significantly affect SRT,
+    probably because the amount of biomass harvested was not adjusted.
+    
 '''
 
 # Test if the ecorecovery module works
@@ -88,8 +111,9 @@ Simulation Findings:
 # %%
 
 import os, datetime, numpy as np, qsdsan as qs
-from qsdsan.utils import time_printer
+from qsdsan.utils import get_SRT, time_printer
 from exposan import pm2_ecorecover as pm2
+from exposan.pm2_ecorecover.validation_result import pm2 as pm2_cal
 from exposan.phosphorus import (
     data_path,
     figures_path,
@@ -175,15 +199,21 @@ def create_flowsheets(inf_range=all_infs, Q=1000, init_conds=default_init_conds)
         # Create the EcoRecover system
         f = qs.Flowsheet(f'f{mgL}')
         pm2.create_system(flowsheet=f, init_conds=init_cond_dct[mgL])
+        # Update system
+        # To account for the increased P conc. and flowrate,
+        # 449 m3/d was EcoRecover baseline
+        X = max(1, Q/449*init_cond_dct[mgL]['S_P']/default_init_conds['S_P'])
+        for u in f.unit:
+            if hasattr(u, 'suspended_growth_model'):
+                if u.suspended_growth_model is not None:
+                    u.suspended_growth_model = pm2_cal
+                if 'PBR' in u.ID:
+                    if round(X, 1) > 1.1: u.V_max = V_pbr_indv_default * X
+                u._compile_ODE()
+        
         SE = f.unit.SE
         SE._init_from_file(new_path)
         os.remove(new_path)
-        X = max(1, Q/449*init_cond_dct[mgL]['S_P']/default_init_conds['S_P']) # to account for the increased P conc. and flowrate, 449 m3/d was EcoRecover baseline
-        if round(X, 1) > 1.1:
-            for u in f.unit:
-                if 'PBR' in u.ID:
-                    u.V_max = V_pbr_indv_default * X
-                    u._compile_ODE()
         f_dct[k] = f
     return f_dct
 
@@ -216,10 +246,27 @@ def simulate_system(f_dct, t_step=1, t=25, export=True):
 
 
 # Individual trial
-f_dct = create_flowsheets(inf_range=range(15, 16), Q=1000)
-f = f_dct['f15']
+mgL = 3
+f_dct = create_flowsheets(inf_range=range(mgL, mgL+1), Q=1000)
+f = f_dct[f'f{mgL}']
 sys = f.system.sys
-f_dct = simulate_system(f_dct=f_dct, t_step=1, t=100, export=True)
+f_dct = simulate_system(f_dct=f_dct, t_step=1, t=5, export=False)
+
+biomass_IDs = ('X_ALG', 'X_PG', 'X_TAG', 'X_N_ALG', 'X_P_ALG')
+SRT = get_SRT(sys, biomass_IDs=biomass_IDs,
+        wastage=f.stream.Harvested_biomass,
+        # active_unit_IDs=(u.ID for u in sys.units if u.get_retained_mass(biomass_IDs) is not None)
+        active_unit_IDs=('MIX', *(f'PBR{i}' for i in range(1, 21)))
+        )
+print(SRT)
+
+# Adjust SRT by changing the amount of harvested biomass
+POST_MEM = f.unit.POST_MEM
+POST_MEM.split = 0.95 # split to return, default 0.97, smaller number means harvesting, thus shorter SRT
+sys.reset_cache()
+sys.simulate(t_span=(0, 5), method='RK23')
+fig, axis = f.stream.Effluent.scope.plot_time_series(('S_P'))
 
 # Run all results
-# f_dct = simulate_system(f_dct=None, inf_range=range(3, 16), t_step=1, t=25, export=True)
+# f_dct = create_flowsheets(inf_range=range(3, 16), Q=1000)
+# f_dct = simulate_system(f_dct=f_dct, t_step=1, t=25, export=True)
