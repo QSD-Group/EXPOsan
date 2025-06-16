@@ -17,8 +17,9 @@ from .. import results_path
 __all__ = ('cache_state', 'load_state')
 
 
-def cache_state(sys, folder=''):
-    path = os.path.join(results_path, f'{folder}/{sys.ID}.npy')
+def cache_state(sys, folder='', filename=''):
+    filename = filename or sys.ID
+    path = os.path.join(results_path, f'{folder}/{filename}.npy')
     np.save(path, sys._state) 
     
 def load_state(sys, state_arr=None, folder='steady_states'):
