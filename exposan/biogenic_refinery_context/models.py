@@ -51,7 +51,7 @@ from exposan.biogenic_refinery_context import (
 
 from . import (
     cost_per_ton_biochar,
-    gwp_per_ton_biochar,
+    gwp_per_ton_biosolids,
     biochar_generated,
     sequesterable_carbon,
     drying_requirement,
@@ -87,7 +87,7 @@ def add_metrics(model):
     
     metrics = [
         Metric('Cost per ton biochar', lambda: cost_per_ton_biochar(model), 'USD/ton biochar'),
-        Metric('GWP per ton biochar', lambda: gwp_per_ton_biochar(model), 'kg CO2-eq/ton biochar'),
+        Metric('GWP per ton biosolids', lambda: gwp_per_ton_biosolids(model), 'kg CO2-eq/ton biosolids'),
         Metric('Biochar generated', lambda: biochar_generated(model), 'ton biochar/yr'),
         Metric('Sequesterable carbon', lambda: sequesterable_carbon(model), 'ton C/yr'),
         Metric('Drying requirement', lambda: drying_requirement(model), 'MJ/ton biosolids'),
@@ -310,14 +310,13 @@ def add_shared_parameters(model, unit_dct, location_specific=False):
         GWP_dct['N2O'] = ImpactItem.get_item('N2O_item').CFs['GlobalWarming'] = i
 
     
-        # Recovered biochar
-        b = 0.2 * 0.9 * (44 / 12)  # assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
-        D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
-        @param(name='biochar CF', element='LCA', kind='isolated',
-               units='kg CO2-eq/kg biochar', baseline=b, distribution=D)
-        def set_biochar_CF(i):
-            GWP_dct['biochar'] = ImpactItem.get_item('biochar_item').CFs['GlobalWarming'] = -i
-    
+    # Recovered biochar
+    # b = 0.2 * 0.9 * (44 / 12)  # assume biochar 20% by mass is fixed C with 90% of that being stable (44/12) carbon to CO2
+    # D = shape.Triangle(lower=b*0.90, midpoint=b, upper=b*1.1)
+    # @param(name='biochar CF', element='LCA', kind='isolated',
+    #        units='kg CO2-eq/kg biochar', baseline=b, distribution=D)
+    # def set_biochar_CF(i):
+    #     GWP_dct['biochar'] = ImpactItem.get_item('biochar_item').CFs['GlobalWarming'] = -i
 
     # Other CFs
     #item_path = os.path.join(br_data_path, 'impact_items.xlsx')
