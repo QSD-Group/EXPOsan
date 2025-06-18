@@ -12,7 +12,7 @@ for license details.
 '''
 
 from qsdsan.utils import ospath, time_printer
-from exposan.pm2_ecorecover import (
+from exposan.pm2_ecorecover_rev import (
     results_path,
     create_model,
     )
@@ -80,8 +80,8 @@ def objective(trial):
 
 if __name__ == '__main__':
 
-    # sampler = optuna.samplers.TPESampler(seed=555)
-    sampler = optuna.samplers.TPESampler(seed=777)
+    sampler = optuna.samplers.TPESampler(seed=1)
+    # sampler = optuna.samplers.TPESampler(seed=777)
 
     study = optuna.create_study(sampler=sampler, direction='minimize')
     # study = optuna.create_study(sampler=sampler, direction='minimize', pruner=optuna.pruners.MedianPruner())
@@ -95,7 +95,8 @@ if __name__ == '__main__':
     assert isinstance(df, pd.DataFrame)
     assert df.shape[0] == 500
 
-    df.to_excel(ospath.join(results_path, 'optuna_cali_seed777_not_sequential_calibration.xlsx'))
+    df.to_excel(ospath.join(results_path, 'optuna_cali_seed1_not_sequential_calibration.xlsx'))
+    # df.to_excel(ospath.join(results_path, 'optuna_cali_seed777_not_sequential_calibration.xlsx'))
     # df.to_excel(ospath.join(results_path, 'conti_optuna_kill.xlsx'))
 
     # optuna.visualization.matplotlib.plot_param_importances(study)

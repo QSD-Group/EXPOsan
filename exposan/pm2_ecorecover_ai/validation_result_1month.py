@@ -41,10 +41,10 @@ cmps = pc.create_pm2_cmps()
 
 ############# create WasteStream objects #################
 # Q = 449.06           # influent flowrate [m3/d]
-Temp = 296.02        # temperature [K]
+Temp = 292.08          # temperature [K]
 # Temp = 286.08          # temperature [K]
 
-T, I = EDV.batch_init(os.path.join(data_path, 'exo_vars_dynamic_influent_cali.xlsx'), 'linear')
+T, I = EDV.batch_init(os.path.join(data_path, 'exo_vars_dynamic_influent_vali.xlsx'), 'linear')
 
 T_mix = T
 I_mix = EDV('light_I_mix', function=lambda t: 0)
@@ -68,10 +68,10 @@ RAA = WasteStream('Return_activated_algae', T=Temp)
 
 #%%
 ############# load and tailor process models #############
-V_mix = 65.09
+V_mix = 62.66
 V_pbr = 77.49
-V_mem = 7.08
-V_ret = 5.61
+V_mem = 7.12
+V_ret = 5.26
 
 # V_mix = 66.23
 # V_pbr = 77.49
@@ -110,7 +110,7 @@ pm2 = pc.PM2(arr_e=6622.86679509832, K_P=29.2038598164409, f_CH_max=4.1562117146
 
 # Dynamic influent
 SE = su.DynamicInfluent('SE', outs=[DYINF],
-                        data_file=ospath.join(data_path, 'dynamic_influent_cali.tsv'))
+                        data_file=ospath.join(data_path, 'dynamic_influent_vali_1month.tsv'))
 
 MIX = su.CSTR('MIX', ins=[DYINF, RAA], outs=[PHO], V_max=V_mix,
               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_mix, I_mix))
@@ -153,14 +153,14 @@ PBR18 = su.CSTR('PBR18', ins=PBR17-0, V_max=V_pbr/20,
               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T, I))
 PBR19 = su.CSTR('PBR19', ins=PBR18-0, V_max=V_pbr/20,
               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T, I))
-PBR20 = su.CSTR('PBR20', ins=PBR19-0, outs=[ME, INT], split=[0.73, 0.27], V_max=V_pbr/20,
+PBR20 = su.CSTR('PBR20', ins=PBR19-0, outs=[ME, INT], split=[0.94, 0.06], V_max=V_pbr/20,
               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T, I))
 
-MEM = su.Splitter('MEM', PBR20-0, outs=[TE, RETEN], split=0.43*(1-cmps.x))
+MEM = su.Splitter('MEM', PBR20-0, outs=[TE, RETEN], split=0.45*(1-cmps.x))
 
 MEV = su.CSTR('MEV', ins=MEM-1, V_max=V_mem, aeration=None, suspended_growth_model=None)
 
-POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.95)                    # changed compared to previous ver.
+POST_MEM = su.Splitter('POST_MEM', MEV-0, outs=[RE, CE], split=0.96)                    # changed compared to previous ver.
 
 CENT = su.Splitter('CENT', POST_MEM-1, outs=[CEN, ALG], split={'X_CHL':0.33,
                                                                 'X_ALG':0.33,
@@ -183,22 +183,22 @@ RET = su.CSTR('RET', ins=[PBR20-1, POST_MEM-0, CENT-0], outs=[RAA], V_max=V_ret,
 #%%
 
 _init_conds = {
-        'X_CHL':1.91,
-        'X_ALG':381.02,
-        'X_PG':17.31,
-        'X_TAG':70.62,
+        'X_CHL':1.58,
+        'X_ALG':316.66,
+        'X_PG':14.39,
+        'X_TAG':58.69,
         'S_CO2':30.0,
         'S_A':5.0,
         'S_G':5.0,
         'S_O2':5.0,
-        'S_NH':13.62,
-        'S_NO':13.75,
-        'S_P':0.35,
-        'X_N_ALG':0.57,
-        'X_P_ALG':0.14,
+        'S_NH':20.72,
+        'S_NO':14.46,
+        'S_P':0.64,
+        'X_N_ALG':0.47,
+        'X_P_ALG':0.12,
     }
 
-batch_init(ospath.join(data_path, 'initial_conditions_pm2_dynamic_influent_cali.xlsx'), 'default')
+batch_init(ospath.join(data_path, 'initial_conditions_pm2_dynamic_influent_vali.xlsx'), 'default')
 
 #%%
 
@@ -231,7 +231,7 @@ def run(t, t_step, method=None, print_t=False, **kwargs):
                       method=method,
                       # rtol=1e-2,
                       # atol=1e-3,
-                      export_state_to=ospath.join(results_path, f'sol_{t}d_{method}_calibration_result.xlsx'),
+                      export_state_to=ospath.join(results_path, f'sol_{t}d_{method}_validation_result_1month.xlsx'),
                       print_t=print_t,
                       **kwargs)
     else:
@@ -269,4 +269,4 @@ if __name__ == '__main__':
 # ALG.get_mass_concentration('mg/l','X_ALG')
 # RET.scope.plot_time_series(('X_ALG'))
 
-# simulation ends with "Estimated SRT assuming at steady state is 6.98 days"
+# simulation ends with "Estimated SRT assuming at steady state is 7.02 days"
