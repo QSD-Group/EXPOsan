@@ -258,7 +258,7 @@ SRT = get_SRT(sys, biomass_IDs=biomass_IDs,
         # active_unit_IDs=(u.ID for u in sys.units if u.get_retained_mass(biomass_IDs) is not None)
         active_unit_IDs=('MIX', *(f'PBR{i}' for i in range(1, 21)))
         )
-print(SRT)
+print(SRT) # 2-3 d for 3 mg/L, 75 d for 15 mg/L
 
 # Adjust SRT by changing the amount of harvested biomass
 POST_MEM = f.unit.POST_MEM
