@@ -13,9 +13,11 @@ for license details.
 
 import numpy as np
 from qsdsan import WasteStream, sanunits as su
-from qsdsan.utils import AttrGetter, auom
+from qsdsan.utils import AttrGetter, auom, load_data, ospath
+from . import data_path
 from ._units import SelectiveRecovery
 from exposan.werf.utils import plantwide_aeration_demand, plantwide_aeration_energy
+from chaospy import distributions as shape
 
 
 __all__ = (
@@ -355,3 +357,30 @@ def add_OPEX_metrics(model):
     @metric(name='total OPEX', units='USD/d', element='OPEX')
     def get_opex():
         return sum(opex.values())
+
+# %%
+eia_df = load_data(
+    ospath.join(data_path, 'eia_electricity_price.xlsx'), # https://www.eia.gov/electricity/monthly/epm_table_grapher.php?t=table_5_06_b
+    header=[0,1], index_col=0
+    )
+data = eia_df.loc[:,[('All Sectors', 'March 2025 YTD')]].dropna(how='all').to_numpy().reshape(-1)
+
+def add_downstream_uncertainty(model):
+    param = model.parameter
+    sys = model.system
+    # s = sys.flowsheet.stream
+    # u = sys.flowsheet.unit
+    
+    b = 13.20 # All Sectors, U.S. Total, March 2025 YTD 
+    D = shape.TruncNormal(data.min()-0.5, data.max()+0.5, mu=b, sigma=data.std())
+    @param(name='Electricity price', units='cents/kWh', element='System', 
+           baseline=b, distribution=D)
+    def set_eprice(p):
+        sys.power_utility.price = p/100
+    
+    b = 68.5 # land application price per wet ton at WRRF gate, based on National Biosolids Data Project report
+    D = shape.Triangle(b*0.5, b, b*1.5)
+    @param(name='Sludge disposal price', units='USD/wet tonne', element='System', 
+           baseline=b, distribution=D)
+    def set_disposal_price(p):
+        pass

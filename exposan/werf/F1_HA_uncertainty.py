@@ -20,7 +20,7 @@ from exposan.werf import (
     opt_underflows,
     results_path
     )
-from exposan.werf.utils import cache_state
+from exposan.werf.utils import cache_state, load_state
 from qsdsan import Model, System, processes as pc
 from qsdsan.utils import get_SRT, ospath
 from biosteam.evaluation._utils import var_columns
@@ -49,7 +49,6 @@ for c in cmps:
 cmps.S_I.f_Vmass_Totmass = cmps.X_I.f_Vmass_Totmass = 0.6
 cmps.X_S.i_mass = cmps.X_I.i_mass = 0.63
 cmps.refresh_constants()
-# fr_orgs = dict(fr_SI=0.2, fr_SF=0.24, fr_SA=0.05, fr_XI=0.18)
 fr_orgs = dict(fr_SI=0.075, fr_SF=0.24, fr_SA=0.05, fr_XI=0.3)
 wws = {}
 wws['low'] = pc.create_masm2d_inf(
@@ -98,13 +97,18 @@ thickener.sludge_flow_rate, u.DW.sludge_flow_rate = opt_underflows[ID]
 u.ASR.DO_setpoints *= 0
 u.ASR.DO_setpoints += 1
 
-u.FC.underflow = 0.4 * 10 * MGD2cmd
+load_state(sys_ha, folder='steady_states/HA_opt')
 
 #%%
 removal_efficiencies = np.arange(0.5, 0.8, 0.05)
-metrics = {'low':[], 'mid':[], 'high':[]}
-for strength, out in metrics.items():
+metrics = {}
+for strength, qwas in zip(('low', 'mid', 'high'), (0.15, 0.2, 0.3)):
     s.RWW.copy_flow(wws[strength])
+    s.RWW._init_state()
+    u.FC.wastage = qwas * MGD2cmd
+    u.FC._ODE = None
+    sys_ha._DAE = None
+    out = []
     print(f"System {ID} + HA, {strength}-strength ww")
     print("="*35)
     for f_rmv in removal_efficiencies:
@@ -128,11 +132,19 @@ for strength, out in metrics.items():
             r_cake = s.cake.get_TSS()/cake_tss
         end2 = tm.time()
         print("Final underflows: ", f"{thickener.sludge_flow_rate:.2f}  {u.DW.sludge_flow_rate:.2f}")
-        print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end2-end)), '\n')
+        print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end2-end)))
+        srt = get_SRT(sys_ha, ('X_H', 'X_PAO', 'X_AUT'), wastage=[s.WAS], 
+                      active_unit_IDs=('ASR', ))
+        print(f'SRT = {srt:.2f} d')
+        arr = u.ASR.state.iloc[:,:-1].to_numpy()
+        mlss = np.sum(cmps.i_mass * cmps.x * arr, axis=1)
+        print(f'MLSS = {np.mean(mlss):.0f} mg/L', '\n')
         cache_state(sys_ha, f'steady_states/HA_F1/{strength}', f'{f_rmv*100:.0f}')
         out.append([m() for m in mdl.metrics])
     metrics[strength] = pd.DataFrame(out, index=removal_efficiencies, 
                                      columns=var_columns(mdl.metrics))
-metrics = pd.concat(metrics.values(), keys=metrics.keys(), 
-                    names=['WW strength', 'Recovery efficiency'])
-metrics.to_excel(ospath.join(results_path, 'HA_F1_upstream_uncertainty.xlsx'))
+
+#%%
+df = pd.concat(metrics.values(), keys=metrics.keys(), 
+               names=['WW strength', 'Recovery efficiency'])
+df.to_excel(ospath.join(results_path, 'HA_F1_upstream_uncertainty.xlsx'))
