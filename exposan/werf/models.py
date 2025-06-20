@@ -160,14 +160,22 @@ def add_OPEX_metrics(model):
     def get_aed_qair():
         if 'AED' in _cached_aer: qair = _cached_aer['AED']
         else: qair = np.nan
+        print(_cached_aer)
         return qair
 
     blower_energy = {}
-    @metric(name='aeration energy', units='kW', element='Aeration')
-    def get_aer_energy():
+    @metric(name='liquid aeration energy', units='kW', element='Aeration')
+    def get_liq_aer_energy():
         blower_energy.clear()
         blower_energy.update(plantwide_aeration_energy(sys, _cached_aer))
-        return sum(blower_energy.values())
+        if 'AED' in blower_energy: not_liq = blower_energy['AED']
+        else: not_liq = 0.
+        return sum(blower_energy.values()) - not_liq
+
+    @metric(name='total aeration energy', units='kW', element='Aeration')
+    def get_aer_energy():
+        print(blower_energy, '\n')
+        return sum(blower_energy.values())    
     
     pumpin = WasteStream('pumpin', T=s.RWW.T, P=s.RWW.P)
     pump = su.Pump('pump', ins=pumpin, ignore_NPSH=False, 
@@ -336,7 +344,7 @@ def add_OPEX_metrics(model):
             dose = 50 + 4.0*(tss-10)    # in lb CaO per wet ton, linearly correlated w TS%, MOP8 Fig 23.79
             dose *= 0.5 # convert from lb/ton to kg/tonne
             opex['lime'] = c =  sum(s.cake.mass * cmps.i_mass) * 24e-3 * dose / 0.9 * 0.124 # assume 90% purity, 124 USD/tonne https://www.imarcgroup.com/quicklime-pricing-report 
-        else: opex['coagulant'] = c = 0
+        else: opex['lime'] = c = 0
         return c
 
     @metric(name='lime stablization energy cost', units='USD/d', element='OPEX')

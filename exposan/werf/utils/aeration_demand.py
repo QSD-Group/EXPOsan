@@ -108,6 +108,7 @@ def _setup_diffused_aeration(unit, kLa, DOsat_s20, T_air,
             k_cfa = get_crossflow_kLa(unit, Q_cfa, DOsat_s20, T_air)
             if k_cfa > kLa: kLa = 0.
             else: kLa -= k_cfa
+    print(unit.ID, ': ', kLa)
             
     d_submergence = (tank_depth - diffuser_height) * ft2m
     if aeration_type in aer_kwargs:
@@ -150,7 +151,6 @@ def get_aeration_demand(unit, kLa=None, DOsat_s20=8.0, alpha=0.5,
     
     kLa, aer = _setup_diffused_aeration(unit, kLa, DOsat_s20, T_air, tank_depth, 
                                         diffuser_height, aeration_type, **kwargs)
-    
     if isa(unit, CSTR):
         aer.alpha = alpha
         aer.V = unit.V_max

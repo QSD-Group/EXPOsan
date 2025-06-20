@@ -84,6 +84,7 @@ def stacked_bar(opex=None, save_as=''):
     if opex is None:
         opex = compile_opex()
     fig, axes = plt.subplots(ncols=len(configs), sharey=True, figsize=(22, 5))
+    # fig, axes = plt.subplots(ncols=len(configs), sharey=True, figsize=(12, 5))
     handles = []
     plt.rcParams['xtick.minor.visible'] = False
     plt.rcParams['ytick.minor.visible'] = True
@@ -183,4 +184,5 @@ def horizontal_stacked_bar(opex=None, save_as=''):
 if __name__ == '__main__':
     opex = compile_opex()
     stacked_bar(opex, save_as='opex.png')
+    # stacked_bar(opex, save_as='opex_wrrfs.png')
     horizontal_stacked_bar(opex, save_as='opexh.png')
