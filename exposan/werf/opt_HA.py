@@ -19,10 +19,11 @@ from exposan.werf import (
     add_OPEX_metrics, 
     add_NH4_recovery_metric,
     opt_underflows,
+    # results_path
     )
 from exposan.werf.utils import cache_state
 from qsdsan import Model, System, sanunits as su
-from qsdsan.utils import get_SRT
+from qsdsan.utils import get_SRT#, ospath, load_data
 from biosteam.evaluation._utils import var_columns
 
 #%%
@@ -30,15 +31,17 @@ def display_metrics(model):
     vals = [m() for m in model.metrics]
     print(f'OPEX = {vals[-2]:.2f} USD/d')
     idx = var_columns(model.metrics)
-    df = pd.DataFrame(vals, index=idx, columns=[model._system.ID])
+    df = pd.DataFrame(vals, index=idx, columns=[model._system.ID[:-2]])
     return df
 
 MGD2cmd = 3785.412
 f_rmv = 0.7
 
+# ufs = load_data(ospath.join(results_path, 'HA_opt_performance.xlsx'), 
+#                 sheet='opt_command', skiprows=[1], header=[0,], index_col=0)
 #%%
 
-# ID = 'B1'
+ID = 'B1'
 # ID = 'B2'
 # ID = 'B3'
 # ID = 'C1'
@@ -55,7 +58,7 @@ f_rmv = 0.7
 # ID = 'I2'
 # ID = 'I3'
 # ID = 'N1'
-ID = 'N2'
+# ID = 'N2'
 
 sys = create_system(ID)
 s = sys.flowsheet.stream
@@ -99,49 +102,52 @@ else:
     thickened = s.thickened_sludge
     thickener = u.GT
 
+# thickener.sludge_flow_rate = ufs.at[ID, 'Thickener']
+# u.DW.sludge_flow_rate = ufs.at[ID, 'Dewatering']
+
 thickener.sludge_flow_rate, u.DW.sludge_flow_rate = opt_underflows[ID]
 # thickener.sludge_flow_rate, u.DW.sludge_flow_rate = (125.55, 13.06)
 
 #%%
-# u.ASR.DO_setpoints *= 0
-# u.ASR.DO_setpoints += 1
+u.ASR.DO_setpoints *= 0
+u.ASR.DO_setpoints += 1
 # u.ASR.DO_setpoints[:] = [0,0,0,0,1,1]
 # u.ASR.DO_setpoints[:] = [0.5,0,1,1,0,1]
-# u.ASR.DO_setpoints[:] = [0,0,1,1,0,1]
-u.ASR.DO_setpoints[:] = [0,0,1,1,0]
+# u.ASR.DO_setpoints[:] = [0,0,2,2,0,1]
+# u.ASR.DO_setpoints[:] = [0,0,1,1,0]
 # Vs = [0.63, 1.5, 2.0, 2.0, 2.3, 0.21] # MG
 # Vs = [0.84, 1.5, 2.0, 2.0, 2.1, 0.2]
 # Vs = [0.99, 1.35, 2.0, 2.0, 2.1, 0.2]
 # Vs = [0.33, 1.5, 2.0, 2.1, 2.3, 0.41]
 # u.ASR.V_tanks[:] = [v * MGD2cmd for v in Vs]
-V_tot = 2.61 * MGD2cmd
+# V_tot = 2.61 * MGD2cmd
 # fr_V = [0.12, 0.18, 0.24, 0.24, 0.18, 0.04]
-fr_V = [0.18, 0.14, 0.24, 0.24, 0.16, 0.04]
+# fr_V = [0.18, 0.14, 0.24, 0.24, 0.16, 0.04]
 # fr_V = [0.16, 0.16, 0.24, 0.24, 0.17, 0.03]     # larger anaerobic zone seems better for EBPR
-u.ASR.V_tanks[:] = [v * V_tot for v in fr_V[:-1]]
+# u.ASR.V_tanks[:] = [v * V_tot for v in fr_V[:-1]]
 # u.ASR.internal_recycles[0] = (3,1,20*MGD2cmd)
 u.ASR._ODE = None
 
-Q_ras = 2 * 10 * MGD2cmd
-Q_was = 0.15 * MGD2cmd
-u.MBR.pumped_flow = Q_ras + Q_was
-u.S1.split = Q_ras / (Q_ras + Q_was)
+# Q_ras = 2 * 10 * MGD2cmd
+# Q_was = 0.2 * MGD2cmd
+# u.MBR.pumped_flow = Q_ras + Q_was
+# u.S1.split = Q_ras / (Q_ras + Q_was)
 
-u.MBR.V_max = fr_V[-1] * V_tot
-u.MBR.aeration = 1.0
-u.MBR._ODE = None
+# u.MBR.V_max = fr_V[-1] * V_tot
+# u.MBR.aeration = 1.0
+# u.MBR._ODE = None
 
 # for unit in (u.O5, u.O6):
 #     unit.aeration = 1.0
 #     unit._ODE = None
 
-s.carbon.imass['S_A'] = 0
-s.carbon._init_state()
-# u.MD.metal_dosage = 5
+# s.carbon.imass['S_A'] = 0
+# s.carbon._init_state()
+# u.MD.metal_dosage = 1
 # u.MD._AE = None
-# u.FC.underflow = 0.67 * 10 * MGD2cmd
-# u.FC.wastage = 0.15 * MGD2cmd
-# u.FC._ODE = None
+u.FC.underflow = 0.4 * 10 * MGD2cmd
+u.FC.wastage = 0.16 * MGD2cmd
+u.FC._ODE = None
 
 # u.AED.V_max = 0.5 * MGD2cmd
 # u.AED._ODE = None
@@ -186,7 +192,9 @@ print(f'MLSS ~ {np.mean(mlss):.0f} mg/L')
 df = display_metrics(mdl)
 df.T.to_clipboard()
 cache_state(sys_ha, 'steady_states/HA_opt')
-#%%
+
+# %%
+
 sys.flowsheet.clear()
 sys_ha.flowsheet.clear()
 del sys, sys_ha
