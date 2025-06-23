@@ -81,13 +81,13 @@ def compile_opex():
 
 #%%
 def stacked_bar(opex=None, save_as=''):
+    plt.rcParams['xtick.minor.visible'] = False
+    plt.rcParams['ytick.minor.visible'] = True
     if opex is None:
         opex = compile_opex()
     fig, axes = plt.subplots(ncols=len(configs), sharey=True, figsize=(22, 5))
     # fig, axes = plt.subplots(ncols=len(configs), sharey=True, figsize=(12, 5))
     handles = []
-    plt.rcParams['xtick.minor.visible'] = False
-    plt.rcParams['ytick.minor.visible'] = True
     for ID, ax in zip(configs, axes):
         df = opex.loc[(slice(None), ID),:]
         df.index = df.index.droplevel(1)
@@ -131,12 +131,13 @@ def stacked_bar(opex=None, save_as=''):
 
 #%%
 def horizontal_stacked_bar(opex=None, save_as=''):
+    plt.rcParams['ytick.minor.visible'] = False
+    plt.rcParams['xtick.minor.visible'] = True
     if opex is None:
         opex = compile_opex()
     fig, axes = plt.subplots(nrows=len(configs), sharex=True, figsize=(6, 22))
     handles = []
-    plt.rcParams['ytick.minor.visible'] = False
-    plt.rcParams['xtick.minor.visible'] = True
+
     for ID, ax in zip(configs, axes):
         df = opex.loc[(slice(None), ID),:]
         df.index = df.index.droplevel(1)
