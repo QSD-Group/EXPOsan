@@ -36,6 +36,8 @@ MGD2cmd = 3785.412
 Temp = 273.15+20 # temperature [K]
 T_ad = 273.15+35
 
+cfm2cmd = 40.77625909247999
+
 def create_n2_system(flowsheet=None, default_init_conds=True):
     flowsheet = flowsheet or qs.Flowsheet(ID)
     qs.main_flowsheet.set_flowsheet(flowsheet)
@@ -80,11 +82,18 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
         gas_stripping=True
         )
     
+    cfa = pc.DiffusedAeration(
+        'cfa', DO_ID='S_O2', V=Vs[-1], Q_air=2e4*cfm2cmd, 
+        DOsat_s20=8.0, d_submergence=4.3, 
+        T_water=Temp, T_air=13+273.15, 
+        alpha=0.65, beta=0.95, theta=1.024, SOTE=0.1, fine_pore=False
+        )
     MBR = su.CompletelyMixedMBR(
         'MBR', ins=ASR-0, outs=('SE', ''),
         V_max=Vs[-1], solids_capture_rate=0.9999, pumped_flow=Q_was+Q_intr,
         aeration=2.0, DO_ID='S_O2', gas_stripping=True,
         suspended_growth_model=asm, 
+        crossflow_air=cfa,
         )
     S1 = su.Splitter('S1', MBR-1, ('', 'WAS'), split=Q_intr/(Q_intr+Q_was))
     HD1 = su.HydraulicDelay('HD1', ins=S1-0, outs=2-ASR)
