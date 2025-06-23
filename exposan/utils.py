@@ -626,85 +626,932 @@ general_country_specific_inputs = {
     }
 
 general_city_specific_inputs = {
-    'Hongkong': {
-        'price_ratio': 0.7,
-        'p_anim': 83.79,
-        'p_veg': 42.99,
-        'e_cal': 2996,
-        'food_waste_ratio': 0.15,
-        'wages': 10,  # average labor wages USD/hour
-        'energy_price': 0.1857,  # USD/kWh
-        'energy_GWP': 0.753928903,  # kg CO2-eq/kWh
-        'N_fertilizer_price': 3.08695652,  # USD/kg N
-        'P_fertilizer_price': 4.98866213,  # USD/kg P
-        'K_fertilizer_price': 1.666666667,  # USD/kg K
-        'household_size': 2.9,  # cap/household
-        'energy_H_Ecosystems': 0.013938093,  # points/kWh
-        'energy_H_Health': 0.027525855,  # points/kWh
-        'energy_H_Resources': 0.029968687,  # points/kWh
-        'certified_electrician_wages': 16.17,  # USD/hour
-        'service_team_wages': 10,  # USD/hour
-        'facility_manager_wages': 12.21  # USD/hour
-    },
-    'Addis Ababa': {
-        'price_ratio': 0.4,
-        'p_anim': 6,
-        'p_veg': 59,
-        'e_cal': 2111,
-        'food_waste_ratio': 0.02,
-        'wages': 0.9,  # average labor wages USD/hour
-        'energy_price': 0.01413,  # USD/kWh
-        'energy_GWP': 0.006710502,  # kg CO2-eq/kWh
-        'N_fertilizer_price': 0.529,  # USD/kg N
-        'P_fertilizer_price': 0.695,  # USD/kg P
-        'K_fertilizer_price': 0,  # USD/kg K
-        'household_size': 4.68,  # cap/household
-        'energy_H_Ecosystems': 0.000652665,  # points/kWh
-        'energy_H_Health': 0.000511132,  # points/kWh
-        'energy_H_Resources': 0.000819693  # points/kWh
-    },
+    # 'Hongkong': {
+    #     'price_ratio': 0.7,
+    #     'p_anim': 83.79,
+    #     'p_veg': 42.99,
+    #     'e_cal': 2996,
+    #     'food_waste_ratio': 0.15,
+    #     'wages': 10,  # average labor wages USD/hour
+    #     'energy_price': 0.1857,  # USD/kWh
+    #     'energy_GWP': 0.753928903,  # kg CO2-eq/kWh
+    #     'N_fertilizer_price': 3.08695652,  # USD/kg N
+    #     'P_fertilizer_price': 4.98866213,  # USD/kg P
+    #     'K_fertilizer_price': 1.666666667,  # USD/kg K
+    #     'household_size': 2.9,  # cap/household
+    #     'energy_H_Ecosystems': 0.013938093,  # points/kWh
+    #     'energy_H_Health': 0.027525855,  # points/kWh
+    #     'energy_H_Resources': 0.029968687,  # points/kWh
+    #     'certified_electrician_wages': 16.17,  # USD/hour
+    #     'service_team_wages': 10,  # USD/hour
+    #     'facility_manager_wages': 12.21  # USD/hour
+    # },
+    # 'Addis Ababa': {
+    #     'price_ratio': 0.4,
+    #     'p_anim': 6,
+    #     'p_veg': 59,
+    #     'e_cal': 2111,
+    #     'food_waste_ratio': 0.02,
+    #     'wages': 0.9,  # average labor wages USD/hour
+    #     'energy_price': 0.01413,  # USD/kWh
+    #     'energy_GWP': 0.006710502,  # kg CO2-eq/kWh
+    #     'N_fertilizer_price': 0.529,  # USD/kg N
+    #     'P_fertilizer_price': 0.695,  # USD/kg P
+    #     'K_fertilizer_price': 0,  # USD/kg K
+    #     'household_size': 4.68,  # cap/household
+    #     'energy_H_Ecosystems': 0.000652665,  # points/kWh
+    #     'energy_H_Health': 0.000511132,  # points/kWh
+    #     'energy_H_Resources': 0.000819693  # points/kWh
+    # },
     
-    'Paris': {
-    'price_ratio': 0.8,
-    'p_anim': 40.2,
-    'p_veg': 40.2,
-    'e_cal': 1986,
-    'food_waste_ratio': 0.17,
-    'wages': 17.948,  # average labor wages USD/hour
-    'energy_price': 0.2016,  # USD/kWh
-    'energy_GWP': 0.054,  # kg CO2-eq/kWh
-    'N_fertilizer_price': 9.11,  # USD/kg N
-    'P_fertilizer_price': 33.8,  # USD/kg P
-    'K_fertilizer_price': 18.42,  # USD/kg K
-    'household_size': 1.86,  # cap/household
-    'energy_H_Ecosystems': 0.001046026,  # points/kWh
-    'energy_H_Health': 0.002296732,  # points/kWh
-    'energy_H_Resources': 0.003274977,  # points/kWh
-    'certified_electrician_wages': 25.10998263,  # USD/hour
-    'service_team_wages': 17.948,  # USD/hour
-    'facility_manager_wages': 17.948  # USD/hour
-    },
+    # 'Paris': {
+    # 'price_ratio': 0.8,
+    # 'p_anim': 40.2,
+    # 'p_veg': 40.2,
+    # 'e_cal': 1986,
+    # 'food_waste_ratio': 0.17,
+    # 'wages': 17.948,  # average labor wages USD/hour
+    # 'energy_price': 0.2016,  # USD/kWh
+    # 'energy_GWP': 0.054,  # kg CO2-eq/kWh
+    # 'N_fertilizer_price': 9.11,  # USD/kg N
+    # 'P_fertilizer_price': 33.8,  # USD/kg P
+    # 'K_fertilizer_price': 18.42,  # USD/kg K
+    # 'household_size': 1.86,  # cap/household
+    # 'energy_H_Ecosystems': 0.001046026,  # points/kWh
+    # 'energy_H_Health': 0.002296732,  # points/kWh
+    # 'energy_H_Resources': 0.003274977,  # points/kWh
+    # 'certified_electrician_wages': 25.10998263,  # USD/hour
+    # 'service_team_wages': 17.948,  # USD/hour
+    # 'facility_manager_wages': 17.948  # USD/hour
+    # },
     
-    'New York City': {
-    'price_ratio': 1.77,
-    'p_anim': 51.96721357,
-    'p_veg': 26.31278643,
-    'e_cal': 2093.14,
-    'food_waste_ratio': 0.3,
-    'wages': 30.84,  # average labor wages USD/hour
-    'energy_price': 0.2469,  # USD/kWh
-    'energy_GWP': 0.596453139,  # kg CO2-eq/kWh
-    'N_fertilizer_price': 4.485913197,  # USD/kg N
-    'P_fertilizer_price': 29.28801254,  # USD/kg P
-    'K_fertilizer_price': 9.487666034,  # USD/kg K
-    'household_size': 2.67,  # cap/household
-    'energy_H_Ecosystems': 0.010927451,  # points/kWh
-    'energy_H_Health': 0.017937517,  # points/kWh
-    'energy_H_Resources': 0.031353155,  # points/kWh
-    'certified_electrician_wages': 48.83,  # USD/hour
-    'service_team_wages': 30.84,  # USD/hour
-    'facility_manager_wages': 87.15  # USD/hour
-    },
+    # 'New York City': {
+    # 'price_ratio': 1.77,
+    # 'p_anim': 51.96721357,
+    # 'p_veg': 26.31278643,
+    # 'e_cal': 2093.14,
+    # 'food_waste_ratio': 0.3,
+    # 'wages': 30.84,  # average labor wages USD/hour
+    # 'energy_price': 0.2469,  # USD/kWh
+    # 'energy_GWP': 0.596453139,  # kg CO2-eq/kWh
+    # 'N_fertilizer_price': 4.485913197,  # USD/kg N
+    # 'P_fertilizer_price': 29.28801254,  # USD/kg P
+    # 'K_fertilizer_price': 9.487666034,  # USD/kg K
+    # 'household_size': 2.67,  # cap/household
+    # 'energy_H_Ecosystems': 0.010927451,  # points/kWh
+    # 'energy_H_Health': 0.017937517,  # points/kWh
+    # 'energy_H_Resources': 0.031353155,  # points/kWh
+    # 'certified_electrician_wages': 48.83,  # USD/hour
+    # 'service_team_wages': 30.84,  # USD/hour
+    # 'facility_manager_wages': 87.15  # USD/hour
+    # },
+    "Albania": {
+       "price_ratio": 0.365,
+       "p_anim": 61.75,
+       "p_veg": 54.0,
+       "e_cal": 3360.0,
+       "food_waste_ratio": 0.17,
+       "wages": 2.35,
+       "energy_price": 0.11,
+       "energy_GWP": 0.06,
+       "household_size": 3.3
+   },
+   "Armenia": {
+       "price_ratio": 0.324,
+       "p_anim": 45.34,
+       "p_veg": 49.02,
+       "e_cal": 2997.0,
+       "food_waste_ratio": 0.17,
+       "wages": 1.37,
+       "energy_price": 0.08,
+       "energy_GWP": 0.47,
+       "household_size": 3.54
+   },
+   "Austria": {
+       "price_ratio": 0.83,
+       "p_anim": 65.83,
+       "p_veg": 43.29,
+       "e_cal": 3695.0,
+       "food_waste_ratio": 0.17,
+       "wages": 21.28,
+       "energy_price": 0.24,
+       "energy_GWP": 0.31,
+       "household_size": 2.27
+   },
+   "Bangladesh": {
+       "price_ratio": 0.374,
+       "p_anim": 12.56,
+       "p_veg": 48.17,
+       "e_cal": 2563.0,
+       "food_waste_ratio": 0.03,
+       "wages": 1.15,
+       "energy_price": 0.07,
+       "energy_GWP": 1.03,
+       "household_size": 4.47
+   },
+   "Barbados": {
+       "price_ratio": 1.111,
+       "p_anim": 51.02,
+       "p_veg": 37.67,
+       "e_cal": 2956.0,
+       "food_waste_ratio": 0.06,
+       "wages": 9.19,
+       "energy_price": 0.21,
+       "energy_GWP": 1.01,
+       "household_size": 2.85
+   },
+   "Belarus": {
+       "price_ratio": 0.333,
+       "p_anim": 52.2,
+       "p_veg": 39.75,
+       "e_cal": 3270.0,
+       "food_waste_ratio": 0.17,
+       "wages": 3.62,
+       "energy_price": 0.07,
+       "energy_GWP": 1.03,
+       "household_size": 2.48
+   },
+   "Belgium": {
+       "price_ratio": 0.824,
+       "p_anim": 58.58,
+       "p_veg": 41.29,
+       "e_cal": 3769.0,
+       "food_waste_ratio": 0.17,
+       "wages": 26.18,
+       "energy_price": 0.3,
+       "energy_GWP": 0.43,
+       "household_size": 2.36
+   },
+   "Belize": {
+       "price_ratio": 0.658,
+       "p_anim": 30.82,
+       "p_veg": 41.11,
+       "e_cal": 2775.0,
+       "food_waste_ratio": 0.06,
+       "wages": 3.19,
+       "energy_price": 0.23,
+       "energy_GWP": 0.22,
+       "household_size": 4.3
+   },
+   "Bolivia": {
+       "price_ratio": 0.39,
+       "p_anim": 35.46,
+       "p_veg": 37.78,
+       "e_cal": 2412.0,
+       "food_waste_ratio": 0.06,
+       "wages": 4.65,
+       "energy_price": 0.12,
+       "energy_GWP": 0.74,
+       "household_size": 3.53
+   },
+   "Botswana": {
+       "price_ratio": 0.429,
+       "p_anim": 28.02,
+       "p_veg": 37.87,
+       "e_cal": 2342.0,
+       "food_waste_ratio": 0.02,
+       "wages": 4.71,
+       "energy_price": 0.11,
+       "energy_GWP": 1.05,
+       "household_size": 3.52
+   },
+   "Bulgaria": {
+       "price_ratio": 0.388,
+       "p_anim": 41.96,
+       "p_veg": 41.3,
+       "e_cal": 2854.0,
+       "food_waste_ratio": 0.17,
+       "wages": 3.59,
+       "energy_price": 0.14,
+       "energy_GWP": 0.5,
+       "household_size": 2.34
+   },
+   "Cambodia": {
+       "price_ratio": 0.359,
+       "p_anim": 19.02,
+       "p_veg": 46.93,
+       "e_cal": 2492.0,
+       "food_waste_ratio": 0.03,
+       "wages": 1.06,
+       "energy_price": 0.15,
+       "energy_GWP": 0.45,
+       "household_size": 4.61
+   },
+   "Cameroon": {
+       "price_ratio": 0.396,
+       "p_anim": 11.26,
+       "p_veg": 60.63,
+       "e_cal": 2733.0,
+       "food_waste_ratio": 0.02,
+       "wages": 1.45,
+       "energy_price": 0.09,
+       "energy_GWP": 0.45,
+       "household_size": 4.99
+   },
+   "Chile": {
+       "price_ratio": 0.552,
+       "p_anim": 49.6,
+       "p_veg": 42.04,
+       "e_cal": 3029.0,
+       "food_waste_ratio": 0.06,
+       "wages": 7.58,
+       "energy_price": 0.19,
+       "energy_GWP": 0.6,
+       "household_size": 3.58
+   },
+   "China": {
+       "price_ratio": 0.61,
+       "p_anim": 40.0,
+       "p_veg": 60.63,
+       "e_cal": 3191.0,
+       "food_waste_ratio": 0.15,
+       "wages": 6.57,
+       "energy_price": 0.08,
+       "energy_GWP": 0.74,
+       "household_size": 3.38
+   },
+   "Croatia": {
+       "price_ratio": 0.48,
+       "p_anim": 55.7,
+       "p_veg": 34.9,
+       "e_cal": 3074.0,
+       "food_waste_ratio": 0.17,
+       "wages": 7.99,
+       "energy_price": 0.16,
+       "energy_GWP": 0.34,
+       "household_size": 2.8
+   },
+   "Cyprus": {
+       "price_ratio": 0.662,
+       "p_anim": 45.6,
+       "p_veg": 46.07,
+       "e_cal": 3019.0,
+       "food_waste_ratio": 0.17,
+       "wages": 13.12,
+       "energy_price": 0.28,
+       "energy_GWP": 0.95,
+       "household_size": 2.75
+   },
+   "Czech Republic": {
+       "price_ratio": 0.53,
+       "p_anim": 52.83,
+       "p_veg": 34.15,
+       "e_cal": 3277.0,
+       "food_waste_ratio": 0.17,
+       "wages": 9.11,
+       "energy_price": 0.24,
+       "energy_GWP": 0.6,
+       "household_size": 2.4
+   },
+   "Denmark": {
+       "price_ratio": 0.969,
+       "p_anim": 79.73,
+       "p_veg": 37.35,
+       "e_cal": 3401.0,
+       "food_waste_ratio": 0.17,
+       "wages": 35.74,
+       "energy_price": 0.32,
+       "energy_GWP": 0.4,
+       "household_size": 2.1
+   },
+   "Dominican Republic": {
+       "price_ratio": 0.431,
+       "p_anim": 33.48,
+       "p_veg": 32.82,
+       "e_cal": 2892.0,
+       "food_waste_ratio": 0.06,
+       "wages": 1.33,
+       "energy_price": 0.09,
+       "energy_GWP": 0.91,
+       "household_size": 3.48
+   },
+   "Ecuador": {
+       "price_ratio": 0.521,
+       "p_anim": 30.73,
+       "p_veg": 35.24,
+       "e_cal": 2606.0,
+       "food_waste_ratio": 0.06,
+       "wages": 3.71,
+       "energy_price": 0.1,
+       "energy_GWP": 0.32,
+       "household_size": 3.78
+   },
+   "Egypt": {
+       "price_ratio": 0.246,
+       "p_anim": 26.42,
+       "p_veg": 71.1,
+       "e_cal": 3292.0,
+       "food_waste_ratio": 0.09,
+       "wages": 1.08,
+       "energy_price": 0.04,
+       "energy_GWP": 0.96,
+       "household_size": 4.13
+   },
+   "El Salvador": {
+       "price_ratio": 0.457,
+       "p_anim": 26.91,
+       "p_veg": 50.12,
+       "e_cal": 2696.0,
+       "food_waste_ratio": 0.06,
+       "wages": 2.42,
+       "energy_price": 0.19,
+       "energy_GWP": 0.34,
+       "household_size": 4.07
+   },
+   "Estonia": {
+       "price_ratio": 0.593,
+       "p_anim": 65.42,
+       "p_veg": 39.96,
+       "e_cal": 3247.0,
+       "food_waste_ratio": 0.17,
+       "wages": 10.23,
+       "energy_price": 0.19,
+       "energy_GWP": 0.91,
+       "household_size": 2.3
+   },
+   "Finland": {
+       "price_ratio": 0.917,
+       "p_anim": 75.43,
+       "p_veg": 42.57,
+       "e_cal": 3343.0,
+       "food_waste_ratio": 0.17,
+       "wages": 23.83,
+       "energy_price": 0.18,
+       "energy_GWP": 0.31,
+       "household_size": 2.07
+   },
+   "France": {
+       "price_ratio": 0.794,
+       "p_anim": 64.45,
+       "p_veg": 43.8,
+       "e_cal": 3502.0,
+       "food_waste_ratio": 0.17,
+       "wages": 21.63,
+       "energy_price": 0.21,
+       "energy_GWP": 0.11,
+       "household_size": 2.22
+   },
+   "Georgia": {
+       "price_ratio": 0.3,
+       "p_anim": 31.24,
+       "p_veg": 45.53,
+       "e_cal": 2835.0,
+       "food_waste_ratio": 0.17,
+       "wages": 1.81,
+       "energy_price": 0.06,
+       "energy_GWP": 0.22,
+       "household_size": 3.34
+   },
+   "Germany": {
+       "price_ratio": 0.807,
+       "p_anim": 64.03,
+       "p_veg": 41.37,
+       "e_cal": 3554.0,
+       "food_waste_ratio": 0.17,
+       "wages": 27.51,
+       "energy_price": 0.38,
+       "energy_GWP": 0.58,
+       "household_size": 2.05
+   },
+   "Ghana": {
+       "price_ratio": 0.39,
+       "p_anim": 15.37,
+       "p_veg": 46.23,
+       "e_cal": 3035.0,
+       "food_waste_ratio": 0.02,
+       "wages": 0.13,
+       "energy_price": 0.06,
+       "energy_GWP": 0.55,
+       "household_size": 3.49
+   },
+   "Greece": {
+       "price_ratio": 0.602,
+       "p_anim": 60.07,
+       "p_veg": 48.09,
+       "e_cal": 3382.0,
+       "food_waste_ratio": 0.17,
+       "wages": 6.15,
+       "energy_price": 0.22,
+       "energy_GWP": 0.74,
+       "household_size": 2.44
+   },
+   "Guatemala": {
+       "price_ratio": 0.512,
+       "p_anim": 21.75,
+       "p_veg": 47.24,
+       "e_cal": 2551.0,
+       "food_waste_ratio": 0.06,
+       "wages": 2.09,
+       "energy_price": 0.25,
+       "energy_GWP": 0.49,
+       "household_size": 4.81
+   },
+   "Guyana": {
+       "price_ratio": 0.484,
+       "p_anim": 35.54,
+       "p_veg": 50.97,
+       "e_cal": 2913.0,
+       "food_waste_ratio": 0.06,
+       "wages": 2.46,
+       "energy_price": 0.26,
+       "energy_GWP": 1.03,
+       "household_size": 3.8
+   },
+   "Honduras": {
+       "price_ratio": 0.43,
+       "p_anim": 21.94,
+       "p_veg": 41.01,
+       "e_cal": 2673.0,
+       "food_waste_ratio": 0.06,
+       "wages": 1.53,
+       "energy_price": 0.19,
+       "energy_GWP": 0.4,
+       "household_size": 4.47
+   },
+   "Hungary": {
+       "price_ratio": 0.479,
+       "p_anim": 51.23,
+       "p_veg": 38.41,
+       "e_cal": 3316.0,
+       "food_waste_ratio": 0.17,
+       "wages": 6.71,
+       "energy_price": 0.12,
+       "energy_GWP": 0.44,
+       "household_size": 2.6
+   },
+   "India": {
+       "price_ratio": 0.3,
+       "p_anim": 15.0,
+       "p_veg": 48.35,
+       "e_cal": 2533.0,
+       "food_waste_ratio": 0.03,
+       "wages": 1.32,
+       "energy_price": 0.08,
+       "energy_GWP": 0.85,
+       "household_size": 4.57
+   },
+   "Israel": {
+       "price_ratio": 1.016,
+       "p_anim": 74.69,
+       "p_veg": 52.26,
+       "e_cal": 3528.0,
+       "food_waste_ratio": 0.09,
+       "wages": 21.94,
+       "energy_price": 0.17,
+       "energy_GWP": 1.02,
+       "household_size": 3.14
+   },
+   "Italy": {
+       "price_ratio": 0.727,
+       "p_anim": 56.94,
+       "p_veg": 49.62,
+       "e_cal": 3503.0,
+       "food_waste_ratio": 0.17,
+       "wages": 16.71,
+       "energy_price": 0.25,
+       "energy_GWP": 0.66,
+       "household_size": 2.4
+   },
+   "Jordan": {
+       "price_ratio": 0.419,
+       "p_anim": 23.22,
+       "p_veg": 45.99,
+       "e_cal": 2732.0,
+       "food_waste_ratio": 0.09,
+       "wages": 2.82,
+       "energy_price": 0.1,
+       "energy_GWP": 0.94,
+       "household_size": 4.72
+   },
+   "Kazakhstan": {
+       "price_ratio": 0.357,
+       "p_anim": 54.7,
+       "p_veg": 36.79,
+       "e_cal": 3067.0,
+       "food_waste_ratio": 0.09,
+       "wages": 1.98,
+       "energy_price": 0.04,
+       "energy_GWP": 0.94,
+       "household_size": 3.5
+   },
+   "Kenya": {
+       "price_ratio": 0.402,
+       "p_anim": 14.92,
+       "p_veg": 46.83,
+       "e_cal": 2197.0,
+       "food_waste_ratio": 0.02,
+       "wages": 1.03,
+       "energy_price": 0.2,
+       "energy_GWP": 0.2,
+       "household_size": 3.64
+   },
+   "Korea, Republic of": {
+       "price_ratio": 0.724,
+       "p_anim": 51.73,
+       "p_veg": 48.45,
+       "e_cal": 3420.0,
+       "food_waste_ratio": 0.15,
+       "wages": 20.45,
+       "energy_price": 0.11,
+       "energy_GWP": 0.77,
+       "household_size": 2.53
+   },
+   "Kyrgyzstan": {
+       "price_ratio": 0.239,
+       "p_anim": 33.91,
+       "p_veg": 50.5,
+       "e_cal": 2729.0,
+       "food_waste_ratio": 0.09,
+       "wages": 1.31,
+       "energy_price": 0.01,
+       "energy_GWP": 0.13,
+       "household_size": 4.21
+   },
+   "Latvia": {
+       "price_ratio": 0.54,
+       "p_anim": 63.08,
+       "p_veg": 39.64,
+       "e_cal": 3229.0,
+       "food_waste_ratio": 0.17,
+       "wages": 8.3,
+       "energy_price": 0.19,
+       "energy_GWP": 0.57,
+       "household_size": 2.58
+   },
+   "Lebanon": {
+       "price_ratio": 0.499,
+       "p_anim": 22.47,
+       "p_veg": 46.68,
+       "e_cal": 2857.0,
+       "food_waste_ratio": 0.09,
+       "wages": 3.78,
+       "energy_price": 0.08,
+       "energy_GWP": 1.03,
+       "household_size": 3.8
+   },
+   "Lithuania": {
+       "price_ratio": 0.49,
+       "p_anim": 78.85,
+       "p_veg": 47.8,
+       "e_cal": 3411.0,
+       "food_waste_ratio": 0.17,
+       "wages": 9.54,
+       "energy_price": 0.18,
+       "energy_GWP": 0.31,
+       "household_size": 2.32
+   },
+   "Luxembourg": {
+       "price_ratio": 0.921,
+       "p_anim": 67.47,
+       "p_veg": 41.18,
+       "e_cal": 3465.0,
+       "food_waste_ratio": 0.17,
+       "wages": 33.97,
+       "energy_price": 0.25,
+       "energy_GWP": 0.71,
+       "household_size": 2.41
+   },
+   "Malaysia": {
+       "price_ratio": 0.385,
+       "p_anim": 43.18,
+       "p_veg": 34.28,
+       "e_cal": 2845.0,
+       "food_waste_ratio": 0.03,
+       "wages": 3.82,
+       "energy_price": 0.06,
+       "energy_GWP": 0.88,
+       "household_size": 4.56
+   },
+   "Mauritius": {
+       "price_ratio": 0.465,
+       "p_anim": 41.21,
+       "p_veg": 47.72,
+       "e_cal": 3051.0,
+       "food_waste_ratio": 0.02,
+       "wages": 3.93,
+       "energy_price": 0.15,
+       "energy_GWP": 0.89,
+       "household_size": 3.48
+   },
+   "Moldova, Republic of": {
+       "price_ratio": 0.33,
+       "p_anim": 30.27,
+       "p_veg": 31.37,
+       "e_cal": 2383.0,
+       "food_waste_ratio": 0.17,
+       "wages": 2.61,
+       "energy_price": 0.11,
+       "energy_GWP": 0.98,
+       "household_size": 2.89
+   },
+   "Mongolia": {
+       "price_ratio": 0.337,
+       "p_anim": 56.85,
+       "p_veg": 30.47,
+       "e_cal": 2579.0,
+       "food_waste_ratio": 0.09,
+       "wages": 2.17,
+       "energy_price": 0.04,
+       "energy_GWP": 0.97,
+       "household_size": 4.32
+   },
+   "Montenegro": {
+       "price_ratio": 0.371,
+       "p_anim": 70.27,
+       "p_veg": 44.26,
+       "e_cal": 3500.0,
+       "food_waste_ratio": 0.17,
+       "wages": 5.03,
+       "energy_price": 0.1,
+       "energy_GWP": 0.45,
+       "household_size": 3.21
+   },
+   "Netherlands": {
+       "price_ratio": 0.854,
+       "p_anim": 69.81,
+       "p_veg": 36.88,
+       "e_cal": 3297.0,
+       "food_waste_ratio": 0.17,
+       "wages": 24.71,
+       "energy_price": 0.18,
+       "energy_GWP": 0.84,
+       "household_size": 2.23
+   },
+   "New Zealand": {
+       "price_ratio": 0.927,
+       "p_anim": 51.57,
+       "p_veg": 42.44,
+       "e_cal": 3191.0,
+       "food_waste_ratio": 0.22,
+       "wages": 23.02,
+       "energy_price": 0.24,
+       "energy_GWP": 0.22,
+       "household_size": 2.67
+   },
+   "Nigeria": {
+       "price_ratio": 0.416,
+       "p_anim": 7.34,
+       "p_veg": 51.28,
+       "e_cal": 2572.0,
+       "food_waste_ratio": 0.02,
+       "wages": 0.72,
+       "energy_price": 0.06,
+       "energy_GWP": 0.86,
+       "household_size": 4.9
+   },
+   "Norway": {
+       "price_ratio": 1.077,
+       "p_anim": 67.91,
+       "p_veg": 45.52,
+       "e_cal": 3371.0,
+       "food_waste_ratio": 0.17,
+       "wages": 29.96,
+       "energy_price": 0.1,
+       "energy_GWP": 0.08,
+       "household_size": 2.22
+   },
+   "Pakistan": {
+       "price_ratio": 0.262,
+       "p_anim": 26.49,
+       "p_veg": 40.51,
+       "e_cal": 2486.0,
+       "food_waste_ratio": 0.03,
+       "wages": 1.07,
+       "energy_price": 0.06,
+       "energy_GWP": 0.68,
+       "household_size": 6.8
+   },
+   "Philippines": {
+       "price_ratio": 0.375,
+       "p_anim": 26.32,
+       "p_veg": 36.22,
+       "e_cal": 2662.0,
+       "food_waste_ratio": 0.03,
+       "wages": 1.91,
+       "energy_price": 0.18,
+       "energy_GWP": 0.81,
+       "household_size": 4.23
+   },
+   "Poland": {
+       "price_ratio": 0.446,
+       "p_anim": 57.93,
+       "p_veg": 47.66,
+       "e_cal": 3537.0,
+       "food_waste_ratio": 0.17,
+       "wages": 7.76,
+       "energy_price": 0.19,
+       "energy_GWP": 0.93,
+       "household_size": 2.81
+   },
+   "Portugal": {
+       "price_ratio": 0.613,
+       "p_anim": 74.37,
+       "p_veg": 42.58,
+       "e_cal": 3480.0,
+       "food_waste_ratio": 0.17,
+       "wages": 6.95,
+       "energy_price": 0.31,
+       "energy_GWP": 0.55,
+       "household_size": 2.66
+   },
+   "Romania": {
+       "price_ratio": 0.388,
+       "p_anim": 53.58,
+       "p_veg": 55.66,
+       "e_cal": 3581.0,
+       "food_waste_ratio": 0.17,
+       "wages": 6.44,
+       "energy_price": 0.18,
+       "energy_GWP": 0.46,
+       "household_size": 2.88
+   },
+   "Russian Federation": {
+       "price_ratio": 0.383,
+       "p_anim": 55.59,
+       "p_veg": 45.81,
+       "e_cal": 3345.0,
+       "food_waste_ratio": 0.17,
+       "wages": 3.45,
+       "energy_price": 0.06,
+       "energy_GWP": 0.69,
+       "household_size": 2.58
+   },
+   "Rwanda": {
+       "price_ratio": 0.353,
+       "p_anim": 8.32,
+       "p_veg": 50.8,
+       "e_cal": 2188.0,
+       "food_waste_ratio": 0.02,
+       "wages": 0.63,
+       "energy_price": 0.26,
+       "energy_GWP": 0.52,
+       "household_size": 4.26
+   },
+   "Saudi Arabia": {
+       "price_ratio": 0.472,
+       "p_anim": 32.74,
+       "p_veg": 54.2,
+       "e_cal": 3307.0,
+       "food_waste_ratio": 0.09,
+       "wages": 11.54,
+       "energy_price": 0.05,
+       "energy_GWP": 1.05,
+       "household_size": 5.6
+   },
+   "Slovakia": {
+       "price_ratio": 0.575,
+       "p_anim": 37.41,
+       "p_veg": 33.16,
+       "e_cal": 2871.0,
+       "food_waste_ratio": 0.17,
+       "wages": 7.67,
+       "energy_price": 0.21,
+       "energy_GWP": 0.28,
+       "household_size": 2.8
+   },
+   "Slovenia": {
+       "price_ratio": 0.611,
+       "p_anim": 51.23,
+       "p_veg": 45.16,
+       "e_cal": 3191.0,
+       "food_waste_ratio": 0.17,
+       "wages": 11.98,
+       "energy_price": 0.16,
+       "energy_GWP": 0.36,
+       "household_size": 2.47
+   },
+   "Spain": {
+       "price_ratio": 0.681,
+       "p_anim": 66.73,
+       "p_veg": 40.82,
+       "e_cal": 3322.0,
+       "food_waste_ratio": 0.17,
+       "wages": 16.78,
+       "energy_price": 0.22,
+       "energy_GWP": 0.45,
+       "household_size": 2.69
+   },
+   "Sri Lanka": {
+       "price_ratio": 0.282,
+       "p_anim": 17.74,
+       "p_veg": 47.48,
+       "e_cal": 2737.0,
+       "food_waste_ratio": 0.03,
+       "wages": 1.39,
+       "energy_price": 0.08,
+       "energy_GWP": 0.59,
+       "household_size": 3.8
+   },
+   "Sweden": {
+       "price_ratio": 0.911,
+       "p_anim": 67.55,
+       "p_veg": 38.01,
+       "e_cal": 3184.0,
+       "food_waste_ratio": 0.17,
+       "wages": 23.75,
+       "energy_price": 0.18,
+       "energy_GWP": 0.08,
+       "household_size": 2.2
+   },
+   "Switzerland": {
+       "price_ratio": 1.133,
+       "p_anim": 59.86,
+       "p_veg": 35.61,
+       "e_cal": 3354.0,
+       "food_waste_ratio": 0.17,
+       "wages": 42.12,
+       "energy_price": 0.22,
+       "energy_GWP": 0.07,
+       "household_size": 2.21
+   },
+   "Tanzania": {
+       "price_ratio": 0.404,
+       "p_anim": 12.14,
+       "p_veg": 46.79,
+       "e_cal": 2373.0,
+       "food_waste_ratio": 0.02,
+       "wages": 1.6,
+       "energy_price": 0.1,
+       "energy_GWP": 0.71,
+       "household_size": 4.85
+   },
+   "Thailand": {
+       "price_ratio": 0.405,
+       "p_anim": 27.06,
+       "p_veg": 36.3,
+       "e_cal": 2804.0,
+       "food_waste_ratio": 0.03,
+       "wages": 3.95,
+       "energy_price": 0.12,
+       "energy_GWP": 0.91,
+       "household_size": 3.69
+   },
+   "Turkey": {
+       "price_ratio": 0.324,
+       "p_anim": 39.5,
+       "p_veg": 71.18,
+       "e_cal": 3711.0,
+       "food_waste_ratio": 0.09,
+       "wages": 5.04,
+       "energy_price": 0.09,
+       "energy_GWP": 0.72,
+       "household_size": 4.07
+   },
+   "Uganda": {
+       "price_ratio": 0.348,
+       "p_anim": 12.25,
+       "p_veg": 34.69,
+       "e_cal": 1981.0,
+       "food_waste_ratio": 0.02,
+       "wages": 1.39,
+       "energy_price": 0.18,
+       "energy_GWP": 0.16,
+       "household_size": 4.53
+   },
+   "Ukraine": {
+       "price_ratio": 0.274,
+       "p_anim": 38.26,
+       "p_veg": 48.18,
+       "e_cal": 3102.0,
+       "food_waste_ratio": 0.17,
+       "wages": 2.27,
+       "energy_price": 0.05,
+       "energy_GWP": 0.41,
+       "household_size": 2.46
+   },
+   "United Kingdom": {
+       "price_ratio": 0.848,
+       "p_anim": 57.96,
+       "p_veg": 45.96,
+       "e_cal": 3344.0,
+       "food_waste_ratio": 0.17,
+       "wages": 21.24,
+       "energy_price": 0.26,
+       "energy_GWP": 0.53,
+       "household_size": 2.27
+   },
+   "United States": {
+       "price_ratio": 1.0,
+       "p_anim": 73.48,
+       "p_veg": 40.27,
+       "e_cal": 3782.0,
+       "food_waste_ratio": 0.22,
+       "wages": 29.32,
+       "energy_price": 0.15,
+       "energy_GWP": 0.68,
+       "household_size": 2.49
+   },
+   "Uruguay": {
+       "price_ratio": 0.719,
+       "p_anim": 46.22,
+       "p_veg": 40.28,
+       "e_cal": 3202.0,
+       "food_waste_ratio": 0.06,
+       "wages": 5.85,
+       "energy_price": 0.2,
+       "energy_GWP": 0.13,
+       "household_size": 2.78
+   }
 }
 
 def run_module_country_specific(
@@ -747,7 +1594,8 @@ def run_module_city_specific(
         city = None,
         city_specific_inputs=None,
         seed=None,
-        N=1000
+        N=1000,
+        **model_kwargs
         ):
     city_specific_inputs = city_specific_inputs or general_city_specific_inputs
     if city is not None:
@@ -763,6 +1611,7 @@ def run_module_city_specific(
                 'ID': sys_ID,
                 'city': city,
                 'city_data': city_specific_inputs[city],
+                **model_kwargs
                 }
             # if n == 0: # create the model
             #     model = create_city_specific_model_func(**kwargs)
@@ -775,7 +1624,7 @@ def run_module_city_specific(
             path += date 
             if note:
                 path += f'_{note}'
-            path += '.xlsx'
+            path += f'_{N}.xlsx'
             run_uncertainty_func(model=model, path=path, seed=seed, N=N)
             sys_dct[city] = model
         models[sys_ID] = sys_dct

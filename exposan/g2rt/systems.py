@@ -138,7 +138,8 @@ app_loss['NH3'] = 0.05
 # =============================================================================
 
 def create_systemA(flowsheet=None, ppl=None, lifetime=default_lifetime, 
-                   flush_water= None, combustion_CH4_EF= None):
+                   flush_water= None, combustion_CH4_EF= None, belt_moisture_content_out = None,
+                   extreme=False):
     # TODO: Set flowsheet to avoid stream replacement warnings
     flowsheet = flowsheet or main_flowsheet
     batch_create_streams('A')
@@ -182,7 +183,8 @@ def create_systemA(flowsheet=None, ppl=None, lifetime=default_lifetime,
                                 ins = (A2-0,mixer-0),
                                 outs = ('A3_liquid','A3_solid'),
                                 ppl = ppl,
-                                user_scale_up = ppl/g2rt.get_default_ppl()
+                                user_scale_up = ppl/g2rt.get_default_ppl(),
+                                extreme=extreme,
                                 )
     
     # make a recycle loop
@@ -199,18 +201,22 @@ def create_systemA(flowsheet=None, ppl=None, lifetime=default_lifetime,
                           ins = (UFmixer-0,A3-1),
                           outs = ('A4_liquid','A4_solid'),
                           ppl = ppl,
-                          user_scale_up = ppl/g2rt.get_default_ppl()
+                          user_scale_up = ppl/g2rt.get_default_ppl(),
+                          moisture_content_out=belt_moisture_content_out, #value should be 84 if 84%, 0-100
+                          extreme = extreme,
                           )
     A12 = su.G2RTSolidsTank('A12',
                              ins = A4-1,
                              outs = 'A12_solids',
-                             user_scale_up = ppl/g2rt.get_default_ppl()
+                             user_scale_up = ppl/g2rt.get_default_ppl(),
+                             extreme=extreme
                              )
     
     A13 = su.G2RTLiquidsTank('A13',
                              ins = (A4-0,'filter_press_liquid','concentrator_liquid'),
                              outs = 'A12_liquids',
-                             user_scale_up = ppl/g2rt.get_default_ppl()
+                             user_scale_up = ppl/g2rt.get_default_ppl(),
+                             extreme=extreme
                              )
     # A5 = su.G2RTUltrafiltration('A5',
     #                                   ins = A13-0,
@@ -220,14 +226,16 @@ def create_systemA(flowsheet=None, ppl=None, lifetime=default_lifetime,
                                       ins = A13-0,
                                       outs = ('A5_treated',1-UFmixer,'A5_reject_discharge'),
                                       reject_recycle_ratio = 1,
-                                      user_scale_up = ppl/g2rt.get_default_ppl()
+                                      user_scale_up = ppl/g2rt.get_default_ppl(),
+                                      extreme = extreme
                                       )
     
     A6 = su.G2RTReverseOsmosis('A6', 
                             ins = A5-0,
                             outs = (1-mixer,'A6_brine','A6_effluent'),
                             permeate_recycle_ratio = 1,
-                            user_scale_up = ppl/g2rt.get_default_ppl()
+                            user_scale_up = ppl/g2rt.get_default_ppl(),
+                            extreme = extreme
                             )
     
     # item = ImpactItem.get_item('H2O_item').copy('A_H2O_item', set_as_source=True)
@@ -238,32 +246,37 @@ def create_systemA(flowsheet=None, ppl=None, lifetime=default_lifetime,
                            outs = ('A7_consensed_waste',2-A13,'A7_N2O','A7_CH4',
                                    'A7_NH3_gas',streamA['H2O_vapor1']),
                            excess_water_recirculate_ratio = 0,
-                           user_scale_up = ppl/g2rt.get_default_ppl()
+                           user_scale_up = ppl/g2rt.get_default_ppl(),
+                           extreme = extreme,
                            )
 
     A8 = su.G2RThomogenizer('A8', 
                             ins = A12-0, 
                             outs = 'A8_grinded',
                             ppl = ppl,
-                            user_scale_up = ppl/g2rt.get_default_ppl()
+                            user_scale_up = ppl/g2rt.get_default_ppl(),
+                            extreme=extreme
                             )
     
     A9 = su.VRpasteurization('A9', 
                                  ins = A8-0,
                                  outs = 'A9_pasteurized',
-                                 user_scale_up = ppl/g2rt.get_default_ppl()
+                                 user_scale_up = ppl/g2rt.get_default_ppl(),
+                                 extreme=extreme
                                  )
     A10 = su.VolumeReductionFilterPress('A10',
                                         ins = A9-0,
                                         outs = (1-A13,'A10_pressed_solid_cake'),
-                                        user_scale_up = ppl/g2rt.get_default_ppl()
+                                        user_scale_up = ppl/g2rt.get_default_ppl(),
+                                        extreme=extreme
                                         )
     A11 = su.VRdryingtunnel('A11',
                            ins = (A7-0,A10-1),
                            outs = ('A11_solid_cakes','A11_N2O', 'A11_CH4',
                                    'A11_NH3_gas',streamA['H2O_vapor']),
                            ppl = ppl,
-                           user_scale_up = ppl/g2rt.get_default_ppl()
+                           user_scale_up = ppl/g2rt.get_default_ppl(),
+                           extreme = extreme,
                            )
     A14 = su.VolumeReductionCombustor('A14',
                                       ins = (A11-0,'Wood_pellets','Air'),
@@ -272,7 +285,8 @@ def create_systemA(flowsheet=None, ppl=None, lifetime=default_lifetime,
                                       if_sludge_service = True, lifetime = lifetime,
                                       ppl=ppl,
                                       CH4_emission_factor=combustion_CH4_EF,
-                                      user_scale_up = ppl/g2rt.get_default_ppl()
+                                      user_scale_up = ppl/g2rt.get_default_ppl(),
+                                      extreme=extreme
                                       )
     
     # CH4 emissions from MURT, concentrator, drying tunnel, and combustor
@@ -323,12 +337,9 @@ def create_systemA(flowsheet=None, ppl=None, lifetime=default_lifetime,
                start_year=2020, lifetime=lifetime, uptime_ratio=1,
                lang_factor=None, annual_maintenance=0,
                annual_labor=0)
-    
-    # batch_create_streams('A')
+    sysA.simulate()
     get_powerA = sum([u.power_utility.rate for u in sysA.units]) * (24 * 365 * teaA.lifetime)
-    
     LCA(system=sysA, lifetime=lifetime, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerA)
-    # sysA.simulate()
     return sysA
     
 
@@ -339,7 +350,8 @@ def create_systemA(flowsheet=None, ppl=None, lifetime=default_lifetime,
 # https://patentimages.storage.googleapis.com/57/6a/81/72a168a92be44c/WO2023288331A1.pdf
 # =============================================================================
 def create_systemB(flowsheet=None, ppl=None, lifetime= default_lifetime, flush_water= None, 
-                   mscwo_replacement_cost = None, mscwo_equipment_cost = None):
+                   mscwo_replacement_cost = None, mscwo_equipment_cost = None,
+                   belt_moisture_content_out = None, extreme = False):
     # TODO: Set flowsheet to avoid stream replacement warnings
     flowsheet = flowsheet or main_flowsheet
     batch_create_streams('B')
@@ -371,7 +383,8 @@ def create_systemB(flowsheet=None, ppl=None, lifetime= default_lifetime, flush_w
                                 ins = (B2-0,mixer-0),
                                 outs = ('B3_liquid','B3_solid'),
                                 ppl = ppl,
-                                user_scale_up = ppl/g2rt.get_default_ppl()
+                                user_scale_up = ppl/g2rt.get_default_ppl(),
+                                extreme=extreme
                                 )
     
     # make a recycle loop
@@ -388,31 +401,38 @@ def create_systemB(flowsheet=None, ppl=None, lifetime= default_lifetime, flush_w
                           ins = (UFmixer-0,B3-1),
                           outs = ('B4_liquid','B4_solid'),
                           ppl = ppl,
-                          user_scale_up = ppl/g2rt.get_default_ppl()
+                          user_scale_up = ppl/g2rt.get_default_ppl(),
+                          moisture_content_out=belt_moisture_content_out,
+                          extreme = extreme,
                           )
     B5 = su.G2RTSolidsTank('B5',
                              ins = B4-1,
                              outs = 'B5_solids',
-                             user_scale_up = ppl/g2rt.get_default_ppl()
+                             user_scale_up = ppl/g2rt.get_default_ppl(),
+                             extreme=extreme
                              )
     
     B6 = su.G2RThomogenizer('B6', 
                             ins = B5-0, 
                             outs = 'B6_grinded',
                             ppl = ppl,
-                            user_scale_up = ppl/g2rt.get_default_ppl())
+                            user_scale_up = ppl/g2rt.get_default_ppl(),
+                            extreme=extreme
+                            )
     
     B7 = su.G2RTLiquidsTank('B7',
                              ins = (B4-0,'concentrator_liquid'),
                              outs = 'B7_liquids',
-                             user_scale_up = ppl/g2rt.get_default_ppl()
+                             user_scale_up = ppl/g2rt.get_default_ppl(),
+                             extreme=extreme
                              )
 
     B8 = su.G2RTUltrafiltration('B8', 
                                 ins = B7-0, 
                                 outs = ('B8_treated',1-UFmixer, 'B8_reject_discharge'),
                                 reject_recycle_ratio = 1,
-                                user_scale_up = ppl/g2rt.get_default_ppl()
+                                user_scale_up = ppl/g2rt.get_default_ppl(),
+                                extreme = extreme,
                                 )
     
     # A6 = su.G2RTReverseOsmosis('A6', 
@@ -423,7 +443,8 @@ def create_systemB(flowsheet=None, ppl=None, lifetime= default_lifetime, flush_w
                             ins = B8-0,
                             outs = (1-mixer,'B9_brine','B9_effluent'),
                             permeate_recycle_ratio = 1,
-                            user_scale_up = ppl/g2rt.get_default_ppl()
+                            user_scale_up = ppl/g2rt.get_default_ppl(),
+                            extreme = extreme,
                             )
     
     # item = ImpactItem.get_item('H2O_item').copy('A_H2O_item', set_as_source=True)
@@ -432,7 +453,8 @@ def create_systemB(flowsheet=None, ppl=None, lifetime= default_lifetime, flush_w
     B10 = su.mSCWOGasModule('B10',
                            ins = streamB['air'],
                            outs = 'B10_compressed_air',
-                           user_scale_up = ppl/g2rt.get_default_ppl()
+                           user_scale_up = ppl/g2rt.get_default_ppl(),
+                           extreme = extreme,
                            )
     
     B11 = su.mSCWOReactorModule('B11',
@@ -440,7 +462,8 @@ def create_systemB(flowsheet=None, ppl=None, lifetime= default_lifetime, flush_w
                                 outs = ('B11_gas','B11_N2O','B11_liquid_effluent','B11_ash_waste'),
                                 material_replacement_cost=mscwo_replacement_cost,
                                 reactor_system_cost = mscwo_equipment_cost,
-                                user_scale_up = ppl/g2rt.get_default_ppl()
+                                user_scale_up = ppl/g2rt.get_default_ppl(),
+                                extreme = extreme,
                                 )
 
     B12 = su.mSCWOConcentratorModule('B12',
@@ -448,7 +471,8 @@ def create_systemB(flowsheet=None, ppl=None, lifetime= default_lifetime, flush_w
                            outs = ('B12_consensed_waste',1-B7,'B12_N2O','B12_CH4',
                                    'B12_NH3_gas',streamB['H2O_vapor1']),
                            excess_water_recirculate_ratio = 0,
-                           user_scale_up = ppl/g2rt.get_default_ppl()
+                           user_scale_up = ppl/g2rt.get_default_ppl(),
+                           extreme = extreme,
                            )
 
     # B9 = su.VRpasteurization('B9', 
@@ -464,7 +488,8 @@ def create_systemB(flowsheet=None, ppl=None, lifetime= default_lifetime, flush_w
                            ins = B12-0,
                            outs = ('B13_solid_cakes','B13_N2O', 'B13_CH4',
                                    'B13_NH3_gas',streamB['H2O_vapor']),
-                           ppl = ppl
+                           ppl = ppl,
+                           extreme = extreme,
                            )
     
     # B14 = su.VolumeReductionCombustor('B14',
@@ -515,7 +540,7 @@ def create_systemB(flowsheet=None, ppl=None, lifetime= default_lifetime, flush_w
                start_year=2020, lifetime=lifetime, uptime_ratio=1,
                lang_factor=None, annual_maintenance=0,
                annual_labor=0)
-    
+    sysB.simulate()
     # batch_create_streams('A')
     get_powerB = sum([u.power_utility.rate for u in sysB.units]) * (24 * 365 * teaB.lifetime)
     
@@ -698,7 +723,7 @@ def create_systemC(flowsheet=None, ppl=None, lifetime= default_lifetime):
                annual_labor=0)
     
     get_powerA = sum([u.power_utility.rate for u in sysA.units]) * (24 * 365 * teaA.lifetime)
-    
+    sysA.simulate()
     LCA(system=sysA, lifetime=lifetime, lifetime_unit='yr', uptime_ratio=1, e_item=get_powerA)
     # sysA.simulate()
     return sysA

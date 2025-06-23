@@ -52,10 +52,10 @@ def get_default_uniform(b, ratio, lb=None, ub=None): # lb/ub for upper/lower bou
 format_key = lambda key: (' '.join(key.split('_'))).capitalize()
 
 def create_city_specific_model(ID, city, model=None, city_data=None,
-                                  include_non_contextual_params=True):
+                                  include_non_contextual_params=True,**model_kwargs):
     city_data = city_data or general_city_specific_inputs[city]
     g2rt.set_default_ppl(city_data['household_size'])
-    model = create_model(model_ID=ID, city_specific=True)
+    model = create_model(model_ID=ID, city_specific=True,**model_kwargs)
     param = model.parameter
     sys = model.system
     sys_stream = sys.flowsheet.stream
@@ -190,29 +190,29 @@ def create_city_specific_model(ID, city, model=None, city_data=None,
     def set_electricity_CF(i):
         GWP_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['GlobalWarming'] = i
 
-    # Energy H_Ecosystems
-    key = 'energy_H_Ecosystems'
-    name, p, b, D = get_param_name_b_D(key, GWP_D_ratio)
-    @param(name=name, element='LCA', kind='isolated',
-           units='points/kWh', baseline=b, distribution=D)
-    def set_electricity_ecosystems_CF(i):
-        H_Ecosystems_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Ecosystems'] = i
+    # # Energy H_Ecosystems
+    # key = 'energy_H_Ecosystems'
+    # name, p, b, D = get_param_name_b_D(key, GWP_D_ratio)
+    # @param(name=name, element='LCA', kind='isolated',
+    #        units='points/kWh', baseline=b, distribution=D)
+    # def set_electricity_ecosystems_CF(i):
+    #     H_Ecosystems_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Ecosystems'] = i
 
-    # Energy H_Health
-    key = 'energy_H_Health'
-    name, p, b, D = get_param_name_b_D(key, GWP_D_ratio)
-    @param(name=name, element='LCA', kind='isolated',
-           units='points/kWh', baseline=b, distribution=D)
-    def set_electricity_health_CF(i):
-        H_Health_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Health'] = i
+    # # Energy H_Health
+    # key = 'energy_H_Health'
+    # name, p, b, D = get_param_name_b_D(key, GWP_D_ratio)
+    # @param(name=name, element='LCA', kind='isolated',
+    #        units='points/kWh', baseline=b, distribution=D)
+    # def set_electricity_health_CF(i):
+    #     H_Health_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Health'] = i
 
-    # Energy H_Resources
-    key = 'energy_H_Resources'
-    name, p, b, D = get_param_name_b_D(key, GWP_D_ratio)
-    @param(name=name, element='LCA', kind='isolated',
-           units='points/kWh', baseline=b, distribution=D)
-    def set_electricity_resources_CF(i):
-        H_Resources_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Resources'] = i
+    # # Energy H_Resources
+    # key = 'energy_H_Resources'
+    # name, p, b, D = get_param_name_b_D(key, GWP_D_ratio)
+    # @param(name=name, element='LCA', kind='isolated',
+    #        units='points/kWh', baseline=b, distribution=D)
+    # def set_electricity_resources_CF(i):
+    #     H_Resources_dct['Electricity'] = ImpactItem.get_item('e_item').CFs['H_Resources'] = i
 
     # ##### Commented out because I am not using country-specific NaCl and am just converting cost
     # ##### with price level ratio - HACL 9/20/22
@@ -263,7 +263,7 @@ def create_city_specific_model(ID, city, model=None, city_data=None,
     return model
 
 #%%
-def run_city(system_IDs, seed=None, N=1000, city=None, note=''):
+def run_city(system_IDs, seed=None, N=1000, city=None, note='',**kwargs):
     return run_module_city_specific(
         create_city_specific_model_func=create_city_specific_model,
         run_uncertainty_func=run_uncertainty,
@@ -272,7 +272,8 @@ def run_city(system_IDs, seed=None, N=1000, city=None, note=''):
         seed=seed,
         N=N,
         city=city, 
-        note=note
+        note=note,
+        **kwargs
     )
 
 if __name__ == '__main__':

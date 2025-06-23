@@ -346,18 +346,17 @@ def get_recoveries(system, ppl=None, include_breakdown=False):
 
 ##### Costs #####
 # Learning curve assumptions
-percent_CAPEX_to_scale = 0.65
 number_of_units = 100000
 
 def get_learning_curve_params():
     """Return learning curve parameters dynamically based on OPTIMISTIC_LEARNING_CURVE."""
     if OPTIMISTIC_LEARNING_CURVE:
-        return 0.01, 0.9  # Optimistic learning curve
+        return 0.01, 0.9, 0.85  # Optimistic learning curve
     else:
-        return 0.03, 0.95  # Pessimistic learning curve
+        return 0.03, 0.95, 0.65  # Pessimistic learning curve
 
 def get_scaled_capital(tea):
-    percent_limit, learning_curve_percent = get_learning_curve_params()
+    percent_limit, learning_curve_percent, percent_CAPEX_to_scale = get_learning_curve_params()
     return get_generic_scaled_capital(
         tea=tea,
         percent_CAPEX_to_scale=percent_CAPEX_to_scale,
@@ -382,7 +381,7 @@ def get_unit_scaled_capital(CAPEX: float, scale=True) -> float:
         The scaled total capital cost for multiple units based on the chosen assumptions.
     """    
     if scale: 
-        percent_limit, learning_curve_percent = get_learning_curve_params()
+        percent_limit, learning_curve_percent, percent_CAPEX_to_scale = get_learning_curve_params()
         CAPEX_to_scale = CAPEX * percent_CAPEX_to_scale
         CAPEX_not_scaled = CAPEX - CAPEX_to_scale
         scaled_limited = CAPEX_to_scale * percent_limit

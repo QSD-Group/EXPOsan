@@ -84,7 +84,43 @@ def run_resource_recovery(model_IDs, seed=None, N=10000, city_specific=False, **
         if g2rt.INCLUDE_RESOURCE_RECOVERY == False:
             run_uncertainty(model, note=f"no_RR_default_{N}" ,seed=seed, N=N)
         else:run_uncertainty(model, note=f"RR_default_{N}" ,seed=seed, N=N)
+#%%
+def run_solids_separation(model_IDs,belt_moisture_content_outs= 84 ,seed=None, N=10000, city_specific=False, **model_kwargs):
+    '''
+    Run uncertainty analysis for models with different lifetimes.
+
+    Parameters:
+    ----------
+    model_IDs : str or list of str
+        One or more model identifiers.
+    belt_moisture_content_out : list of int or float
+        moisture content of the solids after belt separator unit.
+    seed : int, optional
+        Random seed for reproducibility.
+    N : int, default=10000
+        Number of uncertainty samples.
+    city_specific : bool, default=False
+        Whether to use city-specific data.
+    model_kwargs : dict
+        Additional arguments to pass to `create_model`.
     
+    Returns:
+    --------
+    None
+
+    '''
+    # Validate inputs
+    if isinstance(model_IDs, (str, np.str_)):  # Handle both Python and NumPy strings
+        model_IDs = [model_IDs]
+    if not model_IDs:
+        raise ValueError("`model_IDs` must be non-empty.")
+        
+    g2rt.INCLUDE_RESOURCE_RECOVERY = False
+    for ID in model_IDs:
+        for belt_moisture_content_out in belt_moisture_content_outs:
+            model = create_model(ID, city_specific=city_specific,belt_moisture_content_out= belt_moisture_content_out, **model_kwargs)
+            run_uncertainty(model, note=f"moisture_content_post_solid_pre_{belt_moisture_content_out}_N_{N}" ,seed=seed, N=N)
+
 #%%
 def run_ppl_lifetime(model_IDs, lifetimes=10, ppls=6, seed=None, N=10000, city_specific=False, **model_kwargs):
     '''
@@ -124,6 +160,7 @@ def run_ppl_lifetime(model_IDs, lifetimes=10, ppls=6, seed=None, N=10000, city_s
             for ppl in ppls:
                 model = create_model(ID, city_specific=city_specific,lifetime= lifetime, ppl=ppl, **model_kwargs)
                 run_uncertainty(model, note=f"ppl_{ppl}_lifetime_{lifetime}_N_{N}" ,seed=seed, N=N)
+                
 #%% 
 def run_learning_curve (model_IDs, seed=None, N=10000, city_specific=False, **model_kwargs):
     '''
