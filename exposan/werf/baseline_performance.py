@@ -42,7 +42,7 @@ for ID in (
     s = sys.flowsheet.stream
     u = sys.flowsheet.unit
     mdl = Model(sys)
-    add_performance_metrics(mdl, aeration_energy=True)
+    add_performance_metrics(mdl)
     add_OPEX_metrics(mdl)
 
     if "PS" in s: 

@@ -57,8 +57,8 @@ MGD2cmd = 3785.412
 # ID = 'H1'
 # ID = 'I1'
 # ID = 'I2'
-# ID = 'N1'
-ID = 'N2'
+ID = 'N1'
+# ID = 'N2'
 
 sys = create_system(ID)
 s = sys.flowsheet.stream
@@ -127,7 +127,7 @@ u.MBR._ODE = None
 #     unit.aeration = 1.0
 #     unit._ODE = None
 
-s.carbon.imass['S_A'] = 70
+s.carbon.imass['S_A'] = 110
 s.carbon._init_state()
 # u.MD.metal_dosage = 12
 # u.MD._AE = None

@@ -50,7 +50,7 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
         fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
         )
     carb = WasteStream('carbon', T=Temp, units='kg/hr', 
-                       S_A=125) # how much it takes to reduce eff TP to <= 2 mg/L
+                       S_A=130) # how much it takes to reduce eff TP to <= 2 mg/L
     thermo_asm = qs.get_thermo()
     
     PC = su.PrimaryClarifier(
