@@ -54,8 +54,10 @@ format_key = lambda key: (' '.join(key.split('_'))).capitalize()
 def create_city_specific_model(ID, city, model=None, city_data=None,
                                   include_non_contextual_params=True,**model_kwargs):
     city_data = city_data or general_city_specific_inputs[city]
-    g2rt.set_default_ppl(city_data['household_size'])
-    model = create_model(model_ID=ID, city_specific=True,**model_kwargs)
+    # g2rt.set_dynamic_ppl(city_data['household_size'])
+    model = create_model(model_ID=ID, city_specific=True, 
+                         ppl =city_data['household_size'] ,
+                         **model_kwargs)
     param = model.parameter
     sys = model.system
     sys_stream = sys.flowsheet.stream
@@ -152,21 +154,25 @@ def create_city_specific_model(ID, city, model=None, city_data=None,
                 u.wages = i
         # print(f'current wage  is {i} $/hr, annual OPEX is {sys.TEA.AOC} $/yr')
     
-        
-    # # User number
-    # household_size_D_ratio = 0.1
-    # key = 'household_size'
-    # name, p, b, D = get_param_name_b_D(key, household_size_D_ratio)
-    # @param(name=name, 
-    #        element=excretion_unit, 
-    #        kind='coupled', 
-    #        units='-',
-    #        baseline=b, distribution=D)
-    # def set_household_size(i):
-    #     g2rt.set_default_ppl(i)
-    #     # global model
-    #     # model = create_model(model_ID=ID, city_specific=True)
-    #     print(f'current default number is {g2rt.get_default_ppl()},mixed waste flow rate is {sys.flowsheet.unit.A2.outs[0].F_mass} kg/hr')
+    # User number
+    if sys.ID == 'sysA':
+        toilet_unit = sys.flowsheet.unit.A2
+    elif sys.ID == 'sysB':
+        toilet_unit = sys.flowsheet.unit.B2
+    else:
+        raise ValueError(f"Unexpected system ID: {sys.ID}")
+    household_size_D_ratio = 0.1
+    key = 'household_size'
+    name, p, b, D = get_param_name_b_D(key, household_size_D_ratio)
+    @param(name=name, 
+           element=toilet_unit, 
+           kind='coupled', 
+           units='-',
+           baseline=b, distribution=D)
+    def set_household_size(i):
+        toilet_unit.ppl = i
+        g2rt.set_dynamic_ppl(i)
+        # print(f'current default number is {g2rt.get_default_ppl()},mixed waste flow rate is {sys.flowsheet.unit.A2.outs[0].F_mass} kg/hr')
 
     try:
         # Energy price

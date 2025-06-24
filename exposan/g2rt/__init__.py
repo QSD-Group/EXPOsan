@@ -37,12 +37,13 @@ results_path = os.path.join(g2rt_path, 'results')
 # To save simulation data
 if not os.path.isdir(results_path): os.mkdir(results_path)
 default_ppl = 6
-def get_default_ppl():
-    return default_ppl
+dynamic_ppl = 6
+def get_dynamic_ppl():
+    return dynamic_ppl
 
-def set_default_ppl(i):
-    global default_ppl
-    default_ppl = i
+def set_dynamic_ppl(i):
+    global dynamic_ppl
+    dynamic_ppl = i
     
 default_lifetime = 10 #10 years
 
@@ -253,7 +254,7 @@ def get_recoveries(system, ppl=None, include_breakdown=False):
     dct['K_dct'] = K_dct = {}
     dct['Water_dct'] = Water_dct = {}
     if ppl is None:
-        ppl = get_default_ppl()
+        ppl = get_dynamic_ppl()
 
     ##### Unique to A or B #####
     if AB == 'A':
@@ -395,11 +396,12 @@ def get_unit_scaled_capital(CAPEX: float, scale=True) -> float:
 def get_TEA_metrics(system, ppl=None, include_breakdown=False):
     tea = system.TEA
     if ppl is None:
-        ppl = get_default_ppl()
+        ppl = get_dynamic_ppl()
     get_daily_electricity = lambda system: system.power_utility.power * 24 #kWh/day
     get_annual_electricity_cost = lambda system: system.power_utility.cost*system.operating_hours #USD/yr
     
     #TODO: check where to set 'operating_hours'
+    print(f"the current ppl is {ppl}, which is used for TEA calculation")
     functions = [lambda: (get_scaled_capital(tea)-tea.net_earnings) / ppl] #net_earnings is bascially (sales-OPEX)
     if not include_breakdown: return functions # net cost
     return [
@@ -418,14 +420,14 @@ def get_normalized_CAPEX(unit, ppl=None):
     '''Get the CAPEX of a unit normalized to per capita per day.'''
     system = unit.system
     if ppl is None:
-        ppl = get_default_ppl()
+        ppl = get_dynamic_ppl()
     return lambda: system.TEA.get_unit_annualized_equipment_cost(unit)/365/ppl
 
 
 def get_normalized_electricity_cost(unit, ppl=None):
     '''Get the energy (electricity) cost of a unit normalized to per capita per day.'''
     if ppl is None:
-        ppl = get_default_ppl()
+        ppl = get_dynamic_ppl()
     return lambda: unit.power_utility.cost /ppl*24
 
 def get_normalized_OPEX(unit, ppl=None):
@@ -446,7 +448,7 @@ def get_normalized_OPEX(unit, ppl=None):
     # # Normalize to per capita per day
     # return lambda: OPEX * 24 / ppl  # convert to per capita per day
     if ppl is None:
-        ppl = get_default_ppl()
+        ppl = get_dynamic_ppl()
     return lambda: unit.OPEX/ ppl # convert to per capita per day
 
 def get_normalized_labor_cost(unit, ppl=None):
@@ -454,7 +456,7 @@ def get_normalized_labor_cost(unit, ppl=None):
     Get the labor cost for the maintenance of a unit normalized to per capita per day.
     '''
     if ppl is None:
-        ppl = get_default_ppl()
+        ppl = get_dynamic_ppl()
     return lambda: unit.labor_expense / ppl # convert to per capita per day
 
 def get_normalized_recovery_earning(unit, ppl=None):
@@ -467,7 +469,7 @@ def get_normalized_recovery_earning(unit, ppl=None):
     # Sum up the costs from all input and output streams
     streams = unit.ins + unit.outs
     if ppl is None:
-        ppl = get_default_ppl()
+        ppl = get_dynamic_ppl()
     # Return a callable lambda that computes the normalized recovery earning
     return lambda: sum(s.cost for s in streams) * 24 / ppl # convert to per capita per day
 
@@ -475,7 +477,7 @@ def get_normalized_recovery_earning(unit, ppl=None):
 def compute_unit_total_cost(u, ppl=None):
     system = u.system
     if ppl is None:
-        ppl = get_default_ppl()
+        ppl = get_dynamic_ppl()
     return lambda: (system.TEA.get_unit_annualized_equipment_cost(u)/365/ppl+
                     u.power_utility.cost/ppl+
                     u.OPEX/ppl+
@@ -485,7 +487,7 @@ def get_unit_contruction_GW_impact(unit, ppl=None, time =None, time_unit ='day')
     system = unit.system
     lca = system.LCA
     if ppl is None:
-        ppl = get_default_ppl()
+        ppl = get_dynamic_ppl()
     return  lambda: lca.get_construction_impacts(unit, annual=True)['GlobalWarming']/ppl
 # convert to per capita per year
 
@@ -494,7 +496,7 @@ def get_unit_stream_GW_impact(unit, ppl=None):
     lca = system.LCA
     stream_items = {i for i in unit.ins + unit.outs if i.stream_impact_item}
     if ppl is None:
-        ppl = get_default_ppl()
+        ppl = get_dynamic_ppl()
     # s = lca.get_stream_impacts(stream_items=stream_items, exclude=None,
     #                              kind='all', annual=True)
     return lambda: lca.get_stream_impacts(stream_items=stream_items, exclude=None,
@@ -505,7 +507,7 @@ def get_unit_electrcitiy_GW_impact(unit, ppl=None, time =None, time_unit ='day')
     system = unit.system
     lca = system.LCA
     if ppl is None:
-        ppl = get_default_ppl()
+        ppl = get_dynamic_ppl()
     return lambda: lca.get_other_unit_impacts(unit, annual=True)['GlobalWarming']/ppl
 
 # ['GlobalWarming']
@@ -513,7 +515,7 @@ def get_unit_total_impact(unit,ppl=None, annual=True):
     system = unit.system
     lca = system.LCA
     if ppl is None:
-        ppl = get_default_ppl()
+        ppl = get_dynamic_ppl()
     stream_items = {i for i in unit.ins + unit.outs if i.stream_impact_item}
     return lambda: (lca.get_stream_impacts(stream_items=stream_items, exclude=None,
                                  kind='all', annual=True)['GlobalWarming']/ppl+
@@ -523,7 +525,8 @@ def get_unit_total_impact(unit,ppl=None, annual=True):
 def get_LCA_metrics(system, ppl=None, include_breakdown=False):
     lca = system.LCA
     if ppl is None:
-        ppl = get_default_ppl()
+        ppl = get_dynamic_ppl()
+    print(f"the current ppl is {ppl}, which is used for LCA calculation")
     functions = [
         lambda: lca.total_impacts['GlobalWarming']/lca.lifetime/ppl, # annual GWP
         # ReCiPe LCA functions

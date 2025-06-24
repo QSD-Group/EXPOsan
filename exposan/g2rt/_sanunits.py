@@ -633,7 +633,7 @@ class VolumeReductionCombustor(SanUnit):
         self.user_scale_up = user_scale_up
         self.extreme = extreme
         if ppl is None:
-            self.ppl = g2rt.get_default_ppl()
+            self.ppl = g2rt.dynamic_ppl
         else:
             self.ppl = ppl
 
@@ -1406,7 +1406,6 @@ class Excretion(SanUnit):
         ur, fec = self.outs
         ur.empty()
         fec.empty()
-
         not_wasted = 1 - self.waste_ratio
         factor = 24 * 1e3 # from g per person per day to kg per hour
 
@@ -1840,7 +1839,7 @@ class G2RThomogenizer(Copier):
         self.user_scale_up = user_scale_up
         self.extreme = extreme
         if ppl is None:
-            self.ppl = g2rt.get_default_ppl()
+            self.ppl = g2rt.dynamic_ppl
         else:
             self.ppl = ppl
             
@@ -2512,7 +2511,7 @@ class VRdryingtunnel(SanUnit):
         self.extreme = extreme
         data = load_data(path=vr_drying_tunnel_path)
         if ppl is None:
-            self.ppl = g2rt.get_default_ppl()
+            self.ppl = g2rt.dynamic_ppl
         else:
             self.ppl = ppl
         
@@ -2866,7 +2865,7 @@ class G2RTSolidsSeparation(SanUnit):
         self.user_scale_up = user_scale_up
         self.extreme =  extreme
         if ppl is None:
-            self.ppl = g2rt.get_default_ppl()
+            self.ppl = g2rt.dynamic_ppl
         else:
             self.ppl = ppl
 
@@ -3038,7 +3037,7 @@ class G2RTBeltSeparation(SanUnit):
         self.user_scale_up = user_scale_up
         self.extreme = extreme
         if ppl is None:
-            self.ppl = g2rt.get_default_ppl()
+            self.ppl = g2rt.dynamic_ppl
         else:
             self.ppl = ppl
 

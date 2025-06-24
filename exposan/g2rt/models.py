@@ -69,7 +69,7 @@ def add_metrics(model, ppl= None):
     g2rt._load_lca_data()
     system = model.system
     if ppl is None:
-        ppl = g2rt.get_default_ppl()
+        ppl = g2rt.get_dynamic_ppl()
 
     # Recoveries
     funcs = get_recoveries(system, ppl)
@@ -612,7 +612,7 @@ def create_modelA(city_specific=False, ppl=None, lifetime=default_lifetime,
                   **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
     # if ppl is None:
-    #     ppl = g2rt.get_default_ppl()
+    #     ppl = g2rt.dynamic_ppl
     sysA = create_system('A', ppl=ppl, lifetime=lifetime, flowsheet=flowsheet, 
                          flush_water =flush_water, combustion_CH4_EF=combustion_CH4_EF, 
                          belt_moisture_content_out=belt_moisture_content_out,extreme=extreme)
