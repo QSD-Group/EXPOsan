@@ -11,7 +11,7 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-import numpy as np
+import numpy as np, qsdsan as qs
 from qsdsan import WasteStream, sanunits as su
 from qsdsan.utils import AttrGetter, auom, load_data, ospath
 from . import data_path
@@ -23,7 +23,8 @@ from chaospy import distributions as shape
 __all__ = (
     'add_performance_metrics',
     'add_NH4_recovery_metric',
-    'add_OPEX_metrics'
+    'add_OPEX_metrics',
+    'add_downstream_uncertainty'
     )
 
 #%%
@@ -137,7 +138,18 @@ def add_NH4_recovery_metric(model):
                 recovery += s.RWW.imass['S_NH4']/(1-r)*r
             return recovery * 24
         return np.nan
+
     
+x_aer = 1
+x_pump = 1
+
+mixing_power = 3e-3     # 3W/m3 = 3e-3 kW/m3 mixing power requirement
+stablize_power = 4.85   # 4.4 kW/wet ton, Tarallo et al. 2015 --> makes more sense to be kWh/wet ton --> 4.85 kWh/wet tonne
+
+acetic_acid_price = 1.8 # 1.8 $/kg 100% acetic acid, GPS-X default
+lime_price = 0.124      # assume 90% purity, 124 USD/tonne https://www.imarcgroup.com/quicklime-pricing-report
+disposal_price = 68.5   # "land application price per wet ton at WRRF gate", based on National Biosolids Data Project report; GPS-X default is 80 USD/tonne
+
 def add_OPEX_metrics(model):
     
     metric = model.metric
@@ -160,7 +172,6 @@ def add_OPEX_metrics(model):
     def get_aed_qair():
         if 'AED' in _cached_aer: qair = _cached_aer['AED']
         else: qair = np.nan
-        print(_cached_aer)
         return qair
 
     blower_energy = {}
@@ -174,8 +185,7 @@ def add_OPEX_metrics(model):
 
     @metric(name='total aeration energy', units='kW', element='Aeration')
     def get_aer_energy():
-        print(blower_energy, '\n')
-        return sum(blower_energy.values())    
+        return sum(blower_energy.values()) * x_aer
     
     pumpin = WasteStream('pumpin', T=s.RWW.T, P=s.RWW.P)
     pump = su.Pump('pump', ins=pumpin, ignore_NPSH=False, 
@@ -290,16 +300,16 @@ def add_OPEX_metrics(model):
         for unit in u:
             if unit.ID[0] == 'A' and unit.ID[1].isdigit():
                 if unit.aeration is None:
-                    power += unit.V_max * 3e-3
+                    power += unit.V_max * mixing_power
         if 'ASR' in u:
             V = sum(u.ASR.V_tanks[i] for i in range(u.ASR.N_tanks_in_series) if u.ASR.DO_setpoints[i] == 0)
-            power += V * 3e-3 # 3W/m3 mixing power requirement
+            power += V * mixing_power
         mixing_energy['ASR'] = power
         return power
     
     @metric(name='AD mixing energy', units='kW', element='Mixing')
     def get_ad_mixing_power():
-        if 'AD' in u: power = u.AD.V_liq * 3e-3
+        if 'AD' in u: power = u.AD.V_liq * mixing_power
         else: power = 0
         mixing_energy['AD'] = power
         return power
@@ -308,12 +318,12 @@ def add_OPEX_metrics(model):
 
     @metric(name='aeration energy cost', units='USD/d', element='OPEX')
     def get_aer_cost():
-        opex['aeration'] = c = sum(blower_energy.values()) * 24 * sys.power_utility.price
+        opex['aeration'] = c = sum(blower_energy.values()) * x_aer * 24 * sys.power_utility.price
         return c
    
     @metric(name='pumping energy cost', units='USD/d', element='OPEX')
     def get_pump_cost():
-        opex['pumping'] = c =  sum(pump_energy.values()) * 24 * sys.power_utility.price
+        opex['pumping'] = c =  sum(pump_energy.values()) * x_pump * 24 * sys.power_utility.price
         return c
     
     @metric(name='mixing energy cost', units='USD/d', element='OPEX')
@@ -324,7 +334,7 @@ def add_OPEX_metrics(model):
     @metric(name='external carbon cost', units='USD/d', element='OPEX')
     def get_carbon_cost():
         if 'carbon' in s:
-            s.carbon.price = 1.8 * s.carbon.components.S_A.i_mass   # 1.8 $/kg 100% acetic acid, GPS-X default
+            s.carbon.price = acetic_acid_price * s.carbon.components.S_A.i_mass
             opex['carbon'] = c = s.carbon.cost * 24
         else: opex['carbon'] = c = 0
         return c
@@ -342,8 +352,8 @@ def add_OPEX_metrics(model):
             cmps = s.cake.components
             tss = s.cake.get_TSS() * 1e-4 # in TS%
             dose = 50 + 4.0*(tss-10)    # in lb CaO per wet ton, linearly correlated w TS%, MOP8 Fig 23.79
-            dose *= 0.5 # convert from lb/ton to kg/tonne
-            opex['lime'] = c =  sum(s.cake.mass * cmps.i_mass) * 24e-3 * dose / 0.9 * 0.124 # assume 90% purity, 124 USD/tonne https://www.imarcgroup.com/quicklime-pricing-report 
+            dose *= 0.5 / 0.9 # convert from lb/ton to kg/tonne, 90% purity
+            opex['lime'] = c =  sum(s.cake.mass * cmps.i_mass) * 24e-3 * dose * lime_price  
         else: opex['lime'] = c = 0
         return c
 
@@ -351,15 +361,14 @@ def add_OPEX_metrics(model):
     def get_stabilization_power_cost():
         if ('AD' not in u) and ('AED' not in u):    # class B lime stabilization in solid trains 3
             cmps = s.cake.components
-            opex['stablization_energy'] = c = sum(s.cake.mass * cmps.i_mass) * 24e-3 * 4.85 * sys.power_utility.price  # 4.4 kW/wet ton, Tarallo et al. 2015 --> makes more sense to be kWh/wet ton
+            opex['stablization_energy'] = c = sum(s.cake.mass * cmps.i_mass) * 24e-3 * stablize_power * sys.power_utility.price
         else: opex['stablization_energy'] = c = 0
         return c
 
     @metric(name='sludge disposal cost', units='USD/d', element='OPEX')
     def get_sludge_disposal_cost():
         cmps = s.cake.components
-        # return sum(s.cake.mass * cmps.i_mass) * 24e-3 * 80 # 80 USD/tonne, GPS-X default
-        opex['sludge disposal'] = c = sum(s.cake.mass * cmps.i_mass) * 24e-3 * 68.5 # land application price per wet ton at WRRF gate, based on National Biosolids Data Project report
+        opex['sludge disposal'] = c = sum(s.cake.mass * cmps.i_mass) * 24e-3 * disposal_price
         return c
     
     @metric(name='total OPEX', units='USD/d', element='OPEX')
@@ -367,28 +376,51 @@ def add_OPEX_metrics(model):
         return sum(opex.values())
 
 # %%
-eia_df = load_data(
-    ospath.join(data_path, 'eia_electricity_price.xlsx'), # https://www.eia.gov/electricity/monthly/epm_table_grapher.php?t=table_5_06_b
-    header=[0,1], index_col=0
-    )
-data = eia_df.loc[:,[('All Sectors', 'March 2025 YTD')]].dropna(how='all').to_numpy().reshape(-1)
 
 def add_downstream_uncertainty(model):
     param = model.parameter
-    sys = model.system
-    # s = sys.flowsheet.stream
-    # u = sys.flowsheet.unit
+        
+    b = 1
+    D = shape.Uniform(0.85, 1.15)   # based on % error between QSDsan and GPS-X results at baseline (unoptimized)
+    @param(name='Aeration energy uncertainty', units='-', element='System', 
+           baseline=b, distribution=D)
+    def set_aer_energy_scalar(x):
+        global x_aer
+        x_aer = x
     
-    b = 13.20 # All Sectors, U.S. Total, March 2025 YTD 
+    b = 1
+    D = shape.Uniform(0.85, 1.3)    # based on % error between QSDsan and GPS-X results at baseline (unoptimized)
+    @param(name='Pumping energy uncertainty', units='-', element='System', 
+           baseline=b, distribution=D)
+    def set_pump_energy_scalar(x):
+        global x_pump
+        x_pump = x
+
+    b = 3e-3
+    D = shape.Uniform(b*0.9, b*1.1)
+    @param(name='Mixing power', units='kW/m3', element='System', 
+           baseline=b, distribution=D)
+    def set_mixing_power(p):
+        global mixing_power
+        mixing_power = p
+        
+    eia_df = load_data(
+        ospath.join(data_path, 'eia_electricity_price.xlsx'), # https://www.eia.gov/electricity/monthly/epm_table_grapher.php?t=table_5_06_b
+        header=[0,1], index_col=0
+        )
+    data = eia_df.loc[:,('All Sectors', 'March 2025 YTD')].to_numpy()
+
+    b = eia_df.loc['U.S. Total', ('All Sectors', 'March 2025 YTD')] 
     D = shape.TruncNormal(data.min()-0.5, data.max()+0.5, mu=b, sigma=data.std())
     @param(name='Electricity price', units='cents/kWh', element='System', 
            baseline=b, distribution=D)
-    def set_eprice(p):
-        sys.power_utility.price = p/100
+    def set_electricity_price(p):
+        qs.PowerUtility.price = p/100
     
     b = 68.5 # land application price per wet ton at WRRF gate, based on National Biosolids Data Project report
     D = shape.Triangle(b*0.5, b, b*1.5)
     @param(name='Sludge disposal price', units='USD/wet tonne', element='System', 
            baseline=b, distribution=D)
     def set_disposal_price(p):
-        pass
+        global disposal_price
+        disposal_price = p
