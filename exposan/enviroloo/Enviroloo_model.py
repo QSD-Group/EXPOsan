@@ -127,7 +127,7 @@ def add_metrics(model):
     #     #Metric('Annual net cost', get_TEA_metrics_breakdown(system), f'{qs.currency}/cap/yr', 'TEA results'),
     #     ])
     # Net emissions of the EL system in LCA
-    funcs = get_LCA_metrics(system)  # extract LCA metrics from the EL system's LCA results
+    funcs = get_LCA_metrics(system, include_breakdown=True)  # extract LCA metrics from the EL system's LCA results
     cat = 'LCA results'  # assign the same index to all LCA metrics
     metrics = [
         Metric('Annualized CAPEX', get_TEA_metrics(system)[1], f'{qs.currency}/cap/yr', 'TEA results'),
@@ -136,6 +136,8 @@ def add_metrics(model):
         Metric('OPEX excluding labor/energy', get_TEA_metrics(system)[4], f'{qs.currency}/cap/yr', 'TEA results'),
         Metric('Revenue', get_TEA_metrics(system)[5], f'{qs.currency}/cap/yr', 'TEA results'),
         Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', 'LCA results'),
+        Metric('Construction_GWP', funcs[4], 'kg CO2-eq/cap/yr', 'LCA results'),
+        Metric('Stream_GWP', funcs[6], 'kg CO2-eq/cap/yr', 'LCA results'),
         Metric('H_Ecosystems', funcs[1], 'points/cap/yr', 'LCA results'),
         Metric('H_Health', funcs[2], 'points/cap/yr', 'LCA results'),
         Metric('H_Resources', funcs[3], 'points/cap/yr', 'LCA results'),
